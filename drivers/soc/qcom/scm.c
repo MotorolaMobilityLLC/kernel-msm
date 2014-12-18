@@ -17,6 +17,7 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/init.h>
+#include <linux/delay.h>
 
 #include <asm/cacheflush.h>
 #include <asm/compiler.h>
@@ -29,8 +30,12 @@
 #define SCM_EINVAL_ARG		-2
 #define SCM_ERROR		-1
 #define SCM_INTERRUPTED		1
+#define SCM_EBUSY		-55
 
 static DEFINE_MUTEX(scm_lock);
+
+#define SCM_EBUSY_WAIT_MS 30
+#define SCM_EBUSY_MAX_RETRY 20
 
 #define SCM_BUF_LEN(__cmd_size, __resp_size)	\
 	(sizeof(struct scm_command) + sizeof(struct scm_response) + \
@@ -139,7 +144,8 @@ static inline void *scm_get_response_buffer(const struct scm_response *rsp)
 
 static int scm_remap_error(int err)
 {
-	pr_err("scm_call failed with error code %d\n", err);
+	if (err != SCM_EBUSY)
+		pr_err("scm_call failed with error code %d\n", err);
 	switch (err) {
 	case SCM_ERROR:
 		return -EIO;
@@ -150,6 +156,8 @@ static int scm_remap_error(int err)
 		return -EOPNOTSUPP;
 	case SCM_ENOMEM:
 		return -ENOMEM;
+	case SCM_EBUSY:
+		return SCM_EBUSY;
 	}
 	return -EINVAL;
 }
@@ -281,6 +289,33 @@ static int scm_call_common(u32 svc_id, u32 cmd_id, const void *cmd_buf,
 	return ret;
 }
 
+/*
+ * Sometimes the secure world may be busy waiting for a particular resource.
+ * In those situations, it is expected that the secure world returns a special
+ * error code (SCM_EBUSY). Retry any scm_call that fails with this error code,
+ * but with a timeout in place. Also, don't move this into scm_call_common,
+ * since we want the first attempt to be the "fastpath".
+ */
+static int _scm_call_retry(u32 svc_id, u32 cmd_id, const void *cmd_buf,
+				size_t cmd_len, void *resp_buf, size_t resp_len,
+				struct scm_command *cmd,
+				size_t len)
+{
+	int ret, retry_count = 0;
+
+	do {
+		ret = scm_call_common(svc_id, cmd_id, cmd_buf, cmd_len,
+					resp_buf, resp_len, cmd, len);
+		if (ret == SCM_EBUSY)
+			msleep(SCM_EBUSY_WAIT_MS);
+	} while (ret == SCM_EBUSY && (retry_count++ < SCM_EBUSY_MAX_RETRY));
+
+	if (ret == SCM_EBUSY)
+		pr_err("scm: secure world busy (rc = SCM_EBUSY)\n");
+
+	return ret;
+}
+
 /**
  * scm_call_noalloc - Send an SCM command
  *
@@ -344,6 +379,9 @@ int scm_call(u32 svc_id, u32 cmd_id, const void *cmd_buf, size_t cmd_len,
 
 	ret = scm_call_common(svc_id, cmd_id, cmd_buf, cmd_len, resp_buf,
 				resp_len, cmd, len);
+	if (unlikely(ret == SCM_EBUSY))
+		ret = _scm_call_retry(svc_id, cmd_id, cmd_buf, cmd_len,
+				      resp_buf, resp_len, cmd, PAGE_ALIGN(len));
 	kfree(cmd);
 	return ret;
 }
@@ -387,6 +425,42 @@ s32 scm_call_atomic1(u32 svc, u32 cmd, u32 arg1)
 	return r0;
 }
 EXPORT_SYMBOL(scm_call_atomic1);
+
+/**
+ * scm_call_atomic1_1() - SCM command with one argument and one return value
+ * @svc_id: service identifier
+ * @cmd_id: command identifier
+ * @arg1: first argument
+ * @ret1: first return value
+ *
+ * This shall only be used with commands that are guaranteed to be
+ * uninterruptable, atomic and SMP safe.
+ */
+s32 scm_call_atomic1_1(u32 svc, u32 cmd, u32 arg1, u32 *ret1)
+{
+	int context_id;
+	register u32 r0 asm("r0") = SCM_ATOMIC(svc, cmd, 1);
+	register u32 r1 asm("r1") = (uintptr_t)&context_id;
+	register u32 r2 asm("r2") = arg1;
+
+	asm volatile(
+		__asmeq("%0", R0_STR)
+		__asmeq("%1", R1_STR)
+		__asmeq("%2", R0_STR)
+		__asmeq("%3", R1_STR)
+		__asmeq("%4", R2_STR)
+#ifdef REQUIRES_SEC
+			".arch_extension sec\n"
+#endif
+		"smc	#0\n"
+		: "=r" (r0), "=r" (r1)
+		: "r" (r0), "r" (r1), "r" (r2)
+		: "r3");
+	if (ret1)
+		*ret1 = r1;
+	return r0;
+}
+EXPORT_SYMBOL(scm_call_atomic1_1);
 
 /**
  * scm_call_atomic2() - Send an atomic SCM command with two arguments

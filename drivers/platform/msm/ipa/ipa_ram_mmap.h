@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -44,7 +44,7 @@
 #define IPA_CANARY_SIZE 4
 #define IPA_CANARY_VAL 0xdeadbeef
 
-#define IPA_v2_RAM_OFST_START 0
+#define IPA_v2_RAM_OFST_START 128
 #define IPA_v2_RAM_V4_FLT_OFST IPA_v2_RAM_OFST_START
 #define IPA_v2_RAM_V4_FLT_SIZE 88
 #define IPA_v2_RAM_V6_FLT_OFST (IPA_v2_RAM_V4_FLT_OFST + \
@@ -80,7 +80,7 @@
 #define IPA_v2_RAM_APPS_V4_FLT_SIZE 2176
 #define IPA_v2_RAM_APPS_V6_FLT_OFST (IPA_v2_RAM_APPS_V4_FLT_OFST + \
 		IPA_v2_RAM_APPS_V4_FLT_SIZE)
-#define IPA_v2_RAM_APPS_V6_FLT_SIZE 1792
+#define IPA_v2_RAM_APPS_V6_FLT_SIZE 1664
 #define IPA_v2_RAM_END_OFST (IPA_v2_RAM_APPS_V6_FLT_OFST + \
 		IPA_v2_RAM_APPS_V6_FLT_SIZE + IPA_CANARY_SIZE)
 #define IPA_v2_RAM_APPS_V4_RT_OFST IPA_v2_RAM_END_OFST

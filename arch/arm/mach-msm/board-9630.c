@@ -51,16 +51,11 @@ void __init mdm9630_add_drivers(void)
 	msm_rpm_driver_init();
 	rpm_smd_regulator_driver_init();
 	msm_spm_device_init();
-	msm_clock_init(&mdm9630_clock_init_data);
 }
 
 void __init mdm9630_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
-}
-static void __init mdm9630_early_memory(void)
-{
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 static void __init mdm9630_map_io(void)
 {
@@ -90,10 +85,10 @@ static const char *mdm9630_dt_match[] __initconst = {
 	NULL
 };
 
-DT_MACHINE_START(MDM9630_DT, "Qualcomm MDM 9630 (Flattened Device Tree)")
+DT_MACHINE_START(MDM9630_DT,
+		"Qualcomm Technologies, Inc. MDM 9630 (Flattened Device Tree)")
 	.map_io			= mdm9630_map_io,
 	.init_machine		= mdm9630_init,
 	.dt_compat		= mdm9630_dt_match,
 	.reserve		= mdm9630_reserve,
-	.init_very_early	= mdm9630_early_memory,
 MACHINE_END

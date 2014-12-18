@@ -51,7 +51,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/serial_core.h>
-#include <mach/msm_serial_hs.h>
+#include <linux/platform_data/msm_serial_hs.h>
 
 #include <net/bluetooth/bluetooth.h>
 

@@ -31,6 +31,9 @@
 #define CPP_HW_VERSION_2_0_0  0x20000000
 #define CPP_HW_VERSION_4_0_0  0x40000000
 #define CPP_HW_VERSION_4_1_0  0x40010000
+#define CPP_HW_VERSION_5_0_0  0x50000000
+
+#define VBIF_VERSION_2_3_0  0x20030000
 
 #define MAX_ACTIVE_CPP_INSTANCE 8
 #define MAX_CPP_PROCESSING_FRAME 2
@@ -84,6 +87,7 @@
 #define MSM_CPP_POLL_RETRIES		20
 #define MSM_CPP_TASKLETQ_SIZE		16
 #define MSM_CPP_TX_FIFO_LEVEL		16
+#define MSM_CPP_RX_FIFO_LEVEL		512
 
 struct cpp_subscribe_info {
 	struct v4l2_fh *vfh;
@@ -95,6 +99,11 @@ enum cpp_state {
 	CPP_STATE_IDLE,
 	CPP_STATE_ACTIVE,
 	CPP_STATE_OFF,
+};
+
+enum cpp_iommu_state {
+	CPP_IOMMU_STATE_DETACHED,
+	CPP_IOMMU_STATE_ATTACHED,
 };
 
 enum msm_queue {
@@ -163,6 +172,12 @@ struct msm_cpp_work_t {
 	struct cpp_device *cpp_dev;
 };
 
+struct msm_cpp_clock_settings_t {
+	unsigned long clock_rate;
+	uint64_t avg;
+	uint64_t inst;
+};
+
 struct cpp_device {
 	struct platform_device *pdev;
 	struct msm_sd_subdev msm_sd;
@@ -180,12 +195,14 @@ struct cpp_device {
 	struct regulator *fs_cpp;
 	struct mutex mutex;
 	enum cpp_state state;
+	enum cpp_iommu_state iommu_state;
 	uint8_t is_firmware_loaded;
 	char *fw_name_bin;
 	struct workqueue_struct *timer_wq;
 	struct msm_cpp_work_t *work;
 	uint32_t fw_version;
 	uint8_t stream_cnt;
+	uint8_t timeout_trial_cnt;
 
 	int domain_num;
 	struct iommu_domain *domain;

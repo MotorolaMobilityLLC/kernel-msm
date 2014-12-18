@@ -90,12 +90,13 @@
 
 #include "msm_iomap-8974.h"
 #include "msm_iomap-8084.h"
-#include "msm_iomap-8092.h"
 #include "msm_iomap-8916.h"
+#include "msm_iomap-ferrum.h"
 #include "msm_iomap-8226.h"
 #include "msm_iomap-8610.h"
 #include "msm_iomap-9630.h"
+#include "msm_iomap-zirc.h"
 #include "msm_iomap-fsm9900.h"
-#include "msm_iomap-samarium.h"
+#include "msm_iomap-fsm9010.h"
 
 #endif

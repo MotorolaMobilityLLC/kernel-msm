@@ -20,7 +20,6 @@ config ARM
 	select GENERIC_STRNCPY_FROM_USER
 	select GENERIC_STRNLEN_USER
 	select HARDIRQS_SW_RESEND
-	select HAVE_AOUT
 	select HAVE_ARCH_JUMP_LABEL if !XIP_KERNEL
 	select HAVE_ARCH_KGDB
 	select HAVE_ARCH_SECCOMP_FILTER
@@ -1099,15 +1098,6 @@ config ARM_NR_BANKS
 	default 16 if ARCH_EP93XX
 	default 8
 
-config RESERVE_FIRST_PAGE
-	bool
-	default n
-	help
-	  Reserve the first page at PHYS_OFFSET. The first
-	  physical page is used by many platforms for warm
-	  boot operations. Reserve this page so that it is
-	  not allocated by the kernel.
-
 config IWMMXT
 	bool "Enable iWMMXt support" if !CPU_PJ4
 	depends on CPU_XSCALE || CPU_XSC3 || CPU_MOHAWK || CPU_PJ4
@@ -1779,16 +1769,15 @@ config HW_PERF_EVENTS
 	  Enable hardware performance counter support for perf events. If
 	  disabled, perf events will use software events only.
 
+config PERF_EVENTS_USERMODE
+	bool "Enable usermode access for perf events"
+	depends on PERF_EVENTS
+	help
+	  Enable user-mode access to performance counters for perf events.
+	  If enabled, the access permissions allowing CPU performance
+	  counters to be accessed from user-mode are set.
+
 source "mm/Kconfig"
-
-config ARCH_MEMORY_PROBE
-	def_bool n
-
-config ARCH_MEMORY_REMOVE
-	def_bool n
-
-config ENABLE_DMM
-	def_bool n
 
 choice
 	prompt "Virtual Memory Reclaim"
@@ -2191,6 +2180,17 @@ config AUTO_ZRELADDR
 	  will be determined at run-time by masking the current IP with
 	  0xf8000000. This assumes the zImage being placed in the first 128MB
 	  from start of memory.
+
+config ARM_DECOMPRESSOR_LIMIT
+	hex "Limit the decompressor memory area"
+	default 0x10000000
+	help
+	  Allows overriding of the memory size that decompressor maps with
+	  read, write and execute permissions to avoid speculative prefetch.
+
+	  By default ARM_DECOMPRESSOR_LIMIT maps first 1GB of memory
+	  with read, write and execute permissions and reset of the memory
+	  as strongly ordered.
 
 endmenu
 

@@ -211,7 +211,8 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP);
 	}
 
-	if (isr & MDSS_MDP_INTR_WB_2_DONE) {
+	if (isr & ((mdata->mdp_rev == MDSS_MDP_HW_REV_108) ?
+		MDSS_MDP_INTR_WB_2_DONE >> 2 : MDSS_MDP_INTR_WB_2_DONE)) {
 		mdss_mdp_intr_done(MDP_INTR_WB_2);
 		mdss_misr_crc_collect(mdata, DISPLAY_MISR_MDP);
 	}
@@ -247,9 +248,9 @@ struct mdss_mdp_format_params *mdss_mdp_get_format_params(u32 format)
 	return NULL;
 }
 
-void mdss_mdp_intersect_rect(struct mdss_mdp_img_rect *res_rect,
-	const struct mdss_mdp_img_rect *dst_rect,
-	const struct mdss_mdp_img_rect *sci_rect)
+void mdss_mdp_intersect_rect(struct mdss_rect *res_rect,
+	const struct mdss_rect *dst_rect,
+	const struct mdss_rect *sci_rect)
 {
 	int l = max(dst_rect->x, sci_rect->x);
 	int t = max(dst_rect->y, sci_rect->y);
@@ -257,16 +258,16 @@ void mdss_mdp_intersect_rect(struct mdss_mdp_img_rect *res_rect,
 	int b = min((dst_rect->y + dst_rect->h), (sci_rect->y + sci_rect->h));
 
 	if (r < l || b < t)
-		*res_rect = (struct mdss_mdp_img_rect){0, 0, 0, 0};
+		*res_rect = (struct mdss_rect){0, 0, 0, 0};
 	else
-		*res_rect = (struct mdss_mdp_img_rect){l, t, (r-l), (b-t)};
+		*res_rect = (struct mdss_rect){l, t, (r-l), (b-t)};
 }
 
-void mdss_mdp_crop_rect(struct mdss_mdp_img_rect *src_rect,
-	struct mdss_mdp_img_rect *dst_rect,
-	const struct mdss_mdp_img_rect *sci_rect)
+void mdss_mdp_crop_rect(struct mdss_rect *src_rect,
+	struct mdss_rect *dst_rect,
+	const struct mdss_rect *sci_rect)
 {
-	struct mdss_mdp_img_rect res;
+	struct mdss_rect res;
 	mdss_mdp_intersect_rect(&res, dst_rect, sci_rect);
 
 	if (res.w && res.h) {
@@ -276,7 +277,7 @@ void mdss_mdp_crop_rect(struct mdss_mdp_img_rect *src_rect,
 			src_rect->w = res.w;
 			src_rect->h = res.h;
 		}
-		*dst_rect = (struct mdss_mdp_img_rect)
+		*dst_rect = (struct mdss_rect)
 			{(res.x - sci_rect->x), (res.y - sci_rect->y),
 			res.w, res.h};
 	}
@@ -324,7 +325,7 @@ int mdss_mdp_get_rau_strides(u32 w, u32 h,
 }
 
 int mdss_mdp_get_plane_sizes(u32 format, u32 w, u32 h,
-			     struct mdss_mdp_plane_sizes *ps, u32 bwc_mode)
+	struct mdss_mdp_plane_sizes *ps, u32 bwc_mode, bool rotation)
 {
 	struct mdss_mdp_format_params *fmt;
 	int i, rc;
@@ -378,9 +379,24 @@ int mdss_mdp_get_plane_sizes(u32 format, u32 w, u32 h,
 			u8 hmap[] = { 1, 2, 1, 2 };
 			u8 vmap[] = { 1, 1, 2, 2 };
 			u8 horiz, vert, stride_align, height_align;
+			u32 chroma_samp;
 
-			horiz = hmap[fmt->chroma_sample];
-			vert = vmap[fmt->chroma_sample];
+			chroma_samp = fmt->chroma_sample;
+
+			if (rotation) {
+				if (chroma_samp == MDSS_MDP_CHROMA_H2V1)
+					chroma_samp = MDSS_MDP_CHROMA_H1V2;
+				else if (chroma_samp == MDSS_MDP_CHROMA_H1V2)
+					chroma_samp = MDSS_MDP_CHROMA_H2V1;
+			}
+
+			if (chroma_samp >= ARRAY_SIZE(hmap) ||
+				chroma_samp >= ARRAY_SIZE(vmap)) {
+				pr_err("%s: out of bounds error\n", __func__);
+				return -ERANGE;
+			}
+			horiz = hmap[chroma_samp];
+			vert = vmap[chroma_samp];
 
 			switch (format) {
 			case MDP_Y_CR_CB_GH2V2:
@@ -428,7 +444,7 @@ int mdss_mdp_data_check(struct mdss_mdp_data *data,
 	if (!data || data->num_planes == 0)
 		return -ENOMEM;
 
-	pr_debug("srcp0=%pa len=%u frame_size=%u\n", &data->p[0].addr,
+	pr_debug("srcp0=%pa len=%lu frame_size=%u\n", &data->p[0].addr,
 		data->p[0].len, ps->total_size);
 
 	for (i = 0; i < ps->num_planes; i++) {
@@ -443,11 +459,11 @@ int mdss_mdp_data_check(struct mdss_mdp_data *data,
 			curr->addr = prev->addr + psize;
 		}
 		if (curr->len < ps->plane_size[i]) {
-			pr_err("insufficient mem=%u p=%d len=%u\n",
+			pr_err("insufficient mem=%lu p=%d len=%u\n",
 			       curr->len, i, ps->plane_size[i]);
 			return -ENOMEM;
 		}
-		pr_debug("plane[%d] addr=%pa len=%u\n", i,
+		pr_debug("plane[%d] addr=%pa len=%lu\n", i,
 				&curr->addr, curr->len);
 	}
 	data->num_planes = ps->num_planes;
@@ -532,7 +548,7 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 	struct ion_client *iclient = mdss_get_ionclient();
 
 	start = &data->addr;
-	len = (unsigned long *) &data->len;
+	len = &data->len;
 	data->flags |= img->flags;
 	data->p_need = 0;
 
@@ -611,7 +627,7 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 		data->addr += img->offset;
 		data->len -= img->offset;
 
-		pr_debug("mem=%d ihdl=%p buf=0x%pa len=0x%x\n", img->memory_id,
+		pr_debug("mem=%d ihdl=%p buf=0x%pa len=%lu\n", img->memory_id,
 			 data->srcp_ihdl, &data->addr, data->len);
 	} else {
 		mdss_mdp_put_img(data);

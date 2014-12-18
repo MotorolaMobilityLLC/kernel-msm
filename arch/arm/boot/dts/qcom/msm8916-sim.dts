@@ -16,9 +16,11 @@
 
 #include "msm8916.dtsi"
 #include "msm8916-pinctrl.dtsi"
+#include "msm8916-memory.dtsi"
+#include "msm8916-camera-sensor-cdp.dtsi"
 
 / {
-	model = "Qualcomm MSM8916 Simulator";
+	model = "Qualcomm Technologies, Inc. MSM8916 Simulator";
 	compatible = "qcom,msm8916-sim", "qcom,msm8916", "qcom,sim";
 	qcom,board-id= <16 0>;
 };

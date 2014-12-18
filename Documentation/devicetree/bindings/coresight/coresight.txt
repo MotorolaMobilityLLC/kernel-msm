@@ -22,7 +22,8 @@ Required properties:
 	"qcom,coresight-csr" for coresight csr device,
 	"arm,coresight-cti" for coresight cti devices,
 	"qcom,coresight-hwevent" for coresight hardware event devices
-	"arm,coresight-fuse" for coresight fuse device,
+	"arm,coresight-fuse" for coresight fuse v1 device,
+	"arm,coresight-fuse-v2" for coresight fuse v2 device,
 	"qcom,coresight-audio-etm" for coresight audio etm trace device,
 	"qcom,coresight-modem-etm" for coresight modem etm trace device,
 	"qcom,coresight-wcn-etm" for coresight wireless etm trace device,
@@ -102,6 +103,8 @@ Required properties:
 - coresight-id : unique integer identifier for the component
 - coresight-name : unique descriptive name of the component
 - coresight-nr-inports : number of input ports on the component
+- coresight-cti-cpu : cpu phandle for cpu cti, required when qcom,cti-save is true
+- coresight-etm-cpu : specifies phandle for the cpu associated with the ETM device
 
 coresight-outports, coresight-child-list and coresight-child-ports lists will
 be of the same length and will have a one to one correspondence among the
@@ -119,13 +122,18 @@ Optional properties:
 - coresight-child-ports : list of input port numbers of the children
 - coresight-default-sink : represents the default compile time CoreSight sink
 - coresight-ctis : list of ctis that this component interacts with
+- qcom,cti-save : boolean, indicating cti context needs to be saved and restored
+- qcom,cti-hwclk : boolean, indicating support of hardware clock to access cti
+		   registers to be saved and restored
+- qcom,cti-ack-atomic : boolean, indicating cti interrupt acknowledgement needs
+			to be done in atomic context
+- qcom,cti-gpio-trigin : cti trigger input driven by gpio
+- qcom,cti-gpio-trigout : cti trigger output sent to gpio
 - qcom,pc-save : program counter save implemented
 - qcom,blk-size : block size for tmc-etr to usb transfers
 - qcom,memory-size : size of coherent memory to be allocated for tmc-etr buffer
 - qcom,round-robin : indicates if per core etms are allowed round-robin access
 		     by the funnel
-- qcom,reset-flush-race : indicates if a race exists between flushing and ddr
-			  being put into self-refresh during watchdog reset
 - qcom,write-64bit : only 64bit data writes supported by stm
 - <supply-name>-supply: phandle to the regulator device tree node. The required
 			<supply-name> is "vdd" for SD card and "vdd-io" for SD
@@ -139,27 +147,43 @@ Optional properties:
 				units being uA. Here <supply> can be "vdd" for
 				SD card vdd supply or "vdd-io" for SD I/O vdd
 				supply.
-- qcom,seta-gpios : specifies gpios included in set A that are routed to the
-		    mictor connector. Used for tpiu component
-- qcom,seta-gpios-func : active function select for set A gpios
-- qcom,seta-gpios-drv : active drive strength for set A gpios
-- qcom,seta-gpios-pull : active pull configuration for set A gpios
-- qcom,seta-gpios-dir : active direction for set A gpios
-- qcom,setb-gpios : specifies gpios included in set B that are routed to the
-		    mictor connector. Used for tpiu component
-- qcom,setb-gpios-func : active function select for set B gpios
-- qcom,setb-gpios-drv : active drive strength for set B gpios
-- qcom,setb-gpios-pull : active pull configuration for set B gpios
-- qcom,setb-gpios-dir : active direction for set B gpios
 - qcom,hwevent-clks : list of clocks required by hardware event driver
+- qcom,hwevent-regs : list of regulators required by hardware event driver
 - qcom,byte-cntr-absent : specifies if the byte counter feature is absent on
 			  the device. Only relevant in case of tmc-etr device.
 - interrupts : <a b c> where a is 0 or 1 depending on if the interrupt is
 		spi/ppi, b is the interrupt number and c is the mask,
 - interrupt-names : a list of strings that map in order to the list of
 		    interrupts specified in the 'interrupts' property.
-- qcom,nidnt : indicates NIDnT serial wire debug support present. Used for tpiu
-	       component
+- qcom,sg-enable : indicates whether scatter gather feature is supported for TMC
+		   ETR configuration.
+- qcom,nidntsw : boolean, indicating NIDnT software debug or trace support
+		 present. Used for tpiu component
+- qcom,nidnthw : boolean, indicating NIDnT hardware sensing support present.
+		 Used for tpiu component
+  qcom,nidntsw and qcom,nidnthw are mutually exclusive properties, either of
+  these may specified for tpiu component
+- qcom,nidnt-swduart : boolean, indicating NIDnT swd uart support present. Used
+		       for tpiu component
+- qcom,nidnt-swdtrc : boolean, indicating NIDnT swd trace support present. Used
+		      for tpiu component
+- qcom,nidnt-jtag : boolean, indicating NIDnT jtag debug support present. Used
+		    for tpiu component
+- qcom,nidnt-spmi : boolean, indicating NIDnT spmi debug support present. Used
+		    for tpiu component
+- nidnt-gpio : specifies gpio for NIDnT hardware detection
+- nidnt-gpio-polarity : specifies gpio polarity for NIDnT hardware detection
+- pinctrl-names : names corresponding to the numbered pinctrl. The allowed
+		  names are subset of the following: cti-trigin-pctrl,
+		  cti-trigout-pctrl. Used for cti component
+- pinctrl-<n>: list of pinctrl phandles for the different pinctrl states. Refer
+	       to "Documentation/devicetree/bindings/pinctrl/pinctrl-bindings.txt".
+-qcom,funnel-save-restore : boolean, indicating funnel port needs to be disabled
+			    for the ETM whose CPU is being powered down. The port
+			    state is restored when CPU is powered up. Used for
+			    funnel component.
+-qcom,tmc-flush-powerdown : boolean, indicating trace data needs to be flushed before
+			    powering down CPU. Used for TMC component.
 
 Examples:
 
@@ -190,6 +214,11 @@ Examples:
 		coresight-id = <1>;
 		coresight-name = "coresight-tpiu";
 		coresight-nr-inports = <1>;
+
+		qcom,nidnt;
+		qcom,nidnthw;
+		nidnt-gpio = <38>;
+		nidnt-gpio-polarity = <1>;
 
 		vdd-supply = <&pm8941_l21>;
 
@@ -250,6 +279,8 @@ Examples:
 		coresight-outports = <0>;
 		coresight-child-list = <&funnel_kpss>;
 		coresight-child-ports = <0>;
+		coresight-etm-cpu = <&CPU0>;
+
 		qcom,pc-save;
 		qcom,round-robin;
 	};
@@ -263,6 +294,10 @@ Examples:
 		coresight-id = <15>;
 		coresight-name = "coresight-cti0";
 		coresight-nr-inports = <0>;
+
+		qcom,cti-gpio-trigout = <1>;
+		pinctrl-names = "cti-trigout-pctrl";
+		pinctrl-0 = <&trigout_a>;
 	};
 
 	cti1: cti@fc309000 {
@@ -288,6 +323,7 @@ Examples:
 		coresight-nr-inports = <0>;
 
 		qcom,hwevent-clks = "core_mmss_clk";
+		qcom,hwevent-regs = "gdsc_ufs";
 	};
 
 	fuse: fuse@fc4be024 {

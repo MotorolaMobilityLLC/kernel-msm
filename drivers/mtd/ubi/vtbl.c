@@ -1,6 +1,9 @@
 /*
  * Copyright (c) International Business Machines Corp., 2006
  * Copyright (c) Nokia Corporation, 2006, 2007
+ * Copyright (c) 2014, Linux Foundation. All rights reserved.
+ * Linux Foundation chooses to take subject only to the GPLv2
+ * license terms, and distributes only under these terms.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -190,7 +193,7 @@ static int vtbl_check(const struct ubi_device *ubi,
 
 		crc = crc32(UBI_CRC32_INIT, &vtbl[i], UBI_VTBL_RECORD_SIZE_CRC);
 		if (be32_to_cpu(vtbl[i].crc) != crc) {
-			ubi_err("bad CRC at record %u: %#08x, not %#08x",
+			ubi_err(ubi->ubi_num, "bad CRC at record %u: %#08x, not %#08x",
 				 i, crc, be32_to_cpu(vtbl[i].crc));
 			ubi_dump_vtbl_record(&vtbl[i], i);
 			return 1;
@@ -224,7 +227,7 @@ static int vtbl_check(const struct ubi_device *ubi,
 
 		n = ubi->leb_size % alignment;
 		if (data_pad != n) {
-			ubi_err("bad data_pad, has to be %d", n);
+			ubi_err(ubi->ubi_num, "bad data_pad, has to be %d", n);
 			err = 6;
 			goto bad;
 		}
@@ -240,7 +243,7 @@ static int vtbl_check(const struct ubi_device *ubi,
 		}
 
 		if (reserved_pebs > ubi->good_peb_count) {
-			ubi_err("too large reserved_pebs %d, good PEBs %d",
+			ubi_err(ubi->ubi_num, "too large reserved_pebs %d, good PEBs %d",
 				reserved_pebs, ubi->good_peb_count);
 			err = 9;
 			goto bad;
@@ -270,7 +273,8 @@ static int vtbl_check(const struct ubi_device *ubi,
 
 			if (len1 > 0 && len1 == len2 &&
 			    !strncmp(vtbl[i].name, vtbl[n].name, len1)) {
-				ubi_err("volumes %d and %d have the same name \"%s\"",
+				ubi_err(ubi->ubi_num,
+				"volumes %d and %d have the same name \"%s\"",
 					i, n, vtbl[i].name);
 				ubi_dump_vtbl_record(&vtbl[i], i);
 				ubi_dump_vtbl_record(&vtbl[n], n);
@@ -282,7 +286,8 @@ static int vtbl_check(const struct ubi_device *ubi,
 	return 0;
 
 bad:
-	ubi_err("volume table check failed: record %d, error %d", i, err);
+	ubi_err(ubi->ubi_num,
+		"volume table check failed: record %d, error %d", i, err);
 	ubi_dump_vtbl_record(&vtbl[i], i);
 	return -EINVAL;
 }
@@ -339,7 +344,8 @@ retry:
 	 * And add it to the attaching information. Don't delete the old version
 	 * of this LEB as it will be deleted and freed in 'ubi_add_to_av()'.
 	 */
-	err = ubi_add_to_av(ubi, ai, new_aeb->pnum, new_aeb->ec, vid_hdr, 0);
+	err = ubi_add_to_av(ubi, ai, new_aeb->pnum, new_aeb->ec,
+			new_aeb->last_erase_time, new_aeb->rc, vid_hdr, 0);
 	kmem_cache_free(ai->aeb_slab_cache, new_aeb);
 	ubi_free_vid_hdr(ubi, vid_hdr);
 	return err;
@@ -446,11 +452,11 @@ static struct ubi_vtbl_record *process_lvol(struct ubi_device *ubi,
 			leb_corrupted[1] = memcmp(leb[0], leb[1],
 						  ubi->vtbl_size);
 		if (leb_corrupted[1]) {
-			ubi_warn("volume table copy #2 is corrupted");
+			ubi_warn(ubi->ubi_num, "volume table copy #2 is corrupted");
 			err = create_vtbl(ubi, ai, 1, leb[0]);
 			if (err)
 				goto out_free;
-			ubi_msg("volume table was restored");
+			ubi_msg(ubi->ubi_num, "volume table was restored");
 		}
 
 		/* Both LEB 1 and LEB 2 are OK and consistent */
@@ -465,15 +471,15 @@ static struct ubi_vtbl_record *process_lvol(struct ubi_device *ubi,
 		}
 		if (leb_corrupted[1]) {
 			/* Both LEB 0 and LEB 1 are corrupted */
-			ubi_err("both volume tables are corrupted");
+			ubi_err(ubi->ubi_num, "both volume tables are corrupted");
 			goto out_free;
 		}
 
-		ubi_warn("volume table copy #1 is corrupted");
+		ubi_warn(ubi->ubi_num, "volume table copy #1 is corrupted");
 		err = create_vtbl(ubi, ai, 0, leb[1]);
 		if (err)
 			goto out_free;
-		ubi_msg("volume table was restored");
+		ubi_msg(ubi->ubi_num, "volume table was restored");
 
 		vfree(leb[0]);
 		return leb[1];
@@ -562,7 +568,7 @@ static int init_volumes(struct ubi_device *ubi,
 		if (vtbl[i].flags & UBI_VTBL_AUTORESIZE_FLG) {
 			/* Auto re-size flag may be set only for one volume */
 			if (ubi->autoresize_vol_id != -1) {
-				ubi_err("more than one auto-resize volume (%d and %d)",
+				ubi_err(ubi->ubi_num, "more than one auto-resize volume (%d and %d)",
 					ubi->autoresize_vol_id, i);
 				kfree(vol);
 				return -EINVAL;
@@ -608,7 +614,7 @@ static int init_volumes(struct ubi_device *ubi,
 			 * We found a static volume which misses several
 			 * eraseblocks. Treat it as corrupted.
 			 */
-			ubi_warn("static volume %d misses %d LEBs - corrupted",
+			ubi_warn(ubi->ubi_num, "static volume %d misses %d LEBs - corrupted",
 				 av->vol_id, av->used_ebs - av->leb_count);
 			vol->corrupted = 1;
 			continue;
@@ -646,10 +652,10 @@ static int init_volumes(struct ubi_device *ubi,
 	vol->ubi = ubi;
 
 	if (reserved_pebs > ubi->avail_pebs) {
-		ubi_err("not enough PEBs, required %d, available %d",
+		ubi_err(ubi->ubi_num, "not enough PEBs, required %d, available %d",
 			reserved_pebs, ubi->avail_pebs);
 		if (ubi->corr_peb_count)
-			ubi_err("%d PEBs are corrupted and not used",
+			ubi_err(ubi->ubi_num, "%d PEBs are corrupted and not used",
 				ubi->corr_peb_count);
 	}
 	ubi->rsvd_pebs += reserved_pebs;
@@ -660,13 +666,14 @@ static int init_volumes(struct ubi_device *ubi,
 
 /**
  * check_av - check volume attaching information.
+ * @ubi: UBI device description object
  * @vol: UBI volume description object
  * @av: volume attaching information
  *
  * This function returns zero if the volume attaching information is consistent
  * to the data read from the volume tabla, and %-EINVAL if not.
  */
-static int check_av(const struct ubi_volume *vol,
+static int check_av(const struct ubi_device *ubi, const struct ubi_volume *vol,
 		    const struct ubi_ainf_volume *av)
 {
 	int err;
@@ -694,7 +701,7 @@ static int check_av(const struct ubi_volume *vol,
 	return 0;
 
 bad:
-	ubi_err("bad attaching information, error %d", err);
+	ubi_err(ubi->ubi_num, "bad attaching information, error %d", err);
 	ubi_dump_av(av);
 	ubi_dump_vol_info(vol);
 	return -EINVAL;
@@ -718,14 +725,16 @@ static int check_attaching_info(const struct ubi_device *ubi,
 	struct ubi_volume *vol;
 
 	if (ai->vols_found > UBI_INT_VOL_COUNT + ubi->vtbl_slots) {
-		ubi_err("found %d volumes while attaching, maximum is %d + %d",
+		ubi_err(ubi->ubi_num,
+			"found %d volumes while attaching, maximum is %d + %d",
 			ai->vols_found, UBI_INT_VOL_COUNT, ubi->vtbl_slots);
 		return -EINVAL;
 	}
 
 	if (ai->highest_vol_id >= ubi->vtbl_slots + UBI_INT_VOL_COUNT &&
 	    ai->highest_vol_id < UBI_INTERNAL_VOL_START) {
-		ubi_err("too large volume ID %d found", ai->highest_vol_id);
+		ubi_err(ubi->ubi_num, "too large volume ID %d found",
+			ai->highest_vol_id);
 		return -EINVAL;
 	}
 
@@ -753,10 +762,11 @@ static int check_attaching_info(const struct ubi_device *ubi,
 			 * reboot while the volume was being removed. Discard
 			 * these eraseblocks.
 			 */
-			ubi_msg("finish volume %d removal", av->vol_id);
+			ubi_msg(ubi->ubi_num, "finish volume %d removal",
+				av->vol_id);
 			ubi_remove_av(ai, av);
 		} else if (av) {
-			err = check_av(vol, av);
+			err = check_av(ubi, vol, av);
 			if (err)
 				return err;
 		}
@@ -807,13 +817,15 @@ int ubi_read_volume_table(struct ubi_device *ubi, struct ubi_attach_info *ai)
 			if (IS_ERR(ubi->vtbl))
 				return PTR_ERR(ubi->vtbl);
 		} else {
-			ubi_err("the layout volume was not found");
+			ubi_err(ubi->ubi_num,
+				"the layout volume was not found");
 			return -EINVAL;
 		}
 	} else {
 		if (av->leb_count > UBI_LAYOUT_VOLUME_EBS) {
 			/* This must not happen with proper UBI images */
-			ubi_err("too many LEBs (%d) in layout volume",
+			ubi_err(ubi->ubi_num,
+				"too many LEBs (%d) in layout volume",
 				av->leb_count);
 			return -EINVAL;
 		}
@@ -862,7 +874,7 @@ static void self_vtbl_check(const struct ubi_device *ubi)
 		return;
 
 	if (vtbl_check(ubi, ubi->vtbl)) {
-		ubi_err("self-check failed");
+		ubi_err(ubi->ubi_num, "self-check failed");
 		BUG();
 	}
 }

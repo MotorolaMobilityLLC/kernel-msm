@@ -10,6 +10,9 @@
  * GNU General Public License for more details.
  */
 
+#include "mdm9630-display.dtsi"
+#include "qpic-panel-hx-hvga.dtsi"
+
 &soc {
 };
 
@@ -34,7 +37,7 @@
 
 &spi_2 {
 	ethernet-switch@0 {
-		compatible = "simtec,ks8851";
+		compatible = "micrel,ks8851";
 		reg = <0>;
 		interrupt-parent = <&msmgpio>;
 		spi-max-frequency = <2400000>;
@@ -53,9 +56,11 @@
 	};
 
 	gpio@c200 { /* GPIO 3 */
+		status = "ok";
 	};
 
 	gpio@c300 { /* GPIO 4 */
+		status = "ok";
 	};
 
 	gpio@c400 { /* GPIO 5 */
@@ -67,12 +72,15 @@
 
 &pmd9635_mpps {
 	mpp@a000 { /* MPP 1 */
+		status = "ok";
 	};
 
 	mpp@a100 { /* MPP 2 */
+		status = "ok";
 	};
 
 	mpp@a200 { /* MPP 3 */
+		status = "ok";
 	};
 
 	mpp@a300 { /* MPP 4 */
@@ -82,6 +90,7 @@
 		qcom,master-en = <1>;
 		qcom,src-sel = <0>; /* Function constant */
 		qcom,invert = <1>;
+		status = "ok";
 	};
 
 	mpp@a400 { /* MPP 5 */
@@ -94,6 +103,7 @@
 		qcom,master-en = <1>;
 		qcom,src-sel = <0>; /* Function constant */
 		qcom,invert = <1>;
+		status = "ok";
 	};
 };
 

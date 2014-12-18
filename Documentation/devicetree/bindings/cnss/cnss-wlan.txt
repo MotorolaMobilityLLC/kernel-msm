@@ -16,6 +16,19 @@ Required properties:
   - reg-names: Names of the memory regions defined in reg entry
   - wlan-en-gpio: WLAN_EN GPIO signal specified by QCA6174 specifications
   - vdd-wlan-supply: phandle to the regulator device tree node
+  - pinctrl-names: Names corresponding to the numbered pinctrl states
+  - pinctrl-<n>: Pinctrl states as described in
+                 bindings/pinctrl/pinctrl-bindings.txt
+  - qcom,wlan-rc-num: PCIe root complex number which WLAN chip is attached to
+
+Optional properties:
+  - qcom,notify-modem-status: Boolean property to decide whether modem
+    notification should be enabled or not in this platform
+  - wlan-soc-swreg-supply: phandle to the external 1.15V regulator for QCA6174
+  - qcom,wlan-uart-access: Boolean property to decide whether QCA6174
+    has exclusive access to UART.
+  - vdd-wlan-io-supply: phandle to the 1.8V IO regulator for QCA6174
+  - vdd-wlan-xtal-supply: phandle to the 1.8V XTAL regulator for QCA6174
 
 Example:
 
@@ -25,4 +38,9 @@ Example:
         reg-names = "ramdump";
         wlan-en-gpio = <&msmgpio 82 0>;
         vdd-wlan-supply = <&wlan_vreg>;
+        qcom,notify-modem-status;
+        wlan-soc-swreg-supply = <&pma8084_l27>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&cnss_default>;
+        qcom,wlan-rc-num = <0>;
     };

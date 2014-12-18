@@ -37,6 +37,9 @@
 
 #define ARRAY_INDEX_FROM_ADDR(base, addr) ((addr) - (base))
 
+/* Offset relative to QSCRATCH_RAM1_REG */
+#define QSCRATCH_CGCTL_REG_OFFSET	0x1c
+
 enum usb_bam_sm {
 	USB_BAM_SM_INIT = 0,
 	USB_BAM_SM_PLUG_NOTIFIED,
@@ -225,12 +228,11 @@ void msm_bam_set_hsic_host_dev(struct device *dev)
 	if (dev) {
 		/* Hold the device until allowing lpm */
 		info[HSIC_CTRL].in_lpm = false;
-		pr_debug("%s: Getting hsic device %x\n", __func__,
-			(int)dev);
+		pr_debug("%s: Getting hsic device %p\n", __func__, dev);
 		pm_runtime_get(dev);
 	} else if (host_info[HSIC_CTRL].dev) {
-		pr_debug("%s: Putting hsic device %x\n", __func__,
-			(int)host_info[HSIC_CTRL].dev);
+		pr_debug("%s: Putting hsic device %p\n", __func__,
+			host_info[HSIC_CTRL].dev);
 		/* Just free previous device*/
 		info[HSIC_CTRL].in_lpm = true;
 		pm_runtime_put(host_info[HSIC_CTRL].dev);
@@ -322,7 +324,7 @@ static void usb_bam_set_inactivity_timer(enum usb_ctrl bam)
 
 static int connect_pipe(u8 idx, u32 *usb_pipe_idx)
 {
-	int ret, ram1_value;
+	int ret;
 	enum usb_ctrl bam;
 	struct usb_bam_sps_type usb_bam_sps = ctx.usb_bam_sps;
 	struct sps_pipe **pipe = &(usb_bam_sps.sps_pipes[idx]);
@@ -411,13 +413,20 @@ static int connect_pipe(u8 idx, u32 *usb_pipe_idx)
 		 */
 		bam = pipe_connect->bam_type;
 
-		if (bam == CI_CTRL)
-			ram1_value = 0x4;
-		else
-			ram1_value = 0x7;
+		pr_debug("Configuring QSCRATCH RAM for %s\n",
+				bam_enable_strings[bam]);
+		if (bam == CI_CTRL) {
+			writel_relaxed(0x4, ctx.qscratch_ram1_reg);
+			/* Enable only RAM13 Master clock */
+			writel_relaxed(0x10, ctx.qscratch_ram1_reg +
+					QSCRATCH_CGCTL_REG_OFFSET);
+		} else if (bam == DWC3_CTRL) {
+			writel_relaxed(0x7, ctx.qscratch_ram1_reg);
+			/* Enable RAM11-RAM13 Master clock */
+			writel_relaxed(0x18, ctx.qscratch_ram1_reg +
+					QSCRATCH_CGCTL_REG_OFFSET);
+		}
 
-		pr_debug("Writing 0x%x to QSCRATCH_RAM1\n", ram1_value);
-		writel_relaxed(ram1_value, ctx.qscratch_ram1_reg);
 		/* fall through */
 	case OCI_MEM:
 		if (pipe_connect->mem_type == OCI_MEM)
@@ -736,6 +745,8 @@ static int disconnect_pipe(u8 idx)
 	case USB_PRIVATE_MEM:
 		pr_debug("Freeing private memory used by BAM PIPE\n");
 		writel_relaxed(0x0, ctx.qscratch_ram1_reg);
+		writel_relaxed(0x0, ctx.qscratch_ram1_reg +
+				QSCRATCH_CGCTL_REG_OFFSET);
 		clk_disable_unprepare(ctx.mem_clk);
 		clk_disable_unprepare(ctx.mem_iface_clk);
 	case OCI_MEM:
@@ -772,8 +783,8 @@ static bool _hsic_host_bam_resume_core(void)
 
 	/* Exit from "full suspend" in case of hsic host */
 	if (host_info[HSIC_CTRL].dev && info[HSIC_CTRL].in_lpm) {
-		pr_debug("%s: Getting hsic device %x\n", __func__,
-			(int)host_info[HSIC_CTRL].dev);
+		pr_debug("%s: Getting hsic device %p\n", __func__,
+			host_info[HSIC_CTRL].dev);
 		pm_runtime_get(host_info[HSIC_CTRL].dev);
 		info[HSIC_CTRL].in_lpm = false;
 		return true;
@@ -802,8 +813,6 @@ static void _usb_bam_suspend_core(enum usb_ctrl bam_type, bool disconnect)
 	spin_lock(&usb_bam_ipa_handshake_info_lock);
 	info[bam_type].lpm_wait_handshake = false;
 	info[bam_type].lpm_wait_pipes = 0;
-	if (disconnect)
-		pm_runtime_put_noidle(usb_device);
 
 	if (info[bam_type].pending_lpm) {
 		info[bam_type].pending_lpm = 0;
@@ -825,8 +834,8 @@ static void _hsic_host_bam_suspend_core(void)
 	pr_debug("%s: enter\n", __func__);
 
 	if (host_info[HSIC_CTRL].dev && !info[HSIC_CTRL].in_lpm) {
-		pr_debug("%s: Putting hsic host device %x\n", __func__,
-			(int)host_info[HSIC_CTRL].dev);
+		pr_debug("%s: Putting hsic host device %p\n", __func__,
+			host_info[HSIC_CTRL].dev);
 		pm_runtime_put(host_info[HSIC_CTRL].dev);
 		info[HSIC_CTRL].in_lpm = true;
 	}
@@ -1988,8 +1997,8 @@ bool msm_bam_host_lpm_ok(enum usb_ctrl bam_type)
 		    ctx.is_bam_inactivity[bam_type] && info[bam_type].in_lpm) {
 
 			/* HSIC host will go now to lpm */
-			pr_debug("%s: vote for suspend hsic %x\n",
-				__func__, (int)host_info[bam_type].dev);
+			pr_debug("%s: vote for suspend hsic %p\n",
+				__func__, host_info[bam_type].dev);
 
 			for (i = 0; i < ctx.max_connections; i++) {
 				pipe_iter =
@@ -2032,6 +2041,50 @@ void msm_bam_hsic_host_notify_on_resume(void)
 	_msm_bam_host_notify_on_resume(HSIC_CTRL);
 }
 
+static int usb_bam_set_ipa_perf(enum usb_ctrl cur_bam,
+			      enum usb_bam_pipe_dir dir,
+			      enum usb_device_speed usb_connection_speed)
+{
+	int ret;
+	struct ipa_rm_perf_profile ipa_rm_perf_prof;
+	struct msm_usb_bam_platform_data *pdata =
+					ctx.usb_bam_pdev->dev.platform_data;
+
+	if (usb_connection_speed == USB_SPEED_SUPER)
+		ipa_rm_perf_prof.max_supported_bandwidth_mbps =
+			pdata->max_mbps_superspeed;
+	else
+		/* Bam2Bam is supported only for SS and HS (HW limitation) */
+		ipa_rm_perf_prof.max_supported_bandwidth_mbps =
+			pdata->max_mbps_highspeed;
+
+	/*
+	 * Having a max mbps property in dtsi file is a must
+	 * for target with IPA capability.
+	 */
+	if (!ipa_rm_perf_prof.max_supported_bandwidth_mbps) {
+		pr_err("%s: Max mbps is required for speed %d\n", __func__,
+			usb_connection_speed);
+		return -EINVAL;
+	}
+
+	if (dir == USB_TO_PEER_PERIPHERAL) {
+		pr_debug("%s: vote ipa_perf resource=%d perf=%d mbps\n",
+			__func__, ipa_rm_resource_prod[cur_bam],
+			ipa_rm_perf_prof.max_supported_bandwidth_mbps);
+		ret = ipa_rm_set_perf_profile(ipa_rm_resource_prod[cur_bam],
+					&ipa_rm_perf_prof);
+	} else {
+		pr_debug("%s: vote ipa_perf resource=%d perf=%d mbps\n",
+			__func__, ipa_rm_resource_cons[cur_bam],
+			ipa_rm_perf_prof.max_supported_bandwidth_mbps);
+		ret = ipa_rm_set_perf_profile(ipa_rm_resource_cons[cur_bam],
+					&ipa_rm_perf_prof);
+	}
+
+	return ret;
+}
+
 int usb_bam_connect_ipa(struct usb_bam_connect_ipa_params *ipa_params)
 {
 	u8 idx;
@@ -2062,13 +2115,6 @@ int usb_bam_connect_ipa(struct usb_bam_connect_ipa_params *ipa_params)
 		return -EINVAL;
 	}
 	pipe_connect = &usb_bam_connections[idx];
-	cur_bam = pipe_connect->bam_type;
-	cur_mode = pipe_connect->bam_mode;
-	bam2bam = (pdata->connections[idx].pipe_type ==
-			USB_BAM_PIPE_BAM2BAM);
-
-	/* Set the BAM mode (host/device) according to connected pipe */
-	info[cur_bam].cur_bam_mode = pipe_connect->bam_mode;
 
 	if (pipe_connect->enabled) {
 		pr_err("%s: connection %d was already established\n",
@@ -2076,7 +2122,23 @@ int usb_bam_connect_ipa(struct usb_bam_connect_ipa_params *ipa_params)
 		return 0;
 	}
 
+	ret = usb_bam_set_ipa_perf(pipe_connect->bam_type, ipa_params->dir,
+			     ipa_params->usb_connection_speed);
+	if (ret) {
+		pr_err("%s: call to usb_bam_set_ipa_perf failed %d\n",
+			__func__, ret);
+		return ret;
+	}
+
 	pr_debug("%s: enter", __func__);
+
+	cur_bam = pipe_connect->bam_type;
+	cur_mode = pipe_connect->bam_mode;
+	bam2bam = (pdata->connections[idx].pipe_type ==
+			USB_BAM_PIPE_BAM2BAM);
+
+	/* Set the BAM mode (host/device) according to connected pipe */
+	info[cur_bam].cur_bam_mode = pipe_connect->bam_mode;
 
 	if (cur_mode == USB_BAM_DEVICE) {
 		mutex_lock(&info[cur_bam].suspend_resume_mutex);
@@ -2108,12 +2170,12 @@ int usb_bam_connect_ipa(struct usb_bam_connect_ipa_params *ipa_params)
 	     (ctx.pipes_enabled_per_bam[cur_bam] == 0)) {
 		spin_unlock(&usb_bam_lock);
 
-		if (cur_bam != HSIC_CTRL)
+		if (cur_bam == CI_CTRL)
 			msm_hw_bam_disable(1);
 
 		sps_device_reset(ctx.h_bam[cur_bam]);
 
-		if (cur_bam != HSIC_CTRL)
+		if (cur_bam == CI_CTRL)
 			msm_hw_bam_disable(0);
 
 		/* On re-connect assume out from lpm for HOST BAM */
@@ -2315,8 +2377,8 @@ static void usb_bam_work(struct work_struct *w)
 			    pipe_iter->dir ==
 				PEER_PERIPHERAL_TO_USB &&
 				pipe_iter->enabled) {
-				pr_debug("%s: Register wakeup on pipe %x\n",
-					__func__, (int)pipe_iter);
+				pr_debug("%s: Register wakeup on pipe %p\n",
+					__func__, pipe_iter);
 				__usb_bam_register_wake_cb(i,
 					pipe_iter->activity_notify,
 					pipe_iter->priv,
@@ -2695,8 +2757,14 @@ int usb_bam_a2_reset(bool to_reconnect)
 	pr_debug("%s: pipes disconnection success\n", __func__);
 	/* Reset A2 (USB/HSIC) BAM */
 	if (to_reset_bam) {
+		if (bam == CI_CTRL)
+			msm_hw_bam_disable(1);
+
 		if (sps_device_reset(ctx.h_bam[bam]))
 			pr_err("%s: BAM reset failed\n", __func__);
+
+		if (bam == CI_CTRL)
+			msm_hw_bam_disable(0);
 	}
 
 	if (!to_reconnect)
@@ -2800,6 +2868,16 @@ static struct msm_usb_bam_platform_data *usb_bam_dt_to_pdata(
 		pr_err("Invalid usb bam num pipes property\n");
 		return NULL;
 	}
+
+	rc = of_property_read_u32(node, "qcom,usb-bam-max-mbps-highspeed",
+		&pdata->max_mbps_highspeed);
+	if (rc)
+		pdata->max_mbps_highspeed = 0;
+
+	rc = of_property_read_u32(node, "qcom,usb-bam-max-mbps-superspeed",
+		&pdata->max_mbps_superspeed);
+	if (rc)
+		pdata->max_mbps_superspeed = 0;
 
 	rc = of_property_read_u32(node, "qcom,usb-bam-fifo-baseaddr",
 			&addr);
@@ -3254,7 +3332,8 @@ static int usb_bam_probe(struct platform_device *pdev)
 		return ret;
 	}
 	spin_lock_init(&usb_bam_ipa_handshake_info_lock);
-	usb_bam_ipa_create_resources();
+	if (ipa_is_ready())
+		usb_bam_ipa_create_resources();
 	spin_lock_init(&usb_bam_lock);
 	probe_finished = true;
 
@@ -3285,7 +3364,8 @@ void usb_bam_set_qdss_core(const char *qdss_core)
 
 int get_bam2bam_connection_info(u8 idx, unsigned long *usb_bam_handle,
 	u32 *usb_bam_pipe_idx, u32 *peer_pipe_idx,
-	struct sps_mem_buffer *desc_fifo, struct sps_mem_buffer *data_fifo)
+	struct sps_mem_buffer *desc_fifo, struct sps_mem_buffer *data_fifo,
+	enum usb_pipe_mem_type *mem_type)
 {
 	struct usb_bam_pipe_connect *pipe_connect = &usb_bam_connections[idx];
 	enum usb_bam_pipe_dir dir = pipe_connect->dir;
@@ -3307,6 +3387,9 @@ int get_bam2bam_connection_info(u8 idx, unsigned long *usb_bam_handle,
 	if (desc_fifo)
 		memcpy(desc_fifo, &pipe_connect->desc_mem_buf,
 		sizeof(struct sps_mem_buffer));
+	if (mem_type)
+		*mem_type = pipe_connect->mem_type;
+
 	return 0;
 }
 EXPORT_SYMBOL(get_bam2bam_connection_info);
@@ -3360,6 +3443,24 @@ bool msm_bam_device_lpm_ok(enum usb_ctrl bam_type)
 		pr_err("%s: Scheduling LPM for later\n", __func__);
 		return 0;
 	} else {
+		int idx = usb_bam_get_qdss_idx(0);
+		struct usb_bam_pipe_connect *pipe_connect;
+
+		/*
+		 * Disconnecting bam pipes happens in work queue context during
+		 * cable disconnect in qdss composition and will access USB bam
+		 * registers. There is a chance that USB might have entered low
+		 * power mode by the time this work is scheduled and could cause
+		 * crash. Hence don't allow low power mode while bam pipes are
+		 * still connected.
+		 */
+		if (idx >= 0) {
+			pipe_connect = &usb_bam_connections[idx];
+			if (pipe_connect->enabled) {
+				spin_unlock(&usb_bam_ipa_handshake_info_lock);
+				return 0;
+			}
+		}
 		info[bam_type].pending_lpm = 0;
 		info[bam_type].in_lpm = true;
 		spin_unlock(&usb_bam_ipa_handshake_info_lock);

@@ -11,28 +11,45 @@
 #define KGSL_VERSION_MAJOR        3
 #define KGSL_VERSION_MINOR        14
 
-/*context flags */
+/*
+ * We have traditionally mixed context and issueibcmds / command batch flags
+ * together into a big flag stew. This worked fine until we started adding a
+ * lot more command batch flags and we started running out of bits. Turns out
+ * we have a bit of room in the context type / priority mask that we could use
+ * for command batches, but that means we need to split out the flags into two
+ * coherent sets.
+ *
+ * If any future definitions are for both context and cmdbatch add both defines
+ * and link the cmdbatch to the context define as we do below. Otherwise feel
+ * free to add exclusive bits to either set.
+ */
+
+/* --- context flags --- */
 #define KGSL_CONTEXT_SAVE_GMEM		0x00000001
 #define KGSL_CONTEXT_NO_GMEM_ALLOC	0x00000002
+/* This is a cmdbatch exclusive flag - use the CMDBATCH equivalent instead */
 #define KGSL_CONTEXT_SUBMIT_IB_LIST	0x00000004
 #define KGSL_CONTEXT_CTX_SWITCH		0x00000008
 #define KGSL_CONTEXT_PREAMBLE		0x00000010
 #define KGSL_CONTEXT_TRASH_STATE	0x00000020
 #define KGSL_CONTEXT_PER_CONTEXT_TS	0x00000040
 #define KGSL_CONTEXT_USER_GENERATED_TS	0x00000080
+/* This is a cmdbatch exclusive flag - use the CMDBATCH equivalent instead */
 #define KGSL_CONTEXT_END_OF_FRAME	0x00000100
-
 #define KGSL_CONTEXT_NO_FAULT_TOLERANCE 0x00000200
+/* This is a cmdbatch exclusive flag - use the CMDBATCH equivalent instead */
 #define KGSL_CONTEXT_SYNC               0x00000400
 #define KGSL_CONTEXT_PWR_CONSTRAINT     0x00000800
-/* bits [12:15] are reserved for future use */
+
 #define KGSL_CONTEXT_PRIORITY_MASK      0x0000F000
 #define KGSL_CONTEXT_PRIORITY_SHIFT     12
 #define KGSL_CONTEXT_PRIORITY_UNDEF     0
 
+#define KGSL_CONTEXT_IFH_NOP            0x00010000
+#define KGSL_CONTEXT_SECURE             0x00020000
+
 #define KGSL_CONTEXT_TYPE_MASK          0x01F00000
 #define KGSL_CONTEXT_TYPE_SHIFT         20
-
 #define KGSL_CONTEXT_TYPE_ANY		0
 #define KGSL_CONTEXT_TYPE_GL		1
 #define KGSL_CONTEXT_TYPE_CL		2
@@ -42,11 +59,36 @@
 
 #define KGSL_CONTEXT_INVALID 0xffffffff
 
+/*
+ * --- command batch flags ---
+ * The bits that are linked to a KGSL_CONTEXT equivalent are either legacy
+ * definitions or bits that are valid for both contexts and cmdbatches.  To be
+ * safe the other 8 bits that are still available in the context field should be
+ * omitted here in case we need to share - the other bits are available for
+ * cmdbatch only flags as needed
+ */
+#define KGSL_CMDBATCH_MEMLIST		0x00000001
+#define KGSL_CMDBATCH_MARKER		0x00000002
+#define KGSL_CMDBATCH_SUBMIT_IB_LIST	KGSL_CONTEXT_SUBMIT_IB_LIST /* 0x004 */
+#define KGSL_CMDBATCH_CTX_SWITCH	KGSL_CONTEXT_CTX_SWITCH     /* 0x008 */
+#define KGSL_CMDBATCH_PROFILING		0x00000010
+#define KGSL_CMDBATCH_END_OF_FRAME	KGSL_CONTEXT_END_OF_FRAME   /* 0x100 */
+#define KGSL_CMDBATCH_SYNC		KGSL_CONTEXT_SYNC           /* 0x400 */
+#define KGSL_CMDBATCH_PWR_CONSTRAINT	KGSL_CONTEXT_PWR_CONSTRAINT /* 0x800 */
+
+/*
+ * Reserve bits [16:19] and bits [28:31] for possible bits shared between
+ * contexts and command batches.  Update this comment as new flags are added.
+ */
+
 /* --- Memory allocation flags --- */
 
 /* General allocation hints */
 #define KGSL_MEMFLAGS_GPUREADONLY 0x01000000
 #define KGSL_MEMFLAGS_USE_CPU_MAP 0x10000000
+
+/* Memory is secure */
+#define KGSL_MEMFLAGS_SECURE      0x00000008
 
 /* Memory caching hints */
 #define KGSL_CACHEMODE_MASK 0x0C000000
@@ -96,7 +138,7 @@ enum kgsl_user_mem_type {
 	KGSL_USER_MEM_TYPE_ASHMEM	= 0x00000001,
 	KGSL_USER_MEM_TYPE_ADDR		= 0x00000002,
 	KGSL_USER_MEM_TYPE_ION		= 0x00000003,
-	KGSL_USER_MEM_TYPE_MAX		= 0x00000004,
+	KGSL_USER_MEM_TYPE_MAX		= 0x00000007,
 };
 #define KGSL_MEMFLAGS_USERMEM_MASK 0x000000e0
 #define KGSL_MEMFLAGS_USERMEM_SHIFT 5
@@ -273,6 +315,25 @@ struct kgsl_ibdesc {
 	unsigned long __pad;
 	size_t sizedwords;
 	unsigned int ctrl;
+};
+
+/**
+ * struct kgsl_cmdbatch_profiling_buffer
+ * @wall_clock_s: Wall clock at ringbuffer submission time (seconds)
+ * @wall_clock_ns: Wall clock at ringbuffer submission time (nanoseconds)
+ * @gpu_ticks_queued: GPU ticks at ringbuffer submission
+ * @gpu_ticks_submitted: GPU ticks when starting cmdbatch execution
+ * @gpu_ticks_retired: GPU ticks when finishing cmdbatch execution
+ *
+ * This structure defines the profiling buffer used to measure cmdbatch
+ * execution time
+ */
+struct kgsl_cmdbatch_profiling_buffer {
+	uint64_t wall_clock_s;
+	uint64_t wall_clock_ns;
+	uint64_t gpu_ticks_queued;
+	uint64_t gpu_ticks_submitted;
+	uint64_t gpu_ticks_retired;
 };
 
 /* ioctls */
@@ -891,6 +952,12 @@ struct kgsl_cmd_syncpoint {
 	size_t size;
 };
 
+/* Flag to indicate that the cmdlist may contain memlists */
+#define KGSL_IBDESC_MEMLIST 0x1
+
+/* Flag to point out the cmdbatch profiling buffer in the memlist */
+#define KGSL_IBDESC_PROFILING_BUFFER 0x2
+
 /**
  * struct kgsl_submit_commands - Argument to IOCTL_KGSL_SUBMIT_COMMANDS
  * @context_id: KGSL context ID that owns the commands
@@ -906,7 +973,8 @@ struct kgsl_cmd_syncpoint {
  * similar to kgsl_issueibcmds expect that it doesn't support the legacy way to
  * submit IB lists and it adds sync points to block the IB until the
  * dependencies are satisified.  This entry point is the new and preferred way
- * to submit commands to the GPU.
+ * to submit commands to the GPU. The memory list can be used to specify all
+ * memory that is referrenced in the current set of commands.
  */
 
 struct kgsl_submit_commands {
@@ -951,4 +1019,78 @@ struct kgsl_device_constraint {
 struct kgsl_device_constraint_pwrlevel {
 	unsigned int level;
 };
+
+/**
+ * struct kgsl_syncsource_create - Argument to IOCTL_KGSL_SYNCSOURCE_CREATE
+ * @id: returned id for the syncsource that was created.
+ *
+ * This ioctl creates a userspace sync timeline.
+ */
+
+struct kgsl_syncsource_create {
+	unsigned int id;
+/* private: reserved for future use */
+	unsigned int __pad[3];
+};
+
+#define IOCTL_KGSL_SYNCSOURCE_CREATE \
+	_IOWR(KGSL_IOC_TYPE, 0x40, struct kgsl_syncsource_create)
+
+/**
+ * struct kgsl_syncsource_destroy - Argument to IOCTL_KGSL_SYNCSOURCE_DESTROY
+ * @id: syncsource id to destroy
+ *
+ * This ioctl creates a userspace sync timeline.
+ */
+
+struct kgsl_syncsource_destroy {
+	unsigned int id;
+/* private: reserved for future use */
+	unsigned int __pad[3];
+};
+
+#define IOCTL_KGSL_SYNCSOURCE_DESTROY \
+	_IOWR(KGSL_IOC_TYPE, 0x41, struct kgsl_syncsource_destroy)
+
+/**
+ * struct kgsl_syncsource_create_fence - Argument to
+ *     IOCTL_KGSL_SYNCSOURCE_CREATE_FENCE
+ * @id: syncsource id
+ * @fence_fd: returned sync_fence fd
+ *
+ * Create a fence that may be signaled by userspace by calling
+ * IOCTL_KGSL_SYNCSOURCE_SIGNAL_FENCE. There are no order dependencies between
+ * these fences.
+ */
+struct kgsl_syncsource_create_fence {
+	unsigned int id;
+	int fence_fd;
+/* private: reserved for future use */
+	unsigned int __pad[4];
+};
+
+/**
+ * struct kgsl_syncsource_signal_fence - Argument to
+ *     IOCTL_KGSL_SYNCSOURCE_SIGNAL_FENCE
+ * @id: syncsource id
+ * @fence_fd: sync_fence fd to signal
+ *
+ * Signal a fence that was created by a IOCTL_KGSL_SYNCSOURCE_CREATE_FENCE
+ * call using the same syncsource id. This allows a fence to be shared
+ * to other processes but only signaled by the process owning the fd
+ * used to create the fence.
+ */
+#define IOCTL_KGSL_SYNCSOURCE_CREATE_FENCE \
+	_IOWR(KGSL_IOC_TYPE, 0x42, struct kgsl_syncsource_create_fence)
+
+struct kgsl_syncsource_signal_fence {
+	unsigned int id;
+	int fence_fd;
+/* private: reserved for future use */
+	unsigned int __pad[4];
+};
+
+#define IOCTL_KGSL_SYNCSOURCE_SIGNAL_FENCE \
+	_IOWR(KGSL_IOC_TYPE, 0x43, struct kgsl_syncsource_signal_fence)
+
 #endif /* _UAPI_MSM_KGSL_H */

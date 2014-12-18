@@ -296,8 +296,8 @@ config SENSORS_K10TEMP
 	  If you say yes here you get support for the temperature
 	  sensor(s) inside your CPU. Supported are later revisions of
 	  the AMD Family 10h and all revisions of the AMD Family 11h,
-	  12h (Llano), 14h (Brazos) and 15h (Bulldozer/Trinity)
-	  microarchitectures.
+	  12h (Llano), 14h (Brazos), 15h (Bulldozer/Trinity) and
+	  16h (Kabini) microarchitectures.
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called k10temp.
@@ -336,6 +336,17 @@ config SENSORS_ATXP1
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called atxp1.
+
+config SENSORS_BOOST_DYNAMIC_CONTROLLER
+	tristate "Support for Dynamically Mode Change for Boost Regulator"
+	depends on OF
+	default n
+	help
+	  Provides support for changing boost regulator status between
+	  force-bypass and force boost mode dynamically
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called boost-dynamic-controller.
 
 config SENSORS_DS620
 	tristate "Dallas Semiconductor DS620"
@@ -983,6 +994,16 @@ config SENSORS_QPNP_ADC_CURRENT
 	  The driver supports single mode operation to read from upto seven channel
 	  configuration that include reading the external/internal Rsense, CSP_EX,
 	  CSN_EX pair along with the gain and offset calibration.
+
+config SENSORS_QPNP_CURRENT_MONITOR
+	tristate "Support for QPNP SMPS current monitor"
+	depends on SPMI
+	help
+	  This is the current monitor driver for QPNP ULT HF SMPS.
+
+	  The driver provides sysfs interface to configure the current
+	  thresholds and gives notification to user-space via sysfs if
+	  buck's load current crosses the threshold.
 
 config SENSORS_PC87360
 	tristate "National Semiconductor PC87360 family"

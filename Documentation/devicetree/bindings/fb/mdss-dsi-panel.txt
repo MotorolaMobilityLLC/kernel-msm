@@ -60,6 +60,19 @@ Required properties:
 					byte 5, 6: 16 bits length in network byte order
 					byte 7 and beyond: number byte of payload
 
+Note, if a short DCS packet(i.e packet with Byte 0:dcs data type as 05) mentioned in
+qcom,mdss-dsi-on-command/qcom,mdss-dsi-off-command stream fails to transmit,
+then 3 options can be tried.
+	1. Send the packet as a long packet instead
+				Byte 0: dcs data type = 05 (DCS short Packet)
+				Byte 0: dcs data type = 29 (DCS long Packet)
+	2. Send the packet in one burst by prepending with the next packet in packet stream
+				Byte 1 = 01 (indicates this is an individual packet)
+				Byte 1 = 00 (indicates this will be appended to the next
+					     individual packet in the packet stream)
+	3. Prepend a NULL packet to the short packet and send both in one burst instead of
+	   combining multiple short packets and sending them in one burst.
+
 Optional properties:
 - qcom,mdss-dsi-panel-name:		A string used as a descriptive name of the panel
 - qcom,cont-splash-enabled:		Boolean used to enable continuous splash mode.
@@ -67,7 +80,10 @@ Optional properties:
 					to specify the memory reserved for the splash
 					screen using the qcom,memblock-reserve binding
 					for the framebuffer device attached to the panel.
-- qcom,mdss-dsi-panel-broadcast-mode:	Boolean used to enable broadcast mode.
+- qcom,cmd-sync-wait-broadcast:		Boolean used to broadcast dcs command to panels.
+- qcom,cmd-sync-wait-trigger:		Boolean used to identify the which panel in a dual-dsi
+					configuration will be used to trigger the DCS commands.
+					This flag should be set only for one of the two panels.
 - qcom,mdss-dsi-fbc-enable:		Boolean used to enable frame buffer compression mode.
 - qcom,mdss-dsi-fbc-bpp:		Compressed bpp supported by the panel.
 					Specified color order is used as default value.
@@ -172,6 +188,8 @@ Optional properties:
 					horizontal back porch (HBP) blanking period.
 - qcom,mdss-dsi-hsa-power-mode:		Boolean to determine DSI lane state during
 					horizontal sync active (HSA) mode.
+- qcom,mdss-dsi-last-line-interleave	Boolean to determine if last line
+					interleave flag needs to be enabled.
 - qcom,mdss-dsi-bllp-eof-power-mode:	Boolean to determine DSI lane state during
 					blanking low power period (BLLP) EOF mode.
 - qcom,mdss-dsi-bllp-power-mode:	Boolean to determine DSI lane state during
@@ -279,6 +297,12 @@ Optional properties:
 					--> Sleep value (in ms)
 - qcom,partial-update-enabled:		Boolean used to enable partial
 					panel update for command mode panels.
+- qcom,mdss-dsi-horizontal-line-idle:	List of width ranges (EC - SC) in pixels indicating
+					additional idle time in dsi clock cycles that is needed
+					to compensate for smaller line width.
+- qcom,partial-update-roi-merge:	Boolean indicates roi combination is need
+					and function has been provided for dcs
+					2A/2B command.
 - qcom,mdss-dsi-lp11-init:		Boolean used to enable the DSI clocks and data lanes (low power 11)
 					before issuing hardware reset line.
 - qcom,mdss-dsi-init-delay-us:		Delay in microseconds(us) before performing any DSI activity in lp11
@@ -289,8 +313,43 @@ Optional properties:
 - qcom,mdss-dsi-tx-eot-append:		Boolean used to enable appending end of transmission packets.
 - qcom,ulps-enabled:			Boolean to enable support for Ultra Low Power State (ULPS) mode.
 - qcom,panel-roi-alignment:		Specifies the panel ROI alignment restrictions on its
-					left, top, width and height values
-
+					left, top, width, height alignments and minimum width and
+					height values
+- qcom,esd-check-enabled:		Boolean used to enable ESD recovery feature.
+- qcom,mdss-dsi-panel-status-command:	A byte stream formed by multiple dcs packets based on
+					qcom dsi controller protocol, to read the panel status.
+					This value is used to kick in the ESD recovery.
+					byte 0: dcs data type
+					byte 1: set to indicate this is an individual packet
+						 (no chain)
+					byte 2: virtual channel number
+					byte 3: expect ack from client (dcs read command)
+					byte 4: wait number of specified ms after dcs command
+						 transmitted
+					byte 5, 6: 16 bits length in network byte order
+					byte 7 and beyond: number byte of payload
+- qcom,mdss-dsi-panel-status-command-mode:
+					String that specifies the ctrl state for reading the panel status.
+					"dsi_lp_mode" = DSI low power mode
+					"dsi_hs_mode" = DSI high speed mode
+- qcom,mdss-dsi-panel-status-check-mode:Specifies the panel status check method for ESD recovery.
+					"bta_check" = Uses BTA to check the panel status
+					"reg_read" = Reads panel status register to check the panel status
+- qcom,mdss-dsi-panel-status-value:	Specifies the value of the panel status register when the panel is
+					in good state.
+- qcom,dynamic-mode-switch-enabled:		Boolean used to mention whether panel supports
+					dynamic switching from video mode to command mode
+					and vice versa.
+- qcom,video-to-cmd-mode-switch-commands:	List of commands that need to be sent
+					to panel in order to switch from video mode to command mode dynamically.
+					Refer to "qcom,mdss-dsi-on-command" section for adding commands.
+- qcom,cmd-to-video-mode-switch-commands:	List of commands that need to be sent
+					to panel in order to switch from command mode to video mode dynamically.
+					Refer to "qcom,mdss-dsi-on-command" section for adding commands.
+- qcom,mdss-dsi-panel-orientation:	String used to indicate orientation of panel
+					"180" = panel is flipped in both horizontal and vertical directions
+					"hflip" = panel is flipped in horizontal direction
+					"vflip" = panel is flipped in vertical direction
 Note, if a given optional qcom,* binding is not present, then the driver will configure
 the default values specified.
 
@@ -304,7 +363,8 @@ Example:
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-pixel-packing = <0>;
 		qcom,mdss-dsi-panel-destination = "display_1";
-		qcom,mdss-dsi-panel-broadcast-mode;
+		qcom,cmd-sync-wait-broadcast;
+		qcom,cmd-sync-wait-trigger;
 		qcom,mdss-dsi-fbc-enable;
 		qcom,mdss-dsi-fbc-bpp = <0>;
 		qcom,mdss-dsi-fbc-packing = <0>;
@@ -349,6 +409,7 @@ Example:
 		qcom,mdss-dsi-hsa-power-mode;
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-last-line-interleave;
 		qcom,mdss-dsi-traffic-mode = <0>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-color-order = <0>;
@@ -394,6 +455,19 @@ Example:
 		mdss-dsi-rx-eot-ignore;
 		mdss-dsi-tx-eot-append;
 		qcom,ulps-enabled;
-		qcom,panel-roi-alignment = <4 4 2 2>;
+		qcom,panel-roi-alignment = <4 4 2 2 20 20>;
+		qcom,esd-check-enabled;
+		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
+		qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+		qcom,mdss-dsi-panel-status-value = <0x9c>;
+		qcom,dynamic-mode-switch-enabled;
+		qcom,video-to-cmd-mode-switch-commands = [15 01 00 00 00 00 02 C2 0B
+						15 01 00 00 00 00 02 C2 08];
+		qcom,cmd-to-video-mode-switch-commands = [15 01 00 00 00 00 02 C2 03];
+		qcom,mdss-dsi-horizontal-line-idle = <0 40 256>,
+						<40 120 128>,
+						<128 240 64>;
+		qcom,mdss-dsi-panel-orientation = "180"
 	};
 };

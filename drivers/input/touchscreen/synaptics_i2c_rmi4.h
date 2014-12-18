@@ -36,6 +36,10 @@
 #endif
 #include <linux/debugfs.h>
 #include <linux/time.h>
+#if defined(CONFIG_SECURE_TOUCH)
+#include <linux/completion.h>
+#include <linux/atomic.h>
+#endif
 
 #define PDT_PROPS (0x00EF)
 #define PDT_START (0x00E9)
@@ -164,6 +168,8 @@ struct synaptics_rmi4_device_info {
 	unsigned char config_id[3];
 	struct mutex support_fn_list_mutex;
 	struct list_head support_fn_list;
+	unsigned int package_id;
+	unsigned int package_id_rev;
 };
 
 /*
@@ -274,6 +280,12 @@ struct synaptics_rmi4_data {
 	struct pinctrl *ts_pinctrl;
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
+#if defined(CONFIG_SECURE_TOUCH)
+	atomic_t st_enabled;
+	atomic_t st_pending_irqs;
+	struct completion st_powerdown;
+	struct completion st_irq_processed;
+#endif
 	int idle_mode;
 };
 

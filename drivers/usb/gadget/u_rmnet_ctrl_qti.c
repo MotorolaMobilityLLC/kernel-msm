@@ -172,16 +172,10 @@ int gqti_ctrl_connect(struct grmnet *gr, u8 port_num, unsigned intf)
 	}
 	port = ctrl_port[port_num];
 
-	if (!gr) {
+	if (!gr || !port) {
 		pr_err("%s: grmnet port is null\n", __func__);
 		return -ENODEV;
 	}
-
-	if (port_num >= NR_QTI_PORTS) {
-		pr_err("%s: Invalid QTI port %d\n", __func__, port_num);
-		return -ENODEV;
-	}
-	port = ctrl_port[port_num];
 
 	spin_lock_irqsave(&port->lock, flags);
 	port->port_usb = gr;
@@ -193,7 +187,7 @@ int gqti_ctrl_connect(struct grmnet *gr, u8 port_num, unsigned intf)
 	atomic_set(&port->connected, 1);
 	wake_up(&port->read_wq);
 
-	if (port && port->port_usb && port->port_usb->connect)
+	if (port->port_usb && port->port_usb->connect)
 		port->port_usb->connect(port->port_usb);
 
 	return 0;
@@ -207,18 +201,19 @@ void gqti_ctrl_disconnect(struct grmnet *gr, u8 port_num)
 
 	pr_debug("%s: grmnet:%p\n", __func__, gr);
 
-	if (!gr) {
-		pr_err("%s: grmnet port is null\n", __func__);
-		return;
-	}
-
 	if (port_num >= NR_QTI_PORTS) {
 		pr_err("%s: Invalid QTI port %d\n", __func__, port_num);
 		return;
 	}
 
 	port = ctrl_port[port_num];
-	if (port && port->port_usb && port->port_usb->disconnect)
+
+	if (!gr || !port) {
+		pr_err("%s: grmnet port is null\n", __func__);
+		return;
+	}
+
+	if (port->port_usb && port->port_usb->disconnect)
 		port->port_usb->disconnect(port->port_usb);
 
 	atomic_set(&port->connected, 0);
@@ -455,6 +450,7 @@ static long rmnet_ctrl_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 	struct rmnet_ctrl_qti_port *port = container_of(fp->private_data,
 						struct rmnet_ctrl_qti_port,
 						rmnet_device);
+	struct grmnet *gr = NULL;
 	struct ep_info info;
 	int val, ret = 0;
 
@@ -464,6 +460,20 @@ static long rmnet_ctrl_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 		return -EBUSY;
 
 	switch (cmd) {
+	case FRMNET_CTRL_MODEM_OFFLINE:
+		if (port && port->port_usb)
+			gr = port->port_usb;
+
+		if (gr && gr->disconnect)
+			gr->disconnect(gr);
+		break;
+	case FRMNET_CTRL_MODEM_ONLINE:
+		if (port && port->port_usb)
+			gr = port->port_usb;
+
+		if (gr && gr->connect)
+			gr->connect(gr);
+		break;
 	case FRMNET_CTRL_GET_LINE_STATE:
 		val = atomic_read(&port->line_state);
 		ret = copy_to_user((void __user *)arg, &val, sizeof(val));
@@ -544,6 +554,9 @@ static const struct file_operations rmnet_ctrl_fops = {
 	.read = rmnet_ctrl_read,
 	.write = rmnet_ctrl_write,
 	.unlocked_ioctl = rmnet_ctrl_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = rmnet_ctrl_ioctl,
+#endif
 	.poll = rmnet_ctrl_poll,
 };
 

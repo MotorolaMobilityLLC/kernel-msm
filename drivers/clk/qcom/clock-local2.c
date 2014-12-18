@@ -223,7 +223,7 @@ static long rcg_clk_list_rate(struct clk *c, unsigned n)
 static struct clk *_rcg_clk_get_parent(struct rcg_clk *rcg, int has_mnd)
 {
 	u32 n_regval = 0, m_regval = 0, d_regval = 0;
-	u32 cfg_regval;
+	u32 cfg_regval, div, div_regval;
 	struct clk_freq_tbl *freq;
 	u32 cmd_rcgr_regval;
 
@@ -265,8 +265,16 @@ static struct clk *_rcg_clk_get_parent(struct rcg_clk *rcg, int has_mnd)
 
 	/* Figure out what rate the rcg is running at */
 	for (freq = rcg->freq_tbl; freq->freq_hz != FREQ_END; freq++) {
-		if (freq->div_src_val != cfg_regval)
+		/* source select does not match */
+		if ((freq->div_src_val & CFG_RCGR_SRC_SEL_MASK)
+		    != (cfg_regval & CFG_RCGR_SRC_SEL_MASK))
 			continue;
+		/* divider does not match */
+		div = freq->div_src_val & CFG_RCGR_DIV_MASK;
+		div_regval = cfg_regval & CFG_RCGR_DIV_MASK;
+		if (div != div_regval && (div > 1 || div_regval > 1))
+			continue;
+
 		if (has_mnd) {
 			if (freq->m_val != m_regval)
 				continue;
@@ -274,6 +282,8 @@ static struct clk *_rcg_clk_get_parent(struct rcg_clk *rcg, int has_mnd)
 				continue;
 			if (freq->d_val != d_regval)
 				continue;
+		} else if (freq->n_val) {
+			continue;
 		}
 		break;
 	}
@@ -1192,12 +1202,14 @@ static int mux_reg_enable(struct mux_clk *clk)
 {
 	u32 regval;
 	unsigned long flags;
-	u32 offset = clk->en_reg ? clk->en_offset : clk->offset;
+
+	if (!clk->en_mask)
+		return 0;
 
 	spin_lock_irqsave(&mux_reg_lock, flags);
-	regval = readl_relaxed(*clk->base + offset);
+	regval = readl_relaxed(*clk->base + clk->en_offset);
 	regval |= clk->en_mask;
-	writel_relaxed(regval, *clk->base + offset);
+	writel_relaxed(regval, *clk->base + clk->en_offset);
 	/* Ensure enable request goes through before returning */
 	mb();
 	spin_unlock_irqrestore(&mux_reg_lock, flags);
@@ -1209,12 +1221,14 @@ static void mux_reg_disable(struct mux_clk *clk)
 {
 	u32 regval;
 	unsigned long flags;
-	u32 offset = clk->en_reg ? clk->en_offset : clk->offset;
+
+	if (!clk->en_mask)
+		return;
 
 	spin_lock_irqsave(&mux_reg_lock, flags);
-	regval = readl_relaxed(*clk->base + offset);
+	regval = readl_relaxed(*clk->base + clk->en_offset);
 	regval &= ~clk->en_mask;
-	writel_relaxed(regval, *clk->base + offset);
+	writel_relaxed(regval, *clk->base + clk->en_offset);
 	spin_unlock_irqrestore(&mux_reg_lock, flags);
 }
 
@@ -1238,7 +1252,7 @@ static int mux_reg_set_mux_sel(struct mux_clk *clk, int sel)
 static int mux_reg_get_mux_sel(struct mux_clk *clk)
 {
 	u32 regval = readl_relaxed(*clk->base + clk->offset);
-	return !!((regval >> clk->shift) & clk->mask);
+	return (regval >> clk->shift) & clk->mask;
 }
 
 static bool mux_reg_is_enabled(struct mux_clk *clk)

@@ -69,24 +69,22 @@ obj-$(CONFIG_SND_SOC_MSM_QDSP6V2_INTF) += qdsp6v2/
 snd-soc-msm8x10-objs := msm8x10.o
 obj-$(CONFIG_SND_SOC_MSM8X10) += snd-soc-msm8x10.o
 
-
-# for MPQ 8092 sound card driver
-obj-$(CONFIG_SND_SOC_MSM_QDSP6V2_INTF) += qdsp6v2/
-snd-soc-mpq8092-objs := mpq8092.o
-obj-$(CONFIG_SND_SOC_MPQ8092) += snd-soc-mpq8092.o
-
 #for APQ8084 sound card driver
 snd-soc-apq8084-objs := apq8084.o apq8084-i2s.o
 obj-$(CONFIG_SND_SOC_APQ8084) += snd-soc-apq8084.o
 
-#for MSM SAMARIUM sound card driver
-snd-soc-msmsamarium-objs := msmsamarium.o
-obj-$(CONFIG_SND_SOC_MSMSAMARIUM) += snd-soc-msmsamarium.o
+#for CPE drivers
+snd-soc-cpe-objs := msm-cpe-lsm.o
+obj-$(CONFIG_SND_SOC_CPE) += snd-soc-cpe.o
 
 #for mdm9630 sound card driver
 snd-soc-mdm9630-objs := mdm9630.o
 obj-$(CONFIG_SND_SOC_MDM9630) += snd-soc-mdm9630.o
 
 # for MSM 8x16 sound card driver
-snd-soc-msm8x16-objs := msm8x16.o
+snd-soc-msm8x16-objs := msm8x16.o msm8939-slimbus.o
 obj-$(CONFIG_SND_SOC_MSM8X16) += snd-soc-msm8x16.o
+
+# for MSM 8994 sound card driver
+snd-soc-msm8994-objs := msm8994.o
+obj-$(CONFIG_SND_SOC_MSM8994) += snd-soc-msm8994.o

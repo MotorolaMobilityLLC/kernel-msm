@@ -29,7 +29,8 @@ static inline void write_phy(void *base, u32 offset, u32 value)
 static inline void pcie20_phy_init_default(struct msm_pcie_dev_t *dev)
 {
 
-	PCIE_DBG("Initializing 28nm QMP phy - 19.2MHz\n");
+	PCIE_DBG(dev, "RC%d: Initializing 28nm QMP phy - 19.2MHz\n",
+		dev->rc_idx);
 
 	write_phy(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL,		0x03);
 	write_phy(dev->phy, QSERDES_COM_SYSCLK_EN_SEL,		0x08);
@@ -63,7 +64,8 @@ static inline void pcie20_phy_init_default(struct msm_pcie_dev_t *dev)
 void pcie_phy_init(struct msm_pcie_dev_t *dev)
 {
 
-	PCIE_DBG("Initializing 28nm QMP phy - 19.2MHz\n");
+	PCIE_DBG(dev, "RC%d: Initializing 28nm QMP phy - 19.2MHz\n",
+		dev->rc_idx);
 
 	write_phy(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x03);
 
@@ -89,9 +91,11 @@ void pcie_phy_init(struct msm_pcie_dev_t *dev)
 	write_phy(dev->phy, QSERDES_RX_CDR_CONTROL1, 0xF3);
 	write_phy(dev->phy, QSERDES_RX_CDR_CONTROL_HALF, 0x2B);
 
+	write_phy(dev->phy, QSERDES_COM_PLL_VCOTAIL_EN, 0xE1);
+
 	/* Calibration Settings */
 	write_phy(dev->phy, QSERDES_COM_RESETSM_CNTRL, 0x90);
-	write_phy(dev->phy, QSERDES_COM_RESETSM_CNTRL2, 0x05);
+	write_phy(dev->phy, QSERDES_COM_RESETSM_CNTRL2, 0x7);
 
 	/* Additional writes */
 	write_phy(dev->phy, QSERDES_COM_RES_CODE_START_SEG1, 0x20);
@@ -124,7 +128,8 @@ void pcie_phy_init(struct msm_pcie_dev_t *dev)
 		return;
 	}
 
-	PCIE_DBG("Initializing 28nm ATE phy - 100MHz\n");
+	PCIE_DBG(dev, "RC%d: Initializing 28nm ATE phy - 100MHz\n",
+		dev->rc_idx);
 
 	/*  1 */
 	write_phy(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x01);

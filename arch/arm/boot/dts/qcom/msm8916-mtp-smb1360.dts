@@ -13,9 +13,10 @@
 /dts-v1/;
 
 #include "msm8916-mtp.dtsi"
+#include "msm8916-memory.dtsi"
 
 / {
-	model = "Qualcomm MSM 8916 MTP";
+	model = "Qualcomm Technologies, Inc. MSM 8916 SMB1360 MTP";
 	compatible = "qcom,msm8916-mtp", "qcom,msm8916", "qcom,mtp";
 	qcom,board-id = <8 1>;
 };
@@ -27,23 +28,34 @@
 			reg = <0x14>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <62 8>;
-			pinctrl-names = "active", "sleep";
-			pinctrl-0 = <&smb_int_active>;
-			pinctrl-1 = <&smb_int_sleep>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&smb_int_default>;
 			regulator-name = "smb1360_otg_vreg";
 
+			qcom,chg-inhibit-disabled;
 			qcom,float-voltage-mv = <4200>;
 			qcom,iterm-ma = <100>;
 			qcom,charging-disabled;
 			qcom,recharge-thresh-mv = <100>;
+			qcom,thermal-mitigation = <1500 700 600 0>;
 		};
 	};
 };
 
+&usb_otg {
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbid-gpio = <&msm_gpio 110 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usbid_default>;
+	vbus_otg-supply = <&smb1360_otg_supply>;
+};
+
 &pm8916_chg {
-	status = "disabled";
+	status = "ok";
+	qcom,use-external-charger;
 };
 
 &pm8916_bms {
-	status = "disabled";
+	status = "ok";
+	qcom,disable-bms;
 };

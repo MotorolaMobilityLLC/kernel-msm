@@ -143,7 +143,6 @@ struct ice40_hcd {
 	u8 devnum;
 	u32 port_flags;
 	u8 ctrl0;
-	u8 wblen0;
 
 	enum ice40_ep_phase ep0_state;
 	struct usb_hcd *hcd;
@@ -156,7 +155,6 @@ struct ice40_hcd {
 
 	struct pinctrl *pinctrl;
 	int reset_gpio;
-	int slave_select_gpio;
 	int config_done_gpio;
 	int vcc_en_gpio;
 	int clk_en_gpio;
@@ -165,6 +163,7 @@ struct ice40_hcd {
 	struct regulator *spi_vcc;
 	struct regulator *gpio_vcc;
 	bool powered;
+	bool clocked;
 
 	struct dentry *dbg_root;
 	bool pcd_pending;
@@ -191,12 +190,19 @@ struct ice40_hcd {
 
 	struct spi_message *in_msg;
 	struct spi_transfer *in_xfr; /* size 2 */
-	u8 *in_buf; /* size 2 for reading from RBUF0 */
+	u8 *in_tx_buf0; /* Max Size 69 */
+	u8 *in_rx_buf0; /* Max Size 69 */
+	u8 *in_tx_buf1; /* size 3 for reading XFR status */
+	u8 *in_rx_buf1; /* size 3 for reading XFR status */
 
 	struct spi_message *out_msg;
 	struct spi_transfer *out_xfr; /* size 2 */
-	u8 *out_buf; /* size 1 for writing WBUF0 */
+	u8 *out_tx_buf0; /* Max Size 134 when we write both FIFO */
+	u8 *out_tx_buf1; /* size 3 for reading XFR status */
+	u8 *out_rx_buf1; /* size 3 for reading XFR status */
 };
+
+#define FIRMWARE_LOAD_RETRIES 8
 
 static char fw_name[16] = "ice40.bin";
 module_param_string(fw, fw_name, sizeof(fw_name), S_IRUGO | S_IWUSR);
@@ -205,6 +211,10 @@ MODULE_PARM_DESC(fw, "firmware blob file name");
 static bool debugger;
 module_param(debugger, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(debugger, "true to use the debug port");
+
+static bool uicc_card_present;
+module_param(uicc_card_present, bool, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(uicc_card_present, "UICC card is inserted");
 
 static inline struct ice40_hcd *hcd_to_ihcd(struct usb_hcd *hcd)
 {
@@ -340,7 +350,6 @@ static int ice40_reset(struct usb_hcd *hcd)
 	ihcd->devnum = 0;
 	ice40_spi_reg_write(ihcd, 0, FADDR_REG);
 
-	ihcd->wblen0 = ~0;
 	/*
 	 * Read the line state. This driver is loaded after the
 	 * UICC card insertion. So the line state should indicate
@@ -512,10 +521,14 @@ static int ice40_xfer_in(struct ice40_hcd *ihcd, struct urb *urb)
 	u8 epnum = usb_pipeendpoint(urb->pipe);
 	bool is_out = usb_pipeout(urb->pipe);
 	struct ice40_ep *iep = ep->hcpriv;
-	u8 cmd, status, len = 0, t, expected_len;
+	u8 cmd, status = 0, len = 0, t, expected_len, n_expected_len, rblen;
 	void *buf;
 	int ret;
-	bool short_packet = true;
+	bool short_packet = false;
+	int buf_num = 0;
+	bool first = true;
+	bool last = false;
+	u32 actual_len = urb->actual_length;
 
 	if (epnum == 0 && ihcd->ep0_state == STATUS_PHASE) {
 		expected_len = 0;
@@ -530,108 +543,201 @@ static int ice40_xfer_in(struct ice40_hcd *ihcd, struct urb *urb)
 
 	/*
 	 * IN transaction Handling:
-	 * - Program HCMD register to initiate the IN transaction.
-	 * - poll for completion by reading XFRST register.
-	 * - Interpret the result.
-	 * - If ACK is received and we expect some data, read RBLEN
-	 * - Read the data from RBUF
+	 * Here we use double buffering and also do the whole transfer as
+	 * single SPI message. As part of a message we will initiate a read
+	 * request to put the data in one of read buffers. Pull the data from
+	 * another read buffer (if available) which was initiated in previous
+	 * transfer and read status to check whether data we requested was
+	 * successfully put in read buffer.
+	 * Follwing is the sequence of steps for different stages of transfer
+	 * First : (a),(b),(c),(d)
+	 * Normal: (a),(e),(b),(c),(d)
+	 * Last:   (f),(e)
+	 * (a) Program HCMD register to initiate the IN transaction.
+	 * (b) Poll for completion by reading XFRST register.
+	 * (c) Interpret the result.
+	 * (d) If ACK is received and we expect some data to be placed in read
+	 *     buffer which we will read in next transfer
+	 * (e) Read the data from RBUF which was placed in previous transfer
+	 * (f) Read RBLEN_REG
 	 */
 
-	cmd = HCMD_PT(0) | HCMD_TOGV(t) | HCMD_BSEL(0) | HCMD_EP(epnum);
-	ice40_spi_reg_write(ihcd, cmd, HCMD_REG);
+	while (1) {
+		cmd = HCMD_PT(0) | HCMD_TOGV(t) | HCMD_BSEL(buf_num)
+			| HCMD_EP(epnum);
+		if (!expected_len || first) {
+			ihcd->in_tx_buf0[0] = WRITE_CMD(HCMD_REG);
+			ihcd->in_tx_buf0[1] = cmd;
+			ihcd->in_xfr[0].len = 2;  /* 2 (HCMD write) */
+		} else if (last) {
+			ihcd->in_tx_buf0[0] = READ_CMD(RBLEN_REG);
+			if (buf_num)
+				ihcd->in_tx_buf0[3] = READ_CMD(RBUF0_REG);
+			else
+				ihcd->in_tx_buf0[3] = READ_CMD(RBUF1_REG);
 
-	status = ice40_poll_xfer(ihcd, 1000);
-	switch (XFR_MASK(status)) {
-	case XFR_SUCCESS:
-		usb_dotoggle(udev, epnum, is_out);
-		iep->xcat_err = 0;
-		ret = 0;
-		if ((expected_len == 64) && (status & R64B))
-			short_packet = false;
-		break;
-	case XFR_NAK:
-		iep->xcat_err = 0;
-		ret = -EINPROGRESS;
-		break;
-	case XFR_TOGERR:
+			/* 3 (RBLEN read)+ 66 (RBUF read) */
+			ihcd->in_xfr[0].len = 69;
+		} else {
+			ihcd->in_tx_buf0[0] = WRITE_CMD(HCMD_REG);
+			ihcd->in_tx_buf0[1] = cmd;
+			if (buf_num)
+				ihcd->in_tx_buf0[2] = READ_CMD(RBUF0_REG);
+			else
+				ihcd->in_tx_buf0[2] = READ_CMD(RBUF1_REG);
+
+			/* 2 (HCMD write)+ 66 (RBUF read) */
+			ihcd->in_xfr[0].len = 68;
+		}
+
+		ihcd->in_tx_buf1[0] = READ_CMD(XFRST_REG);
+
+		ret = spi_sync(ihcd->spi, ihcd->in_msg);
+		if (ret < 0) {
+			pr_err("SPI transfer failed\n");
+			ret = -EIO;
+			break;
+		}
+
+		/* We never read RBUF during first transfer */
+		if (!first) {
+			if (last)
+				len = ihcd->in_rx_buf0[2];
+			else
+				len = maxpacket;
+
+			/* babble condition */
+			if (len > expected_len) {
+				pr_err("overflow condition\n");
+				ret = -EOVERFLOW;
+				break;
+			}
+
+			/*
+			 * zero len packet received. nothing to read from
+			 * FIFO.
+			 */
+			if (len == 0) {
+				ret = 0;
+				break;
+			}
+			/* Copy data into urb buf from rx buf */
+			if (last)
+				memcpy(buf, &ihcd->in_rx_buf0[5], len);
+			else
+				memcpy(buf, &ihcd->in_rx_buf0[4], len);
+
+			urb->actual_length += len;
+			if ((urb->actual_length == total_len) ||
+					(len < expected_len) || short_packet) {
+				ret = 0; /* URB completed */
+				break;
+			} else {
+				ret = -EINPROGRESS; /* still pending */
+			}
+
+		}
+
+		if (expected_len)
+			expected_len = min_t(u32, maxpacket,
+					total_len - urb->actual_length);
+
+		/* During last we do not need to interpret status */
+		if (!last) {
+			status = ihcd->in_rx_buf1[2];
+
+			if (XFR_MASK(status) == XFR_BUSY)
+				status = ice40_poll_xfer(ihcd, 900);
+check_status:
+			switch (XFR_MASK(status)) {
+			case XFR_SUCCESS:
+				usb_dotoggle(udev, epnum, is_out);
+				iep->xcat_err = 0;
+				ret = 0;
+				/*
+				 * if maxpacket == 64; use R64B. else read
+				 * RBLEN to figure out if it is short_packet
+				 */
+				if (maxpacket == 64) {
+					if (status & R64B)
+						short_packet = false;
+					else
+						short_packet = true;
+				} else {
+					rblen = ice40_spi_reg_read(ihcd,
+							RBLEN_REG);
+					if (rblen < maxpacket)
+						short_packet = true;
+					else
+						short_packet = false;
+				}
+				break;
+			case XFR_NAK:
+				iep->xcat_err = 0;
+				ret = -EINPROGRESS;
+				break;
+			case XFR_TOGERR:
+				/*
+				 * Peripheral had missed the previous Ack and
+				 * sent the same packet again. Ack is sent by
+				 * the hardware. As the data is received
+				 * already, ignore this event.
+				 */
+				ret = -EINPROGRESS;
+				break;
+			case XFR_PKTERR:
+			case XFR_PIDERR:
+			case XFR_WRONGPID:
+			case XFR_CRCERR:
+			case XFR_TIMEOUT:
+				if (++iep->xcat_err < 8)
+					ret = -EINPROGRESS;
+				else
+					ret = -EPROTO;
+				break;
+			case XFR_STALL:
+				status = ice40_poll_xfer(ihcd, 900);
+				/* Check if a fake STALL is reported */
+				if (XFR_MASK(status) != XFR_STALL)
+					goto check_status;
+				ret = -EPIPE;
+				break;
+			case XFR_BADLEN:
+				ret = -EOVERFLOW;
+				break;
+			default:
+				pr_err("transaction timed out\n");
+				ret = -EIO;
+			}
 		/*
-		 * Peripheral had missed the previous Ack and sent
-		 * the same packet again. Ack is sent by the hardware.
-		 * As the data is received already, ignore this
-		 * event.
+		 * Proceed further only if Ack is received and
+		 * we are expecting some data.
 		 */
-		ret = -EINPROGRESS;
-		break;
-	case XFR_PKTERR:
-	case XFR_PIDERR:
-	case XFR_WRONGPID:
-	case XFR_CRCERR:
-	case XFR_TIMEOUT:
-		if (++iep->xcat_err < 8)
-			ret = -EINPROGRESS;
+			if (ret || !expected_len)
+				break;
+		}
+
+		buf = urb->transfer_buffer + urb->actual_length;
+		t = usb_gettoggle(udev, epnum, is_out);
+		buf_num = buf_num ? 0 : 1;
+
+		first = false;
+
+		if (expected_len == maxpacket)
+			n_expected_len = min_t(u32, maxpacket, total_len -
+					(urb->actual_length + maxpacket));
 		else
-			ret = -EPROTO;
-		break;
-	case XFR_STALL:
-		ret = -EPIPE;
-		break;
-	case XFR_BADLEN:
-		ret = -EOVERFLOW;
-		break;
-	default:
-		pr_err("transaction timed out\n");
-		ret = -EIO;
+			n_expected_len = 0;
+
+		if (n_expected_len == 0 || short_packet)
+			last = true;
+		else
+			last = false;
 	}
 
-	/*
-	 * Proceed further only if Ack is received and
-	 * we are expecting some data.
-	 */
-	if (ret || !expected_len)
-		goto out;
-
-	if (short_packet)
-		len = ice40_spi_reg_read(ihcd, RBLEN_REG);
-	else
-		len = 64;
-
-	/* babble condition */
-	if (len > expected_len) {
-		pr_err("overflow condition\n");
-		ret = -EOVERFLOW;
-		goto out;
-	}
-
-	/*
-	 * zero len packet received. nothing to read from
-	 * FIFO.
-	 */
-	if (len == 0) {
-		ret = 0;
-		goto out;
-	}
-
-	ihcd->in_buf[0] = READ_CMD(RBUF0_REG);
-
-	ihcd->in_xfr[1].rx_buf = buf;
-	ihcd->in_xfr[1].len = len;
-
-	ret = spi_sync(ihcd->spi, ihcd->in_msg);
-	if (ret < 0) {
-		pr_err("SPI transfer failed\n");
-		ret = -EIO;
-		goto out;
-	}
-
-	urb->actual_length += len;
-	if ((urb->actual_length == total_len) ||
-			(len < expected_len))
-		ret = 0; /* URB completed */
-	else
-		ret = -EINPROGRESS; /* still pending */
-out:
-	trace_ice40_in(epnum, xfr_status_string(status), len,
-			expected_len, ret);
+	trace_ice40_in(epnum, xfr_status_string(status),
+			urb->actual_length - actual_len,
+			total_len - actual_len, ret);
 	return ret;
 }
 
@@ -644,9 +750,11 @@ static int ice40_xfer_out(struct ice40_hcd *ihcd, struct urb *urb)
 	u8 epnum = usb_pipeendpoint(urb->pipe);
 	bool is_out = usb_pipeout(urb->pipe);
 	struct ice40_ep *iep = ep->hcpriv;
-	u8 cmd, status, len, t;
+	u8 cmd, status, len, t, nlen;
 	void *buf;
-	int ret;
+	int ret, buf_num = 0;
+	bool first = true;
+	u32 actual_len = urb->actual_length;
 
 	if (epnum == 0 && ihcd->ep0_state == STATUS_PHASE) {
 		len = 0;
@@ -660,80 +768,151 @@ static int ice40_xfer_out(struct ice40_hcd *ihcd, struct urb *urb)
 
 	/*
 	 * OUT transaction Handling:
-	 * - If we need to send data, write the data to WBUF Fifo
-	 * - Program the WBLEN register
-	 * - Program HCMD register to initiate the OUT transaction.
-	 * - poll for completion by reading XFRST register.
-	 * - Interpret the result.
+	 * Here we use double buffering and also do the whole transfer as
+	 * single SPI message. As part of a message we will push the data
+	 * already placed in buffer, put data (if available) in another buffer
+	 * for next message and read status to check whether data we pushed was
+	 * successfully transferred.
+	 * Follwing is the sequence of steps for different stages of transfer
+	 * First : (a),(c),(b),(c),(d),(e)
+	 * Normal: (a),(b),(c),(d),(e)
+	 * Last:   (a),(b),(d),(e)
+	 * (a) Program the WBLEN register
+	 * (b) Program HCMD register to initiate the OUT transaction.
+	 * (c) If we need to send data, write the data to WBUF Fifo
+	 * (d) poll for completion by reading XFRST register.
+	 * (e) Interpret the result.
 	 */
 
+	while (1) {
+		/*
+		 * len indicates size of data will be pushed from buffer as
+		 * part of out transaction
+		 * nlen indicates the data we need to put in the buffer for
+		 * next transfer
+		 */
 
-	if (!len)
-		goto no_data;
-
-	ihcd->out_buf[0] = WRITE_CMD(WBUF0_REG);
-
-	ihcd->out_xfr[1].tx_buf = buf;
-	ihcd->out_xfr[1].len = len;
-
-	ret = spi_sync(ihcd->spi, ihcd->out_msg);
-	if (ret < 0) {
-		pr_err("SPI transaction failed\n");
-		status = ret = -EIO;
-		goto out;
-	}
-
-no_data:
-	/*
-	 * Cache the WBLEN register and update it only if it
-	 * is changed from the previous value.
-	 */
-	if (len != ihcd->wblen0) {
-		ice40_spi_reg_write(ihcd, len, WBLEN_REG);
-		ihcd->wblen0 = len;
-	}
-
-	cmd = HCMD_PT(1) | HCMD_TOGV(t) | HCMD_BSEL(0) | HCMD_EP(epnum);
-	ice40_spi_reg_write(ihcd, cmd, HCMD_REG);
-
-	status = ice40_poll_xfer(ihcd, 1000);
-	switch (XFR_MASK(status)) {
-	case XFR_SUCCESS:
-		usb_dotoggle(udev, epnum, is_out);
-		urb->actual_length += len;
-		iep->xcat_err = 0;
-		if (!len || (urb->actual_length == total_len))
-			ret = 0; /* URB completed */
+		if (len == 64)
+			nlen = min_t(u32, maxpacket,
+					total_len - (urb->actual_length + 64));
 		else
-			ret = -EINPROGRESS; /* pending */
-		break;
-	case XFR_NAK:
-		iep->xcat_err = 0;
-		ret = -EINPROGRESS;
-		break;
-	case XFR_PKTERR:
-	case XFR_PIDERR:
-	case XFR_WRONGPID:
-	case XFR_CRCERR:
-	case XFR_TIMEOUT:
-		if (++iep->xcat_err < 8)
+			nlen = 0;
+
+		if (!len) {
+			/*
+			 * If length is zero we dont need to write any data in
+			 * buffers. We need to program HCMD to initiate a OUT
+			 * tranfer and update WBLEN
+			 */
+
+			cmd = HCMD_PT(1) | HCMD_TOGV(t) |
+				HCMD_BSEL(buf_num) | HCMD_EP(epnum);
+			ihcd->out_tx_buf0[0] = WRITE_CMD(WBLEN_REG);
+			ihcd->out_tx_buf0[1] = 0;
+			ihcd->out_tx_buf0[2] = WRITE_CMD(HCMD_REG);
+			ihcd->out_tx_buf0[3] = cmd;
+			/* 4 (HCMD, WBLEN write) */
+			ihcd->out_xfr[0].len = 4;
+		} else {
+			if (first) {
+				first = false;
+				cmd = HCMD_PT(1) | HCMD_TOGV(t) |
+					HCMD_BSEL(buf_num) | HCMD_EP(epnum);
+				ihcd->out_tx_buf0[0] = WRITE_CMD(WBLEN_REG);
+				ihcd->out_tx_buf0[1] = len;
+				ihcd->out_tx_buf0[2] = WRITE_CMD(WBUF0_REG);
+				memcpy(&ihcd->out_tx_buf0[3], buf, len);
+				ihcd->out_tx_buf0[67] = WRITE_CMD(HCMD_REG);
+				ihcd->out_tx_buf0[68] = cmd;
+				ihcd->out_tx_buf0[69] = WRITE_CMD(WBUF1_REG);
+				memcpy(&ihcd->out_tx_buf0[70], buf + len, nlen);
+				/* 2*65(wbuf0/1)+4(HCMD, WBLEN write) */
+				ihcd->out_xfr[0].len = 134;
+			} else {
+				cmd = HCMD_PT(1) | HCMD_TOGV(t)
+					| HCMD_BSEL(buf_num) | HCMD_EP(epnum);
+				ihcd->out_tx_buf0[0] = WRITE_CMD(WBLEN_REG);
+				ihcd->out_tx_buf0[1] = len;
+				ihcd->out_tx_buf0[2] = WRITE_CMD(HCMD_REG);
+				ihcd->out_tx_buf0[3] = cmd;
+				if (buf_num)
+					ihcd->out_tx_buf0[4] =
+						WRITE_CMD(WBUF0_REG);
+				else
+					ihcd->out_tx_buf0[4] =
+						WRITE_CMD(WBUF1_REG);
+				memcpy(&ihcd->out_tx_buf0[5], buf + len, nlen);
+				/* 65(wbuf) + 4 (HCMD, WBLEN write) */
+				ihcd->out_xfr[0].len = 69;
+			}
+		}
+
+		/* Prepare transfer 1 which is to POLL for status */
+		ihcd->out_tx_buf1[0] = READ_CMD(XFRST_REG);
+		ret = spi_sync(ihcd->spi, ihcd->out_msg);
+		if (ret < 0) {
+			pr_err("SPI transaction failed\n");
+			status = ret = -EIO;
+			break;
+		}
+		status = ihcd->out_rx_buf1[2];
+		if (XFR_MASK(status) == XFR_BUSY)
+			status = ice40_poll_xfer(ihcd, 900);
+check_status:
+		switch (XFR_MASK(status)) {
+		case XFR_SUCCESS:
+			usb_dotoggle(udev, epnum, is_out);
+			urb->actual_length += len;
+			iep->xcat_err = 0;
+			if (!len || (urb->actual_length == total_len))
+				ret = 0; /* URB completed */
+			else
+				ret = -EINPROGRESS; /* pending */
+			break;
+		case XFR_NAK:
+			iep->xcat_err = 0;
 			ret = -EINPROGRESS;
-		else
-			ret = -EPROTO;
-		break;
-	case XFR_STALL:
-		ret = -EPIPE;
-		break;
-	case XFR_BADLEN:
-		ret = -EOVERFLOW;
-		break;
-	default:
-		pr_err("transaction timed out\n");
-		ret = -EIO;
+			break;
+		case XFR_PKTERR:
+		case XFR_PIDERR:
+		case XFR_WRONGPID:
+		case XFR_CRCERR:
+		case XFR_TIMEOUT:
+			if (++iep->xcat_err < 8)
+				ret = -EINPROGRESS;
+			else
+				ret = -EPROTO;
+			break;
+		case XFR_STALL:
+			status = ice40_poll_xfer(ihcd, 900);
+			/* Check if a fake STALL is reported */
+			if (XFR_MASK(status) != XFR_STALL)
+				goto check_status;
+			ret = -EPIPE;
+			break;
+		case XFR_BADLEN:
+			ret = -EOVERFLOW;
+			break;
+		default:
+			pr_err("transaction timed out\n");
+			ret = -EIO;
+		}
+		/*
+		 * If we got ACK and there is still data remaining to be
+		 * pushed, update len, buf, t, buf_num
+		 */
+		if (XFR_SUCCESS == XFR_MASK(status) && ret == -EINPROGRESS) {
+			len = min_t(u32, maxpacket,
+					total_len - urb->actual_length);
+			buf = urb->transfer_buffer + urb->actual_length;
+			t = usb_gettoggle(udev, epnum, is_out);
+			buf_num = buf_num ? 0 : 1;
+		} else {
+			break; /* End while loop if ack is not recievied */
+		}
 	}
-
-out:
-	trace_ice40_out(epnum, xfr_status_string(status), len, ret);
+	trace_ice40_out(epnum, xfr_status_string(status),
+			urb->actual_length - actual_len, ret);
 	return ret;
 }
 
@@ -1191,10 +1370,12 @@ error:
 	return ret;
 }
 
+static void ice40_spi_clock_disable(struct ice40_hcd *ihcd);
 static void ice40_spi_power_off(struct ice40_hcd *ihcd);
 static int ice40_bus_suspend(struct usb_hcd *hcd)
 {
 	struct ice40_hcd *ihcd = hcd_to_ihcd(hcd);
+	struct pinctrl_state *s;
 
 	trace_ice40_bus_suspend(0); /* start */
 
@@ -1218,6 +1399,11 @@ static int ice40_bus_suspend(struct usb_hcd *hcd)
 	 * current.
 	 */
 	ice40_spi_power_off(ihcd);
+	ice40_spi_clock_disable(ihcd);
+
+	s = pinctrl_lookup_state(ihcd->pinctrl, PINCTRL_STATE_SLEEP);
+	if (!IS_ERR(s))
+		pinctrl_select_state(ihcd->pinctrl, s);
 
 	trace_ice40_bus_suspend(1); /* successful */
 	pm_relax(&ihcd->spi->dev);
@@ -1228,19 +1414,35 @@ static int ice40_spi_load_fw(struct ice40_hcd *ihcd);
 static int ice40_bus_resume(struct usb_hcd *hcd)
 {
 	struct ice40_hcd *ihcd = hcd_to_ihcd(hcd);
+	struct pinctrl_state *s;
 	u8 ctrl0;
-	int ret;
+	int ret, i;
 
 	pm_stay_awake(&ihcd->spi->dev);
 	trace_ice40_bus_resume(0); /* start */
+
+	s = pinctrl_lookup_state(ihcd->pinctrl, PINCTRL_STATE_DEFAULT);
+	if (!IS_ERR(s))
+		pinctrl_select_state(ihcd->pinctrl, s);
+
 	/*
 	 * Power up the bridge chip and load the configuration file.
 	 * Re-program the previous settings. For now we need to
 	 * update the device address only.
 	 */
-	ice40_spi_load_fw(ihcd);
+
+	for (i = 0; i < FIRMWARE_LOAD_RETRIES; i++) {
+		ret = ice40_spi_load_fw(ihcd);
+		if (!ret)
+			break;
+	}
+
+	if (ret) {
+		pr_err("Load firmware failed with ret: %d\n", ret);
+		return ret;
+	}
+
 	ice40_spi_reg_write(ihcd, ihcd->devnum, FADDR_REG);
-	ihcd->wblen0 = ~0;
 
 	/*
 	 * Program the bridge chip to drive resume signaling. The SOFs
@@ -1325,14 +1527,6 @@ static int ice40_spi_parse_dt(struct ice40_hcd *ihcd)
 		goto out;
 	}
 
-	ihcd->slave_select_gpio = of_get_named_gpio(node,
-				"lattice,slave-select-gpio", 0);
-	if (ihcd->slave_select_gpio < 0) {
-		pr_err("slave select gpio is missing\n");
-		ret = ihcd->slave_select_gpio;
-		goto out;
-	}
-
 	ihcd->config_done_gpio = of_get_named_gpio(node,
 				"lattice,config-done-gpio", 0);
 	if (ihcd->config_done_gpio < 0) {
@@ -1360,27 +1554,27 @@ out:
 	return ret;
 }
 
-static void ice40_spi_power_off(struct ice40_hcd *ihcd)
+static void ice40_spi_clock_disable(struct ice40_hcd *ihcd)
 {
-	if (!ihcd->powered)
+	if (!ihcd->clocked)
 		return;
 
-	gpio_direction_output(ihcd->vcc_en_gpio, 0);
-	regulator_disable(ihcd->core_vcc);
-	regulator_disable(ihcd->spi_vcc);
-	if (ihcd->gpio_vcc)
-		regulator_disable(ihcd->gpio_vcc);
 	if (ihcd->clk_en_gpio)
 		gpio_direction_output(ihcd->clk_en_gpio, 0);
 	if (ihcd->xo_clk)
 		clk_disable_unprepare(ihcd->xo_clk);
 
-	ihcd->powered = false;
+	if (ihcd->clk_en_gpio)
+		gpio_direction_input(ihcd->clk_en_gpio);
+	ihcd->clocked = false;
 }
 
-static int ice40_spi_power_up(struct ice40_hcd *ihcd)
+static int ice40_spi_clock_enable(struct ice40_hcd *ihcd)
 {
-	int ret;
+	int ret = 0;
+
+	if (ihcd->clocked)
+		goto out;
 
 	if (ihcd->xo_clk) {
 		ret = clk_prepare_enable(ihcd->xo_clk);
@@ -1393,16 +1587,54 @@ static int ice40_spi_power_up(struct ice40_hcd *ihcd)
 	if (ihcd->clk_en_gpio) {
 		ret = gpio_direction_output(ihcd->clk_en_gpio, 1);
 		if (ret < 0) {
-			pr_err("fail to enable clk %d\n", ret);
+			pr_err("fail to assert clk-en %d\n", ret);
 			goto disable_xo;
 		}
 	}
+
+	ihcd->clocked = true;
+
+	return 0;
+
+disable_xo:
+	if (ihcd->xo_clk)
+		clk_disable_unprepare(ihcd->xo_clk);
+out:
+	return ret;
+}
+
+static void ice40_spi_power_off(struct ice40_hcd *ihcd)
+{
+	if (!ihcd->powered)
+		return;
+
+	gpio_direction_output(ihcd->vcc_en_gpio, 0);
+	regulator_disable(ihcd->core_vcc);
+	regulator_disable(ihcd->spi_vcc);
+	if (ihcd->gpio_vcc)
+		regulator_disable(ihcd->gpio_vcc);
+
+	/*
+	 * Unused gpio should be in input mode for
+	 * low power consumption.
+	 */
+	gpio_direction_input(ihcd->vcc_en_gpio);
+	gpio_direction_input(ihcd->reset_gpio);
+	ihcd->powered = false;
+}
+
+static int ice40_spi_power_up(struct ice40_hcd *ihcd)
+{
+	int ret = 0;
+
+	if (ihcd->powered)
+		goto out;
 
 	if (ihcd->gpio_vcc) {
 		ret = regulator_enable(ihcd->gpio_vcc); /* 1.8 V */
 		if (ret < 0) {
 			pr_err("fail to enable gpio vcc\n");
-			goto disable_clk;
+			goto out;
 		}
 	}
 
@@ -1435,12 +1667,6 @@ disable_spi_vcc:
 disable_gpio_vcc:
 	if (ihcd->gpio_vcc)
 		regulator_disable(ihcd->gpio_vcc);
-disable_clk:
-	if (ihcd->clk_en_gpio)
-		gpio_direction_output(ihcd->clk_en_gpio, 0);
-disable_xo:
-	if (ihcd->xo_clk)
-		clk_disable_unprepare(ihcd->xo_clk);
 out:
 	return ret;
 }
@@ -1524,35 +1750,40 @@ static int ice40_spi_load_fw(struct ice40_hcd *ihcd)
 	 * The bridge chip samples the chip select signal during
 	 * power-up. If it is low, it enters SPI slave mode and
 	 * accepts the configuration data from us. The chip
-	 * select signal is managed by the SPI controller driver.
-	 * We temporarily override the chip select config to
-	 * drive it low. The SPI bus needs to be locked down during
-	 * this period to avoid other slave data going to our
-	 * bridge chip.
+	 * select signal is managed by the SPI controller driver
+	 * as it is part of the SPI protocol.
+	 *
+	 * Call spi_setup() with inverted active cs setting before
+	 * the powering up the bridge chip. The SPI controller drives
+	 * the chip select low as the slave is idle and bridge chip
+	 * enters slave mode. Call spi_setup() with correct active
+	 * cs setting after the bridge is powered up and before
+	 * starting the transfers.
+	 *
+	 * The SPI bus needs to be locked down during this period to
+	 * avoid other slave data going to our bridge chip. Disable the
+	 * SPI runtime suspend to keep the spi controller active to drive
+	 * the chip select correctly.
 	 *
 	 */
+	pm_runtime_get_sync(ihcd->spi->master->dev.parent);
+
 	spi_bus_lock(ihcd->spi->master);
 
-	ret = gpio_request(ihcd->slave_select_gpio, "ice40_spi_cs");
-	if (ret < 0) {
-		pr_err("fail to request slave select gpio %d\n", ret);
+	ihcd->spi->mode |= SPI_CS_HIGH;
+	ret = spi_setup(ihcd->spi);
+	if (ret) {
+		pr_err("fail to setup SPI with high cs setting %d\n", ret);
 		spi_bus_unlock(ihcd->spi->master);
-		goto out;
-	}
-
-	ret = gpio_direction_output(ihcd->slave_select_gpio, 0);
-	if (ret < 0) {
-		pr_err("fail to drive slave select gpio %d\n", ret);
-		gpio_free(ihcd->slave_select_gpio);
-		spi_bus_unlock(ihcd->spi->master);
+		pm_runtime_put_noidle(ihcd->spi->master->dev.parent);
 		goto out;
 	}
 
 	ret = ice40_spi_power_up(ihcd);
 	if (ret < 0) {
 		pr_err("fail to power up the chip\n");
-		gpio_free(ihcd->slave_select_gpio);
 		spi_bus_unlock(ihcd->spi->master);
+		pm_runtime_put_noidle(ihcd->spi->master->dev.parent);
 		goto out;
 	}
 
@@ -1562,8 +1793,15 @@ static int ice40_spi_load_fw(struct ice40_hcd *ihcd)
 	 */
 	usleep_range(1200, 1250);
 
-	gpio_direction_output(ihcd->slave_select_gpio, 1);
-	gpio_free(ihcd->slave_select_gpio);
+	ihcd->spi->mode &= ~SPI_CS_HIGH;
+	ret = spi_setup(ihcd->spi);
+	if (ret) {
+		pr_err("fail to setup SPI with low cs setting %d\n", ret);
+		spi_bus_unlock(ihcd->spi->master);
+		pm_runtime_put_noidle(ihcd->spi->master->dev.parent);
+	}
+
+	pm_runtime_put_noidle(ihcd->spi->master->dev.parent);
 
 	ret = spi_sync_locked(ihcd->spi, ihcd->fmsg);
 
@@ -1589,24 +1827,51 @@ static int ice40_spi_load_fw(struct ice40_hcd *ihcd)
 		goto power_off;
 	}
 
-	ret = gpio_direction_output(ihcd->reset_gpio, 1);
-	if (ret  < 0) {
-		pr_err("fail to assert reset %d\n", ret);
+	ret = ice40_spi_clock_enable(ihcd);
+	if (ret < 0) {
+		pr_err("fail to enable clocks %d\n", ret);
 		goto power_off;
 	}
-	udelay(50);
+
+	/*
+	 * As per the data book, the bridge chip exits the
+	 * reset state by sampling the falling edge of the
+	 * reset line. Hence assert the reset from 0 to 1
+	 * with 100 usec pulse width twice.
+	 */
+	ret = gpio_direction_output(ihcd->reset_gpio, 1);
+	if (ret  < 0) {
+		pr_err("fail to de-assert reset %d\n", ret);
+		goto clocks_off;
+	}
+	udelay(100);
+	ret = gpio_direction_output(ihcd->reset_gpio, 0);
+	if (ret  < 0) {
+		pr_err("fail to assert reset %d\n", ret);
+		goto clocks_off;
+	}
+	udelay(100);
+	ret = gpio_direction_output(ihcd->reset_gpio, 1);
+	if (ret  < 0) {
+		pr_err("fail to de-assert reset %d\n", ret);
+		goto clocks_off;
+	}
+	udelay(100);
 
 	ret = ice40_spi_reg_read(ihcd, XFRST_REG);
 	pr_debug("XFRST val is %x\n", ret);
 	if (!(ret & PLLOK)) {
 		pr_err("The PLL2 is not synchronized\n");
-		goto power_off;
+		ret = -ENODEV;
+		goto clocks_off;
 	}
 
 	pr_info("Firmware load success\n");
 
 	return 0;
 
+clocks_off:
+	ice40_spi_clock_disable(ihcd);
 power_off:
 	ice40_spi_power_off(ihcd);
 out:
@@ -1846,20 +2111,42 @@ static int ice40_spi_init_xfrs(struct ice40_hcd *ihcd)
 	ret = ice40_spi_init_one_xfr(ihcd, DATA_IN_XFR);
 	if (ret < 0)
 		goto out;
-	ihcd->in_buf = devm_kzalloc(&ihcd->spi->dev, 2, GFP_KERNEL);
-	if (!ihcd->in_buf)
+	ihcd->in_tx_buf0 = devm_kzalloc(&ihcd->spi->dev, 69, GFP_KERNEL);
+	if (!ihcd->in_tx_buf0)
 		goto out;
-	ihcd->in_xfr[0].tx_buf = ihcd->in_buf;
-	ihcd->in_xfr[0].len = 2;
+	ihcd->in_rx_buf0 = devm_kzalloc(&ihcd->spi->dev, 69, GFP_KERNEL);
+	if (!ihcd->in_rx_buf0)
+		goto out;
+	ihcd->in_tx_buf1 = devm_kzalloc(&ihcd->spi->dev, 3, GFP_KERNEL);
+	if (!ihcd->in_tx_buf1)
+		goto out;
+	ihcd->in_rx_buf1 = devm_kzalloc(&ihcd->spi->dev, 3, GFP_KERNEL);
+	if (!ihcd->in_rx_buf1)
+		goto out;
+	ihcd->in_xfr[0].tx_buf = ihcd->in_tx_buf0;
+	ihcd->in_xfr[0].rx_buf = ihcd->in_rx_buf0;
+	ihcd->in_xfr[0].delay_usecs = 1;
+	ihcd->in_xfr[1].tx_buf = ihcd->in_tx_buf1;
+	ihcd->in_xfr[1].rx_buf = ihcd->in_rx_buf1;
+	ihcd->in_xfr[1].len = 3;
 
 	ret = ice40_spi_init_one_xfr(ihcd, DATA_OUT_XFR);
 	if (ret < 0)
 		goto out;
-	ihcd->out_buf = devm_kzalloc(&ihcd->spi->dev, 1, GFP_KERNEL);
-	if (!ihcd->out_buf)
+	ihcd->out_tx_buf0 = devm_kzalloc(&ihcd->spi->dev, 134, GFP_KERNEL);
+	if (!ihcd->out_tx_buf0)
 		goto out;
-	ihcd->out_xfr[0].tx_buf = ihcd->out_buf;
-	ihcd->out_xfr[0].len = 1;
+	ihcd->out_tx_buf1 = devm_kzalloc(&ihcd->spi->dev, 3, GFP_KERNEL);
+	if (!ihcd->out_tx_buf1)
+		goto out;
+	ihcd->out_rx_buf1 = devm_kzalloc(&ihcd->spi->dev, 3, GFP_KERNEL);
+	if (!ihcd->out_rx_buf1)
+		goto out;
+	ihcd->out_xfr[0].tx_buf = ihcd->out_tx_buf0;
+	ihcd->out_xfr[0].delay_usecs = 1;
+	ihcd->out_xfr[1].tx_buf = ihcd->out_tx_buf1;
+	ihcd->out_xfr[1].rx_buf = ihcd->out_rx_buf1;
+	ihcd->out_xfr[1].len = 3;
 
 	return 0;
 
@@ -1936,6 +2223,14 @@ static ssize_t ice40_dbg_cmd_write(struct file *file, const char __user *ubuf,
 		ihcd->port_flags |= (USB_PORT_STAT_C_CONNECTION << 16);
 		ihcd->pcd_pending = true;
 		usb_hcd_poll_rh_status(ihcd->hcd);
+	} else if (!strcmp(buf, "config_test")) {
+		ice40_spi_power_off(ihcd);
+		ice40_spi_clock_disable(ihcd);
+		ret = ice40_spi_load_fw(ihcd);
+		if (ret) {
+			pr_err("config load failed\n");
+			goto out;
+		}
 	} else {
 		ret = -EINVAL;
 		goto out;
@@ -1983,7 +2278,13 @@ out:
 static int ice40_spi_probe(struct spi_device *spi)
 {
 	struct ice40_hcd *ihcd;
-	int ret;
+	int ret, i;
+
+	if (!uicc_card_present) {
+		pr_debug("UICC card is not inserted\n");
+		ret = -ENODEV;
+		goto out;
+	}
 
 	ihcd = devm_kzalloc(&spi->dev, sizeof(*ihcd), GFP_KERNEL);
 	if (!ihcd) {
@@ -2050,7 +2351,11 @@ static int ice40_spi_probe(struct spi_device *spi)
 		goto destroy_wq;
 	}
 
-	ret = ice40_spi_load_fw(ihcd);
+	for (i = 0; i < FIRMWARE_LOAD_RETRIES; i++) {
+		ret = ice40_spi_load_fw(ihcd);
+		if (!ret)
+			break;
+	}
 	if (ret) {
 		pr_err("fail to load fw %d\n", ret);
 		goto destroy_wq;
@@ -2060,7 +2365,7 @@ static int ice40_spi_probe(struct spi_device *spi)
 	if (!ihcd->hcd) {
 		pr_err("fail to alloc hcd\n");
 		ret = -ENOMEM;
-		goto power_off;
+		goto destroy_wq;
 	}
 	*((struct ice40_hcd **) ihcd->hcd->hcd_priv) = ihcd;
 
@@ -2099,8 +2404,6 @@ static int ice40_spi_probe(struct spi_device *spi)
 
 put_hcd:
 	usb_put_hcd(ihcd->hcd);
-power_off:
-	ice40_spi_power_off(ihcd);
 destroy_wq:
 	destroy_workqueue(ihcd->wq);
 destroy_mutex:
@@ -2123,6 +2426,7 @@ static int ice40_spi_remove(struct spi_device *spi)
 	usb_put_hcd(hcd);
 	destroy_workqueue(ihcd->wq);
 	ice40_spi_power_off(ihcd);
+	ice40_spi_clock_disable(ihcd);
 
 	s = pinctrl_lookup_state(ihcd->pinctrl, PINCTRL_STATE_SLEEP);
 	if (!IS_ERR(s))

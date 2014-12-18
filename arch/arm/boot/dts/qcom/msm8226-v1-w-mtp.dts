@@ -15,9 +15,10 @@
 #include "msm8226-w-memory.dtsi"
 #include "msm8226-w-qseecom.dtsi"
 #include "msm8226-720p-mtp.dtsi"
+#include "msm8x26w-gpu.dtsi"
 
 / {
-	model = "Qualcomm MSM 8226W MTP";
+	model = "Qualcomm Technologies, Inc. MSM 8226W MTP";
 	compatible = "qcom,msm8226-mtp", "qcom,msm8226", "qcom,mtp";
 	qcom,board-id = <8 4>;
 };
@@ -29,6 +30,11 @@
 	};
 };
 
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
 };
@@ -37,7 +43,6 @@
 	qcom,cont-splash-enabled;
 };
 
-&mdss_fb0 {
-	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x04200000 0x64000>;
+&pm8x26_rtc {
+	qcom,qpnp-rtc-write = <1>;
 };

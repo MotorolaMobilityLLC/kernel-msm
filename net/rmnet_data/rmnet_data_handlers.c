@@ -18,6 +18,7 @@
 #include <linux/netdevice.h>
 #include <linux/module.h>
 #include <linux/rmnet_data.h>
+#include <linux/net_map.h>
 #include "rmnet_data_private.h"
 #include "rmnet_data_config.h"
 #include "rmnet_data_vnd.h"
@@ -103,12 +104,14 @@ void rmnet_print_packet(const struct sk_buff *skb, const char *dev, char dir)
 		return;
 
 	pr_err("[%s][%c] - PKT skb->len=%d skb->head=%p skb->data=%p skb->tail=%p skb->end=%p\n",
-		dev, dir, skb->len, skb->head, skb->data, skb->tail, skb->end);
+		dev, dir, skb->len, (void *)skb->head, (void *)skb->data,
+		skb_tail_pointer(skb), skb_end_pointer(skb));
 
 	if (skb->len > 0)
 		len = skb->len;
 	else
-		len = ((unsigned int)skb->end) - ((unsigned int)skb->data);
+		len = ((unsigned int)(uintptr_t)skb->end) -
+		      ((unsigned int)(uintptr_t)skb->data);
 
 	pr_err("[%s][%c] - PKT len: %d, printing first %d bytes\n",
 		dev, dir, len, printlen);
@@ -252,6 +255,7 @@ static rx_handler_result_t _rmnet_map_ingress_handler(struct sk_buff *skb,
 	struct rmnet_logical_ep_conf_s *ep;
 	uint8_t mux_id;
 	uint16_t len;
+	int ckresult;
 
 	mux_id = RMNET_MAP_GET_MUX_ID(skb);
 	len = RMNET_MAP_GET_LENGTH(skb)
@@ -277,6 +281,21 @@ static rx_handler_result_t _rmnet_map_ingress_handler(struct sk_buff *skb,
 
 	if (config->ingress_data_format & RMNET_INGRESS_FORMAT_DEMUXING)
 		skb->dev = ep->egress_dev;
+
+	if (config->ingress_data_format & RMNET_INGRESS_FORMAT_MAP_CKSUMV3) {
+		ckresult = rmnet_map_checksum_downlink_packet(skb);
+		trace_rmnet_map_checksum_downlink_packet(skb, ckresult);
+		if (likely(ckresult == RMNET_MAP_CHECKSUM_OK))
+			skb->ip_summed |= CHECKSUM_UNNECESSARY;
+		else if (ckresult != RMNET_MAP_CHECKSUM_ERR_UNKNOWN_IP_VERSION
+			&& ckresult != RMNET_MAP_CHECKSUM_ERR_UNKNOWN_TRANSPORT
+			&& ckresult != RMNET_MAP_CHECKSUM_VALID_FLAG_NOT_SET
+			&& ckresult != RMNET_MAP_CHECKSUM_FRAGMENTED_PACKET) {
+			rmnet_kfree_skb(skb,
+				RMNET_STATS_SKBFREE_INGRESS_BAD_MAP_CKSUM);
+			return RX_HANDLER_CONSUMED;
+		}
+	}
 
 	/* Subtract MAP header */
 	skb_pull(skb, sizeof(struct rmnet_map_header_s));
@@ -307,10 +326,12 @@ static rx_handler_result_t rmnet_map_ingress_handler(struct sk_buff *skb,
 	int rc, co = 0;
 
 	if (config->ingress_data_format & RMNET_INGRESS_FORMAT_DEAGGREGATION) {
+		trace_rmnet_start_deaggregation(skb);
 		while ((skbn = rmnet_map_deaggregate(skb, config)) != 0) {
 			_rmnet_map_ingress_handler(skbn, config);
 			co++;
 		}
+		trace_rmnet_end_deaggregation(skb, co);
 		LOGD("De-aggregated %d packets", co);
 		rmnet_stats_deagg_pkts(co);
 		rmnet_kfree_skb(skb, RMNET_STATS_SKBFREE_MAPINGRESS_AGGBUF);

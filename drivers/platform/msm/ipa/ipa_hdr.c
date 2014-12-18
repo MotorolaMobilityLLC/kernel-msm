@@ -239,6 +239,8 @@ static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 	entry->hdr_len = hdr->hdr_len;
 	strlcpy(entry->name, hdr->name, IPA_RESOURCE_NAME_MAX);
 	entry->is_partial = hdr->is_partial;
+	entry->is_eth2_ofst_valid = hdr->is_eth2_ofst_valid;
+	entry->eth2_ofst = hdr->eth2_ofst;
 	entry->cookie = IPA_COOKIE;
 
 	if (hdr->hdr_len <= ipa_hdr_bin_sz[IPA_HDR_BIN0])
@@ -261,7 +263,7 @@ static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 					   GFP_KERNEL);
 		if (!offset) {
 			IPAERR("failed to alloc hdr offset object\n");
-			goto ofst_alloc_fail;
+			goto bad_hdr_len;
 		}
 		INIT_LIST_HEAD(&offset->link);
 		/*
@@ -298,8 +300,6 @@ static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 
 	return 0;
 
-ofst_alloc_fail:
-	kmem_cache_free(ipa_ctx->hdr_offset_cache, offset);
 bad_hdr_len:
 	entry->cookie = 0;
 	kmem_cache_free(ipa_ctx->hdr_cache, entry);
@@ -676,6 +676,8 @@ int ipa_copy_hdr(struct ipa_ioc_copy_hdr *copy)
 		memcpy(copy->hdr, entry->hdr, entry->hdr_len);
 		copy->hdr_len = entry->hdr_len;
 		copy->is_partial = entry->is_partial;
+		copy->is_eth2_ofst_valid = entry->is_eth2_ofst_valid;
+		copy->eth2_ofst = entry->eth2_ofst;
 		result = 0;
 	}
 	mutex_unlock(&ipa_ctx->lock);

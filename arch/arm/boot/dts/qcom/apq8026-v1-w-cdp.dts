@@ -16,11 +16,17 @@
 #include "msm8226-w-memory.dtsi"
 #include "msm8226-w-qseecom.dtsi"
 #include "msm8226-720p-cdp.dtsi"
+#include "msm8x26w-gpu.dtsi"
 
 / {
-	model = "Qualcomm APQ 8026W CDP";
+	model = "Qualcomm Technologies, Inc. APQ 8026W CDP";
 	compatible = "qcom,apq8026-cdp", "qcom,apq8026", "qcom,cdp";
 	qcom,board-id = <1 4>;
+};
+
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
 &mdss_dsi0 {
@@ -31,7 +37,6 @@
 	qcom,cont-splash-enabled;
 };
 
-&mdss_fb0 {
-	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x04200000 0x64000>;
+&pm8x26_rtc {
+	qcom,qpnp-rtc-write = <1>;
 };

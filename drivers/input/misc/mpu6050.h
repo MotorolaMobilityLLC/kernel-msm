@@ -55,6 +55,8 @@
 #define BIT_I2C_MST_EN		0x20
 #define BIT_FIFO_EN		0x40
 #define BIT_DMP_EN		0x80
+#define BIT_ACCEL_FIFO		0x08
+#define BIT_GYRO_FIFO		0x70
 
 #define REG_PWR_MGMT_1		0x6B
 #define BIT_H_RESET		0x80
@@ -209,12 +211,14 @@ struct mpu_chip_config {
  *  @gpio_int:		interrupt GPIO.
  *  @int_flags:		interrupt pin control flags.
  *  @use_int:		use interrupt mode instead of polling data.
+ *  @place:			sensor place number.
  */
 struct mpu6050_platform_data {
 	int gpio_en;
 	int gpio_int;
 	u32 int_flags;
 	bool use_int;
+	u8 place;
 };
 
 #endif /* __MPU6050_H__ */

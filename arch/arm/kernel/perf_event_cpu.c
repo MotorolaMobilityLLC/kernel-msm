@@ -340,6 +340,7 @@ static struct of_device_id cpu_pmu_of_device_ids[] = {
 	{.compatible = "arm,arm1176-pmu",	.data = armv6pmu_init},
 	{.compatible = "arm,arm1136-pmu",	.data = armv6pmu_init},
 	{.compatible = "qcom,krait-pmu",	.data = armv7_krait_pmu_init},
+	{.compatible = "arm,armv8-pmuv3",       .data = armv8_pmuv3_pmu_init},
 	{},
 };
 
@@ -454,7 +455,7 @@ static void __ref multicore_free_irq(int irq, void *dev_id)
 	int cpu;
 	struct irq_desc *desc = irq_to_desc(irq);
 
-	if (irq >= 0) {
+	if ((irq >= 0) && desc) {
 		for_each_cpu(cpu, desc->percpu_enabled) {
 			if (!armpmu_cpu_up(cpu))
 				smp_call_function_single(cpu,

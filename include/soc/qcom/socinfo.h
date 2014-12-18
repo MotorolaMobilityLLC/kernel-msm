@@ -54,20 +54,28 @@
 
 #define early_machine_is_msm8610()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8610")
-#define early_machine_is_mpq8092()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,mpq8092")
+#define early_machine_is_msmferrum()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msmferrum")
 #define early_machine_is_msm8916()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8916")
 #define early_machine_is_msm8936()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8936")
+#define early_machine_is_msm8939()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8939")
 #define early_machine_is_apq8084()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,apq8084")
 #define early_machine_is_mdm9630()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,mdm9630")
+#define early_machine_is_msmzirc()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msmzirc")
 #define early_machine_is_fsm9900()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,fsm9900")
-#define early_machine_is_msmsamarium()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msmsamarium")
+#define early_machine_is_msm8994()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8994")
+#define early_machine_is_msm8992()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8992")
+#define early_machine_is_fsm9010()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,fsm9010")
 #else
 #define of_board_is_sim()		0
 #define of_board_is_rumi()		0
@@ -89,13 +97,14 @@
 #define machine_is_msm8926()		0
 
 #define early_machine_is_msm8610()	0
-#define early_machine_is_mpq8092()	0
+#define early_machine_is_msmferrum()	0
 #define early_machine_is_msm8916()	0
 #define early_machine_is_msm8936()	0
+#define early_machine_is_msm8939()	0
 #define early_machine_is_apq8084()	0
 #define early_machine_is_mdm9630()	0
 #define early_machine_is_fsm9900()	0
-#define early_machine_is_msmsamarium()	0
+#define early_machine_is_fsm9010()	0
 #endif
 
 #define PLATFORM_SUBTYPE_MDM	1
@@ -134,16 +143,25 @@ enum msm_cpu {
 	MSM_CPU_8627,
 	MSM_CPU_8625,
 	MSM_CPU_9625,
-	MSM_CPU_8092,
+	MSM_CPU_FERRUM,
 	MSM_CPU_8916,
 	MSM_CPU_8936,
+	MSM_CPU_8939,
 	MSM_CPU_8226,
 	MSM_CPU_8610,
 	MSM_CPU_8625Q,
 	MSM_CPU_8084,
 	MSM_CPU_9630,
 	FSM_CPU_9900,
-	MSM_CPU_SAMARIUM,
+	MSM_CPU_ZIRC,
+	MSM_CPU_8994,
+	MSM_CPU_8992,
+	FSM_CPU_9010,
+};
+
+struct msm_soc_info {
+	enum msm_cpu generic_soc_type;
+	char *soc_id_string;
 };
 
 enum pmic_model {
@@ -480,17 +498,16 @@ static inline int cpu_is_msm8974pro_ac(void)
 #endif
 }
 
-static inline int cpu_is_mpq8092(void)
+static inline int cpu_is_msmferrum(void)
 {
-#ifdef CONFIG_ARCH_MPQ8092
+#ifdef CONFIG_ARCH_MSMFERRUM
 	enum msm_cpu cpu = socinfo_get_msm_cpu();
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);
-	return cpu == MSM_CPU_8092;
+	return cpu == MSM_CPU_FERRUM;
 #else
 	return 0;
 #endif
-
 }
 
 static inline int cpu_is_msm8916(void)
@@ -519,6 +536,18 @@ static inline int cpu_is_msm8936(void)
 
 }
 
+static inline int cpu_is_msm8939(void)
+{
+#ifdef CONFIG_ARCH_MSM8916
+	enum msm_cpu cpu = socinfo_get_msm_cpu();
+
+	BUG_ON(cpu == MSM_CPU_UNKNOWN);
+	return cpu == MSM_CPU_8939;
+#else
+	return 0;
+#endif
+
+}
 
 static inline int cpu_is_msm8226(void)
 {

@@ -74,6 +74,54 @@
 		qcom,auto-mode-enable = <0>;
 		status = "okay";
 	};
+
+	pwm@b100 {
+		status = "disabled";
+	};
+
+	pwm@b200 {
+		status = "disabled";
+	};
+
+	pwm@b300 {
+		status = "disabled";
+	};
+
+	pwm@b400 {
+		status = "disabled";
+	};
+
+	pwm@b500 {
+		status = "disabled";
+	};
+
+	pwm@b600 {
+		status = "disabled";
+	};
+
+	pwm@b700 {
+		status = "disabled";
+	};
+
+	pwm@b800 {
+		status = "disabled";
+	};
+
+	pwm@e400 {
+		status = "disabled";
+	};
+
+	pwm@e500 {
+		status = "disabled";
+	};
+
+	pwm@e600 {
+		status = "disabled";
+	};
+
+	pwm@e700 {
+		status = "disabled";
+	};
 };
 
 &pma8084_mvs1 {
@@ -103,6 +151,7 @@
 	qcom,misc-ref = <&pm8941_misc>;
 	dwc_usb3-adc_tm = <&pm8941_adc_tm>;
 	qcom,usbin-vadc = <&pm8941_vadc>;
+	qcom,utmi-clk-rate = <24000000>;
 	interrupt-map-mask = <0x0 0xffffffff>;
 	interrupt-map = <0x0 0 &intc 0 133 0
 			0x0 1 &spmi_bus 0x0 0x2 0x9 0x0>;
@@ -239,6 +288,11 @@
 	vadc@3100 {
 		interrupts = <0x2 0x31 0x0>;
 		interrupt-names = "eoc-int-en-set";
+		/delete-node/ chan@b3;
+		/delete-node/ chan@b4;
+		/delete-node/ chan@b5;
+		/delete-node/ chan@b7;
+		/delete-node/ chan@b8;
 	};
 
 	iadc@3600 {
@@ -253,6 +307,10 @@
 		interrupt-names =	"eoc-int-en-set",
 					"high-thr-en-set",
 					"low-thr-en-set";
+		/delete-node/ chan@b3;
+		/delete-node/ chan@b4;
+		/delete-node/ chan@b5;
+		/delete-node/ chan@b7;
 	};
 };
 

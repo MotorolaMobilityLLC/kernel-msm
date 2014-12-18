@@ -56,6 +56,8 @@ const char *ipa_event_name[] = {
 	__stringify(WLAN_STA_CONNECT),
 	__stringify(WLAN_STA_DISCONNECT),
 	__stringify(WLAN_CLIENT_CONNECT_EX),
+	__stringify(WAN_UPSTREAM_ROUTE_ADD),
+	__stringify(WAN_UPSTREAM_ROUTE_DEL),
 	__stringify(ECM_CONNECT),
 	__stringify(ECM_DISCONNECT),
 };
@@ -393,19 +395,19 @@ static int ipa_attrib_dump(struct ipa_rule_attrib *attrib,
 	int i;
 
 	if (attrib->attrib_mask & IPA_FLT_TOS_MASKED)
-		pr_info("tos_value:%d ", attrib->tos_value);
+		pr_err("tos_value:%d ", attrib->tos_value);
 
 	if (attrib->attrib_mask & IPA_FLT_TOS_MASKED)
-		pr_info("tos_mask:%d ", attrib->tos_mask);
+		pr_err("tos_mask:%d ", attrib->tos_mask);
 
 	if (attrib->attrib_mask & IPA_FLT_PROTOCOL)
-		pr_info("protocol:%d ", attrib->u.v4.protocol);
+		pr_err("protocol:%d ", attrib->u.v4.protocol);
 
 	if (attrib->attrib_mask & IPA_FLT_SRC_ADDR) {
 		if (ip == IPA_IP_v4) {
 			addr[0] = htonl(attrib->u.v4.src_addr);
 			mask[0] = htonl(attrib->u.v4.src_addr_mask);
-			pr_info(
+			pr_err(
 					"src_addr:%pI4 src_addr_mask:%pI4 ",
 					addr + 0, mask + 0);
 		} else if (ip == IPA_IP_v6) {
@@ -413,7 +415,7 @@ static int ipa_attrib_dump(struct ipa_rule_attrib *attrib,
 				addr[i] = htonl(attrib->u.v6.src_addr[i]);
 				mask[i] = htonl(attrib->u.v6.src_addr_mask[i]);
 			}
-			pr_info(
+			pr_err(
 					   "src_addr:%pI6 src_addr_mask:%pI6 ",
 					   addr + 0, mask + 0);
 		} else {
@@ -424,7 +426,7 @@ static int ipa_attrib_dump(struct ipa_rule_attrib *attrib,
 		if (ip == IPA_IP_v4) {
 			addr[0] = htonl(attrib->u.v4.dst_addr);
 			mask[0] = htonl(attrib->u.v4.dst_addr_mask);
-			pr_info(
+			pr_err(
 					   "dst_addr:%pI4 dst_addr_mask:%pI4 ",
 					   addr + 0, mask + 0);
 		} else if (ip == IPA_IP_v6) {
@@ -432,7 +434,7 @@ static int ipa_attrib_dump(struct ipa_rule_attrib *attrib,
 				addr[i] = htonl(attrib->u.v6.dst_addr[i]);
 				mask[i] = htonl(attrib->u.v6.dst_addr_mask[i]);
 			}
-			pr_info(
+			pr_err(
 					   "dst_addr:%pI6 dst_addr_mask:%pI6 ",
 					   addr + 0, mask + 0);
 		} else {
@@ -440,49 +442,49 @@ static int ipa_attrib_dump(struct ipa_rule_attrib *attrib,
 		}
 	}
 	if (attrib->attrib_mask & IPA_FLT_SRC_PORT_RANGE) {
-		pr_info("src_port_range:%u %u ",
+		pr_err("src_port_range:%u %u ",
 				   attrib->src_port_lo,
 			     attrib->src_port_hi);
 	}
 	if (attrib->attrib_mask & IPA_FLT_DST_PORT_RANGE) {
-		pr_info("dst_port_range:%u %u ",
+		pr_err("dst_port_range:%u %u ",
 				   attrib->dst_port_lo,
 			     attrib->dst_port_hi);
 	}
 	if (attrib->attrib_mask & IPA_FLT_TYPE)
-		pr_info("type:%d ", attrib->type);
+		pr_err("type:%d ", attrib->type);
 
 	if (attrib->attrib_mask & IPA_FLT_CODE)
-		pr_info("code:%d ", attrib->code);
+		pr_err("code:%d ", attrib->code);
 
 	if (attrib->attrib_mask & IPA_FLT_SPI)
-		pr_info("spi:%x ", attrib->spi);
+		pr_err("spi:%x ", attrib->spi);
 
 	if (attrib->attrib_mask & IPA_FLT_SRC_PORT)
-		pr_info("src_port:%u ", attrib->src_port);
+		pr_err("src_port:%u ", attrib->src_port);
 
 	if (attrib->attrib_mask & IPA_FLT_DST_PORT)
-		pr_info("dst_port:%u ", attrib->dst_port);
+		pr_err("dst_port:%u ", attrib->dst_port);
 
 	if (attrib->attrib_mask & IPA_FLT_TC)
-		pr_info("tc:%d ", attrib->u.v6.tc);
+		pr_err("tc:%d ", attrib->u.v6.tc);
 
 	if (attrib->attrib_mask & IPA_FLT_FLOW_LABEL)
-		pr_info("flow_label:%x ", attrib->u.v6.flow_label);
+		pr_err("flow_label:%x ", attrib->u.v6.flow_label);
 
 	if (attrib->attrib_mask & IPA_FLT_NEXT_HDR)
-		pr_info("next_hdr:%d ", attrib->u.v6.next_hdr);
+		pr_err("next_hdr:%d ", attrib->u.v6.next_hdr);
 
 	if (attrib->attrib_mask & IPA_FLT_META_DATA) {
-		pr_info(
+		pr_err(
 				   "metadata:%x metadata_mask:%x",
 				   attrib->meta_data, attrib->meta_data_mask);
 	}
 
 	if (attrib->attrib_mask & IPA_FLT_FRAGMENT)
-		pr_info("frg ");
+		pr_err("frg ");
 
-	pr_info("\n");
+	pr_err("\n");
 	return 0;
 }
 
@@ -494,13 +496,13 @@ static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
 	int j;
 
 	if (attrib->tos_eq_present)
-		pr_info("tos_value:%d ", attrib->tos_eq);
+		pr_err("tos_value:%d ", attrib->tos_eq);
 
 	if (attrib->protocol_eq_present)
-		pr_info("protocol:%d ", attrib->protocol_eq);
+		pr_err("protocol:%d ", attrib->protocol_eq);
 
 	for (i = 0; i < attrib->num_ihl_offset_range_16; i++) {
-		pr_info(
+		pr_err(
 			   "(ihl_ofst_range16: ofst:%u lo:%u hi:%u) ",
 			   attrib->ihl_offset_range_16[i].offset,
 			   attrib->ihl_offset_range_16[i].range_low,
@@ -508,7 +510,7 @@ static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
 	}
 
 	for (i = 0; i < attrib->num_offset_meq_32; i++) {
-		pr_info(
+		pr_err(
 			   "(ofst_meq32: ofst:%u mask:0x%x val:0x%x) ",
 			   attrib->offset_meq_32[i].offset,
 			   attrib->offset_meq_32[i].mask,
@@ -516,20 +518,20 @@ static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
 	}
 
 	if (attrib->tc_eq_present)
-		pr_info("tc:%d ", attrib->tc_eq);
+		pr_err("tc:%d ", attrib->tc_eq);
 
 	if (attrib->fl_eq_present)
-		pr_info("flow_label:%d ", attrib->fl_eq);
+		pr_err("flow_label:%d ", attrib->fl_eq);
 
 	if (attrib->ihl_offset_eq_16_present) {
-		pr_info(
+		pr_err(
 				"(ihl_ofst_eq16:%d val:0x%x) ",
 				attrib->ihl_offset_eq_16.offset,
 				attrib->ihl_offset_eq_16.value);
 	}
 
 	for (i = 0; i < attrib->num_ihl_offset_meq_32; i++) {
-		pr_info(
+		pr_err(
 				"(ihl_ofst_meq32: ofts:%d mask:0x%x val:0x%x) ",
 				attrib->ihl_offset_meq_32[i].offset,
 				attrib->ihl_offset_meq_32[i].mask,
@@ -541,7 +543,7 @@ static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
 			addr[j] = attrib->offset_meq_128[i].value[j];
 			mask[j] = attrib->offset_meq_128[i].mask[j];
 		}
-		pr_info(
+		pr_err(
 				"(ofst_meq128: ofst:%d mask:%pI6 val:%pI6) ",
 				attrib->offset_meq_128[i].offset,
 				mask + 0,
@@ -549,7 +551,7 @@ static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
 	}
 
 	if (attrib->metadata_meq32_present) {
-		pr_info(
+		pr_err(
 				"(metadata: ofst:%u mask:0x%x val:0x%x) ",
 				attrib->metadata_meq32.offset,
 				attrib->metadata_meq32.mask,
@@ -557,9 +559,9 @@ static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
 	}
 
 	if (attrib->ipv4_frag_eq_present)
-		pr_info("frg ");
+		pr_err("frg ");
 
-	pr_info("\n");
+	pr_err("\n");
 	return 0;
 }
 
@@ -584,14 +586,14 @@ static ssize_t ipa_read_rt(struct file *file, char __user *ubuf, size_t count,
 	mutex_lock(&ipa_ctx->lock);
 	if (ip ==  IPA_IP_v6) {
 		if (ipa_ctx->ip6_rt_tbl_lcl)
-			pr_info("Table Resides on local memory\n");
+			pr_err("Table Resides on local memory\n");
 		else
-			pr_info("Table Resides on system(ddr) memory\n");
+			pr_err("Table Resides on system(ddr) memory\n");
 	} else if (ip == IPA_IP_v4) {
 		if (ipa_ctx->ip4_rt_tbl_lcl)
-			pr_info("Table Resides on local memory\n");
+			pr_err("Table Resides on local memory\n");
 		else
-			pr_info("Table Resides on system(ddr) memory\n");
+			pr_err("Table Resides on system(ddr) memory\n");
 	}
 
 	list_for_each_entry(tbl, &set->head_rt_tbl_list, link) {
@@ -601,7 +603,7 @@ static ssize_t ipa_read_rt(struct file *file, char __user *ubuf, size_t count,
 				hdr_ofst = entry->hdr->offset_entry->offset;
 			else
 				hdr_ofst = 0;
-			pr_info(
+			pr_err(
 					"tbl_idx:%d tbl_name:%s tbl_ref:%u rule_idx:%d dst:%d ep:%d S:%u hdr_ofst[words]:%u attrib_mask:%08x ",
 					entry->tbl->idx, entry->tbl->name,
 					entry->tbl->ref_cnt, i, entry->rule.dst,
@@ -649,7 +651,7 @@ static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 			bitmap = entry->rule.attrib.attrib_mask;
 			eq = false;
 		}
-		pr_info(
+		pr_err(
 			   "ep_idx:global rule_idx:%d act:%d rt_tbl_idx:%d "
 			   "attrib_mask:%08x to_uc:%d, retain_hdr:%d eq:%d ",
 			   i, entry->rule.action, rt_tbl_idx, bitmap,
@@ -680,7 +682,7 @@ static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 				bitmap = entry->rule.attrib.attrib_mask;
 				eq = false;
 			}
-			pr_info(
+			pr_err(
 				"ep_idx:%d rule_idx:%d act:%d rt_tbl_idx:%d "
 				"attrib_mask:%08x to_uc:%d, retain_hdr:%d eq:%d ",
 				j, i, entry->rule.action,
@@ -711,7 +713,8 @@ static ssize_t ipa_read_stats(struct file *file, char __user *ubuf,
 	for (i = 0; i < IPA_NUM_PIPES; i++)
 		connect |= (ipa_ctx->ep[i].valid << i);
 
-	if (ipa_ctx->ipa_hw_type == IPA_HW_v2_0) {
+	if (ipa_ctx->ipa_hw_type == IPA_HW_v2_0 ||
+		ipa_ctx->ipa_hw_type == IPA_HW_v2_5) {
 		nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
 			"sw_tx=%u\n"
 			"hw_tx=%u\n"
@@ -775,62 +778,153 @@ static ssize_t ipa_read_wstats(struct file *file, char __user *ubuf,
 		size_t count, loff_t *ppos)
 {
 
+#define HEAD_FRMT_STR "%25s\n"
 #define FRMT_STR "%25s %10u\n"
 #define FRMT_STR1 "%25s %10u\n\n"
 
 	int cnt = 0;
 	int nbytes;
+	int ipa_ep_idx;
+	enum ipa_client_type client = IPA_CLIENT_WLAN1_PROD;
+	struct ipa_ep_context *ep;
 
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Rx Pkts Rcvd:", ipa_ctx->wstats.rx_pkts_rcvd);
+	do {
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			HEAD_FRMT_STR, "Client IPA_CLIENT_WLAN1_PROD Stats:");
+		cnt += nbytes;
+
+		ipa_ep_idx = ipa_get_ep_mapping(client);
+		if (ipa_ep_idx == -1) {
+			nbytes = scnprintf(dbg_buff + cnt,
+				IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR, "Not up");
+			cnt += nbytes;
+			break;
+		}
+
+		ep = &ipa_ctx->ep[ipa_ep_idx];
+		if (ep->valid != 1) {
+			nbytes = scnprintf(dbg_buff + cnt,
+				IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR, "Not up");
+			cnt += nbytes;
+			break;
+		}
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Avail Fifo Desc:",
+			atomic_read(&ep->avail_fifo_desc));
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Rx Pkts Rcvd:", ep->wstats.rx_pkts_rcvd);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Rx Pkts Status Rcvd:",
+			ep->wstats.rx_pkts_status_rcvd);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Rx DH Rcvd:", ep->wstats.rx_hd_rcvd);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Rx DH Processed:",
+			ep->wstats.rx_hd_processed);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Rx DH Sent Back:", ep->wstats.rx_hd_reply);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Rx Pkt Leak:", ep->wstats.rx_pkt_leak);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR1, "Rx DP Fail:", ep->wstats.rx_dp_fail);
+		cnt += nbytes;
+
+	} while (0);
+
+	client = IPA_CLIENT_WLAN1_CONS;
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR,
+		"Client IPA_CLIENT_WLAN1_CONS Stats:");
+	cnt += nbytes;
+	while (1) {
+		ipa_ep_idx = ipa_get_ep_mapping(client);
+		if (ipa_ep_idx == -1) {
+			nbytes = scnprintf(dbg_buff + cnt,
+				IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR, "Not up");
+			cnt += nbytes;
+			goto nxt_clnt_cons;
+		}
+
+		ep = &ipa_ctx->ep[ipa_ep_idx];
+		if (ep->valid != 1) {
+			nbytes = scnprintf(dbg_buff + cnt,
+				IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR, "Not up");
+			cnt += nbytes;
+			goto nxt_clnt_cons;
+		}
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Tx Pkts Received:", ep->wstats.tx_pkts_rcvd);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR, "Tx Pkts Sent:", ep->wstats.tx_pkts_sent);
+		cnt += nbytes;
+
+		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			FRMT_STR1, "Tx Pkts Dropped:",
+			ep->wstats.tx_pkts_dropped);
+		cnt += nbytes;
+
+nxt_clnt_cons:
+			switch (client) {
+			case IPA_CLIENT_WLAN1_CONS:
+				client = IPA_CLIENT_WLAN2_CONS;
+				nbytes = scnprintf(dbg_buff + cnt,
+					IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR,
+					"Client IPA_CLIENT_WLAN2_CONS Stats:");
+				cnt += nbytes;
+				continue;
+			case IPA_CLIENT_WLAN2_CONS:
+				client = IPA_CLIENT_WLAN3_CONS;
+				nbytes = scnprintf(dbg_buff + cnt,
+					IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR,
+					"Client IPA_CLIENT_WLAN3_CONS Stats:");
+				cnt += nbytes;
+				continue;
+			case IPA_CLIENT_WLAN3_CONS:
+				client = IPA_CLIENT_WLAN4_CONS;
+				nbytes = scnprintf(dbg_buff + cnt,
+					IPA_MAX_MSG_LEN - cnt, HEAD_FRMT_STR,
+					"Client IPA_CLIENT_WLAN4_CONS Stats:");
+				cnt += nbytes;
+				continue;
+			case IPA_CLIENT_WLAN4_CONS:
+			default:
+				break;
+			}
+		break;
+	}
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+		"\n"HEAD_FRMT_STR, "All Wlan Consumer pipes stats:");
 	cnt += nbytes;
 
 	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Rx Pkts Status Rcvd:", ipa_ctx->wstats.rx_pkts_status_rcvd);
+		"Tx Comm Buff Allocated:",
+		ipa_ctx->wc_memb.wlan_comm_total_cnt);
 	cnt += nbytes;
 
 	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Rx DH Rcvd:", ipa_ctx->wstats.rx_hd_rcvd);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Rx DH Processed:", ipa_ctx->wstats.rx_hd_processed);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Rx DH Sent Back:", ipa_ctx->wstats.rx_hd_reply);
+		"Tx Comm Buff Avail:", ipa_ctx->wc_memb.wlan_comm_free_cnt);
 	cnt += nbytes;
 
 	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR1,
-	 "Rx Pkt Leak:", ipa_ctx->wstats.rx_pkt_leak);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Rx DP Fail:", ipa_ctx->wstats.rx_dp_fail);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Tx Buf Total:", ipa_ctx->wlan_comm_cnt);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Tx Buf Cnt:", ipa_ctx->wstats.tx_buf_cnt);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Tx Pkts Sent:", ipa_ctx->wstats.tx_pkts_rcvd);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Tx Pkts Freed:", ipa_ctx->wstats.tx_pkts_freed);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Tx Pkts Dropped:", ipa_ctx->wstats.tx_pkts_dropped);
-	cnt += nbytes;
-
-	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
-		"Avail Fifo Desc:", ipa_ctx->ep[19].avail_fifo_desc);
+		"Total Tx Pkts Freed:", ipa_ctx->wc_memb.total_tx_pkts_freed);
 	cnt += nbytes;
 
 	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
@@ -949,21 +1043,21 @@ static ssize_t ipa_read_nat4(struct file *file,
 	u16 enable, tbl_entry, flag;
 
 	value = ipa_ctx->nat_mem.public_ip_addr;
-	pr_info(
+	pr_err(
 				"Table IP Address:%d.%d.%d.%d\n",
 				((value & 0xFF000000) >> 24),
 				((value & 0x00FF0000) >> 16),
 				((value & 0x0000FF00) >> 8),
 				((value & 0x000000FF)));
 
-	pr_info("Table Size:%d\n",
+	pr_err("Table Size:%d\n",
 				ipa_ctx->nat_mem.size_base_tables);
 
-	pr_info("Expansion Table Size:%d\n",
+	pr_err("Expansion Table Size:%d\n",
 				ipa_ctx->nat_mem.size_expansion_tables);
 
 	if (!ipa_ctx->nat_mem.is_sys_mem)
-		pr_info("Not supported for local(shared) memory\n");
+		pr_err("Not supported for local(shared) memory\n");
 
 	/* Print Base tables */
 	rule_id = 0;
@@ -972,13 +1066,13 @@ static ssize_t ipa_read_nat4(struct file *file,
 			tbl_size = ipa_ctx->nat_mem.size_base_tables;
 			base_tbl = (u32 *)ipa_ctx->nat_mem.ipv4_rules_addr;
 
-			pr_info("\nBase Table:\n");
+			pr_err("\nBase Table:\n");
 		} else {
 			tbl_size = ipa_ctx->nat_mem.size_expansion_tables;
 			base_tbl =
 			 (u32 *)ipa_ctx->nat_mem.ipv4_expansion_rules_addr;
 
-			pr_info("\nExpansion Base Table:\n");
+			pr_err("\nExpansion Base Table:\n");
 		}
 
 		if (base_tbl != NULL) {
@@ -988,10 +1082,10 @@ static ssize_t ipa_read_nat4(struct file *file,
 				enable = ((value & 0xFFFF0000) >> 16);
 
 				if (enable & NAT_ENTRY_ENABLE) {
-					pr_info("Rule:%d ", rule_id);
+					pr_err("Rule:%d ", rule_id);
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Private_IP:%d.%d.%d.%d ",
 						((value & 0xFF000000) >> 24),
 						((value & 0x00FF0000) >> 16),
@@ -1000,7 +1094,7 @@ static ssize_t ipa_read_nat4(struct file *file,
 					tmp++;
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Target_IP:%d.%d.%d.%d ",
 						((value & 0xFF000000) >> 24),
 						((value & 0x00FF0000) >> 16),
@@ -1009,14 +1103,14 @@ static ssize_t ipa_read_nat4(struct file *file,
 					tmp++;
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Next_Index:%d  Public_Port:%d ",
 						(value & 0x0000FFFF),
 						((value & 0xFFFF0000) >> 16));
 					tmp++;
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Private_Port:%d  Target_Port:%d ",
 						(value & 0x0000FFFF),
 						((value & 0xFFFF0000) >> 16));
@@ -1025,12 +1119,12 @@ static ssize_t ipa_read_nat4(struct file *file,
 					value = *tmp;
 					flag = ((value & 0xFFFF0000) >> 16);
 					if (flag & NAT_ENTRY_RST_FIN_BIT) {
-						pr_info(
+						pr_err(
 								"IP_CKSM_delta:0x%x  Flags:%s ",
 							  (value & 0x0000FFFF),
 								"Direct_To_A5");
 					} else {
-						pr_info(
+						pr_err(
 							"IP_CKSM_delta:0x%x  Flags:%s ",
 							(value & 0x0000FFFF),
 							"Fwd_to_route");
@@ -1038,21 +1132,21 @@ static ssize_t ipa_read_nat4(struct file *file,
 					tmp++;
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Time_stamp:0x%x Proto:%d ",
 						(value & 0x00FFFFFF),
 						((value & 0xFF000000) >> 24));
 					tmp++;
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Prev_Index:%d  Indx_tbl_entry:%d ",
 						(value & 0x0000FFFF),
 						((value & 0xFFFF0000) >> 16));
 					tmp++;
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"TCP_UDP_cksum_delta:0x%x\n",
 						((value & 0xFFFF0000) >> 16));
 				}
@@ -1070,13 +1164,13 @@ static ssize_t ipa_read_nat4(struct file *file,
 			tbl_size = ipa_ctx->nat_mem.size_base_tables;
 			indx_tbl = (u32 *)ipa_ctx->nat_mem.index_table_addr;
 
-			pr_info("\nIndex Table:\n");
+			pr_err("\nIndex Table:\n");
 		} else {
 			tbl_size = ipa_ctx->nat_mem.size_expansion_tables;
 			indx_tbl =
 			 (u32 *)ipa_ctx->nat_mem.index_table_expansion_addr;
 
-			pr_info("\nExpansion Index Table:\n");
+			pr_err("\nExpansion Index Table:\n");
 		}
 
 		if (indx_tbl != NULL) {
@@ -1086,10 +1180,10 @@ static ssize_t ipa_read_nat4(struct file *file,
 				tbl_entry = (value & 0x0000FFFF);
 
 				if (tbl_entry) {
-					pr_info("Rule:%d ", rule_id);
+					pr_err("Rule:%d ", rule_id);
 
 					value = *tmp;
-					pr_info(
+					pr_err(
 						"Table_Entry:%d  Next_Index:%d\n",
 						tbl_entry,
 						((value & 0xFFFF0000) >> 16));

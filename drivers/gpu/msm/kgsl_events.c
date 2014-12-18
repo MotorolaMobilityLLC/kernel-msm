@@ -14,8 +14,10 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/workqueue.h>
+#include <linux/debugfs.h>
 #include <kgsl_device.h>
 
+#include "kgsl_debugfs.h"
 #include "kgsl_trace.h"
 
 /*
@@ -23,6 +25,7 @@
  * so frequently
  */
 static struct kmem_cache *events_cache;
+static struct dentry *events_dentry;
 
 static inline void signal_event(struct kgsl_device *device,
 		struct kgsl_event *event, int result)
@@ -58,18 +61,24 @@ static void _kgsl_event_worker(struct work_struct *work)
  * @device: Pointer to a KGSL device
  * @group: Pointer to a GPU events group to process
  */
-static void retire_events(struct kgsl_device *device,
+void kgsl_process_event_group(struct kgsl_device *device,
 		struct kgsl_event_group *group)
 {
 	struct kgsl_event *event, *tmp;
 	unsigned int timestamp;
-	struct kgsl_context *context = group->context;
+	struct kgsl_context *context;
+
+	if (group == NULL)
+		return;
+
+	context = group->context;
 
 	_kgsl_context_get(context);
 
 	spin_lock(&group->lock);
 
-	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &timestamp);
+	group->readtimestamp(device, group->priv, KGSL_TIMESTAMP_RETIRED,
+		&timestamp);
 
 	/*
 	 * If no timestamps have been retired since the last time we were here
@@ -89,6 +98,7 @@ out:
 	spin_unlock(&group->lock);
 	kgsl_context_put(context);
 }
+EXPORT_SYMBOL(kgsl_process_event_group);
 
 /**
  * kgsl_cancel_events_timestamp() - Cancel pending events for a given timestamp
@@ -168,9 +178,10 @@ EXPORT_SYMBOL(kgsl_cancel_event);
 int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 		unsigned int timestamp, kgsl_event_func func, void *priv)
 {
-	unsigned int queued, retired;
+	unsigned int queued;
 	struct kgsl_context *context = group->context;
 	struct kgsl_event *event;
+	unsigned int retired;
 
 	if (!func)
 		return -EINVAL;
@@ -181,8 +192,9 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 	 * queued.
 	 */
 	if (!context || !(context->flags & KGSL_CONTEXT_USER_GENERATED_TS)) {
-		kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_QUEUED,
+		group->readtimestamp(device, group->priv, KGSL_TIMESTAMP_QUEUED,
 			&queued);
+
 		if (timestamp_cmp(timestamp, queued) > 0)
 			return -EINVAL;
 	}
@@ -211,7 +223,8 @@ int kgsl_add_event(struct kgsl_device *device, struct kgsl_event_group *group,
 	 * Check to see if the requested timestamp has already retired.  If so,
 	 * schedule the callback right away
 	 */
-	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED, &retired);
+	group->readtimestamp(device, group->priv, KGSL_TIMESTAMP_RETIRED,
+		&retired);
 
 	if (timestamp_cmp(retired, timestamp) >= 0) {
 		event->result = KGSL_EVENT_RETIRED;
@@ -244,7 +257,7 @@ void kgsl_process_events(struct work_struct *work)
 
 	read_lock(&group_lock);
 	list_for_each_entry(group, &group_list, group)
-		retire_events(device, group);
+		kgsl_process_event_group(device, group);
 	read_unlock(&group_lock);
 }
 EXPORT_SYMBOL(kgsl_process_events);
@@ -267,20 +280,86 @@ EXPORT_SYMBOL(kgsl_del_event_group);
 /**
  * kgsl_add_event_group() - Add a new GPU event group
  * group: Pointer to the new group to add to the list
+ * context: Context that owns the group (or NULL for global)
+ * name: Name of the group
+ * readtimestamp: Function pointer to the readtimestamp function to call when
+ * processing events
+ * priv: Priv member to pass to the readtimestamp function
  */
 void kgsl_add_event_group(struct kgsl_event_group *group,
-		struct kgsl_context *context)
+		struct kgsl_context *context, const char *name,
+		readtimestamp_func readtimestamp, void *priv)
 {
+	BUG_ON(readtimestamp == NULL);
+
 	spin_lock_init(&group->lock);
 	INIT_LIST_HEAD(&group->events);
 
 	group->context = context;
+	group->readtimestamp = readtimestamp;
+	group->priv = priv;
+
+	if (name)
+		strlcpy(group->name, name, sizeof(group->name));
 
 	write_lock(&group_lock);
 	list_add_tail(&group->group, &group_list);
 	write_unlock(&group_lock);
 }
 EXPORT_SYMBOL(kgsl_add_event_group);
+
+static void events_debugfs_print_group(struct seq_file *s,
+		struct kgsl_event_group *group)
+{
+	struct kgsl_event *event;
+	unsigned int retired;
+
+	spin_lock(&group->lock);
+
+	seq_printf(s, "%s: last=%d\n", group->name, group->processed);
+
+	list_for_each_entry(event, &group->events, node) {
+
+		group->readtimestamp(event->device, group->priv,
+			KGSL_TIMESTAMP_RETIRED, &retired);
+
+		seq_printf(s, "\t%d:%d age=%lu func=%ps [retired=%d]\n",
+			group->context ? group->context->id :
+						KGSL_MEMSTORE_GLOBAL,
+			event->timestamp, jiffies  - event->created,
+			event->func, retired);
+	}
+	spin_unlock(&group->lock);
+}
+
+static int events_debugfs_print(struct seq_file *s, void *unused)
+{
+	struct kgsl_event_group *group;
+
+	seq_puts(s, "event groups:\n");
+	seq_puts(s, "--------------\n");
+
+	read_lock(&group_lock);
+	list_for_each_entry(group, &group_list, group) {
+		events_debugfs_print_group(s, group);
+		seq_puts(s, "\n");
+	}
+	read_unlock(&group_lock);
+
+	return 0;
+}
+
+static int events_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, events_debugfs_print, NULL);
+}
+
+static const struct file_operations events_fops = {
+	.open = events_debugfs_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 
 /**
  * kgsl_events_exit() - Destroy the event kmem cache on module exit
@@ -289,6 +368,8 @@ void kgsl_events_exit(void)
 {
 	if (events_cache)
 		kmem_cache_destroy(events_cache);
+
+	debugfs_remove(events_dentry);
 }
 
 /**
@@ -296,5 +377,13 @@ void kgsl_events_exit(void)
  */
 void __init kgsl_events_init(void)
 {
+	struct dentry *debugfs_dir = kgsl_get_debugfs_dir();
 	events_cache = KMEM_CACHE(kgsl_event, 0);
+
+	events_dentry = debugfs_create_file("events", 0444, debugfs_dir, NULL,
+		&events_fops);
+
+	/* Failure to create a debugfs entry is non fatal */
+	if (IS_ERR(events_dentry))
+		events_dentry = NULL;
 }

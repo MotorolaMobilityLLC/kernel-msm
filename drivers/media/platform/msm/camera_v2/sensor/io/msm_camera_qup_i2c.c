@@ -69,7 +69,7 @@ static int32_t msm_camera_qup_i2c_txdata(
 	rc = i2c_transfer(dev_client->client->adapter, msg, 1);
 	if (rc < 0)
 		S_I2C_DBG("msm_camera_qup_i2c_txdata faild 0x%x\n", saddr);
-	return 0;
+	return rc;
 }
 
 int32_t msm_camera_qup_i2c_read(struct msm_camera_i2c_client *client,
@@ -214,6 +214,11 @@ int32_t msm_camera_qup_i2c_write_seq(struct msm_camera_i2c_client *client,
 		S_I2C_DBG("%s byte %d: 0x%x\n", __func__,
 			len+1, buf[len+1]);
 		len = 2;
+	}
+	if (num_byte > I2C_SEQ_REG_DATA_MAX) {
+		pr_err("%s: num_byte=%d clamped to max supported %d\n",
+			__func__, num_byte, I2C_SEQ_REG_DATA_MAX);
+		num_byte = I2C_SEQ_REG_DATA_MAX;
 	}
 	for (i = 0; i < num_byte; i++) {
 		buf[i+len] = data[i];

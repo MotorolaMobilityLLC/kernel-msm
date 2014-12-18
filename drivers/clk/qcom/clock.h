@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,12 +36,13 @@ struct clock_init_data {
 
 int msm_clock_init(struct clock_init_data *data);
 int find_vdd_level(struct clk *clk, unsigned long rate);
+extern struct list_head orphan_clk_list;
 
 #ifdef CONFIG_DEBUG_FS
-int clock_debug_register(struct clk_lookup *t, size_t s);
+int clock_debug_register(struct clk *clk);
 void clock_debug_print_enabled(void);
 #else
-static inline int clock_debug_register(struct clk_lookup *t, size_t s)
+static inline int clock_debug_register(struct clk *unused)
 {
 	return 0;
 }

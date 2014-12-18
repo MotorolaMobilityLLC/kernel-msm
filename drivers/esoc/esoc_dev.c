@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,11 +45,15 @@ struct esoc_udev {
  * @esoc_clink: esoc control link.
  * @eng: esoc engine for commands/ requests.
  * @esoc_udev: user interface device.
+ * @req_eng_reg: indicates if engine is registered as request eng
+ * @cmd_eng_reg: indicates if engine is registered as cmd eng
  */
 struct esoc_uhandle {
 	struct esoc_clink *esoc_clink;
 	struct esoc_eng eng;
 	struct esoc_udev *esoc_udev;
+	bool req_eng_reg;
+	bool cmd_eng_reg;
 };
 
 #define ESOC_MAX_MINOR	256
@@ -80,7 +84,7 @@ static struct esoc_udev *get_free_esoc_udev(struct esoc_clink *esoc_clink)
 							esoc_clink->name);
 		goto req_fifo_fail;
 	}
-	err = kfifo_alloc(&esoc_udev->req_fifo, (sizeof(u32)) * ESOC_MAX_EVT,
+	err = kfifo_alloc(&esoc_udev->evt_fifo, (sizeof(u32)) * ESOC_MAX_EVT,
 								GFP_KERNEL);
 	if (err) {
 		pr_err("unable to allocate evt fifo for %s\n",
@@ -183,11 +187,13 @@ static long esoc_dev_ioctl(struct file *file, unsigned int cmd,
 		err = esoc_clink_register_req_eng(esoc_clink, &uhandle->eng);
 		if (err)
 			return err;
+		uhandle->req_eng_reg = true;
 		break;
 	case ESOC_REG_CMD_ENG:
 		err = esoc_clink_register_cmd_eng(esoc_clink, &uhandle->eng);
 		if (err)
 			return err;
+		uhandle->cmd_eng_reg = true;
 		break;
 	case ESOC_CMD_EXE:
 		if (esoc_clink->cmd_eng != &uhandle->eng)
@@ -277,6 +283,12 @@ static int esoc_dev_release(struct inode *inode, struct file *file)
 	struct esoc_uhandle *uhandle = file->private_data;
 
 	esoc_clink = uhandle->esoc_clink;
+	if (uhandle->req_eng_reg)
+		esoc_clink_unregister_req_eng(esoc_clink, &uhandle->eng);
+	if (uhandle->cmd_eng_reg)
+		esoc_clink_unregister_cmd_eng(esoc_clink, &uhandle->eng);
+	uhandle->req_eng_reg = false;
+	uhandle->cmd_eng_reg = false;
 	put_esoc_clink(esoc_clink);
 	kfree(uhandle);
 	return 0;

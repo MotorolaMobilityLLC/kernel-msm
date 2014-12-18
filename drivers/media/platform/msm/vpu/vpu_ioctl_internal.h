@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,7 +32,11 @@ static inline int get_vpu_num_sessions(unsigned *ret)
 	return 0;
 }
 
-int vpu_attach_client(struct vpu_client *client, int session_num);
+int vpu_create_session(struct vpu_client *client);
+int vpu_join_session(struct vpu_client *client, int session_num);
+
+int vpu_attach_session_deprecated(struct vpu_client *client, int session_num);
+
 void vpu_detach_client(struct vpu_client *client);
 
 
@@ -67,6 +71,7 @@ int vpu_set_control_port(struct vpu_client *client,
 
 int vpu_commit_configuration(struct vpu_client *client);
 
+int vpu_dual_output(struct vpu_client *client);
 
 int vpu_reqbufs(struct vpu_client *client, struct v4l2_requestbuffers *rb);
 int vpu_qbuf(struct vpu_client *client, struct v4l2_buffer *b);
@@ -80,19 +85,6 @@ int vpu_streamoff(struct vpu_client *client, enum v4l2_buf_type i);
 
 int vpu_trigger_stream(struct vpu_dev_session *session);
 
-/*
- * Notify client with event of ID type.
- * If data is not null then it points to payload of size (<=64)
- */
-void notify_vpu_event_client(struct vpu_client *client,
-		u32 type, u8 *data, u32 size);
-
-/*
- * Notify All clients in session with event of ID type.
- * If data is not null then it points to payload of size (<=64)
- */
-void notify_vpu_event_session(struct vpu_dev_session *session,
-		u32 type, u8 *data, u32 size);
 
 /*
  * Videobuf2 related functions

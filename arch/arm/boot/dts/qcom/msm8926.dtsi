@@ -22,7 +22,7 @@
 #include "msm8226-v2-pm.dtsi"
 
 / {
-	model = "Qualcomm MSM 8926";
+	model = "Qualcomm Technologies, Inc. MSM 8926";
 	compatible = "qcom,msm8926";
 
 	memory {
@@ -49,6 +49,10 @@
 	linux,memory-limit = <0x0>;
 };
 
+&clock_gcc {
+	compatible = "qcom,gcc-8226-v2";
+};
+
 &soc {
 	qcom,mss@fc880000 {
 		reg = <0xfc880000 0x100>,
@@ -73,11 +77,18 @@
 			<         0 0>,
 			< 384000000 2>,
 			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
 			<1190400000 7>;
 		qcom,speed2-bin-v1 =
 			<         0 0>,
 			< 384000000 2>,
 			< 787200000 4>,
+			< 998400000 5>,
+			<1094400000 6>,
+			<1190400000 7>,
+			<1305600000 8>,
+			<1344000000 9>,
 			<1401600000 10>;
 		qcom,speed1-bin-v1 =
 			<         0 0>,

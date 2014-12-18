@@ -35,17 +35,16 @@ Optional Properties:
 - onnn,vsel-gpio:		Present: GPIO connects to the VSEL pin and set the
 				VSEL pin according to device tree flag.
 				Not Present: No GPIO is connected to vsel pin.
+- pinctrl-names:		The state name of the VSEL pin configuration.
+				Only support: "default"
+- pinctrl-0:			The phandles of the pin configuration node in
+				pinctrl for VSEL pin.
+				For details of pinctrl properties, please refer to:
+				"Documentation/devicetree/bindings/pinctrl/pinctrl-bindings.txt"
 - onnn,sleep-enable:		Present: Forced in sleep mode when EN and VSEL
 				pins are low.
 				Not Present: Low quiescent current mode when EN and VSEL
 				pins are low.
-- onnn,tlmm-config:		Array of 2 elements to indicate the mask value and the value
-				to write in the masked bits.
-				This property is used to allow the VSEL GPIO to toggle on certain
-				Qualcomm processors. If it is not specified, then no register write is required.
-				The 2 elements with index[0..1] are:
-				[0] => the mask value;
-				[1] => the value to write into the masked bits.
 - onnn,mode:			A string which specifies the initial mode to use for the regulator.
 				Supported values are "pwm" and "auto". PWM mode is more
 				robust, but draws more current than auto mode. If this propery
@@ -62,6 +61,8 @@ Example:
 			onnn,step-size = <10000>;
 			onnn,min-slew-ns = <333>;
 			onnn,max-slew-ns = <2666>;
+			pintrl-names = "default";
+			pinctrl-0 = <&ext_buck_vsel_default>;
 
 			regulator-min-microvolt = <1050000>;
 			regulator-max-microvolt = <1350000>;

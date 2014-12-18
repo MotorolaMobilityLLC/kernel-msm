@@ -20,7 +20,7 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 #include <linux/irqreturn.h>
-
+#include <linux/mdss_io_util.h>
 #include <linux/msm_iommu_domains.h>
 
 #include "mdss_panel.h"
@@ -62,13 +62,17 @@ struct mdss_hw_settings {
 
 struct mdss_debug_inf {
 	void *debug_data;
-	int (*debug_dump_stats)(void *data, char *buf, int len);
 	void (*debug_enable_clock)(int on);
 };
 
 struct mdss_fudge_factor {
 	u32 numer;
 	u32 denom;
+};
+
+struct mdss_perf_tune {
+	unsigned long min_mdp_clk;
+	u64 min_bus_vote;
 };
 
 #define MDSS_IRQ_SUSPEND	-1
@@ -94,6 +98,15 @@ struct mdss_prefill_data {
 	u32 fbc_lines;
 };
 
+enum mdss_hw_index {
+	MDSS_HW_MDP,
+	MDSS_HW_DSI0,
+	MDSS_HW_DSI1,
+	MDSS_HW_HDMI,
+	MDSS_HW_EDP,
+	MDSS_MAX_HW_BLK
+};
+
 struct mdss_data_type {
 	u32 mdp_rev;
 	struct clk *mdp_clk[MDSS_MAX_CLK];
@@ -104,9 +117,8 @@ struct mdss_data_type {
 	u32 max_mdp_clk_rate;
 
 	struct platform_device *pdev;
-	char __iomem *mdss_base;
-	size_t mdp_reg_size;
-	char __iomem *vbif_base;
+	struct dss_io_data mdss_io;
+	struct dss_io_data vbif_io;
 	char __iomem *mdp_base;
 
 	struct mutex reg_lock;
@@ -117,11 +129,18 @@ struct mdss_data_type {
 	u32 irq_buzy;
 	u32 has_bwc;
 	u32 has_decimation;
+	bool has_fixed_qos_arbiter_enabled;
+	bool has_panic_ctrl;
 	u32 wfd_mode;
 	u32 has_no_lut_read;
+	atomic_t sd_client_count;
 	u8 has_wb_ad;
 	u8 has_non_scalar_rgb;
 	bool has_src_split;
+	bool idle_pc_enabled;
+	bool has_dst_split;
+	bool has_pixel_ram;
+	bool needs_hist_vote;
 
 	u32 rotator_ot_limit;
 	u32 mdp_irq_mask;
@@ -130,9 +149,7 @@ struct mdss_data_type {
 	int suspend_fs_ena;
 	u8 clk_ena;
 	u8 fs_ena;
-	bool vdd_cx_en;
 	u8 vsync_ena;
-	unsigned long min_mdp_clk;
 
 	u32 res_init;
 
@@ -150,19 +167,36 @@ struct mdss_data_type {
 	u32 max_bw_low;
 	u32 max_bw_high;
 	u32 max_bw_per_pipe;
+	u32 *vbif_rt_qos;
+	u32 *vbif_nrt_qos;
+	u32 npriority_lvl;
+
+	u32 reg_bus_hdl;
 
 	struct mdss_fudge_factor ab_factor;
 	struct mdss_fudge_factor ib_factor;
+	struct mdss_fudge_factor ib_factor_overlap;
 	struct mdss_fudge_factor clk_factor;
+
+	u32 disable_prefill;
+	u32 *clock_levels;
+	u32 nclk_lvl;
+
+	u32 enable_bw_release;
+	u32 enable_rotator_bw_release;
 
 	struct mdss_hw_settings *hw_settings;
 
 	struct mdss_mdp_pipe *vig_pipes;
 	struct mdss_mdp_pipe *rgb_pipes;
 	struct mdss_mdp_pipe *dma_pipes;
+	struct mdss_mdp_pipe *cursor_pipes;
 	u32 nvig_pipes;
 	u32 nrgb_pipes;
 	u32 ndma_pipes;
+	u32 max_target_zorder;
+	u8  ncursor_pipes;
+	u32 max_cursor_size;
 
 	DECLARE_BITMAP(mmb_alloc_map, MAX_DRV_SUP_MMB_BLKS);
 
@@ -170,16 +204,18 @@ struct mdss_data_type {
 	struct mdss_mdp_mixer *mixer_wb;
 	u32 nmixers_intf;
 	u32 nmixers_wb;
+	u32 max_mixer_width;
 
 	struct mdss_mdp_ctl *ctl_off;
 	u32 nctl;
+	u32 nwb;
+	u32 ndspp;
 
 	struct mdss_mdp_dp_intf *dp_off;
 	u32 ndp;
 	void *video_intf;
 	u32 nintf;
 
-	u32 pp_bus_hdl;
 	struct mdss_mdp_ad *ad_off;
 	struct mdss_ad_info *ad_cfgs;
 	u32 nad_cfgs;
@@ -198,18 +234,15 @@ struct mdss_data_type {
 	struct mdss_prefill_data prefill_data;
 
 	int handoff_pending;
-	bool ulps;
+	bool idle_pc;
+	struct mdss_perf_tune perf_tune;
+	bool traffic_shaper_en;
+	int iommu_ref_cnt;
+
+	u64 ab[MDSS_MAX_HW_BLK];
+	u64 ib[MDSS_MAX_HW_BLK];
 };
 extern struct mdss_data_type *mdss_res;
-
-enum mdss_hw_index {
-	MDSS_HW_MDP,
-	MDSS_HW_DSI0,
-	MDSS_HW_DSI1,
-	MDSS_HW_HDMI,
-	MDSS_HW_EDP,
-	MDSS_MAX_HW_BLK
-};
 
 struct mdss_hw {
 	u32 hw_ndx;
@@ -222,6 +255,8 @@ void mdss_enable_irq(struct mdss_hw *hw);
 void mdss_disable_irq(struct mdss_hw *hw);
 void mdss_disable_irq_nosync(struct mdss_hw *hw);
 void mdss_bus_bandwidth_ctrl(int enable);
+int mdss_iommu_ctrl(int enable);
+int mdss_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota);
 
 static inline struct ion_client *mdss_get_ionclient(void)
 {
@@ -247,4 +282,22 @@ static inline int mdss_get_iommu_domain(u32 type)
 
 	return mdss_res->iommu_map[type].domain_idx;
 }
+
+static inline int mdss_get_sd_client_cnt(void)
+{
+	if (!mdss_res)
+		return 0;
+	else
+		return atomic_read(&mdss_res->sd_client_count);
+}
+
+#define MDSS_VBIF_WRITE(mdata, offset, value) \
+		dss_reg_w(&mdata->vbif_io, offset, value, 0)
+#define MDSS_VBIF_READ(mdata, offset) \
+		dss_reg_r(&mdata->vbif_io, offset, 0)
+#define MDSS_REG_WRITE(mdata, offset, value) \
+		dss_reg_w(&mdata->mdss_io, offset, value, 0)
+#define MDSS_REG_READ(mdata, offset) \
+		dss_reg_r(&mdata->mdss_io, offset, 0)
+
 #endif /* MDSS_H */

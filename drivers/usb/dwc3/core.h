@@ -46,6 +46,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/mm.h>
 #include <linux/debugfs.h>
+#include <linux/hrtimer.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -194,6 +195,7 @@
 
 /* Global USB2 PHY Configuration Register */
 #define DWC3_GUSB2PHYCFG_PHYSOFTRST	(1 << 31)
+#define DWC3_GUSB2PHYCFG_ENBLSLPM	(1 << 8)
 #define DWC3_GUSB2PHYCFG_SUSPHY		(1 << 6)
 
 /* Global USB3 PIPE Control Register */
@@ -445,13 +447,43 @@ struct dwc3_event_buffer {
 	struct dwc3		*dwc;
 };
 
+struct dwc3_gadget_events {
+	unsigned int	disconnect;
+	unsigned int	reset;
+	unsigned int	connect;
+	unsigned int	wakeup;
+	unsigned int	link_status_change;
+	unsigned int	eopf;
+	unsigned int	suspend;
+	unsigned int	sof;
+	unsigned int	erratic_error;
+	unsigned int	overflow;
+	unsigned int	vendor_dev_test_lmp;
+	unsigned int	cmdcmplt;
+	unsigned int	unknown_event;
+};
+
+struct dwc3_ep_events {
+	unsigned int	xfercomplete;
+	unsigned int	xfernotready;
+	unsigned int	control_data;
+	unsigned int	control_status;
+	unsigned int	xferinprogress;
+	unsigned int	rxtxfifoevent;
+	unsigned int	streamevent;
+	unsigned int	epcmdcomplete;
+	unsigned int	cmdcmplt;
+	unsigned int	unknown_event;
+	unsigned int	total;
+};
+
 #define DWC3_EP_FLAG_STALLED	(1 << 0)
 #define DWC3_EP_FLAG_WEDGED	(1 << 1)
 
 #define DWC3_EP_DIRECTION_TX	true
 #define DWC3_EP_DIRECTION_RX	false
 
-#define DWC3_TRB_NUM		32
+#define DWC3_TRB_NUM		1024
 #define DWC3_TRB_MASK		(DWC3_TRB_NUM - 1)
 
 /**
@@ -475,6 +507,10 @@ struct dwc3_event_buffer {
  * @name: a human readable name e.g. ep1out-bulk
  * @direction: true for TX, false for RX
  * @stream_capable: true when streams are enabled
+ * @dbg_ep_events: different events counter for endpoint
+ * @dbg_ep_events_diff: differential events counter for endpoint
+ * @dbg_ep_events_ts: timestamp for previous event counters
+ * @xfer_timer: timer to manage transfer complete event timeout
  */
 struct dwc3_ep {
 	struct usb_ep		endpoint;
@@ -511,6 +547,10 @@ struct dwc3_ep {
 
 	unsigned		direction:1;
 	unsigned		stream_capable:1;
+	struct dwc3_ep_events	dbg_ep_events;
+	struct dwc3_ep_events	dbg_ep_events_diff;
+	struct timespec		dbg_ep_events_ts;
+	struct hrtimer		xfer_timer;
 };
 
 enum dwc3_phy {
@@ -676,6 +716,9 @@ struct dwc3_scratchpad_array {
 #define DWC3_CORE_PM_SUSPEND_EVENT			5
 #define DWC3_CORE_PM_RESUME_EVENT			6
 #define DWC3_CONTROLLER_POST_INITIALIZATION_EVENT	7
+#define DWC3_CONTROLLER_CONNDONE_EVENT			8
+
+#define MAX_INTR_STATS				10
 /**
  * struct dwc3 - representation of our controller
  * @ctrl_req: usb control request which is used for ep0
@@ -727,6 +770,16 @@ struct dwc3_scratchpad_array {
  * @root: debugfs root folder pointer
  * @tx_fifo_size: Available RAM size for TX fifo allocation
  * @err_evt_seen: previous event in queue was erratic error
+ * @ssphy_clear_auto_suspend_on_disconnect: if true, clear ssphy autosuspend bit
+ *	during disconnect and set it after device is configured.
+ * @usb3_u1u2_disable: if true, disable U1U2 low power modes in Superspeed mode.
+ * @hird_thresh: value to configure in DCTL[HIRD_Thresh]
+ * @in_lpm: if 1, indicates that the controller is in low power mode (no clocks)
+ * @irq: irq number
+ * @bh: tasklet which handles the interrupt
+ * @bh_completion_time: time taken for taklet completion
+ * @bh_handled_evt_cnt: no. of events handled by tasklet per interrupt
+ * @bh_dbg_index: index for capturing bh_completion_time and bh_handled_evt_cnt
  */
 struct dwc3 {
 	struct usb_ctrlrequest	*ctrl_req;
@@ -834,6 +887,19 @@ struct dwc3 {
 	bool			core_reset_after_phy_init;
 	bool			err_evt_seen;
 	bool			hsphy_auto_suspend_disable;
+	bool			ssphy_clear_auto_suspend_on_disconnect;
+	bool			usb3_u1u2_disable;
+	bool			enable_bus_suspend;
+	u8			hird_thresh;
+	atomic_t		in_lpm;
+	struct dwc3_gadget_events	dbg_gadget_events;
+
+	/* offload IRQ handling to tasklet */
+	int			irq;
+	struct tasklet_struct	bh;
+	unsigned                bh_completion_time[MAX_INTR_STATS];
+	unsigned                bh_handled_evt_cnt[MAX_INTR_STATS];
+	unsigned                bh_dbg_index;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -842,8 +908,8 @@ struct dwc3 {
 
 struct dwc3_event_type {
 	u32	is_devspec:1;
-	u32	type:6;
-	u32	reserved8_31:25;
+	u32	type:7;
+	u32	reserved8_31:24;
 } __packed;
 
 #define DWC3_DEPEVT_XFERCOMPLETE	0x01
@@ -919,15 +985,15 @@ struct dwc3_event_depevt {
  *	12	- VndrDevTstRcved
  * @reserved15_12: Reserved, not used
  * @event_info: Information about this event
- * @reserved31_24: Reserved, not used
+ * @reserved31_25: Reserved, not used
  */
 struct dwc3_event_devt {
 	u32	one_bit:1;
 	u32	device_event:7;
 	u32	type:4;
 	u32	reserved15_12:4;
-	u32	event_info:8;
-	u32	reserved31_24:8;
+	u32	event_info:9;
+	u32	reserved31_25:7;
 } __packed;
 
 /**

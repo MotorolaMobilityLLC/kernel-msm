@@ -253,7 +253,7 @@
 #define DOLBY_AUTO_ENDDEP_IDX			(MAX_DOLBY_PARAMS+4)
 
 #define TOTAL_LENGTH_DOLBY_PARAM		745
-#define NUM_DOLBY_ENDP_DEVICE			24
+#define NUM_DOLBY_ENDP_DEVICE			22
 #define DOLBY_VIS_PARAM_HEADER_SIZE		 25
 
 #define DOLBY_INVALID_PORT_ID			-1
@@ -287,11 +287,9 @@ enum {
 	USB_ACCESSORY			= 0x2000,
 	USB_DEVICE			= 0x4000,
 	REMOTE_SUBMIX			= 0x8000,
-	ANC_HEADSET			= 0x10000,
-	ANC_HEADPHONE			= 0x20000,
-	PROXY				= 0x40000,
-	FM				= 0x80000,
-	FM_TX				= 0x100000,
+	PROXY				= 0x10000,
+	FM				= 0x20000,
+	FM_TX				= 0x40000,
 	DEVICE_OUT_ALL			= 0x7FFFFFFF,
 };
 /* DOLBY device definitions end */
@@ -300,20 +298,22 @@ struct dolby_dap_params {
 	uint32_t value[TOTAL_LENGTH_DOLBY_PARAM + MAX_DOLBY_PARAMS];
 } __packed;
 
-int msm_dolby_dap_init(int port_id, int channels, bool is_custom_stereo_on);
+int msm_dolby_dap_init(int port_id, int copp_idx, int channels,
+		       bool is_custom_stereo_on);
 void msm_dolby_dap_deinit(int port_id);
 void msm_dolby_dap_add_controls(struct snd_soc_platform *platform);
-int dolby_dap_set_custom_stereo_onoff(int port_id,
+int dolby_dap_set_custom_stereo_onoff(int port_id, int copp_idx,
 				      bool is_custom_stereo_enabled);
 /* Dolby DOLBY end */
 #else
-int msm_dolby_dap_init(int port_id, int channels, bool is_custom_stereo_on)
+int msm_dolby_dap_init(int port_id, int copp_idx, int channels,
+		       bool is_custom_stereo_on)
 {
 	return 0;
 }
 void msm_dolby_dap_deinit(int port_id) { }
 void msm_dolby_dap_add_controls(struct snd_soc_platform *platform) { }
-int dolby_dap_set_custom_stereo_onoff(int port_id,
+int dolby_dap_set_custom_stereo_onoff(int port_id, int copp_idx,
 				      bool is_custom_stereo_enabled)
 {
 	return 0;

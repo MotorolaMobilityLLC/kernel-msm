@@ -50,6 +50,7 @@ static int msm_v4l2_open(struct file *filp)
 	struct msm_vidc_core *core = video_drvdata(filp);
 	struct msm_vidc_inst *vidc_inst;
 
+	trace_msm_v4l2_vidc_open_start("msm_v4l2_open start");
 	vidc_inst = msm_vidc_open(core->id, vid_dev->type);
 	if (!vidc_inst) {
 		dprintk(VIDC_ERR,
@@ -59,6 +60,7 @@ static int msm_v4l2_open(struct file *filp)
 	}
 	clear_bit(V4L2_FL_USES_V4L2_FH, &vdev->flags);
 	filp->private_data = &(vidc_inst->event_handler);
+	trace_msm_v4l2_vidc_open_end("msm_v4l2_open end");
 	return 0;
 }
 
@@ -66,6 +68,8 @@ static int msm_v4l2_close(struct file *filp)
 {
 	int rc = 0;
 	struct msm_vidc_inst *vidc_inst;
+
+	trace_msm_v4l2_vidc_close_start("msm_v4l2_close start");
 	vidc_inst = get_vidc_inst(filp, NULL);
 	rc = msm_vidc_release_buffers(vidc_inst,
 			V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
@@ -74,6 +78,7 @@ static int msm_v4l2_close(struct file *filp)
 			"Failed in %s for release output buffers\n", __func__);
 
 	rc = msm_vidc_close(vidc_inst);
+	trace_msm_v4l2_vidc_close_end("msm_v4l2_close end");
 	return rc;
 }
 
@@ -322,7 +327,6 @@ static int msm_vidc_initialize_core(struct platform_device *pdev,
 	}
 
 	INIT_LIST_HEAD(&core->instances);
-	mutex_init(&core->sync_lock);
 	mutex_init(&core->lock);
 
 	core->state = VIDC_CORE_UNINIT;
@@ -331,6 +335,7 @@ static int msm_vidc_initialize_core(struct platform_device *pdev,
 		init_completion(&core->completions[i]);
 	}
 
+	INIT_DELAYED_WORK(&core->fw_unload_work, msm_vidc_fw_unload_handler);
 	return rc;
 }
 
@@ -549,6 +554,35 @@ static const struct of_device_id msm_vidc_dt_match[] = {
 	{}
 };
 
+static int msm_vidc_pm_suspend(struct device *pdev)
+{
+	struct msm_vidc_core *core;
+
+	if (!pdev) {
+		dprintk(VIDC_ERR, "%s invalid device\n", __func__);
+		return -EINVAL;
+	}
+
+	core = (struct msm_vidc_core *)pdev->platform_data;
+	if (!core) {
+		dprintk(VIDC_ERR, "%s invalid core\n", __func__);
+		return -EINVAL;
+	}
+	dprintk(VIDC_INFO, "%s\n", __func__);
+
+	return msm_vidc_suspend(core->id);
+}
+
+static int msm_vidc_pm_resume(struct device *dev)
+{
+	dprintk(VIDC_INFO, "%s\n", __func__);
+	return 0;
+}
+
+static const struct dev_pm_ops msm_vidc_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(msm_vidc_pm_suspend, msm_vidc_pm_resume)
+};
+
 MODULE_DEVICE_TABLE(of, msm_vidc_dt_match);
 
 static struct platform_driver msm_vidc_driver = {
@@ -558,6 +592,7 @@ static struct platform_driver msm_vidc_driver = {
 		.name = "msm_vidc_v4l2",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_vidc_dt_match,
+		.pm = &msm_vidc_pm_ops,
 	},
 };
 

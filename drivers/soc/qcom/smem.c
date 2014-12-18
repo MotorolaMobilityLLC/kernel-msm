@@ -24,23 +24,13 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <soc/qcom/subsystem_notif.h>
+#include <soc/qcom/subsystem_restart.h>
 #include <soc/qcom/ramdump.h>
 
 #include <soc/qcom/smem.h>
 
 
 #include "smem_private.h"
-
-/**
- * OVERFLOW_ADD_UNSIGNED() - check for unsigned overflow
- *
- * @type: type to check for overflow
- * @a: left value to use
- * @b: right value to use
- * @returns: true if a + b will result in overflow; false otherwise
- */
-#define OVERFLOW_ADD_UNSIGNED(type, a, b) \
-	(((type)~0 - (a)) < (b) ? true : false)
 
 #define MODEM_SBL_VERSION_INDEX 7
 #define SMEM_VERSION_INFO_SIZE (32 * 4)
@@ -998,34 +988,38 @@ static int restart_notifier_cb(struct notifier_block *this,
 				unsigned long code,
 				void *data)
 {
-	if (code == SUBSYS_AFTER_SHUTDOWN) {
-		struct restart_notifier_block *notifier;
+	struct restart_notifier_block *notifier;
+	struct notif_data *notifdata = data;
+	int ret;
 
+	switch (code) {
+
+	case SUBSYS_AFTER_SHUTDOWN:
 		notifier = container_of(this,
 					struct restart_notifier_block, nb);
 		SMEM_INFO("%s: ssrestart for processor %d ('%s')\n",
 				__func__, notifier->processor,
 				notifier->name);
-
 		remote_spin_release(&remote_spinlock, notifier->processor);
 		remote_spin_release_all(notifier->processor);
-
-		if (smem_ramdump_dev) {
-			int ret;
-
-			SMEM_DBG("%s: saving ramdump\n", __func__);
-			/*
-			 * XPU protection does not currently allow the
-			 * auxiliary memory regions to be dumped.  If this
-			 * changes, then num_smem_areas + 1 should be passed
-			 * into do_elf_ramdump() to dump all regions.
-			 */
-			ret = do_elf_ramdump(smem_ramdump_dev,
-					smem_ramdump_segments, 1);
-			if (ret < 0)
-				LOG_ERR("%s: unable to dump smem %d\n",
-								__func__, ret);
-		}
+		break;
+	case SUBSYS_RAMDUMP_NOTIFICATION:
+		if (!(smem_ramdump_dev && notifdata->enable_ramdump))
+			break;
+		SMEM_DBG("%s: saving ramdump\n", __func__);
+		/*
+		 * XPU protection does not currently allow the
+		 * auxiliary memory regions to be dumped.  If this
+		 * changes, then num_smem_areas + 1 should be passed
+		 * into do_elf_ramdump() to dump all regions.
+		 */
+		ret = do_elf_ramdump(smem_ramdump_dev,
+				smem_ramdump_segments, 1);
+		if (ret < 0)
+			LOG_ERR("%s: unable to dump smem %d\n", __func__, ret);
+		break;
+	default:
+		break;
 	}
 
 	return NOTIFY_DONE;
@@ -1473,7 +1467,7 @@ int __init msm_smem_init(void)
 
 	registered = true;
 
-	smem_ipc_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smem");
+	smem_ipc_log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smem", 0);
 	if (!smem_ipc_log_ctx) {
 		pr_err("%s: unable to create logging context\n", __func__);
 		msm_smem_debug_mask = 0;

@@ -40,10 +40,12 @@
 extern bool coresight_fuse_access_disabled(void);
 extern bool coresight_fuse_apps_access_disabled(void);
 extern bool coresight_fuse_qpdi_access_disabled(void);
+extern bool coresight_fuse_nidnt_access_disabled(void);
 #else
 static inline bool coresight_fuse_access_disabled(void) { return false; }
 static inline bool coresight_fuse_apps_access_disabled(void) { return false; }
 static inline bool coresight_fuse_qpdi_access_disabled(void) { return false; }
+static inline bool coresight_fuse_nidnt_access_disabled(void) { return false; }
 #endif
 #ifdef CONFIG_CORESIGHT_CSR
 extern void msm_qdss_csr_enable_bam_to_usb(void);
@@ -65,6 +67,11 @@ extern void etm_writel_cp14(uint32_t val, uint32_t off);
 #else
 static inline unsigned int etm_readl_cp14(uint32_t off) { return 0; }
 static inline void etm_writel_cp14(uint32_t val, uint32_t off) {}
+#endif
+#if defined(CONFIG_CORESIGHT_ETM) || defined(CONFIG_CORESIGHT_ETMV4)
+extern int coresight_etm_get_funnel_port(int cpu);
+#else
+static inline int coresight_etm_get_funnel_port(int cpu) { return -ENOSYS; }
 #endif
 
 #endif

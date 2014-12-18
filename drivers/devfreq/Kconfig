@@ -63,6 +63,14 @@ config DEVFREQ_GOV_USERSPACE
 	  Otherwise, the governor does not change the frequnecy
 	  given at the initialization.
 
+config DEVFREQ_GOV_CPUFREQ
+	tristate "CPUfreq"
+	depends on CPU_FREQ
+	help
+	  Chooses frequency based on the online CPUs' current frequency and a
+	  CPU frequency to device frequency mapping table(s). This governor
+	  can be useful for controlling devices such as DDR, cache, CCI, etc.
+
 config DEVFREQ_GOV_MSM_ADRENO_TZ
 	tristate "MSM Adreno Trustzone"
 	depends on MSM_KGSL && MSM_SCM
@@ -71,24 +79,54 @@ config DEVFREQ_GOV_MSM_ADRENO_TZ
 	  Sets the frequency using a "on-demand" algorithm.
 	  This governor is unlikely to be useful for other devices.
 
-config DEVFREQ_GOV_MSM_CPUFREQ
-	bool "MSM CPUfreq"
-	depends on CPU_FREQ_MSM
+config MSM_BIMC_BWMON
+	tristate "MSM BIMC Bandwidth monitor hardware"
+	depends on ARCH_MSM
 	help
-	  MSM CPUfreq based governor for CPU bandwidth voting.  Sets the CPU
-	  to DDR BW vote based on the current CPU frequency.  This governor
-	  is unlikely to be useful for non-MSM devices.
+	  The BIMC Bandwidth monitor hardware allows for monitoring the
+	  traffic coming from each master port connected to the BIMC. It also
+	  has the capability to raise an IRQ when the count exceeds a
+	  programmable limit.
 
-config DEVFREQ_GOV_MSM_CPUBW_HWMON
-	tristate "HW monitor based governor for CPUBW"
-	depends on ARCH_MSM_KRAIT
+config ARMBW_HWMON
+	tristate "ARM PMU Bandwidth monitor hardware"
+	depends on ARCH_MSM8916 || ARCH_MSM8226 || ARCH_MSM8610
 	help
-	  HW monitor based governor for CPU to DDR bandwidth voting. This
-	  governor currently supports only Krait L2 PM counters.  Sets the CPU
-	  BW vote by using L2 PM counters to monitor the Krait's use of DDR.
-	  Since this governor uses some of the PM counters it can conflict
-	  with existing profiling tools.  This governor is unlikely to be
-	  useful for other devices.
+	  The PMU present on these ARM cores allow for the use of counters to
+	  monitor the traffic coming from each core to the bus. It also has the
+	  capability to raise an IRQ when the counter overflows, which can be
+	  used to get an IRQ when the count exceeds a certain value
+
+config DEVFREQ_GOV_MSM_GPUBW_MON
+	tristate "GPU BW voting governor"
+	depends on DEVFREQ_GOV_MSM_ADRENO_TZ
+	help
+	  MSM GPU governor for GPU bus bandwidth voting.
+	  This governor works together with MSM Adreno Trustzone governor,
+	  and select bus frequency votes using an "on-demand" alorithm..
+	  This governor is unlikely to be useful for non-MSM devices.
+
+config DEVFREQ_GOV_MSM_BW_HWMON
+	tristate "HW monitor based governor for device BW"
+	depends on ARCH_MSM_KRAIT || ARCH_MSM_BIMC_BWMON
+	help
+	  HW monitor based governor for device to DDR bandwidth voting.
+
+	  When this governor is used for Krait CPUs, it sets the Krait CPU BW
+	  vote by using L2 PM counters to monitor the Krait's use of DDR.
+	  Since this uses some of the Krait PM counters it can conflict with
+	  existing profiling tools.  This governor is unlikely to be useful
+	  for non-MSM devices.
+
+config DEVFREQ_GOV_MSM_CACHE_HWMON
+	tristate "HW monitor based governor for cache frequency"
+	help
+	  HW monitor based governor for cache frequency scaling. This
+	  governor currently supports only Krait L2 PM counters.  Sets the
+	  cache frequency by using L2 PM counters to monitor the Krait's use
+	  of the L2.  Since this governor uses some of the PM counters it can
+	  conflict with existing profiling tools.  This governor is unlikely
+	  to be useful for other devices.
 
 comment "DEVFREQ Drivers"
 
@@ -104,5 +142,29 @@ config ARM_EXYNOS4_BUS_DEVFREQ
 	  the operating frequencies and voltages with OPP support.
 	  To operate with optimal voltages, ASV support is required
 	  (CONFIG_EXYNOS_ASV).
+
+config DEVFREQ_SIMPLE_DEV
+	tristate "Device driver for simple clock device with no status info"
+	select DEVFREQ_GOV_PERFORMANCE
+	select DEVFREQ_GOV_POWERSAVE
+	select DEVFREQ_GOV_USERSPACE
+	select DEVFREQ_GOV_CPUFREQ
+	help
+	  Device driver for simple devices that control their frequency using
+	  clock APIs and don't have any form of status reporting.
+
+config MSM_DEVFREQ_DEVBW
+	bool "MSM DEVFREQ device for device master <-> slave IB/AB BW voting"
+	depends on ARCH_MSM
+	select DEVFREQ_GOV_PERFORMANCE
+	select DEVFREQ_GOV_POWERSAVE
+	select DEVFREQ_GOV_USERSPACE
+	select DEVFREQ_GOV_CPUFREQ
+	default n
+	help
+	  Different devfreq governors use this devfreq device to make CPU to
+	  DDR IB/AB bandwidth votes. This driver provides a SoC topology
+	  agnostic interface to so that some of the devfreq governors can be
+	  shared across SoCs.
 
 endif # PM_DEVFREQ

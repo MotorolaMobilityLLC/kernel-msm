@@ -16,6 +16,8 @@
 #include <linux/qdsp6v2/rtac.h>
 #include <linux/msm_ion.h>
 #include <sound/voice_params.h>
+#include <linux/power_supply.h>
+#include <uapi/linux/vm_bms.h>
 
 #define MAX_VOC_PKT_SIZE 642
 #define SESSION_NAME_LEN 20
@@ -32,6 +34,21 @@
 #define VOC_REC_UPLINK		0x00
 #define VOC_REC_DOWNLINK	0x01
 #define VOC_REC_BOTH		0x02
+
+enum {
+	CVP_VOC_RX_TOPOLOGY_CAL = 0,
+	CVP_VOC_TX_TOPOLOGY_CAL,
+	CVP_VOCPROC_CAL,
+	CVP_VOCVOL_CAL,
+	CVP_VOCDEV_CFG_CAL,
+	CVP_VOCPROC_COL_CAL,
+	CVP_VOCVOL_COL_CAL,
+	CVS_VOCSTRM_CAL,
+	CVS_VOCSTRM_COL_CAL,
+	VOICE_RTAC_INFO_CAL,
+	VOICE_RTAC_APR_CAL,
+	MAX_VOICE_CAL_TYPES
+};
 
 struct voice_header {
 	uint32_t id;
@@ -1331,6 +1348,9 @@ typedef void (*dtmf_rx_det_cb_fn)(uint8_t *pkt,
 				  char *session,
 				  void *private_data);
 
+typedef void (*voip_ssr_cb) (uint32_t opcode,
+				void *private_data);
+
 typedef void (*hostpcm_cb_fn)(uint8_t *data,
 			   char *session,
 			   void *private_data);
@@ -1342,6 +1362,7 @@ struct mvs_driver_info {
 	uint32_t dtx_mode;
 	ul_cb_fn ul_cb;
 	dl_cb_fn dl_cb;
+	voip_ssr_cb ssr_cb;
 	void *private_data;
 	uint32_t evrc_min_rate;
 	uint32_t evrc_max_rate;
@@ -1408,6 +1429,8 @@ struct voice_data {
 
 	struct mutex lock;
 
+	bool disable_topology;
+
 	uint16_t sidetone_gain;
 	uint8_t tty_mode;
 	/* slowtalk enable value */
@@ -1425,6 +1448,8 @@ struct voice_data {
 	struct incall_music_info music_info;
 
 	struct voice_rec_route_state rec_route_state;
+
+	struct power_supply *psy;
 };
 
 struct cal_mem {
@@ -1452,6 +1477,8 @@ struct common_data {
 	/* APR to CVP in the Q6 */
 	void *apr_q6_cvp;
 
+	struct cal_type_data *cal_data[MAX_VOICE_CAL_TYPES];
+
 	struct mem_map_table cal_mem_map_table;
 	uint32_t cal_mem_handle;
 
@@ -1474,6 +1501,8 @@ struct common_data {
 	struct voice_data voice[MAX_VOC_SESSIONS];
 
 	bool srvcc_rec_flag;
+	bool is_destroy_cvd;
+	bool is_vote_bms;
 };
 
 struct voice_session_itr {
@@ -1483,6 +1512,7 @@ struct voice_session_itr {
 
 void voc_register_mvs_cb(ul_cb_fn ul_cb,
 			dl_cb_fn dl_cb,
+			voip_ssr_cb ssr_cb,
 			void *private_data);
 
 void voc_register_dtmf_rx_detection_cb(dtmf_rx_det_cb_fn dtmf_rx_ul_cb,
@@ -1565,8 +1595,6 @@ int voc_set_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 int voc_set_device_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 			uint32_t ramp_duration);
 int voc_get_rx_device_mute(uint32_t session_id);
-int voc_disable_cvp(uint32_t session_id);
-int voc_enable_cvp(uint32_t session_id);
 int voc_set_route_flag(uint32_t session_id, uint8_t path_dir, uint8_t set);
 uint8_t voc_get_route_flag(uint32_t session_id, uint8_t path_dir);
 int voc_enable_dtmf_rx_detection(uint32_t session_id, uint32_t enable);
@@ -1590,7 +1618,6 @@ void voc_register_hpcm_evt_cb(hostpcm_cb_fn hostpcm_cb,
 			      void *private_data);
 void voc_deregister_hpcm_evt_cb(void);
 
-int voc_unmap_cal_blocks(void);
 int voc_map_rtac_block(struct rtac_cal_block_data *cal_block);
 int voc_unmap_rtac_block(uint32_t *mem_map_handle);
 
@@ -1601,5 +1628,11 @@ int voc_start_record(uint32_t port_id, uint32_t set, uint32_t session_id);
 int voice_get_idx_for_session(u32 session_id);
 int voc_set_ext_ec_ref(uint16_t port_id, bool state);
 int voc_update_amr_vocoder_rate(uint32_t session_id);
+int voc_disable_device(uint32_t session_id);
+int voc_enable_device(uint32_t session_id);
+void voc_set_destroy_cvd_flag(bool is_destroy_cvd);
+void voc_set_vote_bms_flag(bool is_vote_bms);
+int voc_disable_topology(uint32_t session_id, uint32_t disable);
 
+uint32_t voice_get_topology(uint32_t topology_idx);
 #endif

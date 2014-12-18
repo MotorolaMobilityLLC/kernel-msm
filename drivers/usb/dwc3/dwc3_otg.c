@@ -91,6 +91,22 @@ static void dwc3_otg_set_hsphy_auto_suspend(struct dwc3_otg *dotg, bool susp)
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 }
 
+static void dwc3_otg_set_ssphy_auto_suspend(struct dwc3_otg *dotg, bool susp)
+{
+	struct dwc3 *dwc = dotg->dwc;
+	u32 reg;
+
+	if (!dwc->ssphy_clear_auto_suspend_on_disconnect)
+		return;
+
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+	if (susp)
+		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+	else
+		reg &= ~(DWC3_GUSB3PIPECTL_SUSPHY);
+	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+}
+
 /**
  * dwc3_otg_set_host_power - Enable port power control for host operation
  *
@@ -202,6 +218,7 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 		 * anymore.
 		 */
 		dwc3_otg_set_hsphy_auto_suspend(dotg, true);
+		dwc3_otg_set_ssphy_auto_suspend(dotg, true);
 		dwc3_otg_set_host_regs(dotg);
 		/*
 		 * FIXME If micro A cable is disconnected during system suspend,
@@ -251,6 +268,7 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 			ext_xceiv->ext_block_reset(ext_xceiv, true);
 
 		dwc3_otg_set_hsphy_auto_suspend(dotg, false);
+		dwc3_otg_set_ssphy_auto_suspend(dotg, false);
 		dwc3_otg_set_peripheral_regs(dotg);
 
 		/* re-init core and OTG registers as block reset clears these */
@@ -332,6 +350,7 @@ static int dwc3_otg_start_peripheral(struct usb_otg *otg, int on)
 		usb_phy_notify_disconnect(dotg->dwc->usb2_phy, USB_SPEED_HIGH);
 		usb_phy_notify_disconnect(dotg->dwc->usb3_phy, USB_SPEED_SUPER);
 		dwc3_otg_set_hsphy_auto_suspend(dotg, false);
+		dwc3_otg_set_ssphy_auto_suspend(dotg, false);
 	}
 
 	return 0;
@@ -364,6 +383,36 @@ static int dwc3_otg_set_peripheral(struct usb_otg *otg,
 		} else {
 			otg->gadget = NULL;
 		}
+	}
+
+	return 0;
+}
+
+/**
+ * dwc3_otg_set_suspend -  Set or clear OTG suspend bit and schedule OTG state machine
+ * work.
+ *
+ * @phy: Pointer to the phy structure.
+ * @suspend: 1 - Ask OTG state machine to issue low power mode entry.
+ *                 0 - Cancel low-power mode entry request.
+ * Returns 0 on success otherwise negative errno.
+ */
+static int dwc3_otg_set_suspend(struct usb_phy *phy, int suspend)
+{
+	const unsigned int lpm_after_suspend_delay = 500;
+
+	struct dwc3_otg *dotg = container_of(phy->otg, struct dwc3_otg, otg);
+
+	if (!dotg->dwc->enable_bus_suspend)
+		return 0;
+
+	if (suspend) {
+		set_bit(DWC3_OTG_SUSPEND, &dotg->inputs);
+		queue_delayed_work(system_nrt_wq,
+			&dotg->sm_work,
+			msecs_to_jiffies(lpm_after_suspend_delay));
+	} else {
+		clear_bit(DWC3_OTG_SUSPEND, &dotg->inputs);
 	}
 
 	return 0;
@@ -427,25 +476,25 @@ static void dwc3_ext_event_notify(struct usb_otg *otg,
 		flush_delayed_work(&dotg->sm_work);
 
 	if (event == DWC3_EVENT_PHY_RESUME) {
-		if (!pm_runtime_status_suspended(phy->dev)) {
+		if (!pm_runtime_status_suspended(phy->dev))
 			dev_warn(phy->dev, "PHY_RESUME event out of LPM!!!!\n");
-		} else {
-			dev_dbg(phy->dev, "ext PHY_RESUME event received\n");
-			/* ext_xceiver would have taken h/w out of LPM by now */
-			ret = pm_runtime_get(phy->dev);
-			if (ret == -EACCES) {
-				/* pm_runtime_get may fail during system
-				   resume with -EACCES error */
-				pm_runtime_disable(phy->dev);
-				pm_runtime_set_active(phy->dev);
-				pm_runtime_enable(phy->dev);
-			} else if (ret < 0) {
-				dev_warn(phy->dev, "pm_runtime_get failed!\n");
-			}
+		dev_dbg(phy->dev, "ext PHY_RESUME event received\n");
+		/* ext_xceiver would have taken h/w out of LPM by now */
+		ret = pm_runtime_get(phy->dev);
+		if (ret == -EACCES) {
+			/* pm_runtime_get may fail during system
+			   resume with -EACCES error */
+			pm_runtime_disable(phy->dev);
+			pm_runtime_set_active(phy->dev);
+			pm_runtime_enable(phy->dev);
+		} else if (ret < 0) {
+			dev_warn(phy->dev, "pm_runtime_get failed!\n");
 		}
 	} else if (event == DWC3_EVENT_XCEIV_STATE) {
-		if (pm_runtime_status_suspended(phy->dev)) {
-			dev_warn(phy->dev, "PHY_STATE event in LPM!!!!\n");
+		if (pm_runtime_status_suspended(phy->dev) ||
+			atomic_read(&phy->dev->power.usage_count) == 0) {
+			dev_dbg(phy->dev, "ext XCEIV_STATE while runtime_status=%d\n",
+				phy->dev->power.runtime_status);
 			ret = pm_runtime_get(phy->dev);
 			if (ret < 0)
 				dev_warn(phy->dev, "pm_runtime_get failed!!\n");
@@ -536,7 +585,7 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_DCP;
 	else
-		power_supply_type = POWER_SUPPLY_TYPE_BATTERY;
+		power_supply_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
 	power_supply_set_supply_type(dotg->psy, power_supply_type);
 
@@ -793,7 +842,11 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					break;
 				}
 			} else {
-				/* no charger registered, start peripheral */
+				/*
+				 * no charger registered, assuming SDP
+				 * and start peripheral
+				 */
+				phy->state = OTG_STATE_B_PERIPHERAL;
 				if (dwc3_otg_start_peripheral(&dotg->otg, 1)) {
 					/*
 					 * Probably set_peripheral not called
@@ -827,6 +880,9 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			if (charger)
 				charger->chg_type = DWC3_INVALID_CHARGER;
 			work = 1;
+		} else if (test_bit(DWC3_OTG_SUSPEND, &dotg->inputs) &&
+			test_bit(B_SESS_VLD, &dotg->inputs)) {
+			pm_runtime_put_sync(phy->dev);
 		}
 		break;
 
@@ -884,7 +940,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		} else {
 			dev_dbg(phy->dev, "still in a_host state. Resuming root hub.\n");
 			pm_runtime_resume(&dotg->dwc->xhci->dev);
-			pm_runtime_put(phy->dev);
+			pm_runtime_put_noidle(phy->dev);
 		}
 		break;
 
@@ -974,6 +1030,7 @@ int dwc3_otg_init(struct dwc3 *dwc)
 	dotg->otg.phy->set_power = dwc3_otg_set_power;
 	dotg->otg.set_peripheral = dwc3_otg_set_peripheral;
 	dotg->otg.set_host = dwc3_otg_set_host;
+	dotg->otg.phy->set_suspend = dwc3_otg_set_suspend;
 	dotg->otg.phy->state = OTG_STATE_UNDEFINED;
 
 	/*

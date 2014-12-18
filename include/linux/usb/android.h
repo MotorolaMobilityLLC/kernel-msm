@@ -21,12 +21,23 @@
 
 #define MAX_STREAMING_FUNCS 3
 #define FUNC_NAME_LEN 10
+
+enum android_pm_qos_state {
+	WFI,
+	IDLE_PC,
+	IDLE_PC_RPM,
+	NO_USB_VOTE,
+	MAX_VOTES = NO_USB_VOTE,
+};
+
 struct android_usb_platform_data {
 	int (*update_pid_and_serial_num)(uint32_t, const char *);
-	u32 swfi_latency;
+	u32 pm_qos_latency[MAX_VOTES];
 	u8 usb_core_id;
 	char streaming_func[MAX_STREAMING_FUNCS][FUNC_NAME_LEN];
 	int  streaming_func_count;
+	u8 uicc_nluns;
+	bool cdrom;
 };
 
 #ifndef CONFIG_TARGET_CORE
@@ -51,6 +62,11 @@ extern int gport_setup(struct usb_configuration *c);
 extern void gport_cleanup(void);
 extern int gserial_init_port(int port_num, const char *name,
 					const char *port_name);
+extern bool gserial_is_connected(void);
+extern bool gserial_is_dun_w_softap_enabled(void);
+extern void gserial_dun_w_softap_enable(bool enable);
+extern bool gserial_is_dun_w_softap_active(void);
+
 
 int acm_port_setup(struct usb_configuration *c);
 void acm_port_cleanup(void);

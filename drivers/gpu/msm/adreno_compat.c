@@ -38,9 +38,8 @@ int adreno_getproperty_compat(struct kgsl_device *device,
 
 			memset(&devinfo, 0, sizeof(devinfo));
 			devinfo.device_id = device->id + 1;
-			devinfo.chip_id = adreno_dev->chip_id;
+			devinfo.chip_id = adreno_dev->chipid;
 			devinfo.mmu_enabled = kgsl_mmu_enabled();
-			devinfo.gpu_id = adreno_dev->gpurev;
 			devinfo.gmem_gpubaseaddr = adreno_dev->gmem_base;
 			devinfo.gmem_sizebytes = adreno_dev->gmem_size;
 
@@ -173,12 +172,8 @@ long adreno_compat_ioctl(struct kgsl_device_private *dev_priv,
 		read.reads = (struct kgsl_perfcounter_read_group __user *)
 				(uintptr_t)read32->reads;
 		read.count = read32->count;
-		result = kgsl_active_count_get(device);
-		if (result)
-			break;
 		result = adreno_perfcounter_read_group(adreno_dev,
 			read.reads, read.count);
-		kgsl_active_count_put(device);
 		break;
 	}
 	default:

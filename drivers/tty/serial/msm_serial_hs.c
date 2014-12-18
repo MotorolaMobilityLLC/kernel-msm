@@ -66,7 +66,7 @@
 #include <mach/hardware.h>
 #include <mach/dma.h>
 #include <linux/msm-sps.h>
-#include <mach/msm_serial_hs.h>
+#include <linux/platform_data/msm_serial_hs.h>
 #include <linux/msm-bus.h>
 
 #include "msm_serial_hs_hwreg.h"
@@ -3457,7 +3457,7 @@ static int __init msm_serial_hs_init(void)
 	int ret;
 
 	ipc_msm_hs_log_ctxt = ipc_log_context_create(IPC_MSM_HS_LOG_PAGES,
-							"msm_serial_hs");
+							"msm_serial_hs", 0);
 	if (!ipc_msm_hs_log_ctxt)
 		MSM_HS_WARN("%s: error creating logging context", __func__);
 

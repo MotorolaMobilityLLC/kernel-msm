@@ -30,6 +30,7 @@
 #define QDSP6SS_RESET			0x014
 #define QDSP6SS_GFMUX_CTL		0x020
 #define QDSP6SS_PWR_CTL			0x030
+#define QDSP6SS_STRAP_ACC		0x110
 
 /* AXI Halt Register Offsets */
 #define AXI_HALTREQ			0x0
@@ -71,6 +72,8 @@
 
 #define HALT_CHECK_MAX_LOOPS            (200)
 #define QDSP6SS_XO_CBCR                 (0x0038)
+
+#define QDSP6SS_ACC_OVERRIDE_VAL	0x20
 
 int pil_q6v5_make_proxy_votes(struct pil_desc *pil)
 {
@@ -130,8 +133,11 @@ EXPORT_SYMBOL(pil_q6v5_make_proxy_votes);
 void pil_q6v5_remove_proxy_votes(struct pil_desc *pil)
 {
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
-	if (drv->vreg_pll)
+
+	if (drv->vreg_pll) {
 		regulator_disable(drv->vreg_pll);
+		regulator_set_optimum_mode(drv->vreg_pll, 0);
+	}
 	regulator_disable(drv->vreg_cx);
 	regulator_set_optimum_mode(drv->vreg_cx, 0);
 	regulator_set_voltage(drv->vreg_cx, RPM_REGULATOR_CORNER_NONE,
@@ -293,6 +299,11 @@ static int __pil_q6v55_reset(struct pil_desc *pil)
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
 	u32 val, i;
 
+	/* Override the ACC value if required */
+	if (drv->override_acc)
+		writel_relaxed(QDSP6SS_ACC_OVERRIDE_VAL,
+				drv->reg_base + QDSP6SS_STRAP_ACC);
+
 	/* Assert resets, stop core */
 	val = readl_relaxed(drv->reg_base + QDSP6SS_RESET);
 	val |= (Q6SS_CORE_ARES | Q6SS_BUS_ARES_ENA | Q6SS_STOP_CORE);
@@ -437,13 +448,14 @@ struct q6v5_data *pil_q6v5_init(struct platform_device *pdev)
 
 	drv->qdsp6v55 = of_device_is_compatible(pdev->dev.of_node,
 						"qcom,pil-q6v55-mss");
-	drv->qdsp6v55 |= of_device_is_compatible(pdev->dev.of_node,
-						"qcom,pil-q6v55-lpass");
 	drv->qdsp6v56 = of_device_is_compatible(pdev->dev.of_node,
 						"qcom,pil-q6v56-mss");
 
 	drv->non_elf_image = of_property_read_bool(pdev->dev.of_node,
 						"qcom,mba-image-is-not-elf");
+
+	drv->override_acc = of_property_read_bool(pdev->dev.of_node,
+						"qcom,override-acc");
 
 	drv->xo = devm_clk_get(&pdev->dev, "xo");
 	if (IS_ERR(drv->xo))

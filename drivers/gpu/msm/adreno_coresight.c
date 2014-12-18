@@ -40,7 +40,7 @@ ssize_t adreno_coresight_show_register(struct device *dev,
 	 * otherwise report 0
 	 */
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 	if (test_bit(ADRENO_DEVICE_CORESIGHT, &adreno_dev->priv)) {
 
 		/*
@@ -59,7 +59,7 @@ ssize_t adreno_coresight_show_register(struct device *dev,
 
 		val = cattr->reg->value;
 	}
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 
 	return snprintf(buf, PAGE_SIZE, "0x%X", val);
 }
@@ -85,7 +85,7 @@ ssize_t adreno_coresight_store_register(struct device *dev,
 	if (ret)
 		return ret;
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 
 	/* Ignore writes while coresight is off */
 	if (!test_bit(ADRENO_DEVICE_CORESIGHT, &adreno_dev->priv))
@@ -104,7 +104,7 @@ ssize_t adreno_coresight_store_register(struct device *dev,
 	}
 
 out:
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 	return size;
 }
 
@@ -125,6 +125,7 @@ static void adreno_coresight_disable(struct coresight_device *csdev)
 {
 	struct kgsl_device *device = dev_get_drvdata(csdev->dev.parent);
 	struct adreno_device *adreno_dev;
+	struct adreno_gpudev *gpudev;
 	struct adreno_coresight *coresight;
 	int i;
 
@@ -132,12 +133,14 @@ static void adreno_coresight_disable(struct coresight_device *csdev)
 		return;
 
 	adreno_dev = ADRENO_DEVICE(device);
-	coresight = adreno_dev->gpudev->coresight;
+	gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+
+	coresight = gpudev->coresight;
 
 	if (coresight == NULL)
 		return;
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 
 	if (!kgsl_active_count_get(device)) {
 		for (i = 0; i < coresight->count; i++)
@@ -149,23 +152,37 @@ static void adreno_coresight_disable(struct coresight_device *csdev)
 
 	clear_bit(ADRENO_DEVICE_CORESIGHT, &adreno_dev->priv);
 
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 }
 
-static int _adreno_coresight_get(struct adreno_device *adreno_dev)
+/**
+ * _adreno_coresight_get_and_clear(): Save the current value of coresight
+ * registers and clear the registers subsequently. Clearing registers
+ * has the effect of disabling coresight.
+ * @adreno_dev: Pointer to adreno device struct
+ */
+static int _adreno_coresight_get_and_clear(struct adreno_device *adreno_dev)
 {
+	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	struct kgsl_device *device = &adreno_dev->dev;
-	struct adreno_coresight *coresight = adreno_dev->gpudev->coresight;
+	struct adreno_coresight *coresight = gpudev->coresight;
 	int i;
 
 	if (coresight == NULL)
 		return -ENODEV;
 
 	if (!kgsl_active_count_get(device)) {
-		for (i = 0; i < coresight->count; i++)
+
+		/*
+		 * Save the current value of each coresight register
+		 * and then clear each register
+		 */
+		for (i = 0; i < coresight->count; i++) {
 			kgsl_regread(device, coresight->registers[i].offset,
 				&coresight->registers[i].value);
-
+			kgsl_regwrite(device, coresight->registers[i].offset,
+				0);
+		}
 		kgsl_active_count_put(device);
 	}
 
@@ -174,8 +191,9 @@ static int _adreno_coresight_get(struct adreno_device *adreno_dev)
 
 static int _adreno_coresight_set(struct adreno_device *adreno_dev)
 {
+	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	struct kgsl_device *device = &adreno_dev->dev;
-	struct adreno_coresight *coresight = adreno_dev->gpudev->coresight;
+	struct adreno_coresight *coresight = gpudev->coresight;
 	int i;
 
 	if (coresight == NULL)
@@ -206,6 +224,7 @@ static int adreno_coresight_enable(struct coresight_device *csdev)
 {
 	struct kgsl_device *device = dev_get_drvdata(csdev->dev.parent);
 	struct adreno_device *adreno_dev;
+	struct adreno_gpudev *gpudev;
 	struct adreno_coresight *coresight;
 	int ret = 0;
 
@@ -213,12 +232,14 @@ static int adreno_coresight_enable(struct coresight_device *csdev)
 		return -ENODEV;
 
 	adreno_dev = ADRENO_DEVICE(device);
-	coresight = adreno_dev->gpudev->coresight;
+	gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+
+	coresight = gpudev->coresight;
 
 	if (coresight == NULL)
 		return -ENODEV;
 
-	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
+	mutex_lock(&device->mutex);
 	if (!test_and_set_bit(ADRENO_DEVICE_CORESIGHT, &adreno_dev->priv)) {
 		int i;
 
@@ -231,7 +252,7 @@ static int adreno_coresight_enable(struct coresight_device *csdev)
 		ret = _adreno_coresight_set(adreno_dev);
 	}
 
-	kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+	mutex_unlock(&device->mutex);
 
 	return ret;
 }
@@ -246,7 +267,7 @@ static int adreno_coresight_enable(struct coresight_device *csdev)
 void adreno_coresight_stop(struct adreno_device *adreno_dev)
 {
 	if (test_bit(ADRENO_DEVICE_CORESIGHT, &adreno_dev->priv))
-		_adreno_coresight_get(adreno_dev);
+		_adreno_coresight_get_and_clear(adreno_dev);
 }
 
 /**
@@ -270,27 +291,29 @@ static const struct coresight_ops adreno_coresight_ops = {
 	.source_ops = &adreno_coresight_source_ops,
 };
 
-void adreno_coresight_remove(struct kgsl_device *device)
+void adreno_coresight_remove(struct adreno_device *adreno_dev)
 {
+	struct kgsl_device *device = &adreno_dev->dev;
 	struct kgsl_device_platform_data *pdata =
-		device->parentdev->platform_data;
+		dev_get_platdata(&device->pdev->dev);
 
 	coresight_unregister(pdata->csdev);
 	pdata->csdev = NULL;
 }
 
-int adreno_coresight_init(struct kgsl_device *device)
+int adreno_coresight_init(struct adreno_device *adreno_dev)
 {
 	int ret = 0;
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+	struct kgsl_device *device = &adreno_dev->dev;
 	struct kgsl_device_platform_data *pdata =
-		device->parentdev->platform_data;
+		dev_get_platdata(&device->pdev->dev);
 	struct coresight_desc desc;
 
 	if (pdata == NULL)
 		return -ENODEV;
 
-	if (adreno_dev->gpudev->coresight == NULL)
+	if (gpudev->coresight == NULL)
 		return -ENODEV;
 
 	if (IS_ERR_OR_NULL(pdata->coresight_pdata))
@@ -305,9 +328,9 @@ int adreno_coresight_init(struct kgsl_device *device)
 	desc.subtype.source_subtype = CORESIGHT_DEV_SUBTYPE_SOURCE_BUS;
 	desc.ops = &adreno_coresight_ops;
 	desc.pdata = pdata->coresight_pdata;
-	desc.dev = device->parentdev;
+	desc.dev = &device->pdev->dev;
 	desc.owner = THIS_MODULE;
-	desc.groups = adreno_dev->gpudev->coresight->groups;
+	desc.groups = gpudev->coresight->groups;
 
 	pdata->csdev = coresight_register(&desc);
 

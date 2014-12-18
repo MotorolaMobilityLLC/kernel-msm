@@ -65,11 +65,11 @@
 #define FT_REG_ID		0xA3
 #define FT_REG_PMODE		0xA5
 #define FT_REG_FW_VER		0xA6
+#define FT_REG_FW_VENDOR_ID	0xA8
 #define FT_REG_POINT_RATE	0x88
 #define FT_REG_THGROUP		0x80
 #define FT_REG_ECC		0xCC
 #define FT_REG_RESET_FW		0x07
-#define FT_REG_FW_MAJ_VER	0xB1
 #define FT_REG_FW_MIN_VER	0xB2
 #define FT_REG_FW_SUB_MIN_VER	0xB3
 
@@ -104,6 +104,7 @@
 #define FT5316_ID		0x0A
 #define FT5306I_ID		0x55
 #define FT6X06_ID		0x06
+#define FT6X36_ID		0x36
 
 #define FT_UPGRADE_AA		0xAA
 #define FT_UPGRADE_55		0x55
@@ -115,11 +116,24 @@
 #define FT_FW_FILE_MAJ_VER(x)	((x)->data[(x)->size - 2])
 #define FT_FW_FILE_MIN_VER(x)	0
 #define FT_FW_FILE_SUB_MIN_VER(x) 0
+#define FT_FW_FILE_VENDOR_ID(x)	((x)->data[(x)->size - 1])
 
-#define FT_FW_CHECK(x)		\
+#define FT_FW_FILE_MAJ_VER_FT6X36(x)	((x)->data[0x10a])
+#define FT_FW_FILE_VENDOR_ID_FT6X36(x)	((x)->data[0x108])
+
+/**
+* Application data verification will be run before upgrade flow.
+* Firmware image stores some flags with negative and positive value
+* in corresponding addresses, we need pick them out do some check to
+* make sure the application data is valid.
+*/
+#define FT_FW_CHECK(x, ts_data) \
+	(ts_data->family_id == FT6X36_ID ? \
+	(((x)->data[0x104] ^ (x)->data[0x105]) == 0xFF \
+	&& ((x)->data[0x106] ^ (x)->data[0x107]) == 0xFF) : \
 	(((x)->data[(x)->size - 8] ^ (x)->data[(x)->size - 6]) == 0xFF \
-	&& (((x)->data[(x)->size - 7] ^ (x)->data[(x)->size - 5]) == 0xFF \
-	&& (((x)->data[(x)->size - 3] ^ (x)->data[(x)->size - 4]) == 0xFF)))
+	&& ((x)->data[(x)->size - 7] ^ (x)->data[(x)->size - 5]) == 0xFF \
+	&& ((x)->data[(x)->size - 3] ^ (x)->data[(x)->size - 4]) == 0xFF))
 
 #define FT_MAX_TRIES		5
 #define FT_RETRY_DLY		20
@@ -153,6 +167,10 @@
 #define FT_MAGIC_BLOADER_LZ4	0x6ffa
 #define FT_MAGIC_BLOADER_GZF_30	0x7ff4
 #define FT_MAGIC_BLOADER_GZF	0x7bf4
+
+#define PINCTRL_STATE_ACTIVE	"pmx_ts_active"
+#define PINCTRL_STATE_SUSPEND	"pmx_ts_suspend"
+#define PINCTRL_STATE_RELEASE	"pmx_ts_release"
 
 enum {
 	FT_BLOADER_VERSION_LZ4 = 0,
@@ -201,11 +219,16 @@ struct ft5x06_ts_data {
 	u8 *tch_data;
 	u32 tch_data_len;
 	u8 fw_ver[3];
+	u8 fw_vendor_id;
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	struct early_suspend early_suspend;
 #endif
+	struct pinctrl *ts_pinctrl;
+	struct pinctrl_state *pinctrl_state_active;
+	struct pinctrl_state *pinctrl_state_suspend;
+	struct pinctrl_state *pinctrl_state_release;
 };
 
 static int ft5x06_i2c_read(struct i2c_client *client, char *writebuf,
@@ -283,13 +306,25 @@ static int ft5x0x_read_reg(struct i2c_client *client, u8 addr, u8 *val)
 	return ft5x06_i2c_read(client, &addr, 1, val, 1);
 }
 
+static void ft5x06_update_fw_vendor_id(struct ft5x06_ts_data *data)
+{
+	struct i2c_client *client = data->client;
+	u8 reg_addr;
+	int err;
+
+	reg_addr = FT_REG_FW_VENDOR_ID;
+	err = ft5x06_i2c_read(client, &reg_addr, 1, &data->fw_vendor_id, 1);
+	if (err < 0)
+		dev_err(&client->dev, "fw vendor id read failed");
+}
+
 static void ft5x06_update_fw_ver(struct ft5x06_ts_data *data)
 {
 	struct i2c_client *client = data->client;
 	u8 reg_addr;
 	int err;
 
-	reg_addr = FT_REG_FW_MAJ_VER;
+	reg_addr = FT_REG_FW_VER;
 	err = ft5x06_i2c_read(client, &reg_addr, 1, &data->fw_ver[0], 1);
 	if (err < 0)
 		dev_err(&client->dev, "fw major version read failed");
@@ -480,6 +515,60 @@ pwr_deinit:
 
 	regulator_put(data->vcc_i2c);
 	return 0;
+}
+
+static int ft5x06_ts_pinctrl_init(struct ft5x06_ts_data *ft5x06_data)
+{
+	int retval;
+
+	/* Get pinctrl if target uses pinctrl */
+	ft5x06_data->ts_pinctrl = devm_pinctrl_get(&(ft5x06_data->client->dev));
+	if (IS_ERR_OR_NULL(ft5x06_data->ts_pinctrl)) {
+		retval = PTR_ERR(ft5x06_data->ts_pinctrl);
+		dev_dbg(&ft5x06_data->client->dev,
+			"Target does not use pinctrl %d\n", retval);
+		goto err_pinctrl_get;
+	}
+
+	ft5x06_data->pinctrl_state_active
+		= pinctrl_lookup_state(ft5x06_data->ts_pinctrl,
+				PINCTRL_STATE_ACTIVE);
+	if (IS_ERR_OR_NULL(ft5x06_data->pinctrl_state_active)) {
+		retval = PTR_ERR(ft5x06_data->pinctrl_state_active);
+		dev_err(&ft5x06_data->client->dev,
+			"Can not lookup %s pinstate %d\n",
+			PINCTRL_STATE_ACTIVE, retval);
+		goto err_pinctrl_lookup;
+	}
+
+	ft5x06_data->pinctrl_state_suspend
+		= pinctrl_lookup_state(ft5x06_data->ts_pinctrl,
+			PINCTRL_STATE_SUSPEND);
+	if (IS_ERR_OR_NULL(ft5x06_data->pinctrl_state_suspend)) {
+		retval = PTR_ERR(ft5x06_data->pinctrl_state_suspend);
+		dev_err(&ft5x06_data->client->dev,
+			"Can not lookup %s pinstate %d\n",
+			PINCTRL_STATE_SUSPEND, retval);
+		goto err_pinctrl_lookup;
+	}
+
+	ft5x06_data->pinctrl_state_release
+		= pinctrl_lookup_state(ft5x06_data->ts_pinctrl,
+			PINCTRL_STATE_RELEASE);
+	if (IS_ERR_OR_NULL(ft5x06_data->pinctrl_state_release)) {
+		retval = PTR_ERR(ft5x06_data->pinctrl_state_release);
+		dev_dbg(&ft5x06_data->client->dev,
+			"Can not lookup %s pinstate %d\n",
+			PINCTRL_STATE_RELEASE, retval);
+	}
+
+	return 0;
+
+err_pinctrl_lookup:
+	devm_pinctrl_put(ft5x06_data->ts_pinctrl);
+err_pinctrl_get:
+	ft5x06_data->ts_pinctrl = NULL;
+	return retval;
 }
 
 #ifdef CONFIG_PM
@@ -701,7 +790,8 @@ static int ft5x06_fw_upgrade_start(struct i2c_client *client,
 	for (i = 0, j = 0; i < FT_UPGRADE_LOOP; i++) {
 		msleep(FT_EARSE_DLY_MS);
 		/* reset - write 0xaa and 0x55 to reset register */
-		if (ts_data->family_id == FT6X06_ID)
+		if (ts_data->family_id == FT6X06_ID
+			|| ts_data->family_id == FT6X36_ID)
 			reset_reg = FT_RST_CMD_REG2;
 		else
 			reset_reg = FT_RST_CMD_REG1;
@@ -890,8 +980,13 @@ static int ft5x06_fw_upgrade(struct device *dev, bool force)
 	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
 	const struct firmware *fw = NULL;
 	int rc;
-	u8 fw_file_maj, fw_file_min, fw_file_sub_min;
+	u8 fw_file_maj, fw_file_min, fw_file_sub_min, fw_file_vendor_id;
 	bool fw_upgrade = false;
+
+	if (data->suspended) {
+		dev_err(dev, "Device is in suspend state: Exit FW upgrade\n");
+		return -EBUSY;
+	}
 
 	rc = request_firmware(&fw, data->fw_name, dev);
 	if (rc < 0) {
@@ -906,7 +1001,13 @@ static int ft5x06_fw_upgrade(struct device *dev, bool force)
 		goto rel_fw;
 	}
 
-	fw_file_maj = FT_FW_FILE_MAJ_VER(fw);
+	if (data->family_id == FT6X36_ID) {
+		fw_file_maj = FT_FW_FILE_MAJ_VER_FT6X36(fw);
+		fw_file_vendor_id = FT_FW_FILE_VENDOR_ID_FT6X36(fw);
+	} else {
+		fw_file_maj = FT_FW_FILE_MAJ_VER(fw);
+		fw_file_vendor_id = FT_FW_FILE_VENDOR_ID(fw);
+	}
 	fw_file_min = FT_FW_FILE_MIN_VER(fw);
 	fw_file_sub_min = FT_FW_FILE_SUB_MIN_VER(fw);
 
@@ -915,17 +1016,11 @@ static int ft5x06_fw_upgrade(struct device *dev, bool force)
 	dev_info(dev, "New firmware: %d.%d.%d", fw_file_maj,
 				fw_file_min, fw_file_sub_min);
 
-	if (force) {
+	if (force)
 		fw_upgrade = true;
-	} else if (data->fw_ver[0] == fw_file_maj) {
-			if (data->fw_ver[1] < fw_file_min)
-				fw_upgrade = true;
-			else if (data->fw_ver[2] < fw_file_sub_min)
-				fw_upgrade = true;
-			else
-				dev_info(dev, "No need to upgrade\n");
-	} else
-		dev_info(dev, "Firmware versions do not match\n");
+	else if ((data->fw_ver[0] < fw_file_maj) &&
+		data->fw_vendor_id == fw_file_vendor_id)
+		fw_upgrade = true;
 
 	if (!fw_upgrade) {
 		dev_info(dev, "Exiting fw upgrade...\n");
@@ -934,7 +1029,7 @@ static int ft5x06_fw_upgrade(struct device *dev, bool force)
 	}
 
 	/* start firmware upgrade */
-	if (FT_FW_CHECK(fw)) {
+	if (FT_FW_CHECK(fw, data)) {
 		rc = ft5x06_fw_upgrade_start(data->client, fw->data, fw->size);
 		if (rc < 0)
 			dev_err(dev, "update failed (%d). try later...\n", rc);
@@ -1510,11 +1605,24 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		}
 	}
 
+	err = ft5x06_ts_pinctrl_init(data);
+	if (!err && data->ts_pinctrl) {
+		err = pinctrl_select_state(data->ts_pinctrl,
+					data->pinctrl_state_active);
+		if (err < 0) {
+			dev_err(&client->dev,
+				"failed to select pin to active state");
+			goto pinctrl_deinit;
+		}
+	} else {
+		goto pwr_off;
+	}
+
 	if (gpio_is_valid(pdata->irq_gpio)) {
 		err = gpio_request(pdata->irq_gpio, "ft5x06_irq_gpio");
 		if (err) {
 			dev_err(&client->dev, "irq gpio request failed");
-			goto pwr_off;
+			goto err_gpio_req;
 		}
 		err = gpio_direction_input(pdata->irq_gpio);
 		if (err) {
@@ -1650,6 +1758,7 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 	dev_dbg(&client->dev, "touch threshold = %d\n", reg_value * 4);
 
 	ft5x06_update_fw_ver(data);
+	ft5x06_update_fw_vendor_id(data);
 
 	FT_STORE_TS_INFO(data->ts_info, data->family_id, data->pdata->name,
 			data->pdata->num_max_touches, data->pdata->group_id,
@@ -1691,6 +1800,19 @@ free_reset_gpio:
 free_irq_gpio:
 	if (gpio_is_valid(pdata->irq_gpio))
 		gpio_free(pdata->irq_gpio);
+err_gpio_req:
+pinctrl_deinit:
+	if (data->ts_pinctrl) {
+		if (IS_ERR_OR_NULL(data->pinctrl_state_release)) {
+			devm_pinctrl_put(data->ts_pinctrl);
+			data->ts_pinctrl = NULL;
+		} else {
+			err = pinctrl_select_state(data->ts_pinctrl,
+					data->pinctrl_state_release);
+			if (err)
+				pr_err("failed to select relase pinctrl state\n");
+		}
+	}
 pwr_off:
 	if (pdata->power_on)
 		pdata->power_on(false);
@@ -1712,6 +1834,7 @@ free_inputdev:
 static int ft5x06_ts_remove(struct i2c_client *client)
 {
 	struct ft5x06_ts_data *data = i2c_get_clientdata(client);
+	int retval;
 
 	debugfs_remove_recursive(data->dir);
 	device_remove_file(&client->dev, &dev_attr_force_update_fw);
@@ -1731,6 +1854,18 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 
 	if (gpio_is_valid(data->pdata->irq_gpio))
 		gpio_free(data->pdata->irq_gpio);
+
+	if (data->ts_pinctrl) {
+		if (IS_ERR_OR_NULL(data->pinctrl_state_release)) {
+			devm_pinctrl_put(data->ts_pinctrl);
+			data->ts_pinctrl = NULL;
+		} else {
+			retval = pinctrl_select_state(data->ts_pinctrl,
+					data->pinctrl_state_release);
+			if (retval < 0)
+				pr_err("failed to select release pinctrl state\n");
+		}
+	}
 
 	if (data->pdata->power_on)
 		data->pdata->power_on(false);

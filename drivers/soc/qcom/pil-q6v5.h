@@ -29,6 +29,7 @@ struct q6v5_data {
 	struct clk *axi_clk;	   /* CPU access to memory */
 	struct clk *core_clk;	   /* CPU core */
 	struct clk *reg_clk;	   /* CPU access registers */
+	struct clk *gpll0_mss_clk; /* GPLL0 to MSS connection */
 	struct clk *rom_clk;	   /* Boot ROM */
 	void __iomem *axi_halt_base; /* Halt base of q6, mss,
 					nc are in same 4K page */
@@ -45,10 +46,13 @@ struct q6v5_data {
 	bool self_auth;
 	phys_addr_t mba_phys;
 	void *mba_virt;
+	size_t mba_size;
 	bool qdsp6v55;
 	bool qdsp6v5_2_0;
 	bool qdsp6v56;
 	bool non_elf_image;
+	bool restart_reg_sec;
+	bool override_acc;
 };
 
 int pil_q6v5_make_proxy_votes(struct pil_desc *pil);

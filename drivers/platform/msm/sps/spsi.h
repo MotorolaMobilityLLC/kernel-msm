@@ -226,6 +226,9 @@ void print_bam_pipe_desc_fifo(void *, u32, u32);
 /* output BAM_TEST_BUS_REG */
 void print_bam_test_bus_reg(void *, u32);
 
+/* halt and un-halt a pipe */
+void bam_pipe_halt(void *, u32, bool);
+
 /**
  * Translate physical to virtual address
  *
@@ -421,4 +424,12 @@ int sps_map_init(const struct sps_map *map_props, u32 options);
  */
 void sps_map_de_init(void);
 
+/*
+ * bam_pipe_reset - reset a BAM pipe.
+ * @base:	BAM virtual address
+ * @pipe:	pipe index
+ *
+ * This function resets a BAM pipe.
+ */
+void bam_pipe_reset(void *base, u32 pipe);
 #endif	/* _SPSI_H_ */

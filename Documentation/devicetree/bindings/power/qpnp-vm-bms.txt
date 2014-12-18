@@ -61,6 +61,9 @@ Parent node required properties:
 			reporting volage based SOC and does not use the VMBMS
 			algorithm for SOC calculation.
 - qcom,bms-vadc: Corresponding VADC device's phandle.
+- qcom,bms-adc_tm: Corresponding ADC_TM device's phandle to set recurring
+                        measurements and receive notifications for vbatt.
+- qcom,pmic-revid : Phandle pointing to the revision peripheral node.
 
 Parent node Optional properties
 - qcom,s1-sample-interval-ms: The sampling rate in ms of the accumulator in state
@@ -81,10 +84,10 @@ Parent node Optional properties
 			the fifo_update_done interrupt. Possile values - 0 to 8
 - qcom,s2-fifo-legth:	Number of FIFO's to be filled in state S2, to generate
 			the fifo_update_done interrupt. Possible values- 0 to 8
-- qcom,force-s2-in-charging: Bool property to force the BMS into S2 (CV) state
-			during charging
 - qcom,force-s3-on-suspend : Bool property to force the BMS into S3 (sleep) state
 			while entering into system suspend.
+- qcom,force-bms-active-on-charger: Bool property to keep BMS FSM active
+				if charger is present.
 - qcom,report-charger-eoc : Bool property to indicate if BMS needs to indicate
 			EOC to charger.
 - qcom,ignore-shutdown-soc: A boolean that controls whether BMS will
@@ -94,6 +97,14 @@ Parent node Optional properties
 - qcom,use-voltage-soc : A boolean that controls whether BMS will use
 			voltage-based SoC instead of a coulomb counter based
 			one. Voltage-based SoC will not guarantee linearity.
+- qcom,disable-bms :	Bool property to disable the VMBMS hardware module.
+			Enable this property if BMS is not supported or an external
+			fuel gauge is used.
+- qcom,s3-ocv-tolerence-uv : The S3 state OCV tolerence threshold in uV. The
+			LSB value is 300uV and maximum value is 76500uV.
+- qcom,low-soc-fifo-length : The fifo length (of S2 STATE) to be used at lower
+			SOCs. If this value is not specified the system uses
+			default lenght.
 
 qcom,batt-pres-status node required properties:
 - reg : offset and length of the PMIC LBC battery interface BATT_PRES_STATUS
@@ -119,10 +130,13 @@ pm8916_bms: qcom,qpnp-vm-bms {
 	qcom,low-voltage-threshold = <3420000>;
 	qcom,low-voltage-calculate-soc-ms = <1000>;
 	qcom,low-soc-calculate-soc-ms = <5000>;
+	qcom,low-soc-fifo-length = <2>;
 	qcom,calculate-soc-ms = <20000>;
+	qcom,s3-ocv-tolerence-uv = <1200>;
 	qcom,volatge-soc-timeout-ms = <60000>;
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,bms-vadc = <&pm8916_vadc>;
+	qcom,bms-adc_tm = <&pm8916_adc_tm>;
 
 	qcom,batt-pres-status@1208 {
 		reg = <0x1208 0x1>;

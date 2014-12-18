@@ -71,11 +71,6 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	{}
 };
 
-static void __init msm8226_early_memory(void)
-{
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
-}
-
 static void __init msm8226_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
@@ -96,10 +91,7 @@ void __init msm8226_add_drivers(void)
 	rpm_smd_regulator_driver_init();
 	qpnp_regulator_init();
 	spm_regulator_init();
-	if (of_board_is_rumi())
-		msm_clock_init(&msm8226_rumi_clock_init_data);
-	else
-		msm_clock_init(&msm8226_clock_init_data);
+	msm_gcc_8226_init();
 	msm_bus_fabric_init_driver();
 	qup_i2c_init_driver();
 	ncp6335d_regulator_init();
@@ -135,11 +127,11 @@ static const char *msm8226_dt_match[] __initconst = {
 	NULL
 };
 
-DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 (Flattened Device Tree)")
+DT_MACHINE_START(MSM8226_DT,
+		"Qualcomm Technologies, Inc. MSM 8226 (Flattened Device Tree)")
 	.map_io			= msm_map_msm8226_io,
 	.init_machine		= msm8226_init,
 	.dt_compat		= msm8226_dt_match,
 	.reserve		= msm8226_reserve,
-	.init_very_early	= msm8226_early_memory,
 	.smp			= &arm_smp_ops,
 MACHINE_END

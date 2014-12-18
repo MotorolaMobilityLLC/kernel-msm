@@ -66,15 +66,17 @@ static int msm_route_hfp_vol_control;
 static const DECLARE_TLV_DB_LINEAR(hfp_rx_vol_gain, 0,
 				INT_RX_VOL_MAX_STEPS);
 
+static int msm_route_auxpcm_lb_vol_ctrl;
+static const DECLARE_TLV_DB_LINEAR(auxpcm_lb_vol_gain, 0,
+				INT_RX_VOL_MAX_STEPS);
+
 static void msm_qti_pp_send_eq_values_(int eq_idx)
 {
 	int result;
 	struct msm_pcm_routing_fdai_data fe_dai;
-	int fe_dai_perf_mode;
 	struct audio_client *ac = NULL;
 
-	msm_pcm_routing_get_fedai_info(eq_idx, SESSION_TYPE_RX, &fe_dai,
-				       &fe_dai_perf_mode);
+	msm_pcm_routing_get_fedai_info(eq_idx, SESSION_TYPE_RX, &fe_dai);
 	ac = q6asm_get_audio_client(fe_dai.strm_id);
 
 	if (ac == NULL) {
@@ -227,7 +229,7 @@ void msm_qti_pp_send_eq_values(int fedai_id)
 }
 
 /* CUSTOM MIXING */
-int msm_qti_pp_send_stereo_to_custom_stereo_cmd(int port_id,
+int msm_qti_pp_send_stereo_to_custom_stereo_cmd(int port_id, int copp_idx,
 						unsigned int session_id,
 						uint16_t op_FL_ip_FL_weight,
 						uint16_t op_FL_ip_FR_weight,
@@ -286,6 +288,7 @@ int msm_qti_pp_send_stereo_to_custom_stereo_cmd(int port_id,
 	avail_length = avail_length - (4 * sizeof(uint16_t));
 	if (params_length) {
 		rc = adm_set_stereo_to_custom_stereo(port_id,
+						     copp_idx,
 						     session_id,
 						     params_value,
 						     params_length);
@@ -309,7 +312,7 @@ static int msm_qti_pp_get_rms_value_control(struct snd_kcontrol *kcontrol,
 					    struct snd_ctl_elem_value *ucontrol)
 {
 	int rc = 0;
-	int be_idx = 0;
+	int be_idx = 0, copp_idx;
 	char *param_value;
 	int *update_param_value;
 	uint32_t param_length = sizeof(uint32_t);
@@ -327,11 +330,19 @@ static int msm_qti_pp_get_rms_value_control(struct snd_kcontrol *kcontrol,
 			break;
 	}
 	if ((be_idx >= MSM_BACKEND_DAI_MAX) || !msm_bedai.active) {
-		pr_err("%s, back not active to query rms\n", __func__);
+		pr_err("%s, back not active to query rms be_idx:%d\n",
+			__func__, be_idx);
 		rc = -EINVAL;
 		goto get_rms_value_err;
 	}
-	rc = adm_get_params(SLIMBUS_0_TX,
+	copp_idx = adm_get_default_copp_idx(SLIMBUS_0_TX);
+	if ((copp_idx < 0) || (copp_idx > MAX_COPPS_PER_PORT)) {
+		pr_err("%s, no active copp to query rms copp_idx:%d\n",
+			__func__ , copp_idx);
+		rc = -EINVAL;
+		goto get_rms_value_err;
+	}
+	rc = adm_get_params(SLIMBUS_0_TX, copp_idx,
 			RMS_MODULEID_APPI_PASSTHRU,
 			RMS_PARAM_FIRST_SAMPLE,
 			param_length + param_payload_len,
@@ -361,15 +372,9 @@ static int msm_qti_pp_put_rms_value_control(struct snd_kcontrol *kcontrol,
 
 /* VOLUME */
 static int msm_route_fm_vol_control;
+static int msm_afe_lb_vol_ctrl;
 static const DECLARE_TLV_DB_LINEAR(fm_rx_vol_gain, 0, INT_RX_VOL_MAX_STEPS);
-
-static int msm_route_multimedia2_vol_control;
-static const DECLARE_TLV_DB_LINEAR(multimedia2_rx_vol_gain, 0,
-				   INT_RX_VOL_MAX_STEPS);
-
-static int msm_route_multimedia5_vol_control;
-static const DECLARE_TLV_DB_LINEAR(multimedia5_rx_vol_gain, 0,
-				   INT_RX_VOL_MAX_STEPS);
+static const DECLARE_TLV_DB_LINEAR(afe_lb_vol_gain, 0, INT_RX_VOL_MAX_STEPS);
 
 static int msm_qti_pp_get_fm_vol_mixer(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
@@ -382,6 +387,42 @@ static int msm_qti_pp_set_fm_vol_mixer(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
 	afe_loopback_gain(INT_FM_TX , ucontrol->value.integer.value[0]);
+
+	msm_route_fm_vol_control = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int msm_qti_pp_get_pri_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = msm_afe_lb_vol_ctrl;
+	return 0;
+}
+
+static int msm_qti_pp_set_pri_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	afe_loopback_gain(AFE_PORT_ID_PRIMARY_MI2S_TX,
+			  ucontrol->value.integer.value[0]);
+
+	msm_afe_lb_vol_ctrl = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int msm_qti_pp_get_quat_mi2s_fm_vol_mixer(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = msm_route_fm_vol_control;
+	return 0;
+}
+
+static int msm_qti_pp_set_quat_mi2s_fm_vol_mixer(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	afe_loopback_gain(AFE_PORT_ID_QUATERNARY_MI2S_TX,
+			  ucontrol->value.integer.value[0]);
 
 	msm_route_fm_vol_control = ucontrol->value.integer.value[0];
 
@@ -405,40 +446,22 @@ static int msm_qti_pp_set_hfp_vol_mixer(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int msm_qti_pp_get_multimedia2_vol_mixer(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *ucontrol)
+static int msm_qti_pp_get_auxpcm_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
 {
-
-	ucontrol->value.integer.value[0] = msm_route_multimedia2_vol_control;
+	ucontrol->value.integer.value[0] = msm_route_auxpcm_lb_vol_ctrl;
 	return 0;
 }
 
-static int msm_qti_pp_get_multimedia5_vol_mixer(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *ucontrol)
+static int msm_qti_pp_set_auxpcm_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
 {
+	struct soc_mixer_control *mc =
+	(struct soc_mixer_control *)kcontrol->private_value;
 
-	ucontrol->value.integer.value[0] = msm_route_multimedia5_vol_control;
-	return 0;
-}
+	afe_loopback_gain(mc->reg, ucontrol->value.integer.value[0]);
 
-static int msm_qti_pp_set_multimedia5_vol_mixer(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *ucontrol)
-{
-
-	if (!multi_ch_pcm_set_volume(ucontrol->value.integer.value[0]))
-		msm_route_multimedia5_vol_control =
-			ucontrol->value.integer.value[0];
-
-	return 0;
-}
-
-static int msm_qti_pp_set_multimedia2_vol_mixer(struct snd_kcontrol *kcontrol,
-					    struct snd_ctl_elem_value *ucontrol)
-{
-
-	if (!multi_ch_pcm_set_volume(ucontrol->value.integer.value[0]))
-		msm_route_multimedia2_vol_control =
-			ucontrol->value.integer.value[0];
+	msm_route_auxpcm_lb_vol_ctrl = ucontrol->value.integer.value[0];
 
 	return 0;
 }
@@ -472,6 +495,15 @@ static const struct snd_kcontrol_new int_fm_vol_mixer_controls[] = {
 	SOC_SINGLE_EXT_TLV("Internal FM RX Volume", SND_SOC_NOPM, 0,
 	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_fm_vol_mixer,
 	msm_qti_pp_set_fm_vol_mixer, fm_rx_vol_gain),
+	SOC_SINGLE_EXT_TLV("Quat MI2S FM RX Volume", SND_SOC_NOPM, 0,
+	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_quat_mi2s_fm_vol_mixer,
+	msm_qti_pp_set_quat_mi2s_fm_vol_mixer, fm_rx_vol_gain),
+};
+
+static const struct snd_kcontrol_new pri_mi2s_lb_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("PRI MI2S LOOPBACK Volume", SND_SOC_NOPM, 0,
+	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_pri_mi2s_lb_vol_mixer,
+	msm_qti_pp_set_pri_mi2s_lb_vol_mixer, afe_lb_vol_gain),
 };
 
 static const struct snd_kcontrol_new int_hfp_vol_mixer_controls[] = {
@@ -480,16 +512,11 @@ static const struct snd_kcontrol_new int_hfp_vol_mixer_controls[] = {
 	msm_qti_pp_set_hfp_vol_mixer, hfp_rx_vol_gain),
 };
 
-static const struct snd_kcontrol_new multimedia2_vol_mixer_controls[] = {
-	SOC_SINGLE_EXT_TLV("HIFI2 RX Volume", SND_SOC_NOPM, 0,
-	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_multimedia2_vol_mixer,
-	msm_qti_pp_set_multimedia2_vol_mixer, multimedia2_rx_vol_gain),
-};
-
-static const struct snd_kcontrol_new multimedia5_vol_mixer_controls[] = {
-	SOC_SINGLE_EXT_TLV("HIFI3 RX Volume", SND_SOC_NOPM, 0,
-	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_multimedia5_vol_mixer,
-	msm_qti_pp_set_multimedia5_vol_mixer, multimedia5_rx_vol_gain),
+static const struct snd_kcontrol_new sec_auxpcm_lb_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("SEC AUXPCM LOOPBACK Volume",
+	AFE_PORT_ID_SECONDARY_PCM_TX, 0, INT_RX_VOL_GAIN, 0,
+	msm_qti_pp_get_auxpcm_lb_vol_mixer, msm_qti_pp_set_auxpcm_lb_vol_mixer,
+	auxpcm_lb_vol_gain),
 };
 
 static const struct snd_kcontrol_new multi_ch_channel_map_mixer_controls[] = {
@@ -647,14 +674,15 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 	snd_soc_add_platform_controls(platform, int_fm_vol_mixer_controls,
 			ARRAY_SIZE(int_fm_vol_mixer_controls));
 
+	snd_soc_add_platform_controls(platform, pri_mi2s_lb_vol_mixer_controls,
+			ARRAY_SIZE(pri_mi2s_lb_vol_mixer_controls));
+
 	snd_soc_add_platform_controls(platform, int_hfp_vol_mixer_controls,
 			ARRAY_SIZE(int_hfp_vol_mixer_controls));
 
-	snd_soc_add_platform_controls(platform, multimedia2_vol_mixer_controls,
-			ARRAY_SIZE(multimedia2_vol_mixer_controls));
-
-	snd_soc_add_platform_controls(platform, multimedia5_vol_mixer_controls,
-			ARRAY_SIZE(multimedia5_vol_mixer_controls));
+	snd_soc_add_platform_controls(platform,
+				sec_auxpcm_lb_vol_mixer_controls,
+			ARRAY_SIZE(sec_auxpcm_lb_vol_mixer_controls));
 
 	snd_soc_add_platform_controls(platform,
 				multi_ch_channel_map_mixer_controls,

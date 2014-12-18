@@ -344,6 +344,7 @@ static struct pll_freq_tbl apcs_pll_freq[] = {
 	F_APCS_PLL(1190400000, 62, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1248000000, 65, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1401600000, 73, 0x0, 0x1, 0x0, 0x0, 0x0),
+	PLL_F_END
 };
 
 static struct pll_clk a53sspll = {
@@ -903,7 +904,8 @@ static struct rcg_clk jpeg0_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_camss_mclk0_1_clk[] = {
-	F(  24000000,      gpll0,   1,    2,   67),
+	F(   9600000,	      xo,   2,	  0,	0),
+	F(  23880000,      gpll0,   1,    2,   67),
 	F(  66670000,	   gpll0,  12,	  0,	0),
 	F_END
 };
@@ -1052,7 +1054,7 @@ static struct rcg_clk byte0_clk_src = {
 	.c = {
 		.dbg_name = "byte0_clk_src",
 		.ops = &clk_ops_byte,
-		VDD_DIG_FMAX_MAP2(LOW, 112500000, NOMINAL, 187500000),
+		VDD_DIG_FMAX_MAP2(LOW, 94400000, NOMINAL, 188500000),
 		CLK_INIT(byte0_clk_src.c),
 	},
 };
@@ -1160,21 +1162,21 @@ static struct rcg_clk pdm2_clk_src = {
 	},
 };
 
-static struct clk_freq_tbl ftbl_gcc_sdcc1_2_apps_clk[] = {
+static struct clk_freq_tbl ftbl_gcc_sdcc1_apps_clk[] = {
 	F(    144000,	      xo,  16,	  3,   25),
 	F(    400000,	      xo,  12,	  1,	4),
 	F(  20000000,	   gpll0,  10,	  1,	4),
 	F(  25000000,	   gpll0,  16,	  1,	2),
 	F(  50000000,	   gpll0,  16,	  0,	0),
 	F( 100000000,	   gpll0,   8,	  0,	0),
-	F( 200000000,	   gpll0,   4,	  0,	0),
+	F( 177770000,	   gpll0, 4.5,	  0,	0),
 	F_END
 };
 
 static struct rcg_clk sdcc1_apps_clk_src = {
 	.cmd_rcgr_reg = SDCC1_APPS_CMD_RCGR,
 	.set_rate = set_rate_mnd,
-	.freq_tbl = ftbl_gcc_sdcc1_2_apps_clk,
+	.freq_tbl = ftbl_gcc_sdcc1_apps_clk,
 	.current_freq = &rcg_dummy_freq,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
@@ -1185,10 +1187,21 @@ static struct rcg_clk sdcc1_apps_clk_src = {
 	},
 };
 
+static struct clk_freq_tbl ftbl_gcc_sdcc2_apps_clk[] = {
+	F(    144000,	      xo,  16,	  3,   25),
+	F(    400000,	      xo,  12,	  1,	4),
+	F(  20000000,	   gpll0,  10,	  1,	4),
+	F(  25000000,	   gpll0,  16,	  1,	2),
+	F(  50000000,	   gpll0,  16,	  0,	0),
+	F( 100000000,	   gpll0,   8,	  0,	0),
+	F( 200000000,	   gpll0,   4,	  0,	0),
+	F_END
+};
+
 static struct rcg_clk sdcc2_apps_clk_src = {
 	.cmd_rcgr_reg = SDCC2_APPS_CMD_RCGR,
 	.set_rate = set_rate_mnd,
-	.freq_tbl = ftbl_gcc_sdcc1_2_apps_clk,
+	.freq_tbl = ftbl_gcc_sdcc2_apps_clk,
 	.current_freq = &rcg_dummy_freq,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
@@ -2390,7 +2403,9 @@ static struct mux_clk apss_debug_sec_mux = {
 		{&apss_debug_ter_mux.c, 0},
 		{&l2_m_clk.c, 1},
 	),
-	.rec_set_par = 1,
+	MUX_REC_SRC_LIST(
+		&apss_debug_ter_mux.c,
+	),
 	.base = &meas_base,
 	.c = {
 		.dbg_name = "apss_debug_sec_mux",
@@ -2406,7 +2421,9 @@ static struct mux_clk apss_debug_pri_mux = {
 	MUX_SRC_LIST(
 		{&apss_debug_sec_mux.c, 0},
 	),
-	.rec_set_par = 1,
+	MUX_REC_SRC_LIST(
+		&apss_debug_sec_mux.c,
+	),
 	.base = &meas_base,
 	.c = {
 		.dbg_name = "apss_debug_pri_mux",
@@ -2446,11 +2463,15 @@ static struct clk_mux_ops gcc_debug_mux_ops;
 static struct mux_clk gcc_debug_mux = {
 	.priv = &debug_mux_priv,
 	.ops = &gcc_debug_mux_ops,
-	.rec_set_par = true,
 	.offset = GCC_DEBUG_CLK_CTL,
-	.en_mask = BIT(16),
 	.mask = 0x1FF,
+	.en_offset = GCC_DEBUG_CLK_CTL,
+	.en_mask = BIT(16),
 	.base = &virt_bases[GCC_BASE],
+	MUX_REC_SRC_LIST(
+		&rpm_debug_clk.c,
+		&apss_debug_pri_mux.c,
+	),
 	MUX_SRC_LIST(
 		{&rpm_debug_clk.c,			0xFFFF},
 		{&apss_debug_pri_mux.c,			0x016A},
@@ -2548,7 +2569,7 @@ static struct mux_clk gcc_debug_mux = {
 	.c = {
 		.dbg_name = "gcc_debug_mux",
 		.ops = &clk_ops_debug_mux,
-		.flags = CLKFLAG_NO_RATE_CACHE,
+		.flags = CLKFLAG_NO_RATE_CACHE | CLKFLAG_MEASURE,
 		CLK_INIT(gcc_debug_mux.c),
 	},
 };
@@ -2597,9 +2618,7 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gp1_clk_src),
 	CLK_LIST(gp2_clk_src),
 	CLK_LIST(gp3_clk_src),
-	CLK_LIST(byte0_clk_src),
 	CLK_LIST(esc0_clk_src),
-	CLK_LIST(pclk0_clk_src),
 	CLK_LIST(vsync_clk_src),
 	CLK_LIST(pdm2_clk_src),
 	CLK_LIST(sdcc1_apps_clk_src),
@@ -2695,14 +2714,12 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_bimc_gfx_clk),
 	CLK_LIST(gcc_bimc_gpu_clk),
 	CLK_LIST(wcnss_m_clk),
-};
 
-static struct clk_lookup msm_clocks_gcc_8916_crypto[] = {
 	/* Crypto clocks */
-	CLK_LOOKUP_OF("core_clk",     gcc_crypto_clk,      "scm"),
-	CLK_LOOKUP_OF("iface_clk",    gcc_crypto_ahb_clk,  "scm"),
-	CLK_LOOKUP_OF("bus_clk",      gcc_crypto_axi_clk,  "scm"),
-	CLK_LOOKUP_OF("core_clk_src", crypto_clk_src,      "scm"),
+	CLK_LIST(gcc_crypto_clk),
+	CLK_LIST(gcc_crypto_ahb_clk),
+	CLK_LIST(gcc_crypto_axi_clk),
+	CLK_LIST(crypto_clk_src),
 };
 
 static int msm_gcc_probe(struct platform_device *pdev)
@@ -2776,27 +2793,21 @@ static int msm_gcc_probe(struct platform_device *pdev)
 	regval |= BIT(0);
 	writel_relaxed(regval, GCC_REG_BASE(APCS_GPLL_ENA_VOTE));
 
-	ret = of_msm_clock_register(pdev->dev.of_node,
-				msm_clocks_lookup,
-				ARRAY_SIZE(msm_clocks_lookup));
-	if (ret)
-		return ret;
-
-	ret = of_msm_clock_register(pdev->dev.of_node,
-				 msm_clocks_gcc_8916_crypto,
-				 ARRAY_SIZE(msm_clocks_gcc_8916_crypto));
-	if (ret)
-		return ret;
-
-	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
-	clk_prepare_enable(&apss_ahb_clk_src.c);
-
 	xo_a_clk_src.c.parent = clk_get(&pdev->dev, "xo_a");
 	if (IS_ERR(xo_a_clk_src.c.parent)) {
 		if (!(PTR_ERR(xo_a_clk_src.c.parent) == -EPROBE_DEFER))
 			dev_err(&pdev->dev, "Unable to get xo_a clock!!!\n");
 		return PTR_ERR(xo_a_clk_src.c.parent);
 	}
+
+	ret = of_msm_clock_register(pdev->dev.of_node,
+				msm_clocks_lookup,
+				ARRAY_SIZE(msm_clocks_lookup));
+	if (ret)
+		return ret;
+
+	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
+	clk_prepare_enable(&apss_ahb_clk_src.c);
 
 	dev_info(&pdev->dev, "Registered GCC clocks\n");
 
@@ -2895,6 +2906,8 @@ late_initcall(msm_clock_debug_init);
 
 /* MDSS DSI_PHY_PLL */
 static struct clk_lookup msm_clocks_gcc_mdss[] = {
+	CLK_LIST(byte0_clk_src),
+	CLK_LIST(pclk0_clk_src),
 	CLK_LIST(gcc_mdss_pclk0_clk),
 	CLK_LIST(gcc_mdss_byte0_clk),
 };

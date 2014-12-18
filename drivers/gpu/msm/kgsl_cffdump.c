@@ -74,7 +74,6 @@ struct cff_op_wait_irq {
 
 #define CFF_OP_RMW              0x0000000a
 
-#define CFF_OP_WRITE_MEM        0x0000000b
 struct cff_op_write_mem {
 	unsigned char op;
 	uint addr;
@@ -218,7 +217,7 @@ static void cffdump_membuf(int id, unsigned char *out_buf, int out_bufsize)
 	cff_op_write_membuf.addr = 0;
 }
 
-static void cffdump_printline(int id, uint opcode, uint op1, uint op2,
+void kgsl_cffdump_printline(int id, uint opcode, uint op1, uint op2,
 	uint op3, uint op4, uint op5)
 {
 	struct cff_op_write_reg cff_op_write_reg;
@@ -321,6 +320,7 @@ static void cffdump_printline(int id, uint opcode, uint op1, uint op2,
 		last_sec = cur_secs;
 	}
 }
+EXPORT_SYMBOL(kgsl_cffdump_printline);
 
 void kgsl_cffdump_init()
 {
@@ -377,7 +377,7 @@ void kgsl_cffdump_memory_base(struct kgsl_device *device, unsigned int base,
 {
 	if (!device->cff_dump_enable)
 		return;
-	cffdump_printline(device->id, CFF_OP_MEMORY_BASE, base,
+	kgsl_cffdump_printline(device->id, CFF_OP_MEMORY_BASE, base,
 			range, gmemsize, 0, 0);
 }
 
@@ -385,16 +385,15 @@ void kgsl_cffdump_hang(struct kgsl_device *device)
 {
 	if (!device->cff_dump_enable)
 		return;
-	cffdump_printline(device->id, CFF_OP_HANG, 0, 0, 0, 0, 0);
+	kgsl_cffdump_printline(device->id, CFF_OP_HANG, 0, 0, 0, 0, 0);
 }
 
 void kgsl_cffdump_close(struct kgsl_device *device)
 {
 	if (!device->cff_dump_enable)
 		return;
-	cffdump_printline(device->id, CFF_OP_EOF, 0, 0, 0, 0, 0);
+	kgsl_cffdump_printline(device->id, CFF_OP_EOF, 0, 0, 0, 0, 0);
 }
-
 
 void kgsl_cffdump_user_event(struct kgsl_device *device,
 		unsigned int cff_opcode, unsigned int op1,
@@ -403,27 +402,42 @@ void kgsl_cffdump_user_event(struct kgsl_device *device,
 {
 	if (!device->cff_dump_enable)
 		return;
-	cffdump_printline(-1, cff_opcode, op1, op2, op3, op4, op5);
+	kgsl_cffdump_printline(-1, cff_opcode, op1, op2, op3, op4, op5);
+}
+
+
+
+void kgsl_cffdump_memcpy(struct kgsl_device *device,
+		unsigned int gpuaddr, unsigned int *ptr, size_t sizebytes)
+{
+	int i;
+
+	if (!device || !device->cff_dump_enable)
+		return;
+
+	for (i = 0; i < ALIGN(sizebytes, 4) / 4; gpuaddr += 4, ptr++, i++)
+		kgsl_cffdump_write(device, gpuaddr, *ptr);
 }
 
 void kgsl_cffdump_syncmem(struct kgsl_device *device,
 			  struct kgsl_memdesc *memdesc, uint gpuaddr,
 			  size_t sizebytes, bool clean_cache)
 {
-	const void *src;
+	unsigned int *src;
 
-	if (!device->cff_dump_enable)
+	if (!device || device->cff_dump_enable)
 		return;
 
-	BUG_ON(memdesc == NULL);
+	if (!memdesc)
+		return;
 
 	total_syncmem += sizebytes;
 
 	src = kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr);
 	if (memdesc->hostptr == NULL) {
 		KGSL_CORE_ERR(
-		"no kernel map for gpuaddr: 0x%08x, m->host: 0x%p, phys: %pa\n",
-		gpuaddr, memdesc->hostptr, &memdesc->physaddr);
+			"cffdump: no kernel mapping for GPU address 0x%08X\n",
+			gpuaddr);
 		return;
 	}
 
@@ -434,40 +448,29 @@ void kgsl_cffdump_syncmem(struct kgsl_device *device,
 		mb();
 
 		kgsl_cache_range_op((struct kgsl_memdesc *)memdesc,
+				gpuaddr - memdesc->gpuaddr,
+				sizebytes,
 				KGSL_CACHE_OP_INV);
 	}
 
-	while (sizebytes > 3) {
-		cffdump_printline(-1, CFF_OP_WRITE_MEM, gpuaddr, *(uint *)src,
-			0, 0, 0);
-		gpuaddr += 4;
-		src += 4;
-		sizebytes -= 4;
-	}
-	if (sizebytes > 0)
-		cffdump_printline(-1, CFF_OP_WRITE_MEM, gpuaddr, *(uint *)src,
-			0, 0, 0);
+	kgsl_cffdump_memcpy(device, gpuaddr, src, sizebytes);
+
 	/* Unmap memory since kgsl_gpuaddr_to_vaddr was called */
 	kgsl_memdesc_unmap(memdesc);
 }
 
-void kgsl_cffdump_setmem(struct kgsl_device *device,
-			uint addr, uint value, uint sizebytes)
+void kgsl_cffdump_memset(struct kgsl_device *device,
+		unsigned int gpuaddr, unsigned char ch, size_t sizebytes)
 {
+	int i;
+
 	if (!device || !device->cff_dump_enable)
 		return;
 
-	while (sizebytes > 3) {
-		/* Use 32bit memory writes as long as there's at least
-		 * 4 bytes left */
-		cffdump_printline(-1, CFF_OP_WRITE_MEM, addr, value,
-				0, 0, 0);
-		addr += 4;
-		sizebytes -= 4;
-	}
-	if (sizebytes > 0)
-		cffdump_printline(-1, CFF_OP_WRITE_MEM, addr, value,
-				0, 0, 0);
+	/* Expand the input char into a dword and output it */
+	for (i = 0; i < ALIGN(sizebytes, 4) / 4; gpuaddr += 4, i++)
+		kgsl_cffdump_write(device, gpuaddr,
+			(ch << 24) | (ch << 16) | (ch << 8) | ch);
 }
 
 void kgsl_cffdump_regwrite(struct kgsl_device *device, uint addr,
@@ -476,7 +479,7 @@ void kgsl_cffdump_regwrite(struct kgsl_device *device, uint addr,
 	if (!device->cff_dump_enable)
 		return;
 
-	cffdump_printline(device->id, CFF_OP_WRITE_REG, addr, value,
+	kgsl_cffdump_printline(device->id, CFF_OP_WRITE_REG, addr, value,
 			0, 0, 0);
 }
 
@@ -486,7 +489,7 @@ void kgsl_cffdump_regpoll(struct kgsl_device *device, uint addr,
 	if (!device->cff_dump_enable)
 		return;
 
-	cffdump_printline(device->id, CFF_OP_POLL_REG, addr, value,
+	kgsl_cffdump_printline(device->id, CFF_OP_POLL_REG, addr, value,
 			mask, 0, 0);
 }
 
@@ -495,7 +498,7 @@ void kgsl_cffdump_slavewrite(struct kgsl_device *device, uint addr, uint value)
 	if (!device->cff_dump_enable)
 		return;
 
-	cffdump_printline(-1, CFF_OP_WRITE_REG, addr, value, 0, 0, 0);
+	kgsl_cffdump_printline(-1, CFF_OP_WRITE_REG, addr, value, 0, 0, 0);
 }
 
 int kgsl_cffdump_waitirq(struct kgsl_device *device)
@@ -503,7 +506,7 @@ int kgsl_cffdump_waitirq(struct kgsl_device *device)
 	if (!device->cff_dump_enable)
 		return 0;
 
-	cffdump_printline(-1, CFF_OP_WAIT_IRQ, 0, 0, 0, 0, 0);
+	kgsl_cffdump_printline(-1, CFF_OP_WAIT_IRQ, 0, 0, 0, 0, 0);
 
 	return 1;
 }
@@ -628,14 +631,17 @@ int kgsl_cff_dump_enable_set(void *data, u64 val)
 		if (!device->cff_dump_enable) {
 			device->cff_dump_enable = 1;
 			/*
-			 * put device to slumber so that we ensure that the
+			 * force device to slumber so that we ensure that the
 			 * start opcode in CFF is present
 			 */
-			kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
-			ret = kgsl_pwrctrl_slumber(device);
+			mutex_lock(&device->mutex);
+			ret = kgsl_pwrctrl_change_state(device,
+				KGSL_STATE_SUSPEND);
+			ret |= kgsl_pwrctrl_change_state(device,
+				KGSL_STATE_SLUMBER);
 			if (ret)
 				device->cff_dump_enable = 0;
-			kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+			mutex_unlock(&device->mutex);
 		}
 	} else if (device->cff_dump_enable && !val) {
 		device->cff_dump_enable = 0;
@@ -667,7 +673,7 @@ EXPORT_SYMBOL(kgsl_cff_dump_enable_get);
  * Returns 0 on success else error code
  */
 static int kgsl_cffdump_capture_adreno_ib_cff(struct kgsl_device *device,
-				phys_addr_t ptbase,
+				struct kgsl_process_private *process,
 				unsigned int gpuaddr, unsigned int dwords)
 {
 	int ret;
@@ -678,7 +684,7 @@ static int kgsl_cffdump_capture_adreno_ib_cff(struct kgsl_device *device,
 	if (!device->cff_dump_enable)
 		return 0;
 
-	ret = adreno_ib_create_object_list(device, ptbase, gpuaddr, dwords,
+	ret = adreno_ib_create_object_list(device, process, gpuaddr, dwords,
 		&ib_obj_list);
 
 	if (ret) {
@@ -708,35 +714,35 @@ static int kgsl_cffdump_capture_adreno_ib_cff(struct kgsl_device *device,
  */
 int kgsl_cffdump_capture_ib_desc(struct kgsl_device *device,
 				struct kgsl_context *context,
-				struct kgsl_ibdesc *ibdesc,
-				unsigned int numibs)
+				struct kgsl_cmdbatch *cmdbatch)
 {
 	int ret = 0;
-	unsigned int ptbase;
-	int i;
+	struct kgsl_memobj_node *ib;
 
 	if (!device->cff_dump_enable)
 		return 0;
 	/* Dump CFF for IB and all objects in it */
-	ptbase = kgsl_mmu_get_pt_base_addr(&device->mmu,
-					context->proc_priv->pagetable);
-	if (!ptbase) {
-		ret = -EINVAL;
-		goto done;
-	}
-	for (i = 0; i < numibs; i++) {
+	list_for_each_entry(ib, &cmdbatch->cmdlist, node) {
 		ret = kgsl_cffdump_capture_adreno_ib_cff(
-			device, ptbase, ibdesc[i].gpuaddr,
-			ibdesc[i].sizedwords);
+			device, context->proc_priv, ib->gpuaddr,
+			ib->sizedwords);
 		if (ret) {
 			KGSL_DRV_ERR(device,
 			"Fail cff capture, IB %lx, size %zx\n",
-			ibdesc[i].gpuaddr,
-			ibdesc[i].sizedwords << 2);
+			ib->gpuaddr,
+			ib->sizedwords << 2);
 			break;
 		}
 	}
-done:
 	return ret;
 }
 EXPORT_SYMBOL(kgsl_cffdump_capture_ib_desc);
+
+DEFINE_SIMPLE_ATTRIBUTE(kgsl_cff_dump_enable_fops, kgsl_cff_dump_enable_get,
+			kgsl_cff_dump_enable_set, "%llu\n");
+
+void kgsl_cffdump_debugfs_create(struct kgsl_device *device)
+{
+	debugfs_create_file("cff_dump", 0644, device->d_debugfs, device,
+			    &kgsl_cff_dump_enable_fops);
+}

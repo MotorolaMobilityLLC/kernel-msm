@@ -83,6 +83,7 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_RBBM_INTERFACE_HANG_INT_CTL	0x2f
 #define A4XX_RBBM_INT_CLEAR_CMD			0x36
 #define A4XX_RBBM_INT_0_MASK			0x37
+#define A4XX_RBBM_ALWAYSON_COUNTER_CNTL		0x3d
 #define A4XX_RBBM_RBBM_CTL			0x3e
 #define A4XX_RBBM_CLOCK_CTL2			0x42
 #define A4XX_RBBM_BLOCK_SW_RESET_CMD		0x45
@@ -200,14 +201,23 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_RBBM_CFG_DEBBUS_CLRC		0x94
 #define A4XX_RBBM_CFG_DEBBUS_LOADIVT		0x95
 
+#define A4XX_RBBM_POWER_CNTL_IP			0x98
+#define A4XX_RBBM_SP_REGFILE_SLEEP_CNTL_0	0x99
+#define A4XX_RBBM_SP_REGFILE_SLEEP_CNTL_1	0x9a
 #define A4XX_RBBM_PERFCTR_CP_0_LO		0x9c
 #define A4XX_RBBM_PERFCTR_CP_0_HI		0x9d
 #define A4XX_RBBM_PERFCTR_CP_1_LO		0x9e
 #define A4XX_RBBM_PERFCTR_CP_1_HI		0x9f
+#define A4XX_RBBM_PERFCTR_CP_2_LO		0xa0
+#define A4XX_RBBM_PERFCTR_CP_2_HI		0xa1
 #define A4XX_RBBM_PERFCTR_CP_3_LO		0xa2
 #define A4XX_RBBM_PERFCTR_CP_3_HI		0xa3
+#define A4XX_RBBM_PERFCTR_CP_4_LO		0xa4
+#define A4XX_RBBM_PERFCTR_CP_4_HI		0xa5
 #define A4XX_RBBM_PERFCTR_CP_5_LO		0xa6
 #define A4XX_RBBM_PERFCTR_CP_5_HI		0xa7
+#define A4XX_RBBM_PERFCTR_CP_6_LO		0xa8
+#define A4XX_RBBM_PERFCTR_CP_6_HI		0xa9
 #define A4XX_RBBM_PERFCTR_CP_7_LO		0xaa
 #define A4XX_RBBM_PERFCTR_CP_7_HI		0xab
 #define A4XX_RBBM_PERFCTR_RBBM_0_LO		0xac
@@ -378,6 +388,8 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_RBBM_PERFCTR_PWR_0_HI		0x167
 #define A4XX_RBBM_PERFCTR_PWR_1_LO		0x168
 #define A4XX_RBBM_PERFCTR_PWR_1_HI		0x169
+#define A4XX_RBBM_ALWAYSON_COUNTER_LO		0x16e
+#define A4XX_RBBM_ALWAYSON_COUNTER_HI		0x16f
 #define A4XX_RBBM_PERFCTR_CTL			0x170
 #define A4XX_RBBM_PERFCTR_LOAD_CMD0		0x171
 #define A4XX_RBBM_PERFCTR_LOAD_CMD1		0x172
@@ -402,6 +414,17 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_RBBM_CFG_DEBBUS_TRACE_BUF4		0x1ad
 #define A4XX_RBBM_CFG_DEBBUS_MISR0		0x1ae
 #define A4XX_RBBM_CFG_DEBBUS_MISR1		0x1af
+#define A4XX_RBBM_POWER_STATUS			0x1b0
+#define A4XX_RBBM_WAIT_IDLE_CLOCKS_CTL2		0x1b8
+#define A4XX_RBBM_PPD_CTRL			0x1b9
+#define A4XX_RBBM_PPD_EPOCH_INTRA_TH_1		0x1ba
+#define A4XX_RBBM_PPD_EPOCH_INTRA_TH_2		0x1bb
+#define A4XX_RBBM_PPD_EPOCH_INTER_TH_HI_CLR_TH  0x1bc
+#define A4XX_RBBM_PPD_EPOCH_INTER_TH_LO         0x1bd
+#define A4XX_RBBM_SECVID_TRUST_CONTROL		0xf400
+#define A4XX_RBBM_SECVID_TSB_TRUSTED_BASE	0xf800
+#define A4XX_RBBM_SECVID_TSB_TRUSTED_SIZE	0xf801
+#define A4XX_RBBM_SECVID_TSB_CONTROL		0xf802
 
 /* CP registers */
 #define A4XX_CP_RB_BASE			0x200
@@ -427,6 +450,7 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_CP_ME_RAM_DATA		0x227
 
 #define A4XX_CP_DEBUG			0x22e
+#define A4XX_CP_POWER_COLLAPSE_CNTL	0x234
 /*
  * CP debug settings for A4xx cores
  * MIU_128BIT_WRITE_ENABLE [25] - Allow 128 bit writes to the VBIF
@@ -465,6 +489,9 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_CP_PERFCTR_CP_SEL_2	0x502
 #define A4XX_CP_PERFCTR_CP_SEL_3	0x503
 #define A4XX_CP_PERFCTR_CP_SEL_4	0x504
+#define A4XX_CP_PERFCTR_CP_SEL_5	0x505
+#define A4XX_CP_PERFCTR_CP_SEL_6	0x506
+#define A4XX_CP_PERFCTR_CP_SEL_7	0x507
 
 #define A4XX_CP_SCRATCH_REG0		0x578
 
@@ -485,10 +512,6 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_SP_PERFCTR_SP_SEL_9	0xecd
 #define A4XX_SP_PERFCTR_SP_SEL_10	0xece
 #define A4XX_SP_PERFCTR_SP_SEL_11	0xecf
-#define A4XX_SP_VS_PVT_MEM_ADDR		0x22e3
-#define A4XX_SP_FS_PVT_MEM_ADDR		0x22ed
-#define A4XX_SP_VS_OBJ_START		0x22e1
-#define A4XX_SP_FS_OBJ_START		0x22eb
 
 enum a4xx_sp_perfctr_sp_sel {
 	SP_FS_STAGE_BARY_INSTRUCTIONS = 0x10,
@@ -507,6 +530,7 @@ enum a4xx_sp_perfctr_sp_sel {
 #define UCHE_TRAP_BASE_HI               0xe84
 #define A4XX_UCHE_INVALIDATE0		0xe8a
 #define A4XX_UCHE_INVALIDATE1		0xe8b
+#define A4XX_UCHE_CACHE_WAYS_VFD	0xe8c
 
 /* VSC registers */
 #define A4XX_VSC_SIZE_ADDRESS		0xc01
@@ -582,6 +606,7 @@ enum a4xx_vfd_perfctr_vfd_sel {
 };
 
 /* VBIF registers */
+#define A4XX_VBIF_VERSION			0x3000
 #define A4XX_VBIF_CLKON				0x3001
 #define A4XX_VBIF_CLKON_FORCE_ON_TESTBUS_MASK	0x1
 #define A4XX_VBIF_CLKON_FORCE_ON_TESTBUS_SHIFT	0x1
@@ -697,6 +722,7 @@ enum a4xx_pc_perfctr_pc_sel {
 
 /* HLSQ registers */
 #define A4XX_HLSQ_TIMEOUT_THRESHOLD     0xe00
+#define A4XX_HLSQ_STATE_RESTORE_TRIGGER	0xe01
 #define A4XX_HLSQ_PERFCTR_HLSQ_SEL_0	0xe06
 #define A4XX_HLSQ_PERFCTR_HLSQ_SEL_1	0xe07
 #define A4XX_HLSQ_PERFCTR_HLSQ_SEL_2	0xe08

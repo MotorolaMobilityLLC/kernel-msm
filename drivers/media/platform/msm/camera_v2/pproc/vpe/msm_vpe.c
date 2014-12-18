@@ -57,7 +57,7 @@ static void vpe_mem_dump(const char * const name, const void * const addr,
 	p_str = line_str;
 	for (i = 0; i < size/4; i++) {
 		if (i % 4 == 0) {
-			snprintf(p_str, 12, "%08x: ", (u32) p);
+			snprintf(p_str, 12, "%p: ", p);
 			p_str += 10;
 		}
 		data = *p++;
@@ -411,7 +411,7 @@ static int vpe_init_mem(struct vpe_device *vpe_dev)
 {
 	kref_init(&vpe_dev->refcount);
 	kref_get(&vpe_dev->refcount);
-	vpe_dev->client = msm_ion_client_create(-1, "vpe");
+	vpe_dev->client = msm_ion_client_create("vpe");
 
 	if (!vpe_dev->client) {
 		pr_err("couldn't create ion client\n");
@@ -689,6 +689,11 @@ static int msm_vpe_notify_frame_done(struct vpe_device *vpe_dev)
 
 	if (queue->len > 0) {
 		frame_qcmd = msm_dequeue(queue, list_frame);
+		if (!frame_qcmd) {
+			pr_err("%s: %d frame_qcmd is NULL\n",
+				 __func__ , __LINE__);
+			return -EINVAL;
+		}
 		processed_frame = frame_qcmd->command;
 		do_gettimeofday(&(processed_frame->out_time));
 		kfree(frame_qcmd);
@@ -1219,7 +1224,7 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_vpe_transaction_setup_cfg *cfg;
 		VPE_DBG("VIDIOC_MSM_VPE_TRANSACTION_SETUP\n");
 		if (sizeof(*cfg) != ioctl_ptr->len) {
-			pr_err("%s: size mismatch cmd=%d, len=%d, expected=%d",
+			pr_err("%s: size mismatch cmd=%d, len=%zu, expected=%zu",
 				__func__, cmd, ioctl_ptr->len,
 				sizeof(*cfg));
 			rc = -EINVAL;
@@ -1366,6 +1371,11 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_vpe_frame_info_t *process_frame;
 		VPE_DBG("VIDIOC_MSM_VPE_GET_EVENTPAYLOAD\n");
 		event_qcmd = msm_dequeue(queue, list_eventdata);
+		if (!event_qcmd) {
+			pr_err("%s: %d event_qcmd is NULL\n",
+				__func__ , __LINE__);
+			return -EINVAL;
+		}
 		process_frame = event_qcmd->command;
 		VPE_DBG("fid %d\n", process_frame->frame_id);
 		if (copy_to_user((void __user *)ioctl_ptr->ioctl_ptr,

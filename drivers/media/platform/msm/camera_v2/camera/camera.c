@@ -346,20 +346,17 @@ static int camera_v4l2_s_fmt_vid_cap_mplane(struct file *filep, void *fh,
 
 		rc = msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
 		if (rc < 0)
-			goto set_fmt_fail;
+			return rc;
 
 		rc = camera_check_event_status(&event);
 		if (rc < 0)
-			goto set_fmt_fail;
+			return rc;
+
 		sp->is_vb2_valid = 1;
 	}
 
 	return rc;
 
-set_fmt_fail:
-	kzfree(sp->vb2_q.drv_priv);
-	sp->vb2_q.drv_priv = NULL;
-	return rc;
 }
 
 static int camera_v4l2_try_fmt_vid_cap_mplane(struct file *filep, void *fh,
@@ -477,7 +474,7 @@ static int camera_v4l2_fh_open(struct file *filep)
 	/* stream_id = open id */
 	stream_id = atomic_read(&pvdev->opened);
 	sp->stream_id = find_first_zero_bit(
-		&stream_id, MSM_CAMERA_STREAM_CNT_BITS);
+		(const unsigned long *)&stream_id, MSM_CAMERA_STREAM_CNT_BITS);
 	pr_debug("%s: Found stream_id=%d\n", __func__, sp->stream_id);
 
 	v4l2_fh_init(&sp->fh, pvdev->vdev);
@@ -571,7 +568,7 @@ static int camera_v4l2_open(struct file *filep)
 		}
 
 		rc = msm_create_command_ack_q(pvdev->vdev->num,
-			find_first_zero_bit(&opn_idx,
+			find_first_zero_bit((const unsigned long *)&opn_idx,
 				MSM_CAMERA_STREAM_CNT_BITS));
 		if (rc < 0) {
 			pr_err("%s : creation of command_ack queue failed\n",
@@ -597,7 +594,7 @@ static int camera_v4l2_open(struct file *filep)
 		}
 	} else {
 		rc = msm_create_command_ack_q(pvdev->vdev->num,
-			find_first_zero_bit(&opn_idx,
+			find_first_zero_bit((const unsigned long *)&opn_idx,
 				MSM_CAMERA_STREAM_CNT_BITS));
 		if (rc < 0) {
 			pr_err("%s : creation of command_ack queue failed Line %d rc %d\n",
@@ -605,9 +602,8 @@ static int camera_v4l2_open(struct file *filep)
 			goto session_fail;
 		}
 	}
-	pr_debug("%s: Open stream_id=%d\n", __func__,
-		   find_first_zero_bit(&opn_idx, MSM_CAMERA_STREAM_CNT_BITS));
-	idx |= (1 << find_first_zero_bit(&opn_idx, MSM_CAMERA_STREAM_CNT_BITS));
+	idx |= (1 << find_first_zero_bit((const unsigned long *)&opn_idx,
+				MSM_CAMERA_STREAM_CNT_BITS));
 	atomic_cmpxchg(&pvdev->opened, opn_idx, idx);
 	return rc;
 

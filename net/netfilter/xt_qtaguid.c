@@ -594,8 +594,8 @@ static void put_tag_ref_tree(tag_t full_tag, struct uid_tag_data *utd_entry)
 	}
 }
 
-static int read_proc_u64(struct file *file, char __user *buf,
-			 size_t size, loff_t *ppos)
+static ssize_t read_proc_u64(struct file *file, char __user *buf,
+			     size_t size, loff_t *ppos)
 {
 	uint64_t *valuep = PDE_DATA(file_inode(file));
 	char tmp[24];
@@ -605,8 +605,8 @@ static int read_proc_u64(struct file *file, char __user *buf,
 	return simple_read_from_buffer(buf, size, ppos, tmp, tmp_size);
 }
 
-static int read_proc_bool(struct file *file, char __user *buf,
-			  size_t size, loff_t *ppos)
+static ssize_t read_proc_bool(struct file *file, char __user *buf,
+			      size_t size, loff_t *ppos)
 {
 	bool *valuep = PDE_DATA(file_inode(file));
 	char tmp[24];
@@ -1491,7 +1491,7 @@ static int proc_iface_stat_fmt_open(struct inode *inode, struct file *file)
 	if (!s)
 		return -ENOMEM;
 
-	s->fmt = (int)PDE_DATA(inode);
+	s->fmt = (int)(long)PDE_DATA(inode);
 	return 0;
 }
 
@@ -1499,7 +1499,7 @@ static const struct file_operations proc_iface_stat_fmt_fops = {
 	.open		= proc_iface_stat_fmt_open,
 	.read		= seq_read,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= seq_release_private,
 };
 
 static int __init iface_stat_init(struct proc_dir_entry *parent_procdir)
@@ -1953,18 +1953,18 @@ static int qtaguid_ctrl_proc_show(struct seq_file *m, void *v)
 			   "match_found_no_sk_in_ct=%llu "
 			   "match_no_sk=%llu "
 			   "match_no_sk_file=%llu\n",
-			   atomic64_read(&qtu_events.sockets_tagged),
-			   atomic64_read(&qtu_events.sockets_untagged),
-			   atomic64_read(&qtu_events.counter_set_changes),
-			   atomic64_read(&qtu_events.delete_cmds),
-			   atomic64_read(&qtu_events.iface_events),
-			   atomic64_read(&qtu_events.match_calls),
-			   atomic64_read(&qtu_events.match_calls_prepost),
-			   atomic64_read(&qtu_events.match_found_sk),
-			   atomic64_read(&qtu_events.match_found_sk_in_ct),
-			   atomic64_read(&qtu_events.match_found_no_sk_in_ct),
-			   atomic64_read(&qtu_events.match_no_sk),
-			   atomic64_read(&qtu_events.match_no_sk_file));
+			   (u64)atomic64_read(&qtu_events.sockets_tagged),
+			   (u64)atomic64_read(&qtu_events.sockets_untagged),
+			   (u64)atomic64_read(&qtu_events.counter_set_changes),
+			   (u64)atomic64_read(&qtu_events.delete_cmds),
+			   (u64)atomic64_read(&qtu_events.iface_events),
+			   (u64)atomic64_read(&qtu_events.match_calls),
+			   (u64)atomic64_read(&qtu_events.match_calls_prepost),
+			   (u64)atomic64_read(&qtu_events.match_found_sk),
+			   (u64)atomic64_read(&qtu_events.match_found_sk_in_ct),
+			   (u64)atomic64_read(&qtu_events.match_found_no_sk_in_ct),
+			   (u64)atomic64_read(&qtu_events.match_no_sk),
+			   (u64)atomic64_read(&qtu_events.match_no_sk_file));
 
 		/* Count the following as part of the last item_index */
 		prdebug_full_state(0, "proc ctrl");
@@ -2482,8 +2482,10 @@ err:
 }
 
 #define MAX_QTAGUID_CTRL_INPUT_LEN 255
-static int qtaguid_ctrl_proc_write(struct file *file, const char __user *buffer,
-				   size_t count, loff_t *offp)
+static ssize_t qtaguid_ctrl_proc_write(struct file *file,
+				       const char __user *buffer,
+				       size_t count,
+				       loff_t *offp)
 {
 	char input_buf[MAX_QTAGUID_CTRL_INPUT_LEN];
 
@@ -2907,7 +2909,7 @@ static const struct file_operations proc_qtaguid_ctrl_fops = {
 	.read		= seq_read,
 	.write		= qtaguid_ctrl_proc_write,
 	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.release	= seq_release_private,
 };
 
 static const struct seq_operations proc_qtaguid_stats_seqops = {

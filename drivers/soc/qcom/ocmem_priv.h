@@ -107,10 +107,9 @@ enum op_code {
 
 /* Operational modes of each region */
 enum region_mode {
-	MODE_NOT_SET = 0x0,
-	WIDE_MODE,
+	WIDE_MODE = 0x0,
 	THIN_MODE,
-	MODE_DEFAULT = MODE_NOT_SET,
+	MODE_DEFAULT = WIDE_MODE,
 };
 
 struct ocmem_plat_data {
@@ -205,7 +204,7 @@ int ocmem_notifier_init(void);
 int check_notifier(int);
 const char *get_name(int);
 int get_tz_id(int);
-int ocmem_enable_sec_program(int);
+int ocmem_restore_sec_program(int);
 int ocmem_enable_dump(enum ocmem_client, unsigned long, unsigned long);
 int ocmem_disable_dump(enum ocmem_client, unsigned long, unsigned long);
 bool is_probe_done(void);

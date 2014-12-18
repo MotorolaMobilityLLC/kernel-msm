@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2007-2014, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -56,7 +56,7 @@ static inline void clk_debug_print_hw(struct clk *clk, struct seq_file *f) {}
 
 #define CLK_WARN(clk, cond, fmt, ...) do {				\
 	clk_debug_print_hw(clk, NULL);					\
-	WARN(cond, "%s: " fmt, (clk)->dbg_name, ##__VA_ARGS__);		\
+	WARN(cond, "%s: " fmt, clk_name(clk), ##__VA_ARGS__);		\
 } while (0)
 
 /**
@@ -72,6 +72,7 @@ static inline void clk_debug_print_hw(struct clk *clk, struct seq_file *f) {}
 		regulator. Optional parameter.
  * @level_votes: array of votes for each level.
  * @num_levels: specifies the size of level_votes array.
+ * @skip_handoff: do not vote for the max possible voltage during init
  * @cur_level: the currently set voltage level
  * @lock: lock to protect this struct
  */
@@ -84,6 +85,7 @@ struct clk_vdd_class {
 	int *vdd_ua;
 	int *level_votes;
 	int num_levels;
+	bool skip_handoff;
 	unsigned long cur_level;
 	struct mutex lock;
 };
@@ -172,14 +174,20 @@ struct clk {
 	int num_fmax;
 	unsigned long rate;
 	struct clk *parent;
+	struct clk_src *parents;
+	unsigned int num_parents;
 
 	struct list_head children;
 	struct list_head siblings;
+	struct list_head list;
 
 	unsigned count;
 	spinlock_t lock;
 	unsigned prepare_count;
 	struct mutex prepare_lock;
+
+	unsigned long init_rate;
+	bool always_on;
 
 	struct dentry *clk_dir;
 };
@@ -188,7 +196,8 @@ struct clk {
 	.lock = __SPIN_LOCK_UNLOCKED((name).lock), \
 	.prepare_lock = __MUTEX_INITIALIZER((name).prepare_lock), \
 	.children = LIST_HEAD_INIT((name).children), \
-	.siblings = LIST_HEAD_INIT((name).siblings)
+	.siblings = LIST_HEAD_INIT((name).siblings), \
+	.list = LIST_HEAD_INIT((name).list)
 
 int vote_vdd_level(struct clk_vdd_class *vdd_class, int level);
 int unvote_vdd_level(struct clk_vdd_class *vdd_class, int level);
@@ -239,4 +248,10 @@ extern int of_clk_add_provider(struct device_node *np,
 			void *data);
 extern void of_clk_del_provider(struct device_node *np);
 
+static inline const char *clk_name(struct clk *c)
+{
+	if (IS_ERR_OR_NULL(c))
+		return "(null)";
+	return c->dbg_name;
+};
 #endif

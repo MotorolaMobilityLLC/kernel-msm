@@ -52,6 +52,37 @@ static int dsi_on(struct mdss_panel_data *pdata)
 	return rc;
 }
 
+static int dsi_update_pconfig(struct mdss_panel_data *pdata,
+				int mode)
+{
+	int ret = 0;
+	struct mdss_panel_info *pinfo = &pdata->panel_info;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	if (!pdata)
+		return -ENODEV;
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (mode == DSI_CMD_MODE) {
+		pinfo->mipi.mode = DSI_CMD_MODE;
+		pinfo->type = MIPI_CMD_PANEL;
+		pinfo->mipi.vsync_enable = 1;
+		pinfo->mipi.hw_vsync_mode = 1;
+	} else {
+		pinfo->mipi.mode = DSI_VIDEO_MODE;
+		pinfo->type = MIPI_VIDEO_PANEL;
+		pinfo->mipi.vsync_enable = 0;
+		pinfo->mipi.hw_vsync_mode = 0;
+	}
+
+	ctrl_pdata->panel_mode = pinfo->mipi.mode;
+	mdss_panel_get_dst_fmt(pinfo->bpp, pinfo->mipi.mode,
+			pinfo->mipi.pixel_packing, &(pinfo->mipi.dst_format));
+	pinfo->cont_splash_enabled = 0;
+
+	return ret;
+}
+
 static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 {
 	int rc = 0;
@@ -64,19 +95,35 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 				panel_data);
 
 	if (enable && pdata->panel_info.panel_power_on == 0) {
-		dsi_ctrl_gpio_request(ctrl_pdata);
-		mdss_dsi_panel_reset(pdata, 1);
+		if (!pdata->panel_info.dynamic_switch_pending) {
+			mdss_dsi_panel_reset(pdata, 1);
+			rc = ctrl_pdata->on(pdata);
+			if (rc)
+				pr_err("dsi_panel_handler panel on failed %d\n",
+									rc);
+		}
 		pdata->panel_info.panel_power_on = 1;
-		rc = ctrl_pdata->on(pdata);
-		if (rc)
-			pr_err("dsi_panel_handler panel on failed %d\n", rc);
+		if (pdata->panel_info.type == MIPI_CMD_PANEL)
+			mdss_dsi_set_tear_on(ctrl_pdata);
 	} else if (!enable && pdata->panel_info.panel_power_on == 1) {
+		msm_dsi_sw_reset();
 		if (dsi_intf.op_mode_config)
 			dsi_intf.op_mode_config(DSI_CMD_MODE, pdata);
-		rc = ctrl_pdata->off(pdata);
+		if (pdata->panel_info.dynamic_switch_pending) {
+			pr_info("%s: switching to %s mode\n", __func__,
+			(pdata->panel_info.mipi.mode ? "video" : "command"));
+			if (pdata->panel_info.type == MIPI_CMD_PANEL) {
+				ctrl_pdata->switch_mode(pdata, DSI_VIDEO_MODE);
+			} else if (pdata->panel_info.type == MIPI_VIDEO_PANEL) {
+				ctrl_pdata->switch_mode(pdata, DSI_CMD_MODE);
+				mdss_dsi_set_tear_off(ctrl_pdata);
+			}
+		}
 		pdata->panel_info.panel_power_on = 0;
-		mdss_dsi_panel_reset(pdata, 0);
-		dsi_ctrl_gpio_free(ctrl_pdata);
+		if (!pdata->panel_info.dynamic_switch_pending) {
+			rc = ctrl_pdata->off(pdata);
+			mdss_dsi_panel_reset(pdata, 0);
+		}
 	}
 	return rc;
 }
@@ -138,6 +185,9 @@ static int dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_PANEL_CLK_CTRL:
 		rc = dsi_clk_ctrl(pdata, (int)arg);
 		break;
+	case MDSS_EVENT_DSI_DYNAMIC_SWITCH:
+		rc = dsi_update_pconfig(pdata, (int)(unsigned long) arg);
+		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
@@ -156,15 +206,6 @@ static int dsi_parse_gpio(struct platform_device *pdev,
 	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		pr_err("%s:%d, Disp_en gpio not specified\n",
 						__func__, __LINE__);
-
-	ctrl_pdata->disp_te_gpio = -1;
-	if (ctrl_pdata->panel_data.panel_info.mipi.mode == DSI_CMD_MODE) {
-		ctrl_pdata->disp_te_gpio = of_get_named_gpio(np,
-						"qcom,platform-te-gpio", 0);
-		if (!gpio_is_valid(ctrl_pdata->disp_te_gpio))
-			pr_err("%s:%d, Disp_te gpio not specified\n",
-							__func__, __LINE__);
-	}
 
 	ctrl_pdata->rst_gpio = of_get_named_gpio(np,
 					"qcom,platform-reset-gpio", 0);
@@ -191,51 +232,29 @@ static int dsi_parse_gpio(struct platform_device *pdev,
 	return 0;
 }
 
-void dsi_ctrl_config_deinit(struct platform_device *pdev,
-				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+static void mdss_dsi_put_dt_vreg_data(struct device *dev,
+	struct dss_module_power *module_power)
 {
-	struct dss_module_power *module_power = &(ctrl_pdata->power_data);
 	if (!module_power) {
 		pr_err("%s: invalid input\n", __func__);
 		return;
 	}
 
 	if (module_power->vreg_config) {
-		devm_kfree(&(pdev->dev), module_power->vreg_config);
+		devm_kfree(dev, module_power->vreg_config);
 		module_power->vreg_config = NULL;
 	}
 	module_power->num_vreg = 0;
 }
 
-int dsi_ctrl_gpio_request(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int rc = 0;
-
-	if (gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-		rc = gpio_request(ctrl_pdata->disp_te_gpio, "disp_te");
-		if (rc)
-			ctrl_pdata->disp_te_gpio_requested = 0;
-		else
-			ctrl_pdata->disp_te_gpio_requested = 1;
-	}
-
-	return rc;
-}
-
-void dsi_ctrl_gpio_free(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	if (ctrl_pdata->disp_te_gpio_requested) {
-		gpio_free(ctrl_pdata->disp_te_gpio);
-		ctrl_pdata->disp_te_gpio_requested = 0;
-	}
-}
-
-static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
+static int mdss_dsi_get_dt_vreg_data(struct device *dev,
+	struct dss_module_power *mp, enum dsi_pm_type module)
 {
 	int i = 0, rc = 0;
 	u32 tmp = 0;
-	struct device_node *supply_node = NULL;
-	struct device_node *np = NULL;
+	struct device_node *of_node = NULL, *supply_node = NULL;
+	const char *pm_supply_name = NULL;
+	struct device_node *supply_root_node = NULL;
 
 	if (!dev || !mp) {
 		pr_err("%s: invalid input\n", __func__);
@@ -243,16 +262,22 @@ static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
 		return rc;
 	}
 
-	np = dev->of_node;
+	of_node = dev->of_node;
 
 	mp->num_vreg = 0;
-	for_each_child_of_node(np, supply_node) {
-		if (!strncmp(supply_node->name, "qcom,platform-supply-entry",
-					strlen("qcom,platform-supply-entry")))
-			++mp->num_vreg;
+	pm_supply_name = __mdss_dsi_pm_supply_node_name(module);
+	supply_root_node = of_get_child_by_name(of_node, pm_supply_name);
+	if (!supply_root_node) {
+		pr_err("no supply entry present\n");
+		goto novreg;
 	}
+
+	for_each_child_of_node(supply_root_node, supply_node) {
+		mp->num_vreg++;
+	}
+
 	if (mp->num_vreg == 0) {
-		pr_err("%s: no vreg\n", __func__);
+		pr_debug("%s: no vreg\n", __func__);
 		goto novreg;
 	} else {
 		pr_debug("%s: vreg found. count=%d\n", __func__, mp->num_vreg);
@@ -266,111 +291,116 @@ static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
 		goto error;
 	}
 
-	for_each_child_of_node(np, supply_node) {
-		if (!strncmp(supply_node->name, "qcom,platform-supply-entry",
-					strlen("qcom,platform-supply-entry"))) {
-			const char *st = NULL;
-			/* vreg-name */
-			rc = of_property_read_string(supply_node,
-				"qcom,supply-name", &st);
-			if (rc) {
-				pr_err("%s: error reading name. rc=%d\n",
-					__func__, rc);
-				goto error;
-			}
-			strlcpy(mp->vreg_config[i].vreg_name, st,
-				sizeof(mp->vreg_config[i].vreg_name));
-			/* vreg-min-voltage */
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-min-voltage", &tmp);
-			if (rc) {
-				pr_err("%s: error reading min volt. rc=%d\n",
-					__func__, rc);
-				goto error;
-			}
-			mp->vreg_config[i].min_voltage = tmp;
-
-			/* vreg-max-voltage */
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-max-voltage", &tmp);
-			if (rc) {
-				pr_err("%s: error reading max volt. rc=%d\n",
-					__func__, rc);
-				goto error;
-			}
-			mp->vreg_config[i].max_voltage = tmp;
-
-			/* enable-load */
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-enable-load", &tmp);
-			if (rc) {
-				pr_err("%s: error reading enable load. rc=%d\n",
-					__func__, rc);
-				goto error;
-			}
-			mp->vreg_config[i].enable_load = tmp;
-
-			/* disable-load */
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-disable-load", &tmp);
-			if (rc) {
-				pr_err("%s: error reading disable load. rc=%d\n",
-					__func__, rc);
-				goto error;
-			}
-			mp->vreg_config[i].disable_load = tmp;
-
-			/* pre-sleep */
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-pre-on-sleep", &tmp);
-			if (rc) {
-				pr_debug("%s: error reading supply pre sleep value. rc=%d\n",
-					__func__, rc);
-			}
-			mp->vreg_config[i].pre_on_sleep = (!rc ? tmp : 0);
-
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-pre-off-sleep", &tmp);
-			if (rc) {
-				pr_debug("%s: error reading supply pre sleep value. rc=%d\n",
-					__func__, rc);
-			}
-			mp->vreg_config[i].pre_off_sleep = (!rc ? tmp : 0);
-
-			/* post-sleep */
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-post-on-sleep", &tmp);
-			if (rc) {
-				pr_debug("%s: error reading supply post sleep value. rc=%d\n",
-					__func__, rc);
-			}
-			mp->vreg_config[i].post_on_sleep = (!rc ? tmp : 0);
-
-			rc = of_property_read_u32(supply_node,
-				"qcom,supply-post-off-sleep", &tmp);
-			if (rc) {
-				pr_debug("%s: error reading supply post sleep value. rc=%d\n",
-					__func__, rc);
-			}
-			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
-
-			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
-				__func__,
-				mp->vreg_config[i].vreg_name,
-				mp->vreg_config[i].min_voltage,
-				mp->vreg_config[i].max_voltage,
-				mp->vreg_config[i].enable_load,
-				mp->vreg_config[i].disable_load,
-				mp->vreg_config[i].pre_on_sleep,
-				mp->vreg_config[i].post_on_sleep,
-				mp->vreg_config[i].pre_off_sleep,
-				mp->vreg_config[i].post_off_sleep
-				);
-			++i;
+	for_each_child_of_node(supply_root_node, supply_node) {
+		const char *st = NULL;
+		/* vreg-name */
+		rc = of_property_read_string(supply_node,
+			"qcom,supply-name", &st);
+		if (rc) {
+			pr_err("%s: error reading name. rc=%d\n",
+				__func__, rc);
+			goto error;
 		}
+		snprintf(mp->vreg_config[i].vreg_name,
+			ARRAY_SIZE((mp->vreg_config[i].vreg_name)), "%s", st);
+		/* vreg-min-voltage */
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-min-voltage", &tmp);
+		if (rc) {
+			pr_err("%s: error reading min volt. rc=%d\n",
+				__func__, rc);
+			goto error;
+		}
+		mp->vreg_config[i].min_voltage = tmp;
+
+		/* vreg-max-voltage */
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-max-voltage", &tmp);
+		if (rc) {
+			pr_err("%s: error reading max volt. rc=%d\n",
+				__func__, rc);
+			goto error;
+		}
+		mp->vreg_config[i].max_voltage = tmp;
+
+		/* enable-load */
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-enable-load", &tmp);
+		if (rc) {
+			pr_err("%s: error reading enable load. rc=%d\n",
+				__func__, rc);
+			goto error;
+		}
+		mp->vreg_config[i].enable_load = tmp;
+
+		/* disable-load */
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-disable-load", &tmp);
+		if (rc) {
+			pr_err("%s: error reading disable load. rc=%d\n",
+				__func__, rc);
+			goto error;
+		}
+		mp->vreg_config[i].disable_load = tmp;
+
+		/* pre-sleep */
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-pre-on-sleep", &tmp);
+		if (rc) {
+			pr_debug("%s: error reading supply pre sleep value. rc=%d\n",
+				__func__, rc);
+			rc = 0;
+		} else {
+			mp->vreg_config[i].pre_on_sleep = tmp;
+		}
+
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-pre-off-sleep", &tmp);
+		if (rc) {
+			pr_debug("%s: error reading supply pre sleep value. rc=%d\n",
+				__func__, rc);
+			rc = 0;
+		} else {
+			mp->vreg_config[i].pre_off_sleep = tmp;
+		}
+
+		/* post-sleep */
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-post-on-sleep", &tmp);
+		if (rc) {
+			pr_debug("%s: error reading supply post sleep value. rc=%d\n",
+				__func__, rc);
+			rc = 0;
+		} else {
+			mp->vreg_config[i].post_on_sleep = tmp;
+		}
+
+		rc = of_property_read_u32(supply_node,
+			"qcom,supply-post-off-sleep", &tmp);
+		if (rc) {
+			pr_debug("%s: error reading supply post sleep value. rc=%d\n",
+				__func__, rc);
+			rc = 0;
+		} else {
+			mp->vreg_config[i].post_off_sleep = tmp;
+		}
+
+		pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
+			__func__,
+			mp->vreg_config[i].vreg_name,
+			mp->vreg_config[i].min_voltage,
+			mp->vreg_config[i].max_voltage,
+			mp->vreg_config[i].enable_load,
+			mp->vreg_config[i].disable_load,
+			mp->vreg_config[i].pre_on_sleep,
+			mp->vreg_config[i].post_on_sleep,
+			mp->vreg_config[i].pre_off_sleep,
+			mp->vreg_config[i].post_off_sleep
+			);
+		++i;
 	}
 
-	return 0;
+	return rc;
 
 error:
 	if (mp->vreg_config) {
@@ -431,16 +461,30 @@ static int dsi_parse_phy(struct platform_device *pdev,
 	return 0;
 }
 
+void dsi_ctrl_config_deinit(struct platform_device *pdev,
+				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int i;
+
+	for (i = DSI_MAX_PM - 1; i >= 0; i--) {
+		mdss_dsi_put_dt_vreg_data(&pdev->dev,
+			&ctrl_pdata->power_data[i]);
+	}
+}
+
 int dsi_ctrl_config_init(struct platform_device *pdev,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
-	int rc;
+	int rc = 0, i;
 
-	rc = dsi_parse_vreg(&pdev->dev, &ctrl_pdata->power_data);
-	if (rc) {
-		pr_err("%s:%d unable to get the regulator resources",
-			__func__, __LINE__);
-		return rc;
+	for (i = 0; i < DSI_MAX_PM; i++) {
+		rc = mdss_dsi_get_dt_vreg_data(&pdev->dev,
+			&ctrl_pdata->power_data[i], i);
+		if (rc) {
+			DEV_ERR("%s: '%s' get_dt_vreg_data failed.rc=%d\n",
+				__func__, __mdss_dsi_pm_name(i), rc);
+			return rc;
+		}
 	}
 
 	rc = dsi_parse_gpio(pdev, ctrl_pdata);
@@ -540,7 +584,7 @@ void dsi_register_interface(struct dsi_interface *intf)
 
 int dsi_buf_alloc(struct dsi_buf *dp, int size)
 {
-	dp->start = kmalloc(size, GFP_KERNEL);
+	dp->start = kzalloc(size, GFP_KERNEL);
 	if (dp->start == NULL) {
 		pr_err("%s:%u\n", __func__, __LINE__);
 		return -ENOMEM;

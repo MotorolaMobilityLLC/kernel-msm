@@ -29,6 +29,7 @@
 #include "msm_isp_axi_util.h"
 #include "msm_isp_stats_util.h"
 #include "msm_sd.h"
+#include "msm_isp46.h"
 #include "msm_isp44.h"
 #include "msm_isp40.h"
 #include "msm_isp32.h"
@@ -36,6 +37,10 @@
 static struct msm_sd_req_vb2_q vfe_vb2_ops;
 
 static const struct of_device_id msm_vfe_dt_match[] = {
+	{
+		.compatible = "qcom,vfe46",
+		.data = &vfe46_hw_info,
+	},
 	{
 		.compatible = "qcom,vfe44",
 		.data = &vfe44_hw_info,
@@ -57,8 +62,147 @@ static const struct platform_device_id msm_vfe_dev_id[] = {
 	{"msm_vfe32", (kernel_ulong_t) &vfe32_hw_info},
 	{}
 };
+#define MAX_OVERFLOW_COUNTERS  16
+#define OVERFLOW_LENGTH 512
+#define OVERFLOW_BUFFER_LENGTH 32
 
 static struct msm_isp_buf_mgr vfe_buf_mgr;
+struct msm_isp_statistics stats;
+static int msm_isp_enable_debugfs(struct msm_isp_statistics *stats);
+static char *stats_str[MAX_OVERFLOW_COUNTERS] = {
+	"imgmaster0_overflow_cnt",
+	"imgmaster1_overflow_cnt",
+	"imgmaster2_overflow_cnt",
+	"imgmaster3_overflow_cnt",
+	"imgmaster4_overflow_cnt",
+	"imgmaster5_overflow_cnt",
+	"imgmaster6_overflow_cnt",
+	"be_overflow_cnt",
+	"bg_overflow_cnt",
+	"bf_overflow_cnt",
+	"awb_overflow_cnt",
+	"rs_overflow_cnt",
+	"cs_overflow_cnt",
+	"ihist_overflow_cnt",
+	"skinbhist_overflow_cnt",
+	"bfscale_overflow_cnt",
+};
+static int vfe_debugfs_statistics_open(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static ssize_t vfe_debugfs_statistics_read(struct file *t_file, char *t_char,
+	size_t t_size_t, loff_t *t_loff_t)
+{
+	int i;
+	char name[OVERFLOW_LENGTH] = {0};
+	int *ptr;
+	char buffer[OVERFLOW_BUFFER_LENGTH] = {0};
+	struct msm_isp_statistics  *stats = (struct msm_isp_statistics *)
+		t_file->private_data;
+	ptr = (int *)(stats);
+	for (i = 0; i < MAX_OVERFLOW_COUNTERS; i++) {
+		strlcat(name, stats_str[i], sizeof(name));
+		strlcat(name, "     ", sizeof(name));
+		snprintf(buffer, sizeof(buffer), "%d", ptr[i]);
+		strlcat(name, buffer, sizeof(name));
+		strlcat(name, "\r\n", sizeof(name));
+	}
+	return simple_read_from_buffer(t_char, t_size_t,
+		t_loff_t, name, strlen(name));
+}
+
+static ssize_t vfe_debugfs_statistics_write(struct file *t_file,
+	const char *t_char, size_t t_size_t, loff_t *t_loff_t)
+{
+	struct msm_isp_statistics *stats = (struct msm_isp_statistics *)
+		t_file->private_data;
+	memset(stats, 0, sizeof(struct msm_isp_statistics));
+
+	return sizeof(struct msm_isp_statistics);
+}
+
+static const struct file_operations vfe_debugfs_error = {
+	.open = vfe_debugfs_statistics_open,
+	.read = vfe_debugfs_statistics_read,
+	.write = vfe_debugfs_statistics_write,
+};
+
+static int msm_isp_enable_debugfs(struct msm_isp_statistics *stats)
+{
+	struct dentry *debugfs_base;
+	debugfs_base = debugfs_create_dir("msm_isp", NULL);
+	if (!debugfs_base)
+		return -ENOMEM;
+	if (!debugfs_create_file("stats", S_IRUGO | S_IWUSR, debugfs_base,
+		stats, &vfe_debugfs_error))
+		return -ENOMEM;
+	return 0;
+}
+
+
+#ifdef CONFIG_COMPAT
+struct msm_isp_event_data32 {
+	struct compat_timeval timestamp;
+	struct compat_timeval mono_timestamp;
+	enum msm_vfe_input_src input_intf;
+	uint32_t frame_id;
+	union {
+		struct msm_isp_stats_event stats;
+		struct msm_isp_buf_event buf_done;
+	} u;
+};
+static long msm_isp_dqevent(struct file *file, struct v4l2_fh *vfh, void *arg)
+{
+	long rc;
+	if (is_compat_task()) {
+		struct msm_isp_event_data32 *event_data32;
+		struct msm_isp_event_data  *event_data;
+		struct v4l2_event isp_event;
+		struct v4l2_event *isp_event_user;
+
+		memset(&isp_event, 0, sizeof(isp_event));
+		rc = v4l2_event_dequeue(vfh, &isp_event,
+				file->f_flags & O_NONBLOCK);
+		if (rc)
+			return rc;
+		event_data = (struct msm_isp_event_data *)
+				isp_event.u.data;
+		isp_event_user = (struct v4l2_event *)arg;
+		memcpy(isp_event_user, &isp_event,
+				sizeof(*isp_event_user));
+		event_data32 = (struct msm_isp_event_data32 *)
+			isp_event_user->u.data;
+		memset(event_data32, 0,
+				sizeof(struct msm_isp_event_data32));
+		event_data32->timestamp.tv_sec =
+				event_data->timestamp.tv_sec;
+		event_data32->timestamp.tv_usec =
+				event_data->timestamp.tv_usec;
+		event_data32->mono_timestamp.tv_sec =
+				event_data->mono_timestamp.tv_sec;
+		event_data32->mono_timestamp.tv_usec =
+				event_data->mono_timestamp.tv_usec;
+		event_data32->input_intf = event_data->input_intf;
+		event_data32->frame_id = event_data->frame_id;
+		memcpy(&(event_data32->u), &(event_data->u),
+					sizeof(event_data32->u));
+	} else {
+		rc = v4l2_event_dequeue(vfh, arg,
+				file->f_flags & O_NONBLOCK);
+	}
+	return rc;
+}
+#else
+static long msm_isp_dqevent(struct file *file, struct v4l2_fh *vfh, void *arg)
+{
+	return v4l2_event_dequeue(vfh, arg,
+			file->f_flags & O_NONBLOCK);
+}
+#endif
+
 static long msm_isp_subdev_do_ioctl(
 	struct file *file, unsigned int cmd, void *arg)
 {
@@ -67,11 +211,12 @@ static long msm_isp_subdev_do_ioctl(
 	struct v4l2_fh *vfh = file->private_data;
 
 	switch (cmd) {
-	case VIDIOC_DQEVENT:
+	case VIDIOC_DQEVENT: {
 		if (!(sd->flags & V4L2_SUBDEV_FL_HAS_EVENTS))
 			return -ENOIOCTLCMD;
-
-		return v4l2_event_dequeue(vfh, arg, file->f_flags & O_NONBLOCK);
+		return msm_isp_dqevent(file, vfh, arg);
+	}
+	break;
 	case VIDIOC_SUBSCRIBE_EVENT:
 		return v4l2_subdev_call(sd, core, subscribe_event, vfh, arg);
 
@@ -91,7 +236,7 @@ static long msm_isp_subdev_fops_ioctl(struct file *file, unsigned int cmd,
 
 static struct v4l2_file_operations msm_isp_v4l2_subdev_fops = {
 #ifdef CONFIG_COMPAT
-	.compat_ioctl = msm_isp_subdev_fops_ioctl,
+	.compat_ioctl32 = msm_isp_subdev_fops_ioctl,
 #endif
 	.unlocked_ioctl = msm_isp_subdev_fops_ioctl
 };
@@ -117,13 +262,24 @@ static int vfe_probe(struct platform_device *pdev)
 	vfe_dev = kzalloc(sizeof(struct vfe_device), GFP_KERNEL);
 	if (!vfe_dev) {
 		pr_err("%s: no enough memory\n", __func__);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto end;
 	}
-
+	vfe_dev->stats = kzalloc(sizeof(struct msm_isp_statistics), GFP_KERNEL);
+	if (!vfe_dev->stats) {
+		pr_err("%s: no enough memory\n", __func__);
+		rc = -ENOMEM;
+		goto probe_fail1;
+	}
 	if (pdev->dev.of_node) {
 		of_property_read_u32((&pdev->dev)->of_node,
 			"cell-index", &pdev->id);
 		match_dev = of_match_device(msm_vfe_dt_match, &pdev->dev);
+		if (!match_dev) {
+			pr_err("%s: No vfe hardware info\n", __func__);
+			rc = -EINVAL;
+			goto probe_fail2;
+		}
 		vfe_dev->hw_info =
 			(struct msm_vfe_hardware_info *) match_dev->data;
 	} else {
@@ -133,7 +289,8 @@ static int vfe_probe(struct platform_device *pdev)
 
 	if (!vfe_dev->hw_info) {
 		pr_err("%s: No vfe hardware info\n", __func__);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto probe_fail2;
 	}
 	ISP_DBG("%s: device id = %d\n", __func__, pdev->id);
 
@@ -141,8 +298,8 @@ static int vfe_probe(struct platform_device *pdev)
 	rc = vfe_dev->hw_info->vfe_ops.core_ops.get_platform_data(vfe_dev);
 	if (rc < 0) {
 		pr_err("%s: failed to get platform resources\n", __func__);
-		kfree(vfe_dev);
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto probe_fail2;
 	}
 
 	INIT_LIST_HEAD(&vfe_dev->tasklet_q);
@@ -171,8 +328,7 @@ static int vfe_probe(struct platform_device *pdev)
 	rc = msm_sd_register(&vfe_dev->subdev);
 	if (rc != 0) {
 		pr_err("%s: msm_sd_register error = %d\n", __func__, rc);
-		kfree(vfe_dev);
-		goto end;
+		goto probe_fail2;
 	}
 
 	msm_isp_v4l2_subdev_fops.owner = v4l2_subdev_fops.owner;
@@ -189,12 +345,42 @@ static int vfe_probe(struct platform_device *pdev)
 		&vfe_vb2_ops, &vfe_layout);
 	if (rc < 0) {
 		pr_err("%s: Unable to create buffer manager\n", __func__);
-		kfree(vfe_dev);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto probe_fail2;
 	}
+	/* create secure context banks*/
+	if (vfe_dev->hw_info->num_iommu_secure_ctx) {
+		/*secure vfe layout*/
+		struct msm_iova_layout vfe_secure_layout = {
+			.partitions = &vfe_partition,
+			.npartitions = 1,
+			.client_name = "vfe_secure",
+			.domain_flags = 0,
+			.is_secure = MSM_IOMMU_DOMAIN_SECURE,
+		};
+		rc = msm_isp_create_secure_domain(vfe_dev->buf_mgr,
+			&vfe_secure_layout);
+		if (rc < 0) {
+			pr_err("%s: fail to create secure domain\n", __func__);
+			msm_sd_unregister(&vfe_dev->subdev);
+			rc = -EINVAL;
+			goto probe_fail2;
+		}
+	}
+	msm_isp_enable_debugfs(vfe_dev->stats);
 	vfe_dev->buf_mgr->ops->register_ctx(vfe_dev->buf_mgr,
-		&vfe_dev->iommu_ctx[0], vfe_dev->hw_info->num_iommu_ctx);
+		&vfe_dev->iommu_ctx[0], &vfe_dev->iommu_secure_ctx[0],
+		vfe_dev->hw_info->num_iommu_ctx,
+		vfe_dev->hw_info->num_iommu_secure_ctx);
+
+	vfe_dev->buf_mgr->init_done = 1;
 	vfe_dev->vfe_open_cnt = 0;
+	return rc;
+
+probe_fail2:
+	kfree(vfe_dev->stats);
+probe_fail1:
+	kfree(vfe_dev);
 end:
 	return rc;
 }

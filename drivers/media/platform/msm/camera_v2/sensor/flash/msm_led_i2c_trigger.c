@@ -13,7 +13,6 @@
 
 #define pr_fmt(fmt) "%s:%d " fmt, __func__, __LINE__
 
-#include <mach/gpiomux.h>
 #include <linux/module.h>
 #include "msm_led_flash.h"
 #include "msm_camera_io_util.h"
@@ -23,13 +22,9 @@
 #include <linux/debugfs.h>
 
 #define FLASH_NAME "camera-led-flash"
-/*#define CONFIG_MSMB_CAMERA_DEBUG*/
+
 #undef CDBG
-#ifdef CONFIG_MSMB_CAMERA_DEBUG
-#define CDBG(fmt, args...) pr_err(fmt, ##args)
-#else
-#define CDBG(fmt, args...) do { } while (0)
-#endif
+#define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
 int32_t msm_led_i2c_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
 	void *arg)
@@ -49,6 +44,7 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 	void *data)
 {
 	int rc = 0;
+	int i = 0;
 	struct msm_camera_led_cfg_t *cfg = (struct msm_camera_led_cfg_t *)data;
 	CDBG("called led_state %d\n", cfg->cfgtype);
 
@@ -61,6 +57,12 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 	case MSM_CAMERA_LED_INIT:
 		if (fctrl->func_tbl->flash_led_init)
 			rc = fctrl->func_tbl->flash_led_init(fctrl);
+		for (i = 0; i < MAX_LED_TRIGGERS; i++) {
+			cfg->flash_current[i] =
+				fctrl->flash_max_current[i];
+			cfg->flash_duration[i] =
+				fctrl->flash_max_duration[i];
+		}
 		break;
 
 	case MSM_CAMERA_LED_RELEASE:
@@ -102,18 +104,16 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 	power_info = &flashdata->power_info;
 	if (power_info->gpio_conf->cam_gpiomux_conf_tbl != NULL) {
 		pr_err("%s:%d mux install\n", __func__, __LINE__);
-		msm_gpiomux_install(
-			(struct msm_gpiomux_config *)
-			power_info->gpio_conf->cam_gpiomux_conf_tbl,
-			power_info->gpio_conf->cam_gpiomux_conf_tbl_size);
 	}
 
 	/* CCI Init */
 	if (fctrl->flash_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_util(
 			fctrl->flash_i2c_client, MSM_CCI_INIT);
-		if (rc < 0)
+		if (rc < 0) {
 			pr_err("cci_init failed\n");
+			return rc;
+		}
 	}
 
 	rc = msm_camera_request_gpio_table(
@@ -151,13 +151,13 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 	struct msm_camera_sensor_board_info *flashdata = NULL;
 	struct msm_camera_power_ctrl_t *power_info = NULL;
 
-	flashdata = fctrl->flashdata;
-	power_info = &flashdata->power_info;
-	CDBG("%s:%d called\n", __func__, __LINE__);
 	if (!fctrl) {
 		pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+	flashdata = fctrl->flashdata;
+	power_info = &flashdata->power_info;
+	CDBG("%s:%d called\n", __func__, __LINE__);
 	gpio_set_value_cansleep(
 		power_info->gpio_conf->gpio_num_info->
 		gpio_num[SENSOR_GPIO_FL_EN],
@@ -173,6 +173,14 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 		pr_err("%s: request gpio failed\n", __func__);
 		return rc;
 	}
+
+	/* CCI deInit */
+	if (fctrl->flash_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_util(
+			fctrl->flash_i2c_client, MSM_CCI_RELEASE);
+		if (rc < 0)
+			pr_err("cci_deinit failed\n");
+	}
 	return 0;
 }
 
@@ -182,13 +190,13 @@ int msm_flash_led_off(struct msm_led_flash_ctrl_t *fctrl)
 	struct msm_camera_sensor_board_info *flashdata = NULL;
 	struct msm_camera_power_ctrl_t *power_info = NULL;
 
-	flashdata = fctrl->flashdata;
-	power_info = &flashdata->power_info;
-	CDBG("%s:%d called\n", __func__, __LINE__);
 	if (!fctrl) {
 		pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+	flashdata = fctrl->flashdata;
+	power_info = &flashdata->power_info;
+	CDBG("%s:%d called\n", __func__, __LINE__);
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
 			fctrl->flash_i2c_client,
@@ -419,6 +427,50 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 			}
 		}
 
+		/* Read the max current for an LED if present */
+		if (of_get_property(of_node, "qcom,max-current", &count)) {
+			count /= sizeof(uint32_t);
+
+			if (count > MAX_LED_TRIGGERS) {
+				pr_err("failed\n");
+				rc = -EINVAL;
+				goto ERROR8;
+			}
+
+			rc = of_property_read_u32_array(of_node,
+				"qcom,max-current",
+				fctrl->flash_max_current, count);
+			if (rc < 0) {
+				pr_err("%s failed %d\n", __func__, __LINE__);
+				goto ERROR8;
+			}
+
+			for (; count < MAX_LED_TRIGGERS; count++)
+				fctrl->flash_max_current[count] = 0;
+		}
+
+		/* Read the max duration for an LED if present */
+		if (of_get_property(of_node, "qcom,max-duration", &count)) {
+			count /= sizeof(uint32_t);
+
+			if (count > MAX_LED_TRIGGERS) {
+				pr_err("failed\n");
+				rc = -EINVAL;
+				goto ERROR8;
+			}
+
+			rc = of_property_read_u32_array(of_node,
+				"qcom,max-duration",
+				fctrl->flash_max_duration, count);
+			if (rc < 0) {
+				pr_err("%s failed %d\n", __func__, __LINE__);
+				goto ERROR8;
+			}
+
+			for (; count < MAX_LED_TRIGGERS; count++)
+				fctrl->flash_max_duration[count] = 0;
+		}
+
 		flashdata->slave_info =
 			kzalloc(sizeof(struct msm_camera_slave_info),
 				GFP_KERNEL);
@@ -600,6 +652,7 @@ int msm_flash_probe(struct platform_device *pdev,
 		pr_err("%s flash_i2c_client NULL\n",
 			__func__);
 		rc = -EFAULT;
+		goto probe_failure;
 	}
 
 	fctrl->flash_i2c_client->cci_client = kzalloc(sizeof(

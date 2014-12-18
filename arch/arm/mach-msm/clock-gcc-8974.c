@@ -2262,11 +2262,16 @@ static struct clk_mux_ops gcc_debug_mux_ops;
 static struct mux_clk gcc_debug_mux = {
 	.priv = &debug_mux_priv,
 	.ops = &gcc_debug_mux_ops,
-	.rec_set_par = 1,
 	.offset = GCC_DEBUG_CLK_CTL_REG,
-	.en_mask = BIT(16),
 	.mask = 0x1FF,
+	.en_offset = GCC_DEBUG_CLK_CTL_REG,
+	.en_mask = BIT(16),
 	.base = &virt_bases[GCC_BASE],
+	MUX_REC_SRC_LIST(
+		&kpss_debug_clk.c,
+		&mmss_debug_clk.c,
+		&rpm_debug_clk.c,
+	),
 	MUX_SRC_LIST(
 		{&kpss_debug_clk.c,		 0x016A},
 		{&mmss_debug_clk.c,		 0x002c},
@@ -2354,7 +2359,7 @@ static struct mux_clk gcc_debug_mux = {
 	.c = {
 		.dbg_name = "gcc_debug_mux",
 		.ops = &clk_ops_debug_mux,
-		.flags = CLKFLAG_NO_RATE_CACHE,
+		.flags = CLKFLAG_NO_RATE_CACHE | CLKFLAG_MEASURE,
 		CLK_INIT(gcc_debug_mux.c),
 	},
 };
@@ -2433,10 +2438,15 @@ static struct clk_lookup msm_clocks_gcc_8974[] = {
 	CLK_LOOKUP_OF("bus_clk",      gcc_ce2_axi_clk,     "qcedev.0"),
 	CLK_LOOKUP_OF("core_clk_src", ce2_clk_src,         "qcedev.0"),
 
-	CLK_LOOKUP_OF("core_clk",     gcc_ce2_clk,     "qcrypto.0"),
-	CLK_LOOKUP_OF("iface_clk",    gcc_ce2_ahb_clk, "qcrypto.0"),
-	CLK_LOOKUP_OF("bus_clk",      gcc_ce2_axi_clk, "qcrypto.0"),
-	CLK_LOOKUP_OF("core_clk_src", ce2_clk_src,     "qcrypto.0"),
+	CLK_LOOKUP_OF("core_clk", gcc_ce2_clk, "fd440000.qcom,qcrypto"),
+	CLK_LOOKUP_OF("iface_clk", gcc_ce2_ahb_clk, "fd440000.qcom,qcrypto"),
+	CLK_LOOKUP_OF("bus_clk", gcc_ce2_axi_clk, "fd440000.qcom,qcrypto"),
+	CLK_LOOKUP_OF("core_clk_src", ce2_clk_src, "fd440000.qcom,qcrypto"),
+
+	CLK_LOOKUP_OF("core_clk", gcc_ce2_clk, "fd440000.qcom,qcrypto1"),
+	CLK_LOOKUP_OF("iface_clk", gcc_ce2_ahb_clk, "fd440000.qcom,qcrypto1"),
+	CLK_LOOKUP_OF("bus_clk", gcc_ce2_axi_clk, "fd440000.qcom,qcrypto1"),
+	CLK_LOOKUP_OF("core_clk_src", ce2_clk_src, "fd440000.qcom,qcrypto1"),
 
 	CLK_LOOKUP_OF("core_clk",     gcc_ce1_clk,         "qseecom"),
 	CLK_LOOKUP_OF("iface_clk",    gcc_ce1_ahb_clk,     "qseecom"),
@@ -2453,10 +2463,22 @@ static struct clk_lookup msm_clocks_gcc_8974[] = {
 	CLK_LOOKUP_OF("bus_clk",      gcc_ce1_axi_clk,     "mcd"),
 	CLK_LOOKUP_OF("core_clk_src", ce1_clk_src,         "mcd"),
 
-	CLK_LOOKUP_OF("core_clk",     gcc_ce1_clk,         "scm"),
-	CLK_LOOKUP_OF("iface_clk",    gcc_ce1_ahb_clk,     "scm"),
-	CLK_LOOKUP_OF("bus_clk",      gcc_ce1_axi_clk,     "scm"),
-	CLK_LOOKUP_OF("core_clk_src", ce1_clk_src,         "scm"),
+	/* Crypto clocks */
+	CLK_LOOKUP_OF("scm_core_clk", gcc_ce1_clk, "fe200000.qcom,lpass"),
+	CLK_LOOKUP_OF("scm_iface_clk", gcc_ce1_ahb_clk, "fe200000.qcom,lpass"),
+	CLK_LOOKUP_OF("scm_bus_clk", gcc_ce1_axi_clk, "fe200000.qcom,lpass"),
+	CLK_LOOKUP_OF("scm_core_clk_src", ce1_clk_src, "fe200000.qcom,lpass"),
+
+	CLK_LOOKUP_OF("scm_core_clk", gcc_ce1_clk, "fb21b000.qcom,pronto"),
+	CLK_LOOKUP_OF("scm_iface_clk", gcc_ce1_ahb_clk,
+						"fb21b000.qcom,pronto"),
+	CLK_LOOKUP_OF("scm_bus_clk",  gcc_ce1_axi_clk, "fb21b000.qcom,pronto"),
+	CLK_LOOKUP_OF("scm_core_clk_src", ce1_clk_src, "fb21b000.qcom,pronto"),
+
+	CLK_LOOKUP_OF("scm_core_clk", gcc_ce1_clk, "fdce0000.qcom,venus"),
+	CLK_LOOKUP_OF("scm_iface_clk", gcc_ce1_ahb_clk, "fdce0000.qcom,venus"),
+	CLK_LOOKUP_OF("scm_bus_clk", gcc_ce1_axi_clk, "fdce0000.qcom,venus"),
+	CLK_LOOKUP_OF("scm_core_clk_src", ce1_clk_src, "fdce0000.qcom,venus"),
 
 	CLK_LOOKUP_OF("core_clk", gcc_gp1_clk, ""),
 	CLK_LOOKUP_OF("core_clk", gcc_gp2_clk, ""),
@@ -2480,16 +2502,19 @@ static struct clk_lookup msm_clocks_gcc_8974[] = {
 
 	CLK_LOOKUP_OF("mem_clk", gcc_usb30_master_clk,           "usb_bam"),
 	CLK_LOOKUP_OF("mem_iface_clk", gcc_sys_noc_usb3_axi_clk, "usb_bam"),
+	CLK_LOOKUP_OF("core_clk", gcc_usb30_master_clk,    "f92f8800.hsphy"),
+	CLK_LOOKUP_OF("core_clk", gcc_usb30_master_clk,    "f92f8800.ssphy"),
 	CLK_LOOKUP_OF("core_clk", gcc_usb30_master_clk,    "msm_dwc3"),
 	CLK_LOOKUP_OF("utmi_clk_src", usb30_mock_utmi_clk_src, "msm_dwc3"),
 	CLK_LOOKUP_OF("utmi_clk", gcc_usb30_mock_utmi_clk, "msm_dwc3"),
 	CLK_LOOKUP_OF("iface_clk", gcc_sys_noc_usb3_axi_clk, "msm_dwc3"),
 	CLK_LOOKUP_OF("iface_clk", gcc_sys_noc_usb3_axi_clk, "msm_usb3"),
 	CLK_LOOKUP_OF("sleep_clk", gcc_usb30_sleep_clk, "msm_dwc3"),
-	CLK_LOOKUP_OF("sleep_a_clk", gcc_usb2a_phy_sleep_clk, "msm_dwc3"),
-	CLK_LOOKUP_OF("sleep_b_clk", gcc_usb2b_phy_sleep_clk, "msm_dwc3"),
+	CLK_LOOKUP_OF("phy_sleep_clk", gcc_usb2a_phy_sleep_clk,
+			"f92f8800.hsphy"),
 	CLK_LOOKUP_OF("iface_clk", gcc_usb_hs_ahb_clk,     "msm_otg"),
 	CLK_LOOKUP_OF("core_clk", gcc_usb_hs_system_clk,   "msm_otg"),
+	CLK_LOOKUP_OF("sleep_clk", gcc_usb2b_phy_sleep_clk, "msm_otg"),
 	CLK_LOOKUP_OF("iface_clk", gcc_usb_hsic_ahb_clk,  "msm_hsic_host"),
 	CLK_LOOKUP_OF("phy_clk", gcc_usb_hsic_clk,	  "msm_hsic_host"),
 	CLK_LOOKUP_OF("cal_clk", gcc_usb_hsic_io_cal_clk,  "msm_hsic_host"),

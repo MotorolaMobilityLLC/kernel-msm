@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -42,9 +42,7 @@ TRACE_EVENT(adreno_cmdbatch_queued,
 		"ctx=%u ts=%u queued=%u flags=%s",
 			__entry->id, __entry->timestamp, __entry->queued,
 			__entry->flags ? __print_flags(__entry->flags, "|",
-				{ KGSL_CONTEXT_SYNC, "SYNC" },
-				{ KGSL_CONTEXT_END_OF_FRAME, "EOF" })
-				: "none"
+						KGSL_CMDBATCH_FLAGS) : "none"
 	)
 );
 
@@ -54,17 +52,21 @@ DECLARE_EVENT_CLASS(adreno_cmdbatch_template,
 	TP_STRUCT__entry(
 		__field(unsigned int, id)
 		__field(unsigned int, timestamp)
-		__field(unsigned int, inflight)
+		__field(int, inflight)
+		__field(unsigned int, flags)
 	),
 	TP_fast_assign(
 		__entry->id = cmdbatch->context->id;
 		__entry->timestamp = cmdbatch->timestamp;
 		__entry->inflight = inflight;
+		__entry->flags = cmdbatch->flags;
 	),
 	TP_printk(
-		"ctx=%u ts=%u inflight=%u",
+		"ctx=%u ts=%u inflight=%d flags=%s",
 			__entry->id, __entry->timestamp,
-			__entry->inflight
+			__entry->inflight,
+			__entry->flags ? __print_flags(__entry->flags, "|",
+				KGSL_CMDBATCH_FLAGS) : "none"
 	)
 );
 
@@ -79,22 +81,26 @@ TRACE_EVENT(adreno_cmdbatch_retired,
 	TP_STRUCT__entry(
 		__field(unsigned int, id)
 		__field(unsigned int, timestamp)
-		__field(unsigned int, inflight)
+		__field(int, inflight)
 		__field(unsigned int, recovery)
+		__field(unsigned int, flags)
 	),
 	TP_fast_assign(
 		__entry->id = cmdbatch->context->id;
 		__entry->timestamp = cmdbatch->timestamp;
 		__entry->inflight = inflight;
 		__entry->recovery = cmdbatch->fault_recovery;
+		__entry->flags = cmdbatch->flags;
 	),
 	TP_printk(
-		"ctx=%u ts=%u inflight=%u recovery=%s",
+		"ctx=%u ts=%u inflight=%d recovery=%s flags=%s",
 			__entry->id, __entry->timestamp,
 			__entry->inflight,
 			__entry->recovery ?
 				__print_flags(__entry->recovery, "|",
-				ADRENO_FT_TYPES) : "none"
+				ADRENO_FT_TYPES) : "none",
+			__entry->flags ? __print_flags(__entry->flags, "|",
+				KGSL_CMDBATCH_FLAGS) : "none"
 	)
 );
 
@@ -213,22 +219,25 @@ TRACE_EVENT(adreno_drawctxt_wait_done,
 );
 
 TRACE_EVENT(adreno_drawctxt_switch,
-	TP_PROTO(struct adreno_context *oldctx,
+	TP_PROTO(struct adreno_ringbuffer *rb,
 		struct adreno_context *newctx,
 		unsigned int flags),
-	TP_ARGS(oldctx, newctx, flags),
+	TP_ARGS(rb, newctx, flags),
 	TP_STRUCT__entry(
+		__field(int, rb_level)
 		__field(unsigned int, oldctx)
 		__field(unsigned int, newctx)
 		__field(unsigned int, flags)
 	),
 	TP_fast_assign(
-		__entry->oldctx = oldctx ? oldctx->base.id : 0;
+		__entry->rb_level = rb->id;
+		__entry->oldctx = rb->drawctxt_active ?
+			rb->drawctxt_active->base.id : 0;
 		__entry->newctx = newctx ? newctx->base.id : 0;
 	),
 	TP_printk(
-		"oldctx=%u newctx=%u flags=%X",
-			__entry->oldctx, __entry->newctx, flags
+		"rb level=%d oldctx=%u newctx=%u flags=%X",
+		__entry->rb_level, __entry->oldctx, __entry->newctx, flags
 	)
 );
 
@@ -266,6 +275,26 @@ TRACE_EVENT(adreno_gpu_fault,
 		__entry->rptr, __entry->ib1base, __entry->ib1size,
 		__entry->ib2base, __entry->ib2size)
 );
+
+TRACE_EVENT(adreno_sp_tp,
+
+	TP_PROTO(unsigned long ip),
+
+	TP_ARGS(ip),
+
+	TP_STRUCT__entry(
+		__field(unsigned long, ip)
+	),
+
+	TP_fast_assign(
+		__entry->ip = ip;
+	),
+
+	TP_printk(
+		"func=%pf", (void *) __entry->ip
+	)
+);
+
 
 #endif /* _ADRENO_TRACE_H */
 

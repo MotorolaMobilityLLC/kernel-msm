@@ -417,6 +417,7 @@ static int fsg_set_halt(struct fsg_dev *fsg, struct usb_ep *ep)
 /* Caller must hold fsg->lock */
 static void wakeup_thread(struct fsg_common *common)
 {
+	smp_wmb();	/* ensure the write of bh->state is complete */
 	/* Tell the main thread that something has happened */
 	common->thread_wakeup_needed = 1;
 	if (common->thread_task)
@@ -645,6 +646,7 @@ static int sleep_thread(struct fsg_common *common)
 	spin_lock_irq(&common->lock);
 	common->thread_wakeup_needed = 0;
 	spin_unlock_irq(&common->lock);
+	smp_rmb();	/* ensure the latest bh->state is visible */
 	return rc;
 }
 
@@ -2782,10 +2784,8 @@ static int create_lun_device(struct fsg_common *common,
 	 * Check if index is non-zero, increment current lun_config
 	 * and cur_lun pointers.
 	 */
-	if (add_lun_index) {
-		lcfg++;
-		curlun++;
-	}
+	lcfg += add_lun_index;
+	curlun += add_lun_index;
 
 	for (i = add_lun_index; i < nluns; ++i, ++curlun, ++lcfg) {
 		curlun->cdrom = !!lcfg->cdrom;

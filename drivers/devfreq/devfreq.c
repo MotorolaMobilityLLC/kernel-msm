@@ -452,32 +452,6 @@ static void devfreq_dev_release(struct device *dev)
 }
 
 /**
- * find_governor_data - Find device specific private data for a governor.
- * @profile: The profile to search.
- * @governor_name: The governor to search for.
- *
- * Look up the device specific data for a governor.
- */
-static void *find_governor_data(struct devfreq_dev_profile *profile,
-				const char *governor_name)
-{
-	void *data = NULL;
-	int i;
-
-	if (profile->governor_data == NULL)
-		return NULL;
-
-	for (i = 0; i < profile->num_governor_data; i++) {
-		if (strncmp(governor_name, profile->governor_data[i].name,
-			     DEVFREQ_NAME_LEN) == 0) {
-			data = profile->governor_data[i].data;
-			break;
-		}
-	}
-	return data;
-}
-
-/**
  * devfreq_add_device() - Add devfreq feature to the device
  * @dev:	the device to add devfreq feature.
  * @profile:	device-specific profile to run devfreq.
@@ -524,19 +498,17 @@ struct devfreq *devfreq_add_device(struct device *dev,
 	devfreq->profile = profile;
 	strncpy(devfreq->governor_name, governor_name, DEVFREQ_NAME_LEN);
 	devfreq->previous_freq = profile->initial_freq;
-
-	devfreq->data = data ? data : find_governor_data(devfreq->profile,
-							 governor_name);
-
+	devfreq->data = data;
 	devfreq->nb.notifier_call = devfreq_notifier_call;
 
 	devfreq->trans_table =	devm_kzalloc(dev, sizeof(unsigned int) *
 						devfreq->profile->max_state *
 						devfreq->profile->max_state,
 						GFP_KERNEL);
-	devfreq->time_in_state = devm_kzalloc(dev, sizeof(unsigned int) *
-						devfreq->profile->max_state,
-						GFP_KERNEL);
+	devfreq->time_in_state = devm_kzalloc(dev,
+					sizeof(*(devfreq->time_in_state)) *
+					devfreq->profile->max_state,
+					GFP_KERNEL);
 	devfreq->last_stat_updated = jiffies;
 	devfreq_set_freq_limits(devfreq);
 
@@ -785,7 +757,6 @@ static ssize_t store_governor(struct device *dev, struct device_attribute *attr,
 			goto out;
 		}
 	}
-	df->data = find_governor_data(df->profile, str_governor);
 	df->governor = governor;
 	strncpy(df->governor_name, governor->name, DEVFREQ_NAME_LEN);
 	ret = df->governor->event_handler(df, DEVFREQ_GOV_START, NULL);
@@ -940,19 +911,26 @@ static ssize_t show_available_freqs(struct device *d,
 	struct devfreq *df = to_devfreq(d);
 	struct device *dev = df->dev.parent;
 	struct opp *opp;
+	unsigned int i = 0, max_state = df->profile->max_state;
+	bool use_opp;
 	ssize_t count = 0;
 	unsigned long freq = 0;
 
 	rcu_read_lock();
+	use_opp = dev_pm_opp_get_opp_count(dev) > 0;
 	do {
-		opp = dev_pm_opp_find_freq_ceil(dev, &freq);
-		if (IS_ERR(opp))
-			break;
+		if (use_opp) {
+			opp = dev_pm_opp_find_freq_ceil(dev, &freq);
+			if (IS_ERR(opp))
+				break;
+		} else {
+			freq = df->profile->freq_table[i++];
+		}
 
 		count += scnprintf(&buf[count], (PAGE_SIZE - count - 2),
 				   "%lu ", freq);
 		freq++;
-	} while (1);
+	} while (use_opp || (!use_opp && i < max_state));
 	rcu_read_unlock();
 
 	/* Truncate the trailing space */

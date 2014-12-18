@@ -24,7 +24,6 @@ Required properties:
 - qcom,hdmi-tx-cec: gpio for Consumer Electronics Control (cec) line.
 - qcom,hdmi-tx-ddc-clk: gpio for Display Data Channel (ddc) clock line.
 - qcom,hdmi-tx-ddc-data: gpio for ddc data line.
-- qcom,hdmi-tx-hpd: gpio required for HDMI hot-plug detect.
 
 Optional properties:
 - hpd-5v-en-supply: phandle to the 5V boost enable regulator device tree node.
@@ -38,6 +37,12 @@ Optional properties:
   selection on liquid devices. Required property for liquid devices.
 - qcom,conditional-power-on: Enables HPD conditionally on MTP targets.
   Required property for MTP devices which are reworked to expose HDMI port.
+- qcom,hdmi-tx-hpd: gpio required for HDMI hot-plug detect. Required on
+  platforms where companion chip is not used.
+- pinctrl-names: a list of strings that map to the pinctrl states.
+- pinctrl-0: list of phandles, each pointing at a pin configuration node.
+...
+- pinctrl-n: list of phandles, each pointing at a pin configuration node.
 
 [Optional child nodes]: These nodes are for devices which are
 dependent on HDMI Tx controller. If HDMI Tx controller is disabled then
@@ -82,4 +87,17 @@ Example:
 		qcom,msm-hdmi-audio-rx {
 			compatible = "qcom,msm-hdmi-audio-codec-rx";
 		};
+		pinctrl-names = "hdmi_hpd_active", "hdmi_ddc_active",
+					"hdmi_cec_active", "hdmi_active",
+					"hdmi_sleep";
+		pinctrl-0 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_suspend
+							&mdss_hdmi_cec_suspend>;
+		pinctrl-1 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_active
+							&mdss_hdmi_cec_suspend>;
+		pinctrl-2 = <&mdss_hdmi_hpd_active &mdss_hdmi_cec_active
+							&mdss_hdmi_ddc_suspend>;
+		pinctrl-3 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_active
+							&mdss_hdmi_cec_active>;
+		pinctrl-4 = <&mdss_hdmi_hpd_suspend &mdss_hdmi_ddc_suspend
+							&mdss_hdmi_cec_suspend>;
 	};

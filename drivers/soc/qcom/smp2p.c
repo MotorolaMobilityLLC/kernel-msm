@@ -506,6 +506,7 @@ static void smp2p_find_entry_v1(struct smp2p_smem __iomem *item,
 {
 	int i;
 	struct smp2p_entry_v1 *pos;
+	char entry_name[SMP2P_MAX_ENTRY_NAME];
 
 	if (!item || !name || !entry_ptr) {
 		SMP2P_ERR("%s: invalid arguments %p, %p, %p\n",
@@ -519,8 +520,9 @@ static void smp2p_find_entry_v1(struct smp2p_smem __iomem *item,
 
 	pos = (struct smp2p_entry_v1 *)(char *)(item + 1);
 	for (i = 0; i < entries_total; i++, ++pos) {
-		if (pos->name[0]) {
-			if (!strncmp(pos->name, name, SMP2P_MAX_ENTRY_NAME)) {
+		memcpy_fromio(entry_name, pos->name, SMP2P_MAX_ENTRY_NAME);
+		if (entry_name[0]) {
+			if (!strcmp(entry_name, name)) {
 				*entry_ptr = &pos->entry;
 				break;
 			}
@@ -1915,7 +1917,7 @@ static int __init msm_smp2p_init(void)
 		in_list[i].smem_edge_in = NULL;
 	}
 
-	log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smp2p");
+	log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smp2p", 0);
 	if (!log_ctx)
 		SMP2P_ERR("%s: unable to create log context\n", __func__);
 

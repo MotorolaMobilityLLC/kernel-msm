@@ -13,23 +13,17 @@
 #define pr_fmt(fmt) "MSM-SENSOR-INIT %s:%d " fmt "\n", __func__, __LINE__
 
 /* Header files */
-#include <mach/gpiomux.h>
 #include "msm_sensor_init.h"
 #include "msm_sensor_driver.h"
 #include "msm_sensor.h"
 #include "msm_sd.h"
 
 /* Logging macro */
-/*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
-#ifdef CONFIG_MSMB_CAMERA_DEBUG
-#define CDBG(fmt, args...) pr_err(fmt, ##args)
-#else
-#define CDBG(fmt, args...) do { } while (0)
-#endif
+#define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
 static struct msm_sensor_init_t *s_init;
-
+static struct v4l2_file_operations msm_sensor_init_v4l2_subdev_fops;
 /* Static function declaration */
 static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg);
@@ -48,21 +42,19 @@ static const struct v4l2_subdev_internal_ops msm_sensor_init_internal_ops;
 static int msm_sensor_wait_for_probe_done(struct msm_sensor_init_t *s_init)
 {
 	int rc;
-
+	int tm = 10000;
 	if (s_init->module_init_status == 1) {
-		pr_err("msm_cam_get_module_init_status -2\n");
+		CDBG("msm_cam_get_module_init_status -2\n");
 		return 0;
 	}
+	rc = wait_event_interruptible_timeout(s_init->state_wait,
+		(s_init->module_init_status == 1), msecs_to_jiffies(tm));
+	if (rc < 0)
+		pr_err("%s:%d wait failed\n", __func__, __LINE__);
+	else if (rc == 0)
+		pr_err("%s:%d wait timeout\n", __func__, __LINE__);
 
-	while (1) {
-		rc = wait_event_interruptible(s_init->state_wait,
-			(s_init->module_init_status == 1));
-		if (rc == -ETIMEDOUT)
-			continue;
-		else if (rc == 0)
-			break;
-	}
-	return 0;
+	return rc;
 }
 
 /* Static function definition */
@@ -131,8 +123,37 @@ static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 	return 0;
 }
 
+#ifdef CONFIG_COMPAT
+static long msm_sensor_init_subdev_do_ioctl(
+	struct file *file, unsigned int cmd, void *arg)
+{
+	struct video_device *vdev = video_devdata(file);
+	struct v4l2_subdev *sd = vdev_to_v4l2_subdev(vdev);
+	struct sensor_init_cfg_data32 *u32 =
+		(struct sensor_init_cfg_data32 *)arg;
+	struct sensor_init_cfg_data sensor_init_data;
+
+	switch (cmd) {
+	case VIDIOC_MSM_SENSOR_INIT_CFG32:
+		sensor_init_data.cfgtype = u32->cfgtype;
+		sensor_init_data.cfg.setting = compat_ptr(u32->cfg.setting);
+		cmd = VIDIOC_MSM_SENSOR_INIT_CFG;
+		return msm_sensor_init_subdev_ioctl(sd, cmd, &sensor_init_data);
+	default:
+		return msm_sensor_init_subdev_ioctl(sd, cmd, arg);
+	}
+}
+
+static long msm_sensor_init_subdev_fops_ioctl(
+	struct file *file, unsigned int cmd, unsigned long arg)
+{
+	return video_usercopy(file, cmd, arg, msm_sensor_init_subdev_do_ioctl);
+}
+#endif
+
 static int __init msm_sensor_init_module(void)
 {
+	int ret = 0;
 	/* Allocate memory for msm_sensor_init control structure */
 	s_init = kzalloc(sizeof(struct msm_sensor_init_t), GFP_KERNEL);
 	if (!s_init) {
@@ -140,7 +161,7 @@ static int __init msm_sensor_init_module(void)
 		return -ENOMEM;
 	}
 
-	pr_err("MSM_SENSOR_INIT_MODULE %p", NULL);
+	CDBG("MSM_SENSOR_INIT_MODULE %p", NULL);
 
 	/* Initialize mutex */
 	mutex_init(&s_init->imutex);
@@ -157,11 +178,27 @@ static int __init msm_sensor_init_module(void)
 	s_init->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_SENSOR_INIT;
 	s_init->msm_sd.sd.entity.name = s_init->msm_sd.sd.name;
 	s_init->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x6;
-	msm_sd_register(&s_init->msm_sd);
+	ret = msm_sd_register(&s_init->msm_sd);
+	if (ret) {
+		CDBG("%s: msm_sd_register error = %d\n", __func__, ret);
+		goto error;
+	}
+
+	msm_sensor_init_v4l2_subdev_fops = v4l2_subdev_fops;
+#ifdef CONFIG_COMPAT
+	msm_sensor_init_v4l2_subdev_fops.compat_ioctl32 =
+		msm_sensor_init_subdev_fops_ioctl;
+#endif
+	s_init->msm_sd.sd.devnode->fops =
+		&msm_sensor_init_v4l2_subdev_fops;
 
 	init_waitqueue_head(&s_init->state_wait);
 
 	return 0;
+error:
+	mutex_destroy(&s_init->imutex);
+	kfree(s_init);
+	return ret;
 }
 
 static void __exit msm_sensor_exit_module(void)

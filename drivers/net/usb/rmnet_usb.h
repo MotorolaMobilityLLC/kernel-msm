@@ -88,6 +88,9 @@ struct rmnet_ctrl_udev {
 	unsigned int		zlp_cnt;
 	unsigned int		invalid_mux_id_cnt;
 	unsigned int		ignore_encap_work;
+	bool			autosuspend_disabled;
+	unsigned int		autosuspend_en_cnt;
+	unsigned int		autosuspend_dis_cnt;
 };
 
 struct rmnet_ctrl_dev {
@@ -109,6 +112,7 @@ struct rmnet_ctrl_dev {
 	unsigned long		status;
 
 	bool			claimed;
+	bool			poll_err;
 
 	unsigned int		mdm_wait_timeout;
 

@@ -33,9 +33,13 @@
 #include "synaptics_dsx_core.h"
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
+#if defined(CONFIG_SECURE_TOUCH)
+#include <linux/pm_runtime.h>
+#endif
 
 #define SYN_I2C_RETRY_TIMES 10
 #define RESET_DELAY 100
+#define DSX_COORDS_ARR_SIZE	4
 
 static int synaptics_rmi4_i2c_set_page(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr)
@@ -176,10 +180,37 @@ exit:
 	return retval;
 }
 
+#if defined(CONFIG_SECURE_TOUCH)
+static int synaptics_rmi4_i2c_get(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval;
+	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
+
+	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
+	retval = pm_runtime_get_sync(i2c->adapter->dev.parent);
+	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
+
+	return retval;
+}
+
+static void synaptics_rmi4_i2c_put(struct synaptics_rmi4_data *rmi4_data)
+{
+	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
+
+	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
+	pm_runtime_put_sync(i2c->adapter->dev.parent);
+	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
+}
+#endif
+
 static struct synaptics_dsx_bus_access bus_access = {
 	.type = BUS_I2C,
 	.read = synaptics_rmi4_i2c_read,
 	.write = synaptics_rmi4_i2c_write,
+#if defined(CONFIG_SECURE_TOUCH)
+	.get = synaptics_rmi4_i2c_get,
+	.put = synaptics_rmi4_i2c_put,
+#endif
 };
 
 static struct synaptics_dsx_hw_interface hw_if;
@@ -193,6 +224,51 @@ static void synaptics_rmi4_i2c_dev_release(struct device *dev)
 	return;
 }
 #ifdef CONFIG_OF
+int synaptics_dsx_get_dt_coords(struct device *dev, char *name,
+				struct synaptics_dsx_board_data *pdata,
+				struct device_node *node)
+{
+	u32 coords[DSX_COORDS_ARR_SIZE];
+	struct property *prop;
+	struct device_node *np = (node == NULL) ? (dev->of_node) : (node);
+	int coords_size, rc;
+
+	prop = of_find_property(np, name, NULL);
+	if (!prop)
+		return -EINVAL;
+	if (!prop->value)
+		return -ENODATA;
+
+	coords_size = prop->length / sizeof(u32);
+	if (coords_size != DSX_COORDS_ARR_SIZE) {
+		dev_err(dev, "invalid %s\n", name);
+		return -EINVAL;
+	}
+
+	rc = of_property_read_u32_array(np, name, coords, coords_size);
+	if (rc && (rc != -EINVAL)) {
+		dev_err(dev, "Unable to read %s\n", name);
+		return rc;
+	}
+
+	if (strcmp(name, "synaptics,panel-coords") == 0) {
+		pdata->panel_minx = coords[0];
+		pdata->panel_miny = coords[1];
+		pdata->panel_maxx = coords[2];
+		pdata->panel_maxy = coords[3];
+	} else if (strcmp(name, "synaptics,display-coords") == 0) {
+		pdata->disp_minx = coords[0];
+		pdata->disp_miny = coords[1];
+		pdata->disp_maxx = coords[2];
+		pdata->disp_maxy = coords[3];
+	} else {
+		dev_err(dev, "unsupported property %s\n", name);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int synaptics_dsx_parse_dt(struct device *dev,
 				struct synaptics_dsx_board_data *rmi4_pdata)
 {
@@ -205,6 +281,9 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 	rmi4_pdata->x_flip = of_property_read_bool(np, "synaptics,x-flip");
 	rmi4_pdata->y_flip = of_property_read_bool(np, "synaptics,y-flip");
 
+	rmi4_pdata->disable_gpios = of_property_read_bool(np,
+			"synaptics,disable-gpios");
+
 	rmi4_pdata->reset_delay_ms = RESET_DELAY;
 	rc = of_property_read_u32(np, "synaptics,reset-delay-ms", &temp_val);
 	if (!rc)
@@ -214,11 +293,35 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 		return rc;
 	}
 
+	rmi4_pdata->fw_name = "PRXXX_fw.img";
+	rc = of_property_read_string(np, "synaptics,fw-name",
+					&rmi4_pdata->fw_name);
+	if (rc && (rc != -EINVAL)) {
+		dev_err(dev, "Unable to read fw name\n");
+		return rc;
+	}
+
 	/* reset, irq gpio info */
 	rmi4_pdata->reset_gpio = of_get_named_gpio_flags(np,
 			"synaptics,reset-gpio", 0, &rmi4_pdata->reset_flags);
 	rmi4_pdata->irq_gpio = of_get_named_gpio_flags(np,
 			"synaptics,irq-gpio", 0, &rmi4_pdata->irq_flags);
+
+	rc = synaptics_dsx_get_dt_coords(dev, "synaptics,display-coords",
+				rmi4_pdata, NULL);
+	if (rc && (rc != -EINVAL))
+		return rc;
+
+	rc = synaptics_dsx_get_dt_coords(dev, "synaptics,panel-coords",
+				rmi4_pdata, NULL);
+	if (rc && (rc != -EINVAL))
+		return rc;
+
+	rmi4_pdata->detect_device = of_property_read_bool(np,
+				"synaptics,detect-device");
+
+	if (rmi4_pdata->detect_device)
+		return 0;
 
 	prop = of_find_property(np, "synaptics,button-map", NULL);
 	if (prop) {

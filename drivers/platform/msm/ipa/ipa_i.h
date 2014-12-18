@@ -37,6 +37,7 @@
 #define IPA_LAN_RX_HEADER_LENGTH (2)
 #define IPA_QMAP_HEADER_LENGTH (4)
 #define IPA_DL_CHECKSUM_LENGTH (8)
+#define IPA_NUM_DESC_PER_SW_TX (2)
 
 #define IPADBG(fmt, args...) \
 	pr_debug(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
@@ -202,6 +203,8 @@ struct ipa_rt_tbl {
  * @offset_entry: entry's offset
  * @cookie: cookie used for validity check
  * @ref_cnt: reference counter of raouting table
+ * @is_eth2_ofst_valid: is eth2_ofst field valid?
+ * @eth2_ofst: offset to start of Ethernet-II/802.3 header
  */
 struct ipa_hdr_entry {
 	struct list_head link;
@@ -213,6 +216,8 @@ struct ipa_hdr_entry {
 	u32 cookie;
 	u32 ref_cnt;
 	int id;
+	u8 is_eth2_ofst_valid;
+	u16 eth2_ofst;
 };
 
 /**
@@ -310,6 +315,51 @@ struct ipa_ep_cfg_status {
 };
 
 /**
+ * struct ipa_wlan_stats - Wlan stats for each wlan endpoint
+ * @rx_pkts_rcvd: Packets sent by wlan driver
+ * @rx_pkts_status_rcvd: Status packets received from ipa hw
+ * @rx_hd_processed: Data Descriptors processed by IPA Driver
+ * @rx_hd_reply: Data Descriptors recycled by wlan driver
+ * @rx_hd_rcvd: Data Descriptors sent by wlan driver
+ * @rx_pkt_leak: Packet count that are not recycled
+ * @rx_dp_fail: Packets failed to transfer to IPA HW
+ * @tx_pkts_rcvd: SKB Buffers received from ipa hw
+ * @tx_pkts_sent: SKB Buffers sent to wlan driver
+ * @tx_pkts_dropped: Dropped packets count
+ */
+struct ipa_wlan_stats {
+	u32 rx_pkts_rcvd;
+	u32 rx_pkts_status_rcvd;
+	u32 rx_hd_processed;
+	u32 rx_hd_reply;
+	u32 rx_hd_rcvd;
+	u32 rx_pkt_leak;
+	u32 rx_dp_fail;
+	u32 tx_pkts_rcvd;
+	u32 tx_pkts_sent;
+	u32 tx_pkts_dropped;
+};
+
+/**
+ * struct ipa_wlan_comm_memb - Wlan comm members
+ * @wlan_spinlock: protects wlan comm buff list and its size
+ * @ipa_tx_mul_spinlock: protects tx dp mul transfer
+ * @wlan_comm_total_cnt: wlan common skb buffers allocated count
+ * @wlan_comm_free_cnt: wlan common skb buffer free count
+ * @total_tx_pkts_freed: Recycled Buffer count
+ * @wlan_comm_desc_list: wlan common skb buffer list
+ */
+struct ipa_wlan_comm_memb {
+	spinlock_t wlan_spinlock;
+	spinlock_t ipa_tx_mul_spinlock;
+	u32 wlan_comm_total_cnt;
+	u32 wlan_comm_free_cnt;
+	u32 total_tx_pkts_freed;
+	struct list_head wlan_comm_desc_list;
+	atomic_t active_clnt_cnt;
+};
+
+/**
  * struct ipa_ep_context - IPA end point context
  * @valid: flag indicating id EP context is valid
  * @client: EP client type
@@ -351,13 +401,17 @@ struct ipa_ep_context {
 	u32 data_fifo_pipe_mem_ofst;
 	bool desc_fifo_client_allocated;
 	bool data_fifo_client_allocated;
-	struct ipa_sys_context *sys;
-	u32 avail_fifo_desc;
+	atomic_t avail_fifo_desc;
 	u32 dflt_flt4_rule_hdl;
 	u32 dflt_flt6_rule_hdl;
 	bool skip_ep_cfg;
 	bool keep_ipa_awake;
 	bool resume_on_connect;
+	struct ipa_wlan_stats wstats;
+	u32 wdi_state;
+
+	/* sys MUST be the last element of this struct */
+	struct ipa_sys_context *sys;
 };
 
 enum ipa_sys_pipe_policy {
@@ -377,11 +431,8 @@ enum ipa_sys_pipe_policy {
  * IPA context specific to the system-bam pipes a.k.a LAN IN/OUT and WAN
  */
 struct ipa_sys_context {
-	struct list_head head_desc_list;
 	u32 len;
-	spinlock_t spinlock;
 	struct sps_register_event event;
-	struct ipa_ep_context *ep;
 	atomic_t curr_polling_state;
 	struct delayed_work switch_to_intr_work;
 	enum ipa_sys_pipe_policy policy;
@@ -390,7 +441,6 @@ struct ipa_sys_context {
 	void (*free_skb)(struct sk_buff *skb);
 	u32 rx_buff_sz;
 	u32 rx_pool_sz;
-	struct workqueue_struct *wq;
 	struct sk_buff *prev_skb;
 	unsigned int len_rem;
 	unsigned int len_pad;
@@ -399,6 +449,13 @@ struct ipa_sys_context {
 	void (*sps_callback)(struct sps_event_notify *notify);
 	enum sps_option sps_option;
 	struct delayed_work replenish_rx_work;
+
+	/* ordering is important - mutable fields go above */
+	struct ipa_ep_context *ep;
+	struct list_head head_desc_list;
+	spinlock_t spinlock;
+	struct workqueue_struct *wq;
+	/* ordering is important - other immutable fields go below */
 };
 
 /**
@@ -539,12 +596,15 @@ struct ipa_nat_mem {
  * @IPA_HW_v1_0: IPA hardware version 1.0, corresponding to ELAN 1.0
  * @IPA_HW_v1_1: IPA hardware version 1.1, corresponding to ELAN 2.0
  * @IPA_HW_v2_0: IPA hardware version 2.0
+ * @IPA_HW_v2_5: IPA hardware version 2.5
  */
 enum ipa_hw_type {
 	IPA_HW_None = 0,
 	IPA_HW_v1_0 = 1,
 	IPA_HW_v1_1 = 2,
-	IPA_HW_v2_0 = 3
+	IPA_HW_v2_0 = 3,
+	IPA_HW_v2_1 = 4,
+	IPA_HW_v2_5 = 5
 };
 
 /**
@@ -579,20 +639,6 @@ struct ipa_stats {
 	u32 wan_aggr_close;
 };
 
-struct ipa_wlan_stats {
-	u32 rx_pkts_rcvd;
-	u32 rx_pkts_status_rcvd;
-	u32 rx_hd_processed;
-	u32 rx_hd_reply;
-	u32 rx_hd_rcvd;
-	u32 rx_pkt_leak;
-	u32 rx_dp_fail;
-	u32 tx_buf_cnt;
-	u32 tx_pkts_freed;
-	u32 tx_pkts_rcvd;
-	u32 tx_pkts_dropped;
-};
-
 struct ipa_active_clients {
 	struct mutex mutex;
 	spinlock_t spinlock;
@@ -600,7 +646,23 @@ struct ipa_active_clients {
 	int cnt;
 };
 
+struct ipa_tag_completion {
+	struct completion comp;
+	atomic_t cnt;
+};
+
 struct ipa_controller;
+
+struct ipa_wdi_ctx {
+	bool uc_loaded;
+	bool uc_failed;
+	struct IpaHwSharedMemWdiMapping_t *ipa_sram_mmio;
+	struct mutex lock;
+	struct completion cmd_rsp;
+	u32 pending_cmd;
+	u32 last_resp;
+	struct dma_pool *dma_pool;
+};
 
 /**
  * struct ipa_context - IPA context
@@ -660,6 +722,7 @@ struct ipa_controller;
  *  core version (vtable like)
  * @enable_clock_scaling: clock scaling is enabled ?
  * @curr_ipa_clk_rate: ipa_clk current rate
+ * @wcstats: wlan common buffer stats
 
  * IPA context - holds all relevant info about IPA driver and its state
  */
@@ -731,13 +794,10 @@ struct ipa_context {
 	spinlock_t idr_lock;
 	u32 enable_clock_scaling;
 	u32 curr_ipa_clk_rate;
+	bool q6_proxy_clk_vote_valid;
 
-	/* wlan related member */
-	spinlock_t wlan_spinlock;
-	spinlock_t ipa_tx_mul_spinlock;
-	u32 wlan_comm_cnt;
-	struct list_head wlan_comm_desc_list;
-	struct ipa_wlan_stats wstats;
+	struct ipa_wlan_comm_memb wc_memb;
+	struct ipa_wdi_ctx wdi;
 };
 
 /**
@@ -789,6 +849,8 @@ struct ipa_controller {
 	u32 ipa_clk_rate_hi;
 	u32 ipa_clk_rate_lo;
 	u32 clock_scaling_bw_threshold;
+	u32 ipa_reg_base_ofst;
+	u32 max_holb_tmr_val;
 	void (*ipa_sram_read_settings)(void);
 	void (*ipa_cfg_ep_hdr)(u32 pipe_number,
 			const struct ipa_ep_cfg_hdr *ipa_ep_hdr_cfg);
@@ -958,5 +1020,11 @@ int ipa_tag_aggr_force_close(int pipe_num);
 void ipa_active_clients_lock(void);
 int ipa_active_clients_trylock(void);
 void ipa_active_clients_unlock(void);
+int ipa_wdi_init(void);
+int ipa_write_qmapid_wdi_pipe(u32 clnt_hdl, u8 qmap_id);
+int ipa_tag_process(struct ipa_desc *desc, int num_descs,
+		    unsigned long timeout);
 
+int ipa_q6_cleanup(void);
+int ipa_init_q6_smem(void);
 #endif /* _IPA_I_H_ */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -75,7 +75,7 @@ static void msm_pcm_route_event_handler(enum msm_pcm_routing_event event,
 
 	BUG_ON(!pcm);
 
-	pr_debug("%s: event %x\n", __func__, event);
+	pr_debug("%s: event 0x%x\n", __func__, event);
 
 	switch (event) {
 	case MSM_PCM_RT_EVT_DEVSWITCH:
@@ -83,6 +83,7 @@ static void msm_pcm_route_event_handler(enum msm_pcm_routing_event event,
 		q6asm_cmd(pcm->audio_client, CMD_FLUSH);
 		q6asm_run(pcm->audio_client, 0, 0, 0);
 	default:
+		pr_err("%s: default event 0x%x\n", __func__, event);
 		break;
 	}
 }
@@ -90,7 +91,7 @@ static void msm_pcm_route_event_handler(enum msm_pcm_routing_event event,
 static void msm_pcm_loopback_event_handler(uint32_t opcode, uint32_t token,
 					   uint32_t *payload, void *priv)
 {
-	pr_debug("%s\n", __func__);
+	pr_debug("%s:\n", __func__);
 	switch (opcode) {
 	case APR_BASIC_RSP_RESULT: {
 		switch (payload[0]) {
@@ -101,7 +102,8 @@ static void msm_pcm_loopback_event_handler(uint32_t opcode, uint32_t token,
 	}
 		break;
 	default:
-		pr_err("Not Supported Event opcode[0x%x]\n", opcode);
+		pr_err("%s: Not Supported Event opcode[0x%x]\n",
+			__func__, opcode);
 		break;
 	}
 }
@@ -110,7 +112,7 @@ static int pcm_loopback_set_volume(struct msm_pcm_loopback *prtd, int volume)
 {
 	int rc = -EINVAL;
 
-	pr_debug("%s Setting volume 0x%x\n", __func__, volume);
+	pr_debug("%s: Setting volume 0x%x\n", __func__, volume);
 
 	if (prtd && prtd->audio_client) {
 		rc = q6asm_set_volume(prtd->audio_client, volume);
@@ -132,6 +134,8 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	int ret = 0;
 	uint16_t bits_per_sample = 16;
 	struct msm_pcm_routing_evt event;
+	struct asm_session_mtmx_strtr_param_window_v2_t asm_mtmx_strtr_window;
+	uint32_t param_id;
 
 	pcm = dev_get_drvdata(rtd->platform->dev);
 	mutex_lock(&pcm->lock);
@@ -190,6 +194,20 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 				dev_err(rtd->platform->dev,
 					"Error %d setting volume", ret);
 		}
+		/* Set to largest negative value */
+		asm_mtmx_strtr_window.window_lsw = 0x00000000;
+		asm_mtmx_strtr_window.window_msw = 0x80000000;
+		param_id = ASM_SESSION_MTMX_STRTR_PARAM_RENDER_WINDOW_START_V2;
+		q6asm_send_mtmx_strtr_window(pcm->audio_client,
+					     &asm_mtmx_strtr_window,
+					     param_id);
+		/* Set to largest positive value */
+		asm_mtmx_strtr_window.window_lsw = 0xffffffff;
+		asm_mtmx_strtr_window.window_msw = 0x7fffffff;
+		param_id = ASM_SESSION_MTMX_STRTR_PARAM_RENDER_WINDOW_END_V2;
+		q6asm_send_mtmx_strtr_window(pcm->audio_client,
+					     &asm_mtmx_strtr_window,
+					     param_id);
 	}
 	dev_info(rtd->platform->dev, "%s: Instance = %d, Stream ID = %s\n",
 			__func__ , pcm->instance, substream->pcm->id);
@@ -202,19 +220,23 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 
 static void stop_pcm(struct msm_pcm_loopback *pcm)
 {
-	struct snd_soc_pcm_runtime *soc_pcm_rx =
-		pcm->playback_substream->private_data;
-	struct snd_soc_pcm_runtime *soc_pcm_tx =
-		pcm->capture_substream->private_data;
+	struct snd_soc_pcm_runtime *soc_pcm_rx;
+	struct snd_soc_pcm_runtime *soc_pcm_tx;
 
 	if (pcm->audio_client == NULL)
 		return;
 	q6asm_cmd(pcm->audio_client, CMD_CLOSE);
 
-	msm_pcm_routing_dereg_phy_stream(soc_pcm_rx->dai_link->be_id,
-			SNDRV_PCM_STREAM_PLAYBACK);
-	msm_pcm_routing_dereg_phy_stream(soc_pcm_tx->dai_link->be_id,
-			SNDRV_PCM_STREAM_CAPTURE);
+	if (pcm->playback_substream != NULL) {
+		soc_pcm_rx = pcm->playback_substream->private_data;
+		msm_pcm_routing_dereg_phy_stream(soc_pcm_rx->dai_link->be_id,
+				SNDRV_PCM_STREAM_PLAYBACK);
+	}
+	if (pcm->capture_substream != NULL) {
+		soc_pcm_tx = pcm->capture_substream->private_data;
+		msm_pcm_routing_dereg_phy_stream(soc_pcm_tx->dai_link->be_id,
+				SNDRV_PCM_STREAM_CAPTURE);
+	}
 	q6asm_audio_client_free(pcm->audio_client);
 	pcm->audio_client = NULL;
 }
@@ -294,6 +316,7 @@ static int msm_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 			q6asm_cmd_nowait(pcm->audio_client, CMD_PAUSE);
 		break;
 	default:
+		pr_err("%s: default cmd %d\n", __func__, cmd);
 		break;
 	}
 

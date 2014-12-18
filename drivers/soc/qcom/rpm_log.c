@@ -50,6 +50,7 @@ struct msm_rpm_log_buffer {
 	char *data;
 	u32 len;
 	u32 pos;
+	struct mutex mutex;
 	u32 max_len;
 	u32 read_idx;
 	struct msm_rpm_log_platform_data *pdata;
@@ -216,6 +217,7 @@ static ssize_t msm_rpm_log_file_read(struct file *file, char __user *bufu,
 	if (!access_ok(VERIFY_WRITE, bufu, count))
 		return -EFAULT;
 
+	mutex_lock(&buf->mutex);
 	/* check for more messages if local buffer empty */
 	if (buf->pos == buf->len) {
 		buf->pos = 0;
@@ -223,8 +225,10 @@ static ssize_t msm_rpm_log_file_read(struct file *file, char __user *bufu,
 						&(buf->read_idx));
 	}
 
-	if ((file->f_flags & O_NONBLOCK) && buf->len == 0)
+	if ((file->f_flags & O_NONBLOCK) && buf->len == 0) {
+		mutex_unlock(&buf->mutex);
 		return -EAGAIN;
+	}
 
 	/* loop until new messages arrive */
 	while (buf->len == 0) {
@@ -239,6 +243,7 @@ static ssize_t msm_rpm_log_file_read(struct file *file, char __user *bufu,
 
 	remaining = __copy_to_user(bufu, &(buf->data[buf->pos]), out_len);
 	buf->pos += out_len - remaining;
+	mutex_unlock(&buf->mutex);
 
 	return out_len - remaining;
 }
@@ -285,6 +290,7 @@ static int msm_rpm_log_file_open(struct inode *inode, struct file *file)
 	buf->pdata = pdata;
 	buf->len = 0;
 	buf->pos = 0;
+	mutex_init(&buf->mutex);
 	buf->max_len = PRINTED_LENGTH(pdata->log_len);
 	buf->read_idx = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_INDICES,
 					 MSM_RPM_LOG_HEAD);
@@ -310,12 +316,14 @@ static int msm_rpm_log_probe(struct platform_device *pdev)
 {
 	struct dentry *dent;
 	struct msm_rpm_log_platform_data *pdata;
-	struct resource *res = NULL;
+	struct resource *res = NULL, *offset = NULL;
 	struct device_node *node = NULL;
 	phys_addr_t page_buffer_address, rpm_addr_phys;
 	int ret = 0;
 	char *key = NULL;
 	uint32_t val = 0;
+	uint32_t offset_addr = 0;
+	void __iomem *phys_ptr = NULL;
 
 	node = pdev->dev.of_node;
 
@@ -327,11 +335,25 @@ static int msm_rpm_log_probe(struct platform_device *pdev)
 
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 		if (!res) {
+			pr_err("%s: could not get resource\n", __func__);
 			kfree(pdata);
 			return -EINVAL;
 		}
 
-		pdata->phys_addr_base = res->start;
+		offset = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		if (offset) {
+			/* Remap the rpm-log pointer */
+			phys_ptr = ioremap_nocache(offset->start, SZ_4);
+			if (!phys_ptr) {
+				pr_err("%s: Failed to ioremap address: %x\n",
+						__func__, offset_addr);
+				return -ENODEV;
+			}
+			offset_addr = readl_relaxed(phys_ptr);
+			iounmap(phys_ptr);
+		}
+
+		pdata->phys_addr_base = res->start + offset_addr;
 		pdata->phys_size = resource_size(res);
 
 		pdata->reg_base = ioremap_nocache(pdata->phys_addr_base,

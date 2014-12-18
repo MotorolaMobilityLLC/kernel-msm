@@ -31,8 +31,8 @@
                 qcom,vddmin-modes  = "normal";
                 qcom,vddmin-drive-strength = <8>;
 		qcom,sfr-query;
-		qcom,sysmon-subsys-id = <20>;
 		qcom,support-shutdown;
+		qcom,sysmon-id = <20>;
 		status = "disabled";
 	};
 
@@ -56,8 +56,8 @@
                 qcom,vddmin-modes  = "normal";
                 qcom,vddmin-drive-strength = <8>;
 		qcom,sfr-query;
-		qcom,sysmon-subsys-id = <20>;
 		qcom,support-shutdown;
+		qcom,sysmon-id = <20>;
 		status = "disabled";
 	};
 };

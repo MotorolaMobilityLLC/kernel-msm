@@ -11,7 +11,8 @@ config ARCH_MSM8974
 	select MSM_SCM
 	select MSM_GPIOMUX
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
 	select MSM_PIL
 	select MSM_SPM_V2
 	select MSM_L2_SPM
@@ -35,7 +36,7 @@ config ARCH_MSM8974
 	select ENABLE_VMALLOC_SAVINGS
 	select MSM_IRQ
 	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
+	select PINCTRL_MSM_TLMM
 
 config ARCH_APQ8084
 	bool "APQ8084"
@@ -66,49 +67,18 @@ config ARCH_APQ8084
 	select USB_ARCH_HAS_XHCI
 	select KRAIT_REGULATOR
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
 	select MSM_PIL
 	select ENABLE_VMALLOC_SAVINGS
 	select MSM_ULTRASOUND
 	select MAXIMUM_CURRENT_THROTTLING
 	select MSM_IRQ
 	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
+	select PINCTRL_MSM_TLMM
 
-config ARCH_MPQ8092
-	bool "MPQ8092"
-	select REGULATOR
-	select ARCH_MSM_KRAITMP
-	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
-	select GPIO_MSM_V3
-	select ARM_GIC
-	select HAVE_ARM_ARCH_TIMER
-	select CPU_V7
-	select MSM_SCM
-	select MSM_GPIOMUX
-	select MSM_QDSP6V2_CODECS
-	select MSM_QDSP6_APRV2 if SND_SOC
-	select MEMORY_HOLE_CARVEOUT
-	select QMI_ENCDEC
-	select MIGHT_HAVE_PCI
-	select ARCH_SUPPORTS_MSI
-	select ARM_HAS_SG_CHAIN
-	select MSM_RPM_SMD
-	select REGULATOR_RPM_SMD
-	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
-	select USB_ARCH_HAS_XHCI
-	select MSM_IRQ
-	select MSM_SPM_V2
-	select MSM_L2_SPM
-	select MSM_PM if PM
-	select MSM_RPM_SMD
-	select MSM_RPM_STATS_LOG
-	select MSM_RPM_LOG
-
-config ARCH_MSM8916
-	bool "MSM8916"
+config ARCH_MSMFERRUM
+	bool "MSMFERRUM"
 	select ARCH_MSM_CORTEXMP
 	select GPIO_MSM_V3
 	select ARM_GIC
@@ -118,7 +88,26 @@ config ARCH_MSM8916
 	select MAY_HAVE_SPARSE_IRQ
 	select SPARSE_IRQ
 	select PINCTRL
-	select PINCTRL_MSM_TLMM_V4
+	select PINCTRL_MSM_TLMM
+	select MSM_NOPM
+	select CPU_FREQ
+	select MSM_QDSP6_APRV3
+	select MSM_QDSP6V2_CODECS
+	select MSM_AUDIO_QDSP6V2 if SND_SOC
+	select MSM_CORTEX_A7
+	select MSM_IRQ
+
+config ARCH_MSM8916
+	bool "MSM8916"
+	select ARCH_MSM_CORTEXMP
+	select ARM_GIC
+	select MULTI_IRQ_HANDLER
+	select CPU_V7
+	select HAVE_ARM_ARCH_TIMER
+	select MAY_HAVE_SPARSE_IRQ
+	select SPARSE_IRQ
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
 	select USE_PINCTRL_IRQ
 	select MSM_PM if PM
 	select MSM_RPM_SMD
@@ -132,14 +121,20 @@ config ARCH_MSM8916
 	select CPU_FREQ_MSM
 	select CPU_FREQ
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select MSM_BIMC_BWMON
+	select ARMBW_HWMON
 	select MSM_RPM_SMD
 	select MSM_QDSP6_APRV3
 	select MSM_QDSP6V2_CODECS
 	select MSM_AUDIO_QDSP6V2 if SND_SOC
 	select ARM_HAS_SG_CHAIN
 	select MSM_RPM_STATS_LOG
+	select ARCH_WANT_KMAP_ATOMIC_FLUSH
 	select MSM_RPM_LOG
+	select MSM_JTAGV8 if CORESIGHT_ETMV4
 
 config ARCH_FSM9900
 	bool "FSM9900"
@@ -151,7 +146,8 @@ config ARCH_FSM9900
 	select HAVE_ARM_ARCH_TIMER
 	select MSM_GPIOMUX
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select MSM_DEVFREQ_DEVBW
+	select DEVFREQ_SIMPLE_DEV
 	select MSM_PIL
 	select REGULATOR
 	select ARM_HAS_SG_CHAIN
@@ -182,18 +178,33 @@ config ARCH_MDM9630
 	select MSM_JTAG_MM if CORESIGHT_ETM
 	select MSM_CORTEX_A7
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select MSM_DEVFREQ_DEVBW
 	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
+	select PINCTRL_MSM_TLMM
 	select MSM_IRQ
 	select MSM_QDSP6_APRV2
 	select MSM_QDSP6V2_CODECS
 	select MSM_AUDIO_QDSP6V2 if SND_SOC
 
+config ARCH_MSMZIRC
+	bool "MSMZIRC"
+	select ARM_GIC
+	select CPU_V7
+	select REGULATOR
+	select HAVE_ARM_ARCH_TIMER
+	select MSM_SPM_V2
+	select MSM_NOPM
+	select MEMORY_HOLE_CARVEOUT
+	select QMI_ENCDEC
+	select MSM_CORTEX_A7
+	select PINCTRL
+	select PINCTRL_MSM_TLMM
+	select USE_PINCTRL_IRQ
+	select MSM_IRQ
+
 config ARCH_MSM8610
 	bool "MSM8610"
 	select ARM_GIC
-	select GIC_SECURE
 	select ARCH_MSM_CORTEXMP
 	select CPU_V7
 	select MSM_SCM
@@ -214,7 +225,9 @@ config ARCH_MSM8610
 	select CPU_FREQ_MSM
 	select CPU_FREQ
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select ARMBW_HWMON
+	select MSM_DEVFREQ_DEVBW
 	select MSM_PIL
 	select MSM_RUN_QUEUE_STATS
 	select ARM_HAS_SG_CHAIN
@@ -227,13 +240,12 @@ config ARCH_MSM8610
 	select MSM_IOMMU_SYNC
 	select MSM_RPM_STATS_LOG
 	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
+	select PINCTRL_MSM_TLMM
 	select MSM_IRQ
 
 config ARCH_MSM8226
 	bool "MSM8226"
 	select ARM_GIC
-	select GIC_SECURE
 	select ARCH_MSM_CORTEXMP
 	select CPU_V7
 	select MSM_SCM
@@ -254,7 +266,9 @@ config ARCH_MSM8226
 	select CPU_FREQ_MSM
 	select CPU_FREQ
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select ARMBW_HWMON
+	select MSM_DEVFREQ_DEVBW
 	select MSM_PIL
 	select MSM_RUN_QUEUE_STATS
 	select ARM_HAS_SG_CHAIN
@@ -267,37 +281,8 @@ config ARCH_MSM8226
 	select MSM_RPM_STATS_LOG
 	select ARCH_WANT_KMAP_ATOMIC_FLUSH
 	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
+	select PINCTRL_MSM_TLMM
 	select ENABLE_VMALLOC_SAVINGS
-	select MSM_IRQ
-
-config ARCH_MSMSAMARIUM
-	bool "MSMSAMARIUM"
-	select ARCH_MSM_KRAITMP
-	select GPIO_MSM_V3
-	select ARM_GIC
-	select CPU_V7
-	select HAVE_ARM_ARCH_TIMER
-	select MSM_SCM
-	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
-	select MSM_PIL
-	select MSM_GPIOMUX
-	select MSM_SPM_V2
-	select MSM_L2_SPM
-	select MSM_QDSP6_APRV2
-	select MSM_QDSP6V2_CODECS
-	select MSM_PM if PM
-	select MSM_RPM_SMD
-	select REGULATOR
-	select REGULATOR_RPM_SMD
-	select REGULATOR_SPM
-	select ARM_HAS_SG_CHAIN
-	select MSM_RUN_QUEUE_STATS
-	select ARCH_WANT_KMAP_ATOMIC_FLUSH
-	select QMI_ENCDEC
-	select PINCTRL
-	select PINCTRL_MSM_TLMM_V3
 	select MSM_IRQ
 endmenu
 
@@ -316,7 +301,8 @@ config MSM_KRAIT_TBB_ABORT_HANDLER
 config  ARCH_MSM_KRAIT
 	bool
 	select ARM_L1_CACHE_SHIFT_6
-	select DEVFREQ_GOV_MSM_CPUBW_HWMON
+	select DEVFREQ_GOV_MSM_BW_HWMON
+	select DEVFREQ_GOV_MSM_CACHE_HWMON
 
 config  MSM_CORTEX_A7
 	bool
@@ -378,13 +364,12 @@ config PHYS_OFFSET
 	hex
 	default "0x00000000" if ARCH_MSM8974
 	default "0x00000000" if ARCH_APQ8084
-	default "0x00000000" if ARCH_MPQ8092
-	default "0x80000000" if ARCH_MSM8916
+	default "0x80000000" if ARCH_MSMFERRUM
 	default "0x00000000" if ARCH_MSM8226
 	default "0x00000000" if ARCH_MSM8610
-	default "0x00000000" if ARCH_MSMSAMARIUM
-	default "0x11400000" if ARCH_FSM9900
+	default "0x0b600000" if ARCH_FSM9900
 	default "0x00000000" if ARCH_MDM9630
+	default "0x80000000" if ARCH_MSMZIRC
 	default "0x00200000" if !MSM_STACKED_MEMORY
 	default "0x10000000"
 
@@ -444,13 +429,13 @@ choice
 		  Say Y here if you want the debug print routines to direct
 		  their output to the serial port on MSM 8974 devices.
 
-	config DEBUG_MPQ8092_UART
-                bool "Kernel low-level debugging messages via MPQ8092 UART"
-                depends on ARCH_MPQ8092
-                select MSM_HAS_DEBUG_UART_HS_V14
-                help
-                  Say Y here if you want the debug print routines to direct
-                  their output to the serial port on MPQ8092 devices.
+	config DEBUG_MSMFERRUM_UART
+		bool "Kernel low-level debugging messages via MSM FERRUM UART"
+		depends on ARCH_MSMFERRUM
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM FERRUM devices.
 
 	config DEBUG_MSM8916_UART
                 bool "Kernel low-level debugging messages via MSM8916 UART"
@@ -476,14 +461,6 @@ choice
 		  Say Y here if you want the debug print routines to direct
 		  their output to the serial port on FSM9900 devices.
 
-	config DEBUG_MSMSAMARIUM_UART
-		bool "Kernel low-level debugging messages via MSM SAMARIUM UART"
-		depends on ARCH_MSMSAMARIUM
-		select MSM_HAS_DEBUG_UART_HS_V14
-		help
-		  Say Y here if you want the debug print routines to direct
-		  their output to the serial port on MSM SAMARIUM devices.
-
 	config DEBUG_MSM8226_UART
 		bool "Kernel low-level debugging messages via MSM 8226 UART"
 		depends on ARCH_MSM8226
@@ -491,6 +468,14 @@ choice
 		help
 		  Say Y here if you want the debug print routines to direct
 		  their output to the serial port on MSM 8226 devices.
+
+	config DEBUG_MSMZIRC_UART
+		bool "Kernel low-level debugging messages via MSM ZIRC UART"
+		depends on ARCH_MSMZIRC
+		select MSM_HAS_DEBUG_UART_HS_V14
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to the serial port on MSM ZIRC devices.
 endchoice
 
 choice
@@ -638,22 +623,6 @@ config MSM_RPC_LOOPBACK_XPRT
 	  Support for routing RPC messages between APPS clients
 	  and APPS servers.  Helps in testing APPS RPC framework.
 
-config MSM_RMT_STORAGE_CLIENT
-	depends on (ARCH_MSM && MSM_ONCRPCROUTER)
-	default n
-	bool "Remote Storage RPC client"
-	help
-	  Provide RPC mechanism for remote processors to access storage
-	  device on apps processor.
-
-config MSM_RMT_STORAGE_CLIENT_STATS
-	depends on (MSM_RMT_STORAGE_CLIENT && DEBUG_FS)
-	default n
-	bool "Remote storage RPC client performance statistics"
-	help
-	  Collects performance statistics and shows this information
-	  through a debugfs file rmt_storage_stats.
-
 if CPU_FREQ_MSM
 
 config MSM_CPU_FREQ_SET_MIN_MAX
@@ -674,20 +643,6 @@ config MSM_CPU_FREQ_MIN
 	default 245760
 
 endif # CPU_FREQ_MSM
-
-config MSM_DEVFREQ_CPUBW
-	bool "Devfreq device for CPU<->DDR IB/AB BW voting"
-	depends on PM_DEVFREQ
-	select DEVFREQ_GOV_PERFORMANCE
-	select DEVFREQ_GOV_POWERSAVE
-	select DEVFREQ_GOV_USERSPACE
-	select DEVFREQ_GOV_MSM_CPUFREQ
-	default n
-	help
-	  Different devfreq governors use this devfreq device to make CPU to
-	  DDR IB/AB bandwidth votes. This driver provides a SoC topology
-	  agnostic interface to so that some of the devfreq governors can be
-	  shared across SoCs.
 
 config RTAC
 	bool "MSM8K real-time audio calibration support"
@@ -824,14 +779,6 @@ config MSM_BUSPM_DEV
 	  allocate physical memory which is used by bus performance hardware to
 	  dump performance data.
 
-config MSM_TZ_LOG
-	tristate "MSM Trust Zone (TZ) Log Driver"
-	depends on DEBUG_FS
-	help
-	  This option enables a driver with a debugfs interface for messages
-	  produced by the Secure code (Trust zone). These messages provide
-	  diagnostic information about TZ operation.
-
 config MSM_DIRECT_SCLK_ACCESS
 	bool "Direct access to the SCLK timer"
 	default n
@@ -845,15 +792,6 @@ config MSM_GPIOMUX
 config MSM_BUS_RPM_MULTI_TIER_ENABLED
 	bool "RPM Multi-tiering Configuration"
 	depends on MSM_BUS_SCALING
-
-config MSM_DLOAD_MODE
-	bool "Enable download mode on crashes"
-	default n
-	help
-		This makes the SoC enter download mode when it resets
-		due to a kernel panic. Note that this doesn't by itself
-		make the kernel reboot on a kernel panic - that must be
-		enabled via another mechanism.
 
 config MSM_STANDALONE_POWER_COLLAPSE
        bool "Enable standalone power collapse"
@@ -994,22 +932,6 @@ config MSM_CPR
 config HAVE_ARCH_HAS_CURRENT_TIMER
 	bool
 
-config MSM_CACHE_DUMP
-	bool "Cache dumping support"
-	help
-	  Add infrastructure to dump the L1 and L2 caches to an allocated buffer.
-	  This allows for analysis of the caches in case cache corruption is
-	  suspected.
-
-config MSM_CACHE_DUMP_ON_PANIC
-	bool "Dump caches on panic"
-	depends on MSM_CACHE_DUMP
-	help
-	  By default, the caches are flushed on panic. This means that trying to
-	  look at them in a RAM dump will give useless data. Select this if you
-	  want to dump the L1 and L2 caches on panic before any flush occurs.
-	  If unsure, say N
-
 config MSM_HSIC_SYSMON
 	tristate "MSM HSIC system monitor driver"
 	depends on USB
@@ -1050,19 +972,6 @@ config MSM_UARTDM_Core_v14
 	depends on SERIAL_MSM_HS
 	help
 		Select if BLSP based UART Core v.14 or higher is present.
-
-config MSM_BOOT_STATS
-	bool "Use MSM boot stats reporting"
-	help
-	 Use this to report msm boot stats such as bootloader throughput,
-	 display init, total boot time.
-	 This figures are reported in mpm sleep clock cycles and have a
-	 resolution of 31 bits as 1 bit is used as an overflow check.
-
-config MSM_XPU_ERR_FATAL
-	bool "Configure XPU violations as fatal errors"
-	help
-	 Select if XPU violations have to be configured as fatal errors.
 
 config KRAIT_REGULATOR
 	bool "Support Kraits powered via ganged regulators in the pmic"

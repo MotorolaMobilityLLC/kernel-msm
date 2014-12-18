@@ -6,16 +6,32 @@
 #include <linux/ioctl.h>
 
 #define MSM_CAM_V4L2_IOCTL_NOTIFY \
-	_IOW('V', BASE_VIDIOC_PRIVATE + 30, struct v4l2_event)
+	_IOW('V', BASE_VIDIOC_PRIVATE + 30, struct msm_v4l2_event_data)
 
 #define MSM_CAM_V4L2_IOCTL_NOTIFY_META \
-	_IOW('V', BASE_VIDIOC_PRIVATE + 31, struct v4l2_event)
+	_IOW('V', BASE_VIDIOC_PRIVATE + 31, struct msm_v4l2_event_data)
 
 #define MSM_CAM_V4L2_IOCTL_CMD_ACK \
-	_IOW('V', BASE_VIDIOC_PRIVATE + 32, struct v4l2_event)
+	_IOW('V', BASE_VIDIOC_PRIVATE + 32, struct msm_v4l2_event_data)
 
 #define MSM_CAM_V4L2_IOCTL_NOTIFY_ERROR \
-	_IOW('V', BASE_VIDIOC_PRIVATE + 33, struct v4l2_event)
+	_IOW('V', BASE_VIDIOC_PRIVATE + 33, struct msm_v4l2_event_data)
+
+
+#ifdef CONFIG_COMPAT
+#define MSM_CAM_V4L2_IOCTL_NOTIFY32 \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 30, struct v4l2_event32)
+
+#define MSM_CAM_V4L2_IOCTL_NOTIFY_META32 \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 31, struct v4l2_event32)
+
+#define MSM_CAM_V4L2_IOCTL_CMD_ACK32 \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 32, struct v4l2_event32)
+
+#define MSM_CAM_V4L2_IOCTL_NOTIFY_ERROR32 \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 33, struct v4l2_event32)
+
+#endif
 
 #define QCAMERA_DEVICE_GROUP_ID	1
 #define QCAMERA_VNODE_GROUP_ID	2
@@ -37,6 +53,7 @@
 #define MSM_CAMERA_SUBDEV_STROBE_FLASH 12
 #define MSM_CAMERA_SUBDEV_BUF_MNGR     13
 #define MSM_CAMERA_SUBDEV_SENSOR_INIT  14
+#define MSM_CAMERA_SUBDEV_OIS          15
 
 #define MSM_MAX_CAMERA_SENSORS  5
 
@@ -117,9 +134,9 @@ struct msm_v4l2_event_data {
 	/*word 8*/
 	unsigned int ret_value;
 	/*word 9*/
-	unsigned int nop3;
+	unsigned int v4l2_event_type;
 	/*word 10*/
-	unsigned int nop4;
+	unsigned int v4l2_event_id;
 	/*word 11*/
 	unsigned int nop5;
 	/*word 12*/
@@ -167,5 +184,15 @@ struct msm_v4l2_format_data {
 #define MSM_V4L2_PIX_FMT_STATS_BF   v4l2_fourcc('S', 'T', 'B', 'F')
 /* Bayer hist stats */
 #define MSM_V4L2_PIX_FMT_STATS_BHST v4l2_fourcc('B', 'H', 'S', 'T')
+
+enum smmu_attach_mode {
+	NON_SECURE_MODE,
+	SECURE_MODE,
+	MAX_PROTECTION_MODE,
+};
+
+struct msm_camera_smmu_attach_type {
+	enum smmu_attach_mode attach;
+};
 
 #endif /* __LINUX_MSMB_CAMERA_H */

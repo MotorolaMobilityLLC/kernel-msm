@@ -17,8 +17,6 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 
-#define SUBSYS_NAME_MAX_LENGTH 40
-
 struct subsys_device;
 
 enum {
@@ -42,6 +40,11 @@ struct module;
  * @ramdump: Collect a ramdump of the subsystem
  * @is_not_loadable: Indicate if subsystem firmware is not loadable via pil
  * framework
+ * @no_auth: Set if subsystem does not rely on PIL to authenticate and bring
+ * it out of reset
+ * @ssctl_instance_id: Instance id used to connect with SSCTL service
+ * @sysmon_pid:	pdev id that sysmon is probed with for the subsystem
+ * @sysmon_shutdown_ret: Return value for the call to sysmon_send_shutdown
  */
 struct subsys_desc {
 	const char *name;
@@ -62,16 +65,24 @@ struct subsys_desc {
 	unsigned int stop_ack_irq;
 	unsigned int wdog_bite_irq;
 	int force_stop_gpio;
+	bool no_auth;
+	int ssctl_instance_id;
+	u32 sysmon_pid;
+	int sysmon_shutdown_ret;
 };
 
 /**
  * struct notif_data - additional notif information
  * @crashed: indicates if subsystem has crashed
  * @enable_ramdump: ramdumps disabled if set to 0
+ * @no_auth: set if subsystem does not use PIL to bring it out of reset
+ * @pdev: subsystem platform device pointer
  */
 struct notif_data {
 	bool crashed;
 	int enable_ramdump;
+	bool no_auth;
+	struct platform_device *pdev;
 };
 
 #if defined(CONFIG_MSM_SUBSYSTEM_RESTART)

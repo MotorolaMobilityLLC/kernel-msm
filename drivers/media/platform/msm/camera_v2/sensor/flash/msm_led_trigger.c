@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,13 +18,8 @@
 
 #define FLASH_NAME "camera-led-flash"
 
-/*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
-#ifdef CONFIG_MSMB_CAMERA_DEBUG
-#define CDBG(fmt, args...) pr_err(fmt, ##args)
-#else
-#define CDBG(fmt, args...) do { } while (0)
-#endif
+#define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
 extern int32_t msm_led_torch_create_classdev(
 				struct platform_device *pdev, void *data);
@@ -186,7 +181,11 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			rc = of_property_read_string(flash_src_node,
 				"linux,default-trigger",
 				&fctrl.flash_trigger_name[i]);
-			if (rc < 0) {
+
+			rc_1 = of_property_read_string(flash_src_node,
+				"qcom,default-led-trigger",
+				&fctrl.flash_trigger_name[i]);
+			if ((rc < 0) && (rc_1 < 0)) {
 				pr_err("default-trigger: read failed\n");
 				of_node_put(flash_src_node);
 				continue;
@@ -232,7 +231,11 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 			rc = of_property_read_string(flash_src_node,
 				"linux,default-trigger",
 				&fctrl.torch_trigger_name);
-			if (rc < 0) {
+
+			rc_1 = of_property_read_string(flash_src_node,
+				"qcom,default-led-trigger",
+				&fctrl.torch_trigger_name);
+			if ((rc < 0) && (rc_1 < 0)) {
 				pr_err("default-trigger: read failed\n");
 				goto torch_failed;
 			}
@@ -242,7 +245,7 @@ static int32_t msm_led_trigger_probe(struct platform_device *pdev)
 
 			if (flashtype == GPIO_FLASH) {
 				/* use fake current */
-				fctrl.torch_op_current = LED_FULL;
+				fctrl.torch_op_current = LED_HALF;
 				if (temp)
 					fctrl.torch_trigger = temp;
 				else

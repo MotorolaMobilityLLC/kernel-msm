@@ -16,6 +16,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include "msm_vidc_internal.h"
+#include "trace/events/msm_vidc.h"
 
 #define VIDC_DBG_TAG "msm_vidc: %4s: "
 
@@ -54,6 +55,9 @@ extern int msm_fw_debug_mode;
 extern int msm_fw_low_power_mode;
 extern int msm_vidc_hw_rsp_timeout;
 extern u32 msm_fw_coverage;
+extern int msm_vidc_vpe_csc_601_to_709;
+extern int msm_vidc_dcvs_mode;
+extern int msm_vidc_sys_idle_indicator;
 
 #define VIDC_MSG_PRIO2STRING(__level) ({ \
 	char *__str; \

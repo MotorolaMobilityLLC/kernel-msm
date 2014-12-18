@@ -21,36 +21,29 @@
 
 /* ==================== Mux clock ==================== */
 
-int parent_to_src_sel(struct clk_src *parents, int num_parents, struct clk *p)
+static int mux_parent_to_src_sel(struct mux_clk *mux, struct clk *p)
 {
-	int i;
-
-	for (i = 0; i < num_parents; i++) {
-		if (parents[i].src == p)
-			return parents[i].sel;
-	}
-
-	return -EINVAL;
+	return parent_to_src_sel(mux->parents, mux->num_parents, p);
 }
 
 static int mux_set_parent(struct clk *c, struct clk *p)
 {
 	struct mux_clk *mux = to_mux_clk(c);
-	int sel = parent_to_src_sel(mux->parents, mux->num_parents, p);
+	int sel = mux_parent_to_src_sel(mux, p);
 	struct clk *old_parent;
 	int rc = 0, i;
 	unsigned long flags;
 
-	if (sel < 0 && mux->rec_set_par) {
-		for (i = 0; i < mux->num_parents; i++) {
-			rc = clk_set_parent(mux->parents[i].src, p);
+	if (sel < 0 && mux->rec_parents) {
+		for (i = 0; i < mux->num_rec_parents; i++) {
+			rc = clk_set_parent(mux->rec_parents[i], p);
 			if (!rc) {
-				sel = mux->parents[i].sel;
 				/*
 				 * This is necessary to ensure prepare/enable
 				 * counts get propagated correctly.
 				 */
-				p = mux->parents[i].src;
+				p = mux->rec_parents[i];
+				sel = mux_parent_to_src_sel(mux, p);
 				break;
 			}
 		}
@@ -121,6 +114,19 @@ static int mux_set_rate(struct clk *c, unsigned long rate)
 	 */
 	if (mux->safe_sel >= 0) {
 		/*
+		 * The safe parent might be a clock with multiple sources;
+		 * to select the "safe" source, set a safe frequency.
+		 */
+		if (mux->safe_freq) {
+			rc = clk_set_rate(mux->safe_parent, mux->safe_freq);
+			if (rc) {
+				pr_err("Failed to set safe rate on %s\n",
+					clk_name(mux->safe_parent));
+				return rc;
+			}
+		}
+
+		/*
 		 * Some mux implementations might switch to/from a low power
 		 * parent as part of their disable/enable ops. Grab the
 		 * enable lock to avoid racing with these implementations.
@@ -147,7 +153,7 @@ set_par_fail:
 	clk_set_rate(new_parent, new_par_curr_rate);
 set_rate_fail:
 	WARN(mux->ops->set_mux_sel(mux,
-		parent_to_src_sel(mux->parents, mux->num_parents, c->parent)),
+		mux_parent_to_src_sel(mux, c->parent)),
 		"Set rate failed for %s. Also in bad state!\n", c->dbg_name);
 	return rc;
 }
@@ -187,8 +193,7 @@ static enum handoff mux_handoff(struct clk *c)
 	struct mux_clk *mux = to_mux_clk(c);
 
 	c->rate = clk_get_rate(c->parent);
-	mux->safe_sel = parent_to_src_sel(mux->parents, mux->num_parents,
-							mux->safe_parent);
+	mux->safe_sel = mux_parent_to_src_sel(mux, mux->safe_parent);
 
 	if (mux->en_mask && mux->ops && mux->ops->is_enabled)
 		return mux->ops->is_enabled(mux)
@@ -293,10 +298,29 @@ static long div_round_rate(struct clk *c, unsigned long rate)
 	return __div_round_rate(&d->data, rate, c->parent, NULL, NULL);
 }
 
+static int _find_safe_div(struct clk *c, unsigned long rate)
+{
+	struct div_clk *d = to_div_clk(c);
+	struct div_data *data = &d->data;
+	unsigned long fast = max(rate, c->rate);
+	unsigned int numer = data->is_half_divider ? 2 : 1;
+	int i, safe_div = 0;
+
+	if (!d->safe_freq)
+		return 0;
+
+	/* Find the max safe freq that is lesser than fast */
+	for (i = data->max_div; i >= data->min_div; i--)
+		if (mult_frac(d->safe_freq, numer, i) <= fast)
+			safe_div = i;
+
+	return safe_div ?: -EINVAL;
+}
+
 static int div_set_rate(struct clk *c, unsigned long rate)
 {
 	struct div_clk *d = to_div_clk(c);
-	int div, rc = 0;
+	int safe_div, div, rc = 0;
 	long rrate, old_prate, new_prate;
 	struct div_data *data = &d->data;
 
@@ -310,10 +334,24 @@ static int div_set_rate(struct clk *c, unsigned long rate)
 	 * !d->ops and return an error. __div_round_rate() ensures div ==
 	 * d->div if !d->ops.
 	 */
-	if (div > data->div)
-		rc = d->ops->set_div(d, div);
-	if (rc)
-		return rc;
+
+	safe_div = _find_safe_div(c, rate);
+	if (d->safe_freq && safe_div < 0) {
+		pr_err("No safe div on %s for transitioning from %lu to %lu\n",
+			c->dbg_name, c->rate, rate);
+		return -EINVAL;
+	}
+
+	safe_div = max(safe_div, div);
+
+	if (safe_div > data->div) {
+		rc = d->ops->set_div(d, safe_div);
+		if (rc) {
+			pr_err("Failed to set div %d on %s\n", safe_div,
+				c->dbg_name);
+			return rc;
+		}
+	}
 
 	old_prate = clk_get_rate(c->parent);
 	rc = clk_set_rate(c->parent, new_prate);
@@ -321,6 +359,8 @@ static int div_set_rate(struct clk *c, unsigned long rate)
 		goto set_rate_fail;
 
 	if (div < data->div)
+		rc = d->ops->set_div(d, div);
+	else if (div < safe_div)
 		rc = d->ops->set_div(d, div);
 	if (rc)
 		goto div_dec_fail;
@@ -333,7 +373,7 @@ div_dec_fail:
 	WARN(clk_set_rate(c->parent, old_prate),
 		"Set rate failed for %s. Also in bad state!\n", c->dbg_name);
 set_rate_fail:
-	if (div > data->div)
+	if (safe_div > data->div)
 		WARN(d->ops->set_div(d, data->div),
 			"Set rate failed for %s. Also in bad state!\n",
 			c->dbg_name);
@@ -511,6 +551,15 @@ static int ext_set_parent(struct clk *c, struct clk *p)
 	return clk_set_parent(c->parent, p);
 }
 
+static struct clk *ext_get_parent(struct clk *c)
+{
+	struct ext_clk *ext = to_ext_clk(c);
+
+	if (!IS_ERR_OR_NULL(c->parent))
+		return c->parent;
+	return clk_get(ext->dev, ext->clk_id);
+}
+
 static enum handoff ext_handoff(struct clk *c)
 {
 	c->rate = clk_get_rate(c->parent);
@@ -524,6 +573,7 @@ struct clk_ops clk_ops_ext = {
 	.set_rate = ext_set_rate,
 	.get_rate = parent_get_rate,
 	.set_parent = ext_set_parent,
+	.get_parent = ext_get_parent,
 };
 
 
@@ -687,7 +737,7 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 	rc = clk_set_rate(new_parent, new_prate);
 	if (rc) {
 		pr_err("failed to set %s to %ld\n",
-			new_parent->dbg_name, new_prate);
+			clk_name(new_parent), new_prate);
 		goto err_set_rate;
 	}
 
@@ -711,11 +761,11 @@ err_set_src_div:
 err_pre_reparent:
 	rc = clk_set_rate(old_parent, old_prate);
 	WARN(rc, "%s: error changing parent (%s) rate to %ld\n",
-		c->dbg_name, old_parent->dbg_name, old_prate);
+		clk_name(c), clk_name(old_parent), old_prate);
 err_set_rate:
 	rc = set_src_div(md, old_parent, old_div);
 	WARN(rc, "%s: error changing back to original div (%d) and parent (%s)\n",
-		c->dbg_name, old_div, old_parent->dbg_name);
+		clk_name(c), old_div, clk_name(old_parent));
 
 	return rc;
 }

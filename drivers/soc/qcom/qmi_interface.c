@@ -525,6 +525,9 @@ static int handle_rmv_server(struct qmi_handle *handle,
 	struct msm_ipc_addr *svc_addr;
 	unsigned long flags;
 
+	if (unlikely(!handle->dest_info))
+		return 0;
+
 	svc_addr = (struct msm_ipc_addr *)(handle->dest_info);
 	if (svc_addr->addr.port_addr.node_id == ctl_msg->srv.node_id &&
 	    svc_addr->addr.port_addr.port_id == ctl_msg->srv.port_id) {
@@ -1734,7 +1737,7 @@ static struct svc_event_nb *find_and_add_svc_event_nb(uint32_t service_id,
 	temp->svc_driver.probe = qmi_svc_event_probe;
 	temp->svc_driver.remove = qmi_svc_event_remove;
 	scnprintf(temp->pdriver_name, sizeof(temp->pdriver_name),
-		  "QMI%08x:%08x", service_id, instance_id);
+		  "SVC%08x:%08x", service_id, instance_id);
 	temp->svc_driver.driver.name = temp->pdriver_name;
 	RAW_INIT_NOTIFIER_HEAD(&temp->svc_event_rcvr_list);
 

@@ -57,7 +57,10 @@
 #define IPA_IOCTL_QUERY_EP_MAPPING 33
 #define IPA_IOCTL_QUERY_RT_TBL_INDEX 34
 #define IPA_IOCTL_WRITE_QMAPID 35
-#define IPA_IOCTL_MAX            36
+#define IPA_IOCTL_MDFY_FLT_RULE 36
+#define IPA_IOCTL_NOTIFY_WAN_UPSTREAM_ROUTE_ADD	37
+#define IPA_IOCTL_NOTIFY_WAN_UPSTREAM_ROUTE_DEL	38
+#define IPA_IOCTL_MAX            39
 
 /**
  * max size of the header to be inserted
@@ -163,6 +166,21 @@ enum ipa_client_type {
 	(client) == IPA_CLIENT_USB3_CONS || \
 	(client) == IPA_CLIENT_USB4_CONS)
 
+#define IPA_CLIENT_IS_WLAN_CONS(client) \
+	((client) == IPA_CLIENT_WLAN1_CONS || \
+	(client) == IPA_CLIENT_WLAN2_CONS || \
+	(client) == IPA_CLIENT_WLAN3_CONS || \
+	(client) == IPA_CLIENT_WLAN4_CONS)
+
+#define IPA_CLIENT_IS_Q6_CONS(client) \
+	((client) == IPA_CLIENT_Q6_LAN_CONS || \
+	(client) == IPA_CLIENT_Q6_WAN_CONS || \
+	(client) == IPA_CLIENT_Q6_DUN_CONS)
+
+#define IPA_CLIENT_IS_Q6_PROD(client) \
+	((client) == IPA_CLIENT_Q6_LAN_PROD || \
+	(client) == IPA_CLIENT_Q6_CMD_PROD)
+
 /**
  * enum ipa_ip_type - Address family: IPv4 or IPv6
  */
@@ -216,8 +234,19 @@ enum ipa_wlan_event {
 	IPA_WLAN_EVENT_MAX
 };
 
+/**
+ * enum ipa_wan_event - Events for wan client
+ *
+ * wan default route add/del
+ */
+enum ipa_wan_event {
+	WAN_UPSTREAM_ROUTE_ADD = IPA_WLAN_EVENT_MAX,
+	WAN_UPSTREAM_ROUTE_DEL,
+	IPA_WAN_EVENT_MAX
+};
+
 enum ipa_ecm_event {
-	ECM_CONNECT = IPA_WLAN_EVENT_MAX,
+	ECM_CONNECT = IPA_WAN_EVENT_MAX,
 	ECM_DISCONNECT,
 	IPA_EVENT_MAX_NUM
 };
@@ -473,6 +502,8 @@ struct ipa_rt_rule {
  * @status:	out paramerer, status of header add operation,
  *		0 for success,
  *		-1 for failure
+ * @is_eth2_ofst_valid: is eth2_ofst field valid?
+ * @eth2_ofst: offset to start of Ethernet-II/802.3 header
  */
 struct ipa_hdr_add {
 	char name[IPA_RESOURCE_NAME_MAX];
@@ -481,6 +512,8 @@ struct ipa_hdr_add {
 	uint8_t is_partial;
 	uint32_t hdr_hdl;
 	int status;
+	uint8_t is_eth2_ofst_valid;
+	uint16_t eth2_ofst;
 };
 
 /**
@@ -507,12 +540,16 @@ struct ipa_ioc_add_hdr {
  *	valid only when ioctl return val is non-negative
  * @is_partial:	out parameter, indicates whether specified header is partial
  *		valid only when ioctl return val is non-negative
+ * @is_eth2_ofst_valid: is eth2_ofst field valid?
+ * @eth2_ofst: offset to start of Ethernet-II/802.3 header
  */
 struct ipa_ioc_copy_hdr {
 	char name[IPA_RESOURCE_NAME_MAX];
 	uint8_t hdr[IPA_HDR_MAX_SIZE];
 	uint8_t hdr_len;
 	uint8_t is_partial;
+	uint8_t is_eth2_ofst_valid;
+	uint16_t eth2_ofst;
 };
 
 /**
@@ -669,6 +706,37 @@ struct ipa_ioc_add_flt_rule {
 	uint8_t global;
 	uint8_t num_rules;
 	struct ipa_flt_rule_add rules[0];
+};
+
+/**
+ * struct ipa_flt_rule_mdfy - filtering rule descriptor includes
+ * in and out parameters
+ * @rule: actual rule to be added
+ * @flt_rule_hdl: handle to rule
+ * @status:	output parameter, status of filtering rule modify  operation,
+ *		0 for success,
+ *		-1 for failure
+ *
+ */
+struct ipa_flt_rule_mdfy {
+	struct ipa_flt_rule rule;
+	uint32_t rule_hdl;
+	int status;
+};
+
+/**
+ * struct ipa_ioc_mdfy_flt_rule - filtering rule modify parameters (supports
+ * multiple rules and commit)
+ * @commit: should rules be written to IPA HW also?
+ * @ip: IP family of rule
+ * @num_rules: number of filtering rules that follow
+ * @rules: all rules need to go back to back here, no pointers
+ */
+struct ipa_ioc_mdfy_flt_rule {
+	uint8_t commit;
+	enum ipa_ip_type ip;
+	uint8_t num_rules;
+	struct ipa_flt_rule_mdfy rules[0];
 };
 
 /**
@@ -982,6 +1050,17 @@ struct ipa_ecm_msg {
 };
 
 /**
+ * struct ipa_wan_msg - To hold information about wan client
+ * @name: name of the wan interface
+ *
+ * CnE need to pass the name of default wan iface when connected/disconnected.
+ */
+struct ipa_wan_msg {
+	char name[IPA_RESOURCE_NAME_MAX];
+	enum ipa_ip_type ip;
+};
+
+/**
  * struct ipa_ioc_rm_dependency - parameters for add/delete dependency
  * @resource_name: name of dependent resource
  * @depends_on_name: name of its dependency
@@ -1112,7 +1191,17 @@ struct ipa_ioc_write_qmapid {
 #define IPA_IOC_WRITE_QMAPID  _IOWR(IPA_IOC_MAGIC, \
 				IPA_IOCTL_WRITE_QMAPID, \
 				struct ipa_ioc_write_qmapid *)
+#define IPA_IOC_MDFY_FLT_RULE _IOWR(IPA_IOC_MAGIC, \
+					IPA_IOCTL_MDFY_FLT_RULE, \
+					struct ipa_ioc_mdfy_flt_rule *)
 
+#define IPA_IOC_NOTIFY_WAN_UPSTREAM_ROUTE_ADD _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_NOTIFY_WAN_UPSTREAM_ROUTE_ADD, \
+				struct ipa_wan_msg *)
+
+#define IPA_IOC_NOTIFY_WAN_UPSTREAM_ROUTE_DEL _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_NOTIFY_WAN_UPSTREAM_ROUTE_DEL, \
+				struct ipa_wan_msg *)
 /*
  * unique magic number of the Tethering bridge ioctls
  */

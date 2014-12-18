@@ -19,6 +19,7 @@
 #include "kgsl.h"
 #include "kgsl_compat.h"
 #include "kgsl_device.h"
+#include "kgsl_sync.h"
 
 #include "adreno.h"
 
@@ -291,58 +292,58 @@ static long kgsl_ioctl_timestamp_event_compat(struct kgsl_device_private
 
 static const struct kgsl_ioctl kgsl_compat_ioctl_funcs[] = {
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_DEVICE_GETPROPERTY_COMPAT,
-			kgsl_ioctl_device_getproperty_compat,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_device_getproperty_compat),
 	/* IOCTL_KGSL_DEVICE_WAITTIMESTAMP is no longer supported */
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID,
-			kgsl_ioctl_device_waittimestamp_ctxtid,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_device_waittimestamp_ctxtid),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_RINGBUFFER_ISSUEIBCMDS_COMPAT,
-			kgsl_ioctl_rb_issueibcmds_compat, 0),
+			kgsl_ioctl_rb_issueibcmds_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_SUBMIT_COMMANDS_COMPAT,
-			kgsl_ioctl_submit_commands_compat, 0),
+			kgsl_ioctl_submit_commands_compat),
 	/* IOCTL_KGSL_CMDSTREAM_READTIMESTAMP is no longer supported */
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_CMDSTREAM_READTIMESTAMP_CTXTID,
-			kgsl_ioctl_cmdstream_readtimestamp_ctxtid,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_cmdstream_readtimestamp_ctxtid),
 	/* IOCTL_KGSL_CMDSTREAM_FREEMEMONTIMESTAMP is no longer supported */
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_CMDSTREAM_FREEMEMONTIMESTAMP_CTXTID_COMPAT,
-			kgsl_ioctl_cmdstream_freememontimestamp_ctxtid_compat,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_cmdstream_freememontimestamp_ctxtid_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_DRAWCTXT_CREATE,
-			kgsl_ioctl_drawctxt_create,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_drawctxt_create),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_DRAWCTXT_DESTROY,
-			kgsl_ioctl_drawctxt_destroy,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_drawctxt_destroy),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_MAP_USER_MEM_COMPAT,
-			kgsl_ioctl_map_user_mem_compat, 0),
+			kgsl_ioctl_map_user_mem_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_SHAREDMEM_FREE_COMPAT,
-			kgsl_ioctl_sharedmem_free_compat, 0),
+			kgsl_ioctl_sharedmem_free_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_SHAREDMEM_FLUSH_CACHE_COMPAT,
-			kgsl_ioctl_sharedmem_flush_cache_compat, 0),
+			kgsl_ioctl_sharedmem_flush_cache_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_ALLOC_COMPAT,
-			kgsl_ioctl_gpumem_alloc_compat, 0),
+			kgsl_ioctl_gpumem_alloc_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_CFF_SYNCMEM_COMPAT,
-			kgsl_ioctl_cff_syncmem_compat, 0),
+			kgsl_ioctl_cff_syncmem_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_CFF_USER_EVENT,
-			kgsl_ioctl_cff_user_event, 0),
+			kgsl_ioctl_cff_user_event),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_TIMESTAMP_EVENT_COMPAT,
-			kgsl_ioctl_timestamp_event_compat,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_timestamp_event_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_SETPROPERTY_COMPAT,
-			kgsl_ioctl_device_setproperty_compat,
-			KGSL_IOCTL_LOCK),
+			kgsl_ioctl_device_setproperty_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_ALLOC_ID_COMPAT,
-			kgsl_ioctl_gpumem_alloc_id_compat, 0),
+			kgsl_ioctl_gpumem_alloc_id_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_FREE_ID,
-			kgsl_ioctl_gpumem_free_id, 0),
+			kgsl_ioctl_gpumem_free_id),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_GET_INFO_COMPAT,
-			kgsl_ioctl_gpumem_get_info_compat, 0),
+			kgsl_ioctl_gpumem_get_info_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_SYNC_CACHE_COMPAT,
-			kgsl_ioctl_gpumem_sync_cache_compat, 0),
+			kgsl_ioctl_gpumem_sync_cache_compat),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_SYNC_CACHE_BULK_COMPAT,
-			kgsl_ioctl_gpumem_sync_cache_bulk_compat, 0),
+			kgsl_ioctl_gpumem_sync_cache_bulk_compat),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_SYNCSOURCE_CREATE,
+			kgsl_ioctl_syncsource_create),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_SYNCSOURCE_DESTROY,
+			kgsl_ioctl_syncsource_destroy),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_SYNCSOURCE_CREATE_FENCE,
+			kgsl_ioctl_syncsource_create_fence),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_SYNCSOURCE_SIGNAL_FENCE,
+			kgsl_ioctl_syncsource_signal_fence),
 };
 
 long kgsl_compat_ioctl(struct file *filep, unsigned int cmd,
@@ -375,19 +376,28 @@ int kgsl_cmdbatch_create_compat(struct kgsl_device *device, unsigned int flags,
 {
 	int ret = 0, i;
 
-	if (!(flags & KGSL_CONTEXT_SYNC)) {
-		for (i = 0; i < numcmds; i++) {
-			struct kgsl_ibdesc_compat cmdbatch_ibdesc;
-			if (copy_from_user(&cmdbatch_ibdesc,
-				cmdlist + (sizeof(struct kgsl_ibdesc_compat)*i),
-				sizeof(struct kgsl_ibdesc_compat)))
-				return -EFAULT;
+	if (!(flags & (KGSL_CMDBATCH_SYNC | KGSL_CMDBATCH_MARKER))) {
+		struct kgsl_ibdesc_compat ibdesc32;
+		struct kgsl_ibdesc ibdesc;
+		void __user *uptr = cmdlist;
 
-			cmdbatch->ibdesc[i].gpuaddr = (unsigned long)
-						cmdbatch_ibdesc.gpuaddr;
-			cmdbatch->ibdesc[i].sizedwords = (size_t)
-						cmdbatch_ibdesc.sizedwords;
-			cmdbatch->ibdesc[i].ctrl = cmdbatch_ibdesc.ctrl;
+		for (i = 0; i < numcmds; i++) {
+			memset(&ibdesc32, 0, sizeof(ibdesc32));
+
+			if (copy_from_user(&ibdesc32, uptr, sizeof(ibdesc32))) {
+				ret = -EFAULT;
+				goto done;
+			}
+
+			ibdesc.gpuaddr = (unsigned long)ibdesc32.gpuaddr;
+			ibdesc.sizedwords = (size_t)ibdesc32.sizedwords;
+			ibdesc.ctrl = (unsigned int)ibdesc32.ctrl;
+
+			ret = kgsl_cmdbatch_add_memobj(cmdbatch, &ibdesc);
+			if (ret)
+				goto done;
+
+			uptr += sizeof(ibdesc32);
 		}
 	}
 	if (synclist && numsyncs) {
@@ -395,7 +405,6 @@ int kgsl_cmdbatch_create_compat(struct kgsl_device *device, unsigned int flags,
 		struct kgsl_cmd_syncpoint_compat sync32;
 		struct kgsl_cmd_syncpoint sync;
 		void __user *uptr = synclist;
-		int i;
 
 		for (i = 0; i < numsyncs; i++) {
 			memset(&sync32, 0, sizeof(sync32));
@@ -413,5 +422,7 @@ int kgsl_cmdbatch_create_compat(struct kgsl_device *device, unsigned int flags,
 			uptr += sizeof(sync32);
 		}
 	}
+
+done:
 	return ret;
 }

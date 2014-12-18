@@ -1171,6 +1171,22 @@ static int armv7pmu_set_event_filter(struct hw_perf_event *event,
 	return 0;
 }
 
+#ifdef CONFIG_PERF_EVENTS_USERMODE
+static void armv7pmu_init_usermode(void)
+{
+	u32 val;
+
+	/* Set PMUSERENR[UEN] */
+	asm volatile("mrc p15, 0, %0, c9, c14, 0" : "=r" (val));
+	val |= 1;
+	asm volatile("mcr p15, 0, %0, c9, c14, 0" : : "r" (val));
+}
+#else
+static inline void armv7pmu_init_usermode(void)
+{
+}
+#endif
+
 static void armv7pmu_reset(void *info)
 {
 	struct arm_pmu *cpu_pmu = (struct arm_pmu *)info;
@@ -1184,6 +1200,8 @@ static void armv7pmu_reset(void *info)
 
 	/* Initialize & Reset PMNC: C and P bits */
 	armv7_pmnc_write(ARMV7_PMNC_P | ARMV7_PMNC_C);
+
+	armv7pmu_init_usermode();
 }
 
 static int armv7_a8_map_event(struct perf_event *event)
@@ -1298,6 +1316,16 @@ static int armv7_a15_pmu_init(struct arm_pmu *cpu_pmu)
 	armv7pmu_init(cpu_pmu);
 	cpu_pmu->name		= "ARMv7 Cortex-A15";
 	cpu_pmu->map_event	= armv7_a15_map_event;
+	cpu_pmu->num_events	= armv7_read_num_pmnc_events();
+	cpu_pmu->set_event_filter = armv7pmu_set_event_filter;
+	return 0;
+}
+
+static int armv8_pmuv3_pmu_init(struct arm_pmu *cpu_pmu)
+{
+	armv7pmu_init(cpu_pmu);
+	cpu_pmu->name		= "ARMv8 Cortex-A53";
+	cpu_pmu->map_event	= armv7_a7_map_event;
 	cpu_pmu->num_events	= armv7_read_num_pmnc_events();
 	cpu_pmu->set_event_filter = armv7pmu_set_event_filter;
 	return 0;

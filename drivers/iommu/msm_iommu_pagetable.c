@@ -26,6 +26,7 @@
 
 #define NUM_FL_PTE      4096
 #define NUM_SL_PTE      256
+#define GUARD_PTE       2
 #define NUM_TEX_CLASS   8
 
 /* First-level page table bits */
@@ -99,7 +100,15 @@ int msm_iommu_pagetable_alloc(struct msm_iommu_pt *pt)
 	if (!pt->fl_table)
 		return -ENOMEM;
 
+	pt->fl_table_shadow = (u32 *)__get_free_pages(GFP_KERNEL,
+							  get_order(SZ_16K));
+	if (!pt->fl_table_shadow) {
+		free_pages((unsigned long)pt->fl_table, get_order(SZ_16K));
+		return -ENOMEM;
+	}
+
 	memset(pt->fl_table, 0, SZ_16K);
+	memset(pt->fl_table_shadow, 0, SZ_16K);
 	clean_pte(pt->fl_table, pt->fl_table + NUM_FL_PTE, pt->redirect);
 
 	return 0;
@@ -108,15 +117,45 @@ int msm_iommu_pagetable_alloc(struct msm_iommu_pt *pt)
 void msm_iommu_pagetable_free(struct msm_iommu_pt *pt)
 {
 	u32 *fl_table;
+	u32 *fl_table_shadow;
 	int i;
 
 	fl_table = pt->fl_table;
+	fl_table_shadow = pt->fl_table_shadow;
 	for (i = 0; i < NUM_FL_PTE; i++)
 		if ((fl_table[i] & 0x03) == FL_TYPE_TABLE)
 			free_page((unsigned long) __va(((fl_table[i]) &
 							FL_BASE_MASK)));
 	free_pages((unsigned long)fl_table, get_order(SZ_16K));
 	pt->fl_table = 0;
+
+	free_pages((unsigned long)fl_table_shadow, get_order(SZ_16K));
+	pt->fl_table_shadow = 0;
+}
+
+void msm_iommu_pagetable_free_tables(struct msm_iommu_pt *pt, unsigned long va,
+				 size_t len)
+{
+	/*
+	 * Adding 2 for worst case. We could be spanning 3 second level pages
+	 * if we unmapped just over 1MB.
+	 */
+	u32 n_entries = len / SZ_1M + 2;
+	u32 fl_offset = FL_OFFSET(va);
+	u32 i;
+
+	for (i = 0; i < n_entries && fl_offset < NUM_FL_PTE; ++i) {
+		u32 *fl_pte_shadow = pt->fl_table_shadow + fl_offset;
+		void *sl_table_va = __va(((*fl_pte_shadow) & ~0x1FF));
+		u32 sl_table = *fl_pte_shadow;
+
+		if (sl_table && !(sl_table & 0x1FF)) {
+			free_pages((unsigned long) sl_table_va,
+				   get_order(SZ_4K));
+			*fl_pte_shadow = 0;
+		}
+		++fl_offset;
+	}
 }
 
 static int __get_pgprot(int prot, int len)
@@ -147,22 +186,24 @@ static int __get_pgprot(int prot, int len)
 		pgprot |= tex & 0x01 ? FL_BUFFERABLE : 0;
 		pgprot |= tex & 0x02 ? FL_CACHEABLE : 0;
 		pgprot |= tex & 0x04 ? FL_TEX0 : 0;
-		pgprot |= FL_AP0 | FL_AP1;
+		pgprot |= prot & IOMMU_PRIV ? FL_AP0 :
+			(FL_AP0 | FL_AP1);
 		pgprot |= prot & IOMMU_WRITE ? 0 : FL_AP2;
 	} else	{
 		pgprot = SL_SHARED;
 		pgprot |= tex & 0x01 ? SL_BUFFERABLE : 0;
 		pgprot |= tex & 0x02 ? SL_CACHEABLE : 0;
 		pgprot |= tex & 0x04 ? SL_TEX0 : 0;
-		pgprot |= SL_AP0 | SL_AP1;
+		pgprot |= prot & IOMMU_PRIV ? SL_AP0 :
+			(SL_AP0 | SL_AP1);
 		pgprot |= prot & IOMMU_WRITE ? 0 : SL_AP2;
 	}
 
 	return pgprot;
 }
 
-static u32 *make_second_level(struct msm_iommu_pt *pt,
-					u32 *fl_pte)
+static u32 *make_second_level(struct msm_iommu_pt *pt, u32 *fl_pte,
+				u32 *fl_pte_shadow)
 {
 	u32 *sl;
 	sl = (u32 *) __get_free_pages(GFP_KERNEL,
@@ -173,10 +214,11 @@ static u32 *make_second_level(struct msm_iommu_pt *pt,
 		goto fail;
 	}
 	memset(sl, 0, SZ_4K);
-	clean_pte(sl, sl + NUM_SL_PTE, pt->redirect);
+	clean_pte(sl, sl + NUM_SL_PTE + GUARD_PTE, pt->redirect);
 
 	*fl_pte = ((((int)__pa(sl)) & FL_BASE_MASK) | \
 			FL_TYPE_TABLE);
+	*fl_pte_shadow = *fl_pte & ~0x1FF;
 
 	clean_pte(fl_pte, fl_pte + 1, pt->redirect);
 fail:
@@ -248,13 +290,8 @@ fail:
 int msm_iommu_pagetable_map(struct msm_iommu_pt *pt, unsigned long va,
 			phys_addr_t pa, size_t len, int prot)
 {
-	u32 *fl_pte;
-	u32 fl_offset;
-	u32 *sl_table;
-	u32 *sl_pte;
-	u32 sl_offset;
-	unsigned int pgprot;
-	int ret = 0;
+	int ret;
+	struct scatterlist sg;
 
 	if (len != SZ_16M && len != SZ_1M &&
 	    len != SZ_64K && len != SZ_4K) {
@@ -263,68 +300,11 @@ int msm_iommu_pagetable_map(struct msm_iommu_pt *pt, unsigned long va,
 		goto fail;
 	}
 
-	if (!pt->fl_table) {
-		pr_debug("Null page table\n");
-		ret = -EINVAL;
-		goto fail;
-	}
+	sg_init_table(&sg, 1);
+	sg_dma_address(&sg) = pa;
+	sg.length = len;
 
-	pgprot = __get_pgprot(prot, len);
-	if (!pgprot) {
-		ret = -EINVAL;
-		goto fail;
-	}
-
-	fl_offset = FL_OFFSET(va);		/* Upper 12 bits */
-	fl_pte = pt->fl_table + fl_offset;	/* int pointers, 4 bytes */
-
-	if (len == SZ_16M) {
-		ret = fl_16m(fl_pte, pa, pgprot);
-		if (ret)
-			goto fail;
-		clean_pte(fl_pte, fl_pte + 16, pt->redirect);
-	}
-
-	if (len == SZ_1M) {
-		ret = fl_1m(fl_pte, pa, pgprot);
-		if (ret)
-			goto fail;
-		clean_pte(fl_pte, fl_pte + 1, pt->redirect);
-	}
-
-	/* Need a 2nd level table */
-	if (len == SZ_4K || len == SZ_64K) {
-
-		if (*fl_pte == 0) {
-			if (make_second_level(pt, fl_pte) == NULL) {
-				ret = -ENOMEM;
-				goto fail;
-			}
-		}
-
-		if (!(*fl_pte & FL_TYPE_TABLE)) {
-			ret = -EBUSY;
-			goto fail;
-		}
-	}
-
-	sl_table = (u32 *) __va(((*fl_pte) & FL_BASE_MASK));
-	sl_offset = SL_OFFSET(va);
-	sl_pte = sl_table + sl_offset;
-
-	if (len == SZ_4K) {
-		ret = sl_4k(sl_pte, pa, pgprot);
-		if (ret)
-			goto fail;
-		clean_pte(sl_pte, sl_pte + 1, pt->redirect);
-	}
-
-	if (len == SZ_64K) {
-		ret = sl_64k(sl_pte, pa, pgprot);
-		if (ret)
-			goto fail;
-		clean_pte(sl_pte, sl_pte + 16, pt->redirect);
-	}
+	ret = msm_iommu_pagetable_map_range(pt, va, &sg, len, prot);
 
 fail:
 	return ret;
@@ -350,61 +330,28 @@ static phys_addr_t get_phys_addr(struct scatterlist *sg)
 	return pa;
 }
 
-static int check_range(u32 *fl_table, unsigned int va,
-				 unsigned int len)
+/*
+ * For debugging we may want to force mappings to be 4K only
+ */
+#ifdef CONFIG_IOMMU_FORCE_4K_MAPPINGS
+static inline int is_fully_aligned(unsigned int va, phys_addr_t pa, size_t len,
+				   int align)
 {
-	unsigned int offset = 0;
-	u32 *fl_pte;
-	u32 fl_offset;
-	u32 *sl_table;
-	u32 sl_start, sl_end;
-	int i;
-
-	fl_offset = FL_OFFSET(va);	/* Upper 12 bits */
-	fl_pte = fl_table + fl_offset;	/* int pointers, 4 bytes */
-
-	while (offset < len) {
-		if (*fl_pte & FL_TYPE_TABLE) {
-			sl_start = SL_OFFSET(va);
-			sl_table =  __va(((*fl_pte) & FL_BASE_MASK));
-			sl_end = ((len - offset) / SZ_4K) + sl_start;
-
-			if (sl_end > NUM_SL_PTE)
-				sl_end = NUM_SL_PTE;
-
-			for (i = sl_start; i < sl_end; i++) {
-				if (sl_table[i] != 0) {
-					pr_err("%08x - %08x already mapped\n",
-						va, va + SZ_4K);
-					return -EBUSY;
-				}
-				offset += SZ_4K;
-				va += SZ_4K;
-			}
-
-
-			sl_start = 0;
-		} else {
-			if (*fl_pte != 0) {
-				pr_err("%08x - %08x already mapped\n",
-				       va, va + SZ_1M);
-				return -EBUSY;
-			}
-			va += SZ_1M;
-			offset += SZ_1M;
-			sl_start = 0;
-		}
-		fl_pte++;
+	if (align == SZ_4K) {
+		return  IS_ALIGNED(va, align) && IS_ALIGNED(pa, align)
+			&& (len >= align);
+	} else {
+		return 0;
 	}
-	return 0;
 }
-
+#else
 static inline int is_fully_aligned(unsigned int va, phys_addr_t pa, size_t len,
 				   int align)
 {
 	return  IS_ALIGNED(va, align) && IS_ALIGNED(pa, align)
 		&& (len >= align);
 }
+#endif
 
 int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 		       struct scatterlist *sg, unsigned int len, int prot)
@@ -413,6 +360,7 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 	unsigned int start_va = va;
 	unsigned int offset = 0;
 	u32 *fl_pte;
+	u32 *fl_pte_shadow;
 	u32 fl_offset;
 	u32 *sl_table = NULL;
 	u32 sl_offset, sl_start;
@@ -433,11 +381,8 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 
 	fl_offset = FL_OFFSET(va);		/* Upper 12 bits */
 	fl_pte = pt->fl_table + fl_offset;	/* int pointers, 4 bytes */
+	fl_pte_shadow = pt->fl_table_shadow + fl_offset;
 	pa = get_phys_addr(sg);
-
-	ret = check_range(pt->fl_table, va, len);
-	if (ret)
-		goto fail;
 
 	while (offset < len) {
 		chunk_size = SZ_4K;
@@ -460,12 +405,14 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 					goto fail;
 				clean_pte(fl_pte, fl_pte + 16, pt->redirect);
 				fl_pte += 16;
+				fl_pte_shadow += 16;
 			} else if (chunk_size == SZ_1M) {
 				ret = fl_1m(fl_pte, pa, pgprot1m);
 				if (ret)
 					goto fail;
 				clean_pte(fl_pte, fl_pte + 1, pt->redirect);
 				fl_pte++;
+				fl_pte_shadow++;
 			}
 
 			offset += chunk_size;
@@ -482,7 +429,7 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 		}
 		/* for 4K or 64K, make sure there is a second level table */
 		if (*fl_pte == 0) {
-			if (!make_second_level(pt, fl_pte)) {
+			if (!make_second_level(pt, fl_pte, fl_pte_shadow)) {
 				ret = -ENOMEM;
 				goto fail;
 			}
@@ -516,12 +463,15 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 			if (chunk_size == SZ_4K) {
 				sl_4k(&sl_table[sl_offset], pa, pgprot4k);
 				sl_offset++;
+				/* Increment map count */
+				(*fl_pte_shadow)++;
 			} else {
 				BUG_ON(sl_offset + 16 > NUM_SL_PTE);
 				sl_64k(&sl_table[sl_offset], pa, pgprot64k);
 				sl_offset += 16;
+				/* Increment map count */
+				*fl_pte_shadow += 16;
 			}
-
 
 			offset += chunk_size;
 			chunk_offset += chunk_size;
@@ -538,6 +488,7 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 		clean_pte(sl_table + sl_start, sl_table + sl_offset,
 				pt->redirect);
 		fl_pte++;
+		fl_pte_shadow++;
 		sl_offset = 0;
 	}
 
@@ -553,64 +504,60 @@ void msm_iommu_pagetable_unmap_range(struct msm_iommu_pt *pt, unsigned int va,
 {
 	unsigned int offset = 0;
 	u32 *fl_pte;
+	u32 *fl_pte_shadow;
 	u32 fl_offset;
 	u32 *sl_table;
 	u32 sl_start, sl_end;
-	int used, i;
+	int used;
 
 	BUG_ON(len & (SZ_4K - 1));
 
 	fl_offset = FL_OFFSET(va);		/* Upper 12 bits */
 	fl_pte = pt->fl_table + fl_offset;	/* int pointers, 4 bytes */
+	fl_pte_shadow = pt->fl_table_shadow + fl_offset;
 
 	while (offset < len) {
 		if (*fl_pte & FL_TYPE_TABLE) {
+			unsigned int n_entries;
+
 			sl_start = SL_OFFSET(va);
 			sl_table =  __va(((*fl_pte) & FL_BASE_MASK));
 			sl_end = ((len - offset) / SZ_4K) + sl_start;
 
 			if (sl_end > NUM_SL_PTE)
 				sl_end = NUM_SL_PTE;
+			n_entries = sl_end - sl_start;
 
-			memset(sl_table + sl_start, 0, (sl_end - sl_start) * 4);
+			memset(sl_table + sl_start, 0, n_entries * 4);
 			clean_pte(sl_table + sl_start, sl_table + sl_end,
 					pt->redirect);
 
-			offset += (sl_end - sl_start) * SZ_4K;
-			va += (sl_end - sl_start) * SZ_4K;
+			offset += n_entries * SZ_4K;
+			va += n_entries * SZ_4K;
 
-			/* Unmap and free the 2nd level table if all mappings
-			 * in it were removed. This saves memory, but the table
-			 * will need to be re-allocated the next time someone
-			 * tries to map these VAs.
-			 */
-			used = 0;
+			BUG_ON((*fl_pte_shadow & 0x1FF) < n_entries);
 
-			/* If we just unmapped the whole table, don't bother
-			 * seeing if there are still used entries left.
-			 */
-			if (sl_end - sl_start != NUM_SL_PTE)
-				for (i = 0; i < NUM_SL_PTE; i++)
-					if (sl_table[i]) {
-						used = 1;
-						break;
-					}
+			/* Decrement map count */
+			*fl_pte_shadow -= n_entries;
+			used = *fl_pte_shadow & 0x1FF;
+
 			if (!used) {
-				free_page((unsigned long)sl_table);
 				*fl_pte = 0;
-
 				clean_pte(fl_pte, fl_pte + 1, pt->redirect);
 			}
 
 			sl_start = 0;
 		} else {
 			*fl_pte = 0;
+			*fl_pte_shadow = 0;
+
 			clean_pte(fl_pte, fl_pte + 1, pt->redirect);
 			va += SZ_1M;
 			offset += SZ_1M;
 			sl_start = 0;
 		}
 		fl_pte++;
+		fl_pte_shadow++;
 	}
 }
 

@@ -106,32 +106,12 @@ ENTRY(__cpu_suspend)
 ENDPROC(__cpu_suspend)
 	.ltorg
 
-/*
- * x0 must contain the sctlr value retrieved from restored context
- */
-ENTRY(cpu_resume_mmu)
-	ldr	x3, =cpu_resume_after_mmu
-	msr	sctlr_el1, x0		// restore sctlr_el1
-	isb
-	br	x3			// global jump to virtual address
-ENDPROC(cpu_resume_mmu)
-cpu_resume_after_mmu:
-	mov	x0, #0			// return zero on success
-	ldp	x19, x20, [sp, #16]
-	ldp	x21, x22, [sp, #32]
-	ldp	x23, x24, [sp, #48]
-	ldp	x25, x26, [sp, #64]
-	ldp	x27, x28, [sp, #80]
-	ldp	x29, lr, [sp], #96
-	ret
-ENDPROC(cpu_resume_after_mmu)
-
-	.data
 ENTRY(cpu_resume)
 	bl	el2_setup		// if in EL2 drop to EL1 cleanly
 #ifdef CONFIG_SMP
 	mrs	x1, mpidr_el1
-	adr	x4, mpidr_hash_ptr
+	adrp	x4, mpidr_hash_ptr
+	add	x4, x4, #:lo12:mpidr_hash_ptr
 	ldr	x5, [x4]
 	add	x8, x4, x5		// x8 = struct mpidr_hash phys address
         /* retrieve mpidr_hash members to compute the hash */
@@ -143,14 +123,15 @@ ENTRY(cpu_resume)
 #else
 	mov	x7, xzr
 #endif
-	adr	x0, sleep_save_sp
+	adrp	x0, sleep_save_sp
+	add	x0, x0, #:lo12:sleep_save_sp
 	ldr	x0, [x0, #SLEEP_SAVE_SP_PHYS]
 	ldr	x0, [x0, x7, lsl #3]
 	/* load sp from context */
 	ldr	x2, [x0, #CPU_CTX_SP]
-	adr	x1, sleep_idmap_phys
+	adrp	x1, sleep_idmap_phys
 	/* load physical address of identity map page table in x1 */
-	ldr	x1, [x1]
+	ldr	x1, [x1, #:lo12:sleep_idmap_phys]
 	mov	sp, x2
 	/*
 	 * cpu_do_resume expects x0 to contain context physical address
@@ -160,6 +141,7 @@ ENTRY(cpu_resume)
 	b	cpu_resume_mmu		// Resume MMU, never returns
 ENDPROC(cpu_resume)
 
+	.data
 	.align 3
 mpidr_hash_ptr:
 	/*

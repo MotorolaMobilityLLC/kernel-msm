@@ -394,7 +394,12 @@ static struct mux_clk kpss_debug_ter_mux = {
 		{&krait2_div_clk.c, 2},
 		{&krait3_div_clk.c, 3},
 	),
-	.rec_set_par = 1,
+	MUX_REC_SRC_LIST(
+		&krait0_div_clk.c,
+		&krait1_div_clk.c,
+		&krait2_div_clk.c,
+		&krait3_div_clk.c,
+	),
 	.base = &meas_base,
 	.c = {
 		.dbg_name = "kpss_debug_ter_mux",
@@ -406,7 +411,6 @@ static struct mux_clk kpss_debug_ter_mux = {
 static struct mux_clk kpss_debug_sec_mux = {
 	.offset = GLB_CLK_DIAG,
 	.en_offset = L2_CBCR_REG,
-	.en_reg = 1,
 	.ops = &mux_reg_ops,
 	.en_mask = BIT(0),
 	.mask = 0x7,
@@ -415,7 +419,10 @@ static struct mux_clk kpss_debug_sec_mux = {
 		{&kpss_debug_ter_mux.c, 0},
 		{&l2_div_clk.c, 1},
 	),
-	.rec_set_par = 1,
+	MUX_REC_SRC_LIST(
+		&kpss_debug_ter_mux.c,
+		&l2_div_clk.c,
+	),
 	.base = &meas_base,
 	.c = {
 		.dbg_name = "kpss_debug_sec_mux",
@@ -432,7 +439,9 @@ static struct mux_clk kpss_debug_pri_mux = {
 	MUX_SRC_LIST(
 		{&kpss_debug_sec_mux.c, 0},
 	),
-	.rec_set_par = 1,
+	MUX_REC_SRC_LIST(
+		&kpss_debug_sec_mux.c,
+	),
 	.base = &meas_base,
 	.c = {
 		.dbg_name = "kpss_debug_pri_mux",
@@ -442,42 +451,35 @@ static struct mux_clk kpss_debug_pri_mux = {
 };
 
 static struct clk_lookup kpss_clocks_8974[] = {
-	CLK_LOOKUP_OF("",	hfpll_src_clk,	""),
-	CLK_LOOKUP_OF("",	acpu_aux_clk,		""),
-	CLK_LOOKUP_OF("",	hfpll0_clk,		""),
-	CLK_LOOKUP_OF("",	hfpll0_div_clk,	""),
-	CLK_LOOKUP_OF("",	hfpll0_clk,		""),
-	CLK_LOOKUP_OF("",	hfpll1_div_clk,	""),
-	CLK_LOOKUP_OF("",	hfpll1_clk,		""),
-	CLK_LOOKUP_OF("",	hfpll2_div_clk,	""),
-	CLK_LOOKUP_OF("",	hfpll2_clk,		""),
-	CLK_LOOKUP_OF("",	hfpll3_div_clk,	""),
-	CLK_LOOKUP_OF("",	hfpll3_clk,		""),
-	CLK_LOOKUP_OF("",	hfpll_l2_div_clk,	""),
-	CLK_LOOKUP_OF("",	hfpll_l2_clk,		""),
-	CLK_LOOKUP_OF("",	krait0_sec_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait1_sec_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait2_sec_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait3_sec_mux_clk,		""),
-	CLK_LOOKUP_OF("",	l2_sec_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait0_pri_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait1_pri_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait2_pri_mux_clk,		""),
-	CLK_LOOKUP_OF("",	krait3_pri_mux_clk,		""),
-	CLK_LOOKUP_OF("",	l2_pri_mux_clk,		""),
-	CLK_LOOKUP_OF("l2_clk",	l2_clk,     "0.qcom,msm-cpufreq"),
-	CLK_LOOKUP_OF("cpu0_clk",	krait0_clk, "0.qcom,msm-cpufreq"),
-	CLK_LOOKUP_OF("cpu1_clk",	krait1_clk, "0.qcom,msm-cpufreq"),
-	CLK_LOOKUP_OF("cpu2_clk",	krait2_clk, "0.qcom,msm-cpufreq"),
-	CLK_LOOKUP_OF("cpu3_clk",	krait3_clk, "0.qcom,msm-cpufreq"),
-	CLK_LOOKUP_OF("l2_clk",	l2_clk,     "fe805664.qcom,pm"),
-	CLK_LOOKUP_OF("cpu0_clk",	krait0_clk, "fe805664.qcom,pm"),
-	CLK_LOOKUP_OF("cpu1_clk",	krait1_clk, "fe805664.qcom,pm"),
-	CLK_LOOKUP_OF("cpu2_clk",	krait2_clk, "fe805664.qcom,pm"),
-	CLK_LOOKUP_OF("cpu3_clk",	krait3_clk, "fe805664.qcom,pm"),
+	CLK_LIST(hfpll_src_clk),
+	CLK_LIST(acpu_aux_clk),
+	CLK_LIST(hfpll0_div_clk),
+	CLK_LIST(hfpll0_clk),
+	CLK_LIST(hfpll1_div_clk),
+	CLK_LIST(hfpll1_clk),
+	CLK_LIST(hfpll2_div_clk),
+	CLK_LIST(hfpll2_clk),
+	CLK_LIST(hfpll3_div_clk),
+	CLK_LIST(hfpll3_clk),
+	CLK_LIST(hfpll_l2_div_clk),
+	CLK_LIST(hfpll_l2_clk),
+	CLK_LIST(krait0_sec_mux_clk),
+	CLK_LIST(krait1_sec_mux_clk),
+	CLK_LIST(krait2_sec_mux_clk),
+	CLK_LIST(krait3_sec_mux_clk),
+	CLK_LIST(l2_sec_mux_clk),
+	CLK_LIST(krait0_pri_mux_clk),
+	CLK_LIST(krait1_pri_mux_clk),
+	CLK_LIST(krait2_pri_mux_clk),
+	CLK_LIST(krait3_pri_mux_clk),
+	CLK_LIST(l2_pri_mux_clk),
+	CLK_LIST(l2_clk),
+	CLK_LIST(krait0_clk),
+	CLK_LIST(krait1_clk),
+	CLK_LIST(krait2_clk),
+	CLK_LIST(krait3_clk),
 
-	CLK_LOOKUP_OF("kpss_debug_mux", kpss_debug_pri_mux,
-		   "fc401880.qcom,cc-debug"),
+	CLK_LIST(kpss_debug_pri_mux),
 };
 
 static struct clk *cpu_clk[] = {
@@ -488,15 +490,17 @@ static struct clk *cpu_clk[] = {
 };
 
 static void get_krait_bin_format_b(struct platform_device *pdev,
-					int *speed, int *pvs, int *pvs_ver)
+			int *speed, int *pvs, int *svs_pvs, int *pvs_ver)
 {
 	u32 pte_efuse, redundant_sel;
 	struct resource *res;
 	void __iomem *base;
+	void __iomem *base_svs;
 
 	*speed = 0;
 	*pvs = 0;
 	*pvs_ver = 0;
+	*svs_pvs = -1;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "efuse");
 	if (!res) {
@@ -536,13 +540,40 @@ static void get_krait_bin_format_b(struct platform_device *pdev,
 		*speed = 0;
 	}
 
+	/* Check SVS PVS bin */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "efuse_svs");
+	if (res) {
+		base_svs = devm_ioremap(&pdev->dev, res->start,
+					resource_size(res));
+		/* Read the svs pvs value if status bit 28 is valid (set) */
+		if (!base_svs) {
+			*svs_pvs = 0;
+			dev_warn(&pdev->dev,
+			 "Unable to read svs efuse data. Defaulting to 0!\n");
+		} else {
+			pte_efuse = readl_relaxed(base_svs);
+			/*
+			 * Read the svs pvs value if status bit 28 is valid
+			 * 4 bits of SVS PVS are in efuse register bits 27-24
+			 */
+			if (pte_efuse & BIT(28))
+				*svs_pvs = (pte_efuse >> 24) & 0xF;
+
+			devm_iounmap(&pdev->dev, base_svs);
+		}
+	}
+
 	/* Check PVS_BLOW_STATUS */
 	pte_efuse = readl_relaxed(base + 0x4) & BIT(21);
 	if (pte_efuse) {
 		dev_info(&pdev->dev, "PVS bin: %d\n", *pvs);
+		if (*svs_pvs >= 0)
+			dev_info(&pdev->dev, "SVS PVS bin: %d\n", *svs_pvs);
+
 	} else {
 		dev_warn(&pdev->dev, "PVS bin not set. Defaulting to 0!\n");
 		*pvs = 0;
+		*svs_pvs = -1;
 	}
 
 	dev_info(&pdev->dev, "PVS version: %d\n", *pvs_ver);
@@ -668,11 +699,11 @@ static int clock_krait_8974_driver_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct clk *c;
-	int speed, pvs, pvs_ver, config_ver, rows, cpu;
-	unsigned long *freq, cur_rate, aux_rate;
+	int speed, pvs, svs_pvs, pvs_ver, config_ver, rows, cpu, svs_row = 0;
+	unsigned long *freq, *svs_freq, cur_rate, aux_rate;
 	struct resource *res;
-	int *uv, *ua;
-	u32 *dscr, vco_mask, config_val;
+	int *uv, *ua, *svs_uv, *svs_ua;
+	u32 *dscr, vco_mask, config_val, svs_fmax;
 	int ret;
 
 	vdd_l2.regulator[0] = devm_regulator_get(dev, "l2-dig");
@@ -759,7 +790,7 @@ static int clock_krait_8974_driver_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "PVS config version: %d\n", config_ver);
 	}
 
-	get_krait_bin_format_b(pdev, &speed, &pvs, &pvs_ver);
+	get_krait_bin_format_b(pdev, &speed, &pvs, &svs_pvs, &pvs_ver);
 	snprintf(table_name, ARRAY_SIZE(table_name),
 			"qcom,speed%d-pvs%d-bin-v%d", speed, pvs, pvs_ver);
 
@@ -777,6 +808,66 @@ static int clock_krait_8974_driver_probe(struct platform_device *pdev)
 			dev_info(dev, "Safe voltage plan loaded.\n");
 			pvs = 0;
 			rows = ret;
+		}
+	} else if (svs_pvs >= 0) {
+		/* Find the split freq for svs fmax */
+		ret = of_property_read_u32(dev->of_node, "qcom,svs-fmax",
+		     &svs_fmax);
+		if (ret) {
+			dev_err(dev, "Unable to find krait fmax for svs\n");
+			return ret;
+		}
+
+		/* Find the svs fmax freq row */
+		while ((svs_row < rows) && (freq[svs_row] != svs_fmax))
+			svs_row++;
+
+		if (svs_row == rows) {
+			dev_err(dev, "Invalid krait fmax for svs\n");
+			return -EINVAL;
+		}
+
+		snprintf(table_name, ARRAY_SIZE(table_name),
+			"qcom,speed%d-pvs%d-bin-v%d", speed, svs_pvs, pvs_ver);
+
+		rows = parse_tbl(dev, table_name, 3,
+			(u32 **) &svs_freq, (u32 **) &svs_uv, (u32 **) &svs_ua);
+		if (rows > 0) {
+			/* Use the svs voltage data for svs freqs */
+			while (svs_row >= 0) {
+				uv[svs_row] = svs_uv[svs_row];
+				svs_row--;
+			}
+
+			devm_kfree(dev, svs_freq);
+			devm_kfree(dev, svs_uv);
+			devm_kfree(dev, svs_ua);
+		} else {
+			/* Fall back to most conservative svs pvs table */
+			dev_err(dev, "Unable to load svs voltage plan %s!\n",
+				table_name);
+
+			snprintf(table_name, ARRAY_SIZE(table_name),
+			"qcom,speed0-pvs0-bin-v%d", pvs_ver);
+
+			rows = parse_tbl(dev, table_name, 3,
+				(u32 **) &svs_freq, (u32 **) &svs_uv,
+				(u32 **) &svs_ua);
+			if (rows < 0) {
+				dev_err(dev, "Unable to load safe voltage plan.\n");
+				return rows;
+			} else {
+				dev_info(dev, "Safe svs voltage plan loaded.\n");
+
+				while (svs_row >= 0) {
+					uv[svs_row] = svs_uv[svs_row];
+					svs_row--;
+				}
+
+				devm_kfree(dev, svs_freq);
+				devm_kfree(dev, svs_uv);
+				devm_kfree(dev, svs_ua);
+			}
 		}
 	}
 

@@ -43,7 +43,7 @@ static int msm_jpeg_get_clk_info(struct msm_jpeg_device *jpeg_dev,
 	struct device_node *of_node;
 	of_node = pdev->dev.of_node;
 
-	count = of_property_count_strings(of_node, "qcom,clock-names");
+	count = of_property_count_strings(of_node, "clock-names");
 
 	JPEG_DBG("count = %d\n", count);
 	if (count == 0) {
@@ -58,7 +58,7 @@ static int msm_jpeg_get_clk_info(struct msm_jpeg_device *jpeg_dev,
 	}
 
 	for (i = 0; i < count; i++) {
-		rc = of_property_read_string_index(of_node, "qcom,clock-names",
+		rc = of_property_read_string_index(of_node, "clock-names",
 				i, &(jpeg_8x_clk_info[i].clk_name));
 		JPEG_DBG("clock-names[%d] = %s\n",
 			 i, jpeg_8x_clk_info[i].clk_name);
@@ -75,7 +75,7 @@ static int msm_jpeg_get_clk_info(struct msm_jpeg_device *jpeg_dev,
 	}
 	for (i = 0; i < count; i++) {
 		jpeg_8x_clk_info[i].clk_rate =
-			(rates[i] == 0) ? -1 : rates[i];
+			(rates[i] == 0) ? (long) -1 : (long) rates[i];
 		JPEG_DBG("clk_rate[%d] = %ld\n",
 			i, jpeg_8x_clk_info[i].clk_rate);
 	}
@@ -302,8 +302,8 @@ int msm_jpeg_platform_init(struct platform_device *pdev,
 		return -ENODEV;
 	}
 	jpeg_irq = jpeg_irq_res->start;
-	JPEG_DBG("%s base address: 0x%x, jpeg irq number: %d\n", __func__,
-		jpeg_mem->start, jpeg_irq);
+	JPEG_DBG("%s base address: 0x%lx, jpeg irq number: %d\n", __func__,
+		(unsigned long)jpeg_mem->start, jpeg_irq);
 
 	pgmn_dev->jpeg_bus_client =
 		msm_bus_scale_register_client(&msm_jpeg_bus_client_pdata);
@@ -361,9 +361,8 @@ int msm_jpeg_platform_init(struct platform_device *pdev,
 		JPEG_PR_ERR("%s: ioremap failed\n", __func__);
 		goto fail_vbif;
 	}
-
-	JPEG_DBG("%s:%d] jpeg_vbif 0x%x", __func__, __LINE__,
-		(uint32_t)pgmn_dev->jpeg_vbif);
+	JPEG_DBG("%s:%d] jpeg_vbif 0x%lx", __func__, __LINE__,
+		(unsigned long)pgmn_dev->jpeg_vbif);
 
 	rc = msm_jpeg_attach_iommu(pgmn_dev);
 	if (rc < 0)
@@ -383,7 +382,7 @@ int msm_jpeg_platform_init(struct platform_device *pdev,
 	*base = jpeg_base;
 	*irq  = jpeg_irq;
 
-	pgmn_dev->jpeg_client = msm_ion_client_create(-1, "camera/jpeg");
+	pgmn_dev->jpeg_client = msm_ion_client_create("camera/jpeg");
 	JPEG_DBG("%s:%d] success\n", __func__, __LINE__);
 
 	pgmn_dev->state = MSM_JPEG_INIT;
@@ -401,13 +400,8 @@ fail_vbif:
 	pgmn_dev->jpeg_clk, pgmn_dev->num_clk, 0);
 
 fail_clk:
-	rc = regulator_disable(pgmn_dev->jpeg_fs);
-	if (!rc)
-		regulator_put(pgmn_dev->jpeg_fs);
-	else
-		JPEG_PR_ERR("%s:%d] regulator disable failed %d",
-			__func__, __LINE__, rc);
-	pgmn_dev->jpeg_fs = NULL;
+	regulator_disable(pgmn_dev->jpeg_fs);
+	regulator_put(pgmn_dev->jpeg_fs);
 
 fail_fs:
 	iounmap(jpeg_base);
