@@ -2385,11 +2385,16 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 
 		if (!chip->bms_psy) {
-			dev_dbg(&client->dev,
-				"%s not found; defer probe\n",
-				chip->bms_psy_name);
-			rc = -EPROBE_DEFER;
-			goto unregister_batt_psy;
+			if (chip->factory_mode) {
+				chip->bms_psy = NULL;
+				pr_err("bms not ready, factory mode\n");
+			} else {
+				dev_dbg(&client->dev,
+					"%s not found; defer probe\n",
+					chip->bms_psy_name);
+				rc = -EPROBE_DEFER;
+				goto unregister_batt_psy;
+			}
 		}
 	}
 
