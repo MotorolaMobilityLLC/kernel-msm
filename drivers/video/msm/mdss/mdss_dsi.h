@@ -281,7 +281,6 @@ struct mdss_dsi_ctrl_pdata {
 	int new_fps;
 	int pwm_enabled;
 	int idle;
-	int idle_requested;
 	bool bklt_off;
 	bool blanked;
 	struct pwm_device *pwm_bl;
