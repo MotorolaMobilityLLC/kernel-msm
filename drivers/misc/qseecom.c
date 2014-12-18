@@ -217,7 +217,7 @@ struct qseecom_dev_handle {
 };
 
 struct qseecom_sg_entry {
-	phys_addr_t phys_addr;
+	uint32_t phys_addr;
 	uint32_t len;
 };
 
