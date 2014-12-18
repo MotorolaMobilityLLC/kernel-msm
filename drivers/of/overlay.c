@@ -428,6 +428,13 @@ static int of_overlay_device_entry_change(struct of_overlay_info *ovinfo,
 
 		/* try to see if it's an I2C client node */
 		if (adap == NULL) {
+			if (!parent_pdev ||
+			    !of_node_check_flag(parent_pdev->dev.of_node,
+						OF_POPULATED_BUS)) {
+				pr_debug("Skipping pdev creation for %s\n",
+					 de->np->full_name);
+				return 0;
+			}
 
 			pr_debug("%s: creating new platform device "
 					"new_node='%s' %p\n",
@@ -467,6 +474,14 @@ static int of_overlay_device_entry_change(struct of_overlay_info *ovinfo,
 	} else {
 
 		if (de->pdev) {
+			if (!parent_pdev ||
+			    !of_node_check_flag(parent_pdev->dev.of_node,
+						OF_POPULATED_BUS)) {
+				pr_debug("Skipping pdev removal for %s\n",
+					 de->np->full_name);
+				return 0;
+			}
+
 			pr_debug("%s: removing pdev %s\n", __func__,
 					dev_name(&de->pdev->dev));
 			platform_device_unregister(de->pdev);
