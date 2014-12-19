@@ -949,12 +949,6 @@ static int32_t mt9v113_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 		return rc;
 	}
 	/* Refresh settings */
-	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_MODE_COMMAND);
-	if (rc < 0) {
-		pr_err("%s: Refresh Mode Command failed\n",
-				__func__);
-		return rc;
-	}
 	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_COMMAND);
 	if (rc < 0) {
 		pr_err("%s: Refresh Command failed\n",
@@ -1104,12 +1098,6 @@ static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 
 	/* Refresh settings */
-	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_MODE_COMMAND);
-	if (rc < 0) {
-		pr_err("%s: Refresh Mode command failed\n",
-				__func__);
-		return rc;
-	}
 	rc = mt9v113_set_refresh(s_ctrl, MT9V113_REFRESH_COMMAND);
 	if (rc < 0) {
 		pr_err("%s: Refresh command failed\n",
