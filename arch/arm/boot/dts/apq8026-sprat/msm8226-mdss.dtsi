@@ -128,7 +128,7 @@
 		qcom,mdss-mdp = <&mdss_mdp>;
 		gdsc-supply = <&gdsc_mdss>;
 		vdd-supply = <&pm8226_l15>;
-		vddio-supply = <&pm8226_l8>;
+		vddldo8-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
