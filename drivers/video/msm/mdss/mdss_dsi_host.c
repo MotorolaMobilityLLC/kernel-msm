@@ -1223,9 +1223,11 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	ret = wait_for_completion_timeout(&ctrl->dma_comp,
 				msecs_to_jiffies(DMA_TX_TIMEOUT));
-	if (ret == 0)
+	if (ret == 0) {
 		ret = -ETIMEDOUT;
-	else
+		pr_err("%s: DMA tx timeout\n", __func__);
+		MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1", "edp", "hdmi", "panic");
+	} else
 		ret = tp->len;
 
 	if (mctrl && mctrl->dma_addr) {
