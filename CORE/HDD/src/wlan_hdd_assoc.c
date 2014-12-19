@@ -993,6 +993,21 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
 
        pHddCtx->sta_to_adapter[sta_id] = NULL;
     }
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+    if (VOS_STATUS_SUCCESS !=
+            WLANTL_ClearInterfaceStats((WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                pHddStaCtx->conn_info.staId[0], WIFI_STATS_IFACE_AC))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s:"
+                "WLANTL_ClearInterfaceStats Failed", __func__);
+    }
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VO] = 0;
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_VI] = 0;
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BE] = 0;
+    pAdapter->hdd_stats.hddTxRxStats.txMcast[WLANTL_AC_BK] = 0;
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
     // Clear saved connection information in HDD
     hdd_connRemoveConnectInfo( pHddStaCtx );
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
