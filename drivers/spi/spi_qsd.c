@@ -2737,6 +2737,10 @@ static int msm_spi_probe(struct platform_device *pdev)
 					__func__);
 			goto skip_dma_resources;
 		}
+		msm_spi_bam_pipe_connect(dd, &dd->bam.prod,
+				&dd->bam.prod.config);
+		msm_spi_bam_pipe_connect(dd, &dd->bam.cons,
+				&dd->bam.cons.config);
 		dd->use_dma = 1;
 	}
 
@@ -2822,8 +2826,10 @@ static int msm_spi_pm_suspend_runtime(struct device *device)
 	}
 	if (dd->pdata && !dd->pdata->active_only)
 		msm_spi_clk_path_unvote(dd);
+
 	if (dd->pdata && !dd->pdata->is_shared)
 		put_local_resources(dd);
+
 suspend_exit:
 	return 0;
 }

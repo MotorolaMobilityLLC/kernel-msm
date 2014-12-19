@@ -53,6 +53,7 @@ Optional properties which are required for support of BAM-mode:
 - interrupt-names : interrupt resource names referenced in interrupts.
 	Required interrupt resource from BAM are:
 	"spi_bam_irq" : BAM interrupt used by the controller.
+- qcom,shared : Boolean. When present, enables multi-ee feature.
 
 Optional SPI slave nodes must be children of the SPI master node and contain
 the following properties.
