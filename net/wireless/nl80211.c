@@ -6020,7 +6020,10 @@ static int nl80211_dump_survey(struct sk_buff *skb,
 static bool nl80211_valid_wpa_versions(u32 wpa_versions)
 {
 	return !(wpa_versions & ~(NL80211_WPA_VERSION_1 |
-				  NL80211_WPA_VERSION_2));
+				NL80211_WPA_VERSION_2 | 
+/*WAPI*/
+				NL80211_WAPI_VERSION_1 ));
+
 }
 
 static int nl80211_authenticate(struct sk_buff *skb, struct genl_info *info)
