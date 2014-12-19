@@ -4801,6 +4801,20 @@ typedef struct wl_rmc_vsie {
 	uint16	payload;	/* IE Data Payload */
 } wl_rmc_vsie_t;
 
+#ifdef BCMWAPI_WAI
+#define IV_LEN 16
+struct wapi_sta_msg_t
+{
+	uint16	msg_type;
+	uint16	datalen;
+	uint8	vap_mac[6];
+	uint8	reserve_data1[2];
+	uint8	sta_mac[6];
+	uint8	reserve_data2[2];
+	uint8	gsn[IV_LEN];
+	uint8	wie[256];
+};
+#endif /* BCMWAPI_WAI */
 
 /* structures  & defines for proximity detection  */
 enum proxd_method {

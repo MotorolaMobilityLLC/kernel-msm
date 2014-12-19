@@ -3062,6 +3062,11 @@ typedef struct ht_prop_cap_ie ht_prop_cap_ie_t;
 #define HT_CAP_RX_STBC_TWO_STREAM	0x2	/* rx STBC support of 1-2 spatial streams */
 #define HT_CAP_RX_STBC_THREE_STREAM	0x3	/* rx STBC support of 1-3 spatial streams */
 
+#ifdef BCMWAPI_WPI
+#define SMS4_KEY_LEN		16
+#define SMS4_WPI_CBC_MAC_LEN	16
+#endif
+
 
 #define HT_CAP_TXBF_CAP_IMPLICIT_TXBF_RX	0x1
 #define HT_CAP_TXBF_CAP_NDP_RX			0x8
@@ -3571,6 +3576,14 @@ typedef struct mmic_ie mmic_ie_t;
 
 #define BSSID_INVALID           "\x00\x00\x00\x00\x00\x00"
 #define BSSID_BROADCAST         "\xFF\xFF\xFF\xFF\xFF\xFF"
+
+#ifdef BCMWAPI_WAI
+#define WAPI_IE_MIN_LEN 	20	
+#define WAPI_VERSION		1	
+#define WAPI_VERSION_LEN	2	
+#define WAPI_OUI		"\x00\x14\x72"	
+#define WAPI_OUI_LEN		DOT11_OUI_LEN	
+#endif 
 
 
 /* ************* WMM Parameter definitions. ************* */
