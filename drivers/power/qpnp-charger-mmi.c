@@ -35,6 +35,10 @@
 #include <linux/batterydata-lib.h>
 #include <linux/usb/msm_ext_chg.h>
 #include <linux/ctype.h>
+#include <linux/dropbox.h>
+
+#define DROPBOX_CHARGING_ISSUE "charging_issue"
+#define USBLPM_DROPBOX_MSG "USB PSY not in low power when USBIN not present"
 
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
@@ -462,6 +466,7 @@ struct qpnp_chg_chip {
 	bool				battery_model_sysfs;
 	char				battery_info[255];
 	bool				demo_mode;
+	bool                            usblpm_dropbox_sent;
 };
 
 static struct qpnp_chg_chip *the_chip;
@@ -1761,6 +1766,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
 			chip->float_charge_start_time = 0;
 			power_supply_set_online(chip->usb_psy, 0);
+			chip->usblpm_dropbox_sent = false;
 		} else {
 			/* when OVP clamped usbin, and then decrease
 			 * the charger voltage to lower than the OVP
@@ -4327,11 +4333,10 @@ static void update_heartbeat(struct work_struct *work)
 							chip);
 	} else if (!usb_present && !host_mode && !ret.intval) {
 		pr_err("USB PSY not in low power without being connected\n");
-		if (chip->usb_psy->set_property) {
-			ret.intval = 1;
-			chip->usb_psy->set_property(chip->usb_psy,
-						POWER_SUPPLY_PROP_LOW_POWER,
-						&ret);
+		if (!chip->usblpm_dropbox_sent) {
+			dropbox_queue_event_text(DROPBOX_CHARGING_ISSUE,
+				USBLPM_DROPBOX_MSG, strlen(USBLPM_DROPBOX_MSG));
+			chip->usblpm_dropbox_sent = true;
 		}
 	} else if (usb_present)
 		qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
