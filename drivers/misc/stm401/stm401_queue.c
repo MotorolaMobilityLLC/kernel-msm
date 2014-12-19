@@ -76,7 +76,7 @@ int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
 	}
 	buffer->size = size;
 
-	ktime_get_ts(&ts);
+	get_monotonic_boottime(&ts);
 	buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
 	ps_stm401->stm401_as_data_buffer_head = new_head;
