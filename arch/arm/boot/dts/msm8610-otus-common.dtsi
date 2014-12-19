@@ -215,6 +215,8 @@
 };
 
 &soc {
+	/delete-node/ fan5646;
+
 	sound {
 		/delete-property/ qcom,ext-spk-amp-gpio;
 	};
