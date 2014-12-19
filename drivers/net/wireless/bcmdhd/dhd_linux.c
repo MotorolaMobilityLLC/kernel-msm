@@ -351,13 +351,6 @@ struct ipv6_work_info_t {
 	unsigned long		event;
 };
 
-#ifdef DHD_MEMDUMP
-typedef struct dhd_dump {
-	uint8 *buf;
-	int bufsize;
-} dhd_dump_t;
-#endif /* DHD_MEMDUMP */
-
 /* When Perimeter locks are deployed, any blocking calls must be preceeded
  * with a PERIM UNLOCK and followed by a PERIM LOCK.
  * Examples of blocking calls are: schedule_timeout(), down_interruptible(),
@@ -2234,23 +2227,6 @@ dhd_os_wlfc_unblock(dhd_pub_t *pub)
 
 #endif /* PROP_TXSTATUS */
 
-#if defined(DHD_8021X_DUMP)
-void
-dhd_tx_dump(osl_t *osh, void *pkt)
-{
-	uint8 *dump_data;
-	uint16 protocol;
-
-	dump_data = PKTDATA(osh, pkt);
-	protocol = (dump_data[12] << 8) | dump_data[13];
-
-	if (protocol == ETHER_TYPE_802_1X) {
-		DHD_ERROR(("ETHER_TYPE_802_1X [TX]: ver %d, type %d, replay %d\n",
-			dump_data[14], dump_data[15], dump_data[30]));
-	}
-}
-#endif /* DHD_8021X_DUMP */
-
 int BCMFASTPATH
 dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 {
@@ -2289,37 +2265,6 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 			dhdp->tx_multicast++;
 		if (ntoh16(eh->ether_type) == ETHER_TYPE_802_1X)
 			atomic_inc(&dhd->pend_8021x_cnt);
-#ifdef DHD_DHCP_DUMP
-		if (ntoh16(eh->ether_type) == ETHER_TYPE_IP) {
-			uint16 dump_hex;
-			uint16 source_port;
-			uint16 dest_port;
-			uint16 udp_port_pos;
-			uint8 *ptr8 = (uint8 *)&pktdata[ETHER_HDR_LEN];
-			uint8 ip_header_len = (*ptr8 & 0x0f)<<2;
-
-			udp_port_pos = ETHER_HDR_LEN + ip_header_len;
-			source_port = (pktdata[udp_port_pos] << 8) | pktdata[udp_port_pos+1];
-			dest_port = (pktdata[udp_port_pos+2] << 8) | pktdata[udp_port_pos+3];
-			if (source_port == 0x0044 || dest_port == 0x0044) {
-				dump_hex = (pktdata[udp_port_pos+249] << 8) |
-					pktdata[udp_port_pos+250];
-				if (dump_hex == 0x0101) {
-					DHD_ERROR(("DHCP - DISCOVER [TX]\n"));
-				} else if (dump_hex == 0x0102) {
-					DHD_ERROR(("DHCP - OFFER [TX]\n"));
-				} else if (dump_hex == 0x0103) {
-					DHD_ERROR(("DHCP - REQUEST [TX]\n"));
-				} else if (dump_hex == 0x0105) {
-					DHD_ERROR(("DHCP - ACK [TX]\n"));
-				} else {
-					DHD_ERROR(("DHCP - 0x%X [TX]\n", dump_hex));
-				}
-			} else if (source_port == 0x0043 || dest_port == 0x0043) {
-				DHD_ERROR(("DHCP - BOOTP [RX]\n"));
-			}
-		}
-#endif /* DHD_DHCP_DUMP */
 	} else {
 			PKTFREE(dhd->pub.osh, pktbuf, TRUE);
 			return BCME_ERROR;
@@ -2373,9 +2318,6 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 	/* Use bus module to send data frame */
 #ifdef WLMEDIA_HTSF
 	dhd_htsf_addtxts(dhdp, pktbuf);
-#endif
-#if defined(DHD_8021X_DUMP)
-	dhd_tx_dump(dhdp->osh, pktbuf);
 #endif
 #ifdef PROP_TXSTATUS
 	{
@@ -2819,49 +2761,17 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		eth = skb->data;
 		len = skb->len;
 
-#if defined(DHD_RX_DUMP) || defined(DHD_8021X_DUMP) || defined(DHD_DHCP_DUMP)
+#if defined(DHD_RX_DUMP) || defined(DHD_8021X_DUMP)
 		dump_data = skb->data;
 		protocol = (dump_data[12] << 8) | dump_data[13];
-#endif /* DHD_RX_DUMP || DHD_8021X_DUMP || DHD_DHCP_DUMP */
-#ifdef DHD_8021X_DUMP
+
 		if (protocol == ETHER_TYPE_802_1X) {
-			DHD_ERROR(("ETHER_TYPE_802_1X [RX]: "
+			DHD_ERROR(("ETHER_TYPE_802_1X: "
 				"ver %d, type %d, replay %d\n",
 				dump_data[14], dump_data[15],
 				dump_data[30]));
 		}
-#endif /* DHD_8021X_DUMP */
-#ifdef DHD_DHCP_DUMP
-		if (protocol != ETHER_TYPE_BRCM && protocol == ETHER_TYPE_IP) {
-			uint16 dump_hex;
-			uint16 source_port;
-			uint16 dest_port;
-			uint16 udp_port_pos;
-			uint8 *ptr8 = (uint8 *)&dump_data[ETHER_HDR_LEN];
-			uint8 ip_header_len = (*ptr8 & 0x0f)<<2;
-
-			udp_port_pos = ETHER_HDR_LEN + ip_header_len;
-			source_port = (dump_data[udp_port_pos] << 8) | dump_data[udp_port_pos+1];
-			dest_port = (dump_data[udp_port_pos+2] << 8) | dump_data[udp_port_pos+3];
-			if (source_port == 0x0044 || dest_port == 0x0044) {
-				dump_hex = (dump_data[udp_port_pos+249] << 8) |
-					dump_data[udp_port_pos+250];
-				if (dump_hex == 0x0101) {
-					DHD_ERROR(("DHCP - DISCOVER [RX]\n"));
-				} else if (dump_hex == 0x0102) {
-					DHD_ERROR(("DHCP - OFFER [RX]\n"));
-				} else if (dump_hex == 0x0103) {
-					DHD_ERROR(("DHCP - REQUEST [RX]\n"));
-				} else if (dump_hex == 0x0105) {
-					DHD_ERROR(("DHCP - ACK [RX]\n"));
-				} else {
-					DHD_ERROR(("DHCP - 0x%X [RX]\n", dump_hex));
-				}
-			} else if (source_port == 0x0043 || dest_port == 0x0043) {
-				DHD_ERROR(("DHCP - BOOTP [RX]\n"));
-			}
-		}
-#endif /* DHD_DHCP_DUMP */
+#endif /* DHD_RX_DUMP || DHD_8021X_DUMP */
 #if defined(DHD_RX_DUMP)
 		DHD_ERROR(("RX DUMP - %s\n", _get_packet_type_str(protocol)));
 		if (protocol != ETHER_TYPE_BRCM) {
