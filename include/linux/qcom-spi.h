@@ -53,4 +53,5 @@ struct msm_spi_platform_data {
 	bool rt_priority;
 	bool use_pinctrl;
 	bool is_shared;
+	bool force_cs;
 };
