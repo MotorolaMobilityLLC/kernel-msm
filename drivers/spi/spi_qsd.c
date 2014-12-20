@@ -1679,7 +1679,7 @@ static void msm_spi_process_message(struct msm_spi *dd)
 	spi_ioc = msm_spi_set_spi_io_control(dd);
 	if (dd->qup_ver || (dd->multi_xfr && !dd->read_len && !dd->write_len)) {
 
-		if (dd->qup_ver)
+		if (dd->pdata->force_cs && dd->qup_ver)
 			write_force_cs(dd, 0);
 
 		/*
@@ -1698,15 +1698,16 @@ static void msm_spi_process_message(struct msm_spi *dd)
 				dd->read_len = dd->write_len = 0;
 				xfrs_grped = combine_transfers(dd);
 				dd->num_xfrs_grped = xfrs_grped;
-				if (dd->qup_ver)
+				if (dd->pdata->force_cs && dd->qup_ver)
 					write_force_cs(dd, 1);
 			}
 
 			dd->cur_tx_transfer = dd->cur_transfer;
 			dd->cur_rx_transfer = dd->cur_transfer;
 			msm_spi_process_transfer(dd);
-			if (dd->qup_ver && dd->cur_transfer->cs_change)
-				write_force_cs(dd, 0);
+			if (dd->pdata->force_cs && dd->qup_ver
+				&& dd->cur_transfer->cs_change)
+					write_force_cs(dd, 0);
 			xfrs_grped--;
 		}
 	} else {
@@ -1729,7 +1730,7 @@ static void msm_spi_process_message(struct msm_spi *dd)
 		dd->num_xfrs_grped = 1;
 		msm_spi_process_transfer(dd);
 	}
-	if (dd->qup_ver)
+	if (dd->pdata->force_cs && dd->qup_ver)
 		write_force_cs(dd, 0);
 	return;
 error:
@@ -2451,6 +2452,8 @@ struct msm_spi_platform_data *msm_spi_dt_to_pdata(
 			&pdata->rt_priority,		 DT_OPT,  DT_BOOL,  0},
 		{"qcom,shared",
 			&pdata->is_shared,		 DT_OPT,  DT_BOOL,  0},
+		{"qcom,force-cs",
+			&pdata->force_cs,		 DT_OPT,  DT_BOOL,  0},
 		{NULL,  NULL,                            0,       0,        0},
 		};
 
