@@ -814,7 +814,6 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		pr_err("invalid ctx session: %d\n", session);
 		return -ENODEV;
 	}
-	ctx->ref_cnt--;
 
 	/* intf stopped,  no more kickoff */
 	ctx->intf_stopped = 1;
@@ -931,11 +930,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		} else {
 			/*
 			 * Transition from ultra low power to low power does
-			 * not require any special handling. The clocks would
+			 * not require any special handling. Just rest the
+			 * intf_stopped flag so that the clocks would
 			 * get turned on when the first update comes.
 			 */
-			pr_debug("%s: nothing to be done.\n", __func__);
-			return 0;
+			pr_debug("%s: reset intf_stopped flag.\n", __func__);
+			ctx->intf_stopped = 0;
+			goto end;
 		}
 	}
 
@@ -968,7 +969,6 @@ panel_events:
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 	}
 
-	ctx->panel_power_state = panel_power_state;
 
 	if (!panel_off) {
 		pr_debug("%s: cmd_stop with panel always on\n", __func__);
@@ -984,6 +984,8 @@ panel_events:
 	ctl->remove_vsync_handler = NULL;
 
 end:
+	if (!IS_ERR_VALUE(ret))
+		ctx->panel_power_state = panel_power_state;
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_EXIT);
 	pr_debug("%s:-\n", __func__);
