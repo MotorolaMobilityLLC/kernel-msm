@@ -592,6 +592,9 @@ static inline int msm_spi_set_state(struct msm_spi *dd,
 		writel_relaxed((cur_state & ~SPI_OP_STATE) | state,
 		       dd->base + SPI_STATE);
 	}
+	/* Ensure previous write completed before waiting on the state */
+	mb();
+
 	if (msm_spi_wait_valid(dd))
 		return -EIO;
 
