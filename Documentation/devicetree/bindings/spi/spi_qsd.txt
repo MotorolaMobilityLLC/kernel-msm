@@ -37,6 +37,7 @@ Optional properties:
   With this spi transaction message pump with high (realtime) priority to reduce
   the transfer latency on the bus by minimising the delay between a transfer request
  - qcom,shared : whether this qup is shared with other ee's
+- qcom,force-cs : Boolean. When present, enables force-cs feature.
 
 Optional properties which are required for support of BAM-mode:
 - qcom,ver-reg-exists : Boolean. When present, allows driver to verify if HW
