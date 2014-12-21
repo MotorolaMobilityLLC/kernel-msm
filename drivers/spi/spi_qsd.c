@@ -1881,7 +1881,7 @@ static void msm_spi_process_message(struct msm_spi *dd)
 
 	/* Don't combine xfers if delay is needed after every xfer */
 	if (dd->qup_ver || xfer_delay) {
-		if (dd->qup_ver)
+		if (dd->pdata->force_cs && dd->qup_ver)
 			write_force_cs(dd, 0);
 		list_for_each_entry(dd->cur_transfer,
 				&dd->cur_msg->transfers,
@@ -1894,10 +1894,10 @@ static void msm_spi_process_message(struct msm_spi *dd)
 						struct spi_transfer,
 						transfer_list);
 
-				if (dd->qup_ver &&
+				if (dd->pdata->force_cs && dd->qup_ver &&
 					t->cs_change == nxt->cs_change)
 					write_force_cs(dd, 1);
-				else if (dd->qup_ver)
+				else if (dd->pdata->force_cs && dd->qup_ver)
 					write_force_cs(dd, 0);
 			}
 
@@ -2706,6 +2706,8 @@ struct msm_spi_platform_data * __init msm_spi_dt_to_pdata(
 			&dd->cs_gpios[2].gpio_num,       DT_OPT,  DT_GPIO, -1},
 		{"qcom,gpio-cs3",
 			&dd->cs_gpios[3].gpio_num,       DT_OPT,  DT_GPIO, -1},
+		{"qcom,force-cs",
+			&pdata->force_cs,		 DT_OPT,  DT_BOOL,  0},
 		{NULL,  NULL,                            0,       0,        0},
 		};
 
