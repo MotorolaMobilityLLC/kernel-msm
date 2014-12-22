@@ -416,6 +416,8 @@ void mdss_dsi_clk_deinit(struct mdss_dsi_ctrl_pdata  *ctrl)
 		clk_put(ctrl->esc_clk);
 	if (ctrl->pixel_clk)
 		clk_put(ctrl->pixel_clk);
+	if (ctrl->mmss_misc_ahb_clk)
+		clk_put(ctrl->mmss_misc_ahb_clk);
 	if (ctrl->axi_clk)
 		clk_put(ctrl->axi_clk);
 	if (ctrl->ahb_clk)
@@ -586,12 +588,26 @@ static int mdss_dsi_bus_clk_start(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		goto error;
 	}
 
+	if (ctrl_pdata->mmss_misc_ahb_clk) {
+		rc = clk_prepare_enable(ctrl_pdata->mmss_misc_ahb_clk);
+		if (rc) {
+			pr_err("%s: failed to enable mmss misc ahb clk.rc=%d\n",
+					__func__, rc);
+			clk_disable_unprepare(ctrl_pdata->axi_clk);
+			clk_disable_unprepare(ctrl_pdata->ahb_clk);
+			clk_disable_unprepare(ctrl_pdata->mdp_core_clk);
+			goto error;
+		}
+	}
+
 error:
 	return rc;
 }
 
 static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
+	if (ctrl_pdata->mmss_misc_ahb_clk)
+		clk_disable_unprepare(ctrl_pdata->mmss_misc_ahb_clk);
 	clk_disable_unprepare(ctrl_pdata->axi_clk);
 	clk_disable_unprepare(ctrl_pdata->ahb_clk);
 	clk_disable_unprepare(ctrl_pdata->mdp_core_clk);
