@@ -101,6 +101,7 @@ struct qpnp_cbldet_chip {
 	struct qpnp_cbldet_irq		irqs[MAX_IRQS];
 	spinlock_t			hw_access_lock;
 	struct power_supply		*usb_psy;
+	struct delayed_work		heartbeat_work;
 };
 
 static int __qpnp_cbldet_read(struct spmi_device *spmi, u16 base,
@@ -258,6 +259,11 @@ static irqreturn_t qpnp_cbldet_usbin_valid_irq_handler(int irq, void *_chip)
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 	}
 
+	cancel_delayed_work(&chip->heartbeat_work);
+	if (chip->usb_present)
+		schedule_delayed_work(&chip->heartbeat_work,
+						msecs_to_jiffies(5000));
+
 	return IRQ_HANDLED;
 }
 
@@ -367,9 +373,29 @@ static void determine_initial_status(struct qpnp_cbldet_chip *chip)
 	 * Set USB psy online to avoid userspace from shutting down if battery
 	 * capacity is at zero and no chargers online.
 	 */
-	if (chip->usb_present)
+	if (chip->usb_present) {
 		power_supply_set_online(chip->usb_psy, 1);
+		schedule_delayed_work(&chip->heartbeat_work,
+						msecs_to_jiffies(5000));
+	}
 
+}
+
+static void heartbeat_work(struct work_struct *work)
+{
+	struct  qpnp_cbldet_chip *chip =
+		container_of(work, struct qpnp_cbldet_chip,
+					heartbeat_work.work);
+	int usb_present = qpnp_cbldet_is_usb_chg_plugged_in(chip);
+	pr_debug("CBL Det HB, usb_present: %d\n", usb_present);
+
+	if (!usb_present && chip->usb_present) {
+		pr_err("Missed CBL Det irq, notify usb psy\n");
+		chip->usb_present = usb_present;
+		power_supply_set_present(chip->usb_psy, chip->usb_present);
+	} else
+		schedule_delayed_work(&chip->heartbeat_work,
+						msecs_to_jiffies(5000));
 }
 
 static int qpnp_cbldet_probe(struct spmi_device *spmi)
@@ -400,6 +426,7 @@ static int qpnp_cbldet_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, chip);
 	device_init_wakeup(&spmi->dev, 1);
 	spin_lock_init(&chip->hw_access_lock);
+	INIT_DELAYED_WORK(&chip->heartbeat_work, heartbeat_work);
 
 	spmi_for_each_container_dev(spmi_resource, spmi) {
 		if (!spmi_resource) {
