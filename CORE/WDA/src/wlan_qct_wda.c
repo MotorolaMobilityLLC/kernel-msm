@@ -8034,18 +8034,65 @@ VOS_STATUS WDA_ProcessEnterImpsReq(tWDA_CbContext *pWDA)
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
+
+/*
+ * FUNCTION: WDA_ExitImpsRespCallback
+ * send Exit IMPS RSP back to PE
+ */
+void WDA_ExitImpsRespCallback(WDI_Status status, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s " ,__func__);
+
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams);
+
+   WDA_SendMsg(pWDA, WDA_EXIT_IMPS_RSP, NULL , (status));
+   return;
+}
+
 /*
  * FUNCTION: WDA_ExitImpsReqCallback
- * send Exit IMPS RSP back to PE
  */ 
 void WDA_ExitImpsReqCallback(WDI_Status status, void* pUserData)
 {
-   tWDA_CbContext *pWDA = (tWDA_CbContext *)pUserData ;
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
-   WDA_SendMsg(pWDA, WDA_EXIT_IMPS_RSP, NULL , (status)) ;
-   return ;
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+       vos_mem_free(pWdaParams);
+       if (WDI_STATUS_DEV_INTERNAL_FAILURE == status)
+       {
+           VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                  FL("reload wlan driver"));
+           wpalWlanReload();
+       }
+   }
+   return;
 }
+
 /*
  * FUNCTION: WDA_ProcessExitImpsReq
  * Request to WDI to Exit IMPS power state.
@@ -8053,23 +8100,47 @@ void WDA_ExitImpsReqCallback(WDI_Status status, void* pUserData)
 VOS_STATUS WDA_ProcessExitImpsReq(tWDA_CbContext *pWDA)
 {
    WDI_Status status = WDI_STATUS_SUCCESS ;
+   tWDA_ReqParams *pWdaParams;
+   WDI_ExitImpsReqParamsType *wdiExitImpsReqParams;
+
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
-   status = WDI_ExitImpsReq((WDI_ExitImpsRspCb)WDA_ExitImpsReqCallback, pWDA);
-   if(IS_WDI_STATUS_FAILURE(status))
+   wdiExitImpsReqParams = (WDI_ExitImpsReqParamsType *)vos_mem_malloc(
+                          sizeof(WDI_ExitImpsReqParamsType));
+   if (NULL == wdiExitImpsReqParams)
    {
-      if (WDI_STATUS_DEV_INTERNAL_FAILURE == status)
-      {
-          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                     FL("reload wlan driver"));
-          wpalWlanReload();
-      }
-      else
-      {
-          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-              "Failure in Exit IMPS REQ WDI API, free all the memory " );
-          WDA_SendMsg(pWDA, WDA_EXIT_IMPS_RSP, NULL , CONVERT_WDI2SIR_STATUS(status)) ;
-      }
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: VOS MEM Alloc Failure", __func__);
+       VOS_ASSERT(0);
+       return VOS_STATUS_E_NOMEM;
+   }
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(wdiExitImpsReqParams);
+      return VOS_STATUS_E_NOMEM;
+   }
+   wdiExitImpsReqParams->wdiReqStatusCB = WDA_ExitImpsReqCallback;
+   wdiExitImpsReqParams->pUserData = pWdaParams;
+
+   /* Store param pointer as passed in by caller */
+   /* store Params pass it to WDI */
+   pWdaParams->wdaWdiApiMsgParam = wdiExitImpsReqParams;
+   pWdaParams->pWdaContext = pWDA;
+   pWdaParams->wdaMsgParam = wdiExitImpsReqParams;
+   status = WDI_ExitImpsReq(wdiExitImpsReqParams,
+                           (WDI_ExitImpsRspCb)WDA_ExitImpsRespCallback,
+                           pWdaParams);
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                  "Failure in Exit IMPS REQ WDI API, free all the memory " );
+       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+       vos_mem_free(pWdaParams);
+       WDA_SendMsg(pWDA, WDA_EXIT_IMPS_RSP, NULL , CONVERT_WDI2SIR_STATUS(status)) ;
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
