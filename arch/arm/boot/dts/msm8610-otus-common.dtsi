@@ -22,6 +22,10 @@
 	chosen {
 		mmi,no-factory-kill-ic;
 	};
+
+	aliases {
+		/delete-property/ spi4;
+	};
 };
 
 &mmi_factory {
@@ -342,6 +346,7 @@
 			sensor3-supply = <&pm8110_l19>;
 		};
 	};
+	/delete-node/ spi@f9926000;
 };
 
 &spmi_bus {
