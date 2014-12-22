@@ -599,6 +599,11 @@ static void i2c_qup_sys_suspend(struct qup_i2c_dev *dev)
 
 static void i2c_qup_resume(struct qup_i2c_dev *dev)
 {
+	if (dev->pwr_state == MSM_I2C_PM_ACTIVE) {
+		dev_err(dev->dev, "attempt to resume when already active\n");
+		return;
+	}
+
 	i2c_qup_gpio_request(dev);
 
 	i2c_qup_clk_path_postponed_register(dev);
