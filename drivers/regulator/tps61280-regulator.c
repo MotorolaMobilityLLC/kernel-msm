@@ -994,7 +994,7 @@ static const struct of_device_id tps61280_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, tps61280_dt_match);
 
-struct i2c_driver tps61280_driver = {
+static struct i2c_driver tps61280_driver = {
 	.driver = {
 		.name = "tps61280",
 		.owner = THIS_MODULE,
