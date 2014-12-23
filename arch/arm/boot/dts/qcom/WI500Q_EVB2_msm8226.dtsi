@@ -30,7 +30,6 @@
 	};
 //adbg--
 	aliases {
-		spi0 = &spi_0;
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
 		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
 		sdhc3 = &sdhc_3; /* SDC3 SDIO slot */
@@ -980,31 +979,6 @@
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 6 0>;
 		qcom,scl-gpio = <&msmgpio 7 0>;
-	};
-
-	i2c@f9925000 { /* BLSP-1 QUP-3 */
-		cell-index = <3>;
-		compatible = "qcom,i2c-qup";
-		reg = <0xf9925000 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 97 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <19200000>;
-	};
-	i2c_0: i2c@f9926000 { /* BLSP-1 QUP-4 */
-		cell-index = <0>;
-		compatible = "qcom,i2c-qup";
-		reg = <0xf9926000 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 98 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <100000>;
-		qcom,i2c-src-freq = <19200000>;
 		qcom,master-id = <86>;
 	};
 
@@ -1021,6 +995,7 @@
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 18 0>;
 		qcom,scl-gpio = <&msmgpio 19 0>;
+		qcom,master-id = <86>;
 	};
 
 	clock_gcc: qcom,gcc@fc400000 {
@@ -1239,30 +1214,6 @@
 			qcom,levels = <600000 787200 998400>;
 			qcom,freq-req;
 		};
-	};
-
-	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
-		compatible = "qcom,spi-qup-v2";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0xf9923000 0x1000>,
-		      <0xf9904000 0xF000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		interrupts = <0 95 0>, <0 238 0>;
-		spi-max-frequency = <19200000>;
-
-		qcom,gpio-mosi = <&msmgpio 0 0>;
-		qcom,gpio-miso = <&msmgpio 1 0>;
-		qcom,gpio-clk  = <&msmgpio 3 0>;
-		qcom,gpio-cs0  = <&msmgpio 22 0>;
-
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <12>;
-		qcom,bam-producer-pipe-index = <13>;
-		qcom,master-id = <86>;
 	};
 
 	qcom,bam_dmux@fc834000 {
