@@ -28,6 +28,8 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/wakelock.h>
+#include <linux/ioctl.h>
+#include <linux/proc_fs.h>
 
 #include "inv_mpu_iio.h"
 #include <linux/iio/sysfs.h>
@@ -37,6 +39,19 @@
 #include "inv_mpu_dts.h"
 #endif
 
+#define MAJOR_NUM 0x68
+#define IOCTL_SET_PED_SENSITIVITY _IOR(MAJOR_NUM, 0, int *)
+#define IOCTL_SET_PED_TIME_THRESH _IOR(MAJOR_NUM, 1, int *)
+#define IOCTL_SET_PED_STEP_THRESH _IOR(MAJOR_NUM, 2, int *)
+#define IOCTL_SET_PED_STEP_UP_TIME_LOW _IOR(MAJOR_NUM, 3, int *)
+#define IOCTL_SET_PED_STEP_UP_TIME_HIGH _IOR(MAJOR_NUM, 4, int *)
+#define IOCTL_GET_PED_SENSITIVITY _IOR(MAJOR_NUM, 10, int *)
+#define IOCTL_GET_PED_TIME_THRESH _IOR(MAJOR_NUM, 11, int *)
+#define IOCTL_GET_PED_STEP_THRESH _IOR(MAJOR_NUM, 12, int *)
+#define IOCTL_GET_PED_STEP_UP_TIME_LOW _IOR(MAJOR_NUM, 13, int *)
+#define IOCTL_GET_PED_STEP_UP_TIME_HIGH _IOR(MAJOR_NUM, 14, int *)
+
+struct iio_dev *g_indio_dev;
 struct inv_mpu_state *g_st;
 static int mpu_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
@@ -374,8 +389,12 @@ static int inv_init_config(struct iio_dev *indio_dev)
 		st->smd.threshold = MPU_INIT_SMD_THLD;
 		st->smd.delay     = MPU_INIT_SMD_DELAY_THLD;
 		st->smd.delay2    = MPU_INIT_SMD_DELAY2_THLD;
+		st->ped.time_thresh = INIT_PED_TIME_THRESH;
 		st->ped.int_thresh = INIT_PED_INT_THRESH;
 		st->ped.step_thresh = INIT_PED_THRESH;
+		st->ped.step_up_high= INIT_PED_STEP_UP_HIGH;
+		st->ped.step_up_low = INIT_PED_STEP_UP_LOW;
+		st->ped.peak_thresh = INIT_PED_PEAK_THRESH;
 		st->sensor[SENSOR_STEP].rate = MAX_DMP_OUTPUT_RATE;
 
 		result = inv_i2c_single_write(st, REG_ACCEL_MOT_DUR,
@@ -800,7 +819,16 @@ static ssize_t _dmp_mem_store(struct device *dev,
 		if (result)
 			goto dmp_mem_store_fail;
 		st->ped.on = !!data;
-		result = inv_set_step_buffer_time(st, 75);//50Hz(20ms)*75=1.5 sec
+		result = inv_set_step_buffer_time(st, st->ped.time_thresh);
+		if (result)
+			goto dmp_mem_store_fail;
+		result = inv_set_step_threshold(st, st->ped.step_thresh);
+		if (result)
+			goto dmp_mem_store_fail;
+		result = inv_set_step_peak_threshold(st, st->ped.peak_thresh);
+		if (result)
+			goto dmp_mem_store_fail;
+		result = inv_set_step_up_time(st, st->ped.step_up_low, st->ped.step_up_high);
 		if (result)
 			goto dmp_mem_store_fail;
 
@@ -814,12 +842,44 @@ static ssize_t _dmp_mem_store(struct device *dev,
 		st->ped.step_thresh = data;
 		break;
 	}
+	case ATTR_DMP_PED_PEAK_THRESH:
+	{
+		result = write_be32_key_to_mem(st, data*MPU_DEFAULT_PED_PEAK_PARAM, KEY_D_PEDSTD_PEAKTHRSH);
+		if (result)
+			goto dmp_mem_store_fail;
+		st->ped.peak_thresh = data;
+		break;
+	}
 	case ATTR_DMP_PED_INT_THRESH:
 	{
 		result = inv_write_2bytes(st, KEY_D_PEDSTD_SB2, data);
 		if (result)
 			goto dmp_mem_store_fail;
 		st->ped.int_thresh = data;
+		break;
+	}
+	case ATTR_DMP_PED_TIME_THRESH:
+	{
+		result = inv_write_2bytes(st, KEY_D_PEDSTD_SB_TIME, data);
+		if (result)
+			goto dmp_mem_store_fail;
+		st->ped.time_thresh = data;
+		break;
+	}
+	case ATTR_DMP_PED_STEP_UP_TIME_LOW:
+	{
+		result = inv_write_2bytes(st, KEY_D_PEDSTD_TIML, data);
+		if (result)
+			goto dmp_mem_store_fail;
+		st->ped.step_up_low = data;
+		break;
+	}
+	case ATTR_DMP_PED_STEP_UP_TIME_HIGH:
+	{
+		result = inv_write_2bytes(st, KEY_D_PEDSTD_TIMH, data);
+		if (result)
+			goto dmp_mem_store_fail;
+		st->ped.step_up_high = data;
 		break;
 	}
 	case ATTR_DMP_SMD_ENABLE:
@@ -1113,8 +1173,16 @@ static ssize_t inv_attr_show(struct device *dev,
 		return sprintf(buf, "%d\n", st->ped.on);
 	case ATTR_DMP_PED_STEP_THRESH:
 		return sprintf(buf, "%d\n", st->ped.step_thresh);
+	case ATTR_DMP_PED_PEAK_THRESH:
+		return sprintf(buf, "%d\n", st->ped.peak_thresh);
 	case ATTR_DMP_PED_INT_THRESH:
 		return sprintf(buf, "%d\n", st->ped.int_thresh);
+	case ATTR_DMP_PED_TIME_THRESH:
+		return sprintf(buf, "%d\n", st->ped.time_thresh);
+	case ATTR_DMP_PED_STEP_UP_TIME_LOW:
+		return sprintf(buf, "%d\n", st->ped.step_up_low);
+	case ATTR_DMP_PED_STEP_UP_TIME_HIGH:
+		return sprintf(buf, "%d\n", st->ped.step_up_high);
 	case ATTR_DMP_SMD_ENABLE:
 		return sprintf(buf, "%d\n", st->chip_config.smd_enable);
 	case ATTR_DMP_SMD_THLD:
@@ -2055,6 +2123,14 @@ static IIO_DEVICE_ATTR(pedometer_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_ON);
 static IIO_DEVICE_ATTR(pedometer_step_thresh, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_STEP_THRESH);
+static IIO_DEVICE_ATTR(pedometer_peak_thresh, S_IRUGO | S_IWUSR,
+        inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_PEAK_THRESH);
+static IIO_DEVICE_ATTR(pedometer_step_up_time_low, S_IRUGO | S_IWUSR,
+        inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_STEP_UP_TIME_LOW);
+static IIO_DEVICE_ATTR(pedometer_step_up_time_high, S_IRUGO | S_IWUSR,
+        inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_STEP_UP_TIME_HIGH);
+static IIO_DEVICE_ATTR(pedometer_time_thresh, S_IRUGO | S_IWUSR,
+        inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_TIME_THRESH);
 static IIO_DEVICE_ATTR(pedometer_int_thresh, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_mem_store, ATTR_DMP_PED_INT_THRESH);
 
@@ -2357,6 +2433,10 @@ static const struct attribute *inv_mpu6xxx_attributes[] = {
 	&iio_dev_attr_pedometer_time.dev_attr.attr,
 	&iio_dev_attr_pedometer_counter.dev_attr.attr,
 	&iio_dev_attr_pedometer_step_thresh.dev_attr.attr,
+	&iio_dev_attr_pedometer_peak_thresh.dev_attr.attr,
+	&iio_dev_attr_pedometer_step_up_time_low.dev_attr.attr,
+	&iio_dev_attr_pedometer_step_up_time_high.dev_attr.attr,
+        &iio_dev_attr_pedometer_time_thresh.dev_attr.attr,
 	&iio_dev_attr_pedometer_int_thresh.dev_attr.attr,
 	&iio_dev_attr_smd_enable.dev_attr.attr,
 	&iio_dev_attr_smd_threshold.dev_attr.attr,
@@ -2452,6 +2532,104 @@ static const struct iio_info mpu_info = {
 	.driver_module = THIS_MODULE,
 	.attrs = &inv_attribute_group,
 };
+
+static long inv_mpu_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    void __user *data;
+    int value = 0;
+    int ret = 0;
+    bool mutex_locked = false;
+
+    data = (void __user *) arg;
+    ret = copy_from_user(&value, data, sizeof(int));
+    if (data == NULL) {
+        pr_err("[INV][ioctl] %s: null data!!! \n", __func__);
+        return -EFAULT;
+    }
+    if (g_st->chip_config.enable) {
+        mutex_lock(&g_indio_dev->mlock);
+        ret = set_inv_enable(g_indio_dev, 0);
+        if (ret)
+            goto access_failed;
+        mutex_locked = true;
+    }
+    switch (cmd) {
+    case IOCTL_SET_PED_SENSITIVITY:
+        printk("[INV][ioctl] %s: setting pedometer sensitivity (%d)\n", __func__, value);
+        ret = inv_set_step_peak_threshold(g_st, value);
+        if (ret==0)
+            g_st->ped.peak_thresh = value;
+	break;
+    case IOCTL_SET_PED_TIME_THRESH:
+        printk("[INV][ioctl] %s: setting pedometer step thresh (%d)\n", __func__, value);
+        ret = inv_set_step_buffer_time(g_st, value);
+        if (ret==0)
+            g_st->ped.time_thresh = value;
+        break;
+    case IOCTL_SET_PED_STEP_THRESH:
+        printk("[INV][ioctl] %s: setting pedometer step thresh (%d)\n", __func__, value);
+        ret = inv_set_step_threshold(g_st, value);
+        if (ret==0)
+            g_st->ped.step_thresh = value;
+        break;
+    case IOCTL_SET_PED_STEP_UP_TIME_LOW:
+        printk("[INV][ioctl] %s: setting pedometer step up low (%d)\n", __func__, value);
+        ret = inv_set_step_up_time(g_st, value, g_st->ped.step_up_high);
+        if (ret==0)
+            g_st->ped.step_up_low = value;
+        break;
+    case IOCTL_SET_PED_STEP_UP_TIME_HIGH:
+        printk("[INV][ioctl] %s: setting pedometer step up high (%d)\n", __func__, value);
+        ret = inv_set_step_up_time(g_st, g_st->ped.step_up_low, value);
+        if (ret==0)
+            g_st->ped.step_up_high = value;
+        break;
+    case IOCTL_GET_PED_SENSITIVITY:
+	ret = __put_user(g_st->ped.peak_thresh, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer sensitivity (%d)\n", __func__, g_st->ped.peak_thresh);
+        break;
+    case IOCTL_GET_PED_TIME_THRESH:
+	ret = __put_user(g_st->ped.time_thresh, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step thresh (%d)\n", __func__, g_st->ped.time_thresh);
+        break;
+    case IOCTL_GET_PED_STEP_THRESH:
+        ret = __put_user(g_st->ped.step_thresh, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step thresh (%d)\n", __func__, g_st->ped.step_thresh);
+        break;
+    case IOCTL_GET_PED_STEP_UP_TIME_LOW:
+        ret = __put_user(g_st->ped.step_up_low, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step up low (%d)\n", __func__, g_st->ped.step_up_low);
+        break;
+    case IOCTL_GET_PED_STEP_UP_TIME_HIGH:
+        ret = __put_user(g_st->ped.step_up_high, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step up high (%d)\n", __func__, g_st->ped.step_up_high);
+        break;
+    default:
+	printk("[INV][ioctl] %s, unknown cmd(0x%x)\n", __func__, cmd);
+	break;
+    }
+    if (mutex_locked) {
+        ret = g_st->set_power_state(g_st, true);
+        if (ret)
+            goto access_failed;
+        ret = set_inv_enable(g_indio_dev, 1);
+        if (ret)
+            goto access_failed;
+        mutex_unlock(&g_indio_dev->mlock);
+        mutex_locked = false;
+    }
+
+    return ret;
+
+access_failed:
+    mutex_unlock(&g_indio_dev->mlock);
+    return ret;
+}
+
+static const struct file_operations proc_inv_operations = {
+     .owner = THIS_MODULE,
+     .unlocked_ioctl      = inv_mpu_ioctl,
+ };
 
 static void inv_setup_func_ptr(struct inv_mpu_state *st)
 {
@@ -2917,8 +3095,10 @@ msleep(100);
                 goto out_remove_wakelock;
 	}
 	inv_init_sensor_struct(st);
+	proc_create("ped_sense", 0, NULL, &proc_inv_operations);
 
 	g_st = st;
+	g_indio_dev = indio_dev;
 
 	#ifdef CONFIG_I2C_STRESS_TEST
 	i2c_add_test_case(client, "MPUSensorTest", ARRAY_AND_SIZE(gMPU9250TestCaseInfo));
