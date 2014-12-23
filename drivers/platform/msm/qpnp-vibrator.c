@@ -403,6 +403,10 @@ static int qpnp_vibrator_probe(struct spmi_device *spmi)
 	if (rc < 0)
 		return rc;
 
+#if ASUS_ENABLE_RX_AUDBG
+	g_vib = vib;
+#endif
+
 	return rc;
 }
 
