@@ -57,7 +57,7 @@ static struct mpu_platform_data gyro_platform_data = {
 s64 get_time_ns(void)
 {
 	struct timespec ts;
-	ktime_get_ts(&ts);
+       get_monotonic_boottime(&ts);             //fix first timestamp always wrong after resume
 	return timespec_to_ns(&ts);
 }
 
