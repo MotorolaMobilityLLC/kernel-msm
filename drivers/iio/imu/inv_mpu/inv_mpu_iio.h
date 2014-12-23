@@ -253,6 +253,10 @@
 #define INIT_ST_THRESHOLD        50
 #define INIT_PED_INT_THRESH      2
 #define INIT_PED_THRESH          13
+#define INIT_PED_PEAK_THRESH	 6
+#define INIT_PED_TIME_THRESH	 150
+#define INIT_PED_STEP_UP_LOW  	 16
+#define INIT_PED_STEP_UP_HIGH	 60
 #define ST_THRESHOLD_MULTIPLIER  10
 #define ST_MAX_SAMPLES           500
 #define ST_MAX_THRESHOLD         100
@@ -299,6 +303,7 @@
 #define MPU_DEFAULT_DMP_FREQ     200
 #define MPL_PROD_KEY(ver, rev)  (ver * 100 + rev)
 #define NUM_OF_PROD_REVS (ARRAY_SIZE(prod_rev_map))
+#define MPU_DEFAULT_PED_PEAK_PARAM	      5368709
 /*---- MPU6050 Silicon Revisions ----*/
 #define MPU_SILICON_REV_A2                    1       /* MPU6050A2 Device */
 #define MPU_SILICON_REV_B1                    2       /* MPU6050B1 Device */
@@ -624,6 +629,7 @@ struct inv_smd {
  * @time: time taken during the period.
  * @last_step_time: last time the step is taken.
  * @step_thresh: step threshold to show steps.
+ * @peak_thresh: peak threshold to determine what gsensor data is a step
  * @int_thresh: step threshold to generate interrupt.
  * @int_on:   pedometer interrupt enable/disable.
  * @on:  pedometer on/off.
@@ -633,7 +639,11 @@ struct inv_ped {
 	u64 time;
 	u64 last_step_time;
 	u16 step_thresh;
+	u8 peak_thresh;
 	u16 int_thresh;
+	u8 time_thresh;
+       u8 step_up_low;
+       u8 step_up_high;
 	bool int_on;
 	bool on;
 };
@@ -881,6 +891,10 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_DMP_PED_INT_ON,
 	ATTR_DMP_PED_STEP_THRESH,
 	ATTR_DMP_PED_INT_THRESH,
+	ATTR_DMP_PED_PEAK_THRESH,
+	ATTR_DMP_PED_TIME_THRESH,
+	ATTR_DMP_PED_STEP_UP_TIME_LOW,
+	ATTR_DMP_PED_STEP_UP_TIME_HIGH,
 	ATTR_DMP_PED_ON,
 	ATTR_DMP_SMD_ENABLE,
 	ATTR_DMP_SMD_THLD,
@@ -1048,8 +1062,10 @@ int inv_quaternion_on(struct inv_mpu_state *st,
 int inv_enable_pedometer_interrupt(struct inv_mpu_state *st, bool en);
 int inv_read_pedometer_counter(struct inv_mpu_state *st);
 int inv_enable_pedometer(struct inv_mpu_state *st, bool en);
-int inv_set_step_buffer_time(struct inv_mpu_state *st, u16 value);
+int inv_set_step_buffer_time(struct inv_mpu_state *st, u8 value);
 int inv_set_step_threshold(struct inv_mpu_state *st, u16 value);
+int inv_set_step_peak_threshold(struct inv_mpu_state *st, u8 value);
+int inv_set_step_up_time(struct inv_mpu_state *st, u8 min, u8 max);
 int inv_get_pedometer_steps(struct inv_mpu_state *st, u32 *steps);
 int inv_get_pedometer_time(struct inv_mpu_state *st, u32 *time);
 int inv_reset_fifo(struct iio_dev *indio_dev);
