@@ -253,7 +253,7 @@
 #define INIT_ST_THRESHOLD        50
 #define INIT_PED_INT_THRESH      2
 #define INIT_PED_THRESH          13
-#define INIT_PED_PEAK_THRESH	 6
+#define INIT_PED_PEAK_THRESH	 7
 #define INIT_PED_TIME_THRESH	 150
 #define INIT_PED_STEP_UP_LOW  	 16
 #define INIT_PED_STEP_UP_HIGH	 60
