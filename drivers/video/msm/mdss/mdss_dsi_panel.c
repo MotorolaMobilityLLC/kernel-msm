@@ -217,11 +217,12 @@ static struct dsi_cmd_desc backlight_cmd = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
 	led_pwm1
 };
-
+extern void mdss_mdp_clk_ctrl(int enable);
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
+	mdss_mdp_clk_ctrl(1);
 
 	pinfo = &(ctrl->panel_data.panel_info);
 	if (pinfo->partial_update_dcs_cmd_by_left) {
@@ -241,6 +242,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	cmdreq.cb = NULL;
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	mdss_mdp_clk_ctrl(0);
 }
 
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -848,7 +850,9 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 		if (panel_ambient_mode == AMBIENT_MODE_ON){
 			printk("MDSS:AMB:skip ambient on cmd due to panel_ambient_mode = AMBIENT_MODE_ON\n");
 		}else if (ctrl->idle_on_cmds.cmd_cnt){
+			mdss_mdp_clk_ctrl(1);
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+			mdss_mdp_clk_ctrl(0);
 			mdss_dsi_panel_bl_ctrl(pdata,ambient_bl_level);
 			panel_ambient_mode = AMBIENT_MODE_ON;
 		}else{
@@ -859,7 +863,9 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 			printk("MDSS:AMB:skip ambient off cmd due to panel_ambient_mode = AMBIENT_MODE_OFF\n");
 		}else if (ctrl->idle_off_cmds.cmd_cnt){
 			mdss_dsi_panel_bl_ctrl(pdata,backup_bl_level);
+			mdss_mdp_clk_ctrl(1);
 			mdss_dsi_panel_cmds_send_async(ctrl, &ctrl->idle_off_cmds);
+			mdss_mdp_clk_ctrl(0);
 			panel_ambient_mode = AMBIENT_MODE_OFF;
 		}else{
 			printk("MDSS:DSI: idle OFF command is not set!\n");
