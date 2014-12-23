@@ -1457,6 +1457,7 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
          pSmeConfigParams->csrConfig.isCoalesingInIBSSAllowed;
    pMac->fEnableDebugLog = pSmeConfigParams->fEnableDebugLog;
    pMac->fDeferIMPSTime = pSmeConfigParams->fDeferIMPSTime;
+   pMac->fBtcEnableIndTimerVal = pSmeConfigParams->fBtcEnableIndTimerVal;
 
    return status;
 }

@@ -115,6 +115,7 @@ typedef struct _smeConfigParams
     tANI_U8  isAmsduSupportInAMPDU;
     tANI_U32       fEnableDebugLog;
     tANI_U32      fDeferIMPSTime;
+    tANI_U8       fBtcEnableIndTimerVal;
 } tSmeConfigParams, *tpSmeConfigParams;
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
