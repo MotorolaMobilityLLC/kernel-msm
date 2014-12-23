@@ -45,6 +45,11 @@
 #define IOCTL_SET_PED_STEP_THRESH _IOR(MAJOR_NUM, 2, int *)
 #define IOCTL_SET_PED_STEP_UP_TIME_LOW _IOR(MAJOR_NUM, 3, int *)
 #define IOCTL_SET_PED_STEP_UP_TIME_HIGH _IOR(MAJOR_NUM, 4, int *)
+#define IOCTL_GET_PED_SENSITIVITY _IOR(MAJOR_NUM, 10, int *)
+#define IOCTL_GET_PED_TIME_THRESH _IOR(MAJOR_NUM, 11, int *)
+#define IOCTL_GET_PED_STEP_THRESH _IOR(MAJOR_NUM, 12, int *)
+#define IOCTL_GET_PED_STEP_UP_TIME_LOW _IOR(MAJOR_NUM, 13, int *)
+#define IOCTL_GET_PED_STEP_UP_TIME_HIGH _IOR(MAJOR_NUM, 14, int *)
 
 struct iio_dev *g_indio_dev;
 struct inv_mpu_state *g_st;
@@ -2578,6 +2583,26 @@ static long inv_mpu_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
         ret = inv_set_step_up_time(g_st, g_st->ped.step_up_low, value);
         if (ret==0)
             g_st->ped.step_up_high = value;
+        break;
+    case IOCTL_GET_PED_SENSITIVITY:
+	ret = __put_user(g_st->ped.peak_thresh, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer sensitivity (%d)\n", __func__, g_st->ped.peak_thresh);
+        break;
+    case IOCTL_GET_PED_TIME_THRESH:
+	ret = __put_user(g_st->ped.time_thresh, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step thresh (%d)\n", __func__, g_st->ped.time_thresh);
+        break;
+    case IOCTL_GET_PED_STEP_THRESH:
+        ret = __put_user(g_st->ped.step_thresh, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step thresh (%d)\n", __func__, g_st->ped.step_thresh);
+        break;
+    case IOCTL_GET_PED_STEP_UP_TIME_LOW:
+        ret = __put_user(g_st->ped.step_up_low, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step up low (%d)\n", __func__, g_st->ped.step_up_low);
+        break;
+    case IOCTL_GET_PED_STEP_UP_TIME_HIGH:
+        ret = __put_user(g_st->ped.step_up_high, (int __user *)arg);
+        printk("[INV][ioctl] %s: getting pedometer step up high (%d)\n", __func__, g_st->ped.step_up_high);
         break;
     default:
 	printk("[INV][ioctl] %s, unknown cmd(0x%x)\n", __func__, cmd);
