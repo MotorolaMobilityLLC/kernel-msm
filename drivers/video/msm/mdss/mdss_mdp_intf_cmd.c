@@ -262,8 +262,8 @@ static inline void mdss_mdp_cmd_clk_off(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_hist_intr_setup(&mdata->hist_intr, MDSS_IRQ_SUSPEND);
 		mdss_mdp_ctl_intf_event
 			(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL, (void *)0);
-		/*mdss_iommu_ctrl(0);
-		mdss_bus_bandwidth_ctrl(false);*/
+		mdss_iommu_ctrl(0);
+		mdss_bus_bandwidth_ctrl(false);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 	}
 	mutex_unlock(&ctx->clk_mtx);
