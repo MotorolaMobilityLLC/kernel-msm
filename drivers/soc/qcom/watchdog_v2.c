@@ -28,6 +28,11 @@
 #include <linux/platform_device.h>
 #include <soc/qcom/scm.h>
 #include <soc/qcom/memory_dump.h>
+//adbg++
+#include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+//adbg--
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -90,6 +95,10 @@ module_param(enable, int, 0);
  */
 static long WDT_HZ = 32765;
 module_param(WDT_HZ, long, 0);
+
+// ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+void* restart_reason_wd;
+// ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 
 /*
  * On the kernel command line specify
@@ -379,13 +388,20 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	nanosec_rem = do_div(t, 1000000000);
 	printk(KERN_INFO "Watchdog bark! Now = %lu.%06lu\n", (unsigned long) t,
 		nanosec_rem / 1000);
-
+//ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+printk(KERN_INFO "Set bootreason to 0x6f656d91\n");
+	__raw_writel(0x6f656d91, restart_reason_wd);
+//ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 	nanosec_rem = do_div(wdog_dd->last_pet, 1000000000);
 	printk(KERN_INFO "Watchdog last pet at %lu.%06lu\n", (unsigned long)
 		wdog_dd->last_pet, nanosec_rem / 1000);
 	if (wdog_dd->do_ipi_ping)
 		dump_cpu_alive_mask(wdog_dd);
-	printk(KERN_INFO "Causing a watchdog bite!");
+	printk(KERN_INFO "Causing a watchdog bite!\n");
+//ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+printk(KERN_INFO "Set bootreason to 0x6f656d91\n");
+	__raw_writel(0x6f656d91, restart_reason_wd);
+//ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 	__raw_writel(1, wdog_dd->base + WDT0_BITE_TIME);
 	mb();
 	__raw_writel(1, wdog_dd->base + WDT0_RST);
@@ -498,6 +514,20 @@ static void init_watchdog_work(struct work_struct *work)
 	int error;
 	u64 timeout;
 	int ret;
+
+//ASUS_BSP +++ Josh_Hsu "try to support GOOGLE ASIT for bootreason"
+	struct device_node *np;
+	np = of_find_compatible_node(NULL, NULL,
+				"qcom,msm-imem-restart_reason");
+	if (!np) {
+		pr_err("unable to find DT imem restart reason node\n");
+	} else {
+		restart_reason_wd = of_iomap(np, 0);
+		if (!restart_reason_wd) {
+			pr_err("unable to map imem restart reason offset\n");
+		}
+	}
+//ASUS_BSP --- Josh_Hsu "try to support GOOGLE ASIT for bootreason"
 
 	/*
 	 * Disable the watchdog for cluster 1 so that cluster 0 watchdog will
