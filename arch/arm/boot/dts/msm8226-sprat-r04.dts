@@ -65,7 +65,7 @@
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <19200000>;
                 qcom,master-id = <86>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	i2c@f9924000 { /* BLSP-1 QUP-2 */
@@ -80,5 +80,6 @@
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <19200000>;
                 qcom,master-id = <86>;
+		status = "disabled";
 	};
 };
