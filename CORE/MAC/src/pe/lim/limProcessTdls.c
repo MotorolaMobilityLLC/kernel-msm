@@ -4363,6 +4363,8 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
                            pStaDs->staType,
                            pStaDs->staIndex);
  
+        limDeleteBASessions(pMac, psessionEntry, BA_BOTH_DIRECTIONS,
+                            eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
         status = limDelSta(pMac, pStaDs, false, psessionEntry) ;
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         if(eSIR_SUCCESS == status)
