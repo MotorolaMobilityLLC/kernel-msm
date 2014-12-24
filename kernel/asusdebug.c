@@ -119,7 +119,7 @@ static int set_bootreason(char *str)
     strcpy(bootreason, str);
 	return 0;
 }
-__setup("bootreason=", set_bootreason);
+__setup("androidboot.bootreason=", set_bootreason);
 #endif
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
