@@ -158,8 +158,8 @@ int64_t read_battery_id(void)
 	return g_BatteryID_value;
 }
 //Hank read BatteryID---
-extern int g_ibat_500;
-extern void pm8226_chg_ibatmax_set(int chg_current);
+
+#if 0
 static int init_resistor_cali(AXC_Gauge_A66 *this)
 {
 	struct file *fd;
@@ -170,17 +170,7 @@ static int init_resistor_cali(AXC_Gauge_A66 *this)
 
 	mmseg_fs = get_fs();
 	set_fs(KERNEL_DS);
-
-	fd_ibat = filp_open( "/data/ibat_500", O_RDONLY,0);
-	if (IS_ERR(fd_ibat)){
-		printk("can not open /data/ibat_500\n");
-	}
-	else{
-		printk("set ibat_max to 500mA\n");
-		g_ibat_500 = 1;
-		pm8226_chg_ibatmax_set(500);
-	}
-
+	
 	fd = filp_open( BATTERY_RESISTOR_CALIBRATION_FILE_PATH, O_RDONLY,0);
 	if (IS_ERR(fd))
 	{
@@ -206,6 +196,7 @@ static int init_resistor_cali(AXC_Gauge_A66 *this)
 	set_fs(mmseg_fs);
   	return 0;
 }
+#endif
 
 //ASUS_BSP  +++ Eason_Chang "add BAT info time"
 static void ReportTime(void)
@@ -271,7 +262,7 @@ static int cal_ocv_percent_when_discharging(
 		 percent, ocv, resistor);
     
     //ASUS_BSP Eason_Chang add event log +++
-//    ASUSEvtlog( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n", percent, ocv, resistor);
+    ASUSEvtlog( "[BAT][Gau]ocv per=%d, ocv=%d, r=%d\n", percent, ocv, resistor);
     //ASUS_BSP Eason_Chang add event log ---
 
 	return percent;
@@ -334,7 +325,7 @@ static int decideCurrSec(int curr)
 
 static int decideVf37(int voltSec)
 {
-	int Vf37TableSec[20] = {38,38,38,38,38,43,37,42,43,43,46,43,42,43,42,46,44,48,53,56};
+	int Vf37TableSec[20] = {38,38,38,38,38,41,41,42,42,42,43,43,43,43,44,45,46,48,53,56};
 							//3447 to 4340	interval:47 mV, total:20
 	if(voltSec > 19){                      
 		return Vf37TableSec[19];
@@ -343,14 +334,14 @@ static int decideVf37(int voltSec)
 	}
 }
 
-static int decideVf185(int voltSec)
+static int decideVf252(int voltSec)
 {
-	int Vf185TableSec[20] = {87,87,87,87,87,87,86,85,92,89,92,98,92,90,100,99,100,113,121,130};
+	int Vf252TableSec[20] = {170,170,170,170,160,154,153,155,159,173,172,176,171,167,171,172,175,191,200,211};
 							//3447 to 4340	interval:47 mV, total:20
 	if(voltSec > 19){                      
-		return Vf185TableSec[19];
+		return Vf252TableSec[19];
 	}else{
-		return Vf185TableSec[voltSec];                      
+		return Vf252TableSec[voltSec];                      
 	}
 }
 
@@ -371,10 +362,10 @@ static void doAdcVfModify(int* volt,int* curr)
 	int currSec;
 	long Vfcurr_seci;
 	long Vf37_seci;
-	long Vf185_seci;
+	long Vf252_seci;
 	long Vfcurr_sec_iplusOne;
 	long Vf37_sec_iplusOne;
-	long Vf185_sec_iplusOne;
+	long Vf252_sec_iplusOne;
 	long Vminus;
 	long voltSpecSeci;
 
@@ -398,27 +389,27 @@ static void doAdcVfModify(int* volt,int* curr)
 	}
 
 	if(0==voltSec){//voltSec:0~20
-		Vf185_seci = decideVf185(voltSec);
-		Vf185_sec_iplusOne = decideVf185(voltSec);
+		Vf252_seci = decideVf252(voltSec);
+		Vf252_sec_iplusOne = decideVf252(voltSec);
 	}else if(20==voltSec){
-		Vf185_seci = decideVf185(voltSec-1);
-		Vf185_sec_iplusOne = decideVf185(voltSec-1);
+		Vf252_seci = decideVf252(voltSec-1);
+		Vf252_sec_iplusOne = decideVf252(voltSec-1);
 	}else{
-		Vf185_seci = decideVf185(voltSec-1);
-		Vf185_sec_iplusOne = decideVf185(voltSec);
+		Vf252_seci = decideVf252(voltSec-1);
+		Vf252_sec_iplusOne = decideVf252(voltSec);
 	}
 
 
 	if(currSectionII==currSec){
-		Vfcurr_seci = Vf37_seci + (*curr-37)*(Vf185_seci-Vf37_seci)/(185-37);
+		Vfcurr_seci = Vf37_seci + (*curr-37)*(Vf252_seci-Vf37_seci)/(252-37);
 		Vfcurr_sec_iplusOne = Vf37_sec_iplusOne 
-							+ (*curr-37)*(Vf185_sec_iplusOne-Vf37_sec_iplusOne)/(185-37);
+							+ (*curr-37)*(Vf252_sec_iplusOne-Vf37_sec_iplusOne)/(252-37);
 	}else if(currSectionI==currSec){
 		Vfcurr_seci = Vf37_seci;
 		Vfcurr_sec_iplusOne = Vf37_sec_iplusOne;
 	}else{//currSectionIII==currSec
-		Vfcurr_seci = Vf185_seci;
-		Vfcurr_sec_iplusOne = Vf185_sec_iplusOne;
+		Vfcurr_seci = Vf252_seci;
+		Vfcurr_sec_iplusOne = Vf252_sec_iplusOne;
 	}
 
 
@@ -426,8 +417,8 @@ static void doAdcVfModify(int* volt,int* curr)
 
 	Vminus = Vfcurr_seci + (*volt-voltSpecSeci)*(Vfcurr_sec_iplusOne-Vfcurr_seci)/47;
 
-	pr_debug("[BAT][vf]Vf37i:%ld,Vf37i+1:%ld,Vf185i:%ld,Vf185i+1:%ld,Vfcurri:%ld,Vfcurri+1:%ld,Vminus:%ld\n"
-					,Vf37_seci,Vf37_sec_iplusOne,Vf185_seci,Vf185_sec_iplusOne
+	pr_debug("[BAT][vf]Vf37i:%ld,Vf37i+1:%ld,Vf252i:%ld,Vf252i+1:%ld,Vfcurri:%ld,Vfcurri+1:%ld,Vminus:%ld\n"
+					,Vf37_seci,Vf37_sec_iplusOne,Vf252_seci,Vf252_sec_iplusOne
 					,Vfcurr_seci,Vfcurr_sec_iplusOne,Vminus);
 
 	*volt = (*volt)-(int)Vminus;
@@ -482,6 +473,7 @@ static void cal_bat_capacity_work(struct work_struct *work)
 
 	AXC_Gauge_A66 *this = container_of(work, AXC_Gauge_A66, calBatCapacityWorker.work);
 
+#if 0
 	// Read resistor when first time to cal battery capacity 
 	if (!this->firstCalBatCapacity) {
 		if (init_resistor_cali(this) < 0) {
@@ -491,6 +483,9 @@ static void cal_bat_capacity_work(struct work_struct *work)
 			
 		this->firstCalBatCapacity = true;
 	}
+#else
+	this->resistorCali = DEFAULT_DEVICE_RESISTOR_VALUE_ROBIN;
+#endif
 
 	wake_lock(&this->calBatCapWlock);
 
@@ -695,6 +690,7 @@ static void cal_bat_resistor_work(struct work_struct *work)
 	return;
 }
 
+#if 0
 /* read_bat_resistor_work - the work to read battery resistor from file */
 static void read_bat_resistor_work(struct work_struct *work)
 {
@@ -704,6 +700,7 @@ static void read_bat_resistor_work(struct work_struct *work)
 
 	return;		
 }
+#endif
 
 /* AXC_Gauge_A66_AskCapacity -
  */
@@ -1046,7 +1043,7 @@ void AXC_Gauge_A66_Constructor(AXI_Gauge *apGauge, int anType, AXI_Gauge_Callbac
 	INIT_DELAYED_WORK(&this->calBatCapacityWorker, cal_bat_capacity_work) ;
 	INIT_DELAYED_WORK(&this->calBat100PerOCVWorker, cal_bat_100_per_ocv_work) ;
 	INIT_DELAYED_WORK(&this->calBatResistorWorker, cal_bat_resistor_work) ;
-	INIT_DELAYED_WORK(&this->readBatResistorWorker, read_bat_resistor_work) ;
+//	INIT_DELAYED_WORK(&this->readBatResistorWorker, read_bat_resistor_work) ;
 
 	this->calBatCapacityQueue = create_singlethread_workqueue("CalBatCapacityWorker");
 	if (!this->calBatCapacityQueue)
