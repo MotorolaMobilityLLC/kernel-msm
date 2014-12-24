@@ -44,6 +44,7 @@
 #include "AXI_Basic_Define.h"
 #include <asm/uaccess.h>
 #include <linux/proc_fs.h>
+#include <linux/asusdebug.h>
 //ASUS_BSP Lenter ---
 
 /* Interrupt offsets */
@@ -2631,12 +2632,10 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 	int rc;
 	u8 chgr_sts, bat_if_sts;
 
-//ASUS_BSP +++
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
 		qpnp_chg_is_dc_chg_plugged_in(chip)) && chip->chg_done) {
 		return POWER_SUPPLY_STATUS_FULL;
 	}
-//ASUS_BSP ---
 
 	rc = qpnp_chg_read(chip, &chgr_sts, INT_RT_STS(chip->chgr_base), 1);
 	if (rc) {
@@ -3223,19 +3222,10 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 
 #define QPNP_CHG_IBATMAX_MIN	50
 #define QPNP_CHG_IBATMAX_MAX	3250
-//ASUS_BSP +++
-int g_ibat_500 = 0;
-//ASUS_BSP ---
 static int
 qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 {
 	u8 temp;
-
-//ASUS_BSP +++
-	if(g_ibat_500){
-		chg_current = 500;
-	}
-//ASUS_BSP ---
 	
 	if (chg_current < QPNP_CHG_IBATMAX_MIN
 			|| chg_current > QPNP_CHG_IBATMAX_MAX) {
@@ -4630,7 +4620,7 @@ qpnp_batt_power_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		//ASUS_BSP Eason: notify thermal limit +++
 		notifyThermalLimit( val->intval);
-//		ASUSEvtlog("[BAT]set SYSTEM_TEMP_LEVEL:%d \n",val->intval);
+		ASUSEvtlog("[BAT]set SYSTEM_TEMP_LEVEL:%d \n",val->intval);
 		//ASUS_BSP Eason: notify thermal limit ---
 		qpnp_batt_system_temp_level_set(chip, val->intval);
 		break;

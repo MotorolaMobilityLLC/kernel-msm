@@ -2,6 +2,7 @@
 #include <linux/mutex.h>
 #include "axi_cap_filter.h"
 #include "axc_cap_filter_a66.h"
+#include <linux/asusdebug.h>
 
 /* BAT_LIFE - different battery life definition */
 #define BAT_LIFE_TO_SHUTDOWN 0
@@ -287,7 +288,6 @@ static int eval_bat_life_when_discharging(
 					__func__);
 		}
 
-#if 0
 		ASUSEvtlog( "[BAT][Fil] int:%d, sus:%d, dp:%d, pre:%d, fast:%d, BMS:%d, fine:%d, cnt:%d, aCur:%d, nCur:%d, dot:%d\n",
 			interval,
 			filRealSusT,
@@ -300,7 +300,7 @@ static int eval_bat_life_when_discharging(
 			pastTimeAvgCurr,
 			g_current_now,
 			g_discharge_after_dot);
-#endif
+
 	}
 	else {
 		bat_life = lastCap; // without cablein capacity rise, do not  change capacity
@@ -338,7 +338,7 @@ static int eval_bat_life_when_charging(
 
 		if (interval > 0) {
 			/* if interval is more than 108sec, max_predict_drop_val will be more than 1 */
-			max_bat_life_rise_val = (maxMah*100/batCapMah)*interval/SECOND_OF_HOUR;
+			max_bat_life_rise_val = ((maxMah*100/batCapMah)*interval/SECOND_OF_HOUR)+1;
 
 			/* to calculate the first number after the decimal dot for more accuracy.*/
 			tmp_val_after_dot = ((100*maxMah*100/batCapMah)*interval/SECOND_OF_HOUR)%100;	
@@ -480,7 +480,7 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 	
 	//Eason: if BatLow keep 15 min, shutdown devices+++
 	if (isBatLow && g_batLowLongTimeShut && (nowCap <= BATLOW_LONGTIME_SHUT_CAP) && (lastCap <= BATLOW_LONGTIME_SHUT_CAP)){
-//		ASUSEvtlog("[BAT][Fil][BatLow]Long tme => shutdown\n");
+		ASUSEvtlog("[BAT][Fil][BatLow]Long tme => shutdown\n");
 		return BAT_LIFE_TO_SHUTDOWN;
 	}
 	//Eason: if BatLow keep 15 min, shutdown devices---
