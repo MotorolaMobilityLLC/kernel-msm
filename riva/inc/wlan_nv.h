@@ -229,6 +229,14 @@ typedef enum
     RF_SUBBAND_INVALID = 0x7FFFFFFF  /* define as 4 bytes data */
 }eRfSubBand;
 
+#define HT_40MINUS_INDEX 4
+
+typedef enum
+{
+    RF_CHAN_BOND_HT40_MINUS = 0,
+    RF_CHAN_BOND_HT40_PLUS
+}eChannnelBondingTypes;
+
 typedef enum
 {
     //2.4GHz Band
