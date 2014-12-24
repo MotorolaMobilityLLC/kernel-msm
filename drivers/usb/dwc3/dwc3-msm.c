@@ -2457,6 +2457,9 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		dev_dbg(mdwc->dev, "%s: notify xceiv event\n", __func__);
 		if (mdwc->otg_xceiv && !mdwc->ext_inuse &&
 		    (mdwc->ext_xceiv.otg_capability || !init)) {
+			if (mdwc->ext_xceiv.bsv == val->intval)
+				break;
+
 			mdwc->ext_xceiv.bsv = val->intval;
 			/* Kick the phone out of host mode if vbus is on */
 			if (val->intval && (mdwc->ext_xceiv.id == DWC3_ID_GROUND))
