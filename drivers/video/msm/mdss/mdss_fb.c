@@ -694,7 +694,6 @@ static int interactive_notify(struct notifier_block *this,
 				if(g_mfd != NULL){
 					g_display_first_frame = true;
 					mdss_fb_send_panel_event(g_mfd,MDSS_EVENT_AMBIENT_MODE_OFF,0);
-					mdss_mdp_overlay_vsync_ctrl(g_mfd,1);
 				}
 			}
 			break;
