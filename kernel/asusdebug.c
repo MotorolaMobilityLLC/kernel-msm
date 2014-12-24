@@ -56,6 +56,11 @@ static struct workqueue_struct *Kernellog_workQueue;
 static void do_kernel_log_worker(struct work_struct *work);
 static DECLARE_WORK(kernellog_Work, do_kernel_log_worker);
 
+/* Enable print process cmds and pid when forked */
+#ifndef ASUS_USER_BUILD
+extern int print_fork;
+#endif
+
 static void do_kernel_log_worker(struct work_struct *work){
     char property_filename[256];
     int property_handle;
@@ -1166,6 +1171,15 @@ static ssize_t asusdebug_write(struct file *file, const char __user *buf, size_t
 			(*last_shutdown_log_addr)=(unsigned int)PRINTK_BUFFER_MAGIC;
 		}
 	}
+#ifndef ASUS_USER_BUILD
+	/* Enable print process cmds and pid when forked */
+	else if(strncmp(messages, "printfork", 9) == 0)
+	{
+		printk("[adbg] Enable or disable printing forked process\n");
+		print_fork = !print_fork;
+		return count;
+	}
+#endif
     else
     {
 		printk("[adbg] %s option in asusdebug is no longer supported.\n", messages);
