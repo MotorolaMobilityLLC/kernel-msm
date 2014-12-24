@@ -40,6 +40,8 @@
 
 #define CMD_GET_HDR_SZ 16
 
+#define ASUS_ADJUST_AFE_TX_MIC_GAIN
+
 enum {
 	ADM_CUSTOM_TOP_CAL = 0,
 	ADM_AUDPROC_CAL,
@@ -1500,6 +1502,96 @@ static int get_cal_path(int path)
 		return TX_DEVICE;
 }
 
+/* ASUS_BSP +++ Ken_Cheng "adjust TX MIC_GAIN" */
+#ifdef ASUS_ADJUST_AFE_TX_MIC_GAIN
+/* send_adm_cal_tx_gain from Qualcomm's patch for adjusting TX MIC_GAIN */
+static int send_adm_cal_tx_gain(int port_id, int copp_idx, int perf_mode)
+{
+	s32 result = 0;
+	struct adm_cmd_set_pp_params_v5 *adm_params = NULL;
+
+	uint32_t params[12] =  {0x00010BFE,0x00010BFF,0x00000004,0x0000b3f3,  /* Tx mic gain b3f3 for 15db */
+				0x00010C3D,0x00010C3E,0x00000004,0x00000001,  /* TX HPF enable/disable */
+				0x00010C3D,0x00010C3F,0x00000004,0x00002000}; /* TX HPF PreGain */
+
+	uint32_t params_length;
+	int sz, port_idx;
+
+	port_id = afe_convert_virtual_to_portid(port_id);
+	port_idx = adm_validate_and_get_port_index(port_id);
+	if (port_idx < 0) {
+		pr_err("%s: Invalid port_id 0x%x\n", __func__, port_id);
+		return -EINVAL;
+	}
+
+	params_length = sizeof(params);
+
+	pr_debug("%s: Port id %#x, port_idx %d, copp_idx %d, perf_mode %d\n",
+		__func__, port_id, port_idx, copp_idx, perf_mode);
+
+	pr_debug("%s: Tx_mic_gain %#x\n", __func__, (params[3]&0xffffff));
+	pr_debug("%s: TX HPF Enabled/Disable Flag %#x\n", __func__, (params[7]&0xffffff));
+	pr_debug("%s: TX HPF PreGain %#x\n", __func__, (params[11]&0xffffff));
+
+	sz = sizeof(struct adm_cmd_set_pp_params_v5) +
+		params_length;
+	adm_params = kzalloc(sz, GFP_KERNEL);
+	if (!adm_params) {
+		pr_err("%s, adm params memory alloc failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	memcpy(((u8 *)adm_params +
+		sizeof(struct adm_cmd_set_pp_params_v5)),
+		params, params_length);
+
+	adm_params->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+		APR_HDR_LEN(20), APR_PKT_VER);
+	adm_params->hdr.pkt_size = sz;
+	adm_params->hdr.src_svc = APR_SVC_ADM;
+	adm_params->hdr.src_domain = APR_DOMAIN_APPS;
+	adm_params->hdr.src_port = port_id;
+	adm_params->hdr.dest_svc = APR_SVC_ADM;
+	adm_params->hdr.dest_domain = APR_DOMAIN_ADSP;
+	adm_params->hdr.token = port_idx << 16 | copp_idx;
+	adm_params->hdr.dest_port =
+			atomic_read(&this_adm.copp.id[port_idx][copp_idx]);
+	adm_params->hdr.opcode = ADM_CMD_SET_PP_PARAMS_V5;
+	adm_params->payload_addr_lsw = 0;
+	adm_params->payload_addr_msw = 0;
+	adm_params->mem_map_handle = 0;
+	adm_params->payload_size = params_length;
+
+	atomic_set(&this_adm.copp.stat[port_idx][copp_idx], 0);
+	pr_debug("%s: Sending SET_PARAMS payload = 0x%x, size = %d\n",
+		__func__, adm_params->payload_addr_lsw,
+		adm_params->payload_size);
+	result = apr_send_pkt(this_adm.apr, (uint32_t *)adm_params);
+	if (result < 0) {
+		pr_err("%s: Set params failed port = %#x\n",
+			__func__, port_id);
+		result = -EINVAL;
+		goto done;
+	}
+	/* Wait for the callback */
+	result = wait_event_timeout(this_adm.copp.wait[port_idx][copp_idx],
+		atomic_read(&this_adm.copp.stat[port_idx][copp_idx]),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (!result) {
+		pr_err("%s: Set params timed out port = %#x\n",
+			__func__, port_id);
+		result = -EINVAL;
+		goto done;
+	}
+
+	result = 0;
+done:
+	kfree(adm_params);
+	return result;
+}
+#endif
+/* ASUS_BSP --- Ken_Cheng "adjust TX MIC_GAIN" */
+
 static void send_adm_cal(int port_id, int copp_idx, int path, int perf_mode,
 			 int app_type, int acdb_id)
 {
@@ -1509,6 +1601,16 @@ static void send_adm_cal(int port_id, int copp_idx, int path, int perf_mode,
 			  app_type, acdb_id);
 	send_adm_cal_type(ADM_AUDVOL_CAL, path, port_id, copp_idx, perf_mode,
 			  app_type, acdb_id);
+
+/* ASUS_BSP +++ Ken_Cheng "adjust TX MIC_GAIN" */
+#ifdef ASUS_ADJUST_AFE_TX_MIC_GAIN
+	if (port_id & 1)  // to make sure apply calibration only the Tx path port(recording)
+	{
+		send_adm_cal_tx_gain(port_id, copp_idx, perf_mode);
+	}
+#endif
+/* ASUS_BSP --- Ken_Cheng "adjust TX MIC_GAIN" */
+
 	return;
 }
 
