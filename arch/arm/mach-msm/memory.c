@@ -172,6 +172,7 @@ static void __init reserve_memory_for_mempools(void)
 			SZ_1M : PAGE_SIZE;
 		mt->start = arm_memblock_steal(mt->size, alignment);
 		BUG_ON(!mt->start);
+		adjust_meminfo(mt->start, round_up(mt->size, alignment));
 	}
 }
 
