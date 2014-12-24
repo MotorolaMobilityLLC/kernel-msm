@@ -31,7 +31,6 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
-#include <linux/cdev.h>
 #include <linux/platform_device.h>
 #include <linux/time.h>
 #include <linux/timer.h>
@@ -41,9 +40,14 @@
 #include <linux/slab.h>
 #include <linux/sync.h>
 #include <linux/proc_fs.h>
+#include <linux/wakelock.h>
+#include <linux/sensors.h>
+#ifdef CONFIG_ASUS_UTILITY
 #include <linux/notifier.h>
 #include <linux/asus_utility.h>
-#include <linux/wakelock.h>
+#endif
+
+extern void vibrator_enable(int value);
 
 #define MAX_BUFFER_SIZE			144
 #define DEVICE_NAME			"IT7260"
@@ -121,7 +125,7 @@ struct PointData {
 } __attribute__((packed));
 
 #define PD_FLAGS_DATA_TYPE_BITS		0xF0
-# define PD_FLAGS_DATA_TYPE_TOUCH	0x00 /* other types (like chip-detected gestures) exist but we do not care */
+#define PD_FLAGS_DATA_TYPE_TOUCH	0x00 /* other types (like chip-detected gestures) exist but we do not care */
 #define PD_FLAGS_NOT_PEN		0x08 /* set if pen touched, clear if finger(s) */
 #define PD_FLAGS_HAVE_FINGERS		0x07 /* a bit for each finger data that is valid (from lsb to msb) */
 #define PD_PALM_FLAG_BIT		0x01
@@ -142,8 +146,13 @@ struct ioctl_cmd168 {
 /* add delay_work for palm */
 struct IT7260_ts_data {
 	struct i2c_client *client;
-	struct input_dev *input_dev;
+	struct input_dev *touch_dev;
 	struct delayed_work afterpalm_work;
+	struct delayed_work touchidle_on_work;
+	struct delayed_work exit_idle_work;
+	struct input_dev *palm_dev;
+	struct sensors_classdev cdev;
+	bool palm_en;
 };
 
 struct ite7260_perfile_data {
@@ -151,6 +160,11 @@ struct ite7260_perfile_data {
 	uint16_t bufferIndex;
 	uint16_t length;
 	uint16_t buffer[MAX_BUFFER_SIZE];
+};
+
+enum {
+	TOUCH_UP = 1,
+	TOUCH_DOWN
 };
 
 static int8_t fwUploadResult = SYSFS_RESULT_NOT_DONE;
@@ -163,18 +177,16 @@ static bool hadPalmDown = false;
 static bool isDeviceSleeping = false;
 static bool isDeviceSuspend = false;
 static bool isDriverAvailable = true;
-static uint8_t magic_key = MAGIC_KEY_NONE;
-static int ite7260_major = 0;
-static int ite7260_minor = 0;
-static struct cdev ite7260_cdev;
-static struct class *ite7260_class = NULL;
-static dev_t ite7260_dev;
-static struct input_dev *input_dev;
-static struct device *class_dev = NULL;
+static bool touchMissed;
 static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
+static int lastTouch = TOUCH_UP;
+static unsigned long last_time_exit_low = 0;
+
+#define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
+#define I2C_RETRIES				2		/* Number of retries */
 
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
@@ -185,6 +197,9 @@ static struct workqueue_struct *IT7260_wq;
 /* internal use func - does not make sure chip is ready before read */
 static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
+	int err;
+	int tries = 0;
+
 	struct i2c_msg msgs[2] = {
 		{
 			.addr = gl_ts->client->addr,
@@ -202,11 +217,25 @@ static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16
 
 	memset(dataBuffer, 0xFF, dataLength);
 
-	return i2c_transfer(gl_ts->client->adapter, msgs, 2);
+	do {
+		err = i2c_transfer(gl_ts->client->adapter, msgs, 2);
+		if (err != 2)
+		    msleep_interruptible(I2C_RETRY_DELAY);
+	} while ((err != 2) && (++tries < I2C_RETRIES));
+
+	if (err != 2) {
+		dev_err(&gl_ts->client->dev, "read transfer error\n");
+		err = -EIO;
+	}
+
+	return err;
 }
 
 static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
+	int err;
+	int tries = 0;
+
 	uint8_t txbuf[257];
 	struct i2c_msg msg = {
 		.addr = gl_ts->client->addr,
@@ -221,7 +250,18 @@ static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer,
 	txbuf[0] = bufferIndex;
 	memcpy(txbuf + 1, dataBuffer, dataLength);
 
-	return i2c_transfer(gl_ts->client->adapter, &msg, 1);
+	do {
+		err = i2c_transfer(gl_ts->client->adapter, &msg, 1);
+		if (err != 1)
+		    msleep_interruptible(I2C_RETRY_DELAY);
+	} while ((err != 1) && (++tries < I2C_RETRIES));
+
+	if (err != 1) {
+		dev_err(&gl_ts->client->dev, "write transfer error\n");
+		err = -EIO;
+	}
+
+	return err;
 }
 
 /*
@@ -394,11 +434,13 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 	static const uint8_t cmdReadCfgVer[] = {CMD_READ_VERSIONS, VER_CONFIG};
 	bool ret = true;
 
+	disable_irq(gl_ts->client->irq);
 	/* this structure is so that we definitely do all the calls, but still return a status in case anyone cares */
 	ret = i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) && ret;
 	ret = i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) && ret;
 	ret = i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) && ret;
 	ret = i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) && ret;
+	enable_irq(gl_ts->client->irq);
 
 	if (logIt)
 		LOGI("current versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n",
@@ -408,12 +450,11 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 	return ret;
 }
 
+#ifdef CONFIG_ASUS_UTILITY
 /* fix touch will not wake up system in suspend mode */
 static void chipLowPowerMode(bool low)
 {
 	int allow_irq_wake = !(isDeviceSleeping);
-	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-	uint8_t dummy;
 
 	if (devicePresent) {
 		LOGI("low power %s\n", low ? "enter" : "exit");
@@ -426,8 +467,9 @@ static void chipLowPowerMode(bool low)
 			isDeviceSleeping = true;
 			isDeviceSuspend = true;
 			wake_unlock(&touch_lock);
-			i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
+			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
+			cancel_delayed_work(&gl_ts->touchidle_on_work);
 			if (!allow_irq_wake){
 				smp_wmb();
 				disable_irq_wake(gl_ts->client->irq);
@@ -435,11 +477,12 @@ static void chipLowPowerMode(bool low)
 			isDeviceSleeping = false;
 			isDeviceSuspend = false;
 			hadPalmDown = false;
-			wake_unlock(&touch_lock);
-			i2cReadNoReadyCheck(BUF_QUERY, &dummy, sizeof(dummy));
+			wake_unlock(&touch_lock);	
+			last_time_exit_low = jiffies;	
 		}
 	}
 }
+#endif
 
 static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -664,6 +707,21 @@ static const struct attribute_group it7260_attr_group = {
 	.attrs = it7260_attributes,
 };
 
+static int palm_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
+{
+	gl_ts->palm_en = enable;
+
+	return 0;
+}
+
+static struct sensors_classdev palm_cdev = {
+	.name = "palm",
+	.vendor = "ITE",
+	.version = 1,
+	.enabled = 0,
+	.sensors_enable = NULL,
+};
+
 static void chipExternalCalibration(bool autoTuneEnabled)
 {
 	uint8_t resp[2];
@@ -686,6 +744,7 @@ void enableAutoTune(void)
 }
 EXPORT_SYMBOL(enableAutoTune);
 
+#ifdef CONFIG_ASUS_UTILITY
 static int mode_notify_sys(struct notifier_block *notif, unsigned long code, void *data)
 {
 	printk(KERN_DEBUG "[PF]%s +\n", __func__);
@@ -703,6 +762,11 @@ static int mode_notify_sys(struct notifier_block *notif, unsigned long code, voi
 	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
+
+static struct notifier_block display_mode_notifier = {
+        .notifier_call =    mode_notify_sys,
+};
+#endif
 
 static void readFingerData(uint16_t *xP, uint16_t *yP, uint8_t *pressureP, const struct FingerData *fd)
 {
@@ -741,15 +805,41 @@ static void waitNotifyEvt(struct work_struct *work) {
 	}
 }
 
+static void touchIdleOnEvt(struct work_struct *work) {
+	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
+
+	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
+}
+
+static void exitIdleEvt(struct work_struct *work) {
+	printk("IT7260: Special IRQ trigger touch event\n");
+	isDeviceSuspend = true;
+	wake_unlock(&touch_lock);
+	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+	input_sync(gl_ts->touch_dev);
+	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+	input_sync(gl_ts->touch_dev);
+	last_time_exit_low = jiffies;	
+}
+
 static void sendPalmEvt(void)
 {
-	magic_key = MAGIC_KEY_PALM;
-	kobject_uevent(&class_dev->kobj, KOBJ_CHANGE);
-	input_report_key(gl_ts->input_dev, KEY_SLEEP, 1);
-	input_sync(gl_ts->input_dev);
+	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+	input_sync(gl_ts->touch_dev);
+	input_report_key(gl_ts->touch_dev, KEY_SLEEP, 1);
+	input_sync(gl_ts->touch_dev);
+	if (gl_ts->palm_en) {
+    	    input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 1);
+	    input_sync(gl_ts->palm_dev);
+       }
+       vibrator_enable(50);
 	msleep(5);
-	input_report_key(gl_ts->input_dev, KEY_SLEEP, 0);
-	input_sync(gl_ts->input_dev);
+	input_report_key(gl_ts->touch_dev, KEY_SLEEP, 0);
+	input_sync(gl_ts->touch_dev);
+	if (gl_ts->palm_en) {
+	    input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 0);
+	    input_sync(gl_ts->palm_dev);
+       }
 }
 
 /* contrary to the name this code does not just read data - lots of processing happens */
@@ -776,11 +866,13 @@ static void readTouchDataPoint(void)
 	}
 	
 	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend && !hadPalmDown) {
-		isDeviceSuspend = true;
-		hadPalmDown = true;
-		sendPalmEvt();
-		queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
-	} 
+		if (jiffies - last_time_exit_low > HZ/5){
+			isDeviceSuspend = true;
+			hadPalmDown = true;
+			sendPalmEvt();
+			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
+		}
+	}
 
 	/* this check may look stupid, but it is here for when MT arrives to this driver. for now just check finger 0 */
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
@@ -794,18 +886,18 @@ static void readTouchDataPoint(void)
 		readFingerData(&x, &y, &pressure, pointData.fd);
 		/* filter points when palming or touching screen edge */
 		if (!isDeviceSuspend && y > 13 && y < 311 && x > 4 && x < 316){
-			input_report_abs(gl_ts->input_dev, ABS_X, x);
-			input_report_abs(gl_ts->input_dev, ABS_Y, y);
-			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
-			input_sync(gl_ts->input_dev);
+			input_report_abs(gl_ts->touch_dev, ABS_X, x);
+			input_report_abs(gl_ts->touch_dev, ABS_Y, y);
+			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+			input_sync(gl_ts->touch_dev);
 		}
 	} else if (!(pointData.palm & PD_PALM_FLAG_BIT)) {
 		hadFingerDown = false;
 		hadPalmDown = false;
 		
-		input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
-		input_sync(gl_ts->input_dev);
-	} 
+		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+		input_sync(gl_ts->touch_dev);
+	}
 
 }
 
@@ -816,52 +908,83 @@ static void readTouchDataPoint_Ambient(void)
 	uint8_t pressure = FD_PRESSURE_NONE;
 	uint16_t x, y;
 	
-	
 	if (!isDeviceSuspend){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
 	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
 		LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
+		isDeviceSuspend = true;
+		wake_unlock(&touch_lock);
 		return;
 	}
 	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
 		LOGE("readTouchDataPoint() failed to read point data buffer\n");
+		isDeviceSuspend = true;
+		wake_unlock(&touch_lock);
 		return;
-	}
+	}	
 	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
-		LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
-		return;
+		if (pointData.flags == 16){
+			LOGE("readTouchDataPoint() send touch event by type 0x%02X\n", pointData.flags);
+		} 
+		else{
+			LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
+			isDeviceSuspend = true;
+			wake_unlock(&touch_lock);
+			return;
+		}
 	}
 	
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
 		readFingerData(&x, &y, &pressure, pointData.fd);
 
 	if ((pointData.palm & PD_PALM_FLAG_BIT)) {
+		if (hadFingerDown){
+			cancel_delayed_work(&gl_ts->exit_idle_work);
+		}
 		hadFingerDown = false;
 	}
 
 	if (pressure >= FD_PRESSURE_LIGHT) {
 
-		if (!hadFingerDown) 
+		if (hadFingerDown){
+			cancel_delayed_work(&gl_ts->exit_idle_work);
+		}
+		else { 
 			hadFingerDown = true;
-
+		}
+		
 		readFingerData(&x, &y, &pressure, pointData.fd);
 	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
 		
-		if (suspend_touch_up - suspend_touch_down < 1000){
-			input_report_key(gl_ts->input_dev, BTN_TOUCH, 1);
-			input_sync(gl_ts->input_dev);
-			input_report_key(gl_ts->input_dev, BTN_TOUCH, 0);
-			input_sync(gl_ts->input_dev);	
-		}else {
-			isDeviceSuspend = true;
+		cancel_delayed_work(&gl_ts->exit_idle_work);
+		if (lastTouch == TOUCH_UP)
+			touchMissed = true;
+		else
+			lastTouch = TOUCH_UP;
+
+		if (touchMissed || suspend_touch_up - suspend_touch_down < 1000) {
+			if (touchMissed) {
+				LOGI("%s: touch down missed, send BTN_TOUCH\n",
+					 __func__);
+				touchMissed = false;
+			}
+			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+			input_sync(gl_ts->touch_dev);
+			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+			input_sync(gl_ts->touch_dev);	
+			last_time_exit_low = jiffies;
 		}
+		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
+	} else if (pointData.flags == 16){
+		hadFingerDown = true;
+		queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
 	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 		isDeviceSuspend = true;
 		wake_unlock(&touch_lock);
-	}
+	} 
 	
 	}else if (isDeviceSuspend){
 		msleep(10);
@@ -869,6 +992,10 @@ static void readTouchDataPoint_Ambient(void)
 			wake_lock(&touch_lock);
 			isDeviceSuspend = false;
 			suspend_touch_down = getMsTime();
+			if (lastTouch == TOUCH_UP)
+				lastTouch = TOUCH_DOWN;
+			else
+				touchMissed = true;
 			readTouchDataPoint_Ambient();
 		}
 	}
@@ -923,7 +1050,7 @@ static bool chipIdentifyIT7260(void)
 	else if (chipID[8] == '6' && chipID[9] == '6')
 		LOGI("rev BX4 found\n");
 	else	/* unknown, but let's hope it is still a version we can talk to */
-		LOGI("unknown revision (0x%02X 0x%02X) found\n", chipID[8], chipID[9]);
+		LOGI("rev (0x%02X 0x%02X) found\n", chipID[8], chipID[9]);
 
 	return true;
 }
@@ -954,6 +1081,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 
 	gl_ts->client = client;
+
 	i2c_set_clientdata(client, gl_ts);
 	pdata = client->dev.platform_data;
 
@@ -967,45 +1095,81 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_ident_fail_or_input_alloc;
 	}
 
-	input_dev = input_allocate_device();
-	if (!input_dev) {
+	gl_ts->touch_dev = input_allocate_device();
+	if (!gl_ts->touch_dev) {
 		LOGE("failed to allocate input device\n");
 		ret = -ENOMEM;
 		goto err_ident_fail_or_input_alloc;
 	}
-	gl_ts->input_dev = input_dev;
 
-	input_dev->name = DEVICE_NAME;
-	input_dev->phys = "I2C";
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->id.vendor = 0x0001;
-	input_dev->id.product = 0x7260;
-	set_bit(EV_SYN, input_dev->evbit);
-	set_bit(EV_KEY, input_dev->evbit);
-	set_bit(EV_ABS, input_dev->evbit);
-	set_bit(INPUT_PROP_DIRECT,input_dev->propbit);
-	set_bit(BTN_TOUCH, input_dev->keybit);
-	set_bit(KEY_SLEEP,input_dev->keybit);
-	set_bit(KEY_WAKEUP,input_dev->keybit);
-	set_bit(KEY_POWER,input_dev->keybit);
-	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
+	gl_ts->touch_dev->name = DEVICE_NAME;
+	gl_ts->touch_dev->phys = "I2C";
+	gl_ts->touch_dev->id.bustype = BUS_I2C;
+	gl_ts->touch_dev->id.vendor = 0x0001;
+	gl_ts->touch_dev->id.product = 0x7260;
+	set_bit(EV_SYN, gl_ts->touch_dev->evbit);
+	set_bit(EV_KEY, gl_ts->touch_dev->evbit);
+	set_bit(EV_ABS, gl_ts->touch_dev->evbit);
+	set_bit(INPUT_PROP_DIRECT,gl_ts->touch_dev->propbit);
+	set_bit(BTN_TOUCH, gl_ts->touch_dev->keybit);
+	set_bit(KEY_SLEEP,gl_ts->touch_dev->keybit);
+	set_bit(KEY_WAKEUP,gl_ts->touch_dev->keybit);
+	set_bit(KEY_POWER,gl_ts->touch_dev->keybit);
+	input_set_abs_params(gl_ts->touch_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
+	input_set_abs_params(gl_ts->touch_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
 
+	if (input_register_device(gl_ts->touch_dev)) {
+		LOGE("failed to register input device\n");
+		goto err_input_register;
+	}
+
+	gl_ts->palm_dev = input_allocate_device();
+	if (!gl_ts->palm_dev) {
+		LOGE("failed to allocate input device\n");
+		ret = -ENOMEM;
+		goto err_ident_fail_or_input_alloc;
+	}
+
+	gl_ts->palm_dev->name = "ASUS PALM";
+	gl_ts->palm_dev->id.bustype = BUS_I2C;
+	input_set_capability(gl_ts->palm_dev, EV_ABS, ABS_DISTANCE);
+	__set_bit(EV_SYN, gl_ts->palm_dev->evbit);
+	__set_bit(ABS_DISTANCE, gl_ts->palm_dev->absbit);
+	input_set_abs_params(gl_ts->palm_dev, ABS_DISTANCE, 0, 1, 0, 0);
+
+	if (input_register_device(gl_ts->palm_dev)) {
+		LOGE("failed to register input device\n");
+		goto err_input_register;
+	}
+
+	gl_ts->palm_en = 0;    
+	gl_ts->cdev = palm_cdev;
+	gl_ts->cdev.enabled = 0;
+	gl_ts->cdev.sensors_enable = palm_enable_set;
+
+	if (sensors_classdev_register(&client->dev, &gl_ts->cdev)) {
+		pr_err("[IT7260] %s: class device create failed\n", __func__);
+		goto err_out;
+	}
+
+	touchMissed = false;
+    
 	IT7260_wq = create_workqueue("IT7260_wq");
 	if (!IT7260_wq)
 		goto err_check_functionality_failed;
 	
 	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
-
-	if (input_register_device(input_dev)) {
-		LOGE("failed to register input device\n");
-		goto err_input_register;
-	}
+	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
+	INIT_DELAYED_WORK(&gl_ts->exit_idle_work, exitIdleEvt);
 
 	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, IRQF_TRIGGER_LOW | IRQF_ONESHOT, client->name, gl_ts)) {
 		dev_err(&client->dev, "request_irq failed\n");
 		goto err_irq_reg;
 	}
+
+	#ifdef CONFIG_ASUS_UTILITY
+	register_mode_notifier(&display_mode_notifier);
+	#endif
 
 	if (sysfs_create_group(&(client->dev.kobj), &it7260_attr_group)) {
 		dev_err(&client->dev, "failed to register sysfs #2\n");
@@ -1023,15 +1187,22 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	return 0;
 
 err_sysfs_grp_create_2:
+	#ifdef CONFIG_ASUS_UTILITY
+	unregister_mode_notifier(&display_mode_notifier);
+	#endif
 	free_irq(client->irq, gl_ts);
 
 err_irq_reg:
-	input_unregister_device(input_dev);
-	input_dev = NULL;
+	input_unregister_device(gl_ts->touch_dev);
+	gl_ts->touch_dev = NULL;
+	input_unregister_device(gl_ts->palm_dev);
+	gl_ts->palm_dev = NULL;
 
 err_input_register:
-	if (input_dev)
-		input_free_device(input_dev);
+	if (gl_ts->touch_dev)
+		input_free_device(gl_ts->touch_dev);
+	if (gl_ts->palm_dev)
+		input_free_device(gl_ts->palm_dev);
 
 err_ident_fail_or_input_alloc:
 	sysfs_remove_group(&(client->dev.kobj), &it7260_attrstatus_group);
@@ -1157,24 +1328,6 @@ static const struct file_operations ite7260_fops = {
 	.unlocked_ioctl = ite7260_ioctl,
 };
 
-static ssize_t show_magic_key(struct device *device, struct device_attribute *attr, char *buf)
-{
-	switch (magic_key) {
-	case MAGIC_KEY_NONE:
-		buf[0] = 0;
-		break;
-	case MAGIC_KEY_PALM:
-		strcpy(buf, "PALM");
-		break;
-	default:
-		strcpy(buf, "UNKNOWN");
-		break;
-	}
-	magic_key = MAGIC_KEY_NONE;
-	return strlen(buf);
-}
-
-
 static const struct i2c_device_id IT7260_ts_id[] = {
 	{ DEVICE_NAME, 0},
 	{}
@@ -1187,21 +1340,22 @@ static const struct of_device_id IT7260_match_table[] = {
 	{},
 };
 
-static struct notifier_block display_mode_notifier = {
-        .notifier_call =    mode_notify_sys,
-};
-
 static int IT7260_ts_resume(struct i2c_client *i2cdev)
 {
-	isDeviceSuspend	= false;
 	isDriverAvailable = true;
     return 0;
 }
 
 static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
+	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	isDeviceSuspend = true;
+	isDeviceSleeping = true;
 	isDriverAvailable = false;
+	
+	cancel_delayed_work(&gl_ts->touchidle_on_work);
+	enable_irq_wake(gl_ts->client->irq);
+	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
     return 0;
 }
 
@@ -1218,84 +1372,17 @@ static struct i2c_driver IT7260_ts_driver = {
 	.suspend = IT7260_ts_suspend,
 };
 
-static const struct device_attribute device_attr =  __ATTR(magic_key, S_IRUGO, show_magic_key, NULL);
-
 static int __init IT7260_ts_init(void)
 {
-	dev_t dev;
-
-
-	if (alloc_chrdev_region(&dev, 0, 1, DEVICE_NAME)) {
-		LOGE("cdev can't get major number\n");
-		goto err_cdev_alloc;
-	}
-	ite7260_major = MAJOR(dev);
-
-	cdev_init(&ite7260_cdev, &ite7260_fops);
-	ite7260_cdev.owner = THIS_MODULE;
-
-	if (cdev_add(&ite7260_cdev, MKDEV(ite7260_major, ite7260_minor), 1)) {
-		LOGE("cdev can't get minor number\n");
-		goto err_cdev_add;
-	}
-
-	ite7260_class = class_create(THIS_MODULE, DEVICE_NAME);
-	if (IS_ERR(ite7260_class)) {
-		LOGE("failed in creating class.\n");
-		goto err_class_create;
-	}
-
-	class_dev = device_create(ite7260_class, NULL, MKDEV(ite7260_major, ite7260_minor), NULL, DEVICE_NAME);
-	if (!class_dev) {
-
-		LOGE("failed in creating device.\n");
-		goto err_dev_create;
-	}
-
-	if (device_create_file(class_dev, &device_attr) < 0) {
-		LOGE("failed in creating file.\n");
-		goto err_file_create;
-	}
-
-	register_mode_notifier(&display_mode_notifier);
-
-	LOGI("=========================================\n");
-	LOGI("register IT7260 cdev, major: %d, minor: %d \n", ite7260_major, ite7260_minor);
-	LOGI("=========================================\n");
-
-	if (!i2c_add_driver(&IT7260_ts_driver))
-		return 0;
-
-	unregister_mode_notifier(&display_mode_notifier);
-	device_remove_file(class_dev, &device_attr);
-
-err_file_create:
-	device_destroy(ite7260_class, ite7260_dev);
-
-err_dev_create:
-	class_destroy(ite7260_class);
-
-err_class_create:
-	cdev_del(&ite7260_cdev);
-
-err_cdev_add:
-	unregister_chrdev_region(dev, 1);
-
-err_cdev_alloc:
-	return -1;
+	return i2c_add_driver(&IT7260_ts_driver);
 }
 
 static void __exit IT7260_ts_exit(void)
 {
-	dev_t dev = MKDEV(ite7260_major, ite7260_minor);
-
 	i2c_del_driver(&IT7260_ts_driver);
+	#ifdef CONFIG_ASUS_UTILITY
 	unregister_mode_notifier(&display_mode_notifier);
-	device_remove_file(class_dev, &device_attr);
-	device_destroy(ite7260_class, ite7260_dev);
-	class_destroy(ite7260_class);
-	cdev_del(&ite7260_cdev);
-	unregister_chrdev_region(dev, 1);
+    	#endif
 	wake_lock_destroy(&touch_lock);
 	if (IT7260_wq)
 		destroy_workqueue(IT7260_wq);
