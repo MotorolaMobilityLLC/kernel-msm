@@ -778,8 +778,8 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	int wakeup = 0;
 	struct pinctrl_state *set_state;
 
-	INIT_WORK(&__wait_for_slowlog_work, wait_for_slowlog_work);
-
+    INIT_WORK(&__wait_for_slowlog_work, wait_for_slowlog_work);
+    
 	if (!pdata) {
 		pdata = gpio_keys_get_devtree_pdata(dev);
 		if (IS_ERR(pdata))
@@ -999,10 +999,7 @@ static struct platform_driver gpio_keys_device_driver = {
 
 static int __init gpio_keys_init(void)
 {
-	if (g_ASUS_hwID >= WI500Q_SR)
-		pwr_gpio = 68;
-	else 
-		pwr_gpio = 1;
+	pwr_gpio = 68;
 
 	return platform_driver_register(&gpio_keys_device_driver);
 }
