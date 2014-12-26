@@ -869,8 +869,8 @@ static int max17042_check_temp(struct max17042_chip *chip)
 {
 	int batt_temp;
 	int hotspot;
-	int max_t;
-	int min_t;
+	int max_t = 0;
+	int min_t = 0;
 	struct max17042_platform_data *pdata;
 	int temp_state = POWER_SUPPLY_HEALTH_GOOD;
 	union power_supply_propval ps = {0, };
