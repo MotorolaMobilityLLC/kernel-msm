@@ -3113,7 +3113,7 @@ EXPORT_SYMBOL(synaptics_rmi4_new_function);
 static int synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
 {
-	int retval;
+	int retval = -EINVAL;
 	struct pinctrl *pinctrl;
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
