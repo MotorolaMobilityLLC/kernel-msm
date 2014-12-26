@@ -1284,7 +1284,7 @@ static int apsd_complete(struct smb358_charger *chip, u8 status)
 
 static int chg_uv(struct smb358_charger *chip, u8 status)
 {
-	int rc;
+	int rc = -1;
 	/* use this to detect USB insertion only if !apsd */
 	if (chip->disable_apsd && status == 0) {
 		chip->chg_present = true;
