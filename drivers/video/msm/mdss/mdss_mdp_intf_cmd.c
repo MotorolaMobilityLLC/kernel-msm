@@ -898,10 +898,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		return -ENODEV;
 	}
 
-	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list) {
-		list_add(&handle->saved_list, &ctl->saved_vsync_handlers);
+	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
-	}
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_ENTRY);
 
@@ -955,7 +953,6 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_cmd_ctx *ctx;
 	struct mdss_mdp_ctl *sctl = NULL;
 	struct mdss_mdp_mixer *mixer;
-	struct mdss_mdp_vsync_handler *tmp, *handle;
 	int ret;
 
 	if (session >= MAX_SESSIONS)
@@ -1015,10 +1012,6 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	INIT_WORK(&ctx->pp_done_work, pingpong_done_work);
 	atomic_set(&ctx->pp_done_cnt, 0);
 	INIT_LIST_HEAD(&ctx->vsync_handlers);
-	list_for_each_entry_safe(handle, tmp, &ctl->saved_vsync_handlers, saved_list) {
-		mdss_mdp_cmd_add_vsync_handler(ctl, handle);
-		list_del_init(&handle->saved_list);
-	}
 
 	ctx->recovery.fxn = mdss_mdp_cmd_underflow_recovery;
 	ctx->recovery.data = ctx;
