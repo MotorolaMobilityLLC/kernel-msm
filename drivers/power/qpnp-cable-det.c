@@ -214,7 +214,7 @@ static int get_prop_charge_type(struct qpnp_cbldet_chip *chip)
 
 static int qpnp_cbldet_usb_path_init(struct qpnp_cbldet_chip *chip)
 {
-	int rc;
+	int rc = 0;
 	u8 reg_val;
 
 	if (qpnp_cbldet_is_usb_chg_plugged_in(chip)) {
