@@ -12850,7 +12850,7 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                  param->subtype, &delStaParams);
 
 #else
-    WLANSAP_PopulateDelStaParams(mac, eCsrForcedDeauthSta,
+    WLANSAP_PopulateDelStaParams(mac, eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
                                  (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
 #endif
     ret = __wlan_hdd_cfg80211_del_station(wiphy, dev, &delStaParams);

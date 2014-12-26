@@ -434,7 +434,8 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
        {
           struct tagCsrDelStaParams delStaParams;
 
-          WLANSAP_PopulateDelStaParams(hdr->addr1, eCsrForcedDeauthSta,
+          WLANSAP_PopulateDelStaParams(hdr->addr1,
+                                  eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
                                  (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
 
           hdd_softap_sta_deauth(pAdapter, &delStaParams);
