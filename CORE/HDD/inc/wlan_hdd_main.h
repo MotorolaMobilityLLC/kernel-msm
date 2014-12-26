@@ -910,14 +910,10 @@ struct hdd_adapter_s
 
 #ifdef WLAN_NS_OFFLOAD
    /** IPv6 notifier callback for handling NS offload on change in IP */
-   struct notifier_block ipv6_notifier;
-   bool ipv6_notifier_registered;
    struct work_struct  ipv6NotifierWorkQueue;
 #endif
     
    /** IPv4 notifier callback for handling ARP offload on change in IP */
-   struct notifier_block ipv4_notifier;
-   bool ipv4_notifier_registered;
    struct work_struct  ipv4NotifierWorkQueue;
 
    //TODO Move this to sta Ctx
@@ -1367,6 +1363,18 @@ struct hdd_context_s
     macAddrSpoof_t spoofMacAddr;
     /* flag to decide if driver need to scan DFS channels or not */
     v_BOOL_t  disable_dfs_flag;
+
+#ifdef WLAN_NS_OFFLOAD
+    /*
+     *  IPv6 notifier callback for handling NS offload on change in IP
+     */
+    struct notifier_block ipv6_notifier;
+#endif
+
+    /* IPv4 notifier callback for handling ARP offload on change in
+     * IP
+     */
+    struct notifier_block ipv4_notifier;
 };
 
 
