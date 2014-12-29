@@ -117,4 +117,39 @@
 		status = "ok";
 		};
 
+	t4k71: qcom,camera@6e {
+		compatible = "qcom,t4k71";
+		reg = <0x6e>;
+		qcom,slave-id = <0x6e 0x00 0x0861>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <270>;
+		qcom,sensor-name = "t4k71";
+		cam_vdig-supply = <&pm8226_l5>;
+		qcom,cam-vreg-name = "cam_vdig";
+		qcom,cam-vreg-type = <0>;
+		qcom,cam-vreg-min-voltage = <1200000>;
+		qcom,cam-vreg-max-voltage = <1200000>;
+		qcom,cam-vreg-op-mode = <105000>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 26 0>,
+			<&msmgpio 36 0>,
+			<&msmgpio 34 0>,
+			<&msmgpio 35 0>;
+		qcom,gpio-vio = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-reset = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					"CAM_VIO",
+					"CAM_VANA",
+					"CAM_RESET";
+		qcom,csi-lane-assign = <0x4320>;
+		qcom,csi-lane-mask = <0x3>;
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <1>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		};
 	};
