@@ -15,6 +15,8 @@ static struct clk_lookup mmi_msm_clocks_8226[] = {
 	/* Camera Clocks */
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "32.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_mclk1_clk.c, "32.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6e.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_mclk1_clk.c, "6e.qcom,camera"),
 };
 
 #ifdef CONFIG_OF
