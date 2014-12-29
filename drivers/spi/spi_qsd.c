@@ -1840,8 +1840,10 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 	 * get local resources for each transfer to ensure we're in a good
 	 * state and not interfering with other EE's using this device
 	 */
-	if (get_local_resources(dd))
+	if (get_local_resources(dd))	{
+		mutex_unlock(&dd->core_lock);
 		return -EINVAL;
+	}
 
 	reset_core(dd);
 	if (dd->use_dma) {
@@ -1867,26 +1869,21 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 	dd->transfer_pending = 0;
 	spin_unlock_irqrestore(&dd->queue_lock, flags);
 
-	mutex_unlock(&dd->core_lock);
-
-	/*
-	 * If needed, this can be done after the current message is complete,
-	 * and work can be continued upon resume. No motivation for now.
-	 */
-	if (dd->suspended)
-		wake_up_interruptible(&dd->continue_suspend);
-
 	/*
 	 * Put local resources prior to calling finalize to ensure the hw
 	 * is in a known state before notifying the calling thread (which is a
 	 * different context since we're running in the spi kthread here) to
 	 * prevent race conditions between us and any other EE's using this hw.
 	 */
-	put_local_resources(dd);
 	if (dd->use_dma) {
 		msm_spi_bam_pipe_disconnect(dd, &dd->bam.prod);
 		msm_spi_bam_pipe_disconnect(dd, &dd->bam.cons);
 	}
+	put_local_resources(dd);
+	mutex_unlock(&dd->core_lock);
+	if (dd->suspended)
+	wake_up_interruptible(&dd->continue_suspend);
+	
 	status_error = dd->cur_msg->status;
 	spi_finalize_current_message(master);
 	return status_error;
@@ -1935,20 +1932,18 @@ static int msm_spi_setup(struct spi_device *spi)
 	if (spi->bits_per_word < 4 || spi->bits_per_word > 32) {
 		dev_err(&spi->dev, "%s: invalid bits_per_word %d\n",
 			__func__, spi->bits_per_word);
-		rc = -EINVAL;
+		return -EINVAL;
 	}
 	if (spi->chip_select > SPI_NUM_CHIPSELECTS-1) {
 		dev_err(&spi->dev, "%s, chip select %d exceeds max value %d\n",
 			__func__, spi->chip_select, SPI_NUM_CHIPSELECTS - 1);
-		rc = -EINVAL;
+		return -EINVAL;
 	}
-
-	if (rc)
-		goto err_setup_exit;
 
 	dd = spi_master_get_devdata(spi->master);
 
 	pm_runtime_get_sync(dd->dev);
+	get_local_resources(dd);
 
 	mutex_lock(&dd->core_lock);
 
@@ -1957,8 +1952,8 @@ static int msm_spi_setup(struct spi_device *spi)
 		msm_spi_pm_resume_runtime(dd->dev);
 
 	if (dd->suspended) {
-		mutex_unlock(&dd->core_lock);
-		return -EBUSY;
+		rc = -EBUSY;
+		goto err_setup_exit;
 	}
 
 	spi_ioc = readl_relaxed(dd->base + SPI_IO_CONTROL);
@@ -1983,12 +1978,11 @@ static int msm_spi_setup(struct spi_device *spi)
 	if (!pm_runtime_enabled(dd->dev))
 		msm_spi_pm_suspend_runtime(dd->dev);
 
+err_setup_exit:
 	mutex_unlock(&dd->core_lock);
-
+	put_local_resources(dd);
 	pm_runtime_mark_last_busy(dd->dev);
 	pm_runtime_put_autosuspend(dd->dev);
-
-err_setup_exit:
 	return rc;
 }
 
