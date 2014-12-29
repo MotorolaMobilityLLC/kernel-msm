@@ -135,6 +135,14 @@ config S5K5E2
 		2 mipi lanes, preview config = 2560 x 1920 at 30 fps,
 		snapshot config = 2560 x 1920 at 30 fps
 
+config T4K71
+	bool "Sensor T4K71 (BAYER 2M)"
+	depends on MSMB_CAMERA
+	---help---
+		Toshiba 2 MP Bayer Sensor with auto focus, uses
+		1 mipi lanes, preview config = 1920 x 1080 at 30 fps,
+		snapshot config = 1920 x 1080 at 30 fps.
+
 config MT9V113
         bool "Sensor MT9V113 (YUV .3MP)"
         depends on MSMB_CAMERA

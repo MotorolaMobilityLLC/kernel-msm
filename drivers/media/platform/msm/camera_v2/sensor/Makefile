@@ -10,6 +10,7 @@ obj-$(CONFIG_IMX179) += imx179.o
 obj-$(CONFIG_IMX132) += imx132.o
 obj-$(CONFIG_IMX135) += imx135.o
 obj-$(CONFIG_IMX134) += imx134.o
+obj-$(CONFIG_T4K71) += t4k71.o
 obj-$(CONFIG_OV8825) += ov8825.o
 obj-$(CONFIG_OV8865) += ov8865.o
 obj-$(CONFIG_s5k4e1) += s5k4e1.o
