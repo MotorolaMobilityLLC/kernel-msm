@@ -470,6 +470,13 @@ static void chipLowPowerMode(bool low)
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
+			
+			//Touch Reset
+			gpio_direction_output(16,1);
+			msleep(50);
+			gpio_direction_output(16,0);
+			msleep(50);
+			
 			if (!allow_irq_wake){
 				smp_wmb();
 				disable_irq_wake(gl_ts->client->irq);
@@ -866,7 +873,7 @@ static void readTouchDataPoint(void)
 	}
 	
 	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend && !hadPalmDown) {
-		if (jiffies - last_time_exit_low > HZ/5){
+		if (jiffies - last_time_exit_low > HZ/4){
 			isDeviceSuspend = true;
 			hadPalmDown = true;
 			sendPalmEvt();
@@ -1061,6 +1068,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	struct IT7260_i2c_platform_data *pdata;
 	uint8_t rsp[2];
 	int ret = -1;
+	int err;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		LOGE("need I2C_FUNC_I2C\n");
@@ -1176,6 +1184,11 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_sysfs_grp_create_2;
 	}
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
+	
+	err = gpio_request(16, "CTP_RST_N");
+	if (err < 0){
+		printk("IT7260: gpio_request 16 error: %d\n",err);
+	}
 	
 	devicePresent = true;
 
@@ -1380,6 +1393,7 @@ static int __init IT7260_ts_init(void)
 static void __exit IT7260_ts_exit(void)
 {
 	i2c_del_driver(&IT7260_ts_driver);
+	gpio_free(16);
 	#ifdef CONFIG_ASUS_UTILITY
 	unregister_mode_notifier(&display_mode_notifier);
     	#endif
