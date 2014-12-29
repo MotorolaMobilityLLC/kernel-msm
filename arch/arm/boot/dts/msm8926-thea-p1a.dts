@@ -16,6 +16,14 @@
 /include/ "msm8926.dtsi"
 /include/ "msm8926-thea-common.dtsi"
 
+&t4k71 {
+	/delete-property/ gpios;
+	gpios = <&msmgpio 26 0>,
+		<&msmgpio 36 0>,
+		<&msmgpio 114 0>,
+		<&msmgpio 35 0>;
+};
+
 &imx132 {
 	/delete-property/ gpios;
 	gpios = <&msmgpio 26 0>,
