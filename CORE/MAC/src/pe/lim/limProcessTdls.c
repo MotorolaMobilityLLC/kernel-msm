@@ -1324,6 +1324,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
     void               *pPacket;
     eHalStatus          halstatus;
     uint32              selfDot11Mode;
+    tpSirMacCapabilityInfo pCapInfo;
 //  Placeholder to support different channel bonding mode of TDLS than AP.
 //  Today, WNI_CFG_CHANNEL_BONDING_MODE will be overwritten when connecting to AP
 //  To support this feature, we need to introduce WNI_CFG_TDLS_CHANNEL_BONDING_MODE
@@ -1352,6 +1353,11 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
          */
          limLog(pMac, LOGE, FL("could not retrieve Capabilities value"));
     }
+
+    pCapInfo = (tpSirMacCapabilityInfo) &caps;
+    /* Export QOS capability  */
+    pCapInfo->qos = 1;
+
     swapBitField16(caps, ( tANI_U16* )&tdlsSetupReq.Capabilities );
 
     /* populate supported rate IE */
@@ -1759,6 +1765,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
     void               *pPacket;
     eHalStatus          halstatus;
     uint32             selfDot11Mode;
+    tpSirMacCapabilityInfo pCapInfo;
 //  Placeholder to support different channel bonding mode of TDLS than AP.
 //  Today, WNI_CFG_CHANNEL_BONDING_MODE will be overwritten when connecting to AP
 //  To support this feature, we need to introduce WNI_CFG_TDLS_CHANNEL_BONDING_MODE
@@ -1790,6 +1797,11 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
          */
          limLog(pMac, LOGE, FL("could not retrieve Capabilities value"));
     }
+
+    pCapInfo = (tpSirMacCapabilityInfo) &caps;
+    /* Export QoS capability */
+    pCapInfo->qos = 1;
+
     swapBitField16(caps, ( tANI_U16* )&tdlsSetupRsp.Capabilities );
 
     /* ipopulate supported rate IE */
