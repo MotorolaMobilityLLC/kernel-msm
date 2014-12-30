@@ -182,11 +182,13 @@ static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
+static struct wake_lock touch_time_lock;
 static int lastTouch = TOUCH_UP;
 static unsigned long last_time_exit_low = 0;
 
 #define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
 #define I2C_RETRIES				2		/* Number of retries */
+#define WAKELOCK_HOLD_MS                (HZ/2)
 
 #define LOGE(...)	pr_err(DEVICE_NAME ": " __VA_ARGS__)
 #define LOGI(...)	printk(DEVICE_NAME ": " __VA_ARGS__)
@@ -826,6 +828,8 @@ static void exitIdleEvt(struct work_struct *work) {
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
 	input_sync(gl_ts->touch_dev);
+	wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
+	wake_unlock(&touch_lock);
 	last_time_exit_low = jiffies;	
 }
 
@@ -980,7 +984,8 @@ static void readTouchDataPoint_Ambient(void)
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 			input_sync(gl_ts->touch_dev);
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
-			input_sync(gl_ts->touch_dev);	
+			input_sync(gl_ts->touch_dev);
+			wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 			last_time_exit_low = jiffies;
 		}
 		isDeviceSuspend = true;
@@ -1184,6 +1189,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_sysfs_grp_create_2;
 	}
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
+	wake_lock_init(&touch_time_lock, WAKE_LOCK_SUSPEND, "touch-time-lock");
 	
 	err = gpio_request(16, "CTP_RST_N");
 	if (err < 0){
@@ -1398,6 +1404,7 @@ static void __exit IT7260_ts_exit(void)
 	unregister_mode_notifier(&display_mode_notifier);
     	#endif
 	wake_lock_destroy(&touch_lock);
+	wake_lock_destroy(&touch_time_lock);
 	if (IT7260_wq)
 		destroy_workqueue(IT7260_wq);
 }
