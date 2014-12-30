@@ -34,6 +34,7 @@ typedef struct sAniSirSys
 
     tANI_U32 gSysFrameCount[4][16];
     tANI_U32 gSysBbtReceived;
+    tANI_U32 gSysBbtPendingMgmtCount;
     tANI_U32 gSysBbtPostedToLim;
     tANI_U32 gSysBbtPostedToSch;
     tANI_U32 gSysBbtPostedToPmm;
@@ -49,6 +50,7 @@ typedef struct sAniSirSys
     tANI_U32 gSysEnableLearnMode;
     tANI_U32 gSysEnableScanMode;
     tANI_U32 gSysEnableLinkMonitorMode;
+    vos_spin_lock_t lock;
 } tAniSirSys, *tpAniSirSys;
 
 #endif

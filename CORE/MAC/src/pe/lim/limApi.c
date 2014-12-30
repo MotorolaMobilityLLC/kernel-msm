@@ -991,6 +991,7 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         return eSIR_SUCCESS;
     pMac->lim.maxBssId = pMacOpenParam->maxBssId;
     pMac->lim.maxStation = pMacOpenParam->maxStation;
+    vos_spin_lock_init( &pMac->sys.lock );
 
     if ((pMac->lim.maxBssId == 0) || (pMac->lim.maxStation == 0))
     {
@@ -1087,7 +1088,9 @@ tSirRetStatus peClose(tpAniSirGlobal pMac)
 
     if (ANI_DRIVER_TYPE(pMac) == eDRIVER_TYPE_MFG)
         return eSIR_SUCCESS;
-    
+
+    vos_spin_lock_destroy( &pMac->sys.lock );
+
     for(i =0; i < pMac->lim.maxBssId; i++)
     {
         if(pMac->lim.gpSession[i].valid == TRUE)
@@ -1339,7 +1342,7 @@ tSirRetStatus peProcessMessages(tpAniSirGlobal pMac, tSirMsgQ* pMsg)
     return eSIR_SUCCESS;
 }
 
-
+#define RSRVD_MGMT_RX_PACKETS 10
 
 // ---------------------------------------------------------------------------
 /**
@@ -1412,6 +1415,30 @@ VOS_STATUS peHandleMgmtFrame( v_PVOID_t pvosGCtx, v_PVOID_t vosBuff)
     msg.type = SIR_BB_XPORT_MGMT_MSG;
     msg.bodyptr = vosBuff;
     msg.bodyval = 0;
+
+    vos_spin_lock_acquire( &pMac->sys.lock );
+    if( pMac->sys.gSysBbtPendingMgmtCount > (vos_pkt_get_num_of_rx_raw_pkts()/4) )
+    {
+        vos_spin_lock_release( &pMac->sys.lock );
+        // drop all management packets
+        vos_pkt_return_packet(pVosPkt);
+        return  VOS_STATUS_SUCCESS;
+    }
+
+    if( pMac->sys.gSysBbtPendingMgmtCount > ( vos_pkt_get_num_of_rx_raw_pkts()/4
+                                              - RSRVD_MGMT_RX_PACKETS ))
+    {
+        // drop all probereq, proberesp and beacons
+        if( mHdr->fc.subType == SIR_MAC_MGMT_BEACON ||  mHdr->fc.subType ==
+            SIR_MAC_MGMT_PROBE_REQ ||  mHdr->fc.subType == SIR_MAC_MGMT_PROBE_RSP )
+        {
+            vos_spin_lock_release( &pMac->sys.lock );
+            vos_pkt_return_packet(pVosPkt);
+            return  VOS_STATUS_SUCCESS;
+        }
+    }
+    pMac->sys.gSysBbtPendingMgmtCount++;
+    vos_spin_lock_release( &pMac->sys.lock );
 
     if( eSIR_SUCCESS != sysBbtProcessMessageCore( pMac,
                                                   &msg,
