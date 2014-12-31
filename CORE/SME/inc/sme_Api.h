@@ -3512,4 +3512,16 @@ eHalStatus sme_RegisterBtCoexTDLSCallback
     void (*pCallbackfn)(void *pAdapter, int)
 );
 
+/* ---------------------------------------------------------------------------
+    \fn smeNeighborRoamIsHandoffInProgress
+
+    \brief This function is a wrapper to call csrNeighborRoamIsHandoffInProgress
+
+    \param hHal - The handle returned by macOpen.
+
+    \return eANI_BOOLEAN_TRUE if reassoc in progress,
+            eANI_BOOLEAN_FALSE otherwise
+---------------------------------------------------------------------------*/
+tANI_BOOLEAN smeNeighborRoamIsHandoffInProgress(tHalHandle hHal);
+
 #endif //#if !defined( __SME_API_H )
