@@ -2399,7 +2399,7 @@ void WLANSAP_PopulateDelStaParams(const v_U8_t *mac,
             vos_mem_copy(pDelStaParams->peerMacAddr, mac, VOS_MAC_ADDR_SIZE);
 
         if (reason_code == 0)
-            pDelStaParams->reason_code = eCsrForcedDeauthSta;
+            pDelStaParams->reason_code = eSIR_MAC_DEAUTH_LEAVING_BSS_REASON;
         else
             pDelStaParams->reason_code = reason_code;
 
