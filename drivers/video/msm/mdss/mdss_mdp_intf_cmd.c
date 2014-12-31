@@ -898,8 +898,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		return -ENODEV;
 	}
 
-	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
+	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list) {
+		list_add(&handle->saved_list, &ctl->saved_vsync_handlers);
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
+	}
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_ENTRY);
 
@@ -1037,6 +1039,17 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 
 	return 0;
 }
+
+static int mdss_mdp_cmd_restore_vsync_handler(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_vsync_handler *tmp, *handle;
+	list_for_each_entry_safe(handle, tmp, &ctl->saved_vsync_handlers, saved_list) {
+		mdss_mdp_cmd_add_vsync_handler(ctl, handle);
+		list_del_init(&handle->saved_list);
+	}
+	return 0;
+}
+
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	int ret, session = 0;
@@ -1058,6 +1071,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->restore_fnc = mdss_mdp_cmd_restore;
+	ctl->restore_vsync_handler = mdss_mdp_cmd_restore_vsync_handler;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;
