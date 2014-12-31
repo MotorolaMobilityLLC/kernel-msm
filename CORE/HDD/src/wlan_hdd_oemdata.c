@@ -45,7 +45,7 @@
 #include <linux/wireless.h>
 #include <wlan_hdd_includes.h>
 #include <net/arp.h>
-
+#include <vos_sched.h>
 /*---------------------------------------------------------------------------------------------
 
   \brief hdd_OemDataReqCallback() - 
@@ -97,7 +97,7 @@ static eHalStatus hdd_OemDataReqCallback(tHalHandle hHal,
 
 /**--------------------------------------------------------------------------------------------
 
-  \brief iw_get_oem_data_rsp() - 
+  \brief __iw_get_oem_data_rsp() -
 
   This function gets the oem data response. This invokes
   the respective sme functionality. Function for handling the oem data rsp 
@@ -111,8 +111,8 @@ static eHalStatus hdd_OemDataReqCallback(tHalHandle hHal,
   \return - 0 for success, non zero for failure
 
 -----------------------------------------------------------------------------------------------*/
-int iw_get_oem_data_rsp(
-        struct net_device *dev, 
+int __iw_get_oem_data_rsp(
+        struct net_device *dev,
         struct iw_request_info *info,
         union iwreq_data *wrqu,
         char *extra)
@@ -160,9 +160,24 @@ int iw_get_oem_data_rsp(
     return rc;
 }
 
+int iw_get_oem_data_rsp(
+        struct net_device *dev,
+        struct iw_request_info *info,
+        union iwreq_data *wrqu,
+        char *extra)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __iw_get_oem_data_rsp(dev, info, wrqu, extra);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
+
 /**--------------------------------------------------------------------------------------------
 
-  \brief iw_set_oem_data_req() - 
+  \brief __iw_set_oem_data_req() -
 
   This function sets the oem data req configuration. This invokes
   the respective sme oem data req functionality. Function for 
@@ -176,8 +191,8 @@ int iw_get_oem_data_rsp(
   \return - 0 for success, non zero for failure
 
 -----------------------------------------------------------------------------------------------*/
-int iw_set_oem_data_req(
-        struct net_device *dev, 
+int __iw_set_oem_data_req(
+        struct net_device *dev,
         struct iw_request_info *info,
         union iwreq_data *wrqu,
         char *extra)
@@ -246,5 +261,19 @@ int iw_set_oem_data_req(
     return rc;
 }
 
+int iw_set_oem_data_req(
+        struct net_device *dev,
+        struct iw_request_info *info,
+        union iwreq_data *wrqu,
+        char *extra)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __iw_set_oem_data_req(dev, info, wrqu, extra);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+}
 
 #endif
