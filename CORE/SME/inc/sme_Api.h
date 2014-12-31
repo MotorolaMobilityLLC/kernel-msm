@@ -3497,5 +3497,19 @@ eHalStatus sme_Encryptmsgsend (tHalHandle hHal,
                                int length,
                                pEncryptMsgRSPCb encCB);
 
+/* ---------------------------------------------------------------------------
+     \fn sme_RegisterBtCoexTDLSCallback
+     \brief  Used to plug in callback function
+            Which notify btcoex on or off.
+            Notification come from FW.
+     \param  hHal
+     \param  pCallbackfn : callback function pointer should be plugged in
+     \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_RegisterBtCoexTDLSCallback
+(
+    tHalHandle hHal,
+    void (*pCallbackfn)(void *pAdapter, int)
+);
 
 #endif //#if !defined( __SME_API_H )
