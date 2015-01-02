@@ -151,7 +151,7 @@
 #define M_STEP_COUNTER	0x000080
 
 #define M_LIN_ACCEL		0x000100
-#define M_QUATERNION	0x000200
+#define M_QUAT_6AXIS	0x000200
 #define M_GRAVITY		0x000400
 #define M_DISP_ROTATE		0x000800
 #define M_DISP_BRIGHTNESS	0x001000
@@ -161,6 +161,7 @@
 #define M_UNCALIB_GYRO		0x008000
 #define M_UNCALIB_MAG		0x010000
 #define M_IR_OBJECT		0x020000
+#define M_QUAT_9AXIS		0x040000
 
 /* wake sensor status */
 #define M_DOCK			0x000001
@@ -230,7 +231,8 @@ enum STM401_data_types {
 	DT_TEMP,
 	DT_ALS,
 	DT_LIN_ACCEL,
-	DT_QUATERNION,
+	DT_QUAT_6AXIS,
+	DT_QUAT_9AXIS,
 	DT_GRAVITY,
 	DT_DISP_ROTATE,
 	DT_DISP_BRIGHT,
@@ -334,7 +336,9 @@ struct stm_response {
 #define IR_STATE                        0x1F
 
 #define MOTION_DUR                      0x20
+#define QUAT_6AXIS_UPDATE_RATE          0x21
 #define ZRMOTION_DUR                    0x22
+#define QUAT_9AXIS_UPDATE_RATE          0x23
 
 #define BYPASS_MODE                     0x24
 #define SLAVE_ADDRESS                   0x25
@@ -367,6 +371,7 @@ struct stm_response {
 #define TEMPERATURE_DATA                0x41
 
 #define GYRO_X                          0x43
+#define QUATERNION_DATA                 0x44
 #define UNCALIB_GYRO_X			0x45
 #define UNCALIB_MAG_X			0x46
 
@@ -497,6 +502,14 @@ struct stm_response {
 #define ORIENT_X	6
 #define ORIENT_Y	8
 #define ORIENT_Z	10
+#define QUAT_6AXIS_A	0
+#define QUAT_6AXIS_B	2
+#define QUAT_6AXIS_C	4
+#define QUAT_6AXIS_W	6
+#define QUAT_9AXIS_A	8
+#define QUAT_9AXIS_B	10
+#define QUAT_9AXIS_C	12
+#define QUAT_9AXIS_W	14
 #define GYRO_RD_X	0
 #define GYRO_RD_Y	2
 #define GYRO_RD_Z	4
@@ -654,6 +667,12 @@ struct stm401_algo_requst_t {
 };
 
 int64_t stm401_timestamp_ns(void);
+int stm401_set_rv_6axis_update_rate(
+	struct stm401_data *ps_stm401,
+	const uint8_t newDelay);
+int stm401_set_rv_9axis_update_rate(
+	struct stm401_data *ps_stm401,
+	const uint8_t newDelay);
 
 irqreturn_t stm401_isr(int irq, void *dev);
 void stm401_irq_work_func(struct work_struct *work);
@@ -726,6 +745,8 @@ extern struct stm401_data *stm401_misc_data;
 extern unsigned short stm401_g_acc_delay;
 extern unsigned short stm401_g_mag_delay;
 extern unsigned short stm401_g_gyro_delay;
+extern uint8_t stm401_g_rv_6axis_delay;
+extern uint8_t stm401_g_rv_9axis_delay;
 extern unsigned short stm401_g_baro_delay;
 extern unsigned short stm401_g_ir_gesture_delay;
 extern unsigned short stm401_g_ir_raw_delay;

@@ -208,6 +208,53 @@ void stm401_irq_work_func(struct work_struct *work)
 			STM16_TO_HOST(MAG_UNCALIB_Y),
 			STM16_TO_HOST(MAG_UNCALIB_Z));
 	}
+	if (irq_status & (M_QUAT_6AXIS | M_QUAT_9AXIS)) {
+		stm401_cmdbuff[0] = QUATERNION_DATA;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 16);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading quaternions failed\n");
+			goto EXIT;
+		}
+
+		if (irq_status & M_QUAT_6AXIS) {
+			stm401_as_data_buffer_write(
+				ps_stm401,
+				DT_QUAT_6AXIS,
+				stm401_readbuff,
+				8,
+				0
+			);
+
+			dev_dbg(
+				&ps_stm401->client->dev,
+				"Sending 6-axis quat values:%d,%d,%d,%d\n",
+				STM16_TO_HOST(QUAT_6AXIS_A),
+				STM16_TO_HOST(QUAT_6AXIS_B),
+				STM16_TO_HOST(QUAT_6AXIS_C),
+				STM16_TO_HOST(QUAT_6AXIS_W)
+			);
+		}
+
+		if (irq_status & M_QUAT_9AXIS) {
+			stm401_as_data_buffer_write(
+				ps_stm401,
+				DT_QUAT_9AXIS,
+				stm401_readbuff+8,
+				8,
+				0
+			);
+
+			dev_dbg(
+				&ps_stm401->client->dev,
+				"Sending 9-axis quat values:%d,%d,%d,%d\n",
+				STM16_TO_HOST(QUAT_9AXIS_A),
+				STM16_TO_HOST(QUAT_9AXIS_B),
+				STM16_TO_HOST(QUAT_9AXIS_C),
+				STM16_TO_HOST(QUAT_9AXIS_W)
+			);
+		}
+	}
 	if (irq_status & M_STEP_COUNTER) {
 		stm401_cmdbuff[0] = STEP_COUNTER;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 8);
