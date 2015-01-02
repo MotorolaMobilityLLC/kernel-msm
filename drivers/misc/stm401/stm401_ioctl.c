@@ -809,3 +809,53 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	mutex_unlock(&ps_stm401->lock);
 	return err;
 }
+
+int stm401_set_rv_6axis_update_rate(
+	struct stm401_data *ps_stm401,
+	const uint8_t newDelay)
+{
+	int err = 0;
+
+	if (mutex_lock_interruptible(&ps_stm401->lock) != 0)
+		return -EINTR;
+	stm401_wake(ps_stm401);
+
+	if (ps_stm401->mode == BOOTMODE)
+		goto EPILOGUE;
+
+	stm401_cmdbuff[0] = QUAT_6AXIS_UPDATE_RATE;
+	stm401_cmdbuff[1] = newDelay;
+	stm401_g_rv_6axis_delay = newDelay;
+	err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
+
+EPILOGUE:
+	stm401_sleep(ps_stm401);
+	mutex_unlock(&ps_stm401->lock);
+
+	return err;
+}
+
+int stm401_set_rv_9axis_update_rate(
+	struct stm401_data *ps_stm401,
+	const uint8_t newDelay)
+{
+	int err = 0;
+
+	if (mutex_lock_interruptible(&ps_stm401->lock) != 0)
+		return -EINTR;
+	stm401_wake(ps_stm401);
+
+	if (ps_stm401->mode == BOOTMODE)
+		goto EPILOGUE;
+
+	stm401_cmdbuff[0] = QUAT_9AXIS_UPDATE_RATE;
+	stm401_cmdbuff[1] = newDelay;
+	stm401_g_rv_9axis_delay = newDelay;
+	err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
+
+EPILOGUE:
+	stm401_sleep(ps_stm401);
+	mutex_unlock(&ps_stm401->lock);
+
+	return err;
+}
