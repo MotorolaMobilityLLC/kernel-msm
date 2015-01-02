@@ -917,7 +917,7 @@
 	pinctrl-0 = <&spi0_mot_default &spi0_cs0_active>;
 	pinctrl-1 = <&spi0_sleep &spi0_mot_cs0_sleep>;
 
-	/delete-property/ qcom,use-bam;
+	qcom,use-bam;
 	/delete-node/ lattice,spi-usb@0;
 
 	stml0xx: stml0xx@0 {
