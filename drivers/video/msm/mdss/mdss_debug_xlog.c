@@ -71,6 +71,8 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 	}
 
 	mdd->logd.xlog_enable = true;
+	mdd->logd.enable_reg_dump = true;
+	mdd->logd.panic_on_err = true;
 
 	debugfs_create_file("dump", 0644, mdd->logd.xlog, NULL,
 						&mdss_xlog_fops);
@@ -171,6 +173,7 @@ void mdss_xlog_tout_handler(const char *name, ...)
 	if (!mdd->logd.xlog_enable)
 		return;
 
+	mdss_samsung_dsi_te_check();
 	va_start(args, name);
 	for (i = 0; i < MDSS_XLOG_MAX_DATA; i++) {
 

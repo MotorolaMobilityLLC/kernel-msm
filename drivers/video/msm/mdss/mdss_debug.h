@@ -130,4 +130,6 @@ static inline int mdss_debug_register_io(const char *name,
 	return mdss_debug_register_base(name, io_data->base, io_data->len);
 }
 
+void mdss_samsung_dsi_te_check(void);
+
 #endif /* MDSS_DEBUG_H */

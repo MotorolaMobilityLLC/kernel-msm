@@ -32,6 +32,7 @@
 #define DT_CMD_HDR 6
 
 /* #define CMD_DEBUG */
+/* #define TE_DEBUG */
 #define ALPM_MODE
 
 static struct dsi_cmd display_on_seq;
@@ -52,6 +53,7 @@ static struct mdss_samsung_driver_data msd;
 static struct dsi_cmd alpm_on_seq;
 static struct dsi_cmd alpm_off_seq;
 static int disp_esd_gpio;
+static int disp_te_gpio;
 /*
  * APIs for ALPM mode
  * alpm_store()
@@ -174,8 +176,13 @@ void mdss_dsi_samsung_panel_reset(struct mdss_panel_data *pdata, int enable)
 		return;
 	}
 
-	pr_info("%s:enable = %d\n", __func__, enable);
+
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
+
+	if (pinfo->cont_splash_enabled)
+		return;
+
+	pr_info("%s:enable = %d\n", __func__, enable);
 
 	if (pinfo->alpm_event) {
 		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
@@ -663,6 +670,42 @@ static void alpm_enable(int enable)
 			}
 		}
 	}
+}
+
+void mdss_samsung_dsi_te_check(void)
+{
+    int rc, te_count = 0;
+    int te_max = 20000; /*samspling 200ms */
+
+    if (gpio_is_valid(disp_te_gpio)) {
+        pr_err(" ============ start waiting for TE ============\n");
+
+        for (te_count = 0;  te_count < te_max; te_count++) {
+            rc = gpio_get_value(disp_te_gpio);
+            if (rc == 1) {
+                pr_err("%s: gpio_get_value(disp_te_gpio) = %d ",
+                                    __func__, rc);
+                pr_err("te_count = %d\n", te_count);
+                break;
+            }
+            /* usleep suspends the calling thread whereas udelay is a
+             * busy wait. Here the value of te_gpio is checked in a loop of
+             * max count = 250. If this loop has to iterate multiple
+             * times before the te_gpio is 1, the calling thread will end
+             * up in suspend/wakeup sequence multiple times if usleep is
+             * used, which is an overhead. So use udelay instead of usleep.
+             */
+            udelay(10);
+        }
+
+        if(te_count == te_max)
+            pr_err("LDI doesn't generate TE\n");
+        else
+            pr_err("LDI generate TE\n");
+
+        pr_err(" ============ finish waiting for TE ============\n");
+    } else
+        pr_err("disp_te_gpio is not valid\n");
 }
 
 static int mdss_samsung_parse_panel_cmd(struct device_node *np,
@@ -1519,6 +1562,15 @@ static const struct attribute_group panel_sysfs_group = {
 	.attrs = panel_sysfs_attributes,
 };
 
+#if defined(TE_DEBUG)
+static irqreturn_t samsung_te_check_handler(int irq, void *handle)
+{
+	pr_info("%s: HW VSYNC\n", __func__);
+
+	return IRQ_HANDLED;
+}
+#endif
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -1649,6 +1701,21 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_err("%s: failed to set gpio %d as input (%d)\n",
 			__func__, disp_esd_gpio, rc);
 	}
+
+	disp_te_gpio = of_get_named_gpio(node, "qcom,te-gpio", 0);
+
+#if defined(TE_DEBUG)
+	rc = request_threaded_irq(
+			gpio_to_irq(disp_te_gpio),
+			samsung_te_check_handler,
+			NULL,
+			IRQF_TRIGGER_FALLING,
+			"VSYNC_GPIO",
+			(void *)0);
+	if (rc)
+		pr_err("%s : Failed to request_irq, ret=%d\n",
+				__func__, rc);
+#endif
 
 	return 0;
 }
