@@ -52,7 +52,7 @@ struct ion_iommu_priv_data {
 #define MAX_VMAP_RETRIES 10
 #define BAD_ORDER	-1
 
-static const unsigned int orders[] = {8, 4, 0};
+static const unsigned int orders[] = {0};
 static const int num_orders = ARRAY_SIZE(orders);
 static unsigned int low_gfp_flags = __GFP_HIGHMEM | GFP_KERNEL | __GFP_ZERO;
 static unsigned int high_gfp_flags = (__GFP_HIGHMEM | __GFP_NORETRY
@@ -534,9 +534,9 @@ struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *heap_data)
 		gfp_t gfp_flags;
 
 		if (orders[i])
-			gfp_flags = high_gfp_flags | __GFP_ZERO;
+			gfp_flags = high_gfp_flags;
 		else
-			gfp_flags = low_gfp_flags | __GFP_ZERO;
+			gfp_flags = low_gfp_flags;
 		pool = ion_page_pool_create(gfp_flags, orders[i]);
 		if (!pool)
 			goto err_create_cached_pool;
@@ -548,9 +548,9 @@ struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *heap_data)
 		gfp_t gfp_flags;
 
 		if (orders[i])
-			gfp_flags = high_gfp_flags | __GFP_ZERO;
+			gfp_flags = high_gfp_flags;
 		else
-			gfp_flags = low_gfp_flags | __GFP_ZERO;
+			gfp_flags = low_gfp_flags;
 		pool = ion_page_pool_create(gfp_flags, orders[i]);
 		if (!pool)
 			goto err_create_uncached_pool;
