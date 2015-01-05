@@ -77,6 +77,13 @@ static struct msm_gpiomux_config wi500q_evb2_msm8226_gpio_configs[] __initdata= 
 
 // ASUS_BSP +++ Cliff_Yu "TOUCH"
 	{
+		.gpio = 16,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &touch_reset,
+			[GPIOMUX_SUSPENDED] = &touch_reset,
+		},
+	},
+	{
 		.gpio = 17,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &touch_int,
