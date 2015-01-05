@@ -441,6 +441,8 @@ static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
 static struct quickwakeup_ops msp430_quickwakeup_ops;
 static struct msp430_quickdraw_ops *msp430_quickdraw_ops;
 static void msp430_quickpeek_reset_locked(struct msp430_data *ps_msp430);
+static int msp430_quickpeek_status_ack(struct msp430_data *ps_msp430,
+	struct msp430_quickpeek_message *qp_message, int ack_return);
 static void msp430_vote_aod_enabled(struct msp430_data *ps_msp430, int voter,
 				    bool enable);
 static int msp430_resolve_aod_enabled_locked(struct msp430_data *ps_msp430);
@@ -1336,31 +1338,31 @@ EXIT:
 
 static void msp430_quickpeek_reset_locked(struct msp430_data *ps_msp430)
 {
+	struct msp430_quickpeek_message *entry, *entry_tmp;
 	int ret = 0;
 
-	if (ps_msp430->quickpeek_state != QP_IDLE) {
-		/* Drain the current list */
-		struct msp430_quickpeek_message *entry, *entry_tmp;
-		list_for_each_entry_safe(entry, entry_tmp,
-			&ps_msp430->quickpeek_command_list, list) {
-			list_del(&entry->list);
-			kfree(entry);
-		}
-
-		if (ps_msp430->quickpeek_state == QP_PREPARED) {
-			/* Cleanup fb driver state */
-			ret = msp430_quickdraw_ops->cleanup(
-				msp430_quickdraw_ops->data);
-			if (ret)
-				dev_err(&ps_msp430->client->dev,
-					"%s: Failed to cleanup (ret: %d)\n",
-					__func__, ret);
-		}
-
-		wake_unlock(&ps_msp430->quickpeek_wakelock);
-		complete(&ps_msp430->quickpeek_done);
-		ps_msp430->quickpeek_state = QP_IDLE;
+	if (ps_msp430->quickpeek_state == QP_PREPARED) {
+		/* Cleanup fb driver state */
+		ret = msp430_quickdraw_ops->cleanup(
+			msp430_quickdraw_ops->data);
+		if (ret)
+			dev_err(&ps_msp430->client->dev,
+				"%s: Failed to cleanup (ret: %d)\n",
+				__func__, ret);
 	}
+
+	/* Drain the current list */
+	list_for_each_entry_safe(entry, entry_tmp,
+		&ps_msp430->quickpeek_command_list, list) {
+		list_del(&entry->list);
+		msp430_quickpeek_status_ack(ps_msp430, entry,
+			AOD_QP_ACK_SUCCESS);
+		kfree(entry);
+	}
+
+	ps_msp430->quickpeek_state = QP_IDLE;
+	wake_unlock(&ps_msp430->quickpeek_wakelock);
+	complete(&ps_msp430->quickpeek_done);
 }
 
 static int msp430_quickpeek_status_ack(struct msp430_data *ps_msp430,
@@ -3741,6 +3743,8 @@ static int msp430_takeback_locked(struct msp430_data *ps_msp430)
 	dev_dbg(&msp430_misc_data->client->dev, "%s\n", __func__);
 
 	if (ps_msp430->mode == NORMALMODE) {
+		msp430_quickpeek_reset_locked(ps_msp430);
+
 		if (ps_msp430->ap_msp_handoff_gpio_ctrl) {
 			/* Legacy GPIO Usage */
 			gpio_set_value(msp_req, 0);
@@ -3780,8 +3784,6 @@ static int msp430_takeback_locked(struct msp430_data *ps_msp430)
 	}
 
 EXIT:
-	msp430_quickpeek_reset_locked(ps_msp430);
-
 	return 0;
 }
 
