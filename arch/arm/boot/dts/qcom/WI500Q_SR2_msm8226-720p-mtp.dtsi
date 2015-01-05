@@ -76,7 +76,7 @@
 			linux,input-type = <1>;
 			linux,code = <116>;
 			gpio-key,wakeup;
-			debounce-interval = <50>;
+			debounce-interval = <120>;
 		};
 #if 0
 		vol_up {
