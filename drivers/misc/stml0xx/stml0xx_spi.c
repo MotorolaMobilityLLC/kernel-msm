@@ -432,8 +432,8 @@ static int stml0xx_spi_send_write_reg_no_retries(unsigned char reg_type,
 
 		/* Payload data offset */
 		cmd_buff[4] = data_offset;
-		data_size = (remaining_data_size < SPI_MAX_PAYLOAD_LEN) ?
-		    remaining_data_size : SPI_MAX_PAYLOAD_LEN;
+		data_size = (remaining_data_size < SPI_TX_PAYLOAD_LEN) ?
+		    remaining_data_size : SPI_TX_PAYLOAD_LEN;
 		cmd_buff[5] = data_size;
 
 		/* Copy data and update data parameters */
@@ -513,9 +513,10 @@ int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
 	return ret;
 }
 
-static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
-					 unsigned char *reg_data,
-					 int reg_size)
+static int stml0xx_spi_send_read_reg_no_retries(enum sh_spi_msg spi_msg_type,
+				unsigned char reg_type,
+				unsigned char *reg_data,
+				int reg_size)
 {
 	int data_offset = 0, data_size;
 	int remaining_data_size = reg_size;
@@ -539,13 +540,16 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 		/* Populate header */
 		cmd_buff[0] = SPI_BARKER_1;
 		cmd_buff[1] = SPI_BARKER_2;
-		cmd_buff[2] = SPI_MSG_TYPE_READ_REG;
+		cmd_buff[2] = spi_msg_type;
 		cmd_buff[3] = reg_type;
 
 		/* Payload data offset */
 		cmd_buff[4] = data_offset;
-		data_size = (remaining_data_size < SPI_MAX_PAYLOAD_LEN) ?
-		    remaining_data_size : SPI_MAX_PAYLOAD_LEN;
+
+		/* Hub doesn't send the header when transmitting
+		 * so we can read more than we can write */
+		data_size = (remaining_data_size < SPI_RX_PAYLOAD_LEN) ?
+		    remaining_data_size : SPI_RX_PAYLOAD_LEN;
 		cmd_buff[5] = data_size;
 
 		/* Swap all bytes */
@@ -575,7 +579,7 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 						     SPI_MSG_SIZE -
 						     SPI_CRC_LEN);
 		if (recv_crc != calc_crc) {
-			dev_err(&stml0xx_misc_data->spi->dev,
+			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"CRC mismatch [0x%02x/0x%02x]. Discarding data.",
 				recv_crc, calc_crc);
 			ret = -EIO;
@@ -622,9 +626,11 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 	     reset_retries++) {
 		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
 			ret =
-			    stml0xx_spi_send_read_reg_no_retries(reg_type,
-								 reg_data,
-								 reg_size);
+				stml0xx_spi_send_read_reg_no_retries(
+						SPI_MSG_TYPE_READ_REG,
+						reg_type,
+						reg_data,
+						reg_size);
 		}
 
 		if (ret < 0) {
@@ -644,6 +650,51 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 	}
 
 	return ret;
+}
+
+int stml0xx_spi_read_msg_data(enum sh_spi_msg spi_msg,
+				unsigned char *data_buffer,
+				int buffer_size,
+				enum reset_option reset_allowed) {
+	int tries;
+	int reset_retries;
+	int ret = -EIO;
+
+	if (!data_buffer || buffer_size <= 0) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"Invalid buffer or buffer size");
+		ret = -EFAULT;
+		return ret;
+	}
+
+	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
+	     reset_retries++) {
+		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+			ret =
+				stml0xx_spi_send_read_reg_no_retries(spi_msg,
+								0,
+								data_buffer,
+								buffer_size);
+		}
+
+		if (ret < 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"stml0xx_spi_read_msg_data SPI transfer error [%d], retries left [%d]",
+				ret, reset_retries);
+			if (reset_allowed)
+				stml0xx_reset(stml0xx_misc_data->pdata);
+			else
+				break;
+		}
+	}
+
+	if (reset_retries == RESET_RETRIES) {
+		dev_err(&stml0xx_misc_data->spi->dev,
+			"stml0xx_spi_read_msg_data spi failure");
+	}
+
+	return ret;
+
 }
 
 void stml0xx_spi_swap_bytes(unsigned char *data, int size)

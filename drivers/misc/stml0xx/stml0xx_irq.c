@@ -86,278 +86,79 @@ void stml0xx_irq_work_func(struct work_struct *work)
 	if (ps_stml0xx->is_suspended)
 		goto EXIT;
 
-	/* read interrupt mask register */
-	err = stml0xx_spi_send_read_reg(INTERRUPT_STATUS, buf, 3);
+	err = stml0xx_spi_read_msg_data(SPI_MSG_TYPE_READ_IRQ_DATA,
+					buf,
+					sizeof(buf),
+					RESET_ALLOWED);
+
 	if (err < 0) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"Reading from stml0xx failed");
 		goto EXIT;
 	}
-	irq_status = (buf[IRQ_NOWAKE_HI] << 16) |
-	    (buf[IRQ_NOWAKE_MED] << 8) | buf[IRQ_NOWAKE_LO];
+
+	irq_status = (buf[IRQ_IDX_STATUS_HI] << 16) |
+	    (buf[IRQ_IDX_STATUS_MED] << 8) | buf[IRQ_IDX_STATUS_LO];
 
 	if (irq_status & M_ACCEL) {
-		/* read accelerometer values from STML0XX */
-		err = stml0xx_spi_send_read_reg(ACCEL_X, buf, 6);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Accel from stml0xx failed");
-			goto EXIT;
-		}
-
 		stml0xx_as_data_buffer_write(
 			ps_stml0xx,
 			DT_ACCEL,
-			buf,
+			&buf[IRQ_IDX_ACCEL1],
 			6,
 			0,
 			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X, buf),
-			STM16_TO_HOST(ACCEL_RD_Y, buf),
-			STM16_TO_HOST(ACCEL_RD_Z, buf));
+			STM16_TO_HOST(ACCEL_RD_X, &buf[IRQ_IDX_ACCEL1]),
+			STM16_TO_HOST(ACCEL_RD_Y, &buf[IRQ_IDX_ACCEL1]),
+			STM16_TO_HOST(ACCEL_RD_Z, &buf[IRQ_IDX_ACCEL1]));
 	}
 	if (irq_status & M_ACCEL2) {
-		/* read 2nd accelerometer values from STML0XX */
-		err = stml0xx_spi_send_read_reg(ACCEL2_X, buf, 6);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading 2nd Accel from stml0xx failed");
-			goto EXIT;
-		}
-
 		stml0xx_as_data_buffer_write(ps_stml0xx,
 			DT_ACCEL2,
-			buf,
+			&buf[IRQ_IDX_ACCEL2],
 			6,
 			0,
 			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc2(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X, buf),
-			STM16_TO_HOST(ACCEL_RD_Y, buf),
-			STM16_TO_HOST(ACCEL_RD_Z, buf));
-	}
-	if (irq_status & M_LIN_ACCEL) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"Invalid M_LIN_ACCEL bit set. irq_status = 0x%06x",
-			irq_status);
-
-		/* read linear accelerometer values from STML0XX */
-		err = stml0xx_spi_send_read_reg(LIN_ACCEL_X, buf, 6);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Linear Accel from stml0xx failed");
-			goto EXIT;
-		}
-
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_LIN_ACCEL,
-					     buf, 6, 0, stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X, buf),
-			STM16_TO_HOST(ACCEL_RD_Y, buf),
-			STM16_TO_HOST(ACCEL_RD_Z, buf));
-	}
-	if (irq_status & M_ECOMPASS) {
-		unsigned char status;
-		/*Read orientation values */
-		err = stml0xx_spi_send_read_reg(MAG_HX, buf, 13);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Ecompass failed");
-			goto EXIT;
-		}
-		status = buf[COMPASS_STATUS];
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_MAG,
-					     buf, 6, status, stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(MAG_X, buf), STM16_TO_HOST(MAG_Y, buf),
-			STM16_TO_HOST(MAG_Z, buf));
-
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_ORIENT,
-					     buf + 6, 6, status, stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending orient(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ORIENT_X, buf),
-			STM16_TO_HOST(ORIENT_Y, buf),
-			STM16_TO_HOST(ORIENT_Z, buf));
-	}
-	if (irq_status & M_GYRO) {
-		err = stml0xx_spi_send_read_reg(GYRO_X, buf, 6);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Gyroscope failed");
-			goto EXIT;
-		}
-		stml0xx_as_data_buffer_write(
-			ps_stml0xx,
-			DT_GYRO,
-			buf,
-			6,
-			0,
-			stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(GYRO_RD_X, buf),
-			STM16_TO_HOST(GYRO_RD_Y, buf),
-			STM16_TO_HOST(GYRO_RD_Z, buf));
-	}
-	/*MODIFIED UNCALIBRATED GYRO */
-	if (irq_status & M_UNCALIB_GYRO) {
-		err = stml0xx_spi_send_read_reg(UNCALIB_GYRO_X, buf, 12);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Gyroscope failed");
-			goto EXIT;
-		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_UNCALIB_GYRO,
-					     buf, 12, 0, stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
-			STM16_TO_HOST(GYRO_RD_X, buf),
-			STM16_TO_HOST(GYRO_RD_Y, buf),
-			STM16_TO_HOST(GYRO_RD_Z, buf),
-			STM16_TO_HOST(GYRO_UNCALIB_X, buf),
-			STM16_TO_HOST(GYRO_UNCALIB_Y, buf),
-			STM16_TO_HOST(GYRO_UNCALIB_Z, buf));
-	}
-	if (irq_status & M_UNCALIB_MAG) {
-		err = stml0xx_spi_send_read_reg(UNCALIB_MAG_X, buf, 12);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Gyroscope failed");
-			goto EXIT;
-		}
-
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_UNCALIB_MAG,
-					     buf, 12, 0, stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Gyro uncalib(x,y,z)values:%d,%d,%d;%d,%d,%d",
-			STM16_TO_HOST(MAG_X, buf), STM16_TO_HOST(MAG_Y, buf),
-			STM16_TO_HOST(MAG_Z, buf),
-			STM16_TO_HOST(MAG_UNCALIB_X, buf),
-			STM16_TO_HOST(MAG_UNCALIB_Y, buf),
-			STM16_TO_HOST(MAG_UNCALIB_Z, buf));
+			STM16_TO_HOST(ACCEL_RD_X, &buf[IRQ_IDX_ACCEL2]),
+			STM16_TO_HOST(ACCEL_RD_Y, &buf[IRQ_IDX_ACCEL2]),
+			STM16_TO_HOST(ACCEL_RD_Z, &buf[IRQ_IDX_ACCEL2]));
 	}
 	if (irq_status & M_ALS) {
-		err = stml0xx_spi_send_read_reg(ALS_LUX, buf, 2);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading ALS from stml0xx failed");
-			goto EXIT;
-		}
 		stml0xx_as_data_buffer_write(
 			ps_stml0xx,
 			DT_ALS,
-			buf,
+			&buf[IRQ_IDX_ALS],
 			2,
 			0,
 			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending ALS %d", STM16_TO_HOST(ALS_VALUE, buf));
-	}
-	if (irq_status & M_TEMPERATURE) {
-		/* Read temperature value */
-		err = stml0xx_spi_send_read_reg(TEMPERATURE_DATA, buf, 2);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Temperature failed");
-			goto EXIT;
-		}
-		stml0xx_as_data_buffer_write(
-			ps_stml0xx,
-			DT_TEMP,
-			buf,
-			2,
-			0,
-			stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending temp(x)value:%d",
-			STM16_TO_HOST(TEMP_VALUE, buf));
-	}
-	if (irq_status & M_PRESSURE) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"Invalid M_PRESSURE bit set. irq_status = 0x%06x",
-			irq_status);
-		/* Read pressure value */
-		err = stml0xx_spi_send_read_reg(CURRENT_PRESSURE, buf, 4);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Pressure failed");
-			goto EXIT;
-		}
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_PRESSURE,
-					     buf, 4, 0, stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending pressure %d",
-			STM32_TO_HOST(PRESSURE_VALUE, buf));
-	}
-	if (irq_status & M_GRAVITY) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"Invalid M_GRAVITY bit set. irq_status = 0x%06x",
-			irq_status);
-
-		/* read gravity values from STML0XX */
-		err = stml0xx_spi_send_read_reg(GRAVITY_X, buf, 6);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Gravity from stml0xx failed");
-			goto EXIT;
-		}
-
-		stml0xx_as_data_buffer_write(
-			ps_stml0xx,
-			DT_GRAVITY,
-			buf,
-			6,
-			0,
-			stm_ws->ts_ns);
-
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(GRAV_X, buf), STM16_TO_HOST(GRAV_Y, buf),
-			STM16_TO_HOST(GRAV_Z, buf));
+			"Sending ALS %d", STM16_TO_HOST(ALS_VALUE,
+					&buf[IRQ_IDX_ALS]));
 	}
 	if (irq_status & M_DISP_ROTATE) {
-		/* Read Display Rotate value */
-		err = stml0xx_spi_send_read_reg(DISP_ROTATE_DATA, buf, 1);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading disp_rotate failed");
-			goto EXIT;
-		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_DISP_ROTATE,
-					     buf, 1, 0, stm_ws->ts_ns);
+					&buf[IRQ_IDX_DISP_ROTATE],
+					1, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending disp_rotate(x)value: %d", buf[DISP_VALUE]);
+			"Sending disp_rotate(x)value: %d",
+			buf[IRQ_IDX_DISP_ROTATE]);
 	}
 	if (irq_status & M_DISP_BRIGHTNESS) {
-		err = stml0xx_spi_send_read_reg(DISPLAY_BRIGHTNESS, buf, 1);
-		if (err < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Reading Display Brightness failed");
-			goto EXIT;
-		}
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_DISP_BRIGHT,
-					     buf, 1, 0, stm_ws->ts_ns);
+						&buf[IRQ_IDX_DISP_BRIGHTNESS],
+						 1, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Display Brightness %d", buf[DISP_VALUE]);
+			"Sending Display Brightness %d",
+			buf[IRQ_IDX_DISP_BRIGHTNESS]);
 	}
 EXIT:
 	kfree((void *)stm_ws);
