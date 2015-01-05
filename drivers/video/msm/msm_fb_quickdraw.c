@@ -337,7 +337,7 @@ static int unlock_buffer(struct msmfb_quickdraw_buffer *buffer)
 		goto exit;
 	}
 	atomic_set(&buffer->locked, 0);
-	wake_up_interruptible_all(&buffer->wait_queue);
+	wake_up_all(&buffer->wait_queue);
 
 	ret = 0;
 
