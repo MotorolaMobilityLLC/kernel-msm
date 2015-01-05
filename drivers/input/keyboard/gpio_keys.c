@@ -56,6 +56,9 @@ struct gpio_keys_drvdata {
 static  struct work_struct __wait_for_slowlog_work;
 extern int boot_after_60sec;
 int pwr_gpio;
+static unsigned long press_time;
+static unsigned long release_time;
+static unsigned long duration;
 
 void wait_for_slowlog_work(struct work_struct *work)
 {
@@ -376,6 +379,15 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
 
 	pr_info("%s:key code=%d  state=%s \n",__func__, button->code,state ? "press" : "release");  //ASUS_BSP +++ Shunmin "gpio_keys"
+	if (button->code == 116) {
+		if (state == 1)
+			press_time = jiffies;
+		else {
+			release_time = jiffies;
+			duration = release_time - press_time;
+			pr_info("duration of power_key press/release is %ld ms \n",  duration*1000/HZ);
+		}
+	}
 	if (type == EV_ABS) {
 		if (state)
 			input_event(input, type, button->code, button->value);
