@@ -1886,6 +1886,18 @@ static __inline tANI_U32 defHddRateToDefCfgRate( tANI_U32 defRateIndex )
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MIN        (0)
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_MAX        (1)
 #define CFG_TDLS_SCAN_COEX_SUPPORT_ENABLE_DEFAULT    (0)
+
+
+/* if gEnableTDLSScan
+ * 0: Same as gEnableTDLSScanCoexistence ; driver will do disconnect if
+ * Peer is not buffer STA capable.
+ * 1: Dut will scan in all cases.
+ * 2: If peer is not buffer STA capable, use CTS2self to do scan.
+*/
+#define CFG_TDLS_SCAN_ENABLE            "gEnableTDLSScan"
+#define CFG_TDLS_SCAN_ENABLE_MIN        (0)
+#define CFG_TDLS_SCAN_ENABLE_MAX        (2)
+#define CFG_TDLS_SCAN_ENABLE_DEFAULT    (0)
 #endif
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -2755,6 +2767,7 @@ typedef struct
    v_U32_t                     fEnableTDLSOffChannel;
    v_U32_t                     fEnableTDLSWmmMode;
    v_BOOL_t                    fEnableTDLSScanCoexSupport;
+   v_BOOL_t                    fEnableTDLSScan;
 #endif
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    v_BOOL_t                    fEnableLLStats;

@@ -2570,6 +2570,21 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
                 __func__, connectedTdlsPeers, pHddCtx->tdls_scan_ctxt.attempt);
         return 1;
     }
+
+    /* if fEnableTDLSScan flag is 1 ; driverwill allow scan even if
+     * peer station is not buffer STA capable
+     *
+     *  RX: If there is any RX activity, device will lose RX packets,
+     *  as peer will not be aware that device is off channel.
+     *  TX: TX is stopped whenever device initiate scan.
+     */
+    if (pHddCtx->cfg_ini->fEnableTDLSScan == 1)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                   FL("Allow SCAN in all TDLS cases"));
+        return 1;
+    }
+
     /* while tdls is up, first time scan */
     else if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode ||
         eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == pHddCtx->tdls_mode)
@@ -2860,6 +2875,34 @@ int wlan_hdd_tdls_get_status(hdd_adapter_t *pAdapter,
         }
     }
     return (0);
+}
+
+int hdd_set_tdls_scan_type(hdd_adapter_t *pAdapter,
+                   tANI_U8 *ptr)
+{
+    int tdls_scan_type;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: pAdapter is NULL", __func__);
+        return -EINVAL;
+    }
+    tdls_scan_type = ptr[9] - '0';
+
+    if (tdls_scan_type <= 2)
+    {
+        pHddCtx->cfg_ini->fEnableTDLSScan = tdls_scan_type;
+         return 0;
+    }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+           " Wrong value is given for tdls_scan_type "
+           " Making fEnableTDLSScan as 0 ");
+        pHddCtx->cfg_ini->fEnableTDLSScan = 0;
+        return -EINVAL;
+    }
 }
 
 /*EXT TDLS*/

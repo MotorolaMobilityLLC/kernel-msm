@@ -2281,6 +2281,13 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            tANI_U8 *ptr = command;
            ret = hdd_wmmps_helper(pAdapter, ptr);
        }
+
+       else if(strncmp(command, "TDLSSCAN", 8) == 0)
+       {
+           tANI_U8 *ptr  = command;
+           ret = hdd_set_tdls_scan_type(pAdapter, ptr);
+       }
+
        else if ( strncasecmp(command, "COUNTRY", 7) == 0 )
        {
            char *country_code;
