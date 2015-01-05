@@ -33,7 +33,7 @@
 
 /* SPI */
 #define SPI_FLASH_CLK_SPD_HZ    4000000
-#define SPI_NORMAL_CLK_SPD_HZ    4000000
+#define SPI_NORMAL_CLK_SPD_HZ   4000000
 #define SPI_BUFF_SIZE           1152
 #define SPI_RETRIES             5
 #define SPI_RETRY_DELAY         20
@@ -42,16 +42,14 @@
 #define SPI_BARKER_2            0xAE
 #define SPI_HEADER_SIZE         6
 #define SPI_CRC_SIZE            2
-#define SPI_MSG_TYPE_READ_REG       0x01
-#define SPI_MSG_TYPE_WRITE_REG      0x02
-#define SPI_MSG_TYPE_READ_SENSORS   0x03
 #define SPI_WRITE_REG_HDR_SIZE      6
 #define SPI_READ_REG_HDR_SIZE       6
 #define SPI_CRC_LEN                 2
 #define SPI_READ_SENSORS_HDR_SIZE   3
-#define SPI_MAX_PAYLOAD_LEN        88
+#define SPI_TX_PAYLOAD_LEN         88
 #define SPI_MSG_SIZE	\
-	(SPI_MAX_PAYLOAD_LEN+SPI_HEADER_SIZE+SPI_CRC_SIZE)
+	(SPI_HEADER_SIZE+SPI_TX_PAYLOAD_LEN+SPI_CRC_SIZE)
+#define SPI_RX_PAYLOAD_LEN         SPI_MSG_SIZE
 
 /** The following define the IOCTL command values via the ioctl macros */
 #define STML0XX_IOCTL_BASE		77
@@ -326,6 +324,13 @@ enum sh_log_level {
 	SH_LOG_DEBUG
 };
 
+enum sh_spi_msg {
+	SPI_MSG_TYPE_READ_REG = 1,
+	SPI_MSG_TYPE_WRITE_REG,
+	SPI_MSG_TYPE_READ_IRQ_DATA,
+	SPI_MSG_TYPE_READ_WAKE_IRQ_DATA
+};
+
 struct stm_response {
 	/* 0x0080 */
 	unsigned short header;
@@ -477,6 +482,37 @@ struct stm_response {
 #define I2C_RESPONSE_LENGTH		8
 
 #define STML0XX_MAXDATA_LENGTH		256
+
+/* stml0xx IRQ SPI buffer indexes */
+#define IRQ_IDX_STATUS_LO         0
+#define IRQ_IDX_STATUS_MED        1
+#define IRQ_IDX_STATUS_HI         2
+#define IRQ_IDX_ACCEL1            3
+#define IRQ_IDX_ACCEL2            9
+#define IRQ_IDX_ALS              15
+#define IRQ_IDX_DISP_ROTATE      17
+#define IRQ_IDX_DISP_BRIGHTNESS  18
+
+/* stml0xx WAKE IRQ SPI buffer indexes */
+#define WAKE_IRQ_IDX_STATUS_LO              0
+#define WAKE_IRQ_IDX_STATUS_MED             1
+#define WAKE_IRQ_IDX_ALGO_STATUS_LO         2
+#define WAKE_IRQ_IDX_ALGO_STATUS_MED        3
+#define WAKE_IRQ_IDX_ALGO_STATUS_HI         4
+#define WAKE_IRQ_IDX_PROX                   5
+#define WAKE_IRQ_IDX_COVER                  6
+#define WAKE_IRQ_IDX_HEADSET                7
+#define WAKE_IRQ_IDX_FLAT                   8
+#define WAKE_IRQ_IDX_STOWED                 9
+#define WAKE_IRQ_IDX_CAMERA                10
+#define WAKE_IRQ_IDX_SIM                   12
+#define WAKE_IRQ_IDX_MOTION                14
+#define WAKE_IRQ_IDX_MODALITY              16
+#define WAKE_IRQ_IDX_MODALITY_ORIENT       23
+#define WAKE_IRQ_IDX_MODALITY_STOWED       30
+#define WAKE_IRQ_IDX_MODALITY_ACCUM        37
+#define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   39
+#define WAKE_IRQ_IDX_LOG_MSG               43
 
 /* stml0xx_readbuff offsets. */
 #define IRQ_WAKE_LO  0
@@ -710,6 +746,10 @@ int stml0xx_spi_send_read_reg(unsigned char reg_type,
 int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 			      unsigned char *reg_data, int reg_data_size,
 			      uint8_t reset_allowed);
+int stml0xx_spi_read_msg_data(enum sh_spi_msg spi_msg,
+				unsigned char *data_buffer,
+				int buffer_size,
+				enum reset_option reset_allowed);
 void stml0xx_spi_swap_bytes(unsigned char *data, int size);
 unsigned short stml0xx_spi_calculate_crc(unsigned char *data, int len);
 void stml0xx_spi_append_crc(unsigned char *data, int len);
