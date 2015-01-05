@@ -6822,13 +6822,12 @@ eHalStatus sme_SetPowerParams(tHalHandle hHal, tSirSetPowerParamsReq* pwParams, 
     \param  hHal - The handle returned by macOpen.
     \param  sessionId - sessionId on which we need to abort scan.
     \param  reason - Reason to abort the scan.
-    \return VOS_STATUS
-            VOS_STATUS_E_FAILURE - failure
-            VOS_STATUS_SUCCESS  success
+    \return tSirAbortScanStatus Abort scan status
   ---------------------------------------------------------------------------*/
-eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
-                            eCsrAbortReason reason)
+tSirAbortScanStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
+                                        eCsrAbortReason reason)
 {
+    tSirAbortScanStatus scanAbortStatus = eSIR_ABORT_SCAN_FAILURE;
     eHalStatus status;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
@@ -6837,12 +6836,12 @@ eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-       status = csrScanAbortMacScan(pMac, sessionId, reason);
+       scanAbortStatus = csrScanAbortMacScan(pMac, sessionId, reason);
 
        sme_ReleaseGlobalLock( &pMac->sme );
     }
 
-    return ( status );
+    return ( scanAbortStatus );
 }
 
 /* ----------------------------------------------------------------------------

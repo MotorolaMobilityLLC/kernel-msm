@@ -2271,12 +2271,11 @@ tANI_U8 sme_GetConcurrentOperationChannel( tHalHandle hHal );
     \brief  API to cancel MAC scan.
     \param  hHal - The handle returned by macOpen.
     \param  sessionId - sessionId for interface
-    \return VOS_STATUS
-            VOS_STATUS_E_FAILURE - failure
-            VOS_STATUS_SUCCESS  success
+    \return tSirAbortScanStatus return status abort scan
+
   ---------------------------------------------------------------------------*/
-eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
-                            eCsrAbortReason reason);
+tSirAbortScanStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
+                                     eCsrAbortReason reason);
 
 /* ---------------------------------------------------------------------------
     \fn sme_GetCfgValidChannels
