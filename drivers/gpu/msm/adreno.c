@@ -1339,8 +1339,12 @@ int adreno_reset(struct kgsl_device *device)
 	/* clear pending vbif transactions before reset */
 	adreno_vbif_clear_pending_transactions(device);
 
-	/* Try soft reset first, for non mmu fault case only */
-	if (!atomic_read(&mmu->fault)) {
+	/*
+	 * Try soft reset first, for non mmu fault case only.
+	 * Skip soft reset and use hard reset for A304 GPU, As
+	 * A304 is not able to do SMMU programming after soft reset.
+	 */
+	if (!atomic_read(&mmu->fault) && !adreno_is_a304(adreno_dev)) {
 		ret = adreno_soft_reset(device);
 		if (ret)
 			KGSL_DEV_ERR_ONCE(device, "Device soft reset failed\n");
