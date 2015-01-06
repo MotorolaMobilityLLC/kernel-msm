@@ -225,6 +225,17 @@
 	accel_orientation_2 = <5>;	 /* Accel 2  Orientation value */
 };
 
+&soc {
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		gpio = <&msm_gpio 36 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+};
+
 &pm8916_l6 {
 	regulator-boot-on;
 };
@@ -239,7 +250,7 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_inx_500_720p_vid_v0>;
-	vddio_disp-supply = <&pm8916_l6>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
 	vsp_disp-supply = <&tps65132_pos>;
 	vsn_disp-supply = <&tps65132_neg>;
 };
