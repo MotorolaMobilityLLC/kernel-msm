@@ -102,6 +102,9 @@ of_get_fixed_voltage_config(struct device *dev)
 	if (of_find_property(np, "gpio-open-drain", NULL))
 		config->gpio_is_open_drain = true;
 
+	if (of_find_property(np, "gpio-open-source", NULL))
+		config->gpio_is_open_source = true;
+
 	if (of_find_property(np, "vin-supply", NULL))
 		config->input_supply = "vin";
 
@@ -206,6 +209,8 @@ static int reg_fixed_voltage_probe(struct platform_device *pdev)
 	}
 	if (config->gpio_is_open_drain)
 		cfg.ena_gpio_flags |= GPIOF_OPEN_DRAIN;
+	if (config->gpio_is_open_source)
+		cfg.ena_gpio_flags |= GPIOF_OPEN_SOURCE;
 
 	cfg.dev = &pdev->dev;
 	cfg.init_data = config->init_data;
