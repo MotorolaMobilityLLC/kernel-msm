@@ -110,63 +110,93 @@
 };
 
 &pm8994_gpios {
-	gpio@c200 { /* GPIO 3 */
-		qcom,mode = <0>;		/* Digital in */
-		qcom,pull = <0>;		/* PULL up 30uA */
-		qcom,vin-sel = <2>;		/* Logical 1 voltage value 1.8v */
-		qcom,src-sel = <0>;		/* Constant */
+	gpio@c200 { /* GPIO 3 - VOL_UP */
 		status = "okay";
-	};
-
-	gpio@c300 { /* GPIO 4 */
-		qcom,mode = <0>;		/* Digital in */
-		qcom,pull = <0>;		/* PULL up 30uA */
-		qcom,vin-sel = <2>;		/* Logical 1 voltage value 1.8v */
-		qcom,src-sel = <0>;		/* Constant */
-		status = "okay";
-	};
-
-	gpio@c400 { /* GPIO 5 */
-		qcom,mode = <0>;		/* Digital in */
-		qcom,pull = <0>;		/* PULL up 30uA */
-		qcom,vin-sel = <2>;		/* Logical 1 voltage value 1.8v */
-		qcom,src-sel = <0>;		/* Constant */
-		status = "okay";
-	};
-
-	gpio@c700 { /* GPIO 8 */
-		qcom,mode = <0>;                /* Digital in */
-		qcom,pull = <0>;                /* PULL up 30uA */
-		qcom,output-type = <0>;         /* CMOS logic */
-		qcom,invert = <1>;              /* Output high */
-		qcom,vin-sel = <2>;             /* Logical 1 voltage value 1.8v */
-		qcom,src-sel = <0>;             /* Constant */
-		qcom,out-strength = <1>;        /* Low drive strength */
-		qcom,master-en = <1>;           /* Enable GPIO */
-		status = "okay";
-	};
-
-	gpio@c600 { /* GPIO 7 */
-		/* NFC pwr request */
-		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
-		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
 		qcom,master-en = <1>;
-		status = "okay";
 	};
 
-	gpio@c900 { /* GPIO 10 */
+	gpio@c300 { /* GPIO 4 - EN_BST_BYP */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@c400 { /* GPIO 5 - DISP_V2_EN */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@c700 { /* GPIO 8 - FACT_KILL_DISABLE */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@c800 { /* GPIO 9 - WLAN_EXT_REG_EN */
+		status = "okay";
+		qcom,mode = <1>;         /* Digital output*/
+		qcom,vin-sel = <2>;      /* VIN2 */
+		qcom,src-sel = <0>;      /* GPIO */
+		qcom,master-en = <1>;    /* Enable GPIO */
+	};
+
+	gpio@c900 { /* GPIO 10 - NFC_CLK_REQ */
+		status = "okay";
 		/* NFC clk request */
-		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
-		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,mode = <0>;                /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;                /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;             /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <2>;             /* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
-		status = "okay";
 	};
 
-	gpio@ce00 { /* GPIO 15 */
+	gpio@ca00 { /* GPIO 11 - WLAN_EXT_REG_EN / AP_VIBE_EN */
+		status = "okay";
+		qcom,mode = <1>;         /* Digital output*/
+		qcom,vin-sel = <2>;      /* VIN2 */
+		qcom,src-sel = <0>;      /* GPIO */
+		qcom,master-en = <1>;    /* Enable GPIO */
+	};
+
+	gpio@cc00 { /* GPIO 13 - NFC_ENABLE_N */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@cd00 { /* GPIO 14 - NFC_POWER_ON */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@ce00 { /* GPIO 15 - DIVCLK1_CODEC */
+		status = "okay";
 		qcom,mode = <1>;
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
@@ -174,21 +204,10 @@
 		qcom,out-strength = <1>;
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
-		status = "okay";
 	};
 
-	gpio@c800 { /* GPIO 9 */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
-		qcom,invert = <1>;		/* Output high */
-		qcom,vin-sel = <0>;		/* VPH_PWR */
-		qcom,src-sel = <0>;		/* Constant */
-		qcom,out-strength = <1>;	/* High drive strength */
-		qcom,master-en = <1>;		/* Enable GPIO */
+	gpio@d100 { /* GPIO 18 - BT_WLAN_32KHZ_IN */
 		status = "okay";
-	};
-
-	gpio@d100 { /* GPIO 18 */
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS logic */
 		qcom,invert = <0>;		/* Output low initially */
@@ -196,39 +215,51 @@
 		qcom,src-sel = <3>;		/* Function 2 */
 		qcom,out-strength = <2>;	/* Medium */
 		qcom,master-en = <1>;		/* Enable GPIO */
-		status = "okay";
 	};
 
-	gpio@d200 { /* GPIO 19 */
-		qcom,mode = <1>;		/* Digital output*/
-		qcom,pull = <4>;		/* Pulldown 10uA */
-		qcom,vin-sel = <2>;		/* VIN2 */
-		qcom,src-sel = <0>;		/* GPIO */
-		qcom,invert = <0>;		/* Invert */
-		qcom,master-en = <1>;		/* Enable GPIO */
+	gpio@d200 { /* GPIO 19 - BT_EN */
 		status = "okay";
+		qcom,mode = <1>;         /* Digital output*/
+		qcom,pull = <4>;         /* Pulldown 10uA */
+		qcom,vin-sel = <2>;      /* VIN2 */
+		qcom,src-sel = <0>;      /* GPIO */
+		qcom,invert = <0>;       /* Invert */
+		qcom,master-en = <1>;    /* Enable GPIO */
+	};
+
+	gpio@d500 { /* GPIO 22 - TRAY_DET */
+		status = "okay";
+		qcom,mode = <0>;
+		qcom,pull = <0>; /* Up */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
 	};
 };
 
 &pm8994_mpps {
-	mpp@a100 { /* MPP 2 */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
-		qcom,vin-sel = <2>;		/* S4 1.8V */
-		qcom,src-sel = <0>;		/* Constant */
-		qcom,master-en = <1>;		/* Enable GPIO */
+	mpp@a300 { /* MPP 4 - USB_HM_DET_N */
 		status = "okay";
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,vin-sel = <2>;		/* S4 1.8V */
+		qcom,pull = <1>;		/* QPNP_PIN_MPP_PULL_UP_OPEN */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,ain-route = <1>;		/* QPNP_PIN_AIN_AMUX_CH6 */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
-	mpp@a300 { /* MPP 4 */
-		/* HDMI_5v_vreg regulator enable */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
+	mpp@a400 { /* MPP 5 - CCP_FAULT_EN */
+		status = "okay";
+		qcom,mode = <1>;		/* Digital Output */
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,src-sel = <0>;		/* Constant */
 		qcom,master-en = <1>;		/* Enable GPIO */
-		qcom,invert = <0>;
+	};
+
+	mpp@a700 { /* MPP 8 - LED_SOL_SINK */
 		status = "okay";
+		qcom,mode = <6>;		/* QPNP_PIN_MODE_SINK */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 };
 
