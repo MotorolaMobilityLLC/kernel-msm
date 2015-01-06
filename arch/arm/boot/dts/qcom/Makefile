@@ -236,6 +236,8 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-surnia-p3d.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1ad.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1b.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1bd.dtb
 
 # Motorola 8936 Devices
 dtb-$(CONFIG_ARCH_MSM8916) += msm8936-lux-p0.dtb
