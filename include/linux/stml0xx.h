@@ -43,15 +43,16 @@
 #define SPI_BARKER_2            0xAE
 #define SPI_HEADER_SIZE         6
 #define SPI_CRC_SIZE            2
-#define SPI_MAX_PAYLOAD_LEN     24
 #define SPI_MSG_TYPE_READ_REG       0x01
 #define SPI_MSG_TYPE_WRITE_REG      0x02
 #define SPI_MSG_TYPE_READ_SENSORS   0x03
 #define SPI_WRITE_REG_HDR_SIZE      6
 #define SPI_READ_REG_HDR_SIZE       6
-#define SPI_MSG_SIZE                32
 #define SPI_CRC_LEN                 2
 #define SPI_READ_SENSORS_HDR_SIZE   3
+#define SPI_MAX_PAYLOAD_LEN        88
+#define SPI_MSG_SIZE	\
+	(SPI_MAX_PAYLOAD_LEN+SPI_HEADER_SIZE+SPI_CRC_SIZE)
 
 /** The following define the IOCTL command values via the ioctl macros */
 #define STML0XX_IOCTL_BASE		77
