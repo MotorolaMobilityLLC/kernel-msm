@@ -638,8 +638,6 @@ struct stml0xx_data {
 
 	bool is_suspended;
 	bool pending_wake_work;
-
-	struct led_classdev led_cdev;
 };
 
 #ifndef ts_to_ns
