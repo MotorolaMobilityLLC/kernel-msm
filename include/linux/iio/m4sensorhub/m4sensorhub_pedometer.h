@@ -30,6 +30,7 @@ struct m4sensorhub_pedometer_iio_data {
 	uint16_t        current_speed;
 	uint32_t        healthy_minutes;
 	uint32_t        calories;
+	uint32_t        calories_normr;
 	long long       timestamp;
 } __packed;
 
