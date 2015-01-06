@@ -36,3 +36,11 @@
 &mdss_fb0 {
 	/delete-property/ qcom,mdss-fb-rot-180;
 };
+
+&soc {
+	/delete-node/ vddio_disp_vreg;
+};
+
+&mdss_dsi0 {
+	vddio_disp-supply = <&pm8916_l6>;
+};
