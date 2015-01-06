@@ -88,9 +88,9 @@
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
 			1 &intc 0 221 0
-			2 &pm8994_gpios 8 0x3>;
+			2 &pm8994_gpios 22 0x3>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	cd-gpios = <&pm8994_gpios 8 0x1>;
+	cd-gpios = <&pm8994_gpios 22 0x1>;
 
 	pinctrl-names = "active", "sleep";
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on>;
