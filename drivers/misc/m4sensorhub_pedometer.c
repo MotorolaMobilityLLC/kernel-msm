@@ -146,6 +146,19 @@ static int m4ped_read_report_data(struct iio_dev *iio,
 		goto m4ped_read_fail;
 	}
 
+	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_METS_CALORIES_NO_RMR);
+	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_METS_CALORIES_NO_RMR,
+		(char *)&(dd->iiodat.calories_normr));
+	if (err < 0) {
+		m4ped_err("%s: Failed to read calories normr data.\n", __func__);
+		goto m4ped_read_fail;
+	} else if (err != size) {
+		m4ped_err("%s: Read %d bytes instead of %d for %s.\n",
+			  __func__, err, size, "calories_normr");
+		err = -EBADE;
+		goto m4ped_read_fail;
+	}
+
 	dd->iiodat.timestamp = iio_get_time_ns();
 
 	dd->iiodat.total_distance += dd->base_dat.total_distance;
