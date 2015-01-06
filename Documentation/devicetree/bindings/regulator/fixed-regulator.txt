@@ -7,8 +7,10 @@ Optional properties:
 - gpio: gpio to use for enable control
 - startup-delay-us: startup time in microseconds
 - enable-active-high: Polarity of GPIO is Active high
-If this property is missing, the default assumed is Active low.
+  If this property is missing, the default assumed is Active low.
 - gpio-open-drain: GPIO is open drain type.
+  If this property is missing then default assumption is false.
+- gpio-open-source: GPIO is open source type.
   If this property is missing then default assumption is false.
 -vin-supply: Input supply name.
 

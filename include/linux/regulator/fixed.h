@@ -33,6 +33,12 @@ struct regulator_init_data;
  *			and low will be set as gpio-output with driven
  *			to low. For non-open-drain case, the gpio will
  *			will be in output and drive to low/high accordingly.
+ * @gpio_is_open_source: Gpio pin is open source or normal type.
+ *			If it is open source type then LOW will be set
+ *			through PULL-DOWN with setting gpio as input
+ *			and HIGH will be set as gpio-output with driven
+ *			to high. For non-open-source case, the gpio will
+ *			will be in output and drive to low/high accordingly.
  * @enable_high:	Polarity of enable GPIO
  *			1 = Active high, 0 = Active low
  * @enabled_at_boot:	Whether regulator has been enabled at
@@ -52,6 +58,7 @@ struct fixed_voltage_config {
 	int gpio;
 	unsigned startup_delay;
 	unsigned gpio_is_open_drain:1;
+	unsigned gpio_is_open_source:1;
 	unsigned enable_high:1;
 	unsigned enabled_at_boot:1;
 	struct regulator_init_data *init_data;
