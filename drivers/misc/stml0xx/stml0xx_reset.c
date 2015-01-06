@@ -222,11 +222,6 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	}
 #endif
 
-	err = stml0xx_led_set_reset(&ps_stml0xx->led_cdev,
-			RESET_NOT_ALLOWED);
-	if (err < 0)
-		ret_err =  err;
-
 	/* sending reset to slpc hal */
 	stml0xx_ms_data_buffer_write(ps_stml0xx, DT_RESET, NULL, 0);
 
