@@ -575,7 +575,8 @@ static int stml0xx_spi_send_read_reg_no_retries(unsigned char reg_type,
 			goto EXIT;
 
 		/* Validate CRC */
-		recv_crc = (read_buff[30] << 8) | read_buff[31];
+		recv_crc = (read_buff[SPI_MSG_SIZE - 2] << 8) |
+				read_buff[SPI_MSG_SIZE - 1];
 		calc_crc = stml0xx_spi_calculate_crc(read_buff,
 						     SPI_MSG_SIZE -
 						     SPI_CRC_LEN);
