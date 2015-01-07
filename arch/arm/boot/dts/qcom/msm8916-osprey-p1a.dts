@@ -31,8 +31,15 @@
 
 &soc {
 	/delete-node/ vddio_disp_vreg;
+	/delete-node/ vdda_touch_vreg;
 };
 
 &mdss_dsi0 {
 	vddio_disp-supply = <&pm8916_l6>;
+};
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		touch_vdd-supply = <&pm8916_l16>;
+	};
 };
