@@ -18,6 +18,7 @@
 #include <linux/mdss_io_util.h>
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/wakelock.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -366,6 +367,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds idle_off_cmds;
 
 	struct delayed_work ambient_enable_work;
+	struct wake_lock ambient_enable_wake_lock;
 	int ambient_on_queued;
 	int ambient_off_queued;
 #ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF

@@ -1315,9 +1315,11 @@ static void __mdss_mdp_ambient_on_work(struct work_struct *work)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata =container_of(dw, struct mdss_dsi_ctrl_pdata, ambient_enable_work);
 
 	pr_debug("MDSS:AMB:__mdss_mdp_ambient_on_work:exec ...\n");
+	wake_lock_timeout(&ctrl_pdata->ambient_enable_wake_lock, msecs_to_jiffies(300));
 	rc = mdss_dsi_panel_ambient_enable(&ctrl_pdata->panel_data, 1);
 	ctrl_pdata->ambient_on_queued = false;
 	printk("MDSS:__mdss_mdp_ambient_on_work---\n");
+	wake_unlock(&ctrl_pdata->ambient_enable_wake_lock);
 }
 int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_panel_recovery *recovery)
@@ -1664,6 +1666,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&ctrl_pdata->ambient_enable_work, __mdss_mdp_ambient_on_work);
 	ctrl_pdata->ambient_on_queued = false;
 	ctrl_pdata->ambient_off_queued = false;
+	wake_lock_init(&ctrl_pdata->ambient_enable_wake_lock, WAKE_LOCK_SUSPEND, "mdss ambient");
+
 #ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
 	ctrl_pdata->dis_off_with_ulps = false;
 #endif
@@ -1708,6 +1712,7 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 	msm_dss_iounmap(&ctrl_pdata->mmss_misc_io);
 	msm_dss_iounmap(&ctrl_pdata->phy_io);
 	msm_dss_iounmap(&ctrl_pdata->ctrl_io);
+	wake_lock_destroy(&ctrl_pdata->ambient_enable_wake_lock);
 	return 0;
 }
 
