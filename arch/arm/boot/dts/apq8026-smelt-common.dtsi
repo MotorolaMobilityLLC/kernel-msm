@@ -48,7 +48,7 @@
 		compatible = "bcm,bcm4343";
 		wl_reg_on = <&msmgpio 28 0>;
 		wl_host_wake = <&msmgpio 29 0>;
-		status = "disabled";
+		status = "ok";
 	};
 
 	m4sensor {
@@ -353,7 +353,8 @@
 	interrupt-names = "hc_irq", "pwr_irq";
 
 	qcom,nonremovable;
-
+	qcom,ignore_voltage_mismatch;
+	qcom,no-uhs;
 	status = "ok";
 };
 
