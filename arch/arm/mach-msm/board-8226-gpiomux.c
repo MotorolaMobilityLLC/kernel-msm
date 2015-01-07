@@ -582,6 +582,7 @@ static struct gpiomux_setting gpio_factory_output_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
 };
 
 static struct gpiomux_setting gpio_factory_irq_config = {
