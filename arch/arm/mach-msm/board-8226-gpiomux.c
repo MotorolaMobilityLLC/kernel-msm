@@ -206,6 +206,19 @@ static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting lcd_vio_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting lcd_vio_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
 static struct gpiomux_setting lcd_rst_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -216,7 +229,8 @@ static struct gpiomux_setting lcd_rst_act_cfg = {
 static struct gpiomux_setting lcd_rst_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
 };
 
 static struct gpiomux_setting lcd_te_act_cfg = {
@@ -247,14 +261,16 @@ static struct gpiomux_setting led_sel_sus_cfg = {
 	.dir = GPIOMUX_OUT_LOW,
 };
 
-static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
+static struct msm_gpiomux_config msm_smelt_lcd_vio_configs[] __initdata = {
 	{
 		.gpio = 33,		/* VIO Enable */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
-			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
+			[GPIOMUX_ACTIVE]    = &lcd_vio_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_vio_sus_cfg,
 		},
 	},
+};
+static struct msm_gpiomux_config msm_smelt_lcd_configs[] __initdata = {
 	{
 		.gpio = 34,		/* SSD2848 Disp Bridge Reset */
 		.settings = {
@@ -1129,11 +1145,6 @@ void __init msm8226_init_gpiomux(void)
 		msm_gpiomux_install(msm_skuf_nfc_configs,
 				ARRAY_SIZE(msm_skuf_nfc_configs));
 
-	/* TODO: instead of msm_gpiomux_install_nowrite after boot loader
-	   supports display also, it's for enable splash screen feature
-	 */
-	msm_gpiomux_install_nowrite(msm_lcd_configs, ARRAY_SIZE(msm_lcd_configs));
-
 	msm_gpiomux_install(msm_lcd_te_configs,
 			ARRAY_SIZE(msm_lcd_te_configs));
 
@@ -1175,6 +1186,13 @@ void __init msm8226_init_gpiomux(void)
 			ARRAY_SIZE(msm_smelt_bcm4343s_configs));
 		msm_gpiomux_install(msm_smelt_batt_and_chrg_configs,
 			ARRAY_SIZE(msm_smelt_batt_and_chrg_configs));
+		msm_gpiomux_install(msm_smelt_lcd_vio_configs,
+					ARRAY_SIZE(msm_smelt_lcd_vio_configs));
+		/* Using msm_gpiomux_install_nowrite as boot loader supports
+		    display also, do not write to support splash screen
+		*/
+		msm_gpiomux_install_nowrite(msm_smelt_lcd_configs,
+					ARRAY_SIZE(msm_smelt_lcd_configs));
 #if defined(CONFIG_MMI_FACTORY)
 		msm_gpiomux_install(msm_smelt_factory_configs,
 			ARRAY_SIZE(msm_smelt_factory_configs));
