@@ -16,6 +16,7 @@
 / {
 	aliases {
 		i2c5 = &i2c_5;
+		spi7 = &spi_7;
 	};
 
 	bt_qca6174 {
@@ -61,6 +62,23 @@
 		i2c_5_scl_sleep: i2c_5_scl_sleep {
 			drive-strength = <2>;
 			bias-disable;
+		};
+	};
+
+	pmx_spi_7 {
+		qcom,pins = <&gp 41 &gp 42 &gp 43 &gp 44>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <1>;
+		label = "spi_7";
+
+		spi_7_active: active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+
+		spi_7_sleep: sleep {
+			drive-strength = <6>;
+			bias-pull-up;
 		};
 	};
 
@@ -413,6 +431,33 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&stm401_out_default &stm401_in_default>;
 		};
+	};
+
+	spi_7: spi@f9963000 { /* BLSP2 QUP1 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9963000 0x1000>,
+			<0xf9944000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 101 0>, <0 239 0>;
+		spi-max-frequency = <19200000>;
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&spi_7_active>;
+		pinctrl-1 = <&spi_7_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup1_spi_apps_clk>;
 	};
 
 	gpio_keys {
