@@ -13,8 +13,8 @@
 /memreserve/ 0x1eae0000 0x20000;
 
 #include "qcom/msm8226-v1.dtsi"
-#include "qcom/msm8226-memory.dtsi"
-#include "qcom/msm8226-qseecom.dtsi"
+#include "qcom/msm8226-w-memory.dtsi"
+#include "qcom/msm8226-w-qseecom.dtsi"
 #include "qcom/msm8226-720p-mtp.dtsi"
 #include "qcom/dsi-panel-mot-ssd2848-290p-cmd.dtsi"
 
@@ -226,6 +226,16 @@
 		regulator-boot-on;
 	};
 
+};
+
+&modem_pil {
+    status = "disabled";
+    /delete-property/ linux,contiguous-region;
+};
+
+/* LW2.0 bootloader memory space conflict with default framebuffer location */
+&mdss_fb0 {
+    qcom,memblock-reserve = <0x04200000 0x640000>;
 };
 
 &pm8226_chg {
