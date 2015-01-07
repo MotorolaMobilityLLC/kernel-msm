@@ -234,6 +234,14 @@
 		enable-active-high;
 		regulator-boot-on;
 	};
+
+	vdda_touch_vreg: vdda_touch_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdda_touch";
+		gpio = <&msm_gpio 114 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
 };
 
 &pm8916_l6 {
@@ -257,4 +265,10 @@
 
 &mot_inx_500_720p_vid_v0 {
 	qcom,cont-splash-enabled;
+};
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		touch_vdd-supply = <&vdda_touch_vreg>;
+	};
 };
