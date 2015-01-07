@@ -812,11 +812,12 @@ int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter)
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     tdlsCtx_t *pHddTdlsCtx;
     int i;
-
     if (NULL == pHddCtx)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s pHddCtx is NULL", __func__);
         return -1;
+    }
 
-    mutex_lock(&pHddCtx->tdls_lock);
 
     if ((FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport) ||
         (FALSE == sme_IsFeatureSupportedByFW(TDLS)))
@@ -826,7 +827,6 @@ int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter)
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s TDLS not enabled (%d) or FW doesn't support (%d)!",
         __func__, pHddCtx->cfg_ini->fEnableTDLSSupport,
         sme_IsFeatureSupportedByFW(TDLS));
-        mutex_unlock(&pHddCtx->tdls_lock);
         return 0;
     }
     /* TDLS is supported only in STA / P2P Client modes,
@@ -841,7 +841,7 @@ int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter)
      */
     if (0 == WLAN_HDD_IS_TDLS_SUPPORTED_ADAPTER(pAdapter))
     {
-        mutex_unlock(&pHddCtx->tdls_lock);
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s TDLS is not supported in mode : %d", __func__, pAdapter->device_mode);
         return 0;
     }
     /* Check for the valid pHddTdlsCtx. If valid do not further
@@ -908,7 +908,6 @@ int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter)
 
     INIT_WORK(&pHddTdlsCtx->implicit_setup, wlan_hdd_tdls_pre_setup);
     INIT_DELAYED_WORK(&pHddCtx->tdls_scan_ctxt.tdls_scan_work, wlan_hdd_tdls_schedule_scan);
-    mutex_unlock(&pHddCtx->tdls_lock);
 
     return 0;
 }
@@ -1223,7 +1222,7 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
     if ( NULL == pHddTdlsCtx )
     {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 FL("pHddTdlsCtx is NULL"));
+                 FL("pHddTdlsCtx is NULL device mode = %d"), pAdapter->device_mode);
         return -1;
     }
 
@@ -1941,10 +1940,10 @@ int wlan_hdd_tdls_get_all_peers(hdd_adapter_t *pAdapter, char *buf, int buflen)
 
 void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
 {
-    tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+    tdlsCtx_t *pHddTdlsCtx;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-    if ((NULL == pHddCtx) || (NULL == pHddTdlsCtx))
+    if ((NULL == pHddCtx))
     {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                FL("pHddCtx or  pHddTdlsCtx points to NULL"));
@@ -1953,6 +1952,22 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
 
     mutex_lock(&pHddCtx->tdls_lock);
 
+    if (0 != wlan_hdd_sta_tdls_init(pAdapter))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wlan_hdd_sta_tdls_init failed",__func__);
+        mutex_unlock(&pHddCtx->tdls_lock);
+        return;
+    }
+    set_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
+
+    pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+    if ((NULL == pHddTdlsCtx))
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+               FL("pHddCtx or  pHddTdlsCtx points to NULL device mode = %d"), pAdapter->device_mode);
+       mutex_unlock(&pHddCtx->tdls_lock);
+       return;
+    }
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
     "%s, update %d discover %d", __func__,
         pHddTdlsCtx->threshold_config.tx_period_t,
@@ -2002,9 +2017,11 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
     pHddTdlsCtx->discovery_sent_cnt = 0;
     wlan_hdd_tdls_check_power_save_prohibited(pHddTdlsCtx->pAdapter);
 
-    wlan_hdd_tdls_monitor_timers_stop(pHddTdlsCtx);
-    wlan_hdd_tdls_peer_timers_destroy(pHddTdlsCtx);
-    wlan_hdd_tdls_free_list(pHddTdlsCtx);
+    if(test_bit(TDLS_INIT_DONE, &pAdapter->event_flags))
+    {
+       wlan_hdd_tdls_exit(pAdapter);
+       clear_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
+    }
 
     mutex_unlock(&pHddCtx->tdls_lock);
 }

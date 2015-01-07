@@ -7424,26 +7424,8 @@ int __wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                     pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
                                 WLAN_HDD_INFRA_STATION: WLAN_HDD_P2P_CLIENT;
                 }
-#ifdef FEATURE_WLAN_TDLS
-                /* The open adapter for the p2p shall skip initializations in
-                 * tdls_init if the device mode is WLAN_HDD_P2P_DEVICE, for
-                 * TDLS is supported only on WLAN_HDD_P2P_CLIENT. Hence invoke
-                 * tdls_init when the change_iface sets the device mode to
-                 * WLAN_HDD_P2P_CLIENT.
-                 */
-
-                if ( pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
-                {
-                    if (0 != wlan_hdd_sta_tdls_init (pAdapter))
-                    {
-                        hddLog(VOS_TRACE_LEVEL_ERROR,
-                            "%s: tdls initialization failed", __func__);
-                        return -EINVAL;
-                    }
-                }
-#endif
-
                 break;
+
             case NL80211_IFTYPE_ADHOC:
                 hddLog(VOS_TRACE_LEVEL_INFO,
                   "%s: setting interface Type to ADHOC", __func__);

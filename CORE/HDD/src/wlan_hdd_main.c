@@ -6241,23 +6241,8 @@ VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter )
 
    set_bit(WMM_INIT_DONE, &pAdapter->event_flags);
 
-#ifdef FEATURE_WLAN_TDLS
-   if(0 != wlan_hdd_sta_tdls_init(pAdapter))
-   {
-       status = VOS_STATUS_E_FAILURE;
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wlan_hdd_sta_tdls_init failed",__func__);
-       goto error_tdls_init;
-   }
-   set_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
-#endif
-
    return VOS_STATUS_SUCCESS;
 
-#ifdef FEATURE_WLAN_TDLS
-error_tdls_init:
-   clear_bit(WMM_INIT_DONE, &pAdapter->event_flags);
-   hdd_wmm_adapter_close(pAdapter);
-#endif
 error_wmm_init:
    clear_bit(INIT_TX_RX_SUCCESS, &pAdapter->event_flags);
    hdd_deinit_tx_rx(pAdapter);
@@ -6331,14 +6316,6 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
          }
 
          hdd_cleanup_actionframe(pHddCtx, pAdapter);
-#ifdef FEATURE_WLAN_TDLS
-         if(test_bit(TDLS_INIT_DONE, &pAdapter->event_flags))
-         {
-            wlan_hdd_tdls_exit(pAdapter);
-            clear_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
-         }
-#endif
-
          break;
       }
 
