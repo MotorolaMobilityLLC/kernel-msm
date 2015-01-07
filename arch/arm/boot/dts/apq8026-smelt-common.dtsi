@@ -221,6 +221,7 @@
 		compatible = "regulator-fixed";
 		regulator-name = "vddio_disp";
 		gpio = <&msmgpio 33 0x0>;
+		gpio-open-source;
 		parent-supply = <&pm8226_l8>;
 		startup-delay-us = <300>;
 		regulator-boot-on;
