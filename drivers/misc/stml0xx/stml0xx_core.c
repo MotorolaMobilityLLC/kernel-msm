@@ -18,7 +18,6 @@
 
 #include <linux/cdev.h>
 #include <linux/delay.h>
-#include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/export.h>
@@ -722,37 +721,14 @@ static int stml0xx_probe(struct spi_device *spi)
 		err = -ENODEV;
 		goto err_pdata;
 	}
-	/* Allocate DMA buffers */
-	ps_stml0xx->spi_dma_enabled = SPI_DMA_ENABLED;
-	if (ps_stml0xx->spi_dma_enabled) {
-		spi->dev.coherent_dma_mask = ~0;
-		/* Minimum coherent DMA allocation is PAGE_SIZE, so allocate
-		   that much and share it between Tx and Rx DMA buffers. */
-		ps_stml0xx->spi_tx_buf =
-		    dma_alloc_coherent(&spi->dev, PAGE_SIZE,
-				       &ps_stml0xx->spi_tx_dma, GFP_DMA);
 
-		if (ps_stml0xx->spi_tx_buf) {
-			ps_stml0xx->spi_rx_buf = (ps_stml0xx->spi_tx_buf
-						  + (PAGE_SIZE / 2));
-			ps_stml0xx->spi_rx_dma =
-			    (dma_addr_t) (ps_stml0xx->spi_tx_dma +
-					  (PAGE_SIZE / 2));
-		} else {
-			/* Fall back to non-DMA */
-			ps_stml0xx->spi_dma_enabled = false;
-		}
-	}
-
-	if (!ps_stml0xx->spi_dma_enabled) {
-		/* Allocate non-DMA buffers */
-		ps_stml0xx->spi_tx_buf =
-			devm_kzalloc(&spi->dev, SPI_BUFF_SIZE, GFP_KERNEL);
-		ps_stml0xx->spi_rx_buf =
-			devm_kzalloc(&spi->dev, SPI_BUFF_SIZE, GFP_KERNEL);
-		if (!ps_stml0xx->spi_tx_buf || !ps_stml0xx->spi_rx_buf)
-			goto err_nomem;
-	}
+	/* Allocate SPI buffers */
+	ps_stml0xx->spi_tx_buf =
+		devm_kzalloc(&spi->dev, SPI_BUFF_SIZE, GFP_KERNEL);
+	ps_stml0xx->spi_rx_buf =
+		devm_kzalloc(&spi->dev, SPI_BUFF_SIZE, GFP_KERNEL);
+	if (!ps_stml0xx->spi_tx_buf || !ps_stml0xx->spi_rx_buf)
+		goto err_nomem;
 
 	/* global buffers used exclusively in bootloader mode */
 	stml0xx_boot_cmdbuff = ps_stml0xx->spi_tx_buf;
@@ -1014,11 +990,6 @@ err_gpio_init:
 	regulator_put(ps_stml0xx->regulator_1);
 err_regulator:
 err_nomem:
-	if (ps_stml0xx->spi_dma_enabled) {
-		dma_free_coherent(&spi->dev, PAGE_SIZE,
-				  ps_stml0xx->spi_tx_buf,
-				  ps_stml0xx->spi_tx_dma);
-	}
 err_pdata:
 err_other:
 	return err;
