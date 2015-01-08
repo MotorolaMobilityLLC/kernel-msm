@@ -2000,20 +2000,19 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
           }
        }
    }
-   // if we don't want QoS or the AP doesn't support Qos
-   // All traffic will get equal opportuniy to transmit data frames.
-   if( hdd_wmm_is_active(pAdapter) ) {
-      /* Get the user priority from IP header & corresponding AC */
-      hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
-      //If 3/4th of BE AC Tx queue is full, then place the DHCP packet in VOICE AC queue
-      if (pAdapter->isVosLowResource && is_dhcp_packet(skb))
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
-                   "%s: BestEffort Tx Queue is 3/4th full"
-                   " Make DHCP packet's pri as VO", __func__);
-         up = SME_QOS_WMM_UP_VO;
-         ac = hddWmmUpToAcMap[up];
-      }
+   /* All traffic will get equal opportuniy to transmit data frames. */
+   /* Get the user priority from IP header & corresponding AC */
+   hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
+   /* If 3/4th of BE AC Tx queue is full,
+    * then place the DHCP packet in VOICE AC queue
+    */
+   if (pAdapter->isVosLowResource && is_dhcp_packet(skb))
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
+                "%s: BestEffort Tx Queue is 3/4th full"
+                " Make DHCP packet's pri as VO", __func__);
+      up = SME_QOS_WMM_UP_VO;
+      ac = hddWmmUpToAcMap[up];
    }
 done:
    skb->priority = up;

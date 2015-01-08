@@ -9801,6 +9801,8 @@ if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsEseSta))
   else
   {
       pw80211Header->wFrmCtrl.subType  = 0;
+      tlMetaInfo->ucUP = 0;
+      tlMetaInfo->ucTID = 0;
 
   // NO NO NO - there is not enough memory allocated to write the QOS ctrl  
   // field, it will overwrite the first 2 bytes of the data packet(LLC header)

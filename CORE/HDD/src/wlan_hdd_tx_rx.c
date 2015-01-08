@@ -1699,52 +1699,47 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
 
 #ifdef FEATURE_WLAN_WAPI
    // Override usIsEapol value when its zero for WAPI case
-      pPktMetaInfo->ucIsWai = hdd_IsWAIPacket( pVosPacket ) ? 1 : 0;
+   pPktMetaInfo->ucIsWai = hdd_IsWAIPacket( pVosPacket ) ? 1 : 0;
 #endif /* FEATURE_WLAN_WAPI */
 
-   if ((HDD_WMM_USER_MODE_NO_QOS == pHddCtx->cfg_ini->WmmMode) ||
-       (!pAdapter->hddWmmStatus.wmmQap))
+   /* 1. Check if ACM is set for this AC
+    * 2. If set, check if this AC had already admitted
+    * 3. If not already admitted, downgrade the UP to next best UP
+    * 4. Allow only when medium time is non zero when Addts accepted
+    *    else downgrade traffic. we opted downgrading over Delts when
+    *    medium time is zero because while doing downgradig driver is not
+    *    clearing the wmm context so consider in subsequent roaming
+    *    if AP (new or same AP) accept the Addts with valid medium time
+    *    no application support is required where if we have opted
+    *    delts Applications have to again do Addts or STA will never
+    *    go for Addts.
+    */
+
+   if(!pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessRequired ||
+      (pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid &&
+       pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecInfo.medium_time))
    {
-      // either we don't want QoS or the AP doesn't support QoS
-      pPktMetaInfo->ucUP = 0;
-      pPktMetaInfo->ucTID = 0;
+      pPktMetaInfo->ucUP = pktNode->userPriority;
+      pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
    }
    else
    {
-      /* 1. Check if ACM is set for this AC 
-       * 2. If set, check if this AC had already admitted 
-       * 3. If not already admitted, downgrade the UP to next best UP
-       * 4. Allow only when medium time is non zero when Addts accepted else downgrade traffic.
-            we opted downgrading over Delts when medium time is zero because while doing downgradig
-            driver is not clearing the wmm context so consider in subsequent roaming if AP (new or
-            same AP) accept the Addts with valid medium time no application support is required
-            where if we have opted delts Applications have to again do Addts or STA will never
-            go for Addts.*/
-
-      if(!pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessRequired ||
-         (pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid &&
-          pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecInfo.medium_time))
+     //Downgrade the UP
+      acAdmitted = pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid;
+      newAc = WLANTL_AC_BK;
+      for (i=ac-1; i>0; i--)
       {
-        pPktMetaInfo->ucUP = pktNode->userPriority;
-        pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
+         if (pAdapter->hddWmmStatus.wmmAcStatus[i].wmmAcAccessRequired == 0)
+         {
+             newAc = i;
+             break;
+         }
       }
-      else
-      {
-        //Downgrade the UP
-        acAdmitted = pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid;
-        newAc = WLANTL_AC_BK;
-        for (i=ac-1; i>0; i--)
-        {
-            if (pAdapter->hddWmmStatus.wmmAcStatus[i].wmmAcAccessRequired == 0)
-            {
-                newAc = i;
-                break;
-            }
-        }
-        pPktMetaInfo->ucUP = hddWmmAcToHighestUp[newAc];
-        pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
-        VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO_LOW,"Downgrading UP %d to UP %d ", pktNode->userPriority, pPktMetaInfo->ucUP);
-      }
+      pPktMetaInfo->ucUP = hddWmmAcToHighestUp[newAc];
+      pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
+      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO_LOW,
+               "Downgrading UP %d to UP %d ",
+                pktNode->userPriority, pPktMetaInfo->ucUP);
    }
 
 #ifdef DEBUG_ROAM_DELAY
