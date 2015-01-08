@@ -18,6 +18,7 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/rwsem.h>
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
@@ -151,7 +152,7 @@ struct fb_quickdraw_buffer *fb_quickdraw_alloc_buffer(
 		memcpy(&buffer->data, data,
 			sizeof(struct fb_quickdraw_buffer_data));
 		buffer->mem_fd = -1;
-		init_waitqueue_head(&buffer->wait_queue);
+		init_rwsem(&buffer->rwsem);
 		INIT_WORK(&buffer->delete_work, delete_buffer_fd);
 		kref_init(&buffer->kref);
 	} else
@@ -196,7 +197,7 @@ exit:
 	return ret;
 }
 
-int fb_quickdraw_lock_buffer(struct fb_quickdraw_buffer *buffer)
+int fb_quickdraw_lock_buffer_read(struct fb_quickdraw_buffer *buffer)
 {
 	int ret = 0;
 
@@ -207,7 +208,7 @@ int fb_quickdraw_lock_buffer(struct fb_quickdraw_buffer *buffer)
 		goto exit;
 	}
 
-	wait_event(buffer->wait_queue, !atomic_cmpxchg(&buffer->locked, 0, 1));
+	down_read(&buffer->rwsem);
 
 exit:
 	pr_debug("%s- (ret: %d)\n", __func__, ret);
@@ -215,7 +216,7 @@ exit:
 	return ret;
 }
 
-int fb_quickdraw_unlock_buffer(struct fb_quickdraw_buffer *buffer)
+int fb_quickdraw_unlock_buffer_read(struct fb_quickdraw_buffer *buffer)
 {
 	int ret = 0;
 
@@ -226,8 +227,7 @@ int fb_quickdraw_unlock_buffer(struct fb_quickdraw_buffer *buffer)
 		goto exit;
 	}
 
-	atomic_set(&buffer->locked, 0);
-	wake_up_all(&buffer->wait_queue);
+	up_read(&buffer->rwsem);
 
 exit:
 	pr_debug("%s- (ret: %d)\n", __func__, ret);
@@ -404,28 +404,7 @@ exit:
 	return ret;
 }
 
-static int fb_quickdraw_user_lock_buffer(int buffer_id)
-{
-	int ret = -EINVAL;
-	struct fb_quickdraw_buffer *buffer;
-
-	pr_debug("%s+\n", __func__);
-
-	buffer = fb_quickdraw_lookup_and_get_buffer(buffer_id);
-	if (!buffer)
-		goto exit;
-
-	ret = wait_event_interruptible(buffer->wait_queue,
-		!atomic_cmpxchg(&buffer->locked, 0, 1));
-
-	fb_quickdraw_put_buffer(buffer);
-exit:
-	pr_debug("%s- (ret: %d)\n", __func__, ret);
-
-	return ret;
-}
-
-static int fb_quickdraw_user_unlock_buffer(int buffer_id)
+static int fb_quickdraw_lock_buffer_write(int buffer_id)
 {
 	int ret = 0;
 	struct fb_quickdraw_buffer *buffer;
@@ -438,8 +417,29 @@ static int fb_quickdraw_user_unlock_buffer(int buffer_id)
 		goto exit;
 	}
 
-	atomic_set(&buffer->locked, 0);
-	wake_up_all(&buffer->wait_queue);
+	down_write(&buffer->rwsem);
+
+	fb_quickdraw_put_buffer(buffer);
+exit:
+	pr_debug("%s- (ret: %d)\n", __func__, ret);
+
+	return ret;
+}
+
+static int fb_quickdraw_unlock_buffer_write(int buffer_id)
+{
+	int ret = 0;
+	struct fb_quickdraw_buffer *buffer;
+
+	pr_debug("%s+\n", __func__);
+
+	buffer = fb_quickdraw_lookup_and_get_buffer(buffer_id);
+	if (!buffer) {
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	up_write(&buffer->rwsem);
 
 	fb_quickdraw_put_buffer(buffer);
 exit:
@@ -518,9 +518,9 @@ static long fb_quickdraw_ioctl(struct file *file, unsigned int cmd,
 		if (cmd == FB_QUICKDRAW_REMOVE_BUFFER)
 			ret = fb_quickdraw_remove_buffer(buffer_id);
 		else if (cmd == FB_QUICKDRAW_LOCK_BUFFER)
-			ret = fb_quickdraw_user_lock_buffer(buffer_id);
+			ret = fb_quickdraw_lock_buffer_write(buffer_id);
 		else if (cmd == FB_QUICKDRAW_UNLOCK_BUFFER)
-			ret = fb_quickdraw_user_unlock_buffer(buffer_id);
+			ret = fb_quickdraw_unlock_buffer_write(buffer_id);
 
 		if (ret)
 			pr_err("%s: FB_QUICKDRAW (cmd: 0x%x) failed (ret=%d)\n",
