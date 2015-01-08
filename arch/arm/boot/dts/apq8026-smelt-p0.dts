@@ -15,8 +15,6 @@
 #include "apq8026-smelt-common.dtsi"
 
 / {
-	model = "Motorola APQ 8026 Smelt";
-	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp", "moto,smelt";
 	qcom,msm-id =
 		<199 0x41 0x0000>, /* P0 Wingboard */
 		<199 0x41 0x0100>; /* P0 Portable */
