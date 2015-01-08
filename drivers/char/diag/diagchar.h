@@ -159,8 +159,6 @@
 #define NUM_DCI_PERIPHERALS	(NUM_SMD_DATA_CHANNELS + 1)
 
 /* Indicates the number of processors that support DCI */
-#define NUM_DCI_PROC		2
-
 #define SMD_DATA_TYPE 0
 #define SMD_CNTL_TYPE 1
 #define SMD_DCI_TYPE 2
