@@ -102,12 +102,6 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 		transfer.speed_hz = SPI_NORMAL_CLK_SPD_HZ;
 	}
 
-	if (SPI_DMA_ENABLED) {
-		transfer.tx_dma = stml0xx_misc_data->spi_tx_dma;
-		transfer.rx_dma = stml0xx_misc_data->spi_rx_dma;
-		msg.is_dma_mapped = 1;
-	}
-
 	spi_message_add_tail(&transfer, &msg);
 
 	if (stml0xx_misc_data->mode != BOOTMODE && stml0xx_g_booted) {
