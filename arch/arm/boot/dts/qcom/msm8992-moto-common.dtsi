@@ -480,6 +480,11 @@
 			"factory_warn";
 	};
 
+	hob_ram {
+		compatible = "mmi,hob_ram";
+		mmi,allocation-type-smem;
+	};
+
 	i2c_5: i2c@f9927000 { /* BLSP1 QUP5 */
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells = <1>;
