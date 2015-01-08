@@ -1125,7 +1125,7 @@ int __wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
         rem_on_channel_request_type_t req_type = OFF_CHANNEL_ACTION_TX;
         // In case of P2P Client mode if we are already
         // on the same channel then send the frame directly
-
+        mutex_lock(&pHddCtx->roc_lock);
         if( (cfgState->remain_on_chan_ctx != NULL) &&
             (cfgState->current_freq == chan->center_freq)
           )
@@ -1165,6 +1165,7 @@ int __wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
                 hddLog(VOS_TRACE_LEVEL_INFO,
                    "action frame: extending the wait time %u",
                    wait);
+                mutex_unlock(&pHddCtx->roc_lock);
                 goto send_frame;
             }
             else
@@ -1172,6 +1173,7 @@ int __wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
                 if ( TRUE ==
                      pRemainChanCtx->hdd_remain_on_chan_cancel_in_progress )
                 {
+                    mutex_unlock(&pHddCtx->roc_lock);
                     hddLog(VOS_TRACE_LEVEL_INFO,
                            "action frame tx: waiting for completion of ROC ");
 
@@ -1184,12 +1186,14 @@ int __wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
                                "%s:wait on cancel_rem_on_chan_var failed %d",
                                 __func__, status);
                     }
+                    goto bypass_lock;
                 }
             }
         }
+        mutex_unlock(&pHddCtx->roc_lock);
+bypass_lock:
         hddLog(VOS_TRACE_LEVEL_INFO,
                "action frame: Request ROC for wait time %u", wait);
-
         INIT_COMPLETION(pAdapter->offchannel_tx_event);
         status = wlan_hdd_request_remain_on_channel(wiphy, dev,
                                         chan,
@@ -1243,8 +1247,10 @@ int __wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
         if( cfgState->remain_on_chan_ctx )
         {
+            mutex_lock(&pHddCtx->roc_lock);
             cfgState->action_cookie = cfgState->remain_on_chan_ctx->cookie;
             *cookie = cfgState->action_cookie;
+            mutex_unlock(&pHddCtx->roc_lock);
         }
         else
         {
