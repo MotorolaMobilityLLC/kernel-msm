@@ -276,6 +276,12 @@ static ssize_t set_sensors_enable(struct device *dev,
 						set_gyro_cal(data);
 					}
 				}
+				if (uChangedSensor == STEP_DETECTOR) {
+					struct timespec ts;
+
+					ts = ktime_to_timespec(ktime_get_boottime());
+					data->lastTimestamp[uChangedSensor] = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+				}
 				data->aiCheckStatus[uChangedSensor] =
 					ADD_SENSOR_STATE;
 				enable_sensor(data, uChangedSensor,

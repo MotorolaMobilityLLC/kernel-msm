@@ -48,6 +48,17 @@ static void get_timestamp(struct ssp_data *data, char *pchRcvDataFrame,
 		int *iDataIdx, struct sensor_value *sensorsdata,
 		struct ssp_time_diff *sensortime, int iSensorData)
 {
+	if (iSensorData == STEP_DETECTOR) {
+		s32 otimestamp = 0;
+		s64 ctimestamp = 0;
+
+		memcpy(&otimestamp, pchRcvDataFrame + *iDataIdx, 4);
+		ctimestamp = (s64) otimestamp * 1000000;
+		sensorsdata->timestamp = data->lastTimestamp[iSensorData] + ctimestamp;
+		*iDataIdx += 4;
+		return;
+	}
+
 	if (sensortime->batch_mode == BATCH_MODE_RUN) {
 		if (sensortime->batch_count == sensortime->batch_count_fixed) {
 			if (sensortime->time_diff == data->adDelayBuf[iSensorData]) {
@@ -232,7 +243,7 @@ int parse_dataframe(struct ssp_data *data, char *pchRcvDataFrame, int iLength)
 			sensortime.batch_mode = length > 1 ? BATCH_MODE_RUN : BATCH_MODE_NONE;
 			sensortime.irq_diff = data->timestamp - data->lastTimestamp[iSensorData];
 
-			if (sensortime.batch_mode == BATCH_MODE_RUN) {
+			if ((sensortime.batch_mode == BATCH_MODE_RUN) && (iSensorData != STEP_DETECTOR)) {
 				if (data->reportedData[iSensorData] == true) {
 					u64 time;
 					sensortime.time_diff = div64_long((s64)(data->timestamp - data->lastTimestamp[iSensorData]), (s64)length);
