@@ -95,6 +95,29 @@
 		};
 	};
 
+	pmx_florida_irq {
+		qcom,pins = <&gp 72>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "florida_irq";
+		florida_irq_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_florida_reset {
+		qcom,pins = <&gp 69>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "florida_reset";
+		florida_reset_default: default {
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
 	pmx_nfc_irq {
 		qcom,pins = <&gp 90>;
 		qcom,num-grp-pins = <1>;
@@ -587,6 +610,43 @@
 		qcom,hdmi-audio-rx;
 		asoc-codec = <&stub_codec>, <&hdmi_audio>;
 		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-audio-codec-rx";
+	};
+};
+
+&spi_0 {
+	florida@0 {
+		compatible = "wlf,wm8280";
+		spi-max-frequency = <9600000>;
+		spi-cs-high;
+		reg = <0x0>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <72 0>;
+		irq-base = <800>;
+		gpio-base = <200>;
+		wlf,reset = <&msm_gpio 69 0>;
+		wlf,irq = <&msm_gpio 72 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
+
+		AVDD-supply = <&pm8994_s4>;
+		DCVDD-supply = <&pm8994_l11>;
+		DBVDD1-supply = <&pm8994_s4>;
+		DBVDD2-supply = <&pm8994_s4>;
+		DBVDD3-supply = <&pm8994_s4>;
+		CPVDD-supply = <&pm8994_s4>;
+		SPKVDDL-supply = <&dummy_vreg>;
+		SPKVDDR-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		gpio-defaults = <0x00002102
+				0xffffffff
+				0x00010000
+				0x00000004
+				0xffffffff>;
+
 	};
 };
 
