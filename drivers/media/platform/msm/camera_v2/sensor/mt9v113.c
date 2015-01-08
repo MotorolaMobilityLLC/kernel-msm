@@ -488,8 +488,10 @@ struct msm_camera_i2c_reg_conf mt9v113_init_tbl[] = {
 	{0x0990, 0x0082,}, /* MCU_DATA_0 */
 	{0x098C, 0x2212,}, /* MCU_ADDRESS [AE_MAX_DGAIN_AE1] */
 	{0x0990, 0x0118,}, /* MCU_DATA_0 */
+	{0x098C, 0xA20C,}, /* MCU_ADDRESS [AE_MAX_INDEX] */
+	{0x0990, 0x000F,}, /* MCU_DATA_0 */
 	{0x098C, 0xA215,}, /* MCU_ADDRESS [AE_INDEX_TH23] */
-	{0x0990, 0x0005,}, /* MCU_DATA_0 */
+	{0x0990, 0x0008,}, /* MCU_DATA_0 */
 	{0x098C, 0xA216,}, /* MCU_ADDRESS [AE_MAXGAIN23] */
 	{0x0990, 0x0082,}, /* MCU_DATA_0 */
 	{0x098C, 0xA24F,}, /* MCU_ADDRESS [AE_BASETARGET]*/
@@ -1041,30 +1043,31 @@ static struct msm_camera_i2c_reg_conf mt9v113_15_30_fps_settings[] = {
 	{0x0990, 0x0005,}, /*MCU_DATA_0*/
 };
 
-static struct msm_camera_i2c_reg_conf mt9v113_5_30_fps_settings[] = {
+static struct msm_camera_i2c_reg_conf mt9v113_8_30_fps_settings[] = {
 	{0x098C, 0x271F,}, /*MCU_ADDRESS [MODE_SENSOR_FRAME_LENGTH_A]*/
 	{0x0990, 0x021F,}, /*MCU_DATA_0*/
 	{0x098C, 0xA20C,}, /*MCU_ADDRESS [AE_MAX_INDEX]*/
-	{0x0990, 0x0018,}, /*MCU_DATA_0*/
+	{0x0990, 0x000F,}, /*MCU_DATA_0*/
 	{0x098C, 0xA215,}, /*MCU_ADDRESS [AE_INDEX_TH23]*/
-	{0x0990, 0x0005,}, /*MCU_DATA_0*/
+	{0x0990, 0x0008,}, /*MCU_DATA_0*/
 };
 
 static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 	struct var_fps_range_t *fps_range)
 {
 	int32_t rc = 0;
-	static bool fps_5_30 = true;
-	if (fps_range->min_fps == 5 && fps_range->max_fps == 30) {
-		if (fps_5_30)
+	static bool fps_8_30 = true;
+	if (fps_range->min_fps == 8 && fps_range->max_fps == 30) {
+		if (fps_8_30)
 			return rc;
+
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 			i2c_write_conf_tbl(
 					s_ctrl->sensor_i2c_client,
-					mt9v113_5_30_fps_settings,
-					ARRAY_SIZE(mt9v113_5_30_fps_settings),
+					mt9v113_8_30_fps_settings,
+					ARRAY_SIZE(mt9v113_8_30_fps_settings),
 					MSM_CAMERA_I2C_WORD_DATA);
-		fps_5_30 = true;
+		fps_8_30 = true;
 	} else if (fps_range->min_fps == 15 && fps_range->max_fps == 30) {
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 			i2c_write_conf_tbl(
@@ -1072,7 +1075,7 @@ static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 					mt9v113_15_30_fps_settings,
 					ARRAY_SIZE(mt9v113_15_30_fps_settings),
 					MSM_CAMERA_I2C_WORD_DATA);
-		fps_5_30 = false;
+		fps_8_30 = false;
 	} else if (fps_range->min_fps == 15 && fps_range->max_fps == 15) {
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 			i2c_write_conf_tbl(
@@ -1080,7 +1083,7 @@ static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 					mt9v113_15_15_fps_settings,
 					ARRAY_SIZE(mt9v113_15_15_fps_settings),
 					MSM_CAMERA_I2C_WORD_DATA);
-		fps_5_30 = false;
+		fps_8_30 = false;
 	} else {
 		pr_err("%s: Invalid frame rate range (%u, %u)\n", __func__,
 				fps_range->min_fps, fps_range->max_fps);
