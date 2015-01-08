@@ -56,17 +56,17 @@
 					FF FF FF FF FF FF
 					FF FF FF FF FF FF /* Color Management 10*/
 					39 01 00 00 00 00 11 E1
-					3E 3A 46 4E 4E 46
-					3A 32 00 FC F0 E4
-					E4 F8 1C 38 /* digital gamma( S curve) R */
+					32 3C 46 48 4E 46
+					40 30 00 FB F1 EE
+					E2 F6 08 40 /* digital gamma( S curve) R */
 					39 01 00 00 00 00 11 E2
-					3E 3A 46 4E 4E 46
-					3A 32 00 FC F0 E4
-					E4 F8 1C 38 /* digital gamma( S curve) G */
+					32 3C 46 48 4E 46
+					40 30 00 FB F1 EE
+					E2 F6 08 40 /* digital gamma( S curve) G */
 					39 01 00 00 00 00 11 E3
-					3E 3A 46 4E 4E 46
-					3A 32 00 FC F0 E4
-					E4 F8 1C 38 /* digital gamma( S curve) B */
+					32 3C 46 48 4E 46
+					40 30 00 FB F1 EE
+					E2 F6 08 40 /* digital gamma( S curve) B */
 					05 01 00 00 00 00 01 35
 					05 01 00 00 00 00 01 29];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
