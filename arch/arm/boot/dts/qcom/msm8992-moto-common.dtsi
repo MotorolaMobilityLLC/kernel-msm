@@ -620,6 +620,10 @@
 		asoc-codec = <&stub_codec>, <&hdmi_audio>;
 		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-audio-codec-rx";
 	};
+
+	qcom,cnss {
+		wlan-112 = <&msm_gpio 112 0>;
+	};
 };
 
 &spi_0 {
