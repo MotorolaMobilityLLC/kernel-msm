@@ -917,3 +917,7 @@
 		qcom,fast-avg-setup = <0>;
 	};
 };
+
+&pm8994_lvs2 {
+	regulator-always-on;
+};
