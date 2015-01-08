@@ -539,3 +539,11 @@
 		qcom,supply-post-off-sleep = <0>;
 	};
 };
+
+&spmi_bus {
+        qcom,pm8226@1 {
+		qcom,vibrator@c000 {
+			qcom,vib-vtg-level-mV = <2300>;
+		};
+	};
+};
