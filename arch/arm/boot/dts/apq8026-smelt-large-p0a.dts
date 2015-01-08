@@ -18,3 +18,11 @@
 	qcom,msm-id =
 		<199 0x41 0x0204>; /* Large P0A Portable */
 };
+
+&spmi_bus {
+	qcom,pm8226@1 {
+		qcom,vibrator@c000 {
+			qcom,vib-vtg-level-mV = <1300>;
+		};
+	};
+};
