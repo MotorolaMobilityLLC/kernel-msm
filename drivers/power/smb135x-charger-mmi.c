@@ -4437,7 +4437,7 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 		return -EINVAL;
 	}
 
-	chip->usb_current_arr_size = (int)match->data;
+	chip->usb_current_arr_size = (long)match->data;
 
 	rc = of_property_read_u32(node, "qcom,float-voltage-mv",
 						&chip->vfloat_mv);
