@@ -568,6 +568,14 @@
 		};
 	};
 
+	slim_msm: slim@fe12f000 {
+		/delete-node/ tomtom_codec;
+		wolfson_codec {
+			compatible = "wlf,florida-slim-audio";
+			elemental-addr = [00 7F 10 51 2F 01];
+		};
+	};
+
 	sound {
 		qcom,model = "msm8994-tomtom-mtp-snd-card";
 
