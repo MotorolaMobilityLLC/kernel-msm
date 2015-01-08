@@ -823,7 +823,6 @@ static void touchIdleOnEvt(struct work_struct *work) {
 static void exitIdleEvt(struct work_struct *work) {
 	printk("IT7260: Special IRQ trigger touch event\n");
 	isDeviceSuspend = true;
-	wake_unlock(&touch_lock);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
