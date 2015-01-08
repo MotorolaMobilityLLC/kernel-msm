@@ -19,6 +19,9 @@
 #include "qcom/dsi-panel-mot-ssd2848-290p-cmd.dtsi"
 
 / {
+	model = "Motorola APQ 8026 Smelt";
+	compatible = "qcom,apq8026", "qcom,msm8226", "qcom,mtp", "moto,smelt";
+
 	aliases {
 		/delete-property/ spi0;
 		uart1 = &uart1;
