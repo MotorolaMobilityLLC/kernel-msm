@@ -32,7 +32,6 @@
 #define ENABLE_VERBOSE_LOGGING 0
 
 /* SPI */
-#define SPI_DMA_ENABLED         true
 #define SPI_FLASH_CLK_SPD_HZ    4000000
 #define SPI_NORMAL_CLK_SPD_HZ    4000000
 #define SPI_BUFF_SIZE           1152
@@ -600,11 +599,8 @@ struct stml0xx_data {
 	/* SPI */
 	struct spi_device *spi;
 	struct mutex spi_lock;
-	bool spi_dma_enabled;
 	unsigned char *spi_tx_buf;
 	unsigned char *spi_rx_buf;
-	dma_addr_t spi_tx_dma;
-	dma_addr_t spi_rx_dma;
 
 	atomic_t enabled;
 	int irq;
