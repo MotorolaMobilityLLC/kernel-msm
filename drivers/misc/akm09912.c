@@ -625,6 +625,9 @@ static const struct file_operations AKECS_fops = {
 	.open = AKECS_Open,
 	.release = AKECS_Release,
 	.unlocked_ioctl = AKECS_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = AKECS_ioctl,
+#endif
 };
 
 static struct miscdevice akm_compass_dev = {
