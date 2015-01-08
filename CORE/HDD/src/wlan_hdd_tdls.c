@@ -1999,6 +1999,11 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
         mutex_unlock(&pHddCtx->tdls_lock);
         return;
     }
+
+#ifdef WLAN_OPEN_SOURCE
+    cancel_work_sync(&pHddTdlsCtx->implicit_setup);
+#endif
+
     pHddTdlsCtx->discovery_sent_cnt = 0;
     wlan_hdd_tdls_check_power_save_prohibited(pHddTdlsCtx->pAdapter);
 
