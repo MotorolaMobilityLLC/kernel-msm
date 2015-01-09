@@ -711,6 +711,7 @@ ARIZONA_MUX_ENUMS(ISRC3DEC4, ARIZONA_ISRC3DEC4MIX_INPUT_1_SOURCE);
 
 static const char * const florida_dsp_output_texts[] = {
 	"None",
+	"DSP2",
 	"DSP3",
 };
 
@@ -719,7 +720,8 @@ static const struct soc_enum florida_dsp_output_enum =
 			florida_dsp_output_texts);
 
 static const struct snd_kcontrol_new florida_dsp_output_mux[] = {
-	SOC_DAPM_ENUM_VIRT("DSP Virtual Output Mux", florida_dsp_output_enum),
+	SOC_DAPM_ENUM_VIRT("DSP2 Virtual Output Mux", florida_dsp_output_enum),
+	SOC_DAPM_ENUM_VIRT("DSP3 Virtual Output Mux", florida_dsp_output_enum),
 };
 
 static const char * const florida_memory_mux_texts[] = {
@@ -810,7 +812,8 @@ SND_SOC_DAPM_INPUT("IN4R"),
 SND_SOC_DAPM_OUTPUT("DRC1 Signal Activity"),
 SND_SOC_DAPM_OUTPUT("DRC2 Signal Activity"),
 
-SND_SOC_DAPM_OUTPUT("DSP Virtual Output"),
+SND_SOC_DAPM_OUTPUT("DSP2 Virtual Output"),
+SND_SOC_DAPM_OUTPUT("DSP3 Virtual Output"),
 
 SND_SOC_DAPM_PGA_E("IN1L PGA", ARIZONA_INPUT_ENABLES, ARIZONA_IN1L_ENA_SHIFT,
 		   0, NULL, 0, arizona_in_ev,
@@ -1260,8 +1263,11 @@ SND_SOC_DAPM_VIRT_MUX("DSP2 Virtual Input", SND_SOC_NOPM, 0, 0,
 SND_SOC_DAPM_VIRT_MUX("DSP3 Virtual Input", SND_SOC_NOPM, 0, 0,
 		      &florida_memory_mux[1]),
 
-SND_SOC_DAPM_VIRT_MUX_E("DSP Virtual Output Mux", SND_SOC_NOPM, 0, 0,
-		      &florida_dsp_output_mux[0], florida_virt_dsp_power_ev,
+SND_SOC_DAPM_VIRT_MUX("DSP2 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+		      &florida_dsp_output_mux[0]),
+
+SND_SOC_DAPM_VIRT_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+		      &florida_dsp_output_mux[1], florida_virt_dsp_power_ev,
 		      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
 ARIZONA_MUX_WIDGETS(ISRC1DEC1, "ISRC1DEC1"),
@@ -1633,9 +1639,13 @@ static const struct snd_soc_dapm_route florida_dapm_routes[] = {
 	{ "DSP3 Preloader", NULL, "DSP3 Virtual Input" },
 	{ "DSP3 Virtual Input", "Shared Memory", "DSP2" },
 
-	{ "DSP Virtual Output", NULL, "DSP Virtual Output Mux" },
-	{ "DSP Virtual Output Mux", "DSP3", "DSP3" },
-	{ "DSP Virtual Output", NULL, "SYSCLK" },
+	{ "DSP2 Virtual Output", NULL, "DSP2 Virtual Output Mux" },
+	{ "DSP2 Virtual Output Mux", "DSP2", "DSP2" },
+	{ "DSP2 Virtual Output", NULL, "SYSCLK" },
+
+	{ "DSP3 Virtual Output", NULL, "DSP3 Virtual Output Mux" },
+	{ "DSP3 Virtual Output Mux", "DSP3", "DSP3" },
+	{ "DSP3 Virtual Output", NULL, "SYSCLK" },
 
 	ARIZONA_MUX_ROUTES("ISRC1INT1", "ISRC1INT1"),
 	ARIZONA_MUX_ROUTES("ISRC1INT2", "ISRC1INT2"),
