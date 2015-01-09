@@ -131,6 +131,9 @@
 #define CFG_1A_REG			0x1A
 #define HOT_SOFT_VFLOAT_COMP_EN_BIT	BIT(3)
 #define COLD_SOFT_VFLOAT_COMP_EN_BIT	BIT(2)
+#define TEMP_MONITOR_EN_BIT		BIT(6)
+#define HOT_SOFT_CCHARGE_COMP_EN_BIT	BIT(1)
+#define COLD_SOFT_CCHARGE_COMP_EN_BIT	BIT(0)
 
 #define CFG_1C_REG			0x1C
 #define BATT_CURR_MASK			SMB135X_MASK(4, 0)
@@ -4184,6 +4187,16 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 		return rc;
 	}
 
+	/* Disable temperature monitoring */
+	mask = TEMP_MONITOR_EN_BIT | HOT_SOFT_CCHARGE_COMP_EN_BIT
+		| COLD_SOFT_CCHARGE_COMP_EN_BIT;
+	rc = smb135x_masked_write(chip, CFG_1A_REG, mask, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't disable temperature monitoring rc = %d\n",
+				rc);
+		return rc;
+	}
+
 	__smb135x_charging(chip, chip->chg_enabled);
 
 	/* interrupt enabling - active low */
@@ -4319,6 +4332,7 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 static int smb135x_hw_init_fac(struct smb135x_chg *chip)
 {
 	int rc;
+	u8 mask;
 
 	pr_info("Factory Mode I2C Writes Disabled!\n");
 	rc = smb135x_masked_write_fac(chip, CMD_I2C_REG,
@@ -4328,6 +4342,17 @@ static int smb135x_hw_init_fac(struct smb135x_chg *chip)
 		dev_err(chip->dev,
 			"Couldn't configure for volatile rc = %d\n",
 			rc);
+
+	/* Disable temperature monitoring in factory mode*/
+	mask = TEMP_MONITOR_EN_BIT | HOT_SOFT_CCHARGE_COMP_EN_BIT
+		| COLD_SOFT_CCHARGE_COMP_EN_BIT;
+	rc = smb135x_masked_write_fac(chip, CFG_1A_REG, mask, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't disable temperature monitoring rc = %d\n",
+				rc);
+		return rc;
+	}
+
 	/* interrupt enabling - active low */
 	if (chip->client->irq) {
 		rc = smb135x_masked_write_fac(chip, CFG_17_REG,
