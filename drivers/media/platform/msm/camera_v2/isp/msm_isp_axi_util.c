@@ -1524,7 +1524,7 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 			vfe_dev->axi_data.src_info[frame_src].frame_id);
 		msm_isp_return_empty_buffer(vfe_dev, stream_info,
 			user_stream_id, frame_id, frame_src);
-		return 0;
+		return -EIO;
 	}
 
 	spin_lock_irqsave(&stream_info->lock, flags);
