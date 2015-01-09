@@ -70,6 +70,9 @@ struct qpnp_vib {
 // ASUS_BSP Tingy: Enable RX feature of audio debug
 #define ASUS_ENABLE_RX_AUDBG 1
 
+//ASUS_BSP hammer: vibrator debug
+#define ASUS_VIB_DBG 1
+
 #if ASUS_ENABLE_RX_AUDBG
 struct qpnp_vib *g_vib = 0;
 #endif
@@ -161,8 +164,16 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 			val |= QPNP_VIB_EN;
 			rc = qpnp_vib_write_u8(vib, &val,
 					QPNP_VIB_EN_CTL(vib->base));
+			#if ASUS_VIB_DBG
+			if (rc < 0){
+				printk(KERN_INFO "[vib]===set on fail===\n");
+				return rc;}
+			else
+				printk(KERN_INFO "[vib]===set on success===\n");
+			#else
 			if (rc < 0)
 				return rc;
+			#endif
 			vib->reg_en_ctl = val;
 		}
 	} else {
@@ -173,8 +184,17 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 			val &= ~QPNP_VIB_EN;
 			rc = qpnp_vib_write_u8(vib, &val,
 					QPNP_VIB_EN_CTL(vib->base));
+			#if ASUS_VIB_DBG
+			if (rc < 0){
+				printk(KERN_INFO "[vib]===set off fail===\n");
+				return rc;}
+			else
+				printk(KERN_INFO "[vib]===set off success===\n");
+			
+			#else
 			if (rc < 0)
 				return rc;
+			#endif
 			vib->reg_en_ctl = val;
 		}
 	}
@@ -189,6 +209,10 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 
 	mutex_lock(&vib->lock);
 	hrtimer_cancel(&vib->vib_timer);
+	
+	#if ASUS_VIB_DBG
+	printk(KERN_INFO "[vib]===enable func1 %d ms===\n",value);
+	#endif	
 
 	if (value == 0)
 		vib->state = 0;
@@ -214,6 +238,10 @@ void vibrator_enable(int value)
 
 	mutex_lock(&vib->lock);
 	hrtimer_cancel(&vib->vib_timer);
+
+	#if ASUS_VIB_DBG
+	printk(KERN_INFO "[vib]===enable func2 %d ms===\n",value);
+	#endif
 
 	if (value == 0)
 		vib->state = 0;
