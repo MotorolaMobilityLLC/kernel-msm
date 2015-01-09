@@ -127,6 +127,7 @@ static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_ctl *ctl,
 	u32 vsync_clk_speed_hz, total_lines, vclks_line, cfg = 0;
 	char __iomem *pingpong_base;
 	struct mdss_mdp_cmd_ctx *ctx = ctl->priv_data;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (IS_ERR_OR_NULL(ctl->panel_data)) {
 		pr_err("no panel data\n");
@@ -171,9 +172,14 @@ static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_ctl *ctl,
 	}
 
 	pingpong_base = mixer->pingpong_base;
-	/* for dst split pp_num is cmd session (0 and 1) */
-	if (is_pingpong_split(ctl->mfd))
-		pingpong_base += ctx->pp_num * SPLIT_MIXER_OFFSET;
+	/*
+	 * for dst split, configure the split path te block for pp split
+	 * synchronization
+	 */
+	if (is_pingpong_split(ctl->mfd)) {
+		if (ctx->pp_num == 1)
+			pingpong_base += mdata->ppsplit_te_offset;
+	}
 
 	mdss_mdp_pingpong_write(pingpong_base,
 		MDSS_MDP_REG_PP_SYNC_CONFIG_VSYNC, cfg);

@@ -2265,6 +2265,8 @@ static void mdss_mdp_ctl_split_display_enable(int enable,
 		if (main_ctl->opmode & MDSS_MDP_CTL_OP_CMD_MODE) {
 			/* interface controlling sw trigger (cmd mode) */
 			lower |= BIT(1);
+			if (is_pingpong_split(main_ctl->mfd))
+				lower |= BIT(2); /* SMART_PANEL_FREE_RUN */
 			if (main_ctl->intf_num == MDSS_MDP_INTF2)
 				lower |= BIT(4);
 			else
