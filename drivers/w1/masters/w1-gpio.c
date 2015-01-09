@@ -19,6 +19,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/regulator/consumer.h>
 
 #include "../w1.h"
 #include "../w1_int.h"
@@ -139,6 +140,28 @@ static int w1_gpio_probe(struct platform_device *pdev)
 		goto free_gpio_ext_pu;
 	}
 
+	/* voltage regulator support */
+	pdata->regulator_en = 0;
+	pdata->w1_gpio_vdd = regulator_get(&pdev->dev, "w1_vdd");
+	if (IS_ERR(pdata->w1_gpio_vdd)) {
+		pdata->w1_gpio_vdd = NULL;
+		dev_err(&pdev->dev,
+				"%s: Failed to get w1_vdd regulator\n",
+				__func__);
+	} else {
+		dev_err(&pdev->dev, "w1-vdd regulator is initially %s\n",
+			regulator_is_enabled(pdata->w1_gpio_vdd) ?
+			"on" : "off");
+		err = regulator_enable(pdata->w1_gpio_vdd);
+		if (err) {
+			pr_err("%s: Error %d enabling w1-vdd regulator\n",
+				__func__, err);
+			goto free_regulator;
+		} else {
+			pdata->regulator_en = 1;
+		}
+	}
+
 	if (pdata->enable_external_pullup)
 		pdata->enable_external_pullup(1);
 
@@ -149,6 +172,9 @@ static int w1_gpio_probe(struct platform_device *pdev)
 
 	return 0;
 
+ free_regulator:
+	if (pdata->w1_gpio_vdd != NULL)
+		regulator_put(pdata->w1_gpio_vdd);
  free_gpio_ext_pu:
 	if (gpio_is_valid(pdata->ext_pullup_enable_pin))
 		gpio_free(pdata->ext_pullup_enable_pin);
@@ -164,6 +190,9 @@ static int w1_gpio_remove(struct platform_device *pdev)
 {
 	struct w1_bus_master *master = platform_get_drvdata(pdev);
 	struct w1_gpio_platform_data *pdata = pdev->dev.platform_data;
+
+	if (pdata->w1_gpio_vdd != NULL)
+		regulator_put(pdata->w1_gpio_vdd);
 
 	if (pdata->enable_external_pullup)
 		pdata->enable_external_pullup(0);

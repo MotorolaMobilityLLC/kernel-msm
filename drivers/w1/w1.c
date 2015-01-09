@@ -40,6 +40,10 @@
 #include "w1_int.h"
 #include "w1_family.h"
 #include "w1_netlink.h"
+#ifdef CONFIG_W1_MASTER_GPIO
+#include <linux/regulator/consumer.h>
+#include <linux/w1-gpio.h>
+#endif
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Evgeniy Polyakov <zbr@ioremap.net>");
@@ -946,11 +950,31 @@ void w1_search_process_cb(struct w1_master *dev, u8 search_type,
 	w1_slave_found_callback cb)
 {
 	struct w1_slave *sl, *sln;
+#ifdef CONFIG_W1_MASTER_GPIO
+	struct w1_gpio_platform_data *w1_gpio_pdata = dev->bus_master->data;
+	int error;
+#endif
 
 	list_for_each_entry(sl, &dev->slist, w1_slave_entry)
 		clear_bit(W1_SLAVE_ACTIVE, (long *)&sl->flags);
 
 	w1_search_devices(dev, search_type, cb);
+
+#ifdef CONFIG_W1_MASTER_GPIO
+	/* turn off regulator, if turned by w1_gpio_probe function */
+	if (w1_gpio_pdata->regulator_en) {
+		error = regulator_disable(w1_gpio_pdata->w1_gpio_vdd);
+		if (error) {
+			pr_err("%s: Error %d disabling w1-vdd regulator\n",
+				__func__, error);
+		} else {
+			w1_gpio_pdata->regulator_en = 0;
+			pr_err("%s: dis: w1-vdd regulator is %s\n", __func__,
+				regulator_is_enabled(w1_gpio_pdata->w1_gpio_vdd) ?
+				"on" : "off");
+		}
+	}
+#endif
 
 	list_for_each_entry_safe(sl, sln, &dev->slist, w1_slave_entry) {
 		if (!test_bit(W1_SLAVE_ACTIVE, (unsigned long *)&sl->flags) && !--sl->ttl)
