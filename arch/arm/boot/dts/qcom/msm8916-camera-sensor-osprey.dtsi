@@ -11,6 +11,13 @@
  * GNU General Public License for more details.
  */
 
+/ {
+	onewire@0 {
+		compatible = "w1-gpio";
+		gpios = <&msm_gpio 100 0>;
+		w1_vdd-supply = <&pm8916_l16>;
+	};
+};
 
 &cci {
 	/* skyworks sky81296 flash LED driver*/
