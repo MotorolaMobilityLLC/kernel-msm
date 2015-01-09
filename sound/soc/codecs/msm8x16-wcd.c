@@ -3651,10 +3651,6 @@ static int msm8x16_wcd_codec_enable_dec(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec, tx_mux_ctl_reg, 0x30,
 					    CF_MIN_3DB_150HZ << 4);
 		}
-		snd_soc_update_bits(codec,
-				MSM8X16_WCD_A_ANALOG_TX_1_2_TXFE_CLKDIV,
-				0xFF, 0x42);
-
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* enable HPF */
