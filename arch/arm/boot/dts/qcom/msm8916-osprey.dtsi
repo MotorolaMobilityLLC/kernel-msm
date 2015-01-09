@@ -169,10 +169,9 @@
 		pinctrl-0 = <&cc_alert_default>;
 
 		maxim,configuration {
-			df-serialnum	= "SNN5955";
+			df-serialnum	= "SNN5959";
 
-			/include/ "batterydata-ft40-lg.dtsi"
-			/include/ "batterydata-ft40-sony.dtsi"
+			/include/ "batterydata-fc40-sony.dtsi"
 		};
 
 		maxim,temp-conv {
