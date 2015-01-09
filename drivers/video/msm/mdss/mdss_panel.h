@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -393,6 +393,7 @@ struct mdss_panel_info {
 	u32 max_fps;
 
 	u32 cont_splash_enabled;
+	bool esd_rdy;
 	u32 partial_update_enabled;
 	u32 dcs_cmd_by_left;
 	u32 partial_update_roi_merge;
