@@ -65,6 +65,15 @@ config LEDS_LM3642
 	  converter plus 1.5A constant current driver for a high-current
 	  white LED.
 
+config LEDS_ISL98611
+	tristate "LED support for ISL98611 Chip"
+	depends on LEDS_CLASS && I2C
+	select REGMAP_I2C
+	help
+	  This option enables support for integrated dual display power supply
+	  and LED backlight driver ISL98611.
+	  Power supply level can be configured useing device tree. GPIO or I2C
+	  can be used to control the supply operation.
 
 config LEDS_LOCOMO
 	tristate "LED Support for Locomo device"
