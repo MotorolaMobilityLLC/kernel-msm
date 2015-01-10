@@ -60,6 +60,9 @@
 		qcom,tfa9890-right-name = "tfa9890.8-0035";
 		qcom,tfa9890-earpiece-gpio = <&msmgpio 130 0>;
 	};
+	qcom,tfa9890-stereo-codec {
+		compatible = "nxp,tfa9890-stereo-codec";
+	};
 
 	qcom,msm-dai-stub {
 		compatible = "qcom,msm-dai-stub";
@@ -473,6 +476,7 @@
 		nxp,tfa_max-vol-steps = <15>;
 		gpios = <&msmgpio 129 0>;     /* RESET */
 		nxp,tfa-dev = "left";
+		nxp,tfa-firmware-part-name = "boost";
 	};
 	tfa9890@35 {
 		compatible = "nxp,tfa9890";
@@ -480,6 +484,7 @@
 		tfa_vdd-supply = <&pma8084_s4>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "right";
+		nxp,tfa-firmware-part-name = "boost";
 	};
 };
 
