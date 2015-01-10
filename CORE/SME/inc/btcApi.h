@@ -108,12 +108,6 @@
 #define BT_MAX_EVENT_DONE_TIMEOUT   45000
 
 /*
-    Maximum time duration to enable uapsd after the event is received from
-    firmware. This is added to handle back to back events from BTC.
-*/
-#define BTC_MAX_ENABLE_UAPSD_TIMER         (1000*60)
-
-/*
     To suppurt multiple SCO connections for BT+UAPSD work
 */
 #define BT_MAX_SCO_SUPPORT  3
