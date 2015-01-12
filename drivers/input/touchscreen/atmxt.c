@@ -1225,6 +1225,9 @@ static int atmxt_request_irq(struct atmxt_driver_data *dd)
 
 	disable_irq_nosync(dd->client->irq);
 
+	if (device_may_wakeup(&dd->client->dev))
+		enable_irq_wake(dd->client->irq);
+
 atmxt_request_irq_fail:
 	return err;
 }
