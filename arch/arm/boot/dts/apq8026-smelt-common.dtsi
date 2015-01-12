@@ -234,13 +234,17 @@
 };
 
 &modem_pil {
-    status = "disabled";
-    /delete-property/ linux,contiguous-region;
+	status = "disabled";
+	/delete-property/ linux,contiguous-region;
 };
 
-/* LW2.0 bootloader memory space conflict with default framebuffer location */
 &mdss_fb0 {
-    qcom,memblock-reserve = <0x04200000 0x640000>;
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
+};
+
+&dsi_mot_ssd2848_290p_cmd {
+	/delete-property/ qcom,cont-splash-enabled;
 };
 
 &pm8226_chg {
