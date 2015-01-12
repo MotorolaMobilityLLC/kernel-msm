@@ -48,6 +48,9 @@
 #include <pcicfg.h>
 #include <dhd_pcie.h>
 #include <dhd_linux.h>
+#ifdef DHD_WAKE_STATUS
+#include <linux/wakeup_reason.h>
+#endif
 #if defined (CONFIG_ARCH_MSM)
 #include <mach/msm_pcie.h>
 #endif
@@ -92,6 +95,12 @@ typedef struct dhdpcie_info
 	char pciname[32];
 	struct pci_saved_state* default_state;
 	struct pci_saved_state* state;
+#ifdef DHD_WAKE_STATUS
+	spinlock_t	pcie_lock;
+	unsigned int	total_wake_count;
+	int	pkt_wake;
+	int	wake_irq;
+#endif
 } dhdpcie_info_t;
 
 
@@ -216,10 +225,42 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 	return ret;
 }
 
+int dhd_os_get_wake_irq(dhd_pub_t *pub);
+
+#ifdef DHD_WAKE_STATUS
+int bcmpcie_get_total_wake(struct dhd_bus *bus)
+{
+	dhdpcie_info_t *pch = pci_get_drvdata(bus->dev);
+
+	return pch->total_wake_count;
+}
+
+int bcmpcie_set_get_wake(struct dhd_bus *bus, int flag)
+{
+	dhdpcie_info_t *pch = pci_get_drvdata(bus->dev);
+	unsigned long flags;
+	int ret;
+
+	spin_lock_irqsave(&pch->pcie_lock, flags);
+
+	ret = pch->pkt_wake;
+	pch->total_wake_count += flag;
+	pch->pkt_wake = flag;
+
+	spin_unlock_irqrestore(&pch->pcie_lock, flags);
+	return ret;
+}
+#endif
+
 static int dhdpcie_resume_dev(struct pci_dev *dev)
 {
 	int err = 0;
 	dhdpcie_info_t *pch = pci_get_drvdata(dev);
+
+#ifdef DHD_WAKE_STATUS
+	if (check_wakeup_reason(pch->wake_irq))
+		bcmpcie_set_get_wake(pch->bus, 1);
+#endif
 	pci_load_and_free_saved_state(dev, &pch->state);
 	pci_restore_state(dev);
 	err = pci_enable_device(dev);
@@ -613,7 +654,12 @@ int dhdpcie_init(struct pci_dev *pdev)
 				break;
 			}
 		}
-
+#ifdef DHD_WAKE_STATUS
+		spin_lock_init(&dhdpcie_info->pcie_lock);
+		dhdpcie_info->wake_irq = dhd_os_get_wake_irq(bus->dhd);
+		if (dhdpcie_info->wake_irq == -1)
+			dhdpcie_info->wake_irq = pdev->irq;
+#endif
 		dhdpcie_init_succeeded = TRUE;
 
 		DHD_ERROR(("%s:Exit - SUCCESS \n", __FUNCTION__));

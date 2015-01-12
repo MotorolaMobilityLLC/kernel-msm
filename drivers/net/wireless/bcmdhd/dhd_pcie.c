@@ -3248,6 +3248,11 @@ void dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 	uint16 flowid;
 	flow_ring_node_t *flow_ring_node;
 
+#ifdef DHD_WAKE_STATUS
+	bcm_bprintf(strbuf, "wake %u rxwake %u readctrlwake %u\n",
+		    bcmpcie_get_total_wake(dhdp->bus), dhdp->bus->rxwake,
+		    dhdp->bus->rcwake);
+#endif
 	dhd_prot_print_info(dhdp, strbuf);
 	for (flowid = 0; flowid < dhdp->num_flow_rings; flowid++) {
 		flow_ring_node = DHD_FLOW_RING(dhdp, flowid);

@@ -140,7 +140,10 @@ typedef struct dhd_bus {
 	uint32  *pcie_mb_intr_addr;
 	void    *pcie_mb_intr_osh;
 	bool	sleep_allowed;
-
+#ifdef DHD_WAKE_STATUS
+	uint		rxwake;
+	uint		rcwake;
+#endif
 	/* version 3 shared struct related info start */
 	ring_sh_info_t	ring_sh[BCMPCIE_COMMON_MSGRINGS + MAX_DHD_TX_FLOWS];
 	uint8	h2d_ring_count;
@@ -191,4 +194,9 @@ extern int dhdpcie_alloc_resource(dhd_bus_t *bus);
 extern void dhdpcie_free_resource(dhd_bus_t *bus);
 extern int dhdpcie_bus_request_irq(struct dhd_bus *bus);
 extern int dhd_buzzz_dump_dngl(dhd_bus_t *bus);
+#ifdef DHD_WAKE_STATUS
+int bcmpcie_get_total_wake(struct dhd_bus *bus);
+int bcmpcie_set_get_wake(struct dhd_bus *bus, int flag);
+#endif
+
 #endif /* dhd_pcie_h */
