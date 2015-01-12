@@ -15,6 +15,7 @@
 #include <linux/spinlock.h>
 #include <linux/ktime.h>
 #include <linux/debugfs.h>
+#include <linux/console.h>
 
 #include "mdss.h"
 #include "mdss_mdp.h"
@@ -172,6 +173,9 @@ void mdss_xlog_tout_handler(const char *name, ...)
 
 	if (!mdd->logd.xlog_enable)
 		return;
+
+	if(is_console_locked())
+		console_unlock();
 
 	mdss_samsung_dsi_te_check();
 	va_start(args, name);
