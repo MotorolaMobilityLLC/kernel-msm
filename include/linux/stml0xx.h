@@ -49,7 +49,8 @@
 #define SPI_TX_PAYLOAD_LEN         88
 #define SPI_MSG_SIZE	\
 	(SPI_HEADER_SIZE+SPI_TX_PAYLOAD_LEN+SPI_CRC_SIZE)
-#define SPI_RX_PAYLOAD_LEN         SPI_MSG_SIZE
+#define SPI_RX_PAYLOAD_LEN	\
+	(SPI_MSG_SIZE - SPI_CRC_SIZE)
 
 /** The following define the IOCTL command values via the ioctl macros */
 #define STML0XX_IOCTL_BASE		77
@@ -492,10 +493,10 @@ struct stm_response {
 #define IRQ_IDX_STATUS_MED        1
 #define IRQ_IDX_STATUS_HI         2
 #define IRQ_IDX_ACCEL1            3
-#define IRQ_IDX_ACCEL2            9
-#define IRQ_IDX_ALS              15
-#define IRQ_IDX_DISP_ROTATE      17
-#define IRQ_IDX_DISP_BRIGHTNESS  18
+#define IRQ_IDX_ACCEL2           36
+#define IRQ_IDX_ALS              42
+#define IRQ_IDX_DISP_ROTATE      44
+#define IRQ_IDX_DISP_BRIGHTNESS  45
 
 /* stml0xx WAKE IRQ SPI buffer indexes */
 #define WAKE_IRQ_IDX_STATUS_LO              0
