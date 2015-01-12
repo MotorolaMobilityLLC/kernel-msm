@@ -21,7 +21,7 @@
 		qcom,esd-det-gpio = <&msmgpio 74 0>;
 		qcom,te-gpio = <&msmgpio 24 0>;
 		qcom,alpm-ldo-offset = <2>;
-		/* qcom,cont-splash-enabled; */
+		qcom,cont-splash-enabled;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
