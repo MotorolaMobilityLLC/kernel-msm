@@ -174,9 +174,10 @@ static DEFINE_MUTEX(sleepModeMutex);
 static bool chipAwake = true;
 static bool hadFingerDown = false;
 static bool hadPalmDown = false;
-static bool isDeviceSleeping = false;
-static bool isDeviceSuspend = false;
+static bool isTouchLocked = false;
 static bool isDriverAvailable = true;
+static bool chipInLowPower = false;
+static bool driverInLowPower = false;
 static bool touchMissed;
 static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
@@ -456,7 +457,7 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 /* fix touch will not wake up system in suspend mode */
 static void chipLowPowerMode(bool low)
 {
-	int allow_irq_wake = !(isDeviceSleeping);
+	int allow_irq_wake = !(driverInLowPower);
 
 	if (devicePresent) {
 		LOGI("low power %s\n", low ? "enter" : "exit");
@@ -466,8 +467,8 @@ static void chipLowPowerMode(bool low)
 				smp_wmb();
 				enable_irq_wake(gl_ts->client->irq);
 			}
-			isDeviceSleeping = true;
-			isDeviceSuspend = true;
+			driverInLowPower = true;
+			isTouchLocked = true;
 			wake_unlock(&touch_lock);
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
@@ -478,16 +479,17 @@ static void chipLowPowerMode(bool low)
 			msleep(50);
 			gpio_direction_output(16,0);
 			msleep(50);
+			chipInLowPower = false;
 			
 			if (!allow_irq_wake){
 				smp_wmb();
 				disable_irq_wake(gl_ts->client->irq);
 			}
-			isDeviceSleeping = false;
-			isDeviceSuspend = false;
+			driverInLowPower = false;
+			isTouchLocked = false;
 			hadPalmDown = false;
-			wake_unlock(&touch_lock);	
-			last_time_exit_low = jiffies;	
+			last_time_exit_low = jiffies;
+			wake_unlock(&touch_lock);
 		}
 	}
 }
@@ -809,20 +811,20 @@ static uint64_t getMsTime(void)
 }
 
 static void waitNotifyEvt(struct work_struct *work) {
-	if (!isDeviceSleeping){
-		isDeviceSuspend = false;
+	if (!driverInLowPower){
+		isTouchLocked = false;
 	}
 }
 
 static void touchIdleOnEvt(struct work_struct *work) {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-
+	chipInLowPower = true;
 	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 }
 
 static void exitIdleEvt(struct work_struct *work) {
 	printk("IT7260: Special IRQ trigger touch event\n");
-	isDeviceSuspend = true;
+	isTouchLocked = true;
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
@@ -875,9 +877,9 @@ static void readTouchDataPoint(void)
 		return;
 	}
 	
-	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isDeviceSuspend && !hadPalmDown) {
+	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isTouchLocked && !hadPalmDown) {
 		if (jiffies - last_time_exit_low > HZ/4){
-			isDeviceSuspend = true;
+			isTouchLocked = true;
 			hadPalmDown = true;
 			sendPalmEvt();
 			queue_delayed_work(IT7260_wq, &gl_ts->afterpalm_work, 30);
@@ -895,7 +897,7 @@ static void readTouchDataPoint(void)
 
 		readFingerData(&x, &y, &pressure, pointData.fd);
 		/* filter points when palming or touching screen edge */
-		if (!isDeviceSuspend && y > 13 && y < 311 && x > 4 && x < 316){
+		if (!isTouchLocked && y > 13 && y < 311 && x > 4 && x < 316){
 			input_report_abs(gl_ts->touch_dev, ABS_X, x);
 			input_report_abs(gl_ts->touch_dev, ABS_Y, y);
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
@@ -918,17 +920,17 @@ static void readTouchDataPoint_Ambient(void)
 	uint8_t pressure = FD_PRESSURE_NONE;
 	uint16_t x, y;
 	
-	if (!isDeviceSuspend){
+	if (!isTouchLocked){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
 	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
 		LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
-		isDeviceSuspend = true;
+		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 		return;
 	}
 	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
 		LOGE("readTouchDataPoint() failed to read point data buffer\n");
-		isDeviceSuspend = true;
+		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 		return;
 	}	
@@ -938,7 +940,7 @@ static void readTouchDataPoint_Ambient(void)
 		} 
 		else{
 			LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
-			isDeviceSuspend = true;
+			isTouchLocked = true;
 			wake_unlock(&touch_lock);
 			return;
 		}
@@ -987,21 +989,21 @@ static void readTouchDataPoint_Ambient(void)
 			wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 			last_time_exit_low = jiffies;
 		}
-		isDeviceSuspend = true;
+		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 	} else if (pointData.flags == 16){
 		hadFingerDown = true;
 		queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
 	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
-		isDeviceSuspend = true;
+		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 	} 
 	
-	}else if (isDeviceSuspend){
+	}else if (isTouchLocked){
 		msleep(10);
 		if (isDriverAvailable){
 			wake_lock(&touch_lock);
-			isDeviceSuspend = false;
+			isTouchLocked = false;
 			suspend_touch_down = getMsTime();
 			if (lastTouch == TOUCH_UP)
 				lastTouch = TOUCH_DOWN;
@@ -1015,7 +1017,7 @@ static void readTouchDataPoint_Ambient(void)
 static irqreturn_t IT7260_ts_threaded_handler(int irq, void *devid)
 {
 	smp_rmb();
-	if (isDeviceSleeping) {
+	if (driverInLowPower) {
 		readTouchDataPoint_Ambient();
 		smp_wmb();
 		/* XXX: call readTouchDataPoint() here maybe ? */
@@ -1125,8 +1127,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(INPUT_PROP_DIRECT,gl_ts->touch_dev->propbit);
 	set_bit(BTN_TOUCH, gl_ts->touch_dev->keybit);
 	set_bit(KEY_SLEEP,gl_ts->touch_dev->keybit);
-	set_bit(KEY_WAKEUP,gl_ts->touch_dev->keybit);
-	set_bit(KEY_POWER,gl_ts->touch_dev->keybit);
 	input_set_abs_params(gl_ts->touch_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(gl_ts->touch_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
 
@@ -1367,13 +1367,17 @@ static int IT7260_ts_resume(struct i2c_client *i2cdev)
 static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-	isDeviceSuspend = true;
-	isDeviceSleeping = true;
+	isTouchLocked = true;
+	driverInLowPower = true;
 	isDriverAvailable = false;
 	
 	cancel_delayed_work(&gl_ts->touchidle_on_work);
 	enable_irq_wake(gl_ts->client->irq);
-	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
+	
+	if (!chipInLowPower) {
+		i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
+		chipInLowPower = true;
+	}
     return 0;
 }
 
