@@ -8414,6 +8414,12 @@ bool dhd_os_check_if_up(dhd_pub_t *pub)
 	return pub->up;
 }
 
+int dhd_os_get_wake_irq(dhd_pub_t *pub)
+{
+	if (!pub)
+		return -1;
+	return wifi_platform_get_wake_irq(pub->info->adapter);
+}
 
 /* function to collect firmware, chip id and chip version info */
 void dhd_set_version_info(dhd_pub_t *dhdp, char *fw)

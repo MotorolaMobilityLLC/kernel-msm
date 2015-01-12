@@ -186,6 +186,11 @@ void* bcmsdh_probe(osl_t *osh, void *dev, void *sdioh, void *adapter_info, uint 
 		goto err;
 	}
 
+#ifdef DHD_WAKE_STATUS
+	bcmsdh->wake_irq = wifi_platform_get_wake_irq(adapter_info);
+	if (bcmsdh->wake_irq == -1)
+		bcmsdh->wake_irq = bcmsdh_osinfo->oob_irq_num;
+#endif
 	return bcmsdh;
 
 	/* error handling */
@@ -215,6 +220,11 @@ int bcmsdh_remove(bcmsdh_info_t *bcmsdh)
 }
 
 #ifdef DHD_WAKE_STATUS
+int bcmsdh_get_total_wake(bcmsdh_info_t *bcmsdh)
+{
+	return bcmsdh->total_wake_count;
+}
+
 int bcmsdh_set_get_wake(bcmsdh_info_t *bcmsdh, int flag)
 {
 	bcmsdh_os_info_t *bcmsdh_osinfo = bcmsdh->os_cxt;
@@ -224,8 +234,7 @@ int bcmsdh_set_get_wake(bcmsdh_info_t *bcmsdh, int flag)
 	spin_lock_irqsave(&bcmsdh_osinfo->oob_irq_spinlock, flags);
 
 	ret = bcmsdh->pkt_wake;
-	if (flag)
-		bcmsdh->total_wake_count++;
+	bcmsdh->total_wake_count += flag;
 	bcmsdh->pkt_wake = flag;
 
 	spin_unlock_irqrestore(&bcmsdh_osinfo->oob_irq_spinlock, flags);
@@ -247,7 +256,7 @@ int bcmsdh_resume(bcmsdh_info_t *bcmsdh)
 	bcmsdh_os_info_t *bcmsdh_osinfo = bcmsdh->os_cxt;
 
 #ifdef DHD_WAKE_STATUS
-	if (check_wakeup_reason(bcmsdh_osinfo->oob_irq_num))
+	if (check_wakeup_reason(bcmsdh->wake_irq))
 		bcmsdh_set_get_wake(bcmsdh, 1);
 #endif
 

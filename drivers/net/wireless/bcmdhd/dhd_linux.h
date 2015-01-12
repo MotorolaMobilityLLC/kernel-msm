@@ -60,6 +60,7 @@ struct wifi_platform_data {
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
 	void *(*get_country_code)(char *ccode, u32 flags);
+	int (*get_wake_irq)(void);
 };
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
 
@@ -105,6 +106,7 @@ void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode,
 	u32 flags);
 void* wifi_platform_prealloc(wifi_adapter_info_t *adapter, int section, unsigned long size);
 void* wifi_platform_get_prealloc_func_ptr(wifi_adapter_info_t *adapter);
+int wifi_platform_get_wake_irq(wifi_adapter_info_t *adapter);
 
 int dhd_get_fw_mode(struct dhd_info *dhdinfo);
 bool dhd_update_fw_nv_path(struct dhd_info *dhdinfo);

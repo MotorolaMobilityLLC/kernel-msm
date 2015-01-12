@@ -2579,8 +2579,9 @@ dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 	bcm_bprintf(strbuf, "intr %d intrcount %u lastintrs %u spurious %u\n",
 	            bus->intr, bus->intrcount, bus->lastintrs, bus->spurious);
 #ifdef DHD_WAKE_STATUS
-	bcm_bprintf(strbuf, "wake %u rxwake %u glomwake %u readctrlwake %u\n",
-	            bus->sdh->total_wake_count, bus->rxwake, bus->glomwake, bus->rcwake);
+	bcm_bprintf(strbuf, "wake %u rxwake %u readctrlwake %u glomwake %u\n",
+	            bcmsdh_get_total_wake(bus->sdh), bus->rxwake,
+	            bus->rcwake, bus->glomwake);
 #endif
 	bcm_bprintf(strbuf, "pollrate %u pollcnt %u regfails %u\n",
 	            bus->pollrate, bus->pollcnt, bus->regfails);
