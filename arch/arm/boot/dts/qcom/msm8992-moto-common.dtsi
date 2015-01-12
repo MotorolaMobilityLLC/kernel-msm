@@ -164,6 +164,17 @@
 			bias-pull-up; /* pull up */
 		};
 	};
+
+	backlight_reset {
+		qcom,pins = <&gp 11>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "backlight_reset";
+		backlight_reset_default: default {
+			drive-strength = <2>;
+			bias-pull-none;
+		};
+	};
 };
 
 &blsp1_uart2 {
