@@ -3046,7 +3046,7 @@ static int mdss_mdp_pm_suspend(struct device *dev)
 	dev_dbg(dev, "display pm suspend\n");
 
 #if !defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
-	mdata->ulps = false;
+	mdata->idle_pc = false;
 #endif
 	return mdss_mdp_suspend_sub(mdata);
 }
