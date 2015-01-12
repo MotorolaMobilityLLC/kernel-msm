@@ -221,6 +221,8 @@ struct dsi_panel_cmds {
 	struct dsi_cmd_desc *cmds;
 	int cmd_cnt;
 	int link_state;
+	char *read_size;
+	char *read_startoffset;
 };
 
 struct dsi_kickoff_action {
@@ -284,8 +286,8 @@ struct mdss_dsi_ctrl_pdata {
 	int (*set_col_page_addr) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
-	int (*event_handler) (int e);
-	void (*panel_reset) (struct mdss_panel_data *pdata, int enable);
+	int (*event_handler) (struct mdss_panel_data *pdata, int e);
+	int (*panel_reset) (struct mdss_panel_data *pdata, int enable);
 	int (*registered) (struct mdss_panel_data *data);
 	void (*switch_mode) (struct mdss_panel_data *pdata, int mode);
 	struct mdss_panel_data panel_data;

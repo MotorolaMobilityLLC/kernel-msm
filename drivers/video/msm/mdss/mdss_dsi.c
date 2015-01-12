@@ -1163,7 +1163,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	default:
 		if (ctrl_pdata->event_handler)
-			rc = ctrl_pdata->event_handler(event);
+			rc = ctrl_pdata->event_handler(pdata, event);
 		else
 			pr_err("%s: unhandled event=%d\n", __func__, event);
 		break;
