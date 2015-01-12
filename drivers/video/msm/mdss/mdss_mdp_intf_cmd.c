@@ -824,6 +824,7 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		pr_err("invalid ctx session: %d\n", session);
 		return -ENODEV;
 	}
+	ctx->ref_cnt--;
 
 	/* intf stopped,  no more kickoff */
 	ctx->intf_stopped = 1;

@@ -775,10 +775,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	mdss_panel_set_ambient_command(ctrl);
 	mdss_panel_set_panel_on_command(ctrl);
 
-	if (is_ambient_on()){
-		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
-		return 0;
-	}
+
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (pinfo->partial_update_dcs_cmd_by_left) {
@@ -786,8 +783,12 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	if (ctrl->off_cmds.cmd_cnt)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
+	if (is_ambient_on()){
+		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
+	}else{
+		if (ctrl->off_cmds.cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
+	}
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;

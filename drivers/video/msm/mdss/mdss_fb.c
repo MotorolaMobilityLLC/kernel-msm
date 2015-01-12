@@ -646,7 +646,7 @@ static int interactive_notify(struct notifier_block *this,
                             unsigned long code, void *data)
 {
 	static bool first_display_on = true;
-	
+
 	printk(KERN_DEBUG "[PF]%s +\n", __func__);
 	switch (code) {
 		case FB_BLANK_ENTER_NON_INTERACTIVE:
@@ -669,7 +669,6 @@ static int interactive_notify(struct notifier_block *this,
 		default:
 			break;
 	}
-
 	printk(KERN_DEBUG "[PF]%s -\n", __func__);
 	return 0;
 }
@@ -1181,10 +1180,12 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	mfd->op_enable = false;
 	mutex_lock(&mfd->bl_lock);
+
 	if (mdss_panel_is_power_off(req_power_state)) {
 		mdss_fb_set_backlight(mfd, 0);
 		mfd->bl_updated = 0;
 	}
+
 	mfd->panel_power_state = req_power_state;
 	mutex_unlock(&mfd->bl_lock);
 
@@ -1283,6 +1284,10 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				blank_mode = FB_BLANK_POWERDOWN;
 		}
 	}
+
+	// ASUS: we go our way...
+	if (BLANK_FLAG_ULP == blank_mode)
+		blank_mode = FB_BLANK_POWERDOWN;
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
@@ -3449,5 +3454,6 @@ int mdss_fb_suspres_panel(struct device *dev, void *data)
 		pr_warn("unable to %s fb%d (%d)\n",
 			event == MDSS_EVENT_RESUME ? "resume" : "suspend",
 			mfd->index, rc);
+
 	return rc;
 }
