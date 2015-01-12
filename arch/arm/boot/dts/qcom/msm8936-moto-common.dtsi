@@ -14,6 +14,19 @@
 #include "msm8939-pinctrl.dtsi"
 #include "carrier-channel-ids.dtsi"
 
+&tlmm_pinmux {
+                backlight_reset {
+                        qcom,pins = <&gp 101>;
+                        qcom,num-grp-pins = <1>;
+                        qcom,pin-func = <0>;
+                        label = "backlight_reset";
+                        backlight_reset_default: default {
+                                drive-strength = <2>;
+                                output-high;
+                        };
+                };
+};
+
 &sdhc_1 {
 	vdd-supply = <&pm8916_l8>;
 	qcom,vdd-voltage-level = <2900000 2900000>;
