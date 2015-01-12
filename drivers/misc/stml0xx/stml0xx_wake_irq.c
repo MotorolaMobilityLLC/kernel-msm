@@ -107,7 +107,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 
 	err = stml0xx_spi_read_msg_data(SPI_MSG_TYPE_READ_WAKE_IRQ_DATA,
 					buf,
-					sizeof(buf),
+					SPI_RX_PAYLOAD_LEN,
 					RESET_ALLOWED);
 
 	if (err < 0) {
