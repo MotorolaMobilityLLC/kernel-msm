@@ -51,6 +51,7 @@
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 
+#include "mdss_dsi.h"
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
 
@@ -771,7 +772,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	pm_runtime_enable(mfd->fbi->dev);
 
 	/* android supports only one lcd-backlight/lcd for now */
-	if (!lcd_backlight_registered) {
+	if (!lcd_backlight_registered &&
+			mfd->panel_info->bklt_ctrl != BL_EXTERNAL &&
+			mfd->panel_info->bklt_ctrl != UNKNOWN_CTRL) {
 		backlight_led.brightness = mfd->panel_info->brightness_max;
 		backlight_led.max_brightness = mfd->panel_info->brightness_max;
 		if (led_classdev_register(&pdev->dev, &backlight_led))

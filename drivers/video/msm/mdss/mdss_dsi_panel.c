@@ -1284,6 +1284,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	}
 
 	ctrl_pdata->bklt_ctrl = UNKNOWN_CTRL;
+	pinfo->bklt_ctrl = UNKNOWN_CTRL;
 	data = of_get_property(np, "qcom,mdss-dsi-bl-pmic-control-type", NULL);
 	if (data) {
 		if (!strncmp(data, "bl_ctrl_wled", 12)) {
@@ -1321,6 +1322,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_external", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_EXTERNAL;
 		}
+		pinfo->bklt_ctrl = ctrl_pdata->bklt_ctrl;
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
