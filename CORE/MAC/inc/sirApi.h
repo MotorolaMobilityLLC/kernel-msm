@@ -4546,6 +4546,7 @@ typedef struct sSirUpdateChanParam
 
 typedef struct sSirUpdateChan
 {
+    tANI_U8 regId;
     tANI_U8 numChan;
     tSirUpdateChanParam chanParam[1];
 } tSirUpdateChanList, *tpSirUpdateChanList;
