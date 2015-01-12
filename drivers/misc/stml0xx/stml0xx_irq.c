@@ -88,7 +88,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 	err = stml0xx_spi_read_msg_data(SPI_MSG_TYPE_READ_IRQ_DATA,
 					buf,
-					sizeof(buf),
+					SPI_RX_PAYLOAD_LEN,
 					RESET_ALLOWED);
 
 	if (err < 0) {
@@ -101,19 +101,44 @@ void stml0xx_irq_work_func(struct work_struct *work)
 	    (buf[IRQ_IDX_STATUS_MED] << 8) | buf[IRQ_IDX_STATUS_LO];
 
 	if (irq_status & M_ACCEL) {
-		stml0xx_as_data_buffer_write(
-			ps_stml0xx,
-			DT_ACCEL,
-			&buf[IRQ_IDX_ACCEL1],
-			6,
-			0,
-			stm_ws->ts_ns);
+		int head = 0;
+		int tail = 0;
+		int first_accel_sample = 0;
+		uint64_t ts_ns = 0;
+		unsigned char *data_buf = 0;
+		unsigned char *accel_buf = 0;
+		uint8_t delay_ms = 0;
 
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X, &buf[IRQ_IDX_ACCEL1]),
-			STM16_TO_HOST(ACCEL_RD_Y, &buf[IRQ_IDX_ACCEL1]),
-			STM16_TO_HOST(ACCEL_RD_Z, &buf[IRQ_IDX_ACCEL1]));
+		data_buf = &buf[IRQ_IDX_ACCEL1];
+
+		ts_ns = stm_ws->ts_ns;
+		head = data_buf[28];
+		tail = data_buf[32];
+		for (
+			first_accel_sample = 1, accel_buf = data_buf + 7*tail;
+			tail != head;
+			tail = (tail + 1) % 4, accel_buf = data_buf + 7*tail) {
+
+			delay_ms = accel_buf[6];
+			if (first_accel_sample)
+				first_accel_sample = 0;
+			else
+				ts_ns += delay_ms * 1000000LL;
+
+			stml0xx_as_data_buffer_write(
+				ps_stml0xx,
+				DT_ACCEL,
+				accel_buf,
+				6,
+				0,
+				ts_ns);
+
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
+				STM16_TO_HOST(ACCEL_RD_X, accel_buf),
+				STM16_TO_HOST(ACCEL_RD_Y, accel_buf),
+				STM16_TO_HOST(ACCEL_RD_Z, accel_buf));
+		}
 	}
 	if (irq_status & M_ACCEL2) {
 		stml0xx_as_data_buffer_write(ps_stml0xx,
