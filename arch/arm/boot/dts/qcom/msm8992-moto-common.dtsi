@@ -15,6 +15,7 @@
 
 / {
 	aliases {
+		i2c4 = &i2c_4;
 		i2c5 = &i2c_5;
 		spi7 = &spi_7;
 		uart0 = &blsp2_uart2;
@@ -32,6 +33,23 @@
 };
 
 &tlmm_pinmux {
+	pmx_i2c_4 {
+		qcom,pins = <&gp 19>, <&gp 20>; /* SDA, SCL */
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <4>;
+		label = "pmx_i2c_4";
+
+		i2c_4_active: i2c_4_active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		i2c_4_sleep: i2c_4_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
 	pmx_i2c_5_sda {
 		qcom,pins = <&gp 23>;
 		qcom,num-grp-pins = <1>;
@@ -494,6 +512,39 @@
 	hob_ram {
 		compatible = "mmi,hob_ram";
 		mmi,allocation-type-smem;
+	};
+
+	qcom,cci@fda0c000 {
+		pinctrl-0 = <&cci0_active>;
+		pinctrl-1 = <&cci0_suspend>;
+		gpios = <&msm_gpio 17 0>,
+			<&msm_gpio 18 0>;
+	};
+
+	i2c_4: i2c@f9926000 { /* BLSP1 QUP3 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr", "bam_phys_addr";
+		reg = <0xf9926000 0x1000>,
+		      <0xf9904000 0x19000>;
+		interrupt-names = "qup_irq", "bam_irq";
+		interrupts = <0 98 0>, <0 238 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup4_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_4_active>;
+		pinctrl-1 = <&i2c_4_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,bam-pipe-idx-cons = <18>;
+		qcom,bam-pipe-idx-prod = <19>;
+		qcom,bam-disable;
+		qcom,master-id = <86>;
 	};
 
 	i2c_5: i2c@f9927000 { /* BLSP1 QUP5 */
