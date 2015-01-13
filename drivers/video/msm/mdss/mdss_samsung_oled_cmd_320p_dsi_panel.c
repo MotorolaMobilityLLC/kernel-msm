@@ -2127,8 +2127,11 @@ static int samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int ev
 			if (msd.dstat.wait_disp_on) {
 				mipi_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON, true);
 				msd.dstat.wait_disp_on = 0;
-				pr_info("DISPLAY_ON(rddpm: 0x%x)\n",
-						mipi_samsung_rddpm_status(pdata));
+				if (rddpm_cmds.cmd_cnt)
+					pr_info("DISPLAY_ON(rddpm: 0x%x)\n",
+							mipi_samsung_rddpm_status(pdata));
+				else
+					pr_info("DISPLAY_ON\n");
 			}
 			break;
 		default:
