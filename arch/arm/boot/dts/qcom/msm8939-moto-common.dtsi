@@ -106,6 +106,60 @@
 			bias-disable;         /* No PULL */
 		};
 	};
+
+	/delete-node/ pmx_rd_nfc_int;
+	/delete-node/ pmx_nfc_reset;
+
+	touch_reset_n {
+		qcom,pins = <&gp 20>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-reset";
+
+		touch_reset_default: default {
+			output-low;
+		};
+
+		touch_reset_active: active {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
+		};
+	};
+
+	touch_int_n {
+		qcom,pins = <&gp 21>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-int";
+
+		touch_int_default: default {
+			bias-disable;
+		};
+
+		touch_int_active: active {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
+		};
+	};
+};
+
+&i2c_0 {
+	qcom,clk-freq-out = <400000>;
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <21 0>;
+		gpios = <&msm_gpio 21 0>, /* IRQ */
+			<&msm_gpio 20 0>; /* RESET */
+		touch_vdd-supply = <&pm8916_l16>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+	};
 };
 
 &sdhc_1 {
