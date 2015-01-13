@@ -23,6 +23,7 @@
 #include <linux/m4sensorhub/m4sensorhub_registers.h>
 #include <linux/m4sensorhub/m4sensorhub_irqs.h>
 #include <linux/firmware.h>
+#include <linux/m4sensorhub/MemMapUserSettings.h>
 
 #ifdef __KERNEL__
 
@@ -69,6 +70,7 @@ enum m4sensorhub_panichdl_index {
 	PANICHDL_ALS_RESTORE,
 	PANICHDL_MPU9150_RESTORE,
 	PANICHDL_PEDOMETER_RESTORE,
+	PANICHDL_EXTERN_RESTORE,
 	/*
 	 * Please add enum before PANICHDL_IRQ_RESTORE
 	 * to make sure IRQ restore will be called last.
@@ -230,6 +232,12 @@ void m4sensorhub_call_preflash_callbacks(void); /* For FW flash core */
 bool m4sensorhub_preflash_callbacks_exist(void); /* For FW flash core */
 
 int m4sensorhub_irq_disable_all(struct m4sensorhub_data *m4sensorhub);
+
+/* External System Calls for Non-M4 Drivers */
+int m4sensorhub_extern_init(struct m4sensorhub_data *m4); /* Init for core */
+/* Utility function called by display driver to sync
+display status to M4 */
+int m4sensorhub_extern_set_display_status(uint8_t status);
 
 #endif /* __KERNEL__ */
 #endif  /* __M4SENSORHUB_H__ */

@@ -411,6 +411,13 @@ static void m4sensorhub_initialize(const struct firmware *firmware,
 		return;
 	}
 
+	err = m4sensorhub_extern_init(&m4sensorhub_misc_data);
+	if (err < 0) {
+		KDEBUG(M4SH_ERROR, "%s: Extern init failed (err=%d)\n",
+			__func__, err);
+		return;
+	}
+
 	/* Initialize all the m4 drivers */
 	inc = inithead;
 	arg.p_m4sensorhub_data = &m4sensorhub_misc_data;
