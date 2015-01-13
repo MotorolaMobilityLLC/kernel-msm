@@ -190,7 +190,7 @@
 		label = "backlight_reset";
 		backlight_reset_default: default {
 			drive-strength = <2>;
-			bias-pull-none;
+			output-high;
 		};
 	};
 };
