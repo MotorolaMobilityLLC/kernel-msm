@@ -472,9 +472,6 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	if (!ctrl_pdata->panel_config.esd_enable)
 		pr_warn("%s: ESD detection is disabled by UTAGS\n", __func__);
 
-	if (of_property_read_bool(np, "mmi,bare_board") == true)
-		ctrl_pdata->panel_config.bare_board = true;
-
 	ctrl_pdata->panel_config.panel_ver = MDSS_PANEL_DEFAULT_VER;
 	of_property_read_u64(np, "mmi,panel_ver",
 					&ctrl_pdata->panel_config.panel_ver);
