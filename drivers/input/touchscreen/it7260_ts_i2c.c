@@ -1068,6 +1068,19 @@ static bool chipIdentifyIT7260(void)
 	return true;
 }
 
+int parse_reset_gpio(struct device *dev)
+{
+	u32 value;
+	struct device_node *node = dev->of_node;
+	
+	if (of_property_read_u32(node, "reset", &value)) {
+		dev_err(dev, "Missing Touch Reset GPIO Value\n");
+		return -EINVAL;
+	}
+	
+	return value;
+}
+
 static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	static const uint8_t cmdStart[] = {CMD_UNKNOWN_7};
@@ -1075,6 +1088,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	uint8_t rsp[2];
 	int ret = -1;
 	int err;
+	int RESET_GPIO;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		LOGE("need I2C_FUNC_I2C\n");
@@ -1190,9 +1204,11 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
 	wake_lock_init(&touch_time_lock, WAKE_LOCK_SUSPEND, "touch-time-lock");
 	
-	err = gpio_request(16, "CTP_RST_N");
+	RESET_GPIO = parse_reset_gpio(&client->dev);
+	printk("IT7260: gpio_request %d\n", RESET_GPIO);
+	err = gpio_request(RESET_GPIO, "CTP_RST_N");
 	if (err < 0){
-		printk("IT7260: gpio_request 16 error: %d\n",err);
+		printk("IT7260: gpio_request %d error: %d\n", RESET_GPIO, err);
 	}
 	
 	devicePresent = true;
@@ -1357,6 +1373,7 @@ static const struct of_device_id IT7260_match_table[] = {
 	{ .compatible = "ITE,IT7260_ts",},
 	{},
 };
+MODULE_DEVICE_TABLE(of, IT7260_match_table);
 
 static int IT7260_ts_resume(struct i2c_client *i2cdev)
 {
@@ -1385,7 +1402,7 @@ static struct i2c_driver IT7260_ts_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = DEVICE_NAME,
-		.of_match_table = IT7260_match_table,
+		.of_match_table = of_match_ptr(IT7260_match_table),
 	},
 	.probe = IT7260_ts_probe,
 	.remove = IT7260_ts_remove,
