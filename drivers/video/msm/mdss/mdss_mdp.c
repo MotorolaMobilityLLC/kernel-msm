@@ -1144,11 +1144,9 @@ static void mdss_hw_rev_init(struct mdss_data_type *mdata)
 		return;
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-	mdss_iommu_attach(mdata);
 	mdata->mdp_rev = MDSS_REG_READ(mdata, MDSS_REG_HW_VERSION);
 	pr_info_once("MDP Rev=%x\n", mdata->mdp_rev);
 	mdss_mdp_hw_rev_caps_init(mdata);
-	mdss_iommu_dettach(mdata);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 }
 
