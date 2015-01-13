@@ -1001,9 +1001,9 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 	hw_d[1] = ((s16) ((acc_data[3] << 8) | acc_data[2]));
 	hw_d[2] = ((s16) ((acc_data[5] << 8) | acc_data[4]));
 
-	hw_d[0] = hw_d[0] * acc->sensitivity;
-	hw_d[1] = hw_d[1] * acc->sensitivity;
-	hw_d[2] = hw_d[2] * acc->sensitivity;
+	hw_d[0] = hw_d[0] * acc->sensitivity / 1000;
+	hw_d[1] = hw_d[1] * acc->sensitivity / 1000;
+	hw_d[2] = hw_d[2] * acc->sensitivity / 1000;
 
 
 	xyz[0] = ((acc->pdata->negate_x) ? (-hw_d[acc->pdata->axis_map_x])
