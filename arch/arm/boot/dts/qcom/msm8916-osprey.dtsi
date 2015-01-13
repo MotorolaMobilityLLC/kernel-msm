@@ -84,7 +84,7 @@
 		        <&msm_gpio 50 0>; /* IRQ */
 		pinctrl-names = "default";
 		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
-		ak,layout = <0>;
+		ak,layout = <5>;
 	};
 };
 
