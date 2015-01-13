@@ -3586,14 +3586,19 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
-	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+	if (evdata && evdata->data) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK ||
+		/* entering suspend upon early blank event */
+		/* to ensure shared power supply is still on */
+		/* for in-cell design touch solutions */
+		if (event == FB_EARLY_EVENT_BLANK) {
+			if (*blank != FB_BLANK_POWERDOWN)
+				return 0;
+			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+		} else if (*blank == FB_BLANK_UNBLANK ||
 			(*blank == FB_BLANK_VSYNC_SUSPEND &&
 			rmi4_data->touch_stopped)) {
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
 		}
 	}
 
