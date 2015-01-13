@@ -18,6 +18,7 @@
 #include "qcom/msm8226-w-sharedmem.dtsi"
 #include "qcom/msm8226-720p-mtp.dtsi"
 #include "qcom/dsi-panel-mot-ssd2848-290p-cmd.dtsi"
+#include "qcom/dsi-panel-mot-ota3201a-290p-vid.dtsi"
 
 / {
 	model = "Motorola APQ 8026 Smelt";
@@ -219,16 +220,6 @@
 		interrupts = <27 0>;
 		interrupt-names = "host_wake";
 		tx-timer-interval = <1>;
-	};
-
-	vddio_disp_vreg: vddio_disp_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "vddio_disp";
-		gpio = <&msmgpio 33 0x0>;
-		gpio-open-source;
-		parent-supply = <&pm8226_l8>;
-		startup-delay-us = <300>;
-		regulator-boot-on;
 	};
 
 };
@@ -478,14 +469,10 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_mot_ssd2848_290p_cmd>;
-	qcom,platform-bridge-reset-gpio = <&msmgpio 34 0>;
+	qcom,dsi-pref-prim-pan = <&dsi_mot_ota3201a_290p_vid>;
 	qcom,platform-reset-gpio = <&msmgpio 36 0>;
-	qcom,platform-te-gpio = <&msmgpio 24 0>;
 	vdda-supply = <&pm8226_l4>;
 	vdd_disp-supply = <&pm8226_l5>;
-	vddio_disp-supply = <&vddio_disp_vreg>;
-	vddram_disp-supply = <&pm8226_l16>;
 	vddcon_disp-supply = <&pm8226_l18>;
 	qcom,platform-supply-entry1 {
 		qcom,supply-name = "vdda";
@@ -510,28 +497,6 @@
 		qcom,supply-post-off-sleep = <0>;
 	};
 	qcom,platform-supply-entry3 {
-		qcom,supply-name = "vddio_disp";
-		qcom,supply-min-voltage = <1800000>;
-		qcom,supply-max-voltage = <1800000>;
-		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
-		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <0>;
-	};
-	qcom,platform-supply-entry4 {
-		qcom,supply-name = "vddram_disp";
-		qcom,supply-min-voltage = <3000000>;
-		qcom,supply-max-voltage = <3000000>;
-		qcom,supply-enable-load = <100000>;
-		qcom,supply-disable-load = <100>;
-		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <0>;
-		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <0>;
-	};
-	qcom,platform-supply-entry5 {
 		qcom,supply-name = "vddcon_disp";
 		qcom,supply-min-voltage = <2850000>;
 		qcom,supply-max-voltage = <2850000>;
