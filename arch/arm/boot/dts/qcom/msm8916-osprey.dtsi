@@ -273,3 +273,8 @@
 		touch_vdd-supply = <&vdda_touch_vreg>;
 	};
 };
+
+&pm8916_l16 {
+	regulator-boot-on;
+	regulator-always-on;
+};

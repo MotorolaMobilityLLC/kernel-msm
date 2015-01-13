@@ -50,3 +50,8 @@
 		touch_vdd-supply = <&pm8916_l16>;
 	};
 };
+
+&pm8916_l16 {
+	/delete-property/ regulator-boot-on;
+	/delete-property/ regulator-always-on;
+};
