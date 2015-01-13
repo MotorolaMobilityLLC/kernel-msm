@@ -1101,10 +1101,13 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 			enable);
 
 	/* Any panel specific low power commands/config */
-	if (enable)
+	if (enable) {
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
-	else
+		msd.dstat.on = 0;
+	} else {
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+		msd.dstat.on = 1;
+	}
 
 	mdss_dsi_panel_alpm_ctrl(pdata, enable);
 

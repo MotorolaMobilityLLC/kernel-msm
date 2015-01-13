@@ -238,6 +238,13 @@ void mdss_dsi_cmd_dma_trigger_sel(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 {
 	int temp;
 	int mask = 0x02;
+	int rc = 0;
+
+	rc = mdss_iommu_ctrl(1);
+	if (IS_ERR_VALUE(rc)) {
+		pr_err("IOMMU attach failed\n");
+		return;
+	}
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 	temp = MIPI_INP((ctrl_pdata->ctrl_base) + 0x0084);
@@ -246,6 +253,7 @@ void mdss_dsi_cmd_dma_trigger_sel(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	else
 		temp &= ~mask;
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0084, temp);
+	mdss_iommu_ctrl(0);
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 }
 
@@ -1445,7 +1453,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	mdss_bus_scale_set_quota(MDSS_HW_DSI0, SZ_1M, SZ_1M);
 
 	pr_debug("%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
 
 	rc = mdss_iommu_ctrl(1);
 	if (IS_ERR_VALUE(rc)) {
@@ -1453,6 +1460,8 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		mutex_unlock(&ctrl->cmd_mutex);
 		return rc;
 	}
+	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
+
 	if (req->flags & CMD_REQ_HS_MODE)
 		mdss_dsi_set_tx_power_mode(0, &ctrl->panel_data);
 
