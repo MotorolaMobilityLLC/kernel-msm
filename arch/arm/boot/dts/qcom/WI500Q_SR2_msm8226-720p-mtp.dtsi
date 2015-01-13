@@ -29,6 +29,7 @@
 			reg = <0x46>;
 			interrupt-parent = <&msmgpio>;
 			interrupts = <17 0x2>;
+			reset = <16>;
 		};
 	};
 
