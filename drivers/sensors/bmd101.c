@@ -116,26 +116,9 @@ static struct gpiomux_setting gpio_sus_cfg = {
 
 static int bmd101_data_report(int data, int accuracy)
 {
-	int report_data;
-
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: bpm(%d) accuracy(%d)\n", __func__, data, accuracy);
-	switch(accuracy) {
-		case SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT:
-			report_data = -1;
-			break;
-		case SENSOR_HEART_RATE_CONFIDENCE_LOW:
-			report_data = data + 1000;
-			break;
-		case SENSOR_HEART_RATE_CONFIDENCE_MEDIUM:
-			report_data = data + 2000;
-			break;
-		case SENSOR_HEART_RATE_CONFIDENCE_HIGH:
-			report_data = data;
-			break;
-		default:
-			report_data = 0;
-	}
-	input_report_abs(sensor_data->input_dev, ABS_MISC, report_data);
+	input_report_abs(sensor_data->input_dev, ABS_MISC, data);
+	input_event(sensor_data->input_dev, EV_MSC, MSC_SCAN, accuracy);
 	input_sync(sensor_data->input_dev);
 
 	return 0;
@@ -558,6 +541,8 @@ static int bmd101_input_init(void)
 	__set_bit(EV_ABS, bmd101_dev->evbit);
 	__set_bit(ABS_MISC, bmd101_dev->absbit);
 	input_set_abs_params(bmd101_dev, ABS_MISC, 0, 1048576, 0, 0);
+	input_set_capability(bmd101_dev, EV_MSC, MSC_SCAN);
+	__set_bit(MSC_SCAN, bmd101_dev->mscbit);
 	input_set_drvdata(bmd101_dev, sensor_data);
 	ret = input_register_device(bmd101_dev);
 	if (ret < 0) {
