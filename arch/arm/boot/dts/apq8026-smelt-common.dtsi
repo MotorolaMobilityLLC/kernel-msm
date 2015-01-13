@@ -432,8 +432,7 @@
 		gpios = <&msmgpio 17 0>, /* IRQ */
 			<&msmgpio 16 0>; /* RESET */
 		touch_vdd-supply = <&pm8226_l28>;
-		atmel,atmxt-tdat-filename = "atmxt-r2.tdat", "atmxt-r3.tdat";
-		support-snowflake = <1>;
+		atmel,atmxt-tdat-filename = "atmxt-r3.tdat";
 	};
 };
 
