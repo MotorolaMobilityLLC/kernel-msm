@@ -27,7 +27,7 @@ static struct msm_cci_intf_ctrl_t fctrl;
 
 static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		struct msm_cci_intf_xfer *xfer,
-		int cmd)
+		unsigned int cmd)
 {
 	int32_t rc, rc2;
 	struct msm_camera_cci_client cci_info = {
@@ -39,7 +39,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		.cci_info = &cci_info,
 	};
 
-	pr_debug("%s cmd:%d bus:%d devaddr:%02x regw:%d rega:%04x count:%d\n",
+	pr_debug("%s cmd:0x%x bus:%d devaddr:%02x regw:%d rega:%04x count:%d\n",
 			__func__, cmd, xfer->cci_bus, xfer->slave_addr,
 			xfer->reg.width, xfer->reg.addr, xfer->data.count);
 
@@ -59,7 +59,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		return rc;
 	}
 
-	if (cmd == MSM_CCI_INTF_READ) {
+	if (cmd == (unsigned int)MSM_CCI_INTF_READ) {
 		/* read */
 		cci_ctrl.cmd = MSM_CCI_I2C_READ;
 		cci_ctrl.cfg.cci_i2c_read_cfg.addr = xfer->reg.addr;
@@ -76,7 +76,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			goto release;
 		}
 		rc = cci_ctrl.status;
-	} else {
+	} else if (cmd == (unsigned int)MSM_CCI_INTF_WRITE) {
 		/* write */
 		int i;
 		struct msm_camera_i2c_reg_array *reg_conf_tbl;
@@ -110,6 +110,9 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 			goto release;
 		}
 		rc = cci_ctrl.status;
+	} else {
+		pr_err("%s: unknown command 0x%x\n", __func__, cmd);
+		rc = -EINVAL;
 	}
 
 release:
@@ -128,7 +131,7 @@ release:
 static long msm_cci_intf_ioctl(struct v4l2_subdev *sd,
 		unsigned int cmd, void *arg)
 {
-	pr_debug("%s cmd=%x\n", __func__, cmd);
+	pr_debug("%s cmd=0x%x\n", __func__, cmd);
 
 	switch (cmd) {
 	case MSM_CCI_INTF_READ:
