@@ -21,6 +21,7 @@
 #define BCM_DBG pr_debug
 
 static int gpio_wl_reg_on = 82;
+static int brcm_wake_irq = -1;
 
 #ifdef CONFIG_DHD_USE_STATIC_BUF
 
@@ -469,6 +470,10 @@ static int brcm_wifi_get_mac_addr(unsigned char *buf)
 	return 0;
 }
 
+static int brcm_wlan_get_wake_irq(void)
+{
+	return brcm_wake_irq;
+}
 
 static struct resource brcm_wlan_resources[] = {
 	[0] = {
@@ -488,6 +493,7 @@ static struct wifi_platform_data brcm_wlan_control = {
 #ifdef CONFIG_DHD_USE_STATIC_BUF
 	.mem_prealloc	= brcm_wlan_mem_prealloc,
 #endif
+	.get_wake_irq	= brcm_wlan_get_wake_irq,
 	.get_country_code = brcm_wlan_get_country_code,
 };
 
@@ -515,6 +521,7 @@ int __init brcm_wlan_init(void)
 
 	np = of_find_compatible_node(NULL, NULL, "bcm,bcm4356");
 	brcm_device_wlan.dev.of_node = np;
+	brcm_wake_irq = gpio_to_irq(of_get_named_gpio(np, "wl_host_wake", 0));
 
 	brcm_wifi_init_gpio(np);
 	return rc;
