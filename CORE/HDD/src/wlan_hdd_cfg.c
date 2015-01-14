@@ -5337,10 +5337,13 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.neighborRoamConfig.nMaxNeighborRetries = pConfig->nMaxNeighborReqTries;
    smeConfig->csrConfig.neighborRoamConfig.nNeighborResultsRefreshPeriod = pConfig->nNeighborResultsRefreshPeriod;
    smeConfig->csrConfig.neighborRoamConfig.nEmptyScanRefreshPeriod = pConfig->nEmptyScanRefreshPeriod;
-   //Making Forced 5G roaming to tightly coupled with the gEnableFirstScan2GOnly=1 only.
-   if(pConfig->enableFirstScan2GOnly)
+   //Making Forced 5G roaming to tightly coupled with the gEnableFirstScan2GOnly
+   //=1 only, Also making sure if HW does not support 5G RF band then no need to
+   //enable this feature even though it is enabled in .ini.
+   if((pConfig->enableFirstScan2GOnly) && (pConfig->nBandCapability != eCSR_BAND_24))
    {
-       smeConfig->csrConfig.neighborRoamConfig.nNeighborInitialForcedRoamTo5GhEnable = pConfig->nNeighborInitialForcedRoamTo5GhEnable;
+       smeConfig->csrConfig.neighborRoamConfig.nNeighborInitialForcedRoamTo5GhEnable
+       = pConfig->nNeighborInitialForcedRoamTo5GhEnable;
    }
    hdd_string_to_u8_array( pConfig->neighborScanChanList,
                                         smeConfig->csrConfig.neighborRoamConfig.neighborScanChanList.channelList,
@@ -5361,7 +5364,10 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
 
    smeConfig->csrConfig.isAmsduSupportInAMPDU = pConfig->isAmsduSupportInAMPDU;
-   smeConfig->csrConfig.nSelect5GHzMargin = pConfig->nSelect5GHzMargin;
+   if(pConfig->nBandCapability != eCSR_BAND_24)
+   {
+       smeConfig->csrConfig.nSelect5GHzMargin = pConfig->nSelect5GHzMargin;
+   }
    smeConfig->csrConfig.initialScanSkipDFSCh = pConfig->initialScanSkipDFSCh;
 
    smeConfig->csrConfig.isCoalesingInIBSSAllowed =
