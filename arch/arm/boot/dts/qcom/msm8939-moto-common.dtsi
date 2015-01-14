@@ -57,6 +57,7 @@
                 qcom,bam-pipe-idx-cons = <4>;
                 qcom,bam-pipe-idx-prod = <5>;
                 qcom,master-id = <86>;
+                qcom,bam-disable;
 	};
 };
 
