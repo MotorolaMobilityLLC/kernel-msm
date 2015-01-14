@@ -346,7 +346,7 @@
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
 
-		gpios = <&msmgpio 31 1>; /* CC_ALERT_N */
+		gpios = <&msmgpio 31 0x11>; /* CC_ALERT_N, GPIOF_DIR_IN | GPIOF_EXPORT */
 		gpio-names = "cc-alert";
 		interrupt-parent = <&msmgpio>;
 		interrupts = <31 0>;  /* TBD? */
