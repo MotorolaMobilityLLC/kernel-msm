@@ -514,6 +514,7 @@ static int __init cpufreq_stats_init(void)
 		return ret;
 	}
 
+	WARN_ON(cpufreq_get_global_kobject());
 	ret = sysfs_create_file(cpufreq_global_kobject,
 			&_attr_current_in_state.attr);
 	if (ret)
@@ -532,6 +533,7 @@ static void __exit cpufreq_stats_exit(void)
 	for_each_online_cpu(cpu)
 		cpufreq_stats_free_table(cpu);
 	cpufreq_powerstats_free();
+	cpufreq_put_global_kobject();
 }
 
 MODULE_AUTHOR("Zou Nan hai <nanhai.zou@intel.com>");
