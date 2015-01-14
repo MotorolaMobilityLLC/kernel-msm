@@ -152,6 +152,18 @@
 			bias-pull-up; /* pull-up */
 		};
 	};
+
+	hs_det_n {
+		qcom,pins = <&gp 69>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "hs-detect-int";
+
+		hs_detect_default: default {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 };
 
 &i2c_0 {
@@ -413,6 +425,36 @@
 				721    747    775    800                                                /*  60 C ...  63 C */
 			>;
 		};
+	};
+
+	fsa8500@23 {
+		compatible = "fairchild,fsa8500";
+		reg = <0x23>;
+		gpios = <&msm_gpio 69 0x0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hs_detect_default>;
+		fsa8500-init-regs = <0x0C 0xA1>,
+				    <0x0F 0xF9>,
+				    <0x11 0x84>,
+				    <0x13 0xBF>,
+				    <0x14 0x69>;
+
+		fsa8500-keymap = <0x4000000 0xE2>, /* SND_JACK_BTN_0 - KEY_MEDIA */
+				 <0x0400000 0x246>, /* SND_JACK_BTN_4 - KEY_VOICECOMMAND */
+				 <0x0200000 0x73>, /* SND_JACK_BTN_5 - KEY_VOLUMEUP */
+				 <0x0100000 0x72>; /* SND_JACK_BTN_6 - KEY_VOLUMEDOWN */
+	};
+
+	/* TI drv2605 */
+	drv2605@5a {
+		compatible = "ti,drv2605";
+		reg = <0x5A>;
+		gpios = <&msm_gpio 84 0>;        /* EN_GPIO */
+		external_trigger = <1>;
+		default_effect = <17>;          /* Strong Click 100% */
+		rated_voltage = <0x70>;         /* 2.4v */
+		overdrive_voltage = <0x89>;     /* 3.0v */
+
 	};
 };
 
