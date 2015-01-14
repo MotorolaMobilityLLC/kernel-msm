@@ -16,15 +16,35 @@
  * 02111-1307, USA
  */
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/reboot.h>
 #include <linux/slab.h>
+
+
+enum mmi_factory_device_list {
+	HONEYFUFU = 0,
+	KUNGPOW,
+};
+
+#define KP_KILL_INDEX 0
+#define KP_CABLE_INDEX 1
+#define KP_WARN_INDEX 2
+#define KP_NUM_GPIOS 3
 
 struct mmi_factory_info {
 	int num_gpios;
 	struct gpio *list;
+	int factory_cable;
+	enum mmi_factory_device_list dev;
+	struct delayed_work warn_irq_work;
+	struct delayed_work fac_cbl_irq_work;
+	int warn_irq;
+	int fac_cbl_irq;
 };
 
 /* The driver should only be present when booting with the environment variable
@@ -43,6 +63,70 @@ static bool mmi_factory_cable_present(void)
 		return false;
 
 	return true;
+}
+
+static void warn_irq_w(struct work_struct *w)
+{
+	struct mmi_factory_info *info = container_of(w,
+						     struct mmi_factory_info,
+						     warn_irq_work.work);
+	int warn_line = gpio_get_value(info->list[KP_WARN_INDEX].gpio);
+
+	if (!warn_line) {
+		pr_info("HW User Reset!\n");
+		pr_info("2 sec to Reset.\n");
+		kernel_halt();
+		return;
+	}
+}
+
+#define WARN_IRQ_DELAY	5 /* 5msec */
+static irqreturn_t warn_irq_handler(int irq, void *data)
+{
+	struct mmi_factory_info *info = data;
+
+	/*schedule delayed work for 5msec for line state to settle*/
+	queue_delayed_work(system_nrt_wq, &info->warn_irq_work,
+			   msecs_to_jiffies(WARN_IRQ_DELAY));
+
+	return IRQ_HANDLED;
+}
+
+static void fac_cbl_irq_w(struct work_struct *w)
+{
+	struct mmi_factory_info *info = container_of(w,
+						     struct mmi_factory_info,
+						     fac_cbl_irq_work.work);
+	int fac_cbl_line = gpio_get_value(info->list[KP_CABLE_INDEX].gpio);
+	int fac_cbl_kill_line = gpio_get_value(info->list[KP_KILL_INDEX].gpio);
+
+	if (fac_cbl_line) {
+		pr_info("Factory Cable Attached!\n");
+		info->factory_cable = 1;
+	} else
+		if (info->factory_cable) {
+			pr_info("Factory Cable Detached!\n");
+			if (fac_cbl_kill_line) {
+				info->factory_cable = 0;
+				pr_info("Factory Kill Disabled!\n");
+			} else {
+				pr_info("2 sec to power off.\n");
+				kernel_power_off();
+				return;
+			}
+		}
+}
+
+#define FAC_CBL_IRQ_DELAY	5 /* 5msec */
+static irqreturn_t fac_cbl_irq_handler(int irq, void *data)
+{
+	struct mmi_factory_info *info = data;
+
+	/*schedule delayed work for 5msec for line state to settle*/
+	queue_delayed_work(system_nrt_wq, &info->fac_cbl_irq_work,
+			   msecs_to_jiffies(FAC_CBL_IRQ_DELAY));
+
+	return IRQ_HANDLED;
 }
 
 static struct mmi_factory_info *mmi_parse_of(struct platform_device *pdev)
@@ -97,16 +181,31 @@ static struct mmi_factory_info *mmi_parse_of(struct platform_device *pdev)
 	return info;
 }
 
+static enum mmi_factory_device_list hff_dev = HONEYFUFU;
+static enum mmi_factory_device_list kp_dev = KUNGPOW;
+
+static const struct of_device_id mmi_factory_of_tbl[] = {
+	{ .compatible = "mmi,factory-support-msm8960", .data = &hff_dev},
+	{ .compatible = "mmi,factory-support-kungpow", .data = &kp_dev},
+	{},
+};
+MODULE_DEVICE_TABLE(of, mmi_factory_of_tbl);
+
 static int mmi_factory_probe(struct platform_device *pdev)
 {
+	const struct of_device_id *match;
 	struct mmi_factory_info *info;
 	int ret;
 	int i;
 
-	if (!mmi_factory_cable_present()) {
-		dev_dbg(&pdev->dev, "factory cable not present\n");
+	match = of_match_device(mmi_factory_of_tbl, &pdev->dev);
+	if (!match) {
+		dev_err(&pdev->dev, "No Match found\n");
 		return -ENODEV;
 	}
+
+	if (match && match->compatible)
+		dev_info(&pdev->dev, "Using %s\n", match->compatible);
 
 	info = mmi_parse_of(pdev);
 	if (!info) {
@@ -137,10 +236,74 @@ static int mmi_factory_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (!mmi_factory_cable_present()) {
+		dev_dbg(&pdev->dev, "factory cable not present\n");
+	} else {
+		pr_info("Factory Cable Attached at Power up!\n");
+		info->factory_cable = 1;
+	}
+
+	if (match && match->data) {
+		info->dev = *(enum mmi_factory_device_list *)(match->data);
+	} else {
+		dev_err(&pdev->dev, "failed to find device match\n");
+		goto fail;
+	}
+
+	if ((info->dev == KUNGPOW) && (info->num_gpios == KP_NUM_GPIOS)) {
+		/* Disable Kill if not powered up by a factory cable */
+		if (!info->factory_cable)
+			gpio_direction_output(info->list[KP_KILL_INDEX].gpio,
+						1);
+
+		info->warn_irq = gpio_to_irq(info->list[KP_WARN_INDEX].gpio);
+		info->fac_cbl_irq =
+			gpio_to_irq(info->list[KP_CABLE_INDEX].gpio);
+
+		INIT_DELAYED_WORK(&info->warn_irq_work, warn_irq_w);
+		INIT_DELAYED_WORK(&info->fac_cbl_irq_work, fac_cbl_irq_w);
+
+		if (info->warn_irq) {
+			ret = request_irq(info->warn_irq,
+					  warn_irq_handler,
+					  IRQF_TRIGGER_FALLING,
+					  "mmi_factory_warn", info);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"request irq failed for Warn\n");
+				goto fail;
+			}
+		} else {
+			ret = -ENODEV;
+			dev_err(&pdev->dev, "IRQ for Warn doesn't exist\n");
+			goto fail;
+		}
+
+		if (info->fac_cbl_irq) {
+			ret = request_irq(info->fac_cbl_irq,
+					  fac_cbl_irq_handler,
+					  IRQF_TRIGGER_RISING |
+					  IRQF_TRIGGER_FALLING,
+					  "mmi_factory_fac_cbl", info);
+			if (ret) {
+				dev_err(&pdev->dev,
+					"irq failed for Factory Cable\n");
+				goto remove_warn;
+			}
+		} else {
+			ret = -ENODEV;
+			dev_err(&pdev->dev,
+				"IRQ for Factory Cable doesn't exist\n");
+			goto remove_warn;
+		}
+	}
+
 	platform_set_drvdata(pdev, info);
 
 	return 0;
 
+remove_warn:
+	free_irq(info->warn_irq, info);
 fail:
 	gpio_free_array(info->list, info->num_gpios);
 	return ret;
@@ -150,17 +313,19 @@ static int mmi_factory_remove(struct platform_device *pdev)
 {
 	struct mmi_factory_info *info = platform_get_drvdata(pdev);
 
-	if (info)
+	if (info) {
 		gpio_free_array(info->list, info->num_gpios);
+
+		cancel_delayed_work_sync(&info->warn_irq_work);
+		cancel_delayed_work_sync(&info->fac_cbl_irq_work);
+		if (info->fac_cbl_irq)
+			free_irq(info->fac_cbl_irq, info);
+		if (info->warn_irq)
+			free_irq(info->warn_irq, info);
+	}
 
 	return 0;
 }
-
-static const struct of_device_id mmi_factory_of_tbl[] = {
-	{ .compatible = "mmi,factory-support-msm8960", },
-	{ },
-};
-MODULE_DEVICE_TABLE(of, mmi_factory_of_tbl);
 
 static struct platform_driver mmi_factory_driver = {
 	.probe = mmi_factory_probe,
