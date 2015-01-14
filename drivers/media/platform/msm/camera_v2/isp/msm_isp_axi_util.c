@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -403,6 +403,15 @@ static void msm_isp_reset_framedrop(struct vfe_device *vfe_dev,
 void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src frame_src, struct msm_isp_timestamp *ts) {
 	struct msm_isp_event_data sof_event;
+
+	if (frame_src >= VFE_SRC_MAX) {
+		pr_err("%s:%d invalid frame_src %d\n", __func__, __LINE__,
+			frame_src);
+		return;
+	}
+
+	vfe_dev->axi_data.src_info[frame_src].time_stamp = ts->buf_time;
+
 	switch (frame_src) {
 	case VFE_PIX_0:
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id++;
@@ -1444,18 +1453,79 @@ int msm_isp_cfg_axi_stream(struct vfe_device *vfe_dev, void *arg)
 	return rc;
 }
 
+static int msm_isp_return_empty_buffer(struct vfe_device *vfe_dev,
+	struct msm_vfe_axi_stream *stream_info, uint32_t user_stream_id,
+	uint32_t frame_id, enum msm_vfe_input_src frame_src)
+{
+	int rc = -1;
+	struct msm_isp_buffer *buf = NULL;
+	uint32_t bufq_handle = 0;
+	uint32_t stream_idx = HANDLE_TO_IDX(stream_info->stream_handle);
+
+	if (!stream_info->controllable_output)
+		return -EINVAL;
+
+	if (frame_src >= VFE_SRC_MAX) {
+		pr_err("%s: Invalid frame_src %d", __func__, frame_src);
+		return -EINVAL;
+	}
+
+	if (stream_idx >= MAX_NUM_STREAM) {
+		pr_err("%s: Invalid stream_idx", __func__);
+		return rc;
+	}
+
+	if (user_stream_id == stream_info->stream_id)
+		bufq_handle = stream_info->bufq_handle[VFE_DEFAULT_BUF_QUEUE];
+	else
+		bufq_handle = stream_info->bufq_handle[VFE_SHARED_BUF_QUEUE];
+
+
+	rc = vfe_dev->buf_mgr->ops->get_buf(vfe_dev->buf_mgr,
+		vfe_dev->pdev->id, bufq_handle, &buf);
+	if (rc < 0) {
+		vfe_dev->error_info.stream_framedrop_count[stream_idx]++;
+		return rc;
+	}
+
+	vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
+		buf->bufq_handle, buf->buf_idx,
+		&vfe_dev->axi_data.src_info[frame_src].time_stamp, frame_id + 1,
+		stream_info->runtime_output_format);
+
+	return 0;
+}
+
 static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, uint32_t user_stream_id,
-	uint8_t need_divert)
+	uint8_t need_divert, uint32_t frame_id)
 {
 	struct msm_vfe_axi_stream_request_cmd stream_cfg_cmd;
 	struct msm_vfe_frame_request_queue *queue_req;
 	uint32_t pingpong_status, pingpong_bit, wm_reload_mask = 0x0;
 	unsigned long flags;
 	int rc = 0;
+	enum msm_vfe_input_src frame_src = 0;
 
 	if (!stream_info->controllable_output)
 		return 0;
+
+
+	if (stream_info->stream_src >= VFE_AXI_SRC_MAX) {
+		pr_err("%s:%d invalid stream src %d\n", __func__, __LINE__,
+			stream_info->stream_src);
+		return -EINVAL;
+	}
+
+	frame_src = SRC_TO_INTF(stream_info->stream_src);
+	if (frame_id < vfe_dev->axi_data.src_info[frame_src].frame_id) {
+		pr_err("%s:%d invalid request_frame %d cur frame id %d\n",
+			__func__, __LINE__, frame_id,
+			vfe_dev->axi_data.src_info[frame_src].frame_id);
+		msm_isp_return_empty_buffer(vfe_dev, stream_info,
+			user_stream_id, frame_id, frame_src);
+		return 0;
+	}
 
 	spin_lock_irqsave(&stream_info->lock, flags);
 	queue_req = &stream_info->request_queue_cmd[stream_info->requestq_idx];
@@ -1483,7 +1553,6 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		(stream_info->requestq_idx + 1) % MSM_VFE_REQUESTQ_SIZE;
 	list_add_tail(&queue_req->list, &stream_info->request_q);
 	spin_unlock_irqrestore(&stream_info->lock, flags);
-
 	stream_info->request_frm_num++;
 
 	stream_cfg_cmd.axi_stream_handle = stream_info->stream_handle;
@@ -1656,7 +1725,8 @@ int msm_isp_update_axi_stream(struct vfe_device *vfe_dev, void *arg)
 		case UPDATE_STREAM_REQUEST_FRAMES: {
 			rc = msm_isp_request_frame(vfe_dev, stream_info,
 				update_info->user_stream_id,
-				update_info->need_divert);
+				update_info->need_divert,
+				update_cmd->cur_frame_id);
 			if (rc)
 				pr_err("%s failed to request frame!\n",
 					__func__);
