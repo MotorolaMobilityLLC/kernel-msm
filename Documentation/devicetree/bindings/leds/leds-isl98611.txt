@@ -3,7 +3,7 @@ to ISL98611 integrated display power and LED backlight driver.
 The IC is connected to Host processor via i2C bus.
 
 Required properties:
-- compatible		: string should be "intersil,leds-isl98611"
+- compatible		: string should be "intersil,isl98611"
 - reg			: interger should be I2C address of the device
 - linux,name		: name of the led that is used in led framework
 
@@ -12,7 +12,7 @@ Optional properties:
 - intersil,default-on	: boolean default on for the led
 - intersil,init-level	: integer default level applied if default-on is true
 - intersil,no-reset		: boolean do not issue SW reset for IC during driver probe
-- intersil,cabc-off		: boolean do not use CABC inputs. PON vlaue is ON.
+- intersil,cabc-disable		: boolean do not use CABC inputs. PON vlaue is ON.
 - intersil,led-current	: integer current level for led current register
 
 Optional properties for display power control settings:
@@ -22,7 +22,7 @@ Optional properties for display power control settings:
 Example:
 
 isl98611@29 {
-	compatible = "intersil,leds-isl98611";
+	compatible = "intersil,isl98611";
 	reg = <0x29>;
 	status = "okay";
 	linux,name = "wled:backlight";
