@@ -193,6 +193,17 @@
 			output-high;
 		};
 	};
+
+	mipi_d0_select {
+		qcom,pins = <&gp 108>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "mipi_d0_select";
+		mipi_d0_select_default: default {
+			drive-strength = <2>;
+			output-low;
+		};
+	};
 };
 
 &blsp1_uart2 {
