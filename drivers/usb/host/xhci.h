@@ -1673,7 +1673,7 @@ static inline int xhci_link_trb_quirk(struct xhci_hcd *xhci)
 /* xHCI debugging */
 
 /* Maximum debug message length */
-#define DBG_MSG_LEN   64UL
+#define DBG_MSG_LEN   128UL
 
 /* Maximum number of messages */
 #define DBG_MAX_MSG   1024UL
