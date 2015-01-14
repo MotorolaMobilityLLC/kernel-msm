@@ -85,6 +85,9 @@
 		fusion {
 			compatible = "mot,m4fusion";
 		};
+		pressure {
+			compatible = "mot,m4pressure";
+		};
 	};
 
 	dock_switch {
