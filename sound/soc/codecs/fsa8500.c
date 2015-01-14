@@ -56,7 +56,6 @@
 				SND_JACK_BTN_4 | SND_JACK_BTN_5 | \
 				SND_JACK_BTN_6 | SND_JACK_BTN_7)
 
-#define VDD_UA_ON_LOAD	10000
 #define	SND_JACK_BTN_SHIFT	20
 
 static struct snd_soc_jack hs_jack;
@@ -66,7 +65,6 @@ static struct i2c_client *fsa8500_client;
 
 struct fsa8500_data {
 	struct regulator *vdd;
-	struct regulator *micvdd;
 	int gpio_irq;
 	int gpio;
 	struct snd_soc_jack *hs_jack;
@@ -83,7 +81,6 @@ struct fsa8500_data {
 	struct wake_lock wake_lock;
 	struct work_struct work_det;
 	struct workqueue_struct *wq;
-	struct fsa8500_platform_data *pdata;
 };
 
 /* I2C Read/Write Functions */
@@ -554,7 +551,7 @@ int fsa8500_hs_detect(struct snd_soc_codec *codec)
 	if (fsa8500 == NULL)
 		return ret;
 
-	pdata = fsa8500->pdata;
+	pdata = fsa8500_client->dev.platform_data;
 
 	if (fsa8500->hs_jack == NULL) {
 		ret = snd_soc_jack_new(codec, "Headset Jack",
@@ -599,20 +596,12 @@ int fsa8500_hs_detect(struct snd_soc_codec *codec)
 
 	mutex_lock(&fsa8500->lock);
 
-	if (!fsa8500->inserted) {
-		ret = regulator_set_optimum_mode(fsa8500->vdd,
-							VDD_UA_ON_LOAD);
-		if (ret < 0)
-			pr_err("%s: failed to set optimum mode\n", __func__);
-		}
 
 	/* if something is plugged in, the irq has been triggered,
 	   the status regs were readed and cleared.
 	   Just report stored value */
 
 	ret = fsa8500_report_hs(fsa8500);
-	if (!fsa8500->inserted)
-		regulator_set_optimum_mode(fsa8500->vdd, 0);
 
 	mutex_unlock(&fsa8500->lock);
 
@@ -650,6 +639,9 @@ static int fsa8500_parse_dt_regs_array(const u32 *arr,
 {
 	u32 len = 0, reg, val;
 	int i;
+
+	if (!arr)
+		return 0;
 
 	for (i = 0; i < count*2; i += 2) {
 		reg = be32_to_cpu(arr[i]);
@@ -771,9 +763,9 @@ static int fsa8500_probe(struct i2c_client *client,
 	}
 
 	if (client->dev.of_node)
-			fsa8500_pdata = fsa8500_of_init(client);
-	else
-			fsa8500_pdata = client->dev.platform_data;
+			client->dev.platform_data = fsa8500_of_init(client);
+
+	fsa8500_pdata = client->dev.platform_data;
 
 	/* Check platform data */
 	if (fsa8500_pdata == NULL) {
@@ -804,7 +796,6 @@ static int fsa8500_probe(struct i2c_client *client,
 	fsa8500->button_pressed = 0;
 	fsa8500->button_jack = NULL;
 	fsa8500->hs_jack = NULL;
-	fsa8500->pdata = fsa8500_pdata;
 	/* This flag is used to indicate that mic bias should be always
 	 * on when headset is inserted, needed for always on voice
 	 * operations and noise estimate.
@@ -813,31 +804,14 @@ static int fsa8500_probe(struct i2c_client *client,
 
 	/* enable regulators */
 	fsa8500->vdd = regulator_get(&client->dev, "hs_det_vdd");
-	if (IS_ERR(fsa8500->vdd)) {
-		pr_err("%s: Error getting vdd regulator.\n", __func__);
-		err = PTR_ERR(fsa8500->vdd);
-		goto reg_get_vdd;
-	}
-
-	regulator_set_voltage(fsa8500->vdd, 1800000, 1800000);
-	err = regulator_enable(fsa8500->vdd);
-	if (err < 0) {
-		pr_err("%s: Error enabling vdd regulator.\n", __func__);
-		goto reg_enable_vdd_fail;
-	}
-
-	fsa8500->micvdd = regulator_get(&client->dev, "hs_det_micvdd");
-	if (IS_ERR(fsa8500->micvdd)) {
-		pr_err("%s: Error getting micvdd regulator.\n", __func__);
-		err = PTR_ERR(fsa8500->micvdd);
-		goto reg_get_micvdd;
-	}
-
-	regulator_set_voltage(fsa8500->micvdd, 2850000, 2850000);
-	err = regulator_enable(fsa8500->micvdd);
-	if (err < 0) {
-		pr_err("%s: Error enabling micvdd regulator.\n", __func__);
-		goto reg_enable_micvdd_fail;
+	if (IS_ERR(fsa8500->vdd))
+		pr_warn("%s: Can't get vdd regulator.\n", __func__);
+	else {
+		err = regulator_enable(fsa8500->vdd);
+		if (err < 0) {
+			pr_err("%s: Error enabling vdd regulator.\n", __func__);
+			goto reg_enable_vdd_fail;
+		}
 	}
 
 	wake_lock_init(&fsa8500->wake_lock, WAKE_LOCK_SUSPEND, "hs_det");
@@ -876,13 +850,11 @@ irq_fail:
 	wake_lock_destroy(&fsa8500->wake_lock);
 	destroy_workqueue(fsa8500->wq);
 wq_fail:
-reg_enable_micvdd_fail:
-	regulator_put(fsa8500->micvdd);
-reg_get_micvdd:
-	regulator_disable(fsa8500->vdd);
+	if (!IS_ERR_OR_NULL(fsa8500->vdd))
+		regulator_disable(fsa8500->vdd);
 reg_enable_vdd_fail:
-	regulator_put(fsa8500->vdd);
-reg_get_vdd:
+	if (!IS_ERR_OR_NULL(fsa8500->vdd))
+		regulator_put(fsa8500->vdd);
 	gpio_free(fsa8500->gpio);
 gpio_init_fail:
 	kfree(fsa8500);
@@ -893,11 +865,10 @@ gpio_init_fail:
 static int fsa8500_remove(struct i2c_client *client)
 {
 	struct fsa8500_data *fsa8500 = i2c_get_clientdata(client);
-	regulator_set_optimum_mode(fsa8500->vdd, 0);
-	regulator_disable(fsa8500->vdd);
-	regulator_put(fsa8500->vdd);
-	regulator_disable(fsa8500->micvdd);
-	regulator_put(fsa8500->micvdd);
+	if (!IS_ERR_OR_NULL(fsa8500->vdd)) {
+		regulator_disable(fsa8500->vdd);
+		regulator_put(fsa8500->vdd);
+	}
 	gpio_free(fsa8500->gpio);
 	wake_lock_destroy(&fsa8500->wake_lock);
 	destroy_workqueue(fsa8500->wq);
