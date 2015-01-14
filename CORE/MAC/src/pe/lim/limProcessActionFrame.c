@@ -415,6 +415,14 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
         return;
     }
 
+    if (( RF_CHAN_14 >= psessionEntry->currentOperChannel )&&
+          !IS_HT40_OBSS_SCAN_FEATURE_ENABLE)
+    {
+        limLog(pMac, LOGW,
+              FL("channel bonding disabled as FW doesn't supoort CB in 2.4gz"));
+        return;
+    }
+
     pOperatingModeframe = vos_mem_malloc(sizeof(*pOperatingModeframe));
     if (NULL == pOperatingModeframe)
     {
