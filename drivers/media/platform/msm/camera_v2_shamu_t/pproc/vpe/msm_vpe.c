@@ -26,7 +26,7 @@
 #include <media/v4l2-subdev.h>
 #include <media/media-entity.h>
 #include <media/msmb_generic_buf_mgr.h>
-#include <media/msmb_pproc.h>
+#include <media/msmb_pproc_shamu_t.h>
 #include "msm_vpe.h"
 #include "msm_camera_io_util.h"
 

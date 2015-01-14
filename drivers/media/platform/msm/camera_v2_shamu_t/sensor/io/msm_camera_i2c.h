@@ -15,7 +15,7 @@
 
 #include <linux/delay.h>
 #include <media/v4l2-subdev.h>
-#include <media/msm_cam_sensor.h>
+#include <media/msm_cam_sensor_shamu_t.h>
 
 struct msm_camera_i2c_client {
 	struct msm_camera_i2c_fn_t *i2c_func_tbl;

@@ -16,8 +16,8 @@
 #include <linux/leds.h>
 #include <linux/platform_device.h>
 #include <media/v4l2-subdev.h>
-#include <media/msm_cam_sensor.h>
-#include <soc/qcom/camera2.h>
+#include <media/msm_cam_sensor_shamu_t.h>
+#include <soc/qcom/camera2_shamu_t.h>
 #include "msm_camera_i2c.h"
 #include "msm_sd.h"
 
