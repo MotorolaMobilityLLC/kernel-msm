@@ -8,12 +8,11 @@ Required properties:
 -compatible		: should be "fairchild,fsa8500".
 -reg			: i2c address to be used.
 -gpios			: Interrupt GPIO
--hs_det_vdd-supply	: regulator to power the chip.
--hs_det_micvdd-supply	: regulator to power the mic bias.
 -fsa8500-init-regs	: initial registers settings
 
 Optional properties:
 
+-hs_det_vdd-supply	: regulator to power the chip.
 -fsa8500-always-on-micbias: Keep bias always on.
 -fsa8500-keymap         : headset keys code map.
 			  Default :1-BTN with key code 0xE2 - KEY_MEDIA
@@ -25,8 +24,6 @@ Example:
 		compatible = "fairchild,fsa8500";
 		reg = <0x23>;
 		gpios = <&msmgpio 9 0x0>;
-		hs_det_vdd-supply = <&pma8084_lvs2>;
-		hs_det_micvdd-supply = <&pma8084_l18>;
 		fsa8500-init-regs = <0x0C 0xA1>,
 				    <0x0F 0xF9>;
 				/* SND_JACK_BTN_0 - KEY_MEDIA */
