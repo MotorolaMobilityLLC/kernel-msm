@@ -74,6 +74,11 @@
 	qcom,pins = <&gp 78>;
 };
 
+&pm8916_l6 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
 &pm8916_l16 {
 	qcom,init-voltage = <3100000>;
 };
