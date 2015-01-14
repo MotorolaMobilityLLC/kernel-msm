@@ -19,7 +19,7 @@
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
 #include <linux/iopoll.h>
-#include <media/msmb_isp.h>
+#include <media/msmb_isp_shamu_t.h>
 
 #include "msm_ispif.h"
 #include "msm.h"
