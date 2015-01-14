@@ -1652,6 +1652,7 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	struct sock *sk;
 	uid_t sock_uid;
 	bool res;
+	bool set_sk_callback_lock = false;
 	/*
 	 * TODO: unhack how to force just accounting.
 	 * For now we only do tag stats when the uid-owner is not requested
@@ -1714,6 +1715,8 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	MT_DEBUG("qtaguid[%d]: sk=%p got_sock=%d fam=%d proto=%d\n",
 		 par->hooknum, sk, got_sock, par->family, ipx_proto(skb, par));
 	if (sk != NULL) {
+		set_sk_callback_lock = true;
+		read_lock_bh(&sk->sk_callback_lock);
 		MT_DEBUG("qtaguid[%d]: sk=%p->sk_socket=%p->file=%p\n",
 			par->hooknum, sk, sk->sk_socket,
 			sk->sk_socket ? sk->sk_socket->file : (void *)-1LL);
@@ -1785,6 +1788,8 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 put_sock_ret_res:
 	if (got_sock)
 		xt_socket_put_sk(sk);
+	if (set_sk_callback_lock)
+		read_unlock_bh(&sk->sk_callback_lock);
 ret_res:
 	MT_DEBUG("qtaguid[%d]: left %d\n", par->hooknum, res);
 	return res;
