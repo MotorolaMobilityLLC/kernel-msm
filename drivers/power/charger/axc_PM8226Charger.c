@@ -445,7 +445,7 @@ void setChgDrawCurrent_pm8226(void)
 			}
 			else if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
 				limitPM8226chg1000();
-				printk("[BAT][CHG][AC]: limit charging current 1200mA\n");
+				printk("[BAT][CHG][AC]: limit charging current 1000mA\n");
 			}
 		}
 	}
