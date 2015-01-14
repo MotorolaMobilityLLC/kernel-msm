@@ -1586,23 +1586,6 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       vos_pkt_return_packet(pVosPacket);
       return VOS_STATUS_E_FAILURE;
    }
-   /* In IBSS the staID can change and hdd uses the same queue for all staid.
-    * Due to this the fetch may be called for staID x, but data might be of
-    * staID y. So better get the staId again from SKB and use this to process
-    * the packet further.
-    */
-   if (WLAN_HDD_IBSS == pAdapter->device_mode)
-   {
-      *pStaId = *(v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
-
-      /* If HDD_WLAN_INVALID_STA_ID no need to check the destination,
-       * just make the staID 0. As if HDD_WLAN_INVALID_STA_ID and
-       * destination is not BC of MC, the packet is already dropped in
-       * hdd_hard_start_xmit.
-       */
-      if (*pStaId == HDD_WLAN_INVALID_STA_ID)
-         *pStaId = IBSS_BROADCAST_STAID;
-   }
    //Attach skb to VOS packet.
    status = vos_pkt_set_os_packet( pVosPacket, skb );
    if (status != VOS_STATUS_SUCCESS)
