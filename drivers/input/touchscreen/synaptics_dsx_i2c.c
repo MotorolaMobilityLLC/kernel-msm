@@ -1541,6 +1541,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char index = 0;
 	unsigned char finger;
 	unsigned char fingers_supported;
+	unsigned char finger_status;
 	unsigned char finger_data[F12_STD_DATA_LEN];
 	unsigned short data_addr;
 	unsigned short data_size;
@@ -1569,48 +1570,62 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	for (finger = 0; finger < fingers_supported; finger++,
 			 index += fhandler->size_of_data_register_block) {
-		if (finger_data[index] == 0)
-			continue;
+		finger_status = finger_data[index];
+#ifdef TYPE_B_PROTOCOL
+		input_mt_slot(rmi4_data->input_dev, finger);
+		input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, finger_status);
+#endif
+		if (finger_status) {
+			x = finger_data[index+1] | (finger_data[index+2] << 8);
+			y = finger_data[index+3] | (finger_data[index+4] << 8);
+			p = finger_data[index+5];
+			w = finger_data[index+5];
+			id = finger;
 
-		x = finger_data[index+1] | (finger_data[index+2] << 8);
-		y = finger_data[index+3] | (finger_data[index+4] << 8);
-		p = finger_data[index+5];
-		w = finger_data[index+5];
-		id = finger;
+			if (rmi4_data->board->x_flip)
+				x = rmi4_data->sensor_max_x - x;
+			if (rmi4_data->board->y_flip)
+				y = rmi4_data->sensor_max_y - y;
 
-		if (rmi4_data->board->x_flip)
-			x = rmi4_data->sensor_max_x - x;
-		if (rmi4_data->board->y_flip)
-			y = rmi4_data->sensor_max_y - y;
+			dev_dbg(&rmi4_data->i2c_client->dev,
+						"%s: Finger %d:\n"
+						"x = %d\n"
+						"y = %d\n"
+						"p = %d\n"
+						"w = %d\n",
+						__func__, finger,
+						x, y, p, w);
 
-		dev_dbg(&rmi4_data->i2c_client->dev,
-					"%s: Finger %d:\n"
-					"x = %d\n"
-					"y = %d\n"
-					"p = %d\n"
-					"w = %d\n",
-					__func__, finger,
-					x, y, p, w);
-
-		input_report_abs(rmi4_data->input_dev,
+			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
-		input_report_abs(rmi4_data->input_dev,
+			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
-		input_report_abs(rmi4_data->input_dev,
+			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_PRESSURE, p);
-		input_report_abs(rmi4_data->input_dev,
+			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, w);
-		input_report_abs(rmi4_data->input_dev,
-					ABS_MT_TRACKING_ID, id);
-		input_mt_sync(rmi4_data->input_dev);
-		touch_count++;
+#ifndef TYPE_B_PROTOCOL
+			input_mt_sync(rmi4_data->input_dev);
+#endif
+			touch_count++;
+#ifdef TYPE_B_PROTOCOL
+		} else {
+			/* Touch no longer active, close out slot */
+			input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, 0);
+#endif
+		}
 
 		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
 
+#ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
+#endif
 
+	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
 
 	return touch_count;
@@ -1739,14 +1754,12 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Finger %d:\n"
-					"status = 0x%02x\n"
 					"x = %d\n"
 					"y = %d\n"
 					"wx = %d\n"
 					"wy = %d\n"
 					"z = %d\n",
 					__func__, finger,
-					finger_status,
 					x, y, wx, wy, z);
 
 			input_report_abs(rmi4_data->input_dev,
@@ -1766,9 +1779,15 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_mt_sync(rmi4_data->input_dev);
 #endif
 			touch_count++;
-
-			synaptics_dsx_resumeinfo_touch(rmi4_data);
+#ifdef TYPE_B_PROTOCOL
+		} else {
+			/* Touch no longer active, close out slot */
+			input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, 0);
+#endif
 		}
+
+		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
 
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
@@ -1781,6 +1800,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		input_mt_sync(rmi4_data->input_dev);
 #endif
 
+	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
 
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
@@ -2432,12 +2452,15 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			ABS_MT_TOUCH_MAJOR, 0,
 			255, 0, 0);
 #endif
+#ifdef TYPE_B_PROTOCOL
+	input_mt_init_slots(rmi4_data->input_dev,
+			rmi4_data->num_of_fingers, 0);
+#else
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TRACKING_ID, 0,
 			rmi4_data->num_of_fingers - 1, 0, 0);
-
 	input_set_events_per_packet(rmi4_data->input_dev, 64);
-
+#endif
 	return retval;
 }
 
