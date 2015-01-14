@@ -489,6 +489,10 @@
 		qcom,haptic@c000 {
 			status = "disabled";
 		};
+
+		qcom,leds@d000 {
+			status = "disabled";
+		};
 	};
 };
 
