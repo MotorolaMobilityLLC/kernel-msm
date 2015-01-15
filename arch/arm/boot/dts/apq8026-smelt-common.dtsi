@@ -88,6 +88,9 @@
 		pressure {
 			compatible = "mot,m4pressure";
 		};
+		ads {
+			compatible = "mot,m4ads";
+		};
 	};
 
 	dock_switch {
