@@ -186,6 +186,7 @@ static struct wake_lock touch_lock;
 static struct wake_lock touch_time_lock;
 static int lastTouch = TOUCH_UP;
 static unsigned long last_time_exit_low = 0;
+static char fwVersion[20];
 
 #define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
 #define I2C_RETRIES				2		/* Number of retries */
@@ -540,6 +541,9 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 		}
 	}
 
+	chipGetVersions(verFw, verCfg, true);
+	sprintf(fwVersion, "%x,%x,%x,%x # %x,%x,%x,%x",verFw[5], verFw[6], verFw[7], verFw[8], verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
+	
 	if (fwLen)
 		release_firmware(fw);
 
@@ -629,10 +633,7 @@ static ssize_t sysfsStatusStore(struct device *dev, struct device_attribute *att
 
 static ssize_t sysfsVersionShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	uint8_t verFw[10], verCfg[10];
-
-	chipGetVersions(verFw, verCfg, false);
-	return sprintf(buf, "%x,%x,%x,%x # %x,%x,%x,%x\n",verFw[5], verFw[6], verFw[7], verFw[8], verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
+	return sprintf(buf, "%s\n", fwVersion);
 }
 
 static ssize_t sysfsVersionStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
