@@ -28,6 +28,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/semaphore.h>
 
 enum {
 	STATE_UNKNOWN,
@@ -379,12 +380,45 @@ struct mxt_data {
 	struct notifier_block fb_notif;
 	struct work_struct resume_work;
 #endif
-	struct mutex crit_section_lock;
+	struct semaphore crit_section_lock;
 	const struct firmware *tdat;
 	struct mxt_tdat_section fw;
 	struct mxt_tdat_section tsett;
 };
 
+#define mxt_unlock(s)	{\
+		up(s);\
+		pr_debug("critical section RELEASED (count %d)\n",\
+				((struct semaphore *)(s))->count);\
+	}
+
+static void mxt_lock(struct semaphore *sem)
+{
+	ktime_t after, before;
+	int retval, elapsed_time;
+
+	retval = down_trylock(sem);
+	if (!retval)
+		goto done;
+	/* will have to wait */
+	before = ktime_get();
+	retval = down_interruptible(sem);
+	if (retval) {
+		pr_err("cannot lock critical section\n");
+		return;
+	}
+	after = ktime_get();
+	elapsed_time = (ktime_to_timeval(after).tv_sec -
+			ktime_to_timeval(before).tv_sec) * 1000;
+	elapsed_time += (ktime_to_timeval(after).tv_usec -
+			ktime_to_timeval(before).tv_usec) / 1000;
+	pr_info("lock delayed by %d ms\n", elapsed_time);
+done:
+	pr_debug("critical section LOCKED (count %d)\n", sem->count);
+}
+
+
+static int mxt_suspend(struct device *dev);
 static int mxt_resume(struct device *dev);
 static int mxt_get_sensor_state(struct mxt_data *data);
 static int mxt_init_t7_power_cfg(struct mxt_data *data);
@@ -4098,8 +4132,7 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 		goto release_firmware;
 	}
 
-	if (data->suspended)
-		mxt_resume(&data->client->dev);
+	mxt_lock(&data->crit_section_lock);
 
 	mxt_irq_enable(data, false);
 
@@ -4126,9 +4159,6 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 		mxt_irq_enable(data, true);
 
 	mxt_set_sensor_state(data, STATE_INIT);
-
-	mutex_lock(&data->crit_section_lock);
-	dev_dbg(dev, "critical section LOCK\n");
 
 	mxt_free_object_table(data);
 
@@ -4202,11 +4232,12 @@ flash_error:
 initialize:
 	mxt_set_sensor_state(data, STATE_QUERY);
 	error = mxt_initialize(data);
-	if (error)
+	if (error) {
+		mxt_set_sensor_state(data, STATE_BL);
 		dev_info(dev, "Init failed after firmware upgrade\n");
+	}
 
-	mutex_unlock(&data->crit_section_lock);
-	dev_dbg(dev, "critical section RELEASE\n");
+	mxt_unlock(&data->crit_section_lock);
 
 	memset(&data->fw, 0, sizeof(data->fw));
 	memset(&data->tsett, 0, sizeof(data->tsett));
@@ -4381,8 +4412,7 @@ static int mxt_input_open(struct input_dev *dev)
 	} else if (!data->in_bootloader)
 		mxt_hw_reset(hw);
 
-	mutex_unlock(&data->crit_section_lock);
-	dev_dbg(&data->client->dev, "critical section RELEASE\n");
+	mxt_unlock(&data->crit_section_lock);
 
 	return 0;
 }
@@ -4397,8 +4427,7 @@ static void mxt_input_close(struct input_dev *dev)
 	if (data->use_regulator)
 		mxt_regulator_disable(data);
 
-	mutex_lock(&data->crit_section_lock);
-	dev_dbg(&data->client->dev, "critical section LOCK\n");
+	mxt_lock(&data->crit_section_lock);
 }
 #endif
 
@@ -4821,7 +4850,7 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		goto err_disable_reg;
 
-	mutex_init(&data->crit_section_lock);
+	sema_init(&data->crit_section_lock, 1);
 
 #ifdef CONFIG_FB
 	data->fb_notif.notifier_call = fb_notifier_callback;
@@ -4904,10 +4933,7 @@ static int mxt_suspend(struct device *dev)
 	static char ud_stats[PAGE_SIZE];
 
 	if (!data->suspended) {
-		/* if driver is in critical section at the moment,
-		 * mutex_lock can block until mutex gets released */
-		mutex_lock(&data->crit_section_lock);
-		dev_dbg(&data->client->dev, "critical section LOCK\n");
+		mxt_lock(&data->crit_section_lock);
 
 		mxt_set_sensor_state(data, STATE_SUSPEND);
 		mxt_reset_slots(data);
@@ -4938,8 +4964,7 @@ static int mxt_resume(struct device *dev)
 		} else if (!data->in_bootloader)
 			mxt_hw_reset(data);
 
-		mutex_unlock(&data->crit_section_lock);
-		dev_dbg(&data->client->dev, "critical section RELEASE\n");
+		mxt_unlock(&data->crit_section_lock);
 	}
 
 	if (data->in_bootloader)
