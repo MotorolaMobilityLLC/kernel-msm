@@ -388,9 +388,9 @@
                 reg = <0x1c>;
 
                 interrupt-parent = <&msm_gpio>;
-                interrupts = <62 0x0>;
-                gpios = <&msm_gpio 62 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
-                gpio-names = "smb1360_int_gpio";
+		interrupts = <62 8>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&smb_int_default>;
                 qcom,smb135x-adc_tm = <&pm8916_adc_tm>;
                 qcom,smb135x-vadc = <&pm8916_vadc>;
                 qcom,float-voltage-mv = <4350>;
@@ -407,9 +407,6 @@
                                           <1500>, <1400>, <1200>, <1100>,
                                           <1000>, <900>, <700>, <600>,
                                           <500>, <400>, <300>;
-                qcom,dc-thermal-mitigation = <600>, <500>, <400>, <300>;
-                qcom,dc-psy-type = "Wireless";
-                qcom,dc-psy-ma = <600>;
                 qcom,bms-psy-name = "max170xx_battery";
                 qcom,max-batt-curr-ma = <2600>;
                 qcom,ext-temp-volt-mv = <4000>;
@@ -509,4 +506,3 @@
 		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
 	};
 };
-
