@@ -537,6 +537,22 @@
 		regulator-always-on;
 	};
 
+	isl98611a_pos: isl98611a_pos {
+		compatible = "regulator-fixed";
+		regulator-name = "vsp_disp";
+		gpio = <&msm_gpio 8 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	isl98611a_neg: isl98611a_neg {
+		compatible = "regulator-fixed";
+		regulator-name = "vsn_disp";
+		gpio = <&pm8994_gpios 5 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
 	factory_support {
 		compatible = "mmi,factory-support-kungpow";
 		gpios = <&pm8994_gpios 8 0x0>, /* GPIOF_OUT_INIT_LOW */
@@ -1057,4 +1073,29 @@
 
 &pm8994_l14 {
 	regulator-always-on;
+};
+
+&pm8994_l18 {
+	regulator-always-on;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 78>;
+};
+
+&pmx_mdss_te {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 10>;
+};
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-reset-gpio = <&msm_gpio 12 0>;
 };
