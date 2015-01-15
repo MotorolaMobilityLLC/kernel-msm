@@ -84,9 +84,9 @@ enum mmi_wls_charger_priority {
 #define DEFAULT_HOT_TEMP 60
 #define DEFAULT_COLD_TEMP -20
 
-static int mmi_wls_chrg_write_reg(struct i2c_client *client, u8 reg, u16 value)
+static int mmi_wls_chrg_write_reg(struct i2c_client *client, u8 reg, u8 value)
 {
-	int ret = i2c_smbus_write_word_data(client, reg, value);
+	int ret = i2c_smbus_write_byte_data(client, reg, value);
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -96,7 +96,7 @@ static int mmi_wls_chrg_write_reg(struct i2c_client *client, u8 reg, u16 value)
 
 static int mmi_wls_chrg_read_reg(struct i2c_client *client, u8 reg)
 {
-	int ret = i2c_smbus_read_word_data(client, reg);
+	int ret = i2c_smbus_read_byte_data(client, reg);
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -119,7 +119,7 @@ static int set_reg(void *data, u64 val)
 {
 	struct mmi_wls_chrg_chip *chip = data;
 	int rc;
-	u16 temp;
+	u8 temp;
 
 	temp = (u8) val;
 	rc = mmi_wls_chrg_write_reg(chip->client,
