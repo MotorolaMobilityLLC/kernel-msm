@@ -104,7 +104,7 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 
 	spi_message_add_tail(&transfer, &msg);
 
-	if (stml0xx_misc_data->mode != BOOTMODE && stml0xx_g_booted) {
+	if (stml0xx_misc_data->mode != BOOTMODE) {
 		if (stml0xx_spi_sensorhub_ready() <= 0) {
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"SPI error STM not ready");
@@ -115,7 +115,7 @@ int stml0xx_spi_transfer(unsigned char *tx_buf, unsigned char *rx_buf, int len)
 
 	rc = spi_sync(stml0xx_misc_data->spi, &msg);
 
-	if (stml0xx_misc_data->mode != BOOTMODE && stml0xx_g_booted) {
+	if (stml0xx_misc_data->mode != BOOTMODE) {
 		if (rc >= 0) {
 			/* wait for the hub to process the message
 			   and ack/nack */
