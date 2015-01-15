@@ -38,6 +38,18 @@
 #define MMI_WLS_CHRG_CHRG_CMPLT_SOC 100
 #define MMI_WLS_NUM_GPIOS 3
 
+#define MMI_WLS_VREF_REG 0x01
+enum mmi_wls_chrg_vref {
+	MMI_WLS_CHRG_VREF_450MV = 0x00,
+	MMI_WLS_CHRG_VREF_500MV = 0x01,
+	MMI_WLS_CHRG_VREF_550MV = 0x02,
+	MMI_WLS_CHRG_VREF_600MV = 0x03,
+	MMI_WLS_CHRG_VREF_650MV = 0x04,
+	MMI_WLS_CHRG_VREF_700MV = 0x05,
+	MMI_WLS_CHRG_VREF_750MV = 0x06,
+	MMI_WLS_CHRG_VREF_800MV = 0x07,
+};
+
 struct mmi_wls_chrg_chip {
 	struct i2c_client *client;
 	struct device *dev;
@@ -259,7 +271,9 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		chip->force_shutdown = true;
 
 	dev_dbg(chip->dev, "State Before = %d\n", chip->state);
-
+	if (powered)
+		mmi_wls_chrg_write_reg(chip->client, MMI_WLS_VREF_REG,
+				       MMI_WLS_CHRG_VREF_450MV);
 	switch (chip->state) {
 	case MMI_WLS_CHRG_WAIT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
@@ -405,6 +419,9 @@ static irqreturn_t pad_det_handler(int irq, void *dev_id)
 
 	if (gpio_get_value(chip->pad_det_n_gpio))
 		power_supply_changed(&chip->wl_psy);
+	else
+		mmi_wls_chrg_write_reg(chip->client, MMI_WLS_VREF_REG,
+				       MMI_WLS_CHRG_VREF_450MV);
 
 	dev_dbg(chip->dev, "pad_det_handler pad_det_n =%x\n",
 			gpio_get_value(chip->pad_det_n_gpio));
