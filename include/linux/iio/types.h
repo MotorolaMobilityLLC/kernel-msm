@@ -34,6 +34,7 @@ enum iio_chan_type {
 	IIO_PASSIVE,
 	IIO_GESTURE,
 	IIO_FUSION,
+	IIO_ADS
 };
 
 enum iio_modifier {
