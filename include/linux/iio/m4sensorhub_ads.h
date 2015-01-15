@@ -16,17 +16,17 @@
  */
 
 
-#ifndef __M4SENSORHUB_PRESSURE_H__
-#define __M4SENSORHUB_PRESSURE_H__
+#ifndef __M4SENSORHUB_ADS_H__
+#define __M4SENSORHUB_ADS_H__
 
 #include <linux/types.h>
 
-/* This needs to be thought through when we
-add other sensors */
+/* ADS will give out 3 bytes data*/
+#define NUM_ELEMENTS 3
 
-struct m4sensorhub_pressure_data {
-	int pressure;
-	int altitude;
+struct m4sensorhub_ads_data {
+	uint8_t data[NUM_ELEMENTS];
 	long long timestamp;
 };
-#endif /* __M4SENSORHUB_PRESSURE_H__ */
+
+#endif /*__M4SENSORHUB_ADS_H__ */
