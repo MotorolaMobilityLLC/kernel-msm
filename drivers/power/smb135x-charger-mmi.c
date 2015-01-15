@@ -85,6 +85,7 @@
 #define USBIN_VOLT_MODE_5V_TO_9V	0x20
 #define USBIN_VOLT_MODE_MASK		SMB135X_MASK(7, 5)
 #define USBIN_INPUT_MASK		SMB135X_MASK(4, 0)
+#define USBIN_MAX_CURRENT               0x1E
 
 #define CFG_D_REG			0x0D
 #define AICL_GLITCH			BIT(3)
@@ -4501,6 +4502,31 @@ static int smb135x_hw_init_fac(struct smb135x_chg *chip)
 			return rc;
 		}
 	}
+
+	pr_info("SMB - Factory Cable Init\n");
+	rc = smb135x_masked_write_fac(chip, CMD_CHG_REG,
+			CMD_CHG_EN, CMD_CHG_EN);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"Couldn't set CHG_ENABLE_BIT rc = %d\n", rc);
+		return rc;
+	}
+
+	rc = smb135x_masked_write_fac(chip, CFG_D_REG, AICL_ENABLE, 0);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't disable AICL\n");
+
+	rc = smb135x_masked_write_fac(chip, CMD_INPUT_LIMIT,
+			USB_100_500_AC_MASK, USB_AC_VAL);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write cmd input = %d\n", rc);
+
+
+
+	rc = smb135x_masked_write_fac(chip, CMD_INPUT_LIMIT,
+			USB_SHUTDOWN_BIT, 0);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write cmd input = %d\n", rc);
 
 	if (chip->dc_psy_type != -EINVAL) {
 		rc = smb135x_masked_write_fac(chip, CFG_A_REG,
