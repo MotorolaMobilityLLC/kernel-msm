@@ -14,6 +14,7 @@
 /dts-v1/;
 
 #include "msm8992-clark.dtsi"
+#include "dsi-panel-mot-inx-500-720p-video.dtsi"
 
 / {
 	qcom,board-id = <0x41 0x8000>;
@@ -36,4 +37,25 @@
 			pinctrl-0 = <&backlight_reset_default>;
 		};
 	};
+};
+
+&pm8994_l14 {
+	regulator-always-on;
+};
+
+&isl98611a_pos {
+	regulator-always-on;
+};
+
+&isl98611a_neg {
+	regulator-always-on;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_inx_500_720p_vid_v0>;
+	vddio_disp-supply = <&pm8994_l14>;
+	vsp_disp-supply = <&isl98611a_pos>;
+	vsn_disp-supply = <&isl98611a_neg>;
+
+	#include"dsi-panel-mot-inx-500-720p-supplies.dtsi"
 };
