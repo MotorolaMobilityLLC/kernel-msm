@@ -98,6 +98,21 @@
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
+&spmi_bus {
+	qcom,pm8916@0 {
+		qcom,leds@1000 {
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-atc";
+			linux,name = "charging";
+			qcom,ctrl-reg = <0x4D>;
+		};
+	};
+};
+
+&pm8916_leds {
+	status = "disabled";
+};
+
 &pm8916_mpps {
 	mpp@a000 { /* MPP 1 */
 		status = "disabled";
