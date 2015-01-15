@@ -730,7 +730,7 @@ void set_touchx_profile(int profile)
 		attr.vtapsv = 9;
 		attr.limit = 24;
 		attr.acc_limit = 25;
-		attr.recovery_is_enabled = 0;
+		attr.recovery_is_enabled = 1;
 	}
 
 	if (profile == 5) {
@@ -955,7 +955,7 @@ static int __init touchx_init(void)
 	INIT_WORK(&touch_work, touch_notify);
 	mutex_init(&touchxp.virtual_touch_mutex);
 	set_touchx_profile(4);
-	attr.touchx_state = 1;
+	attr.touchx_state = 0;
 	pr_info("Initial touchx state = %d\n", attr.touchx_state);
 	touchx_kobj = kobject_create_and_add("touchx", kernel_kobj);
 
