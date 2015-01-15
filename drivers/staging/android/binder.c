@@ -39,6 +39,7 @@
 #include <linux/slab.h>
 #include <linux/pid_namespace.h>
 #include <linux/security.h>
+#include <linux/fdleak_dbg.h>
 
 #include "binder.h"
 #include "binder_trace.h"
@@ -412,8 +413,10 @@ static int task_get_unused_fd_flags(struct binder_proc *proc, int flags)
 static void task_fd_install(
 	struct binder_proc *proc, unsigned int fd, struct file *file)
 {
-	if (proc->files)
+	if (proc->files) {
 		__fd_install(proc->files, fd, file);
+		warn_if_big_fd(fd, proc->tsk);
+	}
 }
 
 /*
