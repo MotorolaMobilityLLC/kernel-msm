@@ -297,6 +297,16 @@ config LEDS_PCA9633
 	  This option enables support for LEDs connected to the PCA9633
 	  LED driver chip accessed via the I2C bus.
 
+config LEDS_ATC
+	tristate "Support for PMIC ATC LED"
+	depends on LEDS_CLASS
+	depends on SPMI && OF_SPMI
+	help
+	  This driver supports the ATC led functionality of Qualcomm PNP PMIC.
+	  Creates standard LED interface for the auto trickle charge indication
+	  LED. SPMI register write is used to access PMIC control register.
+	  Device tree can be used to adjust control register address used.
+
 config LEDS_QPNP
 	tristate "Support for QPNP LEDs"
 	depends on SPMI && OF_SPMI
