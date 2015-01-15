@@ -12,6 +12,7 @@
 
 #include "msm8939-moto-common.dtsi"
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 / {
 	model = "Motorola Mobility MSM 8936 Lux";
