@@ -77,6 +77,17 @@
 		};
 	};
 
+	speaker_reset_n {
+		qcom,pins = <&gp 37>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "speaker_reset_n";
+		speaker_reset_n_default: default {
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
 	cc_alert {
 		qcom,pins = <&gp 12>;
 		qcom,num-grp-pins = <1>;
