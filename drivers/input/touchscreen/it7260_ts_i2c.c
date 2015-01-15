@@ -687,9 +687,9 @@ static ssize_t sysfsSleepStore(struct device *dev, struct device_attribute *attr
 }
 
 
-static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IWGRP, sysfsStatusShow, sysfsStatusStore);
-static DEVICE_ATTR(version, S_IRUGO|S_IWUSR|S_IWGRP, sysfsVersionShow, sysfsVersionStore);
-static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR|S_IWGRP, sysfsSleepShow, sysfsSleepStore);
+static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IRGRP, sysfsStatusShow, sysfsStatusStore);
+static DEVICE_ATTR(version, S_IRUGO|S_IWUSR|S_IRGRP, sysfsVersionShow, sysfsVersionStore);
+static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR|S_IRGRP, sysfsSleepShow, sysfsSleepStore);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
@@ -702,9 +702,9 @@ static const struct attribute_group it7260_attrstatus_group = {
 	.attrs = it7260_attrstatus,
 };
 
-static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IWGRP, sysfsCalibrationShow, sysfsCalibrationStore);
-static DEVICE_ATTR(upgrade, S_IRUGO|S_IWUSR|S_IWGRP, sysfsUpgradeShow, sysfsUpgradeStore);
-static DEVICE_ATTR(point, S_IRUGO|S_IWUSR|S_IWGRP, sysfsPointShow, sysfsPointStore);
+static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IRGRP, sysfsCalibrationShow, sysfsCalibrationStore);
+static DEVICE_ATTR(upgrade, S_IRUGO|S_IWUSR|S_IRGRP, sysfsUpgradeShow, sysfsUpgradeStore);
+static DEVICE_ATTR(point, S_IRUGO|S_IWUSR|S_IRGRP, sysfsPointShow, sysfsPointStore);
 
 
 static struct attribute *it7260_attributes[] = {
