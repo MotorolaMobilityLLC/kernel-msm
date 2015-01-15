@@ -3277,7 +3277,7 @@ static void smb135x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 
 	pr_err("shutdown voltage tripped\n");
 
-	rc = qpnp_vadc_read(chip->vadc_dev, VSYS, &result);
+	rc = qpnp_vadc_read(chip->vadc_dev, VBAT_SNS, &result);
 	pr_info("vbat = %lld, raw = 0x%x\n",
 		result.physical, result.adc_code);
 
@@ -3302,7 +3302,7 @@ static int smb135x_setup_vbat_monitoring(struct smb135x_chg *chip)
 	chip->vbat_monitor_params.high_thr = chip->max_voltage_uv * 2;
 
 	chip->vbat_monitor_params.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
-	chip->vbat_monitor_params.channel = VSYS;
+	chip->vbat_monitor_params.channel = VBAT_SNS;
 	chip->vbat_monitor_params.btm_ctx = (void *)chip;
 
 	if (chip->poll_fast) { /* the adc polling rate is higher*/
