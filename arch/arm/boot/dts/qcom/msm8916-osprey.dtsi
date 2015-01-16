@@ -277,4 +277,5 @@
 &pm8916_l16 {
 	regulator-boot-on;
 	regulator-always-on;
+	qcom,init-voltage = <3300000>;
 };
