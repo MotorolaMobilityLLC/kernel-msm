@@ -505,12 +505,19 @@
 		cam_mclk0 {
 			qcom,pins = <&gp 15>;
 			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <1>;
 			label = "cam_mclk0";
 			cam_mclk0_default: default {
 				bias-pull-down;
 				drive-strength = <4>;
 			};
+		};
+
+		cam_mclk0_active {
+			qcom,pins = <&gp 15>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam_mclk0_active";
+
 			cam_mclk0_active: active {
 				bias-disable;
 				drive-strength = <4>;
@@ -601,13 +608,20 @@
 		cam1_ctrl {
 			qcom,pins = <&gp 36 &gp 120>;
 			qcom,num-grp-pins = <2>;
-			qcom,pin-func = <0>;
 			label = "cam1_ctrl";
 			cam1_ctrl_default: default {
 				bias-disable;
 				output-low;
 				drive-strength = <2>;
 			};
+		};
+
+		cam1_ctrl_active {
+			qcom,pins = <&gp 36 &gp 120>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "cam1_ctrl_active";
+
 			cam1_ctrl_active: active {
 				bias-disable;
 				drive-strength = <2>;
