@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -547,4 +547,7 @@ void limInitOperatingClasses(tHalHandle hHal);
 tANI_U8 limGetOPClassFromChannel(tANI_U8 *country,
                                  tANI_U8 channel,
                                  tANI_U8 offset);
+void limParseBeaconForTim(tpAniSirGlobal pMac, tANI_U8* pRxPacketInfo,
+                          tpPESession psessionEntry);
+
 #endif /* __LIM_UTILS_H */

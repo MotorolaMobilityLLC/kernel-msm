@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -717,8 +717,6 @@ fail:
 
 }
 
-
-
 /**
  * schBeaconProcess
  *
@@ -748,8 +746,12 @@ void schBeaconProcess(tpAniSirGlobal pMac, tANI_U8* pRxPacketInfo, tpPESession p
     // Convert the beacon frame into a structure
     if (sirConvertBeaconFrame2Struct(pMac, (tANI_U8 *) pRxPacketInfo, &beaconStruct)!= eSIR_SUCCESS)
     {
-        PELOGE(schLog(pMac, LOGE, FL("beacon parsing failed"));)
+        schLog(pMac, LOGE, FL("beacon parsing failed"));
         pMac->sch.gSchBcnParseErrorCnt++;
+
+        if ((NULL != psessionEntry) && (!psessionEntry->currentBssBeaconCnt))
+            limParseBeaconForTim(pMac, (tANI_U8 *) pRxPacketInfo, psessionEntry);
+
         return;
     }
 
