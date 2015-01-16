@@ -511,6 +511,27 @@
 };
 
 &spmi_bus {
+
+	qcom,pm8994@0 {
+		qcom,leds@a700 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa700 0x100>;
+			status = "okay";
+			label = "mpp";
+			qcom,led_mpp_8 {
+				label = "mpp";
+				linux,name = "charging";
+				qcom,default-state = "off";
+				qcom,max-current = <15>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,mode = "manual";
+			};
+		};
+	};
+
 	qcom,pmi8994@3 {
 		qcom,haptic@c000 {
 			status = "disabled";
