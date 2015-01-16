@@ -8,4 +8,5 @@ obj-$(CONFIG_MSM_WFD) += wfd/
 obj-y += broadcast/
 obj-$(CONFIG_DVB_MPQ) += dvb/
 obj-$(CONFIG_MSMB_CAMERA) += camera_v2/
+obj-$(CONFIG_MSMB_CAMERA_SHAMU_T) += camera_v2_shamu_t/
 obj-$(CONFIG_MSM_VPU) += vpu/

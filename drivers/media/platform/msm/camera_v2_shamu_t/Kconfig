@@ -1,24 +1,24 @@
-config MSM_CAMERA_SENSOR
+config MSM_CAMERA_SENSOR_SHAMU_T
 	    bool "Qualcomm MSM camera sensor support"
-	    depends on MSMB_CAMERA
+	    depends on MSMB_CAMERA_SHAMU_T
         ---help---
           This flag enables support for Camera Sensor.
           The sensor driver is capable of providing real time
           data for camera support. The driver support V4L2
           subdev APIs.
 
-config MSM_CPP
+config MSM_CPP_SHAMU_T
         bool "Qualcomm MSM Camera Post Processing Engine support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for Camera Post-processing Engine
           The Post processing engine is capable of scaling
           and cropping image. The driver support V4L2 subdev
           APIs.
 
-config MSM_CCI
+config MSM_CCI_SHAMU_T
         bool "Qualcomm MSM Camera Control Interface support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for Camera Control Interface driver only
           for those platforms that have hardware support. This driver
@@ -28,7 +28,7 @@ config MSM_CCI
 
 config MSM_CSI20_HEADER
         bool "Qualcomm MSM CSI 2.0 Header"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for CSI drivers to include 2.0
           header. This header has register macros and its
@@ -38,7 +38,7 @@ config MSM_CSI20_HEADER
 
 config MSM_CSI22_HEADER
         bool "Qualcomm MSM CSI 2.2 Header"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for CSI drivers to include 2.2
           header. This header has register macros and its
@@ -48,7 +48,7 @@ config MSM_CSI22_HEADER
 
 config MSM_CSI30_HEADER
         bool "Qualcomm MSM CSI 3.0 Header"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for CSI drivers to include 3.0
           header. This header has register macros and its
@@ -56,9 +56,9 @@ config MSM_CSI30_HEADER
           This config macro is required for targets based on
           8064 platforms.
 
-config MSM_CSI31_HEADER
+config MSM_CSI31_HEADER_SHAMU_T
         bool "Qualcomm MSM CSI 3.1 Header"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for CSI drivers to include 3.0
           header. This header has register macros and its
@@ -66,36 +66,36 @@ config MSM_CSI31_HEADER
           This config macro is required for targets based on
           APQ8084 platform.
 
-config MSM_CSIPHY
+config MSM_CSIPHY_SHAMU_T
         bool "Qualcomm MSM Camera Serial Interface Physical receiver support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for Camera Serial Interface
           Physical receiver. It deserializes packets and
           supports detection of packet start and stop
           signalling.
 
-config MSM_CSID
+config MSM_CSID_SHAMU_T
         bool "Qualcomm MSM Camera Serial Interface decoder support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for Camera Serial Interface decoder.
           It supports lane merging and decoding of packets
           based on cid which is mapped to a virtual channel
           and datatype.
 
-config MSM_EEPROM
+config MSM_EEPROM_SHAMU_T
         bool "Qualcomm MSM Camera ROM Interface for Calibration support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for ROM Interface for Calibration
           Provides interface for reading the Claibration data.
           and also provides support for writing data in case of FLASH ROM.
 	  Currently supports I2C, CCI and SPI protocol
 
-config MSM_ISPIF
+config MSM_ISPIF_SHAMU_T
         bool "Qualcomm MSM Image Signal Processing interface support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for Image Signal Processing interface module.
           This module acts as a crossbar between CSID and VFE. Output
@@ -104,7 +104,7 @@ config MSM_ISPIF
 
 config MSM_ISPIF_V1
         bool "Qualcomm MSM Image Signal Processing interface support"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
           Enable support for Image Signal Processing interface module.
           This module acts as a crossbar between CSID and VFE. Output
@@ -113,7 +113,7 @@ config MSM_ISPIF_V1
 
 config S5K3L1YX
 	bool "Sensor S5K3L1YX (BAYER 12M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		Samsung 12 MP Bayer Sensor with auto focus, uses
 		4 mipi lanes, preview config = 1984 * 1508 at 30 fps,
@@ -122,7 +122,7 @@ config S5K3L1YX
 
 config IMX135
 	bool "Sensor IMX135 (BAYER 12M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		Sony 12 MP Bayer Sensor with auto focus, uses
 		4 mipi lanes, preview config = 2104 x 1560 at 49 fps,
@@ -131,7 +131,7 @@ config IMX135
 
 config IMX134
 	bool "Sensor IMX134 (BAYER 8M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		Sony 8 MP Bayer Sensor with auto focus, uses
 		4 mipi lanes full resolution @30fps and
@@ -140,7 +140,7 @@ config IMX134
 
 config IMX132
 	bool "Sensor IMX132 (BAYER 2M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		Sony 2 MP Bayer Sensor with auto focus, uses
 		2 mipi lanes, preview config = 1920 x 1080 at 30 fps,
@@ -149,7 +149,7 @@ config IMX132
 
 config OV2720
 	bool "Sensor OV2720 (BAYER 2M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		OmniVision 2 MP Bayer Sensor, supports 2 mipi lanes,
 		preview and snapshot config at 1932 * 1092 at 30 fps,
@@ -158,7 +158,7 @@ config OV2720
 
 config OV9724
 	bool "Sensor OV9724 (BAYER 2M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		OmniVision 2 MP Bayer Sensor, supports 2 mipi lanes,
 		preview and snapshot config at 1280*720 at 30 fps,
@@ -167,7 +167,7 @@ config OV9724
 
 config HI256
         bool "Hynix hi256 (YUV 2MP)"
-        depends on MSMB_CAMERA
+        depends on MSMB_CAMERA_SHAMU_T
         ---help---
                 OmniVision 8 MP Bayer Sensor with auto focus.uses
                 2 mipi lanes, preview config = 1632*1224 30 fps,
@@ -176,7 +176,7 @@ config HI256
 
 config OV5648
 	bool "Sensor OV5648 (BAYER 5M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		OmniVision 5 MP Bayer Sensor, only use 1 mipi lane,
 		preview set to 1296*972 at 30 fps,
@@ -185,7 +185,7 @@ config OV5648
 
 config MT9M114
 	bool "Sensor MT9M114 (YUV 1.26MP)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		MT9M114 is Aptina YUV sensor. It supports 1.26 MP preview
 		and snapshot. The preview and snapshot resolution shall be
@@ -194,7 +194,7 @@ config MT9M114
 
 config SP1628
 	bool "Sensor SP1628 (YUV 720P)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		SP1628 is SuperPix YUV sensor. It supports 720P preview
 		and snapshot. The preview and snapshot resolution shall be
@@ -203,7 +203,7 @@ config SP1628
 
 config GC0339
 	bool "Sensor GC0339 (BAYER .3M)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		gc0339 is a Galaxycore .3 MP Bayer Sensor.
 		It supports 1 or 2 mipi lanes.
@@ -212,7 +212,7 @@ config GC0339
 
 config OV8825
 	bool "OmniVision OV8825 (BAYER 8MP)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		OmniVision 8 MP Bayer Sensor with auto focus.uses
 		2 mipi lanes, preview config = 1632*1224 30 fps,
@@ -221,7 +221,7 @@ config OV8825
 
 config OV8865
 	bool "OmniVision OV8865 (BAYER 8MP)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		OmniVision 8 MP Bayer Sensor with auto focus.uses
 		4 mipi lanes, preview config = 1632*1224 30 fps,
@@ -230,7 +230,7 @@ config OV8865
 
 config s5k4e1
 	bool "Sensor s5k4e1 (BAYER 5MP)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		Samsung 5 MP Bayer Sensor. It uses 2 mipi lanes,
 		supports 720P preview at 30 fps
@@ -239,16 +239,16 @@ config s5k4e1
 
 config OV12830
 	bool "OmniVision OV12830 (BAYER 12MP)"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		OmniVision 12.8 MP Bayer Sensor with auto focus.uses
 		4 mipi lanes, preview config = 2112 * 1500 at 30 fps,
 		snapshot config = 4224 * 3000 at 15 fps.
 		2 lanes max fps is 18, 4 lanes max fps is 24.
 
-config LEDS_LM3646
+config LEDS_LM3646_SHAMU_T
 	tristate "LM3646 driver"
-	depends on MSMB_CAMERA
+	depends on MSMB_CAMERA_SHAMU_T
 	---help---
 		This option enables support for the LM3646 LED controller. LM3646 is
 		a flash driver, can be used as Camera Flash, Torch, Message Indicator.
@@ -263,9 +263,9 @@ config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	  apps to render overlaid video using Video4Linux2
 	  APIs, by using /dev/videoX device
 
-config MSMB_JPEG
+config MSMB_JPEG_SHAMU_T
 	tristate "Qualcomm MSM Jpeg Encoder Engine support"
-        depends on MSMB_CAMERA && (ARCH_MSM8974 || ARCH_MSM8226 || ARCH_APQ8084 || ARCH_MSM8916 || ARCH_MSM)
+        depends on MSMB_CAMERA_SHAMU_T && (ARCH_MSM8974 || ARCH_MSM8226 || ARCH_APQ8084 || ARCH_MSM8916 || ARCH_MSM)
 	---help---
 	  Enable support for Jpeg Encoder/Decoder
 	  Engine for 8974.
@@ -274,12 +274,12 @@ config MSMB_JPEG
 
 config MSM_GEMINI
 	tristate "Qualcomm MSM Gemini JPEG engine support"
-	depends on MSMB_CAMERA && (ARCH_MSM7X30 || ARCH_MSM8X60 || ARCH_MSM8960)
+	depends on MSMB_CAMERA_SHAMU_T && (ARCH_MSM7X30 || ARCH_MSM8X60 || ARCH_MSM8960)
 	---help---
 	  Enables support for the Gemini JPEG encoder engine for 8x60.
 
-config MSM_FD
+config MSM_FD_SHAMU_T
 	 tristate "Qualcomm MSM FD face detection engine support"
-	 depends on MSMB_CAMERA
+	 depends on MSMB_CAMERA_SHAMU_T
 	 ---help---
 	    Enables support for the MSM FD face detection engine.
