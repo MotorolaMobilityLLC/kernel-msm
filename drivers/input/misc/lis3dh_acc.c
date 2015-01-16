@@ -1866,7 +1866,7 @@ static int lis3dh_acc_poll_delay_set(struct sensors_classdev *sensors_cdev,
 {
 	struct lis3dh_acc_data *acc = container_of(sensors_cdev,
 		struct lis3dh_acc_data, cdev);
-	int err;
+	int err = 0;
 	int watermark;
 
 	if (atomic_read(&acc->cal_status)) {
