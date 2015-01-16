@@ -56,6 +56,7 @@ struct mdss_mdp_cmd_ctx {
 struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 
 static int mdss_mdp_cmd_do_notifier(struct mdss_mdp_cmd_ctx *ctx);
+static int mdss_mdp_cmd_restore_vsync_handler(struct mdss_mdp_ctl *ctl);
 
 static bool __mdss_mdp_cmd_is_panel_power_off(struct mdss_mdp_cmd_ctx *ctx)
 {
@@ -1081,6 +1082,8 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 					ctx->rdptr_enabled);
 
+	mdss_mdp_cmd_restore_vsync_handler(ctl);
+
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 		ctx->pp_num, mdss_mdp_cmd_readptr_done, ctl);
 
@@ -1127,7 +1130,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->restore_fnc = mdss_mdp_cmd_restore;
-	ctl->restore_vsync_handler = mdss_mdp_cmd_restore_vsync_handler;
+	//ctl->restore_vsync_handler = mdss_mdp_cmd_restore_vsync_handler;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

@@ -2095,8 +2095,6 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 
 	pr_debug("ctl_num=%d, power_state=%d\n", ctl->num, ctl->power_state);
 
-	if (ctl->restore_vsync_handler)
-		ctl->restore_vsync_handler(ctl);
 
 
 	if (mdss_mdp_ctl_is_power_on_interactive(ctl)) {
