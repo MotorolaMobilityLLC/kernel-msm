@@ -99,6 +99,7 @@ dtb-$(CONFIG_MACH_LENOK) += apq8026-lenok-rev-10.dtb \
 	apq8026-lenok-rev-b.dtb \
 	apq8026-lenok-rev-evb2.dtb \
 	apq8026-lenok-rev-evb1.dtb
+dtb-$(CONFIG_MACH_BASS) += apq8026-bass-rev-a.dtb
 dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
 	armada-370-mirabox.dtb \
 	armada-370-rd.dtb \

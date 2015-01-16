@@ -17,6 +17,13 @@ config MACH_LENOK
 	help
 	  Support for the LGE APQ8026 LENOK.
 
+config MACH_BASS
+	depends on ARCH_MSM8226
+	select MACH_LGE
+	bool "APQ8026 BASS"
+	help
+	  Support for the LGE APQ8026 BASS.
+
 config LGE_BLUETOOTH
 	bool "Support LGE Bluetooth"
 	depends on BT

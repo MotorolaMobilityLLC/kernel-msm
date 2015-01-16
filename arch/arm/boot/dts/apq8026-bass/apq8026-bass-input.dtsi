@@ -1,0 +1,59 @@
+/* Copyright (c) 2014,2015, LGE Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+
+		vol_up {
+			label = "volume_up";
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			gpios = <&msmgpio 106 0x1>;
+		};
+
+		vol_down {
+			label = "volume_down";
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			gpios = <&msmgpio 107 0x1>;
+		};
+	};
+
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		synaptics@20 {
+			compatible = "synaptics,rmi4";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <17 0x2008>;
+			vdd-supply = <&pm8226_l15>;
+			vcc_i2c-supply = <&pm8226_l22>;
+			synaptics,reset-gpio = <&msmgpio 16 0x00>;
+			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
+			synaptics,i2c-pull-up;
+			synaptics,fw-image-name = "synaptics_fw.bin";
+			synaptics,check-build;
+			synaptics,wakeup;
+			synaptics,palm-detect-threshold = <0xd>;
+			synaptics,palm-detect-keycode = <0x8e>; /* KEY_SLEEP */
+			synaptics,doze-interval-active = <3>; /* 30ms */
+			synaptics,doze-interval-sleep = <5>; /* 50ms */
+			status = "ok";
+		};
+	};
+
+};
