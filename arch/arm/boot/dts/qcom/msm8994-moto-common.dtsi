@@ -1150,6 +1150,32 @@
 	};
 };
 
+&pmi8994_charger {
+	status = "okay";
+	qcom,iterm-ma = <100>;
+	qcom,fastchg-current-ma = <2000>;
+	qcom,float-voltage-mv = <4200>;
+	qcom,resume-delta-mv = <200>;
+	qcom,chg-inhibit-fg;
+	qcom,dc-psy-type = "Mains";
+	qcom,dc-psy-ma = <1500>;
+	qcom,rparasitic-uohm = <100000>;
+	qcom,bms-psy-name = "bms";
+	qcom,thermal-mitigation = <1500 700 600 0>;
+	qcom,parallel-usb-min-current-ma = <0>; /* Force Parallel Mode only on HVDCP */
+	qcom,parallel-usb-9v-min-current-ma = <900>;
+	qcom,parallel-allowed-lowering-ma = <500>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <1000>;
+};
+
+&pmi8994_fg {
+	qcom,resume-soc = <95>;
+	status = "okay";
+	qcom,bcl-lm-threshold-ma = <127>;
+	qcom,ext-sense-type = <1>;
+};
+
 &i2c_11 {
 	fsa8500@23 {
 		compatible = "fairchild,fsa8500";
@@ -1227,27 +1253,14 @@
 		reg = <0x1e>;
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <0x2 0xc6 0x0>; /* pmi8994 GPIO 7 */
+		qcom,parallel-charger;
 		qcom,float-voltage-mv = <4350>;
-		qcom,charging-timeout = <1536>;
 		qcom,recharge-thresh-mv = <200>;
-		qcom,iterm-disabled;
-		regulator-name = "smb1357_otg_vreg";
-		qcom,soft-vfloat-comp-disabled;
-		qcom,thermal-mitigation = <2500>, <2400>, <2300>, <2100>,
-					  <2000>, <1910>, <1800>, <1600>,
-					  <1500>, <1400>, <1200>, <1100>,
-					  <1000>, <900>, <700>, <600>,
-					  <500>, <400>, <300>;
-		qcom,dc-thermal-mitigation = <600>, <500>, <400>, <300>;
-		qcom,dc-psy-type = "Wireless";
-		qcom,dc-psy-ma = <600>;
-		qcom,bms-psy-name = "bms";
-		qcom,max-batt-curr-ma = <2500>;
-		qcom,ext-temp-volt-mv = <4000>;
-		qcom,ext-temp-soc = <65>;
+		qcom,inhibit-disabled;
 	};
 
 	mmi_wls_chrg@6c {
+		status = "disable";
 		compatible = "mmi,wls-charger-bq51021";
 		reg = <0x6c>;
 		gpios = <&pmi8994_gpios 10 0x1>, /* GPIOF_IN */
