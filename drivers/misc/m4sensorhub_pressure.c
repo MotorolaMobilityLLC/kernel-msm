@@ -131,8 +131,8 @@ static ssize_t m4sensorhub_pressure_store_setdelay(struct device *p_dev,
 	if (ret < 0)
 		return ret;
 
-	if (samplerate < 0) {
-		pr_err("%s: negative sample rate, rejecting\n", __func__);
+	if (samplerate < -1) {
+		pr_err("%s: non -1 negative sample rate, rejecting\n", __func__);
 		return -EINVAL;
 	}
 	if (samplerate != p_priv_data->samplerate) {
@@ -150,8 +150,9 @@ static ssize_t m4sensorhub_pressure_store_setdelay(struct device *p_dev,
 
 		/* setup the work to start reading data at this rate */
 		cancel_delayed_work(&(p_priv_data->read_data_work));
-		queue_delayed_work(system_freezable_wq, &(p_priv_data->read_data_work),
-			msecs_to_jiffies(p_priv_data->samplerate));
+		if (p_priv_data->samplerate > 0)
+			queue_delayed_work(system_freezable_wq, &(p_priv_data->read_data_work),
+				msecs_to_jiffies(p_priv_data->samplerate));
 
 	}
 
