@@ -817,7 +817,7 @@ static void tzlog_bck_show(struct tzdbg_t *diag_buf)
 	tzlog_bck_show_boot_info(diag_buf);
 	tzlog_bck_show_log(diag_buf);
 reset:
-	memset(diag_buf, 0, tzdbg.diag_size);
+	memset_io(diag_buf, 0, tzdbg.diag_size);
 }
 
 static void tzlog_bck_check(struct platform_device *pdev)
