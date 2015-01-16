@@ -1,2 +1,2 @@
-obj-$(CONFIG_MSMB_CAMERA) += cpp/
-obj-$(CONFIG_MSMB_CAMERA) += vpe/
+obj-$(CONFIG_MSMB_CAMERA_SHAMU_T) += cpp/
+obj-$(CONFIG_MSMB_CAMERA_SHAMU_T) += vpe/
