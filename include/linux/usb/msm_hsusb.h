@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Author: Brian Swetland <swetland@google.com>
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -484,6 +484,7 @@ struct msm_otg {
 	struct qpnp_vadc_chip	*vadc_dev;
 	atomic_t pmic_id_masked;
 	u8 charger_retry_count;
+	wait_queue_head_t       host_suspend_wait;
 };
 
 struct ci13xxx_platform_data {

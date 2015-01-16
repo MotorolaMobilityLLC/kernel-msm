@@ -799,6 +799,7 @@ static void msm_otg_host_hnp_enable(struct usb_otg *otg, bool enable)
 	}
 }
 
+#define HOST_SUSPEND_WQ_TIMEOUT_MS	msecs_to_jiffies(2000) /* 2 seconds */
 static int msm_otg_set_suspend(struct usb_phy *phy, int suspend)
 {
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
@@ -821,8 +822,18 @@ static int msm_otg_set_suspend(struct usb_phy *phy, int suspend)
 		case OTG_STATE_A_HOST:
 			pr_debug("host bus suspend\n");
 			clear_bit(A_BUS_REQ, &motg->inputs);
-			if (!atomic_read(&motg->in_lpm))
+			if (!atomic_read(&motg->in_lpm)) {
 				queue_work(motg->otg_wq, &motg->sm_work);
+			/*
+			 * wake up would happen from msm_otg_suspend
+			 * or remove hcd.
+			 */
+			wait_event_interruptible_timeout(
+				motg->host_suspend_wait,
+				(atomic_read(&motg->in_lpm)
+				|| test_bit(ID, &motg->inputs)),
+				HOST_SUSPEND_WQ_TIMEOUT_MS);
+			}
 			break;
 		case OTG_STATE_B_PERIPHERAL:
 			pr_debug("peripheral bus suspend\n");
@@ -1168,6 +1179,7 @@ phcd_retry:
 
 	motg->host_bus_suspend = host_bus_suspend;
 	atomic_set(&motg->in_lpm, 1);
+	wake_up(&motg->host_suspend_wait);
 	/* Enable ASYNC IRQ (if present) during LPM */
 	if (motg->async_irq)
 		enable_irq(motg->async_irq);
@@ -1534,7 +1546,7 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 		usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
 	} else {
 		dev_dbg(otg->phy->dev, "host off\n");
-
+		wake_up(&motg->host_suspend_wait);
 		usb_remove_hcd(hcd);
 		/* HCD core reset all bits of PORTSC. select ULPI phy */
 		writel_relaxed(0x80000000, USB_PORTSC);
@@ -5028,6 +5040,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	factory_mode = msm_pmic_mmi_factory_mode();
 	factory_cable = factory_mode || msm_pmic_is_factory_cable(motg);
 	msm_otg_get_factory_kill_gpio();
+	init_waitqueue_head(&motg->host_suspend_wait);
 	return 0;
 
 remove_phy:
