@@ -67,6 +67,8 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	uint8_t irq3_status;
 	struct stm401_data *ps_stm401 = container_of(work,
 			struct stm401_data, irq_wake_work);
+	unsigned char cmdbuff[STM401_MAXDATA_LENGTH];
+	unsigned char readbuff[STM401_MAXDATA_LENGTH];
 
 	dev_dbg(&ps_stm401->client->dev, "stm401_irq_wake_work_func\n");
 	mutex_lock(&ps_stm401->lock);
@@ -89,34 +91,34 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	stm401_wake(ps_stm401);
 
 	/* read interrupt mask register */
-	stm401_cmdbuff[0] = WAKESENSOR_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+	cmdbuff[0] = WAKESENSOR_STATUS;
+	err = stm401_i2c_write_read(ps_stm401, cmdbuff, readbuff, 1, 2);
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_readbuff[IRQ_WAKE_MED] << 8)
-				| stm401_readbuff[IRQ_WAKE_LO];
+	irq_status = (readbuff[IRQ_WAKE_MED] << 8)
+				| readbuff[IRQ_WAKE_LO];
 
 	/* read algorithm interrupt status register */
-	stm401_cmdbuff[0] = ALGO_INT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+	cmdbuff[0] = ALGO_INT_STATUS;
+	err = stm401_i2c_write_read(ps_stm401, cmdbuff, readbuff, 1, 3);
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq2_status = (stm401_readbuff[IRQ_WAKE_HI] << 16) |
-		(stm401_readbuff[IRQ_WAKE_MED] << 8) |
-		stm401_readbuff[IRQ_WAKE_LO];
+	irq2_status = (readbuff[IRQ_WAKE_HI] << 16) |
+		(readbuff[IRQ_WAKE_MED] << 8) |
+		readbuff[IRQ_WAKE_LO];
 
 	/* read generic interrupt register */
-	stm401_cmdbuff[0] = GENERIC_INT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+	cmdbuff[0] = GENERIC_INT_STATUS;
+	err = stm401_i2c_write_read(ps_stm401, cmdbuff, readbuff, 1, 1);
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "Reading from stm failed\n");
 		goto EXIT;
 	}
-	irq3_status = stm401_readbuff[0];
+	irq3_status = readbuff[0];
 
 	if (ps_stm401->qw_irq_status) {
 		irq_status |= ps_stm401->qw_irq_status;
@@ -125,11 +127,14 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
-		stm401_cmdbuff[0] = ERROR_STATUS;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
+		cmdbuff[0] = ERROR_STATUS;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
 			1, ESR_SIZE);
 		if (err >= 0) {
-			memcpy(stat_string, stm401_readbuff, ESR_SIZE);
+			memcpy(stat_string, readbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_stm401->client->dev,
 				"STM401 Error: %s\n", stat_string);
@@ -166,16 +171,20 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			"Invalid M_DOCK bit set. irq_status = 0x%06x\n",
 			irq_status);
 
-		stm401_cmdbuff[0] = DOCK_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = DOCK_DATA;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading Dock state failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_DOCK,
-			stm401_readbuff, 1, 0);
-		state = stm401_readbuff[DOCK_STATE];
+			readbuff, 1, 0);
+		state = readbuff[DOCK_STATE];
 		if (ps_stm401->dsdev.dev != NULL)
 			switch_set_state(&ps_stm401->dsdev, state);
 		if (ps_stm401->edsdev.dev != NULL)
@@ -184,19 +193,23 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_stm401->client->dev, "Dock status:%d\n", state);
 	}
 	if (irq_status & M_PROXIMITY) {
-		stm401_cmdbuff[0] = PROXIMITY;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = PROXIMITY;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading prox from stm401 failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_PROX,
-			stm401_readbuff, 1, 0);
+			readbuff, 1, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending Proximity distance %d\n",
-			stm401_readbuff[PROX_DISTANCE]);
+			readbuff[PROX_DISTANCE]);
 	}
 	if (irq_status & M_TOUCH) {
 		if (stm401_display_handle_touch_locked(ps_stm401) < 0)
@@ -204,15 +217,19 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq_status & M_COVER) {
 		int state;
-		stm401_cmdbuff[0] = COVER_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = COVER_DATA;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading Cover state failed\n");
 			goto EXIT;
 		}
 
-		state = stm401_readbuff[COVER_STATE];
+		state = readbuff[COVER_STATE];
 		if (state > 0)
 			state = 1;
 
@@ -227,60 +244,77 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 	}
 	if (irq_status & M_FLATUP) {
-		stm401_cmdbuff[0] = FLAT_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = FLAT_DATA;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading flat data from stm401 failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_FLAT_UP,
-			stm401_readbuff, 1, 0);
+			readbuff, 1, 0);
 
 		dev_dbg(&ps_stm401->client->dev, "Sending Flat up %d\n",
-			stm401_readbuff[FLAT_UP]);
+			readbuff[FLAT_UP]);
 	}
 	if (irq_status & M_FLATDOWN) {
-		stm401_cmdbuff[0] = FLAT_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = FLAT_DATA;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading flat data from stm401 failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_FLAT_DOWN,
-			stm401_readbuff, 1, 0);
+			readbuff, 1, 0);
 
 		dev_dbg(&ps_stm401->client->dev, "Sending Flat down %d\n",
-			stm401_readbuff[FLAT_DOWN]);
+			readbuff[FLAT_DOWN]);
 	}
 	if (irq_status & M_STOWED) {
-		stm401_cmdbuff[0] = STOWED;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = STOWED;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading stowed from stm401 failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_STOWED,
-			stm401_readbuff, 1, 0);
+			readbuff, 1, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
-			"Sending Stowed status %d\n", stm401_readbuff[STOWED]);
+			"Sending Stowed status %d\n", readbuff[STOWED]);
 	}
 	if (irq_status & M_CAMERA_ACT) {
-		stm401_cmdbuff[0] = CAMERA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		cmdbuff[0] = CAMERA;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 2);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading camera data from stm failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_CAMERA_ACT,
-			stm401_readbuff, 2, 0);
+			readbuff, 2, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
-			"Sending Camera: %d\n", STM16_TO_HOST(CAMERA_VALUE));
+			"Sending Camera: %d\n",
+			STM16_TO_HOST(CAMERA_VALUE, readbuff));
 
 		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 1);
 		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 0);
@@ -289,40 +323,52 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			"Report camkey toggle\n");
 	}
 	if (irq_status & M_NFC) {
-		stm401_cmdbuff[0] = NFC;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		cmdbuff[0] = NFC;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading nfc data from stm failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_NFC,
-				stm401_readbuff, 1, 0);
+				readbuff, 1, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
-			"Sending NFC value: %d\n", stm401_readbuff[NFC_VALUE]);
+			"Sending NFC value: %d\n", readbuff[NFC_VALUE]);
 
 	}
 	if (irq_status & M_SIM) {
-		stm401_cmdbuff[0] = SIM;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		cmdbuff[0] = SIM;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 2);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading sig_motion data from stm failed\n");
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_SIM,
-				stm401_readbuff, 2, 0);
+				readbuff, 2, 0);
 
 		/* This is one shot sensor */
 		stm401_g_wake_sensor_state &= (~M_SIM);
 
 		dev_dbg(&ps_stm401->client->dev, "Sending SIM Value=%d\n",
-					STM16_TO_HOST(SIM_DATA));
+					STM16_TO_HOST(SIM_DATA, readbuff));
 	}
 	if (irq_status & M_CHOPCHOP) {
-		stm401_cmdbuff[0] = CHOPCHOP;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		cmdbuff[0] = CHOPCHOP;
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1, 2);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading chopchop data from stm failed\n");
@@ -330,10 +376,10 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		}
 
 		stm401_as_data_buffer_write(ps_stm401, DT_CHOPCHOP,
-						stm401_readbuff, 2, 0);
+						readbuff, 2, 0);
 
 		dev_dbg(&ps_stm401->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
-				STM16_TO_HOST(CHOPCHOP_DATA));
+				STM16_TO_HOST(CHOPCHOP_DATA, readbuff));
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
@@ -356,79 +402,99 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			"Sending no meaningful movement event\n");
 	}
 	if (irq2_status & M_ALGO_MODALITY) {
-		stm401_cmdbuff[0] =
+		cmdbuff[0] =
 			stm401_algo_info[STM401_IDX_MODALITY].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1,
 			STM401_EVT_SZ_TRANSITION);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading modality event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_MODALITY;
+		readbuff[ALGO_TYPE] = STM401_IDX_MODALITY;
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
+			readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending modality event\n");
 	}
 	if (irq2_status & M_ALGO_ORIENTATION) {
-		stm401_cmdbuff[0] =
+		cmdbuff[0] =
 			stm401_algo_info[STM401_IDX_ORIENTATION].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1,
 			STM401_EVT_SZ_TRANSITION);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading orientation event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_ORIENTATION;
+		readbuff[ALGO_TYPE] = STM401_IDX_ORIENTATION;
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
+			readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending orientation event\n");
 	}
 	if (irq2_status & M_ALGO_STOWED) {
-		stm401_cmdbuff[0] =
+		cmdbuff[0] =
 			stm401_algo_info[STM401_IDX_STOWED].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1,
 			STM401_EVT_SZ_TRANSITION);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading stowed event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_STOWED;
+		readbuff[ALGO_TYPE] = STM401_IDX_STOWED;
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
+			readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending stowed event\n");
 	}
 	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
-		stm401_cmdbuff[0] =
+		cmdbuff[0] =
 			stm401_algo_info[STM401_IDX_ACCUM_MODALITY]
 				.evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1,
 			STM401_EVT_SZ_ACCUM_STATE);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading accum modality event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_ACCUM_MODALITY;
+		readbuff[ALGO_TYPE] = STM401_IDX_ACCUM_MODALITY;
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
+			readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending accum modality event\n");
 	}
 	if (irq2_status & M_ALGO_ACCUM_MVMT) {
-		stm401_cmdbuff[0] =
+		cmdbuff[0] =
 			stm401_algo_info[STM401_IDX_ACCUM_MVMT].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+		err = stm401_i2c_write_read(
+			ps_stm401,
+			cmdbuff,
+			readbuff,
+			1,
 			STM401_EVT_SZ_ACCUM_MVMT);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading accum mvmt event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_ACCUM_MVMT;
+		readbuff[ALGO_TYPE] = STM401_IDX_ACCUM_MVMT;
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
+			readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending accum mvmt event\n");
 	}
 	if (irq2_status & M_IR_WAKE_GESTURE) {

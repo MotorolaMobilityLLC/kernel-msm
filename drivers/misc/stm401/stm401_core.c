@@ -89,9 +89,6 @@ unsigned char stat_string[ESR_SIZE+1];
 
 struct stm401_algo_requst_t stm401_g_algo_requst[STM401_NUM_ALGOS];
 
-unsigned char stm401_cmdbuff[512];
-unsigned char stm401_readbuff[READ_CMDBUFF_SIZE];
-
 /* per algo config, request, and event registers */
 const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
 	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
@@ -308,6 +305,7 @@ void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
 	int err;
 	bool factory;
 	struct device_node *np = of_find_node_by_path("/chosen");
+	unsigned char readbuff[STM401_MAXDATA_LENGTH];
 
 	if (np) {
 		/* detect factory cable and disable lowpower mode
@@ -345,10 +343,13 @@ void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
 
 		cmdbuff[0] = LOWPOWER_REG;
 		err =
-		    stm401_i2c_write_read_no_reset(stm401_misc_data,
-						   cmdbuff, 1, 2);
+		    stm401_i2c_write_read_no_reset(
+				stm401_misc_data,
+				cmdbuff,
+				readbuff,
+				1, 2);
 		if (err >= 0) {
-			if ((int)stm401_readbuff[1] == 1)
+			if ((int)readbuff[1] == 1)
 				stm401_misc_data->sh_lowpower_enabled = 1;
 			else
 				stm401_misc_data->sh_lowpower_enabled = 0;
@@ -389,8 +390,12 @@ void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
 	}
 }
 
-int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
-			u8 *buf, int writelen, int readlen)
+int stm401_i2c_write_read_no_reset(
+	struct stm401_data *ps_stm401,
+	u8 *writebuf,
+	u8 *readbuf,
+	int writelen,
+	int readlen)
 {
 	int tries, err = 0;
 	struct i2c_msg msgs[] = {
@@ -398,16 +403,21 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 			.addr = ps_stm401->client->addr,
 			.flags = ps_stm401->client->flags,
 			.len = writelen,
-			.buf = buf,
+			.buf = writebuf,
 		},
 		{
 			.addr = ps_stm401->client->addr,
 			.flags = ps_stm401->client->flags | I2C_M_RD,
 			.len = readlen,
-			.buf = stm401_readbuff,
+			.buf = readbuf,
 		},
 	};
-	if (buf == NULL || writelen == 0 || readlen == 0)
+	if (
+		writebuf == NULL ||
+		readbuf == NULL ||
+		writelen == 0 ||
+		readlen == 0
+	)
 		return -EFAULT;
 
 	if (ps_stm401->mode == BOOTMODE)
@@ -427,7 +437,7 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 		dev_dbg(&ps_stm401->client->dev, "Read from STM401: ");
 		for (tries = 0; tries < readlen; tries++)
 			dev_dbg(&ps_stm401->client->dev, "%02x",
-				stm401_readbuff[tries]);
+				readbuf[tries]);
 	}
 
 	return err;
@@ -531,21 +541,30 @@ static int stm401_device_power_on(struct stm401_data *ps_stm401)
 	return err;
 }
 
-int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
-			int writelen, int readlen)
+int stm401_i2c_write_read(
+	struct stm401_data *ps_stm401,
+	u8 *writebuf,
+	u8 *readbuff,
+	int writelen,
+	int readlen)
 {
 	int tries, err = 0;
 
 	if (ps_stm401->mode == BOOTMODE)
 		return -EFAULT;
 
-	if (buf == NULL || writelen == 0 || readlen == 0)
+	if (
+		writebuf == NULL ||
+		readbuff == NULL ||
+		writelen == 0 ||
+		readlen == 0
+	)
 		return -EFAULT;
 
 	tries = 0;
 	do {
 		err = stm401_i2c_write_read_no_reset(ps_stm401,
-			buf, writelen, readlen);
+			writebuf, readbuff, writelen, readlen);
 		if (err < 0)
 			stm401_reset_and_init();
 	} while ((err < 0) && (++tries < RESET_RETRIES));
@@ -984,6 +1003,8 @@ void clear_interrupt_status_work_func(struct work_struct *work)
 {
 	struct stm401_data *ps_stm401 = container_of(work,
 			struct stm401_data, clear_interrupt_status_work);
+	unsigned char cmdbuff[1];
+	unsigned char readbuff[3];
 
 	dev_dbg(&ps_stm401->client->dev, "clear_interrupt_status_work_func\n");
 	mutex_lock(&ps_stm401->lock);
@@ -998,8 +1019,8 @@ void clear_interrupt_status_work_func(struct work_struct *work)
 
 	/* read interrupt mask register to clear
 			any interrupt during suspend state */
-	stm401_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+	cmdbuff[0] = INTERRUPT_STATUS;
+	stm401_i2c_write_read(ps_stm401, cmdbuff, readbuff, 1, 3);
 
 	stm401_sleep(ps_stm401);
 EXIT:

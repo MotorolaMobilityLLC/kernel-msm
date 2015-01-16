@@ -76,7 +76,8 @@ enum stm_command {
 
 
 static unsigned char stm401_bootloader_ver;
-
+unsigned char stm401_cmdbuff[STM401_MAX_PACKET_LENGTH];
+unsigned char stm401_readbuff[STM401_MAXDATA_LENGTH];
 
 static int stm401_boot_i2c_write(struct stm401_data *ps_stm401,
 	u8 *buf, int len)
@@ -329,6 +330,9 @@ EXIT:
 int stm401_get_version(struct stm401_data *ps_stm401)
 {
 	int err = 0;
+	char cmdbuff[1];
+	char readbuff[1];
+
 	if (ps_stm401->mode == BOOTMODE) {
 		dev_err(&ps_stm401->client->dev,
 			"Tried to read version in boot mode\n");
@@ -338,12 +342,16 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 
 	stm401_wake(ps_stm401);
 
-	stm401_cmdbuff[0] = REV_ID;
-	err = stm401_i2c_write_read_no_reset(ps_stm401, stm401_cmdbuff, 1, 1);
+	cmdbuff[0] = REV_ID;
+	err = stm401_i2c_write_read_no_reset(
+		ps_stm401,
+		cmdbuff,
+		readbuff,
+		1, 1);
 	if (err >= 0) {
-		err = (int)stm401_readbuff[0];
+		err = (int)readbuff[0];
 		dev_err(&ps_stm401->client->dev, "STM401 version %02x",
-			stm401_readbuff[0]);
+			readbuff[0]);
 		stm401_g_booted = 1;
 	}
 	stm401_sleep(ps_stm401);

@@ -98,6 +98,7 @@ int stm401_reset_and_init(void)
 	int mutex_locked = 0;
 	int reset_attempts = 0;
 	unsigned char *rst_cmdbuff = kmalloc(512, GFP_KERNEL);
+	unsigned char readbuff[3];
 	dev_dbg(&stm401_misc_data->client->dev, "stm401_reset_and_init\n");
 
 	if (rst_cmdbuff == NULL)
@@ -116,8 +117,11 @@ int stm401_reset_and_init(void)
 
 		/* check for sign of life */
 		rst_cmdbuff[0] = REV_ID;
-		err = stm401_i2c_write_read_no_reset(stm401_misc_data,
-			rst_cmdbuff, 1, 1);
+		err = stm401_i2c_write_read_no_reset(
+			stm401_misc_data,
+			rst_cmdbuff,
+			readbuff,
+			1, 1);
 		if (err < 0)
 			dev_err(&stm401_misc_data->client->dev, "stm401 not responding after reset (%d)",
 				reset_attempts);
@@ -211,9 +215,17 @@ int stm401_reset_and_init(void)
 		}
 	}
 	rst_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read_no_reset(stm401_misc_data, rst_cmdbuff, 1, 3);
+	stm401_i2c_write_read_no_reset(
+		stm401_misc_data,
+		rst_cmdbuff,
+		readbuff,
+		1, 3);
 	rst_cmdbuff[0] = WAKESENSOR_STATUS;
-	stm401_i2c_write_read_no_reset(stm401_misc_data, rst_cmdbuff, 1, 2);
+	stm401_i2c_write_read_no_reset(
+		stm401_misc_data,
+		rst_cmdbuff,
+		readbuff,
+		1, 2);
 
 	rst_cmdbuff[0] = PROX_SETTINGS;
 	rst_cmdbuff[1]
