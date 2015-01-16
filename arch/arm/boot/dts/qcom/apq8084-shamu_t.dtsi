@@ -12,7 +12,7 @@
  */
 
 #include "apq8084-moto-common.dtsi"
-#include "apq8084-shamu-camera-sensor.dtsi"
+#include "apq8084-shamu_t-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "dsi-panel-mot-smd-596-QHD-cmd.dtsi"
 #include "dsi-panel-mot-smd-598-1080p-cmd.dtsi"
@@ -504,6 +504,7 @@
 			&blsp_spi_default
 			&cam_mclk1_default
 			&cam_mclk3_default
+			&cam2_pwdn_default
 			&max17050_default
 			&factory_default
 			&factory_kill_default
@@ -554,6 +555,104 @@
 		label = "tfa9890_earpiece";
 		tfa9890_earpiece_default: default {
 			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	/* camera pinmux settings    */
+	/* CAM_MCLK0                 */
+	/* (override drive strength) */
+	cam_mclk0 {
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		label = "cam_mclk0";
+		cam_mclk0_default: default {
+			bias-pull-down;
+			drive-strength = <6>;
+		};
+	};
+
+	cam_mclk0_active {
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_mclk0_active";
+
+		cam_mclk0_active: active {
+			bias-disable;
+			drive-strength = <6>;
+		};
+	};
+
+	/* camera pinmux settings    */
+	/* CAM_MCLK2                 */
+	/* (override drive strength) */
+	cam_mclk2 {
+		qcom,pins = <&gp 17>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_mclk2";
+		cam_mclk2_default: default {
+			bias-pull-down;
+			drive-strength = <6>;
+		};
+		cam_mclk2_active: active {
+			bias-disable;
+			drive-strength = <6>;
+		};
+	};
+
+	/* camera pinmux settings           */
+	/* camera 1 reset and stand-by pins */
+	cam1_ctrl {
+		qcom,pins = <&gp 26 &gp 35 &gp 36 &gp 120>;
+		qcom,num-grp-pins = <4>;
+		label = "cam1_ctrl";
+		cam1_ctrl_default: default {
+			bias-disable;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	cam1_ctrl_active {
+		qcom,pins = <&gp 26 &gp 35 &gp 36 &gp 120>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <0>;
+		label = "cam1_ctrl_active";
+
+		cam1_ctrl_active: active {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	/* camera pinmux settings               */
+	/* camera 2 CAM_R_PWDN_N                */
+	/* not allocated, add to pinctrl hump   */
+	cam2_pwdn {
+		qcom,pins = <&gp 25>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cam2_pwdn";
+		cam2_pwdn_default: default {
+			bias-disable;
+			output-low;
+			drive-strength = <2>;
+		};
+		cam2_pwdn_active: active {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	unused {
+		qcom,pins = <&gp 32>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "unused";
+		unused_default: default {
+			bias-pull-down;
 			drive-strength = <2>;
 		};
 	};
