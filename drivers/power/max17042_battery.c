@@ -115,6 +115,28 @@ struct max17042_chip {
 #endif
 };
 
+#ifdef CONFIG_OF
+const char *get_dts_batt_id(struct device *dev)
+{
+	int lenp;
+	const char *retval = NULL;
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	if (n) {
+		retval = of_get_property(n, "batt-id", &lenp);
+		if (!retval || !lenp) {
+			dev_info(dev, "%s: could not get property\n", __func__);
+			retval = NULL;
+		}
+		of_node_put(n);
+	}
+
+	return retval;
+}
+#else
+# define get_dts_batt_id(dev) (NULL)
+#endif
+
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 {
 	int ret = i2c_smbus_write_word_data(client, reg, value);
@@ -932,15 +954,28 @@ static void max17042_cfg_optnl_prop(struct device_node *np,
 static struct max17042_config_data *
 max17042_get_config_data(struct device *dev)
 {
+	char *config_node = NULL;
+	char config_node_path[64];
 	struct max17042_config_data *config_data;
-	struct device_node *np = dev->of_node;
+	struct device_node *np = NULL;
 
-	if (!np)
+	if (!dev->of_node)
 		return NULL;
 
-	np = of_get_child_by_name(np, CONFIG_NODE);
-	if (!np)
-		return NULL;
+	config_node = (char *)get_dts_batt_id(dev);
+	if (config_node) {
+		dev_info(dev, "using %s profile\n", config_node);
+		snprintf(config_node_path, sizeof(config_node_path),
+			 "%s-%s", CONFIG_NODE, config_node);
+		np = of_get_child_by_name(dev->of_node, config_node_path);
+	}
+
+	if (!np) {
+		dev_info(dev, "using %s profile\n", CONFIG_NODE);
+		np = of_get_child_by_name(dev->of_node, CONFIG_NODE);
+		if (!np)
+			return NULL;
+	}
 
 	config_data = devm_kzalloc(dev, sizeof(*config_data), GFP_KERNEL);
 	if (!config_data)
