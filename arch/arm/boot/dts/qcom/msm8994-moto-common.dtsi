@@ -739,6 +739,21 @@
 		};
 	};
 
+	sound {
+		/delete-property/ qcom,model;
+		/delete-property/ asoc-platform-names;
+		/delete-property/ asoc-platform;
+		qcom,model = "msm8994-florida-snd-card";
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-dsp.2",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp", "florida-codec";
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>, <&florida>;
+	};
+
 	slim_msm: slim@fe12f000 {
 		/delete-node/ tomtom_codec;
 		wolfson_codec {
@@ -1092,7 +1107,7 @@
 };
 
 &spi_7 {
-	florida@0 {
+	florida: florida@0 {
 		compatible = "wlf,wm8280";
 		spi-max-frequency = <9600000>;
 		spi-cs-high;
