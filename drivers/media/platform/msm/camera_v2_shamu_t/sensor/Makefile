@@ -1,10 +1,10 @@
-ccflags-y += -Idrivers/media/platform/msm/camera_v2
-ccflags-y += -Idrivers/media/platform/msm/camera_v2/msm_vb2
-ccflags-y += -Idrivers/media/platform/msm/camera_v2/camera
-ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor/io
-ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor/cci
-obj-$(CONFIG_MSMB_CAMERA) += cci/ io/ csiphy/ csid/ actuator/ flash/ eeprom/ ois/
-obj-$(CONFIG_MSM_CAMERA_SENSOR) += msm_sensor_init.o msm_sensor_driver.o msm_sensor.o
+ccflags-y += -Idrivers/media/platform/msm/camera_v2_shamu_t
+ccflags-y += -Idrivers/media/platform/msm/camera_v2_shamu_t/msm_vb2
+ccflags-y += -Idrivers/media/platform/msm/camera_v2_shamu_t/camera
+ccflags-y += -Idrivers/media/platform/msm/camera_v2_shamu_t/sensor/io
+ccflags-y += -Idrivers/media/platform/msm/camera_v2_shamu_t/sensor/cci
+obj-$(CONFIG_MSMB_CAMERA_SHAMU_T) += cci/ io/ csiphy/ csid/ actuator/ flash/ eeprom/ ois/
+obj-$(CONFIG_MSM_CAMERA_SENSOR_SHAMU_T) += msm_sensor_init.o msm_sensor_driver.o msm_sensor.o
 obj-$(CONFIG_S5K3L1YX) += s5k3l1yx.o
 obj-$(CONFIG_IMX135) += imx135.o
 obj-$(CONFIG_IMX132) += imx132.o
