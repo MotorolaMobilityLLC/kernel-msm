@@ -5075,7 +5075,7 @@ static int folio_notifier_callback(struct notifier_block *self,
 		dev_dbg(&mxt_dev_data->client->dev,
 			"state: %s(%d), suspend flag: %d, BL flag: %d\n",
 			mxt_state_name(state), state,
-			atomic_read(mxt_dev_data->suspended),
+			atomic_read(&mxt_dev_data->suspended),
 			mxt_dev_data->in_bootloader);
 		if (folio_state)
 			/* close */
