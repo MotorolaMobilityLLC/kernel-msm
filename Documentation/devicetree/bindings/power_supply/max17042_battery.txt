@@ -26,6 +26,11 @@ Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
    the host device is used  or battery specific characteristic.
+   Optionally can be defined as "maxim,configuration-<batt-id>" where batt-id
+   is set in /chosen path of your respective device tree.  As a result, the driver
+   will load maxim,configuration-<batt-id> you specified. This will allow us
+   to use multiple battery suppliers within the same software binary.
+   NOTE: the length of this node should be less or equal to 64 bytes.
 
  - maxim,temp-conv : Contains a table to convert a value from Temperature
    register to a "real" temp value. This conversion table should be used when
@@ -110,6 +115,14 @@ Example:
 			tgain		= /bits/ 16 <0xE71C>;
 			toff		= /bits/ 16 <0x251A>;
 		}
+
+		/* optionally you can define additional maxim,configuration-<batt-id> */
+		/* the total length of the node name should not be bigger than 64     */
+		/* bytes including null termination character.                        */
+		maxim,configuration-SNN5951A {
+			...
+		}
+
 		maxim,temp-conv {
 			start	= /bits/ 16 <(-20)>;	/* in degrees C */
 			result	= /bits/ 16 <		/* in 1/10 degrees C */
