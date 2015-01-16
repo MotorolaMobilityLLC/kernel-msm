@@ -560,6 +560,13 @@ static struct gpiomux_setting gpio_input_pu_config = {
 	.pull = GPIOMUX_PULL_UP,
 };
 
+static struct gpiomux_setting gpio_output_low_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
 static struct msm_gpiomux_config msm_smelt_batt_and_chrg_configs[] __initdata = {
 	{
 		.gpio      = 31,	/* CC_ALERT_N */
@@ -569,7 +576,28 @@ static struct msm_gpiomux_config msm_smelt_batt_and_chrg_configs[] __initdata = 
 		},
 	},
 	{
+		.gpio      = 53,	/* WCHG_TERMINATE */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_output_low_config,
+			[GPIOMUX_SUSPENDED] = &gpio_output_low_config,
+		},
+	},
+	{
 		.gpio      = 54,	/* WCHG_PAD_DET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_input_pu_config,
+			[GPIOMUX_SUSPENDED] = &gpio_input_pu_config,
+		},
+	},
+	{
+		.gpio      = 58,	/* CHARGE_RATE */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_output_low_config,
+			[GPIOMUX_SUSPENDED] = &gpio_output_low_config,
+		},
+	},
+	{
+		.gpio      = 94,	/* CHARGER_STARTB_1P8_N */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_input_pu_config,
 			[GPIOMUX_SUSPENDED] = &gpio_input_pu_config,

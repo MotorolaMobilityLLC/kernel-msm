@@ -109,6 +109,17 @@
 			     "factory_cable_detect",
 			     "factory_warn";
 	};
+
+	bq5105x-ctrl {
+		reg = <0 0>;
+		compatible = "ti,bq5105x-control";
+		gpios = <&msmgpio 53 0x0>, /* WCHG_TERMINATE, GPIOF_OUT_INIT_LOW */
+			<&msmgpio 58 0x0>, /* CHARGE_RATE, GPIOF_OUT_INIT_LOW */
+		        <&msmgpio 94 0x1>; /* CHARGER_STARTB_1P8_N, GPIOF_IN */
+		gpio-names = "chg_term",
+			     "chg_rate",
+			     "chg_n";
+	};
 };
 
 &soc {
