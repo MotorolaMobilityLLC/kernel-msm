@@ -16,6 +16,6 @@
 / {
 	model = "LGE APQ 8026v2 BASS rev-a";
 	compatible = "qcom,apq8026";
-	qcom,board-id = <132 0x02>;
+	qcom,board-id = <133 0x02>;
 	qcom,msm-id = <199 0x20000>;
 };
