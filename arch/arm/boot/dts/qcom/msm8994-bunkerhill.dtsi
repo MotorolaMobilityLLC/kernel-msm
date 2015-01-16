@@ -163,6 +163,16 @@
 	qcom,always-send-current;
 };
 
+&pmi8994_charger {
+	qcom,float-voltage-mv = <4350>;
+};
+
+&i2c_11 {
+	smb1357_otg_vreg: smb1357-charger@1e {
+		status = "okay";
+	};
+};
+
 &i2c_2 {
 	atmel_mxt_ts@4a {
 		compatible = "atmel,atmel_mxt_ts";
