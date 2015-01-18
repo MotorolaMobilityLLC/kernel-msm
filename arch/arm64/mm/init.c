@@ -161,9 +161,6 @@ void __init arm64_memblock_init(void)
 		dma_phys_limit = dma_to_phys(NULL, DMA_BIT_MASK(32)) + 1;
 	dma_contiguous_reserve(dma_phys_limit);
 
-	/*Temp WA: for pstore*/
-	memblock_reserve(0xaf000000, 0x80000);
-
 	memblock_allow_resize();
 	memblock_dump_all();
 }
