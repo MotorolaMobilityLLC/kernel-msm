@@ -570,30 +570,11 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 	mdss_dsi_sw_reset(ctrl_pdata, true);
 
-	/* LP11 */
-	if (!pinfo->is_suspending) {
-		u32 tmp;
-		tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, 0x1F << 16);
-		wmb();
-
-		msleep(20);
-
+	if (mipi->lp11_init)
 		ctrl_pdata->panel_reset(pdata, 1);
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
-	}
 
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
-
-	if (mipi->force_clk_lane_hs) {
-		u32 tmp;
-
-		tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
-		tmp |= (1<<28);
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
-		wmb();
-	}
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
