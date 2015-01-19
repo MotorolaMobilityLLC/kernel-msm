@@ -23,6 +23,7 @@
 		qcom,alpm-ldo-offset = <2>;
 		qcom,cont-splash-enabled;
 		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-init-delay-us =<20000>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
 		qcom,mdss-dsi-wr-mem-start = <0x2c>;
@@ -64,10 +65,9 @@
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = <4>;
 		qcom,mdss-dsi-mdp-trigger = <0>;
-		qcom,mdss-force-clk-lane-hs = <1>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 /*		qcom,mdss-dsi-panel-clock-rate = <500000000>;*/
-		qcom,mdss-pan-dsi-tx-eot-append = <1>;
+		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 20>, <1 20>;
 		qcom,mdss-display-on-seq = [
 					39 01 00 00 00 00 03 F0 5A 5A
