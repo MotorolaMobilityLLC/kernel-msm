@@ -532,7 +532,6 @@
 		compatible = "qcom,msm8226-audio-tapan";
 		qcom,model = "msm8226-tapan-snd-card";
 		qcom,tapan-mclk-clk-freq = <9600000>;
-		qcom,pri-mi2s-gpio-en  = <&msmgpio 60 0>; /* ASUS_BSP Ken Cheng */
 		qcom,pri-mi2s-gpio-sck = <&msmgpio 63 0>; /* ASUS_BSP Ken Cheng */
 		qcom,pri-mi2s-gpio-ws  = <&msmgpio 64 0>; /* ASUS_BSP Ken Cheng */
 		qcom,pri-mi2s-gpio-din = <&msmgpio 65 0>; /* ASUS_BSP Ken Cheng */

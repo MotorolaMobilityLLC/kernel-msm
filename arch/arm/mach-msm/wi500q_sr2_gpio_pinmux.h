@@ -169,13 +169,6 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 	},
 // ASUS_BSP --- Maggie_Lee "ECG sensor porting"
 //ASUS_BSP +++ Ken_Cheng "MI2S for digital MIC"
-	{
-		.gpio = 60,           /* pri mi2s enable */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
-			[GPIOMUX_ACTIVE] = &pri_mi2s_en,
-		},
-	},
 //ASUS_BSP BerylHou +++ "BT / host"
  	{
 		.gpio      = 61,	/* Host wake up BT */

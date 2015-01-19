@@ -179,19 +179,16 @@ static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
 #if defined(ASUS_WI500Q_PROJECT)
 struct request_gpio {
-        unsigned gpio_no;
+        int gpio_no;
         char *gpio_name;
 };
 static struct regulator *dmic_1p8; //ASUS BSP Jessy : config DMIC 1p8
 static struct request_gpio pri_mi2s_gpio[] = {
 
         {
-                .gpio_name = "PRI_MI2S_EN",
-        },
-
-        {
                 .gpio_name = "PRI_MI2S_SCK",
         },
+
         {
                 .gpio_name = "PRI_MI2S_WS",
         },
@@ -199,6 +196,18 @@ static struct request_gpio pri_mi2s_gpio[] = {
         {
                 .gpio_name = "PRI_MI2S_DIN",
         },
+
+	{
+                .gpio_name = "PRI_MI2S_EN",
+        },
+
+};
+enum {
+	PRI_MI2S_SCK_IDX = 0,
+	PRI_MI2S_WS_IDX,
+	PRI_MI2S_DIN_IDX,
+	PRI_MI2S_EN_IDX,
+	PRI_MI2S_NUM_GPIO,
 };
 /* MI2S clock */
 struct mi2s_clk {
@@ -212,37 +221,32 @@ static struct platform_device *spdev;
 
 static int msm8226_dtparse_mi2s(void)
 {
-        pri_mi2s_gpio[0].gpio_no = of_get_named_gpio(spdev->dev.of_node,
-                "qcom,pri-mi2s-gpio-en", 0);
-        if (pri_mi2s_gpio[0].gpio_no < 0) {
-                pr_err("%s: MI2S_EN GPIO error in the device tree\n",
-                        __func__);
-                return -EINVAL;
-        }
-
-        pri_mi2s_gpio[1].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+        pri_mi2s_gpio[PRI_MI2S_SCK_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
                 "qcom,pri-mi2s-gpio-sck", 0);
-        if (pri_mi2s_gpio[1].gpio_no < 0) {
+        if (pri_mi2s_gpio[PRI_MI2S_SCK_IDX].gpio_no < 0) {
                 pr_err("%s: MI2S_SCK GPIO error in the device tree\n",
                         __func__);
                 return -EINVAL;
         }
 
-        pri_mi2s_gpio[2].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+        pri_mi2s_gpio[PRI_MI2S_WS_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
                 "qcom,pri-mi2s-gpio-ws", 0);
-        if (pri_mi2s_gpio[2].gpio_no < 0) {
+        if (pri_mi2s_gpio[PRI_MI2S_WS_IDX].gpio_no < 0) {
                 pr_err("%s: MI2S_WS GPIO error in the device tree\n",
                         __func__);
                 return -EINVAL;
         }
 
-        pri_mi2s_gpio[3].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+        pri_mi2s_gpio[PRI_MI2S_DIN_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
                 "qcom,pri-mi2s-gpio-din", 0);
-        if (pri_mi2s_gpio[3].gpio_no < 0) {
+        if (pri_mi2s_gpio[PRI_MI2S_DIN_IDX].gpio_no < 0) {
                 pr_err("%s: MI2S_DIN GPIO error in the device tree\n",
                         __func__);
                 return -EINVAL;
         }
+
+	pri_mi2s_gpio[PRI_MI2S_EN_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+                "qcom,pri-mi2s-gpio-en", 0);
 
         return 0;
 }
@@ -1327,10 +1331,13 @@ static struct afe_clk_cfg lpass_mi2s_disable = {
 
 static int msm226_pri_mi2s_free_gpios(void)
 {
-        int     i;
-        for (i = 0; i < ARRAY_SIZE(pri_mi2s_gpio); i++)
-                gpio_free(pri_mi2s_gpio[i].gpio_no);
-        return 0;
+	int     i;
+	for (i = 0; i < PRI_MI2S_NUM_GPIO; i++) {
+		if (pri_mi2s_gpio[i].gpio_no >= 0) {
+			gpio_free(pri_mi2s_gpio[i].gpio_no);
+		}
+	}
+	return 0;
 }
 
 static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
@@ -1339,11 +1346,16 @@ static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
         if (atomic_dec_return(&pri_mi2s_clk.mi2s_rsc_ref) == 0) {
                 pr_debug("%s: free mi2s resources\n", __func__);
 
-                ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX, &lpass_mi2s_disable);
+                ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX, &lpass_mi2s_disable);
                 if (ret < 0) {
                         pr_err("%s: afe_set_lpass_clock failed\n", __func__);
 
                 }
+
+		if (pri_mi2s_gpio[PRI_MI2S_EN_IDX].gpio_no >= 0) {
+			gpio_direction_output(pri_mi2s_gpio[PRI_MI2S_EN_IDX].gpio_no, 0);
+		}
+
                 msm226_pri_mi2s_free_gpios();
         }
 //ASUS BSP Jessy +++ : config DMIC 1p8
@@ -1353,29 +1365,34 @@ static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
 
 static int msm8226_configure_pri_mi2s_gpio(void)
 {
-        int     rtn;
-        int     i;
-        for (i = 0; i < ARRAY_SIZE(pri_mi2s_gpio); i++) {
+	int     rtn;
+	int     i;
 
-                rtn = gpio_request(pri_mi2s_gpio[i].gpio_no,
-                                pri_mi2s_gpio[i].gpio_name);
+	for (i = 0; i < PRI_MI2S_NUM_GPIO; i++) {
+		if (pri_mi2s_gpio[i].gpio_no >= 0) {
+			rtn = gpio_request(pri_mi2s_gpio[i].gpio_no,
+				pri_mi2s_gpio[i].gpio_name);
 
-                pr_debug("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
-                pri_mi2s_gpio[i].gpio_no, pri_mi2s_gpio[i].gpio_name, rtn);
-                if (rtn) {
-                        pr_err("%s: Failed to request gpio %d\n",
-                                   __func__,
-                                   pri_mi2s_gpio[i].gpio_no);
-                        while( i >= 0) {
-                                gpio_free(pri_mi2s_gpio[i].gpio_no);
-                                i--;
-                        }
-                        break;
-                }
-        }
-        gpio_direction_output(60, 1);
+			pr_debug("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
+				pri_mi2s_gpio[i].gpio_no, pri_mi2s_gpio[i].gpio_name, rtn);
+			if (rtn) {
+				pr_err("%s: Failed to request gpio %d\n",
+					__func__,
+					pri_mi2s_gpio[i].gpio_no);
+				while (i >= 0) {
+					gpio_free(pri_mi2s_gpio[i].gpio_no);
+					i--;
+				}
+				return rtn;
+			}
+		}
+	}
 
-        return rtn;
+	if (pri_mi2s_gpio[PRI_MI2S_EN_IDX].gpio_no >= 0) {
+		gpio_direction_output(pri_mi2s_gpio[PRI_MI2S_EN_IDX].gpio_no, 1);
+	}
+
+	return 0;
 }
 static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
 {
