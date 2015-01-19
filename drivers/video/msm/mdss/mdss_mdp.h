@@ -145,7 +145,6 @@ struct mdss_mdp_vsync_handler {
 	bool cmd_post_flush;
 	mdp_vsync_handler_t vsync_handler;
 	struct list_head list;
-	struct list_head saved_list;
 };
 
 enum mdss_mdp_wb_ctl_type {
@@ -234,7 +233,6 @@ struct mdss_mdp_ctl {
 
 	void *priv_data;
 	u32 wb_type;
-	struct list_head saved_vsync_handlers;
 	bool prg_fet;
 };
 
