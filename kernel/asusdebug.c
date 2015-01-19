@@ -62,40 +62,30 @@ extern int print_fork;
 #endif
 
 static void do_kernel_log_worker(struct work_struct *work){
-    char property_filename[256];
-    int property_handle;
-    char property_value[1] = {'1'};
-
-    printk("[adbg] Receive ROBIN loguploader request, enable logwrapper.\n");
-
-    sprintf(property_filename, "/data/property/persist.sys.asus.kernellog");
+    char target_filename[256];
+    int target_handle;
+    int i = 1;
 
     initKernelEnv();
 
-    /* Check if file exist */
-    property_handle = sys_open(property_filename, O_RDWR|O_SYNC, 0);
-    if (property_handle > 0) {
-        printk("[adbg] Property is already exist, no action here.\n");
-        sys_close(property_handle);
-        deinitKernelEnv();
-        return;
+    /* Remove all logcat files except the first one*/
+    for(i = 1; i < 21; i++) {
+        sprintf(target_filename, "/data/user_logcat/logcat.txt.%d", i);
+        target_handle = sys_open(target_filename, O_RDWR|O_SYNC, 0600);
+		/* Check existence and delete it */
+        if(!IS_ERR((const void *)target_handle)) {
+            sys_unlink(target_filename);
+            sys_close(target_handle);
+            printk("[adbg] Clean %s successful.\n", target_filename);
+        }
     }
 
-    /* Create new file*/
-    property_handle = sys_open(property_filename, O_CREAT|O_RDWR|O_SYNC, 0600);
-    if(!IS_ERR((const void *)property_handle))
-    {
-        sys_write(property_handle, property_value, 1);
-        sys_close(property_handle);
-        printk("[adbg] Property set succeed.\n");
-    } else {
-        printk("[adbg] Cannot open property file: [%d]\n", property_handle);
-    }
+    /* Clean the first logcat.txt but not deleting it */
 
     deinitKernelEnv();
 
     /* Reboot device to apply change */
-    kernel_restart(NULL);
+    //kernel_restart(NULL);
 }
 
 int asus_rtc_read_time(struct rtc_time *tm)
