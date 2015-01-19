@@ -66,11 +66,18 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int i = 0;
+	bool dsi_panel_pm_ctrl = true;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		ret = -EINVAL;
 		goto end;
+	}
+
+	if (pdata->panel_info.alpm_event(CHECK_CURRENT_STATUS)) {
+		dsi_panel_pm_ctrl = false;
+		pr_debug("[ALPM_DEBUG] %s : dsi_panel_pm_ctrl : %d\n",
+				__func__, dsi_panel_pm_ctrl);
 	}
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -97,6 +104,10 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
+
+		if ((DSI_PANEL_PM == i) && !dsi_panel_pm_ctrl)
+			continue;
+
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[i].vreg_config,
 			ctrl_pdata->power_data[i].num_vreg, 0);
@@ -114,10 +125,17 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int i = 0;
+	bool dsi_panel_pm_ctrl = true;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
+	}
+
+	if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS)) {
+		dsi_panel_pm_ctrl = false;
+		pr_debug("[ALPM_DEBUG]%s : dsi_panel_pm_ctrl : %d\n",
+				__func__, dsi_panel_pm_ctrl);
 	}
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -130,6 +148,10 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
+
+		if ((DSI_PANEL_PM == i) && !dsi_panel_pm_ctrl)
+			continue;
+
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[i].vreg_config,
 			ctrl_pdata->power_data[i].num_vreg, 1);
@@ -177,6 +199,11 @@ error:
 static int mdss_dsi_panel_power_doze(struct mdss_panel_data *pdata, int enable)
 {
 	/* Panel power control when entering/exiting doze mode */
+	if (enable)
+		mdss_dsi_panel_power_off(pdata);
+	else
+		mdss_dsi_panel_power_on(pdata);
+
 	return 0;
 }
 
