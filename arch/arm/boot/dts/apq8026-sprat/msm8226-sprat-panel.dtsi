@@ -20,7 +20,6 @@
 		qcom,rst-gpio = <&msmgpio 25 0>;
 		qcom,esd-det-gpio = <&msmgpio 74 0>;
 		qcom,te-gpio = <&msmgpio 24 0>;
-		qcom,alpm-ldo-offset = <2>;
 		qcom,cont-splash-enabled;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-init-delay-us =<20000>;
