@@ -50,20 +50,6 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
                         [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
                 },
         },
-	{
-                .gpio = 10,		/* BLSP1 QUP3: I2C3 NFC, I2C_DAT */
-                .settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_i2c_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-                },
-        },
-        {
-                .gpio = 11,		/* BLSP1 QUP3: I2C3 NFC, I2C_CLK */
-                .settings = {
-                        [GPIOMUX_ACTIVE] = &gpio_i2c_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-                },
-        },
 // ASUS_BSP --- Maggie_Lee "I2C"
 // ASUS_BSP +++ Cliff_Yu "TOUCH"
 	{
