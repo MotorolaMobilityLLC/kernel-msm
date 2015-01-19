@@ -10,6 +10,8 @@
 * GNU General Public License for more details.
 */
 
+/memreserve/ 0xaf000000 0x00080000;
+
 #include "msm8916.dtsi"
 #include "msm8916-memory.dtsi"
 #include "msm8916-pinctrl.dtsi"
