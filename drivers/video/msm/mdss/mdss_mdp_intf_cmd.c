@@ -801,7 +801,6 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	int panel_power_state)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
-	struct mdss_panel_info *pinfo;
 	unsigned long flags;
 	int need_wait = 0;
 	int ret = 0;
@@ -823,8 +822,6 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		return -ENODEV;
 	}
 
-	pinfo = &ctl->panel_data->panel_info;
-
 	spin_lock_irqsave(&ctx->clk_lock, flags);
 	/* intf stopped,  no more kickoff */
 	atomic_set(&ctx->intf_stopped, 1);
@@ -843,21 +840,9 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (need_wait) {
-		int idle = 0;
-		unsigned long timeout;
-
 		hz = mdss_panel_get_framerate(&ctl->panel_data->panel_info);
-		timeout = STOP_TIMEOUT(hz);
-
-		if (ctl->panel_data->get_idle)
-			idle = ctl->panel_data->get_idle(ctl->panel_data);
-
-		if (idle)
-			timeout = msecs_to_jiffies(pinfo->idle_ms_per_frame *
-					(VSYNC_EXPIRE_TICK + 2));
-
 		if (wait_for_completion_timeout(&ctx->stop_comp,
-			timeout) <= 0) {
+			STOP_TIMEOUT(hz)) <= 0) {
 			WARN(1, "stop cmd time out\n");
 			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 				ctx->pp_num);

@@ -257,6 +257,7 @@ struct mipi_panel_info {
 	char traffic_mode;
 	char frame_rate;
 	/* command mode */
+	char frame_rate_idle;
 	char interleave_max;
 	char insert_dcs_cmd;
 	char wr_mem_continue;
@@ -367,8 +368,6 @@ struct mdss_panel_info {
 	int new_fps;
 	int panel_max_fps;
 	int panel_max_vtotal;
-	int idle_fps;
-	int idle_ms_per_frame;
 	u32 mode_gpio_state;
 	u32 xstart_pix_align;
 	u32 width_pix_align;
@@ -430,7 +429,10 @@ struct mdss_panel_data {
  */
 static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 {
+	struct mdss_panel_data *panel_data =
+		container_of(panel_info, typeof(*panel_data), panel_info);
 	u32 frame_rate, pixel_total;
+	int idle = 0;
 
 	if (panel_info == NULL)
 		return DEFAULT_FRAME_RATE;
@@ -438,7 +440,12 @@ static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 	switch (panel_info->type) {
 	case MIPI_VIDEO_PANEL:
 	case MIPI_CMD_PANEL:
-		frame_rate = panel_info->mipi.frame_rate;
+		if (panel_data->get_idle)
+			idle = panel_data->get_idle(panel_data);
+		if (idle)
+			frame_rate = panel_info->mipi.frame_rate_idle;
+		else
+			frame_rate = panel_info->mipi.frame_rate;
 		break;
 	case EDP_PANEL:
 		frame_rate = panel_info->edp.frame_rate;
