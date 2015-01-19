@@ -37,4 +37,9 @@
 		lge,adc-low-threshold = <65>;
 		lge,adc-high-threshold = <95>;
 	};
+
+	charger-dock {
+		compatible = "charger-dock-detector";
+		status = "ok";
+	};
 };
