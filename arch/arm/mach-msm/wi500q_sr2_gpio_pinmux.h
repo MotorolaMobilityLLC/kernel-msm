@@ -207,21 +207,15 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 //ASUS_BSP --- Ken_Cheng "MI2S for digital MIC"
+//ASUS_BSP +++ Ryder "Power Key"
 	{
-		.gpio = 106,
+		.gpio = 68,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
 		},
 	},
-	{
-		.gpio = 107,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
-		},
-	},
-	
+//ASUS_BSP --- Ryder "Power Key"
 	{
 		.gpio      = 38,		/* NC */
 		.settings = {
