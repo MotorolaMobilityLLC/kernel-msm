@@ -12,6 +12,7 @@
 
 #include "msm8992.dtsi"
 #include "msm8992-pinctrl.dtsi"
+#include "msm8994-mot-camera-sensor.dtsi"
 
 / {
 	aliases {
@@ -1090,4 +1091,27 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,platform-reset-gpio = <&msm_gpio 12 0>;
+};
+
+&cci {
+	/* IMX230 */
+	qcom,camera@0 {
+		cam_vdig-supply = <&pm8994_l3>;
+		cam_vio-supply = <&pm8994_lvs1>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
+		qcom,cam-vreg-min-voltage = <0 0>;
+		qcom,cam-vreg-max-voltage = <0 0>;
+		qcom,cam-vreg-op-mode = <0 0>;
+
+		gpios = <&msm_gpio 13 0>,
+			<&msm_gpio 93 0>,
+			<&msm_gpio 94 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					  "CAM_RESET0",
+					  "CAM_VANA";
+	};
 };
