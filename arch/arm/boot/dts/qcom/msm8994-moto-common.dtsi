@@ -332,24 +332,24 @@
 		};
 	};
 
-	pmx_stm401_out {
+	pmx_motosh_out {
 		qcom,pins = <&gp 78 &gp 89>;
 		qcom,num-grp-pins = <2>;
 		qcom,pin-func = <0>;
-		label = "stm401_out";
-		stm401_out_default: default {
+		label = "motosh_out";
+		motosh_out_default: default {
 			bias-disable;
 			output-low;
 			drive-strength = <2>;
 		};
 	};
 
-	pmx_stm401_in {
+	pmx_motosh_in {
 		qcom,pins = <&gp 16 &gp 65 &gp 127>;
 		qcom,num-grp-pins = <3>;
 		qcom,pin-func = <0>;
-		label = "stm401_in";
-		stm401_in_default: default {
+		label = "motosh_in";
+		motosh_in_default: default {
 			bias-disable;
 			drive-strength = <2>;
 		};
@@ -700,9 +700,10 @@
 		qcom,bam-pipe-idx-cons = <16>;
 		qcom,bam-pipe-idx-prod = <17>;
 		qcom,master-id = <86>;
+		qcom,bam-disable;
 
-		stm401@39 {
-			compatible = "stm,stm401";
+		motosh@39 {
+			compatible = "stm,motosh";
 			reg = <0x39>;
 			gpios = <&msm_gpio 127 0>,      /* IRQ          */
 				<&pm8994_mpps 5 0>,     /* RESET        */
@@ -721,7 +722,7 @@
 			sensor2-supply = <&pm8994_l17>;
 
 			pinctrl-names = "default";
-			pinctrl-0 = <&stm401_out_default &stm401_in_default>;
+			pinctrl-0 = <&motosh_out_default &motosh_in_default>;
 		};
 	};
 
@@ -1364,6 +1365,14 @@
 };
 
 &pm8994_lvs2 {
+	regulator-always-on;
+};
+
+&pm8994_l17 {
+	regulator-always-on;
+};
+
+&pm8994_l25 {
 	regulator-always-on;
 };
 
