@@ -174,7 +174,7 @@
 
 			qcom,ctrl-supply-entry@1 {
 				reg = <1>;
-				qcom,supply-name = "vddio";
+				qcom,supply-name = "vddldo8";
 				qcom,supply-min-voltage = <1800000>;
 				qcom,supply-max-voltage = <1800000>;
 				qcom,supply-enable-load = <100000>;
@@ -188,21 +188,22 @@
 
 			qcom,panel-supply-entry@0 {
 				reg = <0>;
-			qcom,supply-name = "vdd";
-			qcom,supply-min-voltage = <3300000>;
-			qcom,supply-max-voltage = <3300000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-		};
+				qcom,supply-name = "vddio";
+				qcom,supply-min-voltage = <1800000>;
+				qcom,supply-max-voltage = <1800000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
 
 			qcom,panel-supply-entry@1 {
 				reg = <1>;
-			qcom,supply-name = "vddldo8";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-		};
+				qcom,supply-name = "vdd";
+				qcom,supply-min-voltage = <3300000>;
+				qcom,supply-max-voltage = <3300000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+			};
+
 		};
 	};
 
