@@ -289,6 +289,7 @@ struct mdss_mdp_img_data {
 	unsigned long len;
 	u32 flags;
 	int p_need;
+	bool mapped;
 	struct file *srcp_file;
 	struct ion_handle *srcp_ihdl;
 };
