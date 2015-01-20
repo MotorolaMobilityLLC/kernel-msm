@@ -148,6 +148,7 @@ enum msm_actuator_write_type {
 enum msm_actuator_i2c_operation {
 	MSM_ACT_WRITE = 0,
 	MSM_ACT_POLL,
+	MSM_ACT_READ_SET,
 };
 
 enum actuator_type {

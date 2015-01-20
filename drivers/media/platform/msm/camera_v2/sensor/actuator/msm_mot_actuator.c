@@ -12,10 +12,11 @@
 
 #include "msm_actuator.h"
 
-static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
+static int32_t msm_mot_actuator_init_step_table(
+	struct msm_actuator_ctrl_t *a_ctrl,
 	struct msm_actuator_set_info_t *set_info);
 
-static void msm_actuator_write_focus(
+static void msm_mot_actuator_write_focus(
 	struct msm_actuator_ctrl_t *a_ctrl,
 	uint16_t curr_lens_pos,
 	struct damping_params_t *damping_params,
@@ -84,6 +85,25 @@ static int32_t msm_mot_actuator_write_reg_settings(
 	return rc;
 }
 
+static void msm_mot_actuator_write_focus(
+	struct msm_actuator_ctrl_t *a_ctrl,
+	uint16_t curr_lens_pos,
+	struct damping_params_t *damping_params,
+	int8_t sign_direction,
+	int16_t code_boundary)
+{
+	uint16_t wait_time = 0;
+	CDBG("Enter %s\n", __func__);
+
+	wait_time = damping_params->damping_delay;
+
+	if (curr_lens_pos != code_boundary) {
+		a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl,
+			code_boundary, damping_params->hw_params, wait_time);
+	}
+	CDBG("Exit %s\n", __func__);
+}
+
 static void msm_mot_actuator_parse_i2c_params(
 	struct msm_actuator_ctrl_t *a_ctrl, int16_t next_lens_position,
 	uint32_t hw_params, uint16_t delay)
@@ -92,23 +112,29 @@ static void msm_mot_actuator_parse_i2c_params(
 	uint32_t hw_dword = hw_params;
 	uint16_t i2c_byte1 = 0, i2c_byte2 = 0;
 	uint16_t value = 0;
+	static int16_t last_lens_position = 1;
 	uint32_t size = a_ctrl->reg_tbl_size, i = 0;
 	struct reg_settings_t *i2c_tbl = a_ctrl->mot_i2c_reg_tbl;
 	enum msm_actuator_data_type data_type = MSM_ACTUATOR_WORD_DATA;
+
 	CDBG("%s: Enter\n", __func__);
+
 	for (i = 0; i < size; i++) {
 		/* check that the index into i2c_tbl cannot grow larger that
 		   the allocated size of i2c_tbl */
-		if ((a_ctrl->total_steps + 1) < (a_ctrl->mot_i2c_tbl_index))
+		if ((a_ctrl->total_steps + 1) < (a_ctrl->mot_i2c_tbl_index) ||
+				a_ctrl->mot_i2c_tbl_index >=
+				MAX_ACTUATOR_REG_TBL_SIZE) {
 			break;
+		}
 
 		if (write_arr[i].reg_write_type == MSM_ACTUATOR_WRITE_DAC) {
-			value = (next_lens_position <<
+			value = ((uint16_t)next_lens_position <<
 					write_arr[i].data_shift) |
 				((hw_dword & write_arr[i].hw_mask) >>
 				 write_arr[i].hw_shift);
 
-			CDBG("DAC: 0x%x, lens pos: 0x%x\n",
+			CDBG("DAC: 0x%x, lens pos: %d\n",
 					value, next_lens_position);
 			if (write_arr[i].reg_addr != 0xFFFF) {
 				i2c_byte1 = write_arr[i].reg_addr;
@@ -121,7 +147,16 @@ static void msm_mot_actuator_parse_i2c_params(
 		} else if (write_arr[i].reg_write_type ==
 				MSM_ACTUATOR_WRITE_REG) {
 			i2c_byte1 = write_arr[i].reg_addr;
-			i2c_byte2 = write_arr[i].hw_shift;
+
+			if (i2c_byte1 == 0x16) {
+				if (next_lens_position > last_lens_position)
+					i2c_byte2 = 0x0180; /* toward macro */
+				else
+					i2c_byte2 = 0xFE80; /* toward inf */
+			} else {
+				i2c_byte2 = write_arr[i].hw_shift;
+			}
+
 			if (write_arr[i].data_shift == 1)
 				data_type = MSM_ACTUATOR_BYTE_DATA;
 			else
@@ -142,6 +177,8 @@ static void msm_mot_actuator_parse_i2c_params(
 		i2c_tbl[a_ctrl->mot_i2c_tbl_index].delay = delay;
 		a_ctrl->mot_i2c_tbl_index++;
 	}
+
+	last_lens_position = next_lens_position;
 	CDBG("%s: Exit\n", __func__);
 }
 
@@ -154,9 +191,9 @@ static int32_t msm_mot_actuator_move_focus(
 	int8_t sign_dir = move_params->sign_dir;
 	uint16_t step_boundary = 0;
 	uint16_t target_step_pos = 0;
-	uint16_t target_lens_pos = 0;
+	int16_t target_lens_pos = 0;
 	int16_t dest_step_pos = move_params->dest_step_pos;
-	uint16_t curr_lens_pos = 0;
+	int16_t curr_lens_pos = 0;
 	int dir = move_params->dir;
 	int32_t num_steps = move_params->num_steps;
 	CDBG("Enter %s\n", __func__);
@@ -223,16 +260,17 @@ static int32_t msm_mot_actuator_move_focus(
 			a_ctrl->curr_region_index += sign_dir;
 		}
 		a_ctrl->curr_step_pos = target_step_pos;
+
+		rc = msm_mot_actuator_write_reg_settings(a_ctrl);
+		if (rc < 0) {
+			pr_err("i2c write error:%d\n", rc);
+			return rc;
+		}
+		a_ctrl->mot_i2c_tbl_index = 0;
 	}
 
 	move_params->curr_lens_pos = curr_lens_pos;
 
-	rc = msm_mot_actuator_write_reg_settings(a_ctrl);
-	if (rc < 0) {
-		pr_err("i2c write error:%d\n", rc);
-		return rc;
-	}
-	a_ctrl->mot_i2c_tbl_index = 0;
 	CDBG("Exit\n");
 	return rc;
 }
@@ -269,12 +307,75 @@ static int32_t msm_mot_actuator_set_position(
 	return rc;
 }
 
+static int32_t msm_mot_actuator_init_step_table(
+	struct msm_actuator_ctrl_t *a_ctrl,
+	struct msm_actuator_set_info_t *set_info)
+{
+	int macro_dac = 0;
+	int inf_dac = 0;
+	int cur_code = 0;
+	int16_t step_index = 0, region_index = 0;
+	uint16_t step_boundary = 0;
+	int32_t max_code_size = 1;
+	uint16_t data_size = set_info->actuator_params.data_size;
+	CDBG("Enter %s\n", __func__);
+
+	for (; data_size > 0; data_size--)
+		max_code_size *= 2;
+
+	a_ctrl->max_code_size = max_code_size;
+	kfree(a_ctrl->step_position_table);
+	a_ctrl->step_position_table = NULL;
+
+	if (set_info->af_tuning_params.total_steps
+		>  MAX_ACTUATOR_AF_TOTAL_STEPS) {
+		pr_err("Max actuator totalsteps exceeded = %d\n",
+		set_info->af_tuning_params.total_steps);
+		return -EFAULT;
+	}
+
+	/* Fill step position table */
+	a_ctrl->step_position_table =
+		kmalloc(sizeof(uint16_t) *
+		(set_info->af_tuning_params.total_steps + 1), GFP_KERNEL);
+
+	if (a_ctrl->step_position_table == NULL)
+		return -ENOMEM;
+
+	inf_dac = set_info->mot_af_tuning_params.infinity_dac;
+	macro_dac = set_info->mot_af_tuning_params.macro_dac;
+
+	for (region_index = 0;
+		region_index < a_ctrl->region_size;
+		region_index++) {
+		step_boundary =
+			a_ctrl->region_params[region_index].
+			step_bound[MOVE_NEAR];
+		for (step_index = 0; step_index <= step_boundary;
+			step_index++) {
+			cur_code =
+			((int)step_index * (macro_dac - inf_dac)) /
+			set_info->af_tuning_params.total_steps + inf_dac;
+			if (cur_code > max_code_size) {
+				a_ctrl->step_position_table[step_index] =
+					(uint16_t)max_code_size;
+			} else {
+				a_ctrl->step_position_table[step_index] =
+					(uint16_t)cur_code;
+			}
+		}
+	}
+
+	CDBG("Exit %s\n", __func__);
+	return 0;
+}
+
 static struct msm_actuator msm_mot_hvcm_actuator_table = {
 	.act_type = ACTUATOR_MOT_HVCM,
 	.func_tbl = {
-		.actuator_init_step_table = msm_actuator_init_step_table,
+		.actuator_init_step_table = msm_mot_actuator_init_step_table,
 		.actuator_move_focus = msm_mot_actuator_move_focus,
-		.actuator_write_focus = msm_actuator_write_focus,
+		.actuator_write_focus = msm_mot_actuator_write_focus,
 		.actuator_set_default_focus = msm_actuator_set_default_focus,
 		.actuator_init_focus = msm_actuator_init_focus,
 		.actuator_parse_i2c_params = msm_mot_actuator_parse_i2c_params,
