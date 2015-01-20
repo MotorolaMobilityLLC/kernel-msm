@@ -74,7 +74,7 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
-	if (pdata->panel_info.alpm_event(CHECK_CURRENT_STATUS)) {
+	if (pdata->alpm_data.alpm_status(CHECK_CURRENT_STATUS)) {
 		dsi_panel_pm_ctrl = false;
 		pr_debug("[ALPM_DEBUG] %s : dsi_panel_pm_ctrl : %d\n",
 				__func__, dsi_panel_pm_ctrl);
@@ -132,7 +132,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
-	if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS)) {
+	if (pdata->alpm_data.alpm_status(CHECK_PREVIOUS_STATUS)) {
 		dsi_panel_pm_ctrl = false;
 		pr_debug("[ALPM_DEBUG]%s : dsi_panel_pm_ctrl : %d\n",
 				__func__, dsi_panel_pm_ctrl);

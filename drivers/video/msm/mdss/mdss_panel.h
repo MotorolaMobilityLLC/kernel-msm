@@ -404,9 +404,6 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
-	u32 alpm_ldo_offset;
-	bool alpm_mode;
-	u8 (*alpm_event) (u8 flag);
 };
 
 /* ALPM Flags */
@@ -426,10 +423,17 @@ enum {
 	PANEL_BACKLIGHT_RESTORE,
 };
 
+struct mdss_alpm_data {
+	u8 (*alpm_status) (u8 flag);
+};
+
 struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
 	void (*send_alpm) (struct mdss_panel_data *pdata, bool status);
+#endif
+	struct mdss_alpm_data alpm_data;
 	unsigned char *mmss_cc_base;
 
 	/**
@@ -446,6 +450,7 @@ struct mdss_panel_data {
 	 */
 	int (*event_handler) (struct mdss_panel_data *pdata, int e, void *arg);
 
+	void *panel_private;
 	struct mdss_panel_data *next;
 };
 
@@ -457,16 +462,18 @@ static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 {
 	u32 frame_rate, pixel_total;
 	struct mdss_panel_data *pdata;
+	struct mdss_alpm_data *adata;
 
 	if (panel_info == NULL)
 		return DEFAULT_FRAME_RATE;
 
 	pdata = container_of(panel_info, struct mdss_panel_data, panel_info);
+	adata = &pdata->alpm_data;
 
 	switch (panel_info->type) {
 	case MIPI_VIDEO_PANEL:
 	case MIPI_CMD_PANEL:
-		if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS))
+		if (adata->alpm_status(CHECK_PREVIOUS_STATUS))
 			frame_rate = panel_info->mipi.alpm_frame_rate;
 		else
 			frame_rate = panel_info->mipi.frame_rate;

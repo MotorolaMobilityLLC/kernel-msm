@@ -20,7 +20,7 @@
 #define MAX_PANEL_NAME_SIZE 100
 #define LCD_DEBUG(X, ...) pr_info("[LCD]%s:"X, __func__, ## __VA_ARGS__);
 
-enum mipi_samsung_cmd_list {
+enum mdss_samsung_cmd_list {
 	PANEL_DISPLAY_ON_SEQ,
 	PANEL_DISPLAY_ON,
 	PANEL_DISP_OFF,
@@ -38,10 +38,7 @@ enum mipi_samsung_cmd_list {
 	PANEL_ALPM_OFF,
 	PANEL_BACKLIGHT_CMD,
 };
-enum {
-	MIPI_RESUME_STATE,
-	MIPI_SUSPEND_STATE,
-};
+
 struct candella_lux_map {
 	int *lux_tab;
 	int *cmd_idx;

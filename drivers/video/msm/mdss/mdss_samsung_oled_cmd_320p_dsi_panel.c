@@ -46,7 +46,6 @@ static struct dsi_panel_cmds backlight_cmds;
 static struct dsi_panel_cmds rddpm_cmds;
 
 static struct candella_lux_map candela_map_table;
-static struct mdss_samsung_driver_data msd;
 #if defined(ALPM_MODE)
 /* ALPM mode on/off command */
 static struct dsi_panel_cmds alpm_on_seq;
@@ -58,14 +57,13 @@ static int disp_te_gpio;
  * alpm_store()
  *	- Check or store status like alpm mode status or brightness level
  */
-static void alpm_store(u8 mode);
 #endif
 static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata);
-static int mipi_samsung_disp_send_cmd(
+static int mdss_samsung_disp_send_cmd(
 		struct mdss_dsi_ctrl_pdata *ctrl,
-		enum mipi_samsung_cmd_list cmd,
+		enum mdss_samsung_cmd_list cmd,
 		unsigned char lock);
-
+static void alpm_enable(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -217,12 +215,12 @@ static int get_candela_value(int bl_level)
 	return candela_map_table.lux_tab[candela_map_table.bkl[bl_level]];
 }
 
-static void get_gamma_control_set(int candella)
+static void get_gamma_control_set(int candella, struct smartdim_conf *sdimconf)
 {
 	int cnt;
 	/*  Just a safety check to ensure smart dimming data is initialised well */
-	BUG_ON(msd.sdimconf->generate_gamma == NULL);
-	msd.sdimconf->generate_gamma(candella,
+	BUG_ON(sdimconf->generate_gamma == NULL);
+	sdimconf->generate_gamma(candella,
 			&gamma_cmds_list.cmds[0].payload[1]);
 	for (cnt = 1; cnt < (GAMMA_SET_MAX + 1); cnt++)
 		backlight[cnt] = gamma_cmds_list.cmds[0].payload[cnt];
@@ -234,13 +232,21 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct dcs_cmd_req cmdreq;
 	int cd_idx = 0, cd_level = 0;
 	static int stored_cd_level;
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct display_status *dstat = &msd->dstat;
+
+	if (!dstat->on) {
+		pr_err("%s: Skip to tx command %d\n", __func__, __LINE__);
+		return;
+	}
 
 	/*gamma*/
 	cd_idx = get_cmd_idx(bl_level);
 	cd_level = get_candela_value(bl_level);
 
 	/* gamma control */
-	get_gamma_control_set(cd_level);
+	get_gamma_control_set(cd_level, msd->sdimconf);
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &backlight_cmd;
@@ -311,6 +317,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
+	struct mdss_alpm_data *adata;
+	struct display_status *dstat = NULL;
 	int ambient_mode_check = 0;
 	int i, rc = 0;
 
@@ -321,6 +329,9 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 			panel_data);
+	dstat = &((struct mdss_samsung_driver_data *)pdata->panel_private)->dstat;
+
+	adata = &pdata->alpm_data;
 
 	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 		pr_debug("%s:%d, reset line not configured\n",
@@ -336,18 +347,18 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pr_debug("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
-	if (pinfo->alpm_event) {
-		if (enable && pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
+	if (adata->alpm_status) {
+		if (enable && adata->alpm_status(CHECK_PREVIOUS_STATUS)) {
 			if (gpio_get_value(disp_esd_gpio)) {
 				pr_info("[ESD_DEBUG] check current alpm status\n");
-				ambient_mode_check = pinfo->alpm_event(CHECK_CURRENT_STATUS);
-				pinfo->alpm_event(CLEAR_MODE_STATUS);
+				ambient_mode_check = adata->alpm_status(CHECK_CURRENT_STATUS);
+				adata->alpm_status(CLEAR_MODE_STATUS);
 				if (ambient_mode_check == ALPM_MODE_ON)
-					pinfo->alpm_event(ALPM_MODE_ON);
+					adata->alpm_status(ALPM_MODE_ON);
 			} else
 				return rc;
-		} else if (!enable && pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
-			pinfo->alpm_event(STORE_CURRENT_STATUS);
+		} else if (!enable && adata->alpm_status(CHECK_CURRENT_STATUS)) {
+			adata->alpm_status(STORE_CURRENT_STATUS);
 			return rc;
 		}
 		pr_debug("[ALPM_DEBUG] %s: Panel reset, enable : %d\n",
@@ -360,7 +371,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_err("gpio request failed\n");
 			return rc;
 		}
-		if (!pinfo->cont_splash_enabled && !msd.dstat.on) {
+		if (!pinfo->cont_splash_enabled && !dstat->on) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 
@@ -578,17 +589,21 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 	return;
 }
 
-static int mipi_samsung_disp_send_cmd(
+static int mdss_samsung_disp_send_cmd(
 		struct mdss_dsi_ctrl_pdata *ctrl,
-		enum mipi_samsung_cmd_list cmd,
+		enum mdss_samsung_cmd_list cmd,
 		unsigned char lock)
 {
 	struct dsi_panel_cmds *cmds = NULL;
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct mutex *cmd_lock = &msd->lock;
 #ifdef CMD_DEBUG
 	int i, j;
 #endif
+
 	if (lock)
-		mutex_lock(&msd.lock);
+		mutex_lock(cmd_lock);
 
 	switch (cmd) {
 		case PANEL_DISPLAY_ON_SEQ:
@@ -639,21 +654,21 @@ static int mipi_samsung_disp_send_cmd(
 		mdss_mdp_cmd_clk_disable();
 
 	if (lock)
-		mutex_unlock(&msd.lock);
+		mutex_unlock(cmd_lock);
 	return 0;
 
 unknown_command:
 	LCD_DEBUG("Undefined command\n");
 
 	if (lock)
-		mutex_unlock(&msd.lock);
-
+		mutex_unlock(cmd_lock);
 	return -EINVAL;
 }
 static int mdss_dsi_panel_registered(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
+	struct mdss_samsung_driver_data *msd = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s : Invalid input data\n", __func__);
@@ -663,12 +678,13 @@ static int mdss_dsi_panel_registered(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	ctrl_pdata = container_of(pdata,
 			struct mdss_dsi_ctrl_pdata, panel_data);
-	msd.mfd = (struct msm_fb_data_type *)registered_fb[0]->par;
-	msd.pdata = pdata;
-	msd.ctrl_pdata = ctrl_pdata;
+	msd = (struct mdss_samsung_driver_data *)pdata->panel_private;
+	msd->mfd = (struct msm_fb_data_type *)registered_fb[0]->par;
+	msd->pdata = pdata;
+	msd->ctrl_pdata = ctrl_pdata;
 
 	if (pinfo->mipi.mode == DSI_CMD_MODE)
-		msd.dstat.on = 1;
+		msd->dstat.on = 1;
 
 	pr_info("%s:%d, panel registered succesfully\n", __func__, __LINE__);
 	return 0;
@@ -678,6 +694,7 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 		bool mode)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl= NULL;
+	struct mdss_alpm_data *adata;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -687,27 +704,26 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 			panel_data);
 
-	if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS)
-			&& pdata->panel_info.alpm_event(CHECK_CURRENT_STATUS)) {
-		pdata->panel_info.alpm_mode = mode;
-		pr_info("%s: ambient -> ambient\n", __func__);
+	adata = &pdata->alpm_data;
+
+	if (adata->alpm_status(CHECK_PREVIOUS_STATUS)
+			&& adata->alpm_status(CHECK_CURRENT_STATUS)) {
+		pr_info("[ALPM_DEBUG] %s: ambient -> ambient\n", __func__);
 		return;
 	}
 
-	if (pdata->panel_info.alpm_mode == mode)
-		return;
-
-	if (mode)
-		mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
-	else
+	if (mode) {
+		alpm_enable(ctrl, ALPM_MODE_ON);
+		mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
+	} else {
 		/* Turn Off ALPM Mode */
-		mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
+		alpm_enable(ctrl, MODE_OFF);
+	}
 
-	pr_info("[ALPM_DEBUG]: Send ALPM %s cmds\n",
+	pr_info("[ALPM_DEBUG] %s: Send ALPM %s cmds\n", __func__,
 			mode ? "on" : "off");
 
-	pdata->panel_info.alpm_event(STORE_CURRENT_STATUS);
-	pdata->panel_info.alpm_mode = mode;
+	adata->alpm_status(STORE_CURRENT_STATUS);
 }
 
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
@@ -715,6 +731,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+	struct display_status *dstat = NULL;
 	static int stored_bl_level = 255;
 	int request_bl_dim = 0;
 
@@ -722,6 +739,8 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
+
+	dstat = &((struct mdss_samsung_driver_data *)pdata->panel_private)->dstat;
 
 	if (bl_level == PANEL_BACKLIGHT_RESTORE)
 		bl_level = stored_bl_level;
@@ -751,7 +770,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
 			break;
 		case BL_DCS_CMD:
-			msd.dstat.bright_level = bl_level;
+			dstat->bright_level = bl_level;
 			if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
 				mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
 				break;
@@ -782,7 +801,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 
 	if (pdata->panel_info.first_bl_update) {
-		mipi_samsung_disp_send_cmd(ctrl_pdata, PANEL_BACKLIGHT_CMD, true);
+		mdss_samsung_disp_send_cmd(ctrl_pdata, PANEL_BACKLIGHT_CMD, true);
 		pdata->panel_info.first_bl_update = 0;
 	}
 
@@ -793,14 +812,17 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 void mdss_dsi_panel_bl_dim(struct mdss_panel_data *pdata, int flag)
 {
-	if (likely(msd.dstat.on)) {
+	struct display_status *dstat =
+		&((struct mdss_samsung_driver_data *)pdata->panel_private)->dstat;
+
+	if (likely(dstat->on)) {
 		mdss_dsi_panel_bl_ctrl(pdata, flag);
 	} else
 		pr_info("[ALPM_DEBUG] %s: The LCD already turned off\n"
 				, __func__);
 }
 
-static unsigned int mipi_samsung_manufacture_id(struct mdss_panel_data *pdata)
+static unsigned int mdss_samsung_manufacture_id(struct mdss_panel_data *pdata)
 {
 	unsigned int id = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -828,7 +850,7 @@ static void mdss_sasmung_mtp_id(struct mdss_panel_data *pdata, char *destbuffer)
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
-	mipi_samsung_disp_send_cmd(ctrl, PANEL_MTP_ENABLE, true);
+	mdss_samsung_disp_send_cmd(ctrl, PANEL_MTP_ENABLE, true);
 
 	mdss_dsi_panel_cmd_read(ctrl,
 			mtp_id_cmds.cmds[0].payload[0],
@@ -847,42 +869,49 @@ static void mdss_sasmung_mtp_id(struct mdss_panel_data *pdata, char *destbuffer)
 }
 static int mdss_dsi_panel_dimming_init(struct mdss_panel_data *pdata)
 {
-	/* If the ID is not read yet, then read it*/
-	if (!msd.manufacture_id)
-		msd.manufacture_id = mipi_samsung_manufacture_id(pdata);
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)pdata->panel_private;
+	struct smartdim_conf *sdimconf = NULL;
+	struct display_status *dstat;
 
-	if (!msd.dstat.is_smart_dim_loaded) {
+	/* If the ID is not read yet, then read it*/
+	if (!msd->manufacture_id)
+		msd->manufacture_id = mdss_samsung_manufacture_id(pdata);
+
+	dstat = &msd->dstat;
+
+	if (!dstat->is_smart_dim_loaded) {
 		pr_info(" %s ++\n", __func__);
-		switch (msd.panel) {
+		switch (msd->panel) {
 			case PANEL_320_OCTA_S6E63J:
 				pr_info("%s : S6E63J\n", __func__);
-				msd.sdimconf = smart_S6E63J_get_conf();
+				msd->sdimconf = smart_S6E63J_get_conf();
+				sdimconf = msd->sdimconf;
 				break;
 		}
 		/* Just a safety check to ensure
 		   smart dimming data is initialised well */
-		BUG_ON(msd.sdimconf == NULL);
+		BUG_ON(sdimconf == NULL);
 
 		/* Set the mtp read buffer pointer and read the NVM value*/
-		mdss_sasmung_mtp_id(pdata, msd.sdimconf->mtp_buffer);
+		mdss_sasmung_mtp_id(pdata, sdimconf->mtp_buffer);
 
 		/* lux_tab setting for 350cd */
-		msd.sdimconf->lux_tab = &candela_map_table.lux_tab[0];
-		msd.sdimconf->lux_tabsize = candela_map_table.lux_tab_size;
-		msd.sdimconf->man_id = msd.manufacture_id;
+		sdimconf->lux_tab = &candela_map_table.lux_tab[0];
+		sdimconf->lux_tabsize = candela_map_table.lux_tab_size;
+		sdimconf->man_id = msd->manufacture_id;
 
 		/* Just a safety check to ensure
 		   smart dimming data is initialised well */
-		BUG_ON(msd.sdimconf->init == NULL);
-		msd.sdimconf->init();
-		msd.dstat.is_smart_dim_loaded = true;
+		BUG_ON(sdimconf->init == NULL);
+		sdimconf->init();
+		dstat->is_smart_dim_loaded = true;
 
 		/*
 		 * Since dimming is loaded,
 		 * we can assume that device is out of suspend state
 		 * and can accept backlight commands.
 		 */
-		msd.mfd->resume_state = MIPI_RESUME_STATE;
 		pr_info(" %s --\n", __func__);
 	}
 	return 0;
@@ -891,6 +920,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	struct mdss_alpm_data *adata;
+	struct mdss_samsung_driver_data *msd = NULL;
+	struct display_status *dstat;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -900,6 +932,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 			panel_data);
+	adata = &pdata->alpm_data;
+	msd = (struct mdss_samsung_driver_data *)pdata->panel_private;
+	dstat = &msd->dstat;
 
 	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
@@ -911,41 +946,38 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
-	if (!msd.manufacture_id)
-		msd.manufacture_id = mipi_samsung_manufacture_id(pdata);
+	if (!msd->manufacture_id)
+		msd->manufacture_id = mdss_samsung_manufacture_id(pdata);
 
 	mdss_dsi_panel_dimming_init(pdata);
 
 	/* Normaly the else is working for PANEL_DISP_ON_SEQ */
-	if (pinfo->alpm_event) {
-		if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			mipi_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
+	if (adata->alpm_status) {
+		if (!adata->alpm_status(CHECK_PREVIOUS_STATUS))
+			mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
 	} else
-		mipi_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
+		mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
 
-	msd.dstat.wait_disp_on = 1;
-	msd.dstat.on = 1;
-	msd.mfd->resume_state = MIPI_RESUME_STATE;
+	dstat->wait_disp_on = 1;
+	dstat->on = 1;
 
 	/* ALPM Mode Change */
-	if (pinfo->alpm_event) {
-		if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
-				&& pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
+	if (adata->alpm_status) {
+		if (!adata->alpm_status(CHECK_PREVIOUS_STATUS)
+				&& adata->alpm_status(CHECK_CURRENT_STATUS)) {
 			/* Turn On ALPM Mode */
-
 			mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_DIM);
-			mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
-			pinfo->alpm_event(STORE_CURRENT_STATUS);
+			mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
+			adata->alpm_status(STORE_CURRENT_STATUS);
 			pr_info("[ALPM_DEBUG] %s: Send ALPM mode on cmds\n",
 					__func__);
-		} else if (!pinfo->alpm_event(CHECK_CURRENT_STATUS)
-				&& pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
+		} else if (!adata->alpm_status(CHECK_CURRENT_STATUS)
+				&& adata->alpm_status(CHECK_PREVIOUS_STATUS)) {
 			/* Turn Off ALPM Mode */
-			mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
+			mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
 			/*
-			   mdss_dsi_panel_bl_dim(msd.pdata,
-			   PANEL_BACKLIGHT_RESTORE);
-			   pinfo->alpm_event(CLEAR_MODE_STATUS);
+			   mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_RESTORE);
+			   adata->alpm_status(CLEAR_MODE_STATUS);
 			 */
 			pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
 					__func__);
@@ -953,7 +985,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (androidboot_mode_charger || androidboot_is_recovery)
-		mipi_samsung_disp_send_cmd(ctrl, PANEL_BACKLIGHT_CMD, true);
+		mdss_samsung_disp_send_cmd(ctrl, PANEL_BACKLIGHT_CMD, true);
 	pr_info("%s:-\n", __func__);
 
 end:
@@ -966,6 +998,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	struct mdss_alpm_data *adata;
+	struct display_status *dstat;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -975,6 +1009,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 			panel_data);
+	adata = &pdata->alpm_data;
+	dstat = &((struct mdss_samsung_driver_data *)pdata->panel_private)->dstat;
 
 	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
@@ -986,22 +1022,21 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
-	msd.dstat.on = 0;
-	msd.mfd->resume_state = MIPI_SUSPEND_STATE;
+	dstat->on = 0;
 	pdata->panel_info.first_bl_update = 1;
-	if (pinfo->alpm_event &&
-			pinfo->alpm_event(CHECK_CURRENT_STATUS) &&
-			!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)) {
+	if (adata->alpm_status &&
+			adata->alpm_status(CHECK_CURRENT_STATUS) &&
+			!adata->alpm_status(CHECK_PREVIOUS_STATUS)) {
 		pr_info("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
 				__func__);
 		mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_DIM);
-		mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
-		pinfo->alpm_event(STORE_CURRENT_STATUS);
+		mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
+		adata->alpm_status(STORE_CURRENT_STATUS);
 	} else if (pinfo->is_suspending)
 		pr_debug("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
 				__func__);
 	else
-		mipi_samsung_disp_send_cmd(ctrl, PANEL_DISP_OFF, true);
+		mdss_samsung_disp_send_cmd(ctrl, PANEL_DISP_OFF, true);
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
@@ -1011,8 +1046,10 @@ end:
 
 static void alpm_enable(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 {
-	struct mdss_panel_info *pinfo = &msd.pdata->panel_info;
-	struct display_status *dstat = &msd.dstat;
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct display_status *dstat = &msd->dstat;
+	struct mdss_alpm_data *adata = &ctrl->panel_data.alpm_data;;
 
 	pr_info("[ALPM_DEBUG] %s: enable: %d\n", __func__, enable);
 
@@ -1030,17 +1067,15 @@ static void alpm_enable(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 	 *			-> The mode will change immediately
 	 */
 
-	alpm_store(enable);
+	adata->alpm_status(enable);
 	if (enable == MODE_OFF) {
-		if (pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
-				== ALPM_MODE_ON) {
+		if (adata->alpm_status(CHECK_PREVIOUS_STATUS) == ALPM_MODE_ON) {
 			if (dstat->on) {
-				mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
+				mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
 				/* wait 1 frame(more than 16ms) */
 				msleep(20);
-				pinfo->alpm_event(CLEAR_MODE_STATUS);
-				pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
-						__func__);
+				adata->alpm_status(CLEAR_MODE_STATUS);
+				pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n", __func__);
 			}
 		}
 	}
@@ -1087,6 +1122,8 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	struct display_status *dstat =
+		&((struct mdss_samsung_driver_data *)pdata->panel_private)->dstat;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1103,10 +1140,10 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	/* Any panel specific low power commands/config */
 	if (enable) {
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
-		msd.dstat.on = 0;
+		dstat->on = 0;
 	} else {
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
-		msd.dstat.on = 1;
+		dstat->on = 1;
 	}
 
 	mdss_dsi_panel_alpm_ctrl(pdata, enable);
@@ -1987,18 +2024,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pr_info("%s: ulps feature %s", __func__,
 			(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
 
-	rc = of_property_read_u32(np, "qcom,alpm-ldo-offset", &tmp);
-	pinfo->alpm_ldo_offset = (!rc ? tmp : 0);
-	pr_debug("[ALPM_DEBUG] ldo-offset : %d\n", pinfo->alpm_ldo_offset);
 	mdss_panel_parse_te_params(np, pinfo);
 	mdss_dsi_parse_dcs_cmds(np, &display_on_seq,
-			//		"qcom,mdss-display-on-seq", "qcom,mdss-dsi-on-command-state");
-		"qcom,mdss-display-on-seq", NULL);
+			"qcom,mdss-display-on-seq", "qcom,mdss-dsi-on-command-state");
 	mdss_dsi_parse_dcs_cmds(np, &display_on_cmd,
 			"qcom,mdss-display-on-cmd", NULL);
 	mdss_dsi_parse_dcs_cmds(np, &display_off_seq,
-			//			"qcom,mdss-display-off-seq", "qcom,mdss-dsi-off-command-state");
-		"qcom,mdss-display-off-seq", NULL);
+			"qcom,mdss-display-off-seq", "qcom,mdss-dsi-off-command-state");
 	mdss_dsi_parse_dcs_cmds(np, &manufacture_id_cmds,
 			"samsung,panel-manufacture-id-read-cmds", NULL);
 	mdss_dsi_parse_dcs_cmds(np, &mtp_id_cmds,
@@ -2032,7 +2064,7 @@ error:
 static ssize_t mdss_dsi_disp_get_power(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	pr_info("mipi_samsung_disp_get_power(0)\n");
+	pr_info("mdss_samsung_disp_get_power(0)\n");
 	return 0;
 }
 
@@ -2042,7 +2074,7 @@ static ssize_t mdss_dsi_disp_set_power(struct device *dev,
 	unsigned int power;
 	if (sscanf(buf, "%u", &power) != 1)
 		return -EINVAL;
-	pr_info("mipi_samsung_disp_set_power:%d\n", power);
+	pr_info("mdss_samsung_disp_set_power:%d\n", power);
 	return size;
 }
 
@@ -2054,19 +2086,29 @@ static ssize_t mdss_siop_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	int rc;
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct display_status *dstat = &msd->dstat;
 
-	rc = snprintf(buf, PAGE_SIZE, "%d\n", msd.dstat.siop_status);
-	pr_info("%s : siop status : %d\n", __func__, msd.dstat.siop_status);
+	rc = snprintf(buf, PAGE_SIZE, "%d\n", dstat->siop_status);
+	pr_info("%s : siop status : %d\n", __func__, dstat->siop_status);
 	return rc;
 }
 static ssize_t mdss_siop_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct display_status *dstat = &msd->dstat;
 
-	if (sysfs_streq(buf, "1") && !msd.dstat.siop_status)
-		msd.dstat.siop_status = true;
-	else if (sysfs_streq(buf, "0") && msd.dstat.siop_status)
-		msd.dstat.siop_status = false;
+	if (sysfs_streq(buf, "1") && !dstat->siop_status)
+		dstat->siop_status = true;
+	else if (sysfs_streq(buf, "0") && dstat->siop_status)
+		dstat->siop_status = false;
 	else
 		pr_info("%s: Invalid argument!!", __func__);
 
@@ -2089,13 +2131,18 @@ static struct lcd_ops mdss_dsi_disp_props = {
 static ssize_t mdss_disp_lcdtype_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "SDC_%x\n", msd.manufacture_id);
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+
+	return snprintf(buf, PAGE_SIZE, "SDC_%x\n", msd->manufacture_id);
 }
 static DEVICE_ATTR(lcd_type, S_IRUGO, mdss_disp_lcdtype_show, NULL);
 
 #endif
 
-static int mipi_samsung_rddpm_status(struct mdss_panel_data *pdata)
+static int mdss_samsung_rddpm_status(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 
@@ -2111,9 +2158,11 @@ static int mipi_samsung_rddpm_status(struct mdss_panel_data *pdata)
 	return (int)ctrl->rx_buf.data[0];
 }
 
-static int samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int event)
+static int
+samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int event)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct display_status *dstat = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -2122,16 +2171,17 @@ static int samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int ev
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 			panel_data);
+	dstat = &((struct mdss_samsung_driver_data *)pdata->panel_private)->dstat;
 
 	pr_debug("%s : %d", __func__, event);
 	switch (event) {
 		case MDSS_EVENT_FRAME_UPDATE:
-			if (msd.dstat.wait_disp_on) {
-				mipi_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON, true);
-				msd.dstat.wait_disp_on = 0;
+			if (dstat->wait_disp_on) {
+				mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON, true);
+				dstat->wait_disp_on = 0;
 				if (rddpm_cmds.cmd_cnt)
 					pr_info("DISPLAY_ON(rddpm: 0x%x)\n",
-							mipi_samsung_rddpm_status(pdata));
+							mdss_samsung_rddpm_status(pdata));
 				else
 					pr_info("DISPLAY_ON\n");
 			}
@@ -2144,35 +2194,43 @@ static int samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int ev
 	return 0;
 }
 
-static ssize_t mipi_samsung_ambient_show(struct device *dev,
+static ssize_t mdss_samsung_ambient_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	static struct mdss_panel_info *pinfo;
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
+	struct mdss_panel_info *pinfo;
 
-	if (msd.pdata && unlikely(!pinfo))
-		pinfo = &msd.pdata->panel_info;
+	if (!ctrl) {
+		pr_err("%s: Invalid arguments\n", __func__);
+		goto err;
+	}
+	pinfo = &ctrl->panel_data.panel_info;
 
 	pr_info("[ALPM_DEBUG] %s: current status : %d\n",
 			__func__, pinfo->is_suspending);
 
+err:
 	return 0;
 }
 
-static ssize_t mipi_samsung_ambient_store(struct device *dev,
+static ssize_t mdss_samsung_ambient_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	int ambient_mode = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl =
 		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct display_status *dstat = &msd->dstat;
 
 	sscanf(buf, "%d" , &ambient_mode);
 
 	pr_info("[ALPM_DEBUG] %s: mode : %d\n", __func__, ambient_mode);
 
-	if (msd.dstat.on) {
+	if (dstat->on) {
 		if (ambient_mode)
-			mdss_dsi_panel_bl_dim(&ctrl->panel_data,
-					PANEL_BACKLIGHT_RESTORE);
+			mdss_dsi_panel_bl_dim(&ctrl->panel_data, PANEL_BACKLIGHT_RESTORE);
 		else
 			mdss_dsi_panel_bl_dim(&ctrl->panel_data, PANEL_BACKLIGHT_DIM);
 	} else
@@ -2184,21 +2242,20 @@ static ssize_t mipi_samsung_ambient_store(struct device *dev,
 	return size;
 }
 static DEVICE_ATTR(ambient, S_IRUGO | S_IWUSR | S_IWGRP,
-		mipi_samsung_ambient_show,
-		mipi_samsung_ambient_store);
+		mdss_samsung_ambient_show,
+		mdss_samsung_ambient_store);
 #if defined(ALPM_MODE)
-static ssize_t mipi_samsung_alpm_show(struct device *dev,
+static ssize_t mdss_samsung_alpm_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	int rc;
-	static struct mdss_panel_info *pinfo;
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
+	struct mdss_alpm_data *adata = &ctrl->panel_data.alpm_data;
 	int current_status = 0;
 
-	if (msd.pdata && unlikely(!pinfo))
-		pinfo = &msd.pdata->panel_info;
-
-	if (pinfo && pinfo->alpm_event)
-		current_status = (int)pinfo->alpm_event(CHECK_CURRENT_STATUS);
+	if (adata && adata->alpm_status)
+		current_status = (int)adata->alpm_status(CHECK_CURRENT_STATUS);
 
 	rc = snprintf(buf, PAGE_SIZE, "%d\n", current_status);
 	pr_info("[ALPM_DEBUG] %s: current status : %d\n",
@@ -2207,14 +2264,16 @@ static ssize_t mipi_samsung_alpm_show(struct device *dev,
 	return rc;
 }
 
-static ssize_t mipi_samsung_alpm_store(struct device *dev,
+static ssize_t mdss_samsung_alpm_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	int mode = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl =
 		(struct mdss_dsi_ctrl_pdata *)dev_get_drvdata(dev);
-	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
-	struct display_status *dstat = &msd.dstat;
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)ctrl->panel_data.panel_private;
+	struct display_status *dstat = &msd->dstat;
+	struct mdss_alpm_data *adata = &ctrl->panel_data.alpm_data;
 
 	sscanf(buf, "%d" , &mode);
 	pr_info("[ALPM_DEBUG] %s: mode : %d\n", __func__, mode);
@@ -2227,39 +2286,39 @@ static ssize_t mipi_samsung_alpm_store(struct device *dev,
 	 *	* Unblank *
 	 */
 	if (mode == ALPM_MODE_ON) {
-		alpm_store(mode);
+		adata->alpm_status(mode);
 		/*
 		 * This will work if the ALPM must be on or chagne partial area
 		 * if that already in the status of unblank
 		 */
 		if (dstat->on) {
-			if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
-					&& pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
+			if (!adata->alpm_status(CHECK_PREVIOUS_STATUS) &&
+					adata->alpm_status(CHECK_CURRENT_STATUS)) {
 				/* Turn On ALPM Mode */
-				mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
+				mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
 				if (dstat->wait_disp_on == 0) {
 					/* wait 1 frame(more than 16ms) */
 					msleep(20);
-					mipi_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON, true);
+					mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON, true);
 				}
-				pinfo->alpm_event(STORE_CURRENT_STATUS);
+				adata->alpm_status(STORE_CURRENT_STATUS);
 				pr_info("[ALPM_DEBUG] %s: Send ALPM mode on cmds\n",
 						__func__);
 			}
 		}
 	} else if (mode == MODE_OFF) {
-		if (pinfo->alpm_event) {
-			alpm_store(mode);
-			if (pinfo->alpm_event(CHECK_PREVIOUS_STATUS)
+		if (adata->alpm_status) {
+			adata->alpm_status(mode);
+			if (adata->alpm_status(CHECK_PREVIOUS_STATUS)
 					== ALPM_MODE_ON) {
 				if (dstat->on) {
-					mipi_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
+					mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
 					/* wait 1 frame(more than 16ms) */
 					msleep(20);
-					pinfo->alpm_event(CLEAR_MODE_STATUS);
+					adata->alpm_status(CLEAR_MODE_STATUS);
+					pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n", __func__);
+
 				}
-				pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
-						__func__);
 			}
 		}
 	} else {
@@ -2287,9 +2346,9 @@ static ssize_t mipi_samsung_alpm_store(struct device *dev,
  *		-> Clear current and previous status as MODE_OFF status
  *			 that can use with
  *	* Usage *
- *		Call function "alpm_event_func(STATUS_OR_EVENT_FLAG)"
+ *		Call function "alpm_status_func(STATUS_OR_EVENT_FLAG)"
  */
-u8 alpm_event_func(u8 flag)
+static u8 alpm_status_func(u8 flag)
 {
 	static u8 current_status;
 	static u8 previous_status;
@@ -2319,25 +2378,15 @@ u8 alpm_event_func(u8 flag)
 			break;
 	}
 
-	pr_debug("[ALPM_DEBUG] current_status : %d, previous_status : %d, ret : %d\n",
+	pr_debug("[ALPM_DEBUG] current_status: %d, previous_status: %d, ret: %d\n",
 			current_status, previous_status, ret);
 
 	return ret;
 }
 
-static void alpm_store(u8 mode)
-{
-	struct mdss_panel_info *pinfo = &msd.pdata->panel_info;
-
-	/* Register ALPM event function */
-	if (unlikely(!pinfo->alpm_event))
-		pinfo->alpm_event = alpm_event_func;
-
-	pinfo->alpm_event(mode);
-}
 static DEVICE_ATTR(alpm, S_IRUGO | S_IWUSR | S_IWGRP,
-		mipi_samsung_alpm_show,
-		mipi_samsung_alpm_store);
+		mdss_samsung_alpm_show,
+		mdss_samsung_alpm_store);
 #endif
 
 static struct attribute *panel_sysfs_attributes[] = {
@@ -2379,6 +2428,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	struct device_node *np = NULL;
 	struct platform_device *pdev = NULL;
+	static struct mdss_samsung_driver_data msd;
 	np = of_parse_phandle(node,
 			"qcom,mdss-dsi-panel-controller", 0);
 	if (!np) {
@@ -2388,6 +2438,8 @@ int mdss_dsi_panel_init(struct device_node *node,
 
 	pdev = of_find_device_by_node(np);
 #endif
+
+	ctrl_pdata->panel_data.panel_private = &msd;
 	mutex_init(&msd.lock);
 	if (!node || !ctrl_pdata) {
 		pr_err("%s: Invalid arguments\n", __func__);
@@ -2421,9 +2473,12 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->event_handler = samsung_dsi_panel_event_handler;
+#if defined(CONFIG_FB_MSM_MDSS_PANEL_ALWAYS_ON)
 	ctrl_pdata->panel_data.send_alpm = mdss_dsi_panel_alpm_ctrl;
+#endif
 	ctrl_pdata->panel_reset = mdss_dsi_panel_reset;
 	ctrl_pdata->registered = mdss_dsi_panel_registered;
+	ctrl_pdata->panel_data.alpm_data.alpm_status = alpm_status_func;
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	lcd_device = lcd_device_register("panel", &pdev->dev, ctrl_pdata,
 			&mdss_dsi_disp_props);
@@ -2456,6 +2511,8 @@ int mdss_dsi_panel_init(struct device_node *node,
 
 	msd.msm_pdev = pdev;
 	msd.dstat.on = 0;
+	if (pinfo->cont_splash_enabled)
+		msd.dstat.on = 1;
 
 	disp_esd_gpio = of_get_named_gpio(node, "qcom,esd-det-gpio", 0);
 	rc = gpio_request(disp_esd_gpio, "err_fg");

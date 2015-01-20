@@ -3251,12 +3251,10 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 	int rc;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl = NULL;
-	struct mdss_panel_info *pinfo;
+	struct mdss_alpm_data *adata;
 
 	if (!mfd)
 		return -ENODEV;
-
-	pinfo = mfd->panel_info;
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
@@ -3274,6 +3272,8 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		ctl = mdp5_data->ctl;
 	}
 
+	adata = &ctl->panel_data->alpm_data;
+
 	if (mdss_fb_is_power_on(mfd)) {
 		pr_debug("panel was never turned off\n");
 		rc = mdss_mdp_ctl_start(mdp5_data->ctl, false);
@@ -3287,10 +3287,10 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 	}
 
 	if (!mfd->panel_info->cont_splash_enabled &&
-		(mfd->panel_info->type != DTV_PANEL) &&
-		(mfd->panel_info->type != WRITEBACK_PANEL) &&
-		!(pinfo->alpm_event &&
-		pinfo->alpm_event(CHECK_PREVIOUS_STATUS))) {
+			(mfd->panel_info->type != DTV_PANEL) &&
+			(mfd->panel_info->type != WRITEBACK_PANEL) &&
+			!(adata->alpm_status &&
+				adata->alpm_status(CHECK_PREVIOUS_STATUS))) {
 		rc = mdss_mdp_overlay_start(mfd);
 		if (rc)
 			goto end;
@@ -3321,12 +3321,10 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_mixer *mixer;
 	int need_cleanup;
-	struct mdss_panel_info *pinfo = NULL;
+	struct mdss_alpm_data *adata;
 
 	if (!mfd)
 		return -ENODEV;
-
-	pinfo = mfd->panel_info;
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
@@ -3337,6 +3335,8 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		pr_err("ctl not initialized\n");
 		return -ENODEV;
 	}
+
+	adata = &mdp5_data->ctl->panel_data->alpm_data;
 
 	if (!mdss_mdp_ctl_is_power_on(mdp5_data->ctl))
 		return 0;
@@ -3372,8 +3372,8 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mdp5_data->ov_lock);
 
 	if (need_cleanup) {
-		if (pinfo->alpm_event &&
-			pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
+		if (adata->alpm_status &&
+			adata->alpm_status(CHECK_CURRENT_STATUS)) {
 			pr_debug("[ALPM_DEBUG] %s, Skip cleanup pipes on fb%d\n",
 				 __func__, mfd->index);
 		} else {
