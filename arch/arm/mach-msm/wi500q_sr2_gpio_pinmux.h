@@ -34,7 +34,18 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 // ASUS_BSP BerylHou ---
-
+	{
+		.gpio      = 4,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 5,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
 // ASUS_BSP +++ Maggie_Lee "I2C"
 	{
                 .gpio = 6,		/* BLSP1 QUP2: I2C2 Sensors, I2C_DAT */
@@ -51,6 +62,42 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
                 },
         },
 // ASUS_BSP --- Maggie_Lee "I2C"
+	{
+		.gpio      = 10,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 11,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 12,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 13,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 14,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 15,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
 // ASUS_BSP +++ Cliff_Yu "TOUCH"
 	{
 		.gpio = 16,
@@ -100,6 +147,18 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 	},
 // ASUS_BSP --- Maggie_Lee "ECG sensor porting"
 	{
+		.gpio      = 22,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 23,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
 		.gpio = 24,		/* Tear Enable */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_te_act_cfg,
@@ -111,6 +170,30 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
+		},
+	},
+	{
+		.gpio      = 26,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 27,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 29,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 31,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
 	},
 //ASUS_BSP +++ Maggie_Lee "Sensors Porting"
@@ -136,6 +219,66 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 	//ASUS_BSP --- Maggie_Lee "Sensors Porting"
+	{
+		.gpio      = 38,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 39,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 40,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 41,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 42,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 43,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 44,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 45,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 46,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 47,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
 //ASUS_BSP BerylHou +++ "BT / host"
 	{
 		.gpio      = 48,	/* BT wake up host */
@@ -168,49 +311,8 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 // ASUS_BSP --- Maggie_Lee "ECG sensor porting"
-//ASUS_BSP +++ Ken_Cheng "MI2S for digital MIC"
-//ASUS_BSP BerylHou +++ "BT / host"
- 	{
-		.gpio      = 61,	/* Host wake up BT */
-		.settings = {
-                        [GPIOMUX_ACTIVE] = &host_wakup_bt_act_cfg,
-                        [GPIOMUX_SUSPENDED] = &host_wakup_bt_sus_cfg,
-		},
-	},
-//ASUS_BSP BerylHou ---
 	{
-		.gpio = 63,           /* pri mi2s sck */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
-			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
-		},
-	},
-	{
-		.gpio = 64,           /* pri mi2s ws */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
-			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
-		},
-	},
-	{
-		.gpio = 65,           /* pri mi2s din */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
-			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
-		},
-	},
-//ASUS_BSP --- Ken_Cheng "MI2S for digital MIC"
-//ASUS_BSP +++ Ryder "Power Key"
-	{
-		.gpio = 68,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
-		},
-	},
-//ASUS_BSP --- Ryder "Power Key"
-	{
-		.gpio      = 38,		/* NC */
+		.gpio      = 56,		/* NC */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
@@ -233,8 +335,79 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
 	},
+//ASUS_BSP +++ Ken_Cheng "MI2S for digital MIC"
+//ASUS_BSP BerylHou +++ "BT / host"
+	{
+		.gpio      = 61,	/* Host wake up BT */
+		.settings = {
+                        [GPIOMUX_ACTIVE] = &host_wakup_bt_act_cfg,
+                        [GPIOMUX_SUSPENDED] = &host_wakup_bt_sus_cfg,
+		},
+	},
+//ASUS_BSP BerylHou ---
+	{
+		.gpio      = 62,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio = 63,           /* pri mi2s sck */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 64,           /* pri mi2s ws */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 65,           /* pri mi2s din */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
+		},
+	},
+//ASUS_BSP --- Ken_Cheng "MI2S for digital MIC"
+	{
+		.gpio      = 66,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
 	{
 		.gpio      = 67,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+//ASUS_BSP +++ Ryder "Power Key"
+	{
+		.gpio = 68,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
+			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
+		},
+	},
+//ASUS_BSP --- Ryder "Power Key"
+	{
+		.gpio      = 69,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 70,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 71,		/* NC */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
@@ -246,13 +419,193 @@ static struct msm_gpiomux_config wi500q_sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 	{
+		.gpio      = 73,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 74,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 75,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 76,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 78,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 79,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 80,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 86,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 87,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 88,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 93,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 94,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 96,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 97,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 98,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 99,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 100,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 101,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 102,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 103,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 104,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
 		.gpio      = 105,		/* NC */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
 	},
 	{
+		.gpio      = 106,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 107,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
 		.gpio      = 108,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 109,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 110,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 112,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 113,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 114,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 115,		/* NC */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
+		},
+	},
+	{
+		.gpio      = 116,		/* NC */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
