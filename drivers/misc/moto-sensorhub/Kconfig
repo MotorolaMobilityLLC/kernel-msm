@@ -3,8 +3,10 @@ config SENSORS_MOTOSH
         default n
         depends on I2C
         help
-          Say yes here if you wish to include the STM
-          MOTOSH Sensor processor driver.
+          Say yes here if you wish to include the Motorola
+          "MOTOSH" Sensorhub processor driver. The driver
+          handles registration for physical sensors
+          connected to this external processor.
 
 config MMI_HALL_NOTIFICATIONS
         bool "Enable hall effect sensor notifier"

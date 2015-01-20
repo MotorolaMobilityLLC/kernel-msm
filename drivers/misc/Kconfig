@@ -713,5 +713,5 @@ source "drivers/misc/altera-stapl/Kconfig"
 source "drivers/misc/mei/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
 source "drivers/misc/qcom/Kconfig"
-source "drivers/misc/stm401/Kconfig"
+source "drivers/misc/moto-sensorhub/Kconfig"
 endmenu
