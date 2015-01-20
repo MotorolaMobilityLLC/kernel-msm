@@ -16,129 +16,129 @@
  * 02111-1307, USA
  */
 
-#ifndef __STM401_H__
-#define __STM401_H__
+#ifndef __MOTOSH_H__
+#define __MOTOSH_H__
 
 #include <mach/mmi_hall_notifier.h>
 
 /** The following define the IOCTL command values via the ioctl macros */
-#define STM401_IOCTL_BASE		77
-#define STM401_IOCTL_BOOTLOADERMODE	\
-		_IOW(STM401_IOCTL_BASE, 0, unsigned char)
-#define STM401_IOCTL_NORMALMODE	\
-		_IOW(STM401_IOCTL_BASE, 1, unsigned char)
-#define STM401_IOCTL_MASSERASE	\
-		_IOW(STM401_IOCTL_BASE, 2, unsigned char)
-#define STM401_IOCTL_SETSTARTADDR	\
-		_IOW(STM401_IOCTL_BASE, 3, unsigned int)
-#define STM401_IOCTL_TEST_READ	\
-		_IOR(STM401_IOCTL_BASE, 4, unsigned char)
-#define STM401_IOCTL_TEST_WRITE	\
-		_IOW(STM401_IOCTL_BASE, 5, unsigned char)
-#define STM401_IOCTL_TEST_WRITE_READ	\
-		_IOWR(STM401_IOCTL_BASE, 6, unsigned short)
-#define STM401_IOCTL_SET_MAG_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 7, unsigned short)
-#define STM401_IOCTL_TEST_BOOTMODE	\
-		_IOW(STM401_IOCTL_BASE, 8, unsigned char)
-#define STM401_IOCTL_SET_ACC_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 9,  unsigned short)
-#define STM401_IOCTL_SET_MOTION_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 10, unsigned char)
-#define STM401_IOCTL_SET_GYRO_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 11, unsigned short)
-#define STM401_IOCTL_SET_DEBUG	\
-		_IOW(STM401_IOCTL_BASE, 12, unsigned char)
-#define STM401_IOCTL_SET_USER_PROFILE	\
-		_IOW(STM401_IOCTL_BASE, 13, int)
-#define STM401_IOCTL_SET_GPS_DATA	\
-		_IOW(STM401_IOCTL_BASE, 14, int)
-#define STM401_IOCTL_SET_PRES_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 15, unsigned short)
-#define STM401_IOCTL_SET_REF_ALTITUDE	\
-		_IOW(STM401_IOCTL_BASE, 16, int)
-#define STM401_IOCTL_SET_ACTIVE_MODE	\
-		_IOW(STM401_IOCTL_BASE, 17, unsigned char)
-#define STM401_IOCTL_SET_PASSIVE_MODE	\
-		_IOW(STM401_IOCTL_BASE, 18, unsigned char)
-#define STM401_IOCTL_SET_FACTORY_MODE	\
-		_IOW(STM401_IOCTL_BASE, 19, unsigned char)
-#define STM401_IOCTL_GET_SENSORS	\
-		_IOR(STM401_IOCTL_BASE, 20, unsigned char)
-#define STM401_IOCTL_SET_SENSORS	\
-		_IOW(STM401_IOCTL_BASE, 21, unsigned char)
-#define STM401_IOCTL_GET_VERSION	\
-		_IOR(STM401_IOCTL_BASE, 22, unsigned char)
-#define STM401_IOCTL_SET_MONITOR_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 23, unsigned char)
-#define STM401_IOCTL_GET_DOCK_STATUS	\
-		_IOR(STM401_IOCTL_BASE, 24, unsigned char)
-#define STM401_IOCTL_SET_ORIENTATION_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 25, unsigned char)
-#define STM401_IOCTL_SET_EQUIPMENT_TYPE	\
-		_IOW(STM401_IOCTL_BASE, 26, unsigned char)
-#define STM401_IOCTL_SET_POWER_MODE	\
-		_IOW(STM401_IOCTL_BASE, 27, unsigned char)
-#define STM401_IOCTL_GET_ALGOS	\
-		_IOR(STM401_IOCTL_BASE, 28, char*)
-#define STM401_IOCTL_SET_ALGOS	\
-		_IOW(STM401_IOCTL_BASE, 29, char*)
-#define STM401_IOCTL_GET_MAG_CAL \
-		_IOR(STM401_IOCTL_BASE, 30, unsigned char*)
-#define STM401_IOCTL_SET_MAG_CAL \
-		_IOW(STM401_IOCTL_BASE, 31, unsigned char*)
+#define MOTOSH_IOCTL_BASE		77
+#define MOTOSH_IOCTL_BOOTLOADERMODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 0, unsigned char)
+#define MOTOSH_IOCTL_NORMALMODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 1, unsigned char)
+#define MOTOSH_IOCTL_MASSERASE	\
+		_IOW(MOTOSH_IOCTL_BASE, 2, unsigned char)
+#define MOTOSH_IOCTL_SETSTARTADDR	\
+		_IOW(MOTOSH_IOCTL_BASE, 3, unsigned int)
+#define MOTOSH_IOCTL_TEST_READ	\
+		_IOR(MOTOSH_IOCTL_BASE, 4, unsigned char)
+#define MOTOSH_IOCTL_TEST_WRITE	\
+		_IOW(MOTOSH_IOCTL_BASE, 5, unsigned char)
+#define MOTOSH_IOCTL_TEST_WRITE_READ	\
+		_IOWR(MOTOSH_IOCTL_BASE, 6, unsigned short)
+#define MOTOSH_IOCTL_SET_MAG_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 7, unsigned short)
+#define MOTOSH_IOCTL_TEST_BOOTMODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 8, unsigned char)
+#define MOTOSH_IOCTL_SET_ACC_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 9,  unsigned short)
+#define MOTOSH_IOCTL_SET_MOTION_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 10, unsigned char)
+#define MOTOSH_IOCTL_SET_GYRO_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 11, unsigned short)
+#define MOTOSH_IOCTL_SET_DEBUG	\
+		_IOW(MOTOSH_IOCTL_BASE, 12, unsigned char)
+#define MOTOSH_IOCTL_SET_USER_PROFILE	\
+		_IOW(MOTOSH_IOCTL_BASE, 13, int)
+#define MOTOSH_IOCTL_SET_GPS_DATA	\
+		_IOW(MOTOSH_IOCTL_BASE, 14, int)
+#define MOTOSH_IOCTL_SET_PRES_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 15, unsigned short)
+#define MOTOSH_IOCTL_SET_REF_ALTITUDE	\
+		_IOW(MOTOSH_IOCTL_BASE, 16, int)
+#define MOTOSH_IOCTL_SET_ACTIVE_MODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 17, unsigned char)
+#define MOTOSH_IOCTL_SET_PASSIVE_MODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 18, unsigned char)
+#define MOTOSH_IOCTL_SET_FACTORY_MODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 19, unsigned char)
+#define MOTOSH_IOCTL_GET_SENSORS	\
+		_IOR(MOTOSH_IOCTL_BASE, 20, unsigned char)
+#define MOTOSH_IOCTL_SET_SENSORS	\
+		_IOW(MOTOSH_IOCTL_BASE, 21, unsigned char)
+#define MOTOSH_IOCTL_GET_VERSION	\
+		_IOR(MOTOSH_IOCTL_BASE, 22, unsigned char)
+#define MOTOSH_IOCTL_SET_MONITOR_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 23, unsigned char)
+#define MOTOSH_IOCTL_GET_DOCK_STATUS	\
+		_IOR(MOTOSH_IOCTL_BASE, 24, unsigned char)
+#define MOTOSH_IOCTL_SET_ORIENTATION_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 25, unsigned char)
+#define MOTOSH_IOCTL_SET_EQUIPMENT_TYPE	\
+		_IOW(MOTOSH_IOCTL_BASE, 26, unsigned char)
+#define MOTOSH_IOCTL_SET_POWER_MODE	\
+		_IOW(MOTOSH_IOCTL_BASE, 27, unsigned char)
+#define MOTOSH_IOCTL_GET_ALGOS	\
+		_IOR(MOTOSH_IOCTL_BASE, 28, char*)
+#define MOTOSH_IOCTL_SET_ALGOS	\
+		_IOW(MOTOSH_IOCTL_BASE, 29, char*)
+#define MOTOSH_IOCTL_GET_MAG_CAL \
+		_IOR(MOTOSH_IOCTL_BASE, 30, unsigned char*)
+#define MOTOSH_IOCTL_SET_MAG_CAL \
+		_IOW(MOTOSH_IOCTL_BASE, 31, unsigned char*)
 /* 32 unused */
-#define STM401_IOCTL_SET_MOTION_DUR	\
-		_IOW(STM401_IOCTL_BASE, 33, unsigned int)
+#define MOTOSH_IOCTL_SET_MOTION_DUR	\
+		_IOW(MOTOSH_IOCTL_BASE, 33, unsigned int)
 /* 34 unused */
-#define STM401_IOCTL_SET_ZRMOTION_DUR	\
-		_IOW(STM401_IOCTL_BASE, 35, unsigned int)
-#define STM401_IOCTL_GET_WAKESENSORS	\
-		_IOR(STM401_IOCTL_BASE, 36, unsigned char)
-#define STM401_IOCTL_SET_WAKESENSORS	\
-		_IOW(STM401_IOCTL_BASE, 37, unsigned char)
-#define STM401_IOCTL_GET_VERNAME	\
-		_IOW(STM401_IOCTL_BASE, 38, char*)
-#define STM401_IOCTL_SET_POSIX_TIME	\
-		_IOW(STM401_IOCTL_BASE, 39, unsigned long)
+#define MOTOSH_IOCTL_SET_ZRMOTION_DUR	\
+		_IOW(MOTOSH_IOCTL_BASE, 35, unsigned int)
+#define MOTOSH_IOCTL_GET_WAKESENSORS	\
+		_IOR(MOTOSH_IOCTL_BASE, 36, unsigned char)
+#define MOTOSH_IOCTL_SET_WAKESENSORS	\
+		_IOW(MOTOSH_IOCTL_BASE, 37, unsigned char)
+#define MOTOSH_IOCTL_GET_VERNAME	\
+		_IOW(MOTOSH_IOCTL_BASE, 38, char*)
+#define MOTOSH_IOCTL_SET_POSIX_TIME	\
+		_IOW(MOTOSH_IOCTL_BASE, 39, unsigned long)
 /* 40-42 unused */
-#define STM401_IOCTL_SET_ALGO_REQ \
-		_IOR(STM401_IOCTL_BASE, 43, char*)
-#define STM401_IOCTL_GET_ALGO_EVT \
-		_IOR(STM401_IOCTL_BASE, 44, char*)
-#define STM401_IOCTL_ENABLE_BREATHING \
-		_IOW(STM401_IOCTL_BASE, 45, unsigned char)
-#define STM401_IOCTL_WRITE_REG \
-		_IOR(STM401_IOCTL_BASE, 46, char*)
-#define STM401_IOCTL_READ_REG \
-		_IOR(STM401_IOCTL_BASE, 47, char*)
-#define STM401_IOCTL_SET_STEP_COUNTER_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 48,  unsigned short)
-#define STM401_IOCTL_GET_IR_CONFIG \
-		_IOWR(STM401_IOCTL_BASE, 49, char*)
-#define STM401_IOCTL_SET_IR_CONFIG \
-		_IOW(STM401_IOCTL_BASE, 50, char*)
-#define STM401_IOCTL_SET_IR_GESTURE_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 51,  unsigned short)
-#define STM401_IOCTL_SET_IR_RAW_DELAY	\
-		_IOW(STM401_IOCTL_BASE, 52,  unsigned short)
-#define STM401_IOCTL_GET_BOOTED \
-		_IOR(STM401_IOCTL_BASE, 53, unsigned char)
-#define STM401_IOCTL_SET_LOWPOWER_MODE \
-		_IOW(STM401_IOCTL_BASE, 54, char)
-#define STM401_IOCTL_SET_FLUSH \
-		_IOW(STM401_IOCTL_BASE, 55, int)
+#define MOTOSH_IOCTL_SET_ALGO_REQ \
+		_IOR(MOTOSH_IOCTL_BASE, 43, char*)
+#define MOTOSH_IOCTL_GET_ALGO_EVT \
+		_IOR(MOTOSH_IOCTL_BASE, 44, char*)
+#define MOTOSH_IOCTL_ENABLE_BREATHING \
+		_IOW(MOTOSH_IOCTL_BASE, 45, unsigned char)
+#define MOTOSH_IOCTL_WRITE_REG \
+		_IOR(MOTOSH_IOCTL_BASE, 46, char*)
+#define MOTOSH_IOCTL_READ_REG \
+		_IOR(MOTOSH_IOCTL_BASE, 47, char*)
+#define MOTOSH_IOCTL_SET_STEP_COUNTER_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 48,  unsigned short)
+#define MOTOSH_IOCTL_GET_IR_CONFIG \
+		_IOWR(MOTOSH_IOCTL_BASE, 49, char*)
+#define MOTOSH_IOCTL_SET_IR_CONFIG \
+		_IOW(MOTOSH_IOCTL_BASE, 50, char*)
+#define MOTOSH_IOCTL_SET_IR_GESTURE_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 51,  unsigned short)
+#define MOTOSH_IOCTL_SET_IR_RAW_DELAY	\
+		_IOW(MOTOSH_IOCTL_BASE, 52,  unsigned short)
+#define MOTOSH_IOCTL_GET_BOOTED \
+		_IOR(MOTOSH_IOCTL_BASE, 53, unsigned char)
+#define MOTOSH_IOCTL_SET_LOWPOWER_MODE \
+		_IOW(MOTOSH_IOCTL_BASE, 54, char)
+#define MOTOSH_IOCTL_SET_FLUSH \
+		_IOW(MOTOSH_IOCTL_BASE, 55, int)
 
 #define FW_VERSION_SIZE 12
-#define STM401_CONTROL_REG_SIZE 200
-#define STM401_STATUS_REG_SIZE 8
-#define STM401_TOUCH_REG_SIZE  8
-#define STM401_MAG_CAL_SIZE 26
+#define MOTOSH_CONTROL_REG_SIZE 200
+#define MOTOSH_STATUS_REG_SIZE 8
+#define MOTOSH_TOUCH_REG_SIZE  8
+#define MOTOSH_MAG_CAL_SIZE 26
 #define STM_AOD_INSTRUMENTATION_REG_SIZE 256
-#define STM401_AS_DATA_BUFF_SIZE 20
-#define STM401_MS_DATA_BUFF_SIZE 20
+#define MOTOSH_AS_DATA_BUFF_SIZE 20
+#define MOTOSH_MS_DATA_BUFF_SIZE 20
 
-#define STM401_CAMERA_DATA 0x01
+#define MOTOSH_CAMERA_DATA 0x01
 
 /* Mask values */
 
@@ -196,34 +196,34 @@
 #define M_GENERIC_INTRPT        0x0080
 
 /* algo index */
-#define STM401_IDX_MODALITY        0
-#define STM401_IDX_ORIENTATION     1
-#define STM401_IDX_STOWED          2
-#define STM401_IDX_ACCUM_MODALITY  3
-#define STM401_IDX_ACCUM_MVMT      4
+#define MOTOSH_IDX_MODALITY        0
+#define MOTOSH_IDX_ORIENTATION     1
+#define MOTOSH_IDX_STOWED          2
+#define MOTOSH_IDX_ACCUM_MODALITY  3
+#define MOTOSH_IDX_ACCUM_MVMT      4
 
-#define STM401_NUM_ALGOS           5
+#define MOTOSH_NUM_ALGOS           5
 
-#define STM401_EVT_SZ_TRANSITION   7
-#define STM401_EVT_SZ_ACCUM_STATE  2
-#define STM401_EVT_SZ_ACCUM_MVMT   4
+#define MOTOSH_EVT_SZ_TRANSITION   7
+#define MOTOSH_EVT_SZ_ACCUM_STATE  2
+#define MOTOSH_EVT_SZ_ACCUM_MVMT   4
 
-struct stm401_android_sensor_data {
+struct motosh_android_sensor_data {
 	int64_t timestamp;
 	unsigned char type;
-	unsigned char data[STM401_AS_DATA_BUFF_SIZE];
+	unsigned char data[MOTOSH_AS_DATA_BUFF_SIZE];
 	int size;
 	unsigned char status;
 };
 
-struct stm401_moto_sensor_data {
+struct motosh_moto_sensor_data {
 	int64_t timestamp;
 	unsigned char type;
-	unsigned char data[STM401_MS_DATA_BUFF_SIZE];
+	unsigned char data[MOTOSH_MS_DATA_BUFF_SIZE];
 	int size;
 };
 
-enum STM401_data_types {
+enum MOTOSH_data_types {
 	DT_ACCEL,
 	DT_GYRO,
 	DT_PRESSURE,
@@ -302,19 +302,19 @@ struct stm_response {
 #include <linux/fb.h>
 #endif
 
-#define NAME			     "stm401"
+#define NAME			     "motosh"
 
-/* STM401 memory map */
+/* MOTOSH memory map */
 #define ID                              0x00
 #define REV_ID                          0x01
 #define ERROR_STATUS                    0x02
 #define LOWPOWER_REG                    0x03
 
-#define STM401_PEEKDATA_REG             0x09
-#define STM401_PEEKSTATUS_REG           0x0A
-#define STM401_STATUS_REG               0x0B
-#define STM401_TOUCH_REG                0x0C
-#define STM401_CONTROL_REG              0x0D
+#define MOTOSH_PEEKDATA_REG             0x09
+#define MOTOSH_PEEKSTATUS_REG           0x0A
+#define MOTOSH_STATUS_REG               0x0B
+#define MOTOSH_TOUCH_REG                0x0C
+#define MOTOSH_CONTROL_REG              0x0D
 #define STM_AOD_INSTRUMENTATION_REG     0x0E
 
 #define AP_POSIX_TIME                   0x10
@@ -414,24 +414,24 @@ struct stm_response {
 #define ALGO_EVT_ACCUM_MVMT             0x79
 
 #define RESET                           0x7F
-/* STM401 memory map end */
+/* MOTOSH memory map end */
 
 #define READ_CMDBUFF_SIZE 512
 
 #define LIGHTING_TABLE_SIZE 32
 
-#define STM401_AS_DATA_QUEUE_SIZE       0x20
-#define STM401_AS_DATA_QUEUE_MASK       0x1F
-#define STM401_MS_DATA_QUEUE_SIZE       0x08
-#define STM401_MS_DATA_QUEUE_MASK       0x07
+#define MOTOSH_AS_DATA_QUEUE_SIZE       0x20
+#define MOTOSH_AS_DATA_QUEUE_MASK       0x1F
+#define MOTOSH_MS_DATA_QUEUE_SIZE       0x08
+#define MOTOSH_MS_DATA_QUEUE_MASK       0x07
 
-#define STM401_CLIENT_MASK		0xF0
+#define MOTOSH_CLIENT_MASK		0xF0
 
-#define STM401_BUSY_STATUS_MASK	0x80
-#define STM401_BUSY_SLEEP_USEC	10000
-#define STM401_BUSY_RESUME_COUNT	14
-#define STM401_BUSY_SUSPEND_COUNT	6
-#define STM401_LATE_SUSPEND_TIMEOUT	400
+#define MOTOSH_BUSY_STATUS_MASK	0x80
+#define MOTOSH_BUSY_SLEEP_USEC	10000
+#define MOTOSH_BUSY_RESUME_COUNT	14
+#define MOTOSH_BUSY_SUSPEND_COUNT	6
+#define MOTOSH_LATE_SUSPEND_TIMEOUT	400
 
 #define AOD_WAKEUP_REASON_ESD		4
 #define AOD_WAKEUP_REASON_QP_PREPARE		5
@@ -452,22 +452,22 @@ struct stm_response {
 #define AOD_QP_ENABLED_VOTE_USER		0x02
 #define AOD_QP_ENABLED_VOTE_MASK		0x03
 
-#define STM401_MAX_GENERIC_DATA		512
+#define MOTOSH_MAX_GENERIC_DATA		512
 
 #define ESR_SIZE			128
 
-#define STM401_RESET_DELAY		400
+#define MOTOSH_RESET_DELAY		400
 
 #define I2C_RESPONSE_LENGTH		8
 
-#define STM401_MAXDATA_LENGTH		256
+#define MOTOSH_MAXDATA_LENGTH		256
 
-#define STM401_IR_GESTURE_CNT      8
-#define STM401_IR_SZ_GESTURE       4
-#define STM401_IR_SZ_RAW           20
-#define STM401_IR_CONFIG_REG_SIZE  255
+#define MOTOSH_IR_GESTURE_CNT      8
+#define MOTOSH_IR_SZ_GESTURE       4
+#define MOTOSH_IR_SZ_RAW           20
+#define MOTOSH_IR_CONFIG_REG_SIZE  255
 
-/* stm401_readbuff offsets. */
+/* motosh_readbuff offsets. */
 #define IRQ_WAKE_LO  0
 #define IRQ_WAKE_MED 1
 #define IRQ_WAKE_HI  2
@@ -525,13 +525,13 @@ struct stm_response {
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
-#define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (stm401_readbuff+(x)))))
-#define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (stm401_readbuff+(x)))))
+#define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (motosh_readbuff+(x)))))
+#define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (motosh_readbuff+(x)))))
 
-#define STM401_HALL_SOUTH 1
-#define STM401_HALL_NORTH 2
+#define MOTOSH_HALL_SOUTH 1
+#define MOTOSH_HALL_NORTH 2
 
-struct stm401_quickpeek_message {
+struct motosh_quickpeek_message {
 	u8 message;
 	u8 panel_state;
 	u8 buffer_id;
@@ -542,13 +542,13 @@ struct stm401_quickpeek_message {
 	struct list_head list;
 };
 
-struct stm401_aod_enabled_vote {
+struct motosh_aod_enabled_vote {
 	struct mutex vote_lock;
 	unsigned int vote;
 	unsigned int resolved_vote;
 };
 
-struct stm401_platform_data {
+struct motosh_platform_data {
 	int (*init)(void);
 	void (*exit)(void);
 	int (*power_on)(void);
@@ -569,9 +569,9 @@ struct stm401_platform_data {
 	int ct406_pulse_count;
 };
 
-struct stm401_data {
+struct motosh_data {
 	struct i2c_client *client;
-	struct stm401_platform_data *pdata;
+	struct motosh_platform_data *pdata;
 	/* to avoid two i2c communications at the same time */
 	struct mutex lock;
 	struct work_struct irq_work;
@@ -595,25 +595,25 @@ struct stm401_data {
 	enum stm_mode mode;
 	unsigned char intp_mask;
 
-	dev_t stm401_dev_num;
-	struct class *stm401_class;
+	dev_t motosh_dev_num;
+	struct class *motosh_class;
 	struct cdev as_cdev;
 	struct cdev ms_cdev;
 
 	struct switch_dev dsdev; /* Standard Dock switch */
 	struct switch_dev edsdev; /* Motorola Dock switch */
 
-	struct stm401_android_sensor_data
-		stm401_as_data_buffer[STM401_AS_DATA_QUEUE_SIZE];
-	int stm401_as_data_buffer_head;
-	int stm401_as_data_buffer_tail;
-	wait_queue_head_t stm401_as_data_wq;
+	struct motosh_android_sensor_data
+		motosh_as_data_buffer[MOTOSH_AS_DATA_QUEUE_SIZE];
+	int motosh_as_data_buffer_head;
+	int motosh_as_data_buffer_tail;
+	wait_queue_head_t motosh_as_data_wq;
 
-	struct stm401_moto_sensor_data
-		stm401_ms_data_buffer[STM401_MS_DATA_QUEUE_SIZE];
-	int stm401_ms_data_buffer_head;
-	int stm401_ms_data_buffer_tail;
-	wait_queue_head_t stm401_ms_data_wq;
+	struct motosh_moto_sensor_data
+		motosh_ms_data_buffer[MOTOSH_MS_DATA_QUEUE_SIZE];
+	int motosh_ms_data_buffer_head;
+	int motosh_ms_data_buffer_tail;
+	wait_queue_head_t motosh_ms_data_wq;
 
 	struct regulator *regulator_1;
 	struct regulator *regulator_2;
@@ -627,7 +627,7 @@ struct stm401_data {
 	atomic_t qp_enabled;
 	bool quickpeek_occurred;
 	unsigned short qw_irq_status;
-	struct stm401_aod_enabled_vote aod_enabled;
+	struct motosh_aod_enabled_vote aod_enabled;
 	bool ignore_wakeable_interrupts;
 	int ignored_interrupts;
 	bool qp_in_progress;
@@ -644,7 +644,7 @@ struct stm401_data {
 };
 
 /* per algo config, request, and event registers */
-struct stm401_algo_info_t {
+struct motosh_algo_info_t {
 	unsigned short config_bit;
 	unsigned char cfg_register;
 	unsigned char req_register;
@@ -653,120 +653,120 @@ struct stm401_algo_info_t {
 };
 
 #define ALGO_RQST_DATA_SIZE 28
-struct stm401_algo_requst_t {
+struct motosh_algo_requst_t {
 	char size;
 	char data[ALGO_RQST_DATA_SIZE];
 };
 
-irqreturn_t stm401_isr(int irq, void *dev);
-void stm401_irq_work_func(struct work_struct *work);
+irqreturn_t motosh_isr(int irq, void *dev);
+void motosh_irq_work_func(struct work_struct *work);
 
-irqreturn_t stm401_wake_isr(int irq, void *dev);
-void stm401_irq_wake_work_func(struct work_struct *work);
-int stm401_process_ir_gesture(struct stm401_data *ps_stm401);
+irqreturn_t motosh_wake_isr(int irq, void *dev);
+void motosh_irq_wake_work_func(struct work_struct *work);
+int motosh_process_ir_gesture(struct motosh_data *ps_motosh);
 
-long stm401_misc_ioctl(struct file *file, unsigned int cmd,
+long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
 
-void stm401_reset(struct stm401_platform_data *pdata, unsigned char *cmdbuff);
-int stm401_reset_and_init(void);
+void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff);
+int motosh_reset_and_init(void);
 
-int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
+int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
 	unsigned char status);
-int stm401_as_data_buffer_read(struct stm401_data *ps_stm401,
-	struct stm401_android_sensor_data *buff);
-int stm401_ms_data_buffer_write(struct stm401_data *ps_stm401,
+int motosh_as_data_buffer_read(struct motosh_data *ps_motosh,
+	struct motosh_android_sensor_data *buff);
+int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size);
-int stm401_ms_data_buffer_read(struct stm401_data *ps_stm401,
-	struct stm401_moto_sensor_data *buff);
+int motosh_ms_data_buffer_read(struct motosh_data *ps_motosh,
+	struct motosh_moto_sensor_data *buff);
 
-int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
+int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int writelen, int readlen);
-int stm401_i2c_read_no_reset(struct stm401_data *ps_stm401,
+int motosh_i2c_read_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int len);
-int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
+int motosh_i2c_write_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int len);
-int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
+int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 	int writelen, int readlen);
-int stm401_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len);
-int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len);
-int stm401_enable(struct stm401_data *ps_stm401);
+int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len);
+int motosh_i2c_write(struct motosh_data *ps_motosh, u8 *buf, int len);
+int motosh_enable(struct motosh_data *ps_motosh);
 
-void stm401_wake(struct stm401_data *ps_stm401);
-void stm401_sleep(struct stm401_data *ps_stm401);
-void stm401_detect_lowpower_mode(unsigned char *cmdbuff);
+void motosh_wake(struct motosh_data *ps_motosh);
+void motosh_sleep(struct motosh_data *ps_motosh);
+void motosh_detect_lowpower_mode(unsigned char *cmdbuff);
 
-int stm401_load_brightness_table(struct stm401_data *ps_stm401,
+int motosh_load_brightness_table(struct motosh_data *ps_motosh,
 	unsigned char *cmdbuff);
 
-int stm401_irq_wake_work_func_display_locked(struct stm401_data *ps_stm401,
+int motosh_irq_wake_work_func_display_locked(struct motosh_data *ps_motosh,
 	unsigned short irq_status);
-unsigned short stm401_get_interrupt_status(struct stm401_data *ps_stm401,
+unsigned short motosh_get_interrupt_status(struct motosh_data *ps_motosh,
 	unsigned char reg, int *err);
-void stm401_quickpeek_work_func(struct work_struct *work);
-void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401);
-int stm401_quickpeek_disable_when_idle(struct stm401_data *ps_stm401);
-void stm401_vote_aod_enabled_locked(struct stm401_data *ps_stm401, int voter,
+void motosh_quickpeek_work_func(struct work_struct *work);
+void motosh_quickpeek_reset_locked(struct motosh_data *ps_motosh);
+int motosh_quickpeek_disable_when_idle(struct motosh_data *ps_motosh);
+void motosh_vote_aod_enabled_locked(struct motosh_data *ps_motosh, int voter,
 	bool enable);
-void stm401_store_vote_aod_enabled(struct stm401_data *ps_stm401, int voter,
+void motosh_store_vote_aod_enabled(struct motosh_data *ps_motosh, int voter,
 	bool enable);
-void stm401_store_vote_aod_enabled_locked(struct stm401_data *ps_stm401,
+void motosh_store_vote_aod_enabled_locked(struct motosh_data *ps_motosh,
 	int voter, bool enable);
-int stm401_resolve_aod_enabled_locked(struct stm401_data *ps_stm401);
-int stm401_display_handle_touch_locked(struct stm401_data *ps_stm401);
-int stm401_display_handle_quickpeek_locked(struct stm401_data *ps_stm401,
+int motosh_resolve_aod_enabled_locked(struct motosh_data *ps_motosh);
+int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh);
+int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	bool releaseWakelock);
-void stm401_quickwakeup_init(struct stm401_data *ps_stm401);
+void motosh_quickwakeup_init(struct motosh_data *ps_motosh);
 
-int stm401_boot_flash_erase(void);
-int stm401_get_version(struct stm401_data *ps_stm401);
-int switch_stm401_mode(enum stm_mode mode);
-int stm401_bootloadermode(struct stm401_data *ps_stm401);
+int motosh_boot_flash_erase(void);
+int motosh_get_version(struct motosh_data *ps_motosh);
+int switch_motosh_mode(enum stm_mode mode);
+int motosh_bootloadermode(struct motosh_data *ps_motosh);
 
-extern struct stm401_data *stm401_misc_data;
+extern struct motosh_data *motosh_misc_data;
 
-extern unsigned short stm401_g_acc_delay;
-extern unsigned short stm401_g_mag_delay;
-extern unsigned short stm401_g_gyro_delay;
-extern unsigned short stm401_g_baro_delay;
-extern unsigned short stm401_g_ir_gesture_delay;
-extern unsigned short stm401_g_ir_raw_delay;
-extern unsigned short stm401_g_step_counter_delay;
-extern unsigned long stm401_g_nonwake_sensor_state;
-extern unsigned short stm401_g_algo_state;
-extern unsigned char stm401_g_motion_dur;
-extern unsigned char stm401_g_zmotion_dur;
-extern unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
-extern unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
-extern unsigned short stm401_g_control_reg_restore;
-extern unsigned char stm401_g_ir_config_reg[STM401_IR_CONFIG_REG_SIZE];
-extern bool stm401_g_ir_config_reg_restore;
-extern bool stm401_g_booted;
+extern unsigned short motosh_g_acc_delay;
+extern unsigned short motosh_g_mag_delay;
+extern unsigned short motosh_g_gyro_delay;
+extern unsigned short motosh_g_baro_delay;
+extern unsigned short motosh_g_ir_gesture_delay;
+extern unsigned short motosh_g_ir_raw_delay;
+extern unsigned short motosh_g_step_counter_delay;
+extern unsigned long motosh_g_nonwake_sensor_state;
+extern unsigned short motosh_g_algo_state;
+extern unsigned char motosh_g_motion_dur;
+extern unsigned char motosh_g_zmotion_dur;
+extern unsigned char motosh_g_control_reg[MOTOSH_CONTROL_REG_SIZE];
+extern unsigned char motosh_g_mag_cal[MOTOSH_MAG_CAL_SIZE];
+extern unsigned short motosh_g_control_reg_restore;
+extern unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
+extern bool motosh_g_ir_config_reg_restore;
+extern bool motosh_g_booted;
 
-extern unsigned char stm401_cmdbuff[];
-extern unsigned char stm401_readbuff[];
+extern unsigned char motosh_cmdbuff[];
+extern unsigned char motosh_readbuff[];
 
-extern unsigned short stm401_i2c_retry_delay;
+extern unsigned short motosh_i2c_retry_delay;
 
-extern const struct stm401_algo_info_t stm401_algo_info[];
+extern const struct motosh_algo_info_t motosh_algo_info[];
 
-extern struct stm401_algo_requst_t stm401_g_algo_requst[];
+extern struct motosh_algo_requst_t motosh_g_algo_requst[];
 
-extern long stm401_time_delta;
+extern long motosh_time_delta;
 
-extern unsigned int stm401_irq_disable;
+extern unsigned int motosh_irq_disable;
 
-extern unsigned short stm401_g_wake_sensor_state;
+extern unsigned short motosh_g_wake_sensor_state;
 
 extern unsigned char stat_string[];
 
-extern const struct file_operations stm401_as_fops;
-extern const struct file_operations stm401_ms_fops;
-extern const struct file_operations stm401_misc_fops;
-extern struct miscdevice stm401_misc_device;
+extern const struct file_operations motosh_as_fops;
+extern const struct file_operations motosh_ms_fops;
+extern const struct file_operations motosh_misc_fops;
+extern struct miscdevice motosh_misc_device;
 
 #endif /* __KERNEL__ */
 
-#endif  /* __STM401_H__ */
+#endif  /* __MOTOSH_H__ */
 
