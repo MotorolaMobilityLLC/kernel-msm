@@ -76,6 +76,8 @@ sirf	SiRF Technology, Inc.
 sne	Sony
 snps 	Synopsys, Inc.
 st	STMicroelectronics
+stm     STMicroelectronics
+motosh  Motorola Sensorhub
 ste	ST-Ericsson
 stericsson	ST-Ericsson
 synaptics	Synaptics Inc.
