@@ -169,7 +169,6 @@ typedef struct sCsrNeighborRoamControlInfo
     vos_timer_t                 neighborScanTimer;
     vos_timer_t                 neighborResultsRefreshTimer;
     vos_timer_t                 emptyScanRefreshTimer;
-    tCsrTimerInfo               neighborScanTimerInfo;
     tCsrNeighborRoamChannelInfo roamChannelInfo;
     tANI_U8                     currentNeighborLookupThreshold;
     tANI_BOOLEAN                scanRspPending;
