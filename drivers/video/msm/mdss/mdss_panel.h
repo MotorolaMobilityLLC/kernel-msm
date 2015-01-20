@@ -262,6 +262,7 @@ struct mipi_panel_info {
 	char bllp_power_stop;
 	char traffic_mode;
 	char frame_rate;
+	char alpm_frame_rate;
 	/* command mode */
 	char interleave_max;
 	char insert_dcs_cmd;
@@ -455,14 +456,20 @@ struct mdss_panel_data {
 static inline u32 mdss_panel_get_framerate(struct mdss_panel_info *panel_info)
 {
 	u32 frame_rate, pixel_total;
+	struct mdss_panel_data *pdata;
 
 	if (panel_info == NULL)
 		return DEFAULT_FRAME_RATE;
 
+	pdata = container_of(panel_info, struct mdss_panel_data, panel_info);
+
 	switch (panel_info->type) {
 	case MIPI_VIDEO_PANEL:
 	case MIPI_CMD_PANEL:
-		frame_rate = panel_info->mipi.frame_rate;
+		if (pdata->panel_info.alpm_event(CHECK_PREVIOUS_STATUS))
+			frame_rate = panel_info->mipi.alpm_frame_rate;
+		else
+			frame_rate = panel_info->mipi.frame_rate;
 		break;
 	case EDP_PANEL:
 		frame_rate = panel_info->edp.frame_rate;

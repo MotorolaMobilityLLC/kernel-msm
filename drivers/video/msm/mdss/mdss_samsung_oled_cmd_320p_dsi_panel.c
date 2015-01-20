@@ -2016,6 +2016,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			"samsung,panel-alpm-on-seq", NULL);
 	mdss_dsi_parse_dcs_cmds(np, &alpm_off_seq,
 			"samsung,panel-alpm-off-seq", NULL);
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-alpm-framerate", &tmp);
+	pinfo->mipi.alpm_frame_rate = (!rc ? tmp : 30);
 #endif
 	mdss_samsung_parse_candella_lux_mapping_table(np,
 			&candela_map_table,
