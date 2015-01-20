@@ -10,10 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
  */
 
 #include <linux/cdev.h>
@@ -123,7 +119,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MOTOSH_IOCTL_GET_VERSION:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_VERSION");
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_get_version(ps_motosh);
 		else
 			err = -EBUSY;
@@ -140,7 +136,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = ACCEL_UPDATE_RATE;
 		motosh_cmdbuff[1] = delay;
 		motosh_g_acc_delay = delay;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 
@@ -156,7 +152,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = MAG_UPDATE_RATE;
 		motosh_cmdbuff[1] = delay;
 		motosh_g_mag_delay = delay;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_SET_GYRO_DELAY:
@@ -172,7 +168,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = GYRO_UPDATE_RATE;
 		motosh_cmdbuff[1] = delay;
 		motosh_g_gyro_delay = delay;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_SET_STEP_COUNTER_DELAY:
@@ -202,7 +198,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 		motosh_cmdbuff[1] = delay;
 		motosh_g_baro_delay = delay;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_SET_SENSORS:
@@ -232,14 +228,14 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[3] = bytes[2];
 		motosh_g_nonwake_sensor_state = (motosh_cmdbuff[3] << 16)
 			| (motosh_cmdbuff[2] << 8) | motosh_cmdbuff[1];
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 4);
 		dev_dbg(&ps_motosh->client->dev, "Sensor enable = 0x%lx\n",
 			motosh_g_nonwake_sensor_state);
 		break;
 	case MOTOSH_IOCTL_GET_SENSORS:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_SENSORS");
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			motosh_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 				1, 3);
@@ -273,7 +269,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[2] = bytes[1];
 		motosh_g_wake_sensor_state =  (motosh_cmdbuff[2] << 8)
 			| motosh_cmdbuff[1];
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 3);
 		dev_dbg(&ps_motosh->client->dev, "Sensor enable = 0x%02X\n",
 			motosh_g_wake_sensor_state);
@@ -281,7 +277,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_GET_WAKESENSORS");
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			motosh_cmdbuff[0] = WAKESENSOR_CONFIG;
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 				1, 2);
@@ -314,12 +310,12 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[2] = bytes[1];
 		motosh_g_algo_state = (motosh_cmdbuff[2] << 8)
 			| motosh_cmdbuff[1];
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 3);
 		break;
 	case MOTOSH_IOCTL_GET_ALGOS:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_ALGOS");
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			motosh_cmdbuff[0] = ALGO_CONFIG;
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 				1, 2);
@@ -351,13 +347,13 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		memcpy(motosh_g_mag_cal, &motosh_cmdbuff[1],
 			MOTOSH_MAG_CAL_SIZE);
 		motosh_cmdbuff[0] = MAG_CAL;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff,
 				(MOTOSH_MAG_CAL_SIZE + 1));
 		break;
 	case MOTOSH_IOCTL_GET_MAG_CAL:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_MAG_CAL");
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			motosh_cmdbuff[0] = MAG_CAL;
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 				1, MOTOSH_MAG_CAL_SIZE);
@@ -386,7 +382,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = MOTION_DUR;
 		motosh_cmdbuff[1] = addr & 0xFF;
 		motosh_g_motion_dur =  motosh_cmdbuff[1];
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_SET_ZRMOTION_DUR:
@@ -401,13 +397,13 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = ZRMOTION_DUR;
 		motosh_cmdbuff[1] = addr & 0xFF;
 		motosh_g_zmotion_dur =  motosh_cmdbuff[1];
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_GET_DOCK_STATUS:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_GET_DOCK_STATUS");
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 				1, 1);
 			byte = motosh_readbuff[0];
@@ -418,7 +414,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MOTOSH_IOCTL_TEST_READ:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_TEST_READ");
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			err = motosh_i2c_read(ps_motosh, &byte, 1);
 			/* motosh will return num of bytes read or error */
 			if (err > 0)
@@ -509,7 +505,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_g_algo_requst[addr].size = byte;
 		memcpy(motosh_g_algo_requst[addr].data,
 			&motosh_cmdbuff[1], byte);
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff,
 				1 + byte);
 		break;
@@ -669,7 +665,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		memcpy(motosh_g_ir_config_reg, &motosh_cmdbuff[1],
 			motosh_cmdbuff[1]);
 
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff,
 					motosh_cmdbuff[1] + 1);
 		dev_dbg(&motosh_misc_data->client->dev,
@@ -690,12 +686,12 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		if (byte > sizeof(motosh_g_ir_config_reg)) {
 			dev_err(&ps_motosh->client->dev,
 				"IR Config too big: %d > %d\n", byte,
-				sizeof(motosh_g_ir_config_reg));
+				(int)sizeof(motosh_g_ir_config_reg));
 			err = -EINVAL;
 			break;
 		}
 
-		if (ps_motosh->mode != BOOTMODE) {
+		if (ps_motosh->mode > BOOTMODE) {
 			motosh_cmdbuff[0] = IR_CONFIG;
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 				1, byte);
@@ -724,7 +720,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = IR_GESTURE_RATE;
 		motosh_cmdbuff[1] = delay;
 		motosh_g_ir_gesture_delay = delay;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_SET_IR_RAW_DELAY:
@@ -740,7 +736,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = IR_RAW_RATE;
 		motosh_cmdbuff[1] = delay;
 		motosh_g_ir_raw_delay = delay;
-		if (ps_motosh->mode != BOOTMODE)
+		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_ENABLE_BREATHING:

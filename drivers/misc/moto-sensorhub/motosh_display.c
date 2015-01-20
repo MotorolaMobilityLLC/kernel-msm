@@ -10,10 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
  */
 
 #include <linux/cdev.h>
@@ -237,7 +233,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	}
 
 	if (!atomic_read(&ps_motosh->qp_enabled)) {
-		dev_info(&ps_motosh->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"%s: Received quickpeek interrupt with quickpeek disabled!\n",
 			__func__);
 		goto error;
