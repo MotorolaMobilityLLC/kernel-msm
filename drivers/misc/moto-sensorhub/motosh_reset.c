@@ -41,10 +41,10 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
-#include <linux/stm401.h>
+#include <linux/motosh.h>
 
 
-int stm401_load_brightness_table(struct stm401_data *ps_stm401,
+int motosh_load_brightness_table(struct motosh_data *ps_motosh,
 		unsigned char *cmdbuff)
 {
 	int err = -ENOTTY;
@@ -52,11 +52,11 @@ int stm401_load_brightness_table(struct stm401_data *ps_stm401,
 	cmdbuff[0] = LUX_TABLE_VALUES;
 	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
 		cmdbuff[(2 * index) + 1]
-			= ps_stm401->pdata->lux_table[index] >> 8;
+			= ps_motosh->pdata->lux_table[index] >> 8;
 		cmdbuff[(2 * index) + 2]
-			= ps_stm401->pdata->lux_table[index] & 0xFF;
+			= ps_motosh->pdata->lux_table[index] & 0xFF;
 	}
-	err = stm401_i2c_write_no_reset(ps_stm401, cmdbuff,
+	err = motosh_i2c_write_no_reset(ps_motosh, cmdbuff,
 				(2 * LIGHTING_TABLE_SIZE) + 1);
 	if (err)
 		return err;
@@ -64,34 +64,34 @@ int stm401_load_brightness_table(struct stm401_data *ps_stm401,
 	cmdbuff[0] = BRIGHTNESS_TABLE_VALUES;
 	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
 		cmdbuff[index + 1]
-				= ps_stm401->pdata->brightness_table[index];
+				= ps_motosh->pdata->brightness_table[index];
 	}
-	err = stm401_i2c_write_no_reset(ps_stm401, cmdbuff,
+	err = motosh_i2c_write_no_reset(ps_motosh, cmdbuff,
 			LIGHTING_TABLE_SIZE + 1);
-	dev_dbg(&ps_stm401->client->dev, "Brightness tables loaded\n");
+	dev_dbg(&ps_motosh->client->dev, "Brightness tables loaded\n");
 	return err;
 }
 
-void stm401_reset(struct stm401_platform_data *pdata, unsigned char *cmdbuff)
+void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 {
-	dev_err(&stm401_misc_data->client->dev, "stm401_reset\n");
-	msleep(stm401_i2c_retry_delay);
+	dev_err(&motosh_misc_data->client->dev, "motosh_reset\n");
+	msleep(motosh_i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep(STM401_RESET_DELAY);
+	msleep(MOTOSH_RESET_DELAY);
 	gpio_set_value(pdata->gpio_reset, 1);
-	msleep(STM401_RESET_DELAY);
-	stm401_detect_lowpower_mode(cmdbuff);
+	msleep(MOTOSH_RESET_DELAY);
+	motosh_detect_lowpower_mode(cmdbuff);
 
-	if (!stm401_misc_data->in_reset_and_init) {
+	if (!motosh_misc_data->in_reset_and_init) {
 		/* sending reset to slpc hal */
-		stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
+		motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET,
 			NULL, 0);
 	}
 }
 
-int stm401_reset_and_init(void)
+int motosh_reset_and_init(void)
 {
-	struct stm401_platform_data *pdata;
+	struct motosh_platform_data *pdata;
 	struct timespec current_time;
 	unsigned int i;
 	int err = 0, ret_err = 0;
@@ -99,114 +99,114 @@ int stm401_reset_and_init(void)
 	unsigned char *rst_cmdbuff = kmalloc(512, GFP_KERNEL);
 	int mutex_locked = 0;
 
-	dev_dbg(&stm401_misc_data->client->dev, "stm401_reset_and_init\n");
+	dev_dbg(&motosh_misc_data->client->dev, "motosh_reset_and_init\n");
 
 	if (rst_cmdbuff == NULL)
 		return -ENOMEM;
 
-	wake_lock(&stm401_misc_data->reset_wakelock);
+	wake_lock(&motosh_misc_data->reset_wakelock);
 
-	stm401_misc_data->in_reset_and_init = true;
+	motosh_misc_data->in_reset_and_init = true;
 
-	pdata = stm401_misc_data->pdata;
+	pdata = motosh_misc_data->pdata;
 
-	stm401_wake(stm401_misc_data);
+	motosh_wake(motosh_misc_data);
 
 	do {
-		stm401_reset(pdata, rst_cmdbuff);
+		motosh_reset(pdata, rst_cmdbuff);
 
 		/* check for sign of life */
 		rst_cmdbuff[0] = REV_ID;
-		err = stm401_i2c_write_read_no_reset(stm401_misc_data,
+		err = motosh_i2c_write_read_no_reset(motosh_misc_data,
 			rst_cmdbuff, 1, 1);
 		if (err < 0)
-			dev_err(&stm401_misc_data->client->dev, "stm401 not responding after reset (%d)",
+			dev_err(&motosh_misc_data->client->dev, "motosh not responding after reset (%d)",
 				reset_attempts);
 	} while (reset_attempts++ < 5 && err < 0);
 
-	stm401_i2c_retry_delay = 200;
+	motosh_i2c_retry_delay = 200;
 
 	rst_cmdbuff[0] = ACCEL_UPDATE_RATE;
-	rst_cmdbuff[1] = stm401_g_acc_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_acc_delay;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
-	stm401_i2c_retry_delay = 13;
+	motosh_i2c_retry_delay = 13;
 
 	rst_cmdbuff[0] = MAG_UPDATE_RATE;
-	rst_cmdbuff[1] = stm401_g_mag_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_mag_delay;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = GYRO_UPDATE_RATE;
-	rst_cmdbuff[1] = stm401_g_gyro_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_gyro_delay;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = PRESSURE_UPDATE_RATE;
-	rst_cmdbuff[1] = stm401_g_baro_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_baro_delay;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = IR_GESTURE_RATE;
-	rst_cmdbuff[1] = stm401_g_ir_gesture_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_ir_gesture_delay;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = IR_RAW_RATE;
-	rst_cmdbuff[1] = stm401_g_ir_raw_delay;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_ir_raw_delay;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = NONWAKESENSOR_CONFIG;
-	rst_cmdbuff[1] = stm401_g_nonwake_sensor_state & 0xFF;
-	rst_cmdbuff[2] = (stm401_g_nonwake_sensor_state >> 8) & 0xFF;
-	rst_cmdbuff[3] = stm401_g_nonwake_sensor_state >> 16;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 4);
+	rst_cmdbuff[1] = motosh_g_nonwake_sensor_state & 0xFF;
+	rst_cmdbuff[2] = (motosh_g_nonwake_sensor_state >> 8) & 0xFF;
+	rst_cmdbuff[3] = motosh_g_nonwake_sensor_state >> 16;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 4);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = WAKESENSOR_CONFIG;
-	rst_cmdbuff[1] = stm401_g_wake_sensor_state & 0xFF;
-	rst_cmdbuff[2] = stm401_g_wake_sensor_state >> 8;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 3);
+	rst_cmdbuff[1] = motosh_g_wake_sensor_state & 0xFF;
+	rst_cmdbuff[2] = motosh_g_wake_sensor_state >> 8;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 3);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = ALGO_CONFIG;
-	rst_cmdbuff[1] = stm401_g_algo_state & 0xFF;
-	rst_cmdbuff[2] = stm401_g_algo_state >> 8;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 3);
+	rst_cmdbuff[1] = motosh_g_algo_state & 0xFF;
+	rst_cmdbuff[2] = motosh_g_algo_state >> 8;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 3);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = MOTION_DUR;
-	rst_cmdbuff[1] = stm401_g_motion_dur;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_motion_dur;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = ZRMOTION_DUR;
-	rst_cmdbuff[1] = stm401_g_zmotion_dur;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
+	rst_cmdbuff[1] = motosh_g_zmotion_dur;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
-	for (i = 0; i < STM401_NUM_ALGOS; i++) {
-		if (stm401_g_algo_requst[i].size > 0) {
-			rst_cmdbuff[0] = stm401_algo_info[i].req_register;
+	for (i = 0; i < MOTOSH_NUM_ALGOS; i++) {
+		if (motosh_g_algo_requst[i].size > 0) {
+			rst_cmdbuff[0] = motosh_algo_info[i].req_register;
 			memcpy(&rst_cmdbuff[1],
-				stm401_g_algo_requst[i].data,
-				stm401_g_algo_requst[i].size);
-			err = stm401_i2c_write_no_reset(stm401_misc_data,
+				motosh_g_algo_requst[i].data,
+				motosh_g_algo_requst[i].size);
+			err = motosh_i2c_write_no_reset(motosh_misc_data,
 				rst_cmdbuff,
-				stm401_g_algo_requst[i].size + 1);
+				motosh_g_algo_requst[i].size + 1);
 			if (err < 0)
 				ret_err = err;
 		}
@@ -223,19 +223,19 @@ int stm401_reset_and_init(void)
 		= (pdata->ct406_recalibrate_threshold >> 8) & 0xff;
 	rst_cmdbuff[6] = pdata->ct406_recalibrate_threshold & 0xff;
 	rst_cmdbuff[7] = pdata->ct406_pulse_count & 0xff;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 8);
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff, 8);
 	if (err < 0) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"unable to write proximity settings %d\n", err);
 		ret_err = err;
 	}
 
-	err = stm401_load_brightness_table(stm401_misc_data, rst_cmdbuff);
+	err = motosh_load_brightness_table(motosh_misc_data, rst_cmdbuff);
 	if (err < 0)
 		ret_err = err;
 
 	getnstimeofday(&current_time);
-	current_time.tv_sec += stm401_time_delta;
+	current_time.tv_sec += motosh_time_delta;
 
 	rst_cmdbuff[0] = AP_POSIX_TIME;
 	rst_cmdbuff[1] = (unsigned char)(current_time.tv_sec >> 24);
@@ -245,41 +245,41 @@ int stm401_reset_and_init(void)
 		& 0xff);
 	rst_cmdbuff[4] = (unsigned char)((current_time.tv_sec)
 		& 0xff);
-	err = stm401_i2c_write_no_reset(stm401_misc_data,
+	err = motosh_i2c_write_no_reset(motosh_misc_data,
 					rst_cmdbuff, 5);
 	if (err < 0)
 		ret_err = err;
 
 	rst_cmdbuff[0] = MAG_CAL;
-	memcpy(&rst_cmdbuff[1], stm401_g_mag_cal, STM401_MAG_CAL_SIZE);
-	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff,
-		STM401_MAG_CAL_SIZE);
+	memcpy(&rst_cmdbuff[1], motosh_g_mag_cal, MOTOSH_MAG_CAL_SIZE);
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
+		MOTOSH_MAG_CAL_SIZE);
 	if (err < 0)
 		ret_err = err;
 
-	if (stm401_g_ir_config_reg_restore) {
+	if (motosh_g_ir_config_reg_restore) {
 		rst_cmdbuff[0] = IR_CONFIG;
-		memcpy(&rst_cmdbuff[1], stm401_g_ir_config_reg,
-			stm401_g_ir_config_reg[0]);
-		err = stm401_i2c_write_no_reset(stm401_misc_data,
+		memcpy(&rst_cmdbuff[1], motosh_g_ir_config_reg,
+			motosh_g_ir_config_reg[0]);
+		err = motosh_i2c_write_no_reset(motosh_misc_data,
 						rst_cmdbuff,
-						stm401_g_ir_config_reg[0] + 1);
+						motosh_g_ir_config_reg[0] + 1);
 		if (err < 0)
 			ret_err = err;
 	}
 
 	/* sending reset to slpc hal */
-	stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
+	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET,
 		NULL, 0);
 
-	mutex_locked = mutex_trylock(&stm401_misc_data->lock);
-	stm401_quickpeek_reset_locked(stm401_misc_data);
+	mutex_locked = mutex_trylock(&motosh_misc_data->lock);
+	motosh_quickpeek_reset_locked(motosh_misc_data);
 	if (mutex_locked)
-		mutex_unlock(&stm401_misc_data->lock);
+		mutex_unlock(&motosh_misc_data->lock);
 
 	kfree(rst_cmdbuff);
-	stm401_sleep(stm401_misc_data);
-	stm401_misc_data->in_reset_and_init = false;
-	wake_unlock(&stm401_misc_data->reset_wakelock);
+	motosh_sleep(motosh_misc_data);
+	motosh_misc_data->in_reset_and_init = false;
+	wake_unlock(&motosh_misc_data->reset_wakelock);
 	return ret_err;
 }
