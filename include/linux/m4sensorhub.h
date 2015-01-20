@@ -71,6 +71,8 @@ enum m4sensorhub_panichdl_index {
 	PANICHDL_MPU9150_RESTORE,
 	PANICHDL_PEDOMETER_RESTORE,
 	PANICHDL_EXTERN_RESTORE,
+	PANICHDL_PRESSURE_RESTORE,
+	PANICHDL_ADS_RESTORE,
 	/*
 	 * Please add enum before PANICHDL_IRQ_RESTORE
 	 * to make sure IRQ restore will be called last.
