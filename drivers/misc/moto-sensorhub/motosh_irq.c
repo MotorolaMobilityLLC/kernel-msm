@@ -10,10 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
  */
 
 #include <linux/cdev.h>
@@ -47,9 +43,8 @@ irqreturn_t motosh_isr(int irq, void *dev)
 {
 	struct motosh_data *ps_motosh = dev;
 
-	if (motosh_irq_disable) {
+	if (motosh_irq_disable)
 		return IRQ_HANDLED;
-	}
 
 	queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_work);
 	if (ps_motosh->irq_wake == -1)
