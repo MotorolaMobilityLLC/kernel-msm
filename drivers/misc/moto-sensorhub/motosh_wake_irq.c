@@ -42,36 +42,36 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
-#include <linux/stm401.h>
+#include <linux/motosh.h>
 
 
-irqreturn_t stm401_wake_isr(int irq, void *dev)
+irqreturn_t motosh_wake_isr(int irq, void *dev)
 {
-	struct stm401_data *ps_stm401 = dev;
+	struct motosh_data *ps_motosh = dev;
 
-	if (stm401_irq_disable) {
+	if (motosh_irq_disable) {
 		return IRQ_HANDLED;
 	}
 
-	wake_lock_timeout(&ps_stm401->wakelock, HZ);
+	wake_lock_timeout(&ps_motosh->wakelock, HZ);
 
-	queue_work(ps_stm401->irq_work_queue, &ps_stm401->irq_wake_work);
+	queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_wake_work);
 	return IRQ_HANDLED;
 }
 
-void stm401_irq_wake_work_func(struct work_struct *work)
+void motosh_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
 	unsigned short irq_status;
 	u32 irq2_status;
 	uint8_t irq3_status;
-	struct stm401_data *ps_stm401 = container_of(work,
-			struct stm401_data, irq_wake_work);
+	struct motosh_data *ps_motosh = container_of(work,
+			struct motosh_data, irq_wake_work);
 
-	dev_dbg(&ps_stm401->client->dev, "stm401_irq_wake_work_func\n");
-	mutex_lock(&ps_stm401->lock);
+	dev_dbg(&ps_motosh->client->dev, "motosh_irq_wake_work_func\n");
+	mutex_lock(&ps_motosh->lock);
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		goto EXIT_NO_WAKE;
 
 	/* This is to handle the case of receiving an interrupt after
@@ -79,62 +79,62 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	   is the case, interrupts might be disabled now, so we cannot handle
 	   this at this time. suspend_noirq will return BUSY if this happens
 	   so that we can handle these interrupts. */
-	if (ps_stm401->ignore_wakeable_interrupts) {
-		dev_info(&ps_stm401->client->dev,
+	if (ps_motosh->ignore_wakeable_interrupts) {
+		dev_info(&ps_motosh->client->dev,
 			"Deferring interrupt work\n");
-		ps_stm401->ignored_interrupts++;
+		ps_motosh->ignored_interrupts++;
 		goto EXIT_NO_WAKE;
 	}
 
-	stm401_wake(ps_stm401);
+	motosh_wake(ps_motosh);
 
 	/* read interrupt mask register */
-	stm401_cmdbuff[0] = WAKESENSOR_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+	motosh_cmdbuff[0] = WAKESENSOR_STATUS;
+	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
+		dev_err(&ps_motosh->client->dev, "Reading from motosh failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_readbuff[IRQ_WAKE_MED] << 8)
-				| stm401_readbuff[IRQ_WAKE_LO];
+	irq_status = (motosh_readbuff[IRQ_WAKE_MED] << 8)
+				| motosh_readbuff[IRQ_WAKE_LO];
 
 	/* read algorithm interrupt status register */
-	stm401_cmdbuff[0] = ALGO_INT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+	motosh_cmdbuff[0] = ALGO_INT_STATUS;
+	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
+		dev_err(&ps_motosh->client->dev, "Reading from motosh failed\n");
 		goto EXIT;
 	}
-	irq2_status = (stm401_readbuff[IRQ_WAKE_HI] << 16) |
-		(stm401_readbuff[IRQ_WAKE_MED] << 8) |
-		stm401_readbuff[IRQ_WAKE_LO];
+	irq2_status = (motosh_readbuff[IRQ_WAKE_HI] << 16) |
+		(motosh_readbuff[IRQ_WAKE_MED] << 8) |
+		motosh_readbuff[IRQ_WAKE_LO];
 
 	/* read generic interrupt register */
-	stm401_cmdbuff[0] = GENERIC_INT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+	motosh_cmdbuff[0] = GENERIC_INT_STATUS;
+	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "Reading from stm failed\n");
+		dev_err(&ps_motosh->client->dev, "Reading from stm failed\n");
 		goto EXIT;
 	}
-	irq3_status = stm401_readbuff[0];
+	irq3_status = motosh_readbuff[0];
 
-	if (ps_stm401->qw_irq_status) {
-		irq_status |= ps_stm401->qw_irq_status;
-		ps_stm401->qw_irq_status = 0;
+	if (ps_motosh->qw_irq_status) {
+		irq_status |= ps_motosh->qw_irq_status;
+		ps_motosh->qw_irq_status = 0;
 	}
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
-		stm401_cmdbuff[0] = ERROR_STATUS;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
+		motosh_cmdbuff[0] = ERROR_STATUS;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
 			1, ESR_SIZE);
 		if (err >= 0) {
-			memcpy(stat_string, stm401_readbuff, ESR_SIZE);
+			memcpy(stat_string, motosh_readbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
-			dev_err(&ps_stm401->client->dev,
-				"STM401 Error: %s\n", stat_string);
+			dev_err(&ps_motosh->client->dev,
+				"MOTOSH Error: %s\n", stat_string);
 		} else
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Failed to read error message %d\n", err);
 	}
 
@@ -151,10 +151,10 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		else
 			status = 0x04;
 
-		stm401_as_data_buffer_write(ps_stm401, DT_RESET, &status, 1, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_RESET, &status, 1, 0);
 
-		stm401_reset_and_init();
-		dev_err(&ps_stm401->client->dev, "STM401 requested a reset\n");
+		motosh_reset_and_init();
+		dev_err(&ps_motosh->client->dev, "MOTOSH requested a reset\n");
 		goto EXIT;
 	}
 
@@ -162,62 +162,62 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 	if (irq_status & M_DOCK) {
 		int state;
 
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&ps_motosh->client->dev,
 			"Invalid M_DOCK bit set. irq_status = 0x%06x\n",
 			irq_status);
 
-		stm401_cmdbuff[0] = DOCK_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = DOCK_DATA;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading Dock state failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_DOCK,
-			stm401_readbuff, 1, 0);
-		state = stm401_readbuff[DOCK_STATE];
-		if (ps_stm401->dsdev.dev != NULL)
-			switch_set_state(&ps_stm401->dsdev, state);
-		if (ps_stm401->edsdev.dev != NULL)
-			switch_set_state(&ps_stm401->edsdev, state);
+		motosh_as_data_buffer_write(ps_motosh, DT_DOCK,
+			motosh_readbuff, 1, 0);
+		state = motosh_readbuff[DOCK_STATE];
+		if (ps_motosh->dsdev.dev != NULL)
+			switch_set_state(&ps_motosh->dsdev, state);
+		if (ps_motosh->edsdev.dev != NULL)
+			switch_set_state(&ps_motosh->edsdev, state);
 
-		dev_dbg(&ps_stm401->client->dev, "Dock status:%d\n", state);
+		dev_dbg(&ps_motosh->client->dev, "Dock status:%d\n", state);
 	}
 	if (irq_status & M_PROXIMITY) {
-		stm401_cmdbuff[0] = PROXIMITY;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = PROXIMITY;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Reading prox from stm401 failed\n");
+			dev_err(&ps_motosh->client->dev,
+				"Reading prox from motosh failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_PROX,
-			stm401_readbuff, 1, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_PROX,
+			motosh_readbuff, 1, 0);
 
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"Sending Proximity distance %d\n",
-			stm401_readbuff[PROX_DISTANCE]);
+			motosh_readbuff[PROX_DISTANCE]);
 	}
 	if (irq_status & M_TOUCH) {
-		if (stm401_display_handle_touch_locked(ps_stm401) < 0)
+		if (motosh_display_handle_touch_locked(ps_motosh) < 0)
 			goto EXIT;
 	}
 	if (irq_status & M_QUICKPEEK) {
-		if (stm401_display_handle_quickpeek_locked(ps_stm401,
+		if (motosh_display_handle_quickpeek_locked(ps_motosh,
 			irq_status == M_QUICKPEEK) < 0)
 			goto EXIT;
 	}
 	if (irq_status & M_COVER) {
 		int state;
-		stm401_cmdbuff[0] = COVER_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = COVER_DATA;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading Cover state failed\n");
 			goto EXIT;
 		}
 
-		if (stm401_readbuff[COVER_STATE] == STM401_HALL_NORTH)
+		if (motosh_readbuff[COVER_STATE] == MOTOSH_HALL_NORTH)
 			state = 1;
 		else
 			state = 0;
@@ -225,236 +225,236 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		/* notify subscribers of cover state change */
 		mmi_hall_notify(MMI_HALL_FOLIO, state);
 
-		input_report_switch(ps_stm401->input_dev, SW_LID, state);
-		input_sync(ps_stm401->input_dev);
+		input_report_switch(ps_motosh->input_dev, SW_LID, state);
+		input_sync(ps_motosh->input_dev);
 
-		dev_err(&ps_stm401->client->dev, "Cover status: %d\n", state);
+		dev_err(&ps_motosh->client->dev, "Cover status: %d\n", state);
 	}
 	if (irq_status & M_FLATUP) {
-		stm401_cmdbuff[0] = FLAT_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = FLAT_DATA;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Reading flat data from stm401 failed\n");
+			dev_err(&ps_motosh->client->dev,
+				"Reading flat data from motosh failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_FLAT_UP,
-			stm401_readbuff, 1, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_FLAT_UP,
+			motosh_readbuff, 1, 0);
 
-		dev_dbg(&ps_stm401->client->dev, "Sending Flat up %d\n",
-			stm401_readbuff[FLAT_UP]);
+		dev_dbg(&ps_motosh->client->dev, "Sending Flat up %d\n",
+			motosh_readbuff[FLAT_UP]);
 	}
 	if (irq_status & M_FLATDOWN) {
-		stm401_cmdbuff[0] = FLAT_DATA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = FLAT_DATA;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Reading flat data from stm401 failed\n");
+			dev_err(&ps_motosh->client->dev,
+				"Reading flat data from motosh failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_FLAT_DOWN,
-			stm401_readbuff, 1, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_FLAT_DOWN,
+			motosh_readbuff, 1, 0);
 
-		dev_dbg(&ps_stm401->client->dev, "Sending Flat down %d\n",
-			stm401_readbuff[FLAT_DOWN]);
+		dev_dbg(&ps_motosh->client->dev, "Sending Flat down %d\n",
+			motosh_readbuff[FLAT_DOWN]);
 	}
 	if (irq_status & M_STOWED) {
-		stm401_cmdbuff[0] = STOWED;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = STOWED;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
-				"Reading stowed from stm401 failed\n");
+			dev_err(&ps_motosh->client->dev,
+				"Reading stowed from motosh failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_STOWED,
-			stm401_readbuff, 1, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_STOWED,
+			motosh_readbuff, 1, 0);
 
-		dev_dbg(&ps_stm401->client->dev,
-			"Sending Stowed status %d\n", stm401_readbuff[STOWED]);
+		dev_dbg(&ps_motosh->client->dev,
+			"Sending Stowed status %d\n", motosh_readbuff[STOWED]);
 	}
 	if (irq_status & M_CAMERA_ACT) {
-		stm401_cmdbuff[0] = CAMERA;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		motosh_cmdbuff[0] = CAMERA;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading camera data from stm failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_CAMERA_ACT,
-			stm401_readbuff, 2, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
+			motosh_readbuff, 2, 0);
 
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"Sending Camera: %d\n", STM16_TO_HOST(CAMERA_VALUE));
 
-		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 1);
-		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 0);
-		input_sync(ps_stm401->input_dev);
-		dev_dbg(&ps_stm401->client->dev,
+		input_report_key(ps_motosh->input_dev, KEY_CAMERA, 1);
+		input_report_key(ps_motosh->input_dev, KEY_CAMERA, 0);
+		input_sync(ps_motosh->input_dev);
+		dev_dbg(&ps_motosh->client->dev,
 			"Report camkey toggle\n");
 	}
 	if (irq_status & M_NFC) {
-		stm401_cmdbuff[0] = NFC;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		motosh_cmdbuff[0] = NFC;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading nfc data from stm failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_NFC,
-				stm401_readbuff, 1, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_NFC,
+				motosh_readbuff, 1, 0);
 
-		dev_dbg(&ps_stm401->client->dev,
-			"Sending NFC value: %d\n", stm401_readbuff[NFC_VALUE]);
+		dev_dbg(&ps_motosh->client->dev,
+			"Sending NFC value: %d\n", motosh_readbuff[NFC_VALUE]);
 
 	}
 	if (irq_status & M_SIM) {
-		stm401_cmdbuff[0] = SIM;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		motosh_cmdbuff[0] = SIM;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading sig_motion data from stm failed\n");
 			goto EXIT;
 		}
-		stm401_as_data_buffer_write(ps_stm401, DT_SIM,
-				stm401_readbuff, 2, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_SIM,
+				motosh_readbuff, 2, 0);
 
 		/* This is one shot sensor */
-		stm401_g_wake_sensor_state &= (~M_SIM);
+		motosh_g_wake_sensor_state &= (~M_SIM);
 
-		dev_dbg(&ps_stm401->client->dev, "Sending SIM Value=%d\n",
+		dev_dbg(&ps_motosh->client->dev, "Sending SIM Value=%d\n",
 					STM16_TO_HOST(SIM_DATA));
 	}
 	if (irq_status & M_CHOPCHOP) {
-		stm401_cmdbuff[0] = CHOPCHOP;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		motosh_cmdbuff[0] = CHOPCHOP;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading chopchop data from stm failed\n");
 			goto EXIT;
 		}
 
-		stm401_as_data_buffer_write(ps_stm401, DT_CHOPCHOP,
-						stm401_readbuff, 2, 0);
+		motosh_as_data_buffer_write(ps_motosh, DT_CHOPCHOP,
+						motosh_readbuff, 2, 0);
 
-		dev_dbg(&ps_stm401->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
+		dev_dbg(&ps_motosh->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
 				STM16_TO_HOST(CHOPCHOP_DATA));
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 		/* Client recieving action will be upper 2 most significant */
 		/* bits of the least significant byte of status. */
-		status = (irq2_status & STM401_CLIENT_MASK) | M_MMOVEME;
-		stm401_ms_data_buffer_write(ps_stm401, DT_MMMOVE, &status, 1);
+		status = (irq2_status & MOTOSH_CLIENT_MASK) | M_MMOVEME;
+		motosh_ms_data_buffer_write(ps_motosh, DT_MMMOVE, &status, 1);
 
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"Sending meaningful movement event\n");
 	}
 	if (irq2_status & M_NOMMOVE) {
 		unsigned char status;
 		/* Client recieving action will be upper 2 most significant */
 		/* bits of the least significant byte of status. */
-		status = (irq2_status & STM401_CLIENT_MASK) | M_NOMMOVE;
-		stm401_ms_data_buffer_write(ps_stm401, DT_NOMOVE, &status, 1);
+		status = (irq2_status & MOTOSH_CLIENT_MASK) | M_NOMMOVE;
+		motosh_ms_data_buffer_write(ps_motosh, DT_NOMOVE, &status, 1);
 
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"Sending no meaningful movement event\n");
 	}
 	if (irq2_status & M_ALGO_MODALITY) {
-		stm401_cmdbuff[0] =
-			stm401_algo_info[STM401_IDX_MODALITY].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
-			STM401_EVT_SZ_TRANSITION);
+		motosh_cmdbuff[0] =
+			motosh_algo_info[MOTOSH_IDX_MODALITY].evt_register;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
+			MOTOSH_EVT_SZ_TRANSITION);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading modality event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_MODALITY;
-		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
-		dev_dbg(&ps_stm401->client->dev, "Sending modality event\n");
+		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_MODALITY;
+		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+			motosh_readbuff, 8);
+		dev_dbg(&ps_motosh->client->dev, "Sending modality event\n");
 	}
 	if (irq2_status & M_ALGO_ORIENTATION) {
-		stm401_cmdbuff[0] =
-			stm401_algo_info[STM401_IDX_ORIENTATION].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
-			STM401_EVT_SZ_TRANSITION);
+		motosh_cmdbuff[0] =
+			motosh_algo_info[MOTOSH_IDX_ORIENTATION].evt_register;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
+			MOTOSH_EVT_SZ_TRANSITION);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading orientation event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_ORIENTATION;
-		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
-		dev_dbg(&ps_stm401->client->dev, "Sending orientation event\n");
+		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_ORIENTATION;
+		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+			motosh_readbuff, 8);
+		dev_dbg(&ps_motosh->client->dev, "Sending orientation event\n");
 	}
 	if (irq2_status & M_ALGO_STOWED) {
-		stm401_cmdbuff[0] =
-			stm401_algo_info[STM401_IDX_STOWED].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
-			STM401_EVT_SZ_TRANSITION);
+		motosh_cmdbuff[0] =
+			motosh_algo_info[MOTOSH_IDX_STOWED].evt_register;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
+			MOTOSH_EVT_SZ_TRANSITION);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading stowed event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_STOWED;
-		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
-		dev_dbg(&ps_stm401->client->dev, "Sending stowed event\n");
+		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_STOWED;
+		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+			motosh_readbuff, 8);
+		dev_dbg(&ps_motosh->client->dev, "Sending stowed event\n");
 	}
 	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
-		stm401_cmdbuff[0] =
-			stm401_algo_info[STM401_IDX_ACCUM_MODALITY]
+		motosh_cmdbuff[0] =
+			motosh_algo_info[MOTOSH_IDX_ACCUM_MODALITY]
 				.evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
-			STM401_EVT_SZ_ACCUM_STATE);
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
+			MOTOSH_EVT_SZ_ACCUM_STATE);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading accum modality event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_ACCUM_MODALITY;
-		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
-		dev_dbg(&ps_stm401->client->dev, "Sending accum modality event\n");
+		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MODALITY;
+		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+			motosh_readbuff, 8);
+		dev_dbg(&ps_motosh->client->dev, "Sending accum modality event\n");
 	}
 	if (irq2_status & M_ALGO_ACCUM_MVMT) {
-		stm401_cmdbuff[0] =
-			stm401_algo_info[STM401_IDX_ACCUM_MVMT].evt_register;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
-			STM401_EVT_SZ_ACCUM_MVMT);
+		motosh_cmdbuff[0] =
+			motosh_algo_info[MOTOSH_IDX_ACCUM_MVMT].evt_register;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
+			MOTOSH_EVT_SZ_ACCUM_MVMT);
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"Reading accum mvmt event failed\n");
 			goto EXIT;
 		}
-		stm401_readbuff[ALGO_TYPE] = STM401_IDX_ACCUM_MVMT;
-		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
-			stm401_readbuff, 8);
-		dev_dbg(&ps_stm401->client->dev, "Sending accum mvmt event\n");
+		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MVMT;
+		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+			motosh_readbuff, 8);
+		dev_dbg(&ps_motosh->client->dev, "Sending accum mvmt event\n");
 	}
 	if (irq2_status & M_IR_WAKE_GESTURE) {
-		err = stm401_process_ir_gesture(ps_stm401);
+		err = motosh_process_ir_gesture(ps_motosh);
 		if (err < 0)
 			goto EXIT;
 	}
 	if (irq3_status & M_GENERIC_INTRPT) {
 
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&ps_motosh->client->dev,
 			"Invalid M_GENERIC_INTRPT bit set. irq_status = 0x%06x\n",
 			irq_status);
 
 		/* x (data1) : irq3_status */
-		stm401_ms_data_buffer_write(ps_stm401, DT_GENERIC_INT,
+		motosh_ms_data_buffer_write(ps_motosh, DT_GENERIC_INT,
 			&irq3_status, 1);
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"Sending generic interrupt event:%d\n", irq3_status);
 	}
 
 EXIT:
-	stm401_sleep(ps_stm401);
+	motosh_sleep(ps_motosh);
 EXIT_NO_WAKE:
-	mutex_unlock(&ps_stm401->lock);
+	mutex_unlock(&ps_motosh->lock);
 }

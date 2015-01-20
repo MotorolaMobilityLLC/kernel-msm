@@ -1,10 +1,10 @@
-stm401-objs := stm401_core.o \
-		stm401_flash.o \
-		stm401_ioctl.o \
-		stm401_irq.o \
-		stm401_queue.o \
-		stm401_reset.o \
-		stm401_wake_irq.o \
-		stm401_display.o
-obj-$(CONFIG_MMI_HALL_NOTIFICATIONS) += stm401_mmi_notifications.o
-obj-$(CONFIG_SENSORS_STM401) += stm401.o
+motosh-objs := motosh_core.o \
+		motosh_flash.o \
+		motosh_ioctl.o \
+		motosh_irq.o \
+		motosh_queue.o \
+		motosh_reset.o \
+		motosh_wake_irq.o \
+		motosh_display.o
+obj-$(CONFIG_MMI_HALL_NOTIFICATIONS) += motosh_mmi_notifications.o
+obj-$(CONFIG_SENSORS_MOTOSH) += motosh.o
