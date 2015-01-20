@@ -16,7 +16,7 @@
 #include <linux/wakelock.h>
 #include <linux/irq.h>
 
-#include <linux/stm401.h>
+#include <linux/motosh.h>
 
 struct mmi_hall_data *mmi_hall_init(void)
 {
@@ -35,7 +35,7 @@ int mmi_hall_register_notifier(struct notifier_block *nb,
 		unsigned long stype, bool report)
 {
 	int error;
-	struct mmi_hall_data *mdata = stm401_misc_data->hall_data;
+	struct mmi_hall_data *mdata = motosh_misc_data->hall_data;
 
 	if (!mdata)
 		return -ENODEV;
@@ -58,7 +58,7 @@ int mmi_hall_unregister_notifier(struct notifier_block *nb,
 		unsigned long stype)
 {
 	int error;
-	struct mmi_hall_data *mdata = stm401_misc_data->hall_data;
+	struct mmi_hall_data *mdata = motosh_misc_data->hall_data;
 
 	if (!mdata)
 		return -ENODEV;
@@ -76,7 +76,7 @@ int mmi_hall_unregister_notifier(struct notifier_block *nb,
 
 void mmi_hall_notify(unsigned long stype, int state)
 {
-	struct mmi_hall_data *mdata = stm401_misc_data->hall_data;
+	struct mmi_hall_data *mdata = motosh_misc_data->hall_data;
 
 	if (!mdata) {
 		pr_debug("%s: notifier not initialized yet\n", __func__);
