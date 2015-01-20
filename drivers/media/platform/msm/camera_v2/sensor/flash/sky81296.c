@@ -14,10 +14,66 @@
 #include <linux/export.h>
 #include "msm_led_flash.h"
 
+/* Logging macro */
+#define SKY81296_DRIVER_DEBUG
+
+#undef CDBG
+#ifdef SKY81296_DRIVER_DEBUG
+#define CDBG(fmt, args...) pr_err(fmt, ##args)
+#else
+#define CDBG(fmt, args...) pr_debug(fmt, ##args)
+#endif
+
 #define FLASH_NAME "qcom,sky81296"
+
+#define LED_TORCH_CURRENT_REG    0x03
+#define LED1_STROBE_CURRENT_REG  0x00
+#define LED2_STROBE_CURRENT_REG  0x01
 
 static struct msm_led_flash_ctrl_t fctrl;
 static struct i2c_driver sky81296_i2c_driver;
+
+struct sky81296_current_to_reg {
+	uint16_t current_level;
+	uint16_t reg_value;
+};
+
+static struct sky81296_current_to_reg sky81296_torch_values[] = {
+	{25, 0x00},
+	{50, 0x01},
+	{75, 0x02},
+	{100, 0x03},
+	{125, 0x04},
+	{150, 0x05},
+	{175, 0x06},
+	{200, 0x07},
+	{225, 0x08},
+	{250, 0x09},
+};
+
+static struct sky81296_current_to_reg sky81296_strobe_values[] = {
+	{250, 0x00},
+	{300, 0x01},
+	{350, 0x02},
+	{400, 0x03},
+	{450, 0x04},
+	{500, 0x05},
+	{550, 0x06},
+	{600, 0x07},
+	{650, 0x08},
+	{700, 0x09},
+	{750, 0x0A},
+	{800, 0x0B},
+	{850, 0x0C},
+	{900, 0x0D},
+	{950, 0x0E},
+	{1000, 0x0F},
+	{1100, 0x10},
+	{1200, 0x11},
+	{1300, 0x12},
+	{1400, 0x13},
+	{1500, 0x14},
+};
 
 static struct msm_camera_i2c_reg_array sky81296_init_array[] = {
 	{0x00, 0x05},
@@ -72,6 +128,90 @@ static const struct i2c_device_id sky81296_i2c_id[] = {
 	{FLASH_NAME, (kernel_ulong_t)&fctrl},
 	{ }
 };
+
+static uint8_t msm_flash_sky81296_get_reg_value(
+		struct sky81296_current_to_reg *val_array,
+		int size,
+		uint16_t op_current)
+{
+	int i;
+	uint8_t ret_reg_val = 0x00;
+	uint16_t lo_curr = 0;
+	uint16_t hi_curr = 0;
+
+	CDBG("%s:%d - size:%d op_cur:%d\n", __func__, __LINE__,
+			size, op_current);
+
+	if (op_current <= val_array[0].current_level) {
+		ret_reg_val = val_array[0].reg_value;
+	} else if (op_current >= val_array[size-1].current_level) {
+		ret_reg_val = val_array[size-1].reg_value;
+	} else {
+		for (i = 1; i < size; i++) {
+			lo_curr = val_array[i-1].current_level;
+			hi_curr = val_array[i].current_level;
+			if (op_current >= lo_curr &&
+				op_current <= hi_curr) {
+				/* in between these two, find closest */
+				if ((hi_curr - op_current) <
+					(op_current - lo_curr)) {
+					ret_reg_val = val_array[i].reg_value;
+					break;
+				} else {
+					ret_reg_val = val_array[i-1].reg_value;
+					break;
+				}
+			}
+		}
+	}
+
+	return ret_reg_val;
+}
+
+static int msm_flash_sky81296_led_low(struct msm_led_flash_ctrl_t *fctrl)
+{
+	uint8_t led1_reg_val = 0x00;
+	uint8_t led2_reg_val = 0x00;
+	uint8_t reg_val = 0x00;
+	int tbl_size = sizeof(sky81296_torch_values) /
+			sizeof(struct sky81296_current_to_reg);
+
+	led1_reg_val = msm_flash_sky81296_get_reg_value(sky81296_torch_values,
+			tbl_size, fctrl->torch_op_current[0]);
+
+	led2_reg_val = msm_flash_sky81296_get_reg_value(sky81296_torch_values,
+			tbl_size, fctrl->torch_op_current[1]);
+
+	reg_val = (led2_reg_val << 4) | led1_reg_val;
+	CDBG("%s:%d - current level %d %d reg:0x%x\n", __func__, __LINE__,
+			fctrl->torch_op_current[0], fctrl->torch_op_current[1],
+			reg_val);
+
+	sky81296_low_array[0].reg_data = reg_val;
+	return msm_flash_led_low(fctrl);
+}
+
+static int msm_flash_sky81296_led_high(struct msm_led_flash_ctrl_t *fctrl)
+{
+	uint8_t led1_reg_val = 0x00;
+	uint8_t led2_reg_val = 0x00;
+	int tbl_size = sizeof(sky81296_strobe_values) /
+			sizeof(struct sky81296_current_to_reg);
+
+	led1_reg_val = msm_flash_sky81296_get_reg_value(sky81296_strobe_values,
+			tbl_size, fctrl->flash_op_current[0]);
+
+	led2_reg_val = msm_flash_sky81296_get_reg_value(sky81296_strobe_values,
+			tbl_size, fctrl->flash_op_current[1]);
+
+	CDBG("%s:%d - current level %d %d reg:0x%x:0x%x\n", __func__, __LINE__,
+			fctrl->flash_op_current[0], fctrl->flash_op_current[1],
+			led1_reg_val, led2_reg_val);
+
+	sky81296_high_array[0].reg_data = led1_reg_val;
+	sky81296_high_array[1].reg_data = led2_reg_val;
+	return msm_flash_led_high(fctrl);
+}
 
 static int msm_flash_sky81296_i2c_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -189,8 +329,8 @@ static struct msm_flash_fn_t sky81296_func_tbl = {
 	.flash_led_init = msm_flash_led_init,
 	.flash_led_release = msm_flash_led_release,
 	.flash_led_off = msm_flash_led_off,
-	.flash_led_low = msm_flash_led_low,
-	.flash_led_high = msm_flash_led_high,
+	.flash_led_low = msm_flash_sky81296_led_low,
+	.flash_led_high = msm_flash_sky81296_led_high,
 };
 
 static struct msm_led_flash_ctrl_t fctrl = {
