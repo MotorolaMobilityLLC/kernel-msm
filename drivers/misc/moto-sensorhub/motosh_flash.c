@@ -41,7 +41,7 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
-#include <linux/stm401.h>
+#include <linux/motosh.h>
 
 
 #define OLD_BOOT_VER 0x10
@@ -75,18 +75,18 @@ enum stm_command {
 };
 
 
-static unsigned char stm401_bootloader_ver;
+static unsigned char motosh_bootloader_ver;
 
 
-static int stm401_boot_i2c_write(struct stm401_data *ps_stm401,
+static int motosh_boot_i2c_write(struct motosh_data *ps_motosh,
 	u8 *buf, int len)
 {
 	int ret;
 	int tries = I2C_RETRIES;
 	struct i2c_msg msgs[] = {
 		{
-			.addr = ps_stm401->client->addr,
-			.flags = ps_stm401->client->flags,
+			.addr = ps_motosh->client->addr,
+			.flags = ps_motosh->client->flags,
 			.len = len,
 			.buf = buf,
 		}
@@ -96,31 +96,31 @@ static int stm401_boot_i2c_write(struct stm401_data *ps_stm401,
 		return -EFAULT;
 
 	while (tries) {
-		ret = i2c_transfer(ps_stm401->client->adapter, msgs, 1);
+		ret = i2c_transfer(ps_motosh->client->adapter, msgs, 1);
 		if (ret >= 0)
 			break;
 
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Boot mode I2C write error %d\n", ret);
 		tries--;
 		msleep(I2C_RETRY_DELAY);
 	}
 
 	if (ret < 0)
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Boot mode I2C write fail %d\n", ret);
 
 	return  ret;
 }
 
-static int stm401_boot_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len)
+static int motosh_boot_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len)
 {
 	int ret;
 	int tries = I2C_RETRIES;
 	struct i2c_msg msgs[] = {
 		{
-			.addr = ps_stm401->client->addr,
-			.flags = ps_stm401->client->flags | I2C_M_RD,
+			.addr = ps_motosh->client->addr,
+			.flags = ps_motosh->client->flags | I2C_M_RD,
 			.len = len,
 			.buf = buf,
 		}
@@ -130,35 +130,35 @@ static int stm401_boot_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len)
 		return -EFAULT;
 
 	while (tries) {
-		ret = i2c_transfer(ps_stm401->client->adapter, msgs, 1);
+		ret = i2c_transfer(ps_motosh->client->adapter, msgs, 1);
 		if (ret >= 0)
 			break;
 
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Boot mode I2C read error %d\n", ret);
 		tries--;
 		msleep(I2C_RETRY_DELAY);
 	}
 
 	if (ret < 0)
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Boot mode I2C read fail %d\n", ret);
 
 	return  ret;
 }
 
-static int stm401_boot_cmd_write(struct stm401_data *ps_stm401,
+static int motosh_boot_cmd_write(struct motosh_data *ps_motosh,
 	enum stm_command command)
 {
 	int index = 0;
 
-	stm401_cmdbuff[index++] = command;
-	stm401_cmdbuff[index++] = ~command;
+	motosh_cmdbuff[index++] = command;
+	motosh_cmdbuff[index++] = ~command;
 
-	return stm401_boot_i2c_write(ps_stm401, stm401_cmdbuff, index);
+	return motosh_boot_i2c_write(ps_motosh, motosh_cmdbuff, index);
 }
 
-static int stm401_boot_checksum_write(struct stm401_data *ps_stm401,
+static int motosh_boot_checksum_write(struct motosh_data *ps_motosh,
 	u8 *buf, int len)
 {
 	int i;
@@ -168,47 +168,47 @@ static int stm401_boot_checksum_write(struct stm401_data *ps_stm401,
 		checksum ^= buf[i];
 	buf[i++] = checksum;
 
-	return stm401_boot_i2c_write(ps_stm401, buf, i);
+	return motosh_boot_i2c_write(ps_motosh, buf, i);
 }
 
-static int stm401_get_boot_ver(void)
+static int motosh_get_boot_ver(void)
 {
 	int tries = COMMAND_RETRIES;
 	int err = 0;
 
 	while (tries) {
-		err = stm401_boot_cmd_write(stm401_misc_data, GET_VERSION);
+		err = motosh_boot_cmd_write(motosh_misc_data, GET_VERSION);
 		if (err < 0)
 			goto RETRY_VER;
 
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
+		err = motosh_boot_i2c_read(motosh_misc_data,
+			motosh_readbuff, 1);
 		if (err < 0)
 			goto RETRY_VER;
-		if (stm401_readbuff[0] != ACK_BYTE) {
-			dev_err(&stm401_misc_data->client->dev,
+		if (motosh_readbuff[0] != ACK_BYTE) {
+			dev_err(&motosh_misc_data->client->dev,
 				"Error sending GET_VERSION command 0x%02x\n",
-				stm401_readbuff[0]);
+				motosh_readbuff[0]);
 			goto RETRY_VER;
 		}
 
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
+		err = motosh_boot_i2c_read(motosh_misc_data,
+			motosh_readbuff, 1);
 		if (err < 0)
 			goto RETRY_VER;
-		stm401_bootloader_ver = stm401_readbuff[0];
-		dev_err(&stm401_misc_data->client->dev,
-			"Bootloader version 0x%02x\n", stm401_bootloader_ver);
+		motosh_bootloader_ver = motosh_readbuff[0];
+		dev_err(&motosh_misc_data->client->dev,
+			"Bootloader version 0x%02x\n", motosh_bootloader_ver);
 
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
+		err = motosh_boot_i2c_read(motosh_misc_data,
+			motosh_readbuff, 1);
 		if (err < 0)
 			goto RETRY_VER;
-		if (stm401_readbuff[0] == ACK_BYTE)
+		if (motosh_readbuff[0] == ACK_BYTE)
 			break;
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Error reading GET_VERSION data 0x%02x\n",
-			stm401_readbuff[0]);
+			motosh_readbuff[0]);
 RETRY_VER:
 		tries--;
 		msleep(COMMAND_DELAY);
@@ -217,73 +217,73 @@ RETRY_VER:
 	if (err < 0)
 		return -EIO;
 
-	return stm401_bootloader_ver;
+	return motosh_bootloader_ver;
 }
 
-int stm401_boot_flash_erase(void)
+int motosh_boot_flash_erase(void)
 {
 	int tries = COMMAND_RETRIES;
 	int index = 0;
 	int count = 0;
 	int err = 0;
 
-	if (stm401_bootloader_ver == 0) {
-		if (stm401_get_boot_ver() <= 0) {
+	if (motosh_bootloader_ver == 0) {
+		if (motosh_get_boot_ver() <= 0) {
 			err = -EIO;
 			goto EXIT;
 		}
 	}
 
-	dev_dbg(&stm401_misc_data->client->dev,
+	dev_dbg(&motosh_misc_data->client->dev,
 		"Starting flash erase\n");
 
-	if (stm401_bootloader_ver > OLD_BOOT_VER) {
+	if (motosh_bootloader_ver > OLD_BOOT_VER) {
 		/* Use new bootloader erase command */
 		while (tries) {
-			err = stm401_boot_cmd_write(stm401_misc_data,
+			err = motosh_boot_cmd_write(motosh_misc_data,
 				NO_WAIT_ERASE);
 			if (err < 0)
 				goto RETRY_ERASE;
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ERASE;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Error sending ERASE command 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				goto RETRY_ERASE;
 			}
 
-			stm401_cmdbuff[index++] = 0xFF;
-			stm401_cmdbuff[index++] = 0xFF;
-			err = stm401_boot_checksum_write(stm401_misc_data,
-				stm401_cmdbuff, index);
+			motosh_cmdbuff[index++] = 0xFF;
+			motosh_cmdbuff[index++] = 0xFF;
+			err = motosh_boot_checksum_write(motosh_misc_data,
+				motosh_cmdbuff, index);
 			if (err < 0)
 				goto RETRY_ERASE;
 
-			stm401_readbuff[0] = 0;
+			motosh_readbuff[0] = 0;
 			do {
-				err = stm401_boot_i2c_read(stm401_misc_data,
-					stm401_readbuff, 1);
-				if ((err >= 0) && (stm401_readbuff[0] ==
+				err = motosh_boot_i2c_read(motosh_misc_data,
+					motosh_readbuff, 1);
+				if ((err >= 0) && (motosh_readbuff[0] ==
 						NACK_BYTE))
 					break;
 				msleep(ERASE_DELAY);
 				count++;
 				if (count == ERASE_TIMEOUT)
 					break;
-			} while (stm401_readbuff[0] != ACK_BYTE);
-			if (stm401_readbuff[0] == ACK_BYTE) {
+			} while (motosh_readbuff[0] != ACK_BYTE);
+			if (motosh_readbuff[0] == ACK_BYTE) {
 				err = 0;
-				dev_dbg(&stm401_misc_data->client->dev,
+				dev_dbg(&motosh_misc_data->client->dev,
 					"Flash erase successful\n");
 				break;
 			}
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"Error waiting for ERASE complete 0x%02x\n",
-				stm401_readbuff[0]);
+				motosh_readbuff[0]);
 RETRY_ERASE:
 			err = -EIO;
 			tries--;
@@ -291,26 +291,26 @@ RETRY_ERASE:
 		}
 	} else {
 		/* Use old bootloader erase command */
-		err = stm401_boot_cmd_write(stm401_misc_data, ERASE);
+		err = motosh_boot_cmd_write(motosh_misc_data, ERASE);
 		if (err < 0)
 			goto EXIT;
 
-		err = stm401_boot_i2c_read(stm401_misc_data,
-			stm401_readbuff, 1);
+		err = motosh_boot_i2c_read(motosh_misc_data,
+			motosh_readbuff, 1);
 		if (err < 0)
 			goto EXIT;
-		if (stm401_readbuff[0] != ACK_BYTE) {
-			dev_err(&stm401_misc_data->client->dev,
+		if (motosh_readbuff[0] != ACK_BYTE) {
+			dev_err(&motosh_misc_data->client->dev,
 				"Error sending ERASE command 0x%02x\n",
-				stm401_readbuff[0]);
+				motosh_readbuff[0]);
 			err = -EIO;
 			goto EXIT;
 		}
 
-		stm401_cmdbuff[index++] = 0xFF;
-		stm401_cmdbuff[index++] = 0xFF;
-		err = stm401_boot_checksum_write(stm401_misc_data,
-			stm401_cmdbuff, index);
+		motosh_cmdbuff[index++] = 0xFF;
+		motosh_cmdbuff[index++] = 0xFF;
+		err = motosh_boot_checksum_write(motosh_misc_data,
+			motosh_cmdbuff, index);
 		if (err < 0)
 			goto EXIT;
 
@@ -326,89 +326,89 @@ EXIT:
 	return err;
 }
 
-int stm401_get_version(struct stm401_data *ps_stm401)
+int motosh_get_version(struct motosh_data *ps_motosh)
 {
 	int err = 0;
-	if (ps_stm401->mode == BOOTMODE) {
-		dev_err(&ps_stm401->client->dev,
+	if (ps_motosh->mode == BOOTMODE) {
+		dev_err(&ps_motosh->client->dev,
 			"Tried to read version in boot mode\n");
 		err = -EIO;
 		goto EXIT;
 	}
 
-	stm401_wake(ps_stm401);
+	motosh_wake(ps_motosh);
 
-	stm401_cmdbuff[0] = REV_ID;
-	err = stm401_i2c_write_read_no_reset(ps_stm401, stm401_cmdbuff, 1, 1);
+	motosh_cmdbuff[0] = REV_ID;
+	err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff, 1, 1);
 	if (err >= 0) {
-		err = (int)stm401_readbuff[0];
-		dev_err(&ps_stm401->client->dev, "STM401 version %02x",
-			stm401_readbuff[0]);
-		stm401_g_booted = 1;
+		err = (int)motosh_readbuff[0];
+		dev_err(&ps_motosh->client->dev, "MOTOSH version %02x",
+			motosh_readbuff[0]);
+		motosh_g_booted = 1;
 	}
-	stm401_sleep(ps_stm401);
+	motosh_sleep(ps_motosh);
 
 EXIT:
 	return err;
 }
 
-int switch_stm401_mode(enum stm_mode mode)
+int switch_motosh_mode(enum stm_mode mode)
 {
-	struct stm401_platform_data *pdata;
+	struct motosh_platform_data *pdata;
 	unsigned int bslen_pin_active_value =
-		stm401_misc_data->pdata->bslen_pin_active_value;
+		motosh_misc_data->pdata->bslen_pin_active_value;
 	int tries = COMMAND_RETRIES;
 	int err = 0;
 
-	pdata = stm401_misc_data->pdata;
-	stm401_misc_data->mode = mode;
+	pdata = motosh_misc_data->pdata;
+	motosh_misc_data->mode = mode;
 
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
 		gpio_set_value(pdata->gpio_bslen,
 				(bslen_pin_active_value));
-		dev_dbg(&stm401_misc_data->client->dev,
+		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to boot mode\n");
-		msleep(stm401_i2c_retry_delay);
+		msleep(motosh_i2c_retry_delay);
 		gpio_set_value(pdata->gpio_reset, 0);
-		msleep(stm401_i2c_retry_delay);
+		msleep(motosh_i2c_retry_delay);
 		gpio_set_value(pdata->gpio_reset, 1);
-		msleep(STM401_RESET_DELAY);
+		msleep(MOTOSH_RESET_DELAY);
 
 		while (tries) {
-			err = stm401_boot_cmd_write(stm401_misc_data, GET_ID);
+			err = motosh_boot_cmd_write(motosh_misc_data, GET_ID);
 			if (err < 0)
 				goto RETRY_ID;
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ID;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Error sending GET_ID command 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				goto RETRY_ID;
 			}
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 3);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 3);
 			if (err < 0)
 				goto RETRY_ID;
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"Part ID 0x%02x 0x%02x 0x%02x\n",
-				stm401_readbuff[0], stm401_readbuff[1],
-				stm401_readbuff[2]);
+				motosh_readbuff[0], motosh_readbuff[1],
+				motosh_readbuff[2]);
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ID;
-			if (stm401_readbuff[0] == ACK_BYTE)
+			if (motosh_readbuff[0] == ACK_BYTE)
 				break;
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"Error reading GETID data 0x%02x\n",
-				stm401_readbuff[0]);
+				motosh_readbuff[0]);
 RETRY_ID:
 			err = -EIO;
 			tries--;
@@ -418,35 +418,35 @@ RETRY_ID:
 		/*normal mode */
 		gpio_set_value(pdata->gpio_bslen,
 				!(bslen_pin_active_value));
-		dev_dbg(&stm401_misc_data->client->dev,
+		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to normal mode\n");
 		/* init only if not in the factory
-			- stm401_irq_disable indicates factory test ongoing */
-		if (!stm401_irq_disable)
-			stm401_reset_and_init();
+			- motosh_irq_disable indicates factory test ongoing */
+		if (!motosh_irq_disable)
+			motosh_reset_and_init();
 		else
-			stm401_reset(pdata, stm401_cmdbuff);
+			motosh_reset(pdata, motosh_cmdbuff);
 	}
 
 	return err;
 }
 
-static int stm401_misc_open(struct inode *inode, struct file *file)
+static int motosh_misc_open(struct inode *inode, struct file *file)
 {
 	int err = 0;
-	dev_dbg(&stm401_misc_data->client->dev, "stm401_misc_open\n");
+	dev_dbg(&motosh_misc_data->client->dev, "motosh_misc_open\n");
 
 	err = nonseekable_open(inode, file);
 	if (err < 0)
 		return err;
-	file->private_data = stm401_misc_data;
+	file->private_data = motosh_misc_data;
 
-	err = stm401_enable(stm401_misc_data);
+	err = motosh_enable(motosh_misc_data);
 
 	return err;
 }
 
-ssize_t stm401_misc_write(struct file *file, const char __user *buff,
+ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 				 size_t count, loff_t *ppos)
 {
 	int tries = COMMAND_RETRIES;
@@ -454,123 +454,123 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 	int wait_count = 0;
 	int err = 0;
 
-	if (count > STM401_MAXDATA_LENGTH || count == 0) {
-		dev_err(&stm401_misc_data->client->dev,
+	if (count > MOTOSH_MAXDATA_LENGTH || count == 0) {
+		dev_err(&motosh_misc_data->client->dev,
 			"Invalid packet size %zu\n", count);
 		return -EINVAL;
 	}
 
-	mutex_lock(&stm401_misc_data->lock);
+	mutex_lock(&motosh_misc_data->lock);
 
-	if (stm401_bootloader_ver == 0) {
-		if (stm401_get_boot_ver() <= 0) {
+	if (motosh_bootloader_ver == 0) {
+		if (motosh_get_boot_ver() <= 0) {
 			err = -EIO;
 			goto EXIT;
 		}
 	}
 
-	if (stm401_misc_data->mode == BOOTMODE) {
-		dev_dbg(&stm401_misc_data->client->dev,
+	if (motosh_misc_data->mode == BOOTMODE) {
+		dev_dbg(&motosh_misc_data->client->dev,
 			"Starting flash write, %zu bytes to address 0x%08x\n",
-			count, stm401_misc_data->current_addr);
+			count, motosh_misc_data->current_addr);
 
-		if (stm401_bootloader_ver > OLD_BOOT_VER) {
+		if (motosh_bootloader_ver > OLD_BOOT_VER) {
 			while (tries) {
 				/* Use new bootloader write command */
-				err = stm401_boot_cmd_write(stm401_misc_data,
+				err = motosh_boot_cmd_write(motosh_misc_data,
 					NO_WAIT_WRITE_MEMORY);
 				if (err < 0)
 					goto RETRY_WRITE;
 
-				err = stm401_boot_i2c_read(stm401_misc_data,
-					stm401_readbuff, 1);
+				err = motosh_boot_i2c_read(motosh_misc_data,
+					motosh_readbuff, 1);
 				if (err < 0)
 					goto RETRY_WRITE;
-				if (stm401_readbuff[0] != ACK_BYTE) {
-					dev_err(&stm401_misc_data->client->dev,
+				if (motosh_readbuff[0] != ACK_BYTE) {
+					dev_err(&motosh_misc_data->client->dev,
 					"Error sending WRITE_MEMORY "
 					"command 0x%02x\n",
-						stm401_readbuff[0]);
+						motosh_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
-				stm401_cmdbuff[index++]
-					= (stm401_misc_data->current_addr >> 24)
+				motosh_cmdbuff[index++]
+					= (motosh_misc_data->current_addr >> 24)
 					& 0xFF;
-				stm401_cmdbuff[index++]
-					= (stm401_misc_data->current_addr >> 16)
+				motosh_cmdbuff[index++]
+					= (motosh_misc_data->current_addr >> 16)
 					& 0xFF;
-				stm401_cmdbuff[index++]
-					= (stm401_misc_data->current_addr >> 8)
+				motosh_cmdbuff[index++]
+					= (motosh_misc_data->current_addr >> 8)
 					& 0xFF;
-				stm401_cmdbuff[index++]
-					= stm401_misc_data->current_addr & 0xFF;
-				err = stm401_boot_checksum_write(
-					stm401_misc_data, stm401_cmdbuff,
+				motosh_cmdbuff[index++]
+					= motosh_misc_data->current_addr & 0xFF;
+				err = motosh_boot_checksum_write(
+					motosh_misc_data, motosh_cmdbuff,
 					index);
 				if (err < 0)
 					goto RETRY_WRITE;
-				err = stm401_boot_i2c_read(stm401_misc_data,
-					stm401_readbuff, 1);
+				err = motosh_boot_i2c_read(motosh_misc_data,
+					motosh_readbuff, 1);
 				if (err < 0)
 					goto RETRY_WRITE;
-				if (stm401_readbuff[0] != ACK_BYTE) {
-					dev_err(&stm401_misc_data->client->dev,
+				if (motosh_readbuff[0] != ACK_BYTE) {
+					dev_err(&motosh_misc_data->client->dev,
 						"Error sending MEMORY_WRITE "
 						"address 0x%02x\n",
-						stm401_readbuff[0]);
+						motosh_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
-				stm401_cmdbuff[0] = count - 1;
-				if (copy_from_user(&stm401_cmdbuff[1], buff,
+				motosh_cmdbuff[0] = count - 1;
+				if (copy_from_user(&motosh_cmdbuff[1], buff,
 						count)) {
-					dev_err(&stm401_misc_data->client->dev,
+					dev_err(&motosh_misc_data->client->dev,
 						"Copy from user returned "
 						"error\n");
 					err = -EINVAL;
 					goto EXIT;
 				}
 				if (count & 0x1) {
-					stm401_cmdbuff[count + 1] = 0xFF;
+					motosh_cmdbuff[count + 1] = 0xFF;
 					count++;
 				}
-				err = stm401_boot_checksum_write(
-					stm401_misc_data, stm401_cmdbuff,
+				err = motosh_boot_checksum_write(
+					motosh_misc_data, motosh_cmdbuff,
 					count + 1);
 				if (err < 0) {
-					dev_err(&stm401_misc_data->client->dev,
+					dev_err(&motosh_misc_data->client->dev,
 						"Error sending MEMORY_WRITE "
 						"data 0x%02x\n",
-						stm401_readbuff[0]);
+						motosh_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
-				stm401_readbuff[0] = 0;
+				motosh_readbuff[0] = 0;
 				do {
-					err = stm401_boot_i2c_read(
-						stm401_misc_data,
-						stm401_readbuff, 1);
-					if ((err >= 0) && (stm401_readbuff[0]
+					err = motosh_boot_i2c_read(
+						motosh_misc_data,
+						motosh_readbuff, 1);
+					if ((err >= 0) && (motosh_readbuff[0]
 							== NACK_BYTE))
 						break;
 					msleep(WRITE_DELAY);
 					wait_count++;
 					if (wait_count == WRITE_TIMEOUT)
 						break;
-				} while (stm401_readbuff[0] != ACK_BYTE);
-				if (stm401_readbuff[0] == ACK_BYTE) {
-					dev_dbg(&stm401_misc_data->client->dev,
+				} while (motosh_readbuff[0] != ACK_BYTE);
+				if (motosh_readbuff[0] == ACK_BYTE) {
+					dev_dbg(&motosh_misc_data->client->dev,
 						"MEMORY_WRITE successful\n");
 					err = 0;
 					break;
 				}
-				dev_err(&stm401_misc_data->client->dev,
+				dev_err(&motosh_misc_data->client->dev,
 					"Error writing MEMORY_WRITE "
 					"data 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 RETRY_WRITE:
-				dev_dbg(&stm401_misc_data->client->dev,
+				dev_dbg(&motosh_misc_data->client->dev,
 					"Retry MEMORY_WRITE\n");
 				err = -EIO;
 				tries--;
@@ -580,202 +580,202 @@ RETRY_WRITE:
 				goto EXIT;
 		} else {
 			/* Use old bootloader write command */
-			err = stm401_boot_cmd_write(stm401_misc_data,
+			err = motosh_boot_cmd_write(motosh_misc_data,
 				WRITE_MEMORY);
 			if (err < 0)
 				goto EXIT;
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto EXIT;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 				 "Error sending WRITE_MEMORY command 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				err = -EIO;
 				goto EXIT;
 			}
 
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 24) & 0xFF;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 16) & 0xFF;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 8) & 0xFF;
-			stm401_cmdbuff[index++]
-				= stm401_misc_data->current_addr & 0xFF;
-			err = stm401_boot_checksum_write(stm401_misc_data,
-				stm401_cmdbuff, index);
+			motosh_cmdbuff[index++]
+				= (motosh_misc_data->current_addr >> 24) & 0xFF;
+			motosh_cmdbuff[index++]
+				= (motosh_misc_data->current_addr >> 16) & 0xFF;
+			motosh_cmdbuff[index++]
+				= (motosh_misc_data->current_addr >> 8) & 0xFF;
+			motosh_cmdbuff[index++]
+				= motosh_misc_data->current_addr & 0xFF;
+			err = motosh_boot_checksum_write(motosh_misc_data,
+				motosh_cmdbuff, index);
 			if (err < 0)
 				goto EXIT;
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto EXIT;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Error sending write memory "
 					"address 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				err = -EIO;
 				goto EXIT;
 			}
 
-			stm401_cmdbuff[0] = count - 1;
-			if (copy_from_user(&stm401_cmdbuff[1], buff, count)) {
-				dev_err(&stm401_misc_data->client->dev,
+			motosh_cmdbuff[0] = count - 1;
+			if (copy_from_user(&motosh_cmdbuff[1], buff, count)) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Copy from user returned error\n");
 				err = -EINVAL;
 				goto EXIT;
 			}
 			if (count & 0x1) {
-				stm401_cmdbuff[count + 1] = 0xFF;
+				motosh_cmdbuff[count + 1] = 0xFF;
 				count++;
 			}
-			err = stm401_boot_checksum_write(stm401_misc_data,
-				stm401_cmdbuff, count + 1);
+			err = motosh_boot_checksum_write(motosh_misc_data,
+				motosh_cmdbuff, count + 1);
 			if (err < 0)
 				goto EXIT;
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto EXIT;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Error sending flash data 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				err = -EIO;
 				goto EXIT;
 			}
 		}
 
-		dev_dbg(&stm401_misc_data->client->dev,
+		dev_dbg(&motosh_misc_data->client->dev,
 			"Flash write completed\n");
 
 		tries = COMMAND_RETRIES;
 		while (tries) {
-			err = stm401_boot_cmd_write(stm401_misc_data,
+			err = motosh_boot_cmd_write(motosh_misc_data,
 				READ_MEMORY);
 			if (err < 0)
 				goto RETRY_READ;
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_READ;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 				 "Error sending READ_MEMORY command 0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
 
 			index = 0;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 24) & 0xFF;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 16) & 0xFF;
-			stm401_cmdbuff[index++]
-				= (stm401_misc_data->current_addr >> 8) & 0xFF;
-			stm401_cmdbuff[index++]
-				= stm401_misc_data->current_addr & 0xFF;
-			err = stm401_boot_checksum_write(stm401_misc_data,
-				stm401_cmdbuff, index);
+			motosh_cmdbuff[index++]
+				= (motosh_misc_data->current_addr >> 24) & 0xFF;
+			motosh_cmdbuff[index++]
+				= (motosh_misc_data->current_addr >> 16) & 0xFF;
+			motosh_cmdbuff[index++]
+				= (motosh_misc_data->current_addr >> 8) & 0xFF;
+			motosh_cmdbuff[index++]
+				= motosh_misc_data->current_addr & 0xFF;
+			err = motosh_boot_checksum_write(motosh_misc_data,
+				motosh_cmdbuff, index);
 			if (err < 0)
 				goto RETRY_READ;
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_READ;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Error sending READ_MEMORY address "
 					"0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
 
-			err = stm401_boot_cmd_write(stm401_misc_data,
+			err = motosh_boot_cmd_write(motosh_misc_data,
 				(count - 1));
 			if (err < 0)
 				goto RETRY_READ;
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, 1);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_READ;
-			if (stm401_readbuff[0] != ACK_BYTE) {
-				dev_err(&stm401_misc_data->client->dev,
+			if (motosh_readbuff[0] != ACK_BYTE) {
+				dev_err(&motosh_misc_data->client->dev,
 					"Error sending READ_MEMORY count "
 					"0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
 
-			err = stm401_boot_i2c_read(stm401_misc_data,
-				stm401_readbuff, count);
+			err = motosh_boot_i2c_read(motosh_misc_data,
+				motosh_readbuff, count);
 			if (err < 0) {
-				dev_err(&stm401_misc_data->client->dev,
+				dev_err(&motosh_misc_data->client->dev,
 					"Error reading READ_MEMORY data "
 					"0x%02x\n",
-					stm401_readbuff[0]);
+					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
 
 			for (index = 0; index < count; index++) {
-				if (stm401_readbuff[index] != buff[index]) {
-					dev_err(&stm401_misc_data->client->dev,
+				if (motosh_readbuff[index] != buff[index]) {
+					dev_err(&motosh_misc_data->client->dev,
 						"Error verifying write "
 						"0x%08x 0x%02x "
 						"0x%02x 0x%02x\n",
-						stm401_misc_data->current_addr,
+						motosh_misc_data->current_addr,
 						index,
-						stm401_readbuff[index],
+						motosh_readbuff[index],
 						buff[index]);
 					goto RETRY_READ;
 				}
 			}
 			err = 0;
-			dev_dbg(&stm401_misc_data->client->dev,
+			dev_dbg(&motosh_misc_data->client->dev,
 				"Data compare successful\n");
 			break;
 RETRY_READ:
-			dev_dbg(&stm401_misc_data->client->dev,
+			dev_dbg(&motosh_misc_data->client->dev,
 				"Retry READ_MEMORY\n");
 			err = -EIO;
 			tries--;
 			msleep(COMMAND_DELAY);
 		}
-		stm401_misc_data->current_addr += count;
+		motosh_misc_data->current_addr += count;
 	} else {
-		dev_dbg(&stm401_misc_data->client->dev,
+		dev_dbg(&motosh_misc_data->client->dev,
 			"Normal mode write started\n");
-		if (copy_from_user(stm401_cmdbuff, buff, count)) {
-			dev_err(&stm401_misc_data->client->dev,
+		if (copy_from_user(motosh_cmdbuff, buff, count)) {
+			dev_err(&motosh_misc_data->client->dev,
 				"Copy from user returned error\n");
 			err = -EINVAL;
 		}
 
-		stm401_wake(stm401_misc_data);
+		motosh_wake(motosh_misc_data);
 
 		if (err == 0)
-			err = stm401_i2c_write_no_reset(stm401_misc_data,
-				stm401_cmdbuff, count);
+			err = motosh_i2c_write_no_reset(motosh_misc_data,
+				motosh_cmdbuff, count);
 
-		stm401_sleep(stm401_misc_data);
+		motosh_sleep(motosh_misc_data);
 
 		if (err == 0)
 			err = count;
 	}
 
 EXIT:
-	mutex_unlock(&stm401_misc_data->lock);
+	mutex_unlock(&motosh_misc_data->lock);
 	return err;
 }
 
 
-const struct file_operations stm401_misc_fops = {
+const struct file_operations motosh_misc_fops = {
 	.owner = THIS_MODULE,
-	.open = stm401_misc_open,
-	.unlocked_ioctl = stm401_misc_ioctl,
-	.write = stm401_misc_write,
+	.open = motosh_misc_open,
+	.unlocked_ioctl = motosh_misc_ioctl,
+	.write = motosh_misc_write,
 };
