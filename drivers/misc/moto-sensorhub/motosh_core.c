@@ -41,126 +41,126 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
-#include <linux/stm401.h>
+#include <linux/motosh.h>
 
 #define I2C_RETRIES			5
 #define RESET_RETRIES			2
-#define STM401_DELAY_USEC		10
+#define MOTOSH_DELAY_USEC		10
 #define G_MAX				0x7FFF
 
-#define STM401_BUSY_SLEEP_USEC    10000
-#define STM401_BUSY_RESUME_COUNT  14
-#define STM401_BUSY_SUSPEND_COUNT 6
-#define STM401_I2C_FAIL_LIMIT     10
+#define MOTOSH_BUSY_SLEEP_USEC    10000
+#define MOTOSH_BUSY_RESUME_COUNT  14
+#define MOTOSH_BUSY_SUSPEND_COUNT 6
+#define MOTOSH_I2C_FAIL_LIMIT     10
 
-long stm401_time_delta;
-unsigned int stm401_irq_disable;
-module_param_named(irq_disable, stm401_irq_disable, uint, 0644);
+long motosh_time_delta;
+unsigned int motosh_irq_disable;
+module_param_named(irq_disable, motosh_irq_disable, uint, 0644);
 
-unsigned short stm401_i2c_retry_delay = 13;
+unsigned short motosh_i2c_retry_delay = 13;
 
 /* Remember the sensor state */
-unsigned short stm401_g_acc_delay;
-unsigned short stm401_g_mag_delay;
-unsigned short stm401_g_gyro_delay;
-unsigned short stm401_g_baro_delay;
-unsigned short stm401_g_step_counter_delay;
-unsigned short stm401_g_ir_gesture_delay;
-unsigned short stm401_g_ir_raw_delay;
-unsigned long stm401_g_nonwake_sensor_state;
-unsigned short stm401_g_wake_sensor_state;
-unsigned short stm401_g_algo_state;
-unsigned char stm401_g_motion_dur;
-unsigned char stm401_g_zmotion_dur;
-unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
-unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
-unsigned short stm401_g_control_reg_restore;
-unsigned char stm401_g_ir_config_reg[STM401_IR_CONFIG_REG_SIZE];
-bool stm401_g_ir_config_reg_restore;
-bool stm401_g_booted;
+unsigned short motosh_g_acc_delay;
+unsigned short motosh_g_mag_delay;
+unsigned short motosh_g_gyro_delay;
+unsigned short motosh_g_baro_delay;
+unsigned short motosh_g_step_counter_delay;
+unsigned short motosh_g_ir_gesture_delay;
+unsigned short motosh_g_ir_raw_delay;
+unsigned long motosh_g_nonwake_sensor_state;
+unsigned short motosh_g_wake_sensor_state;
+unsigned short motosh_g_algo_state;
+unsigned char motosh_g_motion_dur;
+unsigned char motosh_g_zmotion_dur;
+unsigned char motosh_g_control_reg[MOTOSH_CONTROL_REG_SIZE];
+unsigned char motosh_g_mag_cal[MOTOSH_MAG_CAL_SIZE];
+unsigned short motosh_g_control_reg_restore;
+unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
+bool motosh_g_ir_config_reg_restore;
+bool motosh_g_booted;
 
 /* Store error message */
 unsigned char stat_string[ESR_SIZE+1];
 
-struct stm401_algo_requst_t stm401_g_algo_requst[STM401_NUM_ALGOS];
+struct motosh_algo_requst_t motosh_g_algo_requst[MOTOSH_NUM_ALGOS];
 
-unsigned char stm401_cmdbuff[512];
-unsigned char stm401_readbuff[READ_CMDBUFF_SIZE];
+unsigned char motosh_cmdbuff[512];
+unsigned char motosh_readbuff[READ_CMDBUFF_SIZE];
 
 /* per algo config, request, and event registers */
-const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
+const struct motosh_algo_info_t motosh_algo_info[MOTOSH_NUM_ALGOS] = {
 	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
-	  ALGO_EVT_MODALITY, STM401_EVT_SZ_TRANSITION },
+	  ALGO_EVT_MODALITY, MOTOSH_EVT_SZ_TRANSITION },
 	{ M_ALGO_ORIENTATION, ALGO_CFG_ORIENTATION, ALGO_REQ_ORIENTATION,
-	  ALGO_EVT_ORIENTATION, STM401_EVT_SZ_TRANSITION },
+	  ALGO_EVT_ORIENTATION, MOTOSH_EVT_SZ_TRANSITION },
 	{ M_ALGO_STOWED, ALGO_CFG_STOWED, ALGO_REQ_STOWED,
-	  ALGO_EVT_STOWED, STM401_EVT_SZ_TRANSITION },
+	  ALGO_EVT_STOWED, MOTOSH_EVT_SZ_TRANSITION },
 	{ M_ALGO_ACCUM_MODALITY, ALGO_CFG_ACCUM_MODALITY,
 	   ALGO_REQ_ACCUM_MODALITY, ALGO_EVT_ACCUM_MODALITY,
-	   STM401_EVT_SZ_ACCUM_STATE },
+	   MOTOSH_EVT_SZ_ACCUM_STATE },
 	{ M_ALGO_ACCUM_MVMT, ALGO_CFG_ACCUM_MVMT, ALGO_REQ_ACCUM_MVMT,
-	  ALGO_EVT_ACCUM_MVMT, STM401_EVT_SZ_ACCUM_MVMT }
+	  ALGO_EVT_ACCUM_MVMT, MOTOSH_EVT_SZ_ACCUM_MVMT }
 };
 
-struct stm401_data *stm401_misc_data;
+struct motosh_data *motosh_misc_data;
 
-void stm401_wake(struct stm401_data *ps_stm401)
+void motosh_wake(struct motosh_data *ps_motosh)
 {
-	if (ps_stm401 != NULL && ps_stm401->pdata != NULL) {
-		if (!(ps_stm401->sh_lowpower_enabled))
+	if (ps_motosh != NULL && ps_motosh->pdata != NULL) {
+		if (!(ps_motosh->sh_lowpower_enabled))
 			return;
 
-		mutex_lock(&ps_stm401->sh_wakeup_lock);
+		mutex_lock(&ps_motosh->sh_wakeup_lock);
 
-		if (ps_stm401->sh_wakeup_count == 0) {
+		if (ps_motosh->sh_wakeup_count == 0) {
 			int timeout = 5000;
 
 			/* wake up the sensorhub and wait up to 5ms
 			 * for it to respond */
-			gpio_set_value(ps_stm401->pdata->gpio_sh_wake, 1);
+			gpio_set_value(ps_motosh->pdata->gpio_sh_wake, 1);
 			while (!gpio_get_value
-			       (ps_stm401->pdata->gpio_sh_wake_resp)
+			       (ps_motosh->pdata->gpio_sh_wake_resp)
 			       && timeout--) {
 				udelay(1);
 			}
 
 			if (timeout <= 0)
-				dev_err(&ps_stm401->client->dev,
+				dev_err(&ps_motosh->client->dev,
 					"sensorhub wakeup timeout\n");
 		}
 
-		ps_stm401->sh_wakeup_count++;
+		ps_motosh->sh_wakeup_count++;
 
-		mutex_unlock(&ps_stm401->sh_wakeup_lock);
+		mutex_unlock(&ps_motosh->sh_wakeup_lock);
 	}
 }
 
-void stm401_sleep(struct stm401_data *ps_stm401)
+void motosh_sleep(struct motosh_data *ps_motosh)
 {
-	if (ps_stm401 != NULL && ps_stm401->pdata != NULL) {
-		if (!(ps_stm401->sh_lowpower_enabled))
+	if (ps_motosh != NULL && ps_motosh->pdata != NULL) {
+		if (!(ps_motosh->sh_lowpower_enabled))
 			return;
 
-		mutex_lock(&ps_stm401->sh_wakeup_lock);
+		mutex_lock(&ps_motosh->sh_wakeup_lock);
 
-		if (ps_stm401->sh_wakeup_count > 0) {
-			ps_stm401->sh_wakeup_count--;
-			if (ps_stm401->sh_wakeup_count == 0) {
-				gpio_set_value(ps_stm401->pdata->gpio_sh_wake,
+		if (ps_motosh->sh_wakeup_count > 0) {
+			ps_motosh->sh_wakeup_count--;
+			if (ps_motosh->sh_wakeup_count == 0) {
+				gpio_set_value(ps_motosh->pdata->gpio_sh_wake,
 					       0);
 				udelay(1);
 			}
 		} else {
-			dev_err(&ps_stm401->client->dev,
-				"stm401_sleep called too many times: %d",
-				ps_stm401->sh_wakeup_count);
+			dev_err(&ps_motosh->client->dev,
+				"motosh_sleep called too many times: %d",
+				ps_motosh->sh_wakeup_count);
 		}
 
-		mutex_unlock(&ps_stm401->sh_wakeup_lock);
+		mutex_unlock(&ps_motosh->sh_wakeup_lock);
 	}
 }
 
-void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
+void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
 {
 	int err;
 	bool factory;
@@ -168,59 +168,59 @@ void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
 
 	if (np) {
 		/* detect factory cable and disable lowpower mode
-		 * because TCMDs will talk directly to the stm401
+		 * because TCMDs will talk directly to the motosh
 		 * over i2c */
 		factory = of_property_read_bool(np, "mmi,factory-cable");
 
 		if (factory) {
 			/* lowpower mode disabled for factory testing */
-			dev_dbg(&stm401_misc_data->client->dev,
+			dev_dbg(&motosh_misc_data->client->dev,
 				"factory cable...lowpower disabled");
-			stm401_misc_data->sh_lowpower_enabled = 0;
+			motosh_misc_data->sh_lowpower_enabled = 0;
 			return;
 		}
 	}
 
-	if ((stm401_misc_data->pdata->gpio_sh_wake >= 0)
-	    && (stm401_misc_data->pdata->gpio_sh_wake_resp >= 0)) {
+	if ((motosh_misc_data->pdata->gpio_sh_wake >= 0)
+	    && (motosh_misc_data->pdata->gpio_sh_wake_resp >= 0)) {
 		/* wait up to 5ms for the sensorhub to respond/power up */
 		int timeout = 5000;
-		mutex_lock(&stm401_misc_data->sh_wakeup_lock);
+		mutex_lock(&motosh_misc_data->sh_wakeup_lock);
 
 		/* hold sensorhub awake, it might try to sleep
 		 * after we tell it the kernel supports low power */
-		gpio_set_value(stm401_misc_data->pdata->gpio_sh_wake, 1);
+		gpio_set_value(motosh_misc_data->pdata->gpio_sh_wake, 1);
 		while (!gpio_get_value
-		       (stm401_misc_data->pdata->gpio_sh_wake_resp)
+		       (motosh_misc_data->pdata->gpio_sh_wake_resp)
 		       && timeout--) {
 			udelay(1);
 		}
 
 		/* detect whether lowpower mode is supported */
-		dev_dbg(&stm401_misc_data->client->dev,
+		dev_dbg(&motosh_misc_data->client->dev,
 			"lowpower supported: ");
 
 		cmdbuff[0] = LOWPOWER_REG;
 		err =
-		    stm401_i2c_write_read_no_reset(stm401_misc_data,
+		    motosh_i2c_write_read_no_reset(motosh_misc_data,
 						   cmdbuff, 1, 2);
 		if (err >= 0) {
-			if ((int)stm401_readbuff[1] == 1)
-				stm401_misc_data->sh_lowpower_enabled = 1;
+			if ((int)motosh_readbuff[1] == 1)
+				motosh_misc_data->sh_lowpower_enabled = 1;
 			else
-				stm401_misc_data->sh_lowpower_enabled = 0;
+				motosh_misc_data->sh_lowpower_enabled = 0;
 
-			dev_dbg(&stm401_misc_data->client->dev,
+			dev_dbg(&motosh_misc_data->client->dev,
 				"lowpower supported: %d",
-				stm401_misc_data->sh_lowpower_enabled);
+				motosh_misc_data->sh_lowpower_enabled);
 
-			if (stm401_misc_data->sh_lowpower_enabled) {
+			if (motosh_misc_data->sh_lowpower_enabled) {
 				/* send back to the hub the kernel
 				 * supports low power mode */
 				cmdbuff[1] =
-				    stm401_misc_data->sh_lowpower_enabled;
+				    motosh_misc_data->sh_lowpower_enabled;
 				err =
-				    stm401_i2c_write_no_reset(stm401_misc_data,
+				    motosh_i2c_write_no_reset(motosh_misc_data,
 							      cmdbuff,
 							      2);
 
@@ -228,69 +228,69 @@ void stm401_detect_lowpower_mode(unsigned char *cmdbuff)
 					/* if we failed to let the sensorhub
 					 * know we support lowpower mode
 					 * disable it */
-					stm401_misc_data->sh_lowpower_enabled =
+					motosh_misc_data->sh_lowpower_enabled =
 					    0;
 				}
 			}
 		} else {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"error reading lowpower supported %d",
 				err);
 				/* if we failed to read the sensorhub
 				 * disable lowpower mode */
-				stm401_misc_data->sh_lowpower_enabled =
+				motosh_misc_data->sh_lowpower_enabled =
 				    0;
 		}
 
-		mutex_unlock(&stm401_misc_data->sh_wakeup_lock);
+		mutex_unlock(&motosh_misc_data->sh_wakeup_lock);
 	}
 }
 
-int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
+int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 			u8 *buf, int writelen, int readlen)
 {
 	int tries, err = 0;
 	struct i2c_msg msgs[] = {
 		{
-			.addr = ps_stm401->client->addr,
-			.flags = ps_stm401->client->flags,
+			.addr = ps_motosh->client->addr,
+			.flags = ps_motosh->client->flags,
 			.len = writelen,
 			.buf = buf,
 		},
 		{
-			.addr = ps_stm401->client->addr,
-			.flags = ps_stm401->client->flags | I2C_M_RD,
+			.addr = ps_motosh->client->addr,
+			.flags = ps_motosh->client->flags | I2C_M_RD,
 			.len = readlen,
-			.buf = stm401_readbuff,
+			.buf = motosh_readbuff,
 		},
 	};
 	if (buf == NULL || writelen == 0 || readlen == 0)
 		return -EFAULT;
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
 	tries = 0;
 	do {
-		err = i2c_transfer(ps_stm401->client->adapter, msgs, 2);
+		err = i2c_transfer(ps_motosh->client->adapter, msgs, 2);
 		if (err != 2)
-			msleep(stm401_i2c_retry_delay);
+			msleep(motosh_i2c_retry_delay);
 	} while ((err != 2) && (++tries < I2C_RETRIES));
 	if (err != 2) {
-		dev_err(&ps_stm401->client->dev, "Read transfer error\n");
+		dev_err(&ps_motosh->client->dev, "Read transfer error\n");
 		err = -EIO;
 	} else {
 		err = 0;
-		dev_dbg(&ps_stm401->client->dev, "Read from STM401: ");
+		dev_dbg(&ps_motosh->client->dev, "Read from MOTOSH: ");
 		for (tries = 0; tries < readlen; tries++)
-			dev_dbg(&ps_stm401->client->dev, "%02x",
-				stm401_readbuff[tries]);
+			dev_dbg(&ps_motosh->client->dev, "%02x",
+				motosh_readbuff[tries]);
 	}
 
 	return err;
 }
 
-int stm401_i2c_read_no_reset(struct stm401_data *ps_stm401,
+int motosh_i2c_read_no_reset(struct motosh_data *ps_motosh,
 			u8 *buf, int len)
 {
 	int tries, err = 0;
@@ -298,48 +298,48 @@ int stm401_i2c_read_no_reset(struct stm401_data *ps_stm401,
 	if (buf == NULL || len == 0)
 		return -EFAULT;
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
 	tries = 0;
 	do {
-		err = i2c_master_recv(ps_stm401->client, buf, len);
+		err = i2c_master_recv(ps_motosh->client, buf, len);
 		if (err < 0)
-			msleep(stm401_i2c_retry_delay);
+			msleep(motosh_i2c_retry_delay);
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "i2c read transfer error\n");
+		dev_err(&ps_motosh->client->dev, "i2c read transfer error\n");
 		err = -EIO;
 	} else {
-		dev_dbg(&ps_stm401->client->dev, "i2c read was successsful:\n");
+		dev_dbg(&ps_motosh->client->dev, "i2c read was successsful:\n");
 		for (tries = 0; tries < err; tries++)
-			dev_dbg(&ps_stm401->client->dev, "%02x", buf[tries]);
+			dev_dbg(&ps_motosh->client->dev, "%02x", buf[tries]);
 	}
 
 	return err;
 }
 
-int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
+int motosh_i2c_write_no_reset(struct motosh_data *ps_motosh,
 			u8 *buf, int len)
 {
 	int err = 0;
 	int tries = 0;
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
 	do {
-		err = i2c_master_send(ps_stm401->client, buf, len);
+		err = i2c_master_send(ps_motosh->client, buf, len);
 		if (err < 0)
-			msleep(stm401_i2c_retry_delay);
+			msleep(motosh_i2c_retry_delay);
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&ps_motosh->client->dev,
 			"i2c write error - 0x%x - 0x%x\n", buf[0], -err);
 		err = -EIO;
 	} else {
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"i2c write successful\n");
 		err = 0;
 	}
@@ -347,53 +347,53 @@ int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
 	return err;
 }
 
-static int stm401_hw_init(struct stm401_data *ps_stm401)
+static int motosh_hw_init(struct motosh_data *ps_motosh)
 {
 	int err = 0;
-	dev_dbg(&ps_stm401->client->dev, "stm401_hw_init\n");
-	ps_stm401->hw_initialized = 1;
+	dev_dbg(&ps_motosh->client->dev, "motosh_hw_init\n");
+	ps_motosh->hw_initialized = 1;
 	return err;
 }
 
-static void stm401_device_power_off(struct stm401_data *ps_stm401)
+static void motosh_device_power_off(struct motosh_data *ps_motosh)
 {
-	dev_dbg(&ps_stm401->client->dev,
-		"stm401_device_power_off\n");
-	if (ps_stm401->hw_initialized == 1) {
-		if (ps_stm401->pdata->power_off)
-			ps_stm401->pdata->power_off();
-		ps_stm401->hw_initialized = 0;
+	dev_dbg(&ps_motosh->client->dev,
+		"motosh_device_power_off\n");
+	if (ps_motosh->hw_initialized == 1) {
+		if (ps_motosh->pdata->power_off)
+			ps_motosh->pdata->power_off();
+		ps_motosh->hw_initialized = 0;
 	}
 }
 
-static int stm401_device_power_on(struct stm401_data *ps_stm401)
+static int motosh_device_power_on(struct motosh_data *ps_motosh)
 {
 	int err = 0;
-	dev_dbg(&ps_stm401->client->dev, "stm401_device_power_on\n");
-	if (ps_stm401->pdata->power_on) {
-		err = ps_stm401->pdata->power_on();
+	dev_dbg(&ps_motosh->client->dev, "motosh_device_power_on\n");
+	if (ps_motosh->pdata->power_on) {
+		err = ps_motosh->pdata->power_on();
 		if (err < 0) {
-			dev_err(&ps_stm401->client->dev,
+			dev_err(&ps_motosh->client->dev,
 				"power_on failed: %d\n", err);
 			return err;
 		}
 	}
-	if (!ps_stm401->hw_initialized) {
-		err = stm401_hw_init(ps_stm401);
+	if (!ps_motosh->hw_initialized) {
+		err = motosh_hw_init(ps_motosh);
 		if (err < 0) {
-			stm401_device_power_off(ps_stm401);
+			motosh_device_power_off(ps_motosh);
 			return err;
 		}
 	}
 	return err;
 }
 
-int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
+int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 			int writelen, int readlen)
 {
 	int tries, err = 0;
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
 	if (buf == NULL || writelen == 0 || readlen == 0)
@@ -401,67 +401,67 @@ int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
 
 	tries = 0;
 	do {
-		err = stm401_i2c_write_read_no_reset(ps_stm401,
+		err = motosh_i2c_write_read_no_reset(ps_motosh,
 			buf, writelen, readlen);
 		if (err < 0)
-			stm401_reset_and_init();
+			motosh_reset_and_init();
 	} while ((err < 0) && (++tries < RESET_RETRIES));
 
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "write_read error\n");
+		dev_err(&ps_motosh->client->dev, "write_read error\n");
 		err = -EIO;
 	} else {
-		dev_dbg(&ps_stm401->client->dev, "write_read successsful:\n");
+		dev_dbg(&ps_motosh->client->dev, "write_read successsful:\n");
 	}
 
 	return err;
 }
 
-int stm401_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len)
+int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len)
 {
 	int tries, err = 0;
 
 	if (buf == NULL || len == 0)
 		return -EFAULT;
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
 	tries = 0;
 	do {
-		err = stm401_i2c_read_no_reset(ps_stm401, buf, len);
+		err = motosh_i2c_read_no_reset(ps_motosh, buf, len);
 		if (err < 0)
-			stm401_reset_and_init();
+			motosh_reset_and_init();
 	} while ((err < 0) && (++tries < RESET_RETRIES));
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "read error\n");
+		dev_err(&ps_motosh->client->dev, "read error\n");
 		err = -EIO;
 	} else {
-		dev_dbg(&ps_stm401->client->dev, "read successsful:\n");
+		dev_dbg(&ps_motosh->client->dev, "read successsful:\n");
 	}
 	return err;
 }
 
-int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len)
+int motosh_i2c_write(struct motosh_data *ps_motosh, u8 *buf, int len)
 {
 	int err = 0;
 	int tries = 0;
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
 	tries = 0;
 	do {
-		err = stm401_i2c_write_no_reset(ps_stm401, buf, len);
+		err = motosh_i2c_write_no_reset(ps_motosh, buf, len);
 		if (err < 0)
-			stm401_reset_and_init();
+			motosh_reset_and_init();
 	} while ((err < 0) && (++tries < RESET_RETRIES));
 
 	if (err < 0) {
-		dev_err(&ps_stm401->client->dev, "write error - %x\n", buf[0]);
+		dev_err(&ps_motosh->client->dev, "write error - %x\n", buf[0]);
 		err = -EIO;
 	} else {
-		dev_dbg(&ps_stm401->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"write successful\n");
 		err = 0;
 	}
@@ -482,17 +482,17 @@ static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
 	return -EINVAL;
 }
 
-int stm401_enable(struct stm401_data *ps_stm401)
+int motosh_enable(struct motosh_data *ps_motosh)
 {
 	int err = 0;
 
-	dev_dbg(&ps_stm401->client->dev, "stm401_enable\n");
-	if (!atomic_cmpxchg(&ps_stm401->enabled, 0, 1)) {
-		err = stm401_device_power_on(ps_stm401);
+	dev_dbg(&ps_motosh->client->dev, "motosh_enable\n");
+	if (!atomic_cmpxchg(&ps_motosh->enabled, 0, 1)) {
+		err = motosh_device_power_on(ps_motosh);
 		if (err < 0) {
-			atomic_set(&ps_stm401->enabled, 0);
-			dev_err(&ps_stm401->client->dev,
-				"stm401_enable returned with %d\n", err);
+			atomic_set(&ps_motosh->enabled, 0);
+			dev_err(&ps_motosh->client->dev,
+				"motosh_enable returned with %d\n", err);
 			return err;
 		}
 	}
@@ -500,19 +500,19 @@ int stm401_enable(struct stm401_data *ps_stm401)
 	return err;
 }
 
-struct miscdevice stm401_misc_device = {
+struct miscdevice motosh_misc_device = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = NAME,
-	.fops = &stm401_misc_fops,
+	.fops = &motosh_misc_fops,
 };
 
 #ifdef CONFIG_OF
-static struct stm401_platform_data *
-stm401_of_init(struct i2c_client *client)
+static struct motosh_platform_data *
+motosh_of_init(struct i2c_client *client)
 {
 	int len;
 	int lsize, bsize, index;
-	struct stm401_platform_data *pdata;
+	struct motosh_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
 	unsigned int lux_table[LIGHTING_TABLE_SIZE];
 	unsigned int brightness_table[LIGHTING_TABLE_SIZE];
@@ -520,7 +520,7 @@ stm401_of_init(struct i2c_client *client)
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"pdata allocation failure\n");
 		return NULL;
 	}
@@ -532,16 +532,16 @@ stm401_of_init(struct i2c_client *client)
 	if (of_gpio_count(np) >= 6) {
 		pdata->gpio_sh_wake = of_get_gpio(np, 4);
 		pdata->gpio_sh_wake_resp = of_get_gpio(np, 5);
-		stm401_misc_data->sh_lowpower_enabled = 1;
+		motosh_misc_data->sh_lowpower_enabled = 1;
 	} else {
 		pdata->gpio_sh_wake = -1;
 		pdata->gpio_sh_wake_resp = -1;
-		stm401_misc_data->sh_lowpower_enabled = 0;
+		motosh_misc_data->sh_lowpower_enabled = 0;
 	}
-	stm401_misc_data->sh_wakeup_count = 0;
+	motosh_misc_data->sh_wakeup_count = 0;
 
 	if (of_get_property(np, "lux_table", &len) == NULL) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"lux_table len access failure\n");
 		return NULL;
 	}
@@ -553,14 +553,14 @@ stm401_of_init(struct i2c_client *client)
 		for (index = 0; index < lsize; index++)
 			pdata->lux_table[index] = ((u32 *)lux_table)[index];
 	} else {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Lux table is missing\n");
 		return NULL;
 	}
 	pdata->lux_table[lsize] = 0xFFFF;
 
 	if (of_get_property(np, "brightness_table", &len) == NULL) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Brightness_table len access failure\n");
 		return NULL;
 	}
@@ -576,13 +576,13 @@ stm401_of_init(struct i2c_client *client)
 				= ((u32 *)brightness_table)[index];
 		}
 	} else {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Brightness table is missing\n");
 		return NULL;
 	}
 
 	if ((lsize + 1) != bsize) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"Lux and Brightness table sizes don't match\n");
 		return NULL;
 	}
@@ -590,12 +590,12 @@ stm401_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "bslen_pin_active_value",
 				&pdata->bslen_pin_active_value);
 
-	of_get_property(np, "stm401_fw_version", &len);
-	if (!of_property_read_string(np, "stm401_fw_version", &name))
+	of_get_property(np, "motosh_fw_version", &len);
+	if (!of_property_read_string(np, "motosh_fw_version", &name))
 		strlcpy(pdata->fw_version, name, FW_VERSION_SIZE);
 	else
-		dev_dbg(&stm401_misc_data->client->dev,
-			"Not useing stm401_fw_version override\n");
+		dev_dbg(&motosh_misc_data->client->dev,
+			"Not useing motosh_fw_version override\n");
 
 	pdata->ct406_detect_threshold = 0x006E;
 	pdata->ct406_undetect_threshold = 0x0050;
@@ -613,56 +613,56 @@ stm401_of_init(struct i2c_client *client)
 	return pdata;
 }
 #else
-static inline struct stm401_platform_data *
-stm401_of_init(struct i2c_client *client)
+static inline struct motosh_platform_data *
+motosh_of_init(struct i2c_client *client)
 {
 	return NULL;
 }
 #endif
 
-static int stm401_gpio_init(struct stm401_platform_data *pdata,
+static int motosh_gpio_init(struct motosh_platform_data *pdata,
 				struct i2c_client *pdev)
 {
 	int err;
 
-	err = gpio_request(pdata->gpio_int, "stm401 int");
+	err = gpio_request(pdata->gpio_int, "motosh int");
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
-			"stm401 int gpio_request failed: %d\n", err);
+		dev_err(&motosh_misc_data->client->dev,
+			"motosh int gpio_request failed: %d\n", err);
 		return err;
 	}
 	gpio_direction_input(pdata->gpio_int);
 	err = gpio_export(pdata->gpio_int, 0);
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"gpio_int gpio_export failed: %d\n", err);
 		goto free_int;
 	}
 	err = gpio_export_link(&pdev->dev, "gpio_irq", pdata->gpio_int);
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"gpio_irq gpio_export_link failed: %d\n", err);
 		goto free_int;
 	}
 
-	err = gpio_request(pdata->gpio_reset, "stm401 reset");
+	err = gpio_request(pdata->gpio_reset, "motosh reset");
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
-			"stm401 reset gpio_request failed: %d\n", err);
+		dev_err(&motosh_misc_data->client->dev,
+			"motosh reset gpio_request failed: %d\n", err);
 		goto free_int;
 	}
 	gpio_direction_output(pdata->gpio_reset, 1);
 	gpio_set_value(pdata->gpio_reset, 1);
 	err = gpio_export(pdata->gpio_reset, 0);
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"reset gpio_export failed: %d\n", err);
 		goto free_reset;
 	}
 
-	err = gpio_request(pdata->gpio_bslen, "stm401 bslen");
+	err = gpio_request(pdata->gpio_bslen, "motosh bslen");
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"bslen gpio_request failed: %d\n", err);
 		goto free_reset;
 	}
@@ -670,16 +670,16 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 	gpio_set_value(pdata->gpio_bslen, 0);
 	err = gpio_export(pdata->gpio_bslen, 0);
 	if (err) {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"bslen gpio_export failed: %d\n", err);
 		goto free_bslen;
 	}
 
 	if ((pdata->gpio_sh_wake >= 0) && (pdata->gpio_sh_wake_resp >= 0)) {
 		/* pin to pull the stm chip out of lowpower mode */
-		err = gpio_request(pdata->gpio_sh_wake, "stm401 sh_wake");
+		err = gpio_request(pdata->gpio_sh_wake, "motosh sh_wake");
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"sh_wake gpio_request failed: %d\n", err);
 			goto free_bslen;
 		}
@@ -687,7 +687,7 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		gpio_set_value(pdata->gpio_sh_wake, 1);
 		err = gpio_export(pdata->gpio_sh_wake, 0);
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"sh_wake gpio_export failed: %d\n", err);
 			goto free_wake_sh;
 		}
@@ -695,16 +695,16 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		/* pin for the response from stm that it is awake */
 		err =
 		    gpio_request(pdata->gpio_sh_wake_resp,
-				 "stm401 sh_wake_resp");
+				 "motosh sh_wake_resp");
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"sh_wake_resp gpio_request failed: %d\n", err);
 			goto free_wake_sh;
 		}
 		gpio_direction_input(pdata->gpio_sh_wake_resp);
 		err = gpio_export(pdata->gpio_sh_wake_resp, 0);
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"sh_wake_resp gpio_export failed: %d\n", err);
 			goto free_sh_wake_resp;
 		}
@@ -712,28 +712,28 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		    gpio_export_link(&pdev->dev, "gpio_sh_wake_resp",
 				     pdata->gpio_sh_wake_resp);
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"gpio_sh_wake_resp gpio_export_link failed: %d\n",
 				err);
 			goto free_sh_wake_resp;
 		}
 	} else {
-		dev_err(&stm401_misc_data->client->dev,
+		dev_err(&motosh_misc_data->client->dev,
 			"%s: pins for stm lowpower mode not specified\n",
 			__func__);
 	}
 
 	if (gpio_is_valid(pdata->gpio_wakeirq)) {
-		err = gpio_request(pdata->gpio_wakeirq, "stm401 wakeirq");
+		err = gpio_request(pdata->gpio_wakeirq, "motosh wakeirq");
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"wakeirq gpio_request failed: %d\n", err);
 			goto free_sh_wake_resp;
 		}
 		gpio_direction_input(pdata->gpio_wakeirq);
 		err = gpio_export(pdata->gpio_wakeirq, 0);
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"wakeirq gpio_export failed: %d\n", err);
 			goto free_wakeirq;
 		}
@@ -741,7 +741,7 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		err = gpio_export_link(&pdev->dev, "wakeirq",
 						pdata->gpio_wakeirq);
 		if (err) {
-			dev_err(&stm401_misc_data->client->dev,
+			dev_err(&motosh_misc_data->client->dev,
 				"wakeirq link failed: %d\n", err);
 			goto free_wakeirq;
 		}
@@ -768,7 +768,7 @@ free_int:
 	return err;
 }
 
-static void stm401_gpio_free(struct stm401_platform_data *pdata)
+static void motosh_gpio_free(struct motosh_platform_data *pdata)
 {
 	gpio_free(pdata->gpio_int);
 	gpio_free(pdata->gpio_reset);
@@ -782,41 +782,41 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 
 void clear_interrupt_status_work_func(struct work_struct *work)
 {
-	struct stm401_data *ps_stm401 = container_of(work,
-			struct stm401_data, clear_interrupt_status_work);
+	struct motosh_data *ps_motosh = container_of(work,
+			struct motosh_data, clear_interrupt_status_work);
 
-	dev_dbg(&ps_stm401->client->dev, "clear_interrupt_status_work_func\n");
-	mutex_lock(&ps_stm401->lock);
+	dev_dbg(&ps_motosh->client->dev, "clear_interrupt_status_work_func\n");
+	mutex_lock(&ps_motosh->lock);
 
-	if (ps_stm401->mode == BOOTMODE)
+	if (ps_motosh->mode == BOOTMODE)
 		goto EXIT;
 
-	if (ps_stm401->is_suspended)
+	if (ps_motosh->is_suspended)
 		goto EXIT;
 
-	stm401_wake(ps_stm401);
+	motosh_wake(ps_motosh);
 
 	/* read interrupt mask register to clear
 			any interrupt during suspend state */
-	stm401_cmdbuff[0] = INTERRUPT_STATUS;
-	stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
+	motosh_cmdbuff[0] = INTERRUPT_STATUS;
+	motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
 
-	stm401_sleep(ps_stm401);
+	motosh_sleep(ps_motosh);
 EXIT:
-	mutex_unlock(&ps_stm401->lock);
+	mutex_unlock(&ps_motosh->lock);
 }
 
 #if defined(CONFIG_FB)
-static int stm401_fb_notifier_callback(struct notifier_block *self,
+static int motosh_fb_notifier_callback(struct notifier_block *self,
 	unsigned long event, void *data)
 {
 	struct fb_event *evdata = data;
-	struct stm401_data *ps_stm401 = container_of(self, struct stm401_data,
+	struct motosh_data *ps_motosh = container_of(self, struct motosh_data,
 		fb_notif);
 	int blank;
 	bool vote = false;
 
-	dev_dbg(&ps_stm401->client->dev, "%s+\n", __func__);
+	dev_dbg(&ps_motosh->client->dev, "%s+\n", __func__);
 
 	if ((event != FB_EVENT_BLANK && event != FB_EARLY_EVENT_BLANK) ||
 	    !evdata || !evdata->data)
@@ -842,32 +842,32 @@ static int stm401_fb_notifier_callback(struct notifier_block *self,
 		goto exit;
 	}
 
-	if (ps_stm401->in_reset_and_init || ps_stm401->mode == BOOTMODE) {
+	if (ps_motosh->in_reset_and_init || ps_motosh->mode == BOOTMODE) {
 		/* store the kernel's vote */
-		stm401_store_vote_aod_enabled(ps_stm401,
+		motosh_store_vote_aod_enabled(ps_motosh,
 				AOD_QP_ENABLED_VOTE_KERN, vote);
-		dev_warn(&ps_stm401->client->dev, "stm401 in reset or BOOTMODE...bailing\n");
+		dev_warn(&ps_motosh->client->dev, "motosh in reset or BOOTMODE...bailing\n");
 		goto exit;
 	} else {
-		mutex_lock(&ps_stm401->lock);
-		stm401_vote_aod_enabled_locked(ps_stm401,
+		mutex_lock(&ps_motosh->lock);
+		motosh_vote_aod_enabled_locked(ps_motosh,
 			AOD_QP_ENABLED_VOTE_KERN, vote);
-		stm401_resolve_aod_enabled_locked(ps_stm401);
-		mutex_unlock(&ps_stm401->lock);
+		motosh_resolve_aod_enabled_locked(ps_motosh);
+		mutex_unlock(&ps_motosh->lock);
 	}
 
 exit:
-	dev_dbg(&ps_stm401->client->dev, "%s-\n", __func__);
+	dev_dbg(&ps_motosh->client->dev, "%s-\n", __func__);
 
 	return 0;
 }
 #endif
 
-static int stm401_probe(struct i2c_client *client,
+static int motosh_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
-	struct stm401_platform_data *pdata;
-	struct stm401_data *ps_stm401;
+	struct motosh_platform_data *pdata;
+	struct motosh_data *ps_motosh;
 	int err = -1;
 	dev_info(&client->dev, "probe begun\n");
 
@@ -876,17 +876,17 @@ static int stm401_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	ps_stm401 = kzalloc(sizeof(*ps_stm401), GFP_KERNEL);
-	if (ps_stm401 == NULL) {
+	ps_motosh = kzalloc(sizeof(*ps_motosh), GFP_KERNEL);
+	if (ps_motosh == NULL) {
 		dev_err(&client->dev,
 			"failed to allocate memory for module data: %d\n", err);
 		return -ENOMEM;
 	}
-	ps_stm401->client = client;
-	stm401_misc_data = ps_stm401;
+	ps_motosh->client = client;
+	motosh_misc_data = ps_motosh;
 
 	if (client->dev.of_node)
-		pdata = stm401_of_init(client);
+		pdata = motosh_of_init(client);
 	else
 		pdata = client->dev.platform_data;
 
@@ -897,73 +897,73 @@ static int stm401_probe(struct i2c_client *client,
 	}
 
 	/* initialize regulators */
-	ps_stm401->regulator_1 = regulator_get(&client->dev, "sensor1");
-	if (IS_ERR(ps_stm401->regulator_1)) {
+	ps_motosh->regulator_1 = regulator_get(&client->dev, "sensor1");
+	if (IS_ERR(ps_motosh->regulator_1)) {
 		dev_err(&client->dev, "Failed to get VIO regulator\n");
 		goto err_regulator;
 	}
 
-	ps_stm401->regulator_2 = regulator_get(&client->dev, "sensor2");
-	if (IS_ERR(ps_stm401->regulator_2)) {
+	ps_motosh->regulator_2 = regulator_get(&client->dev, "sensor2");
+	if (IS_ERR(ps_motosh->regulator_2)) {
 		dev_err(&client->dev, "Failed to get VCC regulator\n");
-		regulator_put(ps_stm401->regulator_1);
+		regulator_put(ps_motosh->regulator_1);
 		goto err_regulator;
 	}
 
-	if (regulator_enable(ps_stm401->regulator_1)) {
+	if (regulator_enable(ps_motosh->regulator_1)) {
 		dev_err(&client->dev, "Failed to enable Sensor 1 regulator\n");
-		regulator_put(ps_stm401->regulator_2);
-		regulator_put(ps_stm401->regulator_1);
+		regulator_put(ps_motosh->regulator_2);
+		regulator_put(ps_motosh->regulator_1);
 		goto err_regulator;
 	}
 
-	if (regulator_enable(ps_stm401->regulator_2)) {
+	if (regulator_enable(ps_motosh->regulator_2)) {
 		dev_err(&client->dev, "Failed to enable Sensor 2 regulator\n");
-		regulator_disable(ps_stm401->regulator_1);
-		regulator_put(ps_stm401->regulator_2);
-		regulator_put(ps_stm401->regulator_1);
+		regulator_disable(ps_motosh->regulator_1);
+		regulator_put(ps_motosh->regulator_2);
+		regulator_put(ps_motosh->regulator_1);
 		goto err_regulator;
 	}
 
-	err = stm401_gpio_init(pdata, client);
+	err = motosh_gpio_init(pdata, client);
 	if (err) {
-		dev_err(&client->dev, "stm401 gpio init failed\n");
+		dev_err(&client->dev, "motosh gpio init failed\n");
 		goto err_gpio_init;
 	}
 
-	mutex_init(&ps_stm401->lock);
-	mutex_init(&ps_stm401->sh_wakeup_lock);
+	mutex_init(&ps_motosh->lock);
+	mutex_init(&ps_motosh->sh_wakeup_lock);
 
-	mutex_lock(&ps_stm401->lock);
-	wake_lock_init(&ps_stm401->wakelock, WAKE_LOCK_SUSPEND, "stm401");
-	wake_lock_init(&ps_stm401->reset_wakelock, WAKE_LOCK_SUSPEND,
-		"stm401_reset");
+	mutex_lock(&ps_motosh->lock);
+	wake_lock_init(&ps_motosh->wakelock, WAKE_LOCK_SUSPEND, "motosh");
+	wake_lock_init(&ps_motosh->reset_wakelock, WAKE_LOCK_SUSPEND,
+		"motosh_reset");
 
-	mutex_init(&ps_stm401->aod_enabled.vote_lock);
+	mutex_init(&ps_motosh->aod_enabled.vote_lock);
 
 	/* Set to passive mode by default */
-	stm401_g_nonwake_sensor_state = 0;
-	stm401_g_wake_sensor_state = 0;
+	motosh_g_nonwake_sensor_state = 0;
+	motosh_g_wake_sensor_state = 0;
 	/* clear the interrupt mask */
-	ps_stm401->intp_mask = 0x00;
+	ps_motosh->intp_mask = 0x00;
 
-	INIT_WORK(&ps_stm401->irq_work, stm401_irq_work_func);
-	INIT_WORK(&ps_stm401->irq_wake_work, stm401_irq_wake_work_func);
-	INIT_WORK(&ps_stm401->clear_interrupt_status_work,
+	INIT_WORK(&ps_motosh->irq_work, motosh_irq_work_func);
+	INIT_WORK(&ps_motosh->irq_wake_work, motosh_irq_wake_work_func);
+	INIT_WORK(&ps_motosh->clear_interrupt_status_work,
 		clear_interrupt_status_work_func);
 
-	ps_stm401->irq_work_queue = create_singlethread_workqueue("stm401_wq");
-	if (!ps_stm401->irq_work_queue) {
+	ps_motosh->irq_work_queue = create_singlethread_workqueue("motosh_wq");
+	if (!ps_motosh->irq_work_queue) {
 		err = -ENOMEM;
 		dev_err(&client->dev, "cannot create work queue: %d\n", err);
 		goto err1;
 	}
-	ps_stm401->pdata = pdata;
-	i2c_set_clientdata(client, ps_stm401);
-	ps_stm401->client->flags &= 0x00;
+	ps_motosh->pdata = pdata;
+	i2c_set_clientdata(client, ps_motosh);
+	ps_motosh->client->flags &= 0x00;
 
-	if (ps_stm401->pdata->init) {
-		err = ps_stm401->pdata->init();
+	if (ps_motosh->pdata->init) {
+		err = ps_motosh->pdata->init();
 		if (err < 0) {
 			dev_err(&client->dev, "init failed: %d\n", err);
 			goto err2;
@@ -971,73 +971,73 @@ static int stm401_probe(struct i2c_client *client,
 	}
 
 	/*configure interrupt*/
-	ps_stm401->irq = gpio_to_irq(ps_stm401->pdata->gpio_int);
-	if (gpio_is_valid(ps_stm401->pdata->gpio_wakeirq))
-		ps_stm401->irq_wake
-			= gpio_to_irq(ps_stm401->pdata->gpio_wakeirq);
+	ps_motosh->irq = gpio_to_irq(ps_motosh->pdata->gpio_int);
+	if (gpio_is_valid(ps_motosh->pdata->gpio_wakeirq))
+		ps_motosh->irq_wake
+			= gpio_to_irq(ps_motosh->pdata->gpio_wakeirq);
 	else
-		ps_stm401->irq_wake = -1;
+		ps_motosh->irq_wake = -1;
 
-	err = stm401_device_power_on(ps_stm401);
+	err = motosh_device_power_on(ps_motosh);
 	if (err < 0) {
 		dev_err(&client->dev, "power on failed: %d\n", err);
 		goto err4;
 	}
 
-	if (ps_stm401->irq_wake != -1)
-		enable_irq_wake(ps_stm401->irq_wake);
-	atomic_set(&ps_stm401->enabled, 1);
+	if (ps_motosh->irq_wake != -1)
+		enable_irq_wake(ps_motosh->irq_wake);
+	atomic_set(&ps_motosh->enabled, 1);
 
-	err = misc_register(&stm401_misc_device);
+	err = misc_register(&motosh_misc_device);
 	if (err < 0) {
 		dev_err(&client->dev, "misc register failed: %d\n", err);
 		goto err6;
 	}
 
-	if (alloc_chrdev_region(&ps_stm401->stm401_dev_num, 0, 2, "stm401")
+	if (alloc_chrdev_region(&ps_motosh->motosh_dev_num, 0, 2, "motosh")
 		< 0)
 		dev_err(&client->dev,
 			"alloc_chrdev_region failed\n");
-	ps_stm401->stm401_class = class_create(THIS_MODULE, "stm401");
+	ps_motosh->motosh_class = class_create(THIS_MODULE, "motosh");
 
-	cdev_init(&ps_stm401->as_cdev, &stm401_as_fops);
-	ps_stm401->as_cdev.owner = THIS_MODULE;
-	err = cdev_add(&ps_stm401->as_cdev, ps_stm401->stm401_dev_num, 1);
+	cdev_init(&ps_motosh->as_cdev, &motosh_as_fops);
+	ps_motosh->as_cdev.owner = THIS_MODULE;
+	err = cdev_add(&ps_motosh->as_cdev, ps_motosh->motosh_dev_num, 1);
 	if (err)
 		dev_err(&client->dev,
 			"cdev_add as failed: %d\n", err);
 
-	device_create(ps_stm401->stm401_class, NULL,
-		MKDEV(MAJOR(ps_stm401->stm401_dev_num), 0),
-		ps_stm401, "stm401_as");
+	device_create(ps_motosh->motosh_class, NULL,
+		MKDEV(MAJOR(ps_motosh->motosh_dev_num), 0),
+		ps_motosh, "motosh_as");
 
-	cdev_init(&ps_stm401->ms_cdev, &stm401_ms_fops);
-	ps_stm401->ms_cdev.owner = THIS_MODULE;
-	err = cdev_add(&ps_stm401->ms_cdev, ps_stm401->stm401_dev_num + 1, 1);
+	cdev_init(&ps_motosh->ms_cdev, &motosh_ms_fops);
+	ps_motosh->ms_cdev.owner = THIS_MODULE;
+	err = cdev_add(&ps_motosh->ms_cdev, ps_motosh->motosh_dev_num + 1, 1);
 	if (err)
 		dev_err(&client->dev,
 			"cdev_add ms failed: %d\n", err);
 
-	device_create(ps_stm401->stm401_class, NULL,
-		MKDEV(MAJOR(ps_stm401->stm401_dev_num), 1),
-		ps_stm401, "stm401_ms");
+	device_create(ps_motosh->motosh_class, NULL,
+		MKDEV(MAJOR(ps_motosh->motosh_dev_num), 1),
+		ps_motosh, "motosh_ms");
 
-	stm401_device_power_off(ps_stm401);
+	motosh_device_power_off(ps_motosh);
 
-	atomic_set(&ps_stm401->enabled, 0);
+	atomic_set(&ps_motosh->enabled, 0);
 
-	err = request_irq(ps_stm401->irq, stm401_isr,
+	err = request_irq(ps_motosh->irq, motosh_isr,
 				IRQF_TRIGGER_RISING,
-				NAME, ps_stm401);
+				NAME, ps_motosh);
 	if (err < 0) {
 		dev_err(&client->dev, "request irq failed: %d\n", err);
 		goto err7;
 	}
 
-	if (ps_stm401->irq_wake != -1) {
-		err = request_irq(ps_stm401->irq_wake, stm401_wake_isr,
+	if (ps_motosh->irq_wake != -1) {
+		err = request_irq(ps_motosh->irq_wake, motosh_wake_isr,
 				IRQF_TRIGGER_RISING,
-				NAME, ps_stm401);
+				NAME, ps_motosh);
 		if (err < 0) {
 			dev_err(&client->dev, "request wake irq failed: %d\n",
 				err);
@@ -1045,53 +1045,53 @@ static int stm401_probe(struct i2c_client *client,
 		}
 	}
 
-	init_waitqueue_head(&ps_stm401->stm401_as_data_wq);
-	init_waitqueue_head(&ps_stm401->stm401_ms_data_wq);
+	init_waitqueue_head(&ps_motosh->motosh_as_data_wq);
+	init_waitqueue_head(&ps_motosh->motosh_ms_data_wq);
 
-	ps_stm401->dsdev.name = "dock";
-	ps_stm401->dsdev.print_name = dock_print_name;
-	err = switch_dev_register(&ps_stm401->dsdev);
+	ps_motosh->dsdev.name = "dock";
+	ps_motosh->dsdev.print_name = dock_print_name;
+	err = switch_dev_register(&ps_motosh->dsdev);
 	if (err) {
 		dev_err(&client->dev,
 			"Couldn't register switch (%s) rc=%d\n",
-			ps_stm401->dsdev.name, err);
-		ps_stm401->dsdev.dev = NULL;
+			ps_motosh->dsdev.name, err);
+		ps_motosh->dsdev.dev = NULL;
 	}
 
-	ps_stm401->edsdev.name = "extdock";
-	ps_stm401->edsdev.print_name = dock_print_name;
-	err = switch_dev_register(&ps_stm401->edsdev);
+	ps_motosh->edsdev.name = "extdock";
+	ps_motosh->edsdev.print_name = dock_print_name;
+	err = switch_dev_register(&ps_motosh->edsdev);
 	if (err) {
 		dev_err(&client->dev,
 			"Couldn't register switch (%s) rc=%d\n",
-			ps_stm401->edsdev.name, err);
-		ps_stm401->edsdev.dev = NULL;
+			ps_motosh->edsdev.name, err);
+		ps_motosh->edsdev.dev = NULL;
 	}
 
-	ps_stm401->input_dev = input_allocate_device();
-	if (!ps_stm401->input_dev) {
+	ps_motosh->input_dev = input_allocate_device();
+	if (!ps_motosh->input_dev) {
 		err = -ENOMEM;
 		dev_err(&client->dev,
 			"input device allocate failed: %d\n", err);
 		goto err8;
 	}
-	input_set_drvdata(ps_stm401->input_dev, ps_stm401);
-	input_set_capability(ps_stm401->input_dev, EV_KEY, KEY_POWER);
-	input_set_capability(ps_stm401->input_dev, EV_KEY, KEY_CAMERA);
-	input_set_capability(ps_stm401->input_dev, EV_SW, SW_LID);
-	ps_stm401->input_dev->name = "sensorprocessor";
+	input_set_drvdata(ps_motosh->input_dev, ps_motosh);
+	input_set_capability(ps_motosh->input_dev, EV_KEY, KEY_POWER);
+	input_set_capability(ps_motosh->input_dev, EV_KEY, KEY_CAMERA);
+	input_set_capability(ps_motosh->input_dev, EV_SW, SW_LID);
+	ps_motosh->input_dev->name = "sensorprocessor";
 
-	err = input_register_device(ps_stm401->input_dev);
+	err = input_register_device(ps_motosh->input_dev);
 	if (err) {
 		dev_err(&client->dev,
 			"unable to register input polled device %s: %d\n",
-			ps_stm401->input_dev->name, err);
+			ps_motosh->input_dev->name, err);
 		goto err9;
 	}
 
 #if defined(CONFIG_FB)
-	ps_stm401->fb_notif.notifier_call = stm401_fb_notifier_callback;
-	err = fb_register_client(&ps_stm401->fb_notif);
+	ps_motosh->fb_notif.notifier_call = motosh_fb_notifier_callback;
+	err = fb_register_client(&ps_motosh->fb_notif);
 	if (err) {
 		dev_err(&client->dev,
 			"Error registering fb_notifier: %d\n", err);
@@ -1099,36 +1099,36 @@ static int stm401_probe(struct i2c_client *client,
 	}
 #endif
 
-	ps_stm401->quickpeek_work_queue =
-		create_singlethread_workqueue("stm401_quickpeek_wq");
-	if (!ps_stm401->quickpeek_work_queue) {
+	ps_motosh->quickpeek_work_queue =
+		create_singlethread_workqueue("motosh_quickpeek_wq");
+	if (!ps_motosh->quickpeek_work_queue) {
 		err = -ENOMEM;
 		dev_err(&client->dev, "cannot create work queue: %d\n", err);
 		goto err11;
 	}
-	INIT_WORK(&ps_stm401->quickpeek_work, stm401_quickpeek_work_func);
-	wake_lock_init(&ps_stm401->quickpeek_wakelock, WAKE_LOCK_SUSPEND,
-		"stm401_quickpeek");
-	INIT_LIST_HEAD(&ps_stm401->quickpeek_command_list);
-	atomic_set(&ps_stm401->qp_enabled, 0);
-	ps_stm401->qp_in_progress = false;
-	ps_stm401->qp_prepared = false;
-	init_waitqueue_head(&ps_stm401->quickpeek_wait_queue);
+	INIT_WORK(&ps_motosh->quickpeek_work, motosh_quickpeek_work_func);
+	wake_lock_init(&ps_motosh->quickpeek_wakelock, WAKE_LOCK_SUSPEND,
+		"motosh_quickpeek");
+	INIT_LIST_HEAD(&ps_motosh->quickpeek_command_list);
+	atomic_set(&ps_motosh->qp_enabled, 0);
+	ps_motosh->qp_in_progress = false;
+	ps_motosh->qp_prepared = false;
+	init_waitqueue_head(&ps_motosh->quickpeek_wait_queue);
 
-	ps_stm401->ignore_wakeable_interrupts = false;
-	ps_stm401->ignored_interrupts = 0;
-	ps_stm401->quickpeek_occurred = false;
-	mutex_init(&ps_stm401->qp_list_lock);
+	ps_motosh->ignore_wakeable_interrupts = false;
+	ps_motosh->ignored_interrupts = 0;
+	ps_motosh->quickpeek_occurred = false;
+	mutex_init(&ps_motosh->qp_list_lock);
 
-	stm401_quickwakeup_init(ps_stm401);
+	motosh_quickwakeup_init(ps_motosh);
 
-	ps_stm401->is_suspended = false;
+	ps_motosh->is_suspended = false;
 
-	switch_stm401_mode(NORMALMODE);
+	switch_motosh_mode(NORMALMODE);
 
-	mutex_unlock(&ps_stm401->lock);
+	mutex_unlock(&ps_motosh->lock);
 
-	ps_stm401->hall_data = mmi_hall_init();
+	ps_motosh->hall_data = mmi_hall_init();
 
 	dev_info(&client->dev, "probed finished\n");
 
@@ -1136,98 +1136,98 @@ static int stm401_probe(struct i2c_client *client,
 
 err11:
 #if defined(CONFIG_FB)
-	fb_unregister_client(&ps_stm401->fb_notif);
+	fb_unregister_client(&ps_motosh->fb_notif);
 err10:
 #endif
 err9:
-	input_free_device(ps_stm401->input_dev);
+	input_free_device(ps_motosh->input_dev);
 err8:
-	free_irq(ps_stm401->irq, ps_stm401);
+	free_irq(ps_motosh->irq, ps_motosh);
 err7:
-	misc_deregister(&stm401_misc_device);
+	misc_deregister(&motosh_misc_device);
 err6:
-	stm401_device_power_off(ps_stm401);
+	motosh_device_power_off(ps_motosh);
 err4:
-	if (ps_stm401->pdata->exit)
-		ps_stm401->pdata->exit();
+	if (ps_motosh->pdata->exit)
+		ps_motosh->pdata->exit();
 err2:
-	destroy_workqueue(ps_stm401->irq_work_queue);
+	destroy_workqueue(ps_motosh->irq_work_queue);
 err1:
-	mutex_unlock(&ps_stm401->lock);
-	mutex_destroy(&ps_stm401->lock);
-	wake_unlock(&ps_stm401->wakelock);
-	wake_lock_destroy(&ps_stm401->wakelock);
-	wake_unlock(&ps_stm401->reset_wakelock);
-	wake_lock_destroy(&ps_stm401->reset_wakelock);
-	stm401_gpio_free(pdata);
+	mutex_unlock(&ps_motosh->lock);
+	mutex_destroy(&ps_motosh->lock);
+	wake_unlock(&ps_motosh->wakelock);
+	wake_lock_destroy(&ps_motosh->wakelock);
+	wake_unlock(&ps_motosh->reset_wakelock);
+	wake_lock_destroy(&ps_motosh->reset_wakelock);
+	motosh_gpio_free(pdata);
 err_gpio_init:
-	regulator_disable(ps_stm401->regulator_2);
-	regulator_disable(ps_stm401->regulator_1);
-	regulator_put(ps_stm401->regulator_2);
-	regulator_put(ps_stm401->regulator_1);
+	regulator_disable(ps_motosh->regulator_2);
+	regulator_disable(ps_motosh->regulator_1);
+	regulator_put(ps_motosh->regulator_2);
+	regulator_put(ps_motosh->regulator_1);
 err_regulator:
 err_pdata:
-	kfree(ps_stm401);
+	kfree(ps_motosh);
 	return err;
 }
 
-static int stm401_remove(struct i2c_client *client)
+static int motosh_remove(struct i2c_client *client)
 {
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
-	dev_err(&ps_stm401->client->dev, "stm401_remove\n");
-	switch_dev_unregister(&ps_stm401->dsdev);
-	switch_dev_unregister(&ps_stm401->edsdev);
-	if (ps_stm401->irq_wake != -1)
-		free_irq(ps_stm401->irq_wake, ps_stm401);
-	free_irq(ps_stm401->irq, ps_stm401);
-	misc_deregister(&stm401_misc_device);
-	input_unregister_device(ps_stm401->input_dev);
-	input_free_device(ps_stm401->input_dev);
-	stm401_device_power_off(ps_stm401);
-	if (ps_stm401->pdata->exit)
-		ps_stm401->pdata->exit();
-	stm401_gpio_free(ps_stm401->pdata);
-	destroy_workqueue(ps_stm401->irq_work_queue);
-	mutex_destroy(&ps_stm401->lock);
-	wake_unlock(&ps_stm401->wakelock);
-	wake_lock_destroy(&ps_stm401->wakelock);
-	wake_unlock(&ps_stm401->reset_wakelock);
-	wake_lock_destroy(&ps_stm401->reset_wakelock);
-	disable_irq_wake(ps_stm401->irq);
+	struct motosh_data *ps_motosh = i2c_get_clientdata(client);
+	dev_err(&ps_motosh->client->dev, "motosh_remove\n");
+	switch_dev_unregister(&ps_motosh->dsdev);
+	switch_dev_unregister(&ps_motosh->edsdev);
+	if (ps_motosh->irq_wake != -1)
+		free_irq(ps_motosh->irq_wake, ps_motosh);
+	free_irq(ps_motosh->irq, ps_motosh);
+	misc_deregister(&motosh_misc_device);
+	input_unregister_device(ps_motosh->input_dev);
+	input_free_device(ps_motosh->input_dev);
+	motosh_device_power_off(ps_motosh);
+	if (ps_motosh->pdata->exit)
+		ps_motosh->pdata->exit();
+	motosh_gpio_free(ps_motosh->pdata);
+	destroy_workqueue(ps_motosh->irq_work_queue);
+	mutex_destroy(&ps_motosh->lock);
+	wake_unlock(&ps_motosh->wakelock);
+	wake_lock_destroy(&ps_motosh->wakelock);
+	wake_unlock(&ps_motosh->reset_wakelock);
+	wake_lock_destroy(&ps_motosh->reset_wakelock);
+	disable_irq_wake(ps_motosh->irq);
 
-	regulator_disable(ps_stm401->regulator_2);
-	regulator_disable(ps_stm401->regulator_1);
-	regulator_put(ps_stm401->regulator_2);
-	regulator_put(ps_stm401->regulator_1);
+	regulator_disable(ps_motosh->regulator_2);
+	regulator_disable(ps_motosh->regulator_1);
+	regulator_put(ps_motosh->regulator_2);
+	regulator_put(ps_motosh->regulator_1);
 #if defined(CONFIG_FB)
-	fb_unregister_client(&ps_stm401->fb_notif);
+	fb_unregister_client(&ps_motosh->fb_notif);
 #endif
-	kfree(ps_stm401);
+	kfree(ps_motosh);
 
 	return 0;
 }
 
-static void stm401_process_ignored_interrupts_locked(
-						struct stm401_data *ps_stm401)
+static void motosh_process_ignored_interrupts_locked(
+						struct motosh_data *ps_motosh)
 {
-	dev_dbg(&ps_stm401->client->dev, "%s\n", __func__);
+	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
 
-	ps_stm401->ignore_wakeable_interrupts = false;
+	ps_motosh->ignore_wakeable_interrupts = false;
 
-	if (ps_stm401->ignored_interrupts) {
-		ps_stm401->ignored_interrupts = 0;
-		wake_lock_timeout(&ps_stm401->wakelock, HZ);
-		queue_work(ps_stm401->irq_work_queue,
-			&ps_stm401->irq_wake_work);
+	if (ps_motosh->ignored_interrupts) {
+		ps_motosh->ignored_interrupts = 0;
+		wake_lock_timeout(&ps_motosh->wakelock, HZ);
+		queue_work(ps_motosh->irq_work_queue,
+			&ps_motosh->irq_wake_work);
 	}
 }
 
-static int stm401_resume(struct device *dev)
+static int motosh_resume(struct device *dev)
 {
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
-	mutex_lock(&ps_stm401->lock);
+	mutex_lock(&ps_motosh->lock);
 
 	/* During a quickwake interrupts will be set as ignored at the end of
 	   quickpeek_work_func while the system is being re-suspended.  It is
@@ -1235,143 +1235,143 @@ static int stm401_resume(struct device *dev)
 	   be immediately resumed.  Since resume_early was already called before
 	   the quickwake started (and therefore before quickpeek_work_func
 	   disabled interrupts) we must re-enable interrupts here. */
-	stm401_process_ignored_interrupts_locked(ps_stm401);
+	motosh_process_ignored_interrupts_locked(ps_motosh);
 
-	ps_stm401->is_suspended = false;
+	ps_motosh->is_suspended = false;
 
-	if (ps_stm401->pending_wake_work) {
-		queue_work(ps_stm401->irq_work_queue,
-			&ps_stm401->irq_wake_work);
-		ps_stm401->pending_wake_work = false;
+	if (ps_motosh->pending_wake_work) {
+		queue_work(ps_motosh->irq_work_queue,
+			&ps_motosh->irq_wake_work);
+		ps_motosh->pending_wake_work = false;
 	}
 
-	if (stm401_irq_disable == 0)
-		queue_work(ps_stm401->irq_work_queue,
-			&ps_stm401->clear_interrupt_status_work);
+	if (motosh_irq_disable == 0)
+		queue_work(ps_motosh->irq_work_queue,
+			&ps_motosh->clear_interrupt_status_work);
 
-	mutex_unlock(&ps_stm401->lock);
+	mutex_unlock(&ps_motosh->lock);
 
 	return 0;
 }
 
-static int stm401_resume_early(struct device *dev)
+static int motosh_resume_early(struct device *dev)
 {
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
-	mutex_lock(&ps_stm401->lock);
+	mutex_lock(&ps_motosh->lock);
 
 	/* If we received wakeable interrupts between suspend_late and
 	   suspend_noirq, we need to reschedule the irq work to be handled now
 	   that interrupts have been re-enabled. */
-	stm401_process_ignored_interrupts_locked(ps_stm401);
+	motosh_process_ignored_interrupts_locked(ps_motosh);
 
-	mutex_unlock(&ps_stm401->lock);
-
-	return 0;
-}
-
-static int stm401_suspend(struct device *dev)
-{
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
-	dev_dbg(dev, "%s\n", __func__);
-
-	mutex_lock(&ps_stm401->lock);
-	ps_stm401->is_suspended = true;
-	mutex_unlock(&ps_stm401->lock);
+	mutex_unlock(&ps_motosh->lock);
 
 	return 0;
 }
 
-static int stm401_suspend_late(struct device *dev)
+static int motosh_suspend(struct device *dev)
 {
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
-	if (!wait_event_timeout(ps_stm401->quickpeek_wait_queue,
-		stm401_quickpeek_disable_when_idle(ps_stm401),
-		msecs_to_jiffies(STM401_LATE_SUSPEND_TIMEOUT)))
+	mutex_lock(&ps_motosh->lock);
+	ps_motosh->is_suspended = true;
+	mutex_unlock(&ps_motosh->lock);
+
+	return 0;
+}
+
+static int motosh_suspend_late(struct device *dev)
+{
+	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
+	dev_dbg(dev, "%s\n", __func__);
+
+	if (!wait_event_timeout(ps_motosh->quickpeek_wait_queue,
+		motosh_quickpeek_disable_when_idle(ps_motosh),
+		msecs_to_jiffies(MOTOSH_LATE_SUSPEND_TIMEOUT)))
 		return -EBUSY;
 
 	return 0;
 }
 
-static int stm401_suspend_noirq(struct device *dev)
+static int motosh_suspend_noirq(struct device *dev)
 {
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(to_i2c_client(dev));
+	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	int ret = 0;
 
 	dev_dbg(dev, "%s\n", __func__);
 
-	mutex_lock(&ps_stm401->lock);
+	mutex_lock(&ps_motosh->lock);
 
 	/* If we received wakeable interrupts between finishing a quickwake and
 	   now, return an error so we will resume to process it instead of
 	   dropping into suspend */
-	if (ps_stm401->ignored_interrupts) {
+	if (ps_motosh->ignored_interrupts) {
 		dev_info(dev,
 			"Force system resume to handle deferred interrupts [%d]\n",
-			ps_stm401->ignored_interrupts);
+			ps_motosh->ignored_interrupts);
 		ret = -EBUSY;
 	}
 
-	ps_stm401->quickpeek_occurred = false;
+	ps_motosh->quickpeek_occurred = false;
 
-	mutex_unlock(&ps_stm401->lock);
+	mutex_unlock(&ps_motosh->lock);
 
 	return ret;
 }
 
-static const struct dev_pm_ops stm401_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(stm401_suspend, stm401_resume)
-	.suspend_late = stm401_suspend_late,
-	.suspend_noirq = stm401_suspend_noirq,
-	.resume_early = stm401_resume_early,
+static const struct dev_pm_ops motosh_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(motosh_suspend, motosh_resume)
+	.suspend_late = motosh_suspend_late,
+	.suspend_noirq = motosh_suspend_noirq,
+	.resume_early = motosh_resume_early,
 };
 
-static const struct i2c_device_id stm401_id[] = {
+static const struct i2c_device_id motosh_id[] = {
 	{NAME, 0},
 	{},
 };
 
-MODULE_DEVICE_TABLE(i2c, stm401_id);
+MODULE_DEVICE_TABLE(i2c, motosh_id);
 
 #ifdef CONFIG_OF
-static struct of_device_id stm401_match_tbl[] = {
-	{ .compatible = "stm,stm401" },
+static struct of_device_id motosh_match_tbl[] = {
+	{ .compatible = "stm,motosh" },
 	{ },
 };
-MODULE_DEVICE_TABLE(of, stm401_match_tbl);
+MODULE_DEVICE_TABLE(of, motosh_match_tbl);
 #endif
 
-static struct i2c_driver stm401_driver = {
+static struct i2c_driver motosh_driver = {
 	.driver = {
 		   .name = NAME,
 		   .owner = THIS_MODULE,
-		   .of_match_table = of_match_ptr(stm401_match_tbl),
+		   .of_match_table = of_match_ptr(motosh_match_tbl),
 #ifdef CONFIG_PM
-		   .pm = &stm401_pm_ops,
+		   .pm = &motosh_pm_ops,
 #endif
 	},
-	.probe = stm401_probe,
-	.remove = stm401_remove,
-	.id_table = stm401_id,
+	.probe = motosh_probe,
+	.remove = motosh_remove,
+	.id_table = motosh_id,
 };
 
-static int __init stm401_init(void)
+static int __init motosh_init(void)
 {
-	return i2c_add_driver(&stm401_driver);
+	return i2c_add_driver(&motosh_driver);
 }
 
-static void __exit stm401_exit(void)
+static void __exit motosh_exit(void)
 {
-	i2c_del_driver(&stm401_driver);
+	i2c_del_driver(&motosh_driver);
 	return;
 }
 
-module_init(stm401_init);
-module_exit(stm401_exit);
+module_init(motosh_init);
+module_exit(motosh_exit);
 
-MODULE_DESCRIPTION("STM401 sensor processor");
+MODULE_DESCRIPTION("MOTOSH sensor processor");
 MODULE_AUTHOR("Motorola");
 MODULE_LICENSE("GPL");
