@@ -10,10 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
  */
 
 #include <linux/cdev.h>
@@ -361,19 +357,22 @@ int switch_motosh_mode(enum stm_mode mode)
 	int err = 0;
 
 	pdata = motosh_misc_data->pdata;
-	motosh_misc_data->mode = mode;
 
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
+		motosh_misc_data->mode = mode;
 		gpio_set_value(pdata->gpio_bslen,
-				(bslen_pin_active_value));
+			       (bslen_pin_active_value));
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to boot mode\n");
 		msleep(motosh_i2c_retry_delay);
 		gpio_set_value(pdata->gpio_reset, 0);
 		msleep(motosh_i2c_retry_delay);
 		gpio_set_value(pdata->gpio_reset, 1);
-		msleep(MOTOSH_RESET_DELAY);
+
+		/* TODO: wleh01, reduce this delay if possible and
+		   update MOTOSH_RESET_DELAY */
+		msleep(600);
 
 		while (tries) {
 			err = motosh_boot_cmd_write(motosh_misc_data, GET_ID);
@@ -381,9 +380,10 @@ int switch_motosh_mode(enum stm_mode mode)
 				goto RETRY_ID;
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 1);
+						   motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ID;
+
 			if (motosh_readbuff[0] != ACK_BYTE) {
 				dev_err(&motosh_misc_data->client->dev,
 					"Error sending GET_ID command 0x%02x\n",
@@ -392,18 +392,20 @@ int switch_motosh_mode(enum stm_mode mode)
 			}
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 3);
+						   motosh_readbuff, 3);
 			if (err < 0)
 				goto RETRY_ID;
+
 			dev_err(&motosh_misc_data->client->dev,
 				"Part ID 0x%02x 0x%02x 0x%02x\n",
 				motosh_readbuff[0], motosh_readbuff[1],
 				motosh_readbuff[2]);
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 1);
+						   motosh_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ID;
+
 			if (motosh_readbuff[0] == ACK_BYTE)
 				break;
 			dev_err(&motosh_misc_data->client->dev,
@@ -414,19 +416,28 @@ RETRY_ID:
 			tries--;
 			msleep(COMMAND_DELAY);
 		}
-	} else {
-		/*normal mode */
+	} else if (mode > BOOTMODE) {
+
+		/* normal/factory mode */
 		gpio_set_value(pdata->gpio_bslen,
-				!(bslen_pin_active_value));
+			       !(bslen_pin_active_value));
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to normal mode\n");
 		/* init only if not in the factory
-			- motosh_irq_disable indicates factory test ongoing */
-		if (!motosh_irq_disable)
-			motosh_reset_and_init();
-		else
+		   - motosh_irq_disable indicates factory test ongoing */
+		if (!motosh_irq_disable) {
+			err = motosh_reset_and_init();
+			if (!err)
+				motosh_misc_data->mode = mode;
+			else
+				motosh_misc_data->mode = UNINITIALIZED;
+		} else
 			motosh_reset(pdata, motosh_cmdbuff);
-	}
+	} else
+		motosh_misc_data->mode = mode;
+
+	dev_info(&motosh_misc_data->client->dev,
+		 "motosh mode is: %d\n", motosh_misc_data->mode);
 
 	return err;
 }
@@ -456,7 +467,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 
 	if (count > MOTOSH_MAXDATA_LENGTH || count == 0) {
 		dev_err(&motosh_misc_data->client->dev,
-			"Invalid packet size %zu\n", count);
+			"Invalid packet size %d\n", (int)count);
 		return -EINVAL;
 	}
 
@@ -471,8 +482,8 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 
 	if (motosh_misc_data->mode == BOOTMODE) {
 		dev_dbg(&motosh_misc_data->client->dev,
-			"Starting flash write, %zu bytes to address 0x%08x\n",
-			count, motosh_misc_data->current_addr);
+			"Starting flash write, %d bytes to address 0x%08x\n",
+			(int)count, motosh_misc_data->current_addr);
 
 		if (motosh_bootloader_ver > OLD_BOOT_VER) {
 			while (tries) {
@@ -488,9 +499,8 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					goto RETRY_WRITE;
 				if (motosh_readbuff[0] != ACK_BYTE) {
 					dev_err(&motosh_misc_data->client->dev,
-					"Error sending WRITE_MEMORY "
-					"command 0x%02x\n",
-						motosh_readbuff[0]);
+							"Error sending WRITE_MEMORY command 0x%02x\n",
+							motosh_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
@@ -516,8 +526,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					goto RETRY_WRITE;
 				if (motosh_readbuff[0] != ACK_BYTE) {
 					dev_err(&motosh_misc_data->client->dev,
-						"Error sending MEMORY_WRITE "
-						"address 0x%02x\n",
+						"Error sending MEMORY_WRITE address 0x%02x\n",
 						motosh_readbuff[0]);
 					goto RETRY_WRITE;
 				}
@@ -526,8 +535,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 				if (copy_from_user(&motosh_cmdbuff[1], buff,
 						count)) {
 					dev_err(&motosh_misc_data->client->dev,
-						"Copy from user returned "
-						"error\n");
+						"Copy from user returned error\n");
 					err = -EINVAL;
 					goto EXIT;
 				}
@@ -540,8 +548,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					count + 1);
 				if (err < 0) {
 					dev_err(&motosh_misc_data->client->dev,
-						"Error sending MEMORY_WRITE "
-						"data 0x%02x\n",
+						"Error sending MEMORY_WRITE data 0x%02x\n",
 						motosh_readbuff[0]);
 					goto RETRY_WRITE;
 				}
@@ -566,8 +573,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					break;
 				}
 				dev_err(&motosh_misc_data->client->dev,
-					"Error writing MEMORY_WRITE "
-					"data 0x%02x\n",
+					"Error writing MEMORY_WRITE data 0x%02x\n",
 					motosh_readbuff[0]);
 RETRY_WRITE:
 				dev_dbg(&motosh_misc_data->client->dev,
@@ -614,8 +620,7 @@ RETRY_WRITE:
 				goto EXIT;
 			if (motosh_readbuff[0] != ACK_BYTE) {
 				dev_err(&motosh_misc_data->client->dev,
-					"Error sending write memory "
-					"address 0x%02x\n",
+					"Error sending write memory address 0x%02x\n",
 					motosh_readbuff[0]);
 				err = -EIO;
 				goto EXIT;
@@ -689,8 +694,7 @@ RETRY_WRITE:
 				goto RETRY_READ;
 			if (motosh_readbuff[0] != ACK_BYTE) {
 				dev_err(&motosh_misc_data->client->dev,
-					"Error sending READ_MEMORY address "
-					"0x%02x\n",
+					"Error sending READ_MEMORY address 0x%02x\n",
 					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
@@ -705,8 +709,7 @@ RETRY_WRITE:
 				goto RETRY_READ;
 			if (motosh_readbuff[0] != ACK_BYTE) {
 				dev_err(&motosh_misc_data->client->dev,
-					"Error sending READ_MEMORY count "
-					"0x%02x\n",
+					"Error sending READ_MEMORY count 0x%02x\n",
 					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
@@ -715,8 +718,7 @@ RETRY_WRITE:
 				motosh_readbuff, count);
 			if (err < 0) {
 				dev_err(&motosh_misc_data->client->dev,
-					"Error reading READ_MEMORY data "
-					"0x%02x\n",
+					"Error reading READ_MEMORY data 0x%02x\n",
 					motosh_readbuff[0]);
 				goto RETRY_READ;
 			}
@@ -724,9 +726,7 @@ RETRY_WRITE:
 			for (index = 0; index < count; index++) {
 				if (motosh_readbuff[index] != buff[index]) {
 					dev_err(&motosh_misc_data->client->dev,
-						"Error verifying write "
-						"0x%08x 0x%02x "
-						"0x%02x 0x%02x\n",
+						"Error verifying write 0x%08x 0x%02x 0x%02x 0x%02x\n",
 						motosh_misc_data->current_addr,
 						index,
 						motosh_readbuff[index],
