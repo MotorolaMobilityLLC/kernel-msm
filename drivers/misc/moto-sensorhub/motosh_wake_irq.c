@@ -10,10 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
  */
 
 #include <linux/cdev.h>
@@ -49,9 +45,8 @@ irqreturn_t motosh_wake_isr(int irq, void *dev)
 {
 	struct motosh_data *ps_motosh = dev;
 
-	if (motosh_irq_disable) {
+	if (motosh_irq_disable)
 		return IRQ_HANDLED;
-	}
 
 	wake_lock_timeout(&ps_motosh->wakelock, HZ);
 
@@ -80,7 +75,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	   this at this time. suspend_noirq will return BUSY if this happens
 	   so that we can handle these interrupts. */
 	if (ps_motosh->ignore_wakeable_interrupts) {
-		dev_info(&ps_motosh->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"Deferring interrupt work\n");
 		ps_motosh->ignored_interrupts++;
 		goto EXIT_NO_WAKE;
@@ -127,7 +122,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	if (irq_status & M_LOG_MSG) {
 		motosh_cmdbuff[0] = ERROR_STATUS;
 		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
-			1, ESR_SIZE);
+					    1, ESR_SIZE);
+
 		if (err >= 0) {
 			memcpy(stat_string, motosh_readbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
@@ -207,6 +203,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			irq_status == M_QUICKPEEK) < 0)
 			goto EXIT;
 	}
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	if (irq_status & M_COVER) {
 		int state;
 		motosh_cmdbuff[0] = COVER_DATA;
@@ -230,6 +227,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 
 		dev_err(&ps_motosh->client->dev, "Cover status: %d\n", state);
 	}
+#endif
 	if (irq_status & M_FLATUP) {
 		motosh_cmdbuff[0] = FLAT_DATA;
 		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);

@@ -10,10 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
  */
 
 #include <linux/cdev.h>
@@ -43,6 +39,8 @@
 
 #include <linux/motosh.h>
 
+#define LOWPOWER_ALLOWED   0
+
 #define I2C_RETRIES			5
 #define RESET_RETRIES			2
 #define MOTOSH_DELAY_USEC		10
@@ -55,6 +53,7 @@
 
 long motosh_time_delta;
 unsigned int motosh_irq_disable;
+
 module_param_named(irq_disable, motosh_irq_disable, uint, 0644);
 
 unsigned short motosh_i2c_retry_delay = 13;
@@ -264,6 +263,7 @@ int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 			.buf = motosh_readbuff,
 		},
 	};
+
 	if (buf == NULL || writelen == 0 || readlen == 0)
 		return -EFAULT;
 
@@ -273,6 +273,7 @@ int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 	tries = 0;
 	do {
 		err = i2c_transfer(ps_motosh->client->adapter, msgs, 2);
+
 		if (err != 2)
 			msleep(motosh_i2c_retry_delay);
 	} while ((err != 2) && (++tries < I2C_RETRIES));
@@ -529,7 +530,8 @@ motosh_of_init(struct i2c_client *client)
 	pdata->gpio_reset = of_get_gpio(np, 1);
 	pdata->gpio_bslen = of_get_gpio(np, 2);
 	pdata->gpio_wakeirq = of_get_gpio(np, 3);
-	if (of_gpio_count(np) >= 6) {
+
+	if (LOWPOWER_ALLOWED && of_gpio_count(np) >= 6) {
 		pdata->gpio_sh_wake = of_get_gpio(np, 4);
 		pdata->gpio_sh_wake_resp = of_get_gpio(np, 5);
 		motosh_misc_data->sh_lowpower_enabled = 1;
@@ -1124,13 +1126,15 @@ static int motosh_probe(struct i2c_client *client,
 
 	ps_motosh->is_suspended = false;
 
+	/* try to go to normal mode, switch to UNINITIALIZED on failure */
 	switch_motosh_mode(NORMALMODE);
 
 	mutex_unlock(&ps_motosh->lock);
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	ps_motosh->hall_data = mmi_hall_init();
-
-	dev_info(&client->dev, "probed finished\n");
+#endif
+	dev_info(&client->dev, "probe finished\n");
 
 	return 0;
 
@@ -1309,7 +1313,7 @@ static int motosh_suspend_noirq(struct device *dev)
 	   now, return an error so we will resume to process it instead of
 	   dropping into suspend */
 	if (ps_motosh->ignored_interrupts) {
-		dev_info(dev,
+		dev_dbg(dev,
 			"Force system resume to handle deferred interrupts [%d]\n",
 			ps_motosh->ignored_interrupts);
 		ret = -EBUSY;
