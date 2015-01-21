@@ -1068,8 +1068,9 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	int ret = -EINVAL;
 	bool is_bl_changed = (bkl_lvl != mfd->bl_level);
 
-	if (((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
-		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
+	if ((((mdss_fb_is_power_off(mfd) || mdss_fb_is_power_on_lp(mfd))
+					&& mfd->dcm_state != DCM_ENTER)
+				|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
 		mfd->unset_bl_level = bkl_lvl;
 		return;
 	} else {
