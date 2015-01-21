@@ -26,8 +26,6 @@
 
 DEFINE_MUTEX(kernel_map_global_lock);
 
-#define KGSL_SG_FREE_POISON	0x7c7c7c7c
-
 /* An attribute for showing per-process memory statistics */
 struct kgsl_mem_entry_attribute {
 	struct attribute attr;
@@ -421,32 +419,6 @@ done:
 	mutex_unlock(&kernel_map_global_lock);
 }
 
-static inline void kgsl_sg_clean(struct scatterlist *sg)
-{
-	sg->offset = (unsigned int)__builtin_return_address(0);
-	sg->length = current->pid;
-	sg->dma_address = KGSL_SG_FREE_POISON;
-}
-
-static inline void kgsl_sg_dump(struct kgsl_memdesc *memdesc)
-{
-	int sglen = memdesc->sglen;
-	int i;
-	struct scatterlist *sg;
-
-	sg = memdesc->sg;
-	pr_info("KGSL SG DUMP: sg=%p, len=%d\n", sg, sglen);
-
-	if (sglen > 32)
-		sglen = 32;
-
-	for (i = 0; i < sglen; i++) {
-		pr_info("page=%08lx, offs=%08x, leng=%08x, dmaa=%08x\n",
-		sg->page_link, sg->offset, sg->length, sg->dma_address);
-		sg++;
-	}
-}
-
 static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 {
 	int i = 0;
@@ -460,16 +432,9 @@ static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 	/* we certainly do not expect the hostptr to still be mapped */
 	BUG_ON(memdesc->hostptr);
 
-	if (memdesc->sg) {
-		if (memdesc->sg->dma_address == KGSL_SG_FREE_POISON) {
-			kgsl_sg_dump(memdesc);
-			BUG_ON(true);
-		}
-		for_each_sg(memdesc->sg, sg, sglen, i) {
+	if (memdesc->sg)
+		for_each_sg(memdesc->sg, sg, sglen, i)
 			__free_pages(sg_page(sg), get_order(sg->length));
-			kgsl_sg_clean(sg);
-		}
-	}
 }
 
 static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)
@@ -923,14 +888,6 @@ void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc)
 	if (memdesc->ops && memdesc->ops->free)
 		memdesc->ops->free(memdesc);
 
-	if (memdesc->sg) {
-		int i = 0;
-		struct scatterlist *sg;
-		int sglen = memdesc->sglen;
-		for_each_sg(memdesc->sg, sg, sglen, i) {
-			kgsl_sg_clean(sg);
-		}
-	}
 	kgsl_sg_free(memdesc->sg, memdesc->sglen_alloc);
 
 	memset(memdesc, 0, sizeof(*memdesc));
