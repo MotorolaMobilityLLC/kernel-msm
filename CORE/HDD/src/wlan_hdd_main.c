@@ -8161,13 +8161,16 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
       // Power has completed all scans will be cancelled.
       if (pHddCtx->scan_info.mScanPending)
       {
-          hddLog(VOS_TRACE_LEVEL_INFO,
-                 FL("abort scan mode: %d sessionId: %d"),
-                     pAdapter->device_mode,
-                     pAdapter->sessionId);
-           hdd_abort_mac_scan(pHddCtx,
-                              pHddCtx->scan_info.sessionId,
-                              eCSR_SCAN_ABORT_DEFAULT);
+          if(NULL != pAdapter)
+          {
+             hddLog(VOS_TRACE_LEVEL_INFO,
+                    FL("abort scan mode: %d sessionId: %d"),
+                       pAdapter->device_mode,
+                       pAdapter->sessionId);
+          }
+          hdd_abort_mac_scan(pHddCtx,
+                             pHddCtx->scan_info.sessionId,
+                             eCSR_SCAN_ABORT_DEFAULT);
       }
    }
    else
