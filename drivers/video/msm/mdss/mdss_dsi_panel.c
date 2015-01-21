@@ -45,7 +45,7 @@
 
 #define DCS_CMD_GET_POWER_MODE 0x0A    /* get power_mode */
 
-DEFINE_LED_TRIGGER(bl_led_trigger);
+DEFINE_LED_TRIGGER_GLOBAL(bl_led_trigger);
 
 static DECLARE_COMPLETION(bl_on_delay_completion);
 static enum hrtimer_restart mdss_dsi_panel_bl_on_defer_timer_expire(
