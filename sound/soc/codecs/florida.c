@@ -1971,8 +1971,10 @@ static struct snd_soc_dai_driver florida_dai[] = {
 static int adsp2_get_comprdev_index(struct snd_compr_stream *stream)
 {
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
-	if (strcmp(rtd->codec_dai->name, "florida-dsp-voicectrl") == 0)
+	if ((strcmp(rtd->codec_dai->name, "florida-dsp-voicectrl") == 0))
 		return 2;
+	else if	(strcmp(rtd->codec_dai->name, "florida-dsp3-txt") == 0)
+		return 3;
 	else if (strcmp(rtd->codec_dai->name, "florida-dsp-trace") == 0)
 		return 0;
 	else if (strcmp(rtd->codec_dai->name, "florida-dsp2-txt") == 0)
@@ -2007,14 +2009,20 @@ static bool adsp2_ez2ctrl_trigger(struct florida_priv *florida, int dev)
 static irqreturn_t adsp2_irq(int irq, void *data)
 {
 	struct florida_priv *florida = data;
-	int ret, avail, i;
+	struct snd_soc_pcm_runtime *rtd;
+	int ret = 0, avail, i;
 	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++) {
 		mutex_lock(&florida->compr_info[i].lock);
 		if (adsp2_ez2ctrl_trigger(florida, i))
 			adsp2_ez2ctrl_set_trigger(florida);
 
 		if (florida->compr_info[i].stream) {
-			ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp);
+			rtd = florida->compr_info[i].stream->private_data;
+			if (!strcmp(rtd->codec_dai->name, "florida-dsp-voicectrl"))
+				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, false);
+			else if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
+				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, true);
+
 			if (ret < 0) {
 				dev_err(florida->core.arizona->dev,
 					"Failed to capture DSP core %d data: %d\n",
@@ -2224,10 +2232,17 @@ static int florida_copy(struct snd_compr_stream *stream, char __user *buf,
 
 	mutex_lock(&florida->compr_info[compr_dev_index].lock);
 
-	if (stream->direction == SND_COMPRESS_PLAYBACK)
-		ret = -EINVAL;
+	if (stream->direction == SND_COMPRESS_PLAYBACK) {
+		mutex_unlock(&florida->compr_info[compr_dev_index].lock);
+		return -EINVAL;
+	}
+
+	if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
+		ret = wm_adsp_stream_read2(florida->compr_info[compr_dev_index].adsp, buf,
+			count);
 	else
-		ret = wm_adsp_stream_read(florida->compr_info[compr_dev_index].adsp, buf, count);
+		ret = wm_adsp_stream_read(florida->compr_info[compr_dev_index].adsp, buf,
+			count);
 
 	mutex_unlock(&florida->compr_info[compr_dev_index].lock);
 
