@@ -1543,6 +1543,11 @@ static const struct snd_soc_dapm_route florida_dapm_routes[] = {
 	{"Text DSP2 CPU", NULL, "SYSCLK" },
 	{"Text DSP2", NULL, "SYSCLK" },
 
+	{"Text DSP3 CPU", NULL, "Text DSP3" },
+	{"Text DSP3", NULL, "DSP3" },
+	{"Text DSP3 CPU", NULL, "SYSCLK" },
+	{"Text DSP3", NULL, "SYSCLK" },
+
 	{ "IN1L PGA", NULL, "IN1L" },
 	{ "IN1R PGA", NULL, "IN1R" },
 
