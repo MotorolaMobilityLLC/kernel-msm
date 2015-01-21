@@ -517,6 +517,12 @@ typedef struct
   /* Function pointer to the packet retrieval routine in HDD */
   WLANTL_STAFetchPktCBType      pfnSTAFetchPkt;
 
+  /* Function pointer holding ULA complete CB routine registered by HDD */
+  WLANTL_STAUlaCompleteCBType   pfnSTAUlaComplete;
+
+  /* HDD Context used in ULA complete CB routine  */
+  v_PVOID_t                     pUlaCBCtx;
+
   /* Reordering information for the STA */
   WLANTL_BAReorderType          atlBAReorderInfo[WLAN_MAX_TID];
 
@@ -677,6 +683,9 @@ typedef struct
     1 then we have to encrypt the data irrespective of TL
     state (CONNECTED/AUTHENTICATED) */
   v_U8_t ptkInstalled;
+
+  /* Flag to check EAPOL 4/4 recevied by TL*/
+  v_U8_t isEapolM4Transmitted;
 
   v_U32_t       linkCapacity;
 
