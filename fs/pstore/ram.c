@@ -432,7 +432,8 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	const struct device *dev = &pdev->dev;
 	struct ramoops_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
-	u32 start, size, console;
+	u32 start = 0, size = 0, console = 0, pmsg = 0;
+	u32 record = 0, oops = 0;
 	int ret;
 
 	pdata = dev_get_drvdata(dev);
@@ -455,9 +456,27 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	if (ret)
 		return;
 
+	ret = of_property_read_u32(np, "android,ramoops-pmsg-size",
+				&pmsg);
+	if (ret)
+		pr_info("pmsg buffer not configured");
+
+	ret = of_property_read_u32(np, "android,ramoops-record-size",
+				&record);
+	if (ret)
+		pr_info("record buffer not configured");
+
+	ret = of_property_read_u32(np, "android,ramoops-dump-oops",
+				&oops);
+	if (ret)
+		pr_info("oops not configured");
+
 	pdata->mem_address = start;
 	pdata->mem_size = size;
 	pdata->console_size = console;
+	pdata->pmsg_size = pmsg;
+	pdata->record_size = record;
+	pdata->dump_oops = (int)oops;
 }
 #else
 static inline void ramoops_of_init(struct platform_device *pdev)
