@@ -18,6 +18,11 @@
 	qcom,board-id = <0x47 0x8000>;
 };
 
+&soc {
+	/delete-node/ isl98611a_pos;
+	/delete-node/ isl98611a_neg;
+};
+
 &i2c_5 {
 	lp8556@2c {
 		status = "ok";
@@ -33,4 +38,37 @@
 	isl98611@29 {
 		status = "disabled";
 	};
+
+	tps65132@3e {
+		compatible = "ti,tps65132";
+		reg = <0x3e>;
+		ti,en-gpio-lpm;
+
+		regulators {
+			tps65132_pos: pos-boost {
+				regulator-name = "tps65132-pos";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <200000>;
+				ti,en-gpio = <&msm_gpio 16 0>;
+			};
+
+			tps65132_neg: neg-boost {
+				regulator-name = "tps65132-neg";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				ti,discharge-enable;
+				ti,enable-time = <800>;
+				ti,current-limit = <40000>;
+				ti,en-gpio = <&msm_gpio 17 0>;
+			};
+		};
+	};
+};
+
+&mdss_dsi0 {
+	vsp_disp-supply = <&tps65132_pos>;
+	vsn_disp-supply = <&tps65132_neg>;
 };
