@@ -164,6 +164,44 @@
 			bias-pull-up;
 		};
 	};
+
+	pmx_nfc_irq {
+		qcom,pins = <&gp 97>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_irq";
+
+		nfc_irq_default: default {
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_nfc_pwr {
+		qcom,pins = <&gp 81>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_pwr";
+
+		nfc_pwr_default: default {
+			bias-pull-down;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_nfc_en {
+		qcom,pins = <&gp 95>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "nfc_en";
+
+		nfc_en_default: default {
+			bias-pull-down;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
 };
 
 &i2c_0 {
@@ -455,6 +493,20 @@
 		rated_voltage = <0x70>;         /* 2.4v */
 		overdrive_voltage = <0x89>;     /* 3.0v */
 
+	};
+
+	/* BCM 20795 NFC Controller */
+	bcm2079x@76 {
+		compatible = "brcm,bcm2079x";
+		reg = <0x76>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <97 0>; /* NFC_IRQ */
+		gpios = <&msm_gpio 95 0>, /* NFC_ENABLE_IN */
+			<&msm_gpio 97 0>, /* NFC_IRQ */
+			<&msm_gpio 81 0>; /* NFC_POWER_ON */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
 	};
 };
 
