@@ -94,15 +94,23 @@ struct wm_adsp {
 	struct list_head ctl_list;
 
 	u32 host_buf_ptr;
+	u32 host_buf_ptr2;
 
 	int max_dsp_read_bytes;
 	u32 dsp_error;
+
 	u32 *raw_capt_buf;
 	struct circ_buf capt_buf;
 	int capt_buf_size;
+
+	u32 *raw_capt_buf2;
+	struct circ_buf capt_buf2;
+
 	u32 capt_watermark;
 	struct wm_adsp_buffer_region *host_regions;
+	struct wm_adsp_buffer_region *host_regions2;
 	bool buffer_drain_pending;
+	bool buffer2_drain_pending;
 
 	int num_firmwares;
 	struct wm_adsp_fw_defs *firmwares;
@@ -110,6 +118,9 @@ struct wm_adsp {
 	struct mutex *fw_lock;
 	struct work_struct boot_work;
 };
+
+#define ADSP2_BUFFER_1			       1
+#define ADSP2_BUFFER_2			       2
 
 #define WM_ADSP1(wname, num) \
 	{ .id = snd_soc_dapm_pga, .name = wname, .reg = SND_SOC_NOPM, \
@@ -150,11 +161,13 @@ extern void wm_adsp_get_caps(const struct wm_adsp *adsp,
 
 extern int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 				const struct snd_compr_params *params);
-extern int wm_adsp_stream_free(struct wm_adsp *adsp);
+extern int wm_adsp_stream_free(struct wm_adsp *adsp, int buffer);
 extern int wm_adsp_stream_start(struct wm_adsp *adsp);
 
-extern int wm_adsp_stream_handle_irq(struct wm_adsp *adsp);
+extern int wm_adsp_stream_handle_irq(struct wm_adsp *adsp, bool two_buf);
 extern int wm_adsp_stream_read(struct wm_adsp *adsp, char __user *buf,
+			       size_t count);
+extern int wm_adsp_stream_read2(struct wm_adsp *adsp, char __user *buf,
 			       size_t count);
 extern int wm_adsp_stream_avail(const struct wm_adsp *adsp);
 
