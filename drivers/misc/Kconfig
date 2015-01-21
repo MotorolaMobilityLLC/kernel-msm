@@ -660,6 +660,13 @@ config QCOM_LIQUID_DOCK
 	  the docking station of various models of Qualcomm Technology's
 	  LiQUID Mobile Development Platforms.
 
+config MMI_SLICE_ACCESSORY
+	tristate "Motorola Slice Accessory support"
+	depends on OF_GPIO
+	help
+	  This option enables support for the battery accessory for
+	  some Motorola phones.
+
 config HAPTIC_DRV2605
 	tristate "TI DRV2605 haptic driver"
 	depends on I2C && SYSFS
