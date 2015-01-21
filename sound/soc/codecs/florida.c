@@ -2098,7 +2098,12 @@ static int florida_free(struct snd_compr_stream *stream)
 		florida->compr_info[compr_dev_index].trig = false;
 
 	florida->compr_info[compr_dev_index].freed = false;
-	wm_adsp_stream_free(florida->compr_info[compr_dev_index].adsp);
+	if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
+		wm_adsp_stream_free(florida->compr_info[compr_dev_index].adsp,
+			2);
+	else
+		wm_adsp_stream_free(florida->compr_info[compr_dev_index].adsp,
+			1);
 
 	mutex_unlock(&florida->compr_info[compr_dev_index].lock);
 	return 0;
