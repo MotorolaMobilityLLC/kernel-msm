@@ -2063,11 +2063,6 @@ static int florida_open(struct snd_compr_stream *stream)
 
 	mutex_lock(&florida->compr_info[stream_num].lock);
 
-	if (florida->compr_info[stream_num].stream) {
-		ret = -EBUSY;
-		goto out;
-	}
-
 	/* TODO:  We are going to want two streams per DSP.  Not just DSP3 */
 	if (stream_num > 2)
 		dsp_num = stream_num-1;
