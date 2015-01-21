@@ -285,6 +285,9 @@ dtb-$(CONFIG_ARCH_MSM8994) += msm8994-trenton-p1.dtb
 
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p0.dtb
 
+dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p101.dtb
+
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
 # to be runtime added by the bootloader (i.e. /chosen properties)
