@@ -191,10 +191,6 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v1>;
-	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
-	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
-	qcom,platform-reset-gpio = <&msm_gpio 94 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&pm8994_l14>;
 	vci_disp-supply = <&pm8994_l18>;
