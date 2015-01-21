@@ -2910,13 +2910,14 @@ int hdd_set_tdls_scan_type(hdd_adapter_t *pAdapter,
                    tANI_U8 *ptr)
 {
     int tdls_scan_type;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_context_t *pHddCtx;
     if (NULL == pAdapter)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: pAdapter is NULL", __func__);
         return -EINVAL;
     }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tdls_scan_type = ptr[9] - '0';
 
     if (tdls_scan_type <= 2)
