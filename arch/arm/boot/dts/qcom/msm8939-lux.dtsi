@@ -28,35 +28,21 @@
 		startup-delay-us = <300>;
 		enable-active-high;
 	};
-};
 
-&i2c_5 {
-	tps65132@3e {
-		compatible = "ti,tps65132";
-		reg = <0x3e>;
-		ti,en-gpio-lpm;
+	isl98611a_pos: isl98611a_pos {
+		compatible = "regulator-fixed";
+		regulator-name = "vsp_disp";
+		gpio = <&msm_gpio 16 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
 
-		regulators {
-			tps65132_pos: pos-boost {
-				regulator-name = "tps65132-pos";
-				regulator-min-microvolt = <5500000>;
-				regulator-max-microvolt = <5500000>;
-				ti,discharge-enable;
-				ti,enable-time = <800>;
-				ti,current-limit = <200000>;
-				ti,en-gpio = <&msm_gpio 16 0>;
-			};
-
-			tps65132_neg: neg-boost {
-				regulator-name = "tps65132-neg";
-				regulator-min-microvolt = <5500000>;
-				regulator-max-microvolt = <5500000>;
-				ti,discharge-enable;
-				ti,enable-time = <800>;
-				ti,current-limit = <40000>;
-				ti,en-gpio = <&msm_gpio 17 0>;
-			};
-		};
+	isl98611a_neg: isl98611a_neg {
+		compatible = "regulator-fixed";
+		regulator-name = "vsn_disp";
+		gpio = <&msm_gpio 17 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
 	};
 };
 
@@ -87,8 +73,8 @@
 	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
 	tp_vci-supply = <&pm8916_l16>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
-	vsp_disp-supply = <&tps65132_pos>;
-	vsn_disp-supply = <&tps65132_neg>;
+	vsp_disp-supply = <&isl98611a_pos>;
+	vsn_disp-supply = <&isl98611a_neg>;
 
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
