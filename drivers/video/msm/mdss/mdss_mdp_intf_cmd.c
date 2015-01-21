@@ -546,22 +546,15 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 		}
 
 		if (rc <= 0) {
-			if (!ctl->wait4pingpong_tout) {
-				WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
+			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 						rc, ctl->num);
-				ctl->wait4pingpong_tout = true;
-				mdss_dsi_debug_check_te(pdata);
-			} else
-				pr_err("cmd kickoff timed out (%d) ctl=%d\n",
-							rc, ctl->num);
-
+			mdss_dsi_debug_check_te(pdata);
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
 						"edp", "hdmi", "panic");
 			rc = -EPERM;
 			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
 		} else {
 			rc = 0;
-			ctl->wait4pingpong_tout = false;
 		}
 	}
 

@@ -235,7 +235,6 @@ struct mdss_mdp_ctl {
 	u32 wb_type;
 
 	struct mdss_mdp_ctl *main_ctl;
-	bool wait4pingpong_tout;
 };
 
 struct mdss_mdp_mixer {
