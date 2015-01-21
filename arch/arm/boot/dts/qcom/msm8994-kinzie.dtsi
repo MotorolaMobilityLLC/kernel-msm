@@ -1,0 +1,76 @@
+/* Copyright (c) 2015, Motorla Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8994-v2-moto-common.dtsi"
+#include "dsi-panel-mot-smd-QHD-cmd.dtsi"
+
+/ {
+	model = "kinzie";
+	compatible = "qcom,msm8994-kinzie", "qcom,msm8994-moto", "qcom,msm8994";
+};
+
+&pm8994_l14 {
+	regulator-boot-on;
+};
+
+&pm8994_l18 {
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
+};
+
+&vbat_disp_vreg {
+	regulator-boot-on;
+};
+
+&mdss_fb0 {
+	qcom,mdss-fb-split = <720 720>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v1>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&pm8994_l14>;
+	vci_disp-supply = <&pm8994_l18>;
+
+	#include "dsi-panel-mot-smd-QHD-cmd-supplies.dtsi"
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v1>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&pm8994_l14>;
+	vci_disp-supply = <&pm8994_l18>;
+
+	#include "dsi-panel-mot-smd-QHD-cmd-supplies.dtsi"
+};
+
+&mot_smd_QHD_0_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_0_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_smd_QHD_1_cmd_v1 {
+	qcom,cont-splash-enabled;
+};
+
+&i2c_2 {
+	/delete-node/ atmel_mxt_ts@4a;
+};
