@@ -4213,6 +4213,13 @@ static inline int get_bpd(const char *name)
 #define AICL_WL_SEL_45S		0
 #define CHGR_CCMP_CFG			0xFA
 #define JEITA_TEMP_HARD_LIMIT_BIT	BIT(5)
+#define USBIN_ALLOW_MASK		SMB_MASK(2, 0)
+#define USBIN_ALLOW_5V			0x0
+#define USBIN_ALLOW_5V_9V		0x1
+#define USBIN_ALLOW_5V_TO_9V		0x2
+#define USBIN_ALLOW_9V			0x3
+#define USBIN_ALLOW_5V_UNREG		0x4
+#define USBIN_ALLOW_5V_9V_UNREG		0x5
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -4546,6 +4553,14 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	rc = smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set fastchg current = %d\n", rc);
+		return rc;
+	}
+
+	rc = smbchg_sec_masked_write(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_5V_TO_9V);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't write usb allowance rc=%d\n", rc);
 		return rc;
 	}
 
