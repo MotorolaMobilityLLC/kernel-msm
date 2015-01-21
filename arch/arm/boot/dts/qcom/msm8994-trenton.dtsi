@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Motorla Mobility LLC. All rights reserved.
+/* Copyright (c) 2014-2015, Motorla Mobility LLC. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -199,46 +199,7 @@
 	vdd_disp-supply = <&pm8994_l14>;
 	vci_disp-supply = <&pm8994_l18>;
 
-	qcom,panel-supply-entries {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		qcom,panel-supply-entry@0 {
-			reg = <0>;
-			qcom,supply-name = "vbat_disp";
-			qcom,supply-min-voltage = <5000000>;
-			qcom,supply-max-voltage = <5000000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@1 {
-			reg = <1>;
-			qcom,supply-name = "vdd_disp";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@2 {
-			reg = <2>;
-			qcom,supply-name = "vci_disp";
-			qcom,supply-min-voltage = <3100000>;
-			qcom,supply-max-voltage = <3100000>;
-			qcom,supply-enable-load = <330000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <20>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-	};
+	#include "dsi-panel-mot-smd-QHD-cmd-supplies.dtsi"
 };
 
 &mdss_dsi1 {
@@ -247,46 +208,7 @@
 	vdd_disp-supply = <&pm8994_l14>;
 	vci_disp-supply = <&pm8994_l18>;
 
-	qcom,panel-supply-entries {
-		#address-cells = <1>;
-		#size-cells = <0>;
-		qcom,panel-supply-entry@0 {
-			reg = <0>;
-			qcom,supply-name = "vbat_disp";
-			qcom,supply-min-voltage = <5000000>;
-			qcom,supply-max-voltage = <5000000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@1 {
-			reg = <1>;
-			qcom,supply-name = "vdd_disp";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <300000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@2 {
-			reg = <2>;
-			qcom,supply-name = "vci_disp";
-			qcom,supply-min-voltage = <3100000>;
-			qcom,supply-max-voltage = <3100000>;
-			qcom,supply-enable-load = <330000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <20>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-	};
+	#include "dsi-panel-mot-smd-QHD-cmd-supplies.dtsi"
 };
 
 &mot_smd_QHD_0_cmd_v0 {
