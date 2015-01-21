@@ -1,0 +1,12 @@
+Motorola Slice detachable battery accessory
+
+This device describes the interface used when connecting a Slice accessory.
+
+Required properties:
+ - compatible: Should be "mmi,slice-accessory".
+ - qcom,slice-detect-gpio: phandle to a GPIO node corresponding to the input
+                         signal indicating when the slice is connected
+ - qcom,usb-host: phandle to the i2c bus adapter connected to the slice port
+
+Optional properties:
+
