@@ -36,7 +36,7 @@
 #define MIN_REFRESH_RATE 30
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
-DEFINE_LED_TRIGGER(bl_led_trigger);
+DEFINE_LED_TRIGGER_GLOBAL(bl_led_trigger);
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
