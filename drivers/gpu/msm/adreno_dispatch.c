@@ -340,7 +340,7 @@ static struct kgsl_cmdbatch *_get_cmdbatch(struct adreno_context *drawctxt)
 		if (!timer_pending(&cmdbatch->timer))
 			mod_timer(&cmdbatch->timer, jiffies + (5 * HZ));
 
-		return ERR_PTR(-EAGAIN);
+		return ERR_PTR(-EBUSY);
 	}
 
 	/*
@@ -672,7 +672,7 @@ static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 {
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	struct adreno_context *drawctxt, *next;
-	struct plist_head requeue, busy_list;
+	struct plist_head requeue;
 	int ret;
 
 	/* Leave early if the dispatcher isn't in a happy state */
@@ -680,7 +680,6 @@ static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 			return 0;
 
 	plist_head_init(&requeue);
-	plist_head_init(&busy_list);
 
 	/* Try to fill the ringbuffers as much as possible */
 	while (1) {
@@ -721,26 +720,25 @@ static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 			/*
 			 * Check to seen if the context had been requeued while
 			 * we were processing it (probably by another thread
-			 * pushing commands). If it has then do a put to make
-			 * sure the reference counting stays accurate.
-			 * If the dispatch_q is full then put it on the
-			 * busy list so it gets first preference when space
-			 * becomes available.
-			 * Otherwise put it on the requeue list since it may
-			 * have more commands.
+			 * pushing commands). If it has then shift it to the
+			 * requeue list if it was not able to submit commands
+			 * due to the dispatch_q being full. Also, do a put to
+			 * make sure the reference counting stays accurate.
+			 * If the node is empty then we will put it on the
+			 * requeue list and not touch the refcount since we
+			 * already hold it from the first time it went on the
+			 * list.
 			 */
-
-			if (!plist_node_empty(&drawctxt->pending)) {
-				plist_del(&drawctxt->pending,
-						&dispatcher->pending);
+			if (plist_node_empty(&drawctxt->pending)) {
+				plist_add(&drawctxt->pending, &requeue);
+			} else {
+				if (-EBUSY == ret) {
+					plist_del(&drawctxt->pending,
+							&dispatcher->pending);
+					plist_add(&drawctxt->pending, &requeue);
+				}
 				kgsl_context_put(&drawctxt->base);
 			}
-
-			if (ret == -EBUSY)
-				/* Inflight queue is full */
-				plist_add(&drawctxt->pending, &busy_list);
-			else
-				plist_add(&drawctxt->pending, &requeue);
 
 			spin_unlock(&dispatcher->plist_lock);
 		} else {
@@ -753,15 +751,10 @@ static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 		}
 	}
 
+	/* Put all the requeued contexts back on the master list */
+
 	spin_lock(&dispatcher->plist_lock);
 
-	/* Put the contexts that couldn't submit back on the pending list */
-	plist_for_each_entry_safe(drawctxt, next, &busy_list, pending) {
-		plist_del(&drawctxt->pending, &busy_list);
-		plist_add(&drawctxt->pending, &dispatcher->pending);
-	}
-
-	/* Now put the contexts that need to be requeued back on the list */
 	plist_for_each_entry_safe(drawctxt, next, &requeue, pending) {
 		plist_del(&drawctxt->pending, &requeue);
 		plist_add(&drawctxt->pending, &dispatcher->pending);
