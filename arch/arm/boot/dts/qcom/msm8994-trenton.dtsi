@@ -16,6 +16,158 @@
 / {
 	model = "trenton";
 	compatible = "qcom,msm8994-trenton", "qcom,msm8994-moto", "qcom,msm8994";
+	aliases {
+		i2c4 = &i2c_4; /* I2C4 Slice qup4 */
+	};
+
+};
+&soc {
+	i2c_4: i2c@f9926000 { /* BLSP1 QUP3 - HW ID BLSP4 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr", "bam_phys_addr";
+		reg = <0xf9926000 0x1000>,
+		      <0xf9904000 0x19000>;
+		interrupt-names = "qup_irq", "bam_irq";
+		interrupts = <0 98 0>, <0 238 0>;
+		qcom,clk-freq-out = <100000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup4_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_4_active>;
+		pinctrl-1 = <&i2c_4_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,bam-pipe-idx-cons = <18>;
+		qcom,bam-pipe-idx-prod = <19>;
+		qcom,master-id = <86>;
+		qcom,bam-disable;
+
+		slice_smb1359: smb1359-charger@1c {
+			status = "disabled";
+			compatible = "qcom,smb1359-charger";
+			reg = <0x1c>;
+
+			qcom,float-voltage-mv = <4350>;
+			qcom,charging-timeout = <1536>;
+			qcom,recharge-thresh-mv = <200>;
+			qcom,iterm-disabled;
+			qcom,soft-vfloat-comp-disabled;
+			qcom,thermal-mitigation = <2500>, <2400>, <2300>, <2100>,
+						  <2000>, <1910>, <1800>, <1600>,
+						  <1500>, <1400>, <1200>, <1100>,
+						  <1000>, <900>, <700>, <600>,
+						  <500>, <400>, <300>;
+			qcom,dc-thermal-mitigation = <600>, <500>, <400>, <300>;
+			qcom,dc-psy-type = "Wireless";
+			qcom,dc-psy-ma = <600>;
+			qcom,bms-psy-name = "bms";
+			qcom,max-batt-curr-ma = <2500>;
+			qcom,ext-temp-volt-mv = <4000>;
+			qcom,ext-temp-soc = <65>;
+		};
+
+		max17050: max17050-slice@36 {
+
+			compatible = "maxim,max17050";
+			reg = <0x36>;
+			maxim,rsns-microohm = <10000>;
+			maxim,enable_por_init;
+			maxim,batt_undervoltage_zero_soc;
+			maxim,batt-psy-name = "slice-battery";
+			maxim,warm-temp-c = <45>;
+			maxim,hot-temp-c = <60>;
+			maxim,cool-temp-c = <0>;
+			maxim,cold-temp-c = <(-20)>;
+
+			maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+
+			maxim,configuration {
+				df-serialnum	= "SNN5955";
+			};
+
+			maxim,temp-conv {
+				start	= /bits/ 16 <(-20)>;	/* in degrees C */
+				result	= /bits/ 16 <
+					/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+					(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)	/* -20 C ... -11 C */
+					(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10	/* -10 C ... -1  C */
+					22     32     42     51     62     72     82     91     99     110	/*  0  C ...  9  C */
+					120    129    138    146    156    165    175    184    192    200	/*  10 C ...  19 C */
+					210    220    230    238    247    256    266    275    285    294	/*  20 C ...  29 C */
+					303    313    324    333    343    353    364    375    385    395	/*  30 C ...  39 C */
+					407    419    430    441    453    466    479    492    505    520	/*  40 C ...  49 C */
+					534    548    565    581    597    616    635    654    676    697	/*  50 C ...  59 C */
+					721    747    775    800						/*  60 C ...  63 C */
+				>;
+			};
+		};
+	};
+
+	slice {
+		compatible = "mmi,slice-accessory";
+		mmi,slice-detect-gpio = <&msm_gpio 96 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&slice_detect_default &slice_int_default>;
+		mmi,i2c_bus = <&i2c_4>;
+	};
+};
+
+&cci {
+	status = "disabled";
+};
+&tspp {
+	status = "disabled";
+};
+&tpiu {
+	status = "disabled";
+};
+&tlmm_pinmux {
+	pmx_i2c_4 {
+		qcom,pins = <&gp 19>, <&gp 20>; /* SDA, SCL */
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <4>;
+		label = "pmx_i2c_4";
+
+		i2c_4_active: i2c_4_active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		i2c_4_sleep: i2c_4_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+	slice_int_n {
+		qcom,pins = <&gp 86>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "slice-int";
+
+		slice_int_default: slice-int {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			input-enable;
+		};
+	};
+	slice_detect_n {
+		qcom,pins = <&gp 96>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "slice-detect";
+
+		slice_detect_default: slice-detect {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			input-enable;
+		};
+	};
+
 };
 
 &pm8994_l14 {
