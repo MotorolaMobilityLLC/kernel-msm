@@ -24,6 +24,7 @@
 #include <linux/leds-qpnp-wled.h>
 #include <linux/clk.h>
 #include <linux/uaccess.h>
+#include <linux/leds.h>
 
 #include "mdss.h"
 #include "mdss_panel.h"
@@ -1590,6 +1591,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	return 0;
 
 error_pan_node:
+	if (BL_WLED == ctrl_pdata->bklt_ctrl)
+		led_trigger_unregister_simple(bl_led_trigger);
 	of_node_put(dsi_pan_node);
 error_vreg:
 	for (i = DSI_MAX_PM - 1; i >= 0; i--)
