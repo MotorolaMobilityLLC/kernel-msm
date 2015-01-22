@@ -1142,4 +1142,6 @@ int mdss_mdp_cmd_set_autorefresh_mode(struct mdss_mdp_ctl *ctl,
 int mdss_mdp_ctl_cmd_autorefresh_enable(struct mdss_mdp_ctl *ctl,
 		int frame_cnt);
 
+void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on);
+
 #endif /* MDSS_MDP_H */
