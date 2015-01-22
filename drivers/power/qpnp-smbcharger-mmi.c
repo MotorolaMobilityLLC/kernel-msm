@@ -219,6 +219,7 @@ struct smbchg_chip {
 	/* aicl deglitch workaround */
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
+	bool				factory_mode;
 };
 
 enum print_reason {
@@ -318,6 +319,9 @@ static int smbchg_write(struct smbchg_chip *chip, u8 *val,
 {
 	int rc = 0;
 	struct spmi_device *spmi = chip->spmi;
+
+	if (chip->factory_mode)
+		return 0;
 
 	if (addr == 0) {
 		dev_err(chip->dev, "addr cannot be zero addr=0x%02x sid=0x%02x rc=%d\n",
@@ -5143,6 +5147,19 @@ static int create_debugfs_entries(struct smbchg_chip *chip)
 	return 0;
 }
 
+static bool smbchg_charger_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 static int smbchg_probe(struct spmi_device *spmi)
 {
 	int rc;
@@ -5172,6 +5189,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev, "Unable to allocate memory\n");
 		return -ENOMEM;
 	}
+
+	chip->factory_mode = smbchg_charger_mmi_factory();
+	if (chip->factory_mode)
+		dev_warn(&spmi->dev,
+			 "Entering Factory Mode SMB Writes Disabled\n");
 
 	INIT_WORK(&chip->usb_set_online_work, smbchg_usb_update_online_work);
 	INIT_DELAYED_WORK(&chip->parallel_en_work,
