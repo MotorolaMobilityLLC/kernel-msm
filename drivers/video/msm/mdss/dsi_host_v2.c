@@ -961,6 +961,7 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp,
 	struct dcs_cmd_req *req;
 	int dsi_on;
 	int ret = -EINVAL;
+	int current_tx_mode, new_tx_mode;
 
 	mutex_lock(&ctrl->mutex);
 	dsi_on = dsi_host_private->dsi_on;
@@ -983,8 +984,18 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp,
 
 	msm_dsi_clk_ctrl(&ctrl->panel_data, 1);
 
-	if (0 == (req->flags & CMD_REQ_LP_MODE))
+	current_tx_mode = dsi_get_tx_power_mode();
+	/* (If current tx mode is LP and
+	   if requested mode is HS), Set DSI HS mode.
+	   else (If current tx mode is HS and
+	   if requested mode is LP), Set DSI LP mode.
+	*/
+	if ((current_tx_mode == DSI_MODE_BIT_LP) &&
+			(0 == (req->flags & CMD_REQ_LP_MODE)))
 		dsi_set_tx_power_mode(0);
+	else if ((current_tx_mode == DSI_MODE_BIT_HS) &&
+			(req->flags & CMD_REQ_LP_MODE))
+		dsi_set_tx_power_mode(1);
 
 	if (req->flags & CMD_REQ_RX) {
 		msm_dsi_cmdlist_rx(ctrl, req);
@@ -992,8 +1003,10 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp,
 	} else
 		ret = msm_dsi_cmdlist_tx(ctrl, req);
 
-	if (0 == (req->flags & CMD_REQ_LP_MODE))
-		dsi_set_tx_power_mode(1);
+	new_tx_mode = dsi_get_tx_power_mode();
+	/* Reset to original mode */
+	if (new_tx_mode != current_tx_mode)
+		dsi_set_tx_power_mode(current_tx_mode);
 
 	msm_dsi_clk_ctrl(&ctrl->panel_data, 0);
 

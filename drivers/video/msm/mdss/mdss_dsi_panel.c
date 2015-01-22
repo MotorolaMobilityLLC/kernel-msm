@@ -616,13 +616,6 @@ int mdss_panel_check_status(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	/* Check panel power mode */
 	pr_debug("%s: Checking power mode\n", __func__);
-#ifdef CONFIG_FB_MSM_MDSS_MDP3
-	/*
-	 * There is a known hardware issue for short reads on old DSI hardware
-	 * revisions. We need run into HS mode to read power mode.
-	 */
-	dsi_set_tx_power_mode(DSI_MODE_BIT_HS);
-#endif
 	mdss_dsi_get_pwr_mode(&ctrl->panel_data, &pwr_mode);
 #ifdef MDSS_PANEL_ESD_SELF_TRIGGER
 	if (esd_count++ > MDSS_PANEL_ESD_TE_TRIGGER)
@@ -1371,7 +1364,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 }
 
 static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
-				u8 reg, size_t size, u8 *buffer)
+		u8 reg, size_t size, u8 *buffer, uint8_t use_hs_mode)
 {
 	int ret;
 	struct dcs_cmd_req cmdreq;
@@ -1403,7 +1396,8 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_read_cmd;
 	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT |
+				(use_hs_mode ? 0 : CMD_REQ_LP_MODE);
 	cmdreq.rlen = size;
 	cmdreq.cb = NULL; /* call back */
 	cmdreq.rbuf = kmalloc(MDSS_DSI_LEN, GFP_KERNEL);
@@ -1428,7 +1422,7 @@ err1:
 }
 
 static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
-				size_t size, u8 *buffer)
+		size_t size, u8 *buffer, uint8_t use_hs_mode)
 {
 	int ret = 0;
 	struct dcs_cmd_req cmdreq;
@@ -1460,7 +1454,7 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_write_cmd;
 	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.flags = CMD_REQ_COMMIT | (use_hs_mode ? 0 : CMD_REQ_LP_MODE);
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
@@ -2073,13 +2067,13 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 			rc = -EFAULT;
 		else
 			rc = mdss_dsi_panel_reg_write(pdata,
-						reg_access.buffer_size + 1,
-						reg_access_buf);
+					reg_access.buffer_size + 1,
+					reg_access_buf, reg_access.use_hs_mode);
 		break;
 	case MSMFB_REG_READ:
 		rc = mdss_dsi_panel_reg_read(pdata, reg_access.address,
-						reg_access.buffer_size,
-						reg_access_buf);
+					reg_access.buffer_size,
+					reg_access_buf, reg_access.use_hs_mode);
 		if ((rc == 0) && (copy_to_user(reg_access.buffer,
 						reg_access_buf,
 						reg_access.buffer_size)))
