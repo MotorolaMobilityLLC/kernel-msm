@@ -333,6 +333,9 @@ static void AKECS_SetYPR(
 		input_report_abs(akm->input, ABS_RZ, rbuf[6]);
 		input_report_abs(akm->input, ABS_THROTTLE, rbuf[7]);
 		input_report_abs(akm->input, ABS_RUDDER, rbuf[8]);
+		input_report_abs(akm->input, ABS_WHEEL, rbuf[16]);
+		input_report_abs(akm->input, ABS_GAS, rbuf[17]);
+		input_report_abs(akm->input, ABS_BRAKE, rbuf[18]);
 	}
 	/* Report fusion sensor information */
 	if (ready & FUSION_DATA_READY) {
@@ -1256,6 +1259,12 @@ static int akm_compass_input_init(
 			-32768, 32767, 0, 0);
 	input_set_abs_params(*input, ABS_RUDDER,
 			0, 3, 0, 0);
+	input_set_abs_params(*input, ABS_WHEEL,
+			-32768, 32767, 0, 0);
+	input_set_abs_params(*input, ABS_GAS,
+			-32768, 32767, 0, 0);
+	input_set_abs_params(*input, ABS_BRAKE,
+			-32768, 32767, 0, 0);
 
 	/* Orientation (degree in Q6 format) */
 	/*  yaw[0,360) pitch[-180,180) roll[-90,90) */
