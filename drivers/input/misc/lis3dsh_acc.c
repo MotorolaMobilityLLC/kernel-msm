@@ -1026,12 +1026,6 @@ static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 					int *xyz)
 {
 	if (acc->report_events) {
-		/*
-		 * Grab or reprime a temporary wakelock to keep system awake
-		 * long enough for receiver of tilt event to grab it's own
-		 * wakelock
-		 */
-		wake_lock_timeout(&acc->tilt_wakelock, TILT_WAKELOCK_HOLD_MS);
 		input_report_abs(acc->input_dev, ABS_X, xyz[0]);
 		input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
 		input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
@@ -1045,14 +1039,20 @@ static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 
 static void report_motion(struct lis3dsh_acc_data *acc)
 {
-	int xyz[3] = { 0 };
-	int err;
+        if (acc->report_events) {
+		/*
+		 * Grab or reprime a temporary wakelock to keep system awake
+		 * long enough for receiver of tilt event to grab it's own
+		 * wakelock
+		 */
+		wake_lock_timeout(&acc->tilt_wakelock, TILT_WAKELOCK_HOLD_MS);
 
-	err = lis3dsh_acc_get_acceleration_data(acc, xyz);
-	if (err < 0)
-		dev_err(&acc->client->dev, "failed to read accel data\n");
-	else
-		lis3dsh_acc_report_values(acc, xyz);
+		/*
+		 * Tell the HAL a wrist tilt gesture was recognized
+		 */
+		input_event(acc->input_dev, EV_MSC, MSC_GESTURE, 1);
+		input_sync(acc->input_dev);
+	}
 }
 
 /* Enable the accelerometer, must be called with lock held */
@@ -2157,6 +2157,7 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 		goto err_power_off;
 	}
 
+        input_set_capability(acc->input_dev, EV_MSC, MSC_GESTURE);
 
 	err = create_sysfs_interfaces(&client->dev);
 	if (err < 0) {
