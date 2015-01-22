@@ -553,6 +553,32 @@ static int mdss_dsi_get_panel_cfg(char *panel_cfg,
 	return rc;
 }
 
+bool mdss_dsi_is_panel_dead(struct mdss_panel_data *pdata)
+{
+	bool ret;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+								panel_data);
+
+	if (ctrl_pdata->ndx == DSI_CTRL_LEFT)
+		ret = (pdata->panel_info.panel_dead) ? true : false;
+	else {
+		struct mdss_panel_data *pdata_dsi0;
+
+		pdata_dsi0 = pdata->prev;
+		if (!pdata_dsi0)
+			ret = false;
+		else
+			ret = (pdata_dsi0->panel_info.panel_dead) ? true :
+									false;
+	}
+
+	pr_debug("%s(ndx=%d): is_panel_dead=%d\n", __func__,
+							ctrl_pdata->ndx, ret);
+	return ret;
+}
+
 static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 {
 	int ret = 0;
