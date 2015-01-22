@@ -697,14 +697,13 @@
 		pinctrl-1 = <&i2c_5_sda_sleep &i2c_5_scl_sleep>;
 		qcom,noise-rjct-scl = <0>;
 		qcom,noise-rjct-sda = <0>;
-		qcom,bam-pipe-idx-cons = <16>;
-		qcom,bam-pipe-idx-prod = <17>;
+		qcom,bam-pipe-idx-cons = <20>;
+		qcom,bam-pipe-idx-prod = <21>;
 		qcom,master-id = <86>;
-		qcom,bam-disable;
 
-		motosh@39 {
+		motosh@43 {
 			compatible = "stm,motosh";
-			reg = <0x39>;
+			reg = <0x43>;
 			gpios = <&msm_gpio 127 0>,      /* IRQ          */
 				<&pm8994_mpps 5 0>,     /* RESET        */
 				<&msm_gpio 78 0>,       /* BSLEN        */
