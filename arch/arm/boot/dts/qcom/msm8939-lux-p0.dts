@@ -29,4 +29,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&backlight_reset_default>;
 	};
+
+	isl98611@29 {
+		status = "disabled";
+	};
 };
