@@ -479,6 +479,7 @@ struct mdss_panel_data {
 	int (*event_handler) (struct mdss_panel_data *pdata, int e, void *arg);
 
 	struct mdss_panel_data *next;
+	struct mdss_panel_data *prev;
 };
 
 struct mdss_panel_debugfs_info {
