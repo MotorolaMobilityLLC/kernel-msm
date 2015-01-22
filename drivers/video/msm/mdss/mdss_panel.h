@@ -527,6 +527,7 @@ struct mdss_panel_data {
 	bool active;
 
 	struct mdss_panel_data *next;
+	struct mdss_panel_data *prev;
 };
 
 struct mdss_panel_debugfs_info {
