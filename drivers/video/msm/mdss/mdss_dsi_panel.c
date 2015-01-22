@@ -754,6 +754,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
 		dropbox_issue = MDSS_DROPBOX_MSG_PWR_MODE_BLACK;
+
+		if (pdata->panel_info.panel_dead)
+			pr_err("%s: Panel recovery FAILED!!\n", __func__);
+
+		pdata->panel_info.panel_dead = true;
 	}
 
 	if (dropbox_issue != NULL) {
