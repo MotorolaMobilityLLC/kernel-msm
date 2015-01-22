@@ -439,7 +439,7 @@ static int fb_quickdraw_user_unlock_buffer(int buffer_id)
 	}
 
 	atomic_set(&buffer->locked, 0);
-	wake_up_interruptible_all(&buffer->wait_queue);
+	wake_up_all(&buffer->wait_queue);
 
 	fb_quickdraw_put_buffer(buffer);
 exit:
