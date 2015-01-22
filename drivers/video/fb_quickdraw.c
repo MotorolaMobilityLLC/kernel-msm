@@ -21,7 +21,6 @@
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
-#include <mach/iommu_domains.h>
 
 static LIST_HEAD(fb_quickdraw_buffer_list_head);
 static DEFINE_MUTEX(list_lock);
