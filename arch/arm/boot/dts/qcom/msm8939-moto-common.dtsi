@@ -67,6 +67,23 @@
 	};
 };
 
+&i2c_5 {
+	isl98611@29 {
+		compatible = "intersil,isl98611";
+		reg = <0x29>;
+		status = "okay";
+		linux,name = "wled:backlight";
+		linux,default-trigger = "bkl-trigger";
+		intersil,default-on;
+		intersil,vn = <20>;
+		intersil,vp = <20>;
+		intersil,cabc-disable;
+		intersil,init-level = <255>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&backlight_reset_default>;
+	};
+};
+
 &tlmm_pinmux {
 	pmx-uartconsole {
 		qcom,pins = <&gp 0>, <&gp 1>;
