@@ -1497,6 +1497,7 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 	}
 
 	if (mfd->mdp.on_fnc) {
+		int panel_dead = mfd->panel_info->panel_dead;
 		ret = mfd->mdp.on_fnc(mfd);
 		if (ret) {
 			mdss_fb_stop_disp_thread(mfd);
@@ -1504,7 +1505,8 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 		}
 
 		mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-		mfd->panel_info->panel_dead = false;
+		if (panel_dead)
+			mfd->panel_info->panel_dead = false;
 
 		/* Start the work thread to signal idle time */
 		if (mfd->idle_time)
@@ -1648,6 +1650,7 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	int ret;
 	struct mdss_panel_data *pdata;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	int panel_dead = mfd->panel_info->panel_dead;
 
 	ret = mdss_fb_pan_idle(mfd);
 	if (ret) {
@@ -1679,7 +1682,17 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 		pdata->panel_info.is_lpm_mode = false;
 	}
 
-	return mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
+	ret = mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
+
+	if (blank_mode == FB_BLANK_UNBLANK && !panel_dead &&
+		mfd->panel_info->panel_dead) {
+		pr_err("%s: Panel is dead, attempt recovery\n", __func__);
+		mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, 1);
+		usleep_range(225 * 1000, 225 * 1000);
+		mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, 1);
+	}
+
+	return ret;
 }
 
 static inline int mdss_fb_create_ion_client(struct msm_fb_data_type *mfd)
