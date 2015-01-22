@@ -2481,6 +2481,9 @@ void inode_dio_wait(struct inode *inode);
 void inode_dio_done(struct inode *inode);
 struct inode *dio_bio_get_inode(struct bio *bio);
 
+extern void inode_set_flags(struct inode *inode, unsigned int flags,
+			    unsigned int mask);
+
 extern const struct file_operations generic_ro_fops;
 
 #define special_file(m) (S_ISCHR(m)||S_ISBLK(m)||S_ISFIFO(m)||S_ISSOCK(m))
