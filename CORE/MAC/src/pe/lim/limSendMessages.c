@@ -692,7 +692,10 @@ tSirRetStatus limSendHT40OBSSScanInd(tpAniSirGlobal pMac,
     msgQ.reserved = 0;
     msgQ.bodyptr = (void *)ht40OBSSScanInd;
     msgQ.bodyval = 0;
-    PELOGW(limLog(pMac, LOGW, FL("Sending WDA_HT40_OBSS_SCAN_IND to WDA"));)
+    limLog(pMac, LOG1, FL("Sending WDA_HT40_OBSS_SCAN_IND to WDA"
+           "Obss Scan trigger width = %d, delay factor = %d"),
+           ht40OBSSScanInd->BSSChannelWidthTriggerScanInterval,
+            ht40OBSSScanInd->BSSWidthChannelTransitionDelayFactor);
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
     retCode = wdaPostCtrlMsg(pMac, &msgQ);
     if (eSIR_SUCCESS != retCode)
