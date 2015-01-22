@@ -1355,6 +1355,13 @@ void hdd_suspend_wlan(void)
       return;
    }
 
+   if (pHddCtx->hdd_wlan_suspended)
+   {
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: Ignore suspend wlan, Already suspended!", __func__);
+      return;
+   }
+
    pHddCtx->hdd_wlan_suspended = TRUE;
    hdd_set_pwrparams(pHddCtx);
    status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
@@ -1645,6 +1652,13 @@ void hdd_resume_wlan(void)
    {
       hddLog(VOS_TRACE_LEVEL_INFO,
              "%s: Ignore resume wlan, LOGP in progress!", __func__);
+      return;
+   }
+
+   if (!pHddCtx->hdd_wlan_suspended)
+   {
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: Ignore resume wlan, Already resumed!", __func__);
       return;
    }
 
