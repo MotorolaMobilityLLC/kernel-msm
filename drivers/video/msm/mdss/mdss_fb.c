@@ -4120,6 +4120,8 @@ static int mdss_fb_register_extra_panel(struct platform_device *pdev,
 	}
 
 	fb_pdata->next = pdata;
+	if (pdata)
+		pdata->prev = fb_pdata;
 
 	return 0;
 }
