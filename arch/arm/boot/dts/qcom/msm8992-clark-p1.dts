@@ -14,7 +14,7 @@
 /dts-v1/;
 
 #include "msm8992-clark.dtsi"
-#include "dsi-panel-mot-inx-500-720p-video.dtsi"
+#include "dsi-panel-mot-inx-570-QHD-cmd.dtsi"
 
 / {
 	qcom,board-id = <0x41 0x81a0>;
@@ -29,8 +29,8 @@
 			linux,name = "wled:backlight";
 			linux,default-trigger = "bkl-trigger";
 			intersil,default-on;
-			intersil,vn = <20>;
-			intersil,vp = <20>;
+			intersil,vn = <26>;	/* -4.5 - vn*.05 */
+			intersil,vp = <26>;	/* +4.5 + vp*.05 */
 			intersil,cabc-disable;
 			intersil,init-level = <255>;
 			pinctrl-names = "default";
@@ -52,10 +52,19 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_inx_500_720p_vid_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_inx_570_QHD_0_cmd_v0>;
 	vddio_disp-supply = <&pm8994_l14>;
 	vsp_disp-supply = <&isl98611a_pos>;
 	vsn_disp-supply = <&isl98611a_neg>;
 
-	#include"dsi-panel-mot-inx-500-720p-supplies.dtsi"
+	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_inx_570_QHD_1_cmd_v0>;
+	vddio_disp-supply = <&pm8994_l14>;
+	vsp_disp-supply = <&isl98611a_pos>;
+	vsn_disp-supply = <&isl98611a_neg>;
+
+	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
 };
