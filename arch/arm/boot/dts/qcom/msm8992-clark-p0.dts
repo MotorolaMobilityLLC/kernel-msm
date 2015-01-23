@@ -59,3 +59,7 @@
 
 	#include"dsi-panel-mot-inx-500-720p-supplies.dtsi"
 };
+
+&mdss_dsi1 {
+	status = "disabled";
+};
