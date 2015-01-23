@@ -57,6 +57,7 @@
 #define RESTART_DELAY 1000
 #define WRITE_DELAY 20
 #define WRITE_TIMEOUT 20
+#define RESET_PULSE 20
 
 enum stm_command {
 	GET_VERSION = 0x01,
@@ -230,7 +231,7 @@ int motosh_boot_flash_erase(void)
 		}
 	}
 
-	dev_dbg(&motosh_misc_data->client->dev,
+	dev_info(&motosh_misc_data->client->dev,
 		"Starting flash erase\n");
 
 	if (motosh_bootloader_ver > OLD_BOOT_VER) {
@@ -256,21 +257,31 @@ int motosh_boot_flash_erase(void)
 			motosh_cmdbuff[index++] = 0xFF;
 			err = motosh_boot_checksum_write(motosh_misc_data,
 				motosh_cmdbuff, index);
-			if (err < 0)
+			if (err < 0) {
+				dev_err(&motosh_misc_data->client->dev,
+					"Error wiping checksum %d\n",
+					tries);
 				goto RETRY_ERASE;
-
+			}
 			motosh_readbuff[0] = 0;
+
 			do {
+				msleep(ERASE_DELAY);
 				err = motosh_boot_i2c_read(motosh_misc_data,
 					motosh_readbuff, 1);
-				if ((err >= 0) && (motosh_readbuff[0] ==
-						NACK_BYTE))
+				if ((err >= 0) &&
+				    (motosh_readbuff[0] == NACK_BYTE))
 					break;
-				msleep(ERASE_DELAY);
+
 				count++;
 				if (count == ERASE_TIMEOUT)
 					break;
+
+				dev_dbg(&motosh_misc_data->client->dev,
+					"Waiting for mass erase, res: %d -- 0x%02X\n",
+					err, motosh_readbuff[0]);
 			} while (motosh_readbuff[0] != ACK_BYTE);
+
 			if (motosh_readbuff[0] == ACK_BYTE) {
 				err = 0;
 				dev_dbg(&motosh_misc_data->client->dev,
@@ -286,36 +297,10 @@ RETRY_ERASE:
 			msleep(COMMAND_DELAY);
 		}
 	} else {
-		/* Use old bootloader erase command */
-		err = motosh_boot_cmd_write(motosh_misc_data, ERASE);
-		if (err < 0)
-			goto EXIT;
-
-		err = motosh_boot_i2c_read(motosh_misc_data,
-			motosh_readbuff, 1);
-		if (err < 0)
-			goto EXIT;
-		if (motosh_readbuff[0] != ACK_BYTE) {
-			dev_err(&motosh_misc_data->client->dev,
-				"Error sending ERASE command 0x%02x\n",
-				motosh_readbuff[0]);
-			err = -EIO;
-			goto EXIT;
-		}
-
-		motosh_cmdbuff[index++] = 0xFF;
-		motosh_cmdbuff[index++] = 0xFF;
-		err = motosh_boot_checksum_write(motosh_misc_data,
-			motosh_cmdbuff, index);
-		if (err < 0)
-			goto EXIT;
-
-		/* We should be checking for an ACK here, but waiting
-		   for the erase to complete takes too long and the I2C
-		   driver will time out and fail.
-		   Instead we just wait and hope the erase was succesful.
-		*/
-		msleep(16000);
+		dev_err(&motosh_misc_data->client->dev,
+			"OLD BOOTLOADER NOT SUPPORTED\n");
+		err = -EIO;
+		goto EXIT;
 	}
 
 EXIT:
@@ -361,18 +346,17 @@ int switch_motosh_mode(enum stm_mode mode)
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
 		motosh_misc_data->mode = mode;
-		gpio_set_value(pdata->gpio_bslen,
-			       (bslen_pin_active_value));
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to boot mode\n");
-		msleep(motosh_i2c_retry_delay);
+
+		/*Assert reset and flash enable and release*/
 		gpio_set_value(pdata->gpio_reset, 0);
-		msleep(motosh_i2c_retry_delay);
+		gpio_set_value(pdata->gpio_bslen,
+			       (bslen_pin_active_value));
+		msleep(RESET_PULSE);
 		gpio_set_value(pdata->gpio_reset, 1);
 
-		/* TODO: wleh01, reduce this delay if possible and
-		   update MOTOSH_RESET_DELAY */
-		msleep(600);
+		msleep(MOTOSH_RESET_DELAY);
 
 		while (tries) {
 			err = motosh_boot_cmd_write(motosh_misc_data, GET_ID);
@@ -423,6 +407,7 @@ RETRY_ID:
 			       !(bslen_pin_active_value));
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to normal mode\n");
+
 		/* init only if not in the factory
 		   - motosh_irq_disable indicates factory test ongoing */
 		if (!motosh_irq_disable) {
@@ -436,7 +421,7 @@ RETRY_ID:
 	} else
 		motosh_misc_data->mode = mode;
 
-	dev_info(&motosh_misc_data->client->dev,
+	dev_dbg(&motosh_misc_data->client->dev,
 		 "motosh mode is: %d\n", motosh_misc_data->mode);
 
 	return err;
@@ -490,13 +475,20 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 				/* Use new bootloader write command */
 				err = motosh_boot_cmd_write(motosh_misc_data,
 					NO_WAIT_WRITE_MEMORY);
-				if (err < 0)
+				if (err < 0) {
+					dev_err(&motosh_misc_data->client->dev,
+						"error NO_WAIT_WRITE_MEMORY\n");
 					goto RETRY_WRITE;
+				}
 
 				err = motosh_boot_i2c_read(motosh_misc_data,
 					motosh_readbuff, 1);
-				if (err < 0)
+				if (err < 0) {
+					dev_err(&motosh_misc_data->client->dev,
+						"error NO_WAIT_WRITE_MEMORY read\n");
 					goto RETRY_WRITE;
+				}
+
 				if (motosh_readbuff[0] != ACK_BYTE) {
 					dev_err(&motosh_misc_data->client->dev,
 							"Error sending WRITE_MEMORY command 0x%02x\n",
@@ -520,6 +512,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					index);
 				if (err < 0)
 					goto RETRY_WRITE;
+
 				err = motosh_boot_i2c_read(motosh_misc_data,
 					motosh_readbuff, 1);
 				if (err < 0)
@@ -543,6 +536,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					motosh_cmdbuff[count + 1] = 0xFF;
 					count++;
 				}
+
 				err = motosh_boot_checksum_write(
 					motosh_misc_data, motosh_cmdbuff,
 					count + 1);
@@ -561,10 +555,10 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 					if ((err >= 0) && (motosh_readbuff[0]
 							== NACK_BYTE))
 						break;
-					msleep(WRITE_DELAY);
 					wait_count++;
 					if (wait_count == WRITE_TIMEOUT)
 						break;
+					msleep(WRITE_DELAY);
 				} while (motosh_readbuff[0] != ACK_BYTE);
 				if (motosh_readbuff[0] == ACK_BYTE) {
 					dev_dbg(&motosh_misc_data->client->dev,
@@ -585,73 +579,10 @@ RETRY_WRITE:
 			if (err < 0)
 				goto EXIT;
 		} else {
-			/* Use old bootloader write command */
-			err = motosh_boot_cmd_write(motosh_misc_data,
-				WRITE_MEMORY);
-			if (err < 0)
-				goto EXIT;
-			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 1);
-			if (err < 0)
-				goto EXIT;
-			if (motosh_readbuff[0] != ACK_BYTE) {
-				dev_err(&motosh_misc_data->client->dev,
-				 "Error sending WRITE_MEMORY command 0x%02x\n",
-					motosh_readbuff[0]);
-				err = -EIO;
-				goto EXIT;
-			}
-
-			motosh_cmdbuff[index++]
-				= (motosh_misc_data->current_addr >> 24) & 0xFF;
-			motosh_cmdbuff[index++]
-				= (motosh_misc_data->current_addr >> 16) & 0xFF;
-			motosh_cmdbuff[index++]
-				= (motosh_misc_data->current_addr >> 8) & 0xFF;
-			motosh_cmdbuff[index++]
-				= motosh_misc_data->current_addr & 0xFF;
-			err = motosh_boot_checksum_write(motosh_misc_data,
-				motosh_cmdbuff, index);
-			if (err < 0)
-				goto EXIT;
-			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 1);
-			if (err < 0)
-				goto EXIT;
-			if (motosh_readbuff[0] != ACK_BYTE) {
-				dev_err(&motosh_misc_data->client->dev,
-					"Error sending write memory address 0x%02x\n",
-					motosh_readbuff[0]);
-				err = -EIO;
-				goto EXIT;
-			}
-
-			motosh_cmdbuff[0] = count - 1;
-			if (copy_from_user(&motosh_cmdbuff[1], buff, count)) {
-				dev_err(&motosh_misc_data->client->dev,
-					"Copy from user returned error\n");
-				err = -EINVAL;
-				goto EXIT;
-			}
-			if (count & 0x1) {
-				motosh_cmdbuff[count + 1] = 0xFF;
-				count++;
-			}
-			err = motosh_boot_checksum_write(motosh_misc_data,
-				motosh_cmdbuff, count + 1);
-			if (err < 0)
-				goto EXIT;
-			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 1);
-			if (err < 0)
-				goto EXIT;
-			if (motosh_readbuff[0] != ACK_BYTE) {
-				dev_err(&motosh_misc_data->client->dev,
-					"Error sending flash data 0x%02x\n",
-					motosh_readbuff[0]);
-				err = -EIO;
-				goto EXIT;
-			}
+			dev_err(&motosh_misc_data->client->dev,
+				"OLD BOOTLOADER NOT SUPPORTED\n");
+			err = -EIO;
+			goto EXIT;
 		}
 
 		dev_dbg(&motosh_misc_data->client->dev,
