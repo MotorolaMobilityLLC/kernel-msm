@@ -15,6 +15,11 @@
 #define T4K71_SENSOR_NAME "t4k71"
 DEFINE_MSM_MUTEX(t4k71_mut);
 
+#define T4K71_OTP_PAGE_SIZE 8
+#define T4K71_OTP_NUM_PAGES 4
+#define T4K71_OTP_TOTAL_SIZE 32 /* no of pages*page size */
+static uint8_t t4k71_otp_buf[T4K71_OTP_TOTAL_SIZE];
+
 static struct msm_sensor_ctrl_t t4k71_s_ctrl;
 static struct msm_sensor_power_setting t4k71_power_setting[] = {
 	{
@@ -105,6 +110,81 @@ static struct msm_camera_i2c_client t4k71_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
+static int32_t t4k71_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int8_t otp_page_no;
+	int32_t rc = 0;
+
+	/* Check otp already read or not */
+	if (s_ctrl->sensor_otp.otp_read)
+		return rc;
+
+	/* Assign OTP memory */
+	t4k71_s_ctrl.sensor_otp.otp_info = (uint8_t *)t4k71_otp_buf;
+	t4k71_s_ctrl.sensor_otp.size = sizeof(t4k71_otp_buf);
+
+	/* Read otp page */
+	for (otp_page_no = 0; otp_page_no < T4K71_OTP_NUM_PAGES;
+		otp_page_no++) {
+
+		/* OTP Read Enable */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3500, 0x01,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail to enable otp\n", __func__);
+			break;
+		}
+
+		/* Select OTP page */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3503, otp_page_no,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail to set OTP page number!\n", __func__);
+			break;
+		}
+
+		/* Start OTP access */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3500, 0x81,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: Fail to access otp status\n", __func__);
+			break;
+		}
+
+		/* Read and store OTP Data */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read_seq(
+			s_ctrl->sensor_i2c_client,
+			0x3504,
+			s_ctrl->sensor_otp.otp_info +
+			otp_page_no*T4K71_OTP_PAGE_SIZE,
+			T4K71_OTP_PAGE_SIZE);
+		if (rc < 0) {
+			pr_err("%s: Fail to read OTP page data\n",
+				__func__);
+			break;
+		}
+	}
+
+	/* Set otp read done flag */
+	s_ctrl->sensor_otp.otp_read = 1;
+
+	/* OTP Read Disable */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0x3500, 0x0,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0)
+		pr_err("%s: OTP Disable failed\n", __func__);
+
+	return rc;
+}
+
 static int32_t t4k71_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	/* This function isn't really needed at this time, even for
@@ -119,6 +199,7 @@ static struct msm_sensor_fn_t t4k71_func_tbl = {
 	.sensor_power_up = msm_sensor_power_up,
 	.sensor_power_down = msm_sensor_power_down,
 	.sensor_get_module_info = t4k71_get_module_info,
+	.sensor_read_otp_info = t4k71_read_otp_info,
 };
 
 static struct msm_sensor_ctrl_t t4k71_s_ctrl = {
