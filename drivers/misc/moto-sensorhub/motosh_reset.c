@@ -84,18 +84,11 @@ void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 	}
 }
 
-/* TODO: wleh01, remove this neuter of reset */
-#define RESET_BRINGUP 0
-
 int motosh_reset_and_init(void)
 {
 	struct motosh_platform_data *pdata;
-
-	/* TODO: wleh01, remove this neuter of reset */
-#if RESET_BRINGUP
 	struct timespec current_time;
 	unsigned int i;
-#endif
 	int err = 0, ret_err = 0;
 	int reset_attempts = 0;
 	unsigned char *rst_cmdbuff;
@@ -166,8 +159,6 @@ int motosh_reset_and_init(void)
 		if (err < 0)
 			ret_err = err;
 
-/* TODO: wleh01, remove this neuter of reset */
-#if RESET_BRINGUP
 		rst_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 		rst_cmdbuff[1] = motosh_g_baro_delay;
 		err = motosh_i2c_write_no_reset(motosh_misc_data,
@@ -307,8 +298,6 @@ int motosh_reset_and_init(void)
 		/* sending reset to slpc hal */
 		motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET,
 					    NULL, 0);
-/* TODO: wleh01, remove this neuter of reset */
-#endif
 	}
 	mutex_locked = mutex_trylock(&motosh_misc_data->lock);
 	motosh_quickpeek_reset_locked(motosh_misc_data);
