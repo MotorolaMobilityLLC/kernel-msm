@@ -33,8 +33,12 @@
 #include <soc/qcom/clock-local2.h>
 #include <soc/qcom/clock-alpha-pll.h>
 
-#include <dt-bindings/clock/msm-clocks-8994.h>
 #include <dt-bindings/clock/msm-clocks-8992.h>
+#ifdef clk_pnoc_modem_clk
+#undef clk_pnoc_modem_clk
+#endif
+#include <dt-bindings/clock/msm-clocks-8994.h>
+
 
 #include "clock.h"
 #include "vdd-level-8994.h"
