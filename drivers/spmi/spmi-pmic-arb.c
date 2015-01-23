@@ -1180,8 +1180,7 @@ static int spmi_pmic_arb_probe(struct platform_device *pdev)
 		return -ENODEV;
 	pmic_arb->ee = (u8)prop;
 
-	ret = spmi_pmic_arb_get_property(pdev, "qcom,pmic-arb-channel-num",
-					&prop);
+	ret = spmi_pmic_arb_get_property(pdev, "qcom,pmic-arb-channel", &prop);
 	if (ret)
 		return -ENODEV;
 	pmic_arb->channel = (u8)prop;
