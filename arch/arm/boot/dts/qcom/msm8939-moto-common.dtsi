@@ -59,16 +59,6 @@
                 qcom,master-id = <86>;
                 qcom,bam-disable;
 	};
-
-	factory_support {
-		compatible = "mmi,factory-support-kungpow";
-		gpios = <&msm_gpio 89 0x0>, /* GPIOF_OUT_INIT_LOW */
-			<&msm_gpio 91 0x1>, /* GPIOF_IN */
-			<&msm_gpio 93 0x1>; /* GPIOF_IN */
-		gpio-names = "factory_kill_disable",
-			"factory_cable_detect",
-			"factory_warn";
-	};
 };
 
 &tlmm_pinmux {
