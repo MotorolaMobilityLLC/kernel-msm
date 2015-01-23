@@ -1743,6 +1743,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			if (ioctl_ptr->ioctl_ptr == NULL) {
 				pr_err("ioctl_ptr->ioctl_ptr=NULL\n");
 				mutex_unlock(&cpp_dev->mutex);
+				kfree(cpp_dev->fw_name_bin);
 				return -EINVAL;
 			}
 			rc = (copy_from_user(cpp_dev->fw_name_bin,
@@ -1938,6 +1939,9 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				process_frame,
 				sizeof(struct msm_cpp_frame_info_t))) {
 					mutex_unlock(&cpp_dev->mutex);
+					kfree(process_frame->cpp_cmd_msg);
+					kfree(process_frame);
+					kfree(event_qcmd);
 					return -EINVAL;
 		}
 
@@ -2049,6 +2053,10 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_CPP_POP_STREAM_BUFFER: {
 		struct msm_buf_mngr_info buff_mgr_info;
 		struct msm_cpp_frame_info_t frame_info;
+		if (ioctl_ptr->ioctl_ptr == NULL) {
+			rc = -EINVAL;
+			break;
+		}
 		rc = (copy_from_user(&frame_info,
 			(void __user *)ioctl_ptr->ioctl_ptr,
 			sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
