@@ -65,6 +65,8 @@
 		compatible = "mmi,hob_ram";
 		mmi,allocation-type-smem;
 	};
+
+	/delete-node/ regulator_spk;
 };
 
 &i2c_5 {
@@ -309,6 +311,109 @@
 		sdc2_cd_off: cd_off {
 			drive-strength = <2>;
 			bias-disable;
+		};
+	};
+
+	spi0_mot_active {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 8>, <&gp 9>, <&gp 11>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi0-mot-active";
+		/* active state */
+		spi0_mot_default: default {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi0_mot_cs0_suspend {
+		/* CS */
+		qcom,pins = <&gp 10>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "spi0-mot-cs0-suspend";
+		spi0_mot_cs0_sleep: cs0_sleep {
+			drive-strength = <2>;
+			bias-disable = <0>;
+			output-high;
+		};
+	};
+
+	/* IRQ, WakeIRQ, SPI Data Ack, SPI Ready for Receive */
+	stml0xx_inputs {
+		qcom,pins = <&gp 51>, <&gp 52>, <&gp 38>, <&gp 5>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-inputs";
+
+		stml0xx_inputs_default: stml0xx-inputs {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+		};
+	};
+
+	stml0xx_wakeup {
+		qcom,pins = <&gp 116>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-wakeup";
+
+		stml0xx_wakeup_default: stml0xx-wakeup {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_reset {
+		qcom,pins = <&gp 120>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-reset";
+
+		stml0xx_reset_default: stml0xx-reset {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_flash_en {
+		qcom,pins = <&gp 121>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-flash-en";
+
+		stml0xx_flash_en_default: stml0xx-flash-en {
+			bias-disable;         /* no pull */
+			drive-strength = <2>;
+			output-low;
+		};
+	};
+
+	ak09912_reset {
+		qcom,pins = <&gp 90>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "ak09912-reset";
+
+		ak09912_reset_default: ak09912-reset {
+			bias-disable;
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	ak09912_irq {
+		qcom,pins = <&gp 50>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "ak09912-irq";
+
+		ak09912_irq_default: ak09912-irq {
+			bias-disable;
+			drive-strength = <2>;
 		};
 	};
 };
@@ -615,6 +720,7 @@
 		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
 	};
 };
+
 &rpm_bus {
 	rpm-regulator-ldoa10 {
 		pm8916_l10: regulator-l10 {
@@ -622,5 +728,70 @@
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
 		};
+	};
+};
+
+&spi_0 {
+	spi-max-frequency = <8000000>;
+	pinctrl-0 = <&spi0_mot_default &spi0_cs0_active>;
+	pinctrl-1 = <&spi0_sleep &spi0_mot_cs0_sleep>;
+
+	qcom,use-bam;
+
+	stml0xx: stml0xx@0 {
+		compatible = "stm,stml0xx";
+		status = "okay";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		gpios = <&msm_gpio 51 0>,        /* IRQ */
+			<&msm_gpio 120 0>,       /* RESET */
+			<&msm_gpio 121 0>,       /* BSLEN */
+			<&msm_gpio 52 0>,        /* WakeIRQ */
+			<&msm_gpio 5 0>,         /* SPI Ready for Receive */
+			<&msm_gpio 38 0>,        /* SPI Data Ack */
+			<&msm_gpio 116 0>;       /* Wake Up Sensor Hub */
+		lux_table = <5 50 100 1500 3000 8000>;
+		brightness_table = <9 14 18 46 67 93 140>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x00C8>;
+		ct406_undetect_threshold = <0x00A5>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+		headset_detect_enable = <0>;
+		headset_hw_version = <0>;
+		headset_insertion_debounce = <0x01F4>;
+		headset_removal_debounce = <0x0080>;
+		headset_button_down_debounce = <0x0032>;
+		headset_button_up_debounce = <0x0032>;
+		headset_button_0-1_threshold = <0x00B6>;
+		headset_button_1-2_threshold = <0x015B>;
+		headset_button_2-3_threshold = <0x021D>;
+		headset_button_3-upper_threshold = <0x0384>;
+		headset_button_1_keycode = <0xE2>;  /* KEY_MEDIA        */
+		headset_button_2_keycode = <0x246>; /* KEY_VOICECOMMAND */
+		headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
+		headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
+		sensor1-supply = <&pm8916_l6>;
+		sensor2-supply = <&pm8916_l17>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&stml0xx_inputs_default
+			     &stml0xx_wakeup_default
+			     &stml0xx_reset_default
+			     &stml0xx_flash_en_default>;
+	};
+};
+
+&i2c_6 {
+	status = "okay";
+
+	ak09912: ak09912@0C {
+		compatible = "ak,ak09912";
+		reg = <0x0C>;
+		gpios = <&msm_gpio 90 0>, /* RESET */
+		        <&msm_gpio 50 0>; /* IRQ */
+		pinctrl-names = "default";
+		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
+		ak,layout = <5>;
 	};
 };
