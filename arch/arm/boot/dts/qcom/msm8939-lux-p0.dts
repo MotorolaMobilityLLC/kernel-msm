@@ -72,3 +72,15 @@
 	vsp_disp-supply = <&tps65132_pos>;
 	vsn_disp-supply = <&tps65132_neg>;
 };
+
+&pm8916_mpps {
+	mpp@a100 { /* MPP 2 */
+		/* CCP_RESOUT_N */
+		status = "ok";
+		qcom,mode = <0>;      /* Digital Input */
+		qcom,vin-sel = <2>;   /* VIN 2 (1.8V) */
+		qcom,src-sel = <0>;   /* GPIO */
+		qcom,ain-route = <1>; /* QPNP_PIN_AIN_AMUX_CH6 */
+		qcom,master-en = <1>; /* Enable MPP */
+	};
+};
