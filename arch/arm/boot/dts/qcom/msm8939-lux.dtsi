@@ -69,6 +69,11 @@
 	qcom,init-voltage = <3100000>;
 };
 
+&pm8916_l17 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
 	tp_vci-supply = <&pm8916_l16>;
