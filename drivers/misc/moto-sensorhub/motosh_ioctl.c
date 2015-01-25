@@ -183,7 +183,8 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[1] = (delay>>8);
 		motosh_cmdbuff[2] = delay;
 		motosh_g_step_counter_delay = delay;
-		err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 3);
+		if (ps_motosh->mode > BOOTMODE)
+			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 3);
 		break;
 	case MOTOSH_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&ps_motosh->client->dev,
@@ -423,7 +424,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MOTOSH_IOCTL_TEST_WRITE:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_TEST_WRITE");
-		if (ps_motosh->mode == BOOTMODE)
+		if (ps_motosh->mode <= BOOTMODE)
 			break;
 		if (copy_from_user(&byte, argp, sizeof(unsigned char))) {
 			dev_err(&ps_motosh->client->dev,
@@ -436,7 +437,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_SET_POSIX_TIME:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_SET_POSIX_TIME");
-		if (ps_motosh->mode == BOOTMODE)
+		if (ps_motosh->mode <= BOOTMODE)
 			break;
 		if (copy_from_user(&current_posix_time, argp,
 			 sizeof(current_posix_time))) {
@@ -511,7 +512,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MOTOSH_IOCTL_GET_ALGO_EVT:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_ALGO_EVT");
-		if (ps_motosh->mode == BOOTMODE) {
+		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EFAULT;
 			break;
 		}
@@ -550,7 +551,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_WRITE_REG:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_WRITE_REG");
-		if (ps_motosh->mode == BOOTMODE) {
+		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EFAULT;
 			break;
 		}
@@ -597,7 +598,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_READ_REG:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_READ_REG");
-		if (ps_motosh->mode == BOOTMODE) {
+		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EFAULT;
 			break;
 		}
@@ -740,7 +741,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 		break;
 	case MOTOSH_IOCTL_ENABLE_BREATHING:
-		if (ps_motosh->mode == BOOTMODE) {
+		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EBUSY;
 			break;
 		}
@@ -762,7 +763,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		err = 0;
 		break;
 	case MOTOSH_IOCTL_SET_LOWPOWER_MODE:
-		if (ps_motosh->mode == BOOTMODE) {
+		if (ps_motosh->mode <= BOOTMODE) {
 			err = -EBUSY;
 			break;
 		}
@@ -787,7 +788,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MOTOSH_IOCTL_SET_FLUSH:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_FLUSH");
-		if (ps_motosh->mode == BOOTMODE)
+		if (ps_motosh->mode <= BOOTMODE)
 			break;
 		if (copy_from_user(&handle, argp, sizeof(unsigned int))) {
 			dev_err(&ps_motosh->client->dev,
