@@ -308,6 +308,7 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios);
 
 static void sdhci_init(struct sdhci_host *host, int soft)
 {
+	printk("[wlan]: sdhci_init +++++++++++\n");
 	if (soft)
 		sdhci_reset(host, SDHCI_RESET_CMD|SDHCI_RESET_DATA);
 	else
@@ -3430,6 +3431,8 @@ int sdhci_add_host(struct sdhci_host *host)
 	unsigned int ocr_avail;
 	int ret;
 
+	printk("[wlan]: sdhci_add_host+++++++\n");
+
 	WARN_ON(host == NULL);
 	if (host == NULL)
 		return -EINVAL;
@@ -3788,33 +3791,34 @@ int sdhci_add_host(struct sdhci_host *host)
 		}
 	}
 
-	if (caps[0] & SDHCI_CAN_VDD_330) {
+//	if (caps[0] & SDHCI_CAN_VDD_330) {
 		ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34;
 
 		mmc->max_current_330 = ((max_current_caps &
 				   SDHCI_MAX_CURRENT_330_MASK) >>
 				   SDHCI_MAX_CURRENT_330_SHIFT) *
 				   SDHCI_MAX_CURRENT_MULTIPLIER;
-	}
-	if (caps[0] & SDHCI_CAN_VDD_300) {
+//	}
+//	if (caps[0] & SDHCI_CAN_VDD_300) {
 		ocr_avail |= MMC_VDD_29_30 | MMC_VDD_30_31;
 
 		mmc->max_current_300 = ((max_current_caps &
 				   SDHCI_MAX_CURRENT_300_MASK) >>
 				   SDHCI_MAX_CURRENT_300_SHIFT) *
 				   SDHCI_MAX_CURRENT_MULTIPLIER;
-	}
-	if (caps[0] & SDHCI_CAN_VDD_180) {
+//	}
+//	if (caps[0] & SDHCI_CAN_VDD_180) {
 		ocr_avail |= MMC_VDD_165_195;
 
 		mmc->max_current_180 = ((max_current_caps &
 				   SDHCI_MAX_CURRENT_180_MASK) >>
 				   SDHCI_MAX_CURRENT_180_SHIFT) *
 				   SDHCI_MAX_CURRENT_MULTIPLIER;
-	}
+//	}
 
 	mmc->ocr_avail = ocr_avail;
 	mmc->ocr_avail_sdio = ocr_avail;
+	printk("[wlan]: mmc->ocr_avail_sdio=%x\n", mmc->ocr_avail_sdio);
 	if (host->ocr_avail_sdio)
 		mmc->ocr_avail_sdio &= host->ocr_avail_sdio;
 	mmc->ocr_avail_sd = ocr_avail;

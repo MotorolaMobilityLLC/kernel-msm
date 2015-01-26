@@ -1135,6 +1135,8 @@ int mmc_attach_sdio(struct mmc_host *host)
 	 * Sanity check the voltages that the card claims to
 	 * support.
 	 */
+	 printk("[wlan]: mmc_attach_sdio: ocr=%x\n", ocr);
+	 
 	if (ocr & 0x7F) {
 		pr_warning("%s: card claims to support voltages "
 		       "below the defined range. These will be ignored.\n",

@@ -197,6 +197,10 @@ enum sdc_mpm_pin_state {
 
 #define INVALID_TUNING_PHASE	-1
 
+extern int wcf_status_register(
+		void (*cb)(int card_present, void *dev), void *dev);
+extern unsigned int wcf_status(struct device *dev);
+
 #define sdhci_is_valid_mpm_wakeup_int(_h) ((_h)->pdata->mpm_sdiowakeup_int >= 0)
 #define sdhci_is_valid_gpio_wakeup_int(_h) ((_h)->pdata->sdiowakeup_irq >= 0)
 
@@ -310,6 +314,9 @@ struct sdhci_msm_pltfm_data {
 	unsigned char sup_clk_cnt;
 	int mpm_sdiowakeup_int;
 	int sdiowakeup_irq;
+	unsigned int (*status)(struct device *);
+	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id), void *dev_id);
+	bool wifi_control_func;
 };
 
 struct sdhci_msm_bus_vote {
@@ -349,6 +356,7 @@ struct sdhci_msm_host {
 	bool is_sdiowakeup_enabled;
 	atomic_t controller_clock;
 	bool use_cdclp533;
+	unsigned int oldstat;
 };
 
 enum vdd_io_level {
@@ -1352,12 +1360,13 @@ static int sdhci_msm_parse_pinctrl_info(struct device *dev,
 	/* Try to obtain pinctrl handle */
 	pctrl = devm_pinctrl_get(dev);
 	if (IS_ERR(pctrl)) {
+		printk("[wlan]: sdhci_msm_parse_pinctrl_info: obtain pinctrl handle fail\n");
 		ret = PTR_ERR(pctrl);
 		goto out;
 	}
 	pctrl_data = devm_kzalloc(dev, sizeof(*pctrl_data), GFP_KERNEL);
 	if (!pctrl_data) {
-		dev_err(dev, "No memory for sdhci_pinctrl_data\n");
+		printk("[wlan]: sdhci_msm_parse_pinctrl_info: No memory for sdhci_pinctrl_data\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -1367,14 +1376,14 @@ static int sdhci_msm_parse_pinctrl_info(struct device *dev,
 			pctrl_data->pctrl, "active");
 	if (IS_ERR(pctrl_data->pins_active)) {
 		ret = PTR_ERR(pctrl_data->pins_active);
-		dev_err(dev, "Could not get active pinstates, err:%d\n", ret);
+		printk("[wlan]: sdhci_msm_parse_pinctrl_info: Could not get active pinstates, err:%d\n", ret);
 		goto out;
 	}
 	pctrl_data->pins_sleep = pinctrl_lookup_state(
 			pctrl_data->pctrl, "sleep");
 	if (IS_ERR(pctrl_data->pins_sleep)) {
 		ret = PTR_ERR(pctrl_data->pins_sleep);
-		dev_err(dev, "Could not get sleep pinstates, err:%d\n", ret);
+		printk("[wlan]: sdhci_msm_parse_pinctrl_info: Could not get sleep pinstates, err:%d\n", ret);
 		goto out;
 	}
 	pdata->pctrl_data = pctrl_data;
@@ -1460,6 +1469,8 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 	int clk_table_len;
 	u32 *clk_table = NULL;
 	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
+
+	printk("[wlan]: sdhci_msm_populate_pdata +++++\n");
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -1551,6 +1562,8 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 
 	if (of_get_property(np, "qcom,nonremovable", NULL))
 		pdata->nonremovable = true;
+	//if (of_get_property(np, "qcom,wifi-control-func", NULL))
+		pdata->wifi_control_func = true;
 
 	if (!of_property_read_u32(np, "qcom,dat1-mpm-int",
 				  &mpm_int))
@@ -2937,6 +2950,77 @@ static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 		msm_host->use_cdclp533 = true;
 }
 
+#if 0
+static unsigned int
+sdhci_msm_slot_status(struct sdhci_msm_host *host)
+{
+	int status;
+
+	status = gpio_get_value_cansleep(host->pdata->status_gpio);
+	if (host->pdata->is_status_gpio_active_low)
+		status = !status;
+
+	return status;
+}
+#endif
+
+static void
+sdhci_msm_check_status(unsigned long data)
+{
+	struct sdhci_msm_host *host = (struct sdhci_msm_host *)data;
+//	unsigned int status;
+
+	printk("[wlan]: sdhci_msm_check_status +++++\n");
+	mmc_detect_change(host->mmc, 0);
+#if 0
+	if (host->pdata->status || gpio_is_valid(host->pdata->status_gpio)) {
+		if (host->pdata->status)
+			status = host->pdata->status(mmc_dev(host->mmc));
+		else
+			status = sdhci_msm_slot_status(host);
+
+		//host->eject = !status;
+
+		if (status ^ host->oldstat) {
+			if (host->pdata->status)
+				pr_info("%s: Slot status change detected "
+					"(%d -> %d)\n",
+					mmc_hostname(host->mmc),
+					host->oldstat, status);
+/*
+			else if (host->pdata->is_status_gpio_active_low)
+				pr_info("%s: Slot status change detected "
+					"(%d -> %d) and the card detect GPIO"
+					" is ACTIVE_LOW\n",
+					mmc_hostname(host->mmc),
+					host->oldstat, status);
+*/
+			else
+				pr_info("%s: Slot status change detected "
+					"(%d -> %d) and the card detect GPIO"
+					" is ACTIVE_HIGH\n",
+					mmc_hostname(host->mmc),
+					host->oldstat, status);
+			mmc_detect_change(host->mmc, 0);
+		}
+		host->oldstat = status;
+	} else {
+		mmc_detect_change(host->mmc, 0);
+	}
+#endif
+}
+
+static void
+sdhci_msm_status_notify_cb(int card_present, void *dev_id)
+{
+	struct sdhci_msm_host *host = dev_id;
+
+	printk("[wlan: sdhci_msm_status_notify_cb ++++\n");
+	pr_debug("%s: card_present %d\n", mmc_hostname(host->mmc),
+	       card_present);
+	sdhci_msm_check_status((unsigned long) host);
+}
+
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
@@ -2949,6 +3033,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	unsigned long flags;
 
 	pr_debug("%s: Enter %s\n", dev_name(&pdev->dev), __func__);
+	printk("[wlan]: sdhci_msm_probe ++++++++++\n");
 	msm_host = devm_kzalloc(&pdev->dev, sizeof(struct sdhci_msm_host),
 				GFP_KERNEL);
 	if (!msm_host) {
@@ -3206,8 +3291,12 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_WAKE_SDIO_IRQ;
 	msm_host->mmc->caps2 |= MMC_CAP2_CORE_PM;
 
-	if (msm_host->pdata->nonremovable)
+	if (msm_host->pdata->nonremovable) {
+		printk("[wlan]: cap++ \n");
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
+		msm_host->mmc->caps |= SDHCI_CAN_VDD_300;
+		msm_host->mmc->caps |= SDHCI_CAN_VDD_330;
+	}
 
 	host->cpu_dma_latency_us = msm_host->pdata->cpu_dma_latency_us;
 
@@ -3260,6 +3349,17 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 			sdhci_msm_cfg_sdiowakeup_gpio_irq(host, false);
 			spin_unlock_irqrestore(&host->lock, flags);
 		}
+	}
+
+	if (msm_host->pdata->wifi_control_func) {
+		msm_host->pdata->register_status_notify = wcf_status_register;
+		msm_host->pdata->status = wcf_status;
+		msm_host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
+	}
+
+	if (msm_host->pdata->register_status_notify)
+	{
+		msm_host->pdata->register_status_notify(sdhci_msm_status_notify_cb, host->mmc);
 	}
 
 	ret = sdhci_add_host(host);
