@@ -414,7 +414,7 @@ static int m4fus_probe(struct platform_device *pdev)
 	struct iio_dev *iio = NULL;
 	int err = 0;
 
-	iio = iio_device_alloc(sizeof(dd));
+	iio = iio_device_alloc(sizeof(struct m4fus_driver_data));
 	if (iio == NULL) {
 		m4fus_err("%s: Failed to allocate IIO data.\n", __func__);
 		err = -ENOMEM;

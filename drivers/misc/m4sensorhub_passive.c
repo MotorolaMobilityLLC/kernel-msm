@@ -473,7 +473,7 @@ static int m4pas_probe(struct platform_device *pdev)
 	struct iio_dev *iio = NULL;
 	int err = 0;
 
-	iio = iio_device_alloc(sizeof(dd));
+	iio = iio_device_alloc(sizeof(struct m4pas_driver_data));
 	if (iio == NULL) {
 		m4pas_err("%s: Failed to allocate IIO data.\n", __func__);
 		err = -ENOMEM;
