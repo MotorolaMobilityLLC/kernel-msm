@@ -917,7 +917,23 @@
 		status = "disabled";
 	};
 
+	vph_pwr_vreg: vph_pwr_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "vph_pwr";
+		regulator-always-on;
+	};
+
 	sdhc_3: sdhci@f9864900 {
+		vdd-supply = <&vph_pwr_vreg>;
+		qcom,vdd-voltage-level = <2950000 2950000>;
+		qcom,vdd-current-level = <9000 800000>;
+
+		vdd-io-supply = <&pm8226_l6>;
+		qcom,vdd-io-always-on;
+		qcom,vdd-io-voltage-level = <1800000 1800000>;
+		qcom,vdd-io-current-level = <6 22000>;
+
 		compatible = "qcom,sdhci-msm";
 		reg = <0xf9864900 0x11c>, <0xf9864000 0x800>;
 		reg-names = "hc_mem", "core_mem";
@@ -958,7 +974,10 @@
 			      2 &msmgpio 41 0x8>;
 		interrupt-names = "hc_irq", "pwr_irq", "sdiowakeup_irq";
 
-		status = "disabled";
+		qcom,wifi-control-func;
+		qcom,nonremovable;
+
+		status = "ok";
 	};
 
 	spmi_bus: qcom,spmi@fc4c0000 {

@@ -191,7 +191,13 @@ void msm_gpiomux_install(struct msm_gpiomux_config *configs, unsigned nconfigs)
 			rc = msm_gpiomux_write(configs[c].gpio, s,
 				configs[c].settings[s], NULL);
 			if (rc)
+			{
 				pr_err("%s: write failure: %d\n", __func__, rc);
+			}
+			else if (configs[c].gpio >= 39 && configs[c].gpio <= 44)
+			{
+				printk("[wlan] msm_gpiomux_install gpio = %d\n", configs[c].gpio);
+			}
 		}
 	}
 }
