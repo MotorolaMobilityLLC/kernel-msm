@@ -77,3 +77,4 @@ obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_heartrate.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_fusion.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_pressure.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_ads.o
+obj-$(CONFIG_BQ5105X_CTRL)      += bq5105x_ctrl.o
