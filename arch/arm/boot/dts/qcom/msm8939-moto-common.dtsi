@@ -1,0 +1,352 @@
+/* Copyright (c) 2014, Motorola Mobility LLC. All rights reserved.
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License version 2 and
+* only version 2 as published by the Free Software Foundation.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*/
+
+#include "msm8939.dtsi"
+#include "msm8939-pinctrl.dtsi"
+#include "carrier-channel-ids.dtsi"
+
+/ {
+	aliases {
+		serial0 = &blsp1_ls_uart1;
+		i2c1 = &i2c_1;
+	};
+};
+
+&soc {
+	/delete-node/ serial@78af000;
+	blsp1_ls_uart1: serial@78af000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x78af000 0x200>;
+		interrupts = <0 107 0>;
+		status = "ok";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart1_apps_clk>,
+			 <&clock_gcc clk_gcc_blsp1_ahb_clk>;
+		clock-names = "core_clk", "iface_clk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart_console_sleep>;
+	};
+
+	i2c_1: i2c@78b5000 { /* BLSP1 QUP1 */
+                compatible = "qcom,i2c-msm-v2";
+                #address-cells = <1>;
+                #size-cells = <0>;
+                reg-names = "qup_phys_addr", "bam_phys_addr";
+                reg = <0x78b5000 0x600>,
+                      <0x7884000 0x23000>;
+                interrupt-names = "qup_irq", "bam_irq";
+                interrupts = <0 95 0>, <0 238 0>;
+                clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+                         <&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+                clock-names = "iface_clk", "core_clk";
+                qcom,clk-freq-out = <100000>;
+                qcom,clk-freq-in  = <19200000>;
+                pinctrl-names = "i2c_active", "i2c_sleep";
+                pinctrl-0 = <&i2c_1_active>;
+                pinctrl-1 = <&i2c_1_sleep>;
+                qcom,noise-rjct-scl = <0>;
+                qcom,noise-rjct-sda = <0>;
+                qcom,bam-pipe-idx-cons = <4>;
+                qcom,bam-pipe-idx-prod = <5>;
+                qcom,master-id = <86>;
+	};
+};
+
+&tlmm_pinmux {
+	pmx-uartconsole {
+		qcom,pins = <&gp 0>, <&gp 1>;
+	};
+
+	backlight_reset {
+		qcom,pins = <&gp 101>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "backlight_reset";
+		backlight_reset_default: default {
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	cc_alert {
+		qcom,pins = <&gp 12>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cc-alert";
+
+		cc_alert_default: cc-alert {
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	pmx_i2c_1 {
+		/* CLK, DATA */
+		qcom,pins = <&gp 3>, <&gp 2>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <3>;
+		label = "pmx_i2c_1";
+
+		i2c_1_active: i2c_1_active {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;         /* No PULL */
+		};
+
+		i2c_1_sleep: i2c_1_sleep {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable;         /* No PULL */
+		};
+	};
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8916_l8>;
+	qcom,vdd-voltage-level = <2900000 2900000>;
+	qcom,vdd-current-level = <200 400000>;
+
+	vdd-io-supply = <&pm8916_l5>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-lpm-sup;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <200 60000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off>;
+
+	qcom,nonremovable;
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&pm8916_l11>;
+	qcom,vdd-voltage-level = <2800000 2950000>;
+	qcom,vdd-current-level = <15000 400000>;
+
+	vdd-io-supply = <&pm8916_l12>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <200 50000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+
+	#address-cells = <0>;
+	interrupt-parent = <&sdhc_2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0
+			2 &msm_gpio 25 0>;
+	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&msm_gpio 25 0x1>;
+
+	status = "ok";
+};
+
+&qcom_tzlog {
+	status = "okay";
+};
+
+&qcom_rng {
+	status = "okay";
+};
+
+&qcom_crypto {
+	status = "okay";
+};
+
+&qcom_cedev {
+	status = "okay";
+};
+
+&qcom_seecom {
+	status = "okay";
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&spmi_bus {
+	qcom,pm8916@0 {
+		qcom,leds@1000 {
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-atc";
+			linux,name = "charging";
+			qcom,ctrl-reg = <0x4D>;
+		};
+	};
+};
+
+&pm8916_leds {
+	status = "disabled";
+};
+
+&pm8916_mpps {
+	mpp@a000 { /* MPP 1 */
+		status = "disabled";
+	};
+
+	mpp@a100 { /* MPP 2 */
+		status = "disabled";
+	};
+
+	mpp@a200 { /* MPP 3 */
+		status = "disabled";
+	};
+
+	mpp@a300 { /* MPP 4 */
+		status = "disabled";
+	};
+};
+
+&pm8916_gpios {
+	gpio@c000 { /* GPIO 1 */
+		/* Battery UICC Alarm */
+		status = "disabled";
+	};
+
+	gpio@c100 { /* GPIO 2 */
+		/* NFC_CLK_REQ */
+		qcom,mode = <0>; /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>; /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>; /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c200 { /* GPIO 3 */
+		/* External regulator control for WTR */
+		status = "disabled";
+	};
+
+	gpio@c300 { /* GPIO 4 */
+		/* External regulator control for APC */
+		status = "disabled";
+	};
+};
+
+/* CoreSight */
+&tpiu {
+	pinctrl-names = "sdcard", "trace", "swduart",
+			"swdtrc", "jtag", "spmi";
+	/* NIDnT */
+	pinctrl-0 = <&qdsd_clk_sdcard &qdsd_cmd_sdcard
+		     &qdsd_data0_sdcard &qdsd_data1_sdcard
+		     &qdsd_data2_sdcard &qdsd_data3_sdcard>;
+	pinctrl-1 = <&qdsd_clk_trace &qdsd_cmd_trace
+		     &qdsd_data0_trace &qdsd_data1_trace
+		     &qdsd_data2_trace &qdsd_data3_trace>;
+	pinctrl-2 = <&qdsd_cmd_swduart &qdsd_data0_swduart
+		     &qdsd_data1_swduart &qdsd_data2_swduart
+		     &qdsd_data3_swduart>;
+	pinctrl-3 = <&qdsd_clk_swdtrc &qdsd_cmd_swdtrc
+		     &qdsd_data0_swdtrc &qdsd_data1_swdtrc
+		     &qdsd_data2_swdtrc &qdsd_data3_swdtrc>;
+	pinctrl-4 = <&qdsd_cmd_jtag &qdsd_data0_jtag
+		     &qdsd_data1_jtag &qdsd_data2_jtag
+		     &qdsd_data3_jtag>;
+	pinctrl-5 = <&qdsd_clk_spmi &qdsd_cmd_spmi
+		     &qdsd_data0_spmi &qdsd_data3_spmi>;
+};
+
+&apc_vreg_corner {
+		qcom,cpr-up-threshold = <0>;
+		qcom,cpr-down-threshold = <8>;
+};
+
+&i2c_1 {
+        smb1357_otg_vreg: smb1357-charger@1c {
+                compatible = "qcom,smb1359-charger";
+                reg = <0x1c>;
+
+                interrupt-parent = <&msm_gpio>;
+                interrupts = <62 0x0>;
+                gpios = <&msm_gpio 62 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+                gpio-names = "smb1360_int_gpio";
+                qcom,smb135x-adc_tm = <&pm8916_adc_tm>;
+                qcom,smb135x-vadc = <&pm8916_vadc>;
+                qcom,float-voltage-mv = <4350>;
+                qcom,charging-timeout = <1536>;
+                qcom,recharge-thresh-mv = <200>;
+                qcom,iterm-disabled;
+                qcom,aicl-disabled;
+                qcom,ir-comp-mv = <175>;
+                regulator-name = "smb1357_otg_vreg";
+                qcom,soft-vfloat-comp-disabled;
+                /* therm-bias-supply = <&pma8084_lvs2>; */
+                qcom,thermal-mitigation = <2500>, <2400>, <2300>, <2100>,
+                                          <2000>, <1910>, <1800>, <1600>,
+                                          <1500>, <1400>, <1200>, <1100>,
+                                          <1000>, <900>, <700>, <600>,
+                                          <500>, <400>, <300>;
+                qcom,dc-thermal-mitigation = <600>, <500>, <400>, <300>;
+                qcom,dc-psy-type = "Wireless";
+                qcom,dc-psy-ma = <600>;
+                qcom,bms-psy-name = "max170xx_battery";
+                qcom,max-batt-curr-ma = <2600>;
+                qcom,ext-temp-volt-mv = <4000>;
+                qcom,ext-temp-soc = <65>;
+                qcom,low-voltage-uv = <2750000>;
+                qcom,max-voltage-uv = <4350000>;
+        };
+
+	max17050: max17050-battery@36 {
+		compatible = "maxim,max17050";
+		reg = <0x36>;
+		maxim,rsns-microohm = <10000>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <12 0x0>;
+		gpios = <&msm_gpio 12 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "cc-alert";
+
+		maxim,enable_por_init;
+		maxim,batt_undervoltage_zero_soc;
+		maxim,batt-psy-name = "battery";
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
+
+		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cc_alert_default>;
+
+		maxim,configuration {
+			df-serialnum    = "SNN5956";
+
+			/include/ "batterydata-ft40-lg.dtsi"
+			/include/ "batterydata-ft40-sony.dtsi"
+		};
+
+		maxim,temp-conv {
+			start   = /bits/ 16 <(-20)>;    /* in degrees C */
+			result  = /bits/ 16 <
+				/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+				(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)   /* -20 C ... -11 C */
+				(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10       /* -10 C ... -1  C */
+				22     32     42     51     62     72     82     91     99     110      /*  0  C ...  9  C */
+				120    129    138    146    156    165    175    184    192    200      /*  10 C ...  19 C */
+				210    220    230    238    247    256    266    275    285    294      /*  20 C ...  29 C */
+				303    313    324    333    343    353    364    375    385    395      /*  30 C ...  39 C */
+				407    419    430    441    453    466    479    492    505    520      /*  40 C ...  49 C */
+				534    548    565    581    597    616    635    654    676    697      /*  50 C ...  59 C */
+				721    747    775    800                                                /*  60 C ...  63 C */
+			>;
+		};
+	};
+};
+
