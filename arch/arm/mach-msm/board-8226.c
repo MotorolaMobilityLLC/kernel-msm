@@ -177,6 +177,8 @@ static struct platform_device *msm_robin_devices[] = {
  * into this category, and thus the driver should not be added here. The
  * EPROBE_DEFER can satisfy most dependency problems.
  */
+extern void init_bcm_wifi(void);
+
 void __init msm8226_add_drivers(void)
 {
 	msm_smd_init();
@@ -196,6 +198,11 @@ void __init msm8226_add_drivers(void)
 //ASUS_BSP lenter +++
 	platform_add_devices(msm_robin_devices, ARRAY_SIZE(msm_robin_devices));
 //ASUS_BSP lenter ---
+
+// ASUS_BSP +++ Init for wifi
+	printk("[wlan]: msm8226_add_drivers\n");
+	init_bcm_wifi();
+// ASUS_BSP --- Init for wifi
 }
 
 void __init msm8226_init(void)
