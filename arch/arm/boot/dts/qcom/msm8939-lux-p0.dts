@@ -53,6 +53,7 @@
 				ti,enable-time = <800>;
 				ti,current-limit = <200000>;
 				ti,en-gpio = <&msm_gpio 16 0>;
+				regulator-boot-on;
 			};
 
 			tps65132_neg: neg-boost {
@@ -63,6 +64,7 @@
 				ti,enable-time = <800>;
 				ti,current-limit = <40000>;
 				ti,en-gpio = <&msm_gpio 17 0>;
+				regulator-boot-on;
 			};
 		};
 	};

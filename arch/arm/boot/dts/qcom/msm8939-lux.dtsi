@@ -27,6 +27,7 @@
 		vin-supply = <&pm8916_l6>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 
 	isl98611a_pos: isl98611a_pos {
@@ -35,6 +36,7 @@
 		gpio = <&msm_gpio 16 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 
 	isl98611a_neg: isl98611a_neg {
@@ -43,6 +45,7 @@
 		gpio = <&msm_gpio 17 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 };
 
@@ -93,6 +96,7 @@
 
 &pm8916_l16 {
 	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
 };
 
 &pm8916_l17 {
@@ -111,6 +115,10 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
+};
+
+&mot_tdi_546_1080p_cmd_v0 {
+	qcom,cont-splash-enabled;
 };
 
 &pm8916_vadc {
