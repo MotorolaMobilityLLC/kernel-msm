@@ -10,9 +10,23 @@
 * GNU General Public License for more details.
 */
 
-#include "msm8936-moto-common.dtsi"
+/dts-v1/;
+
+#include "msm8939-lux.dtsi"
 
 / {
-	model = "Motorola Mobility MSM 8936 Lux";
-	compatible = "qcom,msm8936-lux", "qcom,msm8936-moto", "qcom,msm8936";
+	qcom,board-id = <0x47 0x8000>;
+};
+
+&i2c_5 {
+	lp8556@2c {
+		status = "ok";
+		compatible = "ti,lp8556";
+		reg = <0x2c>;
+		bl-name = "lcd-backlight";
+		dev-ctrl = /bits/ 8 <0x85>;
+		init-brt = /bits/ 8 <0xff>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&backlight_reset_default>;
+	};
 };
