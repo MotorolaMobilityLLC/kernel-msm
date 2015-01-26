@@ -202,6 +202,18 @@
 			drive-strength = <2>;
 		};
 	};
+
+	sdhc2_cd_pin {
+		qcom,pins = <&gp 25>;
+		sdc2_cd_on: cd_on {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		sdc2_cd_off: cd_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 };
 
 &i2c_0 {
