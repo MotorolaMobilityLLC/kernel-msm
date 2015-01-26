@@ -3299,6 +3299,8 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk", gcc_sdcc2_ahb_clk.c, "msm_sdcc.2"),
 	CLK_LOOKUP("core_clk", gcc_sdcc2_apps_clk.c, "msm_sdcc.2"),
 
+	CLK_LOOKUP("iface_clk", gcc_sdcc3_ahb_clk.c, "f9864000.qcom,sdcc"),
+	CLK_LOOKUP("core_clk", gcc_sdcc3_apps_clk.c, "f9864000.qcom,sdcc"),
 	CLK_LOOKUP("iface_clk", gcc_sdcc3_ahb_clk.c, "msm_sdcc.3"),
 	CLK_LOOKUP("core_clk", gcc_sdcc3_apps_clk.c, "msm_sdcc.3"),
 
