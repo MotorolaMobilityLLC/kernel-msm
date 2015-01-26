@@ -3254,6 +3254,8 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
 	host->f_init = freq;
 
+	printk("[wlan]: mmc_rescan_try_freq +++\n");
+
 #ifdef CONFIG_MMC_DEBUG
 	pr_info("%s: %s: trying to init card at %u Hz\n",
 		mmc_hostname(host), __func__, host->f_init);
@@ -3278,11 +3280,20 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 
 	/* Order's important: probe SDIO, then SD, then MMC */
 	if (!mmc_attach_sdio(host))
+	{
+		printk("[wlan]: mmc_attach_sdio ok \n");
 		return 0;
+	}
 	if (!mmc_attach_sd(host))
+	{
+		printk("[wlan]: mmc_attach_sd ok \n");
 		return 0;
+	}
 	if (!mmc_attach_mmc(host))
+	{
+		printk("[wlan]: mmc_attach_mmc ok \n");
 		return 0;
+	}
 
 	mmc_power_off(host);
 	return -EIO;

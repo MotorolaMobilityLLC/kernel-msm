@@ -62,6 +62,8 @@ int mmc_send_io_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 	if (rocr)
 		*rocr = cmd.resp[mmc_host_is_spi(host) ? 1 : 0];
 
+	printk("[wlan]: mmc_send_io_op_cond: i=%d err=%d\n", i, err);
+
 	return err;
 }
 

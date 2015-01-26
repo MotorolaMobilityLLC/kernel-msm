@@ -66,9 +66,15 @@ static const struct sdio_device_id *sdio_match_one(struct sdio_func *func,
 	if (id->class != (__u8)SDIO_ANY_ID && id->class != func->class)
 		return NULL;
 	if (id->vendor != (__u16)SDIO_ANY_ID && id->vendor != func->vendor)
+	{
+		printk("[wlan]: sdio_match_one id->vendor = %x \n", id->vendor);
 		return NULL;
+	}
 	if (id->device != (__u16)SDIO_ANY_ID && id->device != func->device)
+	{
+		printk("[wlan]: sdio_match_one id->device = %x \n", id->device);
 		return NULL;
+	}
 	return id;
 }
 
@@ -76,6 +82,8 @@ static const struct sdio_device_id *sdio_match_device(struct sdio_func *func,
 	struct sdio_driver *sdrv)
 {
 	const struct sdio_device_id *ids;
+
+	printk("[wlan]: %s: +++\n", __func__);
 
 	ids = sdrv->id_table;
 
@@ -129,9 +137,14 @@ static int sdio_bus_probe(struct device *dev)
 	const struct sdio_device_id *id;
 	int ret;
 
+	printk("[wlan]: sdio_bus_probe +++\n");
+
 	id = sdio_match_device(func, drv);
 	if (!id)
+	{
+		printk("[wlan]: sdio_bus_probe: if (!id) +++\n");
 		return -ENODEV;
+	}
 
 	/* Unbound SDIO functions are always suspended.
 	 * During probe, the function is set active and the usage count
@@ -142,7 +155,10 @@ static int sdio_bus_probe(struct device *dev)
 	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD) {
 		ret = pm_runtime_get_sync(dev);
 		if (ret < 0)
+		{
+			printk("[wlan]: sdio_bus_probe before goto disable_runtimepm \n");
 			goto disable_runtimepm;
+		}
 	}
 
 	/* Set the default block size so the driver is sure it's something
@@ -253,6 +269,7 @@ void sdio_unregister_bus(void)
  */
 int sdio_register_driver(struct sdio_driver *drv)
 {
+	printk("[wlan]: %s: +++\n", __func__);
 	drv->drv.name = drv->name;
 	drv->drv.bus = &sdio_bus_type;
 	return driver_register(&drv->drv);
