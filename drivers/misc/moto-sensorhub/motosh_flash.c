@@ -349,16 +349,16 @@ int switch_motosh_mode(enum stm_mode mode)
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to boot mode\n");
 
-		/*Assert reset and flash enable and release*/
-		gpio_set_value(pdata->gpio_reset, 0);
-		gpio_set_value(pdata->gpio_bslen,
-			       (bslen_pin_active_value));
-		msleep(RESET_PULSE);
-		gpio_set_value(pdata->gpio_reset, 1);
-
-		msleep(MOTOSH_RESET_DELAY);
-
 		while (tries) {
+			/* Assert reset and flash enable and release */
+			gpio_set_value(pdata->gpio_reset, 0);
+			msleep(RESET_PULSE);
+			gpio_set_value(pdata->gpio_bslen,
+				       (bslen_pin_active_value));
+			msleep(RESET_PULSE);
+			gpio_set_value(pdata->gpio_reset, 1);
+			msleep(MOTOSH_RESET_DELAY);
+
 			err = motosh_boot_cmd_write(motosh_misc_data, GET_ID);
 			if (err < 0)
 				goto RETRY_ID;
@@ -398,6 +398,16 @@ int switch_motosh_mode(enum stm_mode mode)
 RETRY_ID:
 			err = -EIO;
 			tries--;
+
+			/* Exit flash mode so we can re-enter on a retry
+			   Assert reset de-assert flash-enable and release */
+			gpio_set_value(pdata->gpio_reset, 0);
+			msleep(RESET_PULSE);
+			gpio_set_value(pdata->gpio_bslen,
+				       !(bslen_pin_active_value));
+			msleep(RESET_PULSE);
+			gpio_set_value(pdata->gpio_reset, 1);
+
 			msleep(COMMAND_DELAY);
 		}
 	} else if (mode > BOOTMODE) {
