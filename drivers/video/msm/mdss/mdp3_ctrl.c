@@ -839,6 +839,8 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 	if (ctrl_pdata && ctrl_pdata->cont_splash_on)
 		ctrl_pdata->cont_splash_on(panel);
 
+	panel->panel_info.cont_splash_esd_rdy = true;
+
 reset_error:
 	mutex_unlock(&mdp3_session->offlock);
 	mutex_unlock(&mdp3_session->lock);

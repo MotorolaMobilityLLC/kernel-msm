@@ -688,8 +688,6 @@ static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
 
 	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 
-	pdata->panel_info.cont_splash_esd_rdy = true;
-
 #ifndef CONFIG_FB_MSM_MDSS_MDP3
 	if (pdata->panel_info.hs_cmds_post_init)
 		mdss_set_tx_power_mode(DSI_MODE_BIT_HS, pdata);
@@ -851,8 +849,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	   may not be made visible to user until a point later than this */
 	if (!mfd->quickdraw_in_progress)
 		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
-
-	pdata->panel_info.cont_splash_esd_rdy = true;
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
 	/* validate screen is actually on */
