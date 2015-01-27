@@ -59,6 +59,11 @@
                 qcom,master-id = <86>;
                 qcom,bam-disable;
 	};
+
+	hob_ram {
+		compatible = "mmi,hob_ram";
+		mmi,allocation-type-smem;
+	};
 };
 
 &tlmm_pinmux {
