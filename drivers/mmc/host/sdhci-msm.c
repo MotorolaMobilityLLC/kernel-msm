@@ -3136,16 +3136,16 @@ static int sdhci_msm_select_drive_strength(struct sdhci_host *host,
 /*
  * Simulate a device reset by toggling power on the slot.
  */
-#define HW_RESET_DELAY_INCREMENT	5000
-#define HW_RESET_DELAY_RANGE		2000
-#define HW_RESET_DELAY_MAX		100000
+#define HW_RESET_DELAY_INCREMENT	100000
+#define HW_RESET_DELAY_RANGE		20000
+#define HW_RESET_DELAY_MAX		1000000
 static void sdhci_msm_hw_reset(struct sdhci_host *host)
 {
 	struct mmc_card *card = host->mmc->card;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
 	struct sdhci_msm_slot_reg_data *vreg_data = msm_host->pdata->vreg_data;
-	unsigned long delay = HW_RESET_DELAY_INCREMENT * 2;
+	unsigned long delay = HW_RESET_DELAY_INCREMENT;
 	int rc;
 
 	if (!vreg_data || (card && !mmc_card_sd(card)))
