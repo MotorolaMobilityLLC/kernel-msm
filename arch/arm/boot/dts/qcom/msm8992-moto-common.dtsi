@@ -298,7 +298,7 @@
 			1 &intc 0 221 0
 			2 &pm8994_gpios 22 0x3>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	cd-gpios = <&pm8994_gpios 22 0x1>;
+	cd-gpios = <&pm8994_gpios 22 0x0>;
 
 	pinctrl-names = "active", "sleep";
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on>;
@@ -438,7 +438,7 @@
 	gpio@d500 { /* GPIO 22 - TRAY_DET */
 		status = "okay";
 		qcom,mode = <0>;
-		qcom,pull = <0>; /* Up */
+		qcom,pull = <5>; /* None */
 		qcom,vin-sel = <2>;
 		qcom,src-sel = <0>;
 		qcom,master-en = <1>;
