@@ -306,6 +306,7 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 	memcpy(tty_buf, d_req->buf, d_req->length);
 	tty_flip_buffer_push(&tty_data->port);
 
+	d_req->actual = d_req->length;
 	spin_unlock_irqrestore(&diag_tty_lock, flags);
 
 	diag_ch->notify(diag_ch->priv, USB_DIAG_WRITE_DONE, d_req);
