@@ -115,6 +115,8 @@ int stm401_reset_and_init(void)
 	do {
 		stm401_reset(pdata, rst_cmdbuff);
 
+		stm401_i2c_retry_delay = 200;
+
 		/* check for sign of life */
 		rst_cmdbuff[0] = REV_ID;
 		err = stm401_i2c_write_read_no_reset(stm401_misc_data,
@@ -124,15 +126,13 @@ int stm401_reset_and_init(void)
 				reset_attempts);
 	} while (reset_attempts++ < 5 && err < 0);
 
-	stm401_i2c_retry_delay = 200;
+	stm401_i2c_retry_delay = 13;
 
 	rst_cmdbuff[0] = ACCEL_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_acc_delay;
 	err = stm401_i2c_write_no_reset(stm401_misc_data, rst_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
-
-	stm401_i2c_retry_delay = 13;
 
 	rst_cmdbuff[0] = MAG_UPDATE_RATE;
 	rst_cmdbuff[1] = stm401_g_mag_delay;
