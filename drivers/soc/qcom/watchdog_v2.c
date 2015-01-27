@@ -378,11 +378,56 @@ static int msm_watchdog_remove(struct platform_device *pdev)
 	kfree(wdog_dd);
 	return 0;
 }
+struct dump_regs{
+	char *name;
+	long address;
+	int count;
+	void __iomem *base;
+	uint32_t val[40];
+};
+
+static struct dump_regs reg_dump[] = {
+	{"SAW2_APCS0", 0xf9089000, 0x40},
+	{"SAW2_APCS1", 0xf9099000, 0x40},
+	{"SAW2_APCS2", 0xf90a9000, 0x40},
+	{"SAW2_APCS3", 0xf90b9000, 0x40},
+	{"SAW2_APCS4", 0xf90c9000, 0x40},
+	{"SAW2_APCS5", 0xf90d9000, 0x40},
+	{"SAW2_L2_0",  0xf9012000, 0x40},
+	{"SAW2_L2_1",  0xf9013000, 0x40},
+	{"SAW2_CCI",   0xf9065000, 0x40},
+	{"ACS_APCS0", 0xf908b000, 0x90},
+	{"ACS_APCS1", 0xf909b000, 0x90},
+	{"ACS_APCS2", 0xf90ab000, 0x90},
+	{"ACS_APCS3", 0xf90bb000, 0x90},
+	{"ACS_APCS4", 0xf90cb000, 0x90},
+	{"ACS_APCS5", 0xf90db000, 0x90},
+	{"GLB_L2_0",  0xf900d000, 0x2c},
+	{"GLB_L2_1",  0xf900f000, 0x2c},
+	{"Q2S_L2_0",  0xf900D210, 0x4},
+	{"Q2S_L2_1", 0xf900F210, 0x4},
+};
+
+
+static void dump_debug_registers(void)
+{
+	int i, j;
+
+	for (i=0; i < ARRAY_SIZE(reg_dump); i++) {
+		for (j = 0; j * 4 < reg_dump[i].count; j++) {
+			reg_dump[i].val[j] =
+				__raw_readl(reg_dump[i].base + j * 4);
+		}
+	}
+}
+
 
 void msm_trigger_wdog_bite(void)
 {
 	if (!wdog_data)
 		return;
+
+	dump_debug_registers();
 	pr_info("Causing a watchdog bite!");
 	__raw_writel(1, wdog_data->base + WDT0_BITE_TIME);
 	mb();
@@ -671,6 +716,7 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct msm_watchdog_data *wdog_dd;
+	int i;
 
 	wdog_wq = alloc_workqueue("wdog", WQ_HIGHPRI, 0);
 	if (!wdog_wq) {
@@ -687,6 +733,8 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+	for (i = 0; i < ARRAY_SIZE(reg_dump); i++)
+		reg_dump[i].base = ioremap(reg_dump[i].address, SZ_4K);
 	wdog_data = wdog_dd;
 	wdog_dd->dev = &pdev->dev;
 	platform_set_drvdata(pdev, wdog_dd);
