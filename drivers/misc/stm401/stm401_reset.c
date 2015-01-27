@@ -273,7 +273,7 @@ int stm401_reset_and_init(void)
 		NULL, 0);
 
 	mutex_locked = mutex_trylock(&stm401_misc_data->lock);
-	stm401_quickpeek_reset_locked(stm401_misc_data);
+	stm401_quickpeek_reset_locked(stm401_misc_data, false);
 	if (mutex_locked)
 		mutex_unlock(&stm401_misc_data->lock);
 
