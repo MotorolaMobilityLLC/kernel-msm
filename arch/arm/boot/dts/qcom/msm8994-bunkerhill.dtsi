@@ -153,3 +153,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&drv2605_en_default>;
 };
+
+&sdhc_2 {
+	cd-gpios = <&pm8994_gpios 22 0x1>;
+};
+
+&pm8994_gpios {
+	gpio@d500 { /* GPIO 22 - SDC_DET_N */
+		qcom,pull = <0>; /* Up */
+	};
+};
