@@ -88,6 +88,18 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		}
 	}
 
+	/* Only send accel swap value if different from the default. */
+	if (pdata->accel_swap != 0) {
+		buf[0] = pdata->accel_swap & 0xff;
+		err = stml0xx_spi_send_write_reg_reset(ACCEL_SWAP, buf,
+			1, RESET_NOT_ALLOWED);
+		if (err < 0) {
+			dev_err(&ps_stml0xx->spi->dev,
+				"Unable to write accel swap value");
+			ret_err = err;
+		}
+	}
+
 	buf[0] = stml0xx_g_acc_delay;
 	err = stml0xx_spi_send_write_reg_reset(ACCEL_UPDATE_RATE, buf,
 			1, RESET_NOT_ALLOWED);
