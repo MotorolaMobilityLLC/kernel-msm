@@ -110,6 +110,11 @@ int stm401_reset_and_init(void)
 
 	pdata = stm401_misc_data->pdata;
 
+	mutex_locked = mutex_trylock(&stm401_misc_data->lock);
+	stm401_quickpeek_reset_locked(stm401_misc_data, false);
+	if (mutex_locked)
+		mutex_unlock(&stm401_misc_data->lock);
+
 	stm401_wake(stm401_misc_data);
 
 	do {
@@ -271,11 +276,6 @@ int stm401_reset_and_init(void)
 	/* sending reset to slpc hal */
 	stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
 		NULL, 0);
-
-	mutex_locked = mutex_trylock(&stm401_misc_data->lock);
-	stm401_quickpeek_reset_locked(stm401_misc_data, false);
-	if (mutex_locked)
-		mutex_unlock(&stm401_misc_data->lock);
 
 	kfree(rst_cmdbuff);
 	stm401_sleep(stm401_misc_data);
