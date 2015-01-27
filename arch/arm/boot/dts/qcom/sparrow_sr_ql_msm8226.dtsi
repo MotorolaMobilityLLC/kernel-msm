@@ -972,7 +972,7 @@
 		interrupt-map = <0 &intc 0 127 0
 			      1 &intc 0 224 0
 			      2 &msmgpio 41 0x8>;
-		interrupt-names = "hc_irq", "pwr_irq", "sdiowakeup_irq";
+		interrupt-names = "hc_irq", "pwr_irq", "wlan_oob_irq";
 
 		qcom,wifi-control-func;
 		qcom,nonremovable;
