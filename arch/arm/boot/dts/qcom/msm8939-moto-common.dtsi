@@ -12,6 +12,7 @@
 
 #include "msm8939.dtsi"
 #include "msm8939-pinctrl.dtsi"
+#include "msm8939-camera-sensor-lux.dtsi"
 #include "carrier-channel-ids.dtsi"
 
 / {
@@ -521,5 +522,14 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
+	};
+};
+&rpm_bus {
+	rpm-regulator-ldoa10 {
+		pm8916_l10: regulator-l10 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
+		};
 	};
 };
