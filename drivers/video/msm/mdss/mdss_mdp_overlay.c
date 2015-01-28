@@ -1888,10 +1888,7 @@ static int mdss_mdp_overlay_get_fb_pipe(struct msm_fb_data_type *mfd,
 				pr_warn("right fb pipe not needed\n");
 				return -EINVAL;
 			}
-		}
 
-		if ((mixer_mux == MDSS_MDP_MIXER_MUX_RIGHT) !=
-			(mdp5_data->fb_rot_180 != 0)) {
 			req.src_rect.x = mixer->width;
 			req.src_rect.w = fbi->var.xres - mixer->width;
 		} else {
@@ -1902,23 +1899,8 @@ static int mdss_mdp_overlay_get_fb_pipe(struct msm_fb_data_type *mfd,
 
 		req.src_rect.y = 0;
 		req.src_rect.h = req.src.height;
-
-		if (mixer_mux == MDSS_MDP_MIXER_MUX_RIGHT) {
-			req.dst_rect.x = mixer->width;
-			req.dst_rect.w = fbi->var.xres - mixer->width;
-		} else {
-			req.dst_rect.x = 0;
-			req.dst_rect.w = MIN(fbi->var.xres,
-							mixer->width);
-		}
-
-		req.dst_rect.y = req.src_rect.y;
-		req.dst_rect.h = req.src_rect.h;
-
+		req.dst_rect = req.src_rect;
 		req.z_order = MDSS_MDP_STAGE_BASE;
-
-		if (mdp5_data->fb_rot_180)
-			req.flags |= MDP_ROT_180;
 
 		pr_debug("allocating base pipe mux=%d\n", mixer_mux);
 
@@ -4350,13 +4332,6 @@ static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd)
 					   "qcom,mdss-mixer-swap");
 	if (mdp5_mdata->mixer_swap) {
 		pr_info("mixer swap is enabled for fb device=%s\n",
-			pdev->name);
-	}
-
-	mdp5_mdata->fb_rot_180 = of_property_read_bool(pdev->dev.of_node,
-					   "qcom,mdss-fb-rot-180");
-	if (mdp5_mdata->fb_rot_180) {
-		pr_info("180 degree rotation is enabled for fb device=%s\n",
 			pdev->name);
 	}
 
