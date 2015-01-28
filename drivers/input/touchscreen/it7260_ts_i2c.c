@@ -45,6 +45,7 @@
 #ifdef CONFIG_ASUS_UTILITY
 #include <linux/notifier.h>
 #include <linux/asus_utility.h>
+#include <linux/input/mt.h>
 #endif
 
 extern void vibrator_enable(int value);
@@ -780,20 +781,33 @@ static struct notifier_block display_mode_notifier = {
 };
 #endif
 
-static void readFingerData(uint16_t *xP, uint16_t *yP, uint8_t *pressureP, const struct FingerData *fd)
+
+static void readFingerData(uint16_t *xP1, uint16_t *yP1, uint8_t *pressureP1, uint16_t *xP2, uint16_t *yP2, uint8_t *pressureP2, const struct FingerData *fd)
 {
-	uint16_t x = fd->xLo;
-	uint16_t y = fd->yLo;
+	uint16_t x1 = fd[0].xLo;
+	uint16_t y1 = fd[0].yLo;
+	uint16_t x2 = fd[1].xLo;
+	uint16_t y2 = fd[1].yLo;
 
-	x += ((uint16_t)(fd->hi & 0x0F)) << 8;
-	y += ((uint16_t)(fd->hi & 0xF0)) << 4;
+	x1 += ((uint16_t)(fd[0].hi & 0x0F)) << 8;
+	y1 += ((uint16_t)(fd[0].hi & 0xF0)) << 4;
 
-	if (xP)
-		*xP = x;
-	if (yP)
-		*yP = y;
-	if (pressureP)
-		*pressureP = fd->pressure & FD_PRESSURE_BITS;
+	x2 += ((uint16_t)(fd[1].hi & 0x0F)) << 8;
+	y2 += ((uint16_t)(fd[1].hi & 0xF0)) << 4;
+
+	if (xP1)
+		*xP1 = x1;
+	if (yP1)
+		*yP1 = y1;
+	if (pressureP1)
+		*pressureP1 = fd[0].pressure & FD_PRESSURE_BITS;
+		
+	if (xP2)
+		*xP2 = x2;
+	if (yP2)
+		*yP2 = y2;
+	if (pressureP2)
+		*pressureP2 = fd[1].pressure & FD_PRESSURE_BITS;
 }
 
 static uint64_t getMsTime(void)
@@ -826,6 +840,10 @@ static void touchIdleOnEvt(struct work_struct *work) {
 static void exitIdleEvt(struct work_struct *work) {
 	printk("IT7260: Special IRQ trigger touch event\n");
 	isTouchLocked = true;
+	input_mt_slot(gl_ts->touch_dev,0);
+	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 0);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 0);	
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
@@ -860,8 +878,9 @@ static void readTouchDataPoint(void)
 {
 	struct PointData pointData;
 	uint8_t devStatus;
-	uint8_t pressure = FD_PRESSURE_NONE;
-	uint16_t x, y;
+	uint8_t pressure1 = FD_PRESSURE_NONE;
+	uint8_t pressure2 = FD_PRESSURE_NONE;
+	uint16_t x1, y1, x2, y2;
 
 	/* verify there is point data to read & it is readable and valid */
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
@@ -888,22 +907,39 @@ static void readTouchDataPoint(void)
 	}
 
 	/* this check may look stupid, but it is here for when MT arrives to this driver. for now just check finger 0 */
-	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
-		readFingerData(&x, &y, &pressure, pointData.fd);
+	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 0x03)
+		readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 
-	if (pressure >= FD_PRESSURE_LIGHT) {
+	if (pressure1 >= FD_PRESSURE_LIGHT || pressure2 >= FD_PRESSURE_LIGHT) {
 
 		if (!hadFingerDown)
 			hadFingerDown = true;
 
-		readFingerData(&x, &y, &pressure, pointData.fd);
 		/* filter points when palming or touching screen edge */
-		if (!isTouchLocked && y > 13 && y < 311 && x > 4 && x < 316){
-			input_report_abs(gl_ts->touch_dev, ABS_X, x);
-			input_report_abs(gl_ts->touch_dev, ABS_Y, y);
+		if (!isTouchLocked && y1 > 13 && y1 < 311 && x1 > 4 && x1 < 316 && pointData.flags & 0x01){
+			input_mt_slot(gl_ts->touch_dev,0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
-			input_sync(gl_ts->touch_dev);
+		}else{
+			input_mt_slot(gl_ts->touch_dev, 0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		}
+		
+		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02){
+			input_mt_slot(gl_ts->touch_dev,1);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
+			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+		}else{
+			input_mt_slot(gl_ts->touch_dev, 1);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+		}
+		
+		input_sync(gl_ts->touch_dev);
+
 	} else if (!(pointData.palm & PD_PALM_FLAG_BIT)) {
 		hadFingerDown = false;
 		hadPalmDown = false;
@@ -918,8 +954,10 @@ static void readTouchDataPoint_Ambient(void)
 {
 	struct PointData pointData;
 	uint8_t devStatus;
-	uint8_t pressure = FD_PRESSURE_NONE;
-	uint16_t x, y;
+	uint8_t pressure1 = FD_PRESSURE_NONE;
+	uint16_t x1, y1;
+	uint8_t pressure2 = FD_PRESSURE_NONE;
+	uint16_t x2, y2;
 	
 	if (!isTouchLocked){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
@@ -947,8 +985,8 @@ static void readTouchDataPoint_Ambient(void)
 		}
 	}
 	
-	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 1)
-		readFingerData(&x, &y, &pressure, pointData.fd);
+	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 0x03)
+		readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 
 	if ((pointData.palm & PD_PALM_FLAG_BIT)) {
 		if (hadFingerDown){
@@ -957,8 +995,7 @@ static void readTouchDataPoint_Ambient(void)
 		hadFingerDown = false;
 	}
 
-	if (pressure >= FD_PRESSURE_LIGHT) {
-
+	if (pressure1 >= FD_PRESSURE_LIGHT || pressure2 >= FD_PRESSURE_LIGHT) {
 		if (hadFingerDown){
 			cancel_delayed_work(&gl_ts->exit_idle_work);
 		}
@@ -966,7 +1003,7 @@ static void readTouchDataPoint_Ambient(void)
 			hadFingerDown = true;
 		}
 		
-		readFingerData(&x, &y, &pressure, pointData.fd);
+		readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
@@ -983,6 +1020,10 @@ static void readTouchDataPoint_Ambient(void)
 					 __func__);
 				touchMissed = false;
 			}
+			input_mt_slot(gl_ts->touch_dev,0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 			input_sync(gl_ts->touch_dev);
 			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
@@ -995,7 +1036,7 @@ static void readTouchDataPoint_Ambient(void)
 	} else if (pointData.flags == 16){
 		hadFingerDown = true;
 		queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
-	} else if (pressure == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
+	} else if (pressure1 == 0 && pressure2 == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 	} 
@@ -1142,8 +1183,11 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(INPUT_PROP_DIRECT,gl_ts->touch_dev->propbit);
 	set_bit(BTN_TOUCH, gl_ts->touch_dev->keybit);
 	set_bit(KEY_SLEEP,gl_ts->touch_dev->keybit);
+	input_mt_init_slots(gl_ts->touch_dev, 2, 0);
 	input_set_abs_params(gl_ts->touch_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
 	input_set_abs_params(gl_ts->touch_dev, ABS_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
+	input_set_abs_params(gl_ts->touch_dev, ABS_MT_POSITION_X, 0, SCREEN_X_RESOLUTION, 0, 0);
+	input_set_abs_params(gl_ts->touch_dev, ABS_MT_POSITION_Y, 0, SCREEN_Y_RESOLUTION, 0, 0);
 
 	if (input_register_device(gl_ts->touch_dev)) {
 		LOGE("failed to register input device\n");
