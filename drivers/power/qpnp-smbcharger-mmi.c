@@ -222,6 +222,8 @@ struct smbchg_chip {
 	bool				factory_mode;
 };
 
+static struct smbchg_chip *the_chip;
+
 enum print_reason {
 	PR_REGISTER	= BIT(0),
 	PR_INTERRUPT	= BIT(1),
@@ -320,9 +322,6 @@ static int smbchg_write(struct smbchg_chip *chip, u8 *val,
 	int rc = 0;
 	struct spmi_device *spmi = chip->spmi;
 
-	if (chip->factory_mode)
-		return 0;
-
 	if (addr == 0) {
 		dev_err(chip->dev, "addr cannot be zero addr=0x%02x sid=0x%02x rc=%d\n",
 			addr, spmi->sid, rc);
@@ -393,6 +392,22 @@ static int smbchg_masked_write(struct smbchg_chip *chip, u16 base, u8 mask,
 	unsigned long flags;
 	int rc;
 
+	if (chip->factory_mode)
+		return 0;
+
+	spin_lock_irqsave(&chip->sec_access_lock, flags);
+	rc = smbchg_masked_write_raw(chip, base, mask, val);
+	spin_unlock_irqrestore(&chip->sec_access_lock, flags);
+
+	return rc;
+}
+
+static int smbchg_masked_write_fac(struct smbchg_chip *chip,
+				   u16 base, u8 mask, u8 val)
+{
+	unsigned long flags;
+	int rc;
+
 	spin_lock_irqsave(&chip->sec_access_lock, flags);
 	rc = smbchg_masked_write_raw(chip, base, mask, val);
 	spin_unlock_irqrestore(&chip->sec_access_lock, flags);
@@ -411,6 +426,32 @@ static int smbchg_masked_write(struct smbchg_chip *chip, u16 base, u8 mask,
 #define PERIPHERAL_MASK		0xFF
 static int smbchg_sec_masked_write(struct smbchg_chip *chip, u16 base, u8 mask,
 									u8 val)
+{
+	unsigned long flags;
+	int rc;
+	u16 peripheral_base = base & (~PERIPHERAL_MASK);
+
+	if (chip->factory_mode)
+		return 0;
+
+	spin_lock_irqsave(&chip->sec_access_lock, flags);
+
+	rc = smbchg_masked_write_raw(chip, peripheral_base + SEC_ACCESS_OFFSET,
+				SEC_ACCESS_VALUE, SEC_ACCESS_VALUE);
+	if (rc) {
+		dev_err(chip->dev, "Unable to unlock sec_access: %d", rc);
+		goto out;
+	}
+
+	rc = smbchg_masked_write_raw(chip, base, mask, val);
+
+out:
+	spin_unlock_irqrestore(&chip->sec_access_lock, flags);
+	return rc;
+}
+
+static int smbchg_sec_masked_write_fac(struct smbchg_chip *chip,
+				       u16 base, u8 mask, u8 val)
 {
 	unsigned long flags;
 	int rc;
@@ -5147,6 +5188,525 @@ static int create_debugfs_entries(struct smbchg_chip *chip)
 	return 0;
 }
 
+#define CHG_SHOW_MAX_SIZE 50
+static ssize_t force_chg_usb_suspend_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smbchg_masked_write_fac(the_chip,
+				    the_chip->usb_chgpth_base + CMD_IL,
+				    USBIN_SUSPEND_BIT,
+				    mode ? USBIN_SUSPEND_BIT : 0);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_usb_suspend_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	ret = smbchg_read(the_chip,
+			  &value, the_chip->usb_chgpth_base + CMD_IL, 1);
+	if (ret) {
+		pr_err("USBIN_SUSPEND_BIT failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (USBIN_SUSPEND_BIT & value) ? 1 : 0;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_usb_suspend, 0664,
+		force_chg_usb_suspend_show,
+		force_chg_usb_suspend_store);
+
+static ssize_t force_chg_fail_clear_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chg fail mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	/* do nothing for SMBCHG */
+	r = 0;
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_fail_clear_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	/* do nothing for SMBCHG */
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "0\n");
+}
+
+static DEVICE_ATTR(force_chg_fail_clear, 0664,
+		force_chg_fail_clear_show,
+		force_chg_fail_clear_store);
+
+static ssize_t force_chg_auto_enable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chrg enable value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smbchg_masked_write_fac(the_chip,
+				    the_chip->bat_if_base + CMD_CHG_REG,
+				    EN_BAT_CHG_BIT,
+				    mode ? 0 : EN_BAT_CHG_BIT);
+	if (r < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't set EN_BAT_CHG_BIT enable = %d r = %d\n",
+			(int)mode, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_auto_enable_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smbchg_read(the_chip,
+			  &value, the_chip->bat_if_base + CMD_CHG_REG, 1);
+	if (ret) {
+		pr_err("CHG_EN_BIT failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (EN_BAT_CHG_BIT & value) ? 0 : 1;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_auto_enable, 0664,
+		force_chg_auto_enable_show,
+		force_chg_auto_enable_store);
+
+static int smbchg_set_fastchg_current_fac(struct smbchg_chip *chip,
+					  int current_ma)
+{
+	int i, rc;
+	u8 cur_val;
+
+	/* the fcc enumerations are the same as the usb currents */
+	for (i = ARRAY_SIZE(usb_current_table) - 1; i >= 0; i--) {
+		if (current_ma >= usb_current_table[i])
+			break;
+	}
+	if (i < 0) {
+		dev_err(chip->dev,
+			"Cannot find %dma current_table using %d\n",
+			current_ma, CURRENT_500_MA);
+
+		rc = smbchg_sec_masked_write_fac(chip,
+						 chip->chgr_base + FCC_CFG,
+						 FCC_MASK,
+						 FCC_500MA_VAL);
+		if (rc < 0)
+			dev_err(chip->dev, "Couldn't set %dmA rc=%d\n",
+				CURRENT_500_MA, rc);
+
+		return rc;
+	}
+
+	cur_val = i & FCC_MASK;
+	rc = smbchg_sec_masked_write_fac(chip, chip->chgr_base + FCC_CFG,
+				FCC_MASK, cur_val);
+	if (rc < 0) {
+		dev_err(chip->dev, "cannot write to fcc cfg rc = %d\n", rc);
+		return rc;
+	}
+
+	return rc;
+}
+
+static ssize_t force_chg_ibatt_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long chg_current;
+
+	r = kstrtoul(buf, 0, &chg_current);
+	if (r) {
+		pr_err("Invalid ibatt value = %lu\n", chg_current);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smbchg_set_fastchg_current_fac(the_chip, chg_current);
+	if (r < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't set Fast Charge Current = %d r = %d\n",
+			(int)chg_current, (int)r);
+		return r;
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_ibatt_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smbchg_read(the_chip, &value, the_chip->chgr_base + FCC_CFG, 1);
+	if (ret) {
+		pr_err("Read Fast Charge Current failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = usb_current_table[value & FCC_MASK];
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_ibatt, 0664,
+		force_chg_ibatt_show,
+		force_chg_ibatt_store);
+
+static int smbchg_set_high_usb_chg_current_fac(struct smbchg_chip *chip,
+					       int current_ma)
+{
+	int i, rc;
+	u8 usb_cur_val;
+
+	for (i = ARRAY_SIZE(usb_current_table) - 1; i >= 0; i--) {
+		if (current_ma >= usb_current_table[i])
+			break;
+	}
+	if (i < 0) {
+		dev_err(chip->dev,
+			"Cannot find %dma current_table using %d\n",
+			current_ma, CURRENT_150_MA);
+
+		rc = smbchg_sec_masked_write_fac(chip,
+					chip->usb_chgpth_base + CHGPTH_CFG,
+					CFG_USB_2_3_SEL_BIT, CFG_USB_2);
+		rc |= smbchg_masked_write_fac(chip,
+					      chip->usb_chgpth_base + CMD_IL,
+					   USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
+					   USBIN_LIMITED_MODE | USB51_100MA);
+		if (rc < 0)
+			dev_err(chip->dev, "Couldn't set %dmA rc=%d\n",
+					CURRENT_150_MA, rc);
+
+		return rc;
+	}
+
+	usb_cur_val = i & USBIN_INPUT_MASK;
+	rc = smbchg_sec_masked_write_fac(chip, chip->usb_chgpth_base + IL_CFG,
+				USBIN_INPUT_MASK, usb_cur_val);
+	if (rc < 0) {
+		dev_err(chip->dev, "cannot write to config c rc = %d\n", rc);
+		return rc;
+	}
+
+	rc = smbchg_masked_write_fac(chip, chip->usb_chgpth_base + CMD_IL,
+				USBIN_MODE_CHG_BIT, USBIN_HC_MODE);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write cfg 5 rc = %d\n", rc);
+
+	return rc;
+}
+
+static ssize_t force_chg_iusb_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long usb_curr;
+
+	r = kstrtoul(buf, 0, &usb_curr);
+	if (r) {
+		pr_err("Invalid iusb value = %lu\n", usb_curr);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smbchg_set_high_usb_chg_current_fac(the_chip,
+						usb_curr);
+	if (r < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't set USBIN Current = %d r = %d\n",
+			(int)usb_curr, (int)r);
+		return r;
+	}
+	return r ? r : count;
+}
+
+static ssize_t force_chg_iusb_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		ret = -ENODEV;
+		goto end;
+	}
+
+	ret = smbchg_read(the_chip, &value,
+			  the_chip->usb_chgpth_base + IL_CFG, 1);
+	if (ret) {
+		pr_err("USBIN Current failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = usb_current_table[(value & USBIN_INPUT_MASK)];
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_iusb, 0664,
+		force_chg_iusb_show,
+		force_chg_iusb_store);
+
+
+#define PRECHG_OFFSET 100
+#define PRECHG_STEP 50
+#define PRECHG_TOP 250
+#define PRECHG_REG_SHIFT 5
+#define PRECHG_MASK 0x7
+#define PRECHG_CFG 0xF1
+#define PRECHG_MAX 550
+#define PRECHG_MAX_LVL 0x4
+static ssize_t force_chg_itrick_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long chg_current;
+	int i;
+
+	r = kstrtoul(buf, 0, &chg_current);
+	if (r) {
+		pr_err("Invalid pre-charge value = %lu\n", chg_current);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	if (chg_current >= PRECHG_MAX) {
+		i = PRECHG_MAX_LVL;
+		goto prechg_write;
+	}
+
+	for (i = PRECHG_TOP; i > PRECHG_OFFSET; i = i - PRECHG_STEP) {
+		if (chg_current >= i)
+			break;
+	}
+
+	i = (i - PRECHG_OFFSET) / PRECHG_STEP;
+
+	i = i & PRECHG_MASK;
+
+prechg_write:
+	r = smbchg_sec_masked_write_fac(the_chip,
+					the_chip->chgr_base + PRECHG_CFG,
+					PRECHG_MASK, i);
+	if (r < 0) {
+		dev_err(the_chip->dev,
+			"Couldn't set Pre-Charge Current = %d r = %d\n",
+			(int)chg_current, (int)r);
+		return r;
+	}
+
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_itrick_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smbchg_read(the_chip,
+			  &value, the_chip->chgr_base + PRECHG_CFG, 1);
+	if (ret) {
+		pr_err("Pre-Charge Current failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = value & PRECHG_MASK;
+
+	if (state >= PRECHG_MAX_LVL)
+		state = PRECHG_MAX;
+	else
+		state = (state * PRECHG_STEP) + PRECHG_OFFSET;
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_itrick, 0664,
+		   force_chg_itrick_show,
+		   force_chg_itrick_store);
+
+static ssize_t force_chg_usb_otg_ctl_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid otg ctl value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	if (mode)
+		r = smbchg_masked_write_fac(the_chip,
+					the_chip->bat_if_base + CMD_CHG_REG,
+					(EN_BAT_CHG_BIT | OTG_EN),
+					(EN_BAT_CHG_BIT | OTG_EN));
+	else
+		r = smbchg_masked_write_fac(the_chip,
+					the_chip->bat_if_base + CMD_CHG_REG,
+					(EN_BAT_CHG_BIT | OTG_EN),
+					0);
+
+	if (r < 0)
+		dev_err(the_chip->dev,
+			"Couldn't set OTG mode = %d r = %d\n",
+			(int)mode, (int)r);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_usb_otg_ctl_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = smbchg_read(the_chip,
+			  &value,
+			  the_chip->bat_if_base + CMD_CHG_REG,
+			  1);
+	if (ret) {
+		pr_err("OTG_EN failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (OTG_EN & value) ? 1 : 0;
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_usb_otg_ctl, 0664,
+		   force_chg_usb_otg_ctl_show,
+		   force_chg_usb_otg_ctl_store);
+
 static bool smbchg_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -5296,6 +5856,61 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 	dump_regs(chip);
 	create_debugfs_entries(chip);
+
+	the_chip = chip;
+
+	if (chip->factory_mode) {
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_usb_suspend);
+		if (rc) {
+			pr_err("couldn't create force_chg_usb_suspend\n");
+			goto unregister_dc_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_fail_clear);
+		if (rc) {
+			pr_err("couldn't create force_chg_fail_clear\n");
+			goto unregister_dc_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_auto_enable);
+		if (rc) {
+			pr_err("couldn't create force_chg_auto_enable\n");
+			goto unregister_dc_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+				&dev_attr_force_chg_ibatt);
+		if (rc) {
+			pr_err("couldn't create force_chg_ibatt\n");
+			goto unregister_dc_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_iusb);
+		if (rc) {
+			pr_err("couldn't create force_chg_iusb\n");
+			goto unregister_dc_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+					&dev_attr_force_chg_itrick);
+		if (rc) {
+			pr_err("couldn't create force_chg_itrick\n");
+			goto unregister_dc_psy;
+		}
+
+		rc = device_create_file(chip->dev,
+				&dev_attr_force_chg_usb_otg_ctl);
+		if (rc) {
+			pr_err("couldn't create force_chg_usb_otg_ctl\n");
+			goto unregister_dc_psy;
+		}
+
+	}
+
 	dev_info(chip->dev, "SMBCHG successfully probed batt=%d dc = %d usb = %d\n",
 			get_prop_batt_present(chip),
 			chip->dc_present, chip->usb_present);
@@ -5319,6 +5934,23 @@ static int smbchg_remove(struct spmi_device *spmi)
 
 	if (chip->dc_psy_type != -EINVAL)
 		power_supply_unregister(&chip->dc_psy);
+
+	if (chip->factory_mode) {
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_usb_suspend);
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_fail_clear);
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_auto_enable);
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_ibatt);
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_iusb);
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_itrick);
+		device_remove_file(chip->dev,
+				   &dev_attr_force_chg_usb_otg_ctl);
+	}
 
 	power_supply_unregister(&chip->batt_psy);
 	smbchg_regulator_deinit(chip);
