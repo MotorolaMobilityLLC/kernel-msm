@@ -283,7 +283,7 @@ void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401, bool do_ack)
 	list_replace_init(&ps_stm401->quickpeek_command_list, &temp_list);
 	mutex_unlock(&ps_stm401->qp_list_lock);
 
-	flush_work(&ps_stm401->quickpeek_work);
+	cancel_work_sync(&ps_stm401->quickpeek_work);
 
 	/* From here, no quickpeek interrupts will be handled, because we have
 	   the main lock. Also, the quickpeek workqueue is idle, so basically
