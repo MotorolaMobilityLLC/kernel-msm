@@ -93,10 +93,11 @@ EXPORT_SYMBOL_GPL(m4sensorhub_reg_shutdown);
      reg - Register to be read
      value - array to return data.  Needs to be at least register's size
      num - number of bytes to read
+	bufferaccess if reading a register or a buffer
 */
 int m4sensorhub_reg_read_n(struct m4sensorhub_data *m4sensorhub,
 			   enum m4sensorhub_reg reg, unsigned char *value,
-			   short num)
+			   short num, bool bufferaccess)
 {
 	int ret = -EINVAL;
 	u8 stack_buf[M4SH_MAX_STACK_BUF_SIZE];
@@ -113,9 +114,10 @@ int m4sensorhub_reg_read_n(struct m4sensorhub_data *m4sensorhub,
 		return -EINVAL;
 	}
 
-	if ((reg < M4SH_REG__NUM) && num <= M4SH_MAX_REG_SIZE &&
-	     register_info_tbl[reg].offset + num <=
-	     m4sensorhub_mapsize(reg)) {
+	if (((reg < M4SH_REG__NUM) && num <= M4SH_MAX_REG_SIZE) &&
+			(bufferaccess == true || register_info_tbl[reg].offset + num
+				<= m4sensorhub_mapsize(reg))) {
+
 		buf = (num > (M4SH_MAX_STACK_BUF_SIZE-2))
 			 ? kmalloc(num+2, GFP_KERNEL) : stack_buf;
 		if (!buf) {
