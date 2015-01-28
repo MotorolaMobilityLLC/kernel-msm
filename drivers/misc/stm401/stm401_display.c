@@ -270,7 +270,7 @@ error:
 	goto exit;
 }
 
-void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401)
+void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401, bool do_ack)
 {
 	struct stm401_quickpeek_message *entry, *entry_tmp;
 	struct list_head temp_list;
@@ -301,7 +301,9 @@ void stm401_quickpeek_reset_locked(struct stm401_data *ps_stm401)
 
 	list_for_each_entry_safe(entry, entry_tmp, &temp_list, list) {
 		list_del(&entry->list);
-		stm401_quickpeek_status_ack(ps_stm401, entry, AOD_QP_ACK_DONE);
+		if (do_ack)
+			stm401_quickpeek_status_ack(ps_stm401, entry,
+							AOD_QP_ACK_DONE);
 		kfree(entry);
 	}
 
@@ -499,7 +501,7 @@ static int stm401_takeback_locked(struct stm401_data *ps_stm401)
 	stm401_wake(ps_stm401);
 
 	if (ps_stm401->mode == NORMALMODE) {
-		stm401_quickpeek_reset_locked(ps_stm401);
+		stm401_quickpeek_reset_locked(ps_stm401, true);
 
 		/* New I2C Implementation */
 		stm401_cmdbuff[0] = STM401_PEEKSTATUS_REG;
