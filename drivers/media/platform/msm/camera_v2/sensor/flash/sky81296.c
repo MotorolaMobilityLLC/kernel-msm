@@ -15,7 +15,7 @@
 #include "msm_led_flash.h"
 
 /* Logging macro */
-#define SKY81296_DRIVER_DEBUG
+/*#define SKY81296_DRIVER_DEBUG*/
 
 #undef CDBG
 #ifdef SKY81296_DRIVER_DEBUG
@@ -26,9 +26,23 @@
 
 #define FLASH_NAME "qcom,sky81296"
 
+#define LED_NUM_CONNECTED  2
+
 #define LED_TORCH_CURRENT_REG    0x03
 #define LED1_STROBE_CURRENT_REG  0x00
 #define LED2_STROBE_CURRENT_REG  0x01
+
+#define LED_MAX_STROBE_CURRENT      1500
+#define LED_DEFAULT_STROBE_CURRENT  0x05 /* 500 mA each */
+#define LED_STROBE_EN_DEFAULT       0x22 /* both enabled */
+
+#define LED_MAX_TORCH_CURRENT      250
+#define LED_DEFAULT_TORCH_CURRENT  0x11 /* 50 mA each */
+#define LED_TORCH_EN_DEFAULT       0x11 /* both enabled */
+
+#define LED_MAX_TOTAL_STROBE_CURRENT  1500
+#define LED_MAX_TOTAL_TORCH_CURRENT    250
+
 
 static struct msm_led_flash_ctrl_t fctrl;
 static struct i2c_driver sky81296_i2c_driver;
@@ -96,14 +110,14 @@ static struct msm_camera_i2c_reg_array sky81296_release_array[] = {
 };
 
 static struct msm_camera_i2c_reg_array sky81296_low_array[] = {
-	{0x03, 0x11},
-	{0x04, 0x11},
+	{0x03, LED_DEFAULT_TORCH_CURRENT},
+	{0x04, LED_TORCH_EN_DEFAULT},
 };
 
 static struct msm_camera_i2c_reg_array sky81296_high_array[] = {
-	{0x00, 0x05},
-	{0x01, 0x05},
-	{0x04, 0x22},
+	{0x00, LED_DEFAULT_STROBE_CURRENT},
+	{0x01, LED_DEFAULT_STROBE_CURRENT},
+	{0x04, LED_STROBE_EN_DEFAULT},
 };
 
 static void __exit msm_flash_sky81296_i2c_remove(void)
@@ -173,21 +187,48 @@ static int msm_flash_sky81296_led_low(struct msm_led_flash_ctrl_t *fctrl)
 	uint8_t led1_reg_val = 0x00;
 	uint8_t led2_reg_val = 0x00;
 	uint8_t reg_val = 0x00;
+	uint32_t total_current = 0;
 	int tbl_size = sizeof(sky81296_torch_values) /
 			sizeof(struct sky81296_current_to_reg);
 
-	led1_reg_val = msm_flash_sky81296_get_reg_value(sky81296_torch_values,
-			tbl_size, fctrl->torch_op_current[0]);
+	/* set defaults */
+	sky81296_low_array[0].reg_data = LED_DEFAULT_TORCH_CURRENT;
+	sky81296_low_array[1].reg_data = LED_TORCH_EN_DEFAULT;
 
-	led2_reg_val = msm_flash_sky81296_get_reg_value(sky81296_torch_values,
-			tbl_size, fctrl->torch_op_current[1]);
+	total_current = fctrl->torch_op_current[0] +
+			fctrl->torch_op_current[1];
 
-	reg_val = (led2_reg_val << 4) | led1_reg_val;
-	CDBG("%s:%d - current level %d %d reg:0x%x\n", __func__, __LINE__,
-			fctrl->torch_op_current[0], fctrl->torch_op_current[1],
-			reg_val);
+	if ((total_current > LED_MAX_TOTAL_TORCH_CURRENT) ||
+		(fctrl->torch_op_current[0] == 0 &&
+		fctrl->torch_op_current[1] == 0)) {
+		CDBG("%s:%d - use default current reg:0x%x\n",
+				__func__, __LINE__,
+				sky81296_low_array[0].reg_data);
+	} else {
+		led1_reg_val = msm_flash_sky81296_get_reg_value(
+				sky81296_torch_values,
+				tbl_size,
+				fctrl->torch_op_current[0]);
 
-	sky81296_low_array[0].reg_data = reg_val;
+		led2_reg_val = msm_flash_sky81296_get_reg_value(
+				sky81296_torch_values,
+				tbl_size,
+				fctrl->torch_op_current[1]);
+
+		reg_val = (led2_reg_val << 4) | led1_reg_val;
+		CDBG("%s:%d - current level %d %d reg:0x%x\n",
+				__func__, __LINE__,
+				fctrl->torch_op_current[0],
+				fctrl->torch_op_current[1],
+				reg_val);
+
+		sky81296_low_array[0].reg_data = reg_val;
+		/* if current level is 0, then turn off LED */
+		if (fctrl->torch_op_current[1] == 0)
+			sky81296_low_array[1].reg_data &= 0x0F;
+		if (fctrl->torch_op_current[0] == 0)
+			sky81296_low_array[1].reg_data &= 0xF0;
+	}
 	return msm_flash_led_low(fctrl);
 }
 
@@ -195,21 +236,49 @@ static int msm_flash_sky81296_led_high(struct msm_led_flash_ctrl_t *fctrl)
 {
 	uint8_t led1_reg_val = 0x00;
 	uint8_t led2_reg_val = 0x00;
+	uint32_t total_current = 0;
 	int tbl_size = sizeof(sky81296_strobe_values) /
 			sizeof(struct sky81296_current_to_reg);
 
-	led1_reg_val = msm_flash_sky81296_get_reg_value(sky81296_strobe_values,
-			tbl_size, fctrl->flash_op_current[0]);
+	/* set defaults */
+	sky81296_high_array[0].reg_data = LED_DEFAULT_STROBE_CURRENT;
+	sky81296_high_array[1].reg_data = LED_DEFAULT_STROBE_CURRENT;
+	sky81296_high_array[2].reg_data = LED_STROBE_EN_DEFAULT;
 
-	led2_reg_val = msm_flash_sky81296_get_reg_value(sky81296_strobe_values,
-			tbl_size, fctrl->flash_op_current[1]);
+	total_current = fctrl->flash_op_current[0] +
+			fctrl->flash_op_current[1];
 
-	CDBG("%s:%d - current level %d %d reg:0x%x:0x%x\n", __func__, __LINE__,
-			fctrl->flash_op_current[0], fctrl->flash_op_current[1],
-			led1_reg_val, led2_reg_val);
+	if ((total_current > LED_MAX_TOTAL_STROBE_CURRENT) ||
+		(fctrl->flash_op_current[0] == 0 &&
+		fctrl->flash_op_current[1] == 0)) {
+		CDBG("%s:%d - use default current reg:0x%x\n",
+				__func__, __LINE__,
+				sky81296_high_array[0].reg_data);
+	} else {
+		led1_reg_val = msm_flash_sky81296_get_reg_value(
+				sky81296_strobe_values,
+				tbl_size,
+				fctrl->flash_op_current[0]);
 
-	sky81296_high_array[0].reg_data = led1_reg_val;
-	sky81296_high_array[1].reg_data = led2_reg_val;
+		led2_reg_val = msm_flash_sky81296_get_reg_value(
+				sky81296_strobe_values,
+				tbl_size,
+				fctrl->flash_op_current[1]);
+
+		CDBG("%s:%d - current level %d %d reg:0x%x:0x%x\n",
+				__func__, __LINE__,
+				fctrl->flash_op_current[0],
+				fctrl->flash_op_current[1],
+				led1_reg_val, led2_reg_val);
+
+		sky81296_high_array[0].reg_data = led1_reg_val;
+		sky81296_high_array[1].reg_data = led2_reg_val;
+		/* if current level is 0, then turn off LED */
+		if (fctrl->flash_op_current[1] == 0)
+			sky81296_high_array[2].reg_data &= 0x0F;
+		if (fctrl->flash_op_current[0] == 0)
+			sky81296_high_array[2].reg_data &= 0xF0;
+	}
 	return msm_flash_led_high(fctrl);
 }
 
@@ -337,6 +406,12 @@ static struct msm_led_flash_ctrl_t fctrl = {
 	.flash_i2c_client = &sky81296_i2c_client,
 	.reg_setting = &sky81296_regs,
 	.func_tbl = &sky81296_func_tbl,
+	.flash_num_sources = LED_NUM_CONNECTED,
+	.flash_max_current[0] = LED_MAX_STROBE_CURRENT,
+	.flash_max_current[1] = LED_MAX_STROBE_CURRENT,
+	.torch_num_sources = LED_NUM_CONNECTED,
+	.torch_max_current[0] = LED_MAX_TORCH_CURRENT,
+	.torch_max_current[1] = LED_MAX_TORCH_CURRENT,
 };
 
 /*subsys_initcall(msm_flash_i2c_add_driver);*/
