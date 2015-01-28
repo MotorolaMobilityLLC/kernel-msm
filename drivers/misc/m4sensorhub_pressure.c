@@ -36,7 +36,7 @@
 #include <linux/iio/events.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
-#include <linux/iio/m4sensorhub_pressure.h>
+#include <linux/iio/m4sensorhub/m4sensorhub_pressure.h>
 
 #define m4sensorhub_pressure_DRIVER_NAME	"m4sensorhub_pressure"
 

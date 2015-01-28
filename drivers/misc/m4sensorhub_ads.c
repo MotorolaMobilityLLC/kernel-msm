@@ -35,21 +35,23 @@
 #include <linux/iio/events.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
-#include <linux/iio/m4sensorhub_ads.h>
+#include <linux/iio/m4sensorhub/m4sensorhub_ads.h>
 
 #define m4sensorhub_ads_DRIVER_NAME	"m4sensorhub_ads"
+#define ADS_NUM_SAMPLES 500
+#define ADS_NUM_SAMPLES_PER_TRANS 64
+#define MAX_BYTES_PER_TRANS (sizeof(int) * ADS_NUM_SAMPLES_PER_TRANS)
 
 struct m4sensorhub_ads_drvdata {
 	struct m4sensorhub_data *m4sensorhub;
 	int samplerate;
 	bool enable;
-	struct delayed_work read_data_work;
 	struct platform_device      *pdev;
 	struct m4sensorhub_ads_data read_data;
 	struct mutex				mutex;
 };
 
-#define DATA_SIZE_IN_BITS  (sizeof(uint8_t) * NUM_ELEMENTS * 8)
+#define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ads_data) * 8)
 
 static const struct iio_chan_spec m4sensorhub_ads_channels[] = {
 	{
@@ -69,31 +71,60 @@ static const struct iio_chan_spec m4sensorhub_ads_channels[] = {
 };
 
 
-static void m4ads_work_func(struct work_struct *work)
+static void m4_read_ads_data_locked(struct m4sensorhub_ads_drvdata *priv_data)
 {
-	struct m4sensorhub_ads_drvdata *priv_data = container_of(work,
-                            struct m4sensorhub_ads_drvdata,
-                            read_data_work.work);
+	int ret, i, dataremaining;
+	int* data;
+	int bufsize = MAX_BYTES_PER_TRANS;
 	struct iio_dev *iio_dev = platform_get_drvdata(priv_data->pdev);
 
-	mutex_lock(&(priv_data->mutex));
-	/*
-	TODO : read data from  M4, once we have the register map and
-	implementation on M4
-	*/
-	priv_data->read_data.timestamp = iio_get_time_ns();
 
-	iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
+	data = kzalloc(MAX_BYTES_PER_TRANS, GFP_KERNEL);
+	if (data == NULL) {
+		pr_err("%s:OOM\n", __func__);
+		ret = -ENOMEM;
+		goto err;
+	}
 
-	queue_delayed_work(system_freezable_wq, &(priv_data->read_data_work),
-		msecs_to_jiffies(priv_data->samplerate));
+	/* We start off with reading ADS_NUM_SAMPLES, but we do
+	reads in chunks of ADS_NUM_SAMPLES_PER_TRANS  */
+	dataremaining = sizeof(int)*ADS_NUM_SAMPLES;
 
-	mutex_unlock(&(priv_data->mutex));
+	while(dataremaining > 0)
+	{
+		if (dataremaining > MAX_BYTES_PER_TRANS)
+			bufsize = MAX_BYTES_PER_TRANS;
+		else
+			bufsize = dataremaining;
+
+		ret = m4sensorhub_reg_read_n(priv_data->m4sensorhub,
+				M4SH_REG_ADSSENSOR_READBUFFEREDDATA,
+				(u8*)data, bufsize, true);
+
+		if (ret < 0) {
+			pr_err("%s: unable to read data (%d)\n", __func__, ret);
+			goto err;
+		}
+
+		for (i=0; i < bufsize/sizeof(int); i++) {
+			priv_data->read_data.data = data[i];
+			priv_data->read_data.timestamp = iio_get_time_ns();
+
+			iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
+		}
+
+		dataremaining = dataremaining - ret;
+	}
+
+err:
+	if (data)
+		kfree(data);
 }
 
 static void m4sensorhub_ads_panic_restore(struct m4sensorhub_data *m4sensorhub,
                 void *data)
 {
+	int ret;
 	struct m4sensorhub_ads_drvdata *priv_data =
 			(struct m4sensorhub_ads_drvdata *)data;
 
@@ -102,19 +133,34 @@ static void m4sensorhub_ads_panic_restore(struct m4sensorhub_data *m4sensorhub,
 	if (priv_data->samplerate < 0)
 		goto err;
 
-	/*
-		TODO : Send sample rate to M4, once we have the register map and
-		implementation on M4
-	*/
+	ret = m4sensorhub_reg_write(priv_data->m4sensorhub,
+			M4SH_REG_ADSSENSOR_SAMPLERATE,
+			(char *)&(priv_data->samplerate), m4sh_no_mask);
 
-	cancel_delayed_work(&(priv_data->read_data_work));
+	if (ret != m4sensorhub_reg_getsize(
+			priv_data->m4sensorhub,
+			M4SH_REG_ADSSENSOR_SAMPLERATE)) {
+		pr_err("%s:Unable to set delay\n", __func__);
+		goto err;
+	}
+
 	if (priv_data->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(priv_data->read_data_work),
-		msecs_to_jiffies(priv_data->samplerate));
+		m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+	else
+		m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
 err:
 	mutex_unlock(&(priv_data->mutex));
 }
 
+static void m4_handle_ads_irq(enum m4sensorhub_irqs int_event,
+							void *data)
+{
+	struct iio_dev *iio_dev = (struct iio_dev *)data;
+	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
+	mutex_lock(&(priv_data->mutex));
+	m4_read_ads_data_locked(priv_data);
+	mutex_unlock(&(priv_data->mutex));
+}
 
 static int m4sensorhub_ads_driver_initcallback(struct init_calldata *arg)
 {
@@ -123,10 +169,17 @@ static int m4sensorhub_ads_driver_initcallback(struct init_calldata *arg)
 	int ret;
 
 	priv_data->m4sensorhub = arg->p_m4sensorhub_data;
-	INIT_DELAYED_WORK(&(priv_data->read_data_work), m4ads_work_func);
 	ret = m4sensorhub_panic_register(priv_data->m4sensorhub, PANICHDL_ADS_RESTORE,
 				m4sensorhub_ads_panic_restore, priv_data);
+	if (ret < 0)
+		pr_err("%s: failed panic register(%d)\n", __func__, ret);
 
+	ret = m4sensorhub_irq_register(priv_data->m4sensorhub,
+			M4SH_IRQ_ADS_DATA_READY, m4_handle_ads_irq,
+			iio_dev, 1);
+
+	if (ret < 0)
+		pr_err("%s: failed irq register(%d)\n", __func__, ret);
 
 	return 0;
 }
@@ -147,27 +200,33 @@ static ssize_t m4sensorhub_ads_store_setdelay(struct device *dev,
 	if (ret < 0)
 		return ret;
 
-	if (samplerate < 0) {
-		pr_err("%s: negative sample rate, rejecting\n", __func__);
+	if (samplerate < -1) {
+		pr_err("%s: non -1 negative sample rate, rejecting\n", __func__);
 		return -EINVAL;
 	}
 
 	mutex_lock(&(priv_data->mutex));
 	if (samplerate != priv_data->samplerate) {
-		/*
-		TODO : Send sample rate to M4, once we have the register map and
-		implementation on M4
-		*/
+
+		ret = m4sensorhub_reg_write(priv_data->m4sensorhub,
+				M4SH_REG_ADSSENSOR_SAMPLERATE,
+				(char *)&samplerate, m4sh_no_mask);
+
+		if (ret != m4sensorhub_reg_getsize(
+				priv_data->m4sensorhub,
+				M4SH_REG_ADSSENSOR_SAMPLERATE)) {
+			pr_err("%s:Unable to set delay\n", __func__);
+			goto err;
+		}
 
 		priv_data->samplerate = samplerate;
 
-		/* setup the work to start reading data at this rate */
-		cancel_delayed_work(&(priv_data->read_data_work));
-		queue_delayed_work(system_freezable_wq, &(priv_data->read_data_work),
-			msecs_to_jiffies(priv_data->samplerate));
-
+		if (priv_data->samplerate > 0)
+			m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+		else
+			m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
 	}
-
+err:
 	mutex_unlock(&(priv_data->mutex));
 	return count;
 }
@@ -197,10 +256,7 @@ static ssize_t m4sensorhub_ads_show_iiodata(struct device *dev,
 	struct iio_dev *iio_dev =
 						platform_get_drvdata(pdev);
 	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
-	return snprintf(buf, PAGE_SIZE, "ads[0]:0x%02x ads[1]:0x%02x \
-					ads[2]:0x%02x \n",
-		priv_data->read_data.data[0], priv_data->read_data.data[1],
-		priv_data->read_data.data[2]);
+	return snprintf(buf, PAGE_SIZE, "ads: %d\n", priv_data->read_data.data);
 }
 static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 					m4sensorhub_ads_show_iiodata,
@@ -276,7 +332,7 @@ static int m4sensorhub_ads_probe(struct platform_device *pdev)
 	priv_data->enable = false;
 	priv_data->m4sensorhub = NULL;
 	mutex_init(&(priv_data->mutex));
-	memset(&(priv_data->read_data.data), 0xff, sizeof(uint8_t) * NUM_ELEMENTS);
+	priv_data->read_data.data = -1;
 
 	platform_set_drvdata(pdev, iio_dev);
 
@@ -327,7 +383,8 @@ static int __exit m4sensorhub_ads_remove(struct platform_device *pdev)
 	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
 
 	mutex_lock(&(priv_data->mutex));
-	cancel_delayed_work(&(priv_data->read_data_work));
+	m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+	m4sensorhub_irq_unregister(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
 	m4sensorhub_unregister_initcall(
 				m4sensorhub_ads_driver_initcallback);
 
