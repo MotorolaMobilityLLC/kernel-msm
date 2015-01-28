@@ -113,9 +113,9 @@ static int stm401_quickpeek_status_ack(struct stm401_data *ps_stm401,
 	cmdbuff[1] = req_bit;
 	cmdbuff[2] = qp_message ? qp_message->message : 0x00;
 	cmdbuff[3] = payload;
-	if (stm401_i2c_write(ps_stm401, cmdbuff, 4) < 0) {
+	if (stm401_i2c_write_no_reset(ps_stm401, cmdbuff, 4) < 0) {
 		dev_err(&ps_stm401->client->dev,
-			"Write peek status reg failed\n");
+			"%s: Write peek status reg failed\n", __func__);
 		ret = -EIO;
 	}
 
