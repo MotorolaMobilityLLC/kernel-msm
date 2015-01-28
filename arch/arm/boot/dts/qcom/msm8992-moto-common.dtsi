@@ -36,6 +36,12 @@
 };
 
 &tlmm_pinmux {
+	spi0_active {
+		/* MOSI, MISO, CS_N, CLK */
+		qcom,pins = <&gp 0>, <&gp 1>, <&gp 2>, <&gp 3>;
+		qcom,num-grp-pins = <4>;
+	};
+
 	pmx_i2c_4 {
 		qcom,pins = <&gp 19>, <&gp 20>; /* SDA, SCL */
 		qcom,num-grp-pins = <2>;
@@ -693,6 +699,19 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&stm401_out_default &stm401_in_default>;
 		};
+	};
+
+	/* The QCOM base node is just wrong in many aspects.... fix it here? */
+	spi_0: spi@f9923000 {
+		reg = <0xf9923000 0x1000>,
+		      <0xf9904000 0x19000>;
+
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi0_default>;
+		pinctrl-1 = <&spi0_default>;
+
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
 	};
 
 	spi_7: spi@f9963000 { /* BLSP2 QUP1 */
