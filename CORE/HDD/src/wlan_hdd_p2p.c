@@ -448,11 +448,35 @@ static int wlan_hdd_p2p_start_remain_on_channel(
     hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
     hdd_adapter_t *pAdapter_temp;
     v_BOOL_t isGoPresent = VOS_FALSE;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
-    hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
-    hdd_remain_on_chan_ctx_t *pRemainChanCtx = cfgState->remain_on_chan_ctx;
-    rem_on_channel_request_type_t request_type = pRemainChanCtx->rem_on_chan_request;
+    hdd_context_t *pHddCtx;
+    hdd_cfg80211_state_t *cfgState;
+    hdd_remain_on_chan_ctx_t *pRemainChanCtx;
+    rem_on_channel_request_type_t request_type;
+    int ret = 0;
 
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid, ret = %d",__func__, ret);
+        return ret;
+    }
+    cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
+    if (NULL == cfgState)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: cfgState is not valid ",__func__);
+        return -EINVAL;
+    }
+    pRemainChanCtx = cfgState->remain_on_chan_ctx;
+    request_type = pRemainChanCtx->rem_on_chan_request;
     /* Initialize Remain on chan timer */
     status = vos_timer_init(&pRemainChanCtx->hdd_remain_on_chan_timer,
             VOS_TIMER_TYPE_SW,
@@ -2518,7 +2542,7 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
 
 }
 
-void hdd_p2p_roc_work_queue(struct work_struct *work)
+void __hdd_p2p_roc_work_queue(struct work_struct *work)
 {
     hdd_adapter_t *pAdapter = container_of(to_delayed_work(work), hdd_adapter_t, roc_work);
     hddLog( VOS_TRACE_LEVEL_INFO, FL("%s: "), __func__);
@@ -2526,3 +2550,10 @@ void hdd_p2p_roc_work_queue(struct work_struct *work)
     return;
 }
 
+void hdd_p2p_roc_work_queue(struct work_struct *work)
+{
+    vos_ssr_protect(__func__);
+    __hdd_p2p_roc_work_queue(work);
+    vos_ssr_unprotect(__func__);
+    return;
+}
