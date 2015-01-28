@@ -75,6 +75,7 @@ static const char *irq_name[] = {
 	[M4SH_IRQ_HRSENSOR_DATA_READY]    = "HRSENSOR_DATA_READY",
 	[M4SH_IRQ_AP_ALARM_EXPIRED]       = "AP_ALARM_EXPIRED",
 	[M4SH_IRQ_HEARTRATE_DATA_READY]   = "HR_DATA_READY",
+	[M4SH_IRQ_ADS_DATA_READY]         = "ADS_DATA_READY",
 };
 
 /* -------------- Local Data Structures ------------- */

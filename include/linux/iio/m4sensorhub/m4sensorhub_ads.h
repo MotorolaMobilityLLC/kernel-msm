@@ -21,11 +21,9 @@
 
 #include <linux/types.h>
 
-/* ADS will give out 3 bytes data*/
-#define NUM_ELEMENTS 3
 
 struct m4sensorhub_ads_data {
-	uint8_t data[NUM_ELEMENTS];
+	int data;
 	long long timestamp;
 };
 

@@ -130,7 +130,7 @@ struct m4sensorhub_data *m4sensorhub_client_get_drvdata(void);
 */
 #define m4sensorhub_reg_read(m4sensorhub, reg, value) \
 	m4sensorhub_reg_read_n(m4sensorhub, reg, value, \
-			       m4sensorhub_reg_getsize(m4sensorhub, reg))
+			       m4sensorhub_reg_getsize(m4sensorhub, reg), false)
 
 /* m4sensorhub_reg_write()
 
@@ -151,6 +151,9 @@ struct m4sensorhub_data *m4sensorhub_client_get_drvdata(void);
 int m4sensorhub_reg_init(struct m4sensorhub_data *m4sensorhub);
 int m4sensorhub_reg_shutdown(struct m4sensorhub_data *m4sensorhub);
 int m4sensorhub_reg_read_n(struct m4sensorhub_data *m4sensorhub,
+			   enum m4sensorhub_reg reg, unsigned char *value,
+			   short num, bool bufferaccess);
+int m4sensorhub_reg_read_buffer_n(struct m4sensorhub_data *m4sensorhub,
 			   enum m4sensorhub_reg reg, unsigned char *value,
 			   short num);
 int m4sensorhub_reg_write_n(struct m4sensorhub_data *m4sensorhub,
