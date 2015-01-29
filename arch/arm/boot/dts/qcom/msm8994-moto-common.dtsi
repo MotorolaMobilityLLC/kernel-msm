@@ -1424,10 +1424,6 @@
 	regulator-always-on;
 };
 
-&cnss {
-	wlan-112 = <&msm_gpio 112 0>;
-};
-
 &pm8994_l22 {
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
