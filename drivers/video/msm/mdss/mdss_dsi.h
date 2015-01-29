@@ -309,7 +309,6 @@ struct mdss_dsi_ctrl_pdata {
 	int pwm_enabled;
 	int idle;
 	bool bklt_off;
-	bool blanked;
 	bool panel_bias_vreg;
 
 	bool cmd_sync_wait_broadcast;
