@@ -698,9 +698,6 @@
 	ti,c55-ctrl {
 		compatible = "ti,c55-ctrl";
 		reg = <0 0>;
-
-		ti,mclk-absent;
-
 		gpios = <&msm_gpio 21 2>,     /* gpio_core */
 			<&msm_gpio 8 0>,      /* gpio_reset */
 			<&msm_gpio 66 1>,     /* gpio_ap_int */
