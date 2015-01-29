@@ -281,7 +281,7 @@
 	};
 
 	pmx_tfa9890_reset {
-		qcom,pins = <&gp 105>;
+		qcom,pins = <&gp 33>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "tfa9890-reset";
@@ -1214,10 +1214,10 @@
 		pinctrl-0 = <&drv2605_en_default>;
 	};
 
-	tfa9890@34 {
+	tfa9890: tfa9890@34 {
 		compatible = "nxp,tfa9890";
 		reg = <0x34>;
-		gpios = <&msm_gpio 105 0>;     /* RESET */
+		gpios = <&msm_gpio 33 0>;     /* RESET */
 		tfa_vdd-supply = <&pm8994_s4>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
