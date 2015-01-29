@@ -1395,6 +1395,10 @@
 	qcom,always-send-current;
 };
 
+&pm8994_l29 {
+	regulator-always-on;
+};
+
 &mdss_dsi0 {
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
