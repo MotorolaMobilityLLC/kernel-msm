@@ -1807,7 +1807,15 @@ int adm_open(int port_id, int path, int rate, int channel_mode,
 			this_adm.ec_ref_rx = -1;
 		}
 
-		open.topology_id = topology;
+/***********************************************************************************/
+/***** Hack the topology for MONO MIC here which has HPF module in it. *************/
+		if (path == ADM_PATH_LIVE_REC) {
+			open.topology_id = ADM_CMD_COPP_OPENOPOLOGY_ID_MIC_MONO_AUDIO_COPP;
+			pr_debug("%s: Hacking topology ID in record path 0x%X\n", __func__, open.topology_id);
+		} else {
+			open.topology_id = topology;
+		}
+/***********************************************************************************/
 		open.dev_num_channel = channel_mode & 0x00FF;
 		open.bit_width = bit_width;
 		WARN_ON((perf_mode == ULTRA_LOW_LATENCY_PCM_MODE) &&
