@@ -303,3 +303,10 @@
 		<&msm_gpio 89 0>,       /* SH Wake      */
 		<&msm_gpio 16 0>;       /* SH Wake Resp */
 };
+
+&drv2605 {
+	gpios = <&msm_gpio 91 0>;        /* EN_GPIO */
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&drv2605_en_default>;
+};
