@@ -273,8 +273,20 @@
 	pmx_tfa9890_reset {
 		qcom,pins = <&gp 105>;
 	};
+
+	batt_discon_warn_n {
+		qcom,pins = <&gp 64>;
+	};
 };
 
 &tfa9890 {
 	gpios = <&msm_gpio 105 0>;     /* RESET */
+};
+
+&soc {
+	factory_support {
+		gpios = <&pm8994_gpios 8 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&pmi8994_gpios 5 0x1>, /* GPIOF_IN */
+			<&msm_gpio 64 0x1>; /* GPIOF_IN */
+	};
 };
