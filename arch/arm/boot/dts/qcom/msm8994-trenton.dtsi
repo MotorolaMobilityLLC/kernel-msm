@@ -262,3 +262,9 @@
 					  "CAM_VANA";
 	};
 };
+
+&bcm2079x {
+	gpios = <&pm8994_gpios 9 0>, /* NFC_ENABLE_N */
+		<&msm_gpio 90 0>, /* NFC_IRQ */
+		<&pm8994_gpios 13 0>; /* NFC_POWER_ON */
+};
