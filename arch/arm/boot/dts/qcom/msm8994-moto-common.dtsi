@@ -378,6 +378,10 @@
 
 };
 
+&spi_0 {
+	status = "disabled";
+};
+
 &sdhc_1 {
 	vdd-supply = <&pm8994_l20>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
@@ -793,6 +797,7 @@
 	};
 
 	spi_6: spi@f9928000 { /* BLSP1 QUP6 */
+		status = "disabled";
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
