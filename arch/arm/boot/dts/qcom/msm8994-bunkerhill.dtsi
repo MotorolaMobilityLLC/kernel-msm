@@ -17,6 +17,10 @@
 	compatible = "qcom,msm8994-bunkerhill", "qcom,msm8994-moto", "qcom,msm8994";
 };
 
+&pm8994_l29 {
+	/delete-property/ regulator-always-on;
+};
+
 &pm8994_l14 {
 	regulator-boot-on;
 };

@@ -21,6 +21,11 @@
 	};
 
 };
+
+&pm8994_l29 {
+	/delete-property/ regulator-always-on;
+};
+
 &soc {
 	i2c_4: i2c@f9926000 { /* BLSP1 QUP3 - HW ID BLSP4 */
 		compatible = "qcom,i2c-msm-v2";
