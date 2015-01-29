@@ -812,6 +812,17 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
    else
    {
+      if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
+      {
+         VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+                FL("Tx frame in not associated state in %d context"),
+                    pAdapter->device_mode);
+         ++pAdapter->stats.tx_dropped;
+         ++pAdapter->hdd_stats.hddTxRxStats.txXmitDropped;
+         ++pAdapter->hdd_stats.hddTxRxStats.txXmitDroppedAC[ac];
+         kfree_skb(skb);
+         return NETDEV_TX_OK;
+      }
       STAId = pHddStaCtx->conn_info.staId[0];
    }
 
