@@ -268,3 +268,13 @@
 		<&msm_gpio 90 0>, /* NFC_IRQ */
 		<&pm8994_gpios 13 0>; /* NFC_POWER_ON */
 };
+
+&tlmm_pinmux {
+	pmx_tfa9890_reset {
+		qcom,pins = <&gp 105>;
+	};
+};
+
+&tfa9890 {
+	gpios = <&msm_gpio 105 0>;     /* RESET */
+};
