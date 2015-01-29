@@ -305,7 +305,7 @@
 	};
 
 	pmx_motosh_out {
-		qcom,pins = <&gp 78 &gp 89>;
+		qcom,pins = <&gp 38 &gp 89>;
 		qcom,num-grp-pins = <2>;
 		qcom,pin-func = <0>;
 		label = "motosh_out";
@@ -691,12 +691,12 @@
 		qcom,bam-pipe-idx-prod = <21>;
 		qcom,master-id = <86>;
 
-		motosh@43 {
+		motosh: motosh@43 {
 			compatible = "stm,motosh";
 			reg = <0x43>;
 			gpios = <&msm_gpio 127 0>,      /* IRQ          */
 				<&pm8994_mpps 5 0>,     /* RESET        */
-				<&msm_gpio 78 0>,       /* BSLEN        */
+				<&msm_gpio 38 0>,       /* BSLEN        */
 				<&msm_gpio 65 0>,       /* WakeIRQ      */
 				<&msm_gpio 89 0>,       /* SH Wake      */
 				<&msm_gpio 16 0>;       /* SH Wake Resp */
