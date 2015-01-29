@@ -116,6 +116,10 @@
 	batt_discon_warn_n {
 		qcom,pins = <&gp 64>;
 	};
+
+	pmx_motosh_out {
+		qcom,pins = <&gp 78 &gp 89>;
+	};
 };
 
 &tfa9890 {
@@ -128,4 +132,13 @@
 			<&pmi8994_gpios 5 0x1>, /* GPIOF_IN */
 			<&msm_gpio 64 0x1>; /* GPIOF_IN */
 	};
+};
+
+&motosh {
+	gpios = <&msm_gpio 127 0>,      /* IRQ          */
+		<&pm8994_mpps 5 0>,     /* RESET        */
+		<&msm_gpio 78 0>,       /* BSLEN        */
+		<&msm_gpio 65 0>,       /* WakeIRQ      */
+		<&msm_gpio 89 0>,       /* SH Wake      */
+		<&msm_gpio 16 0>;       /* SH Wake Resp */
 };
