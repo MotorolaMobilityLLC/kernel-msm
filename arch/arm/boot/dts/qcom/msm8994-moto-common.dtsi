@@ -1440,3 +1440,9 @@
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,platform-reset-gpio = <&msm_gpio 94 0>;
 };
+
+&cnss {
+	wlan-bootstrap-gpio = <&msm_gpio 112 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&cnss_default &cnss_lpass_default>;
+};
