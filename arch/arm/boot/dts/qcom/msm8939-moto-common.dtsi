@@ -67,23 +67,6 @@
 	};
 
 	/delete-node/ regulator_spk;
-};
-
-&i2c_5 {
-	isl98611@29 {
-		compatible = "intersil,isl98611";
-		reg = <0x29>;
-		status = "okay";
-		linux,name = "wled:backlight";
-		linux,default-trigger = "bkl-trigger";
-		intersil,default-on;
-		intersil,vn = <20>;
-		intersil,vp = <20>;
-		intersil,cabc-disable;
-		intersil,init-level = <255>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&backlight_reset_default>;
-	};
 
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
@@ -157,6 +140,23 @@
 
 	qcom,msm-audio-ion {
 		compatible = "qcom,msm-audio-ion";
+	};
+};
+
+&i2c_5 {
+	isl98611@29 {
+		compatible = "intersil,isl98611";
+		reg = <0x29>;
+		status = "okay";
+		linux,name = "wled:backlight";
+		linux,default-trigger = "bkl-trigger";
+		intersil,default-on;
+		intersil,vn = <20>;
+		intersil,vp = <20>;
+		intersil,cabc-disable;
+		intersil,init-level = <255>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&backlight_reset_default>;
 	};
 };
 
