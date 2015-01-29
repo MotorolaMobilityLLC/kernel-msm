@@ -1425,3 +1425,7 @@
 		gpios = <&msm_gpio 38 0>;
 	};
 };
+
+&pm8994_l29 {
+	regulator-always-on;
+};
