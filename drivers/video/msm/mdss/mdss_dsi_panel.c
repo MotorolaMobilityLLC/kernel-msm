@@ -254,11 +254,13 @@ static void idle_on_work(struct work_struct *work)
 
 	struct dsi_panel_cmds single_cmd;
 	struct dsi_panel_cmds *idle_cmd;
+	struct mdss_panel_info *pinfo;
 	int i = 0;
 	int cnt;
 	int delay;
 
 	idle_cmd = &ctrl->idle_on_cmds;
+	pinfo = &(ctrl->panel_data.panel_info);
 
 	wake_lock(&ctrl->idle_on_wakelock);
 
@@ -275,13 +277,16 @@ static void idle_on_work(struct work_struct *work)
 		single_cmd.cmd_cnt = cnt;
 		delay = (idle_cmd->cmds+i)->dchdr.wait;
 		(idle_cmd->cmds+i)->dchdr.wait = 0;
+
+		if (pinfo->panel_power_state == MDSS_PANEL_POWER_OFF)
+			break;
+
 		mdss_dsi_panel_cmds_send(ctrl, &single_cmd);
 
 		if (delay) {
 			usleep(delay*1000);
 			(idle_cmd->cmds+i)->dchdr.wait = delay;
 		}
-
 	} while (++i < idle_cmd->cmd_cnt);
 
 	wake_unlock(&ctrl->idle_on_wakelock);
@@ -299,12 +304,6 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-
-	/* don't need to set idle mode if display is blanked */
-	if (ctrl->blanked) {
-		pr_debug("%s: skipped the idle mode\n", __func__);
-		return;
-	}
 
 	pr_debug("%s: enabled %d\n", __func__, enable);
 
@@ -801,6 +800,9 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+
+	/* Control idle mode for panel */
+	mdss_dsi_panel_set_idle_mode(pdata, enable);
 
 	pr_debug("%s:-\n", __func__);
 	return 0;
