@@ -195,6 +195,7 @@ typedef struct _hddTdlsPeer_t {
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
     tANI_U8     uapsdQueues;
+    tANI_U8     qos;
     tANI_U8     maxSp;
     tANI_U8     isBufSta;
     tANI_U8     isOffChannelSupported;
