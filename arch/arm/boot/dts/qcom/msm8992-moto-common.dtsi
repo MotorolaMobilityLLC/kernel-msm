@@ -204,6 +204,18 @@
 		};
 	};
 
+	lcd_enable {
+		qcom,pins = <&gp 8>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "lcd_enable";
+		lcd_enable_default: default {
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+
 	mipi_d0_select {
 		qcom,pins = <&gp 108>;
 		qcom,num-grp-pins = <1>;
