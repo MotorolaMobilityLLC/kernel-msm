@@ -119,9 +119,9 @@
 				qcom,supply-enable-load = <300000>;
 				qcom,supply-disable-load = <100>;
 				qcom,supply-pre-on-sleep = <0>;
-				qcom,supply-post-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <1>;
 				qcom,supply-pre-off-sleep = <0>;
-				qcom,supply-post-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <1>;
 			};
 		        qcom,panel-supply-entry@2 {
 				qcom,supply-name = "vsp_disp";
@@ -132,7 +132,7 @@
 				qcom,supply-pre-on-sleep = <0>;
 				qcom,supply-post-on-sleep = <2>;
 				qcom,supply-pre-off-sleep = <0>;
-				qcom,supply-post-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <5>;
 			};
 			qcom,panel-supply-entry@3 {
 				qcom,supply-name = "vsn_disp";
@@ -143,7 +143,7 @@
 				qcom,supply-pre-on-sleep = <0>;
 				qcom,supply-post-on-sleep = <2>;
 				qcom,supply-pre-off-sleep = <0>;
-				qcom,supply-post-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <1>;
 			};
 		};
 
