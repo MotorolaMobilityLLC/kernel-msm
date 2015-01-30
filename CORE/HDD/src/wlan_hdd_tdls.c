@@ -818,6 +818,12 @@ int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter)
         return -1;
     }
 
+    if (test_bit(TDLS_INIT_DONE, &pAdapter->event_flags))
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: TDLS INIT DONE set to 1, return success to the caller", __func__);
+        return 0;
+    }
 
     if ((FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport) ||
         (FALSE == sme_IsFeatureSupportedByFW(TDLS)))
@@ -908,6 +914,7 @@ int wlan_hdd_sta_tdls_init(hdd_adapter_t *pAdapter)
 
     INIT_WORK(&pHddTdlsCtx->implicit_setup, wlan_hdd_tdls_pre_setup);
     INIT_DELAYED_WORK(&pHddCtx->tdls_scan_ctxt.tdls_scan_work, wlan_hdd_tdls_schedule_scan);
+    set_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
 
     return 0;
 }
@@ -919,7 +926,8 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
 
     /*
      * NOTE: The Callers of this function should ensure to acquire the
-     * tdls_lock to avoid any concurrent access to the Adapter.
+     * tdls_lock to avoid any concurrent access to the Adapter and logp
+     * protection has to be ensured.
      */
 
     pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
@@ -930,13 +938,13 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
                 "%s: HDD context is Null", __func__);
         return ;
     }
-
-    if (pHddCtx->isLogpInProgress)
+    if (!test_bit(TDLS_INIT_DONE, &pAdapter->event_flags))
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: LOGP in Progress. Ignore!!!", __func__);
-        return ;
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: TDLS INIT DONE set to 0, no point in exit", __func__);
+        return;
     }
+    clear_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
 
     pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
     if (NULL == pHddTdlsCtx)
@@ -945,6 +953,7 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
                  FL("pHddTdlsCtx is NULL"));
         return;
     }
+
 #ifdef WLAN_OPEN_SOURCE
     cancel_work_sync(&pHddTdlsCtx->implicit_setup);
     cancel_delayed_work_sync(&pHddCtx->tdls_scan_ctxt.tdls_scan_work);
@@ -1961,7 +1970,6 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
         mutex_unlock(&pHddCtx->tdls_lock);
         return;
     }
-    set_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
 
     pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
     if ((NULL == pHddTdlsCtx))
@@ -2025,11 +2033,7 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
     pHddTdlsCtx->discovery_sent_cnt = 0;
     wlan_hdd_tdls_check_power_save_prohibited(pHddTdlsCtx->pAdapter);
 
-    if(test_bit(TDLS_INIT_DONE, &pAdapter->event_flags))
-    {
-       wlan_hdd_tdls_exit(pAdapter);
-       clear_bit(TDLS_INIT_DONE, &pAdapter->event_flags);
-    }
+    wlan_hdd_tdls_exit(pAdapter);
 
     mutex_unlock(&pHddCtx->tdls_lock);
 }
