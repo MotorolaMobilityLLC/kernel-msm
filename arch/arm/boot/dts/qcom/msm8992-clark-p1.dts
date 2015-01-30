@@ -21,20 +21,61 @@
 };
 
 &soc {
+	/delete-node/ isl98611a_pos;
+	/delete-node/ isl98611a_neg;
 	i2c@f9926000 { /* BLSP1 QUP3 */
-		isl98611@29 {
-			compatible = "intersil,isl98611";
+		lm3631@29 {
+			compatible = "ti,lm3631";
 			reg = <0x29>;
 			status = "okay";
-			linux,name = "wled:backlight";
-			linux,default-trigger = "bkl-trigger";
-			intersil,default-on;
-			intersil,vn = <26>;	/* -4.5 - vn*.05 */
-			intersil,vp = <26>;	/* +4.5 + vp*.05 */
-			intersil,cabc-disable;
-			intersil,init-level = <255>;
+			ti,enable-gpio = <&msm_gpio 11 0>;
+
 			pinctrl-names = "default";
-			pinctrl-0 = <&backlight_reset_default>;
+			pinctrl-0 = <&lcd_enable_default>;
+
+			/* Only Vpos and Vneg are used with LCD boost */
+			regulators {
+				compatible = "ti,lm3631-regulator";
+
+				lm3631_vboost: vboost {
+					regulator-name = "lm3631_boost";
+					regulator-min-microvolt = <4500000>;
+					regulator-max-microvolt = <6350000>;
+					regulator-always-on;
+				};
+
+				lm3631_pos: vpos {
+					regulator-name = "vsp_disp";
+					regulator-min-microvolt = <4000000>;
+					regulator-max-microvolt = <6000000>;
+					regulator-always-on;
+				};
+
+				lm3631_neg: vneg {
+					regulator-name = "vsn_disp";
+					regulator-min-microvolt = <4000000>;
+					regulator-max-microvolt = <6000000>;
+					regulator-always-on;
+				};
+
+				lm3631_cont: vcont {
+					regulator-name = "lm3631_cont";
+					regulator-min-microvolt = <1800000>;
+					regulator-max-microvolt = <3300000>;
+				};
+			};
+
+			backlight {
+				compatible = "ti,lmu-backlight", "ti,lm3631-backlight";
+
+				lcd_bl {
+					bl-name = "lcd-backlight";
+					hvled1-used;
+					hvled2-used;
+					ramp-up = <100>;
+					initial-brightness = /bits/ 8 <0xFF>;
+				};
+			};
 		};
 	};
 };
@@ -43,19 +84,11 @@
 	regulator-always-on;
 };
 
-&isl98611a_pos {
-	regulator-always-on;
-};
-
-&isl98611a_neg {
-	regulator-always-on;
-};
-
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_inx_570_QHD_0_cmd_v0>;
 	vddio_disp-supply = <&pm8994_l14>;
-	vsp_disp-supply = <&isl98611a_pos>;
-	vsn_disp-supply = <&isl98611a_neg>;
+	vsp_disp-supply = <&lm3631_pos>;
+	vsn_disp-supply = <&lm3631_neg>;
 
 	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
 };
@@ -63,8 +96,8 @@
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&mot_inx_570_QHD_1_cmd_v0>;
 	vddio_disp-supply = <&pm8994_l14>;
-	vsp_disp-supply = <&isl98611a_pos>;
-	vsn_disp-supply = <&isl98611a_neg>;
+	vsp_disp-supply = <&lm3631_pos>;
+	vsn_disp-supply = <&lm3631_neg>;
 
 	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
 };
