@@ -20,9 +20,32 @@
 		serial0 = &blsp1_ls_uart1;
 		i2c1 = &i2c_1;
 	};
+	memory {
+		ramoops_mem: ramoops_mem_region {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0xaf000000 0x0 0x80000>;
+			label = "ramoops_mem";
+		};
+	};
 };
 
 &soc {
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		android,ramoops-buffer-start = <0xaf000000>;
+		android,ramoops-buffer-size = <0x80000>;
+		android,ramoops-console-size = <0x40000>;
+		android,ramoops-record-size = <0x3F800>;
+		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-dump-oops = <0x1>;
+
+		linux,contiguous-region = <&ramoops_mem>;
+	};
+
 	/delete-node/ serial@78af000;
 	blsp1_ls_uart1: serial@78af000 {
 		compatible = "qcom,msm-lsuart-v14";
