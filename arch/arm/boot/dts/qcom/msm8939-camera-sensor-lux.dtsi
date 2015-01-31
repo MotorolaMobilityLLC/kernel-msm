@@ -13,6 +13,23 @@
 
 
 &cci {
+	/* skyworks sky81296 flash LED driver*/
+	led_flash0: qcom,sky81296@6e {
+		cell-index = <0>;
+		qcom,slave-id = <0x6e 0x00 0x11>;
+		compatible = "qcom,sky81296";
+		label = "flash";
+		qcom,flash-name = "sky81296";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msm_gpio 32 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <0>;
+		qcom,gpio-req-tbl-label = "cam_led_enable";
+		qcom,cci-master = <0>;
+	};
+
 	qcom,camera@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -20,6 +37,7 @@
 		qcom,slave-id = <0x34 0x16 0x0230>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
+		qcom,led-flash-src = <&led_flash0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx230";
 		cam_vdig-supply = <&pm8916_s3>;
