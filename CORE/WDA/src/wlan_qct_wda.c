@@ -6521,10 +6521,9 @@ VOS_STATUS WDA_ProcessUpdateChannelList(tWDA_CbContext *pWDA,
 
        WDA_SET_CHANNEL_MAX_POWER(pChanInfoType, pChanList->chanParam[i].pwr);
        WDA_SET_CHANNEL_REG_POWER(pChanInfoType, pChanList->chanParam[i].pwr);
-
+       WDA_SET_CUURENT_REG_DOMAIN(pChanInfoType, pChanList->regId);
        pChanInfoType++;
    }
-
    pwdiUpdateChReqParam->wdiReqStatusCB = NULL;
    pWdaParams->pWdaContext = pWDA;
    pWdaParams->wdaMsgParam = (void *)pChanList;

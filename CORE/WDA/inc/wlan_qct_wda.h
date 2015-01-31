@@ -219,6 +219,10 @@ typedef enum {
      (pwda_channel)->reg_info_1 &= 0xff00ffff;           \
      (pwda_channel)->reg_info_1 |= ((val&0xff) << 16);   \
      } while(0)
+#define WDA_SET_CUURENT_REG_DOMAIN(pwda_channel, val) do { \
+     (pwda_channel)->reg_info_2 |= ((val&0x7) << 24);   \
+     (pwda_channel)->reg_info_2 |= 0x80000000;   \
+     } while(0)
 #define WDA_SET_CHANNEL_MIN_POWER(pwlan_hal_update_channel,val) do { \
      (pwlan_hal_update_channel)->reg_info_1 &= 0xffffff00;           \
      (pwlan_hal_update_channel)->reg_info_1 |= (val&0xff);           \
