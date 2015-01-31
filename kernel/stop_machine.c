@@ -69,7 +69,7 @@ static void cpu_stop_queue_work(struct cpu_stopper *stopper,
 
 	spin_lock_irqsave(&stopper->lock, flags);
 
-	if (stopper->enabled) {
+	if (stopper->enabled && cpu_online(task_cpu(stopper->thread))) {
 		list_add_tail(&work->list, &stopper->works);
 		wake_up_process(stopper->thread);
 	} else
