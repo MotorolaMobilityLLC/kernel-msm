@@ -9254,7 +9254,7 @@ WLANTL_TxProcessMsg
     break;
 
   case WLANTL_TX_FW_DEBUG:
-    vos_fwDumpReq(274, 0, 0, 0, 0);
+    vos_fwDumpReq(274, 0, 0, 0, 0, 1); //Async event
     break;
 
   default:
