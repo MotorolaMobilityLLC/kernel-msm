@@ -134,6 +134,7 @@
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <250 154000>;
 
+	qcom,clk-rates = <400000 20000000 25000000 50000000>;
 	qcom,sup-voltages = <1800 2950>;
 
 	qcom,bus-width = <4>;
