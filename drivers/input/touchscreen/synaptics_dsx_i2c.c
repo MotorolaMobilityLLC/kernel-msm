@@ -3594,12 +3594,12 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
 	struct fb_event *evdata = data;
-	int *blank;
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
-	if (evdata && evdata->data) {
-		blank = evdata->data;
+	if ((event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK) &&
+			evdata && evdata->data && rmi4_data) {
+		int *blank = evdata->data;
 		/* entering suspend upon early blank event */
 		/* to ensure shared power supply is still on */
 		/* for in-cell design touch solutions */
