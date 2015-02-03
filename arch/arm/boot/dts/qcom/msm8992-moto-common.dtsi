@@ -12,7 +12,7 @@
 
 #include "msm8992.dtsi"
 #include "msm8992-pinctrl.dtsi"
-#include "msm8994-mot-camera-sensor.dtsi"
+#include "msm8992-msm8994-mot-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 / {
@@ -280,6 +280,44 @@
 			drive-strength = <2>;
 			bias-disable; /* no pull */
 			input-enable;
+		};
+	};
+
+	cam_sensor_rear_pinctrl {
+		/*RESET, AVDD_EN */
+		qcom,pins = <&gp 93>, <&gp 94>;
+		qcom,num-grp-pins = <2>;
+		label = "cam_sensor_rear_pinctrl";
+
+		/* active state */
+		cam_sensor_rear_active: active {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+
+		/*suspended state */
+		cam_sensor_rear_suspend: suspend {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	cam_sensor_front_pinctrl {
+		/* RESET, AVDD_EN */
+		qcom,pins = <&gp 16>, <&gp 114>;
+		qcom,num-grp-pins = <2>;
+		label = "cam_sensor_front_pinctrl";
+
+		/* active state */
+		cam_sensor_front_active: active {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+
+		/*suspended state */
+		cam_sensor_front_suspend: suspend {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
 		};
 	};
 };
@@ -642,10 +680,15 @@
 	};
 
 	qcom,cci@fda0c000 {
+		pinctrl-names = "cci_default", "cci_suspend";
 		pinctrl-0 = <&cci0_active>;
 		pinctrl-1 = <&cci0_suspend>;
 		gpios = <&msm_gpio 17 0>,
 			<&msm_gpio 18 0>;
+		qcom,gpio-tbl-num = <0 1>;
+		qcom,gpio-tbl-flags = <1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
+			"CCI_I2C_CLK0";
 	};
 
 	i2c_2: i2c@f9924000 { /* BLSP1 QUP2 */
@@ -1256,13 +1299,6 @@
 &cci {
 	/* IMX230 */
 	qcom,camera@0 {
-		cam_vdig-supply = <&pm8994_l3>;
-		cam_vio-supply = <&pm8994_lvs1>;
-		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
-		qcom,cam-vreg-min-voltage = <0 0>;
-		qcom,cam-vreg-max-voltage = <0 0>;
-		qcom,cam-vreg-op-mode = <0 0>;
-
 		gpios = <&msm_gpio 13 0>,
 			<&msm_gpio 93 0>,
 			<&msm_gpio 94 0>;
@@ -1273,5 +1309,24 @@
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
 					  "CAM_RESET0",
 					  "CAM_VANA";
+	};
+
+	/* OV5693 */
+	qcom,camera@1 {
+		gpios = <&msm_gpio 15 0>,
+			<&msm_gpio 16 0>,
+			<&msm_gpio 114 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+					  "CAM_RESET1",
+					  "CAM_VANA";
+	};
+
+	/* skywork81296 */
+	led_flash0: qcom,sky81296@6e {
+		gpios = <&msm_gpio 38 0>;
 	};
 };
