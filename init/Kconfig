@@ -1805,6 +1805,22 @@ config MODULE_SIG_HASH
 	default "sha384" if MODULE_SIG_SHA384
 	default "sha512" if MODULE_SIG_SHA512
 
+config MODULE_WHITELIST
+	bool "Only allow white listed modules to be loaded"
+	help
+	  If you say Y here, the kernel will generate a SHA1 hash of
+	  each module that is to be loaded and check this hash against
+	  a list of known hashes. If the module to be loaded's hash is
+	  not found in this list, the kernel will refuse to load the module.
+
+	  The list of known hashes is passed into the kernel via
+	  /sys/kernel/module_whitelist. The whitelist is a write-once list;
+	  after the list is loaded it cannot be modified until the device
+	  is rebooted. At the present time the list is limimited to PAGE_SIZE
+	  (usually 4096 bytes).
+
+	  If unsure, say N.
+
 config MODULE_EXTRA_COPY
 	bool "Keep an extra copy of a module while it is loading"
 	help
