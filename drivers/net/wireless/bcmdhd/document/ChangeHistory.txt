@@ -1,0 +1,379 @@
+BCM43xx DHD 1.141.64.13 for Android Kitkat
+
+2014.12.10 (1.141.64.12 --> 1.141.64.13)
+Others
+   - CSP:806869 Disabled single core beacon rx and single core scan to avoid RSSI fluctuation
+   - CSP:832381 Fixed P2P listen/find failure during scanning with long remain_on_channel duration
+   - CSP:832772 Added error handing for P2P interface adding failed case
+   - CSP:837025 Fixed error check code in wl_run_escan() function
+   - CSP:844266 Added Hang mechanism for SoftAP mode
+   - CSP:846982 Added Cancel of remain-on-channel
+   - CSP:856405 Fixed Power consumption issue with MIRACAST
+   - CSP:861451 Fixed prevent issue - Potential buffer overflow
+   - CSP:864816 Oxygen PM mode controlled from driver side
+   - Added debug log about IEs of Assoc request frame
+   - Removed unnecessary debug message on dhd_tcpdata_info_get() function
+
+
+2014.11.14 (1.141.64.6 --> 1.141.64.12)
+Others
+   - CSP:846982 Added Cancel of remain-on-channel
+   - CSP:850684 Enhanced GAS action frame send logic
+   - Enabled PROP_TXSTATUS and VSDB for 4343/43438 Chips
+   - Supported SR feature for 43430 Chip
+
+
+2014.10.9 (1.141.64.5 --> 1.141.64.6)
+Others
+   - CSP:801266 Fixed Compile error for CPU affinity code
+   - CSP:803125 Added private command of DFS channel scan On/Off
+   - CSP:806428 Fixed traffic statistics was not updated issue
+   - CSP:811149 Enhanced P2P GC current consumption
+   - CSP:819873 Fixed SoftAP current consumption
+   - CSP:832385 Fixed prevent issue
+   - Changed CA(Canada) country code(CA/31 -> US/0)
+   - Fixed SoftAP PMF certification issues
+   - Fixed WiFi Direct Certification - 5.1.20
+
+
+2014.7.2 (1.141.64.4 --> 1.141.64.5)
+Others
+   - CSP:801266 Support CPU affinity for SS new CPU scheduler
+IBSS
+   - Changed Oxygen feature enable position.
+   - Implemented Oxygen Power Save mode
+   - CSP:810665 supported new private command to control MIMO/SISO mode
+
+2014.6.25
+DHD version upgrade (1.141.64 --> 1.141.64.3)
+IBSS
+   - CSP:768321 Added RMC Leader(Active Receiver) Selection API
+
+2014.5.26
+DHD version upgrade (1.141.59 --> 1.141.64)
+Kernel Panic
+   - CSP:794303 Fixed kernel panic during P2P interface down
+
+Others
+   - CSP:790352 Disabled dhd_doflow for KONA platform throughput issue
+   - CSP:794991 Fixed XTAL pull up patch location correctly
+   - Added SUPPORT_P2P_GO_PS macro for sleep current issue code
+   - Fixed chanspec mismatch issue for P2P channel selection
+   - Fixed Multi-AC detection logic for WWM test failure case
+   - Fixed Prevent issue on PNO code
+   - Increased Assoc packet retry time
+
+
+2014.5.12
+DHD version upgrade (1.141.55 --> 1.141.59)
+Kernel Panic
+   - CSP:755191 Changed SKB memory type as GFP_ATOMIC
+   - Fixed kernel panic issue on roaming of FBT(Fass BSS Transition)
+
+Others
+   - CSP:755517, 787554 Fixed Sleep current issue
+   - CSP:775704 Fixed Tx power ioctl error case
+   - CSP:775940 Removed IRQF_TRIGGER_MASK for prevent of cleared board configuration
+   - CSP:790503 Fixed BCM4343 sleep current issue with DTIM 3  AP
+   - CSP:794112 Fixed missing of Multicast packet issue for BCM4343 chip
+   - Added Connection statistics Private command
+   - Added 4356 SDIO support
+   - Added new feature definition for BCM4343 chip
+   - Added Wake on WLAN feature for further usage
+   - Changed log level for DHD DPC thread reschedule case
+   - Enhanced 32bit ioctl structure for 64bit kernel(CONFIG_COMPAT)
+   - Enhanced compatibility issue with Kernel 3.14
+
+
+
+2014.4.28
+DHD version upgrade (1.141.54 --> 1.141.55)
+Others
+   - CSP:786810 Fixed chanspec endian issue for DFS channels
+   - Added ENABLE_BCN_LI_BCN_WAKEUP feature for BCM4343
+   - Type issue fixed on wake lock macro
+
+
+2014.4.25
+DHD version upgrade (1.141.44.4 --> 1.141.54)
+Kernel Panic
+   - CSP:767670 Fixed KSO turn on failed issue
+   - CSP:770009 Fixed kernel panic during repeat test of P2P connection
+   - CSP:776864 Fixed kernel panic during remove interface(Added RTNL lock)
+   - Fixed kernel panic by NULL pointer access case
+   - Fixed Packet was freed when it was still in used
+
+New Feature
+   - Added BCM43430 support code
+   - Added set_mac_acl() handler of the cfg80211 operation
+   - CSP:777843 Added Dynamic DHD thread priority change routine using sysfs
+
+Prevent
+   - CSP:773353 Fixed Prevent issue for length value can be negative
+   - CSP:773356 Fixed Prevent issue for buffer overflow
+   - Fixed Prevent issue for memory leak
+
+Throughput
+   - CSP:764679 Optimized padding size for BCM4334 D2 kitkat platform
+   - CSP:768526 Enabled RXFRAME_THREAD on BCM4334 for throughput enhancement
+   - Enhanced TCP Ack suppress feature
+
+Others
+   - CSP:731323 Added Broadcast action frame TX handling
+   - CSP:762679 Fixed corner case for beacon interval check routine
+   - CSP:764543 Fixed Interface Statistics information
+   - CSP:764911 Added custom GAS initial request  Retry/Dwell time by supplicant request
+   - CSP:770015 Fixed file path for SLP platform in dhd_custom_sec.c
+   - CSP:770123 Updated Makefile for SLP
+   - CSP:776265 Supported WNM Notification for HS20
+   - CSP:781793 Fixed wrong return value for NO_IF was set
+   - Added 802.11H support for SoftAP on BCM4330/BCM4334
+   - Added clean up code for 802.11u interworking
+   - Added WL11U define for BCM4334
+   - Enabled some log for further debugging
+   - Fixed ANQP response frame was sent to wrong interface issue
+   - Fixed Certification issue for WPS-AP Test Plan 4.2.13
+   - Fixed hidden SSID AP Roaming issue
+   - Remove watchdog timer when hang was sent case
+
+
+2014.3.27
+DHD version upgrade (1.141.44.3 --> 1.141.44.4)
+Kernel Panic
+   - CSP:770235 Fixed Kernel panic issue during WiFi On/Off iteration test
+
+Others
+   - CSP:761724 Fixed Prevent issue for out of bounds
+   - CSP:755517 Fixed GC current consumption issue during suspend
+   - CSP:765607, 771194 Fixed Prevent issue for uninitialized variable
+   - CSP:766273, 770590 Fixed Hang event routine when P2P was connected
+   - CSP:770303 Fixed Specific AP can't scan issue
+   - CSP:771208 Fixed country code initialization issue after WiFi Off->On
+
+
+2014.3.7
+DHD version upgrade (1.141.44.2 --> 1.141.44.3)
+   - CSP:761742 ccode/regrev mapping table update of AR, BD, AN
+   - CSP:763114 Fixed Prevent issue for memory leak
+   - CSP:765758 Added a SAR limit trigger private command
+
+
+2014.2.26
+DHD version upgrade (1.141.43 --> 1.141.44.2)
+   - CSP:745888 Removed CPU scheduling redundancy code
+   - CSP:757840 Skipped unnecessary SDIO error message
+   - CSP:759411 Updated Roam channel cache by 'SETBAND' private command
+   - CSP:760115 Fixed restriction of different channel for BCM4330
+   - Applied WAR to Fix TxPower value restore issue
+
+
+2014.2.20
+DHD version upgrade (1.141.39 --> 1.141.43)
+Others
+   - CSP:709432 Fixed the power unit from mW to dBm for Kernel CFG80211 layer
+   - CSP:743747 Added packet realign patch for BCM4330 & BCM4334
+   - CSP:747310 Improved MAC Address parsing logic from OTP
+   - CSP:747851 Fixed channel mismatch issue by cached AP information
+   - CSP:748214 Enhanced Disconnection event log information
+   - CSP:755151 Fixed VID table for BCM4334
+   - CSP:755729 Fixed IOCTL timeout value not refreshed after MFG firmware loading on built-in driver
+   - CSP:756057 Fixed SoftAP current consumption issue
+   - CSP:756844 Fixed prevent issue for NULL point check
+   - CSP:755729 Removed duplicated wake queue check routine
+   - CSP:758850 ccode/regrev mapping table update of NP, PG, ZM, UZ to sync up with the spectrum availability 8.3.4
+   - Added Dynamic SWOOB duration control for EOS2 host
+   - Added vendor extension initial code for further usage
+   - Enabled CONFIG_HAS_WAKELOCK define as a default
+   - Fixed code for 64Bit android platform
+   - Fixed CPU core number for P2P throughput enhancement
+   - Revamped nl80211 testmode interface code for dhd util
+
+
+2014.2.11
+DHD version upgrade (1.141.35 --> 1.141.39)
+Kernel Panic
+   - CSP:750720, 755132 Fixed infinite rescheduling issue
+   - CSP:775709, 756048 Fixed interface ID issue during dequing
+   - Enhanced AMPDU packets reception routine
+
+Others
+   - CSP:753604 Added affinity DHD thread CPU and interrupt handler CPU
+   - CSP:753604 Added Tx tuning params for all platform
+   - CSP:756057 Fixed SoftAP current consumption issue
+   - Added Action frame send log for further debug
+   - Fixed NoA set routine
+   - Fixed SPI OOB interrupt registration routine
+
+
+2014.2.7
+DHD version upgrade (1.141.33 --> 1.141.35)
+Others
+   - CSP:754186 Added Scan start log for debugging purpose
+   - CSP:754725, 755151 Changed default VID value for BCM4334
+   - CSP:747310 Fixed Prevent issue for out of bounds read
+   - Added P2P NoA clear routine
+   - Enhanced packet management routine for sent failed case
+
+
+2014.1.29
+DHD version upgrade (1.141.32 --> 1.141.33)
+New Feature
+   - CSP:667815, 750743 Implemented new function to check DHD/FW version
+   - Added AMPDU Enable/Disable private command for Oxygen
+   - Added single antenna scanning private cmd for 'Always scan available' usage
+
+Others
+   - CSP:743747 Added XTAL Pull time for BCM4330 Chip
+   - CSP:748712 Fixed Passpoint GAS initail packet issue
+   - CSP:751832 Cleaned up unused code
+   - CSP:751911 Code Synced up - dhd_sec_feature.h / dhd_custom_sec.c
+   - CSP:753125, 752060 Fixed scan issue with Hotspot 2.0 feature
+   - CSP:753494 Fixed P2P listen issue
+   - Enabled adaptive scheduling feature to all host processor for BCM4354 project
+   - Fixed Corner case of Fragmented packets management
+   - Optimized SDIO 3.0 clock tuning process
+
+
+2014.1.19
+DHD version upgrade (1.141.28 --> 1.141.32)
+
+Kernel Panic
+   - CSP:745846 Fixed error return value during P2P interface down
+   - CSP:746759 Fixed Interrupt unregister missing code for built-in driver
+   - CSP:748428 Fixed kernel panic issue during interface up
+   - CSP:749453 Fixed Kernel panic issue on getting dongle statistics
+
+New Feature
+   - Added CPU frequency changed log for debug purpose
+   - Added Firmware log to TCP dump feature for debug purpose
+   - Added Keep alive time private command
+
+Others
+   - CSP:744556 Fixed selecting proper interface for action frame
+   - CSP:745384 Enhanced GO NEG collison ocurred case
+   - CSP:745459 Added init code for WES parameters
+   - CSP:745550 P2P Mac address issue for Kitkat
+   - CSP:747513, 749428, 748953 Added more error reason code on SDIO block set code
+   - CSP:749248 Added Defered init call for decrease boot time
+   - Adding Channel 100-140 to Singapore(SG)
+   - Enhanced Hang recovery routine
+   - Enhanced Throughput parameter
+   - Fixed sec_sysfs.h file location as per platform changing
+   - Fixed the interface bring up failure.
+   - Removed ARM_ARCH_7A code for fix compatibility from HAWAII platform
+   - Added P2P interface cleanup code for compatibility issue on kernel 3.10
+
+
+
+2014.1.7
+DHD version upgrade (1.141.23 --> 1.141.28)
+
+Kernel Panic
+   - Added Prevent code for RX thread monopolize
+
+New Feature
+   - CSP:743464 Added CPU core number predefine feature
+   - Added Private command for check TX power configurations
+   - Added Roaming Offload feature
+
+Enhancement
+   - Blocked unnecessary event when host enter sleep mode
+   - Optimized for Throughput parameter
+
+Others
+   - CSP:695411, 745016 Fixed GTK update fail issue
+   - CSP:735839, 740601 Fixed AP scan list disappeared issue
+   - CSP:736965 Fixed Prevent issue for NULL pointer dereference
+   - CSP:744460 Fixed tx_bytes not updated issue
+   - Fixed Build error and memory leak on PNO
+   - Fixed missing P2P IE in Probe REQ of first 802.11 scan
+   - Fixed WiFi Direct certification failed issue(5.1.15)
+
+
+
+2013.12.19
+DHD version upgrade (1.141.15 --> 1.141.23)
+
+Kernel Panic
+   - CSP:724358 Fixed unremoved scan timer issue
+   - CSP:725944 Fixed kernel panic on unsupported band connection case
+   - CSP:735852 Fixed SDIO CRC Error
+   - CSP:740907 Fixed kernel panic when initial boot up case
+   - Fixed NULL point reference case on event handler
+
+
+IBSS
+   - Disabled IBSS Tx fail event for beacon lost
+
+Others
+   - Added Missing code for 4354 Chip support
+   - Added Missing defined for V1-LTE model
+   - CSP:736970 Fixed the host wake up fail issue
+   - CSP:738978 Fixed the DHCP fail issue
+   - CSP:739147 Fixed wrong define location for exynos platform in Makefile
+   - CSP:741136 Fixed Proprietary string issue for Open Source
+   - Enhanced compatibility issue on Kernel 3.10
+   - Enhanced compatibility issue on Kitkat Platform
+   - Enhanced exception code during WiFi on failure
+   - Fixed flow control logic on Multiple Access Category
+   - Optimized parameter for throughput enhancement
+   - Optimized RX wake lock timeout
+
+
+
+
+2013.12.06
+DHD version upgrade (1.141.10 --> 1.141.15)
+
+Kernel Panic
+   - CSP:648482, 722029, 725761 Added P2P feature check routine on firmware for avoid Kernel panic issue
+   - CSP:728341 Added Release code for SDIO In-Band IRQ during WiFi On time
+   - CSP:735272 Fixed WiFi turn on failure case for ioctl failed
+
+IBSS
+   - Changed SUPPORT_AIBSS macro to WLAIBSS for Oxygen
+   - Fixed out of order packet in IBSS mode
+
+Others
+   - CSP:731186 Added VID information for BCM4354 Chip
+   - Added Chip information log
+   - Added clean up code for PM handler during interface down
+   - Added DHD_OF_SUPPORT macro for Device Tree Structure support
+   - Added IPv6 router advertisement packet filter
+   - Added Kitkat feature in Makefile
+   - Enhanced exception code during WiFi on failure
+   - Enhanced Packet queue management for P2P operation
+   - Enhanced SDIO Packet tail padding logic
+   - Enhanced TDLS feature for Kitkat support
+   - Fixed PM work handler wake lock location
+   - Fixed SoftAP turn on failure issue for built-in driver
+   - Limited max DTIM skip interval policy for link lost issue
+   - Removed unnecessary dead code on WiFi init function
+   - Synced dhd_sec_feature.h file for V1 model
+   - Tuned SDIO Overflow block size for reduce CRC error
+
+
+
+2013.11.25
+DHD version upgrade (1.141.8 --> 1.141.10)
+
+BCM4354 BringUp
+   - BCM4354A1 Chip support
+   - Cleaned up MAC address parsing codes
+   - Enhanced built-in driver support
+   - SDIO F2 block size optimized for MFG firmware
+   - Supported Device Tree Structure for Exynos platform
+
+Others
+   - Changed architecture name more generally in Makefile for Q's AP platform
+   - Cleaned up not used code
+   - Enhanced IBSS peer information handling
+   - Fixed Initial 2G scan logic for built-in driver
+
+
+
+1.141.8 - 2013. 11. 15
+
+- Initial DHD release for Android KitKat
+  Tested Chipset :BCM4354/BCM4339
+  It is tested on Android JB MR2 platform

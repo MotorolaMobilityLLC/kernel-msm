@@ -8,3 +8,6 @@ obj-$(CONFIG_BATTERY_ANDROID) += board-sprat-battery.o
 obj-$(CONFIG_MUIC_MAX77836) += switch-max77836.o
 obj-$(CONFIG_REGULATOR_MAX77836) += sec-regulator-max77836.o
 obj-$(CONFIG_SEC_DEBUG) += sec_debug.o
+ifdef CONFIG_BCM4334W
+obj-$(CONFIG_ARCH_MSM8226) += board-8226-wifi.o
+endif

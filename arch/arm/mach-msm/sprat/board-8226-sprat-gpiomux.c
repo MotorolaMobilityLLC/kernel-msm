@@ -329,48 +329,6 @@ static struct msm_gpiomux_config msm_bcm4334w_config[] __initdata = {
 		},
 	},
 	{
-		.gpio = 39,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
-		},
-	},
-	{
-		.gpio = 40,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
-		},
-	},
-	{
-		.gpio = 41,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
-		},
-	},
-	{
-		.gpio = 42,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
-		},
-	},
-	{
-		.gpio = 43,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[1],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[1],
-		},
-	},
-	{
-		.gpio = 44,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_bcm4334w_config[5],
-			[GPIOMUX_ACTIVE] = &gpio_bcm4334w_config[3],
-		},
-	},
-	{
 		.gpio = 47,	/* BT_EN */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &gpio_bcm4334w_config[1],

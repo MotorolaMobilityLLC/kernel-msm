@@ -310,6 +310,15 @@ struct sdhci_msm_pltfm_data {
 	unsigned char sup_clk_cnt;
 	int mpm_sdiowakeup_int;
 	int sdiowakeup_irq;
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+	defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+	defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+	bool is_status_cb;
+	int (*register_status_notify)(void (*callback)(int card_present, void *dev_id),
+		void *dev_id, void *mmc_host);
+#endif /* BCM4335 || BCM4339 || BCM4354 || BCM4334 || BCM4334W */
 };
 
 struct sdhci_msm_bus_vote {
@@ -324,6 +333,13 @@ struct sdhci_msm_bus_vote {
 
 struct sdhci_msm_host {
 	struct platform_device	*pdev;
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+	int id;
+#endif /* BCM4335 || BCM4339 || BCM4354 || BCM4334 || BCM4334W */
 	void __iomem *core_mem;    /* MSM SDCC mapped address */
 	int	pwr_irq;	/* power irq */
 	struct clk	 *clk;     /* main SD/MMC bus clock */
@@ -362,6 +378,14 @@ enum vdd_io_level {
 	 */
 	VDD_IO_SET_LEVEL,
 };
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+extern int brcm_wifi_status_register(
+	void (*callback)(int card_present, void *dev_id), void *dev_id, void *mmc_host);
+#endif /* BCM4335 || BCM4339 || BCM4354 || BCM4334 || BCM4334W */
 
 /* MSM platform specific tuning */
 static inline int msm_dll_poll_ck_out_en(struct sdhci_host *host,
@@ -1460,6 +1484,13 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 	int clk_table_len;
 	u32 *clk_table = NULL;
 	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+	int vendor_type = 0;
+#endif /* BCM4335 || BCM4339 || BCM4354 || BCM4334 || BCM4334W */
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -1557,6 +1588,19 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 		pdata->mpm_sdiowakeup_int = mpm_int;
 	else
 		pdata->mpm_sdiowakeup_int = -1;
+
+
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+	pr_err("%s: before parsing vendor_type\n", __FUNCTION__);
+	if (of_get_property(np, "status-cb", &vendor_type)) {
+		pdata->is_status_cb = true;
+		pr_err("%s: vendor_type=%d \n", __FUNCTION__, vendor_type);
+	}
+#endif /* BCM4335 || BCM4339 || BCM4354 || BCM4334 || BCM4334W */
 
 	return pdata;
 out:
@@ -2903,6 +2947,37 @@ static int sdhci_msm_cfg_mpm_pin_wakeup(struct sdhci_host *host, unsigned mode)
 	return ret;
 }
 
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+static void sdhci_msm_status_notify(int card_present, void *dev_id)
+{
+	struct sdhci_host *host = (struct sdhci_host *)dev_id;
+	unsigned long flags;
+
+	if (host) {
+		host->mmc->rescan_disable=0;
+		pr_err("%s: %s: rescan_disable : %d\n",mmc_hostname(host->mmc),
+			__func__, host->mmc->rescan_disable);
+
+		spin_lock_irqsave(&host->lock, flags);
+		if (card_present) {
+			pr_err("%s: card inserted.\n", mmc_hostname(host->mmc));
+			host->flags &= ~SDHCI_DEVICE_DEAD;
+			host->quirks |= SDHCI_QUIRK_BROKEN_CARD_DETECTION;
+		} else {
+			pr_err("%s: card removed.\n", mmc_hostname(host->mmc));
+			host->flags |= SDHCI_DEVICE_DEAD;
+			host->quirks &= ~SDHCI_QUIRK_BROKEN_CARD_DETECTION;
+		}
+		tasklet_schedule(&host->card_tasklet);
+		spin_unlock_irqrestore(&host->lock, flags);
+	}
+}
+#endif /* BCM4335 || BCM4339 || BCM4354 || BCM4334 || BCM4334W */
+
 static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 		struct sdhci_host *host)
 {
@@ -3229,6 +3304,29 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 			goto vreg_deinit;
 		}
 	}
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+	pr_err("%s: id %d\n", mmc_hostname(msm_host->mmc), msm_host->id);
+	if (msm_host->pdata->is_status_cb) {
+		msm_host->pdata->register_status_notify = brcm_wifi_status_register;
+		msm_host->pdata->register_status_notify(sdhci_msm_status_notify, host, host->mmc);
+		host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY | MMC_PM_KEEP_POWER;
+		host->mmc->pm_caps  |= MMC_PM_IGNORE_PM_NOTIFY | MMC_PM_KEEP_POWER;
+		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
+#if defined(CONFIG_DEFERRED_INITCALLS)
+		host->mmc->rescan_disable=0;
+#else
+		host->mmc->rescan_disable=1;
+#endif
+		pr_err("%s: id %d, register_status_notify=%x, host=%x, rescan_disable=%d\n",
+			mmc_hostname(msm_host->mmc), msm_host->id,
+			(unsigned int)msm_host->pdata->register_status_notify,
+			(unsigned int)host, host->mmc->rescan_disable);
+	}
+#endif
 
 	if ((sdhci_readl(host, SDHCI_CAPABILITIES) & SDHCI_CAN_64BIT) &&
 		(dma_supported(mmc_dev(host->mmc), DMA_BIT_MASK(64)))) {

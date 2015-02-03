@@ -3439,7 +3439,19 @@ void mmc_start_host(struct mmc_host *host)
 		mmc_power_off(host);
 	else
 		mmc_power_up(host);
+
+#if defined(CONFIG_BCM4335) || defined(CONFIG_BCM4335_MODULE) || \
+    defined(CONFIG_BCM4339) || defined(CONFIG_BCM4339_MODULE) || \
+    defined(CONFIG_BCM4354) || defined(CONFIG_BCM4354_MODULE) || \
+    defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE) || \
+    defined(CONFIG_BCM4334W)|| defined(CONFIG_BCM4334W_MODULE)
+	if(strcmp(mmc_hostname(host),"mmc1"))
+		mmc_detect_change(host, 0);
+	else
+		host->rescan_disable = 0;
+#else
 	mmc_detect_change(host, 0);
+#endif
 }
 
 void mmc_stop_host(struct mmc_host *host)

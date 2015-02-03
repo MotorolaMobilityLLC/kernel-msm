@@ -328,6 +328,30 @@
 	status = "disabled";
 };
 
+&sdhc_3 {
+   qcom,clk-rates = <400000 25000000 50000000>;
+
+   #vdd-supply = <&pm8226_l6>;
+   qcom,vdd-always-on;
+   qcom,vdd-voltage-level = <1800000 1800000>;
+   qcom,vdd-current-level = <2000 16000>;
+
+   #vdd-io-supply = <&pm8226_l6>;
+   qcom,vdd-io-always-on;
+   qcom,vdd-io-voltage-level = <1800000 1800000>;
+   qcom,vdd-io-current-level = <2000 16000>;
+
+   qcom,current-limit = <16000>;
+   com,sup-voltages = <2950 2950>;
+
+   pinctrl-names = "active", "sleep";
+   pinctrl-0 = <&sdc3_clk_on &sdc3_cmd_on &sdc3_dat_on>;
+   pinctrl-1 = <&sdc3_clk_off &sdc3_cmd_off &sdc3_dat_off>;
+
+   status-cb = <2>;
+   status = "ok";
+};
+
 &pm8226_gpios {
 	gpio@c000 { /* GPIO 1 */
 		qcom,master-en = <0>;
