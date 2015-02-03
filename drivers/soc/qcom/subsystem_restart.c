@@ -605,7 +605,12 @@ static void subsystem_powerup(struct subsys_device *dev, void *data)
 	if (dev->desc->powerup(dev->desc) < 0) {
 		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
 								NULL);
-		panic("[%p]: Powerup error: %s!", current, name);
+		if (system_state != SYSTEM_RESTART && system_state != SYSTEM_POWER_OFF)
+			panic("[%p]: Powerup error: %s!", current, name);
+		else {
+			pr_info("[%p]: Powerup abort: %s\n", current, name);
+			return;
+		}
 	}
 	enable_all_irqs(dev);
 
