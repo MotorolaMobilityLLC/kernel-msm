@@ -181,6 +181,18 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	factory_support {
+		compatible = "mmi,factory-support-kungpow";
+		gpios = <&msm_gpio 89 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&msm_gpio 91 0x1>, /* GPIOF_IN */
+			<&msm_gpio 93 0x1>; /* GPIOF_IN */
+		gpio-names = "factory_kill_disable",
+			"factory_cable_detect",
+			"factory_warn";
+		pinctrl-names = "default";
+		pinctrl-0 = <&kungpow_default>;
+	};
 };
 
 &i2c_5 {
@@ -454,6 +466,17 @@
 		ak09912_irq_default: ak09912-irq {
 			bias-disable;
 			drive-strength = <2>;
+		};
+	};
+
+	batt_discon_warn_n {
+		qcom,pins = <&gp 93>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "batt-discon-warn-n";
+
+		kungpow_default: kungpow {
+			bias-pull-up; /* pull-up */
 		};
 	};
 };
