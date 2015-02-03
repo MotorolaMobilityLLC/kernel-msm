@@ -20,6 +20,9 @@
 #define MAX_PANEL_NAME_SIZE 100
 #define LCD_DEBUG(X, ...) pr_info("[LCD]%s:"X, __func__, ## __VA_ARGS__);
 
+/* Register dump info */
+#define MAX_INTF_NUM 2
+
 enum mdss_samsung_cmd_list {
 	PANEL_DISPLAY_ON_SEQ,
 	PANEL_DISPLAY_ON,
@@ -54,6 +57,21 @@ struct display_status {
 	u8 on;
 };
 
+struct samsung_register_info {
+	size_t virtual_addr;
+};
+
+struct samsung_register_dump_info {
+	/* DSI PLL */
+	struct samsung_register_info dsi_pll;
+
+	/* DSI CTRL */
+	struct samsung_register_info dsi_ctrl;
+
+	/* DSI PHY */
+	struct samsung_register_info dsi_phy;
+};
+
 struct mdss_samsung_driver_data {
 	struct display_status dstat;
 	struct dsi_buf sdc_tx_buf;
@@ -71,6 +89,8 @@ struct mdss_samsung_driver_data {
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	struct platform_device *msm_pdev;
 #endif
+	/* register dump info */
+	struct samsung_register_dump_info dump_info[MAX_INTF_NUM];
 };
 struct panel_rev {
 	char *name;
@@ -81,5 +101,7 @@ enum {
 };
 void mdnie_lite_tuning_init(struct mdss_samsung_driver_data *msd);
 void mdss_dsi_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
-			struct dsi_cmd_desc *cmds, int cnt, int flag);
+		struct dsi_cmd_desc *cmds, int cnt, int flag);
+struct mdss_data_type *mdss_mdp_get_mdata(void);
+unsigned long get_mdss_dsi_base(void);
 #endif

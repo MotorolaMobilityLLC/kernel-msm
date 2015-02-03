@@ -25,9 +25,12 @@
 #ifdef CONFIG_LCD_CLASS_DEVICE
 #include <linux/lcd.h>
 #endif
+#include <linux/syscalls.h>
 #include "mdss_fb.h"
 #include "mdss_dsi.h"
 #include "mdss_samsung_dsi_panel_msm8x26.h"
+#include "mdss_debug.h"
+
 
 #define DT_CMD_HDR 6
 
@@ -1079,42 +1082,6 @@ static void alpm_enable(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 			}
 		}
 	}
-}
-
-void mdss_samsung_dsi_te_check(void)
-{
-	int rc, te_count = 0;
-	int te_max = 20000; /*samspling 200ms */
-
-	if (gpio_is_valid(disp_te_gpio)) {
-		pr_err(" ============ start waiting for TE ============\n");
-
-		for (te_count = 0;  te_count < te_max; te_count++) {
-			rc = gpio_get_value(disp_te_gpio);
-			if (rc == 1) {
-				pr_err("%s: gpio_get_value(disp_te_gpio) = %d ",
-						__func__, rc);
-				pr_err("te_count = %d\n", te_count);
-				break;
-			}
-			/* usleep suspends the calling thread whereas udelay is a
-			 * busy wait. Here the value of te_gpio is checked in a loop of
-			 * max count = 250. If this loop has to iterate multiple
-			 * times before the te_gpio is 1, the calling thread will end
-			 * up in suspend/wakeup sequence multiple times if usleep is
-			 * used, which is an overhead. So use udelay instead of usleep.
-			 */
-			udelay(10);
-		}
-
-		if(te_count == te_max)
-			pr_err("LDI doesn't generate TE\n");
-		else
-			pr_err("LDI generate TE\n");
-
-		pr_err(" ============ finish waiting for TE ============\n");
-	} else
-		pr_err("disp_te_gpio is not valid\n");
 }
 
 static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
@@ -2411,6 +2378,166 @@ static irqreturn_t samsung_te_check_handler(int irq, void *handle)
 	return IRQ_HANDLED;
 }
 #endif
+
+size_t kvaddr_to_paddr(unsigned long vaddr)
+{
+	pgd_t *pgd;
+	pud_t *pud;
+	pmd_t *pmd;
+	pte_t *pte;
+	size_t paddr;
+
+	pgd = pgd_offset_k(vaddr);
+	if (unlikely(pgd_none(*pgd) || pgd_bad(*pgd)))
+		return 0;
+
+	pud = pud_offset(pgd, vaddr);
+	if (unlikely(pud_none(*pud) || pud_bad(*pud)))
+		return 0;
+
+	pmd = pmd_offset(pud, vaddr);
+	if (unlikely(pmd_none(*pmd) || pmd_bad(*pmd)))
+		return 0;
+
+	pte = pte_offset_kernel(pmd, vaddr);
+	if (!pte_present(*pte))
+		return 0;
+
+	paddr = (unsigned long)pte_pfn(*pte) << PAGE_SHIFT;
+	paddr += (vaddr & (PAGE_SIZE - 1));
+
+	return paddr;
+}
+
+void mdss_samsung_dump_regs(void)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	char name[32];
+	int loop;
+
+	snprintf(name, sizeof(name), "MDP BASE");
+	pr_err("=============%s 0x%08zx ==============\n", name,
+			kvaddr_to_paddr((unsigned long)mdata->mdss_io.base));
+	mdss_dump_reg(mdata->mdss_io.base, 0x100);
+
+	snprintf(name, sizeof(name), "MDP REG");
+	pr_err("=============%s 0x%08zx ==============\n", name,
+			kvaddr_to_paddr((unsigned long)mdata->mdp_base));
+	mdss_dump_reg(mdata->mdp_base, 0x500);
+
+	for (loop = 0; loop < mdata->nctl; loop++) {
+		snprintf(name, sizeof(name), "CTRL%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->ctl_off[loop].base));
+		mdss_dump_reg(mdata->ctl_off[loop].base, 0x200);
+	}
+
+	for (loop = 0; loop < mdata->nvig_pipes; loop++) {
+		snprintf(name, sizeof(name), "VG%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->vig_pipes[loop].base));
+		mdss_dump_reg(mdata->vig_pipes[loop].base, 0x100);
+	}
+
+	for (loop = 0; loop < mdata->nrgb_pipes; loop++) {
+		snprintf(name, sizeof(name), "RGB%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->rgb_pipes[loop].base));
+		mdss_dump_reg(mdata->rgb_pipes[loop].base, 0x100);
+	}
+
+	for (loop = 0; loop < mdata->ndma_pipes; loop++) {
+		snprintf(name, sizeof(name), "DMA%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->dma_pipes[loop].base));
+		mdss_dump_reg(mdata->dma_pipes[loop].base, 0x100);
+	}
+
+	for (loop = 0; loop < mdata->nmixers_intf; loop++) {
+		snprintf(name, sizeof(name), "MIXER_INTF_%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->mixer_intf[loop].base));
+		mdss_dump_reg(mdata->mixer_intf[loop].base, 0x100);
+	}
+
+	for (loop = 0; loop < mdata->nmixers_wb; loop++) {
+		snprintf(name, sizeof(name), "MIXER_WB_%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->mixer_wb[loop].base));
+		mdss_dump_reg(mdata->mixer_wb[loop].base, 0x100);
+	}
+
+	for (loop = 0; loop < mdata->nmixers_intf; loop++) {
+		snprintf(name, sizeof(name), "PING_PONG%d", loop);
+		pr_err("=============%s 0x%08zx ==============\n", name,
+				kvaddr_to_paddr((unsigned long)mdata->mixer_intf[loop].pingpong_base));
+		mdss_dump_reg(mdata->mixer_intf[loop].pingpong_base, 0x40);
+	}
+}
+
+void mdss_samsung_dsi_dump_regs(struct mdss_panel_data *pdata, int dsi_num)
+{
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)pdata->panel_private;
+	struct mdss_dsi_ctrl_pdata **dsi_ctrl = &msd->ctrl_pdata;
+	char name[32];
+
+	snprintf(name, sizeof(name), "DSI%d CTL", dsi_num);
+	pr_err("=============%s 0x%08zx ==============\n", name,
+			kvaddr_to_paddr((unsigned long)dsi_ctrl[dsi_num]->ctrl_io.base));
+	mdss_dump_reg((char *)dsi_ctrl[dsi_num]->ctrl_io.base, dsi_ctrl[dsi_num]->ctrl_io.len);
+
+	snprintf(name, sizeof(name), "DSI%d PHY", dsi_num);
+	pr_err("=============%s 0x%08zx ==============\n", name,
+			kvaddr_to_paddr((unsigned long)dsi_ctrl[dsi_num]->phy_io.base));
+	mdss_dump_reg((char *)dsi_ctrl[dsi_num]->phy_io.base, (size_t)dsi_ctrl[dsi_num]->phy_io.len);
+
+	if (!msd->dump_info[dsi_num].dsi_pll.virtual_addr)
+		msd->dump_info[dsi_num].dsi_pll.virtual_addr = get_mdss_dsi_base();
+	snprintf(name, sizeof(name), "DSI%d PLL", dsi_num);
+	pr_err("=============%s 0x%08zx ==============\n", name,
+			kvaddr_to_paddr((unsigned long)msd->dump_info[dsi_num].dsi_pll.virtual_addr));
+	mdss_dump_reg((char *)msd->dump_info[dsi_num].dsi_pll.virtual_addr, 0x200);
+}
+
+void mdss_samsung_dsi_te_check(struct mdss_panel_data *pdata)
+{
+	int rc, te_count = 0;
+	int te_max = 20000; /*samspling 200ms */
+	int rddpm_reg = 0;
+
+	if (gpio_is_valid(disp_te_gpio)) {
+		pr_err(" ============ start waiting for TE ============\n");
+
+		for (te_count = 0;  te_count < te_max; te_count++) {
+			rc = gpio_get_value(disp_te_gpio);
+			if (rc == 1) {
+				pr_err("%s: gpio_get_value(disp_te_gpio) = %d ",
+						__func__, rc);
+				pr_err("te_count = %d\n", te_count);
+				break;
+			}
+			/* usleep suspends the calling thread whereas udelay is a
+			 * busy wait. Here the value of te_gpio is checked in a loop of
+			 * max count = 250. If this loop has to iterate multiple
+			 * times before the te_gpio is 1, the calling thread will end
+			 * up in suspend/wakeup sequence multiple times if usleep is
+			 * used, which is an overhead. So use udelay instead of usleep.
+			 */
+			udelay(10);
+		}
+
+		if (te_count == te_max) {
+			pr_err("LDI doesn't generate TE\n");
+			rddpm_reg = mdss_samsung_rddpm_status(pdata);
+			pr_info("RDDPM reg : %x\n", rddpm_reg);
+		} else
+			pr_err("LDI generate TE\n");
+
+		pr_err(" ============ finish waiting for TE ============\n");
+	} else
+		pr_err("disp_te_gpio is not valid\n");
+}
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,

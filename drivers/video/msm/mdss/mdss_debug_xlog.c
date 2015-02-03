@@ -72,7 +72,6 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 	}
 
 	mdd->logd.xlog_enable = true;
-	mdd->logd.enable_reg_dump = true;
 	mdd->logd.panic_on_err = true;
 
 	debugfs_create_file("dump", 0644, mdd->logd.xlog, NULL,
@@ -170,6 +169,8 @@ void mdss_xlog_tout_handler(const char *name, ...)
 	int i, dead = 0;
 	va_list args;
 	char *blk_name = NULL;
+	char *dsi0_addr = NULL;
+	char *dsi1_addr = NULL;
 
 	if (!mdd->logd.xlog_enable)
 		return;
@@ -177,7 +178,6 @@ void mdss_xlog_tout_handler(const char *name, ...)
 	if(is_console_locked())
 		console_unlock();
 
-	mdss_samsung_dsi_te_check();
 	va_start(args, name);
 	for (i = 0; i < MDSS_XLOG_MAX_DATA; i++) {
 
@@ -195,6 +195,12 @@ void mdss_xlog_tout_handler(const char *name, ...)
 				mdss_dump_reg(blk_base->base,
 						blk_base->max_offset);
 			}
+
+			if (!strncmp(blk_base->name, "dsi0", 4))
+				dsi0_addr = blk_base->base;
+
+			if (!strncmp(blk_base->name, "dsi1", 4))
+				dsi1_addr = blk_base->base;
 		}
 		if (!strcmp(blk_name, "panic"))
 			dead = 1;
@@ -203,6 +209,16 @@ void mdss_xlog_tout_handler(const char *name, ...)
 
 	MDSS_XLOG(0xffff, 0xffff, 0xffff, 0xffff, 0xffff);
 	mdss_xlog_dump();
+
+	mdss_samsung_dump_regs();
+
+	if (dsi0_addr)
+		mdss_samsung_dsi_dump_regs(mdata->ctl_off->panel_data, 0);
+
+	if (dsi1_addr)
+		mdss_samsung_dsi_dump_regs(mdata->ctl_off->panel_data, 1);
+
+	mdss_samsung_dsi_te_check(mdata->ctl_off->panel_data);
 
 	if (dead && mdd->logd.panic_on_err)
 		panic(name);
