@@ -251,10 +251,6 @@
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
-&dsi_mot_ssd2848_290p_cmd {
-	/delete-property/ qcom,cont-splash-enabled;
-};
-
 &pm8226_chg {
 	status = "disabled";
 };
