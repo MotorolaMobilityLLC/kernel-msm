@@ -1032,9 +1032,14 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 	}
 
 	rc = read_cc_raw(chip, &raw->cc, CC);
-	rc = read_cc_raw(chip, &raw->shdw_cc, SHDW_CC);
 	if (rc) {
 		pr_err("Failed to read raw cc data, rc = %d\n", rc);
+		goto param_err;
+	}
+
+	rc = read_cc_raw(chip, &raw->shdw_cc, SHDW_CC);
+	if (rc) {
+		pr_err("Failed to read raw SW shadow cc data, rc = %d\n", rc);
 		goto param_err;
 	}
 
