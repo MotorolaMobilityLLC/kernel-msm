@@ -11,7 +11,7 @@
  */
 
 #include "msm8994-pinctrl.dtsi"
-#include "msm8994-mot-camera-sensor.dtsi"
+#include "msm8992-msm8994-mot-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 / {
@@ -869,6 +869,18 @@
 	hob_ram {
 		compatible = "mmi,hob_ram";
 		mmi,allocation-type-smem;
+	};
+
+	qcom,cci@fda0c000 {
+		pinctrl-names = "cci_default", "cci_suspend";
+		pinctrl-0 = <&cci0_active>;
+		pinctrl-1 = <&cci0_suspend>;
+		gpios = <&msm_gpio 17 0>,
+			<&msm_gpio 18 0>;
+		qcom,gpio-tbl-num = <0 1>;
+		qcom,gpio-tbl-flags = <1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
+			"CCI_I2C_CLK0";
 	};
 };
 
