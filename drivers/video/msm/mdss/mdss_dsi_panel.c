@@ -279,7 +279,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
 
@@ -403,7 +403,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
-		if (ctrl_pdata->init_cmds.cmd_cnt) {
+		if (!pinfo->cont_splash_enabled && ctrl_pdata->init_cmds.cmd_cnt) {
 			int id;
 			mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->init_cmds);
 			id = mdss_dsi_read_bridge_id(ctrl_pdata);
