@@ -1421,6 +1421,8 @@ VOS_STATUS peHandleMgmtFrame( v_PVOID_t pvosGCtx, v_PVOID_t vosBuff)
     {
         vos_spin_lock_release( &pMac->sys.lock );
         // drop all management packets
+        limLog( pMac, LOGW,
+                FL ( "Management queue 1/4th full, dropping management packets" ));
         vos_pkt_return_packet(pVosPkt);
         return  VOS_STATUS_SUCCESS;
     }
@@ -1433,6 +1435,8 @@ VOS_STATUS peHandleMgmtFrame( v_PVOID_t pvosGCtx, v_PVOID_t vosBuff)
             SIR_MAC_MGMT_PROBE_REQ ||  mHdr->fc.subType == SIR_MAC_MGMT_PROBE_RSP )
         {
             vos_spin_lock_release( &pMac->sys.lock );
+            limLog( pMac, LOGW,
+                    FL ( "Dropping probe req, probe resp or beacon" ));
             vos_pkt_return_packet(pVosPkt);
             return  VOS_STATUS_SUCCESS;
         }
