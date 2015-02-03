@@ -2707,6 +2707,11 @@ void mdss_clk_update_hdmi_addr(u32 phy_addr, u32 phy_pll_addr)
 	hdmi_phy_pll_addr = phy_pll_addr;
 }
 
+unsigned long get_mdss_dsi_base(void)
+{
+	return (unsigned long)mdss_dsi_base;
+}
+
 void mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 {
 	BUG_ON(ahb_clk == NULL);
@@ -2716,6 +2721,7 @@ void mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 		pr_err("%s: unable to remap gdsc base", __func__);
 
 	mdss_dsi_base = ioremap(DSI_PHY_PHYS, DSI_PHY_SIZE);
+
 	if (!mdss_dsi_base)
 		pr_err("%s: unable to remap dsi base", __func__);
 
