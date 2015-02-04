@@ -28,7 +28,34 @@
 	};
 
 	soc: soc { };
+	cpus {
+		#size-cells = <0>;
+		#address-cells = <1>;
 
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x0>;
+		};
+
+		CPU1: cpu@1 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x1>;
+		};
+
+		CPU2: cpu@2 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x2>;
+		};
+
+		CPU3: cpu@3 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x3>;
+		};
+	};
 	memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -4729,22 +4756,28 @@
 		reg-names = "fuse-base";
 	};
 
+
 	qcom,bcl {
 		compatible = "qcom,bcl";
+		qcom,bcl-enable;
 		qcom,ibat-vadc = <&pma8084_vadc>;
 		qcom,ibat-threshold-adc_tm = <&pma8084_adc_tm>;
+		qcom,bcl-hotplug-list = <&CPU2 &CPU3>;
 		qcom,ibat-monitor {
 			high-threshold-uamp = <3000000>;
 			low-threshold-uamp = <1000000>;
 			mitigation-freq-khz = <1958400>;
+			mitigation-gpu-freq-khz = <389000>;
+			max-gpu-freq-khz = <600000>;
 			ibat-channel = <0x15>;
 			adc-interval-usec = <3900>;
 			uv-to-ua-numerator = <2>;
 			uv-to-ua-denominator = <1>;
 			vph-channel = <0x07>;
-			vph-high-threshold-uv = <3750000>;
-			vph-low-threshold-uv = <3500000>;
+			vph-high-threshold-uv = <3650000>;
+			vph-low-threshold-uv = <3150000>;
 			thermal-handle = <&msm_thermal_freq>;
+			smb135x-handle = <&smb1357_otg_vreg>;
 		};
 	};
 
