@@ -350,6 +350,11 @@
 		};
 	};
 	/delete-node/ spi@f9926000;
+
+	qcom,msm-thermal {
+		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor5",
+				"tsens_tz_sensor5", "tsens_tz_sensor5";
+	};
 };
 
 &spmi_bus {
