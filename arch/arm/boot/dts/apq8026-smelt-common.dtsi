@@ -528,7 +528,12 @@
 };
 
 &spmi_bus {
-	qcom,pm8226@1 {
+	qcom,pm8226@0 {
+		pm8x26_rtc: qcom,pm8226_rtc {
+			qcom,qpnp-rtc-write = <1>;
+		};
+	};
+        qcom,pm8226@1 {
 		qcom,vibrator@c000 {
 			qcom,vib-vtg-level-mV = <2300>;
 		};
