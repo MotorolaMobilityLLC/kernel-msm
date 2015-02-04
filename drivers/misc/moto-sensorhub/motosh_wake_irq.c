@@ -203,7 +203,6 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			irq_status == M_QUICKPEEK) < 0)
 			goto EXIT;
 	}
-#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	if (irq_status & M_COVER) {
 		int state;
 		motosh_cmdbuff[0] = COVER_DATA;
@@ -219,15 +218,16 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		else
 			state = 0;
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 		/* notify subscribers of cover state change */
 		mmi_hall_notify(MMI_HALL_FOLIO, state);
+#endif
 
 		input_report_switch(ps_motosh->input_dev, SW_LID, state);
 		input_sync(ps_motosh->input_dev);
 
 		dev_err(&ps_motosh->client->dev, "Cover status: %d\n", state);
 	}
-#endif
 	if (irq_status & M_FLATUP) {
 		motosh_cmdbuff[0] = FLAT_DATA;
 		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
