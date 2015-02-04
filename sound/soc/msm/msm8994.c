@@ -38,6 +38,7 @@
 #include "../codecs/fsa8500-core.h"
 #ifdef CONFIG_SND_SOC_FLORIDA
 #include "../codecs/florida.h"
+#include "../codecs/aov_trigger.h"
 #endif
 
 #define DRV_NAME "msm8994-asoc-snd"
@@ -2147,6 +2148,7 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret)
 		dev_info(codec->dev, "fsa8500 hs det load error %d", ret);
 
+	aov_trigger_init(codec);
 	return 0;
 }
 #endif
