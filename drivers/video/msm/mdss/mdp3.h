@@ -26,7 +26,7 @@
 
 #define MDP_VSYNC_CLK_RATE	19200000
 #define MDP_CORE_CLK_RATE	100000000
-#define KOFF_TIMEOUT msecs_to_jiffies(84)
+#define KOFF_TIMEOUT msecs_to_jiffies(1000)
 
 enum  {
 	MDP3_CLK_AHB,

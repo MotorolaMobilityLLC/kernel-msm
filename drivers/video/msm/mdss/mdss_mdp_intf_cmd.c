@@ -27,7 +27,7 @@
 
 #define SPLIT_MIXER_OFFSET 0x800
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
-#define KOFF_TIMEOUT msecs_to_jiffies(84)
+#define KOFF_TIMEOUT msecs_to_jiffies(1000)
 
 #define STOP_TIMEOUT(hz) msecs_to_jiffies((1000 / hz) * (VSYNC_EXPIRE_TICK + 2))
 #define POWER_COLLAPSE_TIME msecs_to_jiffies(100)
