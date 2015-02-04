@@ -49,8 +49,7 @@ struct florida_compr {
 	bool allocated;
 	bool trig;
 	bool forced;
-	int device_index;
-	int dsp_num;
+	int stream_index;
 	bool freed;
 };
 
@@ -227,28 +226,23 @@ static int florida_virt_dsp_power_ev(struct snd_soc_dapm_widget *w,
 				    struct snd_kcontrol *kcontrol, int event)
 {
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(w->codec);
-	int i;
 
-	/* Checks to see if it is DSP3 to force it on */
-	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++) {
-		if (florida->compr_info[i].dsp_num != 2)
-			continue;
-		mutex_lock(&florida->compr_info[i].lock);
-		if (!florida->compr_info[i].stream)
-			florida->compr_info[i].trig = false;
+	/* The compr_info is hardcoded for DSP3 */
+	mutex_lock(&florida->compr_info[2].lock);
+	if (!florida->compr_info[2].stream)
+		florida->compr_info[2].trig = false;
 
-		switch (event) {
-		case SND_SOC_DAPM_POST_PMU:
-			florida->compr_info[i].forced = true;
-			break;
-		case SND_SOC_DAPM_PRE_PMD:
-			florida->compr_info[i].forced = false;
-			break;
-		default:
-			break;
-		}
-		mutex_unlock(&florida->compr_info[i].lock);
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		florida->compr_info[2].forced = true;
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		florida->compr_info[2].forced = false;
+		break;
+	default:
+		break;
 	}
+	mutex_unlock(&florida->compr_info[2].lock);
 	return 0;
 }
 
@@ -1994,13 +1988,12 @@ static int adsp2_ez2ctrl_set_trigger(struct florida_priv *florida)
 
 static bool adsp2_ez2ctrl_trigger(struct florida_priv *florida, int dev)
 {
-	int dsp_num = florida->compr_info[dev].dsp_num;
-	if (!florida->compr_info[dev].freed && !florida->compr_info[dev].trig
-		&& (florida->core.adsp[dsp_num].fw_id == 0x4000d
-		|| florida->core.adsp[dsp_num].fw_id == 0x40036)
-		&& florida->core.adsp[dsp_num].running) {
-
+	if ((!florida->compr_info[dev].freed)
+		&& (florida->core.adsp[dev].fw_id == 0x4000d
+		|| florida->core.adsp[dev].fw_id == 0x40036)
+		&& florida->core.adsp[dev].running) {
 		florida->compr_info[dev].trig = true;
+		florida->compr_info[dev].freed = true;
 		return true;
 	}
 	return false;
@@ -2010,7 +2003,6 @@ static irqreturn_t adsp2_irq(int irq, void *data)
 {
 	struct florida_priv *florida = data;
 	int ret, avail, i;
-
 	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++) {
 		mutex_lock(&florida->compr_info[i].lock);
 		if (adsp2_ez2ctrl_trigger(florida, i))
@@ -2039,40 +2031,35 @@ static int florida_open(struct snd_compr_stream *stream)
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 	struct arizona *arizona = florida->core.arizona;
-	int i, dsp_num, ret = 0;
+	int stream_num, dsp_num, ret = 0;
 
 	stream->runtime->private_data = NULL;
 
-	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++) {
-		if (!florida->compr_info[i].stream) {
-			stream->runtime->private_data = &florida->compr_info[i];
-			florida->compr_info[i].device_index = i;
-			break;
-		}
-	}
+	stream_num = adsp2_get_comprdev_index(stream);
+	if (stream_num < 0)
+		return stream_num;
+
+	stream->runtime->private_data = &florida->compr_info[stream_num];
+	florida->compr_info[stream_num].stream_index = stream_num;
 
 	if (!stream->runtime->private_data) {
 		dev_err(arizona->dev,
 			" No more compress device can be opened! \n");
 		return -EINVAL;
 	}
-	if (i == FLORIDA_NUM_COMPR_DEVICES) {
-		dev_err(arizona->dev,
-			"All streams are allocated\n");
-		return -EINVAL;
-	}
 
-	dsp_num = adsp2_get_comprdev_index(stream);
-	if (dsp_num < 0) {
-		return dsp_num;
-	}
-	florida->compr_info[i].dsp_num = dsp_num;
-	mutex_lock(&florida->compr_info[i].lock);
+	mutex_lock(&florida->compr_info[stream_num].lock);
 
-	if (florida->compr_info[i].stream) {
+	if (florida->compr_info[stream_num].stream) {
 		ret = -EBUSY;
 		goto out;
 	}
+
+	/* TODO:  We are going to want two streams per DSP.  Not just DSP3 */
+	if (stream_num > 2)
+		dsp_num = stream_num-1;
+	else
+		dsp_num = stream_num;
 
 	if (!wm_adsp_compress_supported(&florida->core.adsp[dsp_num], stream)) {
 		dev_err(arizona->dev,
@@ -2081,11 +2068,10 @@ static int florida_open(struct snd_compr_stream *stream)
 		goto out;
 	}
 
-	florida->compr_info[i].adsp = &florida->core.adsp[dsp_num];
-	florida->compr_info[i].stream = stream;
-	florida->compr_info[i].freed = false;
+	florida->compr_info[stream_num].adsp = &florida->core.adsp[dsp_num];
+	florida->compr_info[stream_num].stream = stream;
 out:
-	mutex_unlock(&florida->compr_info[i].lock);
+	mutex_unlock(&florida->compr_info[stream_num].lock);
 
 	return ret;
 }
@@ -2093,7 +2079,7 @@ out:
 static int florida_free(struct snd_compr_stream *stream)
 {
 	struct florida_compr *compr = stream->runtime->private_data;
-	int compr_dev_index = compr->device_index;
+	int compr_dev_index = compr->stream_index;
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 
@@ -2106,9 +2092,8 @@ static int florida_free(struct snd_compr_stream *stream)
 	if (!florida->compr_info[compr_dev_index].forced)
 		florida->compr_info[compr_dev_index].trig = false;
 
+	florida->compr_info[compr_dev_index].freed = false;
 	wm_adsp_stream_free(florida->compr_info[compr_dev_index].adsp);
-
-	florida->compr_info[compr_dev_index].freed = true;
 
 	mutex_unlock(&florida->compr_info[compr_dev_index].lock);
 	return 0;
@@ -2118,7 +2103,7 @@ static int florida_set_params(struct snd_compr_stream *stream,
 			     struct snd_compr_params *params)
 {
 	struct florida_compr *compr = stream->runtime->private_data;
-	int compr_dev_index = compr->device_index;
+	int compr_dev_index = compr->stream_index;
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 	struct arizona *arizona = florida->core.arizona;
@@ -2159,7 +2144,7 @@ static int florida_trigger(struct snd_compr_stream *stream, int cmd)
 {
 
 	struct florida_compr *compr = stream->runtime->private_data;
-	int compr_dev_index = compr->device_index;
+	int compr_dev_index = compr->stream_index;
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 	int ret = 0;
@@ -2200,7 +2185,7 @@ static int florida_pointer(struct snd_compr_stream *stream,
 			  struct snd_compr_tstamp *tstamp)
 {
 	struct florida_compr *compr = stream->runtime->private_data;
-	int compr_dev_index = compr->device_index;
+	int compr_dev_index = compr->stream_index;
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 
@@ -2219,7 +2204,7 @@ static int florida_copy(struct snd_compr_stream *stream, char __user *buf,
 		       size_t count)
 {
 	struct florida_compr *compr = stream->runtime->private_data;
-	int compr_dev_index = compr->device_index;
+	int compr_dev_index = compr->stream_index;
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 	int ret;
@@ -2243,7 +2228,7 @@ static int florida_get_caps(struct snd_compr_stream *stream,
 			   struct snd_compr_caps *caps)
 {
 	struct florida_compr *compr = stream->runtime->private_data;
-	int compr_dev_index = compr->device_index;
+	int compr_dev_index = compr->stream_index;
 	struct snd_soc_pcm_runtime *rtd = stream->private_data;
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(rtd->codec);
 
@@ -2413,6 +2398,9 @@ static int florida_probe(struct platform_device *pdev)
 	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++)
 		mutex_init(&florida->compr_info[i].lock);
 	mutex_init(&florida->fw_lock);
+
+	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++)
+		florida->compr_info[i].freed = false;
 
 	/* Set of_node to parent from the SPI device to allow DAPM to
 	 * locate regulator supplies */
