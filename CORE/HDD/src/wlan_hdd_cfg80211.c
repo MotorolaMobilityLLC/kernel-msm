@@ -13951,6 +13951,7 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device 
     int max_sta_failed = 0;
     int responder;
     long rc;
+    int ret;
 #if !(TDLS_MGMT_VERSION2)
     u32 peer_capability = 0;
 #endif
@@ -14117,7 +14118,8 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device 
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
             "%s: " MAC_ADDRESS_STR " action %d couldn't sent, as one is pending. return EBUSY",
             __func__, MAC_ADDR_ARRAY(peer), action_code);
-        return -EBUSY;
+        ret = -EBUSY;
+        goto tx_failed;
     }
 
     pAdapter->mgmtTxCompletionStatus = TDLS_CTX_MAGIC;
@@ -14131,8 +14133,8 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device 
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: sme_SendTdlsMgmtFrame failed!", __func__);
         pAdapter->mgmtTxCompletionStatus = FALSE;
-        wlan_hdd_tdls_check_bmps(pAdapter);
-        return -EINVAL;
+        ret = -EINVAL;
+        goto tx_failed;
     }
 
     rc = wait_for_completion_interruptible_timeout(&pAdapter->tdls_mgmt_comp,
@@ -14152,14 +14154,14 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device 
             return -EAGAIN;
         }
 
-        wlan_hdd_tdls_check_bmps(pAdapter);
-        return -EINVAL;
+        ret = -EINVAL;
+        goto tx_failed;
     }
 
     if (max_sta_failed)
     {
-      wlan_hdd_tdls_check_bmps(pAdapter);
-      return max_sta_failed;
+        ret = max_sta_failed;
+        goto tx_failed;
     }
 
     if (SIR_MAC_TDLS_SETUP_RSP == action_code)
@@ -14172,6 +14174,20 @@ static int __wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device 
     }
 
     return 0;
+
+tx_failed:
+    /* add_station will be called before sending TDLS_SETUP_REQ and
+     * TDLS_SETUP_RSP and as part of add_station driver will enable
+     * BMPS. NL80211_TDLS_DISABLE_LINK will be called if the tx of
+     * TDLS_SETUP_REQ or TDLS_SETUP_RSP fails. BMPS will be enabled
+     * as part of processing NL80211_TDLS_DISABLE_LINK. So need to
+     * enable BMPS for TDLS_SETUP_REQ and TDLS_SETUP_RSP if tx fails.
+     */
+
+    if ((SIR_MAC_TDLS_SETUP_REQ == action_code) ||
+            (SIR_MAC_TDLS_SETUP_RSP == action_code))
+        wlan_hdd_tdls_check_bmps(pAdapter);
+    return ret;
 }
 
 #if TDLS_MGMT_VERSION2
