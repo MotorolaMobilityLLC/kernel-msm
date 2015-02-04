@@ -1288,6 +1288,8 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	// ASUS: we go our way...
 	if (BLANK_FLAG_ULP == blank_mode)
 		blank_mode = FB_BLANK_POWERDOWN;
+       else if(BLANK_FLAG_LP == blank_mode)
+               blank_mode = FB_BLANK_UNBLANK;
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
