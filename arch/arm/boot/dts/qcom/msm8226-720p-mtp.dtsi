@@ -353,9 +353,21 @@
 	};
 
 	mpp@a500 { /* MPP 6 */
+		/* HW_VER0 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <1>; /* AMUX 6 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
 	};
 
 	mpp@a600 { /* MPP 7 */
+		/* HW_VER1 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <2>; /* AMUX 7 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */	
 	};
 
 	mpp@a700 { /* MPP 8 */
@@ -379,7 +391,26 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
-
+	chan@15 {
+		label = "hw_ver0";
+		reg = <0x15>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <2>;
+	};
+	chan@16 {
+		label = "hw_ver1";
+		reg = <0x16>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <2>;
+	};
 	chan@17 {
 		label = "pa_therm1";
 		reg = <0x17>;
