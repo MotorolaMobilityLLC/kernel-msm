@@ -193,6 +193,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&kungpow_default>;
 	};
+
+	qcom,cci@1b0c000 {
+		vddio-supply = <&pm8916_l10>;
+	};
 };
 
 &i2c_5 {
