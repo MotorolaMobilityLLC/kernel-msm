@@ -220,6 +220,18 @@ struct smbchg_chip {
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
 	bool				factory_mode;
+	struct delayed_work		heartbeat_work;
+	struct mutex			check_temp_lock;
+	int				temp_state;
+	int				hotspot_temp;
+	int				hotspot_thrs_c;
+	int				hot_temp_c;
+	int				cold_temp_c;
+	int				warm_temp_c;
+	int				cool_temp_c;
+	int				ext_high_temp;
+	int				ext_temp_volt_mv;
+	int				ext_temp_soc;
 };
 
 static struct smbchg_chip *the_chip;
@@ -690,6 +702,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
+	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 };
 
 #define CHGR_STS			0x0E
@@ -2419,9 +2432,10 @@ static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 
 	if (rc)
 		dev_err(chip->dev, "Couldn't set float voltage rc = %d\n", rc);
+#ifdef QCOM_BASE
 	else
 		chip->vfloat_mv = vfloat_mv;
-
+#endif
 	return rc;
 }
 
@@ -2498,6 +2512,12 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
 		rc = smbchg_safety_timer_enable(chip, val->intval);
 		break;
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+		chip->hotspot_temp = val->intval;
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+				      msecs_to_jiffies(0));
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2518,6 +2538,7 @@ static int smbchg_battery_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		rc = 1;
 		break;
 	default:
@@ -2555,6 +2576,7 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = get_prop_batt_health(chip);
+		val->intval = chip->temp_state;
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -2573,6 +2595,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED:
 		val->intval = (int)chip->aicl_complete;
+		break;
+	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+		val->intval = chip->hotspot_temp;
 		break;
 	/* properties from fg */
 	case POWER_SUPPLY_PROP_CAPACITY:
@@ -2676,6 +2701,7 @@ static int smbchg_dc_is_writeable(struct power_supply *psy,
 }
 
 #define USBIN_SUSPEND_SRC_BIT		BIT(6)
+#ifdef QCOM_BASE
 static void smbchg_unknown_battery_en(struct smbchg_chip *chip, bool en)
 {
 	int rc;
@@ -2692,6 +2718,7 @@ static void smbchg_unknown_battery_en(struct smbchg_chip *chip, bool en)
 		return;
 	}
 }
+#endif
 
 static void smbchg_vfloat_adjust_check(struct smbchg_chip *chip)
 {
@@ -2915,8 +2942,10 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				struct smbchg_chip, batt_psy);
 	union power_supply_propval prop = {0,};
 	int rc, current_limit = 0, soc;
+#ifdef QCOM_BASE
 	bool en;
 	bool unused;
+#endif
 
 	if (chip->bms_psy_name)
 		chip->bms_psy =
@@ -2924,6 +2953,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->bms_psy) {
+#ifdef QCOM_BASE
 		chip->bms_psy->get_property(chip->bms_psy,
 				POWER_SUPPLY_PROP_BATTERY_TYPE, &prop);
 		en = strcmp(prop.strval, UNKNOWN_BATT_TYPE) != 0;
@@ -2931,6 +2961,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		en = strcmp(prop.strval, LOADING_BATT_TYPE) != 0;
 		smbchg_battchg_en(chip, en, REASON_BATTCHG_LOADING_PROFILE,
 				&unused);
+#endif
 		soc = get_prop_batt_capacity(chip);
 		if (chip->previous_soc != soc) {
 			chip->previous_soc = soc;
@@ -4209,6 +4240,9 @@ static inline int get_bpd(const char *name)
 	return -EINVAL;
 }
 
+#define CCMP_CFG			0xFA
+#define CCMP_CFG_MASK			0xFF
+#define CCMP_CFG_DIS_ALL_TEMP		0x20
 #define CHGR_CFG1			0xFB
 #define RECHG_THRESHOLD_SRC_BIT		BIT(1)
 #define TERM_I_SRC_BIT			BIT(2)
@@ -4353,6 +4387,14 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set chgr_cfg2 rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = smbchg_sec_masked_write(chip, chip->chgr_base + CCMP_CFG,
+				     CCMP_CFG_MASK, CCMP_CFG_DIS_ALL_TEMP);
+
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set ccmp_cfg rc=%d\n", rc);
 		return rc;
 	}
 
@@ -4803,6 +4845,41 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->jeita_temp_hard_limit,
 			"jeita-temp-hard-limit", rc, 1);
 
+	OF_PROP_READ(chip, chip->hot_temp_c,
+			"qcom,hot-temp-c", rc, 1);
+	if (chip->hot_temp_c == -EINVAL)
+		chip->hot_temp_c = 60;
+
+	OF_PROP_READ(chip, chip->cold_temp_c,
+			"qcom,cold-temp-c", rc, 1);
+	if (chip->cold_temp_c == -EINVAL)
+		chip->cold_temp_c = -20;
+
+	OF_PROP_READ(chip, chip->warm_temp_c,
+			"qcom,warm-temp-c", rc, 1);
+	if (chip->warm_temp_c == -EINVAL)
+		chip->warm_temp_c = 45;
+
+	OF_PROP_READ(chip, chip->cool_temp_c,
+			"qcom,cool-temp-c", rc, 1);
+	if (chip->cool_temp_c == -EINVAL)
+		chip->cool_temp_c = 0;
+
+	OF_PROP_READ(chip, chip->ext_temp_volt_mv,
+			"qcom,ext-temp-volt-mv", rc, 1);
+	if (chip->ext_temp_volt_mv == -EINVAL)
+		chip->ext_temp_volt_mv = 4000;
+
+	OF_PROP_READ(chip, chip->ext_temp_soc,
+			"qcom,ext-temp-soc", rc, 1);
+	if (chip->ext_temp_soc == -EINVAL)
+		chip->ext_temp_soc = 65;
+
+	OF_PROP_READ(chip, chip->hotspot_thrs_c,
+			"qcom,hotspot-thrs-c", rc, 1);
+	if (chip->hotspot_thrs_c == -EINVAL)
+		chip->hotspot_thrs_c = 50;
+
 	/* read boolean configuration properties */
 	chip->use_vfloat_adjustments = of_property_read_bool(node,
 						"qcom,autoadjust-vfloat");
@@ -4900,7 +4977,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 				"Couldn't read threm limits rc = %d\n", rc);
 			return rc;
 		}
-	}
+	} else
+		chip->thermal_levels = 0;
 
 	return 0;
 }
@@ -5707,6 +5785,197 @@ static DEVICE_ATTR(force_chg_usb_otg_ctl, 0664,
 		   force_chg_usb_otg_ctl_show,
 		   force_chg_usb_otg_ctl_store);
 
+static bool smbchg_is_max_thermal_level(struct smbchg_chip *chip)
+{
+	if ((chip->thermal_levels == 0) ||
+	    ((chip->thermal_levels > 0) &&
+	     ((chip->usb_present) &&
+	      ((chip->therm_lvl_sel >= (chip->thermal_levels - 1)) ||
+	       (chip->therm_lvl_sel == -EINVAL)))))
+		return true;
+	else
+		return false;
+}
+
+static char *smb_health_text[] = {
+	"Unknown", "Good", "Overheat", "Warm", "Dead", "Over voltage",
+	"Unspecified failure", "Cold", "Cool", "Watchdog timer expire",
+	"Safety timer expire"
+};
+
+static int smbchg_check_temp_range(struct smbchg_chip *chip,
+				   int batt_volt,
+				   int batt_soc,
+				   int batt_health,
+				   int prev_batt_health)
+{
+	int ext_high_temp = 0;
+
+	if (((batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	     (batt_volt > chip->ext_temp_volt_mv)) ||
+	    ((batt_health == POWER_SUPPLY_HEALTH_WARM) &&
+	     (batt_soc > chip->ext_temp_soc) &&
+	     (smbchg_is_max_thermal_level(chip))))
+		ext_high_temp = 1;
+
+	if ((prev_batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	    (batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	    !chip->ext_high_temp)
+		ext_high_temp = 0;
+
+	if (chip->ext_high_temp != ext_high_temp) {
+		chip->ext_high_temp = ext_high_temp;
+		dev_err(chip->dev, "Ext High = %s\n",
+			chip->ext_high_temp ? "High" : "Low");
+
+		return 1;
+	}
+
+	return 0;
+}
+
+#define HYSTERISIS_DEGC 2
+static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
+{
+	int hotspot;
+	int temp_state = POWER_SUPPLY_HEALTH_GOOD;
+
+	if (!chip)
+		return;
+
+	mutex_lock(&chip->check_temp_lock);
+
+	/* Convert to Degrees C */
+	hotspot = chip->hotspot_temp / 1000;
+
+	/* Override batt_temp if battery hot spot condition
+	   is active */
+	if ((batt_temp > chip->cool_temp_c) &&
+	    (hotspot > batt_temp) &&
+	    (hotspot >= chip->hotspot_thrs_c)) {
+		batt_temp = hotspot;
+	}
+
+	if (chip->temp_state == POWER_SUPPLY_HEALTH_WARM) {
+		if (batt_temp >= chip->hot_temp_c)
+			/* Warm to Hot */
+			temp_state = POWER_SUPPLY_HEALTH_OVERHEAT;
+		else if (batt_temp <=
+			 chip->warm_temp_c - HYSTERISIS_DEGC)
+			/* Warm to Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+		else
+			/* Stay Warm */
+			temp_state = POWER_SUPPLY_HEALTH_WARM;
+	} else if ((chip->temp_state == POWER_SUPPLY_HEALTH_GOOD) ||
+		   (chip->temp_state == POWER_SUPPLY_HEALTH_UNKNOWN)) {
+		if (batt_temp >= chip->warm_temp_c)
+			/* Normal to Warm */
+			temp_state = POWER_SUPPLY_HEALTH_WARM;
+		else if (batt_temp <= chip->cool_temp_c)
+			/* Normal to Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+		else
+			/* Stay Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COOL) {
+		if (batt_temp >=
+		    chip->cool_temp_c + HYSTERISIS_DEGC)
+			/* Cool to Normal */
+			temp_state = POWER_SUPPLY_HEALTH_GOOD;
+		else if (batt_temp <= chip->cold_temp_c)
+			/* Cool to Cold */
+			temp_state = POWER_SUPPLY_HEALTH_COLD;
+		else
+			/* Stay Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) {
+		if (batt_temp >=
+		    chip->cold_temp_c + HYSTERISIS_DEGC)
+			/* Cold to Cool */
+			temp_state = POWER_SUPPLY_HEALTH_COOL;
+		else
+			/* Stay Cold */
+			temp_state = POWER_SUPPLY_HEALTH_COLD;
+	} else if (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) {
+		if (batt_temp <=
+		    chip->hot_temp_c - HYSTERISIS_DEGC)
+			/* Hot to Warm */
+			temp_state = POWER_SUPPLY_HEALTH_WARM;
+		else
+			/* Stay Hot */
+			temp_state = POWER_SUPPLY_HEALTH_OVERHEAT;
+	}
+
+	if (chip->temp_state != temp_state) {
+		chip->temp_state = temp_state;
+		dev_err(chip->dev, "Battery Temp State = %s\n",
+			smb_health_text[chip->temp_state]);
+	}
+	mutex_unlock(&chip->check_temp_lock);
+
+	return;
+}
+
+static void smbchg_set_temp_chgpath(struct smbchg_chip *chip)
+{
+	if (chip->factory_mode)
+		return;
+
+	if ((chip->temp_state == POWER_SUPPLY_HEALTH_COOL) &&
+	    !chip->ext_high_temp)
+		smbchg_float_voltage_set(chip,
+					  chip->ext_temp_volt_mv);
+	else
+		smbchg_float_voltage_set(chip, chip->vfloat_mv);
+
+	if (chip->ext_high_temp ||
+	    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
+	    (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT))
+		smbchg_charging_en(chip, 0);
+	else {
+		smbchg_charging_en(chip, 0);
+		mdelay(10);
+		smbchg_charging_en(chip, 1);
+	}
+}
+
+#define HEARTBEAT_DELAY_MS 60000
+static void smbchg_heartbeat_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip = container_of(work,
+						struct smbchg_chip,
+						heartbeat_work.work);
+	int batt_mv;
+	int batt_ma;
+	int batt_soc;
+	int batt_temp;
+	int prev_batt_health;
+	int prev_ext_lvl;
+
+	batt_mv = get_prop_batt_voltage_now(chip) / 1000;
+	batt_ma = get_prop_batt_current_now(chip) / 1000;
+	batt_soc = get_prop_batt_capacity(chip);
+
+	batt_temp = get_prop_batt_temp(chip) / 10;
+	dev_dbg(chip->dev, "batt=%d mV, %d mA, %d C\n",
+		batt_mv, batt_ma, batt_temp);
+
+	prev_batt_health = chip->temp_state;
+	smbchg_check_temp_state(chip, batt_temp);
+	prev_ext_lvl = chip->ext_high_temp;
+	smbchg_check_temp_range(chip, batt_mv, batt_soc,
+				chip->temp_state, prev_batt_health);
+	if ((prev_batt_health != chip->temp_state) ||
+	    (prev_ext_lvl != chip->ext_high_temp))
+		smbchg_set_temp_chgpath(chip);
+
+	power_supply_changed(&chip->batt_psy);
+
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(HEARTBEAT_DELAY_MS));
+}
+
 static bool smbchg_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -5760,6 +6029,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 			smbchg_parallel_usb_en_work);
 	INIT_DELAYED_WORK(&chip->vfloat_adjust_work, smbchg_vfloat_adjust_work);
 	INIT_DELAYED_WORK(&chip->hvdcp_det_work, smbchg_hvdcp_det_work);
+	INIT_DELAYED_WORK(&chip->heartbeat_work,
+			  smbchg_heartbeat_work);
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
@@ -5779,6 +6050,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->taper_irq_lock);
 	mutex_init(&chip->pm_lock);
 	mutex_init(&chip->wipower_config);
+	mutex_init(&chip->check_temp_lock);
 
 	rc = smbchg_parse_peripherals(chip);
 	if (rc) {
@@ -5910,6 +6182,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 		}
 
 	}
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(0));
 
 	dev_info(chip->dev, "SMBCHG successfully probed batt=%d dc = %d usb = %d\n",
 			get_prop_batt_present(chip),
