@@ -130,6 +130,26 @@
 		interrupt-names = "vbus_det_irq";
 	};
 
+	sound {
+		compatible = "qcom,msm8226-audio-tapan";
+		qcom,model = "msm8226-snd-card";
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 63 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 64 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
+		qcom,no-codec;
+	};
+
+	qcom,msm-dai-q6-mi2s-prim {
+		compatible = "qcom,msm-dai-q6-mi2s";
+		qcom,msm-dai-q6-mi2s-dev-id = <0>;
+		qcom,msm-mi2s-rx-lines = <0>;
+		qcom,msm-mi2s-tx-lines = <1>;
+	};
+
+	/delete-node/ sound-9302;
+
 	/* BLSP1: UART */
 	/delete-node/ spi@f9923000;
 	uart1: uart@f991d000 { /* BLSP1 UART1 */
@@ -462,6 +482,13 @@
 	regulator-min-microvolt = <2850000>;
 	regulator-max-microvolt = <2850000>;
 	qcom,init-voltage = <2850000>;
+	regulator-always-on;
+};
+
+&pm8226_l23 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
 	regulator-always-on;
 };
 

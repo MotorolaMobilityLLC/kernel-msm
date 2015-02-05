@@ -2566,9 +2566,10 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.aif_name = "PRI_MI2S_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.formats = SNDRV_PCM_FMTBIT_S24_LE,
 			.rate_min =     8000,
 			.rate_max =     48000,
+			.sig_bits = 24,
 		},
 		.ops = &msm_dai_q6_mi2s_ops,
 		.probe = msm_dai_q6_dai_mi2s_probe,
