@@ -1191,12 +1191,19 @@
 	qcom,dc-psy-ma = <1500>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
-	qcom,thermal-mitigation = <1500 700 600 0>;
+	/delete-property/ qcom,thermal-mitigation;
 	qcom,parallel-usb-min-current-ma = <0>; /* Force Parallel Mode only on HVDCP */
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-allowed-lowering-ma = <500>;
 	qcom,stepchg-voltage-mv = <4200>;
 	qcom,stepchg-current-ma = <1000>;
+	qcom,hot-temp-c = <60>;
+	qcom,cold-temp-c = <(-20)>;
+	qcom,warm-temp-c = <45>;
+	qcom,cool-temp-c = <0>;
+	qcom,ext-temp-volt-mv = <4000>;
+	qcom,ext-temp-soc = <65>;
+	qcom,hotspot-thrs-c = <50>;
 };
 
 &pmi8994_fg {
