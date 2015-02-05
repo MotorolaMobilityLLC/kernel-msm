@@ -613,7 +613,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	while (len > 0) {
 		struct page *page;
 
-		page = alloc_page(GFP_KERNEL | __GFP_ZERO);
+		page = alloc_page(GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO);
 
 		if (page == NULL) {
 			/*
