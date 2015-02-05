@@ -169,6 +169,7 @@
 #define M_TOUCH			0x000004
 #define M_COVER			0x000008
 #define M_QUICKPEEK		0x000010
+#define M_LIFT			0x000020
 #define M_HUB_RESET		0x000080
 
 #define M_FLATUP		0x000100
@@ -260,6 +261,7 @@ enum STM401_data_types {
 	DT_UNCALIB_MAG,
 	DT_CHOPCHOP,
 	DT_FLUSH,
+	DT_LIFT,
 };
 
 enum {
@@ -386,6 +388,7 @@ struct stm_response {
 #define NFC                             0x4D
 #define SIM                             0x4E
 #define CHOPCHOP                        0x4F
+#define LIFT                            0x51
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
@@ -533,6 +536,9 @@ struct stm_response {
 #define SIM_DATA	0
 #define STEP_DETECT	0
 #define CHOPCHOP_DATA   0
+#define LIFT_DISTANCE	0
+#define LIFT_ROTATION	4
+#define LIFT_GRAV_DIFF	8
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
