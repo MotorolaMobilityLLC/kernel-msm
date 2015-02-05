@@ -3131,7 +3131,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			} else if (motg->phy_irq) {
 				if (msm_otg_read_phy_id_state(motg))
 					set_bit(ID, &motg->inputs);
-				else {
+				else if (pdata->id_v_meas) {
 					id_v = msm_otg_get_ext_id_voltage(motg);
 					pr_err("id voltage at init = %d muV\n",
 									id_v);
@@ -3140,7 +3140,8 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 						set_bit(ID, &motg->inputs);
 					} else
 						clear_bit(ID, &motg->inputs);
-				}
+				} else
+					clear_bit(ID, &motg->inputs);
 			}
 			/*
 			 * VBUS initial state is reported after PMIC
@@ -4356,7 +4357,7 @@ static void msm_id_status_w(struct work_struct *w)
 	else if (motg->ext_id_irq) {
 		motg->id_state = gpio_get_value(motg->pdata->usb_id_gpio);
 
-		if (!motg->id_state) {
+		if (!motg->id_state && motg->pdata->id_v_meas) {
 			int voltage = msm_otg_get_ext_id_voltage(motg);
 			pr_err("ext id voltage = %d microV\n", voltage);
 			if (voltage > ID_GND_THRESH) {
@@ -5516,6 +5517,7 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
 				"qcom,hsusb-otg-rw-during-lpm-workaround");
+	pdata->id_v_meas = !of_property_read_bool(node, "no-id-adc");
 
 	return pdata;
 }
