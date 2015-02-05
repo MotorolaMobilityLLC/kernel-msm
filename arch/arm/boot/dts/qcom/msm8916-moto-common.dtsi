@@ -222,6 +222,8 @@
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msm_gpio 25 0x1>;
 
+	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v";
+
 	status = "ok";
 };
 
