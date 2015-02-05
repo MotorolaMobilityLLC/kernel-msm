@@ -528,9 +528,14 @@
 };
 
 &spmi_bus {
-        qcom,pm8226@1 {
+	qcom,pm8226@1 {
 		qcom,vibrator@c000 {
 			qcom,vib-vtg-level-mV = <2300>;
+		};
+		qcom,leds@d800 {
+			qcom,wled_0 {
+				qcom,default-state = "off";
+			};
 		};
 	};
 };
