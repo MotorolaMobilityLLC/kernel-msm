@@ -36,20 +36,20 @@
 #include "ti-lmu-backlight.h"
 
 #define LM3631_FULL_STRINGS		(LMU_HVLED1 | LMU_HVLED2)
-#define LM3631_DEFAULT_MODE		LM3631_MODE_COMB1
+#define LM3631_DEFAULT_MODE		LM3631_MODE_I2C
 #define LM3631_MAX_BRIGHTNESS		2047
 
 static int lm3631_bl_init(struct ti_lmu_bl_chip *chip)
 {
 	int ret;
 
-	/* Set OVP to 25V by default */
+	/* Set OVP to 29V by default */
 	ret = ti_lmu_update_bits(chip->lmu, LM3631_REG_BL_BOOST,
-				 LM3631_BOOST_OVP_MASK, LM3631_BOOST_OVP_25V);
+				 LM3631_BOOST_OVP_MASK, LM3631_BOOST_OVP_29V);
 	if (ret)
 		return ret;
 
-	/* Set the brightness mode to 'comb1' by default */
+	/* Set the brightness mode to 'i2c only' by default */
 	return ti_lmu_update_bits(chip->lmu, LM3631_REG_BRT_MODE,
 				  LM3631_MODE_MASK, LM3631_DEFAULT_MODE);
 }
@@ -97,7 +97,7 @@ static void lm3631_bl_effect_request(struct ti_lmu_bl *lmu_bl)
 {
 	/* Set exponential mapping */
 	ti_lmu_update_bits(lmu_bl->chip->lmu, LM3631_REG_BL_CFG,
-			   LM3631_MAP_MASK, LM3631_EXPONENTIAL_MAP);
+			   LM3631_MAP_MASK, LM3631_LINEAR_MAP);
 
 	/* Enable slope bit before updating slope time value */
 	ti_lmu_update_bits(lmu_bl->chip->lmu, LM3631_REG_BRT_MODE,
