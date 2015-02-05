@@ -483,6 +483,18 @@
 			bias-pull-up; /* pull-up */
 		};
 	};
+
+	usb-id-pin {
+                qcom,pins = <&gp 31>;
+                usbid_active: usbid_active{
+                        drive-strength = <2>;
+                        bias-disable;
+                };
+                usbid_off: usbid_off{
+                        drive-strength = <2>;
+                        bias-disable;
+                };
+        };
 };
 
 &i2c_0 {
@@ -863,4 +875,14 @@
 		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
 		ak,layout = <5>;
 	};
+};
+
+&usb_otg {
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbid-gpio = <&msm_gpio 31 0>;
+	pinctrl-names = "default", "usbid-off";
+	pinctrl-0 = <&usbid_active>;
+	pinctrl-1 = <&usbid_off>;
+	vbus_otg-supply = <&smb1357_otg_vreg>;
+	no-id-adc;
 };
