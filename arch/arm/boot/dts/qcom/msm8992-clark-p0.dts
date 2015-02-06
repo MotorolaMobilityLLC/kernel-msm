@@ -31,6 +31,7 @@
 };
 
 &mdss_dsi0 {
+	/delete-property/ mmi,mipi-d0-sel;
 	qcom,dsi-pref-prim-pan = <&mot_inx_500_720p_vid_v0>;
 	vddio_disp-supply = <&pm8994_l14>;
 	vsp_disp-supply = <&isl98611a_pos>;
