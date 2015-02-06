@@ -8349,21 +8349,6 @@ static int __wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
         pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
         if( pHostapdState->bssState == BSS_START )
         {
-            hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-            vos_status = wlan_hdd_check_ula_done(pAdapter);
-
-            if ( vos_status != VOS_STATUS_SUCCESS )
-            {
-                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                        "[%4d] wlan_hdd_check_ula_done returned ERROR status= %d",
-                        __LINE__, vos_status );
-
-                pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
-
-                status = -EINVAL;
-                goto end;
-            }
-
             status = WLANSAP_SetKeySta( pVosContext, &setKey);
 
             if ( status != eHAL_STATUS_SUCCESS )
@@ -8431,19 +8416,36 @@ static int __wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
                 setKey.peerMac[4], setKey.peerMac[5],
                 setKey.keyDirection);
 
-        vos_status = wlan_hdd_check_ula_done(pAdapter);
-
-        if ( vos_status != VOS_STATUS_SUCCESS )
+        /* Wait for EAPOL M4 before setting key.
+         * No need to consider Dynamic WEP as we will receive M8.
+         */
+        if ( (setKey.encType == eCSR_ENCRYPT_TYPE_AES ||
+             setKey.encType == eCSR_ENCRYPT_TYPE_TKIP) &&
+             ( 1
+#if defined WLAN_FEATURE_VOWIFI_11R
+               && pHddStaCtx->conn_info.authType != eCSR_AUTH_TYPE_FT_RSN
+               && pHddStaCtx->conn_info.authType != eCSR_AUTH_TYPE_FT_RSN_PSK
+#endif
+#ifdef FEATURE_WLAN_ESE
+               && pHddStaCtx->conn_info.authType != eCSR_AUTH_TYPE_CCKM_WPA
+               && pHddStaCtx->conn_info.authType != eCSR_AUTH_TYPE_CCKM_RSN
+#endif
+               ))
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+            vos_status = wlan_hdd_check_ula_done(pAdapter);
+
+            if ( vos_status != VOS_STATUS_SUCCESS )
+            {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                     "[%4d] wlan_hdd_check_ula_done returned ERROR status= %d",
                     __LINE__, vos_status );
 
-            pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
+               pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
 
-            status = -EINVAL;
-            goto end;
+               status = -EINVAL;
+               goto end;
 
+            }
         }
 
 #ifdef WLAN_FEATURE_VOWIFI_11R

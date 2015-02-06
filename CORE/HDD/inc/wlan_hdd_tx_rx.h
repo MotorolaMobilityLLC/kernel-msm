@@ -49,6 +49,14 @@
 #define HDD_ETHERTYPE_802_1_X              ( 0x888E )
 #define HDD_ETHERTYPE_802_1_X_FRAME_OFFSET ( 12 )
 #define HDD_ETHERTYPE_802_1_X_SIZE         ( 2 )
+
+#define HDD_ETHERTYPE_802_1_X_FRAME_SUB_TYPE_OFFSET ( 19 )
+#define HDD_ETHERTYPE_802_1_X_SUB_TYPE_MASK ( 0x8003 )
+#define HDD_ETHERTYPE_802_1_X_M1_VALUE      ( 0x8000 )
+#define HDD_ETHERTYPE_802_1_X_M2_VALUE      ( 0x0001 )
+#define HDD_ETHERTYPE_802_1_X_M3_VALUE      ( 0x8003 )
+#define HDD_ETHERTYPE_802_1_X_M4_VALUE      ( 0x0003 )
+
 #ifdef FEATURE_WLAN_WAPI
 #define HDD_ETHERTYPE_WAI                  ( 0x88b4 )
 #endif
@@ -264,6 +272,14 @@ extern VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                   : VOS_FALSE otherwise
   ===========================================================================*/
 extern v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket );
+
+/**============================================================================
+  @brief hdd_FindEapolSubType() - Find EAPOL SubType.
+
+  @param pVosPacket : [in] pointer to vos packet
+  @return         : EAPOL_SubType value
+  ===========================================================================*/
+extern EAPOL_SubType hdd_FindEapolSubType( vos_pkt_t *pVosPacket );
 
 /**============================================================================
   @brief hdd_mon_tx_mgmt_pkt() - Transmit MGMT packet received on monitor 
