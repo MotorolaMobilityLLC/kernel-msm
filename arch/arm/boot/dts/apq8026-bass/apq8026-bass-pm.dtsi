@@ -349,55 +349,6 @@
 };
 
 &soc {
-	/* Cable type definition.
-	* Modify the USB cable and move to SoC
-	* to get each table for different USB Pull up resistor via HW Rev
-	* This must have the compatible property "lge,usb-id".
-	* If you don't want to use revision you can remove status & revision property.
-	* If this node is not exist, the charger driver would not be probed.
-	* Each cable type has 3 values
-	* that we can configure the threshold of ADC value and TA/USB IUSB max current value.
-	* ex)
-	*    cable type = <adc_threshold, TA_MA, USB_MA>.
-	*/
-
-	lge,usb_cable@0 {
-		compatible = "lge,usb-id";
-		usb_adc_table@665{
-			status = "okay";
-			revision = "...rev_a";
-			lge,no-init-cable = <100000 500 500>;
-			lge,cable-56k = <200000 1500 1500>;
-			lge,cable-100k = <239000 500 500>;
-			lge,cable-130k = <340000 1500 1500>;
-			lge,cable-180k = <400000 1100 500>;
-			lge,cable-200k = <430000 1100 500>;
-			lge,cable-220k = <485000 1100 500>;
-			lge,cable-270k = <560000 1100 500>;
-			lge,cable-330k = <735000 500 500>;
-			lge,cable-620k = <955000 500 500>;
-			lge,cable-910k = <1140000 1500 1500>;
-			lge,cable-none = <1900000 1100 500>;
-		};
-
-		usb_adc_table@200{
-			status = "okay";
-			revision = "rev_b...";
-			lge,no-init-cable = <197000 500 500>;
-			lge,cable-56k = <496875 1500 1500>;
-			lge,cable-100k = <654545 500 500>;
-			lge,cable-130k = <780861 1500 1500>;
-			lge,cable-180k = <876316 1100 500>;
-			lge,cable-200k = <921429 1100 500>;
-			lge,cable-220k = <988450 1100 500>;
-			lge,cable-270k = <1077399 1100 500>;
-			lge,cable-330k = <1240865 500 500>;
-			lge,cable-620k = <1418326 500 500>;
-			lge,cable-910k = <1637838 1500 1500>;
-			lge,cable-none = <1900000 1100 500>;
-		};
-	};
-
 	i2c@f9923000 {
 		max17050@36 {
 			compatible = "maxim,max17050";
