@@ -22,3 +22,7 @@
 	regulator-max-microvolt = <3250000>;
 	qcom,init-voltage = <3250000>;
 };
+
+&mdss_dsi0 {
+	mmi,mipi-d0-sel = <&msm_gpio 108 0>;
+};

@@ -85,6 +85,7 @@
 };
 
 &mdss_dsi0 {
+	/delete-property/ mmi,mipi-d0-sel;
 	qcom,dsi-pref-prim-pan = <&mot_inx_570_QHD_0_cmd_v0>;
 	vddio_disp-supply = <&pm8994_l14>;
 	vsp_disp-supply = <&lm3631_pos>;
@@ -106,10 +107,12 @@
 
 &mot_inx_570_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
+	/delete-property/ mmi,sh-control-enabled;
 };
 
 &mot_inx_570_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
+	/delete-property/ mmi,sh-control-enabled;
 };
 
 &pm8994_gpios {
