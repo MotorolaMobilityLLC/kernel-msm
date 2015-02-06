@@ -277,10 +277,6 @@
 	regulator-always-on;
 };
 
-&pma8084_lvs4 {
-	regulator-always-on;
-};
-
 &pma8084_l17 {
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
