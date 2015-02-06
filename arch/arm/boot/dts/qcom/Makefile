@@ -238,6 +238,8 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1a.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1ad.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p1bd.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p2a.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p2ad.dtb
 
 # Motorola 8936 Devices
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p0.dtb
