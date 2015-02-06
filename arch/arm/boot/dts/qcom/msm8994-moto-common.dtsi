@@ -658,6 +658,8 @@
 		compatible = "regulator-fixed";
 		regulator-name = "vreg_5p0";
 		gpio = <&pmi8994_gpios 6 0>;
+		enable-active-high;
+		regulator-always-on;
 	};
 
 	dummy_vreg: dummy_vreg {
