@@ -340,6 +340,18 @@
 			bias-pull-down = <0>; /* PULL DOWN */
 		};
 	};
+
+	cam_sensor_mclk0_pinctrl {
+		active {
+			drive-strength = <4>; /* 4 MA */
+		};
+	};
+
+	cam_sensor_mclk2_pinctrl {
+		active {
+			drive-strength = <4>; /* 4 MA */
+		};
+	};
 };
 
 &blsp1_uart2 {
