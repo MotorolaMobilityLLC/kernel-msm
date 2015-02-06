@@ -1,4 +1,4 @@
-r/*
+/*
  * Linux platform device for DHD WLAN adapter
  *
  * Copyright (C) 1999-2014, Broadcom Corporation
