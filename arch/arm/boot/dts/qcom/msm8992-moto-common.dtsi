@@ -438,6 +438,60 @@
 	status = "okay";
 };
 
+&pmi8994_charger {
+	status = "okay";
+	qcom,iterm-ma = <100>;
+	qcom,fastchg-current-ma = <2000>;
+	qcom,float-voltage-mv = <4350>;
+	qcom,resume-delta-mv = <200>;
+	qcom,chg-inhibit-fg;
+	qcom,dc-psy-type = "Mains";
+	qcom,dc-psy-ma = <1500>;
+	qcom,rparasitic-uohm = <100000>;
+	qcom,bms-psy-name = "bms";
+	/delete-property/ qcom,thermal-mitigation;
+	qcom,parallel-usb-min-current-ma = <0>; /* Force Parallel Mode only on HVDCP */
+	qcom,parallel-usb-9v-min-current-ma = <900>;
+	qcom,parallel-allowed-lowering-ma = <500>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <1000>;
+	qcom,hot-temp-c = <60>;
+	qcom,cold-temp-c = <(-20)>;
+	qcom,warm-temp-c = <45>;
+	qcom,cool-temp-c = <0>;
+	qcom,ext-temp-volt-mv = <4000>;
+	qcom,ext-temp-soc = <65>;
+	qcom,hotspot-thrs-c = <50>;
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-itech-3000mah.dtsi"
+	};
+};
+
+&pmi8994_fg {
+	status = "okay";
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <0>;
+	qcom,hot-bat-decidegc = <600>;
+	qcom,cold-bat-decidegc = <(-200)>;
+	qcom,ext-sense-type = <1>; /* External Sense Resistor */
+	qcom,thermal-coefficients = <0x861D 0x4B13 0x3615>;
+	qcom,resume-soc = <99>;
+	qcom,bcl-lm-threshold-ma = <126>;
+	qcom,bcl-mh-threshold-ma = <400>;
+	qcom,fg-iterm-ma = <150>;
+	qcom,irq-volt-empty-mv = <2750>;
+	qcom,fg-cutoff-voltage-mv = <3000>;
+	qcom,fg-vbat-estimate-diff-mv = <1000>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-max-soc = <100>;
+	qcom,fg-min-soc = <0>;
+	qcom,battery-data = <&mot_batterydata>;
+};
+
 &pm8994_gpios {
 	gpio@c200 { /* GPIO 3 - VOL_UP */
 		status = "okay";
