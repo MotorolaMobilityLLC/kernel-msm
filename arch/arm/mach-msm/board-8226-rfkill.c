@@ -30,8 +30,9 @@
 #include <linux/miscdevice.h>
 #endif /* CONFIG_BCM4335BT */
 
-#define GPIO_BT_RESET_N	  75
-#define GPIO_BT_REG_ON_N	76
+/*The reset on pin is the same with reg on*/
+#define GPIO_BT_REG_ON_N	67
+#define GPIO_BT_RESET_N	  GPIO_BT_REG_ON_N
 
 #ifdef CONFIG_BCM4335BT
 #define BTRFKILL_DBG    1
@@ -187,14 +188,11 @@ static int bluetooth_set_power(void *data, bool blocked)
 			printk("** BT rfkill: timeout in acquiring bt lock**\n");
 #endif /* CONFIG_BCM4335BT */
 		gpio_direction_output(GPIO_BT_RESET_N, 0);
-		gpio_direction_output(GPIO_BT_REG_ON_N, 0);
 		msleep(30);
 		gpio_direction_output(GPIO_BT_RESET_N, 1);
-		gpio_direction_output(GPIO_BT_REG_ON_N, 1);
 		printk(KERN_ERR "Bluetooth RESET HIGH!!");
 	} else {
 		gpio_direction_output(GPIO_BT_RESET_N, 0);
-		gpio_direction_output(GPIO_BT_REG_ON_N, 0);
 		printk(KERN_ERR "Bluetooth RESET LOW!!");
 	}
 	return 0;
@@ -218,7 +216,6 @@ static int bluetooth_rfkill_probe(struct platform_device *pdev)
 	if (rc) {
 		printk(KERN_ERR "GPIO req error no=%d", rc);
 		gpio_free(GPIO_BT_RESET_N);
-		gpio_free(GPIO_BT_REG_ON_N);
 		rc = gpio_request(GPIO_BT_RESET_N, "bt_reset");
 		if(rc) {
 			printk(KERN_ERR "GPIO req error no=%d", rc);
@@ -226,7 +223,6 @@ static int bluetooth_rfkill_probe(struct platform_device *pdev)
 		}
 	}
 	gpio_direction_output(GPIO_BT_RESET_N, 0);
-	gpio_direction_output(GPIO_BT_REG_ON_N, 0);
 
 	bluetooth_set_power(NULL, default_state);
 
@@ -254,7 +250,6 @@ err_rfkill_reg:
 err_rfkill_alloc:
 err_gpio_reset:
 	gpio_free(GPIO_BT_RESET_N);
-	gpio_free(GPIO_BT_REG_ON_N);
 	printk(KERN_ERR "bluetooth_rfkill_probe error!\n");
 	return rc;
 }
@@ -264,7 +259,6 @@ static int bluetooth_rfkill_remove(struct platform_device *dev)
 	rfkill_unregister(bt_rfk);
 	rfkill_destroy(bt_rfk);
 	gpio_free(GPIO_BT_RESET_N);
-	gpio_free(GPIO_BT_REG_ON_N);
 
 #ifdef CONFIG_BCM4335BT
 	bcm_btlock_exit();
