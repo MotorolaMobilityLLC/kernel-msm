@@ -255,6 +255,41 @@
 		status = "disabled";
 	};
 
+	hserial:serial@f9920000 {
+		compatible = "qcom,msm-hsuart-v14";
+		status = "ok";
+		reg = <0xf9920000 0x1000>,
+		<0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupt-parent = <&hserial>;
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>; 
+		interrupt-map = <0 &intc 0 110 0 
+		              1 &intc 0 238 0 
+		              2 &msmgpio 12 0>;
+    
+		qcom,tx-gpio = <&msmgpio 13 0x00>; 
+		qcom,rx-gpio = <&msmgpio 12 0x00>;
+		qcom,cts-gpio = <&msmgpio 15 0x00>;
+		qcom,rfr-gpio = <&msmgpio 14 0x00>;
+    
+		qcom,bam-tx-ep-pipe-index = <6>; 
+		qcom,bam-rx-ep-pipe-index = <7>;
+  
+		qcom,inject-rx-on-wakeup = <1>;
+		qcom,rx-char-to-inject = <0xFD>;
+
+		qcom,msm-bus,name = "blsp1_uart3";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
+	};
 	qcom,msm-imem@fe805000 {
 		compatible = "qcom,msm-imem";
 		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */
