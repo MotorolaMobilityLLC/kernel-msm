@@ -3110,7 +3110,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 
 	/* WCNSS CLOCKS */
 	CLK_LOOKUP("xo", cxo_wlan_clk.c, "fb000000.qcom,wcnss-wlan"),
-	CLK_LOOKUP("rf_clk",   cxo_a1.c, "fb000000.qcom,wcnss-wlan"),
 
 	/* BUS DRIVER */
 	CLK_LOOKUP("bus_clk", cnoc_msmbus_clk.c, "msm_config_noc"),
@@ -3227,12 +3226,24 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9927000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup5_i2c_apps_clk.c, "f9927000.i2c"),
 
+	/* vibrator I2C*/
+	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9924000.i2c"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_i2c_apps_clk.c, "f9924000.i2c"),
+	
 	/* I2C Clocks nfc */
 	CLK_LOOKUP("iface_clk",          gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
 	/* lsuart-v14 Clocks */
+	/*MCU uart*/
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991d000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, "f991d000.serial"),
+	
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart3_apps_clk.c, "f991f000.serial"),
+	CLK_LOOKUP("rf_clk",   cxo_a1.c, "f991f000.serial"),
+	
+	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9920000.serial"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, "f9920000.serial"),
 
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f995e000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart2_apps_clk.c, "f995e000.serial"),
@@ -3303,7 +3314,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("mmpll1", mmpll1_pll.c, ""),
 
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, ""),
-	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup4_i2c_apps_clk.c, ""),
@@ -3312,8 +3322,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup5_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_spi_apps_clk.c, ""),
-	CLK_LOOKUP("core_clk", gcc_blsp1_uart1_apps_clk.c, ""),
-	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart5_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart6_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_pdm2_clk.c, ""),
