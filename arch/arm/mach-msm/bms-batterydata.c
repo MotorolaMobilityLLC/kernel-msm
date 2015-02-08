@@ -108,4 +108,8 @@ struct bms_battery_data palladium_1500_data = {
 	.rbatt_capacitive_mohm	= 50,
 	.flat_ocv_threshold_uv	= 3800000,
 	.battery_type		= "palladium_1500mah",
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+    .max_voltage_uv = 4200000,
+    .iterm_ua =100000,
+#endif
 };
