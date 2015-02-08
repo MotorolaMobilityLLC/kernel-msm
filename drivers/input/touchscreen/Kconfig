@@ -11,7 +11,6 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
-source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
@@ -975,20 +974,6 @@ config TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV
 	  To compile this driver as a module, choose M here: the
 	  module will be called synaptics_dsx_rmi4_dev.
 
-config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
-	tristate "Synaptics I2C touchscreen firmware update"
-	depends on TOUCHSCREEN_SYNAPTICS_I2C_RMI4
-	help
-	  This enables support for firmware update for Synaptics RMI4
-	  touchscreens.
-
-	  Say Y here if you have a Synaptics DSX I2C touchscreen
-	  connected to your system.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called synaptics_dsx_fw_update.
 
 config SECURE_TOUCH
 	bool "Secure Touch"
