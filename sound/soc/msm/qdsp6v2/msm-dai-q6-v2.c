@@ -27,7 +27,7 @@
 #include <sound/q6afe-v2.h>
 #include <sound/msm-dai-q6-v2.h>
 #include <sound/pcm_params.h>
-
+#include <linux/regulator/consumer.h>
 #define MSM_DAI_PRI_AUXPCM_DT_DEV_ID 1
 #define MSM_DAI_SEC_AUXPCM_DT_DEV_ID 2
 
@@ -36,6 +36,8 @@
 #define CHANNEL_STATUS_MASK_INIT 0x0
 #define CHANNEL_STATUS_MASK 0x4
 
+/*mic*/
+#define THE_THIRD_MI2S 3
 static const struct afe_clk_cfg lpass_clk_cfg_default = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_OSR_CLK_2_P048_MHZ,
@@ -2809,7 +2811,7 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	u32 mi2s_intf = 0;
 	struct msm_mi2s_pdata *mi2s_pdata;
 	int rc;
-
+	struct regulator *vdd = NULL;
 	rc = of_property_read_u32(pdev->dev.of_node, q6_mi2s_dev_id,
 				  &mi2s_intf);
 	if (rc) {
@@ -2829,7 +2831,24 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 		rc = -ENXIO;
 		goto rtn;
 	}
-
+	if(THE_THIRD_MI2S == mi2s_intf)
+	{
+	    vdd = regulator_get(&pdev->dev, "vcc_mic");
+	    if (IS_ERR(vdd)) 
+	    {
+	 	dev_err(&pdev->dev,
+				"%s: Failed to get vdd regulator\n",
+				__func__);
+		return PTR_ERR(vdd);
+	    }
+	    rc = regulator_enable(vdd);
+	    if (rc) 
+	    {
+	        dev_err(&pdev->dev, "Regulator vdd enable failed rc=%d\n",
+			rc);
+		return rc;
+            }
+        }  
 	dev_set_name(&pdev->dev, "%s.%d", "msm-dai-q6-mi2s", mi2s_intf);
 	pdev->id = mi2s_intf;
 

@@ -751,6 +751,91 @@ static struct msm_gpiomux_config msm_motor_configs[] __initdata =
     },
 };
 
+
+static struct gpiomux_setting  tert_mi2s_act_cfg =
+{
+    .func = GPIOMUX_FUNC_1,
+    .drv = GPIOMUX_DRV_8MA,
+    .pull = GPIOMUX_PULL_NONE,
+};
+static struct gpiomux_setting  tert_mi2s_sus_cfg =
+{
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm8226_tert_mi2s_configs[] __initdata =
+{
+    {
+        .gpio   = 49,       /* qua mi2s sck */
+         .settings =
+        {
+            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+        },
+    },
+    {
+        .gpio   = 50,
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+        },
+    },
+    {
+        .gpio = 51,
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+        },
+    },
+    {
+        .gpio = 52,
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+        },
+    },
+};
+/*mic I2S*/
+static struct gpiomux_setting  quat_mi2s_act_cfg =
+{
+    .func = GPIOMUX_FUNC_2,
+    .drv = GPIOMUX_DRV_8MA,
+    .pull = GPIOMUX_PULL_NONE,
+};
+static struct gpiomux_setting  quat_mi2s_sus_cfg =
+{
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_DOWN,
+};
+static struct msm_gpiomux_config msm8226_quat_mi2s_configs[] __initdata =
+{
+    {
+        .gpio   = 46,       /* qua mi2s sck */
+         .settings =
+        {
+            [GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
+        },
+    },
+    {
+        .gpio   = 47,
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
+        },
+    },
+    {
+        .gpio = 48,
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
+            [GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
+        },
+    }
+};
+
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 static struct gpiomux_setting sdc3_clk_actv_cfg = {
 	.func = GPIOMUX_FUNC_2,
@@ -908,6 +993,10 @@ void __init msm8226_init_gpiomux(void)
 	
 	//motor
 	msm_gpiomux_install(msm_motor_configs, ARRAY_SIZE(msm_motor_configs));
+	/*I2S for speaker*/
+	msm_gpiomux_install(msm8226_tert_mi2s_configs, ARRAY_SIZE(msm8226_tert_mi2s_configs));
+	/*I2S for MIC*/
+	msm_gpiomux_install(msm8226_quat_mi2s_configs, ARRAY_SIZE(msm8226_quat_mi2s_configs));
 	/*
 	 * HSIC STROBE gpio is also used by the ethernet. Install HSIC
 	 * gpio mux config only when HSIC is enabled. HSIC config will
