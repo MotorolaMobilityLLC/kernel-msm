@@ -52,6 +52,9 @@
 #include "clock.h"
 #include "platsmp.h"
 
+#ifdef CONFIG_BCMDHD
+extern int brcm_wlan_init(void);
+#endif
 static struct of_dev_auxdata msm_hsic_host_adata[] = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	{}
@@ -118,6 +121,9 @@ void __init msm8226_init(void)
 
 	msm8226_init_gpiomux();
 	msm8226_add_drivers();
+#ifdef CONFIG_BCMDHD
+        (void)brcm_wlan_init();
+#endif
 }
 
 static const char *msm8226_dt_match[] __initconst = {

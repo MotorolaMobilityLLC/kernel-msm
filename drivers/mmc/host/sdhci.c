@@ -3654,10 +3654,17 @@ int sdhci_add_host(struct sdhci_host *host)
 	 * Enable polling on when card detection is broken and no card detect
 	 * gpio is present.
 	 */
+
 	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
 	    !(host->mmc->caps & MMC_CAP_NONREMOVABLE) &&
 	    (mmc_gpio_get_cd(host->mmc) < 0))
-		mmc->caps |= MMC_CAP_NEEDS_POLL;
+	{
+	    if (strcmp("msm_sdcc.3", host->hw_name))//no poll for wifi 
+        {
+            mmc->caps |= MMC_CAP_NEEDS_POLL;
+        } 
+	}
+		
 
 	/* If vqmmc regulator and no 1.8V signalling, then there's no UHS */
 	host->vqmmc = regulator_get(mmc_dev(mmc), "vqmmc");
@@ -3787,9 +3794,19 @@ int sdhci_add_host(struct sdhci_host *host)
 				(curr << SDHCI_MAX_CURRENT_180_SHIFT);
 		}
 	}
+	
+	/*porting  form qct */
+	if(!strcmp(host->hw_name, "msm_sdcc.3")) { 
+        caps[0] |= (SDHCI_CAN_VDD_330 | SDHCI_CAN_VDD_300 | SDHCI_CAN_VDD_180); 
+    } 
 
 	if (caps[0] & SDHCI_CAN_VDD_330) {
 		ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34;
+        if(!strcmp(host->hw_name, "msm_sdcc.3")) {
+            mmc->caps &= ~(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | 
+            MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 | 
+            MMC_CAP_UHS_DDR50);
+		} 
 
 		mmc->max_current_330 = ((max_current_caps &
 				   SDHCI_MAX_CURRENT_330_MASK) >>
