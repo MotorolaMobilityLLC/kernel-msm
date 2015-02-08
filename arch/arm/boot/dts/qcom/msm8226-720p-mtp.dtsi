@@ -405,16 +405,18 @@
 
 / {
 	mtp_batterydata: qcom,battery-data {
-		qcom,rpull-up-kohm = <100>;
+		qcom,rpull-up-kohm = <68>;
 		qcom,vref-batt-therm = <1800000>;
-
+		/*add batt data file here*/
 		#include "batterydata-palladium.dtsi"
 		#include "batterydata-mtp-3000mah.dtsi"
+		#include "HB3748B4EBC_ATL_SCUD-4v35-3000mah.dtsi"
+		#include "Generic_330mAh_BMS_Final.dtsi"
 	};
 };
 
 &pm8226_bms {
-	status = "ok";
+	status = "ok";/*enable or disable*/
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,enable-fcc-learning;
 	qcom,min-fcc-learning-soc = <20>;
@@ -424,7 +426,7 @@
 };
 
 &pm8226_chg {
-	qcom,charging-disabled;
+	/*qcom,charging-disabled;*/
 	qcom,battery-data = <&mtp_batterydata>;
 };
 

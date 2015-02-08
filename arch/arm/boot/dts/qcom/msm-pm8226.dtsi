@@ -78,23 +78,27 @@
 
 			qcom,vddmax-mv = <4200>;
 			qcom,vddsafe-mv = <4230>;
-			qcom,vinmin-mv = <4300>;
+			qcom,vinmin-mv = <4200>;
+			low-power-usb-workaround;
 			qcom,vbatdet-delta-mv = <100>;
-			qcom,ibatmax-ma = <1500>;
+			qcom,ibatmax-ma = <450>;
 			qcom,ibatterm-ma = <100>;
-			qcom,ibatsafe-ma = <1500>;
+			qcom,ibatsafe-ma = <600>;
 			qcom,thermal-mitigation = <1500 700 600 325>;
 			qcom,resume-soc = <99>;
+			qcom,maxinput-usb-ma = <1100>;
 			qcom,tchg-mins = <150>;
 			qcom,chg-vadc = <&pm8226_vadc>;
 			qcom,chg-adc_tm = <&pm8226_adc_tm>;
 			qcom,pmic-revid = <&pm8226_revid>;
-			qcom,ibatmax-warm-ma = <350>;
+			qcom,ibatmax-warm-ma = <300>;
 			qcom,warm-bat-decidegc = <450>;
 			qcom,warm-bat-mv = <4100>;
 			qcom,cool-bat-decidegc = <100>;
 			qcom,cool-bat-mv = <4100>;
-			qcom,ibatmax-cool-ma = <350>;
+			qcom,ibatmax-cool-ma = <300>;
+			qcom,hot-bat-decidegc = <520>;
+			qcom,cold-bat-decidegc = <0>;
 
 			qcom,chgr@1000 {
 				status = "disabled";
@@ -190,13 +194,16 @@
 			compatible = "qcom,qpnp-bms";
 			#address-cells = <1>;
 			#size-cells = <1>;
-			status = "disabled";
+			/*if want to enable bms,status = "okay"*/
+			status = "okay";
 
 			qcom,r-sense-uohm = <10000>;
+			/*if use external rsense*/
+			//qcom,use-external-rsense;
 			qcom,v-cutoff-uv = <3400000>;
 			qcom,max-voltage-uv = <4200000>;
 			qcom,r-conn-mohm = <0>;
-			qcom,shutdown-soc-valid-limit = <100>;
+			qcom,shutdown-soc-valid-limit = <40>;
 			qcom,adjust-soc-low-threshold = <15>;
 			qcom,ocv-voltage-high-threshold-uv = <3750000>;
 			qcom,ocv-voltage-low-threshold-uv = <3650000>;
@@ -210,7 +217,7 @@
 			qcom,low-ocv-correction-limit-uv = <100>;
 			qcom,high-ocv-correction-limit-uv = <250>;
 			qcom,hold-soc-est = <3>;
-			qcom,low-voltage-threshold = <3420000>;
+			qcom,low-voltage-threshold = <3350000>;
 			qcom,bms-vadc = <&pm8226_vadc>;
 			qcom,bms-iadc = <&pm8226_iadc>;
 			qcom,bms-adc_tm = <&pm8226_adc_tm>;

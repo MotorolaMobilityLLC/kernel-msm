@@ -138,6 +138,16 @@ struct bms_battery_data {
 	int			iterm_ua;
 	int			batt_id_kohm;
 	const char		*battery_type;
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	int			warm_bat_decidegc;
+	int			warm_bat_chg_ma;
+	int			warm_bat_mv;
+	int			cool_bat_decidegc;
+	int			cool_bat_chg_ma;
+	int			cool_bat_mv;
+	int			cold_bat_decidegc;
+	int			hot_bat_decidegc;
+#endif
 };
 
 #if defined(CONFIG_PM8921_BMS) || \
