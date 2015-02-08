@@ -219,7 +219,7 @@ static int32_t msm_mot_actuator_move_focus(
 		pr_err("Invalid direction = %d\n", dir);
 		return -EFAULT;
 	}
-	if (dest_step_pos > a_ctrl->total_steps) {
+	if (dest_step_pos >= a_ctrl->total_steps) {
 		pr_err("Step pos greater than total steps = %d\n",
 		dest_step_pos);
 		return -EFAULT;
@@ -337,7 +337,7 @@ static int32_t msm_mot_actuator_init_step_table(
 	/* Fill step position table */
 	a_ctrl->step_position_table =
 		kmalloc(sizeof(uint16_t) *
-		(set_info->af_tuning_params.total_steps + 1), GFP_KERNEL);
+		(set_info->af_tuning_params.total_steps), GFP_KERNEL);
 
 	if (a_ctrl->step_position_table == NULL)
 		return -ENOMEM;
@@ -351,17 +351,21 @@ static int32_t msm_mot_actuator_init_step_table(
 		step_boundary =
 			a_ctrl->region_params[region_index].
 			step_bound[MOVE_NEAR];
-		for (step_index = 0; step_index <= step_boundary;
+		for (step_index = 0; step_index < step_boundary;
 			step_index++) {
 			cur_code =
-			((int)step_index * (macro_dac - inf_dac)) /
-			set_info->af_tuning_params.total_steps + inf_dac;
-			if (cur_code > max_code_size) {
-				a_ctrl->step_position_table[step_index] =
-					(uint16_t)max_code_size;
-			} else {
-				a_ctrl->step_position_table[step_index] =
-					(uint16_t)cur_code;
+				((int)step_index * (macro_dac - inf_dac)) /
+				(set_info->af_tuning_params.total_steps - 1) +
+				inf_dac;
+			if (step_index <
+				set_info->af_tuning_params.total_steps) {
+				if (cur_code > max_code_size) {
+					a_ctrl->step_position_table[step_index]
+						= (uint16_t)max_code_size;
+				} else {
+					a_ctrl->step_position_table[step_index]
+						= (uint16_t)cur_code;
+				}
 			}
 		}
 	}
