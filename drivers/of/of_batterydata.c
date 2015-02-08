@@ -230,6 +230,47 @@ static int of_batterydata_load_battery_data(struct device_node *node,
 {
 	int rc;
 
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+    int warm_bat_decidegc = 0;
+    int warm_bat_chg_ma = 0;
+    int warm_bat_mv = 0;
+
+    int cool_bat_decidegc = 0;
+    int cool_bat_chg_ma = 0;
+    int cool_bat_mv = 0;
+
+    int cold_bat_decidegc = 0;
+    int hot_bat_decidegc = 0;
+
+    rc = 0;
+
+    OF_PROP_READ(warm_bat_decidegc, "warm-bat-decidegc", node, rc, false);
+    OF_PROP_READ(warm_bat_chg_ma, "ibatmax-warm-ma", node, rc, false);
+    OF_PROP_READ(warm_bat_mv, "warm-bat-mv", node, rc, false);
+
+    OF_PROP_READ(cool_bat_decidegc, "cool-bat-decidegc", node, rc, false);
+    OF_PROP_READ(cool_bat_chg_ma, "ibatmax-cool-ma", node, rc, false);
+    OF_PROP_READ(cool_bat_mv, "cool-bat-mv", node, rc, false);
+
+    OF_PROP_READ(hot_bat_decidegc, "hot-bat-decidegc", node, rc, false);
+    OF_PROP_READ(cold_bat_decidegc, "cold-bat-decidegc", node, rc, false);
+
+    if (!rc)
+    {
+        batt_data->warm_bat_decidegc = warm_bat_decidegc;
+        batt_data->warm_bat_chg_ma = warm_bat_chg_ma;
+        batt_data->warm_bat_mv = warm_bat_mv;
+
+        batt_data->cool_bat_decidegc = cool_bat_decidegc;
+        batt_data->cool_bat_chg_ma = cool_bat_chg_ma;
+        batt_data->cool_bat_mv = cool_bat_mv;
+
+        batt_data->hot_bat_decidegc = hot_bat_decidegc;
+        batt_data->cold_bat_decidegc = cold_bat_decidegc;
+    }
+
+    rc = 0;
+#endif
 	rc = of_batterydata_read_single_row_lut(node, "qcom,fcc-temp-lut",
 			batt_data->fcc_temp_lut);
 	if (rc)

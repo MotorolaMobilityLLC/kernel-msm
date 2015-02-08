@@ -28,7 +28,11 @@
 #include <linux/atomic.h>
 
 #define UEVENT_HELPER_PATH_LEN		256
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+#define UEVENT_NUM_ENVP			64	/* number of env pointers */
+#else
 #define UEVENT_NUM_ENVP			32	/* number of env pointers */
+#endif
 #define UEVENT_BUFFER_SIZE		2048	/* buffer for the variables */
 
 /* path to the userspace helper executed on an event */
