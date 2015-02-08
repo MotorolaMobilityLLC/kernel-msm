@@ -2096,7 +2096,16 @@ void mmc_power_up(struct mmc_host *host)
 	 * This delay must be at least 74 clock sizes, or 1 ms, or the
 	 * time required to reach a stable voltage.
 	 */
-	mmc_delay(10);
+	
+    if (2 == host->index) /* index:2 for sdio device */
+    {
+        mmc_delay(200);
+    }
+    else
+    {
+        mmc_delay(10);
+    }
+	
 
 	/* Set signal voltage to 3.3V */
 	__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330);

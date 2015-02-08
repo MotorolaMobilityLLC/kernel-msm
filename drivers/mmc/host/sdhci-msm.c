@@ -2937,6 +2937,15 @@ static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 		msm_host->use_cdclp533 = true;
 }
 
+#ifdef CONFIG_BCMDHD
+    extern int brcm_wifi_status_register(void (*callback)(int card_present, void *dev_id), void *dev_id);
+    void sdcc_status_notify_cb(int card_present, void *dev_id)
+    {
+        struct sdhci_host *host = (struct sdhci_host*)dev_id;
+	    mmc_detect_change(host->mmc, 0);
+    }
+#endif
+
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
@@ -3261,6 +3270,12 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 			spin_unlock_irqrestore(&host->lock, flags);
 		}
 	}
+#ifdef CONFIG_BCMDHD
+    if (!strcmp("msm_sdcc.3",dev_name(&pdev->dev)))
+    {
+        brcm_wifi_status_register(sdcc_status_notify_cb, host);
+    } 
+#endif
 
 	ret = sdhci_add_host(host);
 	if (ret) {
