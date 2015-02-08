@@ -11,29 +11,14 @@
  */
 
 #include "msm8226-camera-sensor-mtp.dtsi"
+#include "synaptics-dsx.dtsi"
 
 &soc {
 	serial@f991f000 {
 		status = "ok";
 	};
 
-	i2c@f9927000 { /* BLSP1 QUP5 */
-		synaptics@20 {
-			compatible = "synaptics,rmi4";
-			reg = <0x20>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <17 0x2008>;
-			vdd-supply = <&pm8226_l19>;
-			vcc_i2c-supply = <&pm8226_lvs1>;
-			synaptics,reset-gpio = <&msmgpio 16 0x00>;
-			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
-			synaptics,fw-image-name = "PR1468813.img";
-			synaptics,button-map = <139 102 158>;
-			synaptics,i2c-pull-up;
-			synaptics,power-down;
-			synaptics,disable-gpios;
-		};
-	};
+
 
 	i2c@f9925000 { /* BLSP1 QUP3 */
 		nfc-nci@0e {
