@@ -1,0 +1,17 @@
+config TI_VIBRATOR
+	tristate "Vibrator support for DRV2605"
+	depends on I2C
+	help
+	  This option enables device driver support for the vibrator
+
+config HAPTICS_DRV2605
+	bool "Vibrator driver device type"
+	depends on TI_VIBRATOR
+	help
+	  This option enables device driver support for the vibrator
+	  
+config HAPTICS_ERM_HW
+	bool "Vibrator actor type"
+	depends on TI_VIBRATOR
+	help
+	  This option enables device driver support for the vibrator	  
