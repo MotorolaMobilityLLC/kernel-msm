@@ -52,3 +52,17 @@
 	/delete-property/ regulator-boot-on;
 	/delete-property/ regulator-always-on;
 };
+
+&mot_inx_500_720p_vid_v0 {
+	/delete-property/ qcom,mdss-dsi-on-command;
+	qcom,mdss-dsi-on-command = [
+		29 01 00 00 00 00 06 F0 55 AA 52 08 00	/* Page 0 */
+		29 01 00 00 00 00 0B E8 F3 D9 CC C0 B8 B0 A0 A0 A0 9C	/* Brightness control for Moving Mode */
+		29 01 00 00 00 00 03 D9 03 06	/* Set PWM freq. at 32.55k Hz*/
+		29 01 00 00 00 00 02 EA 09		/* PWM compensation */
+		05 01 00 00 78 00 02 11 00		/* Exit sleep */
+		15 01 00 00 00 00 02 51 FF		/* Brightness */
+		15 01 00 00 00 00 02 53 2C		/* CTRL Display */
+		15 01 00 00 00 00 02 55 01		/* UI CABC mode */
+		05 01 00 00 00 00 02 29 00];	/* Display on */
+};
