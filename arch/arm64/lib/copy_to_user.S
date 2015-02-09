@@ -28,9 +28,6 @@
  */
 ENTRY(__copy_to_user)
 #include "copy_template.S"
-	mov     count, x0
-	ret
-	.endm
 ENDPROC(__copy_to_user)
 
 	.section .fixup,"ax"

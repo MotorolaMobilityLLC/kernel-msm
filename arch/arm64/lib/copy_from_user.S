@@ -28,20 +28,6 @@
  */
 ENTRY(__copy_from_user)
 #include "copy_template.S"
-
-        /*
-         * Zeroize remaining destination-buffer
-         */
-        mov     count, x0
-20:
-        /* Zero remaining buffer space */
-        strb    wzr, [dst], #1
-        subs    count, count, #1
-        b.ne    20b
-        ret
-        .endm
-
-
 ENDPROC(__copy_from_user)
 
 	.section .fixup,"ax"
