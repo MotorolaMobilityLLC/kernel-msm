@@ -605,7 +605,7 @@
 		regulator-max-microvolt = <13>;
 
 		qcom,cpr-voltage-ceiling = <900000 900000 1000000 1180000>;
-		qcom,cpr-voltage-floor =   <700000 700000  780000 835000>;
+		qcom,cpr-voltage-floor =   <700000 725000  840000 1000000>;
 		vdd-apc-supply = <&pm8994_s8>;
 
 		qcom,vdd-mx-corner-map = <3 4 5 7>;
@@ -729,7 +729,7 @@
 		regulator-max-microvolt = <17>;
 
 		qcom,cpr-voltage-ceiling = <900000 900000 1000000 1225000>;
-		qcom,cpr-voltage-floor =   <700000 700000  750000 835000>;
+		qcom,cpr-voltage-floor =   <725000 725000  840000 1000000>;
 		vdd-apc-supply = <&pm8994_s11>;
 
 		qcom,vdd-mx-corner-map = <3 4 5 7>;
