@@ -48,14 +48,12 @@
 					regulator-name = "vsp_disp";
 					regulator-min-microvolt = <4000000>;
 					regulator-max-microvolt = <6000000>;
-					regulator-always-on;
 				};
 
 				lm3631_neg: vneg {
 					regulator-name = "vsn_disp";
 					regulator-min-microvolt = <4000000>;
 					regulator-max-microvolt = <6000000>;
-					regulator-always-on;
 				};
 
 				lm3631_cont: vcont {
@@ -78,10 +76,6 @@
 			};
 		};
 	};
-};
-
-&pm8994_l14 {
-	regulator-always-on;
 };
 
 &mdss_dsi0 {
