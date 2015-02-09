@@ -51,6 +51,7 @@
 			15 01 00 00 00 00 02 51 FF		/* Brightness */
 			15 01 00 00 00 00 02 53 2C		/* CTRL Display */
 			15 01 00 00 00 00 02 55 01		/* UI CABC mode */
+			15 01 00 00 00 00 02 36 03		/* Memory Access Control */
 			05 01 00 00 00 00 02 29 00];		/* Display on */
 
 		qcom,mdss-dsi-off-command = [
