@@ -710,8 +710,6 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		mipi->vsync_enable && mipi->hw_vsync_mode)
 		mdss_dsi_set_tear_on(ctrl_pdata);
 
-	ctrl_pdata->blanked = false;
-
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	pr_debug("%s-:\n", __func__);
@@ -779,8 +777,6 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		}
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 	}
-
-	ctrl_pdata->blanked = true;
 
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
@@ -1419,6 +1415,7 @@ static int mdss_dsi_pm_prepare(struct device *dev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = dev_get_drvdata(dev);
 	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
 
 	if (!ctrl_pdata) {
 		pr_err("%s: no driver data\n", __func__);
@@ -1432,7 +1429,8 @@ static int mdss_dsi_pm_prepare(struct device *dev)
 	}
 
 	mutex_lock(&ctrl_pdata->suspend_mutex);
-	if (!ctrl_pdata->blanked) {
+	pinfo = &pdata->panel_info;
+	if (pinfo->panel_power_state != MDSS_PANEL_POWER_OFF) {
 		pr_debug("%s: set low fps mode on\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 1);
 	}
@@ -1444,6 +1442,7 @@ static void mdss_dsi_pm_complete(struct device *dev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = dev_get_drvdata(dev);
 	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
 
 	if (!ctrl_pdata) {
 		pr_err("%s: no driver data\n", __func__);
@@ -1457,7 +1456,8 @@ static void mdss_dsi_pm_complete(struct device *dev)
 	}
 
 	mutex_lock(&ctrl_pdata->suspend_mutex);
-	if (!ctrl_pdata->blanked) {
+	pinfo = &pdata->panel_info;
+	if (pinfo->panel_power_state != MDSS_PANEL_POWER_OFF) {
 		pr_debug("%s: set low fps mode off\n", __func__);
 		mdss_dsi_panel_low_fps_mode(ctrl_pdata, 0);
 	}

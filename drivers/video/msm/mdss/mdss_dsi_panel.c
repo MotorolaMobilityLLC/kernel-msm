@@ -201,12 +201,6 @@ static void mdss_dsi_panel_set_idle_mode(struct mdss_panel_data *pdata,
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	/* don't need to set idle mode if display is blanked */
-	if (ctrl->blanked) {
-		pr_debug("%s: skipped the idle mode\n", __func__);
-		return;
-	}
-
 	pr_debug("%s: enabled %d\n", __func__, enable);
 
 	if (ctrl->idle == enable)
@@ -703,6 +697,9 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+
+	/* Control idle mode for panel */
+	mdss_dsi_panel_set_idle_mode(pdata, enable);
 
 	pr_debug("%s:-\n", __func__);
 	return 0;

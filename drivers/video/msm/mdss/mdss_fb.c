@@ -1365,11 +1365,6 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	}
 	pr_debug("mode: %d\n", blank_mode);
 
-	if (blank_mode == FB_BLANK_UNBLANK)
-		__mdss_fb_set_idle_mode(mfd, 0);
-	else if (blank_mode == FB_BLANK_VSYNC_SUSPEND)
-		__mdss_fb_set_idle_mode(mfd, 1);
-
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 
 	if (pdata->panel_info.is_lpm_mode &&
