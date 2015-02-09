@@ -997,9 +997,46 @@ static void __exit drv2605_exit(void)
 	i2c_del_driver(&drv2605_driver);
 }
 
-//module_init(drv2605_init);
 rootfs_initcall(drv2605_init);
 module_exit(drv2605_exit);
 
 MODULE_AUTHOR("Texas Instruments Inc.");
+
 MODULE_DESCRIPTION("Driver for "HAPTICS_DEVICE_NAME);
+
+
+/******************************************************************************
+ FUNCTION: vibrator_ctrl_kernel
+ 
+ DESCRIPTION: vibrator control interface in kernel
+                      value:vibrate time, unit ms
+ ******************************************************************************/
+void vibrator_ctrl_kernel(int value)
+{
+    pDRV2605data->should_stop = YES;	
+    hrtimer_cancel(&pDRV2605data->timer);
+    cancel_work_sync(&pDRV2605data->vibrator_work);
+
+    mutex_lock(&pDRV2605data->lock);
+    
+    drv2605_stop(pDRV2605data);
+
+    if (value > 0) {
+        if(pDRV2605data->audio_haptics_enabled == NO){
+            wake_lock(&pDRV2605data->wklock);
+        }
+
+        drv2605_change_mode(pDRV2605data, WORK_VIBRATOR, DEV_READY);
+        pDRV2605data->vibrator_is_playing = YES;
+        switch_set_state(&pDRV2605data->sw_dev, SW_STATE_RTP_PLAYBACK);
+
+        value = (value>MAX_TIMEOUT)?MAX_TIMEOUT:value;
+        hrtimer_start(&pDRV2605data->timer, ns_to_ktime((u64)value * NSEC_PER_MSEC), HRTIMER_MODE_REL);
+    }
+    
+    mutex_unlock(&pDRV2605data->lock);
+}
+
+EXPORT_SYMBOL(vibrator_ctrl_kernel);
+MODULE_DESCRIPTION("Driver for "HAPTICS_DEVICE_NAME);
+
