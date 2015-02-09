@@ -1913,11 +1913,11 @@ static int mmc_blk_err_check(struct mmc_card *card,
 		       (unsigned)blk_rq_sectors(req),
 		       brq->cmd.resp[0], brq->stop.resp[0]);
 
+		if (brq->data.error == -EILSEQ)
+			return MMC_BLK_BUS_ERR;
 		if (rq_data_dir(req) == READ) {
 			if (ecc_err)
 				return MMC_BLK_ECC_ERR;
-			if (brq->data.error == -EILSEQ)
-				return MMC_BLK_BUS_ERR;
 			return MMC_BLK_DATA_ERR;
 		} else {
 			return MMC_BLK_CMD_ERR;
