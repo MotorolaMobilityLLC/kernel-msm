@@ -28,7 +28,7 @@
 		status = "ok";
 		compatible = "ti,lp8556";
 		reg = <0x2c>;
-		bl-name = "lcd-backlight";
+		bl-name = "lcd-backlight:0";
 		dev-ctrl = /bits/ 8 <0x85>;
 		init-brt = /bits/ 8 <0xff>;
 		pinctrl-names = "default";
