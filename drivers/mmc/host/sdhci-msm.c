@@ -327,6 +327,7 @@ struct sdhci_msm_pltfm_data {
 	unsigned long mmc_bus_width;
 	struct sdhci_msm_slot_reg_data *vreg_data;
 	bool nonremovable;
+	bool use_mod_dynamic_qos;
 	bool nonhotplug;
 	bool pin_cfg_sts;
 	bool is_emmc;
@@ -1493,17 +1494,19 @@ out:
 
 #ifdef CONFIG_SMP
 static void sdhci_msm_populate_affinity(struct sdhci_msm_pltfm_data *pdata,
-					     struct device_node *np)
+				     struct device_node *np,
+					 char *qos_affinity_name,
+					 char *qos_affinity_mask)
 {
 	const char *cpu_affinity = NULL;
 	u32 cpu_mask;
 
 	pdata->cpu_affinity_type = PM_QOS_REQ_AFFINE_IRQ;
-	if (!of_property_read_string(np, "qcom,cpu-affinity", &cpu_affinity)) {
+	if (!of_property_read_string(np, qos_affinity_name, &cpu_affinity)) {
 		if (!strcmp(cpu_affinity, "all_cores"))
 			pdata->cpu_affinity_type = PM_QOS_REQ_ALL_CORES;
 		else if (!strcmp(cpu_affinity, "affine_cores") &&
-			 !of_property_read_u32(np, "qcom,cpu-affinity-mask",
+			 !of_property_read_u32(np, qos_affinity_mask,
 						&cpu_mask)) {
 				cpumask_bits(&pdata->cpu_affinity_mask)[0] =
 					cpu_mask;
@@ -1514,44 +1517,72 @@ static void sdhci_msm_populate_affinity(struct sdhci_msm_pltfm_data *pdata,
 }
 #else
 static void sdhci_msm_populate_affinity(struct sdhci_msm_pltfm_data *pdata,
-							struct device_node *np)
+				struct device_node *np, char *qos_affinity_name
+				char *qos_affinity_mask)
 {
 }
 #endif
-
-/* Parse platform data */
-static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
+static void sdhci_msm_update_host_qos_data(struct sdhci_msm_pltfm_data *pdata,
+		struct sdhci_host *host, int i)
 {
-	struct sdhci_msm_pltfm_data *pdata = NULL;
+	struct sdhci_host_qos *host_qos = host->host_qos;
+
+	host_qos[i].cpu_dma_latency_us = pdata->cpu_dma_latency_us;
+	host_qos[i].cpu_dma_latency_tbl_sz = pdata->cpu_dma_latency_tbl_sz;
+	host_qos[i].pm_qos_req_dma.type = pdata->cpu_affinity_type;
+	if (host_qos[i].pm_qos_req_dma.type == PM_QOS_REQ_AFFINE_CORES)
+		bitmap_copy(cpumask_bits(&host_qos[i].pm_qos_req_dma.cpus_affine),
+			    cpumask_bits(&pdata->cpu_affinity_mask),
+			    nr_cpumask_bits);
+}
+static void sdhci_msm_print_qos_data(struct device *dev,
+		struct sdhci_host *host)
+{
+	int i, j;
+	struct sdhci_host_qos *host_qos = host->host_qos;
+
+	dev_info(dev, "host_use_default_qos = %d\n",
+			host->host_use_default_qos);
+
+	for (i = 0; i < SDHCI_QOS_MAX_POLICY; i++) {
+		dev_info(dev, "For Qos_policy(%s qos) = %d, tbl_sz = %d, qos type = %d\n",
+				i ? "modified dynamic" : "default", i,
+				host_qos[i].cpu_dma_latency_tbl_sz,
+				host_qos[i].pm_qos_req_dma.type);
+
+		for (j = 0; j < host_qos[i].cpu_dma_latency_tbl_sz; j++)
+			dev_info(dev, "\tdma_lat = %d\n",
+				host_qos[i].cpu_dma_latency_us[j]);
+	}
+}
+
+static int sdhci_msm_populate_qos(struct device *dev,
+		struct sdhci_msm_pltfm_data *pdata,
+		struct sdhci_host *host)
+{
 	struct device_node *np = dev->of_node;
-	u32 bus_width = 0;
 	u32 drv_types = 0;
 	u32 prop_val = 0;
-	int len, i, mpm_int;
-	int clk_table_len;
-	u32 *clk_table = NULL;
-	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
 	bool skip_qos_from_dt = false;
+	int qos_planes = 0, i;
+	char *qos_planes_name[SDHCI_QOS_MAX_POLICY] = {
+			"qcom,cpu-dma-latency-us",
+			"qcom,cpu-dma-latency-us-r",
+			"qcom,cpu-dma-latency-us-w"};
+	char *qos_affinity_name[SDHCI_QOS_MAX_POLICY] = {
+			"qcom,cpu-affinity",
+			"qcom,cpu-affinity-r",
+			"qcom,cpu-affinity-w"};
+	char *qos_affinity_mask[SDHCI_QOS_MAX_POLICY] = {
+			"qcom,cpu-affinity-mask",
+			"qcom,cpu-affinity-mask-r",
+			"qcom,cpu-affinity-mask-w"};
 
-	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
-	if (!pdata) {
-		dev_err(dev, "failed to allocate memory for platform data\n");
+	if (of_property_read_u32(np, "qcom,qos-planes", &qos_planes))
+			qos_planes = SDHCI_QOS_MAX_POLICY;
+
+	if (qos_planes > SDHCI_QOS_MAX_POLICY)
 		goto out;
-	}
-
-	pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
-	if (gpio_is_valid(pdata->status_gpio) & !(flags & OF_GPIO_ACTIVE_LOW))
-		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
-
-	of_property_read_u32(np, "qcom,bus-width", &bus_width);
-	if (bus_width == 8)
-		pdata->mmc_bus_width = MMC_CAP_8_BIT_DATA;
-	else if (bus_width == 4)
-		pdata->mmc_bus_width = MMC_CAP_4_BIT_DATA;
-	else {
-		dev_notice(dev, "invalid bus-width, default to 1-bit mode\n");
-		pdata->mmc_bus_width = 0;
-	}
 
 	of_property_read_u32(np, "qcom,drv-types", &drv_types);
 #if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
@@ -1572,51 +1603,91 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 		pdata->drv_types = drv_types;
 	}
 
-	if (of_get_property(np, "qcom,cpu-dma-latency-us",
-				&prop_val)) {
+	for (i = 0; i < qos_planes; i++) {
+		if (of_get_property(np, qos_planes_name[i],
+					&prop_val)) {
+					
+			pdata->cpu_dma_latency_tbl_sz =
+				prop_val/sizeof(*pdata->cpu_dma_latency_us);
 
-		pdata->cpu_dma_latency_tbl_sz =
-			prop_val/sizeof(*pdata->cpu_dma_latency_us);
+			if (!(pdata->cpu_dma_latency_tbl_sz == 1 ||
+				pdata->cpu_dma_latency_tbl_sz == 3)) {
+				dev_warn(dev, "incorrect Qos param passed from DT: %d\n",
+					pdata->cpu_dma_latency_tbl_sz);
+				skip_qos_from_dt = true;
+			} else {
+				pdata->cpu_dma_latency_us = devm_kzalloc(dev,
+					sizeof(*pdata->cpu_dma_latency_us) *
+					pdata->cpu_dma_latency_tbl_sz,
+					GFP_KERNEL);
+				if (!pdata->cpu_dma_latency_us)
+					goto out;
+				if (of_property_read_u32_array(np,
+						qos_planes_name[i],
+						pdata->cpu_dma_latency_us,
+						pdata->cpu_dma_latency_tbl_sz)) {
+					dev_err(dev, "failed to parse cpu-dma-latency\n");
+					goto out;
+				}
+			}
+			} else {
+				dev_info(dev, "no %s property found\n",
+						qos_planes_name[i]);
+				skip_qos_from_dt = true;
+			}
 
-		if (!(pdata->cpu_dma_latency_tbl_sz == 1 ||
-			pdata->cpu_dma_latency_tbl_sz == 3)) {
-			dev_warn(dev, "incorrect Qos param passed from DT: %d\n",
-				pdata->cpu_dma_latency_tbl_sz);
-			skip_qos_from_dt = true;
-		} else {
+		if (skip_qos_from_dt) {
+			pdata->cpu_dma_latency_tbl_sz = 1;
 			pdata->cpu_dma_latency_us = devm_kzalloc(dev,
 				sizeof(*pdata->cpu_dma_latency_us) *
 				pdata->cpu_dma_latency_tbl_sz,
 				GFP_KERNEL);
-			if (!pdata->cpu_dma_latency_us) {
-				dev_err(dev, "No memory for cpu_dma_latency_us\n");
+			if (!pdata->cpu_dma_latency_us)
 				goto out;
-			}
-			if (of_property_read_u32_array(np,
-					"qcom,cpu-dma-latency-us",
-					pdata->cpu_dma_latency_us,
-					pdata->cpu_dma_latency_tbl_sz)) {
-				dev_err(dev, "failed to parse cpu-dma-latency\n");
-				goto out;
-			}
+			pdata->cpu_dma_latency_us[0] = MSM_MMC_DEFAULT_CPU_DMA_LATENCY;
 		}
-	} else {
-		dev_info(dev, "no qcom,cpu-dma-latency-us found\n");
-		skip_qos_from_dt = true;
+		sdhci_msm_populate_affinity(pdata, np,
+				qos_affinity_name[i], qos_affinity_mask[i]);
+		sdhci_msm_update_host_qos_data(pdata, host, i);
 	}
 
-	if (skip_qos_from_dt) {
-		pdata->cpu_dma_latency_tbl_sz = 1;
-		pdata->cpu_dma_latency_us = devm_kzalloc(dev,
-			sizeof(*pdata->cpu_dma_latency_us) *
-			pdata->cpu_dma_latency_tbl_sz,
-			GFP_KERNEL);
-		if (!pdata->cpu_dma_latency_us) {
-			dev_err(dev, "No memory for cpu_dma_latency_us\n");
-			goto out;
-		}
-		pdata->cpu_dma_latency_us[0] = MSM_MMC_DEFAULT_CPU_DMA_LATENCY;
+	return 0;
+out:
+	return -EINVAL;
+}
+/* Parse platform data */
+static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
+				struct sdhci_host *host)
+{
+	struct sdhci_msm_pltfm_data *pdata = NULL;
+	struct device_node *np = dev->of_node;
+	u32 bus_width = 0;
+	int len, i, mpm_int;
+	int clk_table_len;
+	u32 *clk_table = NULL;
+	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(dev, "failed to allocate memory for platform data\n");
+		goto out;
 	}
+
+	pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
+	if (gpio_is_valid(pdata->status_gpio) & !(flags & OF_GPIO_ACTIVE_LOW))
+		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
+
+	of_property_read_u32(np, "qcom,bus-width", &bus_width);
+	if (bus_width == 8)
+		pdata->mmc_bus_width = MMC_CAP_8_BIT_DATA;
+	else if (bus_width == 4)
+		pdata->mmc_bus_width = MMC_CAP_4_BIT_DATA;
+	else {
+		dev_notice(dev, "invalid bus-width, default to 1-bit mode\n");
+		pdata->mmc_bus_width = 0;
+	}
+	if (sdhci_msm_populate_qos(dev, pdata, host))
+		goto out;
 
 	if (sdhci_msm_dt_get_array(dev, "qcom,clk-rates",
 			&clk_table, &clk_table_len, 0)) {
@@ -1709,6 +1780,9 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 	if (of_get_property(np, "qcom,nonremovable", NULL))
 		pdata->nonremovable = true;
 
+	if (of_get_property(np, "qcom,modified-dynamic-qos", NULL))
+		pdata->use_mod_dynamic_qos = true;
+
 	if (of_get_property(np, "qcom,nonhotplug", NULL))
 		pdata->nonhotplug = true;
 
@@ -1717,8 +1791,6 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 		pdata->mpm_sdiowakeup_int = mpm_int;
 	else
 		pdata->mpm_sdiowakeup_int = -1;
-
-	sdhci_msm_populate_affinity(pdata, np);
 
 	if (of_get_property(np, "qcom,emmc", NULL))
 		pdata->is_emmc = true;
@@ -3498,7 +3570,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 			goto pltfm_free;
 		}
 
-		msm_host->pdata = sdhci_msm_populate_pdata(&pdev->dev);
+		msm_host->pdata = sdhci_msm_populate_pdata(&pdev->dev, host);
 		if (!msm_host->pdata) {
 			dev_err(&pdev->dev, "DT parsing error\n");
 			goto pltfm_free;
@@ -3666,6 +3738,11 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	if (host->quirks2 & SDHCI_QUIRK2_ALWAYS_USE_BASE_CLOCK)
 		host->quirks2 |= SDHCI_QUIRK2_DIVIDE_TOUT_BY_4;
 
+	host->host_use_default_qos = !msm_host->pdata->use_mod_dynamic_qos;
+	sdhci_msm_print_qos_data(&pdev->dev, host);
+	dev_info(&pdev->dev, "Host using %s Qos\n", host->host_use_default_qos ?
+					"default" : "mod dynamic");
+
 	host_version = readw_relaxed((host->ioaddr + SDHCI_HOST_VERSION));
 	dev_dbg(&pdev->dev, "Host Version: 0x%x Vendor Version 0x%x\n",
 		host_version, ((host_version & SDHCI_VENDOR_VER_MASK) >>
@@ -3756,14 +3833,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		sdhci_caps |= ((host_version & 0xFF) << 24);
 		sdhci_writel(host, sdhci_caps, CORE_VENDOR_SPEC_CAPABILITIES1);
 	}
-
-	host->cpu_dma_latency_us = msm_host->pdata->cpu_dma_latency_us;
-	host->cpu_dma_latency_tbl_sz = msm_host->pdata->cpu_dma_latency_tbl_sz;
-	host->pm_qos_req_dma.type = msm_host->pdata->cpu_affinity_type;
-	if (host->pm_qos_req_dma.type == PM_QOS_REQ_AFFINE_CORES)
-		bitmap_copy(cpumask_bits(&host->pm_qos_req_dma.cpus_affine),
-			    cpumask_bits(&msm_host->pdata->cpu_affinity_mask),
-			    nr_cpumask_bits);
 
 	init_completion(&msm_host->pwr_irq_completion);
 
