@@ -7882,10 +7882,11 @@ eHalStatus csrProcessSetBGScanParam(tpAniSirGlobal pMac, tSmeCmd *pCommand)
 }
 
 
-eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
-                               eCsrAbortReason reason)
+tSirAbortScanStatus csrScanAbortMacScan(tpAniSirGlobal pMac,
+                                        tANI_U8 sessionId,
+                                        eCsrAbortReason reason)
 {
-    eHalStatus status = eHAL_STATUS_FAILURE;
+    tSirAbortScanStatus abortScanStatus = eSIR_ABORT_ACTIVE_SCAN_LIST_EMPTY;
     tSirSmeScanAbortReq *pMsg;
     tANI_U16 msgLen;
     tListElem *pEntry;
@@ -7936,8 +7937,8 @@ eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
             pMsg = vos_mem_malloc(msgLen);
             if ( NULL == pMsg )
             {
-               status = eHAL_STATUS_FAILURE;
                smsLog(pMac, LOGE, FL("Failed to allocate memory for SmeScanAbortReq"));
+               abortScanStatus = eSIR_ABORT_SCAN_FAILURE;
             }
             else
             {
@@ -7950,12 +7951,21 @@ eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
                 pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_SCAN_ABORT_IND);
                 pMsg->msgLen = pal_cpu_to_be16(msgLen);
                 pMsg->sessionId = sessionId;
-                status = palSendMBMessage(pMac->hHdd, pMsg);
+                if (eHAL_STATUS_SUCCESS != palSendMBMessage(pMac->hHdd, pMsg))
+                {
+                    smsLog(pMac, LOGE,
+                           FL("Failed to post eWNI_SME_SCAN_ABORT_IND"));
+                    abortScanStatus = eSIR_ABORT_SCAN_FAILURE;
+                }
+                else
+                {
+                    abortScanStatus = eSIR_ABORT_ACTIVE_SCAN_LIST_NOT_EMPTY;
+                }
             }
         }
     }
 
-    return(status);
+    return(abortScanStatus);
 }
 
 void csrRemoveCmdWithSessionIdFromPendingList(tpAniSirGlobal pMac,
@@ -8174,7 +8184,12 @@ eHalStatus csrScanAbortMacScanNotForConnect(tpAniSirGlobal pMac,
     if( !csrIsScanForRoamCommandActive( pMac ) )
     {
         //Only abort the scan if it is not used for other roam/connect purpose
-        status = csrScanAbortMacScan(pMac, sessionId, eCSR_SCAN_ABORT_DEFAULT);
+        if (eSIR_ABORT_SCAN_FAILURE ==
+                csrScanAbortMacScan(pMac, sessionId, eCSR_SCAN_ABORT_DEFAULT))
+        {
+            smsLog(pMac, LOGE, FL("fail to abort scan"));
+            status = eHAL_STATUS_FAILURE;
+        }
     }
 
     return (status);

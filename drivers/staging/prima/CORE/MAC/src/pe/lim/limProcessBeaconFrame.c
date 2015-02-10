@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -79,13 +79,12 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
     /* here is it required to increment session specific heartBeat beacon counter */  
 
 
-    
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
 
 
-    PELOG2(limLog(pMac, LOG2, FL("Received Beacon frame with length=%d from "),
+    limLog(pMac, LOG2, FL("Received Beacon frame with length=%d from "),
            WDA_GET_RX_MPDU_LEN(pRxPacketInfo));
-    limPrintMacAddr(pMac, pHdr->sa, LOG2);)
+    limPrintMacAddr(pMac, pHdr->sa, LOG2);
 
     if (!pMac->fScanOffload)
     {
@@ -124,10 +123,13 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                    FL("Received invalid Beacon in state %d"),
                    psessionEntry->limMlmState);
             limPrintMlmState(pMac, LOGW,  psessionEntry->limMlmState);
+            if ((!psessionEntry->currentBssBeaconCnt) &&
+               (sirCompareMacAddr( psessionEntry->bssId, pHdr->sa)))
+                limParseBeaconForTim(pMac, (tANI_U8 *) pRxPacketInfo, psessionEntry);
+
             vos_mem_free(pBeacon);
             return;
         }
-
         /*during scanning, when any session is active, and beacon/Pr belongs to
           one of the session, fill up the following, TBD - HB couter */
         if ((!psessionEntry->lastBeaconDtimPeriod) &&

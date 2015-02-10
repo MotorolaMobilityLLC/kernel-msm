@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015. The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -83,6 +83,10 @@ static const tANI_U8 aUnsortedChannelList[]= {52,56,60,64,100,104,108,112,116,
 #define SUCCESS 1                   //defined temporarily for BT-AMP
 
 #define MAX_BA_WINDOW_SIZE_FOR_CISCO 25
+#define MAX_DTIM_PERIOD 15
+#define MAX_DTIM_COUNT  15
+#define DTIM_PERIOD_DEFAULT 1
+#define DTIM_COUNT_DEFAULT  1
 static void
 limProcessChannelSwitchSuspendLink(tpAniSirGlobal pMac,
                                     eHalStatus status,
@@ -8286,3 +8290,77 @@ limSetProtectedBit(tpAniSirGlobal  pMac,
         pMacHdr->fc.wep = 1;
 } /*** end limSetProtectedBit() ***/
 #endif
+
+tANI_U8* limGetIePtr(v_U8_t *pIes, int length, v_U8_t eid)
+{
+    int left = length;
+    tANI_U8 *ptr = pIes;
+    tANI_U8 elem_id,elem_len;
+
+    while (left >= 2)
+    {
+       elem_id  =  ptr[0];
+       elem_len =  ptr[1];
+       left -= 2;
+
+       if (elem_len > left)
+       {
+           VOS_TRACE (VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+               FL("****Invalid IEs eid = %d elem_len=%d left=%d\n*****"),
+                                 eid,elem_len,left);
+           return NULL;
+       }
+       if (elem_id == eid)
+       {
+           return ptr;
+       }
+
+       left -= elem_len;
+       ptr += (elem_len + 2);
+    }
+    return NULL;
+}
+
+
+void limParseBeaconForTim(tpAniSirGlobal pMac,tANI_U8* pRxPacketInfo, tpPESession psessionEntry)
+{
+
+    tANI_U32        nPayload;
+    tANI_U8        *pPayload;
+    tANI_U8        *ieptr;
+    tSirMacTim     *tim;
+
+    pPayload = WDA_GET_RX_MPDU_DATA( pRxPacketInfo );
+    nPayload = WDA_GET_RX_PAYLOAD_LEN( pRxPacketInfo );
+
+    if (nPayload < (SIR_MAC_B_PR_SSID_OFFSET + SIR_MAC_MIN_IE_LEN))
+    {
+       limLog(pMac, LOGE, FL("Beacon length too short to parse"));
+       return;
+    }
+
+    if (NULL !=
+       (ieptr = limGetIePtr((pPayload + SIR_MAC_B_PR_SSID_OFFSET),
+                                            nPayload, SIR_MAC_TIM_EID)))
+    {
+       /* Ignore EID and Length field*/
+       tim  = (tSirMacTim *)(ieptr + 2);
+
+       vos_mem_copy(( tANI_U8* )&psessionEntry->lastBeaconTimeStamp,
+                     ( tANI_U8* )pPayload, sizeof(tANI_U64));
+       if (tim->dtimCount >= MAX_DTIM_COUNT)
+           tim->dtimCount = DTIM_COUNT_DEFAULT;
+       if (tim->dtimPeriod >= MAX_DTIM_PERIOD)
+           tim->dtimPeriod = DTIM_PERIOD_DEFAULT;
+       psessionEntry->lastBeaconDtimCount = tim->dtimCount;
+       psessionEntry->lastBeaconDtimPeriod = tim->dtimPeriod;
+       psessionEntry->currentBssBeaconCnt++;
+
+       limLog(pMac, LOG1,
+              FL("currentBssBeaconCnt %d lastBeaconDtimCount %d lastBeaconDtimPeriod %d"),
+              psessionEntry->currentBssBeaconCnt, psessionEntry->lastBeaconDtimCount,
+              psessionEntry->lastBeaconDtimPeriod);
+
+    }
+    return;
+}

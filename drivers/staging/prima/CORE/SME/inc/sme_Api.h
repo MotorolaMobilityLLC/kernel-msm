@@ -115,6 +115,7 @@ typedef struct _smeConfigParams
     tANI_U8  isAmsduSupportInAMPDU;
     tANI_U32       fEnableDebugLog;
     tANI_U32      fDeferIMPSTime;
+    tANI_U8       fBtcEnableIndTimerVal;
 } tSmeConfigParams, *tpSmeConfigParams;
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -2271,12 +2272,11 @@ tANI_U8 sme_GetConcurrentOperationChannel( tHalHandle hHal );
     \brief  API to cancel MAC scan.
     \param  hHal - The handle returned by macOpen.
     \param  sessionId - sessionId for interface
-    \return VOS_STATUS
-            VOS_STATUS_E_FAILURE - failure
-            VOS_STATUS_SUCCESS  success
+    \return tSirAbortScanStatus return status abort scan
+
   ---------------------------------------------------------------------------*/
-eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
-                            eCsrAbortReason reason);
+tSirAbortScanStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
+                                     eCsrAbortReason reason);
 
 /* ---------------------------------------------------------------------------
     \fn sme_GetCfgValidChannels
@@ -3511,5 +3511,17 @@ eHalStatus sme_RegisterBtCoexTDLSCallback
     tHalHandle hHal,
     void (*pCallbackfn)(void *pAdapter, int)
 );
+
+/* ---------------------------------------------------------------------------
+    \fn smeNeighborRoamIsHandoffInProgress
+
+    \brief This function is a wrapper to call csrNeighborRoamIsHandoffInProgress
+
+    \param hHal - The handle returned by macOpen.
+
+    \return eANI_BOOLEAN_TRUE if reassoc in progress,
+            eANI_BOOLEAN_FALSE otherwise
+---------------------------------------------------------------------------*/
+tANI_BOOLEAN smeNeighborRoamIsHandoffInProgress(tHalHandle hHal);
 
 #endif //#if !defined( __SME_API_H )

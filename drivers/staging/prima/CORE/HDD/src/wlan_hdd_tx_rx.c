@@ -812,6 +812,17 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
    else
    {
+      if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
+      {
+         VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+                FL("Tx frame in not associated state in %d context"),
+                    pAdapter->device_mode);
+         ++pAdapter->stats.tx_dropped;
+         ++pAdapter->hdd_stats.hddTxRxStats.txXmitDropped;
+         ++pAdapter->hdd_stats.hddTxRxStats.txXmitDroppedAC[ac];
+         kfree_skb(skb);
+         return NETDEV_TX_OK;
+      }
       STAId = pHddStaCtx->conn_info.staId[0];
    }
 
@@ -1586,23 +1597,6 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       vos_pkt_return_packet(pVosPacket);
       return VOS_STATUS_E_FAILURE;
    }
-   /* In IBSS the staID can change and hdd uses the same queue for all staid.
-    * Due to this the fetch may be called for staID x, but data might be of
-    * staID y. So better get the staId again from SKB and use this to process
-    * the packet further.
-    */
-   if (WLAN_HDD_IBSS == pAdapter->device_mode)
-   {
-      *pStaId = *(v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
-
-      /* If HDD_WLAN_INVALID_STA_ID no need to check the destination,
-       * just make the staID 0. As if HDD_WLAN_INVALID_STA_ID and
-       * destination is not BC of MC, the packet is already dropped in
-       * hdd_hard_start_xmit.
-       */
-      if (*pStaId == HDD_WLAN_INVALID_STA_ID)
-         *pStaId = IBSS_BROADCAST_STAID;
-   }
    //Attach skb to VOS packet.
    status = vos_pkt_set_os_packet( pVosPacket, skb );
    if (status != VOS_STATUS_SUCCESS)
@@ -1699,52 +1693,47 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
 
 #ifdef FEATURE_WLAN_WAPI
    // Override usIsEapol value when its zero for WAPI case
-      pPktMetaInfo->ucIsWai = hdd_IsWAIPacket( pVosPacket ) ? 1 : 0;
+   pPktMetaInfo->ucIsWai = hdd_IsWAIPacket( pVosPacket ) ? 1 : 0;
 #endif /* FEATURE_WLAN_WAPI */
 
-   if ((HDD_WMM_USER_MODE_NO_QOS == pHddCtx->cfg_ini->WmmMode) ||
-       (!pAdapter->hddWmmStatus.wmmQap))
+   /* 1. Check if ACM is set for this AC
+    * 2. If set, check if this AC had already admitted
+    * 3. If not already admitted, downgrade the UP to next best UP
+    * 4. Allow only when medium time is non zero when Addts accepted
+    *    else downgrade traffic. we opted downgrading over Delts when
+    *    medium time is zero because while doing downgradig driver is not
+    *    clearing the wmm context so consider in subsequent roaming
+    *    if AP (new or same AP) accept the Addts with valid medium time
+    *    no application support is required where if we have opted
+    *    delts Applications have to again do Addts or STA will never
+    *    go for Addts.
+    */
+
+   if(!pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessRequired ||
+      (pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid &&
+       pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecInfo.medium_time))
    {
-      // either we don't want QoS or the AP doesn't support QoS
-      pPktMetaInfo->ucUP = 0;
-      pPktMetaInfo->ucTID = 0;
+      pPktMetaInfo->ucUP = pktNode->userPriority;
+      pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
    }
    else
    {
-      /* 1. Check if ACM is set for this AC 
-       * 2. If set, check if this AC had already admitted 
-       * 3. If not already admitted, downgrade the UP to next best UP
-       * 4. Allow only when medium time is non zero when Addts accepted else downgrade traffic.
-            we opted downgrading over Delts when medium time is zero because while doing downgradig
-            driver is not clearing the wmm context so consider in subsequent roaming if AP (new or
-            same AP) accept the Addts with valid medium time no application support is required
-            where if we have opted delts Applications have to again do Addts or STA will never
-            go for Addts.*/
-
-      if(!pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessRequired ||
-         (pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid &&
-          pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecInfo.medium_time))
+     //Downgrade the UP
+      acAdmitted = pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid;
+      newAc = WLANTL_AC_BK;
+      for (i=ac-1; i>0; i--)
       {
-        pPktMetaInfo->ucUP = pktNode->userPriority;
-        pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
+         if (pAdapter->hddWmmStatus.wmmAcStatus[i].wmmAcAccessRequired == 0)
+         {
+             newAc = i;
+             break;
+         }
       }
-      else
-      {
-        //Downgrade the UP
-        acAdmitted = pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid;
-        newAc = WLANTL_AC_BK;
-        for (i=ac-1; i>0; i--)
-        {
-            if (pAdapter->hddWmmStatus.wmmAcStatus[i].wmmAcAccessRequired == 0)
-            {
-                newAc = i;
-                break;
-            }
-        }
-        pPktMetaInfo->ucUP = hddWmmAcToHighestUp[newAc];
-        pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
-        VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO_LOW,"Downgrading UP %d to UP %d ", pktNode->userPriority, pPktMetaInfo->ucUP);
-      }
+      pPktMetaInfo->ucUP = hddWmmAcToHighestUp[newAc];
+      pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
+      VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO_LOW,
+               "Downgrading UP %d to UP %d ",
+                pktNode->userPriority, pPktMetaInfo->ucUP);
    }
 
 #ifdef DEBUG_ROAM_DELAY

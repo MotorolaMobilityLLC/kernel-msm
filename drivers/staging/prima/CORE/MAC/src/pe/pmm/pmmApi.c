@@ -230,8 +230,8 @@ void pmmInitBmpsResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg )
     //If response is failure, then send the response back to PMC and reset its state.
     if(pEnterBmpsParams->status == eHAL_STATUS_SUCCESS)
     {
-        PELOG2(pmmLog(pMac, LOG2,
-            FL("pmmBmps: Received successful response from HAL to enter BMPS_POWER_SAVE "));)
+        pmmLog(pMac, LOG1,
+            FL("pmmBmps: Received successful response from HAL to enter BMPS_POWER_SAVE "));
 
         pMac->pmm.gPmmState = ePMM_STATE_BMPS_SLEEP;
 
@@ -685,8 +685,8 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     msgQ.bodyptr = pBmpsParams;
     msgQ.bodyval = 0;
 
-    PELOG2(pmmLog( pMac, LOG2,
-        FL( "pmmBmps: Sending WDA_ENTER_BMPS_REQ" ));)
+    pmmLog( pMac, LOG1,
+        FL( "pmmBmps: Sending WDA_ENTER_BMPS_REQ" ));
 
     /* we need to defer any incoming messages until we get a
      * WDA_ENTER_BMPS_RSP from HAL.
@@ -1562,8 +1562,8 @@ void pmmEnterImpsResponseHandler (tpAniSirGlobal pMac, eHalStatus rspStatus)
         //if success, change the state to IMPS sleep mode
         pMac->pmm.gPmmState = ePMM_STATE_IMPS_SLEEP;
 
-        PELOG2(pmmLog(pMac, LOG2,
-            FL("pmmImps: Received successful WDA_ENTER_IMPS_RSP from HAL"));)
+        pmmLog(pMac, LOG1,
+            FL("pmmImps: Received successful WDA_ENTER_IMPS_RSP from HAL"));
 
         //update power save statistics
         pmmImpsUpdatePwrSaveStats(pMac);
@@ -1711,8 +1711,8 @@ void pmmExitImpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
         {
             resultCode = eSIR_SME_SUCCESS;
             pMac->pmm.gPmmState = ePMM_STATE_IMPS_WAKEUP;
-            PELOG2(pmmLog(pMac, LOG2,
-                          FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Successful response from HAL"));)
+            pmmLog(pMac, LOG1,
+                          FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Successful response from HAL"));
             //update power save statistics
             pmmImpsUpdateWakeupStats(pMac);
         }
@@ -2510,12 +2510,12 @@ tSirRetStatus pmmImpsSendChangePwrSaveMsg(tpAniSirGlobal pMac, tANI_U8 mode)
     if (SIR_PM_SLEEP_MODE == mode)
     {
         msgQ.type = WDA_ENTER_IMPS_REQ;
-        PELOG2(pmmLog (pMac, LOG2, FL("Sending WDA_ENTER_IMPS_REQ to HAL"));)
+        pmmLog (pMac, LOG1, FL("Sending WDA_ENTER_IMPS_REQ to HAL"));
     }
     else
     {
         msgQ.type = WDA_EXIT_IMPS_REQ;
-        PELOG2(pmmLog (pMac, LOG2, FL("Sending WDA_EXIT_IMPS_REQ to HAL"));)
+        pmmLog (pMac, LOG1, FL("Sending WDA_EXIT_IMPS_REQ to HAL"));
     }
 
     msgQ.reserved = 0;

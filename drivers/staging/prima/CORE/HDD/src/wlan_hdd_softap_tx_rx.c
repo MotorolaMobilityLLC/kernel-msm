@@ -648,6 +648,7 @@ void __hdd_softap_tx_timeout(struct net_device *dev)
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
    struct netdev_queue *txq;
    int i = 0;
+   hdd_context_t *pHddCtx;
 
    VOS_TRACE( VOS_MODULE_ID_HDD_SAP_DATA, VOS_TRACE_LEVEL_ERROR,
       "%s: Transmission timeout occurred", __func__);
@@ -658,6 +659,13 @@ void __hdd_softap_tx_timeout(struct net_device *dev)
               FL("pAdapter is NULL"));
       VOS_ASSERT(0);
       return;
+   }
+
+   pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   if (pHddCtx->isLogpInProgress) {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                       "%s:LOGP in Progress. Ignore!!!",__func__);
+       return;
    }
 
    ++pAdapter->hdd_stats.hddTxRxStats.txTimeoutCount;

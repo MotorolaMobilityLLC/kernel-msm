@@ -3224,6 +3224,22 @@ REG_VARIABLE( CFG_EXTSCAN_ENABLE, WLAN_PARAM_Integer,
                   CFG_ENABLE_DYNAMIC_RA_START_RATE_DEFAULT,
                   CFG_ENABLE_DYNAMIC_RA_START_RATE_MIN,
                   CFG_ENABLE_DYNAMIC_RA_START_RATE_MAX),
+
+   REG_VARIABLE( CFG_BTC_ENABLE_IND_TIMER_VALUE, WLAN_PARAM_Integer,
+                  hdd_config_t, btcEnableIndTimerVal,
+                  VAR_FLAGS_OPTIONAL |
+                  VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                  CFG_BTC_ENABLE_IND_TIMER_VALUE_DEFAULT,
+                  CFG_BTC_ENABLE_IND_TIMER_VALUE_MIN,
+                  CFG_BTC_ENABLE_IND_TIMER_VALUE_MAX),
+
+   REG_VARIABLE( CFG_BTC_FAST_WLAN_CONN_PREF , WLAN_PARAM_Integer,
+                 hdd_config_t, btcFastWlanConnPref,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_FAST_WLAN_CONN_PREF_DEFAULT,
+                 CFG_BTC_FAST_WLAN_CONN_PREF_MIN,
+                 CFG_BTC_FAST_WLAN_CONN_PREF_MAX ),
+
 };
 
 /*
@@ -5129,6 +5145,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
        hddLog(LOGE, "Could not pass on"
                "WNI_CFG_ENABLE_DYNAMIC_RA_START_RATE to CCM");
    }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_BTC_FAST_WLAN_CONN_PREF,
+                    pConfig->btcFastWlanConnPref, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_BTC_FAST_WLAN_CONN_PREF ");
+   }
    return fStatus;
 }
 
@@ -5329,10 +5353,13 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.neighborRoamConfig.nMaxNeighborRetries = pConfig->nMaxNeighborReqTries;
    smeConfig->csrConfig.neighborRoamConfig.nNeighborResultsRefreshPeriod = pConfig->nNeighborResultsRefreshPeriod;
    smeConfig->csrConfig.neighborRoamConfig.nEmptyScanRefreshPeriod = pConfig->nEmptyScanRefreshPeriod;
-   //Making Forced 5G roaming to tightly coupled with the gEnableFirstScan2GOnly=1 only.
-   if(pConfig->enableFirstScan2GOnly)
+   //Making Forced 5G roaming to tightly coupled with the gEnableFirstScan2GOnly
+   //=1 only, Also making sure if HW does not support 5G RF band then no need to
+   //enable this feature even though it is enabled in .ini.
+   if((pConfig->enableFirstScan2GOnly) && (pConfig->nBandCapability != eCSR_BAND_24))
    {
-       smeConfig->csrConfig.neighborRoamConfig.nNeighborInitialForcedRoamTo5GhEnable = pConfig->nNeighborInitialForcedRoamTo5GhEnable;
+       smeConfig->csrConfig.neighborRoamConfig.nNeighborInitialForcedRoamTo5GhEnable
+       = pConfig->nNeighborInitialForcedRoamTo5GhEnable;
    }
    hdd_string_to_u8_array( pConfig->neighborScanChanList,
                                         smeConfig->csrConfig.neighborRoamConfig.neighborScanChanList.channelList,
@@ -5353,7 +5380,10 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
 
    smeConfig->csrConfig.isAmsduSupportInAMPDU = pConfig->isAmsduSupportInAMPDU;
-   smeConfig->csrConfig.nSelect5GHzMargin = pConfig->nSelect5GHzMargin;
+   if(pConfig->nBandCapability != eCSR_BAND_24)
+   {
+       smeConfig->csrConfig.nSelect5GHzMargin = pConfig->nSelect5GHzMargin;
+   }
    smeConfig->csrConfig.initialScanSkipDFSCh = pConfig->initialScanSkipDFSCh;
 
    smeConfig->csrConfig.isCoalesingInIBSSAllowed =
@@ -5372,6 +5402,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.sendDeauthBeforeCon = pConfig->sendDeauthBeforeCon;
 
    smeConfig->fDeferIMPSTime = pHddCtx->cfg_ini->deferImpsTime;
+   smeConfig->fBtcEnableIndTimerVal = pHddCtx->cfg_ini->btcEnableIndTimerVal;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )

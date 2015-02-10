@@ -4546,6 +4546,7 @@ typedef struct sSirUpdateChanParam
 
 typedef struct sSirUpdateChan
 {
+    tANI_U8 regId;
     tANI_U8 numChan;
     tSirUpdateChanParam chanParam[1];
 } tSirUpdateChanList, *tpSirUpdateChanList;
@@ -5637,4 +5638,12 @@ typedef struct
    tANI_U16   mesgLen;
    tSetEncryptedDataRspParams   encryptedDataRsp;
 } tSirEncryptedDataRspParams, *tpSirEncryptedDataRspParams;
+
+typedef enum eSirAbortScanStatus
+{
+    eSIR_ABORT_ACTIVE_SCAN_LIST_EMPTY,
+    eSIR_ABORT_ACTIVE_SCAN_LIST_NOT_EMPTY,
+    eSIR_ABORT_SCAN_FAILURE
+}tSirAbortScanStatus;
+
 #endif /* __SIR_API_H */

@@ -2050,7 +2050,8 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_UAPSD)
      {
          smsLog(pMac, LOG1, FL("ENABLE UAPSD BT Event received"));
-         vos_timer_start(&pMac->btc.enableUapsdTimer, BTC_MAX_ENABLE_UAPSD_TIMER);
+         vos_timer_start(&pMac->btc.enableUapsdTimer,
+                         (pMac->fBtcEnableIndTimerVal * 1000));
      }
      else // unknown indication type
      {

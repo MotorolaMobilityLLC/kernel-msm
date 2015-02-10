@@ -1151,6 +1151,48 @@ WLANTL_RegisterSTAClient
 
 /*===========================================================================
 
+  FUNCTION    WLANTL_UpdateTdlsSTAClient
+
+  DESCRIPTION
+
+    HDD will call this API when ENABLE_LINK happens and  HDD want to
+    register QoS or other params for TDLS peers.
+
+  DEPENDENCIES
+
+    A station must have been registered before the WMM/QOS registration is
+    called.
+
+  PARAMETERS
+
+   pvosGCtx:        pointer to the global vos context; a handle to TL's
+                    control block can be extracted from its context
+   wSTADescType:    STA Descriptor, contains information related to the
+                    new added STA
+
+  RETURN VALUE
+
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_FAULT: Station ID is outside array boundaries or pointer to
+                        TL cb is NULL ; access would cause a page fault
+    VOS_STATUS_E_EXISTS: Station was not registered
+    VOS_STATUS_SUCCESS:  Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+VOS_STATUS
+WLANTL_UpdateTdlsSTAClient
+(
+ v_PVOID_t                 pvosGCtx,
+ WLAN_STADescType*         wSTADescType
+);
+
+
+/*===========================================================================
+
   FUNCTION    WLANTL_ClearSTAClient
 
   DESCRIPTION 

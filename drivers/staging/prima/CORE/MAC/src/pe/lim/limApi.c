@@ -1866,10 +1866,7 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
           (eSIR_FALSE == securityCapsMatched)
           ) ) )
     {
-        /* No need to send probe request if security
-         * capability doesnt match, Disconnect directly.*/
-        if( (false == psessionEntry->fWaitForProbeRsp) &&
-                              (eSIR_TRUE == securityCapsMatched))
+        if ( false == psessionEntry->fWaitForProbeRsp )
         {
             /* If Beacon capabilities is not matching with the current capability,
              * then send unicast probe request to AP and take decision after

@@ -910,14 +910,10 @@ struct hdd_adapter_s
 
 #ifdef WLAN_NS_OFFLOAD
    /** IPv6 notifier callback for handling NS offload on change in IP */
-   struct notifier_block ipv6_notifier;
-   bool ipv6_notifier_registered;
    struct work_struct  ipv6NotifierWorkQueue;
 #endif
     
    /** IPv4 notifier callback for handling ARP offload on change in IP */
-   struct notifier_block ipv4_notifier;
-   bool ipv4_notifier_registered;
    struct work_struct  ipv4NotifierWorkQueue;
 
    //TODO Move this to sta Ctx
@@ -1367,6 +1363,18 @@ struct hdd_context_s
     macAddrSpoof_t spoofMacAddr;
     /* flag to decide if driver need to scan DFS channels or not */
     v_BOOL_t  disable_dfs_flag;
+
+#ifdef WLAN_NS_OFFLOAD
+    /*
+     *  IPv6 notifier callback for handling NS offload on change in IP
+     */
+    struct notifier_block ipv6_notifier;
+#endif
+
+    /* IPv4 notifier callback for handling ARP offload on change in
+     * IP
+     */
+    struct notifier_block ipv4_notifier;
 };
 
 
@@ -1432,8 +1440,9 @@ void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext);
 v_BOOL_t wlan_hdd_is_GO_power_collapse_allowed(hdd_context_t* pHddCtx);
 v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx);
 v_BOOL_t hdd_is_suspend_notify_allowed(hdd_context_t* pHddCtx);
-void hdd_abort_mac_scan(hdd_context_t* pHddCtx, tANI_U8 sessionId,
-                        eCsrAbortReason reason);
+tSirAbortScanStatus hdd_abort_mac_scan(hdd_context_t* pHddCtx,
+                                       tANI_U8 sessionId,
+                                       eCsrAbortReason reason);
 void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 
@@ -1466,7 +1475,7 @@ v_BOOL_t hdd_is_valid_mac_address(const tANI_U8* pMacAddr);
 VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
 VOS_STATUS hdd_is_any_session_connected(hdd_context_t *pHddCtx);
 void hdd_ipv4_notifier_work_queue(struct work_struct *work);
-v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx, v_BOOL_t isRoC );
+v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 sessionId);
 #endif

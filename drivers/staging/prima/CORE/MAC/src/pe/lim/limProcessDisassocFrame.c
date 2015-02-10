@@ -124,11 +124,12 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     // Get reasonCode from Disassociation frame body
     reasonCode = sirReadU16(pBody);
 
-    PELOG2(limLog(pMac, LOGE,
-        FL("Received Disassoc frame for Addr: "MAC_ADDRESS_STR"(mlm state=%s, sme state=%d),"
+    limLog(pMac, LOGE,
+        FL("Received Disassoc frame for Addr: "MAC_ADDRESS_STR
+        "(mlm state=%s, sme state=%d),"
         "with reason code %d from "MAC_ADDRESS_STR), MAC_ADDR_ARRAY(pHdr->da),
-        limMlmStateStr(psessionEntry->limMlmState), psessionEntry->limSmeState, reasonCode,
-        MAC_ADDR_ARRAY(pHdr->sa));)
+        limMlmStateStr(psessionEntry->limMlmState), psessionEntry->limSmeState,
+        reasonCode, MAC_ADDR_ARRAY(pHdr->sa));
 
     /**
    * Extract 'associated' context for STA, if any.

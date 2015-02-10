@@ -1688,6 +1688,75 @@ WLANTL_ChangeSTAState
 
 /*===========================================================================
 
+  FUNCTION    WLANTL_UpdateTdlsSTAClient
+
+  DESCRIPTION
+
+    HDD will call this API when ENABLE_LINK happens and  HDD want to
+    register QoS or other params for TDLS peers.
+
+  DEPENDENCIES
+
+    A station must have been registered before the WMM/QOS registration is
+    called.
+
+  PARAMETERS
+
+   pvosGCtx:        pointer to the global vos context; a handle to TL's
+                    control block can be extracted from its context
+   wSTADescType:    STA Descriptor, contains information related to the
+                    new added STA
+
+  RETURN VALUE
+
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_FAULT: Station ID is outside array boundaries or pointer to
+                        TL cb is NULL ; access would cause a page fault
+    VOS_STATUS_E_EXISTS: Station was not registered
+    VOS_STATUS_SUCCESS:  Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+VOS_STATUS
+WLANTL_UpdateTdlsSTAClient
+(
+ v_PVOID_t                 pvosGCtx,
+ WLAN_STADescType*         pwSTADescType
+)
+{
+  WLANTL_CbType* pTLCb = NULL;
+  WLANTL_STAClientType* pClientSTA = NULL;
+  /*------------------------------------------------------------------------
+    Extract TL control block
+   ------------------------------------------------------------------------*/
+  pTLCb = VOS_GET_TL_CB(pvosGCtx);
+  if ( NULL == pTLCb || ( WLAN_MAX_STA_COUNT <= pwSTADescType->ucSTAId))
+  {
+      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+              "WLAN TL:Invalid TL pointer from pvosGCtx on WLANTL_UpdateTdlsSTAClient"));
+      return VOS_STATUS_E_FAULT;
+  }
+
+  pClientSTA = pTLCb->atlSTAClients[pwSTADescType->ucSTAId];
+  if ((NULL == pClientSTA) || 0 == pClientSTA->ucExists)
+  {
+      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                    "WLAN TL:Station not exists"));
+      return VOS_STATUS_E_FAILURE;
+  }
+
+  pClientSTA->wSTADesc.ucQosEnabled = pwSTADescType->ucQosEnabled;
+
+  return VOS_STATUS_SUCCESS;
+
+}
+
+
+/*===========================================================================
+
   FUNCTION    WLANTL_STAPtkInstalled
 
   DESCRIPTION
@@ -7516,7 +7585,6 @@ WLANTL_STATxAuth
    v_U8_t                ucWDSEnabled = 0;
    v_U32_t               ucTxFlag   = 0;
    v_U8_t                ucACMask, i;
-   v_U8_t                prevStaId;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -7608,9 +7676,6 @@ WLANTL_STATxAuth
     pStaClient->ucNoMoreData = 1;
   }
 
-  if (WLAN_STA_IBSS == pStaClient->wSTADesc.wSTAType)
-     prevStaId = ucSTAId;
-
   vosStatus = pStaClient->pfnSTAFetchPkt( pvosGCtx, 
                                &ucSTAId,
                                ucAC,
@@ -7636,32 +7701,6 @@ WLANTL_STATxAuth
     return vosStatus;
   }
 
-  /* In IBSS only one queue is used for all staID and the fetched packet's
-   * staID might be different from the staID for  which data was pending.
-   * So update the pStaClient and do sanity checks for the new pStaClient.
-   */
-  if ((WLAN_STA_IBSS == pStaClient->wSTADesc.wSTAType) && (prevStaId != ucSTAId))
-  {
-     pStaClient = pTLCb->atlSTAClients[ucSTAId];
-     if (NULL == pStaClient)
-     {
-        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                 "WLAN TL:Station is null ");
-        vos_pkt_return_packet(vosDataBuff);
-        *pvosDataBuff = NULL;
-        return VOS_STATUS_E_FAILURE;
-     }
-     if ((0 == pStaClient->ucExists) ||
-                  (WLANTL_STA_AUTHENTICATED != pStaClient->tlState))
-     {
-        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL:Station not registered or connected state = %d",
-                                                     pStaClient->tlState);
-        vos_pkt_return_packet(vosDataBuff);
-        *pvosDataBuff = NULL;
-        return VOS_STATUS_E_EXISTS;
-     }
-  }
   WLANTL_StatHandleTXFrame(pvosGCtx, ucSTAId, vosDataBuff, NULL, &tlMetaInfo);
 
   /*There are still packets in HDD - set back the pending packets and 
@@ -9801,6 +9840,8 @@ if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsEseSta))
   else
   {
       pw80211Header->wFrmCtrl.subType  = 0;
+      tlMetaInfo->ucUP = 0;
+      tlMetaInfo->ucTID = 0;
 
   // NO NO NO - there is not enough memory allocated to write the QOS ctrl  
   // field, it will overwrite the first 2 bytes of the data packet(LLC header)

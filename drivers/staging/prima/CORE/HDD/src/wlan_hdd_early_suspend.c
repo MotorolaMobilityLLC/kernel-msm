@@ -510,12 +510,13 @@ int wlan_hdd_ipv6_changed(struct notifier_block *nb,
 {
     struct inet6_ifaddr *ifa = (struct inet6_ifaddr *)arg;
     struct net_device *ndev = ifa->idev->dev;
-    hdd_adapter_t *pAdapter =
-             container_of(nb, struct hdd_adapter_s, ipv6_notifier);
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(ndev);
     hdd_context_t *pHddCtx;
     int status;
 
-    if (pAdapter && pAdapter->dev == ndev)
+    if (pAdapter && pAdapter->dev == ndev &&
+          (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ||
+           pAdapter->device_mode == WLAN_HDD_P2P_CLIENT))
     {
         pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
         status = wlan_hdd_validate_context(pHddCtx);
@@ -968,11 +969,13 @@ int wlan_hdd_ipv4_changed(struct notifier_block *nb,
     struct in_device *in_dev;
 
     struct net_device *ndev = ifa->ifa_dev->dev;
-    hdd_adapter_t *pAdapter =
-             container_of(nb, struct hdd_adapter_s, ipv4_notifier);
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(ndev);
     hdd_context_t *pHddCtx;
     int status;
-    if (pAdapter && pAdapter->dev == ndev)
+
+    if (pAdapter && pAdapter->dev == ndev &&
+         (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ||
+          pAdapter->device_mode == WLAN_HDD_P2P_CLIENT))
     {
        pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
        status = wlan_hdd_validate_context(pHddCtx);
@@ -1352,6 +1355,13 @@ void hdd_suspend_wlan(void)
       return;
    }
 
+   if (pHddCtx->hdd_wlan_suspended)
+   {
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: Ignore suspend wlan, Already suspended!", __func__);
+      return;
+   }
+
    pHddCtx->hdd_wlan_suspended = TRUE;
    hdd_set_pwrparams(pHddCtx);
    status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
@@ -1642,6 +1652,13 @@ void hdd_resume_wlan(void)
    {
       hddLog(VOS_TRACE_LEVEL_INFO,
              "%s: Ignore resume wlan, LOGP in progress!", __func__);
+      return;
+   }
+
+   if (!pHddCtx->hdd_wlan_suspended)
+   {
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: Ignore resume wlan, Already resumed!", __func__);
       return;
    }
 
