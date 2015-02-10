@@ -915,15 +915,25 @@ static inline struct synaptics_dsx_platform_data *
 
 static void synaptics_dsx_validate_product_string(unsigned char *id)
 {
-	unsigned char *s;
-	for (s = id; *s; s++) {
+	unsigned char *s, *wc;
+	bool do_once = false, do_all = false;
+
+	for (s = wc = id; *s; s++) {
 		if (*s == '-') {
-			*s = 0;
-			break;
+			do_all = true;
+			continue;
 		}
-		if (!isdigit(*s) && isupper(*s))
+		if (!isdigit(*s) && isupper(*s)) {
 			*s = tolower(*s);
+			do_once = true;
+		}
+		if (do_all || do_once) {
+			*wc = *s;
+			do_once = false;
+		}
+		wc++;
 	}
+	*wc = 0;
 }
 
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
