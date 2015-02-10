@@ -2180,7 +2180,7 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 }
 
 #define MIN_FLOAT_MV	3600
-#define MAX_FLOAT_MV	4400
+#define MAX_FLOAT_MV	4500
 
 #define MID_RANGE_FLOAT_MV_MIN		3600
 #define MID_RANGE_FLOAT_MIN_VAL		0x05
@@ -2209,7 +2209,7 @@ static int smb135x_float_voltage_set(struct smb135x_chg *chip, int vfloat_mv)
 		temp = MID_RANGE_FLOAT_MIN_VAL
 			+ (vfloat_mv - MID_RANGE_FLOAT_MV_MIN)
 				/ MID_RANGE_FLOAT_STEP_MV;
-	} else if (vfloat_mv <= VHIGH_RANGE_FLOAT_MIN_MV) {
+	} else if (vfloat_mv < VHIGH_RANGE_FLOAT_MIN_MV) {
 		/* high range */
 		temp = HIGH_RANGE_FLOAT_MIN_VAL
 			+ (vfloat_mv - HIGH_RANGE_FLOAT_MIN_MV)
