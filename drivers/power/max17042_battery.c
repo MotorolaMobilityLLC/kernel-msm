@@ -39,6 +39,11 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <linux/debugfs.h>
+#include <linux/dropbox.h>
+
+#define FUEL_GAUGE_REPORT "Fuel-Gauge_Report"
+#define MAX_FULL_CAP "MAX1704X - Full Cap = %d\n"
+#define FUEL_GAUGE_REPORT_SIZE 64
 
 /* Status register bits */
 #define STATUS_POR_BIT         (1 << 1)
@@ -139,6 +144,8 @@ struct max17042_chip {
 	int charge_full_des;
 	int taper_reached;
 	bool factory_mode;
+	char fg_report_str[FUEL_GAUGE_REPORT_SIZE];
+	bool fullcap_report_sent;
 };
 
 static void max17042_stay_awake(struct max17042_wakeup_source *source)
@@ -329,7 +336,7 @@ static int max17042_get_property(struct power_supply *psy,
 	struct max17042_chip *chip = container_of(psy,
 				struct max17042_chip, battery);
 	struct regmap *map = chip->regmap;
-	int ret;
+	int ret, cfd_max;
 	u32 data;
 
 	if (!chip->init_complete)
@@ -420,11 +427,29 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = data;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		cfd_max =
+			(chip->charge_full_des +
+				((chip->charge_full_des * 3) / 100));
 		ret = regmap_read(map, MAX17042_FullCAP, &data);
 		if (ret < 0)
 			return ret;
 
 		val->intval = data * 1000 / 2;
+		/* If Full Cap deviates from the range report it once */
+		if (val->intval > cfd_max ||
+			(val->intval * 2) < chip->charge_full_des) {
+
+			if (chip->fullcap_report_sent)
+				break;
+
+			snprintf(chip->fg_report_str, FUEL_GAUGE_REPORT_SIZE,
+				MAX_FULL_CAP, val->intval);
+			dropbox_queue_event_text(FUEL_GAUGE_REPORT,
+				chip->fg_report_str,
+				strlen(chip->fg_report_str));
+			chip->fullcap_report_sent = true;
+		} else
+			chip->fullcap_report_sent = false;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 		ret = max17042_read_charge_counter(chip->client, 1);
