@@ -711,7 +711,7 @@
 		pinctrl-0 = <&smb_int_default>;
                 qcom,smb135x-adc_tm = <&pm8916_adc_tm>;
                 qcom,smb135x-vadc = <&pm8916_vadc>;
-                qcom,float-voltage-mv = <4350>;
+                qcom,float-voltage-mv = <4400>;
                 qcom,charging-timeout = <1536>;
                 qcom,recharge-thresh-mv = <200>;
                 qcom,iterm-disabled;
@@ -752,15 +752,15 @@
 		maxim,cold-temp-c = <(-20)>;
 
 		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+		maxim,df-read-battsn;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cc_alert_default>;
 
 		maxim,configuration {
-			df-serialnum    = "SNN5956";
+			df-serialnum    = "SNN5963";
 
-			/include/ "batterydata-ft40-lg.dtsi"
-			/include/ "batterydata-ft40-sony.dtsi"
+			/include/ "batterydata-fl40-lg.dtsi"
 		};
 
 		maxim,temp-conv {
