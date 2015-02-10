@@ -67,7 +67,7 @@
 				compatible = "ti,lmu-backlight", "ti,lm3631-backlight";
 
 				lcd_bl {
-					bl-name = "lcd-backlight";
+					bl-name = "lcd-backlight:0";
 					hvled1-used;
 					hvled2-used;
 					ramp-up = <100>;
