@@ -17,11 +17,3 @@
 / {
 	qcom,board-id = <0x47 0x8100>;
 };
-
-
-&i2c_0 {
-	synaptics_dsx_i2c@20 {
-		synaptics,x-flip;
-		synaptics,y-flip;
-	};
-};
