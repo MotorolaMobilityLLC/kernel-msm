@@ -711,6 +711,8 @@ static v_BOOL_t put_wifi_peer_info( tpSirWifiPeerInfo stats,
 
     rateInfo = nla_nest_start(vendor_event,
                             QCA_WLAN_VENDOR_ATTR_LL_STATS_PEER_INFO_RATE_INFO);
+    if(!rateInfo)
+        return FALSE;
     for (i = 0; i < stats->numRate; i++)
     {
         struct nlattr *rates;
@@ -718,6 +720,8 @@ static v_BOOL_t put_wifi_peer_info( tpSirWifiPeerInfo stats,
                                             stats->rateStats +
                                        (i * sizeof(tSirWifiRateStat)));
         rates = nla_nest_start(vendor_event, i);
+        if(!rates)
+            return FALSE;
 
         if (FALSE == put_wifi_rate_stat(pRateStats, vendor_event))
         {
@@ -956,10 +960,20 @@ static v_BOOL_t put_wifi_iface_stats(hdd_adapter_t *pAdapter,
 
     wmmInfo = nla_nest_start(vendor_event,
                             QCA_WLAN_VENDOR_ATTR_LL_STATS_WMM_INFO);
+    if(!wmmInfo)
+    {
+        vos_mem_free(pWifiIfaceStatTL);
+        return FALSE;
+    }
     for (i = 0; i < WIFI_AC_MAX; i++)
     {
         struct nlattr *wmmStats;
         wmmStats = nla_nest_start(vendor_event, i);
+        if(!wmmStats)
+        {
+            vos_mem_free(pWifiIfaceStatTL);
+            return FALSE;
+        }
         if (FALSE == put_wifi_wmm_ac_stat(
                                 &pWifiIfaceStat->AccessclassStats[i],
                                 vendor_event))
@@ -1182,15 +1196,31 @@ static v_VOID_t hdd_link_layer_process_peer_stats(hdd_adapter_t *pAdapter,
 
     peerInfo = nla_nest_start(vendor_event,
             QCA_WLAN_VENDOR_ATTR_LL_STATS_PEER_INFO);
+    if(!peerInfo)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: QCA_WLAN_VENDOR_ATTR_LL_STATS_PEER_INFO put fail",
+                __func__);
+        kfree_skb(vendor_event);
+        return;
+    }
 
     pWifiPeerInfo = (tpSirWifiPeerInfo)  ((uint8 *)
                 pWifiPeerStat->peerInfo);
 
     for (i = 1; i <= pWifiPeerStat->numPeers; i++)
     {
-        struct nlattr *peers = nla_nest_start(vendor_event, i);
         int numRate = pWifiPeerInfo->numRate;
+        struct nlattr *peers = nla_nest_start(vendor_event, i);
 
+        if(!peers)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                    "%s: peer stats put fail",
+                    __func__);
+            kfree_skb(vendor_event);
+            return;
+        }
         if (FALSE == put_wifi_peer_info(
                                      pWifiPeerInfo, vendor_event))
         {
@@ -1467,6 +1497,14 @@ static v_VOID_t hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
 
     chList = nla_nest_start(vendor_event,
              QCA_WLAN_VENDOR_ATTR_LL_STATS_CH_INFO);
+    if(!chList)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: QCA_WLAN_VENDOR_ATTR_LL_STATS_CH_INFO put fail",
+                __func__);
+        kfree_skb(vendor_event);
+        return;
+    }
     for (i = 0; i < pWifiRadioStat->numChannels; i++)
     {
         struct nlattr *chInfo;
@@ -1493,6 +1531,14 @@ static v_VOID_t hdd_link_layer_process_radio_stats(hdd_adapter_t *pAdapter,
 
 
         chInfo = nla_nest_start(vendor_event, i);
+        if(!chInfo)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                    "%s: failed to put chInfo",
+                    __func__);
+            kfree_skb(vendor_event);
+            return;
+        }
 
         if (nla_put_u32(vendor_event,
                 QCA_WLAN_VENDOR_ATTR_LL_STATS_CHANNEL_INFO_WIDTH,
