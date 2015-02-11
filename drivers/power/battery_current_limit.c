@@ -178,6 +178,108 @@ static enum bcl_threshold_state bcl_vph_state = BCL_THRESHOLD_DISABLED,
 		bcl_ibat_state = BCL_THRESHOLD_DISABLED;
 static DEFINE_MUTEX(bcl_notify_mutex);
 
+static uint32_t bcl_hotplug_request, bcl_hotplug_mask;
+static DEFINE_MUTEX(bcl_hotplug_mutex);
+static bool bcl_hotplug_enabled;
+static struct power_supply bcl_psy;
+static const char bcl_psy_name[] = "bcl";
+static bool bcl_hit_shutdown_voltage;
+static int bcl_battery_get_property(struct power_supply *psy,
+				enum power_supply_property prop,
+				union power_supply_propval *val)
+{
+	return 0;
+}
+static int bcl_battery_set_property(struct power_supply *psy,
+				enum power_supply_property prop,
+				const union power_supply_propval *val)
+{
+	return 0;
+}
+static void power_supply_callback(struct power_supply *psy)
+{
+	int vbatt = 0;
+	if (bcl_hit_shutdown_voltage)
+		return;
+	if (0 != bcl_get_battery_voltage(&vbatt))
+		return;
+	if (vbatt <= gbcl->btm_vph_low_thresh) {
+		/*relay the notification to smb135x driver*/
+		bcl_config_vph_adc(gbcl, BCL_LOW_THRESHOLD_TYPE_MIN);
+	} else if ((vbatt  > gbcl->btm_vph_low_thresh) &&
+		(vbatt <= gbcl->btm_vph_high_thresh))
+		bcl_config_vph_adc(gbcl, BCL_LOW_THRESHOLD_TYPE);
+	else
+		bcl_config_vph_adc(gbcl, BCL_HIGH_THRESHOLD_TYPE);
+}
+
+static void __ref bcl_handle_hotplug(void)
+{
+	int ret = 0, _cpu = 0;
+	uint32_t prev_hotplug_request = 0;
+
+	mutex_lock(&bcl_hotplug_mutex);
+	prev_hotplug_request = bcl_hotplug_request;
+
+	if (bcl_vph_state == BCL_LOW_THRESHOLD)
+		bcl_hotplug_request = bcl_hotplug_mask;
+	else
+		bcl_hotplug_request = 0;
+
+	if (bcl_hotplug_request == prev_hotplug_request)
+		goto handle_hotplug_exit;
+
+	for_each_possible_cpu(_cpu) {
+		if (!(bcl_hotplug_mask & BIT(_cpu)))
+			continue;
+
+		if (bcl_hotplug_request & BIT(_cpu)) {
+			if (!cpu_online(_cpu))
+				continue;
+			ret = cpu_down(_cpu);
+			if (ret)
+				pr_err("Error %d offlining core %d\n",
+					ret, _cpu);
+			else
+				pr_info("Set Offline CPU:%d\n", _cpu);
+		} else {
+			if (cpu_online(_cpu))
+				continue;
+			ret = cpu_up(_cpu);
+			if (ret)
+				pr_err("Error %d onlining core %d\n",
+					ret, _cpu);
+			else
+				pr_info("Allow Online CPU:%d\n", _cpu);
+		}
+	}
+
+handle_hotplug_exit:
+	mutex_unlock(&bcl_hotplug_mutex);
+	return;
+}
+static int __ref bcl_cpu_ctrl_callback(struct notifier_block *nfb,
+	unsigned long action, void *hcpu)
+{
+	uint32_t cpu = (uintptr_t)hcpu;
+
+	if (action == CPU_UP_PREPARE || action == CPU_UP_PREPARE_FROZEN) {
+		if ((bcl_hotplug_mask & BIT(cpu))
+			&& (bcl_hotplug_request & BIT(cpu))) {
+			pr_debug("preventing CPU%d from coming online\n", cpu);
+			return NOTIFY_BAD;
+		} else {
+			pr_debug("voting for CPU%d to be online\n", cpu);
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block __refdata bcl_cpu_notifier = {
+	.notifier_call = bcl_cpu_ctrl_callback,
+};
+
 static int bcl_cpufreq_callback(struct notifier_block *nfb,
 		unsigned long event, void *data)
 {
@@ -249,7 +351,7 @@ static void battery_monitor_work(struct work_struct *work)
 		update_cpu_freq();
 		bcl_handle_hotplug();
 		bcl_get_battery_voltage(&vbatt);
-		pr_info("vbat is %d\n", vbatt);
+		pr_debug("vbat is %d\n", vbatt);
 		if (bcl_vph_state == BCL_LOW_THRESHOLD) {
 			if (vbatt <= gbcl->btm_vph_low_thresh) {
 				/*relay the notification to smb135x driver*/
@@ -271,7 +373,9 @@ static void battery_monitor_work(struct work_struct *work)
 
 static void bcl_vph_notify(enum bcl_threshold_state thresh_type)
 {
-	pr_info("bcl_vph_notify !!!!!!%x\n", thresh_type);
+	pr_debug("type: %s\n", thresh_type == BCL_LOW_THRESHOLD ? "low" :
+		thresh_type == BCL_HIGH_THRESHOLD ? "high" :
+		"unknown");
 	bcl_vph_state = thresh_type;
 	queue_work(gbcl->battery_monitor_wq, &gbcl->battery_monitor_work);
 }
@@ -314,7 +418,7 @@ static int bcl_config_vph_adc(struct bcl_context *bcl,
 	if (ret < 0)
 		pr_err("Error configuring BTM for Vph. ret:%d\n", ret);
 	else
-		pr_info("Vph config. poll:%d high_uv:%d(%s) low_uv:%d(%s)\n",
+		pr_debug("Vph config. poll:%d high_uv:%d(%s) low_uv:%d(%s)\n",
 		    bcl->btm_vph_adc_param.timer_interval,
 		    bcl->btm_vph_adc_param.high_thr,
 		    (bcl->btm_vph_adc_param.state_request ==
