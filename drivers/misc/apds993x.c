@@ -1,6 +1,7 @@
 /*
  * apds993x.c - Linux kernel modules for ambient light + proximity sensor
  *
+ * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  * Copyright (C) 2012 Lee Kai Koon <kai-koon.lee@avagotech.com>
  * Copyright (C) 2012 Avago Technologies
  * Copyright (C) 2013 LGE Inc.
@@ -315,6 +316,7 @@ static struct sensors_classdev sensors_proximity_cdev = {
 	.min_delay = 30000, /* in microseconds */
 	.fifo_reserved_event_count = 0,
 	.fifo_max_event_count = 0,
+	.flags = 1,
 	.enabled = 0,
 	.delay_msec = 100,
 	.sensors_enable = NULL,
@@ -559,6 +561,36 @@ static int apds993x_set_control(struct i2c_client *client, int control)
 	return ret;
 }
 
+static void apds993x_report_ps_event(struct input_dev *ps_dev,
+			const unsigned int dist)
+{
+	ktime_t ts;
+
+	ts = ktime_get();
+
+	input_event(ps_dev, EV_SYN, SYN_TIME_SEC,
+			ktime_to_timespec(ts).tv_sec);
+	input_event(ps_dev, EV_SYN, SYN_TIME_NSEC,
+			ktime_to_timespec(ts).tv_nsec);
+	input_report_abs(ps_dev, ABS_DISTANCE, dist);
+	input_sync(ps_dev);
+}
+
+static void apds993x_report_als_event(struct input_dev *als_dev,
+			const unsigned int lux)
+{
+	ktime_t ts;
+
+	ts = ktime_get();
+
+	input_event(als_dev, EV_SYN, SYN_TIME_SEC,
+				ktime_to_timespec(ts).tv_sec);
+	input_event(als_dev, EV_SYN, SYN_TIME_NSEC,
+		ktime_to_timespec(ts).tv_nsec);
+	input_report_abs(als_dev, ABS_MISC, lux);
+	input_sync(als_dev);
+}
+
 /*calibration*/
 void apds993x_swap(int *x, int *y)
 {
@@ -730,8 +762,7 @@ static void apds993x_change_ps_threshold(struct i2c_client *client)
 		data->ps_detection = 1;
 
 		/* FAR-to-NEAR detection */
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, 0);
-		input_sync(data->input_dev_ps);
+		apds993x_report_ps_event(data->input_dev_ps, 0);
 
 		i2c_smbus_write_word_data(client,
 				CMD_WORD|APDS993X_PILTL_REG,
@@ -749,8 +780,7 @@ static void apds993x_change_ps_threshold(struct i2c_client *client)
 		data->ps_detection = 0;
 
 		/* NEAR-to-FAR detection */
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, 1);
-		input_sync(data->input_dev_ps);
+		apds993x_report_ps_event(data->input_dev_ps, 1);
 
 		i2c_smbus_write_word_data(client,
 				CMD_WORD|APDS993X_PILTL_REG, 0);
@@ -785,7 +815,10 @@ static void apds993x_change_als_threshold(struct i2c_client *client)
 	if (luxValue >= 0) {
 		luxValue = (luxValue < ALS_MAX_RANGE)
 					? luxValue : ALS_MAX_RANGE;
-		data->als_prev_lux = luxValue;
+		if (luxValue == data->als_prev_lux)
+			lux_is_valid = 0;
+		else
+			data->als_prev_lux = luxValue;
 	} else {
 		/* don't report, the lux is invalid value */
 		lux_is_valid = 0;
@@ -815,8 +848,7 @@ static void apds993x_change_als_threshold(struct i2c_client *client)
 		 * from the PS
 		 */
 		/* NEAR-to-FAR detection */
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, 1);
-		input_sync(data->input_dev_ps);
+		apds993x_report_ps_event(data->input_dev_ps, 1);
 
 		i2c_smbus_write_word_data(client,
 				CMD_WORD|APDS993X_PILTL_REG, 0);
@@ -833,11 +865,9 @@ static void apds993x_change_als_threshold(struct i2c_client *client)
 		pr_info("%s: FAR\n", __func__);
 	}
 
-	if (lux_is_valid) {
+	if (lux_is_valid)
 		/* report the lux level */
-		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
-		input_sync(data->input_dev_als);
-	}
+		apds993x_report_als_event(data->input_dev_als, luxValue);
 
 	data->als_data = ch0data;
 
@@ -934,7 +964,10 @@ static void apds993x_als_polling_work_handler(struct work_struct *work)
 	if (luxValue >= 0) {
 		luxValue = (luxValue < ALS_MAX_RANGE)
 					? luxValue : ALS_MAX_RANGE;
-		data->als_prev_lux = luxValue;
+		if (luxValue == data->als_prev_lux)
+			lux_is_valid = 0;
+		else
+			data->als_prev_lux = luxValue;
 	} else {
 		/* don't report, this is invalid lux value */
 		lux_is_valid = 0;
@@ -964,8 +997,7 @@ static void apds993x_als_polling_work_handler(struct work_struct *work)
 		 * from the PS
 		 */
 		/* NEAR-to-FAR detection */
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, 1);
-		input_sync(data->input_dev_ps);
+		apds993x_report_ps_event(data->input_dev_ps, 1);
 
 		i2c_smbus_write_word_data(client,
 				CMD_WORD|APDS993X_PILTL_REG, 0);
@@ -980,11 +1012,9 @@ static void apds993x_als_polling_work_handler(struct work_struct *work)
 		pr_info("%s: FAR\n", __func__);
 	}
 
-	if (lux_is_valid) {
+	if (lux_is_valid)
 		/* report the lux level */
-		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
-		input_sync(data->input_dev_als);
-	}
+		apds993x_report_als_event(data->input_dev_als, luxValue);
 
 	data->als_data = ch0data;
 
@@ -2802,7 +2832,7 @@ static struct i2c_driver apds993x_driver = {
 
 static int __init apds993x_init(void)
 {
-	apds993x_workqueue = create_workqueue("proximity_als");
+	apds993x_workqueue = create_freezable_workqueue("proximity_als");
 	if (!apds993x_workqueue) {
 		pr_err("%s: out of memory\n", __func__);
 		return -ENOMEM;

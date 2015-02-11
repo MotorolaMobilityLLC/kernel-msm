@@ -1,7 +1,7 @@
 /*
  * MPU6050 6-axis gyroscope + accelerometer driver
  *
- * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -145,6 +145,7 @@ struct mpu6050_sensor {
 	struct mpu6050_platform_data *pdata;
 	struct mutex op_lock;
 	enum inv_devices chip_type;
+	struct workqueue_struct *data_wq;
 	struct delayed_work accel_poll_work;
 	struct delayed_work gyro_poll_work;
 	struct delayed_work fifo_flush_work;
@@ -306,9 +307,10 @@ static void mpu6050_pinctrl_state(struct mpu6050_sensor *sensor,
 			bool active);
 static int mpu6050_set_interrupt(struct mpu6050_sensor *sensor,
 		const u8 mask, bool on);
-static int mpu6050_set_fifo_int(struct mpu6050_sensor *sensor,
+static int mpu6050_set_fifo(struct mpu6050_sensor *sensor,
 					bool en_accel, bool en_gyro);
 static void mpu6050_flush_fifo(struct mpu6050_sensor *sensor);
+static int mpu6050_config_sample_rate(struct mpu6050_sensor *sensor);
 
 static inline void mpu6050_set_fifo_start_time(struct mpu6050_sensor *sensor)
 {
@@ -709,7 +711,8 @@ static void mpu6050_sche_next_flush(struct mpu6050_sensor *sensor)
 		latency = 0;
 
 	if (latency != 0)
-		schedule_delayed_work(&sensor->fifo_flush_work,
+		queue_delayed_work(sensor->data_wq,
+			&sensor->fifo_flush_work,
 			msecs_to_jiffies(latency));
 	else
 		dev_err(&sensor->client->dev,
@@ -775,7 +778,8 @@ static void mpu6050_accel_work_fn(struct work_struct *work)
 	input_sync(sensor->accel_dev);
 
 	if (atomic_read(&sensor->accel_en))
-		schedule_delayed_work(&sensor->accel_poll_work,
+		queue_delayed_work(sensor->data_wq,
+			&sensor->accel_poll_work,
 			msecs_to_jiffies(sensor->accel_poll_ms));
 }
 
@@ -815,7 +819,8 @@ static void mpu6050_gyro_work_fn(struct work_struct *work)
 	input_sync(sensor->gyro_dev);
 
 	if (atomic_read(&sensor->gyro_en))
-		schedule_delayed_work(&sensor->gyro_poll_work,
+		queue_delayed_work(sensor->data_wq,
+			&sensor->gyro_poll_work,
 			msecs_to_jiffies(sensor->gyro_poll_ms));
 }
 
@@ -1185,11 +1190,81 @@ exit:
 	return;
 }
 
-static int mpu6050_gyro_set_enable(struct mpu6050_sensor *sensor, bool enable)
+static int mpu6050_gyro_batching_enable(struct mpu6050_sensor *sensor)
 {
 	int ret = 0;
 	u32 latency;
 
+	if (!sensor->batch_accel) {
+		latency = sensor->gyro_latency_ms;
+	} else {
+		cancel_delayed_work_sync(&sensor->fifo_flush_work);
+		if (sensor->accel_latency_ms < sensor->gyro_latency_ms)
+			latency = sensor->accel_latency_ms;
+		else
+			latency = sensor->gyro_latency_ms;
+	}
+	ret = mpu6050_set_fifo(sensor, sensor->cfg.accel_enable, true);
+	if (ret < 0) {
+		dev_err(&sensor->client->dev,
+			"Fail to enable FIFO for gyro, ret=%d\n", ret);
+		return ret;
+	}
+
+	if (sensor->use_poll) {
+		queue_delayed_work(sensor->data_wq,
+			&sensor->fifo_flush_work,
+			msecs_to_jiffies(latency));
+	} else if (!sensor->cfg.int_enabled) {
+		mpu6050_set_interrupt(sensor, BIT_FIFO_OVERFLOW, true);
+		enable_irq(sensor->client->irq);
+		sensor->cfg.int_enabled = true;
+	}
+
+	return ret;
+}
+
+static int mpu6050_gyro_batching_disable(struct mpu6050_sensor *sensor)
+{
+	int ret = 0;
+	u32 latency;
+
+	ret = mpu6050_set_fifo(sensor, sensor->cfg.accel_enable, false);
+	if (ret < 0) {
+		dev_err(&sensor->client->dev,
+			"Fail to disable FIFO for accel, ret=%d\n", ret);
+		return ret;
+	}
+	if (!sensor->use_poll) {
+		if (sensor->cfg.int_enabled && !sensor->cfg.accel_enable) {
+			mpu6050_set_interrupt(sensor,
+				BIT_FIFO_OVERFLOW, false);
+			disable_irq(sensor->client->irq);
+			sensor->cfg.int_enabled = false;
+		}
+	} else {
+		if (!sensor->batch_accel) {
+			cancel_delayed_work_sync(&sensor->fifo_flush_work);
+		} else if (sensor->gyro_latency_ms <
+				sensor->accel_latency_ms) {
+			cancel_delayed_work_sync(&sensor->fifo_flush_work);
+			latency = sensor->accel_latency_ms;
+			queue_delayed_work(sensor->data_wq,
+				&sensor->fifo_flush_work,
+				msecs_to_jiffies(latency));
+		}
+	}
+	sensor->batch_gyro = false;
+
+	return ret;
+}
+
+static int mpu6050_gyro_set_enable(struct mpu6050_sensor *sensor, bool enable)
+{
+	int ret = 0;
+
+	dev_dbg(&sensor->client->dev,
+		"mpu6050_gyro_set_enable enable=%d\n", enable);
 	mutex_lock(&sensor->op_lock);
 	if (enable) {
 		if (!sensor->power_enabled) {
@@ -1215,71 +1290,38 @@ static int mpu6050_gyro_set_enable(struct mpu6050_sensor *sensor, bool enable)
 			goto exit;
 		}
 
+		ret = mpu6050_config_sample_rate(sensor);
+		if (ret < 0)
+			dev_info(&sensor->client->dev,
+				"Unable to update sampling rate! ret=%d\n",
+				ret);
+
 		if (sensor->batch_gyro) {
-			if (!sensor->batch_accel) {
-				latency = sensor->gyro_latency_ms;
-			} else {
-				cancel_delayed_work_sync(
-					&sensor->fifo_flush_work);
-				if (sensor->accel_latency_ms <
-					sensor->gyro_latency_ms)
-					latency = sensor->accel_latency_ms;
-				else
-					latency = sensor->gyro_latency_ms;
-			}
-			schedule_delayed_work(&sensor->fifo_flush_work,
-					msecs_to_jiffies(latency));
-			ret = mpu6050_set_fifo_int(sensor,
-				sensor->cfg.accel_enable, true);
-			if (ret < 0) {
+			ret = mpu6050_gyro_batching_enable(sensor);
+			if (ret) {
 				dev_err(&sensor->client->dev,
-						"Fail to enable FIFO for gyro, ret=%d\n",
-						ret);
+					"Fail to enable gyro batching =%d\n",
+					ret);
+				ret = -EBUSY;
 				goto exit;
 			}
-			if (!sensor->cfg.int_enabled) {
-				mpu6050_set_interrupt(sensor,
-					BIT_FIFO_OVERFLOW, true);
-				enable_irq(sensor->client->irq);
-				sensor->cfg.int_enabled = true;
-			}
 		} else {
-			schedule_delayed_work(&sensor->gyro_poll_work,
+			queue_delayed_work(sensor->data_wq,
+				&sensor->gyro_poll_work,
 				msecs_to_jiffies(sensor->gyro_poll_ms));
 		}
 		atomic_set(&sensor->gyro_en, 1);
 	} else {
 		atomic_set(&sensor->gyro_en, 0);
 		if (sensor->batch_gyro) {
-			ret = mpu6050_set_fifo_int(sensor,
-				sensor->cfg.accel_enable, false);
-			if (ret < 0) {
+			ret = mpu6050_gyro_batching_disable(sensor);
+			if (ret) {
 				dev_err(&sensor->client->dev,
-						"Fail to disable FIFO for accel, ret=%d\n",
-						ret);
+					"Fail to enable gyro batching =%d\n",
+					ret);
+				ret = -EBUSY;
 				goto exit;
 			}
-
-			if (sensor->cfg.int_enabled &&
-				!sensor->cfg.accel_enable) {
-				mpu6050_set_interrupt(sensor,
-					BIT_FIFO_OVERFLOW, false);
-				disable_irq(sensor->client->irq);
-				sensor->cfg.int_enabled = false;
-			}
-
-			if (!sensor->batch_accel) {
-				cancel_delayed_work_sync(
-					&sensor->fifo_flush_work);
-			} else if (sensor->gyro_latency_ms <
-					sensor->accel_latency_ms) {
-				cancel_delayed_work_sync(
-					&sensor->fifo_flush_work);
-				latency = sensor->accel_latency_ms;
-				schedule_delayed_work(&sensor->fifo_flush_work,
-					msecs_to_jiffies(latency));
-			}
-			sensor->batch_gyro = false;
 		} else {
 			cancel_delayed_work_sync(&sensor->gyro_poll_work);
 		}
@@ -1569,7 +1611,7 @@ exit:
 }
 
 /**
- * mpu6050_set_fifo_int() - Configure and enable sensor FIFO
+ * mpu6050_set_fifo() - Configure and enable sensor FIFO
  * @sensor: sensor device instance
  * @en_accel: buffer accel event to fifo
  * @en_gyro: buffer gyro event to fifo
@@ -1578,7 +1620,7 @@ exit:
  * This function will remove all existing FIFO setting and flush FIFO data,
  * new FIFO setting will be applied after that.
  */
-static int mpu6050_set_fifo_int(struct mpu6050_sensor *sensor,
+static int mpu6050_set_fifo(struct mpu6050_sensor *sensor,
 					bool en_accel, bool en_gyro)
 {
 	struct i2c_client *client = sensor->client;
@@ -1642,16 +1684,26 @@ static int mpu6050_gyro_set_poll_delay(struct mpu6050_sensor *sensor,
 {
 	int ret;
 
+	dev_dbg(&sensor->client->dev,
+		"mpu6050_gyro_set_poll_delay delay=%ld\n", delay);
 	if (delay < MPU6050_GYRO_MIN_POLL_INTERVAL_MS)
 		delay = MPU6050_GYRO_MIN_POLL_INTERVAL_MS;
 	if (delay > MPU6050_GYRO_MAX_POLL_INTERVAL_MS)
 		delay = MPU6050_GYRO_MAX_POLL_INTERVAL_MS;
 
 	mutex_lock(&sensor->op_lock);
+	if (sensor->gyro_poll_ms == delay)
+		goto exit;
+
 	sensor->gyro_poll_ms = delay;
+
+	if (!atomic_read(&sensor->gyro_en))
+		goto exit;
+
 	if (sensor->use_poll) {
 		cancel_delayed_work_sync(&sensor->gyro_poll_work);
-		schedule_delayed_work(&sensor->gyro_poll_work,
+		queue_delayed_work(sensor->data_wq,
+				&sensor->gyro_poll_work,
 				msecs_to_jiffies(sensor->gyro_poll_ms));
 	} else {
 		ret = mpu6050_config_sample_rate(sensor);
@@ -1659,6 +1711,8 @@ static int mpu6050_gyro_set_poll_delay(struct mpu6050_sensor *sensor,
 			dev_err(&sensor->client->dev,
 				"Unable to set polling delay for gyro!\n");
 	}
+
+exit:
 	mutex_unlock(&sensor->op_lock);
 	return 0;
 }
@@ -1870,11 +1924,82 @@ static int mpu6050_accel_enable(struct mpu6050_sensor *sensor, bool on)
 	return 0;
 }
 
-static int mpu6050_accel_set_enable(struct mpu6050_sensor *sensor, bool enable)
+static int mpu6050_accel_batching_enable(struct mpu6050_sensor *sensor)
 {
 	int ret = 0;
 	u32 latency;
 
+	if (!sensor->batch_gyro) {
+		latency = sensor->accel_latency_ms;
+	} else {
+		cancel_delayed_work_sync(&sensor->fifo_flush_work);
+		if (sensor->accel_latency_ms < sensor->gyro_latency_ms)
+			latency = sensor->accel_latency_ms;
+		else
+			latency = sensor->gyro_latency_ms;
+	}
+
+	ret = mpu6050_set_fifo(sensor, true, sensor->cfg.gyro_enable);
+	if (ret < 0) {
+		dev_err(&sensor->client->dev,
+			"Fail to enable FIFO for accel, ret=%d\n", ret);
+		return ret;
+	}
+
+	if (sensor->use_poll) {
+		queue_delayed_work(sensor->data_wq,
+			&sensor->fifo_flush_work,
+			msecs_to_jiffies(latency));
+	} else if (!sensor->cfg.int_enabled) {
+		mpu6050_set_interrupt(sensor, BIT_FIFO_OVERFLOW, true);
+		enable_irq(sensor->client->irq);
+		sensor->cfg.int_enabled = true;
+	}
+
+	return ret;
+}
+
+static int mpu6050_accel_batching_disable(struct mpu6050_sensor *sensor)
+{
+	int ret = 0;
+	u32 latency;
+
+	ret = mpu6050_set_fifo(sensor, false, sensor->cfg.gyro_enable);
+	if (ret < 0) {
+		dev_err(&sensor->client->dev,
+			"Fail to disable FIFO for accel, ret=%d\n", ret);
+		return ret;
+	}
+	if (!sensor->use_poll) {
+		if (sensor->cfg.int_enabled && !sensor->cfg.gyro_enable) {
+			mpu6050_set_interrupt(sensor,
+				BIT_FIFO_OVERFLOW, false);
+			disable_irq(sensor->client->irq);
+			sensor->cfg.int_enabled = false;
+		}
+	} else {
+		if (!sensor->batch_gyro) {
+			cancel_delayed_work_sync(&sensor->fifo_flush_work);
+		} else if (sensor->accel_latency_ms <
+				sensor->gyro_latency_ms) {
+			cancel_delayed_work_sync(&sensor->fifo_flush_work);
+			latency = sensor->gyro_latency_ms;
+			queue_delayed_work(sensor->data_wq,
+				&sensor->fifo_flush_work,
+				msecs_to_jiffies(latency));
+		}
+	}
+	sensor->batch_accel = false;
+
+	return ret;
+}
+
+static int mpu6050_accel_set_enable(struct mpu6050_sensor *sensor, bool enable)
+{
+	int ret = 0;
+
+	dev_dbg(&sensor->client->dev,
+		"mpu6050_accel_set_enable enable=%d\n", enable);
 	mutex_lock(&sensor->op_lock);
 	if (enable) {
 		if (!sensor->power_enabled) {
@@ -1901,71 +2026,38 @@ static int mpu6050_accel_set_enable(struct mpu6050_sensor *sensor, bool enable)
 			goto exit;
 		}
 
+		ret = mpu6050_config_sample_rate(sensor);
+		if (ret < 0)
+			dev_info(&sensor->client->dev,
+				"Unable to update sampling rate! ret=%d\n",
+				ret);
+
 		if (sensor->batch_accel) {
-			if (!sensor->batch_gyro) {
-				latency = sensor->accel_latency_ms;
-			} else {
-				cancel_delayed_work_sync(
-					&sensor->fifo_flush_work);
-				if (sensor->accel_latency_ms <
-					sensor->gyro_latency_ms)
-					latency = sensor->accel_latency_ms;
-				else
-					latency = sensor->gyro_latency_ms;
-			}
-			schedule_delayed_work(&sensor->fifo_flush_work,
-					msecs_to_jiffies(latency));
-			ret = mpu6050_set_fifo_int(sensor,
-				true, sensor->cfg.gyro_enable);
-			if (ret < 0) {
+			ret = mpu6050_accel_batching_enable(sensor);
+			if (ret) {
 				dev_err(&sensor->client->dev,
-						"Fail to enable FIFO for accel, ret=%d\n",
-						ret);
-				return ret;
-			}
-			if (!sensor->cfg.int_enabled) {
-				mpu6050_set_interrupt(sensor,
-					BIT_FIFO_OVERFLOW, true);
-				enable_irq(sensor->client->irq);
-				sensor->cfg.int_enabled = true;
+					"Fail to enable accel batching =%d\n",
+					ret);
+				ret = -EBUSY;
+				goto exit;
 			}
 		} else {
-			schedule_delayed_work(&sensor->accel_poll_work,
+			queue_delayed_work(sensor->data_wq,
+				&sensor->accel_poll_work,
 				msecs_to_jiffies(sensor->accel_poll_ms));
 		}
 		atomic_set(&sensor->accel_en, 1);
 	} else {
 		atomic_set(&sensor->accel_en, 0);
 		if (sensor->batch_accel) {
-			ret = mpu6050_set_fifo_int(sensor,
-				false, sensor->cfg.gyro_enable);
-			if (ret < 0) {
+			ret = mpu6050_accel_batching_disable(sensor);
+			if (ret) {
 				dev_err(&sensor->client->dev,
-						"Fail to disable FIFO for accel, ret=%d\n",
-						ret);
+					"Fail to disable accel batching =%d\n",
+					ret);
+				ret = -EBUSY;
 				goto exit;
 			}
-
-			if (sensor->cfg.int_enabled &&
-				!sensor->cfg.gyro_enable) {
-				mpu6050_set_interrupt(sensor,
-					BIT_FIFO_OVERFLOW, false);
-				disable_irq(sensor->client->irq);
-				sensor->cfg.int_enabled = false;
-			}
-
-			if (!sensor->batch_gyro) {
-				cancel_delayed_work_sync(
-					&sensor->fifo_flush_work);
-			} else if (sensor->accel_latency_ms <
-					sensor->gyro_latency_ms) {
-				cancel_delayed_work_sync(
-					&sensor->fifo_flush_work);
-				latency = sensor->gyro_latency_ms;
-				schedule_delayed_work(&sensor->fifo_flush_work,
-					msecs_to_jiffies(latency));
-			}
-			sensor->batch_accel = false;
 		} else {
 			cancel_delayed_work_sync(&sensor->accel_poll_work);
 		}
@@ -1990,17 +2082,26 @@ static int mpu6050_accel_set_poll_delay(struct mpu6050_sensor *sensor,
 {
 	int ret;
 
+	dev_dbg(&sensor->client->dev,
+		"mpu6050_accel_set_poll_delay delay_ms=%ld\n", delay);
 	if (delay < MPU6050_ACCEL_MIN_POLL_INTERVAL_MS)
 		delay = MPU6050_ACCEL_MIN_POLL_INTERVAL_MS;
 	if (delay > MPU6050_ACCEL_MAX_POLL_INTERVAL_MS)
 		delay = MPU6050_ACCEL_MAX_POLL_INTERVAL_MS;
 
 	mutex_lock(&sensor->op_lock);
+	if (sensor->accel_poll_ms == delay)
+		goto exit;
+
 	sensor->accel_poll_ms = delay;
+
+	if (!atomic_read(&sensor->accel_en))
+		goto exit;
 
 	if (sensor->use_poll) {
 		cancel_delayed_work_sync(&sensor->accel_poll_work);
-		schedule_delayed_work(&sensor->accel_poll_work,
+		queue_delayed_work(sensor->data_wq,
+				&sensor->accel_poll_work,
 				msecs_to_jiffies(sensor->accel_poll_ms));
 	} else {
 		ret = mpu6050_config_sample_rate(sensor);
@@ -2008,6 +2109,8 @@ static int mpu6050_accel_set_poll_delay(struct mpu6050_sensor *sensor,
 			dev_err(&sensor->client->dev,
 				"Unable to set polling delay for accel!\n");
 	}
+
+exit:
 	mutex_unlock(&sensor->op_lock);
 	return 0;
 }
@@ -2736,29 +2839,31 @@ static int mpu6050_probe(struct i2c_client *client,
 			"Polling mode is enabled. use_int=%d gpio_int=%d",
 			sensor->pdata->use_int, sensor->pdata->gpio_int);
 	}
-	INIT_DELAYED_WORK(&sensor->fifo_flush_work,
-			mpu6050_fifo_flush_fn);
-	INIT_DELAYED_WORK(&sensor->accel_poll_work,
-		mpu6050_accel_work_fn);
-	INIT_DELAYED_WORK(&sensor->gyro_poll_work,
-		mpu6050_gyro_work_fn);
+	sensor->data_wq = create_freezable_workqueue("mpu6050_data_work");
+	if (!sensor->data_wq) {
+		dev_err(&client->dev, "Cannot create workqueue!\n");
+		goto err_free_gpio;
+	}
 
+	INIT_DELAYED_WORK(&sensor->fifo_flush_work, mpu6050_fifo_flush_fn);
+	INIT_DELAYED_WORK(&sensor->accel_poll_work, mpu6050_accel_work_fn);
+	INIT_DELAYED_WORK(&sensor->gyro_poll_work, mpu6050_gyro_work_fn);
 
 	ret = input_register_device(sensor->accel_dev);
 	if (ret) {
 		dev_err(&client->dev, "Failed to register input device\n");
-		goto err_free_irq;
+		goto err_destroy_workqueue;
 	}
 	ret = input_register_device(sensor->gyro_dev);
 	if (ret) {
 		dev_err(&client->dev, "Failed to register input device\n");
-		goto err_free_irq;
+		goto err_destroy_workqueue;
 	}
 
 	ret = create_accel_sysfs_interfaces(&sensor->accel_dev->dev);
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to create sysfs for accel\n");
-		goto err_free_irq;
+		goto err_destroy_workqueue;
 	}
 	ret = create_gyro_sysfs_interfaces(&sensor->gyro_dev->dev);
 	if (ret < 0) {
@@ -2818,7 +2923,8 @@ err_remove_gyro_sysfs:
 	remove_accel_sysfs_interfaces(&sensor->gyro_dev->dev);
 err_remove_accel_sysfs:
 	remove_accel_sysfs_interfaces(&sensor->accel_dev->dev);
-err_free_irq:
+err_destroy_workqueue:
+	destroy_workqueue(sensor->data_wq);
 	if (client->irq > 0)
 		free_irq(client->irq, sensor);
 err_free_gpio:
@@ -2852,6 +2958,7 @@ static int mpu6050_remove(struct i2c_client *client)
 	sensors_classdev_unregister(&sensor->gyro_cdev);
 	remove_gyro_sysfs_interfaces(&sensor->gyro_dev->dev);
 	remove_accel_sysfs_interfaces(&sensor->accel_dev->dev);
+	destroy_workqueue(sensor->data_wq);
 	if (client->irq > 0)
 		free_irq(client->irq, sensor);
 	if ((sensor->pdata->use_int) &&
@@ -2989,7 +3096,8 @@ static int mpu6050_resume(struct device *dev)
 		}
 
 		if (sensor->use_poll) {
-			schedule_delayed_work(&sensor->gyro_poll_work,
+			queue_delayed_work(sensor->data_wq,
+				&sensor->gyro_poll_work,
 				msecs_to_jiffies(sensor->gyro_poll_ms));
 		}
 	}
@@ -3002,7 +3110,8 @@ static int mpu6050_resume(struct device *dev)
 		}
 
 		if (sensor->use_poll) {
-			schedule_delayed_work(&sensor->accel_poll_work,
+			queue_delayed_work(sensor->data_wq,
+				&sensor->accel_poll_work,
 				msecs_to_jiffies(sensor->accel_poll_ms));
 		}
 	}

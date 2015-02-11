@@ -1,9 +1,15 @@
 /*
- * <-- Copyright Giesecke & Devrient GmbH 2009 - 2012 -->
+ * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
 #include <linux/types.h>
 #include <linux/slab.h>
@@ -130,7 +136,8 @@ struct bulk_buffer_descriptor *session_add_bulk_buf(struct session *session,
 		bulk_buf_descr =
 			bulk_buffer_descriptor_create(buf, len, handle);
 		if (bulk_buf_descr == NULL) {
-			mobicore_unmap_vmem(session->instance, handle);
+			/* Discard the returned value */
+			(void)mobicore_unmap_vmem(session->instance, handle);
 			break;
 		}
 
@@ -149,8 +156,8 @@ bool session_remove_bulk_buf(struct session *session, void *virt_addr)
 	struct bulk_buffer_descriptor *tmp;
 	struct list_head *pos, *q;
 
-	MCDRV_DBG_VERBOSE(mc_kapi, "Virtual Address = 0x%X",
-			  (unsigned int) virt_addr);
+	MCDRV_DBG_VERBOSE(mc_kapi, "Virtual Address = 0x%p",
+			  virt_addr);
 
 	/* Search and remove bulk buffer descriptor */
 	list_for_each_safe(pos, q, &session->bulk_buffer_descriptors) {
@@ -187,8 +194,8 @@ uint32_t session_find_bulk_buf(struct session *session, void *virt_addr)
 	struct bulk_buffer_descriptor *tmp;
 	struct list_head *pos, *q;
 
-	MCDRV_DBG_VERBOSE(mc_kapi, "Virtual Address = 0x%X",
-			  (unsigned int) virt_addr);
+	MCDRV_DBG_VERBOSE(mc_kapi, "Virtual Address = 0x%p",
+			  virt_addr);
 
 	/* Search and return buffer descriptor handle */
 	list_for_each_safe(pos, q, &session->bulk_buffer_descriptors) {

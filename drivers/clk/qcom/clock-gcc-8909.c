@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -293,7 +293,7 @@ enum vdd_dig_levels {
 
 static int vdd_corner[] = {
 	RPM_REGULATOR_CORNER_NONE,              /* VDD_DIG_NONE */
-	RPM_REGULATOR_CORNER_SVS_SOC,           /* VDD_DIG_LOW */
+	RPM_REGULATOR_CORNER_SVS_KRAIT,         /* VDD_DIG_LOW SVS */
 	RPM_REGULATOR_CORNER_NORMAL,            /* VDD_DIG_NOMINAL */
 	RPM_REGULATOR_CORNER_SUPER_TURBO,       /* VDD_DIG_HIGH */
 };
@@ -968,7 +968,7 @@ static struct rcg_clk byte0_clk_src = {
 	.c = {
 		.dbg_name = "byte0_clk_src",
 		.ops = &clk_ops_byte,
-		VDD_DIG_FMAX_MAP2(LOW, 62500000, NOMINAL, 125000000),
+		VDD_DIG_FMAX_MAP1(LOW, 125000000),
 		CLK_INIT(byte0_clk_src.c),
 	},
 };
@@ -2566,14 +2566,6 @@ static void register_opp_for_dev(struct platform_device *pdev)
 		"Failed to add OPP levels for dev\n");
 }
 
-static struct clk_lookup msm_clocks_mcd[] = {
-	/* Add crypto driver clocks */
-	CLK_LOOKUP_OF("core_clk",     gcc_crypto_clk,         "mcd"),
-	CLK_LOOKUP_OF("iface_clk",    gcc_crypto_ahb_clk,     "mcd"),
-	CLK_LOOKUP_OF("bus_clk",      gcc_crypto_axi_clk,     "mcd"),
-	CLK_LOOKUP_OF("core_clk_src", crypto_clk_src,         "mcd"),
-};
-
 static int msm_gcc_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -2659,14 +2651,6 @@ static int msm_gcc_probe(struct platform_device *pdev)
 				ARRAY_SIZE(msm_clocks_lookup));
 	if (ret)
 		return ret;
-
-	ret =  of_msm_clock_register(pdev->dev.of_node, msm_clocks_mcd,
-					ARRAY_SIZE(msm_clocks_mcd));
-	if (ret) {
-		dev_err(&pdev->dev,
-			"Failed to register crypto clocks for mcd\n");
-		return ret;
-	}
 
 	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
 	clk_prepare_enable(&apss_ahb_clk_src.c);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -55,6 +55,7 @@
 #define WCNSS_DISABLE_PC_LATENCY	100
 #define WCNSS_ENABLE_PC_LATENCY	PM_QOS_DEFAULT_VALUE
 #define WCNSS_PM_QOS_TIMEOUT	15000
+#define IS_CAL_DATA_PRESENT     0
 
 /* module params */
 #define WCNSS_CONFIG_UNSPECIFIED (-1)
@@ -424,6 +425,7 @@ static struct {
 	struct pm_qos_request wcnss_pm_qos_request;
 	int pc_disabled;
 	struct delayed_work wcnss_pm_qos_del_req;
+	struct mutex pm_qos_mutex;
 } *penv = NULL;
 
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
@@ -1050,6 +1052,19 @@ static void wcnss_log_iris_regs(void)
 	}
 }
 
+void wcnss_get_mux_control(void)
+{
+	void __iomem *pmu_conf_reg;
+	struct wcnss_wlan_config *cfg = wcnss_get_wlan_config();
+	u32 reg = 0;
+
+	pmu_conf_reg = cfg->msm_wcnss_base + PRONTO_PMU_OFFSET;
+	writel_relaxed(0, pmu_conf_reg);
+	reg = readl_relaxed(pmu_conf_reg);
+	reg |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
+	writel_relaxed(reg, pmu_conf_reg);
+}
+
 void wcnss_log_debug_regs_on_bite(void)
 {
 	struct platform_device *pdev = wcnss_get_platform_device();
@@ -1079,6 +1094,8 @@ void wcnss_log_debug_regs_on_bite(void)
 
 		if (clk_rate) {
 			wcnss_pronto_log_debug_regs();
+			wcnss_get_mux_control();
+			wcnss_log_iris_regs();
 		} else {
 			pr_err("clock frequency is zero, cannot access PMU or other registers\n");
 			wcnss_log_iris_regs();
@@ -1094,6 +1111,8 @@ void wcnss_reset_intr(void)
 {
 	if (wcnss_hardware_type() == WCNSS_PRONTO_HW) {
 		wcnss_pronto_log_debug_regs();
+		wcnss_get_mux_control();
+		wcnss_log_iris_regs();
 		wmb();
 		__raw_writel(1 << 16, penv->fiq_reg);
 	} else {
@@ -1149,41 +1168,45 @@ static void wcnss_remove_sysfs(struct device *dev)
 
 static void wcnss_pm_qos_add_request(void)
 {
-	pr_info("%s: add request", __func__);
+	pr_info("%s: add request\n", __func__);
 	pm_qos_add_request(&penv->wcnss_pm_qos_request, PM_QOS_CPU_DMA_LATENCY,
 			PM_QOS_DEFAULT_VALUE);
 }
 
 static void wcnss_pm_qos_remove_request(void)
 {
-	pr_info("%s: remove request", __func__);
+	pr_info("%s: remove request\n", __func__);
 	pm_qos_remove_request(&penv->wcnss_pm_qos_request);
 }
 
 void wcnss_pm_qos_update_request(int val)
 {
-	pr_info("%s: update request %d", __func__, val);
+	pr_info("%s: update request %d\n", __func__, val);
 	pm_qos_update_request(&penv->wcnss_pm_qos_request, val);
 }
 
 void wcnss_disable_pc_remove_req(void)
 {
+	mutex_lock(&penv->pm_qos_mutex);
 	if (penv->pc_disabled) {
+		penv->pc_disabled = 0;
 		wcnss_pm_qos_update_request(WCNSS_ENABLE_PC_LATENCY);
 		wcnss_pm_qos_remove_request();
 		wcnss_allow_suspend();
-		penv->pc_disabled = 0;
 	}
+	mutex_unlock(&penv->pm_qos_mutex);
 }
 
 void wcnss_disable_pc_add_req(void)
 {
+	mutex_lock(&penv->pm_qos_mutex);
 	if (!penv->pc_disabled) {
 		wcnss_pm_qos_add_request();
 		wcnss_prevent_suspend();
 		wcnss_pm_qos_update_request(WCNSS_DISABLE_PC_LATENCY);
 		penv->pc_disabled = 1;
 	}
+	mutex_unlock(&penv->pm_qos_mutex);
 }
 
 static void wcnss_smd_notify_event(void *data, unsigned int event)
@@ -2047,8 +2070,10 @@ static void wcnssctrl_rx_handler(struct work_struct *worker)
 		smd_read(penv->smd_ch, NULL, len);
 		return;
 	}
-	if (len < sizeof(struct smd_msg_hdr))
+	if (len < sizeof(struct smd_msg_hdr)) {
+		pr_err("wcnss: incomplete header available len = %d\n", len);
 		return;
+	}
 
 	rc = smd_read(penv->smd_ch, buf, sizeof(struct smd_msg_hdr));
 	if (rc < sizeof(struct smd_msg_hdr)) {
@@ -2443,7 +2468,7 @@ static void wcnss_nvbin_dnld_main(struct work_struct *worker)
 	if (!FW_CALDATA_CAPABLE())
 		goto nv_download;
 
-	if (!penv->fw_cal_available && WCNSS_CONFIG_UNSPECIFIED
+	if (!penv->fw_cal_available && IS_CAL_DATA_PRESENT
 		!= has_calibrated_data && !penv->user_cal_available) {
 		while (!penv->user_cal_available && retry++ < 5)
 			msleep(500);
@@ -3166,6 +3191,7 @@ wcnss_wlan_probe(struct platform_device *pdev)
 	mutex_init(&penv->dev_lock);
 	mutex_init(&penv->ctrl_lock);
 	mutex_init(&penv->vbat_monitor_mutex);
+	mutex_init(&penv->pm_qos_mutex);
 	init_waitqueue_head(&penv->read_wait);
 
 	/* Since we were built into the kernel we'll be called as part

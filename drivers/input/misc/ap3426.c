@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -920,12 +920,13 @@ exit:
 static irqreturn_t ap3426_irq_handler(int irq, void *data)
 {
 	struct ap3426_data *di = data;
+	bool rc;
 
+	rc = queue_work(di->workqueue, &di->report_work);
 	/* wake up event should hold a wake lock until reported */
-	if (atomic_inc_return(&di->wake_count) == 1)
+	if (rc && (atomic_inc_return(&di->wake_count) == 1))
 		pm_stay_awake(&di->i2c->dev);
 
-	queue_work(di->workqueue, &di->report_work);
 
 	return IRQ_HANDLED;
 }
@@ -972,8 +973,10 @@ static void ap3426_report_work(struct work_struct *work)
 	}
 
 exit:
-	if (atomic_dec_and_test(&di->wake_count))
+	if (atomic_dec_and_test(&di->wake_count)) {
 		pm_relax(&di->i2c->dev);
+		dev_dbg(&di->i2c->dev, "wake lock released\n");
+	}
 
 	/* clear interrupt */
 	if (di->power_enabled) {
@@ -1108,6 +1111,11 @@ static int ap3426_sync_delay(struct ap3426_data *di, int als_enabled,
 	unsigned int delay;
 	int rc;
 
+	/* ignore delay synchonization while power not enabled */
+	if (!di->power_enabled) {
+		dev_dbg(&di->i2c->dev, "power is not enabled\n");
+		return 0;
+	}
 	convert_msec = ap3426_calc_conversion_time(di, als_enabled, ps_enabled);
 
 	if (als_enabled && ps_enabled)
@@ -1125,6 +1133,7 @@ static int ap3426_sync_delay(struct ap3426_data *di, int als_enabled,
 		delay -= convert_msec;
 
 	/* Insert delay_msec into wait slots. The maximum is 255 * 5ms */
+	dev_dbg(&di->i2c->dev, "wait time: %lu\n", min(delay / 5UL, 255UL));
 	rc = regmap_write(di->regmap, AP3426_REG_WAIT_TIME,
 			min(delay / 5UL, 255UL));
 	if (rc) {
@@ -1424,6 +1433,14 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 			dev_err(&di->i2c->dev, "power up sensor failed.\n");
 			goto exit;
 		}
+
+		msleep(AP3426_BOOT_TIME_MS);
+
+		rc = ap3426_init_device(di);
+		if (rc) {
+			dev_err(&di->i2c->dev, "init ap3426 failed\n");
+			goto exit;
+		}
 	}
 
 	rc = regmap_read(di->regmap, AP3426_REG_INT_CTL, &interrupt);
@@ -1446,6 +1463,13 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 		goto exit_enable_interrupt;
 	}
 
+	/* clear wait time */
+	rc = regmap_write(di->regmap, AP3426_REG_WAIT_TIME, 0x0);
+	if (rc) {
+		dev_err(&di->i2c->dev, "clear wait time failed\n");
+		goto exit_enable_interrupt;
+	}
+
 	/* clear offset */
 	ps_data[0] = 0;
 	ps_data[1] = 0;
@@ -1462,12 +1486,17 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 	if (rc) {
 		dev_err(&di->i2c->dev, "write %d failed.(%d)\n",
 				AP3426_REG_CONFIG, rc);
-		goto exit_enable_interrupt;
+		goto exit_disable_ps;
 	}
 
 	while (--count) {
-		/* wait for data ready */
-		msleep(ap3426_calc_conversion_time(di, 0, 1));
+		/*
+		 * This function is expected to be executed only 1 time in
+		 * factory and never be executed again during the device's
+		 * life time. It's fine to busy wait for data ready.
+		 */
+		usleep_range(ap3426_calc_conversion_time(di, 0, 1) * 1000,
+			(ap3426_calc_conversion_time(di, 0, 1) + 1) * 1000);
 		rc = regmap_bulk_read(di->regmap, AP3426_REG_PS_DATA_LOW,
 				ps_data, 2);
 		if (rc) {
@@ -1482,7 +1511,7 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 		if (min > (PS_DATA_MASK >> 1)) {
 			dev_err(&di->i2c->dev, "ps data out of range, check if shield\n");
 			rc = -EINVAL;
-			goto exit_enable_interrupt;
+			goto exit_disable_ps;
 		}
 
 		if (apply_now) {
@@ -1493,7 +1522,7 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 			if (rc) {
 				dev_err(&di->i2c->dev, "write %d failed.(%d)\n",
 						AP3426_REG_PS_CAL_L, rc);
-				goto exit_enable_interrupt;
+				goto exit_disable_ps;
 			}
 			di->bias = min;
 		}
@@ -1504,6 +1533,14 @@ static int ap3426_cdev_ps_calibrate(struct sensors_classdev *sensors_cdev,
 	} else {
 		dev_err(&di->i2c->dev, "calibration failed\n");
 		rc = -EINVAL;
+	}
+
+exit_disable_ps:
+	rc = regmap_write(di->regmap, AP3426_REG_CONFIG, config & (~0x02));
+	if (rc) {
+		dev_err(&di->i2c->dev, "write %d failed.(%d)\n",
+				AP3426_REG_CONFIG, rc);
+		goto exit_enable_interrupt;
 	}
 
 exit_enable_interrupt:
@@ -1872,6 +1909,7 @@ static int ap3426_suspend(struct device *dev)
 	int res = 0;
 	struct ap3426_data *di = dev_get_drvdata(dev);
 	u8 ps_data[4];
+	unsigned int config;
 	int idx = di->ps_wakeup_threshold;
 
 	dev_dbg(dev, "suspending ap3426...");
@@ -1880,6 +1918,28 @@ static int ap3426_suspend(struct device *dev)
 
 	/* proximity is enabled */
 	if (di->ps_enabled) {
+		/* disable als sensor to avoid wake up by als interrupt */
+		if (di->als_enabled) {
+			res = regmap_read(di->regmap, AP3426_REG_CONFIG,
+					&config);
+			if (res) {
+				dev_err(&di->i2c->dev, "read %d failed.(%d)\n",
+						AP3426_REG_CONFIG, res);
+				goto exit;
+			}
+
+
+			res = regmap_write(di->regmap, AP3426_REG_CONFIG,
+					config & (~0x1));
+			if (res) {
+				dev_err(&di->i2c->dev, "write %d failed.(%d)\n",
+						AP3426_REG_CONFIG, res);
+				goto exit;
+			}
+
+			ap3426_sync_delay(di, 0, 1, 0, di->ps_delay);
+		}
+
 		/* Don't power off sensor because proximity is a
 		 * wake up sensor.
 		 */
@@ -1938,6 +1998,7 @@ static int ap3426_resume(struct device *dev)
 {
 	int res = 0;
 	struct ap3426_data *di = dev_get_drvdata(dev);
+	unsigned int config;
 
 	dev_dbg(dev, "resuming ap3426...");
 	if (di->ps_enabled) {
@@ -1945,6 +2006,28 @@ static int ap3426_resume(struct device *dev)
 			dev_dbg(&di->i2c->dev, "disable irq wake\n");
 			disable_irq_wake(di->irq);
 		}
+
+		if (di->als_enabled) {
+			res = regmap_read(di->regmap, AP3426_REG_CONFIG,
+					&config);
+			if (res) {
+				dev_err(&di->i2c->dev, "read %d failed.(%d)\n",
+						AP3426_REG_CONFIG, res);
+				goto exit;
+			}
+
+			res = regmap_write(di->regmap, AP3426_REG_CONFIG,
+					config | 0x1);
+			if (res) {
+				dev_err(&di->i2c->dev, "write %d failed.(%d)\n",
+						AP3426_REG_CONFIG, res);
+				goto exit;
+			}
+
+			ap3426_sync_delay(di, 1, 1, di->als_delay,
+					di->ps_delay);
+		}
+
 	} else {
 		pinctrl_select_state(pin_config.pinctrl, pin_config.state[0]);
 		/* Power up sensor */

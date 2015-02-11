@@ -1,41 +1,15 @@
 /*
- * The MobiCore Driver Kernel Module is a Linux device driver, which represents
- * the command proxy on the lowest layer to the secure world (Swd). Additional
- * services like memory allocation via mmap and generation of a MMU tables for
- * given virtual memory are also supported. IRQ functionality receives
- * information from the SWd in the non secure world (NWd).
- * As customary the driver is handled as linux device driver with "open",
- * "close" and "ioctl" commands. Access to the driver is possible after the
- * device "/dev/mobicore" has been opened.
- * The MobiCore Driver Kernel Module must be installed via
- * "insmod mcDrvModule.ko".
+ * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * All Rights Reserved.
  *
- * <-- Copyright Giesecke & Devrient GmbH 2010-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *	notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *	notice, this list of conditions and the following disclaimer in the
- *	documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote
- *	products derived from this software without specific prior
- *	written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
- * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
 
 #ifndef _MC_LINUX_H_
@@ -83,10 +57,10 @@ struct mc_ioctl_info {
  * already. I.e. Daemon was restarted.
  */
 struct mc_ioctl_map {
-	size_t		len;	/* Buffer length */
+	uint32_t	len;	/* Buffer length */
 	uint32_t	handle;	/* WSM handle */
 	uint64_t	phys_addr; /* physical address of WSM (or 0) */
-	unsigned long	addr;	/* Virtual address */
+	uint32_t	rfu;
 	bool		reused;	/* if WSM memory was reused, or new allocated */
 };
 
@@ -97,13 +71,24 @@ struct mc_ioctl_map {
  * Returns the physical address of the MMU table.
  * The page alignment will be created and the appropriated pSize and pOffsetMMU
  * will be modified to the used values.
+ *
+ * We assume the 64 bit compatible one to be the default and the
+ * 32 bit one to be the compat one but we must serve both of them.
  */
-struct mc_ioctl_reg_wsm {
+struct mc_compat_ioctl_reg_wsm {
 	uint32_t buffer;	/* base address of the virtual address  */
 	uint32_t len;		/* size of the virtual address space */
 	uint32_t pid;		/* process id */
 	uint32_t handle;	/* driver handle for locked memory */
 	uint64_t table_phys;	/* physical address of the MMU table */
+};
+
+struct mc_ioctl_reg_wsm {
+	uint64_t buffer;	/* base address of the virtual address  */
+	uint32_t len;		/* size of the virtual address space */
+	uint32_t pid;		/* process id */
+	uint32_t handle;	/* driver handle for locked memory */
+	uint64_t table_phys;/* physical address of the MMU table */
 };
 
 /*
@@ -168,8 +153,14 @@ struct mc_ioctl_resolv_wsm {
  * Creates a MMU Table of the given base address and the size of the
  * data.
  * Parameter: mc_ioctl_reg_wsm
+ *
+ * Since the end ID is also based on the size of the structure it is
+ * safe to use the same ID(6) for both
  */
 #define MC_IO_REG_WSM		_IOWR(MC_IOC_MAGIC, 6, struct mc_ioctl_reg_wsm)
+#define MC_COMPAT_REG_WSM	_IOWR(MC_IOC_MAGIC, 6, \
+			struct mc_compat_ioctl_reg_wsm)
+
 #define MC_IO_UNREG_WSM		_IO(MC_IOC_MAGIC, 7)
 #define MC_IO_LOCK_WSM		_IO(MC_IOC_MAGIC, 8)
 #define MC_IO_UNLOCK_WSM	_IO(MC_IOC_MAGIC, 9)

@@ -211,7 +211,9 @@ static int flush_bw_data(struct device *node_device, int ctx)
 			struct msm_bus_fab_device_type *fabdev =
 							bus_device->fabdev;
 
-			if (fabdev)
+			if (fabdev && fabdev->noc_ops.update_bw_reg &&
+				fabdev->noc_ops.update_bw_reg
+					(node_info->node_info->qos_params.mode))
 				ret = fabdev->noc_ops.set_bw(node_info,
 							fabdev->qos_base,
 							fabdev->base_offset,
@@ -270,8 +272,13 @@ static int flush_clk_data(struct device *node_device, int ctx)
 			}
 
 			ret = enable_nodeclk(nodeclk);
-		} else
+		} else {
+			if ((node->node_info->is_fab_dev) &&
+				!IS_ERR_OR_NULL(node->qos_clk.clk))
+					ret = disable_nodeclk(&node->qos_clk);
+
 			ret = disable_nodeclk(nodeclk);
+		}
 
 		if (ret) {
 			MSM_BUS_ERR("%s: Failed to enable for %d", __func__,
@@ -590,6 +597,15 @@ static int msm_bus_qos_enable_clk(struct msm_bus_node_device_type *node)
 		bus_qos_enabled = 1;
 	}
 
+	if (!IS_ERR_OR_NULL(bus_node->qos_clk.clk)) {
+		ret = enable_nodeclk(&bus_node->qos_clk);
+		if (ret) {
+			MSM_BUS_ERR("%s: Failed to enable bus QOS clk, node %d",
+				__func__, node->node_info->id);
+			goto exit_enable_qos_clk;
+		}
+	}
+
 	if (!IS_ERR_OR_NULL(node->qos_clk.clk)) {
 		rounded_rate = clk_round_rate(node->qos_clk.clk, 1);
 		ret = setrate_nodeclk(&node->qos_clk, rounded_rate);
@@ -613,7 +629,7 @@ exit_enable_qos_clk:
 }
 
 int msm_bus_enable_limiter(struct msm_bus_node_device_type *node_dev,
-				bool enable, uint64_t lim_bw)
+				int enable, uint64_t lim_bw)
 {
 	int ret = 0;
 	struct msm_bus_node_device_type *bus_node_dev;
@@ -771,8 +787,6 @@ static int msm_bus_fabric_init(struct device *dev,
 		goto exit_fabric_init;
 	}
 
-	/*if (msmbus_coresight_init(pdev))
-		pr_warn("Coresight support absent for bus: %d\n", pdata->id);*/
 exit_fabric_init:
 	return ret;
 }
@@ -838,6 +852,8 @@ static int msm_bus_copy_node_info(struct msm_bus_node_device_type *pdata,
 	node_info->qos_params.mode = pdata_node_info->qos_params.mode;
 	node_info->qos_params.prio1 = pdata_node_info->qos_params.prio1;
 	node_info->qos_params.prio0 = pdata_node_info->qos_params.prio0;
+	node_info->qos_params.reg_prio1 = pdata_node_info->qos_params.reg_prio1;
+	node_info->qos_params.reg_prio0 = pdata_node_info->qos_params.reg_prio0;
 	node_info->qos_params.prio_lvl = pdata_node_info->qos_params.prio_lvl;
 	node_info->qos_params.prio_rd = pdata_node_info->qos_params.prio_rd;
 	node_info->qos_params.prio_wr = pdata_node_info->qos_params.prio_wr;

@@ -1,15 +1,21 @@
 /*
+ * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+/*
  * MobiCore Driver Logging Subsystem.
  *
  * The logging subsystem provides the interface between the Mobicore trace
  * buffer and the Linux log
- *
- * <-- Copyright Giesecke & Devrient GmbH 2009-2012 -->
- * <-- Copyright Trustonic Limited 2013 -->
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 #include <linux/miscdevice.h>
 #include <linux/moduleparam.h>
@@ -52,7 +58,6 @@ struct logmsg_struct {
 	uint32_t log_data;		/* Value, if any */
 };
 
-static bool prev_eol;			/* Previous char was a EOL */
 static uint16_t prev_source;		/* Previous Log source */
 static uint32_t log_pos;		/* MobiCore log previous position */
 static struct mc_trace_buf *log_buf;	/* MobiCore log buffer structure */
@@ -63,9 +68,11 @@ static int thread_err;
 
 static void log_eol(uint16_t source)
 {
-	if (!strnlen(log_line, LOG_LINE_SIZE))
+	if (!strnlen(log_line, LOG_LINE_SIZE)) {
+		/* In case a TA tries to print a 0x0 */
+		log_line_len = 0;
 		return;
-	prev_eol = true;
+	}
 	/* MobiCore Userspace */
 	if (prev_source)
 		dev_info(mcd, "%03x|%s\n", prev_source, log_line);
@@ -95,7 +102,6 @@ static void log_char(char ch, uint16_t source)
 	log_line[log_line_len] = ch;
 	log_line[log_line_len + 1] = 0;
 	log_line_len++;
-	prev_eol = false;
 	prev_source = source;
 }
 
@@ -181,6 +187,23 @@ static uint32_t process_log(void)
 	return buff - log_buf->buff;
 }
 
+static void log_exit(void)
+{
+	union fc_generic fc_log;
+
+	memset(&fc_log, 0, sizeof(fc_log));
+	fc_log.as_in.cmd = MC_FC_NWD_TRACE;
+
+	MCDRV_DBG(mcd, "Unregister the trace buffer");
+	mc_fastcall(&fc_log);
+	MCDRV_DBG(mcd, "fc_log out ret=0x%08x", fc_log.as_out.ret);
+
+	if (fc_log.as_out.ret == 0) {
+		free_pages((unsigned long)log_buf, get_order(log_size));
+		log_buf = NULL;
+	}
+}
+
 /* log_worker() - Worker thread processing the log_buf buffer. */
 static int log_worker(void *p)
 {
@@ -221,6 +244,9 @@ err_kthread:
 		set_current_state(TASK_INTERRUPTIBLE);
 	}
 	set_current_state(TASK_RUNNING);
+
+	log_exit();
+
 	return ret;
 }
 
@@ -261,7 +287,6 @@ long mobicore_log_setup(void)
 	log_thread = NULL;
 	log_line = NULL;
 	log_line_len = 0;
-	prev_eol = false;
 	prev_source = 0;
 	thread_err = 0;
 
@@ -301,7 +326,9 @@ long mobicore_log_setup(void)
 	memset(&fc_log, 0, sizeof(fc_log));
 	fc_log.as_in.cmd = MC_FC_NWD_TRACE;
 	fc_log.as_in.param[0] = (uint32_t)phys_log_buf;
-	fc_log.as_in.param[1] = (uint32_t)(((uint64_t)phys_log_buf) >> 32);
+#ifdef CONFIG_PHYS_ADDR_T_64BIT
+	fc_log.as_in.param[1] = (uint32_t)(phys_log_buf >> 32);
+#endif
 	fc_log.as_in.param[2] = log_size;
 
 	MCDRV_DBG(mcd, "fc_log virt=%p phys=0x%llX",

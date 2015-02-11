@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -952,13 +952,15 @@ static int mdp3_overlay_set(struct msm_fb_data_type *mfd,
 	stride = req->src.width * ppp_bpp(req->src.format);
 	format = mdp3_ctrl_get_source_format(req->src.format);
 
-	mutex_lock(&mdp3_session->lock);
 
 	if (mdp3_session->overlay.id != req->id)
 		pr_err("overlay was not released, continue to recover\n");
-
-	mdp3_session->overlay = *req;
+	/*
+	 * A change in overlay structure will always come with
+	 * MSMFB_NEW_REQUEST for MDP3
+	*/
 	if (req->id == MSMFB_NEW_REQUEST) {
+		mutex_lock(&mdp3_session->lock);
 		if (dma->source_config.stride != stride ||
 				dma->source_config.format != format) {
 			dma->source_config.format = format;
@@ -967,11 +969,11 @@ static int mdp3_overlay_set(struct msm_fb_data_type *mfd,
 				mdp3_ctrl_get_pack_pattern(req->src.format);
 			dma->update_src_cfg = true;
 		}
+		mdp3_session->overlay = *req;
 		mdp3_session->overlay.id = 1;
 		req->id = 1;
+		mutex_unlock(&mdp3_session->lock);
 	}
-
-	mutex_unlock(&mdp3_session->lock);
 
 	return rc;
 }
@@ -1065,10 +1067,11 @@ bool update_roi(struct mdp3_rect oldROI, struct mdp_rect newROI)
 
 bool is_roi_valid(struct mdp3_dma_source source_config, struct mdp_rect roi)
 {
-	return  ((roi.x >= source_config.x) &&
+	return  (roi.w > 0) && (roi.h > 0) &&
+		(roi.x >= source_config.x) &&
 		((roi.x + roi.w) <= source_config.width) &&
 		(roi.y >= source_config.y) &&
-		((roi.y + roi.h) <= source_config.height));
+		((roi.y + roi.h) <= source_config.height);
 }
 
 static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
@@ -1478,6 +1481,7 @@ static int mdp3_histogram_stop(struct mdp3_session_data *session,
 	mutex_lock(&session->histo_lock);
 
 	if (!session->histo_status) {
+		pr_debug("mdp3_histogram_stop already stopped!");
 		ret = 0;
 		goto histogram_stop_err;
 	}
@@ -1507,20 +1511,20 @@ static int mdp3_histogram_collect(struct mdp3_session_data *session,
 		return -EINVAL;
 	}
 
+	mutex_lock(&session->histo_lock);
+
+	if (!session->histo_status) {
+		pr_debug("mdp3_histogram_collect not started\n");
+		mutex_unlock(&session->histo_lock);
+		return -EPROTO;
+	}
+
+	mutex_unlock(&session->histo_lock);
+
 	if (!session->clk_on) {
 		pr_debug("mdp/dsi clock off currently\n");
 		return -EPERM;
 	}
-
-	mutex_lock(&session->histo_lock);
-
-	if (!session->histo_status) {
-		pr_err("mdp3_histogram_collect not started\n");
-		mutex_unlock(&session->histo_lock);
-		return -EPERM;
-	}
-
-	mutex_unlock(&session->histo_lock);
 
 	mdp3_clk_enable(1, 0);
 	ret = session->dma->get_histo(session->dma);
@@ -1728,7 +1732,7 @@ static int mdp3_histo_ioctl(struct msm_fb_data_type *mfd, u32 cmd,
 	mdp3_session = mfd->mdp.private1;
 
 	if (mdp3_session->dyn_pu_state && (cmd != MSMFB_HISTOGRAM_STOP)) {
-		pr_err("Partial update feature is enabled.\n");
+		pr_debug("Partial update feature is enabled.\n");
 		return -EPERM;
 	}
 
@@ -2262,7 +2266,7 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 	req = &mdp3_session->req_overlay;
 
 	if (!mdp3_session->status && cmd != MSMFB_METADATA_GET &&
-		cmd != MSMFB_HISTOGRAM_STOP) {
+		cmd != MSMFB_HISTOGRAM_STOP && cmd != MSMFB_HISTOGRAM) {
 		pr_err("mdp3_ctrl_ioctl_handler, display off!\n");
 		return -EPERM;
 	}

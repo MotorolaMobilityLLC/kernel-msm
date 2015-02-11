@@ -187,6 +187,7 @@ static int32_t msm_flash_i2c_init(
 			sizeof(struct msm_sensor_power_setting_array32))) {
 			pr_err("%s copy_from_user failed %d\n",
 				__func__, __LINE__);
+			kfree(power_setting_array32);
 			return -EFAULT;
 		}
 
@@ -618,7 +619,8 @@ static int32_t msm_flash_get_gpio_dt_data(struct device_node *of_node,
 			gpio_array[i] = of_get_gpio(of_node, i);
 			if (((int16_t)gpio_array[i]) < 0) {
 				pr_err("%s failed %d\n", __func__, __LINE__);
-				return -EINVAL;
+				rc = -EINVAL;
+				goto free_gpio_array;
 			}
 			CDBG("%s gpio_array[%d] = %d\n", __func__, i,
 				gpio_array[i]);
@@ -955,6 +957,7 @@ static int32_t msm_flash_platform_probe(struct platform_device *pdev)
 	if (rc < 0) {
 		pr_err("%s:%d msm_flash_get_dt_data failed\n",
 			__func__, __LINE__);
+		kfree(flash_ctrl);
 		return -EINVAL;
 	}
 
