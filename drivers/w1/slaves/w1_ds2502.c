@@ -18,7 +18,7 @@
 #include <linux/w1-gpio.h>
 
 /* Logging macro */
-#define W1_DS2502_DRIVER_DEBUG
+/*#define W1_DS2502_DRIVER_DEBUG*/
 
 #undef CDBG
 #ifdef W1_DS2502_DRIVER_DEBUG
@@ -44,7 +44,7 @@
 #define DS2502_MAX_RETRIES            3
 
 #define DS2502_EEPROM_SIZE            128
-#define DS2502_EEPROM_PAGE_SIZE       0x20
+#define DS2502_FILE_OUTPUT_SIZE       (DS2502_EEPROM_SIZE+1)
 
 #define CRC16_INIT                    0
 
@@ -69,7 +69,8 @@ const unsigned char read_memory_cmd_addr[DS2503_NUM_READ_MEM_CMD] = {
 };
 
 struct w1_ds2502_data {
-	unsigned char rawdata[128];
+	unsigned char rawdata[DS2502_EEPROM_SIZE];
+	unsigned char crcvalid;
 	int status;
 };
 
@@ -80,6 +81,8 @@ static void w1_ds2502_dump_data(struct w1_ds2502_data *data)
 
 	for (x = 0; x < DS2502_EEPROM_SIZE; x++)
 		CDBG("%s: 0x%04x: 0x%02x\n", __func__, x, data->rawdata[x]);
+
+	CDBG("%s: CRC Valid: %d", __func__, data->crcvalid);
 }
 #endif
 
@@ -138,7 +141,8 @@ static enum w1_ds2502_state w1_ds2502_send_command(struct w1_slave *sl)
 	return next_state;
 }
 
-static enum w1_ds2502_state w1_ds2502_rx_data(struct w1_slave *sl)
+static enum w1_ds2502_state w1_ds2502_rx_data(struct w1_slave *sl,
+		unsigned char retry_cnt)
 {
 	enum w1_ds2502_state next_state = STATE_DETECT;
 	unsigned int data_crc;
@@ -158,9 +162,17 @@ static enum w1_ds2502_state w1_ds2502_rx_data(struct w1_slave *sl)
 
 	CDBG("%s: data_crc:0x%x computed_crc:0x%x\n", __func__,
 	     data_crc, computed_crc);
-	/*if (computed_crc == data_crc) {*/
+	if (computed_crc == data_crc) {
+		data->crcvalid = 1;
 		next_state = STATE_READ_DONE;
-	/*}*/
+	}
+
+	if (data->crcvalid == 0 && retry_cnt == MAX_RETRIES-1) {
+		/* tried a few times, but CRC is invalid */
+		pr_err("%s: CRC invalid, report data read (%d)",
+				__func__, retry_cnt);
+		next_state = STATE_READ_DONE;
+	}
 
 	return next_state;
 }
@@ -186,7 +198,7 @@ static void w1_ds2502_first_eeprom_read(struct w1_slave *sl)
 			break;
 
 		case STATE_RX_DATA:
-			state = w1_ds2502_rx_data(sl);
+			state = w1_ds2502_rx_data(sl, retry_count);
 			break;
 
 		default:
@@ -219,7 +231,7 @@ static ssize_t w1_ds2502_read_eeprom(struct file *filp, struct kobject *kobj,
 
 	CDBG("%s: Enter count=%ld\n", __func__, count);
 
-	if (count < DS2502_EEPROM_SIZE) {
+	if (count < DS2502_FILE_OUTPUT_SIZE) {
 		pr_err("%s: input buffer too small %ld", __func__, count);
 		return num_bytes_copied;
 	}
@@ -270,7 +282,8 @@ static ssize_t w1_ds2502_read_eeprom(struct file *filp, struct kobject *kobj,
 		w1_ds2502_dump_data(data);
 #endif
 		memcpy(buf, &data->rawdata[0], DS2502_EEPROM_SIZE);
-		num_bytes_copied = DS2502_EEPROM_SIZE;
+		memcpy(buf+DS2502_EEPROM_SIZE, &data->crcvalid, 1);
+		num_bytes_copied = DS2502_FILE_OUTPUT_SIZE;
 	}
 
 	return (num_bytes_copied == 0) ? 0 : count;
@@ -281,7 +294,7 @@ static struct bin_attribute w1_ds2502_eeprom_attr = {
 		.name = "eeprom",
 		.mode = S_IRUGO | S_IWUSR,
 	},
-	.size = DS2502_EEPROM_SIZE,
+	.size = DS2502_FILE_OUTPUT_SIZE,
 	.read = w1_ds2502_read_eeprom,
 };
 
@@ -295,6 +308,7 @@ static int w1_ds2502_add_slave(struct w1_slave *sl)
 	data = kzalloc(sizeof(struct w1_ds2502_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+	data->crcvalid = 0;
 	data->status = STATUS_DATA_NOT_READ;
 	sl->family_data = data;
 
