@@ -86,3 +86,10 @@
 		qcom,master-en = <1>; /* Enable MPP */
 	};
 };
+
+&i2c_0 {
+	synaptics_dsx_i2c@20 {
+		synaptics,x-flip;
+		synaptics,y-flip;
+	};
+};
