@@ -1246,7 +1246,7 @@
 	qcom,hot-bat-decidegc = <600>;
 	qcom,cold-bat-decidegc = <(-200)>;
 	qcom,ext-sense-type = <1>; /* External Sense Resistor */
-	qcom,thermal-coefficients = <0x861D 0x4B13 0x3615>;
+	qcom,thermal-coefficients =  /bits/ 16 <0x1D86 0x134B 0x1536>;
 	qcom,resume-soc = <99>;
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
