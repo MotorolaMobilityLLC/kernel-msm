@@ -128,6 +128,7 @@
 	qcom,camera@1 {
 		cell-index = <1>;
 		compatible = "qcom,camera";
+		reg = <0x1>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
@@ -165,7 +166,7 @@
 	qcom,camera@2 {
 		cell-index = <2>;
 		compatible = "qcom,camera";
-		reg = <0x20 0x0>;
+		reg = <0x2>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
@@ -209,8 +210,6 @@
 	/delete-node/ cam_sensor_front_suspend;
 	/delete-node/ cam_sensor_mclk0_active;
 	/delete-node/ cam_sensor_mclk0_suspend;
-	/delete-node/ cam_sensor_mclk2_active;
-	/delete-node/ cam_sensor_mclk2_suspend;
 
 	cam_sensor_rear_pinctrl {
 		/*RESET, AVDD_EN */
@@ -285,26 +284,6 @@
 
 		/*suspended state */
 		cam_sensor_mclk0_suspend: suspend {
-			drive-strength = <2>; /* 2 MA */
-			bias-pull-down; /* PULL DOWN */
-		};
-	};
-
-	cam_sensor_mclk2_pinctrl {
-		/* MCLK2 */
-		qcom,pins = <&gp 15>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <1>;
-		label = "cam_sensor_mclk2_pinctrl";
-
-		/* active state */
-		cam_sensor_mclk2_active: active {
-			drive-strength = <2>; /* 2 MA */
-			bias-disable; /* No PULL */
-		};
-
-		/* suspend state */
-		cam_sensor_mclk2_suspend: suspend {
 			drive-strength = <2>; /* 2 MA */
 			bias-pull-down; /* PULL DOWN */
 		};
