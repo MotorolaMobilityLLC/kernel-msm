@@ -974,7 +974,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	bool panel_off = false;
 	bool turn_off_clocks = false;
 	bool send_panel_events = false;
-	int ret = 0;
+	int ret;
 
 	if (!ctx) {
 		pr_err("invalid ctx\n");
@@ -998,7 +998,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	pr_debug("%s: transition from %d --> %d\n", __func__,
 		 ctx->panel_power_state, panel_power_state);
 
-	mutex_lock(&ctl->offlock);
 	if (__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
 		if (mdss_panel_is_power_on_lp(panel_power_state)) {
 			/*
@@ -1043,7 +1042,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		if (IS_ERR_VALUE(ret)) {
 			pr_err("%s: unable to stop interface: %d\n",
 				__func__, ret);
-			goto end;
+			return ret;
 		}
 
 		if (sctl) {
@@ -1051,7 +1050,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			if (IS_ERR_VALUE(ret)) {
 				pr_err("%s: unable to stop slave intf: %d\n",
 					__func__, ret);
-				goto end;
+				return ret;
 			}
 		}
 
@@ -1086,10 +1085,9 @@ panel_events:
 end:
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_EXIT);
-	mutex_unlock(&ctl->offlock);
 	pr_debug("%s:-\n", __func__);
 
-	return ret;
+	return 0;
 }
 
 static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
