@@ -81,7 +81,6 @@
                 qcom,bam-pipe-idx-cons = <4>;
                 qcom,bam-pipe-idx-prod = <5>;
                 qcom,master-id = <86>;
-                qcom,bam-disable;
 	};
 
 	hob_ram {
@@ -93,10 +92,16 @@
 
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
-		qcom,model = "msm8x16-snd-card";
+		qcom,tfa9890-left-name = "tfa9890.1-0034";
+		qcom,tfa9890-left-dai-name = "TFA9890 Playback Left";
+		qcom,model = "msm8939-tfa9890-codec-snd-card";
+		qcom,quat-auxpcm-gpio-sclk = <&msm_gpio 118 0>;
+		qcom,quat-auxpcm-gpio-ws =  <&msm_gpio 117 0>;
+		qcom,quat-auxpcm-gpio-dout = <&msm_gpio 119 0>;
+		qcom,quat-auxpcm-gpio-din = <&msm_gpio 112 0>;
 		qcom,msm-snd-card-id = <0>;
 		qcom,msm-codec-type = "internal";
-		qcom,msm-ext-pa = <0>;
+		qcom,msm-ext-pa = "quaternary";
 		qcom,msm-mbhc-hphl-swh = <0>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
@@ -113,12 +118,16 @@
 			"AMIC2", "MIC BIAS External",
 			"AMIC3", "MIC BIAS External";
 		pinctrl-names = "cdc_lines_act",
-				"cdc_lines_sus";
+				"cdc_lines_sus",
+				"cdc_lines_quat_ext_act_lux",
+				"cdc_lines_quat_ext_sus_lux";
 		pinctrl-0 = <&cdc_pdm_lines_act>;
 		pinctrl-1 = <&cdc_pdm_lines_sus>;
+		pinctrl-2 = <&cdc_pdm_lines_act &ext_cdc_tlmm_lines_act_lux>;
+		pinctrl-3 = <&cdc_pdm_lines_sus &ext_cdc_tlmm_lines_sus_lux>;
 		asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
-				<&afe>, <&lsm>, <&routing>, <&lpa>;
+				<&afe>, <&lsm>, <&routing>, <&lpa>, <&smartboost>;
 		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
 				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
 				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
@@ -483,6 +492,22 @@
 			bias-pull-up; /* pull-up */
 		};
 	};
+
+	ext-cdc-tlmm-lines-lux {
+		qcom,pins = <&gp 112>, <&gp 117>,
+				<&gp 118>, <&gp 119>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <1>;
+		label = "ext-cdc-tlmm-lines-lux";
+		ext_cdc_tlmm_lines_act_lux: tlmm_lines_on_lux {
+			drive-strength = <8>;
+			bias-disable;
+		};
+		ext_cdc_tlmm_lines_sus_lux: tlmm_lines_off_lux {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
 };
 
 &i2c_0 {
@@ -797,6 +822,17 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&nfc_irq_default &nfc_pwr_default &nfc_en_default>;
+	};
+
+	/* smart boost */
+	smartboost: tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&msm_gpio 37 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8916_l6>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+		/* nxp,tfa9890_bin_path = "lux"; */
 	};
 };
 
