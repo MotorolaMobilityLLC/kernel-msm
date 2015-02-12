@@ -61,6 +61,10 @@ static int msm_pri_mi2s_rx_ch = 1;
 
 static int msm_proxy_rx_ch = 2;
 
+#ifdef CONFIG_SND_SOC_TFA9890
+atomic_t tfa9890_quat_mi2s_rsc_ref;
+#endif
+
 static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
 static int msm8x16_enable_extcodec_ext_clk(struct snd_soc_codec *codec,
@@ -509,6 +513,44 @@ static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_TFA9890
+static int quat_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
+{
+	int ret = 0;
+
+	if (enable) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			if (mi2s_rx_bit_format == SNDRV_PCM_FORMAT_S24_LE)
+				mi2s_rx_clk.clk_val1 =
+					Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			else
+				mi2s_rx_clk.clk_val1 =
+					Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_RX,
+				&mi2s_rx_clk);
+		} else
+			pr_err("%s:Not valid substream.\n", __func__);
+
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+
+	} else {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+				AFE_PORT_ID_QUATERNARY_MI2S_RX,
+				&mi2s_rx_clk);
+		} else
+			pr_err("%s:Not valid substream.\n", __func__);
+
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+	}
+	return ret;
+}
+#endif
 
 static int sec_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 {
@@ -966,7 +1008,11 @@ static int conf_int_codec_mux(struct msm8916_asoc_mach_data *pdata)
 	 */
 	vaddr = pdata->vaddr_gpio_mux_spkr_ctl;
 	val = ioread32(vaddr);
+#ifdef CONFIG_SND_SOC_TFA9890
+	val = val | 0x00010002;
+#else
 	val = val | 0x00030300;
+#endif
 	iowrite32(val, vaddr);
 
 	vaddr = pdata->vaddr_gpio_mux_mic_ctl;
@@ -1053,6 +1099,41 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 
 	return ret;
 }
+
+#ifdef CONFIG_SND_SOC_TFA9890
+static int conf_int_codec_mux_quat(struct msm8916_asoc_mach_data *pdata)
+{
+	int ret = 0;
+	int val = 0;
+	void __iomem *vaddr = NULL;
+
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL, 4);
+	if (!vaddr) {
+		pr_err("%s: ioremap failure for addr %x\n",
+			__func__, LPASS_CSR_GP_IO_MUX_SPKR_CTL);
+		return -ENOMEM;
+	}
+	/* enable sec MI2S interface to TLMM GPIO */
+	val = ioread32(vaddr);
+	val = val | 0x00000002;
+	pr_err("%s:  sec mux configuration = %x\n", __func__, val);
+	iowrite32(val, vaddr);
+	iounmap(vaddr);
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_MIC_CTL, 4);
+	if (!vaddr) {
+		pr_err("%s: ioremap failure for addr %x\n",
+			__func__, LPASS_CSR_GP_IO_MUX_MIC_CTL);
+		return -ENOMEM;
+	}
+	/* enable QUAT MI2S interface to TLMM GPIO */
+	val = ioread32(vaddr);
+	val = val | 0x0002000E;
+	pr_err("%s:  quat mux configuration = %x\n", __func__, val);
+	iowrite32(val, vaddr);
+	iounmap(vaddr);
+	return ret;
+}
+#endif
 
 #ifndef CONFIG_SND_SOC_FSA8500
 static void *def_msm8x16_wcd_mbhc_cal(void)
@@ -1203,6 +1284,169 @@ static struct snd_soc_ops msm8x16_mi2s_be_ops = {
 	.hw_params = msm_mi2s_snd_hw_params,
 	.shutdown = msm_mi2s_snd_shutdown,
 };
+
+#ifdef CONFIG_SND_SOC_TFA9890
+static int msm_quat_mi2s_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	int ret;
+
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
+
+	/* if it is msm stub dummy codec dai, it doesnt support this op
+	* causes an unneseccary failure to startup path. */
+	if (strncmp(codec_dai->name, "msm-stub-tx", 11)) {
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0,
+			Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+			SND_SOC_CLOCK_IN);
+
+		if (ret < 0) {
+			pr_err("can't set rx codec clk configuration\n");
+			return ret;
+		}
+	}
+
+	return 1;
+}
+
+static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct msm8916_asoc_mach_data *pdata =
+			snd_soc_card_get_drvdata(card);
+	int ret = 0;
+	pr_debug("%s(): substream = %s stream = %d ext_pa = %d\n", __func__,
+			substream->name, substream->stream, pdata->ext_pa);
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		pr_info("%s: Quaternary Mi2s does not support capture\n",
+					__func__);
+		return 0;
+	}
+	if (!pdata->codec_type &&
+			((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+		ret = conf_int_codec_mux_quat(pdata);
+		if (ret < 0) {
+			pr_err("%s: failed to conf internal codec mux\n",
+							__func__);
+			return ret;
+		}
+		ret = msm8x16_enable_codec_ext_clk(codec, 1, true);
+		if (ret < 0) {
+			pr_err("failed to enable mclk\n");
+			return ret;
+		}
+		ret = quat_mi2s_sclk_ctl(substream, true);
+		if (ret < 0) {
+			pr_err("failed to enable sclk\n");
+			goto err;
+		}
+		ret = pinctrl_select_state(pinctrl_info.pinctrl,
+					pinctrl_info.cdc_lines_act);
+		if (ret < 0) {
+			pr_err("failed to enable codec gpios\n");
+			goto err1;
+		}
+	} else {
+			pr_err("%s: error codec type\n", __func__);
+	}
+	if (atomic_inc_return(&tfa9890_quat_mi2s_rsc_ref) == 1) {
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			pr_debug("%s: set fmt cpu dai failed\n", __func__);
+	}
+
+	return ret;
+err1:
+	ret = quat_mi2s_sclk_ctl(substream, false);
+	if (ret < 0)
+		pr_err("failed to disable sclk\n");
+err:
+	ret = msm8x16_enable_codec_ext_clk(codec, 0, true);
+	if (ret < 0)
+		pr_err("failed to disable mclk\n");
+
+	return ret;
+}
+
+static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	pr_debug("%s(): substream = %s  stream = %d ext_pa = %d\n", __func__,
+			substream->name, substream->stream, pdata->ext_pa);
+	if ((!pdata->codec_type) &&
+			((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+		ret = quat_mi2s_sclk_ctl(substream, false);
+		if (ret < 0)
+			pr_err("%s:clock disable failed\n", __func__);
+		if (atomic_read(&pdata->mclk_rsc_ref) > 0) {
+			atomic_dec(&pdata->mclk_rsc_ref);
+			pr_debug("%s: decrementing mclk_res_ref %d\n",
+						__func__,
+					atomic_read(&pdata->mclk_rsc_ref));
+		}
+		if (atomic_read(&tfa9890_quat_mi2s_rsc_ref) > 0)
+			atomic_dec(&tfa9890_quat_mi2s_rsc_ref);
+	}
+}
+
+static struct snd_soc_ops msm8x16_quat_mi2s_be_ops = {
+	.startup = msm_quat_mi2s_snd_startup,
+	.hw_params = msm_quat_mi2s_hw_params,
+	.shutdown = msm_quat_mi2s_snd_shutdown,
+};
+
+static struct snd_soc_dai_link  msm8x16_tfa9890_dai_link[] = {
+	/* MI2S I2S RX BACK END DAI left Link */
+	{
+		/* stream name is updated for stereo configuration
+		* to have the ability to turn ON/OFF left and right
+		* IC's independently without getting automatically
+		* turned ON by DAPM when QUAT MI2S RX is triggered
+		*/
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		/* codec name will be updated if it is present in devtree
+		 * to support different codecs name on different i2c bus
+		 */
+		.codec_name = "tfa9890.1-0034",
+		.codec_dai_name = "tfa9890_codec_left",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+};
+#endif
 
 static struct snd_soc_dai_link msm8x16_9306_dai[] = {
 	/* Backend DAI Links */
@@ -1839,6 +2083,47 @@ static struct snd_soc_dai_link msm8x16_9302_dai_links[
 				ARRAY_SIZE(msm8x16_dai) +
 				ARRAY_SIZE(msm8x16_9302_dai)];
 
+#ifdef CONFIG_SND_SOC_TFA9890
+static struct snd_soc_dai_link msm8x16_dai_tfa9890_links[
+				ARRAY_SIZE(msm8x16_dai) +
+				ARRAY_SIZE(msm8x16_tfa9890_dai_link)];
+
+static void populate_tfa9890_snd_card_dailinks(struct platform_device *pdev,
+		struct snd_soc_card *card)
+{
+	if (of_property_read_string(pdev->dev.of_node,
+		"qcom,tfa9890-left-name",
+		&msm8x16_tfa9890_dai_link[0].codec_name)) {
+		dev_info(&pdev->dev,
+			"property %s not detected in node %s",
+			"qcom,tfa9890-left-name",
+			pdev->dev.of_node->full_name);
+	} else {
+		dev_info(&pdev->dev,
+			"tfa9890 configured at %d\n",
+			card->num_links);
+		memcpy(msm8x16_dai_tfa9890_links, card->dai_link,
+			card->num_links*sizeof(struct snd_soc_dai_link));
+
+		memcpy((msm8x16_dai_tfa9890_links + card->num_links),
+			&msm8x16_tfa9890_dai_link[0],
+			sizeof(msm8x16_tfa9890_dai_link[0]));
+
+		card->dai_link = msm8x16_dai_tfa9890_links;
+		card->num_links++;
+
+		if (of_property_read_string(pdev->dev.of_node,
+			"qcom,tfa9890-left-dai-name",
+			&msm8x16_tfa9890_dai_link[0].stream_name)) {
+			dev_info(&pdev->dev,
+				"property %s not detected in node %s",
+				"qcom,tfa9890-left-dai-name",
+				pdev->dev.of_node->full_name);
+		}
+	}
+}
+#endif
+
 struct snd_soc_card snd_soc_card_9306_msm8916 = {
 	.name		= "msm8x16-tapan-snd-card",
 	.dai_link	= msm8x16_9306_dai_links,
@@ -1991,7 +2276,7 @@ static void msm8x16_dt_parse_cap_info(struct platform_device *pdev,
 int get_cdc_gpio_lines(struct pinctrl *pinctrl, int ext_pa)
 {
 	pr_debug("%s\n", __func__);
-	switch (ext_pa & SEC_MI2S_ID) {
+	switch (ext_pa) {
 	case SEC_MI2S_ID:
 		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
 			"cdc_lines_sec_ext_sus");
@@ -2008,6 +2293,24 @@ int get_cdc_gpio_lines(struct pinctrl *pinctrl, int ext_pa)
 			return -EINVAL;
 		}
 		break;
+#ifdef CONFIG_SND_SOC_TFA9890
+	case QUAT_MI2S_ID:
+		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
+			"cdc_lines_quat_ext_sus_lux");
+		if (IS_ERR(pinctrl_info.cdc_lines_sus)) {
+			pr_err("%s: Unable to get pinctrl disable state handle\n",
+								__func__);
+			return -EINVAL;
+		}
+		pinctrl_info.cdc_lines_act = pinctrl_lookup_state(pinctrl,
+			"cdc_lines_quat_ext_act_lux");
+		if (IS_ERR(pinctrl_info.cdc_lines_act)) {
+			pr_err("%s: Unable to get pinctrl disable state handle\n",
+								__func__);
+			return -EINVAL;
+		}
+		break;
+#endif
 	default:
 		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
 			"cdc_lines_sus");
@@ -2042,14 +2345,14 @@ int populate_ext_snd_card_dt_data(struct platform_device *pdev)
 	ext_cdc_pinctrl_info.pinctrl = pinctrl;
 	/* get all the states handles from Device Tree*/
 	ext_cdc_pinctrl_info.tlmm_sus = pinctrl_lookup_state(pinctrl,
-			"ext_cdc_tlmm_lines_sus");
+			"cdc_lines_quat_ext_sus_lux");
 	if (IS_ERR(ext_cdc_pinctrl_info.tlmm_sus)) {
 		pr_err("%s: Unable to get pinctrl disable state handle %ld\n",
 			__func__, PTR_ERR(ext_cdc_pinctrl_info.tlmm_sus));
 		return -EINVAL;
 	}
 	ext_cdc_pinctrl_info.tlmm_act = pinctrl_lookup_state(pinctrl,
-			"ext_cdc_tlmm_lines_act");
+			"cdc_lines_quat_ext_act_lux");
 	if (IS_ERR(ext_cdc_pinctrl_info.tlmm_act)) {
 		pr_err("%s: Unable to get pinctrl active state handle %ld\n",
 			__func__, PTR_ERR(ext_cdc_pinctrl_info.tlmm_act));
@@ -2266,6 +2569,10 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	} else {
 		card = &bear_cards[pdev->id];
 		bear_cards[pdev->id].name = dev_name(&pdev->dev);
+#ifdef CONFIG_SND_SOC_TFA9890
+		if (card->dai_link != msm8x16_dai_tfa9890_links)
+			populate_tfa9890_snd_card_dailinks(pdev, card);
+#endif
 		card = &bear_cards[pdev->id];
 		dev_info(&pdev->dev, "default codec configured\n");
 		pdata->codec_type = 0;
@@ -2348,6 +2655,9 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	mutex_init(&pdata->cdc_mclk_mutex);
 	atomic_set(&pdata->mclk_rsc_ref, 0);
 	atomic_set(&pdata->mclk_enabled, false);
+#ifdef CONFIG_SND_SOC_TFA9890
+	atomic_set(&tfa9890_quat_mi2s_rsc_ref, 0);
+#endif
 
 	ret = snd_soc_of_parse_audio_routing(card,
 			"qcom,audio-routing");
