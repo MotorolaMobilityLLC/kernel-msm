@@ -74,3 +74,42 @@
 &i2c_2 {
 	/delete-node/ atmel_mxt_ts@4a;
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,poll-ms = <250>;
+		qcom,limit-temp = <25>;
+		qcom,temp-hysteresis = <20>;
+		qcom,freq-step = <2>;
+		qcom,freq-control-mask = <0xfe>;    /* allow control all but cpu0 */
+		qcom,core-limit-temp = <25>;
+		qcom,core-temp-hysteresis = <20>;
+		qcom,core-control-mask = <0xfe>;    /* allow control all but cpu0 */
+		qcom,hotplug-temp = <25>;
+		qcom,hotplug-temp-hysteresis = <20>;
+	};
+};
+
+&soc {
+	qcom,lpm-levels {
+		qcom,pm-cluster@0 {
+			/delete-node/ qcom,pm-cluster@1;
+		};
+	};
+};
+
+&CPU4 {
+	device_type = "hotpotatoe";
+};
+
+&CPU5 {
+	device_type = "hotpotatoe";
+};
+
+&CPU6 {
+	device_type = "hotpotatoe";
+};
+
+&CPU7 {
+	device_type = "hotpotatoe";
+};
