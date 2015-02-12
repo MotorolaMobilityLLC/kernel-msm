@@ -369,12 +369,6 @@
 			drive-strength = <4>; /* 4 MA */
 		};
 	};
-
-	cam_sensor_mclk2_pinctrl {
-		active {
-			drive-strength = <4>; /* 4 MA */
-		};
-	};
 };
 
 &blsp1_uart2 {
