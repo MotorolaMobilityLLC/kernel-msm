@@ -1,0 +1,26 @@
+* NXP TFA9890
+
+The TFA9890 is a high efficiency class-D audio amplifier with a sophisticated
+SpeakerBoost protection algorithm
+
+Required properties:
+ - compatible:
+		the string of "nxp,tfa9890"
+ - reg:
+		the i2c slave address of the IC
+ - gpios:
+		an array specifiying the two required GPIOs for operation.
+			- RESET GPIO
+ - tfa_vd-supply:
+		specify the regulator it uses.
+ - tfa-dev:
+		specifies if its a Left IC or Right IC in stereo configuration
+
+Example:
+		tfa9890@34 {
+			compatible = "nxp,tfa9890";
+			reg = <0x34>;
+			gpios = <&pm8921_gpio 18 0>;     /* RESET */
+			tfa_vdd-supply = <&rpm_8921_s4>;
+			nxp,tfa-dev = "left";
+		};
