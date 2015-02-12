@@ -880,6 +880,7 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 	int len, lenc, i;
 	static int point;
 	static unsigned int time_since_last_multi_finger_touch;
+	static unsigned int time_since_last_touch;
 	unsigned long recovery_time = 20000000;
 	int gos, scl, recovery_is_enabled, ofs, tip, limit, acc_limit, clen;
 
@@ -909,6 +910,13 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 
 	if (finger != 0)
 		return;
+
+	if (jiffies_to_msecs(jiffies) - time_since_last_touch > 500) {
+		time_since_last_touch = jiffies_to_msecs(jiffies);
+		touchxp.finger_down = 0;
+		return;
+	}
+	time_since_last_touch = jiffies_to_msecs(jiffies);
 
 	if (jiffies_to_msecs(jiffies) -
 			time_since_last_multi_finger_touch < 300)
