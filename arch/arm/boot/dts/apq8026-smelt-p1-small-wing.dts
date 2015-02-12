@@ -16,7 +16,7 @@
 
 / {
 	qcom,msm-id =
-		<199 0x41 0x0204>, /* Large P0A Portable */
 		<199 0x41 0x0300>, /* P1 Wingboard */
-		<199 0x41 0x0307>; /* Small P1 Portable */
+		<199 0x41 0x0307>, /* Small P1 Portable */
+		<199 0x41 0x0308>; /* Small P1 Portable (BCM4343W)*/
 };
