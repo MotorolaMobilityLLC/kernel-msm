@@ -297,8 +297,9 @@ static int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable)
 static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	int power_state)
 {
-	int ret;
+	int ret = 0;
 	struct mdss_panel_info *pinfo;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -306,6 +307,9 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	}
 
 	pinfo = &pdata->panel_info;
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
 	pr_debug("%s: cur_power_state=%d req_power_state=%d\n", __func__,
 		pinfo->panel_power_state, power_state);
 
@@ -320,6 +324,22 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	 */
 	if (pdata->panel_info.dynamic_switch_pending)
 		return 0;
+
+	if (pdata->panel_info.panel_power_initialized) {
+		if (ctrl_pdata->sh_control_enabled) {
+			if (!mdss_dsi_is_panel_dead(pdata)) {
+				pr_info("%s: Skipping power ctrl\n", __func__);
+				goto skip_power_ctrl;
+			} else
+				pr_warn("%s: Panel is dead, toggle panel regulators\n",
+					__func__);
+		}
+	} else {
+		if (ctrl_pdata->sh_control_enabled)
+			pr_info("%s: SH control enabled, initialize panel power once\n",
+				__func__);
+		pdata->panel_info.panel_power_initialized = true;
+	}
 
 	switch (power_state) {
 	case MDSS_PANEL_POWER_OFF:
@@ -341,6 +361,7 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 		ret = -EINVAL;
 	}
 
+skip_power_ctrl:
 	if (!ret)
 		pinfo->panel_power_state = power_state;
 
@@ -612,6 +633,14 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 		goto panel_power_ctrl;
 	}
 
+
+	if (ctrl_pdata->sh_control_enabled &&
+		!mdss_dsi_is_panel_dead(pdata) &&
+		gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
+		pr_debug("%s: set mipi_d0_sel to 1\n", __func__);
+		gpio_set_value(ctrl_pdata->mipi_d0_sel, 1);
+	}
+
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
@@ -813,7 +842,9 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init) {
-		mdss_dsi_panel_reset(pdata, 1);
+		if (!ctrl_pdata->sh_control_enabled ||
+			mdss_dsi_is_panel_dead(pdata))
+			mdss_dsi_panel_reset(pdata, 1);
 	}
 
 	if (mipi->init_delay)
@@ -830,6 +861,13 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+
+	if (ctrl_pdata->sh_control_enabled &&
+		!mdss_dsi_is_panel_dead(pdata) &&
+		gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
+		pr_debug("%s: set mipi_d0_sel to 0\n", __func__);
+		gpio_set_value(ctrl_pdata->mipi_d0_sel, 0);
+	}
 
 end:
 	pr_debug("%s-:\n", __func__);
@@ -2063,6 +2101,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	struct device_node *dsi_ctrl_np = NULL;
 	struct platform_device *ctrl_pdev = NULL;
 	const char *data;
+	enum of_gpio_flags flags;
 	struct resource *res;
 
 	mipi  = &(pinfo->mipi);
@@ -2211,6 +2250,27 @@ int dsi_panel_device_register(struct device_node *pan_node,
 							__func__, __LINE__);
 	} else {
 		ctrl_pdata->mode_gpio = -EINVAL;
+	}
+
+	ctrl_pdata->mipi_d0_sel = -1;
+	if (ctrl_pdata->sh_control_enabled && pinfo->pdest == DISPLAY_1) {
+		ctrl_pdata->mipi_d0_sel = of_get_named_gpio_flags(
+			ctrl_pdev->dev.of_node, "mmi,mipi-d0-sel", 0, &flags);
+		if (!gpio_is_valid(ctrl_pdata->mipi_d0_sel)) {
+			pr_err("%s:%d, mipi d0 sel gpio not specified\n",
+							__func__, __LINE__);
+			ctrl_pdata->sh_control_enabled = false;
+		} else {
+			rc = gpio_request_one(ctrl_pdata->mipi_d0_sel, flags,
+				"mipi_d0_sel");
+			if (rc) {
+				pr_err("request mipi d0 sel gpio failed, rc=%d\n",
+					rc);
+				ctrl_pdata->sh_control_enabled = false;
+				return -ENODEV;
+			}
+			gpio_export(ctrl_pdata->mipi_d0_sel, 1);
+		}
 	}
 
 	ctrl_pdata->timing_db_mode = of_property_read_bool(

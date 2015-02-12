@@ -450,6 +450,7 @@ struct mdss_panel_info {
 	u32 partial_update_roi_merge;
 	struct ion_handle *splash_ihdl;
 	int panel_power_state;
+	bool panel_power_initialized;
 	int blank_state;
 	bool hbm_feature_enabled;
 	bool hbm_state;

@@ -1980,6 +1980,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		goto error;
 	}
 
+	ctrl_pdata->sh_control_enabled = of_property_read_bool(np,
+						"mmi,sh-control-enabled");
+	pr_info("%s: MMI SH control %s\n", __func__,
+		ctrl_pdata->sh_control_enabled ? "enabled" : "disabled");
+
 	return 0;
 
 error:
@@ -2175,6 +2180,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo->dynamic_switch_pending = false;
 	pinfo->is_lpm_mode = false;
 	pinfo->esd_rdy = false;
+	pinfo->panel_power_initialized = false;
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
