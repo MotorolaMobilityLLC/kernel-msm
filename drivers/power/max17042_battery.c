@@ -1408,9 +1408,12 @@ max17042_get_config_data(struct device *dev)
 	struct device_node *node, *df_node, *sn_node;
 	const char *sn_buf, *df_sn, *dev_sn;
 	int rc;
+	bool df_read_sn;
 
 	if (!np)
 		return NULL;
+
+	df_read_sn = of_property_read_bool(np, "maxim,df-read-battsn");
 
 	np = of_get_child_by_name(np, CONFIG_NODE);
 	if (!np)
@@ -1470,7 +1473,7 @@ max17042_get_config_data(struct device *dev)
 
 	max17042_cfg_optnl_prop(np, config_data);
 
-	if (np == df_node)
+	if ((np == df_node) && !df_read_sn)
 		config_data->revision = 1;
 
 	dev_warn(dev, "Config Revision = %d", config_data->revision);
