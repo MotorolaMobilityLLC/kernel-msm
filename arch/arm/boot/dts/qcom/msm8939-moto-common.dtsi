@@ -270,9 +270,9 @@
 		intersil,vn = <20>;
 		intersil,vp = <20>;
 		intersil,pfm-value = <0x86>;
-		intersil,cabc-disable;
 		intersil,no-reset;
 		intersil,init-level = <255>;
+		intersil,dimm-threshold = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&backlight_reset_default>;
 	};
