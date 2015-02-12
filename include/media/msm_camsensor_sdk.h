@@ -125,9 +125,19 @@ enum sensor_stats_type {
 	PDAF,
 };
 
+/* Need to keep this table aligned with
+ * enum msm_camera_i2c_data_type
+ */
 enum msm_actuator_data_type {
 	MSM_ACTUATOR_BYTE_DATA = 1,
 	MSM_ACTUATOR_WORD_DATA,
+	MSM_ACTUATOR_DWORD_DATA,
+	MSM_ACTUATOR_SET_BYTE_MASK,
+	MSM_ACTUATOR_UNSET_BYTE_MASK,
+	MSM_ACTUATOR_SET_WORD_MASK,
+	MSM_ACTUATOR_UNSET_WORD_MASK,
+	MSM_ACTUATOR_SET_BYTE_WRITE_MASK_DATA,
+	MSM_ACTUATOR_DATA_TYPE_MAX,
 };
 
 enum msm_actuator_addr_type {
