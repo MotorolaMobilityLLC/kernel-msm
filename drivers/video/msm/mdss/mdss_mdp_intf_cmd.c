@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -966,20 +966,19 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 {
 	struct mdss_mdp_cmd_ctx *ctx = ctl->priv_data;
 	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
-	int ret = 0;
+	int ret;
 
 	if (!ctx) {
 		pr_err("invalid ctx\n");
 		return -ENODEV;
 	}
 
-	mutex_lock(&ctl->offlock);
 	if (ctx->panel_power_state != panel_power_state) {
 		ret = mdss_mdp_cmd_stop_sub(ctl, panel_power_state);
 		if (IS_ERR_VALUE(ret)) {
 			pr_err("%s: unable to stop interface: %d\n",
 					__func__, ret);
-			goto end;
+			return ret;
 		}
 
 		if (sctl) {
@@ -987,7 +986,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			if (IS_ERR_VALUE(ret)) {
 				pr_err("%s: unable to stop slave intf: %d\n",
 						__func__, ret);
-				goto end;
+				return ret;
 			}
 		}
 
@@ -1017,10 +1016,9 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 end:
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 				ctx->rdptr_enabled, XLOG_FUNC_EXIT);
-	mutex_unlock(&ctl->offlock);
 	pr_debug("%s:-\n", __func__);
 
-	return ret;
+	return 0;
 }
 
 static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
