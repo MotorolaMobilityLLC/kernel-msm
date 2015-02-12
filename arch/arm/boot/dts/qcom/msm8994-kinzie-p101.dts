@@ -19,3 +19,8 @@
 	qcom,board-id = <0x42 0x8101>;
 };
 
+&pmi8994_charger {
+	status = "okay";
+	qcom,fastchg-current-ma = <1000>;
+	qcom,float-voltage-mv = <4200>;
+};
