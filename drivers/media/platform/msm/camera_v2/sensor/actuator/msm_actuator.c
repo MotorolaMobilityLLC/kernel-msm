@@ -152,6 +152,7 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 	struct msm_camera_i2c_reg_setting reg_setting;
 	enum msm_camera_i2c_reg_addr_type save_addr_type =
 		a_ctrl->i2c_client.addr_type;
+	static int16_t last_lens_position = 1;
 
 	for (i = 0; i < size; i++) {
 		reg_setting.size = 1;
@@ -213,7 +214,11 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 			}
 			break;
 		case MSM_ACTUATOR_WRITE_DIR_REG:
-			i2c_tbl.reg_data = hw_dword & 0xFFFF;
+			if (next_lens_position > last_lens_position)
+				i2c_tbl.reg_data = 0x0180; /* toward macro */
+			else
+				i2c_tbl.reg_data = 0xFE80; /* toward inf */
+
 			i2c_tbl.reg_addr = write_arr[i].reg_addr;
 			i2c_tbl.delay = write_arr[i].delay;
 			reg_setting.reg_setting = &i2c_tbl;
@@ -262,8 +267,10 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 					write_arr[i].reg_addr,
 					write_arr[i].reg_data,
 					write_arr[i].data_type);
-				if (rc == 1)
+				if (rc == 1) {
+					msleep(write_arr[i].delay);
 					continue;
+				}
 				if (rc < 0) {
 					pr_err("i2c poll error:%d\n", rc);
 					return rc;
@@ -341,6 +348,7 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 		}
 		a_ctrl->i2c_client.addr_type = save_addr_type;
 	}
+	last_lens_position = next_lens_position;
 	CDBG("Exit\n");
 	return rc;
 }
@@ -349,7 +357,7 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 	uint16_t size, struct reg_settings_t *settings)
 {
 	int32_t rc = -EFAULT;
-	int32_t i = 0;
+	int32_t i = 0, j = 0;
 	enum msm_camera_i2c_reg_addr_type save_addr_type;
 	uint16_t read_position = 0x0;
 	CDBG("Enter\n");
@@ -379,11 +387,18 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 				settings[i].data_type);
 			break;
 		case MSM_ACT_POLL:
-			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_poll(
-				&a_ctrl->i2c_client,
-				settings[i].reg_addr,
-				settings[i].reg_data,
-				settings[i].data_type);
+			for (j = 0; j < ACTUATOR_MAX_POLL_COUNT; j++) {
+				rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_poll(
+						&a_ctrl->i2c_client,
+						settings[i].reg_addr,
+						settings[i].reg_data,
+						settings[i].data_type);
+				if (rc >= 0)
+					break;
+				else
+					msleep(settings[i].delay);
+			}
+			settings[i].delay = 0;
 			break;
 		case MSM_ACT_READ_SET:
 			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read(
