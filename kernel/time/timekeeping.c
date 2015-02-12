@@ -943,6 +943,11 @@ static void timekeeping_resume(void)
 
 		ts_delta = ns_to_timespec(nsec);
 		suspendtime_found = true;
+		/* CONFIG_SUSPEND_TIME requires persistent clock, so it's
+		   functionality is duplicated here for systems using
+		   nonstop clocksource */
+		pr_info("Suspended for %lu.%03lu seconds\n",
+			ts_delta.tv_sec, ts_delta.tv_nsec / NSEC_PER_MSEC);
 	} else if (timespec_compare(&ts_new, &timekeeping_suspend_time) > 0) {
 		ts_delta = timespec_sub(ts_new, timekeeping_suspend_time);
 		suspendtime_found = true;
