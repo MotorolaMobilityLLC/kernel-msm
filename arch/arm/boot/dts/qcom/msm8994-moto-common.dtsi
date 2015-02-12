@@ -1187,8 +1187,8 @@
 &pmi8994_charger {
 	status = "okay";
 	qcom,iterm-ma = <100>;
-	qcom,fastchg-current-ma = <2000>;
-	qcom,float-voltage-mv = <4200>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
 	qcom,dc-psy-type = "Mains";
