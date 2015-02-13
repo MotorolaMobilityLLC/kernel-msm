@@ -198,9 +198,18 @@ static LIST_HEAD(slab_caches);
  */
 #define TRACK_ADDRS_COUNT 16
 struct track {
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 	unsigned long addr;	/* Called from address */
+#endif
 #ifdef CONFIG_STACKTRACE
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 	unsigned long addrs[TRACK_ADDRS_COUNT];	/* Called from address */
+#endif
+#endif
+#ifdef CONFIG_SLUB_DEBUG_USER_ON
+#define MAX_USER_LEN 10
+	unsigned long addr_final[MAX_USER_LEN];
+	unsigned int final_pos;
 #endif
 	int cpu;		/* Was running on cpu */
 	int pid;		/* Pid context */
@@ -461,10 +470,14 @@ static void get_map(struct kmem_cache *s, struct page *page, unsigned long *map)
 /*
  * Debug settings:
  */
+#ifdef CONFIG_SLUB_DEBUG_USER_ON
+static int slub_debug = SLAB_STORE_USER;
+#else
 #ifdef CONFIG_SLUB_DEBUG_ON
 static int slub_debug = DEBUG_DEFAULT_FLAGS;
 #else
 static int slub_debug;
+#endif
 #endif
 
 static char *slub_debug_slabs;
@@ -498,7 +511,9 @@ static void set_track(struct kmem_cache *s, void *object,
 	struct track *p = get_track(s, object, alloc);
 
 	if (addr) {
+
 #ifdef CONFIG_STACKTRACE
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 		struct stack_trace trace;
 		int i;
 
@@ -516,7 +531,13 @@ static void set_track(struct kmem_cache *s, void *object,
 		for (i = trace.nr_entries; i < TRACK_ADDRS_COUNT; i++)
 			p->addrs[i] = 0;
 #endif
+#endif
+#ifdef CONFIG_SLUB_DEBUG_USER_ON
+		p->final_pos = (p->final_pos + 1) % MAX_USER_LEN;
+		p->addr_final[p->final_pos] = addr;
+#else
 		p->addr = addr;
+#endif
 		p->cpu = smp_processor_id();
 		p->pid = current->pid;
 		p->when = jiffies;
@@ -535,12 +556,40 @@ static void init_tracking(struct kmem_cache *s, void *object)
 
 static void print_track(const char *s, struct track *t)
 {
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 	if (!t->addr)
+#else
+	int i;
+	int count;
+	if (!t->addr_final[t->final_pos])
+#endif
 		return;
 
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 	printk(KERN_ERR "INFO: %s in %pS age=%lu cpu=%u pid=%d\n",
 		s, (void *)t->addr, jiffies - t->when, t->cpu, t->pid);
+#else
+	pr_err("INFO: %s in %pS age=%lu cpu=%u pid=%d\n",
+		s, (void *)t->addr_final[t->final_pos],
+		jiffies - t->when,
+		t->cpu,
+		t->pid);
+
+	pr_err(KERN_ERR"INFO: previous 10 users\n");
+
+	i = t->final_pos;
+	count = 0;
+	while (count < MAX_USER_LEN) {
+		print_symbol("%s\n", (unsigned long)t->addr_final[i]);
+		i = i - 1;
+		if (i < 0)
+			i = i + MAX_USER_LEN;
+		count++;
+	}
+#endif
+
 #ifdef CONFIG_STACKTRACE
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 	{
 		int i;
 		for (i = 0; i < TRACK_ADDRS_COUNT; i++)
@@ -549,6 +598,7 @@ static void print_track(const char *s, struct track *t)
 			else
 				break;
 	}
+#endif
 #endif
 }
 
@@ -4259,8 +4309,11 @@ static int add_location(struct loc_track *t, struct kmem_cache *s,
 			break;
 
 		caddr = t->loc[pos].addr;
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 		if (track->addr == caddr) {
-
+#else
+		if (track->addr_final[track->final_pos] == caddr) {
+#endif
 			l = &t->loc[pos];
 			l->count++;
 			if (track->when) {
@@ -4282,7 +4335,11 @@ static int add_location(struct loc_track *t, struct kmem_cache *s,
 			return 1;
 		}
 
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 		if (track->addr < caddr)
+#else
+		if (track->addr_final[track->final_pos] < caddr)
+#endif
 			end = pos;
 		else
 			start = pos;
@@ -4300,7 +4357,12 @@ static int add_location(struct loc_track *t, struct kmem_cache *s,
 			(t->count - pos) * sizeof(struct location));
 	t->count++;
 	l->count = 1;
+
+#ifndef CONFIG_SLUB_DEBUG_USER_ON
 	l->addr = track->addr;
+#else
+	l->addr = track->addr_final[track->final_pos];
+#endif
 	l->sum_time = age;
 	l->min_time = age;
 	l->max_time = age;
