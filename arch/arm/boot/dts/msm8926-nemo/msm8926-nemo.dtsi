@@ -1,0 +1,138 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../qcom/apq8026-v2.dtsi"
+#include "msm8926-nemo-memory.dtsi"
+#include "../qcom/msm8226-w-qseecom.dtsi"
+#include "../qcom/msm8226-w-sharedmem.dtsi"
+#include "../qcom/msm8x26w-gpu.dtsi"
+#include "msm8926-nemo-panel.dtsi"
+#include "msm8926-nemo-sensor.dtsi"
+#include "msm8926-nemo-usb.dtsi"
+#include "msm8926-nemo-misc.dtsi"
+#include "msm8926-nemo-pm.dtsi"
+#include "msm8926-nemo-input.dtsi"
+#include "msm8926-nemo-bt.dtsi"
+#include "msm8926-nemo-sound.dtsi"
+
+&soc {
+	i2c@f9925000 { /* BLSP1 QUP3 */
+		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		reg = <0Xf9925000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 97 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+		qcom,sda-gpio = <&msmgpio 10 0>;
+	};
+
+	serial@f991f000 {
+		status = "ok";
+	};
+
+	i2c@f9923000 { /* BLSP-1 QUP-1 */
+		cell-index = <1>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9923000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 95 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,sda-gpio = <&msmgpio 2 0>;
+		qcom,scl-gpio = <&msmgpio 3 0>;
+	};
+
+	memory_hole: qcom,msm-mem-hole {
+		compatible = "qcom,msm-mem-hole";
+		qcom,memblock-remove = <0x0fe00000 0x00100000
+					0x0fa00000 0x00100000
+					0x03100000 0x01600000
+					0x08600000 0x04c00000>;
+	};
+
+	qcom,vidc@fdc00000 {
+		status = "disabled";
+	};
+	qcom,vidc {
+		status = "disabled";
+	};
+	qcom,wfd {
+		status = "disabled";
+	};
+	qcom,wcnss-wlan {
+		status = "disabled";
+	};
+	qcom,wcnss-wlan@fb000000 {
+		status = "disabled";
+	};
+	qcom,venus@fdce0000 {
+		status = "disabled";
+	};
+	qcom,pronto@fb21b000 {
+		status = "disabled";
+	};
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8226_l17>;
+	qcom,vdd-always-on;
+	qcom,vdd-lpm-sup;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <800 500000>;
+
+	vdd-io-supply = <&pm8226_l6>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+
+	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
+	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+	qcom,nonremovable;
+
+	status = "ok";
+};
+
+&sdhc_3 {
+	/delete-property/ vdd-supply;
+	vdd-io-supply = <&pm8226_l6>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000>;
+	qcom,sup-voltages = <1800 2950>;
+
+	qcom,bus-width = <4>;
+	qcom,nonremovable;
+	status = "ok";
+};
+
+&qsecom_mem {
+	reg = <0 0x1000>;
+};
+
+&cci {
+	status = "disabled";
+};

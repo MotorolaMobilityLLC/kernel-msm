@@ -24,6 +24,13 @@ config MACH_BASS
 	help
 	  Support for the LGE APQ8026 BASS.
 
+config MACH_NEMO
+	depends on ARCH_MSM8226
+	select MACH_LGE
+	bool "MSM8926 NEMO"
+	help
+	  Support for the LGE MSM8926 NEMO.
+
 config LGE_BLUETOOTH
 	bool "Support LGE Bluetooth"
 	depends on BT
