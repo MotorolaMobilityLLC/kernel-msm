@@ -2231,7 +2231,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	MDSS_XLOG(ctrl->ndx, req->flags, req->cmds_cnt, from_mdp, current->pid);
 
-
 	pr_debug("%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
 
