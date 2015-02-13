@@ -23,22 +23,18 @@
 #include	<linux/i2c.h>
 #include	<linux/input.h>
 #include	<linux/uaccess.h>
-#include <linux/sysfs.h>
-#include <linux/syscalls.h>
+#include	<linux/sysfs.h>
+#include	<linux/syscalls.h>
 #include	<linux/workqueue.h>
 #include	<linux/regulator/consumer.h>
 #include	<linux/irq.h>
 #include	<linux/gpio.h>
 #include	<linux/interrupt.h>
 #include	<linux/slab.h>
-#include <linux/wakelock.h>
-#include <linux/sensors.h>
+#include	<linux/wakelock.h>
+#include	<linux/sensors.h>
 
 #include	<linux/input/lis3dsh.h>
-
-#ifdef CONFIG_PM_8226_CHARGER
-extern int pm8226_is_ac_usb_in(void);
-#endif
 
 //Debug Masks +++
 #define NO_DEBUG       0
@@ -329,7 +325,7 @@ MODULE_PARM_DESC(int2_gpio, "integer: gpio number being assined to interrupt PIN
 static struct sensors_classdev lis3dsh_cdev = {
 	.name = "lis3dsh",
 	.vendor = "STMicroelectronics",
-	.version = 1,
+	.version = 2,
 	.enabled = 0,
 	.sensors_enable = NULL,
 };
@@ -340,7 +336,6 @@ struct lis3dsh_acc_data {
 	struct lis3dsh_acc_platform_data *pdata;
 
 	struct mutex lock;
-	struct delayed_work input_work;
 
 	struct input_dev *input_dev;
 
@@ -370,7 +365,7 @@ static struct lis3dsh_acc_data *sensor_data;
 
 static int chip_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
-static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc, int *xyz);
+static void lis3dsh_acc_report_tilt(struct lis3dsh_acc_data *acc, int val);
 static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc, int *xyz);
 static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc, u8 settings);
 
@@ -413,79 +408,37 @@ static void lis3dsh_acc_set_init_register_values(struct lis3dsh_acc_data *acc)
 
 static void lis3dsh_acc_set_init_statepr1_inst(struct lis3dsh_acc_data *acc, int sel)
 {
-	#if (LOAD_SM1_PROGRAM == 0)
-	sel = 0;
-	#endif
-
-	switch (sel) {
-	case LIS3DSH_TILT_TO_WAKE:				//detect tilt
-		acc->resume_stmach_program1[0] = 0x09;
-		acc->resume_stmach_program1[1] = 0x71;
-		acc->resume_stmach_program1[2] = 0x33;
-		acc->resume_stmach_program1[3] = 0x08;
-		acc->resume_stmach_program1[4] = 0x62;
-		acc->resume_stmach_program1[5] = 0x88;
-		acc->resume_stmach_program1[6] = 0x44;
-		acc->resume_stmach_program1[7] = 0x11;
-		acc->resume_stmach_program1[8] = 0x00;
-		acc->resume_stmach_program1[9] = 0x00;
-		acc->resume_stmach_program1[10] = 0x00;
-		acc->resume_stmach_program1[11] = 0x00;
-		acc->resume_stmach_program1[12] = 0x00;
-		acc->resume_stmach_program1[13] = 0x00;
-		acc->resume_stmach_program1[14] = 0x00;
-		acc->resume_stmach_program1[15] = 0x00;
-		break;
-	default:
-		acc->resume_stmach_program1[0] = 0x00;
-		acc->resume_stmach_program1[1] = 0x00;
-		acc->resume_stmach_program1[2] = 0x00;
-		acc->resume_stmach_program1[3] = 0x00;
-		acc->resume_stmach_program1[4] = 0x00;
-		acc->resume_stmach_program1[5] = 0x00;
-		acc->resume_stmach_program1[6] = 0x00;
-		acc->resume_stmach_program1[7] = 0x00;
-		acc->resume_stmach_program1[8] = 0x00;
-		acc->resume_stmach_program1[9] = 0x00;
-		acc->resume_stmach_program1[10] = 0x00;
-		acc->resume_stmach_program1[11] = 0x00;
-		acc->resume_stmach_program1[12] = 0x00;
-		acc->resume_stmach_program1[13] = 0x00;
-		acc->resume_stmach_program1[14] = 0x00;
-		acc->resume_stmach_program1[15] = 0x00;
-		break;
-	}
+	/* Place here state machine 1 program */
+	/* Tilt to wake function Part 1(When watch face is flat)*/
+	acc->resume_stmach_program1[0] = 0x09;
+	acc->resume_stmach_program1[1] = 0x71;
+	acc->resume_stmach_program1[2] = 0x88;
+	acc->resume_stmach_program1[3] = 0xFF;
+	acc->resume_stmach_program1[4] = 0x11;
+	acc->resume_stmach_program1[5] = 0x00;
+	acc->resume_stmach_program1[6] = 0x00;
+	acc->resume_stmach_program1[7] = 0x00;
+	acc->resume_stmach_program1[8] = 0x00;
+	acc->resume_stmach_program1[9] = 0x00;
+	acc->resume_stmach_program1[10] = 0x00;
+	acc->resume_stmach_program1[11] = 0x00;
+	acc->resume_stmach_program1[12] = 0x00;
+	acc->resume_stmach_program1[13] = 0x00;
+	acc->resume_stmach_program1[14] = 0x00;
+	acc->resume_stmach_program1[15] = 0x00;
 }
 
 static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 {
-#if (LOAD_SM2_PROGRAM == 1)
 	/* Place here state machine 2 program */
-	/* Knock Knock Function */
-	acc->resume_stmach_program2[0] = 0x08;
-	acc->resume_stmach_program2[1] = 0x03;
-	acc->resume_stmach_program2[2] = 0x61;
-	acc->resume_stmach_program2[3] = 0x61;
-	acc->resume_stmach_program2[4] = 0x05;
-	acc->resume_stmach_program2[5] = 0x47;
-	acc->resume_stmach_program2[6] = 0x03;
-	acc->resume_stmach_program2[7] = 0x52;
-	acc->resume_stmach_program2[8] = 0x15;
-	acc->resume_stmach_program2[9] = 0x47;
-	acc->resume_stmach_program2[10] = 0x03;
-	acc->resume_stmach_program2[11] = 0x52;
-	acc->resume_stmach_program2[12] = 0x11;
-	acc->resume_stmach_program2[13] = 0x00;
-	acc->resume_stmach_program2[14] = 0x00;
-	acc->resume_stmach_program2[15] = 0x00;
-#else
-	acc->resume_stmach_program2[0] = 0x00;
-	acc->resume_stmach_program2[1] = 0x00;
-	acc->resume_stmach_program2[2] = 0x00;
-	acc->resume_stmach_program2[3] = 0x00;
-	acc->resume_stmach_program2[4] = 0x00;
-	acc->resume_stmach_program2[5] = 0x00;
-	acc->resume_stmach_program2[6] = 0x00;
+	/* Tilt to wake function Part 2(When watch face is towards user)*/
+	acc->resume_stmach_program2[0] = 0xFF;
+	acc->resume_stmach_program2[1] = 0x33;
+	acc->resume_stmach_program2[2] = 0x08;
+	acc->resume_stmach_program2[3] = 0x62;
+	acc->resume_stmach_program2[4] = 0x88;
+	acc->resume_stmach_program2[5] = 0x44;
+	acc->resume_stmach_program2[6] = 0x11;
 	acc->resume_stmach_program2[7] = 0x00;
 	acc->resume_stmach_program2[8] = 0x00;
 	acc->resume_stmach_program2[9] = 0x00;
@@ -495,91 +448,42 @@ static void lis3dsh_acc_set_init_statepr2_inst(struct lis3dsh_acc_data *acc)
 	acc->resume_stmach_program2[13] = 0x00;
 	acc->resume_stmach_program2[14] = 0x00;
 	acc->resume_stmach_program2[15] = 0x00;
-#endif /* LOAD_SM2_PROGRAM */
 }
 
 static void lis3dsh_acc_set_init_statepr1_param(struct lis3dsh_acc_data *acc, int sel)
 {
-#if (LOAD_SP1_PARAMETERS == 1)
-	switch (sel) {
-	case LIS3DSH_TILT_TO_WAKE:				//detect tilt
-		/* Place here state machine 1 parameters */
-		/* Tilt to wake function */
-		acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x32;
-		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x78;
-		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
-		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0xEA;		//tilt angle
-		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0xFF;		//flat (return) angle
-		/* DES1 not available*/
-		acc->resume_state[RES_LIS3DSH_SA_1] = 0x80;
-		acc->resume_state[RES_LIS3DSH_MA_1] = 0x80;
-		acc->resume_state[RES_LIS3DSH_SETT_1] = 0x20;
-		break;
-	default:
-		acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x00;
-		acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
-		acc->resume_state[RES_LIS3DSH_THRS2_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x00;
-		/* DES1 not available*/
-		acc->resume_state[RES_LIS3DSH_SA_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_MA_1] = 0x00;
-		acc->resume_state[RES_LIS3DSH_SETT_1] = 0x00;
-		break;
-	}
-#else
+	/* Place here state machine 1 parameters */
+	/* Tilt to wake function Part 1(When watch face is flat)*/
 	acc->resume_state[RES_LIS3DSH_TIM4_1] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM3_1] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x00;
+	acc->resume_state[RES_LIS3DSH_TIM2_1_L] = 0x32;
 	acc->resume_state[RES_LIS3DSH_TIM2_1_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x00;
+	acc->resume_state[RES_LIS3DSH_TIM1_1_L] = 0x78;
 	acc->resume_state[RES_LIS3DSH_TIM1_1_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_1] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS1_1] = 0x00;
+	acc->resume_state[RES_LIS3DSH_THRS2_1] = 0xEA;		//tilt angle
+	acc->resume_state[RES_LIS3DSH_THRS1_1] = 0xFF;		//flat (return) angle
 	/* DES1 not available*/
-	acc->resume_state[RES_LIS3DSH_SA_1] = 0x00;
-	acc->resume_state[RES_LIS3DSH_MA_1] = 0x00;
-	acc->resume_state[RES_LIS3DSH_SETT_1] = 0x00;
-#endif
+	acc->resume_state[RES_LIS3DSH_SA_1] = 0x80;
+	acc->resume_state[RES_LIS3DSH_MA_1] = 0x80;
+	acc->resume_state[RES_LIS3DSH_SETT_1] = 0x20;
 }
 
 static void lis3dsh_acc_set_init_statepr2_param(struct lis3dsh_acc_data *acc)
 {
-#if (LOAD_SP2_PARAMETERS == 1)
 	/* Place here state machine 2 parameters */
-	/* Knock knock function */
-	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x05;
-	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x14;
-	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x24;
-	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x86;
-	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x01;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x03;
-	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_MA_2] = 0x03;
-	acc->resume_state[RES_LIS3DSH_SETT_2] = 0x21;
-#else
+	/* Tilt to wake function Part 2(When watch face is towards user)*/
 	acc->resume_state[RES_LIS3DSH_TIM4_2] = 0x00;
 	acc->resume_state[RES_LIS3DSH_TIM3_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x00;
+	acc->resume_state[RES_LIS3DSH_TIM2_2_L] = 0x32;
 	acc->resume_state[RES_LIS3DSH_TIM2_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x00;
+	acc->resume_state[RES_LIS3DSH_TIM1_2_L] = 0x78;
 	acc->resume_state[RES_LIS3DSH_TIM1_2_H] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0x00;
+	acc->resume_state[RES_LIS3DSH_THRS2_2] = 0xEA;
+	acc->resume_state[RES_LIS3DSH_THRS1_2] = 0xFF;
 	acc->resume_state[RES_LIS3DSH_DES_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_SA_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_MA_2] = 0x00;
-	acc->resume_state[RES_LIS3DSH_SETT_2] = 0x00;
-#endif
+	acc->resume_state[RES_LIS3DSH_SA_2] = 0x80;
+	acc->resume_state[RES_LIS3DSH_MA_2] = 0x80;
+	acc->resume_state[RES_LIS3DSH_SETT_2] = 0x20;
 }
 
 static int lis3dsh_acc_i2c_read(struct lis3dsh_acc_data *acc,
@@ -905,11 +809,9 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 	struct lis3dsh_acc_data *acc;
 
 	acc = container_of(work, struct lis3dsh_acc_data, irq1_work);
-	/* TODO  add interrupt service procedure.
-		 ie:lis3dsh_acc_get_int_source(acc); */
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: IRQ1 triggered\n", __func__);
-	/*  */
-    	err = lis3dsh_acc_get_acceleration_data(acc, xyz);
+	
+    err = lis3dsh_acc_get_acceleration_data(acc, xyz);
 	rbuf[0] = LIS3DSH_INTERR_STAT;
 	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 	status = rbuf[0];
@@ -918,15 +820,9 @@ static void lis3dsh_acc_irq1_work_func(struct work_struct *work)
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 		if((rbuf[0] == 0x80) && (xyz[2] < 0)) {       //only trigger wake when watch face is facing upwards
-			printk("***********************Tilt to wake event\n");
-			wake_lock_timeout(&acc->tilt_wakelock, (HZ/2));		//keep system awake to ensure tilt event receiver can obtain sensor event
-			lis3dsh_acc_report_values(acc, xyz);
+			sensor_debug(DEBUG_INFO, "[lis3dsh] %s: tilt down\n", __func__);
+			//lis3dsh_acc_report_tilt(acc, 0);
 		}
-	}
-	if(status & LIS3DSH_STAT_INTSM2_BIT) {
-		rbuf[0] = LIS3DSH_OUTS_2;
-		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
 	}
 	enable_irq(acc->irq1);
 	sensor_debug(DEBUG_VERBOSE, "[lis3dsh] %s: IRQ1 re-enabled\n", __func__);
@@ -936,29 +832,24 @@ static void lis3dsh_acc_irq2_work_func(struct work_struct *work)
 {
 	int err = -1;
 	u8 rbuf[2], status;
+	int xyz[3] = { 0 };
 	struct lis3dsh_acc_data *acc;
-	int usb_in = 1;
-	#ifdef CONFIG_PM_8226_CHARGER
-	usb_in = !pm8226_is_ac_usb_in();
-	#endif
 
 	acc = container_of(work, struct lis3dsh_acc_data, irq2_work);
 	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: IRQ2 triggered\n", __func__);
 	/*  */
+    err = lis3dsh_acc_get_acceleration_data(acc, xyz);
 	rbuf[0] = LIS3DSH_INTERR_STAT;
 	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 	status = rbuf[0];
-	if(status & LIS3DSH_STAT_INTSM1_BIT) {
-		rbuf[0] = LIS3DSH_OUTS_1;
-		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-	}
 	if(status & LIS3DSH_STAT_INTSM2_BIT) {
 		rbuf[0] = LIS3DSH_OUTS_2;
 		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
 		sensor_debug(DEBUG_INFO, "[lis3dsh] %s: interrupt (0x%02x)\n", __func__, rbuf[0]);
-		if((rbuf[0] == 0x01) || (rbuf[0] == 0x02) & usb_in) {		//do not report knock event if device is inserted into pogo
-			printk("***********************knock-knock event\n");
+		if((rbuf[0] == 0x80) && (xyz[2] < 0)) {       //only trigger wake when watch face is facing upwards
+			wake_lock_timeout(&acc->tilt_wakelock, (HZ/2));		//keep system awake to ensure tilt event receiver can obtain sensor event
+			sensor_debug(DEBUG_INFO, "[lis3dsh] %s: tilt up\n", __func__);
+			lis3dsh_acc_report_tilt(acc, 1);
 		}
 	}
 	enable_irq(acc->irq2);
@@ -1156,14 +1047,11 @@ static int lis3dsh_acc_get_acceleration_data(struct lis3dsh_acc_data *acc,
 	return err;
 }
 
-static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
-					int *xyz)
+static void lis3dsh_acc_report_tilt(struct lis3dsh_acc_data *acc, int val)
 {
-	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
-	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
-	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
+	input_event(acc->input_dev, EV_MSC, MSC_GESTURE, val);
 	input_sync(acc->input_dev);
-	sensor_debug(DEBUG_INFO, "[lis3dsh] %s : X(%d) Y(%d) Z(%d)\n", __func__, xyz[0], xyz[1], xyz[2]);
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s : (%d)\n", __func__, val);
 }
 
 static int lis3dsh_acc_enable(struct sensors_classdev *sensors_cdev, unsigned int enable)
@@ -1177,12 +1065,10 @@ static int lis3dsh_acc_enable(struct sensors_classdev *sensors_cdev, unsigned in
 			atomic_set(&sensor_data->enabled, 0);
 			return err;
 		}
-		//schedule_delayed_work(&sensor_data->input_work, msecs_to_jiffies(sensor_data->pdata->poll_interval));
-		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_DIS);
+		lis3dsh_acc_state_progrs_enable_control(sensor_data, LIS3DSH_SM1_EN_SM2_EN);
 		sensor_data->cdev.enabled = 1;
 	}
 	else if (!enable && atomic_cmpxchg(&sensor_data->enabled, 1, 0)) {
-		//cancel_delayed_work_sync(&sensor_data->input_work);
 		lis3dsh_acc_device_power_off(sensor_data);
 		sensor_data->cdev.enabled = 0;
 	}
@@ -1272,248 +1158,11 @@ static DEVICE_ATTR(dump, S_IRUGO, attr_reg_dump, NULL);
 static ssize_t attr_get_chip_status(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	printk("[lis3dsh] read_accel_status = %d",chip_status);
+	sensor_debug(DEBUG_INFO, "[lis3dsh] %s: read_accel_status = %d", __func__, chip_status);
 	return sprintf(buf, "%d\n", chip_status);
 }
 static DEVICE_ATTR(chip_status, S_IRUGO, attr_get_chip_status, NULL);
 //ASUS_BSP --- Maggie_Lee "Support ATD BMMI"
-
-static ssize_t attr_set_poll_en(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	unsigned long val;
-
-	if (strict_strtoul(buf, 10, &val))
-		return -EINVAL;
-
-	if(val)
-		schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
-	else
-		cancel_delayed_work_sync(&acc->input_work);
-
-	return size;
-}
-static DEVICE_ATTR(poll_en, S_IWUSR|S_IRUGO, NULL, attr_set_poll_en);
-#endif
-
-#ifdef ASUS_FACTORY_BUILD
-static int factory_test_get_output(struct device *dev, short *rOUT)
-{
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	u16 OUT[3];
-	u8 rbuf[3];
-	int err;
-	int i;
-
-	//Read output registers to clear ZYXDA
-	rbuf[0] = LIS3DSH_OUTX_L;
-	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-	rbuf[0] = LIS3DSH_OUTX_H;
-	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-	rbuf[0] = LIS3DSH_OUTY_L;
-	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-	rbuf[0] = LIS3DSH_OUTY_H;
-	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-	rbuf[0] = LIS3DSH_OUTZ_L;
-	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-	rbuf[0] = LIS3DSH_OUTZ_H;
-	err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-
-	//Check ZYXDA
-	for(i=0 ; i<5 ; i++) {
-		rbuf[0] = LIS3DSH_STATUS_REG;
-		err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-		printk("[lis3dsh] %d: LIS3DSH_STATUS_REG=%d XYZDA=%d\n", i, rbuf[0], (rbuf[0]&0x08)>0?1:0);
-		if ((rbuf[0]&0x08) > 0) {
-			rbuf[0] = LIS3DSH_OUTX_L;
-			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-			if (err < 0)
-				goto err_resume_state;
-			OUT[0] = rbuf[0];
-
-			rbuf[0] = LIS3DSH_OUTX_H;
-			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-			if (err < 0)
-				goto err_resume_state;
-			OUT[0] = (rbuf[0] << 8 | OUT[0]);
-
-			rbuf[0] = LIS3DSH_OUTY_L;
-			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-			if (err < 0)
-				goto err_resume_state;
-			OUT[1] = rbuf[0];
-			
-			rbuf[0] = LIS3DSH_OUTY_H;
-			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-			if (err < 0)
-				goto err_resume_state;
-			OUT[1] = (rbuf[0] << 8 | OUT[1]);
-
-			rbuf[0] = LIS3DSH_OUTZ_L;
-			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-			if (err < 0)
-				goto err_resume_state;
-			OUT[2] = rbuf[0];
-
-			rbuf[0] = LIS3DSH_OUTZ_H;
-			err = lis3dsh_acc_i2c_read(acc, rbuf, 1);
-			if (err < 0)
-				goto err_resume_state;
-			OUT[2] = (rbuf[0] << 8 | OUT[2]);
-
-			//convert the output to mg (2's complement then multiply by 0.06)
-			printk("[lis3dsh] OUT[X]=%d OUT[Y]=%d OUT[Z]=%d\n", OUT[0], OUT[1], OUT[2]);
-			for(i=0;i<3;i++) {
-				rOUT[i] = (short)OUT[i];
-				rOUT[i] = rOUT[i]*6/100;
-			}
-			return 0;
-			
-		}
-		if (i==5)
-			goto err_no_zyxda;
-
-		msleep(10);
-	}
-
-	err_resume_state:
-	dev_err(&acc->client->dev, "i2c read err 0x%02x,0x%02x: %d\n", rbuf[0], rbuf[1], err);
-	return err;
-
-	err_no_zyxda:
-	dev_err(&acc->client->dev, "ZYXDA can not be obtained\n");
-	return -1;	
-}
-
-static ssize_t attr_factory_test(struct device *dev,	struct device_attribute *attr, char *buf)
-{
-	struct lis3dsh_acc_data *acc = dev_get_drvdata(dev);
-	short OUT_NOST[3], OUT_ST[3], OUT_ABS[3];
-	int err, i, j;
-	u8 rbuf[2], temp[4];
-
-	printk("[lis3dsh] factory_test +++ \n");
-
-	//Store current register settings then disable irq
-	for(i=32, j=0;i < 37;i++, j++) {
-		if(i==33)
-			i=35;
-		rbuf[0] = (u8)i;
-		lis3dsh_acc_i2c_read(acc, rbuf, 1);
-		temp[j] = rbuf[0];
-	}
-	if(acc->pdata->gpio_int1)
-		disable_irq_nosync(acc->irq1);
-	if(acc->pdata->gpio_int2)
-		disable_irq_nosync(acc->irq2);
-
-	//Initialize sensor: turn on sensors, enable X/Y/Z, set BDU=1, ODR=100HZ, Cut-off freq=50Hz, FS=2g
-	buf[0] = LIS3DSH_CTRL_REG4;
-	buf[1] = 0x6F;
-	err = lis3dsh_acc_i2c_write(acc, buf, 1);
-	if (err < 0)
-		goto err_resume_state;
-
-	buf[0] = LIS3DSH_CTRL_REG5;
-	buf[1] = 0xC0;
-	err = lis3dsh_acc_i2c_write(acc, buf, 1);
-	if (err < 0)
-		goto err_resume_state;
-
-	buf[0] = LIS3DSH_CTRL_REG3;
-	buf[1] = 0x00;
-	err = lis3dsh_acc_i2c_write(acc, buf, 1);
-	if (err < 0)
-		goto err_resume_state;
-
-	buf[0] = LIS3DSH_CTRL_REG6;
-	buf[1] = 0x00;
-	err = lis3dsh_acc_i2c_write(acc, buf, 1);
-	if (err < 0)
-		goto err_resume_state;
-
-	//wait 80 ms for stable output
-	msleep(80);
-	err=factory_test_get_output(dev, OUT_NOST);
-	if (err < 0) 
-		goto err_out_of_range;
-
-	printk("[lis3dsh] OUT_NOST[X]=%d OUT_NOST[Y]=%d OUT_NOST[Z]=%d\n", OUT_NOST[0], OUT_NOST[1], OUT_NOST[2]);
-
-	//Enable positive sign self test and wait 80ms for stable output
-	buf[0] = LIS3DSH_CTRL_REG5;
-	buf[1] = 0xC2;
-	err = lis3dsh_acc_i2c_write(acc, buf, 1);
-	if (err < 0)
-		goto err_resume_state;
-
-	msleep(80);
-	err=factory_test_get_output(dev, OUT_ST);
-	if (err < 0)
-		goto err_out_of_range;
-
-	printk("[lis3dsh] OUT_ST[X]=%d OUT_ST[Y]=%d OUT_ST[Z]=%d\n", OUT_ST[0], OUT_ST[1], OUT_ST[2]);
-
-	//the absolute different between obtained data (OUT_NOST) and self test data (OUT_ST) should be between 70 and 1400
-	OUT_ABS[0] = abs(OUT_ST[0] - OUT_NOST[0]);
-	OUT_ABS[1] = abs(OUT_ST[1] - OUT_NOST[1]);
-	OUT_ABS[2] = abs(OUT_ST[2] - OUT_NOST[2]);
-	printk("[lis3dsh] OUT_ABS[X]=%d OUT_ABS[Y]=%d OUT_ABS[Z]=%d\n", OUT_ABS[0], OUT_ABS[1], OUT_ABS[2]);
-
-	for( i=0 ; i < 3 ; i++) {
-		if (70 > OUT_ABS[i] || OUT_ABS[i] > 1400)
-			goto err_out_of_range;
-	}
-
-	printk("[lis3dsh] PASS\n");
-	//Restore reg value prior to self test and enable irq
-	for(i=32, j=0;i < 37;i++, j++) {
-		if(i==33)
-			i=35;
-		rbuf[0] = (u8)i;
-		rbuf[1] = temp[j];
-		lis3dsh_acc_i2c_write(acc, rbuf, 1);
-	}
-	if(acc->pdata->gpio_int1 >= 0)
-		enable_irq(acc->irq1);
-	if(acc->pdata->gpio_int2 >= 0)
-		enable_irq(acc->irq2);
-
-	return sprintf(buf, "PASS\n");
-
-	err_resume_state:
-	dev_err(&acc->client->dev, "i2c error 0x%02x,0x%02x: %d\n", buf[0], buf[1], err);
-	printk("[lis3dsh] FAIL\n");
-	for(i=32, j=0;i < 37;i++, j++) {
-		if(i==33)
-			i=35;
-		rbuf[0] = (u8)i;
-		rbuf[1] = temp[j];
-		lis3dsh_acc_i2c_write(acc, rbuf, 1);
-	}
-	if(acc->pdata->gpio_int1 >= 0)
-		enable_irq(acc->irq1);
-	if(acc->pdata->gpio_int2 >= 0)
-		enable_irq(acc->irq2);
-	return sprintf(buf, "FAIL\n");
-
-	err_out_of_range:
-	dev_err(&acc->client->dev, "out of range error %d %d %d\n", OUT_ABS[0], OUT_ABS[1], OUT_ABS[2]);
-	printk("[lis3dsh] FAIL\n");
-	for(i=32, j=0;i < 37;i++, j++) {
-		if(i==33)
-			i=35;
-		rbuf[0] = (u8)i;
-		rbuf[1] = temp[j];
-		lis3dsh_acc_i2c_write(acc, rbuf, 1);
-	}
-	if(acc->pdata->gpio_int1 >= 0)
-		enable_irq(acc->irq1);
-	if(acc->pdata->gpio_int2 >= 0)
-		enable_irq(acc->irq2);
-	return sprintf(buf, "FAIL\n");
-}
-static DEVICE_ATTR(factory_test, S_IRUGO, attr_factory_test, NULL);
 #endif
 
 static struct attribute *lis3dsh_attributes[] = {
@@ -1522,10 +1171,6 @@ static struct attribute *lis3dsh_attributes[] = {
 	&dev_attr_dump.attr,
 #ifndef ASUS_USER_BUILD
 	&dev_attr_chip_status.attr,
-	&dev_attr_poll_en.attr,
-#endif
-#ifdef ASUS_FACTORY_BUILD
-	&dev_attr_factory_test.attr,
 #endif
 	NULL
 };
@@ -1538,7 +1183,6 @@ static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc,
 {
 	u8 val1, val2;
 	int err = -1;
-	//settings = settings & 0x03;
 
 	sensor_debug(DEBUG_INFO, "[Sensors] %s : set machine state=%d\n", __func__, settings);
 
@@ -1583,27 +1227,6 @@ static int lis3dsh_acc_state_progrs_enable_control(struct lis3dsh_acc_data *acc,
 	return err;
 }
 
-static void lis3dsh_acc_input_work_func(struct work_struct *work)
-{
-	struct lis3dsh_acc_data *acc;
-
-	int xyz[3] = { 0 };
-	int err;
-
-	acc = container_of((struct delayed_work *)work,
-			struct lis3dsh_acc_data, input_work);
-
-	mutex_lock(&acc->lock);
-	err = lis3dsh_acc_get_acceleration_data(acc, xyz);
-	if (err < 0)
-		dev_err(&acc->client->dev, "get_acceleration_data failed\n");
-	else
-		lis3dsh_acc_report_values(acc, xyz);
-
-	schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->pdata->poll_interval));
-	mutex_unlock(&acc->lock);
-}
-
 static int lis3dsh_acc_validate_pdata(struct lis3dsh_acc_data *acc)
 {
 	acc->pdata->poll_interval = max(acc->pdata->poll_interval,
@@ -1639,9 +1262,7 @@ static int lis3dsh_acc_validate_pdata(struct lis3dsh_acc_data *acc)
 static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 {
 	int ret = 0;
-//	struct input_dev *lis3dsh_dev = NULL;
 
-	INIT_DELAYED_WORK(&acc->input_work, lis3dsh_acc_input_work_func);
 	acc->input_dev = input_allocate_device();
 	if (!acc->input_dev) {
 		printk("[lis3dsh]: Failed to allocate input_data device\n");
@@ -1651,12 +1272,7 @@ static int lis3dsh_acc_input_init(struct lis3dsh_acc_data *acc)
 	acc->input_dev->name = LIS3DSH_ACC_DEV_NAME;
 	acc->input_dev->id.bustype = BUS_HOST;
 	acc->input_dev->dev.parent = &sensor_data->client->dev;
-	input_set_capability(acc->input_dev, EV_ABS, ABS_MISC);
-	set_bit(EV_ABS, acc->input_dev->evbit);
-
-	input_set_abs_params(acc->input_dev, ABS_X, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(acc->input_dev, ABS_Y, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(acc->input_dev, ABS_Z, -G_MAX, G_MAX, 0, 0);
+	input_set_capability(acc->input_dev, EV_MSC, MSC_GESTURE);
 	input_set_drvdata(acc->input_dev, sensor_data);
 	ret = input_register_device(acc->input_dev);
 	if (ret < 0) {
@@ -1673,50 +1289,6 @@ static void lis3dsh_acc_input_cleanup(struct lis3dsh_acc_data *acc)
 	input_unregister_device(acc->input_dev);
 	input_free_device(acc->input_dev);
 }
-
-#ifdef CONFIG_I2C_STRESS_TEST
-#include <linux/i2c_testcase.h>
-#define I2C_TEST_ST_SENSOR_FAIL (-1)
-
-static int TestLIS3DSHSensorI2C (struct i2c_client *apClient)
-{
-	u8 buf[17];
-	int err = 0;
-
-	i2c_log_in_test_case("%s ++\n", __func__);
-
-	err = lis3dsh_acc_enable(&sensor_data->cdev, 1);
-	if (err < 0) {
-		i2c_log_in_test_case("Fail to turn on sensor\n");
-		goto error;
-	}
-
-	buf[0] = LIS3DSH_WHO_AM_I;
-	err = lis3dsh_acc_i2c_read(sensor_data, buf, 1);
-	if (err < 0) {
-		i2c_log_in_test_case("Fail to read sensor ID\n");
-		goto error;
-	}
-
-	lis3dsh_acc_enable(&sensor_data->cdev, 0);
-	if (err < 0) {
-		i2c_log_in_test_case("Fail to turn off sensor\n");
-		goto error;
-	}
-	
-	i2c_log_in_test_case("%s --\n", __func__);
-
-	return I2C_TEST_PASS;
-
-error:
-	return I2C_TEST_ST_SENSOR_FAIL;
-}
-
-static struct i2c_test_case_info gLIS3DSHTestCaseInfo[] =
-{
-     __I2C_STRESS_TEST_CASE_ATTR(TestLIS3DSHSensorI2C),
-};
-#endif
 
 static int lis3dsh_suspend(struct i2c_client *client, pm_message_t mesg)
 {
@@ -1970,15 +1542,6 @@ static int lis3dsh_acc_probe(struct i2c_client *client, const struct i2c_device_
 	mutex_unlock(&acc->lock);
 	chip_status=1;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
 
-	#ifdef ASUS_FACTORY_BUILD
-	lis3dsh_acc_enable(&sensor_data->cdev, 1);			//default on
-	lis3dsh_acc_state_progrs_enable_control(acc, LIS3DSH_SM1_EN_SM2_DIS);
-	#endif
-
-	#ifdef CONFIG_I2C_STRESS_TEST
-	i2c_add_test_case(client, "STSensorTest", ARRAY_AND_SIZE(gLIS3DSHTestCaseInfo));
-	#endif
-
 	dev_info(&client->dev, "[lis3dsh] %s ---\n", __func__);
 
 	return 0;
@@ -2024,9 +1587,6 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 		gpio_free(acc->pdata->gpio_int2);
 		destroy_workqueue(acc->irq2_work_queue);
 	}
-
-	if (atomic_cmpxchg(&acc->enabled, 1, 0))
-		cancel_delayed_work_sync(&acc->input_work);
 
 	lis3dsh_acc_device_power_off(acc);
 	lis3dsh_acc_input_cleanup(acc);
@@ -2081,4 +1641,3 @@ module_exit(lis3dsh_acc_exit);
 MODULE_DESCRIPTION("lis3dsh accelerometer driver");
 MODULE_AUTHOR("ASUS");
 MODULE_LICENSE("GPL");
-
