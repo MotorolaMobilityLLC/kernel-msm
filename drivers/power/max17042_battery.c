@@ -427,9 +427,10 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = data;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		/* High Threshold for FCC reporting is 104% of design cap */
 		cfd_max =
 			(chip->charge_full_des +
-				((chip->charge_full_des * 3) / 100));
+				((chip->charge_full_des * 4) / 100));
 		ret = regmap_read(map, MAX17042_FullCAP, &data);
 		if (ret < 0)
 			return ret;
