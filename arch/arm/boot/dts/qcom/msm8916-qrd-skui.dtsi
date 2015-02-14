@@ -13,8 +13,6 @@
 #include "msm8916-qrd.dtsi"
 #include "dsi-panel-otm8019a-fwvga-video.dtsi"
 #include "msm8916-camera-sensor-qrd-skui.dtsi"
-#include "dsi-panel-dijingILI9881C-720p-video.dtsi"
-#include "dsi-panel-booyiOTM1287-720p-video.dtsi"
 
 &soc {
 	gpio-leds {
@@ -37,7 +35,7 @@
 		qcom,msm-ext-pa = "primary";
 		qcom,msm-codec-type = "internal";
 		qcom,msm-mbhc-hphl-swh = <1>;
-		qcom,msm-mbhc-gnd-swh = <1>;
+		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
@@ -45,10 +43,10 @@
 			"INT_LDO_H", "MCLK",
 			"MIC BIAS Internal1", "Handset Mic",
 			"MIC BIAS Internal2", "Headset Mic",
-			"MIC BIAS Internal3", "Secondary Mic",
+			"MIC BIAS Internal1", "Secondary Mic",
 			"AMIC1", "MIC BIAS Internal1",
 			"AMIC2", "MIC BIAS Internal2",
-			"AMIC3", "MIC BIAS Internal3";
+			"AMIC3", "MIC BIAS Internal1";
 		pinctrl-names = "cdc_lines_act",
 				"cdc_lines_sus";
 		pinctrl-0 = <&cdc_pdm_lines_act>;
@@ -83,19 +81,6 @@
 				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
 		asoc-codec = <&stub_codec>, <&pm8916_tombak_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
-	};
-
-	//Add hall switch
-	hall_switch {
-		compatible = "hall-switch,och175";
-		pinctrl-names = "hall_active","hall_suspend";
-		pinctrl-0 = <&hall_int_active>;
-		pinctrl-1 = <&hall_int_suspend>;
-		interrupt-parent = <&msm_gpio>;
-		interrupts = <0 121 3>;
-		vio-supply = <&pm8916_l6>;
-		interrupt-names = "hall_irq";
-		hall,irq-gpio = <&msm_gpio 121 0x00>;
 	};
 };
 
@@ -155,71 +140,66 @@
 };
 
 &i2c_0 { /* BLSP1 QUP2 */
-	ltr@23 { /* Ambient light and proximity sensor */
-		compatible = "ltr,ltr559";
-		reg = <0x23>;
+	avago@39 { /* Ambient light and proximity sensor */
+		compatible = "avago,apds9930";
+		reg = <0x39>;
 		pinctrl-names = "default","sleep";
-		pinctrl-0 = <&ltr_default>;
-		pinctrl-1 = <&ltr_sleep>;
+		pinctrl-0 = <&apds99xx_default>;
+		pinctrl-1 = <&apds99xx_sleep>;
 		interrupt-parent = <&msm_gpio>;
-		interrupts = <115 0x2002>;
+		interrupts = <113 0x2002>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		liteon,intr = <115>;
-		ltr,irq-gpio = <&msm_gpio 115 0x2002>;
-		ltr,ps-threshold = <120>;
-		ltr,ps-hysteresis-threshold = <80>;
-		ltr,als-polling-time = <200>;
+		avago,irq-gpio = <&msm_gpio 113 0x2002>;
+		avago,ps-threshold = <600>;
+		avago,ps-hysteresis-threshold = <500>;
+		avago,ps-pulse = <8>;
+		avago,ps-pgain = <0>;
+		avago,als-B = <186>;
+		avago,als-C = <75>;
+		avago,als-D = <129>;
+		avago,ga-value = <768>;
 	};
 
-	bosch@10 { /* accelerometer sensor */
+	bosch@18 { /* Accelerometer sensor */
 		compatible = "bosch,bma2x2";
-		reg = <0x10>;
+		reg = <0x18>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bma2x2_int1_default &bma2x2_int2_default>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <112 0x2002>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
 		bosch,init-interval = <200>;
-		bosch,place = <3>;
+		bosch,place = <2>;
+		bosch,gpio-int1 = <&msm_gpio 112 0x2002>;
+		bosch,gpio-int2 = <&msm_gpio 114 0x2002>;
 	};
-	bosch@12 {/* magnetic sensor */
-		compatible = "bosch,bmm050";
-		reg = <0x12>;
+
+	memsic@30 { /* Magnetic field sensor */
+		compatible = "memsic,mmc3416x";
+		reg = <0x30>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		bosch,init-interval = <200>;
-		bosch,place = <3>;
-		bosch,auto-report;
+		memsic,dir = "obverse-x-axis-forward";
+		memsic,auto-report;
 	};
-	bosch@68 { /* gyroscope sensor */
-		compatible = "bosch,bmg160";
+
+	mpu6050@68 {
+		compatible = "invn,mpu6050";
 		reg = <0x68>;
+		pinctrl-names = "mpu_default","mpu_sleep";
+		pinctrl-0 = <&mpu6050_default>;
+		pinctrl-1 = <&mpu6050_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <115 0x2>;
 		vdd-supply = <&pm8916_l17>;
-		vio-supply = <&pm8916_l6>;
-		bosch,init-interval = <200>;
-		bosch,place = <0>;
+		vlogic-supply = <&pm8916_l16>;
+		vi2c-supply = <&pm8916_l6>;
+		invn,gpio-int = <&msm_gpio 115 0x2>;
+		invn,place = "Portrait Up Back Side";
 	};
 };
-
-&i2c_1 { /* BLSP1 QUP1 */
-		awinic@45 { /* Breath Light-Driven */
-			/*
-			led_Imax				current;         //0=omA, 1=5mA, 2=10mA, 3=15mA,
-			unsigned int			rise_time;      //0=0.13s, 1=0.26s, 2=0.52s, 3=1.04s, 4=2.08s, 5=4.16s, 6=8.32s, 7=16.64s
-			unsigned int			hold_time;     //0=0.13s, 1=0.26s, 2=0.52s, 3=1.04s, 4=2.08s, 5=4.16s,
-			unsigned int			fall_time;       //0=0.13s, 1=0.26s, 2=0.52s, 3=1.04s, 4=2.08s, 5=4.16s, 6=8.32s, 7=16.64s
-			unsigned int			off_time;       //0=0.13s, 1=0.26s, 2=0.52s, 3=1.04s, 4=2.08s, 5=4.16s, 6=8.32s, 7=16.64s
-			unsigned int			delay_time;   //0=0.0s, 1=0.13s, 2=0.26s, 3=0.52s, 4=1.04s, 5=2.08s, 6=4.16s, 7=8.32s, 8=16.64s
-			unsigned int			period_num; //0=unlimited, 1, 2, 3, 4, ......, 15
-			*/
-			compatible = "awinic,aw2013";
-			reg = <0x45>;
-			vdd-supply = <&pm8916_l17>;
-			vcc_i2c-supply = <&pm8916_l6>;
-			awinic,ledr-parameter_array = <3 0 3 0 5 0 0>;
-			awinic,ledg-parameter_array = <3 0 3 0 5 0 0>;
-			awinic,ledb-parameter_array = <3 0 3 0 5 0 0>;
-		};
-};
-
 
 &sdc2_cd_on {
 	/delete-property/ bias-pull-up;
