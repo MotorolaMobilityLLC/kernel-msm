@@ -95,11 +95,7 @@ static void msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 				i2c_byte1 = write_arr[i].reg_addr;
 				i2c_byte2 = value;
 				if (size != (i+1)) {
-#ifdef CONFIG_L8150_CAM_ACTUATOR
-					i2c_byte2 = (value & 0xFF00) >> 8;
-#else
 					i2c_byte2 = value & 0xFF;
-#endif
 					CDBG("byte1:0x%x, byte2:0x%x\n",
 						i2c_byte1, i2c_byte2);
 					i2c_tbl[a_ctrl->i2c_tbl_index].
@@ -111,11 +107,7 @@ static void msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 					a_ctrl->i2c_tbl_index++;
 					i++;
 					i2c_byte1 = write_arr[i].reg_addr;
-#ifdef CONFIG_L8150_CAM_ACTUATOR
-					i2c_byte2 = value & 0xFF;
-#else
 					i2c_byte2 = (value & 0xFF00) >> 8;
-#endif
 				}
 			} else {
 				i2c_byte1 = (value & 0xFF00) >> 8;

@@ -1072,10 +1072,6 @@ struct i2c_msm_clk_div_fld {
 	u8                 ht_div;
 };
 
-
-static int fs_div_l8150 = 0;
-static int ht_div_l8150 = 0;
-
 /*
  * divider values as per HW Designers
  */
@@ -1094,12 +1090,6 @@ static int i2c_msm_set_mstr_clk_ctl(struct i2c_msm_ctrl *ctrl)
 	int i;
 	u32 reg_val = 0;
 	struct i2c_msm_clk_div_fld *itr = i2c_msm_clk_div_map;
-
-        /* For I2C clock dividers*/
-	if(fs_div_l8150 != 0 && ht_div_l8150 != 0){
-		i2c_msm_clk_div_map->fs_div = fs_div_l8150;
-		i2c_msm_clk_div_map->ht_div = ht_div_l8150;
-	}
 
 	/* set noise rejection values for scl and sda */
 	reg_val = I2C_MSM_SCL_NOISE_REJECTION(reg_val, ctrl->noise_rjct_scl);
@@ -3509,31 +3499,6 @@ static int i2c_msm_rsrcs_dt_to_pdata(struct i2c_msm_ctrl *ctrl,
 	return i2c_msm_dt_to_pdata_populate(ctrl, pdev, map);
 }
 
-
-/* For I2C clock dividers*/
-static int i2c_msm_rsrcs_dt(struct i2c_msm_ctrl *ctrl,
-					struct platform_device *pdev)
-{
-	int rc;
-	//struct device_node *node = chip->dev->of_node;
-	struct device_node *node = pdev->dev.of_node;
-	if (!node) {
-		dev_err(ctrl->dev, "device tree info. missing\n");
-		return -EINVAL;
-	}
-	rc = of_property_read_u32(node, "qcom,fs-clk-div",
-						&fs_div_l8150);
-	if (rc < 0)
-		fs_div_l8150 = 0;
-	rc = of_property_read_u32(node, "qcom,high-time-clk-div",
-						&ht_div_l8150);
-	if (rc < 0)
-		ht_div_l8150 = 0;
-
-	return rc;
-}
-
-
 /*
  * i2c_msm_rsrcs_mem_init: reads pdata request region and ioremap it
  * @return zero on success or negative error code
@@ -4070,8 +4035,6 @@ static int i2c_msm_probe(struct platform_device *pdev)
 	ret = i2c_msm_rsrcs_dt_to_pdata(ctrl, pdev);
 	if (ret)
 		return ret;
-
-	i2c_msm_rsrcs_dt(ctrl,pdev);
 
 	ret = i2c_msm_rsrcs_mem_init(pdev, ctrl);
 	if (ret)
