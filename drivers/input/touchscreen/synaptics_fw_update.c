@@ -689,11 +689,13 @@ static int fwu_wait_for_idle(int timeout_ms)
 
 	return -ETIMEDOUT;
 }
-
+extern char g_Id_save[30]; 
+char id_save_high[5]={0};
+char id_save_low[5]={0};
 static enum flash_area fwu_go_nogo(void)
 {
 	int retval = 0;
-	int index = 0;
+//	int index = 0;
 	int deviceFirmwareID;
 	int imageConfigID;
 	int deviceConfigID;
@@ -701,21 +703,12 @@ static enum flash_area fwu_go_nogo(void)
 	unsigned char firmware_id[4];
 	unsigned char config_id[4];
 	unsigned char pkg_id[4];
-	char *strptr;
-	char *imagePR;
+	//char *strptr;
+	char *imagePR = kzalloc(sizeof(MAX_FIRMWARE_ID_LEN), GFP_KERNEL);
 	enum flash_area flash_area = NONE;
 	struct i2c_client *i2c_client = fwu->rmi4_data->i2c_client;
 	struct f01_device_status f01_device_status;
 	struct image_content *img = &fwu->image_content;
-
-	imagePR = kzalloc(sizeof(MAX_FIRMWARE_ID_LEN), GFP_KERNEL);
-	if (!imagePR) {
-		dev_err(&i2c_client->dev,
-			"%s: Failed to alloc mem for image pointer\n",
-			__func__);
-		flash_area = NONE;
-		return flash_area;
-	}
 
 	if (fwu->force_update) {
 		flash_area = UI_FIRMWARE;
@@ -805,6 +798,7 @@ static enum flash_area fwu_go_nogo(void)
 			flash_area = UI_FIRMWARE;
 			goto exit;
 		}
+#if 0//baron modify		
 		strptr = strnstr(fwu->image_name, "PR",
 				sizeof(fwu->image_name));
 		if (!strptr) {
@@ -827,12 +821,30 @@ static enum flash_area fwu_go_nogo(void)
 				"invalid image firmware id...\n");
 			goto exit;
 		}
+#endif
+
+		
 	}
 
 	dev_dbg(&i2c_client->dev,
 			"Device firmware id %d, .img firmware id %d\n",
 			deviceFirmwareID,
 			(unsigned int)imageFirmwareID);
+	//printk("baron----id_save_high=%s,id_save_low=%s\n",id_save_high,id_save_low);
+#if 1
+	if (  (strcmp(id_save_high,"4145")==0 && strcmp(id_save_low,"3033") != 0) ||  (strcmp(id_save_high,"3030")==0 && strcmp(id_save_low,"0005") != 0)) {
+		flash_area = UI_FIRMWARE;
+		goto exit;
+	} else {
+		flash_area = NONE;
+		printk("zhouhehe--baron-NONE--bushengji-4\n");
+		dev_info(&i2c_client->dev,
+			"%s: Img fw is older than device fw. Skip fw update.\n",
+			__func__);
+	//	printk("zhouhehe---gotoE-13\n");
+		goto exit;
+	}
+#else
 	if (imageFirmwareID > deviceFirmwareID) {
 		flash_area = UI_FIRMWARE;
 		goto exit;
@@ -843,6 +855,7 @@ static enum flash_area fwu_go_nogo(void)
 			__func__);
 		goto exit;
 	}
+#endif
 
 	/* device config id */
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
@@ -876,7 +889,7 @@ static enum flash_area fwu_go_nogo(void)
 		__func__, deviceConfigID, imageConfigID);
 
 	if (imageConfigID > deviceConfigID) {
-		flash_area = CONFIG_AREA;
+		flash_area = UI_FIRMWARE;//flash_area = CONFIG_AREA;  //liyong2 2014.4.31
 		goto exit;
 	}
 exit:
@@ -1402,13 +1415,7 @@ static int fwu_do_read_config(void)
 
 	kfree(fwu->read_config_buf);
 	fwu->read_config_buf = kzalloc(fwu->config_size, GFP_KERNEL);
-	if (!fwu->read_config_buf) {
-		dev_err(&fwu->rmi4_data->i2c_client->dev,
-			"%s: Failed to alloc memory for config buffer\n",
-			__func__);
-		retval = -ENOMEM;
-		goto exit;
-	}
+
 	block_offset[1] |= (fwu->config_area << 5);
 
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
@@ -1525,13 +1532,21 @@ static int fwu_do_reflash(void)
 
 	return retval;
 }
-
+extern char id1;
+extern int synaptics_rmi4_i2c_read_extern(struct synaptics_rmi4_data *rmi4_data,
+		unsigned short addr, unsigned char *data, unsigned short length);
 static int fwu_start_reflash(void)
 {
 	int retval = 0;
 	const struct firmware *fw_entry = NULL;
 	struct f01_device_status f01_device_status;
 	enum flash_area flash_area;
+	struct synaptics_rmi4_data *rmi4_data1=fwu->rmi4_data;
+char *pId_save=g_Id_save;
+	struct synaptics_rmi4_device_info *rmi1;
+	rmi1 = &(rmi4_data1->rmi4_mod_info);
+	 
+	
 
 	pr_notice("%s: Start of reflash process\n", __func__);
 
@@ -1556,8 +1571,53 @@ static int fwu_start_reflash(void)
 			return 0;
 		}
 
-		snprintf(fwu->image_name, NAME_BUFFER_SIZE, "%s",
-			fwu->rmi4_data->fw_image_name);
+
+//baron start
+    retval = synaptics_rmi4_i2c_read_extern(rmi4_data1,
+			rmi4_data1->f01_query_base_addr + 11,
+			rmi1->custom_specific,
+			sizeof(rmi1->custom_specific));
+	if (retval < 0) {
+		dev_err(&rmi4_data1->i2c_client->dev,
+				"%s: Failed to read firmware build id (code %d)\n",
+				__func__, retval);
+		return retval;
+	}
+   id1=rmi1->custom_specific[0];
+//    printk("%s:%d zhouhehe custom_specific_id=0x%x,0x%x,0x%x,0x%x\n",__func__,__LINE__,rmi1->custom_specific[0],rmi1->custom_specific[1],rmi1->custom_specific[2],rmi1->custom_specific[3]); 
+//baron end
+
+while(*pId_save!=':')pId_save++;
+strncpy(id_save_high,pId_save+1,4);
+strncpy(id_save_low,pId_save+5,4);
+
+
+//baron modify
+//printk("zhouhehe-baron---(qian)%s\n",fwu->image_name);
+if(strcmp(id_save_high,"3030")==0){
+	strcpy(fwu->image_name,"synaptics_dsx_fw_update.bin");
+	//printk("zhouhehe-baron---(3030)%s\n",fwu->image_name);
+}else if(strcmp(id_save_high,"4145")==0){//4145
+	strcpy(fwu->image_name,"synaptics_dsx_fw_update_yushun.bin");
+	//printk("zhouhehe-baron---(4145)%s\n",fwu->image_name);
+}else{
+	if('E' == id1){ //YUSHUN   PRODUCT_ID:ECW7
+		strcpy(fwu->image_name,"synaptics_dsx_fw_update_yushun.bin");
+		fwu->force_update=1;
+	}
+	if('C' == id1 || 's'== id1){//XINLI   PRODUCT_ID:CM81
+		strcpy(fwu->image_name,"synaptics_dsx_fw_update.bin");
+		fwu->force_update=1;
+	}
+}
+//printk("zhouhehe-baron---(hou)%s\n",fwu->image_name);
+
+
+//		snprintf(fwu->image_name, NAME_BUFFER_SIZE, "%s",
+//			fwu->rmi4_data->fw_image_name);
+
+
+
 		dev_info(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Requesting firmware image %s\n",
 			__func__, fwu->image_name);
@@ -1755,10 +1815,22 @@ static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
 		goto exit;
 	}
 
-	if (input != 1) {
+	if (input != 1 && input != 2) {
 		retval = -EINVAL;
 		goto exit;
 	}
+
+//printk("%s:%d custom_specific_id=%c\n",__func__,__LINE__,id1); 
+	
+//baron modify  echo 1 > force_update_fw:и║??бе????ижy??D?ид?TP1им?t
+//                    echo 2 > force_update_fw:и║??бе????ижy??ио??3TP1им?t
+//printk("zhouhehe--xx=%d\n",input);
+if(input == 1){
+	strcpy(fwu->image_name,"synaptics_dsx_fw_update.bin");	
+}else if(input == 2){//4145
+	strcpy(fwu->image_name,"synaptics_dsx_fw_update_yushun.bin");
+}
+	
 	if (LOCKDOWN)
 		fwu->do_lockdown = true;
 

@@ -755,6 +755,17 @@ config SENSORS_LTR553
 	  To compile this driver as a module, choose M here: the
 	  module will be called ltr553.
 
+config SENSORS_LTR559
+        tristate "LTR559 device driver"
+        depends on I2C
+        default n
+        help
+          Say Y here you want to enable for the sitronix ltr559
+          light and proximity sensors driver.
+
+          To compile this driver as a module, choose M here: the
+          module will be called stk3x1x.
+
 config SENSORS_MMC3416X
 	tristate "MMC3416xPJ 3-axis magnetic sensor driver"
 	depends on I2C
@@ -830,6 +841,31 @@ config SENSORS_BMA2X2_ENABLE_INT2
 	 If you say yes here, you get INT2 support for Bosch Sensortec
 	 acceleration sensors BMA255/BMA254/BMA355/BMA250E/BMA222E/BMA280.
 	 Can only open if you do NOT open interrupt INT1 support
+
+config SENSORS_BMM050
+	tristate "BMM050 Magnetic Sensor Driver"
+	depends on I2C
+	help
+	 If you say yes here, you get support for Bosch Sensortec's
+	 sensor BMM050 Magnetic Sensor
+
+config HALL
+	tristate "HALL Switch"
+	help
+	 If you say yes here, you get support for hall switch control device
+
+config SENSORS_BMG
+        tristate "Bosch Gyroscope Sensor Driver"
+        depends on I2C
+        help
+         If you say yes here, you get support for Bosch Sensortec's
+         gyroscope sensor drivers of BMG160/BMI055/BMI058 e.t.c.
+
+config SENSORS_BMG_FIFO
+	tristate "Bosch Gyroscope FIFO Support"
+	depends on SENSORS_BMG
+	help
+	If you say yes here, you get support for Gyroscope sensor FIFO operations.
 
 config SIG_MOTION
 	tristate "support significant motion sensor function"
