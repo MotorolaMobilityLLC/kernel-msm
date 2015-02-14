@@ -13,6 +13,7 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
+#include "apq8026-smelt-panel-ssd2848.dtsi"
 
 / {
 	qcom,msm-id =
@@ -20,57 +21,3 @@
 		<199 0x41 0x0100>; /* P0 Portable */
 };
 
-&soc {
-	vddio_disp_vreg: vddio_disp_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "vddio_disp";
-		gpio = <&msmgpio 33 0x0>;
-		gpio-open-source;
-		parent-supply = <&pm8226_l8>;
-		startup-delay-us = <300>;
-		regulator-boot-on;
-	};
-};
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_mot_ssd2848_290p_cmd>;
-	qcom,platform-bridge-reset-gpio = <&msmgpio 34 0>;
-	qcom,platform-te-gpio = <&msmgpio 24 0>;
-	vddio_disp-supply = <&vddio_disp_vreg>;
-	vddram_disp-supply = <&pm8226_l16>;
-	qcom,panel-supply-entries {
-		qcom,panel-supply-entry@1 {
-			qcom,supply-name = "vddio_disp";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@2 {
-			qcom,supply-name = "vddram_disp";
-			qcom,supply-min-voltage = <3000000>;
-			qcom,supply-max-voltage = <3000000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@3 {
-			qcom,supply-name = "vddcon_disp";
-			qcom,supply-min-voltage = <2850000>;
-			qcom,supply-max-voltage = <2850000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-	};
-};
