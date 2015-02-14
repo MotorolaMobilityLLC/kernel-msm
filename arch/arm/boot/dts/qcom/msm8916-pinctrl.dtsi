@@ -30,6 +30,36 @@
 			};
 		};
 
+		ltr559_int_pin {
+			qcom,pins = <&gp 115>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "ltr559-irq";
+			ltr_default: ltr_default {
+			drive-strength = <6>;
+			bias-pull-up;
+			};
+			ltr_sleep: ltr_sleep {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		hall_int_pin{
+			qcom,pins = <&gp 121>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "hall_int_pin";
+			hall_int_active: active {
+				drive-strength = <6>;
+				bias-pull-up;
+				};
+			hall_int_suspend: suspend {
+				drive-strength = <6>;
+				bias-pull-up;
+				};
+		};
+
 		ext-cdc-tlmm-lines {
 			qcom,pins = <&gp 116>, <&gp 112>, <&gp 117>,
 						<&gp 118>, <&gp 119>;
@@ -284,7 +314,7 @@
 		};
 
 		usb-id-pin {
-			qcom,pins = <&gp 110>;
+			qcom,pins = <&gp 111>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
 			label = "usb-id-pin";
@@ -382,6 +412,42 @@
 			};
 		};
 
+		pmx_i2c_1 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 3>, <&gp 2>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "pmx_i2c_1";
+
+			i2c_1_active: i2c_1_active {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;		  /* No PULL */
+			};
+
+			i2c_1_sleep: i2c_1_sleep {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;		  /* No PULL */
+			};
+		};
+
+		pmx_i2c_3 {
+			/* CLK, DATA */
+			qcom,pins = <&gp 11>, <&gp 10>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "pmx_i2c_3";
+		
+			i2c_3_active: i2c_3_active {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;		  /* No PULL */
+			};
+		
+			i2c_3_sleep: i2c_3_sleep {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable;		  /* No PULL */
+			};
+		};
+		
 		pmx_i2c_5 {
 			/* CLK, DATA */
 			qcom,pins = <&gp 19>, <&gp 18>;
@@ -618,24 +684,6 @@
 			wcnss_gpio_default: wcnss_gpio_default {
 			        drive-strength = <6>; /* 6 MA */
 			        bias-pull-up; /* PULL UP */
-			};
-		};
-
-		pmx_i2c_6 {
-			/* CLK, DATA */
-			qcom,pins = <&gp 22>, <&gp 23>;
-			qcom,num-grp-pins = <2>;
-			qcom,pin-func = <2>;
-			label = "pmx_i2c_6";
-			/* active state */
-			i2c_6_active: i2c_6_active{
-				drive-strength = <2>; /* 2 MA */
-				bias-disable; /* No PULL */
-			};
-			/*suspended state */
-			i2c_6_sleep: i2c_6_sleep {
-				drive-strength = <2>; /* 2 MA */
-				bias-disable; /* No PULL */
 			};
 		};
 
@@ -965,7 +1013,7 @@
 		};
 
 		tpiu_setb_8 {
-			qcom,pins = <&gp 31>;
+			qcom,pins = <&gp 100>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <10>;
 			label = "tpiu-setb-8";
@@ -976,7 +1024,7 @@
 		};
 
 		tpiu_setb_9 {
-			qcom,pins = <&gp 32>;
+			qcom,pins = <&gp 101>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <10>;
 			label = "tpiu-setb-9";
@@ -1157,6 +1205,30 @@
 			ts_reset_suspend: ts_reset_suspend {
 				drive-strength = <2>;
 				bias-pull-down;
+			};
+		};
+
+	    pmx_ts_power_active {
+			qcom,pins = <&gp 17>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_ts_power_active";
+
+			ts_power_ldo_active: ts_power_ldo_active {
+				drive-strength = <16>;
+				bias-pull-up;
+			};
+		};
+
+		pmx_ts_power_suspend {
+			qcom,pins = <&gp 17>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_ts_power_suspend";
+
+			ts_power_ldo_suspend: ts_power_ldo_suspend {
+				drive-strength = <16>;
+				bias-disable;
 			};
 		};
 

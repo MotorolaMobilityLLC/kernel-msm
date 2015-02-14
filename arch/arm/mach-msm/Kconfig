@@ -349,6 +349,12 @@ config ARCH_MSM8226
 	select MSM_IRQ
 endmenu
 
+config L8150_COMMON
+    default n
+    bool "Longcheer L8150 board"
+    help
+        Support for the L8150 longcheer board.
+
 config MSM_KRAIT_TBB_ABORT_HANDLER
 	bool "Krait TBB/TBH data abort handler"
 	depends on ARCH_MSM_KRAIT
