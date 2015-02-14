@@ -17,8 +17,6 @@
 #include "qcom/msm8226-w-qseecom.dtsi"
 #include "qcom/msm8226-w-sharedmem.dtsi"
 #include "qcom/msm8226-720p-mtp.dtsi"
-#include "qcom/dsi-panel-mot-ssd2848-290p-cmd.dtsi"
-#include "qcom/dsi-panel-mot-ota3201a-290p-vid.dtsi"
 
 / {
 	model = "Motorola APQ 8026 Smelt";
@@ -492,6 +490,12 @@
 	regulator-always-on;
 };
 
+&pm8226_l27 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+};
+
 &spi_4 {
 	status = "ok";
 };
@@ -509,11 +513,10 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_mot_ota3201a_290p_vid>;
 	qcom,platform-reset-gpio = <&msmgpio 36 0>;
 	vdda-supply = <&pm8226_l4>;
-	vdd_disp-supply = <&pm8226_l5>;
-	vddcon_disp-supply = <&pm8226_l18>;
+	/delete-node/ qcom,ctrl-supply-entries;
+	/delete-node/ qcom,panel-supply-entries;
 	qcom,ctrl-supply-entries {
 		qcom,ctrl-supply-entry@0 {
 			qcom,supply-name = "vdda";
@@ -523,31 +526,6 @@
 			qcom,supply-disable-load = <100>;
 			qcom,supply-pre-on-sleep = <0>;
 			qcom,supply-post-on-sleep = <2>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		/delete-node/ qcom,ctrl-supply-entry@1;
-	};
-	qcom,panel-supply-entries {
-		qcom,panel-supply-entry@0 {
-			qcom,supply-name = "vdd_disp";
-			qcom,supply-min-voltage = <1200000>;
-			qcom,supply-max-voltage = <1200000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
-			qcom,supply-pre-off-sleep = <0>;
-			qcom,supply-post-off-sleep = <0>;
-		};
-		qcom,panel-supply-entry@1 {
-			qcom,supply-name = "vddcon_disp";
-			qcom,supply-min-voltage = <2850000>;
-			qcom,supply-max-voltage = <2850000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <100>;
-			qcom,supply-pre-on-sleep = <0>;
-			qcom,supply-post-on-sleep = <0>;
 			qcom,supply-pre-off-sleep = <0>;
 			qcom,supply-post-off-sleep = <0>;
 		};

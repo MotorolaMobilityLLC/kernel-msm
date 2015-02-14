@@ -13,6 +13,7 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
+#include "apq8026-smelt-panel-ota3201a.dtsi"
 
 / {
 	qcom,msm-id =
