@@ -204,7 +204,7 @@ static void max77836_chg_set_enable(struct max77836_chg_data *charger)
 {
 	u8 data;
 
-	if(charger->is_charging) {
+	if(charger->is_charging || (charger->cable_type == CHARGE_SOURCE_NONE)) {
 		/* turn on charger */
 		data = 0xc0;
 		max77836_chg_set_command(charger, MAX77836_CHG_REG_CHG_CTRL2, data);
