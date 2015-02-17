@@ -462,7 +462,12 @@
 			<0xff 108>, /* smmu_bus_intr[36] */
 			<0xff 109>, /* smmu_bus_intr[37] */
 			<0xff 112>, /* smmu_bus_intr[38] */
+			<0xff 114>, /* nidnt_nidnt */
+			<0xff 127>, /* qup_irq */
+			<0xff 128>, /* qup_irq */
+			<0xff 130>, /* qup_irq */
 			<0xff 131>, /* qup_irq */
+			<0xff 132>, /* qup_irq */
 			<0xff 140>, /* uart_dm_intr */
 			<0xff 142>, /* smmu_bus_intr[47] */
 			<0xff 143>, /* smmu_bus_intr[48] */
@@ -508,6 +513,7 @@
 			<0xff 205>, /* rpm_ipc(25) */
 			<0xff 206>, /* rpm_ipc(26) */
 			<0xff 207>, /* rpm_ipc(27) */
+			<0xff 215>, /* qpu-bwmon, cpu-bwmon */
 			<0xff 239>, /* crypto_bam_irq[1]*/
 			<0xff 240>, /* summary_irq_kpss */
 			<0xff 253>, /* sdc2_pwr_cmd_irq */
@@ -558,7 +564,9 @@
 			<39  120>,
 			<40  121>,
 			<50  66>,
-			<51  68>;
+			<51  68>,
+			<52  91>,
+			<53  93>;
 	};
 
 	qcom,pm@8600664 {
