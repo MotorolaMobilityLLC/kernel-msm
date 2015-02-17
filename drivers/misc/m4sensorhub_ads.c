@@ -38,9 +38,9 @@
 #include <linux/iio/m4sensorhub/m4sensorhub_ads.h>
 
 #define m4sensorhub_ads_DRIVER_NAME	"m4sensorhub_ads"
+/* this needs to be in sync with M4 code*/
 #define ADS_NUM_SAMPLES 500
-#define ADS_NUM_SAMPLES_PER_TRANS 64
-#define MAX_BYTES_PER_TRANS (sizeof(int) * ADS_NUM_SAMPLES_PER_TRANS)
+#define BYTES_TO_READ (ADS_NUM_SAMPLES * sizeof(int))
 
 struct m4sensorhub_ads_drvdata {
 	struct m4sensorhub_data *m4sensorhub;
@@ -49,6 +49,7 @@ struct m4sensorhub_ads_drvdata {
 	struct platform_device      *pdev;
 	struct m4sensorhub_ads_data read_data;
 	struct mutex				mutex;
+	int* data;
 };
 
 #define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ads_data) * 8)
@@ -74,51 +75,30 @@ static const struct iio_chan_spec m4sensorhub_ads_channels[] = {
 static void m4_read_ads_data_locked(struct m4sensorhub_ads_drvdata *priv_data)
 {
 	int ret, i, dataremaining;
-	int* data;
-	int bufsize = MAX_BYTES_PER_TRANS;
 	struct iio_dev *iio_dev = platform_get_drvdata(priv_data->pdev);
 
-
-	data = kzalloc(MAX_BYTES_PER_TRANS, GFP_KERNEL);
-	if (data == NULL) {
+	if (priv_data->data == NULL) {
 		pr_err("%s:OOM\n", __func__);
-		ret = -ENOMEM;
-		goto err;
+		return;
 	}
 
-	/* We start off with reading ADS_NUM_SAMPLES, but we do
-	reads in chunks of ADS_NUM_SAMPLES_PER_TRANS  */
 	dataremaining = sizeof(int)*ADS_NUM_SAMPLES;
 
-	while(dataremaining > 0)
-	{
-		if (dataremaining > MAX_BYTES_PER_TRANS)
-			bufsize = MAX_BYTES_PER_TRANS;
-		else
-			bufsize = dataremaining;
+	ret = m4sensorhub_reg_read_buffer(priv_data->m4sensorhub,
+			M4SH_REG_ADSSENSOR_READBUFFEREDDATA,
+			(u8*)priv_data->data, BYTES_TO_READ);
 
-		ret = m4sensorhub_reg_read_n(priv_data->m4sensorhub,
-				M4SH_REG_ADSSENSOR_READBUFFEREDDATA,
-				(u8*)data, bufsize, true);
-
-		if (ret < 0) {
-			pr_err("%s: unable to read data (%d)\n", __func__, ret);
-			goto err;
-		}
-
-		for (i=0; i < bufsize/sizeof(int); i++) {
-			priv_data->read_data.data = data[i];
-			priv_data->read_data.timestamp = iio_get_time_ns();
-
-			iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
-		}
-
-		dataremaining = dataremaining - ret;
+	if (ret < 0 || ret != BYTES_TO_READ) {
+		pr_err("%s: unable to read data (%d)\n", __func__, ret);
+		return;
 	}
 
-err:
-	if (data)
-		kfree(data);
+	for (i=0; i < ADS_NUM_SAMPLES; i++) {
+		priv_data->read_data.data = priv_data->data[i];
+		priv_data->read_data.timestamp = iio_get_time_ns();
+		iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
+	}
+
 }
 
 static void m4sensorhub_ads_panic_restore(struct m4sensorhub_data *m4sensorhub,
@@ -221,14 +201,30 @@ static ssize_t m4sensorhub_ads_store_setdelay(struct device *dev,
 
 		priv_data->samplerate = samplerate;
 
-		if (priv_data->samplerate > 0)
+		if (priv_data->samplerate > 0) {
+			/* don't allocate a buffer if there's one already
+			in use from a previous call to setdelay*/
+			if (priv_data->data == NULL) {
+				priv_data->data = kzalloc(BYTES_TO_READ, GFP_KERNEL);
+
+				if (priv_data->data == NULL) {
+					pr_err("%s:Failed to allocate memory\n", __func__);
+					ret = -ENOMEM;
+					goto err;
+				}
+			}
 			m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
-		else
+		}
+		else {
+			kfree(priv_data->data);
+			priv_data->data = NULL;
 			m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+		}
 	}
+	ret = count;
 err:
 	mutex_unlock(&(priv_data->mutex));
-	return count;
+	return ret;
 }
 
 static ssize_t m4sensorhub_ads_show_setdelay(struct device *dev,
@@ -331,6 +327,7 @@ static int m4sensorhub_ads_probe(struct platform_device *pdev)
 	priv_data->samplerate = -1;
 	priv_data->enable = false;
 	priv_data->m4sensorhub = NULL;
+	priv_data->data = NULL;
 	mutex_init(&(priv_data->mutex));
 	priv_data->read_data.data = -1;
 
@@ -384,6 +381,8 @@ static int __exit m4sensorhub_ads_remove(struct platform_device *pdev)
 
 	mutex_lock(&(priv_data->mutex));
 	m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+	kfree(priv_data->data);
+	priv_data->data = NULL;
 	m4sensorhub_irq_unregister(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
 	m4sensorhub_unregister_initcall(
 				m4sensorhub_ads_driver_initcallback);
