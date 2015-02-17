@@ -311,6 +311,7 @@ struct msm_otg_platform_data {
 	unsigned int mpp_id_amux_chan;
 	unsigned int mpp_id_pull;
 	unsigned int mpp_id_vin;
+	struct clk *system_clk;
 };
 
 /* phy related flags */
@@ -571,6 +572,7 @@ struct ci13xxx_platform_data {
 	void *prv_data;
 	bool l1_supported;
 	bool enable_ahb2ahb_bypass;
+	struct clk *system_clk;
 };
 
 /**
