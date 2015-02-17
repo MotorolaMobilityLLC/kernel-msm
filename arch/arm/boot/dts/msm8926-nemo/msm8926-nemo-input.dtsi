@@ -40,8 +40,8 @@
 			reg = <0x20>;
 			interrupt-parent = <&msmgpio>;
 			interrupts = <17 0x2008>;
-			vdd-supply = <&pm8226_l15>;
-			vcc_i2c-supply = <&pm8226_l22>;
+			vdd-supply = <&pm8226_l18>;
+			vcc_i2c-supply = <&pm8226_l28>;
 			synaptics,reset-gpio = <&msmgpio 16 0x00>;
 			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
 			synaptics,i2c-pull-up;
