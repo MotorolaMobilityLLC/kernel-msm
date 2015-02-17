@@ -1,0 +1,72 @@
+			Cypress CapSense devices programming support
+			--------------------------------------------
+
+Overview
+--------
+
+This driver implements the programming for Linux of Cypress CapSense devices by
+simulating host sourced programming protocol (HSSP) on GPIO pins.
+By using this driver you can reprogram the in-system flash without additional
+adapters. This solution is working with blank or non-blank flash memory.
+Current release was tested with CY8C4014LQI CapSense device.
+
+References
+----------
+
+The main references are at (http://www.cypress.com) see:
+
+1. Protocol description:
+Programming Specifications, Document #: 001-81799
+http://www.cypress.com/?rID=40048
+
+2. Programming Using an External Microcontroller (HSSP)
+http://www.cypress.com/?docID=41696
+
+Required properties:
+ - compatible:    Should be "cypress,cycapsense_hssp"
+ - label:         IC type name, it is used to identify firmware file name
+ - silicon_id:    IC type identifier, used to identify connected IC.
+ - block_size:    In-system flash memory block size
+ - num_of_blocks: Number of flash memory blocks.
+ - secure_bytes:  Number secure bytes;
+ - gpios :        Three interface gpio pins. Index 0 is reset line,
+				index 1 - clock line, index 2 - data line.
+Optional properties:
+ - use-raw-gpio-rw: Do direct register read/write to get/set GPIO,
+ - gpio_base_addr:  Address of GPIO IO block;
+ - gpio_base_size:  Size of GPIO IO block;
+
+Using the driver
+----------------
+
+Once the driver is loaded you can use sysfs support to erase or to program
+in-system flash memory.
+
+1. Program firmware will be automatically loaded from file with
+name defined by label option presented in directory
+/system/etc/firmware.
+Firmware will be flashed if checksum in hex file does not match
+with checksum of in-system flash memory:
+To flash FW:
+
+#echo 1 > /sys/class/capsense/fw_update
+
+2. Program firmware without checking name and checksum. If file <file_name>.hex
+is present in /system/etc/firmware directory you may program it with following
+command:
+
+#echo <file_name>.hex > /sys/class/capsense/fw_update
+
+3. To erase in-system flash memory:
+
+#echo erase > /sys/class/capsense/fw_update
+
+4. To use driver from another module there is exported API cycapsense_fw_update,
+which implements same logic as case #1 above.
+
+5. To reset IC:
+
+#echo reset > /sys/class/capsense/fw_update
+or
+#echo 1 > /sys/class/capsense/reset
+

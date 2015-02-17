@@ -20,6 +20,7 @@ cavium	Cavium, Inc.
 chrp	Common Hardware Reference Platform
 cirrus	Cirrus Logic, Inc.
 cortina	Cortina Systems, Inc.
+cypress Cypress Semiconductor Corporation
 dallas	Maxim Integrated Products (formerly Dallas Semiconductor)
 denx	Denx Software Engineering
 di	Dyna Image Corporation
