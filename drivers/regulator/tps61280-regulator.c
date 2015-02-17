@@ -1,7 +1,7 @@
 /*
  * Driver for TI,TP61280 DC/DC Boost Converter
  *
- * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA Corporation. All rights reserved.
  *
  * Author: Venkat Reddy Talla <vreddytalla@nvidia.com>
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
@@ -81,7 +81,7 @@
 
 #define TPS61280_VOUT_VMIN	2850000
 #define TPS61280_VOUT_VMAX	4400000
-#define TPS61280_VOUT_VSTEP	 500000
+#define TPS61280_VOUT_VSTEP	 50000
 
 struct tps61280_platform_data {
 	bool		bypass_pin_ctrl;
@@ -688,16 +688,15 @@ static int tps61280_regulator_enable_init(struct tps61280_chip *tps61280)
 
 	if (tps61280->pdata.enable_pin_ctrl) {
 		int gpio_flag = GPIOF_OUT_INIT_LOW;
-		int enable_state = 0;
 
-		if (!gpio_is_valid(tps61280->pdata.enable_pin_ctrl))
+		if (!gpio_is_valid(tps61280->pdata.enable_gpio))
 			return 0;
 
 		if (enable_state)
 			gpio_flag = GPIOF_OUT_INIT_HIGH;
 
 		ret = devm_gpio_request_one(tps61280->dev,
-				tps61280->pdata.enable_pin_ctrl,
+				tps61280->pdata.enable_gpio,
 				gpio_flag, "tps61280-en-pin-gpio");
 		if (ret < 0) {
 			dev_err(dev, "Enable GPIO request failed: %d\n", ret);
@@ -890,15 +889,15 @@ static int tps61280_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	ret = tps61280_dvs_init(tps61280);
-	if (ret < 0) {
-		dev_err(&client->dev, "DVS init failed: %d\n", ret);
-		return ret;
-	}
-
 	ret = tps61280_regulator_enable_init(tps61280);
 	if (ret < 0) {
 		dev_err(&client->dev, "Enable init failed: %d\n", ret);
+		return ret;
+	}
+
+	ret = tps61280_dvs_init(tps61280);
+	if (ret < 0) {
+		dev_err(&client->dev, "DVS init failed: %d\n", ret);
 		return ret;
 	}
 
@@ -989,10 +988,16 @@ static int tps61280_resume(struct device *dev)
 static SIMPLE_DEV_PM_OPS(tps61280_pm_ops, tps61280_suspend, tps61280_resume);
 
 static const struct of_device_id tps61280_dt_match[] = {
-	{ .compatible = "ti,tps61280" },
+	{ .compatible = "tps61280" },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, tps61280_dt_match);
+
+static const struct i2c_device_id tps61280_i2c_id[] = {
+	{ "tps61280", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(i2c, tps61280_i2c_id);
 
 static struct i2c_driver tps61280_driver = {
 	.driver = {
@@ -1002,13 +1007,14 @@ static struct i2c_driver tps61280_driver = {
 		.pm = &tps61280_pm_ops,
 	},
 	.probe = tps61280_probe,
+	.id_table = tps61280_i2c_id,
 };
 
 static int __init tps61280_init(void)
 {
 	return i2c_add_driver(&tps61280_driver);
 }
-subsys_initcall(tps61280_init);
+fs_initcall_sync(tps61280_init);
 
 static void __exit tps61280_exit(void)
 {
