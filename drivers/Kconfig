@@ -189,4 +189,6 @@ source "drivers/soc/Kconfig"
 source "drivers/firmware/Kconfig"
 
 source "drivers/haptics/Kconfig"
+
+source "drivers/bluetooth/Kconfig"
 endmenu

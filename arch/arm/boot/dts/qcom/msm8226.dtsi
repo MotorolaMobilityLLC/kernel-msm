@@ -246,6 +246,10 @@
 	qcom,wfd {
 		compatible = "qcom,msm-wfd";
 	};
+	qcom,bluesleep {
+		compatible = "qcom,bluesleep";
+		
+	};
 
 	serial@f991f000 {
 		compatible = "qcom,msm-lsuart-v14";
