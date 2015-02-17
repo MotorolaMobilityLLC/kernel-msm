@@ -28,27 +28,11 @@
 			label = "audio_mem";
 		};
 
-		sbl_mem: sbl_region@fe00000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x0fe00000 0x100000>;
-			label = "sbl_mem";
-		};
-
-		rpm_mem: rpm_region@3100000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x03100000 0x160000>;
-			label = "rpm_mem";
-		};
-
 		external_image_mem: external_image_region@fa00000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-			reg = <0xfa00000 0x100000>;
+			reg = <0x0fa00000 0x500000>;
 			label = "external_image_mem";
 		};
 
