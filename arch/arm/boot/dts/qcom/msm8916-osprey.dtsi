@@ -267,10 +267,6 @@
 	vsn_disp-supply = <&tps65132_neg>;
 };
 
-&mot_inx_500_720p_vid_v0 {
-	qcom,cont-splash-enabled;
-};
-
 &i2c_2 {
 	synaptics_dsx_i2c@20 {
 		touch_vdd-supply = <&vdda_touch_vreg>;
