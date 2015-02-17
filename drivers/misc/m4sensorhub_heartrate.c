@@ -301,7 +301,7 @@ static ssize_t m4hrt_regdata_show(struct device *dev,
 	msleep(1); /* Give M4 time to read the data */
 
 	err = m4sensorhub_reg_read_n(dd->m4, M4SH_REG_HRSENSOR_REGVALUE,
-		(char *)&(data[0]), ARRAY_SIZE(data), false);
+		(char *)&(data[0]), ARRAY_SIZE(data));
 	if (err < 0) {
 		m4hrt_err("%s: Failed to read register data.\n", __func__);
 		goto m4hrt_regdata_show_exit;

@@ -316,7 +316,7 @@ static ssize_t m4ped_userdata_show(struct device *dev,
 	mutex_lock(&(dd->mutex));
 
 	err = m4sensorhub_reg_read_n(dd->m4, M4SH_REG_USERSETTINGS_SCREENSTATUS,
-		(char *)&(data[0]), ARRAY_SIZE(data), false);
+		(char *)&(data[0]), ARRAY_SIZE(data));
 	if (err < 0) {
 		m4ped_err("%s: Failed to read user data.\n", __func__);
 		goto m4ped_userdata_show_fail;
