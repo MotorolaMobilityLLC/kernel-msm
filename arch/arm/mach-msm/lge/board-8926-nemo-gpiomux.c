@@ -119,6 +119,7 @@ static struct gpiomux_setting lcd_rst_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_LOW,
 };
 
 static struct gpiomux_setting lcd_en_act_cfg = {
@@ -157,7 +158,7 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 108,
+		.gpio = 37,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
@@ -358,21 +359,21 @@ static struct gpiomux_setting fuel_gauge_int_config = {
 
 static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
 	{
-		.gpio      = 2,			/* BLSP1 QUP1 I2C_DAT */
+		.gpio      = 10,		/* BLSP3 QUP1 I2C_DAT */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &fuel_gauge_i2c_sda_config,
 			[GPIOMUX_SUSPENDED] = &fuel_gauge_i2c_sda_config,
 		},
 	},
 	{
-		.gpio      = 3,			/* BLSP1 QUP1 I2C_CLK */
+		.gpio      = 11,		/* BLSP3 QUP1 I2C_CLK */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &fuel_gauge_i2c_scl_config,
 			[GPIOMUX_SUSPENDED] = &fuel_gauge_i2c_scl_config,
 		},
 	},
 	{
-		.gpio      = 31,		/* FUEL_GAUGE_INT_N */
+		.gpio      = 109,		/* FUEL_GAUGE_INT_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &fuel_gauge_int_config,
 			[GPIOMUX_SUSPENDED] = &fuel_gauge_int_config,
