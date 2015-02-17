@@ -642,8 +642,6 @@ static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
-/* force the codec to be AIF input so DAPM powers it correctly
-	SND_SOC_DAPM_INPUT("I2S1L"),*/
 	SND_SOC_DAPM_AIF_IN("I2S1L", "I2S1L Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_MIXER("NXP Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_left_mixer_controls[0],
@@ -652,9 +650,8 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
-	{"NXP Output Mixer Left", "DSP Bypass Left", "I2S1L"},
+	{"NXP Output Mixer Left", "DSP Bypass Left", "I2S1L Playback"},
 	{"NXP Speaker Boost Left", "Null", "NXP Output Mixer Left"},
-	{"I2S1L", "Null", "I2S1L PLayback"},
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
@@ -677,7 +674,6 @@ static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
-	SND_SOC_DAPM_INPUT("I2S1R"),
 	SND_SOC_DAPM_MIXER("NXP Output Mixer Right", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_right_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_right_mixer_controls)),
@@ -685,7 +681,7 @@ static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
-	{"NXP Output Mixer Right", "DSP Bypass Right", "I2S1R"},
+	{"NXP Output Mixer Right", "DSP Bypass Right", "I2S1R Playback"},
 	{"NXP Speaker Boost Right", "Null", "NXP Output Mixer Right"},
 };
 
@@ -1677,7 +1673,7 @@ static struct snd_soc_dai_driver tfa9890_left_dai = {
 static struct snd_soc_dai_driver tfa9890_right_dai = {
 	.name = "tfa9890_codec_right",
 	.playback = {
-		     .stream_name = "Playback",
+		     .stream_name = "I2S1R Playback",
 		     .channels_min = 1,
 		     .channels_max = 2,
 		     .rates = TFA9890_RATES,
