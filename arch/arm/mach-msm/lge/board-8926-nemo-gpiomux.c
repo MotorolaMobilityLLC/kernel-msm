@@ -339,18 +339,6 @@ static void msm_gpiomux_sdc3_install(void)
 			    ARRAY_SIZE(msm8226_sdc3_configs));
 }
 
-static struct gpiomux_setting fuel_gauge_i2c_sda_config = {
-	.func = GPIOMUX_FUNC_3,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting fuel_gauge_i2c_scl_config = {
-	.func = GPIOMUX_FUNC_3,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
 static struct gpiomux_setting fuel_gauge_int_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
@@ -358,20 +346,6 @@ static struct gpiomux_setting fuel_gauge_int_config = {
 };
 
 static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
-	{
-		.gpio      = 10,		/* BLSP3 QUP1 I2C_DAT */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &fuel_gauge_i2c_sda_config,
-			[GPIOMUX_SUSPENDED] = &fuel_gauge_i2c_sda_config,
-		},
-	},
-	{
-		.gpio      = 11,		/* BLSP3 QUP1 I2C_CLK */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &fuel_gauge_i2c_scl_config,
-			[GPIOMUX_SUSPENDED] = &fuel_gauge_i2c_scl_config,
-		},
-	},
 	{
 		.gpio      = 109,		/* FUEL_GAUGE_INT_N */
 		.settings = {
