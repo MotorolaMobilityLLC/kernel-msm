@@ -15,7 +15,7 @@
 		status = "ok";
 		compatible = "msm,pwm_vibrator";
 		reg = <0xfd8C3420 0x400>;
-		haptic-pwr-gpio = <&msmgpio 62 0x00>;
+		haptic-pwr-gpio = <&msmgpio 108 0x00>;
 		motor-pwm-gpio = <&msmgpio 33 0x00>;
 		motor-pwm-func = <3>;
 		motor-amp = <80>;
@@ -25,7 +25,7 @@
 		vibe-braking-gain = <100>;
 		vibe-braking-ms = <0>;
 		vibe-driving-ms = <20>;
-		vdd-supply = <&pm8226_l28>;
+		vdd-supply = <&pm8226_l15>;
 		use-vdd-supply;
 	};
 
