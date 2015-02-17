@@ -548,7 +548,7 @@ static struct gpiomux_setting vibrator_active_cfg_gpio33 = {
        .pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting vibrator_active_cfg_gpio62 = {
+static struct gpiomux_setting vibrator_active_cfg_gpio108 = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
@@ -566,9 +566,9 @@ static struct msm_gpiomux_config vibrator_pwm_config[] = {
 
 static struct msm_gpiomux_config vibrator_configs[] = {
 	{
-		.gpio = 62,
+		.gpio = 108,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio62,
+			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio108,
 			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
 		},
 	},
