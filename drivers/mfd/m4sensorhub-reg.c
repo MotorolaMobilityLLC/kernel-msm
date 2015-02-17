@@ -30,6 +30,7 @@
 #define I2C_RETRIES                 10
 
 #define DEBUG_LINE_LENGTH           80
+#define MAX_BYTES_PER_TRANS         256
 
 /* --------------- Global Declarations -------------- */
 
@@ -38,6 +39,9 @@ static int m4sensorhub_mapsize(enum m4sensorhub_reg reg);
 
 /* --------------- Local Declarations -------------- */
 static DEFINE_MUTEX(reg_access);
+/* read_buffer is called in interrupt handler,
+which can happen every second for ADS... so preallocate a buffer*/
+static u8 read_data_buf[MAX_BYTES_PER_TRANS + 2];
 
 /* -------------- Local Data Structures ------------- */
 
@@ -81,6 +85,77 @@ int m4sensorhub_reg_shutdown(struct m4sensorhub_data *m4sensorhub)
 }
 EXPORT_SYMBOL_GPL(m4sensorhub_reg_shutdown);
 
+
+/* m4sensorhub_reg_read_buffer()
+
+   Read a n bytes from the M4 sensor hub starting at 'register'.  Use
+   m4sensorhub_reg_read() instead where possible;
+
+   Returns number of bytes read on success.
+   Returns negative error code on failure
+
+     m4sensorhub - pointer to the main m4sensorhub data struct
+     reg - Register to be read
+     value - array to return data.  Needs to be at least register's size
+     num - number of bytes to read
+*/
+int m4sensorhub_reg_read_buffer(struct m4sensorhub_data *m4sensorhub,
+			   enum m4sensorhub_reg reg, unsigned char *value,
+			   u16 num)
+{
+	int ret = -EINVAL;
+	int dataremaining, bufsize;
+
+	if (m4sensorhub == NULL) {
+		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
+		return -ENODATA;
+	} else if (value == NULL) {
+		KDEBUG(M4SH_ERROR, "%s: value array is NULL\n", __func__);
+		return -ENODATA;
+	} else if (num == 0) {
+		KDEBUG(M4SH_ERROR, "%s: Bytes requested is 0\n", __func__);
+		return -EINVAL;
+	} else if ((reg >= M4SH_REG__NUM) || num > M4SH_MAX_REG_SIZE) {
+		KDEBUG(M4SH_ERROR, "%s() invalid register access reg=%d "
+			"maxreg=%d size=%d maxsze=%d \n", __func__,
+			reg, M4SH_REG__NUM, num, M4SH_MAX_REG_SIZE);
+		return -EINVAL;
+	}
+
+	dataremaining = num;
+
+	mutex_lock(&reg_access);
+	while (dataremaining > 0) {
+		read_data_buf[0] = register_info_tbl[reg].type;
+		read_data_buf[1] = register_info_tbl[reg].offset;
+
+		if (dataremaining > MAX_BYTES_PER_TRANS)
+			bufsize = MAX_BYTES_PER_TRANS;
+		else
+			bufsize = dataremaining;
+
+		ret = m4sensorhub_i2c_write_read(m4sensorhub, read_data_buf, 2, bufsize);
+		if (ret != bufsize) {
+			KDEBUG(M4SH_ERROR, "%s() read failure (ret=%d, bufsize=%d)\n",
+				__func__, ret, bufsize);
+			goto err;
+		} else {
+			memcpy(value, read_data_buf, bufsize);
+			value += ret;
+			dataremaining -= ret;
+		}
+	}
+
+	/* at this point, we have read all the data requested*/
+	ret = num;
+
+err:
+	mutex_unlock(&reg_access);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(m4sensorhub_reg_read_buffer);
+
 /* m4sensorhub_reg_read_n()
 
    Read a n bytes from the M4 sensor hub starting at 'register'.  Use
@@ -93,11 +168,10 @@ EXPORT_SYMBOL_GPL(m4sensorhub_reg_shutdown);
      reg - Register to be read
      value - array to return data.  Needs to be at least register's size
      num - number of bytes to read
-	bufferaccess if reading a register or a buffer
 */
 int m4sensorhub_reg_read_n(struct m4sensorhub_data *m4sensorhub,
 			   enum m4sensorhub_reg reg, unsigned char *value,
-			   short num, bool bufferaccess)
+			   short num)
 {
 	int ret = -EINVAL;
 	u8 stack_buf[M4SH_MAX_STACK_BUF_SIZE];
@@ -115,8 +189,8 @@ int m4sensorhub_reg_read_n(struct m4sensorhub_data *m4sensorhub,
 	}
 
 	if (((reg < M4SH_REG__NUM) && num <= M4SH_MAX_REG_SIZE) &&
-			(bufferaccess == true || register_info_tbl[reg].offset + num
-				<= m4sensorhub_mapsize(reg))) {
+			register_info_tbl[reg].offset + num
+				<= m4sensorhub_mapsize(reg)) {
 
 		buf = (num > (M4SH_MAX_STACK_BUF_SIZE-2))
 			 ? kmalloc(num+2, GFP_KERNEL) : stack_buf;
