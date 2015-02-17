@@ -467,7 +467,12 @@
 			<0xff 108>, /* smmu_bus_intr[36] */
 			<0xff 109>, /* smmu_bus_intr[37] */
 			<0xff 112>, /* smmu_bus_intr[38] */
+			<0xff 114>, /* nidnt_nidnt */
+			<0xff 127>, /* qup_irq */
+			<0xff 128>, /* qup_irq */
+			<0xff 130>, /* qup_irq */
 			<0xff 131>, /* qup_irq */
+			<0xff 132>, /* qup_irq */
 			<0xff 140>, /* uart_dm_intr */
 			<0xff 142>, /* smmu_bus_intr[47] */
 			<0xff 143>, /* smmu_bus_intr[48] */
@@ -564,7 +569,9 @@
 			<39  120>,
 			<40  121>,
 			<50  66>,
-			<51  68>;
+			<51  68>,
+			<52  91>,
+			<53  93>;
 	};
 
 	qcom,pm@8600664 {
