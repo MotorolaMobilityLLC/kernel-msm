@@ -1127,7 +1127,7 @@
 &spi_7 {
 	florida: florida@0 {
 		compatible = "wlf,wm8280";
-		spi-max-frequency = <9600000>;
+		spi-max-frequency = <26000000>;
 		spi-cs-high;
 		reg = <0x0>;
 		interrupt-parent = <&msm_gpio>;
