@@ -49,3 +49,17 @@
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,leds@a500 {
+			status = "disabled";
+		};
+	};
+};
+
+&pm8226_mpps {
+	mpp@a500 {
+		status = "disabled";
+	};
+};
