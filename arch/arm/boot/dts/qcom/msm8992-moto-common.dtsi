@@ -825,6 +825,7 @@
 		gpio = <&msm_gpio 8 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-always-on;
 	};
 
 	isl98611a_neg: isl98611a_neg {
@@ -833,6 +834,7 @@
 		gpio = <&pm8994_gpios 5 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-always-on;
 	};
 
 	factory_support {
@@ -882,6 +884,23 @@
 		};
 		default_suspended: touchstate_aod_suspended {
 			patch-data = "";
+		};
+	};
+
+	i2c@f9926000 { /* BLSP1 QUP3 */
+		isl98611: isl98611@29 {
+			compatible = "intersil,isl98611";
+			reg = <0x29>;
+			status = "okay";
+			linux,name = "wled:backlight";
+			linux,default-trigger = "bkl-trigger";
+			intersil,default-on;
+			intersil,vn = <26>;
+			intersil,vp = <26>;
+			intersil,cabc-disable;
+			intersil,init-level = <255>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&backlight_reset_default>;
 		};
 	};
 
