@@ -83,6 +83,8 @@
 #define ID_VOLTS_DEFAULT        1000000  /* 1000 mV */
 #define MAX_CHGR_RETRY_COUNT    3
 
+#define USB_DEFAULT_SYSTEM_CLOCK 80000000	/* 80 MHz */
+
 enum msm_otg_phy_reg_mode {
 	USB_PHY_REG_OFF,
 	USB_PHY_REG_ON,
