@@ -48,6 +48,69 @@ struct mmi_factory_info {
 	int fac_cbl_irq;
 };
 
+
+static int usr_rst_sw_dis_flg = -EINVAL;
+static ssize_t usr_rst_sw_dis_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	usr_rst_sw_dis_flg = mode;
+
+	return count;
+}
+
+static ssize_t usr_rst_sw_dis_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 (usr_rst_sw_dis_flg > 0) ? "DISABLED" : "ENABLED");
+}
+
+static DEVICE_ATTR(usr_rst_sw_dis, 0664,
+		   usr_rst_sw_dis_show,
+		   usr_rst_sw_dis_store);
+
+static int fac_kill_sw_dis_flg = -EINVAL;
+static ssize_t fac_kill_sw_dis_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	fac_kill_sw_dis_flg = mode;
+
+	return count;
+}
+
+static ssize_t fac_kill_sw_dis_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 (fac_kill_sw_dis_flg > 0) ? "DISABLED" : "ENABLED");
+}
+
+static DEVICE_ATTR(fac_kill_sw_dis, 0664,
+		   fac_kill_sw_dis_show,
+		   fac_kill_sw_dis_store);
+
 /* The driver should only be present when booting with the environment variable
  * indicating factory-cable is present.
  */
@@ -72,6 +135,7 @@ static void warn_irq_w(struct work_struct *w)
 						     struct mmi_factory_info,
 						     warn_irq_work.work);
 	int warn_line = gpio_get_value(info->list[KP_WARN_INDEX].gpio);
+	int reset_info = RESET_EXTRA_RESET_KUNPOW_REASON;
 
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
@@ -85,9 +149,13 @@ static void warn_irq_w(struct work_struct *w)
 		 * A pmic hard reset is necessary to report the powerup reason
 		 * to BL correctly.
 		 */
-		qpnp_pon_store_extra_reset_info(RESET_EXTRA_RESET_KUNPOW_REASON, 0);
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
-		kernel_halt();
+		if (usr_rst_sw_dis_flg <= 0) {
+			qpnp_pon_store_extra_reset_info(reset_info, 0);
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+			kernel_halt();
+		} else
+			pr_info("SW HALT Disabled!\n");
+
 		return;
 	}
 }
@@ -123,7 +191,10 @@ static void fac_cbl_irq_w(struct work_struct *w)
 				pr_info("Factory Kill Disabled!\n");
 			} else {
 				pr_info("2 sec to power off.\n");
-				kernel_power_off();
+				if (fac_kill_sw_dis_flg <= 0)
+					kernel_power_off();
+				else
+					pr_info("SW POFF Disabled!\n");
 				return;
 			}
 		}
@@ -267,6 +338,23 @@ static int mmi_factory_probe(struct platform_device *pdev)
 		if (!info->factory_cable)
 			gpio_direction_output(info->list[KP_KILL_INDEX].gpio,
 						1);
+		else {
+			ret = device_create_file(&pdev->dev,
+						 &dev_attr_usr_rst_sw_dis);
+			if (ret)
+				dev_err(&pdev->dev,
+					"couldn't create usr_rst_sw_dis\n");
+
+			usr_rst_sw_dis_flg = 0;
+
+			ret = device_create_file(&pdev->dev,
+						&dev_attr_fac_kill_sw_dis);
+			if (ret)
+				dev_err(&pdev->dev,
+					"couldn't create fac_kill_sw_dis\n");
+
+			fac_kill_sw_dis_flg = 0;
+		}
 
 		info->warn_irq = gpio_to_irq(info->list[KP_WARN_INDEX].gpio);
 		info->fac_cbl_irq =
@@ -325,6 +413,12 @@ static int mmi_factory_remove(struct platform_device *pdev)
 {
 	struct mmi_factory_info *info = platform_get_drvdata(pdev);
 
+	if (usr_rst_sw_dis_flg >= 0)
+		device_remove_file(&pdev->dev,
+				   &dev_attr_usr_rst_sw_dis);
+	if (fac_kill_sw_dis_flg >= 0)
+		device_remove_file(&pdev->dev,
+				   &dev_attr_fac_kill_sw_dis);
 	if (info) {
 		gpio_free_array(info->list, info->num_gpios);
 
