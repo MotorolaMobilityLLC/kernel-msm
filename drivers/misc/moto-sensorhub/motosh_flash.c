@@ -58,6 +58,7 @@
 #define WRITE_DELAY 20
 #define WRITE_TIMEOUT 20
 #define RESET_PULSE 20
+#define FLASHEN_I2C_DELAY 5
 
 enum stm_command {
 	GET_VERSION = 0x01,
@@ -357,7 +358,7 @@ int switch_motosh_mode(enum stm_mode mode)
 				       (bslen_pin_active_value));
 			msleep(RESET_PULSE);
 			gpio_set_value(pdata->gpio_reset, 1);
-			msleep(MOTOSH_RESET_DELAY);
+			msleep(FLASHEN_I2C_DELAY);
 
 			err = motosh_boot_cmd_write(motosh_misc_data, GET_ID);
 			if (err < 0)
