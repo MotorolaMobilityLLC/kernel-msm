@@ -83,7 +83,7 @@
 			/*  CMD2 Page1 is selected */
 			15 01 00 00 01 00 02 FF 10
 			/* exit sleep mode */
-			05 01 00 00 78 00 02 11 00
+			05 01 00 00 78 00 01 11
 			/* enable_te */
 			15 01 00 00 01 00 02 35 00
 			/* display on */
@@ -91,10 +91,10 @@
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command = [
 			/* display_off */
-			05 01 00 00 01 00 02 28 00
+			05 01 00 00 01 00 01 28
 			/* enter sleep mode */
-			05 01 00 00 78 00 02 10 00];
-		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+			05 01 00 00 78 00 01 10];
+		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 	};
 
 	mot_inx_570_QHD_1_cmd_v0: qcom,mdss_dsi_mot_inx_570_QHD_dualmipi1_cmd_v0 {
