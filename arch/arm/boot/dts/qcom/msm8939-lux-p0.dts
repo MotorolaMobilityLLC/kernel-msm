@@ -111,3 +111,7 @@
 			<&msm_gpio 116 0>;       /* Wake Up Sensor Hub */
 	};
 };
+
+&sdhc_2 {
+	cd-gpios = <&msm_gpio 25 0x1>;
+};
