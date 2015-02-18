@@ -41,3 +41,15 @@
 &mdss_dsi1 {
 	status = "disabled";
 };
+
+&pm8994_gpios {
+	gpio@c300 { /* GPIO 4 - EN_BST_BYP */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+};
