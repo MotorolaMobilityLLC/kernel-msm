@@ -2777,8 +2777,10 @@ out:
 
 	memcg_kmem_commit_charge(page, memcg, order);
 
-	if (page)
+	if (page) {
 		set_page_owner(page, order, gfp_mask);
+		debug_page_users(page, order);
+	}
 
 	return page;
 }
@@ -6435,3 +6437,182 @@ void dump_page(struct page *page)
 	dump_page_flags(page->flags);
 	mem_cgroup_print_bad_page(page);
 }
+
+#ifdef CONFIG_DEBUG_PAGE_USERS
+
+#define MAX_TRACE_LEVEL 8
+#define TRACE_TOTAL_NUMBER 100
+
+struct page_trace_entry {
+
+	struct stack_trace st;
+	unsigned long trace_entries[MAX_TRACE_LEVEL];
+	u64 last_access;
+	unsigned long count;
+	int	pid;
+	char comm[TASK_COMM_LEN];
+};
+
+static struct page_trace_entry *gty;
+static int gty_count;
+static int init_done;
+static DEFINE_SPINLOCK(gty_lock);
+static unsigned long addr_to_debug = CONFIG_DEBUG_PAGE_USERS_ADDR;
+
+
+static void init_ty(struct page_trace_entry *ty)
+{
+	ty->st.nr_entries = 0;
+	ty->st.max_entries = ARRAY_SIZE(ty->trace_entries);
+	ty->st.entries = ty->trace_entries;
+	ty->st.skip = 3;
+
+	memset(ty->trace_entries, 0xFF,
+		sizeof(unsigned long) * MAX_TRACE_LEVEL);
+
+}
+static int same_st(struct stack_trace *old, struct stack_trace *new)
+{
+	int i;
+
+	for (i = 0; i < old->nr_entries; i++)
+		if (old->entries[i] !=  new->entries[i])
+			return 0;
+	return 1;
+
+}
+static struct page_trace_entry *is_ty_saved(struct page_trace_entry *ty)
+{
+	struct page_trace_entry  *c_ty = gty;
+	int i;
+
+	for (i = 0; i < gty_count; i++) {
+		if (same_st(&c_ty->st, &ty->st))
+			return c_ty;
+		c_ty++;
+	}
+	return NULL;
+}
+static void add_trace_entry(void)
+{
+	struct page_trace_entry *ty, tmp;
+
+	if (gty_count >= TRACE_TOTAL_NUMBER) {
+		pr_err("Too Many backtrace to save!!!\n");
+		return;
+	}
+
+	init_ty(&tmp);
+	save_stack_trace(&tmp.st);
+
+	spin_lock(&gty_lock);
+	ty = is_ty_saved(&tmp);
+	if (ty)
+		goto out;
+
+
+	ty = gty + gty_count;
+	memcpy(ty, &tmp, sizeof(tmp));
+	ty->st.entries = ty->trace_entries;
+	gty_count++;
+
+out:
+	ty->count++;
+	ty->last_access = local_clock();
+	ty->pid = current->pid;
+	memcpy(ty->comm, current->comm, TASK_COMM_LEN);
+	spin_unlock(&gty_lock);
+}
+
+static void __debug_users(unsigned long s, unsigned long e)
+{
+	if (!init_done)
+		return;
+
+	if ((s <= addr_to_debug) && (addr_to_debug < e))
+		add_trace_entry();
+}
+
+void debug_slab_page_users(void *addr, size_t size)
+{
+	unsigned long s, e;
+
+	s = (unsigned long)addr;
+	e = s + size;
+
+	__debug_users(s, e);
+
+}
+void debug_page_users(struct page *page, unsigned int order)
+{
+	unsigned long s, e;
+
+	s = (unsigned long) page_address(page);
+	e =  s + (PAGE_SIZE << order);
+
+	__debug_users(s, e);
+}
+void debug_print_page_users(void)
+{
+	int i;
+	struct page_trace_entry *ty;
+
+	if (!init_done)
+		return;
+
+	pr_info("%s: There are %d users (who have got 0x%lx).\n",
+		__func__, gty_count, addr_to_debug);
+
+	if (!gty_count)
+		return;
+
+	ty = gty;
+	for (i = 0; i < gty_count; i++) {
+
+		pr_info("Record %d:\n", i);
+		pr_info("\t alloc times = %lu, last_access @%llu by %s(%d):\n",
+			ty->count, ty->last_access, ty->comm, ty->pid);
+		print_stack_trace(&ty->st, 2);
+		ty++;
+	}
+	pr_info("%s: End of Output\n", __func__);
+}
+void debug_page_users_dump(void *start, size_t len)
+{
+	unsigned long s, e;
+
+	if (!init_done)
+		return;
+
+	s = (unsigned long)start;
+	e = s + len;
+
+	if ((s <= addr_to_debug) && (addr_to_debug < e))
+		debug_print_page_users();
+}
+static int  __init init_trace_entry_buf(void)
+{
+	struct page_trace_entry *ty;
+	int i;
+
+	if (!addr_to_debug)
+		return 0;
+
+	gty = kzalloc((sizeof(struct page_trace_entry) * TRACE_TOTAL_NUMBER),
+			GFP_KERNEL);
+	if (!gty) {
+		pr_err("Failed to allocate page trace_entry buffer\n");
+		return 0;
+	}
+
+	ty = gty;
+	for (i = 0; i < TRACE_TOTAL_NUMBER; i++) {
+		init_ty(ty);
+		ty++;
+	}
+	init_done = 1;
+	return 0;
+
+}
+early_initcall(init_trace_entry_buf);
+#endif /* CONFIG_DEBUG_PAGE_USERS */
