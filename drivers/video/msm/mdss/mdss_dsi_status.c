@@ -90,6 +90,8 @@ irqreturn_t hw_vsync_handler(int irq, void *data)
 	if (!atomic_read(&ctrl_pdata->te_irq_ready))
 		atomic_inc(&ctrl_pdata->te_irq_ready);
 
+	ctrl_pdata->panel_data.panel_info.panel_dead = false;
+
 	return IRQ_HANDLED;
 }
 
