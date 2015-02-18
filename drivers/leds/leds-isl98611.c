@@ -61,7 +61,7 @@
 #define VNON_VAL		0x02
 #define VPOFF_VAL		0x00
 #define VNOFF_VAL		0x00
-#define RESET_VAL		0x80
+#define RESET_VAL		0x00
 #define CABC_VAL		0x80
 #define PWMRES_VAL		0x80
 
