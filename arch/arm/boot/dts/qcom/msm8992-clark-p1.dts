@@ -41,6 +41,7 @@
 					regulator-name = "lm3631_boost";
 					regulator-min-microvolt = <4500000>;
 					regulator-max-microvolt = <6350000>;
+					regulator-boot-on;
 					regulator-always-on;
 				};
 
@@ -48,12 +49,14 @@
 					regulator-name = "vsp_disp";
 					regulator-min-microvolt = <4000000>;
 					regulator-max-microvolt = <6000000>;
+					regulator-boot-on;
 				};
 
 				lm3631_neg: vneg {
 					regulator-name = "vsn_disp";
 					regulator-min-microvolt = <4000000>;
 					regulator-max-microvolt = <6000000>;
+					regulator-boot-on;
 				};
 
 				lm3631_cont: vcont {
@@ -84,6 +87,7 @@
 	vsp_disp-supply = <&lm3631_pos>;
 	vsn_disp-supply = <&lm3631_neg>;
 
+	/delete-node/ qcom,panel-supply-entries;
 	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
 };
 
@@ -93,5 +97,14 @@
 	vsp_disp-supply = <&lm3631_pos>;
 	vsn_disp-supply = <&lm3631_neg>;
 
+	/delete-node/ qcom,panel-supply-entries;
 	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
+};
+
+&mot_inx_570_QHD_0_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_inx_570_QHD_1_cmd_v0 {
+	qcom,cont-splash-enabled;
 };
