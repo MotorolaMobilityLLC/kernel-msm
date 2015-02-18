@@ -43,6 +43,8 @@
 
 #define DRV_NAME "msm8994-asoc-snd"
 
+static int msm8994_tfa9890_earpiece;
+
 #define SAMPLING_RATE_8KHZ      8000
 #define SAMPLING_RATE_16KHZ     16000
 #define SAMPLING_RATE_32KHZ     32000
@@ -95,6 +97,8 @@ struct msm8994_asoc_mach_data {
 	struct msm_pinctrl_info pinctrl_info;
 	void __iomem *pri_mux;
 	void __iomem *sec_mux;
+	/* this gpio will be toggled in earpiece mode */
+	int tfa9890_earpiece_gpio;
 };
 
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -140,6 +144,55 @@ static struct audio_plug_dev *apq8094_db_ext_fp_in_dev;
 /* Front panel audio jack which connected to Line in (ADC6) */
 static struct audio_plug_dev *apq8094_db_ext_fp_out_dev;
 
+static int msm8994_tfa9890_earpiece_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() curr state %d\n", __func__, msm8994_tfa9890_earpiece);
+
+	ucontrol->value.integer.value[0] = msm8994_tfa9890_earpiece;
+	return 0;
+}
+
+static int msm8994_tfa9890_earpiece_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *card = codec->card;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	pr_debug("%s() curr state %d\n", __func__, msm8994_tfa9890_earpiece);
+
+	if (msm8994_tfa9890_earpiece == ucontrol->value.integer.value[0])
+		return 1;
+
+	if (!gpio_is_valid(pdata->tfa9890_earpiece_gpio)) {
+		pr_err("%s: Invalid tfa9890 earpiece gpio\n", __func__);
+		return 0;
+	}
+
+	if (!ucontrol->value.integer.value[0])
+		gpio_set_value_cansleep(pdata->tfa9890_earpiece_gpio, 0);
+	else
+		gpio_set_value_cansleep(pdata->tfa9890_earpiece_gpio, 1);
+
+	msm8994_tfa9890_earpiece = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+static const char *const tfa9890_earpiece[] = {"Off", "On"};
+static const struct soc_enum tfa9890_earpiece_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, tfa9890_earpiece),
+};
+
+/* TFA9890 codec control to turn on ear piece cutback gpio when used
+ * in earpiece mode
+*/
+static const struct snd_kcontrol_new tfa9890_earpiece_control[] = {
+	SOC_ENUM_EXT("TFA9890 earpiece mode", tfa9890_earpiece_enum[0],
+			msm8994_tfa9890_earpiece_get,
+			msm8994_tfa9890_earpiece_put),
+};
 
 static const char *const pin_states[] = {"sleep", "auxpcm-active",
 					 "mi2s-active", "active"};
@@ -2140,6 +2193,11 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret != 0)
 		dev_err(rtd->platform->dev, "Failed to add msm_snd_controls\n");
 
+	ret = snd_soc_add_codec_controls(codec, tfa9890_earpiece_control,
+		ARRAY_SIZE(tfa9890_earpiece_control));
+	if (ret != 0)
+		dev_err(codec->dev, "%s: failed add tfa9890 stereo routes\n", __func__);
+
 	/* Cargo-culted from QC */
 	snd_soc_dapm_sync(dapm);
 
@@ -3615,6 +3673,7 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	pdata->tfa9890_earpiece_gpio = -EINVAL;
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
@@ -3680,13 +3739,44 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 			msm8994_hdmi_dai_link, sizeof(msm8994_hdmi_dai_link));
 
 		card->dai_link	= msm8994_dai_links;
-		card->num_links	= ARRAY_SIZE(msm8994_dai_links);
+		card->num_links = ARRAY_SIZE(msm8994_dai_links);
 	} else {
 		dev_info(&pdev->dev, "%s: No hdmi audio support\n", __func__);
 
-		card->dai_link	= msm8994_common_dai_links;
+		card->dai_link  = msm8994_common_dai_links;
 		card->num_links	= ARRAY_SIZE(msm8994_common_dai_links);
 	}
+
+	/* check if stereo mode is enabled */
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,tfa9890-stereo")) {
+		dev_info(&pdev->dev, "%s(): tfa9890 stereo support present\n",
+				__func__);
+
+		/* read earpiece gpio */
+		pdata->tfa9890_earpiece_gpio =
+			of_get_named_gpio(pdev->dev.of_node,
+			"qcom,tfa9890-earpiece-gpio", 0);
+
+		if (gpio_is_valid(pdata->tfa9890_earpiece_gpio)) {
+			ret = devm_gpio_request(&pdev->dev,
+				pdata->tfa9890_earpiece_gpio,
+				"TFA9890 earpiece gpio");
+			if (ret) {
+				dev_info(card->dev,
+					"%s: Failed to request TFA9890 earpiece gpio %d error %d\n",
+					__func__,
+					pdata->tfa9890_earpiece_gpio, ret);
+			} else {
+				pr_info("earpice gpio %d\n",
+					pdata->tfa9890_earpiece_gpio);
+				gpio_direction_output(pdata->tfa9890_earpiece_gpio, 0);
+			}
+		} else
+			dev_info(&pdev->dev, "property %s not detected in node %s",
+				"qcom,tfa9890-earpiece-gpio",
+				pdev->dev.of_node->full_name);
+	}
+
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&prim_auxpcm_rsc_ref, 0);
 	atomic_set(&sec_auxpcm_rsc_ref, 0);
