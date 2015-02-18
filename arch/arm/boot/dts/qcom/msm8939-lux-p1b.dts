@@ -43,9 +43,3 @@
 	};
 };
 
-&tlmm_pinmux {
-
-	stml0xx_inputs {
-		qcom,pins = <&gp 51>, <&gp 52>, <&gp 38>, <&gp 13>;
-	};
-};
