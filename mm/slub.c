@@ -2393,6 +2393,8 @@ redo:
 
 	slab_post_alloc_hook(s, gfpflags, object);
 
+	debug_slab_page_users(object, s->size);
+
 	return object;
 }
 
