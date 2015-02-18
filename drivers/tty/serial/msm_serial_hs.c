@@ -2236,11 +2236,10 @@ static struct msm_hs_port *msm_hs_get_hs_port(int port_index)
 
 /* request to turn off uart clock once pending TX is flushed */
 void msm_hs_request_clock_off(struct uart_port *uport) {
-	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	int data;
 
-	spin_lock_irqsave(&uport->lock, flags);
+	mutex_lock(&msm_uport->clk_mutex);
 	if (msm_uport->clk_state == MSM_HS_CLK_ON) {
 		msm_uport->clk_state = MSM_HS_CLK_REQUEST_OFF;
 
@@ -2252,7 +2251,7 @@ void msm_hs_request_clock_off(struct uart_port *uport) {
 
 		mb();
 	}
-	spin_unlock_irqrestore(&uport->lock, flags);
+	mutex_unlock(&msm_uport->clk_mutex);
 }
 EXPORT_SYMBOL(msm_hs_request_clock_off);
 
@@ -2270,7 +2269,9 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	 */
 	hrtimer_cancel(&msm_uport->clk_off_timer);
 	flush_work(&msm_uport->clock_off_w);
+	mutex_lock(&msm_uport->clk_mutex);
 	cur_clk_state = msm_uport->clk_state;
+	mutex_unlock(&msm_uport->clk_mutex);
 	msm_hs_clock_vote(msm_uport);
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
@@ -2360,7 +2361,7 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 	struct uart_port *uport = &msm_uport->uport;
 	struct tty_struct *tty = NULL;
 
-	spin_lock_irqsave(&uport->lock, flags);
+	mutex_lock(&msm_uport->clk_mutex);
 	if (msm_uport->clk_state == MSM_HS_CLK_OFF)  {
 		/* ignore the first irq - it is a pending irq that occured
 		 * before enable_irq()
@@ -2370,7 +2371,9 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 		else
 			wakeup = 1;
 	}
+	mutex_unlock(&msm_uport->clk_mutex);
 
+	spin_lock_irqsave(&uport->lock, flags);
 	if (wakeup) {
 		/* the uart was clocked off during an rx, wake up and
 		 * optionally inject char into tty rx
