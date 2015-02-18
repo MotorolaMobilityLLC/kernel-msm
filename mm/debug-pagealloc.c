@@ -80,6 +80,7 @@ static void check_poison_mem(unsigned char *mem, size_t bytes)
 			end - start + 1, 1);
 	BUG_ON(PANIC_CORRUPTION);
 	dump_stack();
+	debug_page_users_dump((void *)start, (size_t)(end - start));
 }
 
 static void unpoison_page(struct page *page)
