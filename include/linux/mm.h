@@ -1873,25 +1873,5 @@ void __init setup_nr_node_ids(void);
 static inline void setup_nr_node_ids(void) {}
 #endif
 
-#ifdef CONFIG_DEBUG_PAGE_USERS
-void debug_slab_page_users(void *addr, size_t size);
-void debug_page_users(struct page *page, unsigned int order);
-void debug_print_page_users(void);
-#else
-inline void debug_slab_page_users(void *addr, size_t size)
-{
-	return;
-}
-void debug_page_users(struct page *page, unsigned int order)
-{
-	return;
-}
-void debug_print_page_users(void)
-{
-	return;
-}
-#endif
-
-
 #endif /* __KERNEL__ */
 #endif /* _LINUX_MM_H */

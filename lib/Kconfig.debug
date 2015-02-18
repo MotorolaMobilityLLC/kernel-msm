@@ -99,12 +99,6 @@ config UNUSED_SYMBOLS
 	  you really need it, and what the merge plan to the mainline kernel for
 	  your module is.
 
-config DEBUG_PAGE_USERS
-	bool "Enable to record the users of specific page"
-	default n
-	help
-	  It's used to debug memory page "use-after-free" issue.
-
 config PAGE_OWNER
 	bool "Track page owner"
 	depends on DEBUG_KERNEL && STACKTRACE_SUPPORT
