@@ -24,6 +24,8 @@
 	/delete-node/ isl98611a_pos;
 	/delete-node/ isl98611a_neg;
 	i2c@f9926000 { /* BLSP1 QUP3 */
+		/delete-node/ isl98611@29;
+
 		lm3631@29 {
 			compatible = "ti,lm3631";
 			reg = <0x29>;
