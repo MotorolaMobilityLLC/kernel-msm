@@ -381,6 +381,29 @@
 			drive-strength = <4>; /* 4 MA */
 		};
 	};
+
+	cycapsense {
+		qcom,pins = <&gp 109 &gp 64>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "cycapsense_";
+		cycapsense_default: default {
+			bias-disable;
+			output-low;
+			drive-strength = <2>;
+		};
+	};
+
+	cycapsense_data {
+		qcom,pins = <&gp 105>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cycapsense_data";
+		cycapsense_data_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
 };
 
 &blsp1_uart2 {
@@ -1111,6 +1134,23 @@
 
 	qcom,cnss {
 		wlan-112 = <&msm_gpio 112 0>;
+	};
+
+	cycapsense_prog {
+			compatible = "cypress,cycapsense_hssp";
+			label = "MotorolaCapSense";
+			silicon_id = <0x0BB11477>;
+			block_size = <64>;
+			num_of_blocks = <256>;
+			secure_bytes = <32>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&cycapsense_default &cycapsense_data_default>;
+			gpios = <&msm_gpio 64 0>, /* RESET */
+				<&msm_gpio 109 0>, /* programming SCLK */
+				<&msm_gpio 105 0>; /* programming SDAT */
+			use-raw-gpio-rw = <1>;
+			gpio_base_addr = <0xFD511004>;
+			gpio_base_size = <0x4000>;
 	};
 };
 
