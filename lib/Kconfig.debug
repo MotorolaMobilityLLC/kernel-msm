@@ -99,6 +99,28 @@ config UNUSED_SYMBOLS
 	  you really need it, and what the merge plan to the mainline kernel for
 	  your module is.
 
+config DEBUG_PAGE_USERS
+	bool "Enable to record the users of specific page"
+	default n
+	help
+	  This is a debug option. it will record the users (i.e. allocation
+	  backtrace) of a specific memory address, which is defined by
+	  CONFIG_DEBUG_PAGE_USERS_ADDR. Both page allocation path and slub
+	  allocation path have been recorded.  There are also other infomation
+	  saved:
+		 allo times : to count how many allocation with same backtrace.
+		 last_access: time of last allocation.
+		 pid and comm:  the task info of the last allocation.
+	  It's used to debug memory page "use-after-free" issue.
+
+config DEBUG_PAGE_USERS_ADDR
+	hex "Memory Address to Debug"
+	depends on DEBUG_PAGE_USERS
+	default "0x0"
+	help
+	  It's to define the memory address to debug. See DEBUG_PAGE_USERS.
+
+
 config PAGE_OWNER
 	bool "Track page owner"
 	depends on DEBUG_KERNEL && STACKTRACE_SUPPORT
