@@ -66,7 +66,8 @@ static void mdss_check_te_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	 * first TE interrupt arrives after the TE IRQ line is enabled. For such
 	 * cases, re-schedule the ESD thread.
 	 */
-	if (!atomic_read(&ctrl_pdata->te_irq_ready)) {
+	if (!ctrl_pdata->panel_data.panel_info.panel_dead &&
+		!atomic_read(&ctrl_pdata->te_irq_ready)) {
 		schedule_delayed_work(&pstatus_data->check_status,
 			msecs_to_jiffies(interval));
 		pr_debug("%s: TE IRQ line not enabled yet\n", __func__);

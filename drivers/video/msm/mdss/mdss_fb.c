@@ -1229,7 +1229,6 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 			goto error;
 
 		mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-		mfd->panel_info->panel_dead = false;
 		mutex_lock(&mfd->update.lock);
 		mfd->update.type = NOTIFY_TYPE_UPDATE;
 		mfd->update.is_suspend = 0;
