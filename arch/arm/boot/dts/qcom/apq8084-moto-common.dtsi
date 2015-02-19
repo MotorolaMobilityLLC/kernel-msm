@@ -858,6 +858,7 @@
 		qcom,ext-temp-soc = <65>;
 		qcom,low-voltage-uv = <2750000>;
 		qcom,max-voltage-uv = <4350000>;
+		qcom,low-gauge-mv = <2800>;
 	};
 
 	max17050: max17050-battery@36 {
