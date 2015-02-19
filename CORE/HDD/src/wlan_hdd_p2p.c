@@ -711,7 +711,25 @@ int __wlan_hdd_cfg80211_remain_on_channel( struct wiphy *wiphy,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
     struct net_device *dev = wdev->netdev;
 #endif
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+    int ret = 0;
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return ret;
+    }
 
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                      TRACE_CODE_HDD_REMAIN_ON_CHANNEL,

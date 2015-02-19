@@ -332,11 +332,13 @@ int __hddDevSuspendHdlr(struct device *dev)
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: WLAN suspended by platform driver",__func__);
 
    /* Get the HDD context */
-   if(!pHddCtx) {
-      VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_FATAL,"%s: HDD context is Null",__func__);
-      return 0;
+   ret = wlan_hdd_validate_context(pHddCtx);
+   if (0 != ret)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: HDD context is not valid",__func__);
+       return ret;
    }
-
    if(pHddCtx->isWlanSuspended == TRUE)
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_FATAL,"%s: WLAN is already in suspended state",__func__);
@@ -385,11 +387,18 @@ int hddDevSuspendHdlr(struct device *dev)
 int __hddDevResumeHdlr(struct device *dev)
 {
    hdd_context_t* pHddCtx = NULL;
-
-   pHddCtx =  (hdd_context_t*)wcnss_wlan_get_drvdata(dev);
+   int ret = 0;
 
    VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_INFO, "%s: WLAN being resumed by Android OS",__func__);
 
+   pHddCtx =  (hdd_context_t*)wcnss_wlan_get_drvdata(dev);
+   ret = wlan_hdd_validate_context(pHddCtx);
+   if (0 != ret)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: HDD context is not valid ",__func__);
+       return ret;
+   }
    if(pHddCtx->isWlanSuspended != TRUE)
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_FATAL,"%s: WLAN is already in resumed state",__func__);
