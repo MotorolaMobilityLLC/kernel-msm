@@ -3764,8 +3764,6 @@ static int tomtom_codec_enable_dec(struct snd_soc_dapm_widget *w,
 							CF_MIN_3DB_150HZ << 4);
 			}
 
-			/* enable HPF */
-			snd_soc_update_bits(codec, tx_mux_ctl_reg , 0x08, 0x00);
 		} else
 			/* bypass HPF */
 			snd_soc_update_bits(codec, tx_mux_ctl_reg , 0x08, 0x08);
@@ -3774,8 +3772,8 @@ static int tomtom_codec_enable_dec(struct snd_soc_dapm_widget *w,
 
 	case SND_SOC_DAPM_POST_PMU:
 
-		/* Disable TX digital mute */
-		snd_soc_update_bits(codec, tx_vol_ctl_reg, 0x01, 0x00);
+		/* enable HPF */
+		snd_soc_update_bits(codec, tx_mux_ctl_reg , 0x08, 0x00);
 
 		if ((tx_hpf_work[decimator - 1].tx_hpf_cut_of_freq !=
 				CF_MIN_3DB_150HZ) &&
@@ -5935,6 +5933,84 @@ static int tomtom_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int tomtom_digital_mute(struct snd_soc_dai *dai, int mute)
+{
+	struct snd_soc_codec *codec = NULL;
+	struct wcd9xxx_ch *ch = NULL;
+	struct tomtom_priv *tomtom;
+	u32 tx_port = 0;
+	u16 tx_vol_ctl_reg = 0, tx_port_reg = 0;
+	u8 tx_port_reg_val = 0;
+	s8 decimator = 0;
+
+	 if (!dai || !dai->codec) {
+		pr_err("%s: Invalid params\n", __func__);
+		return -EINVAL;
+	}
+
+	codec = dai->codec;
+	if (dai->id != AIF1_CAP &&
+	    dai->id != AIF2_CAP &&
+	    dai->id != AIF3_CAP) {
+		dev_dbg(codec->dev, "%s: Not capture use case skip\n",
+			__func__);
+		return 0;
+	}
+
+	tomtom = snd_soc_codec_get_drvdata(codec);
+	if (!tomtom) {
+		dev_err(codec->dev,
+			"%s: drvdata get failed\n", __func__);
+		return -EINVAL;
+	}
+
+	dev_dbg(codec->dev, "%s: enter, mute = %d\n", __func__, mute);
+
+	mute = (mute) ? 1 : 0;
+	/* sleep for 10ms before unmuting the TX path as per HW requirement */
+	usleep_range(10000, 10100);
+	list_for_each_entry(ch, &tomtom->dai[dai->id].wcd9xxx_ch_list, list) {
+		tx_port = ch->port + 1;
+		dev_dbg(codec->dev, "%s: dai->id = %d, tx_port = %d",
+			__func__, dai->id, tx_port);
+		if ((tx_port < 1) || (tx_port > NUM_DECIMATORS)) {
+			dev_err(codec->dev, "%s: Invalid SLIM TX%u DAI ID is %d\n",
+				__func__, tx_port, dai->id);
+			return -EINVAL;
+		}
+
+		tx_port_reg = TOMTOM_A_CDC_CONN_TX_SB_B1_CTL + (tx_port - 1);
+		tx_port_reg_val = snd_soc_read(codec, tx_port_reg);
+		decimator = 0;
+		if ((tx_port >= 1) && (tx_port <= 6)) {
+			tx_port_reg_val = tx_port_reg_val & 0x0F;
+			if (tx_port_reg_val == 0x8)
+				decimator = tx_port;
+		} else if ((tx_port >= 7) && (tx_port <= NUM_DECIMATORS)) {
+			tx_port_reg_val = tx_port_reg_val & 0x1F;
+			if ((tx_port_reg_val >= 0x8) &&
+			    (tx_port_reg_val <= 0x11)) {
+				decimator = (tx_port_reg_val - 0x8) + 1;
+			}
+		}
+
+		if (decimator && decimator <= NUM_DECIMATORS) {
+			dev_dbg(codec->dev, "%s: Decimator used %d\n",
+				__func__, decimator);
+			tx_vol_ctl_reg =
+				TOMTOM_A_CDC_TX1_VOL_CTL_CFG +
+				8 * (decimator - 1);
+			/* Set TX digital mute */
+			snd_soc_update_bits(codec, tx_vol_ctl_reg, 0x01, mute);
+		} else {
+			dev_err(codec->dev, "%s: Invalid Decimator used %d\n",
+				__func__, decimator);
+		}
+	}
+
+	return 0;
+}
+
 static struct snd_soc_dai_ops tomtom_dai_ops = {
 	.startup = tomtom_startup,
 	.shutdown = tomtom_shutdown,
@@ -5943,6 +6019,7 @@ static struct snd_soc_dai_ops tomtom_dai_ops = {
 	.set_fmt = tomtom_set_dai_fmt,
 	.set_channel_map = tomtom_set_channel_map,
 	.get_channel_map = tomtom_get_channel_map,
+	.digital_mute = tomtom_digital_mute,
 };
 
 static struct snd_soc_dai_driver tomtom_dai[] = {
