@@ -1100,6 +1100,12 @@ struct hdd_adapter_s
    /* Lock for active sessions while processing deauth/Disassoc */
    spinlock_t lock_for_active_session;
    fwStatsResult_t  fwStatsRsp;
+
+   /* Time stamp for last completed RoC request */
+   v_TIME_t lastRocTs;
+
+   /* work queue to defer the back to back p2p_listen */
+   struct delayed_work roc_work;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
