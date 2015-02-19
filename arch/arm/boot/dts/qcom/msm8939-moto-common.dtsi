@@ -511,7 +511,7 @@
 	};
 };
 
-&i2c_0 {
+&i2c_4 {
 	qcom,clk-freq-out = <400000>;
 
 	synaptics_dsx_i2c@20 {
