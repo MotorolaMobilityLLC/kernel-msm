@@ -745,7 +745,7 @@ static int mdss_mdp_idle_pc_restore(void)
 	}
 
 	pr_debug("called from %pS\n", __builtin_return_address(0));
-	rc = mdss_iommu_attach(mdata);
+	rc = mdss_iommu_ctrl(1);
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("mdss iommu attach failed rc=%d\n", rc);
 		goto end;
@@ -753,6 +753,7 @@ static int mdss_mdp_idle_pc_restore(void)
 	mdss_hw_init(mdata);
 	mdss_mdp_ctl_restore();
 	mdata->idle_pc = false;
+	mdss_iommu_ctrl(0);
 
 end:
 	mutex_unlock(&mdp_fs_idle_pc_lock);
