@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -6738,7 +6738,7 @@ static int __iw_setnone_getnone(struct net_device *dev,
 
                /*Make sure that pAdapter cleaned properly*/
                hdd_stop_adapter( pHddCtx, pAdapter_to_stop, VOS_TRUE );
-               hdd_deinit_adapter( pHddCtx, pAdapter_to_stop );
+               hdd_deinit_adapter( pHddCtx, pAdapter_to_stop, TRUE);
                memset(&pAdapter_to_stop->sessionCtx, 0, sizeof(pAdapter_to_stop->sessionCtx));
 
                wlan_hdd_release_intf_addr(WLAN_HDD_GET_CTX(pAdapter),

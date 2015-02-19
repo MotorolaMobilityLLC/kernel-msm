@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -61,6 +61,7 @@
 #include <linux/wireless.h>
 #include <linux/semaphore.h>
 #include <linux/compat.h>
+#include <linux/rtnetlink.h>
 #include <vos_api.h>
 #include <vos_sched.h>
 #include <linux/etherdevice.h>
@@ -264,7 +265,7 @@ static void __hdd_hostapd_uninit (struct net_device *dev)
 
    if (pHostapdAdapter && pHostapdAdapter->pHddCtx)
    {
-      hdd_deinit_adapter(pHostapdAdapter->pHddCtx, pHostapdAdapter);
+      hdd_deinit_adapter(pHostapdAdapter->pHddCtx, pHostapdAdapter, TRUE);
 
       /* after uninit our adapter structure will no longer be valid */
       pHostapdAdapter->dev = NULL;
@@ -4757,7 +4758,7 @@ VOS_STATUS hdd_register_hostapd( hdd_adapter_t *pAdapter, tANI_U8 rtnl_lock_held
    return status;
 }
     
-VOS_STATUS hdd_unregister_hostapd(hdd_adapter_t *pAdapter)
+VOS_STATUS hdd_unregister_hostapd(hdd_adapter_t *pAdapter, tANI_U8 rtnl_held)
 {
    ENTER();
    
@@ -4768,7 +4769,16 @@ VOS_STATUS hdd_unregister_hostapd(hdd_adapter_t *pAdapter)
       detatch the wireless device handlers */
    if (pAdapter->dev)
    {
-      pAdapter->dev->wireless_handlers = NULL;
+       if (TRUE == rtnl_held)
+       {
+           pAdapter->dev->wireless_handlers = NULL;
+       }
+       else
+       {
+           rtnl_lock();
+           pAdapter->dev->wireless_handlers = NULL;
+           rtnl_unlock();
+       }
    }
    EXIT();
    return 0;
