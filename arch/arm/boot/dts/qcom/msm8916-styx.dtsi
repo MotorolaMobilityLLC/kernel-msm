@@ -22,6 +22,7 @@
 
 &mdss_dsi0 {
 	qcom,regulator-ldo-mode;
+	qcom,regulator-legacy-program;
 	qcom,platform-regulator-settings = [02 09 03 00 20 00 01];
 	qcom,dsi-pref-prim-pan = <&mot_boe_450_qhd_vid_v3>;
 	vci_disp-supply = <&pm8916_l17>;
