@@ -23,6 +23,7 @@
 
 
 struct m4sensorhub_ads_data {
+	uint32_t seq;
 	int data;
 	long long timestamp;
 };

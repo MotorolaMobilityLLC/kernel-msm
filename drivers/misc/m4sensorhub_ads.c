@@ -37,6 +37,7 @@
 #include <linux/iio/kfifo_buf.h>
 #include <linux/iio/m4sensorhub/m4sensorhub_ads.h>
 
+#define U32_MAX ((u32)(~0U))
 #define m4sensorhub_ads_DRIVER_NAME	"m4sensorhub_ads"
 /* this needs to be in sync with M4 code*/
 #define ADS_NUM_SAMPLES 500
@@ -50,6 +51,7 @@ struct m4sensorhub_ads_drvdata {
 	struct m4sensorhub_ads_data read_data;
 	struct mutex				mutex;
 	int* data;
+	uint32_t data_seq_num;
 };
 
 #define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ads_data) * 8)
@@ -94,9 +96,16 @@ static void m4_read_ads_data_locked(struct m4sensorhub_ads_drvdata *priv_data)
 	}
 
 	for (i=0; i < ADS_NUM_SAMPLES; i++) {
+		priv_data->read_data.seq = (priv_data->data_seq_num)++;
+		if (priv_data->data_seq_num == U32_MAX)
+			priv_data->data_seq_num = 0;
+
 		priv_data->read_data.data = priv_data->data[i];
+
 		priv_data->read_data.timestamp = iio_get_time_ns();
-		iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
+		ret = iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
+		if (ret < 0)
+			pr_err("%s: failed to buffer sample data %d\n", __func__, priv_data->data[i]);
 	}
 
 }
@@ -218,6 +227,7 @@ static ssize_t m4sensorhub_ads_store_setdelay(struct device *dev,
 		else {
 			kfree(priv_data->data);
 			priv_data->data = NULL;
+			priv_data->data_seq_num = 0;
 			m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
 		}
 	}
@@ -330,6 +340,7 @@ static int m4sensorhub_ads_probe(struct platform_device *pdev)
 	priv_data->data = NULL;
 	mutex_init(&(priv_data->mutex));
 	priv_data->read_data.data = -1;
+	priv_data->data_seq_num = 0;
 
 	platform_set_drvdata(pdev, iio_dev);
 
