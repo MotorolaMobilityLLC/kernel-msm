@@ -35,3 +35,26 @@
 			<&msm_gpio 116 0>;       /* Wake Up Sensor Hub */
 	};
 };
+
+&i2c_4 {
+	/delete-node/ synaptics_dsx_i2c@20;
+};
+
+&i2c_0 {
+	qcom,clk-freq-out = <400000>;
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <21 0>;
+		gpios = <&msm_gpio 21 0>, /* IRQ */
+			<&msm_gpio 20 0>; /* RESET */
+		touch_vdd-supply = <&pm8916_l16>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+	};
+};
