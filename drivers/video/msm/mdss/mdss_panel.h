@@ -244,6 +244,7 @@ struct mdss_dsi_phy_ctrl {
 	uint32_t pll[21];
 	char lanecfg[45];
 	bool reg_ldo_mode;
+	bool legacy_reg_prg;
 };
 
 struct mipi_panel_info {
