@@ -3465,12 +3465,13 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 #ifdef CONFIG_SND_SOC_FLORIDA
 	/* FLORIDA - TFA9890 codec-codec link */
 	{
-		.name = "florida-tfa9890",
-		.stream_name = "codec-codec link",
+		.name = "florida-tfa9890-left",
+		.stream_name = "TFA9890_LEFT Playback",
 		.cpu_name = "florida-codec",
 		.cpu_dai_name = "florida-aif1",
 		.codec_name = "tfa9890.11-0034",
 		.codec_dai_name = "tfa9890_codec_left",
+		.no_pcm = 1,
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 		.params = &tfa9890_params,
@@ -3491,6 +3492,23 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 	}
 };
 
+#ifdef CONFIG_SND_SOC_FLORIDA
+static struct snd_soc_dai_link msm8994_tfa9890_stereo_dai_link[] = {
+	{
+		.name = "florida-tfa9890-right",
+		.stream_name = "TFA9890_RIGHT Playback",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "tfa9890.11-0035",
+		.codec_dai_name = "tfa9890_codec_right",
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &tfa9890_params,
+		},
+};
+#endif
+
 static struct snd_soc_dai_link msm8994_hdmi_dai_link[] = {
 /* HDMI BACK END DAI Link */
 	{
@@ -3510,9 +3528,16 @@ static struct snd_soc_dai_link msm8994_hdmi_dai_link[] = {
 	},
 };
 
+#ifdef CONFIG_SND_SOC_FLORIDA
+static struct snd_soc_dai_link msm8994_dai_links[
+					 ARRAY_SIZE(msm8994_common_dai_links) +
+					 ARRAY_SIZE(msm8994_hdmi_dai_link) +
+					 ARRAY_SIZE(msm8994_tfa9890_stereo_dai_link)];
+#else
 static struct snd_soc_dai_link msm8994_dai_links[
 					 ARRAY_SIZE(msm8994_common_dai_links) +
 					 ARRAY_SIZE(msm8994_hdmi_dai_link)];
+#endif
 
 struct snd_soc_card snd_soc_card_msm8994 = {
 #ifdef CONFIG_SND_SOC_FLORIDA
@@ -3733,11 +3758,14 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 			msm8994_hdmi_dai_link, sizeof(msm8994_hdmi_dai_link));
 
 		card->dai_link	= msm8994_dai_links;
-		card->num_links = ARRAY_SIZE(msm8994_dai_links);
+		card->num_links = ARRAY_SIZE(msm8994_common_dai_links)
+			+ ARRAY_SIZE(msm8994_hdmi_dai_link);
 	} else {
 		dev_info(&pdev->dev, "%s: No hdmi audio support\n", __func__);
 
-		card->dai_link  = msm8994_common_dai_links;
+		memcpy(msm8994_dai_links, msm8994_common_dai_links,
+			sizeof(msm8994_common_dai_links));
+		card->dai_link  = msm8994_dai_links;
 		card->num_links	= ARRAY_SIZE(msm8994_common_dai_links);
 	}
 
@@ -3769,6 +3797,12 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "property %s not detected in node %s",
 				"qcom,tfa9890-earpiece-gpio",
 				pdev->dev.of_node->full_name);
+#ifdef CONFIG_SND_SOC_FLORIDA
+		memcpy(msm8994_dai_links + card->num_links,
+			msm8994_tfa9890_stereo_dai_link,
+			sizeof(msm8994_tfa9890_stereo_dai_link));
+		card->num_links += ARRAY_SIZE(msm8994_tfa9890_stereo_dai_link);
+#endif
 	}
 
 	mutex_init(&cdc_mclk_mutex);
