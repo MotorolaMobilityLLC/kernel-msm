@@ -91,13 +91,17 @@
 		};
 	};
 
-	dock_switch {
-		compatible = "switch-gpio";
-		switch_name = "dock";
-		switch_gpio = <&msmgpio 54 0>;
-		switch_state_on = "0";
-		switch_state_off = "1";
+	gpio-charger {
+		compatible = "gpio-charger";
+		gpio = <&msmgpio 54 0>;
+		gpio_active_low;
+		charger-type = <8>; /* POWER_SUPPLY_TYPE_WIRELESS */
+		charger-name = "wireless";
+		supplied_to = "max170xx_battery";
+		switch-name = "dock";
+		wakeup;
 	};
+
 	factory_support {
 		compatible = "mmi,factory-support-kungpow";
 		gpios = <&msmgpio 116 0x0>, /* GPIOF_OUT_INIT_LOW */
