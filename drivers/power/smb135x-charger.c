@@ -427,6 +427,7 @@ struct smb135x_chg {
 	struct qpnp_vadc_chip		*vadc_dev;
 	unsigned int			low_voltage_uv;
 	unsigned int                    max_voltage_uv;
+	unsigned int			low_gauge_mv;
 	bool				shutdown_voltage_tripped;
 	bool				poll_fast;
 	bool				hvdcp_powerup;
@@ -3244,8 +3245,22 @@ static void smb135x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 	pr_info("vbat is at %d, state is at %d\n",
 		 batt_volt, state);
 
-	if (state == ADC_TM_LOW_STATE)
-		chip->shutdown_voltage_tripped = true;
+	if (state == ADC_TM_LOW_STATE) {
+		if (batt_volt < chip->low_gauge_mv) {
+			chip->shutdown_voltage_tripped = true;
+		} else {
+			usleep_range(2000, 2100);
+			rc = qpnp_vadc_read(chip->vadc_dev, VSYS, &result);
+			pr_info("VSYS = %lld, raw = 0x%x\n",
+			result.physical, result.adc_code);
+			if (result.physical < chip->low_voltage_uv) {
+				chip->shutdown_voltage_tripped = true;
+			} else {
+				qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+				&chip->vbat_monitor_params);
+			}
+		}
+	}
 	else
 		qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
 					    &chip->vbat_monitor_params);
@@ -4490,6 +4505,10 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	if (rc < 0)
 		chip->max_voltage_uv = 4350000;
 
+	rc = of_property_read_u32(node, "qcom,low-gauge-mv",
+				  &chip->low_gauge_mv);
+	if (rc < 0)
+		chip->low_gauge_mv = 2800;
 	chip->iterm_disabled = of_property_read_bool(node,
 						"qcom,iterm-disabled");
 
