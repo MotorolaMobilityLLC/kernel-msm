@@ -1280,14 +1280,18 @@ static int mtp_ctrlrequest(struct usb_composite_dev *cdev,
 	u16	w_value = le16_to_cpu(ctrl->wValue);
 	u16	w_length = le16_to_cpu(ctrl->wLength);
 	unsigned long	flags;
+	bool	ptp_mode = false;
 
 	VDBG(cdev, "mtp_ctrlrequest "
 			"%02x.%02x v%04x i%04x l%u\n",
 			ctrl->bRequestType, ctrl->bRequest,
 			w_value, w_index, w_length);
 
+	if (dev->function.hs_descriptors == hs_ptp_descs)
+		ptp_mode = true;
+
 	/* Handle MTP OS string */
-	if (ctrl->bRequestType ==
+	if (!ptp_mode && ctrl->bRequestType ==
 			(USB_DIR_IN | USB_TYPE_STANDARD | USB_RECIP_DEVICE)
 			&& ctrl->bRequest == USB_REQ_GET_DESCRIPTOR
 			&& (w_value >> 8) == USB_DT_STRING
@@ -1300,7 +1304,7 @@ static int mtp_ctrlrequest(struct usb_composite_dev *cdev,
 		DBG(cdev, "vendor request: %d index: %d value: %d length: %d\n",
 			ctrl->bRequest, w_index, w_value, w_length);
 
-		if (ctrl->bRequest == 1
+		if (!ptp_mode && ctrl->bRequest == 1
 				&& (ctrl->bRequestType & USB_DIR_IN)
 				&& (w_index == 4 || w_index == 5)) {
 			if (!dev->is_ptp) {
