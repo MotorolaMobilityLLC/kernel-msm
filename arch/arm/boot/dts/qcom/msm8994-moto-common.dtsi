@@ -572,6 +572,17 @@
 		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
 	};
+
+	chan@10 {
+		label = "chg_therm";
+		reg = <0x10>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
 };
 
 &mdss_mdp {
@@ -1026,6 +1037,15 @@
 		qcom,vin-sel = <2>;
 		qcom,src-sel = <0>;
 		qcom,master-en = <1>;
+	};
+};
+
+&pmi8994_mpps {
+	mpp@a000 { /* MPP 1 */
+		status = "okay";
+		qcom,mode = <4>; /* AIN input */
+		qcom,ain-route = <0>; /* AMUX 5 */
+		qcom,master-en = <1>; /* Enable MPP */
 	};
 };
 
