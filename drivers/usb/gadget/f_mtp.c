@@ -308,6 +308,22 @@ static struct usb_gadget_strings *mtp_strings[] = {
 	NULL,
 };
 
+static struct usb_string ptp_string_defs[] = {
+	/* Naming interface "PTP" so test scripts will recognize us */
+	[INTERFACE_STRING_INDEX].s	= "PTP",
+	{  },	/* end of list */
+};
+
+static struct usb_gadget_strings ptp_string_table = {
+	.language		= 0x0409,	/* en-US */
+	.strings		= ptp_string_defs,
+};
+
+static struct usb_gadget_strings *ptp_strings[] = {
+	&ptp_string_table,
+	NULL,
+};
+
 /* Microsoft MTP OS String */
 static u8 mtp_os_string[] = {
 	18, /* sizeof(mtp_os_string) */
@@ -1497,7 +1513,13 @@ static int mtp_bind_config(struct usb_configuration *c, bool ptp_config)
 	printk(KERN_INFO "mtp_bind_config\n");
 
 	/* allocate a string ID for our interface */
-	if (mtp_string_defs[INTERFACE_STRING_INDEX].id == 0) {
+	if (ptp_config && ptp_string_defs[INTERFACE_STRING_INDEX].id == 0) {
+		ret = usb_string_id(c->cdev);
+		if (ret < 0)
+			return ret;
+		ptp_string_defs[INTERFACE_STRING_INDEX].id = ret;
+		ptp_interface_desc.iInterface = ret;
+	} else if (mtp_string_defs[INTERFACE_STRING_INDEX].id == 0) {
 		ret = usb_string_id(c->cdev);
 		if (ret < 0)
 			return ret;
@@ -1507,13 +1529,14 @@ static int mtp_bind_config(struct usb_configuration *c, bool ptp_config)
 
 	dev->cdev = c->cdev;
 	dev->function.name = "mtp";
-	dev->function.strings = mtp_strings;
 	if (ptp_config) {
+		dev->function.strings = ptp_strings;
 		dev->function.fs_descriptors = fs_ptp_descs;
 		dev->function.hs_descriptors = hs_ptp_descs;
 		if (gadget_is_superspeed(c->cdev->gadget))
 			dev->function.ss_descriptors = ss_ptp_descs;
 	} else {
+		dev->function.strings = mtp_strings;
 		dev->function.fs_descriptors = fs_mtp_descs;
 		dev->function.hs_descriptors = hs_mtp_descs;
 		if (gadget_is_superspeed(c->cdev->gadget))
