@@ -412,6 +412,31 @@
 		};
 	};
 
+	cam_sensor_mclk2_active {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_sensor_mclk2_active";
+		/* active state */
+		cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk2_suspend {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		label = "cam_sensor_mclk2_suspend";
+		/* suspend state */
+		cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+
 	cycapsense {
 		qcom,pins = <&gp 109 &gp 64>;
 		qcom,num-grp-pins = <2>;
@@ -1724,6 +1749,20 @@
 
 	/* OV5693 */
 	qcom,camera@2 {
+		gpios = <&msm_gpio 15 0>,
+			<&msm_gpio 16 0>,
+			<&msm_gpio 114 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					  "CAM_RESET2",
+					  "CAM_VANA";
+	};
+
+	/* OV5693 OTP */
+	qcom,eeprom@2 {
 		gpios = <&msm_gpio 15 0>,
 			<&msm_gpio 16 0>,
 			<&msm_gpio 114 0>;
