@@ -747,7 +747,7 @@ static int stop_charging(struct fan5404x_chg *chip)
 
 	/* Set CE# High, TE Low */
 	rc = fan5404x_masked_write(chip, REG_CONTROL1,
-				CONTROL1_CE_N | CONTROL1_CE_N, CONTROL1_CE_N);
+				CONTROL1_TE | CONTROL1_CE_N, CONTROL1_CE_N);
 	if (rc) {
 		dev_err(chip->dev, "stop-charge: Failed to set TE/CE_N\n");
 		return rc;
@@ -1153,7 +1153,14 @@ static int fan5404x_temp_charging(struct fan5404x_chg *chip, int enable)
 {
 	int rc = 0;
 
-	pr_debug("charging enable = %d\n", enable);
+	pr_debug("%s: charging enable = %d\n", __func__, enable);
+
+	if (enable && (!chip->chg_enabled)) {
+		dev_dbg(chip->dev,
+			"%s: chg_enabled is %d, not to enable charging\n",
+					__func__, chip->chg_enabled);
+		return 0;
+	}
 
 	rc = fan5404x_masked_write(chip, REG_CONTROL1, CONTROL1_CE_N,
 				enable ? 0 : CONTROL1_CE_N);
