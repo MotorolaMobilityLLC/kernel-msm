@@ -18,7 +18,7 @@
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8926W MTP";
-	compatible = "qcom,apq8926-mtp", "qcom,apq8926", "qcom,mtp";
+	compatible = "qcom,msm8926-mtp", "qcom,msm8926", "qcom,mtp";
 	qcom,board-id = <8 4>;
 };
 
