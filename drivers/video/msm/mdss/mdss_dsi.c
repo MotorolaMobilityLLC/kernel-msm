@@ -1733,8 +1733,6 @@ int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
 {
 	int rc = -ENOSYS;
 	struct msmfb_reg_access reg_access;
-	int old_tx_mode;
-	int mode = DSI_MODE_BIT_LP;
 
 	if (mdss_panel_is_power_off(pdata->panel_info.panel_power_state)) {
 		pr_err("%s: Panel is off\n", __func__);
@@ -1747,17 +1745,7 @@ int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
 		if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
 			return -EFAULT;
 
-		if (reg_access.use_hs_mode)
-			mode = DSI_MODE_BIT_HS;
-
-		old_tx_mode = mdss_dsi_get_tx_power_mode(pdata);
-		if (mode != old_tx_mode)
-			mdss_dsi_set_tx_power_mode(mode, pdata);
-
 		rc = mdss_dsi_panel_ioctl_handler(pdata, cmd, arg);
-
-		if (mode != old_tx_mode)
-			mdss_dsi_set_tx_power_mode(old_tx_mode, pdata);
 		break;
 	default:
 		pr_err("%s: unsupport ioctl =0x%x\n", __func__, cmd);
