@@ -7,13 +7,19 @@ Required properties:
 - reg			: interger should be I2C address of the device
 - linux,name		: name of the led that is used in led framework
 
-Optional properties:
-- linux,default-trigger	: string trigger the led from external modules such as display
-- intersil,default-on	: boolean default on for the led
-- intersil,init-level	: integer default level applied if default-on is true
+Integer Register values will be written to the corresponding offsets of the IC after
+applicable masking. Please refer to the ISL98611 manual for the interpretation.
+
+Optional properties for backlight led:
+- linux,default-trigger		: string trigger the led from external modules such as display
+- intersil,default-on		: boolean default on for the led
+- intersil,init-level		: integer default level applied if default-on is true
 - intersil,no-reset		: boolean do not issue SW reset for IC during driver probe
-- intersil,cabc-off		: boolean do not use CABC inputs. PON vlaue is ON.
-- intersil,led-current	: integer current level for led current register
+- intersil,cabc-disable		: boolean do not use CABC inputs. PON vlaue is ON.
+- intersil,led-current		: integer current level for led current registera  @ 0x12
+- intersil,current-scale	: integer current level for led current multiplier register  @ 0x12
+- intersil,pwm-res		: integer pwm resolution for pwm res register @ 0x14
+- intersil,dimm-threshold	: integer dimming threshold for dimming control register @ 0x13
 
 Optional properties for display power control settings:
 - intersil,vn		: negative supply voltage calculated as VN = -4.5V - vn*50mV
