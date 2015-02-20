@@ -48,8 +48,17 @@
 
 #define WLAN_SKB_BUF_NUM        17
 
+#ifdef CONFIG_BCMDHD_GPIO_WL_RESET
+#define WLAN_POWER CONFIG_BCMDHD_GPIO_WL_RESET
+#else
 #define WLAN_POWER          46
+#endif
+
+#ifdef CONFIG_BCMDHD_GPIO_WL_HOSTWAKEUP
+#define WLAN_HOSTWAKE CONFIG_BCMDHD_GPIO_WL_HOSTWAKEUP
+#else
 #define WLAN_HOSTWAKE       37
+#endif
 
 #define WLAN_SCAN_BUF_SIZE  65536
 
@@ -299,10 +308,14 @@ static int __init bcm_wifi_init_gpio_mem(struct platform_device *pdev)
 		}
 	}
 
+	pr_info("%s: mapped gpio %d as power control\n", __func__,
+			gpio_power);
+	pr_info("%s: mapped gpio %d as hostwake control\n", __func__,
+			gpio_hostwake);
+
 	if (bcm_init_wlan_mem() < 0)
 		goto err_alloc_wifi_mem_array;
 
-	pr_info("%s: wifi gpio and mem initialized\n", __func__);
 	return 0;
 
 err_alloc_wifi_mem_array:
