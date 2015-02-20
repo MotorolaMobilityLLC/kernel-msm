@@ -229,10 +229,10 @@ static ssize_t w1_ds2502_read_eeprom(struct file *filp, struct kobject *kobj,
 	unsigned int num_bytes_copied = 0;
 	int error;
 
-	CDBG("%s: Enter count=%ld\n", __func__, count);
+	CDBG("%s: Enter count=%zu\n", __func__, count);
 
 	if (count < DS2502_FILE_OUTPUT_SIZE) {
-		pr_err("%s: input buffer too small %ld", __func__, count);
+		pr_err("%s: input buffer too small %zu", __func__, count);
 		return num_bytes_copied;
 	}
 
