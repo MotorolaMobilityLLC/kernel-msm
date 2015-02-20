@@ -229,6 +229,8 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 				MAX_SUSPEND_ABORT_LEN);
 			log_suspend_abort_reason(suspend_abort);
 		}
+
+		start_logging_wakeup_reasons();
 		syscore_resume();
 	}
 
