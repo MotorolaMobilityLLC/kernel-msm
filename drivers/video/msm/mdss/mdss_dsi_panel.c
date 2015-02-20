@@ -1924,7 +1924,7 @@ error:
 }
 
 static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
-					u8 reg, size_t size, u8 *buffer)
+				u8 reg, size_t size, u8 *buffer, bool hs_mode)
 {
 	int ret;
 	struct dcs_cmd_req cmdreq;
@@ -1957,6 +1957,8 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	cmdreq.cmds = &reg_read_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
 	cmdreq.rlen = size;
 	cmdreq.cb = NULL; /* call back */
 	cmdreq.rbuf = kmalloc(MDSS_DSI_LEN, GFP_KERNEL);
@@ -1981,7 +1983,7 @@ err1:
 }
 
 static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
-						size_t size, u8 *buffer)
+					size_t size, u8 *buffer, bool hs_mode)
 {
 	int ret = 0;
 	struct dcs_cmd_req cmdreq;
@@ -2014,6 +2016,8 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
 	cmdreq.cmds = &reg_write_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
@@ -2051,12 +2055,14 @@ int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 		else
 			rc = mdss_dsi_panel_reg_write(pdata,
 						reg_access.buffer_size + 1,
-						reg_access_buf);
+						reg_access_buf,
+						reg_access.use_hs_mode);
 		break;
 	case MSMFB_REG_READ:
 		rc = mdss_dsi_panel_reg_read(pdata, reg_access.address,
 						reg_access.buffer_size,
-						reg_access_buf);
+						reg_access_buf,
+						reg_access.use_hs_mode);
 		if ((rc == 0) && (copy_to_user(reg_access.buffer,
 						reg_access_buf,
 						reg_access.buffer_size)))
