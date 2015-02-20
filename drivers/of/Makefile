@@ -18,3 +18,4 @@ obj-$(CONFIG_OF_BATTERYDATA)	+= of_batterydata.o
 obj-$(CONFIG_OF_RESERVED_MEM) += of_reserved_mem.o
 
 CFLAGS_fdt.o = -I$(src)/../../scripts/dtc/libfdt
+obj-$(CONFIG_OF_RESOLVE)  += resolver.o
