@@ -306,6 +306,46 @@ extern int of_parse_phandle_with_args(const struct device_node *np,
 extern int of_count_phandle_with_args(const struct device_node *np,
 	const char *list_name, const char *cells_name);
 
+#if defined(CONFIG_OF_DYNAMIC)
+extern int of_property_notify(int action, struct device_node *np,
+			      struct property *prop);
+#else
+static inline int of_property_notify(int action, struct device_node *np,
+			      struct property *prop)
+{
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_PROC_DEVICETREE
+
+extern void of_add_proc_dt_entry(struct device_node *dn);
+extern void of_remove_proc_dt_entry(struct device_node *dn);
+
+extern void of_add_proc_dt_prop_entry(struct device_node *np,
+		struct property *prop);
+
+extern void of_remove_proc_dt_prop_entry(struct device_node *np,
+		struct property *prop);
+
+extern void of_update_proc_dt_prop_entry(struct device_node *np,
+		struct property *newprop, struct property *oldprop);
+#else
+
+static inline void of_add_proc_dt_entry(struct device_node *dn) { }
+static inline void of_remove_proc_dt_entry(struct device_node *dn) { }
+
+static inline void of_add_proc_dt_prop_entry(struct device_node *np,
+		struct property *prop) { }
+
+static inline void of_remove_proc_dt_prop_entry(struct device_node *np,
+		struct property *prop) { }
+
+static inline void of_update_proc_dt_prop_entry(struct device_node *np,
+		struct property *newprop, struct property *oldprop) { }
+
+#endif
+
 extern void of_alias_scan(void * (*dt_alloc)(u64 size, u64 align));
 extern int of_alias_get_id(struct device_node *np, const char *stem);
 
