@@ -145,3 +145,11 @@
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
+
+&spmi_bus {
+	qcom,pm8226@1{
+		qcom,leds@d800 {
+			status = "disabled";
+		};
+	};
+};
