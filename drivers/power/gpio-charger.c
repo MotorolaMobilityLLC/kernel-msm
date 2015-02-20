@@ -160,6 +160,8 @@ of_get_gpio_charger_pdata(struct device *dev)
 
 	of_property_read_string(np, "switch-name", &pdata->switch_name);
 
+	pdata->wakeup = of_property_read_bool(np, "wakeup");
+
 	return pdata;
 }
 
@@ -228,10 +230,12 @@ static int gpio_charger_probe(struct platform_device *pdev)
 		ret = request_any_context_irq(irq, gpio_charger_irq,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				dev_name(&pdev->dev), charger);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_warn(&pdev->dev, "Failed to request irq: %d\n", ret);
-		else
+		} else {
 			gpio_charger->irq = irq;
+			device_init_wakeup(&pdev->dev, pdata->wakeup);
+		}
 	}
 
 	/* Switch needs valid irq since its state changes when irq goes off */
@@ -300,18 +304,37 @@ static int gpio_charger_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
+static int gpio_charger_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
+
+	if (device_may_wakeup(dev))
+		enable_irq_wake(gpio_charger->irq);
+
+	return 0;
+}
+
 static int gpio_charger_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
 
-	power_supply_changed(&gpio_charger->charger);
+	if (device_may_wakeup(dev)) {
+		disable_irq_wake(gpio_charger->irq);
+	} else {
+		/* Set correct state */
+		power_supply_changed(&gpio_charger->charger);
+		if (gpio_charger->sdev)
+			schedule_work(&gpio_charger->work);
+	}
 
 	return 0;
 }
 #endif
 
-static SIMPLE_DEV_PM_OPS(gpio_charger_pm_ops, NULL, gpio_charger_resume);
+static SIMPLE_DEV_PM_OPS(gpio_charger_pm_ops, gpio_charger_suspend,
+				gpio_charger_resume);
 
 #if defined(CONFIG_OF)
 static const struct of_device_id gpio_charger_of_match[] = {
