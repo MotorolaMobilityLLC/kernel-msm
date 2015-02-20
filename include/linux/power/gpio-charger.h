@@ -28,6 +28,7 @@
  * @num_supplicants:	Number of entries in the supplied_to array
  * @switch_name:	Name for the charger GPIO switch. Switch requires a
 			valid IRQ for the GPIO indicating charging status.
+ * @wakeup:		Should GPIO IRQ wakeup system from suspend?
  */
 struct gpio_charger_platform_data {
 	const char *name;
@@ -40,6 +41,7 @@ struct gpio_charger_platform_data {
 	size_t num_supplicants;
 
 	const char *switch_name;
+	bool wakeup;
 };
 
 #endif
