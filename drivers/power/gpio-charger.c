@@ -24,6 +24,8 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
+#include <linux/switch.h>
+#include <linux/workqueue.h>
 
 #include <linux/power/gpio-charger.h>
 
@@ -32,20 +34,38 @@ struct gpio_charger {
 	unsigned int irq;
 
 	struct power_supply charger;
+
+	struct switch_dev *sdev;
+	struct work_struct work;
 };
-
-static irqreturn_t gpio_charger_irq(int irq, void *devid)
-{
-	struct power_supply *charger = devid;
-
-	power_supply_changed(charger);
-
-	return IRQ_HANDLED;
-}
 
 static inline struct gpio_charger *psy_to_gpio_charger(struct power_supply *psy)
 {
 	return container_of(psy, struct gpio_charger, charger);
+}
+
+static inline struct gpio_charger *work_to_gpio_charger(struct work_struct *wk)
+{
+	return container_of(wk, struct gpio_charger, work);
+}
+
+static inline int gpio_state(const struct gpio_charger_platform_data *pdata)
+{
+	return !!gpio_get_value_cansleep(pdata->gpio) ^
+	       !!pdata->gpio_active_low;
+}
+
+static irqreturn_t gpio_charger_irq(int irq, void *devid)
+{
+	struct power_supply *charger = devid;
+	struct gpio_charger *gpio_charger = psy_to_gpio_charger(charger);
+
+	if (gpio_charger->sdev)
+		schedule_work(&gpio_charger->work);
+
+	power_supply_changed(charger);
+
+	return IRQ_HANDLED;
 }
 
 static int gpio_charger_get_property(struct power_supply *psy,
@@ -56,14 +76,21 @@ static int gpio_charger_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = gpio_get_value_cansleep(pdata->gpio);
-		val->intval ^= pdata->gpio_active_low;
+		val->intval = gpio_state(pdata);
 		break;
 	default:
 		return -EINVAL;
 	}
 
 	return 0;
+}
+
+static void gpio_charger_work(struct work_struct *work)
+{
+	struct gpio_charger *gpio_charger = work_to_gpio_charger(work);
+	const struct gpio_charger_platform_data *pdata = gpio_charger->pdata;
+
+	switch_set_state(gpio_charger->sdev, gpio_state(pdata));
 }
 
 static enum power_supply_property gpio_charger_properties[] = {
@@ -130,6 +157,8 @@ of_get_gpio_charger_pdata(struct device *dev)
 		}
 		pdata->num_supplicants = count;
 	}
+
+	of_property_read_string(np, "switch-name", &pdata->switch_name);
 
 	return pdata;
 }
@@ -205,10 +234,40 @@ static int gpio_charger_probe(struct platform_device *pdev)
 			gpio_charger->irq = irq;
 	}
 
+	/* Switch needs valid irq since its state changes when irq goes off */
+	if (pdata->switch_name && !gpio_charger->irq) {
+		dev_warn(&pdev->dev, "Must have valid irq for the switch\n");
+	} else if (pdata->switch_name && gpio_charger->irq) {
+		gpio_charger->sdev = devm_kzalloc(&pdev->dev,
+						  sizeof(*gpio_charger->sdev),
+						  GFP_KERNEL);
+		if (!gpio_charger->sdev) {
+			dev_err(&pdev->dev, "Failed to alloc switch device\n");
+			ret = -ENOMEM;
+			goto err_irq_free;
+		}
+
+		gpio_charger->sdev->name = pdata->switch_name;
+		ret = switch_dev_register(gpio_charger->sdev);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Failed to register switch device:"
+				" %d\n", ret);
+			goto err_irq_free;
+		}
+		INIT_WORK(&gpio_charger->work, gpio_charger_work);
+	}
+
 	platform_set_drvdata(pdev, gpio_charger);
+
+	/* Set initial state */
+	if (gpio_charger->sdev)
+		schedule_work(&gpio_charger->work);
 
 	return 0;
 
+err_irq_free:
+	if (gpio_charger->irq)
+		free_irq(gpio_charger->irq, &gpio_charger->charger);
 err_gpio_free:
 	gpio_free(pdata->gpio);
 err_free:
@@ -219,6 +278,9 @@ static int gpio_charger_remove(struct platform_device *pdev)
 {
 	struct gpio_charger *gpio_charger = platform_get_drvdata(pdev);
 	int i;
+
+	if (gpio_charger->sdev)
+		switch_dev_unregister(gpio_charger->sdev);
 
 	if (gpio_charger->irq)
 		free_irq(gpio_charger->irq, &gpio_charger->charger);

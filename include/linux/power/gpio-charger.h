@@ -26,6 +26,8 @@
  * @gpio_active_low:	Should be set to 1 if the GPIO is active low otherwise 0
  * @supplied_to:	Array of battery names to which this chargers supplies power
  * @num_supplicants:	Number of entries in the supplied_to array
+ * @switch_name:	Name for the charger GPIO switch. Switch requires a
+			valid IRQ for the GPIO indicating charging status.
  */
 struct gpio_charger_platform_data {
 	const char *name;
@@ -36,6 +38,8 @@ struct gpio_charger_platform_data {
 
 	char **supplied_to;
 	size_t num_supplicants;
+
+	const char *switch_name;
 };
 
 #endif
