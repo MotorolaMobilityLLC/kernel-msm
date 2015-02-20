@@ -896,6 +896,8 @@
 			intersil,default-on;
 			intersil,vn = <26>;
 			intersil,vp = <26>;
+			intersil,led-current = <0x40>;
+			intersil,current-scale = <63>;
 			intersil,cabc-disable;
 			intersil,init-level = <255>;
 			intersil,no-reset;
