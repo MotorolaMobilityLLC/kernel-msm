@@ -22,6 +22,8 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
+#include "msm_mot_actuator.c"
+
 static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
 static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl);
 static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl);
@@ -29,12 +31,14 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl);
 static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
 static struct msm_actuator msm_hvcm_actuator_table;
+static struct msm_actuator msm_mot_hvcm_actuator_table;
 
 static struct i2c_driver msm_actuator_i2c_driver;
 static struct msm_actuator *actuators[] = {
 	&msm_vcm_actuator_table,
 	&msm_piezo_actuator_table,
 	&msm_hvcm_actuator_table,
+	&msm_mot_hvcm_actuator_table,
 };
 
 static int32_t msm_actuator_piezo_set_default_focus(
@@ -133,6 +137,7 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 	int32_t rc = -EFAULT;
 	int32_t i = 0;
 	enum msm_camera_i2c_reg_addr_type save_addr_type;
+	uint16_t read_position = 0x0;
 	CDBG("Enter\n");
 
 	save_addr_type = a_ctrl->i2c_client.addr_type;
@@ -165,6 +170,23 @@ static int32_t msm_actuator_init_focus(struct msm_actuator_ctrl_t *a_ctrl,
 				settings[i].reg_addr,
 				settings[i].reg_data,
 				settings[i].data_type);
+			break;
+		case MSM_ACT_READ_SET:
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+					&a_ctrl->i2c_client,
+					settings[i].reg_addr,
+					&read_position,
+					settings[i].data_type);
+			if (rc < 0) {
+				pr_err("%s: Unable to read!\n",
+						__func__);
+				break;
+			}
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+					&a_ctrl->i2c_client,
+					settings[i].reg_data,
+					read_position,
+					settings[i].data_type);
 			break;
 		default:
 			pr_err("Unsupport i2c_operation: %d\n",
@@ -1026,6 +1048,16 @@ static long msm_actuator_subdev_do_ioctl(
 
 			actuator_data.cfg.set_info.actuator_params.park_lens =
 				u32->cfg.set_info.actuator_params.park_lens;
+
+			actuator_data.cfg.set_info.mot_af_tuning_params.
+				macro_dac =
+				u32->cfg.set_info.mot_af_tuning_params.
+				macro_dac;
+
+			actuator_data.cfg.set_info.mot_af_tuning_params.
+				infinity_dac =
+				u32->cfg.set_info.mot_af_tuning_params.
+				infinity_dac;
 
 			parg = &actuator_data;
 			break;
