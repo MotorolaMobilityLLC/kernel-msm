@@ -31,6 +31,14 @@
 #define ISL98611_DEFAULT_TRIGGER		"bkl-trigger"
 #define ISL98611_DEFAULT_VN_LEVEL		20
 #define ISL98611_DEFAULT_VP_LEVEL		20
+#define ISL98611_8BITPWM			0x00
+#define ISL98611_10BITPWM			0x80
+#define ISL98611_100SCALE			63
+#define ISL98611_90p62SCALE			57
+#define ISL98611_DC_ONLY			0x00
+#define ISL98611_20MA				0x00
+#define ISL98611_25MA				0x80
+#define ISL98611_30MA				0xC0
 
 #define REG_STATUS		0x01
 #define REG_ENABLE		0x02
@@ -56,6 +64,8 @@
 #define CABC_MASK		0xF0
 #define PWMRES_MASK		0x80
 #define CURRENT_MASK		0xC0
+#define SCALE_MASK		0x3F
+#define TRANS_THRESHOLD_MASK	0x07
 
 #define VPON_VAL		0x04
 #define VNON_VAL		0x02
@@ -63,7 +73,6 @@
 #define VNOFF_VAL		0x00
 #define RESET_VAL		0x00
 #define CABC_VAL		0x80
-#define PWMRES_VAL		0x80
 
 struct isl98611_chip {
 	struct isl98611_platform_data *pdata;
@@ -145,6 +154,11 @@ static int isl98611_chip_init(struct i2c_client *client)
 		rval |= isl98611_update(pchip, REG_ENABLE,
 			VNEN_MASK, VNOFF_VAL);
 
+	rval |= isl98611_update(pchip, REG_CURRENT,
+			CURRENT_MASK, pdata->led_current);
+	rval |= isl98611_update(pchip, REG_CURRENT,
+			SCALE_MASK, pdata->cur_scale);
+
 	return rval;
 }
 
@@ -160,7 +174,10 @@ static void isl98611_brightness_set(struct work_struct *work)
 	/* set configure pwm input on first brightness command */
 	if (old_level == -1 && !pdata->cabc_off) {
 		dev_info(pchip->dev, "Enabling CABC");
-		isl98611_update(pchip, REG_PWMCTRL, PWMRES_MASK, PWMRES_VAL);
+		isl98611_update(pchip, REG_PWMCTRL,
+			TRANS_THRESHOLD_MASK, pdata->dimm_threshold);
+		isl98611_update(pchip, REG_PWMCTRL,
+			PWMRES_MASK, pdata->pwm_res);
 		isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, CABC_VAL);
 	}
 
@@ -236,8 +253,18 @@ static int isl98611_dt_init(struct i2c_client *client,
 	pdata->vn_level = ISL98611_DEFAULT_VN_LEVEL;
 	of_property_read_u32(np, "intersil,vn", &pdata->vn_level);
 
-	pdata->led_current = ISL98611_20MA;
+	pdata->led_current = ISL98611_25MA;
 	of_property_read_u32(np, "intersil,led-current", &pdata->led_current);
+
+	pdata->cur_scale = ISL98611_90p62SCALE;
+	of_property_read_u32(np, "intersil,current-scale", &pdata->cur_scale);
+
+	pdata->pwm_res = ISL98611_10BITPWM;
+	of_property_read_u32(np, "intersil,pwm-resolution", &pdata->pwm_res);
+
+	pdata->dimm_threshold = ISL98611_DC_ONLY;
+	of_property_read_u32(np, "intersil,dimm-threshold",
+		&pdata->dimm_threshold);
 
 	return 0;
 
