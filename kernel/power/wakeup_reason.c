@@ -129,6 +129,20 @@ void log_suspend_abort_reason(const char *fmt, ...)
 	spin_unlock(&resume_reason_lock);
 }
 
+const int* get_wakeup_reasons(size_t *len)
+{
+	*len = irqcount;
+	return irq_list;
+}
+
+void clear_wakeup_reasons(void)
+{
+	spin_lock(&resume_reason_lock);
+	irqcount = 0;
+	suspend_abort = false;
+	spin_unlock(&resume_reason_lock);
+}
+
 /* Detects a suspend and clears all the previous wake up reasons*/
 static int wakeup_reason_pm_event(struct notifier_block *notifier,
 		unsigned long pm_event, void *unused)
@@ -136,8 +150,7 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		spin_lock(&resume_reason_lock);
-		irqcount = 0;
-		suspend_abort = false;
+		clear_wakeup_reasons();
 		spin_unlock(&resume_reason_lock);
 		break;
 	default:
