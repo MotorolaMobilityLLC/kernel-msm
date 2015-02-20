@@ -23,13 +23,13 @@
 #define I2C_REG_DATA_MAX       (8*1024)
 #define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
 
-#define MAX_ACTUATOR_REG_TBL_SIZE 8
+#define MAX_ACTUATOR_REG_TBL_SIZE 15
 #define MAX_ACTUATOR_REGION       5
 #define NUM_ACTUATOR_DIR          2
 #define MAX_ACTUATOR_SCENARIO     8
 #define MAX_ACT_MOD_NAME_SIZE     32
 #define MAX_ACT_NAME_SIZE         32
-#define MAX_ACTUATOR_INIT_SET     32
+#define MAX_ACTUATOR_INIT_SET     60
 #define MAX_I2C_REG_SET           12
 
 #define MAX_NAME_SIZE             32
@@ -153,17 +153,20 @@ enum msm_actuator_addr_type {
 enum msm_actuator_write_type {
 	MSM_ACTUATOR_WRITE_HW_DAMP,
 	MSM_ACTUATOR_WRITE_DAC,
+	MSM_ACTUATOR_WRITE_REG,
 };
 
 enum msm_actuator_i2c_operation {
 	MSM_ACT_WRITE = 0,
 	MSM_ACT_POLL,
+	MSM_ACT_READ_SET,
 };
 
 enum actuator_type {
 	ACTUATOR_VCM,
 	ACTUATOR_PIEZO,
 	ACTUATOR_HVCM,
+	ACTUATOR_MOT_HVCM,
 };
 
 enum msm_flash_driver_type {
