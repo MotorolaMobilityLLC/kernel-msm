@@ -1458,7 +1458,7 @@ static int mdss_fb_fbmem_ion_mmap(struct fb_info *info,
 	}
 
 	req_size = vma->vm_end - vma->vm_start;
-	fb_size = mfd->fbi->fix.smem_len;
+	fb_size = PAGE_ALIGN(mfd->fbi->fix.smem_len);
 	if (req_size > fb_size) {
 		pr_warn("requested map is greater than framebuffer\n");
 		return -EOVERFLOW;
