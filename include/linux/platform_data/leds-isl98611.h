@@ -14,16 +14,14 @@
 
 
 /*
- *@init_level   : led a init brightness. 4~255
- *@vp_level   : positive power supply VP = 4.5V + vp_level * 50mV
- *@vn_level   : negative power supply VN = -4.5V - vn_level * 50mV
+ *@init_level		: led init brightness. 4~255
+ *@vp_level		: positive power supply VP = 4.5V + vp_level * 50mV
+ *@vn_level		: negative power supply VN = -4.5V - vn_level * 50mV
+ *@led_current		: peak led current register value
+ *@cur_scale		: peak led current multiplier register value
+ *@pwm_res		: pwm resolution register value
+ *@dimm_threshold	: dimming threshold for dimming control register
  */
-
-enum isl98611_led_current {
-	ISL98611_20MA = 0x01,
-	ISL98611_25MA,
-	ISL98611_30MA
-};
 
 struct isl98611_platform_data {
 
@@ -32,6 +30,9 @@ struct isl98611_platform_data {
 	int vp_level;
 	int vn_level;
 	int led_current;
+	int cur_scale;
+	int pwm_res;
+	int dimm_threshold;
 	bool no_reset;
 	const char *name;
 	const char *trigger;
