@@ -51,6 +51,14 @@
 			reg = <0x08600000 0x4c00000>;
 			label = "modem_mem";
 		};
+
+		modem_efs: modem_efs_region@0x07f00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x07F00000 0x100000>;
+			label = "modem_efs";
+		};
 	};
 };
 
