@@ -121,7 +121,7 @@
 				0 0 790 407>;
 		};
 		qcom,pm8226_rtc {
-			qcom,qpnp-rtc-write = <1>;
+			qcom,qpnp-rtc-write = <0>;
 		};
 	};
 
