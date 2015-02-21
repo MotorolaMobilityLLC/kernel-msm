@@ -16168,6 +16168,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
    if(command == ROAM_SCAN_OFFLOAD_STOP)
    {
       pRequestBuf->RoamScanOffloadEnabled = 0;
+      pRequestBuf->StartScanReason = reason;
       /*For a STOP Command, there is no need to
        * go through filling up all the below parameters
        * since they are not required for the STOP command*/
