@@ -1106,6 +1106,8 @@ struct hdd_adapter_s
 
    /* work queue to defer the back to back p2p_listen */
    struct delayed_work roc_work;
+   /* Time stamp for start RoC request */
+   v_TIME_t startRocTs;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
