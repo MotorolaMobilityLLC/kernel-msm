@@ -781,7 +781,7 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
 				disable_irq(gpio_to_irq(
 					ctrl_pdata->disp_te_gpio));
-				atomic_dec(&ctrl_pdata->te_irq_ready);
+				atomic_add_unless(&ctrl_pdata->te_irq_ready, -1, 0);
 		}
 		mdss_dsi_set_tear_off(ctrl_pdata);
 	}
