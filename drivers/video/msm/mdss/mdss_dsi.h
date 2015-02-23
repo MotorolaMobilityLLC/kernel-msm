@@ -265,6 +265,13 @@ enum {
 #define DSI_EV_DSI_FIFO_EMPTY		0x0003
 #define DSI_EV_MDP_BUSY_RELEASE		0x80000000
 
+struct panel_later_power {
+	struct regulator *vreg;
+	char vreg_name[32];
+	int post_on_sleep;
+	int post_off_sleep;
+};
+
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
@@ -360,6 +367,7 @@ struct mdss_dsi_ctrl_pdata {
 
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
+	struct panel_later_power *later_power;
 };
 
 struct dsi_status_data {
