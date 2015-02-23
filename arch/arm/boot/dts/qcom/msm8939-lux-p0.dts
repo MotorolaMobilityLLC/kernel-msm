@@ -104,8 +104,6 @@
 		touch_vdd-supply = <&pm8916_l16>;
 		synaptics,normal-mode = <1>;
 		synaptics,gpio-config;
-		synaptics,x-flip;
-		synaptics,y-flip;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_default &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
