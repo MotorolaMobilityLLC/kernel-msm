@@ -27,10 +27,13 @@
 #include <linux/input/synaptics_dsx.h>
 #include "synaptics_dsx_core.h"
 
-#define FW_IMAGE_NAME "synaptics/startup_fw_update.img"
-/*
+
+#define FW_IMAGE_OFILM "Ofilm.img"
+
+#define FW_IMAGE_TRULY "Truly.img"
+
 #define DO_STARTUP_FW_UPDATE
-*/
+
 #define FORCE_UPDATE false
 #define DO_LOCKDOWN false
 
@@ -1756,6 +1759,36 @@ exit:
 	return retval;
 }
 
+#define DEVICE_OFILM	0X06
+#define DEVICE_TRULY	0X03
+
+int get_device_config_id(void)
+{
+	int retval = 0;
+	unsigned char config_id[4];
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+	
+	/* Get device config ID */
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+				fwu->f34_fd.ctrl_base_addr,
+				config_id,
+				sizeof(config_id));
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to read device config ID\n",
+				__func__);
+		return -1;
+	}
+	dev_info(rmi4_data->pdev->dev.parent,
+			"%s: Device config ID = 0x%02x 0x%02x 0x%02x 0x%02x\n",
+			__func__,
+			config_id[0],
+			config_id[1],
+			config_id[2],
+			config_id[3]);
+	return config_id[2];
+}
+
 static int fwu_start_reflash(void)
 {
 	int retval = 0;
@@ -1763,7 +1796,8 @@ static int fwu_start_reflash(void)
 	struct f01_device_status f01_device_status;
 	const struct firmware *fw_entry = NULL;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
-
+	int device_id = 0;
+	
 	if (rmi4_data->sensor_sleep) {
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Sensor sleeping\n",
@@ -1776,7 +1810,21 @@ static int fwu_start_reflash(void)
 	pr_notice("%s: Start of reflash process\n", __func__);
 
 	if (fwu->img.image == NULL) {
-		strncpy(fwu->img.image_name, FW_IMAGE_NAME, MAX_IMAGE_NAME_LEN);
+		
+		device_id = get_device_config_id();
+		printk("touch device_config_id=%d\n ",device_id);
+		if(device_id == DEVICE_OFILM){
+			strncpy(fwu->img.image_name, FW_IMAGE_OFILM, MAX_IMAGE_NAME_LEN);
+		}
+		else if(device_id == DEVICE_TRULY){
+			strncpy(fwu->img.image_name, FW_IMAGE_TRULY, MAX_IMAGE_NAME_LEN);
+		}
+		else{
+			printk("unhknow device!!!\n");
+			retval = -EINVAL;
+			goto exit;	 
+		}
+		
 		dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: Requesting firmware image %s\n",
 				__func__, fwu->img.image_name);
