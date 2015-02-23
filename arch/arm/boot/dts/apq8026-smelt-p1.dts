@@ -17,5 +17,6 @@
 
 / {
 	qcom,msm-id =
-		<199 0x41 0x0304>; /* Large P1 Portable */
+		<199 0x41 0x0304>, /* Large P1 Portable */
+                <199 0x41 0x0307>; /* Small P1 Portable */
 };
