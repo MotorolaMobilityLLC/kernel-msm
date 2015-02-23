@@ -130,6 +130,7 @@ struct synaptics_rmi4_fn_full_addr {
  */
 struct synaptics_rmi4_f11_extra_data {
 	unsigned char data38_offset;
+	unsigned char data28_offset;
 };
 
 /*
@@ -375,5 +376,5 @@ static inline void hstoba(unsigned char *dest, unsigned short src)
 	dest[0] = src % 0x100;
 	dest[1] = src / 0x100;
 }
-
+extern void vibrator_ctrl_kernel(int value);
 #endif
