@@ -420,6 +420,7 @@ static struct {
 	u16 unsafe_ch_list[WCNSS_MAX_CH_NUM];
 	void *wcnss_notif_hdle;
 	u8 is_shutdown;
+	const char *nv_file_name;
 } *penv = NULL;
 
 static ssize_t wcnss_wlan_macaddr_store(struct device *dev,
@@ -1417,6 +1418,14 @@ int wcnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 buffer_size,
 }
 EXPORT_SYMBOL(wcnss_get_wlan_unsafe_channel);
 
+const char *wcnss_get_nv_file_name(void)
+{
+	if (penv && penv->nv_file_name && strlen(penv->nv_file_name) > 0)
+		return penv->nv_file_name;
+	return NULL;
+}
+EXPORT_SYMBOL(wcnss_get_nv_file_name);
+
 static int wcnss_smd_tx(void *data, int len)
 {
 	int ret = 0;
@@ -1826,14 +1835,17 @@ static void wcnss_nvbin_dnld(void)
 	unsigned int nv_blob_size = 0;
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
+	const char *nv_file_name = (penv->nv_file_name ?
+					penv->nv_file_name : NVBIN_FILE);
 
 	down_read(&wcnss_pm_sem);
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
+	pr_info("wcnss: NV file name = %s\n", nv_file_name);
+	ret = request_firmware(&nv, nv_file_name, dev);
 
 	if (ret || !nv || !nv->data || !nv->size) {
 		pr_err("wcnss: %s: request_firmware failed for %s\n",
-			__func__, NVBIN_FILE);
+			__func__, nv_file_name);
 		goto out;
 	}
 
@@ -2210,6 +2222,8 @@ wcnss_trigger_config(struct platform_device *pdev)
 		return 0;
 	penv->triggered = 1;
 
+	penv->nv_file_name = of_get_property(pdev->dev.of_node,
+						"qcom,nv_file", NULL);
 	/* initialize the WCNSS device configuration */
 	pdata = pdev->dev.platform_data;
 	if (WCNSS_CONFIG_UNSPECIFIED == has_48mhz_xo) {
