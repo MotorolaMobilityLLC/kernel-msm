@@ -1,0 +1,50 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "apq8026-smelt-common.dtsi"
+#include "apq8026-smelt-panel-nt35350.dtsi"
+
+/ {
+	qcom,msm-id =
+		<199 0x41 0x0300>, /* P1A Wingboard */
+		<199 0x41 0x0308>; /* Small P1A Portable (BCM4343W)*/
+};
+
+/* small panel is 360 x 326 */
+&dsi_mot_nt35350_360p_cmd {
+	qcom,mdss-dsi-panel-height = <326>;
+	qcom,mdss-dsi-v-back-porch = <54>;
+};
+
+/* workaround to support nt35350 cut 1.1
+ * it has current issue that needs turn on avdd/avee later sleep out
+ */
+&mdss_dsi0 {
+	qcom,later-supply-name = "avdd_avee_disp";
+	qcom,later-supply-delay = <80 55>;
+	qcom,panel-supply-entries {
+		/delete-node/ qcom,panel-supply-entry@1;
+	};
+};
+&dsi_mot_nt35350_360p_cmd {
+	/* workaround to support nt35350 cut 1.1
+	 * do not change the last 2 dis-on commandss
+	 */
+	qcom,mdss-dsi-on-command = [39 01 00 00 00 00 05 2A 00 00 01 67
+	39 01 00 00 00 00 05 2B 00 00 01 67
+	05 01 00 00 14 00 01 11
+	05 01 00 00 28 00 01 29];
+	qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
+	05 01 00 00 21 00 01 10];
+};
