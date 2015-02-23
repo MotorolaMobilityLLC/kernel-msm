@@ -444,6 +444,43 @@ static int mdss_dsi_get_panel_cfg(char *panel_cfg)
 	return rc;
 }
 
+static int mdss_dsi_get_dt_panel_later_power(struct device_node *np,
+	struct mdss_dsi_ctrl_pdata *ctrl, struct device *dev)
+{
+	const char *st = NULL;
+	u32 tmp[2];
+	int rc;
+
+	if (!np || !ctrl) {
+		pr_err("%s: Invalid arguments\n", __func__);
+		return -EINVAL;
+	}
+
+	rc = of_property_read_string(np, "qcom,later-supply-name", &st);
+	if (rc)
+		return 0;
+	ctrl->later_power = devm_kzalloc(dev, sizeof(struct panel_later_power),
+					 GFP_KERNEL);
+	if (!ctrl->later_power) {
+		pr_err("%s: can't alloc later_power mem\n", __func__);
+		return -ENOMEM;
+	}
+	snprintf(ctrl->later_power->vreg_name,
+		 ARRAY_SIZE((ctrl->later_power->vreg_name)), "%s", st);
+	rc = of_property_read_u32_array(np, "qcom,later-supply-delay", tmp, 2);
+	if (!rc) {
+		ctrl->later_power->post_on_sleep = tmp[0];
+		ctrl->later_power->post_off_sleep = tmp[1];
+	}
+
+	pr_err("%s: vreg=%s post_on=%d post_off=%d\n", __func__,
+		 ctrl->later_power->vreg_name,
+		 ctrl->later_power->post_on_sleep,
+		 ctrl->later_power->post_off_sleep);
+
+	return 0;
+}
+
 static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 {
 	int ret = 0;
@@ -1356,6 +1393,13 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
+	rc = mdss_dsi_get_dt_panel_later_power(pdev->dev.of_node,
+					       ctrl_pdata, &pdev->dev);
+	if (rc) {
+		pr_err("%s: dsi panel init later power failed\n", __func__);
+		goto error_pan_node;
+	}
+
 	rc = dsi_panel_device_register(dsi_pan_node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s: dsi panel dev reg failed\n", __func__);
@@ -1508,6 +1552,17 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		pr_err("%s: failed to init regulator, rc=%d\n",
 						__func__, rc);
 		return rc;
+	}
+	if (ctrl_pdata->later_power) {
+		ctrl_pdata->later_power->vreg =
+			devm_regulator_get(&ctrl_pdev->dev,
+					   ctrl_pdata->later_power->vreg_name);
+		rc = PTR_RET(ctrl_pdata->later_power->vreg);
+		if (rc) {
+			pr_err("%s: failed to init regulator[%s], rc=%d\n",
+				__func__, ctrl_pdata->later_power->vreg_name, rc);
+			return rc;
+		}
 	}
 
 	data = of_get_property(ctrl_pdev->dev.of_node,

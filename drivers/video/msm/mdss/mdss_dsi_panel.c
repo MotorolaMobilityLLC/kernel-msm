@@ -690,8 +690,32 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	if (ctrl->on_cmds.cmd_cnt)
-		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+	if (ctrl->on_cmds.cmd_cnt) {
+		if (!ctrl->later_power) {
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+		} else {
+			struct panel_later_power *pwr = ctrl->later_power;
+			struct dsi_panel_cmds cmds;
+			/* workaround for some panel that need enable power
+			 * after sleep out. assume the last two commands is
+			 * sleep out and display on
+			 */
+			cmds.cmds = ctrl->on_cmds.cmds;
+			cmds.cmd_cnt = ctrl->on_cmds.cmd_cnt - 1;
+			cmds.link_state = ctrl->on_cmds.link_state;
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+			if (regulator_enable(pwr->vreg) < 0) {
+				DEV_ERR("%pS->%s: %s enable failed\n",
+					__builtin_return_address(0), __func__,
+					pwr->vreg_name);
+			}
+			if (pwr->post_on_sleep)
+				msleep(pwr->post_on_sleep);
+			cmds.cmds += cmds.cmd_cnt;
+			cmds.cmd_cnt = 1;
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+		}
+	}
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
@@ -724,8 +748,19 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	if (ctrl->off_cmds.cmd_cnt)
+	if (ctrl->off_cmds.cmd_cnt) {
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
+		if (ctrl->later_power) {
+			struct panel_later_power *pwr = ctrl->later_power;
+			if (regulator_disable(pwr->vreg) < 0) {
+				DEV_ERR("%pS->%s: %s disable failed\n",
+					__builtin_return_address(0), __func__,
+					pwr->vreg_name);
+			}
+			if (pwr->post_off_sleep)
+				msleep(pwr->post_off_sleep);
+		}
+	}
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
