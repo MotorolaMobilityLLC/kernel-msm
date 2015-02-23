@@ -241,6 +241,7 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4237_cmd>;
+	qcom,platform-enable-gpio = <&msmgpio 37 0>;
 	vdd-supply = <&pm8226_l16>;
 
 	qcom,panel-supply-entries {
