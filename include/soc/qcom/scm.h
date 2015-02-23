@@ -44,7 +44,6 @@ static char __n[PAGE_SIZE] __aligned(PAGE_SIZE);
 #define SCM_SIP_FNID(s, c) (((((s) & 0xFF) << 8) | ((c) & 0xFF)) | 0x02000000)
 #define SCM_QSEEOS_FNID(s, c) (((((s) & 0xFF) << 8) | ((c) & 0xFF)) | \
 			      0x32000000)
-#define SCM_SESS_FNID(s, c) (((((s) & 0xFF) << 4) | ((c) & 0xFF)))
 
 #define MAX_SCM_ARGS 10
 #define MAX_SCM_RETS 3
