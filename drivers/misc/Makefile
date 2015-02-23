@@ -78,4 +78,5 @@ obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_pressure.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_ads.o
 obj-$(CONFIG_BQ5105X_CTRL)      += bq5105x_ctrl.o
 obj-$(CONFIG_MOT_UTAG)		+= utag/
+obj-$(CONFIG_SSV_GPS)		+= ssv_gps.o
 obj-$(CONFIG_INPUT_TSL2584)	+= tsl2584.o

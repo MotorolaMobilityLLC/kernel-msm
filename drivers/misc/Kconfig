@@ -650,6 +650,13 @@ config MOT_UTAG
 	  This driver should be built as a module. The module will be called
 	  utags.ko.
 
+config SSV_GPS
+	tristate "SiRF Star GPS"
+	depends on SPI && SYSFS
+	help
+          This option enables support for the SiRF Star GPS.
+	default n
+
 config INPUT_TSL2584
 	tristate "TSL2584"
 	depends on I2C
