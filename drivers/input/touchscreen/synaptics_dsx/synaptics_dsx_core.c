@@ -793,7 +793,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int temp;
 	struct synaptics_rmi4_f11_data_1_5 data;
 	struct synaptics_rmi4_f11_extra_data *extra_data;
-
+	unsigned char f11_2d_data28;
 	/*
 	 * The number of finger status registers is determined by the
 	 * maximum number of fingers supported - 2 bits per finger. So
@@ -825,6 +825,27 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		return 0;
 	}
 
+	if (extra_data->data28_offset)
+	{
+		retval = synaptics_rmi4_reg_read(rmi4_data,
+		data_addr + extra_data->data28_offset,
+		&f11_2d_data28,
+		sizeof(f11_2d_data28));
+		 if (retval < 0)
+		 {
+			 pr_err("%s: read data 28 fail\n", __func__);
+		 }
+		 else if (f11_2d_data28 & 0x02)
+		{
+			pr_debug("%s: palm detect success\n", __func__);
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
+			input_sync(rmi4_data->input_dev);
+			vibrator_ctrl_kernel(50);
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+			input_sync(rmi4_data->input_dev);
+			return 0;
+		}
+	}	 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
 			data_addr,
 			finger_status_reg,
@@ -1524,10 +1545,55 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_f11_query_12 query_12;
 	struct synaptics_rmi4_f11_query_27 query_27;
 	struct synaptics_rmi4_f11_ctrl_6_9 control_6_9;
+	unsigned char ctrl_58;	  
 
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = fd->intr_src_count;
 	fhandler->extra = kmalloc(sizeof(*extra_data), GFP_KERNEL);
+	memset(fhandler->extra, 0, sizeof(*extra_data));
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+					0x64,
+					&ctrl_58,
+					sizeof(ctrl_58));
+	if (retval < 0)
+	{
+		pr_err("%s:read ctrl 58 fail\n", __func__);
+		return retval;
+	}
+	else
+	{
+		pr_debug("%s:ctrl 58=0x%x\n", __func__, ctrl_58);
+		ctrl_58 &= 0x7f;
+		if (ctrl_58 > 20)
+		{
+			ctrl_58 = 20;
+		}
+		ctrl_58 |=0x80;
+		retval = synaptics_rmi4_reg_write(rmi4_data,
+						0x64,
+						&ctrl_58,
+						sizeof(ctrl_58));
+		if (retval < 0)
+		{
+			pr_err("%s: write ctrl 58 fail\n", __func__);
+			return retval;
+		}
+
+		retval = synaptics_rmi4_reg_read(rmi4_data,
+						0x64,
+						&ctrl_58,
+						sizeof(ctrl_58));
+		if (retval < 0)
+		{
+			pr_err("%s:read ctrl 58 fail\n", __func__);
+			return retval;
+		}
+		else
+		{
+			pr_debug("%s:ctrl 58=0x%x\n", __func__, ctrl_58);
+		}
+	}
+
 	extra_data = (struct synaptics_rmi4_f11_extra_data *)fhandler->extra;
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
@@ -1698,9 +1764,11 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 
 	/* data 28 */
 	if (query_0_5.has_bending_correction ||
-			query_0_5.has_large_object_suppression)
+		query_0_5.has_large_object_suppression)
+	{
+		extra_data->data28_offset = offset;
 		offset += 1;
-
+	}
 	/* data 29 30 31 */
 	if (query_0_5.has_query_9 && query_9.has_pen_hover_discrimination)
 		offset += 3;
@@ -3059,7 +3127,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	const struct synaptics_dsx_hw_interface *hw_if;
 	const struct synaptics_dsx_board_data *bdata;
 
-    dev_err(&pdev->dev,"%s: touch probe begin...\n",__func__);
+	dev_err(&pdev->dev,"%s: touch probe begin...\n",__func__);
 
 	hw_if = pdev->dev.platform_data;
 	if (!hw_if) {
@@ -3207,7 +3275,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 			&exp_data.work,
 			0);
 
-    dev_err(&pdev->dev,"%s: touch probe success...\n",__func__);
+	dev_err(&pdev->dev,"%s: touch probe success...\n",__func__);
 
 	return retval;
 
@@ -3601,7 +3669,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	const struct synaptics_dsx_board_data *bdata =
 			rmi4_data->hw_if->board_data;	
-    int retval;
+	int retval;
 
 	if (rmi4_data->stay_awake)
 		return 0;
@@ -3612,11 +3680,11 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	if (rmi4_data->pwr_reg) {
-        retval = regulator_enable(rmi4_data->pwr_reg);
-        if (retval < 0) {
-            //dev_err(dev,"%s: Failed to enable pwr_reg regulator\n",__func__);
-            goto exit;
-        }        
+		retval = regulator_enable(rmi4_data->pwr_reg);
+		if (retval < 0) {
+			//dev_err(dev,"%s: Failed to enable pwr_reg regulator\n",__func__);
+			goto exit;
+		}		 
 		msleep(bdata->power_delay_ms);
 		rmi4_data->current_page = MASK_8BIT;
 		if (rmi4_data->hw_if->ui_hw_init)
