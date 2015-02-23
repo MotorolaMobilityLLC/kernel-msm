@@ -339,6 +339,23 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_stm401->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
 				STM16_TO_HOST(CHOPCHOP_DATA));
 	}
+	if (irq_status & M_LIFT) {
+		stm401_cmdbuff[0] = LIFT;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 12);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading lift data from stm failed\n");
+			goto EXIT;
+		}
+
+		stm401_as_data_buffer_write(ps_stm401, DT_LIFT,
+						stm401_readbuff, 12, 0);
+
+		dev_dbg(&ps_stm401->client->dev, "Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
+				STM32_TO_HOST(LIFT_DISTANCE),
+				STM32_TO_HOST(LIFT_ROTATION),
+				STM32_TO_HOST(LIFT_GRAV_DIFF));
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 		/* Client recieving action will be upper 2 most significant */
