@@ -1,0 +1,57 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "qcom/dsi-panel-mot-nt35350-360p-cmd.dtsi"
+
+&soc {
+	avdd_avee_vreg: avdd_avee_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "avdd_avee_5.4v";
+		regulator-min-microvolt = <5400000>;
+		regulator-max-microvolt = <5400000>;
+		regulator-boot-on;
+		enable-active-high;
+		gpio = <&msmgpio 33 0x0>;
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35350_360p_cmd>;
+	qcom,platform-reset-gpio = <&msmgpio 36 0>;
+	qcom,platform-te-gpio = <&msmgpio 24 0>;
+	vddio_disp-supply = <&pm8226_l27>;
+	avdd_avee_disp-supply = <&avdd_avee_vreg>;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@0 {
+			qcom,supply-name = "vddio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@1 {
+			qcom,supply-name = "avdd_avee_disp";
+			qcom,supply-min-voltage = <5400000>;
+			qcom,supply-max-voltage = <5400000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <10>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
+};
