@@ -2504,7 +2504,6 @@ void mdss_samsung_dsi_te_check(struct mdss_panel_data *pdata)
 {
 	int rc, te_count = 0;
 	int te_max = 20000; /*samspling 200ms */
-	int rddpm_reg = 0;
 
 	if (gpio_is_valid(disp_te_gpio)) {
 		pr_err(" ============ start waiting for TE ============\n");
@@ -2529,8 +2528,6 @@ void mdss_samsung_dsi_te_check(struct mdss_panel_data *pdata)
 
 		if (te_count == te_max) {
 			pr_err("LDI doesn't generate TE\n");
-			rddpm_reg = mdss_samsung_rddpm_status(pdata);
-			pr_info("RDDPM reg : %x\n", rddpm_reg);
 		} else
 			pr_err("LDI generate TE\n");
 
