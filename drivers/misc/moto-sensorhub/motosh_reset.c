@@ -136,6 +136,18 @@ int motosh_reset_and_init(void)
 	else {
 		motosh_i2c_retry_delay = 200;
 
+		rst_cmdbuff[0] = SENSOR_ORIENTATIONS;
+		rst_cmdbuff[1] = pdata->accel_orient & 0xff;
+		rst_cmdbuff[2] = pdata->gyro_orient & 0xff;
+		rst_cmdbuff[3] = pdata->mag_orient & 0xff;
+		err = motosh_i2c_write_no_reset(motosh_misc_data,
+						rst_cmdbuff, 4);
+		if (err < 0) {
+			dev_err(&motosh_misc_data->client->dev,
+				"Unable to wrie sensor orientation value");
+			ret_err = err;
+		}
+
 		rst_cmdbuff[0] = ACCEL_UPDATE_RATE;
 		rst_cmdbuff[1] = motosh_g_acc_delay;
 		err = motosh_i2c_write_no_reset(motosh_misc_data,
