@@ -726,7 +726,9 @@
 			ct406_pulse_count = <0x04>;
 			sensor1-supply = <&pm8994_lvs2>;
 			sensor2-supply = <&pm8994_l17>;
-
+			accel_orient = <1>;            /* Accel Orientation value */
+			gyro_orient = <1>;             /* Gyro Orientation value */
+			mag_orient = <8>;              /* Mag Orientation value */
 			pinctrl-names = "default";
 			pinctrl-0 = <&motosh_out_default &motosh_in_default>;
 		};
