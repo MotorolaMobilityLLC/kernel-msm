@@ -611,6 +611,15 @@ motosh_of_init(struct i2c_client *client)
 				&pdata->ct406_recalibrate_threshold);
 	of_property_read_u32(np, "ct406_pulse_count",
 				&pdata->ct406_pulse_count);
+	pdata->accel_orient = 1;
+	pdata->gyro_orient = 1;
+	pdata->mag_orient = 1;
+	of_property_read_u32(np, "accel_orient",
+			&pdata->accel_orient);
+	of_property_read_u32(np, "gyro_orient",
+			&pdata->gyro_orient);
+	of_property_read_u32(np, "mag_orient",
+			&pdata->mag_orient);
 
 	return pdata;
 }
