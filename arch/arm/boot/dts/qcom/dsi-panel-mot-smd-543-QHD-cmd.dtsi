@@ -24,8 +24,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <2560>;
-		qcom,mdss-pan-physical-width-dimension = <65>;
-		qcom,mdss-pan-physical-height-dimension = <115>;
+		qcom,mdss-pan-physical-width-dimension = <68>;
+		qcom,mdss-pan-physical-height-dimension = <120>;
 		qcom,mdss-dsi-panel-clockrate = <830000000>;
 		qcom,mdss-dsi-h-front-porch = <120>;
 		qcom,mdss-dsi-h-back-porch = <44>;
@@ -52,14 +52,13 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-panel-timings = [DB 34 22 00 62 66 28 36 2B 03
 									04 00];
-
 		qcom,mdss-dsi-hbm-on-command = [
 			/* HBM setting in 2 MSB bits of reg 53 */
 			15 01 00 00 00 00 02 53 e0];
 		qcom,mdss-dsi-hbm-off-command = [
 			15 01 00 00 00 00 02 53 20];
 
-		qcom,mdss-dsi-reset-sequence = <1 11>, <0 10>, <1 100>;
+		qcom,mdss-dsi-reset-sequence = <0 27>, <1 11>;
 		qcom,mdss-dsi-dis-reset-sequence = <0 3>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x03>;
@@ -75,28 +74,43 @@
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
 		qcom,mdss-dsi-on-command = [
+			/* Unlock level 2 commands */
 			39 01 00 00 00 00 03 F0 5A 5A
+			/* Unlock level 3 commands */
 			39 01 00 00 00 00 03 FC 5A 5A
-			05 01 00 00 05 00 02 11 00
+			/* exit sleep mode */
+			05 01 00 00 78 00 01 11
+			/* enable_te */
 			15 01 00 00 01 00 02 35 00
-			39 01 00 00 01 00 02 53 20
+			/* disp_ctrl */
+			15 01 00 00 01 00 02 53 20
+			/* brightness_ctrl */
 			15 01 00 00 01 00 02 51 00
-			39 01 00 00 01 00 02 55 03
+			/* acl_enable_disable_settings */
+			15 01 00 00 01 00 02 55 03
+			/* Unlock level 2 commands */
 			39 01 00 00 01 00 03 F0 5A 5A
-			39 01 00 00 01 00 02 B0 08
-			39 01 00 00 01 00 02 F4 03
+			/* Set index for P9 */
+			15 01 00 00 01 00 02 B0 08
+			/* Turn on memory retention */
+			15 01 00 00 01 00 02 F4 03
+			/* viewable region */
 			39 01 00 00 00 00 05 30 00 00 09 ff
+			/* normal col */
 			39 01 00 00 00 00 05 2a 00 00 05 9f
+			/* normal row */
 			39 01 00 00 00 00 05 2b 00 00 09 ff
-			29 01 00 00 00 00 02 29 00
+			/* display on */
+			05 01 00 00 00 00 01 29
+			/* Configure dual-dsi link*/
 			15 01 00 00 78 00 02 F2 63];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command = [
 			/* display_off */
-			05 01 00 00 01 00 02 28 00
+			05 01 00 00 22 00 01 28
 			/* enter sleep mode */
-			05 01 00 00 78 00 02 10 00];
-		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+			05 01 00 00 78 00 01 10];
+		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
@@ -117,8 +131,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <2560>;
-		qcom,mdss-pan-physical-width-dimension = <65>;
-		qcom,mdss-pan-physical-height-dimension = <115>;
+		qcom,mdss-pan-physical-width-dimension = <68>;
+		qcom,mdss-pan-physical-height-dimension = <120>;
 		qcom,mdss-dsi-panel-clockrate = <830000000>;
 		qcom,mdss-dsi-h-front-porch = <120>;
 		qcom,mdss-dsi-h-back-porch = <44>;
@@ -152,7 +166,6 @@
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
 		qcom,mdss-dsi-te-v-sync-continues-lines = <0x3c>;
