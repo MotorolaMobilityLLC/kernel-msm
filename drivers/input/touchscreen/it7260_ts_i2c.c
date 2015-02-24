@@ -48,8 +48,6 @@
 #include <linux/input/mt.h>
 #endif
 
-extern void vibrator_enable(int value);
-
 #define MAX_BUFFER_SIZE			144
 #define DEVICE_NAME			"IT7260"
 #define SCREEN_X_RESOLUTION		320
@@ -855,16 +853,12 @@ static void exitIdleEvt(struct work_struct *work) {
 
 static void sendPalmEvt(void)
 {
-	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
-	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, KEY_SLEEP, 1);
 	input_sync(gl_ts->touch_dev);
 	if (gl_ts->palm_en) {
     	    input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 1);
 	    input_sync(gl_ts->palm_dev);
        }
-       vibrator_enable(50);
-	msleep(5);
 	input_report_key(gl_ts->touch_dev, KEY_SLEEP, 0);
 	input_sync(gl_ts->touch_dev);
 	if (gl_ts->palm_en) {
