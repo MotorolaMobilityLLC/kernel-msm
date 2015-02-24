@@ -1760,6 +1760,13 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			pr_err("%s: Panel power on failed\n", __func__);
 			return rc;
 		}
+		if (ctrl_pdata->later_power) {
+			rc = regulator_enable(ctrl_pdata->later_power->vreg);
+			if (rc) {
+				pr_err("%s: late_power on failed\n", __func__);
+				return rc;
+			}
+		}
 
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
