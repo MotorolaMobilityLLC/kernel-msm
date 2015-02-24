@@ -159,6 +159,9 @@
 		<&msm_gpio 65 0>,       /* WakeIRQ      */
 		<&msm_gpio 89 0>,       /* SH Wake      */
 		<&msm_gpio 16 0>;       /* SH Wake Resp */
+		accel_orient = <7>;     /* Accel Orientation value */
+		gyro_orient = <7>;      /* Gyro Orientation value */
+		mag_orient = <5>;       /* Mag Orientation value */
 };
 
 &drv2605 {
