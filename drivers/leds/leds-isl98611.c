@@ -28,6 +28,8 @@
 #define ISL98611_NAME				"isl98611"
 #define ISL98611_MAX_BRIGHTNESS			255
 #define ISL98611_DEFAULT_BRIGHTNESS		255
+#define ISL98611_HBM_ON_BRIGHTNESS		(ISL98611_MAX_BRIGHTNESS + 2)
+#define ISL98611_HBM_OFF_BRIGHTNESS		(ISL98611_MAX_BRIGHTNESS + 1)
 #define ISL98611_DEFAULT_TRIGGER		"bkl-trigger"
 #define ISL98611_DEFAULT_VN_LEVEL		20
 #define ISL98611_DEFAULT_VP_LEVEL		20
@@ -85,6 +87,7 @@ struct isl98611_chip {
 };
 
 static const struct regmap_config isl98611_regmap = {
+	.name = ISL98611_NAME,
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = REG_MAX,
@@ -171,6 +174,35 @@ static void isl98611_brightness_set(struct work_struct *work)
 	static int old_level = -1;
 	struct isl98611_platform_data *pdata = pchip->pdata;
 
+	if (pdata->hbm_on && (level > ISL98611_MAX_BRIGHTNESS)
+		&& (-1 != old_level)) {
+		int scale, base, rval = 0;
+		static int pre_hbm_level = old_level;
+		switch (level) {
+		case ISL98611_HBM_OFF_BRIGHTNESS:
+			base = pdata->led_current;
+			scale = pdata->cur_scale;
+			level = pre_hbm_level;
+			dev_info(pchip->dev, "HBM OFF level %d", pre_hbm_level);
+		break;
+		case ISL98611_HBM_ON_BRIGHTNESS:
+			base = pdata->hbm_led_current;
+			scale = pdata->hbm_cur_scale;
+			pre_hbm_level = old_level;
+			level = ISL98611_MAX_BRIGHTNESS;
+			dev_info(pchip->dev, "HBM ON level %d", pre_hbm_level);
+		break;
+		default:
+			dev_err(pchip->dev, "HBM error level %d", level);
+			return;
+		break;
+		}
+		rval |= isl98611_update(pchip, REG_CURRENT, CURRENT_MASK, base);
+		rval |= isl98611_update(pchip, REG_CURRENT, SCALE_MASK, scale);
+		if (rval)
+			dev_err(pchip->dev, "Falied HBM update rval %d", rval);
+	}
+
 	/* set configure pwm input on first brightness command */
 	if (old_level == -1 && !pdata->cabc_off) {
 		dev_info(pchip->dev, "Enabling CABC");
@@ -213,9 +245,6 @@ static void isl98611_led_set(struct led_classdev *led_cdev,
 		return;
 	}
 
-	if (value > led_cdev->max_brightness)
-		value = led_cdev->max_brightness;
-
 	led_cdev->brightness = value;
 	schedule_work(&pchip->ledwork);
 }
@@ -241,6 +270,8 @@ static int isl98611_dt_init(struct i2c_client *client,
 
 	pdata->cabc_off = of_property_read_bool(np, "intersil,cabc-disable");
 
+	pdata->hbm_on = of_property_read_bool(np, "intersil,hbm-on");
+
 	pdata->default_on = of_property_read_bool(np, "intersil,default-on");
 	pdata->init_level = ISL98611_DEFAULT_BRIGHTNESS;
 	if (pdata->default_on)
@@ -258,6 +289,16 @@ static int isl98611_dt_init(struct i2c_client *client,
 
 	pdata->cur_scale = ISL98611_90p62SCALE;
 	of_property_read_u32(np, "intersil,current-scale", &pdata->cur_scale);
+
+	if (pdata->hbm_on) {
+		pdata->hbm_led_current = pdata->led_current;
+		of_property_read_u32(np, "intersil,hbm-led-current",
+			&pdata->hbm_led_current);
+
+		pdata->hbm_cur_scale = pdata->cur_scale;
+		of_property_read_u32(np, "intersil,hbm-current-scale",
+			&pdata->hbm_cur_scale);
+	}
 
 	pdata->pwm_res = ISL98611_10BITPWM;
 	of_property_read_u32(np, "intersil,pwm-resolution", &pdata->pwm_res);
@@ -336,7 +377,10 @@ static int isl98611_probe(struct i2c_client *client,
 	/* led classdev register */
 	pchip->cdev.brightness_set = isl98611_led_set;
 	pchip->cdev.brightness_get = isl98611_led_get;
-	pchip->cdev.max_brightness = ISL98611_MAX_BRIGHTNESS;
+	if (pdata->hbm_on)
+		pchip->cdev.max_brightness = ISL98611_HBM_ON_BRIGHTNESS;
+	else
+		pchip->cdev.max_brightness = ISL98611_MAX_BRIGHTNESS;
 	pchip->cdev.name = pdata->name;
 	pchip->cdev.default_trigger = pdata->trigger;
 	INIT_WORK(&pchip->ledwork, isl98611_brightness_set);
