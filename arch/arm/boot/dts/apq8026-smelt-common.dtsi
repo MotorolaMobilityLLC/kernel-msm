@@ -141,6 +141,11 @@
 		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
 		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
 		qcom,no-codec;
+
+		/delete-property/ qcom,audio-routing;
+		/delete-property/ qcom,cdc-mclk-gpios;
+		/delete-property/ qcom,cdc-vdd-spkr-gpios;
+		/delete-property/ qcom,cdc-us-euro-gpios;
 	};
 
 	qcom,msm-dai-q6-mi2s-prim {
