@@ -462,22 +462,19 @@
 	};
 };
 
-&pm8226_l28 {
-	regulator-max-microvolt = <3400000>;
-	qcom,init-voltage = <3100000>;
+&pm8226_l4 {
+	regulator-min-microvolt = <1200000>;
+	regulator-max-microvolt = <1200000>;
+	qcom,init-voltage = <1200000>;
 	regulator-boot-on;
-	regulator-always-on;
 };
 
 &pm8226_l8 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
 	regulator-boot-on;
 	regulator-always-on;
-};
-
-&pm8226_l18 {
-	regulator-min-microvolt = <2850000>;
-	regulator-max-microvolt = <2850000>;
-	qcom,init-voltage = <2850000>;
 };
 
 &pm8226_l19 {
@@ -494,10 +491,11 @@
 	regulator-always-on;
 };
 
-&pm8226_l27 {
-	regulator-min-microvolt = <1800000>;
-	regulator-max-microvolt = <1800000>;
-	qcom,init-voltage = <1800000>;
+&pm8226_l28 {
+	regulator-max-microvolt = <3400000>;
+	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
+	regulator-always-on;
 };
 
 &spi_4 {
