@@ -25,6 +25,9 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION 0x2003
 
 #include <linux/version.h>
+#ifdef CONFIG_FB
+#include <linux/fb.h>
+#endif
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
@@ -256,6 +259,9 @@ struct synaptics_rmi4_data {
 	struct mutex rmi4_reset_mutex;
 	struct mutex rmi4_report_mutex;
 	struct mutex rmi4_io_ctrl_mutex;
+#ifdef CONFIG_FB
+	struct notifier_block fb_notifier;
+#endif
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif

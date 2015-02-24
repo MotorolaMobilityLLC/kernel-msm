@@ -39,7 +39,8 @@
 #define TYPE_B_PROTOCOL
 #endif
 
-#define WAKEUP_GESTURE false
+/*enable touch screen wake up */
+#define WAKEUP_GESTURE true
 
 #define NO_0D_WHILE_2D
 #define REPORT_2D_Z
@@ -141,6 +142,10 @@ static ssize_t synaptics_rmi4_wake_gesture_store(struct device *dev,
 
 static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf);
+		
+#if defined(CONFIG_FB)
+static void configure_sleep(struct synaptics_rmi4_data *rmi4_data);
+#endif
 
 struct synaptics_rmi4_f01_device_status {
 	union {
@@ -838,10 +843,10 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		 else if (f11_2d_data28 & 0x02)
 		{
 			pr_debug("%s: palm detect success\n", __func__);
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
+			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
 			input_sync(rmi4_data->input_dev);
 			vibrator_ctrl_kernel(50);
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
 			input_sync(rmi4_data->input_dev);
 			return 0;
 		}
@@ -3212,6 +3217,11 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 				__func__);
 		goto err_set_input_dev;
 	}
+	
+	/*register the fb notifier for touch*/
+#if defined(CONFIG_FB)
+	configure_sleep(rmi4_data);
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
@@ -3374,6 +3384,44 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
+
+/*the call back when fb notifier received*/
+#if defined(CONFIG_FB)
+static int fb_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(self, struct synaptics_rmi4_data, fb_notifier);
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK && rmi4_data ) {
+		blank = evdata->data;
+		
+		if (*blank == FB_BLANK_UNBLANK)
+			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
+		else if (*blank == FB_BLANK_POWERDOWN)
+			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+	}
+
+	return 0;
+}
+
+/*register the notifier callback for the fb*/
+static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval = 0;
+
+	rmi4_data->fb_notifier.notifier_call = fb_notifier_callback;
+
+	retval = fb_register_client(&rmi4_data->fb_notifier);
+	if (retval)
+		dev_err(&rmi4_data->pdev->dev,
+			"Unable to register fb_notifier: %d\n", retval);
+	return;
+}
+#endif
+
 static void synaptics_rmi4_f11_wg(struct synaptics_rmi4_data *rmi4_data,
 		bool enable)
 {
@@ -3682,7 +3730,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (rmi4_data->pwr_reg) {
 		retval = regulator_enable(rmi4_data->pwr_reg);
 		if (retval < 0) {
-			//dev_err(dev,"%s: Failed to enable pwr_reg regulator\n",__func__);
 			goto exit;
 		}		 
 		msleep(bdata->power_delay_ms);
