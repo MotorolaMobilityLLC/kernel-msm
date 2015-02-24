@@ -1209,7 +1209,7 @@
 &pmi8994_charger {
 	status = "okay";
 	qcom,iterm-ma = <100>;
-	qcom,fastchg-current-ma = <3000>;
+	qcom,fastchg-current-ma = <4000>;
 	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
@@ -1222,7 +1222,7 @@
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-allowed-lowering-ma = <500>;
 	qcom,stepchg-voltage-mv = <4200>;
-	qcom,stepchg-current-ma = <1000>;
+	qcom,stepchg-current-ma = <2500>;
 	qcom,hot-temp-c = <60>;
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
@@ -1326,6 +1326,15 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&tfa9890_reset_default>;
+	};
+
+	smb1351-charger@1d {
+		status = "ok";
+		compatible = "qcom,smb1351-charger";
+		reg = <0x1d>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4440>;
+		qcom,recharge-mv = <100>;
 	};
 
 	smb1357_otg_vreg: smb1357-charger@1e {
