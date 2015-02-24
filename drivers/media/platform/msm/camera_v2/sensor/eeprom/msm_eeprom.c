@@ -925,6 +925,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	int rc = 0;
 	int j = 0;
 	uint32_t temp;
+	uint32_t temp2 = 0;
 
 	struct msm_camera_cci_client *cci_client = NULL;
 	struct msm_eeprom_ctrl_t *e_ctrl = NULL;
@@ -971,6 +972,10 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	/* Most eeprom's won't have second address, so don't check */
+	of_property_read_u32(of_node, "qcom,slave-addr2",
+		&temp2);
+
 	/* Set platform device handle */
 	e_ctrl->pdev = pdev;
 	/* Set device type as platform device */
@@ -993,6 +998,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	eb_info = e_ctrl->eboard_info;
 	power_info = &eb_info->power_info;
 	eb_info->i2c_slaveaddr = temp;
+	eb_info->i2c_slaveaddr2 = temp2;
 
 	power_info->clk_info = cam_8974_clk_info;
 	power_info->clk_info_size = ARRAY_SIZE(cam_8974_clk_info);
@@ -1042,11 +1048,19 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 		pr_err("failed rc %d\n", rc);
 		goto memdata_free;
 	}
+
 	rc = read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
+	if (eb_info->i2c_slaveaddr2 != 0 && rc < 0) {
+		eb_info->i2c_slaveaddr = eb_info->i2c_slaveaddr2;
+		cci_client->sid = eb_info->i2c_slaveaddr2 >> 1;
+		rc = read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
+	}
+
 	if (rc < 0) {
-		pr_err("%s read_eeprom_memory failed\n", __func__);
+		pr_err("%s: eeprom memory failed\n", __func__);
 		goto power_down;
 	}
+
 	for (j = 0; j < e_ctrl->cal_data.num_data; j++)
 		CDBG("memory_data[%d] = 0x%X\n", j,
 			e_ctrl->cal_data.mapdata[j]);
