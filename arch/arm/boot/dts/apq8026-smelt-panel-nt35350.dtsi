@@ -24,6 +24,13 @@
 	};
 };
 
+&pm8226_l27 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	regulator-boot-on;
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35350_360p_cmd>;
 	qcom,platform-reset-gpio = <&msmgpio 36 0>;

@@ -12,6 +12,21 @@
 
 #include "qcom/dsi-panel-mot-ota3201a-290p-vid.dtsi"
 
+&pm8226_l18 {
+	regulator-min-microvolt = <2850000>;
+	regulator-max-microvolt = <2850000>;
+	qcom,init-voltage = <2850000>;
+	regulator-boot-on;
+};
+
+&pm8226_l27 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	regulator-boot-on;
+};
+
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_mot_ota3201a_290p_vid>;
 	qcom,platform-reset-gpio = <&msmgpio 36 0>;
