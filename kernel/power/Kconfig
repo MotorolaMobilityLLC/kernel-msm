@@ -288,3 +288,14 @@ config SUSPEND_TIME
 	  Prints the time spent in suspend in the kernel log, and
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
+
+config PARTIALRESUME
+	bool "Partial-resume framework"
+	---help---
+	  Provides hooks for drivers to register partial-resume handlers.
+	  Similar to suspend_again support already in kernel, except that it
+	  operates with kernel threads unfrozen and userspace still frozen,
+	  allowing callbacks to block on work queues and kernel threads.
+	  Partial resume will occur only if all wakeup sources have
+	  partial-resume handlers associated with them, and they all return
+	  true.
