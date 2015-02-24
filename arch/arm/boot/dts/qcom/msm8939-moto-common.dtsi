@@ -661,7 +661,7 @@
                 qcom,max-batt-curr-ma = <2600>;
                 qcom,ext-temp-volt-mv = <4000>;
                 qcom,ext-temp-soc = <65>;
-                qcom,low-voltage-uv = <2750000>;
+                qcom,low-voltage-uv = <3200000>;
                 qcom,max-voltage-uv = <4350000>;
         };
 
