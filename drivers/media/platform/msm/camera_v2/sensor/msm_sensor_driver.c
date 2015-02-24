@@ -624,6 +624,103 @@ static void msm_sensor_fill_sensor_info(struct msm_sensor_ctrl_t *s_ctrl,
 	strlcpy(entity_name, s_ctrl->msm_sd.sd.entity.name, MAX_SENSOR_NAME);
 }
 
+static int msm_sensor_read_eeprom(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int8_t eeprom_page_no = 0;
+	int32_t rc = 0;
+	uint16_t eeprom_slave_addr;
+	struct msm_camera_sensor_slave_info *camera_info;
+	struct msm_sensor_otp_cal_info_t *eeprom_cal_info;
+	struct otp_info_t *eeprom_data_info;
+	uint16_t cam_slave_addr =
+		s_ctrl->sensordata->slave_info->sensor_slave_addr;
+	int cam_addr_type = s_ctrl->sensor_i2c_client->addr_type;
+
+	camera_info = s_ctrl->sensordata->cam_slave_info;
+	if (!camera_info) {
+		pr_err("%s: camera slave info is null\n", __func__);
+		return -EAGAIN;
+	}
+
+	eeprom_cal_info = &camera_info->sensor_init_params.sensor_otp;
+	eeprom_data_info = &camera_info->sensor_otp;
+	if (!eeprom_cal_info || !eeprom_data_info) {
+		pr_err("%s: eeprom info is null\n", __func__);
+		return -EAGAIN;
+	} else if (!eeprom_cal_info->eeprom_enable ||
+		eeprom_cal_info->num_of_pages == 0) {
+		pr_err("%s: %s EEPROM disabled in sensor lib\n", __func__,
+			s_ctrl->sensordata->sensor_name);
+		return 0;
+	}
+
+	/* Read eeprom only once */
+	if (eeprom_data_info->otp_read) {
+		pr_debug("%s: eeprom block already read", __func__);
+		return 0;
+	}
+	pr_debug("%s sensor eeprom initialization block:\n"
+			" - page size: %d\n"
+			" - pages count: %d\n"
+			" - addr type: %d\n"
+			" - eeprom enable: %d\n"
+			" - eeprom slave address: 0%x\n"
+			" - eeprom mem address: 0%x\n",
+			s_ctrl->sensordata->sensor_name,
+			eeprom_cal_info->page_size,
+			eeprom_cal_info->num_of_pages,
+			eeprom_cal_info->addr_type,
+			eeprom_cal_info->eeprom_enable,
+			eeprom_cal_info->eeprom_slave_addr,
+			eeprom_cal_info->eeprom_mem_addr
+			);
+	/* Allocate eeprom memory */
+	eeprom_data_info->otp_info = kzalloc(eeprom_cal_info->page_size*
+					eeprom_cal_info->num_of_pages,
+					GFP_KERNEL);
+	if (eeprom_data_info->otp_info == NULL) {
+		pr_err("%s: Unable to allocate memory for eeprom!\n", __func__);
+		return -ENOMEM;
+	}
+
+	for (eeprom_page_no = 0; eeprom_page_no < eeprom_cal_info->num_of_pages;
+		eeprom_page_no++) {
+		eeprom_slave_addr = eeprom_cal_info->eeprom_slave_addr +
+			eeprom_page_no * 2;
+		s_ctrl->sensor_i2c_client->addr_type =
+			eeprom_cal_info->addr_type;
+		s_ctrl->sensordata->slave_info->sensor_slave_addr =
+			eeprom_slave_addr;
+		s_ctrl->sensor_i2c_client->cci_client->sid =
+			(eeprom_slave_addr >> 1);
+
+		/* read eeprom buffer */
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_read_seq(s_ctrl->sensor_i2c_client,
+			eeprom_cal_info->eeprom_mem_addr,
+			(eeprom_data_info->otp_info) +
+			eeprom_page_no*eeprom_cal_info->page_size,
+			eeprom_cal_info->page_size);
+		if (rc < 0) {
+			pr_err("%s: Unable to read eeprom\n", __func__);
+			goto exit;
+		}
+
+	}
+exit:
+	/* Restore sensor defaults */
+	s_ctrl->sensordata->slave_info->sensor_slave_addr =
+		cam_slave_addr;
+	s_ctrl->sensor_i2c_client->cci_client->sid =
+		(cam_slave_addr >> 1);
+	s_ctrl->sensor_i2c_client->addr_type = cam_addr_type;
+
+	/* set read flag to read only once */
+	eeprom_data_info->otp_read = 1;
+
+	return rc;
+}
+
 static int msm_sensor_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int8_t otp_page_no = 0;
@@ -1067,11 +1164,18 @@ int32_t msm_sensor_driver_probe(void *setting,
 	/* Save sensor info*/
 	s_ctrl->sensordata->cam_slave_info = slave_info;
 
-	/* Read OTP */
-	rc = msm_sensor_read_otp(s_ctrl);
-	if (rc < 0)
-		pr_err("%s OTP read failed", slave_info->sensor_name);
-
+	if (slave_info->sensor_init_params.sensor_otp.enable) {
+		/* Read OTP */
+		rc = msm_sensor_read_otp(s_ctrl);
+		if (rc < 0)
+			pr_err("%s OTP read failed", slave_info->sensor_name);
+	} else if (slave_info->sensor_init_params.sensor_otp.eeprom_enable) {
+		/* read eeprom */
+		msm_sensor_read_eeprom(s_ctrl);
+		if (rc < 0)
+			pr_err("%s eeprom read failed",
+				slave_info->sensor_name);
+	}
 	/*
 	  Set probe succeeded flag to 1 so that no other camera shall
 	 * probed on this slot

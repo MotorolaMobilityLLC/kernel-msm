@@ -231,6 +231,10 @@ struct msm_sensor_otp_cal_info_t {
 	uint16_t data_seg_addr;
 	enum msm_camera_i2c_data_type data_size;
 	uint8_t big_endian;
+	enum msm_camera_i2c_reg_addr_type addr_type;
+	uint16_t eeprom_enable;
+	uint16_t eeprom_slave_addr;
+	uint16_t eeprom_mem_addr;
 };
 
 struct msm_sensor_init_params {
