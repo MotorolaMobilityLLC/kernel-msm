@@ -79,6 +79,9 @@
 };
 
 &i2c_11 {
+	smb1351-charger@1d {
+		status = "disable";
+	};
 	smb1357_otg_vreg: smb1357-charger@1e {
 		status = "okay";
 	};
