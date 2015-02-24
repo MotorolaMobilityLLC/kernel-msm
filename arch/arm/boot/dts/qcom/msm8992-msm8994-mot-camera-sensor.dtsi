@@ -29,7 +29,8 @@
 		reg = <0x0>;
 		qcom,eeprom-name = "sony_imx230";
 		compatible = "qcom,eeprom";
-		qcom,slave-addr = <0xA8>;
+		qcom,slave-addr = <0xA0>;
+		qcom,slave-addr2 = <0xA8>;
 		qcom,cci-master = <0>;
 		qcom,num-blocks = <1>;
 		qcom,page0 = <0 0x0000 2 0x00 1 0>;
