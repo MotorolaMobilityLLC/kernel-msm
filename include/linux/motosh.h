@@ -343,6 +343,8 @@ struct stm_response {
 #define ALGO_INT_STATUS                 0x27
 #define GENERIC_INT_STATUS              0x28
 
+#define SENSOR_ORIENTATIONS             0x2A
+
 #define MOTION_DATA                     0x2D
 
 #define PROX_SETTINGS                   0x33
@@ -565,6 +567,9 @@ struct motosh_platform_data {
 	int ct406_undetect_threshold;
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
+	int accel_orient;
+	int gyro_orient;
+	int mag_orient;
 };
 
 struct motosh_data {
