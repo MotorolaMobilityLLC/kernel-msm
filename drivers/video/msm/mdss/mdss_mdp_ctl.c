@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1407,6 +1407,7 @@ struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator)
 	struct mdss_mdp_mixer *mixer = NULL;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	u32 offset = mdss_mdp_get_wb_ctl_support(mdata, true);
+	int ret = 0;
 
 	ctl = mdss_mdp_ctl_alloc(mdss_res, offset);
 	if (!ctl) {
@@ -1446,9 +1447,10 @@ struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator)
 	mixer->ctl = ctl;
 
 	if (ctl->start_fnc)
-		ctl->start_fnc(ctl);
+		ret = ctl->start_fnc(ctl);
 
-	return mixer;
+	if (!ret)
+		return mixer;
 error:
 	if (mixer)
 		mdss_mdp_mixer_free(mixer);
