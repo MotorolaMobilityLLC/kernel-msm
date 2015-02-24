@@ -493,8 +493,8 @@
 &pmi8994_charger {
 	status = "okay";
 	qcom,iterm-ma = <100>;
-	qcom,fastchg-current-ma = <2000>;
-	qcom,float-voltage-mv = <4350>;
+	qcom,fastchg-current-ma = <3400>;
+	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
 	qcom,dc-psy-type = "Mains";
@@ -506,7 +506,7 @@
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-allowed-lowering-ma = <500>;
 	qcom,stepchg-voltage-mv = <4200>;
-	qcom,stepchg-current-ma = <1000>;
+	qcom,stepchg-current-ma = <2000>;
 	qcom,hot-temp-c = <60>;
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
@@ -1291,6 +1291,15 @@
 		tfa_vdd-supply = <&pm8994_s4>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "right";
+	};
+
+	smb1351-charger@1d {
+		status = "ok";
+		compatible = "qcom,smb1351-charger";
+		reg = <0x1d>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4440>;
+		qcom,recharge-mv = <100>;
 	};
 };
 
