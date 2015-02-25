@@ -1471,10 +1471,6 @@
 				/delete-property/ linux,default-trigger;
 			};
 		};
-
-		qcom,leds@d300 {
-			status = "disabled";
-		};
 	};
 };
 
