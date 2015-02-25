@@ -564,7 +564,7 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 	return 0;
 }
 
-static int diag_compute_real_time(int idx)
+int diag_compute_real_time(int idx)
 {
 	int real_time = MODE_REALTIME;
 	if (driver->proc_active_mask == 0) {
