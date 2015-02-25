@@ -112,7 +112,7 @@ ifeq ($(CONFIG_BRCM_CCX),y)
 endif
 
 # DTIM listen interval in suspend mode(0 means follow AP's DTIM period)
-DHDCFLAGS += -DCUSTOM_SUSPEND_BCN_LI_DTIM=0
+DHDCFLAGS += -DCUSTOM_SUSPEND_BCN_LI_DTIM=3
 
 # Ioctl timeout 5000ms
 DHDCFLAGS += -DIOCTL_RESP_TIMEOUT=5000
