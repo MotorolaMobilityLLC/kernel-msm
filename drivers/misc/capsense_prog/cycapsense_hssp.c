@@ -27,6 +27,7 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/hssp_programmer.h>
 #include "cycapsense_hssp.h"
 #include "ProgrammingSteps.h"
 
@@ -34,22 +35,80 @@
 
 struct cycapsense_ctrl_data *ctrl_data;
 
+
+static int programming_done;
+static BLOCKING_NOTIFIER_HEAD(hssp_notifier_list);
+
+/**
+ * register_hssp_update_notify - register accessory notifier callback
+ * @nb: pointer to the notifier block for the callback events.
+ *
+ * Calls the notifier callback to when CapSense goes to/from programming mode,
+ * indicated by a boolean passed to the callback's action parameter.
+ */
+void register_hssp_update_notify(struct notifier_block *nb)
+{
+	if (!nb)
+		return;
+
+	/* inform new client of current state */
+	if (nb->notifier_call)
+		nb->notifier_call(nb, programming_done, NULL);
+
+	blocking_notifier_chain_register(&hssp_notifier_list, nb);
+}
+EXPORT_SYMBOL(register_hssp_update_notify);
+
+/**
+ * unregister_hssp_update_notify - unregister a notifier callback
+ * @nb: pointer to the notifier block for the callback events.
+ *
+ * register_hssp_update_notify() must have been previously called for this
+ * function to work properly.
+ */
+void unregister_hssp_update_notify(struct notifier_block *nb)
+{
+	blocking_notifier_chain_unregister(&hssp_notifier_list, nb);
+}
+EXPORT_SYMBOL(unregister_hssp_update_notify);
+
+static void cycapsense_hssp_notify(int status)
+{
+	programming_done = status;
+	blocking_notifier_call_chain(&hssp_notifier_list,
+						programming_done, NULL);
+}
+
 static int cycapsense_hssp_verify_cs(struct hssp_data *d)
 {
+	int ret;
+
+	cycapsense_hssp_notify(HSSP_START);
+
 	if (DeviceAcquire() == FAILURE) {
 		pr_err("%s: Device Acquire failed\n", __func__);
-		return -EIO;
+		ret = -EIO;
+		goto end;
 	}
 
 	if (VerifySiliconId(d) == FAILURE) {
 		pr_err("%s: Verify Selicon ID failed\n", __func__);
-		return -EIO;
+		ret = -EIO;
+		goto end;
 	}
-	return VerifyChecksum(d);
+
+	ret = VerifyChecksum(d);
+
+end:
+	ExitProgrammingMode();
+	cycapsense_hssp_notify(HSSP_STOP);
+	return ret;
 }
 
 static int cycapsense_hssp_erase(struct hssp_data *d)
 {
+	cycapsense_hssp_notify(HSSP_START);
+
 	if (DeviceAcquire() == FAILURE) {
 		pr_err("%s: Device Acquire failed\n", __func__);
 		return -EIO;
@@ -66,6 +125,8 @@ static int cycapsense_hssp_erase(struct hssp_data *d)
 
 int cycapsense_hssp_dnld(struct hssp_data *d)
 {
+	cycapsense_hssp_notify(HSSP_START);
+
 	if (d->inf.data == NULL || d->inf.s_data == NULL) {
 		pr_err("%s: Invalid input arguments\n", __func__);
 		return -EINVAL;
@@ -117,12 +178,9 @@ int cycapsense_hssp_dnld(struct hssp_data *d)
 	}
 
 	ExitProgrammingMode();
-
+	cycapsense_hssp_notify(HSSP_STOP);
 	return SUCCESS;
 }
-
-
-
 
 const unsigned char ascii2bin[] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
