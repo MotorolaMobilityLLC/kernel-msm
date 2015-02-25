@@ -2439,7 +2439,10 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	ret = snd_soc_of_parse_audio_routing(card,
 			"qcom,audio-routing");
 	if (ret)
-		goto err;
+		dev_dbg(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"qcom, audio-routing",
+			pdev->dev.of_node->full_name, ret);
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 			"qcom,tapan-mclk-clk-freq", &pdata->mclk_freq);
@@ -2460,12 +2463,11 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	pdata->mclk_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,cdc-mclk-gpios", 0);
 	if (pdata->mclk_gpio < 0) {
-		dev_err(&pdev->dev,
+		dev_dbg(&pdev->dev,
 			"Looking up %s property in node %s failed %d\n",
 			"qcom, cdc-mclk-gpios", pdev->dev.of_node->full_name,
 			pdata->mclk_gpio);
-		ret = -ENODEV;
-		goto err;
+		pdata->mclk_gpio = 0;
 	}
 	ret = msm8226_prepare_codec_mclk(card);
 	if (ret)
