@@ -261,5 +261,6 @@ int diag_send_buffering_tx_mode_pkt(struct diag_smd_info *smd_info,
 int diag_send_buffering_wm_values(struct diag_smd_info *smd_info,
 				  struct diag_buffering_mode_t *params);
 void diag_cntl_stm_notify(struct diag_smd_info *smd_info, int action);
+int diag_compute_real_time(int idx);
 
 #endif
