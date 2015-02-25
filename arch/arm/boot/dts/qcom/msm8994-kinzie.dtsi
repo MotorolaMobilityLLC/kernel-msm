@@ -72,12 +72,18 @@
 
 &soc {
 	qcom,msm-thermal {
+		qcom,poll-ms = <250>;
+		qcom,limit-temp = <25>;
+		qcom,temp-hysteresis = <20>;
+		qcom,freq-step = <2>;
 		qcom,freq-control-mask = <0xf>;
+		qcom,core-limit-temp = <25>;
+		qcom,core-temp-hysteresis = <20>;
 		qcom,core-control-mask = <0xe>;    /* allow control all but cpu0 */
+		qcom,hotplug-temp = <25>;
+		qcom,hotplug-temp-hysteresis = <20>;
 
-		qcom,hotplug-temp = <95>;
-		qcom,hotplug-temp-hysteresis = <30>;
-
+		qcom,freq-mitigation-temp = <65>;
 		qcom,freq-mitigation-control-mask = <0xf>;
 	};
 };
