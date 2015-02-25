@@ -167,6 +167,7 @@
 #define M_PROXIMITY		0x000002
 #define M_TOUCH			0x000004
 #define M_COVER			0x000008
+#define M_INIT_COMPLETE		0x000040
 #define M_QUICKPEEK		0x000010
 #define M_HUB_RESET		0x000080
 
@@ -271,6 +272,11 @@ enum stm_mode {
 	BOOTMODE,
 	NORMALMODE,
 	FACTORYMODE
+};
+
+enum reset_mode {
+	START_RESET,
+	COMPLETE_INIT
 };
 
 enum stm_commands {
@@ -455,8 +461,6 @@ struct stm_response {
 #define MOTOSH_MAX_GENERIC_DATA		512
 
 #define ESR_SIZE			128
-
-#define MOTOSH_RESET_DELAY		400
 
 #define I2C_RESPONSE_LENGTH		8
 
@@ -672,7 +676,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
 
 void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff);
-int motosh_reset_and_init(void);
+int motosh_reset_and_init(enum reset_mode mode);
 
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
