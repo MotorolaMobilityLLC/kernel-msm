@@ -2099,7 +2099,7 @@ void diag_send_updates_peripheral(uint8_t peripheral)
 	diag_send_log_mask_update(peripheral, ALL_EQUIP_ID);
 	diag_send_event_mask_update(peripheral);
 	diag_send_real_time_update(peripheral,
-				driver->real_time_mode[DIAG_LOCAL_PROC]);
+				diag_compute_real_time(DIAG_LOCAL_PROC));
 	diag_send_peripheral_buffering_mode(
 				&driver->buffering_mode[peripheral]);
 }
