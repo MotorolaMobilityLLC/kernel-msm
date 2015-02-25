@@ -231,7 +231,8 @@ static ssize_t panel_debug_base_reg_read(struct file *file,
 			struct mdss_dsi_ctrl_pdata, panel_data);
 
 	mdss_dsi_panel_cmd_read(ctrl_pdata, panel_reg[0],
-		panel_reg[1], NULL, rx_buf, dbg->cnt);
+		panel_reg[1], NULL, rx_buf, dbg->cnt, 
+		ctrl_pdata->on_cmds.link_state == DSI_HS_MODE ? true : false);
 
 	rx_len = ctrl_pdata->rx_len;
 
