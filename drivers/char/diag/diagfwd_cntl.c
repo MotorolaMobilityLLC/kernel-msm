@@ -717,7 +717,7 @@ void diag_cntl_process_read_data(struct diagfwd_info *p_info, void *buf,
 	return;
 }
 
-static int diag_compute_real_time(int idx)
+int diag_compute_real_time(int idx)
 {
 	int real_time = MODE_REALTIME;
 	if (driver->proc_active_mask == 0) {
