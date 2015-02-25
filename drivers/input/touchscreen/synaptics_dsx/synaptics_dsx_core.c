@@ -843,10 +843,10 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		 else if (f11_2d_data28 & 0x02)
 		{
 			pr_debug("%s: palm detect success\n", __func__);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
 			input_sync(rmi4_data->input_dev);
 			vibrator_ctrl_kernel(50);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
 			input_sync(rmi4_data->input_dev);
 			return 0;
 		}
@@ -2696,6 +2696,7 @@ static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
 	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
 	set_bit(BTN_TOUCH, rmi4_data->input_dev->keybit);
 	set_bit(BTN_TOOL_FINGER, rmi4_data->input_dev->keybit);
+	set_bit(KEY_SLEEP, rmi4_data->input_dev->keybit);
 #ifdef INPUT_PROP_DIRECT
 	set_bit(INPUT_PROP_DIRECT, rmi4_data->input_dev->propbit);
 #endif
