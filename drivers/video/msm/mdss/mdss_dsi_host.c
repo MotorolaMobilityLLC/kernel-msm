@@ -1413,7 +1413,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	/* make sure dsi_cmd_mdp is idle */
 	rc = mdss_dsi_cmd_mdp_busy(ctrl);
-	if (rc) {
+	if (!ctrl->panel_reset_for_esd && rc) {
 		pr_err("%s: mdp busy timeout\n", __func__);
 		if (from_mdp)
 			mutex_unlock(&ctrl->cmd_mutex);

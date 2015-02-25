@@ -498,6 +498,16 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	return rc;
 }
 
+void mdss_dsi_panel_reset_esd(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	pr_debug("%s: panel reset\n", __func__);
+	if (ctrl->panel_reset_cmds.cmd_cnt) {
+		ctrl->panel_reset_for_esd = true;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->panel_reset_cmds);
+		ctrl->panel_reset_for_esd = false;
+	}
+}
+
 /**
  * mdss_dsi_roi_merge() -  merge two roi into single roi
  *
@@ -1676,6 +1686,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-off-post-reset-delay", &tmp);
 	pinfo->off_post_rst_delay = (!rc ? tmp : 0);
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->panel_reset_cmds,
+		"qcom,mdss-dsi-panel-reset-command", "qcom,mdss-dsi-panel-reset-command-state");
 
 	mdss_dsi_parse_panel_horizintal_line_idle(np, ctrl_pdata);
 
