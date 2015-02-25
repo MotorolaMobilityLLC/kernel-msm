@@ -199,10 +199,12 @@ error:
 static int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable)
 {
 	/* Panel power control when entering/exiting lp mode */
+	/*
 	if (enable)
 		mdss_dsi_panel_power_off(pdata);
 	else
 		mdss_dsi_panel_power_on(pdata);
+	*/
 
 	return 0;
 }
