@@ -19,18 +19,21 @@
 };
 
 &pm8994_l14 {
-/*	regulator-boot-on; */
+	regulator-boot-on;
+	regulator-always-on;
 };
 
 &pm8994_l18 {
 	regulator-min-microvolt = <3100000>;
 	regulator-max-microvolt = <3100000>;
 	qcom,init-voltage = <3100000>;
-/*	regulator-boot-on; */
+	regulator-boot-on;
+	regulator-always-on;
 };
 
 &vbat_disp_vreg {
-/*	regulator-boot-on; */
+	regulator-boot-on;
+	regulator-always-on;
 };
 
 &mdss_fb0 {
@@ -55,7 +58,6 @@
 	#include "dsi-panel-mot-smd-543-QHD-cmd-supplies.dtsi"
 };
 
-/*
 &mot_smd_543_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
@@ -63,8 +65,6 @@
 &mot_smd_543_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
-
-*/
 
 &i2c_2 {
 	/delete-node/ atmel_mxt_ts@4a;
