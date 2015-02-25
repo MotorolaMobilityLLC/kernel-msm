@@ -661,3 +661,31 @@
 	lux_table = <7 56 105 1560 3150 8000>;
 	brightness_table = <4 6 8 21 58 80 122>;
 };
+
+&pma8084_vadc {
+	chan@78 {
+		label = "wchg_therm";
+		reg = <0x78>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <13>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pma8084_adc_tm {
+	chan@78{
+		label = "wchg_therm";
+		reg = <0x78>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <13>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x98>;
+		qcom,thermal-node;
+	};
+};
