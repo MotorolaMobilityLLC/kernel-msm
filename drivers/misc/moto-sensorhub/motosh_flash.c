@@ -422,13 +422,14 @@ RETRY_ID:
 		/* init only if not in the factory
 		   - motosh_irq_disable indicates factory test ongoing */
 		if (!motosh_irq_disable) {
-			err = motosh_reset_and_init();
-			if (!err)
-				motosh_misc_data->mode = mode;
-			else
-				motosh_misc_data->mode = UNINITIALIZED;
-		} else
+			/* Mode will transition to NORMALMODE after
+			   hub reports its init is complete */
+			motosh_misc_data->mode = UNINITIALIZED;
+			motosh_reset_and_init(START_RESET);
+		} else {
+			motosh_misc_data->mode = mode;
 			motosh_reset(pdata, motosh_cmdbuff);
+		}
 	} else
 		motosh_misc_data->mode = mode;
 

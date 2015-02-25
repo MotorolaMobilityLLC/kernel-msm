@@ -118,7 +118,15 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		ps_motosh->qw_irq_status = 0;
 	}
 
-	/* First, check for error messages */
+	/* Check if we are coming out of normal reset and/or
+	   the part has self-reset */
+	if (irq_status & M_INIT_COMPLETE) {
+		dev_err(&ps_motosh->client->dev,
+			"Sensor Hub reports reset");
+		motosh_reset_and_init(COMPLETE_INIT);
+	}
+
+	/* Check for error messages */
 	if (irq_status & M_LOG_MSG) {
 		motosh_cmdbuff[0] = ERROR_STATUS;
 		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
@@ -134,7 +142,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				"Failed to read error message %d\n", err);
 	}
 
-	/* Second, check for a reset request */
+	/* Check for a reset request */
 	if (irq_status & M_HUB_RESET) {
 		unsigned char status;
 
@@ -149,7 +157,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 
 		motosh_as_data_buffer_write(ps_motosh, DT_RESET, &status, 1, 0);
 
-		motosh_reset_and_init();
+		motosh_reset_and_init(START_RESET);
 		dev_err(&ps_motosh->client->dev, "MOTOSH requested a reset\n");
 		goto EXIT;
 	}

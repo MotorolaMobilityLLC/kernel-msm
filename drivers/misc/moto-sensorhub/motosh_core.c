@@ -405,7 +405,7 @@ int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 		err = motosh_i2c_write_read_no_reset(ps_motosh,
 			buf, writelen, readlen);
 		if (err < 0)
-			motosh_reset_and_init();
+			motosh_reset_and_init(START_RESET);
 	} while ((err < 0) && (++tries < RESET_RETRIES));
 
 	if (err < 0) {
@@ -432,7 +432,7 @@ int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len)
 	do {
 		err = motosh_i2c_read_no_reset(ps_motosh, buf, len);
 		if (err < 0)
-			motosh_reset_and_init();
+			motosh_reset_and_init(START_RESET);
 	} while ((err < 0) && (++tries < RESET_RETRIES));
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev, "read error\n");
@@ -455,7 +455,7 @@ int motosh_i2c_write(struct motosh_data *ps_motosh, u8 *buf, int len)
 	do {
 		err = motosh_i2c_write_no_reset(ps_motosh, buf, len);
 		if (err < 0)
-			motosh_reset_and_init();
+			motosh_reset_and_init(START_RESET);
 	} while ((err < 0) && (++tries < RESET_RETRIES));
 
 	if (err < 0) {
@@ -853,7 +853,7 @@ static int motosh_fb_notifier_callback(struct notifier_block *self,
 		goto exit;
 	}
 
-	if (ps_motosh->in_reset_and_init || ps_motosh->mode == BOOTMODE) {
+	if (ps_motosh->in_reset_and_init || ps_motosh->mode <= BOOTMODE) {
 		/* store the kernel's vote */
 		motosh_store_vote_aod_enabled(ps_motosh,
 				AOD_QP_ENABLED_VOTE_KERN, vote);
