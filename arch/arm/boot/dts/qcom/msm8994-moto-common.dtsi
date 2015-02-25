@@ -649,6 +649,11 @@
 };
 
 &soc {
+	qcom,msm-thermal {
+		qcom,hotplug-temp = <95>;
+		qcom,hotplug-temp-hysteresis = <30>;
+	};
+
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};
