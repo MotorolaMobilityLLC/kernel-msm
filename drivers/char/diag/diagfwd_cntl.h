@@ -278,4 +278,5 @@ int diag_send_buffering_tx_mode_pkt(uint8_t peripheral,
 				    struct diag_buffering_mode_t *params);
 int diag_send_buffering_wm_values(uint8_t peripheral,
 				  struct diag_buffering_mode_t *params);
+int diag_compute_real_time(int idx);
 #endif
