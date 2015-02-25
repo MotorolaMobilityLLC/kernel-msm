@@ -11,6 +11,37 @@
  * GNU General Public License for more details.
  */
 
+&tlmm_pinmux {
+	cam_sensor_flash_eeprom {
+		/* FLASH_EEPROM_DATA */
+		qcom,pins = <&gp 100>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cam_sensor_flash_eeprom";
+		/* active state */
+		cam_sensor_flash_eeprom_default: default {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		/*suspended state */
+		cam_sensor_flash_eeprom_sleep: sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+/ {
+	/* Flash EEPROM */
+	onewire@0 {
+		compatible = "w1-gpio";
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&cam_sensor_flash_eeprom_default>;
+		pinctrl-1 = <&cam_sensor_flash_eeprom_sleep>;
+		gpios = <&msm_gpio 100 0>;
+		w1_vdd-supply = <&pm8916_l16>;
+	};
+};
 
 &cci {
 	/* skyworks sky81296 flash LED driver*/
