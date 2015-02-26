@@ -96,7 +96,7 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
-#if 0
+#if 1
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
@@ -185,6 +185,7 @@ static void halt_spmi_pmic_arbiter(void)
 	}
 }
 
+extern int g_recovery_mode;
 static void msm_restart_prepare(const char *cmd)
 {
 
@@ -213,7 +214,19 @@ static void msm_restart_prepare(const char *cmd)
 	}
 #endif
 
-	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+	if(g_recovery_mode) {
+		printk("%s, Recovery Mode Reboot!\n", __func__);
+		/* Hard reset the PMIC unless memory contents must be maintained. */
+		if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0')) {
+			printk("%s, PON_POWER_OFF_WARM_RESET\n", __func__);
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+		} else {
+			printk("%s, PON_POWER_OFF_HARD_RESET\n", __func__);
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+		}
+	}
+	else
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 
 	last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER + (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
 
