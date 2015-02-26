@@ -150,6 +150,10 @@
 	qcom,cci@1b0c000 {
 		vddio-supply = <&pm8916_l10>;
 	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &i2c_5 {
