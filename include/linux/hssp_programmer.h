@@ -15,9 +15,13 @@
 #if IS_ENABLED(CONFIG_CYPRESS_CAPSENSE_HSSP)
 void register_hssp_update_notify(struct notifier_block *nb);
 void unregister_hssp_update_notify(struct notifier_block *nb);
+int cycapsense_fw_update(void);
+int cycapsense_reset(void);
 #else
 static inline void register_hssp_update_notify(struct notifier_block *nb) { }
 static inline void unregister_hssp_update_notify(struct notifier_block *nb) { }
+static inline int cycapsense_fw_update(void) { return 0; }
+static inline int cycapsense_reset(void) { return 0; }
 #endif
 
 #define HSSP_START 0
