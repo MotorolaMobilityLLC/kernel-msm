@@ -177,9 +177,13 @@ static void isl98611_brightness_set(struct work_struct *work)
 	if (pdata->hbm_on && (level > ISL98611_MAX_BRIGHTNESS)
 		&& (-1 != old_level)) {
 		int scale, base, rval = 0;
-		static int pre_hbm_level = old_level;
+		static int pre_hbm_level = -1;
 		switch (level) {
 		case ISL98611_HBM_OFF_BRIGHTNESS:
+			if (-1 == pre_hbm_level) {
+				dev_err(pchip->dev, "Wrong HBM sequence");
+				return;
+			}
 			base = pdata->led_current;
 			scale = pdata->cur_scale;
 			level = pre_hbm_level;
