@@ -101,6 +101,7 @@ struct dsi_cmd_desc {
 #define CMD_REQ_NO_MAX_PKT_SIZE 0x0008
 #define CMD_REQ_LP_MODE 0x0010
 #define CMD_REQ_HS_MODE 0x0020
+#define CMD_REQ_TRIGGER_TE 0x0040
 
 struct dcs_cmd_req {
 	struct dsi_cmd_desc *cmds;

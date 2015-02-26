@@ -254,14 +254,12 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl,
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &backlight_cmd;
 	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_TRIGGER_TE;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
 	mdss_mdp_cmd_clk_enable();
-	mdss_dsi_cmd_dma_trigger_sel(ctrl, 1);
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-	mdss_dsi_cmd_dma_trigger_sel(ctrl, 0);
 	stored_cd_level = cd_level;
 	mdss_mdp_cmd_clk_disable();
 }
