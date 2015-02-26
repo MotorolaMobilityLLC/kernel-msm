@@ -886,7 +886,7 @@ check_config_id:
 		"%s: Device config ID %d, .img config ID %d\n",
 		__func__, deviceConfigID, imageConfigID);
 
-	if (imageConfigID != deviceConfigID) {
+	if (imageConfigID > deviceConfigID) {
 		if (config_flag)
 			flash_area = UI_FIRMWARE;
 		else
