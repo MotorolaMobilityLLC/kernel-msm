@@ -737,9 +737,8 @@
 		gpios = <&msm_gpio 84 0>;        /* EN_GPIO */
 		external_trigger = <1>;
 		default_effect = <17>;          /* Strong Click 100% */
-		rated_voltage = <0x70>;         /* 2.4v */
-		overdrive_voltage = <0x89>;     /* 3.0v */
-
+		rated_voltage = <0x72>;         /* 2.4v */
+		overdrive_voltage = <0xBA>;     /* 3.6v */
 	};
 
 	/* BCM 20795 NFC Controller */
