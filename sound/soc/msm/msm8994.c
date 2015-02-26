@@ -1426,7 +1426,6 @@ static void msm_release_pinctrl(struct platform_device *pdev)
 		pinctrl_info->pinctrl = NULL;
 	}
 }
-#ifndef CONFIG_SND_SOC_FLORIDA
 static int msm_get_pinctrl(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
@@ -1463,12 +1462,14 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 		pr_err("%s: could not get auxpcm pinstate\n", __func__);
 		goto err;
 	}
+#ifndef CONFIG_SND_SOC_FLORIDA
 	pinctrl_info->mi2s_active = pinctrl_lookup_state(pinctrl,
 						"mi2s-active");
 	if (IS_ERR(pinctrl_info->mi2s_active)) {
 		pr_err("%s: could not get mi2s pinstate\n", __func__);
 		goto err;
 	}
+#endif
 	pinctrl_info->active = pinctrl_lookup_state(pinctrl,
 						"active");
 	if (IS_ERR(pinctrl_info->active)) {
@@ -1485,6 +1486,7 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 		ret = -EIO;
 		goto err;
 	}
+#ifndef CONFIG_SND_SOC_FLORIDA
 	pinctrl_info->curr_state = STATE_DISABLE;
 
 	muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
@@ -1500,6 +1502,7 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+#endif
 	muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"lpaif_sec_mode_muxsel");
 	if (!muxsel) {
@@ -1522,7 +1525,6 @@ err:
 	pinctrl_info->pinctrl = NULL;
 	return -EINVAL;
 }
-#endif
 static int msm_sec_auxpcm_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -3882,6 +3884,7 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "msm8994_prepare_us_euro failed (%d)\n",
 			ret);
 
+#endif
 	/* Parse pinctrl info from devicetree */
 	ret = msm_get_pinctrl(pdev);
 	if (!ret) {
@@ -3892,6 +3895,7 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 			__func__, ret);
 		goto err;
 	}
+#ifndef CONFIG_SND_SOC_FLORIDA
 	ret = apq8094_db_device_init();
 	if (ret) {
 		pr_err("%s: DB8094 init ext devices stat IRQ failed (%d)\n",
