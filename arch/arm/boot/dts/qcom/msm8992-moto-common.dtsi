@@ -1380,6 +1380,17 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
+
+	chan@79 {
+		label = "chg_therm";
+		reg = <0x79>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
 };
 
 &pm8994_adc_tm {
@@ -1473,7 +1484,7 @@
 	};
 
 	chan@10 {
-		label = "chg_therm";
+		label = "pchg_therm";
 		reg = <0x10>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
@@ -1576,4 +1587,25 @@
 
 &pm8994_l14 {
 	regulator-always-on;
+};
+
+&soc {
+	qcom,sensor-information {
+		sensor_information17: qcom,sensor-information@17 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "pa_therm0";
+		};
+		sensor_information18: qcom,sensor-information@18 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "pa_therm1";
+		};
+		sensor_information19: qcom,sensor-information@19 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "chg_therm";
+		};
+		sensor_information20: qcom,sensor-information@20 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "pchg_therm";
+		};
+	};
 };
