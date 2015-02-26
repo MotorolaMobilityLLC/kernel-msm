@@ -72,7 +72,6 @@ obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_mpu9150.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_pedometer.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_gesture.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_passive.o
-obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_als.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_heartrate.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_fusion.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_pressure.o
