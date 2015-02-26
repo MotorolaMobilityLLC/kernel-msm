@@ -3611,9 +3611,6 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 			(*blank == FB_BLANK_VSYNC_SUSPEND &&
 			rmi4_data->touch_stopped)) {
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-			/* HACK: perform extra reset to enhance first touch reliability on  */
-			/*		Lux s3346 in-cell touch IC */
-			synaptics_dsx_ic_reset(rmi4_data, true);
 		}
 	}
 
