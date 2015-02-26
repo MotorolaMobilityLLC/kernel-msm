@@ -5948,7 +5948,9 @@ static ssize_t bma2x2_en_disp_rotation_store(struct device *dev,
 					EV_MSC, MSC_RAW, bma2x2->orient_value);
 			input_sync(bma2x2->dev_for_interrupt);
 		} else {
-			bma2x2->flip_value = 0;
+			input_event(bma2x2->dev_for_interrupt,
+					EV_MSC, MSC_RAW, -1);
+			input_sync(bma2x2->dev_for_interrupt);
 		}
 	}
 
