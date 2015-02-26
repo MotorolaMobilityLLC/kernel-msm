@@ -478,15 +478,15 @@ static void sd_update_bus_speed_mode(struct mmc_card *card)
 	    (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR104) &&
 	    (card->host->f_max > UHS_SDR104_MIN_DTR)) {
 			card->sd_bus_speed = UHS_SDR104_BUS_SPEED;
-	} else if ((card->host->caps & MMC_CAP_UHS_DDR50) &&
-		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_DDR50) &&
-		    (card->host->f_max > UHS_DDR50_MIN_DTR)) {
-			card->sd_bus_speed = UHS_DDR50_BUS_SPEED;
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50)) && (card->sw_caps.sd3_bus_mode &
 		    SD_MODE_UHS_SDR50) &&
 		    (card->host->f_max > UHS_SDR50_MIN_DTR)) {
 			card->sd_bus_speed = UHS_SDR50_BUS_SPEED;
+	} else if ((card->host->caps & MMC_CAP_UHS_DDR50) &&
+		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_DDR50) &&
+		    (card->host->f_max > UHS_DDR50_MIN_DTR)) {
+			card->sd_bus_speed = UHS_DDR50_BUS_SPEED;
 	} else if ((card->host->caps & (MMC_CAP_UHS_SDR104 |
 		    MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR25)) &&
 		   (card->sw_caps.sd3_bus_mode & SD_MODE_UHS_SDR25) &&
@@ -510,13 +510,13 @@ static int sd_set_bus_speed_mode(struct mmc_card *card, u8 *status)
 		timing = MMC_TIMING_UHS_SDR104;
 		card->sw_caps.uhs_max_dtr = UHS_SDR104_MAX_DTR;
 		break;
-	case UHS_DDR50_BUS_SPEED:
-		timing = MMC_TIMING_UHS_DDR50;
-		card->sw_caps.uhs_max_dtr = UHS_DDR50_MAX_DTR;
-		break;
 	case UHS_SDR50_BUS_SPEED:
 		timing = MMC_TIMING_UHS_SDR50;
 		card->sw_caps.uhs_max_dtr = UHS_SDR50_MAX_DTR;
+		break;
+	case UHS_DDR50_BUS_SPEED:
+		timing = MMC_TIMING_UHS_DDR50;
+		card->sw_caps.uhs_max_dtr = UHS_DDR50_MAX_DTR;
 		break;
 	case UHS_SDR25_BUS_SPEED:
 		timing = MMC_TIMING_UHS_SDR25;
@@ -704,28 +704,36 @@ static int mmc_sd_throttle_back(struct mmc_host *host)
 
 	sw_caps = &host->card->sw_caps;
 	if (mmc_sd_card_uhs(host->card)) {
-		if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR104) {
+		switch (host->card->sd_bus_speed) {
+		case UHS_SDR104_BUS_SPEED:
+			speed = "SDR104";
 			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR104;
-			speed = "DDR50";
-		} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_DDR50) {
-			/* Skip SDR50 if DDR50 fails. */
+			break;
+		case UHS_SDR50_BUS_SPEED:
+			speed = "SDR50";
+			/* fall though */
+		case UHS_DDR50_BUS_SPEED:
+			if (!speed)
+				speed = "DDR50";
+			/* Skip SDR50 and DDR50 if either fails. */
 			sw_caps->sd3_bus_mode &= ~(SD_MODE_UHS_DDR50 |
 						   SD_MODE_UHS_SDR50);
+			break;
+		case UHS_SDR25_BUS_SPEED:
 			speed = "SDR25";
-		} else if (sw_caps->sd3_bus_mode & SD_MODE_UHS_SDR25) {
 			sw_caps->sd3_bus_mode &= ~SD_MODE_UHS_SDR25;
-			speed = "SDR12";
+			break;
 		}
 	} else if (sw_caps->hs_max_dtr > 0) {
 		/* Disable high speed for legacy cards */
 		sw_caps->hs_max_dtr = 0;
-		speed = "legacy";
+		speed = "high speed";
 	}
 
 	mmc_release_host(host);
 
 	if (speed)
-		pr_warning("%s: throttle back to %s\n",
+		pr_warn("%s: throttle back from %s\n",
 				mmc_hostname(host), speed);
 	else {
 		pr_err("%s: unable to throttle back further\n",
