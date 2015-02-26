@@ -78,6 +78,8 @@ enum branch_state {
 	BRANCH_OFF,
 };
 
+extern void mdss_xlog_tout_handler(const char *name, ...);
+
 /*
  * RCG functions
  */
@@ -409,7 +411,13 @@ static void branch_clk_halt_check(struct clk *c, u32 halt_check,
 			};
 			udelay(1);
 		}
-		CLK_WARN(c, count == 0, "status stuck %s", status_str);
+
+		if ((count == 0)) {
+			if (((!strcmp("mdss_pclk0_clk", clk_name(c)))
+						|| (!strcmp("mdss_byte0_clk", clk_name(c)))))
+				mdss_xlog_tout_handler("dsi0");
+			CLK_WARN(c, count == 0, "status stuck %s", status_str);
+		}
 	}
 }
 
