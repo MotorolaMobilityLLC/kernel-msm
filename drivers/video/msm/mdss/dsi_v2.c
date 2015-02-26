@@ -104,8 +104,6 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 									rc);
 		}
 		pdata->panel_info.panel_power_state = MDSS_PANEL_POWER_ON;
-		if (pdata->panel_info.type == MIPI_CMD_PANEL)
-			mdss_dsi_set_tear_on(ctrl_pdata);
 	} else if (!enable &&
 		(pdata->panel_info.panel_power_state == MDSS_PANEL_POWER_ON)) {
 		msm_dsi_sw_reset();
@@ -118,7 +116,6 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 				ctrl_pdata->switch_mode(pdata, DSI_VIDEO_MODE);
 			} else if (pdata->panel_info.type == MIPI_VIDEO_PANEL) {
 				ctrl_pdata->switch_mode(pdata, DSI_CMD_MODE);
-				mdss_dsi_set_tear_off(ctrl_pdata);
 			}
 		}
 		pdata->panel_info.panel_power_state = MDSS_PANEL_POWER_OFF;
