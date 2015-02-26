@@ -33,12 +33,10 @@
 #include <linux/suspend.h>
 #endif
 
-#define NUM_INT_REGS      3
-#define NUM_INTS_PER_REG  8
-#define NUM_INTS_LAST_REG (((M4SH_IRQ__NUM-1)%NUM_INTS_PER_REG)+1)
-#define INTR_VALID_BITS(n) (unsigned char)((1 << (n)) - 1)
+#define NUM_INT_REGS      2
+#define NUM_INTS_PER_REG  32
 
-#define EVENT_MASK(event) (1 << ((event) % NUM_INTS_PER_REG))
+#define EVENT_MASK(event)  (1 <<  ((event >= M4SH_WAKEIRQ__START)? (event - M4SH_WAKEIRQ__START): event))
 
 #define DBG_BUF_LINE_LEN  80
 
@@ -46,7 +44,8 @@
 
 /* ------------ Local Function Prototypes ----------- */
 static unsigned short get_enable_reg(enum m4sensorhub_irqs event);
-static irqreturn_t event_threaded(int irq, void *devid);
+static irqreturn_t wake_event_threaded(int irq, void *devid);
+static irqreturn_t nowake_event_threaded(int irq, void *devid);
 #ifdef CONFIG_DEBUG_FS
 static int m4sensorhub_dbg_irq_open(struct inode *inode, struct file *file);
 #endif
@@ -56,26 +55,23 @@ static void m4sensorhub_irq_restore(struct m4sensorhub_data *m4sensorhub,
 /* ---------------- Local Declarations -------------- */
 
 static const char *irq_name[] = {
-	[M4SH_IRQ_TMP_DATA_READY]         = "TMP_DATA_READY",
-	[M4SH_IRQ_PRESSURE_DATA_READY]    = "PRES_DATA_READY",
-	[M4SH_IRQ_GYRO_DATA_READY]        = "GYRO_DATA_READY",
-	[M4SH_IRQ_PEDOMETER_DATA_READY]   = "PEDO_DATA_READY",
-	[M4SH_IRQ_COMPASS_DATA_READY]     = "COMPASS_DATA_READY",
-	[M4SH_IRQ_FUSION_DATA_READY]      = "FUSION_DATA_READY",
-	[M4SH_IRQ_ACCEL_DATA_READY]       = "ACCEL_DATA_READY",
-	[M4SH_IRQ_GESTURE_DETECTED]       = "GESTURE_DETECTED",
-	[M4SH_IRQ_STILL_DETECTED]         = "STILL_DETECTED",
-	[M4SH_IRQ_MOTION_DETECTED]        = "MOTION_DETECTED",
-	[M4SH_IRQ_ACTIVITY_CHANGE]        = "ACTIVITY_CHANGE",
-	[M4SH_IRQ_DLCMD_RESP_READY]       = "DLCMD_RESP_READY",
-	[M4SH_IRQ_MIC_DATA_READY]         = "MIC_DATA_READY",
-	[M4SH_IRQ_WRIST_READY]            = "WRIST_READY",
-	[M4SH_IRQ_PASSIVE_BUFFER_FULL]    = "PASSIVE_BUFFER_FULL",
-	[M4SH_IRQ_LIGHTSENSOR_DATA_READY] = "ALS_DATA_READY",
-	[M4SH_IRQ_HRSENSOR_DATA_READY]    = "HRSENSOR_DATA_READY",
-	[M4SH_IRQ_AP_ALARM_EXPIRED]       = "AP_ALARM_EXPIRED",
-	[M4SH_IRQ_HEARTRATE_DATA_READY]   = "HR_DATA_READY",
-	[M4SH_IRQ_ADS_DATA_READY]         = "ADS_DATA_READY",
+	[M4SH_NOWAKEIRQ_ACCEL]           = "NOWAKE_ACCEL",
+	[M4SH_NOWAKEIRQ_GYRO]            = "NOWAKE_GYRO",
+	[M4SH_NOWAKEIRQ_COMPASS]         = "NOWAKE_COMPASS",
+	[M4SH_NOWAKEIRQ_FUSION]          = "NOWAKE_FUSION",
+	[M4SH_NOWAKEIRQ_PRESSURE]        = "NOWAKE_PRESSURE",
+	[M4SH_NOWAKEIRQ_ADS]             = "NOWAKE_ADS",
+	[M4SH_NOWAKEIRQ_PPG]             = "NOWAKE_PPG",
+	[M4SH_NOWAKEIRQ_HEARTRATE]       = "NOWAKE_HEARTRATE",
+	[M4SH_NOWAKEIRQ_PEDOMETER]       = "NOWAKE_PEDOMETER",
+	[M4SH_NOWAKEIRQ_ALS]             = "NOWAKE_ALS",
+	[M4SH_NOWAKEIRQ_ACTIVITY_CHANGE] = "NOWAKE_ACTIVITY_CHANGE",
+	[M4SH_WAKEIRQ_STILL]            = "WAKE_STILL",
+	[M4SH_WAKEIRQ_MOTION]           = "WAKE_MOTION",
+	[M4SH_WAKEIRQ_GESTURE]          = "WAKE_GESTURE",
+	[M4SH_WAKEIRQ_PASSIVE]          = "WAKE_PASSIVE",
+	[M4SH_WAKEIRQ_AP_ALARM_EXPIRED] = "WAKE_ALARM_EXPIRED",
+	[M4SH_WAKEIRQ_M4_READY]         = "M4_READY",
 };
 
 /* -------------- Local Data Structures ------------- */
@@ -109,25 +105,30 @@ struct m4sensorhub_irqdata {
 static const struct {
 	enum m4sensorhub_reg status_reg;
 	enum m4sensorhub_reg enable_reg;
-	unsigned char valid_bits;
+	uint32_t valid_bits;
 } int_registers[NUM_INT_REGS] = {
-	{M4SH_REG_GENERAL_INTERRUPT0STATUS,
-	 M4SH_REG_GENERAL_INTERRUPT0ENABLE,
-	 INTR_VALID_BITS(NUM_INTS_PER_REG)},
-	{M4SH_REG_GENERAL_INTERRUPT1STATUS,
-	M4SH_REG_GENERAL_INTERRUPT1ENABLE,
-	INTR_VALID_BITS(NUM_INTS_PER_REG)},
-	{M4SH_REG_GENERAL_INTERRUPT2STATUS,
-	M4SH_REG_GENERAL_INTERRUPT2ENABLE,
-	INTR_VALID_BITS(NUM_INTS_LAST_REG)},
+	{M4SH_REG_GENERAL_NOWAKEINTSTATUS,
+	 M4SH_REG_GENERAL_NOWAKEINTENABLE,
+	 0xFFFFFFFF},
+	{M4SH_REG_GENERAL_WAKEINTSTATUS,
+	M4SH_REG_GENERAL_WAKEINTENABLE,
+	0xFFFFFFFF},
 };
 
-static irqreturn_t event_isr(int irq, void *data)
+static irqreturn_t wake_event_isr(int irq, void *data)
 {
 	struct m4sensorhub_irqdata *irq_data = data;
 
+	/* this wakelock is held to prevent the kernel from going 
+	   to sleep before the event_thread for this irq gets to run
+           and so this is released when the event_thread finishes execution */ 
 	wake_lock(&irq_data->wake_lock);
 
+	return IRQ_WAKE_THREAD;
+}
+
+static irqreturn_t nowake_event_isr(int irq, void *data)
+{
 	return IRQ_WAKE_THREAD;
 }
 
@@ -180,9 +181,6 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 	data->m4sensorhub = m4sensorhub;
 	m4sensorhub->irqdata = data;
 
-	KDEBUG(M4SH_INFO, "%s: %u IRQs with valid_bits %02X%02X%02X\n",
-		__func__, M4SH_IRQ__NUM, int_registers[2].valid_bits,
-		int_registers[1].valid_bits, int_registers[0].valid_bits);
 	retval = m4sensorhub_irq_disable_all(m4sensorhub);
 	if (retval < 0) {
 		KDEBUG(M4SH_ERROR, "%s: Failed disable all irqs\n", __func__);
@@ -193,19 +191,28 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 	wake_lock_init(&data->tm_wake_lock, WAKE_LOCK_SUSPEND,
 		       "m4sensorhub-timed-irq");
 
-	retval = request_threaded_irq(i2c->irq, event_isr, event_threaded,
-		IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
-		"m4sensorhub-irq", data);
+	/* request wake irq */
+	retval = request_threaded_irq(m4sensorhub->hwconfig.wakeirq, wake_event_isr,
+				      wake_event_threaded, IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+			              "m4sensorhub-wakeirq", data);
 	if (retval) {
-		KDEBUG(M4SH_ERROR, "%s: Failed requesting irq.\n", __func__);
+		KDEBUG(M4SH_ERROR, "%s: Failed requesting wakeirq = %d\n", __func__, retval);
 		goto err_destroy_wq;
 	}
-
 	retval = enable_irq_wake(i2c->irq);
 	if (retval) {
 		KDEBUG(M4SH_ERROR, "%s: Failed enabling irq wake.\n", __func__);
-		goto err_free_irq;
+		goto err_free_wakeirq;
 	}
+	
+	/* request nowake irq */
+        retval = request_threaded_irq(m4sensorhub->hwconfig.nowakeirq, nowake_event_isr, nowake_event_threaded,
+                IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+                "m4sensorhub-nowakeirq", data);
+        if (retval) {
+                KDEBUG(M4SH_ERROR, "%s: Failed requesting nowakeirq = %d\n", __func__, retval);
+                goto err_free_nowakeirq;
+        }
 
 #ifdef CONFIG_DEBUG_FS
 	data->debugfs = debugfs_create_file("m4sensorhub-irq", S_IRUGO, NULL,
@@ -223,11 +230,13 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 	retval = 0;
 	goto done;
 
+err_free_nowakeirq:
+	free_irq(m4sensorhub->hwconfig.nowakeirq, data);
 #ifdef CONFIG_DEBUG_FS
 err_disa_irq:
 #endif
 	disable_irq_wake(i2c->irq);
-err_free_irq:
+err_free_wakeirq:
 	free_irq(i2c->irq, data);
 err_destroy_wq:
 	wake_lock_destroy(&data->wake_lock);
@@ -278,6 +287,7 @@ void m4sensorhub_irq_shutdown(struct m4sensorhub_data *m4sensorhub)
 
 	disable_irq_wake(i2c->irq);
 	free_irq(i2c->irq, data);
+	free_irq(m4sensorhub->hwconfig.nowakeirq, data);
 
 	m4sensorhub->irqdata = NULL;
 	data->m4sensorhub = NULL;
@@ -342,7 +352,7 @@ int m4sensorhub_irq_register(struct m4sensorhub_data *m4sensorhub,
 		retval = -ENODATA;
 		goto m4sensorhub_irq_register_exit;
 	}
-
+	
 	mutex_lock(&irqdata->lock);
 
 	if (irqdata->event_handler[irq].func == NULL) {
@@ -472,6 +482,8 @@ int m4sensorhub_irq_disable(struct m4sensorhub_data *m4sensorhub,
 	struct m4sensorhub_irqdata *data = NULL;
 	int retval = -EINVAL;
 	bool enabled = true;
+	uint32_t mask;
+	uint32_t value = 0;
 
 	if (m4sensorhub == NULL) {
 		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
@@ -502,14 +514,11 @@ int m4sensorhub_irq_disable(struct m4sensorhub_data *m4sensorhub,
 		goto m4sensorhub_irq_disable_fail;
 	}
 
-	retval = m4sensorhub_reg_write_1byte(m4sensorhub,
-		get_enable_reg(irq), 0, EVENT_MASK(irq));
+	mask = EVENT_MASK(irq);
+	retval = m4sensorhub_reg_write(m4sensorhub,
+		get_enable_reg(irq), (unsigned char *)&value, (unsigned char *)&mask);
 	if (retval < 0) {
 		KDEBUG(M4SH_ERROR, "%s: Register write failed\n", __func__);
-		goto m4sensorhub_irq_disable_fail;
-	} else if (retval != 1) {
-		KDEBUG(M4SH_ERROR, "%s: Wrote %d bytes instead of 1\n",
-			__func__, retval);
 		goto m4sensorhub_irq_disable_fail;
 	}
 
@@ -537,6 +546,7 @@ int m4sensorhub_irq_enable(struct m4sensorhub_data *m4sensorhub,
 	struct m4sensorhub_irqdata *data = NULL;
 	int retval = -EINVAL;
 	bool disabled = true;
+	uint32_t mask;
 
 	if (m4sensorhub == NULL) {
 		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
@@ -567,16 +577,13 @@ int m4sensorhub_irq_enable(struct m4sensorhub_data *m4sensorhub,
 		goto m4sensorhub_irq_enable_fail;
 	}
 
-	retval = m4sensorhub_reg_write_1byte(m4sensorhub,
-		get_enable_reg(irq), EVENT_MASK(irq), EVENT_MASK(irq));
+	mask = EVENT_MASK(irq);
+	retval = m4sensorhub_reg_write(m4sensorhub,
+		get_enable_reg(irq), (unsigned char*)&mask , (unsigned char *)&mask);
 	if (retval < 0) {
 		KDEBUG(M4SH_ERROR, "%s: Register write failed\n", __func__);
 		goto m4sensorhub_irq_enable_fail;
-	} else if (retval != 1) {
-		KDEBUG(M4SH_ERROR, "%s: Wrote %d bytes instead of 1\n",
-			__func__, retval);
-		goto m4sensorhub_irq_enable_fail;
-	}
+	} 
 
 	mutex_lock(&data->lock);
 	data->irq_info[irq].enabled = 1;
@@ -597,6 +604,7 @@ int m4sensorhub_irq_disable_all(struct m4sensorhub_data *m4sensorhub)
 	int retval = 0;
 	int i = 0;
 	struct m4sensorhub_irqdata *data = NULL;
+	uint32_t value = 0;
 
 	if (m4sensorhub == NULL) {
 		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
@@ -608,21 +616,18 @@ int m4sensorhub_irq_disable_all(struct m4sensorhub_data *m4sensorhub)
 		goto m4sensorhub_irq_disable_all_fail;
 	}
 
-	for (i = 0; i < NUM_INT_REGS; i++) {
-		retval = m4sensorhub_reg_write_1byte(m4sensorhub,
-			int_registers[i].enable_reg, 0,
-			int_registers[i].valid_bits);
-		if (retval < 0) {
-			KDEBUG(M4SH_ERROR, "%s: Failed to disable INT%d\n",
-				__func__, i);
-			goto m4sensorhub_irq_disable_all_fail;
-		} else if (retval != 1) {
-			KDEBUG(M4SH_ERROR, "%s: Wrote %d bytes instead of 1\n",
-				__func__, retval);
-			retval = -EINVAL;
-			goto m4sensorhub_irq_disable_all_fail;
-		}
-	}
+	retval = m4sensorhub_reg_write(m4sensorhub, M4SH_REG_GENERAL_NOWAKEINTENABLE,
+				      (unsigned char *)&value, m4sh_no_mask);
+	if (retval < 0) {
+		KDEBUG(M4SH_ERROR, "%s: Failed to disable no wake irq\n", __func__);
+		goto m4sensorhub_irq_disable_all_fail;
+	} 
+        retval = m4sensorhub_reg_write(m4sensorhub, M4SH_REG_GENERAL_WAKEINTENABLE,
+                                       (unsigned char *)&value, m4sh_no_mask);
+	if (retval < 0) {
+                KDEBUG(M4SH_ERROR, "%s: Failed to disable wake irq\n", __func__);
+                goto m4sensorhub_irq_disable_all_fail;
+        }
 
 	data = m4sensorhub->irqdata;
 	mutex_lock(&data->lock);
@@ -636,100 +641,83 @@ m4sensorhub_irq_disable_all_fail:
 EXPORT_SYMBOL_GPL(m4sensorhub_irq_disable_all);
 
 /* --------------- Local Functions ----------------- */
-
 static unsigned short get_enable_reg(enum m4sensorhub_irqs event)
 {
 	unsigned short ret;
 
 	if ((event) >= M4SH_IRQ__NUM)
 		ret = M4SH_REG__INVALID;
-	else if ((event) >= M4SH_IRQ_INT2_INDEX)
-		ret = M4SH_REG_GENERAL_INTERRUPT2ENABLE;
-	else if ((event) >= M4SH_IRQ_INT1_INDEX)
-		ret = M4SH_REG_GENERAL_INTERRUPT1ENABLE;
-	else if ((event) >= M4SH_IRQ_INT0_INDEX)
-		ret = M4SH_REG_GENERAL_INTERRUPT0ENABLE;
+	else if ((event >= M4SH_NOWAKEIRQ__START) && (event < M4SH_NOWAKEIRQ__MAX))
+		ret = M4SH_REG_GENERAL_NOWAKEINTENABLE;
+	else if ((event >= M4SH_WAKEIRQ__START) && (event < M4SH_WAKEIRQ__MAX))
+		ret = M4SH_REG_GENERAL_WAKEINTENABLE;
 	else
 		ret = M4SH_REG__INVALID;
 
 	return ret;
 }
 
-static void m4sensorhub_print_irq_sources(unsigned short *en_ints)
+static void m4sensorhub_print_irq_sources(uint32_t en_ints, char nowake)
 {
-	char buffer[DBG_BUF_LINE_LEN];
 	int i;
 	unsigned char index;
-	unsigned short cur_ints;
 
 	if (m4sensorhub_debug < M4SH_NOTICE)
 		goto error;
 
-	strcpy(buffer, "M4 IRQ Registers:");
-	for (i = 0; (i < NUM_INT_REGS) &&
-			(strlen(buffer) < DBG_BUF_LINE_LEN-5); ++i) {
-		sprintf(&buffer[strlen(buffer)], " 0x%02x", en_ints[i]);
-	}
 
-	KDEBUG(M4SH_NOTICE, "%s: %s\n", __func__, buffer);
+	KDEBUG(M4SH_NOTICE, "%s: M4 %s IRQ registers: 0x%x", __func__,
+	       (nowake?"NOWAKE":"WAKE"), en_ints); 
+
+	if (en_ints == 0)
+		KDEBUG(M4SH_NOTICE, "%s: No set bits found\n", __func__);
 
 	/* Decode the bits */
 	KDEBUG(M4SH_NOTICE, "%s: M4 IRQ Sources:\n", __func__);
-	for (i = 0; i < NUM_INT_REGS; ++i) {
-		cur_ints = en_ints[i];
-		while (cur_ints > 0) {
-			/* find the first set bit */
-			index = (unsigned char) (ffs(cur_ints) - 1);
-			if (index >= M4SH_IRQ__NUM) {
-				KDEBUG(M4SH_NOTICE, "%s: No set bits found\n",
-					__func__);
-				goto error;
-			}
+	for (i=0; ((i < sizeof(en_ints)) && (en_ints != 0)); i++) {
 
-			/* clear the bit */
-			cur_ints &= ~(1 << index);
-			/* find the event that occurred */
-			index += M4SH_IRQ__START + (i * NUM_INTS_PER_REG);
-			if (index >= M4SH_IRQ__NUM) {
-				KDEBUG(M4SH_NOTICE, "%s: IRQ index is %d\n",
-					__func__, index);
-				goto error;
-			}
-
-			if (index <= ARRAY_SIZE(irq_name))
-				KDEBUG(M4SH_NOTICE, "\t%s\n", irq_name[index]);
+		if (en_ints & ( 0x01 << i)) {
+			if (nowake)
+				index = i;
 			else
-				KDEBUG(M4SH_NOTICE, "\tIRQ %d\n", index);
-		}
-	}
+				index = i + M4SH_WAKEIRQ__START;
 
+			if (index >= M4SH_IRQ__NUM)
+				KDEBUG(M4SH_NOTICE, "%s: IRQ index is %d\n", __func__, index);
+
+                        if (index <= ARRAY_SIZE(irq_name))
+                                KDEBUG(M4SH_NOTICE, "\t%s\n", irq_name[index]);
+                        else
+                                KDEBUG(M4SH_NOTICE, "\tIRQ %d\n", index);
+		}
+		/* clear the bit that we finished processing */
+		en_ints &= ~(0x01 << i);
+	}
 error:
 	return;
 }
 
-static irqreturn_t event_threaded(int irq, void *devid)
+static irqreturn_t wake_event_threaded(int irq, void *devid)
 {
-	unsigned short en_ints[NUM_INT_REGS] = { 0 };
-	int i;
+	uint32_t en_ints = 0, value = 0, is_irq_set = 0;
+	int index;
 	struct m4sensorhub_irqdata *data = devid;
 	struct m4sensorhub_data *m4sensorhub;
 	struct i2c_client *i2c;
-	unsigned char value, is_irq_set = 0;
 
 	m4sensorhub = data->m4sensorhub;
 	i2c = m4sensorhub->i2c_client;
 
-	for (i = 0; i < NUM_INT_REGS; ++i) {
-		/* M4 is expected to clear these bits when read */
-		if (1 != m4sensorhub_reg_read(m4sensorhub,
-			int_registers[i].status_reg, &value)) {
+	/* M4 is expected to clear these bits when read */
+	if (m4sensorhub_reg_read(m4sensorhub,
+			M4SH_REG_GENERAL_WAKEINTSTATUS, (unsigned char*)&value) < 0) {
 			dev_err(&m4sensorhub->i2c_client->dev,
-				"Error reading INT%d\n", i);
-			goto error;
-		}
-		en_ints[i] = value;
-		is_irq_set |= value;
+			"Error reading wake int status register\n");
+		goto error;
 	}
+
+	en_ints = value;
+	is_irq_set |= value;
 
 	if (!is_irq_set) {
 		/* Got the checkpoint to check if M4 panicked */
@@ -738,47 +726,43 @@ static irqreturn_t event_threaded(int irq, void *devid)
 	}
 
 	if (m4sensorhub->irq_dbg.suspend == 1)
-		m4sensorhub_print_irq_sources(en_ints);
+		m4sensorhub_print_irq_sources(en_ints, 0);
 
-	for (i = 0; i < NUM_INT_REGS; ++i) {
-		unsigned char index;
+	while (en_ints > 0) {
+		struct m4sensorhub_event_handler *event_handler;
 
-		while (en_ints[i] > 0) {
-			struct m4sensorhub_event_handler *event_handler;
+		/* find the first set bit */
+		index = (ffs(en_ints) - 1);
+		if (index >= M4SH_WAKEIRQ__MAX)
+			goto error;
+		/* clear the bit */
+		en_ints &= ~(1 << index);
+		/* find the event that occurred */
+		index += M4SH_WAKEIRQ__START;
+		if (index >= M4SH_WAKEIRQ__MAX)
+			goto error;
 
-			/* find the first set bit */
-			index = (unsigned char)(ffs(en_ints[i]) - 1);
-			if (index >= M4SH_IRQ__NUM)
-				goto error;
-			/* clear the bit */
-			en_ints[i] &= ~(1 << index);
-			/* find the event that occurred */
-			index += M4SH_IRQ__START + (i * NUM_INTS_PER_REG);
-			if (index >= M4SH_IRQ__NUM)
-				goto error;
+		if (data->irq_info[index].enabled) {
+			event_handler = &data->event_handler[index];
 
-			if (data->irq_info[index].enabled) {
-				event_handler = &data->event_handler[index];
-
-				if (event_handler && event_handler->func) {
-					event_handler->func(index,
-							   event_handler->data);
-					if (data->irq_info[index].tm_wakelock) {
-						/* Hold a 500ms wakelock to
-						   let data get to apps */
-						wake_lock_timeout(
-							&data->tm_wake_lock,
-							0.5 * HZ);
-					}
+			if (event_handler && event_handler->func) {
+				event_handler->func(index,
+						   event_handler->data);
+				if (data->irq_info[index].tm_wakelock) {
+					/* Hold a 500ms wakelock to
+					   let data get to apps */
+					wake_lock_timeout(
+						&data->tm_wake_lock,
+						0.5 * HZ);
 				}
-				mutex_lock(&data->lock);
-				data->irq_info[index].ena_fired++;
-				mutex_unlock(&data->lock);
-			} else {
-				mutex_lock(&data->lock);
-				data->irq_info[index].disa_fired++;
-				mutex_unlock(&data->lock);
 			}
+			mutex_lock(&data->lock);
+			data->irq_info[index].ena_fired++;
+			mutex_unlock(&data->lock);
+		} else {
+			mutex_lock(&data->lock);
+			data->irq_info[index].disa_fired++;
+			mutex_unlock(&data->lock);
 		}
 	}
 error:
@@ -786,6 +770,69 @@ error:
 
 	return IRQ_HANDLED;
 }
+
+
+static irqreturn_t nowake_event_threaded(int irq, void *devid)
+{
+        uint32_t en_ints = 0, value = 0, is_irq_set = 0;
+        int index;
+        struct m4sensorhub_irqdata *data = devid;
+        struct m4sensorhub_data *m4sensorhub;
+        struct i2c_client *i2c;
+
+        m4sensorhub = data->m4sensorhub;
+        i2c = m4sensorhub->i2c_client;
+
+        /* M4 is expected to clear these bits when read */
+        if (m4sensorhub_reg_read(m4sensorhub,
+                        M4SH_REG_GENERAL_NOWAKEINTSTATUS, (unsigned char *)&value) < 0) {
+                        dev_err(&m4sensorhub->i2c_client->dev,
+                        "Error reading nowake INT status register\n");
+                goto error;
+        }
+
+        en_ints = value;
+        is_irq_set |= value;
+
+        if (!is_irq_set) {
+		KDEBUG(M4SH_ERROR, "%s: Got nowake int with no bits set", __func__);
+                goto error;
+        }
+
+        if (m4sensorhub->irq_dbg.suspend == 1)
+                m4sensorhub_print_irq_sources(en_ints, 1);
+
+        while (en_ints > 0) {
+                struct m4sensorhub_event_handler *event_handler;
+
+                /* find the first set bit */
+                index = (ffs(en_ints) - 1);
+                if (index >= M4SH_NOWAKEIRQ__MAX)
+                        goto error;
+                /* clear the bit */
+                en_ints &= ~(1 << index);
+                if (data->irq_info[index].enabled) {
+                        event_handler = &data->event_handler[index];
+
+                        if (event_handler && event_handler->func) {
+                                event_handler->func(index,
+                                                   event_handler->data);
+                                if (data->irq_info[index].tm_wakelock) {
+                                }
+                        }
+                        mutex_lock(&data->lock);
+                        data->irq_info[index].ena_fired++;
+                        mutex_unlock(&data->lock);
+                } else {
+                        mutex_lock(&data->lock);
+                        data->irq_info[index].disa_fired++;
+                        mutex_unlock(&data->lock);
+                }
+        }
+error:
+        return IRQ_HANDLED;
+}
+
 
 #ifdef CONFIG_DEBUG_FS
 static int m4sensorhub_dbg_irq_show(struct seq_file *s, void *data)
@@ -823,24 +870,35 @@ static void m4sensorhub_irq_restore(struct m4sensorhub_data *m4sensorhub,
 	void *data)
 {
 	int i;
-	unsigned short en_ints[NUM_INT_REGS] = {0};
+	uint32_t nowake_en_ints = 0, wake_en_ints = 0;
 
 	mutex_lock(&((struct m4sensorhub_irqdata *)data)->lock);
+
 	for (i = 0; i < M4SH_IRQ__NUM; i++) {
 		if (!((struct m4sensorhub_irqdata *)data)->irq_info[i].enabled)
 			continue;
-		en_ints[i/NUM_INTS_PER_REG] |= EVENT_MASK(i);
+		if( i < M4SH_NOWAKEIRQ__MAX)
+			nowake_en_ints |= EVENT_MASK(i);
+		else
+		   	wake_en_ints |= EVENT_MASK(i);
 	}
 	mutex_unlock(&((struct m4sensorhub_irqdata *)data)->lock);
 
-	for (i = 0; i < NUM_INT_REGS; i++) {
-		KDEBUG(M4SH_INFO, "%s: Reseting INT%d-%02X\n", __func__,
-			i, en_ints[i]);
-		if (1 != m4sensorhub_reg_write_1byte(m4sensorhub,
-				int_registers[i].enable_reg, en_ints[i],
-				int_registers[i].valid_bits)) {
-			KDEBUG(M4SH_ERROR, "%s: Failed reseting INT%d\n",
-				__func__, i);
-		}
+	KDEBUG(M4SH_INFO, "%s: Reseting NOWAKEINT-%x\n", __func__,
+	       nowake_en_ints);
+	if (m4sensorhub_reg_write(m4sensorhub,
+				       M4SH_REG_GENERAL_NOWAKEINTENABLE,
+				       (unsigned char *)&nowake_en_ints,
+				       m4sh_no_mask) < 0) {
+		KDEBUG(M4SH_ERROR, "%s: Failed reseting NOWAKEINT\n",
+                                __func__);		
 	}
+
+        if (m4sensorhub_reg_write(m4sensorhub,
+                                       M4SH_REG_GENERAL_WAKEINTENABLE,
+                                       (unsigned char *)&wake_en_ints,
+                                       m4sh_no_mask) < 0) {
+                KDEBUG(M4SH_ERROR, "%s: Failed reseting WAKEINT\n",
+                                __func__);
+        }
 }

@@ -45,20 +45,17 @@ struct m4fus_driver_data {
 	struct mutex                mutex; /* controls driver entry points */
 
 	struct m4sensorhub_fusion_iio_data   iiodat[M4FUS_NUM_FUSION_BUFFERS];
-	struct delayed_work	m4fus_work;
 	int16_t         samplerate;
 	int16_t         latest_samplerate;
-	int16_t         fastest_rate;
 	uint16_t        status;
 };
 
-static void m4fus_work_func(struct work_struct *work)
+
+static void m4fus_isr(enum m4sensorhub_irqs int_event, void *handle)
 {
 	int err = 0;
-	struct m4fus_driver_data *dd =  container_of(work,
-						     struct m4fus_driver_data,
-						     m4fus_work.work);
-	struct iio_dev *iio = platform_get_drvdata(dd->pdev);
+	struct iio_dev *iio = handle;
+	struct m4fus_driver_data *dd = iio_priv(iio);
 	int size = 0;
 
 	mutex_lock(&(dd->mutex));
@@ -132,9 +129,6 @@ static void m4fus_work_func(struct work_struct *work)
 	 * in this one call (see the M4 passive driver).
 	 */
 	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat[0]));
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4fus_work),
-				      msecs_to_jiffies(dd->samplerate));
 
 m4fus_isr_fail:
 	if (err < 0)
@@ -151,13 +145,9 @@ static int m4fus_set_samplerate(struct iio_dev *iio, int16_t rate)
 	struct m4fus_driver_data *dd = iio_priv(iio);
 	int size = 0;
 
-	if ((rate >= 0) && (rate <= dd->fastest_rate))
-		rate = dd->fastest_rate;
-
 	dd->latest_samplerate = rate;
-
 	if (rate == dd->samplerate)
-		goto m4fus_set_samplerate_fail;
+		goto m4fus_set_samplerate_irq_check;
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_SAMPLERATE);
 	err = m4sensorhub_reg_write(dd->m4, M4SH_REG_FUSION_SAMPLERATE,
@@ -172,10 +162,33 @@ static int m4fus_set_samplerate(struct iio_dev *iio, int16_t rate)
 		goto m4fus_set_samplerate_fail;
 	}
 	dd->samplerate = rate;
-	cancel_delayed_work(&(dd->m4fus_work));
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4fus_work),
-				      msecs_to_jiffies(rate));
+
+m4fus_set_samplerate_irq_check:
+	if (rate >= 0) {
+		/* Enable the IRQ if necessary */
+		if (!(dd->status & (1 << M4FUS_IRQ_ENABLED_BIT))) {
+			err = m4sensorhub_irq_enable(dd->m4,
+				M4SH_NOWAKEIRQ_FUSION);
+			if (err < 0) {
+				m4fus_err("%s: Failed to enable irq.\n",
+					  __func__);
+				goto m4fus_set_samplerate_fail;
+			}
+			dd->status = dd->status | (1 << M4FUS_IRQ_ENABLED_BIT);
+		}
+	} else {
+		/* Disable the IRQ if necessary */
+		if (dd->status & (1 << M4FUS_IRQ_ENABLED_BIT)) {
+			err = m4sensorhub_irq_disable(dd->m4,
+				M4SH_NOWAKEIRQ_FUSION);
+			if (err < 0) {
+				m4fus_err("%s: Failed to disable irq.\n",
+					  __func__);
+				goto m4fus_set_samplerate_fail;
+			}
+			dd->status = dd->status & ~(1 << M4FUS_IRQ_ENABLED_BIT);
+		}
+	}
 
 m4fus_set_samplerate_fail:
 	return err;
@@ -370,10 +383,6 @@ static void m4fus_panic_restore(struct m4sensorhub_data *m4sensorhub,
 			  __func__, err, size);
 	}
 
-	cancel_delayed_work(&(dd->m4fus_work));
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4fus_work),
-				      msecs_to_jiffies(dd->samplerate));
 	mutex_unlock(&(dd->mutex));
 }
 
@@ -392,7 +401,12 @@ static int m4fus_driver_init(struct init_calldata *p_arg)
 		goto m4fus_driver_init_fail;
 	}
 
-	INIT_DELAYED_WORK(&(dd->m4fus_work), m4fus_work_func);
+	err = m4sensorhub_irq_register(dd->m4,
+		M4SH_NOWAKEIRQ_FUSION, m4fus_isr, iio, 0);
+	if (err < 0) {
+		m4fus_err("%s: Failed to register M4 IRQ.\n", __func__);
+		goto m4fus_driver_init_fail;
+	}
 
 	err = m4sensorhub_panic_register(dd->m4, PANICHDL_FUSION_RESTORE,
 					 m4fus_panic_restore, dd);
@@ -427,7 +441,6 @@ static int m4fus_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
 	dd->latest_samplerate = dd->samplerate;
-	dd->fastest_rate = 40;
 
 	err = m4fus_create_iiodev(iio); /* iio and dd are freed on fail */
 	if (err < 0) {
@@ -463,7 +476,11 @@ static int __exit m4fus_remove(struct platform_device *pdev)
 		goto m4fus_remove_exit;
 
 	mutex_lock(&(dd->mutex));
-	cancel_delayed_work(&(dd->m4fus_work));
+	if (dd->status & (1 << M4FUS_IRQ_ENABLED_BIT)) {
+		m4sensorhub_irq_disable(dd->m4, M4SH_NOWAKEIRQ_FUSION);
+		dd->status = dd->status & ~(1 << M4FUS_IRQ_ENABLED_BIT);
+	}
+	m4sensorhub_irq_unregister(dd->m4, M4SH_NOWAKEIRQ_FUSION);
 	m4sensorhub_unregister_initcall(m4fus_driver_init);
 	m4fus_remove_iiodev(iio);  /* dd is freed here */
 

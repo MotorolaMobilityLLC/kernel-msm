@@ -168,15 +168,27 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	}
 	m4sensorhub->filename = (char *)fp;
 
-	gpio = of_get_named_gpio_flags(node, "mot,irq-gpio", 0, NULL);
-	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-intr");
+	gpio = of_get_named_gpio_flags(node, "mot,wakeirq-gpio", 0, NULL);
+	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-wakeintr");
 	if (err) {
-		pr_err("Failed acquiring M4 Sensor Hub IRQ GPIO-%d (%d)\n",
+		pr_err("Failed acquiring M4 Sensor Hub wake IRQ GPIO-%d (%d)\n",
 			gpio, err);
 		goto error;
 	}
 	gpio_direction_input(gpio);
-	m4sensorhub->hwconfig.irq_gpio = gpio;
+	m4sensorhub->hwconfig.wakeirq_gpio = gpio;
+
+
+        gpio = of_get_named_gpio_flags(node, "mot,nowakeirq-gpio", 0, NULL);
+        err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-nowakeintr");
+        if (err) {
+                pr_err("Failed acquiring M4 Sensor Hub nowake IRQ GPIO-%d (%d)\n",
+                        gpio, err);
+                goto error_nowakeirq;
+        }
+        gpio_direction_input(gpio);
+        m4sensorhub->hwconfig.nowakeirq_gpio = gpio;
+
 
 	gpio = of_get_named_gpio_flags(node, "mot,reset-gpio", 0, NULL);
 	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-reset");
@@ -206,8 +218,11 @@ error_boot0:
 	gpio_free(m4sensorhub->hwconfig.reset_gpio);
 	m4sensorhub->hwconfig.reset_gpio = -1;
 error_reset:
-	gpio_free(m4sensorhub->hwconfig.irq_gpio);
-	m4sensorhub->hwconfig.irq_gpio = -1;
+	gpio_free(m4sensorhub->hwconfig.nowakeirq_gpio);
+	m4sensorhub->hwconfig.nowakeirq_gpio = -1;
+error_nowakeirq:
+        gpio_free(m4sensorhub->hwconfig.wakeirq_gpio);
+        m4sensorhub->hwconfig.wakeirq_gpio = -1;
 error:
 	m4sensorhub->filename = NULL;
 	return err;
@@ -222,10 +237,15 @@ static void m4sensorhub_hw_free(struct m4sensorhub_data *m4sensorhub)
 		return;
 	}
 
-	if (m4sensorhub->hwconfig.irq_gpio >= 0) {
-		gpio_free(m4sensorhub->hwconfig.irq_gpio);
-		m4sensorhub->hwconfig.irq_gpio = -1;
+	if (m4sensorhub->hwconfig.nowakeirq_gpio >= 0) {
+		gpio_free(m4sensorhub->hwconfig.nowakeirq_gpio);
+		m4sensorhub->hwconfig.nowakeirq_gpio = -1;
 	}
+
+        if (m4sensorhub->hwconfig.wakeirq_gpio >= 0) {
+                gpio_free(m4sensorhub->hwconfig.wakeirq_gpio);
+                m4sensorhub->hwconfig.wakeirq_gpio = -1;
+        }
 
 	if (m4sensorhub->hwconfig.reset_gpio >= 0) {
 		gpio_free(m4sensorhub->hwconfig.reset_gpio);
@@ -769,13 +789,23 @@ static int m4sensorhub_probe(struct i2c_client *client,
 		goto err_deregister;
 	}
 
-	if (m4sensorhub->hwconfig.irq_gpio >= 0)
-		client->irq = gpio_to_irq(m4sensorhub->hwconfig.irq_gpio);
-	else {
+	if (m4sensorhub->hwconfig.wakeirq_gpio >= 0) {
+		client->irq = gpio_to_irq(m4sensorhub->hwconfig.wakeirq_gpio);
+		m4sensorhub->hwconfig.wakeirq = client->irq;
+	} else {
 		KDEBUG(M4SH_ERROR, "%s: No IRQ configured\n", __func__);
 		err = -ENODEV;
 		goto err_unregister_control_group;
 	}
+
+        if (m4sensorhub->hwconfig.nowakeirq_gpio >= 0)
+                 m4sensorhub->hwconfig.nowakeirq =
+			gpio_to_irq(m4sensorhub->hwconfig.nowakeirq_gpio);
+        else {
+                KDEBUG(M4SH_ERROR, "%s: No IRQ configured\n", __func__);
+                err = -ENODEV;
+                goto err_unregister_control_group;
+        }
 
 	err = m4sensorhub_panic_init(m4sensorhub);
 	if (err < 0) {
