@@ -358,6 +358,9 @@ static int msm_restart_probe(struct platform_device *pdev)
 		if (!emergency_dload_mode_addr)
 			pr_err("unable to map imem EDLOAD mode offset\n");
 	}
+#ifdef CONFIG_DISABLE_DOWNLOAD_MODE
+	download_mode = 0;
+#endif
 
 	set_dload_mode(download_mode);
 #endif

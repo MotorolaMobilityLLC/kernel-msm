@@ -52,3 +52,8 @@ config POWER_RESET_VEXPRESS
 	help
 	  Power off and reset support for the ARM Ltd. Versatile
 	  Express boards.
+
+config DISABLE_DOWNLOAD_MODE
+	bool "Whether the download mode should be disabled"
+	help
+	  If you say yes here, the download mode will be disabled.
