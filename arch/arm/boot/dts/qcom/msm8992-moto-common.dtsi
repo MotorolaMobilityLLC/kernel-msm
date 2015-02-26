@@ -1142,6 +1142,16 @@
 		/delete-property/ qcom,model;
 		/delete-property/ asoc-platform-names;
 		/delete-property/ asoc-platform;
+		/delete-property/ pinctrl-3;
+		pinctrl-names = "sleep",
+			"auxpcm-active",
+			"active";
+		pinctrl-0 = <&pri_mi2s_sd0_sleep>,
+			<&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
+		pinctrl-1 = <&pri_mi2s_sd0_sleep>,
+			<&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
+		pinctrl-2 = <&pri_mi2s_sd0_active>,
+			<&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
 		qcom,model = "msm8994-florida-snd-card";
 		qcom,tfa9890-earpiece-gpio = <&msm_gpio 89 0>;
 		qcom,tfa9890-stereo;
