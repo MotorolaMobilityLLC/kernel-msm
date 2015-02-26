@@ -47,9 +47,10 @@ struct m4ped_driver_data {
 
 	struct m4sensorhub_pedometer_iio_data   iiodat;
 	struct m4sensorhub_pedometer_iio_data   base_dat;
-	struct delayed_work	m4ped_work;
+	
 	int16_t         samplerate;
-	int16_t         fastest_rate;
+	int16_t         latest_samplerate;
+
 	uint16_t        status;
 };
 
@@ -175,21 +176,15 @@ m4ped_read_fail:
 	return err;
 }
 
-static void m4ped_work_func(struct work_struct *work)
+static void m4ped_isr(enum m4sensorhub_irqs int_event, void *handle)
 {
 	int err = 0;
-	struct m4ped_driver_data *dd = container_of(work,
-						    struct m4ped_driver_data,
-						    m4ped_work.work);
-	struct iio_dev *iio = platform_get_drvdata(dd->pdev);
-
+	struct iio_dev *iio = handle;
+	struct m4ped_driver_data *dd = iio_priv(iio);
 	mutex_lock(&(dd->mutex));
 	err = m4ped_read_report_data(iio, dd);
 	if (err < 0)
 		m4ped_err("%s: Failed with error code %d.\n", __func__, err);
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4ped_work),
-			msecs_to_jiffies(dd->samplerate));
 	mutex_unlock(&(dd->mutex));
 	return;
 }
@@ -199,17 +194,44 @@ static int m4ped_set_samplerate(struct iio_dev *iio, int16_t rate)
 	int err = 0;
 	struct m4ped_driver_data *dd = iio_priv(iio);
 
-	if ((rate >= 0) && (rate <= dd->fastest_rate))
-		rate = dd->fastest_rate;
-
+	/*
+	 * Currently, there is no concept of setting a sample rate for this
+	 * sensor, so this function only enables/disables interrupt reporting.
+	 */
+	dd->latest_samplerate = rate;
 	if (rate == dd->samplerate)
 		goto m4ped_set_samplerate_fail;
 
-	cancel_delayed_work(&(dd->m4ped_work));
-	dd->samplerate = rate;
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4ped_work),
-			msecs_to_jiffies(dd->samplerate));
+	if (rate >= 0) {
+		/* Enable the IRQ if necessary */
+		if (!(dd->status & (1 << M4PED_IRQ_ENABLED_BIT))) {
+			err = m4sensorhub_irq_enable(dd->m4,
+				M4SH_NOWAKEIRQ_PEDOMETER);
+			if (err < 0) {
+				m4ped_err("%s: Failed to enable ped irq.\n",
+					  __func__);
+				goto m4ped_set_samplerate_fail;
+			}
+
+			dd->status = dd->status | (1 << M4PED_IRQ_ENABLED_BIT);
+			dd->samplerate = rate;
+		}
+	} else {
+		/* Disable the IRQ if necessary */
+		if (dd->status & (1 << M4PED_IRQ_ENABLED_BIT)) {
+			err = m4sensorhub_irq_disable(dd->m4,
+				M4SH_NOWAKEIRQ_PEDOMETER);
+			if (err < 0) {
+				m4ped_err("%s: Failed to disable ped irq.\n",
+					  __func__);
+				goto m4ped_set_samplerate_fail;
+			}
+
+			dd->status = dd->status & ~(1 << M4PED_IRQ_ENABLED_BIT);
+			dd->samplerate = rate;
+		}
+	}
+
 m4ped_set_samplerate_fail:
 	return err;
 }
@@ -324,6 +346,13 @@ static ssize_t m4ped_userdata_show(struct device *dev,
 		m4ped_err("%s: Read %d bytes instead of %d.\n",
 			  __func__, err, size);
 		err = -EBADE;
+		goto m4ped_userdata_show_fail;
+	}
+
+	if (data[0] > 0) {
+		m4ped_err("%s: User settings version is too new (0x%02X)\n",
+			  __func__, data[0]);
+		err = -EINVAL;
 		goto m4ped_userdata_show_fail;
 	}
 
@@ -644,11 +673,6 @@ static void m4ped_panic_restore(struct m4sensorhub_data *m4sensorhub,
 			goto m4ped_panic_restore_fail;
 		}
 	}
-	cancel_delayed_work(&(dd->m4ped_work));
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4ped_work),
-			msecs_to_jiffies(dd->samplerate));
-
 m4ped_panic_restore_fail:
 	mutex_unlock(&(dd->mutex));
 }
@@ -668,7 +692,12 @@ static int m4ped_driver_init(struct init_calldata *p_arg)
 		goto m4ped_driver_init_fail;
 	}
 
-	INIT_DELAYED_WORK(&(dd->m4ped_work), m4ped_work_func);
+	err = m4sensorhub_irq_register(dd->m4,
+		M4SH_NOWAKEIRQ_PEDOMETER, m4ped_isr, iio, 0);
+	if (err < 0) {
+		m4ped_err("%s: Failed to register M4 PED IRQ.\n", __func__);
+		goto m4ped_driver_init_fail;
+	}
 
 	err = m4sensorhub_panic_register(dd->m4, PANICHDL_PEDOMETER_RESTORE,
 					 m4ped_panic_restore, dd);
@@ -702,8 +731,8 @@ static int m4ped_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->fastest_rate = 1000; /* in milli secs */
-	dd->status = dd->status | (1 << M4PED_FEATURE_ENABLED_BIT);
+	dd->latest_samplerate = dd->samplerate;
+    dd->status = dd->status | (1 << M4PED_FEATURE_ENABLED_BIT);
 
 	err = m4ped_create_iiodev(iio); /* iio and dd are freed on fail */
 	if (err < 0) {
@@ -739,6 +768,13 @@ static int __exit m4ped_remove(struct platform_device *pdev)
 		goto m4ped_remove_exit;
 
 	mutex_lock(&(dd->mutex));
+	if (dd->status & (1 << M4PED_IRQ_ENABLED_BIT)) {
+		m4sensorhub_irq_disable(dd->m4,
+					M4SH_NOWAKEIRQ_PEDOMETER);
+		dd->status = dd->status & ~(1 << M4PED_IRQ_ENABLED_BIT);
+	}
+	m4sensorhub_irq_unregister(dd->m4,
+				   M4SH_NOWAKEIRQ_PEDOMETER);
 	m4sensorhub_unregister_initcall(m4ped_driver_init);
 	m4ped_remove_iiodev(iio);  /* dd is freed here */
 

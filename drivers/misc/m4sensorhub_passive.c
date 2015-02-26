@@ -201,7 +201,7 @@ static int m4pas_set_samplerate(struct iio_dev *iio, int16_t rate)
 		/* Enable the IRQ if necessary */
 		if (!(dd->status & (1 << M4PAS_IRQ_ENABLED_BIT))) {
 			err = m4sensorhub_irq_enable(dd->m4,
-				M4SH_IRQ_PASSIVE_BUFFER_FULL);
+				M4SH_WAKEIRQ_PASSIVE);
 			if (err < 0) {
 				m4pas_err("%s: Failed to enable irq.\n",
 					  __func__);
@@ -223,7 +223,7 @@ static int m4pas_set_samplerate(struct iio_dev *iio, int16_t rate)
 		/* Disable the IRQ if necessary */
 		if (dd->status & (1 << M4PAS_IRQ_ENABLED_BIT)) {
 			err = m4sensorhub_irq_disable(dd->m4,
-				M4SH_IRQ_PASSIVE_BUFFER_FULL);
+				M4SH_WAKEIRQ_PASSIVE);
 			if (err < 0) {
 				m4pas_err("%s: Failed to disable irq.\n",
 					  __func__);
@@ -448,7 +448,7 @@ static int m4pas_driver_init(struct init_calldata *p_arg)
 	}
 
 	err = m4sensorhub_irq_register(dd->m4,
-		M4SH_IRQ_PASSIVE_BUFFER_FULL, m4pas_isr, iio, 1);
+		M4SH_WAKEIRQ_PASSIVE, m4pas_isr, iio, 1);
 	if (err < 0) {
 		m4pas_err("%s: Failed to register M4 IRQ.\n", __func__);
 		goto m4pas_driver_init_fail;
@@ -523,11 +523,11 @@ static int __exit m4pas_remove(struct platform_device *pdev)
 	mutex_lock(&(dd->mutex));
 	if (dd->status & (1 << M4PAS_IRQ_ENABLED_BIT)) {
 		m4sensorhub_irq_disable(dd->m4,
-					M4SH_IRQ_PASSIVE_BUFFER_FULL);
+					M4SH_WAKEIRQ_PASSIVE);
 		dd->status = dd->status & ~(1 << M4PAS_IRQ_ENABLED_BIT);
 	}
 	m4sensorhub_irq_unregister(dd->m4,
-				   M4SH_IRQ_PASSIVE_BUFFER_FULL);
+				   M4SH_WAKEIRQ_PASSIVE);
 	m4sensorhub_unregister_initcall(m4pas_driver_init);
 	m4pas_remove_iiodev(iio);  /* dd is freed here */
 

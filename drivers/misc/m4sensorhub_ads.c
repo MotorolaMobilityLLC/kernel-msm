@@ -134,9 +134,9 @@ static void m4sensorhub_ads_panic_restore(struct m4sensorhub_data *m4sensorhub,
 	}
 
 	if (priv_data->samplerate > 0)
-		m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+		m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 	else
-		m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+		m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 err:
 	mutex_unlock(&(priv_data->mutex));
 }
@@ -164,7 +164,7 @@ static int m4sensorhub_ads_driver_initcallback(struct init_calldata *arg)
 		pr_err("%s: failed panic register(%d)\n", __func__, ret);
 
 	ret = m4sensorhub_irq_register(priv_data->m4sensorhub,
-			M4SH_IRQ_ADS_DATA_READY, m4_handle_ads_irq,
+			M4SH_NOWAKEIRQ_ADS, m4_handle_ads_irq,
 			iio_dev, 1);
 
 	if (ret < 0)
@@ -222,13 +222,13 @@ static ssize_t m4sensorhub_ads_store_setdelay(struct device *dev,
 					goto err;
 				}
 			}
-			m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+			m4sensorhub_irq_enable(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 		}
 		else {
 			kfree(priv_data->data);
 			priv_data->data = NULL;
 			priv_data->data_seq_num = 0;
-			m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+			m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 		}
 	}
 	ret = count;
@@ -391,10 +391,10 @@ static int __exit m4sensorhub_ads_remove(struct platform_device *pdev)
 	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
 
 	mutex_lock(&(priv_data->mutex));
-	m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+	m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 	kfree(priv_data->data);
 	priv_data->data = NULL;
-	m4sensorhub_irq_unregister(priv_data->m4sensorhub, M4SH_IRQ_ADS_DATA_READY);
+	m4sensorhub_irq_unregister(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 	m4sensorhub_unregister_initcall(
 				m4sensorhub_ads_driver_initcallback);
 

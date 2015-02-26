@@ -85,9 +85,12 @@ enum m4sensorhub_panichdl_index {
 };
 
 struct m4sensorhub_hwconfig {
-	int irq_gpio;
+	int wakeirq_gpio;
+	int nowakeirq_gpio;
 	int reset_gpio;
 	int boot0_gpio;
+	int wakeirq;
+	int nowakeirq;
 };
 
 struct m4sensorhub_irq_dbg {

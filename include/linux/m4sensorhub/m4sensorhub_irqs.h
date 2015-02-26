@@ -18,77 +18,51 @@
 #ifndef __M4SENSORHUB_IRQS_H__
 #define __M4SENSORHUB_IRQS_H__
 
-#define M4SH_IRQ_INT0_INDEX 0
-#define M4SH_IRQ_INT1_INDEX 8
-#define M4SH_IRQ_INT2_INDEX 16
-
 /* Keep name mapping in m4sensorhub-irq.c 'irq_name' synchronized */
 enum m4sensorhub_irqs {
-	/* 1st supported interrupt */
-	M4SH_IRQ__START,
+	M4SH_NOWAKEIRQ__START = 0,
 
-	/* INT0 0x01: Pressure interrupt */
-	M4SH_IRQ_PRESSURE_DATA_READY = M4SH_IRQ_INT0_INDEX,
+	M4SH_NOWAKEIRQ_ACCEL = M4SH_NOWAKEIRQ__START,
 
-	/* INT0 0x02: Temperature interrupt */
-	M4SH_IRQ_TMP_DATA_READY,
+	M4SH_NOWAKEIRQ_GYRO,
 
-	/* INT0 0x04: Gyro interrupt */
-	M4SH_IRQ_GYRO_DATA_READY,
+	M4SH_NOWAKEIRQ_COMPASS,
 
-	/* INT0 0x80: Pedometer interrupt */
-	M4SH_IRQ_PEDOMETER_DATA_READY,
+	M4SH_NOWAKEIRQ_FUSION,
 
-	/* INT0 0x10: Compass data interrupt */
-	M4SH_IRQ_COMPASS_DATA_READY,
+	M4SH_NOWAKEIRQ_PRESSURE,
 
-	/* INT0 0x20: Fusion data interrupt */
-	M4SH_IRQ_FUSION_DATA_READY,
+	M4SH_NOWAKEIRQ_ADS,
 
-	/* INT0 0x40: Accel data interrupt */
-	M4SH_IRQ_ACCEL_DATA_READY,
+	M4SH_NOWAKEIRQ_PPG,
 
-	/* INT0 0x80: Gesture interrupt */
-	M4SH_IRQ_GESTURE_DETECTED,
+	M4SH_NOWAKEIRQ_HEARTRATE,
 
-	/* INT1 0x01 : still mode interrupt */
-	M4SH_IRQ_STILL_DETECTED = M4SH_IRQ_INT1_INDEX,
+	M4SH_NOWAKEIRQ_PEDOMETER,
 
-	/* INT1 0x02 : motion detected interrupt */
-	M4SH_IRQ_MOTION_DETECTED,
+	M4SH_NOWAKEIRQ_ALS,
 
-	/* INT1 0x04 : activity change interrupt */
-	M4SH_IRQ_ACTIVITY_CHANGE,
+	M4SH_NOWAKEIRQ_ACTIVITY_CHANGE,
 
-	/* INT1 0x08 : download command complete interrupt */
-	M4SH_IRQ_DLCMD_RESP_READY,
+	M4SH_NOWAKEIRQ__MAX,
 
-	/* INT1 0x10 : mic data ready interrupt */
-	M4SH_IRQ_MIC_DATA_READY,
+	M4SH_WAKEIRQ__START = M4SH_NOWAKEIRQ__MAX,
 
-	/* INT1 0x20 : wrist command interrupt */
-	M4SH_IRQ_WRIST_READY,
+	M4SH_WAKEIRQ_STILL = M4SH_WAKEIRQ__START,
 
-	/* INT1 0x40 : passive buffer full */
-	M4SH_IRQ_PASSIVE_BUFFER_FULL,
+	M4SH_WAKEIRQ_MOTION,
 
-	/* INT1 0x80 : lightsensor data ready */
-	M4SH_IRQ_LIGHTSENSOR_DATA_READY,
+	M4SH_WAKEIRQ_GESTURE,
 
-	/* INT2 0x01 : heartratesensor data ready */
-	M4SH_IRQ_HRSENSOR_DATA_READY = M4SH_IRQ_INT2_INDEX,
+	M4SH_WAKEIRQ_PASSIVE,
 
-	/* INT2 0x02 : AP-RTC alarm expired */
-	M4SH_IRQ_AP_ALARM_EXPIRED,
+	M4SH_WAKEIRQ_AP_ALARM_EXPIRED,
 
-	/* INT2 0x04 : HR data ready */
-	M4SH_IRQ_HEARTRATE_DATA_READY,
+	M4SH_WAKEIRQ_M4_READY,
 
-	/* INT2 0x08 : ADS data ready */
-	M4SH_IRQ_ADS_DATA_READY,
-
-	/* Number of allocated interrupts */
-	M4SH_IRQ__NUM
+	M4SH_WAKEIRQ__MAX,
+	
+	M4SH_IRQ__NUM = M4SH_WAKEIRQ__MAX,
 };
 #endif  /* __M4SENSORHUB_IRQS_H__ */
 
