@@ -1705,11 +1705,30 @@ static uint32_t get_mask_from_core_handle(struct platform_device *pdev,
 	return mask;
 }
 
+static bool bcl_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
+
 static int bcl_probe(struct platform_device *pdev)
 {
 	struct bcl_context *bcl = NULL;
 	int ret = 0;
 	enum bcl_device_mode bcl_mode = BCL_DEVICE_DISABLED;
+
+	if (bcl_mmi_factory()) {
+		pr_info("Factory Mode, Disable BCL\n");
+		return -ENODEV;
+	}
 
 	bcl = devm_kzalloc(&pdev->dev, sizeof(struct bcl_context), GFP_KERNEL);
 	if (!bcl) {
