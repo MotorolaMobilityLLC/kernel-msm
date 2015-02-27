@@ -154,6 +154,8 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 		a_ctrl->i2c_client.addr_type;
 	static int16_t last_lens_position = 1;
 
+	CDBG("Enter\n");
+
 	for (i = 0; i < size; i++) {
 		reg_setting.size = 1;
 		switch (write_arr[i].reg_write_type) {
@@ -175,7 +177,7 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 			a_ctrl->i2c_tbl_index++;
 
 			reg_setting.reg_setting = &i2c_tbl;
-			reg_setting.data_type = a_ctrl->i2c_data_type;
+			reg_setting.data_type = write_arr[i].data_type;
 			rc = a_ctrl->i2c_client.
 				i2c_func_tbl->i2c_write_table_w_microdelay(
 				&a_ctrl->i2c_client, &reg_setting);
@@ -331,7 +333,7 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 				write_arr[i].hw_shift;
 			i2c_tbl.delay = 0;
 			reg_setting.reg_setting = &i2c_tbl;
-			reg_setting.data_type = a_ctrl->i2c_data_type;
+			reg_setting.data_type = write_arr[i].data_type;
 
 			rc = a_ctrl->i2c_client.
 				i2c_func_tbl->i2c_write_table_w_microdelay(
@@ -1718,6 +1720,7 @@ static int32_t msm_actuator_i2c_probe(struct i2c_client *client,
 	act_ctrl_t->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x2;
 	msm_sd_register(&act_ctrl_t->msm_sd);
 	msm_actuator_v4l2_subdev_fops = v4l2_subdev_fops;
+
 #ifdef CONFIG_COMPAT
 	msm_actuator_v4l2_subdev_fops.compat_ioctl32 =
 		msm_actuator_subdev_fops_ioctl;
