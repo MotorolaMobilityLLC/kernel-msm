@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/slab.h>
 
@@ -182,6 +183,8 @@ static struct regulator_desc lm3631_regulator_desc[] = {
 	},
 };
 
+	/* Names in the match table have to match child node names in the
+	 regulator lm3631 entry. First match will be taken for each name.*/
 static struct of_regulator_match lm3631_regulator_matches[] = {
 	{ .name = "vboost", .driver_data = (void *)LM3631_BOOST, },
 	{ .name = "vcont",  .driver_data = (void *)LM3631_LDO_CONT, },
@@ -232,6 +235,8 @@ static int lm3631_regulator_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Use name from device tree. Constraints are filled in parse dt*/
+	lm3631_regulator_desc[id].name = init_data->constraints.name;
 	cfg.dev = pdev->dev.parent;
 	cfg.init_data = init_data;
 	cfg.driver_data = lm3631_regulator;
@@ -247,6 +252,8 @@ static int lm3631_regulator_probe(struct platform_device *pdev)
 
 	lm3631_regulator->regulator = rdev;
 	platform_set_drvdata(pdev, lm3631_regulator);
+	dev_info(&pdev->dev, "%s success for %s\n",
+		__func__, lm3631_regulator_desc[id].name);
 
 	return 0;
 }
