@@ -25,6 +25,31 @@
 	qcom,board-id = <8 5>;
 };
 
+&soc {
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		IT7260@46 {
+			compatible = "ite,it7260_ts";
+			reg = <0x46>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <17 0x2008>;
+			avdd-supply = <&pm8226_l19>;
+			vdd-supply = <&pm8226_lvs1>;
+			ite,reset-gpio = <&msmgpio 16 0x00>;
+			ite,irq-gpio = <&msmgpio 17 0x2008>;
+			ite,panel-coords = <0 0 320 320>;
+			ite,display-coords = <0 0 320 320>;
+			ite,reset-delay = <20>;
+			ite,num-fingers = <1>;
+			ite,wakeup;
+			ite,palm-detect;
+			ite,palm-detect-keycode = <142>;
+			ite,low-reset;
+			ite,fw-name = "it7260_fw.bin";
+			ite,cfg-name = "it7260_cfg.bin";
+		};
+	};
+};
+
 &mdss_fb0 {
 	/* cont_splash memory*/
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
