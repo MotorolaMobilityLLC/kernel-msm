@@ -1567,12 +1567,10 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	}
 	else
 	{
-		pr_debug("%s:ctrl 58=0x%x\n", __func__, ctrl_58);
 		ctrl_58 &= 0x7f;
-		if (ctrl_58 > 20)
-		{
-			ctrl_58 = 20;
-		}
+
+		/* set the palm detec feature's para: cover size */
+		ctrl_58 = 40;
 		ctrl_58 |=0x80;
 		retval = synaptics_rmi4_reg_write(rmi4_data,
 						0x64,
