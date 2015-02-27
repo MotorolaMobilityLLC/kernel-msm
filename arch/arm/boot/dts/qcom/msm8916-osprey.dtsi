@@ -172,6 +172,7 @@
 			df-serialnum	= "SNN5959";
 
 			/include/ "batterydata-fc40-sony.dtsi"
+			/include/ "batterydata-fc40-lg.dtsi"
 		};
 
 		maxim,temp-conv {
