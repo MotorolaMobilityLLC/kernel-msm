@@ -99,7 +99,6 @@ struct msm_actuator_ctrl_t {
 	uint16_t initial_code;
 	struct msm_camera_i2c_reg_array *i2c_reg_tbl;
 	uint16_t i2c_tbl_index;
-	struct reg_settings_t mot_i2c_reg_tbl[MAX_ACTUATOR_REG_TBL_SIZE];
 	enum cci_i2c_master_t cci_master;
 	uint32_t subdev_id;
 	enum msm_actuator_state_t actuator_state;
