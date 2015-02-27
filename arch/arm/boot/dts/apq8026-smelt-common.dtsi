@@ -387,40 +387,105 @@
 
 		maxim,enable_por_init;
 
-		/* This is the default battery profile attributes used by max17xxxx driver */
-		/* It is used when batt-id isn't defined in /chosen as batt-id. Additional */
-		/* battery profiles can be placed below named as maxim,configuration-id    */
-		/* where id is the value of /chosen.  For example:                         */
-		/*		maxim,configuration-SNN5951A {                             */
-		/*                   ...                                                   */
-		/*              };                                                         */
-		maxim,configuration {
+		/*
+		 * /maxim,configuration is used when batt-id is not defined in /chosen,
+		 * otherwise maxim,configuration-<batt_id> is used. Use LSB of the
+		 * version property as a version number and MSB to identify battery.
+		 * Incrementing version number forces re-programming of config data.
+		 */
+		maxim,configuration { /* Default to FW3L battery */
 			/* Required properties */
-			version		= /bits/ 16 <0x0001>;
+			version		= /bits/ 16 <0x0001>;   /* MSB = 0x00, LSB is version */
 			config		= /bits/ 16 <0x6254>;	/* Tex = 0, Ss = Aen = TS = Ten = ETHRM = 1 */
 			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
-			design_cap	= /bits/ 16 <606>;	/* in 5uVh/Rsns = 0.5 mAh */
-			ichgt_term	= /bits/ 16 <0x0066>;	/* battery attribute */
+			design_cap	= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
+			ichgt_term	= /bits/ 16 <0x0080>;	/* battery attribute */
 			learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
 			filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 			relax_cfg	= /bits/ 16 <0x043B>;	/* Load = 5 mA, dV = 3.7 mV, dT = 6 mins */
-			fullcap		= /bits/ 16 <662>;	/* in 5uVh/Rsns = 0.5 mAh */
-			fullcapnom	= /bits/ 16 <662>;	/* in 5uVh/Rsns = 0.5 mAh */
-			qrtbl00		= /bits/ 16 <0x1B94>;	/* battery attribute */
-			qrtbl10		= /bits/ 16 <0x0E94>;	/* battery attribute */
-			qrtbl20		= /bits/ 16 <0x0594>;	/* battery attribute */
-			qrtbl30		= /bits/ 16 <0x0294>;	/* battery attribute */
-			rcomp0 		= /bits/ 16 <0x0052>;	/* battery attribute */
-			tcompc0		= /bits/ 16 <0x333A>;	/* battery attribute */
+			fullcap		= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
+			fullcapnom	= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
+			qrtbl00		= /bits/ 16 <0x2f80>;	/* battery attribute */
+			qrtbl10		= /bits/ 16 <0x1500>;	/* battery attribute */
+			qrtbl20		= /bits/ 16 <0x0783>;	/* battery attribute */
+			qrtbl30		= /bits/ 16 <0x0507>;	/* battery attribute */
+			rcomp0 		= /bits/ 16 <0x0070>;	/* battery attribute */
+			tcompc0		= /bits/ 16 <0x5040>;	/* battery attribute */
 			maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
-				0x9cf0 0xa310 0xb180 0xb360 0xb6a0 0xb6e0
-				0xba10 0xbb10 0xbbd0 0xbc10 0xc200 0xc250
-				0xc7c0 0xc820 0xd050 0xd710 0x0140 0x0110
-				0x0210 0x02c0 0x1000 0x0a00 0x06c0 0x31a0
-				0x0af0 0x1170 0x0cb0 0x08d0 0x0aa0 0x0880
-				0x07b0 0x07b0 0x0100 0x0100 0x0100 0x0100
+				0x7d00 0xac70 0xb760 0xb940 0xba50 0xbca0
+				0xbde0 0xc020 0xc190 0xc320 0xc6b0 0xcac0
+				0xce60 0xd0d0 0xd5b0 0xdba0 0x0020 0x0300
+				0x1100 0x0ce0 0x0fe0 0x1490 0x11d0 0x0c90
+				0x0df0 0x0970 0x0600 0x08d0 0x0690 0x06f0
+				0x05f0 0x05f0 0x0080 0x0080 0x0080 0x0080
+				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
+				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
+			>;
+			/* Optional properties */
+			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
+			toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
+		};
+
+		maxim,configuration-FW3S {
+			/* Required properties */
+			version		= /bits/ 16 <0x0101>;   /* MSB = 0x01, LSB is version */
+			config		= /bits/ 16 <0x6254>;	/* Tex = 0, Ss = Aen = TS = Ten = ETHRM = 1 */
+			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+			design_cap	= /bits/ 16 <564>;	/* in 5uVh/Rsns = 0.5 mAh */
+			ichgt_term	= /bits/ 16 <0x0080>;	/* battery attribute */
+			learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
+			filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
+			relax_cfg	= /bits/ 16 <0x043B>;	/* Load = 5 mA, dV = 3.7 mV, dT = 6 mins */
+			fullcap		= /bits/ 16 <564>;	/* in 5uVh/Rsns = 0.5 mAh */
+			fullcapnom	= /bits/ 16 <564>;	/* in 5uVh/Rsns = 0.5 mAh */
+			qrtbl00		= /bits/ 16 <0x3480>;	/* battery attribute */
+			qrtbl10		= /bits/ 16 <0x1900>;	/* battery attribute */
+			qrtbl20		= /bits/ 16 <0x0b09>;	/* battery attribute */
+			qrtbl30		= /bits/ 16 <0x078b>;	/* battery attribute */
+			rcomp0 		= /bits/ 16 <0x0038>;	/* battery attribute */
+			tcompc0		= /bits/ 16 <0x1e2e>;	/* battery attribute */
+			maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
+				0x80c0 0x9d60 0xb740 0xba80 0xbbb0 0xbc90
+				0xbe00 0xbf60 0xc030 0xc2a0 0xc470 0xca00
+				0xd010 0xd1b0 0xd580 0xdb10 0x0040 0x0110
+				0x11c0 0x08f0 0x11d0 0x1310 0x1030 0x13f0
+				0x0ca0 0x0df0 0x0760 0x06f0 0x06a0 0x07e0
+				0x05f0 0x05f0 0x0100 0x0100 0x0100 0x0100
 				0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
 				0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+			>;
+			/* Optional properties */
+			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
+			toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
+		};
+
+		maxim,configuration-FW3L {
+			/* Required properties */
+			version		= /bits/ 16 <0x0201>;   /* MSB = 0x02, LSB is version */
+			config		= /bits/ 16 <0x6254>;	/* Tex = 0, Ss = Aen = TS = Ten = ETHRM = 1 */
+			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+			design_cap	= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
+			ichgt_term	= /bits/ 16 <0x0080>;	/* battery attribute */
+			learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
+			filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
+			relax_cfg	= /bits/ 16 <0x043B>;	/* Load = 5 mA, dV = 3.7 mV, dT = 6 mins */
+			fullcap		= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
+			fullcapnom	= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
+			qrtbl00		= /bits/ 16 <0x2f80>;	/* battery attribute */
+			qrtbl10		= /bits/ 16 <0x1500>;	/* battery attribute */
+			qrtbl20		= /bits/ 16 <0x0783>;	/* battery attribute */
+			qrtbl30		= /bits/ 16 <0x0507>;	/* battery attribute */
+			rcomp0 		= /bits/ 16 <0x0070>;	/* battery attribute */
+			tcompc0		= /bits/ 16 <0x5040>;	/* battery attribute */
+			maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
+				0x7d00 0xac70 0xb760 0xb940 0xba50 0xbca0
+				0xbde0 0xc020 0xc190 0xc320 0xc6b0 0xcac0
+				0xce60 0xd0d0 0xd5b0 0xdba0 0x0020 0x0300
+				0x1100 0x0ce0 0x0fe0 0x1490 0x11d0 0x0c90
+				0x0df0 0x0970 0x0600 0x08d0 0x0690 0x06f0
+				0x05f0 0x05f0 0x0080 0x0080 0x0080 0x0080
+				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
+				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
 			>;
 			/* Optional properties */
 			tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
