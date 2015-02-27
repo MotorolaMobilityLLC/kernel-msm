@@ -1,0 +1,51 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+maxim,fc40-samsung-batterydata {
+        /* Required properties */
+        serialnum       = "SNN5960";
+
+        /* Table from Maxim for FC40 Samsung 2415 mAhr Battery */
+        config          = /bits/ 16 <0x0254>;
+        full_soc_thresh = /bits/ 16 <0x5F00>;   /* app note constant */
+        design_cap      = /bits/ 16 <4830>;     /* mAh times 2 */
+        ichgt_term      = /bits/ 16 <0x0319>;   /* battery attribute */
+        learn_cfg       = /bits/ 16 <0x2606>;   /* app note constant */
+        filter_cfg      = /bits/ 16 <0x87A4>;   /* app note constant */
+        relax_cfg       = /bits/ 16 <0x203B>;
+        fullcap         = /bits/ 16 <4830>;     /* mAh times 2 */
+        fullcapnom      = /bits/ 16 <4830>;     /* mAh times 2 */
+        qrtbl00         = /bits/ 16 <0x3600>;   /* battery attribute */
+        qrtbl10         = /bits/ 16 <0x1880>;   /* battery attribute */
+        qrtbl20         = /bits/ 16 <0x0a00>;   /* battery attribute */
+        qrtbl30         = /bits/ 16 <0x0800>;   /* battery attribute */
+        rcomp0          = /bits/ 16 <0x003a>;   /* battery attribute */
+        tcompc0         = /bits/ 16 <0x1A2E>;   /* battery attribute */
+	vempty		= /bits/ 16 <0xA05F>;	/* battery attribute */
+        maxim,cell-char-tbl = /bits/ 16 <       /* battery attribute */
+		0xa790 0xac30 0xb410 0xb690 0xbb60 0xbc90
+		0xbcd0 0xbd20 0xbf50 0xc000 0xc5a0 0xc600
+		0xcfe0 0xd060 0xd620 0xd6b0 0x00c0 0x0200
+		0x0190 0x0d30 0x1420 0x9000 0x1990 0x1240
+		0x1170 0x0b60 0x0aa0 0x0740 0x0800 0x0640
+		0x0710 0x0710 0x0200 0x0200 0x0200 0x0200
+		0x0200 0x0200 0x0200 0x0200 0x0200 0x0200
+		0x0200 0x0200 0x0200 0x0200 0x0200 0x0200
+        >;
+        /* Optional properties */
+        tgain           = /bits/ 16 <0xE71C>;   /* thermistor attribute */
+        toff            = /bits/ 16 <0x251A>;   /* thermistor attribute */
+        cgain           = /bits/ 16 <0x4000>;   /* current sense attribute */
+        misc_cfg        = /bits/ 16 <0x0170>;
+        rev             = /bits/ 16 <0x0002>;
+};
+
