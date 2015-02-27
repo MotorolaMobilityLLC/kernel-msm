@@ -1038,7 +1038,7 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	tfa9890->ic_version = tfa9890_get_ic_ver(codec);
 	if (tfa9890->ic_version == TFA9890_N1C2) {
 		scnprintf(fw_name, FIRMWARE_NAME_SIZE,
-			"%s/%s.%s_n1c2.patch",
+			"%s%s.%s_n1c2.patch",
 			tfa9890->fw_path, tfa9890->tfa_dev,
 			tfa9890->fw_name);
 		ret = request_firmware(&fw_patch, fw_name, codec->dev);
@@ -1048,7 +1048,7 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 		}
 	} else if (tfa9890->ic_version == TFA9890_N1B12) {
 		scnprintf(fw_name, FIRMWARE_NAME_SIZE,
-			"%s/%s.%s_n1b12.patch",
+			"%s%s.%s_n1b12.patch",
 			tfa9890->fw_path, tfa9890->tfa_dev,
 			tfa9890->fw_name);
 		ret = request_firmware(&fw_patch, fw_name, codec->dev);
@@ -1067,7 +1067,7 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 		}
 	}
 
-	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/%s.%s.speaker",
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s%s.%s.speaker",
 		tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name);
 		ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	ret = request_firmware(&fw_speaker, fw_name, codec->dev);
@@ -1205,7 +1205,7 @@ static void tfa9890_load_preset(struct work_struct *work)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tfa9890_mode); i++) {
-		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s/%s.%s_%s",
+		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s%s.%s_%s",
 			tfa9890->fw_path, tfa9890->tfa_dev,
 			tfa9890->fw_name,
 			tfa9890_preset_tables[i]);
@@ -1233,7 +1233,7 @@ static void tfa9890_load_preset(struct work_struct *work)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tfa9890_mode); i++) {
-		scnprintf(cfg_name, FIRMWARE_NAME_SIZE, "%s/%s.%s.%s",
+		scnprintf(cfg_name, FIRMWARE_NAME_SIZE, "%s%s.%s.%s",
 			tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name,
 			tfa9890_config_tables[i]);
 		if (!strncmp("left", tfa9890->tfa_dev, 4)) {
@@ -1258,7 +1258,7 @@ static void tfa9890_load_preset(struct work_struct *work)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tfa9890_mode); i++) {
-		scnprintf(eq_name, FIRMWARE_NAME_SIZE, "%s/%s.%s.%s",
+		scnprintf(eq_name, FIRMWARE_NAME_SIZE, "%s%s.%s.%s",
 			tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name,
 			tfa9890_eq_tables[i]);
 		if (!strncmp("left", tfa9890->tfa_dev, 4)) {
@@ -1998,8 +1998,8 @@ tfa9890_of_init(struct i2c_client *client)
 	}
 
 	if (of_property_read_string(np, "nxp,tfa9890_bin_path",
-					&pdata->fw_path))
-					pdata->fw_path = ".";
+				&pdata->fw_path))
+		pdata->fw_path = "";
 
 	of_property_read_u32(np, "nxp,tfa_max-vol-steps",
 				&pdata->max_vol_steps);
