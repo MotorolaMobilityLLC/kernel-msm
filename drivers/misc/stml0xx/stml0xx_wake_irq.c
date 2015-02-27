@@ -343,6 +343,21 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			"Sending SIM Value=%d", STM16_TO_HOST(SIM_DATA,
 					&buf[WAKE_IRQ_IDX_SIM]));
 	}
+	if (irq_status & M_LIFT) {
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_LIFT,
+			&buf[WAKE_IRQ_IDX_LIFT],
+			12,
+			0,
+			stm_ws->ts_ns);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
+			STM32_TO_HOST(LIFT_DISTANCE, &buf[WAKE_IRQ_IDX_LIFT]),
+			STM32_TO_HOST(LIFT_ROTATION, &buf[WAKE_IRQ_IDX_LIFT]),
+			STM32_TO_HOST(LIFT_GRAV_DIFF, &buf[WAKE_IRQ_IDX_LIFT]));
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 
