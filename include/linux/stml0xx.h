@@ -201,6 +201,7 @@
 #define M_CAMERA_ACT		0x000800
 #define M_NFC			0x001000
 #define M_SIM			0x002000
+#define M_LIFT			0x004000
 #define M_LOG_MSG		0x008000
 
 /* algo config mask */
@@ -282,7 +283,8 @@ enum STML0XX_data_types {
 	DT_UNCALIB_GYRO,
 	DT_UNCALIB_MAG,
 	DT_ACCEL2,
-	DT_FLUSH
+	DT_FLUSH,
+	DT_LIFT,
 };
 
 enum {
@@ -425,6 +427,7 @@ struct stm_response {
 #define CAMERA                          0x4C
 #define NFC                             0x4D
 #define SIM                             0x4E
+#define LIFT                            0x51
 
 #define SH_LOG_LEVEL_REG                0x55
 
@@ -506,14 +509,15 @@ struct stm_response {
 #define WAKE_IRQ_IDX_FLAT                   8
 #define WAKE_IRQ_IDX_STOWED                 9
 #define WAKE_IRQ_IDX_CAMERA                10
-#define WAKE_IRQ_IDX_SIM                   12
-#define WAKE_IRQ_IDX_MOTION                14
-#define WAKE_IRQ_IDX_MODALITY              16
-#define WAKE_IRQ_IDX_MODALITY_ORIENT       23
-#define WAKE_IRQ_IDX_MODALITY_STOWED       30
-#define WAKE_IRQ_IDX_MODALITY_ACCUM        37
-#define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   39
-#define WAKE_IRQ_IDX_LOG_MSG               43
+#define WAKE_IRQ_IDX_LIFT                  12
+#define WAKE_IRQ_IDX_SIM                   24
+#define WAKE_IRQ_IDX_MOTION                26
+#define WAKE_IRQ_IDX_MODALITY              28
+#define WAKE_IRQ_IDX_MODALITY_ORIENT       35
+#define WAKE_IRQ_IDX_MODALITY_STOWED       42
+#define WAKE_IRQ_IDX_MODALITY_ACCUM        49
+#define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   51
+#define WAKE_IRQ_IDX_LOG_MSG               55
 
 /* stml0xx_readbuff offsets. */
 #define IRQ_WAKE_LO  0
@@ -562,6 +566,9 @@ struct stm_response {
 #define GRAV_Z		4
 #define CAMERA_VALUE	0
 #define SIM_DATA	0
+#define LIFT_DISTANCE	0
+#define LIFT_ROTATION	4
+#define LIFT_GRAV_DIFF	8
 
 #define STML0XX_LED_MAX_DELAY 0xFFFF
 #define STML0XX_LED_MAX_BRIGHTNESS 0x00FFFFFF
