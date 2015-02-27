@@ -250,8 +250,8 @@ struct qpnp_bms_chip {
 	int				charging_adjusted_ocv;
 	int				last_ocv_temp;
 	int				last_cc_uah;
-	unsigned long			last_soc_change_sec;
-	unsigned long			tm_sec;
+	unsigned long long			last_soc_change_sec;
+	unsigned long long			tm_sec;
 	unsigned long			report_tm_sec;
 	bool				first_time_calc_soc;
 	bool				first_time_calc_uuc;
@@ -266,7 +266,7 @@ struct qpnp_bms_chip {
 	int				last_soc_est;
 	int				last_soc_unbound;
 	bool				was_charging_at_sleep;
-	int				charge_start_tm_sec;
+	unsigned long long				charge_start_tm_sec;
 	int				catch_up_time_sec;
 	struct single_row_lut		*adjusted_fcc_temp_lut;
 
@@ -295,7 +295,7 @@ struct qpnp_bms_chip {
 
 	int				ocv_high_threshold_uv;
 	int				ocv_low_threshold_uv;
-	unsigned long			last_recalc_time;
+	unsigned long long			last_recalc_time;
 
 	struct fcc_sample		*fcc_learning_samples;
 	u8				fcc_sample_count;
@@ -1657,7 +1657,7 @@ static int find_pc_for_soc(struct qpnp_bms_chip *chip,
 			ocv_charge_uah, pc);
 	return pc;
 }
-
+#ifndef CONFIG_HUAWEI_BATTERY_SETTING
 static int get_current_time(unsigned long *now_tm_sec)
 {
 	struct rtc_time tm;
@@ -1690,6 +1690,7 @@ close_time:
 	rtc_class_close(rtc);
 	return rc;
 }
+#endif
 
 /* Returns estimated battery resistance */
 static int get_prop_bms_batt_resistance(struct qpnp_bms_chip *chip)
@@ -1759,8 +1760,26 @@ static int get_prop_bms_charge_full(struct qpnp_bms_chip *chip)
 	return calculate_fcc(chip, (int)result.physical);
 }
 
-static int calculate_delta_time(unsigned long *time_stamp, int *delta_time_s)
+static int calculate_delta_time(unsigned long long *time_stamp, int *delta_time_s)
 {
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	unsigned long long time_sec;
+
+	/* default to delta time = 0 if anything fails */
+	*delta_time_s = 0;
+	time_sec = div_u64(get_jiffies_64(),HZ);  
+	*delta_time_s = time_sec - *time_stamp;	
+
+	/* remember this time */
+	if(*delta_time_s >= 0) {
+		*time_stamp = time_sec;
+	}
+	else {
+		pr_err("time read failed,delta_time_s=%d\n",*delta_time_s);    
+		/*delta_time_s can not less 0*/
+		*delta_time_s = 0;
+	}
+#else
 	unsigned long now_tm_sec = 0;
 
 	/* default to delta time = 0 if anything fails */
@@ -1775,6 +1794,9 @@ static int calculate_delta_time(unsigned long *time_stamp, int *delta_time_s)
 
 	/* remember this time */
 	*time_stamp = now_tm_sec;
+#endif
+
+
 	return 0;
 }
 
@@ -1786,7 +1808,7 @@ static void calculate_soc_params(struct qpnp_bms_chip *chip,
 	int soc_rbatt, shdw_cc_uah;
 
 	calculate_delta_time(&chip->tm_sec, &params->delta_time_s);
-	pr_debug("tm_sec = %ld, delta_s = %d\n",
+	pr_debug("tm_sec = %lld, delta_s = %d\n",
 		chip->tm_sec, params->delta_time_s);
 	params->fcc_uah = calculate_fcc(chip, batt_temp);
 	pr_debug("FCC = %uuAh batt_temp = %d\n", params->fcc_uah, batt_temp);
@@ -2091,7 +2113,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 {
 	int soc, soc_change;
 	int time_since_last_change_sec, charge_time_sec = 0;
-	unsigned long last_change_sec;
+	unsigned long long last_change_sec;
 	struct qpnp_vadc_result result;
 	int batt_temp;
 	int rc;
@@ -2151,8 +2173,8 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 			chip->charge_start_tm_sec = last_change_sec;
 		}
 
-		charge_time_sec = min(SOC_CATCHUP_SEC_MAX, (int)last_change_sec
-				- chip->charge_start_tm_sec);
+		charge_time_sec = min(SOC_CATCHUP_SEC_MAX, (int)(last_change_sec
+				- chip->charge_start_tm_sec));
 
 		/* end catchup if calculated soc and last soc are same */
 		if (chip->last_soc == soc)
@@ -2204,12 +2226,12 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	if (chip->last_soc != soc && !chip->last_soc_unbound)
 		chip->last_soc_change_sec = last_change_sec;
 
-	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
+	pr_info("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
 			soc, time_since_last_change_sec);
 	chip->last_soc = bound_soc(soc);
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
-	pr_debug("Reported SOC = %d\n", chip->last_soc);
+	pr_info("Reported SOC = %d\n", chip->last_soc);
 	mutex_unlock(&chip->last_soc_mutex);
 
 	return soc;
@@ -3075,7 +3097,11 @@ done_calculating:
 		report_state_of_charge(chip);
 	}
 
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	chip->last_recalc_time = div_u64(get_jiffies_64(),HZ);
+#else
 	get_current_time(&chip->last_recalc_time);
+#endif
 	chip->first_time_calc_soc = 0;
 	chip->first_time_calc_uuc = 0;
 	return chip->calculated_soc;
@@ -5321,17 +5347,21 @@ static int bms_suspend(struct device *dev)
 
 static int bms_resume(struct device *dev)
 {
-	int rc;
+	int rc = 0;
 	int soc_calc_period;
 	int time_until_next_recalc = 0;
 	unsigned long time_since_last_recalc;
-	unsigned long tm_now_sec;
+	unsigned long long tm_now_sec;
 	struct qpnp_bms_chip *chip = dev_get_drvdata(dev);
 	int cc_uah_in_sleep;
 	int sleep_duration;
 	uint16_t ocv_raw;
 
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	tm_now_sec = div_u64(get_jiffies_64(),HZ);
+#else
 	rc = get_current_time(&tm_now_sec);
+#endif
 	if (rc) {
 		pr_err("Could not read current time: %d\n", rc);
 		tm_now_sec = 0;
