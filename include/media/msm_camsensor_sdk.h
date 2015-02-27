@@ -29,7 +29,7 @@
 #define MAX_ACTUATOR_SCENARIO     8
 #define MAX_ACT_MOD_NAME_SIZE     32
 #define MAX_ACT_NAME_SIZE         32
-#define MAX_ACTUATOR_INIT_SET     60
+#define MAX_ACTUATOR_INIT_SET     120
 #define MAX_I2C_REG_SET           12
 
 #define MAX_NAME_SIZE             32
@@ -141,9 +141,19 @@ enum sensor_stats_type {
 	PDAF,
 };
 
+/* Need to keep this table aligned with
+ * enum msm_camera_i2c_data_type
+ */
 enum msm_actuator_data_type {
 	MSM_ACTUATOR_BYTE_DATA = 1,
 	MSM_ACTUATOR_WORD_DATA,
+	MSM_ACTUATOR_DWORD_DATA,
+	MSM_ACTUATOR_SET_BYTE_MASK,
+	MSM_ACTUATOR_UNSET_BYTE_MASK,
+	MSM_ACTUATOR_SET_WORD_MASK,
+	MSM_ACTUATOR_UNSET_WORD_MASK,
+	MSM_ACTUATOR_SET_BYTE_WRITE_MASK_DATA,
+	MSM_ACTUATOR_DATA_TYPE_MAX,
 };
 
 enum msm_actuator_addr_type {
@@ -154,6 +164,10 @@ enum msm_actuator_addr_type {
 enum msm_actuator_write_type {
 	MSM_ACTUATOR_WRITE_HW_DAMP,
 	MSM_ACTUATOR_WRITE_DAC,
+	MSM_ACTUATOR_WRITE,
+	MSM_ACTUATOR_WRITE_DIR_REG,
+	MSM_ACTUATOR_POLL,
+	MSM_ACTUATOR_READ_WRITE,
 	MSM_ACTUATOR_WRITE_REG,
 };
 
@@ -167,6 +181,7 @@ enum actuator_type {
 	ACTUATOR_VCM,
 	ACTUATOR_PIEZO,
 	ACTUATOR_HVCM,
+	ACTUATOR_BIVCM,
 	ACTUATOR_MOT_HVCM,
 };
 
@@ -334,6 +349,10 @@ struct msm_actuator_reg_params_t {
 	uint16_t reg_addr;
 	uint16_t hw_shift;
 	uint16_t data_shift;
+	uint16_t data_type;
+	uint16_t addr_type;
+	uint16_t reg_data;
+	uint16_t delay;
 };
 
 struct damping_params_t {
