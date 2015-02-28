@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/slab.h>
+#include <linux/qpnp/power-on.h>
 
 
 enum mmi_factory_device_list {
@@ -139,9 +140,21 @@ static void warn_irq_w(struct work_struct *w)
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
-		if (usr_rst_sw_dis_flg <= 0)
+		if (usr_rst_sw_dis_flg <= 0) {
+			/* Configure hardware reset before halt
+			 * The new KUNGKOW circuit will not disconnect the
+			 * battery if usb/dc is connected. But because the
+			 * kernel is halted, a watchdog reset will be reported
+			 * instead of hardware reset. In this case, we need to
+			 * clear the KUNPOW reset bit to let BL detect it as a
+			 * hardware reset.
+			 * A pmic hard reset is necessary to report the powerup
+			 * reason to BL correctly.
+			 */
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_RESET_KUNPOW_REASON, 0);
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 			kernel_halt();
-		else
+		} else
 			pr_info("SW HALT Disabled!\n");
 		return;
 	}
