@@ -264,7 +264,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	for (i = find_first_bit(pending, gic->gic_irqs);
 		i < gic->gic_irqs;
 		i = find_next_bit(pending, gic->gic_irqs, i+1)) {
-		log_wakeup_reason(i + gic->irq_offset);
+		log_base_wakeup_reason(i + gic->irq_offset);
 	}
 }
 
