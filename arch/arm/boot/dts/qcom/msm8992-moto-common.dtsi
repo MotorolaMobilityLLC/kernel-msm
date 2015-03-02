@@ -1156,6 +1156,7 @@
 		qcom,model = "msm8994-florida-snd-card";
 		qcom,tfa9890-earpiece-gpio = <&msm_gpio 89 0>;
 		qcom,tfa9890-stereo;
+		nxp,tfa9890_bin_path = ""; /* if dir string specified, must add '/' at end */
 		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-dsp.2",
 				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
 				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
