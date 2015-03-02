@@ -1272,6 +1272,7 @@
 		overdrive_voltage = <0xBA>;     /* 3.6v */
 
 		vibrator_vdd-supply = <&vreg_5p0>;
+		static-vdd-supply = <&pm8994_l18>;
 	};
 
 	tfa9890@34 {
