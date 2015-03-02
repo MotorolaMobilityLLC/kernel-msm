@@ -37,6 +37,8 @@
                Qualcomm Confidential and Proprietary.
 
 ==========================================================================*/
+#include <linux/netdevice.h>
+#include <linux/inetdevice.h>
 #define ACTION_FRAME_TX_TIMEOUT 2000
 #define WAIT_CANCEL_REM_CHAN    1000
 #define WAIT_REM_CHAN_READY     1000
@@ -57,6 +59,8 @@
 #ifdef WLAN_FEATURE_11W
 #define WLAN_HDD_SET_WEP_FRM_FC(__fc__)     ( (__fc__) = ((__fc__) | 0x40))
 #endif //WLAN_FEATURE_11W
+
+#define HDD_P2P_MAX_ROC_DURATION            1000
 
 enum hdd_rx_flags {
     HDD_RX_FLAG_DECRYPTED        = 1 << 0,
@@ -194,5 +198,5 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct wireless_dev *wdev );
 #else
 int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev );
 #endif
-
+void hdd_p2p_roc_work_queue(struct work_struct *work);
 #endif // __P2P_H

@@ -145,6 +145,7 @@ typedef enum {
     WLAN_FTM_INITIALIZED,
     WLAN_FTM_STOPPED,
     WLAN_FTM_STARTED,
+    WLAN_FTM_STARTING,
 } wlan_hdd_ftm_state;
 typedef struct wlan_hdd_ftm_status_s
 {
@@ -166,6 +167,7 @@ typedef struct wlan_hdd_ftm_status_s
     v_U8_t   *targetNVTablePointer;
     v_U32_t   processedNVTableSize;
     v_U8_t   *tempNVTableBuffer;
+    struct completion startCmpVar;
 
 } wlan_hdd_ftm_status_t;
 typedef struct ftm_msg_s

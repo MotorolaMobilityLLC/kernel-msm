@@ -2735,7 +2735,7 @@ static void iw_full_power_cbfn (void *pContext, eHalStatus status)
     if (0 != ret)
     {
         hddLog(VOS_TRACE_LEVEL_ERROR,
-               "%s: HDD context is not valid (%d)", __func__, ret);
+               "%s: HDD context is not valid",__func__);
         return;
     }
 
@@ -3594,25 +3594,55 @@ int __iw_set_essid(struct net_device *dev,
 {
     v_U32_t status = 0;
     hdd_wext_state_t *pWextState;
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
     v_U32_t roamId;
     tCsrRoamProfile          *pRoamProfile;
     eMib_dot11DesiredBssType connectedBssType;
     eCsrAuthType RSNAuthType;
-    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-
-    pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    tHalHandle hHal;
+    hdd_station_ctx_t *pHddStaCtx;
+    int ret = 0;
 
     ENTER();
-
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    if (NULL == pAdapter)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                                  "%s:LOGP in Progress. Ignore!!!",__func__);
-        return 0;
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
     }
 
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return ret;
+    }
+
+    hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    if (NULL == hHal)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Hal Context is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    if (NULL == pHddStaCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: STA Context is NULL",__func__);
+        return -EINVAL;
+    }
+    pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    if (NULL == pWextState)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: pWextState is NULL",__func__);
+        return -EINVAL;
+    }
     if(pWextState->mTKIPCounterMeasures == TKIP_COUNTER_MEASURE_STARTED) {
         hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "%s :Counter measure is in progress", __func__);
         return -EBUSY;
@@ -3773,10 +3803,45 @@ int __iw_get_essid(struct net_device *dev,
                    struct iw_request_info *info,
                    struct iw_point *dwrq, char *extra)
 {
-   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-   hdd_wext_state_t *wextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-   hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+   hdd_adapter_t *pAdapter;
+   hdd_context_t *pHddCtx;
+   hdd_wext_state_t *wextBuf;
+   hdd_station_ctx_t *pHddStaCtx;
+   int ret = 0;
    ENTER();
+
+   pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+   if (NULL == pAdapter)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Adapter is NULL",__func__);
+       return -EINVAL;
+   }
+
+   pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   ret = wlan_hdd_validate_context(pHddCtx);
+   if (0 != ret)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: HDD context is not valid",__func__);
+       return ret;
+   }
+
+   pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+   if (NULL == pHddStaCtx)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: STA Context is NULL",__func__);
+       return -EINVAL;
+   }
+
+   wextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+   if (NULL == wextBuf)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: wextBuf is NULL",__func__);
+       return -EINVAL;
+   }
 
    if((pHddStaCtx->conn_info.connState == eConnectionState_Associated &&
      wextBuf->roamProfile.SSIDs.SSIDList->SSID.length > 0) ||
@@ -3823,21 +3888,51 @@ int iw_get_essid(struct net_device *dev,
 int __iw_set_auth(struct net_device *dev,struct iw_request_info *info,
                   union iwreq_data *wrqu,char *extra)
 {
-   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-   hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-   hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-   tCsrRoamProfile *pRoamProfile = &pWextState->roamProfile;
+   hdd_adapter_t *pAdapter;
+   hdd_context_t *pHddCtx;
+   hdd_wext_state_t *pWextState;
+   hdd_station_ctx_t *pHddStaCtx;
+   tCsrRoamProfile *pRoamProfile;
    eCsrEncryptionType mcEncryptionType;
    eCsrEncryptionType ucEncryptionType;
+   int ret = 0;
 
    ENTER();
 
-   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+   if (NULL == pAdapter)
    {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-              "%s:LOGP in Progress. Ignore!!!", __func__);
-       return -EBUSY;
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Adapter is NULL",__func__);
+       return -EINVAL;
    }
+
+   pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   ret = wlan_hdd_validate_context(pHddCtx);
+   if (0 != ret)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: HDD context is not valid",__func__);
+       return ret;
+   }
+
+   pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+   if (NULL == pHddStaCtx)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: STA Context is NULL",__func__);
+       return -EINVAL;
+   }
+
+   pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+   if (NULL == pWextState)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWextState is NULL",__func__);
+       return -EINVAL;
+   }
+
+   pRoamProfile = &pWextState->roamProfile;
 
    switch(wrqu->param.flags & IW_AUTH_INDEX)
    {
@@ -4062,17 +4157,39 @@ int iw_set_auth(struct net_device *dev, struct iw_request_info *info,
 int __iw_get_auth(struct net_device *dev,struct iw_request_info *info,
                   union iwreq_data *wrqu,char *extra)
 {
-    hdd_adapter_t* pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_wext_state_t *pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-    tCsrRoamProfile *pRoamProfile = &pWextState->roamProfile;
+    hdd_adapter_t* pAdapter;
+    hdd_wext_state_t *pWextState;
+    tCsrRoamProfile *pRoamProfile;
+    hdd_context_t *pHddCtx;
+    int ret = 0;
+
     ENTER();
 
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    if (NULL == pAdapter)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-              "%s:LOGP in Progress. Ignore!!!", __func__);
-        return -EBUSY;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
     }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return ret;
+    }
+
+    pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    if (NULL == pWextState)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: pWextState is NULL",__func__);
+        return -EINVAL;
+    }
+    pRoamProfile = &pWextState->roamProfile;
 
     switch(pRoamProfile->negotiatedAuthType)
     {
@@ -4215,9 +4332,36 @@ int __iw_set_ap_address(struct net_device *dev,
                         struct iw_request_info *info,
                         union iwreq_data *wrqu, char *extra)
 {
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(WLAN_HDD_GET_PRIV_PTR(dev));
-    v_U8_t  *pMacAddress=NULL;
+    hdd_station_ctx_t *pHddStaCtx;
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+    v_U8_t  *pMacAddress = NULL;
+    int ret = 0;
     ENTER();
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL", __func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               "%s: HDD context is not valid",__func__);
+        return ret;
+    }
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    if (NULL == pHddStaCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: pHddStaCtx is NULL", __func__);
+        return -EINVAL;
+    }
+
     pMacAddress = (v_U8_t*) wrqu->ap_addr.sa_data;
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s "MAC_ADDRESS_STR,
               __func__, MAC_ADDR_ARRAY(pMacAddress));
@@ -4255,10 +4399,34 @@ int __iw_get_ap_address(struct net_device *dev,
                         struct iw_request_info *info,
                         union iwreq_data *wrqu, char *extra)
 {
-    //hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(WLAN_HDD_GET_PRIV_PTR(dev));
-
+    hdd_station_ctx_t *pHddStaCtx;
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+    int ret = 0;
     ENTER();
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               "%s: Adapter is NULL", __func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               "%s: HDD context is not valid",__func__);
+        return ret;
+    }
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    if (NULL == pHddStaCtx)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               "%s: pHddStaCtx is NULL", __func__);
+        return -EINVAL;
+    }
 
     if ((pHddStaCtx->conn_info.connState == eConnectionState_Associated) ||
         (eConnectionState_IbssConnected == pHddStaCtx->conn_info.connState))

@@ -458,6 +458,13 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
         csrLLUnlock(&pMac->roam.roamCmdPendingList);
     }
 
+    if( pRetCmd )
+    {
+         vos_mem_set((tANI_U8 *)&pRetCmd->command, sizeof(pRetCmd->command), 0);
+         vos_mem_set((tANI_U8 *)&pRetCmd->sessionId, sizeof(pRetCmd->sessionId), 0);
+         vos_mem_set((tANI_U8 *)&pRetCmd->u, sizeof(pRetCmd->u), 0);
+    }
+
     return( pRetCmd );
 }
 
@@ -5872,7 +5879,7 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
                        TRACE_CODE_SME_RX_HDD_DBG_READMEM, NO_SESSION, 0));
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-      if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8*)pBuf))
+      if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8*)pBuf, 0))
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -5892,7 +5899,7 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-         if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pBuf))
+         if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pBuf, 0))
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -11841,17 +11848,17 @@ eHalStatus sme_RegisterBtCoexTDLSCallback
 }
 
 /* ---------------------------------------------------------------------------
+    \fn smeNeighborMiddleOfRoaming
 
-    \fn smeNeighborRoamIsHandoffInProgress
-
-    \brief  This function is a wrapper to call csrNeighborRoamIsHandoffInProgress
+    \brief This function is a wrapper to call csrNeighborMiddleOfRoaming
 
     \param hHal - The handle returned by macOpen.
 
-    \return eANI_BOOLEAN_TRUE if reassoc in progress, eANI_BOOLEAN_FALSE otherwise
-
+    \return eANI_BOOLEAN_TRUE if reassoc in progress,
+            eANI_BOOLEAN_FALSE otherwise
 ---------------------------------------------------------------------------*/
-tANI_BOOLEAN smeNeighborRoamIsHandoffInProgress(tHalHandle hHal)
+
+tANI_BOOLEAN smeNeighborMiddleOfRoaming(tHalHandle hHal)
 {
-    return (csrNeighborRoamIsHandoffInProgress(PMAC_STRUCT(hHal)));
+    return (csrNeighborMiddleOfRoaming(PMAC_STRUCT(hHal)));
 }

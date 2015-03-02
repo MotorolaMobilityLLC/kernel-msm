@@ -1567,6 +1567,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     }
 
     pHddCtx->ftm.ftm_state = WLAN_FTM_INITIALIZED;
+    init_completion(&pHddCtx->ftm.startCmpVar);
 
     return VOS_STATUS_SUCCESS;
 
@@ -1715,6 +1716,8 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
        return VOS_STATUS_SUCCESS;
     }
 
+    pHddCtx->ftm.ftm_state = WLAN_FTM_STARTING;
+
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
             "%s: Starting Libra SW", __func__);
 
@@ -1830,6 +1833,7 @@ err_wda_stop:
 
 err_status_failure:
 
+    pHddCtx->ftm.ftm_state = WLAN_FTM_INITIALIZED;
     return VOS_STATUS_E_FAILURE;
 
 }
@@ -3279,6 +3283,7 @@ void wlan_hdd_process_ftm_cmd
                    ,__func__);
             pHddCtx->ftm.pResponseBuf->ftm_err_code = WLAN_FTM_FAILURE;
             wlan_ftm_send_response(pHddCtx);
+            complete(&pHddCtx->ftm.startCmpVar);
             return;
         }
         /* Ptt application running on the host PC expects the length to be one byte less that what we have received*/
@@ -3287,7 +3292,7 @@ void wlan_hdd_process_ftm_cmd
         pHddCtx->ftm.pResponseBuf->ftmpkt.ftm_cmd_type = 0;
 
         wlan_ftm_send_response(pHddCtx);
-
+        complete(&pHddCtx->ftm.startCmpVar);
         break;
 
     case WLAN_FTM_STOP:
@@ -5029,6 +5034,7 @@ static int __iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_in
     char *param;
     VOS_STATUS status;
     hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
     struct iw_point s_priv_data;
 
     ret =0;
@@ -5044,9 +5050,33 @@ static int __iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_in
        return -EINVAL;
     }
 
+    /* helper function to get iwreq_data with compat handling. */
+    if (hdd_priv_get_data(&s_priv_data, wrqu))
+    {
+       return -EINVAL;
+    }
+    /* make sure all params are correctly passed to function */
+    if ((NULL == s_priv_data.pointer) || (0 == s_priv_data.length))
+    {
+       return -EINVAL;
+    }
+    pAdapter = (hdd_adapter_t *)netdev_priv(dev);
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return ret;
+    }
     sub_cmd = s_priv_data.flags;
     length = s_priv_data.length;
-    pAdapter = (hdd_adapter_t *)netdev_priv(dev);
 
     /* we cannot use iotctl_private_iw_point in kernel to allocate memory
      * to store data from userspace as IW_SETCHAR_GETNONE is defined as
@@ -5131,13 +5161,27 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
 static int __iw_ftm_setint_getnone(struct net_device *dev, struct iw_request_info *info,
                        union iwreq_data *wrqu, char *extra)
 {
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
     int *value = (int *)extra;
     int sub_cmd = value[0];
     int set_value = value[1];
     int ret = 0; /* success */
     VOS_STATUS status;
 
+    pAdapter = (netdev_priv(dev));
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: HDD context is not valid",__func__);
+        return ret;
+    }
     switch(sub_cmd)
     {
         case WE_FTM_ON_OFF:
@@ -5319,10 +5363,25 @@ static int iw_ftm_setint_getnone(struct net_device *dev, struct iw_request_info 
 static int __iw_ftm_setnone_getint(struct net_device *dev, struct iw_request_info *info,
                        union iwreq_data *wrqu, char *extra)
 {
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
     int *value = (int *)extra;
     int ret = 0; /* success */
     VOS_STATUS status;
+
+    pAdapter = (netdev_priv(dev));
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: HDD context is not valid",__func__);
+        return ret;
+    }
 
     switch (value[0])
     {
@@ -5386,8 +5445,23 @@ static int __iw_ftm_get_char_setnone(struct net_device *dev, struct iw_request_i
 {
     int sub_cmd = wrqu->data.flags;
     VOS_STATUS status;
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+    int ret = 0;
 
+    pAdapter = (netdev_priv(dev));
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: HDD context is not valid ",__func__);
+        return ret;
+    }
     switch(sub_cmd)
     {
         case WE_GET_MAC_ADDRESS:
@@ -5591,14 +5665,31 @@ static int iw_ftm_setnone_getnone(struct net_device *dev, struct iw_request_info
 static int __iw_ftm_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info,
         union iwreq_data *wrqu, char *extra)
 {
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
     int sub_cmd = wrqu->data.flags;
     int *value = (int*)wrqu->data.pointer;
+    int ret = 0;
 
     if(wrqu->data.length != 2)
     {
         hddLog(LOGE, "Invalid number of Arguments  %d  \n",  wrqu->data.length);
         return -EINVAL;
+    }
+    pAdapter = (netdev_priv(dev));
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return ret;
     }
     switch (sub_cmd)
     {

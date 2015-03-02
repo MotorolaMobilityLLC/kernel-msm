@@ -909,7 +909,16 @@ limAssocFailureTimerHandler(void *pMacGlobal, tANI_U32 param)
        (pMac->lim.pSessionEntry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE))
     {
         limLog(pMac, LOGE, FL("Reassoc timeout happened"));
-        if(pMac->lim.reAssocRetryAttempt < LIM_MAX_REASSOC_RETRY_LIMIT)
+#ifdef FEATURE_WLAN_ESE
+        if (((pMac->lim.pSessionEntry->isESEconnection) &&
+             (pMac->lim.reAssocRetryAttempt <
+             (LIM_MAX_REASSOC_RETRY_LIMIT - 1)))||
+            ((!pMac->lim.pSessionEntry->isESEconnection) &&
+             (pMac->lim.reAssocRetryAttempt < LIM_MAX_REASSOC_RETRY_LIMIT))
+           )
+#else
+        if (pMac->lim.reAssocRetryAttempt < LIM_MAX_REASSOC_RETRY_LIMIT)
+#endif
         {
             limSendRetryReassocReqFrame(pMac, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq, pMac->lim.pSessionEntry);
             pMac->lim.reAssocRetryAttempt++;

@@ -512,6 +512,15 @@ typedef struct
    v_PVOID_t            wdaWdiApiMsgParam;      /* WDI API paramter tracking */
 } tWDA_ReqParams; 
 
+typedef struct
+{
+   v_PVOID_t            pWdaContext;             /* pointer to WDA context*/
+   v_PVOID_t            wdaMsgParam;            /* PE parameter tracking */
+   v_PVOID_t            wdaWdiApiMsgParam;      /* WDI API paramter tracking */
+   v_BOOL_t             wdaHALDumpAsync;        /* Async Request */
+
+} tWDA_HalDumpReqParams;
+
 /*
  * FUNCTION: WDA_open
  * open WDA context
@@ -1896,6 +1905,32 @@ WDA_DS_GetTxFlowMask
 );
 
 /*==========================================================================
+   FUNCTION    WDA_DS_GetAvailableResCount
+
+  DESCRIPTION
+  It returns Available resource count for appropriate Pool Type
+
+  DEPENDENCIES
+
+  PARAMETERS
+
+   IN
+    pvosGCtx          vos context
+    wdiResPool       Pool Type
+
+  RETURN VALUE
+    Available resource count
+
+============================================================================*/
+uint32
+WDA_DS_GetAvailableResCount
+(
+  v_PVOID_t pvosGCtx,
+  WDI_ResPoolType wdiResPool
+);
+
+
+/*==========================================================================
    FUNCTION    WDA_HALDumpCmdReq
 
   DESCRIPTION
@@ -1907,11 +1942,12 @@ WDA_DS_GetTxFlowMask
 
    IN
     pMac             MAC global pointer
-    cmd               Hal dump command
-    arg1              Dump command argument 1
-    arg2              Dump command argument 2
-    arg3              Dump command argument 3
-    arg4              Dump command argument 4
+    cmd              Hal dump command
+    arg1             Dump command argument 1
+    arg2             Dump command argument 2
+    arg3             Dump command argument 3
+    arg4             Dump command argument 4
+    async            Asynchronous event. Doesn't wait for rsp.
 
    OUT
        pBuffer          Dump command Response buffer
@@ -1925,7 +1961,7 @@ WDA_DS_GetTxFlowMask
 ============================================================================*/
 VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac,tANI_U32 cmd, 
                  tANI_U32   arg1, tANI_U32   arg2, tANI_U32   arg3,
-                 tANI_U32   arg4, tANI_U8   *pBuffer);
+                 tANI_U32   arg4, tANI_U8   *pBuffer, wpt_boolean async);
 
 /*==========================================================================
    FUNCTION    WDA_featureCapsExchange

@@ -121,16 +121,24 @@ int __iw_get_oem_data_rsp(
     eHalStatus                            status;
     struct iw_oem_data_rsp*               pHddOemDataRsp;
     tOemDataRsp*                          pSmeOemDataRsp;
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
 
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
-
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    pAdapter = (netdev_priv(dev));
+    if (NULL == pAdapter)
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                                  "%s:LOGP in Progress. Ignore!!!",__func__);
-       return -EBUSY;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter is NULL",__func__);
+        return -EINVAL;
     }
-
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    rc = wlan_hdd_validate_context(pHddCtx);
+    if (0 != rc)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return rc;
+    }
     do
     {
         //get the oem data response from sme
@@ -201,17 +209,33 @@ int __iw_set_oem_data_req(
     eHalStatus status = eHAL_STATUS_SUCCESS;
     struct iw_oem_data_req *pOemDataReq = NULL;
     tOemDataReqConfig oemDataReqConfig;
-
     tANI_U32 oemDataReqID = 0;
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+    hdd_wext_state_t *pwextBuf;
 
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
-    hdd_wext_state_t *pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    pAdapter = (netdev_priv(dev));
+    if (NULL == pAdapter)
     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                                  "%s:LOGP in Progress. Ignore!!!",__func__);
-       return -EBUSY;
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Adapter is NULL",__func__);
+       return -EINVAL;
+    }
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    rc = wlan_hdd_validate_context(pHddCtx);
+    if (0 != rc)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid",__func__);
+        return rc;
+    }
+
+    pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    if (NULL == pwextBuf)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: pwextBuf is NULL",__func__);
+        return -EINVAL;
     }
 
     do

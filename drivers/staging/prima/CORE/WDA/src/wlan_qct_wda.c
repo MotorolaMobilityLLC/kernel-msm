@@ -11569,7 +11569,7 @@ void WDA_HALDumpCmdCallback(WDI_HALDumpCmdRspParamsType *wdiRspParams,
 {
    tANI_U8 *buffer = NULL;
    tWDA_CbContext *pWDA = NULL;
-   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_HalDumpReqParams *pWdaParams = (tWDA_HalDumpReqParams *)pUserData;
    if(NULL == pWdaParams)
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11585,11 +11585,13 @@ void WDA_HALDumpCmdCallback(WDI_HALDumpCmdRspParamsType *wdiRspParams,
       /*Copy the Resp data to UMAC supplied buffer*/
       vos_mem_copy(buffer, wdiRspParams->pBuffer, wdiRspParams->usBufferLen);
    }
+
+   if (!pWdaParams->wdaHALDumpAsync)
+   {/* Indicate VOSS about the start complete */
+      vos_WDAComplete_cback(pWDA->pVosContext);
+   }
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams);
-   
-   /* Indicate VOSS about the start complete */
-   vos_WDAComplete_cback(pWDA->pVosContext);
    return ;
 }
 
@@ -11599,12 +11601,13 @@ void WDA_HALDumpCmdCallback(WDI_HALDumpCmdRspParamsType *wdiRspParams,
  */ 
 VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd, 
                  tANI_U32   arg1, tANI_U32   arg2, tANI_U32   arg3,
-                 tANI_U32   arg4, tANI_U8   *pBuffer)
+                 tANI_U32   arg4, tANI_U8   *pBuffer, wpt_boolean async)
 {
    WDI_Status             status = WDI_STATUS_SUCCESS;
    WDI_HALDumpCmdReqParamsType *wdiHALDumpCmdReqParam = NULL;
    WDI_HALDumpCmdReqInfoType *wdiHalDumpCmdInfo = NULL ;
-   tWDA_ReqParams *pWdaParams ;
+   tWDA_HalDumpReqParams *pWdaParams ;
+
    pVosContextType pVosContext = NULL; 
    VOS_STATUS vStatus;
    pVosContext = (pVosContextType)vos_get_global_context(VOS_MODULE_ID_PE,
@@ -11625,7 +11628,13 @@ VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd,
       return VOS_STATUS_E_RESOURCES;
    }
 
-   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if (NULL == pVosContext->pWDAContext)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: WDA Context Null", __func__);
+      return VOS_STATUS_E_RESOURCES;
+   }
+   pWdaParams = (tWDA_HalDumpReqParams *)vos_mem_malloc(sizeof(tWDA_HalDumpReqParams)) ;
    if(NULL == pWdaParams)
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11651,6 +11660,7 @@ VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd,
    wdiHalDumpCmdInfo->argument4   = arg4;
    wdiHALDumpCmdReqParam->wdiReqStatusCB = NULL ;
    pWdaParams->pWdaContext = pVosContext->pWDAContext;
+   pWdaParams->wdaHALDumpAsync = async;
    
    /*  Response message will be passed through the buffer */
    pWdaParams->wdaMsgParam = (void *)pBuffer;
@@ -11658,21 +11668,27 @@ VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd,
    /* store Params pass it to WDI */
    pWdaParams->wdaWdiApiMsgParam = (void *)wdiHALDumpCmdReqParam ;
    /* Send command to WDI */
-   status = WDI_HALDumpCmdReq(wdiHALDumpCmdReqParam, WDA_HALDumpCmdCallback, pWdaParams);
-   vStatus = vos_wait_single_event( &(pVosContext->wdaCompleteEvent), WDA_DUMPCMD_WAIT_TIMEOUT );
-   if ( vStatus != VOS_STATUS_SUCCESS )
+   status = WDI_HALDumpCmdReq(wdiHALDumpCmdReqParam, WDA_HALDumpCmdCallback,
+                                                                   pWdaParams);
+   /* For Sync event only wait for rsp until completion of wdaCompleteEvent*/
+   if (!async)
    {
-      if ( vStatus == VOS_STATUS_E_TIMEOUT )
+      vStatus = vos_wait_single_event( &(pVosContext->wdaCompleteEvent),
+                                                   WDA_DUMPCMD_WAIT_TIMEOUT );
+      if ( vStatus != VOS_STATUS_SUCCESS )
       {
-         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: Timeout occurred before WDA_HALDUMP complete",__func__);
+         if ( vStatus == VOS_STATUS_E_TIMEOUT )
+         {
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+            "%s: Timeout occurred before WDA_HALDUMP complete",__func__);
+         }
+         else
+         {
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+            "%s: WDA_HALDUMP reporting  other error",__func__);
+         }
+         VOS_ASSERT(0);
       }
-      else
-      {
-         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: WDA_HALDUMP reporting  other error",__func__);
-      }
-      VOS_ASSERT(0);
    }
    return status;
 }
