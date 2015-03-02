@@ -307,7 +307,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	size_t		size = 0;
 	struct usb_ep	*out;
 	unsigned long	flags;
-	unsigned short reserve_headroom;
+	unsigned short reserve_headroom = 0;
 
 	spin_lock_irqsave(&dev->lock, flags);
 	if (dev->port_usb)
@@ -346,9 +346,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	spin_unlock_irqrestore(&dev->lock, flags);
 
 	if (dev->rx_needed_headroom)
-		reserve_headroom = dev->rx_needed_headroom;
-	else
-		reserve_headroom = NET_IP_ALIGN;
+		reserve_headroom = ALIGN(dev->rx_needed_headroom, 4);
 
 	pr_debug("%s: size: %zu + %d(hr)", __func__, size, reserve_headroom);
 
@@ -462,7 +460,7 @@ clean:
 	}
 
 	if (queue)
-		queue_work_on(0, uether_wq, &dev->rx_work);
+		queue_work(uether_wq, &dev->rx_work);
 }
 
 static int prealloc(struct list_head *list,
@@ -2003,7 +2001,7 @@ static void uether_debugfs_exit(struct eth_dev *dev)
 
 static int __init gether_init(void)
 {
-	uether_wq = alloc_workqueue("uether", WQ_CPU_INTENSIVE, 1);
+	uether_wq  = create_singlethread_workqueue("uether");
 	if (!uether_wq) {
 		pr_err("%s: Unable to create workqueue: uether\n", __func__);
 		return -ENOMEM;

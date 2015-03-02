@@ -575,11 +575,19 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	}
 
 	/*
-	 * Enable DSI clocks.
-	 * This is also enable the DSI core power block and reset/setup
-	 * DSI phy
+	 * Enable DSI bus clocks prior to resetting and initializing DSI
+	 * Phy. Phy and ctrl setup need to be done before enabling the link
+	 * clocks.
 	 */
-	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_BUS_CLKS, 1);
+	if (!pdata->panel_info.ulps_suspend_enabled) {
+		mdss_dsi_phy_sw_reset(ctrl_pdata);
+		mdss_dsi_phy_init(ctrl_pdata);
+		mdss_dsi_ctrl_setup(ctrl_pdata);
+	}
+
+	/* DSI link clocks need to be on prior to ctrl sw reset */
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
 	mdss_dsi_sw_reset(ctrl_pdata, true);
 
 	/*
@@ -1180,6 +1188,28 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
+static int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	int rc = 0;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+							panel_data);
+	rc = mdss_dsi_clk_div_config(&pdata->panel_info,
+			pdata->panel_info.mipi.frame_rate);
+	if (rc) {
+		pr_err("%s: unable to initialize the clk dividers\n",
+								__func__);
+		return rc;
+	}
+	ctrl_pdata->refresh_clk_rate = false;
+	ctrl_pdata->pclk_rate = pdata->panel_info.mipi.dsi_pclk_rate;
+	ctrl_pdata->byte_clk_rate = pdata->panel_info.clk_rate / 8;
+	pr_debug("%s ctrl_pdata->byte_clk_rate=%d ctrl_pdata->pclk_rate=%d\n",
+		__func__, ctrl_pdata->byte_clk_rate, ctrl_pdata->pclk_rate);
+	return rc;
+}
+
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
 {
@@ -1198,12 +1228,19 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	MDSS_XLOG(event, arg, ctrl_pdata->ndx, 0x3333);
 
 	switch (event) {
+	case MDSS_EVENT_CHECK_PARAMS:
+		pr_debug("%s:Entered Case MDSS_EVENT_CHECK_PARAMS\n", __func__);
+		ctrl_pdata->refresh_clk_rate = true;
+		break;
 	case MDSS_EVENT_LINK_READY:
 		rc = mdss_dsi_on(pdata);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
 							pdata);
 		break;
 	case MDSS_EVENT_UNBLANK:
+		if (ctrl_pdata->refresh_clk_rate)
+			rc = mdss_dsi_clk_refresh(pdata);
+
 		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE)
 			rc = mdss_dsi_unblank(pdata);
 		break;
@@ -1211,6 +1248,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
+		pdata->panel_info.esd_rdy = true;
 		break;
 	case MDSS_EVENT_BLANK:
 		power_state = (int) (unsigned long) arg;
@@ -1219,6 +1257,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_PANEL_OFF:
 		power_state = (int) (unsigned long) arg;
+		pdata->panel_info.esd_rdy = false;
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->off_cmds.link_state == DSI_LP_MODE)
 			rc = mdss_dsi_blank(pdata, power_state);
@@ -1926,6 +1965,9 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		mdss_debug_register_io("dsi1_phy", &ctrl_pdata->phy_io);
 		ctrl_pdata->ndx = 1;
 	}
+
+	panel_debug_register_base("panel",
+		ctrl_pdata->ctrl_base, ctrl_pdata->reg_size);
 
 	pr_debug("%s: Panel data initialized\n", __func__);
 	return 0;

@@ -560,7 +560,7 @@ static void qcrypto_bw_reaper_work(struct work_struct *work)
 		/* check if engine is stuck */
 		if (pengine->req) {
 			if (pengine->check_flag)
-				dev_err(&pengine->pdev->dev,
+				dev_warn(&pengine->pdev->dev,
 				"The engine appears to be stuck seq %d req %p.\n",
 				active_seq, pengine->req);
 			pengine->check_flag = false;
@@ -1993,6 +1993,12 @@ again:
 	}
 
 	backlog_eng = crypto_get_backlog(&pengine->req_queue);
+
+	/* make sure it is in high bandwidth state */
+	if (pengine->bw_state != BUS_HAS_BANDWIDTH) {
+		spin_unlock_irqrestore(&cp->lock, flags);
+		return 0;
+	}
 
 	/* try to get request from request queue of the engine first */
 	async_req = crypto_dequeue_request(&pengine->req_queue);
@@ -4894,10 +4900,11 @@ err:
 
 static int _qcrypto_engine_in_use(struct crypto_engine *pengine)
 {
-	if (pengine->req || pengine->req_queue.qlen)
+	struct crypto_priv *cp = pengine->pcp;
+
+	if (pengine->req || pengine->req_queue.qlen || cp->req_queue.qlen)
 		return 1;
-	else
-		return 0;
+	return 0;
 }
 
 static void _qcrypto_do_suspending(struct crypto_engine *pengine)

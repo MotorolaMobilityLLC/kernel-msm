@@ -2026,6 +2026,7 @@ void reset_all_window_stats(u64 window_start, unsigned int window_size)
 	u64 start_ts = sched_clock();
 	int reason = WINDOW_CHANGE;
 	unsigned int old = 0, new = 0;
+	unsigned int old_window_size = sched_ravg_window;
 
 	disable_window_stats();
 
@@ -2048,8 +2049,13 @@ void reset_all_window_stats(u64 window_start, unsigned int window_size)
 	for_each_possible_cpu(cpu) {
 		struct rq *rq = cpu_rq(cpu);
 
-		if (window_start)
+		if (window_start) {
+			u32 mostly_idle_load = rq->mostly_idle_load;
+
 			rq->window_start = window_start;
+			rq->mostly_idle_load = div64_u64((u64)mostly_idle_load *
+				 (u64)sched_ravg_window, (u64)old_window_size);
+		}
 #ifdef CONFIG_SCHED_FREQ_INPUT
 		rq->curr_runnable_sum = rq->prev_runnable_sum = 0;
 #endif
@@ -2429,18 +2435,24 @@ static int cpufreq_notifier_trans(struct notifier_block *nb,
 {
 	struct cpufreq_freqs *freq = (struct cpufreq_freqs *)data;
 	unsigned int cpu = freq->cpu, new_freq = freq->new;
-	struct rq *rq = cpu_rq(cpu);
 	unsigned long flags;
+	int i;
 
 	if (val != CPUFREQ_POSTCHANGE)
 		return 0;
 
 	BUG_ON(!new_freq);
 
-	raw_spin_lock_irqsave(&rq->lock, flags);
-	update_task_ravg(rq->curr, rq, TASK_UPDATE, sched_clock(), 0);
-	cpu_rq(cpu)->cur_freq = new_freq;
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
+	if (cpu_rq(cpu)->cur_freq == new_freq)
+		return 0;
+
+	for_each_cpu(i, &cpu_rq(cpu)->freq_domain_cpumask) {
+		struct rq *rq = cpu_rq(i);
+		raw_spin_lock_irqsave(&rq->lock, flags);
+		update_task_ravg(rq->curr, rq, TASK_UPDATE, sched_clock(), 0);
+		rq->cur_freq = new_freq;
+		raw_spin_unlock_irqrestore(&rq->lock, flags);
+	}
 
 	return 0;
 }
@@ -8984,6 +8996,9 @@ void __init sched_init(void)
 		rq->window_start = 0;
 		rq->nr_small_tasks = rq->nr_big_tasks = 0;
 		rq->hmp_flags = 0;
+		rq->mostly_idle_load = pct_to_real(20);
+		rq->mostly_idle_nr_run = 3;
+		rq->mostly_idle_freq = 0;
 #ifdef CONFIG_SCHED_FREQ_INPUT
 		rq->old_busy_time = 0;
 		rq->curr_runnable_sum = rq->prev_runnable_sum = 0;

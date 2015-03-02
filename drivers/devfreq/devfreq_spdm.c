@@ -1,5 +1,5 @@
 /*
-*Copyright (c) 2014, The Linux Foundation. All rights reserved.
+*Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
 *
 *This program is free software; you can redistribute it and/or modify
 *it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,7 @@
 #include <linux/device.h>
 #include <linux/devfreq.h>
 #include <linux/init.h>
+#include <linux/ipc_logging.h>
 #include <linux/gfp.h>
 #include <linux/list.h>
 #include <linux/module.h>
@@ -21,12 +22,21 @@
 #include <linux/msm-bus.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
-#include <soc/qcom/hvc.h>
 
 #include "governor.h"
 #include "devfreq_spdm.h"
 
+static void *spdm_ipc_log_ctxt;
 #define DEVFREQ_SPDM_DEFAULT_WINDOW_MS 100
+#define SPDM_IPC_LOG_PAGES	5
+
+#define SPDM_IPC_LOG(x...)	do { \
+	pr_debug(x); \
+	if (spdm_ipc_log_ctxt) \
+		ipc_log_string(spdm_ipc_log_ctxt, x); \
+} while (0)
+
+#define COPY_SIZE(x, y) ((x) <= (y) ? (x) : (y))
 
 static int change_bw(struct device *dev, unsigned long *freq, u32 flags)
 {
@@ -34,8 +44,8 @@ static int change_bw(struct device *dev, unsigned long *freq, u32 flags)
 	int i;
 	int next_idx;
 	int ret = 0;
-	struct hvc_desc desc = { { 0 } };
-	int hvc_status = 0;
+	struct spdm_args desc = { { 0 } };
+	int ext_status = 0;
 
 	if (!dev || !freq)
 		return -EINVAL;
@@ -61,10 +71,10 @@ update_thresholds:
 	desc.arg[0] = SPDM_CMD_ENABLE;
 	desc.arg[1] = data->spdm_client;
 	desc.arg[2] = clk_get_rate(data->cci_clk);
-	hvc_status = hvc(HVC_FN_SIP(SPDM_HYP_FNID), &desc);
-	if (hvc_status)
-		pr_err("HVC command %u failed with error %u", (int)desc.arg[0],
-			hvc_status);
+	ext_status = spdm_ext_call(&desc, 3);
+	if (ext_status)
+		pr_err("External command %u failed with error %u",
+			(int)desc.arg[0], ext_status);
 	return ret;
 }
 
@@ -232,6 +242,56 @@ no_pdata:
 	return ret;
 }
 
+int __spdm_hyp_call(struct spdm_args *args, int num_args)
+{
+	struct hvc_desc desc = { { 0 } };
+	int status;
+
+	memcpy(desc.arg, args->arg,
+		COPY_SIZE(sizeof(desc.arg), sizeof(args->arg)));
+	SPDM_IPC_LOG("hvc call fn:0x%x, cmd:%llu, num_args:%d\n",
+		HVC_FN_SIP(SPDM_HYP_FNID), desc.arg[0], num_args);
+
+	status = hvc(HVC_FN_SIP(SPDM_HYP_FNID), &desc);
+
+	memcpy(args->ret, desc.ret,
+		COPY_SIZE(sizeof(args->ret), sizeof(desc.ret)));
+	SPDM_IPC_LOG("hvc return fn:0x%x cmd:%llu Ret[0]:%llu Ret[1]:%llu\n",
+			HVC_FN_SIP(SPDM_HYP_FNID), desc.arg[0],
+			desc.ret[0], desc.ret[1]);
+	return status;
+}
+
+int __spdm_scm_call(struct spdm_args *args, int num_args)
+{
+	int status = 0;
+
+	SPDM_IPC_LOG("%s:svc_id:%d,cmd_id:%d,cmd:%llu,num_args:%d\n",
+		__func__, SPDM_SCM_SVC_ID, SPDM_SCM_CMD_ID,
+		args->arg[0], num_args);
+
+	if (!is_scm_armv8()) {
+		status = scm_call(SPDM_SCM_SVC_ID, SPDM_SCM_CMD_ID, args->arg,
+				sizeof(args->arg), args->ret,
+				sizeof(args->ret));
+	} else {
+		struct scm_desc desc = {0};
+		desc.arginfo = SCM_ARGS(num_args);
+		memcpy(desc.args, args->arg,
+			COPY_SIZE(sizeof(desc.args), sizeof(args->arg)));
+
+		status = scm_call2(SCM_SIP_FNID(SPDM_SCM_SVC_ID,
+				SPDM_SCM_CMD_ID), &desc);
+
+		memcpy(args->ret, desc.ret,
+			COPY_SIZE(sizeof(args->ret), sizeof(desc.ret)));
+	}
+	SPDM_IPC_LOG("%s:svc_id:%d,cmd_id:%d,cmd:%llu,Ret[0]:%llu,Ret[1]:%llu\n"
+		, __func__, SPDM_SCM_SVC_ID, SPDM_SCM_CMD_ID, args->arg[0],
+		args->ret[0], args->ret[1]);
+	return status;
+}
+
 static int probe(struct platform_device *pdev)
 {
 	struct spdm_data *data = 0;
@@ -280,6 +340,14 @@ static int probe(struct platform_device *pdev)
 	}
 
 	spdm_init_debugfs(&pdev->dev);
+	spdm_ipc_log_ctxt = ipc_log_context_create(SPDM_IPC_LOG_PAGES,
+							"devfreq_spdm", 0);
+
+	if (IS_ERR_OR_NULL(spdm_ipc_log_ctxt)) {
+		pr_err("%s: Failed to create IPC log context\n", __func__);
+		spdm_ipc_log_ctxt = NULL;
+	}
+
 
 	return 0;
 
@@ -314,6 +382,9 @@ static int remove(struct platform_device *pdev)
 		devm_kfree(&pdev->dev, data->config_data.ports);
 
 	devm_kfree(&pdev->dev, data);
+
+	if (spdm_ipc_log_ctxt)
+		ipc_log_context_destroy(spdm_ipc_log_ctxt);
 
 	return 0;
 }

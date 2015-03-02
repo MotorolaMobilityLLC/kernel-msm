@@ -26,7 +26,7 @@
 
 static struct dsi_clk_desc dsi_pclk;
 
-static void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl)
+void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	u32 ctrl_rev;
 	if (ctrl == NULL) {
@@ -341,7 +341,7 @@ static void mdss_dsi_20nm_phy_init(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 }
 
-static void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
+void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	u32 ctrl_rev;
 
@@ -572,6 +572,10 @@ struct dsiphy_pll_divider_config pll_divider_config;
 int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 			    int frame_rate)
 {
+	struct mdss_panel_data *pdata  = container_of(panel_info,
+			struct mdss_panel_data, panel_info);
+	struct  mdss_dsi_ctrl_pdata *ctrl_pdata = container_of(pdata,
+			struct mdss_dsi_ctrl_pdata, panel_data);
 	u32 fb_divider, rate, vco;
 	u32 div_ratio = 0;
 	u32 pll_analog_posDiv = 1;
@@ -607,7 +611,7 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 	h_period = mdss_panel_get_htotal(panel_info, true);
 	v_period = mdss_panel_get_vtotal(panel_info);
 
-	if ((frame_rate !=
+	if (ctrl_pdata->refresh_clk_rate || (frame_rate !=
 	     panel_info->mipi.frame_rate) ||
 	    (!panel_info->clk_rate)) {
 		h_period += panel_info->lcdc.xres_pad;
@@ -1221,20 +1225,10 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		}
 
 		/*
-		 * Phy software reset should not be done for:
-		 * 1.) Idle screen power collapse use-case. Issue a phy software
-		 *     reset only when unblanking the panel in this case.
-		 * 2.) When ULPS during suspend is enabled.
+		 * Phy and controller setup is needed if coming out of idle
+		 * power collapse with clamps enabled.
 		 */
-		if (pdata->panel_info.blank_state == MDSS_PANEL_BLANK_BLANK &&
-			!pdata->panel_info.ulps_suspend_enabled)
-			mdss_dsi_phy_sw_reset(ctrl);
-
-		/*
-		 * Phy and controller setup need not be done during bootup
-		 * when continuous splash screen is enabled.
-		 */
-		if (!pdata->panel_info.cont_splash_enabled) {
+		if (ctrl->mmss_clamp) {
 			mdss_dsi_phy_init(ctrl);
 			mdss_dsi_ctrl_setup(ctrl);
 		}

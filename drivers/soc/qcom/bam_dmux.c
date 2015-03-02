@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -528,6 +528,8 @@ static void bam_mux_process_data(struct sk_buff *rx_skb)
 	struct bam_mux_hdr *rx_hdr;
 	unsigned long event_data;
 	uint8_t ch_id;
+	void (*notify)(void *, int, unsigned long);
+	void *priv;
 
 	rx_hdr = (struct bam_mux_hdr *)rx_skb->data;
 	ch_id = rx_hdr->ch_id;
@@ -540,15 +542,19 @@ static void bam_mux_process_data(struct sk_buff *rx_skb)
 	rx_skb->truesize = rx_hdr->pkt_len + sizeof(struct sk_buff);
 
 	event_data = (unsigned long)(rx_skb);
+	notify = NULL;
+	priv = NULL;
 
 	spin_lock_irqsave(&bam_ch[ch_id].lock, flags);
-	if (bam_ch[ch_id].notify)
-		bam_ch[ch_id].notify(
-			bam_ch[ch_id].priv, BAM_DMUX_RECEIVE,
-							event_data);
+	if (bam_ch[ch_id].notify) {
+		notify = bam_ch[ch_id].notify;
+		priv = bam_ch[ch_id].priv;
+	}
+	spin_unlock_irqrestore(&bam_ch[ch_id].lock, flags);
+	if (notify)
+		notify(priv, BAM_DMUX_RECEIVE, event_data);
 	else
 		dev_kfree_skb_any(rx_skb);
-	spin_unlock_irqrestore(&bam_ch[ch_id].lock, flags);
 
 	queue_rx();
 }
@@ -2277,7 +2283,7 @@ static int bam_init(void)
 	a2_props.virt_addr = a2_virt_addr;
 	a2_props.virt_size = a2_phys_size;
 	a2_props.irq = a2_bam_irq;
-	a2_props.options = SPS_BAM_OPT_IRQ_WAKEUP;
+	a2_props.options = SPS_BAM_OPT_IRQ_WAKEUP | SPS_BAM_ATMC_MEM;
 	a2_props.num_pipes = A2_NUM_PIPES;
 	a2_props.summing_threshold = A2_SUMMING_THRESHOLD;
 	a2_props.constrained_logging = true;

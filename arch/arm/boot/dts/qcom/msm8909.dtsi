@@ -12,13 +12,15 @@
 
 #include "skeleton64.dtsi"
 #include <dt-bindings/clock/msm-clocks-8909.h>
+#include <dt-bindings/clock/msm-clocks-a7.h>
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909";
 	compatible = "qcom,msm8909";
 	qcom,msm-id =	<245 0>,
 			<258 0>,
-			<265 0>;
+			<265 0>,
+			<275 0>;
 	interrupt-parent = <&intc>;
 
 	chosen {
@@ -157,7 +159,8 @@
 
 	restart@4ab000 {
 		compatible = "qcom,pshold";
-		reg = <0x4ab000 0x4>;
+		reg =	<0x4ab000 0x4>,
+			<0x193d100 0x4>;
 	};
 
 	timer {
@@ -262,7 +265,7 @@
 		#clock-cells = <1>;
 	};
 
-	qcom,clock-a7@0b011050 {
+	clock_cpu: qcom,clock-a7@0b011050 {
 		compatible = "qcom,clock-a53-8916";
 		reg = <0x0b011050 0x8>,
 		      <0x0005c00c 0x8>;
@@ -283,6 +286,7 @@
 			<  400000000 4>,
 			<  800000000 5>,
 			< 1094400000 7>;
+		#clock-cells = <1>;
 	};
 
 	cpubw: qcom,cpubw {
@@ -317,9 +321,15 @@
 		qcom,target-dev = <&cpubw>;
 	};
 
-	qcom,msm-cpufreq@0 {
+	qcom,msm-cpufreq {
 		reg = <0 4>;
 		compatible = "qcom,msm-cpufreq";
+		clocks = <&clock_cpu  clk_a7ssmux>,
+			 <&clock_cpu  clk_a7ssmux>,
+			 <&clock_cpu  clk_a7ssmux>,
+			 <&clock_cpu  clk_a7ssmux>;
+		clock-names = "cpu0_clk", "cpu1_clk",
+				"cpu2_clk", "cpu3_clk";
 		qcom,cpufreq-table =
 			 <  200000 >,
 			 <  400000 >,
@@ -813,7 +823,7 @@
 		compatible = "qcom,android-usb";
 		reg = <0x086000c8 0xc8>;
 		qcom,pm-qos-latency = <2 1001 12701>;
-		qcom,streaming-func = "mtp";
+		qcom,streaming-func = "rndis","mtp";
 	};
 
 	qcom,usbbam@78c4000 {

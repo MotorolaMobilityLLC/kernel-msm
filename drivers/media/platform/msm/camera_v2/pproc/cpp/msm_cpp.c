@@ -769,14 +769,16 @@ void msm_cpp_do_tasklet(unsigned long data)
 			if (tx_fifo[i] == MSM_CPP_MSG_ID_CMD) {
 				cmd_len = tx_fifo[i+1];
 				msg_id = tx_fifo[i+2];
-				if (msg_id == MSM_CPP_MSG_ID_FRAME_ACK) {
+				if ((msg_id == MSM_CPP_MSG_ID_FRAME_ACK)
+					&& (atomic_read(&cpp_timer.used))) {
 					CPP_DBG("Frame done!!\n");
-					/* delete CPP timer */
 					CPP_DBG("delete timer.\n");
+					/* delete CPP timer */
 					msm_cpp_clear_timer(cpp_dev);
 					msm_cpp_notify_frame_done(cpp_dev);
-				} else if (msg_id ==
-					MSM_CPP_MSG_ID_FRAME_NACK) {
+				} else if ((msg_id ==
+					MSM_CPP_MSG_ID_FRAME_NACK)
+					&& (atomic_read(&cpp_timer.used))) {
 					pr_err("NACK error from hw!!\n");
 					CPP_DBG("delete timer.\n");
 					msm_cpp_clear_timer(cpp_dev);
@@ -1406,7 +1408,13 @@ static void msm_cpp_do_timeout_work(struct work_struct *work)
 
 	disable_irq(cpp_timer.data.cpp_dev->irq->start);
 	pr_err("Reloading firmware\n");
-	cpp_load_fw(cpp_timer.data.cpp_dev, NULL);
+	if (!atomic_read(&cpp_timer.used)) {
+		pr_err("Delayed trigger, IRQ serviced\n");
+		return;
+	}
+	atomic_set(&cpp_timer.used, 0);
+	cpp_load_fw(cpp_timer.data.cpp_dev,
+		cpp_timer.data.cpp_dev->fw_name_bin);
 	pr_err("Firmware loading done\n");
 	enable_irq(cpp_timer.data.cpp_dev->irq->start);
 	msm_camera_io_w_mb(0x8, cpp_timer.data.cpp_dev->base +
@@ -1414,11 +1422,6 @@ static void msm_cpp_do_timeout_work(struct work_struct *work)
 	msm_camera_io_w_mb(0xFFFF,
 		cpp_timer.data.cpp_dev->base +
 		MSM_CPP_MICRO_IRQGEN_CLR);
-
-	if (!atomic_read(&cpp_timer.used)) {
-		pr_err("Delayed trigger, IRQ serviced\n");
-		return;
-	}
 
 	if (cpp_timer.data.cpp_dev->timeout_trial_cnt >=
 		MSM_CPP_MAX_TIMEOUT_TRIAL) {
@@ -1428,12 +1431,8 @@ static void msm_cpp_do_timeout_work(struct work_struct *work)
 		return;
 	}
 
-	if (!atomic_read(&cpp_timer.used)) {
-		pr_err("Delayed trigger, IRQ serviced\n");
-		return;
-	}
-
 	this_frame = cpp_timer.data.processed_frame;
+	atomic_set(&cpp_timer.used, 1);
 	pr_err("Starting timer to fire in %d ms. (jiffies=%lu)\n",
 		CPP_CMD_TIMEOUT_MS, jiffies);
 	ret = mod_timer(&cpp_timer.cpp_timer,
@@ -1441,10 +1440,6 @@ static void msm_cpp_do_timeout_work(struct work_struct *work)
 	if (ret)
 		pr_err("error in mod_timer\n");
 
-	if (!atomic_read(&cpp_timer.used)) {
-		pr_err("Delayed trigger, IRQ serviced\n");
-		return;
-	}
 
 	pr_err("Rescheduling for identity=0x%x, frame_id=%03d\n",
 		this_frame->identity, this_frame->frame_id);
@@ -1850,6 +1845,10 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr)
 {
 	int ret;
+	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
+		pr_err("Wrong ioctl_ptr %p\n", ioctl_ptr);
+		return -EINVAL;
+	}
 
 	/* For compat task, source ptr is in kernel space */
 	if (is_compat_task()) {
@@ -1917,7 +1916,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				cpp_dev->fw_name_bin = NULL;
 			}
 			if ((ioctl_ptr->len == 0) ||
-				(ioctl_ptr->len > MSM_CPP_MAX_FW_NAME_LEN)) {
+				(ioctl_ptr->len >= MSM_CPP_MAX_FW_NAME_LEN)) {
 				pr_err("ioctl_ptr->len is 0\n");
 				mutex_unlock(&cpp_dev->mutex);
 				return -EINVAL;
@@ -1933,6 +1932,7 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			if (ioctl_ptr->ioctl_ptr == NULL) {
 				pr_err("ioctl_ptr->ioctl_ptr=NULL\n");
 				mutex_unlock(&cpp_dev->mutex);
+				kfree(cpp_dev->fw_name_bin);
 				return -EINVAL;
 			}
 			rc = (copy_from_user(cpp_dev->fw_name_bin,
@@ -2126,6 +2126,9 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				process_frame,
 				sizeof(struct msm_cpp_frame_info_t))) {
 					mutex_unlock(&cpp_dev->mutex);
+					kfree(process_frame->cpp_cmd_msg);
+					kfree(process_frame);
+					kfree(event_qcmd);
 					return -EINVAL;
 		}
 
@@ -2245,6 +2248,8 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_CPP_POP_STREAM_BUFFER: {
 		struct msm_buf_mngr_info buff_mgr_info;
 		struct msm_cpp_frame_info_t frame_info;
+		if (ioctl_ptr->ioctl_ptr == NULL)
+			rc = -EINVAL;
 		rc = (copy_from_user(&frame_info,
 			(void __user *)ioctl_ptr->ioctl_ptr,
 			sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
