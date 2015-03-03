@@ -37,7 +37,7 @@
 
 #define LM3631_FULL_STRINGS		(LMU_HVLED1 | LMU_HVLED2)
 #define LM3631_DEFAULT_MODE		LM3631_MODE_I2C
-#define LM3631_MAX_BRIGHTNESS		2047
+#define LM3631_MAX_BRIGHTNESS		255
 
 static int lm3631_bl_init(struct ti_lmu_bl_chip *chip)
 {
@@ -64,18 +64,11 @@ static int lm3631_bl_enable(struct ti_lmu_bl *lmu_bl, int enable)
 static int lm3631_bl_set_brightness(struct ti_lmu_bl *lmu_bl, int brightness)
 {
 	u8 data;
-	int ret;
 
 	if (lmu_bl->mode == BL_PWM_BASED)
 		return 0;
 
-	data = brightness & LM3631_BRT_LSB_MASK;
-	ret = ti_lmu_update_bits(lmu_bl->chip->lmu, LM3631_REG_BRT_LSB,
-				 LM3631_BRT_LSB_MASK, data);
-	if (ret)
-		return ret;
-
-	data = (brightness >> LM3631_BRT_MSB_SHIFT) & 0xFF;
+	data = brightness & 0xFF;
 	return ti_lmu_write_byte(lmu_bl->chip->lmu, LM3631_REG_BRT_MSB,
 				 data);
 }
