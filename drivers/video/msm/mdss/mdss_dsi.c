@@ -684,6 +684,43 @@ static int mdss_dsi_pinctrl_init(struct platform_device *pdev)
 	return 0;
 }
 
+static int mdss_dsi_pre_unblank(struct mdss_panel_data *pdata)
+{
+	int ret = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	pr_debug("%s+: ctrl=%p ndx=%d cur_blank_state=%d\n", __func__,
+		ctrl_pdata, ctrl_pdata->ndx, pdata->panel_info.blank_state);
+
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+
+	if (pdata->panel_info.blank_state == MDSS_PANEL_BLANK_LOW_POWER) {
+		pr_debug("%s: panel always on\n", __func__);
+		goto end;
+	}
+
+	if (!(ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) &&
+		!pdata->panel_info.dynamic_switch_pending) {
+		ret = ctrl_pdata->pre_on(pdata);
+		if (ret)
+			pr_err("%s: unable to pre-on the panel\n", __func__);
+	}
+
+end:
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+	pr_debug("%s-:\n", __func__);
+
+	return ret;
+}
+
 static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -1223,8 +1260,11 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 							pdata);
 		break;
 	case MDSS_EVENT_UNBLANK:
+		if (ctrl_pdata->pre_on_cmds.cmd_cnt &&
+			ctrl_pdata->pre_on_cmds.link_state == DSI_LP_MODE)
+			rc = mdss_dsi_pre_unblank(pdata);
 		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE)
-			rc = mdss_dsi_unblank(pdata);
+			rc |= mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_PANEL_ON:
 		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;

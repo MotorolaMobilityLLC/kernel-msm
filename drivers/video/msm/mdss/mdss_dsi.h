@@ -295,6 +295,7 @@ enum {
 
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
+	int (*pre_on)(struct mdss_panel_data *pdata);
 	int (*on) (struct mdss_panel_data *pdata);
 	int (*off) (struct mdss_panel_data *pdata);
 	int (*low_power_config) (struct mdss_panel_data *pdata, int enable);
@@ -362,6 +363,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_hw *dsi_hw;
 	struct mdss_intf_recovery *recovery;
 
+	struct dsi_panel_cmds pre_on_cmds;
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
 	struct dsi_panel_cmds status_cmds;
