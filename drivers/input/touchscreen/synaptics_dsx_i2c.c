@@ -3124,7 +3124,7 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	regs = find_function(SYNAPTICS_RMI4_F01 | CTRL_TYPE);
 	if (unlikely(regs == NULL)) {
 		dev_info(&rmi4_data->i2c_client->dev,
-			"%s: no patchsets for F01\n", __func__);
+			"%s: F01 registers not defined\n", __func__);
 		return;
 	}
 
@@ -3134,7 +3134,7 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	reg = find_packet_reg(regs, 0);
 	if (unlikely(reg == NULL)) {
 		dev_warn(&rmi4_data->i2c_client->dev,
-			"%s: F01 has no patches for F01_RMI_Ctrl0\n",
+			"%s: F01_RMI_Ctrl0 not defined\n",
 			__func__);
 		return;
 	}
@@ -3226,13 +3226,13 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	reg = find_packet_reg(regs, 9);
 	if (unlikely(reg == NULL)) {
 		dev_warn(&rmi4_data->i2c_client->dev,
-			"%s: has no F01_RMI_Ctrl9 patch\n", __func__);
+			"%s: F01_RMI_Ctrl9 not present\n", __func__);
 		return;
 	}
 
 	if (regs && reg) {
 		if (has_recalibration == false || can_access_ctrl9 == false) {
-			pr_debug("no F01_RMI_Ctrl9; disabling patch\n");
+			pr_debug("remove F01_RMI_Ctrl9\n");
 			simple_deinit_packet_reg(reg);
 			return;
 		}
@@ -4124,18 +4124,23 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
 	struct fb_event *evdata = data;
-	int *blank;
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
-	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
-		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
-			queue_work(system_wq, &rmi4_data->resume_work);
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			/* ensure no work left in queue */
-			cancel_work_sync(&rmi4_data->resume_work);
-			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+	if ((event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK) &&
+			evdata && evdata->data && rmi4_data) {
+		int *blank = evdata->data;
+		/* entering suspend upon early blank event */
+		/* to ensure shared power supply is still on */
+		/* for in-cell design touch solutions */
+		if (event == FB_EARLY_EVENT_BLANK) {
+			if (*blank != FB_BLANK_POWERDOWN)
+				return 0;
+			synaptics_dsx_display_off(&rmi4_data->input_dev->dev);
+		} else if (*blank == FB_BLANK_UNBLANK ||
+			(*blank == FB_BLANK_VSYNC_SUSPEND &&
+			rmi4_data->touch_stopped)) {
+			synaptics_dsx_display_on(&rmi4_data->input_dev->dev);
 		}
 	}
 
