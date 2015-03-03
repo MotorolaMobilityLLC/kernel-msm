@@ -216,6 +216,7 @@ void cyttsp5_mt_lift_all(struct cyttsp5_mt_data *md)
 	report_sumsize_palm(md, 0, 0);
 #endif
 	if (md->num_prv_tch != 0) {
+		dev_info(md->dev, "%s\n", __func__);
 		cyttsp5_report_slot_liftoff(md, max);
 		input_sync(md->input);
 #ifdef TSP_BOOSTER
@@ -531,6 +532,12 @@ static int cyttsp5_xy_worker(struct cyttsp5_mt_data *md)
 		num_cur_tch = 0;
 
 	md->palm = tch.hdr[CY_TCH_LO] ? true : false;
+
+	/* When palm is detected, don't report touch event */
+	if (md->palm && num_cur_tch) {
+		dev_info(dev, "Palm gesture, ignore touch event[%d]\n", num_cur_tch);
+		num_cur_tch = 0;
+	}
 #endif
 
 	/* extract xy_data for all currently reported touches */
