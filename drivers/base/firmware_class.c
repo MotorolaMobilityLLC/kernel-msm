@@ -298,6 +298,8 @@ out:
 
 static DEVICE_ATTR(loading, 0644, firmware_loading_show, firmware_loading_store);
 
+#ifndef CONFIG_UML
+
 static int __firmware_data_rw(struct firmware_priv *fw_priv, char *buffer,
 				loff_t *offset, size_t count, int read)
 {
@@ -358,6 +360,8 @@ out:
 	mutex_unlock(&fw_lock);
 	return ret_count;
 }
+
+#endif
 
 static ssize_t firmware_data_read(struct file *filp, struct kobject *kobj,
 				  struct bin_attribute *bin_attr,
@@ -441,6 +445,8 @@ static int fw_realloc_buffer(struct firmware_priv *fw_priv, int min_size)
 	return 0;
 }
 
+#ifndef CONFIG_UML
+
 static ssize_t firmware_direct_write(struct file *filp, struct kobject *kobj,
 				   struct bin_attribute *bin_attr,
 				   char *buffer, loff_t offset, size_t count)
@@ -469,6 +475,8 @@ out:
 	mutex_unlock(&fw_lock);
 	return retval;
 }
+
+#endif
 
 /**
  * firmware_data_write - write method for firmware
@@ -538,8 +546,10 @@ static struct bin_attribute firmware_attr_data = {
 static struct bin_attribute firmware_direct_attr_data = {
 	.attr = { .name = "data", .mode = 0644 },
 	.size = 0,
+#ifndef CONFIG_UML
 	.read = firmware_direct_read,
 	.write = firmware_direct_write,
+#endif
 };
 
 static void firmware_class_timeout(u_long data)

@@ -14,7 +14,9 @@
 #include <linux/kernel_stat.h>
 #include <linux/radix-tree.h>
 #include <linux/bitmap.h>
+#ifndef CONFIG_UML
 #include <linux/wakeup_reason.h>
+#endif
 
 #include "internals.h"
 
@@ -317,10 +319,12 @@ int generic_handle_irq(unsigned int irq)
 	if (!desc)
 		return -EINVAL;
 
+#ifndef CONFIG_UML
 	if (unlikely(logging_wakeup_reasons_nosync()))
 		return log_possible_wakeup_reason(irq,
 				desc,
 				generic_handle_irq_desc);
+#endif
 
 	return generic_handle_irq_desc(irq, desc);
 }

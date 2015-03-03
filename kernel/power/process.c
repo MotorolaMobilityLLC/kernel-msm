@@ -78,8 +78,10 @@ static int try_to_freeze_tasks(bool user_only)
 			break;
 
 		if (pm_wakeup_pending()) {
+#ifndef CONFIG_UML
 			pm_get_active_wakeup_sources(suspend_abort,
 				MAX_SUSPEND_ABORT_LEN);
+#endif
 			log_suspend_abort_reason(suspend_abort);
 			wakeup = true;
 			break;
