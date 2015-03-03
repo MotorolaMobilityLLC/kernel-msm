@@ -385,6 +385,12 @@
 		interrupt-parent = <&msmgpio>;
 		interrupts = <31 0>;  /* TBD? */
 
+		/* These registers are set on every poweup */
+		maxim,regs-init-data = <
+			0x01 0xFF00 /* Valrt Threshold, IRQ disabled */
+			0x02 0x7F80 /* Talrt Threshold, IRQ disabled */
+		>;
+
 		maxim,enable_por_init;
 
 		/*
@@ -395,8 +401,8 @@
 		 */
 		maxim,configuration { /* Default to FW3L battery */
 			/* Required properties */
-			version		= /bits/ 16 <0x0001>;   /* MSB = 0x00, LSB is version */
-			config		= /bits/ 16 <0x6254>;	/* Tex = 0, Ss = Aen = TS = Ten = ETHRM = 1 */
+			version		= /bits/ 16 <0x0002>;   /* MSB = 0x00, LSB is version */
+			config		= /bits/ 16 <0x4254>;	/* TS = Tex = 0, Ss = Aen = Ten = ETHRM = 1 */
 			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
 			design_cap	= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
 			ichgt_term	= /bits/ 16 <0x0080>;	/* battery attribute */
@@ -428,8 +434,8 @@
 
 		maxim,configuration-FW3S {
 			/* Required properties */
-			version		= /bits/ 16 <0x0101>;   /* MSB = 0x01, LSB is version */
-			config		= /bits/ 16 <0x6254>;	/* Tex = 0, Ss = Aen = TS = Ten = ETHRM = 1 */
+			version		= /bits/ 16 <0x0102>;   /* MSB = 0x01, LSB is version */
+			config		= /bits/ 16 <0x4254>;	/* TS = Tex = 0, Ss = Aen = Ten = ETHRM = 1 */
 			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
 			design_cap	= /bits/ 16 <564>;	/* in 5uVh/Rsns = 0.5 mAh */
 			ichgt_term	= /bits/ 16 <0x0080>;	/* battery attribute */
@@ -461,8 +467,8 @@
 
 		maxim,configuration-FW3L {
 			/* Required properties */
-			version		= /bits/ 16 <0x0201>;   /* MSB = 0x02, LSB is version */
-			config		= /bits/ 16 <0x6254>;	/* Tex = 0, Ss = Aen = TS = Ten = ETHRM = 1 */
+			version		= /bits/ 16 <0x0202>;   /* MSB = 0x02, LSB is version */
+			config		= /bits/ 16 <0x4254>;	/* TS = Tex = 0, Ss = Aen = Ten = ETHRM = 1 */
 			full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
 			design_cap	= /bits/ 16 <776>;	/* in 5uVh/Rsns = 0.5 mAh */
 			ichgt_term	= /bits/ 16 <0x0080>;	/* battery attribute */
