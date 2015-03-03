@@ -25,10 +25,6 @@
 	qcom,board-id = <1 4>;
 };
 
-&smsc_hub {
-	status = "ok";
-};
-
 &mdss_fb0 {
 	/* cont_splash memory*/
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
