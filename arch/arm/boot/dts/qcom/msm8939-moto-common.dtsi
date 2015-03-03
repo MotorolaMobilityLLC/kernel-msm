@@ -112,6 +112,10 @@
 		mmi,allocation-type-smem;
 	};
 
+	msm-efuse {
+		compatible = "qcom,msm-efuse";
+	};
+
 	/delete-node/ regulator_spk;
 
 	qcom,msm-audio-ion {
