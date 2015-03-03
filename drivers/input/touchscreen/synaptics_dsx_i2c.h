@@ -456,6 +456,7 @@ struct synaptics_rmi4_packet_reg {
 struct synaptics_rmi4_func_packet_regs {
 	unsigned short f_number;
 	unsigned short base_addr;
+	unsigned short query_offset;
 	int nr_regs;
 	struct synaptics_rmi4_packet_reg *regs;
 };
