@@ -20,6 +20,7 @@ Required properties:
     0x36 is LM3633, LM3697
     0x63 is LM3695
   - ti,enable-gpio: GPIO number of hardware enable pin
+  - ti,switch-supply: name of the regulator to aquire and enable
 
 For the TI LMU backlight properties, please refer to:
 Documentation/devicetree/bindings/video/backlight/ti-lmu-backlight.txt
