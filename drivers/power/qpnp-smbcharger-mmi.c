@@ -2536,7 +2536,7 @@ static int smbchg_safety_timer_enable(struct smbchg_chip *chip, bool enable)
 	int rc;
 	u8 reg;
 
-	if (enable == chip->safety_timer_en)
+	if (!chip->safety_timer_en)
 		return 0;
 
 	if (enable)
@@ -4612,13 +4612,20 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 
 		for (i = 0; i < ARRAY_SIZE(chg_time); i++) {
 			if (chip->safety_time <= chg_time[i]) {
-				reg |= i << SAFETY_TIME_MINUTES_SHIFT;
+				if (chip->safety_time == 0)
+					reg |= (ARRAY_SIZE(chg_time) - 1)
+						<< SAFETY_TIME_MINUTES_SHIFT;
+				else
+					reg |= i << SAFETY_TIME_MINUTES_SHIFT;
 				break;
 			}
 		}
 		for (i = 0; i < ARRAY_SIZE(prechg_time); i++) {
 			if (chip->prechg_safety_time <= prechg_time[i]) {
-				reg |= i;
+				if (chip->prechg_safety_time == 0)
+					reg |= ARRAY_SIZE(prechg_time) - 1;
+				else
+					reg |= i;
 				break;
 			}
 		}
@@ -4634,7 +4641,12 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 				rc);
 			return rc;
 		}
-		chip->safety_timer_en = true;
+
+		if ((chip->safety_time == 0) &&
+		    (chip->prechg_safety_time == 0))
+			chip->safety_timer_en = false;
+		else
+			chip->safety_timer_en = true;
 	} else {
 		rc = smbchg_read(chip, &reg, chip->chgr_base + SFT_CFG, 1);
 		if (rc < 0)
