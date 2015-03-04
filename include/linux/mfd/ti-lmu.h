@@ -16,6 +16,7 @@
 
 #include <linux/gpio.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 
 #define LM3631_NUM_REGULATORS			5
 
@@ -129,6 +130,10 @@ struct ti_lmu_platform_data {
 
 	/* Regulators of LM3631 */
 	struct regulator_init_data *regulator_data[LM3631_NUM_REGULATORS];
+
+	/* MMI I2C swicth regulator parameters*/
+	const char *supply_name;
+	struct regulator *vreg;
 };
 
 /*
