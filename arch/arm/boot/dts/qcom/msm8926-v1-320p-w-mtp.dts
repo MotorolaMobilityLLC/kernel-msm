@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,24 +12,32 @@
 
 
 /dts-v1/;
-#include "msm8926-v2.dtsi"
-#include "msm8226-qseecom.dtsi"
-#include "msm8226-memory.dtsi"
-#include "msm8226-sharedmem.dtsi"
+#include "msm8926-v1.dtsi"
+#include "msm8926-w-memory.dtsi"
+#include "msm8226-w-qseecom.dtsi"
+#include "msm8926-w-sharedmem.dtsi"
 #include "msm8226-720p-mtp.dtsi"
-#include "msm8226-camera-sensor-mtp.dtsi"
+#include "msm8x26w-gpu.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. MSM 8926 MTP";
+	model = "Qualcomm Technologies, Inc. MSM 8926W MTP";
 	compatible = "qcom,msm8926-mtp", "qcom,msm8926", "qcom,mtp";
-	qcom,board-id = <8 0>;
+	qcom,board-id = <8 5>;
 };
 
-&smsc_hub {
-	status = "ok";
-	smsc,model-id = <3502>;
-	smsc,reset-gpio = <&msmgpio 114 0x00>;
-	smsc,int-gpio = <&msmgpio 9 0x00>;
-	smsc,xo-clk-gpio = <&msmgpio 8 0x00>;
-	hub-int-supply = <&pm8226_l6>;
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_auo_qvga_cmd>;
+};
+
+&dsi_auo_qvga_cmd {
+	qcom,cont-splash-enabled;
+};
+
+&pm8x26_rtc {
+	qcom,qpnp-rtc-write = <1>;
 };
