@@ -1778,7 +1778,8 @@ static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->poweron);
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+		atomic_read(&rmi4_data->touch_stopped) == 0);
 }
 
  /**
@@ -3779,8 +3780,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 
 	rmi4_data->current_page = MASK_8BIT;
 	rmi4_data->board = platform_data;
-	rmi4_data->touch_stopped = false;
 	rmi4_data->irq_enabled = false;
+	atomic_set(&rmi4_data->touch_stopped, 1);
 
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;
@@ -4004,7 +4005,7 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 		destroy_workqueue(exp_fn_ctrl.det_workqueue);
 	}
 
-	rmi4_data->touch_stopped = true;
+	atomic_set(&rmi4_data->touch_stopped, 1);
 	wake_up(&rmi4_data->wait);
 
 	synaptics_rmi4_irq_enable(rmi4_data, false);
@@ -4055,7 +4056,7 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 			synaptics_dsx_display_off(&rmi4_data->input_dev->dev);
 		} else if (*blank == FB_BLANK_UNBLANK ||
 			(*blank == FB_BLANK_VSYNC_SUSPEND &&
-			rmi4_data->touch_stopped)) {
+			atomic_read(&rmi4_data->touch_stopped))) {
 			synaptics_dsx_display_on(&rmi4_data->input_dev->dev);
 		}
 	}
@@ -4157,12 +4158,15 @@ static void synaptics_dsx_resumeinfo_touch(
  */
 static int synaptics_rmi4_suspend(struct device *dev)
 {
+	struct pinctrl *pinctrl;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
 
+	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 0, 1) == 1)
+		return 0;
+
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
-	rmi4_data->poweron = false;
 
 	if (rmi4_data->purge_enabled) {
 		int value = 1; /* set flag */
@@ -4170,24 +4174,20 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		pr_debug("touches purge is %s\n", value ? "ON" : "OFF");
 	}
 
-	if (!rmi4_data->touch_stopped) {
-		struct pinctrl *pinctrl;
+	/* use pinctrl to put touch RESET GPIO into SUSPEND state */
+	gpio_free(platform_data->reset_gpio);
+	pinctrl = devm_pinctrl_get_select_default(
+		&rmi4_data->i2c_client->dev);
+	if (IS_ERR(pinctrl))
+		dev_err(&rmi4_data->i2c_client->dev,
+			"pinctrl failed err %ld\n", PTR_ERR(pinctrl));
 
-		gpio_free(platform_data->reset_gpio);
-		pinctrl = devm_pinctrl_get_select_default(
-			&rmi4_data->i2c_client->dev);
-		if (IS_ERR(pinctrl))
-			dev_err(&rmi4_data->i2c_client->dev,
-				"pinctrl failed err %ld\n", PTR_ERR(pinctrl));
-
-		if (platform_data->regulator_en) {
-			regulator_disable(rmi4_data->regulator);
-			pr_debug("touch-vdd regulator is %s\n",
-				regulator_is_enabled(rmi4_data->regulator) ?
-				"on" : "off");
-		}
-
-		rmi4_data->touch_stopped = true;
+	/* if touch REGULATOR is available - turn it OFF */
+	if (platform_data->regulator_en) {
+		regulator_disable(rmi4_data->regulator);
+		pr_debug("touch-vdd regulator is %s\n",
+			regulator_is_enabled(rmi4_data->regulator) ?
+			"on" : "off");
 	}
 
 	return 0;
@@ -4205,56 +4205,59 @@ static int synaptics_rmi4_suspend(struct device *dev)
  */
 static int synaptics_rmi4_resume(struct device *dev)
 {
+	int retval;
+	bool hw_reset = true;
+	struct pinctrl *pinctrl;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	const struct synaptics_dsx_platform_data *platform_data =
+					rmi4_data->board;
+
+	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 1, 0) == 0)
+		return 0;
 
 	synaptics_dsx_resumeinfo_start(rmi4_data);
 
-	if (rmi4_data->touch_stopped) {
-		int retval;
-		bool wait4idle = false;
-		struct pinctrl *pinctrl;
-		const struct synaptics_dsx_platform_data *platform_data =
-						rmi4_data->board;
-
-		if (platform_data->regulator_en) {
-			int error = regulator_enable(rmi4_data->regulator);
-			if (error) {
-				pr_err("Error %d enabling touch-vdd"
-					" regulator\n", error);
-				return error;
-			}
-			pr_debug("touch-vdd regulator is %s\n",
-				regulator_is_enabled(rmi4_data->regulator) ?
-				"on" : "off");
+	/* if touch REGULATOR is avaialble - turn it ON */
+	if (platform_data->regulator_en) {
+		int error = regulator_enable(rmi4_data->regulator);
+		if (error) {
+			pr_err("Error %d enabling touch-vdd regulator\n",
+				error);
+			return error;
 		}
-
-		retval = gpio_get_value(platform_data->reset_gpio);
-		pr_debug("reset gpio state: %d\n", retval);
-		if (retval == 0)
-			wait4idle = true;
-
-		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
-			"active");
-		if (IS_ERR(pinctrl)) {
-			long int error = PTR_ERR(pinctrl);
-			dev_err(&rmi4_data->i2c_client->dev,
-				"pinctrl failed err %ld\n", error);
-		}
-
-		if (gpio_request(platform_data->reset_gpio,
-						RESET_GPIO_NAME) < 0)
-			pr_err("failed to request reset gpio\n");
-
-		gpio_direction_output(platform_data->reset_gpio, 1);
-
-		rmi4_data->touch_stopped = false;
-		synaptics_dsx_on_resume(rmi4_data);
-		retval = synaptics_dsx_ic_reset(rmi4_data, !wait4idle);
-		pr_debug("waited for idle %dms\n", retval);
+		pr_debug("touch-vdd regulator is %s\n",
+			regulator_is_enabled(rmi4_data->regulator) ?
+			"on" : "off");
 	}
 
+	/* if RESET GPIO is in SUSPEND state - no HW reset */
+	retval = gpio_get_value(platform_data->reset_gpio);
+	pr_debug("reset gpio state: %d\n", retval);
+	if (retval == 0)
+		hw_reset = false;
+
+	pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
+		"active");
+	if (IS_ERR(pinctrl)) {
+		long int error = PTR_ERR(pinctrl);
+		dev_err(&rmi4_data->i2c_client->dev,
+			"pinctrl failed err %ld\n", error);
+	}
+
+	if (gpio_request(platform_data->reset_gpio,
+					RESET_GPIO_NAME) < 0)
+		pr_err("failed to request reset gpio\n");
+
+	gpio_direction_output(platform_data->reset_gpio, 1);
+
+	synaptics_dsx_on_resume(rmi4_data);
+
+	/* perform HW reset if needed and wait for touch IC boot completion */
+	retval = synaptics_dsx_ic_reset(rmi4_data, hw_reset);
+	pr_debug("waited for idle %dms\n", retval);
+
+	/* read touch IC state */
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
-	rmi4_data->poweron = true;
 
 	if (rmi4_data->purge_enabled) {
 		int value = 0; /* clear flag */
