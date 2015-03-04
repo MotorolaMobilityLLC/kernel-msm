@@ -292,12 +292,11 @@ struct synaptics_rmi4_data {
 	int sensor_max_x;
 	int sensor_max_y;
 	bool irq_enabled;
-	bool touch_stopped;
+	atomic_t touch_stopped;
 	bool fingers_on_2d;
 	bool input_registered;
 	bool in_bootloader;
 	bool purge_enabled;
-	bool poweron;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
