@@ -77,18 +77,20 @@ int mmi_hall_unregister_notifier(struct notifier_block *nb,
 void mmi_hall_notify(unsigned long stype, int state)
 {
 	struct mmi_hall_data *mdata = motosh_misc_data->hall_data;
+	int stored;
 
 	if (!mdata) {
 		pr_debug("%s: notifier not initialized yet\n", __func__);
 		return;
 	}
 
+	stored = !!(mdata->state & (1 << stype));
 	mdata->state &= ~(1 << stype);
 	mdata->state |= state << stype;
 	pr_debug("%s: current state %d (0x%x)\n", __func__,
 				state, mdata->state);
 
-	if (mdata->enabled & (1 << stype)) {
+	if ((mdata->enabled & (1 << stype)) && stored != state) {
 		blocking_notifier_call_chain(&mdata->nhead[stype],
 				stype, (void *)&state);
 		pr_debug("%s: notification sent\n", __func__);
