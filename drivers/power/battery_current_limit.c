@@ -1163,7 +1163,7 @@ static int probe_btm_properties(struct bcl_context *bcl)
 		register_cpu_notifier(&bcl_cpu_notifier);
 
 	bcl_psy.name = bcl_psy_name;
-	bcl_psy.type = POWER_SUPPLY_TYPE_BATTERY;
+	bcl_psy.type = POWER_SUPPLY_TYPE_BCL;
 	bcl_psy.get_property     = bcl_battery_get_property;
 	bcl_psy.set_property     = bcl_battery_set_property;
 	bcl_psy.num_properties = 0;
