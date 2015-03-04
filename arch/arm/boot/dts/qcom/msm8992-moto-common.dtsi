@@ -522,6 +522,8 @@
 	qcom,ext-temp-volt-mv = <4000>;
 	qcom,ext-temp-soc = <65>;
 	qcom,hotspot-thrs-c = <50>;
+	qcom,charging-timeout-mins = <0>;
+	qcom,precharging-timeout-mins = <0>;
 };
 
 /{
