@@ -41,6 +41,7 @@
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-panel-orientation = "vflip";
 		qcom,mdss-dsi-on-command = [15 01 00 00 01 00 02 00 00
 			15 01 00 00 00 00 02 FE 04
 			15 01 00 00 00 00 02 00 DC
@@ -154,7 +155,7 @@
 			15 01 00 00 00 00 02 FE 00
 			15 01 00 00 00 00 02 35 00
 			15 01 00 00 78 00 02 11 00
-			15 01 00 00 00 00 02 36 C0
+			15 01 00 00 00 00 02 36 40
 			15 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00
 					05 01 00 00 78 00 02 10 00];
