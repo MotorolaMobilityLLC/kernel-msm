@@ -31,6 +31,7 @@
 			reg = <0x29>;
 			status = "okay";
 			ti,enable-gpio = <&msm_gpio 11 0>;
+			ti,switch-supply = "pm8994_l14";
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&lcd_enable_default>;
