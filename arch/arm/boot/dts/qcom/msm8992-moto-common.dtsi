@@ -1611,10 +1611,6 @@
 	regulator-always-on;
 };
 
-&pm8994_l14 {
-	regulator-always-on;
-};
-
 &soc {
 	qcom,sensor-information {
 		sensor_information17: qcom,sensor-information@17 {
