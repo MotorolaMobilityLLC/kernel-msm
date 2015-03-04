@@ -91,7 +91,18 @@ endef
 $(KERNEL_OUT):
 	mkdir -p $(KERNEL_OUT)
 
-$(KERNEL_CONFIG): $(KERNEL_OUT)
+GIT_HOOKS_DIR := kernel/.git/hooks
+inst_hook: $(GIT_HOOKS_DIR)/pre-commit $(GIT_HOOKS_DIR)/checkpatch.pl
+
+$(GIT_HOOKS_DIR)/pre-commit:  kernel/scripts/pre-commit
+	@-cp -f $< $@
+	@-chmod ugo+x $@
+
+$(GIT_HOOKS_DIR)/checkpatch.pl:  kernel/scripts/checkpatch.pl
+	@-cp -f $< $@
+	@-chmod ugo+x $@
+
+$(KERNEL_CONFIG): $(KERNEL_OUT) inst_hook
 	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) $(KERNEL_DEFCONFIG)
 	$(hide) if [ ! -z "$(KERNEL_CONFIG_OVERRIDE)" ]; then \
 			echo "Overriding kernel config with '$(KERNEL_CONFIG_OVERRIDE)'"; \
