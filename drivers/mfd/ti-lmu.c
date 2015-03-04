@@ -37,6 +37,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/slab.h>
+#include <linux/regulator/consumer.h>
 
 #define LMU_IMAX_OFFSET		6
 
@@ -340,6 +341,7 @@ static int ti_lmu_parse_dt(struct device *dev, struct ti_lmu *lmu)
 {
 	struct device_node *node = dev->of_node;
 	struct ti_lmu_platform_data *pdata;
+	int ret;
 
 	if (!node)
 		return -EINVAL;
@@ -351,6 +353,13 @@ static int ti_lmu_parse_dt(struct device *dev, struct ti_lmu *lmu)
 	pdata->en_gpio = of_get_named_gpio(node, "ti,enable-gpio", 0);
 	if (pdata->en_gpio < 0)
 		return pdata->en_gpio;
+
+	/* get regulator  to power the I2C switch */
+	pdata->supply_name = NULL;
+	ret = of_property_read_string(node, "ti,switch-supply",
+		&pdata->supply_name);
+	dev_info(dev, "I2C switch supply: %s\n",
+		(ret ? "not provided" : pdata->supply_name));
 
 	lmu->pdata = pdata;
 
@@ -377,6 +386,23 @@ static int ti_lmu_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 
 		if (ret)
 			return ret;
+	}
+
+	/* if configured request/enable the regulator for the I2C switch */
+	if (lmu->pdata->supply_name) {
+		lmu->pdata->vreg = devm_regulator_get(dev,
+			lmu->pdata->supply_name);
+		if (IS_ERR(lmu->pdata->vreg)) {
+			if (PTR_ERR(lmu->pdata->vreg) == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
+			else
+				return PTR_ERR(lmu->pdata->vreg);
+		}
+		ret = regulator_enable(lmu->pdata->vreg);
+		if (ret) {
+			dev_err(dev, "regulator enable failed %d\n", ret);
+			return ret;
+		}
 	}
 
 	lmu->id = id->driver_data;
