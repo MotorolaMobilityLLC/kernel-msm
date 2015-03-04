@@ -1230,7 +1230,7 @@ static void synaptics_dsx_patch_func(
 		int f_number,
 		struct synaptics_dsx_patch *patch)
 {
-	int r, error;
+	int error;
 	unsigned char *value;
 	struct device *dev = &rmi4_data->i2c_client->dev;
 	struct synaptics_rmi4_subpkt *subpkt;
@@ -1238,15 +1238,28 @@ static void synaptics_dsx_patch_func(
 	struct synaptics_rmi4_packet_reg *reg;
 	struct synaptics_rmi4_func_packet_regs *regs = find_function(f_number);
 
-	pr_debug("patching F%x[#%d]\n", regs->f_number, regs->nr_regs);
-	error = synaptics_rmi4_read_packet_regs(rmi4_data, regs);
-	if (error < 0)
-		return;
+	pr_debug("patching F%x\n", regs->f_number);
+	list_for_each_entry(fp, &patch->cfg_head, link) {
+		if (fp->func != f_number)
+			continue;
+		reg = find_packet_reg(regs, fp->regstr);
+		if (!reg || reg->offset < 0) {
+			pr_err("F%x@%d not present\n", f_number, fp->regstr);
+			continue;
+		}
+		if (fp->subpkt >= reg->nr_subpkts) {
+			pr_err("F%x@%d:%d not present\n",
+				f_number, fp->regstr, fp->subpkt);
+			continue;
+		}
+
+		error =	synaptics_rmi4_read_packet_reg(rmi4_data, regs,
+			reg->r_number);
+		if (error < 0)
+			return;
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
-	{
-		int rr, ss, kk;
-		for (rr = 0; rr < regs->nr_regs; rr++) {
-			reg = regs->regs + rr;
+		{
+			int ss, kk;
 			pr_debug("F%x@%d before patching:\n",
 					regs->f_number, reg->r_number);
 			for (ss = 0; ss < reg->nr_subpkts; ss++) {
@@ -1256,21 +1269,7 @@ static void synaptics_dsx_patch_func(
 					((unsigned char *)subpkt->data)[kk]);
 			}
 		}
-	}
 #endif
-	list_for_each_entry(fp, &patch->cfg_head, link) {
-		if (fp->func != f_number)
-			continue;
-		reg = find_packet_reg(regs, fp->regstr);
-		if (!reg || reg->offset < 0) {
-			pr_debug("F%x@%d not present\n", f_number, fp->regstr);
-			continue;
-		}
-		if (fp->subpkt >= reg->nr_subpkts) {
-			pr_debug("F%x@%d:%d not present\n",
-				f_number, fp->regstr, fp->subpkt);
-			continue;
-		}
 		subpkt = reg->subpkt + fp->subpkt;
 		if (!subpkt->present || !subpkt->data ||
 			subpkt->size < fp->size) {
@@ -1290,10 +1289,6 @@ static void synaptics_dsx_patch_func(
 
 		dev_dbg(dev, "patched F%x@%d:%d, sz=%d\n",
 			f_number, fp->regstr, fp->subpkt, fp->size);
-	}
-
-	for (r = 0; r < regs->nr_regs; r++) {
-		reg = regs->regs + r;
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 		{
 			int ss, kk;
