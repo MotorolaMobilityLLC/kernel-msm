@@ -24,6 +24,7 @@
 #include <linux/pwm.h>
 #include <linux/platform_data/leds-isl98611.h>
 #include <linux/of.h>
+#include <linux/regulator/consumer.h>
 
 #define ISL98611_NAME				"isl98611"
 #define ISL98611_MAX_BRIGHTNESS			255
@@ -311,6 +312,13 @@ static int isl98611_dt_init(struct i2c_client *client,
 	of_property_read_u32(np, "intersil,dimm-threshold",
 		&pdata->dimm_threshold);
 
+	/* get regulator  to power the I2C switch */
+	pdata->supply_name = NULL;
+	rc = of_property_read_string(np, "intersil,switch-supply",
+		&pdata->supply_name);
+	dev_info(&client->dev, "I2C switch supply: %s\n",
+		(rc ? "not provided" : pdata->supply_name));
+
 	return 0;
 
 }
@@ -359,6 +367,25 @@ static int isl98611_probe(struct i2c_client *client,
 		if (rc)
 			return rc;
 	}
+
+	/* if configured request/enable the regulator for the I2C switch */
+	if (pdata->supply_name) {
+		pdata->vreg = devm_regulator_get(&client->dev,
+			pdata->supply_name);
+		if (IS_ERR(pdata->vreg)) {
+			if (PTR_ERR(pdata->vreg) == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
+			else
+				return PTR_ERR(pdata->vreg);
+		}
+		rc = regulator_enable(pdata->vreg);
+		if (rc) {
+			dev_err(&client->dev, "regulator %s enable err %d\n",
+				pdata->supply_name, rc);
+			return rc;
+		}
+	}
+
 
 	i2c_set_clientdata(client, pchip);
 	pchip->pdata = pdata;
