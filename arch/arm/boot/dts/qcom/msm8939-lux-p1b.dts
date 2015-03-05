@@ -121,3 +121,18 @@
 		};
 	};
 };
+
+&pm8916_vadc {
+	/delete-node/ chan@11;
+};
+
+&pm8916_mpps {
+	mpp@a100 { /* MPP 2 */
+		status = "disabled";
+	};
+};
+
+&usb_otg {
+	qcom,hsusb-otg-mode = <1>;
+	/delete-node/ qcom,usbid-gpio;
+};
