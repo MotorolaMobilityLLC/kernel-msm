@@ -1,0 +1,17 @@
+config MACH_LGE
+	bool
+
+menu "LGE Board Selection"
+
+config MACH_MSM8992_BULLHEAD
+	bool "MSM8992 BULLHEAD"
+	depends on ARCH_MSM8992
+	select MACH_LGE
+	help
+	  Support for the LGE MSM8992 BULLHEAD.
+
+endmenu
+
+menu "LGE Specific Patches"
+
+endmenu
