@@ -32,6 +32,7 @@
 #include <soc/qcom/clock-pll.h>
 #include <soc/qcom/clock-local2.h>
 #include <soc/qcom/clock-alpha-pll.h>
+#include <soc/qcom/mmi_soc_info.h>
 
 #include <dt-bindings/clock/msm-clocks-8992.h>
 #ifdef clk_pnoc_modem_clk
@@ -1991,6 +1992,9 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 	} else if (v2)
 		pte_efuse = readl_relaxed(vbases[EFUSE_BASE]);
 
+	/* Track the bin and pvs version for littles */
+	mmi_biglittle_bin_set(a53speedbin, pvs_ver, false);
+
 	snprintf(a53speedbinstr, ARRAY_SIZE(a53speedbinstr),
 			"qcom,a53-speedbin%d-v%d", a53speedbin, pvs_ver);
 
@@ -2010,6 +2014,9 @@ static int cpu_clock_8994_driver_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "using A57 speed bin %u and pvs_ver %d\n",
 			 a57speedbin, pvs_ver);
 	}
+
+	/* Track the bin and pvs version for bigs */
+	mmi_biglittle_bin_set(a57speedbin, pvs_ver, true);
 
 	snprintf(a57speedbinstr, ARRAY_SIZE(a57speedbinstr),
 			"qcom,a57-speedbin%d-v%d", a57speedbin, pvs_ver);
