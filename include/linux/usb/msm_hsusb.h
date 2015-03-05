@@ -270,7 +270,11 @@ enum usb_ctrl {
 		allowing VDDmin without putting PHY into retention.
  * @usb_id_gpio: Gpio used for USB ID detection.
  * @bool phy_dvdd_always_on: PHY DVDD is supplied by always on PMIC LDO.
- * @bool id_v_meas: If usb id voltage can be measured via ADC.
+ * @bool mpp_id_routing: ID is routed via a single MPP that can be used to
+		trigger as well as sample ID voltage.
+ * @mpp_id_amux_chan: AMUX Chan when ID MPP is in Analog mode
+ * @mpp_id_pull:      Pull Value when ID MPP is in Digital mode.
+ * @mpp_id_vin:       VIN (voltage level)  when ID MPP is in Digital mode.
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
@@ -303,7 +307,10 @@ struct msm_otg_platform_data {
 	bool disable_retention_with_vdd_min;
 	int usb_id_gpio;
 	bool phy_dvdd_always_on;
-	bool id_v_meas;
+	bool mpp_id_routing;
+	unsigned int mpp_id_amux_chan;
+	unsigned int mpp_id_pull;
+	unsigned int mpp_id_vin;
 };
 
 /* phy related flags */
