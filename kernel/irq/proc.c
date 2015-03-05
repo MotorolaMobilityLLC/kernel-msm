@@ -495,6 +495,10 @@ int show_interrupts(struct seq_file *p, void *v)
 	for_each_online_cpu(j)
 		seq_printf(p, "%10u ", kstat_irqs_cpu(i, j));
 
+#ifdef CONFIG_GENERIC_IRQ_SHOW_WAKEUP_COUNT
+	seq_printf(p, "%10u ", desc->wakeup_irqs);
+	seq_printf(p, "%-4s", irqd_is_wakeup_set(&desc->irq_data) ? "w" : "");
+#endif
 	if (desc->irq_data.chip) {
 		if (desc->irq_data.chip->irq_print_chip)
 			desc->irq_data.chip->irq_print_chip(&desc->irq_data, p);
