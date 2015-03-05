@@ -61,7 +61,7 @@
 
 #define XRES_PULSE_100US  600
 #if defined CY8C40xx_FAMILY
-#define DEVICE_ACQUIRE_TIMEOUT 20
+#define DEVICE_ACQUIRE_TIMEOUT 40  /* 40 retries, about 2 ms */
 #else
 #define DEVICE_ACQUIRE_TIMEOUT 15
 #endif
