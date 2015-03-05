@@ -125,6 +125,17 @@
 &pm8916_vadc {
 	/delete-node/ chan@b;
 
+	chan@11 {
+		label = "host_det";
+		reg = <0x11>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
 	chan@13 {
 		label = "msm_therm";
 		reg = <0x13>;
@@ -149,6 +160,14 @@
 };
 
 &pm8916_mpps {
+	mpp@a100 { /* MPP 2 */
+		status = "okay";
+		qcom,mode = <0>; /* DIG_IN input */
+		qcom,master-en = <1>; /* Enable MPP */
+		qcom,pull = <1>;          /* QPNP_PIN_MPP_PULL_UP_OPEN */
+		qcom,vin-sel = <3>;       /* LDO6 1.8V */
+		qcom,src-sel = <0>;       /* Constant */
+	};
 	mpp@a300 { /* MPP 4 */
 		status = "okay";
 		qcom,mode = <4>; /* AIN input */
@@ -157,4 +176,15 @@
 		qcom,master-en = <1>; /* Enable MPP */
 		qcom,src-sel = <0>; /* Function constant */
 	};
+};
+
+&usb_otg {
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbid-gpio = <&pm8916_mpps 2 0>;
+	qcom,usbin-vadc = <&pm8916_vadc>;
+	vbus_otg-supply = <&smb1357_otg_vreg>;
+	mpp-id-routing;
+	mpp-id-amux-chan = <1>;              /* QPNP_PIN_AIN_AMUX_CH6 */
+	mpp-id-pull = <1>;                   /* QPNP_PIN_MPP_PULL_UP_OPEN */
+	mpp-id-vin = <3>;                    /* LDO6 1.8V */
 };
