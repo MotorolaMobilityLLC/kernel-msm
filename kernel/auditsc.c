@@ -2416,7 +2416,7 @@ void __audit_seccomp(unsigned long syscall, long signr, int code)
 	audit_log_format(ab, " sig=%ld", signr);
 	audit_log_format(ab, " syscall=%ld", syscall);
 	audit_log_format(ab, " compat=%d", is_compat_task());
-	audit_log_format(ab, " ip=0x%lx", KSTK_EIP(current));
+	audit_log_format(ab, " ip=0x%p", (void *)KSTK_EIP(current));
 	audit_log_format(ab, " code=0x%x", code);
 	audit_log_end(ab);
 }
