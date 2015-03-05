@@ -4948,6 +4948,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef CUSTOM_PSPRETEND_THR
 	uint32 pspretend_thr = CUSTOM_PSPRETEND_THR;
 #endif
+#ifdef SET_DEFAULT_COUNTRY_CODE
+	const char default_country[WLC_CNTRY_BUF_SZ] = {"US"};
+#endif
+
 #ifdef PKT_FILTER_SUPPORT
 	dhd_pkt_filter_enable = TRUE;
 #endif /* PKT_FILTER_SUPPORT */
@@ -5116,7 +5120,13 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 	DHD_ERROR(("Firmware up: op_mode=0x%04x, MAC="MACDBG"\n",
 		dhd->op_mode, MAC2STRDBG(dhd->mac.octet)));
+
 	/* Set Country code  */
+#ifdef SET_DEFAULT_COUNTRY_CODE
+	memset(&dhd->dhd_cspec, 0, sizeof(wl_country_t));
+	get_customized_country_code(dhd->info->adapter,
+		(char *)default_country, &dhd->dhd_cspec);
+#endif
 	if (dhd->dhd_cspec.ccode[0] != 0) {
 		bcm_mkiovar("country", (char *)&dhd->dhd_cspec,
 			sizeof(wl_country_t), iovbuf, sizeof(iovbuf));

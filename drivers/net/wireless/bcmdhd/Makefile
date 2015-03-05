@@ -144,6 +144,9 @@ ifeq ($(CONFIG_HAS_WAKELOCK),)
 DHDCFLAGS += -DCONFIG_HAS_WAKELOCK
 endif
 
+# Set default country code
+DHDCFLAGS += -DSET_DEFAULT_COUNTRY_CODE
+
 ##############################
 # Android Platform Definition
 ##############################
