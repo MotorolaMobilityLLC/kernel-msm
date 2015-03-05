@@ -119,6 +119,7 @@ static int cycapsense_hssp_erase(struct hssp_data *d)
 		return -EIO;
 	}
 
+	d->chip_cs = 0;
 	pr_err("%s: Flash Erase successful\n", __func__);
 	return SUCCESS;
 }
@@ -485,6 +486,21 @@ static ssize_t cycapsense_fw_store(struct class *class,
 	return count;
 }
 
+static ssize_t cycapsense_fw_show(struct class *class,
+					struct class_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, 16, "0x%x\n",
+				ctrl_data ? ctrl_data->hssp_d.chip_cs : 0);
+}
+
+static ssize_t cycapsense_reset_show(struct class *class,
+					struct class_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, 8, "%d\n", programming_done);
+}
+
 static ssize_t cycapsense_reset_store(struct class *class,
 					struct class_attribute *attr,
 					const char *buf, size_t count)
@@ -522,8 +538,8 @@ f_end:
 	return error;
 }
 
-static CLASS_ATTR(fw_update, 0220, NULL, cycapsense_fw_store);
-static CLASS_ATTR(reset, 0220, NULL, cycapsense_reset_store);
+static CLASS_ATTR(fw_update, 0660, cycapsense_fw_show, cycapsense_fw_store);
+static CLASS_ATTR(reset, 0660, cycapsense_reset_show, cycapsense_reset_store);
 
 static struct class capsense_class = {
 	.name			= "capsense",

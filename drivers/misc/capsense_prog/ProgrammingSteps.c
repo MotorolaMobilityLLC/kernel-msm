@@ -1167,6 +1167,7 @@ unsigned char VerifyChecksum(struct hssp_data *d)
 	/* Calculate checksum of user flash */
 	chip_Checksum = (unsigned short)checksum_All -
 	    (unsigned short)checksum_Privileged;
+	d->chip_cs = chip_Checksum;
 
 	/* Read checksum from hex file */
 	HEX_ReadChecksumData(&d->inf, &checksumData);
