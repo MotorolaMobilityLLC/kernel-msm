@@ -12,6 +12,7 @@
 * GNU General Public License for more details.
 */
 
+#include <linux/regulator/consumer.h>
 
 /*
  *@init_level		: led init brightness. 4~255
@@ -44,4 +45,7 @@ struct isl98611_platform_data {
 	bool default_on;
 	bool cabc_off;
 	bool hbm_on;
+	/* MMI I2C swicth regulator parameters*/
+	const char *supply_name;
+	struct regulator *vreg;
 };
