@@ -14,6 +14,7 @@
 #include "msm8992-pinctrl.dtsi"
 #include "msm8992-msm8994-mot-camera-sensor.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "carrier-channel-ids.dtsi"
 
 / {
 	aliases {
