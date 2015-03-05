@@ -283,7 +283,11 @@ enum usb_id_state {
 		routing D+/D- from the USB HUB to the USB jack type B
 		for peripheral mode.
  * @bool phy_dvdd_always_on: PHY DVDD is supplied by always on PMIC LDO.
- * @bool id_v_meas: If usb id voltage can be measured via ADC.
+ * @bool mpp_id_routing: ID is routed via a single MPP that can be used to
+		trigger as well as sample ID voltage.
+ * @mpp_id_amux_chan: AMUX Chan when ID MPP is in Analog mode
+ * @mpp_id_pull:      Pull Value when ID MPP is in Digital mode.
+ * @mpp_id_vin:       VIN (voltage level)  when ID MPP is in Digital mode.
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
@@ -318,12 +322,11 @@ struct msm_otg_platform_data {
 	int hub_reset_gpio;
 	int switch_sel_gpio;
 	bool phy_dvdd_always_on;
-<<<<<<< HEAD
 	struct clk *system_clk;
-||||||| parent of 0d46070... IKKRNBSP-2947: usb: phy: Measure ID voltage only if supported
-=======
-	bool id_v_meas;
->>>>>>> 0d46070... IKKRNBSP-2947: usb: phy: Measure ID voltage only if supported
+	bool mpp_id_routing;
+	unsigned int mpp_id_amux_chan;
+	unsigned int mpp_id_pull;
+	unsigned int mpp_id_vin;
 };
 
 /* phy related flags */
