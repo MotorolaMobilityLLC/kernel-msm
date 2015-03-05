@@ -17,6 +17,7 @@ struct irq_desc;
  * struct irq_desc - interrupt descriptor
  * @irq_data:		per irq and chip data passed down to chip functions
  * @kstat_irqs:		irq stats per cpu
+ * @wakeup_irqs:	irq wakeup count from suspend
  * @handle_irq:		highlevel irq-events handler
  * @preflow_handler:	handler called before the flow handler (currently used by sparc)
  * @action:		the irq action chain
@@ -43,6 +44,7 @@ struct irq_desc;
 struct irq_desc {
 	struct irq_data		irq_data;
 	unsigned int __percpu	*kstat_irqs;
+	unsigned int		wakeup_irqs;
 	irq_flow_handler_t	handle_irq;
 #ifdef CONFIG_IRQ_PREFLOW_FASTEOI
 	irq_preflow_handler_t	preflow_handler;

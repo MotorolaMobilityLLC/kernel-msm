@@ -17,6 +17,16 @@ config GENERIC_IRQ_SHOW
 config GENERIC_IRQ_SHOW_LEVEL
        bool
 
+# Print wakeup count extra information
+config GENERIC_IRQ_SHOW_WAKEUP_COUNT
+	bool " Show extra wakeup count irq information"
+	depends on GENERIC_IRQ_SHOW
+	help
+	  This option will show the wakeup count extra information to
+	  the user through /proc/interrupts interface.
+
+	  If you don't know what to do here, say N.
+
 # Support for delayed migration from interrupt context
 config GENERIC_PENDING_IRQ
 	bool
