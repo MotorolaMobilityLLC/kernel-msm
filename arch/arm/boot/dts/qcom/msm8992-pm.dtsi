@@ -498,6 +498,7 @@
 			<0xff 207>, /* rpm_ipc(27) */
 			<0xff 211>, /* usb_dwc3_otg */
 			<0xff 215>, /* cpu-bwmon */
+			<0xff 224>, /* spdm_bw_hyp */
 			<0xff 240>, /* summary_irq_kpss */
 			<0xff 261>, /* msm_iommu_global_cfg */
 			<0xff 263>, /* msm_iommu_global_client */
@@ -508,7 +509,7 @@
 			<0xff 273>, /* msm_iommu_nonsecure */
 			<0xff 275>, /* int_msi */
 			<0xff 283>, /* int_pls_err */
-			<0xff 284>, /* int_aer_legacy
+			<0xff 284>, /* int_aer_legacy */
 			<0xff 286>, /* int_pls_link_down */
 			<0xff 298>, /* msm_iommu_nonsecure */
 			<0xff 302>, /* coresight-tmc-etr */
