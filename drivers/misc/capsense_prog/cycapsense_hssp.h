@@ -42,6 +42,7 @@ struct hssp_data {
 	int c_offset;
 	int d_offset;
 	void __iomem *gpio_base;
+	u16 chip_cs;
 };
 struct cycapsense_ctrl_data {
 	struct device *dev;
