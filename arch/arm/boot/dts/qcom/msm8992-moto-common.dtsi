@@ -257,10 +257,13 @@
 		qcom,pin-func = <0>;
 		label = "touch-reset";
 
-		touch_reset_default: touch-reset {
-			drive-strength = <2>;
-			bias-disable; /* no pull */
+		touch_reset_default: default {
 			output-low;
+		};
+
+		touch_reset_active: active {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
 		};
 	};
 
@@ -270,7 +273,11 @@
 		qcom,pin-func = <0>;
 		label = "touch-int";
 
-		touch_int_default: touch-int {
+		touch_int_default: default {
+			bias-disable;
+		};
+
+		touch_int_active: active {
 			drive-strength = <2>;
 			bias-pull-up; /* pull-up */
 		};
@@ -875,17 +882,18 @@
 				<&msm_gpio 110 0>; /* RESET */
 			touch_vdd-supply = <&pm8994_l22>;
 			synaptics,gpio-config;
-			pinctrl-names = "default";
-			pinctrl-0 = <&touch_reset_default &touch_int_default>;
-		};
-		touchstate_modes {
-			touchmode-default = <&default_active &default_suspended>;
-		};
-		default_active: touchstate_default_active {
-			patch-data = "";
-		};
-		default_suspended: touchstate_aod_suspended {
-			patch-data = "";
+			pinctrl-names = "default", "active";
+			pinctrl-0 = <&touch_reset_active &touch_int_default>;
+			pinctrl-1 = <&touch_reset_active &touch_int_active>;
+			touchstate_modes {
+				touchmode-default = <&default_active &default_suspended>;
+			};
+			default_active: touchstate_default_active {
+				patch-data = "";
+			};
+			default_suspended: touchstate_aod_suspended {
+				patch-data = "F12@20=0505,23=3,23:1=1;F1@0=1&3";
+			};
 		};
 	};
 
