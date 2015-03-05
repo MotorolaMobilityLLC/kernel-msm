@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Motorola Mobility, LLC
+ * Copyright (C) 2014-2015 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,8 +20,10 @@
 
 #ifdef CONFIG_MMI_SOC_INFO
 void mmi_acpu_bin_set(int *speed, int *pvs, int *ver);
+void mmi_biglittle_bin_set(int bin, int pvs_ver, bool big);
 #else
 static inline void mmi_acpu_bin_set(int *speed, int *pvs, int *ver) { }
+static inline void mmi_biglittle_bin_set(int bin, int pvs_ver, bool big) { }
 #endif
 
 #endif /* __MMI_SOC_INFO_H */
