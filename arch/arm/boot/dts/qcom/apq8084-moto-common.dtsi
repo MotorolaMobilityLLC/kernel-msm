@@ -327,6 +327,10 @@
 	qcom,hdmi_tx@fd922100 {
 		status = "disabled";
 	};
+
+	qcom,msm-thermal {
+		qcom,core-control-mask = <0xc>;
+	};
 };
 
 &pmx_mdss_te {
