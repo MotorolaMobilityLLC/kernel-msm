@@ -984,12 +984,12 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	}
 
 	/* Indicate initialization is complete */
+	spin_lock_irqsave(&dev->isr_lock, flags);
 	dev->pipes[pipe_index] = bam_pipe;
 	dev->pipe_active_mask |= 1UL << pipe_index;
-	spin_lock_irqsave(&dev->isr_lock, flags);
 	list_add_tail(&bam_pipe->list, &dev->pipes_q);
-	spin_unlock_irqrestore(&dev->isr_lock, flags);
 	bam_pipe->state |= BAM_STATE_INIT;
+	spin_unlock_irqrestore(&dev->isr_lock, flags);
 	result = 0;
 exit_err:
 	if (result) {
@@ -1030,8 +1030,8 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 			unsigned long flags = 0;
 			spin_lock_irqsave(&dev->isr_lock, flags);
 			list_del(&pipe->list);
-			spin_unlock_irqrestore(&dev->isr_lock, flags);
 			dev->pipe_active_mask &= ~(1UL << pipe_index);
+			spin_unlock_irqrestore(&dev->isr_lock, flags);
 		}
 		dev->pipe_remote_mask &= ~(1UL << pipe_index);
 		if (pipe->connect.options & SPS_O_NO_DISABLE)
@@ -2161,10 +2161,10 @@ int sps_bam_set_satellite(struct sps_bam *dev, u32 pipe_index)
 	/* Indicate satellite control */
 	spin_lock_irqsave(&dev->isr_lock, flags);
 	list_del(&pipe->list);
-	spin_unlock_irqrestore(&dev->isr_lock, flags);
 	dev->pipe_active_mask &= ~(1UL << pipe_index);
 	dev->pipe_remote_mask |= pipe->pipe_index_mask;
 	pipe->state |= BAM_STATE_REMOTE;
+	spin_unlock_irqrestore(&dev->isr_lock, flags);
 
 	return 0;
 }
