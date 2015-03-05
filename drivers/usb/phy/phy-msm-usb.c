@@ -49,6 +49,7 @@
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/mhl_8334.h>
 #include <linux/qpnp/qpnp-adc.h>
+#include <linux/qpnp/pin.h>
 
 #include <linux/msm-bus.h>
 
@@ -2937,7 +2938,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			} else if (motg->ext_id_irq) {
 				if (gpio_get_value(pdata->usb_id_gpio))
 					set_bit(ID, &motg->inputs);
-				else if (pdata->id_v_meas) {
+				else {
 					id_v = msm_otg_get_ext_id_voltage(motg);
 					pr_err("id voltage at init = %d muV\n",
 									id_v);
@@ -2946,8 +2947,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 						set_bit(ID, &motg->inputs);
 					} else
 						clear_bit(ID, &motg->inputs);
-				} else
-					clear_bit(ID, &motg->inputs);
+				}
 			}
 			/*
 			 * VBUS initial state is reported after PMIC
@@ -3884,27 +3884,50 @@ out:
 static int msm_otg_enable_ext_id(struct msm_otg *motg, int enable)
 {
 	struct pinctrl_state *set_state;
+	struct qpnp_pin_cfg id_pin_cfg;
 
 	if (!motg->ext_id_irq)
 		return -ENODEV;
 
 	if (enable) {
-		set_state = pinctrl_lookup_state(motg->phy_pinctrl, "default");
-		if (IS_ERR(set_state)) {
-			pr_err("cannot enable usbid pin\n");
-			return -EFAULT;
-		} else
-			pinctrl_select_state(motg->phy_pinctrl, set_state);
+		if (motg->pdata->mpp_id_routing) {
+			/* Switch ID Pin to Digital IN */
+			memset(&id_pin_cfg, 0 , sizeof(id_pin_cfg));
+			id_pin_cfg.mode = QPNP_PIN_MODE_DIG_IN;
+			id_pin_cfg.vin_sel = motg->pdata->mpp_id_vin;
+			id_pin_cfg.pull = motg->pdata->mpp_id_pull;
+			id_pin_cfg.master_en  = QPNP_PIN_MASTER_ENABLE;
+			qpnp_pin_config(motg->pdata->usb_id_gpio, &id_pin_cfg);
+		} else {
+			set_state = pinctrl_lookup_state(motg->phy_pinctrl,
+								"default");
+			if (IS_ERR(set_state)) {
+				pr_err("cannot enable usbid pin\n");
+				return -EFAULT;
+			} else
+				pinctrl_select_state(motg->phy_pinctrl,
+								set_state);
+		}
 		enable_irq(motg->ext_id_irq);
 	} else {
 		disable_irq(motg->ext_id_irq);
-		set_state = pinctrl_lookup_state(motg->phy_pinctrl,
-				"usbid-off");
-		if (IS_ERR(set_state)) {
-			pr_err("cannot disable usbid pin\n");
-			return -EFAULT;
-		} else
-			pinctrl_select_state(motg->phy_pinctrl, set_state);
+		if (motg->pdata->mpp_id_routing) {
+			/* Switch ID Pin to Analog IN */
+			memset(&id_pin_cfg, 0 , sizeof(id_pin_cfg));
+			id_pin_cfg.mode = QPNP_PIN_MODE_AIN;
+			id_pin_cfg.ain_route = motg->pdata->mpp_id_amux_chan;
+			id_pin_cfg.master_en  = QPNP_PIN_MASTER_ENABLE;
+			qpnp_pin_config(motg->pdata->usb_id_gpio, &id_pin_cfg);
+		} else {
+			set_state = pinctrl_lookup_state(motg->phy_pinctrl,
+								"usbid-off");
+			if (IS_ERR(set_state)) {
+				pr_err("cannot disable usbid pin\n");
+				return -EFAULT;
+			} else
+				pinctrl_select_state(motg->phy_pinctrl,
+								set_state);
+		}
 	}
 	return 0;
 }
@@ -3984,7 +4007,7 @@ static void msm_id_status_w(struct work_struct *w)
 	else if (motg->ext_id_irq) {
 		id_state = gpio_get_value(motg->pdata->usb_id_gpio);
 
-		if (!id_state && motg->pdata->id_v_meas) {
+		if (!id_state) {
 			int voltage = msm_otg_get_ext_id_voltage(motg);
 			pr_err("ext id voltage = %d microV\n", voltage);
 			if (voltage > ID_GND_THRESH) {
@@ -5026,6 +5049,9 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 	pdata->usb_id_gpio = of_get_named_gpio(node, "qcom,usbid-gpio", 0);
 	if (pdata->usb_id_gpio < 0)
 		pr_debug("usb_id_gpio is not available\n");
+	else
+		pdata->mpp_id_routing = of_property_read_bool(node,
+							"mpp-id-routing");
 
 	pdata->l1_supported = of_property_read_bool(node,
 				"qcom,hsusb-l1-supported");
@@ -5043,7 +5069,15 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
 				"qcom,hsusb-otg-rw-during-lpm-workaround");
-	pdata->id_v_meas = !of_property_read_bool(node, "no-id-adc");
+
+	if (pdata->mpp_id_routing) {
+		of_property_read_u32(node, "mpp-id-amux-chan",
+				&pdata->mpp_id_amux_chan);
+		of_property_read_u32(node, "mpp-id-pull",
+				&pdata->mpp_id_pull);
+		of_property_read_u32(node, "mpp-id-vin",
+				&pdata->mpp_id_vin);
+	}
 
 	return pdata;
 }
