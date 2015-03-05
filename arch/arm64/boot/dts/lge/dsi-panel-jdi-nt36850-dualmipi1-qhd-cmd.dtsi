@@ -1,0 +1,243 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_dual_jdi_cmd_1: qcom,mdss_dsi_jdi_nt36850_1440p_mipi1_cmd {
+		qcom,mdss-dsi-panel-name = "JDI INCELL 1440p Dual 1 cmd mode dsi panel";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi1>;
+		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
+		qcom,mdss-dsi-panel-destination = "display_2";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <720>;
+		qcom,mdss-dsi-panel-height = <2560>;
+		qcom,mdss-dsi-h-front-porch = <180>;
+		qcom,mdss-dsi-h-back-porch = <120>;
+		qcom,mdss-dsi-h-pulse-width = <4>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <7>;
+		qcom,mdss-dsi-v-front-porch = <8>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = "burst_mode";
+		qcom,mdss-dsi-lane-map = "lane_map_0123";
+		qcom,mdss-dsi-lane-hs = <1>;
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,cmd-sync-wait-broadcast;
+		qcom,cmd-sync-wait-trigger;
+		qcom,cont-splash-enabled = <1>;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+		qcom,mdss-dsi-hor-line-idle = <0 40 256>,
+						<40 120 128>,
+						<120 240 64>;
+		qcom,mdss-dsi-panel-timings = [F7 3A 28 00 6E 72
+									2C 3E 31 03 04 00];
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+		qcom,mdss-dsi-t-clk-post = <0x2D>; // 60 + 420 * UI
+		qcom,mdss-dsi-t-clk-pre = <0x2D>;
+		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-te-pin-select = <1>;
+		qcom,mdss-dsi-wr-mem-start = <0x2c>;
+		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,mdss-dsi-on-command = [
+			/* cmd page select */
+			15 01 00 00 00 00 02 FF 10
+			/* Non reload OTP */
+			15 01 00 00 00 00 02 FB 01
+			/* write display brightness */
+			39 01 00 00 00 00 03 51 FF 03
+			/* write ctrl display */
+			15 01 00 00 00 00 02 53 2C
+			/* write power save */
+			15 01 00 00 00 00 02 55 80
+			/* set tear on */
+			15 01 00 00 00 00 02 35 00
+			/* set tear scan line */
+			39 01 00 00 00 00 03 44 03 E8
+
+			/* CMD Page Select */
+			15 01 00 00 00 00 02 FF 22
+			/* Non reload OTP */
+			15 01 00 00 00 00 02 FB 01
+			/*	IE	setting	start */
+			//To enhance saturation, using VIVID region
+			15	01	00	00	00	00	02	00	00
+			15	01	00	00	00	00	02	01	04
+			15	01	00	00	00	00	02	02	08
+			15	01	00	00	00	00	02	03	0C
+			15	01	00	00	00	00	02	04	10
+			15	01	00	00	00	00	02	05	14
+			15	01	00	00	00	00	02	06	18
+			15	01	00	00	00	00	02	07	20
+			15	01	00	00	00	00	02	08	24
+			15	01	00	00	00	00	02	09	28
+			15	01	00	00	00	00	02	0A	30
+			15	01	00	00	00	00	02	0B	30
+			15	01	00	00	00	00	02	0C	30
+			15	01	00	00	00	00	02	0D	20
+			15	01	00	00	00	00	02	0E	10
+			15	01	00	00	00	00	02	0F	0C
+			15	01	00	00	00	00	02	10	0A
+			15	01	00	00	00	00	02	11	08
+			15	01	00	00	00	00	02	12	06
+			15	01	00	00	00	00	02	13	04
+
+			//SKIN_HUE and HUE_RATIO
+			15	01	00	00	00	00	02	32	80
+			15	01	00	00	00	00	02	33	80
+			15	01	00	00	00	00	02	34	80
+			15	01	00	00	00	00	02	35	80
+			15	01	00	00	00	00	02	36	00
+			15	01	00	00	00	00	02	37	00
+			15	01	00	00	00	00	02	38	00
+			15	01	00	00	00	00	02	39	00
+			15	01	00	00	00	00	02	3A	02
+			15	01	00	00	00	00	02	3B	04
+			15	01	00	00	00	00	02	3F	10
+			15	01	00	00	00	00	02	40	18
+			15	01	00	00	00	00	02	41	1E
+			15	01	00	00	00	00	02	42	22
+			15	01	00	00	00	00	02	43	26
+			15	01	00	00	00	00	02	44	26
+			15	01	00	00	00	00	02	45	20
+			15	01	00	00	00	00	02	46	12
+			15	01	00	00	00	00	02	47	08
+			15	01	00	00	00	00	02	48	04
+			15	01	00	00	00	00	02	49	02
+			15	01	00	00	00	00	02	4A	00
+			15	01	00	00	00	00	02	4B	00
+			15	01	00	00	00	00	02	4C	80
+
+			//VIVID/SMART COLOR RATIO and Enable bits
+			15	01	00	00	00	00	02	14	00	//VIVID_ratio, no use
+			15	01	00	00	00	00	02	1A	00	//EN_VIVID, no use
+			15	01	00	00	00	00	02	4D	01	//SMART_ENH_RATIO
+			15	01	00	00	00	00	02	53	01	//EN_SMART
+			15	01	00	00	00	00	02	54	01	//EN_SKIN_KEEP
+			15	01	00	00	00	00	02	55	00	//EN_V_constrain
+
+			//SMART CONTRAST
+			15	01	00	00	00	00	02	56	01	//EN_Smart_Contrast
+			15	01	00	00	00	00	02	58	0F	//SC_Dark
+			15	01	00	00	00	00	02	59	11	//SC_Light
+			15	01	00	00	00	00	02	64	2F	//SC_THD, default 20
+			15	01	00	00	00	00	02	7C	00
+
+			//EDGE ENHANCEMENT
+			15	01	00	00	00	00	02	65	0C	//EDGE
+			15	01	00	00	00	00	02	68	01	//EN_ENDGE
+			15	01	00	00	00	00	02	69	62	//EN_EDGE_STEP
+			15	01	00	00	00	00	02	97	FF	//EDGE_ENH_THD
+			15	01	00	00	00	00	02	98	18	//EN_JGY
+
+			15	01	00	00	00	00	02	A2	20	//Contrast smoothing
+			/* IE setting Ends */
+
+			/* CMD Page Select */
+			15 01 00 00 05 00 02 FF 10
+			/* exit_sleep_mode, wait 120ms */
+			05 01 00 00 78 00 01 11
+			/* idle mode off */
+			05 01 00 00 00 00 01 38
+			/* set_address_mode */
+			15 01 00 00 00 00 02 36 00
+			/* jdi_write_payload_ff_20 */
+			15 01 00 00 00 00 02 FF 20
+			/* jdi_write_payload_fb_01 */
+			15 01 00 00 00 00 02 FB 01
+			/* jdi_write_payload_56_80 */
+			15 01 00 00 00 00 02 56 80
+			/* jdi_write_payload_ff_24 */
+			15 01 00 00 00 00 02 FF 24
+			/* jdi_write_payload_fb_01 */
+			15 01 00 00 00 00 02 FB 01
+			/* jdi_write_payload_8b_f4 */
+			15 01 00 00 00 00 02 8B F4
+			/* jdi_write_payload_8c_01 */
+			15 01 00 00 00 00 02 8C 01
+			/* jdi_write_payload_86_1b */
+			15 01 00 00 00 00 02 86 1B
+			/* jdi_write_payload_87_27 */
+			15 01 00 00 00 00 02 87 27
+			/* jdi_write_payload_88_1b */
+			15 01 00 00 00 00 02 88 1B
+			/* jdi_write_payload_89_27 */
+			15 01 00 00 00 00 02 89 27
+			/* jdi_write_payload_ff_26 */
+			15 01 00 00 00 00 02 FF 26
+			/* jdi_write_payload_f2_10 */
+			15 01 00 00 00 00 02 F2 10
+			/* jdi_write_payload_ff_10 */
+			15 01 00 00 00 00 02 FF 10
+			/* set_display_on */
+			05 01 00 00 14 00 01 29
+			];
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command = [
+			05 01 00 00 14 00 02 28 00
+			05 01 00 00 3C 00 02 10 00
+			];
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,blmap-size = <256>;
+		qcom,blmap = <
+			  0
+			 109  109  109  109  109  109  109  109  109  109						// 001-010
+			 109  109  110  110  110  111  111  112  112  112						// 011-020
+			 113  113  114  115  117  119  121  122  124  126						// 021-030
+			 128  129  131  133  135  137  140  142  145  148						// 031-040
+			 150  153  156  158  161  164  166  169  172  177						// 041-050
+			 183  188  194  199  205  210  216  221  227  232						// 051-060
+			 237  242  247  252  257  263  268  273  278  283						// 061-070
+			 288  293  299  306  313  321  328  336  343  350						// 071-080
+			 358  365  373  380  388  396  404  412  420  429						// 081-090
+			 437  445  453  462  470  478  486  495  506  518						// 091-100
+			 529  541  553  564  576  588  599  611  623  634						// 101-110
+			 645  657  668  679  691  702  714  725  736  748						// 111-120
+			 759  771  785  799  814  828  842  857  871  885						// 121-130
+			 900  914  928  943  960  978  995  1013  1031  1048					// 131-140
+			 1066  1084  1101  1119  1137  1153  1170  1187  1204  1221				// 141-150
+			 1238  1254  1271  1288  1305  1322  1339  1356  1376  1396				// 151-160
+			 1417  1437  1458  1478  1498  1519  1539  1560  1580  1601				// 161-170
+			 1622  1643  1664  1685  1706  1727  1748  1769  1790  1811				// 171-180
+			 1832  1853  1874  1898  1923  1948  1973  1998  2023  2047				// 181-190
+			 2072  2097  2122  2147  2172  2197  2222  2248  2273  2299				// 191-200
+			 2324  2350  2375  2401  2426  2452  2477  2503  2535  2568				// 201-210
+			 2601  2634  2667  2700  2733  2766  2799  2832  2865  2894				// 211-220
+			 2924  2953  2983  3013  3042  3072  3101  3131  3161  3190				// 221-230
+			 3220  3250  3284  3318  3352  3386  3420  3455  3489  3523				// 231-240
+			 3557  3591  3625  3660  3699  3739  3778  3818  3857  3897				// 241-250
+			 3936  3976  4015  4055  4095  											// 251-255
+		>;
+		qcom,mdss-pan-physical-width-dimension = <68>;
+		qcom,mdss-pan-physical-height-dimension = <121>;
+	};
+};
+

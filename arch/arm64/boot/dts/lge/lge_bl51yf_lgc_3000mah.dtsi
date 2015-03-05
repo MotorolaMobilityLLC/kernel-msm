@@ -1,0 +1,57 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,LGE_BL51YF_LGC_3000mAh {
+       /* #1781157_LGE_BL51YF_LGC_3000mAh_averaged_MasterSlave_Nov17th2014*/
+       qcom,max-voltage-uv = <4400000>;
+       qcom,nom-batt-capacity-mah = <3000>;
+       qcom,batt-id-kohm = <0>;
+       qcom,battery-beta = <4150>;
+       qcom,battery-type = "LGE_BL51YF_LGC_3000mAh";
+       qcom,checksum = <0xACAF>;
+       qcom,gui-version = "PMI8994GUI - 2.1.4.10";
+       qcom,fg-profile-data = [
+              11 88 55 7F
+              0A 83 8F 7D
+              4E 83 5A 62
+              63 79 6E 84
+              2F 82 36 98
+              02 B5 01 C0
+              64 18 2E 88
+              9E 84 3C 88
+              E5 7E 65 83
+              37 6C 1C 88
+              CC 8E 53 82
+              60 98 EE B5
+              65 C1 5E 16
+              9B 0B 0E 5A
+              14 70 71 FD
+              91 44 96 45
+              3A 42 00 00
+              A9 44 24 2E
+              55 36 00 00
+              00 00 00 00
+              00 00 00 00
+              1D 71 6B 71
+              13 53 7C 88
+              40 74 F1 5A
+              AF 30 40 7B
+              73 74 7F 60
+              B0 95 B5 96
+              1F 1E 61 85
+              5E A0 71 0C
+              28 00 FF 36
+              F0 11 30 03
+              00 00 00 00
+      ];
+};

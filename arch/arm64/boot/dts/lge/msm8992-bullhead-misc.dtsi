@@ -1,0 +1,34 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+    gpio_keys {
+        compatible = "gpio-keys";
+        input-name = "gpio-keys";
+
+        vol_up {
+            label = "volume_up";
+            gpios = <&pm8994_gpios 3 0x1>;
+            linux,input-type = <1>;
+            linux,code = <115>;
+            gpio-key,wakeup;
+            debounce-interval = <15>;
+        };
+    };
+};
+
+&pmi8994_haptics {
+	status = "okay";
+	qcom,vmax-mv = <2400>;
+	qcom,ilim-ma = <150>;
+};

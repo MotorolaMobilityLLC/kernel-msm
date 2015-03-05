@@ -1,0 +1,170 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "dsi-panel-jdi-nt36850-dualmipi0-qhd-cmd.dtsi"
+#include "dsi-panel-jdi-nt36850-dualmipi1-qhd-cmd.dtsi"
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+	qcom,mdss-has-source-split;
+	qcom,mdss-has-dst-split;
+	/delete-property/ qcom,mdss-ad-off;
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <3>;
+	qcom,pins = <&gp 78>, <&gp 89>, <&gp 110>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_jdi_cmd_0>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+
+	/* Add TE pin control status on the PINCTRL structure */
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
+	qcom,platform-vddio_en-gpio = <&msm_gpio 110 0>;
+	qcom,platform-avdd-gpio = <&msm_gpio 89 0>;
+
+	tpio-supply = <&pm8994_l10>;
+	tpvci-supply =  <&pm8994_l22>;
+
+	qcom,ctrl-supply-entries {
+		qcom,ctrl-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <1>;
+		};
+	};
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "tpvci";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <1>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "tpio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <1>;
+		};
+	};
+};
+
+&mdss_fb0 {
+	qcom,memory-reservation-size = <0x1C20000>;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_jdi_cmd_1>;
+
+	tpio-supply = <&pm8994_l10>;
+	tpvci-supply =  <&pm8994_l22>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
+	lge,reset-low-hold = <10>;
+
+	qcom,ctrl-supply-entries {
+		qcom,ctrl-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <1>;
+		};
+	};
+
+	qcom,panel-supply-entries {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "tpvci";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <1>;
+		};
+
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "tpio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <1>;
+		};
+	};
+};
+
+&dsi_dual_jdi_cmd_0{
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			qcom,fs-curr-ua = <20000>;
+			qcom,ibb-pwrup-dly = <1>;
+			qcom,led-strings-list = [00 01 02];
+		};
+	};
+};
+
+/* RPM controlled regulators: */
+
+&rpm_bus {
+	rpm-regulator-ldoa10 {
+		status = "okay";
+		pm8994_l10: regulator-l10 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
+			status = "okay";
+			regulator-always-on;
+		};
+
+	};
+
+	rpm-regulator-ldoa22 {
+		status = "okay";
+		pm8994_l22: regulator-l22 {
+			regulator-always-on;
+		};
+	};
+};
