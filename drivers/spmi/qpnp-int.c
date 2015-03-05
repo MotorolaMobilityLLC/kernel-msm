@@ -636,8 +636,11 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 		desc = irq_to_desc(irq);
 		if (desc == NULL)
 			name = "stray irq";
-		else if (desc->action && desc->action->name)
-			name = desc->action->name;
+		else {
+			desc->wakeup_irqs++;
+			if (desc->action && desc->action->name)
+				name = desc->action->name;
+		}
 
 		pr_warn("%d triggered [0x%01x, 0x%02x,0x%01x] %s\n",
 				irq, spec->slave, spec->per, spec->irq, name);
