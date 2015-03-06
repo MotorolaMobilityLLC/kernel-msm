@@ -126,10 +126,10 @@
 	};
 
 	/* ov5693 */
-	qcom,camera@1 {
-		cell-index = <1>;
+	qcom,camera@2 {
+		cell-index = <2>;
 		compatible = "qcom,camera";
-		reg = <0x1>;
+		reg = <0x2>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
@@ -151,48 +151,8 @@
 		qcom,gpio-vana = <2>;
 		qcom,gpio-req-tbl-num = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
-					  "CAM_RESET1",
-					  "CAM_VANA";
-		qcom,sensor-position = <1>;
-		qcom,sensor-mode = <0>;
-		qcom,cci-master = <0>;
-		status = "ok";
-		clocks = <&clock_mmss clk_mclk2_clk_src>,
-				<&clock_mmss clk_camss_mclk2_clk>;
-		clock-names = "cam_src_clk", "cam_clk";
-	};
-
-	/* s5k5e2ya */
-	qcom,camera@2 {
-		cell-index = <2>;
-		compatible = "qcom,camera";
-		reg = <0x2>;
-		qcom,csiphy-sd-index = <1>;
-		qcom,csid-sd-index = <1>;
-		qcom,mount-angle = <90>;
-		cam_vdig-supply = <&pm8994_l3>;
-		cam_vio-supply = <&pm8994_lvs1>;
-		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
-		qcom,cam-vreg-min-voltage = <1200000 0>;
-		qcom,cam-vreg-max-voltage = <1200000 0>;
-		qcom,cam-vreg-op-mode = <1050000 0>;
-		qcom,gpio-no-mux = <0>;
-		pinctrl-names = "cam_default", "cam_suspend";
-		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
-		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
-		gpios = <&msm_gpio 15 0>,
-			<&msm_gpio 133 0>,
-			<&msm_gpio 132 0>,
-			<&msm_gpio 95 0>;
-		qcom,gpio-reset = <1>;
-		qcom,gpio-standby = <2>;
-		qcom,gpio-vana = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
-					  "CAM_RESET1",
-					  "CAM_STANDBY1",
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					  "CAM_RESET2",
 					  "CAM_VANA";
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <0>;
@@ -211,6 +171,8 @@
 	/delete-node/ cam_sensor_front_suspend;
 	/delete-node/ cam_sensor_mclk0_active;
 	/delete-node/ cam_sensor_mclk0_suspend;
+	/delete-node/ cam_sensor_mclk2_active;
+	/delete-node/ cam_sensor_mclk2_suspend;
 
 	cam_sensor_rear_pinctrl {
 		/*RESET, AVDD_EN */
@@ -286,6 +248,26 @@
 		/*suspended state */
 		cam_sensor_mclk0_suspend: suspend {
 			drive-strength = <2>; /* 2 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+
+	cam_sensor_mclk2_pinctrl {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_sensor_mclk2_pinctrl";
+
+		/* active state */
+		cam_sensor_mclk2_active: active {
+			drive-strength = <4>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+
+		/* suspend state */
+		cam_sensor_mclk2_suspend: suspend {
+			drive-strength = <4>; /* 2 MA */
 			bias-pull-down; /* PULL DOWN */
 		};
 	};
