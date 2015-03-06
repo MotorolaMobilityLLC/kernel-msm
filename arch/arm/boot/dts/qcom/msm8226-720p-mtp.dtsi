@@ -429,7 +429,7 @@
 		#include "batterydata-palladium.dtsi"
 		#include "batterydata-mtp-3000mah.dtsi"
 		#include "HB3748B4EBC_ATL_SCUD-4v35-3000mah.dtsi"
-		#include "Generic_330mAh_BMS_Final.dtsi"
+		#include "Generic_300mAh_BMS_Final.dtsi"
 	};
 };
 
