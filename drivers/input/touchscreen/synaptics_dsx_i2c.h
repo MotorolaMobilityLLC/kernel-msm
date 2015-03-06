@@ -317,6 +317,7 @@ struct synaptics_rmi4_data {
 	bool mode_is_wakeable;
 	bool mode_is_persistent;
 
+	bool patching_enabled;
 	struct synaptics_dsx_patchset *default_mode;
 	struct synaptics_dsx_patchset *alternate_mode;
 	struct synaptics_dsx_patchset *current_mode;
