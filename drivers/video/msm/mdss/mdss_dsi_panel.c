@@ -471,8 +471,22 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
+
+		if (pinfo->off_pre_rst_delay) {
+			pr_debug("%s: off_pre_rst_delay:%d\n",
+					__func__, pinfo->off_pre_rst_delay);
+			usleep(pinfo->off_pre_rst_delay * 1000);
+		}
+
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
+
+		if (pinfo->off_post_rst_delay) {
+			pr_debug("%s: off_post_rst_delay:%d\n",
+					__func__, pinfo->off_post_rst_delay);
+			usleep(pinfo->off_post_rst_delay * 1000);
+		}
+
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
@@ -1641,6 +1655,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->low_fps_mode_off_cmds,
 		"qcom,mdss-dsi-low-fps-mode-off-command", "qcom,mdss-dsi-low-fps-mode-off-command-state");
+
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-off-pre-reset-delay", &tmp);
+	pinfo->off_pre_rst_delay = (!rc ? tmp : 0);
+
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-off-post-reset-delay", &tmp);
+	pinfo->off_post_rst_delay = (!rc ? tmp : 0);
 
 	mdss_dsi_parse_panel_horizintal_line_idle(np, ctrl_pdata);
 
