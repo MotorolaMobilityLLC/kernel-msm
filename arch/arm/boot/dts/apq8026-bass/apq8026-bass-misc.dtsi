@@ -18,7 +18,7 @@
 		haptic-pwr-gpio = <&msmgpio 62 0x00>;
 		motor-pwm-gpio = <&msmgpio 33 0x00>;
 		motor-pwm-func = <3>;
-		motor-amp = <100>;
+		motor-amp = <90>;
 		n-value = <127>;
 		clk-name = "cam_gp0_clk";
 		vibe-warmup-delay = <0>;
