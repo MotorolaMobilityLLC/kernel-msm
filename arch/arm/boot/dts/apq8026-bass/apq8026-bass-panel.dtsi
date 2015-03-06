@@ -39,6 +39,8 @@
 		qcom,mdss-dsi-color-order = <0>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-lp11-init = <1>;
+		qcom,mdss-dsi-init-delay-us = <5000>;
 		qcom,mdss-dsi-on-command = [05 01 00 00 80 00 01 11
 					39 01 00 00 00 00 02 36 40
 					15 01 00 00 00 00 02 53 20
@@ -195,6 +197,8 @@
 		qcom,mdss-brightness-default-level = <208>;
 		qcom,cont-splash-enabled;
 		qcom,ulps-enabled;
+		qcom,mdss-dsi-off-pre-reset-delay = <20>;
+		qcom,mdss-dsi-off-post-reset-delay = <20>;
 		qcom,blmap = /bits/ 8 <
 			0 0 0 0 1 1 1 1 1 1                         /* 0-9 */
 			1 7 14 15 16 17 18 19 20 21                 /* 10-19 */
