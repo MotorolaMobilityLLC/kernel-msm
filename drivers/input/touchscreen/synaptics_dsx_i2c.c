@@ -775,7 +775,7 @@ int synaptics_dsx_dt_parse_mode(struct synaptics_rmi4_data *data,
 
 	np_modes = of_find_node_by_name(np, "touchstate_modes");
 	if (!np_modes) {
-		pr_err("can't find touchstate modes node\n");
+		pr_warn("can't find touchstate modes node\n");
 		ret = -EINVAL;
 		goto err;
 	}
@@ -835,18 +835,22 @@ static struct synaptics_dsx_platform_data *
 
 	pr_err("entered of_init function\n");
 
+	rmi4_data->patching_enabled = 1;
 	retval = synaptics_dsx_dt_parse_mode(rmi4_data, "default",
 			rmi4_data->default_mode);
 	if (retval) {
-		dev_err(&client->dev, "failed to load default mode\n");
-		return NULL;
+		pr_warn("failed to load default mode\n");
+		rmi4_data->patching_enabled = 0;
 	}
 
-	retval = synaptics_dsx_dt_parse_mode(rmi4_data, "alternate",
-			rmi4_data->alternate_mode);
-	if (retval) {
-		pr_warn("alternate mode not found; using default instead\n");
-		rmi4_data->alternate_mode = rmi4_data->default_mode;
+	if (rmi4_data->patching_enabled) {
+		retval = synaptics_dsx_dt_parse_mode(rmi4_data, "alternate",
+				rmi4_data->alternate_mode);
+		if (retval) {
+			pr_warn("alternate mode not found;"
+				" using default instead\n");
+			rmi4_data->alternate_mode = rmi4_data->default_mode;
+		}
 	}
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
@@ -1355,14 +1359,16 @@ static void synaptics_dsx_state_config(
 	if (rmi4_data->mode_is_wakeable)
 		synaptics_dsx_enable_wakeup_source(rmi4_data, true);
 
-	for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++)
-		synaptics_dsx_patch_func(rmi4_data,
-			synaptics_cfg_regs[i].f_number, patch);
+	if (rmi4_data->patching_enabled) {
+		for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++)
+			synaptics_dsx_patch_func(rmi4_data,
+				synaptics_cfg_regs[i].f_number, patch);
 
-	pr_debug("applied %s in mode %s\n",
-		state == ACTIVE_IDX ? "ACTIVE" : "SUSPEND",
-		rmi4_data->current_mode == rmi4_data->default_mode ?
-		"DEFAULT" : "OTHER");
+		pr_debug("applied %s in mode %s\n",
+			state == ACTIVE_IDX ? "ACTIVE" : "SUSPEND",
+			rmi4_data->current_mode == rmi4_data->default_mode ?
+			"DEFAULT" : "OTHER");
+	}
 }
 
 #define DSX(a)	(#a)
