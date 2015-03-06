@@ -167,13 +167,6 @@ static struct gpiomux_setting gpio_i2c_config = {
 
 static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 	{
-		.gpio = 106,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
-		},
-	},
-	{
 		.gpio = 107,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
@@ -598,6 +591,27 @@ static struct msm_gpiomux_config msm_uart1_configs[] __initdata =
 	},
 };
 
+static struct gpiomux_setting gpio_reset_config =
+{
+    .func = GPIOMUX_FUNC_2, //Please look @ GPIO function table for correct function
+    .drv = GPIOMUX_DRV_8MA, //Drive Strength
+    .pull = GPIOMUX_PULL_UP, //Should be PULL_UP for UART
+};
+
+/*added gpio define and uart for MCU*/
+static struct msm_gpiomux_config msm_mcureset_config[] __initdata =
+{
+	{
+		.gpio = 87, //BLSP1 UART1 reset
+		.settings =
+		{
+		[GPIOMUX_ACTIVE] = &gpio_reset_config,
+		[GPIOMUX_SUSPENDED] = &gpio_reset_config,
+		},
+	},
+};
+
+
 static struct msm_gpiomux_config msm_uart3_configs[] __initdata =
 {
     {
@@ -952,6 +966,10 @@ void __init msm8226_init_gpiomux(void)
 	msm_gpiomux_install(msm8226_tert_mi2s_configs, ARRAY_SIZE(msm8226_tert_mi2s_configs));
 	/*I2S for MIC*/
 	msm_gpiomux_install(msm8226_quat_mi2s_configs, ARRAY_SIZE(msm8226_quat_mi2s_configs));
+
+	/*RST MCU*/
+	msm_gpiomux_install(msm_mcureset_config, ARRAY_SIZE(msm_mcureset_config));
+
 	/*
 	 * HSIC STROBE gpio is also used by the ethernet. Install HSIC
 	 * gpio mux config only when HSIC is enabled. HSIC config will
