@@ -289,6 +289,12 @@ config SUSPEND_TIME
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
 
+config SUSPEND_TIME_TIMEKEEPING
+	bool "get suspend time from timekeeping"
+	---help---
+	  Get the suspend time in suspend from timekeeping for the archs
+	  that don't support persistent clock.
+
 config QUICK_WAKEUP
 	bool "Quick wakeup"
 	depends on SUSPEND
