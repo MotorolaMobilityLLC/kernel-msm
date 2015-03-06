@@ -1291,6 +1291,12 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	if (client->irq) {
+		/* Disable and clear SOC alerts until irq is requested */
+		max17042_write_reg(client, MAX17042_SALRT_Th, 0xFF00);
+		reg = max17042_read_reg(client, MAX17042_STATUS);
+		reg &= ~(STATUS_SMN_BIT | STATUS_SMX_BIT);
+		max17042_write_reg(client, MAX17042_STATUS, reg);
+
 		ret = request_threaded_irq(client->irq, NULL,
 						max17042_thread_handler,
 						IRQF_TRIGGER_FALLING |
