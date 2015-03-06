@@ -130,6 +130,7 @@
 
 			/include/ "batterydata-ft40-lg.dtsi"
 			/include/ "batterydata-ft40-sony.dtsi"
+			/include/ "batterydata-ft40-lishen.dtsi"
 		};
 
 		maxim,temp-conv {
