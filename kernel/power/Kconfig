@@ -289,6 +289,13 @@ config SUSPEND_TIME
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
 
+config SUSPEND_TIME_TIMEKEEPING
+	bool "get suspend time from timekeeping"
+	depends on SUSPEND_TIME
+	---help---
+	  Get the suspend time in suspend from timekeeping for the archs
+	  that dont support persistent clock.
+
 config PM_SYNC_BEFORE_SUSPEND
 	bool "Sync file systems before suspend"
 	depends on PM
