@@ -4146,9 +4146,6 @@ static void msm_id_status_w(struct work_struct *w)
 		id_state = msm_otg_read_pmic_id_state(motg);
 	else if (motg->ext_id_irq) {
 		id_state = gpio_get_value(motg->pdata->usb_id_gpio);
-	else if (motg->phy_irq)
-		id_state = msm_otg_read_phy_id_state(motg);
-
 		if (!id_state) {
 			int voltage = msm_otg_get_ext_id_voltage(motg);
 			pr_err("ext id voltage = %d microV\n", voltage);
@@ -4157,7 +4154,9 @@ static void msm_id_status_w(struct work_struct *w)
 				id_state = 1;
 			}
 		}
-	}
+	} else if (motg->phy_irq)
+		id_state = msm_otg_read_phy_id_state(motg);
+
 
 	if (id_state) {
 		if (!test_and_set_bit(ID, &motg->inputs)) {
