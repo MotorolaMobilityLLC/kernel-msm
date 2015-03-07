@@ -123,6 +123,8 @@ int motosh_reset_and_init(enum reset_mode mode)
 	/* Part is up and alive, switch to normal mode */
 	motosh_misc_data->mode = NORMALMODE;
 
+	motosh_time_sync();
+
 	rst_cmdbuff[0] = SENSOR_ORIENTATIONS;
 	rst_cmdbuff[1] = pdata->accel_orient & 0xff;
 	rst_cmdbuff[2] = pdata->gyro_orient & 0xff;
@@ -309,3 +311,4 @@ int motosh_reset_and_init(enum reset_mode mode)
 
 	return ret_err;
 }
+

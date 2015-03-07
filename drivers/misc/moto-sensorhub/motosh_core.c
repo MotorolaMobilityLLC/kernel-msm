@@ -1262,6 +1262,8 @@ static int motosh_resume(struct device *dev)
 		queue_work(ps_motosh->irq_work_queue,
 			&ps_motosh->clear_interrupt_status_work);
 
+	motosh_time_sync();
+
 	mutex_unlock(&ps_motosh->lock);
 
 	return 0;
