@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Copyright (C) 2015 Devin Kim <dojip.kim@lge.com>
+# This program may be used under the terms of version 2 of the GNU
+# General Public License.
+
+# Stop execution if any command fails
+set -e
+
+# Allow for verbose output
+if [ "$V" = 1 ]; then
+    set -x
+fi
+
+newsize=$(od -j 16 -I -N 4 $1 | awk '{print $2}')
+filesize=$(stat -c "%s" $1)
+padcount=$((newsize - filesize))
+cp -f $1 $1.wrapper
+dd if=/dev/zero ibs=1 count="$padcount" >> $1.wrapper
