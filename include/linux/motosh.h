@@ -35,6 +35,7 @@
 #define REV_ID                          0x01
 #define ERROR_STATUS                    0x02
 #define LOWPOWER_REG                    0x03
+#define MOTOSH_ELAPSED_RT               0x06
 
 #define MOTOSH_PEEKDATA_REG             0x09
 #define MOTOSH_PEEKSTATUS_REG           0x0A
@@ -452,6 +453,10 @@ int motosh_boot_flash_erase(void);
 int motosh_get_version(struct motosh_data *ps_motosh);
 int switch_motosh_mode(enum stm_mode mode);
 int motosh_bootloadermode(struct motosh_data *ps_motosh);
+
+void motosh_time_sync(void);
+int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time);
+void motosh_time_compare(void);
 
 extern struct motosh_data *motosh_misc_data;
 
