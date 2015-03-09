@@ -949,6 +949,10 @@
 		mmi,allocation-type-smem;
 	};
 
+	msm-efuse {
+		compatible = "qcom,msm-efuse";
+	};
+
 	qcom,cci@fda0c000 {
 		pinctrl-names = "cci_default", "cci_suspend";
 		pinctrl-0 = <&cci0_active>;
