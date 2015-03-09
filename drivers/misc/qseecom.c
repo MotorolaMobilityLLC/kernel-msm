@@ -1050,7 +1050,7 @@ static int qseecom_load_app(struct qseecom_dev_handle *data, void __user *argp)
 		}
 		entry->app_id = app_id;
 		entry->ref_cnt = 1;
-		memcpy(entry->app_name, load_img_req.img_name,
+		strlcpy(entry->app_name, load_img_req.img_name,
 					MAX_APP_NAME_SIZE);
 		/* Deallocate the handle */
 		if (!IS_ERR_OR_NULL(ihandle))
@@ -1065,7 +1065,7 @@ static int qseecom_load_app(struct qseecom_dev_handle *data, void __user *argp)
 		(char *)(load_img_req.img_name));
 	}
 	data->client.app_id = app_id;
-	memcpy(data->client.app_name, load_img_req.img_name,
+	strlcpy(data->client.app_name, load_img_req.img_name,
 					MAX_APP_NAME_SIZE);
 	load_img_req.app_id = app_id;
 	if (copy_to_user(argp, &load_img_req, sizeof(load_img_req))) {
@@ -2443,7 +2443,7 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		if (ret < 0)
 			goto err;
 		data->client.app_id = ret;
-		memcpy(data->client.app_name, app_name, MAX_APP_NAME_SIZE);
+		strlcpy(data->client.app_name, app_name, MAX_APP_NAME_SIZE);
 	}
 	if (!found_app) {
 		entry = kmalloc(sizeof(*entry), GFP_KERNEL);
@@ -2454,7 +2454,7 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		}
 		entry->app_id = ret;
 		entry->ref_cnt = 1;
-		memcpy(entry->app_name, app_name, MAX_APP_NAME_SIZE);
+		strlcpy(entry->app_name, app_name, MAX_APP_NAME_SIZE);
 
 		spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
 		list_add_tail(&entry->list, &qseecom.registered_app_list_head);
@@ -3236,7 +3236,7 @@ static int qseecom_query_app_loaded(struct qseecom_dev_handle *data,
 				&qseecom.registered_app_list_lock, flags);
 		data->client.app_id = ret;
 		query_req.app_id = ret;
-		memcpy(data->client.app_name, query_req.app_name,
+		strlcpy(data->client.app_name, query_req.app_name,
 				MAX_APP_NAME_SIZE);
 		if (copy_to_user(argp, &query_req, sizeof(query_req))) {
 			pr_err("copy_to_user failed\n");
