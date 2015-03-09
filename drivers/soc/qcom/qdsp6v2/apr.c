@@ -850,6 +850,9 @@ static int __init apr_init(void)
 {
 	int i, j, k;
 
+	init_waitqueue_head(&dsp_wait);
+	init_waitqueue_head(&modem_wait);
+
 	for (i = 0; i < APR_DEST_MAX; i++)
 		for (j = 0; j < APR_CLIENT_MAX; j++) {
 			mutex_init(&client[i][j].m_lock);
@@ -872,8 +875,6 @@ device_initcall(apr_init);
 static int __init apr_late_init(void)
 {
 	int ret = 0;
-	init_waitqueue_head(&dsp_wait);
-	init_waitqueue_head(&modem_wait);
 	subsys_notif_register(&mnb, &lnb);
 	return ret;
 }
