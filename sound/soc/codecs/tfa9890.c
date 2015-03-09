@@ -60,8 +60,8 @@ struct tfa9890_priv {
 	struct regulator *vdd;
 	struct snd_soc_codec *codec;
 	struct workqueue_struct *tfa9890_wq;
-	struct work_struct init_work;
-	struct work_struct calib_work;
+	struct delayed_work init_work;
+	struct delayed_work calib_work;
 	struct delayed_work mode_work;
 	struct work_struct load_preset;
 	struct delayed_work delay_work;
@@ -83,10 +83,13 @@ struct tfa9890_priv {
 	char const *fw_name;
 	int is_spkr_prot_en;
 	int update_cfg_eq;
+	int pcm_start_delay;
 };
 
 static DEFINE_MUTEX(lr_lock);
 static int stereo_mode;
+
+static void tfa9890_power(struct snd_soc_codec *codec, int on);
 
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
@@ -764,6 +767,65 @@ static int tfa9890_dsp_bypass_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
+		int on)
+{
+	if (on) {
+		/* if in bypass mode dont't do anything */
+		if (tfa9890->is_spkr_prot_en)
+			return;
+		/* To initialize dsp all the I2S signals should be bought up,
+		 * so that the DSP's internal PLL can sync up and memory becomes
+		 * accessible. Trigger callback is called when pcm write starts,
+		 * so this should be the place where DSP is initialized
+		 */
+		if (tfa9890->dsp_init == TFA9890_DSP_INIT_PENDING)
+			queue_delayed_work(tfa9890->tfa9890_wq,
+				&tfa9890->init_work,
+				msecs_to_jiffies(tfa9890->pcm_start_delay));
+		/* will need to read speaker impedence here if its not read yet
+		 * to complete the calibartion process. This step will enable
+		 * device to calibrate if its not calibrated/validated in the
+		 * factory. When the factory process is in place speaker imp
+		 * will be read from sysfs and validated.
+		 */
+		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
+			if (tfa9890->mode_switched == 1)
+				queue_delayed_work(tfa9890->tfa9890_wq,
+				&tfa9890->mode_work,
+				msecs_to_jiffies(tfa9890->pcm_start_delay));
+			if (tfa9890->speaker_imp == 0)
+				queue_delayed_work(tfa9890->tfa9890_wq,
+				&tfa9890->calib_work,
+				msecs_to_jiffies(tfa9890->pcm_start_delay));
+			}
+	}
+}
+
+static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
+		    struct snd_kcontrol *kcontrol,
+		    int event) {
+	struct snd_soc_codec *codec = w->codec;
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		break;
+	case SND_SOC_DAPM_POST_PMU:
+		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE)
+			tfa9890_power(codec, 1);
+		tfa9890_handle_playback_event(tfa9890, 1);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		tfa9890_handle_playback_event(tfa9890, 0);
+		tfa9890_power(codec, 0);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static const struct soc_enum tfa9890_mode_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, tfa9890_mode),
 };
@@ -788,7 +850,9 @@ static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
-	SND_SOC_DAPM_AIF_IN("I2S1L", "I2S1L Playback", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN_E("I2S1L", "I2S1L Playback", 0, 0, 0, 0,
+			tfa9890_i2s_playback_event,
+			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_MIXER("NXP Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_left_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_left_mixer_controls)),
@@ -798,6 +862,7 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
 	{"NXP Output Mixer Left", "DSP Bypass Left", "I2S1L Playback"},
 	{"NXP Speaker Boost Left", "Null", "NXP Output Mixer Left"},
+	{"I2S1L Playback", "Null", "I2S1L"}
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
@@ -820,6 +885,9 @@ static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
+	SND_SOC_DAPM_AIF_IN_E("I2S1R", "I2S1R Playback", 0, 0, 0, 0,
+			tfa9890_i2s_playback_event,
+			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_MIXER("NXP Output Mixer Right", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_right_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_right_mixer_controls)),
@@ -829,6 +897,7 @@ static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
 	{"NXP Output Mixer Right", "DSP Bypass Right", "I2S1R Playback"},
 	{"NXP Speaker Boost Right", "Null", "NXP Output Mixer Right"},
+	{"I2S1R Playback", "Null", "I2S1R"}
 };
 
 /*
@@ -1140,7 +1209,8 @@ static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
 static void tfa9890_work_read_imp(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, calib_work);
+			container_of(work, struct tfa9890_priv,
+			calib_work.work);
 	u16 val;
 
 	mutex_lock(&lr_lock);
@@ -1307,7 +1377,8 @@ static void tfa9890_monitor(struct work_struct *work)
 		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 		/* schedule init now if the clocks are up and stable */
 		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
-			queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
+			queue_delayed_work(tfa9890->tfa9890_wq,
+				&tfa9890->init_work, 0);
 	} /* else just reschedule */
 
 	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
@@ -1319,7 +1390,8 @@ static void tfa9890_monitor(struct work_struct *work)
 static void tfa9890_dsp_init(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, init_work);
+			container_of(work, struct tfa9890_priv,
+			init_work.work);
 	struct snd_soc_codec *codec = tfa9890->codec;
 	u16 val;
 	int ret;
@@ -1327,14 +1399,30 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	mutex_lock(&lr_lock);
 	mutex_lock(&tfa9890->dsp_init_lock);
 
+	/* if the initialzation is pending treat it as cold
+	 * startcase, need to put the dsp in reset and and
+	 * power it up after additional delay to make sure
+	 * the pll is stable. once the init is done this step
+	 * is not needed for warm start as the dsp firmware
+	 * patch configures the PLL for stable startup.
+	 */
+	snd_soc_write(codec, TFA9890_CF_CONTROLS, 0x1);
+	/* power up IC */
+	tfa9890_power(codec, 1);
 	/* check if DSP pll is synced, It should be sync'ed at this point */
 	ret = tfa9890_wait_pll_sync(tfa9890);
 	if (ret < 0)
 		goto out;
 
+	/* wait additional 3msec for PLL to be stable */
+	usleep_range(3000, 3001);
+	/* take DSP out of reset */
+	snd_soc_write(codec, TFA9890_CF_CONTROLS, 0x0);
+
 	val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
 
-	pr_info("tfa9890: Initializing DSP, status:0x%x", val);
+	pr_info("tfa9890: Initializing DSP, status:0x%x codec name %s",
+				val, codec->name);
 
 	/* cold boot device before loading firmware and parameters */
 	ret = tfa9890_coldboot(codec);
@@ -1522,27 +1610,6 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 			usleep_range(10000, 10001);
 		} while ((++tries < 20));
 	} else {
-		if (tfa9890->dsp_init == TFA9890_DSP_INIT_PENDING) {
-			/* if the initialzation is pending treat it as cold
-			 * startcase, need to put the dsp in reset and and
-			 * power it up after additional delay to make sure
-			 * the pll is stable. once the init is done this step
-			 * is not needed for warm start as the dsp firmware
-			 * patch configures the PLL for stable startup.
-			 */
-			snd_soc_write(codec, TFA9890_CF_CONTROLS, 0x1);
-			/* power up IC */
-			tfa9890_power(codec, 1);
-
-			tfa9890_wait_pll_sync(tfa9890);
-
-			/* wait additional 3msec for PLL to be stable */
-			usleep_range(3000, 3001);
-
-			/* take DSP out of reset */
-			snd_soc_write(codec, TFA9890_CF_CONTROLS, 0x0);
-		}
-
 		tfa9890_set_mute(codec, TFA9890_MUTE_OFF);
 		/* start monitor thread to check IC status bit 5secs, and
 		 * re-init IC to recover.
@@ -1588,37 +1655,12 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 	int ret = 0;
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
-		/* if in bypass mode dont't do anything */
-		if (tfa9890->is_spkr_prot_en)
-			break;
-		/* To initialize dsp all the I2S signals should be bought up,
-		 * so that the DSP's internal PLL can sync up and memory becomes
-		 * accessible. Trigger callback is called when pcm write starts,
-		 * so this should be the place where DSP is initialized
-		 */
-		if (tfa9890->dsp_init == TFA9890_DSP_INIT_PENDING)
-			queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
-
-		/* will need to read speaker impedence here if its not read yet
-		 * to complete the calibartion process. This step will enable
-		 * device to calibrate if its not calibrated/validated in the
-		 * factory. When the factory process is in place speaker imp
-		 * will be read from sysfs and validated.
-		 */
-		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
-			if (tfa9890->mode_switched == 1)
-				queue_delayed_work(tfa9890->tfa9890_wq,
-				&tfa9890->mode_work, 0);
-			if (tfa9890->speaker_imp == 0)
-				queue_work(tfa9890->tfa9890_wq,
-					&tfa9890->calib_work);
-
-		}
-		/* else nothing to do */
+		tfa9890_handle_playback_event(tfa9890, 1);
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 	case SNDRV_PCM_TRIGGER_STOP:
+		tfa9890_handle_playback_event(tfa9890, 0);
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		break;
@@ -2012,6 +2054,10 @@ tfa9890_of_init(struct i2c_client *client)
 		&pdata->fw_name))
 		pdata->fw_name = "tfa9890";
 
+	if (of_property_read_u32(np, "nxp,tfa_pcm-start-delay",
+				&pdata->pcm_start_delay))
+		pdata->pcm_start_delay = 0;
+
 	return pdata;
 }
 #else
@@ -2063,6 +2109,7 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->fw_path = pdata->fw_path;
 	tfa9890->fw_name = pdata->fw_name;
 	tfa9890->update_cfg_eq = 1;
+	tfa9890->pcm_start_delay = pdata->pcm_start_delay;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
@@ -2088,8 +2135,8 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 		goto wq_fail;
 	}
 
-	INIT_WORK(&tfa9890->init_work, tfa9890_dsp_init);
-	INIT_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
+	INIT_DELAYED_WORK(&tfa9890->init_work, tfa9890_dsp_init);
+	INIT_DELAYED_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
 	INIT_DELAYED_WORK(&tfa9890->mode_work, tfa9890_work_mode);
 	INIT_WORK(&tfa9890->load_preset, tfa9890_load_preset);
 	INIT_DELAYED_WORK(&tfa9890->delay_work, tfa9890_monitor);
