@@ -16,15 +16,13 @@
 #include <uapi/linux/kernel.h>
 
 // +++ ASUS_BSP : add for hardware ID
-enum DEVICE_HWID
-{
-	// WI500Q
-	WI500Q_EVB = 0x0,
-	WI500Q_EVB2 = 0x1,
-	WI500Q_SR = 0x2,
-	WI500Q_SR2 = 0x3,
-	WI500Q_ER = 0x4,
-	WI500Q_PR = 0x5,
+enum DEVICE_HWID {
+	// WI300Q
+	SPARROW_EVB = 0x0,
+	SPARROW_SR_PNI = 0x1,
+	SPARROW_SR_QL = 0x2,
+	SPARROW_ER = 0x3,
+	SPARROW_PR = 0x4,
 	HWID_UNKNOWN = 0xFF
 };
 // --- ASUS_BSP : add for hardware ID

@@ -4,11 +4,9 @@
 /////////////////////////////////////////////////////////////////////
 //includ add asus platform gpio table
 
-#ifdef ASUS_WI500Q_PROJECT
-#include "wi500q_evb2_gpio_pinmux.h"
-#include "wi500q_sr_gpio_pinmux.h"
-#include "wi500q_sr2_gpio_pinmux.h"
-#endif
+#include "sparrow_evb_gpio_pinmux.h"
+#include "sparrow_sr_pni_gpio_pinmux.h"
+#include "sparrow_sr_ql_gpio_pinmux.h"
 
 
 /////////////////////////////////////////////////////////////////////
@@ -17,32 +15,29 @@
 int __init device_gpio_init(void)
 {   
 
-#ifdef ASUS_WI500Q_PROJECT
    	switch (g_ASUS_hwID)
    	{
-	case WI500Q_EVB2:
-		printk("[KERNEL] wi500q gpio config table = EVB2\n");  
-		msm_gpiomux_install(wi500q_evb2_msm8226_gpio_configs,
-		ARRAY_SIZE(wi500q_evb2_msm8226_gpio_configs));	 	  
+	case SPARROW_EVB:
+		printk("[KERNEL] sparrow gpio config table = EVB\n");
+		msm_gpiomux_install(sparrow_evb_msm8226_gpio_configs,
+		ARRAY_SIZE(sparrow_evb_msm8226_gpio_configs));
   	break;
-	case WI500Q_SR:
-		printk("[KERNEL] wi500q gpio config table = SR\n");  
-		msm_gpiomux_install(wi500q_sr_msm8226_gpio_configs,
-		ARRAY_SIZE(wi500q_sr_msm8226_gpio_configs));	 	  
+	case SPARROW_SR_PNI:
+		printk("[KERNEL] sparrow gpio config table = SR_PNI\n");
+		msm_gpiomux_install(sparrow_sr_pni_msm8226_gpio_configs,
+		ARRAY_SIZE(sparrow_sr_pni_msm8226_gpio_configs));
   	break;
-	case WI500Q_SR2:
-		printk("[KERNEL] wi500q gpio config table = SR2\n");  
-		msm_gpiomux_install(wi500q_sr2_msm8226_gpio_configs,
-		ARRAY_SIZE(wi500q_sr2_msm8226_gpio_configs));	 	  
+	case SPARROW_SR_QL:
+		printk("[KERNEL] sparrow gpio config table = SR_QL\n");
+		msm_gpiomux_install(sparrow_sr_ql_msm8226_gpio_configs,
+		ARRAY_SIZE(sparrow_sr_ql_msm8226_gpio_configs));
   	break;
 	default:
-		printk(KERN_ERR "[ERROR] There is NO valid hardware ID, use WI500Q SR GPIO Instead.\n");			   
-		msm_gpiomux_install(wi500q_sr_msm8226_gpio_configs,
-		ARRAY_SIZE(wi500q_sr_msm8226_gpio_configs));	 
+		printk(KERN_ERR "[ERROR] There is NO valid hardware ID, use SPARROW EVB GPIO Instead.\n");
+		msm_gpiomux_install(sparrow_evb_msm8226_gpio_configs,
+		ARRAY_SIZE(sparrow_evb_msm8226_gpio_configs));
 	break;
 	}
-#endif
 
- 
    return 0;
 }
