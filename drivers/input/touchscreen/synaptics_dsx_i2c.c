@@ -2029,11 +2029,18 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int p;
 	int w;
 	int id;
+	static unsigned char active_touch_max_idx;
 	struct f12_d1_type *finger_data;
 	struct synaptics_rmi4_packet_reg *reg_data_1 =
 					&synaptics_cfg_regs[1].regs[0];
 	struct synaptics_rmi4_packet_reg *reg_data_15 =
 					&synaptics_cfg_regs[1].regs[1];
+
+	if (atomic_read(&rmi4_data->panel_off_flag)) {
+		synaptics_dsx_resumeinfo_ignore(rmi4_data);
+		return 0;
+	} else
+		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
 
 	fingers_to_process = fhandler->num_of_data_points;
 	data_addr = fhandler->full_addr.data_base;
@@ -2067,6 +2074,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		pr_debug("fingers to process %d\n", fingers_to_process);
 	}
 
+	fingers_to_process = max(fingers_to_process, active_touch_max_idx);
+
 	if (fingers_to_process == 0) {
 		synaptics_dsx_release_all(rmi4_data);
 		return 0;
@@ -2080,12 +2089,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			data_size);
 	if (retval < 0)
 		return 0;
-
-	if (atomic_read(&rmi4_data->panel_off_flag)) {
-		synaptics_dsx_resumeinfo_ignore(rmi4_data);
-		return 0;
-	} else
-		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
 
 	finger_data = (struct f12_d1_type *)reg_data_1->data;
 	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
@@ -2127,6 +2130,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_mt_sync(rmi4_data->input_dev);
 #endif
 			touch_count++;
+			active_touch_max_idx = finger + 1;
 #ifdef TYPE_B_PROTOCOL
 		} else {
 			/* Touch no longer active, close out slot */
@@ -2138,10 +2142,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
 
+	if (!touch_count) {
+		active_touch_max_idx = 0;
 #ifndef TYPE_B_PROTOCOL
-	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
 #endif
+	}
 
 	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
