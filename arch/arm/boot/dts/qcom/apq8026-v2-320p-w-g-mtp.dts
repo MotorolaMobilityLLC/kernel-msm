@@ -63,6 +63,7 @@
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
 			"LDO_H", "MCLK",
+			"SPK_OUT", "EXT_VDD_SPKR",
 			"AIF4 MAD", "MCLK",
 			"AMIC3", "MIC BIAS2 External",
 			"MIC BIAS2 External", "Analog Mic3",
@@ -75,6 +76,7 @@
 
 		qcom,tomtom-mclk-clk-freq = <9600000>;
 		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
+		qcom,cdc-vdd-spkr-gpios = <&pm8226_gpios 2 0>;
 	};
 };
 
