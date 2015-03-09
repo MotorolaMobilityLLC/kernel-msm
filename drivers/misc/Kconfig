@@ -730,4 +730,5 @@ source "drivers/misc/vmw_vmci/Kconfig"
 source "drivers/misc/qcom/Kconfig"
 source "drivers/misc/moto-sensorhub/Kconfig"
 source "drivers/misc/capsense_prog/Kconfig"
+source "drivers/misc/sec/Kconfig"
 endmenu
