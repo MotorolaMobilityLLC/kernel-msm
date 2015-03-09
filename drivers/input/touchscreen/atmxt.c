@@ -3955,6 +3955,74 @@ static ssize_t atmxt_debug_ic_ver_show(struct device *dev,
 }
 static DEVICE_ATTR(ic_ver, S_IRUGO, atmxt_debug_ic_ver_show, NULL);
 
+static ssize_t atmxt_debug_reset_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int err = 0;
+	struct atmxt_driver_data *dd = dev_get_drvdata(dev);
+
+	err = gpio_get_value(dd->pdata->gpio_reset);
+	if (err < 0) {
+		pr_err("%s: Failed to read reset level with error code %d.\n",
+			__func__, err);
+		err = sprintf(buf,
+			"Failed to read reset level with error code %d.\n",
+			err);
+		goto atmxt_debug_reset_show_exit;
+	}
+
+	switch (err) {
+	case 0:
+		err = sprintf(buf, "Reset line is LOW.\n");
+		break;
+	case 1:
+		err = sprintf(buf, "Reset line is HIGH.\n");
+		break;
+	default:
+		err = sprintf(buf, "Read reset level of %d.\n", err);
+		break;
+	}
+
+atmxt_debug_reset_show_exit:
+	return err;
+}
+static ssize_t atmxt_debug_reset_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned long value = 0;
+	struct atmxt_driver_data *dd = dev_get_drvdata(dev);
+	int err = 0;
+
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		pr_err("%s: Failed to convert value.\n", __func__);
+		return err;
+	}
+
+	mutex_lock(dd->mutex);
+
+	switch (value) {
+	case 0:
+		gpio_set_value(dd->pdata->gpio_reset, 0);
+		err = size;
+		break;
+
+	case 1:
+		gpio_set_value(dd->pdata->gpio_reset, 1);
+		err = size;
+		break;
+
+	default:
+		pr_err("%s: Invalid value %lu passed.\n", __func__, value);
+		err = -EINVAL;
+	}
+
+	mutex_unlock(dd->mutex);
+	return err;
+}
+static DEVICE_ATTR(reset, S_IRUGO | S_IWUSR,
+	atmxt_debug_reset_show, atmxt_debug_reset_store);
+
 static int atmxt_create_sysfs_files(struct atmxt_driver_data *dd)
 {
 	int err = 0;
@@ -4050,7 +4118,13 @@ static int atmxt_create_sysfs_files(struct atmxt_driver_data *dd)
 	check = device_create_file(&(dd->client->dev),
 					&dev_attr_interactivemode);
 	if (check < 0) {
-		pr_err("%s: Failed to create ic_ver.\n", __func__);
+		pr_err("%s: Failed to create interactivemode.\n", __func__);
+		err = check;
+	}
+
+	check = device_create_file(&(dd->client->dev), &dev_attr_reset);
+	if (check < 0) {
+		pr_err("%s: Failed to create reset file.\n", __func__);
 		err = check;
 	}
 
@@ -4081,5 +4155,6 @@ static void atmxt_remove_sysfs_files(struct atmxt_driver_data *dd)
 #endif
 	device_remove_file(&(dd->client->dev), &dev_attr_ic_ver);
 	device_remove_file(&(dd->client->dev), &dev_attr_interactivemode);
+	device_remove_file(&(dd->client->dev), &dev_attr_reset);
 	return;
 }
