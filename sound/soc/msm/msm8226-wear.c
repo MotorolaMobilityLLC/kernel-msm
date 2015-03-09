@@ -129,6 +129,7 @@ static struct mutex cdc_mclk_mutex;
 static struct clk *codec_clk;
 static int clk_users;
 static int msm_proxy_rx_ch = 2;
+static int vdd_spkr_gpio = -1;
 
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
@@ -193,6 +194,28 @@ static int msm8226_mclk_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int msm8226_vdd_spkr_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (vdd_spkr_gpio >= 0) {
+			gpio_direction_output(vdd_spkr_gpio, 1);
+			pr_debug("%s: Enabled 5V external supply for speaker\n",
+				 __func__);
+		}
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		if (vdd_spkr_gpio >= 0) {
+			gpio_direction_output(vdd_spkr_gpio, 0);
+			pr_debug("%s: Disabled 5V external supply for speaker\n",
+				 __func__);
+		}
+		break;
+	}
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget msm8226_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY("MCLK",  SND_SOC_NOPM, 0, 0,
@@ -204,6 +227,9 @@ static const struct snd_soc_dapm_widget msm8226_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Analog Mic3", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic4", NULL),
 
+	SND_SOC_DAPM_SUPPLY("EXT_VDD_SPKR",  SND_SOC_NOPM, 0, 0,
+			    msm8226_vdd_spkr_event,
+			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 };
 
 static const char *const slim0_rx_ch_text[] = {"One", "Two"};
@@ -1831,6 +1857,24 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	vdd_spkr_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,cdc-vdd-spkr-gpios", 0);
+	if (vdd_spkr_gpio < 0) {
+		dev_dbg(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"qcom, cdc-vdd-spkr-gpios",
+			pdev->dev.of_node->full_name, vdd_spkr_gpio);
+	} else {
+		ret = gpio_request(vdd_spkr_gpio, "TOMTOM_CODEC_VDD_SPKR");
+		if (ret) {
+			/* GPIO to enable EXT VDD exists, but failed request */
+			dev_err(card->dev,
+				"%s: Failed to request tomtom vdd spkr gpio %d\n",
+				 __func__, vdd_spkr_gpio);
+			goto err;
+		}
+	}
+
 	msm8226_setup_hs_jack(pdev, pdata);
 
 	return 0;
@@ -1853,9 +1897,12 @@ static int msm8226_asoc_machine_remove(struct platform_device *pdev)
 	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 
 	gpio_free(pdata->mclk_gpio);
+	if (vdd_spkr_gpio >= 0)
+		gpio_free(vdd_spkr_gpio);
 	if (pdata->us_euro_gpio > 0)
 		gpio_free(pdata->us_euro_gpio);
 
+	vdd_spkr_gpio = -1;
 	snd_soc_unregister_card(card);
 
 	return 0;
