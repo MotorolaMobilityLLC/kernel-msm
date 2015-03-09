@@ -437,7 +437,16 @@ config SND_SOC_WM5102
 	tristate
 
 config SND_SOC_FLORIDA
-	tristate
+	bool "Florida ext audio codec"
+	help
+	Florida ASoC codec driver should only be integrated
+	on products that carry WM8281/XMCS1000 external audio
+	codec. Florida ALSA ASoC codec is a highly-integrated
+	low-power audio system. Florida digital core combines a
+	quad-core 600MMAC DSP system with a variety of power-efficient
+	fixed function audio processing blocks. The programmable
+	DSP cores support advanced audio features, including multi-mic
+	noise reduction, AEC, ANC, speech enhancement etc.
 
 config SND_SOC_WM8350
 	tristate
