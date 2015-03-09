@@ -565,7 +565,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			timeout_cnt ++;
 			printk("mdss:cmd:timeout_cnt increase to %d...\n",timeout_cnt);
 			if (timeout_cnt > 15){
-				panic("To live without light, i prefer to die!!\n");
+				//panic("To live without light, i prefer to die!!\n");
 			}
 			rc = -EPERM;
 			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);

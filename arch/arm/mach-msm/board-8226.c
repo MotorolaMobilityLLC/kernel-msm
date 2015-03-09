@@ -129,7 +129,7 @@ static void gpio_bt_init(void)
 	bluesleep_resources[0].start = GPIO_BT_WAKE_UP_HOST;
 	bluesleep_resources[0].end = GPIO_BT_WAKE_UP_HOST;
 
-	if (g_ASUS_hwID == WI500Q_EVB2) {
+	if (g_ASUS_hwID == SPARROW_EVB) {
 		bluesleep_resources[1].start = GPIO_HOST_WAKE_UP_BT_EVB2;
 		bluesleep_resources[1].end = GPIO_HOST_WAKE_UP_BT_EVB2;
 	} else {

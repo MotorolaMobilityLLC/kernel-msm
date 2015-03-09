@@ -471,10 +471,8 @@ int AXC_Cap_Filter_A66_FilterCapacity(struct AXI_Cap_Filter *apCapFilter, int no
 	 && (g_CHG_mode != 1)
 #endif
 	 ) {
-		if(g_ASUS_hwID >= WI500Q_SR2){ 
-			pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
-			return BAT_LIFE_TO_SHUTDOWN;
-		}
+		pr_info("[BAT][Fil]%s(), bat low and cap <= 3, shutdown!! \n", __func__);
+		return BAT_LIFE_TO_SHUTDOWN;
 	}
 #endif
 	
