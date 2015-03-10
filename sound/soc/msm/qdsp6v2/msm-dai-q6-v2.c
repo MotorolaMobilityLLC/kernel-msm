@@ -2400,26 +2400,8 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	dai_data->rate = params_rate(params);
 
 //ASUS_BSP Ken_Cheng for WI500Q Digital MIC (ADMP441) +++
-#if !defined(ASUS_WI500Q_PROJECT)
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-	case SNDRV_PCM_FORMAT_SPECIAL:
-		dai_data->port_config.i2s.bit_width = 16;
-		dai_data->bitwidth = 16;
-		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
-		dai_data->port_config.i2s.bit_width = 24;
-		dai_data->bitwidth = 24;
-		break;
-	default:
-		pr_err("%s: format %d\n",
-			__func__, params_format(params));
-		return -EINVAL;
-	}
-#else
-		dai_data->port_config.i2s.bit_width = 24;
-		dai_data->bitwidth = 24;
-#endif
+	dai_data->port_config.i2s.bit_width = 24;
+	dai_data->bitwidth = 24;
 //ASUS_BSP Ken_Cheng for WI500Q Digital MIC (ADMP441) ---
 
 	dai_data->port_config.i2s.i2s_cfg_minor_version =
@@ -2574,11 +2556,7 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 //ASUS_BSP Ken_Cheng for WI500Q Digital MIC (ADMP441) +++
-#if !defined(ASUS_WI500Q_PROJECT)
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
-#else
 			.formats = SNDRV_PCM_FMTBIT_S24_LE,
-#endif
 //ASUS_BSP Ken_Cheng for WI500Q Digital MIC (ADMP441) ---
 			.rate_min =     8000,
 			.rate_max =     48000,
