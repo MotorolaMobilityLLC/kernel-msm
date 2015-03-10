@@ -55,13 +55,15 @@ struct tfa9890_priv {
 	struct regulator *vdd;
 	struct snd_soc_codec *codec;
 	struct workqueue_struct *tfa9890_wq;
-	struct work_struct init_work;
-	struct work_struct calib_work;
+	struct delayed_work init_work;
+	struct delayed_work calib_work;
 	struct delayed_work mode_work;
 	struct work_struct load_preset;
 	struct delayed_work delay_work;
 	struct mutex dsp_init_lock;
 	struct mutex i2c_rw_lock;
+	struct snd_pcm_substream *substream;
+	struct snd_soc_dai *dai;
 	int dsp_init;
 	int speaker_imp;
 	int sysclk;
@@ -83,6 +85,9 @@ struct tfa9890_priv {
 	int is_pcm_triggered;
 };
 
+static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
+			     struct snd_soc_dai *dai);
+static void tfa9890_power(struct snd_soc_codec *codec, int on);
 static DEFINE_MUTEX(lr_lock);
 static int stereo_mode;
 static struct snd_soc_codec *left_codec;
@@ -799,6 +804,83 @@ static int tfa9890_dsp_bypass_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tfa9890_i2sl_event(struct snd_soc_dapm_widget *w,
+		    struct snd_kcontrol *kcontrol,
+		    int event) {
+	struct snd_soc_codec *codec = w->codec;
+	u16 val;
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		break;
+	case SND_SOC_DAPM_POST_PMU:
+		tfa9890_power(codec, 1);
+
+		if (tfa9890->dai && tfa9890->substream)
+			tfa9890_trigger(tfa9890->substream,
+				SNDRV_PCM_TRIGGER_START,
+				tfa9890->dai);
+
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		pr_info("%s: status X%x", __func__, val);
+
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		if (tfa9890->dai && tfa9890->substream)
+			tfa9890_trigger(tfa9890->substream,
+				SNDRV_PCM_TRIGGER_STOP,
+				tfa9890->dai);
+		tfa9890_power(codec, 0);
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		pr_info("%s: post pmd %d status X%x", __func__, event, val);
+		break;
+	default:
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		pr_info("%s: post ev %d status X%x", __func__, event, val);
+		break;
+	}
+	return 0;
+}
+
+static int tfa9890_i2sr_event(struct snd_soc_dapm_widget *w,
+		    struct snd_kcontrol *kcontrol,
+		    int event) {
+	struct snd_soc_codec *codec = w->codec;
+	u16 val;
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		break;
+	case SND_SOC_DAPM_POST_PMU:
+		tfa9890_power(codec, 1);
+		if (tfa9890->dai && tfa9890->substream)
+			tfa9890_trigger(tfa9890->substream,
+				SNDRV_PCM_TRIGGER_START,
+				tfa9890->dai);
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		pr_info("%s: status X%x", __func__, val);
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		if (tfa9890->dai && tfa9890->substream)
+			tfa9890_trigger(tfa9890->substream,
+				SNDRV_PCM_TRIGGER_STOP,
+				tfa9890->dai);
+		tfa9890_power(codec, 0);
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		pr_info("%s: post pdm %d status X%x", __func__, event, val);
+		break;
+	default:
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		pr_info("%s: post ev %d status X%x", __func__, event, val);
+		break;
+	}
+	return 0;
+}
+
 static int tfa9890_put_ch_sel(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -883,7 +965,9 @@ static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
-	SND_SOC_DAPM_INPUT("I2S1L"),
+	SND_SOC_DAPM_AIF_IN_E("I2S1L", "I2S1L Playback", 0, 0, 0, 0,
+				tfa9890_i2sl_event,
+				SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_MIXER("BOOST Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_left_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_left_mixer_controls)),
@@ -893,6 +977,7 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
 	{"BOOST Output Mixer Left", "DSP Bypass Left", "I2S1L"},
 	{"BOOST Speaker Left", "Null", "BOOST Output Mixer Left"},
+	{"I2S1L Playback", "Null", "I2S1L"}
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
@@ -916,7 +1001,9 @@ static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
-	SND_SOC_DAPM_INPUT("I2S1R"),
+	SND_SOC_DAPM_AIF_IN_E("I2S1R", "I2S1R Playback", 0, 0, 0, 0,
+			tfa9890_i2sr_event,
+			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_MIXER("BOOST Output Mixer Right", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_right_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_right_mixer_controls)),
@@ -926,6 +1013,7 @@ static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
 	{"BOOST Output Mixer Right", "DSP Bypass Right", "I2S1R"},
 	{"BOOST Speaker Right", "Null", "BOOST Output Mixer Right"},
+	{"I2S1R Playback", "Null", "I2S1R"}
 };
 
 /*
@@ -1241,7 +1329,9 @@ static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
 static void tfa9890_work_read_imp(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, calib_work);
+			container_of(work, struct tfa9890_priv,
+			calib_work.work);
+
 	u16 val;
 
 	mutex_lock(&lr_lock);
@@ -1421,7 +1511,8 @@ static void tfa9890_monitor(struct work_struct *work)
 		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 		/* schedule init now if the clocks are up and stable */
 		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
-			queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
+			queue_delayed_work(tfa9890->tfa9890_wq,
+				&tfa9890->init_work, 0);
 	} /* else just reschedule */
 
 	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
@@ -1433,7 +1524,7 @@ static void tfa9890_monitor(struct work_struct *work)
 static void tfa9890_dsp_init(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, init_work);
+			container_of(work, struct tfa9890_priv, init_work.work);
 	struct snd_soc_codec *codec = tfa9890->codec;
 	u16 val;
 	int ret;
@@ -1447,7 +1538,8 @@ static void tfa9890_dsp_init(struct work_struct *work)
 
 	val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
 
-	pr_info("tfa9890: Initializing DSP, status:0x%x", val);
+	pr_info("tfa9890: Initializing DSP, status:0x%x codec name %s", val,
+			codec->name);
 
 	/* cold boot device before loading firmware and parameters */
 	ret = tfa9890_coldboot(codec);
@@ -1554,6 +1646,7 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 	u16 val;
 	int bclk_ws_ratio;
 
+	pr_info("%s: enter\n", __func__);
 	/* validate and set params */
 	if (params_format(params) != SNDRV_PCM_FORMAT_S16_LE) {
 		pr_err("tfa9890: invalid pcm bit lenght\n");
@@ -1607,6 +1700,8 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
+	tfa9890->substream = substream;
+	tfa9890->dai = dai;
 	return 0;
 }
 
@@ -1713,7 +1808,9 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		 * so this should be the place where DSP is initialized
 		 */
 		if (tfa9890->dsp_init == TFA9890_DSP_INIT_PENDING)
-			queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
+			queue_delayed_work(tfa9890->tfa9890_wq,
+				&tfa9890->init_work,
+				msecs_to_jiffies(500));
 
 		/* will need to read speaker impedence here if its not read yet
 		 * to complete the calibartion process. This step will enable
@@ -1722,13 +1819,14 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		 * will be read from sysfs and validated.
 		 */
 		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
-			if ((tfa9890->mode_switched == 1) ||
-					(tfa9890->update_cfg == 1))
-				queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->mode_work,
-						0);
+			if (tfa9890->mode_switched == 1)
+				queue_delayed_work(tfa9890->tfa9890_wq,
+					&tfa9890->mode_work,
+					msecs_to_jiffies(500));
 			if (tfa9890->speaker_imp == 0)
-				queue_work(tfa9890->tfa9890_wq,
-					&tfa9890->calib_work);
+				queue_delayed_work(tfa9890->tfa9890_wq,
+					&tfa9890->calib_work,
+					msecs_to_jiffies(500));
 
 		}
 		/* else nothing to do */
@@ -1982,6 +2080,7 @@ static ssize_t tfa9890_force_calibaration(struct device *dev,
 
 	tfa9890_calibaration(tfa9890);
 
+	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 	return count;
 }
 
@@ -2042,7 +2141,7 @@ static const struct snd_soc_dai_ops tfa9890_ops = {
 static struct snd_soc_dai_driver tfa9890_left_dai = {
 	.name = "tfa9890_codec_left",
 	.playback = {
-		     .stream_name = "Playback",
+		     .stream_name = "I2S1L Playback",
 		     .channels_min = 1,
 		     .channels_max = 2,
 		     .rates = TFA9890_RATES,
@@ -2054,7 +2153,7 @@ static struct snd_soc_dai_driver tfa9890_left_dai = {
 static struct snd_soc_dai_driver tfa9890_right_dai = {
 	.name = "tfa9890_codec_right",
 	.playback = {
-		     .stream_name = "Playback",
+		     .stream_name = "I2S1R Playback",
 		     .channels_min = 1,
 		     .channels_max = 2,
 		     .rates = TFA9890_RATES,
@@ -2266,8 +2365,8 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 		goto wq_fail;
 	}
 
-	INIT_WORK(&tfa9890->init_work, tfa9890_dsp_init);
-	INIT_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
+	INIT_DELAYED_WORK(&tfa9890->init_work, tfa9890_dsp_init);
+	INIT_DELAYED_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
 	INIT_DELAYED_WORK(&tfa9890->mode_work, tfa9890_work_mode);
 	INIT_WORK(&tfa9890->load_preset, tfa9890_load_preset);
 	INIT_DELAYED_WORK(&tfa9890->delay_work, tfa9890_monitor);
