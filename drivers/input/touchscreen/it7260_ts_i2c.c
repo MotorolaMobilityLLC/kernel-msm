@@ -473,14 +473,14 @@ static void chipLowPowerMode(bool low)
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
-			
+
 			//Touch Reset
-			gpio_direction_output(16,1);
-			msleep(50);
 			gpio_direction_output(16,0);
 			msleep(50);
+			gpio_direction_output(16,1);
+			msleep(50);
 			chipInLowPower = false;
-			
+
 			if (!allow_irq_wake){
 				smp_wmb();
 				disable_irq_wake(gl_ts->client->irq);
@@ -525,7 +525,7 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
 	fwUploadResult = SYSFS_RESULT_NOT_DONE;
 	if (fwLen && cfgLen) {
-		if (manualUpgrade || (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) || 
+		if (manualUpgrade || (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) ||
 		(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5])){
 			LOGI("firmware/config will be upgraded\n");
 			disable_irq(gl_ts->client->irq);
@@ -542,7 +542,7 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 
 	chipGetVersions(verFw, verCfg, true);
 	sprintf(fwVersion, "%x,%x,%x,%x # %x,%x,%x,%x",verFw[5], verFw[6], verFw[7], verFw[8], verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
-	
+
 	if (fwLen)
 		release_firmware(fw);
 
@@ -799,7 +799,7 @@ static void readFingerData(uint16_t *xP1, uint16_t *yP1, uint8_t *pressureP1, ui
 		*yP1 = y1;
 	if (pressureP1)
 		*pressureP1 = fd[0].pressure & FD_PRESSURE_BITS;
-		
+
 	if (xP2)
 		*xP2 = x2;
 	if (yP2)
@@ -841,14 +841,14 @@ static void exitIdleEvt(struct work_struct *work) {
 	input_mt_slot(gl_ts->touch_dev,0);
 	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 0);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 0);	
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 0);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
 	input_sync(gl_ts->touch_dev);
 	wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 	wake_unlock(&touch_lock);
-	last_time_exit_low = jiffies;	
+	last_time_exit_low = jiffies;
 }
 
 static void sendPalmEvt(void)
@@ -890,7 +890,7 @@ static void readTouchDataPoint(void)
 		LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
 		return;
 	}
-	
+
 	if ((pointData.palm & PD_PALM_FLAG_BIT) && !isTouchLocked && !hadPalmDown) {
 		if (jiffies - last_time_exit_low > HZ/4){
 			isTouchLocked = true;
@@ -920,7 +920,7 @@ static void readTouchDataPoint(void)
 			input_mt_slot(gl_ts->touch_dev, 0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		}
-		
+
 		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02){
 			input_mt_slot(gl_ts->touch_dev,1);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
@@ -931,13 +931,13 @@ static void readTouchDataPoint(void)
 			input_mt_slot(gl_ts->touch_dev, 1);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		}
-		
+
 		input_sync(gl_ts->touch_dev);
 
 	} else if (!(pointData.palm & PD_PALM_FLAG_BIT)) {
 		hadFingerDown = false;
 		hadPalmDown = false;
-		
+
 		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
 		input_sync(gl_ts->touch_dev);
 	}
@@ -952,7 +952,7 @@ static void readTouchDataPoint_Ambient(void)
 	uint16_t x1, y1;
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x2, y2;
-	
+
 	if (!isTouchLocked){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
 	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
@@ -966,11 +966,11 @@ static void readTouchDataPoint_Ambient(void)
 		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 		return;
-	}	
+	}
 	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
 		if (pointData.flags == 16){
 			LOGE("readTouchDataPoint() send touch event by type 0x%02X\n", pointData.flags);
-		} 
+		}
 		else{
 			LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
 			isTouchLocked = true;
@@ -978,7 +978,7 @@ static void readTouchDataPoint_Ambient(void)
 			return;
 		}
 	}
-	
+
 	if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 0x03)
 		readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 
@@ -993,15 +993,15 @@ static void readTouchDataPoint_Ambient(void)
 		if (hadFingerDown){
 			cancel_delayed_work(&gl_ts->exit_idle_work);
 		}
-		else { 
+		else {
 			hadFingerDown = true;
 		}
-		
+
 		readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 	} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 		hadFingerDown = false;
 		suspend_touch_up = getMsTime();
-		
+
 		cancel_delayed_work(&gl_ts->exit_idle_work);
 		if (lastTouch == TOUCH_UP)
 			touchMissed = true;
@@ -1033,8 +1033,8 @@ static void readTouchDataPoint_Ambient(void)
 	} else if (pressure1 == 0 && pressure2 == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 		isTouchLocked = true;
 		wake_unlock(&touch_lock);
-	} 
-	
+	}
+
 	}else if (isTouchLocked){
 		msleep(10);
 		if (isDriverAvailable){
@@ -1108,12 +1108,12 @@ int parse_reset_gpio(struct device *dev)
 {
 	u32 value;
 	struct device_node *node = dev->of_node;
-	
+
 	if (of_property_read_u32(node, "reset", &value)) {
 		dev_err(dev, "Missing Touch Reset GPIO Value\n");
 		return -EINVAL;
 	}
-	
+
 	return value;
 }
 
@@ -1207,7 +1207,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_input_register;
 	}
 
-	gl_ts->palm_en = 0;    
+	gl_ts->palm_en = 0;
 	gl_ts->cdev = palm_cdev;
 	gl_ts->cdev.enabled = 0;
 	gl_ts->cdev.sensors_enable = palm_enable_set;
@@ -1218,11 +1218,11 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 
 	touchMissed = false;
-    
+
 	IT7260_wq = create_workqueue("IT7260_wq");
 	if (!IT7260_wq)
 		goto err_check_functionality_failed;
-	
+
 	INIT_DELAYED_WORK(&gl_ts->afterpalm_work, waitNotifyEvt);
 	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
 	INIT_DELAYED_WORK(&gl_ts->exit_idle_work, exitIdleEvt);
@@ -1242,14 +1242,14 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
 	wake_lock_init(&touch_time_lock, WAKE_LOCK_SUSPEND, "touch-time-lock");
-	
+
 	RESET_GPIO = parse_reset_gpio(&client->dev);
 	printk("IT7260: gpio_request %d\n", RESET_GPIO);
 	err = gpio_request(RESET_GPIO, "CTP_RST_N");
 	if (err < 0){
 		printk("IT7260: gpio_request %d error: %d\n", RESET_GPIO, err);
 	}
-	
+
 	devicePresent = true;
 
 	i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart));
@@ -1426,10 +1426,10 @@ static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 	isTouchLocked = true;
 	driverInLowPower = true;
 	isDriverAvailable = false;
-	
+
 	cancel_delayed_work(&gl_ts->touchidle_on_work);
 	enable_irq_wake(gl_ts->client->irq);
-	
+
 	if (!chipInLowPower) {
 		i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
 		chipInLowPower = true;
