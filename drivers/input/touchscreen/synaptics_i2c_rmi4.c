@@ -1833,6 +1833,8 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 			"synaptics,i2c-pull-up");
 	rmi4_pdata->power_down_enable = of_property_read_bool(np,
 			"synaptics,power-down");
+	rmi4_pdata->use_power_ldo = of_property_read_bool(np,
+			"synaptics,use-external-ldo");
 	rmi4_pdata->disable_gpios = of_property_read_bool(np,
 			"synaptics,disable-gpios");
 	rmi4_pdata->modify_reso = of_property_read_bool(np,
@@ -1873,7 +1875,9 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 			"synaptics,reset-gpio", 0, &rmi4_pdata->reset_flags);
 	rmi4_pdata->irq_gpio = of_get_named_gpio_flags(np,
 			"synaptics,irq-gpio", 0, &rmi4_pdata->irq_flags);
-
+	/* power ldo gpio info*/
+	rmi4_pdata->power_ldo_gpio = of_get_named_gpio_flags(np,
+		"synaptics,power-ldo-gpio", 0, NULL);
 	rmi4_pdata->detect_device = of_property_read_bool(np,
 					"synaptics,detect-device");
 
@@ -3124,23 +3128,42 @@ static int synaptics_rmi4_regulator_configure(struct synaptics_rmi4_data
 	if (on == false)
 		goto hw_shutdown;
 
-	rmi4_data->vdd = regulator_get(&rmi4_data->i2c_client->dev,
-					"vdd");
-	if (IS_ERR(rmi4_data->vdd)) {
-		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Failed to get vdd regulator\n",
-				__func__);
-		return PTR_ERR(rmi4_data->vdd);
-	}
-
-	if (regulator_count_voltages(rmi4_data->vdd) > 0) {
-		retval = regulator_set_voltage(rmi4_data->vdd,
-			RMI4_VTG_MIN_UV, RMI4_VTG_MAX_UV);
-		if (retval) {
+	if (rmi4_data->board->use_power_ldo) {
+		if (gpio_is_valid(rmi4_data->board->power_ldo_gpio)) {
+			retval = gpio_request(rmi4_data->board->power_ldo_gpio,
+				"rmi4_ldo_gpio");
+			if (retval) {
+				dev_err(&rmi4_data->i2c_client->dev,
+					"rmi4 power ldo gpio request failed\n");
+				return retval;
+			}
+			retval = gpio_direction_output(
+				rmi4_data->board->power_ldo_gpio, 1);
+			if (retval) {
+				dev_err(&rmi4_data->i2c_client->dev,
+					"rmi4 set_direction for power ldo gpio failed\n");
+				goto free_ldo_gpio;
+			}
+		}
+	} else {
+		rmi4_data->vdd = regulator_get(&rmi4_data->i2c_client->dev,
+						"vdd");
+		if (IS_ERR(rmi4_data->vdd)) {
 			dev_err(&rmi4_data->i2c_client->dev,
-				"regulator set_vtg failed retval =%d\n",
-				retval);
-			goto err_set_vtg_vdd;
+					"%s: Failed to get vdd regulator\n",
+					__func__);
+			return PTR_ERR(rmi4_data->vdd);
+		}
+
+		if (regulator_count_voltages(rmi4_data->vdd) > 0) {
+			retval = regulator_set_voltage(rmi4_data->vdd,
+				RMI4_VTG_MIN_UV, RMI4_VTG_MAX_UV);
+			if (retval) {
+				dev_err(&rmi4_data->i2c_client->dev,
+					"regulator set_vtg failed retval =%d\n",
+					retval);
+				goto err_set_vtg_vdd;
+			}
 		}
 	}
 
@@ -3152,7 +3175,7 @@ static int synaptics_rmi4_regulator_configure(struct synaptics_rmi4_data
 					"%s: Failed to get i2c regulator\n",
 					__func__);
 			retval = PTR_ERR(rmi4_data->vcc_i2c);
-			goto err_get_vtg_i2c;
+			goto free_ldo_gpio;
 		}
 
 		if (regulator_count_voltages(rmi4_data->vcc_i2c) > 0) {
@@ -3171,19 +3194,33 @@ static int synaptics_rmi4_regulator_configure(struct synaptics_rmi4_data
 err_set_vtg_i2c:
 	if (rmi4_data->board->i2c_pull_up)
 		regulator_put(rmi4_data->vcc_i2c);
-err_get_vtg_i2c:
-	if (regulator_count_voltages(rmi4_data->vdd) > 0)
-		regulator_set_voltage(rmi4_data->vdd, 0,
-			RMI4_VTG_MAX_UV);
+free_ldo_gpio:
+	if ((rmi4_data->board->use_power_ldo) &&
+		gpio_is_valid(rmi4_data->board->power_ldo_gpio)) {
+		gpio_set_value(rmi4_data->board->power_ldo_gpio, 0);
+		gpio_free(rmi4_data->board->power_ldo_gpio);
+	}
 err_set_vtg_vdd:
-	regulator_put(rmi4_data->vdd);
-	return retval;
-
-hw_shutdown:
-	if (regulator_count_voltages(rmi4_data->vdd) > 0)
-		regulator_set_voltage(rmi4_data->vdd, 0,
+	if (!rmi4_data->board->use_power_ldo) {
+		if (regulator_count_voltages(rmi4_data->vdd) > 0)
+			regulator_set_voltage(rmi4_data->vdd, 0,
 			RMI4_VTG_MAX_UV);
-	regulator_put(rmi4_data->vdd);
+		regulator_put(rmi4_data->vdd);
+	}
+
+	return retval;
+hw_shutdown:
+	if ((rmi4_data->board->use_power_ldo) &&
+		gpio_is_valid(rmi4_data->board->power_ldo_gpio)) {
+		gpio_set_value(rmi4_data->board->power_ldo_gpio, 0);
+		gpio_free(rmi4_data->board->power_ldo_gpio);
+	}
+	if (!rmi4_data->board->use_power_ldo) {
+		if (regulator_count_voltages(rmi4_data->vdd) > 0)
+			regulator_set_voltage(rmi4_data->vdd, 0,
+			RMI4_VTG_MAX_UV);
+		regulator_put(rmi4_data->vdd);
+	}
 	if (rmi4_data->board->i2c_pull_up) {
 		if (regulator_count_voltages(rmi4_data->vcc_i2c) > 0)
 			regulator_set_voltage(rmi4_data->vcc_i2c, 0,
@@ -3200,21 +3237,30 @@ static int synaptics_rmi4_power_on(struct synaptics_rmi4_data *rmi4_data,
 	if (on == false)
 		goto power_off;
 
-	retval = reg_set_optimum_mode_check(rmi4_data->vdd,
-		RMI4_ACTIVE_LOAD_UA);
-	if (retval < 0) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"Regulator vdd set_opt failed rc=%d\n",
-			retval);
-		return retval;
-	}
+	if (rmi4_data->board->use_power_ldo) {
+		if (gpio_is_valid(rmi4_data->board->power_ldo_gpio)) {
+			dev_dbg(&rmi4_data->i2c_client->dev,
+				"Use power ldo, gpio=%d\n",
+				rmi4_data->board->power_ldo_gpio);
+			gpio_set_value(rmi4_data->board->power_ldo_gpio, 1);
+		}
+	} else {
+		retval = reg_set_optimum_mode_check(rmi4_data->vdd,
+			RMI4_ACTIVE_LOAD_UA);
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"Regulator vdd set_opt failed rc=%d\n",
+				retval);
+			return retval;
+		}
 
-	retval = regulator_enable(rmi4_data->vdd);
-	if (retval) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"Regulator vdd enable failed rc=%d\n",
-			retval);
-		goto error_reg_en_vdd;
+		retval = regulator_enable(rmi4_data->vdd);
+		if (retval) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"Regulator vdd enable failed rc=%d\n",
+				retval);
+			goto error_reg_en_vdd;
+		}
 	}
 
 	if (rmi4_data->board->i2c_pull_up) {
@@ -3241,14 +3287,29 @@ error_reg_en_vcc_i2c:
 	if (rmi4_data->board->i2c_pull_up)
 		reg_set_optimum_mode_check(rmi4_data->vcc_i2c, 0);
 error_reg_opt_i2c:
-	regulator_disable(rmi4_data->vdd);
+	if (rmi4_data->board->use_power_ldo) {
+		if (gpio_is_valid(rmi4_data->board->power_ldo_gpio)) {
+			gpio_set_value(rmi4_data->board->power_ldo_gpio, 0);
+			gpio_free(rmi4_data->board->power_ldo_gpio);
+		}
+	} else {
+		regulator_disable(rmi4_data->vdd);
+	}
 error_reg_en_vdd:
-	reg_set_optimum_mode_check(rmi4_data->vdd, 0);
+	if (!rmi4_data->board->use_power_ldo)
+		reg_set_optimum_mode_check(rmi4_data->vdd, 0);
 	return retval;
 
 power_off:
-	reg_set_optimum_mode_check(rmi4_data->vdd, 0);
-	regulator_disable(rmi4_data->vdd);
+	if (rmi4_data->board->use_power_ldo) {
+		if (gpio_is_valid(rmi4_data->board->power_ldo_gpio)) {
+			gpio_set_value(rmi4_data->board->power_ldo_gpio, 0);
+			gpio_free(rmi4_data->board->power_ldo_gpio);
+		}
+	} else {
+		reg_set_optimum_mode_check(rmi4_data->vdd, 0);
+		regulator_disable(rmi4_data->vdd);
+	}
 	if (rmi4_data->board->i2c_pull_up) {
 		reg_set_optimum_mode_check(rmi4_data->vcc_i2c, 0);
 		regulator_disable(rmi4_data->vcc_i2c);
@@ -4249,7 +4310,9 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 		synaptics_rmi4_release_all(rmi4_data);
 
-		retval = synaptics_rmi4_regulator_lpm(rmi4_data, true);
+		if (!rmi4_data->board->use_power_ldo)
+			retval = synaptics_rmi4_regulator_lpm(rmi4_data, true);
+
 		if (retval < 0) {
 			dev_err(dev, "failed to enter low power mode\n");
 			goto err_lpm_regulator;
@@ -4285,7 +4348,8 @@ err_gpio_configure:
 		if (retval < 0)
 			dev_err(dev, "failed to select get default pinctrl state\n");
 	}
-	synaptics_rmi4_regulator_lpm(rmi4_data, false);
+	if (!rmi4_data->board->use_power_ldo)
+		synaptics_rmi4_regulator_lpm(rmi4_data, false);
 
 err_lpm_regulator:
 	if (rmi4_data->sensor_sleep) {
@@ -4322,10 +4386,12 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	synaptics_secure_touch_stop(rmi4_data, 1);
 
-	retval = synaptics_rmi4_regulator_lpm(rmi4_data, false);
-	if (retval < 0) {
-		dev_err(dev, "Failed to enter active power mode\n");
-		return retval;
+	if (!rmi4_data->board->use_power_ldo) {
+		retval = synaptics_rmi4_regulator_lpm(rmi4_data, false);
+		if (retval < 0) {
+			dev_err(dev, "Failed to enter active power mode\n");
+			return retval;
+		}
 	}
 
 	if (rmi4_data->board->disable_gpios) {
@@ -4371,7 +4437,8 @@ err_check_configuration:
 
 		synaptics_rmi4_gpio_configure(rmi4_data, false);
 	}
-	synaptics_rmi4_regulator_lpm(rmi4_data, true);
+	if (!rmi4_data->board->use_power_ldo)
+		synaptics_rmi4_regulator_lpm(rmi4_data, true);
 	wake_up(&rmi4_data->wait);
 
 	return retval;
@@ -4383,7 +4450,8 @@ err_gpio_configure:
 		if (retval < 0)
 			pr_err("failed to select idle pinctrl state\n");
 	}
-	synaptics_rmi4_regulator_lpm(rmi4_data, true);
+	if (!rmi4_data->board->use_power_ldo)
+		synaptics_rmi4_regulator_lpm(rmi4_data, true);
 	wake_up(&rmi4_data->wait);
 
 	return retval;
