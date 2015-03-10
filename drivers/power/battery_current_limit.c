@@ -190,7 +190,8 @@ static enum bcl_threshold_state bcl_vph_state = BCL_THRESHOLD_DISABLED,
 		bcl_ibat_state = BCL_THRESHOLD_DISABLED,
 		bcl_soc_state = BCL_THRESHOLD_DISABLED;
 static DEFINE_MUTEX(bcl_notify_mutex);
-static uint32_t bcl_hotplug_request, bcl_hotplug_mask, bcl_soc_hotplug_mask;
+static uint32_t prev_hotplug_request, bcl_hotplug_request;
+static uint32_t bcl_hotplug_mask, bcl_soc_hotplug_mask;
 static uint32_t bcl_frequency_mask;
 static struct work_struct bcl_hotplug_work;
 static DEFINE_MUTEX(bcl_hotplug_mutex);
@@ -254,6 +255,7 @@ static void __ref bcl_handle_hotplug(struct work_struct *work)
 		}
 	}
 
+	prev_hotplug_request = bcl_hotplug_request;
 	mutex_unlock(&bcl_hotplug_mutex);
 	return;
 }
@@ -378,7 +380,7 @@ static void power_supply_callback(struct power_supply *psy)
 	}
 }
 
-static int bcl_get_battery_voltage(int *vbatt_mv)
+int bcl_get_battery_voltage(int *vbatt_mv)
 {
 	static struct power_supply *psy;
 	union power_supply_propval ret = {0,};
@@ -929,13 +931,13 @@ mode_store(struct device *dev, struct device_attribute *attr,
 	if (!gbcl)
 		return -EPERM;
 
-	if (!strcmp(buf, "enable")) {
+	if (!strncmp(buf, "enable", 6)) {
 		bcl_update_online_mask();
 		bcl_mode_set(BCL_DEVICE_ENABLED);
 		pr_info("bcl enabled\n");
-	} else if (!strcmp(buf, "disable")) {
+	} else if (!strncmp(buf, "disable", 7)) {
+		battery_soc_val = 100;
 		bcl_mode_set(BCL_DEVICE_DISABLED);
-		cpumask_clear(bcl_cpu_online_mask);
 		pr_info("bcl disabled\n");
 	} else {
 		return -EINVAL;
