@@ -505,4 +505,7 @@ struct msm_isp_event_data {
 #define VIDIOC_MSM_ISP_UPDATE_STATS_STREAM \
 	_IOWR('V', BASE_VIDIOC_PRIVATE+16, struct msm_vfe_axi_stream_update_cmd)
 
+#define VIDIOC_MSM_ISP_DEQUEUE_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+17, struct msm_isp_qbuf_info)
+
 #endif /* __MSMB_ISP__ */
