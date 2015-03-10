@@ -71,6 +71,7 @@ int msm_bcl_disable(void);
 int msm_bcl_set_threshold(enum bcl_param, enum bcl_trip_type,
 	struct bcl_threshold *);
 int msm_bcl_read(enum bcl_param, int *);
+int bcl_get_battery_voltage(int *vbatt_mv);
 #else
 static inline struct bcl_param_data *msm_bcl_register_param(
 	enum bcl_param param_type, struct bcl_driver_ops *ops, char *name)
@@ -96,6 +97,10 @@ static inline int msm_bcl_set_threshold(enum bcl_param param_type,
 	return -ENOSYS;
 }
 static inline int msm_bcl_read(enum bcl_param param_type, int *vbat_value)
+{
+	return -ENOSYS;
+}
+static int bcl_get_battery_voltage(int *vbatt_mv)
 {
 	return -ENOSYS;
 }
