@@ -1604,7 +1604,7 @@
 	};
 
 	/* OV5693 */
-	qcom,camera@1 {
+	qcom,camera@2 {
 		gpios = <&msm_gpio 15 0>,
 			<&msm_gpio 16 0>,
 			<&msm_gpio 114 0>;
@@ -1612,8 +1612,8 @@
 		qcom,gpio-vana = <2>;
 		qcom,gpio-req-tbl-num = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
-					  "CAM_RESET1",
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					  "CAM_RESET2",
 					  "CAM_VANA";
 	};
 
