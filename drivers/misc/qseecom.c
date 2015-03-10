@@ -183,6 +183,7 @@ struct qseecom_control {
 	struct cdev cdev;
 	bool timer_running;
 	bool no_clock_support;
+	bool appsbl_qseecom_support;
 };
 
 struct qseecom_client_handle {
@@ -4960,6 +4961,12 @@ static int qseecom_probe(struct platform_device *pdev)
 			qseecom.ce_info.qsee_ce_hw_instance);
 		}
 
+		qseecom.appsbl_qseecom_support =
+				of_property_read_bool((&pdev->dev)->of_node,
+						"qcom,appsbl-qseecom-support");
+		pr_info("qseecom.appsbl_qseecom_support = 0x%x",
+				qseecom.appsbl_qseecom_support);
+
 		qseecom.no_clock_support =
 				of_property_read_bool((&pdev->dev)->of_node,
 						"qcom,no-clock-support");
@@ -4996,7 +5003,8 @@ static int qseecom_probe(struct platform_device *pdev)
 
 		qseecom_platform_support = (struct msm_bus_scale_pdata *)
 						msm_bus_cl_get_pdata(pdev);
-		if (qseecom.qsee_version >= (QSEE_VERSION_02)) {
+		if (qseecom.qsee_version >= (QSEE_VERSION_02) &&
+			!qseecom.appsbl_qseecom_support) {
 			struct resource *resource = NULL;
 			struct qsee_apps_region_info_ireq req;
 			struct qseecom_command_scm_resp resp;
