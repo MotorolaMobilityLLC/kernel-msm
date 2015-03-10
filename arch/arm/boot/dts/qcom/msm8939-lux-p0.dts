@@ -22,6 +22,8 @@
 	/delete-node/ isl98611a_pos;
 	/delete-node/ isl98611a_neg;
 
+	/delete-node/ slim@77c0000;
+	/delete-node/ sound;
 	sound {
 		compatible = "qcom,msm8x16-audio-codec";
 		qcom,tfa9890-left-name = "tfa9890.1-0034";
