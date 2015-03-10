@@ -145,6 +145,7 @@
 &i2c_0 {
 	qcom,clk-freq-out = <400000>;
 
+	status = "ok";
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
@@ -166,6 +167,10 @@
 			patch-data = "F12@20=0505,23=3,23:1=1;F1@0=1&3";
 		};
 	};
+};
+
+&spi_2 {
+	status = "disabled";
 };
 
 &pm8916_vadc {
