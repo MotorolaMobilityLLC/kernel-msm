@@ -177,7 +177,6 @@ static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
-#if defined(ASUS_WI500Q_PROJECT)
 struct request_gpio {
         int gpio_no;
         char *gpio_name;
@@ -250,7 +249,6 @@ static int msm8226_dtparse_mi2s(void)
 
         return 0;
 }
-#endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
 //ASUS_BSP Ken_Cheng +++
@@ -934,7 +932,6 @@ static int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 #endif
 //ASUS_BSP Ken_Cheng ---
 
-#if defined(ASUS_CW_WITH_CODEC) || defined(ASUS_WI500Q_PROJECT)
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -946,7 +943,6 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-#endif
 
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, slim0_rx_ch_text),
@@ -1310,7 +1306,6 @@ static struct snd_soc_ops msm8226_be_ops = {
 //ASUS_BSP Ken_Cheng ---
 
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
-#if defined(ASUS_WI500Q_PROJECT)
 static struct afe_clk_cfg lpass_mi2s_enable = {
         AFE_API_VERSION_I2S_CONFIG,
         Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ,
@@ -1435,7 +1430,6 @@ static struct snd_soc_ops msm8226_mi2s_be_ops = {
         .startup = msm8226_mi2s_startup,
         .shutdown = msm8226_mi2s_shutdown
 };
-#endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
 /* Digital audio interface glue - connects codec <---> CPU */
@@ -2115,7 +2109,6 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 #endif
 //ASUS_BSP Ken_Cheng ---
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
-#if defined(ASUS_WI500Q_PROJECT)
         {
                 .name = LPASS_BE_PRI_MI2S_TX,
                 .stream_name = "Primary MI2S Capture",
@@ -2128,7 +2121,6 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
                 .be_hw_params_fixup = msm_be_hw_params_fixup,
                 .ops = &msm8226_mi2s_be_ops,
         },
-#endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 };
 
@@ -2597,7 +2589,6 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 //ASUS_BSP Ken_Cheng +++
-#if defined(ASUS_WI500Q_PROJECT)
         spdev = pdev;
         msm8226_dtparse_mi2s();
 //ASUS BSP Jessy +++ : config DMIC 1p8
@@ -2612,7 +2603,6 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
         }
 
 //ASUS BSP Jessy --- : config DMIC 1p8
-#endif
 //ASUS_BSP Ken_Cheng ---
 
 	card = populate_snd_card_dailinks(&pdev->dev);
