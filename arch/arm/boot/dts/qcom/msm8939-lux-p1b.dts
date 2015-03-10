@@ -122,6 +122,10 @@
 	};
 };
 
+&spi_2 {
+	status = "disabled";
+};
+
 &pm8916_vadc {
 	/delete-node/ chan@11;
 };
