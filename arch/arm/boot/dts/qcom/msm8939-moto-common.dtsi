@@ -20,6 +20,7 @@
 	aliases {
 		serial0 = &blsp1_ls_uart1;
 		i2c1 = &i2c_1;
+		spi2 = &spi_2; /* Audio Codec */
 	};
 	memory {
 		tzlog_bck_mem: tzlog_bck_region {
@@ -157,6 +158,104 @@
 
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
+	};
+
+	/delete-node/ slim@77c0000;
+	slim_msm: slim@77c0000 {
+		cell-index = <1>;
+		compatible = "qcom,slim-ngd";
+		reg = <0x77c0000 0x2C000>,
+		      <0x7784000 0x2A000>;
+		reg-names = "slimbus_physical", "slimbus_bam_physical";
+		interrupts = <0 163 0>, <0 180 0>;
+		interrupt-names = "slimbus_irq", "slimbus_bam_irq";
+		qcom,apps-ch-pipes = <0x600000>;
+		qcom,ea-pc = <0x140>;
+
+		wolfson_codec {
+			compatible = "wlf,florida-slim-audio";
+			elemental-addr = [00 7F 10 51 2F 01];
+		};
+	};
+
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
+
+	sound {
+		compatible = "qcom,msm8939-audio-codec";
+		qcom,model = "msm8939-florida-snd-card";
+		qcom,tfa9890-earpiece-gpio = <&msm_gpio 89 0>;
+		qcom,tfa9890-stereo;
+		qcom,cdc-us-euro-gpios = <&msm_gpio 120 0>;
+		qcom,headset-jack-type-NC;
+
+		pinctrl-names = "cdc_slim_lines_act", "cdc_slim_lines_sus";
+		pinctrl-0 = <&cdc_slim_lines_act>;
+		pinctrl-1 = <&cdc_slim_lines_sus>;
+
+		asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&lpa>, <&florida>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-pcm-lpa",
+				"florida-codec";
+		asoc-cpu = <&dai_hdmi>, <&dai_mi2s0>, <&dai_mi2s1>,
+				<&dai_mi2s2>, <&dai_mi2s3>, <&sb_0_rx>, <&sb_0_tx>,
+				<&sb_1_rx>, <&sb_1_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&bt_sco_rx>,
+				<&bt_sco_tx>, <&int_fm_rx>, <&int_fm_tx>, <&afe_pcm_rx>,
+				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>, <&incall_music_rx>,
+				<&incall_music_2_rx>;
+		asoc-cpu-names = "msm-dai-q6-hdmi.8", "msm-dai-q6-mi2s.0",
+				"msm-dai-q6-mi2s.1", "msm-dai-q6-mi2s.2",
+				"msm-dai-q6-mi2s.3", "msm-dai-q6-dev.16384",
+				"msm-dai-q6-dev.16385", "msm-dai-q6-dev.16386",
+				"msm-dai-q6-dev.16387", "msm-dai-q6-dev.16390",
+				"msm-dai-q6-dev.16391", "msm-dai-q6-dev.16392",
+				"msm-dai-q6-dev.16393", "msm-dai-q6-dev.16395",
+				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
+				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
+				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
+				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
+				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
+				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+	};
+
+	spi_2: spi@78b6000 { /* BLSP1 QUP2 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x78b6000 0x600>,
+			<0x7884000 0x23000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 96 0>, <0 238 0>;
+		spi-max-frequency = <48000000>;
+		pinctrl-names = "default", "sleep", "cs_default";
+
+		pinctrl-0 = <&spi2_default &spi2_cs0_active>;
+		pinctrl-1 = <&spi2_sleep &spi2_cs0_sleep>;
+
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp1_qup2_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,infinite-mode = <0>;
+		qcom,force-cs;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <6>;
+		qcom,bam-producer-pipe-index = <7>;
+		qcom,master-id = <86>;
 	};
 };
 
@@ -443,6 +542,79 @@
 
 		kungpow_default: kungpow {
 			bias-pull-up; /* pull-up */
+		};
+	};
+
+	pmx_florida_irq {
+		qcom,pins = <&gp 98>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "florida_irq";
+		florida_irq_default: default {
+			bias-disable;
+			drive-strength = <2>;
+		};
+	};
+
+	pmx_florida_reset {
+		qcom,pins = <&gp 83>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "florida_reset";
+		florida_reset_default: default {
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+	};
+
+	spi2_active {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 4>, <&gp 5>, <&gp 7>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi2-active";
+		/* active state */
+		 spi2_default: default {
+			bias-pull-up;
+			drive-strength = <6>; /* 6 MA */
+		};
+	};
+
+	spi2_suspend {
+		/* MOSI, MISO, CLK */
+		qcom,pins = <&gp 4>, <&gp 5>, <&gp 7>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi2-suspend";
+		/* suspended state */
+		spi2_sleep: sleep {
+			bias-pull-up;
+			drive-strength = <6>; /* 6 MA */
+		};
+	};
+
+	spi2_cs0_active {
+		/* CS */
+		qcom,pins = <&gp 6>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi2-cs0-active";
+		spi2_cs0_active: cs0_active {
+			bias-pull-up;
+			drive-strength = <6>; /* 6 MA */
+		};
+	};
+
+	spi2_cs0_suspend {
+		/* CS */
+		qcom,pins = <&gp 6>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi2-cs0-suspend";
+		spi2_cs0_sleep: cs0_sleep {
+			bias-pull-up;
+			drive-strength = <6>; /* 6 MA */
 		};
 	};
 };
@@ -852,5 +1024,49 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
 		ak,layout = <5>;
+	};
+};
+
+&blsp1_uart2 {
+	status = "disabled";
+};
+
+&i2c_0 {
+	status = "disabled";
+};
+
+&spi_2 {
+	florida: florida@0 {
+		compatible = "wlf,wm8280";
+		spi-max-frequency = <26000000>;
+		spi-cs-low;
+		reg = <0x0>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <98 0>;
+		irq-base = <800>;
+		gpio-base = <200>;
+		wlf,reset = <&msm_gpio 83 0>;
+		wlf,irq = <&msm_gpio 98 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
+
+		AVDD-supply = <&pm8916_s4>;
+		DCVDD-supply = <&pm8916_l11>;
+		DBVDD1-supply = <&pm8916_s4>;
+		DBVDD2-supply = <&pm8916_s4>;
+		DBVDD3-supply = <&pm8916_s4>;
+		CPVDD-supply = <&pm8916_s4>;
+		SPKVDDL-supply = <&dummy_vreg>;
+		SPKVDDR-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		gpio-defaults = <0x00002102
+				0xffffffff
+				0x00010000
+				0x00000004
+				0xffffffff>;
 	};
 };
