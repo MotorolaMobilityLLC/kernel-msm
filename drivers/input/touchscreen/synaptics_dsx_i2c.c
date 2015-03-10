@@ -3703,6 +3703,7 @@ static inline int synaptics_dsx_display_off(struct device *dev)
 static inline int synaptics_dsx_display_on(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	pr_debug("queue resume\n");
 	queue_work(system_wq, &rmi4_data->resume_work);
 	return 0;
 }
@@ -3783,6 +3784,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->board = platform_data;
 	rmi4_data->irq_enabled = false;
 	atomic_set(&rmi4_data->touch_stopped, 1);
+	rmi4_data->ic_on = true;
 
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;
@@ -3862,7 +3864,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 
 	rmi4_data->regulator = regulator_get(&client->dev, "touch_vdd");
 	if (IS_ERR(rmi4_data->regulator)) {
-		dev_err(&client->dev,
+		dev_warn(&client->dev,
 				"%s: Failed to get regulator\n",
 				__func__);
 	} else {
@@ -4048,6 +4050,7 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 	if ((event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK) &&
 			evdata && evdata->data && rmi4_data) {
 		int *blank = evdata->data;
+		pr_debug("fb notification: event = %lu blank = %d\n", event, *blank);
 		/* entering suspend upon early blank event */
 		/* to ensure shared power supply is still on */
 		/* for in-cell design touch solutions */
@@ -4175,20 +4178,24 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		pr_debug("touches purge is %s\n", value ? "ON" : "OFF");
 	}
 
-	/* use pinctrl to put touch RESET GPIO into SUSPEND state */
-	gpio_free(platform_data->reset_gpio);
-	pinctrl = devm_pinctrl_get_select_default(
-		&rmi4_data->i2c_client->dev);
-	if (IS_ERR(pinctrl))
-		dev_err(&rmi4_data->i2c_client->dev,
-			"pinctrl failed err %ld\n", PTR_ERR(pinctrl));
+	if (rmi4_data->ic_on) {
+		/* use pinctrl to put touch RESET GPIO into SUSPEND state */
+		gpio_free(platform_data->reset_gpio);
+		pinctrl = devm_pinctrl_get_select_default(
+			&rmi4_data->i2c_client->dev);
+		if (IS_ERR(pinctrl))
+			dev_err(&rmi4_data->i2c_client->dev,
+				"pinctrl failed err %ld\n", PTR_ERR(pinctrl));
 
-	/* if touch REGULATOR is available - turn it OFF */
-	if (platform_data->regulator_en) {
-		regulator_disable(rmi4_data->regulator);
-		pr_debug("touch-vdd regulator is %s\n",
-			regulator_is_enabled(rmi4_data->regulator) ?
-			"on" : "off");
+		/* if touch REGULATOR is available - turn it OFF */
+		if (platform_data->regulator_en) {
+			regulator_disable(rmi4_data->regulator);
+			pr_debug("touch-vdd regulator is %s\n",
+				regulator_is_enabled(rmi4_data->regulator) ?
+				"on" : "off");
+		}
+
+		rmi4_data->ic_on = false;
 	}
 
 	return 0;
@@ -4218,38 +4225,41 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	synaptics_dsx_resumeinfo_start(rmi4_data);
 
-	/* if touch REGULATOR is avaialble - turn it ON */
-	if (platform_data->regulator_en) {
-		int error = regulator_enable(rmi4_data->regulator);
-		if (error) {
-			pr_err("Error %d enabling touch-vdd regulator\n",
-				error);
-			return error;
+	if (!rmi4_data->ic_on) {
+		/* if touch REGULATOR is avaialble - turn it ON */
+		if (platform_data->regulator_en) {
+			int error = regulator_enable(rmi4_data->regulator);
+			if (error) {
+				pr_err("Error %d enabling touch-vdd regulator\n",
+					error);
+				return error;
+			}
+			pr_debug("touch-vdd regulator is %s\n",
+				regulator_is_enabled(rmi4_data->regulator) ?
+				"on" : "off");
 		}
-		pr_debug("touch-vdd regulator is %s\n",
-			regulator_is_enabled(rmi4_data->regulator) ?
-			"on" : "off");
+
+		/* if RESET GPIO is in SUSPEND state - no HW reset */
+		retval = gpio_get_value(platform_data->reset_gpio);
+		pr_debug("reset gpio state: %d\n", retval);
+		if (retval == 0)
+			hw_reset = false;
+
+		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
+			"active");
+		if (IS_ERR(pinctrl)) {
+			long int error = PTR_ERR(pinctrl);
+			dev_err(&rmi4_data->i2c_client->dev,
+				"pinctrl failed err %ld\n", error);
+		}
+
+		if (gpio_request(platform_data->reset_gpio,
+						RESET_GPIO_NAME) < 0)
+			pr_err("failed to request reset gpio\n");
+
+		gpio_direction_output(platform_data->reset_gpio, 1);
+		rmi4_data->ic_on = true;
 	}
-
-	/* if RESET GPIO is in SUSPEND state - no HW reset */
-	retval = gpio_get_value(platform_data->reset_gpio);
-	pr_debug("reset gpio state: %d\n", retval);
-	if (retval == 0)
-		hw_reset = false;
-
-	pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
-		"active");
-	if (IS_ERR(pinctrl)) {
-		long int error = PTR_ERR(pinctrl);
-		dev_err(&rmi4_data->i2c_client->dev,
-			"pinctrl failed err %ld\n", error);
-	}
-
-	if (gpio_request(platform_data->reset_gpio,
-					RESET_GPIO_NAME) < 0)
-		pr_err("failed to request reset gpio\n");
-
-	gpio_direction_output(platform_data->reset_gpio, 1);
 
 	synaptics_dsx_on_resume(rmi4_data);
 
