@@ -244,11 +244,5 @@ bool m4sensorhub_preflash_callbacks_exist(void); /* For FW flash core */
 
 int m4sensorhub_irq_disable_all(struct m4sensorhub_data *m4sensorhub);
 
-/* External System Calls for Non-M4 Drivers */
-int m4sensorhub_extern_init(struct m4sensorhub_data *m4); /* Init for core */
-/* Utility function called by display driver to sync
-display status to M4 */
-int m4sensorhub_extern_set_display_status(uint8_t status);
-
 #endif /* __KERNEL__ */
 #endif  /* __M4SENSORHUB_H__ */
