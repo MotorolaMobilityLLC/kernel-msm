@@ -50,3 +50,9 @@
 		qcom,invert = <1>; /* Invert default 0 to get 1 */
 	};
 };
+
+&i2c_11 {
+	drv2605@5a {
+		status = "disabled";
+	};
+};
