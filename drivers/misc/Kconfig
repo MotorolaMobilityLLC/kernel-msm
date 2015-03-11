@@ -563,7 +563,13 @@ config APANIC_PLABEL
 	default "kpanic"
 	---help---
 	 If your platform uses a different flash partition label for storing
- 	 crashdumps, enter it here.
+	 crashdumps, enter it here.
+
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	depends on PROFILING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
 config TSIF
 	depends on ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_APQ8064
