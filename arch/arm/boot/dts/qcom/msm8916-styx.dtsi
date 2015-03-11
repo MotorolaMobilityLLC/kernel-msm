@@ -155,4 +155,7 @@
 	reg = <0 0 0 0x2800000>;
 };
 
-
+&sdhc_2 {
+	qcom,clk-rates = <400000 25000000 50000000 100000000>;
+	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v";
+};
