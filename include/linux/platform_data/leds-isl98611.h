@@ -21,9 +21,10 @@
  *@led_current		: peak led current register value
  *@hbm_led_curren	: above value in high brightness mode
  *@cur_scale		: peak led current multiplier register value
- *@hbm_cur_scal		: above value in high brightness mode
+ *@hbm_cur_scale	: above value in high brightness mode
  *@pwm_res		: pwm resolution register value
  *@dimm_threshold	: dimming threshold for dimming control register
+ *@pfm_value		: register 0x15 setting for PFM entry threshold
  *@hbm_on		: enable high brightness mode
  */
 
@@ -39,6 +40,7 @@ struct isl98611_platform_data {
 	int hbm_cur_scale;
 	int pwm_res;
 	int dimm_threshold;
+	int pfm_value;
 	bool no_reset;
 	const char *name;
 	const char *trigger;
