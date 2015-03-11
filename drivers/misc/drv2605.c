@@ -1003,6 +1003,10 @@ static ssize_t drv260x_read(struct file *filp, char *buff, size_t length,
 static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 			     loff_t * off)
 {
+
+	if (drv260x->client == NULL)
+		return len;
+
 	mutex_lock(&vibdata.lock);
 	hrtimer_cancel(&vibdata.timer);
 
