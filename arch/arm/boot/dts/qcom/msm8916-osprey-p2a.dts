@@ -17,3 +17,11 @@
 / {
 	qcom,board-id = <0x49 0x82a0>;
 };
+
+&tlmm_pinmux {
+	pmx_sdc2_clk {
+		sdc2_clk_on: clk_on {
+			drive-strength = <12>; /* 12 MA */
+		};
+	};
+};

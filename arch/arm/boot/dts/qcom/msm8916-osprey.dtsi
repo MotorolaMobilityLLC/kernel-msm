@@ -20,6 +20,12 @@
 };
 
 &tlmm_pinmux {
+	pmx_sdc2_clk {
+		sdc2_clk_on: clk_on {
+			drive-strength = <16>; /* 16 MA */
+		};
+	};
+
 	cc_alert {
 		qcom,pins = <&gp 49>;
 	};
