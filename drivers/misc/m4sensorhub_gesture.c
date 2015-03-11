@@ -38,9 +38,13 @@
 #ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
 #include <linux/wakeup_source_notify.h>
 #endif
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+#include <linux/display_state_notify.h>
+#endif
 
 #define m4ges_err(format, args...)  KDEBUG(M4SH_ERROR, format, ## args)
 
+/* This bit is used to track status if app has enabled the sensor*/
 #define M4GES_IRQ_ENABLED_BIT       0
 
 struct m4ges_driver_data {
@@ -53,6 +57,9 @@ struct m4ges_driver_data {
 	int16_t         latest_samplerate;
 	uint32_t        gesture_count;
 	uint16_t        status;
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	struct          notifier_block display_nb;
+#endif
 };
 
 
@@ -133,7 +140,7 @@ m4ges_isr_fail:
 	return;
 }
 
-static int m4ges_set_samplerate(struct iio_dev *iio, int16_t rate)
+static int m4ges_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 {
 	int err = 0;
 	struct m4ges_driver_data *dd = iio_priv(iio);
@@ -215,7 +222,7 @@ static ssize_t m4ges_setrate_store(struct device *dev,
 		goto m4ges_enable_store_exit;
 	}
 
-	err = m4ges_set_samplerate(iio, value);
+	err = m4ges_set_samplerate_locked(iio, value);
 	if (err < 0) {
 		m4ges_err("%s: Failed to set sample rate.\n", __func__);
 		goto m4ges_enable_store_exit;
@@ -340,6 +347,37 @@ m4ges_create_iiodev_exit:
 	return err;
 }
 
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static int display_notify(struct notifier_block *self,
+			unsigned long action, void *dev)
+{
+	struct m4ges_driver_data *dd =
+		container_of(self, struct m4ges_driver_data, display_nb);
+
+	mutex_lock(&(dd->mutex));
+	switch (action) {
+	case DISPLAY_STATE_OFF:
+	case DISPLAY_STATE_LP:
+		/* If gesture is enabled by app, enable interrupt*/
+		if ((dd->status & (1 << M4GES_IRQ_ENABLED_BIT))) {
+			m4sensorhub_irq_enable(dd->m4, M4SH_WAKEIRQ_GESTURE);
+			pr_info("%s: enabling INT (%lu)\n", __func__, action);
+		}
+		break;
+	case DISPLAY_STATE_ON:
+		/* If gesture is enabled by app, disable interrupt*/
+		if ((dd->status & (1 << M4GES_IRQ_ENABLED_BIT))) {
+			m4sensorhub_irq_disable(dd->m4, M4SH_WAKEIRQ_GESTURE);
+			pr_info("%s: disabling INT (%lu)\n", __func__, action);
+		}
+		break;
+	}
+	mutex_unlock(&(dd->mutex));
+
+	return NOTIFY_OK;
+}
+#endif
+
 static int m4ges_driver_init(struct init_calldata *p_arg)
 {
 	struct iio_dev *iio = p_arg->p_data;
@@ -361,6 +399,11 @@ static int m4ges_driver_init(struct init_calldata *p_arg)
 		m4ges_err("%s: Failed to register M4 IRQ.\n", __func__);
 		goto m4ges_driver_init_fail;
 	}
+
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	dd->display_nb.notifier_call = display_notify;
+	display_state_register_notify(&dd->display_nb);
+#endif
 
 	goto m4ges_driver_init_exit;
 
@@ -433,6 +476,9 @@ static int __exit m4ges_remove(struct platform_device *pdev)
 	m4sensorhub_irq_unregister(dd->m4,
 				   M4SH_WAKEIRQ_GESTURE);
 	m4sensorhub_unregister_initcall(m4ges_driver_init);
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	display_state_unregister_notify(&dd->display_nb);
+#endif
 	m4ges_remove_iiodev(iio);  /* dd is freed here */
 
 m4ges_remove_exit:
@@ -444,7 +490,7 @@ static int m4ges_suspend(struct platform_device *pdev, pm_message_t state)
 	struct iio_dev *iio = platform_get_drvdata(pdev);
 	struct m4ges_driver_data *dd = iio_priv(iio);
 	mutex_lock(&(dd->mutex));
-	if (m4ges_set_samplerate(iio, dd->latest_samplerate) < 0)
+	if (m4ges_set_samplerate_locked(iio, dd->latest_samplerate) < 0)
 		m4ges_err("%s: setrate retry failed\n", __func__);
 	mutex_unlock(&(dd->mutex));
 	return 0;

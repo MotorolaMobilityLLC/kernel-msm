@@ -50,6 +50,7 @@
 
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
+#include <linux/display_state_notify.h>
 
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
@@ -1120,7 +1121,9 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 		pr_debug("No change in power state\n");
 		return 0;
 	}
-
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	display_state_notify_subscriber(DISPLAY_STATE_OFF);
+#endif
 	cur_power_state = mfd->panel_power_state;
 
 	mutex_lock(&mfd->update.lock);
@@ -1169,6 +1172,10 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 		return 0;
 	}
 
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	display_state_notify_subscriber(DISPLAY_STATE_ON);
+#endif
+
 	if (mfd->mdp.on_fnc) {
 		ret = mfd->mdp.on_fnc(mfd);
 		if (ret)
@@ -1215,6 +1222,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		return -EPERM;
 
 	cur_power_state = mfd->panel_power_state;
+
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	if (BLANK_FLAG_LP == blank_mode)
+		display_state_notify_subscriber(DISPLAY_STATE_LP);
+#endif
 
 	/*
 	 * Low power (lp) and ultra low pwoer (ulp) modes are currently only
