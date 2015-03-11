@@ -18,6 +18,14 @@
 	qcom,board-id = <0x49 0x82ad>;
 };
 
+&tlmm_pinmux {
+	pmx_sdc2_clk {
+		sdc2_clk_on: clk_on {
+			drive-strength = <12>; /* 12 MA */
+		};
+	};
+};
+
 &spi_5 {
 	status = "ok";
 	fci_dtv: fc8300@0 {
