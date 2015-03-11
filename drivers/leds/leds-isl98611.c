@@ -34,6 +34,7 @@
 #define ISL98611_DEFAULT_TRIGGER		"bkl-trigger"
 #define ISL98611_DEFAULT_VN_LEVEL		20
 #define ISL98611_DEFAULT_VP_LEVEL		20
+#define ISL98611_DEFAULT_PFM			0x87
 #define ISL98611_8BITPWM			0x00
 #define ISL98611_10BITPWM			0x80
 #define ISL98611_100SCALE			63
@@ -55,6 +56,7 @@
 #define REG_CURRENT		0x12
 #define REG_DIMMCTRL		0x13
 #define REG_PWMCTRL		0x14
+#define REG_PFMCTRL		0x15
 #define REG_VLEDFREQ		0x16
 #define REG_VLEDCONFIG		0x17
 #define REG_MAX			0x17
@@ -69,6 +71,7 @@
 #define CURRENT_MASK		0xC0
 #define SCALE_MASK		0x3F
 #define TRANS_THRESHOLD_MASK	0x07
+#define PFM_MASK		0xFF
 
 #define VPON_VAL		0x04
 #define VNON_VAL		0x02
@@ -162,6 +165,10 @@ static int isl98611_chip_init(struct i2c_client *client)
 			CURRENT_MASK, pdata->led_current);
 	rval |= isl98611_update(pchip, REG_CURRENT,
 			SCALE_MASK, pdata->cur_scale);
+
+	if (pdata->pfm_value != ISL98611_DEFAULT_PFM)
+		rval |= isl98611_update(pchip, REG_PFMCTRL,
+			PFM_MASK, pdata->pfm_value);
 
 	return rval;
 }
@@ -294,6 +301,9 @@ static int isl98611_dt_init(struct i2c_client *client,
 
 	pdata->cur_scale = ISL98611_90p62SCALE;
 	of_property_read_u32(np, "intersil,current-scale", &pdata->cur_scale);
+
+	pdata->pfm_value = ISL98611_DEFAULT_PFM;
+	of_property_read_u32(np, "intersil,pfm-value", &pdata->pfm_value);
 
 	if (pdata->hbm_on) {
 		pdata->hbm_led_current = pdata->led_current;
