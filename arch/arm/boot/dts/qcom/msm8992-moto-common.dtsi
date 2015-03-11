@@ -284,6 +284,7 @@
 	};
 
 	pmx_i2c_12 {
+		status = "disabled";
 		qcom,pins = <&gp 87>, <&gp 88>; /* SDA, SCL */
 		qcom,num-grp-pins = <2>;
 		qcom,pin-func = <3>;
@@ -301,6 +302,7 @@
 	};
 
 	slice_int_n {
+		status = "disabled";
 		qcom,pins = <&gp 96>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
@@ -314,6 +316,7 @@
 	};
 
 	slice_detect_n {
+		status = "disabled";
 		qcom,pins = <&gp 95>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
@@ -1008,6 +1011,7 @@
 
 	i2c_12: i2c@f9968000 { /* BLSP2 QUP5 - HW ID BLSP12 */
 		compatible = "qcom,i2c-msm-v2";
+		status = "disabled";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "qup_phys_addr";
@@ -1094,6 +1098,7 @@
 
 	slice {
 		compatible = "mmi,slice-accessory";
+		status = "disabled";
 		mmi,slice-detect-gpio = <&msm_gpio 95 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&slice_detect_default &slice_int_default>;
