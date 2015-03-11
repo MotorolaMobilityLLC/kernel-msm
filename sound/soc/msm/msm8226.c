@@ -218,36 +218,72 @@ struct mi2s_clk {
 static struct mi2s_clk pri_mi2s_clk;
 static struct platform_device *spdev;
 
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+static struct request_gpio tert_mi2s_gpio[] = {
+	{
+		.gpio_name = "TERT_MI2S_SCK",
+	},
+	{
+		.gpio_name = "TERT_MI2S_WS",
+	},
+	{
+		.gpio_name = "TERT_MI2S_DOUT",
+	},
+};
+
+static struct mi2s_clk tert_mi2s_clk;
+#endif
+
 static int msm8226_dtparse_mi2s(void)
 {
-        pri_mi2s_gpio[PRI_MI2S_SCK_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
-                "qcom,pri-mi2s-gpio-sck", 0);
-        if (pri_mi2s_gpio[PRI_MI2S_SCK_IDX].gpio_no < 0) {
-                pr_err("%s: MI2S_SCK GPIO error in the device tree\n",
-                        __func__);
-                return -EINVAL;
-        }
+	pri_mi2s_gpio[PRI_MI2S_SCK_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,pri-mi2s-gpio-sck", 0);
+	if (pri_mi2s_gpio[PRI_MI2S_SCK_IDX].gpio_no < 0) {
+		pr_err("%s: MI2S_SCK GPIO error in the device tree\n", __func__);
+		return -EINVAL;
+	}
 
-        pri_mi2s_gpio[PRI_MI2S_WS_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
-                "qcom,pri-mi2s-gpio-ws", 0);
-        if (pri_mi2s_gpio[PRI_MI2S_WS_IDX].gpio_no < 0) {
-                pr_err("%s: MI2S_WS GPIO error in the device tree\n",
-                        __func__);
-                return -EINVAL;
-        }
+	pri_mi2s_gpio[PRI_MI2S_WS_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,pri-mi2s-gpio-ws", 0);
+	if (pri_mi2s_gpio[PRI_MI2S_WS_IDX].gpio_no < 0) {
+		pr_err("%s: MI2S_WS GPIO error in the device tree\n", __func__);
+		return -EINVAL;
+	}
 
-        pri_mi2s_gpio[PRI_MI2S_DIN_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
-                "qcom,pri-mi2s-gpio-din", 0);
-        if (pri_mi2s_gpio[PRI_MI2S_DIN_IDX].gpio_no < 0) {
-                pr_err("%s: MI2S_DIN GPIO error in the device tree\n",
-                        __func__);
-                return -EINVAL;
-        }
+	pri_mi2s_gpio[PRI_MI2S_DIN_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,pri-mi2s-gpio-din", 0);
+	if (pri_mi2s_gpio[PRI_MI2S_DIN_IDX].gpio_no < 0) {
+		pr_err("%s: MI2S_DIN GPIO error in the device tree\n", __func__);
+		return -EINVAL;
+	}
 
-	pri_mi2s_gpio[PRI_MI2S_EN_IDX].gpio_no = of_get_named_gpio(spdev->dev.of_node,
-                "qcom,pri-mi2s-gpio-en", 0);
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+	tert_mi2s_gpio[0].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,tert-mi2s-gpio-sck", 0);
+	if (tert_mi2s_gpio[0].gpio_no < 0) {
+		pr_err("%s: TERT_MI2S_SCK GPIO error in the device tree\n",
+			__func__);
+		return -EINVAL;
+	}
 
-        return 0;
+	tert_mi2s_gpio[1].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,tert-mi2s-gpio-ws", 0);
+	if (tert_mi2s_gpio[1].gpio_no < 0) {
+		pr_err("%s: TERT_MI2S_WS GPIO error in the device tree\n",
+			 __func__);
+		return -EINVAL;
+	}
+
+	tert_mi2s_gpio[2].gpio_no = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,tert-mi2s-gpio-dout", 0);
+	if (tert_mi2s_gpio[2].gpio_no < 0) {
+		pr_err("%s: TERT_MI2S_DOUT GPIO error in the device tree\n",
+			__func__);
+		return -EINVAL;
+	}
+#endif
+
+	return 0;
 }
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
@@ -1430,6 +1466,87 @@ static struct snd_soc_ops msm8226_mi2s_be_ops = {
         .startup = msm8226_mi2s_startup,
         .shutdown = msm8226_mi2s_shutdown
 };
+
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+static int msm226_tert_mi2s_free_gpios(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(tert_mi2s_gpio); i++)
+		gpio_free(tert_mi2s_gpio[i].gpio_no);
+	return 0;
+}
+
+static void msm8226_tert_mi2s_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret =0;
+	if (atomic_dec_return(&tert_mi2s_clk.mi2s_rsc_ref) == 0) {
+		pr_debug("%s: free mi2s resources\n", __func__);
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_disable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+		}
+		msm226_tert_mi2s_free_gpios();
+	}
+}
+
+static int msm8226_configure_tert_mi2s_gpio(void)
+{
+	int rtn;
+	int i;
+	for (i = 0; i < ARRAY_SIZE(tert_mi2s_gpio); i++) {
+		rtn = gpio_request(tert_mi2s_gpio[i].gpio_no,
+			tert_mi2s_gpio[i].gpio_name);
+
+		pr_debug("%s: gpio = %d, gpio name = %s, rtn = %d\n", __func__,
+			tert_mi2s_gpio[i].gpio_no, tert_mi2s_gpio[i].gpio_name, rtn);
+		if (rtn) {
+			pr_err("%s: Failed to request gpio %d\n",
+				__func__,
+				tert_mi2s_gpio[i].gpio_no);
+			while (i >= 0) {
+				gpio_free(tert_mi2s_gpio[i].gpio_no);
+				i--;
+			}
+			break;
+		}
+	}
+
+	return rtn;
+}
+
+static int msm8226_tert_mi2s_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+
+	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+	if (atomic_inc_return(&tert_mi2s_clk.mi2s_rsc_ref) == 1) {
+		pr_debug("%s: acquire mi2s resources\n", __func__);
+		msm8226_configure_tert_mi2s_gpio();
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_enable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0) {
+			dev_err(cpu_dai->dev, "set format for CPU dai"
+				" failed\n");
+		}
+	}
+
+	return ret;
+}
+
+static struct snd_soc_ops msm8226_tert_mi2s_be_ops = {
+	.startup = msm8226_tert_mi2s_startup,
+	.shutdown = msm8226_tert_mi2s_shutdown
+};
+#endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 
 /* Digital audio interface glue - connects codec <---> CPU */
@@ -2121,6 +2238,20 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
                 .be_hw_params_fixup = msm_be_hw_params_fixup,
                 .ops = &msm8226_mi2s_be_ops,
         },
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+	{
+		.name = LPASS_BE_TERT_MI2S_RX,
+		.stream_name = "Tertiary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8226_tert_mi2s_be_ops,
+	},
+#endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
 };
 

@@ -287,4 +287,9 @@ config SND_SOC_MSM8994
 	 the machine drivers and the corresponding
 	 DAI-links.
 
+config SND_SOC_MSM8226_I2S_SPKR_AMP
+	bool "Whether the I2S Speaker AMP should be set"
+	help
+	 If you say yes here, the I2S Speaker AMP will be set.
+
 endmenu
