@@ -146,7 +146,7 @@
 /* Not used */
 #define MOTOSH_TOUCH_REG_SIZE  8
 /* Used in HAL */
-#define MOTOSH_MAG_CAL_SIZE 26
+#define MOTOSH_MAG_CAL_SIZE 32
 /* Not used */
 #define STM_AOD_INSTRUMENTATION_REG_SIZE 256
 /* Not used in user space */
