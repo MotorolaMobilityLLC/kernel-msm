@@ -758,8 +758,8 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		} else if (pinfo->type == MIPI_CMD_PANEL) {
 			u32 dsi_pclk_rate = pinfo->mipi.dsi_pclk_rate;
 
-			if (is_pingpong_split(mixer->ctl->mfd))
-				dsi_pclk_rate *= 2;
+			/* Hacked to increase MDP by twofold for kinzie issue */
+			dsi_pclk_rate *= 2;
 
 			if (dsi_pclk_rate > perf->mdp_clk_rate)
 				perf->mdp_clk_rate = dsi_pclk_rate;
