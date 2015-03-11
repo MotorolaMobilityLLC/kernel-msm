@@ -118,10 +118,6 @@
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 };
 
-&mot_tdi_546_1080p_cmd_v0 {
-	qcom,cont-splash-enabled;
-};
-
 &pm8916_vadc {
 	/delete-node/ chan@b;
 
