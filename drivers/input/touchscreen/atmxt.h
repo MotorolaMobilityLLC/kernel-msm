@@ -34,7 +34,7 @@
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
 #define atmxt_dbg(dd, level, format, args...) \
 {\
-	if (1) \
+	if ((dd->dbg->dbg_lvl) >= level) \
 		printk(KERN_INFO format, ## args); \
 }
 #else
