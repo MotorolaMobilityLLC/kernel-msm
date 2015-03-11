@@ -627,6 +627,12 @@ config MSM_PWM_VIBRATOR
           This option enables device driver support for MSM Vibrator driver.
           Some functions should be given by platform data for enable PWM, Motor IC, etc.
 
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	depends on PROFILING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
