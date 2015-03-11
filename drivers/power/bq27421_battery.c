@@ -409,6 +409,11 @@ static int bq27421_probe(struct i2c_client *client,
 	chip->battery.properties = bq27421_battery_props;
 	chip->battery.num_properties = ARRAY_SIZE(bq27421_battery_props);
 
+        if (power_supply_register(&client->dev, &chip->battery))
+                pr_err("%s: failed power supply register\n", __func__);
+        else
+                chip->power_supply_registered = true;
+
 	if (bq27421_is_unsealed(chip))
 		bq27421_ctrl_sealed(chip);
 
@@ -422,11 +427,6 @@ static int bq27421_probe(struct i2c_client *client,
 			return ret;
 		}
 	}
-
-	if (power_supply_register(&client->dev, &chip->battery))
-		pr_err("%s: failed power supply register\n", __func__);
-	else
-		chip->power_supply_registered = true;
 
 	return ret;
 }
