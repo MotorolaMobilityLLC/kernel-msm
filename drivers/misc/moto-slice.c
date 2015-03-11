@@ -192,6 +192,8 @@ static void slice_detected_work(struct work_struct *w)
 		if (!value) {
 			if (slice_try_eeprom(slice)) {
 				dev_err(slice->dev, "Can't find slice eeprom\n");
+				/* Allow system suspend */
+				pm_relax(slice->dev);
 				return;
 			}
 			slice_register_i2c_devices(slice);
