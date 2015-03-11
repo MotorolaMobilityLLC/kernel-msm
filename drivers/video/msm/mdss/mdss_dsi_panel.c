@@ -703,7 +703,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			cmds.cmds = ctrl->on_cmds.cmds;
 			cmds.cmd_cnt = ctrl->on_cmds.cmd_cnt - 1;
 			cmds.link_state = ctrl->on_cmds.link_state;
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+			mdss_dsi_panel_cmds_send(ctrl, &cmds);
 			if (regulator_enable(pwr->vreg) < 0) {
 				DEV_ERR("%pS->%s: %s enable failed\n",
 					__builtin_return_address(0), __func__,
@@ -713,7 +713,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				msleep(pwr->post_on_sleep);
 			cmds.cmds += cmds.cmd_cnt;
 			cmds.cmd_cnt = 1;
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+			mdss_dsi_panel_cmds_send(ctrl, &cmds);
 		}
 	}
 

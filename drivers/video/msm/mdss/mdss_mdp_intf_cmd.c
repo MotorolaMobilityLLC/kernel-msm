@@ -859,6 +859,7 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		goto end;
 	}
 
+	ctx->ref_cnt--;
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 		ctx->pp_num, NULL, NULL);
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP,
@@ -902,7 +903,12 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	pr_debug("%s: transition from %d --> %d\n", __func__,
 		ctx->panel_power_state, panel_power_state);
 
-	if (__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
+	if (mdss_panel_is_power_off(panel_power_state)) {
+		/* request to turn off panel at all */
+		send_panel_events = true;
+		turn_off_clocks = true;
+		panel_off = true;
+	} else if (__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
 		if (mdss_panel_is_power_on_lp(panel_power_state)) {
 			/*
 			 * If we are transitioning from interactive to low
@@ -913,10 +919,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			send_panel_events = true;
 			if (mdss_panel_is_power_on_ulp(panel_power_state))
 				turn_off_clocks = true;
-		} else if (mdss_panel_is_power_off(panel_power_state)) {
-			send_panel_events = true;
-			turn_off_clocks = true;
-			panel_off = true;
 		}
 	} else {
 		if (mdss_panel_is_power_on_ulp(panel_power_state)) {
