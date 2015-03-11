@@ -35,8 +35,8 @@
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
-	qcom,platform-vddio_en-gpio = <&msm_gpio 110 0>;
-	qcom,platform-avdd-gpio = <&msm_gpio 89 0>;
+	qcom,platform-enable-gpio = <&msm_gpio 110 0>;
+	qcom,platform-te-gpio = <&msm_gpio 10 0>;
 
 	tpio-supply = <&pm8994_l10>;
 	tpvci-supply =  <&pm8994_l22>;
@@ -89,9 +89,6 @@
 	tpio-supply = <&pm8994_l10>;
 	tpvci-supply =  <&pm8994_l22>;
 
-	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
-	lge,reset-low-hold = <10>;
-
 	qcom,ctrl-supply-entries {
 		qcom,ctrl-supply-entry@1 {
 			reg = <1>;
@@ -134,6 +131,7 @@
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-dsi-lp11-init;
 };
 
 &spmi_bus {
@@ -165,6 +163,23 @@
 		status = "okay";
 		pm8994_l22: regulator-l22 {
 			regulator-always-on;
+		};
+	};
+};
+
+&i2c_5 {
+	dw8768@3e {
+		compatible = "dw,dw8768";
+		reg = <0x3e>;
+
+		regulators {
+			avdd_reg: dw8768-dsv {
+				regulator-name = "avdd_reg";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				dw,enable-gpio = <&msm_gpio 89 0>;
+				dw,power-on-delay-us = <3700>;
+			};
 		};
 	};
 };
