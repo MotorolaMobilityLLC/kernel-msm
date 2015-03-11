@@ -619,5 +619,13 @@ config REGULATOR_CPR
 	  suggestions in efuse as initial settings. It converts corner vote
 	  to voltage value before writing to a voltage regulator API, such as
 	  that provided by spm-regulator driver.
+
+config REGULATOR_DW8768
+	bool "DONGWOON DW8768 regulator driver"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports DW8768 voltage regulator. DW8768 is a power
+	  supply IC to support general positive/negative driven LCDs.
 endif
 
