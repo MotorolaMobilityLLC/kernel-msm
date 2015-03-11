@@ -65,6 +65,17 @@
 		gesture {
 			compatible = "mot,m4gesture";
 		};
+
+		display {
+			compatible = "mot,m4display";
+		};
+		download {
+			compatible = "mot,m4download";
+		};
+		stillmode {
+			compatible = "mot,m4stillmode";
+		};
+
 		heartratesensor {
 			compatible = "mot,m4heartrate";
 		};
@@ -512,6 +523,14 @@
 		reg = <0x38>;
 		lm3535,en_gpio = <&msmgpio 35 0>; // is not supported by driver yet
 	};
+
+	tsl2584@29 {
+		compatible = "ams,tsl2584";
+		reg = <0x29>;
+		vdd-supply = <&pm8226_l18>;
+		ams,ink_type = <0x01>;
+	};
+
 };
 
 &i2c_5 {
