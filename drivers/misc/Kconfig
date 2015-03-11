@@ -700,6 +700,12 @@ config FAN48632_BOOST
 	  output voltage from a single cell Li-Ion battery, even when the
 	  battery voltage is below system cutoff.
 
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	default n
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
