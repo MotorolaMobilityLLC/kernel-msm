@@ -47,7 +47,7 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 	static struct timespec ts;
 	static struct stml0xx_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = dev;
-	getrawmonotonic(&ts);
+	get_monotonic_boottime(&ts);
 
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
