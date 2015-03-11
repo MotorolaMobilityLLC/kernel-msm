@@ -43,3 +43,9 @@ config FB_MSM_MDSS_MDP3
 	---help---
 	The MDP3 provides support for an older version display controller
 	included in latest display sub-system, known as MDSS.
+
+config DISPLAY_STATE_NOTIFY
+	bool "notifier for display panel state"
+	---help---
+	The display driver can notify any subscriber about the
+	changes in display state
