@@ -69,3 +69,5 @@ obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
 obj-$(CONFIG_QCOM_LIQUID_DOCK)	+= qcom_liquid_dock.o
 obj-y				+= qcom/
 obj-$(CONFIG_SEC_MISC)	+= sec_param.o sec_misc.o
+obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
+
