@@ -70,4 +70,4 @@ obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_MMI_SAR) += mmi-sar.o
 obj-$(CONFIG_CYPRESS_CAPSENSE_PROGRAMMING)	+= capsense_prog/
-
+obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
