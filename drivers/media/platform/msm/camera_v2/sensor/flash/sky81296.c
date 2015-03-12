@@ -117,6 +117,7 @@ static struct msm_camera_i2c_reg_array sky81296_low_array[] = {
 static struct msm_camera_i2c_reg_array sky81296_high_array[] = {
 	{0x00, LED_DEFAULT_STROBE_CURRENT},
 	{0x01, LED_DEFAULT_STROBE_CURRENT},
+	{0x03, LED_DEFAULT_TORCH_CURRENT},
 	{0x04, LED_STROBE_EN_DEFAULT},
 };
 
@@ -237,13 +238,17 @@ static int msm_flash_sky81296_led_high(struct msm_led_flash_ctrl_t *fctrl)
 	uint8_t led1_reg_val = 0x00;
 	uint8_t led2_reg_val = 0x00;
 	uint32_t total_current = 0;
+	uint8_t led1_torch = false;
+	uint8_t led2_torch = false;
 	int tbl_size = sizeof(sky81296_strobe_values) /
 			sizeof(struct sky81296_current_to_reg);
-
+	int tbl_size_torch = sizeof(sky81296_torch_values) /
+			sizeof(struct sky81296_current_to_reg);
 	/* set defaults */
 	sky81296_high_array[0].reg_data = LED_DEFAULT_STROBE_CURRENT;
 	sky81296_high_array[1].reg_data = LED_DEFAULT_STROBE_CURRENT;
-	sky81296_high_array[2].reg_data = LED_STROBE_EN_DEFAULT;
+	sky81296_high_array[2].reg_data = 0;
+	sky81296_high_array[3].reg_data = 0;
 
 	total_current = fctrl->flash_op_current[0] +
 			fctrl->flash_op_current[1];
@@ -255,29 +260,64 @@ static int msm_flash_sky81296_led_high(struct msm_led_flash_ctrl_t *fctrl)
 				__func__, __LINE__,
 				sky81296_high_array[0].reg_data);
 	} else {
-		led1_reg_val = msm_flash_sky81296_get_reg_value(
+		/*  if one current is < 250 then we need to use mixed
+		 *  torch and strobe current levels
+		 */
+		if (fctrl->flash_op_current[0] >= 250) {
+			led1_reg_val = msm_flash_sky81296_get_reg_value(
 				sky81296_strobe_values,
 				tbl_size,
 				fctrl->flash_op_current[0]);
+			sky81296_high_array[0].reg_data = led1_reg_val;
+		} else {
+			led1_reg_val = msm_flash_sky81296_get_reg_value(
+				sky81296_torch_values,
+				tbl_size_torch,
+				fctrl->flash_op_current[0]);
+			led1_torch = true;
+			sky81296_high_array[2].reg_data = (0x0f & led1_reg_val);
+		}
 
-		led2_reg_val = msm_flash_sky81296_get_reg_value(
+		if (fctrl->flash_op_current[1] >= 250) {
+			led2_reg_val = msm_flash_sky81296_get_reg_value(
 				sky81296_strobe_values,
 				tbl_size,
 				fctrl->flash_op_current[1]);
+			sky81296_high_array[1].reg_data = led2_reg_val;
+		} else {
+			led2_reg_val = msm_flash_sky81296_get_reg_value(
+				sky81296_torch_values,
+				tbl_size_torch,
+				fctrl->flash_op_current[1]);
+			led2_torch = true;
+			sky81296_high_array[2].reg_data = ((led2_reg_val << 4) |
+					sky81296_high_array[2].reg_data);
+		}
 
-		CDBG("%s:%d - current level %d %d reg:0x%x:0x%x\n",
+		/* if current level is 0, then turn off LED */
+		if (led1_torch == true)
+			sky81296_high_array[3].reg_data = 0x01;
+		else
+			sky81296_high_array[3].reg_data = 0x02;
+
+		if (led2_torch == true)
+			sky81296_high_array[3].reg_data |= 0x10;
+		else
+			sky81296_high_array[3].reg_data |= 0x20;
+
+		if (fctrl->flash_op_current[1] == 0)
+			sky81296_high_array[3].reg_data &= 0x0F;
+		if (fctrl->flash_op_current[0] == 0)
+			sky81296_high_array[3].reg_data &= 0xF0;
+
+		CDBG("%s:%d - current level %d %d reg:0x%x 0x%x 0x%x 0x%x\n",
 				__func__, __LINE__,
 				fctrl->flash_op_current[0],
 				fctrl->flash_op_current[1],
-				led1_reg_val, led2_reg_val);
-
-		sky81296_high_array[0].reg_data = led1_reg_val;
-		sky81296_high_array[1].reg_data = led2_reg_val;
-		/* if current level is 0, then turn off LED */
-		if (fctrl->flash_op_current[1] == 0)
-			sky81296_high_array[2].reg_data &= 0x0F;
-		if (fctrl->flash_op_current[0] == 0)
-			sky81296_high_array[2].reg_data &= 0xF0;
+				sky81296_high_array[0].reg_data,
+				sky81296_high_array[1].reg_data,
+				sky81296_high_array[2].reg_data,
+				sky81296_high_array[3].reg_data);
 	}
 	return msm_flash_led_high(fctrl);
 }
