@@ -269,6 +269,7 @@
 		intersil,default-on;
 		intersil,vn = <20>;
 		intersil,vp = <20>;
+		intersil,pfm-value = <0x86>;
 		intersil,cabc-disable;
 		intersil,no-reset;
 		intersil,init-level = <255>;
