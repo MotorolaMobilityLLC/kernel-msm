@@ -38,6 +38,27 @@
 	#include"dsi-panel-mot-inx-570-QHD-supplies.dtsi"
 };
 
+&pm8994_l14 {
+	regulator-boot-on;
+	regulator-always-on;
+};
+
+&isl98611a_pos {
+	regulator-boot-on;
+};
+
+&isl98611a_neg {
+	regulator-boot-on;
+};
+
+&mot_inx_570_QHD_0_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
+&mot_inx_570_QHD_1_cmd_v0 {
+	qcom,cont-splash-enabled;
+};
+
 &pm8994_gpios {
 	gpio@c500 { /* GPIO 6 - DISP_V3_EN */
 		status = "okay";
