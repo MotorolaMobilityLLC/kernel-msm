@@ -19,6 +19,8 @@ Parent node required properties:
 - qcom,vddsafe-mv:			Maximum Vdd voltage in mV.
 - qcom,vinmin-mv:			Minimum input voltage in mV.
 - qcom,ibatsafe-ma:			Safety battery current setting
+- qcom,usbin-ovp-irq:			External IC irq to trigger over
+					voltage when insert charger.
 
 Parent node optional properties:
 - qcom,vbatweak-uv:			Weak battery voltage threshold in uV,
@@ -176,6 +178,7 @@ Example:
 		qcom,resume-soc = <99>;
 		qcom,btc-disabled = <0>;
 		qcom,chg-vadc = <&pm8916_vadc>;
+		qcom,usbin-ovp-irq = <&msm_gpio 110 0>;
 
 		qcom,chgr@1000 {
 			reg = <0x1000 0x100>;
