@@ -381,6 +381,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct mutex cmd_mutex;
 	struct regulator *lab; /* vreg handle */
 	struct regulator *ibb; /* vreg handle */
+	struct regulator *avdd_reg;
 	struct mutex clk_lane_mutex;
 
 	u32 ulps_clamp_ctrl_off;
