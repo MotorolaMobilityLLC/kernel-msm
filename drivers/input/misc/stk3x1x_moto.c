@@ -260,6 +260,7 @@ struct stk3x1x_data {
 	enum prox_state prox_mode;
 	bool suspended;
 	bool delayed_work;
+	bool als_first_event;
 };
 
 static int32_t stk3x1x_enable_ps(struct stk3x1x_data *ps_data,
@@ -830,9 +831,10 @@ static int32_t stk3x1x_enable_als(struct stk3x1x_data *ps_data, uint8_t enable)
 			"%s: write I2C error, ret=%d\n", __func__, ret);
 		return ret;
 	}
-	
+
 	if (enable) {
 		ps_data->als_enabled = true;
+		ps_data->als_first_event = true;
 		if(!(ps_data->ps_enabled))
 			enable_irq(ps_data->irq);
 	} else {
@@ -1624,7 +1626,7 @@ static struct attribute_group stk_ps_attribute_group = {
 static void stk_work_func(struct work_struct *work)
 {
 	uint32_t reading;
-	int32_t ret;
+	int32_t ret, cur_lux;
 	uint8_t disable_flag = 0;
 	uint8_t org_flag_reg;
 	struct stk3x1x_data *ps_data = container_of(work,
@@ -1675,7 +1677,16 @@ static void stk_work_func(struct work_struct *work)
 
 		reading = reading * ps_data->als_correct_factor / 1000;
 
-		ps_data->als_lux_last = stk_alscode2lux(ps_data, reading);
+		cur_lux = stk_alscode2lux(ps_data, reading);
+		/* input abs doesnot report same lux values consecutively*/
+		if (ps_data->als_first_event &&
+			ps_data->als_lux_last == cur_lux) {
+			ps_data->als_lux_last++;
+			ps_data->als_first_event = false;
+		} else {
+			ps_data->als_lux_last = cur_lux;
+		}
+
 		input_report_abs(ps_data->als_input_dev, ABS_MISC,
 			ps_data->als_lux_last);
 		input_sync(ps_data->als_input_dev);
