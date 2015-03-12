@@ -31,6 +31,9 @@
 #define MCU_GPIO_RESET 87
 #define GPIO_LEN	  16
 
+/* min reset delay time (ms)*/
+#define MIN_MCU_RESET_TIME 20
+
 struct gpio_mcu_info
 {
 	unsigned gpio;
@@ -44,22 +47,15 @@ static struct gpio_mcu_info gpio_mcu []=
 	{MCU_GPIO_RESET,"GPIO87"}
 };
 
-struct proc_dir_entry *mcu_dir;
-
-static ssize_t mcu_write_proc_gpio(unsigned gpio, const char __user *buffer, size_t count)
+/* set gpio output value*/
+static int mcu_set_gpio(unsigned gpio, int value)
 {
-	char b;
 	unsigned i;
 	char buf[GPIO_LEN] = {0};
 
-	if (copy_from_user(&b, buffer, 1))
+	if ( (value != 0) && (value != 1))
 	{
-		pr_err("Set value failed copy\n");
-		return -EFAULT;
-	}
-	if ( b != '0' && b != '1')
-	{
-		pr_err("Set value invalid\n");
+		pr_err("mcu_set_gpio value invalid\n");
 		return -EINVAL;
 	}
 
@@ -73,27 +69,40 @@ static ssize_t mcu_write_proc_gpio(unsigned gpio, const char __user *buffer, siz
 	}
 	if(sizeof(gpio_mcu) / sizeof(struct gpio_mcu_info) == i)
 	{
-		pr_err("gpio %d for invalid.\n", gpio);
+		pr_err("mcu_set_gpio gpio %d for invalid.\n", gpio);
 		return -EINVAL;
 	}
 	if (gpio_request(gpio, (const char*)buf))
 	{
-		pr_err( "Failed to request gpio %d\n", gpio);
+		pr_err( "mcu_set_gpio failed to request gpio %d\n", gpio);
 
 		return -EFAULT;
 	}
 
-	if (b == '0')
-	{
-		gpio_direction_output(gpio, 0);
-		pr_info("mcu_write_proc_gpio (%u) low.\n", gpio);
-	}	
-	else if (b == '1')
-	{
-		gpio_direction_output(gpio, 1);
-		pr_info("mcu_write_proc_gpio (%u) high.\n", gpio);
-	}
+	gpio_direction_output(gpio, value);
+	pr_info("mcu_set_gpio (%u) value (%d).\n", gpio, value);
+
 	gpio_free(gpio);
+	return 0;
+
+}
+
+struct proc_dir_entry *mcu_dir;
+
+static ssize_t mcu_write_proc_gpio(unsigned gpio, const char __user *buffer, size_t count)
+{
+	char b;
+
+	if (copy_from_user(&b, buffer, 1))
+	{
+		pr_err("Set value failed copy\n");
+		return -EFAULT;
+	}
+	if (mcu_set_gpio(gpio, b - '0'))
+	{
+		pr_err("Set value invalid\n");
+		return -EINVAL;
+	}
 	return count;
 
 }
@@ -175,7 +184,6 @@ static const struct file_operations proc_fops_gpio_reset = {
 	.write = mcu_write_proc_gpio_reset,
 };
 
-
 static int __init board_mcu_gpio_init(void)
 {
 	int retval;
@@ -215,6 +223,11 @@ static int __init board_mcu_gpio_init(void)
 		goto fail;
 	}
 
+	/*reset mcu*/
+	mcu_set_gpio(MCU_GPIO_RESET, 0);
+	mdelay(MIN_MCU_RESET_TIME);
+	mcu_set_gpio(MCU_GPIO_RESET, 1);
+	pr_info("mcu board init reset\n");
 	return 0;
 
 fail:
