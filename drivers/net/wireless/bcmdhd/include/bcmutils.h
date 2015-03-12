@@ -1,9 +1,27 @@
 /*
  * Misc useful os-independent macros and functions.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmutils.h 490808 2014-07-12 00:33:13Z $
+ * $Id: bcmutils.h 469595 2014-04-10 21:19:06Z $
  */
 
 #ifndef	_bcmutils_h_
@@ -16,7 +34,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #ifdef PKTQ_LOG
 #include <wlioctl.h>
@@ -690,7 +707,10 @@ extern int bcm_format_field(const bcm_bit_desc_ex_t *bd, uint32 field, char* buf
 extern int bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len);
 #endif
 
+#if defined(DHD_DEBUG) || defined(WLMSG_PRHDRS) || defined(WLMSG_PRPKT) || \
+	defined(WLMSG_ASSOC) || defined(WLMEDIA_PEAKRATE)
 extern int bcm_format_hex(char *str, const void *bytes, int len);
+#endif
 
 extern const char *bcm_crypto_algo_name(uint algo);
 extern char *bcm_chipname(uint chipid, char *buf, uint len);
@@ -713,24 +733,6 @@ typedef struct bcm_xtlv {
 	uint16	len;
 	uint8	data[1];
 } bcm_xtlv_t;
-
-/* descriptor of xtlv data src or dst  */
-typedef struct {
-	uint16	type;
-	uint16	len;
-	void	*ptr; /* ptr to memory location */
-} xtlv_desc_t;
-
-/*  set a var from xtlv buffer */
-typedef int
-(bcm_set_var_from_tlv_cbfn_t)(void *ctx, void **tlv_buf, uint16 type, uint16 len);
-
-struct bcm_tlvbuf {
-    uint16 size;
-    uint8 *head; /* point to head of buffer */
-    uint8 *buf; /* current position of buffer */
-	/* followed by the allocated buffer */
-};
 
 #define BCM_TLV_MAX_DATA_SIZE (255)
 #define BCM_XTLV_MAX_DATA_SIZE (65535)
@@ -768,27 +770,6 @@ extern uint8 *bcm_copy_tlv_safe(const void *src, uint8 *dst, int dst_maxlen);
 
 /* xtlv */
 extern bcm_xtlv_t *bcm_next_xtlv(bcm_xtlv_t *elt, int *buflen);
-extern struct bcm_tlvbuf *bcm_xtlv_buf_alloc(void *osh, uint16 len);
-extern void bcm_xtlv_buf_free(void *osh, struct bcm_tlvbuf *tbuf);
-extern uint16 bcm_xtlv_buf_len(struct bcm_tlvbuf *tbuf);
-extern uint16 bcm_xtlv_buf_rlen(struct bcm_tlvbuf *tbuf);
-extern uint8 *bcm_xtlv_buf(struct bcm_tlvbuf *tbuf);
-extern uint8 *bcm_xtlv_head(struct bcm_tlvbuf *tbuf);
-extern int bcm_xtlv_put_data(struct bcm_tlvbuf *tbuf, uint16 type, const void *data, uint16 dlen);
-extern int bcm_xtlv_put_8(struct bcm_tlvbuf *tbuf, uint16 type, const int8 data);
-extern int bcm_xtlv_put_16(struct bcm_tlvbuf *tbuf, uint16 type, const int16 data);
-extern int bcm_xtlv_put_32(struct bcm_tlvbuf *tbuf, uint16 type, const int32 data);
-extern int bcm_unpack_xtlv_entry(void **tlv_buf, uint16 xpct_type, uint16 xpct_len, void *dst);
-extern int bcm_skip_xtlv(void **tlv_buf);
-extern int bcm_pack_xtlv_entry(void **tlv_buf, uint16 *buflen, uint16 type, uint16 len, void *src);
-extern int bcm_unpack_xtlv_buf(void *ctx,
-	void *tlv_buf, uint16 buflen, bcm_set_var_from_tlv_cbfn_t *cbfn);
-extern int
-bcm_unpack_xtlv_buf_to_mem(void *tlv_buf, int *buflen, xtlv_desc_t *items);
-extern int
-bcm_pack_xtlv_buf_from_mem(void **tlv_buf, uint16 *buflen, xtlv_desc_t *items);
-extern int
-bcm_pack_xtlv_entry_from_hex_string(void **tlv_buf, uint16 *buflen, uint16 type, char *hex);
 
 /* bcmerror */
 extern const char *bcmerrorstr(int bcmerror);

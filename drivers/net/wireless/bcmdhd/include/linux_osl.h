@@ -1,9 +1,27 @@
 /*
  * Linux OS Independent Layer
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linux_osl.h 491170 2014-07-15 06:23:58Z $
+ * $Id: linux_osl.h 474317 2014-04-30 21:49:42Z $
  */
 
 #ifndef _linux_osl_h_
@@ -33,10 +51,6 @@ extern int osl_static_mem_init(osl_t *osh, void *adapter);
 extern int osl_static_mem_deinit(osl_t *osh, void *adapter);
 extern void osl_set_bus_handle(osl_t *osh, void *bus_handle);
 extern void* osl_get_bus_handle(osl_t *osh);
-#ifdef EXYNOS5433_PCIE_WAR
-extern void exynos_pcie_set_l1_exit(void);
-extern void exynos_pcie_clear_l1_exit(void);
-#endif /* EXYNOS5433_PCIE_WAR */
 
 /* Global ASSERT type */
 extern uint32 g_assert_type;
@@ -57,7 +71,7 @@ extern void osl_assert(const char *exp, const char *file, int line);
 			#define ASSERT(exp)
 		#endif /* GCC_VERSION > 30100 */
 	#endif /* __GNUC__ */
-#endif
+#endif 
 
 /* bcm_prefetch_32B */
 static inline void bcm_prefetch_32B(const uint8 *addr, const int cachelines_32B)
@@ -69,7 +83,7 @@ static inline void bcm_prefetch_32B(const uint8 *addr, const int cachelines_32B)
 		case 2: __asm__ __volatile__("pld\t%a0" :: "p"(addr + 32) : "cc");
 		case 1: __asm__ __volatile__("pld\t%a0" :: "p"(addr +  0) : "cc");
 	}
-#endif
+#endif 
 }
 
 /* microsecond delay */
@@ -173,7 +187,7 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 /* API for DMA addressing capability */
 #define OSL_DMADDRWIDTH(osh, addrwidth) ({BCM_REFERENCE(osh); BCM_REFERENCE(addrwidth);})
 
-#if (defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__))
+#if defined(__mips__) || (defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__))
 	extern void osl_cache_flush(void *va, uint size);
 	extern void osl_cache_inv(void *va, uint size);
 	extern void osl_prefetch(const void *ptr);
@@ -192,7 +206,7 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 	#define OSL_PREFETCH(ptr)		BCM_REFERENCE(ptr)
 
 	#define OSL_ARCH_IS_COHERENT()		NULL
-#endif
+#endif 
 
 /* register access macros */
 #if defined(BCMSDIO)
@@ -210,7 +224,7 @@ extern void osl_pcie_rreg(osl_t *osh, ulong addr, void *v, uint size);
 		osl_pcie_rreg(osh, (uintptr)(r), (void *)&__osl_v, sizeof(*(r))); \
 		__osl_v; \
 	})
-#endif
+#endif 
 
 #if defined(BCM47XX_ACP_WAR)
 	#define SELECT_BUS_WRITE(osh, mmap_op, bus_op) ({BCM_REFERENCE(osh); mmap_op;})
@@ -225,7 +239,7 @@ extern void osl_pcie_rreg(osl_t *osh, ulong addr, void *v, uint size);
 #else
 	#define SELECT_BUS_WRITE(osh, mmap_op, bus_op) ({BCM_REFERENCE(osh); mmap_op;})
 	#define SELECT_BUS_READ(osh, mmap_op, bus_op) ({BCM_REFERENCE(osh); mmap_op;})
-#endif
+#endif 
 #endif /* BCM47XX_ACP_WAR */
 
 #define OSL_ERROR(bcmerror)	osl_error(bcmerror)
@@ -248,7 +262,7 @@ extern int osl_error(int bcmerror);
 #else
 #define OSL_SYSUPTIME()		((uint32)jiffies * (1000 / HZ))
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 29) */
-#define	printf(fmt, args...)	printk("BCMDHD:"fmt , ## args)
+#define	printf(fmt, args...)	printk(fmt , ## args)
 #include <linux/kernel.h>	/* for vsn/printf's */
 #include <linux/string.h>	/* for mem*, str* */
 /* bcopy's: Linux kernel doesn't provide these (anymore) */
@@ -258,26 +272,6 @@ extern int osl_error(int bcmerror);
 
 /* register access macros */
 
-#ifdef EXYNOS5433_PCIE_WAR
-#define R_REG(osh, r) (\
-	SELECT_BUS_READ(osh, \
-		({ \
-			__typeof(*(r)) __osl_v; \
-			exynos_pcie_set_l1_exit();	\
-			switch (sizeof(*(r))) { \
-				case sizeof(uint8):	__osl_v = \
-					readb((volatile uint8*)(r)); break; \
-				case sizeof(uint16):	__osl_v = \
-					readw((volatile uint16*)(r)); break; \
-				case sizeof(uint32):	__osl_v = \
-					readl((volatile uint32*)(r)); break; \
-			} \
-			exynos_pcie_clear_l1_exit();	\
-			__osl_v; \
-		}), \
-		OSL_READ_REG(osh, r)) \
-)
-#else
 #define R_REG(osh, r) (\
 	SELECT_BUS_READ(osh, \
 		({ \
@@ -294,21 +288,7 @@ extern int osl_error(int bcmerror);
 		}), \
 		OSL_READ_REG(osh, r)) \
 )
-#endif /* EXYNOS5433_PCIE_WAR */
 
-#ifdef EXYNOS5433_PCIE_WAR
-#define W_REG(osh, r, v) do { \
-	exynos_pcie_set_l1_exit();	\
-	SELECT_BUS_WRITE(osh, \
-		switch (sizeof(*(r))) { \
-			case sizeof(uint8):	writeb((uint8)(v), (volatile uint8*)(r)); break; \
-			case sizeof(uint16):	writew((uint16)(v), (volatile uint16*)(r)); break; \
-			case sizeof(uint32):	writel((uint32)(v), (volatile uint32*)(r)); break; \
-		}, \
-		(OSL_WRITE_REG(osh, r, v))); \
-		exynos_pcie_clear_l1_exit();	\
-	} while (0)
-#else
 #define W_REG(osh, r, v) do { \
 	SELECT_BUS_WRITE(osh, \
 		switch (sizeof(*(r))) { \
@@ -318,7 +298,6 @@ extern int osl_error(int bcmerror);
 		}, \
 		(OSL_WRITE_REG(osh, r, v))); \
 	} while (0)
-#endif /* EXYNOS5433_PCIE_WAR */
 
 #define	AND_REG(osh, r, v)		W_REG(osh, (r), R_REG(osh, r) & (v))
 #define	OR_REG(osh, r, v)		W_REG(osh, (r), R_REG(osh, r) | (v))
@@ -340,7 +319,7 @@ extern int osl_error(int bcmerror);
 #define	OSL_GETCYCLES(x)	rdtscl((x))
 #else
 #define OSL_GETCYCLES(x)	((x) = 0)
-#endif
+#endif 
 
 /* dereference an address that may cause a bus exception */
 #define	BUSPROBE(val, addr)	({ (val) = R_REG(NULL, (addr)); 0; })
@@ -689,7 +668,7 @@ extern void osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt,
 extern void osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt);
 #define PKTFRMFWDER(osh, skbs, skb_cnt) \
 	osl_pkt_frmfwder(((osl_t *)osh), (void *)(skbs), (skb_cnt))
-#endif
+#endif 
 
 
 /** GMAC Forwarded packet tagging for reduced cache flush/invalidate.

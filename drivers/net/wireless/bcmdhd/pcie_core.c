@@ -3,7 +3,25 @@
  * Contains PCIe related functions that are shared between different driver models (e.g. firmware
  * builds, DHD builds, BMAC builds), in order to avoid code duplication.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: pcie_core.c 444841 2013-12-21 04:32:29Z $
  */
@@ -36,13 +54,7 @@ void pcie_watchdog_reset(osl_t *osh, si_t *sih, sbpcieregs_t *sbpcieregs)
 		PCIECFGREG_LINK_STATUS_CTRL2, PCIECFGREG_RBAR_CTRL,
 		PCIECFGREG_PML1_SUB_CTRL1, PCIECFGREG_REG_BAR2_CONFIG,
 		PCIECFGREG_REG_BAR3_CONFIG};
-	sbpcieregs_t *pcie = NULL;
 	uint32 origidx = si_coreidx(sih);
-
-	/* Switch to PCIE2 core */
-	pcie = (sbpcieregs_t *)si_setcore(sih, PCIE2_CORE_ID, 0);
-	BCM_REFERENCE(pcie);
-	ASSERT(pcie != NULL);
 
 	/* Disable/restore ASPM Control to protect the watchdog reset */
 	W_REG(osh, &sbpcieregs->configaddr, PCIECFGREG_LINK_STATUS_CTRL);
@@ -50,6 +62,7 @@ void pcie_watchdog_reset(osl_t *osh, si_t *sih, sbpcieregs_t *sbpcieregs)
 	val = lsc & (~PCIE_ASPM_ENAB);
 	W_REG(osh, &sbpcieregs->configdata, val);
 
+	si_setcore(sih, PCIE2_CORE_ID, 0);
 	si_corereg(sih, SI_CC_IDX, OFFSETOF(chipcregs_t, watchdog), ~0, 4);
 	OSL_DELAY(100000);
 

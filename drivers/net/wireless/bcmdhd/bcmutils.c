@@ -1,8 +1,26 @@
 /*
  * Driver O/S-independent utility routines
  *
- * $Copyright Open Broadcom Corporation$
- * $Id: bcmutils.c 488316 2014-06-30 15:22:21Z $
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
+ * $Id: bcmutils.c 473326 2014-04-29 00:37:35Z $
  */
 
 #include <bcm_cfg.h>
@@ -13,6 +31,10 @@
 
 #include <osl.h>
 #include <bcmutils.h>
+#if defined(BCMNVRAM)
+#include <siutils.h>
+#include <bcmnvram.h>
+#endif
 
 #else /* !BCMDRIVER */
 
@@ -42,22 +64,6 @@
 void *_bcmutils_dummy_fn = NULL;
 
 
-#ifdef CUSTOM_DSCP_TO_PRIO_MAPPING
-#define CUST_IPV4_TOS_PREC_MASK 0x3F
-#define DCSP_MAX_VALUE 64
-/* 0:BE,1:BK,2:RESV(BK):,3:EE,:4:CL,5:VI,6:VO,7:NC */
-int dscp2priomap[DCSP_MAX_VALUE]=
-{
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, /* BK->BE */
-	2, 0, 0, 0, 0, 0, 0, 0,
-	3, 0, 0, 0, 0, 0, 0, 0,
-	4, 0, 0, 0, 0, 0, 0, 0,
-	5, 0, 0, 0, 0, 0, 0, 0,
-	6, 0, 0, 0, 0, 0, 0, 0,
-	7, 0, 0, 0, 0, 0, 0, 0
-};
-#endif /* CUSTOM_DSCP_TO_PRIO_MAPPING */
 
 
 #ifdef BCMDRIVER
@@ -815,12 +821,7 @@ pktsetprio(void *pkt, bool update_vtag)
 			priority = PRIO_8021D_EE;
 			break;
 		default:
-#ifndef CUSTOM_DSCP_TO_PRIO_MAPPING
 			priority = (int)(tos_tc >> IPV4_TOS_PREC_SHIFT);
-#else
-			priority = (int)dscp2priomap[((tos_tc >> IPV4_TOS_DSCP_SHIFT)
-				& CUST_IPV4_TOS_PREC_MASK)];
-#endif
 			break;
 		}
 
@@ -1526,7 +1527,6 @@ bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len)
 
 	return (int)(p - buf);
 }
-#endif 
 
 /* print bytes formatted as hex to a string. return the resulting string length */
 int
@@ -1542,6 +1542,7 @@ bcm_format_hex(char *str, const void *bytes, int len)
 	}
 	return (int)(p - str);
 }
+#endif 
 
 /* pretty hex print a contiguous buffer */
 void
@@ -1588,17 +1589,10 @@ static const char *crypto_algo_names[] = {
 	"AES_CCM",
 	"AES_OCB_MSDU",
 	"AES_OCB_MPDU",
-#ifdef BCMCCX
-	"CKIP",
-	"CKIP_MMH",
-	"WEP_MMH",
-	"NALG",
-#else
 	"NALG",
 	"UNDEF",
 	"UNDEF",
 	"UNDEF",
-#endif /* BCMCCX */
 	"WAPI",
 	"PMK",
 	"BIP",

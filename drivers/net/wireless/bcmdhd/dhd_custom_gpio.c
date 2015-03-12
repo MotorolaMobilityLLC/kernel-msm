@@ -1,6 +1,24 @@
 /*
 * Customer code to add GPIO control during WLAN start/stop
-* $Copyright Open Broadcom Corporation$
+* Copyright (C) 1999-2014, Broadcom Corporation
+* 
+*      Unless you and Broadcom execute a separate written software license
+* agreement governing use of this software, this software is licensed to you
+* under the terms of the GNU General Public License version 2 (the "GPL"),
+* available at http://www.broadcom.com/licenses/GPLv2.php, with the
+* following added to such license:
+* 
+*      As a special exception, the copyright holders of this software give you
+* permission to link this software with independent modules, and to copy and
+* distribute the resulting executable under terms of your choice, provided that
+* you also meet, for each linked independent module, the terms and conditions of
+* the license of that module.  An independent module is a module which is not
+* derived from this software.  The special exception does not apply to any
+* modifications of the software.
+* 
+*      Notwithstanding the above, under no circumstances may you combine this
+* software in any way with any other Broadcom software provided under a license
+* other than the GPL, without Broadcom's express prior written consent.
 *
 * $Id: dhd_custom_gpio.c 447105 2014-01-08 05:27:09Z $
 */
@@ -21,9 +39,6 @@
 
 #if defined(CUSTOMER_HW2)
 
-#if defined(PLATFORM_MPS)
-int __attribute__ ((weak)) wifi_get_fw_nv_path(char *fw, char *nv) { return 0;};
-#endif
 
 #endif 
 
@@ -33,7 +48,7 @@ int __attribute__ ((weak)) wifi_get_fw_nv_path(char *fw, char *nv) { return 0;};
 extern int sdioh_mmc_irq(int irq);
 #endif /* (BCMLXSDMMC)  */
 
-#if defined(CUSTOMER_HW3) || defined(PLATFORM_MPS)
+#if defined(CUSTOMER_HW3)
 #include <mach/gpio.h>
 #endif
 
@@ -58,7 +73,7 @@ int dhd_customer_oob_irq_map(void *adapter, unsigned long *irq_flags_ptr)
 {
 	int  host_oob_irq = 0;
 
-#if defined(CUSTOMER_HW2) && !defined(PLATFORM_MPS)
+#if defined(CUSTOMER_HW2)
 	host_oob_irq = wifi_platform_get_irq_number(adapter, irq_flags_ptr);
 
 #else
@@ -77,11 +92,11 @@ int dhd_customer_oob_irq_map(void *adapter, unsigned long *irq_flags_ptr)
 	WL_ERROR(("%s: customer specific Host GPIO number is (%d)\n",
 	         __FUNCTION__, dhd_oob_gpio_num));
 
-#if defined CUSTOMER_HW3 || defined(PLATFORM_MPS)
+#if defined CUSTOMER_HW3
 	gpio_request(dhd_oob_gpio_num, "oob irq");
 	host_oob_irq = gpio_to_irq(dhd_oob_gpio_num);
 	gpio_direction_input(dhd_oob_gpio_num);
-#endif /* defined CUSTOMER_HW3 || defined(PLATFORM_MPS) */
+#endif 
 #endif 
 
 	return (host_oob_irq);
@@ -109,8 +124,7 @@ dhd_custom_get_mac_address(void *adapter, unsigned char *buf)
 		return -EINVAL;
 
 	/* Customer access to MAC address stored outside of DHD driver */
-#if (defined(CUSTOMER_HW2) || defined(CUSTOMER_HW10)) && (LINUX_VERSION_CODE >= \
-	KERNEL_VERSION(2, 6, 35))
+#if defined(CUSTOMER_HW2) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35))
 	ret = wifi_platform_get_mac_addr(adapter, buf);
 #endif
 
@@ -242,7 +256,8 @@ const struct cntry_locales_custom translate_custom_table[] = {
 *  input : ISO 3166-1 country abbreviation
 *  output: customized cspec
 */
-void get_customized_country_code(void *adapter, char *country_iso_code, wl_country_t *cspec)
+void get_customized_country_code(void *adapter, char *country_iso_code,
+				 wl_country_t *cspec, u32 flags)
 {
 #if defined(CUSTOMER_HW2) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
 
@@ -251,7 +266,8 @@ void get_customized_country_code(void *adapter, char *country_iso_code, wl_count
 	if (!cspec)
 		return;
 
-	cloc_ptr = wifi_platform_get_country_code(adapter, country_iso_code);
+	cloc_ptr = wifi_platform_get_country_code(adapter, country_iso_code,
+						  flags);
 	if (cloc_ptr) {
 		strlcpy(cspec->ccode, cloc_ptr->custom_locale, WLC_CNTRY_BUF_SZ);
 		cspec->rev = cloc_ptr->custom_locale_rev;

@@ -1,9 +1,27 @@
 /*
  * Broadcom Dongle Host Driver (DHD), common DHD core.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
  *
- * $Id: dhd_common.c 490628 2014-07-11 07:13:31Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
+ *
+ * $Id: dhd_common.c 473079 2014-04-27 07:47:16Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -34,12 +52,11 @@
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
 #endif
-#ifdef WLBTAMP
-#include <proto/bt_amp_hci.h>
-#include <dhd_bta.h>
-#endif
 #ifdef PNO_SUPPORT
 #include <dhd_pno.h>
+#endif
+#ifdef RTT_SUPPORT
+#include <dhd_rtt.h>
 #endif
 
 #define htod32(i) (i)
@@ -106,7 +123,7 @@ const char dhd_version[] = "Dongle Host Driver, version " EPI_VERSION_STR
 	DHD_COMPILED " on " __DATE__ " at " __TIME__;
 #else
 const char dhd_version[] = "\nDongle Host Driver, version " EPI_VERSION_STR "\nCompiled from ";
-#endif 
+#endif
 
 void dhd_set_timer(void *bus, uint wdtick);
 
@@ -126,10 +143,6 @@ enum {
 	IOV_LOGSTAMP,
 	IOV_GPIOOB,
 	IOV_IOCTLTIMEOUT,
-#ifdef WLBTAMP
-	IOV_HCI_CMD,		/* HCI command */
-	IOV_HCI_ACL_DATA,	/* HCI data packet */
-#endif
 #if defined(DHD_DEBUG)
 	IOV_CONS,
 	IOV_DCONSOLE_POLL,
@@ -138,10 +151,6 @@ enum {
 	IOV_PROPTXSTATUS_ENABLE,
 	IOV_PROPTXSTATUS_MODE,
 	IOV_PROPTXSTATUS_OPT,
-#ifdef QMONITOR
-	IOV_QMON_TIME_THRES,
-	IOV_QMON_TIME_PERCENT,
-#endif /* QMONITOR */
 	IOV_PROPTXSTATUS_MODULE_IGNORE,
 	IOV_PROPTXSTATUS_CREDIT_IGNORE,
 	IOV_PROPTXSTATUS_TXSTATUS_IGNORE,
@@ -193,10 +202,6 @@ const bcm_iovar_t dhd_iovars[] = {
 	{"clearcounts", IOV_CLEARCOUNTS, 0, IOVT_VOID,	0 },
 	{"gpioob",	IOV_GPIOOB,	0,	IOVT_UINT32,	0 },
 	{"ioctl_timeout",	IOV_IOCTLTIMEOUT,	0,	IOVT_UINT32,	0 },
-#ifdef WLBTAMP
-	{"HCI_cmd",	IOV_HCI_CMD,	0,	IOVT_BUFFER,	0},
-	{"HCI_ACL_data", IOV_HCI_ACL_DATA, 0,	IOVT_BUFFER,	0},
-#endif
 #ifdef PROP_TXSTATUS
 	{"proptx",	IOV_PROPTXSTATUS_ENABLE,	0,	IOVT_BOOL,	0 },
 	/*
@@ -207,10 +212,6 @@ const bcm_iovar_t dhd_iovars[] = {
 	*/
 	{"ptxmode",	IOV_PROPTXSTATUS_MODE,	0,	IOVT_UINT32,	0 },
 	{"proptx_opt", IOV_PROPTXSTATUS_OPT,	0,	IOVT_UINT32,	0 },
-#ifdef QMONITOR
-	{"qtime_thres",	IOV_QMON_TIME_THRES,	0,	IOVT_UINT32,	0 },
-	{"qtime_percent", IOV_QMON_TIME_PERCENT, 0,	IOVT_UINT32,	0 },
-#endif /* QMONITOR */
 	{"pmodule_ignore", IOV_PROPTXSTATUS_MODULE_IGNORE, 0, IOVT_BOOL, 0 },
 	{"pcredit_ignore", IOV_PROPTXSTATUS_CREDIT_IGNORE, 0, IOVT_BOOL, 0 },
 	{"ptxstatus_ignore", IOV_PROPTXSTATUS_TXSTATUS_IGNORE, 0, IOVT_BOOL, 0 },
@@ -432,7 +433,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 
 	case IOV_GVAL(IOV_MSGLEVEL):
 		int_val = (int32)dhd_msg_level;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_MSGLEVEL):
@@ -453,12 +454,12 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 
 	case IOV_GVAL(IOV_BCMERROR):
 		int_val = (int32)dhd_pub->bcmerror;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_GVAL(IOV_WDTICK):
 		int_val = (int32)dhd_watchdog_ms;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_WDTICK):
@@ -476,7 +477,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef DHD_DEBUG
 	case IOV_GVAL(IOV_DCONSOLE_POLL):
 		int_val = (int32)dhd_console_ms;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_DCONSOLE_POLL):
@@ -522,37 +523,6 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		break;
 	}
 
-#ifdef WLBTAMP
-	case IOV_SVAL(IOV_HCI_CMD): {
-		amp_hci_cmd_t *cmd = (amp_hci_cmd_t *)arg;
-
-		/* sanity check: command preamble present */
-		if (len < HCI_CMD_PREAMBLE_SIZE)
-			return BCME_BUFTOOSHORT;
-
-		/* sanity check: command parameters are present */
-		if (len < (int)(HCI_CMD_PREAMBLE_SIZE + cmd->plen))
-			return BCME_BUFTOOSHORT;
-
-		dhd_bta_docmd(dhd_pub, cmd, len);
-		break;
-	}
-
-	case IOV_SVAL(IOV_HCI_ACL_DATA): {
-		amp_hci_ACL_data_t *ACL_data = (amp_hci_ACL_data_t *)arg;
-
-		/* sanity check: HCI header present */
-		if (len < HCI_ACL_DATA_PREAMBLE_SIZE)
-			return BCME_BUFTOOSHORT;
-
-		/* sanity check: ACL data is present */
-		if (len < (int)(HCI_ACL_DATA_PREAMBLE_SIZE + ACL_data->dlen))
-			return BCME_BUFTOOSHORT;
-
-		dhd_bta_tx_hcidata(dhd_pub, ACL_data, len);
-		break;
-	}
-#endif /* WLBTAMP */
 
 #ifdef PROP_TXSTATUS
 	case IOV_GVAL(IOV_PROPTXSTATUS_ENABLE): {
@@ -561,7 +531,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		if (bcmerror != BCME_OK)
 			goto exit;
 		int_val = wlfc_enab ? 1 : 0;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	}
 	case IOV_SVAL(IOV_PROPTXSTATUS_ENABLE): {
@@ -585,36 +555,18 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		bcmerror = dhd_wlfc_get_mode(dhd_pub, &int_val);
 		if (bcmerror != BCME_OK)
 			goto exit;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_PROPTXSTATUS_MODE):
 		dhd_wlfc_set_mode(dhd_pub, int_val);
 		break;
-#ifdef QMONITOR
-	case IOV_GVAL(IOV_QMON_TIME_THRES): {
-		int_val = dhd_qmon_thres(dhd_pub, FALSE, 0);
-		bcopy(&int_val, arg, val_size);
-		break;
-	}
-
-	case IOV_SVAL(IOV_QMON_TIME_THRES): {
-		dhd_qmon_thres(dhd_pub, TRUE, int_val);
-		break;
-	}
-
-	case IOV_GVAL(IOV_QMON_TIME_PERCENT): {
-		int_val = dhd_qmon_getpercent(dhd_pub);
-		bcopy(&int_val, arg, val_size);
-		break;
-	}
-#endif /* QMONITOR */
 
 	case IOV_GVAL(IOV_PROPTXSTATUS_MODULE_IGNORE):
 		bcmerror = dhd_wlfc_get_module_ignore(dhd_pub, &int_val);
 		if (bcmerror != BCME_OK)
 			goto exit;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_PROPTXSTATUS_MODULE_IGNORE):
@@ -625,7 +577,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		bcmerror = dhd_wlfc_get_credit_ignore(dhd_pub, &int_val);
 		if (bcmerror != BCME_OK)
 			goto exit;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_PROPTXSTATUS_CREDIT_IGNORE):
@@ -636,7 +588,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		bcmerror = dhd_wlfc_get_txstatus_ignore(dhd_pub, &int_val);
 		if (bcmerror != BCME_OK)
 			goto exit;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_PROPTXSTATUS_TXSTATUS_IGNORE):
@@ -647,7 +599,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		bcmerror = dhd_wlfc_get_rxpkt_chk(dhd_pub, &int_val);
 		if (bcmerror != BCME_OK)
 			goto exit;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_PROPTXSTATUS_RXPKT_CHK):
@@ -667,14 +619,14 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef PCIE_FULL_DONGLE
 		int_val = BUS_TYPE_PCIE;
 #endif
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 
 #ifdef WLMEDIA_HTSF
 	case IOV_GVAL(IOV_WLPKTDLYSTAT_SZ):
 		int_val = dhd_pub->htsfdlystat_sz;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 
 	case IOV_SVAL(IOV_WLPKTDLYSTAT_SZ):
@@ -708,7 +660,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef DHDTCPACK_SUPPRESS
 	case IOV_GVAL(IOV_TCPACK_SUPPRESS): {
 		int_val = (uint32)dhd_pub->tcpack_sup_mode;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	}
 	case IOV_SVAL(IOV_TCPACK_SUPPRESS): {
@@ -730,7 +682,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 
 		wmf = dhd_wmf_conf(dhd_pub, bssidx);
 		int_val = wmf->wmf_enable ? 1 :0;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	}
 	case IOV_SVAL(IOV_WMF_BSS_ENAB): {
@@ -772,7 +724,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 	}
 	case IOV_GVAL(IOV_WMF_UCAST_IGMP):
 		int_val = dhd_pub->wmf_ucast_igmp ? 1 : 0;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	case IOV_SVAL(IOV_WMF_UCAST_IGMP):
 		if (dhd_pub->wmf_ucast_igmp == int_val)
@@ -785,7 +737,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		break;
 	case IOV_GVAL(IOV_WMF_MCAST_DATA_SENDUP):
 		int_val = dhd_wmf_mcast_data_sendup(dhd_pub, 0, FALSE, FALSE);
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	case IOV_SVAL(IOV_WMF_MCAST_DATA_SENDUP):
 		dhd_wmf_mcast_data_sendup(dhd_pub, 0, TRUE, int_val);
@@ -794,7 +746,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef WL_IGMP_UCQUERY
 	case IOV_GVAL(IOV_WMF_UCAST_IGMP_QUERY):
 		int_val = dhd_pub->wmf_ucast_igmp_query ? 1 : 0;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	case IOV_SVAL(IOV_WMF_UCAST_IGMP_QUERY):
 		if (dhd_pub->wmf_ucast_igmp_query == int_val)
@@ -809,7 +761,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef DHD_UCAST_UPNP
 	case IOV_GVAL(IOV_WMF_UCAST_UPNP):
 		int_val = dhd_pub->wmf_ucast_upnp ? 1 : 0;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	case IOV_SVAL(IOV_WMF_UCAST_UPNP):
 		if (dhd_pub->wmf_ucast_upnp == int_val)
@@ -827,7 +779,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef DHD_UNICAST_DHCP
 	case IOV_GVAL(IOV_DHCP_UNICAST):
 		int_val = dhd_pub->dhcp_unicast;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	case IOV_SVAL(IOV_DHCP_UNICAST):
 		if (dhd_pub->dhcp_unicast == int_val)
@@ -843,7 +795,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 #ifdef DHD_L2_FILTER
 	case IOV_GVAL(IOV_BLOCK_PING):
 		int_val = dhd_pub->block_ping;
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	case IOV_SVAL(IOV_BLOCK_PING):
 		if (dhd_pub->block_ping == int_val)
@@ -867,7 +819,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		}
 
 		int_val = dhd_get_ap_isolate(dhd_pub, bssidx);
-		bcopy(&int_val, arg, val_size);
+		bcopy(&int_val, arg, sizeof(int_val));
 		break;
 	}
 	case IOV_SVAL(IOV_AP_ISOLATE): {
@@ -1390,6 +1342,8 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 	case WLC_E_PFN_SCAN_COMPLETE:
 	case WLC_E_PFN_SCAN_NONE:
 	case WLC_E_PFN_SCAN_ALLGONE:
+	case WLC_E_PFN_GSCAN_FULL_RESULT:
+	case WLC_E_PFN_SWC:
 		DHD_EVENT(("PNOEVENT: %s\n", event_name));
 		break;
 
@@ -1454,7 +1408,7 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 
 			/* Display the trace buffer. Advance from
 			 * \n to \n to avoid display big
-			 * printf (issue with Linux printf )
+			 * printf (issue with Linux printk )
 			 */
 			p = (char *)&buf[MSGTRACE_HDRLEN];
 			while (*p != '\0' && (s = strstr(p, "\n")) != NULL) {
@@ -1698,7 +1652,7 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 
 		/* Ignore the event if NOIF is set */
 		if (ifevent->reserved & WLC_E_IF_FLAGS_BSSCFG_NOIF) {
-			DHD_ERROR(("WLC_E_IF: NO_IF set, event Ignored\r\n"));
+			DHD_ERROR(("WLC_E_IF: NO_IF set, event Ignored\n"));
 			return (BCME_UNSUPPORTED);
 		}
 #ifdef PCIE_FULL_DONGLE
@@ -1768,10 +1722,6 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		htsf_update(dhd_pub->info, event_data);
 		break;
 #endif /* WLMEDIA_HTSF */
-#if defined(NDISVER) && (NDISVER >= 0x0630)
-	case WLC_E_NDIS_LINK:
-		break;
-#else
 	case WLC_E_NDIS_LINK: {
 		uint32 temp = hton32(WLC_E_LINK);
 
@@ -1779,7 +1729,6 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		       sizeof(pvt_data->event.event_type));
 		break;
 	}
-#endif /* NDISVER >= 0x0630 */
 	case WLC_E_PFN_NET_FOUND:
 	case WLC_E_PFN_NET_LOST:
 		break;
@@ -1789,7 +1738,12 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	case WLC_E_PFN_BEST_BATCHING:
 		dhd_pno_event_handler(dhd_pub, event, (void *)event_data);
 		break;
-#endif 
+#endif
+#if defined(RTT_SUPPORT)
+	case WLC_E_PROXD:
+		dhd_rtt_event_handler(dhd_pub, event, (void *)event_data);
+		break;
+#endif /* RTT_SUPPORT */
 		/* These are what external supplicant/authenticator wants */
 	case WLC_E_ASSOC_IND:
 	case WLC_E_AUTH_IND:
@@ -2420,10 +2374,6 @@ void
 dhd_sendup_event_common(dhd_pub_t *dhdp, wl_event_msg_t *event, void *data)
 {
 	switch (ntoh32(event->event_type)) {
-#ifdef WLBTAMP
-	case WLC_E_BTA_HCI_EVENT:
-		break;
-#endif /* WLBTAMP */
 	default:
 		break;
 	}
@@ -2692,7 +2642,7 @@ wl_iw_parse_channel_list_tlv(char** list_str, uint16* channel_list,
  *  SSIDs list parsing from cscan tlv list
  */
 int
-wl_iw_parse_ssid_list_tlv(char** list_str, wlc_ssid_t* ssid, int max, int *bytes_left)
+wl_iw_parse_ssid_list_tlv(char** list_str, wlc_ssid_ext_t* ssid, int max, int *bytes_left)
 {
 	char* str;
 	int idx = 0;
@@ -2740,6 +2690,7 @@ wl_iw_parse_ssid_list_tlv(char** list_str, wlc_ssid_t* ssid, int max, int *bytes
 
 			*bytes_left -= ssid[idx].SSID_len;
 			str += ssid[idx].SSID_len;
+			ssid[idx].hidden = TRUE;
 
 			DHD_TRACE(("%s :size=%d left=%d\n",
 				(char*)ssid[idx].SSID, ssid[idx].SSID_len, *bytes_left));
