@@ -2913,7 +2913,7 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		} else if (timeleft == 0) {
 			DHD_ERROR(("%s: resumed on timeout\n", __FUNCTION__));
 			bus->suspended = FALSE;
-			bus->dhd->busstate = DHD_BUS_DATA;
+			bus->dhd->busstate = DHD_BUS_DOWN;
 			rc = -ETIMEDOUT;
 		} else if (bus->wait_for_d3_ack == DHD_INVALID) {
 			DHD_ERROR(("PCIe link down during suspend"));
