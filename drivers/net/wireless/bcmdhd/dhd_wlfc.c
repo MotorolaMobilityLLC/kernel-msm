@@ -1,7 +1,25 @@
 /*
  * DHD PROP_TXSTATUS Module.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ *
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_wlfc.c 490028 2014-07-09 05:58:25Z $
  *
@@ -23,9 +41,7 @@
 #include <wlfc_proto.h>
 #include <dhd_wlfc.h>
 #endif
-#ifdef DHDTCPACK_SUPPRESS
 #include <dhd_ip.h>
-#endif /* DHDTCPACK_SUPPRESS */
 
 
 /*
@@ -40,11 +56,7 @@
 
 #ifdef PROP_TXSTATUS
 
-#ifdef QMONITOR
-#define DHD_WLFC_QMON_COMPLETE(entry) dhd_qmon_txcomplete(&entry->qmon)
-#else
 #define DHD_WLFC_QMON_COMPLETE(entry)
-#endif /* QMONITOR */
 
 #define LIMIT_BORROW
 
@@ -981,7 +993,7 @@ _dhd_wlfc_pretx_pktprocess(athost_wl_status_info_t* ctx,
 	bool send_tim_update = FALSE;
 	uint32 htod = 0;
 	uint16 htodseq = 0;
-	uint8 free_ctr;
+	uint8 free_ctr, flags = 0;
 	int gen = 0xff;
 	dhd_pub_t *dhdp = (dhd_pub_t *)ctx->dhdp;
 
@@ -1035,22 +1047,25 @@ _dhd_wlfc_pretx_pktprocess(athost_wl_status_info_t* ctx,
 		return BCME_ERROR;
 	}
 
-	WL_TXSTATUS_SET_FREERUNCTR(htod, free_ctr);
-	WL_TXSTATUS_SET_HSLOT(htod, hslot);
-	WL_TXSTATUS_SET_FIFO(htod, DHD_PKTTAG_FIFO(PKTTAG(p)));
-	WL_TXSTATUS_SET_FLAGS(htod, WLFC_PKTFLAG_PKTFROMHOST);
-	WL_TXSTATUS_SET_GENERATION(htod, gen);
-	DHD_PKTTAG_SETPKTDIR(PKTTAG(p), 1);
-
+	flags = WLFC_PKTFLAG_PKTFROMHOST;
 	if (!DHD_PKTTAG_CREDITCHECK(PKTTAG(p))) {
 		/*
 		Indicate that this packet is being sent in response to an
 		explicit request from the firmware side.
 		*/
-		WLFC_PKTFLAG_SET_PKTREQUESTED(htod);
-	} else {
-		WLFC_PKTFLAG_CLR_PKTREQUESTED(htod);
+		flags |= WLFC_PKTFLAG_PKT_REQUESTED;
 	}
+	if (pkt_is_dhcp(ctx->osh, p)) {
+		flags |= WLFC_PKTFLAG_PKT_FORCELOWRATE;
+	}
+
+	WL_TXSTATUS_SET_FREERUNCTR(htod, free_ctr);
+	WL_TXSTATUS_SET_HSLOT(htod, hslot);
+	WL_TXSTATUS_SET_FIFO(htod, DHD_PKTTAG_FIFO(PKTTAG(p)));
+	WL_TXSTATUS_SET_FLAGS(htod, flags);
+	WL_TXSTATUS_SET_GENERATION(htod, gen);
+	DHD_PKTTAG_SETPKTDIR(PKTTAG(p), 1);
+
 
 	rc = _dhd_wlfc_pushheader(ctx, p, send_tim_update,
 		entry->traffic_lastreported_bmp, entry->mac_handle, htod, htodseq, FALSE);
@@ -1223,9 +1238,6 @@ _dhd_wlfc_enque_delayq(athost_wl_status_info_t* ctx, void* pktbuf, int prec)
 			return BCME_ERROR;
 		}
 
-#ifdef QMONITOR
-		dhd_qmon_tx(&entry->qmon);
-#endif
 
 		/*
 		A packet has been pushed, update traffic availability bitmap,
@@ -1620,9 +1632,6 @@ _dhd_wlfc_mac_entry_update(athost_wl_status_info_t* ctx, wlfc_mac_descriptor_t* 
 {
 	int rc = BCME_OK;
 
-#ifdef QMONITOR
-	dhd_qmon_reset(&entry->qmon);
-#endif
 
 	if ((action == eWLFC_MAC_ENTRY_ACTION_ADD) || (action == eWLFC_MAC_ENTRY_ACTION_UPDATE)) {
 		entry->occupied = 1;

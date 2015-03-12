@@ -1,9 +1,27 @@
 /*
  * Linux cfgp2p driver
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
  *
- * $Id: wl_cfgp2p.c 490694 2014-07-11 14:37:00Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
+ *
+ * $Id: wl_cfgp2p.c 472818 2014-04-25 08:07:56Z $
  *
  */
 #include <typedefs.h>
@@ -54,23 +72,6 @@ static const struct net_device_ops wl_cfgp2p_if_ops = {
 	.ndo_start_xmit = wl_cfgp2p_start_xmit,
 };
 #endif /* WL_ENABLE_P2P_IF */
-
-#if defined(WL_NEWCFG_PRIVCMD_SUPPORT)
-static int wl_cfgp2p_start_xmit(struct sk_buff *skb, struct net_device *ndev);
-static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd);
-
-static int wl_cfgp2p_if_dummy(struct net_device *net)
-{
-	return 0;
-}
-
-static const struct net_device_ops wl_cfgp2p_if_ops = {
-	.ndo_open       = wl_cfgp2p_if_dummy,
-	.ndo_stop       = wl_cfgp2p_if_dummy,
-	.ndo_do_ioctl   = wl_cfgp2p_do_ioctl,
-	.ndo_start_xmit = wl_cfgp2p_start_xmit,
-};
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 
 bool wl_cfgp2p_is_pub_action(void *frame, u32 frame_len)
 {
@@ -399,11 +400,11 @@ wl_cfgp2p_ifadd(struct bcm_cfg80211 *cfg, struct ether_addr *mac, u8 if_type,
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 
 	if (unlikely(err < 0))
-		printf("'cfg p2p_ifadd' error %d\n", err);
+		printk("'cfg p2p_ifadd' error %d\n", err);
 	else if (if_type == WL_P2P_IF_GO) {
 		err = wldev_ioctl(ndev, WLC_SET_SCB_TIMEOUT, &scb_timeout, sizeof(u32), true);
 		if (unlikely(err < 0))
-			printf("'cfg scb_timeout' error %d\n", err);
+			printk("'cfg scb_timeout' error %d\n", err);
 	}
 	return err;
 }
@@ -424,7 +425,7 @@ wl_cfgp2p_ifdisable(struct bcm_cfg80211 *cfg, struct ether_addr *mac)
 	ret = wldev_iovar_setbuf(netdev, "p2p_ifdis", mac, sizeof(*mac),
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 	if (unlikely(ret < 0)) {
-		printf("'cfg p2p_ifdis' error %d\n", ret);
+		printk("'cfg p2p_ifdis' error %d\n", ret);
 	}
 	return ret;
 }
@@ -445,7 +446,7 @@ wl_cfgp2p_ifdel(struct bcm_cfg80211 *cfg, struct ether_addr *mac)
 	ret = wldev_iovar_setbuf(netdev, "p2p_ifdel", mac, sizeof(*mac),
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 	if (unlikely(ret < 0)) {
-		printf("'cfg p2p_ifdel' error %d\n", ret);
+		printk("'cfg p2p_ifdel' error %d\n", ret);
 	}
 	return ret;
 }
@@ -479,11 +480,11 @@ wl_cfgp2p_ifchange(struct bcm_cfg80211 *cfg, struct ether_addr *mac, u8 if_type,
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, &cfg->ioctl_buf_sync);
 
 	if (unlikely(err < 0)) {
-		printf("'cfg p2p_ifupd' error %d\n", err);
+		printk("'cfg p2p_ifupd' error %d\n", err);
 	} else if (if_type == WL_P2P_IF_GO) {
 		err = wldev_ioctl(netdev, WLC_SET_SCB_TIMEOUT, &scb_timeout, sizeof(u32), true);
 		if (unlikely(err < 0))
-			printf("'cfg scb_timeout' error %d\n", err);
+			printk("'cfg scb_timeout' error %d\n", err);
 	}
 	return err;
 }
@@ -1590,7 +1591,7 @@ wl_cfgp2p_listen_complete(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 #endif /* WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST */
 			if (ndev && (ndev->ieee80211_ptr != NULL)) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
-				cfg80211_remain_on_channel_expired(cfgdev, cfg->last_roc_id,
+				cfg80211_remain_on_channel_expired(bcmcfg_to_p2p_wdev(cfg), cfg->last_roc_id,
 					&cfg->remain_on_chan, GFP_KERNEL);
 #else
 				cfg80211_remain_on_channel_expired(cfgdev, cfg->last_roc_id,
@@ -1646,7 +1647,7 @@ wl_cfgp2p_cancel_listen(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		if (notify) {
 #if defined(WL_CFG80211_P2P_DEV_IF)
 			if (wdev)
-				cfg80211_remain_on_channel_expired(wdev, cfg->last_roc_id,
+				cfg80211_remain_on_channel_expired(bcmcfg_to_p2p_wdev(cfg), cfg->last_roc_id,
 					&cfg->remain_on_chan, GFP_KERNEL);
 #else
 			if (ndev && ndev->ieee80211_ptr)
@@ -2345,15 +2346,13 @@ struct ethtool_ops cfgp2p_ethtool_ops = {
 };
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) */
 
-#if defined(WL_ENABLE_P2P_IF) || defined(WL_NEWCFG_PRIVCMD_SUPPORT)
+#if defined(WL_ENABLE_P2P_IF)
 s32
 wl_cfgp2p_register_ndev(struct bcm_cfg80211 *cfg)
 {
 	int ret = 0;
 	struct net_device* net = NULL;
-#ifndef	WL_NEWCFG_PRIVCMD_SUPPORT
 	struct wireless_dev *wdev = NULL;
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 	uint8 temp_addr[ETHER_ADDR_LEN] = { 0x00, 0x90, 0x4c, 0x33, 0x22, 0x11 };
 
 	if (cfg->p2p_net) {
@@ -2367,14 +2366,12 @@ wl_cfgp2p_register_ndev(struct bcm_cfg80211 *cfg)
 		return -ENODEV;
 	}
 
-#ifndef	WL_NEWCFG_PRIVCMD_SUPPORT
 	wdev = kzalloc(sizeof(*wdev), GFP_KERNEL);
 	if (unlikely(!wdev)) {
 		WL_ERR(("Could not allocate wireless device\n"));
 		free_netdev(net);
 		return -ENOMEM;
 	}
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 
 	strncpy(net->name, "p2p%d", sizeof(net->name) - 1);
 	net->name[IFNAMSIZ - 1] = '\0';
@@ -2396,44 +2393,36 @@ wl_cfgp2p_register_ndev(struct bcm_cfg80211 *cfg)
 	/* Register with a dummy MAC addr */
 	memcpy(net->dev_addr, temp_addr, ETHER_ADDR_LEN);
 
-#ifndef	WL_NEWCFG_PRIVCMD_SUPPORT
 	wdev->wiphy = cfg->wdev->wiphy;
 
 	wdev->iftype = wl_mode_to_nl80211_iftype(WL_MODE_BSS);
 
 	net->ieee80211_ptr = wdev;
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
 	net->ethtool_ops = &cfgp2p_ethtool_ops;
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) */
 
-#ifndef	WL_NEWCFG_PRIVCMD_SUPPORT
 	SET_NETDEV_DEV(net, wiphy_dev(wdev->wiphy));
 
 	/* Associate p2p0 network interface with new wdev */
 	wdev->netdev = net;
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 
 	ret = register_netdev(net);
 	if (ret) {
 		CFGP2P_ERR((" register_netdevice failed (%d)\n", ret));
 		free_netdev(net);
-#ifndef	WL_NEWCFG_PRIVCMD_SUPPORT
 		kfree(wdev);
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 		return -ENODEV;
 	}
 
 	/* store p2p net ptr for further reference. Note that iflist won't have this
 	 * entry as there corresponding firmware interface is a "Hidden" interface.
 	 */
-#ifndef	WL_NEWCFG_PRIVCMD_SUPPORT
 	cfg->p2p_wdev = wdev;
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 	cfg->p2p_net = net;
 
-	printf("%s: P2P Interface Registered\n", net->name);
+	printk("%s: P2P Interface Registered\n", net->name);
 
 	return ret;
 }
@@ -2486,7 +2475,7 @@ static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd
 
 	return ret;
 }
-#endif /* WL_ENABLE_P2P_IF || WL_NEWCFG_PRIVCMD_SUPPORT  */
+#endif
 
 #if defined(WL_ENABLE_P2P_IF)
 static int wl_cfgp2p_if_open(struct net_device *net)
@@ -2547,13 +2536,8 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 	WL_TRACE(("Enter\n"));
 
 	if (cfg->p2p_wdev) {
-		CFGP2P_ERR(("p2p_wdev defined already.\n"));
-#if (defined(CUSTOMER_HW10) && defined(CONFIG_ARCH_ODIN))
 		wl_cfgp2p_del_p2p_disc_if(cfg->p2p_wdev, cfg);
 		CFGP2P_ERR(("p2p_wdev deleted.\n"));
-#else
-		return ERR_PTR(-ENFILE);
-#endif 
 	}
 
 	wdev = kzalloc(sizeof(*wdev), GFP_KERNEL);
@@ -2565,16 +2549,12 @@ wl_cfgp2p_add_p2p_disc_if(struct bcm_cfg80211 *cfg)
 	memset(&primary_mac, 0, sizeof(primary_mac));
 	get_primary_mac(cfg, &primary_mac);
 	wl_cfgp2p_generate_bss_mac(&primary_mac,
-		&cfg->p2p->dev_addr, &cfg->p2p->int_addr);
+			&cfg->p2p->dev_addr, &cfg->p2p->int_addr);
 
 	wdev->wiphy = cfg->wdev->wiphy;
 	wdev->iftype = NL80211_IFTYPE_P2P_DEVICE;
 	memcpy(wdev->address, &cfg->p2p->dev_addr, ETHER_ADDR_LEN);
 
-#if defined(WL_NEWCFG_PRIVCMD_SUPPORT)
-	if (cfg->p2p_net)
-		memcpy(cfg->p2p_net->dev_addr, &cfg->p2p->dev_addr, ETHER_ADDR_LEN);
-#endif /* WL_NEWCFG_PRIVCMD_SUPPORT */
 
 	/* store p2p wdev ptr for further reference. */
 	cfg->p2p_wdev = wdev;

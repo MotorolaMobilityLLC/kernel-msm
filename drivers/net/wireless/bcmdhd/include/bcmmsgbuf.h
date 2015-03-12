@@ -4,9 +4,27 @@
  *
  * Definitions subject to change without notice.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
  *
- * $Id: bcmmsgbuf.h 490808 2014-07-12 00:33:13Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
+ *
+ * $Id: bcmmsgbuf.h 472643 2014-04-24 21:19:22Z $
  */
 #ifndef _bcmmsgbuf_h_
 #define	_bcmmsgbuf_h_
@@ -479,7 +497,7 @@ typedef struct host_txbuf_post {
 	uint16		metadata_buf_len;
 	/* provided data buffer len to receive data */
 	uint16		data_len;
-	uint32		rsvd;
+	uint32		flag2;
 } host_txbuf_post_t;
 
 #define BCMPCIE_PKT_FLAGS_FRAME_802_3	0x01
@@ -497,6 +515,9 @@ typedef struct host_txbuf_post {
 #define BCMPCIE_TXPOST_FLAGS_FRAME_802_11	BCMPCIE_PKT_FLAGS_FRAME_802_11
 #define BCMPCIE_TXPOST_FLAGS_PRIO_SHIFT		BCMPCIE_PKT_FLAGS_PRIO_SHIFT
 #define BCMPCIE_TXPOST_FLAGS_PRIO_MASK		BCMPCIE_PKT_FLAGS_PRIO_MASK
+
+#define BCMPCIE_PKT_FLAGS2_FORCELOWRATE_MASK	0x01
+#define BCMPCIE_PKT_FLAGS2_FORCELOWRATE_SHIFT	0
 
 /* H2D Txpost ring work items */
 typedef union txbuf_submit_item {

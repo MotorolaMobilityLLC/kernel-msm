@@ -37,6 +37,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#include <linux/mmc/sdhci.h>
 
 #include "core.h"
 #include "bus.h"
@@ -2057,6 +2058,7 @@ void mmc_set_driver_type(struct mmc_host *host, unsigned int drv_type)
 void mmc_power_up(struct mmc_host *host)
 {
 	int bit;
+	struct sdhci_host *sdh_host = mmc_priv(host);
 
 	if (host->ios.power_mode == MMC_POWER_ON)
 		return;
@@ -2096,16 +2098,14 @@ void mmc_power_up(struct mmc_host *host)
 	 * This delay must be at least 74 clock sizes, or 1 ms, or the
 	 * time required to reach a stable voltage.
 	 */
-	
-    if (2 == host->index) /* index:2 for sdio device */
-    {
-        mmc_delay(200);
-    }
-    else
-    {
-        mmc_delay(10);
-    }
-	
+	if (!strcmp("msm_sdcc.3", sdh_host->hw_name))
+	{
+		mmc_delay(200);
+	}
+	else
+	{
+		mmc_delay(10);
+	}
 
 	/* Set signal voltage to 3.3V */
 	__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330);
@@ -3814,6 +3814,7 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		notify_block, struct mmc_host, pm_notify);
 	unsigned long flags;
 	int err = 0;
+	struct sdhci_host *sdh_host = mmc_priv(host);
 
 	switch (mode) {
 	case PM_HIBERNATION_PREPARE:
@@ -3882,7 +3883,11 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		}
 		host->rescan_disable = 0;
 		spin_unlock_irqrestore(&host->lock, flags);
-		mmc_detect_change(host, 0);
+		/* no detect change for sdio */
+		if (strcmp("msm_sdcc.3", sdh_host->hw_name))
+		{
+			mmc_detect_change(host, 0);
+		}
 		break;
 
 	default:

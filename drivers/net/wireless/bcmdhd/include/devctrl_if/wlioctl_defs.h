@@ -4,7 +4,25 @@
  *
  * Definitions subject to change without notice.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wlioctl_defs.h 403826 2013-05-22 16:40:55Z $
  */
@@ -14,7 +32,6 @@
 #define wlioctl_defs_h
 
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 
 
@@ -316,8 +333,6 @@
 /* check this magic number */
 #define WLC_IOCTL_MAGIC		0x14e46c77
 
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
 /* bss_info_cap_t flags */
 #define WL_BSS_FLAGS_FROM_BEACON	0x01	/* bss_info derived from beacon */
 #define WL_BSS_FLAGS_FROM_CACHE		0x02	/* bss_info collected from cache */
@@ -348,14 +363,14 @@
 #define CRYPTO_ALGO_AES_CCM		4
 #define CRYPTO_ALGO_AES_OCB_MSDU	5
 #define CRYPTO_ALGO_AES_OCB_MPDU	6
-#if !defined(BCMCCX) && !defined(BCMEXTCCX)
+#if !defined(BCMEXTCCX)
 #define CRYPTO_ALGO_NALG		7
 #else
 #define CRYPTO_ALGO_CKIP		7
 #define CRYPTO_ALGO_CKIP_MMH	8
 #define CRYPTO_ALGO_WEP_MMH		9
 #define CRYPTO_ALGO_NALG		10
-#endif /* !BCMCCX && !BCMEXTCCX */
+#endif 
 
 #define CRYPTO_ALGO_SMS4		11
 #define CRYPTO_ALGO_PMK			12	/* for 802.1x supp to set PMK before 4-way */
@@ -379,13 +394,13 @@
 
 #define WL_SOFT_KEY	(1 << 0)	/* Indicates this key is using soft encrypt */
 #define WL_PRIMARY_KEY	(1 << 1)	/* Indicates this key is the primary (ie tx) key */
-#if defined(BCMCCX) || defined(BCMEXTCCX)
+#if defined(BCMEXTCCX)
 #define WL_CKIP_KP	(1 << 4)	/* CMIC */
 #define WL_CKIP_MMH	(1 << 5)	/* CKIP */
 #else
 #define WL_KF_RES_4	(1 << 4)	/* Reserved for backward compat */
 #define WL_KF_RES_5	(1 << 5)	/* Reserved for backward compat */
-#endif /* BCMCCX || BCMEXTCCX */
+#endif 
 #define WL_IBSS_PEER_GROUP_KEY	(1 << 6)	/* Indicates a group key for a IBSS PEER */
 
 /* wireless security bitvec */
@@ -393,45 +408,15 @@
 #define TKIP_ENABLED		0x0002
 #define AES_ENABLED		0x0004
 #define WSEC_SWFLAG		0x0008
-#ifdef BCMCCX
-#define CKIP_KP_ENABLED		0x0010
-#define CKIP_MIC_ENABLED	0x0020
-#endif /* BCMCCX */
 #define SES_OW_ENABLED		0x0040	/* to go into transition mode without setting wep */
-#ifdef BCMWAPI_WPI
-#define SMS4_ENABLED		0x0100
-#endif /* BCMWAPI_WPI */
 
 /* wsec macros for operating on the above definitions */
 #define WSEC_WEP_ENABLED(wsec)	((wsec) & WEP_ENABLED)
 #define WSEC_TKIP_ENABLED(wsec)	((wsec) & TKIP_ENABLED)
 #define WSEC_AES_ENABLED(wsec)	((wsec) & AES_ENABLED)
 
-#ifdef BCMCCX
-#define WSEC_CKIP_KP_ENABLED(wsec)	((wsec) & CKIP_KP_ENABLED)
-#define WSEC_CKIP_MIC_ENABLED(wsec)	((wsec) & CKIP_MIC_ENABLED)
-#define WSEC_CKIP_ENABLED(wsec)	((wsec) & (CKIP_KP_ENABLED|CKIP_MIC_ENABLED))
-
-#ifdef BCMWAPI_WPI
-#define WSEC_ENABLED(wsec) \
-	((wsec) & (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED | CKIP_KP_ENABLED |	\
-	  CKIP_MIC_ENABLED | SMS4_ENABLED))
-#else /* BCMWAPI_WPI */
-#define WSEC_ENABLED(wsec) \
-		((wsec) & \
-		 (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED | CKIP_KP_ENABLED | CKIP_MIC_ENABLED))
-#endif /* BCMWAPI_WPI */
-#else /* defined BCMCCX */
-#ifdef BCMWAPI_WPI
-#define WSEC_ENABLED(wsec)	((wsec) & (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED | SMS4_ENABLED))
-#else /* BCMWAPI_WPI */
 #define WSEC_ENABLED(wsec)	((wsec) & (WEP_ENABLED | TKIP_ENABLED | AES_ENABLED))
-#endif /* BCMWAPI_WPI */
-#endif /* BCMCCX */
 #define WSEC_SES_OW_ENABLED(wsec)	((wsec) & SES_OW_ENABLED)
-#ifdef BCMWAPI_WAI
-#define WSEC_SMS4_ENABLED(wsec)	((wsec) & SMS4_ENABLED)
-#endif /* BCMWAPI_WAI */
 
 #define MFP_CAPABLE		0x0200
 #define MFP_REQUIRED	0x0400
@@ -442,21 +427,15 @@
 #define WPA_AUTH_NONE		0x0001	/* none (IBSS) */
 #define WPA_AUTH_UNSPECIFIED	0x0002	/* over 802.1x */
 #define WPA_AUTH_PSK		0x0004	/* Pre-shared key */
-#if defined(BCMCCX) || defined(BCMEXTCCX)
+#if defined(BCMEXTCCX)
 #define WPA_AUTH_CCKM		0x0008	/* CCKM */
 #define WPA2_AUTH_CCKM		0x0010	/* CCKM2 */
-#endif	/* BCMCCX || BCMEXTCCX */
+#endif	
 /* #define WPA_AUTH_8021X 0x0020 */	/* 802.1x, reserved */
 #define WPA2_AUTH_UNSPECIFIED	0x0040	/* over 802.1x */
 #define WPA2_AUTH_PSK		0x0080	/* Pre-shared key */
 #define BRCM_AUTH_PSK           0x0100  /* BRCM specific PSK */
 #define BRCM_AUTH_DPT		0x0200	/* DPT PSK without group keys */
-#if defined(BCMWAPI_WAI) || defined(BCMWAPI_WPI)
-#define WPA_AUTH_WAPI           0x0400
-#define WAPI_AUTH_NONE		WPA_AUTH_NONE	/* none (IBSS) */
-#define WAPI_AUTH_UNSPECIFIED	0x0400	/* over AS */
-#define WAPI_AUTH_PSK		0x0800	/* Pre-shared key */
-#endif /* BCMWAPI_WAI || BCMWAPI_WPI */
 #define WPA2_AUTH_MFP           0x1000  /* MFP (11w) in contrast to CCX */
 #define WPA2_AUTH_TPK		0x2000 	/* TDLS Peer Key */
 #define WPA2_AUTH_FT		0x4000 	/* Fast Transition. */
@@ -626,7 +605,6 @@
 #define WLC_SET_LAZYWDS				139
 #define WLC_GET_BANDLIST			140
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 #define WLC_GET_BAND				141
 #define WLC_SET_BAND				142
 #define WLC_SCB_DEAUTHENTICATE			143
@@ -666,9 +644,7 @@
 /* #define WLC_DUMP_PHYREGS			177 */ /* no longer supported */
 #define WLC_GET_PROTECTION_CONTROL		178
 #define WLC_SET_PROTECTION_CONTROL		179
-#endif /* LINUX_POSTMOGRIFY_REMOVAL  */
 #define WLC_GET_PHYLIST				180
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 #define WLC_ENCRYPT_STRENGTH			181	/* ndis only */
 #define WLC_DECRYPT_STATUS			182	/* ndis only */
 #define WLC_GET_KEY_SEQ				183
@@ -689,9 +665,7 @@
 /* #define WLC_GET_GMODE_PROTECTION_CTS		198 */ /* no longer supported */
 /* #define WLC_SET_GMODE_PROTECTION_CTS		199 */ /* no longer supported */
 #define WLC_SET_WSEC_TEST			200
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 #define WLC_SCB_DEAUTHENTICATE_FOR_REASON	201
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 #define WLC_TKIP_COUNTERMEASURES		202
 #define WLC_GET_PIOMODE				203
 #define WLC_SET_PIOMODE				204
@@ -707,7 +681,6 @@
 #define WLC_START_CHANNEL_QA			214
 #define WLC_GET_CHANNEL_SEL			215
 #define WLC_START_CHANNEL_SEL			216
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 #define WLC_GET_VALID_CHANNELS			217
 #define WLC_GET_FAKEFRAG			218
 #define WLC_SET_FAKEFRAG			219
@@ -729,7 +702,6 @@
 #define WLC_GET_KEY_PRIMARY			235
 #define WLC_SET_KEY_PRIMARY			236
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 /* #define WLC_DUMP_RADIOREGS			237 */ /* no longer supported */
 #define WLC_GET_ACI_ARGS			238
@@ -756,17 +728,13 @@
 #define WLC_LEGACY_LINK_BEHAVIOR		259
 #define WLC_GET_CHANNELS_IN_COUNTRY		260
 #define WLC_GET_COUNTRY_LIST			261
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 #define WLC_GET_VAR				262	/* get value of named variable */
 #define WLC_SET_VAR				263	/* set named variable to value */
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 #define WLC_NVRAM_GET				264	/* deprecated */
 #define WLC_NVRAM_SET				265
 #define WLC_NVRAM_DUMP				266
 #define WLC_REBOOT				267
-#endif /* !LINUX_POSTMOGRIFY_REMOVAL */
 #define WLC_SET_WSEC_PMK			268
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 #define WLC_GET_AUTH_MODE			269
 #define WLC_SET_AUTH_MODE			270
 #define WLC_GET_WAKEENTRY			271
@@ -1783,13 +1751,6 @@
 #define TSPEC_UNKNOWN		3	/* TSPEC unknown */
 #define TSPEC_STATUS_MASK	7	/* TSPEC status mask */
 
-#ifdef BCMCCX
-/* "wlan_reason" iovar interface */
-#define WL_WLAN_ASSOC_REASON_NORMAL_NETWORK	0 /* normal WLAN network setup */
-#define WL_WLAN_ASSOC_REASON_ROAM_FROM_CELLULAR_NETWORK	1 /* roam from Cellular network */
-#define WL_WLAN_ASSOC_REASON_ROAM_FROM_LAN	2 /* roam from LAN */
-#define WL_WLAN_ASSOC_REASON_MAX		2 /* largest value allowed */
-#endif /* BCMCCX */
 
 /* Software feature flag defines used by wlfeatureflag */
 #ifdef WLAFTERBURNER
@@ -2024,8 +1985,6 @@
 #define NET_DETECT_MAX_PROFILES		16
 #define NET_DETECT_MAX_CHANNELS		50
 #endif /* NET_DETECT */
-
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 /* Bit masks for radio disabled status - returned by WL_GET_RADIO */
 #define WL_RADIO_SW_DISABLE		(1<<0)

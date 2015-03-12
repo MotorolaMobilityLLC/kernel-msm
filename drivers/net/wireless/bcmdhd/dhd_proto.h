@@ -4,9 +4,27 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_proto.h 490409 2014-07-10 16:34:27Z $
+ * $Id: dhd_proto.h 472193 2014-04-23 06:27:38Z $
  */
 
 #ifndef _dhd_proto_h_
@@ -18,8 +36,14 @@
 #include <dhd_flowring.h>
 #endif
 
+#define DEFAULT_IOCTL_RESP_TIMEOUT	2000
 #ifndef IOCTL_RESP_TIMEOUT
-#define IOCTL_RESP_TIMEOUT  2000  /* In milli second default value for Production FW */
+#ifdef BCMQT
+#define IOCTL_RESP_TIMEOUT  30000 /* In milli second */
+#else
+/* In milli second default value for Production FW */
+#define IOCTL_RESP_TIMEOUT  DEFAULT_IOCTL_RESP_TIMEOUT
+#endif /* BCMQT */
 #endif /* IOCTL_RESP_TIMEOUT */
 
 #ifndef MFG_IOCTL_RESP_TIMEOUT
@@ -108,6 +132,7 @@ extern void dhd_prot_update_txflowring(dhd_pub_t *dhdp, uint16 flow_id, void *ms
 extern void dhd_prot_txdata_write_flush(dhd_pub_t *dhd, uint16 flow_id, bool in_lock);
 extern uint32 dhd_prot_txp_threshold(dhd_pub_t *dhd, bool set, uint32 val);
 extern void dhd_prot_clear(dhd_pub_t *dhd);
+
 
 #endif /* BCMPCIE */
 

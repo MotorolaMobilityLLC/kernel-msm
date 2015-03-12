@@ -1,9 +1,27 @@
 /*
  * Linux OS Independent Layer
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
  *
- * $Id: linux_osl.c 490846 2014-07-12 13:08:59Z $
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
+ *
+ * $Id: linux_osl.c 474402 2014-05-01 03:50:41Z $
  */
 
 #define LINUX_PORT
@@ -292,18 +310,18 @@ osl_attach(void *pdev, uint bustype, bool pkttag)
 
 int osl_static_mem_init(osl_t *osh, void *adapter)
 {
-#ifdef CONFIG_DHD_USE_STATIC_BUF
+#if defined(CONFIG_DHD_USE_STATIC_BUF)
 		if (!bcm_static_buf && adapter) {
 			if (!(bcm_static_buf = (bcm_static_buf_t *)wifi_platform_prealloc(adapter,
 				3, STATIC_BUF_SIZE + STATIC_BUF_TOTAL_LEN))) {
-				printf("can not alloc static buf!\n");
+				printk("can not alloc static buf!\n");
 				bcm_static_skb = NULL;
 				ASSERT(osh->magic == OS_HANDLE_MAGIC);
 				kfree(osh);
 				return -ENOMEM;
 			}
 			else
-				printf("alloc static buf at %x!\n", (unsigned int)bcm_static_buf);
+				printk("alloc static buf at %x!\n", (unsigned int)bcm_static_buf);
 
 
 			sema_init(&bcm_static_buf->static_sem, 1);
@@ -311,14 +329,13 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 			bcm_static_buf->buf_ptr = (unsigned char *)bcm_static_buf + STATIC_BUF_SIZE;
 		}
 
-#ifdef BCMSDIO
 		if (!bcm_static_skb && adapter) {
 			int i;
 			void *skb_buff_ptr = 0;
 			bcm_static_skb = (bcm_static_pkt_t *)((char *)bcm_static_buf + 2048);
 			skb_buff_ptr = wifi_platform_prealloc(adapter, 4, 0);
 			if (!skb_buff_ptr) {
-				printf("cannot alloc static buf!\n");
+				printk("cannot alloc static buf!\n");
 				bcm_static_buf = NULL;
 				bcm_static_skb = NULL;
 				ASSERT(osh->magic == OS_HANDLE_MAGIC);
@@ -333,7 +350,6 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 
 			sema_init(&bcm_static_skb->osl_pkt_sem, 1);
 		}
-#endif /* BCMSDIO */
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 
 	return 0;
@@ -369,12 +385,10 @@ int osl_static_mem_deinit(osl_t *osh, void *adapter)
 	if (bcm_static_buf) {
 		bcm_static_buf = 0;
 	}
-#ifdef BCMSDIO
 	if (bcm_static_skb) {
 		bcm_static_skb = 0;
 	}
-#endif /* BCMSDIO */
-#endif /* CONFIG_DHD_USE_STATIC_BUF */
+#endif
 	return 0;
 }
 
@@ -386,6 +400,7 @@ static struct sk_buff *osl_alloc_skb(osl_t *osh, unsigned int len)
 #if defined(CONFIG_SPARSEMEM) && defined(CONFIG_ZONE_DMA)
 	flags |= GFP_ATOMIC;
 #endif
+
 	skb = __dev_alloc_skb(len, flags);
 #else
 	skb = dev_alloc_skb(len);
@@ -538,11 +553,9 @@ osl_ctfpool_stats(osl_t *osh, void *b)
 	if (bcm_static_buf) {
 		bcm_static_buf = 0;
 	}
-#ifdef BCMSDIO
 	if (bcm_static_skb) {
 		bcm_static_skb = 0;
 	}
-#endif /* BCMSDIO */
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 
 	bb = b;
@@ -644,7 +657,7 @@ osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt)
 #if defined(BCMDBG_CTRACE)
 	int i;
 	struct sk_buff *skb;
-#endif 
+#endif
 
 #if defined(BCMDBG_CTRACE)
 	if (skb_cnt > 1) {
@@ -663,7 +676,7 @@ osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt)
 		ADD_CTRACE(osh, skb, file, line);
 #endif /* BCMDBG_CTRACE */
 	}
-#endif 
+#endif
 
 	atomic_add(skb_cnt, &osh->cmn->pktalloced);
 }
@@ -873,7 +886,7 @@ osl_pktget_static(osl_t *osh, uint len)
 	struct sk_buff *skb;
 
 	if (len > DHD_SKB_MAX_BUFSIZE) {
-		printf("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
+		printk("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
 		return osl_pktget(osh, len);
 	}
 
@@ -929,7 +942,7 @@ osl_pktget_static(osl_t *osh, uint len)
 #endif
 
 	up(&bcm_static_skb->osl_pkt_sem);
-	printf("%s: all static pkt in use!\n", __FUNCTION__);
+	printk("%s: all static pkt in use!\n", __FUNCTION__);
 	return osl_pktget(osh, len);
 }
 
@@ -1107,7 +1120,7 @@ osl_malloc(osl_t *osh, uint size)
 			if (i == STATIC_BUF_MAX_NUM)
 			{
 				up(&bcm_static_buf->static_sem);
-				printf("all static buff in use!\n");
+				printk("all static buff in use!\n");
 				goto original;
 			}
 
@@ -1237,7 +1250,7 @@ osl_dma_alloc_consistent(osl_t *osh, uint size, uint16 align_bits, uint *alloced
 		va = pci_alloc_consistent(osh->pdev, size, &pap_lin);
 		*pap = (dmaaddr_t)pap_lin;
 	}
-#endif /* BCM47XX_CA9 && __ARM_ARCH_7A__ */
+#endif
 	return va;
 }
 
@@ -1374,7 +1387,7 @@ int osl_arch_is_coherent(void)
 	return arch_is_coherent();
 #endif
 }
-#endif 
+#endif
 
 #if defined(BCMASSERT_LOG)
 void
@@ -1394,12 +1407,12 @@ osl_assert(const char *exp, const char *file, int line)
 #ifdef BCMASSERT_LOG
 	snprintf(tempbuf, 64, "\"%s\": file \"%s\", line %d\n",
 		exp, basename, line);
-	printf("%s", tempbuf);
+	printk("%s", tempbuf);
 #endif /* BCMASSERT_LOG */
 
 
 }
-#endif 
+#endif
 
 void
 osl_delay(uint usec)
@@ -1521,25 +1534,25 @@ void osl_ctrace_dump(osl_t *osh, struct bcmstrbuf *b)
 	if (b != NULL)
 		bcm_bprintf(b, " Total %d sbk not free\n", osh->ctrace_num);
 	else
-		printf(" Total %d sbk not free\n", osh->ctrace_num);
+		printk(" Total %d sbk not free\n", osh->ctrace_num);
 
 	list_for_each_entry(skb, &osh->ctrace_list, ctrace_list) {
 		if (b != NULL)
 			bcm_bprintf(b, "[%d] skb %p:\n", ++idx, skb);
 		else
-			printf("[%d] skb %p:\n", ++idx, skb);
+			printk("[%d] skb %p:\n", ++idx, skb);
 
 		for (i = 0; i < skb->ctrace_count; i++) {
 			j = (skb->ctrace_start + i) % CTRACE_NUM;
 			if (b != NULL)
 				bcm_bprintf(b, "    [%s(%d)]\n", skb->func[j], skb->line[j]);
 			else
-				printf("    [%s(%d)]\n", skb->func[j], skb->line[j]);
+				printk("    [%s(%d)]\n", skb->func[j], skb->line[j]);
 		}
 		if (b != NULL)
 			bcm_bprintf(b, "\n");
 		else
-			printf("\n");
+			printk("\n");
 	}
 
 	spin_unlock_irqrestore(&osh->ctrace_lock, flags);

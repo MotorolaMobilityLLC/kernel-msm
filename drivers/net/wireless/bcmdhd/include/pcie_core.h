@@ -1,9 +1,27 @@
 /*
  * BCM43XX PCIE core hardware definitions.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: pcie_core.h 483003 2014-06-05 19:57:46Z $
+ * $Id: pcie_core.h 468449 2014-04-07 21:50:10Z $
  */
 #ifndef	_PCIE_CORE_H
 #define	_PCIE_CORE_H
@@ -310,12 +328,6 @@ typedef struct sbpcieregs {
 #define PCIE_TLP_TGTDEBUG2		0x078 /* Target Debug Reg2 */
 #define PCIE_TLP_TGTDEBUG3		0x07C /* Target Debug Reg3 */
 #define PCIE_TLP_TGTDEBUG4		0x080 /* Target Debug Reg4 */
-
-/* PCIE2 MDIO register offsets */
-#define PCIE2_MDIO_CONTROL    0x128
-#define PCIE2_MDIO_WR_DATA    0x12C
-#define PCIE2_MDIO_RD_DATA    0x130
-
 
 /* MDIO control */
 #define MDIOCTL_DIVISOR_MASK		0x7f	/* clock to be used on MDIO */

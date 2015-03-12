@@ -171,7 +171,7 @@
 			1 &intc 0 221 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 
-	status = "ok";
+	status = "disabled";
 };
 &sdhc_3 {
 	qcom,sup-voltages = <1800 1800>;
