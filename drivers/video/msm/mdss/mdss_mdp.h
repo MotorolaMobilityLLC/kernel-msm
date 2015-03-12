@@ -227,6 +227,7 @@ struct mdss_mdp_ctl_intfs_ops {
 	 */
 	int (*reconfigure)(struct mdss_mdp_ctl *ctl,
 			enum dynamic_switch_modes mode, bool pre);
+	int (*panel_on_locked)(struct mdss_mdp_ctl *ctl);
 };
 
 struct mdss_mdp_ctl {
@@ -913,6 +914,8 @@ int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
 void mdss_mdp_handoff_cleanup_pipes(struct msm_fb_data_type *mfd,
 							u32 type);
 int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx);
+int mdss_mdp_overlay_release_sub(struct msm_fb_data_type *mfd, int ndx,
+	bool unstage);
 int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd);
 int mdss_mdp_video_addr_setup(struct mdss_data_type *mdata,
 		u32 *offsets,  u32 count);
@@ -930,6 +933,8 @@ struct mdss_mdp_data *mdss_mdp_overlay_buf_alloc(struct msm_fb_data_type *mfd,
 		struct mdss_mdp_pipe *pipe);
 void mdss_mdp_overlay_buf_free(struct msm_fb_data_type *mfd,
 		struct mdss_mdp_data *buf);
+void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd,
+		struct list_head *destroy_pipes);
 
 int mdss_mdp_ctl_reconfig(struct mdss_mdp_ctl *ctl,
 		struct mdss_panel_data *pdata);
@@ -1141,6 +1146,11 @@ int mdss_mdp_cmd_set_autorefresh_mode(struct mdss_mdp_ctl *ctl,
 		int frame_cnt);
 int mdss_mdp_ctl_cmd_autorefresh_enable(struct mdss_mdp_ctl *ctl,
 		int frame_cnt);
+
+int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd, struct mdp_overlay *req);
+int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
+			  struct msmfb_overlay_data *req);
+int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx);
 
 void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on);
 
