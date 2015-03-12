@@ -339,6 +339,12 @@ struct msm_fb_data_type {
 	enum dyn_mode_switch_state switch_state;
 	u32 switch_new_mode;
 	struct mutex switch_lock;
+
+	int (*quickdraw_fb_cleanup)(struct msm_fb_data_type *mfd);
+	int (*quickdraw_fb_prepare)(struct msm_fb_data_type *mfd);
+	bool quickdraw_in_progress;
+	u32 quickdraw_panel_state;
+	bool quickdraw_reset_panel;
 };
 
 struct sys_panelinfo {
@@ -432,4 +438,8 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 int mdss_fb_compat_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg);
 void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd);
+int mdss_fb_pan_display_ex(struct fb_info *info,
+			   struct mdp_display_commit *disp_commit);
+int mdss_fb_blank_sub(int blank_mode, struct fb_info *info, int op_enable);
+
 #endif /* MDSS_FB_H */

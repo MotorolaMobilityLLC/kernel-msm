@@ -473,6 +473,8 @@ struct mdss_panel_info {
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
 
+	u32 quickdraw_enabled;
+
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
 };
@@ -529,6 +531,7 @@ struct mdss_panel_data {
 
 	struct mdss_panel_data *next;
 	struct mdss_panel_data *prev;
+	struct msm_fb_data_type *mfd;
 };
 
 struct mdss_panel_debugfs_info {
