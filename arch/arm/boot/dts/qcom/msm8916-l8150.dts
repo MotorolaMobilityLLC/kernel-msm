@@ -181,6 +181,17 @@
 			bias-disable;		  /* No PULL */
 		};
 	};
+
+	ovp-id-pin {
+		qcom,pins = <&gp 110>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "ovp-id-pin";
+		ovp_default: ovp-irq {
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
 };
 
 &i2c_1 {
@@ -337,6 +348,10 @@
 	qcom,bms-controlled-charging;
 	qcom,disable-vbatdet-based-recharge;
 	qcom,ibatsafe-ma = <950>;
+
+	qcom,usbin-ovp-irq = <&msm_gpio 110 0>;
+	pinctrl-names = "ovp-irq";
+	pinctrl-0 = <&ovp_default>;
 	status = "ok";
 };
 
