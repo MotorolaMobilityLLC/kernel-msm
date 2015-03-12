@@ -14,7 +14,10 @@
 
 #define MDSS_DROPBOX_MSG_ESD "ESD event detected"
 #define MDSS_DROPBOX_MSG_PWR_MODE_BLACK "PWR_MODE black screen detected"
-
+#define MDSS_DROPBOX_MSG_PWR_MODE_FAIL "PWR_MODE read failure"
+#define MDSS_DROPBOX_MSG_PWR_MODE_INVALID "PWR_MODE invalid mode detected"
+#define MDSS_DROPBOX_MSG_PWR_MODE_MISMATCH "PWR_MODE mis-match sensorhub reported"
+#define MDSS_DROPBOX_MSG_ESD_SENSORHUB_DROPBOX "ESD sensorhub detected"
 
 void mdss_dropbox_report_event(char *msg, int count);
 #endif /* MDSS_DROPBOX_H */
