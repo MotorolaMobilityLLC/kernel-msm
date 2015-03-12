@@ -558,7 +558,7 @@
 	};
 
 	pmx_florida_reset {
-		qcom,pins = <&gp 83>;
+		qcom,pins = <&gp 31>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
 		label = "florida_reset";
@@ -777,8 +777,13 @@
 	};
 
 	gpio@c200 { /* GPIO 3 */
-		/* External regulator control for WTR */
-		status = "disabled";
+		/* WM5110LDO_EN */
+		status = "okay";
+		qcom,mode = <1>;	/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,pull = <5>;	/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;	/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@c300 { /* GPIO 4 */
@@ -1046,7 +1051,7 @@
 		interrupts = <98 0>;
 		irq-base = <800>;
 		gpio-base = <200>;
-		wlf,reset = <&msm_gpio 83 0>;
+		wlf,reset = <&msm_gpio 31 0>;
 		wlf,irq = <&msm_gpio 98 0>;
 
 		pinctrl-names = "default";
