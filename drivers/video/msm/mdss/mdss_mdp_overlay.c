@@ -35,6 +35,8 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
 
+#include "mdss_quickdraw.h"
+
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
@@ -1042,7 +1044,7 @@ exit_fail:
 	return ret;
 }
 
-static int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd,
+int mdss_mdp_overlay_set(struct msm_fb_data_type *mfd,
 				struct mdp_overlay *req)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
@@ -1241,7 +1243,7 @@ static void __overlay_pipe_cleanup(struct msm_fb_data_type *mfd,
  * Goes through destroy_pipes list and ensures they are ready to be destroyed
  * and cleaned up. Also cleanup of any pipe buffers after flip.
  */
-static void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd,
+void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd,
 		struct list_head *destroy_pipes)
 {
 	struct mdss_mdp_pipe *pipe, *tmp;
@@ -2030,6 +2032,12 @@ commit_fail:
 
 int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
 {
+	return mdss_mdp_overlay_release_sub(mfd, ndx, false);
+}
+
+int mdss_mdp_overlay_release_sub(struct msm_fb_data_type *mfd, int ndx,
+	bool unstage)
+{
 	struct mdss_mdp_pipe *pipe, *tmp;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	u32 unset_ndx = 0;
@@ -2054,6 +2062,14 @@ int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
 			else
 				list_del_init(&pipe->list);
 
+			if (unstage) {
+				mdss_mdp_pipe_queue_data(pipe, NULL);
+				mdss_mdp_mixer_pipe_unstage(pipe,
+					pipe->mixer_left);
+				mdss_mdp_mixer_pipe_unstage(pipe,
+					pipe->mixer_right);
+			}
+
 			mdss_mdp_pipe_unmap(pipe);
 			if (destroy_pipe)
 				__overlay_pipe_cleanup(mfd, pipe);
@@ -2073,7 +2089,7 @@ int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
 	return 0;
 }
 
-static int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx)
+int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx)
 {
 	int ret = 0;
 	struct mdss_overlay_private *mdp5_data;
@@ -2244,7 +2260,7 @@ static int mdss_mdp_overlay_queue(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
-static int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
+int mdss_mdp_overlay_play(struct msm_fb_data_type *mfd,
 				 struct msmfb_overlay_data *req)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
@@ -4810,8 +4826,20 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 			goto end;
 		}
 		if (mfd->panel_info->type != WRITEBACK_PANEL) {
-			atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
-			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
+			if (mfd->quickdraw_in_progress) {
+				/* In quickdraw, only turn the panel on, don't
+				   kickoff so that we preserve the panel's
+				   contents */
+				ctl = mfd_to_ctl(mfd);
+				if (ctl->ops.panel_on_locked) {
+					mutex_lock(&ctl->lock);
+					ctl->ops.panel_on_locked(ctl);
+					mutex_unlock(&ctl->lock);
+				}
+			} else {
+				atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
+				rc = mdss_mdp_overlay_kickoff(mfd, NULL);
+			}
 		}
 	} else {
 		rc = mdss_mdp_ctl_setup(mdp5_data->ctl);
@@ -5433,6 +5461,9 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 		}
 	}
 	mdp5_data->dyn_pu_state = mfd->panel_info->partial_update_enabled;
+
+	if (mfd->index == 0 && mfd->panel_info->quickdraw_enabled)
+		mdss_quickdraw_register(mfd);
 
 	if (mdss_mdp_pp_overlay_init(mfd))
 		pr_warn("Failed to initialize pp overlay data.\n");

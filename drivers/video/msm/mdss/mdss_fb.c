@@ -92,8 +92,6 @@ static int mdss_fb_pan_display(struct fb_var_screeninfo *var,
 static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 			     struct fb_info *info);
 static int mdss_fb_set_par(struct fb_info *info);
-static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
-			     int op_enable);
 static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd);
 static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg);
@@ -479,9 +477,9 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 	int ret;
 
 	pr_debug("fb%d panel_power_state = %d\n", mfd->index,
-		mfd->panel_power_state);
+		mfd->quickdraw_in_progress ? 0 : mfd->panel_power_state);
 	ret = scnprintf(buf, PAGE_SIZE, "panel_power_on = %d\n",
-						mfd->panel_power_state);
+		mfd->quickdraw_in_progress ? 0 : mfd->panel_power_state);
 
 	return ret;
 }
@@ -1001,6 +999,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	}
 
 	mfd = (struct msm_fb_data_type *)fbi->par;
+	pdata->mfd = mfd;
 	mfd->key = MFD_KEY;
 	mfd->fbi = fbi;
 	mfd->panel_info = &pdata->panel_info;
@@ -1098,6 +1097,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		mfd->mdp.splash_init_fnc(mfd);
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
+
+	mfd->quickdraw_in_progress = false;
+	mfd->quickdraw_reset_panel = false;
 
 	return rc;
 }
@@ -1658,8 +1660,7 @@ error:
 	return ret;
 }
 
-static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
-			     int op_enable)
+int mdss_fb_blank_sub(int blank_mode, struct fb_info *info, int op_enable)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
@@ -1743,8 +1744,10 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		break;
 	}
 
-	/* Notify listeners */
-	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
+	if (!mfd->quickdraw_in_progress) {
+		/* Notify listeners */
+		sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
+	}
 
 	ATRACE_END(trace_buffer);
 
@@ -2990,7 +2993,7 @@ static int mdss_fb_wait_for_kickoff(struct msm_fb_data_type *mfd)
 	return ret;
 }
 
-static int mdss_fb_pan_display_ex(struct fb_info *info,
+int mdss_fb_pan_display_ex(struct fb_info *info,
 		struct mdp_display_commit *disp_commit)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
@@ -2998,7 +3001,7 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 	u32 wait_for_finish = disp_commit->wait_for_finish;
 	int ret = 0;
 
-	if (!mfd || (!mfd->op_enable))
+	if (!mfd || (!mfd->op_enable && !mfd->quickdraw_in_progress))
 		return -EPERM;
 
 	if ((mdss_fb_is_power_off(mfd)) &&
