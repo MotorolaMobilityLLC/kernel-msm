@@ -2,7 +2,25 @@
  *  BCMSDH interface glue
  *  implement bcmsdh API for SDIOH driver
  *
- * $ Copyright Open Broadcom Corporation $
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: bcmsdh.c 450676 2014-01-22 22:45:13Z $
  */
@@ -32,9 +50,6 @@ const uint bcmsdh_msglevel = BCMSDH_ERROR_VAL;
 /* local copy of bcm sd handler */
 bcmsdh_info_t * l_bcmsdh = NULL;
 
-#if 0 && (NDISVER < 0x0630)
-extern SDIOH_API_RC sdioh_detach(osl_t *osh, sdioh_info_t *sd);
-#endif
 
 #if defined(OOB_INTR_ONLY) && defined(HW_OOB)
 extern int
@@ -86,10 +101,6 @@ bcmsdh_detach(osl_t *osh, void *sdh)
 	bcmsdh_info_t *bcmsdh = (bcmsdh_info_t *)sdh;
 
 	if (bcmsdh != NULL) {
-#if 0 && (NDISVER < 0x0630)
-		if (bcmsdh->sdioh)
-			sdioh_detach(osh, bcmsdh->sdioh);
-#endif
 		MFREE(osh, bcmsdh, sizeof(bcmsdh_info_t));
 	}
 

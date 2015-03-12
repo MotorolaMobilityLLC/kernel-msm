@@ -1,9 +1,27 @@
 /*
  * Broadcom device-specific manifest constants.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdevs.h 484136 2014-06-12 04:36:10Z $
+ * $Id: bcmdevs.h 474307 2014-04-30 20:58:03Z $
  */
 
 #ifndef	_BCMDEVS_H
@@ -347,7 +365,6 @@
 #define BCM43556_CHIP_ID	0xAA24          /* 43556 chipcommon chipid */
 #define BCM43558_CHIP_ID	0xAA26          /* 43558 chipcommon chipid */
 #define BCM43566_CHIP_ID	0xAA2E          /* 43566 chipcommon chipid */
-#define BCM43567_CHIP_ID	0xAA2F          /* 43567 chipcommon chipid */
 #define BCM43568_CHIP_ID	0xAA30          /* 43568 chipcommon chipid */
 #define BCM43569_CHIP_ID	0xAA31          /* 43569 chipcommon chipid */
 #define BCM43570_CHIP_ID	0xAA32          /* 43570 chipcommon chipid */
@@ -358,7 +375,6 @@
 				(CHIPID(chipid) == BCM43556_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43558_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43566_CHIP_ID) || \
-				(CHIPID(chipid) == BCM43567_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43568_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43569_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43570_CHIP_ID) || \
@@ -651,380 +667,6 @@
 #define MIN_SLOW_CLK		32		/* us Slow clock period */
 #define	XTAL_ON_DELAY		1000		/* us crystal power-on delay */
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
-/* Reference Board Types */
-#define	BU4710_BOARD		0x0400
-#define	VSIM4710_BOARD		0x0401
-#define	QT4710_BOARD		0x0402
-
-#define	BU4309_BOARD		0x040a
-#define	BCM94309CB_BOARD	0x040b
-#define	BCM94309MP_BOARD	0x040c
-#define	BCM4309AP_BOARD		0x040d
-
-#define	BCM94302MP_BOARD	0x040e
-
-#define	BU4306_BOARD		0x0416
-#define	BCM94306CB_BOARD	0x0417
-#define	BCM94306MP_BOARD	0x0418
-
-#define	BCM94710D_BOARD		0x041a
-#define	BCM94710R1_BOARD	0x041b
-#define	BCM94710R4_BOARD	0x041c
-#define	BCM94710AP_BOARD	0x041d
-
-#define	BU2050_BOARD		0x041f
-
-#define	BCM94306P50_BOARD	0x0420
-
-#define	BCM94309G_BOARD		0x0421
-
-#define	BU4704_BOARD		0x0423
-#define	BU4702_BOARD		0x0424
-
-#define	BCM94306PC_BOARD	0x0425		/* pcmcia 3.3v 4306 card */
-
-#define	MPSG4306_BOARD		0x0427
-
-#define	BCM94702MN_BOARD	0x0428
-
-/* BCM4702 1U CompactPCI Board */
-#define	BCM94702CPCI_BOARD	0x0429
-
-/* BCM4702 with BCM95380 VLAN Router */
-#define	BCM95380RR_BOARD	0x042a
-
-/* cb4306 with SiGe PA */
-#define	BCM94306CBSG_BOARD	0x042b
-
-/* cb4306 with SiGe PA */
-#define	PCSG94306_BOARD		0x042d
-
-/* bu4704 with sdram */
-#define	BU4704SD_BOARD		0x042e
-
-/* Dual 11a/11g Router */
-#define	BCM94704AGR_BOARD	0x042f
-
-/* 11a-only minipci */
-#define	BCM94308MP_BOARD	0x0430
-
-/* 4306/gprs combo */
-#define	BCM94306GPRS_BOARD	0x0432
-
-/* BCM5365/BCM4704 FPGA Bringup Board */
-#define BU5365_FPGA_BOARD	0x0433
-
-#define BU4712_BOARD		0x0444
-#define	BU4712SD_BOARD		0x045d
-#define	BU4712L_BOARD		0x045f
-
-/* BCM4712 boards */
-#define BCM94712AP_BOARD	0x0445
-#define BCM94712P_BOARD		0x0446
-
-/* BCM4318 boards */
-#define BU4318_BOARD		0x0447
-#define CB4318_BOARD		0x0448
-#define MPG4318_BOARD		0x0449
-#define MP4318_BOARD		0x044a
-#define SD4318_BOARD		0x044b
-
-/* BCM4313 boards */
-#define BCM94313BU_BOARD	0x050f
-#define BCM94313HM_BOARD	0x0510
-#define BCM94313EPA_BOARD	0x0511
-#define BCM94313HMG_BOARD       0x051C
-
-/* BCM63XX boards */
-#define BCM96338_BOARD		0x6338
-#define BCM96348_BOARD		0x6348
-#define BCM96358_BOARD		0x6358
-#define BCM96368_BOARD		0x6368
-
-/* Another mp4306 with SiGe */
-#define	BCM94306P_BOARD		0x044c
-
-/* mp4303 */
-#define	BCM94303MP_BOARD	0x044e
-
-/* mpsgh4306 */
-#define	BCM94306MPSGH_BOARD	0x044f
-
-/* BRCM 4306 w/ Front End Modules */
-#define BCM94306MPM		0x0450
-#define BCM94306MPL		0x0453
-
-/* 4712agr */
-#define	BCM94712AGR_BOARD	0x0451
-
-/* pcmcia 4303 */
-#define	PC4303_BOARD		0x0454
-
-/* 5350K */
-#define	BCM95350K_BOARD		0x0455
-
-/* 5350R */
-#define	BCM95350R_BOARD		0x0456
-
-/* 4306mplna */
-#define	BCM94306MPLNA_BOARD	0x0457
-
-/* 4320 boards */
-#define	BU4320_BOARD		0x0458
-#define	BU4320S_BOARD		0x0459
-#define	BCM94320PH_BOARD	0x045a
-
-/* 4306mph */
-#define	BCM94306MPH_BOARD	0x045b
-
-/* 4306pciv */
-#define	BCM94306PCIV_BOARD	0x045c
-
-#define	BU4712SD_BOARD		0x045d
-
-#define	BCM94320PFLSH_BOARD	0x045e
-
-#define	BU4712L_BOARD		0x045f
-#define	BCM94712LGR_BOARD	0x0460
-#define	BCM94320R_BOARD		0x0461
-
-#define	BU5352_BOARD		0x0462
-
-#define	BCM94318MPGH_BOARD	0x0463
-
-#define	BU4311_BOARD		0x0464
-#define	BCM94311MC_BOARD	0x0465
-#define	BCM94311MCAG_BOARD	0x0466
-
-#define	BCM95352GR_BOARD	0x0467
-
-/* bcm95351agr */
-#define	BCM95351AGR_BOARD	0x0470
-
-/* bcm94704mpcb */
-#define	BCM94704MPCB_BOARD	0x0472
-
-/* 4785 boards */
-#define BU4785_BOARD		0x0478
-
-/* 4321 boards */
-#define BU4321_BOARD		0x046b
-#define BU4321E_BOARD		0x047c
-#define MP4321_BOARD		0x046c
-#define CB2_4321_BOARD		0x046d
-#define CB2_4321_AG_BOARD	0x0066
-#define MC4321_BOARD		0x046e
-
-/* 4328 boards */
-#define BU4328_BOARD		0x0481
-#define BCM4328SDG_BOARD	0x0482
-#define BCM4328SDAG_BOARD	0x0483
-#define BCM4328UG_BOARD		0x0484
-#define BCM4328UAG_BOARD	0x0485
-#define BCM4328PC_BOARD		0x0486
-#define BCM4328CF_BOARD		0x0487
-
-/* 4325 boards */
-#define BCM94325DEVBU_BOARD	0x0490
-#define BCM94325BGABU_BOARD	0x0491
-
-#define BCM94325SDGWB_BOARD	0x0492
-
-#define BCM94325SDGMDL_BOARD	0x04aa
-#define BCM94325SDGMDL2_BOARD	0x04c6
-#define BCM94325SDGMDL3_BOARD	0x04c9
-
-#define BCM94325SDABGWBA_BOARD	0x04e1
-
-/* 4322 boards */
-#define BCM94322MC_SSID		0x04a4
-#define BCM94322USB_SSID	0x04a8	/* dualband */
-#define BCM94322HM_SSID		0x04b0
-#define BCM94322USB2D_SSID	0x04bf	/* single band discrete front end */
-
-/* 4312 boards */
-#define	BCM4312MCGSG_BOARD	0x04b5
-
-/* 4315 boards */
-#define BCM94315DEVBU_SSID	0x04c2
-#define BCM94315USBGP_SSID	0x04c7
-#define BCM94315BGABU_SSID	0x04ca
-#define BCM94315USBGP41_SSID	0x04cb
-
-/* 4319 boards */
-#define BCM94319DEVBU_SSID	0X04e5
-#define BCM94319USB_SSID	0X04e6
-#define BCM94319SD_SSID		0X04e7
-
-/* 4716 boards */
-#define BCM94716NR2_SSID	0x04cd
-
-/* 4319 boards */
-#define BCM94319DEVBU_SSID	0X04e5
-#define BCM94319USBNP4L_SSID	0X04e6
-#define BCM94319WLUSBN4L_SSID	0X04e7
-#define BCM94319SDG_SSID	0X04ea
-#define BCM94319LCUSBSDN4L_SSID	0X04eb
-#define BCM94319USBB_SSID       0x04ee
-#define BCM94319LCSDN4L_SSID	0X0507
-#define BCM94319LSUSBN4L_SSID	0X0508
-#define BCM94319SDNA4L_SSID	0X0517
-#define BCM94319SDELNA4L_SSID	0X0518
-#define BCM94319SDELNA6L_SSID	0X0539
-#define BCM94319ARCADYAN_SSID	0X0546
-#define BCM94319WINDSOR_SSID    0x0561
-#define BCM94319MLAP_SSID       0x0562
-#define BCM94319SDNA_SSID       0x058b
-#define BCM94319BHEMU3_SSID     0x0563
-#define BCM94319SDHMB_SSID     0x058c
-#define BCM94319SDBREF_SSID     0x05a1
-#define BCM94319USBSDB_SSID     0x05a2
-
-
-/* 4329 boards */
-#define BCM94329AGB_SSID	0X04b9
-#define BCM94329TDKMDL1_SSID	0X04ba
-#define BCM94329TDKMDL11_SSID	0X04fc
-#define BCM94329OLYMPICN18_SSID	0X04fd
-#define BCM94329OLYMPICN90_SSID	0X04fe
-#define BCM94329OLYMPICN90U_SSID 0X050c
-#define BCM94329OLYMPICN90M_SSID 0X050b
-#define BCM94329AGBF_SSID	0X04ff
-#define BCM94329OLYMPICX17_SSID	0X0504
-#define BCM94329OLYMPICX17M_SSID	0X050a
-#define BCM94329OLYMPICX17U_SSID	0X0509
-#define BCM94329OLYMPICUNO_SSID	0X0564
-#define BCM94329MOTOROLA_SSID   0X0565
-#define BCM94329OLYMPICLOCO_SSID	0X0568
-/* 4336 SDIO board types */
-#define BCM94336SD_WLBGABU_SSID		0x0511
-#define BCM94336SD_WLBGAREF_SSID	0x0519
-#define BCM94336SDGP_SSID	0x0538
-#define BCM94336SDG_SSID	0x0519
-#define BCM94336SDGN_SSID	0x0538
-#define BCM94336SDGFC_SSID	0x056B
-
-/* 4330 SDIO board types */
-#define BCM94330SDG_SSID	0x0528
-#define BCM94330SD_FCBGABU_SSID	0x052e
-#define BCM94330SD_WLBGABU_SSID	0x052f
-#define BCM94330SD_FCBGA_SSID	0x0530
-#define BCM94330FCSDAGB_SSID		0x0532
-#define BCM94330OLYMPICAMG_SSID		0x0549
-#define BCM94330OLYMPICAMGEPA_SSID		0x054F
-#define BCM94330OLYMPICUNO3_SSID	0x0551
-#define BCM94330WLSDAGB_SSID	0x0547
-#define BCM94330CSPSDAGBB_SSID	0x054A
-
-/* 43224 boards */
-#define BCM943224X21        0x056e
-#define BCM943224X21_FCC    0x00d1
-#define BCM943224X21B	    0x00e9
-#define BCM943224M93	    0x008b
-#define BCM943224M93A	    0x0090
-#define BCM943224X16	    0x0093
-#define BCM94322X9		    0x008d
-#define BCM94322M35e	    0x008e
-
-/* 43228 Boards */
-#define BCM943228BU8_SSID	0x0540
-#define BCM943228BU9_SSID	0x0541
-#define BCM943228BU_SSID	0x0542
-#define BCM943227HM4L_SSID	0x0543
-#define BCM943227HMB_SSID	0x0544
-#define BCM943228HM4L_SSID	0x0545
-#define BCM943228SD_SSID	0x0573
-
-/* 43239 Boards */
-#define BCM943239MOD_SSID	0x05ac
-#define BCM943239REF_SSID	0x05aa
-
-/* 4331 boards */
-#define BCM94331X19               0x00D6	/* X19B */
-#define BCM94331X28               0x00E4	/* X28 */
-#define BCM94331X28B              0x010E	/* X28B */
-#define BCM94331PCIEBT3Ax_SSID    BCM94331X28
-#define BCM94331X12_2G_SSID       0x00EC	/* X12 2G */
-#define BCM94331X12_5G_SSID       0x00ED	/* X12 5G */
-#define BCM94331X29B              0x00EF	/* X29B */
-#define BCM94331X29D              0x010F	/* X29D */
-#define BCM94331CSAX_SSID         BCM94331X29B
-#define BCM94331X19C              0x00F5	/* X19C */
-#define BCM94331X33	          0x00F4	/* X33 */
-#define BCM94331BU_SSID           0x0523
-#define BCM94331S9BU_SSID         0x0524
-#define BCM94331MC_SSID           0x0525
-#define BCM94331MCI_SSID          0x0526
-#define BCM94331PCIEBT4_SSID      0x0527
-#define BCM94331HM_SSID           0x0574
-#define BCM94331PCIEDUAL_SSID     0x059B
-#define BCM94331MCH5_SSID         0x05A9
-#define BCM94331CS_SSID           0x05C6
-#define BCM94331CD_SSID           0x05DA
-
-/* 4314 Boards */
-#define BCM94314BU_SSID         0x05b1
-
-/* 53572 Boards */
-#define BCM953572BU_SSID       0x058D
-#define BCM953572NR2_SSID      0x058E
-#define BCM947188NR2_SSID      0x058F
-#define BCM953572SDRNR2_SSID   0x0590
-
-/* 43236 boards */
-#define BCM943236OLYMPICSULLEY_SSID 0x594
-#define BCM943236PREPROTOBLU2O3_SSID 0x5b9
-#define BCM943236USBELNA_SSID 0x5f8
-
-/* 4314 Boards */
-#define BCM94314BUSDIO_SSID	0x05c8
-#define BCM94314BGABU_SSID	0x05c9
-#define BCM94314HMEPA_SSID	0x05ca
-#define BCM94314HMEPABK_SSID	0x05cb
-#define BCM94314SUHMEPA_SSID	0x05cc
-#define BCM94314SUHM_SSID	0x05cd
-#define BCM94314HM_SSID		0x05d1
-
-/* 4334 Boards */
-#define BCM94334FCAGBI_SSID	0x05df
-#define BCM94334WLAGBI_SSID	0x05dd
-
-/* 4335 Boards */
-#define BCM94335X52             0x0114
-
-/* 4345 Boards */
-#define BCM94345_SSID           0x0687
-
-/* 4360 Boards */
-#define BCM94360X52C            0X0117
-#define BCM94360X52D            0X0137
-#define BCM94360X29C            0X0112
-#define BCM94360X29CP2          0X0134
-#define BCM94360X29CP3          0X013B
-#define BCM94360X51             0x0111
-#define BCM94360X51P2           0x0129
-#define BCM94360X51P3           0x0142
-#define BCM94360X51A            0x0135
-#define BCM94360X51B            0x0136
-#define BCM94360CS              0x061B
-#define BCM94360J28_D11AC2G     0x0c00
-#define BCM94360J28_D11AC5G     0x0c01
-#define BCM94360USBH5_D11AC5G   0x06aa
-#define BCM94360MCM5            0x06d8
-
-/* 4350 Boards */
-#define BCM94350X52B            0X0116
-#define BCM94350X14             0X0131
-
-/* 43217 Boards */
-#define BCM943217BU_SSID	0x05d5
-#define BCM943217HM2L_SSID	0x05d6
-#define BCM943217HMITR2L_SSID	0x05d7
-
-/* 43142 Boards */
-#define BCM943142HM_SSID	0x05e0
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 /* 43341 Boards */
 #define BCM943341WLABGS_SSID	0x062d

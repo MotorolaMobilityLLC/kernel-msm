@@ -2,7 +2,25 @@
  * Linux-specific abstractions to gain some independence from linux kernel versions.
  * Pave over some 2.2 versus 2.4 versus 2.6 kernel differences.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: linuxver.h 431983 2013-10-25 06:53:27Z $
  */
@@ -11,7 +29,6 @@
 #define _linuxver_h_
 
 #include <typedefs.h>
-
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #include <linux/config.h>
@@ -717,7 +734,7 @@ not match our unaligned address for < 2.6.24
  * Overide latest kfifo functions with
  * older version to work on older kernels
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)) && !defined(WL_COMPAT_WIRELESS)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33))
 #define kfifo_in_spinlocked(a, b, c, d)		kfifo_put(a, (u8 *)b, c)
 #define kfifo_out_spinlocked(a, b, c, d)	kfifo_get(a, (u8 *)b, c)
 #define kfifo_esize(a)				1

@@ -1,7 +1,25 @@
 /*
  * DHD Linux header file (dhd_linux exports for cfg80211 and other components)
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ *
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ *
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ *
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_linux.h 399301 2013-04-29 21:41:52Z $
  */
@@ -29,6 +47,21 @@
 #if defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND) */
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+#include <linux/wlan_plat.h>
+#endif
+
+#if !defined(CONFIG_WIFI_CONTROL_FUNC)
+#define WLAN_PLAT_NODFS_FLAG	0x01
+struct wifi_platform_data {
+	int (*set_power)(int val);
+	int (*set_reset)(int val);
+	int (*set_carddetect)(int val);
+	void *(*mem_prealloc)(int section, unsigned long size);
+	int (*get_mac_addr)(unsigned char *buf);
+	void *(*get_country_code)(char *ccode, u32 flags);
+};
+#endif /* CONFIG_WIFI_CONTROL_FUNC */
 
 #define DHD_REGISTRATION_TIMEOUT  12000  /* msec : allowed time to finished dhd registration */
 
@@ -68,7 +101,8 @@ int wifi_platform_set_power(wifi_adapter_info_t *adapter, bool on, unsigned long
 int wifi_platform_bus_enumerate(wifi_adapter_info_t *adapter, bool device_present);
 int wifi_platform_get_irq_number(wifi_adapter_info_t *adapter, unsigned long *irq_flags_ptr);
 int wifi_platform_get_mac_addr(wifi_adapter_info_t *adapter, unsigned char *buf);
-void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode);
+void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode,
+	u32 flags);
 void* wifi_platform_prealloc(wifi_adapter_info_t *adapter, int section, unsigned long size);
 void* wifi_platform_get_prealloc_func_ptr(wifi_adapter_info_t *adapter);
 

@@ -4,7 +4,25 @@
  *
  * Definitions subject to change without notice.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2014, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wlioctl.h 490639 2014-07-11 08:31:53Z $
  */
@@ -24,20 +42,14 @@
 #include <bcmwifi_rates.h>
 #include <devctrl_if/wlioctl_defs.h>
 
-#if 0 && (NDISVER >= 0x0600)
-#include <proto/bcmipv6.h>
-#endif
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 #include <bcm_mpool_pub.h>
 #include <bcmcdc.h>
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 
 
 
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 #ifndef INTF_NAME_SIZ
 #define INTF_NAME_SIZ	16
@@ -75,11 +87,7 @@ typedef struct {
 	bool		assoc_approved;		/* (re)association approved */
 	uint16		reject_reason;		/* reason code for rejecting association */
 	struct		ether_addr   da;
-#if 0 && (NDISVER >= 0x0620)
-	LARGE_INTEGER	sys_time;		/* current system time */
-#else
 	int64		sys_time;		/* current system time */
-#endif
 } assoc_decision_t;
 
 #define ACTION_FRAME_SIZE 1800
@@ -116,8 +124,6 @@ typedef struct wl_sa_query {
 	uint16 			id;
 	struct ether_addr 	da;
 } wl_sa_query_t;
-
-#endif /*  LINUX_POSTMOGRIFY_REMOVAL */
 
 /* require default structure packing */
 #define BWL_DEFAULT_PACKING
@@ -168,7 +174,6 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 
 
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 /* Legacy structure to help keep backward compatible wl tool and tray app */
 
 #define	LEGACY_WL_BSS_INFO_VERSION	107	/* older version of wl_bss_info struct */
@@ -240,8 +245,6 @@ typedef struct wl_bss_info_108 {
 	/* variable length Information Elements */
 } wl_bss_info_108_t;
 
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
 #define	WL_BSS_INFO_VERSION	109		/* current version of wl_bss_info struct */
 
 /* BSS info structure
@@ -286,7 +289,15 @@ typedef struct wl_bss_info {
 	/* variable length Information Elements */
 } wl_bss_info_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
+#define	WL_GSCAN_BSS_INFO_VERSION	1	/* current version of wl_gscan_bss_info struct */
+#define WL_GSCAN_INFO_FIXED_FIELD_SIZE   (sizeof(wl_gscan_bss_info_t) - sizeof(wl_bss_info_t))
+
+typedef struct wl_gscan_bss_info {
+	uint32      timestamp[2];
+	wl_bss_info_t info;
+	/* variable length Information Elements */
+} wl_gscan_bss_info_t;
+
 
 typedef struct wl_bsscfg {
 	uint32  bsscfg_idx;
@@ -367,14 +378,17 @@ struct wl_clm_dload_info {
 };
 typedef struct wl_clm_dload_info wl_clm_dload_info_t;
 
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
 typedef struct wlc_ssid {
 	uint32		SSID_len;
 	uchar		SSID[DOT11_MAX_SSID_LEN];
 } wlc_ssid_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
+typedef struct wlc_ssid_ext {
+	bool       hidden;
+	uint32		SSID_len;
+	uchar		SSID[DOT11_MAX_SSID_LEN];
+} wlc_ssid_ext_t;
+
 
 #define MAX_PREFERRED_AP_NUM     5
 typedef struct wlc_fastssidinfo {
@@ -469,7 +483,6 @@ typedef struct wl_iscan_params {
 
 /* 3 fields + size of wl_scan_params, not including variable length array */
 #define WL_ISCAN_PARAMS_FIXED_SIZE (OFFSETOF(wl_iscan_params_t, params) + sizeof(wlc_ssid_t))
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 typedef struct wl_scan_results {
 	uint32 buflen;
@@ -478,7 +491,6 @@ typedef struct wl_scan_results {
 	wl_bss_info_t bss_info[1];
 } wl_scan_results_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 /* size of wl_scan_results not including variable length array */
 #define WL_SCAN_RESULTS_FIXED_SIZE (sizeof(wl_scan_results_t) - sizeof(wl_bss_info_t))
 
@@ -503,6 +515,14 @@ typedef struct wl_escan_result {
 } wl_escan_result_t;
 
 #define WL_ESCAN_RESULTS_FIXED_SIZE (sizeof(wl_escan_result_t) - sizeof(wl_bss_info_t))
+
+typedef struct wl_gscan_result {
+	uint32 buflen;
+	uint32 version;
+	wl_gscan_bss_info_t bss_info[1];
+} wl_gscan_result_t;
+
+#define WL_GSCAN_RESULTS_FIXED_SIZE (sizeof(wl_gscan_result_t) - sizeof(wl_gscan_bss_info_t))
 
 /* incremental scan results struct */
 typedef struct wl_iscan_results {
@@ -543,7 +563,6 @@ typedef struct wl_probe_params {
 	struct ether_addr bssid;
 	struct ether_addr mac;
 } wl_probe_params_t;
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 #define WL_MAXRATES_IN_SET		16	/* max # of rates in a rateset */
 typedef struct wl_rateset {
@@ -628,7 +647,6 @@ typedef struct wl_join_params {
 					 */
 } wl_join_params_t;
 
-#ifndef  LINUX_POSTMOGRIFY_REMOVAL
 #define WL_JOIN_PARAMS_FIXED_SIZE 	(OFFSETOF(wl_join_params_t, params) + \
 					 WL_ASSOC_PARAMS_FIXED_SIZE)
 /* scan params for extended join */
@@ -701,11 +719,9 @@ typedef struct {
 	uint32 source;	/* last detected interference source */
 	uint32 timestamp;	/* second timestamp on interferenced flag change */
 } interference_source_rep_t;
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 #define WLC_CNTRY_BUF_SZ	4		/* Country string is 3 bytes + NUL */
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 typedef struct wl_country {
 	char country_abbrev[WLC_CNTRY_BUF_SZ];	/* nul-terminated country code used in
@@ -783,29 +799,6 @@ typedef struct wl_rm_rep {
 } wl_rm_rep_t;
 #define WL_RM_REP_FIXED_LEN	8
 
-#ifdef BCMCCX
-
-#define LEAP_USER_MAX		32
-#define LEAP_DOMAIN_MAX		32
-#define LEAP_PASSWORD_MAX	32
-
-typedef struct wl_leap_info {
-	wlc_ssid_t ssid;
-	uint8 user_len;
-	uchar user[LEAP_USER_MAX];
-	uint8 password_len;
-	uchar password[LEAP_PASSWORD_MAX];
-	uint8 domain_len;
-	uchar domain[LEAP_DOMAIN_MAX];
-} wl_leap_info_t;
-
-typedef struct wl_leap_list {
-	uint32 buflen;
-	uint32 version;
-	uint32 count;
-	wl_leap_info_t leap_info[1];
-} wl_leap_list_t;
-#endif	/* BCMCCX */
 
 typedef enum sup_auth_status {
 	/* Basic supplicant authentication states */
@@ -830,7 +823,6 @@ typedef enum sup_auth_status {
 	WLC_SUP_KEYXCHANGE_WAIT_G1,	/* Waiting to receive handshake msg G1 */
 	WLC_SUP_KEYXCHANGE_PREP_G2	/* Preparing to send handshake msg G2 */
 } sup_auth_status_t;
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 typedef struct wl_wsec_key {
 	uint32		index;		/* key index */
@@ -887,7 +879,6 @@ typedef struct _pmkid_cand_list {
 
 #define WL_STA_ANT_MAX		4	/* max possible rx antennas */
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 typedef struct wl_assoc_info {
 	uint32		req_len;
 	uint32		resp_len;
@@ -1047,8 +1038,6 @@ typedef struct {
 
 #define WL_STA_VER		4
 
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
 #define	WLC_NUMRATES	16	/* max # of rates in a rateset */
 
 typedef struct wlc_rateset {
@@ -1084,7 +1073,6 @@ typedef struct maclist {
 	struct ether_addr ea[1];	/* variable length array of MAC addresses */
 } maclist_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 /* get pkt count struct passed through ioctl */
 typedef struct get_pktcnt {
 	uint rx_good_pkt;
@@ -1141,8 +1129,6 @@ typedef struct {
 	uint32	tsf_timer[2][2];	/* Start and End time for 8bytes value */
 } wl_mac_ratehisto_res_t;	/* MAC Specific Rate Histogram Response */
 
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
 /* Linux network driver ioctl encoding */
 typedef struct wl_ioctl {
 	uint cmd;	/* common ioctl definition */
@@ -1171,7 +1157,6 @@ typedef struct compat_wl_ioctl {
 #define WL_NUM_RATES_VHT			10
 #define WL_NUM_RATES_MCS32			1
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 /*
  * Structure for passing hardware and software
@@ -1678,7 +1663,6 @@ typedef struct wl_txchain_pwr_offsets {
 struct tsinfo_arg {
 	uint8 octets[3];
 };
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 #define RATE_CCK_1MBPS 0
 #define RATE_CCK_2MBPS 1
@@ -1982,7 +1966,6 @@ typedef struct {
 	uint32	reinitreason[NREINITREASONCOUNT]; /* reinitreason counters; 0: Unknown reason */
 } wl_cnt_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 typedef struct {
 	uint16  version;    /* see definition of WL_CNT_T_VERSION */
 	uint16  length;     /* length of entire structure */
@@ -2264,7 +2247,6 @@ typedef struct {
 	uint32 bphy_badplcp;
 
 } wl_delta_stats_t;
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 typedef struct {
 	uint32 packets;
@@ -2286,7 +2268,6 @@ typedef struct {
 
 } wl_wme_cnt_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 struct wl_msglevel2 {
 	uint32 low;
 	uint32 high;
@@ -2559,6 +2540,10 @@ enum {
 #define PFN_PARTIAL_SCAN_BIT		0
 #define PFN_PARTIAL_SCAN_MASK		1
 
+#define PFN_SWC_RSSI_WINDOW_MAX   8
+#define PFN_SWC_MAX_NUM_APS       16
+#define PFN_HOTLIST_MAX_NUM_APS   64
+
 /* PFN network info structure */
 typedef struct wl_pfn_subnet_info {
 	struct ether_addr BSSID;
@@ -2596,6 +2581,20 @@ typedef struct wl_pfn_scanresults {
 	uint32 count;
 	wl_pfn_net_info_t netinfo[1];
 } wl_pfn_scanresults_t;
+
+typedef struct wl_pfn_significant_net {
+	uint16 flags;
+	uint16 channel;
+	struct ether_addr BSSID;
+	int8 rssi[PFN_SWC_RSSI_WINDOW_MAX];
+} wl_pfn_significant_net_t;
+
+typedef struct wl_pfn_swc_results {
+	uint32 version;
+	uint32 pkt_count;
+	uint32 total_count;
+	wl_pfn_significant_net_t list[1];
+} wl_pfn_swc_results_t;
 
 /* used to report exactly one scan result */
 /* plus reports detailed scan info in bss_info */
@@ -2635,6 +2634,13 @@ typedef struct wl_pfn_bssid {
 	/* Bit4: suppress_lost, Bit3: suppress_found */
 	uint16             flags;
 } wl_pfn_bssid_t;
+
+typedef struct wl_pfn_significant_bssid {
+	struct ether_addr	macaddr;
+	int8    rssi_low_threshold;
+	int8    rssi_high_threshold;
+} wl_pfn_significant_bssid_t;
+
 #define WL_PFN_SUPPRESSFOUND_MASK	0x08
 #define WL_PFN_SUPPRESSLOST_MASK	0x10
 #define WL_PFN_RSSI_MASK		0xff00
@@ -2646,6 +2652,40 @@ typedef struct wl_pfn_cfg {
 	uint16	channel_list[WL_NUMCHANNELS];
 	uint32	flags;
 } wl_pfn_cfg_t;
+
+#define CH_BUCKET_REPORT_REGULAR            0
+#define CH_BUCKET_REPORT_FULL_RESULT        2
+
+typedef struct wl_pfn_gscan_channel_bucket {
+	uint16 bucket_end_index;
+	uint8 bucket_freq_multiple;
+	uint8 report_flag;
+} wl_pfn_gscan_channel_bucket_t;
+
+#define GSCAN_SEND_ALL_RESULTS_MASK    (1 << 0)
+#define GSCAN_CFG_FLAGS_ONLY_MASK      (1 << 7)
+
+typedef struct wl_pfn_gscan_cfg {
+	/* BIT0 1 = send probes/beacons to HOST
+	 * BIT1 Reserved
+	 * BIT2 Reserved
+	 * Add any future flags here
+	 * BIT7 1 = no other useful cfg sent
+	 */
+	uint8 flags;
+	/* Buffer filled threshold in % to generate an event */
+	uint8   buffer_threshold;
+	/* No. of BSSIDs with "change" to generate an evt
+	 * change - crosses rssi threshold/lost
+	 */
+	uint8   swc_nbssid_threshold;
+	/* Max=8 (for now) Size of rssi cache buffer */
+	uint8  swc_rssi_window_size;
+	uint16  count_of_channel_buckets;
+	uint16  lost_ap_window;
+	wl_pfn_gscan_channel_bucket_t channel_bucket[1];
+} wl_pfn_gscan_cfg_t;
+
 #define WL_PFN_REPORT_ALLNET    0
 #define WL_PFN_REPORT_SSIDNET   1
 #define WL_PFN_REPORT_BSSIDNET  2
@@ -2669,6 +2709,16 @@ typedef struct wl_pfn_list {
 	wl_pfn_t	pfn[1];
 } wl_pfn_list_t;
 
+#define WL_PFN_MAC_OUI_ONLY_MASK      1
+#define WL_PFN_SET_MAC_UNASSOC_MASK   2
+/* To configure pfn_macaddr */
+typedef struct wl_pfn_macaddr_cfg {
+	uint8 version;
+	uint8 flags;
+	struct ether_addr macaddr;
+} wl_pfn_macaddr_cfg_t;
+#define WL_PFN_MACADDR_CFG_VER 1
+
 typedef BWL_PRE_PACKED_STRUCT struct pfn_olmsg_params_t {
 	wlc_ssid_t ssid;
 	uint32	cipher_type;
@@ -2686,8 +2736,6 @@ typedef BWL_PRE_PACKED_STRUCT struct pfn_olmsg_params_t {
 #ifndef MSCAN_MAX
 #define MSCAN_MAX			90
 #endif
-
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 /* Service discovery */
 typedef struct {
@@ -2832,7 +2880,6 @@ typedef struct {
 	struct ether_addr bssid[1];	/* max ANQPO_MAX_IGNORE_BSSID */
 } wl_anqpo_ignore_bssid_list_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 struct toe_ol_stats_t {
 	/* Num of tx packets that don't need to be checksummed */
@@ -2963,7 +3010,6 @@ typedef struct wl_pkt_filter_pattern {
 		uint32	offset;		/* Offset within received packet to start pattern matching.
 				 * Offset '0' is the first byte of the ethernet header.
 				 */
-		wl_pkt_decrypter_t*	decrypt_ctx;	/* Decrypt context */
 	};
 	uint32	size_bytes;	/* Size of the pattern.  Bitmask must be the same size. */
 	uint8   mask_and_pattern[1]; /* Variable length mask and pattern data.  mask starts
@@ -3405,8 +3451,6 @@ typedef struct {
 } wl_ioctl_overlay_t;
 #endif /* DONGLEOVERLAYS */
 
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
 /* 11k Neighbor Report element */
 typedef struct nbr_element {
 	uint8 id;
@@ -3663,22 +3707,6 @@ BWL_PRE_PACKED_STRUCT struct hostip_id {
 	uint8 id;
 } BWL_POST_PACKED_STRUCT;
 
-#if 0 && (NDISVER >= 0x0600)
-/* Return values */
-#define ND_REPLY_PEER		0x1	/* Reply was sent to service NS request from peer */
-#define ND_REQ_SINK			0x2	/* Input packet should be discarded */
-#define ND_FORCE_FORWARD	0X3	/* For the dongle to forward req to HOST */
-
-
-/* Neighbor Solicitation Response Offload IOVAR param */
-typedef BWL_PRE_PACKED_STRUCT struct nd_param {
-	struct ipv6_addr	host_ip[2];
-	struct ipv6_addr	solicit_ip;
-	struct ipv6_addr	remote_ip;
-	uint8	host_mac[ETHER_ADDR_LEN];
-	uint32	offload_id;
-} BWL_POST_PACKED_STRUCT nd_param_t;
-#endif 
 
 typedef BWL_PRE_PACKED_STRUCT struct wl_pfn_roam_thresh {
 	uint32 pfn_alert_thresh; /* time in ms */
@@ -3777,7 +3805,6 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_pmalert_ucode_dbg {
 	uint32 phydebug[20];
 } BWL_POST_PACKED_STRUCT wl_pmalert_ucode_dbg_t;
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 
 /* Structures and constants used for "vndr_ie" IOVar interface */
 #define VNDR_IE_CMD_LEN		4	/* length of the set command string:
@@ -3893,7 +3920,6 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 } BWL_POST_PACKED_STRUCT ibss_route_tbl_t;
 
 #define MAX_IBSS_ROUTE_TBL_ENTRY	64
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 #define TXPWR_TARGET_VERSION  0
 typedef BWL_PRE_PACKED_STRUCT struct {
@@ -3978,7 +4004,6 @@ typedef BWL_PRE_PACKED_STRUCT struct wlc_ipfo_route_tbl {
 /* no strict structure packing */
 #include <packed_section_end.h>
 
-#ifndef LINUX_POSTMOGRIFY_REMOVAL
 	/* Global ASSERT Logging */
 #define ASSERTLOG_CUR_VER	0x0100
 #define MAX_ASSRTSTR_LEN	64
@@ -3999,20 +4024,6 @@ typedef BWL_PRE_PACKED_STRUCT struct wlc_ipfo_route_tbl {
 #define LOGRRC_FIX_LEN	8
 #define IOBUF_ALLOWED_NUM_OF_LOGREC(type, len) ((len - LOGRRC_FIX_LEN)/sizeof(type))
 
-#ifdef BCMWAPI_WAI
-#define IV_LEN 16
-	struct wapi_sta_msg_t
-	{
-		uint16	msg_type;
-		uint16	datalen;
-		uint8	vap_mac[6];
-		uint8	reserve_data1[2];
-		uint8	sta_mac[6];
-		uint8	reserve_data2[2];
-		uint8	gsn[IV_LEN];
-		uint8	wie[256];
-	};
-#endif /* BCMWAPI_WAI */
 
 	/* chanim acs record */
 	typedef struct {
@@ -5522,8 +5533,6 @@ typedef struct net_detect_wake_data {
 } net_detect_wake_data_t;
 
 #endif /* NET_DETECT */
-
-#endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 typedef struct bcnreq {
 	uint8 bcn_mode;
