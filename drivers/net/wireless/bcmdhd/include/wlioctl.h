@@ -4924,6 +4924,8 @@ typedef BWL_PRE_PACKED_STRUCT struct wl_proxd_params_tof_tune {
 	uint8		hw_adj;			/* enable hw assisted timestamp adjustment */
 	uint8		seq_en;			/* enable ranging sequence */
 	uint8		ftm_cnt[TOF_BW_SEQ_NUM]; /* number of ftm frames based on bandwidth */
+	int16		N_log2_2g;		/* simple threshold crossing for 2g channel */
+	int16		N_scale_2g;		/* simple threshold crossing for 2g channel */
 } BWL_POST_PACKED_STRUCT wl_proxd_params_tof_tune_t;
 
 typedef struct wl_proxd_params_iovar {
@@ -5799,26 +5801,574 @@ wl_wlc_version_t;
  * there is a change that involves both WLC layer and per-port layer.
  * WLC_VERSION_MINOR is currently not in use.
  */
-#define WLC_VERSION_MAJOR	3
+#define WLC_VERSION_MAJOR	2
 #define WLC_VERSION_MINOR	0
 
+/* current version of WLC interface supported by WL layer */
+#define WL_SUPPORTED_WLC_VER_MAJOR 3
+#define WL_SUPPORTED_WLC_VER_MINOR 0
 
 /* require strict packing */
 #include <packed_section_start.h>
-/* Data returned by the bssload_report iovar.
- * This is also the WLC_E_BSS_LOAD event data.
- */
-typedef BWL_PRE_PACKED_STRUCT struct wl_bssload {
-	uint16 sta_count;		/* station count */
-	uint16 aac;			/* available admission capacity */
-	uint8 chan_util;		/* channel utilization */
-} BWL_POST_PACKED_STRUCT wl_bssload_t;
 
-/* Maximum number of configurable BSS Load levels.  The number of BSS Load
- * ranges is always 1 more than the number of configured levels.  eg. if
- * 3 levels of 10, 20, 30 are configured then this defines 4 load ranges:
- * 0-10, 11-20, 21-30, 31-255.  A WLC_E_BSS_LOAD event is generated each time
- * the utilization level crosses into another range, subject to the rate limit.
+#define WL_PROXD_API_VERSION 0x0300	/* version 3.0 */
+
+/* proximity detection methods */
+enum {
+	WL_PROXD_METHOD_NONE	= 0,
+	WL_PROXD_METHOD_RSVD1	= 1, /* backward compatibility - RSSI, not supported */
+	WL_PROXD_METHOD_TOF	= 2, /* 11v+BCM proprietary */
+	WL_PROXD_METHOD_RSVD2	= 3, /* 11v only - if needed */
+	WL_PROXD_METHOD_FTM	= 4, /* IEEE rev mc/2014 */
+	WL_PROXD_METHOD_MAX
+};
+typedef int16 wl_proxd_method_t;
+
+/* global and method configuration flags */
+enum {
+	WL_PROXD_FLAG_NONE		= 0x00000000,
+	WL_PROXD_FLAG_RX_ENABLED        = 0x00000001, /* respond to requests */
+	WL_PROXD_FLAG_RX_RANGE_REQ	= 0x00000002, /* 11mc range requests enabled */
+	WL_PROXD_FLAG_TX_LCI		= 0x00000004, /* transmit location, if available */
+	WL_PROXD_FLAG_TX_CIVIC		= 0x00000008, /* tx civic loc, if available */
+	WL_PROXD_FLAG_RX_AUTO_BURST	= 0x00000010, /* respond to requests w/o host action */
+	WL_PROXD_FLAG_TX_AUTO_BURST	= 0x00000020, /* continue requests w/o host action */
+	WL_PROXD_FLAG_ALL		= 0xffffffff
+};
+typedef uint32 wl_proxd_flags_t;
+
+/* session flags */
+enum {
+	WL_PROXD_SESSION_FLAG_NONE		= 0x00000000,  /* no flags */
+	WL_PROXD_SESSION_FLAG_INITIATOR		= 0x00000001,  /* local device is initiator */
+	WL_PROXD_SESSION_FLAG_TARGET		= 0x00000002,  /* local device is target */
+	WL_PROXD_SESSION_FLAG_ONE_WAY		= 0x00000004,  /* (initiated) 1-way rtt */
+	WL_PROXD_SESSION_FLAG_AUTO_BURST	= 0x00000008,  /* created w/ rx_auto_burst */
+	WL_PROXD_SESSION_FLAG_PERSIST		= 0x00000010,  /* good until cancelled */
+	WL_PROXD_SESSION_FLAG_RTT_DETAIL	= 0x00000020,  /* rtt detail in results */
+	WL_PROXD_SESSION_FLAG_TOF_COMPAT	= 0x00000040,  /* TOF  compatibility - TBD */
+	WL_PROXD_SESSION_FLAG_AOA		= 0x00000080,  /* AOA along w/ RTT */
+	WL_PROXD_SESSION_FLAG_RX_AUTO_BURST	= 0x00000100,  /* Same as proxd flags above */
+	WL_PROXD_SESSION_FLAG_TX_AUTO_BURST	= 0x00000200,  /* Same as proxd flags above */
+	WL_PROXD_SESSION_FLAG_NAN_BSS		= 0x00000400,  /* Use NAN BSS, if applicable */
+	WL_PROXD_SESSION_FLAG_TS1		= 0x00000800,  /* e.g. FTM1 - cap or rx */
+	WL_PROXD_SESSION_FLAG_REPORT_FAILURE	= 0x00002000, /* report failure to target */
+	WL_PROXD_SESSION_FLAG_INITIATOR_RPT	= 0x00004000, /* report distance to target */
+	WL_PROXD_SESSION_FLAG_NOCHANSWT		= 0x00008000, /* No channel switching */
+	WL_PROXD_SESSION_FLAG_NETRUAL		= 0x00010000, /* netrual mode */
+	WL_PROXD_SESSION_FLAG_SEQ_EN		= 0x00020000, /* Toast */
+	WL_PROXD_SESSION_FLAG_NO_PARAM_OVRD	= 0x00040000, /* no param override from target */
+	WL_PROXD_SESSION_FLAG_ASAP		= 0x00080000, /* ASAP session */
+	WL_PROXD_SESSION_FLAG_REQ_LCI		= 0x00100000, /* transmit LCI req */
+	WL_PROXD_SESSION_FLAG_REQ_CIV		= 0x00200000, /* transmit civic loc req */
+	WL_PROXD_SESSION_FLAG_COLLECT		= 0x80000000,	/* debug - collect */
+	WL_PROXD_SESSION_FLAG_ALL		= 0xffffffff
+};
+typedef uint32 wl_proxd_session_flags_t;
+
+/* time units - mc supports up to 0.1ns resolution */
+enum {
+	WL_PROXD_TMU_TU		= 0,		/* 1024us */
+	WL_PROXD_TMU_SEC	= 1,
+	WL_PROXD_TMU_MILLI_SEC	= 2,
+	WL_PROXD_TMU_MICRO_SEC	= 3,
+	WL_PROXD_TMU_NANO_SEC	= 4,
+	WL_PROXD_TMU_PICO_SEC	= 5
+};
+typedef int16 wl_proxd_tmu_t;
+
+/* time interval e.g. 10ns */
+typedef struct wl_proxd_intvl {
+	uint32 intvl;
+	wl_proxd_tmu_t tmu;
+	uint8	pad[2];
+} wl_proxd_intvl_t;
+
+/* commands that can apply to proxd, method or a session */
+enum {
+	WL_PROXD_CMD_NONE		= 0,
+	WL_PROXD_CMD_GET_VERSION	= 1,
+	WL_PROXD_CMD_ENABLE		= 2,
+	WL_PROXD_CMD_DISABLE		= 3,
+	WL_PROXD_CMD_CONFIG		= 4,
+	WL_PROXD_CMD_START_SESSION	= 5,
+	WL_PROXD_CMD_BURST_REQUEST	= 6,
+	WL_PROXD_CMD_STOP_SESSION	= 7,
+	WL_PROXD_CMD_DELETE_SESSION	= 8,
+	WL_PROXD_CMD_GET_RESULT		= 9,
+	WL_PROXD_CMD_GET_INFO		= 10,
+	WL_PROXD_CMD_GET_STATUS		= 11,
+	WL_PROXD_CMD_GET_SESSIONS	= 12,
+	WL_PROXD_CMD_GET_COUNTERS	= 13,
+	WL_PROXD_CMD_CLEAR_COUNTERS	= 14,
+	WL_PROXD_CMD_COLLECT		= 15,
+	WL_PROXD_CMD_TUNE		= 16,
+	WL_PROXD_CMD_DUMP		= 17,
+	WL_PROXD_CMD_START_RANGING	= 18,
+	WL_PROXD_CMD_STOP_RANGING	= 19,
+	WL_PROXD_CMD_GET_RANGING_INFO	= 20,
+	WL_PROXD_CMD_MAX
+};
+typedef int16 wl_proxd_cmd_t;
+
+/* session ids:
+ * id 0 is reserved
+ * ids 1..0x7fff - allocated by host/app
+ * 0x8000-0xffff - allocated by firmware, used for auto/rx
+ */
+enum {
+	 WL_PROXD_SESSION_ID_GLOBAL = 0
+};
+
+#define WL_PROXD_SID_HOST_MAX 0x7fff
+#define WL_PROXD_SID_HOST_ALLOC(_sid) ((_sid) > 0 && (_sid) <= WL_PROXD_SID_HOST_MAX)
+
+/* maximum number sessions that can be allocated, may be less if tunable */
+#define WL_PROXD_MAX_SESSIONS 16
+
+typedef uint16 wl_proxd_session_id_t;
+
+/* status - TBD BCME_ vs proxd status - range reserved for BCME_ */
+enum {
+	WL_PROXD_E_INCOMPLETE		= -1044,
+	WL_PROXD_E_OVERRIDDEN		= -1043,
+	WL_PROXD_E_ASAP_FAILED		= -1042,
+	WL_PROXD_E_NOTSTARTED		= -1041,
+	WL_PROXD_E_INVALIDAVB		= -1040,
+	WL_PROXD_E_INCAPABLE		= -1039,
+	WL_PROXD_E_MISMATCH		= -1038,
+	WL_PROXD_E_DUP_SESSION		= -1037,
+	WL_PROXD_E_REMOTE_FAIL		= -1036,
+	WL_PROXD_E_REMOTE_INCAPABLE	= -1035,
+	WL_PROXD_E_SCHED_FAIL		= -1034,
+	WL_PROXD_E_PROTO		= -1033,
+	WL_PROXD_E_EXPIRED		= -1032,
+	WL_PROXD_E_TIMEOUT		= -1031,
+	WL_PROXD_E_NOACK		= -1030,
+	WL_PROXD_E_DEFERRED		= -1029,
+	WL_PROXD_E_INVALID_SID		= -1028,
+	WL_PROXD_E_REMOTE_CANCEL	= -1027,
+	WL_PROXD_E_CANCELED		= -1026,	/* local */
+	WL_PROXD_E_INVALID_SESSION	= -1025,
+	WL_PROXD_E_BAD_STATE		= -1024,
+	WL_PROXD_E_ERROR		= -1,
+	WL_PROXD_E_OK			= 0
+};
+typedef int32 wl_proxd_status_t;
+
+/* session states */
+enum {
+	WL_PROXD_SESSION_STATE_NONE			= 0,
+	WL_PROXD_SESSION_STATE_CREATED			= 1,
+	WL_PROXD_SESSION_STATE_CONFIGURED		= 2,
+	WL_PROXD_SESSION_STATE_STARTED			= 3,
+	WL_PROXD_SESSION_STATE_DELAY			= 4,
+	WL_PROXD_SESSION_STATE_USER_WAIT		= 5,
+	WL_PROXD_SESSION_STATE_SCHED_WAIT		= 6,
+	WL_PROXD_SESSION_STATE_BURST			= 7,
+	WL_PROXD_SESSION_STATE_STOPPING			= 8,
+	WL_PROXD_SESSION_STATE_ENDED			= 9,
+	WL_PROXD_SESSION_STATE_DESTROYING		= -1
+};
+typedef int16 wl_proxd_session_state_t;
+
+/* RTT sample flags */
+enum {
+	WL_PROXD_RTT_SAMPLE_NONE	= 0x00,
+	WL_PROXD_RTT_SAMPLE_DISCARD	= 0x01
+};
+typedef uint8 wl_proxd_rtt_sample_flags_t;
+
+typedef struct wl_proxd_rtt_sample {
+	uint8				id;			/* id for the sample - non-zero */
+	wl_proxd_rtt_sample_flags_t	flags;
+	int16				rssi;
+	wl_proxd_intvl_t	rtt;		/* round trip time */
+	uint32 				ratespec;
+} wl_proxd_rtt_sample_t;
+
+/*  result flags */
+enum {
+	WL_PRXOD_RESULT_FLAG_NONE	= 0x0000,
+	WL_PROXD_RESULT_FLAG_NLOS	= 0x0001,	/* LOS - if available */
+	WL_PROXD_RESULT_FLAG_LOS	= 0x0002,	/* NLOS - if available */
+	WL_PROXD_RESULT_FLAG_FATAL	= 0x0004,	/* Fatal error during burst */
+	WL_PROXD_RESULT_FLAG_ALL	= 0xffff
+};
+typedef int16 wl_proxd_result_flags_t;
+
+/* rtt measurement result */
+typedef struct wl_proxd_rtt_result {
+	wl_proxd_session_id_t		sid;
+	wl_proxd_result_flags_t		flags;
+	wl_proxd_status_t		status;
+	struct ether_addr		peer;
+	wl_proxd_session_state_t	state;		/* current state */
+	union {
+		wl_proxd_intvl_t		retry_after;	/* hint for errors */
+		wl_proxd_intvl_t		burst_duration; /* burst duration */
+	} u;
+	wl_proxd_rtt_sample_t		avg_rtt;
+	uint32				avg_dist;	/* 1/256m units */
+	uint16				sd_rtt;		/* RTT standard deviation */
+	uint8				num_valid_rtt;	/* valid rtt cnt */
+	uint8				num_ftm;	/* actual num of ftm cnt */
+	uint16				burst_num;	/* in a session */
+	uint16				num_rtt;	/* 0 if no detail */
+	wl_proxd_rtt_sample_t		rtt[1];		/* variable */
+} wl_proxd_rtt_result_t;
+
+/* aoa measurement result */
+typedef struct wl_proxd_aoa_result {
+	wl_proxd_session_id_t			sid;
+	wl_proxd_result_flags_t			flags;
+	wl_proxd_status_t			status;
+	struct ether_addr			peer;
+	wl_proxd_session_state_t		state;
+	uint16					burst_num;
+	uint8					pad[2];
+	/* wl_proxd_aoa_sample_t sample_avg; TBD */
+} BWL_POST_PACKED_STRUCT wl_proxd_aoa_result_t;
+
+/* global stats */
+typedef struct wl_proxd_counters {
+	uint32 tx;			/* tx frame count */
+	uint32 rx;			/* rx frame count */
+	uint32 burst;			/* total number of burst */
+	uint32 sessions;		/* total number of sessions */
+	uint32 max_sessions;		/* max concurrency */
+	uint32 sched_fail;		/* scheduling failures */
+	uint32 timeouts;		/* timeouts */
+	uint32 protoerr;		/* protocol errors */
+	uint32 noack;			/* tx w/o ack */
+	uint32 txfail;			/* any tx falure */
+	uint32 lci_req_tx;		/* tx LCI requests */
+	uint32 lci_req_rx;		/* rx LCI requests */
+	uint32 lci_rep_tx;		/* tx LCI reports */
+	uint32 lci_rep_rx;		/* rx LCI reports */
+	uint32 civic_req_tx;		/* tx civic requests */
+	uint32 civic_req_rx;		/* rx civic requests */
+	uint32 civic_rep_tx;		/* tx civic reports */
+	uint32 civic_rep_rx;		/* rx civic reports */
+	uint32 rctx;			/* ranging contexts created */
+	uint32 rctx_done;		/* count of ranging done */
+} wl_proxd_counters_t;
+
+typedef struct wl_proxd_counters wl_proxd_session_counters_t;
+
+enum {
+	WL_PROXD_CAP_NONE 		= 0x0000,
+	WL_PROXD_CAP_ALL 		= 0xffff
+};
+typedef int16 wl_proxd_caps_t;
+
+/* method capabilities */
+enum {
+	WL_PROXD_FTM_CAP_NONE = 0x0000,
+	WL_PROXD_FTM_CAP_FTM1 = 0x0001
+};
+typedef uint16 wl_proxd_ftm_caps_t;
+
+typedef struct BWL_PRE_PACKED_STRUCT wl_proxd_tlv_id_list {
+	uint16			num_ids;
+	uint16			ids[1];
+} BWL_POST_PACKED_STRUCT wl_proxd_tlv_id_list_t;
+
+typedef struct wl_proxd_session_id_list {
+	uint16 num_ids;
+	wl_proxd_session_id_t ids[1];
+} wl_proxd_session_id_list_t;
+
+/* tlvs returned for get_info on ftm method
+ * configuration:
+ * 		proxd flags
+ *  	event mask
+ *  	debug mask
+ *  	session defaults (session tlvs)
+ * status tlv - not supported for ftm method
+ * info tlv
+ */
+typedef struct wl_proxd_ftm_info {
+	wl_proxd_ftm_caps_t caps;
+	uint16 max_sessions;
+	uint16 num_sessions;
+	uint16 rx_max_burst;
+} wl_proxd_ftm_info_t;
+
+/* tlvs returned for get_info on session
+ * session config (tlvs)
+ * session info tlv
+ */
+typedef struct wl_proxd_ftm_session_info {
+	uint16 sid;
+	uint8 bss_index;
+	uint8 pad;
+	struct ether_addr bssid;
+	wl_proxd_session_state_t state;
+	wl_proxd_status_t status;
+	uint16	burst_num;
+} wl_proxd_ftm_session_info_t;
+
+typedef struct wl_proxd_ftm_session_status {
+	uint16 sid;
+	wl_proxd_session_state_t state;
+	wl_proxd_status_t status;
+	uint16	burst_num;
+} wl_proxd_ftm_session_status_t;
+
+/* rrm range request */
+typedef struct wl_proxd_range_req {
+	uint16			num_repeat;
+	uint16			init_delay_range;	/* in TUs */
+	uint8			pad;
+	uint8			num_nbr;		/* number of (possible) neighbors */
+	nbr_element_t		nbr[1];
+} wl_proxd_range_req_t;
+
+#define WL_PROXD_LCI_LAT_OFF	0
+#define WL_PROXD_LCI_LONG_OFF	5
+#define WL_PROXD_LCI_ALT_OFF	10
+
+#define WL_PROXD_LCI_GET_LAT(_lci, _lat, _lat_err) { \
+	unsigned _off = WL_PROXD_LCI_LAT_OFF; \
+	_lat_err = (_lci)->data[(_off)] & 0x3f; \
+	_lat = (_lci)->data[(_off)+1]; \
+	_lat |= (_lci)->data[(_off)+2] << 8; \
+	_lat |= (_lci)->data[_(_off)+3] << 16; \
+	_lat |= (_lci)->data[(_off)+4] << 24; \
+	_lat <<= 2; \
+	_lat |= (_lci)->data[(_off)] >> 6; \
+}
+
+#define WL_PROXD_LCI_GET_LONG(_lci, _lcilong, _long_err) { \
+	unsigned _off = WL_PROXD_LCI_LONG_OFF; \
+	_long_err = (_lci)->data[(_off)] & 0x3f; \
+	_lcilong = (_lci)->data[(_off)+1]; \
+	_lcilong |= (_lci)->data[(_off)+2] << 8; \
+	_lcilong |= (_lci)->data[_(_off)+3] << 16; \
+	_lcilong |= (_lci)->data[(_off)+4] << 24; \
+	__lcilong <<= 2; \
+	_lcilong |= (_lci)->data[(_off)] >> 6; \
+}
+
+#define WL_PROXD_LCI_GET_ALT(_lci, _alt_type, _alt, _alt_err) { \
+	unsigned _off = WL_PROXD_LCI_ALT_OFF; \
+	_alt_type = (_lci)->data[_off] & 0x0f; \
+	_alt_err = (_lci)->data[(_off)] >> 4; \
+	_alt_err |= ((_lci)->data[(_off)+1] & 0x03) << 4; \
+	_alt = (_lci)->data[(_off)+2]; \
+	_alt |= (_lci)->data[(_off)+3] << 8; \
+	_alt |= (_lci)->data[_(_off)+4] << 16; \
+	_alt <<= 6; \
+	_alt |= (_lci)->data[(_off) + 1] >> 2; \
+}
+
+#define WL_PROXD_LCI_VERSION(_lci) ((_lci)->data[15] >> 6)
+
+/* availability. advertising mechanism bss specific */
+/* availablity flags */
+enum {
+	WL_PROXD_AVAIL_NONE = 0,
+	WL_PROXD_AVAIL_NAN_PUBLISHED = 0x0001,
+	WL_PROXD_AVAIL_SCHEDULED = 0x0002        /* scheduled by proxd */
+};
+typedef int16 wl_proxd_avail_flags_t;
+
+/* time reference */
+enum {
+	WL_PROXD_TREF_NONE = 0,
+	WL_PROXD_TREF_DEV_TSF = 1,
+	WL_PROXD_TREF_NAN_DW = 2,
+	WL_PROXD_TREF_TBTT = 3,
+	WL_PROXD_TREF_MAX		/* last entry */
+};
+typedef int16 wl_proxd_time_ref_t;
+
+/* proxd channel-time slot */
+typedef struct {
+	wl_proxd_intvl_t start;         /* from ref */
+	wl_proxd_intvl_t duration;      /* from start */
+	uint32  chanspec;
+} wl_proxd_time_slot_t;
+
+/* availability. advertising mechanism bss specific */
+typedef struct wl_proxd_avail {
+	wl_proxd_avail_flags_t flags; /* for query only */
+	wl_proxd_time_ref_t time_ref;
+	uint16	max_slots; /* for query only */
+	uint16  num_slots;
+	wl_proxd_time_slot_t slots[1];
+} wl_proxd_avail_t;
+
+/* collect support TBD */
+
+/* debugging */
+enum {
+	WL_PROXD_DEBUG_NONE	= 0x00000000,
+	WL_PROXD_DEBUG_LOG	= 0x00000001,
+	WL_PROXD_DEBUG_IOV	= 0x00000002,
+	WL_PROXD_DEBUG_EVENT	= 0x00000004,
+	WL_PROXD_DEBUG_SESSION	= 0x00000008,
+	WL_PROXD_DEBUG_PROTO	= 0x00000010,
+	WL_PROXD_DEBUG_SCHED	= 0x00000020,
+	WL_PROXD_DEBUG_RANGING	= 0x00000040,
+	WL_PROXD_DEBUG_ALL	= 0xffffffff
+};
+typedef uint32 wl_proxd_debug_mask_t;
+
+/* tlv IDs - data length 4 bytes unless overridden by type, alignment 32 bits */
+enum {
+	WL_PROXD_TLV_ID_NONE			= 0,
+	WL_PROXD_TLV_ID_METHOD			= 1,
+	WL_PROXD_TLV_ID_FLAGS			= 2,
+	WL_PROXD_TLV_ID_CHANSPEC		= 3,	/* note: uint32 */
+	WL_PROXD_TLV_ID_TX_POWER		= 4,
+	WL_PROXD_TLV_ID_RATESPEC		= 5,
+	WL_PROXD_TLV_ID_BURST_DURATION		= 6,	/* intvl - length of burst */
+	WL_PROXD_TLV_ID_BURST_PERIOD		= 7,	/* intvl - between bursts */
+	WL_PROXD_TLV_ID_BURST_FTM_SEP		= 8,	/* intvl - between FTMs */
+	WL_PROXD_TLV_ID_BURST_NUM_FTM		= 9,	/* uint16 - per burst */
+	WL_PROXD_TLV_ID_NUM_BURST		= 10,	/* uint16 */
+	WL_PROXD_TLV_ID_FTM_RETRIES		= 11,	/* uint16 at FTM level */
+	WL_PROXD_TLV_ID_BSS_INDEX		= 12,	/* uint8 */
+	WL_PROXD_TLV_ID_BSSID			= 13,
+	WL_PROXD_TLV_ID_INIT_DELAY		= 14,	/* intvl - optional, non-standalone only */
+	WL_PROXD_TLV_ID_BURST_TIMEOUT		= 15,	/* expect response within - intvl */
+	WL_PROXD_TLV_ID_EVENT_MASK		= 16,	/* interested events - in/out */
+	WL_PROXD_TLV_ID_FLAGS_MASK		= 17,	/* interested flags - in only */
+	WL_PROXD_TLV_ID_PEER_MAC		= 18,	/* mac address of peer */
+	WL_PROXD_TLV_ID_FTM_REQ			= 19,	/* dot11_ftm_req */
+	WL_PROXD_TLV_ID_LCI_REQ			= 20,
+	WL_PROXD_TLV_ID_LCI			= 21,
+	WL_PROXD_TLV_ID_CIVIC_REQ		= 22,
+	WL_PROXD_TLV_ID_CIVIC			= 23,
+	WL_PROXD_TLV_ID_AVAIL			= 24,
+	WL_PROXD_TLV_ID_SESSION_FLAGS		= 25,
+	WL_PROXD_TLV_ID_SESSION_FLAGS_MASK	= 26,	/* in only */
+	WL_PROXD_TLV_ID_RX_MAX_BURST		= 27,	/* uint16 - limit bursts per session */
+	WL_PROXD_TLV_ID_RANGING_INFO		= 28,	/* ranging info */
+	WL_PROXD_TLV_ID_RANGING_FLAGS		= 29,	/* uint16 */
+	WL_PROXD_TLV_ID_RANGING_FLAGS_MASK = 30,	/* uint16, in only */
+	/* 31 - 34 reserved for other feature */
+	WL_PROXD_TLV_ID_FTM_REQ_RETRIES 	= 35,	/* uint16 FTM request retries */
+
+	/* output - 512 + x */
+	WL_PROXD_TLV_ID_STATUS			= 512,
+	WL_PROXD_TLV_ID_COUNTERS		= 513,
+	WL_PROXD_TLV_ID_INFO			= 514,
+	WL_PROXD_TLV_ID_RTT_RESULT		= 515,
+	WL_PROXD_TLV_ID_AOA_RESULT		= 516,
+	WL_PROXD_TLV_ID_SESSION_INFO		= 517,
+	WL_PROXD_TLV_ID_SESSION_STATUS		= 518,
+	WL_PROXD_TLV_ID_SESSION_ID_LIST		= 519,
+
+	/* debug tlvs can be added starting 1024 */
+	WL_PROXD_TLV_ID_DEBUG_MASK		= 1024,
+	WL_PROXD_TLV_ID_COLLECT			= 1025,	/* output only */
+	WL_PROXD_TLV_ID_STRBUF			= 1026,
+
+	WL_PROXD_TLV_ID_MAX
+};
+
+typedef struct wl_proxd_tlv {
+	uint16 id;
+	uint16 len;
+	uint8  data[1];
+} wl_proxd_tlv_t;
+
+/* proxd iovar - applies to proxd, method or session */
+typedef struct wl_proxd_iov {
+	uint16			version;
+	uint16			len;
+	wl_proxd_cmd_t		cmd;
+	wl_proxd_method_t	method;
+	wl_proxd_session_id_t	sid;
+	uint8			pad[2];
+	wl_proxd_tlv_t		tlvs[1];	/* variable */
+} wl_proxd_iov_t;
+
+#define WL_PROXD_IOV_HDR_SIZE OFFSETOF(wl_proxd_iov_t, tlvs)
+
+/* The following event definitions may move to bcmevent.h, but sharing proxd types
+ * across needs more invasive changes unrelated to proxd
+ */
+enum {
+	WL_PROXD_EVENT_NONE				= 0,	/* not an event, reserved */
+	WL_PROXD_EVENT_SESSION_CREATE	= 1,
+	WL_PROXD_EVENT_SESSION_START	= 2,
+	WL_PROXD_EVENT_FTM_REQ		= 3,
+	WL_PROXD_EVENT_BURST_START	= 4,
+	WL_PROXD_EVENT_BURST_END	= 5,
+	WL_PROXD_EVENT_SESSION_END	= 6,
+	WL_PROXD_EVENT_SESSION_RESTART	= 7,
+	WL_PROXD_EVENT_BURST_RESCHED	= 8,	/* burst rescheduled - e.g. partial TSF */
+	WL_PROXD_EVENT_SESSION_DESTROY	= 9,
+	WL_PROXD_EVENT_RANGE_REQ	= 10,
+	WL_PROXD_EVENT_FTM_FRAME	= 11,
+	WL_PROXD_EVENT_DELAY		= 12,
+	WL_PROXD_EVENT_VS_INITIATOR_RPT = 13,	/* (target) rx initiator-report */
+	WL_PROXD_EVENT_RANGING		= 14,
+
+	WL_PROXD_EVENT_MAX
+};
+typedef int16 wl_proxd_event_type_t;
+
+/* proxd event mask - upto 32 events for now */
+typedef uint32 wl_proxd_event_mask_t;
+
+#define WL_PROXD_EVENT_MASK_ALL 0xfffffffe
+#define WL_PROXD_EVENT_MASK_EVENT(_event_type) (1 << (_event_type))
+#define WL_PROXD_EVENT_ENABLED(_mask, _event_type) (\
+	((_mask) & WL_PROXD_EVENT_MASK_EVENT(_event_type)) != 0)
+
+/* proxd event - applies to proxd, method or session */
+typedef struct wl_proxd_event {
+	uint16			version;
+	uint16			len;
+	wl_proxd_event_type_t	type;
+	wl_proxd_method_t	method;
+	wl_proxd_session_id_t	sid;
+	uint8			pad[2];
+	wl_proxd_tlv_t		tlvs[1];	/* variable */
+} wl_proxd_event_t;
+
+enum {
+	WL_PROXD_RANGING_STATE_NONE		= 0,
+	WL_PROXD_RANGING_STATE_NOTSTARTED	= 1,
+	WL_PROXD_RANGING_STATE_INPROGRESS	= 2,
+	WL_PROXD_RANGING_STATE_DONE		= 3
+};
+typedef int16 wl_proxd_ranging_state_t;
+
+/* proxd ranging flags */
+enum {
+	WL_PROXD_RANGING_FLAG_NONE = 0x0000,  /* no flags */
+	WL_PROXD_RANGING_FLAG_DEL_SESSIONS_ON_STOP = 0x0001,
+	WL_PROXD_RANGING_FLAG_ALL = 0xffff
+};
+typedef uint16 wl_proxd_ranging_flags_t;
+
+struct wl_proxd_ranging_info {
+	wl_proxd_status_t   status;
+	wl_proxd_ranging_state_t state;
+	wl_proxd_ranging_flags_t flags;
+	uint16	num_sids;
+	uint16	num_done;
+};
+typedef struct wl_proxd_ranging_info wl_proxd_ranging_info_t;
+
+/* end proxd definitions */
+
+
+/* Data structures for Interface Create/Remove  */
+
+#define WL_INTERFACE_CREATE_VER	(0)
+
+/*
+ * The flags filed of the wl_interface_create is designed to be
+ * a Bit Mask. As of now only Bit 0 and Bit 1 are used as mentioned below.
+ * The rest of the bits can be used, incase we have to provide
+ * more information to the dongle
  */
 #define MAX_BSSLOAD_LEVELS 8
 #define MAX_BSSLOAD_RANGES (MAX_BSSLOAD_LEVELS + 1)

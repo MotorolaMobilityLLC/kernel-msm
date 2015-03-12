@@ -5964,7 +5964,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif
 #ifdef RTT_SUPPORT
 	if (!dhd->rtt_state) {
-		dhd_rtt_init(dhd);
+		ret = dhd_rtt_init(dhd);
+		if (ret < 0) {
+			DHD_ERROR(("%s failed to initialize RTT\n", __FUNCTION__));
+		}
 	}
 #endif
 
@@ -6000,6 +6003,34 @@ dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf, uint cmd_len, in
 
 	return ret;
 }
+
+int
+dhd_getiovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf,
+	uint cmd_len, char **resptr, uint resp_len)
+{
+	int len = resp_len;
+	int ret;
+	char *buf = *resptr;
+	wl_ioctl_t ioc;
+	if (resp_len > WLC_IOCTL_MAXLEN)
+		return BCME_BADARG;
+
+	memset(buf, 0, resp_len);
+
+	bcm_mkiovar(name, cmd_buf, cmd_len, buf, len);
+
+	memset(&ioc, 0, sizeof(ioc));
+
+	ioc.cmd = WLC_GET_VAR;
+	ioc.buf = buf;
+	ioc.len = len;
+	ioc.set = 0;
+
+	ret = dhd_wl_ioctl(pub, ifidx, &ioc, ioc.buf, ioc.len);
+
+	return ret;
+}
+
 
 int dhd_change_mtu(dhd_pub_t *dhdp, int new_mtu, int ifidx)
 {

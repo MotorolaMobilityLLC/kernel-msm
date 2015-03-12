@@ -767,16 +767,18 @@ exit:
 #endif /* GSCAN_SUPPORT */
 
 #ifdef RTT_SUPPORT
-void wl_cfgvendor_rtt_evt(void *ctx, void *rtt_data)
+void
+wl_cfgvendor_rtt_evt(void *ctx, void *rtt_data)
 {
 	struct wireless_dev *wdev = (struct wireless_dev *)ctx;
 	struct wiphy *wiphy;
 	struct sk_buff *skb;
-	uint32 tot_len = NLMSG_DEFAULT_SIZE, entry_len = 0;
+ 	uint32 complete = 0;
 	gfp_t kflags;
-	rtt_report_t *rtt_report = NULL;
-	rtt_result_t *rtt_result = NULL;
-	struct list_head *rtt_list;
+	rtt_result_t *rtt_result;
+	rtt_results_header_t *rtt_header;
+	struct list_head *rtt_cache_list;
+	struct nlattr *rtt_nl_hdr;
 	wiphy = wdev->wiphy;
 
 	WL_DBG(("In\n"));
@@ -785,52 +787,44 @@ void wl_cfgvendor_rtt_evt(void *ctx, void *rtt_data)
 		WL_ERR(("rtt_data is NULL\n"));
 		goto exit;
 	}
-	rtt_list = (struct list_head *)rtt_data;
+	rtt_cache_list = (struct list_head *)rtt_data;
 	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
-	/* Alloc the SKB for vendor_event */
-	skb = cfg80211_vendor_event_alloc(wiphy, tot_len, GOOGLE_RTT_COMPLETE_EVENT, kflags);
-	if (!skb) {
-		WL_ERR(("skb alloc failed"));
-		goto exit;
-	}
-	/* fill in the rtt results on each entry */
-	list_for_each_entry(rtt_result, rtt_list, list) {
-		entry_len = 0;
-		entry_len = sizeof(rtt_report_t);
-		rtt_report = kzalloc(entry_len, kflags);
-		if (!rtt_report) {
-			WL_ERR(("rtt_report alloc failed"));
+
+	list_for_each_entry(rtt_header, rtt_cache_list, list) {
+		/* Alloc the SKB for vendor_event */
+		skb = cfg80211_vendor_event_alloc(wiphy, rtt_header->result_tot_len + 100,
+			GOOGLE_RTT_COMPLETE_EVENT, kflags);
+		if (!skb) {
+			WL_ERR(("skb alloc failed"));
 			goto exit;
 		}
-		rtt_report->addr = rtt_result->peer_mac;
-		rtt_report->num_measurement = 1; /* ONE SHOT */
-		rtt_report->status = rtt_result->err_code;
-		rtt_report->type = (rtt_result->TOF_type == TOF_TYPE_ONE_WAY) ? RTT_ONE_WAY: RTT_TWO_WAY;
-		rtt_report->peer = rtt_result->target_info->peer;
-		rtt_report->channel = rtt_result->target_info->channel;
-		rtt_report->rssi = rtt_result->avg_rssi;
-		/* tx_rate */
-		rtt_report->tx_rate = rtt_result->tx_rate;
-		/* RTT */
-		rtt_report->rtt = rtt_result->meanrtt;
-		rtt_report->rtt_sd = rtt_result->sdrtt/10;
-		/* convert to centi meter */
-		if (rtt_result->distance != 0xffffffff)
-			rtt_report->distance = (rtt_result->distance >> 2) * 25;
-		else /* invalid distance */
-			rtt_report->distance = -1;
-		rtt_report->ts = rtt_result->ts;
-		nla_append(skb, entry_len, rtt_report);
-		kfree(rtt_report);
+		if (list_is_last(&rtt_header->list, rtt_cache_list)) {
+			complete = 1;
+		}
+		nla_put_u32(skb, RTT_ATTRIBUTE_RESULTS_COMPLETE, complete);
+		rtt_nl_hdr = nla_nest_start(skb, RTT_ATTRIBUTE_RESULTS_PER_TARGET);
+		if (!rtt_nl_hdr) {
+			WL_ERR(("rtt_nl_hdr is NULL\n"));
+			break;
+		}
+		nla_put(skb, RTT_ATTRIBUTE_TARGET_MAC, ETHER_ADDR_LEN, &rtt_header->peer_mac);
+		nla_put_u32(skb, RTT_ATTRIBUTE_RESULT_CNT, rtt_header->result_cnt);
+		list_for_each_entry(rtt_result, &rtt_header->result_list, list) {
+			nla_put(skb, RTT_ATTRIBUTE_RESULT,
+				rtt_result->report_len, &rtt_result->report);
+		}
+		nla_nest_end(skb, rtt_nl_hdr);
+		cfg80211_vendor_event(skb, kflags);
 	}
-	cfg80211_vendor_event(skb, kflags);
 exit:
 	return;
 }
 
-static int wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev *wdev,
-					const void *data, int len) {
+static int
+wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int len) {
 	int err = 0, rem, rem1, rem2, type;
+	int target_cnt;
 	rtt_config_params_t rtt_param;
 	rtt_target_info_t* rtt_target = NULL;
 	const struct nlattr *iter, *iter1, *iter2;
@@ -851,11 +845,18 @@ static int wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev 
 		type = nla_type(iter);
 		switch (type) {
 		case RTT_ATTRIBUTE_TARGET_CNT:
-			rtt_param.rtt_target_cnt = nla_get_u8(iter);
+			target_cnt = nla_get_u8(iter);
 			if (rtt_param.rtt_target_cnt > RTT_MAX_TARGET_CNT) {
 				WL_ERR(("exceed max target count : %d\n",
-					rtt_param.rtt_target_cnt));
+					target_cnt));
 				err = BCME_RANGE;
+				goto exit;
+			}
+			rtt_param.rtt_target_cnt = target_cnt;
+			rtt_param.target_info = kzalloc(TARGET_INFO_SIZE(target_cnt), GFP_KERNEL);
+			if (rtt_param.target_info == NULL) {
+				WL_ERR(("failed to allocate target info for (%d)\n", target_cnt));
+				err = BCME_NOMEM;
 				goto exit;
 			}
 			break;
@@ -871,62 +872,70 @@ static int wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev 
 						break;
 					case RTT_ATTRIBUTE_TARGET_TYPE:
 						rtt_target->type = nla_get_u8(iter2);
-						if (!(feature_set & WIFI_FEATURE_D2D_RTT)) {
-							if (rtt_target->type == RTT_TWO_WAY ||
-								rtt_target->type == RTT_INVALID) {
-								WL_ERR(("doesn't support RTT type : %d\n",
-									rtt_target->type));
-								err = -EINVAL;
-								goto exit;
-							} else if (rtt_target->type == RTT_AUTO) {
-								rtt_target->type = RTT_ONE_WAY;
-							}
-						} else {
-							if (rtt_target->type == RTT_INVALID) {
-								WL_ERR(("doesn't support RTT type : %d\n",
-									rtt_target->type));
-								err = -EINVAL;
-								goto exit;
-							}
-						}
-						break;
-					case RTT_ATTRIBUTE_TARGET_PEER:
-						rtt_target->peer= nla_get_u8(iter2);
-						if (rtt_target->peer != RTT_PEER_AP) {
-							WL_ERR(("doesn't support peer type : %d\n",
-								rtt_target->peer));
+						if (rtt_target->type == RTT_INVALID) {
+							WL_ERR(("doesn't support RTT type"
+								" : %d\n",
+								rtt_target->type));
 							err = -EINVAL;
 							goto exit;
 						}
+						break;
+					case RTT_ATTRIBUTE_TARGET_PEER:
+						rtt_target->peer = nla_get_u8(iter2);
 						break;
 					case RTT_ATTRIBUTE_TARGET_CHAN:
 						memcpy(&rtt_target->channel, nla_data(iter2),
 							sizeof(rtt_target->channel));
 						break;
-					case RTT_ATTRIBUTE_TARGET_MODE:
-						rtt_target->continuous = nla_get_u8(iter2);
-						break;
 					case RTT_ATTRIBUTE_TARGET_INTERVAL:
 						rtt_target->interval = nla_get_u32(iter2);
 						break;
-					case RTT_ATTRIBUTE_TARGET_NUM_MEASUREMENT:
-						rtt_target->measure_cnt = nla_get_u32(iter2);
+					case RTT_ATTRIBUTE_TARGET_NUM_BURST:
+						rtt_target->num_burst = nla_get_u32(iter2);
+						if (!(rtt_target->num_burst == 1 ||
+							ISPOWEROF2(rtt_target->num_burst))) {
+							WL_ERR(("%d value must be power of 2"
+								" or 1\n",
+								rtt_target->num_burst));
+							err = -EINVAL;
+							goto exit;
+						}
 						break;
-					case RTT_ATTRIBUTE_TARGET_NUM_PKT:
-						rtt_target->ftm_cnt = nla_get_u32(iter2);
+					case RTT_ATTRIBUTE_TARGET_NUM_FTM_BURST:
+						rtt_target->num_frames_per_burst =
+						nla_get_u32(iter2);
 						break;
-					case RTT_ATTRIBUTE_TARGET_NUM_RETRY:
-						rtt_target->retry_cnt = nla_get_u32(iter2);
+					case RTT_ATTRIBUTE_TARGET_NUM_RETRY_FTM:
+						rtt_target->num_retries_per_ftm =
+						nla_get_u32(iter2);
+						break;
+					case RTT_ATTRIBUTE_TARGET_NUM_RETRY_FTMR:
+						rtt_target->num_retries_per_ftmr =
+						nla_get_u32(iter2);
+						break;
+					case RTT_ATTRIBUTE_TARGET_LCI:
+						rtt_target->LCI_request = nla_get_u8(iter2);
+						break;
+					case RTT_ATTRIBUTE_TARGET_LCR:
+						rtt_target->LCI_request = nla_get_u8(iter2);
+						break;
+					case RTT_ATTRIBUTE_TARGET_BURST_TIMEOUT:
+						rtt_target->burst_timeout = nla_get_u32(iter2);
+						break;
+					case RTT_ATTRIBUTE_TARGET_BW:
+						rtt_target->bw = nla_get_u8(iter2);
 					}
 				}
 				/* convert to chanspec value */
-				rtt_target->chanspec = dhd_rtt_convert_to_chspec(rtt_target->channel);
+				rtt_target->chanspec =
+					dhd_rtt_convert_to_chspec(rtt_target->channel);
 				if (rtt_target->chanspec == 0) {
 					WL_ERR(("Channel is not valid \n"));
 					goto exit;
 				}
 				WL_INFORM(("Target addr %s, Channel : %s for RTT \n",
-					bcm_ether_ntoa((const struct ether_addr *)&rtt_target->addr, eabuf),
+					bcm_ether_ntoa((const struct ether_addr *)&rtt_target->addr,
+					eabuf),
 					wf_chspec_ntoa(rtt_target->chanspec, chanbuf)));
 				rtt_target++;
 			}
@@ -939,13 +948,17 @@ static int wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev 
 		err = -EINVAL;
 	}
 exit:
+	/* free the target info list */
+	kfree(rtt_param.target_info);
 	return err;
 }
 
-static int wl_cfgvendor_rtt_cancel_config(struct wiphy *wiphy, struct wireless_dev *wdev,
-					const void *data, int len)
+static int
+wl_cfgvendor_rtt_cancel_config(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int len)
 {
 	int err = 0, rem, type, target_cnt = 0;
+	int target_cnt_chk = 0;
 	const struct nlattr *iter;
 	struct ether_addr *mac_list = NULL, *mac_addr = NULL;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
@@ -954,8 +967,13 @@ static int wl_cfgvendor_rtt_cancel_config(struct wiphy *wiphy, struct wireless_d
 		type = nla_type(iter);
 		switch (type) {
 		case RTT_ATTRIBUTE_TARGET_CNT:
+			if (mac_list != NULL) {
+				WL_ERR(("mac_list is not NULL\n"));
+				goto exit;
+			}
 			target_cnt = nla_get_u8(iter);
-			mac_list = (struct ether_addr *)kzalloc(target_cnt * ETHER_ADDR_LEN , GFP_KERNEL);
+			mac_list = (struct ether_addr *)kzalloc(target_cnt * ETHER_ADDR_LEN,
+				GFP_KERNEL);
 			if (mac_list == NULL) {
 				WL_ERR(("failed to allocate mem for mac list\n"));
 				goto exit;
@@ -963,27 +981,35 @@ static int wl_cfgvendor_rtt_cancel_config(struct wiphy *wiphy, struct wireless_d
 			mac_addr = &mac_list[0];
 			break;
 		case RTT_ATTRIBUTE_TARGET_MAC:
-			if (mac_addr)
+			if (mac_addr) {
 				memcpy(mac_addr++, nla_data(iter), ETHER_ADDR_LEN);
-			else {
+				target_cnt_chk++;
+				if (target_cnt_chk > target_cnt) {
+					WL_ERR(("over target count\n"));
+					goto exit;
+				}
+				break;
+			} else {
 				WL_ERR(("mac_list is NULL\n"));
 				goto exit;
 			}
-			break;
-		}
-		if (dhd_dev_rtt_cancel_cfg(bcmcfg_to_prmry_ndev(cfg), mac_list, target_cnt) < 0) {
-			WL_ERR(("Could not cancel RTT configuration\n"));
-			err = -EINVAL;
-			goto exit;
 		}
 	}
+
+	if (dhd_dev_rtt_cancel_cfg(bcmcfg_to_prmry_ndev(cfg), mac_list, target_cnt) < 0) {
+		WL_ERR(("Could not cancel RTT configuration\n"));
+		err = -EINVAL;
+	}
+
 exit:
-	if (mac_list)
+	if (mac_list) {
 		kfree(mac_list);
+	}
 	return err;
 }
-static int wl_cfgvendor_rtt_get_capability(struct wiphy *wiphy, struct wireless_dev *wdev,
-					const void *data, int len)
+static int
+wl_cfgvendor_rtt_get_capability(struct wiphy *wiphy, struct wireless_dev *wdev,
+	const void *data, int len)
 {
 	int err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
