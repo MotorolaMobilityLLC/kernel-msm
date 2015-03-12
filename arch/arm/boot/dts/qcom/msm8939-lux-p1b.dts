@@ -126,10 +126,18 @@
 
 &spi_2 {
 	status = "disabled";
+
+	/delete-node/ florida@0;
 };
 
 &pm8916_vadc {
 	/delete-node/ chan@11;
+};
+
+&pm8916_gpios {
+	gpio@c200 { /* GPIO 3 */
+		status = "disabled";
+	};
 };
 
 &pm8916_mpps {

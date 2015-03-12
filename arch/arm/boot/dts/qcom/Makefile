@@ -248,6 +248,7 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p1c.dtb
+dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p2a.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
