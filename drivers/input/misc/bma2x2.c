@@ -60,9 +60,8 @@
 #define ISR_INFO(dev, fmt, arg...)
 #endif
 
-#define BMA2X2_SENSOR_IDENTIFICATION_ENABLE
 
-#define SENSOR_NAME                 "bma2x2-accel"
+#define SENSOR_NAME                 "bma2x2"
 #define ABSMIN                      -512
 #define ABSMAX                      512
 #define SLOPE_THRESHOLD_VALUE       32
@@ -1269,7 +1268,7 @@
 
 #define MAX_FIFO_F_LEVEL 32
 #define MAX_FIFO_F_BYTES 6
-#define BMA_MAX_RETRY_I2C_XFER (100)
+#define BMA_MAX_RETRY_I2C_XFER (10)
 
 #ifdef CONFIG_DOUBLE_TAP
 #define DEFAULT_TAP_JUDGE_PERIOD 1000    /* default judge in 1 second */
@@ -5244,6 +5243,25 @@ static ssize_t bma2x2_place_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n", place);
 }
 
+static ssize_t bma2x2_place_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma2x2_data *bma2x2 = i2c_get_clientdata(client);
+
+	error = kstrtoul(buf, 10, &data);
+	if (error)
+		return error;
+
+	if ((data >= 0) && (data <= 7))
+		bma2x2->pdata->place = data;
+
+	return count;
+}
+
 
 static ssize_t bma2x2_delay_store(struct device *dev,
 		struct device_attribute *attr,
@@ -6700,8 +6718,8 @@ static DEVICE_ATTR(softreset, S_IWUSR,
 		NULL, bma2x2_softreset_store);
 static DEVICE_ATTR(temperature, S_IRUSR|S_IRGRP,
 		bma2x2_temperature_show, NULL);
-static DEVICE_ATTR(place, S_IRUSR|S_IRGRP,
-		bma2x2_place_show, NULL);
+static DEVICE_ATTR(place, S_IRUSR|S_IRGRP|S_IWUSR,
+		bma2x2_place_show, bma2x2_place_store);
 #ifdef CONFIG_SIG_MOTION
 static DEVICE_ATTR(en_sig_motion, S_IRUSR|S_IRGRP|S_IWUSR,
 		bma2x2_en_sig_motion_show, bma2x2_en_sig_motion_store);
