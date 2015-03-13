@@ -85,7 +85,7 @@
 #define MSM_CPP_START_ADDRESS		0x0
 #define MSM_CPP_END_ADDRESS			0x3F00
 
-#define MSM_CPP_POLL_RETRIES		20
+#define MSM_CPP_POLL_RETRIES		200
 #define MSM_CPP_TASKLETQ_SIZE		16
 #define MSM_CPP_TX_FIFO_LEVEL		16
 #define MSM_CPP_RX_FIFO_LEVEL		512
@@ -238,6 +238,10 @@ struct cpp_device {
 	uint32_t wr_3_pntr;
 	uint32_t rd_ref_pntr;
 	uint32_t wr_ref_pntr;
+	uint32_t wr_0_meta_data_wr_pntr;
+	uint32_t wr_1_meta_data_wr_pntr;
+	uint32_t wr_2_meta_data_wr_pntr;
+	uint32_t wr_3_meta_data_wr_pntr;
 	uint32_t stripe_base;
 	uint32_t stripe_size;
 	uint32_t stripe_info_offset;

@@ -69,7 +69,7 @@
 #define clk_ocmemgx_msmbus_a_clk 0x66dd774f
 #define clk_oxili_gfx3d_clk_src 0xe0405056
 #define clk_pnoc_keepalive_a_clk 0xf8f91f0b
-#define clk_pnoc_modem_clk 0x82240f71
+#define clk_pnoc_modem_clk 0x822f0471
 #define clk_pnoc_msmbus_clk 0x38b95c77
 #define clk_pnoc_msmbus_a_clk 0x8c9b4e93
 #define clk_pnoc_pm_clk 0xd6f7dfb9
@@ -379,6 +379,14 @@
 #define clk_dsi_vco_clk_8994 0x976ed967
 #define clk_mdss_pixel_clk_mux 0xf261a1a6
 #define clk_mdss_byte_clk_mux 0x64a23fa0
+#define clk_shadow_byte_clk_src 0x5e69f8ef
+#define clk_shadow_pixel_clk_src 0xa6b20c5a
+#define clk_shadow_fixed_hr_oclk2_div_clk_8994 0xd1ec3fb3
+#define clk_shadow_bypass_lp_div_mux_8994 0xa57bf87b
+#define clk_shadow_hr_oclk3_div_clk_8994 0x20274a2b
+#define clk_shadow_indirect_path_div2_clk_8994 0x5d6b34c8
+#define clk_shadow_ndiv_clk_8994 0x488de275
+#define clk_shadow_dsi_vco_clk_8994 0x7995eebd
 #define clk_mdss_dsi1_vco_clk_src 0xfcd15658
 
 /* clock_cpu controlled clocks */

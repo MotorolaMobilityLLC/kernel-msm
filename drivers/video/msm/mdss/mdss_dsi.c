@@ -658,9 +658,6 @@ static int mdss_dsi_reconfig(struct mdss_panel_data *pdata, int mode)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	}
 
-	if (mode == MIPI_CMD_PANEL)
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
-
 	pr_debug("%s, end\n", __func__);
 	return 0;
 }
@@ -675,11 +672,13 @@ static int mdss_dsi_update_panel_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		pinfo->type = MIPI_CMD_PANEL;
 		pinfo->mipi.vsync_enable = 1;
 		pinfo->mipi.hw_vsync_mode = 1;
+		pinfo->partial_update_enabled = pinfo->partial_update_supported;
 	} else {	/*video mode*/
 		pinfo->mipi.mode = DSI_VIDEO_MODE;
 		pinfo->type = MIPI_VIDEO_PANEL;
 		pinfo->mipi.vsync_enable = 0;
 		pinfo->mipi.hw_vsync_mode = 0;
+		pinfo->partial_update_enabled = 0;
 	}
 
 	ctrl_pdata->panel_mode = pinfo->mipi.mode;
@@ -1087,8 +1086,9 @@ static void __mdss_dsi_calc_dfps_delay(struct mdss_panel_data *pdata)
 	pipe_delay = (hsync_period + 1) / pclk_to_esc_ratio;
 	if (pinfo->mipi.eof_bllp_power_stop == 0)
 		pipe_delay += (17 / pclk_to_esc_ratio) +
-			((21 + pinfo->mipi.t_clk_pre +
-			pinfo->mipi.t_clk_post) / byte_to_esc_ratio) +
+			((21 + (pinfo->mipi.t_clk_pre + 1) +
+				(pinfo->mipi.t_clk_post + 1)) /
+				byte_to_esc_ratio) +
 			((((pd->timing[8] >> 1) + 1) +
 			((pd->timing[6] >> 1) + 1) +
 			((pd->timing[3] * 4) + (pd->timing[5] >> 1) + 1) +
@@ -1101,7 +1101,8 @@ static void __mdss_dsi_calc_dfps_delay(struct mdss_panel_data *pdata)
 			((((pd->timing[1] >> 1) + 1) +
 			((pd->timing[4] >> 1) + 1)) / hr_bit_to_esc_ratio);
 
-	pll_delay = ((1000 * esc_clk_rate) / 1000000) * 2;
+	/* 130 us pll delay recommended by h/w doc */
+	pll_delay = ((130 * esc_clk_rate) / 1000000) * 2;
 
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + DSI_DYNAMIC_REFRESH_PIPE_DELAY,
 						pipe_delay);
@@ -1152,6 +1153,8 @@ static int __mdss_dsi_dfps_update_clks(struct mdss_panel_data *pdata,
 
 		if (mdss_dsi_is_ctrl_clk_slave(ctrl_pdata)) {
 			pr_debug("%s DFPS already updated.\n", __func__);
+			ctrl_pdata->panel_data.panel_info.mipi.frame_rate =
+				new_fps;
 			return rc;
 		}
 
@@ -1180,7 +1183,7 @@ static int __mdss_dsi_dfps_update_clks(struct mdss_panel_data *pdata,
 			return rc;
 		}
 
-		mdss_dsi_en_wait4dynamic_done(ctrl_pdata);
+		rc = mdss_dsi_en_wait4dynamic_done(ctrl_pdata);
 		MIPI_OUTP((ctrl_pdata->ctrl_base) + DSI_DYNAMIC_REFRESH_CTRL,
 							0x00);
 
@@ -1193,7 +1196,10 @@ static int __mdss_dsi_dfps_update_clks(struct mdss_panel_data *pdata,
 				ctrl_pdata->pll_pixel_clk);
 		clk_disable_unprepare(ctrl_pdata->pll_byte_clk);
 		clk_disable_unprepare(ctrl_pdata->pll_pixel_clk);
-		ctrl_pdata->panel_data.panel_info.mipi.frame_rate = new_fps;
+
+		if (!rc)
+			ctrl_pdata->panel_data.panel_info.mipi.frame_rate =
+				new_fps;
 	} else {
 		ctrl_pdata->pclk_rate =
 			pdata->panel_info.mipi.dsi_pclk_rate;
@@ -1313,7 +1319,7 @@ static int mdss_dsi_set_stream_size(struct mdss_panel_data *pdata)
 
 	pinfo = &pdata->panel_info;
 
-	if (!pinfo->partial_update_enabled)
+	if (!pinfo->partial_update_supported)
 		return -EINVAL;
 
 	roi = &pinfo->roi;

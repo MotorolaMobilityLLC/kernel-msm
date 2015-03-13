@@ -1057,6 +1057,19 @@ static int msm_pcie_restore_sec_config(struct msm_pcie_dev_t *dev)
 	return 0;
 }
 
+static inline int msm_pcie_check_align(struct msm_pcie_dev_t *dev,
+						u32 offset)
+{
+	if (offset % 4) {
+		PCIE_ERR(dev,
+			"PCIe: RC%d: offset 0x%x is not correctly aligned\n",
+			dev->rc_idx, offset);
+		return MSM_PCIE_ERROR;
+	}
+
+	return 0;
+}
+
 static bool msm_pcie_confirm_linkup(struct msm_pcie_dev_t *dev,
 						bool check_sw_stts,
 						bool check_ep)
@@ -1318,26 +1331,31 @@ static void msm_pcie_sel_debug_testcase(struct msm_pcie_dev_t *dev,
 	u32 ep_link_ctrlstts_offset = 0;
 	u32 ep_dev_ctrl2stts2_offset = 0;
 
-	current_offset = readl_relaxed(dev->conf + PCIE_CAP_PTR_OFFSET) & 0xff;
+	if (testcase >= 5 && testcase <= 10) {
+		current_offset =
+			readl_relaxed(dev->conf + PCIE_CAP_PTR_OFFSET) & 0xff;
 
-	while (current_offset) {
-		val = readl_relaxed(dev->conf + current_offset);
-		if ((val & 0xff) == PCIE20_CAP_ID) {
-			ep_link_ctrlstts_offset = current_offset + 0x10;
-			ep_dev_ctrl2stts2_offset = current_offset + 0x28;
-			break;
+		while (current_offset) {
+			val = readl_relaxed(dev->conf + current_offset);
+			if ((val & 0xff) == PCIE20_CAP_ID) {
+				ep_link_ctrlstts_offset = current_offset +
+								0x10;
+				ep_dev_ctrl2stts2_offset = current_offset +
+								0x28;
+				break;
+			}
+			current_offset = (val >> 8) & 0xff;
 		}
-		current_offset = (val >> 8) & 0xff;
-	}
 
-	if (!ep_link_ctrlstts_offset)
-		PCIE_DBG(dev,
-			"RC%d endpoint does not support PCIe capability registers\n",
-			dev->rc_idx);
-	else
-		PCIE_DBG(dev,
-			"RC%d: ep_link_ctrlstts_offset: 0x%x\n",
-			dev->rc_idx, ep_link_ctrlstts_offset);
+		if (!ep_link_ctrlstts_offset)
+			PCIE_DBG(dev,
+				"RC%d endpoint does not support PCIe capability registers\n",
+				dev->rc_idx);
+		else
+			PCIE_DBG(dev,
+				"RC%d: ep_link_ctrlstts_offset: 0x%x\n",
+				dev->rc_idx, ep_link_ctrlstts_offset);
+	}
 
 	switch (testcase) {
 	case 0: /* output status */
@@ -2757,6 +2775,9 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 	current_offset = readl_relaxed(dev->conf + PCIE_CAP_PTR_OFFSET) & 0xff;
 
 	while (current_offset) {
+		if (msm_pcie_check_align(dev, current_offset))
+			return;
+
 		val = readl_relaxed(dev->conf + current_offset);
 		if ((val & 0xff) == PCIE20_CAP_ID) {
 			ep_link_cap_offset = current_offset + 0x0c;
@@ -2779,14 +2800,25 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 	}
 
 	if (dev->common_clk_en) {
+		msm_pcie_write_mask(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS,
+					0, BIT(6));
+
 		msm_pcie_write_mask(dev->conf + ep_link_ctrlstts_offset,
 					0, BIT(6));
 
-		if (dev->shadow_en)
+		if (dev->shadow_en) {
+			dev->rc_shadow[PCIE20_CAP_LINKCTRLSTATUS / 4] =
+				readl_relaxed(dev->dm_core +
+					PCIE20_CAP_LINKCTRLSTATUS);
+
 			dev->ep_shadow[0][ep_link_ctrlstts_offset / 4] =
 				readl_relaxed(dev->conf +
 					ep_link_ctrlstts_offset);
+		}
 
+		PCIE_DBG2(dev, "RC's CAP_LINKCTRLSTATUS:0x%x\n",
+			readl_relaxed(dev->dm_core +
+			PCIE20_CAP_LINKCTRLSTATUS));
 		PCIE_DBG2(dev, "EP's CAP_LINKCTRLSTATUS:0x%x\n",
 			readl_relaxed(dev->conf + ep_link_ctrlstts_offset));
 	}
@@ -2835,7 +2867,7 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 					0, BIT(1));
 		if (dev->shadow_en) {
 			dev->rc_shadow[PCIE20_CAP_LINKCTRLSTATUS / 4] =
-						readl_relaxed(dev->conf +
+						readl_relaxed(dev->dm_core +
 						PCIE20_CAP_LINKCTRLSTATUS);
 			dev->ep_shadow[0][ep_link_ctrlstts_offset / 4] =
 						readl_relaxed(dev->conf +
@@ -2851,6 +2883,9 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 	if (dev->l1ss_supported) {
 		current_offset = PCIE_EXT_CAP_OFFSET;
 		while (current_offset) {
+			if (msm_pcie_check_align(dev, current_offset))
+				return;
+
 			val = readl_relaxed(dev->conf + current_offset);
 			if ((val & 0xffff) == L1SUB_CAP_ID) {
 				ep_l1sub_cap_reg1_offset = current_offset + 0x4;
@@ -3490,6 +3525,9 @@ static void msm_pcie_config_ep_aer(struct msm_pcie_dev_t *dev,
 						0xff;
 
 	while (current_offset) {
+		if (msm_pcie_check_align(dev, current_offset))
+			return;
+
 		val = readl_relaxed(ep_base + current_offset);
 		if ((val & 0xff) == PCIE20_CAP_ID) {
 			ep_dev_info->dev_ctrlstts_offset =
@@ -4517,9 +4555,6 @@ static int msm_pcie_probe(struct platform_device *pdev)
 	PCIE_DBG(&msm_pcie_dev[rc_idx],
 		"Clock power management is %s enabled.\n",
 		msm_pcie_dev[rc_idx].clk_power_manage_en ? "" : "not");
-	msm_pcie_dev[rc_idx].aux_clk_sync =
-		of_property_read_bool((&pdev->dev)->of_node,
-				"qcom,aux-clk-sync");
 	msm_pcie_dev[rc_idx].aux_clk_sync =
 		of_property_read_bool((&pdev->dev)->of_node,
 				"qcom,aux-clk-sync");
