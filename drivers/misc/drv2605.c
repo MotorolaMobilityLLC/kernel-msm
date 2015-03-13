@@ -1155,7 +1155,7 @@ static int drv260x_init(void)
 {
 	int reval = -ENOMEM;
 
-	drv260x = kmalloc(sizeof *drv260x, GFP_KERNEL);
+	drv260x = kzalloc(sizeof(struct drv260x), GFP_KERNEL);
 	if (!drv260x) {
 		printk(KERN_ALERT
 		       "drv260x: cannot allocate memory for drv260x driver\n");
