@@ -26,6 +26,9 @@
 #include <linux/leds.h>
 #include <linux/debugfs.h>
 
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
 #define LBC_MASK(MSB_BIT, LSB_BIT) \
@@ -329,6 +332,7 @@ struct qpnp_lbc_chip {
 	unsigned int			cfg_cool_bat_chg_ma;
 	unsigned int			cfg_safe_voltage_mv;
 	unsigned int			cfg_max_voltage_mv;
+	unsigned int			usbin_ovp_irq;
 	unsigned int			cfg_min_voltage_mv;
 	unsigned int			cfg_charger_detect_eoc;
 	unsigned int			cfg_disable_vbatdet_based_recharge;
@@ -377,6 +381,9 @@ struct qpnp_lbc_chip {
 	struct qpnp_adc_tm_chip		*adc_tm_dev;
 	struct led_classdev		led_cdev;
 	struct dentry			*debug_root;
+
+	/* usbin over-voltage-protect detect*/
+	struct delayed_work		ovp_detect_work;
 
 	/* parallel-chg params */
 	struct power_supply		parallel_psy;
@@ -2171,6 +2178,69 @@ static const struct file_operations qpnp_lbc_config_debugfs_ops = {
 	.release	= single_release,
 };
 
+static void ovp_detect_work_func(struct work_struct *work)
+{
+	struct qpnp_lbc_chip *chip = container_of(work, struct qpnp_lbc_chip,
+							ovp_detect_work.work);
+
+	int gpio_level;
+	int health;
+
+	gpio_level = gpio_get_value(chip->usbin_ovp_irq);
+
+	health = gpio_level ? POWER_SUPPLY_HEALTH_GOOD :
+						POWER_SUPPLY_HEALTH_OVERVOLTAGE;
+	pr_err("OVERVOLTAGE = 5 GOOD = 1 health=%d\n", health);
+	power_supply_set_health_state(chip->usb_psy, health);
+}
+
+#define FOR_CHG_BOUNCE_DELAY	10 /* 10msec*/
+static irqreturn_t ovp_irq_handler(int irq, void *_chip)
+{
+	struct qpnp_lbc_chip *chip = _chip;
+
+	queue_delayed_work(system_nrt_wq, &chip->ovp_detect_work,
+					msecs_to_jiffies(FOR_CHG_BOUNCE_DELAY));
+
+	return IRQ_HANDLED;
+}
+
+static void use_external_ic_control_ovp(struct qpnp_lbc_chip *chip)
+{
+	int ret = 0;
+	unsigned int ovp_irq;
+
+	pr_info("usbin_ovp_irq = %d\n", chip->usbin_ovp_irq);
+
+	if (gpio_is_valid(chip->usbin_ovp_irq)) {
+		ret = gpio_request(chip->usbin_ovp_irq, "ovp_irq");
+		if (ret) {
+			pr_err("request usbin_ovp_irq failed\n");
+			goto ovp_error_goto;
+		}
+
+		ret = gpio_direction_input(chip->usbin_ovp_irq);
+		if (ret) {
+			pr_err("set usbin_ovp_irq tp input failed\n");
+			gpio_free(chip->usbin_ovp_irq);
+			goto ovp_error_goto;
+		}
+	} else {
+		pr_err("usbin_ovp_irq is n-valid\n");
+		goto ovp_error_goto;
+	}
+
+	ovp_irq = gpio_to_irq(chip->usbin_ovp_irq);
+	ret = request_irq(ovp_irq,
+			ovp_irq_handler,
+			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+			"ovp_detcet", chip);
+	if (ret)
+		pr_err("request usbin ovp irq failed\n");
+ovp_error_goto:
+	return;
+}
+
 #define OF_PROP_READ(chip, prop, qpnp_dt_property, retval, optional)	\
 do {									\
 	if (retval)							\
@@ -2191,6 +2261,7 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 {
 	int rc = 0;
 	const char *bpd;
+	struct device_node *np = chip->dev->of_node;
 
 	OF_PROP_READ(chip, cfg_max_voltage_mv, "vddmax-mv", rc, 0);
 	OF_PROP_READ(chip, cfg_safe_voltage_mv, "vddsafe-mv", rc, 0);
@@ -2351,6 +2422,13 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 	pr_debug("use-external-charger=%d, thermal_levels=%d\n",
 			chip->cfg_use_external_charger,
 			chip->cfg_thermal_levels);
+
+	chip->usbin_ovp_irq = of_get_named_gpio_flags(np, "qcom,usbin-ovp-irq",
+								0, NULL);
+	if (chip->usbin_ovp_irq < 0)
+		pr_err("Error reading usbin_ovp_irq =%d\n",
+							chip->usbin_ovp_irq);
+
 	return rc;
 }
 
@@ -3040,6 +3118,7 @@ static int qpnp_lbc_main_probe(struct spmi_device *spmi)
 	spin_lock_init(&chip->ibat_change_lock);
 	spin_lock_init(&chip->irq_lock);
 	INIT_WORK(&chip->vddtrim_work, qpnp_lbc_vddtrim_work_fn);
+	INIT_DELAYED_WORK(&chip->ovp_detect_work, ovp_detect_work_func);
 	alarm_init(&chip->vddtrim_alarm, ALARM_REALTIME, vddtrim_callback);
 
 	/* Get all device-tree properties */
@@ -3047,6 +3126,11 @@ static int qpnp_lbc_main_probe(struct spmi_device *spmi)
 	if (rc) {
 		pr_err("Failed to read DT properties rc=%d\n", rc);
 		return rc;
+	}
+
+	if (chip->usbin_ovp_irq >= 0) {
+		pr_info("use external ic to control ovp function.\n");
+		use_external_ic_control_ovp(chip);
 	}
 
 	rc = qpnp_lbc_parse_resources(chip);
@@ -3226,6 +3310,7 @@ static int qpnp_lbc_remove(struct spmi_device *spmi)
 		alarm_cancel(&chip->vddtrim_alarm);
 		cancel_work_sync(&chip->vddtrim_work);
 	}
+	cancel_delayed_work_sync(&chip->ovp_detect_work);
 	debugfs_remove_recursive(chip->debug_root);
 	if (chip->bat_if_base)
 		power_supply_unregister(&chip->batt_psy);
