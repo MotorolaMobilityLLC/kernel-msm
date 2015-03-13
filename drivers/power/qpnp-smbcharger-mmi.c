@@ -245,6 +245,8 @@ struct smbchg_chip {
 	int				stepchg_max_current_ma;
 	enum stepchg_state		stepchg_state;
 	struct wakeup_source		smbchg_wake_source;
+	struct delayed_work		usb_insertion_work;
+	int				apsd_rerun_cnt;
 };
 
 static struct smbchg_chip *the_chip;
@@ -295,6 +297,8 @@ module_param_named(
 	wipower_dcin_hyst_uv, wipower_dcin_hyst_uv,
 	int, S_IRUSR | S_IWUSR
 );
+
+static int smbchg_force_apsd(struct smbchg_chip *chip);
 
 #define pr_smb(reason, fmt, ...)				\
 	do {							\
@@ -3882,12 +3886,30 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+static void usb_insertion_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip =
+		container_of(work, struct smbchg_chip,
+			     usb_insertion_work.work);
+	int rc;
+
+	rc = smbchg_force_apsd(chip);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't rerun apsd rc = %d\n", rc);
+
+	smbchg_relax(chip, PM_CHARGER);
+}
+
 static void handle_usb_removal(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 	int rc;
 
+	cancel_delayed_work(&chip->usb_insertion_work);
+	chip->apsd_rerun_cnt = 0;
+
 	smbchg_aicl_deglitch_wa_check(chip);
+
 	/* Clear the OV detected status set before */
 	if (chip->usb_ov_det)
 		chip->usb_ov_det = false;
@@ -3934,6 +3956,9 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	u8 reg = 0;
 
 	smbchg_stay_awake(chip, PM_CHARGER);
+
+	cancel_delayed_work(&chip->usb_insertion_work);
+
 	/* usb inserted */
 	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
 	if (rc < 0)
@@ -3941,6 +3966,20 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	type = get_type(reg);
 	usb_type_name = get_usb_type_name(type);
 	usb_supply_type = get_usb_supply_type(type);
+
+	/* Rerun APSD 1 sec later */
+	if ((usb_supply_type == POWER_SUPPLY_TYPE_USB) &&
+	    !chip->apsd_rerun_cnt) {
+		dev_info(chip->dev, "HW Detected SDP!\n");
+		chip->apsd_rerun_cnt++;
+		chip->usb_present = 0;
+		schedule_delayed_work(&chip->usb_insertion_work,
+				      msecs_to_jiffies(1000));
+		return;
+	}
+
+	chip->apsd_rerun_cnt = 0;
+
 	pr_smb(PR_STATUS, "inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
 			usb_type_name, usb_supply_type, reg);
 	smbchg_aicl_deglitch_wa_check(chip);
@@ -4814,6 +4853,30 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 			return rc;
 		}
 	}
+
+	return rc;
+}
+
+static int smbchg_force_apsd(struct smbchg_chip *chip)
+{
+	int rc;
+
+	dev_info(chip->dev, "Start APSD Rerun!\n");
+	rc = smbchg_sec_masked_write(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_9V);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write usb allowance %d rc=%d\n",
+			USBIN_ALLOW_9V, rc);
+	msleep(10);
+
+	/* RESET to Default 5V to 9V */
+	rc = smbchg_sec_masked_write(chip,
+				     chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				     USBIN_ALLOW_MASK, USBIN_ALLOW_5V_TO_9V);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't write usb allowance %d rc=%d\n",
+			USBIN_ALLOW_5V_TO_9V, rc);
 
 	return rc;
 }
@@ -6221,9 +6284,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 	}
 
 	chip->factory_mode = smbchg_charger_mmi_factory();
-	if (chip->factory_mode)
+	if (chip->factory_mode) {
 		dev_warn(&spmi->dev,
 			 "Entering Factory Mode SMB Writes Disabled\n");
+		chip->apsd_rerun_cnt = 1;
+	}
 
 	wakeup_source_init(&chip->smbchg_wake_source, "smbchg_wake");
 	INIT_WORK(&chip->usb_set_online_work, smbchg_usb_update_online_work);
@@ -6233,6 +6298,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	INIT_DELAYED_WORK(&chip->hvdcp_det_work, smbchg_hvdcp_det_work);
 	INIT_DELAYED_WORK(&chip->heartbeat_work,
 			  smbchg_heartbeat_work);
+	INIT_DELAYED_WORK(&chip->usb_insertion_work,
+			  usb_insertion_work);
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
