@@ -173,8 +173,9 @@ struct mdss_data_type {
 	bool has_pixel_ram;
 	bool needs_hist_vote;
 
-	u32 rotator_ot_limit;
-	u32 default_ot_limit;
+	u32 default_ot_rd_limit;
+	u32 default_ot_wr_limit;
+
 	u32 mdp_irq_mask;
 	u32 mdp_hist_irq_mask;
 
@@ -321,6 +322,8 @@ struct mdss_util_intf {
 	int (*get_iommu_domain)(u32 type);
 	int (*iommu_attached)(void);
 	int (*iommu_ctrl)(int enable);
+	void (*iommu_lock)(void);
+	void (*iommu_unlock)(void);
 	void (*bus_bandwidth_ctrl)(int enable);
 	int (*bus_scale_set_quota)(int client, u64 ab_quota, u64 ib_quota);
 	struct mdss_panel_cfg* (*panel_intf_type)(int intf_val);

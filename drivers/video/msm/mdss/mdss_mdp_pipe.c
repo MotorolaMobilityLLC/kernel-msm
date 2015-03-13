@@ -856,9 +856,9 @@ static struct mdss_mdp_pipe *mdss_mdp_pipe_init(struct mdss_mdp_mixer *mixer,
 		struct mdss_mdp_pipe *pool_head = pipe_pool + off;
 		off += left_blend_pipe->priority - pool_head->priority + 1;
 		if (off >= npipes) {
-			pr_err("priority limitation. l_pipe:%d. no low priority %d pipe type available.\n",
+			pr_warn("priority limitation. l_pipe:%d. no low priority %d pipe type available.\n",
 				left_blend_pipe->num, type);
-			return ERR_PTR(-EINVAL);
+			return NULL;
 		}
 	}
 
@@ -1358,7 +1358,6 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	struct mdss_rect sci, dst, src;
 	bool rotation = false;
-	u32 panel_orientation = 0;
 
 	pr_debug("ctl: %d pnum=%d wh=%dx%d src={%d,%d,%d,%d} dst={%d,%d,%d,%d}\n",
 			pipe->mixer_left->ctl->num, pipe->num,
@@ -1412,15 +1411,6 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 			src.y = pipe->src.y + (pipe->src.y + pipe->src.h)
 				- (src.y + src.h);
 		}
-	}
-
-	if (!(pipe->mixer_left->rotator_mode)) {
-		panel_orientation = pipe->mixer_left->ctl->mfd->panel_orientation;
-		if (panel_orientation & MDP_FLIP_LR)
-			dst.x =  pipe->mixer_left->ctl->roi.w - dst.x - dst.w;
-
-		if (panel_orientation & MDP_FLIP_UD)
-			dst.y =  pipe->mixer_left->ctl->roi.h - dst.y - dst.h;
 	}
 
 	src_size = (src.h << 16) | src.w;
@@ -1687,11 +1677,11 @@ static void mdss_mdp_set_ot_limit_pipe(struct mdss_mdp_pipe *pipe)
 	ot_params.reg_off_mdp_clk_ctrl = pipe->clk_ctrl.reg_off;
 	ot_params.bit_off_mdp_clk_ctrl = pipe->clk_ctrl.bit_off +
 		CLK_FORCE_ON_OFFSET;
+	ot_params.is_rot = pipe->mixer_left->rotator_mode;
+	ot_params.is_wb = ctl->intf_num == MDSS_MDP_NO_INTF;
+	ot_params.is_yuv = pipe->src_fmt->is_yuv;
 
-	mdss_mdp_set_ot_limit(&ot_params,
-		pipe->mixer_left->rotator_mode,
-		ctl->intf_num ==  MDSS_MDP_NO_INTF,
-		pipe->src_fmt->is_yuv);
+	mdss_mdp_set_ot_limit(&ot_params);
 }
 
 int mdss_mdp_pipe_queue_data(struct mdss_mdp_pipe *pipe,

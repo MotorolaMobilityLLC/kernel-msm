@@ -210,6 +210,12 @@ static struct mdss_mdp_rot_pipe *mdss_mdp_rot_mgr_acquire_pipe(
 			rot_pipe->wait_count--;
 			mutex_unlock(&rot_mgr->pipe_lock);
 			rot_pipe = NULL;
+		} else {
+			mutex_lock(&rot_mgr->pipe_lock);
+			rot_pipe->active_session = rot;
+			rot_pipe->context_switched =
+				(rot_pipe->previous_session != rot);
+			mutex_unlock(&rot_mgr->pipe_lock);
 		}
 	}
 
@@ -804,10 +810,11 @@ static int mdss_mdp_rotator_config(struct msm_fb_data_type *mfd,
 	if (rot->flags & MDP_ROT_90)
 		swap(rot->dst.w, rot->dst.h);
 
+	rot->req_data = *req;
+
 	req->src.format = mdss_mdp_get_rotator_dst_format(req->src.format,
 		req->flags & MDP_ROT_90, req->flags & MDP_BWC_EN);
 
-	rot->req_data = *req;
 	rot->params_changed++;
 
 	return 0;
@@ -889,8 +896,17 @@ static int mdss_mdp_rotator_config_ex(struct msm_fb_data_type *mfd,
 	}
 
 	/* if session hasn't changed, skip reconfiguration */
-	if (!memcmp(req, &rot->req_data, sizeof(*req)))
+	if (!memcmp(req, &rot->req_data, sizeof(*req))) {
+		/*
+		 * as per the IOCTL spec, every successful rotator setup
+		 * needs to return corresponding destination format.
+		 */
+		req->src.format = mdss_mdp_get_rotator_dst_format(
+			req->src.format, req->flags & MDP_ROT_90,
+			req->flags & MDP_BWC_EN);
+
 		return 0;
+	}
 
 	flush_work(&rot->commit_work);
 

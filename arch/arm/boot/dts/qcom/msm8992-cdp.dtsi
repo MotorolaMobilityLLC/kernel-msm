@@ -65,15 +65,15 @@
 	qcom,mdss-dsi-bl-max-level = <4095>;
 	qcom,cont-splash-enabled;
 	qcom,mdss-dsi-pan-enable-dynamic-fps;
-	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
-	qcom,mdss-dsi-min-refresh-rate = <45>;
+	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_clk_mode";
+	qcom,mdss-dsi-min-refresh-rate = <53>;
 };
 
 &dsi_dual_sharp_video_1 {
 	qcom,cont-splash-enabled;
 	qcom,mdss-dsi-pan-enable-dynamic-fps;
-	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode_vfp";
-	qcom,mdss-dsi-min-refresh-rate = <45>;
+	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_clk_mode";
+	qcom,mdss-dsi-min-refresh-rate = <53>;
 };
 
 
@@ -114,11 +114,7 @@
 };
 
 &dsi_sharp_1080_cmd {
-	pwms = <&pmi8994_pwm_4 0 0>;
-	pwm-names = "backlight";
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
-	qcom,mdss-dsi-bl-pwm-pmi;
-	qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
 };

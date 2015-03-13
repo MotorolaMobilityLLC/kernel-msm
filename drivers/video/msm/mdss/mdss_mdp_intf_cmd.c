@@ -709,28 +709,12 @@ static int mdss_mdp_cmd_set_partial_roi(struct mdss_mdp_ctl *ctl)
 {
 	int rc = 0;
 
-	if (!ctl->panel_data->panel_info.partial_update_enabled)
+	if (!ctl->panel_data->panel_info.partial_update_supported)
 		return rc;
 
-	if (ctl->roi.w && ctl->roi.h && ctl->roi_changed) {
-		if (ctl->mfd && (ctl->mfd->panel_orientation & MDP_FLIP_LR))
-			ctl->panel_data->panel_info.roi.x =
-				ctl->mixer_left->width -
-					(ctl->roi.x + ctl->roi.w);
-		else
-			ctl->panel_data->panel_info.roi.x = ctl->roi.x;
-		if (ctl->mfd && (ctl->mfd->panel_orientation & MDP_FLIP_UD))
-			ctl->panel_data->panel_info.roi.y =
-				ctl->mixer_left->height -
-					(ctl->roi.y + ctl->roi.h);
-		else
-			ctl->panel_data->panel_info.roi.y = ctl->roi.y;
-		ctl->panel_data->panel_info.roi.w = ctl->roi.w;
-		ctl->panel_data->panel_info.roi.h = ctl->roi.h;
-
-		rc = mdss_mdp_ctl_intf_event(ctl,
+	/* set panel col and page addr */
+	rc = mdss_mdp_ctl_intf_event(ctl,
 			MDSS_EVENT_ENABLE_PARTIAL_ROI, NULL);
-	}
 	return rc;
 }
 
@@ -738,7 +722,7 @@ static int mdss_mdp_cmd_set_stream_size(struct mdss_mdp_ctl *ctl)
 {
 	int rc = 0;
 
-	if (!ctl->panel_data->panel_info.partial_update_enabled)
+	if (!ctl->panel_data->panel_info.partial_update_supported)
 		return rc;
 
 	/* set dsi controller stream size */
@@ -1399,6 +1383,21 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 		}
 	}
 	return 0;
+}
+
+void mdss_mdp_switch_roi_reset(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
+
+	if (!ctl->panel_data ||
+	  !ctl->panel_data->panel_info.partial_update_supported)
+		return;
+
+	ctl->panel_data->panel_info.roi = ctl->roi;
+	if (sctl && sctl->panel_data)
+		sctl->panel_data->panel_info.roi = sctl->roi;
+
+	mdss_mdp_cmd_set_partial_roi(ctl);
 }
 
 void mdss_mdp_switch_to_vid_mode(struct mdss_mdp_ctl *ctl, int prep)
