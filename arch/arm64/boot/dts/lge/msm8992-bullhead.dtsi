@@ -23,6 +23,10 @@
 	status = "disabled";
 };
 
+&usb3 {
+	status = "ok";
+};
+
 &hsphy0 {
 	status = "ok";
 };
