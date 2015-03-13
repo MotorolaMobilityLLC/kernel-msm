@@ -1178,7 +1178,7 @@ static void msm_hs_set_termios(struct uart_port *uport,
 	if (c_cflag & CRTSCTS) {
 		data |= UARTDM_MR1_CTS_CTL_BMSK;
 		data |= UARTDM_MR1_RX_RDY_CTL_BMSK;
-		msm_uport->flow_control = true;
+		msm_uport->flow_control = false;
 	}
 	msm_hs_write(uport, UART_DM_MR1, data);
 
@@ -1907,6 +1907,7 @@ void msm_hs_set_mctrl_locked(struct uart_port *uport,
 {
 	unsigned int set_rts;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+	unsigned int data;
 
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s:Failed.Clocks are OFF\n", __func__);
@@ -1915,10 +1916,27 @@ void msm_hs_set_mctrl_locked(struct uart_port *uport,
 	/* RTS is active low */
 	set_rts = TIOCM_RTS & mctrl ? 0 : 1;
 
-	if (set_rts)
-		msm_hs_disable_flow_control(uport);
-	else
-		msm_hs_enable_flow_control(uport);
+	if (set_rts) 
+	{ 
+		data = msm_hs_read(uport, UART_DM_MR1); 
+		/* disable auto ready-for-receiving */ 
+		data &= ~UARTDM_MR1_RX_RDY_CTL_BMSK; 
+		msm_hs_write(uport, UART_DM_MR1, data); 
+		/* Disable RFR line */ 
+		msm_hs_write(uport, UART_DM_CR, RFR_HIGH); 
+		mb(); 
+	} 
+	else 
+	{ 
+		/* Enable RFR line */ 
+		msm_hs_write(uport, UART_DM_CR, RFR_LOW); 
+		/* Enable auto RFR */ 
+		data = msm_hs_read(uport, UART_DM_MR1); 
+		data |= UARTDM_MR1_RX_RDY_CTL_BMSK; 
+		msm_hs_write(uport, UART_DM_MR1, data); 
+		mb(); 
+	}
+
 }
 
 void msm_hs_set_mctrl(struct uart_port *uport,

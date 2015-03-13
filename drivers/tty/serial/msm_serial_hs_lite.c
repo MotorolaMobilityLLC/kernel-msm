@@ -1699,7 +1699,6 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	u32 line;
 	int ret;
-	struct clk *clk_rf = NULL;
 
 	if (pdev->id == -1)
 		pdev->id = atomic_inc_return(&msm_serial_hsl_next_id) - 1;
@@ -1735,11 +1734,6 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	port->uartclk = 7372800;
 	msm_hsl_port = UART_TO_MSM(port);
 
-        clk_rf = clk_get(&pdev->dev, "rf_clk");
-	if (!IS_ERR(clk_rf)) {
-            /* BT clk enable*/
- 	    ret = clk_prepare_enable(clk_rf);
-        }
 
 	msm_hsl_port->clk = clk_get(&pdev->dev, "core_clk");
 	if (unlikely(IS_ERR(msm_hsl_port->clk))) {
