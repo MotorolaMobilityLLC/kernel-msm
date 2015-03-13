@@ -2018,10 +2018,10 @@ static irqreturn_t adsp2_irq(int irq, void *data)
 
 		if (florida->compr_info[i].stream) {
 			rtd = florida->compr_info[i].stream->private_data;
-			if (!strcmp(rtd->codec_dai->name, "florida-dsp-voicectrl"))
-				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, false);
-			else if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
+			if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
 				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, true);
+			else
+				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, false);
 
 			if (ret < 0) {
 				dev_err(florida->core.arizona->dev,
