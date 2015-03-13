@@ -63,7 +63,9 @@
 #define IR_STATE                        0x1F
 
 #define MOTION_DUR                      0x20
+#define QUAT_6AXIS_UPDATE_RATE          0x21
 #define ZRMOTION_DUR                    0x22
+#define QUAT_9AXIS_UPDATE_RATE          0x23
 
 #define BYPASS_MODE                     0x24
 #define SLAVE_ADDRESS                   0x25
@@ -98,6 +100,7 @@
 #define TEMPERATURE_DATA                0x41
 
 #define GYRO_X                          0x43
+#define QUATERNION_DATA                 0x44
 #define UNCALIB_GYRO_X			0x45
 #define UNCALIB_MAG_X			0x46
 
@@ -226,6 +229,14 @@
 #define ORIENT_X	6
 #define ORIENT_Y	8
 #define ORIENT_Z	10
+#define QUAT_6AXIS_A	0
+#define QUAT_6AXIS_B	2
+#define QUAT_6AXIS_C	4
+#define QUAT_6AXIS_W	6
+#define QUAT_9AXIS_A	8
+#define QUAT_9AXIS_B	10
+#define QUAT_9AXIS_C	12
+#define QUAT_9AXIS_W	14
 #define GYRO_RD_X	0
 #define GYRO_RD_Y	2
 #define GYRO_RD_Z	4
@@ -327,6 +338,7 @@ struct motosh_data {
 
 	dev_t motosh_dev_num;
 	struct class *motosh_class;
+	struct device *motosh_class_dev;
 	struct cdev as_cdev;
 	struct cdev ms_cdev;
 
@@ -387,6 +399,14 @@ struct motosh_algo_requst_t {
 	char size;
 	char data[ALGO_RQST_DATA_SIZE];
 };
+
+int64_t motosh_timestamp_ns(void);
+int motosh_set_rv_6axis_update_rate(
+	struct motosh_data *ps_motosh,
+	const uint8_t newDelay);
+int motosh_set_rv_9axis_update_rate(
+	struct motosh_data *ps_motosh,
+	const uint8_t newDelay);
 
 irqreturn_t motosh_isr(int irq, void *dev);
 void motosh_irq_work_func(struct work_struct *work);
@@ -463,6 +483,8 @@ extern struct motosh_data *motosh_misc_data;
 extern unsigned short motosh_g_acc_delay;
 extern unsigned short motosh_g_mag_delay;
 extern unsigned short motosh_g_gyro_delay;
+extern uint8_t motosh_g_rv_6axis_delay;
+extern uint8_t motosh_g_rv_9axis_delay;
 extern unsigned short motosh_g_baro_delay;
 extern unsigned short motosh_g_ir_gesture_delay;
 extern unsigned short motosh_g_ir_raw_delay;
