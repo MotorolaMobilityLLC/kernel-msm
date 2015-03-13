@@ -35,7 +35,6 @@
 
 struct cycapsense_ctrl_data *ctrl_data;
 
-
 static int programming_done;
 static BLOCKING_NOTIFIER_HEAD(hssp_notifier_list);
 
@@ -101,6 +100,7 @@ static int cycapsense_hssp_verify_cs(struct hssp_data *d)
 
 end:
 	ExitProgrammingMode();
+	msleep(1000);
 	cycapsense_hssp_notify(HSSP_STOP);
 	return ret;
 }
@@ -109,6 +109,7 @@ static int cycapsense_hssp_erase(struct hssp_data *d)
 {
 	cycapsense_hssp_notify(HSSP_START);
 
+	device_lock(ctrl_data->dev);
 	if (DeviceAcquire() == FAILURE) {
 		pr_err("%s: Device Acquire failed\n", __func__);
 		return -EIO;
@@ -118,7 +119,7 @@ static int cycapsense_hssp_erase(struct hssp_data *d)
 		pr_err("%s: Flash Erase failed\n", __func__);
 		return -EIO;
 	}
-
+	device_unlock(ctrl_data->dev);
 	d->chip_cs = 0;
 	pr_err("%s: Flash Erase successful\n", __func__);
 	return SUCCESS;
@@ -179,6 +180,7 @@ int cycapsense_hssp_dnld(struct hssp_data *d)
 	}
 
 	ExitProgrammingMode();
+	msleep(1000);
 	cycapsense_hssp_notify(HSSP_STOP);
 	return SUCCESS;
 }
@@ -370,60 +372,50 @@ parse_hex_end_err:
 	return -EINVAL;
 }
 
-int cycapsense_fw_update(void)
+int __cycapsense_fw_update(struct cycapsense_ctrl_data *data)
 {
 	const struct firmware *fw = NULL;
 	char *fw_name = NULL;
 	struct hex_info *inf;
 	int error = 0;
 
-	if (ctrl_data == NULL || ctrl_data->dev == NULL) {
-		pr_err("%s: Ctrl data not initialized\n", __func__);
-		return -ENODEV;
-	}
+	inf = &data->hssp_d.inf;
 
-	inf = &ctrl_data->hssp_d.inf;
-
-	device_lock(ctrl_data->dev);
-
-	if (inf->fw_name != NULL && !strcmp(inf->fw_name, "erase")) {
-		error = cycapsense_hssp_erase(&ctrl_data->hssp_d);
-		goto fw_upd_end;
-	}
+	device_lock(data->dev);
 
 	fw_name = kzalloc(NAME_MAX, GFP_KERNEL);
 	if (fw_name == NULL) {
-		dev_err(ctrl_data->dev, "No memory for FW name\n");
+		dev_err(data->dev, "No memory for FW name\n");
 		error = -ENOMEM;
 		goto fw_upd_end;
 	}
-	if (inf->fw_name == NULL) {
-		strlcpy(fw_name, ctrl_data->hssp_d.name, NAME_MAX);
+	if (inf->fw_name[0] == 0) {
+		strlcpy(fw_name, data->hssp_d.name, NAME_MAX);
 		strlcat(fw_name, ".hex", NAME_MAX);
 	} else {
 		strlcpy(fw_name, inf->fw_name, NAME_MAX);
 	}
-	if (request_firmware(&fw, fw_name, ctrl_data->dev) < 0 || !fw
+	if (request_firmware(&fw, fw_name, data->dev) < 0 || !fw
 		|| !fw->data || !fw->size) {
-		dev_err(ctrl_data->dev, "Unable to get firmware %s\n", fw_name);
+		dev_err(data->dev, "Unable to get firmware %s\n", fw_name);
 		error = -ENOENT;
 		goto fw_upd_end;
 	}
-	error = cycapsense_hssp_parse_hex(&ctrl_data->hssp_d, fw->data,
+	error = cycapsense_hssp_parse_hex(&data->hssp_d, fw->data,
 					fw->size);
 	if (error)
 		goto fw_upd_end;
 
-	if (inf->fw_name != NULL ||
-		cycapsense_hssp_verify_cs(&ctrl_data->hssp_d) != SUCCESS) {
+	if (inf->fw_name[0] ||
+		cycapsense_hssp_verify_cs(&data->hssp_d) != SUCCESS) {
 		/* force update regardless check sum, if user requested */
-		dev_info(ctrl_data->dev, "Flashing firmware %s\n", fw_name);
-		error = cycapsense_hssp_dnld(&ctrl_data->hssp_d);
+		dev_info(data->dev, "Flashing firmware %s\n", fw_name);
+		error = cycapsense_hssp_dnld(&data->hssp_d);
 		if (!error)
-			dev_info(ctrl_data->dev, "%s flashed successful\n",
+			dev_info(data->dev, "%s flashed successful\n",
 						fw_name);
 	} else
-		dev_info(ctrl_data->dev,
+		dev_info(data->dev,
 				"Checksum is matching. No firmware upgrade.\n");
 
 fw_upd_end:
@@ -440,10 +432,41 @@ fw_upd_end:
 	if (fw_name != NULL)
 		kfree(fw_name);
 
-	device_unlock(ctrl_data->dev);
+	device_unlock(data->dev);
 	return error;
 }
+
+int cycapsense_fw_update(void)
+{
+	if (ctrl_data == NULL || ctrl_data->dev == NULL) {
+		pr_err("%s: Ctrl data not initialized\n", __func__);
+		return -ENODEV;
+	}
+
+	ctrl_data->cmd = HSSP_CMD_FW_UPDATE;
+	schedule_work(&ctrl_data->work);
+	return 0;
+}
 EXPORT_SYMBOL(cycapsense_fw_update);
+
+int __cycapsense_reset(struct cycapsense_ctrl_data *data)
+{
+	int status = programming_done;
+
+	if (status == HSSP_STOP)
+		cycapsense_hssp_notify(HSSP_START);
+
+	dev_info(data->dev, "Reset requested\n");
+	device_lock(data->dev);
+	ExitProgrammingMode();
+	msleep(1000);
+
+	if (status == HSSP_STOP)
+		cycapsense_hssp_notify(HSSP_STOP);
+
+	device_unlock(data->dev);
+	return 0;
+}
 
 int cycapsense_reset(void)
 {
@@ -451,10 +474,10 @@ int cycapsense_reset(void)
 		pr_err("%s: Ctrl data not initialized\n", __func__);
 		return -ENODEV;
 	}
-	dev_info(ctrl_data->dev, "Reset requested\n");
-	device_lock(ctrl_data->dev);
-	ExitProgrammingMode();
-	device_unlock(ctrl_data->dev);
+
+	ctrl_data->cmd = HSSP_CMD_RESET;
+	schedule_work(&ctrl_data->work);
+
 	return 0;
 }
 EXPORT_SYMBOL(cycapsense_reset);
@@ -472,17 +495,20 @@ static ssize_t cycapsense_fw_store(struct class *class,
 	if (cp)
 		*(char *)cp = 0;
 
-	ctrl_data->hssp_d.inf.fw_name = buf;
-
-	if (!strcmp(buf, "reset")) {
-		cycapsense_reset();
-		return count;
+	if (!strcmp(buf, "reset"))
+		ctrl_data->cmd = HSSP_CMD_RESET;
+	else if (!strcmp(buf, "erase"))
+		ctrl_data->cmd = HSSP_CMD_ERASE;
+	else {
+		ctrl_data->cmd = HSSP_CMD_FW_UPDATE;
+		if (!strcmp(buf, "1"))
+			ctrl_data->hssp_d.inf.fw_name[0] = 0;
+		else
+			strlcpy(ctrl_data->hssp_d.inf.fw_name, buf, NAME_MAX);
 	}
 
-	if (!strcmp(buf, "1"))
-		ctrl_data->hssp_d.inf.fw_name = NULL;
-	cycapsense_fw_update();
-	ctrl_data->hssp_d.inf.fw_name = NULL;
+	schedule_work(&ctrl_data->work);
+
 	return count;
 }
 
@@ -512,6 +538,25 @@ static ssize_t cycapsense_reset_store(struct class *class,
 		cycapsense_reset();
 
 	return count;
+}
+
+static void capsense_update_work(struct work_struct *w)
+{
+	struct cycapsense_ctrl_data *data =
+		container_of(w, struct cycapsense_ctrl_data, work);
+
+	switch (data->cmd) {
+	case HSSP_CMD_RESET:
+		__cycapsense_reset(data);
+		break;
+	case HSSP_CMD_ERASE:
+		cycapsense_hssp_erase(&data->hssp_d);
+		break;
+	case HSSP_CMD_FW_UPDATE:
+		__cycapsense_fw_update(data);
+		break;
+	}
+	data->cmd = HSSP_CMD_NONE;
 }
 
 static int cycapsense_validate_gpio(struct device *dev,
@@ -658,6 +703,8 @@ static int cycapsense_prog_probe(struct platform_device *pdev)
 	}
 	ctrl_data->dev = &pdev->dev;
 	platform_set_drvdata(pdev, ctrl_data);
+
+	INIT_WORK(&ctrl_data->work, capsense_update_work);
 
 	dev_dbg(&pdev->dev, "Cypress CapSense probe complete\n");
 
