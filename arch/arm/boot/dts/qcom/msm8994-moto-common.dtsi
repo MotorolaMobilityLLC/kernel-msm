@@ -1409,6 +1409,7 @@
 		tfa_vdd-supply = <&pm8994_s4>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
+		nxp,tfa_pcm-start-delay = <100>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&tfa9890_reset_default>;
