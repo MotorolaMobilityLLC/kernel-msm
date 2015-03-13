@@ -209,12 +209,35 @@ static struct {
 } f01_c0_0;
 
 static struct {
+	unsigned char doze_interval;
+} f01_c2_0;
+
+static struct {
+	unsigned char wakeup_threshold;
+} f01_c3_0;
+
+static struct {
+	unsigned char doze_holdoff;
+} f01_c5_0;
+
+static struct {
 	unsigned char recalibration_interval;
 } f01_c9_0;
 
-
 static struct synaptics_rmi4_subpkt f01_c0[] = {
 	RMI4_SUBPKT_STATIC(0, f01_c0_0),
+};
+
+static struct synaptics_rmi4_subpkt f01_c2[] = {
+	RMI4_SUBPKT(f01_c2_0),
+};
+
+static struct synaptics_rmi4_subpkt f01_c3[] = {
+	RMI4_SUBPKT(f01_c3_0),
+};
+
+static struct synaptics_rmi4_subpkt f01_c5[] = {
+	RMI4_SUBPKT(f01_c5_0),
 };
 
 static struct synaptics_rmi4_subpkt f01_c9[] = {
@@ -223,16 +246,26 @@ static struct synaptics_rmi4_subpkt f01_c9[] = {
 
 static struct synaptics_rmi4_packet_reg f01_ctrl_reg_array[] = {
 	RMI4_REG_STATIC(0, f01_c0, 1),
-	RMI4_REG(9, f01_c9),
+	RMI4_REG_STATIC(2, f01_c2, 1),
+	RMI4_REG_STATIC(3, f01_c3, 1),
+	RMI4_REG_STATIC(5, f01_c5, 1),
+	RMI4_REG_STATIC(9, f01_c9, 1),
 };
 
 static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 	{
-		.f_number = SYNAPTICS_RMI4_F12 | CTRL_TYPE,
+		.f_number = SYNAPTICS_RMI4_F12,
 		.base_addr = 0,
 		.query_offset = 4,
 		.nr_regs = ARRAY_SIZE(f12_ctrl_reg_array),
 		.regs = f12_ctrl_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F01,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f01_ctrl_reg_array),
+		.regs = f01_ctrl_reg_array,
 	},
 	{
 		.f_number = SYNAPTICS_RMI4_F12 | DATA_TYPE,
@@ -240,13 +273,6 @@ static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 		.query_offset = 7,
 		.nr_regs = ARRAY_SIZE(f12_data_reg_array),
 		.regs = f12_data_reg_array,
-	},
-	{
-		.f_number = SYNAPTICS_RMI4_F01 | CTRL_TYPE,
-		.base_addr = 0,
-		.query_offset = 0,	/* does not matter */
-		.nr_regs = ARRAY_SIZE(f01_ctrl_reg_array),
-		.regs = f01_ctrl_reg_array,
 	},
 };
 
@@ -1073,14 +1099,14 @@ struct synaptics_rmi4_f01_device_status {
 struct synaptics_rmi4_f01_query1 {
 	union {
 		struct {
-			unsigned char has_query42:1;
-			unsigned char has_doze_holdoff:1;
-			unsigned char has_adjustable_doze:1;
-			unsigned char has_charger_input:1;
-			unsigned char has_sensor_id:1;
-			unsigned char reserved:1;
-			unsigned char non_compliant:1;
 			unsigned char custom_map:1;
+			unsigned char non_compliant:1;
+			unsigned char reserved:1;
+			unsigned char has_sensor_id:1;
+			unsigned char has_charger_input:1;
+			unsigned char has_adjustable_doze:1;
+			unsigned char has_doze_holdoff:1;
+			unsigned char has_query42:1;
 		} __packed;
 		unsigned char data[1];
 	};
@@ -1089,13 +1115,13 @@ struct synaptics_rmi4_f01_query1 {
 struct synaptics_rmi4_f01_query42 {
 	union {
 		struct {
-			unsigned char reserved:2;
-			unsigned char has_recalibration:1;
-			unsigned char has_report_rate:1;
-			unsigned char has_swr:1;
-			unsigned char has_guest:1;
-			unsigned char has_multi_physical:1;
 			unsigned char has_ds4_queries:1;
+			unsigned char has_multi_physical:1;
+			unsigned char has_guest:1;
+			unsigned char has_swr:1;
+			unsigned char has_report_rate:1;
+			unsigned char has_recalibration:1;
+			unsigned char reserved:2;
 		} __packed;
 		unsigned char data[1];
 	};
@@ -1296,7 +1322,7 @@ static void synaptics_dsx_patch_func(
 	struct synaptics_dsx_func_patch *fp;
 	struct synaptics_rmi4_packet_reg *reg;
 	struct synaptics_rmi4_func_packet_regs *regs =
-				find_function(f_number | CTRL_TYPE);
+				find_function(f_number);
 
 	pr_debug("patching F%x\n", regs->f_number);
 	list_for_each_entry(fp, &patch->cfg_head, link) {
@@ -2877,7 +2903,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	if (f12_d15[0].present)
 		pr_debug("F12 has data register 15\n");
 
-	regs = find_function(SYNAPTICS_RMI4_F12 | CTRL_TYPE);
+	regs = find_function(SYNAPTICS_RMI4_F12);
 	retval = synaptics_rmi4_scan_f12_reg_info(rmi4_data,
 			fhandler->full_addr.query_base + regs->query_offset,
 			fhandler->full_addr.ctrl_base, regs);
@@ -3107,13 +3133,19 @@ static void simple_deinit_packet_reg(struct synaptics_rmi4_packet_reg *reg)
 	reg->subpkt[0].offset = -1;
 }
 
+#define F01_RMI_Ctrl0	0
+#define F01_RMI_Ctrl2	2
+#define F01_RMI_Ctrl3	3
+#define F01_RMI_Ctrl5	5
+#define F01_RMI_Ctrl9	9
+
 static void synaptics_rmi4_scan_f01_reg_info(
 		struct synaptics_rmi4_data *rmi4_data)
 {
-	int retval;
+	int r, s, retval;
 	unsigned short query42_offset = F01_QUERY21_OFFSET;
 	unsigned short query43_size = 0;
-	unsigned short ctrl9_offset = 0;
+	unsigned short current_ctrl_offset = rmi4_data->num_of_intr_regs;
 	bool has_recalibration = false;
 	bool can_access_ctrl9 = false;
 	u8 query43[4];
@@ -3122,17 +3154,29 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	struct synaptics_rmi4_func_packet_regs *regs;
 	struct synaptics_rmi4_packet_reg *reg;
 
-	regs = find_function(SYNAPTICS_RMI4_F01 | CTRL_TYPE);
+	regs = find_function(SYNAPTICS_RMI4_F01);
 	if (unlikely(regs == NULL)) {
 		dev_info(&rmi4_data->i2c_client->dev,
 			"%s: F01 registers not defined\n", __func__);
 		return;
 	}
+	/* invalidate offsets only and keep statically defined register size */
+	for (r = 0; r < regs->nr_regs; ++r) {
+		regs->regs[r].offset = -1;
+		kfree(regs->regs[r].data);
+		for (s = 0; s < regs->regs[r].nr_subpkts; ++s) {
+			regs->regs[r].subpkt[s].present = 0;
+			if (regs->regs[r].subpkt[s].data &&
+					regs->regs[r].subpkt[s].size)
+				memset(regs->regs[r].subpkt[s].data, 0,
+					regs->regs[r].subpkt[s].size);
+		}
+	}
 
 	regs->base_addr = rmi4_data->f01_ctrl_base_addr;
 	pr_debug("F01_RMI_Ctrl base addr 0x%x\n", regs->base_addr);
 
-	reg = find_packet_reg(regs, 0);
+	reg = find_packet_reg(regs, F01_RMI_Ctrl0);
 	if (unlikely(reg == NULL)) {
 		dev_warn(&rmi4_data->i2c_client->dev,
 			"%s: F01_RMI_Ctrl0 not defined\n",
@@ -3144,7 +3188,7 @@ static void synaptics_rmi4_scan_f01_reg_info(
 		reg->data = simple_init_packet_reg(reg, 0);
 		if (!reg->data) {
 			simple_deinit_packet_reg(reg);
-			dev_warn(&rmi4_data->i2c_client->dev,
+			dev_err(&rmi4_data->i2c_client->dev,
 				"%s: remove r%d.s0 from the list\n",
 				__func__, reg->r_number);
 		}
@@ -3160,26 +3204,60 @@ static void synaptics_rmi4_scan_f01_reg_info(
 		return;
 	}
 
-	if (query1.reserved) {
-		ctrl9_offset++;		/* has F01_RMI_Ctrl4 */
-		query42_offset++;	/* has F01_RMI_Query21 */
-		query42_offset += 18;	/* has F01_RMI_Query23-41 */
-		pr_debug("has F01_RMI_Query21,23-41 and F01_RMI_Ctrl4\n");
-	}
-
 	if (query1.has_sensor_id) {
 		query42_offset++;	/* has F01_RMI_Query22 */
 		pr_debug("has F01_RMI_Query22\n");
 	}
 
 	if (query1.has_adjustable_doze) {
-		ctrl9_offset += 2;	/* has F01_RMI_Ctrl2 & Ctrl3 */
 		pr_debug("has F01_RMI_Ctrl2 and F01_RMI_Ctrl3\n");
+		current_ctrl_offset++;
+		reg = find_packet_reg(regs, F01_RMI_Ctrl2);
+		if (reg) {
+			reg->data = simple_init_packet_reg(reg,
+						current_ctrl_offset);
+			if (!reg->data) {
+				simple_deinit_packet_reg(reg);
+				dev_err(&rmi4_data->i2c_client->dev,
+					"%s: remove r%d.s0 from the list\n",
+					__func__, reg->r_number);
+			}
+		}
+		current_ctrl_offset++;
+		reg = find_packet_reg(regs, F01_RMI_Ctrl3);
+		if (reg) {
+			reg->data = simple_init_packet_reg(reg,
+						current_ctrl_offset);
+			if (!reg->data) {
+				simple_deinit_packet_reg(reg);
+				dev_err(&rmi4_data->i2c_client->dev,
+					"%s: remove r%d.s0 from the list\n",
+					__func__, reg->r_number);
+			}
+		}
+	}
+
+	if (query1.reserved) {
+		current_ctrl_offset++;		/* has F01_RMI_Ctrl4 */
+		query42_offset++;	/* has F01_RMI_Query21 */
+		query42_offset += 18;	/* has F01_RMI_Query23-41 */
+		pr_debug("has F01_RMI_Query21,23-41 and F01_RMI_Ctrl4\n");
 	}
 
 	if (query1.has_doze_holdoff) {
-		ctrl9_offset++;		/* has F01_RMI_Ctrl5 */
 		pr_debug("has F01_RMI_Ctrl5\n");
+		current_ctrl_offset++;
+		reg = find_packet_reg(regs, F01_RMI_Ctrl5);
+		if (reg) {
+			reg->data = simple_init_packet_reg(reg,
+						current_ctrl_offset);
+			if (!reg->data) {
+				simple_deinit_packet_reg(reg);
+				dev_err(&rmi4_data->i2c_client->dev,
+					"%s: remove r%d.s0 from the list\n",
+					__func__, reg->r_number);
+			}
+		}
 	}
 
 	query42.data[0] = 0;
@@ -3216,15 +3294,21 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	}
 
 	if (query43_size) {
-		if (query43[2] & 0x1)
-			ctrl9_offset++;	/* has F01_RMI_Ctrl6 */
-		if (query43[2] & 0x2)
-			ctrl9_offset++;	/* has F01_RMI_Ctrl7 */
-		if (query43[2] & 0x4)
-			ctrl9_offset++;	/* has F01_RMI_Ctrl8 */
+		if (query43[2] & 0x1) {
+			current_ctrl_offset++;	/* has F01_RMI_Ctrl6 */
+			pr_debug("has F01_RMI_Ctrl6\n");
+		}
+		if (query43[2] & 0x2) {
+			current_ctrl_offset++;	/* has F01_RMI_Ctrl7 */
+			pr_debug("has F01_RMI_Ctrl7\n");
+		}
+		if (query43[2] & 0x4) {
+			current_ctrl_offset++;	/* has F01_RMI_Ctrl8 */
+			pr_debug("has F01_RMI_Ctrl8\n");
+		}
 	}
 
-	reg = find_packet_reg(regs, 9);
+	reg = find_packet_reg(regs, F01_RMI_Ctrl9);
 	if (unlikely(reg == NULL)) {
 		dev_warn(&rmi4_data->i2c_client->dev,
 			"%s: F01_RMI_Ctrl9 not present\n", __func__);
@@ -3233,17 +3317,20 @@ static void synaptics_rmi4_scan_f01_reg_info(
 
 	if (regs && reg) {
 		if (has_recalibration == false || can_access_ctrl9 == false) {
-			pr_debug("remove F01_RMI_Ctrl9\n");
 			simple_deinit_packet_reg(reg);
+			dev_warn(&rmi4_data->i2c_client->dev,
+				"%s: remove r%d.s0 from the list\n",
+				__func__, reg->r_number);
 			return;
 		}
 
-		ctrl9_offset += rmi4_data->num_of_intr_regs;
-		pr_debug("F01_RMI_Ctrl9 offset %d\n", ctrl9_offset);
-		reg->data = simple_init_packet_reg(reg, ctrl9_offset);
+		current_ctrl_offset++;
+		pr_debug("F01_RMI_Ctrl9 offset %d\n", current_ctrl_offset);
+
+		reg->data = simple_init_packet_reg(reg, current_ctrl_offset);
 		if (!reg->data) {
 			simple_deinit_packet_reg(reg);
-			dev_warn(&rmi4_data->i2c_client->dev,
+			dev_err(&rmi4_data->i2c_client->dev,
 				"%s: remove r%d.s0 from the list\n",
 				__func__, reg->r_number);
 		}
@@ -3520,7 +3607,8 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 		batohui(&config_id, rmi->config_id, sizeof(config_id));
 		pr_info("Product: %s, firmware id: %x, config id: %08x\n",
 			rmi->product_id_string, firmware_id, config_id);
-
+		/* has to be called after determining */
+		/* the number of interrupt registers */
 		synaptics_rmi4_scan_f01_reg_info(rmi4_data);
 	}
 
