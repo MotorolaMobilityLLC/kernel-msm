@@ -1848,7 +1848,8 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		pr_err_ratelimited("invalid value: cmd=0x%x\n", cmd);
 		break;
 	case VIDIOC_MSM_CPP_IOMMU_ATTACH: {
-		if (cpp_dev->iommu_state == CPP_IOMMU_STATE_DETACHED) {
+		if ((cpp_dev->iommu_state == CPP_IOMMU_STATE_DETACHED) &&
+			(cpp_dev->stream_cnt == 0)) {
 			rc = iommu_attach_device(cpp_dev->domain,
 				cpp_dev->iommu_ctx);
 			if (rc < 0) {
