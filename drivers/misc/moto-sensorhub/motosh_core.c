@@ -26,12 +26,14 @@
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/ktime.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
+#include <linux/sysfs.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
@@ -62,6 +64,8 @@ unsigned short motosh_i2c_retry_delay = 13;
 unsigned short motosh_g_acc_delay;
 unsigned short motosh_g_mag_delay;
 unsigned short motosh_g_gyro_delay;
+uint8_t motosh_g_rv_6axis_delay = 40;
+uint8_t motosh_g_rv_9axis_delay = 40;
 unsigned short motosh_g_baro_delay;
 unsigned short motosh_g_step_counter_delay;
 unsigned short motosh_g_ir_gesture_delay;
@@ -102,6 +106,145 @@ const struct motosh_algo_info_t motosh_algo_info[MOTOSH_NUM_ALGOS] = {
 };
 
 struct motosh_data *motosh_misc_data;
+
+/* MOTOSH sysfs functions/attributes */
+
+/* Attribute: timestamp_time_ns (RO) */
+static ssize_t timestamp_time_ns_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	*((uint64_t *)buf) = motosh_timestamp_ns();
+	return sizeof(uint64_t);
+}
+
+/* Attribute: rv_6axis_update_rate (RW) */
+static ssize_t rv_6axis_update_rate_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	*((uint8_t *)buf) = motosh_g_rv_6axis_delay;
+	return sizeof(uint8_t);
+}
+static ssize_t rv_6axis_update_rate_store(
+	struct device *dev,
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	int err = 0;
+	if (count < 1)
+		return -EINVAL;
+	err = motosh_set_rv_6axis_update_rate(
+		motosh_misc_data,
+		*((uint8_t *)buf));
+	if (err)
+		return err;
+	else
+		return sizeof(uint8_t);
+}
+
+/* Attribute: rv_9axis_update_rate (RW) */
+static ssize_t rv_9axis_update_rate_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	*((uint8_t *)buf) = motosh_g_rv_9axis_delay;
+	return sizeof(uint8_t);
+}
+static ssize_t rv_9axis_update_rate_store(
+	struct device *dev,
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	int err = 0;
+	if (count < 1)
+		return -EINVAL;
+	err = motosh_set_rv_9axis_update_rate(
+		motosh_misc_data,
+		*((uint8_t *)buf));
+	if (err)
+		return err;
+	else
+		return sizeof(uint8_t);
+}
+
+static struct device_attribute motosh_attributes[] = {
+	__ATTR_RO(timestamp_time_ns),
+	__ATTR(
+		rv_6axis_update_rate,
+		0664,
+		rv_6axis_update_rate_show,
+		rv_6axis_update_rate_store),
+	__ATTR(
+		rv_9axis_update_rate,
+		0664,
+		rv_9axis_update_rate_show,
+		rv_9axis_update_rate_store),
+	__ATTR_NULL
+};
+
+static int create_device_attributes(
+	struct device *dev,
+	struct device_attribute *attrs)
+{
+	int i;
+	int err = 0;
+
+	for (i = 0; attrs[i].attr.name != NULL; ++i) {
+		err = device_create_file(dev, &attrs[i]);
+		if (err)
+			break;
+	}
+
+	if (err) {
+		for (--i; i >= 0; --i)
+			device_remove_file(dev, &attrs[i]);
+	}
+
+	return err;
+}
+
+static void remove_device_attributes(
+	struct device *dev,
+	struct device_attribute *attrs)
+{
+	int i;
+
+	for (i = 0; attrs[i].attr.name != NULL; ++i)
+		device_remove_file(dev, &attrs[i]);
+}
+
+static int create_sysfs_interfaces(struct motosh_data *ps_motosh)
+{
+	int err = 0;
+
+	if (!ps_motosh)
+		return -EINVAL;
+
+	err = create_device_attributes(
+		ps_motosh->motosh_class_dev,
+		motosh_attributes);
+
+	if (err < 0)
+		remove_device_attributes(
+			ps_motosh->motosh_class_dev,
+			motosh_attributes);
+	return err;
+}
+
+/* END: MOTOSH sysfs functions/attributes */
+
+int64_t motosh_timestamp_ns(void)
+{
+	struct timespec ts;
+	get_monotonic_boottime(&ts);
+	return ts.tv_sec*1000000000LL + ts.tv_nsec;
+}
 
 void motosh_wake(struct motosh_data *ps_motosh)
 {
@@ -1018,9 +1161,16 @@ static int motosh_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 			"cdev_add as failed: %d\n", err);
 
-	device_create(ps_motosh->motosh_class, NULL,
+	ps_motosh->motosh_class_dev = device_create(
+		ps_motosh->motosh_class, NULL,
 		MKDEV(MAJOR(ps_motosh->motosh_dev_num), 0),
 		ps_motosh, "motosh_as");
+
+	err = create_sysfs_interfaces(ps_motosh);
+	if (err)
+		dev_err(&client->dev,
+			"create_sysfs_interfaces failed: %d",
+			err);
 
 	cdev_init(&ps_motosh->ms_cdev, &motosh_ms_fops);
 	ps_motosh->ms_cdev.owner = THIS_MODULE;
