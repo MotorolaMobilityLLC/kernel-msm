@@ -3240,7 +3240,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 	
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f991f000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart3_apps_clk.c, "f991f000.serial"),
-	CLK_LOOKUP("rf_clk",   cxo_a1.c, "f991f000.serial"),
 	
 	CLK_LOOKUP("iface_clk",       gcc_blsp1_ahb_clk.c, "f9920000.serial"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_uart4_apps_clk.c, "f9920000.serial"),

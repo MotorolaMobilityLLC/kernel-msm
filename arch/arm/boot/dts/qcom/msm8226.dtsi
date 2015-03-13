@@ -248,7 +248,13 @@
 	};
 	qcom,bluesleep {
 		compatible = "qcom,bluesleep";
-		
+		host-wake-gpio = <&msmgpio 64 0>;
+		ext-wake-gpio = <&msmgpio 63 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <64 0>;
+		interrupt-names = "host_wake";
+		tx-timer-interval = <1>;
+		gpio-key,wakeup;
 	};
 
 	serial@f991f000 {
