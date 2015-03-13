@@ -120,6 +120,13 @@ static struct msm_gpiomux_config sparrow_evb_msm8226_gpio_configs[] __initdata= 
                 },
         },
 // ASUS_BSP --- Maggie_Lee "I2C"
+        {
+               .gpio = 24,             /* Tear Enable */
+               .settings = {
+                       [GPIOMUX_ACTIVE]    = &lcd_te_act_cfg,
+                       [GPIOMUX_SUSPENDED] = &lcd_te_sus_cfg,
+               },
+        },
 	{
 		.gpio = 25,
 		.settings = {
