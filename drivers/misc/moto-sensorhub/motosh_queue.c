@@ -46,7 +46,6 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 {
 	int new_head;
 	struct motosh_android_sensor_data *buffer;
-	struct timespec ts;
 	static bool error_reported;
 
 	new_head = (ps_motosh->motosh_as_data_buffer_head + 1)
@@ -72,8 +71,7 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	}
 	buffer->size = size;
 
-	get_monotonic_boottime(&ts);
-	buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
+	buffer->timestamp = motosh_timestamp_ns();
 
 	ps_motosh->motosh_as_data_buffer_head = new_head;
 	wake_up(&ps_motosh->motosh_as_data_wq);
@@ -106,7 +104,6 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 {
 	int new_head;
 	struct motosh_moto_sensor_data *buffer;
-	struct timespec ts;
 	static bool error_reported;
 
 	new_head = (ps_motosh->motosh_ms_data_buffer_head + 1)
@@ -131,9 +128,7 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 	}
 	buffer->size = size;
 
-	ktime_get_ts(&ts);
-	buffer->timestamp
-		= ts.tv_sec*1000000000LL + ts.tv_nsec;
+	buffer->timestamp = motosh_timestamp_ns();
 
 	ps_motosh->motosh_ms_data_buffer_head = new_head;
 	wake_up(&ps_motosh->motosh_ms_data_wq);
