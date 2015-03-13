@@ -806,3 +806,57 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	mutex_unlock(&ps_motosh->lock);
 	return err;
 }
+
+int motosh_set_rv_6axis_update_rate(
+	struct motosh_data *ps_motosh,
+	const uint8_t newDelay)
+{
+	int err = 0;
+	unsigned char cmdbuff[2];
+
+	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
+		return -EINTR;
+	motosh_wake(ps_motosh);
+
+	if (ps_motosh->mode == BOOTMODE)
+		goto EPILOGUE;
+
+	cmdbuff[0] = QUAT_6AXIS_UPDATE_RATE;
+	cmdbuff[1] = newDelay;
+	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
+	if (!err)
+		motosh_g_rv_6axis_delay = newDelay;
+
+EPILOGUE:
+	motosh_sleep(ps_motosh);
+	mutex_unlock(&ps_motosh->lock);
+
+	return err;
+}
+
+int motosh_set_rv_9axis_update_rate(
+	struct motosh_data *ps_motosh,
+	const uint8_t newDelay)
+{
+	int err = 0;
+	unsigned char cmdbuff[2];
+
+	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
+		return -EINTR;
+	motosh_wake(ps_motosh);
+
+	if (ps_motosh->mode == BOOTMODE)
+		goto EPILOGUE;
+
+	cmdbuff[0] = QUAT_9AXIS_UPDATE_RATE;
+	cmdbuff[1] = newDelay;
+	err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
+	if (!err)
+		motosh_g_rv_9axis_delay = newDelay;
+
+EPILOGUE:
+	motosh_sleep(ps_motosh);
+	mutex_unlock(&ps_motosh->lock);
+
+	return err;
+}
