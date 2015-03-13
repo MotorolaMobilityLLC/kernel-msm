@@ -650,6 +650,14 @@ config MOT_UTAG
 	  This driver should be built as a module. The module will be called
 	  utags.ko.
 
+config INPUT_TSL2584
+	tristate "TSL2584"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you wish to include support for the TSL2584 ALS sensor.
+	  If unsure, say N.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
