@@ -118,6 +118,10 @@
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 };
 
+&mdss_dsi1 {
+	status = "disabled";
+};
+
 &pm8916_vadc {
 	/delete-node/ chan@b;
 
