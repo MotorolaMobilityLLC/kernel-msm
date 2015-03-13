@@ -1481,6 +1481,11 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 			return retval;
 
 		rmi4_data->irq_enabled = true;
+
+		/*configured as a wake up source*/
+		retval = irq_set_irq_wake(rmi4_data->irq, 1);
+		if (retval < 0)
+			return retval;
 	} else {
 		if (rmi4_data->irq_enabled) {
 			disable_irq(rmi4_data->irq);
