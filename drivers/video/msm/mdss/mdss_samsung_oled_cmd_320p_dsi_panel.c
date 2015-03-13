@@ -31,7 +31,6 @@
 #include "mdss_samsung_dsi_panel_msm8x26.h"
 #include "mdss_debug.h"
 
-
 #define DT_CMD_HDR 6
 
 /* #define CMD_DEBUG */
@@ -707,12 +706,6 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 
 	adata = &pdata->alpm_data;
 
-	if (adata->alpm_status(CHECK_PREVIOUS_STATUS)
-			&& adata->alpm_status(CHECK_CURRENT_STATUS)) {
-		pr_info("[ALPM_DEBUG] %s: ambient -> ambient\n", __func__);
-		return;
-	}
-
 	if (mode) {
 		alpm_enable(ctrl, ALPM_MODE_ON);
 		mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
@@ -921,7 +914,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
-	struct mdss_alpm_data *adata;
 	struct mdss_samsung_driver_data *msd = NULL;
 	struct display_status *dstat;
 
@@ -933,7 +925,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 			panel_data);
-	adata = &pdata->alpm_data;
 	msd = (struct mdss_samsung_driver_data *)pdata->panel_private;
 	dstat = &msd->dstat;
 
@@ -952,38 +943,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_panel_dimming_init(pdata);
 
-	/* Normaly the else is working for PANEL_DISP_ON_SEQ */
-	if (adata->alpm_status) {
-		if (!adata->alpm_status(CHECK_PREVIOUS_STATUS))
-			mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
-	} else
-		mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
+	mdss_samsung_disp_send_cmd(ctrl, PANEL_DISPLAY_ON_SEQ, true);
 
 	dstat->wait_disp_on = 1;
 	dstat->on = 1;
-
-	/* ALPM Mode Change */
-	if (adata->alpm_status) {
-		if (!adata->alpm_status(CHECK_PREVIOUS_STATUS)
-				&& adata->alpm_status(CHECK_CURRENT_STATUS)) {
-			/* Turn On ALPM Mode */
-			mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_DIM);
-			mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
-			adata->alpm_status(STORE_CURRENT_STATUS);
-			pr_info("[ALPM_DEBUG] %s: Send ALPM mode on cmds\n",
-					__func__);
-		} else if (!adata->alpm_status(CHECK_CURRENT_STATUS)
-				&& adata->alpm_status(CHECK_PREVIOUS_STATUS)) {
-			/* Turn Off ALPM Mode */
-			mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_OFF, true);
-			/*
-			   mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_RESTORE);
-			   adata->alpm_status(CLEAR_MODE_STATUS);
-			 */
-			pr_info("[ALPM_DEBUG] %s: Send ALPM off cmds\n",
-					__func__);
-		}
-	}
 
 	if (androidboot_mode_charger || androidboot_is_recovery)
 		mdss_samsung_disp_send_cmd(ctrl, PANEL_BACKLIGHT_CMD, true);
@@ -1025,19 +988,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	dstat->on = 0;
 	pdata->panel_info.first_bl_update = 1;
-	if (adata->alpm_status &&
-			adata->alpm_status(CHECK_CURRENT_STATUS) &&
-			!adata->alpm_status(CHECK_PREVIOUS_STATUS)) {
-		pr_info("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
-				__func__);
-		mdss_dsi_panel_bl_dim(pdata, PANEL_BACKLIGHT_DIM);
-		mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
-		adata->alpm_status(STORE_CURRENT_STATUS);
-	} else if (pinfo->is_suspending)
-		pr_debug("[ALPM_DEBUG] %s: Skip to send panel off cmds\n",
-				__func__);
-	else
-		mdss_samsung_disp_send_cmd(ctrl, PANEL_DISP_OFF, true);
+	if (adata->alpm_status)
+		adata->alpm_status(CLEAR_MODE_STATUS);
+	mdss_samsung_disp_send_cmd(ctrl, PANEL_DISP_OFF, true);
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
@@ -2158,7 +2111,7 @@ samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int event)
 
 	return 0;
 }
-
+#if defined(AMBIENT_SYSFS)
 static ssize_t mdss_samsung_ambient_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -2206,6 +2159,20 @@ static ssize_t mdss_samsung_ambient_store(struct device *dev,
 
 	return size;
 }
+#else
+static ssize_t mdss_samsung_ambient_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return 0;
+}
+
+static ssize_t mdss_samsung_ambient_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	return size;
+}
+
+#endif
 static DEVICE_ATTR(ambient, S_IRUGO | S_IWUSR | S_IWGRP,
 		mdss_samsung_ambient_show,
 		mdss_samsung_ambient_store);
