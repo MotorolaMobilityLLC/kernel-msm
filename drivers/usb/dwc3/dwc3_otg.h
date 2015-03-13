@@ -25,6 +25,8 @@
 
 #define DWC3_IDEV_CHG_MAX 1500
 #define DWC3_HVDCP_CHG_MAX 1800
+#define DWC3_IDEV_CHG_DCP 1300
+#define DWC3_IDEV_CHG_PROP 1100
 #define DWC3_IDEV_CHG_MIN 500
 #define DWC_LS_DM	  0x1
 #define DWC_LS_DP	  0x2
