@@ -19,9 +19,11 @@
 #define __CYCAPSENSE_HSSP_H__
 
 #include <linux/string.h>
+#include <linux/limits.h>
+#include <linux/workqueue.h>
 
 struct hex_info {
-	const char *fw_name;
+	char fw_name[NAME_MAX];
 	u8 *data;
 	u8 *s_data;
 	u8 *m_data;
@@ -47,7 +49,14 @@ struct hssp_data {
 struct cycapsense_ctrl_data {
 	struct device *dev;
 	struct hssp_data hssp_d;
+	struct work_struct work;
+	int cmd;
 };
+
+#define HSSP_CMD_NONE		0
+#define HSSP_CMD_RESET		1
+#define HSSP_CMD_ERASE		2
+#define HSSP_CMD_FW_UPDATE	3
 
 int cycapsense_hssp_dnld(struct hssp_data *d);
 
