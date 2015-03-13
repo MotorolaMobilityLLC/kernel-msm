@@ -385,7 +385,8 @@ typedef struct wlc_ssid {
 
 typedef struct wlc_ssid_ext {
 	bool       hidden;
-	uint32		SSID_len;
+	uint16     flags;
+	uint16	   SSID_len;
 	uchar		SSID[DOT11_MAX_SSID_LEN];
 } wlc_ssid_ext_t;
 
@@ -2544,6 +2545,9 @@ enum {
 #define PFN_SWC_MAX_NUM_APS       16
 #define PFN_HOTLIST_MAX_NUM_APS   64
 
+#define MAX_EPNO_HIDDEN_SSID         8
+#define MAX_WHITELIST_SSID           2
+
 /* PFN network info structure */
 typedef struct wl_pfn_subnet_info {
 	struct ether_addr BSSID;
@@ -2695,7 +2699,8 @@ typedef struct wl_pfn_gscan_cfg {
 
 #define WL_PFN_CFG_FLAGS_PROHIBITED	0x00000001	/* Accept and use prohibited channels */
 #define WL_PFN_CFG_FLAGS_RESERVED	0xfffffffe	/* Remaining reserved for future use */
-
+#define WL_PFN_SSID_A_BAND_TRIG   0x20
+#define WL_PFN_SSID_BG_BAND_TRIG   0x40
 typedef struct wl_pfn {
 	wlc_ssid_t		ssid;			/* ssid name and its length */
 	int32			flags;			/* bit2: hidden */
@@ -2711,6 +2716,44 @@ typedef struct wl_pfn_list {
 	uint32		count;
 	wl_pfn_t	pfn[1];
 } wl_pfn_list_t;
+
+#define PFN_SSID_EXT_VERSION   1
+
+typedef struct wl_pfn_ext {
+	uint8 flags;
+	int8 rssi_thresh; /* RSSI threshold, track only if RSSI > threshold */
+	uint16 wpa_auth; /* Match the wpa auth type defined in wlioctl_defs.h */
+	uint8 ssid[DOT11_MAX_SSID_LEN];
+	uint8 ssid_len;
+	uint8 pad;
+} wl_pfn_ext_t;
+
+typedef struct wl_pfn_ext_list {
+	uint16 version;
+	uint16 count;
+	wl_pfn_ext_t pfn_ext[1];
+} wl_pfn_ext_list_t;
+
+#define WL_PFN_SSID_EXT_FOUND   0x1
+#define WL_PFN_SSID_EXT_LOST    0x2
+typedef struct wl_pfn_result_ssid {
+	uint8 flags;
+	int8 rssi;
+	/* channel number */
+	uint16 channel;
+	/* Assume idx in order of cfg */
+	uint32 index;
+} wl_pfn_result_ssid_crc32_t;
+
+typedef struct wl_pfn_ssid_ext_result {
+	uint16 version;
+	uint16 count;
+	wl_pfn_result_ssid_crc32_t net[1];
+} wl_pfn_ssid_ext_result_t;
+
+#define PFN_EXT_AUTH_CODE_OPEN   1 /* open */
+#define PFN_EXT_AUTH_CODE_PSK   2 /* WPA_PSK or WPA2PSK */
+#define PFN_EXT_AUTH_CODE_EAPOL 4 /* any EAPOL  */
 
 #define WL_PFN_MAC_OUI_ONLY_MASK      1
 #define WL_PFN_SET_MAC_UNASSOC_MASK   2

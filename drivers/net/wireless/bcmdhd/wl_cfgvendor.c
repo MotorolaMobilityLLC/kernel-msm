@@ -280,7 +280,6 @@ int wl_cfgvendor_send_hotlist_event(struct wiphy *wiphy,
 	return 0;
 }
 
-
 static int wl_cfgvendor_gscan_get_capabilities(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
@@ -656,6 +655,98 @@ exit:
 	kfree(hotlist_params);
 	return err;
 }
+
+static int wl_cfgvendor_epno_cfg(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	int err = 0;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	dhd_epno_params_t *epno_params;
+	int tmp, tmp1, tmp2, type, num = 0;
+	const struct nlattr *outer, *inner, *iter;
+	uint8 flush = 0, i = 0;
+	uint16 num_visible_ssid = 0;
+
+	nla_for_each_attr(iter, data, len, tmp2) {
+		type = nla_type(iter);
+		switch (type) {
+			case GSCAN_ATTRIBUTE_EPNO_SSID_LIST:
+				nla_for_each_nested(outer, iter, tmp) {
+					epno_params = (dhd_epno_params_t *)
+					          dhd_dev_pno_get_gscan(bcmcfg_to_prmry_ndev(cfg),
+					                 DHD_PNO_GET_EPNO_SSID_ELEM, NULL, &num);
+					if (!epno_params) {
+						WL_ERR(("Failed to get SSID LIST buffer\n"));
+						err = -ENOMEM;
+						goto exit;
+					}
+					i++;
+					nla_for_each_nested(inner, outer, tmp1) {
+						type = nla_type(inner);
+
+						switch (type) {
+							case GSCAN_ATTRIBUTE_EPNO_SSID:
+								memcpy(epno_params->ssid,
+								  nla_data(inner),
+								  DOT11_MAX_SSID_LEN);
+								break;
+							case GSCAN_ATTRIBUTE_EPNO_SSID_LEN:
+								len = nla_get_u8(inner);
+								if (len < DOT11_MAX_SSID_LEN) {
+									epno_params->ssid_len = len;
+								} else {
+									WL_ERR(("SSID too long %d\n", len));
+									err = -EINVAL;
+									goto exit;
+								}
+								break;
+							case GSCAN_ATTRIBUTE_EPNO_RSSI:
+								epno_params->rssi_thresh =
+								       (int8) nla_get_u32(inner);
+								break;
+							case GSCAN_ATTRIBUTE_EPNO_FLAGS:
+								epno_params->flags =
+								          nla_get_u8(inner);
+								if (!(epno_params->flags &
+								        DHD_PNO_USE_SSID))
+									num_visible_ssid++;
+								break;
+							case GSCAN_ATTRIBUTE_EPNO_AUTH:
+								epno_params->auth =
+								        nla_get_u8(inner);
+								break;
+						}
+					}
+				}
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_SSID_NUM:
+				num = nla_get_u8(iter);
+				break;
+			case GSCAN_ATTRIBUTE_EPNO_FLUSH:
+				flush = nla_get_u8(iter);
+				dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
+				           DHD_PNO_EPNO_CFG_ID, NULL, flush);
+				break;
+			default:
+				WL_ERR(("%s: No such attribute %d\n", __FUNCTION__, type));
+				err = -EINVAL;
+				goto exit;
+			}
+
+	}
+	if (i != num) {
+		WL_ERR(("%s: num_ssid %d does not match ssids sent %d\n", __FUNCTION__,
+		     num, i));
+		err = -EINVAL;
+	}
+exit:
+	/* Flush all configs if error condition */
+	flush = (err < 0) ? TRUE: FALSE;
+	dhd_dev_pno_set_cfg_gscan(bcmcfg_to_prmry_ndev(cfg),
+	   DHD_PNO_EPNO_CFG_ID, &num_visible_ssid, flush);
+	return err;
+}
+
 static int wl_cfgvendor_set_batch_scan_cfg(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
@@ -1365,6 +1456,17 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_set_country
 	},
+#ifdef GSCAN_SUPPORT
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = GSCAN_SUBCMD_SET_EPNO_SSID
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_epno_cfg
+
+	},
+#endif /* GSCAN_SUPPORT */
 };
 
 static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
@@ -1381,7 +1483,8 @@ static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
 #endif /* RTT_SUPPORT */
 #ifdef GSCAN_SUPPORT
 		{ OUI_GOOGLE, GOOGLE_SCAN_COMPLETE_EVENT },
-		{ OUI_GOOGLE, GOOGLE_GSCAN_GEOFENCE_LOST_EVENT }
+		{ OUI_GOOGLE, GOOGLE_GSCAN_GEOFENCE_LOST_EVENT },
+		{ OUI_GOOGLE, GOOGLE_SCAN_EPNO_EVENT }
 #endif /* GSCAN_SUPPORT */
 };
 
