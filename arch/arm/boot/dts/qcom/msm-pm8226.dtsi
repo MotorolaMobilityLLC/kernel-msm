@@ -202,9 +202,9 @@
 			/*if want to enable bms,status = "okay"*/
 			status = "okay";
 
-			qcom,r-sense-uohm = <10000>;
+			qcom,r-sense-uohm = <9700>;
 			/*if use external rsense*/
-			//qcom,use-external-rsense;
+			qcom,use-external-rsense;
 			qcom,v-cutoff-uv = <3400000>;
 			qcom,max-voltage-uv = <4350000>;
 			qcom,r-conn-mohm = <0>;
