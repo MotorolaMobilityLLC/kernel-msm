@@ -792,6 +792,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
+	/* clear idle state */
+	ctrl->idle = 0;
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
