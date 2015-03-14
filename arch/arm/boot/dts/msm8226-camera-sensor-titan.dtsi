@@ -80,6 +80,45 @@
 		status = "ok";
 		};
 
+	ov8865: qcom,camera@20 {
+		compatible = "ovti,ov8865";
+		reg = <0x20>;
+		qcom,slave-id = <0x20 0x300b 0x8865>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,led-flash-src = <&led_flash1>;
+		qcom,mount-angle = <270>;
+		qcom,actuator-src = <&actuator0>;
+		qcom,sensor-name = "ov8865";
+		cam_vdig-supply = <&pm8226_l5>;
+		cam_vaf-supply = <&pm8226_l28>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf";
+		qcom,cam-vreg-type = <0 1 1 0>;
+		qcom,cam-vreg-min-voltage = <1200000 0 0 2850000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 0 2850000>;
+		qcom,cam-vreg-op-mode = <105000 0 0 100000>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 26 0>,
+			<&msmgpio 27 0>,
+			<&msmgpio 33 0>,
+			<&msmgpio 37 0>;
+		qcom,gpio-vana = <1>;
+		qcom,gpio-vio = <2>;
+		qcom,gpio-reset = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					"CAM_VANA",
+					"CAM_VIO",
+					"CAM_RESET";
+		qcom,csi-lane-assign = <0x4320>;
+		qcom,csi-lane-mask = <0x1F>;
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		};
+
 	imx132: qcom,camera@32 {
 		compatible = "qcom,imx132";
 		reg = <0x32>;
