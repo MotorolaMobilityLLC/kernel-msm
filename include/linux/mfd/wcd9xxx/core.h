@@ -121,6 +121,11 @@ enum {
 	TOMTOM_NUM_IRQS = WCD9330_NUM_IRQS,
 };
 
+enum {
+       WCD9XXX_REGULATOR_SLEEP_VOTE = 0,
+       WCD9XXX_REGULATOR_ACTIVE_VOTE,
+};
+
 /*
  * data structure for Slimbus and I2S channel.
  * Some of fields are only used in smilbus mode
@@ -185,6 +190,7 @@ struct wcd9xxx {
 	struct slim_device *slim_slave;
 	struct mutex io_lock;
 	struct mutex xfer_lock;
+	struct mutex rgltr_vote_lock;
 	u8 version;
 
 	int reset_gpio;
@@ -224,6 +230,8 @@ int wcd9xxx_interface_reg_write(struct wcd9xxx *wcd9xxx, unsigned short reg,
 int wcd9xxx_get_logical_addresses(u8 *pgd_la, u8 *inf_la);
 int wcd9xxx_slim_write_repeat(struct wcd9xxx *wcd9xxx, unsigned short reg,
 			     int bytes, void *src);
+void wcd9xxx_cdc_vote_regulator_mode(struct wcd9xxx *wcd9xxx,
+				char *regulator_name, bool active_vote);
 
 #if defined(CONFIG_WCD9310_CODEC) || \
 	defined(CONFIG_WCD9304_CODEC) || \
