@@ -3500,6 +3500,9 @@ static int msm_gcc_probe(struct platform_device *pdev)
 	clk_set_rate(&apss_ahb_clk_src.c, 19200000);
 	clk_prepare_enable(&apss_ahb_clk_src.c);
 
+	if (compat_bin)
+		gcc_bimc_gfx_clk.c.depends = NULL;
+
 	dev_info(&pdev->dev, "Registered GCC clocks\n");
 
 	return 0;
