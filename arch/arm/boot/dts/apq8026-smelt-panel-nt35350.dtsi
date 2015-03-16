@@ -28,6 +28,7 @@
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <1800000>;
 	qcom,init-voltage = <1800000>;
+	qcom,init-disallow-bypass = <1>;
 	regulator-boot-on;
 };
 
