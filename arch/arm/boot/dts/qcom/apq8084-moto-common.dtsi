@@ -48,6 +48,10 @@
 
 &soc {
 	/delete-node/ qcom,mhi;
+	corrupt_page {
+		compatible = "qcom,msm-contig-mem";
+		qcom,memblock-reserve = <0x00011000 0x1000>;
+	};
 
 	ramoops {
 		compatible = "ramoops";
