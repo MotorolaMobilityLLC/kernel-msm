@@ -261,13 +261,13 @@
 
 		/* active state */
 		cam_sensor_mclk2_active: active {
-			drive-strength = <4>; /* 2 MA */
+			drive-strength = <4>; /* 4 MA */
 			bias-disable; /* No PULL */
 		};
 
 		/* suspend state */
 		cam_sensor_mclk2_suspend: suspend {
-			drive-strength = <4>; /* 2 MA */
+			drive-strength = <4>; /* 4 MA */
 			bias-pull-down; /* PULL DOWN */
 		};
 	};
