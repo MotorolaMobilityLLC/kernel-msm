@@ -72,6 +72,7 @@
 #define SCALE_MASK		0x3F
 #define TRANS_THRESHOLD_MASK	0x07
 #define PFM_MASK		0xFF
+#define BRGHT_LSB_MASK		0x07
 
 #define VPON_VAL		0x04
 #define VNON_VAL		0x02
@@ -169,6 +170,9 @@ static int isl98611_chip_init(struct i2c_client *client)
 	if (pdata->pfm_value != ISL98611_DEFAULT_PFM)
 		rval |= isl98611_update(pchip, REG_PFMCTRL,
 			PFM_MASK, pdata->pfm_value);
+
+	/* LSB brightness is set to 0x7 by default. Clear it */
+	rval |= isl98611_update(pchip, REG_BRGHT_LSB, BRGHT_LSB_MASK, 0);
 
 	return rval;
 }
