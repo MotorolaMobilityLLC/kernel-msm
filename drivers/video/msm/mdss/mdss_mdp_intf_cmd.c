@@ -316,6 +316,9 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	}
 
 	spin_unlock(&ctx->clk_lock);
+
+	trace_mdp_cmd_readptr_done((u32)ktime_to_ms(ktime_get()),
+			ctx->rdptr_enabled);
 }
 
 static void mdss_mdp_cmd_underflow_recovery(void *data)

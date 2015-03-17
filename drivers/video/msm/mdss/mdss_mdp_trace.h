@@ -249,6 +249,21 @@ TRACE_EVENT(mdp_trace_counter,
 			__get_str(counter_name), __entry->value)
 );
 
+TRACE_EVENT(mdp_cmd_readptr_done,
+	TP_PROTO(u32 ms, int rdptr_enabled),
+	TP_ARGS(ms, rdptr_enabled),
+	TP_STRUCT__entry(
+			__field(u32, ms)
+			__field(int, rdptr_enabled)
+	),
+	TP_fast_assign(
+			__entry->ms = ms;
+			__entry->rdptr_enabled = rdptr_enabled;
+	),
+	TP_printk("readptr ms:%d rdptr_e:%d\n",
+			__entry->ms, __entry->rdptr_enabled)
+);
+
 #endif /* if !defined(TRACE_MDSS_MDP_H) || defined(TRACE_HEADER_MULTI_READ) */
 
 /* This part must be outside protection */
