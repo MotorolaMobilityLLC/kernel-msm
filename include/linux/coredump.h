@@ -11,6 +11,8 @@
  * functions to write out all the necessary info.
  */
 struct coredump_params;
+extern int dump_init(struct coredump_params *cprm);
+extern int dump_finish(struct coredump_params *cprm);
 extern int dump_skip(struct coredump_params *cprm, size_t nr);
 extern int dump_emit(struct coredump_params *cprm, const void *addr, int nr);
 extern int dump_align(struct coredump_params *cprm, int align);
