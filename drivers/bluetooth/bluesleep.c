@@ -209,6 +209,11 @@ void bluesleep_sleep_wakeup(void)
 */
 static void bluesleep_sleep_work(struct work_struct *work)
 {
+	if(!has_lpm_enabled) {
+		BT_ERR("bluesleep_outgoing_data(), bluesleep is not enabled");
+		return;
+	}
+
 	if (bluesleep_can_sleep()) {
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
@@ -278,6 +283,10 @@ void bluesleep_outgoing_data(void)
 {
 	unsigned long irq_flags;
 
+	if(!has_lpm_enabled) {
+		BT_ERR("bluesleep_outgoing_data(), bluesleep is not enabled");
+		return;
+	}
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
 	/* log data passing by */
@@ -472,6 +481,7 @@ static int bluesleep_write_proc_lpm(struct file *file,
 		/* HCI_DEV_UNREG */
 		bluesleep_stop();
 		has_lpm_enabled = false;
+		bsi->uport = NULL;
 	} else {
 		/* HCI_DEV_REG */
 		if (!has_lpm_enabled) {
