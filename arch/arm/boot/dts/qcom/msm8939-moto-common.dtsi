@@ -907,7 +907,7 @@
 		gpios = <&msm_gpio 69 0x0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&hs_detect_default>;
-		fsa8500-init-regs = <0x0C 0xA1>,
+		fsa8500-init-regs = <0x0C 0x41>,
 				    <0x0F 0xF9>,
 				    <0x11 0x84>,
 				    <0x13 0xBF>,
