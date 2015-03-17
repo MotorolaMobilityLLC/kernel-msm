@@ -109,7 +109,6 @@
 /* use this to include integers in commands */
 #define CMD_UINT16(v)		((uint8_t)(v)) , ((uint8_t)((v) >> 8))
 
-
 struct FingerData {
 	uint8_t xLo;
 	uint8_t hi;
@@ -186,6 +185,7 @@ static struct wake_lock touch_time_lock;
 static int lastTouch = TOUCH_UP;
 static unsigned long last_time_exit_low = 0;
 static char fwVersion[20];
+static int RESET_GPIO;
 
 #define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
 #define I2C_RETRIES				2		/* Number of retries */
@@ -475,9 +475,9 @@ static void chipLowPowerMode(bool low)
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
 
 			//Touch Reset
-			gpio_direction_output(16,0);
+			gpio_direction_output(RESET_GPIO,0);
 			msleep(50);
-			gpio_direction_output(16,1);
+			gpio_direction_output(RESET_GPIO,1);
 			msleep(50);
 			chipInLowPower = false;
 
@@ -1124,7 +1124,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	uint8_t rsp[2];
 	int ret = -1;
 	int err;
-	int RESET_GPIO;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		LOGE("need I2C_FUNC_I2C\n");
