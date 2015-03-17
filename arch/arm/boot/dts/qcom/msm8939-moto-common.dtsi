@@ -1075,5 +1075,28 @@
 				0x00010000
 				0x00000004
 				0xffffffff>;
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@1100 {
+				reg = <0x1200>;
+				firmware {
+					frontend {
+						wlf,wmfw-file = "aov-frontend";
+						wlf,bin-file = "None";
+					};
+				};
+			};
+			adsp@1200 {
+				reg = <0x1300>;
+				firmware {
+					aov {
+						wlf,wmfw-file = "aov-control";
+						wlf,bin-file = "aov-model";
+						wlf,compr-caps = <1 1 4 1 16000>;
+					};
+				};
+			};
+		};
 	};
 };
