@@ -832,12 +832,18 @@ wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev *wdev,
 	int8 chanbuf[CHANSPEC_STR_LEN];
 	int32 feature_set = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	rtt_capabilities_t capability;
 	feature_set = dhd_dev_get_feature_set(bcmcfg_to_prmry_ndev(cfg));
 
 	WL_DBG(("In\n"));
 	err = dhd_dev_rtt_register_noti_callback(wdev->netdev, wdev, wl_cfgvendor_rtt_evt);
 	if (err < 0) {
 		WL_ERR(("failed to register rtt_noti_callback\n"));
+		goto exit;
+	}
+	err = dhd_dev_rtt_capability(bcmcfg_to_prmry_ndev(cfg), &capability);
+	if (err < 0) {
+		WL_ERR(("failed to get the capability\n"));
 		goto exit;
 	}
 	memset(&rtt_param, 0, sizeof(rtt_param));
@@ -872,7 +878,9 @@ wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev *wdev,
 						break;
 					case RTT_ATTRIBUTE_TARGET_TYPE:
 						rtt_target->type = nla_get_u8(iter2);
-						if (rtt_target->type == RTT_INVALID) {
+						if (rtt_target->type == RTT_INVALID ||
+							(rtt_target->type == RTT_ONE_WAY &&
+							!capability.rtt_one_sided_supported)) {
 							WL_ERR(("doesn't support RTT type"
 								" : %d\n",
 								rtt_target->type));
@@ -931,6 +939,7 @@ wl_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev *wdev,
 					dhd_rtt_convert_to_chspec(rtt_target->channel);
 				if (rtt_target->chanspec == 0) {
 					WL_ERR(("Channel is not valid \n"));
+					err = -EINVAL;
 					goto exit;
 				}
 				WL_INFORM(("Target addr %s, Channel : %s for RTT \n",

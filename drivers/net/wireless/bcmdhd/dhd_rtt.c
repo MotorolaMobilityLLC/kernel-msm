@@ -64,7 +64,7 @@ static DEFINE_SPINLOCK(noti_list_lock);
 #define FTM_DEFAULT_SESSION 1
 #define FTM_BURST_TIMEOUT_UNIT 250 /* 250 ns */
 #define FTM_INVALID -1
-#define	FTM_DEFAULT_CNT_20M		15
+#define	FTM_DEFAULT_CNT_20M		12
 #define FTM_DEFAULT_CNT_40M		10
 #define FTM_DEFAULT_CNT_80M		5
 
@@ -1881,13 +1881,13 @@ dhd_rtt_init(dhd_pub_t *dhd)
 	rtt_status_info_t *rtt_status;
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	if (dhd->rtt_state) {
-		goto exit;
+		return err;
 	}
 	dhd->rtt_state = kzalloc(sizeof(rtt_status_info_t), GFP_KERNEL);
 	if (dhd->rtt_state == NULL) {
 		err = BCME_NOMEM;
 		DHD_ERROR(("%s : failed to create rtt_state\n", __FUNCTION__));
-		goto exit;
+		return err;
 	}
 	bzero(dhd->rtt_state, sizeof(rtt_status_info_t));
 	rtt_status = GET_RTTSTATE(dhd);
@@ -1934,8 +1934,8 @@ dhd_rtt_init(dhd_pub_t *dhd)
 	INIT_WORK(&rtt_status->work, dhd_rtt_work);
 exit:
 	if (err < 0) {
-		kfree(dhd->rtt_state);
 		kfree(rtt_status->rtt_config.target_info);
+		kfree(dhd->rtt_state);
 	}
 	return err;
 }
