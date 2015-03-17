@@ -1290,7 +1290,7 @@
 		gpios = <&msm_gpio 29 0x0>;
 		hs_det_vdd-supply = <&dummy_vreg>; /* Connected to B+ */
 		hs_det_micvdd-supply = <&pm8994_s4>;
-		fsa8500-init-regs = <0x0C 0xA1>,
+		fsa8500-init-regs = <0x0C 0x41>,
 				    <0x0F 0xF9>,
 				    <0x11 0x84>,
 				    <0x13 0xBF>,
