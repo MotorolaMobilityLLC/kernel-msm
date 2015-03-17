@@ -143,6 +143,9 @@
 		qcom,msm-mi2s-tx-lines = <1>;
 	};
 
+	slim@fe12f000 {
+		status = "disabled";
+	};
 	/delete-node/ sound-9302;
 
 	/* BLSP1: UART */
@@ -609,10 +612,8 @@
 		qcom,vibrator@c000 {
 			qcom,vib-vtg-level-mV = <2300>;
 		};
-		qcom,leds@d800 {
-			qcom,wled_0 {
-				qcom,default-state = "off";
-			};
+		qcom,leds@d300 {
+			status = "disabled";
 		};
 	};
 };
