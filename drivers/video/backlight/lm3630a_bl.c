@@ -12,6 +12,7 @@
 #define pr_fmt(fmt)	"%s: " fmt, __func__
 
 #include <linux/module.h>
+#include <linux/kfifo.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/backlight.h>
@@ -44,6 +45,7 @@
 #define INT_DEBOUNCE_MSEC	10
 #define LM3630A_VDDIO_VOLT	1800000
 
+#define LM3630A_BRIGHTNESS_VALUE_SIZE	sizeof(int)
 #define LM3630A_MAX_BRIGHTNESS		0xFF
 #define LM3630A_HBM_OFF_BRIGHTNESS	(LM3630A_MAX_BRIGHTNESS + 1)
 #define LM3630A_HBM_ON_BRIGHTNESS	(LM3630A_HBM_OFF_BRIGHTNESS + 1)
@@ -68,7 +70,8 @@ struct lm3630a_chip {
 	struct led_classdev ledcdev;
 	struct workqueue_struct *ledwq;
 	struct work_struct ledwork;
-	int ledval;
+	struct kfifo fifo;
+	spinlock_t lock;
 };
 
 #ifdef CONFIG_FB_BACKLIGHT
@@ -488,17 +491,16 @@ static const struct regmap_config lm3630a_regmap = {
 	.max_register = REG_MAX,
 };
 
-static void lm3630a_led_set_func(struct work_struct *work)
+static int lm3630a_led_set_value(struct work_struct *work, int ledval)
 {
 	struct lm3630a_chip *pchip;
 	struct lm3630a_platform_data *pdata;
-	int ret = 0, brt, ledval;
+	int ret = 0, brt;
 	bool new_hbm = false;
 	static bool cur_hbm;
 	static int cur_brt = LM3630A_MAX_BRIGHTNESS;
 
 	pchip = container_of(work, struct lm3630a_chip, ledwork);
-	ledval = pchip->ledval;
 	pdata = pchip->pdata;
 
 	dev_dbg(pchip->dev, "led value = %d\n", ledval);
@@ -586,13 +588,32 @@ static void lm3630a_led_set_func(struct work_struct *work)
 out:
 	if (ret < 0)
 		dev_err(pchip->dev, "fail to set brightness\n");
-	return;
+	return ret;
+}
+
+static void lm3630a_led_set_func(struct work_struct *work)
+{
+	struct lm3630a_chip *pchip;
+	int ledval, len;
+
+	pchip = container_of(work, struct lm3630a_chip, ledwork);
+	while (true) {
+		len = kfifo_out_spinlocked(&pchip->fifo,
+		(unsigned char *)&ledval, LM3630A_BRIGHTNESS_VALUE_SIZE,
+		&pchip->lock);
+		if (len != LM3630A_BRIGHTNESS_VALUE_SIZE)
+			break;
+		if (lm3630a_led_set_value(work, ledval))
+			break;
+	}
 }
 
 static void lm3630a_led_set(struct led_classdev *cdev,
 				enum led_brightness value)
 {
 	struct lm3630a_chip *pchip;
+	unsigned long flags;
+	int ledval = value;
 
 	pchip = container_of(cdev, struct lm3630a_chip, ledcdev);
 
@@ -602,7 +623,16 @@ static void lm3630a_led_set(struct led_classdev *cdev,
 			"Force brightness to %d if it's invalid\n", value);
 	}
 
-	pchip->ledval = value;
+	spin_lock_irqsave(&pchip->lock, flags);
+	if (kfifo_avail(&pchip->fifo) < LM3630A_BRIGHTNESS_VALUE_SIZE) {
+		dev_warn(pchip->dev, "fifo overflow\n");
+		spin_unlock_irqrestore(&pchip->lock, flags);
+		return;
+	}
+	kfifo_in(&pchip->fifo, (unsigned char *)&ledval,
+			LM3630A_BRIGHTNESS_VALUE_SIZE);
+	spin_unlock_irqrestore(&pchip->lock, flags);
+
 	queue_work(pchip->ledwq, &pchip->ledwork);
 }
 
@@ -775,18 +805,25 @@ static int lm3630a_probe(struct i2c_client *client,
 		}
 	} else {
 		pchip->ledcdev = lm3630a_led_cdev;
-		INIT_WORK(&pchip->ledwork, lm3630a_led_set_func);
 		rval = led_classdev_register(pchip->dev, &pchip->ledcdev);
 		if (rval) {
 			dev_err(pchip->dev, "unable to register %s,rc=%d\n",
 				lm3630a_led_cdev.name, rval);
 			return rval;
 		}
+		spin_lock_init(&pchip->lock);
+		if (kfifo_alloc(&pchip->fifo,
+			LM3630A_BRIGHTNESS_VALUE_SIZE * 32, GFP_KERNEL)) {
+			dev_err(pchip->dev, "FIFO allocation failed\n");
+			rval = -ENOMEM;
+			goto err1;
+		}
+		INIT_WORK(&pchip->ledwork, lm3630a_led_set_func);
 		pchip->ledwq = create_singlethread_workqueue("lm3630a-led-wq");
 		if (!pchip->ledwq) {
 			dev_err(pchip->dev, "fail to create led thread\n");
 			rval = -ENOMEM;
-			goto err1;
+			goto err2;
 		}
 	}
 
@@ -796,7 +833,7 @@ static int lm3630a_probe(struct i2c_client *client,
 		if (IS_ERR(pchip->pwmd)) {
 			dev_err(&client->dev, "fail : get pwm device\n");
 			rval = PTR_ERR(pchip->pwmd);
-			goto err1;
+			goto err3;
 		}
 	}
 
@@ -804,21 +841,21 @@ static int lm3630a_probe(struct i2c_client *client,
 	if (pchip->irq) {
 		rval = lm3630a_intr_config(pchip);
 		if (rval < 0)
-			goto err2;
+			goto err4;
 	}
 
 	dev_info(&client->dev, "LM3630A backlight register OK.\n");
 	return 0;
 
-err2:
+err4:
 	if (!IS_ERR_OR_NULL(pchip->pwmd))
 		pwm_free(pchip->pwmd);
-	if (pchip->irq)
-		free_irq(pchip->irq, pchip);
-	if (pchip->irqthread) {
-		flush_workqueue(pchip->irqthread);
-		destroy_workqueue(pchip->irqthread);
-	}
+err3:
+	if (!is_fb_backlight)
+		destroy_workqueue(pchip->ledwq);
+err2:
+	if (!is_fb_backlight)
+		kfifo_free(&pchip->fifo);
 err1:
 	if (is_fb_backlight) {
 		if (!IS_ERR_OR_NULL(pchip->bleda))
@@ -846,7 +883,6 @@ static int lm3630a_remove(struct i2c_client *client)
 
 	if (pchip->irq) {
 		free_irq(pchip->irq, pchip);
-		flush_workqueue(pchip->irqthread);
 		destroy_workqueue(pchip->irqthread);
 	}
 
@@ -862,6 +898,7 @@ static int lm3630a_remove(struct i2c_client *client)
 			backlight_device_unregister(pchip->bledb);
 	} else {
 		destroy_workqueue(pchip->ledwq);
+		kfifo_free(&pchip->fifo);
 		led_classdev_unregister(&pchip->ledcdev);
 	}
 
