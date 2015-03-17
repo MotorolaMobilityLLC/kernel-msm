@@ -311,6 +311,10 @@ extern int arizona_set_micd_cb(struct snd_soc_codec *codec,
 				void (*micd_cb)(bool mic));
 extern int arizona_set_ez2ctrl_cb(struct snd_soc_codec *codec,
 				  void (*ez2ctrl_trigger)(void));
+extern int arizona_set_ez2panic_cb(struct snd_soc_codec *codec,
+				  void (*ez2panic_trigger)(int dsp, u16 *msg));
+extern int arizona_set_ez2text_cb(struct snd_soc_codec *codec,
+				  void (*ez2text_trigger)(int dsp));
 extern int arizona_set_custom_jd(struct snd_soc_codec *codec,
 				 const struct arizona_jd_state *custom_jd);
 
