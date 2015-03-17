@@ -65,18 +65,6 @@
 		gesture {
 			compatible = "mot,m4gesture";
 		};
-		display {
-			compatible = "mot,m4display";
-		};
-		download {
-			compatible = "mot,m4download";
-		};
-		stillmode {
-			compatible = "mot,m4stillmode";
-		};
-		lightsensor {
-			compatible = "mot,m4als";
-		};
 		heartratesensor {
 			compatible = "mot,m4heartrate";
 		};
