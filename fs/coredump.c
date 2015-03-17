@@ -748,6 +748,18 @@ fail:
  * do on a core-file: use only these functions to write out all the
  * necessary info.
  */
+int dump_init(struct coredump_params *cprm)
+{
+	return 1;
+}
+EXPORT_SYMBOL(dump_init);
+
+int dump_finish(struct coredump_params *cprm)
+{
+	return 1;
+}
+EXPORT_SYMBOL(dump_finish);
+
 int dump_emit(struct coredump_params *cprm, const void *addr, int nr)
 {
 	struct file *file = cprm->file;
