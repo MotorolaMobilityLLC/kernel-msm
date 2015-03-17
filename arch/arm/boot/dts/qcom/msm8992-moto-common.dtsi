@@ -531,7 +531,27 @@
 	qcom,dc-psy-ma = <1500>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
-	/delete-property/ qcom,thermal-mitigation;
+	qcom,chg-thermal-mitigation = <3400>, <3200>, <3100>, <3000>, <2800>,
+				      <2600>, <2500>, <2400>, <2200>, <2100>,
+				      <2000>, <1900>, <1700>, <1600>, <1500>,
+				      <1400>, <1300>;
+	qcom,parallel-charge-current-map = <3400 1800 1600>,
+					   <3200 1600 1600>,
+					   <3100 1500 1600>,
+					   <3000 1400 1600>,
+					   <2800 1400 1400>,
+					   <2600 1200 1400>,
+					   <2500 1100 1400>,
+					   <2400 1000 1400>,
+					   <2200 1000 1200>,
+					   <2100 900 1200>,
+					   <2000 1000 1000>,
+					   <1900 900 1000>,
+					   <1700 700 1000>,
+					   <1600 600 1000>,
+					   <1500 500 1000>,
+					   <1400 400 1000>,
+					   <1300 300 1000>;
 	qcom,parallel-usb-min-current-ma = <0>; /* Force Parallel Mode only on HVDCP */
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-allowed-lowering-ma = <500>;
