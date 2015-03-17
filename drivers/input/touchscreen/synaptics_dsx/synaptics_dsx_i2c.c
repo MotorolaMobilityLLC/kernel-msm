@@ -301,6 +301,7 @@ int synaptics_dsx_get_dt_coords(struct device *dev, char *name,
 
 	return 0;
 }
+EXPORT_SYMBOL(synaptics_dsx_get_dt_coords);
 
 static int synaptics_dsx_parse_dt(struct device *dev,
 				struct synaptics_dsx_board_data *rmi4_pdata)
