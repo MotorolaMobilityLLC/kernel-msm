@@ -39,9 +39,7 @@
 #include "../codecs/fsa8500-core.h"
 #ifdef CONFIG_SND_SOC_FLORIDA
 #include "../codecs/florida.h"
-#if 0
 #include "../codecs/aov_trigger.h"
-#endif
 #endif
 
 #define DRV_NAME "msm8939-slimbus-wcd"
@@ -846,9 +844,7 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret)
 		dev_info(codec->dev, "fsa8500 hs det load error %d", ret);
 
-#if 0
 	aov_trigger_init(codec);
-#endif
 	return 0;
 }
 #endif
