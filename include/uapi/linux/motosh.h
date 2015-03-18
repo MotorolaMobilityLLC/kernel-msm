@@ -95,7 +95,8 @@
 		_IOR(MOTOSH_IOCTL_BASE, 30, unsigned char*)
 #define MOTOSH_IOCTL_SET_MAG_CAL \
 		_IOW(MOTOSH_IOCTL_BASE, 31, unsigned char*)
-/* 32 unused */
+#define MOTOSH_IOCTL_GET_VERSION_STR \
+		_IOW(MOTOSH_IOCTL_BASE, 32, char*)
 #define MOTOSH_IOCTL_SET_MOTION_DUR	\
 		_IOW(MOTOSH_IOCTL_BASE, 33, unsigned int)
 /* 34 unused */
@@ -139,6 +140,7 @@
 
 /* Used in HAL */
 #define FW_VERSION_SIZE 12
+#define FW_VERSION_STR_MAX_LEN 256
 /* Not used in user space */
 #define MOTOSH_CONTROL_REG_SIZE 200
 /* Not used in user space */
