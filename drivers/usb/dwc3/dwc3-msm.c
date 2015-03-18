@@ -140,6 +140,7 @@ MODULE_PARM_DESC(id_gnd_threshold, "Threshold for ID GND Voltage");
 #define PWR_EVNT_LPM_OUT_L1_MASK		BIT(13)
 
 #define DWC3_ID_DEFAULT_VOLTS       1000000 /* 1V */
+#define DWC3_ID_STATUS_DELAY        500     /* 500 msec */
 
 /* TZ SCM parameters */
 #define DWC3_MSM_RESTORE_SCM_CFG_CMD 0x2
@@ -191,7 +192,7 @@ struct dwc3_msm {
 	struct delayed_work	chg_work;
 	enum usb_chg_state	chg_state;
 	int			pmic_id_irq;
-	struct work_struct	id_work;
+	struct delayed_work	id_work;
 	struct qpnp_adc_tm_btm_param	adc_param;
 	struct qpnp_adc_tm_chip *adc_tm_dev;
 	struct delayed_work	init_adc_work;
@@ -2289,7 +2290,9 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		/* Let OTG know about ID detection */
 		mdwc->id_state = val->intval ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
 		if (mdwc->otg_xceiv)
-			queue_work(system_nrt_wq, &mdwc->id_work);
+			queue_delayed_work(system_nrt_wq,
+				&mdwc->id_work,
+				msecs_to_jiffies(DWC3_ID_STATUS_DELAY));
 
 		break;
 	case POWER_SUPPLY_PROP_SCOPE:
@@ -2568,7 +2571,7 @@ reset_pin:
 
 static void dwc3_id_work(struct work_struct *w)
 {
-	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm, id_work);
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm, id_work.work);
 	int ret;
 
 	if (mdwc->host_mode_disable)
@@ -2626,7 +2629,9 @@ static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 	id = !!irq_read_line(irq);
 	if (mdwc->id_state != id) {
 		mdwc->id_state = id;
-		queue_work(system_nrt_wq, &mdwc->id_work);
+		queue_delayed_work(system_nrt_wq,
+			&mdwc->id_work,
+			msecs_to_jiffies(DWC3_ID_STATUS_DELAY));
 	}
 
 	return IRQ_HANDLED;
@@ -2669,7 +2674,7 @@ static void dwc3_adc_notification(enum qpnp_tm_state state, void *ctx)
 		mdwc->adc_param.state_request = ADC_TM_HIGH_THR_ENABLE;
 	}
 
-	dwc3_id_work(&mdwc->id_work);
+	dwc3_id_work(&mdwc->id_work.work);
 
 	/* re-arm ADC interrupt */
 	qpnp_adc_tm_usbid_configure(mdwc->adc_tm_dev, &mdwc->adc_param);
@@ -2962,7 +2967,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&mdwc->chg_work, dwc3_chg_detect_work);
 	INIT_DELAYED_WORK(&mdwc->resume_work, dwc3_resume_work);
 	INIT_WORK(&mdwc->restart_usb_work, dwc3_restart_usb_work);
-	INIT_WORK(&mdwc->id_work, dwc3_id_work);
+	INIT_DELAYED_WORK(&mdwc->id_work, dwc3_id_work);
 	INIT_DELAYED_WORK(&mdwc->init_adc_work, dwc3_init_adc_work);
 	init_completion(&mdwc->ext_chg_wait);
 
@@ -3454,7 +3459,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->id_state = !!irq_read_line(mdwc->pmic_id_irq);
 		if (mdwc->id_state == DWC3_ID_GROUND &&
 			(get_prop_usbid_voltage_now(mdwc) < id_gnd_threshold))
-			queue_work(system_nrt_wq, &mdwc->id_work);
+			queue_delayed_work(system_nrt_wq,
+				&mdwc->id_work,
+				msecs_to_jiffies(DWC3_ID_STATUS_DELAY));
 		local_irq_restore(flags);
 		enable_irq_wake(mdwc->pmic_id_irq);
 	}
