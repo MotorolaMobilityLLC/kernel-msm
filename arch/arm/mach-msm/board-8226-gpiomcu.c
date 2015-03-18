@@ -72,17 +72,10 @@ static int mcu_set_gpio(unsigned gpio, int value)
 		pr_err("mcu_set_gpio gpio %d for invalid.\n", gpio);
 		return -EINVAL;
 	}
-	if (gpio_request(gpio, (const char*)buf))
-	{
-		pr_err( "mcu_set_gpio failed to request gpio %d\n", gpio);
-
-		return -EFAULT;
-	}
 
 	gpio_direction_output(gpio, value);
 	pr_info("mcu_set_gpio (%u) value (%d).\n", gpio, value);
 
-	gpio_free(gpio);
 	return 0;
 
 }
@@ -103,6 +96,7 @@ static ssize_t mcu_write_proc_gpio(unsigned gpio, const char __user *buffer, siz
 		pr_err("Set value invalid\n");
 		return -EINVAL;
 	}
+
 	return count;
 
 }
@@ -223,6 +217,25 @@ static int __init board_mcu_gpio_init(void)
 		goto fail;
 	}
 
+	if (gpio_request(MCU_GPIO_BOOT0, (const char*)"gpio_mcu_boot0"))
+	{
+		pr_err( "failed to request gpio %d\n", MCU_GPIO_BOOT0);
+
+		return -EFAULT;
+	}
+	if (gpio_request(MCU_GPIO_BOOT1, (const char*)"gpio_mcu_boot1"))
+	{
+		pr_err( "failed to request gpio %d\n", MCU_GPIO_BOOT1);
+
+		return -EFAULT;
+	}
+	if (gpio_request(MCU_GPIO_RESET, (const char*)"gpio_mcu_reset"))
+	{
+		pr_err( "failed to request gpio %d\n", MCU_GPIO_RESET);
+
+		return -EFAULT;
+	}
+
 	/*reset mcu*/
 	mcu_set_gpio(MCU_GPIO_RESET, 0);
 	mdelay(MIN_MCU_RESET_TIME);
@@ -243,6 +256,9 @@ fail:
  */
 static void __exit board_mcu_gpio_exit(void)
 {
+	gpio_free(MCU_GPIO_BOOT0);
+	gpio_free(MCU_GPIO_BOOT1);
+	gpio_free(MCU_GPIO_RESET);
 	remove_proc_entry("gpio_mcu_boot0", mcu_dir);
 	remove_proc_entry("gpio_mcu_boot1", mcu_dir);
 	remove_proc_entry("gpio_mcu_reset", mcu_dir);
