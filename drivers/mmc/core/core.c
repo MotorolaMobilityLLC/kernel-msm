@@ -3376,10 +3376,18 @@ void mmc_rescan(struct work_struct *work)
 	if (host->rescan_disable)
 		return;
 
+	if( (host->index == 1) && (host->caps & MMC_CAP_NONREMOVABLE) )
+	{
+		printk("[wlan]: mmc_rescan: cap revised\n");
+		host->caps &= ~MMC_CAP_NONREMOVABLE;
+	}
+
 	/* If there is a non-removable card registered, only scan once */
-	if ((host->caps & MMC_CAP_NONREMOVABLE) && host->rescan_entered)
+	if ((host->caps & MMC_CAP_NONREMOVABLE) && host->rescan_entered && (host->index != 1))
 		return;
 	host->rescan_entered = 1;
+
+	printk("[wlan]: mmc_rescan: host->caps & MMC_CAP_NONREMOVABLE = %d\n", host->caps & MMC_CAP_NONREMOVABLE);
 
 	mmc_bus_get(host);
 	mmc_rpm_hold(host, &host->class_dev);
