@@ -171,8 +171,6 @@
 
 		qcom,tx-gpio = <&msmgpio 0 0x00>;
 		qcom,rx-gpio = <&msmgpio 1 0x00>;
-		qcom,cts-gpio = <&msmgpio 2 0x00>;
-		qcom,rfr-gpio = <&msmgpio 3 0x00>;
 
 		qcom,bam-tx-ep-pipe-index = <0>; /* BAM Consumer Pipe */
 		qcom,bam-rx-ep-pipe-index = <1>; /* BAM Producer Pipe */

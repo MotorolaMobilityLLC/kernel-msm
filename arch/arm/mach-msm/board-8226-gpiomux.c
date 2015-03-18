@@ -402,6 +402,13 @@ static struct gpiomux_setting gpio_uart6_config = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+/* These lines are controlled as GPIO from user space */
+static struct gpiomux_setting gpio_uart1_cts_rts_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct msm_gpiomux_config msm_smelt_blsp_configs[] __initdata = {
 	{
 		.gpio      = 0,		/* BLSP1 QUP1 uart 1 tx */
@@ -420,15 +427,15 @@ static struct msm_gpiomux_config msm_smelt_blsp_configs[] __initdata = {
 	{
 		.gpio      = 2,		/* BLSP1 QUP1 uart 1 cts */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_uart1_config,
-			[GPIOMUX_SUSPENDED] = &gpio_uart1_config,
+			[GPIOMUX_ACTIVE] = &gpio_uart1_cts_rts_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart1_cts_rts_config,
 		},
 	},
 	{
 		.gpio      = 3,		/* BLSP1 QUP1 uart 1 rts */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_uart1_config,
-			[GPIOMUX_SUSPENDED] = &gpio_uart1_config,
+			[GPIOMUX_ACTIVE] = &gpio_uart1_cts_rts_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart1_cts_rts_config,
 		},
 	},
 	{
