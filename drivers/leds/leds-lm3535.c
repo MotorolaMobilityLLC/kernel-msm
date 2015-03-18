@@ -1268,7 +1268,8 @@ static int lm3535_set_ramp (struct i2c_client *client,
 static int lm3535_enable(struct i2c_client *client, unsigned int on)
 {
     int ret;
-    uint8_t value = 0x0F; // Enable A
+	/* Enable A, except EN4A */
+	uint8_t value = 0x07;
 
     if (on) {
         gpio_set_value(LM3535_HWEN_GPIO, 1);
