@@ -65,10 +65,13 @@ void motosh_irq_work_func(struct work_struct *work)
 
 	motosh_wake(ps_motosh);
 
-	if (ps_motosh->mode == BOOTMODE)
+	if (ps_motosh->mode <= BOOTMODE)
 		goto EXIT;
 
 	if (ps_motosh->is_suspended)
+		goto EXIT;
+
+	if (motosh_misc_data->in_reset_and_init)
 		goto EXIT;
 
 	/* read interrupt mask register */
