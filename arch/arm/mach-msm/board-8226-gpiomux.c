@@ -50,41 +50,6 @@ static struct msm_gpiomux_config msm_hsic_configs[] = {
 };
 #endif
 
-static struct gpiomux_setting smsc_hub_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting smsc_hub_susp_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct msm_gpiomux_config smsc_hub_configs[] = {
-	{
-		.gpio = 114, /* reset_n */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &smsc_hub_act_cfg,
-			[GPIOMUX_SUSPENDED] = &smsc_hub_susp_cfg,
-		},
-	},
-	{
-		.gpio = 8, /* clk_en */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &smsc_hub_act_cfg,
-			[GPIOMUX_SUSPENDED] = &smsc_hub_susp_cfg,
-		},
-	},
-	{
-		.gpio = 9, /* int_n */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &smsc_hub_act_cfg,
-			[GPIOMUX_SUSPENDED] = &smsc_hub_susp_cfg,
-		},
-	},
-};
 
 #define KS8851_IRQ_GPIO 115
 
@@ -141,12 +106,6 @@ static struct gpiomux_setting gpio_keys_suspend = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting gpio_spi_cs_eth_config = {
-	.func = GPIOMUX_FUNC_4,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
 static struct gpiomux_setting wcnss_5wire_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv  = GPIOMUX_DRV_2MA,
@@ -168,13 +127,6 @@ static struct gpiomux_setting gpio_i2c_config = {
 static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 	{
 		.gpio = 107,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
-		},
-	},
-	{
-		.gpio = 108,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
@@ -237,21 +189,6 @@ static struct msm_gpiomux_config msm_lcd_te_configs[] __initdata = {
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
-	
-	{
-		.gpio      = 14,	/* BLSP1 QUP4 I2C_SDA */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 15,	/* BLSP1 QUP4 I2C_SCL */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
 	{
 		.gpio      = 18,		/* BLSP1 QUP5 I2C_SDA */
 		.settings = {
@@ -266,13 +203,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
 	},
-	{
-		.gpio      = 22,		/* BLSP1 QUP1 SPI_CS_ETH */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_cs_eth_config,
-		},
-	},
-
 };
 
 static struct msm_gpiomux_config msm_synaptics_configs[] __initdata = {
@@ -288,81 +218,6 @@ static struct msm_gpiomux_config msm_synaptics_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &synaptics_int_act_cfg,
 			[GPIOMUX_SUSPENDED] = &synaptics_int_sus_cfg,
-		},
-	},
-};
-
-static struct gpiomux_setting goodix_ldo_en_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting goodix_ldo_en_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting goodix_int_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting goodix_int_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting goodix_reset_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting goodix_reset_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-
-static struct msm_gpiomux_config msm_skuf_goodix_configs[] __initdata = {
-	{
-		.gpio = 15,		/* LDO EN */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &goodix_ldo_en_act_cfg,
-			[GPIOMUX_SUSPENDED] = &goodix_ldo_en_sus_cfg,
-		},
-	},
-	{
-		.gpio = 16,		/* RESET */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &goodix_reset_act_cfg,
-			[GPIOMUX_SUSPENDED] = &goodix_reset_sus_cfg,
-		},
-	},
-	{
-		.gpio = 17,		/* INT */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &goodix_int_act_cfg,
-			[GPIOMUX_SUSPENDED] = &goodix_int_sus_cfg,
-		},
-	},
-	{
-		.gpio      = 18,		/* BLSP1 QUP5 I2C_SDA */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 19,		/* BLSP1 QUP5 I2C_SCL */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
 	},
 };
@@ -490,20 +345,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 37, /* CAM1_RST_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 35, /* CAM2_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
 		.gpio = 28, /* CAM2_RST_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
@@ -513,45 +354,12 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 
 };
 
-static struct msm_gpiomux_config msm_sensor_configs_skuf_plus[] __initdata = {
-	{
-		.gpio = 22, /* CAM1_VDD */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 34, /* CAM1 VCM_PWDN */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-};
-
-
-static struct gpiomux_setting usb_otg_sw_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct msm_gpiomux_config usb_otg_sw_configs[] __initdata = {
-	{
-		.gpio = 67,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &usb_otg_sw_cfg,
-		},
-	},
-};
-
 
 static struct gpiomux_setting gpio_uart_config =
 {
-    .func = GPIOMUX_FUNC_2, //Please look @ GPIO function table for correct function
-    .drv = GPIOMUX_DRV_8MA, //Drive Strength
-    .pull = GPIOMUX_PULL_NONE, //Should be PULL NONE for UART
+	.func = GPIOMUX_FUNC_2, //Please look @ GPIO function table for correct function
+	.drv = GPIOMUX_DRV_8MA, //Drive Strength
+	.pull = GPIOMUX_PULL_NONE, //Should be PULL NONE for UART
 };
 
 /*added gpio define and uart for MCU*/
@@ -559,252 +367,486 @@ static struct msm_gpiomux_config msm_uart1_configs[] __initdata =
 {
 	{
 		.gpio = 0, //BLSP1 UART1 TX
-		.settings = 
+		.settings =
 		{
-		[GPIOMUX_ACTIVE] = &gpio_uart_config,	
-		[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
-	{	
+	{
 		.gpio = 1, //BLSP1 UART1 RX
-		.settings = 
+		.settings =
 		{
-		[GPIOMUX_ACTIVE] = &gpio_uart_config,
-		[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
 	{
 		.gpio = 2, //BLSP1 UART1 RTS
-		.settings = 
+		.settings =
 		{
-		[GPIOMUX_ACTIVE] = &gpio_uart_config,	
-		[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
-	{	
+	{
 		.gpio = 3, //BLSP1 UART1 CTS
-		.settings = 
+		.settings =
 		{
-		[GPIOMUX_ACTIVE] = &gpio_uart_config,
-		[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
 		},
 	},
 };
 
 static struct gpiomux_setting gpio_reset_config =
 {
-    .func = GPIOMUX_FUNC_2, //Please look @ GPIO function table for correct function
-    .drv = GPIOMUX_DRV_8MA, //Drive Strength
-    .pull = GPIOMUX_PULL_UP, //Should be PULL_UP for UART
+	.func = GPIOMUX_FUNC_GPIO, //Please look @ GPIO function table for correct function
+	.drv = GPIOMUX_DRV_2MA, //Drive Strength
+	.pull = GPIOMUX_PULL_UP, //Should be PULL_UP for UART
 };
 
 /*added gpio define and uart for MCU*/
 static struct msm_gpiomux_config msm_mcureset_config[] __initdata =
 {
 	{
-		.gpio = 87, //BLSP1 UART1 reset
+		.gpio = 87,/*mcu reset*/
 		.settings =
 		{
-		[GPIOMUX_ACTIVE] = &gpio_reset_config,
-		[GPIOMUX_SUSPENDED] = &gpio_reset_config,
+			[GPIOMUX_ACTIVE] = &gpio_reset_config,
+			[GPIOMUX_SUSPENDED] = &gpio_reset_config,
 		},
 	},
 };
 
+/*gpio to indicate the sleep and wakeup status between mcu and AP*/
+static struct gpiomux_setting gpio_low_power_status_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
 
+static struct msm_gpiomux_config msm_low_power_status_config[] __initdata =
+{
+	{
+		.gpio = 108, /*AP status*/
+		.settings =
+		{
+			[GPIOMUX_ACTIVE] = &gpio_low_power_status_config,
+			[GPIOMUX_SUSPENDED] = &gpio_low_power_status_config,
+		},
+	},
+	{
+		.gpio = 114, /*mcu status*/
+		.settings =
+		{
+			[GPIOMUX_ACTIVE] = &gpio_low_power_status_config,
+			[GPIOMUX_SUSPENDED] = &gpio_low_power_status_config,
+		},
+	},
+};
+
+/*uart for BT*/
 static struct msm_gpiomux_config msm_uart3_configs[] __initdata =
 {
-    {
-        .gpio = 12, //BLSP1 UART3 RX
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_uart_config,
-            [GPIOMUX_SUSPENDED] = &gpio_uart_config,
-        },
-    },
-    {
-        .gpio = 13, //BLSP1 UART3 TX
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_uart_config,
-            [GPIOMUX_SUSPENDED] = &gpio_uart_config,
-        },
-    },
-    {
-        .gpio = 14, //BLSP1 UART3 RTS
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_uart_config,
-            [GPIOMUX_SUSPENDED] = &gpio_uart_config,
-        },
-    },
-    {
-        .gpio = 15, //BLSP1 UART3 CTS
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_uart_config,
-            [GPIOMUX_SUSPENDED] = &gpio_uart_config,
-        },
-    },
+	{
+		.gpio = 12, //BLSP1 UART3 RX
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+		},
+	},
+	{
+		.gpio = 13, //BLSP1 UART3 TX
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+		},
+	},
+	{
+		.gpio = 14, //BLSP1 UART3 RTS
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+		},
+	},
+	{
+		.gpio = 15, //BLSP1 UART3 CTS
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+		},
+	},
 };
-
-
-static struct gpiomux_setting bt_wakeup_cfg =
-{
-    .func = GPIOMUX_FUNC_GPIO,
-    .drv = GPIOMUX_DRV_8MA,
-    .dir = GPIOMUX_OUT_LOW,/*default need set LOW*/
-    .pull = GPIOMUX_PULL_UP,
-};
-
-/*BT wakeup gpio*/
-static struct msm_gpiomux_config msm_bt_wakeup_configs[] __initdata =
-{
-    {
-        .gpio	= 63,		/* BT WAKEUP*/
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &bt_wakeup_cfg,
-            [GPIOMUX_ACTIVE] = &bt_wakeup_cfg,
-        },
-    },
-};
-
-static struct gpiomux_setting host_wakeup_cfg =
-{
-    .func = GPIOMUX_FUNC_GPIO,
-    .drv = GPIOMUX_DRV_8MA,
-    .dir = GPIOMUX_IN,
-    .pull = GPIOMUX_PULL_NONE,
-};
-
-static struct msm_gpiomux_config msm_host_wakeup_configs[] __initdata =
-{
-    {
-        .gpio	= 64,		/* HOST WAKEUP */
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &host_wakeup_cfg,
-            [GPIOMUX_ACTIVE] = &host_wakeup_cfg,
-        },
-    },
-};
-
 
 /*speaker gpio*/
 static struct msm_gpiomux_config msm_speaker_configs[] __initdata =
 {
-    {
-        .gpio      = 10,		/* i2c */
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_i2c_config,
-            [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-        },
-    },
-    {
-        .gpio      = 11,		/* i2c */
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_i2c_config,
-            [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-        },
-    },
+	{
+		.gpio      = 10,		/* i2c */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	{
+		.gpio      = 11,		/* i2c */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
 };
 /*motor gpio*/
 static struct msm_gpiomux_config msm_motor_configs[] __initdata =
 {
-    {
-        .gpio      = 6,		/* i2c */
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_i2c_config,
-            [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-        },
-    },
-    {
-        .gpio      = 7,		/* i2c */
-        .settings = {
-            [GPIOMUX_ACTIVE] = &gpio_i2c_config,
-            [GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-        },
-    },
+	{
+		.gpio      = 6,		/* i2c */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	{
+		.gpio      = 7,		/* i2c */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
 };
 
+static struct gpiomux_setting gpio_motor_ctrl_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_motor_ctrl_configs[] __initdata =
+{
+	{
+		.gpio      = 59,		/* trig*/
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_motor_ctrl_config,
+			[GPIOMUX_SUSPENDED] = &gpio_motor_ctrl_config,
+		},
+	},
+	{
+		.gpio      = 60,		/* enable */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_motor_ctrl_config,
+			[GPIOMUX_SUSPENDED] = &gpio_motor_ctrl_config,
+		},
+	},
+};
 
 static struct gpiomux_setting  tert_mi2s_act_cfg =
 {
-    .func = GPIOMUX_FUNC_1,
-    .drv = GPIOMUX_DRV_8MA,
-    .pull = GPIOMUX_PULL_NONE,
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 static struct gpiomux_setting  tert_mi2s_sus_cfg =
 {
-    .func = GPIOMUX_FUNC_GPIO,
-    .drv = GPIOMUX_DRV_2MA,
-    .pull = GPIOMUX_PULL_DOWN,
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct msm_gpiomux_config msm8226_tert_mi2s_configs[] __initdata =
 {
-    {
-        .gpio   = 49,       /* qua mi2s sck */
-         .settings =
-        {
-            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
-        },
-    },
-    {
-        .gpio   = 50,
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
-        },
-    },
-    {
-        .gpio = 51,
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
-        },
-    },
-    {
-        .gpio = 52,
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
-        },
-    },
+	{
+		.gpio   = 49,       /* qua mi2s sck */
+		.settings =
+		{
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio   = 50,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 51,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 52,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &tert_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &tert_mi2s_act_cfg,
+		},
+	},
 };
 /*mic I2S*/
 static struct gpiomux_setting  quat_mi2s_act_cfg =
 {
-    .func = GPIOMUX_FUNC_2,
-    .drv = GPIOMUX_DRV_8MA,
-    .pull = GPIOMUX_PULL_NONE,
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 static struct gpiomux_setting  quat_mi2s_sus_cfg =
 {
-    .func = GPIOMUX_FUNC_GPIO,
-    .drv = GPIOMUX_DRV_2MA,
-    .pull = GPIOMUX_PULL_DOWN,
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 static struct msm_gpiomux_config msm8226_quat_mi2s_configs[] __initdata =
 {
-    {
-        .gpio   = 46,       /* qua mi2s sck */
-         .settings =
-        {
-            [GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
-        },
-    },
-    {
-        .gpio   = 47,
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
-        },
-    },
-    {
-        .gpio = 48,
-        .settings = {
-            [GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
-            [GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
-        },
-    }
+	{
+		.gpio   = 46,       /* qua mi2s sck */
+		.settings =
+		{
+			[GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio   = 47,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 48,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &quat_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_mi2s_act_cfg,
+		},
+	}
+};
+
+/*force download*/
+static struct gpiomux_setting  gpio_force_dload_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+static struct msm_gpiomux_config msm_force_dload_configs[] __initdata =
+{
+	{
+		.gpio      = 58,		/* force dload */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_force_dload_config,
+			[GPIOMUX_SUSPENDED] = &gpio_force_dload_config,
+		},
+	},
+};
+
+/*mcu boot*/
+static struct gpiomux_setting  gpio_mcu_boot_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+static struct msm_gpiomux_config msm_mcu_boot_configs[] __initdata =
+{
+	{
+		.gpio      = 106,		/* boot1 */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_mcu_boot_config,
+			[GPIOMUX_SUSPENDED] = &gpio_mcu_boot_config,
+		},
+	},
+	{
+		.gpio      = 111,		/* boot0 */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_mcu_boot_config,
+			[GPIOMUX_SUSPENDED] = &gpio_mcu_boot_config,
+		},
+	},
+};
+
+/*wifi reg on*/
+static struct gpiomux_setting  gpio_wifi_regon_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+static struct msm_gpiomux_config msm_wifi_regon_configs[] __initdata =
+{
+	{
+		.gpio      = 110,		/* wifi regon */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_wifi_regon_config,
+			[GPIOMUX_SUSPENDED] = &gpio_wifi_regon_config,
+		},
+	},
+};
+
+/*LCD ID*/
+static struct gpiomux_setting  gpio_lcd_id_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+static struct msm_gpiomux_config msm_lcd_id_configs[] __initdata =
+{
+	{
+		.gpio      = 37,		/* id1 */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_lcd_id_config,
+			[GPIOMUX_SUSPENDED] = &gpio_lcd_id_config,
+		},
+	},
+	{
+		.gpio      = 38,		/* id0 */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_lcd_id_config,
+			[GPIOMUX_SUSPENDED] = &gpio_lcd_id_config,
+		},
+	},
+};
+
+/*interrupt gpio to wake up AP*/
+static struct gpiomux_setting  gpio_wakeup_ap_irq_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.dir = GPIOMUX_IN,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_wakeup_ap_irq_configs[] __initdata =
+{
+	{
+		.gpio      = 64,		/* BT wakeup AP */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_wakeup_ap_irq_config,
+			[GPIOMUX_SUSPENDED] = &gpio_wakeup_ap_irq_config,
+		},
+	},
+	{
+		.gpio      = 65,		/* MCU wakeup AP */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_wakeup_ap_irq_config,
+			[GPIOMUX_SUSPENDED] = &gpio_wakeup_ap_irq_config,
+		},
+	},
+	{
+		.gpio      = 66,		/* WLAN wakeup AP */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_wakeup_ap_irq_config,
+			[GPIOMUX_SUSPENDED] = &gpio_wakeup_ap_irq_config,
+		},
+	},
+};
+
+/*interrupt gpio to wake up peripheral*/
+static struct gpiomux_setting gpio_wakeup_peripheral_irq_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.dir = GPIOMUX_OUT_LOW,/*default need set LOW*/
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_wakeup_peripheral_irq_configs[] __initdata =
+{
+	{
+		.gpio	= 62,		/* AP wakeup MCU*/
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_wakeup_peripheral_irq_config,
+			[GPIOMUX_ACTIVE] = &gpio_wakeup_peripheral_irq_config,
+		},
+	},
+	{
+		.gpio	= 63,		/* AP wakeup BT*/
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_wakeup_peripheral_irq_config,
+			[GPIOMUX_ACTIVE] = &gpio_wakeup_peripheral_irq_config,
+		},
+	},
+};
+
+/*BT reg on*/
+static struct gpiomux_setting  gpio_bt_regon_config =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+static struct msm_gpiomux_config msm_bt_regon_configs[] __initdata =
+{
+	{
+		.gpio      = 67,		/* BT regon */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bt_regon_config,
+			[GPIOMUX_SUSPENDED] = &gpio_bt_regon_config,
+		},
+	},
+};
+
+/*BT I2S*/
+static struct gpiomux_setting  bt_i2s_act1_cfg =
+{
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+static struct gpiomux_setting  bt_i2s_act0_cfg =
+{
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting  bt_i2s_sus_cfg =
+{
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm8226_bt_i2s1_configs[] __initdata =
+{
+	{
+		.gpio   = 68,       /* bt i2s data to ap */
+		.settings =
+		{
+			[GPIOMUX_SUSPENDED] = &bt_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &bt_i2s_act1_cfg,
+		},
+	},
+	{
+		.gpio   = 69,       /* bt i2s ws */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &bt_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &bt_i2s_act1_cfg,
+		},
+	},
+};
+
+static struct msm_gpiomux_config msm8226_bt_i2s0_configs[] __initdata =
+{
+	{
+		.gpio   = 70,       /* bt  i2s clk */
+		.settings =
+		{
+			[GPIOMUX_SUSPENDED] = &bt_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &bt_i2s_act0_cfg,
+		},
+	},
+	{
+		.gpio   = 71,       /* bt i2s data from ap */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &bt_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &bt_i2s_act0_cfg,
+		},
+	},
 };
 
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
@@ -908,67 +950,77 @@ void __init msm8226_init_gpiomux(void)
 	msm_gpiomux_install(msm_keypad_configs,
 			ARRAY_SIZE(msm_keypad_configs));
 
-	if (of_board_is_skuf())
-	{
-	    //do nothing
-	}
-	else {
-		msm_gpiomux_install(msm_blsp_configs,
+	msm_gpiomux_install(msm_blsp_configs,
 			ARRAY_SIZE(msm_blsp_configs));
-	}
 
 	msm_gpiomux_install(wcnss_5wire_interface,
 				ARRAY_SIZE(wcnss_5wire_interface));
 
-	if (of_board_is_skuf())
-		msm_gpiomux_install(msm_skuf_goodix_configs,
-				ARRAY_SIZE(msm_skuf_goodix_configs));
-	else
-		msm_gpiomux_install(msm_synaptics_configs,
+
+    msm_gpiomux_install(msm_synaptics_configs,
 				ARRAY_SIZE(msm_synaptics_configs));
 
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
+
 
 	msm_gpiomux_install(msm_lcd_te_configs,
 			ARRAY_SIZE(msm_lcd_te_configs));
 
 	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
 
-	if (of_board_is_skuf())
-		msm_gpiomux_install(msm_sensor_configs_skuf_plus,
-			ARRAY_SIZE(msm_sensor_configs_skuf_plus));
-
-
-	if (of_board_is_cdp() || of_board_is_mtp() || of_board_is_xpm())
-		msm_gpiomux_install(usb_otg_sw_configs,
-					ARRAY_SIZE(usb_otg_sw_configs));
-
 	msm_gpiomux_sdc3_install();
 
-	//UART3
+	/*BT uart3*/
 	msm_gpiomux_install(msm_uart3_configs, ARRAY_SIZE(msm_uart3_configs));
-	
-	//MCU uart1
+
+	/*MCU uart1*/
 	msm_gpiomux_install(msm_uart1_configs, ARRAY_SIZE(msm_uart1_configs));
-	
-	//BT WAKEUP
-   	msm_gpiomux_install(msm_bt_wakeup_configs, ARRAY_SIZE(msm_bt_wakeup_configs));
-	//HOST WAKEUP
-	msm_gpiomux_install(msm_host_wakeup_configs, ARRAY_SIZE(msm_host_wakeup_configs));
-	
-	//speaker
+
+	/*speaker*/
 	msm_gpiomux_install(msm_speaker_configs, ARRAY_SIZE(msm_speaker_configs));
-	
-	//motor
+
+	/*motor*/
 	msm_gpiomux_install(msm_motor_configs, ARRAY_SIZE(msm_motor_configs));
+
+	/*motor ctrl*/
+	msm_gpiomux_install(msm_motor_ctrl_configs, ARRAY_SIZE(msm_motor_ctrl_configs));
+
 	/*I2S for speaker*/
 	msm_gpiomux_install(msm8226_tert_mi2s_configs, ARRAY_SIZE(msm8226_tert_mi2s_configs));
 	/*I2S for MIC*/
 	msm_gpiomux_install(msm8226_quat_mi2s_configs, ARRAY_SIZE(msm8226_quat_mi2s_configs));
 
-	/*RST MCU*/
+	/*MCU reset*/
 	msm_gpiomux_install(msm_mcureset_config, ARRAY_SIZE(msm_mcureset_config));
+
+	/*AP and MCU low power status*/
+	msm_gpiomux_install(msm_low_power_status_config, ARRAY_SIZE(msm_low_power_status_config));
+
+	/*MCU boot*/
+	msm_gpiomux_install(msm_mcu_boot_configs, ARRAY_SIZE(msm_mcu_boot_configs));
+
+	/*force dload*/
+	msm_gpiomux_install(msm_force_dload_configs, ARRAY_SIZE(msm_force_dload_configs));
+
+	/*wifi reg on*/
+	msm_gpiomux_install(msm_wifi_regon_configs, ARRAY_SIZE(msm_wifi_regon_configs));
+
+	/*lcd id*/
+	msm_gpiomux_install(msm_lcd_id_configs, ARRAY_SIZE(msm_lcd_id_configs));
+
+	/*AP wakeup peripheral*/
+	msm_gpiomux_install(msm_wakeup_peripheral_irq_configs, ARRAY_SIZE(msm_wakeup_peripheral_irq_configs));
+
+	/*peripheral wakeup AP*/
+	msm_gpiomux_install(msm_wakeup_ap_irq_configs, ARRAY_SIZE(msm_wakeup_ap_irq_configs));
+
+	/*BT reg on*/
+	msm_gpiomux_install(msm_bt_regon_configs, ARRAY_SIZE(msm_bt_regon_configs));
+
+	/*BT i2s*/
+	msm_gpiomux_install(msm8226_bt_i2s1_configs, ARRAY_SIZE(msm8226_bt_i2s1_configs));
+	msm_gpiomux_install(msm8226_bt_i2s0_configs, ARRAY_SIZE(msm8226_bt_i2s0_configs));
 
 	/*
 	 * HSIC STROBE gpio is also used by the ethernet. Install HSIC
@@ -982,7 +1034,4 @@ void __init msm8226_init_gpiomux(void)
 	}
 	msm_gpiomux_install(msm_hsic_configs, ARRAY_SIZE(msm_hsic_configs));
 #endif
-	if (machine_is_msm8926() && of_board_is_mtp())
-		msm_gpiomux_install(smsc_hub_configs,
-			ARRAY_SIZE(smsc_hub_configs));
 }
