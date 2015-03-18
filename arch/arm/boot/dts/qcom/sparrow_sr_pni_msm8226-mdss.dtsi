@@ -125,7 +125,7 @@
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
 		gdsc-supply = <&gdsc_mdss>;
-		vdd-supply = <&pm8226_l19>;
+		vdd-supply = <&pm8226_l15>;
 		vddio-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
 		panel-supply = <&pm8226_l7>;
@@ -188,22 +188,14 @@
 			qcom,panel-supply-entry@0 {
 				reg = <0>;
 				qcom,supply-name = "vdd";
-				qcom,supply-min-voltage = <2850000>;
-				qcom,supply-max-voltage = <2850000>;
+				qcom,supply-min-voltage = <2800000>;
+				qcom,supply-max-voltage = <2800000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
 			};
 
 			qcom,panel-supply-entry@1 {
 				reg = <1>;
-				qcom,supply-name = "vddio";
-				qcom,supply-min-voltage = <1800000>;
-				qcom,supply-max-voltage = <1800000>;
-				qcom,supply-enable-load = <100000>;
-				qcom,supply-disable-load = <100>;
-			};
-			qcom,panel-supply-entry@2 {
-				reg = <2>;
 				qcom,supply-name = "panel";
 				qcom,supply-min-voltage = <1800000>;
 				qcom,supply-max-voltage = <1800000>;
