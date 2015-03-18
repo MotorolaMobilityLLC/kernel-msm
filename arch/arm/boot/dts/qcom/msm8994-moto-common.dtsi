@@ -464,6 +464,17 @@
 		qcom,fast-avg-setup = <0>;
 	};
 
+	chan@13 {
+		label = "host_det";
+		reg = <0x13>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
 	chan@73 {
 		label = "pm_therm";
 		reg = <0x73>;
@@ -1153,7 +1164,7 @@
 		qcom,vin-sel = <2>;		/* S4 1.8V */
 		qcom,pull = <1>;		/* QPNP_PIN_MPP_PULL_UP_OPEN */
 		qcom,src-sel = <0>;		/* Constant */
-		qcom,ain-route = <1>;		/* QPNP_PIN_AIN_AMUX_CH6 */
+		qcom,ain-route = <3>;		/* QPNP_PIN_AIN_AMUX_CH8 */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
@@ -1202,6 +1213,20 @@
 
 &usb3 {
 	status = "ok";
+	interrupt-parent = <&usb3>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0x0 0xffffffff>;
+	interrupt-map = <0x0 0 &intc 0 133 0
+			0x0 1 &intc 0 180 0
+			0x0 2 &spmi_bus 0x0 0x0 0xA3 0x0>;
+	interrupt-names = "hs_phy_irq", "pwr_event_irq", "pmic_id_irq";
+	qcom,dwc3-usb-vadc = <&pm8994_vadc>;
+	pmic-id-gpio = <&pm8994_mpps 4 0>;    /* HOST_DET */
+	pmic-id-amux-chan = <3>;              /* QPNP_PIN_AIN_AMUX_CH8 */
+	pmic-id-pull = <1>;                   /* QPNP_PIN_MPP_PULL_UP_OPEN */
+	pmic-id-vin = <2>;                    /* S4 1.8V */
+	pmic-id-adc-channel = <0x13>;         /* MPP4 */
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
 	};
