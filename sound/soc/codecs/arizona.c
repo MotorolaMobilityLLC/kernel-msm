@@ -1279,7 +1279,7 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 #define RX_STREAM_3 152
 
 static u32 rx_porth1[2], rx_porth2[1], rx_porth3[2], rx_porth1m[1];
-static u32 tx_porth1[1], tx_porth2[1], tx_porth3[1], tx_porth1s[2];
+static u32 tx_porth1[2], tx_porth2[1], tx_porth3[1], tx_porth1s[2];
 static u16 rx_handles1[] = { RX_STREAM_1, RX_STREAM_1 + 1 };
 static u16 rx_handles2[] = { RX_STREAM_2 };
 static u16 rx_handles3[] = { RX_STREAM_3, RX_STREAM_3 + 1 };
