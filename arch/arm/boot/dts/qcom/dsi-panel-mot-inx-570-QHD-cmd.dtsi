@@ -69,36 +69,56 @@
 		qcom,mdss-dsi-te-using-te-pin;
 		qcom,mdss-dsi-on-command = [
 			/* Setting VBP=8 and VFP=8 */
-			39 01 00 00 01 00 04 3B 03 08 08
+			39 01 00 00 00 00 04 3B 03 08 08
 			/* Configure command mode */
-			15 01 00 00 01 00 02 BB 10
+			15 01 00 00 00 00 02 BB 10
 			/* Disable BK_EN control */
-			15 01 00 00 01 00 02 E5 00
+			15 01 00 00 00 00 02 E5 00
 			/* NVT SDC */
-			15 01 00 00 01 00 02 C0 00
+			15 01 00 00 00 00 02 C0 00
 			/* 1600RGBX2560, GRAM Slide Parameter=16h */
-			39 01 00 00 01 00 0C C9 01 01 80 00 0B 06 67 04 3A 11 F8
+			39 01 00 00 00 00 0C C9 01 01 80 00 0B 06 67 04 3A 11 F8
 			/* Don't reload MTP after 0x11 cmd */
-			15 01 00 00 01 00 02 FB 01
-			/* Engineer CMD2 page 4 is selected */
-			15 01 00 00 01 00 02 FF 24
+			15 01 00 00 00 00 02 FB 01
+			/* CMD2 Page 4 is selected */
+			15 01 00 00 00 00 02 FF 24
 			/* Image up-side down & gate scan inverse */
-			15 01 00 00 01 00 02 9D 36
+			15 01 00 00 00 00 02 9D 36
 			/* Don't reload MTP after 0x11 cmd*/
-			15 01 00 00 01 00 02 FB 01
-			/* CMD1 Page1 is selected */
-			15 01 00 00 01 00 02 FF 10
+			15 01 00 00 00 00 02 FB 01
+			/* Configure LEDPWM Freq ~27.48khz */
+			/* CMD2 Page3 is selected */
+			15 01 00 00 00 00 02 FF 23
+			15 01 00 00 00 00 02 07 20
+			15 01 00 00 00 00 02 08 05
+			15 01 00 00 00 00 02 46 06
+			/* historam analysis threshold APL_TH 1440 RGBx2560 */
+			15 01 00 00 00 00 02 39 40
+			/* Don't reload MTP after 0x11 cmd*/
+			15 01 00 00 00 00 02 FB 01
 			/* Touch improvement - EQ Mux settings */
-			15 01 00 00 01 00 02 FF 20
-			15 01 00 00 01 00 02 5C 80
-			15 01 00 00 01 00 02 5D 84
-			15 01 00 00 01 00 02 62 02
-			15 01 00 00 01 00 02 FB 01
-			15 01 00 00 01 00 02 FF 10
+			/* CMD2 Page 0 is selected */
+			15 01 00 00 00 00 02 FF 20
+			15 01 00 00 00 00 02 5C 80
+			15 01 00 00 00 00 02 5D 84
+			15 01 00 00 00 00 02 62 02
+			15 01 00 00 00 00 02 FB 01
+			/* CMD1 is selected */
+			15 01 00 00 00 00 02 FF 10
+			/* 8 bits DBV = 0xFF (100%) */
+			15 01 00 00 00 00 02 51 FF
+			/* Write CTRL display */
+			15 01 00 00 00 00 02 53 2C
+			/* CABC on, UI-mode */
+			15 01 00 00 00 00 02 55 01
+			/* Diming Step=32, T = 1 frame */
+			39 01 00 00 00 00 03 68 04 01
+			/* Don't reload MTP after 0x11 cmd*/
+			15 01 00 00 00 00 02 FB 01
 			/* exit sleep mode */
 			05 01 00 00 78 00 01 11
 			/* enable_te */
-			15 01 00 00 01 00 02 35 00
+			15 01 00 00 00 00 02 35 00
 			/* display on */
 			05 01 00 00 00 00 01 29];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
