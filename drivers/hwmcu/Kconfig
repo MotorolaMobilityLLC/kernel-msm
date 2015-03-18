@@ -1,0 +1,3 @@
+config HUAWEI_MCU_WAKE 
+	bool "HUAWEI MCU WAKE"
+	default n

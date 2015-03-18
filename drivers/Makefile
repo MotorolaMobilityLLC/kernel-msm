@@ -170,3 +170,4 @@ obj-$(CONFIG_SENSORS)		+= sensors/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
 obj-$(CONFIG_TI_VIBRATOR)	+= haptics/
 obj-y	+= hwversion/
+obj-$(CONFIG_HUAWEI_MCU_WAKE)	+= hwmcu/
