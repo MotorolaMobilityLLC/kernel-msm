@@ -14,30 +14,30 @@ maxim,fl40-lg-batterydata {
 	/* Required properties */
 	serialnum	= "SNN5963";
 
-	/* This is Temproray table, pushing this for FL40 LG 3630 mAhr Battery,
-	 * Once we get profile data planning to update this table */
+	/* Table from Maxim for FL40 LG 3591 mAhr Battery */
 	config		= /bits/ 16 <0x0254>;
 	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
-	design_cap	= /bits/ 16 <7260>;	/* mAh times 2 */
-	ichgt_term	= /bits/ 16 <0x0319>;	/* battery attribute */
+	design_cap	= /bits/ 16 <7182>;	/* mAh times 2 */
+	ichgt_term	= /bits/ 16 <0x0489>;	/* battery attribute */
 	learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
 	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 	relax_cfg	= /bits/ 16 <0x203B>;
-	fullcap		= /bits/ 16 <7260>;	/* mAh times 2 */
-	fullcapnom	= /bits/ 16 <7260>;	/* mAh times 2 */
-	qrtbl00		= /bits/ 16 <0x2302>;	/* battery attribute */
-	qrtbl10		= /bits/ 16 <0x0F82>;	/* battery attribute */
-	qrtbl20		= /bits/ 16 <0x0586>;	/* battery attribute */
-	qrtbl30		= /bits/ 16 <0x0585>;	/* battery attribute */
-	rcomp0 		= /bits/ 16 <0x0076>;	/* battery attribute */
-	tcompc0		= /bits/ 16 <0x1A2E>;	/* battery attribute */
+	fullcap		= /bits/ 16 <7182>;	/* mAh times 2 */
+	fullcapnom	= /bits/ 16 <7182>;	/* mAh times 2 */
+	qrtbl00		= /bits/ 16 <0x2081>;	/* battery attribute */
+	qrtbl10		= /bits/ 16 <0x1181>;	/* battery attribute */
+	qrtbl20		= /bits/ 16 <0x0A81>;	/* battery attribute */
+	qrtbl30		= /bits/ 16 <0x0901>;	/* battery attribute */
+	rcomp0 		= /bits/ 16 <0x006A>;	/* battery attribute */
+	tcompc0		= /bits/ 16 <0x193D>;	/* battery attribute */
+	vempty		= /bits/ 16 <0xA05F>;   /* battery attribute */
 	maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
-		0x7d00 0xa6e0 0xb6f0 0xb920 0xbae0 0xbca0
-		0xbd60 0xbe20 0xbfc0 0xc2c0 0xc550 0xc7a0
-		0xca00 0xcce0 0xd1f0 0xd730 0x0020 0x01b0
-		0x0f70 0x0c70 0x14a0 0x1c00 0x1c00 0x15e0
-		0x0cf0 0x0980 0x0890 0x09a0 0x07f0 0x07b0
-		0x06a0 0x06a0 0x0100 0x0100 0x0100 0x0100
+		0x91c0 0xb4c0 0xb800 0xb950 0xbb40 0xbca0
+		0xbd00 0xbe60 0xc080 0xc1b0 0xc430 0xc7e0
+		0xcb50 0xcde0 0xd360 0xd960 0x0080 0x0420
+		0x1d50 0x0670 0x1320 0x2c40 0x1ba0 0x0fd0
+		0x0f80 0x0950 0x0940 0x0650 0x0840 0x0790
+		0x0680 0x0680 0x0100 0x0100 0x0100 0x0100
 		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
 		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
 	>;
@@ -46,5 +46,5 @@ maxim,fl40-lg-batterydata {
 	toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
 	cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
 	misc_cfg	= /bits/ 16 <0x0170>;
-	rev		= /bits/ 16 <0x0002>;
+	rev		= /bits/ 16 <0x0003>;
 };
