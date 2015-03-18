@@ -3969,7 +3969,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 
 	/* Rerun APSD 1 sec later */
 	if ((usb_supply_type == POWER_SUPPLY_TYPE_USB) &&
-	    !chip->apsd_rerun_cnt) {
+	    !chip->apsd_rerun_cnt && !chip->factory_mode) {
 		dev_info(chip->dev, "HW Detected SDP!\n");
 		chip->apsd_rerun_cnt++;
 		chip->usb_present = 0;
