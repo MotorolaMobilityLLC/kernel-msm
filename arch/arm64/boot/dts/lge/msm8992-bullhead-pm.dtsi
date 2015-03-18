@@ -40,10 +40,8 @@
 };
 
 /{
-        lge_batterydata: qcom,battery-data {
+        bullhead_batterydata: qcom,battery-data {
                 #include "lge_bl51yf_lgc_3000mah.dtsi"
-                #include "lge_bl51yf_tocad_3000mah.dtsi"
-                #include "../qcom/batterydata-itech-3000mah.dtsi"
         };
 };
 
@@ -51,7 +49,8 @@
         status = "ok";
 
         qcom,ext-sense-type;
-        qcom,battery-data = <&lge_batterydata>;
+        qcom,battery-data = <&bullhead_batterydata>;
+        qcom,single-profile;
         qcom,sw-rbias-control;
         qcom,fg-iterm-ma = <400>;
 };

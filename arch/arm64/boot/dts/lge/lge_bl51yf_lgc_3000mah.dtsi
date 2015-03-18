@@ -11,13 +11,13 @@
  * GNU General Public License for more details.
  */
 
-qcom,LGE_BL51YF_LGC_3000mAh {
+lge,lge_bl51yf_lgc_3000mah {
        /* #1781157_LGE_BL51YF_LGC_3000mAh_averaged_MasterSlave_Nov17th2014*/
        qcom,max-voltage-uv = <4400000>;
        qcom,nom-batt-capacity-mah = <3000>;
        qcom,batt-id-kohm = <0>;
        qcom,battery-beta = <4150>;
-       qcom,battery-type = "LGE_BL51YF_LGC_3000mAh";
+       qcom,battery-type = "lge_bl51yf_lgc_3000mah";
        qcom,checksum = <0xACAF>;
        qcom,gui-version = "PMI8994GUI - 2.1.4.10";
        qcom,fg-profile-data = [
