@@ -386,6 +386,10 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	of_property_read_u32(np, "bslen_pin_active_value",
 			     &pdata->bslen_pin_active_value);
 
+	pdata->reset_hw_type = 0;
+	of_property_read_u32(np, "reset_hw_type",
+		&pdata->reset_hw_type);
+
 	of_get_property(np, "stml0xx_fw_version", &len);
 	if (!of_property_read_string(np, "stml0xx_fw_version", &name))
 		strlcpy(pdata->fw_version, name, FW_VERSION_SIZE);
@@ -512,9 +516,14 @@ static int stml0xx_gpio_init(struct stml0xx_platform_data *pdata,
 			"stml0xx reset gpio_request failed: %d", err);
 		goto free_int;
 	}
-	gpio_direction_output(pdata->gpio_reset, 1);
-	gpio_set_value(pdata->gpio_reset, 1);
-	err = gpio_export(pdata->gpio_reset, 0);
+	if (pdata->reset_hw_type == 0) {
+		gpio_direction_output(pdata->gpio_reset, 1);
+		gpio_set_value(pdata->gpio_reset, 1);
+		err = gpio_export(pdata->gpio_reset, 0);
+	} else {
+		gpio_direction_input(pdata->gpio_reset);
+		err = gpio_export(pdata->gpio_reset, 1);
+	}
 	if (err) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"reset gpio_export failed: %d", err);
