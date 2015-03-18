@@ -614,6 +614,7 @@ struct stml0xx_platform_data {
 	int gpio_spi_ready_for_receive;
 	int gpio_spi_data_ack;
 	unsigned int bslen_pin_active_value;
+	unsigned int reset_hw_type;
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
 	char fw_version[FW_VERSION_SIZE];
