@@ -76,6 +76,9 @@
 
 #define SENSOR_ORIENTATIONS             0x2A
 
+#define FW_VERSION_LEN_REG              0x2B
+#define FW_VERSION_STR_REG              0x2C
+
 #define MOTION_DATA                     0x2D
 
 #define PROX_SETTINGS                   0x33
@@ -301,6 +304,7 @@ struct motosh_platform_data {
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
 	char fw_version[FW_VERSION_SIZE];
+	char fw_version_str[FW_VERSION_STR_MAX_LEN];
 	int ct406_detect_threshold;
 	int ct406_undetect_threshold;
 	int ct406_recalibrate_threshold;
@@ -471,6 +475,7 @@ void motosh_quickwakeup_init(struct motosh_data *ps_motosh);
 
 int motosh_boot_flash_erase(void);
 int motosh_get_version(struct motosh_data *ps_motosh);
+int motosh_get_version_str(struct motosh_data *ps_motosh);
 int switch_motosh_mode(enum stm_mode mode);
 int motosh_bootloadermode(struct motosh_data *ps_motosh);
 
