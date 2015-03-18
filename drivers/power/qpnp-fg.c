@@ -1671,6 +1671,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	const char *data, *batt_type_str, *old_batt_type;
 	bool tried_again = false, vbat_in_range;
 	u8 reg = 0;
+	bool use_single_profile = 0;
 
 wait:
 	fg_stay_awake(&chip->profile_wakeup_source);
@@ -1694,8 +1695,14 @@ wait:
 		goto no_profile;
 	}
 
-	profile_node = of_batterydata_get_best_profile(batt_node, "bms",
-							fg_batt_type);
+	use_single_profile = of_property_read_bool(node,
+						"qcom,single-profile");
+	if (use_single_profile)
+		profile_node = of_get_next_available_child(batt_node,
+								NULL);
+	else
+		profile_node = of_batterydata_get_best_profile(batt_node,
+							"bms", fg_batt_type);
 	if (!profile_node) {
 		pr_err("couldn't find profile handle\n");
 		old_batt_type = default_batt_type;
