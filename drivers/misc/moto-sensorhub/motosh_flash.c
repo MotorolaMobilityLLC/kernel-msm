@@ -334,6 +334,46 @@ EXIT:
 	return err;
 }
 
+int motosh_get_version_str(struct motosh_data *ps_motosh)
+{
+	int err = 0;
+	int len;
+	if (ps_motosh->mode == BOOTMODE) {
+		dev_err(&ps_motosh->client->dev,
+			"Tried to read version string in boot mode\n");
+		err = -EIO;
+		goto EXIT;
+	}
+
+	motosh_wake(ps_motosh);
+
+	motosh_cmdbuff[0] = FW_VERSION_LEN_REG;
+	err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff, 1, 1);
+	if (err >= 0) {
+		len = (int)motosh_readbuff[0];
+		if (len >= FW_VERSION_STR_MAX_LEN)
+			len = FW_VERSION_STR_MAX_LEN - 1;
+		if (len >= READ_CMDBUFF_SIZE)
+			len = READ_CMDBUFF_SIZE - 1;
+
+		dev_err(&ps_motosh->client->dev,
+			"MOTOSH version len %03d", len);
+		motosh_cmdbuff[0] = FW_VERSION_STR_REG;
+		err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff,
+			1, len + 1);
+		if (err >= 0) {
+			motosh_readbuff[len] = '\0';
+			strlcpy(ps_motosh->pdata->fw_version_str,
+				motosh_readbuff, FW_VERSION_STR_MAX_LEN);
+		}
+	}
+	motosh_sleep(ps_motosh);
+
+EXIT:
+	return err;
+}
+
+
 int switch_motosh_mode(enum stm_mode mode)
 {
 	struct motosh_platform_data *pdata;
