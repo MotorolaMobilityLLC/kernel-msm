@@ -1866,7 +1866,6 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 						 POOL_TYPE_HDLC);
 	if (!buf_hdlc) {
 		ret = -ENOMEM;
-		driver->used = 0;
 		goto fail_free_copy;
 	}
 	if (HDLC_OUT_BUF_SIZE < (2*payload_size) + 3) {

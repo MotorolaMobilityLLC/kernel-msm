@@ -1524,16 +1524,6 @@ static int diagfwd_mux_write_done(unsigned char *buf, int len, int buf_ctxt,
 		if (peripheral >= 0 && peripheral < NUM_SMD_DATA_CHANNELS) {
 			smd_info = &driver->smd_data[peripheral];
 			diag_smd_reset_buf(smd_info, num);
-			/*
-			 * Flush any work that is currently pending on the data
-			 * channels. This will ensure that the next read is not
-			 * missed.
-			 */
-			if (driver->logging_mode == MEMORY_DEVICE_MODE &&
-					ctxt == DIAG_MEMORY_DEVICE_MODE) {
-				flush_workqueue(smd_info->wq);
-				wake_up(&driver->smd_wait_q);
-			}
 		} else if (peripheral == APPS_DATA) {
 			diagmem_free(driver, (unsigned char *)buf,
 				     POOL_TYPE_HDLC);
