@@ -629,6 +629,24 @@ void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+static char idle_cmd;
+static struct dsi_cmd_desc dcs_idle_cmd = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(idle_cmd)}, (char *)&idle_cmd};
+int mdss_dsi_set_panel_idle(struct mdss_dsi_ctrl_pdata *ctrl, int idle)
+{
+	struct dcs_cmd_req cmdreq;
+
+	idle_cmd = idle ? 0x39 : 0x38;
+	cmdreq.cmds = &dcs_idle_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	return mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+}
+
+
 /*
  * mdss_dsi_cmd_get: ctrl->cmd_mutex acquired by caller
  */

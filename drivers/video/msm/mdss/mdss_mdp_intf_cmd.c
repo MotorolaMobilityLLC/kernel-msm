@@ -894,6 +894,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		return 0;
 	}
 
+	/* when display was transmitted form lp to on mode, it may not
+	 * set ctx->panel_power_state to power_on_interactive, so sync
+	 * mdp_ctl status to avoid missing state change updates
+	 */
+	if (mdss_mdp_ctl_is_power_on_interactive(ctl))
+		ctx->panel_power_state = MDSS_PANEL_POWER_ON;
+
 	if (ctx->panel_power_state == panel_power_state) {
 		pr_debug("%s: no transition needed %d --> %d\n", __func__,
 			ctx->panel_power_state, panel_power_state);

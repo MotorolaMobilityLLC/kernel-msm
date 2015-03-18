@@ -3270,9 +3270,14 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 
 	if (mdss_fb_is_power_on(mfd)) {
 		pr_debug("panel was never turned off\n");
-		/* do nothing when panel was always on */
+		/* notify panel exit low power mode */
+		mutex_lock(&ctl->lock);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 		ctl->power_state = MDSS_PANEL_POWER_ON;
-		rc = 0;
+		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+		mutex_unlock(&ctl->lock);
+		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
 		goto panel_on;
 	}
 
