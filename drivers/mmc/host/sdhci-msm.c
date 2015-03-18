@@ -2964,7 +2964,7 @@ sdhci_msm_slot_status(struct sdhci_msm_host *host)
 }
 #endif
 
-static void
+/*static void
 sdhci_msm_check_status(unsigned long data)
 {
 	struct sdhci_msm_host *host = (struct sdhci_msm_host *)data;
@@ -2986,7 +2986,7 @@ sdhci_msm_check_status(unsigned long data)
 				pr_info("%s: Slot status change detected "
 					"(%d -> %d)\n",
 					mmc_hostname(host->mmc),
-					host->oldstat, status);
+					host->oldstat, status);*/
 /*
 			else if (host->pdata->is_status_gpio_active_low)
 				pr_info("%s: Slot status change detected "
@@ -2995,7 +2995,7 @@ sdhci_msm_check_status(unsigned long data)
 					mmc_hostname(host->mmc),
 					host->oldstat, status);
 */
-			else
+/*			else
 				pr_info("%s: Slot status change detected "
 					"(%d -> %d) and the card detect GPIO"
 					" is ACTIVE_HIGH\n",
@@ -3008,17 +3008,20 @@ sdhci_msm_check_status(unsigned long data)
 		mmc_detect_change(host->mmc, 0);
 	}
 #endif
-}
+}*/
 
 static void
 sdhci_msm_status_notify_cb(int card_present, void *dev_id)
 {
 	struct sdhci_msm_host *host = dev_id;
+	struct mmc_host *hostt = dev_id;
 
 	printk("[wlan: sdhci_msm_status_notify_cb ++++\n");
 	pr_debug("%s: card_present %d\n", mmc_hostname(host->mmc),
 	       card_present);
-	sdhci_msm_check_status((unsigned long) host);
+
+	mmc_detect_change(hostt, 0);
+	//sdhci_msm_check_status((unsigned long) host);
 }
 
 static int sdhci_msm_probe(struct platform_device *pdev)
@@ -3351,7 +3354,10 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (msm_host->pdata->wifi_control_func) {
+	//if (msm_host->pdata->wifi_control_func) {
+	if(host->mmc->index == 1)
+	{
+		printk("[wlan]: %s: msm_host->pdata->wifi_control_func != Null\n", __func__);
 		msm_host->pdata->register_status_notify = wcf_status_register;
 		msm_host->pdata->status = wcf_status;
 		msm_host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
