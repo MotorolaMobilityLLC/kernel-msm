@@ -202,7 +202,7 @@ static bool di_set_power_state( DI_INSTANCE_T * instance, DI_SENSOR_TYPE_T senso
 	u8 hw_rate = 0;
 	u16 fastest_rate = 0;
 	DI_SENSOR_TYPE_T fastest_sensor = DST_NONE;
-	u8 Asus_tilt_threshold = 35;
+	u8 Asus_tilt_threshold = 10;
 
 	debug_log("sensor %s: set_power_state: power:%08X\n", s->name, power);
 
