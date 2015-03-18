@@ -361,7 +361,7 @@ static int ltr559_als_enable(struct i2c_client *client, int on)
 		msleep(WAKEUP_DELAY);
 		ret |= i2c_smbus_read_byte_data(client, LTR559_ALS_DATA_CH0_1);
 		cancel_delayed_work_sync(&data->als_work);
-		schedule_delayed_work(&data->als_work, data->platform_data->als_poll_interval);
+		schedule_delayed_work(&data->als_work,msecs_to_jiffies(data->platform_data->als_poll_interval));
 	} else {
 		cancel_delayed_work_sync(&data->als_work);
 		ret = i2c_smbus_write_byte_data(client, LTR559_ALS_CONTR, MODE_ALS_StdBy);
@@ -519,7 +519,7 @@ static void ltr559_als_work_func(struct work_struct *work)
 		}
 	}
 
-	schedule_delayed_work(&data->als_work, data->platform_data->als_poll_interval);
+	schedule_delayed_work(&data->als_work,msecs_to_jiffies(data->platform_data->als_poll_interval));
 workout:
 	mutex_unlock(&data->op_lock);
 }
