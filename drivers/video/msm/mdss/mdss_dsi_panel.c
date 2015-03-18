@@ -777,8 +777,7 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	}
 
 	pinfo = &pdata->panel_info;
-	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
 	pr_debug("%s: ctrl=%p ndx=%d enable=%d\n", __func__, ctrl, ctrl->ndx,
 		enable);
@@ -788,6 +787,11 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+
+	if (pinfo->mipi.idle_enable) {
+		int r = mdss_dsi_set_panel_idle(ctrl, enable);
+		WARN(r, "mdss_dsi_set_panel_idle(%d) return %d\n", enable, r);
+	}
 
 	pr_debug("%s:-\n", __func__);
 	return 0;
@@ -1425,6 +1429,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-te-check-enable");
 	pinfo->mipi.hw_vsync_mode = of_property_read_bool(np,
 		"qcom,mdss-dsi-te-using-te-pin");
+	pinfo->mipi.idle_enable = of_property_read_bool(np,
+		"qcom,mdss-dsi-dcs-idle-enable");
 
 	rc = of_property_read_u32(np,
 		"qcom,mdss-dsi-h-sync-pulse", &tmp);
