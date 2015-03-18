@@ -4021,15 +4021,17 @@ out:
  */
 static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 {
+#ifdef QCOM_BASE
 	int rc;
 	u8 reg;
 	union power_supply_propval prop = {0, };
+#endif
 	struct smbchg_chip *chip = _chip;
 	bool usb_present = is_usb_present(chip);
 
 	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
-
+#ifdef QCOM_BASE
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
@@ -4052,6 +4054,7 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 	}
 	smbchg_wipower_check(chip);
 out:
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -4065,15 +4068,18 @@ out:
  */
 static irqreturn_t src_detect_handler(int irq, void *_chip)
 {
+#ifdef QCOM_BASE
 	int rc;
 	u8 reg;
 	union power_supply_propval prop = {0, };
+#endif
 	struct smbchg_chip *chip = _chip;
 	bool usb_present = is_usb_present(chip);
 
 	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
+#ifdef QCOM_BASE
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
@@ -4101,6 +4107,16 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	}
 
 out:
+#endif
+	if (!chip->usb_present && usb_present) {
+		/* USB inserted */
+		chip->usb_present = usb_present;
+			handle_usb_insertion(chip);
+	} else if (chip->usb_present && !usb_present) {
+		/* USB removed */
+		chip->usb_present = usb_present;
+		handle_usb_removal(chip);
+	}
 	return IRQ_HANDLED;
 }
 
