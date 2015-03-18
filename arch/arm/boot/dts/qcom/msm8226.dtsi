@@ -257,6 +257,19 @@
 		gpio-key,wakeup;
 	};
 
+	qcom,mcusleep {
+		compatible = "qcom,mcusleep";
+		mcu-ap-status-gpio = <&msmgpio 108 0>;
+		mcu-wake-ap-gpio = <&msmgpio 65 0>;
+		ext-wake-mcu-gpio = <&msmgpio 62 0>;
+		mcu-status-gpio = <&msmgpio 114 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <65 0>;
+		interrupt-names = "mcu_host_wake";
+		tx-timer-interval = <3>;
+		gpio-key,wakeup;
+	};
+	
 	serial@f991f000 {
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0xf991f000 0x1000>;
