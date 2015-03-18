@@ -617,7 +617,8 @@ static int msm8960_btsco_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	pr_debug("%s: msm8960_btsco_rate  = %d", __func__, msm8960_btsco_rate);
-	ucontrol->value.integer.value[0] = msm8960_btsco_rate;
+	ucontrol->value.integer.value[0] =
+		(msm8960_btsco_rate == SAMPLE_RATE_8KHZ) ? 0 : 1;
 	return 0;
 }
 
@@ -625,10 +626,10 @@ static int msm8960_btsco_rate_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	switch (ucontrol->value.integer.value[0]) {
-	case 8000:
+	case 0:
 		msm8960_btsco_rate = SAMPLE_RATE_8KHZ;
 		break;
-	case 16000:
+	case 1:
 		msm8960_btsco_rate = SAMPLE_RATE_16KHZ;
 		break;
 	default:
