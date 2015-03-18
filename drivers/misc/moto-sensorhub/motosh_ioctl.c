@@ -109,6 +109,20 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		else
 			err = 0;
 		break;
+	case MOTOSH_IOCTL_GET_VERSION_STR:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_VERSION_STR");
+		if (ps_motosh->mode > BOOTMODE) {
+			err = motosh_get_version_str(ps_motosh);
+			if (err >= 0) {
+				if (copy_to_user(argp,
+					&(ps_motosh->pdata->fw_version_str),
+					FW_VERSION_STR_MAX_LEN))
+					err = -EFAULT;
+			}
+		} else {
+			err = -EBUSY;
+		}
+		break;
 	case MOTOSH_IOCTL_GET_BOOTED:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_BOOTED");
 		byte = motosh_g_booted;
