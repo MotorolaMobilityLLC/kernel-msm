@@ -284,7 +284,7 @@ struct wm_adsp_host_buffer {
 };
 
 #define WM_ADSP_DATA_WORD_SIZE         3
-#define WM_ADSP_MAX_READ_SIZE          256
+#define WM_ADSP_MAX_READ_SIZE          1024
 #define WM_ADSP_ALG_XM_STRUCT_MAGIC    0x49aec7
 #define WM_ADSP_ALG_XM2_STRUCT_MAGIC   0x2e07b0
 
