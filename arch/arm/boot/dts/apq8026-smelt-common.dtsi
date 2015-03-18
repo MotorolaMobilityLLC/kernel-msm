@@ -634,6 +634,11 @@
 		qcom,leds@d300 {
 			status = "disabled";
 		};
+		qcom,leds@d800 {
+			qcom,wled_0 {
+				qcom,default-state = "off";
+			};
+		};
 	};
 };
 
