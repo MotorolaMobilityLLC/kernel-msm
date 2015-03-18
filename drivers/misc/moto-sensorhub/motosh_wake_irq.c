@@ -40,6 +40,7 @@
 
 #include <linux/motosh.h>
 
+#define SPURIOUS_INT_DELAY 600 /* ms */
 
 irqreturn_t motosh_wake_isr(int irq, void *dev)
 {
@@ -60,6 +61,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	unsigned short irq_status;
 	u32 irq2_status;
 	uint8_t irq3_status;
+	static int spurious_det;
+
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_wake_work);
 
@@ -85,11 +88,27 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 
 	/* read interrupt mask register */
 	motosh_cmdbuff[0] = WAKESENSOR_STATUS;
-	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
-	if (err < 0) {
-		dev_err(&ps_motosh->client->dev, "Reading from motosh failed\n");
-		goto EXIT;
+	if (motosh_misc_data->in_reset_and_init) {
+		/* only apply delay if issue observed before */
+		if (spurious_det)
+			msleep(SPURIOUS_INT_DELAY);
+
+		err = motosh_i2c_write_read_no_reset(ps_motosh,
+						     motosh_cmdbuff, 1, 2);
+		if (err < 0) {
+			spurious_det = 1;
+			dev_err(&ps_motosh->client->dev, "Spurious int?, retry\n");
+			motosh_reset_and_init(START_RESET);
+			goto EXIT;
+		}
+	} else {
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
+		if (err < 0) {
+			dev_err(&ps_motosh->client->dev, "Reading from motosh failed\n");
+			goto EXIT;
+		}
 	}
+
 	irq_status = (motosh_readbuff[IRQ_WAKE_MED] << 8)
 				| motosh_readbuff[IRQ_WAKE_LO];
 
@@ -122,7 +141,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	   the part has self-reset */
 	if (irq_status & M_INIT_COMPLETE) {
 		dev_err(&ps_motosh->client->dev,
-			"Sensor Hub reports reset");
+			"Sensor Hub reports reset %d", spurious_det);
 		motosh_reset_and_init(COMPLETE_INIT);
 	}
 
