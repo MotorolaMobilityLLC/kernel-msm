@@ -174,6 +174,9 @@ static int isl98611_chip_init(struct i2c_client *client)
 	/* LSB brightness is set to 0x7 by default. Clear it */
 	rval |= isl98611_update(pchip, REG_BRGHT_LSB, BRGHT_LSB_MASK, 0);
 
+	rval |= isl98611_update(pchip, REG_DIMMCTRL,
+		TRANS_THRESHOLD_MASK, pdata->dimm_threshold);
+
 	return rval;
 }
 
@@ -222,8 +225,6 @@ static void isl98611_brightness_set(struct work_struct *work)
 	/* set configure pwm input on first brightness command */
 	if (old_level == -1 && !pdata->cabc_off) {
 		dev_info(pchip->dev, "Enabling CABC");
-		isl98611_update(pchip, REG_DIMMCTRL,
-			TRANS_THRESHOLD_MASK, pdata->dimm_threshold);
 		isl98611_update(pchip, REG_PWMCTRL,
 			PWMRES_MASK, pdata->pwm_res);
 		isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, CABC_VAL);
