@@ -16,7 +16,6 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
-
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -180,9 +179,9 @@ typedef struct rtt_target_info {
 
 typedef struct rtt_report {
 	struct ether_addr addr;
-	uint32 burst_num; /* # of burst inside a multi-burst request */
-	uint32 ftm_num; /* total RTT measurement frames */
-	uint32 success_num; /* total successful RTT measurement frames */
+	unsigned int burst_num; /* # of burst inside a multi-burst request */
+	unsigned int ftm_num; /* total RTT measurement frames */
+	unsigned int success_num; /* total successful RTT measurement frames */
 	uint8  num_per_burst_peer; /* max number of FTM number per burst the peer support */
 	rtt_reason_t status; /* raging status */
 	/* in s, 11mc only, only for RTT_REASON_FAIL_BUSY_TRY_LATER, 1- 31s */
@@ -195,12 +194,13 @@ typedef struct rtt_report {
 	wifi_timespan rtt;	/*  round trip time in 0.1 nanoseconds */
 	wifi_timespan rtt_sd;	/* rtt standard deviation in 0.1 nanoseconds */
 	wifi_timespan rtt_spread; /* difference between max and min rtt times recorded */
-	int32 distance; /* distance in cm (optional) */
-	int32 distance_sd; /* standard deviation in cm (optional) */
-	int32 distance_spread; /* difference between max and min distance recorded (optional) */
+	int distance; /* distance in cm (optional) */
+	int distance_sd; /* standard deviation in cm (optional) */
+	int distance_spread; /* difference between max and min distance recorded (optional) */
 	wifi_timestamp ts; /* time of the measurement (in microseconds since boot) */
-	int32 burst_duration; /* in ms, how long the FW time is to fininish one burst measurement */
-	u32 ie_len; 				/* ie length of LCI or LCR (optional) */
+	int burst_duration; /* in ms, how long the FW time is to fininish one burst measurement */
+	bcm_tlv_t *LCI; /* LCI Report */
+	bcm_tlv_t *LCR; /* Location Civic Report */
 } rtt_report_t;
 #define RTT_REPORT_SIZE (sizeof(rtt_report_t))
 
