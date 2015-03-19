@@ -262,6 +262,7 @@ struct smbchg_chip {
 	int				stepchg_max_voltage_mv;
 	int				stepchg_max_current_ma;
 	enum stepchg_state		stepchg_state;
+	unsigned int			stepchg_state_holdoff;
 	struct wakeup_source		smbchg_wake_source;
 	struct delayed_work		usb_insertion_work;
 	int				apsd_rerun_cnt;
@@ -6404,6 +6405,7 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip)
 }
 
 #define HEARTBEAT_DELAY_MS 60000
+#define HEARTBEAT_HOLDOFF_MS 10000
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -6418,7 +6420,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_step;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
-
+	set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
 	batt_mv = get_prop_batt_voltage_now(chip) / 1000;
 	batt_ma = get_prop_batt_current_now(chip) / 1000;
 	batt_soc = get_prop_batt_capacity(chip);
@@ -6434,16 +6436,25 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_state = STEP_ONE;
 		else
 			chip->stepchg_state = STEP_MAX;
+		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_MAX) &&
 		   (batt_ma < 0) && (chip->usb_present)) {
 		batt_ma *= -1;
 		if ((batt_ma <= chip->stepchg_current_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
-		     chip->stepchg_current_ma)) {
-			chip->stepchg_state = STEP_ONE;
-		}
-	} else if (!chip->usb_present)
+		     chip->stepchg_current_ma))
+			if (chip->stepchg_state_holdoff >= 2) {
+				chip->stepchg_state = STEP_ONE;
+				chip->stepchg_state_holdoff = 0;
+			} else
+				chip->stepchg_state_holdoff++;
+		else
+			chip->stepchg_state_holdoff = 0;
+	} else if (!chip->usb_present) {
 		chip->stepchg_state = STEP_NONE;
+		chip->stepchg_state_holdoff = 0;
+	} else
+		chip->stepchg_state_holdoff = 0;
 
 	switch (chip->stepchg_state) {
 	case STEP_ONE:
@@ -6480,8 +6491,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	power_supply_changed(&chip->batt_psy);
 
-	schedule_delayed_work(&chip->heartbeat_work,
-			      msecs_to_jiffies(HEARTBEAT_DELAY_MS));
+	if (!chip->stepchg_state_holdoff)
+		schedule_delayed_work(&chip->heartbeat_work,
+				      msecs_to_jiffies(HEARTBEAT_DELAY_MS));
+	else
+		schedule_delayed_work(&chip->heartbeat_work,
+				      msecs_to_jiffies(HEARTBEAT_HOLDOFF_MS));
+
 	smbchg_relax(chip, PM_HEARTBEAT);
 }
 
