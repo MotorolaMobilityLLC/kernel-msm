@@ -57,6 +57,12 @@
 #include <linux/uidgid.h>
 #include <linux/cred.h>
 
+#ifdef CONFIG_PARSE_RECOVERY_RESET_COMMAND
+#include <linux/fs.h>
+#include <linux/file.h>
+#include <linux/vmalloc.h>
+#endif
+
 #include <linux/kmsg_dump.h>
 /* Move somewhere else to avoid recompiling? */
 #include <generated/utsrelease.h>
@@ -388,6 +394,87 @@ static void migrate_to_reboot_cpu(void)
 	set_cpus_allowed_ptr(current, cpumask_of(cpu));
 }
 
+#ifdef CONFIG_PARSE_RECOVERY_RESET_COMMAND
+static char *find_wipe_command(char const *source_str, long source_str_length)
+{
+	long l1 = source_str_length;
+	long l2 = 0;
+	char const *s1 = source_str;
+
+	//l2 = strlen("recovery\n--wipe_data");
+	l2 = strlen("--wipe_data");
+	while(l1 >= l2) {
+		l1--;
+		//if (!memcmp(s1,"recovery\n--wipe_data",l2))
+		if (!memcmp(s1,"--wipe_data",l2))
+			return (char *)s1;
+		s1++;
+	}
+	return NULL;
+}
+
+static int parse_recovery_factory_reset_command(void)
+{
+	struct file* filp;
+	long file_length;
+	char *temp_buff;
+	long file_read = 0;
+	loff_t pos;
+	mm_segment_t old_fs;
+
+	printk(KERN_INFO "Open recovery command file!\n");
+	filp = filp_open("/cache/recovery/command", O_RDONLY, 0);
+	if (IS_ERR(filp))
+	{
+		printk(KERN_INFO "Unable to load /cache/recovery/command \n");
+		return -1;
+	}
+	printk(KERN_INFO "Get file length!\n");
+	file_length = i_size_read(file_inode(filp));
+	printk(KERN_INFO "length: %ld\n",file_length);
+	if (file_length <= 0 || file_length > 131072)
+	{
+		printk(KERN_INFO "Invalid command file \n");
+		fput(filp);
+		return -1;
+	}
+	temp_buff = vmalloc(file_length+1);
+	if (temp_buff == NULL)
+	{
+		printk(KERN_INFO "Out of memory loading.\n");
+		fput(filp);
+		return -1;
+	}
+	pos = 0;
+	printk(KERN_INFO "Read file!\n");
+ 	old_fs = get_fs();     /* save previous value */
+  	set_fs (get_ds()); /* use kernel limit */
+	file_read = vfs_read(filp, temp_buff, file_length, &pos);
+	set_fs(old_fs); /* restore before returning to user space */
+	if ( file_read != file_length)
+	{
+		printk(KERN_INFO "Failed to read /cache/recovery/command: %ld \n",file_read);
+		vfree(temp_buff);
+		fput(filp);
+		return -1;
+	}
+	fput(filp);
+
+	// find wipe string
+	printk(KERN_INFO "find_wipe_command()\n");
+	if(find_wipe_command(temp_buff,file_length)!=NULL)
+	{
+		temp_buff[file_length] = 0;
+		printk(KERN_INFO "Found wipe string: %s\n",temp_buff);
+		vfree(temp_buff);
+		return 0;
+	}
+
+	vfree(temp_buff);
+	return -1;
+}
+#endif //#ifdef CONFIG_PARSE_RECOVERY_RESET_COMMAND
+
 /**
  *	kernel_restart - reboot the system
  *	@cmd: pointer to buffer containing command to execute for restart
@@ -398,6 +485,16 @@ static void migrate_to_reboot_cpu(void)
  */
 void kernel_restart(char *cmd)
 {
+#ifdef CONFIG_PARSE_RECOVERY_RESET_COMMAND
+	if (!strncmp(cmd, "recovery", 8)){
+		printk(KERN_EMERG "Kernel restart with recovery command.\n");
+		if(parse_recovery_factory_reset_command()==0)
+		{
+			printk(KERN_EMERG "Do factory reset by recovery.\n");
+			cmd = "oem-69";
+		}	
+	}
+#endif //#ifdef CONFIG_PARSE_RECOVERY_RESET_COMMAND
 	kernel_restart_prepare(cmd);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
