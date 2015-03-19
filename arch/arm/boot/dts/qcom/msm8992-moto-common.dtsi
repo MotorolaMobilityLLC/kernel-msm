@@ -944,7 +944,6 @@
 			intersil,cabc-disable;
 			intersil,init-level = <255>;
 			intersil,no-reset;
-			intersil,switch-supply = "pm8994_l14";
 			pinctrl-names = "default";
 			pinctrl-0 = <&backlight_reset_default>;
 		};
