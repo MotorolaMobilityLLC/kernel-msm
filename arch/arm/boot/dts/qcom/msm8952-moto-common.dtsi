@@ -14,6 +14,7 @@
 #include "msm8952.dtsi"
 #include "msm8952-pinctrl.dtsi"
 #include "msm8952-camera-sensor-moto.dtsi"
+#include <moto-mem-reserve.h>
 
 / {
 	aliases {
@@ -31,6 +32,25 @@
 			reg = <0x0 0xae000000 0x0 0x80000>;
 			label = "ramoops_mem";
 		};
+
+		tzlog_bck_mem: tzlog_bck_region {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			/*linux,remove-completely;*/
+			reg = <0x0 TZLOG_BCK_BASE_8952
+				0x0 TZLOG_BCK_SIZE>;
+			label = "tzlog_bck_mem";
+		};
+
+		wdog_cpuctx_mem: wdog_cpuctx_region {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			/*linux,remove-completely;*/
+			reg = <0x0 WDOG_CPUCTX_BASE_8952
+				0x0 WDOG_CPUCTX_SIZE_8952>;
+			label = "wdog_cpuctx_mem";
+		};
+
 	};
 };
 
@@ -318,8 +338,13 @@
 		linux,contiguous-region = <&ramoops_mem>;
 	};
 
+	qcom_tzlog: tz-log@08600720 {
+		linux,contiguous-region = <&tzlog_bck_mem>;
+	};
+
         qcom,wdt@b017000 {
                 qcom,bark-time = <22000>;
+		linux,contiguous-region = <&wdog_cpuctx_mem>;
         };
 
 	spi_4: spi@7af5000 { /* BLSP2 QUP1 */
