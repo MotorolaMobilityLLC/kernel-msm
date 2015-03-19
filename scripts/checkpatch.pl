@@ -3928,6 +3928,11 @@ sub process {
 		exit(0);
 	}
 
+	# Skip if it's an empty patch
+	if ($chk_patch && !$is_patch && !$realline) {
+		exit(0);
+	}
+
 	if (!$is_patch) {
 		ERROR("NOT_UNIFIED_DIFF",
 		      "Does not appear to be a unified-diff format patch\n");
