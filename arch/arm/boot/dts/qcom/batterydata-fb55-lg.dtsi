@@ -1,0 +1,60 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,fb55-lg {
+	/* #1921003_Moto_FB55_3760mAh_averaged_MasterSlave_Mar9th2015*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3760>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3900>;
+	qcom,battery-type = "FB55-LG-3760mah";
+	qcom,rslow-comp-along-soc-c1-ch-milli = <3504>;
+	qcom,rslow-comp-along-soc-c2-ch-milli = <5951>;
+	qcom,rs-to-rslow-charge-fix-milli = <1073>;
+	qcom,rslow-comp-ch-fix-th-milli = <705>;
+	qcom,checksum = <0xAE7F>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.2";
+	qcom,fg-profile-data = [
+		 04 88 5F 7E
+		 55 82 E2 7C
+		 75 83 22 7C
+		 E8 8A DF 94
+		 EF 81 1C 99
+		 0C B6 CB C0
+		 5E 18 07 88
+		 35 7E 2F 82
+		 BE 7C 6A 83
+		 23 74 9B 89
+		 AF 94 4B 82
+		 35 98 5B B5
+		 94 C0 58 15
+		 0A 0F C5 58
+		 14 70 30 FB
+		 04 45 DC 44
+		 56 42 00 00
+		 6F 45 E7 3B
+		 5A 45 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 B9 70 10 70
+		 10 64 26 89
+		 35 77 48 6A
+		 05 6D A9 79
+		 CD 75 9F 63
+		 83 7E 09 C9
+		 12 B5 60 C7
+		 5D A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 00
+	];
+};
