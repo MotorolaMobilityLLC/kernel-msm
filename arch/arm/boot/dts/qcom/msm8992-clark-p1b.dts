@@ -77,3 +77,7 @@
 		status = "disabled";
 	};
 };
+
+&isl98611 {
+	intersil,switch-supply = "pm8994_l14";
+};
