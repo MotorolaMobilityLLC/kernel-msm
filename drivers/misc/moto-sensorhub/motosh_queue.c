@@ -50,10 +50,39 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 
 	new_head = (ps_motosh->motosh_as_data_buffer_head + 1)
 		& MOTOSH_AS_DATA_QUEUE_MASK;
+	/* Check for buffer full */
 	if (new_head == ps_motosh->motosh_as_data_buffer_tail) {
 		if (!error_reported) {
 			dev_err(&ps_motosh->client->dev, "as data buffer full\n");
 			error_reported = true;
+		}
+		/* Some events (especially on-change events) are very
+		 * important to know about if we have to drop them
+		 */
+		switch (type) {
+		case DT_ALS:
+			dev_err(
+				&ps_motosh->client->dev,
+				"dropped als event: %d",
+				STM16_TO_HOST(ALS_VALUE)
+			);
+			break;
+		case DT_PROX:
+			dev_err(
+				&ps_motosh->client->dev,
+				"dropped prox event: %d",
+				motosh_readbuff[PROX_DISTANCE]
+			);
+			break;
+		case DT_DISP_ROTATE:
+			dev_err(
+				&ps_motosh->client->dev,
+				"dropped disp-rotate event: %d",
+				motosh_readbuff[DISP_VALUE]
+			);
+			break;
+		default:
+			break;
 		}
 		wake_up(&ps_motosh->motosh_as_data_wq);
 		return 0;
