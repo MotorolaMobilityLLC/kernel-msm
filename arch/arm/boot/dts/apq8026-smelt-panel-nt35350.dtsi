@@ -63,3 +63,7 @@
 		};
 	};
 };
+
+&dsi_mot_nt35350_360p_cmd {
+	qcom,mdss-dsi-dcs-idle-enable;
+};
