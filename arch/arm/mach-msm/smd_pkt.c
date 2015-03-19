@@ -49,12 +49,14 @@
 
 #define DEVICE_NAME "smdpkt"
 #define WAKELOCK_TIMEOUT (2*HZ)
+#define SMD_PKT_MAGIC (0xDEADBAAD)
 
 struct smd_pkt_dev {
 	struct cdev cdev;
 	struct device *devicep;
 	void *pil;
 	char pdriver_name[PDRIVER_NAME_MAX_SIZE];
+	int magic;
 	struct platform_driver driver;
 
 	struct smd_channel *ch;
@@ -976,8 +978,14 @@ int smd_pkt_release(struct inode *inode, struct file *file)
 		smd_pkt_devp->ch = 0;
 		smd_pkt_devp->blocking_write = 0;
 		smd_pkt_devp->poll_mode = 0;
-		platform_driver_unregister(&smd_pkt_devp->driver);
-		smd_pkt_devp->driver.probe = NULL;
+		if (smd_pkt_devp->driver.probe) {
+			platform_driver_unregister(&smd_pkt_devp->driver);
+			smd_pkt_devp->driver.probe = NULL;
+		} else {
+			pr_err("%s: invalid unregister dev id:%d magic %x\n",
+					 __func__, smd_pkt_devp->i,
+					smd_pkt_devp->magic);
+		}
 		if (smd_pkt_devp->pil)
 			pil_put(smd_pkt_devp->pil);
 		smd_pkt_devp->has_reset = 0;
@@ -1044,6 +1052,7 @@ static int __init smd_pkt_init(void)
 		smd_pkt_devp[i]->is_open = 0;
 		smd_pkt_devp[i]->poll_mode = 0;
 		smd_pkt_devp[i]->wakelock_locked = 0;
+		smd_pkt_devp[i]->magic = SMD_PKT_MAGIC;
 		init_waitqueue_head(&smd_pkt_devp[i]->ch_opened_wait_queue);
 
 		spin_lock_init(&smd_pkt_devp[i]->pa_spinlock);
@@ -1117,6 +1126,7 @@ static void __exit smd_pkt_cleanup(void)
 
 	for (i = 0; i < NUM_SMD_PKT_PORTS; ++i) {
 		cdev_del(&smd_pkt_devp[i]->cdev);
+		smd_pkt_devp[i]->magic = 0;
 		kfree(smd_pkt_devp[i]);
 		device_destroy(smd_pkt_classp,
 			       MKDEV(MAJOR(smd_pkt_number), i));
