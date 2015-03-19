@@ -1351,7 +1351,7 @@
 /{
 	mot_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "batterydata-itech-3000mah.dtsi"
+		#include "batterydata-fb55-lg.dtsi"
 	};
 };
 
