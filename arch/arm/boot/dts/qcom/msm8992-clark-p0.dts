@@ -27,6 +27,7 @@
 &isl98611 {
 	intersil,vn = <20>;
 	intersil,vp = <20>;
+	intersil,switch-supply = "pm8994_l14";
 };
 
 &mdss_dsi0 {
