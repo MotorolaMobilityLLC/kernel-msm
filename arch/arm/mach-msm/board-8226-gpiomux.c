@@ -570,7 +570,7 @@ static struct gpiomux_setting gpio_input_pu_config = {
 static struct gpiomux_setting gpio_output_low_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
+	.pull = GPIOMUX_PULL_KEEPER,
 	.dir = GPIOMUX_OUT_LOW,
 };
 
