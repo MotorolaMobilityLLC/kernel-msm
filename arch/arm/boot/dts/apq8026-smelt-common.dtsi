@@ -140,6 +140,7 @@
 		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
 		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
 		qcom,no-codec;
+		qcom,mic-power-supply = <&pm8226_l23>;
 
 		/delete-property/ qcom,audio-routing;
 		/delete-property/ qcom,cdc-mclk-gpios;
@@ -573,7 +574,6 @@
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <1800000>;
 	qcom,init-voltage = <1800000>;
-	regulator-always-on;
 };
 
 &pm8226_l28 {

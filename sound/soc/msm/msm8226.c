@@ -1232,6 +1232,27 @@ static struct afe_clk_cfg lpass_pri_i2s_disable = {
 	0,
 };
 
+static struct regulator *mic_regulator;
+
+static int msm_be_pri_mi2s_init(struct snd_soc_pcm_runtime *rtd)
+{
+	struct snd_soc_card *card = rtd->card;
+
+	if (mic_regulator == NULL) {
+		mic_regulator = regulator_get(card->dev,
+			"qcom,mic-power");
+
+		if (IS_ERR(mic_regulator)) {
+			pr_err("%s: Cannot get regulator %s.\n",
+			       __func__, "qcom,mic-power");
+
+			return PTR_ERR(mic_regulator);
+		}
+	}
+
+	return 0;
+}
+
 static int msm8226_mi2s_pri_snd_hw_params(struct snd_pcm_substream *substream,
 			struct snd_pcm_hw_params *params)
 {
@@ -1263,6 +1284,8 @@ static void  msm8226_mi2s_pri_snd_shutdown(struct snd_pcm_substream *substream)
 			&lpass_pri_i2s_disable);
 		if (ret < 0)
 			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+
+		regulator_disable(mic_regulator);
 	}
 }
 
@@ -1287,6 +1310,9 @@ static int msm8226_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
 			atomic_dec_return(&pri_mi2s_rsc_ref);
 			return -EINVAL;
 		}
+
+		if (regulator_enable(mic_regulator))
+			pr_err("%s: enabled failed mic_regulator\n", __func__);
 
 		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX,
 			&lpass_pri_i2s_enable);
@@ -1968,6 +1994,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_dai_name = "msm-stub-tx",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
+		.init = &msm_be_pri_mi2s_init,
 		.be_hw_params_fixup = msm_be_pri_mi2s_hw_params_fixup,
 		.ops = &msm8226_mi2s_pri_be_ops,
 		.ignore_suspend = 1,
