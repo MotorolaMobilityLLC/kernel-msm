@@ -266,6 +266,7 @@ struct smbchg_chip {
 	struct wakeup_source		smbchg_wake_source;
 	struct delayed_work		usb_insertion_work;
 	int				apsd_rerun_cnt;
+	int				charger_rate;
 };
 
 static struct smbchg_chip *the_chip;
@@ -287,6 +288,8 @@ enum wake_reason {
 	PM_HEARTBEAT = BIT(3),
 	PM_CHARGER = BIT(4),
 };
+
+static void smbchg_rate_check(struct smbchg_chip *chip);
 
 static int smbchg_debug_mask;
 module_param_named(
@@ -748,6 +751,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
+	POWER_SUPPLY_PROP_CHARGE_RATE,
 };
 
 #define CHGR_STS			0x0E
@@ -2788,6 +2792,10 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		val->intval = chip->hotspot_temp;
 		break;
+	case POWER_SUPPLY_PROP_CHARGE_RATE:
+		smbchg_rate_check(chip);
+		val->intval = chip->charger_rate;
+		break;
 	/* properties from fg */
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = get_prop_batt_capacity(chip);
@@ -3155,6 +3163,33 @@ static bool smbchg_hvdcp_det_check(struct smbchg_chip *chip)
 		return true;
 
 	return false;
+}
+
+#define WEAK_CHARGER_THRESHOLD 450
+static void smbchg_rate_check(struct smbchg_chip *chip)
+{
+	int prev_chg_rate = chip->charger_rate;
+	char *charge_rate[] = {
+		"None", "Normal", "Weak", "Turbo"
+	};
+
+	if (!is_usb_present(chip)) {
+		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
+		return;
+	}
+
+	if (smbchg_get_aicl_level_ma(chip) < WEAK_CHARGER_THRESHOLD)
+		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
+	else if (smbchg_hvdcp_det_check(chip))
+		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+	else
+		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+
+
+	if (prev_chg_rate != chip->charger_rate)
+		dev_err(chip->dev, "%s Charger Detected!\n",
+			charge_rate[chip->charger_rate]);
+
 }
 
 #define HVDCP_ICL_MAX 3000
@@ -4063,6 +4098,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		disable_irq_wake(chip->aicl_done_irq);
 		chip->enable_aicl_wake = false;
 	}
+	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 	chip->vbat_above_headroom = false;
 	chip->stepchg_state = STEP_NONE;
 	chip->vfloat_mv = chip->stepchg_max_voltage_mv;
@@ -4132,6 +4168,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	}
 	if (parallel_psy)
 		power_supply_set_present(parallel_psy, true);
+
+	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NORMAL;
 
 	if (chip->parallel.avail && chip->aicl_done_irq
 			&& !chip->enable_aicl_wake) {
@@ -4439,8 +4477,10 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 	if (usb_present)
 		smbchg_parallel_usb_check_ok(chip);
 
-	if (chip->aicl_complete)
+	if (chip->aicl_complete) {
+		smbchg_rate_check(chip);
 		power_supply_changed(&chip->batt_psy);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -6569,6 +6609,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->usb_online = -EINVAL;
 	chip->stepchg_state = STEP_NONE;
 	smbchg_parallel_en = 1;
+	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
 	dev_set_drvdata(&spmi->dev, chip);
 
 	spin_lock_init(&chip->sec_access_lock);
