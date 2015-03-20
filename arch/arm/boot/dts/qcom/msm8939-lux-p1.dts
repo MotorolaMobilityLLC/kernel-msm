@@ -144,6 +144,13 @@
 	/delete-node/ synaptics_dsx_i2c@20;
 };
 
+&i2c_6 {
+
+	ak09912: ak09912@0C {
+		ak,layout = <5>;
+	};
+};
+
 &i2c_0 {
 	qcom,clk-freq-out = <400000>;
 

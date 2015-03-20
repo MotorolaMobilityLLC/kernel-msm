@@ -152,6 +152,13 @@
 	};
 };
 
+&i2c_6 {
+
+	ak09912: ak09912@0C {
+		ak,layout = <5>;
+	};
+};
+
 &mdss_dsi0 {
 	vsp_disp-supply = <&tps65132_pos>;
 	vsn_disp-supply = <&tps65132_neg>;
