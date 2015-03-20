@@ -45,7 +45,7 @@
 #define DMP_PRECISION                   1000
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
-#define DMP_IMAGE_CRC_VALUE             0xa7e2110d
+#define DMP_IMAGE_CRC_VALUE             0x6a62ffc6
 
 /*--- Test parameters defaults --- */
 #define DEF_OLDEST_SUPP_PROD_REV        8
@@ -460,7 +460,7 @@ int inv_get_silicon_rev_mpu6500(struct inv_mpu_state *st)
 	result = inv_i2c_read(st, REG_WHOAMI, 1, &whoami);
 	if (result)
 		return result;
-	if (whoami != MPU6500_ID && whoami != MPU9250_ID &&
+	if (whoami != MPU6500_ID && whoami != MPU9250_ID && whoami != MPU9255_ID &&
 			whoami != MPU9350_ID && whoami != MPU6515_ID)
 		return -EINVAL;
 
@@ -1315,6 +1315,7 @@ int inv_enable_pedometer(struct inv_mpu_state *st, bool en)
 	} else {
 		d[0] = 0xff;
 	}
+
 	return mem_w_key(KEY_CFG_PED_ENABLE, ARRAY_SIZE(d), d);
 }
 

@@ -30,17 +30,28 @@
 #include <linux/wakelock.h>
 
 #include "inv_mpu_iio.h"
+#ifdef INV_KERNEL_3_10
+#include <linux/iio/sysfs.h>
+#else
 #include "sysfs.h"
+#endif
 #include "inv_test/inv_counters.h"
 
 #ifdef CONFIG_DTS_INV_MPU_IIO
 #include "inv_mpu_dts.h"
 #endif
 
+/*
+ * Uncomment to utilize suspend_noirq.
+ * It is platform dependent whether or not suspend_irq is called
+ */
+#undef USE_SUSPEND_NOIRQ
+
+
 s64 get_time_ns(void)
 {
 	struct timespec ts;
-	ts = CURRENT_TIME;
+	get_monotonic_boottime(&ts);
 	return timespec_to_ns(&ts);
 }
 
@@ -55,6 +66,7 @@ static const struct inv_hw_s hw_info[INV_NUM_PARTS] = {
 	{118, "MPU9150"},
 	{128, "MPU6500"},
 	{128, "MPU9250"},
+	{128, "MPU9255"},
 	{128, "MPU9350"},
 	{128, "MPU6515"},
 };
@@ -1217,7 +1229,8 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_SECONDARY_NAME:
 	{
 		const char *n[] = {"NULL", "AK8975", "AK8972", "AK8963",
-					"BMA250", "MLX90399", "AK09911"};
+					"BMA250", "MLX90399",
+					"AK09911", "AK09912"};
 		switch (st->plat_data.sec_slave_id) {
 		case COMPASS_ID_AK8975:
 			return sprintf(buf, "%s\n", n[1]);
@@ -1231,6 +1244,8 @@ static ssize_t inv_attr_show(struct device *dev,
 			return sprintf(buf, "%s\n", n[5]);
 		case COMPASS_ID_AK09911:
 			return sprintf(buf, "%s\n", n[6]);
+		case COMPASS_ID_AK09912:
+			return sprintf(buf, "%s\n", n[7]);
 		default:
 			return sprintf(buf, "%s\n", n[0]);
 		}
@@ -1395,7 +1410,7 @@ static ssize_t inv_flush_batch_show(struct device *dev,
 {
 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
 	int result;
-	bool has_data;
+	bool has_data = false;
 
 	mutex_lock(&indio_dev->mlock);
 	result = inv_flush_batch_data(indio_dev, &has_data);
@@ -2475,6 +2490,10 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		st->chip_type = INV_MPU6500;
 		plat->sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS;
 		plat->sec_slave_id = COMPASS_ID_AK8963;
+	} else if (!strcmp(id->name, "mpu9255")) {
+		st->chip_type = INV_MPU6500;
+		plat->sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS;
+		plat->sec_slave_id = COMPASS_ID_AK8963;
 	} else if (!strcmp(id->name, "mpu6xxx")) {
 		st->chip_type = INV_MPU6050;
 	} else if (!strcmp(id->name, "mpu9350")) {
@@ -2634,6 +2653,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		if (st->plat_data.sec_slave_id == COMPASS_ID_AK8975 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK8972 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK09911 ||
+		    st->plat_data.sec_slave_id == COMPASS_ID_AK09912 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK8963) {
 			memcpy(&inv_attributes[t_ind], inv_akxxxx_attributes,
 			       sizeof(inv_akxxxx_attributes));
@@ -2696,7 +2716,6 @@ static int inv_mpu_probe(struct i2c_client *client,
 	struct inv_mpu_state *st;
 	struct iio_dev *indio_dev;
 	int result;
-
 	/*
 	 * If we're not coming from a power-off condition, we need to
 	 * reset the chip as we may have gotten here via a watchdog
@@ -2714,7 +2733,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 		pr_err("I2c function error\n");
 		goto out_no_free;
 	}
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	indio_dev = iio_device_alloc(sizeof(*st));
 #else
 	indio_dev = iio_allocate_device(sizeof(*st));
@@ -2742,7 +2761,6 @@ static int inv_mpu_probe(struct i2c_client *client,
 			return result;
 		}
 		msleep(POWER_UP_TIME);
-
 		/*
 		 * We don't need subsequent reset of chip as it's coming
 		 * from a power-off condition
@@ -2816,7 +2834,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 	INIT_KFIFO(st->timestamps);
 	spin_lock_init(&st->time_stamp_lock);
 	wake_lock_init(&st->smd_wakelock, WAKE_LOCK_SUSPEND, SMD_LOCK_NAME);
-	mutex_init(&st->suspend_resume_lock);
+	sema_init(&st->suspend_resume_lock,1);
 	result = st->set_power_state(st, false);
 	if (result) {
 		dev_err(&client->adapter->dev,
@@ -2840,7 +2858,7 @@ out_remove_ring:
 out_unreg_ring:
 	inv_mpu_unconfigure_ring(indio_dev);
 out_free:
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_device_free(indio_dev);
 #else
 	iio_free_device(indio_dev);
@@ -2890,7 +2908,7 @@ static int inv_mpu_remove(struct i2c_client *client)
 		inv_mpu_remove_trigger(indio_dev);
 	iio_buffer_unregister(indio_dev);
 	inv_mpu_unconfigure_ring(indio_dev);
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_device_free(indio_dev);
 #else
 	iio_free_device(indio_dev);
@@ -2993,7 +3011,9 @@ static int inv_mpu_resume(struct device *dev)
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
+#ifndef USE_SUSPEND_NOIRQ
 	st->suspend_state = false;
+#endif
 
 	result = 0;
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
@@ -3009,7 +3029,6 @@ static int inv_mpu_resume(struct device *dev)
 
 		/* restore enable state all non-wakeup sensors */
 		inv_enable_nonwake_sensors(st);
-
 	} else if (st->chip_config.enable) {
 		result = st->set_power_state(st, true);
 		enable_irq(st->client->irq);
@@ -3017,6 +3036,7 @@ static int inv_mpu_resume(struct device *dev)
 	mutex_unlock(&indio_dev->mlock);
 	/* add code according to different request End */
 
+	up(&st->suspend_resume_lock);
 	return result;
 }
 
@@ -3069,12 +3089,29 @@ static int inv_mpu_suspend(struct device *dev)
 	}
 	st->suspend_state = true;
 	/* add code according to different request End */
+#ifndef USE_SUSPEND_NOIRQ
+	down(&st->suspend_resume_lock);
+#endif
 
 	return 0;
 }
 
+#ifdef USE_SUSPEND_NOIRQ
+static int inv_mpu_suspend_noirq(struct device *dev)
+{
+	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+	down(&st->suspend_resume_lock);
+	st->suspend_state = false;
+	return 0;
+}
+#endif
+
 static const struct dev_pm_ops inv_mpu_pmops = {
 	.suspend       = inv_mpu_suspend,
+#ifdef USE_SUSPEND_NOIRQ
+	.suspend_noirq = inv_mpu_suspend_noirq,
+#endif
 	.resume        = inv_mpu_resume,
 };
 #define INV_MPU_PMOPS (&inv_mpu_pmops)
@@ -3093,6 +3130,7 @@ static const struct i2c_device_id inv_mpu_id[] = {
 	{"mpu9150", INV_MPU9150},
 	{"mpu6500", INV_MPU6500},
 	{"mpu9250", INV_MPU9250},
+	{"mpu9255", INV_MPU9255},
 	{"mpu6xxx", INV_MPU6XXX},
 	{"mpu9350", INV_MPU9350},
 	{"mpu6515", INV_MPU6515},

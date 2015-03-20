@@ -21,6 +21,8 @@
 #include <linux/mpu.h>
 #include <linux/wakelock.h>
 
+#include <linux/semaphore.h>
+
 #include "iio.h"
 #include "buffer.h"
 
@@ -274,6 +276,9 @@
 /* ----MPU9350 ----*/
 #define MPU9350_ID               0x72
 
+#define MPU9255_ID               0x73
+
+
 #define THREE_AXIS               3
 #define GYRO_CONFIG_FSR_SHIFT    3
 #define ACCEL_CONFIG_FSR_SHIFT    3
@@ -283,7 +288,7 @@
 #define CRC_FIRMWARE_SEED        0
 #define SELF_TEST_SUCCESS        1
 #define MS_PER_DMP_TICK          20
-#define DMP_IMAGE_SIZE           2943
+#define DMP_IMAGE_SIZE           3035
 
 /* init parameters */
 #define INIT_FIFO_RATE           50
@@ -362,7 +367,6 @@
 #define INV_GYRO_ACC_MASK                 0x007E
 #define INV_ACCEL_MASK                    0x70
 #define INV_GYRO_MASK                     0xE
-
 #define SMD_WAKELOCK_HOLD_MS              (HZ / 2)
 #define SMD_LOCK_NAME                     "SMD_Sensor"
 
@@ -418,6 +422,7 @@ enum inv_devices {
 	INV_MPU9150,
 	INV_MPU6500,
 	INV_MPU9250,
+	INV_MPU9255,
 	INV_MPU6XXX,
 	INV_MPU9350,
 	INV_MPU6515,
@@ -717,7 +722,7 @@ struct inv_mpu_state {
 	const struct inv_hw_s *hw;
 	enum   inv_devices chip_type;
 	spinlock_t time_stamp_lock;
-	struct mutex suspend_resume_lock;
+	struct semaphore suspend_resume_lock;
 	struct i2c_client *client;
 	struct mpu_platform_data plat_data;
 	struct inv_mpu_slave *slave_accel;

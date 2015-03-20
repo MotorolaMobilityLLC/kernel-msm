@@ -44,7 +44,7 @@ static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 	u8 buf[IIO_BUFFER_BYTES];
 
 	memcpy(buf, &hdr, sizeof(hdr));
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
 #else
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
@@ -62,13 +62,13 @@ static int inv_push_8bytes_buffer(struct inv_mpu_state *st, u16 hdr,
 	memcpy(buf, &hdr, sizeof(hdr));
 	for (i = 0; i < 3; i++)
 		memcpy(&buf[2 + i * 2], &d[i], sizeof(d[i]));
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
 #else
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
 #endif
 	memcpy(buf, &t, sizeof(t));
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
 #else
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
@@ -85,20 +85,20 @@ static int inv_push_16bytes_buffer(struct inv_mpu_state *st, u16 hdr, u64 t,
 
 	memcpy(buf, &hdr, sizeof(hdr));
 	memcpy(buf + 4, &q[0], sizeof(q[0]));
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
 #else
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
 #endif
 	for (i = 0; i < 2; i++)
 		memcpy(buf + 4 * i, &q[i + 1], sizeof(q[i]));
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
 #else
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
 #endif
 	memcpy(buf, &t, sizeof(t));
-#ifdef CONFIG_INV_KERNEL_3_10
+#ifdef INV_KERNEL_3_10
 	iio_push_to_buffers(indio_dev, buf);
 #else
 	iio_push_to_buffer(indio_dev->buffer, buf, 0);
@@ -162,7 +162,7 @@ static int inv_send_compass_data(struct inv_mpu_state *st)
 			inv_push_marker_to_buffer(st, COMPASS_HDR_2);
 		else
 			inv_push_8bytes_buffer(st, COMPASS_HDR,
-						st->last_ts, sen);
+					st->last_ts, sen);
 		slave->prev_ts = curr_ts;
 	}
 
@@ -432,6 +432,7 @@ static int inv_set_master_delay(struct inv_mpu_state *st)
 		case COMPASS_ID_AK8972:
 		case COMPASS_ID_AK8963:
 		case COMPASS_ID_AK09911:
+		case COMPASS_ID_AK09912:
 			delay = (BIT_SLV0_DLY_EN | BIT_SLV1_DLY_EN);
 			break;
 		case COMPASS_ID_MLX90399:
@@ -969,7 +970,6 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 {
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	struct inv_reg_map_s *reg;
-	u8 data[2];
 	int result;
 
 	reg = &st->reg;
@@ -1032,16 +1032,6 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 			result = inv_read_time_and_ticks(st, false);
 			if (result)
 				return result;
-			result = inv_i2c_read(st, reg->fifo_count_h,
-						FIFO_COUNT_BYTE, data);
-			if (result)
-				return result;
-			st->fifo_count = be16_to_cpup((__be16 *)(data));
-			if (st->fifo_count) {
-				result = inv_process_batchmode(st);
-				if (result)
-					return result;
-			}
 		}
 		inv_push_marker_to_buffer(st, END_MARKER);
 		/* disable fifo reading */
@@ -1137,7 +1127,7 @@ irqreturn_t inv_read_fifo_mpu3050(int irq, void *dev_id)
 	struct inv_reg_map_s *reg;
 
 	reg = &st->reg;
-	mutex_lock(&st->suspend_resume_lock);
+	down(&st->suspend_resume_lock);
 	mutex_lock(&indio_dev->mlock);
 	if (st->chip_config.dmp_on)
 		bytes_per_datum = HEADERED_NORMAL_BYTES;
@@ -1197,8 +1187,7 @@ irqreturn_t inv_read_fifo_mpu3050(int irq, void *dev_id)
 
 end_session:
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
-
+	up(&st->suspend_resume_lock);
 	return IRQ_HANDLED;
 
 flush_fifo:
@@ -1206,7 +1195,7 @@ flush_fifo:
 	inv_reset_fifo(indio_dev);
 	inv_clear_kfifo(st);
 	mutex_unlock(&indio_dev->mlock);
-	mutex_unlock(&st->suspend_resume_lock);
+	up(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 }
@@ -1625,6 +1614,7 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 #define DMP_MIN_RUN_TIME (37 * NSEC_PER_MSEC)
 	if (st->suspend_state)
 		return IRQ_HANDLED;
+	down(&st->suspend_resume_lock);
 	mutex_lock(&indio_dev->mlock);
 	if (st->chip_config.dmp_on) {
 		pts1 = get_time_ns();
@@ -1714,6 +1704,7 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 	}
 end_session:
 	mutex_unlock(&indio_dev->mlock);
+	up(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 flush_fifo:
@@ -1721,6 +1712,7 @@ flush_fifo:
 	inv_reset_fifo(indio_dev);
 	inv_clear_kfifo(st);
 	mutex_unlock(&indio_dev->mlock);
+	up(&st->suspend_resume_lock);
 
 	return IRQ_HANDLED;
 }
