@@ -200,8 +200,6 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
 		case LIN_ACCEL_X:
-			dev_err(&ps_motosh->client->dev, "Invalid LIN_ACCEL_X event\n");
-
 			motosh_as_data_buffer_write(ps_motosh, DT_LIN_ACCEL,
 						data, 6, 0, true);
 
@@ -366,8 +364,6 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 4;
 			break;
 		case GRAVITY_X:
-			dev_err(&ps_motosh->client->dev, "Invalid GRAVITY_X event\n");
-
 			motosh_as_data_buffer_write(ps_motosh, DT_GRAVITY,
 				data, 6, 0, true);
 

@@ -67,6 +67,8 @@ unsigned short motosh_g_mag_delay;
 unsigned short motosh_g_gyro_delay;
 uint8_t motosh_g_rv_6axis_delay = 40;
 uint8_t motosh_g_rv_9axis_delay = 40;
+uint8_t motosh_g_gravity_delay = 40;
+uint8_t motosh_g_linear_accel_delay = 40;
 unsigned short motosh_g_baro_delay;
 unsigned short motosh_g_step_counter_delay;
 unsigned short motosh_g_ir_gesture_delay;
@@ -175,6 +177,60 @@ static ssize_t rv_9axis_update_rate_store(
 		return sizeof(uint8_t);
 }
 
+/* Attribute: gravity_update_rate */
+static ssize_t gravity_update_rate_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	*((uint8_t *)buf) = motosh_g_gravity_delay;
+	return sizeof(uint8_t);
+}
+static ssize_t gravity_update_rate_store(
+	struct device *dev,
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	int err = 0;
+	if (count < 1)
+		return -EINVAL;
+	err = motosh_set_gravity_update_rate(
+		motosh_misc_data,
+		*((uint8_t *)buf));
+	if (err)
+		return err;
+	else
+		return sizeof(uint8_t);
+}
+
+/* Attribute: linear_accel_update_rate */
+static ssize_t linear_accel_update_rate_show(
+	struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	*((uint8_t *)buf) = motosh_g_linear_accel_delay;
+	return sizeof(uint8_t);
+}
+static ssize_t linear_accel_update_rate_store(
+	struct device *dev,
+	struct device_attribute *attr,
+	const char *buf,
+	size_t count)
+{
+	int err = 0;
+	if (count < 1)
+		return -EINVAL;
+	err = motosh_set_linear_accel_update_rate(
+		motosh_misc_data,
+		*((uint8_t *)buf));
+	if (err)
+		return err;
+	else
+		return sizeof(uint8_t);
+}
+
 static struct device_attribute motosh_attributes[] = {
 	__ATTR_RO(timestamp_time_ns),
 	__ATTR(
@@ -187,6 +243,16 @@ static struct device_attribute motosh_attributes[] = {
 		0664,
 		rv_9axis_update_rate_show,
 		rv_9axis_update_rate_store),
+	__ATTR(
+		gravity_update_rate,
+		0664,
+		gravity_update_rate_show,
+		gravity_update_rate_store),
+	__ATTR(
+		linear_accel_update_rate,
+		0664,
+		linear_accel_update_rate_show,
+		linear_accel_update_rate_store),
 	__ATTR_NULL
 };
 
