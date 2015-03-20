@@ -1397,6 +1397,7 @@ out:
 }
 
 static DECLARE_RWSEM(cnss_pm_sem);
+static int cnss_in_suspend;
 
 static int cnss_pm_notify(struct notifier_block *b,
 			unsigned long event, void *p)
@@ -1404,10 +1405,14 @@ static int cnss_pm_notify(struct notifier_block *b,
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
 		down_write(&cnss_pm_sem);
+		cnss_in_suspend = 1;
 		break;
 
 	case PM_POST_SUSPEND:
-		up_write(&cnss_pm_sem);
+		if (cnss_in_suspend) {
+			cnss_in_suspend = 0;
+			up_write(&cnss_pm_sem);
+		}
 		break;
 	}
 
