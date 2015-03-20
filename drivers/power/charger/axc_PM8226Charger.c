@@ -254,12 +254,6 @@ void AcUsbPowerSupplyChange_pm8226(void)
 	}
 }
 
-static void limitPM8226chg1000(void)
-{
-	gpCharger->usb_current_max = 1000*1000;
-	asus_usbPath_chg_current_set(1000);
-}
-
 static void limitPM8226chg900(void)
 {
 	gpCharger->usb_current_max = 900*1000;
@@ -444,8 +438,8 @@ void setChgDrawCurrent_pm8226(void)
 				printk("[BAT][CHG][Low]: limit chgCur,  darw 500\n");
 			}
 			else if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-				limitPM8226chg1000();
-				printk("[BAT][CHG][AC]: limit charging current 1000mA\n");
+				limitPM8226chg900();
+				printk("[BAT][CHG][AC]: limit charging current 900mA\n");
 			}
 		}
 	}
@@ -480,7 +474,7 @@ void setChgDrawACTypeCurrent_withCheckAICL_pm8226(void)
 	}
 	else{
 		if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-			limitPM8226chg1000();
+			limitPM8226chg900();
 		}
 	}
 #endif//#ifndef ASUS_FACTORY_BUILD    
@@ -687,7 +681,7 @@ static void AXC_PM8226_Charger_SetCharger(AXI_Charger *apCharger , AXE_Charger_T
 			//Eason Factory version AC:1200 Pad:900+++
 			#ifdef ASUS_FACTORY_BUILD
 			if(HIGH_CURRENT_CHARGER_TYPE==aeChargerType)
-				limitPM8226chg1000();
+				limitPM8226chg900();
 			else if(NORMAL_CURRENT_CHARGER_TYPE==aeChargerType)
 				limitPM8226chg900();
 			#endif
