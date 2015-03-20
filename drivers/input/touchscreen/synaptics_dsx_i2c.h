@@ -247,7 +247,9 @@ struct synaptics_dsx_patchset {
  * @sensor_max_x: sensor maximum x value
  * @sensor_max_y: sensor maximum y value
  * @irq_enabled: flag for indicating interrupt enable status
- * @touch_stopped: flag to stop interrupt thread processing
+ * @touch_stopped: touch is in suspend state
+ * @flash_enabled: allow flashing once transition to active state is complete
+ * @ic_on: touch ic power state
  * @fingers_on_2d: flag to indicate presence of fingers in 2d area
  * @wait: wait queue for touch data polling in interrupt thread
  * @number_resumes: total number of remembered resumes
@@ -259,7 +261,6 @@ struct synaptics_dsx_patchset {
  * @i2c_read: pointer to i2c read function
  * @i2c_write: pointer to i2c write function
  * @irq_enable: pointer to irq enable function
- * @ic_on: touch ic power state
  */
 struct synaptics_rmi4_data {
 	struct i2c_client *i2c_client;
@@ -294,6 +295,7 @@ struct synaptics_rmi4_data {
 	int sensor_max_y;
 	bool irq_enabled;
 	atomic_t touch_stopped;
+	bool flash_enabled;
 	bool ic_on;
 	bool fingers_on_2d;
 	bool input_registered;
