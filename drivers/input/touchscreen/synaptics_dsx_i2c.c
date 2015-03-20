@@ -46,6 +46,10 @@
 #define INPUT_PHYS_NAME "synaptics_dsx_i2c/input0"
 #define TYPE_B_PROTOCOL
 
+#define RMI4_WAIT_READY 0
+#define RMI4_HW_RESET 1
+#define RMI4_SW_RESET 2
+
 #define NO_0D_WHILE_2D
 /*
 #define REPORT_2D_Z
@@ -1168,8 +1172,75 @@ static irqreturn_t synaptics_dsx_reset_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+int synaptics_rmi4_sw_reset(struct synaptics_rmi4_data *rmi4_data,
+				bool requery) {
+	int retval;
+	unsigned char page_number;
+	unsigned short pdt_entry_addr;
+	struct synaptics_rmi4_fn_desc rmi_fd;
+	unsigned short cmd_reg_addr;
+	bool cmd_reg_found = false;
+
+	if (!requery) {
+		cmd_reg_addr = rmi4_data->f01_cmd_base_addr;
+		cmd_reg_found = true;
+		goto sw_reset;
+	}
+
+	for (page_number = 0; !cmd_reg_found && page_number < PAGES_TO_SERVICE;
+			page_number++) {
+		for (pdt_entry_addr = PDT_START; pdt_entry_addr > PDT_END;
+				pdt_entry_addr -= PDT_ENTRY_SIZE) {
+			pdt_entry_addr |= (page_number << 8);
+
+			retval = synaptics_rmi4_i2c_read(rmi4_data,
+					pdt_entry_addr,
+					(unsigned char *)&rmi_fd,
+					sizeof(rmi_fd));
+			if (retval < 0)
+				return retval;
+
+			if (rmi_fd.fn_number == 0) {
+				dev_dbg(&rmi4_data->i2c_client->dev,
+						"%s: Reached end of PDT\n",
+						__func__);
+				break;
+			}
+
+			dev_dbg(&rmi4_data->i2c_client->dev,
+					"%s: F%02x found (page %d)\n",
+					__func__, rmi_fd.fn_number,
+					page_number);
+
+			if (rmi_fd.fn_number == SYNAPTICS_RMI4_F01) {
+				cmd_reg_addr = rmi_fd.cmd_base_addr;
+				cmd_reg_found = true;
+				break;
+			}
+		}
+	}
+
+sw_reset:
+	if (cmd_reg_found) {
+		uint8_t command = 1;
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+			cmd_reg_addr,
+			&command, sizeof(command));
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to issue SW reset command, error = %d\n",
+				__func__, retval);
+			return retval;
+		}
+		return 0;
+	} else
+		return -ENOENT;
+
+}
+
+
 static int synaptics_dsx_ic_reset(
-		struct synaptics_rmi4_data *rmi4_data, bool hw_reset)
+		struct synaptics_rmi4_data *rmi4_data, int reset)
 {
 	int retval;
 	unsigned long start = jiffies;
@@ -1178,9 +1249,13 @@ static int synaptics_dsx_ic_reset(
 
 	sema_init(&reset_semaphore, 0);
 
-	if (hw_reset) {
+	if (reset == RMI4_HW_RESET) {
 		gpio_set_value(platform_data->reset_gpio, 0);
 		udelay(1500);
+	} else if (reset == RMI4_SW_RESET) {
+		retval = synaptics_rmi4_sw_reset(rmi4_data, true);
+		if (retval < 0)
+			return retval;
 	}
 
 	retval = request_irq(rmi4_data->irq, synaptics_dsx_reset_irq,
@@ -1191,7 +1266,7 @@ static int synaptics_dsx_ic_reset(
 				"%s: Failed to request irq: %d\n",
 				__func__, retval);
 
-	if (hw_reset)
+	if (reset == RMI4_HW_RESET)
 		gpio_set_value(platform_data->reset_gpio, 1);
 
 	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(100));
@@ -1206,6 +1281,10 @@ static int synaptics_dsx_ic_reset(
 	}
 
 	free_irq(rmi4_data->irq, &reset_semaphore);
+
+	/* perform SW reset if HW reset failed */
+	if (reset != RMI4_SW_RESET && retval == -ETIMEDOUT)
+		retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_SW_RESET);
 
 	return retval;
 }
@@ -1507,6 +1586,7 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
+	int retval;
 	unsigned int reset;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
@@ -1516,7 +1596,12 @@ static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 	if (reset != 1)
 		return -EINVAL;
 
-	synaptics_dsx_ic_reset(rmi4_data, true);
+	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
+	if (retval > 0)
+		pr_debug("successful reset took %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	return count;
 }
@@ -1780,7 +1865,8 @@ static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	return scnprintf(buf, PAGE_SIZE, "%d\n",
-		atomic_read(&rmi4_data->touch_stopped) == 0);
+		atomic_read(&rmi4_data->touch_stopped) == 0 &&
+		rmi4_data->flash_enabled);
 }
 
  /**
@@ -3509,7 +3595,12 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 		need_to_query = true;
 	}
 
-	synaptics_dsx_ic_reset(rmi4_data, true);
+	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
+	if (retval > 0)
+		pr_debug("successful reset took %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	if (need_to_query) {
 		if (!rmi4_data->input_dev) {
@@ -3739,6 +3830,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	rmi4_data = kzalloc(sizeof(*rmi4_data), GFP_KERNEL);
+	pr_debug("rmi4_data allocated = %p\n", rmi4_data);
 	if (!rmi4_data) {
 		dev_err(&client->dev,
 				"%s: Failed to alloc mem for rmi4_data\n",
@@ -3785,6 +3877,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->irq_enabled = false;
 	atomic_set(&rmi4_data->touch_stopped, 1);
 	rmi4_data->ic_on = true;
+	rmi4_data->flash_enabled = false;
 
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;
@@ -3882,9 +3975,12 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 			"on" : "off");
 	}
 
-	retval = synaptics_dsx_ic_reset(rmi4_data, true);
+	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
 	if (retval > 0)
 		pr_debug("successful reset took %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	retval = synaptics_rmi4_query_device(rmi4_data);
 	if (retval < 0) {
@@ -4170,6 +4266,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 0, 1) == 1)
 		return 0;
 
+	rmi4_data->flash_enabled = false;
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
 
 	if (rmi4_data->purge_enabled) {
@@ -4214,7 +4311,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 static int synaptics_rmi4_resume(struct device *dev)
 {
 	int retval;
-	bool hw_reset = true;
+	int reset = RMI4_HW_RESET;
 	struct pinctrl *pinctrl;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	const struct synaptics_dsx_platform_data *platform_data =
@@ -4243,7 +4340,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 		retval = gpio_get_value(platform_data->reset_gpio);
 		pr_debug("reset gpio state: %d\n", retval);
 		if (retval == 0)
-			hw_reset = false;
+			reset = RMI4_WAIT_READY;
 
 		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
 			"active");
@@ -4264,11 +4361,17 @@ static int synaptics_rmi4_resume(struct device *dev)
 	synaptics_dsx_on_resume(rmi4_data);
 
 	/* perform HW reset if needed and wait for touch IC boot completion */
-	retval = synaptics_dsx_ic_reset(rmi4_data, hw_reset);
-	pr_debug("waited for idle %dms\n", retval);
+	retval = synaptics_dsx_ic_reset(rmi4_data, reset);
+	if (retval > 0)
+		pr_debug("waited for idle %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	/* read touch IC state */
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
+	/* transition to active state is completed - allow flashing */
+	rmi4_data->flash_enabled = true;
 
 	if (rmi4_data->purge_enabled) {
 		int value = 0; /* clear flag */
@@ -4277,7 +4380,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	synaptics_dsx_resumeinfo_finish(rmi4_data);
-
 	return 0;
 }
 
