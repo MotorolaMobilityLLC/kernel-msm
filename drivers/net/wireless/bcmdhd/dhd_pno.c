@@ -1712,7 +1712,7 @@ int dhd_wait_batch_results_complete(dhd_pub_t *dhd)
 		/* All results consumed/No results cached??
 		 * Get fresh results from FW
 		 */
-		if (!num_results) {
+		if ((_pno_state->pno_mode & DHD_PNO_GSCAN_MODE) && !num_results) {
 			DHD_PNO(("%s: No results cached, getting from FW..\n", __FUNCTION__));
 			err = dhd_retreive_batch_scan_results(dhd);
 			if (err == BCME_OK) {
@@ -2669,7 +2669,10 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 		err = BCME_UNSUPPORTED;
 		goto exit;
 	}
-
+	if (!(_pno_state->pno_mode & DHD_PNO_GSCAN_MODE)) {
+		DHD_ERROR(("%s: GSCAN is not enabled\n", __FUNCTION__));
+		goto exit;
+	}
 	gscan_params = &params->params_gscan;
 	nAPs_per_scan = (uint8 *) MALLOC(dhd->osh, gscan_params->mscan);
 
@@ -2870,11 +2873,8 @@ _dhd_pno_get_for_batch(dhd_pub_t *dhd, char *buf, int bufsize, int reason)
 		err = BCME_UNSUPPORTED;
 		goto exit_no_unlock;
 	}
-#ifdef GSCAN_SUPPORT
-	if (!(_pno_state->pno_mode & (DHD_PNO_BATCH_MODE | DHD_PNO_GSCAN_MODE))) {
-#else
+
 	if (!(_pno_state->pno_mode & DHD_PNO_BATCH_MODE)) {
-#endif /* GSCAN_SUPPORT */
 		DHD_ERROR(("%s: Batching SCAN mode is not enabled\n", __FUNCTION__));
 		goto exit_no_unlock;
 	}
@@ -3108,20 +3108,15 @@ _dhd_pno_get_batch_handler(struct work_struct *work)
 		DHD_ERROR(("%s : dhd is NULL\n", __FUNCTION__));
 		return;
 	}
-
 #ifdef GSCAN_SUPPORT
-	if (_pno_state->pno_mode & DHD_PNO_GSCAN_MODE) {
-		_dhd_pno_get_gscan_batch_from_fw(dhd);
-		return;
-	} else
+	_dhd_pno_get_gscan_batch_from_fw(dhd);
 #endif /* GSCAN_SUPPORT */
-	{
+	if (_pno_state->pno_mode & DHD_PNO_BATCH_MODE) {
 		params_batch = &_pno_state->pno_params_arr[INDEX_OF_BATCH_PARAMS].params_batch;
 
 		_dhd_pno_get_for_batch(dhd, params_batch->get_batch.buf,
 			params_batch->get_batch.bufsize, params_batch->get_batch.reason);
 	}
-
 }
 
 int
