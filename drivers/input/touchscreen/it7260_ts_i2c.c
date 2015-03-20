@@ -525,8 +525,8 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
 	fwUploadResult = SYSFS_RESULT_NOT_DONE;
 	if (fwLen && cfgLen) {
-		if (manualUpgrade || (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) ||
-		(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5])){
+		if (manualUpgrade || (verFw[5] != fw->data[8] || verFw[6] != fw->data[9] || verFw[7] != fw->data[10] || verFw[8] != fw->data[11]) ||
+		(verCfg[1] != cfg->data[cfgLen - 8] || verCfg[2] != cfg->data[cfgLen - 7] || verCfg[3] != cfg->data[cfgLen - 6] || verCfg[4] != cfg->data[cfgLen - 5])) {
 			LOGI("firmware/config will be upgraded\n");
 			disable_irq(gl_ts->client->irq);
 			success = chipFirmwareUpload(fwLen, fw->data, cfgLen, cfg->data);
