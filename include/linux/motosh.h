@@ -59,6 +59,7 @@
 #define IR_STATUS                       0x11
 #define IR_GESTURE_RATE                 0x12
 #define IR_RAW_RATE                     0x13
+#define LINEAR_ACCEL_UPDATE_RATE        0x15
 #define IR_GESTURE                      0x1C
 #define IR_RAW                          0x1D
 #define IR_CONFIG                       0x1E
@@ -89,6 +90,7 @@
 #define BRIGHTNESS_TABLE_VALUES         0x35
 #define STEP_COUNTER_UPDATE_RATE        0x36
 
+#define GRAVITY_UPDATE_RATE             0x37
 #define FW_FLASH_CRC                    0x38
 #define WAKESENSOR_STATUS               0x39
 
@@ -448,6 +450,12 @@ int motosh_set_rv_6axis_update_rate(
 int motosh_set_rv_9axis_update_rate(
 	struct motosh_data *ps_motosh,
 	const uint8_t newDelay);
+int motosh_set_gravity_update_rate(
+	struct motosh_data *ps_motosh,
+	const uint8_t newDelay);
+int motosh_set_linear_accel_update_rate(
+	struct motosh_data *ps_motosh,
+	const uint8_t newDelay);
 
 irqreturn_t motosh_isr(int irq, void *dev);
 void motosh_irq_work_func(struct work_struct *work);
@@ -540,6 +548,8 @@ extern unsigned short motosh_g_mag_delay;
 extern unsigned short motosh_g_gyro_delay;
 extern uint8_t motosh_g_rv_6axis_delay;
 extern uint8_t motosh_g_rv_9axis_delay;
+extern uint8_t motosh_g_gravity_delay;
+extern uint8_t motosh_g_linear_accel_delay;
 extern unsigned short motosh_g_baro_delay;
 extern unsigned short motosh_g_ir_gesture_delay;
 extern unsigned short motosh_g_ir_raw_delay;
