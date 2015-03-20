@@ -35,6 +35,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/qpnp-revid.h>
 #include <linux/dropbox.h>
+#include <linux/qpnp-revid.h>
 
 #define FUEL_GAUGE_REPORT "Fuel-Gauge_Report"
 #define QPNPFG_FULL_CAP "QPNPFG - Full Cap = %d\n"
