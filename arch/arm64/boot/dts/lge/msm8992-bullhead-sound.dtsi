@@ -11,3 +11,8 @@
  * GNU General Public License for more details.
  */
 
+&soc {
+	sound {
+		qcom,mbhc-gpio-level-insert = <0>;
+	};
+};
