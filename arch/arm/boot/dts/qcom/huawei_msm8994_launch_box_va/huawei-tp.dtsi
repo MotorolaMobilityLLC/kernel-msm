@@ -1,0 +1,144 @@
+/* <DTS2014012301511 liyunlong 20140123 begin */
+/* < DTS2014011801994 tenghui 20140118 begin */
+/* < DTS2014010309198 sunlibin 20140104 begin */
+&soc {
+	/* BLSP1 QUP2 */
+	i2c@f9924000 { 
+		status = "ok";
+		qcom,clk-freq-out = <400000>;
+
+		tsc@1a {
+			compatible = "cy,cyttsp4_i2c_adapter";
+			reg = <0x1A>;
+			/* GPIO 17, high-to-low edge triggered */
+			/*interrupts = <6 2>;*/
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <77 0x2008>;
+			/* interrupt-parent = <&gpio2>; */
+			cy,adapter_id = "cyttsp4_i2c_adapter";
+			vdd-supply = <&pm8994_l22>;
+			vcc_i2c-supply = <&pm8994_l14>;
+			cy,vdd = "vdd";
+			cy,vbus = "vcc_i2c";
+			cy,irq_gpio_num = <&msm_gpio 77 0x2008>;
+			cy,core {
+				cy,name = "cyttsp4_core";
+				cy,id = "main_ttsp_core";
+
+				cy,irq_gpio = <&msm_gpio 77 0x2008>;
+				cy,rst_gpio = <&msm_gpio 96 0x0>;
+
+				/* Enable cy,max_xfer_len to limit max I2C/SPI transfer length */
+				/* cy,max_xfer_len = <0x100>; */
+
+				/* CY_CORE_FLAG_WAKE_ON_GESTURE */
+				cy,flags = <0>;
+				cy,easy_wakeup_supported_gestures = <31>; /*supported gestures ored bits*/
+
+				/* GLOVE function */
+				cy,use_configure_sensitivity = <1>;
+
+				/* CY_CORE_EWG_TAP_TAP | CY_CORE_EWG_TWO_FINGER_SLIDE */
+				cy,easy_wakeup_gesture = <0x0>;
+				cy,btn_keys = <102 /* KEY_HOME */
+						139 /* KEY_MENU */
+						158 /* KEY_BACK */
+						217 /* KEY_SEARCH */
+						114 /* KEY_VOLUMEDOWN */
+						115 /* KEY_VOLUMEUP */
+						212 /* KEY_CAMERA */
+						116>; /* KEY_POWER */
+				cy,btn_keys-tag = <0>;
+
+				/* tp capacitance infomation */
+				cy,min_mut_cap = "-4000"; /*minimum mutual capcitance*/
+				cy,max_mut_cap = "-500"; /*maximum mutual capcitance*/
+				cy,min_self_cap = "-1100"; /*minimum self capcitance*/
+				cy,max_self_cap = "2300"; /*maximum self capcitance*/
+				cy,tx_lines = <16>; /*number of Tx lines*/
+				cy,rx_lines = <28>; /*Number of Rx lines*/
+				cy,self_cap_num = <28>; /* Number of self cap lines */ 
+				cy,ignore_list_mut_cap = <27 447>; /*mutual capacitance ignore list*/
+				cy,data_start_byte = <8>; /*the data byte after command header*/
+				cy,tp_ic_version = "TMD463";/*ic version*/
+
+				cy,mt {
+					cy,name = "cyttsp4_mt";
+
+					cy,inp_dev_name = "cyttsp4_mt";
+					/* CY_MT_FLAG_FLIP | CY_MT_FLAG_INV_X | CY_MT_FLAG_INV_Y */
+					cy,flags = <0x40>;
+					cy,abs =
+						/* ABS_MT_POSITION_X, CY_ABS_MIN_X, CY_ABS_MAX_X, 0, 0 */
+						<0x35 0 720 0 0
+						/* ABS_MT_POSITION_Y, CY_ABS_MIN_Y, CY_ABS_MAX_Y, 0, 0 */
+						0x36 0 1280 0 0
+						/* ABS_MT_PRESSURE, CY_ABS_MIN_P, CY_ABS_MAX_P, 0, 0 */
+						0x3a 0 255 0 0
+						/* CY_IGNORE_VALUE, CY_ABS_MIN_W, CY_ABS_MAX_W, 0, 0 */
+						0xffff 0 255 0 0
+						/* ABS_MT_TRACKING_ID, CY_ABS_MIN_T, CY_ABS_MAX_T, 0, 0 */
+						0x39 0 15 0 0
+						/* ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0 */
+						0x30 0 255 0 0
+						/* ABS_MT_TOUCH_MINOR, 0, 255, 0, 0 */
+						0x31 0 255 0 0
+						/* ABS_MT_ORIENTATION, -128, 127, 0, 0 */
+						0x34 0xfffffed7 127 0 0>;
+
+					cy,vkeys_x = <720>;
+					cy,vkeys_y = <1280>;
+
+					/*8 bits  for gesture control*/
+					cy,easy_wakeup_gesture_keys = <	59 /*Double tap*/
+						60 /*Single finger slide from left to right*/
+						61 /*Single finger slide from right to left*/
+						62 /*Single finger slide from top to bottom*/
+						63 /*Single finger slide from bottom to top*/
+						0  /*Not used*/
+						0  /*Not used*/
+						0  /*Not used*/
+						>;
+
+					cy,virtual_keys = /* KeyCode CenterX CenterY Width Height */
+						/* KEY_BACK */
+						<158 120 1340 200 100
+						/* KEY_HOMEPAGE instead of KEY_HOME(102) */
+						172 360 1340 200 100
+						/* KEY_MENU */
+						139 600 1340 200 100>;
+						/* KEY SEARCH */
+						/*217 1360 630 160 180>;*/
+				};
+
+				cy,btn {
+					cy,name = "cyttsp4_btn";
+
+					cy,inp_dev_name = "cyttsp4_btn";
+				};
+
+				cy,proximity {
+					cy,name = "cyttsp4_proximity";
+
+					cy,inp_dev_name = "cyttsp4_proximity";
+					cy,abs =
+						/* ABS_DISTANCE, CY_PROXIMITY_MIN_VAL, CY_PROXIMITY_MAX_VAL, 0, 0 */
+						<0x19 0 1 0 0>;
+				};
+
+				cy,loader {
+					cy,name = "cyttsp4_loader";
+					cy,tp_location = "COF";
+					/* Force recalibration after config upgrade*/
+					cy,flags = <0x03>;
+					cy,firmware_name = "cyttsp4_fw_mate2.bin";
+					cy,product_family = "Mate2";
+				};
+			};
+		};
+	};
+
+};
+/* DTS2014010309198 sunlibin 20140104 end > */
+/* DTS2014011801994 tenghui 20140118 end > */
+/* DTS2014012301511 liyunlong 20140123 end> */

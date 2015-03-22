@@ -287,17 +287,23 @@
 	qcom,num-grp-pins = <1>;
 	qcom,pins = <&gp 78>;
 };
+/*< DTS2015032200690 lijianzhao 20150322 begin */
+/* add tp and lcd driver */
+&pmx_mdss_te {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 10>;
+};
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_video_0>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active>;
-	pinctrl-1 = <&mdss_dsi_suspend>;
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,dsi-panel-bias-vreg;
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
-        qcom,platform-enable-gpio = <&pm8994_gpios 14 0>;
+       /* qcom,platform-enable-gpio = <&pm8994_gpios 14 0>; */
 };
-
+/* DTS2015032200690 lijianzhao 20150322 end >*/
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_video_1>;
 };

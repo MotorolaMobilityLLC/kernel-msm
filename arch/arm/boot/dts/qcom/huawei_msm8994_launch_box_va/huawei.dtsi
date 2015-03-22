@@ -8,8 +8,11 @@
 */
 /*belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator begin*/
 /*#include "huawei-i2c-detect-va.dtsi"*/
-/*#include "huawei-lcd.dtsi"*/
-/*#include "huawei-tp.dtsi"*/
+/*< DTS2015032200690 lijianzhao 20150322 begin */
+/* add tp and lcd driver */
+#include "huawei-lcd.dtsi"
+#include "huawei-tp.dtsi"
+/* DTS2015032200690 lijianzhao 20150322 end >*/
 /*#include "huawei-camera.dtsi"*/
 /*#include "huawei-sensors.dtsi"*/
 /*#include "huawei-vibrator.dtsi"*/
