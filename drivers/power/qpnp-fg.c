@@ -367,8 +367,8 @@ struct fg_chip {
 	struct work_struct	battery_age_work;
 	struct work_struct	update_esr_work;
 	struct work_struct	set_resume_soc_work;
-	struct work_struct	rslow_comp_work;
 	struct work_struct	init_work;
+	struct work_struct	rslow_comp_work;
 	struct power_supply	*batt_psy;
 	struct power_supply	*usb_psy;
 	struct power_supply	*dc_psy;
@@ -427,7 +427,6 @@ struct fg_chip {
 	struct fg_rslow_data	rslow_comp;
 	/* interleaved memory access */
 	u16			*offset;
-	bool			ima_supported;
 };
 
 /* FG_MEMIF DEBUGFS structures */
@@ -3304,10 +3303,8 @@ wait:
 			schedule_work(&chip->dump_sram);
 		goto done;
 	}
-
 	if (fg_est_dump)
 		dump_sram(&chip->dump_sram);
-
 	if ((fg_debug_mask & FG_STATUS) && !vbat_in_range)
 		pr_info("Vbat out of range: v_current_pred: %d, v:%d\n",
 				fg_data[FG_DATA_CPRED_VOLTAGE].value,
@@ -4908,8 +4905,8 @@ cancel_work:
 	cancel_work_sync(&chip->status_change_work);
 	cancel_work_sync(&chip->cycle_count_work);
 	cancel_work_sync(&chip->update_esr_work);
-	cancel_work_sync(&chip->rslow_comp_work);
 	cancel_work_sync(&chip->init_work);
+	cancel_work_sync(&chip->rslow_comp_work);
 of_init_fail:
 	mutex_destroy(&chip->rslow_comp.lock);
 	mutex_destroy(&chip->rw_lock);
