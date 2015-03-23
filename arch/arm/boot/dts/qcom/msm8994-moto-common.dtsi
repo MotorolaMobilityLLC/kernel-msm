@@ -330,7 +330,7 @@
 		qcom,pin-func = <0>;
 		label = "motosh_in";
 		motosh_in_default: default {
-			bias-disable;
+			bias-pull-down;
 			drive-strength = <2>;
 		};
 	};
