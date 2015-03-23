@@ -25,7 +25,9 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/qpnp/power-on.h>
+#include <soc/qcom/watchdog.h>
 
 
 enum mmi_factory_device_list {
@@ -140,6 +142,14 @@ static void warn_irq_w(struct work_struct *w)
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
+
+		/* trigger wdog if resin key pressed */
+		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT) {
+			pr_info("%s: User triggered watchdog reset\n", __func__);
+			msm_trigger_wdog_bite();
+			return;
+		}
+
 		if (usr_rst_sw_dis_flg <= 0) {
 			/* Configure hardware reset before halt
 			 * The new KUNGKOW circuit will not disconnect the

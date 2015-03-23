@@ -59,6 +59,9 @@ enum pon_restart_reason {
 #define RESET_EXTRA_REBOOT_BL_REASON	BIT(2)
 #define RESET_EXTRA_HW_RESET_REASON	BIT(1)
 
+#define QPNP_PON_KEY_RESIN_BIT		BIT(1)
+extern int qpnp_pon_key_status;
+
 #ifdef CONFIG_QPNP_POWER_ON
 int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
 int qpnp_pon_is_warm_reset(void);
