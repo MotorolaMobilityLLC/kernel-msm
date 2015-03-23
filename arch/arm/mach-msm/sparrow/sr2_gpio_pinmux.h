@@ -234,6 +234,34 @@ static struct msm_gpiomux_config sr2_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 //ASUS_BSP --- Ken_Cheng "MI2S for digital MIC"
+	{
+		.gpio = 68,           /* secd mi2s out */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 69,           /* secd mi2s sync */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &pri_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &pri_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 70,           /* secd mi2s clk */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sec_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &sec_mi2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 71,           /* secd mi2s in */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sec_mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &sec_mi2s_act_cfg,
+		},
+	},
 //ASUS_BSP +++ Evan_Yeh "PNI sensors hub porting"
 {
                .gpio = 111,
