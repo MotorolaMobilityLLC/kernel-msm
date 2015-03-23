@@ -44,11 +44,11 @@
 			label = "adsp_pil_mem";
 		};
 
-		modem_mem: modem_region@0x8600000 {
+		modem_mem: modem_region@0x8200000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-			reg = <0x08600000 0x4c00000>;
+			reg = <0x08200000 0x5000000>;
 			label = "modem_mem";
 		};
 
