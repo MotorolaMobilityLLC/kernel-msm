@@ -282,6 +282,7 @@ dtb-$(CONFIG_ARCH_MSM8994) += msm8994-bunkerhill-p201.dtb
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p1b.dtb
+dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p1c.dtb
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p2a.dtb
 
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p1.dtb
