@@ -552,7 +552,7 @@
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
 	qcom,dc-psy-type = "Mains";
-	qcom,dc-psy-ma = <1500>;
+	qcom,dc-psy-ma = <500>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
 	qcom,chg-thermal-mitigation = <3400>, <3200>, <3100>, <3000>, <2800>,
