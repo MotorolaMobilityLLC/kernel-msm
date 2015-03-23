@@ -2029,6 +2029,7 @@ static void *def_codec_mbhc_cal(void)
 	struct wcd9xxx_mbhc_btn_detect_cfg *btn_cfg;
 	u16 *btn_low, *btn_high;
 	u8 *n_ready, *n_cic, *gain;
+	int ret;
 
 	codec_cal = kzalloc(WCD9XXX_MBHC_CAL_SIZE(WCD9XXX_MBHC_DEF_BUTTONS,
 						WCD9XXX_MBHC_DEF_RLOADS),
@@ -2072,22 +2073,32 @@ static void *def_codec_mbhc_cal(void)
 	btn_low = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_V_BTN_LOW);
 	btn_high = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg,
 					       MBHC_BTN_DET_V_BTN_HIGH);
-	btn_low[0] = -50;
-	btn_high[0] = 20;
-	btn_low[1] = 21;
-	btn_high[1] = 61;
-	btn_low[2] = 62;
-	btn_high[2] = 104;
-	btn_low[3] = 105;
-	btn_high[3] = 148;
-	btn_low[4] = 149;
-	btn_high[4] = 189;
-	btn_low[5] = 190;
-	btn_high[5] = 228;
-	btn_low[6] = 229;
-	btn_high[6] = 269;
-	btn_low[7] = 270;
-	btn_high[7] = 500;
+
+	ret = of_property_read_u16_array(spdev->dev.of_node,
+				"qcom,mbhc-btn-cal-low", btn_low, 8);
+	ret |= of_property_read_u16_array(spdev->dev.of_node,
+				"qcom,mbhc-btn-cal-high", btn_high, 8);
+	if (ret) {
+		pr_err("%s: failed to get btn-cal from dt\n",
+							__func__);
+		btn_low[0] = -50;
+		btn_high[0] = 20;
+		btn_low[1] = 21;
+		btn_high[1] = 61;
+		btn_low[2] = 62;
+		btn_high[2] = 104;
+		btn_low[3] = 105;
+		btn_high[3] = 148;
+		btn_low[4] = 149;
+		btn_high[4] = 189;
+		btn_low[5] = 190;
+		btn_high[5] = 228;
+		btn_low[6] = 229;
+		btn_high[6] = 269;
+		btn_low[7] = 270;
+		btn_high[7] = 500;
+	}
+
 	n_ready = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_N_READY);
 	n_ready[0] = 80;
 	n_ready[1] = 68;
