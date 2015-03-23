@@ -441,6 +441,7 @@ struct msm_otg_platform_data {
  * @dbg_lock: Dynamic debug buffer Lock.
  * @buf: Dynamic Debug Buffer.
  * @id_state: Indicates USBID line status.
+ * @falsesdp_retry_count: Counter for number of FALSE_SDP retries
  */
 struct msm_otg {
 	struct usb_phy phy;
@@ -591,6 +592,7 @@ struct msm_otg {
 	rwlock_t dbg_lock;
 	char (buf[DEBUG_MAX_MSG])[DEBUG_MSG_LEN];   /* buffer */
 	enum usb_id_state id_state;
+	int falsesdp_retry_count;
 };
 
 struct ci13xxx_platform_data {
