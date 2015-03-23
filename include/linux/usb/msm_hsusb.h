@@ -418,6 +418,7 @@ struct msm_otg_platform_data {
 	     the charger detection starts. When USB is disconnected and in lpm
 	     pm_done is set to true.
  * @ext_id_irq: IRQ for ID interrupt.
+ * @falsesdp_retry_count: Counter for number of FALSE_SDP retries
  */
 struct msm_otg {
 	struct usb_phy phy;
@@ -557,6 +558,7 @@ struct msm_otg {
 	struct qpnp_vadc_chip	*vadc_dev;
 	int ext_id_irq;
 	wait_queue_head_t	host_suspend_wait;
+	int falsesdp_retry_count;
 };
 
 struct ci13xxx_platform_data {
