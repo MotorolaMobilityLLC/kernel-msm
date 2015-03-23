@@ -188,6 +188,17 @@ static struct gpiomux_setting host_wakup_bt_sus_cfg= { // host_wakeup_suspend
 
 // ASUS_BSP BerylHou ---
 
+static struct gpiomux_setting sec_mi2s_act_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+static struct gpiomux_setting sec_mi2s_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 //ASUS_BSP +++ Ken_Cheng "MI2S porting for digital MIC"
 static struct gpiomux_setting  pri_mi2s_act_cfg = {
 	.func = GPIOMUX_FUNC_1,

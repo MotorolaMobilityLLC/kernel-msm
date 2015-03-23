@@ -538,11 +538,11 @@
 		qcom,tert-mi2s-gpio-sck  = <&msmgpio 49 0>;
 		qcom,tert-mi2s-gpio-ws   = <&msmgpio 50 0>;
 		qcom,tert-mi2s-gpio-dout = <&msmgpio 52 0>;
-		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 63 0>;
-		qcom,prim-auxpcm-gpio-sync = <&msmgpio 64 0>;
-		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
-		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
-		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 70 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 69 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 71 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 68 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-secd";
 		DMIC-supply = <&pm8226_l23>; //ASUS BSP Jessy config DMIC
 		SPK1P8-supply = <&pm8226_l9>;
 		SPK3P0-supply = <&pm8226_l16>;
@@ -750,13 +750,13 @@
 		compatible = "qcom,msm-auxpcm-dev";
 		qcom,msm-cpudai-auxpcm-mode = <0>, <0>;
 		qcom,msm-cpudai-auxpcm-sync = <1>, <1>;
-		qcom,msm-cpudai-auxpcm-frame = <5>, <4>;
+		qcom,msm-cpudai-auxpcm-frame = <3>, <3>;
 		qcom,msm-cpudai-auxpcm-quant = <2>, <2>;
 		qcom,msm-cpudai-auxpcm-num-slots = <1>, <1>;
 		qcom,msm-cpudai-auxpcm-slot-mapping = <1>, <1>;
 		qcom,msm-cpudai-auxpcm-data = <0>, <0>;
-		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>, <2048000>;
-		qcom,msm-auxpcm-interface = "primary";
+		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <512000>, <512000>;
+		qcom,msm-auxpcm-interface = "secondary";
 	};
 
 	qcom,msm-ssc-sensors {

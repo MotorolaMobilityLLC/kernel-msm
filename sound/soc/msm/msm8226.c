@@ -2162,34 +2162,34 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 	},
 #endif
 //ASUS_BSP Ken_Cheng ---
-	/* AUX PCM Backend DAI Links */
+	/* Secondary AUX PCM Backend DAI Links */
 	{
-		.name = LPASS_BE_AUXPCM_RX,
-		.stream_name = "AUX PCM Playback",
-		.cpu_dai_name = "msm-dai-q6-auxpcm.1",
+		.name = LPASS_BE_SEC_AUXPCM_RX,
+		.stream_name = "Sec AUX PCM Playback",
+		.cpu_dai_name = "msm-dai-q6-auxpcm.2",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-rx",
 		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_AUXPCM_RX,
+		.be_id = MSM_BACKEND_DAI_SEC_AUXPCM_RX,
 		.be_hw_params_fixup = msm_auxpcm_be_params_fixup,
 		.ops = &msm_auxpcm_be_ops,
 		.ignore_pmdown_time = 1,
-		.ignore_suspend = 1
+		.ignore_suspend = 1,
 		/* this dainlink has playback support */
 	},
 	{
-		.name = LPASS_BE_AUXPCM_TX,
-		.stream_name = "AUX PCM Capture",
-		.cpu_dai_name = "msm-dai-q6-auxpcm.1",
+		.name = LPASS_BE_SEC_AUXPCM_TX,
+		.stream_name = "Sec AUX PCM Capture",
+		.cpu_dai_name = "msm-dai-q6-auxpcm.2",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-tx",
 		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_AUXPCM_TX,
+		.be_id = MSM_BACKEND_DAI_SEC_AUXPCM_TX,
 		.be_hw_params_fixup = msm_auxpcm_be_params_fixup,
 		.ops = &msm_auxpcm_be_ops,
-		.ignore_suspend = 1
+		.ignore_suspend = 1,
 	},
 //ASUS_BSP Ken_Cheng +++
 #if defined(ASUS_CW_WITH_CODEC)
@@ -2936,6 +2936,8 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 	}
 	if (!strcmp(auxpcm_pri_gpio_set, "prim-gpio-prim")) {
 		lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_PRI_MODE_MUXSEL, 4);
+	} else if (!strcmp(auxpcm_pri_gpio_set, "prim-gpio-secd")) {
+		lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_SEC_MODE_MUXSEL, 4);
 	} else if (!strcmp(auxpcm_pri_gpio_set, "prim-gpio-tert")) {
 		lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_TER_MODE_MUXSEL, 4);
 	} else {
