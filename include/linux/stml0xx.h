@@ -203,7 +203,17 @@
 #define M_CAMERA_ACT		0x000800
 #define M_NFC			0x001000
 #define M_SIM			0x002000
+#define M_LIFT			0x004000
 #define M_LOG_MSG		0x008000
+
+/*#define M_UNUSED		0x010000*/
+/*#define M_UNUSED		0x020000*/
+/*#define M_UNUSED		0x040000*/
+/*#define M_UNUSED		0x080000*/
+/*#define M_UNUSED		0x100000*/
+/*#define M_UNUSED		0x200000*/
+/*#define M_UNUSED		0x400000*/
+/*#define M_UNUSED		0x800000*/
 
 /* algo config mask */
 #define M_MMOVEME               0x0001
@@ -498,23 +508,25 @@ struct stm_response {
 /* stml0xx WAKE IRQ SPI buffer indexes */
 #define WAKE_IRQ_IDX_STATUS_LO              0
 #define WAKE_IRQ_IDX_STATUS_MED             1
-#define WAKE_IRQ_IDX_ALGO_STATUS_LO         2
-#define WAKE_IRQ_IDX_ALGO_STATUS_MED        3
-#define WAKE_IRQ_IDX_ALGO_STATUS_HI         4
-#define WAKE_IRQ_IDX_PROX                   5
-#define WAKE_IRQ_IDX_COVER                  6
-#define WAKE_IRQ_IDX_HEADSET                7
-#define WAKE_IRQ_IDX_FLAT                   8
-#define WAKE_IRQ_IDX_STOWED                 9
-#define WAKE_IRQ_IDX_CAMERA                10
-#define WAKE_IRQ_IDX_SIM                   12
-#define WAKE_IRQ_IDX_MOTION                14
-#define WAKE_IRQ_IDX_MODALITY              16
-#define WAKE_IRQ_IDX_MODALITY_ORIENT       23
-#define WAKE_IRQ_IDX_MODALITY_STOWED       30
-#define WAKE_IRQ_IDX_MODALITY_ACCUM        37
-#define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   39
-#define WAKE_IRQ_IDX_LOG_MSG               43
+#define WAKE_IRQ_IDX_STATUS_HI              2
+#define WAKE_IRQ_IDX_ALGO_STATUS_LO         3
+#define WAKE_IRQ_IDX_ALGO_STATUS_MED        4
+#define WAKE_IRQ_IDX_ALGO_STATUS_HI         5
+#define WAKE_IRQ_IDX_PROX                   6
+#define WAKE_IRQ_IDX_COVER                  7
+#define WAKE_IRQ_IDX_HEADSET                8
+#define WAKE_IRQ_IDX_FLAT                   9
+#define WAKE_IRQ_IDX_STOWED                10
+#define WAKE_IRQ_IDX_CAMERA                11
+#define WAKE_IRQ_IDX_LIFT                  13
+#define WAKE_IRQ_IDX_SIM                   25
+#define WAKE_IRQ_IDX_MOTION                27
+#define WAKE_IRQ_IDX_MODALITY              29
+#define WAKE_IRQ_IDX_MODALITY_ORIENT       36
+#define WAKE_IRQ_IDX_MODALITY_STOWED       43
+#define WAKE_IRQ_IDX_MODALITY_ACCUM        50
+#define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   52
+#define WAKE_IRQ_IDX_LOG_MSG               56
 
 /* stml0xx_readbuff offsets. */
 #define IRQ_WAKE_LO  0
@@ -813,7 +825,7 @@ extern long stml0xx_time_delta;
 
 extern unsigned int stml0xx_irq_disable;
 
-extern unsigned short stml0xx_g_wake_sensor_state;
+extern unsigned long stml0xx_g_wake_sensor_state;
 
 extern unsigned char stat_string[];
 
