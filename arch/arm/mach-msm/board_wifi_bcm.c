@@ -320,15 +320,15 @@ ether_aton_r (const char *asc, struct ether_addr * addr)
 
 		addr->ether_addr_octet[i] = (unsigned char)((val0 << 4) + val1);
 
-		if (i < ETHER_ADDR_LEN - 1) {
+		/*if (i < ETHER_ADDR_LEN - 1) {
 			if (*asc != ':')
 				return NULL;
 			asc++;
-		}
+		}*/
 	}
 
-	if (*asc != '\0')
-		return NULL;
+	/*if (*asc != '\0')
+		return NULL;*/
 
 	return addr;
 }
@@ -377,6 +377,8 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 		goto random_mac;
 	}
 
+	fp->f_pos += strlen("MacAddress0=");
+
 	readlen = kernel_read(fp, fp->f_pos, macasc, 17); // 17 = 12 + 5
 	if (readlen > 0) {
 		unsigned char* macbin;
@@ -399,6 +401,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 	}
 
 	filp_close(fp, NULL);
+
 	return ret;
 
 random_mac:
