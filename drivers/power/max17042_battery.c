@@ -98,6 +98,7 @@
 #define MISC_CFG_PROPERTY		"misc_cfg"
 #define FULLCAP_PROPERTY		"fullcap"
 #define FULLCAPNOM_PROPERTY		"fullcapnom"
+#define LAVG_EMPTY_PROPERTY		"lavg_empty"
 #define QRTBL00_PROPERTY		"qrtbl00"
 #define QRTBL10_PROPERTY		"qrtbl10"
 #define QRTBL20_PROPERTY		"qrtbl20"
@@ -687,6 +688,8 @@ static void  max17042_write_custom_regs(struct max17042_chip *chip)
 	max17042_write_verify_reg(map, MAX17042_RCOMP0, config->rcomp0);
 	max17042_write_verify_reg(map, MAX17042_TempCo,	config->tcompc0);
 	max17042_write_verify_reg(map, MAX17042_ICHGTerm, config->ichgt_term);
+	max17042_write_verify_reg(map, MAX17042_LAvg_empty,
+				  config->lavg_empty);
 	if (chip->chip_type == MAX17042) {
 		regmap_write(map, MAX17042_EmptyTempCo,	config->empty_tempco);
 		max17042_write_verify_reg(map, MAX17042_K_empty0,
@@ -1395,6 +1398,9 @@ static int max17042_cfg_rqrd_prop(struct device *dev,
 		return -EINVAL;
 	if (of_property_read_u16(np, FULLCAPNOM_PROPERTY,
 				 &config_data->fullcapnom))
+		return -EINVAL;
+	if (of_property_read_u16(np, LAVG_EMPTY_PROPERTY,
+				 &config_data->lavg_empty))
 		return -EINVAL;
 
 	return max17042_get_cell_char_tbl(dev, np, config_data);
