@@ -16,7 +16,9 @@
 #include <linux/module.h>
 #include <linux/debugfs.h>
 #include <soc/qcom/mmi_watchdog.h>
+#include <soc/qcom/watchdog.h>
 
+#ifndef CONFIG_MSM_WATCHDOG_V2
 struct completion wdt_timeout_complete;
 static void wdt_timeout_work(struct work_struct *work)
 {
@@ -27,15 +29,20 @@ static void wdt_timeout_work(struct work_struct *work)
 	complete(&wdt_timeout_complete);
 }
 static DECLARE_WORK(wdt_timeout_work_struct, wdt_timeout_work);
+#endif
 
 static int fire_watchdog_reset_set(void *data, u64 val)
 {
-	init_completion(&wdt_timeout_complete);
+
 	printk(KERN_WARNING "Fire hardware watchdog reset.\n");
 	printk(KERN_WARNING "Please wait ...\n");
+#ifdef CONFIG_MSM_WATCHDOG_V2
+	msm_trigger_wdog_bite();
+#else
+	init_completion(&wdt_timeout_complete);
 	schedule_work_on(0, &wdt_timeout_work_struct);
 	wait_for_completion(&wdt_timeout_complete);
-
+#endif
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(fire_watchdog_reset_fops,
