@@ -281,25 +281,26 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_SET_WAKESENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_WAKESENSORS");
-		if (copy_from_user(buf, argp, 2 * sizeof(unsigned char))) {
+		if (copy_from_user(buf, argp, 3 * sizeof(unsigned char))) {
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Copy set sensors returned error");
 			err = -EFAULT;
 			break;
 		}
-		stml0xx_g_wake_sensor_state = (buf[1] << 8) | buf[0];
+		stml0xx_g_wake_sensor_state = (buf[2] << 16)
+			|(buf[1] << 8) | buf[0];
 		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG,
-							 buf, 2);
+							 buf, 3);
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sensor enable = 0x%02X", stml0xx_g_wake_sensor_state);
+			"Sensor enable = 0x%06lX", stml0xx_g_wake_sensor_state);
 		break;
 	case STML0XX_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_WAKESENSORS");
 		if (stml0xx_g_booted) {
 			err = stml0xx_spi_send_read_reg(WAKESENSOR_CONFIG,
-							 buf, 2);
+							 buf, 3);
 			if (err < 0) {
 				dev_err(&stml0xx_misc_data->spi->dev,
 					"Reading get sensors failed");
@@ -308,8 +309,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		} else {
 			buf[0] = stml0xx_g_wake_sensor_state & 0xFF;
 			buf[1] = (stml0xx_g_wake_sensor_state >> 8) & 0xFF;
+			buf[2] = (stml0xx_g_wake_sensor_state >> 16) & 0xFF;
 		}
-		if (copy_to_user(argp, buf, 2 * sizeof(unsigned char)))
+		if (copy_to_user(argp, buf, 3 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
 	case STML0XX_IOCTL_SET_ALGOS:
