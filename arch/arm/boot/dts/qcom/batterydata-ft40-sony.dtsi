@@ -19,11 +19,12 @@ maxim,ft40-sony-batterydata {
 	full_soc_thresh	= /bits/ 16 <0x6200>;	/* app note constant */
 	design_cap	= /bits/ 16 <4806>;	/* mAh times 2 */
 	ichgt_term	= /bits/ 16 <0x0280>;	/* battery attribute */
-	learn_cfg	= /bits/ 16 <0x2606>;	/* app note constant */
+	learn_cfg	= /bits/ 16 <0x2607>;	/* app note constant */
 	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
 	relax_cfg	= /bits/ 16 <0x203B>;
 	fullcap		= /bits/ 16 <4806>;	/* mAh times 2 */
 	fullcapnom	= /bits/ 16 <4806>;	/* mAh times 2 */
+	lavg_empty	= /bits/ 16 <0x0F05>;	/* (2403mA/4/0.15625mA) */
 	qrtbl00		= /bits/ 16 <0x2A81>;	/* battery attribute */
 	qrtbl10		= /bits/ 16 <0x1500>;	/* battery attribute */
 	qrtbl20		= /bits/ 16 <0x0A03>;	/* battery attribute */
@@ -45,5 +46,5 @@ maxim,ft40-sony-batterydata {
 	toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
 	cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
 	misc_cfg	= /bits/ 16 <0x0170>;
-	rev		= /bits/ 16 <0x0002>;
+	rev		= /bits/ 16 <0x0003>;
 };
