@@ -242,7 +242,7 @@ module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
 );
 
-static int smbchg_parallel_en;
+static int smbchg_parallel_en = 1;
 module_param_named(
 	parallel_en, smbchg_parallel_en, int, S_IRUSR | S_IWUSR
 );
@@ -869,7 +869,7 @@ static int get_prop_batt_voltage_max_design(struct smbchg_chip *chip)
 
 static int get_prop_batt_health(struct smbchg_chip *chip)
 {
-	if (chip->batt_hot)
+	/*if (chip->batt_hot)
 		return POWER_SUPPLY_HEALTH_OVERHEAT;
 	else if (chip->batt_cold)
 		return POWER_SUPPLY_HEALTH_COLD;
@@ -877,7 +877,7 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_WARM;
 	else if (chip->batt_cool)
 		return POWER_SUPPLY_HEALTH_COOL;
-	else
+	else*/
 		return POWER_SUPPLY_HEALTH_GOOD;
 }
 
@@ -2925,6 +2925,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		current_limit = prop.intval / 1000;
 
 	pr_smb(PR_MISC, "current_limit = %d\n", current_limit);
+	pr_info("smbchg_external_power_changed: current_limit = %d\n", current_limit);
 	mutex_lock(&chip->current_change_lock);
 	if (current_limit != chip->usb_target_current_ma) {
 		pr_smb(PR_STATUS, "changed current_limit = %d\n",
@@ -3846,6 +3847,8 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 	bool usb_present = is_usb_present(chip);
 
 	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
+			chip->usb_present, usb_present);
+	pr_info( "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);

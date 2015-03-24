@@ -333,6 +333,8 @@ struct device_node *of_batterydata_get_best_profile(
 
 	batt_id_kohm = ret.intval / 1000;
 
+	batt_id_kohm = 100;
+
 	/* read battery id range percentage for best profile */
 	rc = of_property_read_u32(batterydata_container_node,
 			"qcom,batt-id-range-pct", &id_range_pct);

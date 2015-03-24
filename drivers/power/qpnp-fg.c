@@ -1071,7 +1071,7 @@ static bool fg_is_batt_empty(struct fg_chip *chip)
 	return (fg_soc_sts & SOC_EMPTY) != 0;
 }
 
-#define EMPTY_CAPACITY		0
+#define EMPTY_CAPACITY		1
 #define DEFAULT_CAPACITY	50
 #define MISSING_CAPACITY	100
 static int get_prop_capacity(struct fg_chip *chip)
@@ -1115,6 +1115,8 @@ static int get_prop_capacity(struct fg_chip *chip)
 	if (fg_debug_mask & FG_POWER_SUPPLY)
 		pr_info_ratelimited("capacity: %d, raw: 0x%02x\n",
 				capacity, cap[0]);
+	if(capacity == 0)
+		capacity = 1;
 	return capacity;
 }
 

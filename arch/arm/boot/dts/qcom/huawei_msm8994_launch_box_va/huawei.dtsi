@@ -29,7 +29,7 @@
 /*belong to the factory group, according to the order of fac end*/
 
 /*belong to the OS group, according to the order of battery memery begin*/
-/*#include "huawei-battery.dtsi"*/
+#include "huawei-battery.dtsi"
 /*#include "huawei-memory.dtsi"*/
 /*#include "huawei-emmc.dtsi" */
 /*#include "huawei-sdcard.dtsi"*/
