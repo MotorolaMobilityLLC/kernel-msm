@@ -91,7 +91,7 @@ irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 void stml0xx_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
-	unsigned short irq_status;
+	unsigned long irq_status;
 	u32 irq2_status;
 	struct stml0xx_work_struct *stm_ws = (struct stml0xx_work_struct *)work;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
@@ -127,8 +127,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 
 	/* read interrupt mask register */
-	irq_status = (buf[WAKE_IRQ_IDX_STATUS_MED] << 8)
-	    | buf[WAKE_IRQ_IDX_STATUS_LO];
+	irq_status = (buf[WAKE_IRQ_IDX_STATUS_HI] << 16) |
+	    (buf[WAKE_IRQ_IDX_STATUS_MED] << 8) |
+	    buf[WAKE_IRQ_IDX_STATUS_LO];
 
 	/* read algorithm interrupt status register */
 	irq2_status = (buf[WAKE_IRQ_IDX_ALGO_STATUS_HI] << 16) |
