@@ -48,12 +48,12 @@
                 qcom,mdss-dsi-border-color = <0>;
 		qcom,splash-no-solid-fill;
 
-                qcom,mdss-dsi-tune-h-front-porch = <62>;
-                qcom,mdss-dsi-tune-h-back-porch = <62>;
-                qcom,mdss-dsi-tune-h-pulse-width = <8>;
-                qcom,mdss-dsi-tune-v-back-porch = <15>;
-                qcom,mdss-dsi-tune-v-front-porch = <15>;
-                qcom,mdss-dsi-tune-v-pulse-width = <1280>;
+                qcom,mdss-dsi-tune-h-front-porch = <96>;
+                qcom,mdss-dsi-tune-h-back-porch = <96>;
+                qcom,mdss-dsi-tune-h-pulse-width = <4>;
+                qcom,mdss-dsi-tune-v-back-porch = <50>;
+                qcom,mdss-dsi-tune-v-front-porch = <1086>;
+                qcom,mdss-dsi-tune-v-pulse-width = <2>;
 
 		qcom,mdss-dsi-on-command = [
 			29 01 00 00 00 00 02 ff 01
@@ -155,12 +155,12 @@
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,splash-no-solid-fill;
 
-		qcom,mdss-dsi-tune-h-front-porch = <62>;
-		qcom,mdss-dsi-tune-h-back-porch = <62>;
-		qcom,mdss-dsi-tune-h-pulse-width = <8>;
-		qcom,mdss-dsi-tune-v-back-porch = <15>;
-		qcom,mdss-dsi-tune-v-front-porch = <15>;
-		qcom,mdss-dsi-tune-v-pulse-width = <1280>;
+		qcom,mdss-dsi-tune-h-front-porch = <96>;
+		qcom,mdss-dsi-tune-h-back-porch = <96>;
+		qcom,mdss-dsi-tune-h-pulse-width = <4>;
+		qcom,mdss-dsi-tune-v-back-porch = <50>;
+		qcom,mdss-dsi-tune-v-front-porch = <1086>;
+		qcom,mdss-dsi-tune-v-pulse-width = <2>;
 
 		qcom,mdss-dsi-on-command = [
 			29 01 00 00 00 00 02 ff 03
@@ -299,12 +299,12 @@
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,splash-no-solid-fill;
 
-		qcom,mdss-dsi-tune-h-front-porch = <62>;
-		qcom,mdss-dsi-tune-h-back-porch = <62>;
-		qcom,mdss-dsi-tune-h-pulse-width = <8>;
-		qcom,mdss-dsi-tune-v-back-porch = <15>;
-		qcom,mdss-dsi-tune-v-front-porch = <15>;
-		qcom,mdss-dsi-tune-v-pulse-width = <1280>;
+		qcom,mdss-dsi-tune-h-front-porch = <96>;
+		qcom,mdss-dsi-tune-h-back-porch = <96>;
+		qcom,mdss-dsi-tune-h-pulse-width = <4>;
+		qcom,mdss-dsi-tune-v-back-porch = <50>;
+		qcom,mdss-dsi-tune-v-front-porch = <1086>;
+		qcom,mdss-dsi-tune-v-pulse-width = <2>;
 
 		qcom,mdss-dsi-on-command = [
 			29 01 00 00 00 00 02 ba 01
