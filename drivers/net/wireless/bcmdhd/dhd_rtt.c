@@ -1560,7 +1560,7 @@ dhd_rtt_convert_results_to_host(rtt_report_t *rtt_report, uint8 *p_data, uint16 
 	/* average distance */
 	if (avg_dist != FTM_INVALID) {
 		rtt_report->distance = (avg_dist >> 8) * 100; /* meter -> cm */
-		rtt_report->distance += (avg_dist & 0xff) / 256 * 100;
+		rtt_report->distance += (avg_dist & 0xff) * 100 / 256;
 	} else {
 		rtt_report->distance = FTM_INVALID;
 	}
@@ -1661,21 +1661,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 			break;
 		 }
 	}
-	if (is_new) {
-		/* allocate new header for rtt_results */
-		rtt_results_header = kzalloc(sizeof(rtt_results_header_t), GFP_KERNEL);
-		if (!rtt_results_header) {
-			if (!in_atomic()) {
-				mutex_unlock(&rtt_status->rtt_mutex);
-			}
-			ret = -ENOMEM;
-				goto exit;
-		}
-		/* Initialize the head of list for rtt result */
-		INIT_LIST_HEAD(&rtt_results_header->result_list);
-		rtt_results_header->peer_mac = event->addr;
-		list_add_tail(&rtt_results_header->list, &rtt_status->rtt_results_cache);
-	}
+
 	switch (event_type) {
 	case WL_PROXD_EVENT_SESSION_CREATE:
 		DHD_RTT(("WL_PROXD_EVENT_SESSION_CREATE\n"));
@@ -1688,6 +1674,21 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 		break;
 	case WL_PROXD_EVENT_BURST_END:
 		DHD_RTT(("WL_PROXD_EVENT_BURST_END\n"));
+		if (is_new) {
+			/* allocate new header for rtt_results */
+			rtt_results_header = kzalloc(sizeof(rtt_results_header_t), GFP_KERNEL);
+			if (!rtt_results_header) {
+				if (!in_atomic()) {
+					mutex_unlock(&rtt_status->rtt_mutex);
+				}
+				ret = -ENOMEM;
+					goto exit;
+			}
+			/* Initialize the head of list for rtt result */
+			INIT_LIST_HEAD(&rtt_results_header->result_list);
+			rtt_results_header->peer_mac = event->addr;
+			list_add_tail(&rtt_results_header->list, &rtt_status->rtt_results_cache);
+		}
 		if (tlvs_len > 0) {
 			/* allocate rtt_results for new results */
 			rtt_result = kzalloc(sizeof(rtt_result_t), kflags);
