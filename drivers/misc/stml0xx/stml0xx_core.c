@@ -65,7 +65,7 @@ unsigned short stml0xx_g_mag_delay;
 unsigned short stml0xx_g_gyro_delay;
 unsigned short stml0xx_g_baro_delay;
 unsigned long stml0xx_g_nonwake_sensor_state;
-unsigned short stml0xx_g_wake_sensor_state;
+unsigned long stml0xx_g_wake_sensor_state;
 unsigned short stml0xx_g_algo_state;
 unsigned char stml0xx_g_motion_dur;
 unsigned char stml0xx_g_zmotion_dur;
