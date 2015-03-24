@@ -1057,6 +1057,9 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 	}
 
 	if (enable) {
+		if (pdata->panel_info.panel_power_state == MDSS_PANEL_POWER_LP1)
+			mdss_dsi_panel_power_lp(pdata,0);
+
 		if (!ctrl->core_power) {
 			/* enable mdss gdsc */
 			pr_debug("%s: Enable MDP FS\n", __func__);
@@ -1071,6 +1074,20 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 			}
 			ctrl->core_power = true;
 		}
+
+		if (pdata == NULL) {
+			pr_err("%s: Invalid input data\n", __func__);
+			return -EINVAL;
+		}
+
+		if (pdata->panel_info.panel_power_state == MDSS_PANEL_POWER_LP1) {
+			mdss_dsi_phy_sw_reset(ctrl->ctrl_base);
+			if (!ctrl->mmss_clamp) {
+				mdss_dsi_phy_init(ctrl);
+				mdss_dsi_ctrl_setup(ctrl);
+			}
+		}
+
 
 		rc = mdss_dsi_bus_clk_start(ctrl);
 		if (rc) {
@@ -1133,6 +1150,10 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		 */
 		mdss_dsi_bus_clk_stop(ctrl);
 
+
+		if (pdata->panel_info.panel_power_state == MDSS_PANEL_POWER_LP1)
+			mdss_dsi_phy_disable(ctrl);
+
 		/* disable mdss gdsc only if dsi phy was successfully clamped*/
 		if (rc) {
 			pr_debug("%s: leaving mdss gdsc on\n", __func__);
@@ -1148,6 +1169,14 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 				rc = 0;
 			} else {
 				ctrl->core_power = false;
+			}
+		}
+
+		if (pdata->panel_info.panel_power_state == MDSS_PANEL_POWER_LP1) {
+			mdss_dsi_panel_power_lp(pdata,1);
+			if (pdata->panel_info.pendingpoweroff) {
+				mdss_dsi_panel_power_lp(pdata,1);
+				pdata->panel_info.pendingpoweroff=false;
 			}
 		}
 	}

@@ -196,15 +196,16 @@ error:
 	return ret;
 }
 
-static int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable)
+int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable)
 {
+
+	pr_debug("%s: enable: %d\n", __func__, enable);
+
 	/* Panel power control when entering/exiting lp mode */
-	/*
 	if (enable)
 		mdss_dsi_panel_power_off(pdata);
 	else
 		mdss_dsi_panel_power_on(pdata);
-	*/
 
 	return 0;
 }
@@ -214,6 +215,7 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 {
 	int ret;
 	struct mdss_panel_info *pinfo;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -221,6 +223,9 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	}
 
 	pinfo = &pdata->panel_info;
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
 	pr_debug("%s: cur_power_state=%d req_power_state=%d\n", __func__,
 		pinfo->panel_power_state, power_state);
 
@@ -241,14 +246,23 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 		ret = mdss_dsi_panel_power_off(pdata);
 		break;
 	case MDSS_PANEL_POWER_ON:
-		if (mdss_dsi_is_panel_on_lp(pdata))
-			ret = mdss_dsi_panel_power_lp(pdata, false);
+		if (mdss_dsi_is_panel_on_lp(pdata)) {
+			if(!pinfo->pendingpoweroff)
+				ret = mdss_dsi_panel_power_lp(pdata, false);
+			else
+				pinfo->pendingpoweroff = false;
+		}
 		else
 			ret = mdss_dsi_panel_power_on(pdata);
 		break;
 	case MDSS_PANEL_POWER_LP1:
 	case MDSS_PANEL_POWER_LP2:
-		ret = mdss_dsi_panel_power_lp(pdata, true);
+		if (ctrl_pdata->core_power) {
+			pinfo->pendingpoweroff = true;
+			ret =0;
+		} else {
+			ret = mdss_dsi_panel_power_lp(pdata, true);
+		}
 		break;
 	default:
 		pr_err("%s: unknown panel power state requested (%d)\n",

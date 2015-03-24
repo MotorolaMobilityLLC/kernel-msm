@@ -537,4 +537,5 @@ static inline bool mdss_dsi_ulps_feature_enabled(
 	return pdata->panel_info.ulps_feature_enabled;
 }
 
+int mdss_dsi_panel_power_lp(struct mdss_panel_data *pdata, int enable);
 #endif /* MDSS_DSI_H */
