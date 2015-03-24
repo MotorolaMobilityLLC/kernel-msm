@@ -55,8 +55,9 @@
 #define ERASE_TIMEOUT 80
 
 #define RESTART_DELAY 1000
-#define WRITE_DELAY 20
-#define WRITE_TIMEOUT 20
+#define WRITE_DELAY_US_MIN 2800
+#define WRITE_DELAY_US_MAX 3000
+#define WRITE_ACK_NACK_TRIES 10
 #define RESET_PULSE 20
 #define FLASHEN_I2C_DELAY 5
 
@@ -601,25 +602,34 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 
 				motosh_readbuff[0] = 0;
 				do {
+					usleep_range(WRITE_DELAY_US_MIN,
+						WRITE_DELAY_US_MAX);
+
 					err = motosh_boot_i2c_read(
 						motosh_misc_data,
 						motosh_readbuff, 1);
+
+					/* successfully received a NACK */
 					if ((err >= 0) && (motosh_readbuff[0]
 							== NACK_BYTE))
 						break;
+
 					wait_count++;
-					if (wait_count == WRITE_TIMEOUT)
+					if (wait_count == WRITE_ACK_NACK_TRIES)
 						break;
-					msleep(WRITE_DELAY);
 				} while (motosh_readbuff[0] != ACK_BYTE);
+
 				if (motosh_readbuff[0] == ACK_BYTE) {
 					dev_dbg(&motosh_misc_data->client->dev,
 						"MEMORY_WRITE successful\n");
 					err = 0;
 					break;
 				}
+
+				/* If I2C Error or NACK_BYTE */
 				dev_err(&motosh_misc_data->client->dev,
-					"Error writing MEMORY_WRITE data 0x%02x\n",
+					"Error writing MEMORY_WRITE i2c: %d data 0x%02x\n",
+					err,
 					motosh_readbuff[0]);
 RETRY_WRITE:
 				dev_dbg(&motosh_misc_data->client->dev,
