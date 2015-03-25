@@ -322,6 +322,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 
 	if (is_ambient_on()){
 		pr_info("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
+		return 0;
 	}
 	pr_debug("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
@@ -744,8 +745,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
-	if (ctrl->on_cmds.cmd_cnt){
-		printk("[ASUS]%s debug on_cmds.cmd_cnt\n",__func__);
+	if (is_ambient_on()){
+		printk("MDSS:DSI:Skip %s due to ambient_on()\n",__func__);
+	}else{
+	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 	}
 
