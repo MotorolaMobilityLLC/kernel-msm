@@ -72,12 +72,7 @@
 	};
 };
 
-&i2c_11 {
-	drv2605@5a {
-		status = "disabled";
-	};
-};
-
 &isl98611 {
 	intersil,switch-supply = "pm8994_l14";
 };
+
