@@ -287,6 +287,7 @@ enum wake_reason {
 	PM_ESR_PULSE = BIT(2),
 	PM_HEARTBEAT = BIT(3),
 	PM_CHARGER = BIT(4),
+	PM_WIRELESS = BIT(5),
 };
 
 static void smbchg_rate_check(struct smbchg_chip *chip);
@@ -4020,6 +4021,24 @@ static irqreturn_t power_ok_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+static int handle_dc_removal(struct smbchg_chip *chip)
+{
+	if (chip->dc_psy_type != -EINVAL)
+		power_supply_set_online(&chip->dc_psy, chip->dc_present);
+
+	smbchg_relax(chip, PM_WIRELESS);
+	return 0;
+}
+
+static int handle_dc_insertion(struct smbchg_chip *chip)
+{
+	if (chip->dc_psy_type != -EINVAL)
+		power_supply_set_online(&chip->dc_psy,
+						chip->dc_present);
+	smbchg_stay_awake(chip, PM_WIRELESS);
+	return 0;
+}
+
 /**
  * dcin_uv_handler() - called when the dc voltage crosses the uv threshold
  * @chip: pointer to smbchg_chip
@@ -4034,6 +4053,7 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 	pr_smb(PR_STATUS, "chip->dc_present = %d dc_present = %d\n",
 			chip->dc_present, dc_present);
 
+#ifdef QCOM_BASE
 	if (chip->dc_present != dc_present) {
 		/* dc changed */
 		chip->dc_present = dc_present;
@@ -4045,6 +4065,17 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 	}
 
 	smbchg_wipower_check(chip);
+#endif
+	if (!chip->dc_present && dc_present) {
+		/* dc inserted */
+		chip->dc_present = dc_present;
+		handle_dc_insertion(chip);
+	} else if (chip->dc_present && !dc_present) {
+		/* dc removed */
+		chip->dc_present = dc_present;
+		handle_dc_removal(chip);
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -4583,6 +4614,7 @@ static inline int get_bpd(const char *name)
 	return -EINVAL;
 }
 
+#define DC_CHGR_CFG			0xF1
 #define CCMP_CFG			0xFA
 #define CCMP_CFG_MASK			0xFF
 #define CCMP_CFG_DIS_ALL_TEMP		0x20
@@ -4642,6 +4674,7 @@ static inline int get_bpd(const char *name)
 #define USBIN_ALLOW_9V			0x3
 #define USBIN_ALLOW_5V_UNREG		0x4
 #define USBIN_ALLOW_5V_9V_UNREG		0x5
+#define DCIN_ALLOW_5V_TO_9V		0x2
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -4966,6 +4999,15 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 
 	/* DC path current settings */
 	if (chip->dc_psy_type != -EINVAL) {
+		rc = smbchg_sec_masked_write(chip,
+				     chip->dc_chgpth_base + DC_CHGR_CFG,
+				     0xFF, DCIN_ALLOW_5V_TO_9V);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set DCIN CHGR CONFIG rc = %d\n", rc);
+			return rc;
+		}
+
 		rc = smbchg_set_thermal_limited_dc_current_max(chip,
 						chip->dc_target_current_ma);
 		if (rc < 0) {
