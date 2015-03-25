@@ -43,6 +43,11 @@ static spinlock_t resume_reason_lock;
 bool log_wakeups __read_mostly;
 struct completion wakeups_completion;
 
+static struct timespec last_xtime; /* wall time before last suspend */
+static struct timespec curr_xtime; /* wall time after last suspend */
+static struct timespec last_stime; /* total_sleep_time before last suspend */
+static struct timespec curr_stime; /* total_sleep_time after last suspend */
+
 static void init_wakeup_irq_node(struct wakeup_irq_node *p, int irq)
 {
 	p->irq = irq;
@@ -245,10 +250,32 @@ static ssize_t last_resume_reason_show(struct kobject *kobj,
 	return b.buf_offset;
 }
 
+static ssize_t last_suspend_time_show(struct kobject *kobj,
+			struct kobj_attribute *attr, char *buf)
+{
+	struct timespec sleep_time;
+	struct timespec total_time;
+	struct timespec suspend_resume_time;
+
+	sleep_time = timespec_sub(curr_stime, last_stime);
+	total_time = timespec_sub(curr_xtime, last_xtime);
+	suspend_resume_time = timespec_sub(total_time, sleep_time);
+
+	/*
+	 * suspend_resume_time is calculated from sleep_time. Userspace would
+	 * always need both. Export them in pair here.
+	 */
+	return sprintf(buf, "%lu.%09lu %lu.%09lu\n",
+				suspend_resume_time.tv_sec, suspend_resume_time.tv_nsec,
+				sleep_time.tv_sec, sleep_time.tv_nsec);
+}
+
 static struct kobj_attribute resume_reason = __ATTR_RO(last_resume_reason);
+static struct kobj_attribute suspend_time = __ATTR_RO(last_suspend_time);
 
 static struct attribute *attrs[] = {
 	&resume_reason.attr,
+	&suspend_time.attr,
 	NULL,
 };
 static struct attribute_group attr_group = {
@@ -490,11 +517,19 @@ void clear_wakeup_reasons(void)
 static int wakeup_reason_pm_event(struct notifier_block *notifier,
 		unsigned long pm_event, void *unused)
 {
+	struct timespec xtom; /* wall_to_monotonic, ignored */
+
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		clear_wakeup_reasons();
+
+		get_xtime_and_monotonic_and_sleep_offset(&last_xtime, &xtom,
+				&last_stime);
 		break;
 	case PM_POST_SUSPEND:
+		get_xtime_and_monotonic_and_sleep_offset(&curr_xtime, &xtom,
+				&curr_stime);
+
 		/* log_wakeups should have been cleared by now. */
 		if (WARN_ON(logging_wakeup_reasons())) {
 			stop_logging_wakeup_reasons();
