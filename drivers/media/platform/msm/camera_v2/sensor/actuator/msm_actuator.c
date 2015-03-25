@@ -1193,11 +1193,11 @@ static int32_t msm_actuator_set_param(struct msm_actuator_ctrl_t *a_ctrl,
 	a_ctrl->i2c_data_type = set_info->actuator_params.i2c_data_type;
 	a_ctrl->i2c_client.addr_type = set_info->actuator_params.i2c_addr_type;
 	if (set_info->actuator_params.reg_tbl_size <=
-		MAX_ACTUATOR_REG_TBL_SIZE) {
+		MAX_ACTUATOR_REG_TBL_SIZE2) {
 		a_ctrl->reg_tbl_size = set_info->actuator_params.reg_tbl_size;
 	} else {
 		a_ctrl->reg_tbl_size = 0;
-		pr_err("MAX_ACTUATOR_REG_TBL_SIZE is exceeded.\n");
+		pr_err("MAX_ACTUATOR_REG_TBL_SIZE2 is exceeded.\n");
 		return -EFAULT;
 	}
 
