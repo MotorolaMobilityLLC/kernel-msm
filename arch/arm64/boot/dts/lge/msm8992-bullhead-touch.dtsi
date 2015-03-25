@@ -23,8 +23,6 @@
 		interrupts = <22 0x2008>;
 		vcc_i2c-supply = <&pm8994_l10>;
 		vdd-supply = <&pm8994_l22>;
-		synaptics,display-coords = <0 0 1439 2559>;
-		synaptics,panel-coords = <0 0 1439 2559>;
 		synaptics,reset-gpio = <&msm_gpio 8 0x00>;
 		synaptics,irq-gpio = <&msm_gpio 22 0x2008>;
 		synaptics,i2c-pull-up;
