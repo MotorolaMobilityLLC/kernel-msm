@@ -1175,6 +1175,12 @@
 		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi0_default>;
 		pinctrl-1 = <&spi0_default>;
+		spi-max-frequency = <48000000>;
+		qcom,infinite-mode = <0>;
+		qcom,ver-reg-exists;
+		qcom,use-bam;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
 
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
 			 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
