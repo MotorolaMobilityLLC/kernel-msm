@@ -445,6 +445,8 @@ SOC_ENUM("LHPF4 Mode", arizona_lhpf4_mode),
 ARIZONA_SAMPLE_RATE_CONTROL("Sample Rate 2", 2),
 ARIZONA_SAMPLE_RATE_CONTROL("Sample Rate 3", 3),
 
+SOC_VALUE_ENUM("FX Rate", arizona_fx_rate),
+
 SOC_VALUE_ENUM("ISRC1 FSL", arizona_isrc_fsl[0]),
 SOC_VALUE_ENUM("ISRC2 FSL", arizona_isrc_fsl[1]),
 SOC_VALUE_ENUM("ISRC3 FSL", arizona_isrc_fsl[2]),
@@ -547,6 +549,7 @@ SOC_SINGLE_TLV("Noise Gate Threshold Volume", ARIZONA_NOISE_GATE_CONTROL,
 SOC_ENUM("Noise Gate Hold", arizona_ng_hold),
 
 SOC_VALUE_ENUM("Output Rate 1", arizona_output_rate),
+SOC_VALUE_ENUM("In Rate", arizona_input_rate),
 
 FLORIDA_NG_SRC("HPOUT1L", ARIZONA_NOISE_GATE_SELECT_1L),
 FLORIDA_NG_SRC("HPOUT1R", ARIZONA_NOISE_GATE_SELECT_1R),
