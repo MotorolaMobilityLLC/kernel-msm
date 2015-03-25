@@ -402,7 +402,7 @@ static void drv260x_set_go_bit(char val)
 	drv260x_write_reg_val(go, sizeof(go));
 }
 
-static unsigned char drv260x_read_reg(unsigned char reg)
+static int drv260x_read_reg(unsigned char reg)
 {
 	int tries;
 	int ret;
@@ -793,6 +793,17 @@ static int drv260x_probe(struct i2c_client *client,
 	/* Reset the chip */
 	drv260x_write_reg(MODE_REG, MODE_RESET);
 
+	udelay(850);
+	/* Read status */
+	err = drv260x_read_reg(STATUS_REG);
+
+	if (err < 0) {
+		pr_err("drv260x: HW init failed\n");
+		device_destroy(drv260x->class, drv260x->version);
+		class_destroy(drv260x->class);
+		return -ENODEV;
+	}
+
 	if (pdata->default_effect)
 		drv260x->default_sequence[0] = pdata->default_effect;
 	else
@@ -828,7 +839,7 @@ static int drv260x_probe(struct i2c_client *client,
 
 static void probe_work(struct work_struct *work)
 {
-	char status;
+	int status;
 
 	drv260x_update_init_sequence(ERM_autocal_sequence,
 					sizeof(ERM_autocal_sequence),
