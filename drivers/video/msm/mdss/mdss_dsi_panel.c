@@ -368,6 +368,12 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
 	} else {
+		for (i = 0; i < pinfo->dis_rst_seq_len; i++) {
+			gpio_set_value(ctrl_pdata->rst_gpio,
+					pinfo->dis_rst_seq[i++]);
+			if (pinfo->dis_rst_seq[i])
+				usleep(pinfo->dis_rst_seq[i] * 1000);
+		}
 		if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 			gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
 			gpio_free(ctrl_pdata->bklt_en_gpio);
@@ -1856,6 +1862,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
+
+	mdss_dsi_parse_reset_seq(np, pinfo->dis_rst_seq,
+		&(pinfo->dis_rst_seq_len), "qcom,mdss-dsi-dis-reset-sequence");
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->on_cmds,
 		"qcom,mdss-dsi-on-command", "qcom,mdss-dsi-on-command-state");
