@@ -20,7 +20,7 @@
 #define I2C_SEQ_REG_DATA_MAX    256
 #define I2C_REG_DATA_MAX       (8*1024)
 
-#define MAX_ACTUATOR_REG_TBL_SIZE 15
+#define MAX_ACTUATOR_REG_TBL_SIZE2 8
 #define MAX_ACTUATOR_REGION       5
 #define NUM_ACTUATOR_DIR          2
 #define MAX_ACTUATOR_SCENARIO     8
