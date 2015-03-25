@@ -977,7 +977,7 @@ static int __update_hypdbg_base(struct platform_device *pdev,
 
 #ifdef CONFIG_MSM_TZ_LOG_WDOG_DUMP
 
-#define MSMWDTD(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
+#define MSMDBG(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
 
 #define MSMWDT_ERR(fmt, args...) do { \
 	pr_err("TzLog: "fmt, ##args); \
@@ -986,8 +986,10 @@ static int __update_hypdbg_base(struct platform_device *pdev,
 
 #define MSMWDTD_IFWDOG(fmt, args...) do { \
 	if (bi_powerup_reason() == PU_REASON_WDOG_AP_RESET) \
-		MSMWDTD(fmt, ##args); \
+		MSMDBG(fmt, ##args); \
 } while (0)
+
+#define MSMWDTD(fmt, args...) MSMWDTD_IFWDOG(fmt, ##args)
 
 static void tzlog_bck_show_boot_info(struct tzdbg_t *diag_buf)
 {
