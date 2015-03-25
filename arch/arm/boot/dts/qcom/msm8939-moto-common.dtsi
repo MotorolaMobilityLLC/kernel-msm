@@ -784,6 +784,7 @@
 		qcom,vin-sel = <2>;	/* QPNP_PIN_VIN2 */
 		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
+		qcom,invert = <1>;	/* Invert to get output HIGH */
 	};
 
 	gpio@c300 { /* GPIO 4 */
