@@ -29,7 +29,7 @@ struct seq_file;
 struct module;
 struct irq_desc;
 struct irq_data;
-typedef	void (*irq_flow_handler_t)(unsigned int irq,
+typedef	bool (*irq_flow_handler_t)(unsigned int irq,
 					    struct irq_desc *desc);
 typedef	void (*irq_preflow_handler_t)(struct irq_data *data);
 
@@ -404,15 +404,15 @@ static inline int irq_set_parent(int irq, int parent_irq)
  * Built-in IRQ handlers for various IRQ types,
  * callable via desc->handle_irq()
  */
-extern void handle_level_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_fasteoi_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_edge_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_edge_eoi_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_simple_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_percpu_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_percpu_devid_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_bad_irq(unsigned int irq, struct irq_desc *desc);
-extern void handle_nested_irq(unsigned int irq);
+extern bool handle_level_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_fasteoi_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_edge_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_edge_eoi_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_simple_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_percpu_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_percpu_devid_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_bad_irq(unsigned int irq, struct irq_desc *desc);
+extern bool handle_nested_irq(unsigned int irq);
 
 /* Handling of unhandled and spurious interrupts: */
 extern void note_interrupt(unsigned int irq, struct irq_desc *desc,
