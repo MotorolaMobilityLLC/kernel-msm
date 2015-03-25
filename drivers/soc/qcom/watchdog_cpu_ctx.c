@@ -397,7 +397,7 @@ static const struct msm_wdog_cpuctx_header mwc_header[CPUCTX_TYPES] = {
 #define WDOG_CPUCTX_SIZE_PERCPU	(sizeof(struct msm_wdog_cpuctx))
 #define WDOG_CPUCTX_SIZE	(num_present_cpus() * WDOG_CPUCTX_SIZE_PERCPU)
 
-#define MSMWDTD(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
+#define MSMDBG(fmt, args...) persistent_ram_annotation_append(fmt, ##args)
 
 #define MSMWDT_ERR(fmt, args...) do { \
 	pr_err("WdogCtx: "fmt, ##args); \
@@ -406,8 +406,10 @@ static const struct msm_wdog_cpuctx_header mwc_header[CPUCTX_TYPES] = {
 
 #define MSMWDTD_IFWDOG(fmt, args...) do { \
 	if (bi_powerup_reason() == PU_REASON_WDOG_AP_RESET) \
-		MSMWDTD(fmt, ##args); \
+		MSMDBG(fmt, ##args); \
 } while (0)
+
+#define MSMWDTD(fmt, args...) MSMWDTD_IFWDOG(fmt, ##args)
 
 #define SC_STATUS_NS		0x01
 #define SC_STATUS_WDT		0x02
