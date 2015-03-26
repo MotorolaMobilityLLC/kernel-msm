@@ -788,6 +788,10 @@ config IOMMU_API
 config MSM_GPIOMUX
 	bool
 
+config MSM_OF_GPIOMUX
+	bool "Load gpiomux setting froms device tree"
+	depends on (MSM_GPIOMUX && OF)
+
 config MSM_BUS_RPM_MULTI_TIER_ENABLED
 	bool "RPM Multi-tiering Configuration"
 	depends on MSM_BUS_SCALING

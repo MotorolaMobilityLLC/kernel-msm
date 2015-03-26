@@ -176,6 +176,11 @@ int msm_tlmm_misc_reg_read(enum msm_tlmm_misc_reg misc_reg);
 
 void msm_tlmm_misc_reg_write(enum msm_tlmm_misc_reg misc_reg, int val);
 
+#define DUMP_GPIOMUX 0
+#if DUMP_GPIOMUX
+void msm_gpiomux_dump(void);
+#endif
+
 #else
 static inline int msm_gpiomux_init(size_t ngpio)
 {
