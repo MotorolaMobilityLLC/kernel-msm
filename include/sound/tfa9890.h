@@ -20,6 +20,7 @@ struct tfa9890_pdata {
 	const char *tfa_dev;
 	const char *fw_path;
 	const char *fw_name;
+	int pcm_start_delay;
 };
 
 #endif
