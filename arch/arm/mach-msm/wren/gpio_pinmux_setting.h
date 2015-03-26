@@ -1,5 +1,5 @@
-#ifndef _SPARROW_GPIO_SETTING_PINMUX_H_
-#define _SPARROW_GPIO_SETTING_PINMUX_H_
+#ifndef _GPIO_SETTING_PINMUX_H_
+#define _GPIO_SETTING_PINMUX_H_
 
 #include <linux/kernel.h>
 #include <linux/gpio.h>
@@ -41,24 +41,25 @@ static struct gpiomux_setting gpio_keys_suspend = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-static struct gpiomux_setting gpio_spi_config = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
 
-static struct gpiomux_setting gpio_spi_cs_config = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
+//static struct gpiomux_setting gpio_spi_config = {
+//	.func = GPIOMUX_FUNC_1,
+//	.drv = GPIOMUX_DRV_8MA,
+//	.pull = GPIOMUX_PULL_NONE,
+//};
+
+//static struct gpiomux_setting gpio_spi_cs_config = {
+//	.func = GPIOMUX_FUNC_1,
+//	.drv = GPIOMUX_DRV_6MA,
+//	.pull = GPIOMUX_PULL_DOWN,
+//};
 
 // ASUS_BSP +++ Jason Yeh "QL sensor hub"
-static struct gpiomux_setting gpio_blsp3_spi_suspend_config = {
-       .func = GPIOMUX_FUNC_GPIO, //Please look @ GPIO function table for correct
-       .drv = GPIOMUX_DRV_2MA, //Drive Strength
-       .pull = GPIOMUX_PULL_NONE, //Should be PULL NONE
-};
+//static struct gpiomux_setting gpio_blsp3_spi_suspend_config = {
+//       .func = GPIOMUX_FUNC_GPIO, //Please look @ GPIO function table for correct
+//       .drv = GPIOMUX_DRV_2MA, //Drive Strength
+//       .pull = GPIOMUX_PULL_NONE, //Should be PULL NONE
+//};
 // ASUS_BSP --- Jason Yeh "QL sensor hub"
 
 #if 0
@@ -124,12 +125,12 @@ static struct gpiomux_setting gpio_suspend_config[] = {
 #endif
 
 //ASUS_BSP +++ Maggie_Lee "Sensors Porting"
-static struct gpiomux_setting gyro_int = {				//LIS3DSH
-    .func = GPIOMUX_FUNC_GPIO,
-    .drv = GPIOMUX_DRV_2MA,
-    .pull = GPIOMUX_PULL_NONE,
-    .dir = GPIOMUX_IN,
-};
+//static struct gpiomux_setting gyro_int = {				//LIS3DSH
+//    .func = GPIOMUX_FUNC_GPIO,
+//    .drv = GPIOMUX_DRV_2MA,
+//    .pull = GPIOMUX_PULL_NONE,
+//    .dir = GPIOMUX_IN,
+//};
 //ASUS_BSP --- Maggie_Lee "Sensors Porting"
 
 static struct gpiomux_setting sensors_hub_int = {				//LIS3DSH
@@ -241,4 +242,4 @@ static struct gpiomux_setting gpio_nc_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-#endif
+#endif /* _GPIO_SETTING_PINMUX_H_ */

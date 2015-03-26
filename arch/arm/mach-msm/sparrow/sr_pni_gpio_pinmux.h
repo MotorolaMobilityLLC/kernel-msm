@@ -1,9 +1,9 @@
-#ifndef _SPARROW_SR_QL_GPIO_PINMUX_H_
-#define _SPARROW_SR_QL_GPIO_PINMUX_H_
+#ifndef _SR_PNI_GPIO_PINMUX_H_
+#define _SR_PNI_GPIO_PINMUX_H_
 
-#include "sparrow_gpio_pinmux_setting.h"
+#include "gpio_pinmux_setting.h"
 
-static struct msm_gpiomux_config sparrow_sr_ql_msm8226_gpio_configs[] __initdata= {
+static struct msm_gpiomux_config sr_pni_msm8226_gpio_configs[] __initdata= {
 // ASUS_BSP BerylHou +++ "BT config"
 	{
 		.gpio      = 0,	/* BLSP1 BT Uart Tx */
@@ -65,36 +65,6 @@ static struct msm_gpiomux_config sparrow_sr_ql_msm8226_gpio_configs[] __initdata
                 },
         },
 // ASUS_BSP --- Maggie_Lee "I2C"
-// ASUS_BSP +++ Jason Yeh "QL sensor hub"
-        {
-                .gpio = 12,
-                .settings = {
-                        [GPIOMUX_ACTIVE]    = &gpio_spi_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_blsp3_spi_suspend_config,
-                },
-        },
-        {
-                .gpio = 13,
-                .settings = {
-                        [GPIOMUX_ACTIVE]    = &gpio_spi_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_blsp3_spi_suspend_config,
-                },
-        },
-        {
-                .gpio = 14,
-                .settings = {
-                        [GPIOMUX_ACTIVE]    = &gpio_spi_cs_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_blsp3_spi_suspend_config,
-                },
-        },
-        {
-                .gpio = 15,
-                .settings = {
-                        [GPIOMUX_ACTIVE]    = &gpio_spi_config,
-                        [GPIOMUX_SUSPENDED] = &gpio_blsp3_spi_suspend_config,
-                },
-        },
-// ASUS_BSP --- Jason Yeh "QL sensor hub"
 // ASUS_BSP +++ Cliff_Yu "TOUCH"
 	{
 		.gpio = 16,
@@ -127,13 +97,13 @@ static struct msm_gpiomux_config sparrow_sr_ql_msm8226_gpio_configs[] __initdata
                 },
         },
 // ASUS_BSP --- Maggie_Lee "I2C"
-	{
-		.gpio = 24,		/* Tear Enable */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &lcd_te_act_cfg,
-			[GPIOMUX_SUSPENDED] = &lcd_te_sus_cfg,
-		},
-	},
+        {
+               .gpio = 24,             /* Tear Enable */
+               .settings = {
+                       [GPIOMUX_ACTIVE]    = &lcd_te_act_cfg,
+                       [GPIOMUX_SUSPENDED] = &lcd_te_sus_cfg,
+               },
+        },
 	{
 		.gpio = 25,
 		.settings = {
@@ -141,22 +111,6 @@ static struct msm_gpiomux_config sparrow_sr_ql_msm8226_gpio_configs[] __initdata
 			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
 		},
 	},
-// ASUS_BSP +++ Jason Yeh "QL sensor hub"
-        {
-                .gpio = 26,
-                .settings = {
-                        [GPIOMUX_ACTIVE]    = &gyro_int,
-                        [GPIOMUX_SUSPENDED] = &gyro_int,
-                },
-        },
-        {
-                .gpio = 28,
-                .settings = {
-                        [GPIOMUX_ACTIVE]    = &gyro_int,
-                        [GPIOMUX_SUSPENDED] = &gyro_int,
-                },
-        },
-// ASUS_BSP --- Jason Yeh "QL sensor hub"
 // ASUS_BSP +++ Joe_Tsai "Wifi config SDIO interface"
 	{
 		/* DAT3 */
@@ -355,4 +309,4 @@ static struct msm_gpiomux_config sparrow_sr_ql_msm8226_gpio_configs[] __initdata
 	},
 };
 
-#endif  /* _SPARROW_SR_GPIO_PINMUX_H_  */
+#endif  /* _SR_GPIO_PINMUX_H_  */

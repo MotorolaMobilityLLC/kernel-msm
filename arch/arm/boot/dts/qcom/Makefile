@@ -60,10 +60,13 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-sim.dtb \
 	msm8936-mtp.dtb \
 	msm8936-mtp-smb1360.dtb \
 	msm8936-mtp-wcd9306.dtb
-dtb-$(CONFIG_ARCH_MSM8226) += sparrow_evb_apq8026-v2-320p-w-mtp.dtb \
+# Use the config ASUS_SPARROW or ASUS_WREN to configure DTB and to take over ARCH_MSM8226
+dtb-$(CONFIG_ASUS_SPARROW) += \
+	sparrow_evb_apq8026-v2-320p-w-mtp.dtb \
 	sparrow_sr_pni_apq8026-v2-320p-w-mtp.dtb \
 	sparrow_sr_ql_apq8026-v2-320p-w-mtp.dtb \
-	sparrow_sr2_apq8026-v2-320p-w-mtp.dtb \
+	sparrow_sr2_apq8026-v2-320p-w-mtp.dtb
+dtb-$(CONFIG_ASUS_WREN) += \
 	wren_evb_apq8026-v2-320p-w-mtp.dtb
 dtb-$(CONFIG_ARCH_MSM8610) += msm8610-rumi.dtb \
 	msm8610-v1-cdp.dtb \

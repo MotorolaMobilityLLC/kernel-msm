@@ -987,3 +987,21 @@ config MSM_PP2S_FEMTO
 	  Select Y if you want this notification to manifest.
 	  If unsure, select N.
 endif
+
+choice
+	prompt "Default Sparrow"
+	default ASUS_SPARROW
+	depends on ARCH_MSM8226
+
+	config ASUS_SPARROW
+		bool "ASUS Sparrow device"
+		default y
+		help
+		  To customize architecture variables to be ASUS Sparrow.
+
+	config ASUS_WREN
+		bool "ASUS Wren device"
+		default n
+		help
+		  To customize platform variables to be ASUS Wren.
+endchoice
