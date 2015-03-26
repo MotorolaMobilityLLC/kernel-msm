@@ -138,6 +138,17 @@
 		};
 	};
 
+	/*To disable gen-vkeys.c probe,avoid generate kobject*/
+	gen-vkeys {
+		compatible = "huawei,gen-vkeys";
+		label = "synaptics_rmi4_i2c";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <720>;
+		qcom,panel-maxy = <1369>;
+		qcom,key-codes = <158 172 139>;
+	};
+
 };
 /* DTS2014010309198 sunlibin 20140104 end > */
 /* DTS2014011801994 tenghui 20140118 end > */

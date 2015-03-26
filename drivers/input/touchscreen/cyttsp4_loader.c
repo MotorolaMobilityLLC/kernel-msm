@@ -2079,7 +2079,7 @@ static ssize_t cyttsp4_manual_upgrade_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(manual_upgrade, S_IRUSR | S_IWUSR,
+static DEVICE_ATTR(manual_upgrade, S_IWUSR,
 	NULL, cyttsp4_manual_upgrade_store);
 #endif
 

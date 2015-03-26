@@ -3193,6 +3193,8 @@ static int cyttsp4_get_ttconfig_info(struct cyttsp4_core_data *cd)
 	u16 crc = 0;
 	int rc;
 
+	return 0;
+
 	rc = set_mode(cd, CY_MODE_CAT);
 	if (rc < 0) {
 		tp_log_err( "%s: failed to set mode to CAT rc=%d\n",
