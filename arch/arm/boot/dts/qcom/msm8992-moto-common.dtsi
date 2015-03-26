@@ -1678,6 +1678,10 @@
 	regulator-always-on;
 };
 
+&pm8994_l25 {
+	regulator-always-on;
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
