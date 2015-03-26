@@ -1083,7 +1083,7 @@
 				firmware {
 					frontend {
 						wlf,wmfw-file = "aov-frontend";
-						wlf,bin-file = "None";
+						wlf,bin-file = "aov-vrgain";
 					};
 				};
 			};
