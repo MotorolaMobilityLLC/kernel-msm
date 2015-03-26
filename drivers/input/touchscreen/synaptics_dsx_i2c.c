@@ -3164,6 +3164,7 @@ static void synaptics_rmi4_scan_f01_reg_info(
 	for (r = 0; r < regs->nr_regs; ++r) {
 		regs->regs[r].offset = -1;
 		kfree(regs->regs[r].data);
+		regs->regs[r].data = NULL;
 		for (s = 0; s < regs->regs[r].nr_subpkts; ++s) {
 			regs->regs[r].subpkt[s].present = 0;
 			if (regs->regs[r].subpkt[s].data &&
