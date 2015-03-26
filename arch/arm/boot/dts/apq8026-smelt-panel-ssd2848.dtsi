@@ -24,6 +24,18 @@
 	};
 };
 
+&board_gpiomux_install {
+	gpio@33 {
+		active  = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		suspend = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
+	};
+	gpio@34 {
+		active  = <0x0301>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, OUT_HIGH */
+		suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
+		install-no-write;
+	};
+};
+
 &pm8226_l5 {
 	regulator-min-microvolt = <1200000>;
 	regulator-max-microvolt = <1200000>;
