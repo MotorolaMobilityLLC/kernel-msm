@@ -1,7 +1,7 @@
 /*
- * HND arm trap handling.
+ * HNDRTE arm trap handling.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,11 +21,11 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: hnd_armtrap.h 470663 2014-04-16 00:24:43Z $
+ * $Id: hndrte_armtrap.h 261365 2011-05-24 20:42:23Z $
  */
 
-#ifndef	_hnd_armtrap_h_
-#define	_hnd_armtrap_h_
+#ifndef	_hndrte_armtrap_h
+#define	_hndrte_armtrap_h
 
 
 /* ARM trap handling */
@@ -85,4 +85,4 @@ typedef struct _trap_struct {
 
 #endif	/* !_LANGUAGE_ASSEMBLY */
 
-#endif	/* _hnd_armtrap_h_ */
+#endif	/* _hndrte_armtrap_h */
