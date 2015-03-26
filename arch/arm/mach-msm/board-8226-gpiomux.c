@@ -18,6 +18,8 @@
 #include <mach/gpiomux.h>
 #include <soc/qcom/socinfo.h>
 
+#if !defined(CONFIG_MSM_OF_GPIOMUX)
+
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 static struct gpiomux_setting hsic_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -1140,6 +1142,8 @@ static void msm_gpiomux_sdc3_install(void)
 static void msm_gpiomux_sdc3_install(void) {}
 #endif /* CONFIG_MMC_MSM_SDC3_SUPPORT */
 
+#endif /* !defined(CONFIG_MSM_OF_GPIOMUX) */
+
 void __init msm8226_init_gpiomux(void)
 {
 	int rc;
@@ -1149,6 +1153,8 @@ void __init msm8226_init_gpiomux(void)
 		pr_err("%s failed %d\n", __func__, rc);
 		return;
 	}
+
+#if !defined(CONFIG_MSM_OF_GPIOMUX)
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	msm_gpiomux_install(msm_eth_configs, ARRAY_SIZE(msm_eth_configs));
@@ -1234,4 +1240,9 @@ void __init msm8226_init_gpiomux(void)
 			ARRAY_SIZE(msm_smelt_factory_configs));
 #endif
 	}
+	/* You may use this function to dump all current settings then pull
+	 * it to the device tree...
+	 */
+	/* msm_gpiomux_dump(); */
+#endif /* !defined(CONFIG_MSM_OF_GPIOMUX) */
 }
