@@ -53,6 +53,13 @@ enum headset_state_t {
 	SH_HEADSET_BUTTON_4
 };
 
+enum cover_detect_states {
+	STML0XX_HALL_NO_DETECT,
+	STML0XX_HALL_SOUTH_DETECT,
+	STML0XX_HALL_NORTH_DETECT,
+	STML0XX_HALL_NORTH_OR_SOUTH_DETECT
+};
+
 enum headset_state_t Headset_State = SH_HEADSET_REMOVED;
 
 irqreturn_t stml0xx_wake_isr(int irq, void *dev)
@@ -89,6 +96,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	struct stml0xx_work_struct *stm_ws = (struct stml0xx_work_struct *)work;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned char buf[SPI_MSG_SIZE];
+
+	struct stml0xx_platform_data *pdata;
+	pdata = ps_stml0xx->pdata;
 
 	dev_dbg(&stml0xx_misc_data->spi->dev, "stml0xx_irq_wake_work_func");
 	mutex_lock(&ps_stml0xx->lock);
@@ -141,11 +151,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq_status & M_COVER) {
 		int state = 0;
-		if (buf[WAKE_IRQ_IDX_COVER] == STML0XX_HALL_NORTH)
-			state = 1;
-		else
-			state = 0;
-
+		if ((pdata->cover_detect_polarity
+			& buf[WAKE_IRQ_IDX_COVER]) != 0)
+				state = 1;
 		input_report_switch(ps_stml0xx->input_dev, SW_LID, state);
 		input_sync(ps_stml0xx->input_dev);
 
