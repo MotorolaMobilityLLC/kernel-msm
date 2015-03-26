@@ -32,6 +32,7 @@
 #include <linux/pinctrl/consumer.h>
 
 #include <linux/asusdebug.h>
+#include <linux/kernel.h>
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -1011,7 +1012,12 @@ static struct platform_driver gpio_keys_device_driver = {
 
 static int __init gpio_keys_init(void)
 {
-	pwr_gpio = 68;
+	enum DEVICE_HWID ASUS_hwID;
+	ASUS_hwID = get_hardware_id();
+	if ((ASUS_hwID == SPARROW_EVB) || (ASUS_hwID == SPARROW_SR_PNI) || (ASUS_hwID == SPARROW_SR_QL))
+		pwr_gpio = 68;
+	else
+		pwr_gpio = 47;
 
 	return platform_driver_register(&gpio_keys_device_driver);
 }
