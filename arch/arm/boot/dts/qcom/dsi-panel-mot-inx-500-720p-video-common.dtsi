@@ -29,6 +29,7 @@ qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 
 qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 10>, <1 20>;
+qcom,mdss-dsi-dis-reset-sequence = <1 101>, <0 0>;
 
 qcom,mdss-dsi-on-command = [
 	29 01 00 00 00 00 06 F0 55 AA 52 08 00	/* Page 0 */
@@ -44,7 +45,7 @@ qcom,mdss-dsi-on-command = [
 
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 11 00 01 28
-	05 01 00 00 64 00 01 10];
+	05 01 00 00 00 00 01 10];
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
@@ -103,7 +104,7 @@ qcom,panel-supply-entries {
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <1>;
+		qcom,supply-post-off-sleep = <2>;
 	};
 	qcom,panel-supply-entry@2 {
 		qcom,supply-name = "vsn_disp";
@@ -112,8 +113,8 @@ qcom,panel-supply-entries {
 		qcom,supply-enable-load = <100000>;
 		qcom,supply-disable-load = <100>;
 		qcom,supply-pre-on-sleep = <0>;
-		qcom,supply-post-on-sleep = <10>;
-		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <1>;
+		qcom,supply-post-on-sleep = <2>;
+		qcom,supply-pre-off-sleep = <2>;
+		qcom,supply-post-off-sleep = <2>;
 	};
 };
