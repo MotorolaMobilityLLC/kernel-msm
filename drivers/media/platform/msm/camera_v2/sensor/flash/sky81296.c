@@ -33,11 +33,11 @@
 #define LED2_STROBE_CURRENT_REG  0x01
 
 #define LED_MAX_STROBE_CURRENT      1500
-#define LED_DEFAULT_STROBE_CURRENT  0x05 /* 500 mA each */
+#define LED_DEFAULT_STROBE_CURRENT  0x0A /* 750 mA */
 #define LED_STROBE_EN_DEFAULT       0x22 /* both enabled */
 
 #define LED_MAX_TORCH_CURRENT      250
-#define LED_DEFAULT_TORCH_CURRENT  0x11 /* 50 mA each */
+#define LED_DEFAULT_TORCH_CURRENT  0x22 /* 75 mA each */
 #define LED_TORCH_EN_DEFAULT       0x11 /* both enabled */
 
 #define LED_MAX_TOTAL_STROBE_CURRENT  1500
@@ -92,7 +92,7 @@ static struct sky81296_current_to_reg sky81296_strobe_values[] = {
 static struct msm_camera_i2c_reg_array sky81296_init_array[] = {
 	{0x00, 0x05},
 	{0x01, 0x05},
-	{0x02, 0xBB},
+	{0x02, 0x88}, /* 760 ms */
 	{0x03, 0x11},
 	{0x04, 0x00},
 	{0x05, 0x00},
