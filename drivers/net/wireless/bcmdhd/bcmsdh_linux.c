@@ -1,7 +1,7 @@
 /*
  * SDIO access interface for drivers - linux specific (pci only)
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_linux.c 461444 2014-03-12 02:55:28Z $
+ * $Id: bcmsdh_linux.c 461443 2014-03-12 02:40:59Z $
  */
 
 /**
@@ -47,6 +47,7 @@ extern void dhdsdio_isr(void * args);
 #if defined(CONFIG_ARCH_ODIN)
 #include <linux/platform_data/gpio-odin.h>
 #endif /* defined(CONFIG_ARCH_ODIN) */
+
 #include <dhd_linux.h>
 
 /* driver info, initialized when bcmsdh_register is called */

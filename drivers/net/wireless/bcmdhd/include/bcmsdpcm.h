@@ -2,7 +2,7 @@
  * Broadcom SDIO/PCMCIA
  * Software-specific definitions shared between device and host side
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdpcm.h 472405 2014-04-23 23:46:55Z $
+ * $Id: bcmsdpcm.h 414378 2013-07-24 15:58:50Z $
  */
 
 #ifndef	_bcmsdpcm_h_
@@ -268,11 +268,14 @@ typedef struct {
 	uint32  assert_exp_addr;
 	uint32  assert_file_addr;
 	uint32  assert_line;
-	uint32	console_addr;		/* Address of hnd_cons_t */
+	uint32	console_addr;		/* Address of hndrte_cons_t */
 	uint32  msgtrace_addr;
 	uint32  fwid;
 } sdpcm_shared_t;
 
 extern sdpcm_shared_t sdpcm_shared;
+
+/* Function can be used to notify host of FW halt */
+extern void sdpcmd_fwhalt(void);
 
 #endif	/* _bcmsdpcm_h_ */

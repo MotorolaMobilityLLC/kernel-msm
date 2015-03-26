@@ -1,7 +1,7 @@
 /*
  * Misc system wide definitions
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdefs.h 474209 2014-04-30 12:16:47Z $
+ * $Id: bcmdefs.h 433011 2013-10-30 09:19:54Z $
  */
 
 #ifndef	_bcmdefs_h_
@@ -76,8 +76,13 @@
 #undef BCM47XX_CA9
 
 #ifndef BCMFASTPATH
+#if defined(BCM47XX_CA9)
+#define BCMFASTPATH		__attribute__ ((__section__ (".text.fastpath")))
+#define BCMFASTPATH_HOST	__attribute__ ((__section__ (".text.fastpath_host")))
+#else
 #define BCMFASTPATH
 #define BCMFASTPATH_HOST
+#endif
 #endif /* BCMFASTPATH */
 
 
@@ -88,7 +93,18 @@
  */
 	#define BCMRAMFN(_fn)	_fn
 
+
+
+/* Put some library data/code into ROM to reduce RAM requirements */
+#define _data	_data
+#define BCMROMDAT_NAME(_data)	_data
+#define _fn		_fn
+#define _fn	_fn
 #define STATIC	static
+#define BCMROMDAT_ARYSIZ(data)	ARRAYSIZE(data)
+#define BCMROMDAT_SIZEOF(data)	sizeof(data)
+#define BCMROMDAT_APATCH(data)
+#define BCMROMDAT_SPATCH(data)
 
 /* Bus types */
 #define	SI_BUS			0	/* SOC Interconnect */
@@ -140,10 +156,8 @@
 /* Defines for DMA Address Width - Shared between OSL and HNDDMA */
 #define DMADDR_MASK_32 0x0		/* Address mask for 32-bits */
 #define DMADDR_MASK_30 0xc0000000	/* Address mask for 30-bits */
-#define DMADDR_MASK_26 0xFC000000	/* Address maks for 26-bits */
 #define DMADDR_MASK_0  0xffffffff	/* Address mask for 0-bits (hi-part) */
 
-#define	DMADDRWIDTH_26  26 /* 26-bit addressing capability */
 #define	DMADDRWIDTH_30  30 /* 30-bit addressing capability */
 #define	DMADDRWIDTH_32  32 /* 32-bit addressing capability */
 #define	DMADDRWIDTH_63  63 /* 64-bit addressing capability */
@@ -182,7 +196,6 @@ typedef unsigned long dmaaddr_t;
 		(_pa) = (_val);			\
 	} while (0)
 #endif /* BCMDMA64OSL */
-#define PHYSADDRISZERO(_pa) (PHYSADDRLO(_pa) == 0 && PHYSADDRHI(_pa) == 0)
 
 /* One physical DMA segment */
 typedef struct  {
@@ -211,7 +224,11 @@ typedef struct {
 /* add 40 bytes to allow for extra RPC header and info  */
 #define BCMEXTRAHDROOM 260
 #else /* BCM_RPC_NOCOPY || BCM_RPC_TXNOCOPY */
+#if defined(BCM47XX_CA9)
+#define BCMEXTRAHDROOM 224
+#else
 #define BCMEXTRAHDROOM 204
+#endif /* linux && BCM47XX_CA9 */
 #endif /* BCM_RPC_NOCOPY || BCM_RPC_TXNOCOPY */
 
 /* Packet alignment for most efficient SDIO (can change based on platform) */
@@ -323,7 +340,9 @@ typedef struct {
 #define NVRAM_ARRAY_MAXSIZE	MAXSZ_NVRAM_VARS
 #endif /* DL_NVRAM */
 
+#ifdef BCMUSBDEV_ENABLED
 extern uint32 gFWID;
+#endif
 
 
 #endif /* _bcmdefs_h_ */

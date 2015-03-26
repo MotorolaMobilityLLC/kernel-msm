@@ -1,7 +1,7 @@
 /*
  * bcmevent read-only data shared by kernel or app layers
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -20,7 +20,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: bcmevent.c 487838 2014-06-27 05:51:44Z $
+ * $Id: bcmevent.c 487871 2014-06-27 07:48:00Z $
  */
 
 #include <typedefs.h>
@@ -29,17 +29,10 @@
 #include <proto/bcmeth.h>
 #include <proto/bcmevent.h>
 
-
-/* Table of event name strings for UIs and debugging dumps */
-typedef struct {
-	uint event;
-	const char *name;
-} bcmevent_name_str_t;
-
 /* Use the actual name for event tracing */
 #define BCMEVENT_NAME(_event) {(_event), #_event}
 
-static const bcmevent_name_str_t bcmevent_names[] = {
+const bcmevent_name_t bcmevent_names[] = {
 	BCMEVENT_NAME(WLC_E_SET_SSID),
 	BCMEVENT_NAME(WLC_E_JOIN),
 	BCMEVENT_NAME(WLC_E_START),
@@ -126,6 +119,7 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 #endif
 	BCMEVENT_NAME(WLC_E_ASSOC_REQ_IE),
 	BCMEVENT_NAME(WLC_E_ASSOC_RESP_IE),
+	BCMEVENT_NAME(WLC_E_ACTION_FRAME_RX_NDIS),
 	BCMEVENT_NAME(WLC_E_BEACON_FRAME_RX),
 #ifdef WLTDLS
 	BCMEVENT_NAME(WLC_E_TDLS_PEER_EVENT),
@@ -151,36 +145,7 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 	BCMEVENT_NAME(WLC_E_BCMC_CREDIT_SUPPORT),
 #endif
 	BCMEVENT_NAME(WLC_E_TXFAIL_THRESH),
-#ifdef WLBSSLOAD_REPORT
-	BCMEVENT_NAME(WLC_E_BSS_LOAD),
-#endif
-#if defined(BT_WIFI_HANDOVER) || defined(WL_TBOW)
-	BCMEVENT_NAME(WLC_E_BT_WIFI_HANDOVER_REQ),
-#endif
 	BCMEVENT_NAME(WLC_E_RMC_EVENT),
 };
 
-
-const char *bcmevent_get_name(uint event_type)
-{
-	/* note:  first coded this as a static const but some
-	 * ROMs already have something called event_name so
-	 * changed it so we don't have a variable for the
-	 * 'unknown string
-	 */
-	const char *event_name = NULL;
-
-	uint idx;
-	for (idx = 0; idx < (uint)ARRAYSIZE(bcmevent_names); idx++) {
-
-		if (bcmevent_names[idx].event == event_type) {
-			event_name = bcmevent_names[idx].name;
-			break;
-		}
-	}
-
-	/* if we find an event name in the array, return it.
-	 * otherwise return unknown string.
-	 */
-	return ((event_name) ? event_name : "Unknown Event");
-}
+const int bcmevent_names_size = ARRAYSIZE(bcmevent_names);

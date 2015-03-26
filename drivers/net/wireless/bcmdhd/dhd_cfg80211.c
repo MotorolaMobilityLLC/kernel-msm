@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Dongle Host Driver (DHD) related
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -30,13 +30,13 @@
 #include <bcmutils.h>
 #include <wldev_common.h>
 #include <wl_cfg80211.h>
+#include <brcm_nl80211.h>
 #include <dhd_cfg80211.h>
 
 #ifdef PKT_FILTER_SUPPORT
 #include <dngl_stats.h>
 #include <dhd.h>
 #endif
-
 extern struct bcm_cfg80211 *g_bcm_cfg;
 
 #ifdef PKT_FILTER_SUPPORT
@@ -51,11 +51,9 @@ static int dhd_dongle_up = FALSE;
 #include <dhd.h>
 #include <dhdioctl.h>
 #include <wlioctl.h>
-#include <brcm_nl80211.h>
 #include <dhd_cfg80211.h>
 
-static s32 wl_dongle_up(struct net_device *ndev);
-static s32 wl_dongle_down(struct net_device *ndev);
+static s32 wl_dongle_up(struct net_device *ndev, u32 up);
 
 /**
  * Function implementations
@@ -75,17 +73,6 @@ s32 dhd_cfg80211_deinit(struct bcm_cfg80211 *cfg)
 
 s32 dhd_cfg80211_down(struct bcm_cfg80211 *cfg)
 {
-	struct net_device *ndev;
-	s32 err = 0;
-
-	WL_TRACE(("In\n"));
-	if (!dhd_dongle_up) {
-		WL_ERR(("Dongle is already down\n"));
-		return err;
-	}
-
-	ndev = bcmcfg_to_prmry_ndev(cfg);
-	wl_dongle_down(ndev);
 	dhd_dongle_up = FALSE;
 	return 0;
 }
@@ -162,11 +149,9 @@ void dhd_netdev_free(struct net_device *ndev)
 		free_netdev(ndev);
 }
 
-static s32
-wl_dongle_up(struct net_device *ndev)
+static s32 wl_dongle_up(struct net_device *ndev, u32 up)
 {
 	s32 err = 0;
-	u32 up = 0;
 
 	err = wldev_ioctl(ndev, WLC_UP, &up, sizeof(up), true);
 	if (unlikely(err)) {
@@ -174,20 +159,6 @@ wl_dongle_up(struct net_device *ndev)
 	}
 	return err;
 }
-
-static s32
-wl_dongle_down(struct net_device *ndev)
-{
-	s32 err = 0;
-	u32 down = 0;
-
-	err = wldev_ioctl(ndev, WLC_DOWN, &down, sizeof(down), true);
-	if (unlikely(err)) {
-		WL_ERR(("WLC_DOWN error (%d)\n", err));
-	}
-	return err;
-}
-
 
 s32 dhd_config_dongle(struct bcm_cfg80211 *cfg)
 {
@@ -205,7 +176,7 @@ s32 dhd_config_dongle(struct bcm_cfg80211 *cfg)
 
 	ndev = bcmcfg_to_prmry_ndev(cfg);
 
-	err = wl_dongle_up(ndev);
+	err = wl_dongle_up(ndev, 0);
 	if (unlikely(err)) {
 		WL_ERR(("wl_dongle_up failed\n"));
 		goto default_conf_out;
@@ -217,3 +188,114 @@ default_conf_out:
 	return err;
 
 }
+
+#ifdef CONFIG_NL80211_TESTMODE
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+int dhd_cfg80211_testmode_cmd(struct wiphy *wiphy, struct wireless_dev *wdev, void *data, int len)
+#else
+int dhd_cfg80211_testmode_cmd(struct wiphy *wiphy, void *data, int len)
+#endif  /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
+{
+	struct sk_buff *reply;
+	struct bcm_cfg80211 *cfg;
+	dhd_pub_t *dhd;
+	struct bcm_nlmsg_hdr *nlioc = data;
+	dhd_ioctl_t ioc = { 0 };
+	int err = 0;
+	void *buf = NULL, *cur;
+	u16 buflen;
+	u16 maxmsglen = PAGE_SIZE - 0x100;
+	bool newbuf = false;
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+	int8 index = 0;
+	struct net_device *ndev = NULL;
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
+
+	WL_TRACE(("entry: cmd = %d\n", nlioc->cmd));
+	cfg = wiphy_priv(wiphy);
+	dhd = cfg->pub;
+
+	DHD_OS_WAKE_LOCK(dhd);
+
+	/* send to dongle only if we are not waiting for reload already */
+	if (dhd->hang_was_sent) {
+		WL_ERR(("HANG was sent up earlier\n"));
+		DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhd, DHD_EVENT_TIMEOUT_MS);
+		DHD_OS_WAKE_UNLOCK(dhd);
+		return OSL_ERROR(BCME_DONGLE_DOWN);
+	}
+
+	len -= sizeof(struct bcm_nlmsg_hdr);
+
+	if (nlioc->len > 0) {
+		if (nlioc->len <= len) {
+			buf = (void *)nlioc + nlioc->offset;
+			*(char *)(buf + nlioc->len) = '\0';
+		} else {
+			if (nlioc->len > DHD_IOCTL_MAXLEN)
+				nlioc->len = DHD_IOCTL_MAXLEN;
+			buf = vzalloc(nlioc->len);
+			if (!buf)
+				return -ENOMEM;
+			newbuf = true;
+			memcpy(buf, (void *)nlioc + nlioc->offset, len);
+			*(char *)(buf + len) = '\0';
+		}
+	}
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+	ndev = wdev_to_wlc_ndev(wdev, cfg);
+	index = dhd_net2idx(dhd->info, ndev);
+	if (index == DHD_BAD_IF) {
+	WL_ERR(("Bad ifidx from wdev:%p\n", wdev));
+		return BCME_ERROR;
+}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
+
+	ioc.cmd = nlioc->cmd;
+	ioc.len = nlioc->len;
+	ioc.set = nlioc->set;
+	ioc.driver = nlioc->magic;
+	err = dhd_ioctl_process(dhd, 0, &ioc, buf);
+	if (err) {
+		WL_TRACE(("dhd_ioctl_process return err %d\n", err));
+		err = OSL_ERROR(err);
+		goto done;
+	}
+
+	cur = buf;
+	while (nlioc->len > 0) {
+		buflen = nlioc->len > maxmsglen ? maxmsglen : nlioc->len;
+		nlioc->len -= buflen;
+		reply = cfg80211_testmode_alloc_reply_skb(wiphy, buflen+4);
+		if (!reply) {
+			WL_ERR(("Failed to allocate reply msg\n"));
+			err = -ENOMEM;
+			break;
+		}
+
+		if (nla_put(reply, BCM_NLATTR_DATA, buflen, cur) ||
+			nla_put_u16(reply, BCM_NLATTR_LEN, buflen)) {
+			kfree_skb(reply);
+			err = -ENOBUFS;
+			break;
+		}
+
+		do {
+			err = cfg80211_testmode_reply(reply);
+		} while (err == -EAGAIN);
+		if (err) {
+			WL_ERR(("testmode reply failed:%d\n", err));
+			break;
+		}
+		cur += buflen;
+	}
+
+done:
+	if (newbuf)
+		vfree(buf);
+	DHD_OS_WAKE_UNLOCK(dhd);
+	return err;
+}
+#endif /* CONFIG_NL80211_TESTMODE */

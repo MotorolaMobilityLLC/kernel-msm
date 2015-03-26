@@ -3,7 +3,7 @@
  *
  *  Description: Universal AMP API
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -23,11 +23,9 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: uamp_api.h 467328 2014-04-03 01:23:40Z $
+ * $Id: uamp_api.h 294267 2011-11-04 23:41:52Z $
  *
  */
-
-
 #ifndef UAMP_API_H
 #define UAMP_API_H
 
