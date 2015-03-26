@@ -35,7 +35,6 @@ obj-$(CONFIG_MSM_PP2S_FEMTO) += pp2s.o
 obj-$(CONFIG_ARCH_MSMFERRUM) += board-ferrum.o
 obj-$(CONFIG_ARCH_MSM8916) += board-8916.o
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
-obj-$(CONFIG_ARCH_MSM8226) += asus_gpio_pinmux.o sparrow_rfkill.o
 # ASUS_BSP +++ : add for wifi
 obj-$(CONFIG_ARCH_MSM8226) += board_wifi_bcm.o
 # ASUS_BSP --- : add for wifi
@@ -46,6 +45,9 @@ obj-$(CONFIG_ARCH_MSM8610) += clock-dsi-8610.o
 obj-$(CONFIG_ARCH_MDM9630) += clock-9630.o
 obj-$(CONFIG_ARCH_MSMZIRC) += board-zirc.o
 obj-$(CONFIG_MSM_PM) += ext-buck-control.o
+
+obj-$(CONFIG_ASUS_SPARROW) += sparrow/
+obj-$(CONFIG_ASUS_WREN) += wren/
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 
