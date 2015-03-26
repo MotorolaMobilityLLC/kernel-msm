@@ -34,6 +34,7 @@
 #include <linux/rtc.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/batterydata-lib.h>
+#include<linux/wakelock.h>
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -219,6 +220,7 @@ struct smbchg_chip {
 	/* aicl deglitch workaround */
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
+	struct wake_lock		chg_wake_lock;
 };
 
 enum print_reason {
@@ -1417,8 +1419,10 @@ static int smbchg_get_min_parallel_current_ma(struct smbchg_chip *chip)
 #define DCIN_ACTIVE_PWR_SRC_BIT		BIT(0)
 static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 {
-	int min_current_thr_ma, rc, type;
+	/*int min_current_thr_ma, rc, type;*/
+	int min_current_thr_ma, rc;
 	u8 reg;
+	union power_supply_propval prop = {0,};
 
 	if (!smbchg_parallel_en) {
 		pr_smb(PR_STATUS, "Parallel charging not enabled\n");
@@ -1435,7 +1439,10 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
-	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
+	/* mask these code temporarily, as power on by DCP will be detected as SDP */
+	/* use dwc3_msm dwc3_chg_detect_work as charge type detection */
+
+	/*rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
 		return false;
@@ -1448,6 +1455,24 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 	}
 
 	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
+		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
+		return false;
+	}*/
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_TYPE, &prop);
+	if (rc < 0){
+		dev_err(chip->dev,
+			"could not read USB type property, rc=%d\n", rc);
+		return false;
+	}
+
+	if (prop.intval == POWER_SUPPLY_TYPE_USB_CDP) {
+		pr_smb(PR_STATUS, "CDP adapter, skipping\n");
+		return false;
+	}
+
+	if (prop.intval == POWER_SUPPLY_TYPE_USB) {
 		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
 		return false;
 	}
@@ -3726,8 +3751,8 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 				POWER_SUPPLY_TYPE_UNKNOWN);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
-		power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_UNKNOWN);
+		/*power_supply_set_supply_type(chip->usb_psy,
+				POWER_SUPPLY_TYPE_UNKNOWN);*/
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		schedule_work(&chip->usb_set_online_work);
 		rc = power_supply_set_health_state(chip->usb_psy,
@@ -3769,7 +3794,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
 				usb_supply_type);
-		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
+		/*power_supply_set_supply_type(chip->usb_psy, usb_supply_type);*/
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
@@ -3865,6 +3890,7 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 			(prop.intval == POWER_SUPPLY_TYPE_USB_DCP)) {
 			if (chip->usb_present && !usb_present) {
 				/* DCP or HVDCP removed */
+				wake_unlock(&chip->chg_wake_lock);
 				chip->usb_present = usb_present;
 				handle_usb_removal(chip);
 				chip->aicl_irq_count = 0;
@@ -3915,6 +3941,7 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 			(prop.intval == POWER_SUPPLY_TYPE_USB)) &&
 			chip->usb_present) {
 				/* CDP or SDP removed */
+				wake_lock(&chip->chg_wake_lock);
 				chip->usb_present = !chip->usb_present;
 				handle_usb_removal(chip);
 				chip->aicl_irq_count = 0;
@@ -4136,8 +4163,10 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	chip->usb_present = is_usb_present(chip);
 	chip->dc_present = is_dc_present(chip);
 
-	if (chip->usb_present)
+	if (chip->usb_present){
+		wake_lock(&chip->chg_wake_lock);
 		handle_usb_insertion(chip);
+	}
 	else
 		handle_usb_removal(chip);
 
@@ -5176,6 +5205,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 		return -ENOMEM;
 	}
 
+	wake_lock_init(&chip->chg_wake_lock, WAKE_LOCK_SUSPEND, "pm8916_chg");
+
 	INIT_WORK(&chip->usb_set_online_work, smbchg_usb_update_online_work);
 	INIT_DELAYED_WORK(&chip->parallel_en_work,
 			smbchg_parallel_usb_en_work);
@@ -5297,6 +5328,7 @@ static int smbchg_remove(struct spmi_device *spmi)
 	struct smbchg_chip *chip = dev_get_drvdata(&spmi->dev);
 
 	debugfs_remove_recursive(chip->debug_root);
+	wake_lock_destroy(&chip->chg_wake_lock);
 
 	if (chip->dc_psy_type != -EINVAL)
 		power_supply_unregister(&chip->dc_psy);
