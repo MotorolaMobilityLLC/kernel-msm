@@ -3,7 +3,7 @@
  * This header file housing the define and function prototype use by
  * both the wl driver, tools & Apps.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -43,15 +43,10 @@ typedef uint16 chanspec_t;
 #define CH_10MHZ_APART			2
 #define CH_5MHZ_APART			1	/* 2G band channels are 5 Mhz apart */
 #define CH_MAX_2G_CHANNEL		14	/* Max channel in 2G band */
-#define MAXCHANNEL		224	/* max # supported channels. The max channel no is above,
+#define	MAXCHANNEL		224	/* max # supported channels. The max channel no is 216,
 					 * this is that + 1 rounded up to a multiple of NBBY (8).
 					 * DO NOT MAKE it > 255: channels are uint8's all over
 					 */
-#define MAXCHANNEL_NUM	(MAXCHANNEL - 1)	/* max channel number */
-
-/* make sure channel num is within valid range */
-#define CH_NUM_VALID_RANGE(ch_num) ((ch_num) > 0 && (ch_num) <= MAXCHANNEL_NUM)
-
 #define CHSPEC_CTLOVLP(sp1, sp2, sep)	(ABS(wf_chspec_ctlchan(sp1) - wf_chspec_ctlchan(sp2)) < \
 				  (sep))
 
@@ -136,11 +131,7 @@ typedef uint16 chanspec_t;
 					 WL_CHANSPEC_BW_160 | WL_CHANSPEC_BAND_5G)
 
 /* simple MACROs to get different fields of chanspec */
-#ifdef WL11AC_80P80
-#define CHSPEC_CHANNEL(chspec)	wf_chspec_channel(chspec)
-#else
 #define CHSPEC_CHANNEL(chspec)	((uint8)((chspec) & WL_CHANSPEC_CHAN_MASK))
-#endif
 #define CHSPEC_CHAN1(chspec)	((chspec) & WL_CHANSPEC_CHAN1_MASK) >> WL_CHANSPEC_CHAN1_SHIFT
 #define CHSPEC_CHAN2(chspec)	((chspec) & WL_CHANSPEC_CHAN2_MASK) >> WL_CHANSPEC_CHAN2_SHIFT
 #define CHSPEC_BAND(chspec)		((chspec) & WL_CHANSPEC_BAND_MASK)
@@ -303,34 +294,12 @@ typedef uint16 chanspec_t;
 #define WLC_2G_25MHZ_OFFSET		5	/* 2.4GHz band channel offset */
 
 /**
- *  No of sub-band vlaue of the specified Mhz chanspec
- */
-#define WF_NUM_SIDEBANDS_40MHZ   2
-#define WF_NUM_SIDEBANDS_80MHZ   4
-#define WF_NUM_SIDEBANDS_8080MHZ 4
-#define WF_NUM_SIDEBANDS_160MHZ  8
-
-/**
  * Convert chanspec to ascii string
  *
  * @param	chspec		chanspec format
  * @param	buf		ascii string of chanspec
  *
  * @return	pointer to buf with room for at least CHANSPEC_STR_LEN bytes
- *		Original chanspec in case of error
- *
- * @see		CHANSPEC_STR_LEN
- */
-extern char * wf_chspec_ntoa_ex(chanspec_t chspec, char *buf);
-
-/**
- * Convert chanspec to ascii string
- *
- * @param	chspec		chanspec format
- * @param	buf		ascii string of chanspec
- *
- * @return	pointer to buf with room for at least CHANSPEC_STR_LEN bytes
- *		NULL in case of error
  *
  * @see		CHANSPEC_STR_LEN
  */
@@ -379,17 +348,6 @@ extern bool wf_chspec_valid(chanspec_t chanspec);
  * @return Returns the channel number of the primary 20MHz channel
  */
 extern uint8 wf_chspec_ctlchan(chanspec_t chspec);
-
-/**
- * Return the bandwidth string.
- *
- * This function returns the bandwidth string for the passed chanspec.
- *
- * @param	chspec    input chanspec
- *
- * @return Returns the bandwidth string
- */
-extern char * wf_chspec_to_bw_str(chanspec_t chspec);
 
 /**
  * Return the primary (control) chanspec.
@@ -471,19 +429,6 @@ extern int wf_mhz2channel(uint freq, uint start_factor);
 extern int wf_channel2mhz(uint channel, uint start_factor);
 
 /**
- * Returns the chanspec 80Mhz channel corresponding to the following input
- * parameters
- *
- *	primary_channel - primary 20Mhz channel
- *	center_channel   - center frequecny of the 80Mhz channel
- *
- * The center_channel can be one of {42, 58, 106, 122, 138, 155}
- *
- * returns INVCHANSPEC in case of error
- */
-extern chanspec_t wf_chspec_80(uint8 center_channel, uint8 primary_channel);
-
-/**
  * Convert ctl chan and bw to chanspec
  *
  * @param	ctl_ch		channel
@@ -498,22 +443,19 @@ extern uint wf_channel2freq(uint channel);
 extern uint wf_freq2channel(uint freq);
 
 /*
- * Returns the 80+80 MHz chanspec corresponding to the following input parameters
+ * Returns the 80+80 chanspec corresponding to the following input parameters
  *
- *    primary_20mhz - Primary 20 MHz channel
- *    chan0_80MHz - center channel number of one frequency segment
- *    chan1_80MHz - center channel number of the other frequency segment
+ *    primary_20mhz - Primary 20 Mhz channel
+ *    chan1 - channel number of first 80 Mhz band
+ *    chan2 - channel number of second 80 Mhz band
  *
- * Parameters chan0_80MHz and chan1_80MHz are channel numbers in {42, 58, 106, 122, 138, 155}.
- * The primary channel must be contained in one of the 80MHz channels. This routine
- * will determine which frequency segment is the primary 80 MHz segment.
+ *  parameters chan1 and chan2  are channel numbers in {42, 58, 106, 122, 138, 155}
  *
- * Returns INVCHANSPEC in case of error.
- *
- * Refer to IEEE802.11ac section 22.3.14 "Channelization".
+ *  returns INVCHANSPEC in case of error
  */
+
 extern chanspec_t wf_chspec_get8080_chspec(uint8 primary_20mhz,
-	uint8 chan0_80Mhz, uint8 chan1_80Mhz);
+uint8 chan1_80Mhz, uint8 chan2_80Mhz);
 
 /*
  * Returns the primary 80 Mhz channel for the provided chanspec
@@ -538,11 +480,5 @@ extern uint8 wf_chspec_secondary80_channel(chanspec_t chanspec);
  */
 extern chanspec_t wf_chspec_primary80_chspec(chanspec_t chspec);
 
-#ifdef WL11AC_80P80
-/*
- * This function returns the centre chanel for the given chanspec.
- * In case of 80+80 chanspec it returns the primary 80 Mhz centre channel
- */
-extern uint8 wf_chspec_channel(chanspec_t chspec);
-#endif
+
 #endif	/* _bcmwifi_channels_h_ */

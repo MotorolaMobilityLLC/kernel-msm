@@ -1,7 +1,7 @@
 /*
  * Fundamental types and constants relating to WPA
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wpa.h 450928 2014-01-23 14:13:38Z $
+ * $Id: wpa.h 506473 2014-10-06 09:12:53Z $
  */
 
 #ifndef _proto_wpa_h_
@@ -80,8 +80,6 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 #define WPA_RSN_IE_FIXED_LEN	4
 #define WPA_RSN_IE_TAG_FIXED_LEN	2
 typedef uint8 wpa_pmkid_t[WPA2_PMKID_LEN];
-
-#define WFA_OSEN_IE_FIXED_LEN	6
 
 /* WPA suite/multicast suite */
 typedef BWL_PRE_PACKED_STRUCT struct
@@ -169,6 +167,7 @@ typedef BWL_PRE_PACKED_STRUCT struct
 #define	WPA_CAP_WPA2_PREAUTH		RSN_CAP_PREAUTH
 
 #define WPA2_PMKID_COUNT_LEN	2
+#define RSN_GROUPMANAGE_CIPHER_LEN 4
 
 
 /* This marks the end of a packed structure section. */

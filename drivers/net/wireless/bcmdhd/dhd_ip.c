@@ -1,7 +1,7 @@
 /*
  * IP Packet Parser Module.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_ip.c 468932 2014-04-09 06:58:15Z $
+ * $Id: dhd_ip.c 519554 2014-12-08 06:23:43Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -38,7 +38,6 @@
 
 #ifdef DHDTCPACK_SUPPRESS
 #include <dhd_bus.h>
-#include <dhd_proto.h>
 #include <proto/bcmtcp.h>
 #endif /* DHDTCPACK_SUPPRESS */
 
@@ -287,11 +286,7 @@ int dhd_tcpack_suppress_set(dhd_pub_t *dhdp, uint8 mode)
 		goto exit;
 	}
 
-	if (mode >= TCPACK_SUP_LAST_MODE ||
-#ifndef BCMSDIO
-		mode == TCPACK_SUP_DELAYTX ||
-#endif
-		FALSE) {
+	if (mode > TCPACK_SUP_DELAYTX) {
 		DHD_ERROR(("%s %d: Invalid mode %d\n", __FUNCTION__, __LINE__, mode));
 		ret = BCME_BADARG;
 		goto exit;
@@ -379,6 +374,7 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 	tcpack_sup_module_t *tcpack_sup_mod;
 	tcpack_info_t *tcpack_info_tbl;
 	int tbl_cnt;
+	uint pushed_len;
 	int ret = BCME_OK;
 	void *pdata;
 	uint32 pktlen;
@@ -387,7 +383,10 @@ inline int dhd_tcpack_check_xmit(dhd_pub_t *dhdp, void *pkt)
 		goto exit;
 
 	pdata = PKTDATA(dhdp->osh, pkt);
-	pktlen = PKTLEN(dhdp->osh, pkt) - dhd_prot_hdrlen(dhdp, pdata);
+
+	/* Length of BDC(+WLFC) headers pushed */
+	pushed_len = BDC_HEADER_LEN + (((struct bdc_header *)pdata)->dataOffset * 4);
+	pktlen = PKTLEN(dhdp->osh, pkt) - pushed_len;
 
 	if (pktlen < TCPACKSZMIN || pktlen > TCPACKSZMAX) {
 		DHD_TRACE(("%s %d: Too short or long length %d to be TCP ACK\n",
@@ -680,16 +679,10 @@ dhd_tcpack_suppress(dhd_pub_t *dhdp, void *pkt)
 				tack_tbl.cnt[2]++;
 #endif /* DEBUG_COUNTER && DHDTCPACK_SUP_DBG */
 				ret = TRUE;
-			} else {
-#if defined(DEBUG_COUNTER) && defined(DHDTCPACK_SUP_DBG)
-				tack_tbl.cnt[6]++;
-#endif /* DEBUG_COUNTER && DHDTCPACK_SUP_DBG */
-				DHD_TRACE(("%s %d: lenth mismatch %d != %d || %d != %d"
-					" ACK %u -> %u\n", __FUNCTION__, __LINE__,
-					new_ip_hdr_len, old_ip_hdr_len,
-					new_tcp_hdr_len, old_tcp_hdr_len,
-					old_tcpack_num, new_tcp_ack_num));
-			}
+			} else
+				DHD_TRACE(("%s %d: lenth mismatch %d != %d || %d != %d\n",
+					__FUNCTION__, __LINE__, new_ip_hdr_len, old_ip_hdr_len,
+					new_tcp_hdr_len, old_tcp_hdr_len));
 		} else if (new_tcp_ack_num == old_tcpack_num) {
 			set_dotxinrx = TRUE;
 			/* TCPACK retransmission */
@@ -872,7 +865,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 				bcopy(last_tdata_info, tdata_info_tmp, sizeof(tcpdata_info_t));
 			}
 			bzero(last_tdata_info, sizeof(tcpdata_info_t));
-			DHD_ERROR(("%s %d: tcpdata_info(idx %d) is aged out. ttl cnt is now %d\n",
+			DHD_INFO(("%s %d: tcpdata_info(idx %d) is aged out. ttl cnt is now %d\n",
 				__FUNCTION__, __LINE__, i, tcpack_sup_mod->tcpdata_info_cnt));
 			/* Don't increase "i" here, so that the prev last tcpdata_info is checked */
 		} else
@@ -901,7 +894,7 @@ dhd_tcpdata_info_get(dhd_pub_t *dhdp, void *pkt)
 		/* No TCP flow with the same IP addr and TCP port is found
 		 * in tcp_data_info_tbl. So add this flow to the table.
 		 */
-		DHD_ERROR(("%s %d: Add data info to tbl[%d]: IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
+		DHD_INFO(("%s %d: Add data info to tbl[%d]: IP addr "IPV4_ADDR_STR" "IPV4_ADDR_STR
 			" TCP port %d %d\n",
 			__FUNCTION__, __LINE__, tcpack_sup_mod->tcpdata_info_cnt,
 			IPV4_ADDR_TO_STR(ntoh32_ua(&ip_hdr[IPV4_SRC_IP_OFFSET])),

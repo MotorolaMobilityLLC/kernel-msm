@@ -10,7 +10,7 @@ DHDCFLAGS += -Wall -Wstrict-prototypes -Dlinux -DLINUX -DBCMDRIVER            \
 	-DKEEP_ALIVE -DCSCAN -DPKT_FILTER_SUPPORT                             \
 	-DEMBEDDED_PLATFORM -DPNO_SUPPORT                                     \
 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT                           \
-	-DCUSTOMER_HW2 -DGET_CUSTOM_MAC_ENABLE
+	-DCUSTOMER_HW2
 
 #################
 # Common feature
@@ -98,72 +98,23 @@ DRIVER_TYPE ?= $(CONFIG_BCMDHD)
 # Chip dependent feature
 #########################
 
-ifneq ($(filter y, $(CONFIG_BCM4343) $(CONFIG_BCM4354) $(CONFIG_BCM4356)),)
-  DHDCFLAGS += -DUSE_WL_TXBF
-  DHDCFLAGS += -DUSE_WL_FRAMEBURST
-  DHDCFLAGS += -DCUSTOM_DPC_CPUCORE=0
-  DHDCFLAGS += -DPROP_TXSTATUS_VSDB
-  DHDCFLAGS += -DCUSTOM_PSPRETEND_THR=30
+DHDCFLAGS += -DHW_OOB
 
-# New Features
-  DHDCFLAGS += -DWL11U
-  DHDCFLAGS += -DDHD_ENABLE_LPC
+
 ifneq ($(CONFIG_BCMDHD_SDIO),)
-  DHDCFLAGS += -DBDC -DOOB_INTR_ONLY -DHW_OOB -DDHD_BCMEVENTS -DMMC_SDIO_ABORT
+  DHDCFLAGS += -DBDC -DOOB_INTR_ONLY -DDHD_BCMEVENTS -DMMC_SDIO_ABORT
   DHDCFLAGS += -DBCMSDIO -DBCMLXSDMMC -DUSE_SDIOFIFO_IOVAR
   DHDCFLAGS += -DPROP_TXSTATUS
-  DHDCFLAGS += -DCUSTOM_AMPDU_MPDU=16
-  DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=64
-# tput enhancement
-  DHDCFLAGS += -DCUSTOM_GLOM_SETTING=8 -DCUSTOM_RXCHAIN=1
-  DHDCFLAGS += -DUSE_DYNAMIC_F2_BLKSIZE -DDYNAMIC_F2_BLKSIZE_FOR_NONLEGACY=128
-  DHDCFLAGS += -DBCMSDIOH_TXGLOM -DCUSTOM_TXGLOM=1 -DBCMSDIOH_TXGLOM_HIGHSPEED
-  DHDCFLAGS += -DDHDTCPACK_SUPPRESS
-  DHDCFLAGS += -DRXFRAME_THREAD
-  DHDCFLAGS += -DREPEAT_READFRAME
-  DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=40
-  DHDCFLAGS += -DMAX_HDR_READ=128
-  DHDCFLAGS += -DDHD_FIRSTREAD=128
 endif
 
 ifneq ($(CONFIG_BCMDHD_PCIE),)
   DHDCFLAGS += -DPCIE_FULL_DONGLE -DBCMPCIE -DCUSTOM_DPC_PRIO_SETTING=-1
-# tput enhancement
-  DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=64
-  DHDCFLAGS += -DCUSTOM_AMPDU_MPDU=32
-  DHDCFLAGS += -DCUSTOM_AMPDU_RELEASE=16
 endif
-endif
-
-
-ifneq ($(CONFIG_BCM4339),)
-  DHDCFLAGS += -DBCM4339_CHIP -DHW_OOB
-
-  # tput enhancement
-  DHDCFLAGS += -DCUSTOM_GLOM_SETTING=8 -DCUSTOM_RXCHAIN=1
-  DHDCFLAGS += -DUSE_DYNAMIC_F2_BLKSIZE -DDYNAMIC_F2_BLKSIZE_FOR_NONLEGACY=128
-  DHDCFLAGS += -DBCMSDIOH_TXGLOM -DCUSTOM_TXGLOM=1 -DBCMSDIOH_TXGLOM_HIGHSPEED
-  DHDCFLAGS += -DDHDTCPACK_SUPPRESS
-  DHDCFLAGS += -DUSE_WL_TXBF
-  DHDCFLAGS += -DUSE_WL_FRAMEBURST
-  DHDCFLAGS += -DRXFRAME_THREAD
-  DHDCFLAGS += -DCUSTOM_AMPDU_BA_WSIZE=64
-  DHDCFLAGS += -DCUSTOM_DPC_CPUCORE=0
-  DHDCFLAGS += -DPROP_TXSTATUS_VSDB
-  DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=32
-
-  # New Features
-  DHDCFLAGS += -DWL11U
-  DHDCFLAGS += -DDHD_ENABLE_LPC
-  DHDCFLAGS += -DCUSTOM_PSPRETEND_THR=30
-endif
-
 
 #EXTRA_LDFLAGS += --strip-debug
 
 ifeq ($(DRIVER_TYPE),y)
   DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
-  DHDCFLAGS += -DUSE_LATE_INITCALL_SYNC
 endif
 
 EXTRA_CFLAGS += $(DHDCFLAGS) -DDHD_DEBUG
@@ -175,8 +126,7 @@ DHDOFILES := dhd_pno.o dhd_common.o dhd_ip.o dhd_custom_gpio.o \
 	dhd_linux.o dhd_linux_sched.o dhd_cfg80211.o dhd_linux_wq.o aiutils.o bcmevent.o \
 	bcmutils.o bcmwifi_channels.o hndpmu.o linux_osl.o sbutils.o siutils.o \
 	wl_android.o wl_cfg80211.o wl_cfgp2p.o wl_cfg_btcoex.o wldev_common.o wl_linux_mon.o  \
-	dhd_linux_platdev.o dhd_pno.o dhd_linux_wq.o wl_cfg_btcoex.o \
-	hnd_pktq.o hnd_pktpool.o
+	dhd_linux_platdev.o dhd_pno.o dhd_linux_wq.o wl_cfg_btcoex.o
 
 ifneq ($(CONFIG_BCMDHD_SDIO),)
   DHDOFILES += bcmsdh.o bcmsdh_linux.o bcmsdh_sdmmc.o bcmsdh_sdmmc_linux.o
@@ -184,8 +134,7 @@ ifneq ($(CONFIG_BCMDHD_SDIO),)
 endif
 
 ifneq ($(CONFIG_BCMDHD_PCIE),)
-  DHDOFILES += dhd_pcie.o dhd_pcie_linux.o dhd_msgbuf.o dhd_flowring.o
-  DHDOFILES += pcie_core.o
+  DHDOFILES += dhd_pcie.o dhd_pcie_linux.o dhd_msgbuf.o circularbuf.o
 endif
 
 bcmdhd-objs := $(DHDOFILES)

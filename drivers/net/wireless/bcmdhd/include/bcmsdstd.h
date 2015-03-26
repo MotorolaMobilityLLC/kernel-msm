@@ -1,7 +1,7 @@
 /*
  *  'Standard' SDIO HOST CONTROLLER driver
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdstd.h 455390 2014-02-13 22:14:56Z $
+ * $Id: bcmsdstd.h 523962 2015-01-05 10:23:21Z $
  */
 #ifndef	_BCM_SD_STD_H
 #define	_BCM_SD_STD_H

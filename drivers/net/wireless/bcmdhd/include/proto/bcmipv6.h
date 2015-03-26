@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  *
  * Fundamental constants relating to Neighbor Discovery Protocol
  *
- * $Id: bcmipv6.h 439574 2013-11-27 06:37:37Z $
+ * $Id: bcmipv6.h 399482 2013-04-30 09:24:37Z $
  */
 
 #ifndef _bcmipv6_h_
@@ -56,8 +56,7 @@
 #define IPV6_FRAG_OFFS_SHIFT	3
 
 /* For icmpv6 */
-#define ICMPV6_HEADER_TYPE	0x3A
-#define ICMPV6_PKT_TYPE_RA	134
+#define ICMPV6_HEADER_TYPE 	0x3A
 #define ICMPV6_PKT_TYPE_NS	135
 #define ICMPV6_PKT_TYPE_NA	136
 
