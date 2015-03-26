@@ -449,6 +449,10 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	of_property_read_u32(np, "headset_button_4_keycode",
 			     &pdata->headset_button_4_keycode);
 
+	pdata->cover_detect_polarity = 0;
+	of_property_read_u32(np, "cover_detect_polarity",
+			     &pdata->cover_detect_polarity);
+
 	pdata->accel_orientation_1 = 0;
 	pdata->accel_orientation_2 = 0;
 	of_property_read_u32(np, "accel_orientation_1",
