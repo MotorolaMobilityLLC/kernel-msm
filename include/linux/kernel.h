@@ -21,8 +21,9 @@ enum DEVICE_HWID {
 	SPARROW_EVB = 0x0,
 	SPARROW_SR_PNI = 0x1,
 	SPARROW_SR_QL = 0x2,
-	SPARROW_ER = 0x3,
+	SPARROW_SR2 = 0x3,
 	SPARROW_PR = 0x4,
+	WREN_EVB = 0x8,
 	HWID_UNKNOWN = 0xFF
 };
 // --- ASUS_BSP : add for hardware ID
