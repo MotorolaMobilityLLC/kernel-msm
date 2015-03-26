@@ -623,6 +623,7 @@ struct stml0xx_platform_data {
 	int accel_orientation_1;
 	int accel_orientation_2;
 	int accel_swap;
+	int cover_detect_polarity;
 };
 
 struct stml0xx_data {
