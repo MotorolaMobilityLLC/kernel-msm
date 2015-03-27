@@ -2056,6 +2056,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int p;
 	int w;
 	int id;
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	unsigned char number_of_fingers_actually_touching = 0;
+#endif
 
 	fingers_supported = fhandler->num_of_data_points;
 	data_addr = fhandler->full_addr.data_base;
@@ -2073,6 +2076,19 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		return 0;
 	} else
 		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_lock(&touchxp.virtual_touch_mutex);
+
+	for (finger = 0; finger < fingers_supported; finger++,
+			 index += fhandler->size_of_data_register_block) {
+		if (finger_data[index] == 0)
+			continue;
+		number_of_fingers_actually_touching++;
+	}
+	index = 0;
+#endif
 
 	for (finger = 0; finger < fingers_supported; finger++,
 			 index += fhandler->size_of_data_register_block) {
@@ -2093,6 +2109,13 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+			touchxp.touch_magic_dev = rmi4_data->input_dev;
+			if (touchxp.touchx)
+				touchxp.touchx(&x, &y, finger,
+					       number_of_fingers_actually_touching);
+#endif
 
 			dev_dbg(&rmi4_data->i2c_client->dev,
 						"%s: Finger %d:\n"
@@ -2126,6 +2149,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
 
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (!touch_count)
+		touchxp.finger_down = 0;
+#endif
+
 #ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
@@ -2133,6 +2162,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_unlock(&touchxp.virtual_touch_mutex);
+#endif
 
 	return touch_count;
 }
