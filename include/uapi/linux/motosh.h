@@ -191,9 +191,9 @@
 #define M_PROXIMITY		0x000002
 #define M_TOUCH			0x000004
 #define M_COVER			0x000008
-#define M_INIT_COMPLETE		0x000040
 #define M_QUICKPEEK		0x000010
 #define M_LIFT			0x000020
+#define M_INIT_COMPLETE		0x000040
 #define M_HUB_RESET		0x000080
 
 #define M_FLATUP		0x000100
@@ -205,16 +205,26 @@
 #define M_CHOPCHOP		0x004000
 #define M_LOG_MSG		0x008000
 
-#define M_IR_WAKE_GESTURE	0x200000
+/*#define M_UNUSED      0x010000*/
+/*#define M_UNUSED      0x020000*/
+/*#define M_UNUSED      0x040000*/
+/*#define M_UNUSED      0x080000*/
+/*#define M_UNUSED      0x100000*/
+/*#define M_UNUSED      0x200000*/
+/*#define M_UNUSED      0x400000*/
+/*#define M_UNUSED      0x800000*/
+
 
 /* algo config mask */
-#define M_MMOVEME               0x0001
-#define M_NOMMOVE               0x0002
-#define M_ALGO_MODALITY         0x0008
-#define M_ALGO_ORIENTATION      0x0010
-#define M_ALGO_STOWED           0x0020
-#define M_ALGO_ACCUM_MODALITY   0x0040
-#define M_ALGO_ACCUM_MVMT       0x0080
+#define M_MMOVEME               0x000001
+#define M_NOMMOVE               0x000002
+#define M_ALGO_MODALITY         0x000008
+#define M_ALGO_ORIENTATION      0x000010
+#define M_ALGO_STOWED           0x000020
+#define M_ALGO_ACCUM_MODALITY   0x000040
+#define M_ALGO_ACCUM_MVMT       0x000080
+
+#define M_IR_WAKE_GESTURE       0x200000
 
 /* generic interrupt mask */
 #define M_GENERIC_INTRPT        0x0080
