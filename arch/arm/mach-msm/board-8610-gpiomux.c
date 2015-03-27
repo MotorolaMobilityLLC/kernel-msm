@@ -65,30 +65,6 @@ static struct gpiomux_setting gpio_nfc_sus_config = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting atmel_int_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting atmel_int_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting atmel_reset_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting atmel_reset_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
 static struct gpiomux_setting focaltech_int_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -339,20 +315,6 @@ static struct msm_gpiomux_config msm_nfc_configs[] __initdata = {
 
 
 static struct msm_gpiomux_config msm_atmel_configs[] __initdata = {
-	{
-		.gpio      = 0,		/* TOUCH RESET */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &atmel_reset_act_cfg,
-			[GPIOMUX_SUSPENDED] = &atmel_reset_sus_cfg,
-		},
-	},
-	{
-		.gpio      = 1,		/* TOUCH INT */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &atmel_int_act_cfg,
-			[GPIOMUX_SUSPENDED] = &atmel_int_sus_cfg,
-		},
-	},
 	{
 		.gpio      = 86,		/* BLSP1 QUP4 SPI_DATA_MOSI */
 		.settings = {
