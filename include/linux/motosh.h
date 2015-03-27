@@ -537,7 +537,7 @@ extern long motosh_time_delta;
 
 extern unsigned int motosh_irq_disable;
 
-extern unsigned short motosh_g_wake_sensor_state;
+extern unsigned long motosh_g_wake_sensor_state;
 
 extern unsigned char stat_string[];
 

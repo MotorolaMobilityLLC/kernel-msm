@@ -296,7 +296,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_SET_WAKESENSORS:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_SET_WAKESENSORS");
-		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
+		if (copy_from_user(bytes, argp, 3 * sizeof(unsigned char))) {
 			dev_dbg(&ps_motosh->client->dev,
 				"Copy set sensors returned error\n");
 			err = -EFAULT;
@@ -305,10 +305,12 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_cmdbuff[0] = WAKESENSOR_CONFIG;
 		motosh_cmdbuff[1] = bytes[0];
 		motosh_cmdbuff[2] = bytes[1];
-		motosh_g_wake_sensor_state =  (motosh_cmdbuff[2] << 8)
+		motosh_cmdbuff[3] = bytes[2];
+		motosh_g_wake_sensor_state =  (motosh_cmdbuff[3] << 16)
+			| (motosh_cmdbuff[2] << 8)
 			| motosh_cmdbuff[1];
 		if (ps_motosh->mode > BOOTMODE)
-			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 3);
+			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 4);
 		dev_dbg(&ps_motosh->client->dev, "Sensor enable = 0x%02X\n",
 			motosh_g_wake_sensor_state);
 		break;
@@ -318,7 +320,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		if (ps_motosh->mode > BOOTMODE) {
 			motosh_cmdbuff[0] = WAKESENSOR_CONFIG;
 			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
-				1, 2);
+				1, 3);
 			if (err < 0) {
 				dev_err(&ps_motosh->client->dev,
 					"Reading get sensors failed\n");
@@ -326,9 +328,11 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			}
 			bytes[0] = motosh_readbuff[0];
 			bytes[1] = motosh_readbuff[1];
+			bytes[2] = motosh_readbuff[2];
 		} else {
 			bytes[0] = motosh_g_wake_sensor_state & 0xFF;
 			bytes[1] = (motosh_g_wake_sensor_state >> 8) & 0xFF;
+			bytes[2] = (motosh_g_wake_sensor_state >> 16) & 0xFF;
 		}
 		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
