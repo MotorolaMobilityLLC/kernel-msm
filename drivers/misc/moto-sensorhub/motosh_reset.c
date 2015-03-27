@@ -290,10 +290,11 @@ int motosh_reset_and_init(enum reset_mode mode)
 		ret_err = err;
 
 	rst_cmdbuff[0] = WAKESENSOR_CONFIG;
-	rst_cmdbuff[1] = motosh_g_wake_sensor_state & 0xFF;
-	rst_cmdbuff[2] = motosh_g_wake_sensor_state >> 8;
+	rst_cmdbuff[1] = (motosh_g_wake_sensor_state) & 0xFF;
+	rst_cmdbuff[2] = (motosh_g_wake_sensor_state >>  8) & 0xFF;
+	rst_cmdbuff[3] = (motosh_g_wake_sensor_state >> 16) & 0xFF;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
-					rst_cmdbuff, 3);
+					rst_cmdbuff, 4);
 	if (err < 0)
 		ret_err = err;
 
