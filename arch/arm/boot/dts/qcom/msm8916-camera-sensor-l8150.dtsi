@@ -238,19 +238,24 @@ eeprom1: qcom,eeprom@22 {
 			<&msm_gpio 28 0>,
 			<&msm_gpio 33 0>,
 			<&msm_gpio 119 0>,
-			<&msm_gpio 118 0>;
+			<&msm_gpio 118 0>,
+			<&msm_gpio 117 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
 		qcom,gpio-vdig = <3>;
 		qcom,gpio-vana = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-custom1 = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 			"CAM_RESET1",
 			"CAM_STANDBY",
 			"CAM_VDIG",
-			"CAM_VANA";
+			"CAM_VANA",
+			"CAM_V_CUSTOM1";
 		qcom,cam-power-seq-type = "sensor_gpio",
+			"sensor_gpio",
+			"sensor_gpio",
 			"sensor_gpio",
 			"sensor_gpio",
 			"sensor_gpio",
@@ -263,16 +268,18 @@ eeprom1: qcom,eeprom@22 {
 		qcom,cam-power-seq-val = 	"sensor_gpio_standby",
 			"sensor_gpio_reset",
 			"sensor_gpio_vana",
+			"sensor_gpio_custom1",
 			"sensor_gpio_vdig",
 			"sensor_gpio_vana",
+			"sensor_gpio_custom1",
 			"sensor_gpio_vdig",
 			"sensor_gpio_standby",
 			"sensor_gpio_reset",
 			"sensor_cam_mclk",
 			"none";
 
-		qcom,cam-power-seq-cfg-val = <0 0 0 0 1 1 1 1 1 23880000 0>;
-		qcom,cam-power-seq-delay = <1 1 1 1 1 1 30 30 10 1>;
+		qcom,cam-power-seq-cfg-val = <0 0 0 0 0 1 1 1 1 1 23880000 0>;
+		qcom,cam-power-seq-delay = <1 1 1 1 1 1 1 1 30 30 10 1>;
 		qcom,mclk-23880000;
 		clocks = <&clock_gcc clk_mclk1_clk_src>,
 				<&clock_gcc clk_gcc_camss_mclk1_clk>;
@@ -300,18 +307,21 @@ eeprom1: qcom,eeprom@22 {
 			<&msm_gpio 28 0>,
 			<&msm_gpio 33 0>,
 			<&msm_gpio 119 0>,
-			<&msm_gpio 118 0>;
+			<&msm_gpio 118 0>,
+			<&msm_gpio 117 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
 		qcom,gpio-vdig = <3>;
 		qcom,gpio-vana = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-custom1 = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 			"CAM_RESET",
 			"CAM_STANDBY",
 			"CAM_VDIG",
-			"CAM_VANA";
+			"CAM_VANA",
+			"CAM_V_CUSTOM1";
 
 		qcom,cci-master = <0>;
 		clocks = <&clock_gcc clk_mclk1_clk_src>,
