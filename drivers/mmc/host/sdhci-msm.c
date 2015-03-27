@@ -111,6 +111,8 @@ enum sdc_mpm_pin_state {
 #define CORE_1_8V_SUPPORT		(1 << 26)
 #define CORE_SYS_BUS_SUPPORT_64_BIT	28
 
+#define CORE_VENDOR_SPEC_CAPABILITIES1	0x120
+
 #define CORE_VENDOR_SPEC_ADMA_ERR_ADDR0	0x114
 #define CORE_VENDOR_SPEC_ADMA_ERR_ADDR1	0x118
 
@@ -310,6 +312,8 @@ struct sdhci_msm_pltfm_data {
 	unsigned char sup_clk_cnt;
 	int mpm_sdiowakeup_int;
 	int sdiowakeup_irq;
+	bool ignore_volt_mismatch;
+	bool no_uhs;
 };
 
 struct sdhci_msm_bus_vote {
@@ -1557,6 +1561,12 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev)
 		pdata->mpm_sdiowakeup_int = mpm_int;
 	else
 		pdata->mpm_sdiowakeup_int = -1;
+
+	if (of_get_property(np, "qcom,ignore_voltage_mismatch", NULL))
+		pdata->ignore_volt_mismatch = true;
+
+	if (of_get_property(np, "qcom,no-uhs", NULL))
+		pdata->no_uhs = true;
 
 	return pdata;
 out:
@@ -2930,6 +2940,22 @@ static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 	}
 
 	/*
+	 * Some buggy SDIO peripherals that can operate on 1.8V don't
+	 * announce this capability in OCR registry. At the same time
+	 * on host side 1.8V could be the only voltage enabled for this
+	 * host controller and that's causing errors during SDIO init.
+	 * To make MMC core and SDIO drivers happy and avoid voltage
+	 * mismatch error during initialization of the card we can explicitly
+	 * add 3V cap for the host side.
+	 */
+	if (msm_host->pdata->ignore_volt_mismatch) {
+		caps = CORE_3_0V_SUPPORT;
+		writel_relaxed(
+			(readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES) |
+			caps), host->ioaddr + CORE_VENDOR_SPEC_CAPABILITIES0);
+	}
+
+	/*
 	 * SDCC 5 controller with major version 1, minor version 0x34 and later
 	 * with HS 400 mode support will use CM DLL instead of CDC LP 533 DLL.
 	 */
@@ -3208,6 +3234,14 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
+
+	if (msm_host->pdata->no_uhs) {
+		u32 caps1 = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES_1);
+		caps1 &= ~(SDHCI_SUPPORT_SDR104 | SDHCI_SUPPORT_SDR50 |
+			SDHCI_SUPPORT_DDR50);
+		caps1 |= ((host_version & 0xFF) << 24);
+		sdhci_writel(host, caps1, CORE_VENDOR_SPEC_CAPABILITIES1);
+	}
 
 	host->cpu_dma_latency_us = msm_host->pdata->cpu_dma_latency_us;
 
