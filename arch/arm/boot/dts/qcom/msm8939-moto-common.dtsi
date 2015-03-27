@@ -953,6 +953,7 @@
 		tfa_vdd-supply = <&pm8916_l6>;
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
+		nxp,tfa_pcm-start-delay = <100>;
 		/* nxp,tfa9890_bin_path = "lux"; */
 	};
 };
