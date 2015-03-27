@@ -106,7 +106,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v1>;
 	tp_vci-supply = <&pm8916_l16>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	vsp_disp-supply = <&isl98611a_pos>;
