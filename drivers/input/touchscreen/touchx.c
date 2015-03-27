@@ -26,6 +26,7 @@ static int xo;
 static int yo;
 static int iv_len(int x, int y);
 static char highv;
+static int scalec, tipc, offsetc;
 
 struct profile_attr_t {
 	int touchx_state;  /* 0 = touchx is off, anything else is on */
@@ -46,10 +47,72 @@ static struct profile_attr_t attr;
 static void set_touchx_profile(int profile);
 static void tip_attr(void);
 
+void eval_scalec(void)
+{
+	switch (offsetc) {
+	case 0:
+		attr.touchx_state = scalec;
+		if (attr.touchx_state)
+			attr.touchx_state = 1;
+		break;
+	case 1:
+		attr.acc_limit = scalec;
+		if (attr.acc_limit < 1)
+			attr.acc_limit = 1;
+		if (attr.acc_limit > 100)
+			attr.acc_limit = 100;
+		break;
+	case 2:
+		set_curve((char) scalec);
+		break;
+	case 3:
+		attr.vtapsv = scalec;
+		if (attr.vtapsv < 1)
+			attr.vtapsv = 1;
+		if (attr.vtapsv > TAPSV)
+			attr.vtapsv = TAPSV;
+		break;
+	case 4:
+		if (scalec > 127)
+			scalec = -(0x100 - scalec);
+		attr.ofs = scalec;
+		break;
+	case 5:
+		attr.profile = scalec;
+		set_touchx_profile(attr.profile);
+		break;
+	case 6:
+		attr.recovery_is_enabled = scalec;
+		break;
+	case 7:
+		attr.scl = scalec;
+		break;
+	case 8:
+		attr.tip = scalec;
+		break;
+	case 9:
+		attr.limit = scalec;
+		break;
+	}
+
+	scalec = 0;
+	tipc = 0;
+	offsetc = 0;
+}
+
 static ssize_t sysfs_show_touchx_state(struct kobject *kobj,
 		struct kobj_attribute *kattr, char *buf)
 {
 	wc++;
+
+	if (tipc == -4)
+		eval_scalec();
+	else {
+		scalec = 0;
+		tipc = 0;
+		offsetc = 0;
+	}
+
 	return snprintf(buf, PAGE_SIZE, "%d\n", attr.touchx_state);
 }
 
@@ -68,6 +131,7 @@ static ssize_t sysfs_set_touchx_state(struct kobject *kobj,
 static ssize_t sysfs_show_touchx_scale(struct kobject *kobj,
 		struct kobj_attribute *kattr, char *buf)
 {
+	scalec++;
 	return snprintf(buf, PAGE_SIZE, "%d\n", attr.scl);
 }
 
@@ -117,6 +181,7 @@ static ssize_t sysfs_set_touchx_recovery(struct kobject *kobj,
 static ssize_t sysfs_show_touchx_offset(struct kobject *kobj,
 		struct kobj_attribute *kattr, char *buf)
 {
+	offsetc++;
 	return snprintf(buf, PAGE_SIZE, "%d\n", attr.ofs);
 }
 
@@ -139,6 +204,7 @@ static ssize_t sysfs_show_touchx_tip(struct kobject *kobj,
 	} else
 		wc = -18;
 
+	tipc--;
 	return snprintf(buf, PAGE_SIZE, "%d\n", attr.tip);
 }
 
@@ -724,12 +790,12 @@ void set_touchx_profile(int profile)
 		attr.curve_l = l_mesa;
 		attr.curve_g = g_mesa;
 
-		attr.scl = 8;
+		attr.scl = 6;
 		attr.ofs = -9;
-		attr.tip = 9;
-		attr.vtapsv = 8;
-		attr.limit = 52;
-		attr.acc_limit = 25;
+		attr.tip = 4;
+		attr.vtapsv = 5;
+		attr.limit = 22;
+		attr.acc_limit = 19;
 		attr.recovery_is_enabled = 0;
 	}
 
@@ -814,6 +880,7 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 	int len, lenc, i;
 	static int point;
 	static unsigned int time_since_last_multi_finger_touch;
+	static unsigned int time_since_last_touch;
 	unsigned long recovery_time = 20000000;
 	int gos, scl, recovery_is_enabled, ofs, tip, limit, acc_limit, clen;
 
@@ -843,6 +910,13 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 
 	if (finger != 0)
 		return;
+
+	if (jiffies_to_msecs(jiffies) - time_since_last_touch > 500) {
+		time_since_last_touch = jiffies_to_msecs(jiffies);
+		touchxp.finger_down = 0;
+		return;
+	}
+	time_since_last_touch = jiffies_to_msecs(jiffies);
 
 	if (jiffies_to_msecs(jiffies) -
 			time_since_last_multi_finger_touch < 300)
@@ -900,7 +974,8 @@ static void touchx(int *xp, int *yp, unsigned char finger,
 
 		clen = iv_len(dx, dy);
 		if (clen > limit) {
-			int normp = (limit * 19005) / clen;
+			/* 1.19 */
+			int normp = (limit * 19497) / clen;
 			dx = (dx * normp) >> 14;
 			dy = (dy * normp) >> 14;
 		}
