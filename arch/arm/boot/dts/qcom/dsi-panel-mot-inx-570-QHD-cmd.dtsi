@@ -17,10 +17,10 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		mmi,sh-control-enabled;
+		mmi,quickdraw-enabled;
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-panel-destination = "display_1";
 		qcom,mdss-dsi-panel-framerate = <60>;
-		qcom,mdss-dsi-panel-col-align = <8>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
@@ -74,7 +74,11 @@
 			15 01 00 00 01 00 02 BB 10
 			/* Disable BK_EN control */
 			15 01 00 00 01 00 02 E5 00
-			/* Don't reload MTP after 0x11 cmd*/
+			/* NVT SDC */
+			15 01 00 00 01 00 02 C0 00
+			/* 1600RGBX2560, GRAM Slide Parameter=16h */
+			39 01 00 00 01 00 0C C9 01 01 80 00 0B 06 67 04 3A 11 F8
+			/* Don't reload MTP after 0x11 cmd */
 			15 01 00 00 01 00 02 FB 01
 			/* Engineer CMD2 page 4 is selected */
 			15 01 00 00 01 00 02 FF 24
@@ -82,7 +86,7 @@
 			15 01 00 00 01 00 02 9D 36
 			/* Don't reload MTP after 0x11 cmd*/
 			15 01 00 00 01 00 02 FB 01
-			/*  CMD2 Page1 is selected */
+			/* CMD1 Page1 is selected */
 			15 01 00 00 01 00 02 FF 10
 			/* exit sleep mode */
 			05 01 00 00 78 00 01 11
@@ -110,10 +114,10 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi1>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		mmi,sh-control-enabled;
+		mmi,quickdraw-enabled;
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-panel-destination = "display_2";
 		qcom,mdss-dsi-panel-framerate = <60>;
-		qcom,mdss-dsi-panel-col-align = <8>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
