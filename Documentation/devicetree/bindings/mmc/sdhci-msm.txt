@@ -45,6 +45,12 @@ Optional Properties:
 			   1, 4 and 8.
 	- qcom,nonremovable - specifies whether the card in slot is
 			      hot pluggable or hard wired.
+	- qcom,ignore_voltage_mismatch - explicitly enables 3.0V capability for the host
+					 to avoid voltage mismatch error when initializing
+					 cards that contain incorrect voltage capabilities
+					 in OCR register.
+	- qcom,no-uhs - disables UHS capabilities on the host side. May be helpful with some
+			SDIO peripherals that can operate on 1.8V but don't support UHS modes.
 	- qcom,bus-speed-mode - specifies supported bus speed modes by host.
 				The supported bus speed modes are :
 				"HS400_1p8v" - indicates that host can support HS400 at 1.8v.
