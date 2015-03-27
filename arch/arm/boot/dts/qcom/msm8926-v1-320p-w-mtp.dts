@@ -22,7 +22,15 @@
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8926W MTP";
 	compatible = "qcom,msm8926-mtp", "qcom,msm8926", "qcom,mtp";
-	qcom,board-id = <8 5>;
+	qcom,board-id = <8 4>;
+};
+
+&soc {
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		synaptics@20 {
+			synaptics,display-coords = <0 0 319 239>;
+		};
+	};
 };
 
 &mdss_fb0 {
@@ -31,10 +39,10 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_auo_qvga_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
 };
 
-&dsi_auo_qvga_cmd {
+&dsi_nt35590_qvga_cmd {
 	qcom,cont-splash-enabled;
 };
 
