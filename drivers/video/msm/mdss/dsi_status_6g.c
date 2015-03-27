@@ -18,6 +18,8 @@
 #include "mdss_dsi.h"
 #include "mdss_mdp.h"
 
+#define STATUS_CHECK_TIMEOUT_MS 10000
+
 /*
  * mdss_report_panel_dead() - Sends the PANEL_ALIVE=0 status to HAL layer.
  * @pstatus_data   : dsi status data
@@ -38,6 +40,8 @@ static void mdss_report_panel_dead(struct dsi_status_data *pstatus_data)
 	}
 
 	pdata->panel_info.panel_dead = true;
+	wake_lock_timeout(&pstatus_data->status_wakelock,
+			msecs_to_jiffies(STATUS_CHECK_TIMEOUT_MS));
 	kobject_uevent_env(&pstatus_data->mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);
 	pr_err("%s: Panel has gone bad, sending uevent - %s\n",
