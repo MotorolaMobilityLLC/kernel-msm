@@ -511,7 +511,7 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 			    &mdss_dbg_xlog.enable_reg_dump);
 
 	mdss_dbg_xlog.xlog_enable = XLOG_DEFAULT_ENABLE;
-	mdss_dbg_xlog.panic_on_err = XLOG_DEFAULT_PANIC;
+	mdss_dbg_xlog.panic_on_err = 0;//XLOG_DEFAULT_PANIC;
 	mdss_dbg_xlog.enable_reg_dump = XLOG_DEFAULT_REGDUMP;
 
 	pr_info("xlog_status: enable:%d, panic:%d, dump:%d\n",
