@@ -72,6 +72,8 @@
 			39 01 00 00 01 00 04 3B 03 08 08
 			/* Configure command mode */
 			15 01 00 00 01 00 02 BB 10
+			/* Disable BK_EN control */
+			15 01 00 00 01 00 02 E5 00
 			/* Don't reload MTP after 0x11 cmd*/
 			15 01 00 00 01 00 02 FB 01
 			/* Engineer CMD2 page 4 is selected */
