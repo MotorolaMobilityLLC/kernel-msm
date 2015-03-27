@@ -364,6 +364,23 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_motosh->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
 				STM16_TO_HOST(CHOPCHOP_DATA));
 	}
+	if (irq_status & M_LIFT) {
+		motosh_cmdbuff[0] = LIFT;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
+		if (err < 0) {
+			dev_err(&ps_motosh->client->dev,
+				"Reading lift data from stm failed\n");
+			goto EXIT;
+		}
+
+		motosh_as_data_buffer_write(ps_motosh, DT_LIFT,
+						motosh_readbuff, 12, 0);
+
+		dev_dbg(&ps_motosh->client->dev, "Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
+				STM32_TO_HOST(LIFT_DISTANCE),
+				STM32_TO_HOST(LIFT_ROTATION),
+				STM32_TO_HOST(LIFT_GRAV_DIFF));
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 		/* Client recieving action will be upper 2 most significant */
