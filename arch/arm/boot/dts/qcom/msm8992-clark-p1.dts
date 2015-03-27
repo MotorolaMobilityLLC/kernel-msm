@@ -108,11 +108,13 @@
 &mot_inx_570_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
 	/delete-property/ mmi,sh-control-enabled;
+	/delete-property/ mmi,quickdraw-enabled;
 };
 
 &mot_inx_570_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 	/delete-property/ mmi,sh-control-enabled;
+	/delete-property/ mmi,quickdraw-enabled;
 };
 
 &pm8994_gpios {
