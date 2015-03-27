@@ -58,7 +58,7 @@ irqreturn_t motosh_wake_isr(int irq, void *dev)
 void motosh_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
-	unsigned short irq_status;
+	unsigned long irq_status;
 	u32 irq2_status;
 	uint8_t irq3_status;
 	static int spurious_det;
@@ -109,8 +109,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		}
 	}
 
-	irq_status = (motosh_readbuff[IRQ_WAKE_MED] << 8)
-				| motosh_readbuff[IRQ_WAKE_LO];
+	irq_status = (motosh_readbuff[IRQ_WAKE_HI] << 16)
+		| (motosh_readbuff[IRQ_WAKE_MED] << 8)
+		| motosh_readbuff[IRQ_WAKE_LO];
 
 	/* read algorithm interrupt status register */
 	motosh_cmdbuff[0] = ALGO_INT_STATUS;

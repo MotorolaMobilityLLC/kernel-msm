@@ -72,7 +72,7 @@ unsigned short motosh_g_step_counter_delay;
 unsigned short motosh_g_ir_gesture_delay;
 unsigned short motosh_g_ir_raw_delay;
 unsigned long motosh_g_nonwake_sensor_state;
-unsigned short motosh_g_wake_sensor_state;
+unsigned long motosh_g_wake_sensor_state;
 unsigned short motosh_g_algo_state;
 unsigned char motosh_g_motion_dur;
 unsigned char motosh_g_zmotion_dur;
