@@ -249,8 +249,10 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 		if (mdss_dsi_is_panel_on_lp(pdata)) {
 			if(!pinfo->pendingpoweroff)
 				ret = mdss_dsi_panel_power_lp(pdata, false);
-			else
+			else {
 				pinfo->pendingpoweroff = false;
+				ret = 0;
+			}
 		}
 		else
 			ret = mdss_dsi_panel_power_on(pdata);
