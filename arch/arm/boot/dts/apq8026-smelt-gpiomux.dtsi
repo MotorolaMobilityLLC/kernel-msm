@@ -41,117 +41,111 @@
 	 */
 	board_gpiomux_install: qcom,msm-gpiomux-install {
 		gpio@0 {
-			active  = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@1 {
-			active  = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@2 {
-			active  = <0x0300>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x0300>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@3 {
-			active  = <0x0300>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x0300>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
+		};
+		gpio@4 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@5 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@6 {
-			active  = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 			suspend = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@7 {
-			active  = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 			suspend = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 		};
+		gpio@8 {
+			suspend = <0x2332>; /* FUNC_2, DRV_8MA, PULL_UP, OUT_LOW */
+		};
+		gpio@9 {
+			suspend = <0x2332>; /* FUNC_2, DRV_8MA, PULL_UP, OUT_LOW */
+		};
 		gpio@10 {
-			active  = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 			suspend = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@11 {
-			active  = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 			suspend = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@12 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 			suspend = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 		};
 		gpio@13 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 			suspend = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 		};
 		gpio@14 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 			suspend = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 		};
 		gpio@15 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 			suspend = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
 		};
 		gpio@16 {
-			active  = <0x0230>; /* FUNC_GPIO, DRV_6MA, PULL_UP, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x0202>; /* FUNC_GPIO, DRV_6MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@17 {
-			active  = <0x0330>; /* FUNC_GPIO, DRV_8MA, PULL_UP, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x0330>; /* FUNC_GPIO, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@18 {
-			active  = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 			suspend = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@19 {
-			active  = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 			suspend = <0x3000>; /* FUNC_3, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@20 {
-			active  = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@21 {
-			active  = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@22 {
-			active  = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@23 {
-			active  = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x2300>; /* FUNC_2, DRV_8MA, PULL_NONE, IN */
+			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@24 {
-			active  = <0x1010>; /* FUNC_1, DRV_2MA, PULL_DOWN, IN */
 			suspend = <0x1010>; /* FUNC_1, DRV_2MA, PULL_DOWN, IN */
 		};
+		gpio@25 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
 		gpio@26 {
-			active  = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@27 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@28 {
-			active  = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@29 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@30 {
-			active  = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@31 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+		};
+		gpio@32 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@33 {
 			active  = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 			install-no-write;
+		};
+		gpio@34 {
+			suspend = <0x0302>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@35 {
 			active  = <0x0301>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, OUT_HIGH */
@@ -168,87 +162,241 @@
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 			install-no-write;
 		};
-		gpio@40 {
-			active  = <0x1210>; /* FUNC_1, DRV_6MA, PULL_DOWN, IN */
+		gpio@38 {
 			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+		};
+		gpio@39 {
+			suspend = <0x2030>; /* FUNC_2, DRV_2MA, PULL_UP, IN */
+		};
+		gpio@40 {
+			suspend = <0x2030>; /* FUNC_2, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@41 {
-			active  = <0x1210>; /* FUNC_1, DRV_6MA, PULL_DOWN, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x2030>; /* FUNC_2, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@42 {
-			active  = <0x1210>; /* FUNC_1, DRV_6MA, PULL_DOWN, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x2030>; /* FUNC_2, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@43 {
-			active  = <0x1210>; /* FUNC_1, DRV_6MA, PULL_DOWN, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x2030>; /* FUNC_2, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@44 {
-			active  = <0x1210>; /* FUNC_1, DRV_6MA, PULL_DOWN, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+			suspend = <0x2000>; /* FUNC_2, DRV_2MA, PULL_NONE, IN */
 		};
-		gpio@53 {
-			active  = <0x0022>; /* FUNC_GPIO, DRV_2MA, PULL_KEEPER, OUT_LOW */
-			suspend = <0x0022>; /* FUNC_GPIO, DRV_2MA, PULL_KEEPER, OUT_LOW */
+		gpio@45 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
-		gpio@54 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
-			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+		gpio@46 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
 		};
-		gpio@58 {
-			active  = <0x0022>; /* FUNC_GPIO, DRV_2MA, PULL_KEEPER, OUT_LOW */
-			suspend = <0x0022>; /* FUNC_GPIO, DRV_2MA, PULL_KEEPER, OUT_LOW */
+		gpio@47 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
-		gpio@63 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x1010>; /* FUNC_1, DRV_2MA, PULL_DOWN, IN */
-		};
-		gpio@64 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x1010>; /* FUNC_1, DRV_2MA, PULL_DOWN, IN */
-		};
-		gpio@65 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x1010>; /* FUNC_1, DRV_2MA, PULL_DOWN, IN */
-		};
-		gpio@66 {
-			active  = <0x1300>; /* FUNC_1, DRV_8MA, PULL_NONE, IN */
-			suspend = <0x1010>; /* FUNC_1, DRV_2MA, PULL_DOWN, IN */
-		};
-		gpio@67 {
+		gpio@48 {
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
-		gpio@94 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+		gpio@49 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@50 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@51 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@52 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@53 {
+			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
+		};
+		gpio@54 {
 			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 		};
-		gpio@106 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
+		gpio@55 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@56 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@57 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@58 {
+			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
+		};
+		gpio@59 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@60 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@61 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@62 {
+			suspend = <0x0012>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, OUT_LOW */
+		};
+		gpio@63 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@64 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@65 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@66 {
+			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@67 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@68 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@69 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@70 {
+			suspend = <0x0310>; /* FUNC_GPIO, DRV_8MA, PULL_DOWN, IN */
+		};
+		gpio@71 {
+			suspend = <0x0330>; /* FUNC_GPIO, DRV_8MA, PULL_UP, IN */
+		};
+		gpio@72 {
 			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@73 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@74 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@75 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@76 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@77 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@78 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@79 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@80 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@81 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@82 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@83 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@84 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@85 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@86 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@87 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@88 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@89 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@90 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@91 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@92 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@93 {
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+		};
+		gpio@94 {
+			suspend = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
+		};
+		gpio@95 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@96 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@97 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@98 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@99 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@100 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@101 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@102 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@103 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@104 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@105 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@106 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@107 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
-			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@108 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
-			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@109 {
+			suspend = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
+		};
+		gpio@110 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@111 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@112 {
-			active  = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 		};
+		gpio@113 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
+		gpio@114 {
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
+		};
 		gpio@115 {
-			active  = <0x1700>; /* FUNC_1, DRV_16MA, PULL_NONE, IN */
-			suspend = <0x0012>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, OUT_LOW */
+			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@116 {
-			active  = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
 	};
