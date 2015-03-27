@@ -190,6 +190,7 @@
 #define M_COVER			0x000008
 #define M_INIT_COMPLETE		0x000040
 #define M_QUICKPEEK		0x000010
+#define M_LIFT			0x000020
 #define M_HUB_RESET		0x000080
 
 #define M_FLATUP		0x000100
@@ -281,6 +282,7 @@ enum MOTOSH_data_types {
 	DT_UNCALIB_MAG,
 	DT_CHOPCHOP,
 	DT_FLUSH,
+	DT_LIFT,
 };
 
 enum {

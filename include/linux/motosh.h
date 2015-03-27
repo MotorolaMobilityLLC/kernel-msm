@@ -120,6 +120,7 @@
 #define NFC                             0x4D
 #define SIM                             0x4E
 #define CHOPCHOP                        0x4F
+#define LIFT                            0x51
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
@@ -263,6 +264,9 @@
 #define SIM_DATA	0
 #define STEP_DETECT	0
 #define CHOPCHOP_DATA   0
+#define LIFT_DISTANCE	0
+#define LIFT_ROTATION	4
+#define LIFT_GRAV_DIFF	8
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
