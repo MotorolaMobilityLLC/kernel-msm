@@ -26,11 +26,13 @@
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
 #include <linux/switch.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
@@ -39,22 +41,52 @@
 
 #include <linux/motosh.h>
 
+static int maxBufFill = -1;
+static long long int as_queue_numremoved;
+static long long int as_queue_numadded;
+#define AS_QUEUE_SIZE_ESTIMATE (as_queue_numadded - as_queue_numremoved)
+#define AS_QUEUE_MAX_SIZE (1024)
 
+/**
+ * motosh_as_data_buffer_write() - put a sensor event on the as queue
+ *
+ * @ps_motosh: the global motosh data struct
+ * @type:      the data type (DT_*)
+ * @data:      raw sensor data
+ * @size:      the size in bytes of the data
+ * @status:    the status of the sensor event
+ *
+ * NOTE: this function must be reentrant since kmalloc with
+ *       GFP_KERNEL flags can block.
+ *
+ * Return: 1 on success, 0 on dropped event
+ */
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
 	unsigned char status)
 {
-	int new_head;
-	struct motosh_android_sensor_data *buffer;
-	static bool error_reported;
+	static bool full_reported;
 
-	new_head = (ps_motosh->motosh_as_data_buffer_head + 1)
-		& MOTOSH_AS_DATA_QUEUE_MASK;
-	/* Check for buffer full */
-	if (new_head == ps_motosh->motosh_as_data_buffer_tail) {
-		if (!error_reported) {
+	long long int queue_size;
+	struct as_node *new_tail;
+	struct motosh_android_sensor_data *buffer;
+
+	/* Get current queue size */
+	queue_size = AS_QUEUE_SIZE_ESTIMATE;
+
+	if (queue_size > maxBufFill) {
+		dev_dbg(
+			&ps_motosh->client->dev,
+			"maxBufFill = %d",
+			maxBufFill);
+		maxBufFill = queue_size;
+	}
+
+	/* Check for queue full */
+	if (queue_size >= AS_QUEUE_MAX_SIZE) {
+		if (!full_reported) {
 			dev_err(&ps_motosh->client->dev, "as data buffer full\n");
-			error_reported = true;
+			full_reported = true;
 		}
 		/* Some events (especially on-change events) are very
 		 * important to know about if we have to drop them
@@ -86,8 +118,24 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 		}
 		wake_up(&ps_motosh->motosh_as_data_wq);
 		return 0;
+	} /* END: queue full */
+
+	/* Make a new node */
+	new_tail = kmalloc(
+		sizeof(struct as_node),
+		GFP_KERNEL
+	);
+	if (!new_tail) {
+		wake_up(&ps_motosh->motosh_as_data_wq);
+		dev_err(
+			&ps_motosh->client->dev,
+			"as queue kmalloc error"
+		);
+		return 0;
 	}
-	buffer = &(ps_motosh->motosh_as_data_buffer[new_head]);
+
+	/* Populate node data */
+	buffer = &(new_tail->data);
 	buffer->type = type;
 	buffer->status = status;
 	if (data != NULL && size > 0) {
@@ -100,31 +148,61 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	}
 	buffer->size = size;
 
-	buffer->timestamp = motosh_timestamp_ns();
+	/* Add new_tail to end of queue */
+	spin_lock(&(ps_motosh->as_queue_lock));
+		/* Have to timestamp after lock to avoid
+		 * out-of-order events
+		 */
+		buffer->timestamp = motosh_timestamp_ns();
+		list_add_tail(&(new_tail->list), &(ps_motosh->as_queue.list));
+		++as_queue_numadded;
+	spin_unlock(&(ps_motosh->as_queue_lock));
 
-	ps_motosh->motosh_as_data_buffer_head = new_head;
 	wake_up(&ps_motosh->motosh_as_data_wq);
 
-	error_reported = false;
+	/* If we got here, the queue is not full */
+	if (full_reported) {
+		dev_err(
+			&ps_motosh->client->dev,
+			"as data buffer not full\n"
+		);
+	}
+	full_reported = false;
 	return 1;
 }
 
+/**
+ * motosh_as_data_buffer_read() - read/remove an item from the as queue
+ * @ps_motosh: the global motosh data struct
+ * @buff:      the output data item
+ *
+ * NOTE: this function is not reentrant, due to the fact that there is
+ *       only one single-threaded reader
+ * Return: 1 on success, 0 on empty queue
+ */
 int motosh_as_data_buffer_read(struct motosh_data *ps_motosh,
 	struct motosh_android_sensor_data *buff)
 {
-	int new_tail;
+	struct as_node *first;
 
-	if (ps_motosh->motosh_as_data_buffer_tail
-		== ps_motosh->motosh_as_data_buffer_head)
+	/* Get first item in queue */
+	first = list_first_entry_or_null(
+		&(ps_motosh->as_queue.list),
+		struct as_node,
+		list
+	);
+	if (first == NULL)
 		return 0;
 
-	new_tail = (ps_motosh->motosh_as_data_buffer_tail + 1)
-		& MOTOSH_AS_DATA_QUEUE_MASK;
+	/* Copy out the data */
+	*buff = first->data;
 
-	*buff = ps_motosh->motosh_as_data_buffer[new_tail];
-
-	ps_motosh->motosh_as_data_buffer_tail = new_tail;
-
+	/* Delete the item */
+	spin_lock(&(ps_motosh->as_queue_lock));
+		list_del(&(first->list));
+		++as_queue_numremoved;
+	spin_unlock(&(ps_motosh->as_queue_lock));
+	kfree(first);
 	return 1;
 }
 
@@ -209,6 +287,7 @@ static ssize_t motosh_as_read(struct file *file, char __user *buffer,
 	ret = motosh_as_data_buffer_read(ps_motosh, &tmp_buff);
 	if (ret == 0)
 		return 0;
+
 	ret = copy_to_user(buffer, &tmp_buff,
 		sizeof(struct motosh_android_sensor_data));
 	if (ret != 0) {
@@ -226,8 +305,7 @@ static unsigned int motosh_as_poll(struct file *file,
 	struct motosh_data *ps_motosh = file->private_data;
 
 	poll_wait(file, &ps_motosh->motosh_as_data_wq, wait);
-	if (ps_motosh->motosh_as_data_buffer_head
-		!= ps_motosh->motosh_as_data_buffer_tail)
+	if (!list_empty(&(ps_motosh->as_queue.list)))
 		mask = POLLIN | POLLRDNORM;
 
 	return mask;
