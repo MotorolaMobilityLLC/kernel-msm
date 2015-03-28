@@ -1,7 +1,4 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
-/* < DTS2013092405622 shenjinming 20130924 begin */
 /* add the log dynamic control */
 
 /*
@@ -56,7 +53,7 @@ struct bus_type cyttsp4_bus_type;
 
 static void cyttsp4_dev_release(struct device *dev)
 {
-	tp_log_debug( "%s: Enter\n", __func__);
+	tp_log_debug("%s: Enter\n", __func__);
 	put_device(dev->parent);
 }
 
@@ -74,7 +71,8 @@ static int cyttsp4_match_dev(struct device *dev, void *data)
 }
 
 static void cyttsp4_initialize_device(struct cyttsp4_device *dev,
-		struct cyttsp4_device_info const *dev_info)
+				      struct cyttsp4_device_info const
+				      *dev_info)
 {
 	dev->name = dev_info->name;
 	dev->core_id = dev_info->core_id;
@@ -91,7 +89,7 @@ static void _cyttsp4_reinitialize_device(struct cyttsp4_device *dev)
 }
 
 static void cyttsp4_initialize_core(struct cyttsp4_core *core,
-		struct cyttsp4_core_info const *core_info)
+				    struct cyttsp4_core_info const *core_info)
 {
 	core->name = core_info->name;
 	core->id = core_info->id;
@@ -109,31 +107,28 @@ static void _cyttsp4_reinitialize_core(struct cyttsp4_core *core)
 }
 
 static int _cyttsp4_register_dev(struct cyttsp4_device *pdev,
-		struct cyttsp4_core *core)
+				 struct cyttsp4_core *core)
 {
 	int ret;
-    /*< DTS2013031207138 houming 20130312 begin */
 	/* Check if the device is registered with the system */
 	if (bus_find_device(&cyttsp4_bus_type, NULL, &pdev->dev,
-			cyttsp4_match_dev)) {
+			    cyttsp4_match_dev)) {
 		put_device(&pdev->dev);
 		return -EEXIST;
 	}
-    /* DTS2013031207138 houming 20130312 end >*/
 	pdev->core = core;
 	pdev->dev.parent = get_device(&core->dev);
 	pdev->dev.bus = &cyttsp4_bus_type;
 	pdev->dev.type = &cyttsp4_dev_type;
-	dev_set_name(&pdev->dev, "%s.%s", pdev->name,  core->id);
+	dev_set_name(&pdev->dev, "%s.%s", pdev->name, core->id);
 
 	ret = device_register(&pdev->dev);
-	tp_log_debug(
-		"%s: Registering device '%s'. Parent at '%s', err = %d\n",
-		 __func__, dev_name(&pdev->dev),
-		 dev_name(pdev->dev.parent), ret);
+	tp_log_debug("%s: Registering device '%s'. Parent at '%s', err = %d\n",
+		     __func__, dev_name(&pdev->dev),
+		     dev_name(pdev->dev.parent), ret);
 	if (ret) {
-		tp_log_err( "%s: failed to register device, err %d\n",
-			__func__, ret);
+		tp_log_err("%s: failed to register device, err %d\n",
+			   __func__, ret);
 		pdev->core = NULL;
 	}
 	return ret;
@@ -143,42 +138,39 @@ static void _cyttsp4_unregister_dev(struct cyttsp4_device *pdev)
 {
 	/* Check if the device is registered with the system */
 	if (!bus_find_device(&cyttsp4_bus_type, NULL, &pdev->dev,
-			cyttsp4_match_dev))
+			     cyttsp4_match_dev))
 		return;
 
-	tp_log_debug( "%s: Unregistering device '%s'.\n",
-		__func__, dev_name(&pdev->dev));
+	tp_log_debug("%s: Unregistering device '%s'.\n",
+		     __func__, dev_name(&pdev->dev));
 	/* Put reference taken by bus_find_device() */
 	put_device(&pdev->dev);
 	device_unregister(&pdev->dev);
 }
 
 static int _cyttsp4_register_core(struct cyttsp4_core *pdev,
-		struct cyttsp4_adapter *adap)
+				  struct cyttsp4_adapter *adap)
 {
 	int ret;
-	/*< DTS2013031207138 houming 20130312 begin */
 	/* Check if the device is registered with the system */
 	if (bus_find_device(&cyttsp4_bus_type, NULL, &pdev->dev,
-			cyttsp4_match_dev)) {
+			    cyttsp4_match_dev)) {
 		put_device(&pdev->dev);
 		return -EEXIST;
 	}
-    /* DTS2013031207138 houming 20130312 end >*/
 	pdev->adap = adap;
 	pdev->dev.parent = get_device(adap->dev);
 	pdev->dev.bus = &cyttsp4_bus_type;
 	pdev->dev.type = &cyttsp4_core_type;
-	dev_set_name(&pdev->dev, "%s.%s", pdev->id,  adap->id);
+	dev_set_name(&pdev->dev, "%s.%s", pdev->id, adap->id);
 
 	ret = device_register(&pdev->dev);
-	tp_log_debug(
-		"%s: Registering device '%s'. Parent at '%s', err = %d\n",
-		 __func__, dev_name(&pdev->dev),
-		 dev_name(pdev->dev.parent), ret);
+	tp_log_debug("%s: Registering device '%s'. Parent at '%s', err = %d\n",
+		     __func__, dev_name(&pdev->dev),
+		     dev_name(pdev->dev.parent), ret);
 	if (ret) {
-		tp_log_err( "%s: failed to register device, err %d\n",
-			__func__, ret);
+		tp_log_err("%s: failed to register device, err %d\n",
+			   __func__, ret);
 		pdev->adap = NULL;
 	}
 	return ret;
@@ -188,26 +180,26 @@ static void _cyttsp4_unregister_core(struct cyttsp4_core *pdev)
 {
 	/* Check if the core is registered with the system */
 	if (!bus_find_device(&cyttsp4_bus_type, NULL, &pdev->dev,
-			cyttsp4_match_dev))
+			     cyttsp4_match_dev))
 		return;
 
-	tp_log_debug( "%s: Unregistering core '%s'.\n",
-		__func__, dev_name(&pdev->dev));
+	tp_log_debug("%s: Unregistering core '%s'.\n",
+		     __func__, dev_name(&pdev->dev));
 	/* Put reference taken by bus_find_device() */
 	put_device(&pdev->dev);
 	device_unregister(&pdev->dev);
 }
 
-static void _cyttsp4_unregister_and_reinitialize_devices(
-		struct cyttsp4_core *core)
+static void _cyttsp4_unregister_and_reinitialize_devices(struct cyttsp4_core
+							 *core)
 {
 	struct cyttsp4_device *dev;
 
 	list_for_each_entry(dev, &cyttsp4_dev_list, node)
-		if (dev->core == core) {
-			_cyttsp4_unregister_dev(dev);
-			_cyttsp4_reinitialize_device(dev);
-		}
+	    if (dev->core == core) {
+		_cyttsp4_unregister_dev(dev);
+		_cyttsp4_reinitialize_device(dev);
+	}
 }
 
 static struct cyttsp4_adapter *find_adapter(char const *adap_id)
@@ -215,8 +207,8 @@ static struct cyttsp4_adapter *find_adapter(char const *adap_id)
 	struct cyttsp4_adapter *a;
 
 	list_for_each_entry(a, &adapter_list, node)
-		if (!strncmp(a->id, adap_id, NAME_MAX))
-			return a;
+	    if (!strncmp(a->id, adap_id, NAME_MAX))
+		return a;
 	return NULL;
 }
 
@@ -225,8 +217,8 @@ static struct cyttsp4_core *find_core(char const *core_id)
 	struct cyttsp4_core *d;
 
 	list_for_each_entry(d, &core_dev_list, node)
-		if (!strncmp(d->id, core_id, NAME_MAX))
-			return d;
+	    if (!strncmp(d->id, core_id, NAME_MAX))
+		return d;
 	return NULL;
 }
 
@@ -240,15 +232,14 @@ static struct cyttsp4_core *find_core_with_driver(char const *core_id)
 	return NULL;
 }
 
-static struct cyttsp4_device *find_device(char const *name,
-		char const *core_id)
+static struct cyttsp4_device *find_device(char const *name, char const *core_id)
 {
 	struct cyttsp4_device *d;
 
 	list_for_each_entry(d, &cyttsp4_dev_list, node)
-		if (!strncmp(d->name, name, NAME_MAX) &&
-				!strncmp(d->core_id, core_id, NAME_MAX))
-			return d;
+	    if (!strncmp(d->name, name, NAME_MAX) &&
+		!strncmp(d->core_id, core_id, NAME_MAX))
+		return d;
 	return NULL;
 }
 
@@ -257,8 +248,8 @@ static void rescan_devices(struct cyttsp4_core *core)
 	struct cyttsp4_device *d;
 
 	list_for_each_entry(d, &cyttsp4_dev_list, node)
-		if (!d->core && !strncmp(core->id, d->core_id, NAME_MAX))
-			_cyttsp4_register_dev(d, core);
+	    if (!d->core && !strncmp(core->id, d->core_id, NAME_MAX))
+		_cyttsp4_register_dev(d, core);
 }
 
 static void rescan_cores(struct cyttsp4_adapter *adap)
@@ -266,12 +257,11 @@ static void rescan_cores(struct cyttsp4_adapter *adap)
 	struct cyttsp4_core *d;
 
 	list_for_each_entry(d, &core_dev_list, node)
-		if (!d->adap && !strncmp(adap->id, d->adap_id, NAME_MAX))
-			_cyttsp4_register_core(d, adap);
+	    if (!d->adap && !strncmp(adap->id, d->adap_id, NAME_MAX))
+		_cyttsp4_register_core(d, adap);
 }
 
-static int cyttsp4_check_device_info(
-	struct cyttsp4_device_info const *dev_info)
+static int cyttsp4_check_device_info(struct cyttsp4_device_info const *dev_info)
 {
 	int len;
 
@@ -291,8 +281,7 @@ static int cyttsp4_check_device_info(
 	return 0;
 }
 
-static int cyttsp4_check_core_info(
-	struct cyttsp4_core_info const *core_info)
+static int cyttsp4_check_core_info(struct cyttsp4_core_info const *core_info)
 {
 	int len;
 
@@ -337,21 +326,23 @@ int cyttsp4_register_device(struct cyttsp4_device_info const *dev_info)
 
 	mutex_lock(&core_lock);
 	if (find_device(dev_info->name, dev_info->core_id)) {
-		tp_log_debug("%s: device '%s' with core id '%s' already exists\n",
-			__func__, dev_info->name, dev_info->core_id);
+		tp_log_debug
+		    ("%s: device '%s' with core id '%s' already exists\n",
+		     __func__, dev_info->name, dev_info->core_id);
 		ret = -EEXIST;
 		goto fail_unlock;
 	}
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
 		tp_log_err("%s: failed to allocate device '%s'\n",
-			__func__, dev_info->name);
+			   __func__, dev_info->name);
 		ret = -ENOMEM;
 		goto fail_unlock;
 	}
 	cyttsp4_initialize_device(dev, dev_info);
 	list_add(&dev->node, &cyttsp4_dev_list);
-	tp_log_debug("%s: '%s' added to cyttsp4_dev_list\n", __func__, dev->name);
+	tp_log_debug("%s: '%s' added to cyttsp4_dev_list\n", __func__,
+		     dev->name);
 	core = find_core_with_driver(dev->core_id);
 	if (core)
 		ret = _cyttsp4_register_dev(dev, core);
@@ -360,6 +351,7 @@ fail_unlock:
 fail:
 	return ret;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_register_device);
 
 int cyttsp4_unregister_device(char const *name, char const *core_id)
@@ -375,20 +367,22 @@ int cyttsp4_unregister_device(char const *name, char const *core_id)
 	mutex_lock(&core_lock);
 	dev = find_device(name, core_id);
 	if (!dev) {
-		tp_log_err("%s: device '%s' could not be found\n", __func__, name);
+		tp_log_err("%s: device '%s' could not be found\n", __func__,
+			   name);
 		ret = -ENODEV;
 		goto fail_unlock;
 	}
 	_cyttsp4_unregister_dev(dev);
 	list_del(&dev->node);
 	tp_log_debug("%s: '%s' removed from cyttsp4_dev_list\n", __func__,
-		dev->name);
+		     dev->name);
 	kfree(dev);
 fail_unlock:
 	mutex_unlock(&core_lock);
 fail:
 	return ret;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_unregister_device);
 
 int cyttsp4_register_core_device(struct cyttsp4_core_info const *core_info)
@@ -411,14 +405,14 @@ int cyttsp4_register_core_device(struct cyttsp4_core_info const *core_info)
 	mutex_lock(&core_lock);
 	if (find_core(core_info->id)) {
 		tp_log_debug("%s: core id '%s' already exists\n",
-				__func__, core_info->id);
+			     __func__, core_info->id);
 		ret = -EEXIST;
 		goto fail_unlock;
 	}
 	core = kzalloc(sizeof(*core), GFP_KERNEL);
 	if (!core) {
 		tp_log_err("%s: failed to allocate core device '%s'\n",
-			__func__, core_info->name);
+			   __func__, core_info->name);
 		ret = -ENOMEM;
 		goto fail_unlock;
 	}
@@ -428,7 +422,7 @@ int cyttsp4_register_core_device(struct cyttsp4_core_info const *core_info)
 	adap = find_adapter(core->adap_id);
 	if (adap) {
 		tp_log_debug("%s: adapter for '%s' is '%s'\n", __func__,
-				core->id, dev_name(adap->dev));
+			     core->id, dev_name(adap->dev));
 		ret = _cyttsp4_register_core(core, adap);
 		if (!ret)
 			rescan_devices(core);
@@ -438,29 +432,29 @@ fail_unlock:
 fail:
 	return ret;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_register_core_device);
 
 int cyttsp4_add_adapter(char const *id, struct cyttsp4_ops const *ops,
-		struct device *parent)
+			struct device *parent)
 {
 	int rc = 0;
 	struct cyttsp4_adapter *a;
 
 	if (!parent) {
-		tp_log_err( "%s: need parent for '%s'\n", __func__, id);
+		tp_log_err("%s: need parent for '%s'\n", __func__, id);
 		return -EINVAL;
 	}
 	mutex_lock(&core_lock);
 	if (find_adapter(id)) {
-		tp_log_err( "%s: adapter '%s' already exists\n",
-				__func__, id);
+		tp_log_err("%s: adapter '%s' already exists\n", __func__, id);
 		rc = -EEXIST;
 		goto fail;
 	}
 	a = kzalloc(sizeof(*a), GFP_KERNEL);
 	if (!a) {
-		tp_log_err( "%s: failed to allocate adapter '%s'\n",
-				__func__, id);
+		tp_log_err("%s: failed to allocate adapter '%s'\n",
+			   __func__, id);
 		rc = -ENOMEM;
 		goto fail;
 	}
@@ -470,12 +464,13 @@ int cyttsp4_add_adapter(char const *id, struct cyttsp4_ops const *ops,
 	a->write = ops->write;
 	a->dev = parent;
 	list_add(&a->node, &adapter_list);
-	tp_log_debug( "%s: '%s' added to adapter_list\n", __func__, id);
+	tp_log_debug("%s: '%s' added to adapter_list\n", __func__, id);
 	rescan_cores(a);
 fail:
 	mutex_unlock(&core_lock);
 	return rc;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_add_adapter);
 
 int cyttsp4_del_adapter(char const *id)
@@ -487,8 +482,7 @@ int cyttsp4_del_adapter(char const *id)
 	mutex_lock(&core_lock);
 	adap = find_adapter(id);
 	if (!adap) {
-		tp_log_err("%s: adapter '%s' does not exist\n",
-			__func__, id);
+		tp_log_err("%s: adapter '%s' does not exist\n", __func__, id);
 		rc = -ENODEV;
 		goto fail;
 	}
@@ -512,6 +506,7 @@ fail:
 	mutex_unlock(&core_lock);
 	return rc;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_del_adapter);
 
 static struct cyttsp4_device *verify_device_type(struct device *dev)
@@ -529,23 +524,21 @@ static int cyttsp4_device_match(struct device *dev, struct device_driver *drv)
 	struct cyttsp4_device *cyttsp4_dev = verify_device_type(dev);
 	struct cyttsp4_core *cyttsp4_core;
 	int match;
-	/* < DTS2013111905649 zhangmin 20131119 begin */
 	if (cyttsp4_dev) {
 		match = strncmp(cyttsp4_dev->name, drv->name, NAME_MAX) == 0;
-		tp_log_debug("%s: %s",__func__,cyttsp4_dev->name);
+		tp_log_debug("%s: %s", __func__, cyttsp4_dev->name);
 		goto exit;
 	}
 	cyttsp4_core = verify_core_type(dev);
 	if (cyttsp4_core) {
 		match = strncmp(cyttsp4_core->name, drv->name, NAME_MAX) == 0;
-		tp_log_debug("%s: %s",__func__,cyttsp4_core->name);
+		tp_log_debug("%s: %s", __func__, cyttsp4_core->name);
 		goto exit;
 	}
 	match = 0;
 exit:
-	tp_log_debug( " %s matching '%s' driver\n",
-			match ? "is" : "isn't", drv->name);
-	/* DTS2013111905649 zhangmin 20131119 end > */
+	tp_log_debug(" %s matching '%s' driver\n",
+		     match ? "is" : "isn't", drv->name);
 	return match;
 }
 
@@ -583,7 +576,7 @@ static int cyttsp4_pm_suspend(struct device *dev)
 {
 	struct device_driver *drv = dev->driver;
 
-	tp_log_debug( "%s\n", __func__);
+	tp_log_debug("%s\n", __func__);
 	if (drv && drv->pm && drv->pm->suspend)
 		return drv->pm->suspend(dev);
 	return 0;
@@ -593,7 +586,7 @@ static int cyttsp4_pm_resume(struct device *dev)
 {
 	struct device_driver *drv = dev->driver;
 
-	tp_log_debug( "%s\n", __func__);
+	tp_log_debug("%s\n", __func__);
 	if (drv && drv->pm && drv->pm->resume)
 		return drv->pm->resume(dev);
 	return 0;
@@ -622,12 +615,13 @@ static const struct dev_pm_ops cyttsp4_dev_pm_ops = {
 };
 
 struct bus_type cyttsp4_bus_type = {
-	.name		= "ttsp4",
-	.dev_attrs	= cyttsp4_dev_attrs,
-	.match		= cyttsp4_device_match,
-	.uevent		= NULL,
-	.pm		= &cyttsp4_dev_pm_ops,
+	.name = "ttsp4",
+	.dev_attrs = cyttsp4_dev_attrs,
+	.match = cyttsp4_device_match,
+	.uevent = NULL,
+	.pm = &cyttsp4_dev_pm_ops,
 };
+
 EXPORT_SYMBOL_GPL(cyttsp4_bus_type);
 
 static int cyttsp4_drv_remove(struct device *_dev)
@@ -674,13 +668,13 @@ static int cyttsp4_drv_probe(struct device *_dev)
 
 	if (!core || !core->dev.driver)
 		return -ENODEV;
-	/* Increase usage count of the core driver*/
+	/* Increase usage count of the core driver */
 	__module_get(core->dev.driver->owner);
 
 	rc = drv->probe(dev);
 	if (rc)
 		module_put(core->dev.driver->owner);
-	tp_log_debug( "%s: for %s = %d\n", __func__, dev->name, rc);
+	tp_log_debug("%s: for %s = %d\n", __func__, dev->name, rc);
 	return rc;
 }
 
@@ -691,14 +685,14 @@ static int cyttsp4_core_drv_probe(struct device *_dev)
 	struct cyttsp4_adapter *adap = dev->adap;
 	int rc;
 
-	/*Increase the judgment conditions*/
+	/*Increase the judgment conditions */
 	if (!adap || !adap->dev->driver)
 		return -ENODEV;
-	/* Increase usage count of the adapter driver*/
+	/* Increase usage count of the adapter driver */
 	__module_get(adap->dev->driver->owner);
 
 	rc = drv->probe(dev);
-	tp_log_debug( "%s: for %s = %d\n", __func__, dev->name, rc);
+	tp_log_debug("%s: for %s = %d\n", __func__, dev->name, rc);
 	if (!rc)
 		rescan_devices(dev);
 	else
@@ -719,6 +713,7 @@ int cyttsp4_register_driver(struct cyttsp4_driver *drv)
 	tp_log_debug("%s: '%s' returned %d\n", __func__, drv->driver.name, ret);
 	return ret;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_register_driver);
 
 int cyttsp4_register_core_driver(struct cyttsp4_core_driver *drv)
@@ -734,24 +729,27 @@ int cyttsp4_register_core_driver(struct cyttsp4_core_driver *drv)
 	tp_log_debug("%s: '%s' returned %d\n", __func__, drv->driver.name, ret);
 	return ret;
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_register_core_driver);
 
 void cyttsp4_unregister_driver(struct cyttsp4_driver *drv)
 {
 	driver_unregister(&drv->driver);
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_unregister_driver);
 
 void cyttsp4_unregister_core_driver(struct cyttsp4_core_driver *drv)
 {
 	driver_unregister(&drv->driver);
 }
+
 EXPORT_SYMBOL_GPL(cyttsp4_unregister_core_driver);
 
 static int __init cyttsp4_bus_init(void)
 {
 	int error;
-	error =  bus_register(&cyttsp4_bus_type);
+	error = bus_register(&cyttsp4_bus_type);
 	if (error)
 		tp_log_err("%s: error %d\n", __func__, error);
 	else
@@ -764,14 +762,9 @@ static void __exit cyttsp4_bus_exit(void)
 	tp_log_debug("%s: ok\n", __func__);
 }
 
-/* < DTS2013091304609 shenjinming 20131129 begin */
 /* cyttsp bus init too early,set the property as 5s */
 fs_initcall_sync(cyttsp4_bus_init);
-/* DTS2013091304609 shenjinming 20131129 end > */
 module_exit(cyttsp4_bus_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Aleksej Makarov <aleksej.makarov@sonyericsson.com>");
 
-/* DTS2013092405622 shenjinming 20130924 end > */
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */

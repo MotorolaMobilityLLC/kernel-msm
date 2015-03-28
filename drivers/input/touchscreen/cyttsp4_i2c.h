@@ -1,4 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
 
 /*
  * cyttsp4_i2c.h
@@ -34,11 +33,8 @@
 
 #define CYTTSP4_I2C_NAME "cyttsp4_i2c_adapter"
 
-/*< DTS2013030503552 houming 20130308 begin */
 /*Extern the variable*/
 extern struct regulator *vdd_cypress;
 extern struct regulator *vbus_cypress;
-/* DTS2013030503552 houming 20130308 end > */
 
 #endif /* _LINUX_CYTTSP4_I2C_H */
-/* DTS2013050605374 shenjinming 20130508 end > */

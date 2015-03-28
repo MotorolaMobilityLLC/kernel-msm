@@ -1,4 +1,3 @@
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 /*
  * cyttsp4_devtree.h
@@ -37,4 +36,3 @@ static inline int cyttsp4_devtree_register_devices(struct device *adap_dev)
 }
 #endif
 
-/* DTS2013062605264 sunlibin 20130702 end > */

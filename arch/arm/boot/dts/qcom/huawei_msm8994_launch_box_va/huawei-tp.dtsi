@@ -1,6 +1,3 @@
-/* <DTS2014012301511 liyunlong 20140123 begin */
-/* < DTS2014011801994 tenghui 20140118 begin */
-/* < DTS2014010309198 sunlibin 20140104 begin */
 &soc {
 	/* BLSP1 QUP2 */
 	i2c@f9924000 { 
@@ -150,6 +147,3 @@
 	};
 
 };
-/* DTS2014010309198 sunlibin 20140104 end > */
-/* DTS2014011801994 tenghui 20140118 end > */
-/* DTS2014012301511 liyunlong 20140123 end> */

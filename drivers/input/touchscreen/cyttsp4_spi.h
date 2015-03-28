@@ -1,4 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
 
 /*
  * cyttsp4_spi.h
@@ -37,4 +36,3 @@
 #define CYTTSP4_SPI_NAME "cyttsp4_spi_adapter"
 
 #endif /* _LINUX_CYTTSP4_SPI_H */
-/* DTS2013050605374 shenjinming 20130508 end > */

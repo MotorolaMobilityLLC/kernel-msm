@@ -1,5 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 
 /*
@@ -47,7 +45,6 @@ struct cyttsp4_device_access_platform_data {
 	char const *device_access_dev_name;
 };
 
-/* < DTS2013070806058 shenjinming 20130708 begin */
 #define CY_CMD_IN_DATA_OFFSET_VALUE 0
 #define CY_CMD_LCL_IDAC_OFFSET 1
 
@@ -58,7 +55,6 @@ struct cyttsp4_device_access_platform_data {
 
 #define CY_CMD_RET_PANEL_ELMNT_SZ_MASK 0x07
 #define I2C_BUF_MAX_SIZE 250
-
 
 enum cyttsp4_scan_data_type {
 	CY_MUT_RAW,
@@ -72,56 +68,40 @@ enum cyttsp4_scan_data_type {
 	CY_BAL_DIFF,
 };
 
-enum check_data_type{
+enum check_data_type {
 	CY_CHK_MUT_RAW,
 	CY_CHK_SELF_RAW,
 	CY_CHK_MUT_IDAC,
 	CY_CHK_SELF_IDAC,
 };
-/* < DTS2014021202262 zhangmin 20140212 begin */
-typedef enum
-{
+typedef enum {
 	CY_TMD445 = 0,
 	CY_TMD463 = 1,
 	CY_TMDUNKNOW
-}cy_tp_ic_version;
-/* DTS2014021202262 zhangmin 20140212 end > */
-/* < DTS2013080102139 shenjinming 20130801 begin */
+} cy_tp_ic_version;
 /* tp capacitance infomation */
-/* < DTS2014012003402 shenjinming 20140120 begin */
 /* add a element of self capcitance number */
-typedef struct cypress4_tp_cap_info_{
-    int min_mut_cap;
-    int max_mut_cap;
-    int min_self_cap;
-    int max_self_cap;
-    int tx_lines;
-    int rx_lines;
-    int self_cap_num;
-    bool data_ok;
-    /* <DTS2013081407019 vaibhav 20130814 begin */
-    u16 *ignore_list_self_cap;
-    u16 *ignore_list_mut_cap;
-    int ignore_list_size_self_cap;
-    int ignore_list_size_mut_cap;
-    int data_start_byte;
-    /* < DTS2014021202262 zhangmin 20140212 begin */
-    cy_tp_ic_version tp_ic_version;
-    /* DTS2014021202262 zhangmin 20140212 end > */
-    /* DTS2013081407019 vaibhav 20130814 end> */
-}cypress4_tp_cap_info;
-/* DTS2014012003402 shenjinming 20140120 end > */
+typedef struct cypress4_tp_cap_info_ {
+	int min_mut_cap;
+	int max_mut_cap;
+	int min_self_cap;
+	int max_self_cap;
+	int tx_lines;
+	int rx_lines;
+	int self_cap_num;
+	bool data_ok;
+	u16 *ignore_list_self_cap;
+	u16 *ignore_list_mut_cap;
+	int ignore_list_size_self_cap;
+	int ignore_list_size_mut_cap;
+	int data_start_byte;
+	cy_tp_ic_version tp_ic_version;
+} cypress4_tp_cap_info;
 
 #define CYP_CAP_NUM_MAX     20
 
-/* < DTS2014010309198 sunlibin 20140104 begin */
 /*move to hw_tp_common.c*/
-/* DTS2014010309198 sunlibin 20140104 end > */
-/* DTS2013080102139 shenjinming 20130801 end > */
 
-/* DTS2013070806058 shenjinming 20130708 end > */
 
 #endif /* _LINUX_CYTTSP4_DEVICE_ACCESS_H */
 
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */

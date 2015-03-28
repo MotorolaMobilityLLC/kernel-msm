@@ -84,9 +84,7 @@ obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
 obj-$(CONFIG_TOUCHSCREEN_BU21150)	+= bu21150.o
 obj-$(CONFIG_INPUT_MT_WRAPPER)		+= input_mt_wrapper.o
 
-#/*< DTS2015032200690 lijianzhao 20150322 begin */
 #add tp and lcd driver
-#/* < DTS2013062605264 sunlibin 20130702 begin */
 obj-y += hw_tp_common.o
 obj-$(CONFIG_CYPRESS_CYTTSP4_BUS) += cyttsp4_bus.o
 obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_I2C)	+= cyttsp4_i2c.o
@@ -142,5 +140,3 @@ CFLAGS_cyttsp4_devtree.o += -DVERBOSE_DEBUG
 CFLAGS_cyttsp4_platform.o += -DVERBOSE_DEBUG
 endif
 
-#/* DTS2013062605264 sunlibin 20130702 end > */
-#/* DTS2015032200690 lijianzhao 20150322 end >*/

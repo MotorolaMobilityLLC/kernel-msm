@@ -1,5 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 
 /*
@@ -46,10 +44,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
-/* < DTS2013121402231 shenjinming 20131212 begin */
 #include <linux/notifier.h>
 #include <linux/fb.h>
-/* DTS2013121402231 shenjinming 20131212 end > */
 
 #include <linux/cyttsp4_core.h>
 #include <linux/cyttsp4_mt.h>
@@ -57,19 +53,19 @@
 
 struct cyttsp4_mt_data;
 struct cyttsp4_mt_function {
-	int (*mt_release)(struct cyttsp4_device *ttsp);
-	int (*mt_probe)(struct cyttsp4_device *ttsp,
-			struct cyttsp4_mt_data *md);
-	void (*report_slot_liftoff)(struct cyttsp4_mt_data *md, int max_slots);
-	void (*input_sync)(struct input_dev *input);
-	void (*input_report)(struct input_dev *input, int sig, int t,
-			int type);
-	void (*final_sync)(struct input_dev *input, int max_slots,
-			int mt_sync_count, unsigned long *ids);
-	int (*input_register_device)(struct input_dev *input, int max_slots);
+	int (*mt_release) (struct cyttsp4_device * ttsp);
+	int (*mt_probe) (struct cyttsp4_device * ttsp,
+			 struct cyttsp4_mt_data * md);
+	void (*report_slot_liftoff) (struct cyttsp4_mt_data * md,
+				     int max_slots);
+	void (*input_sync) (struct input_dev * input);
+	void (*input_report) (struct input_dev * input, int sig, int t,
+			      int type);
+	void (*final_sync) (struct input_dev * input, int max_slots,
+			    int mt_sync_count, unsigned long *ids);
+	int (*input_register_device) (struct input_dev * input, int max_slots);
 };
 
-/* < DTS2013121402231 shenjinming 20131212 begin */
 struct cyttsp4_mt_data {
 	struct cyttsp4_device *ttsp;
 	struct cyttsp4_mt_platform_data *pdata;
@@ -83,17 +79,14 @@ struct cyttsp4_mt_data {
 	bool is_suspended;
 	bool input_device_registered;
 	char phys[NAME_MAX];
-	int num_prv_rec; /* Number of previous touch records */
+	int num_prv_rec;	/* Number of previous touch records */
 	int prv_tch_type;
 #ifdef VERBOSE_DEBUG
 	u8 pr_buf[CY_MAX_PRBUF_SIZE];
 #endif
 	struct notifier_block fb_notif;
 };
-/* DTS2013121402231 shenjinming 20131212 end > */
 
 extern void cyttsp4_init_function_ptrs(struct cyttsp4_mt_data *md);
 extern struct cyttsp4_driver cyttsp4_mt_driver;
 
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */

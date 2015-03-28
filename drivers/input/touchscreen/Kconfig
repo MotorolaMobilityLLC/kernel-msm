@@ -11,14 +11,10 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
-#/*< DTS2015032200690 lijianzhao 20150322 begin */
 #add tp and lcd driver
-# /* < DTS2013050605374 shenjinming 20130508 begin */
-#/* < DTS2013062605264 sunlibin 20130702 begin */
 
 config TOUCHSCREEN_CYPRESS_CYTTSP4
 	tristate "Cypress TrueTouch Gen4 Touchscreen Driver"
-	depends on HUAWEI_KERNEL
 	default n
 	select CYPRESS_CYTTSP4_BUS
 	select TOUCHSCREEN_CYPRESS_CYTTSP4_I2C
@@ -100,7 +96,6 @@ config TOUCHSCREEN_CYPRESS_CYTTSP4_BINARY_FW_UPGRADE
 	  Generation4 device Firmware into kernel itself.
 	  This should be enabled for manual FW upgrade.
 
-#/* < DTS2013071205587 sunlibin 20130715 begin */
 config TOUCHSCREEN_HUAWEI_CYTTSP4_RECOVERY_FW_UPDATE
 	bool "FW upgrade from recovery binary file"
 	depends on TOUCHSCREEN_CYPRESS_CYTTSP4_LOADER
@@ -109,7 +104,6 @@ config TOUCHSCREEN_HUAWEI_CYTTSP4_RECOVERY_FW_UPDATE
 	  Include Cypress TrueTouch(tm) Standard Product
 	  Generation4 device Firmware into kernel itself.
 	  This should be enabled for manual FW upgrade.
-#/* DTS2013071205587 sunlibin 20130715 end > */
 
 config TOUCHSCREEN_CYPRESS_CYTTSP4_PLATFORM_TTCONFIG_UPGRADE
 	bool "TT Configuration upgrade from header file"
@@ -228,9 +222,6 @@ config TOUCHSCREEN_CYPRESS_CYTTSP4_DEBUG_MODULE
 	  This module adds support for verbose printing touch
 	  information.
 	  
-#/* DTS2013062605264 sunlibin 20130702 end > */
-# /* DTS2013050605374 shenjinming 20130508 end > */
-#/* DTS2015032200690 lijianzhao 20150322 end >*/
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 
 config TOUCHSCREEN_88PM860X

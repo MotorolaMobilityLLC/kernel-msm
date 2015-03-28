@@ -1,4 +1,3 @@
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 /*
  * cyttsp4_device_access-api.h
@@ -50,11 +49,12 @@
 #define OP_PARAM_ACTIVE_LOOK_FOR_TOUCH_INTERVAL 0x4F
 
 extern int cyttsp4_device_access_read_command(const char *core_name,
-		int ic_grpnum, int ic_grpoffset, u8 *buf, int buf_size);
+					      int ic_grpnum, int ic_grpoffset,
+					      u8 * buf, int buf_size);
 
 extern int cyttsp4_device_access_write_command(const char *core_name,
-		int ic_grpnum, int ic_grpoffset, u8 *buf, int length);
+					       int ic_grpnum, int ic_grpoffset,
+					       u8 * buf, int length);
 
 #endif /* _LINUX_CYTTSP4_DEVICE_ACCESS_API_H */
 
-/* DTS2013062605264 sunlibin 20130702 end > */

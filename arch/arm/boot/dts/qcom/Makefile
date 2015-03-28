@@ -1,7 +1,5 @@
 ifeq ($(CONFIG_OF),y)
-#/* < DTS2015031807289 yedapeng 20150313 begin */
 include $(srctree)/arch/arm/boot/dts/qcom/Makefile.board
-#/* DTS2015031807289 yedapeng 20150313 end > */
 dtb-$(CONFIG_ARCH_MSM8974) += msm8974-v1-cdp.dtb \
 	msm8974-v1-fluid.dtb \
 	msm8974-v1-liquid.dtb \

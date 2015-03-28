@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
  
-/*<DTS2015031807289 yedapeng 20150313 begin*/
 /dts-v1/;
 
 #include "msm8994-v2.0.dtsi"
@@ -24,4 +23,3 @@
 	qcom,board-id= <8000 0>;
 	huawei,modem_id = <0xFD000100 0x0>;
 };
-/*DTS2015031807289 yedapeng 20150313 end>*/

@@ -1,7 +1,4 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
-/* < DTS2013092405622 shenjinming 20130924 begin */
 /* add the log dynamic control */
 
 /*
@@ -39,7 +36,7 @@
 #include "cyttsp4_mt_common.h"
 
 static void cyttsp4_final_sync(struct input_dev *input, int max_slots,
-		int mt_sync_count, unsigned long *ids)
+			       int mt_sync_count, unsigned long *ids)
 {
 	if (mt_sync_count)
 		input_sync(input);
@@ -51,7 +48,7 @@ static void cyttsp4_input_sync(struct input_dev *input)
 }
 
 static void cyttsp4_input_report(struct input_dev *input, int sig,
-		 int t, int type)
+				 int t, int type)
 {
 	if (type == CY_OBJ_STANDARD_FINGER || type == CY_OBJ_GLOVE) {
 		input_report_key(input, BTN_TOOL_FINGER, CY_BTN_PRESSED);
@@ -66,7 +63,7 @@ static void cyttsp4_input_report(struct input_dev *input, int sig,
 }
 
 static void cyttsp4_report_slot_liftoff(struct cyttsp4_mt_data *md,
-		int max_slots)
+					int max_slots)
 {
 	input_report_key(md->input, BTN_TOUCH, CY_BTN_RELEASED);
 	input_report_key(md->input, BTN_TOOL_FINGER, CY_BTN_RELEASED);
@@ -90,17 +87,17 @@ void cyttsp4_init_function_ptrs(struct cyttsp4_mt_data *md)
 	md->mt_function.input_report = cyttsp4_input_report;
 	md->mt_function.input_register_device = cyttsp4_input_register_device;
 }
-/* < DTS2013091004488 shenjinming 20130910 begin */
+
 static int __init cyttsp4_mt_init(void)
 {
 	int rc;
 	cyttsp4_mt_driver.driver.owner = THIS_MODULE;
 	rc = cyttsp4_register_driver(&cyttsp4_mt_driver);
 	tp_log_info("%s: Cypress TTSP MTA v4 multi-touch (Built %s), rc=%d\n",
-		 __func__, CY_DRIVER_DATE, rc);
+		    __func__, CY_DRIVER_DATE, rc);
 	return rc;
 }
-/* DTS2013091004488 shenjinming 20130910 end > */
+
 module_init(cyttsp4_mt_init);
 
 static void __exit cyttsp4_mt_exit(void)
@@ -108,11 +105,9 @@ static void __exit cyttsp4_mt_exit(void)
 	cyttsp4_unregister_driver(&cyttsp4_mt_driver);
 	tp_log_info("%s: module exit\n", __func__);
 }
+
 module_exit(cyttsp4_mt_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Cypress TrueTouch(R) Standard 2D multi-touch driver");
 MODULE_AUTHOR("Cypress Semiconductor");
-/* DTS2013092405622 shenjinming 20130924 end > */
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */

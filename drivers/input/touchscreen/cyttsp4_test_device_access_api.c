@@ -1,4 +1,3 @@
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 /*
  * cyttsp4_test_device_access_api.c
@@ -60,11 +59,12 @@ static int __init cyttsp4_test_device_access_api_init(void)
 	 * return size + config row size bytes
 	 */
 	rc = cyttsp4_device_access_read_command(NULL,
-			GRPNUM_TOUCH_CONFIG, CONFIG_VER_OFFSET,
-			buffer, BUFFER_SIZE);
+						GRPNUM_TOUCH_CONFIG,
+						CONFIG_VER_OFFSET, buffer,
+						BUFFER_SIZE);
 	if (rc < 0) {
 		pr_err("%s: cyttsp4_device_access_read_command failed, rc=%d\n",
-			__func__, rc);
+		       __func__, rc);
 		goto exit;
 	}
 
@@ -88,11 +88,13 @@ static int __init cyttsp4_test_device_access_api_init(void)
 	 * Group 6 write supports writing arbitrary number of bytes
 	 */
 	rc = cyttsp4_device_access_write_command(NULL,
-			GRPNUM_TOUCH_CONFIG, CONFIG_VER_OFFSET,
-			buffer, CONFIG_VER_SIZE);
+						 GRPNUM_TOUCH_CONFIG,
+						 CONFIG_VER_OFFSET, buffer,
+						 CONFIG_VER_SIZE);
 	if (rc < 0) {
-		pr_err("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
-			__func__, rc);
+		pr_err
+		    ("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
+		     __func__, rc);
 		goto exit;
 	}
 
@@ -100,15 +102,17 @@ static int __init cyttsp4_test_device_access_api_init(void)
 	 * CASE 2 - Get Operational mode parameters
 	 */
 	for (i = OP_PARAM_ACTIVE_DISTANCE;
-			i <= OP_PARAM_ACTIVE_LOOK_FOR_TOUCH_INTERVAL; i++) {
+	     i <= OP_PARAM_ACTIVE_LOOK_FOR_TOUCH_INTERVAL; i++) {
 		buffer[0] = OP_CMD_GET_PARAMETER;
 		buffer[1] = i;
 
 		rc = cyttsp4_device_access_write_command(NULL,
-				GRPNUM_OP_COMMAND, 0, buffer, 2);
+							 GRPNUM_OP_COMMAND, 0,
+							 buffer, 2);
 		if (rc < 0) {
-			pr_err("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
-				__func__, rc);
+			pr_err
+			    ("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
+			     __func__, rc);
 			goto exit;
 		}
 
@@ -117,10 +121,12 @@ static int __init cyttsp4_test_device_access_api_init(void)
 		 * number of command data registers + 1
 		 */
 		rc = cyttsp4_device_access_read_command(NULL,
-				GRPNUM_OP_COMMAND, 0, buffer, 7);
+							GRPNUM_OP_COMMAND, 0,
+							buffer, 7);
 		if (rc < 0) {
-			pr_err("%s: cyttsp4_device_access_read_command failed, rc=%d\n",
-				__func__, rc);
+			pr_err
+			    ("%s: cyttsp4_device_access_read_command failed, rc=%d\n",
+			     __func__, rc);
 			goto exit;
 		}
 
@@ -149,22 +155,25 @@ static int __init cyttsp4_test_device_access_api_init(void)
 	/*
 	 * CASE 3 - Set Active mode refresh interval to 200 ms
 	 */
-	buffer[0] = OP_CMD_SET_PARAMETER; /* Set Parameter */
-	buffer[1] = OP_PARAM_REFRESH_INTERVAL; /* Refresh Interval parameter */
-	buffer[2] = 1; /* Parameter length - 1 byte */
-	buffer[3] = 200; /* 200 ms */
+	buffer[0] = OP_CMD_SET_PARAMETER;	/* Set Parameter */
+	buffer[1] = OP_PARAM_REFRESH_INTERVAL;	/* Refresh Interval parameter */
+	buffer[2] = 1;		/* Parameter length - 1 byte */
+	buffer[3] = 200;	/* 200 ms */
 
 	rc = cyttsp4_device_access_write_command(NULL,
-			GRPNUM_OP_COMMAND, 0, buffer, 4);
+						 GRPNUM_OP_COMMAND, 0, buffer,
+						 4);
 	if (rc < 0) {
-		pr_err("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
-			__func__, rc);
+		pr_err
+		    ("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
+		     __func__, rc);
 		goto exit;
 	}
 
 exit:
 	return 0;
 }
+
 module_init(cyttsp4_test_device_access_api_init);
 
 static void __exit cyttsp4_test_device_access_api_exit(void)
@@ -177,24 +186,27 @@ static void __exit cyttsp4_test_device_access_api_exit(void)
 	 * CASE 4 - Restore Active mode refresh interval to original
 	 */
 	if (active_refresh_interval) {
-		buffer[0] = OP_CMD_SET_PARAMETER; /* Set Parameter */
+		buffer[0] = OP_CMD_SET_PARAMETER;	/* Set Parameter */
 		buffer[1] = OP_PARAM_REFRESH_INTERVAL;
-					/* Refresh Interval parameter */
-		buffer[2] = 1; /* Parameter length - 1 byte */
-		buffer[3] = (u8)active_refresh_interval;
+		/* Refresh Interval parameter */
+		buffer[2] = 1;	/* Parameter length - 1 byte */
+		buffer[3] = (u8) active_refresh_interval;
 
 		rc = cyttsp4_device_access_write_command(NULL,
-				GRPNUM_OP_COMMAND, 0, buffer, 4);
+							 GRPNUM_OP_COMMAND, 0,
+							 buffer, 4);
 		if (rc < 0) {
-			pr_err("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
-				__func__, rc);
+			pr_err
+			    ("%s: cyttsp4_device_access_write_command failed, rc=%d\n",
+			     __func__, rc);
 		}
 	}
 }
+
 module_exit(cyttsp4_test_device_access_api_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Cypress TrueTouch(R) Standard touchscreen device access API tester");
+MODULE_DESCRIPTION
+    ("Cypress TrueTouch(R) Standard touchscreen device access API tester");
 MODULE_AUTHOR("Cypress Semiconductor");
 
-/* DTS2013062605264 sunlibin 20130702 end > */

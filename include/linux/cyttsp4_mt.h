@@ -1,5 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 
 /*
@@ -45,7 +43,7 @@ enum cyttsp4_sig_caps {
 	CY_MAX_OST,
 	CY_FUZZ_OST,
 	CY_FLAT_OST,
-	CY_NUM_ABS_SET	/* number of signal capability fields */
+	CY_NUM_ABS_SET		/* number of signal capability fields */
 };
 
 /* abs axis signal offsets in the framworks array  */
@@ -58,7 +56,7 @@ enum cyttsp4_sig_ost {
 	CY_ABS_MAJ_OST,
 	CY_ABS_MIN_OST,
 	CY_ABS_OR_OST,
-	CY_NUM_ABS_OST	/* number of abs signals */
+	CY_NUM_ABS_OST		/* number of abs signals */
 };
 
 enum cyttsp4_mt_platform_flags {
@@ -72,29 +70,25 @@ enum cyttsp4_mt_platform_flags {
 };
 
 struct touch_framework {
-	const uint16_t  *abs;
-	uint8_t         size;
-	uint8_t         enable_vkeys;
+	const uint16_t *abs;
+	uint8_t size;
+	uint8_t enable_vkeys;
 } __packed;
 
-/* < DTS2014012003402 shenjinming 20140120 begin */
 struct touch_wakeup_keys {
-	const uint16_t  *keys;
-	uint8_t         size;
-	uint8_t         enable_wkeys;/*just padding, not used*/
+	const uint16_t *keys;
+	uint8_t size;
+	uint8_t enable_wkeys;	/*just padding, not used */
 } __packed;
 
 struct cyttsp4_mt_platform_data {
 	struct touch_framework *frmwrk;
-    struct touch_wakeup_keys *wakeup_keys;
+	struct touch_wakeup_keys *wakeup_keys;
 	unsigned short flags;
 	char const *inp_dev_name;
 	int vkeys_x;
 	int vkeys_y;
 };
 
-/* DTS2014012003402 shenjinming 20140120 end > */
 #endif /* _LINUX_CYTTSP4_MT_H */
 
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */

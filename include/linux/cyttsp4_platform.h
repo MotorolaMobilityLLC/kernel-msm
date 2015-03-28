@@ -1,4 +1,3 @@
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 /*
  * cyttsp4_platform.h
@@ -37,16 +36,16 @@
 extern struct cyttsp4_loader_platform_data _cyttsp4_loader_platform_data;
 
 extern int cyttsp4_xres(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev);
+			struct device *dev);
 extern int cyttsp4_init(struct cyttsp4_core_platform_data *pdata,
-		int on, struct device *dev);
+			int on, struct device *dev);
 extern int cyttsp4_power(struct cyttsp4_core_platform_data *pdata,
-		int on, struct device *dev, atomic_t *ignore_irq);
+			 int on, struct device *dev, atomic_t * ignore_irq);
 extern int cyttsp4_irq_stat(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev);
+			    struct device *dev);
 #ifdef CYTTSP4_DETECT_HW
 extern int cyttsp4_detect(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev, cyttsp4_platform_read read);
+			  struct device *dev, cyttsp4_platform_read read);
 #else
 #define cyttsp4_detect		NULL
 #endif
@@ -62,4 +61,3 @@ static struct cyttsp4_loader_platform_data _cyttsp4_loader_platform_data;
 
 #endif /* _LINUX_CYTTSP4_PLATFORM_H */
 
-/* DTS2013062605264 sunlibin 20130702 end > */

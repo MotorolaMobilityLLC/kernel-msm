@@ -1,5 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
 
 /*
@@ -48,13 +46,13 @@
 
 #include "cyttsp4_devtree.h"
 
-#define CY_SPI_WR_OP		0x00 /* r/~w */
+#define CY_SPI_WR_OP		0x00	/* r/~w */
 #define CY_SPI_RD_OP		0x01
 #define CY_SPI_A8_BIT		0x02
 #define CY_SPI_WR_HEADER_BYTES	2
 #define CY_SPI_RD_HEADER_BYTES	1
 #define CY_SPI_SYNC_BYTE	0
-#define CY_SPI_SYNC_ACK		0x62 /* from TRM *A protocol */
+#define CY_SPI_SYNC_ACK		0x62	/* from TRM *A protocol */
 #define CY_SPI_DATA_SIZE	(3 * 256)
 #define CY_SPI_BITS_PER_WORD	8
 #define CY_SPI_NUM_RETRY	3
@@ -68,8 +66,8 @@ struct cyttsp4_spi {
 	struct mutex lock;
 };
 
-static void _cyttsp4_spi_pr_buf(struct cyttsp4_spi *ts_spi, u8 *buf,
-			int size, char const *info)
+static void _cyttsp4_spi_pr_buf(struct cyttsp4_spi *ts_spi, u8 * buf,
+				int size, char const *info)
 {
 #ifdef VERBOSE_DEBUG
 	static char b[CY_SPI_DATA_SIZE * 3 + 1];
@@ -82,7 +80,7 @@ static void _cyttsp4_spi_pr_buf(struct cyttsp4_spi *ts_spi, u8 *buf,
 }
 
 static int cyttsp4_spi_xfer(u8 op, struct cyttsp4_spi *ts,
-			u16 reg, u8 *buf, int length)
+			    u16 reg, u8 * buf, int length)
 {
 	struct device *dev = &ts->client->dev;
 	struct spi_message msg;
@@ -105,10 +103,10 @@ static int cyttsp4_spi_xfer(u8 op, struct cyttsp4_spi *ts,
 	case CY_SPI_WR_OP:
 		if (length + CY_SPI_WR_HEADER_BYTES > CY_SPI_DATA_SIZE) {
 			dev_vdbg(dev,
-				"%s: length+%d=%d is greater than SPI max=%d\n",
-				__func__, CY_SPI_WR_HEADER_BYTES,
-				length + CY_SPI_WR_HEADER_BYTES,
-				CY_SPI_DATA_SIZE);
+				 "%s: length+%d=%d is greater than SPI max=%d\n",
+				 __func__, CY_SPI_WR_HEADER_BYTES,
+				 length + CY_SPI_WR_HEADER_BYTES,
+				 CY_SPI_DATA_SIZE);
 			rc = -EINVAL;
 			goto cyttsp4_spi_xfer_exit;
 		}
@@ -144,10 +142,10 @@ static int cyttsp4_spi_xfer(u8 op, struct cyttsp4_spi *ts,
 
 		if ((length + CY_SPI_RD_HEADER_BYTES) > CY_SPI_DATA_SIZE) {
 			dev_vdbg(dev,
-				"%s: length+%d=%d is greater than SPI max=%d\n",
-				__func__, CY_SPI_RD_HEADER_BYTES,
-				length + CY_SPI_RD_HEADER_BYTES,
-				CY_SPI_DATA_SIZE);
+				 "%s: length+%d=%d is greater than SPI max=%d\n",
+				 __func__, CY_SPI_RD_HEADER_BYTES,
+				 length + CY_SPI_RD_HEADER_BYTES,
+				 CY_SPI_DATA_SIZE);
 			rc = -EINVAL;
 			goto cyttsp4_spi_xfer_exit;
 		}
@@ -175,7 +173,7 @@ static int cyttsp4_spi_xfer(u8 op, struct cyttsp4_spi *ts,
 	rc = spi_sync(ts->client, &msg);
 	if (rc < 0) {
 		dev_vdbg(dev, "%s: spi_sync() error %d, len=%d, op=%d\n",
-			__func__, rc, xfer[0].len, op);
+			 __func__, rc, xfer[0].len, op);
 		/*
 		 * do not return here since probably a bad ACK sequence
 		 * let the following ACK check handle any errors and
@@ -190,18 +188,18 @@ static int cyttsp4_spi_xfer(u8 op, struct cyttsp4_spi *ts,
 		switch (op) {
 		case CY_SPI_WR_OP:
 			_cyttsp4_spi_pr_buf(ts, wr_hdr_buf,
-				CY_SPI_WR_HEADER_BYTES,
-				"spi_wr_buf HEAD");
+					    CY_SPI_WR_HEADER_BYTES,
+					    "spi_wr_buf HEAD");
 			if (buf)
 				_cyttsp4_spi_pr_buf(ts, buf,
-					length, "spi_wr_buf DATA");
+						    length, "spi_wr_buf DATA");
 			break;
 
 		case CY_SPI_RD_OP:
 			_cyttsp4_spi_pr_buf(ts, rd_hdr_buf,
-				CY_SPI_RD_HEADER_BYTES, "spi_rd_buf HEAD");
-			_cyttsp4_spi_pr_buf(ts, buf, length,
-				"spi_rd_buf DATA");
+					    CY_SPI_RD_HEADER_BYTES,
+					    "spi_rd_buf HEAD");
+			_cyttsp4_spi_pr_buf(ts, buf, length, "spi_rd_buf DATA");
 			break;
 
 		default:
@@ -218,7 +216,7 @@ cyttsp4_spi_xfer_exit:
 }
 
 static s32 cyttsp4_spi_read_block_data(struct cyttsp4_spi *ts, u16 addr,
-				int length, void *data, int max_xfer)
+				       int length, void *data, int max_xfer)
 {
 	int rc = -EINVAL;
 	int retry = 0;
@@ -265,7 +263,8 @@ exit:
 }
 
 static s32 cyttsp4_spi_write_block_data(struct cyttsp4_spi *ts, u16 addr,
-				int length, const void *data, int max_xfer)
+					int length, const void *data,
+					int max_xfer)
 {
 	int rc = -EINVAL;
 	int retry = 0;
@@ -278,7 +277,7 @@ static s32 cyttsp4_spi_write_block_data(struct cyttsp4_spi *ts, u16 addr,
 		trans_len = min(length, max_xfer);
 
 		rc = cyttsp4_spi_xfer(CY_SPI_WR_OP, ts, addr, (void *)data,
-				trans_len);
+				      trans_len);
 		if (rc < 0) {
 			dev_err(dev, "%s: Fail write r=%d\n", __func__, rc);
 			goto exit;
@@ -304,7 +303,7 @@ exit:
 }
 
 static int cyttsp4_spi_write(struct cyttsp4_adapter *adap, u16 addr,
-		const void *buf, int size, int max_xfer)
+			     const void *buf, int size, int max_xfer)
 {
 	struct cyttsp4_spi *ts = dev_get_drvdata(adap->dev);
 	int rc;
@@ -319,7 +318,7 @@ static int cyttsp4_spi_write(struct cyttsp4_adapter *adap, u16 addr,
 }
 
 static int cyttsp4_spi_read(struct cyttsp4_adapter *adap, u16 addr,
-		void *buf, int size, int max_xfer)
+			    void *buf, int size, int max_xfer)
 {
 	struct cyttsp4_spi *ts = dev_get_drvdata(adap->dev);
 	int rc;
@@ -339,8 +338,9 @@ static struct cyttsp4_ops ops = {
 };
 
 static struct of_device_id cyttsp4_spi_of_match[] = {
-	{ .compatible = "cy,cyttsp4_spi_adapter", }, { }
+	{.compatible = "cy,cyttsp4_spi_adapter",}, {}
 };
+
 MODULE_DEVICE_TABLE(of, cyttsp4_spi_of_match);
 
 static int __devinit cyttsp4_spi_probe(struct spi_device *spi)
@@ -372,7 +372,7 @@ static int __devinit cyttsp4_spi_probe(struct spi_device *spi)
 	match = of_match_device(of_match_ptr(cyttsp4_spi_of_match), dev);
 	if (match) {
 		rc = of_property_read_string(dev->of_node, "cy,adapter_id",
-				&adap_id);
+					     &adap_id);
 		if (rc) {
 			dev_err(dev, "%s: OF error rc=%d\n", __func__, rc);
 			goto error_free_data;
@@ -426,17 +426,18 @@ static int __devexit cyttsp4_spi_remove(struct spi_device *spi)
 }
 
 static const struct spi_device_id cyttsp4_spi_id[] = {
-	{ CYTTSP4_SPI_NAME, 0 },  { }
+	{CYTTSP4_SPI_NAME, 0}, {}
 };
+
 MODULE_DEVICE_TABLE(spi, cyttsp4_spi_id);
 
 static struct spi_driver cyttsp4_spi_driver = {
 	.driver = {
-		.name = CYTTSP4_SPI_NAME,
-		.bus = &spi_bus_type,
-		.owner = THIS_MODULE,
-		.of_match_table = cyttsp4_spi_of_match,
-	},
+		   .name = CYTTSP4_SPI_NAME,
+		   .bus = &spi_bus_type,
+		   .owner = THIS_MODULE,
+		   .of_match_table = cyttsp4_spi_of_match,
+		   },
 	.probe = cyttsp4_spi_probe,
 	.remove = __devexit_p(cyttsp4_spi_remove),
 	.id_table = cyttsp4_spi_id,
@@ -448,10 +449,11 @@ static int __init cyttsp4_spi_init(void)
 
 	err = spi_register_driver(&cyttsp4_spi_driver);
 	pr_info("%s: Cypress TTSP SPI Touchscreen Driver (Built %s) rc=%d\n",
-		 __func__, CY_DRIVER_DATE, err);
+		__func__, CY_DRIVER_DATE, err);
 
 	return err;
 }
+
 module_init(cyttsp4_spi_init);
 
 static void __exit cyttsp4_spi_exit(void)
@@ -459,10 +461,9 @@ static void __exit cyttsp4_spi_exit(void)
 	spi_unregister_driver(&cyttsp4_spi_driver);
 	pr_info("%s: module exit\n", __func__);
 }
+
 module_exit(cyttsp4_spi_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Cypress TrueTouch(R) Standard Product SPI driver");
 MODULE_AUTHOR("Aleksej Makarov <aleksej.makarov@sonyericsson.com>");
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */

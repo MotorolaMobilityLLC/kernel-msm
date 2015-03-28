@@ -1,4 +1,3 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
 
 /*
  * cyttsp4_btn.h
@@ -39,4 +38,3 @@ struct cyttsp4_btn_platform_data {
 };
 
 #endif /* _LINUX_CYTTSP4_BTN_H */
-/* DTS2013050605374 shenjinming 20130508 end > */

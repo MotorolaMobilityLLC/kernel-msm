@@ -1,4 +1,3 @@
-/*<DTS2015031807289 yedapeng 20150313 begin*/
 /*                                      Regulations
 1.The "DTSxxx" just be allowed to  add at the begin and the tail.
 2.The dtsi files which belong to a group need to be put together,and will be separated by remarks.
@@ -8,11 +7,9 @@
 */
 /*belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator begin*/
 /*#include "huawei-i2c-detect-va.dtsi"*/
-/*< DTS2015032200690 lijianzhao 20150322 begin */
 /* add tp and lcd driver */
 #include "huawei-lcd.dtsi"
 #include "huawei-tp.dtsi"
-/* DTS2015032200690 lijianzhao 20150322 end >*/
 /*#include "huawei-camera.dtsi"*/
 /*#include "huawei-sensors.dtsi"*/
 /*#include "huawei-vibrator.dtsi"*/
@@ -36,4 +33,3 @@
 /*belong to the OS group, according to the order of battery memery end*/
 
 /*#include "huawei-nfc.dtsi"*/
-/* DTS2015031807289 yedapeng 20150313 end > */

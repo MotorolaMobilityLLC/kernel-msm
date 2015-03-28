@@ -8,12 +8,4 @@ config SRCARCH
 	string
 	option env="SRCARCH"
 
-# /* < DTS2015031303702 zhaiqi 20150313 begin */
-config HUAWEI_KERNEL
-	bool "Use huawei code"
-	default y
-	help
-	use huawei code
-# /* DTS2015031303702 zhaiqi 20150313 end > */
-
 source "arch/$SRCARCH/Kconfig"

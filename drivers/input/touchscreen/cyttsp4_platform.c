@@ -1,7 +1,4 @@
-/* < DTS2013050605374 shenjinming 20130508 begin */
-/* < DTS2013062605264 sunlibin 20130702 begin */
 /* add cypress new driver ttda-02.03.01.476713 */
-/* < DTS2013092405622 shenjinming 20130924 begin */
 /* add the log dynamic control */
 
 /*
@@ -40,9 +37,7 @@
 #include <linux/cyttsp4_bus.h>
 #include <linux/cyttsp4_core.h>
 
-/* < DTS2013082800833 sunlibin 20130828 begin */
 #include <cyttsp4_regs.h>
-/* DTS2013082800833 sunlibin 20130828 end > */
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PLATFORM_FW_UPGRADE
 #include <linux/cyttsp4_img.h>
 static struct cyttsp4_touch_firmware cyttsp4_firmware = {
@@ -61,29 +56,29 @@ static struct cyttsp4_touch_firmware cyttsp4_firmware = {
 #endif
 
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PLATFORM_TTCONFIG_UPGRADE
-/* < DTS2013082800833 sunlibin 20130828 begin */
-
 
 #include <linux/Config_Ofilm.h>
 static struct touch_settings cyttsp4_sett_ofilm_G750C_param_regs = {
-	.data = (uint8_t *)&cyttsp4_ofilm_G750C_param_regs[0],
+	.data = (uint8_t *) & cyttsp4_ofilm_G750C_param_regs[0],
 	.size = ARRAY_SIZE(cyttsp4_ofilm_G750C_param_regs),
 	.tag = 0,
 };
+
 static struct touch_settings cyttsp4_sett_ofilm_G750C_param_size = {
-	.data = (uint8_t *)&cyttsp4_ofilm_G750C_param_size[0],
+	.data = (uint8_t *) & cyttsp4_ofilm_G750C_param_size[0],
 	.size = ARRAY_SIZE(cyttsp4_ofilm_G750C_param_size),
 	.tag = 0,
 };
 
 #include <linux/Config_Truly.h>
 static struct touch_settings cyttsp4_sett_truly_G750C_param_regs = {
-	.data = (uint8_t *)&cyttsp4_truly_G750C_param_regs[0],
+	.data = (uint8_t *) & cyttsp4_truly_G750C_param_regs[0],
 	.size = ARRAY_SIZE(cyttsp4_truly_G750C_param_regs),
 	.tag = 0,
 };
+
 static struct touch_settings cyttsp4_sett_truly_G750C_param_size = {
-	.data = (uint8_t *)&cyttsp4_truly_G750C_param_size[0],
+	.data = (uint8_t *) & cyttsp4_truly_G750C_param_size[0],
 	.size = ARRAY_SIZE(cyttsp4_truly_G750C_param_size),
 	.tag = 0,
 };
@@ -94,32 +89,35 @@ static struct cyttsp4_touch_config cyttsp4_ofilm_G750C_ttconfig = {
 	.fw_ver = ofilm_G750C_ttconfig_fw_ver,
 	.fw_vsize = ARRAY_SIZE(ofilm_G750C_ttconfig_fw_ver),
 };
+
 static struct cyttsp4_touch_config cyttsp4_truly_G750C_ttconfig = {
 	.param_regs = &cyttsp4_sett_truly_G750C_param_regs,
 	.param_size = &cyttsp4_sett_truly_G750C_param_size,
 	.fw_ver = truly_G750C_ttconfig_fw_ver,
 	.fw_vsize = ARRAY_SIZE(truly_G750C_ttconfig_fw_ver),
 };
-/* < DTS2013111905649 zhangmin 20131119 begin */
+
 /*G6 parameters*/
 static struct touch_settings cyttsp4_sett_ofilm_G6_param_regs = {
-	.data = (uint8_t *)&cyttsp4_ofilm_G6_param_regs[0],
+	.data = (uint8_t *) & cyttsp4_ofilm_G6_param_regs[0],
 	.size = ARRAY_SIZE(cyttsp4_ofilm_G6_param_regs),
 	.tag = 0,
 };
+
 static struct touch_settings cyttsp4_sett_ofilm_G6_param_size = {
-	.data = (uint8_t *)&cyttsp4_ofilm_G6_param_size[0],
+	.data = (uint8_t *) & cyttsp4_ofilm_G6_param_size[0],
 	.size = ARRAY_SIZE(cyttsp4_ofilm_G6_param_size),
 	.tag = 0,
 };
 
 static struct touch_settings cyttsp4_sett_truly_G6_param_regs = {
-	.data = (uint8_t *)&cyttsp4_truly_G6_param_regs[0],
+	.data = (uint8_t *) & cyttsp4_truly_G6_param_regs[0],
 	.size = ARRAY_SIZE(cyttsp4_truly_G6_param_regs),
 	.tag = 0,
 };
+
 static struct touch_settings cyttsp4_sett_truly_G6_param_size = {
-	.data = (uint8_t *)&cyttsp4_truly_G6_param_size[0],
+	.data = (uint8_t *) & cyttsp4_truly_G6_param_size[0],
 	.size = ARRAY_SIZE(cyttsp4_truly_G6_param_size),
 	.tag = 0,
 };
@@ -130,20 +128,23 @@ static struct cyttsp4_touch_config cyttsp4_ofilm_G6_ttconfig = {
 	.fw_ver = ofilm_G6_ttconfig_fw_ver,
 	.fw_vsize = ARRAY_SIZE(ofilm_G6_ttconfig_fw_ver),
 };
+
 static struct cyttsp4_touch_config cyttsp4_truly_G6_ttconfig = {
 	.param_regs = &cyttsp4_sett_truly_G6_param_regs,
 	.param_size = &cyttsp4_sett_truly_G6_param_size,
 	.fw_ver = truly_G6_ttconfig_fw_ver,
 	.fw_vsize = ARRAY_SIZE(truly_G6_ttconfig_fw_ver),
 };
+
 /*Mate2 parameters*/
 static struct touch_settings cyttsp4_sett_ofilm_Mate2_param_regs = {
-	.data = (uint8_t *)&cyttsp4_Mate2_ofilm_param_regs[0],
+	.data = (uint8_t *) & cyttsp4_Mate2_ofilm_param_regs[0],
 	.size = ARRAY_SIZE(cyttsp4_Mate2_ofilm_param_regs),
 	.tag = 0,
 };
+
 static struct touch_settings cyttsp4_sett_ofilm_Mate2_param_size = {
-	.data = (uint8_t *)&cyttsp4_Mate2_ofilm_param_size[0],
+	.data = (uint8_t *) & cyttsp4_Mate2_ofilm_param_size[0],
 	.size = ARRAY_SIZE(cyttsp4_Mate2_ofilm_param_size),
 	.tag = 0,
 };
@@ -154,7 +155,7 @@ static struct cyttsp4_touch_config cyttsp4_ofilm_Mate2_ttconfig = {
 	.fw_ver = ttconfig_Mate2_ofilm_fw_ver,
 	.fw_vsize = ARRAY_SIZE(ttconfig_Mate2_ofilm_fw_ver),
 };
-/* DTS2013111905649 zhangmin 20131119 end > */
+
 static struct cyttsp4_touch_config cyttsp4_ttconfig = {
 	.param_regs = NULL,
 	.param_size = NULL,
@@ -163,51 +164,47 @@ static struct cyttsp4_touch_config cyttsp4_ttconfig = {
 };
 
 struct cyttsp4_sett_ttconfig_map cyttsp4_sett_ttconfig_map[] = {
-		[0]={
-				.id = OFILM, 
-				.product_family = "G750C",
-				.ttconfig_param = &cyttsp4_ofilm_G750C_ttconfig,
-			},
-		[1]={
-				.id = TRULY, 
-				.product_family = "G750C",
-				.ttconfig_param = &cyttsp4_truly_G750C_ttconfig,
-			},
-		[2]={
-				.id = 6, //just for temp huawei 0829
-				.product_family = "G750C",
-				.ttconfig_param = &cyttsp4_ofilm_G750C_ttconfig,
-			},
-		[3]={
-				.id = 7, //just for temp huawei 0829
-				.product_family = "G750C",
-				.ttconfig_param = &cyttsp4_truly_G750C_ttconfig,
-			},
-		/* < DTS2013111905649 zhangmin 20131119 begin */
-		/* < DTS2014032502025 zhangmin 20140325 begin */
-		/*MATE2 is using old regular*/
-		[4]={
-				.id = 6,
-				.product_family = "Mate2",
-				.ttconfig_param = &cyttsp4_ofilm_Mate2_ttconfig,
-			},
-		/* DTS2014032502025 zhangmin 20140325 end > */
-		[5]={
-				.id = OFILM, 
-				.product_family = "G6",
-				.ttconfig_param = &cyttsp4_ofilm_G6_ttconfig,
-			},
-		[6]={
-				.id = TRULY, 
-				.product_family = "G6",
-				.ttconfig_param = &cyttsp4_truly_G6_ttconfig,
-			},
-		[7]={
-				.ttconfig_param = NULL,
-			},
-		/* DTS2013111905649 zhangmin 20131119 end > */
+	[0] = {
+	       .id = OFILM,
+	       .product_family = "G750C",
+	       .ttconfig_param = &cyttsp4_ofilm_G750C_ttconfig,
+	       },
+	[1] = {
+	       .id = TRULY,
+	       .product_family = "G750C",
+	       .ttconfig_param = &cyttsp4_truly_G750C_ttconfig,
+	       },
+	[2] = {
+	       .id = 6,		//just for temp huawei 0829
+	       .product_family = "G750C",
+	       .ttconfig_param = &cyttsp4_ofilm_G750C_ttconfig,
+	       },
+	[3] = {
+	       .id = 7,		//just for temp huawei 0829
+	       .product_family = "G750C",
+	       .ttconfig_param = &cyttsp4_truly_G750C_ttconfig,
+	       },
+	/*MATE2 is using old regular */
+	[4] = {
+	       .id = 6,
+	       .product_family = "Mate2",
+	       .ttconfig_param = &cyttsp4_ofilm_Mate2_ttconfig,
+	       },
+	[5] = {
+	       .id = OFILM,
+	       .product_family = "G6",
+	       .ttconfig_param = &cyttsp4_ofilm_G6_ttconfig,
+	       },
+	[6] = {
+	       .id = TRULY,
+	       .product_family = "G6",
+	       .ttconfig_param = &cyttsp4_truly_G6_ttconfig,
+	       },
+	[7] = {
+	       .ttconfig_param = NULL,
+	       },
 };
-/* DTS2013082800833 sunlibin 20130828 end > */
+
 
 #else
 static struct cyttsp4_touch_config cyttsp4_ttconfig = {
@@ -218,10 +215,10 @@ static struct cyttsp4_touch_config cyttsp4_ttconfig = {
 };
 
 struct cyttsp4_sett_ttconfig_map cyttsp4_sett_ttconfig_map[] = {
-		[0]={
-				.id=0, 
-				.ttconfig_param = NULL,
-			},
+	[0] = {
+	       .id = 0,
+	       .ttconfig_param = NULL,
+	       },
 };
 #endif
 
@@ -232,8 +229,7 @@ struct cyttsp4_loader_platform_data _cyttsp4_loader_platform_data = {
 	.flags = CY_LOADER_FLAG_NONE,
 };
 
-int cyttsp4_xres(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev)
+int cyttsp4_xres(struct cyttsp4_core_platform_data *pdata, struct device *dev)
 {
 	int rst_gpio = pdata->rst_gpio;
 	int rc = 0;
@@ -244,74 +240,57 @@ int cyttsp4_xres(struct cyttsp4_core_platform_data *pdata,
 	msleep(40);
 	gpio_set_value(rst_gpio, 1);
 	msleep(20);
-    /* < DTS2013091004488 shenjinming 20130910 begin */
-	tp_log_debug(
-		"%s: RESET CYTTSP gpio=%d r=%d\n", __func__,
-		pdata->rst_gpio, rc);
-    /* DTS2013091004488 shenjinming 20130910 end > */
+	tp_log_debug("%s: RESET CYTTSP gpio=%d r=%d\n", __func__,
+		     pdata->rst_gpio, rc);
 	return rc;
 }
 
 int cyttsp4_init(struct cyttsp4_core_platform_data *pdata,
-		int on, struct device *dev)
+		 int on, struct device *dev)
 {
 	int rst_gpio = pdata->rst_gpio;
 	int irq_gpio = pdata->irq_gpio;
 	int rc = 0;
 
-    /* < DTS2013051702487 shenjinming 20130520 begin */
-	if (on) 
-    {
+	if (on) {
 		rc = gpio_request(rst_gpio, "cyttsp4");
-		if (rc < 0) 
-        {
+		if (rc < 0) {
 			gpio_free(rst_gpio);
 			rc = gpio_request(rst_gpio, "cyttsp4");
 		}
-        
-		if (rc < 0) 
-        {
-			tp_log_err(
-				"%s: Fail request gpio=%d\n", __func__,
-				rst_gpio);
-		} 
-        else 
-        {
+
+		if (rc < 0) {
+			tp_log_err("%s: Fail request gpio=%d\n", __func__,
+				   rst_gpio);
+		} else {
 			rc = gpio_direction_output(rst_gpio, 1);
-			if (rc < 0) 
-            {
+			if (rc < 0) {
 				tp_log_err("%s: Fail set output gpio=%d\n",
-					__func__, rst_gpio);
+					   __func__, rst_gpio);
 				gpio_free(rst_gpio);
-		    } 
-            else 
-            {
-                /* set irq gpio as no pull */
-    		    //rc = gpio_tlmm_config(GPIO_CFG(irq_gpio,0,GPIO_CFG_INPUT,
-                //                    GPIO_CFG_NO_PULL,GPIO_CFG_8MA),GPIO_CFG_ENABLE);
-                //if( rc < 0 )
-                //{
-                //    tp_log_err("%s: Fail set gpio=%d as no pull\n", __func__, irq_gpio);
-                //}
-    			rc = gpio_direction_input(irq_gpio);
-		    }
-	    }
-	} 
-    else 
-    {
+			} else {
+				/* set irq gpio as no pull */
+				//rc = gpio_tlmm_config(GPIO_CFG(irq_gpio,0,GPIO_CFG_INPUT,
+				//                    GPIO_CFG_NO_PULL,GPIO_CFG_8MA),GPIO_CFG_ENABLE);
+				//if( rc < 0 )
+				//{
+				//    tp_log_err("%s: Fail set gpio=%d as no pull\n", __func__, irq_gpio);
+				//}
+				rc = gpio_direction_input(irq_gpio);
+			}
+		}
+	} else {
 		gpio_free(rst_gpio);
 		gpio_free(irq_gpio);
 	}
-    /* DTS2013051702487 shenjinming 20130520 end > */
 
-	tp_log_info(
-		"%s: INIT CYTTSP RST gpio=%d and IRQ gpio=%d r=%d\n",
-		__func__, rst_gpio, irq_gpio, rc);
+	tp_log_info("%s: INIT CYTTSP RST gpio=%d and IRQ gpio=%d r=%d\n",
+		    __func__, rst_gpio, irq_gpio, rc);
 	return rc;
 }
 
 static int cyttsp4_wakeup(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev, atomic_t *ignore_irq)
+			  struct device *dev, atomic_t * ignore_irq)
 {
 	int irq_gpio = pdata->irq_gpio;
 	int rc = 0;
@@ -322,35 +301,30 @@ static int cyttsp4_wakeup(struct cyttsp4_core_platform_data *pdata,
 	if (rc < 0) {
 		if (ignore_irq)
 			atomic_set(ignore_irq, 0);
-		tp_log_err(
-			"%s: Fail set output gpio=%d\n",
-			__func__, irq_gpio);
+		tp_log_err("%s: Fail set output gpio=%d\n", __func__, irq_gpio);
 	} else {
 		udelay(2000);
 		rc = gpio_direction_input(irq_gpio);
 		if (ignore_irq)
 			atomic_set(ignore_irq, 0);
 		if (rc < 0) {
-			tp_log_err(
-				"%s: Fail set input gpio=%d\n",
-				__func__, irq_gpio);
+			tp_log_err("%s: Fail set input gpio=%d\n",
+				   __func__, irq_gpio);
 		}
 	}
 
-	tp_log_info(
-		"%s: WAKEUP CYTTSP gpio=%d r=%d\n", __func__,
-		irq_gpio, rc);
+	tp_log_info("%s: WAKEUP CYTTSP gpio=%d r=%d\n", __func__, irq_gpio, rc);
 	return rc;
 }
 
 static int cyttsp4_sleep(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev, atomic_t *ignore_irq)
+			 struct device *dev, atomic_t * ignore_irq)
 {
 	return 0;
 }
 
 int cyttsp4_power(struct cyttsp4_core_platform_data *pdata,
-		int on, struct device *dev, atomic_t *ignore_irq)
+		  int on, struct device *dev, atomic_t * ignore_irq)
 {
 	if (on)
 		return cyttsp4_wakeup(pdata, dev, ignore_irq);
@@ -359,14 +333,14 @@ int cyttsp4_power(struct cyttsp4_core_platform_data *pdata,
 }
 
 int cyttsp4_irq_stat(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev)
+		     struct device *dev)
 {
 	return gpio_get_value(pdata->irq_gpio);
 }
 
 #ifdef CYTTSP4_DETECT_HW
 int cyttsp4_detect(struct cyttsp4_core_platform_data *pdata,
-		struct device *dev, cyttsp4_platform_read read)
+		   struct device *dev, cyttsp4_platform_read read)
 {
 	int retry = 3;
 	int rc;
@@ -374,21 +348,18 @@ int cyttsp4_detect(struct cyttsp4_core_platform_data *pdata,
 
 	while (retry--) {
 		/* Perform reset, wait for 100 ms and perform read */
-		tp_log_debug( "%s: Performing a reset\n", __func__);
+		tp_log_debug("%s: Performing a reset\n", __func__);
 		pdata->xres(pdata, dev);
 		msleep(100);
 		rc = read(dev, 0, buf, 1);
 		if (!rc)
 			return 0;
 
-		tp_log_debug( "%s: Read unsuccessful, try=%d\n",
-			__func__, 3 - retry);
+		tp_log_debug("%s: Read unsuccessful, try=%d\n",
+			     __func__, 3 - retry);
 	}
 
 	return rc;
 }
 #endif
 
-/* DTS2013092405622 shenjinming 20130924 end > */
-/* DTS2013062605264 sunlibin 20130702 end > */
-/* DTS2013050605374 shenjinming 20130508 end > */
