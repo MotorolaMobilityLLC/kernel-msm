@@ -18,6 +18,8 @@
 /* The user-space-visible definitions. */
 #include <uapi/linux/motosh.h>
 
+#include <linux/spinlock.h>
+
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 #include <mach/mmi_hall_notifier.h>
 #endif
@@ -155,8 +157,6 @@
 
 #define LIGHTING_TABLE_SIZE 32
 
-#define MOTOSH_AS_DATA_QUEUE_SIZE       0x20
-#define MOTOSH_AS_DATA_QUEUE_MASK       0x1F
 #define MOTOSH_MS_DATA_QUEUE_SIZE       0x08
 #define MOTOSH_MS_DATA_QUEUE_MASK       0x07
 
@@ -314,6 +314,18 @@ struct motosh_platform_data {
 	int mag_orient;
 };
 
+/**
+ * as_node - Android sensor event node type
+ * @list: underlying linux list_head structure
+ * @data: data from the sensor event
+ *
+ * The as event queue is a list of these nodes
+ */
+struct as_node {
+	struct list_head list;
+	struct motosh_android_sensor_data data;
+};
+
 struct motosh_data {
 	struct i2c_client *client;
 	struct motosh_platform_data *pdata;
@@ -349,10 +361,11 @@ struct motosh_data {
 	struct switch_dev dsdev; /* Standard Dock switch */
 	struct switch_dev edsdev; /* Motorola Dock switch */
 
-	struct motosh_android_sensor_data
-		motosh_as_data_buffer[MOTOSH_AS_DATA_QUEUE_SIZE];
-	int motosh_as_data_buffer_head;
-	int motosh_as_data_buffer_tail;
+	/* Android sensor event queue */
+	struct as_node as_queue;
+	/* Lock for modifying as_queue */
+	spinlock_t as_queue_lock;
+
 	wait_queue_head_t motosh_as_data_wq;
 
 	struct motosh_moto_sensor_data
