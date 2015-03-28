@@ -2189,7 +2189,7 @@ static int cyttsp4_loader_probe(struct cyttsp4_device *ttsp)
     /* < DTS2013091304609 shenjinming 20131129 begin */
     /*it cant load it till system comes up so its safe to delay it*/
 	INIT_DELAYED_WORK(&data->fw_and_config_upgrade, cyttsp4_fw_and_config_upgrade);
-	schedule_delayed_work(&data->fw_and_config_upgrade, msecs_to_jiffies(CY_LDR_UPDATE_WAIT_TIMEOUT));
+	//schedule_delayed_work(&data->fw_and_config_upgrade, msecs_to_jiffies(CY_LDR_UPDATE_WAIT_TIMEOUT));
     /* DTS2013091304609 shenjinming 20131129 end > */
 
 	tp_log_info( "%s: Successful probe %s\n", __func__, ttsp->name);
