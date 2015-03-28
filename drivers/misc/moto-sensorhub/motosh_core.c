@@ -27,6 +27,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/ktime.h>
+#include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
@@ -1038,6 +1039,9 @@ static int motosh_probe(struct i2c_client *client,
 	}
 	ps_motosh->client = client;
 	motosh_misc_data = ps_motosh;
+
+	INIT_LIST_HEAD(&(ps_motosh->as_queue.list));
+	spin_lock_init(&(ps_motosh->as_queue_lock));
 
 	if (client->dev.of_node)
 		pdata = motosh_of_init(client);
