@@ -323,12 +323,6 @@
 			B2 D1
 			23 01 00 00 01 00 02
 			B5 06
-			23 01 00 00 01 00 02
-			8B F3
-			23 01 00 00 01 00 02
-			7A 10
-			23 01 00 00 01 00 02
-			21 30
 			29 01 00 00 01 00 04
 			FF 98 81 01
 			23 01 00 00 01 00 02
@@ -464,6 +458,12 @@
 		qcom,mdss-dsi-bl-pmic-bank-select = <0>;
 		qcom,mdss-dsi-pwm-gpio = <&pm8916_mpps 4 0>;
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 10>, <1 20>;
+
+		qcom,mdss-dsi-panel-status-command = [06 01 00 01 05 00 02 0A 08];
+		qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+		qcom,mdss-dsi-panel-status-value = <0x9c>;
+		qcom,esd-check-enabled;
 	};
 };
 
