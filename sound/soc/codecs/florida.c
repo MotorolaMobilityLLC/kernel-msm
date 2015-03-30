@@ -710,6 +710,7 @@ static const char * const florida_dsp_output_texts[] = {
 	"None",
 	"DSP2",
 	"DSP3",
+	"DSP4",
 };
 
 static const struct soc_enum florida_dsp_output_enum =
@@ -719,6 +720,7 @@ static const struct soc_enum florida_dsp_output_enum =
 static const struct snd_kcontrol_new florida_dsp_output_mux[] = {
 	SOC_DAPM_ENUM_VIRT("DSP2 Virtual Output Mux", florida_dsp_output_enum),
 	SOC_DAPM_ENUM_VIRT("DSP3 Virtual Output Mux", florida_dsp_output_enum),
+	SOC_DAPM_ENUM_VIRT("DSP4 Virtual Output Mux", florida_dsp_output_enum),
 };
 
 static const char * const florida_memory_mux_texts[] = {
@@ -811,6 +813,7 @@ SND_SOC_DAPM_OUTPUT("DRC2 Signal Activity"),
 
 SND_SOC_DAPM_OUTPUT("DSP2 Virtual Output"),
 SND_SOC_DAPM_OUTPUT("DSP3 Virtual Output"),
+SND_SOC_DAPM_OUTPUT("DSP4 Virtual Output"),
 
 SND_SOC_DAPM_PGA_E("IN1L PGA", ARIZONA_INPUT_ENABLES, ARIZONA_IN1L_ENA_SHIFT,
 		   0, NULL, 0, arizona_in_ev,
@@ -1267,6 +1270,10 @@ SND_SOC_DAPM_VIRT_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
 		      &florida_dsp_output_mux[1], florida_virt_dsp_power_ev,
 		      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
+SND_SOC_DAPM_VIRT_MUX("DSP4 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+		      &florida_dsp_output_mux[2]),
+
+
 ARIZONA_MUX_WIDGETS(ISRC1DEC1, "ISRC1DEC1"),
 ARIZONA_MUX_WIDGETS(ISRC1DEC2, "ISRC1DEC2"),
 ARIZONA_MUX_WIDGETS(ISRC1DEC3, "ISRC1DEC3"),
@@ -1648,6 +1655,10 @@ static const struct snd_soc_dapm_route florida_dapm_routes[] = {
 	{ "DSP3 Virtual Output", NULL, "DSP3 Virtual Output Mux" },
 	{ "DSP3 Virtual Output Mux", "DSP3", "DSP3" },
 	{ "DSP3 Virtual Output", NULL, "SYSCLK" },
+
+	{ "DSP4 Virtual Output", NULL, "DSP4 Virtual Output Mux" },
+	{ "DSP4 Virtual Output Mux", "DSP4", "DSP4" },
+	{ "DSP4 Virtual Output", NULL, "SYSCLK" },
 
 	ARIZONA_MUX_ROUTES("ISRC1INT1", "ISRC1INT1"),
 	ARIZONA_MUX_ROUTES("ISRC1INT2", "ISRC1INT2"),
