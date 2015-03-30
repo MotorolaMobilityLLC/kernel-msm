@@ -79,8 +79,6 @@ struct mpu9150_client {
 	struct mutex mutex; /* prevent concurrent thread access */
 	struct delayed_work mpu9150_work[NUM_TYPES];
 	signed short fastest_rate[NUM_TYPES];
-	int calibration_done;
-	int app_override;
 };
 
 struct mpu9150_client *misc_mpu9150_data;
@@ -145,15 +143,6 @@ static void m4_report_mpu9150_inputevent(
 static void m4_queue_delayed_work(struct mpu9150_client *dd,
 			int delay, enum mpu9150_sensor type)
 {
-	if (type == TYPE_COMPASS) {
-		/* initial calibration is not done and there is
-		no app requesting compass data */
-		if ((!dd->calibration_done) && (!dd->app_override))
-			/* For current drain saving, m4 is sampling
-			   compass at 40ms while omap is polling
-			   for compass data at 15 secs */
-			delay = 15000;
-	}
 	queue_delayed_work(system_freezable_wq,
 			   &(dd->mpu9150_work[type]),
 			   msecs_to_jiffies(delay));
@@ -208,7 +197,6 @@ static void m4_read_mpu9150_data(struct mpu9150_client *mpu9150_client_data,
 	sCompassData compassdata;
 	sAccelData acceldata;
 	sGyroData gyrodata;
-	struct mpu9150_client *dd = mpu9150_client_data;
 
 	switch (type) {
 	case TYPE_GYRO:
@@ -249,18 +237,6 @@ static void m4_read_mpu9150_data(struct mpu9150_client *mpu9150_client_data,
 		mpu9150_client_data->compass_data.cz =  compassdata.z;
 		mpu9150_client_data->compass_data.ca =  compassdata.accuracy;
 
-		/* Check if calibration is complete */
-		if ((!(dd->calibration_done)) && (compassdata.accuracy)) {
-			dd->calibration_done = 1;
-			KDEBUG(M4SH_INFO, "Calibration complete\n");
-			/* Stop compass sampling if no app is using the data */
-			if (dd->app_override == 0) {
-				m4_set_mpu9150_delay(dd,
-						     -1,
-						     TYPE_COMPASS);
-			KDEBUG(M4SH_INFO, "Init cal done. Turning off compass");
-			}
-		}
 		break;
 
 	default:
@@ -407,19 +383,7 @@ static ssize_t m4_mpu9150_write_compass_setdelay(struct device *dev,
 
 	mutex_lock(&(misc_mpu9150_data->mutex));
 
-	if (misc_mpu9150_data->calibration_done == 0) {
-		/* If calibration is not complete and app tries to
-		turn off ignore */
-		if (scanresult < 0) {
-			misc_mpu9150_data->app_override = 0;
-			goto compass_setdelay_exit;
-		} else {
-			misc_mpu9150_data->app_override = 1;
-		}
-	}
 	m4_set_mpu9150_delay(misc_mpu9150_data, scanresult, TYPE_COMPASS);
-
-compass_setdelay_exit:
 
 	mutex_unlock(&(misc_mpu9150_data->mutex));
 
@@ -633,9 +597,6 @@ static int mpu9150_driver_init(struct init_calldata *p_arg)
 					 dd);
 	if (ret < 0)
 		KDEBUG(M4SH_ERROR, "HR panic callback register failed\n");
-	m4_set_mpu9150_delay(dd,
-			     40,
-			     TYPE_COMPASS);
 	mutex_unlock(&(dd->mutex));
 	return ret;
 }
@@ -668,8 +629,6 @@ static int mpu9150_client_probe(struct platform_device *pdev)
 	mpu9150_client_data->fastest_rate[TYPE_ACCEL] = 40;
 	mpu9150_client_data->fastest_rate[TYPE_GYRO] = 40;
 	mpu9150_client_data->fastest_rate[TYPE_COMPASS] = 40;
-	mpu9150_client_data->calibration_done = 0;
-	mpu9150_client_data->app_override = 0;
 
 	mpu9150_client_data->input_dev = input_allocate_device();
 	if (!mpu9150_client_data->input_dev) {
