@@ -360,7 +360,7 @@
 		qcom,rpull-up-kohm = <100>;
 		qcom,vref-batt-therm = <1800000>;
 
-		#include "batterydata-qrd-wike-4v35-2600mah.dtsi"
+		#include "batterydata-l8150-jd-4v35-2500mah.dtsi"
 	};
 };
 
