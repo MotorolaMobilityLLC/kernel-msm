@@ -81,7 +81,6 @@
 			qcom,num-grp-pins = <1>;
 		};
 
-
 		/* SDC pin type */
 		sdc: sdc {
 			/*
@@ -201,7 +200,6 @@
 			};
 		};
 
-
 		pmx_ts_reset {
 			qcom,pins = <&gp 8>;
 			qcom,pin-func = <0>;
@@ -236,83 +234,49 @@
 			};
 		};
 
-		pmx_quat_mi2s {
-		    qcom,pins = <&gp 58>, <&gp 59>;
-		    qcom,num-grp-pins = <2>;
-		    qcom,pin-func = <1>;
-		    label = "quat_mi2s";
-		    quat_mi2s_sleep: quat_mi2s_sleep {
-		    drive-strength = <2>;	/* 2 mA */
-		    bias-pull-down;		/* PULL DOWN */
-		    };
-		    quat_mi2s_active: quat_mi2s_active {
-		    drive-strength = <8>;	/* 8 mA */
-		    bias-disable;		/* NO PULL */
-		    output-high;
-		    };
+		pmx_spi_fpc_active {
+			qcom,pins =  <&gp 53>, <&gp 54>, <&gp 55>, <&gp 56>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <2>;
+			label = "pmx_spi_fpc_active";
+			spi_fpc_active: spi_fpc_active {
+				drive-strength = <2>; /* 2MA */
+				bias-disable;
+			};
 		};
 
-		pmx_quat_mi2s_mclk {
-		    qcom,pins = <&gp 57>;
-		    qcom,num-grp-pins = <1>;
-		    qcom,pin-func = <1>;
-		    label = "quat_mi2s_mclk";
-		    quat_mi2s_mclk_sleep: quat_mi2s_mclk_sleep {
-		    drive-strength = <2>;	/* 2 mA */
-		    bias-pull-down;		/* PULL DOWN */
-		    };
-		    quat_mi2s_mclk_active: quat_mi2s_mclk_active {
-		    drive-strength = <8>;	/* 8 mA */
-		    bias-disable;		/* NO PULL */
-		    };
-		};
-
-		pmx_quat_mi2s_sd0 {
-		    qcom,pins = <&gp 60>;
-		    qcom,num-grp-pins = <1>;
-		    qcom,pin-func = <1>;
-		    label = "quat_mi2s_sd0";
-		    quat_mi2s_sd0_sleep: quat_mi2s_sd0_sleep {
-		    drive-strength = <2>;	/* 2 mA */
-		    bias-pull-down;		/* PULL DOWN */
-		    };
-		    quat_mi2s_sd0_active: quat_mi2s_sd0_active {
-		    drive-strength = <8>;	/* 8 mA */
-		    bias-disable;		/* NO PULL */
-		    };
-		};
-
-		pmx_quat_mi2s_sd1 {
-		    qcom,pins = <&gp 61>;
-		    qcom,num-grp-pins = <1>;
-		    qcom,pin-func = <1>;
-		    label = "quat_mi2s_sd1";
-		    quat_mi2s_sd1_sleep: quat_mi2s_sd1_sleep {
-		    drive-strength = <2>;	/* 2 mA */
-		    bias-pull-down;		/* PULL DOWN */
-		    };
-		    quat_mi2s_sd1_active: quat_mi2s_sd1_active {
-		    drive-strength = <8>;	/* 8 mA */
-		    bias-disable;		/* NO PULL */
-		    };
-		};
-
-		/* TI Speaker Amp IC */
-		tas2552_enable_gpio {
-			qcom,pins = <&gp 0>;
+		pmx_spi_fpc_suspend {
+			qcom,pins =  <&gp 53>, <&gp 54>, <&gp 55>, <&gp 56>;
+			qcom,num-grp-pins = <4>;
 			qcom,pin-func = <0>;
-			qcom,num-grp-pins = <1>;
-			label = "tas2552_enable_gpio";
-			tas2552_active: tas2552_active {
-				drive-strength = <8>;
-				bias-pull-up;
+			label = "pmx_spi_fpc_suspend";
+			spi_fpc_suspend: spi_fpc_suspend {
+				drive-strength = <2>; /* 2MA */
+				bias-pull-down;
 			};
-			tas2552_sleep: tas2552_sleep {
-				drive-strength = <8>;
+		};
+
+		pmx_fpc_ctrl {
+			qcom,pins = <&gp 62>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "pmx_fpc_ctrl";
+			fpc_ctrl: fpc_ctrl {
+				drive-strength = <2>; /* 2MA */
 				bias-pull-up;
 			};
 		};
 
+		pmx_fpc_int {
+			qcom,pins = <&gp 61>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "pmx_fpc_int";
+			fpc_int: fpc_int {
+				drive-strength = <2>; /* 2MA */
+				bias-pull-down;
+			};
+		};
 
 		/* pin set for HallIC */
 		hallic_gpio {

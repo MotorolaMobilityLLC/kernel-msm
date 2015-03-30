@@ -33,3 +33,27 @@
 	qcom,vmax-mv = <2400>;
 	qcom,ilim-ma = <400>;
 };
+
+&spi_fpc {
+	fpc@0 {
+		compatible = "fpc,fpc1020";
+		reg = <2>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <61 0x0>;
+		vdd_io-supply = <&pm8994_lvs2>;
+		vdd-supply = <&pm8994_l25>;
+
+		spi-max-frequency = <15000000>;
+
+		clock-names = "fpc_xo";
+		clocks = <&clock_rpm clk_div_clk3>;
+
+		pinctrl-names = "gpio_fpc_suspend";
+		pinctrl-0 = <&fpc_int &fpc_ctrl>;
+
+		fpc,gpio_irq = <&msm_gpio 61 0x00>;
+		fpc,gpio_reset = <&msm_gpio 62 0x00>;
+		fpc,gpio_cs = <&msm_gpio 55 0x00>;
+		fpc,force_hwid = <0x8210>;
+	};
+};

@@ -13,6 +13,46 @@
 
 #include "msm8992-bullhead-pinctrl.dtsi"
 
+/ {
+	aliases {
+		spi1 = &spi_fpc;
+	};
+};
+
+&soc {
+	spi_fpc: spi_fpc@f9966000{
+		status = "ok";
+		compatible = "qcom,spi-qup-v2";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg-names = "spi_physical";
+		reg = <0xf9966000 0x1000>;
+
+		interrupt-names = "spi_irq";
+		interrupts = <0 104 0>;
+
+		spi-max-frequency = <15000000>;
+
+		qcom,master-id = <84>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup4_spi_apps_clk>;
+
+		/* Assign runtime functions to pins */
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default","spi_sleep";
+		pinctrl-0 = <&spi_fpc_active>;
+		pinctrl-1 = <&spi_fpc_suspend>;
+
+		qcom,gpio-mosi = <&msm_gpio 53 0>;
+		qcom,gpio-miso = <&msm_gpio 54 0>;
+		qcom,gpio-cs0 = <&msm_gpio 55 0>;
+		qcom,gpio-clk = <&msm_gpio 56 0>;
+	};
+};
+
 &modem_mem {
 	reg = <0 0x09000000 0 0x6400000>;
 };
