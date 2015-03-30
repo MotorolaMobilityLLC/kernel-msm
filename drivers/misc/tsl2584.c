@@ -416,6 +416,8 @@ static int tsl2584_als_enable(struct tsl2584_data *tsl)
 	u8 reg_data[2] = {0};
 
 	if (!atomic_cmpxchg(&tsl->als_enabled, 0, 1)) {
+		tsl2584_power_on(tsl);
+		tsl2584_device_init(tsl);
 		/* write ALS interrupt persistence */
 		reg_data[0] = TSL2584_INTR;
 		if (tsl->pdata->irq)
@@ -459,6 +461,7 @@ static int tsl2584_als_disable(struct tsl2584_data *tsl)
 			pr_err("%s: Error  %d\n", __func__, error);
 			return error;
 		}
+		tsl2584_power_off(tsl);
 	}
 	return 0;
 }
