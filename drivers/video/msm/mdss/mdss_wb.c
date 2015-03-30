@@ -26,7 +26,6 @@
 
 #include "mdss_panel.h"
 #include "mdss_wb.h"
-#include "mdss_dsi.h"
 
 /**
  * mdss_wb_check_params - check new panel info params
@@ -132,20 +131,6 @@ static int mdss_wb_probe(struct platform_device *pdev)
 
 	if (!pdev->dev.of_node)
 		return -ENODEV;
-
-	/*
-	 * This is a HACK for now.
-	 * DSI has problem with probing because the panel's regulators
-	 * depends on the PMIC GPIO's probe, but it is not ready yet therefore
-	 * the DSI probe will be deferred. If let the WB probe happens before
-	 * DSI then all the overlay_kickoff will be sent to WB instead of
-	 * DSI/primary display. QCOM SR#01781312 is opened for this issue
-	 */
-	if (mdss_dsi_is_dsi_probed() != 0) {
-		pr_warn("%s: mdss_wb_probe will be deferred due to DSI "
-				"probe deffered\n", __func__);
-		return -EPROBE_DEFER;
-	}
 
 	wb_ctrl = devm_kzalloc(&pdev->dev, sizeof(*wb_ctrl), GFP_KERNEL);
 	if (!wb_ctrl)
