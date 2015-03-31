@@ -24,3 +24,9 @@
 	qcom,fastchg-current-ma = <1000>;
 	qcom,float-voltage-mv = <4200>;
 };
+
+&i2c_11 {
+	drv2605@5a {
+		external_trigger = <2>; /* Disable ext. trigger */
+	};
+};
