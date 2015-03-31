@@ -272,3 +272,20 @@
 		};
 	};
 };
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d300 {
+			qcom,flash_0 {
+				qcom,max-current = <125>;
+				qcom,duration = <90>;
+				qcom,current = <125>;
+			};
+			qcom,torch_0 {
+				qcom,max-current = <25>;
+				qcom,duration = <120>;
+				qcom,current = <25>;
+			};
+		};
+	};
+};
