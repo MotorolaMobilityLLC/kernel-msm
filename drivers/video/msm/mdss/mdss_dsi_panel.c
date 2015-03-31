@@ -528,10 +528,16 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 	pinfo = &pdata->panel_info;
 	p_roi = &pinfo->roi;
 
+	/*
+	 * to avoid keep sending same col_page info to panel,
+	 * if roi_merge enabled, the roi of left ctrl is used
+	 * to compare against new merged roi and saved new
+	 * merged roi to it after comparing.
+	 * if roi_merge disabled, then the calling ctrl's roi
+	 * and pinfo's roi are used to compare.
+	 */
 	if (pinfo->partial_update_roi_merge) {
 		left_or_both = mdss_dsi_roi_merge(ctrl, &roi);
-
-		/* always used left ctrl */
 		other = mdss_dsi_get_ctrl_by_index(DSI_CTRL_LEFT);
 		c_roi = &other->roi;
 	} else {
@@ -539,10 +545,7 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 		roi = *p_roi;
 	}
 
-	/*
-	 * if broadcase mode enable or roi had changed
-	 * then do col_page update
-	 */
+	/* roi had changed, do col_page update */
 	if (mdss_dsi_sync_wait_enable(ctrl) ||
 				!mdss_rect_cmp(c_roi, &roi)) {
 		pr_debug("%s: ndx=%d x=%d y=%d w=%d h=%d\n",
