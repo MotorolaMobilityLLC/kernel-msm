@@ -746,7 +746,8 @@ motosh_of_init(struct i2c_client *client)
 	pdata->ct406_detect_threshold = 0x006E;
 	pdata->ct406_undetect_threshold = 0x0050;
 	pdata->ct406_recalibrate_threshold = 0x0064;
-	pdata->ct406_pulse_count = 0x04;
+	pdata->ct406_pulse_count = 0x02;
+	pdata->ct406_prox_gain = 0x02;
 	of_property_read_u32(np, "ct406_detect_threshold",
 				&pdata->ct406_detect_threshold);
 	of_property_read_u32(np, "ct406_undetect_threshold",
@@ -755,6 +756,8 @@ motosh_of_init(struct i2c_client *client)
 				&pdata->ct406_recalibrate_threshold);
 	of_property_read_u32(np, "ct406_pulse_count",
 				&pdata->ct406_pulse_count);
+	of_property_read_u32(np, "ct406_prox_gain",
+				&pdata->ct406_prox_gain);
 	pdata->accel_orient = 1;
 	pdata->gyro_orient = 1;
 	pdata->mag_orient = 1;
