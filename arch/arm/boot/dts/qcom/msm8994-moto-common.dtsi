@@ -1489,8 +1489,8 @@
 	drv2605: drv2605@5a {
 		compatible = "ti,drv2605";
 		reg = <0x5a>;
-		gpios = <&pm8994_gpios 11 0>;        /* EN_GPIO */
-		external_trigger = <2>;
+		gpios = <&pm8994_gpios 11 0>;   /* EN_GPIO */
+		external_trigger = <1>;         /* Enable ext. trigger */
 		default_effect = <17>;          /* Strong Click 100% */
 		rated_voltage = <0x72>;         /* 2.4v */
 		overdrive_voltage = <0xBA>;     /* 3.6v */
