@@ -1,5 +1,5 @@
 ifeq ($(CONFIG_OF),y)
-include $(srctree)/arch/arm/boot/dts/qcom/Makefile.board
+#include $(srctree)/arch/arm/boot/dts/qcom/Makefile.board
 dtb-$(CONFIG_ARCH_MSM8974) += msm8974-v1-cdp.dtb \
 	msm8974-v1-fluid.dtb \
 	msm8974-v1-liquid.dtb \
