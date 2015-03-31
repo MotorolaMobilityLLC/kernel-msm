@@ -19,3 +19,8 @@
 	qcom,board-id = <0x42 0x8100>;
 };
 
+&i2c_11 {
+	drv2605@5a {
+		external_trigger = <2>; /* Disable ext. trigger */
+	};
+};
