@@ -173,8 +173,9 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	buf[4] = (pdata->ct406_recalibrate_threshold >> 8) & 0xff;
 	buf[5] = pdata->ct406_recalibrate_threshold & 0xff;
 	buf[6] = pdata->ct406_pulse_count & 0xff;
+	buf[7] = pdata->ct406_prox_gain & 0xff;
 	err = stml0xx_spi_send_write_reg_reset(PROX_SETTINGS, buf,
-			7, RESET_NOT_ALLOWED);
+			8, RESET_NOT_ALLOWED);
 	if (err < 0) {
 		dev_err(&ps_stml0xx->spi->dev,
 			"unable to write proximity settings %d", err);
