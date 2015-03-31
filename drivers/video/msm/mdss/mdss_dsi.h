@@ -469,6 +469,16 @@ static inline bool mdss_dsi_sync_wait_trigger(struct mdss_dsi_ctrl_pdata *ctrl)
 				ctrl->cmd_sync_wait_trigger;
 }
 
+static inline bool mdss_dsi_is_left_ctrl(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+        return ctrl->ndx == DSI_CTRL_LEFT;
+}
+
+static inline bool mdss_dsi_is_right_ctrl(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+        return ctrl->ndx == DSI_CTRL_RIGHT;
+}
+
 static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_other_ctrl(
 					struct mdss_dsi_ctrl_pdata *ctrl)
 {
