@@ -115,7 +115,7 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return -EINVAL;
 	}
@@ -144,7 +144,7 @@ static int mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return 0;
 	}
@@ -178,7 +178,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	struct mdss_panel_info *pinfo;
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			return;
 	}
@@ -350,7 +350,7 @@ static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
 	}
 
 	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT) {
 			pr_err("%s: reading the pwr_mode on DSI_CTRL_RIGHT\n",
 								__func__);
@@ -562,7 +562,7 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 				return 0;
 		}
 
-		if (pinfo->partial_update_dcs_cmd_by_left) {
+		if (pinfo->dcs_cmd_by_left) {
 			if (left_or_both && ctrl->ndx == DSI_CTRL_RIGHT) {
 				/* 2A/2B sent by left already */
 				return 0;
@@ -588,7 +588,7 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata)
 		cmdreq.rlen = 0;
 		cmdreq.cb = NULL;
 
-		if (pinfo->partial_update_dcs_cmd_by_left)
+		if (pinfo->dcs_cmd_by_left)
 			ctrl = mdss_dsi_get_ctrl_by_index(DSI_CTRL_LEFT);
 
 		mdss_dsi_cmdlist_put(ctrl, &cmdreq);
@@ -677,7 +677,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
 	}
@@ -732,7 +732,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
-	if (pinfo->partial_update_dcs_cmd_by_left) {
+	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
 	}
@@ -1152,15 +1152,15 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		pr_info("%s: partial_update_enabled=%d\n", __func__,
 					pinfo->partial_update_enabled);
 
-		pinfo->partial_update_dcs_cmd_by_left =
-					of_property_read_bool(np,
-					"qcom,partial-update-dcs-cmd-by-left");
 		if (pinfo->partial_update_enabled) {
 			ctrl->set_col_page_addr = mdss_dsi_set_col_page_addr;
 			pinfo->partial_update_roi_merge =
 					of_property_read_bool(np,
 					"qcom,partial-update-roi-merge");
 		}
+
+		pinfo->dcs_cmd_by_left = of_property_read_bool(np,
+						"qcom,dcs-cmd-by-left");
 	}
 
 	pinfo->ulps_feature_enabled = of_property_read_bool(np,

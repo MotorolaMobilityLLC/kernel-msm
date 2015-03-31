@@ -672,7 +672,7 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl)
 	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
 
 	if (ctl->panel_data->panel_info.partial_update_enabled &&
-		ctl->panel_data->panel_info.partial_update_dcs_cmd_by_left &&
+		ctl->panel_data->panel_info.dcs_cmd_by_left &&
 		ctl->main_ctl) {
 		pr_debug("%s: call panel_on on primary ctl instead of split\n",
 			__func__);
