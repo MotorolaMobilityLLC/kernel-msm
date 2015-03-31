@@ -229,8 +229,9 @@ int motosh_reset_and_init(enum reset_mode mode)
 		= (pdata->ct406_recalibrate_threshold >> 8) & 0xff;
 	rst_cmdbuff[6] = pdata->ct406_recalibrate_threshold & 0xff;
 	rst_cmdbuff[7] = pdata->ct406_pulse_count & 0xff;
+	rst_cmdbuff[8] = pdata->ct406_prox_gain & 0xff;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
-					rst_cmdbuff, 8);
+					rst_cmdbuff, 9);
 	if (err < 0) {
 		dev_err(&motosh_misc_data->client->dev,
 			"unable to write proximity settings %d\n", err);
