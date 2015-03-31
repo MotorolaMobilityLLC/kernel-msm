@@ -340,6 +340,7 @@ struct drv260x_platform_data {
 	int default_effect;
 	int rated_voltage;
 	int overdrive_voltage;
+	int rtp_overdrive_voltage;
 	int effects_library;
 	int disable_calibration;
 	struct regulator *vibrator_vdd;
