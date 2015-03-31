@@ -24,7 +24,8 @@
 
 struct m4sensorhub_ads_data {
 	uint32_t seq;
-	int data;
+	int ch1_data;
+	int ch2_data;
 	long long timestamp;
 };
 

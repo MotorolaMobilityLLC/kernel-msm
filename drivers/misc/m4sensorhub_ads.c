@@ -40,7 +40,7 @@
 #define U32_MAX ((u32)(~0U))
 #define m4sensorhub_ads_DRIVER_NAME	"m4sensorhub_ads"
 /* this needs to be in sync with M4 code*/
-#define ADS_NUM_SAMPLES 500
+#define ADS_NUM_SAMPLES 1000
 #define BYTES_TO_READ (ADS_NUM_SAMPLES * sizeof(int))
 
 struct m4sensorhub_ads_drvdata {
@@ -95,12 +95,13 @@ static void m4_read_ads_data_locked(struct m4sensorhub_ads_drvdata *priv_data)
 		return;
 	}
 
-	for (i=0; i < ADS_NUM_SAMPLES; i++) {
+	for (i = 0; i < ADS_NUM_SAMPLES; i = i + 2) {
 		priv_data->read_data.seq = (priv_data->data_seq_num)++;
 		if (priv_data->data_seq_num == U32_MAX)
 			priv_data->data_seq_num = 0;
 
-		priv_data->read_data.data = priv_data->data[i];
+		priv_data->read_data.ch1_data = priv_data->data[i];
+		priv_data->read_data.ch2_data = priv_data->data[i+1];
 
 		priv_data->read_data.timestamp = iio_get_time_ns();
 		ret = iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
@@ -262,7 +263,9 @@ static ssize_t m4sensorhub_ads_show_iiodata(struct device *dev,
 	struct iio_dev *iio_dev =
 						platform_get_drvdata(pdev);
 	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
-	return snprintf(buf, PAGE_SIZE, "ads: %d\n", priv_data->read_data.data);
+	return snprintf(buf, PAGE_SIZE, "ads::ch1 %d, ch2 %d\n",
+					priv_data->read_data.ch1_data,
+					priv_data->read_data.ch2_data);
 }
 static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 					m4sensorhub_ads_show_iiodata,
@@ -339,7 +342,8 @@ static int m4sensorhub_ads_probe(struct platform_device *pdev)
 	priv_data->m4sensorhub = NULL;
 	priv_data->data = NULL;
 	mutex_init(&(priv_data->mutex));
-	priv_data->read_data.data = -1;
+	priv_data->read_data.ch1_data = -1;
+	priv_data->read_data.ch2_data = -1;
 	priv_data->data_seq_num = 0;
 
 	platform_set_drvdata(pdev, iio_dev);
