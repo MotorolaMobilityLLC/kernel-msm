@@ -13,6 +13,7 @@
 #include "msm8916-moto-common.dtsi"
 #include "msm8916-camera-sensor-osprey.dtsi"
 #include "dsi-panel-mot-inx-500-720p-video.dtsi"
+#include "dsi-panel-mot-tdi-500-720p-video.dtsi"
 
 / {
 	model = "Motorola Mobility MSM 8916 Osprey";
