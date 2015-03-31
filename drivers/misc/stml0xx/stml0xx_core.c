@@ -396,7 +396,8 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	pdata->ct406_detect_threshold = 0x00C8;
 	pdata->ct406_undetect_threshold = 0x00A5;
 	pdata->ct406_recalibrate_threshold = 0x0064;
-	pdata->ct406_pulse_count = 0x04;
+	pdata->ct406_pulse_count = 0x02;
+	pdata->ct406_prox_gain = 0x02;
 	of_property_read_u32(np, "ct406_detect_threshold",
 			     &pdata->ct406_detect_threshold);
 	of_property_read_u32(np, "ct406_undetect_threshold",
@@ -405,6 +406,8 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 			     &pdata->ct406_recalibrate_threshold);
 	of_property_read_u32(np, "ct406_pulse_count",
 			     &pdata->ct406_pulse_count);
+	of_property_read_u32(np, "ct406_prox_gain",
+			     &pdata->ct406_prox_gain);
 
 	pdata->headset_detect_enable = 0;
 	pdata->headset_hw_version = 0;
