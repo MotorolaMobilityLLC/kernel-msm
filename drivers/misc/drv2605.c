@@ -177,6 +177,7 @@ static struct drv260x {
 	unsigned char default_sequence[4];
 	unsigned char rated_voltage;
 	unsigned char overdrive_voltage;
+	unsigned char rtp_overdrive_voltage;
 	struct regulator *vibrator_vdd;
 	int use_default_calibration;
 	unsigned char default_calibration[5];
@@ -318,6 +319,8 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "rated_voltage", &pdata->rated_voltage);
 	of_property_read_u32(np, "overdrive_voltage",
 				&pdata->overdrive_voltage);
+	of_property_read_u32(np, "rtp_overdrive_voltage",
+				&pdata->rtp_overdrive_voltage);
 	of_property_read_u32(np, "effects_library", &pdata->effects_library);
 	of_property_read_u32(np, "disable_calibration",
 						&pdata->disable_calibration);
@@ -483,7 +486,7 @@ static void drv260x_change_mode(char mode)
 	unsigned char tmp[] = {
 #ifdef RTP_CLOSED_LOOP_ENABLE
 		Control3_REG, NG_Thresh_2,
-		OVERDRIVE_CLAMP_VOLTAGE_REG, RTP_ERM_OVERDRIVE_CLAMP_VOLTAGE,
+		OVERDRIVE_CLAMP_VOLTAGE_REG, drv260x->rtp_overdrive_voltage,
 #endif
 		MODE_REG, mode
 	};
@@ -818,6 +821,12 @@ static int drv260x_probe(struct i2c_client *client,
 		drv260x->overdrive_voltage = pdata->overdrive_voltage;
 	else
 		drv260x->overdrive_voltage = ERM_OVERDRIVE_CLAMP_VOLTAGE;
+
+	if (pdata->rtp_overdrive_voltage)
+		drv260x->rtp_overdrive_voltage = pdata->rtp_overdrive_voltage;
+	else
+		drv260x->rtp_overdrive_voltage =
+					RTP_ERM_OVERDRIVE_CLAMP_VOLTAGE;
 
 	if (pdata->disable_calibration)
 		drv260x->disable_calibration = pdata->disable_calibration;
