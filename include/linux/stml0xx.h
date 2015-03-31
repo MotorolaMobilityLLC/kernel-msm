@@ -616,6 +616,7 @@ struct stml0xx_platform_data {
 	int ct406_undetect_threshold;
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
+	int ct406_prox_gain;
 	int headset_detect_enable;
 	int headset_hw_version;
 	int headset_insertion_debounce;
