@@ -641,7 +641,7 @@
 			patch-data = "";
 		};
 		default_suspended: touchstate_aod_suspended {
-			patch-data = "F12@20=0505,23=3,23:1=1;F1@0=1&3";
+			patch-data = "F12@20=0505,23=3,23:1=1;F1@0=1&7";
 		};
 	};
 };
