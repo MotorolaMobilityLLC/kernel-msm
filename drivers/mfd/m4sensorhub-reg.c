@@ -115,10 +115,9 @@ int m4sensorhub_reg_read_buffer(struct m4sensorhub_data *m4sensorhub,
 	} else if (num == 0) {
 		KDEBUG(M4SH_ERROR, "%s: Bytes requested is 0\n", __func__);
 		return -EINVAL;
-	} else if ((reg >= M4SH_REG__NUM) || num > M4SH_MAX_REG_SIZE) {
-		KDEBUG(M4SH_ERROR, "%s() invalid register access reg=%d "
-			"maxreg=%d size=%d maxsze=%d \n", __func__,
-			reg, M4SH_REG__NUM, num, M4SH_MAX_REG_SIZE);
+	} else if (reg >= M4SH_REG__NUM) {
+		KDEBUG(M4SH_ERROR, "%s() invalid access reg=%d maxreg=%d\n",
+			__func__, reg, M4SH_REG__NUM);
 		return -EINVAL;
 	}
 
