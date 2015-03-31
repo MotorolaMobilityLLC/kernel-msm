@@ -562,6 +562,7 @@ static void arm64_ext_local_handler(void *info)
 	spin_lock_irqsave(&l2ectlr_lock, flags2);
 
 	l2ectlr = read_l2ectlr_el1;
+	edac_printk(KERN_ERR, EDAC_CPU, "the L2ECTRL_EL1 value is %#x\n", l2ectlr);
 
 	if (l2ectlr & L2ECTLR_EXT_ERR) {
 		edac_printk(KERN_CRIT, EDAC_CPU,
