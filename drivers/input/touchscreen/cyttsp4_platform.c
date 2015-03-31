@@ -37,7 +37,7 @@
 #include <linux/cyttsp4_bus.h>
 #include <linux/cyttsp4_core.h>
 
-#include <cyttsp4_regs.h>
+#include "cyttsp4_regs.h"
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PLATFORM_FW_UPGRADE
 #include <linux/cyttsp4_img.h>
 static struct cyttsp4_touch_firmware cyttsp4_firmware = {
