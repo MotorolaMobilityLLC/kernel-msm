@@ -215,14 +215,14 @@ struct synaptics_dsx_patch {
 	struct list_head cfg_head;
 };
 
-struct synaptics_dsx_patchset {
-	int	patch_num;
-	struct synaptics_dsx_patch *patch_data;
-};
-
 #define ACTIVE_IDX	0
 #define SUSPEND_IDX	1
 #define MAX_NUM_STATES	2
+
+struct synaptics_dsx_patchset {
+	int	patch_num;
+	struct synaptics_dsx_patch *patch_data[MAX_NUM_STATES];
+};
 
 struct f34_properties {
 	union {
