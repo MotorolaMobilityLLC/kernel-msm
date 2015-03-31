@@ -1203,6 +1203,25 @@ static struct regulator *create_regulator(struct regulator_dev *rdev,
 	    _regulator_is_enabled(rdev))
 		regulator->always_on = true;
 
+	/*
+	 * For the regulator does not support set voltage, pick up
+	 * current voltage, it will help regulator_set_voltage passed
+	 * when set with same voltage.
+	 */
+	if (!rdev->desc->ops->set_voltage &&
+	    !rdev->desc->ops->set_voltage_sel) {
+		if (rdev->desc->ops->get_voltage)
+			err = rdev->desc->ops->get_voltage(rdev);
+		else if (rdev->desc->ops->list_voltage)
+			err = rdev->desc->ops->list_voltage(rdev, 0);
+		else
+			err = -EINVAL;
+		if (err >= 0) {
+			regulator->min_uV = err;
+			regulator->max_uV = err;
+		}
+	}
+
 	mutex_unlock(&rdev->mutex);
 	return regulator;
 overflow_err:
