@@ -839,6 +839,12 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
 	snd_soc_dapm_ignore_suspend(dapm, "IN3R");
 	snd_soc_dapm_ignore_suspend(dapm, "IN3L");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1L");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1R");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT2L");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT2R");
 
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to add florida_audio_routes\n");
