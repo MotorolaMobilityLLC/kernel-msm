@@ -313,6 +313,7 @@ struct motosh_platform_data {
 	int ct406_undetect_threshold;
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
+	int ct406_prox_gain;
 	int accel_orient;
 	int gyro_orient;
 	int mag_orient;
