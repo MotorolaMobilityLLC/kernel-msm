@@ -29,6 +29,8 @@ Optional:
 		programmed the driver will ignore this option.
 	- calibration-data:
 		Default calibration data.
+	- rtp_overdrive_voltage:
+		overdrive voltage for RTP closed loop mode
 Example:
 
 	i2c@1a200000 {
