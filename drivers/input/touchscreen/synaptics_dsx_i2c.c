@@ -883,7 +883,7 @@ int synaptics_dsx_dt_parse_mode(struct synaptics_rmi4_data *data,
 
 		/* Parse the node */
 		ret = synaptics_dsx_dt_parse_state(data, np_config,
-				 &mode->patch_data[config]);
+				 mode->patch_data[config]);
 		of_node_put(np_config);
 		if (ret < 0)
 			goto err;
@@ -1431,7 +1431,7 @@ static void synaptics_dsx_state_config(
 {
 	int i;
 	struct synaptics_dsx_patch *patch =
-			&rmi4_data->current_mode->patch_data[state];
+			rmi4_data->current_mode->patch_data[state];
 
 	if (!patch || !patch->cfg_num) {
 		pr_debug("patchset is empty!\n");
@@ -3836,6 +3836,25 @@ exit:
 }
 EXPORT_SYMBOL(synaptics_rmi4_new_function);
 
+static void synaptics_dsx_free_patch(struct synaptics_dsx_patch *patch)
+{
+	struct synaptics_dsx_func_patch *fp;
+	list_for_each_entry(fp, &patch->cfg_head, link)
+		kfree(fp->data);
+	kfree(patch);
+}
+
+static struct synaptics_dsx_patch *synaptics_dsx_init_patch(const char *name)
+{
+	struct synaptics_dsx_patch *patch;
+	patch = kzalloc(sizeof(struct synaptics_dsx_patch), GFP_KERNEL);
+	if (patch) {
+		patch->name = name;
+		INIT_LIST_HEAD(&patch->cfg_head);
+	}
+	return patch;
+}
+
 static int synaptics_dsx_init_mode(struct synaptics_rmi4_data *data,
 		struct synaptics_dsx_patchset **pmode)
 {
@@ -3846,15 +3865,43 @@ static int synaptics_dsx_init_mode(struct synaptics_rmi4_data *data,
 		return -ENOMEM;
 
 	mode->patch_num = MAX_NUM_STATES;
-	mode->patch_data = kzalloc(sizeof(struct synaptics_dsx_patch) *
-		mode->patch_num, GFP_KERNEL);
-	if (!mode->patch_data) {
-		kfree(mode);
-		return -ENOMEM;
+	for (i = 0; i < mode->patch_num; i++) {
+		struct synaptics_dsx_patch *patch;
+		patch = synaptics_dsx_init_patch("dts");
+		if (!patch) {
+			kfree(mode);
+			return -ENOMEM;
+		}
+		mode->patch_data[i] = patch;
 	}
+	return 0;
+}
 
-	for (i = 0; i < mode->patch_num; i++)
-		INIT_LIST_HEAD(&mode->patch_data[i].cfg_head);
+static int synaptics_dsx_free_modes(struct synaptics_rmi4_data *data)
+{
+	int m, i;
+	struct synaptics_dsx_patchset *mode;
+
+	for (m = 0; m < 2; m++) {
+		switch (m) {
+		case 0:
+			mode = data->default_mode;
+			break;
+		case 1:
+			mode = data->alternate_mode;
+			break;
+		}
+		if (!mode)
+			continue;
+		for (i = 0; i < mode->patch_num; i++) {
+			struct synaptics_dsx_patch *patch = mode->patch_data[i];
+			synaptics_dsx_free_patch(patch);
+		}
+		kfree(mode);
+	}
+	data->current_mode = NULL;
+	data->default_mode = NULL;
+	data->alternate_mode = NULL;
 	return 0;
 }
 
@@ -4150,6 +4197,7 @@ err_regulator_enable:
 	input_free_device(rmi4_data->input_dev);
 
 err_input_device:
+	synaptics_dsx_free_modes(rmi4_data);
 	kfree(rmi4_data);
 
 	return retval;
@@ -4207,6 +4255,7 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 	fb_unregister_client(&rmi4_data->panel_nb);
 #endif
 	synaptics_rmi4_cleanup(rmi4_data);
+	synaptics_dsx_free_modes(rmi4_data);
 	kfree(rmi4_data);
 
 	return 0;
