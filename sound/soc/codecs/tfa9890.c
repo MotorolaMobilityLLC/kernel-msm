@@ -1970,6 +1970,9 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 
 		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_left_dapm_routes,
 				ARRAY_SIZE(tfa9890_left_dapm_routes));
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1L");
+		snd_soc_dapm_ignore_suspend(&codec->dapm,
+			"NXP Speaker Boost Left");
 	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
 		snd_soc_add_codec_controls(codec, tfa9890_right_snd_controls,
 			     ARRAY_SIZE(tfa9890_right_snd_controls));
@@ -1978,6 +1981,9 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 				ARRAY_SIZE(tfa9890_right_dapm_widgets));
 		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_right_dapm_routes,
 				ARRAY_SIZE(tfa9890_right_dapm_routes));
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1R");
+		snd_soc_dapm_ignore_suspend(&codec->dapm,
+			"NXP Speaker Boost Right");
 	}
 
 	if (stereo_mode) {
