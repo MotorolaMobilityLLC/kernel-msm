@@ -97,6 +97,7 @@ static const struct regmap_config isl98611_regmap = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = REG_MAX,
+	.cache_type = REGCACHE_NONE,
 };
 
 /* i2c access */
