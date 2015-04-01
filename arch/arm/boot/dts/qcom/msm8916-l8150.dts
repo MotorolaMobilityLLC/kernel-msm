@@ -338,6 +338,7 @@
 		synaptics,use-external-ldo;
 		synaptics,display-coords = <0 0 720 1280>;
 		synaptics,panel-coords = <0 0 720 1280>;
+		synaptics,fw-image-name = "synaptics_dsx_fw_update.bin";
 	};
 };
 
