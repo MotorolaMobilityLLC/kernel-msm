@@ -881,6 +881,7 @@ static inline bool __is_mdp_clk_svs_plus_range(struct mdss_data_type *mdata,
 		(rate <= mdata->svs_plus_max);
 }
 
+int mdss_mdp_cmd_ctx_is_pingpong_split_slave(struct mdss_mdp_ctl *ctl);
 irqreturn_t mdss_mdp_isr(int irq, void *ptr);
 int mdss_iommu_attach(struct mdss_data_type *mdata);
 int mdss_iommu_dettach(struct mdss_data_type *mdata);
