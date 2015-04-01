@@ -17,10 +17,10 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		mmi,sh-control-enabled;
+		mmi,quickdraw-enabled;
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-panel-destination = "display_1";
 		qcom,mdss-dsi-panel-framerate = <60>;
-		qcom,mdss-dsi-panel-col-align = <8>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
@@ -135,10 +135,10 @@
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi1>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		mmi,sh-control-enabled;
+		mmi,quickdraw-enabled;
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-panel-destination = "display_2";
 		qcom,mdss-dsi-panel-framerate = <60>;
-		qcom,mdss-dsi-panel-col-align = <8>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
