@@ -182,8 +182,17 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			"Received peek prepare command\n");
 		break;
 	case AOD_WAKEUP_REASON_QP_COMPLETE:
+		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+			1, 1) < 0) {
+			dev_err(&ps_motosh->client->dev,
+				"Reading peek draw data from STM failed\n");
+			goto error;
+		}
+		qp_message->commit = (motosh_readbuff[0] & 0x80) >> 7;
 		dev_dbg(&ps_motosh->client->dev,
-			"Received peek complete command\n");
+			"Received peek complete command commit: %d\n",
+			qp_message->commit);
 		break;
 	case AOD_WAKEUP_REASON_QP_DRAW:
 		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
@@ -194,14 +203,15 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			goto error;
 		}
 		qp_message->buffer_id = motosh_readbuff[0] & 0x3f;
+		qp_message->commit = (motosh_readbuff[0] & 0x80) >> 7;
 		qp_message->x1 = motosh_readbuff[1] |
 			motosh_readbuff[2] << 8;
 		qp_message->y1 = motosh_readbuff[3] |
 			motosh_readbuff[4] << 8;
 
 		dev_dbg(&ps_motosh->client->dev,
-			"Received peek draw command for buffer: %d (coord: %d, %d)\n",
-			qp_message->buffer_id,
+			"Received peek draw command for buffer: %d commit: %d (coord: %d, %d)\n",
+			qp_message->buffer_id, qp_message->commit,
 			qp_message->x1, qp_message->y1);
 		break;
 	case AOD_WAKEUP_REASON_QP_ERASE:
@@ -212,6 +222,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 				"Reading peek erase data from STM failed\n");
 			goto error;
 		}
+		qp_message->commit = (motosh_readbuff[0] & 0x80) >> 7;
 		qp_message->x1 = motosh_readbuff[1] |
 			motosh_readbuff[2] << 8;
 		qp_message->y1 = motosh_readbuff[3] |
@@ -222,8 +233,8 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			motosh_readbuff[8] << 8;
 
 		dev_dbg(&ps_motosh->client->dev,
-			"Received peek erase command: (%d, %d) -> (%d, %d)\n",
-			qp_message->x1, qp_message->y1,
+			"Received peek erase command: commit: %d (%d, %d) -> (%d, %d)\n",
+			qp_message->commit, qp_message->x1, qp_message->y1,
 			qp_message->x2, qp_message->y2);
 		break;
 	default:
@@ -422,8 +433,8 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 				x = qp_message->x1;
 			if (qp_message->y1 != AOD_QP_DRAW_NO_OVERRIDE)
 				y = qp_message->y1;
-			ret = fb_quickdraw_execute(
-				qp_message->buffer_id, 1, x, y);
+			ret = fb_quickdraw_execute(qp_message->buffer_id,
+				qp_message->commit, x, y);
 			if (ret) {
 				dev_err(&ps_motosh->client->dev,
 					"%s: Failed to execute (ret: %d)\n",
@@ -439,7 +450,7 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 				ack_return = AOD_QP_ACK_INVALID;
 				break;
 			}
-			ret = fb_quickdraw_erase(1,
+			ret = fb_quickdraw_erase(qp_message->commit,
 				qp_message->x1, qp_message->y1,
 				qp_message->x2, qp_message->y2);
 			if (ret) {
@@ -450,7 +461,7 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 			}
 			break;
 		case AOD_WAKEUP_REASON_QP_COMPLETE:
-			ret = fb_quickdraw_cleanup(1);
+			ret = fb_quickdraw_cleanup(qp_message->commit);
 			if (ret) {
 				dev_err(&ps_motosh->client->dev,
 					"%s: Failed to cleanup (ret: %d)\n",
