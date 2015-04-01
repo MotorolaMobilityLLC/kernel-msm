@@ -292,3 +292,10 @@ config USB_QCOM_IPC_BRIDGE
 	  will be bridged in kernel space. This driver works as a transport
 	  layer for IPC router module that enables communication between
 	  APPS processor and MODEM processor.
+
+config USB_CC_TUSB320
+	bool "TUSB320 Configuration Controller for type C"
+	depends on USB || I2C
+	default n
+	help
+	  Enable this to support TUSB320 CC(Configuration Channel) Controller for Type C.
