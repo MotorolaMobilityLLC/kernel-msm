@@ -859,6 +859,7 @@ static inline u32 left_lm_w_from_mfd(struct msm_fb_data_type *mfd)
 	return width;
 }
 
+int mdss_mdp_cmd_ctx_is_pingpong_split_slave(struct mdss_mdp_ctl *ctl);
 irqreturn_t mdss_mdp_isr(int irq, void *ptr);
 int mdss_iommu_attach(struct mdss_data_type *mdata);
 int mdss_iommu_dettach(struct mdss_data_type *mdata);
