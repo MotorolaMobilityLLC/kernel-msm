@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -301,6 +301,8 @@
 
 #include "dsi-panel-hx8394d-720p-video.dtsi"
 #include "dsi-panel-sharp-qhd-video.dtsi"
+#include "dsi-panel-truly-wvga-cmd.dtsi"
+#include "dsi-panel-hx8394d-qhd-video.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
@@ -323,9 +325,25 @@
 	qcom,cont-splash-enabled;
 };
 
+&dsi_truly_wvga_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
+	qcom,mdss-dsi-bl-pmic-bank-select = <0>;
+	qcom,mdss-dsi-pwm-gpio = <&pm8909_mpps 2 0>;
+	qcom,cont-splash-enabled;
+};
+
+&dsi_hx8394d_qhd_vid {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
+	qcom,mdss-dsi-bl-pmic-bank-select = <0>;
+	qcom,mdss-dsi-pwm-gpio = <&pm8909_mpps 2 0>;
+	qcom,cont-splash-enabled;
+};
+
 &pmx_mdss {
-	qcom,num-grp-pins = <3>;
-	qcom,pins = <&gp 97>, <&gp 25>, <&gp 37>;
+	qcom,num-grp-pins = <2>;
+	qcom,pins = <&gp 25>, <&gp 37>;
 };
 
 &pmx_mdss_te {
@@ -339,7 +357,6 @@
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 
-	qcom,platform-enable-gpio = <&msm_gpio 97 0>;
 	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
 	qcom,platform-bklight-en-gpio = <&msm_gpio 37 0>;
 };

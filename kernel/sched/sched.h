@@ -137,6 +137,9 @@ struct task_group {
 	struct cgroup_subsys_state css;
 
 	bool notify_on_migrate;
+#ifdef CONFIG_SCHED_HMP
+	bool upmigrate_discouraged;
+#endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* schedulable entities of this group on each cpu */
@@ -749,6 +752,7 @@ unsigned int max_task_load(void);
 extern void sched_account_irqtime(int cpu, struct task_struct *curr,
 				 u64 delta, u64 wallclock);
 unsigned int cpu_temp(int cpu);
+extern unsigned int nr_eligible_big_tasks(int cpu);
 
 static inline int capacity(struct rq *rq)
 {
@@ -821,6 +825,11 @@ static inline int sched_cpu_high_irqload(int cpu)
 #else	/* CONFIG_SCHED_HMP */
 
 struct hmp_sched_stats;
+
+static inline unsigned int nr_eligible_big_tasks(int cpu)
+{
+	return 0;
+}
 
 static inline int pct_task_load(struct task_struct *p) { return 0; }
 
@@ -1381,7 +1390,7 @@ static inline u64 steal_ticks(u64 steal)
 
 static inline void inc_nr_running(struct rq *rq)
 {
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, true);
+	sched_update_nr_prod(cpu_of(rq), 1, true);
 	rq->nr_running++;
 
 #ifdef CONFIG_NO_HZ_FULL
@@ -1397,7 +1406,7 @@ static inline void inc_nr_running(struct rq *rq)
 
 static inline void dec_nr_running(struct rq *rq)
 {
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, false);
+	sched_update_nr_prod(cpu_of(rq), 1, false);
 	rq->nr_running--;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  * Copyright (C) 1994 Martin Schaller
  *
  * 2001 - Documented with DocBook
@@ -170,6 +170,27 @@ static int __from_user_fb_cmap(struct fb_cmap __user *cmap,
 	    put_user(compat_ptr(data), &cmap->blue) ||
 	    get_user(data, &cmap32->transp) ||
 	    put_user(compat_ptr(data), &cmap->transp))
+		return -EFAULT;
+
+	return 0;
+}
+
+static int __to_user_fb_cmap(struct fb_cmap __user *cmap,
+				struct fb_cmap32 __user *cmap32)
+{
+	unsigned long data;
+
+	if (copy_in_user(&cmap32->start, &cmap->start, 2 * sizeof(__u32)))
+		return -EFAULT;
+
+	if (get_user(data, (unsigned long *) &cmap->red) ||
+	    put_user((compat_caddr_t) data, &cmap32->red) ||
+	    get_user(data, (unsigned long *) &cmap->green) ||
+	    put_user((compat_caddr_t) data, &cmap32->green) ||
+	    get_user(data, (unsigned long *) &cmap->blue) ||
+	    put_user((compat_caddr_t) data, &cmap32->blue) ||
+	    get_user(data, (unsigned long *) &cmap->transp) ||
+	    put_user((compat_caddr_t) data, &cmap32->transp))
 		return -EFAULT;
 
 	return 0;
@@ -863,6 +884,32 @@ static int __to_user_hist_lut_data(
 	return 0;
 }
 
+static int __from_user_rgb_lut_data(
+				struct mdp_rgb_lut_data32 __user *rgb_lut32,
+				struct mdp_rgb_lut_data __user *rgb_lut)
+{
+	if (copy_in_user(&rgb_lut->flags, &rgb_lut32->flags,
+		sizeof(uint32_t)) ||
+		copy_in_user(&rgb_lut->lut_type, &rgb_lut32->lut_type,
+		sizeof(uint32_t)))
+		return -EFAULT;
+
+	return __from_user_fb_cmap(&rgb_lut->cmap, &rgb_lut32->cmap);
+}
+
+static int __to_user_rgb_lut_data(
+			struct mdp_rgb_lut_data32 __user *rgb_lut32,
+			struct mdp_rgb_lut_data __user *rgb_lut)
+{
+	if (copy_in_user(&rgb_lut32->flags, &rgb_lut->flags,
+		sizeof(uint32_t)) ||
+		copy_in_user(&rgb_lut32->lut_type, &rgb_lut->lut_type,
+		sizeof(uint32_t)))
+		return -EFAULT;
+
+	return __to_user_fb_cmap(&rgb_lut->cmap, &rgb_lut32->cmap);
+}
+
 static int __from_user_lut_cfg_data(
 			struct mdp_lut_cfg_data32 __user *lut_cfg32,
 			struct mdp_lut_cfg_data __user *lut_cfg)
@@ -895,6 +942,11 @@ static int __from_user_lut_cfg_data(
 			compat_ptr((uintptr_t)&lut_cfg32->data.hist_lut_data),
 			&lut_cfg->data.hist_lut_data);
 		break;
+	case mdp_lut_rgb:
+		ret = __from_user_rgb_lut_data(
+			compat_ptr((uintptr_t)&lut_cfg32->data.rgb_lut_data),
+			&lut_cfg->data.rgb_lut_data);
+		break;
 	default:
 		break;
 	}
@@ -907,7 +959,7 @@ static int __to_user_lut_cfg_data(
 			struct mdp_lut_cfg_data __user *lut_cfg)
 {
 	uint32_t lut_type;
-	int ret;
+	int ret = 0;
 
 	if (copy_from_user(&lut_type, &lut_cfg->lut_type,
 			sizeof(uint32_t)))
@@ -933,6 +985,11 @@ static int __to_user_lut_cfg_data(
 		ret = __to_user_hist_lut_data(
 			compat_ptr((uintptr_t)&lut_cfg32->data.hist_lut_data),
 			&lut_cfg->data.hist_lut_data);
+		break;
+	case mdp_lut_rgb:
+		ret = __to_user_rgb_lut_data(
+			compat_ptr((uintptr_t)&lut_cfg32->data.rgb_lut_data),
+			&lut_cfg->data.rgb_lut_data);
 		break;
 	default:
 		break;
@@ -2385,6 +2442,11 @@ static int __to_user_mdp_overlay(struct mdp_overlay32 __user *ov32,
 			   sizeof(struct mdp_scale_data));
 	if (ret)
 		return -EFAULT;
+
+	ret |= put_user(ov->color_space, &ov32->color_space);
+	if (ret)
+		return -EFAULT;
+
 	return 0;
 }
 
@@ -2439,6 +2501,10 @@ static int __from_user_mdp_overlay(struct mdp_overlay *ov,
 
 	if (copy_in_user(&ov->scale, &ov32->scale,
 			 sizeof(struct mdp_scale_data)))
+		return -EFAULT;
+
+	if (get_user(data, &ov32->color_space) ||
+	    put_user(data, &ov->color_space))
 		return -EFAULT;
 
 	return 0;
@@ -2593,11 +2659,15 @@ int mdss_compat_overlay_ioctl(struct fb_info *info, unsigned int cmd,
 		}
 		ov32 = compat_ptr(arg);
 		ret = __from_user_mdp_overlay(ov, ov32);
-		if (ret)
+
+		if (ret) {
 			pr_err("%s: compat mdp overlay failed\n", __func__);
-		else
+		} else {
 			ret = mdss_fb_do_ioctl(info, cmd, (unsigned long) ov);
-		ret = __to_user_mdp_overlay(ov32, ov);
+
+			if (!ret)
+				ret = __to_user_mdp_overlay(ov32, ov);
+		}
 		break;
 	case MSMFB_OVERLAY_SET:
 		ov = compat_alloc_user_space(sizeof(*ov));
@@ -2612,7 +2682,9 @@ int mdss_compat_overlay_ioctl(struct fb_info *info, unsigned int cmd,
 			pr_err("%s: compat mdp overlay failed\n", __func__);
 		} else {
 			ret = mdss_fb_do_ioctl(info, cmd, (unsigned long) ov);
-			ret = __to_user_mdp_overlay(ov32, ov);
+
+			if (!ret)
+				ret = __to_user_mdp_overlay(ov32, ov);
 		}
 		break;
 	case MSMFB_OVERLAY_PREPARE:

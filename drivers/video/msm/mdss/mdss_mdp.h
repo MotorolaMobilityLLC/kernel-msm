@@ -45,7 +45,6 @@
 #define HORSCALER_NUM_FILTER_TAPS	8
 #define HORSCALER_COEFF_NUM		17
 #define MDP_MIN_VBP		4
-#define MDP_MIN_FETCH		9
 #define MAX_FREE_LIST_SIZE	12
 #define OVERLAY_MAX		10
 
@@ -76,12 +75,6 @@
 #define MASTER_CTX 0
 #define SLAVE_CTX 1
 
-/*
- * Recommendation is to have different ot depending on the fps
- * and resolution, but since current SW doesn't support different
- * fps for non-real time, we are hard-coding the ot limit to 2 for now
- */
-#define MDSS_OT_LIMIT 2
 #define XIN_HALT_TIMEOUT_US	0x4000
 
 enum mdss_mdp_perf_state_type {
@@ -264,6 +257,7 @@ struct mdss_mdp_ctl {
 	u32 perf_transaction_status;
 	bool perf_release_ctl_bw;
 	u64 bw_pending;
+	bool disable_prefill;
 
 	bool traffic_shaper_enabled;
 	u32  traffic_shaper_mdp_clk;
@@ -298,7 +292,7 @@ struct mdss_mdp_ctl {
 	void *priv_data;
 	void *intf_ctx[2];
 	u32 wb_type;
-	bool prg_fet;
+	u32 prg_fet;
 	bool force_ctl_start;
 };
 
@@ -318,6 +312,15 @@ struct mdss_mdp_mixer {
 	u16 cursor_hoty;
 	u8 rotator_mode;
 
+	/*
+	 * src_split_req is valid only for right layer mixer.
+	 *
+	 * VIDEO mode panels: Always true if source split is enabled.
+	 * CMD mode panels: Only true if source split is enabled and
+	 *                  for a given commit left and right both ROIs
+	 *                  are valid.
+	 */
+	bool src_split_req;
 	bool is_right_mixer;
 	struct mdss_mdp_ctl *ctl;
 	struct mdss_mdp_pipe *stage_pipe[MAX_PIPES_PER_LM];
@@ -481,6 +484,8 @@ struct mdss_mdp_pipe {
 
 	u32 flags;
 	u32 bwc_mode;
+
+	/* valid only when pipe's output is crossing both layer mixers */
 	bool src_split_req;
 	bool is_right_blend;
 
@@ -576,6 +581,9 @@ struct mdss_mdp_set_ot_params {
 	u32 num;
 	u32 width;
 	u32 height;
+	bool is_rot;
+	bool is_wb;
+	bool is_yuv;
 	u32 reg_off_vbif_lim_conf;
 	u32 reg_off_mdp_clk_ctrl;
 	u32 bit_off_mdp_clk_ctrl;
@@ -691,7 +699,7 @@ static inline bool mdss_mdp_is_vbif_nrt(u32 mdp_rev)
 		MDSS_MDP_HW_REV_107);
 }
 
-static inline bool mdss_mdp_apply_ot_limit(u32 mdp_rev)
+static inline bool is_dynamic_ot_limit_required(u32 mdp_rev)
 {
 	return mdp_rev == MDSS_MDP_HW_REV_105 ||
 		mdp_rev == MDSS_MDP_HW_REV_109 ||
@@ -707,6 +715,35 @@ static inline int mdss_mdp_iommu_dyn_attach_supported(
 static inline int mdss_mdp_line_buffer_width(void)
 {
 	return MAX_LINE_BUFFER_WIDTH;
+}
+
+static inline u32 get_panel_yres(struct mdss_panel_info *pinfo)
+{
+	u32 yres;
+
+	yres = pinfo->yres + pinfo->lcdc.border_top +
+				pinfo->lcdc.border_bottom;
+	return yres;
+}
+
+static inline u32 get_panel_xres(struct mdss_panel_info *pinfo)
+{
+	u32 xres;
+
+	xres = pinfo->xres + pinfo->lcdc.border_left +
+				pinfo->lcdc.border_right;
+	return xres;
+}
+
+static inline u32 get_panel_width(struct mdss_mdp_ctl *ctl)
+{
+	u32 width;
+
+	width = get_panel_xres(&ctl->panel_data->panel_info);
+	if (ctl->panel_data->next && is_pingpong_split(ctl->mfd))
+		width += get_panel_xres(&ctl->panel_data->next->panel_info);
+
+	return width;
 }
 
 static inline int mdss_mdp_panic_signal_support_mode(
@@ -855,6 +892,7 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd);
 int mdss_mdp_video_addr_setup(struct mdss_data_type *mdata,
 		u32 *offsets,  u32 count);
 int mdss_mdp_video_start(struct mdss_mdp_ctl *ctl);
+void mdss_mdp_switch_roi_reset(struct mdss_mdp_ctl *ctl);
 void mdss_mdp_switch_to_cmd_mode(struct mdss_mdp_ctl *ctl, int prep);
 void mdss_mdp_switch_to_vid_mode(struct mdss_mdp_ctl *ctl, int prep);
 void *mdss_mdp_get_intf_base_addr(struct mdss_data_type *mdata,
@@ -884,6 +922,7 @@ int mdss_mdp_ctl_destroy(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff);
 int mdss_mdp_ctl_stop(struct mdss_mdp_ctl *ctl, int panel_power_mode);
 int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg);
+int mdss_mdp_get_prefetch_lines(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_perf_bw_check(struct mdss_mdp_ctl *ctl,
 		struct mdss_mdp_pipe **left_plist, int left_cnt,
 		struct mdss_mdp_pipe **right_plist, int right_cnt,
@@ -1026,13 +1065,18 @@ void mdss_mdp_data_free(struct mdss_mdp_data *data);
 
 u32 mdss_get_panel_framerate(struct msm_fb_data_type *mfd);
 int mdss_mdp_calc_phase_step(u32 src, u32 dst, u32 *out_phase);
+
 void mdss_mdp_intersect_rect(struct mdss_rect *res_rect,
 	const struct mdss_rect *dst_rect,
 	const struct mdss_rect *sci_rect);
 void mdss_mdp_crop_rect(struct mdss_rect *src_rect,
 	struct mdss_rect *dst_rect,
 	const struct mdss_rect *sci_rect);
-
+void rect_copy_mdss_to_mdp(struct mdp_rect *user, struct mdss_rect *kernel);
+void rect_copy_mdp_to_mdss(struct mdp_rect *user, struct mdss_rect *kernel);
+bool mdss_rect_overlap_check(struct mdss_rect *rect1, struct mdss_rect *rect2);
+void mdss_rect_split(struct mdss_rect *in_roi, struct mdss_rect *l_roi,
+	struct mdss_rect *r_roi, u32 splitpoint);
 
 int mdss_mdp_wb_kickoff(struct msm_fb_data_type *mfd,
 		struct mdss_mdp_commit_cb *commit_cb);
@@ -1053,7 +1097,7 @@ int mdss_mdp_writeback_display_commit(struct mdss_mdp_ctl *ctl, void *arg);
 struct mdss_mdp_ctl *mdss_mdp_ctl_mixer_switch(struct mdss_mdp_ctl *ctl,
 					       u32 return_type);
 void mdss_mdp_set_roi(struct mdss_mdp_ctl *ctl,
-					struct mdp_display_commit *data);
+	struct mdss_rect *l_roi, struct mdss_rect *r_roi);
 
 int mdss_mdp_wb_set_format(struct msm_fb_data_type *mfd, u32 dst_format);
 int mdss_mdp_wb_get_format(struct msm_fb_data_type *mfd,
@@ -1065,8 +1109,7 @@ int mdss_mdp_wb_get_secure(struct msm_fb_data_type *mfd, uint8_t *enable);
 void mdss_mdp_ctl_restore(void);
 int  mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_wait_for_xin_halt(u32 xin_id, bool is_vbif_nrt);
-void mdss_mdp_set_ot_limit(struct mdss_mdp_set_ot_params *params,
-	bool is_rot, bool is_wb, bool is_yuv);
+void mdss_mdp_set_ot_limit(struct mdss_mdp_set_ot_params *params);
 int mdss_mdp_cmd_set_autorefresh_mode(struct mdss_mdp_ctl *ctl,
 		int frame_cnt);
 int mdss_mdp_ctl_cmd_autorefresh_enable(struct mdss_mdp_ctl *ctl,

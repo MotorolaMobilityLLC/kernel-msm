@@ -12,13 +12,15 @@
 
 #include "skeleton64.dtsi"
 #include <dt-bindings/clock/msm-clocks-8909.h>
+#include <dt-bindings/clock/msm-clocks-a7.h>
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909";
 	compatible = "qcom,msm8909";
 	qcom,msm-id =	<245 0>,
 			<258 0>,
-			<265 0>;
+			<265 0>,
+			<275 0>;
 	interrupt-parent = <&intc>;
 
 	chosen {
@@ -120,7 +122,7 @@
 		cont_splash_mem: splash_region@83000000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
-			reg = <0x0 0x83000000 0x0 0x900000>;
+			reg = <0x0 0x83000000 0x0 0xc00000>;
 			label = "cont_splash_mem";
 		};
 	};
@@ -262,7 +264,7 @@
 		#clock-cells = <1>;
 	};
 
-	qcom,clock-a7@0b011050 {
+	clock_cpu: qcom,clock-a7@0b011050 {
 		compatible = "qcom,clock-a53-8916";
 		reg = <0x0b011050 0x8>,
 		      <0x0005c00c 0x8>;
@@ -283,6 +285,7 @@
 			<  400000000 4>,
 			<  800000000 5>,
 			< 1094400000 7>;
+		#clock-cells = <1>;
 	};
 
 	cpubw: qcom,cpubw {
@@ -317,9 +320,15 @@
 		qcom,target-dev = <&cpubw>;
 	};
 
-	qcom,msm-cpufreq@0 {
+	qcom,msm-cpufreq {
 		reg = <0 4>;
 		compatible = "qcom,msm-cpufreq";
+		clocks = <&clock_cpu  clk_a7ssmux>,
+			 <&clock_cpu  clk_a7ssmux>,
+			 <&clock_cpu  clk_a7ssmux>,
+			 <&clock_cpu  clk_a7ssmux>;
+		clock-names = "cpu0_clk", "cpu1_clk",
+				"cpu2_clk", "cpu3_clk";
 		qcom,cpufreq-table =
 			 <  200000 >,
 			 <  400000 >,
@@ -556,6 +565,7 @@
 			qcom,smd-irq-bitmask = <0x1000>;
 			interrupts = <0 25 1>;
 			label = "modem";
+			qcom,not-loadable;
 		};
 
 		qcom,smsm-modem {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -985,6 +985,14 @@ struct vidc_seq_hdr {
 	u32 seq_hdr_len;
 };
 
+struct hal_fw_info {
+	char version[128];
+	int base_addr;
+	int register_base;
+	int register_size;
+	int irq;
+};
+
 enum hal_flush {
 	HAL_FLUSH_INPUT,
 	HAL_FLUSH_OUTPUT,
@@ -1259,14 +1267,6 @@ enum msm_vidc_hfi_type {
 	VIDC_HFI_Q6,
 };
 
-enum fw_info {
-	FW_BASE_ADDRESS,
-	FW_REGISTER_BASE,
-	FW_REGISTER_SIZE,
-	FW_IRQ,
-	FW_INFO_MAX,
-};
-
 enum msm_vidc_thermal_level {
 	VIDC_THERMAL_NORMAL = 0,
 	VIDC_THERMAL_LOW,
@@ -1300,6 +1300,7 @@ static inline enum vidc_bus_vote_data_session VIDC_VOTE_DATA_SESSION_VAL(
 struct vidc_bus_vote_data {
 	enum vidc_bus_vote_data_session session;
 	int load;
+	bool low_power;
 };
 
 #define call_hfi_op(q, op, args...)			\
@@ -1347,8 +1348,7 @@ struct hfi_device {
 			int *domain_num, int *partition_num);
 	int (*load_fw)(void *dev);
 	void (*unload_fw)(void *dev);
-	int (*resurrect_fw)(void *dev);
-	int (*get_fw_info)(void *dev, enum fw_info info);
+	int (*get_fw_info)(void *dev, struct hal_fw_info *fw_info);
 	int (*get_stride_scanline)(int color_fmt, int width,
 		int height,	int *stride, int *scanlines);
 	int (*session_clean)(void *sess);

@@ -159,6 +159,8 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	/*Panel ON/Off commands should be sent in DSI Low Power Mode*/
 	if (pcmds->link_state == DSI_LP_MODE)
 		cmdreq.flags  |= CMD_REQ_LP_MODE;
+	else if (pcmds->link_state == DSI_HS_MODE)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
 
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
@@ -1280,9 +1282,10 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	pinfo->cont_splash_enabled = of_property_read_bool(np,
 		"qcom,cont-splash-enabled");
 
+	pinfo->partial_update_supported = of_property_read_bool(np,
+		"qcom,partial-update-enabled");
 	if (pinfo->mipi.mode == DSI_CMD_MODE) {
-		pinfo->partial_update_enabled = of_property_read_bool(np,
-				"qcom,partial-update-enabled");
+		pinfo->partial_update_enabled = pinfo->partial_update_supported;
 		pr_info("%s: partial_update_enabled=%d\n", __func__,
 					pinfo->partial_update_enabled);
 		if (pinfo->partial_update_enabled) {

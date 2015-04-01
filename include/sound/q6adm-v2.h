@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,10 +57,10 @@ int srs_trumedia_open(int port_id, int copp_idx, __s32 srs_tech_id,
 		      void *srs_params);
 
 int adm_dts_eagle_set(int port_id, int copp_idx, int param_id,
-		      void *data, int size);
+		      void *data, uint32_t size);
 
 int adm_dts_eagle_get(int port_id, int copp_idx, int param_id,
-		      void *data, int size);
+		      void *data, uint32_t size);
 
 int adm_get_params(int port_id, int copp_idx, uint32_t module_id,
 		   uint32_t param_id, uint32_t params_length, char *params);
@@ -87,9 +87,9 @@ void adm_ec_ref_rx_id(int  port_id);
 
 int adm_get_lowlatency_copp_id(int port_id);
 
-void adm_set_multi_ch_map(char *channel_map);
+int adm_set_multi_ch_map(char *channel_map, int path);
 
-void adm_get_multi_ch_map(char *channel_map);
+int adm_get_multi_ch_map(char *channel_map, int path);
 
 int adm_validate_and_get_port_index(int port_id);
 

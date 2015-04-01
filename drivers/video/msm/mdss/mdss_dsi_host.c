@@ -991,6 +991,8 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		return 0;
 	}
 
+	mutex_lock(&ctrl_pdata->cmd_mutex);
+
 	pr_debug("%s: Checking Register status\n", __func__);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
@@ -1016,6 +1018,8 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	pr_debug("%s: Read register done with ret: %d\n", __func__, ret);
+
+	mutex_unlock(&ctrl_pdata->cmd_mutex);
 
 	return ret;
 }
@@ -1154,6 +1158,8 @@ int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		return 0;
 	}
 
+	mutex_lock(&ctrl_pdata->cmd_mutex);
+
 	pr_debug("%s: Checking BTA status\n", __func__);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
@@ -1173,6 +1179,8 @@ int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	pr_debug("%s: BTA done with ret: %d\n", __func__, ret);
+
+	mutex_unlock(&ctrl_pdata->cmd_mutex);
 
 	return ret;
 }
@@ -1714,12 +1722,14 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	ctrl->dma_size = ALIGN(tp->len, SZ_4K);
 
 
+	ctrl->mdss_util->iommu_lock();
 	if (ctrl->mdss_util->iommu_attached()) {
 		int ret = msm_iommu_map_contig_buffer(tp->dmap,
 				ctrl->mdss_util->get_iommu_domain(domain), 0,
 				ctrl->dma_size, SZ_4K, 0, &(ctrl->dma_addr));
 		if (IS_ERR_VALUE(ret)) {
 			pr_err("unable to map dma memory to iommu(%d)\n", ret);
+			ctrl->mdss_util->iommu_unlock();
 			return -ENOMEM;
 		}
 		ctrl->dmap_iommu_map = true;
@@ -1808,6 +1818,7 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	ctrl->dma_addr = 0;
 	ctrl->dma_size = 0;
 end:
+	ctrl->mdss_util->iommu_unlock();
 	return ret;
 }
 
@@ -1900,10 +1911,12 @@ static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	return rx_byte;
 }
 
-void mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl)
+int mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	unsigned long flag;
 	u32 data;
+	int rc = 0;
+
 	/* DSI_INTL_CTRL */
 	data = MIPI_INP((ctrl->ctrl_base) + 0x0110);
 	data &= DSI_INTR_TOTAL_MASK;
@@ -1918,13 +1931,17 @@ void mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl)
 			(BIT(8) | BIT(0)));
 
 	if (!wait_for_completion_timeout(&ctrl->dynamic_comp,
-				msecs_to_jiffies(VSYNC_PERIOD * 4)))
+			msecs_to_jiffies(VSYNC_PERIOD * 4))) {
 		pr_err("Dynamic interrupt timedout\n");
+		rc = -EINVAL;
+	}
 
 	data = MIPI_INP((ctrl->ctrl_base) + 0x0110);
 	data &= DSI_INTR_TOTAL_MASK;
 	data &= ~DSI_INTR_DYNAMIC_REFRESH_MASK;
 	MIPI_OUTP((ctrl->ctrl_base) + 0x0110, data);
+
+	return rc;
 }
 
 void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -2059,6 +2076,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	struct dcs_cmd_req *req;
 	struct mdss_panel_info *pinfo;
 	struct mdss_rect *roi = NULL;
+	bool use_iommu = false;
 	int ret = -EINVAL;
 	int rc = 0;
 	u32 ctrl_rev;
@@ -2100,13 +2118,14 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		 * alway set.
 		 */
 		if (!roi || (roi->w != 0 || roi->h != 0)) {
-			if (ctrl->hw_rev == MDSS_DSI_HW_REV_103 &&
+			if (ctrl->cmd_clk_ln_recovery_en &&
 					ctrl->panel_mode == DSI_CMD_MODE)
 				mdss_dsi_start_hs_clk_lane(ctrl);
 		}
 	} else {	/* from dcs send */
-		if (ctrl->hw_rev == MDSS_DSI_HW_REV_103 &&
-				ctrl->panel_mode == DSI_CMD_MODE)
+		if (ctrl->cmd_clk_ln_recovery_en &&
+				ctrl->panel_mode == DSI_CMD_MODE &&
+				(req->flags & CMD_REQ_HS_MODE))
 			mdss_dsi_cmd_start_hs_clk_lane(ctrl);
 	}
 
@@ -2125,7 +2144,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 		if (ctrl->mdss_util->bus_scale_set_quota)
 			ctrl->mdss_util->bus_scale_set_quota(MDSS_DSI_RT,
-								SZ_1M, SZ_1M);
+								0, SZ_1M);
 
 		if (ctrl->mdss_util->iommu_ctrl) {
 			rc = ctrl->mdss_util->iommu_ctrl(1);
@@ -2134,6 +2153,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 				mutex_unlock(&ctrl->cmd_mutex);
 				return rc;
 			}
+			use_iommu = true;
 		}
 	}
 
@@ -2151,7 +2171,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		mdss_dsi_set_tx_power_mode(1, &ctrl->panel_data);
 
 	if (!(req->flags & CMD_REQ_DMA_TPG)) {
-		if (ctrl->mdss_util->iommu_ctrl)
+		if (use_iommu)
 			ctrl->mdss_util->iommu_ctrl(0);
 
 		if (ctrl->mdss_util->bus_scale_set_quota)
@@ -2180,8 +2200,9 @@ need_lock:
 
 		mutex_unlock(&ctrl->cmd_mutex);
 	} else {	/* from dcs send */
-		if (ctrl->hw_rev == MDSS_DSI_HW_REV_103 &&
-				ctrl->panel_mode == DSI_CMD_MODE)
+		if (ctrl->cmd_clk_ln_recovery_en &&
+				ctrl->panel_mode == DSI_CMD_MODE &&
+				(req->flags & CMD_REQ_HS_MODE))
 			mdss_dsi_cmd_stop_hs_clk_lane(ctrl);
 	}
 
@@ -2339,6 +2360,16 @@ void mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl)
 		MIPI_OUTP(base + 0x0068, status);
 		/* Writing of an extra 0 needed to clear error bits */
 		MIPI_OUTP(base + 0x0068, 0);
+		/*
+		 * After bta done, h/w may have a fake overflow and
+		 * that overflow may further cause ack_err about 3 ms
+		 * later which is another false alarm. Here the
+		 * warning message is ignored.
+		 */
+		if (ctrl->panel_data.panel_info.esd_check_enabled &&
+			(ctrl->status_mode == ESD_BTA) && (status & 0x1008000))
+			return;
+
 		pr_err("%s: status=%x\n", __func__, status);
 	}
 }
@@ -2469,6 +2500,29 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 
 	pr_debug("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
 
+	if (isr & DSI_INTR_BTA_DONE) {
+		spin_lock(&ctrl->mdp_lock);
+		mdss_dsi_disable_irq_nosync(ctrl, DSI_BTA_TERM);
+		complete(&ctrl->bta_comp);
+		/*
+		 * When bta done happens, the panel should be in good
+		 * state. However, bta could cause the fake overflow
+		 * error for video mode. The similar issue happens when
+		 * sending dcs cmd. This overflow further causes
+		 * flicking because of phy reset which is unncessary,
+		 * so here overflow error is ignored, and errors are
+		 * cleared.
+		 */
+		if (ctrl->panel_data.panel_info.esd_check_enabled &&
+			(ctrl->status_mode == ESD_BTA) &&
+			(ctrl->panel_mode == DSI_VIDEO_MODE)) {
+			isr &= ~DSI_INTR_ERROR;
+			/* clear only overflow */
+			mdss_dsi_set_reg(ctrl, 0x0c, 0x44440000, 0x44440000);
+		}
+		spin_unlock(&ctrl->mdp_lock);
+	}
+
 	if (isr & DSI_INTR_ERROR) {
 		MDSS_XLOG(ctrl->ndx, ctrl->mdp_busy, isr, 0x97);
 		mdss_dsi_error(ctrl);
@@ -2493,7 +2547,7 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 		MDSS_XLOG(ctrl->ndx, ctrl->mdp_busy, isr, 0x99);
 		spin_lock(&ctrl->mdp_lock);
 		mdss_dsi_disable_irq_nosync(ctrl, DSI_MDP_TERM);
-		if (ctrl->hw_rev == MDSS_DSI_HW_REV_103 &&
+		if (ctrl->cmd_clk_ln_recovery_en &&
 				ctrl->panel_mode == DSI_CMD_MODE) {
 			dsi_send_events(ctrl, DSI_EV_STOP_HS_CLK_LANE,
 							DSI_MDP_TERM);
@@ -2501,13 +2555,6 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 			ctrl->mdp_busy = false;
 			complete(&ctrl->mdp_comp);
 		}
-		spin_unlock(&ctrl->mdp_lock);
-	}
-
-	if (isr & DSI_INTR_BTA_DONE) {
-		spin_lock(&ctrl->mdp_lock);
-		mdss_dsi_disable_irq_nosync(ctrl, DSI_BTA_TERM);
-		complete(&ctrl->bta_comp);
 		spin_unlock(&ctrl->mdp_lock);
 	}
 

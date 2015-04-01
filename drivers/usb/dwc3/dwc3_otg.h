@@ -1,7 +1,7 @@
 /**
  * dwc3_otg.h - DesignWare USB3 DRD Controller OTG
  *
- * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,13 +23,19 @@
 #include "power.h"
 
 #define DWC3_IDEV_CHG_MAX 1500
+#define DWC3_HVDCP_CHG_MAX 1800
+
+/*
+ * Module param to override current drawn for DCP charger
+ * Declared in dwc3-msm module
+ */
+extern int dcp_max_current;
 
 struct dwc3_charger;
 
 /**
  * struct dwc3_otg: OTG driver data. Shared by HCD and DCD.
  * @otg: USB OTG Transceiver structure.
- * @irq: IRQ number assigned for HSUSB controller.
  * @regs: ioremapped register base address.
  * @sm_work: OTG state machine work.
  * @charger: DWC3 external charger detector
@@ -37,7 +43,6 @@ struct dwc3_charger;
  */
 struct dwc3_otg {
 	struct usb_otg		otg;
-	int			irq;
 	struct dwc3		*dwc;
 	void __iomem		*regs;
 	struct regulator	*vbus_otg;
@@ -109,7 +114,6 @@ enum dwc3_id_state {
 struct dwc3_ext_xceiv {
 	enum dwc3_id_state	id;
 	bool			bsv;
-	bool			otg_capability;
 
 	/* to notify OTG about LPM exit event, provided by OTG */
 	void	(*notify_ext_events)(struct usb_otg *otg,
@@ -122,5 +126,4 @@ struct dwc3_ext_xceiv {
 /* for external transceiver driver */
 extern int dwc3_set_ext_xceiv(struct usb_otg *otg,
 				struct dwc3_ext_xceiv *ext_xceiv);
-
 #endif /* __LINUX_USB_DWC3_OTG_H */

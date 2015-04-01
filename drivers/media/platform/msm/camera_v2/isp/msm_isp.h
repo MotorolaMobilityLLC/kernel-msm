@@ -50,10 +50,10 @@
 
 #define VFE_MAX_CFG_TIMEOUT 3000
 #define VFE_CLK_INFO_MAX 16
-#define STATS_COMP_BIT_MASK 0xFF0000
+#define STATS_COMP_BIT_MASK 0x1FF
 
-#define MSM_ISP_MIN_AB 300000000
-#define MSM_ISP_MIN_IB 450000000
+#define MSM_ISP_MIN_AB 100000000
+#define MSM_ISP_MIN_IB 120000000
 
 struct vfe_device;
 struct msm_vfe_axi_stream;
@@ -71,6 +71,7 @@ enum msm_isp_pack_fmt {
 	DPCM8,
 	PLAIN8,
 	PLAIN16,
+	DPCM10,
 	MAX_ISP_PACK_FMT,
 };
 
@@ -149,6 +150,8 @@ struct msm_vfe_axi_ops {
 		struct msm_vfe_axi_stream *stream_info, uint8_t plane_idx);
 
 	void (*cfg_ub) (struct vfe_device *vfe_dev);
+
+	void (*read_wm_ping_pong_addr)(struct vfe_device *vfe_dev);
 
 	void (*update_ping_pong_addr) (struct vfe_device *vfe_dev,
 		uint8_t wm_idx, uint32_t pingpong_status, dma_addr_t paddr);
@@ -324,7 +327,6 @@ struct msm_vfe_axi_stream {
 	uint32_t stream_handle;
 	uint8_t buf_divert;
 	enum msm_vfe_axi_stream_type stream_type;
-	uint32_t vt_enable;
 	uint32_t frame_based;
 	enum msm_vfe_frame_skip_pattern frame_skip_pattern;
 	uint32_t framedrop_period;
@@ -368,6 +370,7 @@ struct msm_vfe_src_info {
 	long pixel_clock;
 	uint32_t input_format;/*V4L2 pix format with bayer pattern*/
 	uint32_t last_updt_frm_id;
+	uint32_t sof_counter_step;
 };
 
 struct msm_vfe_fetch_engine_info {

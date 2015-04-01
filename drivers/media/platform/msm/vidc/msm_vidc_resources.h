@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,6 +39,11 @@ struct reg_set {
 struct addr_range {
 	u32 start;
 	u32 size;
+};
+
+struct addr_set {
+	struct addr_range *addr_tbl;
+	int count;
 };
 
 struct iommu_info {
@@ -95,6 +100,7 @@ struct bus_info {
 	u32 priv;
 	u32 sessions_supported; /* bitmask */
 	bool passive;
+	bool low_power;
 };
 
 struct bus_set {
@@ -110,6 +116,7 @@ struct msm_vidc_platform_resources {
 	struct load_freq_table *load_freq_tbl;
 	uint32_t load_freq_tbl_size;
 	struct reg_set reg_set;
+	struct addr_set qdss_addr_set;
 	struct iommu_set iommu_group_set;
 	struct buffer_usage_set buffer_usage_set;
 	uint32_t ocmem_size;

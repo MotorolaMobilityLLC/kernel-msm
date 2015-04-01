@@ -182,10 +182,6 @@ int msm_isp_update_bandwidth(enum msm_isp_hw_client client,
 				isp_bandwidth_mgr.client_info[i].ib;
 		}
 	}
-	if (path->vectors[0].ab > 0 && path->vectors[0].ib > 0) {
-		path->vectors[0].ab += MSM_ISP_MIN_AB;
-		path->vectors[0].ib += MSM_ISP_MIN_IB;
-	}
 	msm_bus_scale_client_update_request(isp_bandwidth_mgr.bus_client,
 		isp_bandwidth_mgr.bus_vector_active_idx);
 	/* Insert into circular buffer */
@@ -517,7 +513,7 @@ int msm_isp_cfg_pix(struct vfe_device *vfe_dev,
 		input_cfg->d.pix_cfg.input_mux;
 	vfe_dev->axi_data.src_info[VFE_PIX_0].input_format =
 		input_cfg->d.pix_cfg.input_format;
-
+	vfe_dev->axi_data.src_info[VFE_PIX_0].sof_counter_step = 1;
 	rc = msm_isp_set_clk_rate(vfe_dev,
 		&vfe_dev->axi_data.src_info[VFE_PIX_0].pixel_clock);
 	if (rc < 0) {
@@ -532,6 +528,12 @@ int msm_isp_cfg_pix(struct vfe_device *vfe_dev,
 	if (input_cfg->d.pix_cfg.input_mux == CAMIF) {
 		vfe_dev->axi_data.src_info[VFE_PIX_0].width =
 			input_cfg->d.pix_cfg.camif_cfg.pixels_per_line;
+		if (input_cfg->d.pix_cfg.camif_cfg.subsample_cfg.
+			sof_counter_step > 0) {
+			vfe_dev->axi_data.src_info[VFE_PIX_0].
+				sof_counter_step = input_cfg->d.pix_cfg.
+				camif_cfg.subsample_cfg.sof_counter_step;
+		}
 	} else if (input_cfg->d.pix_cfg.input_mux == EXTERNAL_READ) {
 		vfe_dev->axi_data.src_info[VFE_PIX_0].width =
 			input_cfg->d.pix_cfg.fetch_engine_cfg.buf_stride;
@@ -743,7 +745,11 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	}
 	case VIDIOC_MSM_ISP_REQUEST_BUF:
+		/* fallthrough */
 	case VIDIOC_MSM_ISP_ENQUEUE_BUF:
+		/* fallthrough */
+	case VIDIOC_MSM_ISP_DEQUEUE_BUF:
+		/* fallthrough */
 	case VIDIOC_MSM_ISP_RELEASE_BUF: {
 		mutex_lock(&vfe_dev->buf_mgr_mutex);
 		rc = msm_isp_proc_buf_cmd(vfe_dev->buf_mgr, cmd, arg);
@@ -1115,7 +1121,7 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].last_updt_frm_id;
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id != *cfg_data
 			|| update_id == *cfg_data) {
-			pr_err("%s hw update lock failed acq %d, cur id %u, last id %u\n",
+			ISP_DBG("%s hw update lock failed acq %d, cur id %u, last id %u\n",
 				__func__,
 				*cfg_data,
 				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id,
@@ -1127,7 +1133,7 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 	case VFE_HW_UPDATE_UNLOCK: {
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id
 			!= *cfg_data) {
-			pr_err("hw update across frame boundary,begin id %u, end id %d\n",
+			ISP_DBG("hw update across frame boundary,begin id %u, end id %d\n",
 				*cfg_data,
 				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
 		}
@@ -1374,6 +1380,10 @@ int msm_isp_cal_word_per_line(uint32_t output_format,
 	case V4L2_PIX_FMT_P16RGGB10:
 		val = CAL_WORD(pixel_per_line, 1, 4);
 	break;
+	case V4L2_PIX_FMT_NV24:
+	case V4L2_PIX_FMT_NV42:
+		val = CAL_WORD(pixel_per_line, 1, 8);
+	break;
 		/*TD: Add more image format*/
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);
@@ -1511,6 +1521,9 @@ int msm_isp_get_bit_per_pixel(uint32_t output_format)
 	case V4L2_PIX_FMT_NV61:
 	case V4L2_PIX_FMT_Y16:
 		return 16;
+	case V4L2_PIX_FMT_NV24:
+	case V4L2_PIX_FMT_NV42:
+		return 24;
 		/*TD: Add more image format*/
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);
@@ -1536,10 +1549,11 @@ void msm_isp_process_iommu_page_fault(struct vfe_device *vfe_dev)
 	pr_err("%s:%d] vfe_dev %p id %d\n", __func__,
 		__LINE__, vfe_dev, vfe_dev->pdev->id);
 
-	vfe_dev->buf_mgr->ops->buf_mgr_debug(vfe_dev->buf_mgr);
-
 	error_event.frame_id =
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
+	vfe_dev->buf_mgr->ops->buf_mgr_debug(vfe_dev->buf_mgr);
+	msm_isp_print_ping_pong_address(vfe_dev);
+	vfe_dev->hw_info->vfe_ops.axi_ops.read_wm_ping_pong_addr(vfe_dev);
 	msm_isp_send_event(vfe_dev,
 					ISP_EVENT_IOMMU_P_FAULT, &error_event);
 }
@@ -1819,23 +1833,35 @@ static int msm_vfe_iommu_fault_handler(struct iommu_domain *domain,
 	struct device *dev, unsigned long iova, int flags, void *token)
 {
 	struct vfe_device *vfe_dev = NULL;
+	int rc = -ENOSYS;
 
 	if (token) {
 		vfe_dev = (struct vfe_device *)token;
+		msm_isp_axi_disable_all_wm(vfe_dev);
+		msm_isp_stats_disable(vfe_dev);
+		/* VFE_SRC_MAX will call reg update on all stream src */
+		vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev,
+			VFE_SRC_MAX);
 		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops) {
 			pr_err("%s:%d] buf_mgr %p\n", __func__,
 				__LINE__, vfe_dev->buf_mgr);
 			goto end;
 		}
-		if (!vfe_dev->buf_mgr->pagefault_debug)
+		if (!vfe_dev->buf_mgr->pagefault_debug) {
+			vfe_dev->buf_mgr->pagefault_debug = 1;
 			msm_isp_enqueue_tasklet_cmd(vfe_dev, 0, 0, 1);
+		} else {
+			/* Page fault previously handled, avoid flooding logs*/
+			rc = 0;
+			goto end;
+		}
 	} else {
 		ISP_DBG("%s:%d] no token received: %p\n",
 			__func__, __LINE__, token);
 		goto end;
 	}
 end:
-	return -ENOSYS;
+	return rc;
 }
 
 int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)

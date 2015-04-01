@@ -115,6 +115,9 @@ struct msm_isp_buf_ops {
 	int (*enqueue_buf) (struct msm_isp_buf_mgr *buf_mgr,
 		struct msm_isp_qbuf_info *info);
 
+	int (*dequeue_buf)(struct msm_isp_buf_mgr *buf_mgr,
+		struct msm_isp_qbuf_info *info);
+
 	int (*release_buf) (struct msm_isp_buf_mgr *buf_mgr,
 		uint32_t bufq_handle);
 
@@ -183,6 +186,7 @@ struct msm_isp_buf_mgr {
 	int num_iommu_ctx;
 	struct device *iommu_ctx[2];
 	struct list_head buffer_q;
+	spinlock_t bufq_list_lock;
 	int num_iommu_secure_ctx;
 	struct device *iommu_secure_ctx[2];
 	int attach_ref_cnt[MAX_PROTECTION_MODE][MAX_IOMMU_CTX];

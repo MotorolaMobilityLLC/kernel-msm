@@ -16,6 +16,8 @@
 #include "dsi-panel-sharp-dualmipi0-wqxga-video.dtsi"
 #include "dsi-panel-sharp-dualmipi1-wqxga-video.dtsi"
 #include "dsi-panel-sharp-1080p-cmd.dtsi"
+#include "dsi-panel-nt35597-wqxga-video.dtsi"
+#include "dsi-panel-nt35597-wqxga-cmd.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
@@ -39,6 +41,15 @@
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_video_1>;
 };
+
+&dsi_nt35597_wqxga_video {
+	qcom,cont-splash-enabled;
+};
+
+&dsi_nt35597_wqxga_cmd {
+	qcom,cont-splash-enabled;
+};
+
 &dsi_dual_sharp_video_0 {
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <1>;
@@ -156,7 +167,7 @@
 	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
 
 	qcom,nonremovable;
-	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 192000000 384000000>;
+	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 172000000 344000000>;
 	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
 	status = "ok";
 };

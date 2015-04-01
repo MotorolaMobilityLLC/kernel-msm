@@ -343,7 +343,7 @@ struct mdss_pp_res_type {
 	struct mdp_gamut_cfg_data gamut_disp_cfg[MDSS_BLOCK_DISP_NUM];
 	uint16_t gamut_tbl[MDSS_BLOCK_DISP_NUM][GAMUT_TOTAL_TABLE_SIZE];
 	u32 hist_data[MDSS_BLOCK_DISP_NUM][HIST_V_SIZE];
-	struct pp_sts_type pp_disp_sts[MDSS_BLOCK_DISP_NUM];
+	struct pp_sts_type pp_disp_sts[MDSS_MAX_MIXER_DISP_NUM];
 	/* physical info */
 	struct pp_hist_col_info *dspp_hist;
 };
@@ -438,7 +438,7 @@ static int pp_ad_attenuate_bl(struct mdss_ad_info *ad, u32 bl, u32 *bl_out);
 static int pp_ad_linearize_bl(struct mdss_ad_info *ad, u32 bl, u32 *bl_out,
 		int inv);
 static int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
-		int *ad_bl_out);
+		bool *bl_out_notify);
 static int pp_num_to_side(struct mdss_mdp_ctl *ctl, u32 num);
 static inline bool pp_sts_is_enabled(u32 sts, int side);
 static inline void pp_sts_set_split_bits(u32 *sts, u32 bits);
@@ -1415,6 +1415,9 @@ int mdss_mdp_pipe_sspp_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 		pipe_num = pipe->num - MDSS_MDP_SSPP_DMA0;
 		pipe_cnt = mdata->ndma_pipes;
 		break;
+	case MDSS_MDP_PIPE_TYPE_CURSOR:
+		/* cursor does not support the feature */
+		return 0;
 	default:
 		pr_err("Invalid pipe type %d\n", pipe->type);
 		return -EINVAL;
@@ -1731,15 +1734,16 @@ static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer)
 		ad_flags = 0;
 	}
 
-	/* call calibration specific processing here */
-	if (ctl->mfd->calib_mode)
-		goto flush_exit;
-
 	/* nothing to update */
 	if ((!flags) && (!(opmode)) && (!ad_flags))
 		goto dspp_exit;
 
 	pp_sts = &mdss_pp_res->pp_disp_sts[disp_num];
+
+	if (!flags) {
+		pr_debug("skip configuring dspp features\n");
+		goto opmode_config;
+	}
 
 	if (mdata->mdp_rev >= MDSS_MDP_HW_REV_103) {
 		pp_pa_v2_config(flags, base + MDSS_MDP_REG_DSPP_PA_BASE, pp_sts,
@@ -1789,10 +1793,9 @@ static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer)
 			pp_sts->pgc_sts |= PP_STS_ENABLE;
 		pp_sts_set_split_bits(&pp_sts->pgc_sts, pgc_config->flags);
 	}
-
+opmode_config:
 	pp_dspp_opmode_config(ctl, dspp_num, pp_sts, mdata->mdp_rev, &opmode);
 
-flush_exit:
 	if (ad_hw) {
 		mutex_lock(&ad->lock);
 		ad_flags = ad->reg_sts;
@@ -2060,11 +2063,8 @@ int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 			bl_mfd = ctl->mfd;
 		}
 
-		mutex_lock(&bl_mfd->bl_lock);
-		bl = bl_mfd->ad_bl_level;
-		mutex_unlock(&bl_mfd->bl_lock);
-
 		mutex_lock(&ad->lock);
+		bl = bl_mfd->ad_bl_level;
 		if (PP_AD_STATE_CFG & ad->state)
 			pp_ad_cfg_write(&mdata->ad_off[dspp_num], ad);
 		if (PP_AD_STATE_INIT & ad->state)
@@ -2073,7 +2073,7 @@ int mdss_mdp_pp_resume(struct mdss_mdp_ctl *ctl, u32 dspp_num)
 			(ad->sts & PP_STS_ENABLE)) {
 			ad->last_bl = bl;
 			linear_map(bl, &ad->bl_data,
-				ad->bl_mfd->panel_info->bl_max,
+				bl_mfd->panel_info->bl_max,
 				MDSS_MDP_AD_BL_SCALE);
 			pp_ad_input_write(&mdata->ad_off[dspp_num], ad);
 		}
@@ -2190,17 +2190,16 @@ int mdss_mdp_pp_overlay_init(struct msm_fb_data_type *mfd)
 		return -EPERM;
 	}
 
-	mfd->mdp.ad_invalidate_input = pp_ad_invalidate_input;
 	mfd->mdp.ad_calc_bl = pp_ad_calc_bl;
-
 	return 0;
 }
 
-int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
-	int *ad_bl_out)
+static int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
+	bool *bl_out_notify)
 {
 	int ret = -1;
 	int temp = bl_in;
+	u32 ad_bl_out = 0;
 	struct mdss_ad_info *ad;
 
 	ret = mdss_mdp_get_ad(mfd, &ad);
@@ -2214,18 +2213,18 @@ int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
 	}
 
 	mutex_lock(&ad->lock);
+	if (!mfd->ad_bl_level)
+		mfd->ad_bl_level = bl_in;
 	if (!(ad->state & PP_AD_STATE_RUN)) {
 		pr_debug("AD is not running.\n");
 		mutex_unlock(&ad->lock);
 		return -EPERM;
 	}
 
-	if (!ad->bl_mfd || !ad->bl_mfd->panel_info ||
-		!ad->bl_att_lut) {
-		pr_err("Invalid ad info: bl_mfd = 0x%p, ad->bl_mfd->panel_info = 0x%p, bl_att_lut = 0x%p\n",
+	if (!ad->bl_mfd || !ad->bl_mfd->panel_info) {
+		pr_err("Invalid ad info: bl_mfd = 0x%p, ad->bl_mfd->panel_info = 0x%p\n",
 			ad->bl_mfd,
-			(!ad->bl_mfd) ? NULL : ad->bl_mfd->panel_info,
-			ad->bl_att_lut);
+			(!ad->bl_mfd) ? NULL : ad->bl_mfd->panel_info);
 		mutex_unlock(&ad->lock);
 		return -EINVAL;
 	}
@@ -2244,7 +2243,7 @@ int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
 		mutex_unlock(&ad->lock);
 		return ret;
 	}
-	*ad_bl_out = temp;
+	ad_bl_out = temp;
 
 	ret = pp_ad_linearize_bl(ad, temp, &temp, MDP_PP_AD_BL_LINEAR_INV);
 	if (ret) {
@@ -2253,6 +2252,14 @@ int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
 		return ret;
 	}
 	*bl_out = temp;
+
+	if (ad_bl_out != mfd->ad_bl_level) {
+		mfd->ad_bl_level = ad_bl_out;
+		*bl_out_notify = true;
+	}
+
+	if (*bl_out_notify)
+		pp_ad_invalidate_input(mfd);
 	mutex_unlock(&ad->lock);
 	return 0;
 }
@@ -4582,7 +4589,7 @@ int mdss_mdp_ad_input(struct msm_fb_data_type *mfd,
 	mutex_lock(&ad->lock);
 	if ((!PP_AD_STATE_IS_INITCFG(ad->state) &&
 			!PP_AD_STS_IS_DIRTY(ad->sts)) &&
-			!input->mode == MDSS_AD_MODE_CALIB) {
+			(input->mode != MDSS_AD_MODE_CALIB)) {
 		pr_warn("AD not initialized or configured.\n");
 		ret = -EPERM;
 		goto error;
@@ -4641,6 +4648,7 @@ int mdss_mdp_ad_input(struct msm_fb_data_type *mfd,
 			mdss_fb_set_backlight(mfd, bl);
 			mutex_unlock(&mfd->bl_lock);
 			mutex_lock(&ad->lock);
+			mfd->calib_mode_bl = bl;
 		} else {
 			pr_warn("should be in calib mode\n");
 		}
@@ -4920,10 +4928,6 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 
 	mdata = mfd_to_mdata(mfd);
 
-	mutex_lock(&bl_mfd->bl_lock);
-	bl = bl_mfd->ad_bl_level;
-	mutex_unlock(&bl_mfd->bl_lock);
-
 	mutex_lock(&ad->lock);
 	if (ad->sts != last_sts || ad->state != last_state) {
 		last_sts = ad->sts;
@@ -4941,13 +4945,15 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 		ad->sts &= ~PP_AD_STS_DIRTY_DATA;
 		ad->state |= PP_AD_STATE_DATA;
 		pr_debug("dirty data, last_bl = %d\n", ad->last_bl);
+		bl = bl_mfd->ad_bl_level;
+
 		if ((ad->cfg.mode == MDSS_AD_MODE_AUTO_STR) &&
 							(ad->last_bl != bl)) {
 			ad->last_bl = bl;
 			ad->calc_itr = ad->cfg.stab_itr;
 			ad->sts |= PP_AD_STS_DIRTY_VSYNC;
 			linear_map(bl, &ad->bl_data,
-				ad->bl_mfd->panel_info->bl_max,
+				bl_mfd->panel_info->bl_max,
 				MDSS_MDP_AD_BL_SCALE);
 		}
 		ad->reg_sts |= PP_AD_STS_DIRTY_DATA;
@@ -5002,10 +5008,10 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 			/* Clear state and regs when going to off state*/
 			ad->sts = 0;
 			ad->sts |= PP_AD_STS_DIRTY_VSYNC;
-			ad->state &= !PP_AD_STATE_INIT;
-			ad->state &= !PP_AD_STATE_CFG;
-			ad->state &= !PP_AD_STATE_DATA;
-			ad->state &= !PP_AD_STATE_BL_LIN;
+			ad->state &= ~PP_AD_STATE_INIT;
+			ad->state &= ~PP_AD_STATE_CFG;
+			ad->state &= ~PP_AD_STATE_DATA;
+			ad->state &= ~PP_AD_STATE_BL_LIN;
 			ad->ad_data = 0;
 			ad->ad_data_mode = 0;
 			ad->last_bl = 0;

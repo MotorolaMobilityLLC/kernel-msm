@@ -268,6 +268,7 @@ static void __iomem *virt_dbgbase;
 #define OXILI_GFX3D_CBCR				0x59020
 #define OXILI_GMEM_CBCR					0x59024
 #define OXILI_AHB_CBCR					0x59028
+#define OXILI_TIMER_CBCR				0x59040
 #define CAMSS_TOP_AHB_CMD_RCGR				0x5A000
 #define BIMC_GFX_CBCR					0x31024
 #define BIMC_GPU_CBCR					0x31040
@@ -371,10 +372,21 @@ static void __iomem *virt_dbgbase;
 	},					\
 	.num_fmax = VDD_DIG_NUM
 
+#define VDD_DIG_FMAX_MAP4(l1, f1, l2, f2, l3, f3, l4, f4) \
+	.vdd_class = &vdd_dig, \
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
+		[VDD_DIG_##l3] = (f3),		\
+		[VDD_DIG_##l4] = (f4),          \
+	},					\
+	.num_fmax = VDD_DIG_NUM
+
 enum vdd_dig_levels {
 	VDD_DIG_NONE,
 	VDD_DIG_LOW,
 	VDD_DIG_NOMINAL,
+	VDD_DIG_NOMINAL_PLUS,
 	VDD_DIG_HIGH,
 	VDD_DIG_NUM
 };
@@ -383,6 +395,7 @@ static int vdd_corner[] = {
 	RPM_REGULATOR_CORNER_NONE,		/* VDD_DIG_NONE */
 	RPM_REGULATOR_CORNER_SVS_SOC,		/* VDD_DIG_LOW */
 	RPM_REGULATOR_CORNER_NORMAL,		/* VDD_DIG_NOMINAL */
+	RPM_REGULATOR_CORNER_TURBO,		/* VDD_DIG_NOMINAL_PLUS */
 	RPM_REGULATOR_CORNER_SUPER_TURBO,	/* VDD_DIG_HIGH */
 };
 
@@ -799,7 +812,7 @@ static struct rcg_clk vfe0_clk_src = {
 	.c = {
 		.dbg_name = "vfe0_clk_src",
 		.ops = &clk_ops_rcg,
-		VDD_DIG_FMAX_MAP3(LOW, 160000000, NOMINAL, 320000000, HIGH,
+		VDD_DIG_FMAX_MAP4(LOW, 200000000, NOMINAL, 400000000, NOMINAL_PLUS, 480000000, HIGH,
 			600000000),
 		CLK_INIT(vfe0_clk_src.c),
 	},
@@ -816,6 +829,7 @@ static struct clk_freq_tbl ftbl_gcc_oxili_gfx3d_clk[] = {
 	F( 266670000,      gpll0_out_main,   3,	  0,	0),
 	F( 310000000,	gpll2_gfx3d,	3,	  0,	0),
 	F( 400000000,      gpll0_out_main,   2,	  0,	0),
+	F( 465000000,      gpll2_gfx3d,   2,    0,    0),
 	F( 550000000,      gpll3_out_main,   2,    0,    0),
 	F_END
 };
@@ -829,7 +843,7 @@ static struct rcg_clk gfx3d_clk_src = {
 	.c = {
 		.dbg_name = "gfx3d_clk_src",
 		.ops = &clk_ops_rcg,
-		VDD_DIG_FMAX_MAP3(LOW, 220000000, NOMINAL, 400000000, HIGH,
+		VDD_DIG_FMAX_MAP4(LOW, 220000000, NOMINAL, 400000000, NOMINAL_PLUS, 465000000, HIGH,
 			550000000),
 		CLK_INIT(gfx3d_clk_src.c),
 	},
@@ -2531,6 +2545,18 @@ static struct branch_clk gcc_oxili_gfx3d_clk = {
 	},
 };
 
+static struct branch_clk gcc_oxili_timer_clk = {
+	.cbcr_reg = OXILI_TIMER_CBCR,
+	.has_sibling = 0,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_oxili_timer_clk",
+		.parent = &gcc_xo.c,
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_oxili_timer_clk.c),
+	},
+};
+
 static struct branch_clk gcc_pdm2_clk = {
 	.cbcr_reg = PDM2_CBCR,
 	.has_sibling = 0,
@@ -3051,6 +3077,7 @@ static struct mux_clk gcc_debug_mux = {
 		{&gcc_crypto_clk.c,			0x0138},
 		{&gcc_crypto_axi_clk.c,			0x0139},
 		{&gcc_crypto_ahb_clk.c,			0x013a},
+		{&gcc_oxili_timer_clk.c,		0x01e9},
 		{&gcc_oxili_gfx3d_clk.c,		0x01ea},
 		{&gcc_oxili_ahb_clk.c,			0x01eb},
 		{&gcc_oxili_gmem_clk.c,			0x01f0},
@@ -3236,6 +3263,7 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_mss_cfg_ahb_clk),
 	CLK_LIST(gcc_mss_q6_bimc_axi_clk),
 	CLK_LIST(gcc_oxili_ahb_clk),
+	CLK_LIST(gcc_oxili_timer_clk),
 	CLK_LIST(gcc_oxili_gfx3d_clk),
 	CLK_LIST(gcc_pdm2_clk),
 	CLK_LIST(gcc_pdm_ahb_clk),

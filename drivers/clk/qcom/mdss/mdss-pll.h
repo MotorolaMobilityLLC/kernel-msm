@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -44,6 +44,32 @@ enum {
 	MDSS_PLL_TARGET_8916,
 	MDSS_PLL_TARGET_8939,
 	MDSS_PLL_TARGET_8909,
+};
+
+#define DFPS_MAX_NUM_OF_FRAME_RATES 10
+
+struct dfps_panel_info {
+	uint32_t enabled;
+	uint32_t frame_rate_cnt;
+	uint32_t frame_rate[DFPS_MAX_NUM_OF_FRAME_RATES];
+};
+
+struct dfps_pll_codes {
+	uint32_t pll_codes_1;
+	uint32_t pll_codes_2;
+};
+
+struct dfps_codes_info {
+	uint32_t is_valid;
+	uint32_t frame_rate;
+	uint32_t clk_rate;
+	struct dfps_pll_codes pll_codes;
+};
+
+struct dfps_info {
+	struct dfps_panel_info panel_dfps;
+	struct dfps_codes_info codes_dfps[DFPS_MAX_NUM_OF_FRAME_RATES];
+	void *dfps_fb_base;
 };
 
 struct mdss_pll_resources {
@@ -100,6 +126,12 @@ struct mdss_pll_resources {
 	bool		pll_on;
 
 	/*
+	 * Certain plls' have to change the vco freq range to support
+	 * 90 phase difference between bit and byte clock frequency.
+	 */
+	bool		pll_en_90_phase;
+
+	/*
 	 * handoff_status is true of pll is already enabled by bootloader with
 	 * continuous splash enable case. Clock API will call the handoff API
 	 * to enable the status. It is disabled if continuous splash
@@ -111,11 +143,6 @@ struct mdss_pll_resources {
 	 * caching the pll trim codes in the case of dynamic refresh
 	 */
 	int		cache_pll_trim_codes[2];
-
-	/*
-	 * for maintaining the status of saving trim codes
-	 */
-	bool		reg_upd;
 
 	/*
 	 * Notifier callback for MDSS gdsc regulator events
@@ -133,6 +160,7 @@ struct mdss_pll_resources {
 	 */
 	uint32_t index;
 
+	struct dfps_info *dfps;
 };
 
 struct mdss_pll_vco_calc {

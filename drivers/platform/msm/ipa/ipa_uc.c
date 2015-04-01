@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -102,6 +102,19 @@ enum ipa_hw_errors {
 };
 
 /**
+ * struct IpaHwResetPipeCmdData_t - Structure holding the parameters
+ * for IPA_CPU_2_HW_CMD_MEMCPY command.
+ *
+ * The parameters are passed as immediate params in the shared memory
+ */
+struct IpaHwMemCopyData_t  {
+	u32 destination_addr;
+	u32 source_addr;
+	u32 dest_buffer_size;
+	u32 source_buffer_size;
+};
+
+/**
  * union IpaHwResetPipeCmdData_t - Structure holding the parameters
  * for IPA_CPU_2_HW_CMD_RESET_PIPE command.
  * @pipeNum : Pipe number to be reset
@@ -151,9 +164,21 @@ union IpaHwErrorEventData_t {
 	u32 raw32b;
 } __packed;
 
+/**
+ * union IpaHwUpdateFlagsCmdData_t - Structure holding the parameters for
+ * IPA_CPU_2_HW_CMD_UPDATE_FLAGS command
+ * @newFlags: SW flags defined the behavior of HW.
+ *	This field is expected to be used as bitmask for enum ipa_hw_flags
+ */
+union IpaHwUpdateFlagsCmdData_t {
+	struct IpaHwUpdateFlagsCmdParams_t {
+		u32 newFlags;
+	} params;
+	u32 raw32b;
+};
+
 struct ipa_uc_hdlrs uc_hdlrs[IPA_HW_NUM_FEATURES] = { { 0 } };
 
-/* TODO: add support for IPA_HW_v2_5 */
 static void ipa_log_evt_hdlr(void)
 {
 	int i;
@@ -654,3 +679,61 @@ int ipa_uc_notify_clk_state(bool enabled)
 	return ipa_uc_send_cmd(0, opcode, 0, true, 0);
 }
 EXPORT_SYMBOL(ipa_uc_notify_clk_state);
+
+/**
+ * ipa_uc_update_hw_flags() - send uC the HW flags to be used
+ * @flags: This field is expected to be used as bitmask for enum ipa_hw_flags
+ *
+ * Returns: 0 on success, negative on failure
+ */
+int ipa_uc_update_hw_flags(u32 flags)
+{
+	union IpaHwUpdateFlagsCmdData_t cmd;
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.params.newFlags = flags;
+	return ipa_uc_send_cmd(cmd.raw32b, IPA_CPU_2_HW_CMD_UPDATE_FLAGS, 0,
+		false, HZ);
+}
+EXPORT_SYMBOL(ipa_uc_update_hw_flags);
+
+/**
+ * ipa_uc_memcpy() - Perform a memcpy action using IPA uC
+ * @dest: physical address to store the copied data.
+ * @src: physical address of the source data to copy.
+ * @len: number of bytes to copy.
+ *
+ * Returns: 0 on success, negative on failure
+ */
+int ipa_uc_memcpy(phys_addr_t dest, phys_addr_t src, int len)
+{
+	int res;
+	struct ipa_mem_buffer mem;
+	struct IpaHwMemCopyData_t *cmd;
+
+	IPADBG("dest 0x%pa src 0x%pa len %d\n", &dest, &src, len);
+	mem.size = sizeof(cmd);
+	mem.base = dma_alloc_coherent(ipa_ctx->pdev, mem.size, &mem.phys_base,
+		GFP_KERNEL);
+	if (!mem.base) {
+		IPAERR("fail to alloc DMA buff of size %d\n", mem.size);
+		return -ENOMEM;
+	}
+	cmd = (struct IpaHwMemCopyData_t *)mem.base;
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->destination_addr = dest;
+	cmd->dest_buffer_size = len;
+	cmd->source_addr = src;
+	cmd->source_buffer_size = len;
+	res = ipa_uc_send_cmd((u32)mem.phys_base, IPA_CPU_2_HW_CMD_MEMCPY, 0,
+		true, 10 * HZ);
+	if (res) {
+		IPAERR("ipa_uc_send_cmd failed %d\n", res);
+		goto free_coherent;
+	}
+
+	res = 0;
+free_coherent:
+	dma_free_coherent(ipa_ctx->pdev, mem.size, mem.base, mem.phys_base);
+	return res;
+}

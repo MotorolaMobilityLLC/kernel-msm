@@ -41,7 +41,7 @@
  * unreasonably large. Set to 1s more than first wait + final wait which
  * are already quite long and proceed without any further waits. */
 #define WAIT_DISP_OP_TIMEOUT (WAIT_FENCE_FIRST_TIMEOUT + \
-		WAIT_FENCE_FINAL_TIMEOUT + 1)
+		WAIT_FENCE_FINAL_TIMEOUT + MSEC_PER_SEC)
 
 #ifndef MAX
 #define  MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -150,6 +150,7 @@ struct disp_info_notify {
 	int value;
 	int is_suspend;
 	int ref_count;
+	bool init_done;
 };
 
 struct msm_sync_pt_data {
@@ -193,6 +194,7 @@ struct msm_mdp_interface {
 					u32 mode);
 	int (*kickoff_fnc)(struct msm_fb_data_type *mfd,
 					struct mdp_display_commit *data);
+	int (*pre_commit_fnc)(struct msm_fb_data_type *mfd);
 	int (*ioctl_handler)(struct msm_fb_data_type *mfd, u32 cmd, void *arg);
 	void (*dma_fnc)(struct msm_fb_data_type *mfd);
 	int (*cursor_update)(struct msm_fb_data_type *mfd,
@@ -200,9 +202,8 @@ struct msm_mdp_interface {
 	int (*lut_update)(struct msm_fb_data_type *mfd, struct fb_cmap *cmap);
 	int (*do_histogram)(struct msm_fb_data_type *mfd,
 				struct mdp_histogram *hist);
-	int (*ad_invalidate_input)(struct msm_fb_data_type *mfd);
 	int (*ad_calc_bl)(struct msm_fb_data_type *mfd, int bl_in,
-		int *bl_out, int *ad_bl_out);
+		int *bl_out, bool *bl_out_notify);
 	int (*panel_register_done)(struct mdss_panel_data *pdata);
 	u32 (*fb_stride)(u32 fb_index, u32 xres, int bpp);
 	int (*splash_init_fnc)(struct msm_fb_data_type *mfd);
@@ -274,6 +275,7 @@ struct msm_fb_data_type {
 	int ext_ad_ctrl;
 	u32 ext_bl_ctrl;
 	u32 calib_mode;
+	u32 calib_mode_bl;
 	u32 ad_bl_level;
 	u32 bl_level;
 	u32 bl_scale;

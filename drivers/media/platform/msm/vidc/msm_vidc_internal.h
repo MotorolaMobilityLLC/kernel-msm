@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,7 +33,6 @@
 #include <media/msm_vidc.h>
 #include <media/msm_media_info.h>
 
-#include "vidc_hfi_api.h"
 #include "vidc_hfi_api.h"
 
 #define MSM_VIDC_DRV_NAME "msm_vidc_driver"
@@ -225,6 +224,7 @@ enum msm_vidc_modes {
 	VIDC_TURBO = 1 << 1,
 	VIDC_THUMBNAIL = 1 << 2,
 	VIDC_NOMINAL = 1 << 3,
+	VIDC_POWER_SAVE = 1 << 4,
 };
 
 struct msm_vidc_core_capability {
@@ -284,7 +284,7 @@ struct msm_vidc_inst {
 	struct msm_vidc_format *fmts[MAX_PORT_NUM];
 	struct buf_queue bufq[MAX_PORT_NUM];
 	struct msm_vidc_list pendingq;
-	struct msm_vidc_list internalbufs;
+	struct msm_vidc_list scratchbufs;
 	struct msm_vidc_list persistbufs;
 	struct msm_vidc_list pending_getpropq;
 	struct msm_vidc_list outputbufs;

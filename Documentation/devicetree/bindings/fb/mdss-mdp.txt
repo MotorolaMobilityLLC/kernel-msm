@@ -344,14 +344,23 @@ Optional properties:
 				   sw_reset register bitmap. Number of offsets
 				   defined should match the number of offsets
 				   defined in property: qcom,mdss-pipe-dma-off
-- qcom,mdss-rotator-ot-limit:	This integer value indicates maximum number of pending
-				writes that can be allowed from rotator client. Default
-				value is 16 which is the maximum. This value can be
-				used to reduce the pending writes limit dynamically
-				and can be tuned to match performance requirements
-				depending upon system state.
-- qcom,mdss-default-ot-limit:	This integer value indicates the default number of pending
+- qcom,mdss-default-ot-wr-limit: This integer value indicates maximum number of pending
+				writes that can be allowed from non real time client.
+				This value can be used to reduce the pending writes
+				limit and can be tuned to match performance
+				requirements depending upon system state.
+				Some platforms require a dynamic ot limiting in
+				some cases. Setting this default ot write limit
+				will enable this dynamic limiting for the write
+				operations in the platforms that require these
+				limits.
+- qcom,mdss-default-ot-rd-limit: This integer value indicates the default number of pending
 				reads that can be allowed for the real time clients.
+				Some platforms require a dynamic ot limiting in
+				some cases. Setting this default ot read limit
+				will enable this dynamic limiting for the read
+				operations in the platforms that require these
+				limits.
 - qcom,mdss-clk-levels:		This array indicates the mdp core clock level selection
 				array. Core clock is calculated for each frame and
 				hence depending upon calculated value, clock rate
@@ -407,6 +416,8 @@ Fudge Factors:			Fudge factors are used to boost demand for
 				values when the overlap bandwidth is the
 				predominant value compared to prefill bandwidth
 				value.
+- qcom,mdss-ib-factor-cmd:	This fudge factor is applied to calculated ib
+				values in case of command mode.
 - qcom,mdss-clk-factor:		This fudge factor is applied to calculated mdp
 				clk rate in default conditions.
 
@@ -509,6 +520,9 @@ Subnode properties:
 - qcom,boot-indication-enabled: Boolean property that enables turning on the blue
 				LED for notifying that the device is in boot
 				process.
+- qcom,mdss-needs-iommu-bw-vote: Boolean property to indicate if minimum bus
+				bandwidth vote is needed for MDSS to perform
+				IOMMU transactions.
 
 Example:
 	mdss_mdp: qcom,mdss_mdp@fd900000 {
@@ -641,6 +655,7 @@ Example:
 		qcom,mdss-prefill-pingpong-buffer-pixels = <5120>;
 		qcom,mdss-prefill-fbc-lines = <2>;
 		qcom,mdss-idle-power-collapse-enabled;
+		qcom,mdss-needs-iommu-bw-vote;
 
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;

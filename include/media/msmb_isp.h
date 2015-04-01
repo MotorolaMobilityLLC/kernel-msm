@@ -103,6 +103,7 @@ enum msm_isp_stats_type {
 	MSM_ISP_STATS_BF_SCALE,  /* Bayer Focus scale */
 	MSM_ISP_STATS_HDR_BE,    /* HDR Bayer Exposure */
 	MSM_ISP_STATS_HDR_BHIST, /* HDR Bayer Hist */
+	MSM_ISP_STATS_AEC_BG,   /* AEC BG */
 	MSM_ISP_STATS_MAX    /* MAX */
 };
 
@@ -152,6 +153,18 @@ struct msm_vfe_fetch_engine_cfg {
 	uint32_t buf_stride;
 };
 
+/*
+ * Camif output general configuration
+ */
+struct msm_vfe_camif_subsample_cfg {
+	uint32_t irq_subsample_period;
+	uint32_t irq_subsample_pattern;
+	uint32_t sof_counter_step;
+};
+
+/*
+ * Camif frame and window configuration
+ */
 struct msm_vfe_camif_cfg {
 	uint32_t lines_per_frame;
 	uint32_t pixels_per_line;
@@ -162,6 +175,7 @@ struct msm_vfe_camif_cfg {
 	uint32_t epoch_line0;
 	uint32_t epoch_line1;
 	enum msm_vfe_camif_input camif_input;
+	struct msm_vfe_camif_subsample_cfg subsample_cfg;
 };
 
 struct msm_vfe_testgen_cfg {
@@ -635,5 +649,8 @@ struct msm_isp_event_data {
 
 #define VIDIOC_MSM_ISP_FETCH_ENG_START \
 	_IOWR('V', BASE_VIDIOC_PRIVATE+20, struct msm_vfe_fetch_eng_start)
+
+#define VIDIOC_MSM_ISP_DEQUEUE_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+21, struct msm_isp_qbuf_info)
 
 #endif /* __MSMB_ISP__ */

@@ -477,24 +477,6 @@ static bool is_factor_needed(struct mdss_mdp_perf_params *perf_temp,
 			perf_temp->bw_vote_mode);
 }
 
-static inline u32 get_panel_yres(struct mdss_panel_info *pinfo)
-{
-	u32 yres;
-
-	yres = pinfo->yres + pinfo->lcdc.border_top +
-				pinfo->lcdc.border_bottom;
-	return yres;
-}
-
-static inline u32 get_panel_xres(struct mdss_panel_info *pinfo)
-{
-	u32 xres;
-
-	xres = pinfo->xres + pinfo->lcdc.border_left +
-				pinfo->lcdc.border_right;
-	return xres;
-}
-
 static u32 mdss_mdp_get_rotator_fps(struct mdss_mdp_pipe *pipe)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
@@ -558,6 +540,9 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 	} else if (mixer->type != MDSS_MDP_MIXER_TYPE_WRITEBACK) {
 		struct mdss_panel_info *pinfo;
 
+		if (!mixer->ctl)
+			return -EINVAL;
+
 		pinfo = &mixer->ctl->panel_data->panel_info;
 		if (pinfo->type == MIPI_VIDEO_PANEL) {
 			fps = pinfo->panel_max_fps;
@@ -566,9 +551,14 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 			fps = mdss_panel_get_framerate(pinfo);
 			v_total = mdss_panel_get_vtotal(pinfo);
 		}
-		xres = get_panel_xres(pinfo);
+		xres = get_panel_width(mixer->ctl);
 		is_fbc = pinfo->fbc.enabled;
 		h_total = mdss_panel_get_htotal(pinfo, false);
+
+		if (is_pingpong_split(mixer->ctl->mfd))
+			h_total += mdss_panel_get_htotal(
+				&mixer->ctl->panel_data->next->panel_info,
+				false);
 	} else {
 		v_total = mixer->height;
 		xres = mixer->width;
@@ -641,6 +631,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 
 	if (mixer->ctl->intf_num == MDSS_MDP_NO_INTF ||
 		mdata->disable_prefill ||
+		mixer->ctl->disable_prefill ||
 		(pipe->flags & MDP_SOLID_FILL)) {
 		perf->prefill_bytes = 0;
 		goto exit;
@@ -740,13 +731,19 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		perf->mdp_clk_rate =
 			mdss_mdp_clk_fudge_factor(mixer, perf->mdp_clk_rate);
 
-		if (!pinfo)	/* perf for bus writeback */
+		if (!pinfo) {	/* perf for bus writeback */
 			perf->bw_overlap =
 				fps * mixer->width * mixer->height * 3;
 		/* for command mode, run as fast as the link allows us */
-		else if ((pinfo->type == MIPI_CMD_PANEL) &&
-			 (pinfo->mipi.dsi_pclk_rate > perf->mdp_clk_rate))
-			perf->mdp_clk_rate = pinfo->mipi.dsi_pclk_rate;
+		} else if (pinfo->type == MIPI_CMD_PANEL) {
+			u32 dsi_pclk_rate = pinfo->mipi.dsi_pclk_rate;
+
+			if (is_pingpong_split(mixer->ctl->mfd))
+				dsi_pclk_rate *= 2;
+
+			if (dsi_pclk_rate > perf->mdp_clk_rate)
+				perf->mdp_clk_rate = dsi_pclk_rate;
+		}
 	}
 
 	/*
@@ -863,6 +860,67 @@ exit:
 		*(perf->bw_vote_mode));
 }
 
+static bool is_mdp_prefetch_needed(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_panel_info *pinfo = &ctl->panel_data->panel_info;
+	struct mdss_data_type *mdata = ctl->mdata;
+	bool enable_prefetch = false;
+
+	if (mdata->mdp_rev >= MDSS_MDP_HW_REV_105) {
+		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width +
+			pinfo->lcdc.v_front_porch) < mdata->min_prefill_lines)
+			pr_warn_once("low vbp+vfp may lead to perf issues in some cases\n");
+
+		enable_prefetch = true;
+
+		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width) >=
+				MDSS_MDP_MAX_PREFILL_FETCH)
+			enable_prefetch = false;
+	} else {
+		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width) <
+				mdata->min_prefill_lines)
+			pr_warn_once("low vbp may lead to display performance issues");
+	}
+
+	return enable_prefetch;
+}
+
+/**
+ * mdss_mdp_get_prefetch_lines: - Number of fetch lines in vertical front porch
+ * @ctl:	Pointer to controller where prefetch lines will be calculated
+ *
+ * Returns the number of fetch lines in vertical front porch at which mdp
+ * can start fetching the next frame.
+ *
+ * In some cases, vertical front porch is too high. In such cases limit
+ * the mdp fetch lines  as the last (25 - vbp - vpw) lines of vertical
+ * front porch.
+ */
+int mdss_mdp_get_prefetch_lines(struct mdss_mdp_ctl *ctl)
+{
+	int prefetch_avail = 0;
+	int v_total, vfp_start;
+	u32 prefetch_needed;
+	struct mdss_panel_info *pinfo = &ctl->panel_data->panel_info;
+
+	if (!is_mdp_prefetch_needed(ctl))
+		return 0;
+
+	v_total = mdss_panel_get_vtotal(pinfo);
+	vfp_start = (pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width +
+			pinfo->yres);
+
+	prefetch_avail = v_total - vfp_start;
+	prefetch_needed = MDSS_MDP_MAX_PREFILL_FETCH -
+		pinfo->lcdc.v_back_porch -
+		pinfo->lcdc.v_pulse_width;
+
+	if (prefetch_avail > prefetch_needed)
+		prefetch_avail = prefetch_needed;
+
+	return prefetch_avail;
+}
+
 static u32 mdss_mdp_get_vbp_factor(struct mdss_mdp_ctl *ctl)
 {
 	u32 fps, v_total, vbp, vbp_fac;
@@ -875,8 +933,7 @@ static u32 mdss_mdp_get_vbp_factor(struct mdss_mdp_ctl *ctl)
 	fps = mdss_panel_get_framerate(pinfo);
 	v_total = mdss_panel_get_vtotal(pinfo);
 	vbp = pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width;
-	if (ctl->prg_fet)
-		vbp += mdss_mdp_max_fetch_lines(pinfo);
+	vbp += ctl->prg_fet;
 
 	vbp_fac = (vbp) ? fps * v_total / vbp : 0;
 	pr_debug("vbp_fac=%d vbp=%d v_total=%d\n", vbp_fac, vbp, v_total);
@@ -1053,7 +1110,7 @@ int mdss_mdp_perf_bw_check_pipe(struct mdss_mdp_perf_params *perf,
 		return 0;
 
 	vbp_fac = mdss_mdp_get_vbp_factor_max(ctl);
-	prefill_bw = perf->prefill_bytes * vbp_fac;
+	prefill_bw = (u64)(perf->prefill_bytes) * (vbp_fac);
 	pipe_bw = max(prefill_bw, perf->bw_overlap);
 	pr_debug("prefill=%llu, vbp_fac=%u, overlap=%llu\n",
 			prefill_bw, vbp_fac, perf->bw_overlap);
@@ -1104,6 +1161,9 @@ static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
 				&mdss_res->ib_factor_overlap),
 			apply_fudge_factor(perf->bw_prefill,
 				&mdss_res->ib_factor));
+	} else if (ctl->intf_num != MDSS_MDP_NO_INTF) {
+		perf->bw_ctl = apply_fudge_factor(perf->bw_ctl,
+				&mdss_res->ib_factor_cmd);
 	}
 	pr_debug("ctl=%d clk_rate=%u\n", ctl->num, perf->mdp_clk_rate);
 	pr_debug("bw_overlap=%llu bw_prefill=%llu prefill_bytes=%d\n",
@@ -1893,17 +1953,6 @@ static int mdss_mdp_ctl_fbc_enable(int enable,
 	return 0;
 }
 
-static inline u32 get_panel_width(struct mdss_mdp_ctl *ctl)
-{
-	u32 width;
-
-	width = get_panel_xres(&ctl->panel_data->panel_info);
-	if (ctl->panel_data->next && is_pingpong_split(ctl->mfd))
-		width += get_panel_xres(&ctl->panel_data->next->panel_info);
-
-	return width;
-}
-
 void mdss_mdp_get_interface_type(struct mdss_mdp_ctl *ctl, int *intf_type,
 		int *split_needed)
 {
@@ -1994,6 +2043,7 @@ int mdss_mdp_ctl_setup(struct mdss_mdp_ctl *ctl)
 	ctl->mixer_left->width = width;
 	ctl->mixer_left->height = height;
 	ctl->mixer_left->roi = (struct mdss_rect) {0, 0, width, height};
+	ctl->valid_roi = true;
 
 	if (ctl->mfd->split_mode == MDP_DUAL_LM_DUAL_DISPLAY) {
 		pr_debug("dual display detected\n");
@@ -2166,6 +2216,7 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 	ctl->perf_release_ctl_bw = false;
 	ctl->border_x_off = pinfo->lcdc.border_left;
 	ctl->border_y_off = pinfo->lcdc.border_top;
+	ctl->disable_prefill = false;
 
 	switch (pdata->panel_info.type) {
 	case EDP_PANEL:
@@ -2309,6 +2360,7 @@ int mdss_mdp_ctl_split_display_setup(struct mdss_mdp_ctl *ctl,
 	mixer->height = sctl->height;
 	mixer->roi = (struct mdss_rect)
 				{0, 0, mixer->width, mixer->height};
+	sctl->valid_roi = true;
 	sctl->mixer_left = mixer;
 
 	return mdss_mdp_set_split_ctl(ctl, sctl);
@@ -2585,12 +2637,6 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 
-	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_RESET, NULL);
-	if (ret) {
-		pr_err("panel power on failed ctl=%d\n", ctl->num);
-		goto error;
-	}
-
 	ret = mdss_mdp_ctl_start_sub(ctl, handoff);
 	if (ret == 0) {
 		if (sctl && ctl->mfd &&
@@ -2616,7 +2662,6 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 
 	mdss_mdp_hist_intr_setup(&mdata->hist_intr, MDSS_IRQ_RESUME);
 
-error:
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 	mutex_unlock(&ctl->lock);
 
@@ -2735,7 +2780,8 @@ int mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl)
 	return 0;
 }
 
-void mdss_mdp_set_mixer_roi(struct mdss_mdp_ctl *ctl, struct mdss_rect *roi)
+static void mdss_mdp_set_mixer_roi(struct mdss_mdp_ctl *ctl,
+	struct mdss_rect *roi)
 {
 	struct mdss_rect mixer_roi;
 
@@ -2772,39 +2818,29 @@ static inline u32 mdss_mdp_mpq_pipe_num_map(u32 pipe_num)
 }
 
 void mdss_mdp_set_roi(struct mdss_mdp_ctl *ctl,
-		struct mdp_display_commit *data)
+	struct mdss_rect *l_roi, struct mdss_rect *r_roi)
 {
-	struct mdss_rect l_roi, r_roi;
-
-	l_roi.x = data->l_roi.x;
-	l_roi.y = data->l_roi.y;
-	l_roi.w = data->l_roi.w;
-	l_roi.h = data->l_roi.h;
-
-	r_roi.x = data->r_roi.x;
-	r_roi.y = data->r_roi.y;
-	r_roi.w = data->r_roi.w;
-	r_roi.h = data->r_roi.h;
-
 	/* Reset ROI when we have (1) invalid ROI (2) feature disabled */
-	if ((!l_roi.w && l_roi.h) || (l_roi.w && !l_roi.h) ||
-		(!r_roi.w && r_roi.h) || (r_roi.w && !r_roi.h) ||
-		(!l_roi.w && !l_roi.h && !r_roi.w && !r_roi.h) ||
-		!ctl->panel_data->panel_info.partial_update_enabled) {
-		l_roi = (struct mdss_rect)
-		{0, 0, ctl->mixer_left->width, ctl->mixer_left->height};
+	if ((!l_roi->w && l_roi->h) || (l_roi->w && !l_roi->h) ||
+	    (!r_roi->w && r_roi->h) || (r_roi->w && !r_roi->h) ||
+	    (!l_roi->w && !l_roi->h && !r_roi->w && !r_roi->h) ||
+	    !ctl->panel_data->panel_info.partial_update_enabled) {
+
+		*l_roi = (struct mdss_rect) {0, 0,
+				ctl->mixer_left->width,
+				ctl->mixer_left->height};
 
 		if (ctl->mixer_right) {
-			r_roi = (struct mdss_rect)
-				{0, 0, ctl->mixer_right->width,
-				ctl->mixer_right->height};
+			*r_roi = (struct mdss_rect) {0, 0,
+					ctl->mixer_right->width,
+					ctl->mixer_right->height};
 		}
 	}
 
-	mdss_mdp_set_mixer_roi(ctl, &l_roi);
+	mdss_mdp_set_mixer_roi(ctl, l_roi);
 
 	if (ctl->mixer_right)
-		mdss_mdp_set_mixer_roi(ctl->mixer_right->ctl, &r_roi);
+		mdss_mdp_set_mixer_roi(ctl->mixer_right->ctl, r_roi);
 }
 
 static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
@@ -2837,6 +2873,9 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 		return;
 	}
 
+	if (!ctl->valid_roi)
+		return;
+
 	trace_mdp_mixer_update(mixer->num);
 	pr_debug("setup mixer=%d\n", mixer->num);
 	screen_state = ctl->force_screen_state;
@@ -2853,7 +2892,7 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 	if (pipe == NULL) {
 		mixercfg = MDSS_MDP_LM_BORDER_COLOR;
 	} else {
-		if (ctl->mdata->mdp_rev == MDSS_MDP_HW_REV_200) {
+		if (mdata->mdp_rev == MDSS_MDP_HW_REV_200) {
 			mpq_num = mdss_mdp_mpq_pipe_num_map(pipe->num);
 			mixercfg = 1 << (3 * mpq_num);
 		} else if (pipe->num == MDSS_MDP_SSPP_VIG3 ||
@@ -2878,6 +2917,8 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 
 		stage = i / MAX_PIPES_PER_STAGE;
 		if (stage != pipe->mixer_stage) {
+			pr_err("pipe%d stage mismatch. pipe->mixer_stage=%d, mixer->stage_pipe=%d. skip staging it\n",
+				pipe->num, pipe->mixer_stage, stage);
 			mixer->stage_pipe[i] = NULL;
 			continue;
 		}
@@ -2955,7 +2996,7 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 		if (!pipe->src_fmt->alpha_enable && bg_alpha_enable)
 			mixer_op_mode = 0;
 
-		if (ctl->mdata->mdp_rev == MDSS_MDP_HW_REV_200) {
+		if (mdata->mdp_rev == MDSS_MDP_HW_REV_200) {
 			mpq_num = mdss_mdp_mpq_pipe_num_map(pipe->num);
 			mixercfg |= stage << (3 * mpq_num);
 		} else if ((stage < MDSS_MDP_STAGE_6) &&
@@ -3016,7 +3057,7 @@ update_mixer:
 	mixer_op_mode |=
 		(mdp_mixer_read(mixer, MDSS_MDP_REG_LM_OP_MODE) & BIT(0));
 
-	if (mdata->has_src_split && mixer_mux == MDSS_MDP_MIXER_MUX_RIGHT)
+	if (mixer->src_split_req && mixer_mux == MDSS_MDP_MIXER_MUX_RIGHT)
 		mixer_op_mode |= BIT(31);
 
 	mdp_mixer_write(mixer, MDSS_MDP_REG_LM_OP_MODE, mixer_op_mode);
@@ -3026,8 +3067,9 @@ update_mixer:
 	mdss_mdp_ctl_write(ctl, off + MDSS_MDP_REG_CTL_LAYER_EXTN_OFFSET,
 		mixercfg_extn);
 
-	pr_debug("mixer=%d mixer_cfg=0%x mixercfg_extn=0x%x\n",
-		mixer->num, mixercfg, mixercfg_extn);
+	pr_debug("mixer=%d cfg=0%08x cfg_extn=0x%08x op_mode=0x%08x w=%d h=%d\n",
+		mixer->num, mixercfg, mixercfg_extn,
+		mixer_op_mode, mixer->roi.w, mixer->roi.h);
 }
 
 int mdss_mdp_mixer_addr_setup(struct mdss_data_type *mdata,
@@ -3478,6 +3520,32 @@ int mdss_mdp_display_wait4pingpong(struct mdss_mdp_ctl *ctl, bool use_lock)
 	return ret;
 }
 
+static void mdss_mdp_force_border_color(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);
+
+	ctl->force_screen_state = MDSS_SCREEN_FORCE_BLANK;
+
+	if (sctl)
+		sctl->force_screen_state = MDSS_SCREEN_FORCE_BLANK;
+
+	mdss_mdp_mixer_setup(ctl, MDSS_MDP_MIXER_MUX_LEFT);
+	mdss_mdp_mixer_setup(ctl, MDSS_MDP_MIXER_MUX_RIGHT);
+
+	ctl->force_screen_state = MDSS_SCREEN_DEFAULT;
+	if (sctl)
+		sctl->force_screen_state = MDSS_SCREEN_DEFAULT;
+
+	/*
+	 * Update the params changed for mixer for the next frame to
+	 * configure the mixer setup properly.
+	 */
+	if (ctl->mixer_left)
+		ctl->mixer_left->params_changed++;
+	if (ctl->mixer_right)
+		ctl->mixer_right->params_changed++;
+}
+
 int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	struct mdss_mdp_commit_cb *commit_cb)
 {
@@ -3522,6 +3590,10 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 		mdss_mdp_ctl_perf_set_transaction_status(sctl,
 			PERF_SW_COMMIT_STATE, PERF_STATUS_BUSY);
 	}
+
+	if (sctl && mdata->has_src_split)
+		sctl->mixer_left->src_split_req =
+			(ctl->valid_roi == sctl->valid_roi);
 
 	if (is_bw_released || ctl->force_screen_state ||
 		(ctl->mixer_left && ctl->mixer_left->params_changed) ||
@@ -3580,7 +3652,19 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 		commit_cb->commit_cb_fnc(
 			MDP_COMMIT_STAGE_SETUP_DONE,
 			commit_cb->data);
-	mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_READY);
+	ret = mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_READY);
+
+	/*
+	 * When wait for fence timed out, driver ignores the fences
+	 * for signalling. Hardware needs to access only on the buffers
+	 * that are valid and driver needs to ensure it. This function
+	 * would set the mixer state to border when there is timeout.
+	 */
+	if (ret == NOTIFY_BAD) {
+		mdss_mdp_force_border_color(ctl);
+		ret = 0;
+	}
+
 	ATRACE_END("frame_ready");
 
 	if (ctl->ops.wait_pingpong && !mdata->serialize_wait4pp)

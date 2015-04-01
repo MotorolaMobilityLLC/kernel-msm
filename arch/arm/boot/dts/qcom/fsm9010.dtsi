@@ -26,6 +26,35 @@
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
 	};
 
+	cpus {
+		#size-cells = <0>;
+		#address-cells = <1>;
+
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x0>;
+		};
+
+		CPU1: cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x1>;
+		};
+
+		CPU2: cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x2>;
+		};
+
+		CPU3: cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x3>;
+		};
+	};
+
 	soc: soc { };
 };
 
@@ -51,6 +80,17 @@
 			     <1 4 0xf08>,
 			     <1 1 0xf08>;
 		clock-frequency = <19200000>;
+	};
+
+	qcom,wdt@f9017000 {
+		compatible = "qcom,msm-watchdog";
+		reg = <0xf9017000 0x1000>;
+		reg-names = "wdt-base";
+		interrupts = <0 3 0>, <0 4 0>;
+		qcom,bark-time = <11000>;
+		qcom,pet-time = <10000>;
+		qcom,ipi-ping;
+		status = "disabled";
 	};
 
 	clock_gcc: qcom,gcc@fc400000 {
@@ -262,7 +302,7 @@
 		qcom,vdd-io-voltage-level = <1800000 1800000>;
 		qcom,vdd-io-current-level = <200 154000>;
 
-		qcom,clk-rates = <400000>;
+		qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
 		qcom,nonremovable;
 		status = "disable";
 	};
@@ -296,6 +336,42 @@
 		compatible = "qcom,qfp-fuse";
 		reg = <0xfc4b8000 0x7000>;
 		qcom,blow-status-offset = <0x2048>;
+		status = "disabled";
+	};
+
+	qfec0: qcom,qfec@0xe7000000 {
+		compatible = "qcom,qfec-nss";
+		cell-index = <0>;
+		reg = <0xe7000000 0x10000>,
+			<0xfc800000 0x4000>,
+			<0xfc900000 0x100000>,
+			<0xfcb00000 0x100000>;
+		reg-names = "qfec_mac",
+			"qfec_csr",
+			"qfec_qsgmii",
+			"qfec_rgmii_csr";
+		interrupts = <0 242 0>;
+		clocks = <&clock_rpm clk_gcc_gmac0_axi_clk>;
+		clock-names = "core_clk";
+		qcom,qsgmii-pcs-chan = <1>;
+		status = "disabled";
+	};
+
+	qfec1: qcom,qfec@0xe7200000 {
+		compatible = "qcom,qfec-nss";
+		cell-index = <1>;
+		reg = <0xe7200000 0x10000>,
+			<0xfc800000 0x4000>,
+			<0xfc900000 0x100000>,
+			<0xfcb00000 0x100000>;
+		reg-names = "qfec_mac",
+			"qfec_csr",
+			"qfec_qsgmii",
+			"qfec_rgmii_csr";
+		interrupts = <0 244 0>;
+		clocks = <&clock_rpm clk_gcc_gmac1_axi_clk>;
+		clock-names = "core_clk";
+		qcom,qsgmii-pcs-chan = <2>;
 		status = "disabled";
 	};
 
@@ -375,6 +451,7 @@
 			    "bam_phys";
 		interrupts = <0 24 0>;
 		interrupt-names = "bam_irq";
+		status = "disabled";
 	};
 
 	pcie1: qcom,pcie@fc528000 {
@@ -556,6 +633,8 @@
 			reg = <0xfe0 12>;
 		};
 	};
+
+
 };
 
 #include "fsm9010-regulator.dtsi"

@@ -170,24 +170,20 @@ static void fault_detect_read(struct kgsl_device *device)
 static inline bool _isidle(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	unsigned int ts, i;
+	unsigned int i;
+	unsigned int reg_rbbm_status;
 
 	if (!kgsl_state_is_awake(device))
 		goto ret;
 
-	/* If GPU HW status is not idle then return false */
-	if (!adreno_hw_isidle(adreno_dev))
-		return false;
+	adreno_readreg(adreno_dev, ADRENO_REG_RBBM_STATUS,
+			&reg_rbbm_status);
 
 	/*
-	 * only compare the current RB timestamp because the device has gone
-	 * idle and therefore only the current RB ts can be equal, the other
-	 * RB's may not be scheduled by dispatcher yet
+	 * Check if gpu is busy by checking bits in RBBM_STATUS register
+	 * which indicate gpu activity
 	 */
-	if (adreno_rb_readtimestamp(device,
-		adreno_dev->cur_rb, KGSL_TIMESTAMP_RETIRED, &ts))
-		return false;
-	if (ts != adreno_dev->cur_rb->timestamp)
+	if (reg_rbbm_status & ADRENO_RBBM_STATUS_BUSY_MASK)
 		return false;
 ret:
 	for (i = 0; i < adreno_ft_regs_num; i++)
@@ -269,6 +265,27 @@ static void _retire_marker(struct kgsl_cmdbatch *cmdbatch)
 
 	trace_adreno_cmdbatch_retired(cmdbatch, -1, 0, 0);
 	kgsl_cmdbatch_destroy(cmdbatch);
+}
+
+static int _check_context_queue(struct adreno_context *drawctxt)
+{
+	int ret;
+
+	spin_lock(&drawctxt->lock);
+
+	/*
+	 * Wake up if there is room in the context or if the whole thing got
+	 * invalidated while we were asleep
+	 */
+
+	if (kgsl_context_invalid(&drawctxt->base))
+		ret = 1;
+	else
+		ret = drawctxt->queued < _context_cmdqueue_size ? 1 : 0;
+
+	spin_unlock(&drawctxt->lock);
+
+	return ret;
 }
 
 /*
@@ -650,12 +667,11 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 	}
 
 	/*
-	 * If the context successfully submitted commands there will be room
-	 * in the context queue so wake up any snoozing threads that want to
-	 * submit commands
+	 * Wake up any snoozing threads if we have consumed any real commands
+	 * or marker commands and we have room in the context queue.
 	 */
 
-	if (count)
+	if (_check_context_queue(drawctxt))
 		wake_up_all(&drawctxt->wq);
 
 	if (!ret)
@@ -795,27 +811,6 @@ static int adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 
 	ret = _adreno_dispatcher_issuecmds(adreno_dev);
 	mutex_unlock(&dispatcher->mutex);
-
-	return ret;
-}
-
-static int _check_context_queue(struct adreno_context *drawctxt)
-{
-	int ret;
-
-	spin_lock(&drawctxt->lock);
-
-	/*
-	 * Wake up if there is room in the context or if the whole thing got
-	 * invalidated while we were asleep
-	 */
-
-	if (kgsl_context_invalid(&drawctxt->base))
-		ret = 1;
-	else
-		ret = drawctxt->queued < _context_cmdqueue_size ? 1 : 0;
-
-	spin_unlock(&drawctxt->lock);
 
 	return ret;
 }

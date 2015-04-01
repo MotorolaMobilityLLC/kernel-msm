@@ -342,6 +342,7 @@ struct mdss_dsi_ctrl_pdata {
 	bool dsi_irq_line;
 	atomic_t te_irq_ready;
 
+	bool cmd_clk_ln_recovery_en;
 	bool cmd_sync_wait_broadcast;
 	bool cmd_sync_wait_trigger;
 
@@ -470,7 +471,7 @@ void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 			struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl);
-void mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl);
+int mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);

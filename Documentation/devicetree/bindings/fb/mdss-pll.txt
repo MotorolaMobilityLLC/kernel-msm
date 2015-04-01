@@ -25,6 +25,9 @@ Optional properties:
 - label:	       	A string used to describe the driver used.
 - vcca-supply:		Phandle for vcca regulator device node.
 
+- qcom,mdss-en-pll-90-phase: 	Boolean property to indicate if the DSI PLL
+				needs to be configured to have 90 phase difference
+				between the BIT clock and BYTE clock frequencies.
 - qcom,platform-supply-entries:	A node that lists the elements of the supply. There
 				can be more than one instance of this binding,
 				in which case the entry would be appended with
@@ -41,6 +44,9 @@ Optional properties:
 				-- qcom,supply-pre-off-sleep: time to sleep (ms) before turning off
 				-- qcom,supply-post-off-sleep: time to sleep (ms) after turning off
 
+- linux,contiguous-region: Phandle to the continuous memory region reserved for
+		   dynamic refresh rate data.
+
 Example:
 	mdss_dsi0_pll: qcom,mdss_dsi_pll@fd922A00 {
 		compatible = "qcom,mdss_dsi_pll_8974";
@@ -54,6 +60,7 @@ Example:
 		gdsc-supply = <&gdsc_mdss>;
 		vddio-supply = <&pm8941_l12>;
 		vcca-supply = <&pm8941_l28>;
+		qcom,mdss-en-pll-90-phase;
 
 		clocks = <&clock_gcc clk_gcc_mdss_mdp_clk>,
 			 <&clock_gcc clk_gcc_mdss_ahb_clk>,
@@ -78,5 +85,7 @@ Example:
 				qcom,supply-post-off-sleep = <0>;
 			};
 		};
+
+		linux,contiguous-region = <&dfps_data_mem>;
 	};
 

@@ -966,6 +966,20 @@ static int adreno_init(struct kgsl_device *device)
 	int i;
 	int ret;
 
+	/*
+	 * If the microcode read fails then either the usermodehelper wasn't
+	 * available or there was a corruption problem - in either case fail the
+	 * open and force the user to try again
+	 */
+
+	ret = adreno_ringbuffer_read_pm4_ucode(device);
+	if (ret)
+		return ret;
+
+	ret = adreno_ringbuffer_read_pfp_ucode(device);
+	if (ret)
+		return ret;
+
 	kgsl_pwrctrl_change_state(device, KGSL_STATE_INIT);
 	/*
 	 * initialization only needs to be done once initially until
@@ -982,9 +996,6 @@ static int adreno_init(struct kgsl_device *device)
 	/* Initialize coresight for the target */
 	adreno_coresight_init(adreno_dev);
 
-	adreno_ringbuffer_read_pm4_ucode(device);
-	adreno_ringbuffer_read_pfp_ucode(device);
-
 	/*
 	 * Check if firmware supports the sync lock PM4 packets needed
 	 * for IOMMUv1
@@ -1000,11 +1011,13 @@ static int adreno_init(struct kgsl_device *device)
 	adreno_ft_regs_num = (ARRAY_SIZE(adreno_ft_regs_default) +
 				   gpudev->ft_perf_counters_count*2);
 
-	adreno_ft_regs = kzalloc(adreno_ft_regs_num, GFP_KERNEL);
+	adreno_ft_regs = kzalloc(adreno_ft_regs_num * sizeof(unsigned int),
+						GFP_KERNEL);
 	if (!adreno_ft_regs)
 		return -ENOMEM;
 
-	adreno_ft_regs_val = kzalloc(adreno_ft_regs_num, GFP_KERNEL);
+	adreno_ft_regs_val = kzalloc(adreno_ft_regs_num * sizeof(unsigned int),
+						GFP_KERNEL);
 	if (!adreno_ft_regs_val)
 		return -ENOMEM;
 
@@ -2202,7 +2215,7 @@ bool adreno_hw_isidle(struct adreno_device *adreno_dev)
 	adreno_readreg(adreno_dev, ADRENO_REG_RBBM_STATUS,
 		&reg_rbbm_status);
 
-	if (reg_rbbm_status & ~0x80000001)
+	if (reg_rbbm_status & ADRENO_RBBM_STATUS_BUSY_MASK)
 		return false;
 
 	/* Don't consider ourselves idle if there is an IRQ pending */
@@ -2711,6 +2724,13 @@ static inline s64 adreno_ticks_to_us(u32 ticks, u32 freq)
 	return ticks / freq;
 }
 
+/**
+ * adreno_power_stats() - Reads the counters needed for freq decisions
+ * @device: Pointer to device whose counters are read
+ * @stats: Pointer to stats set that needs updating
+ * Power: The caller is expected to be in a clock enabled state as this
+ * function does reg reads
+ */
 static void adreno_power_stats(struct kgsl_device *device,
 				struct kgsl_power_stats *stats)
 {
@@ -2720,14 +2740,6 @@ static void adreno_power_stats(struct kgsl_device *device,
 	struct adreno_busy_data busy_data;
 
 	memset(stats, 0, sizeof(*stats));
-
-	/*
-	 * If we're not currently active, there shouldn't have been
-	 * any cycles since the last time this function was called.
-	 */
-
-	if (device->state != KGSL_STATE_ACTIVE)
-		return;
 
 	/* Get the busy cycles counted since the counter was last reset */
 	gpudev->busy_cycles(adreno_dev, &busy_data);

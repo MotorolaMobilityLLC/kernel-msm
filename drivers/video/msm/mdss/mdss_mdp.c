@@ -93,6 +93,7 @@ static DEFINE_SPINLOCK(mdp_lock);
 static DEFINE_MUTEX(mdp_clk_lock);
 static DEFINE_MUTEX(bus_bw_lock);
 static DEFINE_MUTEX(mdp_iommu_lock);
+static DEFINE_MUTEX(mdp_iommu_ref_cnt_lock);
 static DEFINE_MUTEX(mdp_fs_idle_pc_lock);
 
 static struct mdss_panel_intf pan_types[] = {
@@ -339,6 +340,7 @@ static int mdss_mdp_bus_scale_set_quota(u64 ab_quota_rt, u64 ab_quota_nrt,
 		u32 nrt_axi_port_cnt = mdss_res->nrt_axi_port_cnt;
 		u32 total_axi_port_cnt = mdss_res->axi_port_cnt;
 		u32 rt_axi_port_cnt = total_axi_port_cnt - nrt_axi_port_cnt;
+		int match_cnt = 0;
 
 		if (!bw_table || !total_axi_port_cnt ||
 		    total_axi_port_cnt > MAX_AXI_PORT_COUNT) {
@@ -376,6 +378,20 @@ static int mdss_mdp_bus_scale_set_quota(u64 ab_quota_rt, u64 ab_quota_nrt,
 				ab_quota[i] = ab_quota[0];
 				ib_quota[i] = ib_quota[0];
 			}
+		}
+
+		for (i = 0; i < total_axi_port_cnt; i++) {
+			vect = &bw_table->usecase
+				[mdss_res->curr_bw_uc_idx].vectors[i];
+			/* avoid performing updates for small changes */
+			if ((ab_quota[i] == vect->ab) &&
+				(ib_quota[i] == vect->ib))
+				match_cnt++;
+		}
+
+		if (match_cnt == total_axi_port_cnt) {
+			pr_debug("skip BW vote\n");
+			return 0;
 		}
 
 		new_uc_idx = (mdss_res->curr_bw_uc_idx %
@@ -659,12 +675,22 @@ static inline int is_mdss_iommu_attached(void)
 	return mdss_res->iommu_attached;
 }
 
+void mdss_iommu_lock(void)
+{
+	mutex_lock(&mdp_iommu_lock);
+}
+
+void mdss_iommu_unlock(void)
+{
+	mutex_unlock(&mdp_iommu_lock);
+}
+
 int mdss_iommu_ctrl(int enable)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	int rc = 0;
 
-	mutex_lock(&mdp_iommu_lock);
+	mutex_lock(&mdp_iommu_ref_cnt_lock);
 	pr_debug("%pS: enable %d mdata->iommu_ref_cnt %d\n",
 		__builtin_return_address(0), enable, mdata->iommu_ref_cnt);
 
@@ -673,19 +699,27 @@ int mdss_iommu_ctrl(int enable)
 		 * delay iommu attach until continous splash screen has
 		 * finished handoff, as it may still be working with phys addr
 		 */
-		if (!mdata->iommu_attached && !mdata->handoff_pending)
+		if (!mdata->iommu_attached && !mdata->handoff_pending) {
+			if (mdata->needs_iommu_bw_vote)
+				mdss_bus_scale_set_quota(MDSS_HW_IOMMU,
+					SZ_1M, SZ_1M);
 			rc = mdss_iommu_attach(mdata);
+		}
 		mdata->iommu_ref_cnt++;
 	} else {
 		if (mdata->iommu_ref_cnt) {
 			mdata->iommu_ref_cnt--;
-			if (mdata->iommu_ref_cnt == 0)
+			if (mdata->iommu_ref_cnt == 0) {
 				rc = mdss_iommu_dettach(mdata);
+				if (mdata->needs_iommu_bw_vote)
+					mdss_bus_scale_set_quota(MDSS_HW_IOMMU,
+						0, 0);
+			}
 		} else {
 			pr_err("unbalanced iommu ref\n");
 		}
 	}
-	mutex_unlock(&mdp_iommu_lock);
+	mutex_unlock(&mdp_iommu_ref_cnt_lock);
 
 	if (IS_ERR_VALUE(rc))
 		return rc;
@@ -974,6 +1008,7 @@ int mdss_iommu_attach(struct mdss_data_type *mdata)
 
 	MDSS_XLOG(mdata->iommu_attached);
 
+	mutex_lock(&mdp_iommu_lock);
 	if (mdata->iommu_attached) {
 		pr_debug("mdp iommu already attached\n");
 		goto end;
@@ -1002,6 +1037,7 @@ int mdss_iommu_attach(struct mdss_data_type *mdata)
 
 	mdata->iommu_attached = true;
 end:
+	mutex_unlock(&mdp_iommu_lock);
 	return rc;
 }
 
@@ -1013,9 +1049,10 @@ int mdss_iommu_dettach(struct mdss_data_type *mdata)
 
 	MDSS_XLOG(mdata->iommu_attached);
 
+	mutex_lock(&mdp_iommu_lock);
 	if (!mdata->iommu_attached) {
 		pr_debug("mdp iommu already dettached\n");
-		return 0;
+		goto end;
 	}
 
 	for (i = 0; i < MDSS_IOMMU_MAX_DOMAIN; i++) {
@@ -1031,7 +1068,8 @@ int mdss_iommu_dettach(struct mdss_data_type *mdata)
 	}
 
 	mdata->iommu_attached = false;
-
+end:
+	mutex_unlock(&mdp_iommu_lock);
 	return 0;
 }
 
@@ -1056,6 +1094,7 @@ int mdss_iommu_init(struct mdss_data_type *mdata)
 		layout.partitions = iomap->partitions;
 		layout.npartitions = iomap->npartitions;
 		layout.is_secure = (i == MDSS_IOMMU_DOMAIN_SECURE);
+		layout.domain_flags = 0;
 
 		iomap->domain_idx = msm_register_domain(&layout);
 		if (IS_ERR_VALUE(iomap->domain_idx))
@@ -1119,8 +1158,22 @@ static int mdss_mdp_debug_init(struct platform_device *pdev,
 	return 0;
 }
 
+static u32 mdss_get_props(void)
+{
+	u32 props = 0;
+	void __iomem *props_base = ioremap(0xFC4B8114, 4);
+	if (props_base) {
+		props = readl_relaxed(props_base);
+		iounmap(props_base);
+	}
+	return props;
+}
+
 static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 {
+	/* prevent disable of prefill calculations */
+	mdata->min_prefill_lines = 0xffff;
+
 	switch (mdata->mdp_rev) {
 	case MDSS_MDP_HW_REV_105:
 	case MDSS_MDP_HW_REV_109:
@@ -1132,11 +1185,21 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 		mdss_set_quirk(mdata, MDSS_QUIRK_BWCPANIC);
 		mdata->max_target_zorder = 4; /* excluding base layer */
 		mdata->max_cursor_size = 128;
+		mdata->min_prefill_lines = 12;
+		mdata->props = mdss_get_props();
+		break;
+	case MDSS_MDP_HW_REV_107:
+		mdata->max_target_zorder = 4; /* excluding base layer */
+		mdata->max_cursor_size = 64;
+		mdata->min_prefill_lines = 21;
 		break;
 	default:
 		mdata->max_target_zorder = 4; /* excluding base layer */
 		mdata->max_cursor_size = 64;
 	}
+
+	if (mdata->mdp_rev < MDSS_MDP_HW_REV_103)
+		mdss_set_quirk(mdata, MDSS_QUIRK_DOWNSCALE_HANG);
 }
 
 static void mdss_hw_rev_init(struct mdss_data_type *mdata)
@@ -1238,6 +1301,10 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 				mdata->iclient);
 		mdata->iclient = NULL;
 	}
+
+	mdata->needs_iommu_bw_vote =
+			of_property_read_bool(mdata->pdev->dev.of_node,
+			 "qcom,mdss-needs-iommu-bw-vote");
 
 	rc = mdss_iommu_init(mdata);
 
@@ -1424,6 +1491,8 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 	SPRINT("smp_mb_per_pipe=%d\n", mdata->smp_mb_per_pipe);
 	SPRINT("max_downscale_ratio=%d\n", MAX_DOWNSCALE_RATIO);
 	SPRINT("max_upscale_ratio=%d\n", MAX_UPSCALE_RATIO);
+	if (mdata->props)
+		SPRINT("props=%d", mdata->props);
 	if (mdata->max_bw_low)
 		SPRINT("max_bandwidth_low=%u\n", mdata->max_bw_low);
 	if (mdata->max_bw_high)
@@ -1508,6 +1577,8 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 
 	mdss_res->mdss_util->get_iommu_domain = mdss_get_iommu_domain;
 	mdss_res->mdss_util->iommu_attached = is_mdss_iommu_attached;
+	mdss_res->mdss_util->iommu_lock = mdss_iommu_lock;
+	mdss_res->mdss_util->iommu_unlock = mdss_iommu_unlock;
 	mdss_res->mdss_util->iommu_ctrl = mdss_iommu_ctrl;
 	mdss_res->mdss_util->bus_scale_set_quota = mdss_bus_scale_set_quota;
 	mdss_res->mdss_util->bus_bandwidth_ctrl = mdss_bus_bandwidth_ctrl;
@@ -2657,12 +2728,12 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	mdata->rot_block_size = (!rc ? data : 128);
 
 	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,mdss-rotator-ot-limit", &data);
-	mdata->rotator_ot_limit = (!rc ? data : 0);
+		"qcom,mdss-default-ot-rd-limit", &data);
+	mdata->default_ot_rd_limit = (!rc ? data : 0);
 
 	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,mdss-default-ot-limit", &data);
-	mdata->default_ot_limit = (!rc ? data : 0);
+		"qcom,mdss-default-ot-wr-limit", &data);
+	mdata->default_ot_wr_limit = (!rc ? data : 0);
 
 	mdata->has_non_scalar_rgb = of_property_read_bool(pdev->dev.of_node,
 		"qcom,mdss-has-non-scalar-rgb");
@@ -2756,6 +2827,16 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	mdata->ib_factor_overlap.denom = mdata->ib_factor.denom;
 	mdss_mdp_parse_dt_fudge_factors(pdev, "qcom,mdss-ib-factor-overlap",
 		&mdata->ib_factor_overlap);
+
+	/*
+	 * 1x factor on ib_factor_cmd as default value. This value is
+	 * experimentally determined and should be tuned in device
+	 * tree
+	 */
+	mdata->ib_factor_cmd.numer = 1;
+	mdata->ib_factor_cmd.denom = 1;
+	mdss_mdp_parse_dt_fudge_factors(pdev, "qcom,mdss-ib-factor-cmd",
+		&mdata->ib_factor_cmd);
 
 	mdata->clk_factor.numer = 1;
 	mdata->clk_factor.denom = 1;
@@ -3101,39 +3182,59 @@ bool force_on_xin_clk(u32 bit_off, u32 clk_ctl_reg_off, bool enable)
 	return clk_forced_on;
 }
 
-static bool limit_rotator_ot(bool is_yuv, u32 width, u32 height)
-{
-	return (true == is_yuv) &&
-		(width * height <= 1080 * 1920);
-}
-
-static int limit_wb_ot(u32 width, u32 height)
-{
-
-	return width * height <= 1080 * 1920;
-}
-
-static u32 get_ot_limit(u32 reg_off, u32 bit_off, bool is_rot,
-	bool is_wb, bool is_yuv, u32 width, u32 height)
+static void apply_dynamic_ot_limit(u32 *ot_lim,
+	struct mdss_mdp_set_ot_params *params)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
-	u32 ot_lim = mdata->default_ot_limit;
+	u32 res;
+
+	if (!is_dynamic_ot_limit_required(mdata->mdp_rev))
+		return;
+
+	res = params->width * params->height;
+
+	pr_debug("w:%d h:%d rot:%d yuv:%d wb:%d res:%d\n",
+		params->width, params->height, params->is_rot,
+		params->is_yuv, params->is_wb, res);
+
+	if ((params->is_rot && params->is_yuv) ||
+		params->is_wb) {
+		if (res <= 1080 * 1920) {
+			*ot_lim = 2;
+		} else if (res <= 3840 * 2160) {
+			if (params->is_rot && params->is_yuv)
+				*ot_lim = 8;
+			else
+				*ot_lim = 16;
+		}
+	}
+}
+
+static u32 get_ot_limit(u32 reg_off, u32 bit_off,
+	struct mdss_mdp_set_ot_params *params)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	u32 ot_lim = 0;
 	u32 is_vbif_nrt, val;
 
+	if (mdata->default_ot_wr_limit &&
+		(params->reg_off_vbif_lim_conf == MMSS_VBIF_WR_LIM_CONF))
+		ot_lim = mdata->default_ot_wr_limit;
+	else if (mdata->default_ot_rd_limit &&
+		(params->reg_off_vbif_lim_conf == MMSS_VBIF_RD_LIM_CONF))
+		ot_lim = mdata->default_ot_rd_limit;
+
 	/*
-	 * If default ot limit is not set from dt,
-	 * then ot limiting is disabled.
+	 * If default ot is not set from dt,
+	 * then do not configure it.
 	 */
 	if (ot_lim == 0)
 		goto exit;
 
+	/* Modify the limits if the target and the use case requires it */
+	apply_dynamic_ot_limit(&ot_lim, params);
+
 	is_vbif_nrt = mdss_mdp_is_vbif_nrt(mdata->mdp_rev);
-
-	if ((is_rot && limit_rotator_ot(is_yuv, width, height)) ||
-		(is_wb && limit_wb_ot(width, height))) {
-		ot_lim = MDSS_OT_LIMIT;
-	}
-
 	val = MDSS_VBIF_READ(mdata, reg_off, is_vbif_nrt);
 	val &= (0xFF << bit_off);
 	val = val >> bit_off;
@@ -3142,11 +3243,11 @@ static u32 get_ot_limit(u32 reg_off, u32 bit_off, bool is_rot,
 		ot_lim = 0;
 
 exit:
+	pr_debug("ot_lim=%d\n", ot_lim);
 	return ot_lim;
 }
 
-void mdss_mdp_set_ot_limit(struct mdss_mdp_set_ot_params *params,
-	bool is_rot, bool is_wb, bool is_yuv)
+void mdss_mdp_set_ot_limit(struct mdss_mdp_set_ot_params *params)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	u32 ot_lim;
@@ -3157,15 +3258,10 @@ void mdss_mdp_set_ot_limit(struct mdss_mdp_set_ot_params *params,
 	u32 reg_val;
 	bool forced_on;
 
-	if (!mdss_mdp_apply_ot_limit(mdata->mdp_rev))
-		goto exit;
-
 	ot_lim = get_ot_limit(
 		reg_off_vbif_lim_conf,
 		bit_off_vbif_lim_conf,
-		is_rot, is_wb, is_yuv,
-		params->width,
-		params->height) & 0xFF;
+		params) & 0xFF;
 
 	if (ot_lim == 0)
 		goto exit;
