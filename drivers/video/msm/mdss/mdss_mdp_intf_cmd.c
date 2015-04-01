@@ -1589,6 +1589,16 @@ static int mdss_mdp_cmd_reconfigure(struct mdss_mdp_ctl *ctl,
 	return 0;
 }
 
+int mdss_mdp_cmd_ctx_is_pingpong_split_slave(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx;
+	if (ctl->intf_ctx[SLAVE_CTX] != NULL) {
+		ctx = ctl->intf_ctx[SLAVE_CTX];
+		return ctx->pingpong_split_slave;
+	} else
+		return 0;
+}
+
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	int ret, session = 0;
