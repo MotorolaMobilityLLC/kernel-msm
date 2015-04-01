@@ -38,6 +38,7 @@
 
 &mdss_fb0 {
 	qcom,mdss-fb-split = <720 720>;
+	qcom,mdss-fb-rot-180;
 };
 
 &mdss_dsi0 {
