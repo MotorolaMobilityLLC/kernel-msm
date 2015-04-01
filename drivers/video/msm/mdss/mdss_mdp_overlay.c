@@ -2789,6 +2789,8 @@ static ssize_t te_enable_store(struct device *dev,
 	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	struct mdss_mdp_mixer *mixer;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	static char __iomem *pp_base;
 	static int prev_height;
 
 	int enable;
@@ -2823,10 +2825,28 @@ static ssize_t te_enable_store(struct device *dev,
 		goto locked_end;
 	}
 
+	if (enable) {
+		r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_TE,
+			(void *) (long int) enable);
+		if (r) {
+			pr_err("%s: Failed sending TE command, r=%d\n",
+						__func__, r);
+			r = -EFAULT;
+			goto locked_end;
+		} else
+			te_status = enable;
+	}
+
 	for (i = 0; i < 2; i++) {
+
+		/* There are 2 different hardwares:
+		 * (i) two mixers which doesn't have master/slave
+		 * (ii) one mixer which has master/slave
+		 */
 		if (i == 0)
 			mux = MDSS_MDP_MIXER_MUX_LEFT;
-		else if (i == 1)
+		else if (i == 1 &&
+			!mdss_mdp_cmd_ctx_is_pingpong_split_slave(ctl))
 			mux = MDSS_MDP_MIXER_MUX_RIGHT;
 
 		mixer = mdss_mdp_mixer_get(ctl, mux);
@@ -2834,6 +2854,11 @@ static ssize_t te_enable_store(struct device *dev,
 			pr_warn("There is no mixer for mux = %d\n", i);
 			continue;
 		}
+
+		/* 0:Master and 1:slave, pingpong base */
+		pp_base = mixer->pingpong_base;
+		if (i == 1 && mdss_mdp_cmd_ctx_is_pingpong_split_slave(ctl))
+			pp_base = mdata->slave_pingpong_base;
 
 		/* The TE max height in MDP is being set to a max value of
 		 * 0xFFF0. Since this is such a large number, when TE is
@@ -2843,21 +2868,25 @@ static ssize_t te_enable_store(struct device *dev,
 		 * FPS to drop to 30 FPS, and prevent timeout errors. */
 		if (!enable) {
 			prev_height =
-				mdss_mdp_pingpong_read(mixer->pingpong_base,
+				mdss_mdp_pingpong_read(pp_base,
 				MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT) & 0xFFFF;
-			mdss_mdp_pingpong_write(mixer->pingpong_base,
+			mdss_mdp_pingpong_write(pp_base,
 				MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT,
 				mfd->fbi->var.yres * 2);
 		} else if (enable && prev_height) {
-			mdss_mdp_pingpong_write(mixer->pingpong_base,
+			mdss_mdp_pingpong_write(pp_base,
 				MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT,
-				prev_height);
+					prev_height);
 		}
 
+	}
+
+	if (!enable) {
 		r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_TE,
 						(void *) (long int) enable);
 		if (r) {
-			pr_err("Failed sending TE command, r=%d\n", r);
+			pr_err("%s: Failed sending TE command, r=%d\n",
+						__func__, r);
 			r = -EFAULT;
 			goto locked_end;
 		} else
