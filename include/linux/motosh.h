@@ -290,6 +290,7 @@ struct motosh_quickpeek_message {
 	u8 message;
 	u8 panel_state;
 	u8 buffer_id;
+	u8 commit;
 	u16 x1;
 	u16 y1;
 	u16 x2;
