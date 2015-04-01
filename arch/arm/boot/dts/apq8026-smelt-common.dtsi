@@ -27,6 +27,7 @@
 		/delete-property/ spi0;
 		uart1 = &uart1;
 		uart6 = &uart6;
+		spi4 = &spi_4;
 	};
 
 	ramoops {
@@ -112,6 +113,23 @@
 			     "factory_warn";
 	};
 
+	ssv_gps@0 {
+		compatible = "mot,ssv_gps";
+		status = "ok";
+		reg = <0 0>;
+
+		mot,spi-bus = <4>;
+		mot,chip-select = <0>;
+		mot,gps-spi-max-frequency = <6800000>;
+		mot,rtc-clk = "sleep_clk";
+		mot,modalias = "spidev";
+
+		mot,boot-select-gpio = <&msmgpio 34 0x00>;
+		mot,on-off-gpio      = <&msmgpio 37 0x00>;
+		mot,irq-gpio         = <&msmgpio 46 0x00>;
+		mot,reset-gpio       = <&msmgpio 48 0x00>;
+		mot,host-wakeup-gpio = <&msmgpio 72 0x00>;
+	};
 	bq5105x-ctrl {
 		reg = <0 0>;
 		compatible = "ti,bq5105x-control";
@@ -202,29 +220,24 @@
 		qcom,master-id = <86>;
 	};
 
-	/* BLSP4: [spi_4] (C55) */
+	/* BLSP1-QUP3: [spi_4] (GPS) */
 	/delete-node/ i2c@f9926000;
-	spi_4: spi@f9926000 { /* BLSP1 SPI4 */
+	spi_4: spi@f9926000 { /* BLSP1-QUP3 SPI4 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "spi_physical", "spi_bam_physical";
 		reg = <0xf9926000 0x1000>,
-		      <0xf9904000 0x19000>;
+			<0xf9904000 0x19000>;
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 98 0>, <0 238 0>;
 		spi-max-frequency = <19200000>;
-
 		qcom,gpio-mosi = <&msmgpio 12 0>;
 		qcom,gpio-miso = <&msmgpio 13 0>;
 		qcom,gpio-clk  = <&msmgpio 15 0>;
 		qcom,gpio-cs0  = <&msmgpio 14 0>;
-
 		qcom,infinite-mode = <0>;
-		qcom,use-bam;
 		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <18>;
-		qcom,bam-producer-pipe-index = <19>;
 		qcom,master-id = <86>;
 	};
 
@@ -564,6 +577,12 @@
 	qcom,init-voltage = <1800000>;
 	regulator-boot-on;
 	regulator-always-on;
+};
+
+&pm8226_l9 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
 };
 
 &pm8226_l19 {
