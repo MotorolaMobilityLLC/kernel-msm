@@ -45,6 +45,11 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/msm-bus.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#ifdef CONFIG_USB_CC_TUSB320
+#include <linux/usb/tusb320_notify.h>
+#endif
 #include <soc/qcom/scm.h>
 
 #include "dwc3_otg.h"
@@ -204,6 +209,8 @@ struct dwc3_msm {
 	bool			vbus_active;
 	bool			ext_inuse;
 	enum dwc3_id_state	id_state;
+	int			ext_id_gpio;
+	int			ext_id_irq;
 	unsigned long		lpm_flags;
 #define MDWC3_PHY_REF_CLK_OFF		BIT(0)
 #define MDWC3_TCXO_SHUTDOWN		BIT(1)
@@ -233,6 +240,9 @@ struct dwc3_msm {
 	int  pwr_event_irq;
 	atomic_t                in_p3;
 	unsigned int		lpm_to_suspend_delay;
+#ifdef CONFIG_USB_CC_TUSB320
+	struct notifier_block	dwc3_ext_cc_notifier;
+#endif
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2274,7 +2284,8 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 		dev_dbg(mdwc->dev, "%s: notify xceiv event\n", __func__);
 		mdwc->vbus_active = val->intval;
-		if (mdwc->otg_xceiv && !mdwc->ext_inuse && !mdwc->in_restart) {
+		if (mdwc->otg_xceiv && !mdwc->ext_inuse &&
+			!mdwc->ext_xceiv.ext_cc_control && !mdwc->in_restart) {
 			if (mdwc->ext_xceiv.bsv == val->intval)
 				break;
 
@@ -2493,6 +2504,20 @@ static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t dwc3_ext_id_irq(int irq, void *data)
+{
+	struct dwc3_msm *mdwc = data;
+	enum dwc3_id_state id;
+
+	id = gpio_get_value(mdwc->ext_id_gpio);
+	if (mdwc->id_state != id) {
+		mdwc->id_state = id;
+		queue_work(system_nrt_wq, &mdwc->id_work);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static int dwc3_cpu_notifier_cb(struct notifier_block *nfb,
 		unsigned long action, void *hcpu)
 {
@@ -2508,6 +2533,152 @@ static int dwc3_cpu_notifier_cb(struct notifier_block *nfb,
 
 	return NOTIFY_OK;
 }
+
+#ifdef CONFIG_USB_CC_TUSB320
+static enum dwc3_power_mode dwc3_convert_tusb320_power(u8 ufp_power)
+{
+	enum dwc3_power_mode b_power = DWC3_B_POW_DEFAULT;
+
+	switch (ufp_power) {
+	case TUBS320_UFP_POWER_MEDIUM :
+		b_power = DWC3_B_POW_MEDIUM;
+		break;
+	case TUBS320_UFP_POWER_ACC :
+		b_power = DWC3_B_POW_ACC;
+		break;
+	case TUBS320_UFP_POWER_HIGH :
+		b_power = DWC3_B_POW_HIGH;
+		break;
+	case TUBS320_UFP_POWER_DEFAULT :
+	default:
+		break;
+	}
+
+	return b_power;
+}
+
+static int dwc3_ext_tusb320_event_notify(struct notifier_block *nfb,
+							unsigned long action, void *data)
+{
+	struct dwc3_msm *mdwc =
+			container_of(nfb, struct dwc3_msm, dwc3_ext_cc_notifier);
+	struct tusb320_notify_param *param = (struct tusb320_notify_param *)data;
+	enum dwc3_power_mode b_power;
+
+	if (!mdwc->otg_xceiv || !mdwc->ext_xceiv.ext_cc_control
+				 || mdwc->ext_inuse) {
+		dev_err(mdwc->dev, "%s: state is not available\n", __func__);
+		return NOTIFY_DONE;
+	}
+
+	b_power = dwc3_convert_tusb320_power(param->ufp_power);
+
+	if (action == TUBS320_ATTACH_STATE_EVENT) {
+		switch (param->state) {
+		case TUBS320_NOT_ATTACH:
+			mdwc->ext_xceiv.bsv_power = DWC3_B_POW_DEFAULT;
+			mdwc->ext_xceiv.acc_mode = DWC3_ACC_INVALID;
+
+			if (mdwc->ext_xceiv.bsv) {
+				mdwc->ext_xceiv.bsv = false;
+				dbg_event(0xFF, "Q RW (vbus)", 0);
+				queue_delayed_work(system_nrt_wq,
+									&mdwc->resume_work, 0);
+			}
+			else if (mdwc->id_state == DWC3_ID_GROUND) {
+				if(mdwc->pmic_id_irq || mdwc->ext_id_irq) {
+					return NOTIFY_DONE;
+				}
+				mdwc->ext_xceiv.id = DWC3_ID_FLOAT;
+				mdwc->id_state = DWC3_ID_GROUND;
+				queue_work(system_nrt_wq, &mdwc->id_work);
+			}
+			break;
+		case TUBS320_DFP_ATTACH_UFP:
+			if(mdwc->pmic_id_irq || mdwc->ext_id_irq) {
+				return NOTIFY_DONE;
+			}
+			if (mdwc->id_state != DWC3_ID_GROUND) {
+				mdwc->id_state = DWC3_ID_GROUND;
+				queue_work(system_nrt_wq, &mdwc->id_work);
+			}
+			break;
+		case TUBS320_UFP_ATTACH_DFP:
+			if (mdwc->ext_xceiv.bsv &&
+				(mdwc->ext_xceiv.bsv_power == b_power))
+				break;
+
+			mdwc->ext_xceiv.bsv = true;
+			mdwc->ext_xceiv.bsv_power = b_power;
+
+			/*
+			 * Set debouncing delay to 120ms. Otherwise battery
+			 * charging CDP complaince test fails if delay > 120ms.
+			 */
+			dbg_event(0xFF, "Q RW (vbus)", 1);
+			queue_delayed_work(system_nrt_wq,
+							&mdwc->resume_work, 12);
+			break;
+		case TUBS320_ACC_AUDIO_DFP:
+			break;
+		case TUBS320_ACC_AUDIO_UFP:
+			if (mdwc->ext_xceiv.bsv &&
+				(mdwc->ext_xceiv.bsv_power == b_power) &&
+				(mdwc->ext_xceiv.acc_mode == DWC3_ACC_AUDIO_UFP))
+				break;
+
+			mdwc->ext_xceiv.bsv = true;
+			mdwc->ext_xceiv.bsv_power = b_power;
+			mdwc->ext_xceiv.acc_mode = DWC3_ACC_DEBUG_UFP;
+			queue_delayed_work(system_nrt_wq,
+						&mdwc->resume_work, 0);
+			break;
+		case TUBS320_ACC_DEBUG_DFP:
+			break;
+		case TUBS320_ACC_DEBUG_UFP:
+			if (mdwc->ext_xceiv.bsv &&
+				(mdwc->ext_xceiv.bsv_power == b_power) &&
+				(mdwc->ext_xceiv.acc_mode == DWC3_ACC_DEBUG_UFP))
+				break;
+
+			mdwc->ext_xceiv.bsv = true;
+			mdwc->ext_xceiv.bsv_power = b_power;
+			mdwc->ext_xceiv.acc_mode = DWC3_ACC_DEBUG_UFP;
+			queue_delayed_work(system_nrt_wq,
+						&mdwc->resume_work, 0);
+			break;
+		default:
+		case TUBS320_ATTACH_ACC:
+			break;
+		}
+	}
+	else if (action == TUBS320_UFP_POWER_UPDATE_EVENT) {
+		switch (param->state) {
+		case TUBS320_UFP_ATTACH_DFP:
+		case TUBS320_ACC_AUDIO_UFP:
+		case TUBS320_ACC_DEBUG_UFP:
+			if (!mdwc->ext_xceiv.bsv ||
+				(mdwc->ext_xceiv.bsv_power == b_power)) {
+				return NOTIFY_DONE;
+			}
+			else {
+				mdwc->ext_xceiv.bsv_power = b_power;
+				queue_delayed_work(system_nrt_wq,
+						&mdwc->resume_work, 0);
+			}
+			break;
+		case TUBS320_NOT_ATTACH:
+		case TUBS320_DFP_ATTACH_UFP:
+		case TUBS320_ACC_AUDIO_DFP:
+		case TUBS320_ACC_DEBUG_DFP:
+		default:
+				break;
+		}
+	}
+
+	return NOTIFY_OK;
+}
+#endif
 
 static void dwc3_adc_notification(enum qpnp_tm_state state, void *ctx)
 {
@@ -2922,6 +3093,14 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	clk_prepare_enable(mdwc->ref_clk);
 
 	mdwc->id_state = mdwc->ext_xceiv.id = DWC3_ID_FLOAT;
+
+	mdwc->ext_id_gpio = of_get_named_gpio(node, "qcom,ext-id-gpio", 0);
+	if (mdwc->ext_id_gpio < 0)
+		dev_dbg(&pdev->dev, "ext_id_gpio is not available\n");
+
+	mdwc->ext_xceiv.ext_cc_control = of_property_read_bool(node,
+				"qcom,ext-cc-control");
+
 	mdwc->charger.charging_disabled = of_property_read_bool(node,
 				"qcom,charging-disabled");
 
@@ -3033,9 +3212,48 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	}
 
 	if (mdwc->pmic_id_irq <= 0) {
-		/* If no PMIC ID IRQ, use ADC for ID pin detection */
-		queue_work(system_nrt_wq, &mdwc->init_adc_work.work);
-		device_create_file(&pdev->dev, &dev_attr_adc_enable);
+		if (gpio_is_valid(mdwc->ext_id_gpio)) {
+			/* ext_id_gpio request */
+			ret = gpio_request_one(mdwc->ext_id_gpio,
+							GPIOF_DIR_IN, "dwc3_ext_id_gpio");
+			if (ret < 0) {
+				dev_err(&pdev->dev, "gpio req for id failed\n");
+				mdwc->ext_id_irq = 0;
+				goto disable_ref_clk;
+			}
+			/* ext_id_gpio to irq */
+			mdwc->ext_id_irq = gpio_to_irq(mdwc->ext_id_gpio);
+			if (mdwc->ext_id_irq) {
+				irq_set_status_flags(mdwc->ext_id_irq,
+					IRQ_NOAUTOEN);
+				ret = devm_request_irq(&pdev->dev,
+							mdwc->ext_id_irq,
+							dwc3_ext_id_irq,
+							IRQF_TRIGGER_RISING |
+							IRQF_TRIGGER_FALLING,
+							"dwc3_msm_ext_id",
+							mdwc);
+				if (ret) {
+					dev_err(&pdev->dev, "request ext irq for id failed\n");
+					mdwc->ext_id_irq = 0;
+					goto disable_ref_clk;
+				}
+			}
+			else {
+				dev_err(&pdev->dev, "ext_id_irq for id is invalid\n");
+				mdwc->ext_id_irq = 0;
+				goto disable_ref_clk;
+			}
+		}
+		else {
+			mdwc->ext_id_irq = 0;
+
+			if (!mdwc->ext_xceiv.ext_cc_control) {
+				/* If no PMIC ID IRQ, use ADC for ID pin detection */
+				queue_work(system_nrt_wq, &mdwc->init_adc_work.work);
+				device_create_file(&pdev->dev, &dev_attr_adc_enable);
+			}
+		}
 		mdwc->pmic_id_irq = 0;
 	}
 
@@ -3270,6 +3488,16 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	if (cpu_to_affin)
 		register_cpu_notifier(&mdwc->dwc3_cpu_notifier);
 
+	if (mdwc->ext_xceiv.ext_cc_control) {
+#ifdef CONFIG_USB_CC_TUSB320
+		mdwc->dwc3_ext_cc_notifier.notifier_call =
+						dwc3_ext_tusb320_event_notify;
+		tusb320_register_notifier(&mdwc->dwc3_ext_cc_notifier);
+#else
+		dev_err(&pdev->dev, "Fail to register cc control notification\n");
+#endif
+	}
+
 	device_init_wakeup(mdwc->dev, 1);
 	pm_stay_awake(mdwc->dev);
 	dwc3_msm_debugfs_init(mdwc);
@@ -3295,6 +3523,15 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			queue_work(system_nrt_wq, &mdwc->id_work);
 		local_irq_restore(flags);
 		enable_irq_wake(mdwc->pmic_id_irq);
+	}
+	else if(mdwc->ext_id_irq) {
+		enable_irq(mdwc->ext_id_irq);
+		local_irq_save(flags);
+		mdwc->id_state = gpio_get_value(mdwc->ext_id_gpio);
+		if (mdwc->id_state == DWC3_ID_GROUND)
+			queue_work(system_nrt_wq, &mdwc->id_work);
+		local_irq_restore(flags);
+		enable_irq_wake(mdwc->ext_id_irq);
 	}
 
 	msm_bam_set_usb_dev(mdwc->dev);

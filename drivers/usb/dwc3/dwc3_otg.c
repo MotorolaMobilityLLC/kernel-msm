@@ -467,6 +467,7 @@ psy_error:
 void dwc3_otg_init_sm(struct dwc3_otg *dotg)
 {
 	struct usb_phy *phy = dotg->otg.phy;
+	struct dwc3_ext_xceiv *ext_xceiv = dotg->ext_xceiv;
 	struct dwc3 *dwc = dotg->dwc;
 	int ret;
 
@@ -481,13 +482,20 @@ void dwc3_otg_init_sm(struct dwc3_otg *dotg)
 		set_bit(ID, &dotg->inputs);
 	}
 
-	/*
-	 * If vbus-present property was set then set BSV to 1.
-	 * This is needed for emulation platforms as PMIC ID
-	 * interrupt is not available.
-	 */
-	if (dwc->vbus_active)
-		set_bit(B_SESS_VLD, &dotg->inputs);
+	if (ext_xceiv && ext_xceiv->ext_cc_control
+			/*&& !No battery */ ) {
+		if (ext_xceiv->bsv)
+			set_bit(B_SESS_VLD, &dotg->inputs);
+	} else {
+
+		/*
+		 * If vbus-present property was set then set BSV to 1.
+		 * This is needed for emulation platforms as PMIC ID
+		 * interrupt is not available.
+		 */
+		if (dwc->vbus_active)
+			set_bit(B_SESS_VLD, &dotg->inputs);
+	}
 }
 
 /**

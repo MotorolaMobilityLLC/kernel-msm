@@ -110,10 +110,30 @@ enum dwc3_id_state {
 	DWC3_ID_FLOAT,
 };
 
+
+enum dwc3_acc_mode {
+	DWC3_ACC_INVALID = 0,
+	DWC3_ACC_AUDIO_DFP,
+	DWC3_ACC_AUDIO_UFP,
+	DWC3_ACC_DEBUG_DFP,
+	DWC3_ACC_DEBUG_UFP,
+};
+
+enum dwc3_power_mode {
+	DWC3_B_POW_DEFAULT = 0,
+	DWC3_B_POW_MEDIUM,
+	DWC3_B_POW_ACC,
+	DWC3_B_POW_HIGH,
+};
+
 /* external transceiver that can perform connect/disconnect monitoring in LPM */
 struct dwc3_ext_xceiv {
 	enum dwc3_id_state	id;
 	bool			bsv;
+	bool			ext_cc_control;
+	enum dwc3_acc_mode	acc_mode;
+	enum dwc3_power_mode	bsv_power;
+	unsigned 		default_power;
 
 	/* to notify OTG about LPM exit event, provided by OTG */
 	void	(*notify_ext_events)(struct usb_otg *otg,
