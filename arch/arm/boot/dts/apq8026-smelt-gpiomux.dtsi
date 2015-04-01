@@ -33,7 +33,7 @@
 	 *   'P' bits 4-7 is gpio pull method, which
 	 *       0 = none, 1 = pull down, 2 = pull keeper, 3 = pull up,
 	 *   'V' bits 8-11 is gpio driven, which
-	 *       0 = 2 mA, 1 = 4 mA, n = (n+2)*2 mA, the maximum is 16mA
+	 *       0 = 2 mA, 1 = 4 mA, n = (n+1)*2 mA, the maximum is 16mA
 	 *   'F' bits 12-15 is gpio function, which
 	 *       0 = gpio, others refer hardware reference
 	 * Example:
@@ -145,7 +145,7 @@
 			install-no-write;
 		};
 		gpio@34 {
-			suspend = <0x0302>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, OUT_LOW */
+			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@35 {
 			active  = <0x0301>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, OUT_HIGH */
@@ -158,9 +158,7 @@
 			install-no-write;
 		};
 		gpio@37 {
-			active  = <0x0302>; /* FUNC_GPIO, DRV_8MA, PULL_NONE, OUT_LOW */
 			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
-			install-no-write;
 		};
 		gpio@38 {
 			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
@@ -193,7 +191,7 @@
 			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@48 {
-			suspend = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
+			suspend = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
 		};
 		gpio@49 {
 			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
