@@ -1,0 +1,165 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_jdi_r69338_fhd_vid: qcom,mdss_dsi_r69338_1080p_video {
+		compatible = "qcom,mdss-dsi-panel";
+		status = "ok";
+		qcom,cont-splash-enabled;
+		qcom,mdss-dsi-panel-name = "JDI FHD video mode dsi panel";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-type = "dsi_video_mode";
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <1080>;
+		qcom,mdss-dsi-panel-height = <1920>;
+		qcom,mdss-dsi-h-front-porch = <96>;
+		qcom,mdss-dsi-h-back-porch = <36>;
+		qcom,mdss-dsi-h-pulse-width = <12>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <3>;
+		qcom,mdss-dsi-v-front-porch = <4>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-pan-physical-width-dimension = <65>;
+		qcom,mdss-pan-physical-height-dimension = <115>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
+		qcom,mdss-dsi-underflow-color = <0x0>;
+		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-on-command = [
+			39 01 00 00 00 00 02
+			51 ff
+
+			39 01 00 00 00 00 02
+			53 2c
+
+			39 01 00 00 00 00 02
+			55 01
+
+			29 01 00 00 00 00 02
+			b0 04
+
+			29 01 00 00 00 00 1f
+			c7 00 0d 16 1d 2b 38
+			42 50 35 3d 4b 59 62
+			69 76 00 0d 16 1d 2b
+			38 42 50 35 3d 4b 59
+			62 69 76
+
+			29 01 00 00 00 00 14
+			c8 01 00 00 fa 00 fc
+			00 00 00 fa 00 fc 00
+			00 00 00 00 fc 00
+
+			29 01 00 00 00 00 07
+			b8 07 88 25 18 00 31
+
+			29 01 00 00 00 00 07
+			b9 07 82 3c 10 3c 87
+
+			29 01 00 00 00 00 07
+			ba 07 78 64 10 64 b4
+
+			29 01 00 00 00 00 19
+			ce 75 40 43 49 55 62
+			71 82 94 a8 b9 cb db
+			e9 f5 fc ff 23 91 04
+			04 44 00 00
+
+			/* CE JDI */
+			29 01 00 00 00 00 21
+			ca 01 70 a0 80 89 98
+			95 8f 08 3f 80 88 e6
+			f0 00 ff 00 ff 0c 0c
+			0a 06 04 04 00 d0 0c
+			08 3f 3f 3f 3f
+
+			29 01 00 00 00 00 02
+			d6 01
+
+			05 01 00 00 00 00 01
+			29
+
+			05 01 00 00 78 00 01
+			11
+			];
+
+		qcom,mdss-dsi-off-command = [
+			05 01 00 00 14 00 01
+			28
+			05 01 00 00 50 00 01
+			10
+			];
+
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
+		qcom,mdss-dsi-lane-map = "lane_map_0123";
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+
+		qcom,mdss-dsi-panel-timings = [E2 36 24 00 66 68 28 38 2A 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x02>;
+		qcom,mdss-dsi-t-clk-pre = <0x2A>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-pan-enable-dynamic-fps;
+		qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode";
+		qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 1>, <1 10>;
+
+		qcom,blmap-size = <256>;
+		qcom,blmap = <
+			0
+			109  109  109  109  109  109  109  109  109  109				// 001-010
+			109  109  110  110  110  111  111  112  112  112				// 011-020
+			113  113  114  115  117  119  121  122  124  126				// 021-030
+			128  129  131  133  135  137  140  142  145  148				// 031-040
+			150  153  156  158  161  164  166  169  172  177				// 041-050
+			183  188  194  199  205  210  216  221  227  232				// 051-060
+			237  242  247  252  257  263  268  273  278  283				// 061-070
+			288  293  299  306  313  321  328  336  343  350				// 071-080
+			358  365  373  380  388  396  404  412  420  429				// 081-090
+			437  445  453  462  470  478  486  495  506  518				// 091-100
+			529  541  553  564  576  588  599  611  623  634				// 101-110
+			645  657  668  679  691  702  714  725  736  748				// 111-120
+			759  771  785  799  814  828  842  857  871  885				// 121-130
+			900  914  928  943  960  978  995  1013  1031  1048				// 131-140
+			1066  1084  1101  1119  1137  1153  1170  1187  1204  1221		// 141-150
+			1238  1254  1271  1288  1305  1322  1339  1356  1376  1396		// 151-160
+			1417  1437  1458  1478  1498  1519  1539  1560  1580  1601		// 161-170
+			1622  1643  1664  1685  1706  1727  1748  1769  1790  1811		// 171-180
+			1832  1853  1874  1898  1923  1948  1973  1998  2023  2047		// 181-190
+			2072  2097  2122  2147  2172  2197  2222  2248  2273  2299		// 191-200
+			2324  2350  2375  2401  2426  2452  2477  2503  2535  2568		// 201-210
+			2601  2634  2667  2700  2733  2766  2799  2832  2865  2894		// 211-220
+			2924  2953  2983  3013  3042  3072  3101  3131  3161  3190		// 221-230
+			3220  3250  3284  3318  3352  3386  3420  3455  3489  3523		// 231-240
+			3557  3591  3625  3660  3699  3739  3778  3818  3857  3897		// 241-250
+			3936  3976  4015  4055  4095>;									// 251-255
+	};
+};
