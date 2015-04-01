@@ -27,6 +27,7 @@
 #include <linux/regulator/consumer.h>
 
 #define ISL98611_NAME				"isl98611"
+#define ISL98611_QUEUE_NAME			"backlight-workqueue"
 #define ISL98611_MAX_BRIGHTNESS			255
 #define ISL98611_DEFAULT_BRIGHTNESS		255
 #define ISL98611_HBM_ON_BRIGHTNESS		(ISL98611_MAX_BRIGHTNESS + 2)
@@ -263,7 +264,7 @@ static void isl98611_led_set(struct led_classdev *led_cdev,
 	}
 
 	led_cdev->brightness = value;
-	schedule_work(&pchip->ledwork);
+	queue_work(pchip->ledwq, &pchip->ledwork);
 }
 
 
@@ -429,12 +430,21 @@ static int isl98611_probe(struct i2c_client *client,
 		pchip->cdev.max_brightness = ISL98611_MAX_BRIGHTNESS;
 	pchip->cdev.name = pdata->name;
 	pchip->cdev.default_trigger = pdata->trigger;
+
+	/* need single thread queue to keep requests in sequence */
+	pchip->ledwq = create_singlethread_workqueue(ISL98611_QUEUE_NAME);
+	if (!pchip->ledwq) {
+		rc = -ENOMEM;
+		dev_err(&client->dev, "unable to create workqueue");
+		return rc;
+	}
+
 	INIT_WORK(&pchip->ledwork, isl98611_brightness_set);
 
 	rc = led_classdev_register(&client->dev, &pchip->cdev);
 	if (rc) {
 		dev_err(&client->dev, "unable to register led rc=%d", rc);
-		return rc;
+		goto classerr;
 	}
 
 	if (pdata->default_on)
@@ -444,6 +454,10 @@ static int isl98611_probe(struct i2c_client *client,
 	dev_info(pchip->dev, "probe success chip hw status %#x", status);
 
 	return 0;
+
+classerr:
+	destroy_workqueue(pchip->ledwq);
+	return rc;
 }
 
 static int isl98611_remove(struct i2c_client *client)
@@ -451,6 +465,7 @@ static int isl98611_remove(struct i2c_client *client)
 	struct isl98611_chip *pchip = i2c_get_clientdata(client);
 
 	led_classdev_unregister(&pchip->cdev);
+	destroy_workqueue(pchip->ledwq);
 
 	return 0;
 }
