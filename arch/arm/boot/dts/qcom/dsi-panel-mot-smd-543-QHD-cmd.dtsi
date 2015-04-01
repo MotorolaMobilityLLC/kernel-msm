@@ -88,8 +88,6 @@
 			15 01 00 00 01 00 02 51 00
 			/* acl_enable_disable_settings */
 			15 01 00 00 01 00 02 55 03
-			/* Image up-side down & gate scan inverse */
-			15 01 00 00 01 00 02 36 C0
 			/* Unlock level 2 commands */
 			39 01 00 00 01 00 03 F0 5A 5A
 			/* Set index for P9 */
