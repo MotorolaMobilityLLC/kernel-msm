@@ -200,6 +200,56 @@
 			};
 		};
 
+		spi7_active {
+			/* MOSI, MISO, CLK */
+			qcom,pins = <&gp 41>, <&gp 42>, <&gp 44>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <1>;
+			label = "spi7-active";
+			/* active state */
+			spi7_default: default {
+				drive-strength = <12>; /* 12 MA */
+				bias-disable = <0>; /* No PULL */
+			};
+		};
+
+		spi7_suspend {
+			/* MOSI, MISO, CLK */
+			qcom,pins = <&gp 41>, <&gp 42>, <&gp 44>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <0>;
+			label = "spi7-suspend";
+			/* suspended state */
+			spi7_sleep: sleep {
+				drive-strength = <2>; /* 2 MA */
+				bias-pull-down; /* pull down */
+			};
+		};
+
+		spi7_cs_active {
+			/* CS */
+			qcom,pins = <&gp 43>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "spi7-cs-active";
+			spi7_cs_active: cs_active {
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
+		spi7_cs_suspend {
+			/* CS */
+			qcom,pins = <&gp 43>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "spi7-cs-suspend";
+			spi7_cs_sleep: cs_sleep {
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
 		pmx_ts_reset {
 			qcom,pins = <&gp 8>;
 			qcom,pin-func = <0>;

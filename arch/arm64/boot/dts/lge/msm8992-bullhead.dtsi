@@ -16,6 +16,7 @@
 / {
 	aliases {
 		spi1 = &spi_fpc;
+		spi7 = &spi_7;
 	};
 };
 
@@ -50,6 +51,38 @@
 		qcom,gpio-miso = <&msm_gpio 54 0>;
 		qcom,gpio-cs0 = <&msm_gpio 55 0>;
 		qcom,gpio-clk = <&msm_gpio 56 0>;
+	};
+
+	spi_7: spi@f9963000 {
+		status = "ok";
+		compatible = "qcom,spi-qup-v2";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9963000 0x500>,
+			<0xf9944000 0x19000>;
+
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 101 0>, <0 239 0>;
+
+		spi-max-frequency = <25000000>;
+
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi7_default &spi7_cs_active>;
+		pinctrl-1 = <&spi7_sleep &spi7_cs_sleep>;
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup1_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,ver-reg-exists;
+		qcom,master-id = <84>;
 	};
 };
 
