@@ -2060,9 +2060,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	static unsigned char active_touch_max_idx;
 	struct f12_d1_type *finger_data;
 	struct synaptics_rmi4_packet_reg *reg_data_1 =
-					&synaptics_cfg_regs[1].regs[0];
+				&rmi4_data->f12_data_registers_ptr->regs[0];
 	struct synaptics_rmi4_packet_reg *reg_data_15 =
-					&synaptics_cfg_regs[1].regs[1];
+				&rmi4_data->f12_data_registers_ptr->regs[1];
 
 	if (atomic_read(&rmi4_data->panel_off_flag)) {
 		synaptics_dsx_resumeinfo_ignore(rmi4_data);
@@ -2893,7 +2893,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char intr_offset;
 	struct synaptics_rmi4_func_packet_regs *regs;
 
-	regs = find_function(SYNAPTICS_RMI4_F12 | DATA_TYPE);
+	regs = rmi4_data->f12_data_registers_ptr;
 	retval = synaptics_rmi4_scan_f12_reg_info(rmi4_data,
 			fhandler->full_addr.query_base + regs->query_offset,
 			fhandler->full_addr.data_base, regs);
@@ -3957,7 +3957,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->irq_enabled = false;
 	atomic_set(&rmi4_data->touch_stopped, 1);
 	rmi4_data->ic_on = true;
-
+	rmi4_data->f12_data_registers_ptr =
+				find_function(SYNAPTICS_RMI4_F12 | DATA_TYPE);
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
 	rmi4_data->i2c_write = synaptics_rmi4_i2c_write;
 	rmi4_data->set_state = synaptics_dsx_sensor_state;

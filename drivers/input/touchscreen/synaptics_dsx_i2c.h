@@ -224,6 +224,127 @@ struct synaptics_dsx_patchset {
 #define SUSPEND_IDX	1
 #define MAX_NUM_STATES	2
 
+struct f34_properties {
+	union {
+		struct {
+			unsigned char regmap:1;
+			unsigned char unlocked:1;
+			unsigned char has_config_id:1;
+			unsigned char has_perm_config:1;
+			unsigned char has_bl_config:1;
+			unsigned char has_display_config:1;
+			unsigned char has_blob_config:1;
+			unsigned char reserved:1;
+		} __packed;
+		unsigned char data[1];
+	};
+};
+
+#define SYNAPTICS_DSX_STATES { \
+	DSX(UNKNOWN), \
+	DSX(ACTIVE), \
+	DSX(STANDBY), \
+	DSX(SUSPEND), \
+	DSX(BL), \
+	DSX(INIT), \
+	DSX(FLASH), \
+	DSX(INVALID) }
+
+#define DSX(a)	STATE_##a
+enum SYNAPTICS_DSX_STATES;
+#undef DSX
+
+enum ic_modes {
+	IC_MODE_ANY = 0,
+	IC_MODE_BL,
+	IC_MODE_UI
+};
+
+enum exp_fn {
+	RMI_DEV = 0,
+	RMI_F34,
+	RMI_F54,
+	RMI_FW_UPDATER,
+	RMI_LAST,
+};
+
+static inline ssize_t synaptics_rmi4_show_error(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	dev_warn(dev, "%s Attempted to read from write-only attribute %s\n",
+			__func__, attr->attr.name);
+	return -EPERM;
+}
+
+static inline ssize_t synaptics_rmi4_store_error(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	dev_warn(dev, "%s Attempted to write to read-only attribute %s\n",
+			__func__, attr->attr.name);
+	return -EPERM;
+}
+
+static inline void batohs(unsigned short *dest, unsigned char *src)
+{
+	*dest = src[1] * 0x100 + src[0];
+}
+
+static inline void hstoba(unsigned char *dest, unsigned short src)
+{
+	dest[0] = src % 0x100;
+	dest[1] = src / 0x100;
+}
+
+static inline void batohui(unsigned int *dest, unsigned char *src, size_t size)
+{
+	int si = size;
+	*dest = 0;
+	for (; --si >= 0;)
+		*dest += src[si] << (si << 3);
+}
+
+struct synaptics_rmi4_subpkt {
+	bool present;
+	bool expected;
+	short offset;
+	unsigned int size;
+	void *data;
+};
+
+#define RMI4_SUBPKT(a)\
+	{.present = 0, .expected = 1, .size = sizeof(a), .data = &a}
+#define RMI4_SUBPKT_STATIC(o, a)\
+	{.present = 1, .expected = 1,\
+			.offset = o, .size = sizeof(a), .data = &a}
+
+struct synaptics_rmi4_packet_reg {
+	unsigned short r_number;
+	bool expected;
+	short offset;
+	unsigned int size;
+	unsigned char *data;
+	unsigned char nr_subpkts;
+	struct synaptics_rmi4_subpkt *subpkt;
+};
+
+#define RMI4_NO_REG(r) {\
+	.r_number = r, .offset = -1, .expected = 0, .size = 0, .data = NULL,\
+	.nr_subpkts = 0, .subpkt = NULL}
+#define RMI4_REG(r, s) {\
+	.r_number = r, .offset = -1, .expected = 1, .size = 0, .data = NULL,\
+	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
+#define RMI4_REG_STATIC(r, s, sz) {\
+	.r_number = r, .offset = r, .expected = 1, .size = sz, .data = NULL,\
+	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
+
+struct synaptics_rmi4_func_packet_regs {
+	unsigned short f_number;
+	unsigned short base_addr;
+	unsigned short query_offset;
+	int nr_regs;
+	struct synaptics_rmi4_packet_reg *regs;
+};
+
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -325,50 +446,8 @@ struct synaptics_rmi4_data {
 	struct synaptics_dsx_patchset *current_mode;
 
 	struct work_struct resume_work;
-};
 
-struct f34_properties {
-	union {
-		struct {
-			unsigned char regmap:1;
-			unsigned char unlocked:1;
-			unsigned char has_config_id:1;
-			unsigned char has_perm_config:1;
-			unsigned char has_bl_config:1;
-			unsigned char has_display_config:1;
-			unsigned char has_blob_config:1;
-			unsigned char reserved:1;
-		} __packed;
-		unsigned char data[1];
-	};
-};
-
-#define SYNAPTICS_DSX_STATES { \
-	DSX(UNKNOWN), \
-	DSX(ACTIVE), \
-	DSX(STANDBY), \
-	DSX(SUSPEND), \
-	DSX(BL), \
-	DSX(INIT), \
-	DSX(FLASH), \
-	DSX(INVALID) }
-
-#define DSX(a)	STATE_##a
-enum SYNAPTICS_DSX_STATES;
-#undef DSX
-
-enum ic_modes {
-	IC_MODE_ANY = 0,
-	IC_MODE_BL,
-	IC_MODE_UI
-};
-
-enum exp_fn {
-	RMI_DEV = 0,
-	RMI_F34,
-	RMI_F54,
-	RMI_FW_UPDATER,
-	RMI_LAST,
+	struct synaptics_rmi4_func_packet_regs *f12_data_registers_ptr;
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
@@ -385,83 +464,6 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 		void (*func_attn)(struct synaptics_rmi4_data *rmi4_data,
 				unsigned char intr_mask),
 		enum ic_modes mode);
-
-static inline ssize_t synaptics_rmi4_show_error(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	dev_warn(dev, "%s Attempted to read from write-only attribute %s\n",
-			__func__, attr->attr.name);
-	return -EPERM;
-}
-
-static inline ssize_t synaptics_rmi4_store_error(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	dev_warn(dev, "%s Attempted to write to read-only attribute %s\n",
-			__func__, attr->attr.name);
-	return -EPERM;
-}
-
-static inline void batohs(unsigned short *dest, unsigned char *src)
-{
-	*dest = src[1] * 0x100 + src[0];
-}
-
-static inline void hstoba(unsigned char *dest, unsigned short src)
-{
-	dest[0] = src % 0x100;
-	dest[1] = src / 0x100;
-}
-
-static inline void batohui(unsigned int *dest, unsigned char *src, size_t size)
-{
-	int si = size;
-	*dest = 0;
-	for (; --si >= 0;)
-		*dest += src[si] << (si << 3);
-}
-
-struct synaptics_rmi4_subpkt {
-	bool present;
-	bool expected;
-	short offset;
-	unsigned int size;
-	void *data;
-};
-
-#define RMI4_SUBPKT(a)\
-	{.present = 0, .expected = 1, .size = sizeof(a), .data = &a}
-#define RMI4_SUBPKT_STATIC(o, a)\
-	{.present = 1, .expected = 1,\
-			.offset = o, .size = sizeof(a), .data = &a}
-
-struct synaptics_rmi4_packet_reg {
-	unsigned short r_number;
-	bool expected;
-	short offset;
-	unsigned int size;
-	unsigned char *data;
-	unsigned char nr_subpkts;
-	struct synaptics_rmi4_subpkt *subpkt;
-};
-
-#define RMI4_NO_REG(r) {\
-	.r_number = r, .offset = -1, .expected = 0, .size = 0, .data = NULL,\
-	.nr_subpkts = 0, .subpkt = NULL}
-#define RMI4_REG(r, s) {\
-	.r_number = r, .offset = -1, .expected = 1, .size = 0, .data = NULL,\
-	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
-#define RMI4_REG_STATIC(r, s, sz) {\
-	.r_number = r, .offset = r, .expected = 1, .size = sz, .data = NULL,\
-	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
-
-struct synaptics_rmi4_func_packet_regs {
-	unsigned short f_number;
-	unsigned short base_addr;
-	unsigned short query_offset;
-	int nr_regs;
-	struct synaptics_rmi4_packet_reg *regs;
-};
 
 int synaptics_rmi4_scan_packet_reg_info(
 	struct synaptics_rmi4_data *rmi4_data,
