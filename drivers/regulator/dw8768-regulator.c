@@ -30,7 +30,8 @@ struct dw8768_regulator {
 	struct regulator_init_data	*init_data;
 	struct regmap 			*i2c_regmap;
 	struct device_node		*reg_node;
-	int				en_gpio;
+	int				ena_gpio;
+	int				enm_gpio;
 	bool				is_enabled;
 };
 
@@ -47,41 +48,48 @@ static struct of_regulator_match dw8768_reg_matches[] = {
 
 static int dw8768_regulator_enable(struct regulator_dev *rdev)
 {
-	struct dw8768_regulator *reg_data =
-					rdev_get_drvdata(rdev);
-	int rc;
+	struct dw8768_regulator *reg_data = rdev_get_drvdata(rdev);
+	int rc = 0;
 
-	if (gpio_is_valid(reg_data->en_gpio)) {
-		gpio_set_value(reg_data->en_gpio, 1);
-		rc = regmap_write(rdev->regmap, 0x05, 0x0F);
+	if (gpio_is_valid(reg_data->ena_gpio)) {
+		gpio_set_value(reg_data->ena_gpio, 1);
+		if (gpio_is_valid(reg_data->enm_gpio)) {
+			gpio_set_value(reg_data->enm_gpio, 1);
+		} else {
+			rc = regmap_write(rdev->regmap, 0x05, 0x0F);
+			if (rc)
+				pr_err("Failed to write i2c. rc=%d\n", rc);
+		}
 		reg_data->is_enabled = true;
 	} else {
-		pr_err("enable gpio is not configured\n");
-		return -EINVAL;
+		pr_err("gpio ena is not configured\n");
+		rc = -EINVAL;
 	}
 
-	pr_debug("enabled\n");
-
-	return 0;
+	return rc;
 }
 
 static int dw8768_regulator_disable(struct regulator_dev *rdev)
 {
 	struct dw8768_regulator *reg_data = rdev_get_drvdata(rdev);
-	int rc;
+	int rc = 0;
 
-	if (gpio_is_valid(reg_data->en_gpio)) {
-		gpio_set_value(reg_data->en_gpio, 0);
-		rc = regmap_write(rdev->regmap, 0x05, 0x07);
+	if (gpio_is_valid(reg_data->ena_gpio)) {
+		if (gpio_is_valid(reg_data->enm_gpio)) {
+			gpio_set_value(reg_data->enm_gpio, 0);
+		} else {
+			rc = regmap_write(rdev->regmap, 0x05, 0x07);
+			if (rc)
+				pr_err("Failed to write i2c. rc=%d\n", rc);
+		}
+		gpio_set_value(reg_data->ena_gpio, 0);
 		reg_data->is_enabled = false;
 	} else {
-		pr_err("enable gpio is not configured\n");
-		return -EINVAL;
+		pr_err("gpio ena is not configured\n");
+		rc = -EINVAL;
 	}
 
-	pr_debug("disabled\n");
-
-	return 0;
+	return rc;
 }
 
 static int dw8768_regulator_is_enabled(struct regulator_dev *rdev)
@@ -162,12 +170,19 @@ static int dw8768_parse_dt(struct dw8768_regulator *reg_data,
 	reg_data->reg_node = dw8768_reg_matches[0].of_node;
 	reg_data->rdesc.name = constraints->name;
 
-	reg_data->en_gpio = of_get_named_gpio(dw8768_reg_matches[0].of_node,
-						"dw,enable-gpio", 0);
-	if (!gpio_is_valid(reg_data->en_gpio)) {
-		pr_err("enable-gpio not specified. rd=%d\n",
-						reg_data->en_gpio);
+	reg_data->ena_gpio = of_get_named_gpio(dw8768_reg_matches[0].of_node,
+						"dw,ena-gpio", 0);
+	if (!gpio_is_valid(reg_data->ena_gpio)) {
+		pr_err("ena-gpio not specified. rd=%d\n",
+						reg_data->ena_gpio);
 		return -EINVAL;
+	}
+
+	reg_data->enm_gpio = of_get_named_gpio(dw8768_reg_matches[0].of_node,
+						"dw,enm-gpio", 0);
+	if (!gpio_is_valid(reg_data->enm_gpio)) {
+		pr_err("enm-gpio not specified. rd=%d\n",
+						reg_data->enm_gpio);
 	}
 
 	rc = of_property_read_u32(dw8768_reg_matches[0].of_node,
@@ -177,6 +192,7 @@ static int dw8768_parse_dt(struct dw8768_regulator *reg_data,
 		pr_err("Can't read power on delay. rc=%d\n", rc);
 		reg_data->rdesc.enable_time = 3700;
 	}
+
 	return rc;
 }
 
@@ -204,14 +220,27 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 	rc = dw8768_parse_dt(reg_data, client);
 	if (rc) {
 		pr_err("Failed to parse device tree. rc=%d\n", rc);
-		goto out;
+		goto error;
 	}
 
-	rc = gpio_request_one(reg_data->en_gpio,
-				GPIOF_OUT_INIT_HIGH, "dw8768_enable");
+	if (!gpio_is_valid(reg_data->ena_gpio)) {
+		pr_err("Invalid gpio ena\n");
+		goto error;
+	}
+	rc = gpio_request_one(reg_data->ena_gpio,
+				GPIOF_OUT_INIT_HIGH, "dw8768_ena");
 	if (rc) {
-		pr_err("Failed to request enanble gpio. rc=%d\n", rc);
-		goto out;
+		pr_err("Failed to request gpio ena. rc=%d\n", rc);
+		goto error;
+	}
+
+	if (gpio_is_valid(reg_data->enm_gpio)) {
+		rc = gpio_request_one(reg_data->enm_gpio,
+				GPIOF_OUT_INIT_HIGH, "dw8768_enm");
+		if (rc) {
+			pr_err("Failed to request gpio enm. rc=%d\n", rc);
+			goto error_enm;
+		}
 	}
 
 	reg_data->i2c_regmap = devm_regmap_init_i2c(client,
@@ -219,8 +248,9 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 	if (IS_ERR(reg_data->i2c_regmap)) {
 		rc = PTR_ERR(reg_data->i2c_regmap);
 		pr_err("Failed to init i2c. rc=%d\n", rc);
-		goto error;
+		goto error_i2c;
 	}
+
 	i2c_set_clientdata(client, reg_data);
 
 	reg_data->dev = &client->dev;
@@ -241,15 +271,21 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 	if (IS_ERR(reg_data->rdev)) {
 		rc = PTR_ERR(reg_data->rdev);
 		pr_err("Failed to register regulator. rc=%d\n", rc);
-		goto error;
+		goto error_i2c;
 	}
 
-	return 0;
+	return rc;
 
+error_i2c:
+	if (gpio_is_valid(reg_data->enm_gpio))
+		gpio_free(reg_data->enm_gpio);
+error_enm:
+	if (gpio_is_valid(reg_data->ena_gpio))
+		gpio_free(reg_data->ena_gpio);
 error:
-	if(reg_data->en_gpio)
-		gpio_free(reg_data->en_gpio);
-out:
+	if (reg_data) {
+		devm_kfree(&client->dev, reg_data);
+	}
 	return rc;
 }
 
@@ -259,8 +295,10 @@ static int dw8768_regulator_remove(struct i2c_client *client)
 				i2c_get_clientdata(client);
 
 	regulator_unregister(reg_data->rdev);
-	if(reg_data->en_gpio)
-		gpio_free(reg_data->en_gpio);
+	if (gpio_is_valid(reg_data->ena_gpio))
+		gpio_free(reg_data->ena_gpio);
+	if (gpio_is_valid(reg_data->enm_gpio))
+		gpio_free(reg_data->enm_gpio);
 
 	return 0;
 }
