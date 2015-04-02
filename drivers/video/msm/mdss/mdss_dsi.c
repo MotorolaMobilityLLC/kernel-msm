@@ -146,13 +146,6 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 
 	mdss_dsi_labibb_vreg_init(pdev);
 
-	ctrl_pdata->avdd_reg = devm_regulator_get(&pdev->dev, "avdd_reg");
-	rc = PTR_RET(ctrl_pdata->avdd_reg);
-	if (rc) {
-		ctrl_pdata->avdd_reg = NULL;
-		pr_err("%s: failed to get dsv avdd_reg dsi%d\n", __func__, ctrl_pdata->ndx);
-	}
-
 	return rc;
 }
 

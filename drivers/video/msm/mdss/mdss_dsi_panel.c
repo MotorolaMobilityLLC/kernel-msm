@@ -287,14 +287,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 
-			if (ctrl_pdata->avdd_reg) {
-				rc = regulator_enable(ctrl_pdata->avdd_reg);
-				if (rc) {
-					pr_err("%s: failed to enable avdd_reg\n",
-							__func__);
-				}
-			}
-
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
@@ -323,15 +315,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
 			gpio_free(ctrl_pdata->bklt_en_gpio);
 		}
-
-		if (ctrl_pdata->avdd_reg && regulator_is_enabled(ctrl_pdata->avdd_reg)) {
-			rc = regulator_disable(ctrl_pdata->avdd_reg);
-			if (rc) {
-				pr_err("%s: failed to disable avdd_reg\n",
-						__func__);
-			}
-		}
-
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
