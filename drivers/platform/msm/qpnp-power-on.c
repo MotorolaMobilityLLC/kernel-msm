@@ -135,6 +135,8 @@ struct qpnp_pon {
 	u32 dbc;
 };
 
+int qpnp_pon_key_status;
+
 static struct qpnp_pon *sys_reset_dev;
 
 static u32 s1_delay[PON_S1_COUNT_MAX + 1] = {
@@ -497,6 +499,8 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		dev_err(&pon->spmi->dev, "Unable to read PON RT status\n");
 		return rc;
 	}
+
+	qpnp_pon_key_status = pon_rt_sts;
 
 	switch (cfg->pon_type) {
 	case PON_KPDPWR:

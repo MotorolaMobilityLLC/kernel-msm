@@ -23,6 +23,8 @@
 #include <linux/platform_device.h>
 #include <linux/reboot.h>
 #include <linux/slab.h>
+#include <linux/qpnp/power-on.h>
+#include <mach/mmi_watchdog.h>
 
 
 enum mmi_factory_device_list {
@@ -74,7 +76,12 @@ static void warn_irq_w(struct work_struct *w)
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
-		kernel_halt();
+		/* trigger wdog if resin key pressed */
+		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT) {
+			pr_info("User triggered watchdog reset (Pwr+VolDn)\n");
+			trigger_watchdog_reset();
+		} else
+			kernel_halt();
 		return;
 	}
 }
