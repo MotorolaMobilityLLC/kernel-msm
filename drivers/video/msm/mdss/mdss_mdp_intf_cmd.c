@@ -378,8 +378,6 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 
 	if (atomic_read(&ctx->koff_cnt)) {
 		if (atomic_dec_return(&ctx->koff_cnt)) {
-			pr_err("%s: too many kickoffs=%d!\n", __func__,
-			       atomic_read(&ctx->koff_cnt));
 			atomic_set(&ctx->koff_cnt, 0);
 		}
 		if (mdss_mdp_cmd_do_notifier(ctx)) {
@@ -561,10 +559,6 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 					atomic_read(&ctx->koff_cnt));
 
 		if (rc <= 0) {
-			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
-						rc, ctl->num);
-			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
-						"edp", "hdmi", "panic");
 			rc = -EPERM;
 			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
 		} else {
