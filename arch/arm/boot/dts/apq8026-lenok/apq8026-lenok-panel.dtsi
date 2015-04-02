@@ -79,6 +79,7 @@
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-on-command = [
 					39 00 00 00 00 00 03 51 00 00 /*DBV Setting*/
+					15 01 00 00 00 00 02 B0 AC
 					39 00 00 00 00 00 18 DB
 					01 A9 00 92 FF 11
 					1C 34 43 2F 84 85
@@ -180,9 +181,10 @@
 		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-reset-command =[
 					05 01 00 00 80 00 01 10
+					05 01 00 00 00 00 01 38 /*idle mode off*/
 					15 01 00 00 00 00 02 36 40
 					15 01 00 00 00 00 02 53 20
-					39 01 00 00 00 00 03 51 FE 00
+					39 01 00 00 00 00 03 51 D0 00
 					05 01 00 00 80 00 01 11
 					05 01 00 00 00 00 01 35
 					05 01 00 00 00 00 01 29
