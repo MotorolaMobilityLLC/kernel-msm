@@ -590,7 +590,7 @@ static int bad_temp_flag = false;//bad temp
 static struct qpnp_chg_chip *global_chip;//globle chip point
 static int force_ps_but_not_chg = false;//test not chg
 static int hot_design_current = 1500;//hot current
-static int running_test_soc_enable = false;//runnnig test soc 
+static int running_test_soc_enable = false;//runnnig test soc
 
 static int input_current_filter(int mA);
 static int get_prop_batt_temp(struct qpnp_chg_chip *chip);
@@ -3709,7 +3709,8 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 	if (term_current < QPNP_CHG_ITERM_MIN_MA
 			|| term_current > QPNP_CHG_ITERM_MAX_MA) {
 		pr_info("bad mA=%d asked to set\n", term_current);
-		return 0;
+		term_current = term_current < QPNP_CHG_ITERM_MIN_MA ?
+                        QPNP_CHG_ITERM_MIN_MA : QPNP_CHG_ITERM_MAX_MA;
 	}
 
 	temp = (term_current - QPNP_CHG_ITERM_MIN_MA)
