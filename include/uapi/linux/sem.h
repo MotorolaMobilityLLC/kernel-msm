@@ -50,6 +50,15 @@ union semun {
 	void __user *__pad;
 };
 
+/* arg for semctl 64 bit system calls. */
+union semun64 {
+	int val;			/* value for SETVAL */
+	struct semid64_ds __user *buf;	/* buffer for IPC_STAT & IPC_SET */
+	unsigned short __user *array;	/* array for GETALL & SETALL */
+	struct seminfo __user *__buf;	/* buffer for IPC_INFO */
+	void __user *__pad;
+};
+
 struct  seminfo {
 	int semmap;
 	int semmni;
