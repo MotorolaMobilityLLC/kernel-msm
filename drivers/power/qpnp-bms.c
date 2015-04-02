@@ -1266,7 +1266,7 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
         {
             chip->estimate_new_ocv_flag = 1;
             pr_info("ocv_low_threshold_uv is %d ,ocv_high_threshold_uv is %d ,last_good_ocv_uv is %d \n",
-                chip->ocv_low_threshold_uv,chip->ocv_high_threshold_uv,raw->last_good_ocv_uv);	
+                chip->ocv_low_threshold_uv,chip->ocv_high_threshold_uv,raw->last_good_ocv_uv);
         }
 #endif
 			pr_debug("OCV is stale or bad, estimating new OCV.\n");
@@ -1767,15 +1767,15 @@ static int calculate_delta_time(unsigned long long *time_stamp, int *delta_time_
 
 	/* default to delta time = 0 if anything fails */
 	*delta_time_s = 0;
-	time_sec = div_u64(get_jiffies_64(),HZ);  
-	*delta_time_s = time_sec - *time_stamp;	
+	time_sec = div_u64(get_jiffies_64(),HZ);
+	*delta_time_s = time_sec - *time_stamp;
 
 	/* remember this time */
 	if(*delta_time_s >= 0) {
 		*time_stamp = time_sec;
 	}
 	else {
-		pr_err("time read failed,delta_time_s=%d\n",*delta_time_s);    
+		pr_err("time read failed,delta_time_s=%d\n",*delta_time_s);
 		/*delta_time_s can not less 0*/
 		*delta_time_s = 0;
 	}
@@ -2028,7 +2028,7 @@ void debug_pc_temp_ocv_lut(struct pc_temp_ocv_lut *p)
     printk("\n");
 
     printk("***********ocv*******percent**********\n ");
-	
+
     for(i=0;i<PC_TEMP_ROWS;i++)
     {
         for(j=0;j<PC_TEMP_COLS;j++)
@@ -2037,7 +2037,7 @@ void debug_pc_temp_ocv_lut(struct pc_temp_ocv_lut *p)
         }
         printk("%5d  ",p->percent[i]);
         printk("\n");
-    
+
     }
     printk("\n");
 }
@@ -2059,7 +2059,7 @@ void debug_sf_lut(struct sf_lut *p)
     printk("\n");
 
     printk("***********sf*****percent**********\n ");
-	
+
     for(i=0;i<PC_CC_ROWS;i++)
     {
         for(j=0;j<PC_CC_COLS;j++)
@@ -2226,12 +2226,12 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	if (chip->last_soc != soc && !chip->last_soc_unbound)
 		chip->last_soc_change_sec = last_change_sec;
 
-	pr_info("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
+	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
 			soc, time_since_last_change_sec);
 	chip->last_soc = bound_soc(soc);
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
-	pr_info("Reported SOC = %d\n", chip->last_soc);
+	pr_debug("Reported SOC = %d\n", chip->last_soc);
 	mutex_unlock(&chip->last_soc_mutex);
 
 	return soc;
@@ -2484,7 +2484,7 @@ int hw_protect_voltage_check(struct qpnp_bms_chip *chip,int soc,int sample_count
         {
             pr_info("set power_up flag true \n");
             power_up_flag = true;
-        }	
+        }
     }
 
     /* get vbatt uv based on */
@@ -2504,7 +2504,7 @@ int hw_protect_voltage_check(struct qpnp_bms_chip *chip,int soc,int sample_count
     {
         bad_voltage_count = 0;
     }
-    
+
     if(bad_voltage_count >= HW_MAX_BAD_VOLTAGE_COUNT)
     {
         pr_info("Voltage is too low,change soc to zero\n ");
@@ -2746,7 +2746,7 @@ out:
     {
         bad_voltage_count = 0 ;
     }
-	
+
     if(true == factory_flag&&  0 == soc)
     {
         pr_info("do not report zero in factory mode \n");
@@ -5095,8 +5095,8 @@ static int qpnp_bms_probe(struct spmi_device *spmi)
 	struct qpnp_bms_chip *chip;
 	bool warm_reset;
 	int rc, vbatt;
-	
-    pr_err("charger probe begin...\n");
+
+	pr_err("bms probe begin...\n");
 
 	chip = devm_kzalloc(&spmi->dev, sizeof(struct qpnp_bms_chip),
 			GFP_KERNEL);
