@@ -2384,7 +2384,6 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		sync_pt_data->flushed = true;
 		break;
 	case MDP_NOTIFY_FRAME_TIMEOUT:
-		pr_err("%s: frame timeout\n", sync_pt_data->fence_name);
 		mdss_fb_signal_timeline(sync_pt_data);
 		break;
 	case MDP_NOTIFY_FRAME_DONE:

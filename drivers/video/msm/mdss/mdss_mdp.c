@@ -555,8 +555,6 @@ int mdss_mdp_irq_enable(u32 intr_type, u32 intf_num)
 
 	spin_lock_irqsave(&mdp_lock, irq_flags);
 	if (mdata->mdp_irq_mask & irq) {
-		pr_warn("MDSS MDP IRQ-0x%x is already set, mask=%x\n",
-				irq, mdata->mdp_irq_mask);
 		ret = -EBUSY;
 	} else {
 		pr_debug("MDP IRQ mask old=%x new=%x\n",
