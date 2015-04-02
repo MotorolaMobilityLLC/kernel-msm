@@ -287,7 +287,7 @@ void motosh_quickpeek_reset_locked(struct motosh_data *ps_motosh)
 
 	if (ps_motosh->qp_prepared) {
 		/* Cleanup fb driver state */
-		ret = fb_quickdraw_cleanup();
+		ret = fb_quickdraw_cleanup(0);
 
 		if (ret)
 			dev_err(&ps_motosh->client->dev,
@@ -423,7 +423,7 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 			if (qp_message->y1 != AOD_QP_DRAW_NO_OVERRIDE)
 				y = qp_message->y1;
 			ret = fb_quickdraw_execute(
-				qp_message->buffer_id, x, y);
+				qp_message->buffer_id, 1, x, y);
 			if (ret) {
 				dev_err(&ps_motosh->client->dev,
 					"%s: Failed to execute (ret: %d)\n",
@@ -439,7 +439,7 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 				ack_return = AOD_QP_ACK_INVALID;
 				break;
 			}
-			ret = fb_quickdraw_erase(
+			ret = fb_quickdraw_erase(1,
 				qp_message->x1, qp_message->y1,
 				qp_message->x2, qp_message->y2);
 			if (ret) {
@@ -450,7 +450,7 @@ void motosh_quickpeek_work_func(struct work_struct *work)
 			}
 			break;
 		case AOD_WAKEUP_REASON_QP_COMPLETE:
-			ret = fb_quickdraw_cleanup();
+			ret = fb_quickdraw_cleanup(1);
 			if (ret) {
 				dev_err(&ps_motosh->client->dev,
 					"%s: Failed to cleanup (ret: %d)\n",

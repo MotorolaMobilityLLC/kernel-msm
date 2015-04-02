@@ -555,12 +555,13 @@ int fb_quickdraw_prepare(unsigned char panel_state)
 	return ret;
 }
 
-int fb_quickdraw_execute(int buffer_id, int x, int y)
+int fb_quickdraw_execute(int buffer_id, int commit, int x, int y)
 {
 	int ret = -EINVAL;
 	struct fb_quickdraw_buffer *buffer;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (buffer_id: %d commit: %d x: %d y: %d)\n", __func__,
+		buffer_id, commit, x, y);
 
 	BUG_ON(!fb_quickdraw_ops);
 
@@ -579,11 +580,12 @@ exit:
 	return ret;
 }
 
-int fb_quickdraw_erase(int x1, int y1, int x2, int y2)
+int fb_quickdraw_erase(int commit, int x1, int y1, int x2, int y2)
 {
 	int ret;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (commit: %d x1: %d y1: %d x2: %d y2: %d)\n", __func__,
+		commit, x1, y1, x2, y2);
 
 	BUG_ON(!fb_quickdraw_ops);
 
@@ -594,11 +596,11 @@ int fb_quickdraw_erase(int x1, int y1, int x2, int y2)
 	return ret;
 }
 
-int fb_quickdraw_cleanup(void)
+int fb_quickdraw_cleanup(int commit)
 {
 	int ret;
 
-	pr_debug("%s+\n", __func__);
+	pr_debug("%s+ (commit: %d)\n", __func__, commit);
 
 	BUG_ON(!fb_quickdraw_ops);
 
