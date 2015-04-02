@@ -1,5 +1,5 @@
 
-qcom,generic-4v35-300mAh-data {
+qcom,HB442528EBC-XWD-4v35-300mah-data {
 
 	qcom,fcc-mah = <300>;
 	qcom,default-rbatt-mohm = <487>;
@@ -7,10 +7,10 @@ qcom,generic-4v35-300mAh-data {
 	qcom,flat-ocv-threshold-uv = <3800000>;
 	qcom,max-voltage-uv = <4350000>;
 	qcom,v-cutoff-uv = <3400000>;
-	qcom,chg-term-ua = <100000>;
-	qcom,batt-id-kohm = <10>;
-	qcom,batt-name = "Generic_300mAh_BMS";
-	qcom,battery-type = "Generic_300mAh_BMS";
+	qcom,chg-term-ua = <30000>;
+	qcom,batt-id-kohm = <470>;
+	qcom,batt-name = "HB442528EBC-XWD-4v35-300mah";
+	qcom,battery-type = "HB442528EBC-XWD-4v35-300mah";
 
 	qcom,warm-bat-decidegc = <450>;
 	qcom,warm-bat-mv = <4100>;
@@ -22,7 +22,7 @@ qcom,generic-4v35-300mAh-data {
 
 	qcom,hot-bat-decidegc = <500>;
 	qcom,cold-bat-decidegc = <0>;
-	
+
 	qcom,rbatt-sf-lut {
 		qcom,lut-col-legend = <(-20) 0 25 40 60>;
 		qcom,lut-row-legend = <100 95 90 85 80>,
@@ -64,12 +64,12 @@ qcom,generic-4v35-300mAh-data {
 				<22938 2852 344 206 128>,
 				<45877 5703 688 411 255>;
 	};
-	
+
 	qcom,fcc-temp-lut {
 		qcom,lut-col-legend = <(-20) 0 25 40 60>;
 		qcom,lut-data = <326 324 322 319 315>;
-	};	 
-	
+	};
+
 	qcom,pc-temp-ocv-lut {
 		qcom,lut-col-legend = <(-20) 0 25 40 60>;
 		qcom,lut-row-legend = <100 95 90 85 80>,
@@ -109,7 +109,7 @@ qcom,generic-4v35-300mAh-data {
 				<3414 3443 3472 3472 3454>,
 				<3306 3358 3396 3388 3370>,
 				<3188 3252 3269 3256 3241>,
-				<3008 3000 3000 3000 3000>;				   
+				<3008 3000 3000 3000 3000>;
 		};
 
 };

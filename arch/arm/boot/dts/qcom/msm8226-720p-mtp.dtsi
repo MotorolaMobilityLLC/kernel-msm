@@ -365,7 +365,7 @@
 		qcom,invert = <1>; /* Enable MPP */
 		qcom,ain-route = <2>; /* AMUX 7 */
 		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */	
+		qcom,src-sel = <0>; /* Function constant */
 	};
 
 	mpp@a700 { /* MPP 8 */
@@ -426,10 +426,8 @@
 		qcom,rpull-up-kohm = <68>;
 		qcom,vref-batt-therm = <1800000>;
 		/*add batt data file here*/
-		#include "batterydata-palladium.dtsi"
-		#include "batterydata-mtp-3000mah.dtsi"
-		#include "HB3748B4EBC_ATL_SCUD-4v35-3000mah.dtsi"
-		#include "Generic_300mAh_BMS_Final.dtsi"
+		#include "HB442528EBC-SCUD-4v35-300mah.dtsi"
+		#include "HB442528EBC-XWD-4v35-300mah.dtsi"
 	};
 };
 
