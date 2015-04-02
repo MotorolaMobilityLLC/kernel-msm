@@ -1688,6 +1688,7 @@
 &pm8994_l22 {
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
+	regulator-always-on;
 	qcom,init-voltage = <3300000>;
 	qcom,init-current = <100>;
 	qcom,system-load = <100000>;
