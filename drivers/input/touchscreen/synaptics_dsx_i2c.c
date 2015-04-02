@@ -197,12 +197,12 @@ static struct synaptics_rmi4_packet_reg f12_data_reg_array[] = {
 static struct {
 	union {
 		struct {
-			unsigned char configured:1;
-			unsigned char report_rate:1;
-			unsigned char charger_connected:1;
-			unsigned char reserved:2;
-			unsigned char no_sleep:1;
 			unsigned char sleep_mode:2;
+			unsigned char no_sleep:1;
+			unsigned char reserved:2;
+			unsigned char charger_connected:1;
+			unsigned char report_rate:1;
+			unsigned char configured:1;
 		} __packed;
 		unsigned char data[1];
 	};
