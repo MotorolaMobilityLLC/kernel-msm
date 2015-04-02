@@ -45,19 +45,19 @@ struct fb_quickdraw_buffer_data {
 #ifdef CONFIG_FB_QUICKDRAW
 
 int fb_quickdraw_prepare(unsigned char panel_state);
-int fb_quickdraw_execute(int buffer_id, int x, int y);
-int fb_quickdraw_erase(int x1, int y1, int x2, int y2);
-int fb_quickdraw_cleanup(void);
+int fb_quickdraw_execute(int buffer_id, int commit, int x, int y);
+int fb_quickdraw_erase(int commit, int x1, int y1, int x2, int y2);
+int fb_quickdraw_cleanup(int commit);
 
 #else
 
 static inline int fb_quickdraw_prepare(unsigned char panel_state)
 	{ return 0; };
-static inline int fb_quickdraw_execute(int buffer_id, int x, int y)
+static inline int fb_quickdraw_execute(int buffer_id, int commit, int x, int y)
 	{ return 0; };
-static inline int fb_quickdraw_erase(int x1, int y1, int x2, int y2)
+static inline int fb_quickdraw_erase(int commit, int x1, int y1, int x2, int y2)
 	{ return 0; };
-static inline int fb_quickdraw_cleanup(void)
+static inline int fb_quickdraw_cleanup(int commit)
 	{ return 0; };
 #endif /* CONFIG_FB_QUICKDRAW */
 
