@@ -220,6 +220,7 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_WIRELESS,	/* Accessory Charger Adapters */
 	POWER_SUPPLY_TYPE_BMS,		/* Battery Monitor System */
 	POWER_SUPPLY_TYPE_USB_PARALLEL,		/* USB Parallel Path */
+	POWER_SUPPLY_TYPE_BCL,		/* Battery Current Limit */
 };
 
 union power_supply_propval {
