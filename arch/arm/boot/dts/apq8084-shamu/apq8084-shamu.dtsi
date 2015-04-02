@@ -409,12 +409,18 @@
 
 &mot_smd_596_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
-	qcom,partial-update-dcs-cmd-by-left;
+	qcom,partial-update-enabled;
+	qcom,panel-roi-alignment = <0 8 0 0 8 1>;
+	qcom,partial-update-roi-merge;
+	qcom,dcs-cmd-by-left;
 };
 
 &mot_smd_596_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
-	qcom,partial-update-dcs-cmd-by-left;
+	qcom,partial-update-enabled;
+	qcom,panel-roi-alignment = <0 8 0 0 8 1>;
+	qcom,partial-update-roi-merge;
+	qcom,dcs-cmd-by-left;
 };
 
 &i2c_1 {
