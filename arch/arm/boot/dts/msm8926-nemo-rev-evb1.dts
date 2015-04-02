@@ -11,11 +11,11 @@
  */
 
 /dts-v1/;
-#include "msm8926-nemo/msm8926-nemo-rev-a.dtsi"
+#include "msm8926-nemo/msm8926-nemo-rev-evb1.dtsi"
 
 / {
-	model = "LGE MSM 8926 NEMO rev-a";
+	model = "LGE MSM 8926 NEMO rev-evb1";
 	compatible = "qcom,msm8926";
-	qcom,board-id = <141 0x02>;
+	qcom,board-id = <141 0>;
 	qcom,msm-id = <200 0x10001>;
 };
