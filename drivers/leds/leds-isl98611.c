@@ -74,7 +74,10 @@
 #define TRANS_THRESHOLD_MASK	0x07
 #define PFM_MASK		0xFF
 #define BRGHT_LSB_MASK		0x07
+#define VLED_EN_MASK		0x08
 
+#define VLED_ON_VAL		0x08
+#define VLED_OFF_VAL		0x00
 #define VPON_VAL		0x04
 #define VNON_VAL		0x02
 #define VPOFF_VAL		0x00
@@ -190,6 +193,7 @@ static void isl98611_brightness_set(struct work_struct *work)
 	unsigned int level = pchip->cdev.brightness;
 	static int old_level = -1;
 	struct isl98611_platform_data *pdata = pchip->pdata;
+	int rc;
 
 	if (pdata->hbm_on && (level > ISL98611_MAX_BRIGHTNESS)
 		&& (-1 != old_level)) {
@@ -232,10 +236,18 @@ static void isl98611_brightness_set(struct work_struct *work)
 		isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, CABC_VAL);
 	}
 
-	if (level != old_level && old_level == 0)
-		dev_info(pchip->dev, "backlight on");
-	 else if (level == 0 && old_level != 0)
-		dev_info(pchip->dev, "backlight off");
+	if (level != old_level && old_level == 0) {
+		rc = isl98611_update(pchip, REG_ENABLE,
+			VLED_EN_MASK, VLED_ON_VAL);
+		printk_ratelimited(KERN_INFO
+			"isl98611 backlight on %s", (rc?"FAILED":""));
+	}
+	 else if (level == 0 && old_level != 0) {
+		rc = isl98611_update(pchip, REG_ENABLE,
+			VLED_EN_MASK, VLED_OFF_VAL);
+		printk_ratelimited(KERN_INFO
+			"isl98611 backlight off %s", (rc?"FAILED":""));
+	}
 	old_level = level;
 
 	isl98611_write(pchip, REG_BRGHT_MSB, level);
