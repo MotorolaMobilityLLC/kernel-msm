@@ -94,7 +94,7 @@ static void tfa9890_power(struct snd_soc_codec *codec, int on);
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
 	.reg = TFA9890_BATT_CTL_REG,
-	.value = 0x13A2,
+	.value = 0x1396,
 },
 {
 	.reg = TFA9890_I2S_CTL_REG,
@@ -102,7 +102,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_VOL_CTL_REG,
-	.value = 0x002f,
+	.value = 0x00AF,
 },
 {
 	.reg = TFA9890_SPK_CTL_REG,
