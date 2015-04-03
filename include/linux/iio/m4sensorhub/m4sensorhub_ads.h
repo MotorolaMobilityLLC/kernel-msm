@@ -21,6 +21,14 @@
 
 #include <linux/types.h>
 
+enum {
+	MODE_0,
+	MODE_1,
+	MODE_2,
+	MODE_3,
+	MODE_4,
+	MODE_MAX
+};
 
 struct m4sensorhub_ads_data {
 	uint32_t seq;
