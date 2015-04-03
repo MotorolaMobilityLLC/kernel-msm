@@ -228,7 +228,8 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_PFN_SCAN_COMPLETE		138	/* PFN completed scan of network list */
 #define WLC_E_RMC_EVENT			139	/* RMC event */
 #define WLC_E_PFN_SSID_EXT      142  /* SSID EXT event */
-#define WLC_E_LAST			143	/* highest val + 1 for range checking */
+#define WLC_E_ROAM_EXP_EVENT    143  /* Expanded roam event */
+#define WLC_E_LAST			144	/* highest val + 1 for range checking */
 
 /* define an API for getting the string name of an event */
 extern const char *bcmevent_get_name(uint event_type);
