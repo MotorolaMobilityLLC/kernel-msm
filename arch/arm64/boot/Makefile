@@ -14,16 +14,10 @@
 # Based on the ia64 boot/Makefile.
 #
 
-include $(srctree)/arch/arm64/boot/dts/Makefile
+include $(srctree)/arch/arm64/boot/dts/huawei/Makefile
 
 targets := Image Image.gz
 
-DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
-ifneq ($(DTB_NAMES),)
-DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
-else
-DTB_LIST := $(dtb-y)
-endif
 DTB_OBJS := $(addprefix $(obj)/dts/,$(DTB_LIST))
 
 $(obj)/Image: vmlinux FORCE
