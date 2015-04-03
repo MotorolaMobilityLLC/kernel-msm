@@ -151,7 +151,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	int ret = 0;
 	u8 aod_qp_reason;
 	u8 aod_qp_panel_state;
-	struct motosh_quickpeek_message *qp_message;
+	struct motosh_quickpeek_message *qp_message = NULL;
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
 
