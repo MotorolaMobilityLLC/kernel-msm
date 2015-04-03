@@ -25,6 +25,7 @@
 #include <linux/reboot.h>
 #include <linux/slab.h>
 #include <linux/qpnp/power-on.h>
+#include <soc/qcom/watchdog.h>
 
 
 enum mmi_factory_device_list {
@@ -140,6 +141,15 @@ static void warn_irq_w(struct work_struct *w)
 	if (!warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
+
+#ifdef CONFIG_QPNP_POWER_ON
+		/* trigger wdog if resin key pressed */
+		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT) {
+			pr_info("User triggered watchdog reset(Pwr + VolDn)\n");
+			msm_trigger_wdog_bite();
+			return;
+		}
+#endif
 		/* Configure hardware reset before halt
 		 * The new KUNGKOW circuit will not disconnect the battery if
 		 * usb/dc is connected. But because the kernel is halted, a
