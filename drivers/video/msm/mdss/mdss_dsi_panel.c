@@ -101,50 +101,6 @@ static struct dsi_cmd_desc dcs_read_cmd = {
 	dcs_cmd
 };
 
-
-
-#define IDLE_IN_REG      0x39
-#define IDLE_OUT_REG     0x38
-#define IDLE_STATUS_REG  0x0a
-#define IDLE_MARK        0x40
-static char cmd_idle[2] = {0x39, 0x00};
-static char page_0[2] = {0xFE, 0x00};
-static struct dsi_cmd_desc idle_write_cmd[2] = {
-	{{DTYPE_DCS_WRITE1, 1, 0, 0, 5, sizeof(page_0)}, page_0},
-	{{DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(cmd_idle)}, cmd_idle}
-	};
-
-
-static void mdss_dsi_panel_idle_dcs(struct mdss_dsi_ctrl_pdata *ctrl, unsigned char cmd0)
-{
-	struct dcs_cmd_req cmdreq;
-	struct mdss_panel_info *pinfo;
-
-	pinfo = &(ctrl->panel_data.panel_info);
-	if (pinfo->partial_update_dcs_cmd_by_left)
-	{
-		if (ctrl->ndx != DSI_CTRL_LEFT)
-		{
-			pr_err("%s: set idle fail\n", __func__);
-			return;
-		}
-	}
-
-	cmd_idle[0] = cmd0;
-
-	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &idle_write_cmd[0];
-	cmdreq.cmds_cnt = 2;
-	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
-
-	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-	pr_debug("%s: %s idle complete\n", __func__, cmd0==IDLE_IN_REG?"enter":"exit");
-}
-
-
-
 u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 		char cmd1, void (*fxn)(int), char *rbuf, int len)
 {
@@ -659,7 +615,6 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
-	unsigned char pw_status=0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -674,33 +629,11 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		enable);
 
 	/* Any panel specific low power commands/config */
-	mdss_dsi_panel_cmd_read(ctrl, IDLE_STATUS_REG, 0, NULL, &pw_status, sizeof(pw_status));
 	if (enable)
-	{
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
-		if (pw_status&IDLE_MARK)
-		{
-			pr_debug("%s: lcd is in idle mode already\n", __func__);
-		}
-		else
-		{
-			mdss_dsi_panel_idle_dcs(ctrl, IDLE_IN_REG);
-		}
-	}
 	else
-	{
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
-		if (pw_status&IDLE_MARK)
-		{
-			mdss_dsi_panel_idle_dcs(ctrl, IDLE_OUT_REG);
-		}
-		else
-		{
-			pr_debug("%s:lcd is out of idle mode already\n", __func__);
-		}
-	}
 
-	pr_debug("%s: value of reg 0x0a is %d\n", __func__, pw_status);
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
