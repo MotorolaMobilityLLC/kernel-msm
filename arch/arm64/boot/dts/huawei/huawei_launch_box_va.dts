@@ -12,10 +12,10 @@
  
 /dts-v1/;
 
-#include "msm8994-v2.0.dtsi"
-#include "msm8994-pinctrl.dtsi"
-#include "msm8994-mtp.dtsi"
-#include "huawei_msm8994_launch_box_va/huawei.dtsi"
+#include "../qcom/msm8994-v2.0.dtsi"
+#include "../qcom/msm8994-pinctrl.dtsi"
+#include "../qcom/msm8994-mtp.dtsi"
+#include "huawei.dtsi"
 
 / {
 	model = "Huawei Technologies, Inc. MSM8994 Launch Box";
