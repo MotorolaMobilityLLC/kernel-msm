@@ -29,7 +29,7 @@
 
 &pmi8994_haptics {
 	status = "okay";
-	qcom,actuator-type = "erm";
+	qcom,actuator-type = "lra";
 	qcom,vmax-mv = <2400>;
 	qcom,ilim-ma = <400>;
 };
