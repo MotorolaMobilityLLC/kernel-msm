@@ -44,7 +44,7 @@
 #include <linux/stml0xx.h>
 
 #define GET_ACK_RETRIES 10
-#define GET_ACK_DELAY   20
+#define GET_ACK_DELAY   5
 #define COMMAND_RETRIES 5
 #define COMMAND_DELAY   2000
 
@@ -96,13 +96,16 @@ static int stml0xx_boot_spi_wait_for_ack(int num_polls, int poll_int_ms,
 	/* Poll for ACK */
 	int rc = 0;
 	while (num_polls--) {
-		rc = stml0xx_spi_read_no_reset(stml0xx_boot_readbuff, 1);
+		/* Read two bytes at a time as the part usually takes
+			two clock cycles to ACK regardless of speed */
+		rc = stml0xx_spi_read_no_reset(stml0xx_boot_readbuff, 2);
 		if (rc < 0) {
 			dev_err(&stml0xx_misc_data->spi->dev,
 				"Failed to read from SPI [%d]", rc);
 			return rc;
 		}
-		if (stml0xx_boot_readbuff[0] == ACK_BYTE) {
+		if (stml0xx_boot_readbuff[0] == ACK_BYTE ||
+			stml0xx_boot_readbuff[1] == ACK_BYTE) {
 			/* Received ACK */
 			if (send_ack) {
 				dev_dbg(&stml0xx_misc_data->spi->dev,
