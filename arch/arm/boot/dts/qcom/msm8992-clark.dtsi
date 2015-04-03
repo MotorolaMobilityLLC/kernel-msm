@@ -16,3 +16,9 @@
 	model = "clark";
 	compatible = "qcom,msm8992-clark", "qcom,msm8992-moto", "qcom,msm8994";
 };
+
+&pm8994_l22 {
+	regulator-min-microvolt = <3250000>;
+	regulator-max-microvolt = <3250000>;
+	qcom,init-voltage = <3250000>;
+};
