@@ -413,6 +413,8 @@ static s32 wl_notify_pfn_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfg
 #ifdef GSCAN_SUPPORT
 static s32 wl_notify_gscan_event(struct bcm_cfg80211 *wl, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data);
+static s32 wl_handle_roam_exp_event(struct bcm_cfg80211 *wl, bcm_struct_cfgdev *cfgdev,
+	const wl_event_msg_t *e, void *data);
 #endif /* GSCAN_SUPPORT */
 static s32 wl_notifier_change_state(struct bcm_cfg80211 *cfg, struct net_info *_net_info,
 	enum wl_status state, bool set);
@@ -8518,6 +8520,37 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	return err;
 }
 
+#ifdef GSCAN_SUPPORT
+static s32
+wl_handle_roam_exp_event(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
+	const wl_event_msg_t *e, void *data)
+{
+	struct net_device *ndev = NULL;
+	u32 datalen = be32_to_cpu(e->datalen);
+
+	if (datalen) {
+		wl_roam_exp_event_t *evt_data = (wl_roam_exp_event_t *)data;
+		if (evt_data->version == ROAM_EXP_EVENT_VERSION) {
+			wlc_ssid_t *ssid = &evt_data->cur_ssid;
+			struct wireless_dev *wdev;
+			ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
+			if (ndev) {
+				wdev = ndev->ieee80211_ptr;
+				wdev->ssid_len = min(ssid->SSID_len, (uint32)DOT11_MAX_SSID_LEN);
+				memcpy(wdev->ssid, ssid->SSID, wdev->ssid_len);
+				WL_ERR(("SSID is %s\n", ssid->SSID));
+				wl_update_prof(cfg, ndev, NULL, ssid, WL_PROF_SSID);
+			} else {
+				WL_ERR(("NULL ndev!\n"));
+			}
+		} else {
+			WL_ERR(("Version mismatch %d, expected %d", evt_data->version,
+			       ROAM_EXP_EVENT_VERSION));
+		}
+	}
+	return BCME_OK;
+}
+#endif /* GSCAN_SUPPORT */
 
 static s32
 wl_notify_roaming_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
@@ -9629,6 +9662,7 @@ static void wl_init_event_handler(struct bcm_cfg80211 *cfg)
 	cfg->evt_handler[WLC_E_PFN_BSSID_NET_FOUND] = wl_notify_gscan_event;
 	cfg->evt_handler[WLC_E_PFN_BSSID_NET_LOST] = wl_notify_gscan_event;
 	cfg->evt_handler[WLC_E_PFN_SSID_EXT] = wl_notify_gscan_event;
+	cfg->evt_handler[WLC_E_ROAM_EXP_EVENT] = wl_handle_roam_exp_event;
 #endif /* GSCAN_SUPPORT */
 #ifdef WLTDLS
 	cfg->evt_handler[WLC_E_TDLS_PEER_EVENT] = wl_tdls_event_handler;

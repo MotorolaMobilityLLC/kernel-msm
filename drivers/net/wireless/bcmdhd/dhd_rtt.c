@@ -1714,7 +1714,7 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 	rtt_status_info_t *rtt_status;
 	rtt_target_info_t *rtt_target_info;
 	struct rtt_noti_callback *iter;
-	rtt_results_header_t *entry, *next, *rtt_results_header;
+	rtt_results_header_t *entry, *next, *rtt_results_header = NULL;
 	rtt_result_t *rtt_result, *next2;
 	gfp_t kflags;
 	bool is_new = TRUE;

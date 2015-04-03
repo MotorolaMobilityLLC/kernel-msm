@@ -648,6 +648,62 @@ typedef struct wl_join_params {
 					 */
 } wl_join_params_t;
 
+typedef struct wlc_roam_exp_params {
+	int8 a_band_boost_threshold;
+	int8 a_band_penalty_threshold;
+	uint8 a_band_boost_factor;
+	uint8 a_band_penalty_factor;
+	uint8 cur_bssid_boost;
+	int8 alert_roam_trigger_threshold;
+	uint16 a_band_max_boost;
+} wlc_roam_exp_params_t;
+
+#define ROAM_EXP_CFG_VERSION     1
+#define ROAM_EXP_ENABLE_FLAG             (1 << 0)
+#define ROAM_EXP_CFG_PRESENT             (1 << 1)
+typedef struct wl_roam_exp_cfg {
+	uint8 version;
+	uint8 flags;
+	uint16 reserved;
+	wlc_roam_exp_params_t params;
+} wl_roam_exp_cfg_t;
+
+typedef struct wl_bssid_pref_list {
+	struct ether_addr bssid;
+	/* Add this to modify rssi */
+	int8 rssi_factor;
+	int8 flags;
+} wl_bssid_pref_list_t;
+
+#define BSSID_PREF_LIST_VERSION        1
+#define ROAM_EXP_CLEAR_BSSID_PREF        (1 << 0)
+typedef struct wl_bssid_pref_cfg {
+	uint8 version;
+	uint8 flags;
+	uint16 count;
+	wl_bssid_pref_list_t bssids[1];
+} wl_bssid_pref_cfg_t;
+
+#define SSID_WHITELIST_VERSION         1
+#define ROAM_EXP_CLEAR_SSID_WHITELIST    (1 << 0)
+/* Roam SSID whitelist, ssids in this list are ok to                   */
+/* be considered as targets to join when considering a roam */
+typedef struct wl_ssid_whitelist {
+	uint8 version;
+	uint8 flags;
+	uint8 ssid_count;
+	uint8 reserved;
+	wlc_ssid_t ssids[1];
+} wl_ssid_whitelist_t;
+
+#define ROAM_EXP_EVENT_VERSION       1
+typedef struct wl_roam_exp_event {
+	uint8 version;
+	uint8 flags;
+	uint16 reserved;
+	wlc_ssid_t cur_ssid;
+} wl_roam_exp_event_t;
+
 #define WL_JOIN_PARAMS_FIXED_SIZE 	(OFFSETOF(wl_join_params_t, params) + \
 					 WL_ASSOC_PARAMS_FIXED_SIZE)
 /* scan params for extended join */
