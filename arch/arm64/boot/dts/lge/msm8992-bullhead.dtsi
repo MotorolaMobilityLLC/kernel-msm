@@ -13,6 +13,10 @@
 
 #include "msm8992-bullhead-pinctrl.dtsi"
 
+&modem_mem {
+	reg = <0 0x09000000 0 0x6400000>;
+};
+
 &blsp1_uart2 {
 	status= "ok";
 	pinctrl-names = "default";
