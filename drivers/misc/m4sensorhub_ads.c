@@ -52,6 +52,7 @@ struct m4sensorhub_ads_drvdata {
 	struct mutex				mutex;
 	int* data;
 	uint32_t data_seq_num;
+	uint8_t	mode;
 };
 
 #define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ads_data) * 8)
@@ -229,6 +230,7 @@ static ssize_t m4sensorhub_ads_store_setdelay(struct device *dev,
 			kfree(priv_data->data);
 			priv_data->data = NULL;
 			priv_data->data_seq_num = 0;
+			priv_data->mode = MODE_MAX;
 			m4sensorhub_irq_disable(priv_data->m4sensorhub, M4SH_NOWAKEIRQ_ADS);
 		}
 	}
@@ -270,11 +272,67 @@ static ssize_t m4sensorhub_ads_show_iiodata(struct device *dev,
 static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 					m4sensorhub_ads_show_iiodata,
 					NULL, 0);
+
+static ssize_t m4sensorhub_ads_store_mode(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio_dev =
+						platform_get_drvdata(pdev);
+	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
+	int ret;
+	int mode;
+
+	ret = kstrtoint(buf, 10, &mode);
+	if (ret < 0)
+		return ret;
+
+	if (mode < 0 || mode > MODE_MAX)
+		return -EINVAL;
+
+	mutex_lock(&(priv_data->mutex));
+	ret = m4sensorhub_reg_write(priv_data->m4sensorhub,
+				M4SH_REG_ADSSENSOR_MODE,
+				(char *)&mode, m4sh_no_mask);
+
+	if (ret != m4sensorhub_reg_getsize(
+			priv_data->m4sensorhub,
+			M4SH_REG_ADSSENSOR_MODE))
+		pr_err("%s:Unable to set mode\n", __func__);
+	else
+		priv_data->mode = mode;
+
+	mutex_unlock(&(priv_data->mutex));
+	return count;
+}
+
+static ssize_t m4sensorhub_ads_show_mode(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio_dev =
+						platform_get_drvdata(pdev);
+	struct m4sensorhub_ads_drvdata *priv_data = iio_priv(iio_dev);
+	int ret;
+
+	mutex_lock(&(priv_data->mutex));
+
+	ret = snprintf(buf, PAGE_SIZE, "mode:0x%02x\n",
+					priv_data->mode);
+
+	mutex_unlock(&(priv_data->mutex));
+	return ret;
+}
+static IIO_DEVICE_ATTR(mode, S_IRUGO | S_IWUSR,
+					m4sensorhub_ads_show_mode,
+					m4sensorhub_ads_store_mode, 0);
 #define M4_DEV_ATTR(name) (&iio_dev_attr_##name.dev_attr.attr)
 
 static struct attribute *m4sensorhub_ads_attributes[] = {
 	M4_DEV_ATTR(setdelay),
 	M4_DEV_ATTR(iiodata),
+	M4_DEV_ATTR(mode),
 	NULL
 };
 
@@ -341,6 +399,7 @@ static int m4sensorhub_ads_probe(struct platform_device *pdev)
 	priv_data->enable = false;
 	priv_data->m4sensorhub = NULL;
 	priv_data->data = NULL;
+	priv_data->mode = MODE_MAX;
 	mutex_init(&(priv_data->mutex));
 	priv_data->read_data.ch1_data = -1;
 	priv_data->read_data.ch2_data = -1;
