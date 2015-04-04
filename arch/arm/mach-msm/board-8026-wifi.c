@@ -7,9 +7,27 @@
 #include <linux/wlan_plat.h>
 #include <mach/gpio.h>
 #include <linux/gpio.h>
+#include <linux/random.h>
+#include <linux/ctype.h>
+#include <linux/proc_fs.h>
+#include <linux/uaccess.h>
 
 #define GPIO_WL_HOST_WAKE 66
 #define GPIO_WL_REG_ON 110
+
+/* for wifi mac address custom */
+#define TEMP_BUFFER_LEN 3
+#define ETHER_ADDR_LEN 6
+#define ETHER_STR_LEN 12
+#define ETHER_BUFFER_LEN 16
+
+char g_wlan_ether_addr[] = {0x00,0x00,0x00,0x00,0x00,0x00};
+
+typedef enum
+{
+	WLAN_BASE10		=	10,
+	WLAN_BASE16		=	16,
+}WLAN_BASE_TYPE;
 
 
 #ifdef CONFIG_BROADCOM_WIFI_RESERVED_MEM
@@ -348,6 +366,151 @@ static void *brcm_wlan_get_country_code(char *ccode)
 	return &brcm_wlan_translate_custom_table[0];
 }
 
+int wlan_strtoi(const char *nptr, const char **endptr, WLAN_BASE_TYPE base)
+{
+	int ret = 0;
+	if (NULL == nptr)
+	{
+		return ret;
+	}
+
+	while (isspace(*nptr))
+	{
+		nptr++;
+	}
+
+	while ((isdigit(*nptr) && (WLAN_BASE10 == base || WLAN_BASE16 == base))
+		|| (isalpha(*nptr) && (WLAN_BASE16 == base)))
+	{
+		if (isdigit(*nptr))
+		{
+			ret = (ret * base) + (*nptr - '0');
+		}
+		else
+		{
+			if (isupper(*nptr))
+			{
+				ret = (ret * base) + (*nptr - 'A');
+			}
+			else
+			{
+				ret = (ret * base) + (*nptr - 'a');
+			}
+			ret += WLAN_BASE10;
+		}
+		nptr++;
+	}
+
+	if (NULL != endptr)
+	{
+		*endptr = nptr;
+	}
+	return ret;
+}
+
+static ssize_t wifi_mac_read(struct file *file, char __user *userbuf,
+							size_t bytes, loff_t *off)
+{
+	return 0;
+}
+
+static ssize_t wifi_mac_write(struct file *file, const char __user *buffer,
+							size_t count, loff_t *pos)
+{
+		int i = 0;
+		char temp[TEMP_BUFFER_LEN];
+		char temp_buf[ETHER_BUFFER_LEN] = {0};
+
+		if (count < ETHER_STR_LEN)
+		{
+			return -EINVAL;
+		}
+
+		if (copy_from_user(temp_buf, buffer, ETHER_STR_LEN))
+		{
+			return -EFAULT;
+		}
+
+		for (i = 0; i < ETHER_STR_LEN; i++)
+		{
+			if (((temp_buf[i] < '0')|| (temp_buf[i] > '9')) &&
+				((temp_buf[i] < 'a') || (temp_buf[i] > 'f')) &&
+				((temp_buf[i] < 'A') || (temp_buf[i] > 'F')))
+			{
+				pr_err("wlan:invalid mac address\n");
+				return -EINVAL;
+			}
+		}
+
+		for (i = 0; i < ETHER_ADDR_LEN; i++)
+		{
+			memset(temp, 0, TEMP_BUFFER_LEN);
+			memcpy(temp, temp_buf + 2*i, TEMP_BUFFER_LEN-1);
+			g_wlan_ether_addr[i] = (char)wlan_strtoi(temp, NULL, WLAN_BASE16);
+		}
+
+	return count;
+}
+
+
+static const struct file_operations proc_fops_wifi_mac = {
+	.owner = THIS_MODULE,
+	.read = wifi_mac_read,
+	.write = wifi_mac_write,
+};
+
+int __init brcm_wlan_proc_create(void)
+{
+	int retval = 0;
+	struct proc_dir_entry *ent;
+	struct proc_dir_entry *wifi_dir;
+
+	wifi_dir = proc_mkdir("wifi", NULL);
+	if (wifi_dir == NULL)
+	{
+		pr_err("Unable to create /proc/wifi directory.\n");
+		return -ENOMEM;
+	}
+
+	/* read/write wifi mac entries */
+	ent = proc_create("mac", 0660, wifi_dir, &proc_fops_wifi_mac);
+	if (ent == NULL)
+	{
+		pr_err("Unable to create /proc/wifi/mac entry.\n");
+		retval = -ENOMEM;
+		goto fail;
+	}
+	return retval;
+
+fail:
+	remove_proc_entry("wifi", 0);
+	return retval;
+
+}
+
+int brcm_wlan_get_mac_addr(unsigned char *buf)
+{
+	const char null_addr[] = {0x00,0x00,0x00,0x00,0x00,0x00};
+
+	if (NULL == buf)
+	{
+		return -1;
+	}
+
+	if (0 == memcmp(g_wlan_ether_addr, null_addr, ETHER_ADDR_LEN))
+	{
+		get_random_bytes(buf, ETHER_ADDR_LEN);
+		buf[0] = 0x00;
+		return 0;
+	}
+
+	memcpy(buf, g_wlan_ether_addr, ETHER_ADDR_LEN);
+
+	printk(KERN_INFO"%s:MAC:%02X:%02X:%02X:%02X:%02X:%02X\n", __func__,
+			buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
+
+	return 0;
+}
 
 static struct resource brcm_wlan_resources[] = {
 	[0] = {
@@ -366,6 +529,7 @@ static struct wifi_platform_data brcm_wlan_control = {
 #ifdef CONFIG_BROADCOM_WIFI_RESERVED_MEM
 	.mem_prealloc	= brcm_wlan_mem_prealloc,
 #endif
+	.get_mac_addr = brcm_wlan_get_mac_addr,
 	.get_country_code = brcm_wlan_get_country_code,
 };
 
@@ -393,6 +557,7 @@ int __init brcm_wlan_init(void)
     brcm_wlan_resources[0].end = gpio_to_irq(GPIO_WL_HOST_WAKE);
     /* set wifi to power off */
     brcm_wlan_power(0);
+    brcm_wlan_proc_create();
 
 
 	return platform_device_register(&brcm_device_wlan);
