@@ -658,7 +658,8 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		 */
 		if (page_size != PAGE_SIZE)
 			gfp_mask |= __GFP_COMP | __GFP_NORETRY |
-				__GFP_NO_KSWAPD | __GFP_NOWARN;
+				__GFP_NO_KSWAPD | __GFP_NOWARN |
+				GFP_NO_ZONELIST_SCAN;
 		else
 			gfp_mask |= GFP_KERNEL;
 
@@ -666,7 +667,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 		if (page == NULL) {
 			if (page_size != PAGE_SIZE) {
-				page_size = PAGE_SIZE;
+				page_size >>= 1;
 				continue;
 			}
 
