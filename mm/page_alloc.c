@@ -1945,6 +1945,9 @@ zonelist_scan:
 	 */
 	for_each_zone_zonelist_nodemask(zone, z, zonelist,
 						high_zoneidx, nodemask) {
+		if ((zone_idx(zone) != classzone_idx) && ((gfp_mask &
+				GFP_NO_ZONELIST_SCAN) == GFP_NO_ZONELIST_SCAN))
+			break;
 		if (IS_ENABLED(CONFIG_NUMA) && zlc_active &&
 			!zlc_zone_worth_trying(zonelist, z, allowednodes))
 				continue;
@@ -2054,6 +2057,8 @@ try_this_zone:
 this_zone_full:
 		if (IS_ENABLED(CONFIG_NUMA))
 			zlc_mark_zone_full(zonelist, z);
+		if ((gfp_mask & GFP_NO_ZONELIST_SCAN) == GFP_NO_ZONELIST_SCAN)
+			break;
 	}
 
 	if (unlikely(IS_ENABLED(CONFIG_NUMA) && page == NULL && zlc_active)) {
@@ -2225,6 +2230,9 @@ __alloc_pages_may_oom(gfp_t gfp_mask, unsigned int order,
 		 * Note: Hugepage uses it but will hit PAGE_ALLOC_COSTLY_ORDER.
 		 */
 		if (gfp_mask & __GFP_THISNODE)
+			goto out;
+
+		if (gfp_mask & __GFP_NO_ZONELIST_SCAN)
 			goto out;
 	}
 	/* Exhausted what can be done so it's blamo time */
@@ -2522,6 +2530,9 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	 */
 	if (IS_ENABLED(CONFIG_NUMA) &&
 			(gfp_mask & GFP_THISNODE) == GFP_THISNODE)
+		goto nopage;
+
+	if ((gfp_mask & GFP_NO_ZONELIST_SCAN) == GFP_NO_ZONELIST_SCAN)
 		goto nopage;
 
 restart:
