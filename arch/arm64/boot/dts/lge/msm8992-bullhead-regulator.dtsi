@@ -11,3 +11,48 @@
  * GNU General Public License for more details.
  */
 
+&pm8994_l18 { /* Sensor VDD */
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+	status = "okay";
+};
+
+&pm8994_l19 { /* Sensor Hub VDD */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&pm8994_l22 { /* Touch VDD */
+	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+	status = "okay";
+};
+
+&pm8994_l25 { /* FPS */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&i2c_5 {
+	dw8768@3e {
+		compatible = "dw,dw8768";
+		reg = <0x3e>;
+		regulators { /* LCD DSV */
+			avdd_reg: dw8768-dsv {
+				regulator-name = "avdd_reg";
+				regulator-min-microvolt = <5500000>;
+				regulator-max-microvolt = <5500000>;
+				dw,ena-gpio = <&msm_gpio 89 0>;
+				dw,enm-gpio = <&msm_gpio 90 0>;
+				dw,power-on-delay-us = <3700>;
+			};
+		};
+	};
+};

@@ -73,28 +73,3 @@
 		};
 	};
 };
-
-&pm8994_l22 {
-	regulator-min-microvolt = <3100000>;
-	regulator-max-microvolt = <3100000>;
-	qcom,init-voltage = <3100000>;
-	status = "okay";
-};
-
-&i2c_5 {
-	dw8768@3e {
-		compatible = "dw,dw8768";
-		reg = <0x3e>;
-
-		regulators {
-			avdd_reg: dw8768-dsv {
-				regulator-name = "avdd_reg";
-				regulator-min-microvolt = <5500000>;
-				regulator-max-microvolt = <5500000>;
-				dw,ena-gpio = <&msm_gpio 89 0>;
-				dw,enm-gpio = <&msm_gpio 90 0>;
-				dw,power-on-delay-us = <3700>;
-			};
-		};
-	};
-};
