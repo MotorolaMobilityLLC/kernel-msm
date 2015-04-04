@@ -97,6 +97,10 @@ static void synaptics_dsx_resumeinfo_ignore(
 		struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_dsx_resumeinfo_touch(
 		struct synaptics_rmi4_data *rmi4_data);
+static void synaptics_dsx_free_patch(
+		struct synaptics_dsx_patch *patch);
+static struct synaptics_dsx_patch *
+		synaptics_dsx_init_patch(const char *name);
 
 /* F12 packet register description */
 static struct {
@@ -294,17 +298,46 @@ static char *synaptics_dsx_find_patch(char *head, char *delimiters, char **next)
 	return patch;
 }
 
-static int synaptics_dsx_parse_patch(int func, char *query,
-		struct synaptics_dsx_patch *patch_ptr)
+static int parse_patch_data(char *value_p, u8 data[], long *bitmask_v)
 {
-	int i, ii, error, num_of_bytes;
+	int i, error, num_of_bytes = 1;
+	long value_v;
+	char *bitmask_p;
+
+	bitmask_p = strpbrk(value_p, "&");
+	if (bitmask_p) {
+		*bitmask_p++ = '\0';
+		error = kstrtol(bitmask_p, 16, bitmask_v);
+		if (error)
+			pr_err("bitmask conv error\n");
+	}
+
+	/* detect multiple bytes data */
+	if ((strlen(value_p)%2) == 0)
+		num_of_bytes = strlen(value_p)/2;
+
+	for (i = 0; i < num_of_bytes; i++) {
+		error = kstrtol(value_p, 16, &value_v);
+		if (error)
+			pr_err("value conv error\n");
+		data[i] = (u8)value_v;
+		value_p += 2;
+	}
+
+	return num_of_bytes;
+}
+
+static int synaptics_dsx_parse_patch(int func, char *query,
+		struct synaptics_dsx_patch *patch_ptr, bool expect_data)
+{
+	int i, error, num_of_bytes;
 	u8 data[64];
-	char *next, *bitmask_p, *subpkt_p, *value_p, *pair = query;
-	long regstr_v, bitmask_v, subpkt_v, value_v;
+	char *next, *subpkt_p, *value_p, *pair = query;
+	long regstr_v, bitmask_v, subpkt_v;
 	struct synaptics_dsx_func_patch *patch;
 
 	for (i = 0; pair; pair = next, i++) {
-		num_of_bytes = 1;
+		num_of_bytes = 0;
 		bitmask_v = subpkt_v = 0L;
 
 		pair = synaptics_dsx_find_patch(pair, ",", &next);
@@ -337,33 +370,9 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			continue;
 		}
 
-		/* advance to data */
-		++value_p;
-
-		bitmask_p = strpbrk(value_p, "&");
-		if (bitmask_p) {
-			*bitmask_p++ = '\0';
-			error = kstrtol(bitmask_p, 16, &bitmask_v);
-			if (error)
-				pr_err("F%x[%d]: bitmask conv error\n",
-					func, i);
-		}
-
-		/* detect multiple bytes data */
-		if ((strlen(value_p)%2) == 0) {
-			num_of_bytes = strlen(value_p)/2;
-			pr_debug("F%x[%d]: %d byte(s) of data\n",
-					func, i, num_of_bytes);
-		}
-
-		for (ii = 0; ii < num_of_bytes; ii++) {
-			error = kstrtol(value_p, 16, &value_v);
-			if (error)
-				pr_err("F%x[%d]: value conv error\n", func, i);
-			data[ii] = (u8)value_v;
-			value_p += 2;
-		}
-
+		if (expect_data)
+			num_of_bytes = parse_patch_data(
+						++value_p, data, &bitmask_v);
 		/* primitive data validation */
 		if (func <= 0 || func > 255 ||
 		    regstr_v < 0 || regstr_v > 255) {
@@ -377,10 +386,13 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			return -ENOMEM;
 		}
 
-		patch->data = kzalloc(num_of_bytes, GFP_KERNEL);
-		if (!patch->data) {
-			pr_err("failed to alloc mem\n");
-			return -ENOMEM;
+		if (expect_data) {
+			patch->data = kzalloc(num_of_bytes, GFP_KERNEL);
+			if (!patch->data) {
+				pr_err("failed to alloc mem\n");
+				return -ENOMEM;
+			}
+			memcpy(patch->data, data, num_of_bytes);
 		}
 
 		patch->func = (u8)func;
@@ -388,7 +400,6 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		patch->subpkt = (u8)subpkt_v;
 		patch->size = (u8)num_of_bytes;
 		patch->bitmask = (u8)bitmask_v;
-		memcpy(patch->data, data, num_of_bytes);
 
 		pr_debug("F%x[%d], register %d, subpkt %d, size %d, mask %x\n",
 			patch->func, i, patch->regstr, patch->subpkt,
@@ -411,7 +422,9 @@ static int synaptics_dsx_parse_patch(int func, char *query,
  *      2=1fa0  - 2 bytes of data to write to the register
  */
 static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
-		const char *patch_ptr, struct synaptics_dsx_patch *patch)
+		const char *patch_ptr,
+		struct synaptics_dsx_patch *patch,
+		bool expect_data)
 {
 	struct device *dev = &data->i2c_client->dev;
 	long number_v;
@@ -442,8 +455,8 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 			continue;
 		}
 
-		error = synaptics_dsx_parse_patch(
-					(int)number_v, config_p, patch);
+		error = synaptics_dsx_parse_patch((int)number_v,
+					config_p, patch, expect_data);
 		if (error < 0) {
 			dev_err(dev, "invalid patch; parse error %d\n", error);
 			continue;
@@ -648,7 +661,7 @@ int synaptics_rmi4_read_packet_reg(
 		return -ENOENT;
 	}
 
-	pr_debug("F%02x reading r%d@%x, size %d to @%p\n", regs->f_number,
+	pr_debug("F%02x reading r%d{%X}, size %d to @%p\n", regs->f_number,
 			reg->r_number, regs->base_addr + reg->offset,
 			reg->size, reg->data);
 
@@ -748,7 +761,7 @@ static int synaptics_rmi4_write_packet_reg(
 		}
 	}
 
-	pr_debug("writing r%d@%x, size %d to @%p\n", reg->r_number,
+	pr_debug("writing r%d{%X}, size %d to @%p\n", reg->r_number,
 			regs->base_addr + reg->offset, reg->size, reg->data);
 
 	retval = rmi4_data->i2c_write(rmi4_data,
@@ -823,7 +836,7 @@ int synaptics_dsx_dt_parse_state(struct synaptics_rmi4_data *data,
 		return err;
 	}
 
-	synaptics_dsx_parse_string(data, patch_data, state);
+	synaptics_dsx_parse_string(data, patch_data, state, true);
 
 	return 0;
 }
@@ -1084,6 +1097,21 @@ static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
 static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_query_idx_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t synaptics_rmi4_query_idx_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_query_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t synaptics_rmi4_query_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_patch_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -1227,6 +1255,15 @@ static struct device_attribute attrs[] = {
 	__ATTR(poweron, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_poweron_show,
 			synaptics_rmi4_store_error),
+	__ATTR(query_idx, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_query_idx_show,
+			synaptics_rmi4_query_idx_store),
+	__ATTR(query, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_query_show,
+			synaptics_rmi4_query_store),
+	__ATTR(patch, S_IWUSR | S_IWGRP,
+			synaptics_rmi4_show_error,
+			synaptics_rmi4_patch_store),
 };
 
 struct synaptics_exp_fn_ctrl {
@@ -1870,6 +1907,184 @@ static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	return scnprintf(buf, PAGE_SIZE, "%d\n",
 		atomic_read(&rmi4_data->touch_stopped) == 0);
+}
+
+static struct synaptics_dsx_patch *query_data;
+static unsigned int query_index;
+
+#define SPRINTF_RANGE(fmt, args...) {\
+		blen += scnprintf(out + blen, count - blen, fmt, ##args);\
+	}
+
+static ssize_t synaptics_dsx_patch_dump(
+	struct synaptics_rmi4_data *rmi4_data, char *out, ssize_t count)
+{
+	int i;
+	const char *name;
+	struct synaptics_dsx_func_patch *fp;
+	ssize_t blen = 0;
+
+	if (!query_data) {
+		SPRINTF_RANGE("nothing to query\n");
+		goto time_to_leave;
+	}
+	name = query_data->name ? query_data->name : "noname";
+	SPRINTF_RANGE("[%s", name);
+	if (!strnstr(name, "runtime", 7))
+		SPRINTF_RANGE("-%s", !query_index ? "active" : "suspended");
+	SPRINTF_RANGE("] ");
+	list_for_each_entry(fp, &query_data->cfg_head, link) {
+		struct synaptics_rmi4_func_packet_regs *regs;
+		struct synaptics_rmi4_packet_reg *reg;
+		int error;
+		unsigned short data_addr;
+		unsigned int data_size;
+		unsigned char *value;
+
+		regs = find_function(fp->func);
+		if (!regs)
+			continue;
+		reg = find_packet_reg(regs, fp->regstr);
+		if (!reg || reg->offset < 0) {
+			pr_err("F%x@%d not present\n", fp->func, fp->regstr);
+			continue;
+		}
+
+		error = synaptics_rmi4_read_packet_reg(rmi4_data,
+				regs, reg->r_number);
+		if (error < 0) {
+			pr_err("F%x@%d register read failed\n",
+				fp->func, fp->regstr);
+			continue;
+		}
+		/* calculate register address */
+		data_addr = regs->base_addr + reg->offset;
+		/* dump whole register if subpacket is 255 */
+		if (fp->subpkt == 0xff) {
+			value = reg->data;
+			data_size = reg->size;
+			SPRINTF_RANGE("F%x@%d{%X}=",
+				fp->func, fp->regstr, data_addr);
+		} else {
+			struct synaptics_rmi4_subpkt *subpkt;
+			subpkt = reg->subpkt + fp->subpkt;
+			value = (unsigned char *)subpkt->data;
+			data_size = subpkt->size;
+			data_addr += subpkt->offset;
+			SPRINTF_RANGE("F%x@%d:%d{%X}=",
+				fp->func, fp->regstr, fp->subpkt, data_addr);
+		}
+
+		for (i = 0; i < data_size; i++)
+			SPRINTF_RANGE("%02x", *value++);
+		SPRINTF_RANGE("; ");
+	}
+	SPRINTF_RANGE("\n");
+time_to_leave:
+	return blen;
+}
+
+static ssize_t synaptics_rmi4_query_idx_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int index;
+	if (sscanf(buf, "%u", &index) != 1)
+		return -EINVAL;
+	query_index = index > 0 ? 1 : 0;
+	pr_debug("index setup to %u\n", query_index);
+	return count;
+}
+
+static ssize_t synaptics_rmi4_query_idx_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			!query_index ? "active" : "suspended");
+}
+
+static ssize_t synaptics_rmi4_query_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct synaptics_dsx_patch *patch;
+
+	if (*buf == '\n') {
+		if (query_data) {
+			synaptics_dsx_free_patch(query_data);
+			query_data = NULL;
+			pr_debug("discarded current query\n");
+		}
+		goto leave_now;
+	}
+	if (*buf != 'F') {
+		pr_err("invalid query syntax\n");
+		return -EINVAL;
+	}
+	patch = synaptics_dsx_init_patch("sysfs-runtime");
+	if (!patch)
+		return -ENOMEM;
+	synaptics_dsx_parse_string(rmi4_data, buf, patch, false);
+	if (query_data) {
+		synaptics_dsx_free_patch(query_data);
+		pr_debug("previous query discarded\n");
+	}
+	query_data = patch;
+	pr_debug("new query added\n");
+leave_now:
+	return count;
+}
+
+static ssize_t synaptics_rmi4_query_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	bool clear_after_use = false;
+	ssize_t length;
+
+	if (!query_data) {
+		query_data = rmi4_data->current_mode->patch_data[query_index];
+		clear_after_use = true;
+	}
+	length = synaptics_dsx_patch_dump(rmi4_data, buf, PAGE_SIZE);
+	if (clear_after_use)
+		query_data = NULL;
+	return length;
+}
+
+static ssize_t synaptics_rmi4_patch_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct synaptics_dsx_patch *patch;
+
+	if (*buf == '\n') {
+		pr_debug("discarding %s patch set from %s mode\n",
+			!query_index ? "active" : "suspended",
+			rmi4_data->current_mode == rmi4_data->default_mode ?
+			"default" : "alternate");
+		synaptics_dsx_free_patch(
+			rmi4_data->current_mode->patch_data[query_index]);
+		patch = synaptics_dsx_init_patch("sysfs");
+		rmi4_data->current_mode->patch_data[query_index] = patch;
+		goto leave_now;
+	}
+	if (*buf != 'F') {
+		pr_err("invalid patch syntax\n");
+		return -EINVAL;
+	}
+	patch = synaptics_dsx_init_patch("sysfs");
+	if (!patch)
+		return -ENOMEM;
+	synaptics_dsx_parse_string(rmi4_data, buf, patch, true);
+	synaptics_dsx_free_patch(
+		rmi4_data->current_mode->patch_data[query_index]);
+	rmi4_data->current_mode->patch_data[query_index] = patch;
+	pr_debug("[sysfs-%s] patch set added to %s mode\n",
+		!query_index ? "active" : "suspended",
+		rmi4_data->current_mode == rmi4_data->default_mode ?
+				"default" : "alternate");
+leave_now:
+	return count;
 }
 
  /**
