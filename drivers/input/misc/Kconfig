@@ -863,5 +863,9 @@ config SENSORS_ISL29044A
 	help
 	 This option enables support for the INTERSIL ISL29044A P/L sensor.
 
+config INPUT_FPC1020
+       tristate "FPC_BTP fingerprint sensor support"
+       depends on SPI_MASTER
+
 endif
 

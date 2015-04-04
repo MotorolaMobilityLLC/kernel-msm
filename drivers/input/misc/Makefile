@@ -78,6 +78,7 @@ obj-$(CONFIG_SENSORS_BMA2X2)	+= bstclass.o
 
 obj-$(CONFIG_SENSORS_BMA2X2)	+= bma2x2.o
 obj-$(CONFIG_SENSORS_LTR553)	+= ltr553.o
+obj-$(CONFIG_INPUT_FPC1020)	+= fpc1020_main.o fpc1020_common.o fpc1020_input.o fpc1020_capture.o fpc1020_regulator.o
 
 ifeq ($(CONFIG_SENSORS_BMA2X2_ENABLE_INT1),y)
 	EXTRA_CFLAGS += -DBMA2X2_ENABLE_INT1
