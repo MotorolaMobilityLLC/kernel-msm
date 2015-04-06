@@ -44,6 +44,7 @@
 
 #include <trace/events/task.h>
 #include "internal.h"
+#include "coredump_gz.h"
 
 #include <trace/events/sched.h>
 
@@ -271,6 +272,8 @@ static int format_corename(struct core_name *cn, struct coredump_params *cprm)
 	}
 
 out:
+	check_for_gz(ispipe, core_pattern, cprm);
+
 	/* Backward compatibility with core_uses_pid:
 	 *
 	 * If core_pattern does not include a %p (as is the default)
@@ -760,17 +763,23 @@ fail:
  */
 int dump_init(struct coredump_params *cprm)
 {
+	if (dump_compressed(cprm))
+		return gz_init(cprm);
+
 	return 1;
 }
 EXPORT_SYMBOL(dump_init);
 
 int dump_finish(struct coredump_params *cprm)
 {
+	if (dump_compressed(cprm))
+		return gz_finish(cprm);
+
 	return 1;
 }
 EXPORT_SYMBOL(dump_finish);
 
-int dump_emit(struct coredump_params *cprm, const void *addr, int nr)
+int __dump_emit(struct coredump_params *cprm, const void *addr, int nr)
 {
 	struct file *file = cprm->file;
 	loff_t pos = file->f_pos;
@@ -789,13 +798,21 @@ int dump_emit(struct coredump_params *cprm, const void *addr, int nr)
 	}
 	return 1;
 }
+
+int dump_emit(struct coredump_params *cprm, const void *addr, int nr)
+{
+	if (dump_compressed(cprm))
+		return gz_dump_write(cprm, addr, nr);
+	return __dump_emit(cprm, addr, nr);
+}
 EXPORT_SYMBOL(dump_emit);
 
 int dump_skip(struct coredump_params *cprm, size_t nr)
 {
 	static char zeroes[PAGE_SIZE];
 	struct file *file = cprm->file;
-	if (file->f_op->llseek && file->f_op->llseek != no_llseek) {
+	if (!dump_compressed(cprm) && file->f_op->llseek
+			&& file->f_op->llseek != no_llseek) {
 		if (cprm->written + nr > cprm->limit)
 			return 0;
 		if (dump_interrupted() ||
@@ -817,6 +834,10 @@ EXPORT_SYMBOL(dump_skip);
 int dump_align(struct coredump_params *cprm, int align)
 {
 	unsigned mod = cprm->written & (align - 1);
+#ifdef CONFIG_COREDUMP_GZ
+	if (dump_compressed(cprm))
+		mod = cprm->zstr.total_in & (align - 1);
+#endif
 	if (align & (align - 1))
 		return 0;
 	return mod ? dump_skip(cprm, align - mod) : 1;
