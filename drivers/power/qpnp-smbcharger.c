@@ -3766,11 +3766,11 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		chip->usb_ov_det = false;
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
-				POWER_SUPPLY_TYPE_UNKNOWN);
+				POWER_SUPPLY_TYPE_USB);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_UNKNOWN);
+				POWER_SUPPLY_TYPE_USB);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		schedule_work(&chip->usb_set_online_work);
 		rc = power_supply_set_health_state(chip->usb_psy,
