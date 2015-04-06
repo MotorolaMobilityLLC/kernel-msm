@@ -5,6 +5,18 @@
 menu "Near Field Communication (NFC) devices"
 	depends on NFC
 
+config NFC_PN548
+	bool "PN548 NFC driver"
+	depends on I2C
+	select CRC_CCITT
+	default n
+	---help---
+	  Say yes if you want PN548 Near Field Communication driver.
+	  This is for i2c connected version. If unsure, say N here.
+
+	  To compile this driver as a module, choose m here. The module will
+	  be called pn548.
+
 config NFC_PN533
 	tristate "NXP PN533 USB driver"
 	depends on USB
