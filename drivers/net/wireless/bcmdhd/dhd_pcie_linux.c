@@ -95,6 +95,7 @@ typedef struct dhdpcie_info
 	char pciname[32];
 	struct pci_saved_state* default_state;
 	struct pci_saved_state* state;
+	wifi_adapter_info_t *adapter;
 #ifdef DHD_WAKE_STATUS
 	spinlock_t	pcie_lock;
 	unsigned int	total_wake_count;
@@ -211,6 +212,8 @@ static int dhdpcie_pci_resume(struct pci_dev *pdev)
 	return dhdpcie_set_suspend_resume(pdev, FALSE);
 }
 
+int dhd_os_get_wake_irq(dhd_pub_t *pub);
+
 static int dhdpcie_suspend_dev(struct pci_dev *dev)
 {
 	int ret;
@@ -222,10 +225,11 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 	if (pci_is_enabled(dev))
 		pci_disable_device(dev);
 	ret = pci_set_power_state(dev, PCI_D3hot);
+#ifdef CONFIG_PARTIALRESUME
+	wifi_process_partial_resume(pch->adapter, WIFI_PR_INIT);
+#endif
 	return ret;
 }
-
-int dhd_os_get_wake_irq(dhd_pub_t *pub);
 
 #ifdef DHD_WAKE_STATUS
 int bcmpcie_get_total_wake(struct dhd_bus *bus)
@@ -258,8 +262,12 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 	dhdpcie_info_t *pch = pci_get_drvdata(dev);
 
 #ifdef DHD_WAKE_STATUS
-	if (check_wakeup_reason(pch->wake_irq))
+	if (check_wakeup_reason(pch->wake_irq)) {
+#ifdef CONFIG_PARTIALRESUME
+		wifi_process_partial_resume(pch->adapter, WIFI_PR_NOTIFY_RESUME);
+#endif
 		bcmpcie_set_get_wake(pch->bus, 1);
+	}
 #endif
 	pci_load_and_free_saved_state(dev, &pch->state);
 	pci_restore_state(dev);
@@ -596,6 +604,7 @@ int dhdpcie_init(struct pci_dev *pdev)
 		bzero(dhdpcie_info, sizeof(dhdpcie_info_t));
 		dhdpcie_info->osh = osh;
 		dhdpcie_info->dev = pdev;
+		dhdpcie_info->adapter = adapter;
 
 		/* Find the PCI resources, verify the  */
 		/* vendor and device ID, map BAR regions and irq,  update in structures */

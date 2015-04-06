@@ -61,6 +61,14 @@ struct wifi_platform_data {
 	int (*get_mac_addr)(unsigned char *buf);
 	int (*get_wake_irq)(void);
 	void *(*get_country_code)(char *ccode, u32 flags);
+#ifdef CONFIG_PARTIALRESUME
+#define WIFI_PR_INIT			0
+#define WIFI_PR_NOTIFY_RESUME		1
+#define WIFI_PR_VOTE_FOR_RESUME		2
+#define WIFI_PR_VOTE_FOR_SUSPEND	3
+#define WIFI_PR_WAIT_FOR_READY		4
+	bool (*partial_resume)(int action);
+#endif
 };
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
 
@@ -107,6 +115,7 @@ void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode,
 void* wifi_platform_prealloc(wifi_adapter_info_t *adapter, int section, unsigned long size);
 void* wifi_platform_get_prealloc_func_ptr(wifi_adapter_info_t *adapter);
 int wifi_platform_get_wake_irq(wifi_adapter_info_t *adapter);
+bool wifi_process_partial_resume(wifi_adapter_info_t *adapter, int action);
 
 int dhd_get_fw_mode(struct dhd_info *dhdinfo);
 bool dhd_update_fw_nv_path(struct dhd_info *dhdinfo);
