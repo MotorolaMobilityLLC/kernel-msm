@@ -561,7 +561,7 @@ config BUILD_ARM64_UNCOMPRESSED_APPENDED_DTB_IMAGE
 
 config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
 	string "Default dtb names"
-	depends on BUILD_ARM64_APPENDED_DTB_IMAGE
+	depends on BUILD_ARM64_APPENDED_DTB_IMAGE || BUILD_ARM64_UNCOMPRESSED_APPENDED_DTB_IMAGE
 	help
 	  Space separated list of names of dtbs to append when
 	  building a concatenated Image.gz-dtb or Image-dtb.
