@@ -26,6 +26,9 @@
 
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+#include <linux/wlan_plat.h>
+#endif
 #include <wldev_common.h>
 
 /* If any feature uses the Generic Netlink Interface, put it here to enable WL_GENL
@@ -60,4 +63,5 @@ int wifi_get_irq_number(unsigned long *irq_flags_ptr);
 int wifi_set_power(int on, unsigned long msec);
 int wifi_get_mac_addr(unsigned char *buf);
 void *wifi_get_country_code(char *ccode);
+bool wifi_process_partial_resume(int action);
 #endif /* CONFIG_WIFI_CONTROL_FUNC */

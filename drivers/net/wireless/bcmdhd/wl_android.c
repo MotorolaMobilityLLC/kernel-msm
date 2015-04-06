@@ -1456,6 +1456,18 @@ void *wifi_get_country_code(char *ccode)
 }
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)) */
 
+bool wifi_process_partial_resume(int action)
+{
+#ifdef CONFIG_PARTIALRESUME
+	if (wifi_control_data && wifi_control_data->partial_resume) {
+		return wifi_control_data->partial_resume(action);
+	}
+	return false;
+#else
+	return false;
+#endif
+}
+
 static int wifi_set_carddetect(int on)
 {
 	DHD_ERROR(("%s = %d\n", __FUNCTION__, on));
