@@ -45,6 +45,12 @@ extern void guard_bio_eod(int rw, struct bio *bio);
 extern void __init chrdev_init(void);
 
 /*
+ * coredump.c
+ */
+struct coredump_params;
+extern int __dump_emit(struct coredump_params *cprm, const void *addr, int nr);
+
+/*
  * namei.c
  */
 extern int user_path_mountpoint_at(int, const char __user *, unsigned int, struct path *);
