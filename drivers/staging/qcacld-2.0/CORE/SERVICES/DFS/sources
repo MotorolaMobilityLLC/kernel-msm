@@ -1,0 +1,62 @@
+#
+#  sources file for DFS module
+#
+LMAC=..
+TOP=$(LMAC)\..
+INC=$(TOP)\include
+HAL=$(TOP)\hal
+ATH=$(LMAC)\ath_dev
+
+!IFDEF BUILD_UMAC
+MP=$(TOP)\os\win_nwf
+INC_MP=$(MP)\include
+IF_ATH=$(TOP)\umac\if_lmac
+!ELSE
+MP=$(TOP)\winvista
+INC_MP=$(INC)\winvista
+IF_ATH=$(TOP)\if_ath_net80211
+!ENDIF
+
+!include $(INC_MP)\sources.inc
+
+TARGETNAME=ath_dfs
+TARGETPATH=$(TOP)\lib
+TARGETTYPE=LIBRARY
+
+!IFDEF BUILD_HTC
+# Put htc include dirs at the head of the list.
+# This ensures that the htc/adf header files will preempt any
+# header files of the same names from the regular adf directories.
+INCLUDES= $(INCLUDES)                            \
+    $(TOP)\htc\inc;                              \
+    $(TOP)\htc\adf\include;                      \
+    $(TOP)\htc\adf\winvista\nbuf;                \
+    $(TOP)\htc\adf\winvista\include;
+!ENDIF
+
+INCLUDES= $(INCLUDES)       \
+    $(TOP);                 \
+    $(ATH);                 \
+    $(ATH_DFS);             \
+    $(TOP)\ath\winvista;    \
+    $(TOP)\ath\winvista;    \
+    $(HAL);                 \
+    $(HAL)\winvista;        \
+    $(IF_ATH);              \
+    $(INC);                 \
+    $(INC_MP);               \
+    $(SDXROOT)\net\inc;     \
+    $(DDK_INC_PATH)
+
+SOURCES=$(SOURCES)          \
+        dfs_staggered.c      \
+        dfs_bindetects.c      \
+        dfs_misc.c            \
+        dfs_debug.c            \
+        dfs_process_radarevent.c \
+        dfs_process_phyerr.c \
+        dfs_nol.c         \
+        dfs_ar.c            \
+        dfs_fcc_bin5.c       \
+        dfs_init.c            \
+        dfs.c
