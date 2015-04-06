@@ -125,13 +125,8 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 			schedule_delayed_work(&pdsi_status->check_status,
 				msecs_to_jiffies(interval));
 		} else {
-			char *envp[2] = {"PANEL_ALIVE=0", NULL};
-			pdata->panel_info.panel_dead = true;
-			ret = kobject_uevent_env(
-				&pdsi_status->mfd->fbi->dev->kobj,
-							KOBJ_CHANGE, envp);
-			pr_err("%s: Panel has gone bad, sending uevent - %s\n",
-							__func__, envp[0]);
+			mdss_fb_send_panel_reset_event(pdsi_status->mfd);
+			pr_err("%s: Panel has gone bad, sending uevent\n", __func__);
 		}
 	}
 }

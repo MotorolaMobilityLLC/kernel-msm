@@ -3083,3 +3083,14 @@ int mdss_fb_suspres_panel(struct device *dev, void *data)
 			mfd->index, rc);
 	return rc;
 }
+
+void mdss_fb_send_panel_reset_event(struct msm_fb_data_type *mfd)
+{
+	char *envp[2] = {"PANEL_ALIVE=0", NULL};
+	if (!mfd)
+		return;
+
+	mfd->panel_info->panel_dead = true;
+	kobject_uevent_env(&mfd->fbi->dev->kobj, KOBJ_CHANGE, envp);
+	pr_err("sending uevent - %s from %pS\n", envp[0], __builtin_return_address(0));
+}
