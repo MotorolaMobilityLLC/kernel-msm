@@ -39,6 +39,9 @@
 #include <asm/uaccess.h>
 #include <asm/param.h>
 #include <asm/page.h>
+#ifdef CONFIG_COREDUMP_GZ
+#include "coredump_gz.h"
+#endif
 
 #ifndef user_long_t
 #define user_long_t long
@@ -2179,6 +2182,7 @@ static int elf_core_dump(struct coredump_params *cprm)
 	Elf_Half e_phnum;
 	elf_addr_t e_shoff;
 	elf_addr_t *vma_filesz = NULL;
+	int page_padding_num;
 
 	/*
 	 * We no longer stop all VM operations.
@@ -2315,7 +2319,13 @@ static int elf_core_dump(struct coredump_params *cprm)
 		goto end_coredump;
 
 	/* Align to page */
-	if (!dump_skip(cprm, dataoff - cprm->written))
+	page_padding_num = dataoff - cprm->written;
+#ifdef CONFIG_COREDUMP_GZ
+	/* For compressing in kernel, re-write the padding zero nums */
+	if (dump_compressed(cprm))
+		page_padding_num = dataoff - cprm->zstr.total_in;
+#endif
+	if (!dump_skip(cprm, page_padding_num))
 		goto end_coredump;
 
 	for (i = 0, vma = first_vma(current, gate_vma); vma != NULL;
