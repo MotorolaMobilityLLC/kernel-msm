@@ -336,6 +336,15 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		input_sync(ps_stml0xx->input_dev);
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Report camkey toggle");
 	}
+	if (irq_status & M_CHOPCHOP) {
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CHOPCHOP,
+						0,
+						0, 0, stm_ws->ts_ns);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Sending Chopchop: %d", STM16_TO_HOST(CHOP_VALUE,
+				0));
+	}
 	if (irq_status & M_SIM) {
 		stml0xx_as_data_buffer_write(
 			ps_stml0xx,
