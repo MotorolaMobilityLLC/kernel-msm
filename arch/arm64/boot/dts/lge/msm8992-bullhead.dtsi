@@ -464,6 +464,7 @@
 };
 
 #include "msm8992-lge.dtsi"
+#include "msm8992-bullhead-regulator.dtsi"
 #include "msm8992-bullhead-camera.dtsi"
 #include "msm8992-bullhead-connectivity.dtsi"
 #include "msm8992-bullhead-misc.dtsi"
