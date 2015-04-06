@@ -22,6 +22,14 @@ struct wifi_platform_data {
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
 	void *(*get_country_code)(char *ccode);
+#ifdef CONFIG_PARTIALRESUME
+#define WIFI_PR_INIT			0
+#define WIFI_PR_NOTIFY_RESUME		1
+#define WIFI_PR_VOTE_FOR_RESUME		2
+#define WIFI_PR_VOTE_FOR_SUSPEND	3
+#define WIFI_PR_WAIT_FOR_READY		4
+	bool (*partial_resume)(int action);
+#endif
 };
 
 #endif
