@@ -159,6 +159,7 @@ struct msm_vfe_fetch_engine_cfg {
 struct msm_vfe_camif_subsample_cfg {
 	uint32_t irq_subsample_period;
 	uint32_t irq_subsample_pattern;
+	uint32_t sof_counter_step;
 };
 
 /*
@@ -648,5 +649,8 @@ struct msm_isp_event_data {
 
 #define VIDIOC_MSM_ISP_FETCH_ENG_START \
 	_IOWR('V', BASE_VIDIOC_PRIVATE+20, struct msm_vfe_fetch_eng_start)
+
+#define VIDIOC_MSM_ISP_DEQUEUE_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+21, struct msm_isp_qbuf_info)
 
 #endif /* __MSMB_ISP__ */

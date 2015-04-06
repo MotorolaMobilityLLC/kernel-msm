@@ -29,7 +29,8 @@ struct panel_id {
 #define DEFAULT_ROTATOR_FRAME_RATE 120
 #define ROTATOR_LOW_FRAME_RATE 30
 #define MDSS_DSI_RST_SEQ_LEN	10
-#define MDSS_MDP_MAX_FETCH 12
+/* worst case prefill lines for all chipsets including all vertical blank */
+#define MDSS_MDP_MAX_PREFILL_FETCH 25
 
 /* panel type list */
 #define NO_PANEL		0xffff	/* No Panel */
@@ -431,6 +432,7 @@ struct mdss_panel_info {
 	int blank_state;
 
 	uint32_t panel_dead;
+	u32 panel_force_dead;
 	u32 panel_orientation;
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
@@ -564,33 +566,6 @@ static inline int mdss_panel_get_htotal(struct mdss_panel_info *pinfo, bool
 	return adj_xres + pinfo->lcdc.h_back_porch +
 		pinfo->lcdc.h_front_porch +
 		pinfo->lcdc.h_pulse_width;
-}
-
-/**
- * mdss_mdp_max_fetch_lines: - Number of fetch lines in vertical front porch
- * @pinfo:	Pointer to panel info containing all panel information
- *
- * Returns the number of fetch lines in vertical front porch at which mdp
- * can start fetching the next frame.
- *
- * In some cases, vertical front porch is too high. In such cases limit
- * the mdp fetch lines  as the last 12 lines of vertical front porch.
- */
-static inline int mdss_mdp_max_fetch_lines(struct mdss_panel_info *pinfo)
-{
-	int fetch_lines;
-	int v_total, vfp_start;
-
-	v_total = mdss_panel_get_vtotal(pinfo);
-	vfp_start = (pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width +
-			pinfo->yres);
-
-	fetch_lines = v_total - vfp_start;
-
-	if (fetch_lines > MDSS_MDP_MAX_FETCH)
-		fetch_lines = MDSS_MDP_MAX_FETCH;
-
-	return fetch_lines;
 }
 
 int mdss_register_panel(struct platform_device *pdev,

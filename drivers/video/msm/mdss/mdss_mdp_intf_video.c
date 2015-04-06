@@ -1119,30 +1119,18 @@ int mdss_mdp_video_reconfigure_splash_done(struct mdss_mdp_ctl *ctl,
 	return ret;
 }
 
-static bool mdss_mdp_fetch_programable(struct mdss_mdp_ctl *ctl)
+static void mdss_mdp_disable_prefill(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_panel_info *pinfo = &ctl->panel_data->panel_info;
-	struct mdss_data_type *mdata;
-	bool ret;
+	struct mdss_data_type *mdata = ctl->mdata;
 
-	mdata = ctl->mdata;
-
-	if (mdata->mdp_rev >= MDSS_MDP_HW_REV_105) {
-		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_front_porch) <
-				MDP_MIN_FETCH) {
-			pr_warn_once("low vbp+vfp may lead to perf issues in some cases\n");
-		}
-		ret = true;
-
-		if (pinfo->lcdc.v_back_porch > MDP_MIN_FETCH)
-			ret = false;
-	} else {
-		if (pinfo->lcdc.v_back_porch < MDP_MIN_FETCH)
-			pr_warn_once("low vbp may lead to display performance issues");
-		ret = false;
+	if ((ctl->prg_fet + pinfo->lcdc.v_back_porch +
+			pinfo->lcdc.v_pulse_width) > mdata->min_prefill_lines) {
+		ctl->disable_prefill = true;
+		pr_debug("disable prefill vbp:%d vpw:%d prg_fet:%d\n",
+			pinfo->lcdc.v_back_porch, pinfo->lcdc.v_pulse_width,
+			ctl->prg_fet);
 	}
-
-	return ret;
 }
 
 static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
@@ -1154,9 +1142,9 @@ static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 
 	mdata = ctl->mdata;
 
-	if (!mdss_mdp_fetch_programable(ctl)) {
+	ctl->prg_fet = mdss_mdp_get_prefetch_lines(ctl);
+	if (!ctl->prg_fet) {
 		pr_debug("programmable fetch is not needed/supported\n");
-		ctl->prg_fet = false;
 		return;
 	}
 
@@ -1166,18 +1154,38 @@ static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 	 */
 	v_total = mdss_panel_get_vtotal(pinfo);
 	h_total = mdss_panel_get_htotal(pinfo, true);
-	fetch_start = (v_total - mdss_mdp_max_fetch_lines(pinfo)) * h_total + 1;
+
+	fetch_start = (v_total - ctl->prg_fet) * h_total + 1;
 	fetch_enable = BIT(31);
 
 	if (pinfo->dynamic_fps && (pinfo->dfps_update ==
 			DFPS_IMMEDIATE_CLK_UPDATE_MODE))
 		fetch_enable |= BIT(23);
 
-	ctl->prg_fet = true;
+	pr_debug("ctl:%d fetch_start:%d lines:%d\n",
+		ctl->num, fetch_start, ctl->prg_fet);
 
-	pr_debug("ctl:%d, fetch start=%d\n", ctl->num, fetch_start);
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_PROG_FETCH_START, fetch_start);
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_CONFIG, fetch_enable);
+}
+
+static void mdss_mdp_handoff_programmable_fetch(struct mdss_mdp_ctl *ctl,
+	struct mdss_mdp_video_ctx *ctx)
+{
+	u32 fetch_start_handoff, v_total_handoff, h_total_handoff;
+	ctl->prg_fet = 0;
+	if (mdp_video_read(ctx, MDSS_MDP_REG_INTF_CONFIG) & BIT(31)) {
+		fetch_start_handoff = mdp_video_read(ctx,
+			MDSS_MDP_REG_INTF_PROG_FETCH_START);
+		h_total_handoff = mdp_video_read(ctx,
+			MDSS_MDP_REG_INTF_HSYNC_CTL) >> 16;
+		v_total_handoff = mdp_video_read(ctx,
+			MDSS_MDP_REG_INTF_VSYNC_PERIOD_F0)/h_total_handoff;
+		ctl->prg_fet = v_total_handoff -
+			((fetch_start_handoff - 1)/h_total_handoff);
+		pr_debug("programmable fetch lines %d start:%d\n",
+			ctl->prg_fet, fetch_start_handoff);
+	}
 }
 
 static int mdss_mdp_video_ctx_setup(struct mdss_mdp_ctl *ctl,
@@ -1246,7 +1254,11 @@ static int mdss_mdp_video_ctx_setup(struct mdss_mdp_ctl *ctl,
 			return -EINVAL;
 		}
 		mdss_mdp_fetch_start_config(ctx, ctl);
+	} else {
+		mdss_mdp_handoff_programmable_fetch(ctl, ctx);
 	}
+
+	mdss_mdp_disable_prefill(ctl);
 
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_PANEL_FORMAT, ctl->dst_format);
 	return 0;

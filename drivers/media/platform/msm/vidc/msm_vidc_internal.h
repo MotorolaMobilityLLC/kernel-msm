@@ -34,7 +34,6 @@
 #include <media/msm_media_info.h>
 
 #include "vidc_hfi_api.h"
-#include "vidc_hfi_api.h"
 
 #define MSM_VIDC_DRV_NAME "msm_vidc_driver"
 #define MSM_VIDC_VERSION KERNEL_VERSION(0, 0, 1);
@@ -285,7 +284,7 @@ struct msm_vidc_inst {
 	struct msm_vidc_format *fmts[MAX_PORT_NUM];
 	struct buf_queue bufq[MAX_PORT_NUM];
 	struct msm_vidc_list pendingq;
-	struct msm_vidc_list internalbufs;
+	struct msm_vidc_list scratchbufs;
 	struct msm_vidc_list persistbufs;
 	struct msm_vidc_list pending_getpropq;
 	struct msm_vidc_list outputbufs;
