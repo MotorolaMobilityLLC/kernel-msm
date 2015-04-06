@@ -50,6 +50,12 @@ extern int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
 extern void __init chrdev_init(void);
 
 /*
+ * coredump.c
+ */
+struct coredump_params;
+extern int __dump_emit(struct coredump_params *cprm, const void *addr, int nr);
+
+/*
  * namei.c
  */
 extern int user_path_mountpoint_at(int, const char __user *, unsigned int, struct path *);
