@@ -13,7 +13,9 @@
 #ifndef _FB_QUICKDRAW_OPS_H_
 #define _FB_QUICKDRAW_OPS_H_
 
+#include <linux/fb.h>
 #include <linux/file.h>
+#include <linux/ion.h>
 #include <linux/kref.h>
 #include <linux/rwsem.h>
 #include <linux/types.h>
@@ -30,35 +32,35 @@ struct fb_quickdraw_buffer {
 	struct work_struct delete_work;
 };
 
+struct fb_quickdraw_framebuffer {
+	struct ion_handle *ihdl;
+	void *addr;
+	size_t size;
+	int fd;
+	int w;
+	int h;
+	int buffer_id;
+	int format;
+	int bpp;
+	int draw_count;
+};
+
 struct fb_quickdraw_ops {
 	int (*prepare)(void *data, unsigned char panel_state);
-	int (*execute)(void *data, struct fb_quickdraw_buffer *buffer,
-		int x, int y);
-	int (*erase)(void *data, int x1, int y1, int x2, int y2);
+	int (*execute)(void *data, struct fb_quickdraw_buffer *buffer);
 	int (*cleanup)(void *data);
-	int (*validate_buffer)(void *data,
-		struct fb_quickdraw_buffer_data *buffer_data);
-	struct fb_quickdraw_buffer *(*alloc_buffer)(void *data,
-		struct fb_quickdraw_buffer_data *buffer_data);
-	int (*delete_buffer)(void *data, struct fb_quickdraw_buffer *buffer);
+	int (*format2bpp)(void *data, int format);
 	void *data; /* arbitrary data passed back to user */
 };
 
-void fb_quickdraw_register_ops(struct fb_quickdraw_ops *ops);
-struct fb_quickdraw_buffer *fb_quickdraw_alloc_buffer(
-	struct fb_quickdraw_buffer_data *data, size_t size);
-int fb_quickdraw_get_buffer(struct fb_quickdraw_buffer *buffer);
-int fb_quickdraw_put_buffer(struct fb_quickdraw_buffer *buffer);
-int fb_quickdraw_lock_buffer_read(struct fb_quickdraw_buffer *buffer);
-int fb_quickdraw_unlock_buffer_read(struct fb_quickdraw_buffer *buffer);
+struct fb_quickdraw_impl_data {
+	struct fb_quickdraw_ops *ops;
+	struct fb_info *fbi;
+	struct ion_client *iclient;
+	unsigned int ion_heap_id_mask;
+	struct fb_quickdraw_framebuffer *fb;
+};
 
-static inline int fb_quickdraw_check_alignment(int value, int align)
-{
-	return value % align;
-}
-int fb_quickdraw_correct_alignment(int coord, int align);
-void fb_quickdraw_clip_rect(int panel_xres, int panel_yres, int x, int y,
-			    int w, int h, struct fb_quickdraw_rect *src_rect,
-			    struct fb_quickdraw_rect *dst_rect);
+void fb_quickdraw_register_impl(struct fb_quickdraw_impl_data *impl);
 
 #endif /* _FB_QUICKDRAW_OPS_H_ */
