@@ -142,7 +142,7 @@ static ssize_t synaptics_rmi4_wake_gesture_store(struct device *dev,
 
 static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf);
-		
+
 #if defined(CONFIG_FB)
 static void configure_sleep(struct synaptics_rmi4_data *rmi4_data);
 #endif
@@ -820,9 +820,16 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			return 0;
 
 		if (detected_gestures) {
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+			/*
+			 * Use multi-touch event to wake up device
+			 */
+			input_mt_slot(rmi4_data->input_dev, 0);
+			input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 1);
+			input_report_key(rmi4_data->input_dev, BTN_TOUCH, 1);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+			input_mt_slot(rmi4_data->input_dev, 0);
+			input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 0);
+			input_report_key(rmi4_data->input_dev, BTN_TOUCH, 0);
 			input_sync(rmi4_data->input_dev);
 			rmi4_data->suspend = false;
 		}
@@ -850,7 +857,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_sync(rmi4_data->input_dev);
 			return 0;
 		}
-	}	 
+	}
 	retval = synaptics_rmi4_reg_read(rmi4_data,
 			data_addr,
 			finger_status_reg,
@@ -1555,7 +1562,7 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_f11_query_12 query_12;
 	struct synaptics_rmi4_f11_query_27 query_27;
 	struct synaptics_rmi4_f11_ctrl_6_9 control_6_9;
-	unsigned char ctrl_58;	  
+	unsigned char ctrl_58;
 
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = fd->intr_src_count;
@@ -3221,7 +3228,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 				__func__);
 		goto err_set_input_dev;
 	}
-	
+
 	/*register the fb notifier for touch*/
 #if defined(CONFIG_FB)
 	configure_sleep(rmi4_data);
@@ -3401,7 +3408,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 
 	if (evdata && evdata->data && event == FB_EVENT_BLANK && rmi4_data ) {
 		blank = evdata->data;
-		
+
 		if (*blank == FB_BLANK_UNBLANK)
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 		else if (*blank == FB_BLANK_POWERDOWN)
@@ -3720,7 +3727,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	const struct synaptics_dsx_board_data *bdata =
-			rmi4_data->hw_if->board_data;	
+			rmi4_data->hw_if->board_data;
 	int retval;
 
 	if (rmi4_data->stay_awake)
@@ -3735,7 +3742,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 		retval = regulator_enable(rmi4_data->pwr_reg);
 		if (retval < 0) {
 			goto exit;
-		}		 
+		}
 		msleep(bdata->power_delay_ms);
 		rmi4_data->current_page = MASK_8BIT;
 		if (rmi4_data->hw_if->ui_hw_init)
