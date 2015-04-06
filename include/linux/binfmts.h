@@ -3,6 +3,7 @@
 
 #include <linux/sched.h>
 #include <linux/unistd.h>
+#include <linux/zlib.h>
 #include <asm/exec.h>
 #include <uapi/linux/binfmts.h>
 
@@ -66,6 +67,13 @@ struct coredump_params {
 	unsigned long mm_flags;
 	loff_t written;
 	loff_t pos;
+#ifdef CONFIG_COREDUMP_GZ
+	int gz;
+	u32 crc;
+	z_stream zstr;
+	void *out_buf;
+	void *deflate_workspace;
+#endif
 };
 
 /*
