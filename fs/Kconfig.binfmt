@@ -183,3 +183,12 @@ config COREDUMP
 	  This option enables support for performing core dumps. You almost
 	  certainly want to say Y here. Not necessary on systems that never
 	  need debugging or only ever run flawless code.
+
+config COREDUMP_GZ
+	bool "Enable compressed core dump"
+	depends on COREDUMP
+	select ZLIB_DEFLATE
+	help
+	  This option enables in-kernel gzip compression of core dumps. If
+	  core_pattern ends in ".gz" (and is not a pipe), any core dumps
+	  produced will be compressed using gzip.
