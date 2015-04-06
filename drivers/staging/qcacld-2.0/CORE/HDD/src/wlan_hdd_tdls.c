@@ -44,6 +44,9 @@
 #include "wlan_hdd_tdls.h"
 #include "wlan_hdd_cfg80211.h"
 #include "vos_sched.h"
+#ifdef CONFIG_CNSS
+#include <net/cnss.h>
+#endif
 
 #ifdef TDLS_USE_SEPARATE_DISCOVERY_TIMER
 static tANI_S32 wlan_hdd_get_tdls_discovery_peer_cnt(tdlsCtx_t *pHddTdlsCtx);

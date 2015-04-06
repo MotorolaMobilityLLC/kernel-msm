@@ -25,6 +25,15 @@ ifeq ($(KERNEL_BUILD),1)
 	MODNAME := wlan
 	WLAN_ROOT := drivers/staging/qcacld-2.0
 	WLAN_OPEN_SOURCE := 1
+
+	#Flag to enable TDLS feature
+	CONFIG_QCOM_TDLS := y
+
+        ifneq ($(CONFIG_QCA_CLD_WLAN),)
+                ifeq ($(CONFIG_CNSS),y)
+			CONFIG_QCOM_LTE_COEX := y
+                endif
+        endif
 endif
 
 ifeq ($(KERNEL_BUILD), 0)
