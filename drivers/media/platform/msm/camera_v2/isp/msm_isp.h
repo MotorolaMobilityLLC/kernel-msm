@@ -52,8 +52,8 @@
 #define VFE_CLK_INFO_MAX 16
 #define STATS_COMP_BIT_MASK 0x1FF
 
-#define MSM_ISP_MIN_AB 300000000
-#define MSM_ISP_MIN_IB 450000000
+#define MSM_ISP_MIN_AB 100000000
+#define MSM_ISP_MIN_IB 120000000
 
 struct vfe_device;
 struct msm_vfe_axi_stream;
@@ -370,6 +370,7 @@ struct msm_vfe_src_info {
 	long pixel_clock;
 	uint32_t input_format;/*V4L2 pix format with bayer pattern*/
 	uint32_t last_updt_frm_id;
+	uint32_t sof_counter_step;
 };
 
 struct msm_vfe_fetch_engine_info {

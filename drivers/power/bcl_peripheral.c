@@ -662,6 +662,8 @@ static irqreturn_t bcl_handle_ibat(int irq, void *data)
 			pr_err("Error clearing max/min reg. err:%d\n", ret);
 		thresh_value = perph_data->high_trip;
 		convert_adc_to_ibat_val(&thresh_value);
+		/* Account threshold trip from PBS threshold for dead time */
+		thresh_value -= perph_data->inhibit_derating_ua;
 		if (perph_data->trip_val < thresh_value) {
 			pr_debug("False Ibat high trip. ibat:%d ibat_thresh_val:%d\n",
 				perph_data->trip_val, thresh_value);
@@ -1004,7 +1006,7 @@ static int bcl_probe(struct spmi_device *spmi)
 	ret = devm_request_threaded_irq(&spmi->dev,
 			bcl_perph->param[BCL_PARAM_VOLTAGE].irq_num,
 			NULL, bcl_handle_vbat,
-			IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"bcl_vbat_interrupt",
 			&bcl_perph->param[BCL_PARAM_VOLTAGE]);
 	if (ret) {
@@ -1024,7 +1026,7 @@ static int bcl_probe(struct spmi_device *spmi)
 	ret = devm_request_threaded_irq(&spmi->dev,
 			bcl_perph->param[BCL_PARAM_CURRENT].irq_num,
 			NULL, bcl_handle_ibat,
-			IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"bcl_ibat_interrupt",
 			&bcl_perph->param[BCL_PARAM_CURRENT]);
 	if (ret) {

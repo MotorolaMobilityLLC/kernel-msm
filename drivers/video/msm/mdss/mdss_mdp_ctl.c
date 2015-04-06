@@ -631,6 +631,7 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 
 	if (mixer->ctl->intf_num == MDSS_MDP_NO_INTF ||
 		mdata->disable_prefill ||
+		mixer->ctl->disable_prefill ||
 		(pipe->flags & MDP_SOLID_FILL)) {
 		perf->prefill_bytes = 0;
 		goto exit;
@@ -859,6 +860,67 @@ exit:
 		*(perf->bw_vote_mode));
 }
 
+static bool is_mdp_prefetch_needed(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_panel_info *pinfo = &ctl->panel_data->panel_info;
+	struct mdss_data_type *mdata = ctl->mdata;
+	bool enable_prefetch = false;
+
+	if (mdata->mdp_rev >= MDSS_MDP_HW_REV_105) {
+		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width +
+			pinfo->lcdc.v_front_porch) < mdata->min_prefill_lines)
+			pr_warn_once("low vbp+vfp may lead to perf issues in some cases\n");
+
+		enable_prefetch = true;
+
+		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width) >=
+				MDSS_MDP_MAX_PREFILL_FETCH)
+			enable_prefetch = false;
+	} else {
+		if ((pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width) <
+				mdata->min_prefill_lines)
+			pr_warn_once("low vbp may lead to display performance issues");
+	}
+
+	return enable_prefetch;
+}
+
+/**
+ * mdss_mdp_get_prefetch_lines: - Number of fetch lines in vertical front porch
+ * @ctl:	Pointer to controller where prefetch lines will be calculated
+ *
+ * Returns the number of fetch lines in vertical front porch at which mdp
+ * can start fetching the next frame.
+ *
+ * In some cases, vertical front porch is too high. In such cases limit
+ * the mdp fetch lines  as the last (25 - vbp - vpw) lines of vertical
+ * front porch.
+ */
+int mdss_mdp_get_prefetch_lines(struct mdss_mdp_ctl *ctl)
+{
+	int prefetch_avail = 0;
+	int v_total, vfp_start;
+	u32 prefetch_needed;
+	struct mdss_panel_info *pinfo = &ctl->panel_data->panel_info;
+
+	if (!is_mdp_prefetch_needed(ctl))
+		return 0;
+
+	v_total = mdss_panel_get_vtotal(pinfo);
+	vfp_start = (pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width +
+			pinfo->yres);
+
+	prefetch_avail = v_total - vfp_start;
+	prefetch_needed = MDSS_MDP_MAX_PREFILL_FETCH -
+		pinfo->lcdc.v_back_porch -
+		pinfo->lcdc.v_pulse_width;
+
+	if (prefetch_avail > prefetch_needed)
+		prefetch_avail = prefetch_needed;
+
+	return prefetch_avail;
+}
+
 static u32 mdss_mdp_get_vbp_factor(struct mdss_mdp_ctl *ctl)
 {
 	u32 fps, v_total, vbp, vbp_fac;
@@ -871,8 +933,7 @@ static u32 mdss_mdp_get_vbp_factor(struct mdss_mdp_ctl *ctl)
 	fps = mdss_panel_get_framerate(pinfo);
 	v_total = mdss_panel_get_vtotal(pinfo);
 	vbp = pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width;
-	if (ctl->prg_fet)
-		vbp += mdss_mdp_max_fetch_lines(pinfo);
+	vbp += ctl->prg_fet;
 
 	vbp_fac = (vbp) ? fps * v_total / vbp : 0;
 	pr_debug("vbp_fac=%d vbp=%d v_total=%d\n", vbp_fac, vbp, v_total);
@@ -1982,6 +2043,7 @@ int mdss_mdp_ctl_setup(struct mdss_mdp_ctl *ctl)
 	ctl->mixer_left->width = width;
 	ctl->mixer_left->height = height;
 	ctl->mixer_left->roi = (struct mdss_rect) {0, 0, width, height};
+	ctl->valid_roi = true;
 
 	if (ctl->mfd->split_mode == MDP_DUAL_LM_DUAL_DISPLAY) {
 		pr_debug("dual display detected\n");
@@ -2154,6 +2216,7 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 	ctl->perf_release_ctl_bw = false;
 	ctl->border_x_off = pinfo->lcdc.border_left;
 	ctl->border_y_off = pinfo->lcdc.border_top;
+	ctl->disable_prefill = false;
 
 	switch (pdata->panel_info.type) {
 	case EDP_PANEL:
@@ -2297,6 +2360,7 @@ int mdss_mdp_ctl_split_display_setup(struct mdss_mdp_ctl *ctl,
 	mixer->height = sctl->height;
 	mixer->roi = (struct mdss_rect)
 				{0, 0, mixer->width, mixer->height};
+	sctl->valid_roi = true;
 	sctl->mixer_left = mixer;
 
 	return mdss_mdp_set_split_ctl(ctl, sctl);
@@ -2798,7 +2862,7 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 		return;
 
 	ctl = mixer->ctl;
-	if (!ctl || !ctl->valid_roi)
+	if (!ctl)
 		return;
 
 	mixer->params_changed = 0;
@@ -2808,6 +2872,9 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 		mdss_mdp_ctl_write(mixer->ctl, off, 0);
 		return;
 	}
+
+	if (!ctl->valid_roi)
+		return;
 
 	trace_mdp_mixer_update(mixer->num);
 	pr_debug("setup mixer=%d\n", mixer->num);
