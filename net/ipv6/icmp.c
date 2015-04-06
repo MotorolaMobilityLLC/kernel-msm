@@ -68,6 +68,10 @@
 
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_PARTIALRESUME
+bool wlan_vote_for_suspend(void);
+#endif
+
 /*
  *	The ICMP socket(s). This is the most convenient way to flow control
  *	our ICMP output as well as maintain a clean interface throughout
@@ -761,6 +765,12 @@ static int icmpv6_rcv(struct sk_buff *skb)
 	case NDISC_NEIGHBOUR_ADVERTISEMENT:
 	case NDISC_REDIRECT:
 		ndisc_rcv(skb);
+#ifdef CONFIG_PARTIALRESUME
+		if ((type == NDISC_NEIGHBOUR_ADVERTISEMENT) &&
+		    (ipv6_addr_equal(&in6addr_linklocal_allnodes,
+		    &ipv6_hdr(skb)->daddr)))
+			wlan_vote_for_suspend();
+#endif
 		break;
 
 	case ICMPV6_MGM_QUERY:
