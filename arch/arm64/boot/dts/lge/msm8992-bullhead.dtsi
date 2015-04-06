@@ -17,6 +17,7 @@
 	aliases {
 		spi1 = &spi_fpc;
 		spi7 = &spi_7;
+		i2c9 = &i2c_9;
 	};
 };
 
@@ -82,6 +83,33 @@
 		qcom,bam-consumer-pipe-index = <12>;
 		qcom,bam-producer-pipe-index = <13>;
 		qcom,ver-reg-exists;
+		qcom,master-id = <84>;
+	};
+
+	i2c_9: i2c@f9965000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+		reg-names = "qup_phys_addr", "bam_phys_addr";
+		reg = <0xf9965000 0x1000>,
+		      <0xf9944000 0x19000>;
+		interrupt-names = "qup_irq", "bam_irq";
+		interrupts = <0 103 0>, <0 239 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		qcom,disable-dma;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+		         <&clock_gcc clk_gcc_blsp2_qup3_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_9_active>;
+		pinctrl-1 = <&i2c_9_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		qcom,bam-pipe-idx-cons = <16>;
+		qcom,bam-pipe-idx-prod = <17>;
 		qcom,master-id = <84>;
 	};
 };
