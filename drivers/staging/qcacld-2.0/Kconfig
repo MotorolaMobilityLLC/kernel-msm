@@ -14,12 +14,18 @@ config PRONTO_WLAN
 	help
 	Add support for the Qualcomm Atheros Pronto WLAN module
 
+config QCA_CLD_WLAN
+
+	tristate "Qualcomm QCA CLD WLAN module"
+	default n
+	help
+	Add support for the Qualcomm QCA CLD WLAN module
 
 #	depends on WLAN
 #	depends on CFG80211
 #        depends on WCNSS_CORE
 
-if PRIMA_WLAN != n || PRONTO_WLAN != n
+if PRIMA_WLAN != n || PRONTO_WLAN != n || QCA_CLD_WLAN
 
 config PRIMA_WLAN_BTAMP
 	bool "Enable the Prima WLAN BT-AMP feature"
@@ -49,7 +55,7 @@ config QCOM_VOWIFI_11R
 	bool "Enable Fast Transition (11r) feature"
 	default n
 
-config CONFIG_FEATURE_NAN
+config FEATURE_NAN
 	bool "Enable NAN feature"
 	default n
 
