@@ -159,8 +159,34 @@ typedef struct rtt_target_info {
 	wifi_channel_info_t channel; /* channel information */
 	chanspec_t chanspec; /* chanspec for channel */
 	bool	disable; /* disable for RTT measurement */
-	uint32	interval; /* interval of RTT measurement (unit ms) when continuous = true */
-	uint16 num_burst; /* total number of RTT bursts when multi_burst = 1 */
+	/*
+	* Time interval between bursts (units: 100 ms).
+	* Applies to 1-sided and 2-sided RTT multi-burst requests.
+	* Range: 0-31, 0: no preference by initiator (2-sided RTT)
+	*/
+	uint32	burst_period;
+	/*
+	* Total number of RTT bursts to be executed. It will be
+	* specified in the same way as the parameter "Number of
+	* Burst Exponent" found in the FTM frame format. It
+	* applies to both: 1-sided RTT and 2-sided RTT. Valid
+	* values are 0 to 15 as defined in 802.11mc std.
+	* 0 means single shot
+	* The implication of this parameter on the maximum
+	* number of RTT results is the following:
+	* for 1-sided RTT: max num of RTT results = (2^num_burst)*(num_frames_per_burst)
+	* for 2-sided RTT: max num of RTT results = (2^num_burst)*(num_frames_per_burst - 1)
+	*/
+	uint16 num_burst;
+	/*
+	* num of frames per burst.
+	* Minimum value = 1, Maximum value = 31
+	* For 2-sided this equals the number of FTM frames
+	* to be attempted in a single burst. This also
+	* equals the number of FTM frames that the
+	* initiator will request that the responder send
+	* in a single frame
+	*/
     uint32 num_frames_per_burst;
 	/* num of frames in each RTT burst
 	 * for single side, measurement result num = frame number
@@ -171,8 +197,18 @@ typedef struct rtt_target_info {
 	uint32 num_retries_per_ftmr;
 	uint8  LCI_request;
 	uint8  LCR_request;
-	uint32 burst_timeout;
-	uint8  preamble; /* 0 - Legacy, 1 - HT, 2 - VHT */
+	/*
+	* Applies to 1-sided and 2-sided RTT. Valid values will
+	* be 2-11 and 15 as specified by the 802.11mc std for
+	* the FTM parameter burst duration. In a multi-burst
+	* request, if responder overrides with larger value,
+	* the initiator will return failure. In a single-burst
+	* request if responder overrides with larger value,
+	* the initiator will sent TMR_STOP to terminate RTT
+	* at the end of the burst_duration it requested.
+	*/
+	uint32 burst_duration;
+	uint8  preamble; /* 1 - Legacy, 2 - HT, 4 - VHT */
 	uint8  bw;  /* 5, 10, 20, 40, 80, 160 */
 } rtt_target_info_t;
 
@@ -180,7 +216,7 @@ typedef struct rtt_target_info {
 typedef struct rtt_report {
 	struct ether_addr addr;
 	unsigned int burst_num; /* # of burst inside a multi-burst request */
-	unsigned int ftm_num; /* total RTT measurement frames */
+	unsigned int ftm_num; /* total RTT measurement frames attempted */
 	unsigned int success_num; /* total successful RTT measurement frames */
 	uint8  num_per_burst_peer; /* max number of FTM number per burst the peer support */
 	rtt_reason_t status; /* raging status */
@@ -189,8 +225,16 @@ typedef struct rtt_report {
 	rtt_type_t type; /* rtt type */
 	wifi_rssi  rssi; /* average rssi in 0.5 dB steps e.g. 143 implies -71.5 dB */
 	wifi_rssi  rssi_spread; /* rssi spread in 0.5 db steps e.g. 5 implies 2.5 spread */
-	wifi_rate_t tx_rate;           /* tx rate */
-	wifi_rate_t rx_rate;           /* rx rate */
+	/*
+	* 1-sided RTT: TX rate of RTT frame.
+	* 2-sided RTT: TX rate of initiator's Ack in response to FTM frame.
+	*/
+	wifi_rate_t tx_rate;
+	/*
+	* 1-sided RTT: TX rate of Ack from other side.
+	* 2-sided RTT: TX rate of FTM frame coming from responder.
+	*/
+	wifi_rate_t rx_rate;
 	wifi_timespan rtt;	/*  round trip time in 0.1 nanoseconds */
 	wifi_timespan rtt_sd;	/* rtt standard deviation in 0.1 nanoseconds */
 	wifi_timespan rtt_spread; /* difference between max and min rtt times recorded */
@@ -199,6 +243,7 @@ typedef struct rtt_report {
 	int distance_spread; /* difference between max and min distance recorded (optional) */
 	wifi_timestamp ts; /* time of the measurement (in microseconds since boot) */
 	int burst_duration; /* in ms, how long the FW time is to fininish one burst measurement */
+	int negotiated_burst_num; /* Number of bursts allowed by the responder */
 	bcm_tlv_t *LCI; /* LCI Report */
 	bcm_tlv_t *LCR; /* Location Civic Report */
 } rtt_report_t;
@@ -256,6 +301,9 @@ dhd_dev_rtt_capability(struct net_device *dev, rtt_capabilities_t *capa);
 /* export to upper layer */
 chanspec_t
 dhd_rtt_convert_to_chspec(wifi_channel_info_t channel);
+
+int
+dhd_rtt_idx_to_burst_duration(uint idx);
 
 int
 dhd_rtt_set_cfg(dhd_pub_t *dhd, rtt_config_params_t *params);
