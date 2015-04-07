@@ -343,11 +343,6 @@
 	};
 };
 
-&sdhc_1 {
-	qcom,vdd-always-on;
-	qcom,vdd-lpm-sup;
-};
-
 &sdhc_2 {
 	status = "disabled";
 };
