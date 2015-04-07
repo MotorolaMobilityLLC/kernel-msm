@@ -1387,6 +1387,9 @@ static struct mdss_mdp_mixer *mdss_mdp_mixer_alloc(
 			mixer->ref_cnt++;
 			mixer->params_changed++;
 			mixer->ctl = ctl;
+			mixer->next_pipe_map = 0;
+			mixer->previous_pipe_map = 0;
+
 			pr_debug("alloc mixer num %d for ctl=%d\n",
 				 mixer->num, ctl->num);
 			break;
@@ -2226,6 +2229,7 @@ int mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl)
 {
 	u32 status = 1;
 	int cnt = 20;
+	struct mdss_mdp_mixer *mixer = ctl->mixer_left;
 
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_SW_RESET, 1);
 
@@ -2246,6 +2250,23 @@ int mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl)
 		}
 	} while (status);
 
+	if (mixer) {
+		int i;
+		u32 pipe_map = mixer->previous_pipe_map;
+		struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+		pr_debug("pipe_map=0x%x\n", pipe_map);
+		for (i = 0; pipe_map; i++) {
+			if (pipe_map & BIT(0)) {
+				struct mdss_mdp_pipe *pipe;
+				pipe = mdss_mdp_pipe_search(mdata, 1 << i);
+				if (pipe)
+					mdss_mdp_pipe_fetch_halt(pipe);
+			}
+			pipe_map >>= 1;
+		}
+	}
+
 	return 0;
 }
 
@@ -2260,6 +2281,7 @@ void mdss_mdp_set_mixer_roi(struct mdss_mdp_ctl *ctl, struct mdss_rect *roi)
 		ctl->roi_changed++;
 
 		mixer_roi = ctl->mixer_left->roi;
+
 		if ((mixer_roi.w != roi->w) ||
 			(mixer_roi.h != roi->h)) {
 			ctl->mixer_left->roi = *roi;
@@ -2319,6 +2341,21 @@ void mdss_mdp_set_roi(struct mdss_mdp_ctl *ctl,
 
 	if (ctl->mixer_right)
 		mdss_mdp_set_mixer_roi(ctl->mixer_right->ctl, &r_roi);
+}
+
+static void mdss_mdp_mixer_update_pipe_map(struct mdss_mdp_ctl *master_ctl,
+	int mixer_mux)
+{
+	struct mdss_mdp_mixer *mixer = mdss_mdp_mixer_get(master_ctl,
+		mixer_mux);
+
+	if (!mixer)
+		return;
+
+	pr_debug("mixer%d previous_pipes=0x%x next_pipes=0x%x\n",
+		mixer->num, mixer->previous_pipe_map, mixer->next_pipe_map);
+
+	mixer->previous_pipe_map = mixer->next_pipe_map;
 }
 
 static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
@@ -2391,6 +2428,12 @@ static void mdss_mdp_mixer_setup(struct mdss_mdp_ctl *master_ctl,
 			mixer->stage_pipe[i] = NULL;
 			continue;
 		}
+		/*
+		 * pipe which is staged on both LMs will be tracked through
+		 * left mixer only.
+		 */
+		if (!pipe->src_split_req || !mixer->is_right_mixer)
+			mixer->next_pipe_map |= pipe->ndx;
 
 		blend_stage = stage - MDSS_MDP_STAGE_0;
 		off = MDSS_MDP_REG_LM_BLEND_OFFSET(blend_stage);
@@ -3057,6 +3100,8 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 			sctl->wait_pingpong(sctl, NULL);
 		ATRACE_END("wait_pingpong");
 
+		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_LEFT);
+		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_RIGHT);
 	}
 	if (commit_cb)
 		commit_cb->commit_cb_fnc(MDP_COMMIT_STAGE_READY_FOR_KICKOFF,

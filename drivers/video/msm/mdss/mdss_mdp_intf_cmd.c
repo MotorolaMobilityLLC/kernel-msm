@@ -624,6 +624,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 					rc, ctl->num);
 			mdss_dsi_debug_check_te(pdata);
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1", "panic");
+			mdss_mdp_ctl_reset(ctx->ctl);
 			mdss_fb_send_panel_reset_event(ctl->mfd);
 		}
 		ctx->pp_timeout_report_cnt++;

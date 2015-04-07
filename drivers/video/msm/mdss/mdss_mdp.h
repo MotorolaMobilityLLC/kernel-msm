@@ -256,6 +256,8 @@ struct mdss_mdp_mixer {
 	bool is_right_mixer;
 	struct mdss_mdp_ctl *ctl;
 	struct mdss_mdp_pipe *stage_pipe[MAX_PIPES_PER_LM];
+	u32 next_pipe_map;
+	u32 previous_pipe_map;
 };
 
 struct mdss_mdp_format_params {
