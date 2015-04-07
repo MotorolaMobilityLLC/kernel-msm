@@ -2981,6 +2981,7 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	int ret = 0;
 	bool is_bw_released;
 	int split_enable;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	if (!ctl) {
 		pr_err("display function not set\n");
@@ -3091,7 +3092,7 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_READY);
 	ATRACE_END("frame_ready");
 
-	if (ctl->wait_pingpong) {
+	if (!mdata->serialize_wait4pp && ctl->wait_pingpong) {
 
 		ATRACE_BEGIN("wait_pingpong");
 		ctl->wait_pingpong(ctl, NULL);
@@ -3103,6 +3104,7 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_LEFT);
 		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_RIGHT);
 	}
+
 	if (commit_cb)
 		commit_cb->commit_cb_fnc(MDP_COMMIT_STAGE_READY_FOR_KICKOFF,
 			commit_cb->data);
@@ -3128,6 +3130,19 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	} else {
 		if (ctl->display_fnc)
 			ret = ctl->display_fnc(ctl, arg); /* DSI0 kickoff */
+	}
+
+	if (mdata->serialize_wait4pp && ctl->wait_pingpong) {
+
+		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_LEFT);
+		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_RIGHT);
+
+		ATRACE_BEGIN("wait_pingpong");
+		ctl->wait_pingpong(ctl, NULL);
+
+		if (sctl && sctl->wait_pingpong)
+			sctl->wait_pingpong(sctl, NULL);
+		ATRACE_END("wait_pingpong");
 	}
 
 	if (sctl)

@@ -621,6 +621,8 @@ int mdss_debugfs_init(struct mdss_data_type *mdata)
 	}
 	debugfs_create_file("stat", 0644, mdd->root, mdata, &mdss_stat_fops);
 	debugfs_create_file("reg_dump", 0644, mdd->root, mdd, &mdss_reg_dump_fops);
+	debugfs_create_bool("serialize_wait4pp", 0644, mdd->root,
+		(u32 *)&mdata->serialize_wait4pp);
 
 	mdd->perf = debugfs_create_dir("perf", mdd->root);
 	if (IS_ERR_OR_NULL(mdd->perf)) {
