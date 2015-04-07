@@ -839,7 +839,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		handle = cpu_to_be32(handle);
 		motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
-				(char *)&handle, 4, 0);
+				(char *)&handle, 4, 0, false);
 		break;
 	}
 
