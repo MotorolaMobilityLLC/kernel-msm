@@ -16,7 +16,7 @@
 
 include $(srctree)/arch/arm64/boot/dts/huawei/Makefile
 
-targets := Image Image.gz
+targets := Image Image-dtb Image.gz Image.gz-dtb
 
 DTB_OBJS := $(addprefix $(obj)/dts/,$(DTB_LIST))
 
