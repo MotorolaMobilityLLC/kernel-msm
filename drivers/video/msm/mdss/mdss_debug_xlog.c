@@ -220,6 +220,8 @@ void mdss_xlog_tout_handler(const char *name, ...)
 
 	mdss_samsung_dsi_te_check(mdata->ctl_off->panel_data);
 
+	mmss_clock_dump();
+
 	if (dead && mdd->logd.panic_on_err)
 		panic(name);
 }

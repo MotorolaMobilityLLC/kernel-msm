@@ -3790,6 +3790,40 @@ static struct platform_driver gcc_driver = {
 	},
 };
 
+void mmss_clock_dump(void)
+{
+	int i=0;
+	int tmp0x0 =0;
+	int tmp0x4 =0;
+	int tmp0x8 =0;
+	int tmp0xc =0;
+
+	pr_info("============== %s ==============\n", __func__);
+	for (i=0; i< 145; i++) {
+		tmp0x0 = readl_relaxed(MMSS_REG_BASE((i*16)+0x0));
+		tmp0x4 = readl_relaxed(MMSS_REG_BASE((i*16)+0x4));
+		tmp0x8 = readl_relaxed(MMSS_REG_BASE((i*16)+0x8));
+		tmp0xc = readl_relaxed(MMSS_REG_BASE((i*16)+0xc));
+		pr_err("PLL [%04x] : %08x %08x %08x %08x\n",i*16, tmp0x0,tmp0x4,tmp0x8,tmp0xc);
+	}
+
+	for (i=0; i< 53; i++) {
+		tmp0x0 = readl_relaxed(MMSS_REG_BASE(0x2000+(i*16)+0x0));
+		tmp0x4 = readl_relaxed(MMSS_REG_BASE(0x2000+(i*16)+0x4));
+		tmp0x8 = readl_relaxed(MMSS_REG_BASE(0x2000+(i*16)+0x8));
+		tmp0xc = readl_relaxed(MMSS_REG_BASE(0x2000+(i*16)+0xc));
+		pr_err("MDSS [%04x] : %08x %08x %08x %08x\n",i*16, tmp0x0,tmp0x4,tmp0x8,tmp0xc);
+	}
+
+	for (i=0; i< 17; i++) {
+		tmp0x0 = readl_relaxed(MMSS_REG_BASE(0x5000+(i*16)+0x0));
+		tmp0x4 = readl_relaxed(MMSS_REG_BASE(0x5000+(i*16)+0x4));
+		tmp0x8 = readl_relaxed(MMSS_REG_BASE(0x5000+(i*16)+0x8));
+		tmp0xc = readl_relaxed(MMSS_REG_BASE(0x5000+(i*16)+0xc));
+		pr_err("Shared [%04x] : %08x %08x %08x %08x\n",i*16, tmp0x0,tmp0x4,tmp0x8,tmp0xc);
+	}
+}
+
 static bool initialized;
 int __init msm_gcc_8226_init(void)
 {
