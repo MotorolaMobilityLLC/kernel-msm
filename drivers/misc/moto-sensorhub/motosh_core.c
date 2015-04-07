@@ -943,12 +943,12 @@ static void motosh_gpio_free(struct motosh_platform_data *pdata)
 		gpio_free(pdata->gpio_sh_wake_resp);
 }
 
-void clear_interrupt_status_work_func(struct work_struct *work)
+void clear_nonwakeable_event_queue_work_func(struct work_struct *work)
 {
 	struct motosh_data *ps_motosh = container_of(work,
-			struct motosh_data, clear_interrupt_status_work);
+			struct motosh_data, clear_nonwakeable_event_queue_work);
 
-	dev_dbg(&ps_motosh->client->dev, "clear_interrupt_status_work_func\n");
+	dev_dbg(&ps_motosh->client->dev, "clear_nonwakeable_event_queue_work_func\n");
 	mutex_lock(&ps_motosh->lock);
 
 	if (ps_motosh->mode == BOOTMODE)
@@ -959,10 +959,10 @@ void clear_interrupt_status_work_func(struct work_struct *work)
 
 	motosh_wake(ps_motosh);
 
-	/* read interrupt mask register to clear
-			any interrupt during suspend state */
-	motosh_cmdbuff[0] = INTERRUPT_STATUS;
-	motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
+	/* a write to the work queue length causes it to be reset */
+	motosh_cmdbuff[0] = NWAKE_MSG_QUEUE_LEN;
+	motosh_cmdbuff[1] = 0x00;
+	motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 
 	motosh_sleep(ps_motosh);
 EXIT:
@@ -1115,8 +1115,8 @@ static int motosh_probe(struct i2c_client *client,
 
 	INIT_WORK(&ps_motosh->irq_work, motosh_irq_work_func);
 	INIT_WORK(&ps_motosh->irq_wake_work, motosh_irq_wake_work_func);
-	INIT_WORK(&ps_motosh->clear_interrupt_status_work,
-		clear_interrupt_status_work_func);
+	INIT_WORK(&ps_motosh->clear_nonwakeable_event_queue_work,
+		clear_nonwakeable_event_queue_work_func);
 
 	ps_motosh->irq_work_queue = create_singlethread_workqueue("motosh_wq");
 	if (!ps_motosh->irq_work_queue) {
@@ -1422,7 +1422,7 @@ static int motosh_resume(struct device *dev)
 
 	if (motosh_irq_disable == 0)
 		queue_work(ps_motosh->irq_work_queue,
-			&ps_motosh->clear_interrupt_status_work);
+			&ps_motosh->clear_nonwakeable_event_queue_work);
 
 	motosh_time_sync();
 
