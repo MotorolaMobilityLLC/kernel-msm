@@ -439,7 +439,7 @@ void mdss_mdp_cmd_clk_enable(void);
 void mdss_mdp_cmd_clk_disable(void);
 int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_ctrl_setup(struct mdss_dsi_ctrl_pdata *ctrl);
-void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl, bool print_en);
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
