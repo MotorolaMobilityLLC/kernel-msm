@@ -152,6 +152,7 @@ config ARCH_MSM8916
 	select MSM_RPM_LOG
 	select MSM_JTAGV8 if CORESIGHT_ETMV4
 	select RCU_BOOST if DEBUG_KMEMLEAK
+	select HAS_MACH_MEMUTILS
 
 config ARCH_FSM9900
 	bool "FSM9900"
@@ -1057,4 +1058,10 @@ config MMI_DEVICE_DTBS
 	help
 	  Only include Motorola device specific DTBs to limit the number that
 	  get built during kernel compilation.
+
+config HAS_MACH_MEMUTILS
+	default n
+	bool "Motorola MSM memcpy enhancements"
+	help
+	Faster memcpy performance for MSM8916.
 endif
