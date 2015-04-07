@@ -770,5 +770,8 @@ const struct file_operations motosh_misc_fops = {
 	.owner = THIS_MODULE,
 	.open = motosh_misc_open,
 	.unlocked_ioctl = motosh_misc_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = motosh_misc_ioctl,
+#endif
 	.write = motosh_misc_write,
 };
