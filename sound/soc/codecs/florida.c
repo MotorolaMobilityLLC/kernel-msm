@@ -39,6 +39,9 @@
 #define FLORIDA_DEFAULT_FRAGMENTS       1
 #define FLORIDA_DEFAULT_FRAGMENT_SIZE   4096
 
+#define ADSP2_CONTROL	0x0
+#define ADSP2_START	0x0001
+
 struct florida_compr {
 	struct mutex lock;
 
@@ -308,6 +311,31 @@ static int florida_put_trig_state(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int florida_get_dsp_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct wm_adsp *dsps = snd_soc_codec_get_drvdata(codec);
+	struct soc_mixer_control *mc = (struct soc_mixer_control *)
+		kcontrol->private_value;
+	struct wm_adsp *dsp = &dsps[mc->shift];
+	unsigned int val;
+
+	regmap_read(dsp->regmap, dsp->base + ADSP2_CONTROL, &val);
+	if (val & ADSP2_START)
+		ucontrol->value.integer.value[0] = 1;
+	else
+		ucontrol->value.integer.value[0] = 0;
+
+	return 0;
+}
+
+static int florida_put_dsp_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
 static const struct snd_kcontrol_new florida_snd_controls[] = {
 SOC_ENUM("IN1 OSR", arizona_in_dmic_osr[0]),
 SOC_ENUM("IN2 OSR", arizona_in_dmic_osr[1]),
@@ -348,6 +376,14 @@ SOC_SINGLE("IN4R HPF Switch", ARIZONA_IN4R_CONTROL,
 SOC_SINGLE_EXT("Set Trigger State Switch", SND_SOC_NOPM, 0, 1, 0,
 	florida_get_trig_state,
 	florida_put_trig_state),
+SOC_SINGLE_EXT("Get DSP1 State", SND_SOC_NOPM, 0, 1, 0, florida_get_dsp_state,
+	florida_put_dsp_state),
+SOC_SINGLE_EXT("Get DSP2 State", SND_SOC_NOPM, 1, 1, 0, florida_get_dsp_state,
+	florida_put_dsp_state),
+SOC_SINGLE_EXT("Get DSP3 State", SND_SOC_NOPM, 2, 1, 0, florida_get_dsp_state,
+	florida_put_dsp_state),
+SOC_SINGLE_EXT("Get DSP4 State", SND_SOC_NOPM, 3, 1, 0, florida_get_dsp_state,
+	florida_put_dsp_state),
 
 SOC_SINGLE_TLV("IN1L Digital Volume", ARIZONA_ADC_DIGITAL_VOLUME_1L,
 	       ARIZONA_IN1L_DIG_VOL_SHIFT, 0xbf, 0, digital_tlv),
