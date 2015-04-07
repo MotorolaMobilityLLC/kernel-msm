@@ -38,7 +38,7 @@
 #define ERROR_STATUS                    0x02
 #define LOWPOWER_REG                    0x03
 #define MOTOSH_ELAPSED_RT               0x06
-
+#define RESET_REQUEST                   0x07
 #define MOTOSH_PEEKDATA_REG             0x09
 #define MOTOSH_PEEKSTATUS_REG           0x0A
 #define MOTOSH_STATUS_REG               0x0B
@@ -89,10 +89,8 @@
 #define BRIGHTNESS_TABLE_VALUES         0x35
 #define STEP_COUNTER_UPDATE_RATE        0x36
 
-#define INTERRUPT_MASK                  0x37
 #define FW_FLASH_CRC                    0x38
 #define WAKESENSOR_STATUS               0x39
-#define INTERRUPT_STATUS                0x3A
 
 #define ACCEL_X                         0x3B
 #define LIN_ACCEL_X                     0x3C
@@ -106,7 +104,6 @@
 #define TEMPERATURE_DATA                0x41
 
 #define GYRO_X                          0x43
-#define QUATERNION_DATA                 0x44
 #define UNCALIB_GYRO_X			0x45
 #define UNCALIB_MAG_X			0x46
 
@@ -123,9 +120,17 @@
 #define CHOPCHOP                        0x4F
 #define LIFT                            0x51
 
+#define WAKE_MSG_QUEUE                  0x52
+#define NWAKE_MSG_QUEUE_LEN             0x53
+#define NWAKE_MSG_QUEUE                 0x54
+#define WAKE_MSG_QUEUE_LEN              0x57
+
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
 #define ALGO_EVT_ACCUM_MODALITY         0x63
+
+#define QUATERNION_6AXIS                0x64
+#define QUATERNION_9AXIS                0x65
 
 #define CURRENT_PRESSURE                0x66
 
@@ -156,6 +161,10 @@
 /* MOTOSH memory map end */
 
 #define READ_CMDBUFF_SIZE 512
+
+#define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
+#define MOTOSH_EVENT_QUEUE_MSG_ID_LEN 1
+#define MOTOSH_EVENT_TIMESTAMP_LEN    3
 
 #define LIGHTING_TABLE_SIZE 32
 
@@ -271,8 +280,8 @@
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
-#define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (motosh_readbuff+(x)))))
-#define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (motosh_readbuff+(x)))))
+#define STM16_TO_HOST(buf, x) ((short) be16_to_cpu(*((u16 *) (buf+(x)))))
+#define STM32_TO_HOST(buf, x) ((short) be32_to_cpu(*((u32 *) (buf+(x)))))
 
 #define MOTOSH_HALL_SOUTH 1
 #define MOTOSH_HALL_NORTH 2
@@ -341,7 +350,7 @@ struct motosh_data {
 	struct mutex lock;
 	struct work_struct irq_work;
 	struct work_struct irq_wake_work;
-	struct work_struct clear_interrupt_status_work;
+	struct work_struct clear_nonwakeable_event_queue_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
 	struct wake_lock reset_wakelock;
@@ -438,7 +447,8 @@ void motosh_irq_work_func(struct work_struct *work);
 
 irqreturn_t motosh_wake_isr(int irq, void *dev);
 void motosh_irq_wake_work_func(struct work_struct *work);
-int motosh_process_ir_gesture(struct motosh_data *ps_motosh);
+int motosh_process_ir_gesture(struct motosh_data *ps_motosh,
+	unsigned char *data);
 
 long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
@@ -448,11 +458,11 @@ int motosh_reset_and_init(enum reset_mode mode);
 
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
-	unsigned char status);
+	unsigned char status, bool timestamped);
 int motosh_as_data_buffer_read(struct motosh_data *ps_motosh,
 	struct motosh_android_sensor_data *buff);
 int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
-	unsigned char type, unsigned char *data, int size);
+	unsigned char type, unsigned char *data, int size, bool timestamped);
 int motosh_ms_data_buffer_read(struct motosh_data *ps_motosh,
 	struct motosh_moto_sensor_data *buff);
 
