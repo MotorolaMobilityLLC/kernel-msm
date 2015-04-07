@@ -23,6 +23,7 @@
 #define MDSS_XLOG_ENTRY	512
 #define MDSS_XLOG_MAX_DATA 6
 #define MDSS_XLOG_BUF_MAX 512
+#define MDSS_MAX_DUMPS 5
 
 struct tlog {
 	u64 tick;
@@ -80,7 +81,7 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 
 	mdd->logd.xlog_enable = 1;
 	mdd->logd.enable_reg_dump = 1;
-	mdd->logd.panic_on_err = 1;
+	mdd->logd.panic_on_err = 0;
 
 	return 0;
 }
@@ -169,12 +170,13 @@ void mdss_xlog_tout_handler(const char *name, ...)
 	int i, dead = 0;
 	va_list args;
 	char *blk_name = NULL;
+	static int cnt = 0;
 
 	if (!mdd->logd.xlog_enable)
 		return;
 
 	va_start(args, name);
-	for (i = 0; i < MDSS_XLOG_MAX_DATA; i++) {
+	for (i = 0; (i < MDSS_XLOG_MAX_DATA) && (cnt < MDSS_MAX_DUMPS); i++) {
 
 		blk_name = va_arg(args, char*);
 		if (IS_ERR_OR_NULL(blk_name))
@@ -187,7 +189,7 @@ void mdss_xlog_tout_handler(const char *name, ...)
 				mdd->logd.enable_reg_dump) {
 				pr_info("\n%s  :   =========%s DUMP=========\n",
 						__func__, blk_base->name);
-				mdss_dump_reg(blk_base->base,
+				mdss_dump_reg(blk_base->name, blk_base->base,
 						blk_base->max_offset, true);
 			}
 		}
@@ -195,6 +197,9 @@ void mdss_xlog_tout_handler(const char *name, ...)
 			dead = 1;
 	}
 	va_end(args);
+
+	if (cnt < MDSS_MAX_DUMPS)
+		cnt++;
 
 	MDSS_XLOG(0xffff, 0xffff, 0xffff, 0xffff, 0xffff);
 	mdss_xlog_dump();

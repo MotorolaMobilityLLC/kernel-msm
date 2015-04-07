@@ -20,6 +20,7 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/vmalloc.h>
 
 #include "mdss.h"
 #include "mdss_mdp.h"
@@ -30,6 +31,18 @@
 #define GROUP_BYTES 4
 #define ROW_BYTES 16
 #define MAX_VSYNC_COUNT 0xFFFFFFF
+
+struct mdss_debug_dump_info {
+	char name[32];
+	char *dump_addr;
+	u32 len;
+	struct mdss_debug_dump_info *next;
+};
+
+static struct mdss_debug_dump_info *reg_dump_info;
+static u32 reg_dump_lines;
+static u32 reg_dump_bases;
+static DEFINE_MUTEX(reg_dump_info_mutex);
 
 static int mdss_debug_base_open(struct inode *inode, struct file *file)
 {
@@ -334,6 +347,120 @@ static const struct file_operations mdss_stat_fops = {
 	.read = mdss_debug_stat_read,
 };
 
+static int mdss_debug_reg_dump_open(struct inode *inode, struct file *file)
+{
+	/* non-seekable */
+	file->f_mode &= ~(FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE);
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static char *reg_dump_buf;
+static u32 reg_dump_buf_size;
+static struct ion_client *dbg_iclient;
+static struct ion_handle *dbg_ihandle;
+
+static ssize_t mdss_debug_reg_dump_read(struct file *file,
+	char __user *user_buf, size_t count, loff_t *ppos)
+{
+	size_t len;
+
+	if (!dbg_iclient) {
+		pr_err("ion_debug_client is not valid. Cannot dump\n");
+		return -EPERM;
+	}
+
+	if (!reg_dump_info) {
+		pr_err("nothing to dump\n");
+		return -EINVAL;
+	}
+
+	if (!reg_dump_buf) {
+		char dump_buf[64];
+		char *ptr;
+		int cnt, tot;
+		struct mdss_debug_dump_info *iterator = reg_dump_info;
+
+		mutex_lock(&reg_dump_info_mutex);
+
+		reg_dump_buf_size = (reg_dump_lines + reg_dump_bases) * 64;
+
+		dbg_ihandle = ion_alloc(dbg_iclient, reg_dump_buf_size, SZ_4K,
+				ION_HEAP(ION_SYSTEM_HEAP_ID), 0);
+		if (IS_ERR_OR_NULL(dbg_ihandle)) {
+			pr_err("unable to alloc debug mem from ion - %ld\n",
+					PTR_ERR(dbg_ihandle));
+			mutex_unlock(&reg_dump_info_mutex);
+			return PTR_ERR(dbg_ihandle);
+		}
+
+		reg_dump_buf = (char *)ion_map_kernel(dbg_iclient, dbg_ihandle);
+		if (IS_ERR_OR_NULL(reg_dump_buf)) {
+			pr_err("ION memory mapping failed - %ld\n",
+				PTR_ERR(reg_dump_buf));
+			ion_free(dbg_iclient, dbg_ihandle);
+			mutex_unlock(&reg_dump_info_mutex);
+			return PTR_ERR(reg_dump_buf);
+		}
+
+		tot = 0;
+		for (;iterator;) {
+			ptr = iterator->dump_addr;
+			len = snprintf(reg_dump_buf + tot, 64,
+				"******** %s DUMP ********\n", iterator->name);
+			tot += len;
+			for (cnt = iterator->len; cnt > 0; cnt -= ROW_BYTES) {
+				hex_dump_to_buffer(ptr, min(cnt, ROW_BYTES),
+						ROW_BYTES, GROUP_BYTES, dump_buf,
+						sizeof(dump_buf), false);
+				len = scnprintf(reg_dump_buf + tot,
+					reg_dump_buf_size - tot, "0x%08x: %s\n",
+					(unsigned int)ptr, dump_buf);
+
+				ptr += ROW_BYTES;
+				tot += len;
+				if (tot >= reg_dump_buf_size)
+					break;
+			}
+			iterator = iterator->next;
+		}
+		reg_dump_buf_size = tot;
+
+		mutex_unlock(&reg_dump_info_mutex);
+	}
+
+	if (*ppos >= reg_dump_buf_size)
+		return 0; /* done reading */
+
+	len = min(count, reg_dump_buf_size - (size_t) *ppos);
+	if (copy_to_user(user_buf, reg_dump_buf + *ppos, len)) {
+		pr_err("failed to copy to user\n");
+		return -EFAULT;
+	}
+
+	*ppos += len; /* increase offset */
+
+	return len;
+}
+
+static int mdss_debug_reg_dump_release(struct inode *inode, struct file *file)
+{
+	if (reg_dump_buf) {
+		ion_unmap_kernel(dbg_iclient, dbg_ihandle);
+		ion_free(dbg_iclient, dbg_ihandle);
+		dbg_ihandle = NULL;
+		reg_dump_buf = NULL;
+		reg_dump_buf_size = 0;
+	}
+	return 0;
+}
+
+static const struct file_operations mdss_reg_dump_fops = {
+	.open = mdss_debug_reg_dump_open,
+	.read = mdss_debug_reg_dump_read,
+	.release = mdss_debug_reg_dump_release,
+};
+
 static ssize_t mdss_debug_factor_write(struct file *file,
 		    const char __user *user_buf, size_t count, loff_t *ppos)
 {
@@ -493,6 +620,7 @@ int mdss_debugfs_init(struct mdss_data_type *mdata)
 		goto err;
 	}
 	debugfs_create_file("stat", 0644, mdd->root, mdata, &mdss_stat_fops);
+	debugfs_create_file("reg_dump", 0644, mdd->root, mdd, &mdss_reg_dump_fops);
 
 	mdd->perf = debugfs_create_dir("perf", mdd->root);
 	if (IS_ERR_OR_NULL(mdd->perf)) {
@@ -507,6 +635,13 @@ int mdss_debugfs_init(struct mdss_data_type *mdata)
 		goto err;
 
 	mdata->debug_inf.debug_data = mdd;
+
+	dbg_iclient = msm_ion_client_create(-1 , "mdss_debug_iclient");
+	if (IS_ERR_OR_NULL(dbg_iclient)) {
+		pr_err("Err:client not created, val %d\n",
+			PTR_RET(dbg_iclient));
+		dbg_iclient = NULL;
+	}
 
 	return 0;
 
@@ -525,7 +660,7 @@ int mdss_debugfs_remove(struct mdss_data_type *mdata)
 	return 0;
 }
 
-void mdss_dump_reg(char __iomem *base, int len, bool dump_in_memory)
+void mdss_dump_reg(const char *name, char __iomem *base, int len, bool dump_in_memory)
 {
 	char *addr;
 	u32 x0, x4, x8, xc;
@@ -538,9 +673,41 @@ void mdss_dump_reg(char __iomem *base, int len, bool dump_in_memory)
 	len /= 16;
 
 	if (dump_in_memory) {
+		struct mdss_debug_dump_info *dump_info =
+			kzalloc(sizeof(struct mdss_debug_dump_info), GFP_KERNEL);
+		if (!dump_info) {
+			pr_err("failed to allocate memory for reg_dump_info\n");
+			return;
+		}
+
 		/* 16Byte for x0 + x4 +x8 +xc */
 		dump_addr = kzalloc(len * 16, GFP_KERNEL);
-		pr_info("start_address:%p end_address:%p\n", dump_addr, dump_addr + (u32)len*16);
+		if (!dump_addr) {
+			pr_err("failed to allocate register dump memory\n");
+			return;
+		}
+
+		mutex_lock(&reg_dump_info_mutex);
+
+		strlcpy(dump_info->name, name, sizeof(dump_info->name));
+		dump_info->dump_addr = (char *)dump_addr;
+		dump_info->len = len * 16;
+
+		reg_dump_lines += len;
+		reg_dump_bases++;
+		if (!reg_dump_info) {
+			reg_dump_info = dump_info;
+		} else {
+			struct mdss_debug_dump_info *iterator = reg_dump_info;
+
+			for (;iterator && iterator->next;)
+				iterator = iterator->next;
+			iterator->next = dump_info;
+		}
+		pr_info("start_address:%p end_address:%p\n", dump_addr,
+			dump_addr + dump_info->len);
+
+		mutex_unlock(&reg_dump_info_mutex);
 	}
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
