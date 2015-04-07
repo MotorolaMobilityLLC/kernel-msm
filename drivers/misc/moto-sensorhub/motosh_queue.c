@@ -63,13 +63,14 @@ static long long int as_queue_numadded;
  */
 int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	unsigned char type, unsigned char *data, int size,
-	unsigned char status)
+	unsigned char status, bool timestamped)
 {
 	static bool full_reported;
 
 	long long int queue_size;
 	struct as_node *new_tail;
 	struct motosh_android_sensor_data *buffer;
+	struct timespec ts;
 
 	/* Get current queue size */
 	queue_size = AS_QUEUE_SIZE_ESTIMATE;
@@ -96,21 +97,21 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 			dev_err(
 				&ps_motosh->client->dev,
 				"dropped als event: %d",
-				STM16_TO_HOST(ALS_VALUE)
+				STM16_TO_HOST(data, ALS_VALUE)
 			);
 			break;
 		case DT_PROX:
 			dev_err(
 				&ps_motosh->client->dev,
 				"dropped prox event: %d",
-				motosh_readbuff[PROX_DISTANCE]
+				data[PROX_DISTANCE]
 			);
 			break;
 		case DT_DISP_ROTATE:
 			dev_err(
 				&ps_motosh->client->dev,
 				"dropped disp-rotate event: %d",
-				motosh_readbuff[DISP_VALUE]
+				data[DISP_VALUE]
 			);
 			break;
 		default:
@@ -153,7 +154,18 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 		/* Have to timestamp after lock to avoid
 		 * out-of-order events
 		 */
-		buffer->timestamp = motosh_timestamp_ns();
+		if (timestamped) {
+			/* if a timestamp is included in the event buffer,
+			   it is the 3 bytes after the data */
+			get_monotonic_boottime(&ts);
+			buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
+			buffer->timestamp =
+					motosh_time_recover((data[size] << 16) |
+							(data[size+1] <<  8) |
+							(data[size+2]),
+							buffer->timestamp);
+		} else
+			buffer->timestamp = motosh_timestamp_ns();
 		list_add_tail(&(new_tail->list), &(ps_motosh->as_queue.list));
 		++as_queue_numadded;
 	spin_unlock(&(ps_motosh->as_queue_lock));
@@ -207,10 +219,11 @@ int motosh_as_data_buffer_read(struct motosh_data *ps_motosh,
 }
 
 int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
-	unsigned char type, unsigned char *data, int size)
+	unsigned char type, unsigned char *data, int size, bool timestamped)
 {
 	int new_head;
 	struct motosh_moto_sensor_data *buffer;
+	struct timespec ts;
 	static bool error_reported;
 
 	new_head = (ps_motosh->motosh_ms_data_buffer_head + 1)
@@ -235,7 +248,18 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 	}
 	buffer->size = size;
 
-	buffer->timestamp = motosh_timestamp_ns();
+	if (timestamped) {
+		/* if a timestamp is included in the event buffer,
+		   it is the 3 bytes after the data */
+		get_monotonic_boottime(&ts);
+		buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
+		buffer->timestamp =
+			motosh_time_recover((data[size] << 16) |
+					    (data[size+1] <<  8) |
+					    (data[size+2]),
+					    buffer->timestamp);
+	} else
+		buffer->timestamp = motosh_timestamp_ns();
 
 	ps_motosh->motosh_ms_data_buffer_head = new_head;
 	wake_up(&ps_motosh->motosh_ms_data_wq);

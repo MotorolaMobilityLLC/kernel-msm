@@ -81,7 +81,7 @@ void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 	if (!motosh_misc_data->in_reset_and_init) {
 		/* sending reset to slpc hal */
 		motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET,
-			NULL, 0);
+			NULL, 0, false);
 	}
 }
 
@@ -301,7 +301,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 		ret_err = err;
 
 	/* sending reset to slpc hal */
-	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0);
+	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0, false);
 
 	mutex_locked = mutex_trylock(&motosh_misc_data->lock);
 	motosh_quickpeek_reset_locked(motosh_misc_data);
