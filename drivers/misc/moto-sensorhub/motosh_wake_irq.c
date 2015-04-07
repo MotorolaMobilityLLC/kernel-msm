@@ -59,9 +59,14 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
 	unsigned long irq_status;
-	u32 irq2_status;
-	uint8_t irq3_status;
 	static int spurious_det;
+	u8 queue_length = 0;
+	u8 queue_index = 0;
+	u8 state = 0;
+	bool valid_queue_len;
+	bool pending_log_msg = false;
+	bool pending_reset = false;
+	u8 pending_reset_reason;
 
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_wake_work);
@@ -86,7 +91,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 
 	motosh_wake(ps_motosh);
 
-	/* read interrupt mask register */
+	/* prioritize AoD
+	   [these events operates independent of the wake event queueing] */
 	motosh_cmdbuff[0] = WAKESENSOR_STATUS;
 	if (motosh_misc_data->in_reset_and_init) {
 		/* only apply delay if issue observed before */
@@ -94,133 +100,52 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			msleep(SPURIOUS_INT_DELAY);
 
 		err = motosh_i2c_write_read_no_reset(ps_motosh,
-						     motosh_cmdbuff, 1, 2);
+						     motosh_cmdbuff, 1, 3);
 		if (err < 0) {
 			spurious_det = 1;
-			dev_err(&ps_motosh->client->dev, "Spurious int?, retry\n");
+			dev_err(&ps_motosh->client->dev, "Spurious interrupt? Retry...\n");
 			motosh_reset_and_init(START_RESET);
 			goto EXIT;
 		}
 	} else {
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
 		if (err < 0) {
-			dev_err(&ps_motosh->client->dev, "Reading from motosh failed\n");
+			dev_err(&ps_motosh->client->dev, "Reading from sensorhub failed\n");
 			goto EXIT;
 		}
 	}
 
 	irq_status = (motosh_readbuff[IRQ_WAKE_HI] << 16)
-		| (motosh_readbuff[IRQ_WAKE_MED] << 8)
-		| motosh_readbuff[IRQ_WAKE_LO];
-
-	/* read algorithm interrupt status register */
-	motosh_cmdbuff[0] = ALGO_INT_STATUS;
-	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
-	if (err < 0) {
-		dev_err(&ps_motosh->client->dev, "Reading from motosh failed\n");
-		goto EXIT;
-	}
-	irq2_status = (motosh_readbuff[IRQ_WAKE_HI] << 16) |
-		(motosh_readbuff[IRQ_WAKE_MED] << 8) |
-		motosh_readbuff[IRQ_WAKE_LO];
-
-	/* read generic interrupt register */
-	motosh_cmdbuff[0] = GENERIC_INT_STATUS;
-	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-	if (err < 0) {
-		dev_err(&ps_motosh->client->dev, "Reading from stm failed\n");
-		goto EXIT;
-	}
-	irq3_status = motosh_readbuff[0];
+			| (motosh_readbuff[IRQ_WAKE_MED] << 8)
+			| motosh_readbuff[IRQ_WAKE_LO];
 
 	if (ps_motosh->qw_irq_status) {
 		irq_status |= ps_motosh->qw_irq_status;
 		ps_motosh->qw_irq_status = 0;
 	}
 
+	/* read wake queue length */
+	motosh_cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
+	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
+	if (err < 0) {
+		dev_err(&ps_motosh->client->dev,
+			"Reading wake queue length failed\n");
+		goto EXIT;
+	}
+	queue_length = motosh_readbuff[0];
+
+	dev_dbg(&ps_motosh->client->dev,
+			"wake queue_length: %d\n", queue_length);
+
+	valid_queue_len = ((queue_length > 0) &&
+			   (queue_length <= MOTOSH_MAX_EVENT_QUEUE_SIZE));
+
 	/* Check if we are coming out of normal reset and/or
 	   the part has self-reset */
 	if (irq_status & M_INIT_COMPLETE) {
 		dev_err(&ps_motosh->client->dev,
-			"Sensor Hub reports reset %d", spurious_det);
+			"sensorhub reports reset [%d]", spurious_det);
 		motosh_reset_and_init(COMPLETE_INIT);
-	}
-
-	/* Check for error messages */
-	if (irq_status & M_LOG_MSG) {
-		motosh_cmdbuff[0] = ERROR_STATUS;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
-					    1, ESR_SIZE);
-
-		if (err >= 0) {
-			memcpy(stat_string, motosh_readbuff, ESR_SIZE);
-			stat_string[ESR_SIZE] = 0;
-			dev_err(&ps_motosh->client->dev,
-				"MOTOSH Error: %s\n", stat_string);
-		} else
-			dev_err(&ps_motosh->client->dev,
-				"Failed to read error message %d\n", err);
-	}
-
-	/* Check for a reset request */
-	if (irq_status & M_HUB_RESET) {
-		unsigned char status;
-
-		if (strnstr(stat_string, "modality", ESR_SIZE))
-			status = 0x01;
-		else if (strnstr(stat_string, "Algo", ESR_SIZE))
-			status = 0x02;
-		else if (strnstr(stat_string, "Watchdog", ESR_SIZE))
-			status = 0x03;
-		else
-			status = 0x04;
-
-		motosh_as_data_buffer_write(ps_motosh, DT_RESET, &status, 1, 0);
-
-		motosh_reset_and_init(START_RESET);
-		dev_err(&ps_motosh->client->dev, "MOTOSH requested a reset\n");
-		goto EXIT;
-	}
-
-	/* Check all other status bits */
-	if (irq_status & M_DOCK) {
-		int state;
-
-		dev_err(&ps_motosh->client->dev,
-			"Invalid M_DOCK bit set. irq_status = 0x%06lX\n",
-			irq_status);
-
-		motosh_cmdbuff[0] = DOCK_DATA;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading Dock state failed\n");
-			goto EXIT;
-		}
-		motosh_as_data_buffer_write(ps_motosh, DT_DOCK,
-			motosh_readbuff, 1, 0);
-		state = motosh_readbuff[DOCK_STATE];
-		if (ps_motosh->dsdev.dev != NULL)
-			switch_set_state(&ps_motosh->dsdev, state);
-		if (ps_motosh->edsdev.dev != NULL)
-			switch_set_state(&ps_motosh->edsdev, state);
-
-		dev_dbg(&ps_motosh->client->dev, "Dock status:%d\n", state);
-	}
-	if (irq_status & M_PROXIMITY) {
-		motosh_cmdbuff[0] = PROXIMITY;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading prox from motosh failed\n");
-			goto EXIT;
-		}
-		motosh_as_data_buffer_write(ps_motosh, DT_PROX,
-			motosh_readbuff, 1, 0);
-
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending Proximity distance %d\n",
-			motosh_readbuff[PROX_DISTANCE]);
 	}
 	if (irq_status & M_TOUCH) {
 		if (motosh_display_handle_touch_locked(ps_motosh) < 0)
@@ -228,272 +153,304 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq_status & M_QUICKPEEK) {
 		if (motosh_display_handle_quickpeek_locked(ps_motosh,
-			irq_status == M_QUICKPEEK) < 0)
+			irq_status == M_QUICKPEEK && !valid_queue_len) < 0)
 			goto EXIT;
 	}
-	if (irq_status & M_COVER) {
-		int state;
-		motosh_cmdbuff[0] = COVER_DATA;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading Cover state failed\n");
-			goto EXIT;
-		}
 
-		if (motosh_readbuff[COVER_STATE] == MOTOSH_HALL_NORTH)
-			state = 1;
-		else
-			state = 0;
+	if (!valid_queue_len) {
+		dev_dbg(&ps_motosh->client->dev,
+			"Invalid wake queue_length: %d\n", queue_length);
+		goto EXIT;
+	}
+
+	/* read wake queue */
+	motosh_cmdbuff[0] = WAKE_MSG_QUEUE;
+	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, queue_length);
+	if (err < 0) {
+		dev_err(&ps_motosh->client->dev,
+			"Reading wake queue failed [len: %d]\n", queue_length);
+		goto EXIT;
+	}
+
+	/* process each event from the queue */
+	/* NOTE: the motosh_readbuff should not be modified while the event
+	   queue is being processed */
+	while (queue_index < queue_length) {
+		unsigned char *data;
+		unsigned char message_id = motosh_readbuff[queue_index];
+
+		queue_index += MOTOSH_EVENT_QUEUE_MSG_ID_LEN;
+		data = &motosh_readbuff[queue_index];
+
+		dev_dbg(&ps_motosh->client->dev,
+			"wake parsing event: 0x%02X\n",
+			message_id);
+		switch (message_id) {
+		/* some events (for example, those that hold no data) are
+		   signalled using a WAKESENSOR_STATUS */
+		case WAKESENSOR_STATUS:
+			irq_status = (data[IRQ_WAKE_HI] << 16)
+					| (data[IRQ_WAKE_MED] << 8)
+					| data[IRQ_WAKE_LO];
+			queue_index += 3;
+			data += 3;
+			if (irq_status & M_FLATUP) {
+				motosh_as_data_buffer_write(ps_motosh,
+					DT_FLAT_UP, data, 1, 0, false);
+
+				dev_dbg(&ps_motosh->client->dev, "Sending Flat up %d\n",
+					data[0]);
+				queue_index += 1;
+			} else if (irq_status & M_FLATDOWN) {
+				motosh_as_data_buffer_write(ps_motosh,
+					DT_FLAT_DOWN, data, 1, 0, false);
+
+				dev_dbg(&ps_motosh->client->dev, "Sending Flat down %d\n",
+					data[0]);
+				queue_index += 1;
+			} else if (irq_status & M_LOG_MSG) {
+				pending_log_msg = true;
+			};
+			break;
+		case RESET_REQUEST:
+			pending_reset = true;
+			pending_reset_reason = data[0];
+			queue_index += 1;
+			break;
+		case DOCK_DATA:
+			dev_err(&ps_motosh->client->dev,
+				"Invalid DOCK_DATA event [0x%02X]\n",
+				data[0]);
+
+			motosh_as_data_buffer_write(ps_motosh, DT_DOCK,
+				data, 1, 0, false);
+			state = data[DOCK_STATE];
+			if (ps_motosh->dsdev.dev != NULL)
+				switch_set_state(&ps_motosh->dsdev, state);
+			if (ps_motosh->edsdev.dev != NULL)
+				switch_set_state(&ps_motosh->edsdev, state);
+
+			dev_dbg(&ps_motosh->client->dev, "Dock status:%d\n",
+				state);
+			queue_index += 1;
+			break;
+		case PROXIMITY:
+			motosh_as_data_buffer_write(ps_motosh, DT_PROX,
+				data, 1, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending Proximity distance %d\n",
+				data[PROX_DISTANCE]);
+			queue_index += 1;
+			break;
+		case COVER_DATA:
+			if (data[COVER_STATE] == MOTOSH_HALL_NORTH)
+				state = 1;
+			else
+				state = 0;
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
-		/* notify subscribers of cover state change */
-		mmi_hall_notify(MMI_HALL_FOLIO, state);
+			/* notify subscribers of cover state change */
+			mmi_hall_notify(MMI_HALL_FOLIO, state);
 #endif
 
-		input_report_switch(ps_motosh->input_dev, SW_LID, state);
-		input_sync(ps_motosh->input_dev);
+			input_report_switch(ps_motosh->input_dev, SW_LID,
+					    state);
+			input_sync(ps_motosh->input_dev);
 
-		dev_err(&ps_motosh->client->dev, "Cover status: %d\n", state);
-	}
-	if (irq_status & M_FLATUP) {
-		motosh_cmdbuff[0] = FLAT_DATA;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading flat data from motosh failed\n");
-			goto EXIT;
+			dev_err(&ps_motosh->client->dev, "Cover status: %d\n",
+				state);
+			queue_index += 1;
+			break;
+		case STOWED:
+			motosh_as_data_buffer_write(ps_motosh, DT_STOWED,
+				data, 1, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending Stowed status %d\n",  data[STOWED]);
+			queue_index += 1;
+			break;
+		case CAMERA:
+			motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
+				data, 2, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending Camera: %d\n", STM16_TO_HOST(data,
+				CAMERA_VALUE));
+
+			input_report_key(ps_motosh->input_dev, KEY_CAMERA, 1);
+			input_report_key(ps_motosh->input_dev, KEY_CAMERA, 0);
+			input_sync(ps_motosh->input_dev);
+			dev_dbg(&ps_motosh->client->dev,
+				"Report camkey toggle\n");
+			queue_index += 2;
+			break;
+		case NFC:
+			motosh_as_data_buffer_write(ps_motosh, DT_NFC,
+					data, 1, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending NFC value: %d\n", data[0]);
+			queue_index += 1;
+			break;
+		case SIM:
+			motosh_as_data_buffer_write(ps_motosh, DT_SIM,
+					data, 2, 0, false);
+
+			/* This is one shot sensor */
+			motosh_g_wake_sensor_state &= (~M_SIM);
+
+			dev_dbg(&ps_motosh->client->dev, "Sending SIM Value=%d\n",
+						STM16_TO_HOST(data, SIM_DATA));
+			queue_index += 2;
+			break;
+		case CHOPCHOP:
+			motosh_as_data_buffer_write(ps_motosh, DT_CHOPCHOP,
+							data, 2, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
+					STM16_TO_HOST(data, CHOPCHOP_DATA));
+			queue_index += 2;
+			break;
+		case LIFT:
+			motosh_as_data_buffer_write(ps_motosh, DT_LIFT,
+							data, 12, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev, "Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
+					STM32_TO_HOST(data, LIFT_DISTANCE),
+					STM32_TO_HOST(data, LIFT_ROTATION),
+					STM32_TO_HOST(data, LIFT_GRAV_DIFF));
+			queue_index += 12;
+			break;
+		case MOTION_DATA:
+			if (data[0] & M_MMOVEME) {
+				motosh_ms_data_buffer_write(ps_motosh,
+						DT_MMMOVE, data, 1, false);
+				dev_dbg(&ps_motosh->client->dev,
+					"Sending meaningful movement event\n");
+			} else {
+				motosh_ms_data_buffer_write(ps_motosh,
+						DT_NOMOVE, data, 1, false);
+				dev_dbg(&ps_motosh->client->dev,
+					"Sending no meaningful movement event\n");
+			}
+			queue_index += 1;
+			break;
+		case ALGO_EVT_MODALITY:
+		{
+			u8 algo_transition[8];
+			memcpy(algo_transition, data, 7);
+			algo_transition[ALGO_TYPE] = MOTOSH_IDX_MODALITY;
+			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+				algo_transition, 8, false);
+			dev_dbg(&ps_motosh->client->dev, "Sending modality event\n");
+			queue_index += 7;
 		}
-		motosh_as_data_buffer_write(ps_motosh, DT_FLAT_UP,
-			motosh_readbuff, 1, 0);
-
-		dev_dbg(&ps_motosh->client->dev, "Sending Flat up %d\n",
-			motosh_readbuff[FLAT_UP]);
-	}
-	if (irq_status & M_FLATDOWN) {
-		motosh_cmdbuff[0] = FLAT_DATA;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading flat data from motosh failed\n");
-			goto EXIT;
+			break;
+		case ALGO_EVT_ORIENTATION:
+		{
+			u8 algo_transition[8];
+			memcpy(algo_transition, data, 7);
+			algo_transition[ALGO_TYPE] = MOTOSH_IDX_ORIENTATION;
+			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+				algo_transition, 8, false);
+			dev_dbg(&ps_motosh->client->dev, "Sending orientation event\n");
+			queue_index += 7;
 		}
-		motosh_as_data_buffer_write(ps_motosh, DT_FLAT_DOWN,
-			motosh_readbuff, 1, 0);
-
-		dev_dbg(&ps_motosh->client->dev, "Sending Flat down %d\n",
-			motosh_readbuff[FLAT_DOWN]);
-	}
-	if (irq_status & M_STOWED) {
-		motosh_cmdbuff[0] = STOWED;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading stowed from motosh failed\n");
-			goto EXIT;
+			break;
+		case ALGO_EVT_STOWED:
+		{
+			u8 algo_transition[8];
+			memcpy(algo_transition, data, 7);
+			algo_transition[ALGO_TYPE] = MOTOSH_IDX_STOWED;
+			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+				algo_transition, 8, false);
+			dev_dbg(&ps_motosh->client->dev, "Sending stowed event\n");
+			queue_index += 7;
 		}
-		motosh_as_data_buffer_write(ps_motosh, DT_STOWED,
-			motosh_readbuff, 1, 0);
-
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending Stowed status %d\n", motosh_readbuff[STOWED]);
-	}
-	if (irq_status & M_CAMERA_ACT) {
-		motosh_cmdbuff[0] = CAMERA;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading camera data from stm failed\n");
-			goto EXIT;
+			break;
+		case ALGO_EVT_ACCUM_MODALITY:
+		{
+			u8 algo_transition[8];
+			memcpy(algo_transition, data, 7);
+			algo_transition[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MODALITY;
+			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+				algo_transition, 8, false);
+			dev_dbg(&ps_motosh->client->dev, "Sending accum modality event\n");
+			queue_index += 7;
 		}
-		motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
-			motosh_readbuff, 2, 0);
-
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending Camera: %d\n", STM16_TO_HOST(CAMERA_VALUE));
-
-		input_report_key(ps_motosh->input_dev, KEY_CAMERA, 1);
-		input_report_key(ps_motosh->input_dev, KEY_CAMERA, 0);
-		input_sync(ps_motosh->input_dev);
-		dev_dbg(&ps_motosh->client->dev,
-			"Report camkey toggle\n");
-	}
-	if (irq_status & M_NFC) {
-		motosh_cmdbuff[0] = NFC;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading nfc data from stm failed\n");
-			goto EXIT;
+			break;
+		case ALGO_EVT_ACCUM_MVMT:
+		{
+			u8 algo_transition[8];
+			memcpy(algo_transition, data, 7);
+			algo_transition[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MVMT;
+			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
+				algo_transition, 8, false);
+			dev_dbg(&ps_motosh->client->dev, "Sending accum mvmt event\n");
+			queue_index += 7;
 		}
-		motosh_as_data_buffer_write(ps_motosh, DT_NFC,
-				motosh_readbuff, 1, 0);
-
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending NFC value: %d\n", motosh_readbuff[NFC_VALUE]);
-
-	}
-	if (irq_status & M_SIM) {
-		motosh_cmdbuff[0] = SIM;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
-		if (err < 0) {
+			break;
+		case IR_GESTURE:
+			queue_index += motosh_process_ir_gesture(ps_motosh,
+								 data);
+			break;
+		case GENERIC_INT_STATUS:
 			dev_err(&ps_motosh->client->dev,
-				"Reading sig_motion data from stm failed\n");
+				"Invalid GENERIC_INT_STATUS event [0x%02X]\n",
+				data[0]);
+
+			motosh_ms_data_buffer_write(ps_motosh, DT_GENERIC_INT,
+				data, 1, false);
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending generic interrupt event:%d\n",
+				data[0]);
+			queue_index += 1;
+			break;
+		default:
+			/* ERROR...unknown message
+			   Need to drop the remaining data in this operation. */
+			dev_err(&ps_motosh->client->dev, "ERROR: unknown wake msg: 0x%02X\n",
+				message_id);
+			/* a write to the work queue length causes
+			   it to be reset */
+			motosh_cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
+			motosh_cmdbuff[1] = 0x00;
+			motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 			goto EXIT;
-		}
-		motosh_as_data_buffer_write(ps_motosh, DT_SIM,
-				motosh_readbuff, 2, 0);
-
-		/* This is one shot sensor */
-		motosh_g_wake_sensor_state &= (~M_SIM);
-
-		dev_dbg(&ps_motosh->client->dev, "Sending SIM Value=%d\n",
-					STM16_TO_HOST(SIM_DATA));
+		};
 	}
-	if (irq_status & M_CHOPCHOP) {
-		motosh_cmdbuff[0] = CHOPCHOP;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
-		if (err < 0) {
+
+	/* log messages are stored in a separate register, must read
+	   after queue is processed */
+	if (pending_log_msg) {
+		motosh_cmdbuff[0] = ERROR_STATUS;
+		err = motosh_i2c_write_read(ps_motosh,
+					    motosh_cmdbuff,
+					    1, ESR_SIZE);
+
+		if (err >= 0) {
+			memcpy(stat_string, motosh_readbuff,
+			       ESR_SIZE);
+			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_motosh->client->dev,
-				"Reading chopchop data from stm failed\n");
-			goto EXIT;
-		}
-
-		motosh_as_data_buffer_write(ps_motosh, DT_CHOPCHOP,
-						motosh_readbuff, 2, 0);
-
-		dev_dbg(&ps_motosh->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
-				STM16_TO_HOST(CHOPCHOP_DATA));
-	}
-	if (irq_status & M_LIFT) {
-		motosh_cmdbuff[0] = LIFT;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
-		if (err < 0) {
+				"sensorhub: %s\n",
+				stat_string);
+		} else
 			dev_err(&ps_motosh->client->dev,
-				"Reading lift data from stm failed\n");
-			goto EXIT;
-		}
+				"Failed to read error message %d\n",
+				err);
+	}
 
-		motosh_as_data_buffer_write(ps_motosh, DT_LIFT,
-						motosh_readbuff, 12, 0);
+	/* process a reset request after dumping any last logs */
+	if (pending_reset) {
+		motosh_as_data_buffer_write(ps_motosh, DT_RESET,
+					    &pending_reset_reason,
+					    1, 0, false);
 
-		dev_dbg(&ps_motosh->client->dev, "Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
-				STM32_TO_HOST(LIFT_DISTANCE),
-				STM32_TO_HOST(LIFT_ROTATION),
-				STM32_TO_HOST(LIFT_GRAV_DIFF));
-	}
-	if (irq2_status & M_MMOVEME) {
-		unsigned char status;
-		/* Client recieving action will be upper 2 most significant */
-		/* bits of the least significant byte of status. */
-		status = (irq2_status & MOTOSH_CLIENT_MASK) | M_MMOVEME;
-		motosh_ms_data_buffer_write(ps_motosh, DT_MMMOVE, &status, 1);
-
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending meaningful movement event\n");
-	}
-	if (irq2_status & M_NOMMOVE) {
-		unsigned char status;
-		/* Client recieving action will be upper 2 most significant */
-		/* bits of the least significant byte of status. */
-		status = (irq2_status & MOTOSH_CLIENT_MASK) | M_NOMMOVE;
-		motosh_ms_data_buffer_write(ps_motosh, DT_NOMOVE, &status, 1);
-
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending no meaningful movement event\n");
-	}
-	if (irq2_status & M_ALGO_MODALITY) {
-		motosh_cmdbuff[0] =
-			motosh_algo_info[MOTOSH_IDX_MODALITY].evt_register;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
-			MOTOSH_EVT_SZ_TRANSITION);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading modality event failed\n");
-			goto EXIT;
-		}
-		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_MODALITY;
-		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
-			motosh_readbuff, 8);
-		dev_dbg(&ps_motosh->client->dev, "Sending modality event\n");
-	}
-	if (irq2_status & M_ALGO_ORIENTATION) {
-		motosh_cmdbuff[0] =
-			motosh_algo_info[MOTOSH_IDX_ORIENTATION].evt_register;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
-			MOTOSH_EVT_SZ_TRANSITION);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading orientation event failed\n");
-			goto EXIT;
-		}
-		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_ORIENTATION;
-		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
-			motosh_readbuff, 8);
-		dev_dbg(&ps_motosh->client->dev, "Sending orientation event\n");
-	}
-	if (irq2_status & M_ALGO_STOWED) {
-		motosh_cmdbuff[0] =
-			motosh_algo_info[MOTOSH_IDX_STOWED].evt_register;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
-			MOTOSH_EVT_SZ_TRANSITION);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading stowed event failed\n");
-			goto EXIT;
-		}
-		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_STOWED;
-		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
-			motosh_readbuff, 8);
-		dev_dbg(&ps_motosh->client->dev, "Sending stowed event\n");
-	}
-	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
-		motosh_cmdbuff[0] =
-			motosh_algo_info[MOTOSH_IDX_ACCUM_MODALITY]
-				.evt_register;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
-			MOTOSH_EVT_SZ_ACCUM_STATE);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading accum modality event failed\n");
-			goto EXIT;
-		}
-		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MODALITY;
-		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
-			motosh_readbuff, 8);
-		dev_dbg(&ps_motosh->client->dev, "Sending accum modality event\n");
-	}
-	if (irq2_status & M_ALGO_ACCUM_MVMT) {
-		motosh_cmdbuff[0] =
-			motosh_algo_info[MOTOSH_IDX_ACCUM_MVMT].evt_register;
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1,
-			MOTOSH_EVT_SZ_ACCUM_MVMT);
-		if (err < 0) {
-			dev_err(&ps_motosh->client->dev,
-				"Reading accum mvmt event failed\n");
-			goto EXIT;
-		}
-		motosh_readbuff[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MVMT;
-		motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
-			motosh_readbuff, 8);
-		dev_dbg(&ps_motosh->client->dev, "Sending accum mvmt event\n");
-	}
-	if (irq2_status & M_IR_WAKE_GESTURE) {
-		err = motosh_process_ir_gesture(ps_motosh);
-		if (err < 0)
-			goto EXIT;
-	}
-	if (irq3_status & M_GENERIC_INTRPT) {
-
-		dev_err(&ps_motosh->client->dev,
-			"Invalid M_GENERIC_INTRPT bit set. irq_status = 0x%06lX\n",
-			irq_status);
-
-		/* x (data1) : irq3_status */
-		motosh_ms_data_buffer_write(ps_motosh, DT_GENERIC_INT,
-			&irq3_status, 1);
-		dev_dbg(&ps_motosh->client->dev,
-			"Sending generic interrupt event:%d\n", irq3_status);
+		motosh_reset_and_init(START_RESET);
+		dev_err(&ps_motosh->client->dev, "sensorhub requested a reset\n");
+		goto EXIT;
 	}
 
 EXIT:
