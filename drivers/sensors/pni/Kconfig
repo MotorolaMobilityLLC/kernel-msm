@@ -10,3 +10,10 @@ config SENSORS_EM718X
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called em718x.
+
+config SENSORS_SENTRAL_IIO
+	tristate "SENtral Sensor Hub (IIO)"
+	default n
+	help
+	  This driver supports the SENtral Sensor Hub using IIO
+	  This driver can be built as a module.
