@@ -466,14 +466,6 @@
 		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "ok";
 	};
-
-	gpio@d400 { /* GPIO 21 BAT_LOW_ALARM */
-		qcom,mode = <2>;		/* Digital in-out */
-		qcom,vin-sel = <2>;		/* Voltage value 1.8v */
-		qcom,src-sel = <2>;		/* Function 1 */
-		qcom,master-en = <1>;		/* Enable GPIO */
-		status = "ok";
-	};
 };
 
 &pm8994_mpps {
