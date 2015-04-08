@@ -410,6 +410,7 @@ int mdss_dsi_get_tx_power_mode(struct mdss_panel_data *pdata)
 void mdss_dsi_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl, bool restore)
 {
 	u32 data0;
+	unsigned long flag;
 
 	if (!ctrl) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -438,6 +439,11 @@ void mdss_dsi_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl, bool restore)
 		MIPI_OUTP(ctrl->ctrl_base + 0x0004, data0);
 		wmb();	/* make sure dsi controller enabled again */
 	}
+
+	spin_lock_irqsave(&ctrl->mdp_lock, flag);
+	ctrl->mdp_busy = false;
+	complete_all(&ctrl->mdp_comp);
+	spin_unlock_irqrestore(&ctrl->mdp_lock, flag);
 }
 
 void mdss_dsi_err_intr_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, u32 mask,

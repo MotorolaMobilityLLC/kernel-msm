@@ -150,6 +150,8 @@ struct mdss_panel_recovery {
  * @MDSS_EVENT_DSI_STREAM_SIZE: Event to update DSI controller's stream size
  * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
  * @MDSS_EVENT_ENABLE_HBM:	Enable "High Brightness Mode" feature on panel
+ * @MDSS_EVENT_DSI_RESET_WRITE_PTR: Reset the write pointer coordinates on
+ * 				the panel. Also, need to do a s/w reset.
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -172,6 +174,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 	MDSS_EVENT_ENABLE_TE,
 	MDSS_EVENT_ENABLE_HBM,
+	MDSS_EVENT_DSI_RESET_WRITE_PTR,
 };
 
 struct lcd_panel_info {

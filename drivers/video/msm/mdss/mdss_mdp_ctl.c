@@ -2242,10 +2242,10 @@ int mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl)
 		udelay(50);
 		status = mdss_mdp_ctl_read(ctl, MDSS_MDP_REG_CTL_SW_RESET);
 		status &= 0x01;
-		pr_debug("status=%x\n", status);
+		pr_err("status=%x\n", status);
 		cnt--;
 		if (cnt == 0) {
-			pr_err("timeout\n");
+			pr_err("ctl%d reset timedout\n", ctl->num);
 			return -EAGAIN;
 		}
 	} while (status);
@@ -3093,13 +3093,30 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	ATRACE_END("frame_ready");
 
 	if (!mdata->serialize_wait4pp && ctl->wait_pingpong) {
+		bool recovery_needed = false;
 
 		ATRACE_BEGIN("wait_pingpong");
-		ctl->wait_pingpong(ctl, NULL);
+		ret = ctl->wait_pingpong(ctl, NULL);
+		if (ret)
+			recovery_needed = true;
 
-		if (sctl && sctl->wait_pingpong)
-			sctl->wait_pingpong(sctl, NULL);
+		if (sctl && sctl->wait_pingpong) {
+			ret = sctl->wait_pingpong(sctl, NULL);
+			if (ret)
+				recovery_needed = true;
+		}
 		ATRACE_END("wait_pingpong");
+
+		if (recovery_needed) {
+			mdss_mdp_ctl_reset(ctl);
+			if (sctl)
+				mdss_mdp_ctl_reset(sctl);
+
+			mdss_mdp_ctl_intf_event(ctl,
+				MDSS_EVENT_DSI_RESET_WRITE_PTR, NULL);
+
+			pr_info("pingpong timeout recovery finished\n");
+		}
 
 		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_LEFT);
 		mdss_mdp_mixer_update_pipe_map(ctl, MDSS_MDP_MIXER_MUX_RIGHT);
