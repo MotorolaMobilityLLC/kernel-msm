@@ -11,3 +11,7 @@
  */
 
 #include "msm8926-nemo.dtsi"
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4237_cmd>;
+};

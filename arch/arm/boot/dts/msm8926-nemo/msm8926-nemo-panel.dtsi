@@ -12,6 +12,118 @@
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
+	dsi_lgd_lg4262_cmd: qcom,mdss_dsi_lgd_lg4262_cmd {
+		qcom,mdss-dsi-panel-name = "LG4262 480P OLED command mode dsi panel";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <480>;
+		qcom,mdss-dsi-panel-height = <480>;
+		qcom,mdss-dsi-h-front-porch = <164>;
+		qcom,mdss-dsi-h-back-porch = <140>;
+		qcom,mdss-dsi-h-pulse-width = <8>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <1>;
+		qcom,mdss-dsi-v-front-porch = <6>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-pan-physical-width-dimension = <33>;
+		qcom,mdss-pan-physical-height-dimension = <33>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = <0>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-on-command = [
+					39 01 00 00 00 00 05 2A 00 00 01 DF /* Column Addess Setting */
+					39 01 00 00 00 00 05 2B 00 00 01 DF /* Page Addess Setting */
+					15 01 00 00 00 00 02 53 20 /* Display Control */
+					15 01 00 00 00 00 02 55 00 /* Write Power Save */
+					15 01 00 00 00 00 02 36 00 /* Memory Access Control*/
+					39 01 00 00 00 00 03 51 F2 02 /* DBV Setting */
+					05 01 00 00 00 00 01 11 /* Sleep out */
+					05 01 00 00 78 00 01 35 /* TE On */
+					05 01 00 00 00 00 01 29 /* Display On */
+					];
+		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
+					05 01 00 00 70 00 01 10];
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-idle-on-command = [
+					];
+		qcom,mdss-dsi-idle-on-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-idle-off-command = [
+				];
+		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-panel-reset-command =[
+					05 01 00 00 80 00 01 10
+					15 01 00 00 00 00 02 36 40
+					15 01 00 00 00 00 02 53 20
+					39 01 00 00 00 00 03 51 FE 00
+					05 01 00 00 80 00 01 11
+					05 01 00 00 00 00 01 35
+					05 01 00 00 00 00 01 29
+					];
+		qcom,mdss-dsi-idle-fps = <30>;
+		qcom,mdss-dsi-h-sync-pulse = <1>;
+		qcom,mdss-dsi-traffic-mode = "burst_mode";
+		qcom,mdss-dsi-lane-map = "lane_map_0123";
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-te-pin-select = <1>;
+		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,mdss-dsi-panel-timings = [40 1F 17 00 2F 2D 1C 21 29 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x20>;
+		qcom,mdss-dsi-t-clk-pre = <0x28>;
+		qcom,mdss-dsi-bl-min-level = <0>;
+		qcom,mdss-dsi-bl-max-level = <255>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs_l";
+		qcom,mdss-dsi-reset-sequence = <1 50>;
+		qcom,mdss-brightness-default-level = <208>;
+		qcom,cont-splash-enabled;
+		qcom,ulps-enabled;
+		qcom,partial-update-enabled;
+		qcom,blmap = /bits/ 8 <
+			0 0 0 0 1 1 1 1 1 1                         /* 0-9 */
+			1 7 14 15 16 17 18 19 20 21                 /* 10-19 */
+			22 23 24 25 26 26 27 28 29 30               /* 20-29 */
+			31 32 33 34 35 36 37 38 39 40               /* 30-39 */
+			41 42 43 44 45 46 47 48 49 50               /* 40-49 */
+			51 52 53 54 55 56 57 58 59 60               /* 50-59 */
+			61 62 63 64 65 66 67 68 69 70               /* 60-69 */
+			71 72 73 74 75 76 77 78 79 80               /* 70-79 */
+			81 82 83 84 85 86 87 88 89 90               /* 80-89 */
+			91 92 93 94 95 96 97 98 99 100              /* 90-99 */
+			101 102 103 104 105 106 107 108 109 110     /* 100-109 */
+			111 112 113 114 115 116 117 118 119 120     /* 110-119 */
+			121 122 123 124 125 126 127 128 129 130     /* 120-129 */
+			131 132 133 134 135 136 137 138 139 140     /* 130-139 */
+			141 142 143 144 145 146 147 148 149 150     /* 140-149 */
+			151 152 153 153 154 155 156 157 158 159     /* 150-159 */
+			160 161 162 163 164 166 167 168 169 170     /* 160-169 */
+			171 172 173 174 175 176 177 178 179 180     /* 170-179 */
+			181 182 183 184 185 186 187 188 189 190     /* 180-189 */
+			191 192 193 194 195 196 197 198 199 200     /* 190-199 */
+			201 202 203 204 204 205 206 207 208 209     /* 200-209 */
+			210 211 212 213 214 215 217 218 219 220     /* 210-219 */
+			221 222 223 224 225 226 227 228 229 230     /* 220-229 */
+			231 232 233 234 235 236 237 238 239 240     /* 230-239 */
+			241 242 242 243 244 245 246 247 248 249     /* 240-249 */
+			250 251 252 253 254 255                     /* 250-255 */
+		>;
+	};
+
 	dsi_lgd_lg4237_cmd: qcom,mdss_dsi_lgd_lg4237_cmd {
 		qcom,mdss-dsi-panel-name = "LG4237 320P OLED command mode dsi panel";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
@@ -240,7 +352,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4237_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4262_cmd>;
 	qcom,platform-enable-gpio = <&msmgpio 37 0>;
 	vdd-supply = <&pm8226_l16>;
 
