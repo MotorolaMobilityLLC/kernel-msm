@@ -24,11 +24,13 @@
         };
 
 	i2c@f9924000 { /* BLSP1 QUP2 Sensors */
-		em718x@28 {
-			compatible = "pni,em718x";
+		em7184@28 {
+			compatible = "pni,em7184";
 			reg = <0x28>;
 			interrupt-parent = <&msmgpio>;
 			interrupts = <111 0x4>;
+			pni,gpio-irq = <&msmgpio 111 0x00>;
+			pni,firmware = "em7184.fw";
 		};
 	};
 
