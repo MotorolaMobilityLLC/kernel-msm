@@ -1543,12 +1543,12 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		pr_smb(PR_STATUS, "Not in fast charge, skipping\n");
 		return false;
 	}
-
+#ifdef QCOM_BASE
 	if (get_prop_batt_health(chip) != POWER_SUPPLY_HEALTH_GOOD) {
 		pr_smb(PR_STATUS, "JEITA active, skipping\n");
 		return false;
 	}
-
+#endif
 	if (get_prop_batt_voltage_now(chip) < PARALLEL_MIN_BATT_VOLT_UV) {
 		pr_smb(PR_STATUS, "Battery Voltage below %d, skipping\n",
 		       PARALLEL_MIN_BATT_VOLT_UV);
