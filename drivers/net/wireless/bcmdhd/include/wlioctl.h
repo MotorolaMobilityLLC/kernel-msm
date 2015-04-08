@@ -2982,6 +2982,50 @@ typedef struct {
 	struct ether_addr bssid[1];	/* max ANQPO_MAX_IGNORE_BSSID */
 } wl_anqpo_ignore_bssid_list_t;
 
+#define ANQPO_MAX_PFN_HS        16
+#define ANQPO_MAX_OI_LENGTH     8
+typedef struct
+{
+        uint8 length;
+        uint8 data[ANQPO_MAX_OI_LENGTH];
+} wl_anqpo_oi_t;
+
+#define ANQPO_MAX_OI    16
+typedef struct
+{
+        uint32 numOi;
+        wl_anqpo_oi_t oi[ANQPO_MAX_OI];
+} wl_anqpo_roaming_consortium_t;
+
+#define ANQPO_MAX_REALM_LENGTH  255
+typedef struct
+{
+        uint8 length;
+        uint8 data[ANQPO_MAX_REALM_LENGTH + 1]; /* null terminated */
+} wl_anqpo_realm_data_t;
+
+#define ANQPO_MCC_LENGTH        3
+#define ANQPO_MNC_LENGTH        3
+typedef struct
+{
+        char mcc[ANQPO_MCC_LENGTH + 1];
+        char mnc[ANQPO_MNC_LENGTH + 1];
+} wl_anqpo_plmn_t;
+
+typedef struct {
+        uint32 version;
+        uint32 id;
+        wl_anqpo_plmn_t plmn;
+        wl_anqpo_realm_data_t realm;
+        wl_anqpo_roaming_consortium_t rc;
+} wl_anqpo_pfn_hs_t;
+
+typedef struct {
+        bool is_clear;                          /* set to clear list (not used on GET) */
+        uint16 count;                           /* number of preferred hotspot in list */
+        wl_anqpo_pfn_hs_t hs[];        		/* max ANQPO_MAX_PFN_HS */
+} wl_anqpo_pfn_hs_list_t;
+
 
 struct toe_ol_stats_t {
 	/* Num of tx packets that don't need to be checksummed */

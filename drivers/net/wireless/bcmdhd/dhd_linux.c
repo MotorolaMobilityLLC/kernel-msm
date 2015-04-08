@@ -8056,6 +8056,14 @@ int dhd_dev_set_whitelist_ssid(struct net_device *dev, wl_ssid_whitelist_t *ssid
 	}
 	return err;
 }
+
+void * dhd_dev_process_anqpo_result(struct net_device *dev,
+			const void  *data, uint32 event, int *send_evt_bytes)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	return (dhd_pno_process_anqpo_result(&dhd->pub, data, event, send_evt_bytes));
+}
 #endif /* GSCAN_SUPPORT */
 
 bool dhd_dev_is_legacy_pno_enabled(struct net_device *dev)
