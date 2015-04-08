@@ -1667,6 +1667,8 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+	if (!dump_init(cprm))
+		goto end_coredump;
 
 	offset += sizeof(*elf);				/* Elf header */
 	offset += segs * sizeof(struct elf_phdr);	/* Program headers */
@@ -1775,6 +1777,7 @@ static int elf_fdpic_core_dump(struct coredump_params *cprm)
 	}
 
 end_coredump:
+	dump_finish(cprm);
 	set_fs(fs);
 
 cleanup:
