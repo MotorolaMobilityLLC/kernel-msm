@@ -1045,7 +1045,6 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_mixer *mixer;
 	struct mdss_mdp_vsync_handler *tmp, *handle;
 	int ret;
-	struct mdss_mdp_vsync_handler *tmp, *handle;
 
 	if (session >= MAX_SESSIONS)
 		return 0;
