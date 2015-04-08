@@ -1547,6 +1547,8 @@ EXPORT_SYMBOL(kgsl_pre_hwaccess);
  */
 static int _init(struct kgsl_device *device)
 {
+	/* Suspend the pwrscale if it is currently enabled. */
+	kgsl_pwrscale_sleep(device);
 	kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
 	return 0;
 }
@@ -1593,6 +1595,7 @@ static int _wake(struct kgsl_device *device)
 		kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
 		break;
 	case KGSL_STATE_INIT:
+		kgsl_pwrscale_wake(device);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_ACTIVE);
 		kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
 		break;
