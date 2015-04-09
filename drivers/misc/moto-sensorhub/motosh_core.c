@@ -1402,6 +1402,8 @@ static int motosh_resume(struct device *dev)
 	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
+	ps_motosh->is_suspended = false;
+
 	mutex_lock(&ps_motosh->lock);
 
 	/* During a quickwake interrupts will be set as ignored at the end of
@@ -1411,8 +1413,6 @@ static int motosh_resume(struct device *dev)
 	   the quickwake started (and therefore before quickpeek_work_func
 	   disabled interrupts) we must re-enable interrupts here. */
 	motosh_process_ignored_interrupts_locked(ps_motosh);
-
-	ps_motosh->is_suspended = false;
 
 	if (ps_motosh->pending_wake_work) {
 		queue_work(ps_motosh->irq_work_queue,
@@ -1453,8 +1453,14 @@ static int motosh_suspend(struct device *dev)
 	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
-	mutex_lock(&ps_motosh->lock);
+	/* Stop processing non-wake irqs. Afterwards, no more non-wake
+	 * irq work functions are scheduled. */
 	ps_motosh->is_suspended = true;
+
+	/* Acquire/release this mutex so that we are sure that any in-progress
+	 * irq work function has completed before we allow suspend.
+	 */
+	mutex_lock(&ps_motosh->lock);
 	mutex_unlock(&ps_motosh->lock);
 
 	return 0;

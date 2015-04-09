@@ -103,14 +103,18 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 						     motosh_cmdbuff, 1, 3);
 		if (err < 0) {
 			spurious_det = 1;
-			dev_err(&ps_motosh->client->dev, "Spurious interrupt? Retry...\n");
+			dev_err(&ps_motosh->client->dev,
+				"Spurious interrupt? Retry... [err: %d]\n",
+				err);
 			motosh_reset_and_init(START_RESET);
 			goto EXIT;
 		}
 	} else {
 		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
 		if (err < 0) {
-			dev_err(&ps_motosh->client->dev, "Reading from sensorhub failed\n");
+			dev_err(&ps_motosh->client->dev,
+				"Reading wake sensor status failed [err: %d]\n",
+				err);
 			goto EXIT;
 		}
 	}
@@ -129,7 +133,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
-			"Reading wake queue length failed\n");
+			"Reading wake queue length failed [err: %d]\n", err);
 		goto EXIT;
 	}
 	queue_length = motosh_readbuff[0];
@@ -168,7 +172,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, queue_length);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
-			"Reading wake queue failed [len: %d]\n", queue_length);
+			"Reading wake queue failed [len: %d] [err: %d]\n",
+			queue_length,
+			err);
 		goto EXIT;
 	}
 
@@ -438,7 +444,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				stat_string);
 		} else
 			dev_err(&ps_motosh->client->dev,
-				"Failed to read error message %d\n",
+				"Failed to read error message [err: %d]\n",
 				err);
 	}
 
