@@ -792,6 +792,11 @@ static struct partial_resume smd_pr = {
 	.partial_resume = smd_partial_resume,
 };
 
+static struct partial_resume mpm_pr = {
+	.irq = 203,
+	.partial_resume = smd_partial_resume,
+};
+
 static struct partial_resume wlan_pr = {
 	.partial_resume = bcm_wifi_partial_resume,
 };
@@ -806,6 +811,7 @@ int __init wlan_partial_resume_init(void)
 	rc = register_partial_resume(&wlan_pr);
 	pr_debug("%s: after registering %pF: %d\n", __func__,
 		 wlan_pr.partial_resume, rc);
+	rc = register_partial_resume(&mpm_pr);
 	rc = register_partial_resume(&smd_pr);
 	pr_debug("%s: after registering %pF: %d\n", __func__,
 		 smd_pr.partial_resume, rc);
