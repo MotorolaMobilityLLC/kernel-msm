@@ -441,6 +441,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 
 void mdss_dsi_panel_low_fps_mode(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
 int mdss_dsi_panel_get_height(void);
+bool mdss_dsi_panel_need_flip_ud(void);
 
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format);

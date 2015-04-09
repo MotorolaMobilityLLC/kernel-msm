@@ -1152,9 +1152,7 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	u32 tmp_src_xy, tmp_src_size;
 	int ret = 0;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
-#ifdef CONFIG_FB_MSM_MDSS_FLIP_UD
 	int panel_height;
-#endif
 	struct mdss_rect sci, dst, src;
 	bool rotation = false;
 
@@ -1194,10 +1192,10 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 		pr_debug("Image decimation h=%d v=%d\n",
 				pipe->horz_deci, pipe->vert_deci);
 
-#ifdef CONFIG_FB_MSM_MDSS_FLIP_UD
-	panel_height = mdss_dsi_panel_get_height();
-	pipe->dst.y = (panel_height) - (pipe->dst.y + pipe->dst.h);
-#endif
+	if (mdss_dsi_panel_need_flip_ud()) {
+		panel_height = mdss_dsi_panel_get_height();
+		pipe->dst.y = (panel_height) - (pipe->dst.y + pipe->dst.h);
+	}
 
 	sci = pipe->mixer_left->ctl->roi;
 	dst = pipe->dst;
@@ -1299,9 +1297,8 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 	if (pipe->flags & MDP_FLIP_UD)
 		opmode |= MDSS_MDP_OP_FLIP_UD;
 
-#ifdef CONFIG_FB_MSM_MDSS_FLIP_UD
-	opmode ^= MDSS_MDP_OP_FLIP_UD;
-#endif
+	if (mdss_dsi_panel_need_flip_ud())
+		opmode ^= MDSS_MDP_OP_FLIP_UD;
 
 	pr_debug("pnum=%d format=%d opmode=%x\n", pipe->num, fmt->format,
 			opmode);

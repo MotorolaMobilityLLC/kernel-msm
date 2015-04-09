@@ -50,9 +50,3 @@ config FB_MSM_MDSS_PANEL_ALWAYS_ON
 	default n
 	---help---
 	Keep the display panel always on even when device goes to suspend.
-
-config FB_MSM_MDSS_FLIP_UD
-	depends on FB_MSM_MDSS
-	bool "MDP dsipay flip UD"
-	---help---
-	The MDP force to flip the UD in MDP PIPE.

@@ -27,6 +27,7 @@
 #define DT_CMD_HDR 6
 
 static int mdss_panel_height = 480;
+static bool mdss_flip_ud = false;
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
@@ -1290,6 +1291,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->yres = (!rc ? tmp : 480);
 	mdss_panel_height = pinfo->yres;
 
+	mdss_flip_ud = of_property_read_bool(np, "qcom,mdss-flip-ud");
+
 	rc = of_property_read_u32(np,
 		"qcom,mdss-pan-physical-width-dimension", &tmp);
 	pinfo->physical_width = (!rc ? tmp : 0);
@@ -1706,4 +1709,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 int mdss_dsi_panel_get_height(void)
 {
 	return mdss_panel_height;
+}
+
+bool mdss_dsi_panel_need_flip_ud(void)
+{
+	return mdss_flip_ud;
 }
