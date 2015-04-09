@@ -45,7 +45,7 @@ irqreturn_t motosh_isr(int irq, void *dev)
 {
 	struct motosh_data *ps_motosh = dev;
 
-	if (motosh_irq_disable)
+	if (motosh_irq_disable || ps_motosh->is_suspended)
 		return IRQ_HANDLED;
 
 	/* safety check that we don't excessively queue, sensor hub
@@ -73,14 +73,15 @@ void motosh_irq_work_func(struct work_struct *work)
 		num_irq--;
 
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_work_func\n");
+
+	if (ps_motosh->is_suspended)
+		return;
+
 	mutex_lock(&ps_motosh->lock);
 
 	motosh_wake(ps_motosh);
 
 	if (ps_motosh->mode <= BOOTMODE)
-		goto EXIT;
-
-	if (ps_motosh->is_suspended)
 		goto EXIT;
 
 	if (motosh_misc_data->in_reset_and_init)
@@ -91,7 +92,7 @@ void motosh_irq_work_func(struct work_struct *work)
 	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
-			"Reading nwake queue length failed\n");
+			"Reading nwake queue length failed [err: %d]\n", err);
 		goto EXIT;
 	}
 	queue_length = motosh_readbuff[0];
@@ -101,7 +102,8 @@ void motosh_irq_work_func(struct work_struct *work)
 
 	if (queue_length == 0 || queue_length > MOTOSH_MAX_EVENT_QUEUE_SIZE) {
 		dev_dbg(&ps_motosh->client->dev,
-			"Invalid nwake queue_length: %d\n", queue_length);
+			"Invalid nwake queue_length: %d\n",
+			queue_length);
 		goto EXIT;
 	}
 
@@ -110,7 +112,9 @@ void motosh_irq_work_func(struct work_struct *work)
 	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, queue_length);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
-			"Reading nwake queue failed [len: %d]\n", queue_length);
+			"Reading nwake queue failed [len: %d] [err: %d]\n",
+			queue_length,
+			err);
 		goto EXIT;
 	}
 
