@@ -90,6 +90,7 @@
 #define STEP_COUNTER_UPDATE_RATE        0x36
 
 #define INTERRUPT_MASK                  0x37
+#define FW_FLASH_CRC                    0x38
 #define WAKESENSOR_STATUS               0x39
 #define INTERRUPT_STATUS                0x3A
 
