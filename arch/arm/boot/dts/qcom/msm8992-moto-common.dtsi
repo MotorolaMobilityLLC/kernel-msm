@@ -1676,6 +1676,10 @@
 
 &pm8994_l22 {
 	regulator-always-on;
+	qcom,init-current = <100>;
+	qcom,system-load = <100000>;
+	qcom,init-ldo-mode = <1>;
+	qcom,always-send-current;
 };
 
 &pm8994_l25 {
