@@ -1754,7 +1754,6 @@ static int sentral_suspend(struct device *dev)
 	struct sentral_device *sentral = dev_get_drvdata(dev);
 	int rc = 0;
 
-	mutex_lock(&sentral->lock);
 	dev_info(dev, "entered suspend\n");
 
 	if (device_may_wakeup(dev))
@@ -1773,7 +1772,6 @@ static int sentral_resume(struct device *dev)
 	if (device_may_wakeup(dev))
 		disable_irq_wake(sentral->irq);
 
-	mutex_unlock(&sentral->lock);
 	return rc;
 }
 
