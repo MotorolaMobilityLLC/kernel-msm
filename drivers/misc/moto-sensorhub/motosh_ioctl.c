@@ -123,6 +123,29 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EBUSY;
 		}
 		break;
+
+	case MOTOSH_IOCTL_GET_FLASH_CRC:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_FLASH_CRC");
+
+		if (ps_motosh->mode <= BOOTMODE) {
+			dev_err(&ps_motosh->client->dev,
+				"Tried to read flash CRC in boot mode\n");
+			err = -EIO;
+			break;
+		}
+
+		motosh_cmdbuff[0] = FW_FLASH_CRC;
+		err = motosh_i2c_write_read_no_reset(ps_motosh,
+				motosh_cmdbuff, 1, 4);
+		if (err >= 0) {
+			if (copy_to_user(argp, motosh_readbuff, 4))
+				err = -EFAULT;
+			else
+				err = 0;
+		}
+
+		break;
+
 	case MOTOSH_IOCTL_GET_BOOTED:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_BOOTED");
 		byte = motosh_g_booted;
