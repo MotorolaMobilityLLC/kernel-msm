@@ -350,53 +350,23 @@
 
 &soc {
 	i2c@f9925000 {
-		max17050@36 {
-			compatible = "maxim,max17050";
-			reg = <0x36>;
+		max17048@36 {
+			compatible = "maxim,max17048";
+			status = "okay";
 			interrupt-parent = <&msmgpio>;
-			interrupts = <31 2>;
-
-			maxim,rsns-microohm = <10000>;
-			maxim,ext_batt_psy;
-			maxim,full-soc = <100>;
-			maxim,empty-soc = <0>;
-
-			maxim,model = [A0 00 AE 30 B6 E0 B7 90
-					B9 30 BB 10 BC 50 BD 60
-					BE 70 C0 40 C2 90 C5 30
-					C7 D0 CC D0 D2 90 D8 90
-					00 70 03 70 0D E0 10 00
-					0E 30 10 70 19 00 19 00
-					10 50 0D C0 08 F0 08 90
-					08 A0 06 F0 06 F0 06 F0
-					01 00 01 00 01 00 01 00
-					01 00 01 00 01 00 01 00
-					01 00 01 00 01 00 01 00
-					01 00 01 00 01 00 01 00];
-
-			maxim,relaxcfg = <0x506B>;
-			maxim,config = <0x2100>;
-			maxim,filtercfg = <0x87A4>;
-			maxim,learncfg = <0x2606>;
-			maxim,misccfg = <0x0870>;
-			maxim,fullsocthr = <0x5F00>;
-			maxim,rcomp0 = <0x004E>;
-			maxim,tempco = <0x2C3C>;
-			maxim,tempnom = <0x1400>;
-			maxim,tgain = <0xE932>;
-			maxim,toff = <0x2381>;
-			maxim,ichgterm = <0x00C0>;
-			maxim,vempty = <0xA2DA>;
-			maxim,qrtable00 = <0x2004>;
-			maxim,qrtable10 = <0x1084>;
-			maxim,qrtable20 = <0x0508>;
-			maxim,qrtable30 = <0x0508>;
-			maxim,capacity = <0x0316>;
-			maxim,vf_fullcap = <0x0316>;
-			maxim,temperature = <0x1400>;
-			maxim,dpacc = <0x0C80>;
-			maxim,param-version = <0x1>;
-			status = "disabled";
+			interrupts = <0x6D 0x0>;
+			reg = <0x36>;
+			max17048,alert_gpio = <&msmgpio 0x6D 0x00>;
+			max17048,rcomp = <77>;
+			max17048,rcomp-co-hot = <700>;
+			max17048,rcomp-co-cold = <5225>;
+			max17048,alert_threshold = <2>;
+			max17048,max-mvolt = <4350>;
+			max17048,min-mvolt = <3200>;
+			max17048,full-soc = <970>;
+			max17048,empty-soc = <10>;
+			max17048,batt-tech = <2>;
+			max17048,fcc-mah = <2300>;
 		};
 		bq27421@55 {
 			compatible = "ti,bq27421";
@@ -404,7 +374,7 @@
 			interrupt-parent = <&msmgpio>;
 			interrupts = <109 2>;
 			ti,ext_batt_psy;
-			status = "okay";
+			status = "disabled";
 		};
 	};
 

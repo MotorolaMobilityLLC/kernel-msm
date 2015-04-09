@@ -12,6 +12,14 @@
 
 #include "msm8926-nemo.dtsi"
 
+&soc {
+	i2c@f9925000 {
+		bq27421@55 {
+			status = "okay";
+		};
+	};
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4237_cmd>;
 };
