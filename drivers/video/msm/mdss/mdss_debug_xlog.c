@@ -198,8 +198,10 @@ void mdss_xlog_tout_handler(const char *name, ...)
 	}
 	va_end(args);
 
-	if (cnt < MDSS_MAX_DUMPS)
+	if (cnt < MDSS_MAX_DUMPS) {
+		mdss_dump_debug_bus(true);
 		cnt++;
+	}
 
 	MDSS_XLOG(0xffff, 0xffff, 0xffff, 0xffff, 0xffff);
 	mdss_xlog_dump();

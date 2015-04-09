@@ -28,20 +28,23 @@
 #include "mdss_debug.h"
 
 #define DEFAULT_BASE_REG_CNT 0x100
-#define GROUP_BYTES 4
 #define ROW_BYTES 16
+#define GROUP_BYTES 4
 #define MAX_VSYNC_COUNT 0xFFFFFFF
 
 struct mdss_debug_dump_info {
 	char name[32];
 	char *dump_addr;
 	u32 len;
+	u8 row_bytes;
+	u8 grp_bytes;
 	struct mdss_debug_dump_info *next;
 };
 
 static struct mdss_debug_dump_info *reg_dump_info;
 static u32 reg_dump_lines;
 static u32 reg_dump_bases;
+static u32 dbg_bus_dump_lines;
 static DEFINE_MUTEX(reg_dump_info_mutex);
 
 static int mdss_debug_base_open(struct inode *inode, struct file *file)
@@ -383,7 +386,8 @@ static ssize_t mdss_debug_reg_dump_read(struct file *file,
 
 		mutex_lock(&reg_dump_info_mutex);
 
-		reg_dump_buf_size = (reg_dump_lines + reg_dump_bases) * 64;
+		reg_dump_buf_size = (reg_dump_lines + reg_dump_bases +
+				     dbg_bus_dump_lines) * 64;
 
 		dbg_ihandle = ion_alloc(dbg_iclient, reg_dump_buf_size, SZ_4K,
 				ION_HEAP(ION_SYSTEM_HEAP_ID), 0);
@@ -405,19 +409,29 @@ static ssize_t mdss_debug_reg_dump_read(struct file *file,
 
 		tot = 0;
 		for (;iterator;) {
+			int row_bytes = iterator->row_bytes;
+			int grp_bytes = iterator->grp_bytes;
+
 			ptr = iterator->dump_addr;
 			len = snprintf(reg_dump_buf + tot, 64,
 				"******** %s DUMP ********\n", iterator->name);
 			tot += len;
-			for (cnt = iterator->len; cnt > 0; cnt -= ROW_BYTES) {
-				hex_dump_to_buffer(ptr, min(cnt, ROW_BYTES),
-						ROW_BYTES, GROUP_BYTES, dump_buf,
-						sizeof(dump_buf), false);
-				len = scnprintf(reg_dump_buf + tot,
-					reg_dump_buf_size - tot, "0x%08x: %s\n",
-					(unsigned int)ptr, dump_buf);
+			for (cnt = iterator->len; cnt > 0; cnt -= row_bytes) {
 
-				ptr += ROW_BYTES;
+				hex_dump_to_buffer(ptr, min(cnt, row_bytes),
+					row_bytes, grp_bytes, dump_buf,
+					sizeof(dump_buf), false);
+
+				if (row_bytes == 32)
+					len = scnprintf(reg_dump_buf + tot,
+						reg_dump_buf_size - tot, "%s\n",
+						dump_buf);
+				else
+					len = scnprintf(reg_dump_buf + tot,
+						reg_dump_buf_size - tot, "0x%08x: %s\n",
+						(unsigned int)ptr, dump_buf);
+
+				ptr += row_bytes;
 				tot += len;
 				if (tot >= reg_dump_buf_size)
 					break;
@@ -694,6 +708,8 @@ void mdss_dump_reg(const char *name, char __iomem *base, int len, bool dump_in_m
 		strlcpy(dump_info->name, name, sizeof(dump_info->name));
 		dump_info->dump_addr = (char *)dump_addr;
 		dump_info->len = len * 16;
+		dump_info->row_bytes = ROW_BYTES;
+		dump_info->grp_bytes = GROUP_BYTES;
 
 		reg_dump_lines += len;
 		reg_dump_bases++;
@@ -728,6 +744,213 @@ void mdss_dump_reg(const char *name, char __iomem *base, int len, bool dump_in_m
 		}
 
 		addr += 16;
+	}
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+}
+
+#define MAX_DBG_BUS_TEST_POINTS 4
+enum mdss_debug_bus_type {
+	MDSS_UP_DBG_BUS,
+	MDSS_LP_DBG_BUS,
+	MDSS_MAX_DBG_BUS,
+};
+
+struct mdss_debug_bus_data {
+	u8 bus_type;
+	u8 block_id;
+	/* 0 = don't collect, 1 = collect */
+	u32 test_point[MAX_DBG_BUS_TEST_POINTS];
+};
+
+static struct mdss_debug_bus_data dbg_bus_list[] = {
+	{MDSS_UP_DBG_BUS,   4, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  24, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  42, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  88, {1, 1, 0, 0}},
+
+	{MDSS_UP_DBG_BUS,  12, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  34, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  52, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  96, {1, 1, 0, 0}},
+
+	{MDSS_UP_DBG_BUS,   5, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  25, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  43, {1, 1, 0, 0}},
+	{MDSS_UP_DBG_BUS,  89, {1, 1, 0, 0}},
+
+	{MDSS_UP_DBG_BUS,   6, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  26, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  44, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  90, {1, 0, 0, 0}},
+
+	{MDSS_UP_DBG_BUS,   7, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  27, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  45, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  91, {1, 1, 1, 0}},
+
+	{MDSS_UP_DBG_BUS,  13, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  35, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  53, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  97, {1, 1, 1, 0}},
+
+	{MDSS_UP_DBG_BUS,  58, {1, 1, 1, 0}},
+	{MDSS_UP_DBG_BUS,  65, {1, 1, 1, 0}},
+
+	{MDSS_LP_DBG_BUS,  14, {1, 1, 1, 0}},
+	{MDSS_LP_DBG_BUS,  20, {1, 1, 1, 0}},
+	{MDSS_LP_DBG_BUS,  26, {1, 1, 1, 0}},
+	{MDSS_LP_DBG_BUS,   4, {1, 1, 1, 0}},
+
+	{MDSS_LP_DBG_BUS,  18, {0, 1, 0, 0}},
+	{MDSS_LP_DBG_BUS,  24, {0, 1, 0, 0}},
+	{MDSS_LP_DBG_BUS,  30, {0, 1, 0, 0}},
+	{MDSS_LP_DBG_BUS,   8, {0, 1, 0, 0}},
+
+	{MDSS_LP_DBG_BUS,  31, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  33, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  35, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  43, {1, 0, 0, 0}},
+
+	{MDSS_LP_DBG_BUS,  32, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  34, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  36, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  42, {1, 0, 0, 0}},
+
+	{MDSS_UP_DBG_BUS,   0, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,   8, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  20, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  30, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  38, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  48, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  54, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  61, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  84, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS,  92, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS, 111, {0, 0, 0, 1}},
+	{MDSS_UP_DBG_BUS, 118, {0, 0, 0, 1}},
+
+	{MDSS_UP_DBG_BUS,  29, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  37, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  47, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  60, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS,  67, {1, 0, 0, 0}},
+	{MDSS_UP_DBG_BUS, 107, {1, 0, 0, 0}},
+
+	{MDSS_LP_DBG_BUS,  63, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  64, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  65, {1, 0, 0, 0}},
+	{MDSS_LP_DBG_BUS,  75, {1, 0, 0, 0}},
+};
+
+void mdss_dump_debug_bus(bool dump_in_memory)
+{
+	u32 *dump_addr;
+	u32 dump_cnt = 0;
+	int i, j;
+	int list_items = sizeof(dbg_bus_list)/sizeof(struct mdss_debug_bus_data);
+	int size = list_items * ALIGN(sizeof(struct mdss_debug_bus_data), 32);
+	struct mdss_data_type *mdata = mdss_res;
+
+	if (!mdata || !mdata->mdp_base)
+		return;
+
+	if (dump_in_memory) {
+		struct mdss_debug_dump_info *dump_info =
+			kzalloc(sizeof(struct mdss_debug_dump_info), GFP_KERNEL);
+		if (!dump_info) {
+			pr_err("failed to allocate memory for reg_dump_info\n");
+			return;
+		}
+
+		/* 16Byte for x0 + x4 +x8 +xc */
+		dump_addr = kzalloc(size, GFP_KERNEL);
+		if (!dump_addr) {
+			pr_err("failed to allocate register dump memory\n");
+			return;
+		}
+
+		mutex_lock(&reg_dump_info_mutex);
+
+		strlcpy(dump_info->name, "debug bus", sizeof(dump_info->name));
+		dump_info->dump_addr = (char *)dump_addr;
+		dump_info->len = size;
+		dump_info->row_bytes = 32;
+		dump_info->grp_bytes = 4;
+
+		dbg_bus_dump_lines += list_items;
+		if (!reg_dump_info) {
+			reg_dump_info = dump_info;
+		} else {
+			struct mdss_debug_dump_info *iterator = reg_dump_info;
+
+			for (;iterator && iterator->next;)
+				iterator = iterator->next;
+			iterator->next = dump_info;
+		}
+		pr_info("debug bus dump start_address:%p end_address:%p\n",
+			dump_addr, dump_addr + dump_info->len);
+
+		mutex_unlock(&reg_dump_info_mutex);
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+	pr_debug("number of dbg bus items %d\n", list_items);
+	for (i = 0; i < list_items; i++) {
+		u32 tp_val[MAX_DBG_BUS_TEST_POINTS];
+		u32 ctrl_reg_offset, status_reg_offset;
+		struct mdss_debug_bus_data *item = &dbg_bus_list[i];
+
+		/* turn off all debugbus first */
+		writel_relaxed(0, mdata->mdp_base + MDSS_MDP_SMP_DEBUGBUS_CTRL);
+		writel_relaxed(0, mdata->mdp_base + MDSS_MDP_UP_DEBUGBUS_CTRL);
+		writel_relaxed(0, mdata->mdp_base + MDSS_MDP_LP_DEBUGBUS_CTRL);
+
+		if (item->bus_type == MDSS_UP_DBG_BUS) {
+			ctrl_reg_offset = MDSS_MDP_UP_DEBUGBUS_CTRL;
+			status_reg_offset = MDSS_MDP_UP_DEBUGBUS_STATUS;
+		} else if (item->bus_type == MDSS_LP_DBG_BUS) {
+			ctrl_reg_offset = MDSS_MDP_LP_DEBUGBUS_CTRL;
+			status_reg_offset = MDSS_MDP_LP_DEBUGBUS_STATUS;
+		} else {
+			pr_err("unsupported debug bus type %d\n", i);
+			continue;
+		}
+
+		for (j = 0; j < MAX_DBG_BUS_TEST_POINTS; j++) {
+			u32 ctrl_val, tg_sel = j;
+			/* skip if tp read is not needed */
+			if (item->test_point[j] == 0) {
+				tp_val[j] = 0xFFFFFFFF;
+				continue;
+			}
+
+			if (j == 2)
+				tg_sel = 3;
+			else if (j == 3)
+				tg_sel = 6;
+
+			ctrl_val = 1 | (tg_sel << 1) | (item->block_id << 4);
+			writel_relaxed(ctrl_val,
+				mdata->mdss_base + ctrl_reg_offset);
+			tp_val[j] = readl_relaxed(mdata->mdss_base + status_reg_offset);
+			pr_debug("ctrl: off=0x%x val=0x%x status:off=0x%x val=0x%x\n",
+				ctrl_reg_offset, ctrl_val,
+				status_reg_offset, tp_val[j]);
+		}
+		if (!dump_in_memory) {
+			pr_info("dbg_bus_type:%d: block_id:%d tp0:0x%08x tp1:0x%08x tp3:0x%08x tp6:0x%08x\n",
+				i, item->block_id,
+				tp_val[0], tp_val[1], tp_val[2], tp_val[3]);
+		} else {
+			dump_addr[dump_cnt++] = item->bus_type;
+			dump_addr[dump_cnt++] = item->block_id;
+
+			for (j = 0; j < MAX_DBG_BUS_TEST_POINTS; j++)
+				dump_addr[dump_cnt++] = tp_val[j];
+
+			dump_addr[dump_cnt++] = 0xFFFFFFFF;
+			dump_addr[dump_cnt++] = 0xFFFFFFFF;
+		}
 	}
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 }
