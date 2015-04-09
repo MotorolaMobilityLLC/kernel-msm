@@ -1592,10 +1592,13 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 	u16 val;
 	u16 tries = 0;
 
-	mutex_lock(&tfa9890->dsp_init_lock);
 	if (mute) {
 		cancel_delayed_work_sync(&tfa9890->mode_work);
 		cancel_delayed_work_sync(&tfa9890->delay_work);
+	}
+
+	mutex_lock(&tfa9890->dsp_init_lock);
+	if (mute) {
 		tfa9890_set_mute(codec, TFA9890_AMP_MUTE);
 		do {
 			/* need to wait for amp to stop switching, to minimize
