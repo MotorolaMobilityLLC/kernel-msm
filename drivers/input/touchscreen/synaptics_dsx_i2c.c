@@ -4103,6 +4103,11 @@ static int synaptics_dsx_free_modes(struct synaptics_rmi4_data *data)
 			mode = data->default_mode;
 			break;
 		case 1:
+			/* If alt mode was not present, and set to default
+			 * mode, don't double free it.
+			 */
+			if (data->default_mode == data->alternate_mode)
+				continue;
 			mode = data->alternate_mode;
 			break;
 		}
