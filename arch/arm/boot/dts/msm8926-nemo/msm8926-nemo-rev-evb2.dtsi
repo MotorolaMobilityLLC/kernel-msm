@@ -11,3 +11,7 @@
  */
 
 #include "msm8926-nemo.dtsi"
+
+&dsi_lgd_lg4262_cmd {
+	/delete-property/ qcom,mdss-dsi-bl-pmic-control-type;
+};
