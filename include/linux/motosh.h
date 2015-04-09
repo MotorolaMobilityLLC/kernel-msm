@@ -467,15 +467,27 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 int motosh_ms_data_buffer_read(struct motosh_data *ps_motosh,
 	struct motosh_moto_sensor_data *buff);
 
+/* motosh_i2c_write_read_no_reset()
+ */
 int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int writelen, int readlen);
+/* motosh_i2c_read_no_reset()
+ */
 int motosh_i2c_read_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int len);
+/* motosh_i2c_write_no_reset()
+ */
 int motosh_i2c_write_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int len);
+/* motosh_i2c_write_read()
+ */
 int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 	int writelen, int readlen);
+/* motosh_i2c_read()
+ */
 int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len);
+/* motosh_i2c_write()
+ */
 int motosh_i2c_write(struct motosh_data *ps_motosh, u8 *buf, int len);
 int motosh_enable(struct motosh_data *ps_motosh);
 
