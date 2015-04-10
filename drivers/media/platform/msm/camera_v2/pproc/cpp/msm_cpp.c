@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, 2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1695,6 +1695,11 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr)
 {
 	int ret;
+	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
+		pr_err("%s: Wrong ioctl_ptr %p / len %zu\n", __func__,
+			ioctl_ptr, ioctl_ptr->len);
+		return -EINVAL;
+	}
 
 	/* For compat task, source ptr is in kernel space */
 	if (is_compat_task()) {
@@ -1713,6 +1718,12 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr)
 {
 	int ret;
+
+	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
+		pr_err("%s: Wrong ioctl_ptr %p / len %zu\n", __func__,
+			ioctl_ptr, ioctl_ptr->len);
+		return -EINVAL;
+	}
 
 	ret = copy_from_user(dst_ptr,
 		(void __user *)ioctl_ptr->ioctl_ptr, ioctl_ptr->len);
@@ -2046,6 +2057,10 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_pproc_queue_buf_info queue_buf_info;
 		CPP_DBG("VIDIOC_MSM_CPP_QUEUE_BUF\n");
 
+		if (ioctl_ptr->len != sizeof(struct msm_pproc_queue_buf_info)) {
+			pr_err("%s: Not valid ioctl_ptr->len\n", __func__);
+			return -EINVAL;
+		}
 		rc = msm_cpp_copy_from_ioctl_ptr(&queue_buf_info, ioctl_ptr);
 		if (rc) {
 			ERR_COPY_FROM_USER();
