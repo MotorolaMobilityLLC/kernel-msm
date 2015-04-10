@@ -19,6 +19,7 @@
 
 #include "mdss_dsi.h"
 #include "mdss_edp.h"
+#include "mdss_debug.h"
 
 #define SW_RESET BIT(2)
 #define SW_RESET_PLL BIT(0)
@@ -1055,6 +1056,8 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		pr_err("%s: Invalid panel data\n", __func__);
 		return -EINVAL;
 	}
+
+	MDSS_XLOG(enable, pdata->panel_info.panel_power_state, ctrl->core_power, ctrl->mmss_clamp, ctrl->ulps);
 
 	if (enable) {
 		if (pdata->panel_info.panel_power_state == MDSS_PANEL_POWER_LP1)

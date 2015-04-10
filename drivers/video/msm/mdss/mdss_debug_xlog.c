@@ -21,7 +21,7 @@
 #include "mdss_mdp.h"
 #include "mdss_debug.h"
 
-#define MDSS_XLOG_ENTRY	256
+#define MDSS_XLOG_ENTRY	512
 #define MDSS_XLOG_MAX_DATA 6
 #define MDSS_XLOG_BUF_MAX 512
 

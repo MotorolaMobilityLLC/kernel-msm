@@ -552,6 +552,7 @@ int mdss_mdp_irq_enable(u32 intr_type, u32 intf_num)
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	irq = mdss_mdp_irq_mask(intr_type, intf_num);
+	MDSS_XLOG(intr_type, irq, mdata->mdp_irq_mask);
 
 	spin_lock_irqsave(&mdp_lock, irq_flags);
 	if (mdata->mdp_irq_mask & irq) {
@@ -606,6 +607,8 @@ void mdss_mdp_irq_disable(u32 intr_type, u32 intf_num)
 
 	irq = mdss_mdp_irq_mask(intr_type, intf_num);
 
+	MDSS_XLOG(intr_type, irq, mdata->mdp_irq_mask);
+
 	spin_lock_irqsave(&mdp_lock, irq_flags);
 	if (!(mdata->mdp_irq_mask & irq)) {
 		pr_warn("MDSS MDP IRQ-%x is NOT set, mask=%x\n",
@@ -658,6 +661,7 @@ void mdss_mdp_irq_disable_nosync(u32 intr_type, u32 intf_num)
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	irq = mdss_mdp_irq_mask(intr_type, intf_num);
+	MDSS_XLOG(intr_type, irq, mdata->mdp_irq_mask);
 
 	if (!(mdata->mdp_irq_mask & irq)) {
 		pr_warn("MDSS MDP IRQ-%x is NOT set, mask=%x\n",
@@ -882,7 +886,8 @@ void mdss_mdp_clk_ctrl(int enable)
 		}
 	}
 
-	MDSS_XLOG(mdp_clk_cnt, changed, enable, current->pid);
+	if (changed)
+		MDSS_XLOG(mdp_clk_cnt, changed, enable, current->pid);
 	pr_debug("%s: clk_cnt=%d changed=%d enable=%d\n",
 			__func__, mdp_clk_cnt, changed, enable);
 
@@ -2964,6 +2969,8 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 	if (!mdata->fs)
 		return;
 
+	MDSS_XLOG(on, mdata->fs_ena,mdata->idle_pc, atomic_read(&mdata->active_intf_cnt), 0xbbbb);
+
 	if (on) {
 		pr_err("Enable MDP FS\n");
 		if (!mdata->fs_ena) {
@@ -2997,6 +3004,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 		}
 		mdata->fs_ena = false;
 	}
+	MDSS_XLOG(on, mdata->fs_ena, mdata->idle_pc, atomic_read(&mdata->active_intf_cnt), 0xeeee);
 }
 
 int mdss_mdp_secure_display_ctrl(unsigned int enable)
