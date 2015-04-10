@@ -2757,6 +2757,19 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = get_prop_batt_health(chip);
 		val->intval = chip->temp_state;
+		if (val->intval ==  POWER_SUPPLY_HEALTH_WARM) {
+			if (chip->ext_high_temp)
+				val->intval = POWER_SUPPLY_HEALTH_OVERHEAT;
+			else
+				val->intval = POWER_SUPPLY_HEALTH_GOOD;
+		}
+
+		if (val->intval ==  POWER_SUPPLY_HEALTH_COOL) {
+			if (chip->ext_high_temp)
+				val->intval = POWER_SUPPLY_HEALTH_COLD;
+			else
+				val->intval = POWER_SUPPLY_HEALTH_GOOD;
+		}
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
