@@ -203,7 +203,7 @@ static int ret = -1;
 static struct workqueue_struct *IT7260_wq;
 
 /* internal use func - does not make sure chip is ready before read */
-static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
+static int i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
 	int err;
 	int tries = 0;
@@ -232,14 +232,13 @@ static bool i2cReadNoReadyCheck(uint8_t bufferIndex, uint8_t *dataBuffer, uint16
 	} while ((err != 2) && (++tries < I2C_RETRIES));
 
 	if (err != 2) {
-		dev_err(&gl_ts->client->dev, "read transfer error\n");
 		err = -EIO;
 	}
 
 	return err;
 }
 
-static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
+static int i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
 	int err;
 	int tries = 0;
@@ -265,7 +264,6 @@ static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer,
 	} while ((err != 1) && (++tries < I2C_RETRIES));
 
 	if (err != 1) {
-		dev_err(&gl_ts->client->dev, "write transfer error\n");
 		err = -EIO;
 	}
 
@@ -277,13 +275,13 @@ static bool i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer,
  * This function ascertains it is ready for that too. the results of this call often
  * were ignored.
  */
-static bool waitDeviceReady(bool forever, bool slowly)
+static int waitDeviceReady(bool forever, bool slowly)
 {
 	uint8_t ucQuery;
 	uint32_t count = DEVICE_READY_MAX_WAIT;
 
 	do {
-		if (!i2cReadNoReadyCheck(BUF_QUERY, &ucQuery, sizeof(ucQuery)))
+		if (i2cReadNoReadyCheck(BUF_QUERY, &ucQuery, sizeof(ucQuery)) != 2)
 			ucQuery = CMD_STATUS_BUSY;
 
 		if (slowly)
@@ -296,13 +294,13 @@ static bool waitDeviceReady(bool forever, bool slowly)
 	return !ucQuery;
 }
 
-static bool i2cRead(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
+static int i2cRead(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
 	waitDeviceReady(false, false);
 	return i2cReadNoReadyCheck(bufferIndex, dataBuffer, dataLength);
 }
 
-static bool i2cWrite(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
+static int i2cWrite(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
 	waitDeviceReady(false, false);
 	return i2cWriteNoReadyCheck(bufferIndex, dataBuffer, dataLength);
@@ -313,10 +311,10 @@ static bool chipFirmwareReinitialize(uint8_t cmdOfChoice)
 	uint8_t cmd[] = {cmdOfChoice};
 	uint8_t rsp[2];
 
-	if (!i2cWrite(BUF_COMMAND, cmd, sizeof(cmd)))
+	if (i2cWrite(BUF_COMMAND, cmd, sizeof(cmd)) != 1)
 		return false;
 
-	if (!i2cRead(BUF_RESPONSE, rsp, sizeof(rsp)))
+	if (i2cRead(BUF_RESPONSE, rsp, sizeof(rsp)) != 2)
 		return false;
 
 	/* a reply of two zero bytes signifies success */
@@ -329,10 +327,10 @@ static bool chipFirmwareUpgradeModeEnterExit(bool enter)
 	uint8_t resp[2];
 
 	cmd[1] = enter ? FIRMWARE_MODE_ENTER : FIRMWARE_MODE_EXIT;
-	if (!i2cWrite(BUF_COMMAND, cmd, sizeof(cmd)))
+	if (i2cWrite(BUF_COMMAND, cmd, sizeof(cmd)) != 1)
 		return false;
 
-	if (!i2cRead(BUF_RESPONSE, resp, sizeof(resp)))
+	if (i2cRead(BUF_RESPONSE, resp, sizeof(resp)) != 2)
 		return false;
 
 	/* a reply of two zero bytes signifies success */
@@ -344,11 +342,11 @@ static bool chipSetStartOffset(uint16_t offset)
 	uint8_t cmd[] = {CMD_SET_START_OFFSET, 0, CMD_UINT16(offset)};
 	uint8_t resp[2];
 
-	if (!i2cWrite(BUF_COMMAND, cmd, 4))
+	if (i2cWrite(BUF_COMMAND, cmd, 4) != 1)
 		return false;
 
 
-	if (!i2cRead(BUF_RESPONSE, resp, sizeof(resp)))
+	if (i2cRead(BUF_RESPONSE, resp, sizeof(resp)) != 2)
 		return false;
 
 
@@ -387,12 +385,18 @@ static bool chipFlashWriteAndVerify(unsigned int fwLength, const uint8_t *fwData
 
 			/* set write offset and write the data*/
 			chipSetStartOffset(writeStartOffset + curDataOfst);
-			i2cWrite(BUF_COMMAND, cmdWrite, 2 + curWriteSz);
+			if (i2cWrite(BUF_COMMAND, cmdWrite, 2 + curWriteSz) != 1) {
+				LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+			}
 
 			/* set offset and read the data back */
 			chipSetStartOffset(writeStartOffset + curDataOfst);
-			i2cWrite(BUF_COMMAND, cmdRead, sizeof(cmdRead));
-			i2cRead(BUF_RESPONSE, bufRead, curWriteSz);
+			if (i2cWrite(BUF_COMMAND, cmdRead, sizeof(cmdRead)) != 1) {
+				LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+			}
+			if (i2cRead(BUF_RESPONSE, bufRead, curWriteSz) != 2) {
+				LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+			}
 
 			/* verify. If success break out of retry loop */
 			for (i = 0; i < curWriteSz && bufRead[i] == cmdWrite[i + 2]; i++);
@@ -443,17 +447,34 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 	bool ret = true;
 
 	disable_irq(gl_ts->client->irq);
+
 	/* this structure is so that we definitely do all the calls, but still return a status in case anyone cares */
-	ret = i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) && ret;
-	ret = i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) && ret;
-	ret = i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) && ret;
-	ret = i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) && ret;
+	if (i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		ret = false;
+	}
+	if (i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		ret = false;
+	}
+	if (i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		ret = false;
+	}
+	if (i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		ret = false;
+	}
+
 	enable_irq(gl_ts->client->irq);
 
 	if (logIt)
 		LOGI("current versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n",
 			verFw[5], verFw[6], verFw[7], verFw[8],
 			verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
+
+	sprintf(fwVersion, "%x,%x,%x,%x # %x,%x,%x,%x",verFw[5], verFw[6], verFw[7], verFw[8],
+			 verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
 
 	return ret;
 }
@@ -550,13 +571,12 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 
 			fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
 			LOGI("upload %s\n", success ? "success" : "failed");
-		}else {
+		} else {
 			LOGI("firmware/config upgrade not needed\n");
 		}
 	}
 
 	chipGetVersions(verFw, verCfg, true);
-	sprintf(fwVersion, "%x,%x,%x,%x # %x,%x,%x,%x",verFw[5], verFw[6], verFw[7], verFw[8], verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
 
 	if (fwLen)
 		release_firmware(fw);
@@ -577,7 +597,7 @@ static ssize_t sysfsCalibrationShow(struct device *dev, struct device_attribute 
 	return sprintf(buf, "%d", calibrationWasSuccessful);
 }
 
-static bool chipSendCalibrationCmd(bool autoTuneOn)
+static int chipSendCalibrationCmd(bool autoTuneOn)
 {
 	uint8_t cmdCalibrate[] = {CMD_CALIBRATE, 0, autoTuneOn ? 1 : 0, 0, 0};
 	return i2cWrite(BUF_COMMAND, cmdCalibrate, sizeof(cmdCalibrate));
@@ -587,10 +607,10 @@ static ssize_t sysfsCalibrationStore(struct device *dev, struct device_attribute
 {
 	uint8_t resp;
 
-	if (!chipSendCalibrationCmd(false))
+	if (chipSendCalibrationCmd(false) != 1)
 		LOGE("failed to send calibration command\n");
 	else {
-		calibrationWasSuccessful = i2cRead(BUF_RESPONSE, &resp, sizeof(resp)) ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
+		calibrationWasSuccessful = (i2cRead(BUF_RESPONSE, &resp, sizeof(resp)) == 2) ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
 
 		/* previous logic that was here never called chipFirmwareReinitialize() due to checking a guaranteed-not-null value against null. We now call it. Hopefully this is OK */
 		if (!resp)
@@ -626,28 +646,61 @@ static ssize_t sysfsPointStore(struct device *dev, struct device_attribute *attr
 
 static ssize_t sysfsStatusShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	/* the usefulness of this is questionable at best */
-	return sprintf(buf, "%d\n", devicePresent ? 1 : 0);
+	uint8_t verFw[10], verCfg[10];
+	ssize_t ret;
+
+	devicePresent = chipGetVersions(verFw, verCfg, true);
+	LOGI("[%d] %s touch status = %d\n", __LINE__, __func__, devicePresent ? 1 : 0);
+	ret = sprintf(buf, "%d\n", devicePresent ? 1 : 0);
+
+	return ret;
 }
 
 static ssize_t sysfsStatusStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	uint8_t verFw[10], verCfg[10];
-
 	/*
 	 * A per previous code that was here, any write causes the version info to be printed to the kernel log.
 	 * Technically the write was passed through scanf, looking for an integer, but the value was discarded.
 	 * Keeping this functionality in case something relied on it.
 	 */
-
-	chipGetVersions(verFw, verCfg, true);
-
 	return count;
 }
 
 static ssize_t sysfsVersionShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", fwVersion);
+	uint8_t verFw[10] = {0};
+	uint8_t verCfg[10] = {0};
+	char local_fwVersion[20] = {0};
+	uint8_t cmdReadFwVer[] = {CMD_READ_VERSIONS, VER_FIRMWARE};
+	uint8_t cmdReadCfgVer[] = {CMD_READ_VERSIONS, VER_CONFIG};
+	ssize_t ret;
+
+	disable_irq(gl_ts->client->irq);
+
+	if (i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+	}
+	if (i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+	}
+	if (i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+	}
+	if (i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+	}
+
+	enable_irq(gl_ts->client->irq);
+
+	LOGI("[%d] %s current versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n", __LINE__, __func__,
+		verFw[5], verFw[6], verFw[7], verFw[8],verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
+
+	sprintf(local_fwVersion, "%x,%x,%x,%x # %x,%x,%x,%x",verFw[5], verFw[6], verFw[7], verFw[8],
+			 verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
+
+	ret = sprintf(buf, "%s\n", local_fwVersion);
+
+	return ret;
 }
 
 static ssize_t sysfsVersionStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -701,7 +754,6 @@ static ssize_t sysfsSleepStore(struct device *dev, struct device_attribute *attr
 		return -EINTR;
 }
 
-
 static DEVICE_ATTR(status, S_IRUGO|S_IWUSR, sysfsStatusShow, sysfsStatusStore);
 static DEVICE_ATTR(version, S_IRUGO|S_IWUSR, sysfsVersionShow, sysfsVersionStore);
 static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR, sysfsSleepShow, sysfsSleepStore);
@@ -753,7 +805,9 @@ static void chipExternalCalibration(bool autoTuneEnabled)
 
 	LOGI("sent calibration command -> %d\n", chipSendCalibrationCmd(autoTuneEnabled));
 	waitDeviceReady(true, true);
-	i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp));
+	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+	}
 	chipFirmwareReinitialize(CMD_FIRMWARE_REINIT_C);
 }
 
@@ -846,8 +900,13 @@ static void waitNotifyEvt(struct work_struct *work) {
 
 static void touchIdleOnEvt(struct work_struct *work) {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-	i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
-	chipInLowPower = true;
+	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		chipInLowPower = false;
+	} else {
+		chipInLowPower = true;
+		LOGI("[%d] %s set chipInLowPower = %d. \n", __LINE__, __func__, chipInLowPower);
+	}
 }
 
 static void exitIdleEvt(struct work_struct *work) {
@@ -893,12 +952,16 @@ static void readTouchDataPoint(void)
 	uint16_t x1, y1, x2, y2;
 
 	/* verify there is point data to read & it is readable and valid */
-	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
-	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
-		LOGE(" %s called when no data available (0x%02X)\n", __func__, devStatus);
+	if (i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus)) == 2) {
+		if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
+			LOGE(" %s called when no data available (0x%02X)\n", __func__, devStatus);
+			return;
+		}
+	} else {
+		LOGE("[%d] %s i2c read fail. \n", __LINE__, __func__);
 		return;
 	}
-	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
+	if (i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData)) != 2) {
 		LOGE(" %s failed to read point data buffer\n", __func__);
 		return;
 	}
@@ -940,7 +1003,7 @@ static void readTouchDataPoint(void)
 				LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
 				TOUCH_P1_DOWN_FLAG = 1;
 			}
-		}else {
+		} else {
 			input_mt_slot(gl_ts->touch_dev, 0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 			if (TOUCH_P1_DOWN_FLAG == 1) {
@@ -959,7 +1022,7 @@ static void readTouchDataPoint(void)
 				LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
 				TOUCH_P2_DOWN_FLAG = 1;
 			}
-		}else {
+		} else {
 			input_mt_slot(gl_ts->touch_dev, 1);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 			if (TOUCH_P2_DOWN_FLAG == 1) {
@@ -970,7 +1033,7 @@ static void readTouchDataPoint(void)
 
 		input_sync(gl_ts->touch_dev);
 
-	}else if (!(pointData.palm & PD_PALM_FLAG_BIT)) {
+	} else if (!(pointData.palm & PD_PALM_FLAG_BIT)) {
 		hadFingerDown = false;
 		hadPalmDown = false;
 
@@ -1002,25 +1065,29 @@ static void readTouchDataPoint_Ambient(void)
 			__LINE__, __func__, isTouchLocked, isDriverAvailable);
 
 	if (!isTouchLocked) {
-		i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
-		if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
-			LOGE("[%d] %s called when no data available (0x%02X)\n", __LINE__, __func__, devStatus);
-			isTouchLocked = true;
-			LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
-			wake_unlock(&touch_lock);
+		if (i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus)) == 2) {
+			if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
+				isTouchLocked = true;
+				LOGE("[%d] %s called when no data available (0x%02X), set isTouchLocked = %d.\n",
+					__LINE__, __func__, devStatus, isTouchLocked);
+				wake_unlock(&touch_lock);
+				return;
+			}
+		} else {
+			LOGE("[%d] %s i2c read fail. \n", __LINE__, __func__);
 			return;
 		}
-		if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
-			LOGE("[%d] %s failed to read point data buffer\n", __LINE__, __func__);
+		if (i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData)) != 2) {
 			isTouchLocked = true;
-			LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
+			LOGE("[%d] %s failed to read point data buffer, set isTouchLocked = %d.\n",
+				__LINE__, __func__, isTouchLocked);
 			wake_unlock(&touch_lock);
 			return;
 		}
 		if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
 			if (pointData.flags == 16) {
 				LOGE("[%d] %s send touch event by type 0x%02X\n", __LINE__, __func__, pointData.flags);
-			}else {
+			} else {
 				LOGE("[%d] %s dropping non-point data of type 0x%02X\n", __LINE__, __func__, pointData.flags);
 				isTouchLocked = true;
 				LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
@@ -1089,11 +1156,9 @@ static void readTouchDataPoint_Ambient(void)
 				LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
 			}
 			wake_unlock(&touch_lock);
-		} else {
-			LOGI("[%d] %s other condition.\n", __LINE__, __func__);
 		}
 
-	}else if (isTouchLocked){
+	} else if (isTouchLocked) {
 		if (!isDriverAvailable) {
 			msleep(10);
 			LOGI("[%d] %s after sleep.\n", __LINE__, __func__);
@@ -1119,7 +1184,7 @@ static irqreturn_t IT7260_ts_threaded_handler(int irq, void *devid)
 		readTouchDataPoint_Ambient();
 		smp_wmb();
 		/* XXX: call readTouchDataPoint() here maybe ? */
-	}else {
+	} else {
 		readTouchDataPoint();
 	}
 
@@ -1135,16 +1200,16 @@ static bool chipIdentifyIT7260(void)
 	/* not sure why asus chose to wait forever here, duplicating their logic for now */
 	waitDeviceReady(true, false);
 
-	if (!i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent))) {
-		LOGE("i2cWrite() failed\n");
+	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 		return false;
 	}
 
 	/* not sure why asus chose to wait forever here, duplicating their logic for now */
 	waitDeviceReady(true, false);
 
-	if (!i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID))) {
-		LOGE("i2cRead() failed\n");
+	if (i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID)) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
 		return false;
 	}
 
@@ -1312,10 +1377,15 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 
 	devicePresent = true;
+	LOGI("[%d] %s set devicePresent = %d.\n", __LINE__, __func__, devicePresent);
 
-	i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart));
+	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart)) != 1) {
+		LOGE("[%d] %s i2c write fail. \n", __LINE__, __func__);
+	}
 	mdelay(10);
-	i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp));
+	if (i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp)) != 2 ) {
+		LOGE("[%d] %s i2c read fail. \n", __LINE__, __func__);
+	}
 	mdelay(10);
 
 	return 0;
@@ -1393,13 +1463,15 @@ static long ite7260_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			if (!memcmp(buffer, fakeCmdIrqOff, sizeof(fakeCmdIrqOff))) {
 				LOGI("Disabling IRQ.\n");
 				disable_irq(gl_ts->client->irq);
-			}else if (!memcmp(buffer, fakeCmdIrqOn, sizeof(fakeCmdIrqOff))) {
+			} else if (!memcmp(buffer, fakeCmdIrqOn, sizeof(fakeCmdIrqOff))) {
 				LOGI("Enabling IRQ.\n");
 				enable_irq(gl_ts->client->irq);
 			}
 			LOGE("reserved command being sent to chip, this is probably bad!\n");
 		}
-		i2cWriteNoReadyCheck(data.bufferIndex, buffer, data.length);
+		if (i2cWriteNoReadyCheck(data.bufferIndex, buffer, data.length) != 1) {
+			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		}
 		return 0;
 
 	case IOCTL_GET:
@@ -1412,7 +1484,9 @@ static long ite7260_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		if (!data.length)
 			data.buffer[0] = 128;
 		else {
-			i2cReadNoReadyCheck(data.bufferIndex, buffer, data.length);
+			if (i2cReadNoReadyCheck(data.bufferIndex, buffer, data.length) != 2) {
+				LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+			}
 			for (i = 0; i < data.length; i++)
 				data.buffer[i] = buffer[i];
 		}
@@ -1501,8 +1575,13 @@ static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 	}
 
 	if (!chipInLowPower) {
-		i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower));
-		chipInLowPower = true;
+		if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
+			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+			chipInLowPower = false;
+		} else {
+			chipInLowPower = true;
+			LOGI("[%d] %s set chipInLowPower = %d. \n", __LINE__, __func__, chipInLowPower);
+		}
 	}
 	return 0;
 }
