@@ -707,6 +707,13 @@ void *bcmsdh_get_drvdata(void)
 		return NULL;
 	return dev_get_drvdata(sdhcinfo->dev);
 }
+
+int bcmsdh_get_irq(void)
+{
+	if (!sdhcinfo)
+		return -1;
+	return sdhcinfo->oob_irq;
+}
 #endif
 
 /* Module parameters specific to each host-controller driver */
