@@ -155,6 +155,8 @@ static int ion_secure_cma_add_to_pool(
 		ret = -ENOMEM;
 		goto out_free;
 	}
+	mod_zone_page_state(page_zone(pfn_to_page(PFN_DOWN(handle))),
+			NR_ION_CMA_PAGES, (len >> PAGE_SHIFT));
 
 	chunk->cpu_addr = cpu_addr;
 	chunk->handle = handle;
@@ -337,6 +339,8 @@ static void ion_secure_cma_free_chunk(struct ion_cma_secure_heap *sheap,
 			chunk->chunk_size >> PAGE_SHIFT);
 	dma_free_attrs(sheap->dev, chunk->chunk_size, chunk->cpu_addr,
 				chunk->handle, &attrs);
+	mod_zone_page_state(page_zone(pfn_to_page(PFN_DOWN(chunk->handle))),
+			NR_ION_CMA_PAGES, -(chunk->chunk_size >> PAGE_SHIFT));
 	atomic_sub(chunk->chunk_size, &sheap->total_pool_size);
 	list_del(&chunk->entry);
 	kfree(chunk);
