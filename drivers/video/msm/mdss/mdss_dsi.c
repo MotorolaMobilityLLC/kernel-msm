@@ -1757,10 +1757,14 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		mdss_debug_register_base("dsi0",
 			ctrl_pdata->ctrl_base, ctrl_pdata->reg_size);
 		ctrl_pdata->ndx = 0;
+		mdss_debug_register_base("dsi0_phy",
+			ctrl_pdata->phy_io.base, ctrl_pdata->phy_io.len);
 	} else {
 		mdss_debug_register_base("dsi1",
 			ctrl_pdata->ctrl_base, ctrl_pdata->reg_size);
 		ctrl_pdata->ndx = 1;
+		mdss_debug_register_base("dsi1_phy",
+			ctrl_pdata->phy_io.base, ctrl_pdata->phy_io.len);
 	}
 
 	pr_debug("%s: Panel data initialized\n", __func__);

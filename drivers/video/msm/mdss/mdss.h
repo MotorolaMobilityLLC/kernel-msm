@@ -125,6 +125,11 @@ struct mdss_data_type {
 	char __iomem *vbif_base;
 	char __iomem *mdp_base;
 
+	char __iomem *dsi0_base;
+	char __iomem *dsi0_phy_base;
+	char __iomem *dsi1_base;
+	char __iomem *dsi1_phy_base;
+
 	struct mutex reg_lock;
 
 	u32 irq;

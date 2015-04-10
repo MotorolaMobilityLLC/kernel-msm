@@ -623,7 +623,8 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 					rc, ctl->num);
 			mdss_dsi_debug_check_te(pdata);
-			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1", "panic");
+			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
+				"dsi0_phy", "dsi1_phy", "panic");
 		}
 		ctx->pp_timeout_report_cnt++;
 		rc = -EPERM;
