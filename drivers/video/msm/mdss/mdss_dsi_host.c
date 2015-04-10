@@ -1571,9 +1571,7 @@ static int dsi_event_thread(void *data)
 				mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
 			}
 			mutex_unlock(&ctrl->mutex);
-
-			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
-						"edp", "hdmi", "panic");
+			MDSS_XLOG(0xeeee);
 		}
 
 		if (todo & DSI_EV_DSI_FIFO_EMPTY)
