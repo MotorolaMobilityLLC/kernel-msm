@@ -54,3 +54,9 @@ config MDSS_ULPS_BEFORE_PANEL_OFF
 	default n
 	---help---
 		Panel used by ROBIN need mipi in ULPS before OFF
+
+config ASUS_BACKLIGHT_DEBUG
+	bool 'enable backlight debug mode'
+	default n
+	---help---
+		Enable backlight debug mode
