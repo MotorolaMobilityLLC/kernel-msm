@@ -554,12 +554,15 @@ static int ion_system_contig_heap_allocate(struct ion_heap *heap,
 	page = alloc_pages(low_order_gfp_flags | __GFP_ZERO, order);
 	if (!page)
 		return -ENOMEM;
+	mod_zone_page_state(page_zone(page), NR_ION_PAGES, 1 << order);
 
 	split_page(page, order);
 
 	len = PAGE_ALIGN(len);
 	for (i = len >> PAGE_SHIFT; i < (1 << order); i++)
 		__free_page(page + i);
+	mod_zone_page_state(page_zone(page), NR_ION_PAGES,
+		(len >> PAGE_SHIFT) - (1 << order));
 
 	table = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
 	if (!table) {
@@ -582,6 +585,8 @@ static int ion_system_contig_heap_allocate(struct ion_heap *heap,
 out:
 	for (i = 0; i < len >> PAGE_SHIFT; i++)
 		__free_page(page + i);
+	mod_zone_page_state(page_zone(page), NR_ION_PAGES,
+			-(len >> PAGE_SHIFT));
 	kfree(table);
 	return ret;
 }
@@ -595,6 +600,7 @@ void ion_system_contig_heap_free(struct ion_buffer *buffer)
 
 	for (i = 0; i < pages; i++)
 		__free_page(page + i);
+	mod_zone_page_state(page_zone(page), NR_ION_PAGES, -pages);
 	sg_free_table(table);
 	kfree(table);
 }
