@@ -46,7 +46,7 @@
 
 #define NAME "fsa8500"
 
-#define I2C_RETRY_DELAY		5 /* ms */
+#define I2C_RETRY_DELAY		20 /* ms */
 #define I2C_RETRIES		5
 
 #define FSA8500_JACK_MASK (SND_JACK_HEADSET | SND_JACK_HEADPHONE| \
@@ -79,7 +79,7 @@ struct fsa8500_data {
 	int button_detect_state;
 	struct mutex lock;
 	struct wake_lock wake_lock;
-	struct work_struct work_det;
+	struct delayed_work work_det;
 	struct workqueue_struct *wq;
 };
 
@@ -416,9 +416,13 @@ EXPORT_SYMBOL_GPL(fsa8500_mic_event);
 
 static int fsa8500_update_device_status(struct fsa8500_data *fsa8500)
 {
+	int err;
 
-	fsa8500_i2c_read(fsa8500, FSA8500_INT_REG1,
+	err = fsa8500_i2c_read(fsa8500, FSA8500_INT_REG1,
 			fsa8500->irq_status, sizeof(fsa8500->irq_status));
+	if (err == -EIO)
+		return err;
+
 	pr_debug("%s:  regs 0x%x,0x%x,0x%x,0x%x,0x%x\n", __func__,
 		fsa8500->irq_status[0], fsa8500->irq_status[1],
 		fsa8500->irq_status[2], fsa8500->irq_status[3],
@@ -508,7 +512,10 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
 					status<<SND_JACK_BTN_SHIFT,
 					status<<SND_JACK_BTN_SHIFT);
-
+		/* The framework can ignore events if they came
+		to close to each other. Add small delay between
+		press and release events */
+		usleep(10000);
 		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
 					0, status<<SND_JACK_BTN_SHIFT);
 	}
@@ -614,7 +621,7 @@ static irqreturn_t fsa8500_irq_handler(int irq, void *data)
 	struct fsa8500_data *irq_data = data;
 
 	wake_lock_timeout(&irq_data->wake_lock, HZ);
-	queue_work(irq_data->wq, &irq_data->work_det);
+	queue_work(irq_data->wq, &irq_data->work_det.work);
 	return IRQ_HANDLED;
 }
 
@@ -626,7 +633,9 @@ static void fsa8500_det_thread(struct work_struct *work)
 	mutex_lock(&irq_data->lock);
 	wake_lock(&irq_data->wake_lock);
 
-	fsa8500_update_device_status(irq_data);
+	if (fsa8500_update_device_status(irq_data))
+		queue_delayed_work(irq_data->wq, &irq_data->work_det,
+					msecs_to_jiffies(2000));
 	fsa8500_report_hs(irq_data);
 
 	wake_unlock(&irq_data->wake_lock);
@@ -826,7 +835,7 @@ static int fsa8500_probe(struct i2c_client *client,
 		goto wq_fail;
 	}
 
-	INIT_WORK(&fsa8500->work_det, fsa8500_det_thread);
+	INIT_DELAYED_WORK(&fsa8500->work_det, fsa8500_det_thread);
 
 	fsa8500->gpio_irq = gpio_to_irq(fsa8500->gpio);
 	/* active low interrupt */
