@@ -87,19 +87,24 @@ static int ion_cma_allocate(struct ion_heap *heap, struct ion_buffer *buffer,
 	info->table = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
 	if (!info->table) {
 		dev_err(dev, "Fail to allocate sg table\n");
-		goto err;
+		goto free_mem;
 	}
 
 	info->is_cached = ION_IS_CACHED(flags);
 
-	ion_cma_get_sgtable(dev,
-			info->table, info->cpu_addr, info->handle, len);
+	if (ion_cma_get_sgtable(dev,
+			info->table, info->cpu_addr, info->handle, len))
+		goto free_table;
 
 	/* keep this for memory release */
 	buffer->priv_virt = info;
 	dev_dbg(dev, "Allocate buffer %pK\n", buffer);
 	return 0;
 
+free_table:
+	kfree(info->table);
+free_mem:
+	dma_free_coherent(dev, len, info->cpu_addr, info->handle);
 err:
 	kfree(info);
 	return ION_CMA_ALLOCATE_FAILED;
