@@ -1846,6 +1846,12 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 {
 	int ret;
 
+	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
+		pr_err("%s: Wrong ioctl_ptr %p / len %zu\n", __func__,
+			ioctl_ptr, ioctl_ptr->len);
+		return -EINVAL;
+	}
+
 	/* For compat task, source ptr is in kernel space */
 	if (is_compat_task()) {
 		memcpy(dst_ptr, ioctl_ptr->ioctl_ptr, ioctl_ptr->len);
@@ -1863,6 +1869,11 @@ static int msm_cpp_copy_from_ioctl_ptr(void *dst_ptr,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr)
 {
 	int ret;
+	if ((ioctl_ptr->ioctl_ptr == NULL) || (ioctl_ptr->len == 0)) {
+		pr_err("%s: Wrong ioctl_ptr %p / len %zu\n", __func__,
+			ioctl_ptr, ioctl_ptr->len);
+		return -EINVAL;
+	}
 
 	ret = copy_from_user(dst_ptr,
 		(void __user *)ioctl_ptr->ioctl_ptr, ioctl_ptr->len);
@@ -1927,6 +1938,8 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			}
 			if (ioctl_ptr->ioctl_ptr == NULL) {
 				pr_err("ioctl_ptr->ioctl_ptr=NULL\n");
+				kfree(cpp_dev->fw_name_bin);
+				cpp_dev->fw_name_bin = NULL;
 				mutex_unlock(&cpp_dev->mutex);
 				return -EINVAL;
 			}
@@ -2213,6 +2226,10 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_pproc_queue_buf_info queue_buf_info;
 		CPP_DBG("VIDIOC_MSM_CPP_QUEUE_BUF\n");
 
+		if (ioctl_ptr->len != sizeof(struct msm_pproc_queue_buf_info)) {
+			pr_err("%s: Not valid ioctl_ptr->len\n", __func__);
+			return -EINVAL;
+		}
 		rc = msm_cpp_copy_from_ioctl_ptr(&queue_buf_info, ioctl_ptr);
 		if (rc) {
 			ERR_COPY_FROM_USER();
@@ -2238,6 +2255,12 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_CPP_POP_STREAM_BUFFER: {
 		struct msm_buf_mngr_info buff_mgr_info;
 		struct msm_cpp_frame_info_t frame_info;
+		if (ioctl_ptr->ioctl_ptr == NULL ||
+			(ioctl_ptr->len !=
+			sizeof(struct msm_cpp_frame_info_t))) {
+			rc = -EINVAL;
+			break;
+		}
 		rc = (copy_from_user(&frame_info,
 			(void __user *)ioctl_ptr->ioctl_ptr,
 			sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
@@ -2711,10 +2734,13 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 
 		CPP_DBG("fid %d\n", process_frame->frame_id);
 		if (copy_to_user((void __user *)kp_ioctl.ioctl_ptr,
-				&k32_process_frame,
-				sizeof(struct msm_cpp_frame_info32_t))) {
-					mutex_unlock(&cpp_dev->mutex);
-					return -EINVAL;
+			&k32_process_frame,
+			sizeof(struct msm_cpp_frame_info32_t))) {
+			kfree(process_frame->cpp_cmd_msg);
+			kfree(process_frame);
+			kfree(event_qcmd);
+			mutex_unlock(&cpp_dev->mutex);
+			return -EINVAL;
 		}
 
 		kfree(process_frame->cpp_cmd_msg);
