@@ -551,3 +551,4 @@
 #include "msm8992-bullhead-pm.dtsi"
 #include "msm8992-bullhead-sound.dtsi"
 #include "msm8992-bullhead-touch.dtsi"
+#include "msm8992-bullhead-sensorhub.dtsi"
