@@ -2009,34 +2009,115 @@ static bool adsp2_ez2ctrl_trigger(struct florida_priv *florida, int dev)
 	return false;
 }
 
+static int adsp2_panic_check(struct florida_priv *florida, int dev, int *reg)
+{
+
+	struct arizona *arizona = florida->core.arizona;
+	unsigned int val;
+	unsigned int scratch1;
+	u16 err_msg[4];
+	int i;
+
+	*reg = ARIZONA_DSP1_SCRATCH_1 + (dev << 8);
+	regmap_read(arizona->regmap, *reg,  &val);
+
+	if ((val & 0x3fff) == 0)
+		return val;
+
+	scratch1 = val;
+
+	dev_err(florida->core.arizona->dev,
+		"DSP%d Panic %x\n", dev, val);
+
+	memset(err_msg, 0, sizeof(err_msg));
+
+	i = 0;
+	err_msg[i++] = (u16)val;
+	regmap_read(arizona->regmap, *reg-1, &val);
+	err_msg[i++] = (u16)val;
+	regmap_read(arizona->regmap, *reg+1, &val);
+	err_msg[i++] = (u16)val;
+	regmap_read(arizona->regmap, *reg+2, &val);
+	err_msg[i++] = (u16)val;
+
+	/* Panic callback */
+	if (florida->core.arizona->pdata.ez2panic_trigger)
+		florida->core.arizona->pdata.ez2panic_trigger(dev,
+			&err_msg[0]);
+
+	/* Clean panic field */
+	scratch1 &= 0xc000;
+	regmap_write(arizona->regmap, *reg, scratch1);
+
+	return scratch1;
+}
+
+static int florida_text_event(struct florida_priv *florida, int dev)
+{
+	pr_debug("Placeholder for text callback\n");
+	return 0;
+}
+
+static void handle_stream(struct florida_priv *florida, int dev)
+{
+	struct snd_soc_pcm_runtime *rtd;
+	int ret, avail, i = dev;
+
+	if (florida->compr_info[i].stream) {
+		rtd = florida->compr_info[i].stream->private_data;
+		if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt")) {
+			pr_debug("HANDLING TEXT STREAM from DSP%d\n", dev);
+			ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp,
+							true);
+		} else {
+			pr_debug("HANDLING AOV STREAM from DSP%d\n", dev);
+			ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp,
+							false);
+		}
+		if (ret < 0) {
+			dev_err(florida->core.arizona->dev,
+				"Failed to capture DSP core %d data: %d\n",
+				i, ret);
+		} else {
+			florida->compr_info[i].total_copied += ret;
+			avail = wm_adsp_stream_avail(florida->compr_info[i].adsp);
+			if (avail > FLORIDA_DEFAULT_FRAGMENT_SIZE)
+				snd_compr_fragment_elapsed(florida->compr_info[i].stream);
+		}
+	}
+	return;
+}
+
 static irqreturn_t adsp2_irq(int irq, void *data)
 {
 	struct florida_priv *florida = data;
-	struct snd_soc_pcm_runtime *rtd;
-	int ret = 0, avail, i;
+	int i, scratch_reg, reg;
+	struct arizona *arizona = florida->core.arizona;
+
 	for (i = 0; i < FLORIDA_NUM_COMPR_DEVICES; i++) {
 		mutex_lock(&florida->compr_info[i].lock);
-		if (adsp2_ez2ctrl_trigger(florida, i))
-			adsp2_ez2ctrl_set_trigger(florida);
-
-		if (florida->compr_info[i].stream) {
-			rtd = florida->compr_info[i].stream->private_data;
-			if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
-				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, true);
-			else
-				ret = wm_adsp_stream_handle_irq(florida->compr_info[i].adsp, false);
-
-			if (ret < 0) {
-				dev_err(florida->core.arizona->dev,
-					"Failed to capture DSP core %d data: %d\n",
-					i, ret);
-			} else {
-				florida->compr_info[i].total_copied += ret;
-				avail = wm_adsp_stream_avail(florida->compr_info[i].adsp);
-				if (avail > FLORIDA_DEFAULT_FRAGMENT_SIZE)
-					snd_compr_fragment_elapsed(florida->compr_info[i].stream);
+		scratch_reg = adsp2_panic_check(florida, i, &reg);
+		if ((scratch_reg & 0x3fff) == 0) {
+			/* AOV interrupt */
+			if (scratch_reg & 0x4000) {
+				/* Clear event bit */
+				scratch_reg &= 0xbfff;
+				regmap_write(arizona->regmap, reg, scratch_reg);
+				if (adsp2_ez2ctrl_trigger(florida, i)) {
+					pr_debug("Calling AOV callback\n");
+					adsp2_ez2ctrl_set_trigger(florida);
+				}
+			}
+			/* Text interrupt */
+			if (scratch_reg & 0x8000) {
+				/* Clear event bit */
+				scratch_reg &= 0x7fff;
+				regmap_write(arizona->regmap, reg, scratch_reg);
+				pr_debug("Calling Text Callback\n");
+				florida_text_event(florida, i);
 			}
 		}
+		handle_stream(florida, i);
 		mutex_unlock(&florida->compr_info[i].lock);
 	}
 	return IRQ_HANDLED;
