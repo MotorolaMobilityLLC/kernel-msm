@@ -166,14 +166,14 @@ static int sentral_log_meta_event(struct sentral_device *sentral, struct sentral
 
 // fifo
 
-static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
-{
-	int rc;
-
-	dev_info(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
-	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
-	return rc;
-}
+//static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
+//{
+//	int rc;
+//
+//	dev_info(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
+//	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
+//	return rc;
+//}
 
 static int sentral_fifo_get_bytes_remaining(struct sentral_device *sentral)
 {
@@ -435,35 +435,35 @@ static int sentral_set_host_upload_enable(struct sentral_device *sentral, bool e
 
 // host iface control
 
-static int sentral_set_host_iface_control(struct sentral_device *sentral, u8 flag, bool enable)
-{
-	int rc;
-	u8 value;
-
-	rc = sentral_read_byte(sentral, SR_HOST_CONTROL);
-	if (rc < 0) {
-		dev_err(&sentral->client->dev, "error (%d) reading host interface control\n", rc);
-		return rc;
-	}
-
-	value = (rc & ~(flag)) | flag;
-
-	if (value == rc)
-		return 0;
-
-	rc = sentral_write_byte(sentral, SR_HOST_CONTROL, value);
-	if (rc) {
-		dev_err(&sentral->client->dev, "error (%d) setting host interface control to 0x%02X\n", rc, value);
-		return rc;
-	}
-
-	return 0;
-}
-
-static int sentral_set_host_ap_suspend(struct sentral_device *sentral, bool enable)
-{
-	return sentral_set_host_iface_control(sentral, SEN_HOST_CTRL_AP_SUSPENDED, enable);
-}
+//static int sentral_set_host_iface_control(struct sentral_device *sentral, u8 flag, bool enable)
+//{
+//	int rc;
+//	u8 value;
+//
+//	rc = sentral_read_byte(sentral, SR_HOST_CONTROL);
+//	if (rc < 0) {
+//		dev_err(&sentral->client->dev, "error (%d) reading host interface control\n", rc);
+//		return rc;
+//	}
+//
+//	value = (rc & ~(flag)) | flag;
+//
+//	if (value == rc)
+//		return 0;
+//
+//	rc = sentral_write_byte(sentral, SR_HOST_CONTROL, value);
+//	if (rc) {
+//		dev_err(&sentral->client->dev, "error (%d) setting host interface control to 0x%02X\n", rc, value);
+//		return rc;
+//	}
+//
+//	return 0;
+//}
+//
+//static int sentral_set_host_ap_suspend(struct sentral_device *sentral, bool enable)
+//{
+//	return sentral_set_host_iface_control(sentral, SEN_HOST_CTRL_AP_SUSPENDED, enable);
+//}
 
 /*
 static int sentral_set_algo_standby_enable(struct sentral_device *sentral, bool enable)
@@ -1483,55 +1483,55 @@ static const struct iio_info sentral_iio_info = {
 	.driver_module = THIS_MODULE,
 };
 
-static int sentral_suspend_notifier(struct notifier_block *nb, unsigned long event, void *data)
-{
-	struct sentral_device *sentral = container_of(nb, struct sentral_device, nb);
-	int rc;
-
-	dev_dbg(&sentral->client->dev, "suspend nb: %lu\n", event);
-
-	switch (event) {
-
-	case PM_SUSPEND_PREPARE:
-		dev_info(&sentral->client->dev, "preparing to suspend ...\n");
-
-		// cancel work
-		cancel_work_sync(&sentral->work_fifo_read);
-		cancel_delayed_work_sync(&sentral->work_watchdog);
-
-		// notify sentral of suspend
-		rc = sentral_set_host_ap_suspend(sentral, true);
-		if (rc)
-			dev_err(&sentral->client->dev, "error (%d) setting AP suspend to true\n", rc);
-
-		// flush fifo
-		rc = sentral_fifo_flush(sentral, SST_ALL);
-		if (rc)
-			dev_err(&sentral->client->dev, "error (%d) flushing FIFO, sensor: %d\n", rc, SST_ALL);
-
-		// empty fifo
-		rc = sentral_fifo_read(sentral, (void *)sentral->data_buffer);
-		if (rc)
-			dev_err(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
-
-		break;
-
-	case PM_POST_SUSPEND:
-		dev_info(&sentral->client->dev, "post suspend ...\n");
-
-		// notify sentral of wakeup
-		rc = sentral_set_host_ap_suspend(sentral, false);
-		if (rc)
-			dev_err(&sentral->client->dev, "error (%d) setting AP suspend to false\n", rc);
-
-		// queue fifo work
-		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
-
-		break;
-	}
-
-	return NOTIFY_DONE;
-}
+//static int sentral_suspend_notifier(struct notifier_block *nb, unsigned long event, void *data)
+//{
+//	struct sentral_device *sentral = container_of(nb, struct sentral_device, nb);
+//	int rc;
+//
+//	dev_dbg(&sentral->client->dev, "suspend nb: %lu\n", event);
+//
+//	switch (event) {
+//
+//	case PM_SUSPEND_PREPARE:
+//		dev_info(&sentral->client->dev, "preparing to suspend ...\n");
+//
+//		// cancel work
+//		cancel_work_sync(&sentral->work_fifo_read);
+//		cancel_delayed_work_sync(&sentral->work_watchdog);
+//
+//		// notify sentral of suspend
+//		rc = sentral_set_host_ap_suspend(sentral, true);
+//		if (rc)
+//			dev_err(&sentral->client->dev, "error (%d) setting AP suspend to true\n", rc);
+//
+//		// flush fifo
+//		rc = sentral_fifo_flush(sentral, SST_ALL);
+//		if (rc)
+//			dev_err(&sentral->client->dev, "error (%d) flushing FIFO, sensor: %d\n", rc, SST_ALL);
+//
+//		// empty fifo
+//		rc = sentral_fifo_read(sentral, (void *)sentral->data_buffer);
+//		if (rc)
+//			dev_err(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
+//
+//		break;
+//
+//	case PM_POST_SUSPEND:
+//		dev_info(&sentral->client->dev, "post suspend ...\n");
+//
+//		// notify sentral of wakeup
+//		rc = sentral_set_host_ap_suspend(sentral, false);
+//		if (rc)
+//			dev_err(&sentral->client->dev, "error (%d) setting AP suspend to false\n", rc);
+//
+//		// queue fifo work
+//		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
+//
+//		break;
+//	}
+//
+//	return NOTIFY_DONE;
+//}
 
 static int sentral_parse_dt(struct device *dev, struct sentral_platform_data *platform_data)
 {
@@ -1686,8 +1686,8 @@ static int sentral_probe(struct i2c_client *client, const struct i2c_device_id *
 
 	// init pm
 	device_init_wakeup(dev, 1);
-	sentral->nb.notifier_call = sentral_suspend_notifier;
-	register_pm_notifier(&sentral->nb);
+//	sentral->nb.notifier_call = sentral_suspend_notifier;
+//	register_pm_notifier(&sentral->nb);
 
 	// create custom class
 	rc = sentral_class_create(sentral);
