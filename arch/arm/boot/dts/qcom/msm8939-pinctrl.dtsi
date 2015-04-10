@@ -15,6 +15,8 @@
 		compatible = "qcom,msm-tlmm-8939", "qcom,msm-tlmm-8916";
 		reg = <0x1000000 0x300000>;
 		interrupts = <0 208 0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uim1_default &uim2_default>;
 
 		/*General purpose pins*/
 		gp: gp {
@@ -301,6 +303,28 @@
 			smb_int_default: smb_int_default {
 				drive-strength = <2>;	/* 2 MA */
 				bias-pull-up;		/* PULL UP*/
+			};
+		};
+
+		uim1-det-pin {
+			qcom,pins = <&gp 60>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "uim1-det-pin";
+			uim1_default: default {
+				drive-strength = <2>;
+				bias-disable = <0>; /* No PULL */
+			};
+		};
+
+		uim2-det-pin {
+			qcom,pins = <&gp 56>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "uim2-det-pin";
+			uim2_default: default {
+				drive-strength = <2>;
+				bias-disable = <0>; /* No PULL */
 			};
 		};
 
