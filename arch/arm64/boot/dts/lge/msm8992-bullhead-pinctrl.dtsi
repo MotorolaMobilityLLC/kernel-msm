@@ -33,6 +33,28 @@
 			qcom,num-grp-pins = <1>;
 		};
 
+		uart_console_disable {
+			qcom,pins = <&gp 4>, <&gp 5>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "uart_console_disable";
+			uart_disable: disable {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		uart_console_enable {
+			qcom,pins = <&gp 4>, <&gp 5>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "uart_console_enable";
+			uart_enable: enable {
+				drive-strength = <16>;
+				bias-disable;
+			};
+		};
+
 		pmx_i2c_9 {
 			qcom,pins = <&gp 51>, <&gp 52>; /* SDA, SCL */
 			qcom,num-grp-pins = <2>;

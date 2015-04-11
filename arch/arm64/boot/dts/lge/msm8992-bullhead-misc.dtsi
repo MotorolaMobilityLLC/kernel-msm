@@ -12,19 +12,29 @@
  */
 
 &soc {
-    gpio_keys {
-        compatible = "gpio-keys";
-        input-name = "gpio-keys";
+	earjack-debugger {
+		compatible = "serial,earjack-debugger";
+		status = "ok";
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <77 0x0>;
+		serial,irq-gpio = <&msm_gpio 77 0x00>;
+		pinctrl-names = "disable", "enable";
+		pinctrl-0 = <&uart_disable>;
+		pinctrl-1 = <&uart_enable>;
+	};
 
-        vol_up {
-            label = "volume_up";
-            gpios = <&pm8994_gpios 3 0x1>;
-            linux,input-type = <1>;
-            linux,code = <115>;
-            gpio-key,wakeup;
-            debounce-interval = <15>;
-        };
-    };
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm8994_gpios 3 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
 };
 
 &pmi8994_haptics {
