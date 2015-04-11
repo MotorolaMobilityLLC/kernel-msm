@@ -117,6 +117,7 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
 #define BT_TXDATA 0x02
 #define BT_ASLEEP 0x04
 #define BT_EXT_WAKE 0x08
+#define BT_SUSPEND  0x10
 
 static bool has_lpm_enabled = false;
 static struct bluesleep_info *bsi;
@@ -154,7 +155,10 @@ struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 */
 static void hsuart_power(int on)
 {
-	pr_info("HSUART CLOCK: %s,\n", on ? "ON" : "OFF");
+	if (test_bit(BT_SUSPEND, &flags))
+		return;
+
+	pr_info("HSUART CLOCK:  %s\n", on ? "ON" : "OFF");
 	if (on) {
 		msm_hs_request_clock_on(bsi->uport);
 		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
@@ -173,7 +177,7 @@ int bluesleep_can_sleep(void)
 {
 	/* check if WAKE_BT_GPIO and BT_WAKE_GPIO are both deasserted */
 	return ((gpio_get_value(bsi->host_wake) != bsi->irq_polarity) &&
-	           (gpio_get_value(bsi->ext_wake)) && (bsi->uport != NULL));
+		(test_bit(BT_EXT_WAKE, &flags)) && (bsi->uport != NULL));
 }
 
 void bluesleep_sleep_wakeup(void)
@@ -181,9 +185,7 @@ void bluesleep_sleep_wakeup(void)
 	if (test_bit(BT_ASLEEP, &flags)) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("waking up...\n");
-			
-		/*Activating UART */
-		hsuart_power(1);
+
 		wake_lock(&bsi->wake_lock);
 		
 		/* Start the timer */
@@ -197,6 +199,9 @@ void bluesleep_sleep_wakeup(void)
 			
 		clear_bit(BT_EXT_WAKE, &flags);
 		clear_bit(BT_ASLEEP, &flags);
+
+		/*Activating UART */
+		hsuart_power(1);
 	} else {
 		pr_info("bluesleep_sleep_wakeup : already wake up");
 		mod_timer(&tx_timer, jiffies + (bsi->tx_timer_interval * HZ));
@@ -615,6 +620,7 @@ static int bluesleep_probe(struct platform_device *pdev)
 	bsi->irq_polarity = POLARITY_LOW;	/*low edge (falling edge) */
 
 	wake_lock_init(&bsi->wake_lock, WAKE_LOCK_SUSPEND, "bluesleep");
+	clear_bit(BT_SUSPEND, &flags);
 
 	BT_INFO("host_wake_irq %d, polarity %d",
 		bsi->host_wake_irq, bsi->irq_polarity);
@@ -649,6 +655,31 @@ static int bluesleep_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int bluesleep_resume(struct platform_device *pdev)
+{
+	if (test_bit(BT_SUSPEND, &flags)) {
+		if (debug_mask & DEBUG_SUSPEND)
+			pr_info("bluesleep resuming...\n");
+		if ((bsi->uport != NULL) &&
+		    (gpio_get_value(bsi->host_wake) == bsi->irq_polarity)) {
+			if (debug_mask & DEBUG_SUSPEND)
+				pr_info("bluesleep resume from BT event...\n");
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		}
+		clear_bit(BT_SUSPEND, &flags);
+	}
+	return 0;
+}
+
+static int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_info("bluesleep suspending...\n");
+	set_bit(BT_SUSPEND, &flags);
+	return 0;
+}
+
 static struct of_device_id bluesleep_match_table[] = {
 	{.compatible = "qcom,bluesleep"},
 	{}
@@ -657,6 +688,8 @@ static struct of_device_id bluesleep_match_table[] = {
 static struct platform_driver bluesleep_driver = {
 	.probe = bluesleep_probe,
 	.remove = bluesleep_remove,
+	.suspend = bluesleep_suspend,
+	.resume = bluesleep_resume,
 	.driver = {
 		.name = "bluesleep",
 		.owner = THIS_MODULE,
