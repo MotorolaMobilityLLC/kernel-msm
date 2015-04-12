@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3022,28 +3022,16 @@ static int get_device_tree_data(struct platform_device *pdev)
 	tmdev->calib_len = tmdev->res_calib_mem->end -
 					tmdev->res_calib_mem->start + 1;
 
-	res_mem = request_mem_region(tmdev->res_calib_mem->start,
-				tmdev->calib_len, tmdev->res_calib_mem->name);
-	if (!res_mem) {
-		pr_err("Request calibration memory region failed\n");
-		rc = -EINVAL;
-		goto fail_unmap_tsens;
-	}
-
-	tmdev->tsens_calib_addr = ioremap(res_mem->start,
+	tmdev->tsens_calib_addr = ioremap(tmdev->res_calib_mem->start,
 						tmdev->calib_len);
 	if (!tmdev->tsens_calib_addr) {
 		pr_err("Failed to IO map EEPROM registers.\n");
 		rc = -EINVAL;
-		goto fail_unmap_calib_region;
+		goto fail_unmap_tsens;
 	}
 
 	return 0;
 
-fail_unmap_calib_region:
-	if (tmdev->res_calib_mem)
-		release_mem_region(tmdev->res_calib_mem->start,
-					tmdev->calib_len);
 fail_unmap_tsens:
 	if (tmdev->tsens_addr)
 		iounmap(tmdev->tsens_addr);
