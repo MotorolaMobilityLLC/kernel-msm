@@ -2268,6 +2268,12 @@ static int arizona_hw_params(struct snd_pcm_substream *substream,
 	bool reconfig;
 	unsigned int aif_tx_state, aif_rx_state;
 
+	/*BODGE to fix the format call that is not made by codec to codec links*/
+	arizona_set_fmt(dai,
+		SND_SOC_DAIFMT_I2S |
+		SND_SOC_DAIFMT_CBM_CFM |
+		SND_SOC_DAIFMT_NB_NF);
+
 	if (params_rate(params) % 8000)
 		rates = &arizona_44k1_bclk_rates[0];
 	else
@@ -2333,13 +2339,6 @@ static int arizona_hw_params(struct snd_pcm_substream *substream,
 		snd_soc_update_bits(codec,
 				    base + ARIZONA_AIF_RX_ENABLES, 0xff, 0x0);
 	}
-
-/* BODGE to fix the format call that is not made by codec to codec links */
-arizona_set_fmt(dai,
-	SND_SOC_DAIFMT_I2S |
-	SND_SOC_DAIFMT_CBM_CFM |
-	SND_SOC_DAIFMT_NB_NF);
-
 
 	ret = arizona_hw_params_rate(substream, params, dai);
 	if (ret != 0)
