@@ -859,6 +859,8 @@
 			accel_orient = <1>;            /* Accel Orientation value */
 			gyro_orient = <1>;             /* Gyro Orientation value */
 			mag_orient = <8>;              /* Mag Orientation value */
+			panel_type = <0>;              /* Panel Type value */
+			IR_config = <0>;               /* IR Config value */
 			pinctrl-names = "default";
 			pinctrl-0 = <&motosh_out_default &motosh_in_default>;
 		};
