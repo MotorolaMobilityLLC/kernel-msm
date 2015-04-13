@@ -38,7 +38,7 @@
 #include <dhd_proto.h>
 #include <dhd_bus.h>
 #include <dhd_dbg.h>
-
+#include <dhd_debug.h>
 #include <siutils.h>
 
 
@@ -655,6 +655,9 @@ int dhd_prot_attach(dhd_pub_t *dhd)
 	/* DMAing ring completes supported? FALSE by default  */
 	dhd->dma_d2h_ring_upd_support = FALSE;
 	dhd->dma_h2d_ring_upd_support = FALSE;
+
+	/* set  the memdump capability */
+	dhd->memdump_enabled = DUMP_MEMONLY;
 
 	/* Ring Allocations */
 	/* 1.0	 H2D	TXPOST ring */

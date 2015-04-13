@@ -6092,7 +6092,7 @@ enum {
 	WL_PROXD_RESULT_FLAG_NLOS	= 0x0001,	/* LOS - if available */
 	WL_PROXD_RESULT_FLAG_LOS	= 0x0002,	/* NLOS - if available */
 	WL_PROXD_RESULT_FLAG_FATAL	= 0x0004,	/* Fatal error during burst */
-	WL_PROXD_RESULT_FLAG_VHTACK 	= 0x0008,      /* VHTACK or Legacy ACK used */
+	WL_PROXD_RESULT_FLAG_VHTACK = 0x0008,      /* VHTACK or Legacy ACK used */
 	WL_PROXD_RESULT_FLAG_ALL	= 0xffff
 };
 typedef int16 wl_proxd_result_flags_t;

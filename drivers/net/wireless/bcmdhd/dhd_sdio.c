@@ -561,6 +561,8 @@ static int dhdsdio_checkdied(dhd_bus_t *bus, char *data, uint size);
 static int dhd_serialconsole(dhd_bus_t *bus, bool get, bool enable, int *bcmerror);
 #endif /* DHD_DEBUG */
 
+static int dhdsdio_mem_dump(dhd_bus_t *bus);
+
 static int dhdsdio_devcap_set(dhd_bus_t *bus, uint8 cap);
 static int dhdsdio_download_state(dhd_bus_t *bus, bool enter);
 
@@ -3113,7 +3115,11 @@ printbuf:
 	if (sdpcm_shared.flags & (SDPCM_SHARED_ASSERT | SDPCM_SHARED_TRAP)) {
 		DHD_ERROR(("%s: %s\n", __FUNCTION__, strbuf.origbuf));
 	}
-
+	/* save core dump or write to a file */
+	if (bus->dhd->memdump_enabled) {
+		dhdsdio_mem_dump(bus);
+		dhd_dbg_send_urgent_evt(bus->dhd, NULL, 0);
+	}
 
 done:
 	if (mbuffer)
@@ -3126,7 +3132,49 @@ done:
 	return bcmerror;
 }
 #endif /* #ifdef DHD_DEBUG */
+static int
+dhdsdio_mem_dump(dhd_bus_t *bus)
+{
+	int ret = 0;
+	int size; /* Full mem size */
+	int start = bus->dongle_ram_base; /* Start address */
+	int read_size = 0; /* Read size of each iteration */
+	uint8 *databuf = NULL;
+	dhd_pub_t *dhd = bus->dhd;
 
+	if (!dhd->soc_ram) {
+		DHD_ERROR(("%s : dhd->soc_ram is NULL\n", __FUNCTION__));
+		return -1;
+	}
+
+	size = dhd->soc_ram_length = bus->ramsize;
+	/* Read mem content */
+	DHD_ERROR(("Dump dongle memory"));
+	databuf = dhd->soc_ram;
+	while (size)
+	{
+		read_size = MIN(MEMBLOCK, size);
+		if ((ret = dhdsdio_membytes(bus, FALSE, start, databuf, read_size)))
+		{
+			DHD_ERROR(("%s: Error membytes %d\n", __FUNCTION__, ret));
+			return -1;
+		}
+		/* Decrement size and increment start address */
+		size -= read_size;
+		start += read_size;
+		databuf += read_size;
+	}
+	DHD_ERROR(("Done\n"));
+
+	dhd_save_fwdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
+	return 0;
+}
+
+int
+dhd_socram_dump(dhd_bus_t * bus)
+{
+	return (dhdsdio_mem_dump(bus));
+}
 
 int
 dhdsdio_downloadvars(dhd_bus_t *bus, void *arg, int len)
@@ -7797,7 +7845,7 @@ static int
 _dhdsdio_download_firmware(struct dhd_bus *bus)
 {
 	int bcmerror = -1;
-
+	dhd_pub_t *dhd = bus->dhd;
 	bool embed = FALSE;	/* download embedded firmware */
 	bool dlok = FALSE;	/* download firmware succeeded */
 
@@ -7864,6 +7912,14 @@ _dhdsdio_download_firmware(struct dhd_bus *bus)
 	if (dhdsdio_download_state(bus, FALSE)) {
 		DHD_ERROR(("%s: error getting out of ARM core reset\n", __FUNCTION__));
 		goto err;
+	}
+	if (dhd) {
+		if (!dhd->soc_ram) {
+			dhd->soc_ram = MALLOC(dhd->osh, bus->ramsize);
+			dhd->soc_ram_length = bus->ramsize;
+		} else {
+			memset(dhd->soc_ram, 0, dhd->soc_ram_length);
+		}
 	}
 
 	bcmerror = 0;
@@ -7995,6 +8051,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 		if (!bus->dhd->dongle_reset) {
 			dhd_os_sdlock(dhdp);
 			dhd_os_wd_timer(dhdp, 0);
+			dhd_dbg_start(dhdp, 0);
 #if !defined(IGNORE_ETH0_DOWN)
 			/* Force flow control as protection when stop come before ifconfig_down */
 			dhd_txflowcontrol(bus->dhd, ALL_INTERFACES, ON);
@@ -8059,7 +8116,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 						dhd_txflowcontrol(bus->dhd, ALL_INTERFACES, OFF);
 #endif
 						dhd_os_wd_timer(dhdp, dhd_watchdog_ms);
-
+						dhd_dbg_start(dhdp, 1);
 						DHD_TRACE(("%s: WLAN ON DONE\n", __FUNCTION__));
 					} else {
 						dhd_bus_stop(bus, FALSE);

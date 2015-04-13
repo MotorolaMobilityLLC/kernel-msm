@@ -44,6 +44,7 @@
 #include <dhd_flowring.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
+#include <dhd_debug.h>
 #include <dhdioctl.h>
 #include <sdiovar.h>
 #include <bcmmsgbuf.h>
@@ -74,6 +75,7 @@ int dhd_dongle_ramsize;
 static int dhdpcie_checkdied(dhd_bus_t *bus, char *data, uint size);
 static int dhdpcie_bus_readconsole(dhd_bus_t *bus);
 #endif
+static int dhdpcie_mem_dump(dhd_bus_t *bus);
 static void dhdpcie_bus_report_pcie_linkdown(dhd_bus_t *bus);
 static int dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uint size);
 static int dhdpcie_bus_doiovar(dhd_bus_t *bus, const bcm_iovar_t *vi, uint32 actionid,
@@ -1061,7 +1063,7 @@ static int
 _dhdpcie_download_firmware(struct dhd_bus *bus)
 {
 	int bcmerror = -1;
-
+	dhd_pub_t *dhd = bus->dhd;
 	bool embed = FALSE;	/* download embedded firmware */
 	bool dlok = FALSE;	/* download firmware succeeded */
 
@@ -1131,9 +1133,15 @@ _dhdpcie_download_firmware(struct dhd_bus *bus)
 		DHD_ERROR(("%s: error getting out of ARM core reset\n", __FUNCTION__));
 		goto err;
 	}
-
+	if (dhd) {
+		if (!dhd->soc_ram) {
+			dhd->soc_ram = MALLOC(dhd->osh, bus->ramsize);
+			dhd->soc_ram_length = bus->ramsize;
+		} else {
+			memset(dhd->soc_ram, 0, dhd->soc_ram_length);
+		}
+	}
 	bcmerror = 0;
-
 err:
 	return bcmerror;
 }
@@ -1417,7 +1425,6 @@ dhdpcie_checkdied(dhd_bus_t *bus, char *data, uint size)
 					line[n] = ch;
 				}
 
-
 				if (n > 0) {
 					if (line[n - 1] == '\r')
 						n--;
@@ -1437,6 +1444,11 @@ dhdpcie_checkdied(dhd_bus_t *bus, char *data, uint size)
 printbuf:
 	if (bus->pcie_sh->flags & (PCIE_SHARED_ASSERT | PCIE_SHARED_TRAP)) {
 		DHD_ERROR(("%s: %s\n", __FUNCTION__, strbuf.origbuf));
+	}
+	/* save core dump or write to a file */
+	if (bus->dhd->memdump_enabled) {
+		dhdpcie_mem_dump(bus);
+		dhd_dbg_send_urgent_evt(bus->dhd, NULL, 0);
 	}
 
 done:
@@ -1463,6 +1475,50 @@ dhdpcie_bus_report_pcie_linkdown(dhd_bus_t *bus)
 	dhd_os_send_hang_message(bus->dhd);
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 }
+static int
+dhdpcie_mem_dump(dhd_bus_t *bus)
+{
+	int ret = BCME_OK;
+	int size; /* Full mem size */
+	int start = bus->dongle_ram_base; /* Start address */
+	int read_size = 0; /* Read size of each iteration */
+	uint8 *databuf = NULL;
+	dhd_pub_t *dhd = bus->dhd;
+	if (!dhd->soc_ram) {
+		DHD_ERROR(("%s : dhd->soc_ram is NULL\n", __FUNCTION__));
+		return -1;
+	}
+	size = dhd->soc_ram_length = bus->ramsize;
+
+	/* Read mem content */
+	databuf = dhd->soc_ram;
+	while (size) {
+		read_size = MIN(MEMBLOCK, size);
+		if ((ret = dhdpcie_bus_membytes(bus, FALSE, start, databuf, read_size))) {
+			DHD_ERROR(("%s: Error membytes %d\n", __FUNCTION__, ret));
+			return BCME_ERROR;
+		}
+		DHD_TRACE(("."));
+
+	/* Decrement size and increment start address */
+		size -= read_size;
+		start += read_size;
+		databuf += read_size;
+	}
+
+
+	dhd_save_fwdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
+	dhd_schedule_memdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
+
+	return ret;
+}
+
+int
+dhd_socram_dump(dhd_bus_t *bus)
+{
+	return (dhdpcie_mem_dump(bus));
+}
+
 
 /**
  * Transfers bytes from host to dongle using pio mode.
@@ -2297,6 +2353,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 				}
 
 				dhd_os_wd_timer(dhdp, 0);
+				dhd_dbg_start(dhdp, 0);
 				dhd_bus_stop(bus, TRUE);
 				dhd_prot_clear(dhdp);
 				dhd_clear(dhdp);
@@ -2405,7 +2462,12 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 						__FUNCTION__, ret));
 					goto done;
 				}
-
+				ret = dhd_dbg_start(dhdp, 1);
+				if (ret) {
+					DHD_ERROR(("%s: dhd_dbg_start: %d\n",
+						__FUNCTION__, ret));
+					goto done;
+				}
 				bus->dhd->up = TRUE;
 				DHD_ERROR(("%s: WLAN Power On Done\n", __FUNCTION__));
 			} else {

@@ -66,9 +66,6 @@ typedef enum {
 	ANDROID_NL80211_SUBCMD_GSCAN_RANGE_START = 0x1000,
 	ANDROID_NL80211_SUBCMD_GSCAN_RANGE_END   = 0x10FF,
 
-	/* define all NearbyDiscovery related commands between 0x1100 and 0x11FF */
-	ANDROID_NL80211_SUBCMD_NBD_RANGE_START = 0x1100,
-	ANDROID_NL80211_SUBCMD_NBD_RANGE_END   = 0x11FF,
 
 	/* define all RTT related commands between 0x1100 and 0x11FF */
 	ANDROID_NL80211_SUBCMD_RTT_RANGE_START = 0x1100,
@@ -79,6 +76,14 @@ typedef enum {
 
 	ANDROID_NL80211_SUBCMD_TDLS_RANGE_START = 0x1300,
 	ANDROID_NL80211_SUBCMD_TDLS_RANGE_END	= 0x13FF,
+
+	ANDROID_NL80211_SUBCMD_DEBUG_RANGE_START = 0x1400,
+	ANDROID_NL80211_SUBCMD_DEBUG_RANGE_END	= 0x14FF,
+
+	/* define all NearbyDiscovery related commands between 0x1500 and 0x15FF */
+	ANDROID_NL80211_SUBCMD_NBD_RANGE_START = 0x1500,
+	ANDROID_NL80211_SUBCMD_NBD_RANGE_END   = 0x15FF,
+
 	/* This is reserved for future usage */
 
 } ANDROID_VENDOR_SUB_COMMAND;
@@ -110,9 +115,15 @@ enum wl_vendor_subcmd {
 	RTT_SUBCMD_SET_CONFIG = ANDROID_NL80211_SUBCMD_RTT_RANGE_START,
 	RTT_SUBCMD_CANCEL_CONFIG,
 	RTT_SUBCMD_GETCAPABILITY,
-
 	LSTATS_SUBCMD_GET_INFO = ANDROID_NL80211_SUBCMD_LSTATS_RANGE_START,
-    /* Add more sub commands here */
+	DEBUG_START_LOGGING = ANDROID_NL80211_SUBCMD_DEBUG_RANGE_START,
+	DEBUG_TRIGGER_MEM_DUMP,
+	DEBUG_GET_MEM_DUMP,
+	DEBUG_GET_VER,
+	DEBUG_GET_RING_STATUS,
+	DEBUG_GET_RING_DATA,
+	DEBUG_GET_FEATURE,
+	/* Add more sub commands here */
     VENDOR_SUBCMD_MAX
 };
 
@@ -252,6 +263,22 @@ enum rtt_attributes {
 	RTT_ATTRIBUTE_RESULT
 };
 
+enum debug_attributes {
+	DEBUG_ATTRIBUTE_GET_DRIVER,
+	DEBUG_ATTRIBUTE_GET_FW,
+	DEBUG_ATTRIBUTE_RING_ID,
+	DEBUG_ATTRIBUTE_RING_NAME,
+	DEBUG_ATTRIBUTE_RING_FLAGS,
+	DEBUG_ATTRIBUTE_LOG_LEVEL,
+	DEBUG_ATTRIBUTE_LOG_TIME_INTVAL,
+	DEBUG_ATTRIBUTE_LOG_MIN_DATA_SIZE,
+	DEBUG_ATTRIBUTE_FW_DUMP_LEN,
+	DEBUG_ATTRIBUTE_FW_DUMP_DATA,
+	DEBUG_ATTRIBUTE_RING_DATA,
+	DEBUG_ATTRIBUTE_RING_STATUS,
+	DEBUG_ATTRIBUTE_RING_NUM
+};
+
 typedef enum wl_vendor_event {
 	BRCM_VENDOR_EVENT_UNSPEC,
 	BRCM_VENDOR_EVENT_PRIV_STR,
@@ -262,7 +289,9 @@ typedef enum wl_vendor_event {
 	GOOGLE_RTT_COMPLETE_EVENT,
 	GOOGLE_SCAN_COMPLETE_EVENT,
 	GOOGLE_GSCAN_GEOFENCE_LOST_EVENT,
-	GOOGLE_SCAN_EPNO_EVENT
+	GOOGLE_SCAN_EPNO_EVENT,
+	GOOGLE_DEBUG_RING_EVENT,
+	GOOGLE_FW_DUMP_EVENT
 } wl_vendor_event_t;
 
 enum andr_wifi_attr {
@@ -305,7 +334,7 @@ typedef enum gscan_complete_event {
 #define BRCM_VENDOR_SCMD_CAPA	"cap"
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 13, 0)) || defined(WL_VENDOR_EXT_SUPPORT)
-extern int wl_cfgvendor_attach(struct wiphy *wiphy);
+extern int wl_cfgvendor_attach(struct wiphy *wiphy, dhd_pub_t *dhd);
 extern int wl_cfgvendor_detach(struct wiphy *wiphy);
 extern int wl_cfgvendor_send_async_event(struct wiphy *wiphy,
                   struct net_device *dev, int event_id, const void  *data, int len);

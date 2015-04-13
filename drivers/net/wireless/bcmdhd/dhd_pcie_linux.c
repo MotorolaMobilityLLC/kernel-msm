@@ -567,6 +567,7 @@ void dhdpcie_linkdown_cb(struct msm_pcie_notify *noti)
 			DHD_ERROR(("%s: Event HANG send up "
 				"due to PCIe linkdown\n", __FUNCTION__));
 			bus->islinkdown = TRUE;
+			dhd->busstate = DHD_BUS_DOWN;
 			DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhd, DHD_EVENT_TIMEOUT_MS);
 			dhd_os_check_hang(dhd, 0, -ETIMEDOUT);
 		}
