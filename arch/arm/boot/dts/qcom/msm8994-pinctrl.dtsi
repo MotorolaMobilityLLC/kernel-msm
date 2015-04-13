@@ -210,6 +210,84 @@
 		        };
 		};
 
+		spi5_active1 {
+			/* MOSI, MISO */
+			qcom,pins = <&gp 21>, <&gp 22>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "spi5-active";
+
+			spi5_active1: spi_active {
+			       drive-strength = <12>;
+			       bias-disable = <0>;
+		        };
+		};
+
+		spi5_suspend1 {
+			/* MOSI, MISO */
+			qcom,pins = <&gp 21>, <&gp 22>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "spi5-suspend";
+
+			spi5_sleep1: spi_sleep {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		spi5_active2 {
+			/* CLK */
+			qcom,pins = <&gp 24>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <3>;
+			label = "spi5-active2";
+
+			spi5_active2: spi_active {
+				drive-strength = <12>;
+				bias-disable = <0>;
+		        };
+		};
+
+		spi5_suspend2 {
+			/* CLK */
+			qcom,pins = <&gp 24>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <3>;
+			label = "spi5-suspend2";
+
+			spi5_sleep2: spi_sleep {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+		spi5_cs0_active {
+			/* CS1 */
+			qcom,pins = <&gp 23>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <2>;
+			label = "spi5-cs0-active";
+
+			spi5_cs0_active: cs0_active {
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
+		spi5_cs0_suspend {
+			/* CS1 */
+			qcom,pins = <&gp 23>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <2>;
+			label = "spi5-cs0-suspend";
+
+			spi5_cs0_sleep: cs0_sleep {
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+
 		pmx_i2c_1 {
 			qcom,pins = <&gp 2>, <&gp 3>; /* SDA, SCL */
 			qcom,num-grp-pins = <2>;

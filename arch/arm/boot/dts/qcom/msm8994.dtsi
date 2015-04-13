@@ -36,6 +36,7 @@
 		i2c2 = &i2c_2;
 		i2c5 = &i2c_5;
 		spi0 = &spi_0;
+		spi5 = &spi_5;
 		qup2 = &i2c_2;
 	};
 
@@ -1316,8 +1317,8 @@
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
 		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <12>;
-		qcom,bam-producer-pipe-index = <13>;
+		qcom,bam-consumer-pipe-index = <16>;
+		qcom,bam-producer-pipe-index = <17>;
 		qcom,master-id = <86>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
@@ -1329,6 +1330,57 @@
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
 			 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
 	};
+
+#if 1 /* FIFO mode */
+	/* BLSP1 QUP4 */
+	spi_5: spi_stm: spi@f9927000 {
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical";
+		reg = <0xf9927000 0x1000>;
+		interrupt-names = "spi_irq";
+		interrupts = <0 99 0>;
+		spi-max-frequency = <19200000>;
+		qcom,ver-reg-exists;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi5_active1 &spi5_active2 &spi5_cs0_active>;
+		pinctrl-1 = <&spi5_sleep1 &spi5_sleep2 &spi5_cs0_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp1_qup5_spi_apps_clk>;
+		status = "ok";
+	};
+#else
+	/* BLSP1 QUP4: using DMA */
+	spi_5: spi_stm: spi@f9927000 {
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9927000 0x1000>,
+			<0xf9904000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 99 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi5_active1 &spi5_active2 &spi5_cs0_active>;
+		pinctrl-1 = <&spi5_sleep1 &spi5_sleep2 &spi5_cs0_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp1_qup5_spi_apps_clk>;
+		status = "ok";
+	};
+#endif
 
 	qcom,msm-ssc-sensors {
 		compatible = "qcom,msm-ssc-sensors";
