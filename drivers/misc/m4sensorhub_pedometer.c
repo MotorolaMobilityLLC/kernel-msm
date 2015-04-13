@@ -160,7 +160,7 @@ static int m4ped_read_report_data(struct iio_dev *iio,
 		goto m4ped_read_fail;
 	}
 
-	dd->iiodat.timestamp = iio_get_time_ns();
+	dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
 
 	dd->iiodat.total_distance += dd->base_dat.total_distance;
 	dd->iiodat.total_steps += dd->base_dat.total_steps;

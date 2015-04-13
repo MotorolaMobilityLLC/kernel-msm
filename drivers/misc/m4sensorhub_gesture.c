@@ -127,7 +127,7 @@ static void m4ges_isr(enum m4sensorhub_irqs int_event, void *handle)
 	}
 #endif /* CONFIG_WAKEUP_SOURCE_NOTIFY */
 
-	dd->iiodat.timestamp = iio_get_time_ns();
+	dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
 	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
 	dd->gesture_count++;
 

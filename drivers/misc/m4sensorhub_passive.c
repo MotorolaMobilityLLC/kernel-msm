@@ -156,7 +156,7 @@ static void m4pas_isr(enum m4sensorhub_irqs int_event, void *handle)
 		dd->iiodat[i].heartrate = heartrate[i];
 		dd->iiodat[i].hrconfidence = hrconfidence[i];
 		dd->iiodat[i].healthy_minutes = healthy_minutes[i];
-		dd->iiodat[i].timestamp = iio_get_time_ns();
+		dd->iiodat[i].timestamp = ktime_to_ns(ktime_get_boottime());
 	}
 
 	/*
