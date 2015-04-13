@@ -1370,6 +1370,7 @@
 	qcom,dc-psy-ma = <500>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
+	qcom,charge-unknown-battery;
 	qcom,chg-thermal-mitigation = <4000>, <3950>, <3850>, <3750>, <3650>,
 				      <3600>, <3400>, <3200>, <3100>, <3000>,
 				      <2800>, <2600>, <2500>, <2400>, <2200>,
