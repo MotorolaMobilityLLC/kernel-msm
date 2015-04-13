@@ -79,7 +79,7 @@ static void m4fus_isr(enum m4sensorhub_irqs int_event, void *handle)
 	}
 
 	dd->iiodat[0].type = FUSION_TYPE_ROTATION;
-	dd->iiodat[0].timestamp = iio_get_time_ns();
+	dd->iiodat[0].timestamp = ktime_to_ns(ktime_get_boottime());
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_EULERPITCH);
 	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_EULERPITCH,
@@ -121,7 +121,7 @@ static void m4fus_isr(enum m4sensorhub_irqs int_event, void *handle)
 	}
 
 	dd->iiodat[1].type = FUSION_TYPE_ORIENTATION;
-	dd->iiodat[1].timestamp = iio_get_time_ns();
+	dd->iiodat[1].timestamp = ktime_to_ns(ktime_get_boottime());
 
 	/*
 	 * For some reason, IIO knows we are sending an array,

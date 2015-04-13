@@ -91,7 +91,7 @@ static void m4pressure_work_func(struct work_struct *work)
 
 	p_priv_data->read_data.pressure = pressure.pressure;
 	p_priv_data->read_data.altitude = pressure.absoluteAltitude;
-	p_priv_data->read_data.timestamp = iio_get_time_ns();
+	p_priv_data->read_data.timestamp = ktime_to_ns(ktime_get_boottime());
 
 	iio_push_to_buffers(p_iio_dev, (unsigned char *)&(p_priv_data->read_data));
 
