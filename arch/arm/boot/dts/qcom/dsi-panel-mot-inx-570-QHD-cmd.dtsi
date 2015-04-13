@@ -25,8 +25,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <2560>;
-		qcom,mdss-pan-physical-width-dimension = <65>;
-		qcom,mdss-pan-physical-height-dimension = <115>;
+		qcom,mdss-pan-physical-width-dimension = <70>;
+		qcom,mdss-pan-physical-height-dimension = <125>;
 		qcom,mdss-dsi-panel-clockrate = <830000000>;
 		qcom,mdss-dsi-h-front-porch = <120>;
 		qcom,mdss-dsi-h-back-porch = <44>;
@@ -53,8 +53,7 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-panel-timings = [DB 34 22 00 62 66 28 36 2B 03
 									04 00];
-
-		qcom,mdss-dsi-reset-sequence = <0 11>, <1 2>, <0 1>, <1 11>;
+		qcom,mdss-dsi-reset-sequence = <0 11>, <1 11>, <0 1>, <1 11>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-t-clk-post = <0x2d>;
 		qcom,mdss-dsi-t-clk-pre = <0x29>;
@@ -94,7 +93,7 @@
 			/* display_off */
 			05 01 00 00 01 00 01 28
 			/* enter sleep mode */
-			05 01 00 00 78 00 01 10];
+			05 01 00 00 46 00 01 10];
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
 		qcom,esd-check-enabled;
@@ -117,8 +116,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <2560>;
-		qcom,mdss-pan-physical-width-dimension = <65>;
-		qcom,mdss-pan-physical-height-dimension = <115>;
+		qcom,mdss-pan-physical-width-dimension = <70>;
+		qcom,mdss-pan-physical-height-dimension = <125>;
 		qcom,mdss-dsi-panel-clockrate = <830000000>;
 		qcom,mdss-dsi-h-front-porch = <120>;
 		qcom,mdss-dsi-h-back-porch = <44>;
