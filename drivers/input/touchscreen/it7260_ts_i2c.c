@@ -508,7 +508,7 @@ static void chipLowPowerMode(bool low)
 
 			//Touch Reset
 			gpio_direction_output(RESET_GPIO,0);
-			msleep(10);
+			msleep(60);
 			gpio_direction_output(RESET_GPIO,1);
 			msleep(50);
 			chipInLowPower = false;
@@ -900,12 +900,14 @@ static void waitNotifyEvt(struct work_struct *work) {
 
 static void touchIdleOnEvt(struct work_struct *work) {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
-		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
-		chipInLowPower = false;
-	} else {
-		chipInLowPower = true;
-		LOGI("[%d] %s set chipInLowPower = %d. \n", __LINE__, __func__, chipInLowPower);
+	if (!chipInLowPower){
+		if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
+			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+			chipInLowPower = false;
+		} else {
+			chipInLowPower = true;
+			LOGI("[%d] %s set chipInLowPower = %d. \n", __LINE__, __func__, chipInLowPower);
+		}
 	}
 }
 
