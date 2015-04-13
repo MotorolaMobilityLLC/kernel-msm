@@ -11,7 +11,7 @@
 #include "huawei-lcd.dtsi"
 #include "huawei-tp.dtsi"
 /*#include "huawei-camera.dtsi"*/
-/*#include "huawei-sensors.dtsi"*/
+#include "huawei-sensors.dtsi"
 /*#include "huawei-vibrator.dtsi"*/
 /*belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator end*/
 
