@@ -57,6 +57,9 @@
 #include <linux/m4sensorhub.h>
 #include <linux/m4sensorhub/MemMapUserSettings.h>
 #endif
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+#include <linux/display_state_notify.h>
+#endif
 
 #define MODULE_NAME "leds_lm3535"
 
@@ -274,6 +277,11 @@ struct lm3535 {
 #ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
 	atomic_t docked;
 	struct notifier_block dock_nb;
+#endif
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	atomic_t off_at_lp;
+	atomic_t disp_in_lp;
+	struct notifier_block display_nb;
 #endif
 };
 static DEFINE_MUTEX(lm3535_mutex);
@@ -636,6 +644,19 @@ static int lm3535_dock_notifier(struct notifier_block *self,
 }
 #endif /* CONFIG_WAKEUP_SOURCE_NOTIFY */
 
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static int lm3535_display_notify(struct notifier_block *self,
+			unsigned long action, void *dev)
+{
+	atomic_set(&lm3535_data.disp_in_lp, action == DISPLAY_STATE_LP);
+	/* adjust brightness when off_at_lp enabled */
+	if (atomic_read(&lm3535_data.off_at_lp))
+		lm3535_brightness_set(&lm3535_led, lm3535_led.brightness);
+	return NOTIFY_OK;
+}
+#endif
+
+
 #ifdef	CONFIG_HAS_AMBIENTMODE
 struct led_classdev *led_get_default_dev(void)
 {
@@ -693,6 +714,12 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
         value = 0; /* Special case for turn off */
     else if ((value >= 5) && (value < 10))
         value = 1; /* Special case for dim */
+
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	if ((value == 1) && atomic_read(&lm3535_data.off_at_lp) &&
+	    atomic_read(&lm3535_data.disp_in_lp))
+		value = 0;
+#endif
 
     if ((value == 0) && (!lm3535_data.enabled)) {
         /* If LED already disabled, we don't need to do anything */
@@ -927,6 +954,36 @@ static ssize_t lm3535_suspend_store (struct device *dev,
 }
 static DEVICE_ATTR(suspend, 0644, lm3535_suspend_show, lm3535_suspend_store);
 
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static ssize_t lm3535_off_at_lp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	snprintf(buf, 16, "%d\n", atomic_read(&lm3535_data.off_at_lp));
+	return strlen(buf)+1;
+}
+
+static ssize_t lm3535_off_at_lp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned value = 0;
+	if (!buf || size == 0) {
+		pr_err("%s: invalid command\n", __func__);
+		return -EINVAL;
+	}
+	sscanf(buf, "%d", &value);
+	value = !!value;
+	if (value != atomic_read(&lm3535_data.off_at_lp)) {
+		atomic_set(&lm3535_data.off_at_lp, value);
+		/* adjust brightness */
+		lm3535_brightness_set(&lm3535_led, lm3535_led.brightness);
+	}
+	return size;
+}
+
+static DEVICE_ATTR(off_at_lp, 0644, lm3535_off_at_lp_show,
+		   lm3535_off_at_lp_store);
+#endif /* CONFIG_DISPLAY_STATE_NOTIFY */
+
 /* This function is called by i2c_probe */
 static int lm3535_probe (struct i2c_client *client,
     const struct i2c_device_id *id)
@@ -1044,6 +1101,23 @@ static int lm3535_probe (struct i2c_client *client,
 	lm3535_data.dock_nb.notifier_call = lm3535_dock_notifier;
 	wakeup_source_register_notify(&lm3535_data.dock_nb);
 #endif /* CONFIG_WAKEUP_SOURCE_NOTIFY */
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	atomic_set(&lm3535_data.off_at_lp,
+		   of_property_read_bool(client->dev.of_node,
+					 "lm3535,turn_off_when_disp_in_lp"));
+	ret = device_create_file(lm3535_led.dev, &dev_attr_off_at_lp);
+	if (ret) {
+		pr_err("%s: failed(%d) create device file\n", __func__, ret);
+		device_remove_file(lm3535_led.dev, &dev_attr_suspend);
+		led_classdev_unregister(&lm3535_led);
+		led_classdev_unregister(&lm3535_led_noramp);
+		misc_deregister(&als_miscdev);
+		return ret;
+	}
+	atomic_set(&lm3535_data.disp_in_lp, 0);
+	lm3535_data.display_nb.notifier_call = lm3535_display_notify;
+	display_state_register_notify(&lm3535_data.display_nb);
+#endif
 
 	INIT_DELAYED_WORK(&lm3535_data.als_delayed_work,
 			  lm3535_allow_als_work_func);
@@ -1524,6 +1598,10 @@ static int lm3535_remove (struct i2c_client *client)
 #if 0
     input_unregister_device (lm3535_data.idev);
     input_free_device (lm3535_data.idev);
+#endif
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	device_remove_file(lm3535_led.dev, &dev_attr_off_at_lp);
+	display_state_unregister_notify(&lm3535_data.display_nb);
 #endif
     return 0;
 }

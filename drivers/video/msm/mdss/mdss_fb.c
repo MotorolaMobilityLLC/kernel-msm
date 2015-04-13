@@ -1121,9 +1121,6 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 		pr_debug("No change in power state\n");
 		return 0;
 	}
-#ifdef CONFIG_DISPLAY_STATE_NOTIFY
-	display_state_notify_subscriber(DISPLAY_STATE_OFF);
-#endif
 	cur_power_state = mfd->panel_power_state;
 
 	mutex_lock(&mfd->update.lock);
@@ -1172,10 +1169,6 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 		return 0;
 	}
 
-#ifdef CONFIG_DISPLAY_STATE_NOTIFY
-	display_state_notify_subscriber(DISPLAY_STATE_ON);
-#endif
-
 	if (mfd->mdp.on_fnc) {
 		ret = mfd->mdp.on_fnc(mfd);
 		if (ret)
@@ -1208,12 +1201,32 @@ error:
 	return ret;
 }
 
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static unsigned long mdss_fb_pwr_to_disp_state(int panel_power_state)
+{
+	unsigned long display_state;
+	switch (panel_power_state) {
+	case MDSS_PANEL_POWER_OFF:
+		display_state = DISPLAY_STATE_OFF;
+		break;
+	case MDSS_PANEL_POWER_ON:
+		display_state = DISPLAY_STATE_ON;
+		break;
+	default:
+		display_state = DISPLAY_STATE_LP;
+		break;
+	}
+	return display_state;
+}
+#endif /* CONFIG_DISPLAY_STATE_NOTIFY */
+
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
 	int cur_power_state, req_power_state = MDSS_PANEL_POWER_OFF;
+	unsigned long cur_display_state;
 
 	if (!mfd || !op_enable)
 		return -EPERM;
@@ -1222,11 +1235,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		return -EPERM;
 
 	cur_power_state = mfd->panel_power_state;
-
-#ifdef CONFIG_DISPLAY_STATE_NOTIFY
-	if (BLANK_FLAG_LP == blank_mode)
-		display_state_notify_subscriber(DISPLAY_STATE_LP);
-#endif
 
 	/*
 	 * Low power (lp) and ultra low pwoer (ulp) modes are currently only
@@ -1292,6 +1300,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	/* Only notify when actual display state is changed */
+	cur_display_state = mdss_fb_pwr_to_disp_state(mfd->panel_power_state);
+	if (cur_display_state != mdss_fb_pwr_to_disp_state(cur_power_state))
+		display_state_notify_subscriber(cur_display_state);
+#endif
 
 	return ret;
 }

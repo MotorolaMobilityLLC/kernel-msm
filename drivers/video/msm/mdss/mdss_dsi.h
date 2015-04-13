@@ -253,6 +253,24 @@ enum {
 	DSI_CTRL_MAX,
 };
 
+enum {
+	PANEL_TFMODE_TRANSMISSIVE,
+	PANEL_TFMODE_REFLECTIVE,
+	PANEL_TFMODE_TRANSFLECTIVE,
+	PANEL_TFMODE_MAX
+};
+
+enum {
+	TFMODE_STATE_NORMAL,
+	TFMODE_STATE_LOWPOWER,
+	TFMODE_STATE_MAX,
+};
+
+struct dsi_panel_tfmode {
+	int	tfmode[TFMODE_STATE_MAX];
+	struct dsi_panel_cmds cmds[PANEL_TFMODE_MAX];
+};
+
 #define DSI_CTRL_LEFT		DSI_CTRL_0
 #define DSI_CTRL_RIGHT		DSI_CTRL_1
 
@@ -332,6 +350,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds off_cmds;
 	struct dsi_panel_cmds status_cmds;
 	u32 status_value;
+	struct dsi_panel_tfmode *panel_tfmode;
 
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
@@ -434,6 +453,8 @@ void mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);
+int mdss_dsi_panel_init_sysfs(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+				struct platform_device *pdev);
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format);
 
