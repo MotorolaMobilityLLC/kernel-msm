@@ -629,6 +629,7 @@ extern void dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success);
 #define WIFI_FEATURE_EPR                0x4000      /* Enhanced power reporting         */
 #define WIFI_FEATURE_AP_STA             0x8000      /* Support for AP STA Concurrency   */
 #define WIFI_FEATURE_LINKSTAT           0x10000     /* Support for Linkstats            */
+#define WIFI_FEATURE_HAL_EPNO           0x40000     /* WiFi PNO enhanced                */
 
 #define MAX_FEATURE_SET_CONCURRRENT_GROUPS  3
 
@@ -802,6 +803,9 @@ extern int dhd_bssidx2idx(dhd_pub_t *dhdp, uint32 bssidx);
 
 extern bool dhd_is_concurrent_mode(dhd_pub_t *dhd);
 extern int dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf, uint cmd_len, int set);
+extern int dhd_getiovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf,
+		uint cmd_len, char **resptr, uint resp_len);
+
 typedef enum cust_gpio_modes {
 	WLAN_RESET_ON,
 	WLAN_RESET_OFF,

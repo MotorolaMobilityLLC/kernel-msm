@@ -152,8 +152,8 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 #endif
 	BCMEVENT_NAME(WLC_E_TXFAIL_THRESH),
 #ifdef GSCAN_SUPPORT
-	{ WLC_E_PFN_GSCAN_FULL_RESULT, "PFN_GSCAN_FULL_RESULT"},
-	{ WLC_E_PFN_SWC, "PFN_SIGNIFICANT_WIFI_CHANGE"}
+	BCMEVENT_NAME(WLC_E_PFN_GSCAN_FULL_RESULT),
+	BCMEVENT_NAME(WLC_E_PFN_SWC),
 #endif /* GSCAN_SUPPORT */
 #ifdef WLBSSLOAD_REPORT
 	BCMEVENT_NAME(WLC_E_BSS_LOAD),
@@ -161,6 +161,9 @@ static const bcmevent_name_str_t bcmevent_names[] = {
 #if defined(BT_WIFI_HANDOVER) || defined(WL_TBOW)
 	BCMEVENT_NAME(WLC_E_BT_WIFI_HANDOVER_REQ),
 #endif
+#ifdef GSCAN_SUPPORT
+	BCMEVENT_NAME(WLC_E_PFN_SSID_EXT)
+#endif /* GSCAN_SUPPORT */
 };
 
 
