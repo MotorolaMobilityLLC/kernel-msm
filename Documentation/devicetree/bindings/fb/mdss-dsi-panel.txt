@@ -351,6 +351,23 @@ Optional properties:
 					"hflip" = panel is flipped in horizontal direction
 					"vflip" = panel is flipped in vertical direction
 - qcom,mdss-dsi-dcs-idle-enable:	Boolean used to mention whether panel supports DCS idle exit/enter commands.
+- qcom,mdss-dsi-transflective-panel:	A node for the elements of the transflective panel
+					-- qcom,mdss-dsi-panel-tf-normal: string of panel mode when display is normal on
+					   "transmissive", "reflective", or "transflective", default is "transmissive"
+					-- qcom,mdss-dsi-panel-tf-lowpower: string of panel when display is low power on
+					   "transmissive", "reflective", or "transflective", default is "reflective"
+					-- qcom,mdss-dsi-panel-tf-transmissive-command: List of commands that need to be sent
+					   to panel in order to set transmissive mode dynamically.
+					   Refer to "qcom,mdss-dsi-on-command" and "qcom,mdss-dsi-on-command-state" section
+					   for adding commands.
+					-- qcom,mdss-dsi-panel-tf-reflective-command: List of commands that need to be sent
+					   to panel in order to set reflective mode dynamically.
+					   Refer to "qcom,mdss-dsi-on-command" and "qcom,mdss-dsi-on-command-state" section
+					   for adding commands.
+					-- qcom,mdss-dsi-panel-tf-transflective-command: List of commands that need to be sent
+					   to panel in order to set transflective mode dynamically.
+					   Refer to "qcom,mdss-dsi-on-command" and "qcom,mdss-dsi-on-command-state" section
+					   for adding commands.
 Note, if a given optional qcom,* binding is not present, then the driver will configure
 the default values specified.
 

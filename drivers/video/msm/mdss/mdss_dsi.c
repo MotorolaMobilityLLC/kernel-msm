@@ -1398,6 +1398,11 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("%s: dsi panel init failed\n", __func__);
 		goto error_pan_node;
 	}
+	rc = mdss_dsi_panel_init_sysfs(ctrl_pdata, pdev);
+	if (rc) {
+		pr_err("%s: dsi panel init sysfs failed\n", __func__);
+		goto error_pan_node;
+	}
 
 	rc = mdss_dsi_get_dt_panel_later_power(pdev->dev.of_node,
 					       ctrl_pdata, &pdev->dev);
