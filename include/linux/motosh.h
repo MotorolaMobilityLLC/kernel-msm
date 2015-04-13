@@ -318,6 +318,8 @@ struct motosh_platform_data {
 	int accel_orient;
 	int gyro_orient;
 	int mag_orient;
+	int panel_type;
+	int IR_config;
 };
 
 /**
