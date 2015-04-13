@@ -14,6 +14,7 @@
 #include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/of_platform.h>
 #include <linux/gpio.h>
 #include <linux/qpnp/pin.h>
 #include <linux/delay.h>
@@ -716,6 +717,12 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		}
 	}
 
+	if (ctrl->panel_tfmode) {
+		struct dsi_panel_cmds *cmds =
+			&(ctrl->panel_tfmode->cmds[TFMODE_STATE_NORMAL]);
+		mdss_dsi_panel_cmds_send(ctrl, cmds);
+	}
+
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
@@ -791,6 +798,13 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	if (pinfo->mipi.idle_enable) {
 		int r = mdss_dsi_set_panel_idle(ctrl, enable);
 		WARN(r, "mdss_dsi_set_panel_idle(%d) return %d\n", enable, r);
+	}
+
+	if (ctrl->panel_tfmode) {
+		int state = enable ? TFMODE_STATE_LOWPOWER
+				   : TFMODE_STATE_NORMAL;
+		mdss_dsi_panel_cmds_send
+			(ctrl, &(ctrl->panel_tfmode->cmds[state]));
 	}
 
 	pr_debug("%s:-\n", __func__);
@@ -1149,6 +1163,83 @@ static void mdss_dsi_parse_roi_alignment(struct device_node *np,
 				pinfo->min_height);
 	}
 }
+
+static const char *tfmode_strs[PANEL_TFMODE_MAX] = {
+	[PANEL_TFMODE_TRANSMISSIVE] = "transmissive",
+	[PANEL_TFMODE_REFLECTIVE] = "reflective",
+	[PANEL_TFMODE_TRANSFLECTIVE] = "transflective",
+};
+
+static int str_2_tfmode(const char *str)
+{
+	int i;
+	for (i = 0; i < PANEL_TFMODE_MAX; i++) {
+		if (!strnicmp(tfmode_strs[i], str, strlen(tfmode_strs[i])))
+			break;
+	}
+	return i;
+}
+
+static const char *tfmode_2_str(int tfmode)
+{
+	if ((uint)tfmode < PANEL_TFMODE_MAX)
+		return tfmode_strs[tfmode];
+	return NULL;
+}
+
+static int mdss_dsi_parse_tfmode(struct device_node *np, const char *prop,
+	int default_tfmode)
+{
+	int tfmode = default_tfmode;
+	const char *data = of_get_property(np, prop, NULL);
+	if (data) {
+		int tf = str_2_tfmode(data);
+		if (tf != PANEL_TFMODE_MAX)
+			tfmode = tf;
+	}
+	return tfmode;
+}
+
+static int mdss_dsi_parse_panel_tfmode(struct device_node *np,
+	struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	struct dsi_panel_tfmode *panel_tfmode;
+	struct dsi_panel_cmds *cmds;
+	int i, rc = 0;
+	np = of_get_child_by_name(np, "qcom,mdss-dsi-transflective-panel");
+	if (!np)
+		return rc;
+
+	panel_tfmode = kzalloc(sizeof(*panel_tfmode), GFP_KERNEL);
+	if (!panel_tfmode) {
+		rc = -ENOMEM;
+		return rc;
+	}
+	panel_tfmode->tfmode[TFMODE_STATE_NORMAL] =
+		mdss_dsi_parse_tfmode(np, "qcom,mdss-dsi-panel-tf-normal",
+				      PANEL_TFMODE_TRANSMISSIVE);
+	panel_tfmode->tfmode[TFMODE_STATE_LOWPOWER] =
+		mdss_dsi_parse_tfmode(np, "qcom,mdss-dsi-panel-tf-lowpower",
+				      PANEL_TFMODE_REFLECTIVE);
+	cmds = panel_tfmode->cmds;
+	for (i = 0; i < PANEL_TFMODE_MAX; i++, cmds++) {
+		char cmd_prop[60], sta_prop[68];
+		snprintf(cmd_prop, sizeof(cmd_prop),
+			 "qcom,mdss-dsi-panel-tf-%s-command",
+			 tfmode_strs[i]);
+		snprintf(sta_prop, sizeof(sta_prop),
+			 "qcom,mdss-dsi-panel-tf-%s-command-state",
+			 tfmode_strs[i]);
+		rc = mdss_dsi_parse_dcs_cmds(np, cmds, cmd_prop, sta_prop);
+		if (rc) {
+			kfree(panel_tfmode);
+			panel_tfmode = NULL;
+			break;
+		}
+	}
+	ctrl->panel_tfmode = panel_tfmode;
+	return rc;
+};
 
 static int mdss_dsi_parse_panel_features(struct device_node *np,
 	struct mdss_dsi_ctrl_pdata *ctrl)
@@ -1584,6 +1675,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	if (ctrl_pdata->init_cmds.cmd_cnt)
 		pinfo->mipi.lp11_init = true;
 
+	rc = mdss_dsi_parse_panel_tfmode(np, ctrl_pdata);
+	if (rc) {
+		pr_err("%s: failed to parse panel mode commands\n", __func__);
+		goto error;
+	}
+
 	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
 	if (rc) {
 		pr_err("%s: failed to parse panel features\n", __func__);
@@ -1642,4 +1739,80 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 
 	return 0;
+}
+
+static ssize_t mdss_dsi_store_panel_tfmode(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = dev_get_drvdata(dev);
+	struct {
+		const char *arg;
+		int len;
+	} tfmodes[TFMODE_STATE_MAX] = {
+		[TFMODE_STATE_NORMAL] = { "normal=", 7 },
+		[TFMODE_STATE_LOWPOWER] = { "lowpower=", 9 },
+	};
+	int i, cur;
+
+	mutex_lock(&ctrl->mutex);
+	switch (ctrl->panel_data.panel_info.blank_state) {
+	case MDSS_PANEL_BLANK_UNBLANK:
+		cur = TFMODE_STATE_NORMAL;
+		break;
+	case MDSS_PANEL_BLANK_LOW_POWER:
+		cur = TFMODE_STATE_LOWPOWER;
+		break;
+	default:
+		cur = TFMODE_STATE_MAX;
+		break;
+	}
+	for (i = 0; i < TFMODE_STATE_MAX; i++) {
+		int tfmode;
+		const char *param = strnstr(buf, tfmodes[i].arg, len);
+		if (!param)
+			continue;
+		tfmode = str_2_tfmode(param + tfmodes[i].len);
+		if ((tfmode == PANEL_TFMODE_MAX) ||
+		    (tfmode == ctrl->panel_tfmode->tfmode[i]))
+			continue;
+		ctrl->panel_tfmode->tfmode[i] = tfmode;
+		if (i == cur)
+			mdss_dsi_panel_cmds_send
+				(ctrl, &(ctrl->panel_tfmode->cmds[tfmode]));
+	}
+	mutex_unlock(&ctrl->mutex);
+
+	return len;
+}
+
+static ssize_t mdss_dsi_show_panel_tfmode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = dev_get_drvdata(dev);
+	int normal = ctrl->panel_tfmode->tfmode[TFMODE_STATE_NORMAL];
+	int lpower = ctrl->panel_tfmode->tfmode[TFMODE_STATE_LOWPOWER];
+	return snprintf(buf, PAGE_SIZE, "normal: %s, low power: %s\n",
+			tfmode_2_str(normal), tfmode_2_str(lpower));
+}
+
+static DEVICE_ATTR(panel_tfmode, S_IRUGO | S_IWUSR,
+		   mdss_dsi_show_panel_tfmode, mdss_dsi_store_panel_tfmode);
+
+static struct attribute *dsi_panel_attrs[] = {
+	&dev_attr_panel_tfmode.attr,
+	NULL
+};
+
+static struct attribute_group dsi_panel_attr_group = {
+	.attrs = dsi_panel_attrs
+};
+
+int mdss_dsi_panel_init_sysfs(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+				struct platform_device *pdev)
+{
+	int rc = 0;
+	if (ctrl_pdata->panel_tfmode)
+		rc = sysfs_create_group(&(pdev->dev.kobj),
+					&dsi_panel_attr_group);
+	return rc;
 }
