@@ -949,20 +949,32 @@ static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
 	SOC_DAPM_SINGLE("DSP Bypass Left", TFA9890_I2S_CTL_REG, 6, 3, 0),
 };
 
+static const char * const sel_amp_text[] = {
+		"On", "Off"
+};
+
+static SOC_ENUM_SINGLE_DECL(sel_amp_enum, SND_SOC_NOPM, 0, sel_amp_text);
+
+static const struct snd_kcontrol_new left_sel_mux =
+	SOC_DAPM_ENUM_VIRT("Left Select Mux", sel_amp_enum);
+
 static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
-	SND_SOC_DAPM_AIF_IN_E("I2S1L", "I2S1L Playback", 0, 0, 0, 0,
-				tfa9890_i2s_playback_event,
-				SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_AIF_IN_E("I2S1L", NULL, 0, 0, 0, 0,
+			tfa9890_i2s_playback_event,
+			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_MIXER("BOOST Output Mixer Left", SND_SOC_NOPM, 0, 0,
-			   &tfa9890_left_mixer_controls[0],
-			   ARRAY_SIZE(tfa9890_left_mixer_controls)),
+			&tfa9890_left_mixer_controls[0],
+			ARRAY_SIZE(tfa9890_left_mixer_controls)),
+	SND_SOC_DAPM_VIRT_MUX("Left SPK Mux", SND_SOC_NOPM, 0, 0,
+			&left_sel_mux),
 	SND_SOC_DAPM_OUTPUT("BOOST Speaker Left"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
-	{"BOOST Output Mixer Left", "DSP Bypass Left", "I2S1L"},
-	{"BOOST Speaker Left", "Null", "BOOST Output Mixer Left"},
-	{"I2S1L Playback", "Null", "I2S1L"}
+	{"I2S1L", NULL, "I2S1L Playback"},
+	{"Left SPK Mux", "On", "I2S1L"},
+	{"BOOST Output Mixer Left", NULL, "Left SPK Mux"},
+	{"BOOST Speaker Left", NULL, "BOOST Output Mixer Left"},
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
@@ -985,20 +997,26 @@ static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
 	SOC_DAPM_SINGLE("DSP Bypass Right", TFA9890_I2S_CTL_REG, 6, 3, 0),
 };
 
+static const struct snd_kcontrol_new right_sel_mux =
+	SOC_DAPM_ENUM_VIRT("Right Select Mux", sel_amp_enum);
+
 static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
-	SND_SOC_DAPM_AIF_IN_E("I2S1R", "I2S1R Playback", 0, 0, 0, 0,
+	SND_SOC_DAPM_AIF_IN_E("I2S1R", NULL, 0, 0, 0, 0,
 			tfa9890_i2s_playback_event,
 			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_MIXER("BOOST Output Mixer Right", SND_SOC_NOPM, 0, 0,
-			   &tfa9890_right_mixer_controls[0],
-			   ARRAY_SIZE(tfa9890_right_mixer_controls)),
+			&tfa9890_right_mixer_controls[0],
+			ARRAY_SIZE(tfa9890_right_mixer_controls)),
+	SND_SOC_DAPM_VIRT_MUX("Right SPK Mux", SND_SOC_NOPM, 0, 0,
+			&right_sel_mux),
 	SND_SOC_DAPM_OUTPUT("BOOST Speaker Right"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
-	{"BOOST Output Mixer Right", "DSP Bypass Right", "I2S1R"},
-	{"BOOST Speaker Right", "Null", "BOOST Output Mixer Right"},
-	{"I2S1R Playback", "Null", "I2S1R"}
+	{"I2S1R", NULL, "I2S1R Playback"},
+	{"Right SPK Mux", "On", "I2S1R"},
+	{"BOOST Output Mixer Right", NULL, "Right SPK Mux"},
+	{"BOOST Speaker Right", NULL, "BOOST Output Mixer Right"},
 };
 
 /*
@@ -2142,9 +2160,11 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 		snd_soc_dapm_new_controls(&codec->dapm,
 				tfa9890_left_dapm_widgets,
 				ARRAY_SIZE(tfa9890_left_dapm_widgets));
-
 		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_left_dapm_routes,
 				ARRAY_SIZE(tfa9890_left_dapm_routes));
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1L");
+		snd_soc_dapm_ignore_suspend(&codec->dapm,
+			"BOOST Speaker Left");
 	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
 		snd_soc_add_codec_controls(codec, tfa9890_right_snd_controls,
 			     ARRAY_SIZE(tfa9890_right_snd_controls));
@@ -2153,6 +2173,9 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 				ARRAY_SIZE(tfa9890_right_dapm_widgets));
 		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_right_dapm_routes,
 				ARRAY_SIZE(tfa9890_right_dapm_routes));
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1R");
+		snd_soc_dapm_ignore_suspend(&codec->dapm,
+			"BOOST Speaker Right");
 	}
 
 	if (stereo_mode) {
