@@ -104,7 +104,8 @@ static void m4_read_ads_data_locked(struct m4sensorhub_ads_drvdata *priv_data)
 		priv_data->read_data.ch1_data = priv_data->data[i];
 		priv_data->read_data.ch2_data = priv_data->data[i+1];
 
-		priv_data->read_data.timestamp = iio_get_time_ns();
+		priv_data->read_data.timestamp =
+			ktime_to_ns(ktime_get_boottime());
 		ret = iio_push_to_buffers(iio_dev, (unsigned char *)&(priv_data->read_data));
 		if (ret < 0)
 			pr_err("%s: failed to buffer sample data %d\n", __func__, priv_data->data[i]);
