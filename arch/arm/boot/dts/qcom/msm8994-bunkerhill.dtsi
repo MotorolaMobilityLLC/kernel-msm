@@ -165,6 +165,8 @@
 		accel_orient = <7>;     /* Accel Orientation value */
 		gyro_orient = <7>;      /* Gyro Orientation value */
 		mag_orient = <5>;       /* Mag Orientation value */
+		panel_type = <0>;       /* Panel Type value */
+		IR_config = <0>;        /* IR Config value */
 };
 
 &drv2605 {
