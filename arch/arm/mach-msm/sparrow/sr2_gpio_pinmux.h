@@ -1,9 +1,9 @@
-#ifndef _SPARROW_SR2_GPIO_PINMUX_H_
-#define _SPARROW_SR2_GPIO_PINMUX_H_
+#ifndef _SR2_GPIO_PINMUX_H_
+#define _SR2_GPIO_PINMUX_H_
 
-#include "sparrow_gpio_pinmux_setting.h"
+#include "gpio_pinmux_setting.h"
 
-static struct msm_gpiomux_config sparrow_sr2_msm8226_gpio_configs[] __initdata= {
+static struct msm_gpiomux_config sr2_msm8226_gpio_configs[] __initdata= {
 // ASUS_BSP BerylHou +++ "BT config"
 	{
 		.gpio      = 0,	/* BLSP1 BT Uart Tx */
@@ -309,4 +309,4 @@ static struct msm_gpiomux_config sparrow_sr2_msm8226_gpio_configs[] __initdata= 
 	},
 };
 
-#endif  /* _SPARROW_SR2_GPIO_PINMUX_H_  */
+#endif  /* _SR2_GPIO_PINMUX_H_  */
