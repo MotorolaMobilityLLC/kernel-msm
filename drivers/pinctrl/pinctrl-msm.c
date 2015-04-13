@@ -746,7 +746,7 @@ static void msm_register_gpiochip(struct msm_pinctrl_dd *dd)
 		gc->free = msm_pinctrl_free_gpio;
 		gc->dev = dd->dev;
 		gc->ngpio = pintype->num_pins;
-		gc->base = -1;
+		gc->base = 0;
 		ret = gpiochip_add(gc);
 		if (ret) {
 			dev_err(dd->dev, "failed to register gpio chip\n");
