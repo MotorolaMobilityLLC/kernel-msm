@@ -4571,6 +4571,10 @@ wl_cfg80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 	s32 wsec;
 	s32 err = 0;
 	s32 bssidx;
+	union {
+		int32 index;
+		uint8 tsc[DOT11_WPA_KEY_RSC_LEN];
+	} u;
 	if (wl_cfgp2p_find_idx(cfg, dev, &bssidx) != BCME_OK) {
 		WL_ERR(("Find p2p index from dev(%p) failed\n", dev));
 		return BCME_ERROR;
@@ -4579,11 +4583,21 @@ wl_cfg80211_get_key(struct wiphy *wiphy, struct net_device *dev,
 	RETURN_EIO_IF_NOT_UP(cfg);
 	memset(&key, 0, sizeof(key));
 	key.index = key_idx;
+	swap_key_from_BE(&key);
+	if ((err = wldev_ioctl(dev, WLC_GET_KEY, &key, sizeof(key), false))) {
+		return err;
+	}
 	swap_key_to_BE(&key);
 	memset(&params, 0, sizeof(params));
 	params.key_len = (u8) min_t(u8, DOT11_MAX_KEY_SIZE, key.len);
-	memcpy(params.key, key.data, params.key_len);
+	params.key = key.data;
 
+	u.index = key.index;
+	if ((err = wldev_ioctl(dev, WLC_GET_KEY_SEQ, &u, sizeof(u), false))) {
+		return err;
+	}
+	params.seq = u.tsc;
+	params.seq_len = DOT11_WPA_KEY_RSC_LEN;
 	err = wldev_iovar_getint_bsscfg(dev, "wsec", &wsec, bssidx);
 	if (unlikely(err)) {
 		WL_ERR(("WLC_GET_WSEC error (%d)\n", err));
