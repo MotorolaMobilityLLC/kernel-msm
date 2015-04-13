@@ -40,15 +40,16 @@
 
 &pm8994_l14 {
 	regulator-boot-on;
-	regulator-always-on;
 };
 
 &isl98611a_pos {
 	regulator-boot-on;
+	/delete-property/ regulator-always-on;
 };
 
 &isl98611a_neg {
 	regulator-boot-on;
+	/delete-property/ regulator-always-on;
 };
 
 &mot_inx_570_QHD_0_cmd_v0 {
