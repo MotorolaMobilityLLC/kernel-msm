@@ -81,7 +81,7 @@ struct dhd_bus;
 struct dhd_prot;
 struct dhd_info;
 struct dhd_ioctl;
-
+struct dhd_dbg;
 /* The level of bus communication with the dongle */
 enum dhd_bus_state {
 	DHD_BUS_DOWN,		/* Not ready for frame transfers */
@@ -162,6 +162,14 @@ enum dhd_prealloc_index {
 	DHD_PREALLOC_IF_FLOW_LKUP = 9
 };
 
+enum dhd_dongledump_mode {
+	DUMP_DISABLED = 0,
+	DUMP_MEMONLY,
+	DUMP_MEMFILE,
+	DUMP_MEMFILE_BUGON,
+	DUMP_MEMFILE_MAX
+};
+
 /* Packet alignment for most efficient SDIO (can change based on platform) */
 #ifndef DHD_SDALIGN
 #define DHD_SDALIGN	32
@@ -224,7 +232,7 @@ typedef struct dhd_pub {
 	struct dhd_bus *bus;	/* Bus module handle */
 	struct dhd_prot *prot;	/* Protocol module handle */
 	struct dhd_info  *info; /* Info module handle */
-
+	struct dhd_dbg *dbg;
 	/* to NDIS developer, the structure dhd_common is redundant,
 	 * please do NOT merge it back from other branches !!!
 	 */
@@ -416,6 +424,9 @@ typedef struct dhd_pub {
 #ifdef GSCAN_SUPPORT
 	bool lazy_roam_enable;
 #endif /* GSCAN_SUPPORT */
+	uint8 *soc_ram;
+	uint32 soc_ram_length;
+	uint32 memdump_enabled;
 } dhd_pub_t;
 
 #if defined(BCMWDF)
@@ -659,6 +670,7 @@ extern int dhd_os_ioctl_resp_wait(dhd_pub_t * pub, uint * condition, bool * pend
 extern int dhd_os_ioctl_resp_wake(dhd_pub_t * pub);
 extern int dhd_os_d3ack_wait(dhd_pub_t * pub, uint * condition, bool * pending);
 extern int dhd_os_d3ack_wake(dhd_pub_t * pub);
+extern struct net_device *dhd_linux_get_primary_netdev(dhd_pub_t *dhdp);
 extern unsigned int dhd_os_get_ioctl_resp_timeout(void);
 extern void dhd_os_set_ioctl_resp_timeout(unsigned int timeout_msec);
 
@@ -738,6 +750,14 @@ typedef struct {
 	int  num_fmts;
 	char **fmts;
 	char *raw_fmts;
+	char *raw_sstr;
+	uint32 ramstart;
+	uint32 rodata_start;
+	uint32 rodata_end;
+	char *rom_raw_sstr;
+	uint32 rom_ramstart;
+	uint32 rom_rodata_start;
+	uint32 rom_rodata_end;
 } dhd_event_log_t;
 #endif /* SHOW_LOGTRACE */
 
@@ -756,6 +776,11 @@ extern void wl_event_to_host_order(wl_event_msg_t * evt);
 extern int dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int len);
 extern int dhd_wl_ioctl_cmd(dhd_pub_t *dhd_pub, int cmd, void *arg, int len, uint8 set,
                             int ifindex);
+extern int dhd_wl_ioctl_get_intiovar(dhd_pub_t *dhd_pub, char *name, uint *pval,
+	int cmd, uint8 set, int ifidx);
+extern int dhd_wl_ioctl_set_intiovar(dhd_pub_t *dhd_pub, char *name, uint val,
+	int cmd, uint8 set, int ifidx);
+
 extern void dhd_common_init(osl_t *osh);
 
 extern int dhd_do_driver_init(struct net_device *net);
@@ -1050,6 +1075,13 @@ int dhd_os_wlfc_block(dhd_pub_t *pub);
 int dhd_os_wlfc_unblock(dhd_pub_t *pub);
 extern const uint8 prio2fifo[];
 #endif /* PROP_TXSTATUS */
+
+void dhd_save_fwdump(dhd_pub_t *dhd_pub, void * buffer, uint32 length);
+void dhd_schedule_memdump(dhd_pub_t *dhdp, uint8 *buf, uint32 size);
+int dhd_os_socram_dump(struct net_device *dev, uint32 *dump_size);
+int dhd_os_get_socram_dump(struct net_device *dev, char **buf, uint32 *size);
+int dhd_common_socram_dump(dhd_pub_t *dhdp);
+int dhd_os_get_version(struct net_device *dev, bool dhd_ver, char **buf, uint32 size);
 
 uint8* dhd_os_prealloc(dhd_pub_t *dhdpub, int section, uint size, bool kmalloc_if_fail);
 void dhd_os_prefree(dhd_pub_t *dhdpub, void *addr, uint size);
