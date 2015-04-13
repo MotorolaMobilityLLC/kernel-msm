@@ -386,6 +386,7 @@ struct cntry_locales_custom brcm_wlan_translate_nodfs_table[] = {
 	{"PL", "E0", 33},
 	{"PT", "E0", 33},
 	{"RO", "E0", 33},
+	{"RU", "RU", 50},
 	{"SE", "E0", 33},
 	{"SG", "SG", 20},
 	{"SI", "E0", 33},
