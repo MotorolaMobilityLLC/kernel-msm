@@ -296,6 +296,7 @@ static void AKECS_SetYPR(
 	struct akm_compass_data *akm,
 	int *rbuf)
 {
+	static uint8_t flag;
 	uint32_t ready;
 	dev_vdbg(&akm->i2c->dev, "%s: flag =0x%X", __func__, rbuf[0]);
 	dev_vdbg(&akm->input->dev, "  Acc [LSB]   : %6d,%6d,%6d stat=%d",
@@ -317,40 +318,65 @@ static void AKECS_SetYPR(
 	ready = (akm->enable_flag & (uint32_t)rbuf[0]);
 	mutex_unlock(&akm->val_mutex);
 
+	/* NOTE: Each rbuf value is encoded below in order to prevent
+		reporting the same value as the previous, since the
+		input driver only honors changed values. The receiving entity
+		needs to decode the proper value back out. */
+
 	/* Report acceleration sensor information */
 /*
 	if (ready & ACC_DATA_READY) {
-		input_report_abs(akm->input, ABS_X, rbuf[1]);
-		input_report_abs(akm->input, ABS_Y, rbuf[2]);
-		input_report_abs(akm->input, ABS_Z, rbuf[3]);
-		input_report_abs(akm->input, ABS_RX, rbuf[4]);
+		input_report_abs(akm->input, ABS_X,
+			(rbuf[1] << 1) + flag);
+		input_report_abs(akm->input, ABS_Y,
+			(rbuf[2] << 1) + flag);
+		input_report_abs(akm->input, ABS_Z,
+			(rbuf[3] << 1) + flag);
+		input_report_abs(akm->input, ABS_RX,
+			(rbuf[4] << 1) + flag);
 	}
 */
 
 	/* Report magnetic vector information */
 	if (ready & MAG_DATA_READY) {
-		input_report_abs(akm->input, ABS_RY, rbuf[5]);
-		input_report_abs(akm->input, ABS_RZ, rbuf[6]);
-		input_report_abs(akm->input, ABS_THROTTLE, rbuf[7]);
-		input_report_abs(akm->input, ABS_RUDDER, rbuf[8]);
-		input_report_abs(akm->input, ABS_WHEEL, rbuf[16]);
-		input_report_abs(akm->input, ABS_GAS, rbuf[17]);
-		input_report_abs(akm->input, ABS_BRAKE, rbuf[18]);
+		input_report_abs(akm->input, ABS_RY,
+			(rbuf[5] << 1) + flag);
+		input_report_abs(akm->input, ABS_RZ,
+			(rbuf[6] << 1) + flag);
+		input_report_abs(akm->input, ABS_THROTTLE,
+			(rbuf[7] << 1) + flag);
+		input_report_abs(akm->input, ABS_RUDDER,
+			(rbuf[8] << 1) + flag);
+		input_report_abs(akm->input, ABS_WHEEL,
+			(rbuf[16] << 1) + flag);
+		input_report_abs(akm->input, ABS_GAS,
+			(rbuf[17] << 1) + flag);
+		input_report_abs(akm->input, ABS_BRAKE,
+			(rbuf[18] << 1) + flag);
 	}
 	/* Report fusion sensor information */
 	if (ready & FUSION_DATA_READY) {
 		/* Orientation */
-		input_report_abs(akm->input, ABS_HAT0Y, rbuf[9]);
-		input_report_abs(akm->input, ABS_HAT1X, rbuf[10]);
-		input_report_abs(akm->input, ABS_HAT1Y, rbuf[11]);
+		input_report_abs(akm->input, ABS_HAT0Y,
+			(rbuf[9] << 1) + flag);
+		input_report_abs(akm->input, ABS_HAT1X,
+			(rbuf[10] << 1) + flag);
+		input_report_abs(akm->input, ABS_HAT1Y,
+			(rbuf[11] << 1) + flag);
 		/* Rotation Vector */
-		input_report_abs(akm->input, ABS_TILT_X, rbuf[12]);
-		input_report_abs(akm->input, ABS_TILT_Y, rbuf[13]);
-		input_report_abs(akm->input, ABS_TOOL_WIDTH, rbuf[14]);
-		input_report_abs(akm->input, ABS_VOLUME, rbuf[15]);
+		input_report_abs(akm->input, ABS_TILT_X,
+			(rbuf[12] << 1) + flag);
+		input_report_abs(akm->input, ABS_TILT_Y,
+			(rbuf[13] << 1) + flag);
+		input_report_abs(akm->input, ABS_TOOL_WIDTH,
+			(rbuf[14] << 1) + flag);
+		input_report_abs(akm->input, ABS_VOLUME,
+			(rbuf[15] << 1) + flag);
 	}
 
 	input_sync(akm->input);
+	/* Toggle flag */
+	flag = !flag;
 }
 
 /* This function will block a process until the latest measurement
