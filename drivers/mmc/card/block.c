@@ -132,6 +132,7 @@ struct mmc_blk_data {
 
 	unsigned int	failure_ratio;
 	unsigned int	forgive_ratio;
+	unsigned int	drop_threshold;
 
 	/*
 	 * Only set in main mmc_blk_data associated
@@ -149,6 +150,7 @@ struct mmc_blk_data {
 	struct device_attribute current_health;
 	struct device_attribute adj_failure_ratio;
 	struct device_attribute adj_forgive_ratio;
+	struct device_attribute adj_drop_threshold;
 	int	area_type;
 };
 
@@ -587,6 +589,39 @@ static ssize_t forgive_ratio_store(struct device *dev,
 	}
 
 	md->forgive_ratio = set;
+	ret = count;
+out:
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t drop_threshold_show(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	int ret;
+
+	ret = snprintf(buf, PAGE_SIZE, "%u\n", md->drop_threshold);
+
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t drop_threshold_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	int ret;
+	char *end;
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	unsigned long set = simple_strtoul(buf, &end, 0);
+	if (end == buf) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	md->drop_threshold = set;
 	ret = count;
 out:
 	mmc_blk_put(md);
@@ -1487,13 +1522,24 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 				      md->failure_ratio ||
 		    card->failures >= md->failure_ratio * 10 ||
 		    msec > MMC_ERROR_MAX_TIME_MS) {
-			pr_warning("%s: giving up on card after %lld ms (%u/%u, %llu/%llu)\n",
+			card->drop_score++;
+			pr_warning("%s: giving up on request after %lld ms (%u/%u, %llu/%llu, %u/%u)\n",
 				   mmc_hostname(host), msec,
 				   card->failures, card->successes,
-				   host->request_errors, host->requests);
-			host->card_bad = 1;
-			mmc_card_set_removed(card);
-			mmc_detect_change(host, 0);
+				   host->request_errors, host->requests,
+				   card->drop_score, md->drop_threshold);
+			if (md->drop_threshold > 0 &&
+			    card->drop_score >= md->drop_threshold) {
+				pr_warning("%s: dropping card after %u failures\n",
+					   mmc_hostname(host),
+					   card->drop_score);
+				host->card_bad = 1;
+				mmc_card_set_removed(card);
+				mmc_detect_change(host, 0);
+			}
+			card->failures = 0;
+			card->successes = 0;
+			card->failure_time = ktime_set(0, 0);
 			return -EIO;
 		}
 
@@ -3191,6 +3237,7 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 	md->usage = 1;
 	md->failure_ratio = MMC_ERROR_FAILURE_RATIO;
 	md->forgive_ratio = MMC_ERROR_FORGIVE_RATIO;
+	md->drop_threshold = MMC_ERROR_DROP_THRESHOLD;
 
 	ret = mmc_init_queue(&md->queue, card, &md->lock, subname);
 	if (ret)
@@ -3493,6 +3540,19 @@ static int mmc_add_disk(struct mmc_blk_data *md)
 
 	return ret;
 
+	md->adj_drop_threshold.show = drop_threshold_show;
+	md->adj_drop_threshold.store = drop_threshold_store;
+	sysfs_attr_init(&md->adj_drop_threshold.attr);
+	md->adj_drop_threshold.attr.name = "drop_threshold";
+	md->adj_drop_threshold.attr.mode = S_IRUGO | S_IWUSR;
+	ret = device_create_file(disk_to_dev(md->disk),
+				 &md->adj_drop_threshold);
+	if (ret)
+		goto failure_drop_threshold;
+
+failure_drop_threshold:
+	device_remove_file(disk_to_dev(md->disk),
+			   &md->adj_forgive_ratio);
 forgive_ratio_fails:
 	device_remove_file(disk_to_dev(md->disk),
 			   &md->adj_failure_ratio);
