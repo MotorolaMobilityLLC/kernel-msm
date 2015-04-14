@@ -97,7 +97,9 @@ struct smbchg_chip {
 	u16				otg_base;
 	u16				misc_base;
 
-	int				fake_battery_soc;
+	bool				test_mode;
+	int				test_mode_soc;
+	int				test_mode_temp;
 	u8				revision[4];
 
 	/* configuration parameters */
@@ -927,8 +929,9 @@ static int get_prop_batt_capacity(struct smbchg_chip *chip)
 {
 	int capacity, rc;
 
-	if (chip->fake_battery_soc >= 0)
-		return chip->fake_battery_soc;
+	if (chip->test_mode && !(chip->test_mode_soc < 0)
+	    && !(chip->test_mode_soc > 100))
+		return chip->test_mode_soc;
 
 	rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_CAPACITY, &capacity);
 	if (rc) {
@@ -2718,7 +2721,8 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		schedule_work(&chip->usb_set_online_work);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		chip->fake_battery_soc = val->intval;
+		if (chip->test_mode)
+			chip->test_mode_soc = val->intval;
 		power_supply_changed(&chip->batt_psy);
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
@@ -2745,6 +2749,13 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		schedule_delayed_work(&chip->heartbeat_work,
 				      msecs_to_jiffies(0));
 		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		if (chip->test_mode)
+			chip->test_mode_temp = val->intval;
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+					msecs_to_jiffies(0));
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2765,6 +2776,7 @@ static int smbchg_battery_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
+	case POWER_SUPPLY_PROP_TEMP:
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		rc = 1;
 		break;
@@ -2870,7 +2882,11 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = get_prop_batt_voltage_now(chip);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = get_prop_batt_temp(chip);
+		if (chip->test_mode && !(chip->test_mode_temp < -350)
+		    && !(chip->test_mode_temp > 1250))
+			val->intval = chip->test_mode_temp;
+		else
+			val->intval = get_prop_batt_temp(chip);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
 		val->intval = get_prop_batt_voltage_max_design(chip);
@@ -6850,6 +6866,29 @@ static bool smbchg_charger_mmi_factory(void)
 	return factory;
 }
 
+static bool qpnp_smbcharger_test_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *mode;
+	int rc;
+	bool test = false;
+
+	if (!np)
+		return test;
+
+	rc = of_property_read_string(np, "mmi,battery", &mode);
+	if ((rc >= 0) && mode) {
+		if (strcmp(mode, "test") == 0)
+			test = true;
+	}
+	of_node_put(np);
+
+	return test;
+}
+
+
+#define DEFAULT_TEST_MODE_SOC  52
+#define DEFAULT_TEST_MODE_TEMP  225
 static int smbchg_probe(struct spmi_device *spmi)
 {
 	int rc;
@@ -6901,7 +6940,12 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
 	chip->usb_psy = usb_psy;
-	chip->fake_battery_soc = -EINVAL;
+	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
+	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
+	chip->test_mode = qpnp_smbcharger_test_mode();
+	if (chip->test_mode)
+		dev_warn(&spmi->dev, "Test Mode Enabled\n");
+
 	chip->usb_online = -EINVAL;
 	chip->stepchg_state = STEP_NONE;
 	smbchg_parallel_en = 1;
