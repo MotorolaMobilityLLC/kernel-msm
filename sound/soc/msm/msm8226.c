@@ -182,6 +182,10 @@ struct request_gpio {
         char *gpio_name;
 };
 static struct regulator *dmic_1p8; //ASUS BSP Jessy : config DMIC 1p8
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+static struct regulator *spk_1p8;
+static struct regulator *spk_3p0;
+#endif
 static struct request_gpio pri_mi2s_gpio[] = {
 
         {
@@ -1488,6 +1492,10 @@ static void msm8226_tert_mi2s_shutdown(struct snd_pcm_substream *substream)
 		}
 		msm226_tert_mi2s_free_gpios();
 	}
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+	regulator_disable(spk_1p8);
+	regulator_disable(spk_3p0);
+#endif
 }
 
 static int msm8226_configure_tert_mi2s_gpio(void)
@@ -1522,6 +1530,20 @@ static int msm8226_tert_mi2s_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
 	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+	ret = regulator_enable(spk_1p8);
+	if (ret) {
+		printk("unable to enable the spk 1p8\n");
+		return ret;
+	}
+
+	ret = regulator_enable(spk_3p0);
+	if (ret) {
+		printk("unable to enable the spk 3p0\n");
+		return ret;
+	}
+#endif
 
 	if (atomic_inc_return(&tert_mi2s_clk.mi2s_rsc_ref) == 1) {
 		pr_debug("%s: acquire mi2s resources\n", __func__);
@@ -2732,6 +2754,32 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
         if (ret) {
             dev_err(&pdev->dev, "unable to set voltage level for dmic 1p8\n");
         }
+
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+	spk_1p8 = devm_regulator_get(&pdev->dev, "SPK1P8");
+	if (IS_ERR(spk_1p8)) {
+		dev_err(&pdev->dev, "unable to get spk 1p8\n");
+	}
+
+	ret = regulator_set_voltage(spk_1p8, 1800000, 1800000);
+	if (ret) {
+		dev_err(&pdev->dev, "unable to set voltage level for spk 1p8\n");
+	}
+
+	regulator_set_optimum_mode(spk_1p8, 300000);
+
+	spk_3p0 = devm_regulator_get(&pdev->dev, "SPK3P0");
+	if (IS_ERR(spk_3p0)) {
+		dev_err(&pdev->dev, "unable to get spk 3p0\n");
+	}
+
+	ret = regulator_set_voltage(spk_3p0, 3000000, 3000000);
+	if (ret) {
+		dev_err(&pdev->dev, "unable to set voltage level for spk 3p0\n");
+	}
+
+	regulator_set_optimum_mode(spk_3p0, 600000);
+#endif
 
 //ASUS BSP Jessy --- : config DMIC 1p8
 //ASUS_BSP Ken_Cheng ---
