@@ -832,7 +832,7 @@ static int mdss_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		return mfd->mdp.off_pan_on_fnc(mfd);
 	}
 #endif
-	mfd->panel_info->is_suspending = false;
+	mfd->panel_info->is_suspending = true;
 
 	mdss_fb_pan_idle(mfd);
 	ret = mdss_fb_send_panel_event(mfd, MDSS_EVENT_SUSPEND, NULL);

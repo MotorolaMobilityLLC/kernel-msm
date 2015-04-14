@@ -695,6 +695,7 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl= NULL;
 	struct mdss_alpm_data *adata;
+	struct mdss_panel_info *pinfo = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -705,10 +706,17 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 			panel_data);
 
 	adata = &pdata->alpm_data;
+	pinfo = &pdata->panel_info;
 
 	if (mode) {
 		alpm_enable(ctrl, ALPM_MODE_ON);
-		mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
+		if (!pinfo->is_suspending) {
+			pr_debug("[ALPM_DEBUG] %s: panel is not in suspend state\n", __func__);
+			return;
+		}
+
+		if (adata->alpm_status(CHECK_PREVIOUS_STATUS) != ALPM_MODE_ON)
+			mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
 	} else {
 		/* Turn Off ALPM Mode */
 		alpm_enable(ctrl, MODE_OFF);
@@ -2081,6 +2089,8 @@ samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int event)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct display_status *dstat = NULL;
+	struct mdss_samsung_driver_data *msd =
+		(struct mdss_samsung_driver_data *)pdata->panel_private;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -2103,6 +2113,10 @@ samsung_dsi_panel_event_handler(struct mdss_panel_data *pdata, int event)
 				else
 					pr_info("DISPLAY_ON\n");
 			}
+			break;
+		case MDSS_EVENT_SUSPEND:
+			if (msd->mfd->panel_power_state != MDSS_PANEL_POWER_OFF)
+				ctrl->low_power_config(pdata, 1);
 			break;
 		default:
 			pr_debug("%s : unknown event (%d)\n", __func__, event);
