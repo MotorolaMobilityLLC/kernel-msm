@@ -95,6 +95,7 @@
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
 #define DEVICE_READY_MAX_WAIT		500
+#define DEVICE_READY_MAX_PROBE_WAIT		100
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -275,10 +276,16 @@ static int i2cWriteNoReadyCheck(uint8_t bufferIndex, const uint8_t *dataBuffer, 
  * This function ascertains it is ready for that too. the results of this call often
  * were ignored.
  */
-static int waitDeviceReady(bool forever, bool slowly)
+static int waitDeviceReady(bool forever, bool slowly, bool probe)
 {
 	uint8_t ucQuery;
-	uint32_t count = DEVICE_READY_MAX_WAIT;
+	uint32_t count;
+
+	if (probe) {
+		count = DEVICE_READY_MAX_PROBE_WAIT;
+	} else {
+		count = DEVICE_READY_MAX_WAIT;
+	}
 
 	do {
 		if (i2cReadNoReadyCheck(BUF_QUERY, &ucQuery, sizeof(ucQuery)) != 2)
@@ -296,13 +303,13 @@ static int waitDeviceReady(bool forever, bool slowly)
 
 static int i2cRead(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
-	waitDeviceReady(false, false);
+	waitDeviceReady(false, false, false);
 	return i2cReadNoReadyCheck(bufferIndex, dataBuffer, dataLength);
 }
 
 static int i2cWrite(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
-	waitDeviceReady(false, false);
+	waitDeviceReady(false, false, false);
 	return i2cWriteNoReadyCheck(bufferIndex, dataBuffer, dataLength);
 }
 
@@ -804,7 +811,7 @@ static void chipExternalCalibration(bool autoTuneEnabled)
 	uint8_t resp[2];
 
 	LOGI("sent calibration command -> %d\n", chipSendCalibrationCmd(autoTuneEnabled));
-	waitDeviceReady(true, true);
+	waitDeviceReady(true, true, false);
 	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
 	}
@@ -1193,22 +1200,20 @@ static irqreturn_t IT7260_ts_threaded_handler(int irq, void *devid)
 	return IRQ_HANDLED;
 }
 
-static bool chipIdentifyIT7260(void)
+static bool chipIdentifyIT7260(bool probe)
 {
 	static const uint8_t cmdIdent[] = {CMD_IDENT_CHIP};
 	static const uint8_t expectedID[] = {0x0A, 'I', 'T', 'E', '7', '2', '6', '0'};
 	uint8_t chipID[10] = {0,};
 
-	/* not sure why asus chose to wait forever here, duplicating their logic for now */
-	waitDeviceReady(true, false);
+	waitDeviceReady(false, false, probe);
 
 	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 		return false;
 	}
 
-	/* not sure why asus chose to wait forever here, duplicating their logic for now */
-	waitDeviceReady(true, false);
+	waitDeviceReady(false, false, probe);
 
 	if (i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID)) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
@@ -1254,6 +1259,8 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	int ret = -1;
 	int err;
 
+	LOGI("start to probe...\n");
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		LOGE("need I2C_FUNC_I2C\n");
 		ret = -ENODEV;
@@ -1278,12 +1285,12 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	pdata = client->dev.platform_data;
 
 	if (sysfs_create_group(&(client->dev.kobj), &it7260_attrstatus_group)) {
-		dev_err(&client->dev, "failed to register sysfs #1\n");
+		LOGE("failed to register sysfs #1\n");
 		goto err_sysfs_grp_create_1;
 	}
 
-	if (!chipIdentifyIT7260()) {
-		LOGI ("chipIdentifyIT7260 FAIL");
+	if (!chipIdentifyIT7260(true)) {
+		LOGE("chipIdentifyIT7260 FAIL\n");
 		goto err_ident_fail_or_input_alloc;
 	}
 
@@ -1356,7 +1363,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	INIT_DELAYED_WORK(&gl_ts->exit_idle_work, exitIdleEvt);
 
 	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, IRQF_TRIGGER_LOW | IRQF_ONESHOT, client->name, gl_ts)) {
-		dev_err(&client->dev, "request_irq failed\n");
+		LOGE("request_irq failed\n");
 		goto err_irq_reg;
 	}
 
@@ -1365,7 +1372,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	#endif
 
 	if (sysfs_create_group(&(client->dev.kobj), &it7260_attr_group)) {
-		dev_err(&client->dev, "failed to register sysfs #2\n");
+		LOGE("failed to register sysfs #2\n");
 		goto err_sysfs_grp_create_2;
 	}
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
