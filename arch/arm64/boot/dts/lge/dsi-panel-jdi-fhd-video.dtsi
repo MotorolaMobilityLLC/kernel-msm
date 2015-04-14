@@ -132,6 +132,7 @@
 		qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode";
 		qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 1>, <1 10>;
 
+		qcom,bl-default-lvl = <1800>;
 		qcom,blmap-size = <256>;
 		qcom,blmap = <
 			0
