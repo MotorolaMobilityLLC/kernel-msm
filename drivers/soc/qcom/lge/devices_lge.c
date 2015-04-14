@@ -16,6 +16,16 @@
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <linux/platform_device.h>
+#include <linux/mdss_io_util.h>
+
+int __init lge_charger_mode_init(char *s)
+{
+	if (!strcmp(s, "charger"))
+		mdss_set_bl_ctrl_by_panel(true);
+
+	return 1;
+}
+__setup("androidboot.mode=", lge_charger_mode_init);
 
 static enum hw_rev_type lge_bd_rev = HW_REV_MAX;
 

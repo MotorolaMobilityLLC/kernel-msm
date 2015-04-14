@@ -42,7 +42,6 @@ enum lge_laf_mode_type {
 
 enum lge_laf_mode_type lge_get_laf_mode(void);
 
-enum lge_boot_mode_type lge_get_boot_mode(void);
 int lge_get_android_dlcomplete(void);
 int get_lge_frst_status(void);
 
