@@ -781,6 +781,8 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 
 	mdss_mdp_cmd_set_partial_roi(ctl);
 
+	MDSS_XLOG(ctl->num, (unsigned int)gclk, (unsigned int)gab, (unsigned int)gib);
+
 	/*
 	 * tx dcs command if had any
 	 */
@@ -1167,4 +1169,3 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 
 	return 0;
 }
-

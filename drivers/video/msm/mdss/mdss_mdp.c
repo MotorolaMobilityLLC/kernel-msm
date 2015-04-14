@@ -171,6 +171,9 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev);
 static int mdss_mdp_parse_dt_ad_cfg(struct platform_device *pdev);
 static int mdss_mdp_parse_dt_bus_scale(struct platform_device *pdev);
 
+unsigned long gclk=0;
+u64 gab = 0, gib = 0;
+
 /**
  * mdss_mdp_vbif_axi_halt() - Halt MDSS AXI ports
  * @mdata: pointer to the global mdss data structure.
@@ -518,6 +521,9 @@ int mdss_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota)
 
 	mutex_unlock(&bus_bw_lock);
 
+	gab = total_ab;
+	gib = total_ib;
+
 	return rc;
 }
 
@@ -735,6 +741,8 @@ void mdss_mdp_set_clk_rate(unsigned long rate)
 	} else {
 		pr_err("mdp src clk not setup properly\n");
 	}
+
+	gclk = clk_rate;
 }
 
 unsigned long mdss_mdp_get_clk_rate(u32 clk_idx)

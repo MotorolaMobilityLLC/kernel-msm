@@ -134,4 +134,7 @@ void mdss_samsung_dsi_te_check(struct mdss_panel_data *pdata);
 void mdss_samsung_dump_regs(void);
 void mdss_samsung_dsi_dump_regs(struct mdss_panel_data *pdata, int dsi_num);
 void mmss_clock_dump(void);
+extern unsigned long gclk;
+extern u64 gab;
+extern u64 gib;
 #endif /* MDSS_DEBUG_H */
