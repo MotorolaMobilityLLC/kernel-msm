@@ -29,6 +29,19 @@
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
+static int mdss_bl_ctrl_panel = false;
+static int bl_default_lvl = 1800;
+
+void mdss_set_bl_ctrl_by_panel(int enable)
+{
+	mdss_bl_ctrl_panel = enable;
+}
+
+static int mdss_bl_ctrl_by_panel(void)
+{
+	return mdss_bl_ctrl_panel;
+}
+
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	if (ctrl->pwm_pmi)
@@ -642,6 +655,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds);
 
+	if (mdss_bl_ctrl_by_panel())
+		mdss_dsi_panel_bl_ctrl(pdata, bl_default_lvl);
+
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 	pr_debug("%s:-\n", __func__);
@@ -663,6 +679,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				panel_data);
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+
+	if (mdss_bl_ctrl_by_panel())
+		mdss_dsi_panel_bl_ctrl(pdata, 0);
 
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
@@ -1780,6 +1799,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_panel_horizintal_line_idle(np, ctrl_pdata);
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
+
+	if (mdss_bl_ctrl_by_panel())
+		of_property_read_u32(np, "qcom,bl-default-lvl",
+						&bl_default_lvl);
 
 	return 0;
 
