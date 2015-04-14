@@ -48,6 +48,11 @@
 
 #define F12_DATA_15_WORKAROUND
 
+static int doze_interval = 3;
+#define PALM_DETECT_SIZE 40  /*define palm detect size*/
+#define DOZE_INTERVAL    doze_interval /*doze mode finger-activity checks period,unit:10ms*/
+#define NORMAL_INTERVAL  3   /*normal mode finger-activity checks period,unit:10ms*/
+
 /*
 #define IGNORE_FN_INIT_FAILURE
 */
@@ -97,6 +102,11 @@ static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data);
 
+static int synaptics_rmi4_doze_interval_config(struct synaptics_rmi4_data *rmi4_data,unsigned char val);
+static int synaptics_rmi4_palm_detect_config(struct synaptics_rmi4_data *rmi4_data,unsigned char val);
+static int synaptics_rmi4_hw_reset_device(struct synaptics_rmi4_data *rmi4_data);
+static int synaptics_rmi4_sw_reset_device(struct synaptics_rmi4_data *rmi4_data);
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static ssize_t synaptics_rmi4_full_pm_cycle_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
@@ -142,6 +152,12 @@ static ssize_t synaptics_rmi4_wake_gesture_store(struct device *dev,
 
 static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_doze_cycle_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_doze_cycle_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
 
 #if defined(CONFIG_FB)
 static void configure_sleep(struct synaptics_rmi4_data *rmi4_data);
@@ -548,6 +564,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(wake_gesture, (S_IRUGO | S_IWUGO),
 			synaptics_rmi4_wake_gesture_show,
 			synaptics_rmi4_wake_gesture_store),
+	__ATTR(doze_cycle, (S_IRUGO | S_IWUGO),
+			synaptics_rmi4_doze_cycle_show,
+			synaptics_rmi4_doze_cycle_store),
 };
 
 static struct kobj_attribute virtual_key_map_attr = {
@@ -729,6 +748,7 @@ static ssize_t synaptics_rmi4_suspend_store(struct device *dev,
 	return count;
 }
 
+
 static ssize_t synaptics_rmi4_wake_gesture_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -751,6 +771,35 @@ static ssize_t synaptics_rmi4_wake_gesture_store(struct device *dev,
 
 	if (rmi4_data->f11_wakeup_gesture || rmi4_data->f12_wakeup_gesture)
 		rmi4_data->enable_wakeup_gesture = input;
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_doze_cycle_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			doze_interval);
+}
+
+static ssize_t synaptics_rmi4_doze_cycle_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+	int retval;
+	struct synaptics_rmi4_data *rmi4_data = exp_data.rmi4_data;
+
+	if(buf == NULL) {
+		return -EINVAL;
+       }
+	sscanf(buf, "%u", &input);
+	retval = synaptics_rmi4_doze_interval_config(rmi4_data,input);
+	if(retval) {
+		pr_err("%s: set doze interval failed,ret=%d\n", __func__,retval);
+		return retval;
+	}
+	pr_debug("%s: set input=%d\n", __func__,input);
+	doze_interval = input;
 
 	return count;
 }
@@ -818,6 +867,8 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				sizeof(detected_gestures));
 		if (retval < 0)
 			return 0;
+
+		pr_info("%s: read data38=0x%x\n", __func__,detected_gestures);
 
 		if (detected_gestures) {
 			/*
@@ -1568,46 +1619,24 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	fhandler->num_of_data_sources = fd->intr_src_count;
 	fhandler->extra = kmalloc(sizeof(*extra_data), GFP_KERNEL);
 	memset(fhandler->extra, 0, sizeof(*extra_data));
-	retval = synaptics_rmi4_reg_read(rmi4_data,
-					0x64,
+
+	/* set the palm detec feature's para: cover size */
+	ctrl_58 = PALM_DETECT_SIZE;
+	ctrl_58 |=0x80;
+	retval = synaptics_rmi4_reg_write(rmi4_data,
+					SYNA_F11_2D_CTRL58,
 					&ctrl_58,
 					sizeof(ctrl_58));
 	if (retval < 0)
 	{
-		pr_err("%s:read ctrl 58 fail\n", __func__);
+		pr_err("%s: write ctrl 58 fail\n", __func__);
 		return retval;
 	}
-	else
-	{
-		ctrl_58 &= 0x7f;
 
-		/* set the palm detec feature's para: cover size */
-		ctrl_58 = 40;
-		ctrl_58 |=0x80;
-		retval = synaptics_rmi4_reg_write(rmi4_data,
-						0x64,
-						&ctrl_58,
-						sizeof(ctrl_58));
-		if (retval < 0)
-		{
-			pr_err("%s: write ctrl 58 fail\n", __func__);
-			return retval;
-		}
-
-		retval = synaptics_rmi4_reg_read(rmi4_data,
-						0x64,
-						&ctrl_58,
-						sizeof(ctrl_58));
-		if (retval < 0)
-		{
-			pr_err("%s:read ctrl 58 fail\n", __func__);
-			return retval;
-		}
-		else
-		{
-			pr_debug("%s:ctrl 58=0x%x\n", __func__, ctrl_58);
-		}
-	}
+	//doze internal config
+	retval = synaptics_rmi4_doze_interval_config(rmi4_data,NORMAL_INTERVAL);
+	if (retval < 0)
+		return retval;
 
 	extra_data = (struct synaptics_rmi4_f11_extra_data *)fhandler->extra;
 
@@ -3203,6 +3232,13 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		goto err_enable_reg;
 	}
 
+	retval = synaptics_rmi4_sw_reset_device(rmi4_data);
+	if (retval < 0) {
+		dev_err(&pdev->dev,
+				"%s: Failed to sw reset device\n",
+				__func__);
+		goto err_sw_reset;
+	}
 	retval = synaptics_rmi4_set_gpio(rmi4_data);
 	if (retval < 0) {
 		dev_err(&pdev->dev,
@@ -3335,6 +3371,7 @@ err_set_input_dev:
 
 err_ui_hw_init:
 err_set_gpio:
+err_sw_reset:
 	synaptics_rmi4_enable_reg(rmi4_data, false);
 
 err_enable_reg:
@@ -3686,6 +3723,103 @@ exit:
 }
 #endif
 
+static int synaptics_rmi4_doze_interval_config(struct synaptics_rmi4_data *rmi4_data,unsigned char val)
+{
+	int retval;
+	unsigned char ctrl_02;
+
+	if(rmi4_data == NULL) {
+		pr_err("%s:invalid para!!\n", __func__);
+		return -EINVAL;
+	}
+	if(val < 1||val > 150) {
+		pr_err("%s:invalid val!!\n", __func__);
+		return -EINVAL;
+       }
+
+	ctrl_02 = val;
+	retval = synaptics_rmi4_reg_write(rmi4_data,
+					SYNA_F01_RMI_CTRL02,
+					&ctrl_02,
+					sizeof(ctrl_02));
+	if (retval < 0)
+	{
+		pr_err("%s: write ctrl 02 fail\n", __func__);
+		return retval;
+	}
+
+	return 0;
+}
+
+static int synaptics_rmi4_palm_detect_config(struct synaptics_rmi4_data *rmi4_data,unsigned char val)
+{
+	int retval;
+	unsigned char ctrl_58;
+
+	if(rmi4_data == NULL)
+	{
+		pr_err("%s:invalid para!!\n", __func__);
+		return -1;
+	}
+
+	ctrl_58 = val;
+	ctrl_58 |= 0x80;
+	retval = synaptics_rmi4_reg_write(rmi4_data,
+					SYNA_F11_2D_CTRL58,
+					&ctrl_58,
+					sizeof(ctrl_58));
+	if (retval < 0)
+	{
+		pr_err("%s: write ctrl 58 fail\n", __func__);
+		return retval;
+	}
+	return 0;
+}
+
+static int synaptics_rmi4_hw_reset_device(struct synaptics_rmi4_data *rmi4_data)
+{
+	const struct synaptics_dsx_board_data *bdata;
+
+	if(rmi4_data == NULL)
+	{
+		pr_err("%s:invalid para!!\n", __func__);
+		return -1;
+	}
+
+	bdata = rmi4_data->hw_if->board_data;
+	//reset
+	if (bdata->reset_gpio >= 0) {
+		gpio_set_value(bdata->reset_gpio, bdata->reset_on_state);
+		msleep(bdata->reset_active_ms);
+		gpio_set_value(bdata->reset_gpio, !bdata->reset_on_state);
+		msleep(bdata->reset_delay_ms);
+	}
+	return 0;
+}
+
+static int synaptics_rmi4_sw_reset_device(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval;
+	unsigned char command = 0x01;
+
+	if(rmi4_data == NULL)
+	{
+		pr_err("%s:invalid para!!\n", __func__);
+		return -1;
+	}
+
+	retval = synaptics_rmi4_reg_write(rmi4_data,
+			SYNA_F01_RMI_CMD00,
+			&command,
+			sizeof(command));
+	if (retval < 0)
+		return retval;
+
+	msleep(20);
+
+	return 0;
+}
+
 static int synaptics_rmi4_suspend(struct device *dev)
 {
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
@@ -3717,6 +3851,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		regulator_disable(rmi4_data->pwr_reg);
 
 exit:
+
 	rmi4_data->suspend = true;
 
 	return 0;
@@ -3761,6 +3896,12 @@ static int synaptics_rmi4_resume(struct device *dev)
 	mutex_unlock(&exp_data.mutex);
 
 exit:
+	//reset
+        synaptics_rmi4_sw_reset_device(rmi4_data);
+	synaptics_rmi4_hw_reset_device(rmi4_data);
+	synaptics_rmi4_palm_detect_config(rmi4_data,PALM_DETECT_SIZE);
+	synaptics_rmi4_doze_interval_config(rmi4_data,DOZE_INTERVAL);
+
 	rmi4_data->suspend = false;
 
 	return 0;
