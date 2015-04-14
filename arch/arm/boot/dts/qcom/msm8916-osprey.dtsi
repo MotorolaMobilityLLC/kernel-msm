@@ -301,28 +301,3 @@
 		};
 	};
 };
-&soc {
-qcom,bcl {
-		compatible = "qcom,bcl";
-		qcom,bcl-enable;
-		qcom,ibat-vadc = <&pm8916_vadc>;
-		qcom,ibat-threshold-adc_tm = <&pm8916_adc_tm>;
-		qcom,bcl-hotplug-list = <&CPU2 &CPU3>;
-		qcom,ibat-monitor {
-			high-threshold-uamp = <3000000>;
-			low-threshold-uamp = <1000000>;
-			mitigation-freq-khz = <1094400>;
-			mitigation-gpu-freq-khz = <310000>;
-			max-gpu-freq-khz = <400000>;
-			ibat-channel = <0x15>;
-			adc-interval-usec = <3900>;
-			uv-to-ua-numerator = <2>;
-			uv-to-ua-denominator = <1>;
-			vph-channel = <0x06>;
-			vph-high-threshold-uv = <3700000>;
-			vph-low-threshold-uv = <3500000>;
-			thermal-handle = <&msm_thermal_freq>;
-			charge-ic-handle = <&fan54046>;
-		};
-	};
-};
