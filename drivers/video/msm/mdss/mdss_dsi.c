@@ -334,12 +334,9 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 				pr_warn("%s: Panel is dead, toggle panel regulators\n",
 					__func__);
 		}
-	} else {
-		if (ctrl_pdata->sh_control_enabled)
-			pr_info("%s: SH control enabled, initialize panel power once\n",
-				__func__);
-		pdata->panel_info.panel_power_initialized = true;
-	}
+	} else if (ctrl_pdata->sh_control_enabled)
+		pr_info("%s: SH control enabled, initialize panel power once\n",
+			__func__);
 
 	switch (power_state) {
 	case MDSS_PANEL_POWER_OFF:
@@ -350,6 +347,8 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 			ret = mdss_dsi_panel_power_lp(pdata, false);
 		else
 			ret = mdss_dsi_panel_power_on(pdata);
+		if (!ret)
+			pdata->panel_info.panel_power_initialized = true;
 		break;
 	case MDSS_PANEL_POWER_LP1:
 	case MDSS_PANEL_POWER_LP2:
