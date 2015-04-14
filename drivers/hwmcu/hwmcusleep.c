@@ -14,7 +14,7 @@
 
 #define pr_fmt(fmt) "Mcusleep: %s: " fmt, __func__
 
-#include <linux/module.h>	/* kernel module definitions */
+#include <linux/module.h> /* kernel module definitions */
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -39,34 +39,17 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 
-
-
 /* Defines*/
 
-#define VERSION "1.1"
+#define VERSION "1.2"
 #define PROC_DIR "mcusleep/sleep"
 
 /*irq_polarity*/
 #define POLARITY_LOW 0
 #define POLARITY_HIGH 1
 
-
-/*signal*/
-#define MCU_SIG_WAKEUP_AP (42)
-
 /*buff len*/
 #define MCU_BUFF_LEN (255)
-
-/*kill signal to app*/
-extern int send_sig(int sig, struct task_struct *p, int priv);
-#define KILL_PROC(nr, sig) \
-{ \
-struct task_struct *tsk; \
-struct pid *pid;    \
-pid = find_get_pid((pid_t)nr);    \
-tsk = pid_task(pid, PIDTYPE_PID);    \
-if (tsk) send_sig(sig, tsk, 1); \
-}
 
 /*mcu sleep info struct*/
 struct mcusleep_info 
@@ -82,23 +65,26 @@ struct mcusleep_info
     int irq_polarity;
     int has_ext_wake;
     int mcu_irq_wake_status;
+    int mcu_uart_ready;
 };
 
 /* MCU wake ap timeout */
 #define MCU_TIMER_INTERVAL (2 * HZ)
 
+/* MCU min delay time */
+#define MIN_MCU_DELAY_TIME 30
+
 /* state variable names and bit positions */
 #define MCU_ALLOW_SLEEP 0x01
 
-static bool has_lpm_enabled = false;
+/*mcu info struct*/
 static struct mcusleep_info *mcuinfo;
-static int app_pid = 0;
 
 /*
 * Local function prototypes
 */
-static int mcusleep_wake_allow(void);
-static void mcusleep_wake_deny(void);
+static int mcusleep_sleep_allow(void);
+static int mcusleep_sleep_deny(void);
 
 /*
 * Global variables
@@ -110,17 +96,15 @@ static unsigned long flags;
 /** Tasklet to respond to change in hostwake line */
 static struct tasklet_struct mcu_hostwake_task;
 
-
 /*proc f_ops*/
 struct proc_dir_entry *mcusleep_dir;
-
 
 /**
 * @return 1 if the mcu has awake, 0 asleep.
 */
-int mcusleep_in_sleep(void)
+static int mcusleep_has_wakeup(void)
 {
-    /* check if mcu_status_gpio is asleep */
+    /* check mcu_status_gpio sleep status */
     return (gpio_get_value(mcuinfo->mcu_status_gpio));
 }
 
@@ -130,13 +114,13 @@ int mcusleep_in_sleep(void)
 */
 static void mcusleep_hostwake_task(unsigned long data)
 {
+    /*pull up ap status gpio*/
     gpio_direction_output(mcuinfo->ap_status_gpio, 1);
-    pr_info("mcusleep_hostwake_task isr ap status high\n");
+    pr_info("mcusleep_hostwake_task isr ap status high send cmd\n");
+    mcuinfo->mcu_uart_ready = 1;
     /* Start the wake lock */
     wake_lock_timeout(&mcuinfo->wake_lock, MCU_TIMER_INTERVAL);
-
 }
-
 
 
 /**
@@ -158,21 +142,23 @@ static irqreturn_t mcusleep_hostwake_isr(int irq, void *dev_id)
 * @return On success, 0. On error, -1, and <code>errno</code> is set
 * appropriately.
 */
-static int mcusleep_wake_allow(void)
+static int mcusleep_sleep_allow(void)
 {
     int retval;
 
+    /*pull down ap status gpio*/
+    gpio_direction_output(mcuinfo->ap_status_gpio, 0);
+    pr_info("mcusleep allowed ap_status_gpio low\n");
+    mcuinfo->mcu_uart_ready = 0;
     retval = enable_irq_wake(mcuinfo->host_wake_irq);
     if (retval < 0) 
     {
         pr_err("Couldn't enable mcu_host_wake as wakeup interrupt\n");
         goto fail;
     }
-
     mcuinfo->mcu_irq_wake_status = true;
-    pr_info("enable_irq_wake host_wake_irq\n");
-
     set_bit(MCU_ALLOW_SLEEP, &flags);
+    wake_unlock(&mcuinfo->wake_lock);
     return 0;
 
 fail:
@@ -183,94 +169,121 @@ fail:
 /**
 * Stops the Sleep-Mode Protocol on the Host.
 */
-static void mcusleep_wake_deny(void)
+static int mcusleep_sleep_deny(void)
 {
+    if (!mcuinfo->has_ext_wake)
+    {
+        pr_err("not support ext wake\n");
+        return 0;
+    }
     /*pull high ap status gpio*/
     gpio_direction_output(mcuinfo->ap_status_gpio, 1);
-    pr_info("gpio_direction_output ap_status_gpio high\n");
+    pr_info("awake mcu ap_status_gpio high\n");
+    /*pull ap wake mcu gpio*/
+    gpio_direction_output(mcuinfo->ext_wake_mcu, 1);
+    pr_info("ext_wake_mcu high\n");
+    mdelay(MIN_MCU_DELAY_TIME);
+    if (mcusleep_has_wakeup())
+    {
+        /*when mcu awake up pull down wake mcu gpio*/
+        gpio_direction_output(mcuinfo->ext_wake_mcu, 0);
+        pr_info("ext_wake_mcu low\n");
+        mcuinfo->mcu_uart_ready = 1;
+    }
+    /*mcu status not ready*/
+    else
+    {
+        pr_err("wakeup mcu retry failure\n");
+        return -EIO;
+    }
     wake_lock_timeout(&mcuinfo->wake_lock, HZ / 2);
+    return 0;
 }
 
 /**
-* read mcu sleep status
+* read mcu gpio and uart status
 */
-
 static ssize_t mcusleep_read_proc_lpm
                 (struct file *file, char __user *userbuf,
                 size_t bytes, loff_t *off)
 {
     int asleep = 0;
-    
-    asleep = gpio_get_value(mcuinfo->mcu_host_wake);
-    pr_info("mcu host wake status: %d\n", asleep);
+    char buff[MCU_BUFF_LEN] = {0};
+        
+    asleep = mcusleep_has_wakeup();
+    snprintf(buff, sizeof(buff), "%d", (mcuinfo->mcu_uart_ready & asleep));
+    if (strlen(buff) <= 0)
+    {
+        return -EINVAL;
+    }
+
+    if (copy_to_user(userbuf, buff, strlen(buff)))
+    {
+        return -EFAULT;
+    }
+
+    return (size_t)strlen(buff);
+}
+
+/**
+* read mcu sleep status
+*/
+static ssize_t mcusleep_read_proc_sleep
+                (struct file *file, char __user *userbuf,
+                size_t bytes, loff_t *off)
+{
+    pr_info("mcu status gpio: %d ap status gpio:%d\n", 
+        (gpio_get_value(mcuinfo->mcu_status_gpio)), (gpio_get_value(mcuinfo->ap_status_gpio)));
     return 0;
 }
 
 /**
-* write mcu sleep proc
+* write mcu sleep control proc
 */
-static int mcusleep_write_proc_lpm(struct file *file,
+static int mcusleep_write_proc_sleep(struct file *file,
     const char __user * buffer, size_t count,
     loff_t * ppos)
 {
-    char b;
+    char b = 0;
+    int ret = 0;
 
     if (count < 1)
-    return -EINVAL;
-
+    {
+        return -EINVAL;
+    }
     if (copy_from_user(&b, buffer, 1))
-    return -EFAULT;
-
+    {
+        return -EFAULT;
+    }
     if (b == '0')
     {
-        /* mcusleep_wake_deny */
-        mcusleep_wake_deny();
-        has_lpm_enabled = false;
+        /* mcu not wakeup,wake it */
+        if ((!mcusleep_has_wakeup()) || (!mcuinfo->mcu_uart_ready))
+        {
+            ret = mcusleep_sleep_deny();
+            if (ret)
+            {
+                /*wakeup failure*/
+                return -ENODEV;
+            }
+        }
     } 
     else 
     {
-        /* mcusleep_wake_allow */
-        if (!has_lpm_enabled) 
+        /* mcusleep_sleep_allow */
+        if (mcusleep_has_wakeup()) 
         {
-            has_lpm_enabled = true;
             /* if arm sleep started, start mcusleep enable irq */
-            mcusleep_wake_allow();
+            mcusleep_sleep_allow();
         }
     }
 
     return count;
 }
 
-/**
-* write mcu sleep proc
-*/
-static int mcusleep_write_proc_pid(struct file *file,
-    const char __user * buffer, size_t count,
-    loff_t * ppos)
-{
-    char b[MCU_BUFF_LEN] = {0};
-
-    if (count < 1)
-    return -EINVAL;
-
-    if (copy_from_user(&b, buffer, strlen(buffer)))
-    return -EFAULT;
-
-    app_pid = simple_strtol(b, NULL, 10);
-	if( app_pid <=0 )
-	{
-		/*pid must > 0, not support init process use this function*/
-		return -EFAULT;
-	}
-
-    pr_info("mcusleep_write_proc_pid:%d\n",
-        app_pid);
-    return count;
-}
-
 
 /**
-* get gpio resource id, use of_get_named_gpio
+*  mcusleep_populate_dt_pinfo
 */
 static int mcusleep_populate_dt_pinfo(struct platform_device *pdev)
 {
@@ -321,9 +334,8 @@ static int mcusleep_populate_dt_pinfo(struct platform_device *pdev)
 }
 
 /**
-* get gpio resource id, use platform_get_resource_byname
+* mcusleep_populate_pinfo
 */
-
 static int mcusleep_populate_pinfo(struct platform_device *pdev)
 {
     struct resource *res;
@@ -458,12 +470,6 @@ static int mcusleep_probe(struct platform_device *pdev)
         goto free_mcu_host_wake;
     }
     mcuinfo->host_wake_irq = res->start;
-    if (mcuinfo->host_wake_irq < 0) 
-    {
-        pr_err("couldn't find mcu_host_wake irq\n");
-        ret = -ENODEV;
-        goto free_mcu_ext_wake;
-    }
 
     /*low edge (falling edge) */
     mcuinfo->irq_polarity = POLARITY_LOW; 
@@ -481,10 +487,12 @@ static int mcusleep_probe(struct platform_device *pdev)
         pr_err("Couldn't acquire MCU HOST WAKE UP IRQ\n");
         goto free_mcu_ext_wake;
     }
-
+    
+    /*pull up ap status*/
     gpio_direction_output(mcuinfo->ap_status_gpio, 1);
-
+    /*init mcu status*/
     mcuinfo->mcu_irq_wake_status = false;
+    mcuinfo->mcu_uart_ready = 1;
     pr_info("mcu sleep probe ok init ap status high\n");
     return 0;
 
@@ -510,28 +518,46 @@ static int mcusleep_remove(struct platform_device *pdev)
     free_irq(mcuinfo->host_wake_irq, NULL);
     gpio_free(mcuinfo->mcu_host_wake);
     gpio_free(mcuinfo->ap_status_gpio);
+    gpio_free(mcuinfo->mcu_status_gpio);
     gpio_free(mcuinfo->ext_wake_mcu);
     wake_lock_destroy(&mcuinfo->wake_lock);
     kfree(mcuinfo);
+    pr_info("mcu sleep remove\n");
+    return 0;
+}
+
+
+#ifdef CONFIG_PM
+/**
+* mcu pm sleep module  drv resume  donothing
+*/
+static int mcusleep_resume(struct device *dev)
+{
     return 0;
 }
 
 /**
-* mcu sleep module  drv resume, do nothing
+* mcu mcusleep pm drv suspend
 */
-static int mcusleep_resume(struct platform_device *pdev)
+static int mcusleep_suspend(struct device *dev)
 {
-
+    pr_info("mcusleep_suspend allow mcu sleep\n");
+    mcusleep_sleep_allow();
     return 0;
 }
 
 /**
-* mcu sleep module  drv suspend, do nothing
+* mcu mcusleep pm drv
 */
-static int mcusleep_suspend(struct platform_device *pdev, pm_message_t state)
-{
-    return 0;
-}
+static const struct dev_pm_ops mcusleep_pmops = {
+    .suspend = mcusleep_suspend,
+    .resume = mcusleep_resume,
+};
+
+#define MCUSLEEP_PMOPS (&mcusleep_pmops)
+#else
+#define MCUSLEEP_PMOPS NULL
+#endif
 
 /**
 * mcu mcusleep_match_table
@@ -549,33 +575,33 @@ static struct platform_driver mcusleep_driver =
 {
     .probe = mcusleep_probe,
     .remove = mcusleep_remove,
-    .suspend = mcusleep_suspend,  
-    .resume = mcusleep_resume,
     .driver = {
         .name = "mcusleep",
         .owner = THIS_MODULE,
         .of_match_table = mcusleep_match_table,
+        .pm = MCUSLEEP_PMOPS,
     },
 };
 
 /**
-* mcu file_operations
+* mcu lpm_file_operations
 */
 static const struct file_operations lpm_fops = 
 {
     .owner = THIS_MODULE,
     .read = mcusleep_read_proc_lpm,
-    .write = mcusleep_write_proc_lpm,
 };
 
 /**
-* mcu pid file
+* mcu sleep_file_operations
 */
-static const struct file_operations pid_fops = 
+static const struct file_operations sleep_fops =
 {
     .owner = THIS_MODULE,
-    .write = mcusleep_write_proc_pid,
+    .write = mcusleep_write_proc_sleep,
+    .read = mcusleep_read_proc_sleep,
 };
+
 
 /**
 * make proc sys node
@@ -639,27 +665,24 @@ static int __init mcusleep_init(void)
         goto fail;
     }
 
-    /* Creating write only "pid" entry */
-    ent = mcusleep_proc_create("pid", S_IRUGO | S_IWUSR | S_IWGRP, mcusleep_dir,
-                                &pid_fops);
-    if (ent == NULL) 
+    /* Creating write only "sleep" entry */
+    ent = mcusleep_proc_create("sleep", S_IRUGO | S_IWUSR | S_IWGRP, mcusleep_dir,
+                                &sleep_fops);
+    if (ent == NULL)
     {
-        pr_err("Unable to create /proc/%s/lpm entry\n", PROC_DIR);
+        pr_err("Unable to create /proc/%s/sleep entry\n", PROC_DIR);
         retval = -ENOMEM;
         goto fail;
     }
-
     /* clear all status bits */
     flags = 0;
-
     /* initialize host wake tasklet */
     tasklet_init(&mcu_hostwake_task, mcusleep_hostwake_task, 0);
-
     return 0;
 
 fail:
     remove_proc_entry("lpm", mcusleep_dir);
-    remove_proc_entry("pid", mcusleep_dir);
+    remove_proc_entry("sleep", mcusleep_dir);
     remove_proc_entry("mcusleep", 0);
     return retval;
 }
@@ -687,11 +710,12 @@ static void __exit mcusleep_exit(void)
         }
         free_irq(mcuinfo->host_wake_irq, NULL);
     }
-
+    /*deregister dev*/
     platform_driver_unregister(&mcusleep_driver);
-
+    /* initialize host wake tasklet */
+    tasklet_kill(&mcu_hostwake_task);
     remove_proc_entry("lpm", mcusleep_dir);
-    remove_proc_entry("pid", mcusleep_dir);
+    remove_proc_entry("sleep", mcusleep_dir);
     remove_proc_entry("mcusleep", 0);
 }
 
