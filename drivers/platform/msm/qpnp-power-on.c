@@ -670,6 +670,9 @@ static irqreturn_t qpnp_kpdpwr_irq(int irq, void *_pon)
 
 static irqreturn_t qpnp_kpdpwr_bark_irq(int irq, void *_pon)
 {
+	struct qpnp_pon *pon = _pon;
+
+	dev_info(&pon->spmi->dev, "Reset S1- KPD_PWR_N\n");
 	return IRQ_HANDLED;
 }
 
