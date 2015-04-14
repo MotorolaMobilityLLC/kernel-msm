@@ -427,8 +427,10 @@ struct mmc_card {
 
 #define MMC_ERROR_FAILURE_RATIO	10		/* give up on cards with too many failures/successes */
 #define MMC_ERROR_FORGIVE_RATIO	10		/* forgive cards with enough successes/failures */
+#define MMC_ERROR_DROP_THRESHOLD 3		/* drop cards whose requests we have had to give up on */
 	unsigned int		failures;	/* number of recent request failures */
 	unsigned int		successes;	/* successful requests since 1st recorded failure  */
+	unsigned int		drop_score;	/* number of times we have given up on the request */
 #define MMC_ERROR_MAX_TIME_MS	10000LL		/* give up after 10 seconds of trouble */
 	ktime_t			failure_time;	/* time of the first failure */
 #define MMC_THROTTLE_BACK_THRESHOLD 2
