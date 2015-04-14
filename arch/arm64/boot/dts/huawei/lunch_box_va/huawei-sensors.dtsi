@@ -7,3 +7,25 @@
 		spi-cpha;
 	};
 };
+
+&pm8994_l18 { /* Sensor VDD */
+	regulator-min-microvolt = <2850000>;
+	regulator-max-microvolt = <2850000>;
+	regulator-always-on;
+	qcom,init-voltage = <2850000>;
+	status = "okay";
+};
+
+&pm8994_l19 { /* Sensor Hub VDD */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
+&pm8994_lvs2 {
+	qcom,init-enable = <1>;
+	regulator-always-on;
+	status = "okay";
+};
