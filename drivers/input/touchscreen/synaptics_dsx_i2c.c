@@ -2273,6 +2273,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int w;
 	int id;
 	static unsigned char active_touch_max_idx;
+	struct timespec hw_time = ktime_to_timespec(ktime_get());
 	struct f12_d1_type *finger_data;
 	struct synaptics_rmi4_packet_reg *reg_data_1 =
 				&rmi4_data->f12_data_registers_ptr->regs[0];
@@ -2332,6 +2333,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			data_size);
 	if (retval < 0)
 		return 0;
+
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_SEC, hw_time.tv_sec);
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_NSEC, hw_time.tv_nsec);
 
 	finger_data = (struct f12_d1_type *)reg_data_1->data;
 	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
@@ -2430,6 +2436,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int z;
+	struct timespec hw_time = ktime_to_timespec(ktime_get());
 
 	/*
 	 * The number of finger status registers is determined by the
@@ -2454,6 +2461,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		return 0;
 	} else
 		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
+
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_SEC, hw_time.tv_sec);
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_NSEC, hw_time.tv_nsec);
 
 	for (finger = 0; finger < fingers_supported; finger++) {
 		reg_index = finger / 4;
