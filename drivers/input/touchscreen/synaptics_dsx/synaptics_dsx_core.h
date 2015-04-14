@@ -60,6 +60,24 @@
 #define SYNAPTICS_RMI4_F55 (0x55)
 #define SYNAPTICS_RMI4_FDB (0xdb)
 
+//reg map+#define SYNA_F01_RMI_CTRL02 (0x003A)   /* Doze Interval */
+#define SYNA_F11_2D_CTRL58  (0x0064)   /* Large Object Suppression Parameters */
+#define SYNA_F01_RMI_QUERY11  0x0087   /* Product ID Query 0 */
+#define SYNA_F01_RMI_QUERY12  0x0088   /* Product ID Query 1 */
+#define SYNA_F01_RMI_QUERY13  0x0089   /* Product ID Query 2 */
+#define SYNA_F01_RMI_QUERY14  0x008A   /* Product ID Query 3 */
+#define SYNA_F01_RMI_QUERY15  0x008B   /* Product ID Query 4 */
+#define SYNA_F01_RMI_QUERY16  0x008C   /* Product ID Query 5 */
+#define SYNA_F01_RMI_QUERY17  0x008D   /* Product ID Query 6 */
+#define SYNA_F01_RMI_QUERY18  0x008E   /* Product ID Query 7 */
+#define SYNA_F01_RMI_QUERY19  0x008F   /* Product ID Query 8 */
+#define SYNA_F01_RMI_QUERY20  0x0090   /* Product ID Query 9 */
+
+#define SYNA_F01_RMI_CTRL00   0x0038   /* Device Control */
+#define SYNA_F01_RMI_CTRL02   0x003A   /* Doze Interval */
+#define SYNA_F01_RMI_CMD00    0x0071   /* Device Command */
+
+
 #define PRODUCT_INFO_SIZE 2
 #define PRODUCT_ID_SIZE 10
 #define BUILD_ID_SIZE 3
