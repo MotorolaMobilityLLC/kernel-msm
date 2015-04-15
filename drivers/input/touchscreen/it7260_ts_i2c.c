@@ -94,7 +94,7 @@
 #define SYSFS_RESULT_FAIL		(-1)
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
-#define DEVICE_READY_MAX_WAIT		500
+#define DEVICE_READY_MAX_WAIT		10
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -1070,17 +1070,15 @@ static bool chipIdentifyIT7260(void)
 	static const uint8_t expectedID[] = {0x0A, 'I', 'T', 'E', '7', '2', '6', '0'};
 	uint8_t chipID[10] = {0,};
 
-	/* not sure why asus chose to wait forever here, duplicating their logic for now */
-	waitDeviceReady(true, false);
-
+	waitDeviceReady(false, false);
+	
 	if (!i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent))) {
 		LOGE("i2cWrite() failed\n");
 		return false;
 	}
 
-	/* not sure why asus chose to wait forever here, duplicating their logic for now */
-	waitDeviceReady(true, false);
-
+	waitDeviceReady(false, false);
+	
 	if (!i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID))) {
 		LOGE("i2cRead() failed\n");
 		return false;
