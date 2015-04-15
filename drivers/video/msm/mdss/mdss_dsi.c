@@ -643,13 +643,19 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-	if (!pdata->panel_info.ulps_suspend_enabled) {
+	if ((!pdata->panel_info.ulps_suspend_enabled &&
+			!ctrl_pdata->sh_control_enabled) ||
+					mdss_dsi_is_panel_dead(pdata)) {
+		pr_debug("%s(%d): disable DSI controller and DSI phy\n",
+						__func__, ctrl_pdata->ndx);
 		/* disable DSI controller */
 		mdss_dsi_controller_cfg(0, pdata);
 
 		/* disable DSI phy */
 		mdss_dsi_phy_disable(ctrl_pdata);
-	}
+	} else
+		pr_debug("%s(%d): SKIP disable DSI controller and DSI phy\n",
+						__func__, ctrl_pdata->ndx);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
@@ -826,11 +832,17 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * turned on. However, if cont splash is disabled, the first time DSI
 	 * is powered on, phy init needs to be done unconditionally.
 	 */
-	if (!pdata->panel_info.ulps_suspend_enabled || !ctrl_pdata->ulps) {
+	if (((!pdata->panel_info.ulps_suspend_enabled || !ctrl_pdata->ulps) &&
+		!ctrl_pdata->sh_control_enabled)  ||
+			mdss_dsi_is_panel_dead(pdata)) {
+		pr_debug("%s(%d): reset and init DSI phy\n",
+						__func__, ctrl_pdata->ndx);
 		mdss_dsi_phy_sw_reset(ctrl_pdata);
 		mdss_dsi_phy_init(ctrl_pdata);
 		mdss_dsi_ctrl_setup(ctrl_pdata);
-	}
+	} else
+		pr_debug("%s(%d): skip reset and reinit DSI phy\n",
+						__func__, ctrl_pdata->ndx);
 
 	/* DSI link clocks need to be on prior to ctrl sw reset */
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
@@ -2344,7 +2356,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	 * This is needed for the DSI PHY to maintain ULPS state during
 	 * suspend also.
 	 */
-	if (pinfo->ulps_suspend_enabled) {
+	if (pinfo->ulps_suspend_enabled || ctrl_pdata->sh_control_enabled) {
 		rc = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[DSI_CTRL_PM].vreg_config,
 			ctrl_pdata->power_data[DSI_CTRL_PM].num_vreg, 1);
