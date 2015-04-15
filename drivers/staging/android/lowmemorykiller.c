@@ -504,9 +504,11 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 
 		if (time_before_eq(jiffies, lowmem_deathpending_timeout)) {
 			if (test_task_flag(tsk, TIF_MEMDIE)) {
+				int same_tgid = same_thread_group(current, tsk);
+
 				rcu_read_unlock();
 				/* give the system time to free up the memory */
-				if (!same_thread_group(current, tsk))
+				if (!same_tgid)
 					msleep_interruptible(20);
 				else
 					set_tsk_thread_flag(current,
