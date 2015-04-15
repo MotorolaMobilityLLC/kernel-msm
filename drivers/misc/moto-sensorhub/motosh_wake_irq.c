@@ -187,7 +187,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		int state;
 
 		dev_err(&ps_motosh->client->dev,
-			"Invalid M_DOCK bit set. irq_status = 0x%06x\n",
+			"Invalid M_DOCK bit set. irq_status = 0x%06lX\n",
 			irq_status);
 
 		motosh_cmdbuff[0] = DOCK_DATA;
@@ -486,7 +486,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	if (irq3_status & M_GENERIC_INTRPT) {
 
 		dev_err(&ps_motosh->client->dev,
-			"Invalid M_GENERIC_INTRPT bit set. irq_status = 0x%06x\n",
+			"Invalid M_GENERIC_INTRPT bit set. irq_status = 0x%06lX\n",
 			irq_status);
 
 		/* x (data1) : irq3_status */
