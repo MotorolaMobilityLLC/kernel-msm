@@ -849,7 +849,8 @@ static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		break;
 	case SND_SOC_DAPM_POST_PMU:
-		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE)
+		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE ||
+				tfa9890->is_spkr_prot_en)
 			tfa9890_power(codec, 1);
 		tfa9890_handle_playback_event(tfa9890, 1);
 		break;
