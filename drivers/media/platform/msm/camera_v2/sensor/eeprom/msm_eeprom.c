@@ -82,10 +82,6 @@ static uint32_t msm_eeprom_match_crc(struct msm_eeprom_memory_block_t *data)
 				+ map[j+1].mem.valid_size;
 			continue;
 		}
-		if (map[j+1].mem.valid_size != sizeof(uint32_t)) {
-			CDBG("%s: malformatted data mapping\n", __func__);
-			return -EINVAL;
-		}
 		sum = (uint32_t *) (memptr + map[j].mem.valid_size);
 		rc = msm_eeprom_verify_sum(memptr, map[j].mem.valid_size,
 					   *sum);
