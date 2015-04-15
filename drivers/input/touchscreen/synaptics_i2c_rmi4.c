@@ -1492,12 +1492,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				return 1;
 			}
 
-			for (finger = 0; finger < fingers_to_process; finger++) {
-				input_mt_slot(rmi4_data->input_dev, finger);
-				input_mt_report_slot_state(rmi4_data->input_dev,
-							   MT_TOOL_FINGER, 0);
-			}
-
 			input_report_key(rmi4_data->input_dev,
 					 rmi4_data->board->palm_detect_keycode,
 					 1);
