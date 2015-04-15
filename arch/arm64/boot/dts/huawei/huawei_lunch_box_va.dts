@@ -15,10 +15,10 @@
 #include "../qcom/msm8994-v2.0.dtsi"
 #include "../qcom/msm8994-pinctrl.dtsi"
 #include "../qcom/msm8994-mtp.dtsi"
-#include "huawei.dtsi"
+#include "lunch_box_va/huawei.dtsi"
 
 / {
-	model = "Huawei Technologies, Inc. MSM8994 Launch Box";
+	model = "Huawei Technologies, Inc. MSM8994 Lunch Box";
 	compatible = "qcom,msm8994-mtp", "qcom,msm8994", "qcom,mtp";
 	qcom,board-id= <8000 0>;
 	huawei,modem_id = <0xFD000100 0x0>;
