@@ -748,7 +748,6 @@ static ssize_t synaptics_rmi4_suspend_store(struct device *dev,
 	return count;
 }
 
-
 static ssize_t synaptics_rmi4_wake_gesture_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3167,7 +3166,7 @@ EXPORT_SYMBOL(synaptics_rmi4_new_function);
 static int synaptics_rmi4_probe(struct platform_device *pdev)
 {
 	int retval;
-	unsigned char attr_count;
+	signed char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	const struct synaptics_dsx_hw_interface *hw_if;
 	const struct synaptics_dsx_board_data *bdata;
