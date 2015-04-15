@@ -20,10 +20,11 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
-
+#include <linux/wakelock.h>
 #include <linux/asus_utility.h>
 
 #define MODE_PROC_MAX_BUFF_SIZE  256
+#define WAIT_FOR_AMBIENT_DRAW_MS                (HZ)
 #define USER_ROOT_DIR "asus_utility"  
 #define USER_ENTRY   "interactive"
 /*
@@ -47,7 +48,7 @@ static void do_notify_on_worker(struct work_struct *work);
 static void do_notify_off_worker(struct work_struct *work);
 static DECLARE_WORK(notify_on_Work, do_notify_on_worker);
 static DECLARE_WORK(notify_off_Work, do_notify_off_worker);
-
+static struct wake_lock ambient_drawing_wakelock;
 int modeSendNotify(unsigned long val)
 {
        int ret = 0;
@@ -109,6 +110,10 @@ static int mode_write_proc_interactive (struct file *filp, const char __user *bu
 			queue_work(notify_workQueue, &notify_on_Work);
 	}
 	else if (!strncmp(msg,"FB_BLANK_ENTER_NON_INTERACTIVE",len-1)){
+	
+		wake_lock_timeout(&ambient_drawing_wakelock, WAIT_FOR_AMBIENT_DRAW_MS);
+		printk("wake_lock_timeout(Hz) for ambient mode UI...\n");
+		
 		if (interactive_status == 1)
 			queue_work(notify_workQueue, &notify_off_Work);
 	}
@@ -177,6 +182,8 @@ static int init_debug_port(void)
 {
 	struct proc_dir_entry *mode; 
 	
+	wake_lock_init(&ambient_drawing_wakelock, WAKE_LOCK_SUSPEND, "ambient_drawing_wakelock");
+	
     mode_root = proc_mkdir(USER_ROOT_DIR, NULL); 
     if (NULL== mode_root) 
     { 
@@ -206,6 +213,7 @@ static void remove_debug_port(void)
 {
     remove_proc_entry(USER_ENTRY,mode_root); 
     remove_proc_entry(USER_ROOT_DIR,NULL);
+    wake_lock_destroy(&ambient_drawing_wakelock);
 }
 
 /**
