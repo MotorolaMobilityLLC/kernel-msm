@@ -311,7 +311,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			| motosh_cmdbuff[1];
 		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff, 4);
-		dev_dbg(&ps_motosh->client->dev, "Sensor enable = 0x%02X\n",
+		dev_dbg(&ps_motosh->client->dev, "Sensor enable = 0x%06lX\n",
 			motosh_g_wake_sensor_state);
 		break;
 	case MOTOSH_IOCTL_GET_WAKESENSORS:
