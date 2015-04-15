@@ -835,6 +835,7 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS3");
 	snd_soc_dapm_ignore_suspend(dapm, "MICSUPP");
 	snd_soc_dapm_ignore_suspend(dapm, "IN1L");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1R");
 	snd_soc_dapm_ignore_suspend(dapm, "IN2L");
 	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
 	snd_soc_dapm_ignore_suspend(dapm, "IN3R");
