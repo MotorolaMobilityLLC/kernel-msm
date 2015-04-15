@@ -73,7 +73,7 @@
 #include "msm8226-smp2p.dtsi"
 #include "msm8226-gpu.dtsi"
 #include "msm8226-bus.dtsi"
-#include "wren_evb_msm8226-mdss.dtsi"
+#include "wren_evb_sr_msm8226-mdss.dtsi"
 #include "msm8226-coresight.dtsi"
 #include "msm8226-iommu-domains.dtsi"
 #include "msm8226-pinctrl.dtsi"
@@ -1402,8 +1402,8 @@
 };
 
 #include "msm-pm8226-rpm-regulator.dtsi"
-#include "wren_evb_msm-pm8226.dtsi"
-#include "wren_evb_msm8226-regulator.dtsi"
+#include "wren_evb_sr_msm-pm8226.dtsi"
+#include "wren_evb_sr_msm8226-regulator.dtsi"
 
 &pm8226_vadc {
 	chan@0 {
