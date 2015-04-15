@@ -1270,7 +1270,8 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		 * when ULPS during suspend is enabled.
 		 */
 		if ((pdata->panel_info.blank_state != MDSS_PANEL_BLANK_BLANK) ||
-			pdata->panel_info.ulps_suspend_enabled) {
+			pdata->panel_info.ulps_suspend_enabled ||
+				ctrl->sh_control_enabled) {
 			rc = mdss_dsi_clamp_ctrl(ctrl, 1);
 			if (rc)
 				pr_err("%s: Failed to enable dsi clamps. rc=%d\n",
