@@ -215,4 +215,4 @@
 */
 };
 
-#include "wren_evb_msm8226-mdss-panels.dtsi"
+#include "wren_evb_sr_msm8226-mdss-panels.dtsi"

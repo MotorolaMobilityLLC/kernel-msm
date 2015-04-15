@@ -17,13 +17,17 @@
 
 // +++ ASUS_BSP : add for hardware ID
 enum DEVICE_HWID {
-	// WI300Q
-	SPARROW_EVB = 0x0,
+	// WI301Q
+	SPARROW_EVB    = 0x0,
 	SPARROW_SR_PNI = 0x1,
-	SPARROW_SR_QL = 0x2,
-	SPARROW_SR2 = 0x3,
-	SPARROW_PR = 0x4,
-	WREN_EVB = 0x8,
+	SPARROW_SR_QL  = 0x2,
+	SPARROW_SR2    = 0x3,
+	SPARROW_ER     = 0x4,
+	SPARROW_PR     = 0x5,
+	// WI300QF
+	WREN_EVB_SR    = 0x8,
+	WREN_ER        = 0x9,
+	WREN_PR        = 0x10,
 	HWID_UNKNOWN = 0xFF
 };
 // --- ASUS_BSP : add for hardware ID

@@ -1,9 +1,9 @@
-#ifndef _EVB_GPIO_PINMUX_H_
-#define _EVB_GPIO_PINMUX_H_
+#ifndef _EVB_SR_GPIO_PINMUX_H_
+#define _EVB_SR_GPIO_PINMUX_H_
 
 #include "gpio_pinmux_setting.h"
 
-static struct msm_gpiomux_config evb_msm8226_gpio_configs[] __initdata= {
+static struct msm_gpiomux_config evb_sr_msm8226_gpio_configs[] __initdata= {
 // ASUS_BSP BerylHou +++ "BT config"
 	{
 		.gpio = 0,	/* BLSP1 BT Uart Tx */
@@ -309,4 +309,4 @@ static struct msm_gpiomux_config evb_msm8226_gpio_configs[] __initdata= {
 	},
 };
 
-#endif  /* _EVB_GPIO_PINMUX_H_  */
+#endif  /* _EVB_SR_GPIO_PINMUX_H_  */
