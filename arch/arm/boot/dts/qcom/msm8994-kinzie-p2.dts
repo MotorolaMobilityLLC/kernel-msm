@@ -18,3 +18,7 @@
 / {
 	qcom,board-id = <0x42 0x8200>;
 };
+
+&pmi8994_charger {
+	qcom,dc-psy-ma = <1000>;
+};
