@@ -2989,42 +2989,6 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 	}
 	mutex_unlock(&chip->soc_invalidation_mutex);
 
-#ifndef CONFIG_HUAWEI_BATTERY_SETTING
-
-#define CAPACITY_99 99
-#define CAPACITY_100 100
-#define SAMPLE_COUNTER 5
-#define DELTA_I_REPORT_100 -200000
-
-    if(new_calculated_soc == CAPACITY_99 && is_battery_charging(chip))
-    {
-        int ibat_ua = 0;
-        int vbat_uv = 0;
-
-        get_simultaneous_batt_v_and_i(chip,&ibat_ua, &vbat_uv);
-        pr_info("ibat_ua = %d\n",ibat_ua);
-        if(ibat_ua > DELTA_I_REPORT_100 && ibat_ua < 0)
-        {
-            chip->fake_soc_count++;
-            pr_info("fake_soc_count = %d\n",chip->fake_soc_count);
-            if(chip->fake_soc_count == SAMPLE_COUNTER)
-            {
-                chip->fake_soc_count = 0;
-                new_calculated_soc = CAPACITY_100;
-                chip->last_ocv_uv = find_ocv_for_pc(chip, batt_temp,find_pc_for_soc(chip, &params, new_calculated_soc));
-                pr_info("fake adjust soc = %d\n",new_calculated_soc);
-            }
-        }
-        else
-        {
-            chip->fake_soc_count = 0;
-        }
-    }
-    else
-    {
-        chip->fake_soc_count = 0;
-    }
-#endif
 	if (chip->first_time_calc_soc && !chip->shutdown_soc_invalid) {
 		pr_debug("Skip adjustment when shutdown SOC has been forced\n");
 		new_calculated_soc = soc;
