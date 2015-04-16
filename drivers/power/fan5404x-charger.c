@@ -1030,11 +1030,12 @@ static int fan5404x_get_prop_batt_capacity(struct fan5404x_chg *chip)
 }
 
 #define DEFAULT_BATT_VOLT_MV	4000
-static int fan5404x_get_prop_batt_voltage_now(struct fan5404x_chg *chip,
-						int *volt_mv)
+static int fan5404x_get_prop_batt_voltage_current_now(struct fan5404x_chg *chip,
+						int *volt_mv, int *curr_ma)
 {
 	int rc = 0;
 	union power_supply_propval ret = {0, };
+	*curr_ma = 0;
 
 	if (!chip->bms_psy && chip->bms_psy_name)
 		chip->bms_psy =
@@ -1048,8 +1049,14 @@ static int fan5404x_get_prop_batt_voltage_now(struct fan5404x_chg *chip,
 			*volt_mv = DEFAULT_BATT_VOLT_MV;
 			return rc;
 		}
-
 		*volt_mv = ret.intval / 1000;
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't get batt current\n");
+			return rc;
+		}
+		*curr_ma = -1 * ret.intval / 1000;
 		return 0;
 	}
 
@@ -1080,12 +1087,17 @@ static bool fan5404x_get_prop_taper_reached(struct fan5404x_chg *chip)
 	}
 	return false;
 }
-
+#define CURRENT_SHUTDOWN 1500
+/*0.05 v guard voltage for the difference
+ * between FG and ADC voltage measuring
+ * to protect the battery from over discharging
+ * */
+#define GUARD_VOLTAGE 50
 static void fan5404x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 {
 	struct fan5404x_chg *chip = ctx;
 	struct qpnp_vadc_result result;
-	int batt_volt;
+	int batt_volt, batt_curr;
 	int rc;
 
 	pr_err("shutdown voltage tripped\n");
@@ -1096,11 +1108,35 @@ static void fan5404x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 							result.adc_code);
 	}
 
-	fan5404x_get_prop_batt_voltage_now(chip, &batt_volt);
-	pr_info("vbat is at %d, state is at %d\n", batt_volt, state);
+	fan5404x_get_prop_batt_voltage_current_now(
+						chip, &batt_volt, &batt_curr);
+	pr_info("vbat is at %d, curr %d state is at %d\n",
+						batt_volt, batt_curr, state);
 
-	if (state == ADC_TM_LOW_STATE)
-		chip->shutdown_voltage_tripped = 1;
+	if (state == ADC_TM_LOW_STATE) {
+		batt_volt -= GUARD_VOLTAGE;
+		if ((batt_curr < CURRENT_SHUTDOWN) &&
+				(batt_volt <= (chip->low_voltage_uv/1000))) {
+			msleep(250);
+			fan5404x_get_prop_batt_voltage_current_now(
+						chip, &batt_volt, &batt_curr);
+			pr_info("vbat is at %d, curr %d state is at %d\n",
+						batt_volt, batt_curr, state);
+			batt_volt -= GUARD_VOLTAGE;
+			if ((batt_curr < CURRENT_SHUTDOWN) &&
+				(batt_volt <= (chip->low_voltage_uv/1000))) {
+				pr_info("shutdown now\n");
+				chip->shutdown_voltage_tripped = 1;
+			} else {
+				qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+					&chip->vbat_monitor_params);
+			}
+		} else {
+			msleep(250);
+			qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+				&chip->vbat_monitor_params);
+		}
+	}
 	else
 		qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
 				&chip->vbat_monitor_params);
@@ -1205,11 +1241,12 @@ static void fan5404x_set_chrg_path_temp(struct fan5404x_chg *chip)
 
 static int fan5404x_check_temp_range(struct fan5404x_chg *chip)
 {
-	int batt_volt;
+	int batt_volt, batt_curr;
 	int batt_soc;
 	int ext_high_temp = 0;
 
-	if (fan5404x_get_prop_batt_voltage_now(chip, &batt_volt))
+	if (fan5404x_get_prop_batt_voltage_current_now(chip,
+				&batt_volt, &batt_curr))
 		return 0;
 
 	batt_soc = fan5404x_get_prop_batt_capacity(chip);
