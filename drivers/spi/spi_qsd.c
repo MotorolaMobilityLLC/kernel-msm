@@ -788,7 +788,15 @@ static void msm_spi_set_mx_counts(struct msm_spi *dd, u32 n_words)
 static int msm_spi_bam_pipe_disconnect(struct msm_spi *dd,
 						struct msm_spi_bam_pipe  *pipe)
 {
-	int ret = sps_disconnect(pipe->handle);
+	int ret = 0;
+	struct sps_connect config = pipe->config;
+	config.options |= SPS_O_POLL;
+	ret = sps_set_config(pipe->handle, &config);
+	if (ret) {
+		pr_err("sps_set_config() failed ret %d\n", ret);
+		return ret;
+	}
+	ret = sps_disconnect(pipe->handle);
 	if (ret) {
 		dev_dbg(dd->dev, "%s disconnect bam %s pipe failed\n",
 							__func__, pipe->name);
