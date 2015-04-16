@@ -280,8 +280,8 @@
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
-#define STM16_TO_HOST(buf, x) ((short) be16_to_cpu(*((u16 *) (buf+(x)))))
-#define STM32_TO_HOST(buf, x) ((short) be32_to_cpu(*((u32 *) (buf+(x)))))
+#define STM16_TO_HOST(buf, x) ((int16_t) be16_to_cpu(*((u16 *) (buf+(x)))))
+#define STM32_TO_HOST(buf, x) ((int32_t) be32_to_cpu(*((u32 *) (buf+(x)))))
 
 #define MOTOSH_HALL_SOUTH 1
 #define MOTOSH_HALL_NORTH 2
