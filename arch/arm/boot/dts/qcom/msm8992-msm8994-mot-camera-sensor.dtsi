@@ -468,13 +468,14 @@
 	qcom,pmi8994@3 {
 		qcom,leds@d300 {
 			qcom,flash_0 {
-				qcom,max-current = <125>;
+				/delete-property/ qcom,power-detect-enabled;
+				qcom,max-current = <1000>;
 				qcom,duration = <90>;
-				qcom,current = <125>;
+				qcom,current = <75>;
+				qcom,clamp-current = <25>;
 			};
 			qcom,torch_0 {
-				qcom,max-current = <25>;
-				qcom,duration = <120>;
+				qcom,max-current = <200>;
 				qcom,current = <25>;
 			};
 		};
