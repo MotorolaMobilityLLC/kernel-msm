@@ -5820,6 +5820,75 @@ static void dump_regs(struct smbchg_chip *chip)
 		dump_reg(chip, chip->misc_base + addr, "MISC CFG");
 }
 
+static inline void dump_reg_dbfs(struct smbchg_chip *chip, u16 addr,
+				 const char *name, struct seq_file *m)
+{
+	u8 reg;
+
+	smbchg_read(chip, &reg, addr, 1);
+	seq_printf(m, "%s - %04X = %02X\n", name, addr, reg);
+}
+
+/* dumps useful registers for debug */
+static void dump_regs_dbfs(struct smbchg_chip *chip, struct seq_file *m)
+{
+	u16 addr;
+
+	/* charger peripheral */
+	for (addr = 0xB; addr <= 0x10; addr++)
+		dump_reg_dbfs(chip, chip->chgr_base + addr, "CHGR Status", m);
+	for (addr = 0xF0; addr <= 0xFF; addr++)
+		dump_reg_dbfs(chip, chip->chgr_base + addr, "CHGR Config", m);
+	/* battery interface peripheral */
+	dump_reg_dbfs(chip, chip->bat_if_base + RT_STS, "BAT_IF Status", m);
+	dump_reg_dbfs(chip, chip->bat_if_base + CMD_CHG_REG,
+		      "BAT_IF Command", m);
+	for (addr = 0xF0; addr <= 0xFB; addr++)
+		dump_reg_dbfs(chip, chip->bat_if_base + addr,
+			      "BAT_IF Config", m);
+	/* usb charge path peripheral */
+	for (addr = 0x7; addr <= 0x10; addr++)
+		dump_reg_dbfs(chip, chip->usb_chgpth_base + addr,
+			      "USB Status", m);
+	dump_reg_dbfs(chip, chip->usb_chgpth_base + CMD_IL, "USB Command", m);
+	for (addr = 0xF0; addr <= 0xF5; addr++)
+		dump_reg_dbfs(chip, chip->usb_chgpth_base + addr,
+			      "USB Config", m);
+	/* dc charge path peripheral */
+	dump_reg_dbfs(chip, chip->dc_chgpth_base + RT_STS, "DC Status", m);
+	for (addr = 0xF0; addr <= 0xF6; addr++)
+		dump_reg_dbfs(chip, chip->dc_chgpth_base + addr,
+			      "DC Config", m);
+	/* misc peripheral */
+	dump_reg_dbfs(chip, chip->misc_base + IDEV_STS, "MISC Status", m);
+	dump_reg_dbfs(chip, chip->misc_base + RT_STS, "MISC Status", m);
+	for (addr = 0xF0; addr <= 0xF3; addr++)
+		dump_reg_dbfs(chip, chip->misc_base + addr, "MISC CFG", m);
+}
+
+static int show_cnfg_regs(struct seq_file *m, void *data)
+{
+	struct smbchg_chip *chip = m->private;
+
+	dump_regs_dbfs(chip, m);
+	return 0;
+}
+
+static int cnfg_debugfs_open(struct inode *inode, struct file *file)
+{
+	struct smbchg_chip *chip = inode->i_private;
+
+	return single_open(file, show_cnfg_regs, chip);
+}
+
+static const struct file_operations cnfg_debugfs_ops = {
+	.owner		= THIS_MODULE,
+	.open		= cnfg_debugfs_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int create_debugfs_entries(struct smbchg_chip *chip)
 {
 	struct dentry *ent;
@@ -5837,6 +5906,16 @@ static int create_debugfs_entries(struct smbchg_chip *chip)
 	if (!ent) {
 		dev_err(chip->dev,
 			"Couldn't create force dcin icl check file\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("register_dump",
+				  S_IFREG | S_IWUSR | S_IRUGO,
+				  chip->debug_root, chip,
+				  &cnfg_debugfs_ops);
+	if (!ent) {
+		dev_err(chip->dev,
+			"Couldn't create force dump file\n");
 		return -EINVAL;
 	}
 	return 0;
