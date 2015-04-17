@@ -82,7 +82,7 @@ struct tfa9890_priv {
 	char const *tfa_dev;
 	char const *fw_path;
 	char const *fw_name;
-	int is_spkr_prot_en;
+	int is_spkr_prot_disabled;
 	int update_eq;
 	int update_cfg;
 	int pcm_start_delay;
@@ -756,9 +756,9 @@ static int tfa9890_dsp_bypass_put(struct snd_kcontrol *kcontrol,
 		val |= TFA9890_BAT_CTL_BSSBY_MSK;
 		snd_soc_write(codec, TFA9890_BATT_CTL_REG, val);
 
-		tfa9890->is_spkr_prot_en = 1;
+		tfa9890->is_spkr_prot_disabled = 1;
 		pr_debug("%s: codec dsp bypassed %d\n", codec->name,
-			tfa9890->is_spkr_prot_en);
+			tfa9890->is_spkr_prot_disabled);
 	} else {
 		/* Set CHSA to enable DSP */
 		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
@@ -784,9 +784,9 @@ static int tfa9890_dsp_bypass_put(struct snd_kcontrol *kcontrol,
 		val &= ~(TFA9890_BAT_CTL_BSSBY_MSK);
 		snd_soc_write(codec, TFA9890_BATT_CTL_REG, val);
 
-		tfa9890->is_spkr_prot_en = 0;
+		tfa9890->is_spkr_prot_disabled = 0;
 		pr_debug("%s: codec dsp unbypassed %d\n", codec->name,
-			tfa9890->is_spkr_prot_en);
+			tfa9890->is_spkr_prot_disabled);
 	}
 	mutex_unlock(&lr_lock);
 	return 1;
@@ -798,7 +798,7 @@ static int tfa9890_dsp_bypass_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
 
-	ucontrol->value.integer.value[0] = tfa9890->is_spkr_prot_en;
+	ucontrol->value.integer.value[0] = tfa9890->is_spkr_prot_disabled;
 
 	return 0;
 }
@@ -808,7 +808,7 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 {
 	if (on) {
 		/* if in bypass mode dont't do anything */
-		if (tfa9890->is_spkr_prot_en)
+		if (tfa9890->is_spkr_prot_disabled)
 			return;
 		/* To initialize dsp all the I2S signals should be bought up,
 		 * so that the DSP's internal PLL can sync up and memory becomes
@@ -850,7 +850,7 @@ static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE ||
-				tfa9890->is_spkr_prot_en)
+				tfa9890->is_spkr_prot_disabled)
 			tfa9890_power(codec, 1);
 		tfa9890_handle_playback_event(tfa9890, 1);
 		break;
@@ -932,7 +932,7 @@ static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
 	SOC_SINGLE_EXT("NXP Left Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0, tfa9890_get_ch_sel,
 				tfa9890_put_ch_sel),
-	SOC_SINGLE_EXT("BOOST ENABLE Spkr Left Prot", 0 , 0, 1,
+	SOC_SINGLE_EXT("NXP DISABLE Spkr Left Prot", 0 , 0, 1,
 		0, tfa9890_dsp_bypass_get,
 		tfa9890_dsp_bypass_put),
 };
@@ -980,7 +980,7 @@ static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
 	SOC_SINGLE_EXT("NXP Right Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0, tfa9890_get_ch_sel,
 				tfa9890_put_ch_sel),
-	SOC_SINGLE_EXT("BOOST ENABLE Spkr Right Prot", 0, 0, 1,
+	SOC_SINGLE_EXT("NXP DISABLE Spkr Right Prot", 0, 0, 1,
 		0, tfa9890_dsp_bypass_get,
 		tfa9890_dsp_bypass_put),
 };
@@ -1498,7 +1498,7 @@ static void tfa9890_monitor(struct work_struct *work)
 	 * and DSP watch dog bit to re init */
 	if (((TFA9890_STATUS_ACS & val) || (TFA9890_STATUS_WDS & val) ||
 		!(TFA9890_STATUS_AMP_SWS & val)) &&
-		!(tfa9890->is_spkr_prot_en)) {
+		!(tfa9890->is_spkr_prot_disabled)) {
 		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 		/* schedule init now if the clocks are up and stable */
 		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
