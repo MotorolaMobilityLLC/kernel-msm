@@ -629,13 +629,13 @@ void motosh_store_vote_aod_enabled_locked(struct motosh_data *ps_motosh,
 		ps_motosh->aod_enabled.vote &= ~voter;
 }
 
-unsigned short motosh_get_interrupt_status(struct motosh_data *ps_motosh,
-	unsigned char reg, int *err)
+static unsigned long motosh_get_wake_interrupt_status(
+		struct motosh_data *ps_motosh, int *err)
 {
 	motosh_wake(ps_motosh);
 
-	motosh_cmdbuff[0] = reg;
-	*err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
+	motosh_cmdbuff[0] = WAKESENSOR_STATUS;
+	*err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
 	if (*err < 0) {
 		dev_err(&ps_motosh->client->dev, "Reading from STM failed\n");
 		motosh_sleep(ps_motosh);
@@ -643,7 +643,8 @@ unsigned short motosh_get_interrupt_status(struct motosh_data *ps_motosh,
 	}
 
 	motosh_sleep(ps_motosh);
-	return (motosh_readbuff[1] << 8) | motosh_readbuff[0];
+	return (motosh_readbuff[2] << 16) | (motosh_readbuff[1] << 8)
+		| motosh_readbuff[0];
 }
 
 /* WARNING: This code is extrememly prone to race conditions. Be very careful
@@ -652,7 +653,7 @@ unsigned short motosh_get_interrupt_status(struct motosh_data *ps_motosh,
 static int motosh_qw_check(void *data)
 {
 	struct motosh_data *ps_motosh = (struct motosh_data *)data;
-	unsigned short irq_status;
+	unsigned long irq_status;
 	int err, ret = 0;
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
@@ -664,8 +665,7 @@ static int motosh_qw_check(void *data)
 		goto EXIT;
 	}
 
-	irq_status = motosh_get_interrupt_status(ps_motosh, WAKESENSOR_STATUS,
-		&err);
+	irq_status = motosh_get_wake_interrupt_status(ps_motosh, &err);
 	if (err < 0)
 		goto EXIT;
 
