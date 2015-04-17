@@ -1945,7 +1945,7 @@ dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_
 
 	i = 0;
 	if (argv[i] == NULL) {
-		DHD_ERROR(("No args provided\n"));
+		DHD_ERROR(("%s: No args provided\n", __FUNCTION__));
 		goto fail;
 	}
 
@@ -1972,18 +1972,20 @@ dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_
 	rc = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, buf_len, TRUE, 0);
 	rc = rc >= 0 ? 0 : rc;
 	if (rc)
-		DHD_TRACE(("%s: failed to add pktfilter %s, retcode = %d\n",
-		__FUNCTION__, arg, rc));
+		DHD_ERROR(("%s: failed to add pktfilter (enable=%d)%s, retcode = %d\n",
+		__FUNCTION__, enable, arg, rc));
 	else
-		DHD_TRACE(("%s: successfully added pktfilter %s\n",
-		__FUNCTION__, arg));
+		DHD_ERROR(("%s: successfully added pktfilter (enable=%d)%s\n",
+		__FUNCTION__, enable, arg));
+
+	DHD_ERROR(("%s: set pkt_filter_mode=%d\n", __FUNCTION__, master_mode));
 
 	/* Contorl the master mode */
 	bcm_mkiovar("pkt_filter_mode", (char *)&master_mode, 4, buf, sizeof(buf));
 	rc = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, sizeof(buf), TRUE, 0);
 	rc = rc >= 0 ? 0 : rc;
 	if (rc)
-		DHD_TRACE(("%s: failed to add pktfilter %s, retcode = %d\n",
+		DHD_ERROR(("%s: failed to add pktfilter %s, retcode = %d\n",
 		__FUNCTION__, arg, rc));
 
 fail:

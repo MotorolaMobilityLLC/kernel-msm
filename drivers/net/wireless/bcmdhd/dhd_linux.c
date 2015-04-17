@@ -574,7 +574,11 @@ uint dhd_pkt_filter_init = 0;
 module_param(dhd_pkt_filter_init, uint, 0);
 
 /* Pkt filter mode control */
-uint dhd_master_mode = TRUE;
+#if defined(BOARD_INTEL)
+uint dhd_master_mode = FALSE;
+#else
+ uint dhd_master_mode = TRUE;
+#endif /* BOARD_INTEL */
 module_param(dhd_master_mode, uint, 0);
 
 int dhd_watchdog_prio = 0;
@@ -1371,7 +1375,7 @@ int dhd_process_cid_mac(dhd_pub_t *dhdp, bool prepost)
 	return 0;
 }
 
-#if defined(PKT_FILTER_SUPPORT) && !defined(GAN_LITE_NAT_KEEPALIVE_FILTER)
+#if defined(PKT_FILTER_SUPPORT) && !defined(GAN_LITE_NAT_KEEPALIVE_FILTER) && !defined(BOARD_INTEL)
 static bool
 _turn_on_arp_filter(dhd_pub_t *dhd, int op_mode)
 {
@@ -1391,7 +1395,7 @@ _turn_on_arp_filter(dhd_pub_t *dhd, int op_mode)
 exit:
 	return _apply;
 }
-#endif /* PKT_FILTER_SUPPORT && !GAN_LITE_NAT_KEEPALIVE_FILTER */
+#endif /* PKT_FILTER_SUPPORT && !GAN_LITE_NAT_KEEPALIVE_FILTER && !defined(BOARD_INTEL) */
 
 #if defined(CUSTOM_PLATFORM_NV_TEGRA)
 #ifdef PKT_FILTER_SUPPORT
@@ -1570,12 +1574,14 @@ void dhd_enable_packet_filter(int value, dhd_pub_t *dhd)
 #ifdef PKT_FILTER_SUPPORT
 	int i;
 
-	DHD_TRACE(("%s: enter, value = %d\n", __FUNCTION__, value));
+	DHD_ERROR(("%s: enter, value = %d, dhd_pkt_filter_enable = %u\n", __FUNCTION__, value, dhd_pkt_filter_enable));
 
 #if defined(CUSTOM_PLATFORM_NV_TEGRA)
 	dhd_enable_packet_filter_ports(dhd, value);
 #endif /* defined(CUSTOM_PLATFORM_NV_TEGRA) */
 
+/* ASUS_BSP_WIFI+++ fix dhd_enable_packet_filter bug */
+#if 0
 	/* 1 - Enable packet filter, only allow unicast packet to send up */
 	/* 0 - Disable packet filter */
 	if (dhd_pkt_filter_enable && (!value ||
@@ -1595,6 +1601,30 @@ void dhd_enable_packet_filter(int value, dhd_pub_t *dhd)
 				value, dhd_master_mode);
 		}
 	}
+#else
+	if (dhd_pkt_filter_enable) {
+		/* sometimes we shouldn't enable pkt filter */
+		if (value) {
+			/* 1. when not support STA mode */
+			if (!dhd_support_sta_mode(dhd)) {
+				DHD_ERROR(("%s: ERROR: not STA mode\n", __FUNCTION__));
+				return;
+			}
+
+			/* 2. STA doing DHCP */
+			if (dhd_support_sta_mode(dhd) && dhd->dhcp_in_progress) {
+				DHD_ERROR(("%s: ERROR: DHCP in progress\n", __FUNCTION__));
+				return;
+			}
+		}
+
+		for (i = 0; i < dhd->pktfilter_count; i++) {
+			dhd_pktfilter_offload_enable(dhd, dhd->pktfilter[i], value, dhd_master_mode);
+		}
+	}
+#endif
+/* ASUS_BSP_WIFI--- fix dhd_enable_packet_filter bug */
+
 #endif /* PKT_FILTER_SUPPORT */
 }
 
@@ -6525,6 +6555,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif /* ARP_OFFLOAD_SUPPORT */
 
 #ifdef PKT_FILTER_SUPPORT
+#ifndef BOARD_INTEL
 	/* Setup default defintions for pktfilter , enable in suspend */
 	dhd->pktfilter_count = 6;
 	/* Setup filter to allow only unicast */
@@ -6536,7 +6567,30 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd->pktfilter[DHD_MDNS_FILTER_NUM] = "104 0 0 0 0xFFFFFFFFFFFF 0x01005E0000FB";
 	/* apply APP pktfilter */
 	dhd->pktfilter[DHD_ARP_FILTER_NUM] = "105 0 0 12 0xFFFF 0x0806";
+#else
+	/* Setup drop defintions for pktfilter , enable in suspend */
+	dhd->pktfilter_count = 10;
+	dhd->pktfilter[DHD_UNICAST_FILTER_NUM] = NULL;
+	/* discard all broadcast packets */
+	dhd->pktfilter[DHD_BROADCAST_FILTER_NUM] = "101 0 0 0 0xFFFFFFFFFFFF 0xFFFFFFFFFFFF";
+	/* discard all IPv4 multicast packets */
+	dhd->pktfilter[DHD_MULTICAST4_FILTER_NUM] = "102 0 0 0 0xFFFFFF 0x01005E";
+	/* discard all IPv6 multicast packets */
+	dhd->pktfilter[DHD_MULTICAST6_FILTER_NUM] = "103 0 0 0 0xFFFF 0x3333";
 
+	dhd->pktfilter[DHD_MDNS_FILTER_NUM] = NULL;
+	dhd->pktfilter[DHD_ARP_FILTER_NUM] = NULL;
+
+	/* discard IPv4 broadcast address XXX.XXX.XXX.255 */
+	dhd->pktfilter[DHD_IPV4_BC_255_FILTER_NUM] = "106 0 0 12 0xFFFF00000000000000000000000000000000000000FF 0x080000000000000000000000000000000000000000FF";
+	/* discard IPv4 multicast address 224.0.0.0/4 */
+	dhd->pktfilter[DHD_IPV4_MC_224_FILTER_NUM] = "107 0 0 12 0xFFFF00000000000000000000000000000000F0 0x080000000000000000000000000000000000E0";
+	/* discard IPv6 multicast address FF00::/8 */
+	dhd->pktfilter[DHD_IPV6_MC_FF00_FILTER_NUM] = "108 0 0 12 0xFFFF000000000000000000000000000000000000000000000000FF 0x86DD000000000000000000000000000000000000000000000000FF";
+
+	/* discard all netbios packets */
+	dhd->pktfilter[DHD_NETBIOS_FILTER_NUM] = "109 0 0 23 0xff00000000000000000000ffffffff00000000000078 0x11b6e5c0a80105c0a8016400890089003a09db329a00";
+#endif /* !BOARD_INTEL */
 
 #if defined(SOFTAP)
 	if (ap_fw_loaded) {
@@ -8263,6 +8317,9 @@ int net_os_rxfilter_add_remove(struct net_device *dev, int add_remove, int num)
 		return ret;
 	if (num >= dhd->pub.pktfilter_count)
 		return -EINVAL;
+#ifdef BOARD_INTEL
+	add_remove = !add_remove; /* using discard patterns instead */
+#endif
 	switch (num) {
 		case DHD_BROADCAST_FILTER_NUM:
 			filterp = "101 0 0 0 0xFFFFFFFFFFFF 0xFFFFFFFFFFFF";
@@ -8290,6 +8347,41 @@ int net_os_rxfilter_add_remove(struct net_device *dev, int add_remove, int num)
 			dhd->pub.pktfilter[num] = NULL;
 		}
 	}
+
+#ifdef BOARD_INTEL
+	switch (num) {
+	case DHD_BROADCAST_FILTER_NUM:
+		num = DHD_IPV4_BC_255_FILTER_NUM;
+		filterp = "106 0 0 12 0xFFFF00000000000000000000000000000000000000FF 0x080000000000000000000000000000000000000000FF";
+		filter_id = 106;
+		break;
+	case DHD_MULTICAST4_FILTER_NUM:
+		num = DHD_IPV4_MC_224_FILTER_NUM;
+		filterp = "107 0 0 12 0xFFFF00000000000000000000000000000000F0 0x080000000000000000000000000000000000E0";
+		filter_id = 107;
+		break;
+	case DHD_MULTICAST6_FILTER_NUM:
+		num = DHD_IPV6_MC_FF00_FILTER_NUM;
+		filterp = "108 0 0 12 0xFFFF000000000000000000000000000000000000000000000000FF 0x86DD000000000000000000000000000000000000000000000000FF";
+		filter_id = 108;
+		break;
+	default:
+		num = 0;
+		break;
+	}
+
+	/* Add filter */
+	if (add_remove) {
+		dhd->pub.pktfilter[num] = filterp;
+		dhd_pktfilter_offload_set(&dhd->pub, dhd->pub.pktfilter[num]);
+	} else { /* Delete filter */
+		if (dhd->pub.pktfilter[num] != NULL) {
+			dhd_pktfilter_offload_delete(&dhd->pub, filter_id);
+			dhd->pub.pktfilter[num] = NULL;
+		}
+	}
+#endif /* BOARD_INTEL */
+
 	return ret;
 }
 

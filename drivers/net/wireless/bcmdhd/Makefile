@@ -52,6 +52,12 @@ else
 DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
 endif
 
+##################################
+# Intel platform specific feature
+# (pkt filter for ipv4 bc/mc, ipv6 mc, netbios)
+##################################
+DHDCFLAGS += -DBOARD_INTEL
+
 #########################
 # Chip dependent feature
 #########################

@@ -685,6 +685,12 @@ extern int dhd_set_ap_powersave(dhd_pub_t *dhdp, int ifidx, int enable);
 #define DHD_MULTICAST6_FILTER_NUM	3
 #define DHD_MDNS_FILTER_NUM		4
 #define DHD_ARP_FILTER_NUM		5
+#ifdef BOARD_INTEL
+#define DHD_IPV4_BC_255_FILTER_NUM	6
+#define DHD_IPV4_MC_224_FILTER_NUM 	7
+#define DHD_IPV6_MC_FF00_FILTER_NUM	8
+#define DHD_NETBIOS_FILTER_NUM	9
+#endif /* BOARD_INTEL */
 
 #if defined(CUSTOM_PLATFORM_NV_TEGRA)
 /* Port based packet filtering command actions */
