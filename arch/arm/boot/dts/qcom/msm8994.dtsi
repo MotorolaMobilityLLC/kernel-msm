@@ -1317,8 +1317,8 @@
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
 		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <16>;
-		qcom,bam-producer-pipe-index = <17>;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
 		qcom,master-id = <86>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
@@ -1331,7 +1331,7 @@
 			 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
 	};
 
-#if 1 /* FIFO mode */
+#if 0 /* FIFO mode */
 	/* BLSP1 QUP4 */
 	spi_5: spi_stm: spi@f9927000 {
 		compatible = "qcom,spi-qup-v2";
@@ -1368,8 +1368,8 @@
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
 		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <12>;
-		qcom,bam-producer-pipe-index = <13>;
+		qcom,bam-consumer-pipe-index = <20>;
+		qcom,bam-producer-pipe-index = <21>;
 		qcom,master-id = <86>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
