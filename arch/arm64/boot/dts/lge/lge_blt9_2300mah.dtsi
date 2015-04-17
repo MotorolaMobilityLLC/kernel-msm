@@ -1,0 +1,61 @@
+/* Copyright (c) 2015, LGE Inc. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+lge,lge_blt9_2300mah {
+       /* #1956773_LGE_BLT9_2300mAh_averaged_MasterSlave_Apr10th2015*/
+       qcom,max-voltage-uv = <4350000>;
+       qcom,nom-batt-capacity-mah = <2300>;
+       qcom,batt-id-kohm = <0>;
+       qcom,battery-beta = <4150>;
+       qcom,battery-type = "lge_blt9_2300mah";
+       qcom,chg-rslow-comp-c1 = <2539897>;
+       qcom,chg-rslow-comp-c2 = <2740054>;
+       qcom,chg-rs-to-rslow = <1365421>;
+       qcom,chg-rslow-comp-thr = <0x99>;
+       qcom,checksum = <0x5A62>;
+       qcom,gui-version = "PMI8994GUI - 2.1.6.4";
+       qcom,fg-profile-data = [
+                CD 83 D5 77
+                3E 80 CF 75
+                72 83 E3 7C
+                71 90 03 97
+                06 82 3F 99
+                F0 B6 22 C2
+                52 16 13 88
+                FF 7E 9D 82
+                3A 7D 69 83
+                87 74 64 89
+                2F 94 43 82
+                9C 98 4C B6
+                C1 C1 5E 17
+                8B 08 FF 5B
+                CE 6E 71 FD
+                42 35 63 46
+                0B 40 00 00
+                26 4C 77 3A
+                6E 33 00 00
+                00 00 00 00
+                00 00 00 00
+                DD 72 E7 70
+                88 7C D9 81
+                07 7C 3C 70
+                AC 61 52 82
+                7A 75 4F 63
+                60 39 23 9A
+                47 27 62 00
+                5D A0 71 0C
+                28 00 FF 36
+                F0 11 30 03
+                00 00 00 00
+       ];
+};

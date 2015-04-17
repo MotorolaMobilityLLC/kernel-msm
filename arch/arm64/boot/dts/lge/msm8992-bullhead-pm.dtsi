@@ -61,7 +61,7 @@
 
 /{
         bullhead_batterydata: qcom,battery-data {
-                #include "lge_bl51yf_lgc_3000mah.dtsi"
+                #include "lge_blt9_2300mah.dtsi"
         };
 };
 
