@@ -403,7 +403,7 @@ struct motosh_data {
 	wait_queue_head_t quickpeek_wait_queue;
 	atomic_t qp_enabled;
 	bool quickpeek_occurred;
-	unsigned short qw_irq_status;
+	unsigned long qw_irq_status;
 	struct motosh_aod_enabled_vote aod_enabled;
 	bool ignore_wakeable_interrupts;
 	int ignored_interrupts;
