@@ -39,6 +39,8 @@
 		qcom,mdss-dsi-color-order = <0>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-panel-status-check-mode ="te_signal_check";
+		qcom,esd-check-enabled;
 		qcom,mdss-dsi-on-command = [
 					39 01 00 00 00 00 05 2A 00 00 01 DF /* Column Addess Setting */
 					39 01 00 00 00 00 05 2B 00 00 01 DF /* Page Addess Setting */
@@ -151,6 +153,8 @@
 		qcom,mdss-dsi-color-order = <0>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-panel-status-check-mode ="te_signal_check";
+		qcom,esd-check-enabled;
 		qcom,mdss-dsi-on-command = [05 01 00 00 80 00 01 11
 					39 01 00 00 00 00 02 36 40
 					15 01 00 00 00 00 02 53 20
