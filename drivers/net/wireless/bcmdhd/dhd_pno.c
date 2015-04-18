@@ -1265,6 +1265,7 @@ dhd_pno_add_to_ssid_list(dhd_pno_params_t *params, wlc_ssid_ext_t *ssid_list,
 		_pno_ssid->hidden = ssid_list[i].hidden;
 		memcpy(_pno_ssid->SSID, ssid_list[i].SSID, _pno_ssid->SSID_len);
 		list_add_tail(&_pno_ssid->list, &params->params_legacy.ssid_list);
+		params->params_legacy.nssid++;
 	}
 
 exit:
@@ -1391,7 +1392,7 @@ dhd_pno_set_for_ssid(dhd_pub_t *dhd, wlc_ssid_ext_t* ssid_list, int nssid,
 	_params->params_legacy.pno_repeat = pno_repeat;
 	_params->params_legacy.pno_freq_expo_max = pno_freq_expo_max;
 	_params->params_legacy.nchan = tot_nchan;
-	_params->params_legacy.nssid = nssid;
+	_params->params_legacy.nssid = 0;
 	INIT_LIST_HEAD(&_params->params_legacy.ssid_list);
 #ifdef GSCAN_SUPPORT
 	/* dhd_pno_initiate_gscan_request will handle simultaneous Legacy PNO and GSCAN */
