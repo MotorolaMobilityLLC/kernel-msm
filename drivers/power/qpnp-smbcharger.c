@@ -3975,6 +3975,7 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	if (reg) {
 		if (!chip->usb_present && usb_present) {
 			/* USB inserted */
+			wake_lock(&chip->chg_wake_lock);
 			chip->usb_present = usb_present;
 			handle_usb_insertion(chip);
 		}
@@ -3985,7 +3986,7 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 			(prop.intval == POWER_SUPPLY_TYPE_USB)) &&
 			chip->usb_present) {
 				/* CDP or SDP removed */
-				wake_lock(&chip->chg_wake_lock);
+				wake_unlock(&chip->chg_wake_lock);
 				chip->usb_present = !chip->usb_present;
 				handle_usb_removal(chip);
 				chip->aicl_irq_count = 0;
