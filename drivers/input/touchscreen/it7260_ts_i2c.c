@@ -107,6 +107,13 @@
 #define PT_INFO_YES			0x80
 #define BT_INFO_NONE_BUT_DOWN	0x08 /* no new data but finder(s) still down */
 
+#define FW_CUSTOMER_ID1			5
+#define FW_CUSTOMER_ID2			13
+#define CFG_CUSTOMER_ID1			7
+#define CFG_CUSTOMER_ID2			1
+
+static int upgrade_flag = 0;
+
 //show touch point message flag
 static int TOUCH_P1_DOWN_FLAG = 0;
 static int TOUCH_P2_DOWN_FLAG = 0;
@@ -181,6 +188,7 @@ static bool isTouchLocked = false;
 static bool isDriverAvailable = true;
 static bool chipInLowPower = false;
 static bool driverInLowPower = false;
+static bool TP_DLMODE = false;
 static bool touchMissed;
 static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
@@ -191,8 +199,10 @@ static int lastTouch = TOUCH_UP;
 static unsigned long last_time_exit_low = 0;
 static char fwVersion[20];
 static int RESET_GPIO = 0;
+static int TP_DLMODE_GPIO_VALUE = 0;
 static int ret = -1;
 
+#define TP_DLMODE_GPIO			30
 #define I2C_RETRY_DELAY			15		/* Waiting for signals [ms] */
 #define I2C_RETRIES				2		/* Number of retries */
 #define WAKELOCK_HOLD_MS		(HZ/2)
@@ -513,13 +523,16 @@ static void chipLowPowerMode(bool low)
 		} else {
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
 
-			//Touch Reset
-			gpio_direction_output(RESET_GPIO,0);
-			msleep(60);
-			gpio_direction_output(RESET_GPIO,1);
-			msleep(50);
-			chipInLowPower = false;
-
+			LOGI("[%d] %s TP_DLMODE = %d.\n", __LINE__, __func__, TP_DLMODE);
+			if (!TP_DLMODE) {
+				//Touch Reset
+				gpio_direction_output(RESET_GPIO,0);
+				msleep(60);
+				gpio_direction_output(RESET_GPIO,1);
+				msleep(50);
+				chipInLowPower = false;
+				LOGI("[%d] %s touch reset, set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
+			}
 			if (!allow_irq_wake) {
 				smp_wmb();
 				ret = disable_irq_wake(gl_ts->client->irq);
@@ -565,12 +578,37 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 
 	chipGetVersions(verFw, verCfg, true);
 
+	LOGI("upgrading versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n",
+		fw->data[8], fw->data[9], fw->data[10], fw->data[11],
+		cfg->data[cfgLen - 8], cfg->data[cfgLen - 7], cfg->data[cfgLen - 6], cfg->data[cfgLen - 5]);
+
 	/* fix touch firmware/config update failed issue */
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
 	fwUploadResult = SYSFS_RESULT_NOT_DONE;
+	upgrade_flag = 0;
 	if (fwLen && cfgLen) {
-		if (manualUpgrade || (verFw[5] != fw->data[8] || verFw[6] != fw->data[9] || verFw[7] != fw->data[10] || verFw[8] != fw->data[11]) ||
-		(verCfg[1] != cfg->data[cfgLen - 8] || verCfg[2] != cfg->data[cfgLen - 7] || verCfg[3] != cfg->data[cfgLen - 6] || verCfg[4] != cfg->data[cfgLen - 5])) {
+		if (manualUpgrade != SYSFS_FW_UPLOAD_MODE_MANUAL) {
+			LOGI("manualUpgrade = %d, compare version.\n", manualUpgrade);
+			if (fw->data[8] == FW_CUSTOMER_ID1 && fw->data[9] == FW_CUSTOMER_ID2 &&
+				cfg->data[cfgLen - 8] == CFG_CUSTOMER_ID1 && cfg->data[cfgLen - 7] == CFG_CUSTOMER_ID2) {
+				if (verFw[5] != FW_CUSTOMER_ID1 || verFw[6] != FW_CUSTOMER_ID2 ||
+					verCfg[1] != CFG_CUSTOMER_ID1 || verCfg[2] != CFG_CUSTOMER_ID2) {
+					LOGI("ic's fw/cfg is wrong, need to upgrade.\n");
+					upgrade_flag = 1;
+				} else {
+					if (verFw[7] == 0xFF || verFw[8] == 0xFF || verFw[7] < fw->data[10] ||
+						(verFw[7] == fw->data[10] && verFw[8] < fw->data[11]) || verCfg[3] == 0xFF || verCfg[4] == 0xFF ||
+						verCfg[3] < cfg->data[cfgLen - 6] || (verCfg[3] == cfg->data[cfgLen - 6] && verCfg[4] < cfg->data[cfgLen - 5])) {
+						LOGI("ic's fw/cfg is too old, need to upgrade.\n");
+						upgrade_flag = 1;
+					}
+				}
+			} else {
+				LOGI("fw/cfg file is wrong. Do not need to upgrade.\n");
+			}
+		}
+
+		if (manualUpgrade || upgrade_flag) {
 			LOGI("firmware/config will be upgraded\n");
 			disable_irq(gl_ts->client->irq);
 			success = chipFirmwareUpload(fwLen, fw->data, cfgLen, cfg->data);
@@ -907,7 +945,8 @@ static void waitNotifyEvt(struct work_struct *work) {
 
 static void touchIdleOnEvt(struct work_struct *work) {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
-	if (!chipInLowPower){
+	LOGI("[%d] %s chipInLowPower = %d, TP_DLMODE = %d. \n", __LINE__, __func__, chipInLowPower, TP_DLMODE);
+	if (!chipInLowPower && !TP_DLMODE) {
 		if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
 			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 			chipInLowPower = false;
@@ -963,7 +1002,9 @@ static void readTouchDataPoint(void)
 	/* verify there is point data to read & it is readable and valid */
 	if (i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus)) == 2) {
 		if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
-			LOGE(" %s called when no data available (0x%02X)\n", __func__, devStatus);
+			if (!TP_DLMODE) {
+				LOGE(" %s called when no data available (0x%02X)\n", __func__, devStatus);
+			}
 			return;
 		}
 	} else {
@@ -1069,7 +1110,7 @@ static void readTouchDataPoint_Ambient(void)
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x2, y2;
 
-	if (isTouchLocked)
+	if (isTouchLocked && !TP_DLMODE)
 		LOGI("[%d] %s isTouchLocked = %d, isDriverAvailable = %d. \n",
 			__LINE__, __func__, isTouchLocked, isDriverAvailable);
 
@@ -1077,8 +1118,10 @@ static void readTouchDataPoint_Ambient(void)
 		if (i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus)) == 2) {
 			if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
 				isTouchLocked = true;
-				LOGE("[%d] %s called when no data available (0x%02X), set isTouchLocked = %d.\n",
-					__LINE__, __func__, devStatus, isTouchLocked);
+				if (!TP_DLMODE) {
+					LOGE("[%d] %s called when no data available (0x%02X), set isTouchLocked = %d.\n",
+						__LINE__, __func__, devStatus, isTouchLocked);
+				}
 				wake_unlock(&touch_lock);
 				return;
 			}
@@ -1109,20 +1152,18 @@ static void readTouchDataPoint_Ambient(void)
 			readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 
 		if ((pointData.palm & PD_PALM_FLAG_BIT)) {
-			if (hadFingerDown){
+			if (hadFingerDown) {
 				cancel_delayed_work(&gl_ts->exit_idle_work);
 			}
 			hadFingerDown = false;
 		}
 
 		if (pressure1 >= FD_PRESSURE_LIGHT || pressure2 >= FD_PRESSURE_LIGHT) {
-			if (hadFingerDown){
+			if (hadFingerDown) {
 				cancel_delayed_work(&gl_ts->exit_idle_work);
-			}
-			else {
+			} else {
 				hadFingerDown = true;
 			}
-
 			readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
 		} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 			hadFingerDown = false;
@@ -1170,12 +1211,16 @@ static void readTouchDataPoint_Ambient(void)
 	} else if (isTouchLocked) {
 		if (!isDriverAvailable) {
 			msleep(10);
-			LOGI("[%d] %s after sleep.\n", __LINE__, __func__);
+			if (!TP_DLMODE) {
+				LOGI("[%d] %s after sleep.\n", __LINE__, __func__);
+			}
 		}
 		if (isDriverAvailable) {
 			wake_lock(&touch_lock);
 			isTouchLocked = false;
-			LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
+			if (!TP_DLMODE) {
+				LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
+			}
 			suspend_touch_down = getMsTime();
 			if (lastTouch == TOUCH_UP)
 				lastTouch = TOUCH_DOWN;
@@ -1385,6 +1430,12 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		LOGE("IT7260: gpio_request %d error: %d\n", RESET_GPIO, err);
 	}
 
+	TP_DLMODE_GPIO_VALUE = gpio_get_value(TP_DLMODE_GPIO);
+	if (TP_DLMODE_GPIO_VALUE == 1) {
+		TP_DLMODE = true;
+		LOGI("in tp download mode.\n");
+	}
+
 	devicePresent = true;
 	LOGI("[%d] %s set devicePresent = %d.\n", __LINE__, __func__, devicePresent);
 
@@ -1583,7 +1634,8 @@ static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 		LOGI("[%d] %s enable IRQ wake fail. ret = %d.\n", __LINE__, __func__, ret);
 	}
 
-	if (!chipInLowPower) {
+	LOGI("[%d] %s chipInLowPower = %d, TP_DLMODE = %d. \n", __LINE__, __func__, chipInLowPower, TP_DLMODE);
+	if (!chipInLowPower && !TP_DLMODE) {
 		if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
 			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 			chipInLowPower = false;
