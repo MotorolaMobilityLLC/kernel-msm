@@ -105,6 +105,9 @@ int motosh_reset_and_init(enum reset_mode mode)
 	wake_lock(&motosh_misc_data->reset_wakelock);
 
 	if (mode == START_RESET) {
+		/* Mode will transition to NORMALMODE after
+		   hub reports its init is complete */
+		motosh_misc_data->mode = UNINITIALIZED;
 		motosh_reset(pdata, rst_cmdbuff);
 		wake_unlock(&motosh_misc_data->reset_wakelock);
 		return ret_err;
