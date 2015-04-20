@@ -404,6 +404,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_buf rx_buf;
 	struct dsi_buf status_buf;
 	int status_mode;
+	int cur_max_pkt_size;
 
 	struct dsi_pinctrl_res pin_res;
 
