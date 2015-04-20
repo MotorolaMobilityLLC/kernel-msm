@@ -50,7 +50,7 @@
 //ASUS_BSP +++ Shunmin "gpio_keys"
 		pwr_key {
 			label = "pwr_key";
-			gpios = <&msmgpio 47 0x1>;
+			gpios = <&msmgpio 37 0x1>;
 			linux,input-type = <1>;
 			linux,code = <116>;
 			gpio-key,wakeup;
