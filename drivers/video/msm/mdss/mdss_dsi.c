@@ -1219,15 +1219,18 @@ static struct device_node *mdss_dsi_pref_prim_panel(
  * returns pointer to panel node on success, NULL on error.
  */
 static struct device_node *mdss_dsi_find_panel_of_node(
-		struct platform_device *pdev, char *panel_cfg)
+		struct platform_device *pdev, char *panel_cfg,
+		bool *same_panel_cfg)
 {
-	int len, i;
+	int len, i, rc;
 	int ctrl_id = pdev->id - 1;
 	char panel_name[MDSS_MAX_PANEL_LEN];
 	char ctrl_id_stream[3] =  "0:";
 	char *stream = NULL, *pan = NULL;
+	const char *str = NULL;
 	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
 
+	*same_panel_cfg = false;
 	len = strlen(panel_cfg);
 	if (!len) {
 		/* no panel cfg chg, parse dt */
@@ -1253,9 +1256,12 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 				panel_name[i] = *(stream + i);
 			panel_name[i] = 0;
 		}
+		pan = strnchr(panel_name, MDSS_MAX_PANEL_LEN, '@');
+		if (pan)
+			*pan++ = '\0';
 
-		pr_debug("%s:%d:%s:%s\n", __func__, __LINE__,
-			 panel_cfg, panel_name);
+		pr_debug("%s:%d:%s:%s %s\n", __func__, __LINE__,
+			 panel_cfg, panel_name, pan);
 
 		mdss_node = of_parse_phandle(pdev->dev.of_node,
 					     "qcom,mdss-mdp", 0);
@@ -1272,6 +1278,16 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 			       __func__);
 			goto end;
 		}
+		rc = of_property_read_string(dsi_pan_node,
+			"qcom,mdss-dsi-panel-config-version", &str);
+		if (rc)
+			str = NULL;
+
+		if ((!pan && !str) || (pan && str && !strcmp(pan, str)))
+			*same_panel_cfg = true;
+		else
+			pr_info("%s: panel configure version is mismatched!"
+				" boot[%s] kernel[%s]\n", __func__, pan, str);
 		return dsi_pan_node;
 	}
 end:
@@ -1288,7 +1304,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	struct device_node *dsi_pan_node = NULL;
 	char panel_cfg[MDSS_MAX_PANEL_LEN];
 	const char *ctrl_name;
-	bool cmd_cfg_cont_splash = true;
+	bool cmd_cfg_cont_splash = false;
 	struct mdss_panel_cfg *pan_cfg = NULL;
 
 	if (!mdss_is_ready()) {
@@ -1385,13 +1401,15 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 			__func__, __LINE__);
 
 	/* find panel device node */
-	dsi_pan_node = mdss_dsi_find_panel_of_node(pdev, panel_cfg);
+	dsi_pan_node = mdss_dsi_find_panel_of_node
+				(pdev, panel_cfg, &cmd_cfg_cont_splash);
 	if (!dsi_pan_node) {
 		pr_err("%s: can't find panel node %s\n", __func__, panel_cfg);
 		goto error_pan_node;
 	}
 
-	cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
+	if (cmd_cfg_cont_splash)
+		cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
 
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
@@ -1785,6 +1803,21 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {
 		pinfo->panel_power_state = MDSS_PANEL_POWER_OFF;
+		if (mdss_panel_get_boot_cfg()) {
+			/* for the case bootloader had enabled display but
+			 * kernel will re-initialize it, it needs put panel
+			 * to the reset state
+			 */
+			if (!gpio_request(ctrl_pdata->rst_gpio, NULL)) {
+				gpio_set_value((ctrl_pdata->rst_gpio), 0);
+				gpio_free(ctrl_pdata->rst_gpio);
+			}
+			if (gpio_is_valid(ctrl_pdata->bridge_rst_gpio) &&
+			    !gpio_request(ctrl_pdata->bridge_rst_gpio, NULL)) {
+				gpio_set_value((ctrl_pdata->bridge_rst_gpio), 0);
+				gpio_free(ctrl_pdata->bridge_rst_gpio);
+			}
+		}
 	}
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));
