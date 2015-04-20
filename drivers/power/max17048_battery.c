@@ -86,9 +86,14 @@ struct max17048_chip {
 	int batt_temp;
 	int batt_health;
 	int batt_current;
+	bool ext_batt_psy;
+#ifdef CONFIG_SENSORS_QPNP_ADC_CURRENT
+	struct qpnp_iadc_chip *iadc_dev;
+#endif
 };
 
 static struct max17048_chip *ref;
+static int max17048_get_prop_current(struct max17048_chip *chip);
 static int max17048_clear_interrupt(struct max17048_chip *chip);
 
 struct debug_reg {
@@ -122,6 +127,9 @@ static int max17048_write_word(struct i2c_client *client, int reg, u16 value)
 {
 	int ret;
 
+	if (!client)
+		return -1;
+
 	ret = i2c_smbus_write_word_data(client, reg, swab16(value));
 	if (ret < 0)
 		dev_err(&client->dev, "%s(): Failed in writing register"
@@ -132,10 +140,12 @@ static int max17048_write_word(struct i2c_client *client, int reg, u16 value)
 
 static int max17048_read_word(struct i2c_client *client, int reg)
 {
-	int ret=-1;
+	int ret;
 
-	if (client != NULL)
-		ret = i2c_smbus_read_word_data(client, reg);
+	if (!client)
+		return -1;
+
+	ret = i2c_smbus_read_word_data(client, reg);
 	if (ret < 0)
 		dev_err(&client->dev, "%s(): Failed in reading register"
 					"0x%02x err %d\n", __func__, reg, ret);
@@ -251,7 +261,7 @@ static void max17048_check_recharge(struct max17048_chip *chip)
 
 	if (chip->capacity_level == 99 &&
 			chip->lasttime_capacity_level == 100)
-		chip->ac_psy->set_property(chip->ac_psy,
+		chip->batt_psy.set_property(&chip->batt_psy,
 				POWER_SUPPLY_PROP_CHARGING_ENABLED,
 				&ret);
 }
@@ -319,6 +329,8 @@ static void max17048_work(struct work_struct *work)
 
 	pr_debug("%s.\n", __func__);
 
+	max17048_get_prop_current(chip);
+
 	ret = max17048_set_rcomp(chip);
 	if (ret)
 		pr_err("%s : failed to set rcomp\n", __func__);
@@ -343,9 +355,8 @@ static void max17048_work(struct work_struct *work)
 			__func__, chip->soc, chip->vcell);
 	pr_info("%s: SOC = %d vbatt_mv = %d\n",
 			__func__, chip->capacity_level, chip->voltage);
-/*	pr_info("%s: ibatt_ua = %d batt_temp = %d\n",
-			__func__, chip->batt_current, chip->batt_temp);
-*/
+
+
 	wake_unlock(&chip->alert_lock);
 	schedule_delayed_work(&chip->monitor_work, 10000);
 }
@@ -445,6 +456,9 @@ static int max17048_parse_dt(struct device *dev,
 	struct device_node *dev_node = dev->of_node;
 	int ret = 0;
 
+	chip->ext_batt_psy = of_property_read_bool(dev_node,
+			"max17048,ext-batt-psy");
+
 	chip->alert_gpio = of_get_named_gpio(dev_node,
 			"max17048,alert_gpio", 0);
 	if (chip->alert_gpio < 0) {
@@ -532,6 +546,130 @@ static int max17048_parse_dt(struct device *dev,
 
 out:
 	return ret;
+}
+
+static int max17048_get_prop_vbatt_uv(struct max17048_chip *chip)
+{
+	max17048_get_vcell(chip);
+	return chip->voltage * 1000;
+}
+
+static int max17048_get_prop_present(struct max17048_chip *chip)
+{
+	/*FIXME - need to implement */
+	return true;
+}
+
+#ifdef CONFIG_SENSORS_QPNP_ADC_CURRENT
+static bool qpnp_iadc_is_ready(struct max17048_chip *chip)
+{
+	struct i2c_client *client = chip->client;
+
+	if (!client)
+		return false;
+
+	if (chip->iadc_dev)
+		return true; /* ready */
+
+	client = chip->client;
+	chip->iadc_dev = qpnp_get_iadc(&client->dev, "chg");
+	if (IS_ERR(chip->iadc_dev)) {
+		chip->iadc_dev = NULL;
+		return false;
+	}
+
+	return true;
+}
+static int qpnp_get_battery_current(struct max17048_chip *chip)
+{
+	struct qpnp_iadc_result i_result;
+	int ret;
+
+	if (!qpnp_iadc_is_ready(chip)) {
+		pr_err("%s: qpnp iadc is not ready!\n", __func__);
+		chip->batt_current = 0;
+		return 0;
+	}
+
+	ret = qpnp_iadc_read(chip->iadc_dev, EXTERNAL_RSENSE, &i_result);
+	if (ret) {
+		pr_err("%s: failed to read iadc\n", __func__);
+		chip->batt_current = 0;
+		return ret;
+	}
+
+	/* positive polarity indicate net current entering the battery */
+	chip->batt_current = i_result.result_ua;
+
+	return 0;
+}
+#endif
+
+static int max17048_get_prop_current(struct max17048_chip *chip)
+{
+#ifdef CONFIG_SENSORS_QPNP_ADC_CURRENT
+	int ret;
+
+	ret = qpnp_get_battery_current(chip);
+	if (ret)
+		pr_err("%s: failed to get batt current.\n", __func__);
+#else
+	pr_warn("%s: batt current is not supported!\n", __func__);
+	chip->batt_current = 0;
+#endif
+	pr_debug("%s: ibatt_ua = %d\n", __func__, chip->batt_current);
+
+	return chip->batt_current;
+}
+
+static enum power_supply_property max17048_battery_props[] = {
+
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_TECHNOLOGY,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
+	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+};
+
+static int max17048_get_property(struct power_supply *psy,
+			    enum power_supply_property psp,
+			    union power_supply_propval *val)
+{
+	struct max17048_chip *chip = container_of(psy,
+				struct max17048_chip, batt_psy);
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = max17048_get_prop_present(chip);
+		break;
+	case POWER_SUPPLY_PROP_TECHNOLOGY:
+		val->intval = chip->batt_tech;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+		val->intval = chip->max_mvolt * 1000;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
+		val->intval = chip->min_mvolt * 1000;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = max17048_get_prop_vbatt_uv(chip);
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY:
+		val->intval = chip->capacity_level;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = max17048_get_prop_current(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = chip->fcc_mah;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int max17048_create_debugfs_entries(struct max17048_chip *chip)
@@ -628,6 +766,7 @@ static int max17048_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
+	chip->client = client;
 	if (&client->dev.of_node) {
 		ret = max17048_parse_dt(&client->dev, chip);
 		if (ret) {
@@ -640,7 +779,6 @@ static int max17048_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
-	chip->client = client;
 	version = max17048_get_version(chip);
 	dev_info(&client->dev, "MAX17048 Fuel-Gauge Ver 0x%x\n", version);
 	if (version != MAX17048_VERSION_11 &&
@@ -652,6 +790,26 @@ static int max17048_probe(struct i2c_client *client,
 	}
 
 	ref = chip;
+	/*
+	 * If ext_batt_psy is true, then an external device publishes
+	 * a POWER_SUPPLY_TYPE_BATTERY, so this driver will publish its
+	 * data via the POWER_SUPPLY_TYPE_BMS type
+	 */
+	if (chip->ext_batt_psy) {
+		chip->batt_psy.name = "bms";
+		chip->batt_psy.type = POWER_SUPPLY_TYPE_BMS;
+	} else {
+		chip->batt_psy.name = "battery";
+		chip->batt_psy.type = POWER_SUPPLY_TYPE_BATTERY;
+	}
+	chip->batt_psy.get_property = max17048_get_property;
+	chip->batt_psy.properties = max17048_battery_props;
+	chip->batt_psy.num_properties = ARRAY_SIZE(max17048_battery_props);
+	ret = power_supply_register(&client->dev, &chip->batt_psy);
+	if (ret) {
+		dev_err(&client->dev, "failed: power supply register\n");
+		goto error;
+	}
 
 	INIT_DELAYED_WORK(&chip->monitor_work, max17048_work);
 	wake_lock_init(&chip->alert_lock, WAKE_LOCK_SUSPEND,
