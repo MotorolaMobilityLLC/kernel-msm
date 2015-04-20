@@ -536,7 +536,7 @@ static int motosh_device_power_on(struct motosh_data *ps_motosh)
 int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 			int writelen, int readlen)
 {
-	int tries, err = 0;
+	int err = 0;
 
 	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
@@ -544,13 +544,10 @@ int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 	if (buf == NULL || writelen == 0 || readlen == 0)
 		return -EFAULT;
 
-	tries = 0;
-	do {
-		err = motosh_i2c_write_read_no_reset(ps_motosh,
-			buf, writelen, readlen);
-		if (err < 0)
-			motosh_reset_and_init(START_RESET);
-	} while ((err < 0) && (++tries < RESET_RETRIES));
+	err = motosh_i2c_write_read_no_reset(ps_motosh,
+		buf, writelen, readlen);
+	if (err < 0)
+		motosh_reset_and_init(START_RESET);
 
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev, "write_read error\n");
@@ -564,7 +561,7 @@ int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
 
 int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len)
 {
-	int tries, err = 0;
+	int err = 0;
 
 	if (buf == NULL || len == 0)
 		return -EFAULT;
@@ -572,12 +569,10 @@ int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len)
 	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
-	tries = 0;
-	do {
-		err = motosh_i2c_read_no_reset(ps_motosh, buf, len);
-		if (err < 0)
-			motosh_reset_and_init(START_RESET);
-	} while ((err < 0) && (++tries < RESET_RETRIES));
+	err = motosh_i2c_read_no_reset(ps_motosh, buf, len);
+	if (err < 0)
+		motosh_reset_and_init(START_RESET);
+
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev, "read error\n");
 		err = -EIO;
@@ -590,17 +585,13 @@ int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len)
 int motosh_i2c_write(struct motosh_data *ps_motosh, u8 *buf, int len)
 {
 	int err = 0;
-	int tries = 0;
 
 	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
-	tries = 0;
-	do {
-		err = motosh_i2c_write_no_reset(ps_motosh, buf, len);
-		if (err < 0)
-			motosh_reset_and_init(START_RESET);
-	} while ((err < 0) && (++tries < RESET_RETRIES));
+	err = motosh_i2c_write_no_reset(ps_motosh, buf, len);
+	if (err < 0)
+		motosh_reset_and_init(START_RESET);
 
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev, "write error - %x\n", buf[0]);
@@ -815,7 +806,11 @@ static int motosh_gpio_init(struct motosh_platform_data *pdata,
 		goto free_int;
 	}
 	gpio_direction_output(pdata->gpio_reset, 1);
-	gpio_set_value(pdata->gpio_reset, 1);
+
+	/* Keep part in reset until end of probe sequence to avoid early
+	   handling of irq related communication */
+	gpio_set_value(pdata->gpio_reset, 0);
+
 	err = gpio_export(pdata->gpio_reset, 0);
 	if (err) {
 		dev_err(&motosh_misc_data->client->dev,
@@ -1424,7 +1419,8 @@ static int motosh_resume(struct device *dev)
 		queue_work(ps_motosh->irq_work_queue,
 			&ps_motosh->clear_nonwakeable_event_queue_work);
 
-	motosh_time_sync();
+	if (ps_motosh->mode > BOOTMODE)
+		motosh_time_sync();
 
 	mutex_unlock(&ps_motosh->lock);
 
