@@ -238,6 +238,8 @@ struct smbchg_chip {
 	spinlock_t			sec_access_lock;
 	struct mutex			current_change_lock;
 	struct mutex			usb_set_online_lock;
+	struct mutex			usb_set_present_lock;
+	struct mutex			dc_set_present_lock;
 	struct mutex			battchg_disabled_lock;
 	struct mutex			usb_en_lock;
 	struct mutex			dc_en_lock;
@@ -4132,6 +4134,7 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 
 	smbchg_wipower_check(chip);
 #endif
+	mutex_lock(&chip->dc_set_present_lock);
 	if (!chip->dc_present && dc_present) {
 		/* dc inserted */
 		chip->dc_present = dc_present;
@@ -4141,6 +4144,7 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 		chip->dc_present = dc_present;
 		handle_dc_removal(chip);
 	}
+	mutex_unlock(&chip->dc_set_present_lock);
 
 	return IRQ_HANDLED;
 }
@@ -4304,8 +4308,11 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 	} else {
 		chip->usb_ov_det = false;
 		/* If USB is present, then handle the USB insertion */
-		if (is_usb_present(chip))
+		if (is_usb_present(chip)) {
+			mutex_lock(&chip->usb_set_present_lock);
 			handle_usb_insertion(chip);
+			mutex_unlock(&chip->usb_set_present_lock);
+		}
 	}
 out:
 	return IRQ_HANDLED;
@@ -4405,6 +4412,7 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 
 out:
 #endif
+	mutex_lock(&chip->usb_set_present_lock);
 	if (!chip->usb_present && usb_present) {
 		/* USB inserted */
 		chip->usb_present = usb_present;
@@ -4414,6 +4422,7 @@ out:
 		chip->usb_present = usb_present;
 		handle_usb_removal(chip);
 	}
+	mutex_unlock(&chip->usb_set_present_lock);
 	return IRQ_HANDLED;
 }
 
@@ -4627,13 +4636,21 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	usbid_change_handler(0, chip);
 	src_detect_handler(0, chip);
 
+	mutex_lock(&chip->usb_set_present_lock);
 	chip->usb_present = is_usb_present(chip);
-	chip->dc_present = is_dc_present(chip);
-
 	if (chip->usb_present)
 		handle_usb_insertion(chip);
 	else
 		handle_usb_removal(chip);
+	mutex_unlock(&chip->usb_set_present_lock);
+
+	mutex_lock(&chip->dc_set_present_lock);
+	chip->dc_present = is_dc_present(chip);
+	if (chip->dc_present)
+		handle_dc_insertion(chip);
+	else
+		handle_dc_removal(chip);
+	mutex_unlock(&chip->dc_set_present_lock);
 
 	return 0;
 }
@@ -6638,6 +6655,40 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip)
 	}
 }
 
+static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
+{
+	bool usb_present = is_usb_present(chip);
+	bool dc_present = is_dc_present(chip);
+
+	mutex_lock(&chip->usb_set_present_lock);
+	if (!chip->usb_present && usb_present) {
+		/* USB inserted */
+		chip->usb_present = usb_present;
+		handle_usb_insertion(chip);
+	} else if (chip->usb_present && !usb_present) {
+		/* USB removed */
+		chip->usb_present = usb_present;
+		handle_usb_removal(chip);
+	}
+	mutex_unlock(&chip->usb_set_present_lock);
+
+	mutex_lock(&chip->dc_set_present_lock);
+	if (!chip->dc_present && dc_present) {
+		/* dc inserted */
+		chip->dc_present = dc_present;
+		handle_dc_insertion(chip);
+	} else if (chip->dc_present && !dc_present) {
+		/* dc removed */
+		chip->dc_present = dc_present;
+		handle_dc_removal(chip);
+	}
+	mutex_unlock(&chip->dc_set_present_lock);
+
+	/* DCIN online status is determined based on GPIO status. */
+	if (chip->usb_present != chip->usb_online)
+		schedule_work(&chip->usb_set_online_work);
+}
+
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define STEPCHG_MAX_FV_COMP 60
@@ -6665,6 +6716,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	batt_temp = get_prop_batt_temp(chip) / 10;
 	dev_dbg(chip->dev, "batt=%d mV, %d mA, %d C\n",
 		batt_mv, batt_ma, batt_temp);
+	smbchg_sync_accy_property_status(chip);
 
 	prev_step = chip->stepchg_state;
 
@@ -6860,6 +6912,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->fcc_lock);
 	mutex_init(&chip->current_change_lock);
 	mutex_init(&chip->usb_set_online_lock);
+	mutex_init(&chip->usb_set_present_lock);
+	mutex_init(&chip->dc_set_present_lock);
 	mutex_init(&chip->battchg_disabled_lock);
 	mutex_init(&chip->usb_en_lock);
 	mutex_init(&chip->dc_en_lock);
@@ -7014,7 +7068,12 @@ unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 free_regulator:
 	smbchg_regulator_deinit(chip);
+	mutex_lock(&chip->usb_set_present_lock);
 	handle_usb_removal(chip);
+	mutex_unlock(&chip->usb_set_present_lock);
+	mutex_lock(&chip->dc_set_present_lock);
+	handle_dc_removal(chip);
+	mutex_unlock(&chip->dc_set_present_lock);
 	wakeup_source_trash(&chip->smbchg_wake_source);
 	return rc;
 }
