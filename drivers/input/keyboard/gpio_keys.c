@@ -1017,7 +1017,7 @@ static int __init gpio_keys_init(void)
 	if ((ASUS_hwID == SPARROW_EVB) || (ASUS_hwID == SPARROW_SR_PNI) || (ASUS_hwID == SPARROW_SR_QL))
 		pwr_gpio = 68;
 	else
-		pwr_gpio = 47;
+		pwr_gpio = 37;
 
 	return platform_driver_register(&gpio_keys_device_driver);
 }
