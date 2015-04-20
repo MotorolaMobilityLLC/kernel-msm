@@ -290,6 +290,24 @@ static DECLARE_TLV_DB_SCALE(ng_tlv, -10200, 600, 0);
 	{ name " ANC Source", "RXANCL", "RXANCL" }, \
 	{ name " ANC Source", "RXANCR", "RXANCR" }
 
+static int florida_get_trig_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct florida_priv *florida = snd_soc_codec_get_drvdata(codec);
+	ucontrol->value.integer.value[0] = florida->compr_info[2].freed;
+	return 0;
+}
+
+static int florida_put_trig_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct florida_priv *florida = snd_soc_codec_get_drvdata(codec);
+	florida->compr_info[2].freed = ucontrol->value.integer.value[0];
+	return 0;
+}
+
 static const struct snd_kcontrol_new florida_snd_controls[] = {
 SOC_ENUM("IN1 OSR", arizona_in_dmic_osr[0]),
 SOC_ENUM("IN2 OSR", arizona_in_dmic_osr[1]),
@@ -327,6 +345,9 @@ SOC_SINGLE("IN4L HPF Switch", ARIZONA_IN4L_CONTROL,
 	   ARIZONA_IN4L_HPF_SHIFT, 1, 0),
 SOC_SINGLE("IN4R HPF Switch", ARIZONA_IN4R_CONTROL,
 	   ARIZONA_IN4R_HPF_SHIFT, 1, 0),
+SOC_SINGLE_EXT("Set Trigger State Switch", SND_SOC_NOPM, 0, 1, 0,
+	florida_get_trig_state,
+	florida_put_trig_state),
 
 SOC_SINGLE_TLV("IN1L Digital Volume", ARIZONA_ADC_DIGITAL_VOLUME_1L,
 	       ARIZONA_IN1L_DIG_VOL_SHIFT, 0xbf, 0, digital_tlv),
