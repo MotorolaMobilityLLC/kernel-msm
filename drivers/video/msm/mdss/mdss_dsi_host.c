@@ -1708,9 +1708,11 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	ret = wait_for_completion_timeout(&ctrl->dma_comp,
 				msecs_to_jiffies(DMA_TX_TIMEOUT));
-	if (ret == 0)
+	if (ret == 0) {
+		pr_err("%s(%d): wait for dma_comp timed out. ret = 0x%x\n",
+					__func__, ctrl->ndx, ret);
 		ret = -ETIMEDOUT;
-	else
+	} else
 		ret = tp->len;
 
 	if (mctrl && mctrl->dma_addr) {
