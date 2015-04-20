@@ -838,7 +838,7 @@
                 qcom,recharge-thresh-mv = <200>;
                 qcom,iterm-disabled;
                 qcom,aicl-disabled;
-                qcom,ir-comp-mv = <175>;
+                qcom,ir-comp-mv = <100>;
                 regulator-name = "smb1357_otg_vreg";
                 qcom,soft-vfloat-comp-disabled;
                 /* therm-bias-supply = <&pma8084_lvs2>; */
