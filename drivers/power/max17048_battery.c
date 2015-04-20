@@ -6,7 +6,7 @@
  *  Chandler Zhang <chazhang@nvidia.com>
  *  Syed Rafiuddin <srafiuddin@nvidia.com>
  *
- *  Copyright (C) 2013 LGE Inc.
+ *  Copyright (C) 2013-2015 LGE Inc.
  *  ChoongRyeol Lee <choongryeol.lee@lge.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -54,6 +54,8 @@
 
 #define MAX17048_VERSION_11    0x11
 #define MAX17048_VERSION_12    0x12
+
+#define NORMAL_POLL_MS 10000
 
 struct max17048_chip {
 	struct i2c_client *client;
@@ -255,17 +257,6 @@ static int max17048_get_vcell(struct max17048_chip *chip)
 	return 0;
 }
 
-static void max17048_check_recharge(struct max17048_chip *chip)
-{
-	union power_supply_propval ret = {true,};
-
-	if (chip->capacity_level == 99 &&
-			chip->lasttime_capacity_level == 100)
-		chip->batt_psy.set_property(&chip->batt_psy,
-				POWER_SUPPLY_PROP_CHARGING_ENABLED,
-				&ret);
-}
-
 static int max17048_get_soc(struct max17048_chip *chip)
 {
 	int soc;
@@ -341,7 +332,6 @@ static void max17048_work(struct work_struct *work)
 	if (chip->voltage != chip->lasttime_voltage ||
 		chip->capacity_level != chip->lasttime_capacity_level) {
 		chip->lasttime_voltage = chip->voltage;
-		max17048_check_recharge(chip);
 		chip->lasttime_capacity_level = chip->capacity_level;
 
 		power_supply_changed(&chip->batt_psy);
@@ -358,7 +348,8 @@ static void max17048_work(struct work_struct *work)
 
 
 	wake_unlock(&chip->alert_lock);
-	schedule_delayed_work(&chip->monitor_work, 10000);
+	schedule_delayed_work(&chip->monitor_work,
+			msecs_to_jiffies(NORMAL_POLL_MS));
 }
 
 static irqreturn_t max17048_interrupt_handler(int irq, void *data)
