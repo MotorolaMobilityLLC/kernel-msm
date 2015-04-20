@@ -367,6 +367,8 @@
 			max17048,empty-soc = <10>;
 			max17048,batt-tech = <2>;
 			max17048,fcc-mah = <2300>;
+			max17048,ext-batt-psy;
+			qcom,chg-iadc = <&pm8226_iadc>;
 		};
 		bq27421@55 {
 			compatible = "ti,bq27421";
