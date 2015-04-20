@@ -2095,6 +2095,8 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			pr_warn("%s: dma tx done but irq not triggered\n",
 				__func__);
 		} else {
+			pr_err("%s(%d): wait for dma_comp timed out. ret = 0x%x\n",
+				__func__, ctrl->ndx, ret);
 			ret = -ETIMEDOUT;
 		}
 	}
