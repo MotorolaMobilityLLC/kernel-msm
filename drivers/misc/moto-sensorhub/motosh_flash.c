@@ -366,6 +366,7 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 			motosh_readbuff[len] = '\0';
 			strlcpy(ps_motosh->pdata->fw_version_str,
 				motosh_readbuff, FW_VERSION_STR_MAX_LEN);
+			motosh_g_booted = 1;
 		}
 	}
 	motosh_sleep(ps_motosh);
@@ -387,6 +388,11 @@ int switch_motosh_mode(enum stm_mode mode)
 
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
+		/* revert back to non-booted. This prevents TCMD from
+		   trying to access over I2C or ioctl during desk testing
+		   when a flash upgrade is being peformed. */
+		motosh_g_booted = 0;
+
 		motosh_misc_data->mode = mode;
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Switching to boot mode\n");
@@ -463,9 +469,6 @@ RETRY_ID:
 		/* init only if not in the factory
 		   - motosh_irq_disable indicates factory test ongoing */
 		if (!motosh_irq_disable) {
-			/* Mode will transition to NORMALMODE after
-			   hub reports its init is complete */
-			motosh_misc_data->mode = UNINITIALIZED;
 			motosh_reset_and_init(START_RESET);
 		} else {
 			motosh_misc_data->mode = mode;

@@ -40,7 +40,7 @@
 
 #include <linux/motosh.h>
 
-#define SPURIOUS_INT_DELAY 600 /* ms */
+#define SPURIOUS_INT_DELAY 800 /* ms */
 
 irqreturn_t motosh_wake_isr(int irq, void *dev)
 {
