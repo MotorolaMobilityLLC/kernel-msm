@@ -65,7 +65,9 @@ dtb-$(CONFIG_ASUS_SPARROW) += \
 	sparrow_evb_apq8026-v2-320p-w-mtp.dtb \
 	sparrow_sr_pni_apq8026-v2-320p-w-mtp.dtb \
 	sparrow_sr_ql_apq8026-v2-320p-w-mtp.dtb \
-	sparrow_sr2_apq8026-v2-320p-w-mtp.dtb
+	sparrow_sr2_apq8026-v2-320p-w-mtp.dtb \
+	sparrow_er_apq8026-v2-320p-w-mtp.dtb \
+	sparrow_pr_apq8026-v2-320p-w-mtp.dtb
 dtb-$(CONFIG_ASUS_WREN) += \
 	wren_evb_sr_apq8026-v2-320p-w-mtp.dtb
 dtb-$(CONFIG_ARCH_MSM8610) += msm8610-rumi.dtb \
