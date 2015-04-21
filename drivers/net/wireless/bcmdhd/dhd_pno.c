@@ -1165,7 +1165,7 @@ static int dhd_epno_set_ssid(dhd_pub_t *dhd,
 		                        (num_visible_epno_ssid - 1));
 		p_ssid_ext_elem = kzalloc(mem_needed, GFP_KERNEL);
 		if (p_ssid_ext_elem == NULL) {
-			DHD_ERROR(("%s : failed to allocate memory %zd\n",
+			DHD_ERROR(("%s : failed to allocate memory %u\n",
 				__FUNCTION__, mem_needed));
 			err = BCME_NOMEM;
 			goto exit;
