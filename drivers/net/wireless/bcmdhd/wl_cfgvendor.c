@@ -361,12 +361,12 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	int err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_results_cache_t *results, *iter;
-	uint32 reply_len, complete = 0;
+	uint32 reply_len, complete = 1;
 	int32 mem_needed, num_results_iter;
 	wifi_gscan_result_t *ptr;
 	uint16 num_scan_ids, num_results;
 	struct sk_buff *skb;
-	struct nlattr *scan_hdr;
+	struct nlattr *scan_hdr, *complete_flag;
 
 	dhd_dev_wait_batch_results_complete(bcmcfg_to_prmry_ndev(cfg));
 	dhd_dev_pno_lock_access_batch_results(bcmcfg_to_prmry_ndev(cfg));
@@ -392,8 +392,6 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	if (mem_needed > (int32)NLMSG_DEFAULT_SIZE) {
 		mem_needed = (int32)NLMSG_DEFAULT_SIZE;
 		complete = 0;
-	} else {
-		complete = 1;
 	}
 
 	WL_TRACE(("complete %d mem_needed %d max_mem %d\n", complete, mem_needed,
@@ -406,9 +404,8 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 		return -ENOMEM;
 	}
 	iter = results;
-
-	nla_put_u32(skb, GSCAN_ATTRIBUTE_SCAN_RESULTS_COMPLETE, complete);
-
+	complete_flag = nla_reserve(skb, GSCAN_ATTRIBUTE_SCAN_RESULTS_COMPLETE,
+	                    sizeof(complete));
 	mem_needed = mem_needed - (SCAN_RESULTS_COMPLETE_FLAG_LEN + VENDOR_REPLY_OVERHEAD);
 
 	while (iter) {
@@ -418,6 +415,11 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 		    ((iter->tot_count - iter->tot_consumed) > num_results_iter))
 			break;
 		scan_hdr = nla_nest_start(skb, GSCAN_ATTRIBUTE_SCAN_RESULTS);
+		/* no more room? we are done then (for now) */
+		if (scan_hdr == NULL) {
+			complete = 0;
+			break;
+		}
 		nla_put_u32(skb, GSCAN_ATTRIBUTE_SCAN_ID, iter->scan_id);
 		nla_put_u8(skb, GSCAN_ATTRIBUTE_SCAN_FLAGS, iter->flag);
 		num_results_iter = iter->tot_count - iter->tot_consumed;
@@ -434,10 +436,9 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 		    (num_results_iter * sizeof(wifi_gscan_result_t));
 		iter = iter->next;
 	}
-
+	memcpy(nla_data(complete_flag), &complete, sizeof(complete));
 	dhd_dev_gscan_batch_cache_cleanup(bcmcfg_to_prmry_ndev(cfg));
 	dhd_dev_pno_unlock_access_batch_results(bcmcfg_to_prmry_ndev(cfg));
-
 	return cfg80211_vendor_cmd_reply(skb);
 }
 
