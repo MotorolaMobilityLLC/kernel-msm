@@ -57,6 +57,7 @@ D_l	.req	x13
 D_h	.req	x14
 
 ENTRY(memcpy)
+	prfm    pldl1strm, [src, #(1*L1_CACHE_BYTES)]
 	mov	dst, dstin
 	cmp	count, #16
 	/*When memory length is less than 16, the accessed are not aligned.*/
@@ -188,6 +189,7 @@ ENTRY(memcpy)
 	ldp	C_l, C_h, [src],#16
 	stp	D_l, D_h, [dst],#16
 	ldp	D_l, D_h, [src],#16
+	prfm    pldl1strm, [src, #(4*L1_CACHE_BYTES)]
 	subs	count, count, #64
 	b.ge	1b
 	stp	A_l, A_h, [dst],#16
