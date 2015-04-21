@@ -1112,6 +1112,12 @@ static ssize_t synaptics_rmi4_query_show(struct device *dev,
 static ssize_t synaptics_rmi4_patch_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -1243,6 +1249,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(drv_irq, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_drv_irq_show,
 			synaptics_rmi4_drv_irq_store),
+	__ATTR(reporting, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_reporting_show,
+			synaptics_rmi4_reporting_store),
 	__ATTR(hw_irqstat, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_hw_irqstat_show,
 			synaptics_rmi4_store_error),
@@ -1790,11 +1799,39 @@ static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 	case 1:
 		return scnprintf(buf, PAGE_SIZE, "High\n");
 	default:
-		printk(KERN_ERR "%s: Failed to get GPIO for irq %d.\n",
-				__func__,
-				rmi4_data->irq);
+		pr_err("Failed to get GPIO for irq %d\n", rmi4_data->irq);
 		return scnprintf(buf, PAGE_SIZE, "Unknown\n");
 	}
+}
+
+static bool reporting_stopped;
+
+static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			reporting_stopped ? "STOPPED" : "RUNNING");
+}
+
+static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long value = 0;
+	int err = 0;
+
+	if (*buf == 's' || *buf == 'S') {
+		reporting_stopped = true;
+	} else if (*buf == 'r' || *buf == 'R') {
+		reporting_stopped = false;
+	} else {
+		err = kstrtoul(buf, 10, &value);
+		if (err < 0) {
+			pr_err("Failed to convert value\n");
+			return -EINVAL;
+		}
+		reporting_stopped = value == 0;
+	}
+	return count;
 }
 
 static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
@@ -1815,7 +1852,7 @@ static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
 
 	err = kstrtoul(buf, 10, &value);
 	if (err < 0) {
-		printk(KERN_ERR "%s: Failed to convert value.\n", __func__);
+		pr_err("Failed to convert value\n");
 		return -EINVAL;
 	}
 
@@ -1829,7 +1866,7 @@ static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
 		synaptics_rmi4_irq_enable(rmi4_data, true);
 		break;
 	default:
-		printk(KERN_ERR "%s: Invalid value\n", __func__);
+		pr_err("Invalid value\n");
 		return -EINVAL;
 	}
 	return count;
@@ -2341,7 +2378,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			data_addr + reg_data_1->offset,
 			reg_data_1->data,
 			data_size);
-	if (retval < 0)
+	if (retval < 0 || reporting_stopped)
 		return 0;
 
 	input_event(rmi4_data->input_dev, EV_SYN,
