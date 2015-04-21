@@ -8,6 +8,8 @@
 #include "sr_pni_gpio_pinmux.h"
 #include "sr_ql_gpio_pinmux.h"
 #include "sr2_gpio_pinmux.h"
+#include "er_gpio_pinmux.h"
+#include "pr_gpio_pinmux.h"
 
 /////////////////////////////////////////////////////////////////////
 //define asus gpio var.
@@ -35,6 +37,16 @@ int __init device_gpio_init(void)
 			printk("[KERNEL] sparrow gpio config table = SR2\n");
 			msm_gpiomux_install(sr2_msm8226_gpio_configs,
 					ARRAY_SIZE(sr2_msm8226_gpio_configs));
+			break;
+		case SPARROW_ER:
+			printk("[KERNEL] sparrow gpio config table = ER\n");
+			msm_gpiomux_install(er_msm8226_gpio_configs,
+					ARRAY_SIZE(er_msm8226_gpio_configs));
+			break;
+		case SPARROW_PR:
+			printk("[KERNEL] sparrow gpio config table = PR\n");
+			msm_gpiomux_install(pr_msm8226_gpio_configs,
+					ARRAY_SIZE(pr_msm8226_gpio_configs));
 			break;
 		default:
 			printk(KERN_ERR "[ERROR] There is NO valid hardware ID, use SPARROW EVB GPIO Instead.\n");
