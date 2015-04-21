@@ -980,16 +980,19 @@ static void dwc3_otg_chg_check_timer_func(unsigned long data)
 	if (!dotg->charger || !dotg->charger->get_linestate)
 		return;
 
-	if (dotg->charger->get_linestate(dotg->charger) == DWC3_LS ||
-		dotg->false_sdp_retry_count >= max_chgr_retry_count) {
+	if (dotg->charger->get_linestate(dotg->charger) == DWC3_LS) {
 		dev_info(phy->dev, "DCP is detected as SDP\n");
 		set_bit(B_FALSE_SDP, &dotg->inputs);
 		queue_delayed_work(system_nrt_wq, &dotg->sm_work, 0);
 		return;
 	}
-	dotg->false_sdp_retry_count++;
-	mod_timer(&dotg->chg_check_timer, CHG_RECHECK_DELAY);
-	dev_dbg(phy->dev, "Run chg_check_timer again\n");
+	if (dotg->false_sdp_retry_count <  max_chgr_retry_count)
+		dotg->false_sdp_retry_count++;
+
+	if (dotg->false_sdp_retry_count == max_chgr_retry_count)
+		dwc3_otg_set_power(phy, DWC3_IDEV_CHG_MIN);
+	else
+		mod_timer(&dotg->chg_check_timer, CHG_RECHECK_DELAY);
 }
 
 /**
