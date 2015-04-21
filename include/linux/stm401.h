@@ -544,8 +544,8 @@ struct stm_response {
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
-#define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (stm401_readbuff+(x)))))
-#define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (stm401_readbuff+(x)))))
+#define STM16_TO_HOST(x) ((int16_t) be16_to_cpu(*((u16 *) (stm401_readbuff+(x)))))
+#define STM32_TO_HOST(x) ((int32_t) be32_to_cpu(*((u32 *) (stm401_readbuff+(x)))))
 
 #define STM401_HALL_SOUTH 1
 #define STM401_HALL_NORTH 2
