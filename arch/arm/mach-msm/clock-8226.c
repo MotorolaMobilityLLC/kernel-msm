@@ -2022,6 +2022,8 @@ static struct rcg_clk byte0_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_mdss_esc0_clk[] = {
+	F_MDSS(   9600000,         xo,   2,    0,    0),
+	F_MDSS(  12800000,         xo, 1.5,    0,    0),
 	F_MDSS(  19200000,         xo,   1,    0,    0),
 	F_END
 };
@@ -3644,7 +3646,6 @@ static void msm8226_clock_post_init(void)
 	clk_set_rate(&cci_clk_src.c, cci_clk_src.freq_tbl[0].freq_hz);
 	clk_set_rate(&mclk0_clk_src.c, mclk0_clk_src.freq_tbl[0].freq_hz);
 	clk_set_rate(&mclk1_clk_src.c, mclk1_clk_src.freq_tbl[0].freq_hz);
-	clk_set_rate(&esc0_clk_src.c, esc0_clk_src.freq_tbl[0].freq_hz);
 	clk_set_rate(&vsync_clk_src.c, vsync_clk_src.freq_tbl[0].freq_hz);
 
 	clk_set_rate(&kpss_ahb_clk_src.c, 19200000);

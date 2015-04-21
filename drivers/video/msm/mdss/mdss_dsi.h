@@ -340,6 +340,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_drv_cm_data shared_pdata;
 	u32 pclk_rate;
 	u32 byte_clk_rate;
+	u32 esc_clk_rate;
 	struct dss_module_power power_data[DSI_MAX_PM];
 	u32 dsi_irq_mask;
 	struct mdss_hw *dsi_hw;

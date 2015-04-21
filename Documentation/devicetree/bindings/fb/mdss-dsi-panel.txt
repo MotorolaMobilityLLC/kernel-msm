@@ -242,7 +242,9 @@ Optional properties:
 					"trigger_sw_te" = Software trigger and TE
 - qcom,mdss-dsi-panel-framerate:	Specifies the frame rate for the panel.
 					60 = 60 frames per second (default)
-- qcom,mdss-dsi-panel-clockrate:	Specifies the panel clock speed in Hz.
+- qcom,mdss-dsi-panel-clockrate:	Specifies the panel high speed clock speed in Hz.
+					0 = default value.
+- qcom,mdss-dsi-panel-esc-clockrate:	Specifies the panel low power clock speed in Hz.
 					0 = default value.
 - qcom,mdss-dsi-on-command-state:	String that specifies the ctrl state for sending ON commands.
 					"dsi_lp_mode" = DSI low power mode (default)

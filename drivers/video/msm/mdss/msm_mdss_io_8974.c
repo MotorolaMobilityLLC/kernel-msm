@@ -659,7 +659,6 @@ static void mdss_dsi_link_clk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
-	u32 esc_clk_rate = 19200000;
 	int rc = 0;
 
 	if (!ctrl_pdata) {
@@ -667,31 +666,25 @@ static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		return -EINVAL;
 	}
 
-	if (!ctrl_pdata->panel_data.panel_info.cont_splash_enabled) {
-		pr_debug("%s: Set clk rates: pclk=%d, byteclk=%d escclk=%d\n",
-			__func__, ctrl_pdata->pclk_rate,
-			ctrl_pdata->byte_clk_rate, esc_clk_rate);
-		rc = clk_set_rate(ctrl_pdata->esc_clk, esc_clk_rate);
-		if (rc) {
-			pr_err("%s: dsi_esc_clk - clk_set_rate failed\n",
-				__func__);
-			goto error;
-		}
+	pr_debug("%s: Set clk rates: pclk=%d, byteclk=%d escclk=%d\n",
+		 __func__, ctrl_pdata->pclk_rate,
+		 ctrl_pdata->byte_clk_rate, ctrl_pdata->esc_clk_rate);
+	rc = clk_set_rate(ctrl_pdata->esc_clk, ctrl_pdata->esc_clk_rate);
+	if (rc) {
+		pr_err("%s: dsi_esc_clk - clk_set_rate failed\n", __func__);
+		goto error;
+	}
 
-		rc =  clk_set_rate(ctrl_pdata->byte_clk,
-			ctrl_pdata->byte_clk_rate);
-		if (rc) {
-			pr_err("%s: dsi_byte_clk - clk_set_rate failed\n",
-				__func__);
-			goto error;
-		}
+	rc = clk_set_rate(ctrl_pdata->byte_clk, ctrl_pdata->byte_clk_rate);
+	if (rc) {
+		pr_err("%s: dsi_byte_clk - clk_set_rate failed\n", __func__);
+		goto error;
+	}
 
-		rc = clk_set_rate(ctrl_pdata->pixel_clk, ctrl_pdata->pclk_rate);
-		if (rc) {
-			pr_err("%s: dsi_pixel_clk - clk_set_rate failed\n",
-				__func__);
-			goto error;
-		}
+	rc = clk_set_rate(ctrl_pdata->pixel_clk, ctrl_pdata->pclk_rate);
+	if (rc) {
+		pr_err("%s: dsi_pixel_clk - clk_set_rate failed\n", __func__);
+		goto error;
 	}
 
 error:
