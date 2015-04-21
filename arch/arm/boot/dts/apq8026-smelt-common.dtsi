@@ -90,6 +90,9 @@
 		ads {
 			compatible = "mot,m4ads";
 		};
+		ppg {
+			compatible = "mot,m4ppg";
+		};
 	};
 
 	gpio-charger {
