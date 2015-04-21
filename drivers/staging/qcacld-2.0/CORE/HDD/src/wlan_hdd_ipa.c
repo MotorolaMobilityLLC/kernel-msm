@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1325,7 +1325,8 @@ static int hdd_ipa_rm_request(struct hdd_ipa_priv *hdd_ipa)
 
 	cancel_delayed_work(&hdd_ipa->wake_lock_work);
 	if (hdd_ipa->wake_lock_released) {
-		vos_wake_lock_acquire(&hdd_ipa->wake_lock);
+		vos_wake_lock_acquire(&hdd_ipa->wake_lock,
+                                      WIFI_POWER_EVENT_WAKELOCK_IPA);
 		hdd_ipa->wake_lock_released = false;
 	}
 	adf_os_spin_unlock_bh(&hdd_ipa->rm_lock);
@@ -1344,7 +1345,8 @@ static void hdd_ipa_wake_lock_timer_func(struct work_struct *work)
 		goto end;
 
 	hdd_ipa->wake_lock_released = true;
-	vos_wake_lock_release(&hdd_ipa->wake_lock);
+	vos_wake_lock_release(&hdd_ipa->wake_lock,
+			      WIFI_POWER_EVENT_WAKELOCK_IPA);
 
 end:
 	adf_os_spin_unlock_bh(&hdd_ipa->rm_lock);

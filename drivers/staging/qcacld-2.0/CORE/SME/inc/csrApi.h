@@ -414,6 +414,12 @@ typedef struct tagCsrScanResultFilter
     tANI_U8 MFPRequired;
     tANI_U8 MFPCapable;
 #endif
+    /* The following flag is used to distinguish the
+     * roaming case while building the scan filter and
+     * applying it on to the scan results. This is mainly
+     * used to support whitelist ssid feature.
+     */
+    uint8_t scan_filter_for_roam;
 }tCsrScanResultFilter;
 
 
@@ -833,6 +839,23 @@ typedef enum
    eCSR_HDD
 } eCsrStatsRequesterType;
 
+/**
+ * enum csr_hi_rssi_scan_id - Parameter ids for hi rssi scan feature
+ *
+ * eCSR_HI_RSSI_SCAN_MAXCOUNT_ID: how many times scan can be performed
+ * eCSR_HI_RSSI_SCAN_RSSI_DELTA_ID: rssi difference to trigger scan
+ * eCSR_HI_RSSI_SCAN_DELAY_ID: delay in millseconds between scans
+ * eCSR_HI_RSSI_SCAN_RSSI_UB_ID: rssi upper bound for scan trigger
+ */
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+enum csr_hi_rssi_scan_id {
+	eCSR_HI_RSSI_SCAN_MAXCOUNT_ID,
+	eCSR_HI_RSSI_SCAN_RSSI_DELTA_ID,
+	eCSR_HI_RSSI_SCAN_DELAY_ID,
+	eCSR_HI_RSSI_SCAN_RSSI_UB_ID
+};
+#endif
+
 typedef struct tagPmkidCandidateInfo
 {
     tCsrBssid BSSID;
@@ -1057,6 +1080,10 @@ typedef struct tagCsrNeighborRoamConfigParams
     tANI_U8        nRoamBmissFinalBcnt;
     tANI_U8        nRoamBeaconRssiWeight;
     tANI_U8        delay_before_vdev_stop;
+    uint32_t       nhi_rssi_scan_max_count;
+    uint32_t       nhi_rssi_scan_rssi_delta;
+    uint32_t       nhi_rssi_scan_delay;
+    int32_t        nhi_rssi_scan_rssi_ub;
 }tCsrNeighborRoamConfigParams;
 #endif
 

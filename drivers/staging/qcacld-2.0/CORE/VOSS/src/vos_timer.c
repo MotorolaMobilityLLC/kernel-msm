@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, 2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -538,6 +538,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: Cannot destroy uninitialized timer",__func__);
+      VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
 
@@ -613,6 +614,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: Cannot destroy uninitialized timer",__func__);
+      VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
    spin_lock_irqsave( &timer->platformInfo.spinlock,flags );

@@ -1215,16 +1215,24 @@ VOS_STATUS peHandleMgmtFrame( v_PVOID_t pvosGCtx, v_PVOID_t vosBuff)
     //  The MPDU header is now present at a certain "offset" in
     // the BD and is specified in the BD itself
     //
-    mHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-    if(mHdr->fc.type == SIR_MAC_MGMT_FRAME)
-    {
-    PELOG1(limLog( pMac, LOG1,
-       FL ( "RxBd=%p mHdr=%p Type: %d Subtype: %d  Sizes:FC%d Mgmt%d"),
-       pRxPacketInfo, mHdr, mHdr->fc.type, mHdr->fc.subType, sizeof(tSirMacFrameCtl), sizeof(tSirMacMgmtHdr) );)
 
-    MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT, NO_SESSION,
+    mHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    if(mHdr->fc.type == SIR_MAC_MGMT_FRAME) {
+        PELOG1(limLog( pMac, LOG1,
+               FL("RxBd=%p mHdr=%p Type: %d Subtype: %d  Sizes:FC%d Mgmt%d"),
+               pRxPacketInfo, mHdr, mHdr->fc.type, mHdr->fc.subType,
+               sizeof(tSirMacFrameCtl), sizeof(tSirMacMgmtHdr));)
+
+        limLog(pMac, LOG1, FL("mpdu_len:%d hdr_len:%d data_len:%d"),
+               WDA_GET_RX_MPDU_LEN(pRxPacketInfo),
+               WDA_GET_RX_MPDU_HEADER_LEN(pRxPacketInfo),
+               WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo));
+
+        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT,
+                        WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo),
                         LIM_TRACE_MAKE_RXMGMT(mHdr->fc.subType,
-                        (tANI_U16) (((tANI_U16) (mHdr->seqControl.seqNumHi << 4)) | mHdr->seqControl.seqNumLo)));)
+                        (tANI_U16) (((tANI_U16)(mHdr->seqControl.seqNumHi << 4))
+                        | mHdr->seqControl.seqNumLo)));)
     }
 
 

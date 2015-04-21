@@ -8570,6 +8570,7 @@ void csrRoamRoamingStateDisassocRspProcessor( tpAniSirGlobal pMac, tSirSmeDisass
        if(HAL_STATUS_SUCCESS(status))
        {
            vos_mem_set(pScanFilter, sizeof(tCsrScanResultFilter), 0);
+	   pScanFilter->scan_filter_for_roam = 1;
            status = csrRoamPrepareFilterFromProfile(pMac,
                                      &pNeighborRoamInfo->csrNeighborRoamProfile,
                                      pScanFilter);
@@ -9445,8 +9446,12 @@ eHalStatus csrRoamPrepareFilterFromProfile(tpAniSirGlobal pMac, tCsrRoamProfile 
                                            tCsrScanResultFilter *pScanFilter)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
-    tANI_U32 size = 0;
+    uint32_t size = 0;
     tANI_U8  index = 0;
+    struct roam_ext_params *roam_params;
+    uint8_t i;
+
+    roam_params = &pMac->roam.configParam.roam_params;
 
     do
     {
@@ -9477,6 +9482,30 @@ eHalStatus csrRoamPrepareFilterFromProfile(tpAniSirGlobal pMac, tCsrRoamProfile 
                 //We always use index 1 for self SSID. Index 0 for peer's SSID that we want to join
                 pScanFilter->SSIDs.numOfSSIDs = 1;
             }
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+              FL("No of Allowed List:%d"), roam_params->num_ssid_allowed_list);
+          if (pScanFilter->scan_filter_for_roam
+                && roam_params->num_ssid_allowed_list) {
+             pScanFilter->SSIDs.numOfSSIDs =
+                    roam_params->num_ssid_allowed_list;
+             size = sizeof(tCsrSSIDInfo) * pScanFilter->SSIDs.numOfSSIDs;
+             pScanFilter->SSIDs.SSIDList = vos_mem_malloc(size);
+          if ( NULL == pScanFilter->SSIDs.SSIDList)
+             status = eHAL_STATUS_FAILURE;
+          else
+             status = eHAL_STATUS_SUCCESS;
+          if(!HAL_STATUS_SUCCESS(status))
+             break;
+          for (i=0; i<roam_params->num_ssid_allowed_list; i++) {
+             vos_mem_copy((void *)pScanFilter->SSIDs.SSIDList[i].SSID.ssId,
+               roam_params->ssid_allowed_list[i].ssId,
+               roam_params->ssid_allowed_list[i].length);
+             pScanFilter->SSIDs.SSIDList[i].SSID.length =
+               roam_params->ssid_allowed_list[i].length;
+             pScanFilter->SSIDs.SSIDList[i].handoffPermitted = 1;
+             pScanFilter->SSIDs.SSIDList[i].ssidHidden = 0;
+          }
+          } else {
             size = sizeof(tCsrSSIDInfo) * pProfile->SSIDs.numOfSSIDs;
             pScanFilter->SSIDs.SSIDList = vos_mem_malloc(size);
             if ( NULL == pScanFilter->SSIDs.SSIDList )
@@ -9489,6 +9518,7 @@ eHalStatus csrRoamPrepareFilterFromProfile(tpAniSirGlobal pMac, tCsrRoamProfile 
             }
             vos_mem_copy(pScanFilter->SSIDs.SSIDList, pProfile->SSIDs.SSIDList,
                          size);
+          }
         }
         if(!pProfile->ChannelInfo.ChannelList || (pProfile->ChannelInfo.ChannelList[0] == 0) )
         {
@@ -13817,9 +13847,12 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         pBuf++;
 
         // txBFCsnValue
-        txBFCsnValue = (tANI_U8)pMac->roam.configParam.txBFCsnValue;
-        if (pIes->VHTCaps.present) {
-            txBFCsnValue = MIN(txBFCsnValue, pIes->VHTCaps.numSoundingDim);
+        if (IS_BSS_VHT_CAPABLE(pIes->VHTCaps) &&
+			pMac->roam.configParam.txBFEnable) {
+		txBFCsnValue = (tANI_U8)pMac->roam.configParam.txBFCsnValue;
+		if (pIes->VHTCaps.numSoundingDim)
+			txBFCsnValue = MIN(txBFCsnValue,
+					pIes->VHTCaps.numSoundingDim);
         }
         *pBuf = txBFCsnValue;
         pBuf++;
@@ -16696,6 +16729,54 @@ void csrRoamOffload(tpAniSirGlobal pMac, tSirRoamOffloadScanReq *pRequestBuf,
 }
 #endif
 
+/**
+ * check_allowed_ssid_list() - Check the WhiteList
+ * @req_buffer:      Buffer which contains the connected profile SSID.
+ * @roam_params:     Buffer which contains the whitelist SSID's.
+ *
+ * Check if the connected profile SSID exists in the whitelist.
+ * It is assumed that the framework provides this also in the whitelist.
+ * If it exists there is no issue. Otherwise add it to the list.
+ *
+ * Return: None
+ */
+static void check_allowed_ssid_list(tSirRoamOffloadScanReq *req_buffer,
+		struct roam_ext_params *roam_params)
+{
+	int i = 0;
+	bool match = false;
+	for (i = 0; i < roam_params->num_ssid_allowed_list; i++) {
+		if ((roam_params->ssid_allowed_list[i].length ==
+			req_buffer->ConnectedNetwork.ssId.length) &&
+			vos_mem_compare(roam_params->ssid_allowed_list[i].ssId,
+			req_buffer->ConnectedNetwork.ssId.ssId,
+			roam_params->ssid_allowed_list[i].length)) {
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+				"Whitelist contains connected profile SSID");
+			match = true;
+			break;
+		}
+	}
+	if (!match) {
+		if (roam_params->num_ssid_allowed_list >=
+			MAX_SSID_ALLOWED_LIST) {
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+				"Whitelist is FULL. Cannot Add another entry");
+			return;
+		}
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+			"Adding Connected profile SSID to whitelist");
+		/* i is the next available index to add the entry.*/
+		i = roam_params->num_ssid_allowed_list;
+		vos_mem_copy(roam_params->ssid_allowed_list[i].ssId,
+				req_buffer->ConnectedNetwork.ssId.ssId,
+				req_buffer->ConnectedNetwork.ssId.length);
+		roam_params->ssid_allowed_list[i].length =
+			req_buffer->ConnectedNetwork.ssId.length;
+		roam_params->num_ssid_allowed_list++;
+	}
+}
+
 eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
                               tANI_U8 command, tANI_U8 reason)
 {
@@ -16711,6 +16792,9 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
    tANI_U32 host_channels = 0;
    eCsrBand eBand;
    tANI_U8 ChannelCacheStr[128] = {0};
+   struct roam_ext_params *roam_params_dst;
+   struct roam_ext_params *roam_params_src;
+   uint8_t op_channel;
    currChannelListInfo = &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo;
 
    pSession = CSR_GET_SESSION( pMac, sessionId );
@@ -16752,9 +16836,10 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
 
    if ((pMac->roam.neighborRoamInfo[sessionId].neighborRoamState ==
         eCSR_NEIGHBOR_ROAM_STATE_INIT) &&
-       (command != ROAM_SCAN_OFFLOAD_STOP))
+       (command != ROAM_SCAN_OFFLOAD_STOP) &&
+       (reason != REASON_ROAM_SET_BLACKLIST_BSSID))
    {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
             FL("Scan Command not sent to FW with state = %s and cmd=%d"),
             macTraceGetNeighbourRoamState(
             pMac->roam.neighborRoamInfo[sessionId].neighborRoamState), command);
@@ -16772,8 +16857,17 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
     vos_mem_zero(pRequestBuf, sizeof(tSirRoamOffloadScanReq));
     /* If command is STOP, then pass down ScanOffloadEnabled as Zero.This will handle the case of
      * host driver reloads, but Riva still up and running*/
-    if(command == ROAM_SCAN_OFFLOAD_STOP)
-       pRequestBuf->RoamScanOffloadEnabled = 0;
+    if(command == ROAM_SCAN_OFFLOAD_STOP) {
+      /* clear the roaming parameters that are per connection.
+       * For a new connection, they have to be programmed again.
+       */
+      if (csrNeighborMiddleOfRoaming((tHalHandle)pMac, sessionId)) {
+          pRequestBuf->middle_of_roaming = 1;
+      } else {
+          csr_roam_reset_roam_params(pMac);
+      }
+      pRequestBuf->RoamScanOffloadEnabled = 0;
+    }
     else
        pRequestBuf->RoamScanOffloadEnabled = pMac->roam.configParam.isRoamOffloadScanEnabled;
     vos_mem_copy(pRequestBuf->ConnectedNetwork.currAPbssid,
@@ -16790,18 +16884,14 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
             pMac->roam.roamSession[sessionId].connectedProfile.EncryptionType;
     pRequestBuf->ConnectedNetwork.mcencryption =
             pMac->roam.roamSession[sessionId].connectedProfile.mcEncryptionType;
-    pRequestBuf->LookupThreshold =
-            (v_S7_t)pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1);
     pRequestBuf->delay_before_vdev_stop =
             pNeighborRoamInfo->cfgParams.delay_before_vdev_stop;
     pRequestBuf->OpportunisticScanThresholdDiff =
             pNeighborRoamInfo->cfgParams.nOpportunisticThresholdDiff;
     pRequestBuf->RoamRescanRssiDiff =
             pNeighborRoamInfo->cfgParams.nRoamRescanRssiDiff;
-    pRequestBuf->RoamRssiDiff =
-            pMac->roam.configParam.RoamRssiDiff;
     pRequestBuf->Command = command;
-    pRequestBuf->StartScanReason = reason;
+    pRequestBuf->reason = reason;
     pRequestBuf->NeighborScanTimerPeriod =
             pNeighborRoamInfo->cfgParams.neighborScanPeriod;
     pRequestBuf->NeighborRoamScanRefreshPeriod =
@@ -17020,6 +17110,83 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
        csrRoamOffload(pMac, pRequestBuf, pSession);
    }
 #endif
+   roam_params_dst = &pRequestBuf->roam_params;
+   roam_params_src = &pMac->roam.configParam.roam_params;
+   if (reason == REASON_ROAM_SET_SSID_ALLOWED)
+      check_allowed_ssid_list(pRequestBuf, roam_params_src);
+   /* Configure the lookup threshold either from INI or from framework.
+    * If both are present, give higher priority to the one from framework.
+    */
+   if (roam_params_src->alert_rssi_threshold)
+       pRequestBuf->LookupThreshold = roam_params_src->alert_rssi_threshold;
+   else
+       pRequestBuf->LookupThreshold =
+         (v_S7_t)pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1);
+   vos_mem_copy(roam_params_dst, roam_params_src,
+               sizeof(struct roam_ext_params));
+   pRequestBuf->hi_rssi_scan_max_count =
+           pNeighborRoamInfo->cfgParams.hi_rssi_scan_max_count;
+   pRequestBuf->hi_rssi_scan_delay =
+           pNeighborRoamInfo->cfgParams.hi_rssi_scan_delay;
+   pRequestBuf->hi_rssi_scan_rssi_ub =
+           pNeighborRoamInfo->cfgParams.hi_rssi_scan_rssi_ub;
+   /* rssi_diff which is updated via framework is equivalent to the
+    * INI RoamRssiDiff parameter and hence should be updated.*/
+   if (roam_params_src->rssi_diff)
+        pMac->roam.configParam.RoamRssiDiff = roam_params_src->rssi_diff;
+   pRequestBuf->RoamRssiDiff =
+        pMac->roam.configParam.RoamRssiDiff;
+   op_channel = pSession->connectedProfile.operationChannel;
+   /* If the current operation channel is 5G frequency band, then
+    * there is no need to enable the HI_RSSI feature. This feature
+    * is useful only if we are connected to a 2.4 GHz AP and we wish
+    * to connect to a better 5GHz AP is available.*/
+   if(CSR_IS_CHANNEL_5GHZ(op_channel)) {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+        "Disabling HI_RSSI feature since the connected AP is 5GHz");
+      pRequestBuf->hi_rssi_scan_rssi_delta = 0;
+   }
+   else {
+      pRequestBuf->hi_rssi_scan_rssi_delta =
+           pNeighborRoamInfo->cfgParams.hi_rssi_scan_rssi_delta;
+   }
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+      "hi_rssi_delta=%d, hi_rssi_max_count=%d,"
+      "hi_rssi_delay=%d, hi_rssi_ub=%d",
+      pRequestBuf->hi_rssi_scan_rssi_delta,
+      pRequestBuf->hi_rssi_scan_max_count,
+      pRequestBuf->hi_rssi_scan_delay,
+      pRequestBuf->hi_rssi_scan_rssi_ub);
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+     "num_bssid_avoid_list: %d, num_ssid_allowed_list:%d, num_bssid_favored:%d,"
+     "raise_rssi_thresh_5g: %d, drop_rssi_thresh_5g:%d, raise_rssi_type_5g:%d,"
+     "raise_factor_5g:%d, drop_rssi_type_5g:%d, drop_factor_5g:%d,"
+     "max_raise_rssi_5g=%d, max_drop_rssi_5g:%d, alert_rssi_threshold:%d",
+     roam_params_dst->num_bssid_avoid_list,
+     roam_params_dst->num_ssid_allowed_list, roam_params_dst->num_bssid_favored,
+     roam_params_dst->raise_rssi_thresh_5g,
+     roam_params_dst->drop_rssi_thresh_5g, roam_params_dst->raise_rssi_type_5g,
+     roam_params_dst->raise_factor_5g, roam_params_dst->drop_rssi_type_5g,
+     roam_params_dst->drop_factor_5g, roam_params_dst->max_raise_rssi_5g,
+     roam_params_dst->max_drop_rssi_5g, roam_params_dst->alert_rssi_threshold);
+
+    for (i = 0; i < roam_params_dst->num_bssid_avoid_list; i++) {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+          "Blacklist Bssid("MAC_ADDRESS_STR")",
+           MAC_ADDR_ARRAY(roam_params_dst->bssid_avoid_list[i]));
+    }
+    for (i = 0; i < roam_params_dst->num_ssid_allowed_list; i++) {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, "Whitelist: %.*s",
+            roam_params_dst->ssid_allowed_list[i].length,
+            roam_params_dst->ssid_allowed_list[i].ssId);
+    }
+    for (i = 0; i < roam_params_dst->num_bssid_favored; i++) {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+          "Preferred Bssid("MAC_ADDRESS_STR") score=%d",
+           MAC_ADDR_ARRAY(roam_params_dst->bssid_favored[i]),
+           roam_params_dst->bssid_favored_factor[i]);
+    }
    msg.type     = WDA_ROAM_SCAN_OFFLOAD_REQ;
    msg.reserved = 0;
    msg.bodyptr  = pRequestBuf;

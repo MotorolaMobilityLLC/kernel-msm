@@ -357,6 +357,7 @@ int hdd_softap_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
 #endif
 
+   wlan_hdd_log_eapol(skb, WIFI_EVENT_DRIVER_EAPOL_FRAME_TRANSMIT_REQUESTED);
 
 #ifdef QCA_PKT_PROTO_TRACE
    if ((hddCtxt->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
@@ -1248,6 +1249,8 @@ VOS_STATUS hdd_softap_rx_packet_cbk(v_VOID_t *vosContext,
    ++pAdapter->stats.rx_packets;
    pAdapter->stats.rx_bytes += skb->len;
 
+   wlan_hdd_log_eapol(skb, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED);
+
 #ifdef QCA_PKT_PROTO_TRACE
    if ((pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
        (pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_DHCP))
@@ -1271,7 +1274,8 @@ VOS_STATUS hdd_softap_rx_packet_cbk(v_VOID_t *vosContext,
    skb->protocol = eth_type_trans(skb, skb->dev);
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
    vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
-                                 HDD_WAKE_LOCK_DURATION);
+                                 HDD_WAKE_LOCK_DURATION,
+                                 WIFI_POWER_EVENT_WAKELOCK_HOLD_RX);
 #endif
    rxstat = netif_rx_ni(skb);
    if (NET_RX_SUCCESS == rxstat)

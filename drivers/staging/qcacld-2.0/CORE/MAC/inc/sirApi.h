@@ -66,12 +66,6 @@
 #define SIR_MAX_24G_5G_CHANNEL_RANGE      166
 #define SIR_BCN_REPORT_MAX_BSS_DESC       4
 
-
-#ifdef FEATURE_WLAN_BATCH_SCAN
-#define SIR_MAX_SSID_SIZE (32)
-#endif
-
-
 #define SIR_NUM_11B_RATES 4   //1,2,5.5,11
 #define SIR_NUM_11A_RATES 8  //6,9,12,18,24,36,48,54
 #define SIR_NUM_POLARIS_RATES 3 //72,96,108
@@ -113,6 +107,7 @@ typedef tANI_U8 tSirVersionString[SIR_VERSION_STRING_LEN];
 #define WLAN_EXTSCAN_MAX_BUCKETS                  16
 #define WLAN_EXTSCAN_MAX_HOTLIST_APS              128
 #define WLAN_EXTSCAN_MAX_SIGNIFICANT_CHANGE_APS   64
+#define WLAN_EXTSCAN_MAX_HOTLIST_SSIDS            8
 
 typedef enum
 {
@@ -132,6 +127,11 @@ typedef enum
     eSIR_EXTSCAN_SCAN_RES_AVAILABLE_IND,
     eSIR_EXTSCAN_SCAN_PROGRESS_EVENT_IND,
     eSIR_EXTSCAN_FULL_SCAN_RESULT_IND,
+    eSIR_EPNO_NETWORK_FOUND_IND,
+    eSIR_PASSPOINT_NETWORK_FOUND_IND,
+    eSIR_EXTSCAN_SET_SSID_HOTLIST_RSP,
+    eSIR_EXTSCAN_RESET_SSID_HOTLIST_RSP,
+    eSIR_EXTSCAN_HOTLIST_SSID_MATCH_IND,
 
     /* Keep this last */
     eSIR_EXTSCAN_CALLBACK_TYPE_MAX,
@@ -3790,6 +3790,30 @@ typedef enum {
         SIR_ROAMING_DFS_CHANNEL_ENABLED_NORMAL = 1,
         SIR_ROAMING_DFS_CHANNEL_ENABLED_ACTIVE = 2
 } eSirDFSRoamScanMode;
+#define MAX_SSID_ALLOWED_LIST 4
+#define MAX_BSSID_AVOID_LIST  16
+#define MAX_BSSID_FAVORED     16
+struct roam_ext_params {
+	uint8_t num_bssid_avoid_list;
+	uint8_t num_ssid_allowed_list;
+	uint8_t num_bssid_favored;
+	tSirMacSSid ssid_allowed_list[MAX_SSID_ALLOWED_LIST];
+	tSirMacAddr bssid_avoid_list[MAX_BSSID_AVOID_LIST];
+	tSirMacAddr bssid_favored[MAX_BSSID_FAVORED];
+	uint8_t bssid_favored_factor[MAX_BSSID_FAVORED];
+	int raise_rssi_thresh_5g;
+	int drop_rssi_thresh_5g;
+	uint8_t raise_rssi_type_5g;
+	uint8_t raise_factor_5g;
+	uint8_t drop_rssi_type_5g;
+	uint8_t drop_factor_5g;
+	int max_raise_rssi_5g;
+	int max_drop_rssi_5g;
+	int alert_rssi_threshold;
+	int rssi_diff;
+	int good_rssi_roam;
+	bool is_5g_pref_enabled;
+};
 
 typedef struct sSirRoamOffloadScanReq
 {
@@ -3802,7 +3826,7 @@ typedef struct sSirRoamOffloadScanReq
   tANI_U8     RoamRssiDiff;
   tANI_U8     ChannelCacheType;
   tANI_U8     Command;
-  tANI_U8     StartScanReason;
+  tANI_U8     reason;
   tANI_U16    NeighborScanTimerPeriod;
   tANI_U16    NeighborRoamScanRefreshPeriod;
   tANI_U16    NeighborScanChannelMinTime;
@@ -3849,6 +3873,13 @@ typedef struct sSirRoamOffloadScanReq
   tANI_U32  R0KH_ID_Length;
   tANI_U8   RoamKeyMgmtOffloadEnabled;
 #endif
+  struct roam_ext_params roam_params;
+  uint32_t  hi_rssi_scan_max_count;
+  uint32_t  hi_rssi_scan_rssi_delta;
+  uint32_t  hi_rssi_scan_delay;
+  int32_t   hi_rssi_scan_rssi_ub;
+  uint8_t  middle_of_roaming;
+
 } tSirRoamOffloadScanReq, *tpSirRoamOffloadScanReq;
 
 typedef struct sSirRoamOffloadScanRsp
@@ -4505,77 +4536,6 @@ typedef struct sSirDelPeriodicTxPtrn
    tANI_U8  ucPtrnId;           // Pattern ID
 } tSirDelPeriodicTxPtrn, *tpSirDelPeriodicTxPtrn;
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-// Set batch scan resposne from FW
-typedef struct
-{
-  /*maximum number of scans which FW can cache*/
-  tANI_U32 nScansToBatch;
-} tSirSetBatchScanRsp, *tpSirSetBatchScanRsp;
-
-// Set batch scan request to FW
-typedef struct
-{
-    tANI_U32 sessionId;
-    tANI_U32 scanFrequency;        /* how frequent to do scan - default 30Sec*/
-    tANI_U32 numberOfScansToBatch; /* number of scans to batch */
-    tANI_U32 bestNetwork;          /* best networks in terms of rssi */
-    tANI_U8  rfBand;               /* band to scan :
-                                      0 ->both Band, 1->2.4Ghz Only
-                                      and 2-> 5GHz Only */
-    tANI_U32 rtt;                  /* set if required to do RTT it is not
-                                      supported in current version */
-} tSirSetBatchScanReq, *tpSirSetBatchScanReq;
-
-
-// Stop batch scan request to FW
-typedef struct
-{
-    tANI_U32 param;
-} tSirStopBatchScanInd, *tpSirStopBatchScanInd;
-
-// Trigger batch scan result indication to FW
-typedef struct
-{
-    tANI_U32 param;
-} tSirTriggerBatchScanResultInd, *tpSirTriggerBatchScanResultInd;
-
-// Batch scan result indication from FW
-typedef PACKED_PRE struct PACKED_POST
-{
-    tANI_U8   bssid[6];     /* BSSID */
-    tANI_U8   ssid[33];     /* SSID */
-    tANI_U8   ch;           /* Channel */
-    tANI_S8   rssi;         /* RSSI or Level */
-    /*Timestamp when Network was found. Used to calculate age based on timestamp
-      in GET_RSP msg header */
-    tANI_U32  timestamp;
-} tSirBatchScanNetworkInfo, *tpSirBatchScanNetworkInfo;
-
-typedef PACKED_PRE struct PACKED_POST
-{
-    tANI_U32   scanId; /* Scan List ID. */
-    /*No of AP in a Scan Result. Should be same as bestNetwork in SET_REQ msg*/
-    tANI_U32   numNetworksInScanList;
-    /*Variable data ptr: Number of AP in Scan List*/
-    /*Following numNetworkInScanList is data of type tSirBatchScanNetworkInfo
-     *of sizeof(tSirBatchScanNetworkInfo) * numNetworkInScanList */
-    tANI_U8    scanList[1];
-} tSirBatchScanList, *tpSirBatchScanList;
-
-typedef PACKED_PRE struct PACKED_POST
-{
-    tANI_U32      timestamp;
-    tANI_U32      numScanLists;
-    boolean       isLastResult;
-    /* Variable Data ptr: Number of Scan Lists*/
-    /* following isLastResult is data of type tSirBatchScanList
-     * of sizeof(tSirBatchScanList) * numScanLists*/
-    tANI_U8       scanResults[1];
-}  tSirBatchScanResultIndParam, *tpSirBatchScanResultIndParam;
-
-#endif // FEATURE_WLAN_BATCH_SCAN
-
 typedef struct
 {
     tANI_U16      mesgType;
@@ -4871,6 +4831,15 @@ typedef struct sSirRoamOffloadSynchFail
 
 #ifdef FEATURE_WLAN_EXTSCAN
 
+/**
+ * typedef enum wifi_scan_flags - wifi scan flags
+ * @WIFI_SCAN_FLAG_INTERRUPTED: Indicates that scan results are not complete
+ *				because probes were not sent on some channels
+ */
+typedef enum {
+	WIFI_SCAN_FLAG_INTERRUPTED = 1,
+} wifi_scan_flags;
+
 typedef enum
 {
     WIFI_BAND_UNSPECIFIED,
@@ -4903,8 +4872,6 @@ typedef struct
    /* High threshold */
    tANI_S32       high;
 
-   /* Frequency in MHz*/
-   tANI_U32       channel;
 } tSirAPThresholdParam, *tpSirAPThresholdParam;
 
 typedef struct
@@ -4913,22 +4880,48 @@ typedef struct
     tANI_U8     sessionId;
 } tSirGetExtScanCapabilitiesReqParams, *tpSirGetExtScanCapabilitiesReqParams;
 
-typedef struct
+/**
+ * struct ext_scan_capabilities_response - extscan capabilities response data
+ *					   from target
+ * @requestId: request identifier
+ * @status:    status
+ * @max_scan_cache_size: total space allocated for scan (in bytes)
+ * @max_scan_buckets: maximum number of channel buckets
+ * @max_ap_cache_per_scan: maximum number of APs that can be stored per scan
+ * @max_rssi_sample_size: number of RSSI samples used for averaging RSSI
+ * @ax_scan_reporting_threshold: max possible report_threshold
+ * @max_hotlist_bssids: maximum number of entries for hotlist APs
+ * @max_significant_wifi_change_aps: maximum number of entries for
+ *				significant wifi change APs
+ * @max_bssid_history_entries: number of BSSID/RSSI entries that device can hold
+ * @max_hotlist_ssids: maximum number of entries for hotlist SSIDs
+ * @max_number_epno_networks: max number of epno entries
+ * @max_number_epno_networks_by_ssid: max number of epno entries
+ *			if ssid is specified, that is, epno entries for
+ *			which an exact match is required,
+ *			or entries corresponding to hidden ssids
+ * @max_number_of_white_listed_ssid: max number of white listed SSIDs
+ */
+struct ext_scan_capabilities_response
 {
-    tANI_U32    requestId;
-    tANI_U32    status;
+	uint32_t    requestId;
+	uint32_t    status;
 
-    tANI_U32    scanCacheSize;
-    tANI_U32    scanBuckets;
-    tANI_U32    maxApPerScan;
-    tANI_U32    maxRssiSampleSize;
-    tANI_U32    maxScanReportingThreshold;
+	uint32_t    max_scan_cache_size;
+	uint32_t    max_scan_buckets;
+	uint32_t    max_ap_cache_per_scan;
+	uint32_t    max_rssi_sample_size;
+	uint32_t    max_scan_reporting_threshold;
 
-    tANI_U32    maxHotlistAPs;
-    tANI_U32    maxSignificantWifiChangeAPs;
+	uint32_t    max_hotlist_bssids;
+	uint32_t    max_significant_wifi_change_aps;
 
-    tANI_U32    maxBsidHistoryEntries;
-} tSirExtScanCapabilitiesEvent, *tpSirExtScanCapabilitiesEvent;
+	uint32_t    max_bssid_history_entries;
+	uint32_t    max_hotlist_ssids;
+	uint32_t    max_number_epno_networks;
+	uint32_t    max_number_epno_networks_by_ssid;
+	uint32_t    max_number_of_white_listed_ssid;
+};
 
 
 typedef struct
@@ -4982,35 +4975,111 @@ typedef struct
     tANI_U8       ieData[];
 } tSirWifiScanResult, *tpSirWifiScanResult;
 
+/**
+ * struct extscan_hotlist_match - extscan hotlist match
+ * @requestId: request identifier
+ * @numOfAps: number of bssids retrieved by the scan
+ * @moreData: 0 - for last fragment
+ *	      1 - still more fragment(s) coming
+ * @ap: wifi scan result
+ */
+struct extscan_hotlist_match
+{
+	uint32_t    requestId;
+	bool        moreData;
+	bool        ap_found;
+	uint32_t    numOfAps;
+	tSirWifiScanResult   ap[];
+};
+
+/**
+ * struct extscan_cached_scan_result - extscan cached scan result
+ * @scan_id: a unique identifier for the scan unit
+ * @flags: a bitmask with additional information about scan
+ * @num_results: number of bssids retrieved by the scan
+ * @ap: wifi scan bssid results info
+ */
+struct extscan_cached_scan_result
+{
+	uint32_t    scan_id;
+	uint32_t    flags;
+	uint32_t    num_results;
+	tSirWifiScanResult *ap;
+};
+
+/**
+ * struct tSirWifiScanResultEvent - wifi scan result event
+ * @requestId: request identifier
+ * @ap_found: flag to indicate ap found or not
+ *		true: AP was found
+ *		false: AP was lost
+ * @numOfAps: number of aps
+ * @moreData: more data
+ * @ap: bssid information
+ *
+ */
 typedef struct
 {
-    tANI_U32             requestId;
-
-    tANI_U32             numOfAps;
-
-    /*
-     * 0 - for last fragment
-     * 1 - still more fragment(s) coming
-     */
-    tANI_BOOLEAN         moreData;
-    tSirWifiScanResult   ap[];
+	uint32_t     requestId;
+	bool         ap_found;
+	uint32_t     numOfAps;
+	bool         moreData;
+	tSirWifiScanResult   ap[];
 } tSirWifiScanResultEvent, *tpSirWifiScanResultEvent;
 
-/*
+/**
+ * struct extscan_cached_scan_results - extscan cached scan results
+ * @request_id: request identifier
+ * @more_data: 0 - for last fragment
+ *	       1 - still more fragment(s) coming
+ * @num_scan_ids: number of scan ids
+ * @result: wifi scan result
+ */
+struct extscan_cached_scan_results
+{
+	uint32_t    request_id;
+	bool        more_data;
+	uint32_t    num_scan_ids;
+	struct extscan_cached_scan_result  *result;
+};
+
+
+/**
+ * struct tSirWifiFullScanResultEvent - extscan full scan event
+ * @request_id: request identifier
+ * @moreData: 0 - for last fragment
+ *             1 - still more fragment(s) coming
+ * @ap: bssid info
+ *
  * Reported when each probe response is received, if reportEvents
  * enabled in tSirWifiScanCmdReqParams
  */
 typedef struct
 {
-    tANI_U32               requestId;
-
-    /*
-     * 0 - for last fragment
-     * 1 - still more fragment(s) coming
-     */
-    tANI_BOOLEAN           moreData;
-    tSirWifiScanResult     ap;
+	uint32_t            requestId;
+	bool                moreData;
+	tSirWifiScanResult  ap;
 } tSirWifiFullScanResultEvent, *tpSirWifiFullScanResultEvent;
+
+/**
+ * struct pno_match_found - epno match found
+ * @request_id: request identifier
+ * @moreData: 0 - for last fragment
+     * 1 - still more fragment(s) coming
+ * @num_results: number of bssids, driver sends this event to upper layer
+ *		 for every beacon, hence %num_results is always set to 1.
+ * @ap: bssid info
+ *
+ * Reported when each beacon probe response is received with
+ * epno match found tag.
+     */
+struct pno_match_found
+{
+	uint32_t            request_id;
+	bool                more_data;
+	uint32_t            num_results;
+	tSirWifiScanResult  ap[];
+};
 
 
 typedef struct
@@ -5027,37 +5096,44 @@ typedef struct
     tANI_U8       chnlClass;
 } tSirWifiScanChannelSpec, *tpSirWifiScanChannelSpec;
 
+/**
+ * struct tSirWifiScanBucketSpec - wifi scan bucket spec
+ * @bucket: bucket identifier
+ * @band: wifi band
+ * @period: Desired period, in millisecond; if this is too
+ *		low, the firmware should choose to generate results as fast as
+ *		it can instead of failing the command byte
+ *		for exponential backoff bucket this is the min_period
+ * @reportEvents: 0 => normal reporting (reporting rssi history
+ *		only, when rssi history buffer is % full)
+ *		1 => same as 0 + report a scan completion event after scanning
+ *		this bucket
+ *		2 => same as 1 + forward scan results
+ *		(beacons/probe responses + IEs) in real time to HAL
+ * @max_period: if max_period is non zero or different than period,
+ *		then this bucket is an exponential backoff bucket and
+ *		the scan period will grow exponentially as per formula:
+ *		actual_period(N) = period ^ (N/(step_count+1)) to a
+ *		maximum period of max_period
+ * @exponent: for exponential back off bucket: multiplier:
+ *		new_period = old_period * exponent
+ * @step_count: for exponential back off bucket, number of scans performed
+ *		at a given period and until the exponent is applied
+ * @numChannels: channels to scan; these may include DFS channels
+ *		Note that a given channel may appear in multiple buckets
+ * @channels: Channel list
+ */
 typedef struct
 {
-    /* Bucket index, 0 based */
-    tANI_U8       bucket;
-
-    /* when UNSPECIFIED, use channel list */
-    tWifiBand     band;
-
-    /*
-     * Desired period, in millisecond; if this is too
-     * low, the firmware should choose to generate results as fast as
-     * it can instead of failing the command byte
-     */
-    tANI_U32      period;
-
-    /*
-     * 0 => normal reporting (reporting rssi history
-     * only, when rssi history buffer is % full)
-     * 1 => same as 0 + report a scan completion event after scanning
-     * this bucket
-     * 2 => same as 1 + forward scan results (beacons/probe responses + IEs)
-     * in real time to HAL
-     */
-    tANI_U32      reportEvents;
-
-    tANI_U32      numChannels;
-
-    /*
-     * Channels to scan; these may include DFS channels
-     */
-    tSirWifiScanChannelSpec channels[WLAN_EXTSCAN_MAX_CHANNELS];
+	uint8_t         bucket;
+	tWifiBand       band;
+	uint32_t        period;
+	uint32_t        reportEvents;
+	uint32_t        max_period;
+	uint32_t        exponent;
+	uint32_t        step_count;
+	uint32_t        numChannels;
+	tSirWifiScanChannelSpec channels[WLAN_EXTSCAN_MAX_CHANNELS];
 } tSirWifiScanBucketSpec, *tpSirWifiScanBucketSpec;
 
 typedef struct
@@ -5067,7 +5143,11 @@ typedef struct
     tANI_U32                maxAPperScan;
 
     /* in %, when buffer is this much full, wake up host */
-    tANI_U32                reportThreshold;
+    uint32_t                report_threshold_percent;
+
+    /* in number of scans, wake up host after these many scans */
+    uint32_t                report_threshold_num_scans;
+
     tANI_U32                requestId;
     tANI_U8                 sessionId;
 
@@ -5075,11 +5155,16 @@ typedef struct
     tSirWifiScanBucketSpec  buckets[WLAN_EXTSCAN_MAX_BUCKETS];
 } tSirWifiScanCmdReqParams, *tpSirWifiScanCmdReqParams;
 
-typedef struct
-{
-    tANI_U32    requestId;
-    tANI_U32    status;
-} tSirExtScanStartRspParams, *tpSirExtScanStartRspParams;
+/**
+ * struct sir_extscan_generic_response -
+ *	Generic ExtScan Response structure
+ * @request_id: ID of the request
+ * @status: operation status returned by firmware
+ */
+struct sir_extscan_generic_response {
+	uint32_t request_id;
+	uint32_t status;
+};
 
 typedef struct
 {
@@ -5087,27 +5172,22 @@ typedef struct
     tANI_U8     sessionId;
 } tSirExtScanStopReqParams, *tpSirExtScanStopReqParams;
 
+/**
+ * struct tSirExtScanSetBssidHotListReqParams - set hotlist request
+ * @requestId: request identifier
+ * @sessionId: session identifier
+ * @lost_ap_sample_size: number of samples to confirm AP loss
+ * @numAp: Number of hotlist APs
+ * @ap: hotlist APs
+ */
 typedef struct
 {
-    tANI_U32    requestId;
-    tANI_U32    status;
-} tSirExtScanStopRspParams, *tpSirExtScanStopRspParams;
-
-typedef struct
-{
-    tANI_U32               requestId;
-    tANI_U8                sessionId;
-
-    /* Number of hotlist APs */
-    tANI_U32               numAp;
-    tSirAPThresholdParam   ap[WLAN_EXTSCAN_MAX_HOTLIST_APS];
+	uint32_t    requestId;
+	uint8_t     sessionId;
+	uint32_t    lost_ap_sample_size;
+	uint32_t    numAp;
+	tSirAPThresholdParam   ap[WLAN_EXTSCAN_MAX_HOTLIST_APS];
 } tSirExtScanSetBssidHotListReqParams, *tpSirExtScanSetBssidHotListReqParams;
-
-typedef struct
-{
-    tANI_U32    requestId;
-    tANI_U32    status;
-} tSirExtScanSetBssidHotListRspParams, *tpSirExtScanSetBssidHotListRspParams;
 
 typedef struct
 {
@@ -5116,12 +5196,36 @@ typedef struct
 } tSirExtScanResetBssidHotlistReqParams,
   *tpSirExtScanResetBssidHotlistReqParams;
 
-typedef struct
-{
-    tANI_U32    requestId;
-    tANI_U32    status;
-} tSirExtScanResetBssidHotlistRspParams,
-  *tpSirExtScanResetBssidHotlistRspParams;
+/**
+ * struct sir_ssid_hotlist_param - param for SSID Hotlist
+ * @ssid: SSID which is being hotlisted
+ * @band: Band in which the given SSID should be scanned
+ * @rssi_low: Low bound on RSSI
+ * @rssi_high: High bound on RSSI
+ */
+struct sir_ssid_hotlist_param {
+	tSirMacSSid ssid;
+	uint8_t band;
+	int32_t rssi_low;
+	int32_t rssi_high;
+};
+
+/**
+ * struct sir_set_ssid_hotlist_request - set SSID hotlist request struct
+ * @request_id: ID of the request
+ * @session_id: ID of the session
+ * @lost_ssid_sample_size: Number of consecutive scans in which the SSID
+ *	must not be seen in order to consider the SSID "lost"
+ * @ssid_count: Number of valid entries in the @ssids array
+ * @ssids: Array that defines the SSIDs that are in the hotlist
+ */
+struct sir_set_ssid_hotlist_request {
+	uint32_t request_id;
+	uint8_t session_id;
+	uint32_t lost_ssid_sample_size;
+	uint32_t ssid_count;
+	struct sir_ssid_hotlist_param ssids[WLAN_EXTSCAN_MAX_HOTLIST_SSIDS];
+};
 
 typedef struct
 {
@@ -5143,13 +5247,6 @@ typedef struct
     tSirAPThresholdParam  ap[WLAN_EXTSCAN_MAX_SIGNIFICANT_CHANGE_APS];
 } tSirExtScanSetSigChangeReqParams,
  *tpSirExtScanSetSigChangeReqParams;
-
-typedef struct
-{
-    tANI_U32      requestId;
-    tANI_U32      status;
-} tSirExtScanSetSignificantChangeRspParams,
-  *tpSirExtScanSetSignificantChangeRspParams;
 
 typedef struct
 {
@@ -5180,16 +5277,96 @@ typedef struct
 typedef struct
 {
     tANI_U32    requestId;
-    tANI_U32    status;
-} tSirExtScanResetSignificantChangeRspParams,
-  *tpSirExtScanResetSignificantChangeRspParams;
-
-typedef struct
-{
-    tANI_U32    requestId;
     tANI_U32    numResultsAvailable;
 } tSirExtScanResultsAvailableIndParams,
   *tpSirExtScanResultsAvailableIndParams;
+
+typedef struct
+{
+    tANI_U32   requestId;
+    tANI_U32   status;
+    tANI_U8    scanEventType;
+} tSirExtScanOnScanEventIndParams,
+  *tpSirExtScanOnScanEventIndParams;
+
+/**
+ * struct wifi_epno_network - enhanced pno network block
+ * @ssid: ssid
+ * @rssi_threshold: threshold for considering this SSID as found, required
+ *		    granularity for this threshold is 4dBm to 8dBm
+ * @flags: WIFI_PNO_FLAG_XXX
+ * @auth_bit_field: auth bit field for matching WPA IE
+ */
+struct wifi_epno_network
+{
+	tSirMacSSid  ssid;
+	int8_t       rssi_threshold;
+	uint8_t      flags;
+	uint8_t      auth_bit_field;
+};
+
+/**
+ * struct wifi_epno_params - enhanced pno network params
+ * @num_networks: number of ssids
+ * @networks: PNO networks
+ */
+struct wifi_epno_params
+{
+	uint32_t    request_id;
+	uint32_t    session_id;
+	uint32_t    num_networks;
+	struct wifi_epno_network networks[];
+};
+
+#define SIR_PASSPOINT_REALM_LEN 256
+#define SIR_PASSPOINT_ROAMING_CONSORTIUM_ID_NUM 16
+#define SIR_PASSPOINT_PLMN_LEN 3
+/**
+ * struct wifi_passpoint_network - passpoint network block
+ * @id: identifier of this network block
+ * @realm: null terminated UTF8 encoded realm, 0 if unspecified
+ * @roaming_consortium_ids: roaming consortium ids to match, 0s if unspecified
+ * @plmn: mcc/mnc combination as per rules, 0s if unspecified
+ */
+struct wifi_passpoint_network
+{
+	uint32_t id;
+	uint8_t  realm[SIR_PASSPOINT_REALM_LEN];
+	int64_t  roaming_consortium_ids[SIR_PASSPOINT_ROAMING_CONSORTIUM_ID_NUM];
+	uint8_t  plmn[SIR_PASSPOINT_PLMN_LEN];
+};
+
+/**
+ * struct wifi_passpoint_req - passpoint request
+ * @request_id: request identifier
+ * @num_networks: number of networks
+ * @networks: passpoint networks
+ */
+struct wifi_passpoint_req
+{
+	uint32_t request_id;
+	uint32_t session_id;
+	uint32_t num_networks;
+	struct wifi_passpoint_network networks[];
+};
+
+/**
+ * struct wifi_passpoint_match - wifi passpoint network match
+ * @id: network block identifier for the matched network
+ * @anqp_len: length of ANQP blob
+ * @ap: scan result, with channel and beacon information
+ * @anqp: ANQP data, in the information_element format
+ */
+struct wifi_passpoint_match
+{
+	uint32_t  request_id;
+	uint32_t  id;
+	uint32_t  anqp_len;
+	tSirWifiScanResult ap;
+	uint8_t   anqp[];
+};
+
+#endif /* FEATURE_WLAN_EXTSCAN */
 
 #ifdef FEATURE_WLAN_AUTO_SHUTDOWN
 typedef struct
@@ -5202,16 +5379,6 @@ typedef struct
     tANI_U32    shutdown_reason;
 } tSirAutoShutdownEvtParams;
 #endif
-
-typedef struct
-{
-    tANI_U32   requestId;
-    tANI_U32   status;
-    tANI_U8    scanEventType;
-} tSirExtScanOnScanEventIndParams,
-  *tpSirExtScanOnScanEventIndParams;
-
-#endif /* FEATURE_WLAN_EXTSCAN */
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
 
@@ -5534,6 +5701,27 @@ typedef struct
     tANI_U32            rssiData;
     /* access Point ACK RSSI (averaged) from connected AP */
     tANI_U32            rssiAck;
+    /** number of peers */
+    tANI_U32 num_peers;
+    /** Indicates how many peer_stats events will be sent depending on the num_peers. */
+    tANI_U32 num_peer_events;
+    /** number of ac */
+    tANI_U32 num_ac;
+    /** Roaming Stat */
+    tANI_U32 roam_state;
+    /** Average Beacon spread offset is the averaged time delay between TBTT and beacon TSF */
+    /** Upper 32 bits of averaged 64 bit beacon spread offset */
+    tANI_U32 avg_bcn_spread_offset_high;
+    /** Lower 32 bits of averaged 64 bit beacon spread offset */
+    tANI_U32 avg_bcn_spread_offset_low;
+    /** Takes value of 1 if AP leaks packets after sending an ACK for PM=1 otherwise 0 */
+    tANI_U32 is_leaky_ap;
+    /** Average number of frames received from AP after receiving the ACK for a frame with PM=1 */
+    tANI_U32 avg_rx_frms_leaked;
+    /** Rx leak watch window currently in force to minimize data loss because of leaky AP. Rx leak window is the
+        time driver waits before shutting down the radio or switching the channel and after receiving an ACK for
+        a data frame with PM bit set) */
+    tANI_U32 rx_leak_window;
     /* per ac data packet statistics */
     tSirWifiWmmAcStat    AccessclassStats[WIFI_AC_MAX];
 } tSirWifiIfaceStat, *tpSirWifiIfaceStat;
@@ -5611,6 +5799,28 @@ typedef struct sAniGetLinkStatus
 
 /* number of neighbor reports that we can handle in Neighbor Report Response */
 #define MAX_SUPPORTED_NEIGHBOR_RPT 15
+
+/**
+ * struct sir_stats_avg_factor
+ * @vdev_id: session id
+ * @stats_avg_factor: average factor
+ */
+struct sir_stats_avg_factor
+{
+	uint8_t vdev_id;
+	uint16_t stats_avg_factor;
+};
+
+/**
+ * struct sir_guard_time_request
+ * @vdev_id: session id
+ * @guard_time: guard time
+ */
+struct sir_guard_time_request
+{
+	uint8_t vdev_id;
+	uint32_t guard_time;
+};
 
 /* Max number of rates allowed in Supported Rates IE */
 #define MAX_NUM_SUPPORTED_RATES (8)

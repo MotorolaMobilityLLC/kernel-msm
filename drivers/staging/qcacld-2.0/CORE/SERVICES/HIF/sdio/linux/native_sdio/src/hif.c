@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -135,6 +135,7 @@ module_param(reset_sdio_on_unload, int, 0644);
 
 A_UINT32 nohifscattersupport = 1;
 
+A_UINT32 forcedriverstrength = 1; /* force driver strength to type D */
 
 /* ------ Static Variables ------ */
 static const struct sdio_device_id ar6k_id_table[] = {
@@ -1191,6 +1192,53 @@ TODO: MMC SDIO3.0 Setting should also be modified in ReInit() function when Powe
             unsigned char speed = 0;
 #endif
             sdio_claim_host(func);
+
+            /* force driver strength to type D */
+            if (((id->device & MANUFACTURER_ID_AR6K_BASE_MASK) ==
+                    MANUFACTURER_ID_QCA9377_BASE && forcedriverstrength == 1)) {
+                unsigned int  addr = SDIO_CCCR_DRIVE_STRENGTH;
+                unsigned char value = 0;
+                A_UINT32 err = Func0_CMD52ReadByte(func->card, addr, &value);
+                if (err) {
+                    printk("Read CCCR 0x%02X failed: %d\n",
+                            (unsigned int) addr,
+                            (unsigned int) err);
+                } else {
+                    value = (value &
+                            (~(SDIO_DRIVE_DTSx_MASK << SDIO_DRIVE_DTSx_SHIFT))) |
+                            SDIO_DTSx_SET_TYPE_D;
+                    err = Func0_CMD52WriteByte(func->card, addr, value);
+                    if (err) {
+                        printk("Write CCCR 0x%02X to 0x%02X failed: %d\n",
+                                (unsigned int) addr,
+                                (unsigned int) value,
+                                (unsigned int) err);
+                    } else {
+                        addr = CCCR_SDIO_DRIVER_STRENGTH_ENABLE_ADDR;
+                        value = 0;
+                        err = Func0_CMD52ReadByte(func->card, addr, &value);
+                        if (err) {
+                             printk("Read CCCR 0x%02X failed: %d\n",
+                                    (unsigned int) addr,
+                                    (unsigned int) err);
+                        } else {
+                            value = (value &
+                                    (~CCCR_SDIO_DRIVER_STRENGTH_ENABLE_MASK)) |
+                                    CCCR_SDIO_DRIVER_STRENGTH_ENABLE_A |
+                                    CCCR_SDIO_DRIVER_STRENGTH_ENABLE_C |
+                                    CCCR_SDIO_DRIVER_STRENGTH_ENABLE_D;
+                            err = Func0_CMD52WriteByte(func->card, addr, value);
+                            if (err) {
+                                printk("Write CCCR 0x%02X to 0x%02X failed: %d\n",
+                                        (unsigned int) addr,
+                                        (unsigned int) value,
+                                        (unsigned int) err);
+                            }
+                        }
+                    }
+                }
+            }
+
             if (writecccr1) {
                 A_UINT32 err = Func0_CMD52WriteByte(func->card,
                         writecccr1,

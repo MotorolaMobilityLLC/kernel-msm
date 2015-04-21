@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -76,6 +76,7 @@ typedef enum {
 #ifdef CONFIG_ATH_PCIE_ACCESS_DEBUG
     GEN_PARAM_DUMP_PCIE_ACCESS_LOG
 #endif
+    GEN_PARAM_MODULATED_DTIM
 } GEN_PARAM;
 
 #define VDEV_CMD 1

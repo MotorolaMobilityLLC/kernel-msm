@@ -73,6 +73,7 @@ struct wmi_unified {
 	ol_scn_t scn_handle; /* handle to device */
 	adf_os_atomic_t pending_cmds;
 	HTC_ENDPOINT_ID wmi_endpoint_id;
+	uint16_t max_msg_len;
 	WMI_EVT_ID event_id[WMI_UNIFIED_MAX_EVENT];
 	wmi_unified_event_handler event_handler[WMI_UNIFIED_MAX_EVENT];
 	u_int32_t max_event_idx;

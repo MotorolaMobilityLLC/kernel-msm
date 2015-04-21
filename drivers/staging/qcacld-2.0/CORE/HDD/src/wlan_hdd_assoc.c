@@ -1291,6 +1291,12 @@ static void hdd_SendReAssocEvent(struct net_device *dev,
     tANI_U32 rspRsnLength = 0;
     struct ieee80211_channel *chan;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    uint8_t buf_ssid_ie[2 + SIR_MAC_SSID_EID_MAX]; /* 2 bytes for EID and len */
+    uint8_t *buf_ptr, ssid_ie_len;
+    struct cfg80211_bss *bss = NULL;
+    uint8_t *final_req_ie = NULL;
+    tCsrRoamConnectedProfile roam_profile;
+    tHalHandle hal_handle = WLAN_HDD_GET_HAL_CTX(pAdapter);
 
     if (!rspRsnIe) {
         hddLog(LOGE, FL("Unable to allocate RSN IE"));
@@ -1334,11 +1340,47 @@ static void hdd_SendReAssocEvent(struct net_device *dev,
 
     chan = ieee80211_get_channel(pAdapter->wdev.wiphy,
                                  (int)pCsrRoamInfo->pBssDesc->channelId);
-    cfg80211_roamed(dev, chan, pCsrRoamInfo->bssid,
-                    reqRsnIe, reqRsnLength,
-                    rspRsnIe, rspRsnLength,GFP_KERNEL);
+    memset(&roam_profile, 0, sizeof(tCsrRoamConnectedProfile));
+    sme_RoamGetConnectProfile(hal_handle, pAdapter->sessionId, &roam_profile);
+    bss = cfg80211_get_bss(pAdapter->wdev.wiphy, chan, pCsrRoamInfo->bssid,
+        &roam_profile.SSID.ssId[0], roam_profile.SSID.length,
+        WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
+
+    if (bss == NULL)
+        hddLog(LOGE, FL("Get BSS returned NULL"));
+    buf_ptr = buf_ssid_ie;
+    *buf_ptr = SIR_MAC_SSID_EID;
+    buf_ptr++;
+    *buf_ptr = roam_profile.SSID.length; /*len of ssid*/
+    buf_ptr++;
+    vos_mem_copy(buf_ptr, &roam_profile.SSID.ssId[0],
+    roam_profile.SSID.length);
+    ssid_ie_len = 2 + roam_profile.SSID.length;
+    hddLog(LOG2, FL("SSIDIE:"));
+    VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
+       buf_ssid_ie, ssid_ie_len);
+    final_req_ie = kmalloc(IW_GENERIC_IE_MAX, GFP_KERNEL);
+    if (final_req_ie == NULL)
+        goto done;
+    buf_ptr = final_req_ie;
+    vos_mem_copy(buf_ptr, buf_ssid_ie, ssid_ie_len);
+    buf_ptr += ssid_ie_len;
+    vos_mem_copy(buf_ptr, reqRsnIe, reqRsnLength);
+    memcpy(rspRsnIe, pFTAssocRsp, len);
+    memset(final_req_ie + (ssid_ie_len + reqRsnLength), 0,
+    IW_GENERIC_IE_MAX - (ssid_ie_len + reqRsnLength));
+    hddLog(LOG2, FL("Req RSN IE:"));
+    VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
+       final_req_ie, (ssid_ie_len +reqRsnLength));
+    cfg80211_roamed_bss(dev, bss,
+       final_req_ie, (ssid_ie_len + reqRsnLength),
+       rspRsnIe, rspRsnLength, GFP_KERNEL);
+
 done:
-    kfree(rspRsnIe);
+   sme_RoamFreeConnectProfile(hal_handle, &roam_profile);
+   if (final_req_ie)
+      kfree(final_req_ie);
+   kfree(rspRsnIe);
 }
 
 void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter)

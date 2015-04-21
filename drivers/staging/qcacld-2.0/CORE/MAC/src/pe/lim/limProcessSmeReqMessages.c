@@ -1292,9 +1292,10 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     tpSirSmeScanReq     pScanReq;
     tANI_U8             i = 0;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
-    limDiagEventReport(pMac, WLAN_PE_DIAG_SCAN_REQ_EVENT, NULL, 0, 0);
-#endif //FEATURE_WLAN_DIAG_SUPPORT
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_SCAN_REQ_EVENT, NULL,
+                       eSIR_SUCCESS, eSIR_SUCCESS);
+#endif
 
     pScanReq = (tpSirSmeScanReq) pMsgBuf;
     limLog(pMac, LOG1, FL("SME SCAN REQ numChan %d min %d max %d IELen %d first %d fresh %d unique %d type %d mode %d rsp %d"),
@@ -2344,9 +2345,10 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         goto end;
     }
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
-    limDiagEventReport(pMac, WLAN_PE_DIAG_REASSOC_REQ_EVENT, psessionEntry, 0, 0);
-#endif //FEATURE_WLAN_DIAG_SUPPORT
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_REASSOC_REQ_EVENT, psessionEntry,
+                       eSIR_SUCCESS, eSIR_SUCCESS);
+#endif
     //pMac->lim.gpLimReassocReq = pReassocReq;//TO SUPPORT BT-AMP
 
     /* Store the reassoc handle in the session Table.. 23rd sep review */
@@ -5667,35 +5669,27 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
         case eWNI_SME_REASSOC_REQ:
             __limProcessSmeReassocReq(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_DISASSOC_REQ:
             __limProcessSmeDisassocReq(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_DISASSOC_CNF:
         case eWNI_SME_DEAUTH_CNF:
             __limProcessSmeDisassocCnf(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_DEAUTH_REQ:
             __limProcessSmeDeauthReq(pMac, pMsgBuf);
-
             break;
-
-
 
         case eWNI_SME_SETCONTEXT_REQ:
             __limProcessSmeSetContextReq(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_REMOVEKEY_REQ:
             __limProcessSmeRemoveKeyReq(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_STOP_BSS_REQ:

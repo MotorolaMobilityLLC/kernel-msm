@@ -167,95 +167,163 @@ defMsgDecision(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 
 #ifdef FEATURE_WLAN_EXTSCAN
 static void
-__limExtScanForwardBcnProbeRsp(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
-                               tSirProbeRespBeacon *pFrame, tANI_U32 ieLen)
+__lim_pno_match_fwd_bcn_probepsp(tpAniSirGlobal pmac, uint8_t *rx_pkt_info,
+				tSirProbeRespBeacon *frame, uint32_t ie_len,
+				uint32_t msg_type)
 {
-    tpSirWifiFullScanResultEvent fScanResult;
-    tANI_U8                     *pBody;
-    tSirMsgQ                     mmhMsg;
-    tpSirMacMgmtHdr              pHdr;
+	struct pno_match_found  *result;
+	uint8_t                 *body;
+	tSirMsgQ                mmh_msg;
+	tpSirMacMgmtHdr         hdr;
+	uint32_t num_results = 1, len, i;
 
-    fScanResult = vos_mem_malloc(sizeof(*fScanResult) + ieLen);
-    if (NULL == fScanResult) {
-        limLog(pMac, LOGE, FL("Memory allocation failed"));
-        return;
-    }
-    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-    pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
-    vos_mem_zero(fScanResult, sizeof(*fScanResult) + ieLen);
+	/* Upon receiving every matched beacon, bss info is forwarded to the
+	 * the upper layer, hence num_results is set to 1 */
+	len = sizeof(*result) + (num_results * sizeof(tSirWifiScanResult)) +
+		ie_len;
 
-    /* Received frame does not have request id, hence set 0 */
-    fScanResult->requestId = 0;
+	result = vos_mem_malloc(len);
+	if (NULL == result) {
+		limLog(pmac, LOGE, FL("Memory allocation failed"));
+		return;
+	}
+	hdr = WDA_GET_RX_MAC_HEADER(rx_pkt_info);
+	body = WDA_GET_RX_MPDU_DATA(rx_pkt_info);
+	vos_mem_zero(result, sizeof(*result) + ie_len);
 
-    fScanResult->moreData = 0;
-    fScanResult->ap.ts = vos_timer_get_system_time();
-    fScanResult->ap.beaconPeriod = pFrame->beaconInterval;
-    fScanResult->ap.capability = limGetU16((tANI_U8 *)&pFrame->capabilityInfo);
-    fScanResult->ap.channel = WDA_GET_RX_CH(pRxPacketInfo);
-    fScanResult->ap.rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
-    fScanResult->ap.rtt = 0;
-    fScanResult->ap.rtt_sd = 0;
-    fScanResult->ap.ieLength = ieLen;
+	/* Received frame does not have request id, hence set 0 */
+	result->request_id = 0;
+	result->more_data = 0;
+	result->num_results = num_results;
 
-    vos_mem_copy((tANI_U8 *) &fScanResult->ap.ssid[0],
-                 (tANI_U8 *) pFrame->ssId.ssId, pFrame->ssId.length);
-    fScanResult->ap.ssid[pFrame->ssId.length] = '\0';
-    vos_mem_copy((tANI_U8 *) &fScanResult->ap.bssid, (tANI_U8 *) pHdr->bssId,
-                 sizeof(tSirMacAddr));
-    /* Copy IE fields */
-    vos_mem_copy((tANI_U8 *) &fScanResult->ap.ieData,
-                 pBody + SIR_MAC_B_PR_SSID_OFFSET, ieLen);
+	for (i = 0; i < result->num_results; i++) {
+		result->ap[i].ts = vos_timer_get_system_time();
+		result->ap[i].beaconPeriod = frame->beaconInterval;
+		result->ap[i].capability =
+			limGetU16((uint8_t *)&frame->capabilityInfo);
+		result->ap[i].channel = WDA_GET_RX_CH(rx_pkt_info);
+		result->ap[i].rssi = WDA_GET_RX_RSSI_DB(rx_pkt_info);
+		result->ap[i].rtt = 0;
+		result->ap[i].rtt_sd = 0;
+		result->ap[i].ieLength = ie_len;
+		vos_mem_copy((uint8_t *) &result->ap[i].ssid[0],
+                 (uint8_t *) frame->ssId.ssId, frame->ssId.length);
+		result->ap[i].ssid[frame->ssId.length] = '\0';
+		vos_mem_copy((uint8_t *) &result->ap[i].bssid,
+				(uint8_t *) hdr->bssId,
+				sizeof(tSirMacAddr));
+		/* Copy IE fields */
+		vos_mem_copy((uint8_t *) &result->ap[i].ieData,
+				body + SIR_MAC_B_PR_SSID_OFFSET, ie_len);
+	}
 
-    mmhMsg.type = eWNI_SME_EXTSCAN_FULL_SCAN_RESULT_IND;
-    mmhMsg.bodyptr = fScanResult;
-    mmhMsg.bodyval = 0;
-    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+	mmh_msg.type = msg_type;
+	mmh_msg.bodyptr = result;
+	mmh_msg.bodyval = 0;
+	limSysProcessMmhMsgApi(pmac, &mmh_msg, ePROT);
 }
 
 static void
-__limProcessExtScanBeaconProbeRsp(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
-                                  tANI_U8 subType)
+__limExtScanForwardBcnProbeRsp(tpAniSirGlobal pmac, uint8_t *rx_pkt_info,
+				tSirProbeRespBeacon *frame, uint32_t ie_len,
+				uint32_t msg_type)
 {
-    tSirProbeRespBeacon         *pFrame;
-    tANI_U8                     *pBody;
-    tANI_U32                     frameLen;
-    tSirRetStatus                status;
+	tpSirWifiFullScanResultEvent result;
+	uint8_t                     *body;
+	tSirMsgQ                     mmh_msg;
+	tpSirMacMgmtHdr              hdr;
 
-    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-    if (frameLen <= SIR_MAC_B_PR_SSID_OFFSET) {
-        limLog(pMac, LOGP,
-               FL("RX packet has invalid length %d"), frameLen);
-        return;
-    }
+	result = vos_mem_malloc(sizeof(*result) + ie_len);
+	if (NULL == result) {
+		limLog(pmac, LOGE, FL("Memory allocation failed"));
+		return;
+	}
+	hdr = WDA_GET_RX_MAC_HEADER(rx_pkt_info);
+	body = WDA_GET_RX_MPDU_DATA(rx_pkt_info);
+	vos_mem_zero(result, sizeof(*result) + ie_len);
 
-    pFrame = vos_mem_malloc(sizeof(*pFrame));
-    if (NULL == pFrame) {
-        limLog(pMac, LOGE, FL("Memory allocation failed"));
-        return;
-    }
+	/* Received frame does not have request id, hence set 0 */
+	result->requestId = 0;
 
-    if (subType == SIR_MAC_MGMT_BEACON) {
-        limLog(pMac, LOG2, FL("Beacon due to ExtScan"));
-        status = sirConvertBeaconFrame2Struct(pMac, (tANI_U8 *)pRxPacketInfo,
-                                              pFrame);
-    } else if (subType == SIR_MAC_MGMT_PROBE_RSP) {
-        limLog(pMac, LOG2, FL("Probe Rsp due to ExtScan"));
-        pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
-        status = sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pFrame);
-    } else {
-        vos_mem_free(pFrame);
-        return;
-    }
+	result->moreData = 0;
+	result->ap.ts = vos_timer_get_system_time();
+	result->ap.beaconPeriod = frame->beaconInterval;
+	result->ap.capability = limGetU16((uint8_t *)&frame->capabilityInfo);
+	result->ap.channel = WDA_GET_RX_CH(rx_pkt_info);
+	result->ap.rssi = WDA_GET_RX_RSSI_DB(rx_pkt_info);
+	result->ap.rtt = 0;
+	result->ap.rtt_sd = 0;
+	result->ap.ieLength = ie_len;
 
-    if (status != eSIR_SUCCESS) {
-        limLog(pMac, LOGE, FL("Frame parsing failed"));
-        vos_mem_free(pFrame);
-        return;
-    }
+	vos_mem_copy((uint8_t *) &result->ap.ssid[0],
+                 (uint8_t *) frame->ssId.ssId, frame->ssId.length);
+	result->ap.ssid[frame->ssId.length] = '\0';
+	vos_mem_copy((uint8_t *) &result->ap.bssid, (uint8_t *) hdr->bssId,
+			sizeof(tSirMacAddr));
+	/* Copy IE fields */
+	vos_mem_copy((uint8_t *) &result->ap.ieData,
+			body + SIR_MAC_B_PR_SSID_OFFSET, ie_len);
 
-    __limExtScanForwardBcnProbeRsp(pMac, pRxPacketInfo, pFrame,
-                                  (frameLen - SIR_MAC_B_PR_SSID_OFFSET));
-    vos_mem_free(pFrame);
+	mmh_msg.type = msg_type;
+	mmh_msg.bodyptr = result;
+	mmh_msg.bodyval = 0;
+	limSysProcessMmhMsgApi(pmac, &mmh_msg, ePROT);
+}
+
+static void
+__limProcessExtScanBeaconProbeRsp(tpAniSirGlobal pmac, uint8_t *rx_pkt_info,
+                                  uint8_t sub_type)
+{
+	tSirProbeRespBeacon  *frame;
+	uint8_t              *body;
+	uint32_t             frm_len;
+	tSirRetStatus        status;
+
+	frm_len = WDA_GET_RX_PAYLOAD_LEN(rx_pkt_info);
+	if (frm_len <= SIR_MAC_B_PR_SSID_OFFSET) {
+		limLog(pmac, LOGP,
+			FL("RX packet has invalid length %d"), frm_len);
+		return;
+	}
+
+	frame = vos_mem_malloc(sizeof(*frame));
+	if (NULL == frame) {
+		limLog(pmac, LOGE, FL("Memory allocation failed"));
+		return;
+	}
+
+	if (sub_type == SIR_MAC_MGMT_BEACON) {
+		limLog(pmac, LOG2, FL("Beacon due to ExtScan/epno"));
+		status = sirConvertBeaconFrame2Struct(pmac,
+						(uint8_t *)rx_pkt_info,
+						frame);
+	} else if (sub_type == SIR_MAC_MGMT_PROBE_RSP) {
+		limLog(pmac, LOG2, FL("Probe Rsp due to ExtScan/epno"));
+		body = WDA_GET_RX_MPDU_DATA(rx_pkt_info);
+		status = sirConvertProbeFrame2Struct(pmac, body,
+							frm_len, frame);
+	} else {
+		vos_mem_free(frame);
+		return;
+	}
+
+	if (status != eSIR_SUCCESS) {
+		limLog(pmac, LOGE, FL("Frame parsing failed"));
+		vos_mem_free(frame);
+		return;
+	}
+
+	if (WMA_IS_EXTSCAN_SCAN_SRC(rx_pkt_info))
+		__limExtScanForwardBcnProbeRsp(pmac, rx_pkt_info, frame,
+					(frm_len - SIR_MAC_B_PR_SSID_OFFSET),
+					eWNI_SME_EXTSCAN_FULL_SCAN_RESULT_IND);
+
+	if (WMA_IS_EPNO_SCAN_SRC(rx_pkt_info))
+		__lim_pno_match_fwd_bcn_probepsp(pmac, rx_pkt_info, frame,
+					(frm_len - SIR_MAC_B_PR_SSID_OFFSET),
+					eWNI_SME_EPNO_NETWORK_FOUND_IND);
+
+	vos_mem_free(frame);
 }
 #endif
 
@@ -656,13 +724,14 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
         }
     }
 #ifdef FEATURE_WLAN_EXTSCAN
-    if (WMA_IS_EXTSCAN_SCAN_SRC(pRxPacketInfo)) {
+    if (WMA_IS_EXTSCAN_SCAN_SRC(pRxPacketInfo) ||
+        WMA_IS_EPNO_SCAN_SRC(pRxPacketInfo)) {
         if (fc.subType == SIR_MAC_MGMT_BEACON ||
             fc.subType == SIR_MAC_MGMT_PROBE_RSP) {
             __limProcessExtScanBeaconProbeRsp(pMac, pRxPacketInfo, fc.subType);
         } else {
-            limLog(pMac, LOGE, FL("Wrong frameType %d, Subtype %d for EXTSCAN"),
-                    fc.type, fc.subType);
+            limLog(pMac, LOGE, FL("Wrong frameType %d, Subtype %d for %d"),
+                    fc.type, fc.subType, WMA_GET_SCAN_SRC(pRxPacketInfo));
         }
         goto end;
     }

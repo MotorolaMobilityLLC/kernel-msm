@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -96,6 +96,7 @@ VOS_STATUS vos_list_destroy( vos_list_t *pList )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: list not initialized", __func__);
+      VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
 

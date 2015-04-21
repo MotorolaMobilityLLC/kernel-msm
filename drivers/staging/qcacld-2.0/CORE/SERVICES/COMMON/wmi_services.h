@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -59,7 +59,7 @@ typedef  enum  {
     WMI_SERVICE_WOW,                  /* WOW Support */
     WMI_SERVICE_RATECTRL_CACHE,       /* Rate-control caching */
     WMI_SERVICE_IRAM_TIDS,            /* TIDs in IRAM */
-    WMI_SERVICE_ARPNS_OFFLOAD,        /* ARP NS Offload support */
+    WMI_SERVICE_ARPNS_OFFLOAD,        /* ARP NS Offload support for STA vdev */
     WMI_SERVICE_NLO,                  /* Network list offload service */
     WMI_SERVICE_GTK_OFFLOAD,          /* GTK offload */
     WMI_SERVICE_SCAN_SCH,             /* Scan Scheduler Service */
@@ -116,6 +116,8 @@ typedef  enum  {
     WMI_SERVICE_MDNS_OFFLOAD,         /* mDNS responder offload support */
     WMI_SERVICE_SAP_AUTH_OFFLOAD,     /* softap auth offload */
     WMI_SERVICE_DUAL_BAND_SIMULTANEOUS_SUPPORT, /* Dual Band Simultaneous support */
+    WMI_SERVICE_OCB,                  /* OCB mode support */
+    WMI_SERVICE_AP_ARPNS_OFFLOAD,     /* arp offload support for ap mode vdev */
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;
 

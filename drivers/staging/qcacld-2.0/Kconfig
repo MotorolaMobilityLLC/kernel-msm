@@ -1,35 +1,13 @@
-comment "Qualcomm Atheros Prima WLAN module"
-
-config PRIMA_WLAN
-
-	tristate "Qualcomm Atheros Prima WLAN module"
-	default n
-	help
-	Add support for the Qualcomm Atheros Prima WLAN module
-
-config PRONTO_WLAN
-
-	tristate "Qualcomm Atheros Pronto WLAN module"
-	default n
-	help
-	Add support for the Qualcomm Atheros Pronto WLAN module
+comment "Qualcomm Atheros CLD WLAN module"
 
 config QCA_CLD_WLAN
 
-	tristate "Qualcomm QCA CLD WLAN module"
+	tristate "Qualcomm Atheros CLD WLAN module"
 	default n
 	help
-	Add support for the Qualcomm QCA CLD WLAN module
+	Add support for the Qualcomm Atheros CLD WLAN module
 
-#	depends on WLAN
-#	depends on CFG80211
-#        depends on WCNSS_CORE
-
-if PRIMA_WLAN != n || PRONTO_WLAN != n || QCA_CLD_WLAN
-
-config PRIMA_WLAN_BTAMP
-	bool "Enable the Prima WLAN BT-AMP feature"
-	default n
+if QCA_CLD_WLAN != n
 
 config QCACLD_WLAN_LFR3
 	bool "Enable the WLAN Legacy Fast Roaming feature Version 3"
@@ -55,8 +33,16 @@ config QCOM_VOWIFI_11R
 	bool "Enable Fast Transition (11r) feature"
 	default n
 
-config FEATURE_NAN
+config WLAN_FEATURE_NAN
 	bool "Enable NAN feature"
 	default n
 
-endif # PRIMA_WLAN || PRONTO_WLAN
+config QCOM_TDLS
+	bool "Enable TDLS feature"
+	default n
+
+config QCOM_LTE_COEX
+	bool "Enable QCOM LTE Coex feature"
+	default n
+
+endif # QCA_CLD_WLAN

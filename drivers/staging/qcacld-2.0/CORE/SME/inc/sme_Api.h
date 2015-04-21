@@ -363,7 +363,8 @@ void sme_SetCurrDeviceMode (tHalHandle hHal, tVOS_CON_MODE currDeviceMode);
 eHalStatus sme_CloseSession(tHalHandle hHal, tANI_U8 sessionId,
                          csrRoamSessionCloseCallback callback, void *pContext);
 
-
+eHalStatus sme_update_roam_params(tHalHandle hHal, uint8_t session_id,
+		struct roam_ext_params roam_params_src, int update_param);
 
 /*--------------------------------------------------------------------------
 
@@ -3568,60 +3569,6 @@ eHalStatus sme_RoamDelPMKIDfromCache( tHalHandle hHal, tANI_U8 sessionId,
 
 void smeGetCommandQStatus( tHalHandle hHal );
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-/* ---------------------------------------------------------------------------
-    \fn sme_SetBatchScanReq
-    \brief  API to set batch scan request in FW
-    \param  hHal - The handle returned by macOpen.
-    \param  pRequest -  Pointer to the batch request.
-    \param  sessionId - session ID
-    \param  callbackRoutine - HDD callback which needs to be invoked after
-            getting set batch scan response from FW
-    \param  callbackContext - pAdapter context
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus
-sme_SetBatchScanReq
-(
-    tHalHandle hHal, tSirSetBatchScanReq *pRequest, tANI_U8 sessionId,
-    void (*callbackRoutine) (void *callbackCtx, tSirSetBatchScanRsp *pRsp),
-    void *callbackContext
-);
-
-/* ---------------------------------------------------------------------------
-    \fn sme_TriggerBatchScanResultInd
-    \brief  API to trigger batch scan result indications from from FW
-    \param  hHal - The handle returned by macOpen.
-    \param  pRequest -  Pointer to get batch request.
-    \param  sessionId - session ID
-    \param  callbackRoutine - HDD callback which needs to be invoked after
-            getting get batch scan response from FW
-    \param  callbackContext - pAdapter context
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus
-sme_TriggerBatchScanResultInd
-(
-    tHalHandle hHal, tSirTriggerBatchScanResultInd *pRequest, tANI_U8 sessionId,
-    void (*callbackRoutine) (void *callbackCtx, void *pRsp),
-    void *callbackContext
-);
-
-/* ---------------------------------------------------------------------------
-    \fn sme_StopBatchScanInd
-    \brief  API to stop batch scan request in FW
-    \param  hHal - The handle returned by macOpen.
-    \param  pRequest -  Pointer to stop batch indication
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus
-sme_StopBatchScanInd
-(
-    tHalHandle hHal, tSirStopBatchScanInd *pInd, tANI_U8 sessionId
-);
-
-#endif
-
 /*
  * SME API to enable/disable idle mode powersave
  * This should be called only if powersave offload
@@ -3922,6 +3869,10 @@ eHalStatus sme_SetBssHotlist (tHalHandle hHal,
 eHalStatus sme_ResetBssHotlist (tHalHandle hHal,
                              tSirExtScanResetBssidHotlistReqParams *pResetReq);
 
+eHalStatus
+sme_set_ssid_hotlist(tHalHandle hal,
+		     struct sir_set_ssid_hotlist_request *request);
+
 /* ---------------------------------------------------------------------------
     \fn sme_SetSignificantChange
     \brief  SME API to set significant change
@@ -3951,6 +3902,13 @@ eHalStatus sme_ResetSignificantChange (tHalHandle hHal,
     -------------------------------------------------------------------------*/
 eHalStatus sme_getCachedResults (tHalHandle hHal,
                       tSirExtScanGetCachedResultsReqParams *pCachedResultsReq);
+
+eHalStatus sme_set_epno_list(tHalHandle hal,
+                                struct wifi_epno_params *req_msg);
+eHalStatus sme_set_passpoint_list(tHalHandle hal,
+				  struct wifi_passpoint_req *req_msg);
+eHalStatus sme_reset_passpoint_list(tHalHandle hal,
+				    struct wifi_passpoint_req *req_msg);
 
 /* ---------------------------------------------------------------------------
     \fn sme_ExtScanRegisterCallback
@@ -4120,5 +4078,18 @@ eHalStatus sme_SetLedFlashing (tHalHandle hHal, tANI_U8 type,
     \return eHalStatus
     -------------------------------------------------------------------------*/
 eHalStatus sme_handle_dfs_chan_scan(tHalHandle hHal, tANI_U8 dfs_flag);
+
+eHalStatus sme_configure_modulated_dtim(tHalHandle hHal, tANI_U8 session_id,
+					tANI_U32 modulated_dtim);
+
+eHalStatus sme_configure_stats_avg_factor(tHalHandle hHal, tANI_U8 session_id,
+					  tANI_U16 stats_avg_factor);
+
+eHalStatus sme_configure_guard_time(tHalHandle hHal, tANI_U8 session_id,
+                                    tANI_U32 guard_time);
+eHalStatus sme_update_roam_scan_hi_rssi_scan_params(tHalHandle hal_handle,
+	uint8_t session_id,
+	uint32_t notify_id,
+	int32_t val);
 
 #endif //#if !defined( __SME_API_H )

@@ -101,6 +101,11 @@
 #define IS_DOT11_MODE_11B(dot11Mode)  \
             ((dot11Mode == WNI_CFG_DOT11_MODE_11B) ? TRUE : FALSE)
 
+#define IS_BSS_VHT_CAPABLE(vhtCaps) \
+		((vhtCaps).present && \
+		((vhtCaps).rxMCSMap != 0xFFFF) && \
+		((vhtCaps).txMCSMap != 0xFFFF))
+
 /// Proprietary IE definition
 typedef struct sSirMacPropIE
 {

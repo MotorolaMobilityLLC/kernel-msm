@@ -1652,6 +1652,90 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
    return status;
 }
 
+/**
+ * sme_update_roam_params - Store/Update the roaming params
+ * @hHal                    Handle for Hal layer
+ * @session_id              SME Session ID
+ * @roam_params_src         The source buffer to copy
+ * @update_param            Type of parameter to be updated
+ *
+ * Return: Return the status of the updation.
+ */
+eHalStatus sme_update_roam_params(tHalHandle hHal,
+	uint8_t session_id, struct roam_ext_params roam_params_src,
+	int update_param)
+{
+	tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+	struct roam_ext_params *roam_params_dst;
+	uint8_t i;
+
+	roam_params_dst = &pMac->roam.configParam.roam_params;
+	switch(update_param) {
+	case REASON_ROAM_EXT_SCAN_PARAMS_CHANGED:
+		roam_params_dst->raise_rssi_thresh_5g =
+			roam_params_src.raise_rssi_thresh_5g;
+		roam_params_dst->drop_rssi_thresh_5g =
+			roam_params_src.drop_rssi_thresh_5g;
+		roam_params_dst->raise_factor_5g=
+			roam_params_src.raise_factor_5g;
+		roam_params_dst->drop_factor_5g =
+			roam_params_src.drop_factor_5g;
+		roam_params_dst->max_raise_rssi_5g =
+			roam_params_src.max_raise_rssi_5g;
+		roam_params_dst->max_drop_rssi_5g=
+			roam_params_src.max_drop_rssi_5g;
+		roam_params_dst->alert_rssi_threshold =
+			roam_params_src.alert_rssi_threshold;
+		roam_params_dst->is_5g_pref_enabled = true;
+		break;
+	case REASON_ROAM_SET_SSID_ALLOWED:
+		vos_mem_set(&roam_params_dst->ssid_allowed_list, 0,
+				sizeof(tSirMacSSid) * MAX_SSID_ALLOWED_LIST);
+		roam_params_dst->num_ssid_allowed_list=
+			roam_params_src.num_ssid_allowed_list;
+		for (i=0; i<roam_params_dst->num_ssid_allowed_list; i++) {
+			roam_params_dst->ssid_allowed_list[i].length =
+				roam_params_src.ssid_allowed_list[i].length;
+			vos_mem_copy(roam_params_dst->ssid_allowed_list[i].ssId,
+				roam_params_src.ssid_allowed_list[i].ssId,
+				roam_params_dst->ssid_allowed_list[i].length);
+		}
+		break;
+	case REASON_ROAM_SET_FAVORED_BSSID:
+		vos_mem_set(&roam_params_dst->bssid_favored, 0,
+			sizeof(tSirMacAddr) * MAX_BSSID_FAVORED);
+		roam_params_dst->num_bssid_favored=
+			roam_params_src.num_bssid_favored;
+		for (i=0; i<roam_params_dst->num_bssid_favored; i++) {
+			vos_mem_copy(&roam_params_dst->bssid_favored[i],
+				&roam_params_src.bssid_favored[i],
+				sizeof(tSirMacAddr));
+			roam_params_dst->bssid_favored_factor[i] =
+				roam_params_src.bssid_favored_factor[i];
+		}
+		break;
+	case REASON_ROAM_SET_BLACKLIST_BSSID:
+		vos_mem_set(&roam_params_dst->bssid_avoid_list, 0,
+			sizeof(tSirMacAddr) * MAX_BSSID_AVOID_LIST);
+		roam_params_dst->num_bssid_avoid_list =
+			roam_params_src.num_bssid_avoid_list;
+		for (i=0; i<roam_params_dst->num_bssid_avoid_list; i++) {
+			vos_mem_copy(&roam_params_dst->bssid_avoid_list[i],
+				&roam_params_src.bssid_avoid_list[i],
+				sizeof(tSirMacAddr));
+		}
+		break;
+	case REASON_ROAM_GOOD_RSSI_CHANGED:
+		roam_params_dst->good_rssi_roam =
+			roam_params_src.good_rssi_roam;
+		break;
+	default:
+		break;
+	}
+	csrRoamOffloadScan(pMac, session_id,
+		ROAM_SCAN_OFFLOAD_UPDATE_CFG, update_param);
+	return 0;
+}
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
 void sme_ProcessGetGtkInfoRsp( tHalHandle hHal,
                             tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp)
@@ -2794,6 +2878,14 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
           {
                 pMac->sme.pExtScanIndCb(pMac->hHdd,
                                         eSIR_EXTSCAN_FULL_SCAN_RESULT_IND,
+                                        pMsg->bodyptr);
+                vos_mem_free(pMsg->bodyptr);
+                break;
+          }
+          case eWNI_SME_EPNO_NETWORK_FOUND_IND:
+          {
+                pMac->sme.pExtScanIndCb(pMac->hHdd,
+                                        eSIR_EPNO_NETWORK_FOUND_IND,
                                         pMsg->bodyptr);
                 vos_mem_free(pMsg->bodyptr);
                 break;
@@ -11987,102 +12079,6 @@ void smeGetCommandQStatus( tHalHandle hHal )
     return;
 }
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-/* ---------------------------------------------------------------------------
-    \fn sme_SetBatchScanReq
-    \brief  API to set batch scan request in FW
-    \param  hHal - The handle returned by macOpen.
-    \param  pRequest -  Pointer to the batch request.
-    \param  sessionId - session ID
-    \param  callbackRoutine - HDD callback which needs to be invoked after
-            getting set batch scan response from FW
-    \param  callbackContext - pAdapter context
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_SetBatchScanReq
-(
-    tHalHandle hHal, tSirSetBatchScanReq *pRequest, tANI_U8 sessionId,
-    void (*callbackRoutine) (void *callbackCtx, tSirSetBatchScanRsp *pRsp),
-    void *callbackContext
-)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus status;
-
-    if (!pMac)
-    {
-        return eHAL_STATUS_FAILURE;
-    }
-
-    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
-    {
-       status = pmcSetBatchScanReq(hHal, pRequest, sessionId, callbackRoutine,
-                  callbackContext);
-       sme_ReleaseGlobalLock( &pMac->sme );
-    }
-
-    return status;
-}
-
-/* ---------------------------------------------------------------------------
-    \fn sme_TriggerBatchScanResultInd
-    \brief  API to trigger batch scan result indications from FW
-    \param  hHal - The handle returned by macOpen.
-    \param  pRequest -  Pointer to get batch request.
-    \param  sessionId - session ID
-    \param  callbackRoutine - HDD callback which needs to be invoked after
-            getting batch scan result indication from FW
-    \param  callbackContext - pAdapter context
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_TriggerBatchScanResultInd
-(
-    tHalHandle hHal, tSirTriggerBatchScanResultInd *pRequest, tANI_U8 sessionId,
-    void (*callbackRoutine) (void *callbackCtx, void *pRsp),
-    void *callbackContext
-)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus status;
-
-    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
-    {
-       status = pmcTriggerBatchScanResultInd(hHal, pRequest, sessionId,
-                   callbackRoutine, callbackContext);
-       sme_ReleaseGlobalLock( &pMac->sme );
-    }
-
-    return status;
-}
-
-
-/* ---------------------------------------------------------------------------
-    \fn sme_StopBatchScanInd
-    \brief  API to stop batch scan request in FW
-    \param  hHal - The handle returned by macOpen.
-    \param  pRequest -  Pointer to the batch request.
-    \param  sessionId - session ID
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_StopBatchScanInd
-(
-    tHalHandle hHal, tSirStopBatchScanInd *pRequest, tANI_U8 sessionId
-)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus status;
-
-    if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme )))
-    {
-       status = pmcStopBatchScanInd(hHal, pRequest, sessionId);
-       sme_ReleaseGlobalLock( &pMac->sme );
-    }
-
-    return status;
-}
-
-#endif
-
 void sme_getRecoveryStats(tHalHandle hHal) {
     tANI_U8 i;
 
@@ -13763,6 +13759,52 @@ eHalStatus sme_ResetBssHotlist (tHalHandle hHal,
     return status;
 }
 
+/**
+ * sme_set_ssid_hotlist() - Set the SSID hotlist
+ * @hal: SME handle
+ * @request: set ssid hotlist request
+ *
+ * Return: eHalStatus
+ */
+eHalStatus
+sme_set_ssid_hotlist(tHalHandle hal,
+		     struct sir_set_ssid_hotlist_request *request)
+{
+	eHalStatus status;
+	VOS_STATUS vstatus;
+	tpAniSirGlobal mac = PMAC_STRUCT(hal);
+	vos_msg_t vos_message;
+	struct sir_set_ssid_hotlist_request *set_req;
+
+	set_req = vos_mem_malloc(sizeof(*set_req));
+	if (!set_req) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  "%s: Not able to allocate memory for WDA_EXTSCAN_SET_SSID_HOTLIST_REQ",
+			  __func__);
+		return eHAL_STATUS_FAILURE;
+	}
+
+	*set_req = *request;
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (eHAL_STATUS_SUCCESS == status) {
+		/* Serialize the req through MC thread */
+		vos_message.bodyptr = set_req;
+		vos_message.type    = WDA_EXTSCAN_SET_SSID_HOTLIST_REQ;
+		vstatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+		sme_ReleaseGlobalLock(&mac->sme);
+		if (!VOS_IS_STATUS_SUCCESS(vstatus)) {
+			vos_mem_free(set_req);
+			status = eHAL_STATUS_FAILURE;
+		}
+	} else {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  "%s: sme_AcquireGlobalLock error", __func__);
+		vos_mem_free(set_req);
+		status = eHAL_STATUS_FAILURE;
+	}
+	return status;
+}
+
 /* ---------------------------------------------------------------------------
     \fn sme_SetSignificantChange
     \brief  SME API to set significant change
@@ -13845,6 +13887,198 @@ eHalStatus sme_getCachedResults (tHalHandle hHal,
         sme_ReleaseGlobalLock(&pMac->sme);
     }
     return status;
+}
+
+/**
+ * sme_set_epno_list() - set epno network list
+ * @hHal: global hal handle
+ * @input: request message
+ *
+ * This function constructs the vos message and fill in message type,
+ * bodyptr with %input and posts it to WDA queue.
+ *
+ * Return: eHalStatus enumeration
+ */
+eHalStatus sme_set_epno_list(tHalHandle hal,
+				struct wifi_epno_params *input)
+{
+        eHalStatus status     = eHAL_STATUS_SUCCESS;
+        VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac   = PMAC_STRUCT(hal);
+	vos_msg_t vos_message;
+	struct wifi_epno_params *req_msg;
+	int len, i;
+
+	smsLog(mac, LOG1, FL("enter"));
+	len = sizeof(*req_msg) +
+		(input->num_networks * sizeof(struct wifi_epno_network));
+	req_msg = vos_mem_malloc(len);
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
+
+	vos_mem_zero(req_msg, len);
+	req_msg->num_networks = input->num_networks;
+	req_msg->request_id = input->request_id;
+	req_msg->session_id = input->session_id;
+	for (i = 0; i < req_msg->num_networks; i++) {
+		req_msg->networks[i].rssi_threshold =
+				input->networks[i].rssi_threshold;
+		req_msg->networks[i].flags = input->networks[i].flags;
+		req_msg->networks[i].auth_bit_field =
+				input->networks[i].auth_bit_field;
+		req_msg->networks[i].ssid.length =
+				input->networks[i].ssid.length;
+		vos_mem_copy(req_msg->networks[i].ssid.ssId,
+				input->networks[i].ssid.ssId,
+				req_msg->networks[i].ssid.length);
+	}
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		vos_mem_free(req_msg);
+		return status;
+	}
+
+	/* Serialize the req through MC thread */
+	vos_message.bodyptr = req_msg;
+	vos_message.type    = WDA_SET_EPNO_LIST_REQ;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		vos_mem_free(req_msg);
+		status = eHAL_STATUS_FAILURE;
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+        return status;
+}
+
+/**
+ * sme_set_passpoint_list() - set passpoint network list
+ * @hal: global hal handle
+ * @input: request message
+ *
+ * This function constructs the vos message and fill in message type,
+ * bodyptr with @input and posts it to WDA queue.
+ *
+ * Return: eHalStatus enumeration
+ */
+eHalStatus sme_set_passpoint_list(tHalHandle hal,
+				struct wifi_passpoint_req *input)
+{
+	eHalStatus status     = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac   = PMAC_STRUCT(hal);
+	vos_msg_t vos_message;
+	struct wifi_passpoint_req *req_msg;
+	int len, i;
+
+	smsLog(mac, LOG1, FL("enter"));
+	len = sizeof(*req_msg) +
+		(input->num_networks * sizeof(struct wifi_passpoint_network));
+	req_msg = vos_mem_malloc(len);
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
+
+	vos_mem_zero(req_msg, len);
+	req_msg->num_networks = input->num_networks;
+	req_msg->request_id = input->request_id;
+	req_msg->session_id = input->session_id;
+	for (i = 0; i < req_msg->num_networks; i++) {
+		req_msg->networks[i].id =
+				input->networks[i].id;
+		vos_mem_copy(req_msg->networks[i].realm,
+				input->networks[i].realm,
+				strlen(input->networks[i].realm) + 1);
+		vos_mem_copy(req_msg->networks[i].plmn,
+				input->networks[i].plmn,
+				SIR_PASSPOINT_PLMN_LEN);
+		vos_mem_copy(req_msg->networks[i].roaming_consortium_ids,
+			     input->networks[i].roaming_consortium_ids,
+			sizeof(req_msg->networks[i].roaming_consortium_ids));
+	}
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		vos_mem_free(req_msg);
+		return status;
+	}
+
+	/* Serialize the req through MC thread */
+	vos_message.bodyptr = req_msg;
+	vos_message.type    = WDA_SET_PASSPOINT_LIST_REQ;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		vos_mem_free(req_msg);
+		status = eHAL_STATUS_FAILURE;
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+        return status;
+}
+
+/**
+ * sme_reset_passpoint_list() - reset passpoint network list
+ * @hHal: global hal handle
+ * @input: request message
+ *
+ * Return: eHalStatus enumeration
+ */
+eHalStatus sme_reset_passpoint_list(tHalHandle hal,
+				    struct wifi_passpoint_req *input)
+{
+	eHalStatus status     = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac   = PMAC_STRUCT(hal);
+	vos_msg_t vos_message;
+	struct wifi_passpoint_req *req_msg;
+
+	smsLog(mac, LOG1, FL("enter"));
+	req_msg = vos_mem_malloc(sizeof(*req_msg));
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
+
+	vos_mem_zero(req_msg, sizeof(*req_msg));
+	req_msg->request_id = input->request_id;
+	req_msg->session_id = input->session_id;
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		vos_mem_free(req_msg);
+		return status;
+	}
+
+	/* Serialize the req through MC thread */
+	vos_message.bodyptr = req_msg;
+	vos_message.type    = WDA_RESET_PASSPOINT_LIST_REQ;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		vos_mem_free(req_msg);
+		status = eHAL_STATUS_FAILURE;
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+        return status;
 }
 
 eHalStatus sme_ExtScanRegisterCallback (tHalHandle hHal,
@@ -14214,3 +14448,263 @@ eHalStatus sme_handle_dfs_chan_scan(tHalHandle hHal, tANI_U8 dfs_flag)
 }
 
 
+/**
+ * sme_configure_stats_avg_factor() - function to config avg. stats factor
+ * @hHal: hHal
+ * @session_id: session ID
+ * @stats_avg_factor: average stats factor
+ *
+ * This function configures the guard time in firmware
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_configure_stats_avg_factor(tHalHandle hHal, tANI_U8 session_id,
+                                          tANI_U16 stats_avg_factor)
+{
+	vos_msg_t msg;
+	eHalStatus status = eHAL_STATUS_SUCCESS;
+	tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+	struct sir_stats_avg_factor *stats_factor;
+
+	stats_factor = vos_mem_malloc(sizeof(*stats_factor));
+
+	if (!stats_factor) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  "%s: Not able to allocate memory for WDA_SET_MDNS_RESPONSE_CMD",
+			  __func__);
+		return eHAL_STATUS_E_MALLOC_FAILED;
+	}
+
+	status = sme_AcquireGlobalLock(&pMac->sme);
+
+	if (eHAL_STATUS_SUCCESS == status) {
+
+		stats_factor->vdev_id = session_id;
+		stats_factor->stats_avg_factor = stats_avg_factor;
+
+		/* serialize the req through MC thread */
+		msg.type     = SIR_HAL_CONFIG_STATS_FACTOR;
+		msg.bodyptr  = stats_factor;
+
+		if (!VOS_IS_STATUS_SUCCESS(
+			    vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))) {
+			VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				   "%s: Not able to post SIR_HAL_CONFIG_STATS_FACTOR to WMA!",
+				   __func__);
+			vos_mem_free(stats_factor);
+			status = eHAL_STATUS_FAILURE;
+		}
+		sme_ReleaseGlobalLock(&pMac->sme);
+	} else {
+		VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			   "%s: sme_AcquireGlobalLock error!",
+			   __func__);
+		vos_mem_free(stats_factor);
+	}
+
+	return status;
+}
+
+/**
+ * sme_configure_guard_time() - function to configure guard time
+ * @hHal:   SME API to enable/disable DFS channel scan
+ * @session_id: session ID
+ * @guard_time: Guard time
+ *
+ * This function configures the guard time in firmware
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_configure_guard_time(tHalHandle hHal, tANI_U8 session_id,
+                                    tANI_U32 guard_time)
+{
+	vos_msg_t msg;
+	eHalStatus status = eHAL_STATUS_SUCCESS;
+	tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
+	struct sir_guard_time_request *g_time;
+
+	g_time = vos_mem_malloc(sizeof(g_time));
+
+	if (!g_time) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  "%s: Not able to allocate memory for WDA_SET_MDNS_RESPONSE_CMD",
+			  __func__);
+		return eHAL_STATUS_E_MALLOC_FAILED;
+	}
+
+	status = sme_AcquireGlobalLock(&pMac->sme);
+
+	if (eHAL_STATUS_SUCCESS == status) {
+
+		g_time->vdev_id = session_id;
+		g_time->guard_time = guard_time;
+
+		/* serialize the req through MC thread */
+		msg.type     = SIR_HAL_CONFIG_GUARD_TIME;
+		msg.bodyptr  = g_time;
+
+		if (!VOS_IS_STATUS_SUCCESS(
+			    vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))) {
+			VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				   "%s: Not able to post SIR_HAL_CONFIG_GUARD_TIME to WDA!",
+				   __func__);
+			vos_mem_free(g_time);
+			status = eHAL_STATUS_FAILURE;
+		}
+		sme_ReleaseGlobalLock(&pMac->sme);
+	} else {
+		VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			   "%s: sme_AcquireGlobalLock error!",
+			   __func__);
+		vos_mem_free(g_time);
+	}
+
+	return status;
+}
+
+/**
+ * sme_update_roam_scan_hi_rssi_scan_params() - update high rssi scan
+ *         params
+ * @hal_handle - The handle returned by macOpen.
+ * @session_id - Session Identifier
+ * @notify_id - Identifies 1 of the 4 parameters to be modified
+ * @val New value of the parameter
+ *
+ * Return: eHAL_STATUS_SUCCESS - SME update config successful.
+ *         Other status means SME failed to update
+ */
+
+eHalStatus sme_update_roam_scan_hi_rssi_scan_params(tHalHandle hal_handle,
+	uint8_t session_id,
+	uint32_t notify_id,
+	int32_t val)
+{
+	tpAniSirGlobal mac_ctx = PMAC_STRUCT(hal_handle);
+	eHalStatus status  = eHAL_STATUS_SUCCESS;
+	tCsrNeighborRoamConfig *nr_config = NULL;
+	tpCsrNeighborRoamControlInfo nr_info = NULL;
+	uint32_t reason = 0;
+
+	status = sme_AcquireGlobalLock(&mac_ctx->sme);
+	if (HAL_STATUS_SUCCESS(status)) {
+		nr_config = &mac_ctx->roam.configParam.neighborRoamConfig;
+		nr_info   = &mac_ctx->roam.neighborRoamInfo[session_id];
+		switch (notify_id) {
+		case eCSR_HI_RSSI_SCAN_MAXCOUNT_ID:
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+				"%s: gRoamScanHirssiMaxCount is changed from %d to %d",
+				__func__, nr_config->nhi_rssi_scan_max_count,
+				val);
+			nr_config->nhi_rssi_scan_max_count = val;
+			nr_info->cfgParams.hi_rssi_scan_max_count = val;
+			reason = REASON_ROAM_SCAN_HI_RSSI_MAXCOUNT_CHANGED;
+		break;
+
+		case eCSR_HI_RSSI_SCAN_RSSI_DELTA_ID:
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+				"%s: gRoamScanHiRssiDelta is changed from %d to %d",
+				__func__, nr_config->nhi_rssi_scan_rssi_delta,
+				val);
+			nr_config->nhi_rssi_scan_rssi_delta = val;
+			nr_info->cfgParams.hi_rssi_scan_rssi_delta = val;
+			reason = REASON_ROAM_SCAN_HI_RSSI_DELTA_CHANGED;
+			break;
+
+		case eCSR_HI_RSSI_SCAN_DELAY_ID:
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+				"%s: gRoamScanHiRssiDelay is changed from %d to %d",
+				__func__, nr_config->nhi_rssi_scan_delay,
+				val);
+			nr_config->nhi_rssi_scan_delay = val;
+			nr_info->cfgParams.hi_rssi_scan_delay = val;
+			reason = REASON_ROAM_SCAN_HI_RSSI_DELAY_CHANGED;
+			break;
+
+		case eCSR_HI_RSSI_SCAN_RSSI_UB_ID:
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+				"%s: gRoamScanHiRssiUpperBound is changed from %d to %d",
+				__func__,
+				nr_config->nhi_rssi_scan_rssi_ub,
+				val);
+			nr_config->nhi_rssi_scan_rssi_ub = val;
+			nr_info->cfgParams.hi_rssi_scan_rssi_ub = val;
+			reason = REASON_ROAM_SCAN_HI_RSSI_UB_CHANGED;
+			break;
+
+		default:
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				"%s: invalid parameter notify_id %d", __func__,
+				notify_id);
+			status = eHAL_STATUS_INVALID_PARAMETER;
+			break;
+		}
+		sme_ReleaseGlobalLock(&mac_ctx->sme);
+	}
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+	if (mac_ctx->roam.configParam.isRoamOffloadScanEnabled &&
+		status == eHAL_STATUS_SUCCESS) {
+		csrRoamOffloadScan(mac_ctx, session_id,
+			ROAM_SCAN_OFFLOAD_UPDATE_CFG, reason);
+	}
+#endif
+
+	return status;
+}
+
+/**
+ * sme_configure_modulated_dtim() - function to configure modulated dtim
+ * @h_hal: SME API to enable/disable modulated DTIM instantaneously
+ * @session_id: session ID
+ * @modulated_dtim: modulated dtim value
+ *
+ * This function configures the guard time in firmware
+ *
+ * Return: eHalStatus
+ */
+eHalStatus sme_configure_modulated_dtim(tHalHandle h_hal, tANI_U8 session_id,
+				      tANI_U32 modulated_dtim)
+{
+	vos_msg_t msg;
+	eHalStatus status = eHAL_STATUS_SUCCESS;
+	tpAniSirGlobal pMac  = PMAC_STRUCT(h_hal);
+	wda_cli_set_cmd_t *iwcmd;
+
+	iwcmd = vos_mem_malloc(sizeof(*iwcmd));
+	if (NULL == iwcmd) {
+		VOS_TRACE(VOS_MODULE_ID_SME,
+			  VOS_TRACE_LEVEL_FATAL,
+			  "%s: vos_mem_alloc failed", __func__);
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
+
+	status = sme_AcquireGlobalLock(&pMac->sme);
+
+	if (eHAL_STATUS_SUCCESS == status) {
+
+		vos_mem_zero((void *)iwcmd, sizeof(*iwcmd));
+		iwcmd->param_value = modulated_dtim;
+		iwcmd->param_vdev_id = session_id;
+		iwcmd->param_id = GEN_PARAM_MODULATED_DTIM;
+		iwcmd->param_vp_dev = GEN_CMD;
+		msg.type = WDA_CLI_SET_CMD;
+		msg.reserved = 0;
+		msg.bodyptr = (void *)iwcmd;
+
+		if (!VOS_IS_STATUS_SUCCESS(
+			    vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))) {
+			VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				   "%s: Not able to post SIR_HAL_CONFIG_GUARD_TIME to WDA!",
+				   __func__);
+			vos_mem_free(iwcmd);
+			status = eHAL_STATUS_FAILURE;
+		}
+		sme_ReleaseGlobalLock(&pMac->sme);
+	} else {
+		VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			   "%s: sme_AcquireGlobalLock error!",
+			   __func__);
+		vos_mem_free(iwcmd);
+	}
+
+	return status;
+}

@@ -1669,6 +1669,8 @@ hif_pci_remove(struct pci_dev *pdev)
 
     pci_disable_msi(pdev);
 
+    hif_dump_pipe_debug_count(sc->hif_device);
+
     hif_deinit_adf_ctx(scn);
     A_FREE(scn);
     A_FREE(sc->hif_device);
@@ -1716,6 +1718,8 @@ void hif_pci_shutdown(struct pci_dev *pdev)
 
     if (!vos_is_ssr_ready(__func__))
         printk("Host driver is not ready for SSR, attempting anyway\n");
+
+    hif_dump_pipe_debug_count(sc->hif_device);
 
     if (!WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
         hdd_wlan_shutdown();

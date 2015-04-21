@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -69,7 +69,6 @@
 #include <ol_tx_queue.h>
 #include <ol_tx_sched.h>           /* ol_tx_sched_attach, etc. */
 #include <ol_txrx.h>
-
 
 /*=== function definitions ===*/
 
@@ -885,6 +884,7 @@ ol_txrx_vdev_attach(
     adf_os_atomic_set(&vdev->os_q_paused, 0);
     vdev->tx_fl_lwm = 0;
     vdev->tx_fl_hwm = 0;
+    vdev->wait_on_peer_id = OL_TXRX_INVALID_LOCAL_PEER_ID;
     vdev->osif_flow_control_cb = NULL;
     /* Default MAX Q depth for every VDEV */
     vdev->ll_pause.max_q_depth =
@@ -1054,6 +1054,8 @@ ol_txrx_peer_attach(
     struct ol_txrx_peer_t *temp_peer;
     u_int8_t i;
     int differs;
+    bool wait_on_deletion = false;
+    unsigned long rc;
 
     /* preconditions */
     TXRX_ASSERT2(pdev);
@@ -1071,11 +1073,32 @@ ol_txrx_peer_attach(
                 peer_mac_addr[0], peer_mac_addr[1],
                 peer_mac_addr[2], peer_mac_addr[3],
                 peer_mac_addr[4], peer_mac_addr[5]);
-            adf_os_spin_unlock_bh(&pdev->peer_ref_mutex);
-            return NULL;
+            if (adf_os_atomic_read(&temp_peer->delete_in_progress)) {
+                vdev->wait_on_peer_id = temp_peer->local_id;
+                adf_os_init_completion(&vdev->wait_delete_comp);
+                wait_on_deletion = true;
+            } else {
+                adf_os_spin_unlock_bh(&pdev->peer_ref_mutex);
+                return NULL;
+            }
         }
     }
+
     adf_os_spin_unlock_bh(&pdev->peer_ref_mutex);
+
+    if (wait_on_deletion) {
+        /* wait for peer deletion */
+        rc = adf_os_wait_for_completion_timeout(
+                            &vdev->wait_delete_comp,
+                            adf_os_msecs_to_ticks(PEER_DELETION_TIMEOUT));
+        if (!rc) {
+             TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+                 "timedout waiting for peer(%d) deletion\n",
+                 vdev->wait_on_peer_id);
+             vdev->wait_on_peer_id = OL_TXRX_INVALID_LOCAL_PEER_ID;
+             return NULL;
+        }
+    }
 
     peer = adf_os_mem_alloc(pdev->osdev, sizeof(*peer));
     if (!peer) {
@@ -1432,6 +1455,8 @@ ol_txrx_peer_unref_delete(ol_txrx_peer_handle peer)
      */
     adf_os_spin_lock_bh(&pdev->peer_ref_mutex);
     if (adf_os_atomic_dec_and_test(&peer->ref_cnt)) {
+        u_int16_t peer_id;
+
         TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
             "Deleting peer %p (%02x:%02x:%02x:%02x:%02x:%02x)\n",
             peer,
@@ -1439,6 +1464,7 @@ ol_txrx_peer_unref_delete(ol_txrx_peer_handle peer)
             peer->mac_addr.raw[2], peer->mac_addr.raw[3],
             peer->mac_addr.raw[4], peer->mac_addr.raw[5]);
 
+        peer_id = peer->local_id;
         /* remove the reference to the peer from the hash table */
         ol_txrx_peer_find_hash_remove(pdev, peer);
 
@@ -1450,6 +1476,14 @@ ol_txrx_peer_unref_delete(ol_txrx_peer_handle peer)
 
         /* peer is removed from peer_list */
         adf_os_atomic_set(&peer->delete_in_progress, 0);
+
+        /* Set wait_delete_comp event if the current peer id matches
+         * with registered peer id.
+         */
+        if (peer_id == vdev->wait_on_peer_id) {
+            adf_os_complete(&vdev->wait_delete_comp);
+            vdev->wait_on_peer_id = OL_TXRX_INVALID_LOCAL_PEER_ID;
+        }
 
         /* check whether the parent vdev has no peers left */
         if (TAILQ_EMPTY(&vdev->peer_list)) {

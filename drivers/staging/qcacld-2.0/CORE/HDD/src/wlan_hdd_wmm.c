@@ -63,9 +63,6 @@
 #include <wlan_hdd_hostapd.h>
 #include <wlan_hdd_softap_tx_rx.h>
 #include <vos_sched.h>
-#ifdef CONFIG_CNSS
-#include <net/cnss.h>
-#endif
 
 // change logging behavior based upon debug flag
 #ifdef HDD_WMM_DEBUG

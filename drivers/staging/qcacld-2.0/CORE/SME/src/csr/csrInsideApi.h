@@ -96,11 +96,12 @@
 #define CSR_BEST_RSSI_VALUE         (-30)   //RSSI >= this is in CAT4
 #define CSR_DEFAULT_RSSI_DB_GAP     30 //every 30 dbm for one category
 #define CSR_BSS_CAP_VALUE_NONE  0    //not much value
-#define CSR_BSS_CAP_VALUE_HT    2
+#define CSR_BSS_CAP_VALUE_HT    1
+#define CSR_BSS_CAP_VALUE_VHT   2
 #define CSR_BSS_CAP_VALUE_WMM   1
 #define CSR_BSS_CAP_VALUE_UAPSD 1
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
-#define CSR_BSS_CAP_VALUE_5GHZ  1
+#define CSR_BSS_CAP_VALUE_5GHZ  2
 #endif
 #define CSR_DEFAULT_ROAMING_TIME 10   //10 seconds
 #define CSR_ROAM_MIN(X, Y)  ((X) < (Y) ? (X) : (Y))
@@ -195,6 +196,8 @@ typedef struct
 #define CSR_IS_BETTER_PREFER_VALUE(v1, v2)   ((v1) > (v2))
 #define CSR_IS_EQUAL_PREFER_VALUE(v1, v2)   ((v1) == (v2))
 #define CSR_IS_BETTER_CAP_VALUE(v1, v2)     ((v1) > (v2))
+#define CSR_IS_EQUAL_CAP_VALUE(v1, v2)  ((v1) == (v2))
+#define CSR_IS_BETTER_RSSI(v1, v2)   ((v1) > (v2))
 #define CSR_IS_ENC_TYPE_STATIC( encType ) ( ( eCSR_ENCRYPT_TYPE_NONE == (encType) ) || \
                                             ( eCSR_ENCRYPT_TYPE_WEP40_STATICKEY == (encType) ) || \
                                             ( eCSR_ENCRYPT_TYPE_WEP104_STATICKEY == (encType) ) )

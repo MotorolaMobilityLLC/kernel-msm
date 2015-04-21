@@ -633,6 +633,10 @@ limSendMlmAssocReq( tpAniSirGlobal pMac,
         }
     }
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_ASSOC_REQ_EVENT, psessionEntry,
+                       eSIR_SUCCESS, eSIR_SUCCESS);
+#endif
     pMlmAssocReq->listenInterval = (tANI_U16)val;
     /* Update PE session ID*/
     pMlmAssocReq->sessionId = psessionEntry->peSessionId;

@@ -443,6 +443,11 @@ limRestoreFromAuthState(tpAniSirGlobal pMac, tSirResultCodes resultCode, tANI_U1
     tSirMacAddr     currentBssId;
     tLimMlmAuthCnf  mlmAuthCnf;
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_AUTH_COMP_EVENT, sessionEntry,
+                       resultCode, protStatusCode);
+#endif
+
     vos_mem_copy( (tANI_U8 *) &mlmAuthCnf.peerMacAddr,
                   (tANI_U8 *) &pMac->lim.gpLimMlmAuthReq->peerMacAddr,
                   sizeof(tSirMacAddr));

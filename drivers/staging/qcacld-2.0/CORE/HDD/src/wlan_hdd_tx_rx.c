@@ -89,6 +89,15 @@ static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter);
   Type declarations
   -------------------------------------------------------------------------*/
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+#define HDD_EAPOL_ETHER_TYPE             (0x888E)
+#define HDD_EAPOL_ETHER_TYPE_OFFSET      (12)
+#define HDD_EAPOL_PACKET_TYPE_OFFSET     (15)
+#define HDD_EAPOL_KEY_INFO_OFFSET        (19)
+#define HDD_EAPOL_DEST_MAC_OFFSET        (0)
+#define HDD_EAPOL_SRC_MAC_OFFSET         (6)
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
+
 /*---------------------------------------------------------------------------
   Function definitions and documentation
   -------------------------------------------------------------------------*/
@@ -874,6 +883,8 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
       skb->priority = up;
       skb->queue_mapping = hddLinuxUpToAcMap[up];
    }
+
+   wlan_hdd_log_eapol(skb, WIFI_EVENT_DRIVER_EAPOL_FRAME_TRANSMIT_REQUESTED);
 
 #ifdef QCA_PKT_PROTO_TRACE
    if ((hddCtxt->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
@@ -1734,6 +1745,8 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
 #ifdef FEATURE_WLAN_TDLS
 #endif
 
+   wlan_hdd_log_eapol(skb, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED);
+
 #ifdef QCA_PKT_PROTO_TRACE
    if ((pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
        (pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_DHCP))
@@ -1768,7 +1781,8 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
    pAdapter->stats.rx_bytes += skb->len;
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
    vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
-                                 HDD_WAKE_LOCK_DURATION);
+                                 HDD_WAKE_LOCK_DURATION,
+                                 WIFI_POWER_EVENT_WAKELOCK_HOLD_RX);
 #endif
    rxstat = netif_rx_ni(skb);
    if (NET_RX_SUCCESS == rxstat)
@@ -1833,3 +1847,125 @@ VOS_STATUS hdd_rx_mul_packet_cbk(v_VOID_t *vosContext,
 }
 #endif /* IPA_OFFLOAD */
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+
+/**
+ * wlan_hdd_is_eapol() - Function to check if frame is EAPOL or not
+ * @skb:    skb data
+ *
+ * This function checks if the frame is an EAPOL frame or not
+ *
+ * Return: true (1) if packet is EAPOL
+ *
+ */
+static bool wlan_hdd_is_eapol(struct sk_buff *skb)
+{
+	uint16_t ether_type=0;
+
+	if (!skb) {
+		hddLog(VOS_TRACE_LEVEL_ERROR, FL("skb is NULL"));
+		return false;
+	}
+
+	ether_type = (uint16_t)(*(uint16_t *)
+			(skb->data + HDD_EAPOL_ETHER_TYPE_OFFSET));
+
+	if (VOS_SWAP_U16(ether_type) == HDD_EAPOL_ETHER_TYPE) {
+		return true;
+	} else {
+		/* No error msg handled since this will happen often */
+		return false;
+	}
+}
+
+/**
+ * wlan_hdd_get_eapol_params() - Function to extract EAPOL params
+ * @skb:                sbb data
+ * @eapol_params:       Pointer to hold the parsed EAPOL params
+ * @event_type:         Event type to indicate Tx/Rx
+ *
+ * This function parses the input skb data to get the EAPOL params,if the
+ * packet is EAPOL and store it in the pointer passed as input
+ *
+ * Return: 0 on success and negative value in failure
+ *
+ */
+static int wlan_hdd_get_eapol_params(struct sk_buff *skb,
+			      struct vos_event_wlan_eapol *eapol_params,
+			      uint8_t event_type)
+{
+	bool ret;
+	uint8_t packet_type=0;
+
+	ret = wlan_hdd_is_eapol(skb);
+
+	if (!ret)
+		return -1;
+
+	packet_type = (uint8_t)(*(uint8_t *)
+			(skb->data + HDD_EAPOL_PACKET_TYPE_OFFSET));
+
+	eapol_params->eapol_packet_type = packet_type;
+	eapol_params->eapol_key_info = (uint16_t)(*(uint16_t *)
+				       (skb->data + HDD_EAPOL_KEY_INFO_OFFSET));
+	eapol_params->event_sub_type = event_type;
+	eapol_params->eapol_rate = 0;/* As of now, zero */
+
+	vos_mem_copy(eapol_params->dest_addr,
+			(skb->data + HDD_EAPOL_DEST_MAC_OFFSET),
+			sizeof(eapol_params->dest_addr));
+	vos_mem_copy(eapol_params->src_addr,
+			(skb->data + HDD_EAPOL_SRC_MAC_OFFSET),
+			sizeof(eapol_params->src_addr));
+	return 0;
+}
+/**
+ * wlan_hdd_event_eapol_log() - Function to log EAPOL events
+ * @eapol_params:    Structure containing EAPOL params
+ *
+ * This function logs the parsed EAPOL params
+ *
+ * Return: None
+ *
+ */
+static void wlan_hdd_event_eapol_log(struct vos_event_wlan_eapol eapol_params)
+{
+	WLAN_VOS_DIAG_EVENT_DEF(wlan_diag_event, struct vos_event_wlan_eapol);
+
+	wlan_diag_event.event_sub_type = eapol_params.event_sub_type;
+	wlan_diag_event.eapol_packet_type = eapol_params.eapol_packet_type;
+	wlan_diag_event.eapol_key_info = eapol_params.eapol_key_info;
+	wlan_diag_event.eapol_rate = eapol_params.eapol_rate;
+	vos_mem_copy(wlan_diag_event.dest_addr,
+		     eapol_params.dest_addr,
+		     sizeof (wlan_diag_event.dest_addr));
+        vos_mem_copy(wlan_diag_event.src_addr,
+		     eapol_params.src_addr,
+		     sizeof (wlan_diag_event.src_addr));
+
+	WLAN_VOS_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_EAPOL);
+}
+
+/**
+ * wlan_hdd_log_eapol() - Function to check and extract EAPOL params
+ * @skb:               skb data
+ * @event_type:        One of enum wifi_connectivity_events to indicate Tx/Rx
+ *
+ * This function parses the input skb data to get the EAPOL params,if the
+ * packet is EAPOL and store it in the pointer passed as input
+ *
+ * Return: None
+ *
+ */
+void wlan_hdd_log_eapol(struct sk_buff *skb,
+		uint8_t event_type)
+{
+	int ret;
+	struct vos_event_wlan_eapol eapol_params;
+
+	ret = wlan_hdd_get_eapol_params(skb, &eapol_params, event_type);
+	if (!ret) {
+		wlan_hdd_event_eapol_log(eapol_params);
+	}
+}
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */

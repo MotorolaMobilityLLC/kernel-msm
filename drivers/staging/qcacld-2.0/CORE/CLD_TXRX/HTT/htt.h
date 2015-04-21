@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2304,14 +2304,14 @@ A_COMPILE_TIME_ASSERT(HTT_RX_IND_hdr_size_quantum,
 #define HTT_RX_IND_START_VALID_M           0x80000000
 #define HTT_RX_IND_START_VALID_S           31
 
-#define HTT_RX_IND_RSSI_PRI20_S            0x000000ff
-#define HTT_RX_IND_RSSI_PRI20_M            0
-#define HTT_RX_IND_RSSI_EXT20_S            0x0000ff00
-#define HTT_RX_IND_RSSI_EXT20_M            8
-#define HTT_RX_IND_RSSI_EXT40_S            0x00ff0000
-#define HTT_RX_IND_RSSI_EXT40_M            16
-#define HTT_RX_IND_RSSI_EXT80_S            0xff000000
-#define HTT_RX_IND_RSSI_EXT80_M            24
+#define HTT_RX_IND_RSSI_PRI20_M            0x000000ff
+#define HTT_RX_IND_RSSI_PRI20_S            0
+#define HTT_RX_IND_RSSI_EXT20_M            0x0000ff00
+#define HTT_RX_IND_RSSI_EXT20_S            8
+#define HTT_RX_IND_RSSI_EXT40_M            0x00ff0000
+#define HTT_RX_IND_RSSI_EXT40_S            16
+#define HTT_RX_IND_RSSI_EXT80_M            0xff000000
+#define HTT_RX_IND_RSSI_EXT80_S            24
 
 #define HTT_RX_IND_VHT_SIG_A1_M            0x00ffffff
 #define HTT_RX_IND_VHT_SIG_A1_S            0

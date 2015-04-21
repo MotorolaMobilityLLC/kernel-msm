@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -86,6 +86,17 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
 /*-------------------------------------------------------------------------
   Function declarations and documenation
   ------------------------------------------------------------------------*/
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void vos_log_wlock_diag(uint32_t reason, const char *wake_lock_name,
+		uint32_t timeout, uint32_t status);
+#else
+static inline void vos_log_wlock_diag(uint32_t reason,
+		const char *wake_lock_name,
+		uint32_t timeout, uint32_t status)
+{
+
+}
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 #ifdef __cplusplus
 }

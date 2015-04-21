@@ -776,11 +776,6 @@ tANI_U8* macTraceGetWdaMsgString( tANI_U16 wdaMsg )
         CASE_RETURN_STRING(WDA_UPDATE_MEMBERSHIP);
         CASE_RETURN_STRING(WDA_UPDATE_USERPOS);
 #endif
-#ifdef FEATURE_WLAN_BATCH_SCAN
-        CASE_RETURN_STRING(WDA_SET_BATCH_SCAN_REQ);
-        CASE_RETURN_STRING(WDA_TRIGGER_BATCH_SCAN_RESULT_IND);
-        CASE_RETURN_STRING(WDA_STOP_BATCH_SCAN_IND);
-#endif
         CASE_RETURN_STRING(WDA_START_SCAN_OFFLOAD_REQ);
         CASE_RETURN_STRING(WDA_STOP_SCAN_OFFLOAD_REQ);
         CASE_RETURN_STRING(WDA_UPDATE_CHAN_LIST_REQ);
@@ -933,13 +928,17 @@ void macTraceReset(tpAniSirGlobal pMac)
 {
 }
 
-void macTrace(tpAniSirGlobal pMac,  tANI_U8 code, tANI_U8 session, tANI_U32 data)
+void macTrace(tpAniSirGlobal pMac, tANI_U8 code, tANI_U16 session,
+              tANI_U32 data)
 {
-    //Today macTrace is being invoked by PE only, need to remove this function once PE is migrated to using new trace API.
+    /* Today macTrace is being invoked by PE only,
+     * need to remove this function once PE is migrated to using new trace API.
+     */
     macTraceNew(pMac, VOS_MODULE_ID_PE, code, session, data);
 }
 
-void macTraceNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 code, tANI_U8 session, tANI_U32 data)
+void macTraceNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 code,
+                 tANI_U16 session, tANI_U32 data)
 {
     vos_trace(module, code, session, data);
 }

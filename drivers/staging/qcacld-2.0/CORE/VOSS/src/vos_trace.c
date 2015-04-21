@@ -472,7 +472,7 @@ void vosTraceInit()
   \param session -
   \param data - actual message contents.
   ----------------------------------------------------------------------------*/
-void vos_trace(v_U8_t module, v_U8_t code, v_U8_t session, v_U32_t data)
+void vos_trace(v_U8_t module, v_U8_t code, v_U16_t session, v_U32_t data)
 {
     tpvosTraceRecord rec = NULL;
     unsigned long flags;

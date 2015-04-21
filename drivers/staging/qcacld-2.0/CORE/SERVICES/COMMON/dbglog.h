@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, 2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -63,8 +63,8 @@ extern "C" {
 
 #define DBGLOG_NUM_ARGS_OFFSET            26
 #define DBGLOG_NUM_ARGS_MASK              0xFC000000 /* Bit 26-31 */
-#define DBGLOG_NUM_ARGS_MAX               5 /* it is limited bcoz of limitations
-                                              with Xtensa tool */
+#define DBGLOG_NUM_ARGS_MAX                9 /* it is bcoz of limitation
+                                             of corebsp MSG*() to accept max 9 arg  */
 
 #define DBGLOG_LOG_BUFFER_SIZE            1500
 #define DBGLOG_DBGID_DEFINITION_LEN_MAX   90

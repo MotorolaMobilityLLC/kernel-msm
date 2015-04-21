@@ -108,6 +108,8 @@
    a response from WCNSS */
 #define WLAN_WAIT_TIME_SESSIONOPENCLOSE  15000
 #define WLAN_WAIT_TIME_ABORTSCAN  2000
+#define WLAN_WAIT_TIME_EXTSCAN  1000
+#define WLAN_WAIT_TIME_LL_STATS 5000
 
 
 /** Maximum time(ms) to wait for mc thread suspend **/
@@ -280,19 +282,6 @@ extern spinlock_t hdd_context_lock;
 #define SNR_CONTEXT_MAGIC   0x534E5200   //SNR
 #define LINK_CONTEXT_MAGIC  0x4C494E4B   //LINKSPEED
 #define LINK_STATUS_MAGIC   0x4C4B5354   //LINKSTATUS(LNST)
-
-#ifdef FEATURE_WLAN_BATCH_SCAN
-#define HDD_BATCH_SCAN_VERSION (17)
-#define HDD_SET_BATCH_SCAN_DEFAULT_FREQ (30)/*batch scan frequency default 30s*/
-#define HDD_SET_BATCH_SCAN_BEST_NETWORK (16)/*best network default value*/
-#define HDD_SET_BATCH_SCAN_DEFAULT_BAND (0)/*auto means both 2.4GHz and 5GHz*/
-#define HDD_SET_BATCH_SCAN_24GHz_BAND_ONLY (1)/*only 2.4GHz band*/
-#define HDD_SET_BATCH_SCAN_5GHz_BAND_ONLY (2)/*only 5GHz band*/
-#define HDD_SET_BATCH_SCAN_REQ_TIME_OUT (15000) /*Batch scan req timeout in ms*/
-#define HDD_GET_BATCH_SCAN_RSP_TIME_OUT (15000) /*Batch scan req timeout in ms*/
-#define HDD_BATCH_SCAN_AP_META_INFO_SIZE (150) /*AP meta info size in string*/
-
-#endif
 
 #ifdef QCA_LL_TX_FLOW_CT
 /* MAX OS Q block time value in msec
@@ -827,52 +816,6 @@ typedef struct multicast_addr_list
 } t_multicast_add_list;
 #endif
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-
-/* Batch scan response AP info */
-typedef struct
-{
-    /*Batch ID*/
-    tANI_U32 batchId;
-    /*is it last AP in GET BATCH SCAN RSP*/
-    v_BOOL_t isLastAp;
-    /*BSSID*/
-    tANI_U8  bssid[SIR_MAC_ADDR_LEN];
-    /*SSID*/
-    tANI_U8  ssid[SIR_MAX_SSID_SIZE + 1];
-    /*Channel*/
-    tANI_U8  ch;
-    /*RSSI or Level*/
-    tANI_S8  rssi;
-    /*Age*/
-    tANI_U32 age;
-}tHDDbatchScanRspApInfo;
-
-/*Batch scan response list*/
-struct tHDDBatchScanRspList
-{
-    tHDDbatchScanRspApInfo ApInfo;
-    struct tHDDBatchScanRspList *pNext;
-};
-
-typedef struct tHDDBatchScanRspList tHddBatchScanRsp;
-
-/*Batch Scan state*/
-typedef enum
-{
-   /*Batch scan is started this means WLS_BATCHING SET command is issued
-     from framework*/
-   eHDD_BATCH_SCAN_STATE_STARTED,
-
-   /*Batch scan is stopped this means WLS_BATCHING STOP command is issued
-     from framework*/
-   eHDD_BATCH_SCAN_STATE_STOPPED,
-
-   eHDD_BATCH_SCAN_STATE_MAX,
-} eHDD_BATCH_SCAN_STATE;
-
-#endif
-
 #define WLAN_HDD_ADAPTER_MAGIC 0x574c414e //ASCII "WLAN"
 
 struct hdd_adapter_s
@@ -1029,39 +972,6 @@ struct hdd_adapter_s
    v_BOOL_t higherDtimTransition;
    v_BOOL_t survey_idx;
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-   /*Completion variable for set batch scan request*/
-   struct completion hdd_set_batch_scan_req_var;
-   /*Completion variable for get batch scan request*/
-   struct completion hdd_get_batch_scan_req_var;
-   /*HDD batch scan lock*/
-   struct mutex hdd_batch_scan_lock;
-   /*HDD set batch scan request*/
-   tSirSetBatchScanReq  hddSetBatchScanReq;
-   /*HDD set batch scan response*/
-   tSirSetBatchScanRsp  hddSetBatchScanRsp;
-   /*HDD stop batch scan indication*/
-   tSirStopBatchScanInd hddStopBatchScanInd;
-   /*HDD get batch scan request*/
-   tSirTriggerBatchScanResultInd  hddTriggerBatchScanResultInd;
-   /* Batched scan response queue: new batch scan results added at the tail
-      and old batch scan results are deleted from head */
-   tHddBatchScanRsp *pBatchScanRsp;
-   /*No of scans in batch scan rsp(MSCAN)*/
-   v_U32_t numScanList;
-   /*isTruncated = 1 batch scan rsp is truncated
-     isTruncated = 0 batch scan rsp is complete*/
-   v_BOOL_t isTruncated;
-   /*Wait for get batch scan response from FW or not*/
-   volatile v_BOOL_t hdd_wait_for_get_batch_scan_rsp;
-   /*Wait for set batch scan response from FW or not*/
-   volatile v_BOOL_t hdd_wait_for_set_batch_scan_rsp;
-   /*Previous batch scan ID*/
-   v_U32_t prev_batch_id;
-   /*Batch scan state*/
-   eHDD_BATCH_SCAN_STATE batchScanState;
-#endif
-
    hdd_scaninfo_t scan_info;
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
    tAniTrafStrmMetrics tsmStats;
@@ -1208,6 +1118,40 @@ typedef struct
     v_U32_t dl_mod_loglevel[MAX_MOD_LOGLEVEL];
 
 }fw_log_info;
+
+#ifdef FEATURE_WLAN_EXTSCAN
+/**
+ * struct hdd_ext_scan_context - hdd ext scan context
+ *
+ * @request_id: userspace-assigned ID associated with the request
+ * @response_event: Ext scan wait event
+ * @response_status: Status returned by FW in response to a request
+ * @ignore_cached_results: Flag to ignore cached results or not
+ * @capability_response: Ext scan capability response data from target
+ */
+struct hdd_ext_scan_context {
+	uint32_t request_id;
+	int response_status;
+	bool ignore_cached_results;
+	struct completion response_event;
+	struct ext_scan_capabilities_response capability_response;
+};
+#endif /* End of FEATURE_WLAN_EXTSCAN */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+/**
+ * struct hdd_ll_stats_context - hdd link layer stats context
+ *
+ * @request_id: userspace-assigned link layer stats request id
+ * @request_bitmap: userspace-assigned link layer stats request bitmap
+ * @response_event: LL stats request wait event
+ */
+struct hdd_ll_stats_context {
+	uint32_t request_id;
+	uint32_t request_bitmap;
+	struct completion response_event;
+};
+#endif /* End of WLAN_FEATURE_LINK_LAYER_STATS */
 
 /** Adapter stucture definition */
 
@@ -1492,6 +1436,15 @@ struct hdd_context_s
 
     /* Time since boot up to WiFi turn ON (in micro seconds) */
     v_U64_t wifi_turn_on_time_since_boot;
+
+#ifdef FEATURE_WLAN_EXTSCAN
+    struct hdd_ext_scan_context ext_scan_context;
+#endif /* FEATURE_WLAN_EXTSCAN */
+
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+    struct hdd_ll_stats_context ll_stats_context;
+#endif /* End of WLAN_FEATURE_LINK_LAYER_STATS */
+
 };
 
 /*---------------------------------------------------------------------------
@@ -1566,9 +1519,9 @@ void wlan_hdd_incr_active_session(hdd_context_t *pHddCtx,
 void wlan_hdd_decr_active_session(hdd_context_t *pHddCtx,
                                   tVOS_CON_MODE mode);
 void wlan_hdd_reset_prob_rspies(hdd_adapter_t* pHostapdAdapter);
-void hdd_prevent_suspend(void);
-void hdd_allow_suspend(void);
-void hdd_prevent_suspend_timeout(v_U32_t timeout);
+void hdd_prevent_suspend(uint32_t reason);
+void hdd_allow_suspend(uint32_t reason);
+void hdd_prevent_suspend_timeout(v_U32_t timeout, uint32_t reason);
 bool hdd_is_ssr_required(void);
 void hdd_set_ssr_required(e_hdd_ssr_required value);
 
@@ -1623,46 +1576,6 @@ int hdd_wlan_set_ht2040_mode(hdd_adapter_t *pAdapter, v_U16_t staId,
                              v_MACADDR_t macAddrSTA, int width);
 #endif
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-/**---------------------------------------------------------------------------
-
-  \brief hdd_handle_batch_scan_ioctl () - This function handles WLS_BATCHING
-     IOCTLs from user space. Following BATCH SCAN DEV IOCTs are handled:
-     WLS_BATCHING VERSION
-     WLS_BATCHING SET
-     WLS_BATCHING GET
-     WLS_BATCHING STOP
-
-  \param  - pAdapter Pointer to HDD adapter
-  \param  - pPrivdata Pointer to priv_data
-  \param  - command Pointer to command
-
-  \return - 0 for success -EFAULT for failure
-
-  --------------------------------------------------------------------------*/
-
-int hdd_handle_batch_scan_ioctl
-(
-    hdd_adapter_t *pAdapter,
-    hdd_priv_data_t *pPrivdata,
-    tANI_U8 *command
-);
-
-/**---------------------------------------------------------------------------
-
-  \brief hdd_deinit_batch_scan () - This function cleans up batch scan data
-   structures
-
-  \param  - pAdapter Pointer to HDD adapter
-
-  \return - None
-
-  --------------------------------------------------------------------------*/
-
-void hdd_deinit_batch_scan(hdd_adapter_t *pAdapter);
-
-#endif /*End of FEATURE_WLAN_BATCH_SCAN*/
-
 VOS_STATUS hdd_abort_mac_scan_all_adapters(hdd_context_t *pHddCtx);
 
 
@@ -1707,4 +1620,40 @@ void wlan_hdd_disable_roaming(hdd_adapter_t *pAdapter);
 void wlan_hdd_enable_roaming(hdd_adapter_t *pAdapter);
 #endif
 int hdd_set_miracast_mode(hdd_adapter_t *pAdapter, tANI_U8 *command);
+#ifdef WLAN_FEATURE_LINK_LAYER_STATS
+static inline bool hdd_link_layer_stats_supported(void)
+{
+	return true;
+}
+
+/**
+ * hdd_init_ll_stats_ctx() - initialize link layer stats context
+ * @hdd_ctx: Pointer to hdd context
+ *
+ * Return: none
+ */
+static inline void hdd_init_ll_stats_ctx(hdd_context_t *hdd_ctx)
+{
+	init_completion(&hdd_ctx->ll_stats_context.response_event);
+	hdd_ctx->ll_stats_context.request_bitmap = 0;
+
+	return;
+}
+#else
+static inline bool hdd_link_layer_stats_supported(void)
+{
+	return false;
+}
+static inline void hdd_init_ll_stats_ctx(hdd_context_t *hdd_ctx)
+{
+	return;
+}
+#endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+void hdd_get_fw_version(hdd_context_t *hdd_ctx,
+			uint32_t *major_spid, uint32_t *minor_spid,
+			uint32_t *siid, uint32_t *crmid);
+
+bool hdd_is_memdump_supported(void);
+
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

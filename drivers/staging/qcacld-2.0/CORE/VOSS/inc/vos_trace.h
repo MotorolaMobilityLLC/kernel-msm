@@ -113,7 +113,7 @@ typedef struct  svosTraceRecord
     v_U64_t time;
     v_U8_t module;
     v_U8_t code;
-    v_U8_t session;
+    v_U16_t session;
     v_U32_t data;
     uint32_t pid;
 }tvosTraceRecord, *tpvosTraceRecord;
@@ -184,7 +184,7 @@ void vos_trace_setLevel( VOS_MODULE_ID module, VOS_TRACE_LEVEL level );
 v_BOOL_t vos_trace_getLevel( VOS_MODULE_ID module, VOS_TRACE_LEVEL level );
 
 typedef void (*tpvosTraceCb) (void *pMac, tpvosTraceRecord, v_U16_t);
-void vos_trace(v_U8_t module, v_U8_t code, v_U8_t session, v_U32_t data);
+void vos_trace(v_U8_t module, v_U8_t code, v_U16_t session, v_U32_t data);
 void vosTraceRegister(VOS_MODULE_ID, tpvosTraceCb);
 VOS_STATUS vos_trace_spin_lock_init(void);
 void vosTraceInit(void);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -62,4 +62,5 @@ int nl_srv_bcast(struct sk_buff * skb);
 void nl_srv_nl_ready_indication(void);
 void nl_srv_nl_close_indication(int pid);
 #endif /* WLAN_KD_READY_NOTIFIER */
+int nl_srv_is_initialized(void);
 #endif

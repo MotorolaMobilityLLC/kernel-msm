@@ -105,7 +105,7 @@ typedef struct sPESession           // Added to Support BT-AMP
 {
     /* To check session table is in use or free*/
     tANI_U8                 available;
-    tANI_U8                 peSessionId;
+    tANI_U16                peSessionId;
     tANI_U8                 smeSessionId;
     tANI_U16                transactionId;
 

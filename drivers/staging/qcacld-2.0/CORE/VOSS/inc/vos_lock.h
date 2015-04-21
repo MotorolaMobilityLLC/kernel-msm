@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -264,33 +264,37 @@ VOS_STATUS vos_wake_lock_init(vos_wake_lock_t *pLock, const char *name);
   \brief vos_wake_lock_acquire() - acquires a wake lock
 
   \param pLock - the wake lock to acquire
+         reason - reason for taking wakelock
 
   \return VOS_STATUS_SUCCESS - the wake lock was successfully acquired
 
   ------------------------------------------------------------------------*/
-VOS_STATUS vos_wake_lock_acquire(vos_wake_lock_t *pLock);
+VOS_STATUS vos_wake_lock_acquire(vos_wake_lock_t *pLock, uint32_t reason);
 
 /*--------------------------------------------------------------------------
 
   \brief vos_wake_lock_timeout_acquire() - acquires a wake lock with a timeout
 
   \param pLock - the wake lock to acquire
+         reason - reason for taking wakelock
 
   \return VOS_STATUS_SUCCESS - the wake lock was successfully acquired
 
   ------------------------------------------------------------------------*/
-VOS_STATUS vos_wake_lock_timeout_acquire(vos_wake_lock_t *pLock, v_U32_t msec);
+VOS_STATUS vos_wake_lock_timeout_acquire(vos_wake_lock_t *pLock, v_U32_t msec,
+                                         uint32_t reason);
 
 /*--------------------------------------------------------------------------
 
   \brief vos_wake_lock_release() - releases a wake lock
 
   \param pLock - the wake lock to release
+         reason - reason for taking wakelock
 
   \return VOS_STATUS_SUCCESS - the lock was successfully released
 
   ------------------------------------------------------------------------*/
-VOS_STATUS vos_wake_lock_release(vos_wake_lock_t *pLock);
+VOS_STATUS vos_wake_lock_release(vos_wake_lock_t *pLock, uint32_t reason);
 
 /*--------------------------------------------------------------------------
 

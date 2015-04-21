@@ -139,10 +139,6 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 
 #define SPACE_ASCII_VALUE  32
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-#define EQUALS_TO_ASCII_VALUE (61)
-#endif
-
 #define WLAN_HOST_SEQ_NUM_MIN				2048
 #define WLAN_HOST_SEQ_NUM_MAX				4095
 #define LOW_SEQ_NUM_MASK				0x000F

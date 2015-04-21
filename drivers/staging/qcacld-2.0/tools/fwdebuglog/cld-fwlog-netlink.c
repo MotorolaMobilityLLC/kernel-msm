@@ -39,6 +39,7 @@
 #include <asm/types.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <sys/capability.h>
 #include <linux/prctl.h>
 #include <pwd.h>
@@ -67,12 +68,15 @@ const uint32_t capabilities = (1 << CAP_NET_RAW) | (1 << CAP_NET_ADMIN);
 /* Groups needed
  * AID_INET      : Open INET socket
  * AID_NET_ADMIN : Handle NL socket
- * AID_QCOM_DIAG : Access DIAG debugfs
+ * AID__DIAG : Access DIAG debugfs
  * AID_WIFI      : WIFI Operation
  */
+#ifdef QCOM_BSP
 const gid_t groups[] = {AID_INET, AID_NET_ADMIN, AID_QCOM_DIAG, AID_WIFI};
+#else
+const gid_t groups[] = {AID_INET, AID_NET_ADMIN, AID_DIAG, AID_WIFI};
 #endif
-
+#endif
 const char options[] =
 "Options:\n\
 -f, --logfile=<Output log file> [Mandotory]\n\

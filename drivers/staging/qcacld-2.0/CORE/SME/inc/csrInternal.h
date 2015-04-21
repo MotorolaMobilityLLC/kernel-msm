@@ -80,6 +80,10 @@
 ( \
    (((pMac)->roam.configParam.nSelect5GHzMargin)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
 )
+#define CSR_IS_SELECT_5G_PREFERRED(pMac) \
+( \
+   (((pMac)->roam.configParam.roam_params.is_5g_pref_enabled)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
+)
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 #define CSR_IS_ROAM_PREFER_5GHZ( pMac ) \
@@ -288,6 +292,13 @@ typedef enum
    eCSR_REASON_HANDOFF,
 
 }eCsrDiagWlanStatusEventReason;
+
+typedef enum
+{
+    eCSR_EVENT_TYPE_INVALID = 0,
+    eCSR_EVENT_SCAN_COMPLETE = 70,
+    eCSR_EVENT_SCAN_RES_FOUND = 71,
+} eCSR_WLAN_DIAG_EVENT_TYPE;
 
 #endif //FEATURE_WLAN_DIAG_SUPPORT
 
@@ -509,6 +520,10 @@ typedef struct tagCsrNeighborRoamConfig
     tANI_U8        nRoamBmissFinalBcnt;
     tANI_U8        nRoamBeaconRssiWeight;
     tANI_U8        delay_before_vdev_stop;
+    uint32_t       nhi_rssi_scan_max_count;
+    uint32_t       nhi_rssi_scan_rssi_delta;
+    uint32_t       nhi_rssi_scan_delay;
+    int32_t        nhi_rssi_scan_rssi_ub;
 }tCsrNeighborRoamConfig;
 #endif
 
@@ -674,6 +689,7 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN  isRoamOffloadEnabled;
 #endif
     tANI_BOOLEAN obssEnabled;
+    struct roam_ext_params roam_params;
 }tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo
@@ -1540,6 +1556,10 @@ void csrProcessRoamOffloadSynchInd(tHalHandle hHal,
 eHalStatus csrScanSaveRoamOffloadApToScanCache(tpAniSirGlobal pMac,
             tSirRoamOffloadSynchInd *pRoamOffloadSynchInd);
 void csrProcessHOFailInd(tpAniSirGlobal pMac, void *pMsgBuf);
+#endif
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void csr_diag_event_report(tpAniSirGlobal pmac, uint16_t event_type,
+                           uint16_t status, uint16_t reasoncode);
 #endif
 #endif
 

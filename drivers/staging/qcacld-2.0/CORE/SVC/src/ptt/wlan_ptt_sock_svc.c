@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -102,7 +102,13 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
 #ifdef PTT_SOCK_DEBUG_VERBOSE
    ptt_sock_dump_buf((const unsigned char *)skb->data, skb->len);
 #endif
-   err = nl_srv_ucast(skb, pid, MSG_DONTWAIT);
+
+   if (pid != -1) {
+       err = nl_srv_ucast(skb, pid, MSG_DONTWAIT);
+   } else {
+       err = nl_srv_bcast(skb);
+   }
+
    return err;
 }
 /*

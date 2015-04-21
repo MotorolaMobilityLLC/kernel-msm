@@ -100,9 +100,9 @@
 ** incoming frames, as well as overhead for internal
 ** messaging
 **
-** Increased to 2000 to handle more RX frames
+** Increased to 8000 to handle more RX frames
 */
-#define VOS_CORE_MAX_MESSAGES 2000
+#define VOS_CORE_MAX_MESSAGES 8000
 
 #ifdef QCA_CONFIG_SMP
 /*

@@ -339,6 +339,53 @@ cbNotifySetEnableFastRoamInConcurrency(hdd_context_t *pHddCtx,
 
 #endif
 
+/**
+ * cb_notify_set_roam_scan_hi_rssi_scan_params() - configure hi rssi
+ * scan params from cfg to sme.
+ * @hdd_ctx: HDD context data structure
+ * @notify_id: Identifies 1 of the 4 parameters to be modified
+ *
+ * Picks up the value from hd configuration and passes it to SME.
+ * Return: void
+ */
+
+static void
+cb_notify_set_roam_scan_hi_rssi_scan_params(hdd_context_t *hdd_ctx,
+				    unsigned long notify_id)
+{
+	int32_t val;
+
+	if (wlan_hdd_validate_context(hdd_ctx)) {
+		hddLog(LOGE, FL("HDD context is invalid"));
+		return;
+	}
+
+	switch (notify_id) {
+	case eCSR_HI_RSSI_SCAN_MAXCOUNT_ID:
+		val = hdd_ctx->cfg_ini->nhi_rssi_scan_max_count;
+		break;
+
+	case eCSR_HI_RSSI_SCAN_RSSI_DELTA_ID:
+		val = hdd_ctx->cfg_ini->nhi_rssi_scan_rssi_delta;
+		break;
+
+	case eCSR_HI_RSSI_SCAN_DELAY_ID:
+		val = hdd_ctx->cfg_ini->nhi_rssi_scan_delay;
+		break;
+
+	case eCSR_HI_RSSI_SCAN_RSSI_UB_ID:
+		val = hdd_ctx->cfg_ini->nhi_rssi_scan_rssi_ub;
+		break;
+
+	default:
+		return;
+	}
+
+	sme_update_roam_scan_hi_rssi_scan_params(hdd_ctx->hHal, 0,
+		notify_id, val);
+}
+
+
 REG_TABLE_ENTRY g_registry_table[] =
 {
    REG_VARIABLE( CFG_RTS_THRESHOLD_NAME, WLAN_PARAM_Integer,
@@ -2069,6 +2116,49 @@ REG_TABLE_ENTRY g_registry_table[] =
                       CFG_DELAY_BEFORE_VDEV_STOP_MIN,
                       CFG_DELAY_BEFORE_VDEV_STOP_MAX,
                       cb_notify_set_delay_before_vdev_stop, 0 ),
+
+   REG_DYNAMIC_VARIABLE(CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_NAME,
+                        WLAN_PARAM_Integer,
+                        hdd_config_t, nhi_rssi_scan_max_count,
+                        VAR_FLAGS_OPTIONAL |
+                                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_MIN,
+                        CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_MAX,
+                        cb_notify_set_roam_scan_hi_rssi_scan_params,
+                        eCSR_HI_RSSI_SCAN_MAXCOUNT_ID),
+
+   REG_DYNAMIC_VARIABLE(CFG_ROAM_SCAN_HI_RSSI_DELTA_NAME, WLAN_PARAM_Integer,
+                        hdd_config_t, nhi_rssi_scan_rssi_delta,
+                        VAR_FLAGS_OPTIONAL |
+                                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_DELTA_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_DELTA_MIN,
+                        CFG_ROAM_SCAN_HI_RSSI_DELTA_MAX,
+                        cb_notify_set_roam_scan_hi_rssi_scan_params,
+                        eCSR_HI_RSSI_SCAN_RSSI_DELTA_ID),
+
+   REG_DYNAMIC_VARIABLE(CFG_ROAM_SCAN_HI_RSSI_DELAY_NAME, WLAN_PARAM_Integer,
+                        hdd_config_t, nhi_rssi_scan_delay,
+                        VAR_FLAGS_OPTIONAL |
+                                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_DELAY_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_DELAY_MIN,
+                        CFG_ROAM_SCAN_HI_RSSI_DELAY_MAX,
+                        cb_notify_set_roam_scan_hi_rssi_scan_params,
+                        eCSR_HI_RSSI_SCAN_DELAY_ID),
+
+   REG_DYNAMIC_VARIABLE(CFG_ROAM_SCAN_HI_RSSI_UB_NAME,
+                        WLAN_PARAM_SignedInteger,
+                        hdd_config_t, nhi_rssi_scan_rssi_ub,
+                        VAR_FLAGS_OPTIONAL |
+                                VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_UB_DEFAULT,
+                        CFG_ROAM_SCAN_HI_RSSI_UB_MIN,
+                        CFG_ROAM_SCAN_HI_RSSI_UB_MAX,
+                        cb_notify_set_roam_scan_hi_rssi_scan_params,
+                        eCSR_HI_RSSI_SCAN_RSSI_UB_ID),
+
 
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
 
@@ -4329,6 +4419,18 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
             "Name = [allowDFSChannelRoam] Value = [%u] ",
             pHddCtx->cfg_ini->allowDFSChannelRoam);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+            "Name = [nhi_rssi_scan_max_count] Value = [%u] ",
+            pHddCtx->cfg_ini->nhi_rssi_scan_max_count);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+            "Name = [nhi_rssi_scan_rssi_delta] Value = [%u] ",
+            pHddCtx->cfg_ini->nhi_rssi_scan_rssi_delta);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+            "Name = [nhi_rssi_scan_delay] Value = [%u] ",
+            pHddCtx->cfg_ini->nhi_rssi_scan_delay);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+            "Name = [nhi_rssi_scan_rssi_ub] Value = [%u] ",
+            pHddCtx->cfg_ini->nhi_rssi_scan_rssi_ub);
 #endif
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [burstSizeDefinition] Value = [0x%x] ",pHddCtx->cfg_ini->burstSizeDefinition);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [tsInfoAckPolicy] Value = [0x%x] ",pHddCtx->cfg_ini->tsInfoAckPolicy);
@@ -6222,7 +6324,16 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
                                         WNI_CFG_VALID_CHANNEL_LIST_LEN );
    smeConfig->csrConfig.neighborRoamConfig.nRoamBmissFirstBcnt = pConfig->nRoamBmissFirstBcnt;
    smeConfig->csrConfig.neighborRoamConfig.nRoamBmissFinalBcnt = pConfig->nRoamBmissFinalBcnt;
-   smeConfig->csrConfig.neighborRoamConfig.nRoamBeaconRssiWeight = pConfig->nRoamBeaconRssiWeight;
+   smeConfig->csrConfig.neighborRoamConfig.nRoamBeaconRssiWeight =
+           pConfig->nRoamBeaconRssiWeight;
+   smeConfig->csrConfig.neighborRoamConfig.nhi_rssi_scan_max_count =
+           pConfig->nhi_rssi_scan_max_count;
+   smeConfig->csrConfig.neighborRoamConfig.nhi_rssi_scan_rssi_delta =
+           pConfig->nhi_rssi_scan_rssi_delta;
+   smeConfig->csrConfig.neighborRoamConfig.nhi_rssi_scan_delay =
+           pConfig->nhi_rssi_scan_delay;
+   smeConfig->csrConfig.neighborRoamConfig.nhi_rssi_scan_rssi_ub =
+           pConfig->nhi_rssi_scan_rssi_ub;
 #endif
 
    smeConfig->csrConfig.addTSWhenACMIsOff = pConfig->AddTSWhenACMIsOff;

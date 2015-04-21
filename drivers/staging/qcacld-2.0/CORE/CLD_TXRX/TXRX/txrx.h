@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -35,6 +35,9 @@
 #include "adf_nbuf.h"
 #include "ol_txrx_osif_api.h"
 #include "wlan_qct_tl.h"
+
+/* wait on peer deletion timeout value in milliseconds */
+#define PEER_DELETION_TIMEOUT 500
 
 enum txrx_wmm_ac {
 	TXRX_WMM_AC_VO,

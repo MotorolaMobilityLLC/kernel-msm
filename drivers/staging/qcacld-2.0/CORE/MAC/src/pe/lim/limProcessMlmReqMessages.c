@@ -2397,6 +2397,10 @@ limProcessMlmAuthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                                   (tANI_U8) pMac->lim.gpLimMlmAuthReq->authType;
         authFrameBody.authTransactionSeqNumber = SIR_MAC_AUTH_FRAME_1;
         authFrameBody.authStatusCode = 0;
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+        limDiagEventReport(pMac, WLAN_PE_DIAG_AUTH_START_EVENT, psessionEntry,
+                           eSIR_SUCCESS, authFrameBody.authStatusCode);
+#endif
         limSendAuthMgmtFrame(pMac,
                              &authFrameBody,
                              pMac->lim.gpLimMlmAuthReq->peerMacAddr,

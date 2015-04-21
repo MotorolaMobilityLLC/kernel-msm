@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -195,5 +195,12 @@ static INLINE void SetExtendedMboxWindowInfo(A_UINT16 Manfid, HIF_DEVICE_MBOX_IN
 #define CCCR_SDIO_ASYNC_INT_DELAY_ADDRESS       0xF0
 #define CCCR_SDIO_ASYNC_INT_DELAY_LSB           0x06
 #define CCCR_SDIO_ASYNC_INT_DELAY_MASK          0xC0
+
+/* Vendor Specific Driver Strength Settings */
+#define CCCR_SDIO_DRIVER_STRENGTH_ENABLE_ADDR   0xf2
+#define CCCR_SDIO_DRIVER_STRENGTH_ENABLE_MASK   0x0e
+#define CCCR_SDIO_DRIVER_STRENGTH_ENABLE_A      0x02
+#define CCCR_SDIO_DRIVER_STRENGTH_ENABLE_C      0x04
+#define CCCR_SDIO_DRIVER_STRENGTH_ENABLE_D      0x08
 
 #endif /*HIF_SDIO_COMMON_H_*/

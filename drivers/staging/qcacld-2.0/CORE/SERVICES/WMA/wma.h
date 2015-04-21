@@ -535,6 +535,11 @@ struct wma_txrx_node {
 	v_BOOL_t roam_synch_in_progress;
 	void *plink_status_req;
 	u_int8_t delay_before_vdev_stop;
+#ifdef FEATURE_WLAN_EXTSCAN
+	bool extscan_in_progress;
+#endif
+	uint32_t alt_modulated_dtim;
+	bool alt_modulated_dtim_enabled;
 };
 
 #if defined(QCA_WIFI_FTM)
@@ -1248,6 +1253,7 @@ VOS_STATUS wma_send_snr_request(tp_wma_handle wma_handle, void *pGetRssiReq,
 
 #define WMA_NLO_FREQ_THRESH          1000         /* in MHz */
 #define WMA_SEC_TO_MSEC(sec)         (sec * 1000) /* sec to msec */
+#define WMA_MSEC_TO_USEC(msec)       (msec * 1000) /* msec to usec */
 
 /* Default rssi threshold defined in CFG80211 */
 #define WMA_RSSI_THOLD_DEFAULT   -300

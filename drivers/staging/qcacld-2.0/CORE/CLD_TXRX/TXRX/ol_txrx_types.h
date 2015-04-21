@@ -780,6 +780,8 @@ struct ol_txrx_vdev_t {
 #if defined(CONFIG_PER_VDEV_TX_DESC_POOL)
 	adf_os_atomic_t tx_desc_count;
 #endif
+	u_int16_t wait_on_peer_id;
+	adf_os_comp_t wait_delete_comp;
 };
 
 struct ol_rx_reorder_array_elem_t {

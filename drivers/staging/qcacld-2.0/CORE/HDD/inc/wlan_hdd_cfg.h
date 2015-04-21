@@ -2805,6 +2805,33 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_SAP_DOT11MC_MAX           (1)
 #define CFG_SAP_DOT11MC_DEFAULT       (0)
 
+/* Parameters for roaming scans performed at high RSSI */
+
+/* Maximum number of scans after RSSI change */
+#define CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_NAME         "gRoamScanHiRssiMaxCount"
+#define CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_MIN          (0)
+#define CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_MAX          (10)
+#define CFG_ROAM_SCAN_HI_RSSI_MAXCOUNT_DEFAULT      (3)
+
+/* Change in RSSI at which scan is triggered */
+#define CFG_ROAM_SCAN_HI_RSSI_DELTA_NAME           "gRoamScanHiRssiDelta"
+#define CFG_ROAM_SCAN_HI_RSSI_DELTA_MIN            (0)
+#define CFG_ROAM_SCAN_HI_RSSI_DELTA_MAX            (16)
+#define CFG_ROAM_SCAN_HI_RSSI_DELTA_DEFAULT        (10)
+
+/* Delay between consecutive scans in milliseconds */
+#define CFG_ROAM_SCAN_HI_RSSI_DELAY_NAME            "gRoamScanHiRssiDelay"
+#define CFG_ROAM_SCAN_HI_RSSI_DELAY_MIN             (5000)
+#define CFG_ROAM_SCAN_HI_RSSI_DELAY_MAX             (0x7fffffff)
+#define CFG_ROAM_SCAN_HI_RSSI_DELAY_DEFAULT         (15000)
+
+/* Upper bound after which scan will not be performed */
+#define CFG_ROAM_SCAN_HI_RSSI_UB_NAME              "gRoamScanHiRssiUpperBound"
+#define CFG_ROAM_SCAN_HI_RSSI_UB_MIN               (-66)
+#define CFG_ROAM_SCAN_HI_RSSI_UB_MAX               (0)
+#define CFG_ROAM_SCAN_HI_RSSI_UB_DEFAULT           (-30)
+
+
 /*---------------------------------------------------------------------------
   Type declarations
   -------------------------------------------------------------------------*/
@@ -2940,6 +2967,10 @@ typedef struct
    v_U8_t        nRoamBmissFirstBcnt;
    v_U8_t        nRoamBmissFinalBcnt;
    v_U8_t        nRoamBeaconRssiWeight;
+   uint32_t      nhi_rssi_scan_max_count;
+   uint32_t      nhi_rssi_scan_rssi_delta;
+   uint32_t      nhi_rssi_scan_delay;
+   int32_t       nhi_rssi_scan_rssi_ub;
 #endif
 
    //Additional Handoff params

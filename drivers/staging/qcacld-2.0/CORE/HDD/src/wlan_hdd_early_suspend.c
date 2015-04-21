@@ -1683,7 +1683,7 @@ VOS_STATUS hdd_wlan_reset_initialization(void)
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Preventing the phone from going to suspend",__func__);
 
    // Prevent the phone from going to sleep
-   hdd_prevent_suspend();
+   hdd_prevent_suspend(WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT);
 
    return VOS_STATUS_SUCCESS;
 }
@@ -1963,8 +1963,7 @@ VOS_STATUS hdd_wlan_re_init(void *hif_sc)
 
    hdd_adapter_t *pAdapter;
    int i;
-   hdd_prevent_suspend();
-
+   hdd_prevent_suspend(WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT);
 
    vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, TRUE);
 
@@ -2186,7 +2185,7 @@ VOS_STATUS hdd_wlan_re_init(void *hif_sc)
    wlan_hdd_send_svc_nlink_msg(WLAN_SVC_FW_CRASHED_IND, NULL, 0);
 
    /* Allow the phone to go to sleep */
-   hdd_allow_suspend();
+   hdd_allow_suspend(WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT);
    /* register for riva power on lock */
    if (req_riva_power_on_lock("wlan"))
    {
@@ -2251,7 +2250,7 @@ err_vosclose:
 
 err_re_init:
    /* Allow the phone to go to sleep */
-   hdd_allow_suspend();
+   hdd_allow_suspend(WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT);
    vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    VOS_BUG(0);
    return -EPERM;

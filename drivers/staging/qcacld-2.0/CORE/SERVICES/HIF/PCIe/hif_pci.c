@@ -1417,6 +1417,46 @@ HIFDiagWriteAccess(HIF_DEVICE *hif_device, A_UINT32 address, A_UINT32 data)
     }
 }
 
+/**
+ * hif_dump_pipe_debug_count() - Log error count
+ * @hif_device:	HIF device pointer.
+ *
+ * Output the pipe error counts of each pipe to log file
+ *
+ * Return: N/A
+ */
+void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device)
+{
+	struct HIF_CE_state *hif_state;
+	struct hif_pci_softc *sc;
+	int pipe_num;
+
+	if (hif_device == NULL) {
+		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, (
+			"%s hif_device is NULL", __func__));
+		return;
+	}
+	hif_state = (struct HIF_CE_state *)hif_device;
+	if (hif_state == NULL) {
+		AR_DEBUG_PRINTF(ATH_DEBUG_ERR, (
+			"%s hif_state is NULL", __func__));
+		return;
+	}
+	sc = hif_state->sc;
+	for (pipe_num=0; pipe_num < sc->ce_count; pipe_num++) {
+		struct HIF_CE_pipe_info *pipe_info;
+
+	pipe_info = &hif_state->pipe_info[pipe_num];
+	AR_DEBUG_PRINTF(ATH_DEBUG_ERR, (
+		"%s pipe_id = %d, recv_bufs_needed = %d, nbuf_alloc_err_count = %u, nbuf_dma_err_count = %u, nbuf_ce_enqueue_err_count = %u",
+		__func__, pipe_info->pipe_num,
+		atomic_read(&pipe_info->recv_bufs_needed),
+		pipe_info->nbuf_alloc_err_count,
+		pipe_info->nbuf_dma_err_count,
+		pipe_info->nbuf_ce_enqueue_err_count));
+	}
+}
+
 static int
 hif_post_recv_buffers_for_pipe(struct HIF_CE_pipe_info *pipe_info)
 {
@@ -1426,6 +1466,7 @@ hif_post_recv_buffers_for_pipe(struct HIF_CE_pipe_info *pipe_info)
     struct hif_pci_softc *sc = hif_state->sc;
     struct ol_softc *scn = sc->ol_sc;
     a_status_t ret;
+    uint32_t bufs_posted = 0;
 
     buf_sz = pipe_info->buf_sz;
     if (buf_sz == 0) {
@@ -1446,8 +1487,14 @@ hif_post_recv_buffers_for_pipe(struct HIF_CE_pipe_info *pipe_info)
 
         nbuf = adf_nbuf_alloc(scn->adf_dev, buf_sz, 0, 4, FALSE);
         if (!nbuf) {
-            AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s buf alloc error [%d] needed %d\n", __FUNCTION__, pipe_info->pipe_num, atomic_read(&pipe_info->recv_bufs_needed)));
+            AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+                ("%s buf alloc error [%d] needed %d\n",
+                 __func__, pipe_info->pipe_num,
+                 atomic_read(&pipe_info->recv_bufs_needed)));
             atomic_inc(&pipe_info->recv_bufs_needed);
+            adf_os_spin_lock_bh(&pipe_info->recv_bufs_needed_lock);
+            pipe_info->nbuf_alloc_err_count++;
+            adf_os_spin_unlock_bh(&pipe_info->recv_bufs_needed_lock);
             return 1;
         }
 
@@ -1458,20 +1505,47 @@ hif_post_recv_buffers_for_pipe(struct HIF_CE_pipe_info *pipe_info)
         ret = adf_nbuf_map_single(scn->adf_dev, nbuf, ADF_OS_DMA_FROM_DEVICE);
 
         if (unlikely(ret != A_STATUS_OK)) {
-            AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s mapping error\n", __FUNCTION__));
+            AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s mapping error\n", __func__));
             adf_nbuf_free(nbuf);
             atomic_inc(&pipe_info->recv_bufs_needed);
+            adf_os_spin_lock_bh(&pipe_info->recv_bufs_needed_lock);
+            pipe_info->nbuf_dma_err_count++;
+            adf_os_spin_unlock_bh(&pipe_info->recv_bufs_needed_lock);
             return 1;
         }
 
         CE_data = adf_nbuf_get_frag_paddr_lo(nbuf, 0);
 
-        pci_dma_sync_single_for_device(scn->sc_osdev->bdev, CE_data, buf_sz, PCI_DMA_FROMDEVICE);
+        pci_dma_sync_single_for_device(scn->sc_osdev->bdev, CE_data,
+                                       buf_sz, PCI_DMA_FROMDEVICE);
         status = CE_recv_buf_enqueue(ce_hdl, (void *)nbuf, CE_data);
         A_ASSERT(status == EOK);
+        if (status != EOK) {
+            AR_DEBUG_PRINTF(ATH_DEBUG_ERR,
+                ("%s CE_recv_buf_enqueue error [%d] needed %d\n",
+                __func__, pipe_info->pipe_num,
+                atomic_read(&pipe_info->recv_bufs_needed)));
+            atomic_inc(&pipe_info->recv_bufs_needed);
+            adf_nbuf_free(nbuf);
+            adf_os_spin_lock_bh(&pipe_info->recv_bufs_needed_lock);
+            pipe_info->nbuf_ce_enqueue_err_count++;
+            adf_os_spin_unlock_bh(&pipe_info->recv_bufs_needed_lock);
+            return 1;
+        }
 
         adf_os_spin_lock_bh(&pipe_info->recv_bufs_needed_lock);
+        bufs_posted++;
     }
+    pipe_info->nbuf_alloc_err_count =
+        (pipe_info->nbuf_alloc_err_count > bufs_posted)?
+         pipe_info->nbuf_alloc_err_count - bufs_posted : 0;
+    pipe_info->nbuf_dma_err_count =
+        (pipe_info->nbuf_dma_err_count > bufs_posted)?
+         pipe_info->nbuf_dma_err_count - bufs_posted : 0;
+    pipe_info->nbuf_ce_enqueue_err_count =
+        (pipe_info->nbuf_ce_enqueue_err_count > bufs_posted)?
+         pipe_info->nbuf_ce_enqueue_err_count - bufs_posted : 0;
+
     adf_os_spin_unlock_bh(&pipe_info->recv_bufs_needed_lock);
 
     return 0;

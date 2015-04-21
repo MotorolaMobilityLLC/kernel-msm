@@ -90,6 +90,10 @@ struct HIF_CE_pipe_info {
     struct HIF_CE_completion_state_list *completion_space_list;
     struct HIF_CE_completion_state *completion_freeq_head;
     struct HIF_CE_completion_state *completion_freeq_tail;
+    /* adding three counts for debugging ring buffer errors */
+    uint32_t nbuf_alloc_err_count;
+    uint32_t nbuf_dma_err_count;
+    uint32_t nbuf_ce_enqueue_err_count;
 } ;
 
 struct HIF_CE_state {
@@ -146,6 +150,7 @@ void priv_dump_agc(struct hif_pci_softc *sc);
 void priv_start_cap_chaninfo(struct hif_pci_softc *sc);
 void priv_dump_chaninfo(struct hif_pci_softc *sc);
 void priv_dump_bbwatchdog(struct hif_pci_softc *sc);
+void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device);
 
 #define CE_HTT_T2H_MSG 1
 #define CE_HTT_H2T_MSG 4

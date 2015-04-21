@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1773,6 +1773,7 @@ csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac,
                                       &pMac->roam.neighborRoamInfo[sessionId];
     tCsrRoamConnectedProfile *pCurProfile = &pMac->roam.roamSession[sessionId].connectedProfile;
     tANI_U8 i = 0;
+    struct roam_ext_params *roam_params;
 
     VOS_ASSERT(pScanFilter != NULL);
     if (pScanFilter == NULL)
@@ -1780,9 +1781,10 @@ csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac,
 
     vos_mem_zero(pScanFilter, sizeof(tCsrScanResultFilter));
 
+    roam_params = &pMac->roam.configParam.roam_params;
     /* We dont want to set BSSID based Filter */
     pScanFilter->BSSIDs.numOfBSSIDs = 0;
-
+    pScanFilter->scan_filter_for_roam = 1;
     //only for HDD requested handoff fill in the BSSID in the filter
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     if (pNeighborRoamInfo->uOsRequestedHandoff)
@@ -1805,24 +1807,45 @@ csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac,
         }
     }
 #endif
-    /* Populate all the information from the connected profile */
-    pScanFilter->SSIDs.numOfSSIDs = 1;
-    pScanFilter->SSIDs.SSIDList = vos_mem_malloc(sizeof(tCsrSSIDInfo));
-    if (NULL == pScanFilter->SSIDs.SSIDList)
-    {
-        smsLog(pMac, LOGE, FL("Scan Filter SSID mem alloc failed"));
-        return eHAL_STATUS_FAILED_ALLOC;
-    }
-    pScanFilter->SSIDs.SSIDList->handoffPermitted = 1;
-    pScanFilter->SSIDs.SSIDList->ssidHidden = 0;
-    pScanFilter->SSIDs.SSIDList->SSID.length =  pCurProfile->SSID.length;
-    vos_mem_copy((void *)pScanFilter->SSIDs.SSIDList->SSID.ssId, (void *)pCurProfile->SSID.ssId, pCurProfile->SSID.length);
+    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+        FL("No of Allowed SSID List:%d"), roam_params->num_ssid_allowed_list);
+    if (roam_params->num_ssid_allowed_list) {
+        pScanFilter->SSIDs.numOfSSIDs = (roam_params->num_ssid_allowed_list);
+        pScanFilter->SSIDs.SSIDList =
+           vos_mem_malloc(sizeof(tCsrSSIDInfo) * pScanFilter->SSIDs.numOfSSIDs);
+        if (NULL == pScanFilter->SSIDs.SSIDList) {
+           smsLog(pMac, LOGE, FL("Scan Filter SSID mem alloc failed"));
+           return eHAL_STATUS_FAILED_ALLOC;
+        }
+        for(i = 0; i < roam_params->num_ssid_allowed_list; i++) {
+          pScanFilter->SSIDs.SSIDList[i].handoffPermitted = 1;
+          pScanFilter->SSIDs.SSIDList[i].ssidHidden = 0;
+          vos_mem_copy((void *)pScanFilter->SSIDs.SSIDList[i].SSID.ssId,
+            roam_params->ssid_allowed_list[i].ssId,
+            roam_params->ssid_allowed_list[i].length);
+          pScanFilter->SSIDs.SSIDList[i].SSID.length =
+            roam_params->ssid_allowed_list[i].length;
+        }
+    } else {
+        /* Populate all the information from the connected profile */
+        pScanFilter->SSIDs.numOfSSIDs = 1;
+        pScanFilter->SSIDs.SSIDList = vos_mem_malloc(sizeof(tCsrSSIDInfo));
+        if (NULL == pScanFilter->SSIDs.SSIDList) {
+          smsLog(pMac, LOGE, FL("Scan Filter SSID mem alloc failed"));
+          return eHAL_STATUS_FAILED_ALLOC;
+        }
+        pScanFilter->SSIDs.SSIDList->handoffPermitted = 1;
+        pScanFilter->SSIDs.SSIDList->ssidHidden = 0;
+        pScanFilter->SSIDs.SSIDList->SSID.length =  pCurProfile->SSID.length;
+        vos_mem_copy((void *)pScanFilter->SSIDs.SSIDList->SSID.ssId,
+          (void *)pCurProfile->SSID.ssId, pCurProfile->SSID.length);
 
     NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Filtering for SSID %.*s from scan results,"
                                 "length of SSID = %u"),
                                 pScanFilter->SSIDs.SSIDList->SSID.length,
                                 pScanFilter->SSIDs.SSIDList->SSID.ssId,
                                 pScanFilter->SSIDs.SSIDList->SSID.length);
+    }
     pScanFilter->authType.numEntries = 1;
     pScanFilter->authType.authType[0] = pCurProfile->AuthType;
 
@@ -2035,7 +2058,7 @@ csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
 
                 if (abs(CurrAPRssi) < abs(pScanResult->BssDescriptor.rssi)) {
                     /* Do not roam to an AP with worse RSSI than the current */
-                    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
                                "%s: [INFOLOG]Current AP rssi=%d new ap rssi "
                                "worse=%d", __func__,
                                CurrAPRssi,
@@ -2049,7 +2072,7 @@ csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
                      */
                     if (abs(abs(CurrAPRssi) -
                          abs(pScanResult->BssDescriptor.rssi)) < RoamRssiDiff) {
-                        VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                        VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
                                    "%s: [INFOLOG]Current AP rssi=%d new ap "
                                    "rssi=%d not good enough, roamRssiDiff=%d",
                                     __func__,
@@ -2058,7 +2081,7 @@ csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
                                    RoamRssiDiff);
                         continue;
                     } else {
-                        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
                                  "%s: [INFOLOG]Current AP rssi=%d new ap "
                                  "rssi better=%d",
                                   __func__,
@@ -4717,6 +4740,25 @@ csrNeighborRoamNeighborLookupDOWNCallback (v_PVOID_t pAdapter,
 extern int dumpCmdRSSI;
 #endif
 
+/**
+ * csr_roam_reset_roam_params() - API to reset the roaming parameters
+ * @mac_ctx:       Global MAC Context pointer.
+ *
+ * Return: VOID
+ */
+void csr_roam_reset_roam_params(tpAniSirGlobal mac_ctx)
+{
+	struct roam_ext_params *roam_params = NULL;
+	/* clear all the whitelist parameters,
+	 * remaining needs to be retained across connections. */
+	VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			FL("Roaming parameters are reset"));
+	roam_params = &mac_ctx->roam.configParam.roam_params;
+	roam_params->num_ssid_allowed_list = 0;
+	vos_mem_set(&roam_params->ssid_allowed_list, 0,
+		sizeof(tSirMacSSid) * MAX_SSID_ALLOWED_LIST);
+}
+
 /* ---------------------------------------------------------------------------
 
     \fn csrNeighborRoamIndicateDisconnect
@@ -4755,6 +4797,11 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac,
     /*Free the current previous profile and move the current profile to prev profile.*/
     csrRoamFreeConnectProfile(pMac, pPrevProfile);
     csrRoamCopyConnectProfile(pMac, sessionId, pPrevProfile);
+
+    /* clear the roaming parameters that are per connection.
+     * For a new connection, they have to be programmed again. */
+    if (!csrNeighborMiddleOfRoaming((tHalHandle)pMac, sessionId))
+      csr_roam_reset_roam_params(pMac);
 #endif
     if (NULL != pSession)
     {
@@ -5336,6 +5383,14 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac, tANI_U8 sessionId)
     vos_mem_copy(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList,
                         pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.channelList,
                         pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels);
+    pNeighborRoamInfo->cfgParams.hi_rssi_scan_max_count =
+            pMac->roam.configParam.neighborRoamConfig.nhi_rssi_scan_max_count;
+    pNeighborRoamInfo->cfgParams.hi_rssi_scan_rssi_delta =
+            pMac->roam.configParam.neighborRoamConfig.nhi_rssi_scan_rssi_delta;
+    pNeighborRoamInfo->cfgParams.hi_rssi_scan_delay =
+            pMac->roam.configParam.neighborRoamConfig.nhi_rssi_scan_delay;
+    pNeighborRoamInfo->cfgParams.hi_rssi_scan_rssi_ub =
+            pMac->roam.configParam.neighborRoamConfig.nhi_rssi_scan_rssi_ub;
 
     vos_mem_set(pNeighborRoamInfo->currAPbssid, sizeof(tCsrBssid), 0);
     pNeighborRoamInfo->currentNeighborLookupThreshold =
@@ -5350,6 +5405,7 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac, tANI_U8 sessionId)
         pNeighborRoamInfo->cfgParams.nRoamBmissFinalBcnt;
     pNeighborRoamInfo->currentRoamBeaconRssiWeight =
         pNeighborRoamInfo->cfgParams.nRoamBeaconRssiWeight;
+
 #ifdef FEATURE_WLAN_LFR
     pNeighborRoamInfo->lookupDOWNRssi = 0;
     pNeighborRoamInfo->uEmptyScanCount = 0;

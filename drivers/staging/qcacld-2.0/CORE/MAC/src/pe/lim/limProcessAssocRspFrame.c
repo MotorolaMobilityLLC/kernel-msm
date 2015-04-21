@@ -741,6 +741,10 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     {
         // Log success
         PELOG1(limLog(pMac, LOG1, FL("Successfully Reassociated with BSS"));)
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_ROAM_ASSOC_COMP_EVENT,
+                       psessionEntry, eSIR_SUCCESS, eSIR_SUCCESS);
+#endif
 #ifdef FEATURE_WLAN_ESE
         {
             tANI_U8 cnt = 0;
@@ -939,8 +943,9 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         else
             psessionEntry->beaconParams.fShortPreamble = true;
     }
-#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
-    limDiagEventReport(pMac, WLAN_PE_DIAG_CONNECTED, psessionEntry, 0, 0);
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_CONNECTED, psessionEntry,
+                       eSIR_SUCCESS, eSIR_SUCCESS);
 #endif
     if( pAssocRsp->QosMapSet.present )
     {

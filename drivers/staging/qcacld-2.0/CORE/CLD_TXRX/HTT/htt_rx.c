@@ -2219,7 +2219,8 @@ htt_rx_hash_list_insert(struct htt_pdev_t *pdev, u_int32_t paddr,
         htt_list_remove(pdev->rx_ring.hash_table[i].freepool.next);
     }
     else {
-        hash_element = adf_os_mem_alloc(pdev->osdev, sizeof(hash_element));
+        hash_element = adf_os_mem_alloc(pdev->osdev,
+                                         sizeof(struct htt_rx_hash_entry));
         if (adf_os_unlikely(NULL == hash_element)) {
             HTT_ASSERT_ALWAYS(0);
             return 1;

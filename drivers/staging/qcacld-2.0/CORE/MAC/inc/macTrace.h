@@ -56,8 +56,10 @@
 
 
 void macTraceReset(tpAniSirGlobal pMac);
-void macTrace(tpAniSirGlobal pMac,  tANI_U8 code, tANI_U8 session, tANI_U32 data);
-void macTraceNew(tpAniSirGlobal pMac,  tANI_U8 module, tANI_U8 code, tANI_U8 session, tANI_U32 data);
+void macTrace(tpAniSirGlobal pMac, tANI_U8 code, tANI_U16 session,
+              tANI_U32 data);
+void macTraceNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 code,
+                 tANI_U16 session, tANI_U32 data);
 tANI_U8* macTraceGetCfgMsgString( tANI_U16 cfgMsg );
 tANI_U8* macTraceGetLimMsgString( tANI_U16 limMsg );
 tANI_U8* macTraceGetWdaMsgString( tANI_U16 wdaMsg );

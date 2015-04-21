@@ -64,7 +64,7 @@ typedef struct
    u_int8_t  scan:1;
    u_int8_t  dpuFeedback;
    u_int8_t  sessionId;
-   u_int8_t  scan_src:1;
+   u_int8_t  scan_src;
 }t_packetmeta, *tp_packetmeta;
 
 /* implementation specific vos packet type */

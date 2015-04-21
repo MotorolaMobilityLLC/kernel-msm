@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -102,4 +102,30 @@ static __adf_os_inline a_uint32_t __adf_os_int_sqrt(a_uint32_t x)
 	return int_sqrt(x);
 }
 
+/**
+ * @brief completion structure initialization
+ */
+static __adf_os_inline void
+__adf_os_init_completion(adf_os_comp_t *ptr)
+{
+	init_completion(ptr);
+}
+
+
+/**
+ * @brief wait for completion till timeout
+ *
+ * @Return: 0 if timed out, and positive on completion
+ */
+static __adf_os_inline unsigned long
+__adf_os_wait_for_completion_timeout(adf_os_comp_t *ptr, unsigned long timeout)
+{
+	return wait_for_completion_timeout(ptr, timeout);
+}
+
+static __adf_os_inline void
+__adf_os_complete(adf_os_comp_t *ptr)
+{
+	complete(ptr);
+}
 #endif /*_ADF_CMN_OS_UTIL_PVT_H*/
