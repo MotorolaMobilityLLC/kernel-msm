@@ -433,7 +433,7 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	struct ramoops_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
 	u32 start = 0, size = 0, console = 0, pmsg = 0;
-	u32 record = 0, oops = 0;
+	u32 record = 0, oops = 0, ftrace = 0;
 	int ret;
 
 	pdata = dev_get_drvdata(dev);
@@ -471,11 +471,18 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	if (ret)
 		pr_info("oops not configured");
 
+	ret = of_property_read_u32(np, "android,ramoops-ftrace-size",
+				&ftrace);
+	if (ret)
+		pr_info("ftrace not configured");
+
+
 	pdata->mem_address = start;
 	pdata->mem_size = size;
 	pdata->console_size = console;
 	pdata->pmsg_size = pmsg;
 	pdata->record_size = record;
+	pdata->ftrace_size = ftrace;
 	pdata->dump_oops = (int)oops;
 }
 #else
