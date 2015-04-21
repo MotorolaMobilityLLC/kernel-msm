@@ -21,10 +21,10 @@
 		<199 0x41 0x0308>; /* Small P1A Portable (BCM4343W)*/
 };
 
-/* small panel is 360 x 326 */
+/* small panel is 360 x 325 */
 &dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-height = <326>;
-	qcom,mdss-dsi-v-back-porch = <54>;
+	qcom,mdss-dsi-panel-height = <325>;
+	qcom,mdss-dsi-v-back-porch = <55>;
 };
 
 /* workaround to support nt35350 cut 1.1
@@ -38,6 +38,7 @@
 	};
 };
 &dsi_mot_nt35350_360p_cmd {
+	qcom,mdss-dsi-panel-name = "mot 360p command mode dsi panel 1.1";
 	/* workaround to support nt35350 cut 1.1
 	 * do not change the last 2 dis-on commandss
 	 */
