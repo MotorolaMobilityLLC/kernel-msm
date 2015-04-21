@@ -1777,8 +1777,12 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	ctrl_pdata->pclk_rate = mipi->dsi_pclk_rate;
 	ctrl_pdata->byte_clk_rate = pinfo->clk_rate / 8;
-	pr_debug("%s: pclk=%d, bclk=%d\n", __func__,
-			ctrl_pdata->pclk_rate, ctrl_pdata->byte_clk_rate);
+	ctrl_pdata->esc_clk_rate = pinfo->esc_clk_rate;
+	if (!ctrl_pdata->esc_clk_rate)
+		ctrl_pdata->esc_clk_rate = 19200000;
+	pr_debug("%s: pclk=%d, bclk=%d escclk=%d\n", __func__,
+		 ctrl_pdata->pclk_rate, ctrl_pdata->byte_clk_rate,
+		 ctrl_pdata->esc_clk_rate);
 
 	ctrl_pdata->ctrl_state = CTRL_STATE_UNKNOWN;
 
