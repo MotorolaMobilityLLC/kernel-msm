@@ -8,9 +8,28 @@
 #include <linux/irq_work.h>
 #include <linux/iio/iio.h>
 
+// comment out the following to use printk logging instead of dyndbg
+#define SENTRAL_LOG_DYNDBG 1
+
+// some build env may not have all levels available, so we define the level per
+// log type here
+#define SENTRAL_LOG_PRINTK_D KERN_DEBUG
+#define SENTRAL_LOG_PRINTK_E KERN_ERR
+#define SENTRAL_LOG_PRINTK_I KERN_INFO
+
+#ifdef SENTRAL_LOG_DYNDBG
+#define LOGD(dev, fmt, ...) dev_dbg(dev, fmt, ##__VA_ARGS__)
+#define LOGE(dev, fmt, ...) dev_err(dev, fmt, ##__VA_ARGS__)
+#define LOGI(dev, fmt, ...) dev_info(dev, fmt, ##__VA_ARGS__)
+#else /* dyndbg not available, use printk */
+#define LOGD(dev, fmt, ...) printk(SENTRAL_LOG_PRINTK_D "%s(): " fmt, __func__, ##__VA_ARGS__)
+#define LOGE(dev, fmt, ...) printk(SENTRAL_LOG_PRINTK_E "%s(): " fmt, __func__, ##__VA_ARGS__)
+#define LOGI(dev, fmt, ...) printk(SENTRAL_LOG_PRINTK_I "%s(): " fmt, __func__, ##__VA_ARGS__)
+#endif /* SENTRAL_LOG_DYNDBG */
+
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define ENDIS(b) (b ? "enable" : "disable")
+#define ENSTR(b) (b ? "enable" : "disable")
 #define TFSTR(b) (b ? "true" : "false")
 
 #define SENTRAL_NAME "sentral"
@@ -73,6 +92,11 @@ enum sentral_host_control_flags {
 	SEN_HOST_CTRL_RESERVED =      1 << 7,
 };
 
+enum sentral_chip_control_flags {
+	SEN_CHIP_CTRL_CPU_RUN =       1 << 0,
+	SEN_CHIP_CTRL_UPLOAD_ENABLE = 1 << 1,
+};
+
 enum sentral_sensor_type {
 	SST_NOP =                          0,
 	SST_ACCELEROMETER =                1,
@@ -97,6 +121,10 @@ enum sentral_sensor_type {
 	SST_GEOMAGNETIC_ROTATION_VECTOR = 20,
 	SST_HEART_RATE =                  21,
 	SST_TILT_DETECTOR =               22,
+	SST_WAKE_GESTURE =                23,
+	SST_GLANCE_GESTURE =              24,
+	SST_PICKUP_GESTURE =              25,
+	SST_ACTIVITY =                    31,
 	SST_MAX,
 	SST_FIRST = SST_ACCELEROMETER,
 	SST_TIMESTAMP_LSW =             0xFC,
@@ -105,30 +133,34 @@ enum sentral_sensor_type {
 	SST_ALL =                       0xFF,
 };
 
-static const char *sentral_sensor_type_strings[] = {
-	"NOP",
-	"ACCELEROMETER",
-	"GEOMAGNETIC_FIELD",
-	"ORIENTATION",
-	"GYROSCOPE",
-	"LIGHT",
-	"PRESSURE",
-	"TEMPERATURE",
-	"PROXIMITY",
-	"GRAVITY",
-	"LINEAR_ACCELERATION",
-	"ROTATION_VECTOR",
-	"RELATIVE_HUMIDITY",
-	"AMBIENT_TEMPERATURE",
-	"MAGNETIC_FIELD_UNCALIBRATED",
-	"GAME_ROTATION_VECTOR",
-	"GYROSCOPE_UNCALIBRATED",
-	"SIGNIFICANT_MOTION",
-	"STEP_DETECTOR",
-	"STEP_COUNTER",
-	"GEOMAGNETIC_ROTATION_VECTOR",
-	"HEART_RATE",
-	"TILT_DETECTOR",
+static const char *sentral_sensor_type_strings[SST_MAX] = {
+	[SST_NOP] = "NOP",
+	[SST_ACCELEROMETER] = "ACCELEROMETER",
+	[SST_GEOMAGNETIC_FIELD] = "MAGNETIC_FIELD",
+	[SST_ORIENTATION] = "ORIENTATION",
+	[SST_GYROSCOPE] = "GYROSCOPE",
+	[SST_LIGHT] = "LIGHT",
+	[SST_PRESSURE] = "PRESSURE",
+	[SST_TEMPERATURE] = "TEMPERATURE",
+	[SST_PROXIMITY] = "PROXIMITY",
+	[SST_GRAVITY] = "GRAVITY",
+	[SST_LINEAR_ACCELERATION] = "LINEAR_ACCELERATION",
+	[SST_ROTATION_VECTOR] = "ROTATION_VECTOR",
+	[SST_RELATIVE_HUMIDITY] = "RELATIVE_HUMIDITY",
+	[SST_AMBIENT_TEMPERATURE] = "AMBIENT_TEMPERATURE",
+	[SST_MAGNETIC_FIELD_UNCALIBRATED] = "MAGNETIC_FIELD_UNCALIBRATED",
+	[SST_GAME_ROTATION_VECTOR] = "GAME_ROTATION_VECTOR",
+	[SST_GYROSCOPE_UNCALIBRATED] = "GYROSCOPE_UNCALIBRATED",
+	[SST_SIGNIFICANT_MOTION] = "SIGNIFICANT_MOTION",
+	[SST_STEP_DETECTOR] = "STEP_DETECTOR",
+	[SST_STEP_COUNTER] = "STEP_COUNTER",
+	[SST_GEOMAGNETIC_ROTATION_VECTOR] = "GEOMAGNETIC_ROTATION_VECTOR",
+	[SST_HEART_RATE] = "HEART_RATE",
+	[SST_TILT_DETECTOR] = "TILT_DETECTOR",
+	[SST_WAKE_GESTURE] = "WAKE_GESTURE",
+	[SST_GLANCE_GESTURE] = "GLANCE_GESTURE",
+	[SST_PICKUP_GESTURE] = "PICKUP_GESTURE",
+	[SST_ACTIVITY] = "ACTIVITY",
 };
 
 enum sentral_param_page {
@@ -436,13 +468,14 @@ struct sentral_device {
 	struct mutex lock;
 	struct wake_lock w_lock;
 	struct notifier_block nb;
-	struct sentral_chip_control chip_control;
 	u8 *data_buffer;
 	bool init_complete;
 	u64 ts_irq_utime;
 	u32 ts_irq_stime;
 	u64 ts_sensor_utime;
 	u32 ts_sensor_stime;
+	u64 enabled_mask;
+	struct sentral_param_sensor_config sensor_config[SST_MAX];
 };
 
 #endif /* _SENTRAL_IIO_H_ */
