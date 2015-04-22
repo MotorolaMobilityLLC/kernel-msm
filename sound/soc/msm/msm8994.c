@@ -2454,7 +2454,7 @@ static const struct snd_soc_pcm_stream tfa9890_params = {
 	.formats = SNDRV_PCM_FORMAT_S16_LE,
 	.rate_min = 48000,
 	.rate_max = 48000,
-	.channels_min = 2,
+	.channels_min = 1,
 	.channels_max = 2,
 };
 #endif
@@ -3341,7 +3341,7 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.platform_name = "msm-pcm-routing",
 #ifdef CONFIG_SND_SOC_FLORIDA
 		.codec_name = "florida-codec",
-		.codec_dai_name	= "florida-slim1",
+		.codec_dai_name	= "florida-slim2",
 #else
 		.codec_name = "tomtom_codec",
 		.codec_dai_name = "tomtom_rx1",
@@ -3358,18 +3358,18 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.name = LPASS_BE_SLIMBUS_1_TX,
 		.stream_name = "Slimbus1 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16387",
-		.platform_name = "msm-pcm-routing",
+		.platform_name = "msm-pcm-hostless",
 #ifdef CONFIG_SND_SOC_FLORIDA
 		.codec_name = "florida-codec",
-		.codec_dai_name	= "florida-slim1",
+		.codec_dai_name	= "florida-slim2",
 #else
 		.codec_name = "tomtom_codec",
 		.codec_dai_name = "tomtom_tx1",
 #endif
-		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
 		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
 		.ops = &msm8994_be_ops,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 	},
 	{
@@ -3515,6 +3515,18 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.params = &tfa9890_params,
 	},
+	{
+		.name = "florida-tfa9890-left-cap",
+		.stream_name = "TFA9890_LEFT Capture",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "tfa9890.11-0034",
+		.codec_dai_name = "tfa9890_codec_left",
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &tfa9890_params,
+	},
 #endif
 	{
 		.name = LPASS_BE_PRI_MI2S_TX,
@@ -3544,7 +3556,19 @@ static struct snd_soc_dai_link msm8994_tfa9890_stereo_dai_link[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 		.params = &tfa9890_params,
-		},
+	},
+	{
+		.name = "florida-tfa9890-right-cap",
+		.stream_name = "TFA9890_RIGHT Capture",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "tfa9890.11-0035",
+		.codec_dai_name = "tfa9890_codec_right",
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &tfa9890_params,
+	},
 };
 #endif
 
