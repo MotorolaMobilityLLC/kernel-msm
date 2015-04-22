@@ -27,6 +27,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/notifier.h>
 #include <linux/fb.h>
+#include <linux/dropbox.h>
 
 #define ISL98611_NAME				"isl98611"
 #define ISL98611_QUEUE_NAME			"backlight-workqueue"
@@ -372,6 +373,27 @@ static const struct of_device_id of_isl98611_leds_match;
 
 #endif
 
+void isl98611_dropbox_report_recovery(struct isl98611_chip *pchip)
+{
+	char dropbox_entry[REG_MAX*7+1];
+	size_t size = sizeof(dropbox_entry);
+	char *cur = dropbox_entry;
+	u8 buf[REG_MAX+1];
+	int i = 0;
+
+	regmap_bulk_read(pchip->regmap, REG_STATUS, buf, REG_MAX);
+
+	for (i = 0; i <= REG_MAX; i++) {
+		int len = scnprintf(cur, size, "%02x: %02x\n", i, buf[i]);
+		cur += len;
+		size -= len;
+	}
+
+	pr_err("%s: dump:\n%s\n", __func__, dropbox_entry);
+	dropbox_queue_event_text("isl98611_reset_recovery", dropbox_entry,
+		strlen(dropbox_entry));
+}
+
 static int isl98611_fb_notifier_callback(struct notifier_block *self,
 	unsigned long event, void *data)
 {
@@ -393,6 +415,7 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 				__func__, regval);
 			dev_err(pchip->dev, "%s: Re-initialize the chip\n",
 				__func__);
+			isl98611_dropbox_report_recovery(pchip);
 			pchip->cdev.brightness = 0;
 			isl98611_write(pchip, REG_BRGHT_MSB, 0);
 			isl98611_chip_init(pchip);
