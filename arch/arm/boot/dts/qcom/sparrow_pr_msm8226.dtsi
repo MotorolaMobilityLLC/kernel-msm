@@ -544,6 +544,8 @@
 		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
 		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
 		DMIC-supply = <&pm8226_l23>; //ASUS BSP Jessy config DMIC
+		SPK1P8-supply = <&pm8226_l9>;
+		SPK3P0-supply = <&pm8226_l16>;
 	};
 
 	qcom,msm-pcm {
