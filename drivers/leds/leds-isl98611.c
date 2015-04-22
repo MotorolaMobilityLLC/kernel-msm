@@ -75,6 +75,7 @@
 #define PFM_MASK		0xFF
 #define BRGHT_LSB_MASK		0x07
 #define VLED_EN_MASK		0x08
+#define RESET_MASK		0x80
 
 #define VLED_ON_VAL		0x08
 #define VLED_OFF_VAL		0x00
@@ -83,6 +84,7 @@
 #define VPOFF_VAL		0x00
 #define VNOFF_VAL		0x00
 #define RESET_VAL		0x00
+#define NO_RESET_VAL		0x80
 #define CABC_VAL		0x80
 
 struct isl98611_chip {
@@ -238,15 +240,15 @@ static void isl98611_brightness_set(struct work_struct *work)
 
 	if (level != old_level && old_level == 0) {
 		rc = isl98611_update(pchip, REG_ENABLE,
-			VLED_EN_MASK, VLED_ON_VAL);
+			VLED_EN_MASK | RESET_MASK, VLED_ON_VAL | NO_RESET_VAL);
 		printk_ratelimited(KERN_INFO
-			"isl98611 backlight on %s", (rc?"FAILED":""));
+			"isl98611 backlight on %s\n", (rc ? "FAILED" : ""));
 	}
 	 else if (level == 0 && old_level != 0) {
 		rc = isl98611_update(pchip, REG_ENABLE,
-			VLED_EN_MASK, VLED_OFF_VAL);
+			VLED_EN_MASK | RESET_MASK, VLED_OFF_VAL | NO_RESET_VAL);
 		printk_ratelimited(KERN_INFO
-			"isl98611 backlight off %s", (rc?"FAILED":""));
+			"isl98611 backlight off %s\n", (rc ? "FAILED" : ""));
 	}
 	old_level = level;
 
