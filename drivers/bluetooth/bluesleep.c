@@ -14,7 +14,7 @@
 
  * Copyright (C) 2006-2007 - Motorola
  * Copyright (c) 2008-2010, The Linux Foundation. All rights reserved.
- * Copyright (c) 2013-2014, LGE Inc.
+ * Copyright (c) 2013-2015, LGE Inc.
 
  * Date         Author           Comment
  * -----------  --------------   --------------------------------
@@ -239,6 +239,9 @@ int bluesleep_can_sleep(void)
 
 void bluesleep_sleep_wakeup(void)
 {
+	unsigned long irq_flags;
+
+	spin_lock_irqsave(&rw_lock, irq_flags);
 	if (test_bit(BT_ASLEEP, &flags)) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("waking up...\n");
@@ -252,13 +255,17 @@ void bluesleep_sleep_wakeup(void)
 			pr_info("BT WAKE: set to wake\n");
 
 		/*Activating UART */
+		clear_bit(BT_ASLEEP, &flags);
+		spin_unlock_irqrestore(&rw_lock, irq_flags);
+
 		hsuart_power(1);
 
 		if (bsi->has_ext_wake == 1)
 			gpio_set_value(bsi->ext_wake, 0);
 
 		clear_bit(BT_EXT_WAKE, &flags);
-		clear_bit(BT_ASLEEP, &flags);
+	} else {
+		spin_unlock_irqrestore(&rw_lock, irq_flags);
 	}
 }
 
