@@ -753,7 +753,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu,
 				KGSL_PWRON_FIXUP_IDENTIFIER);
 		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu,
-			CP_HDR_INDIRECT_BUFFER_PFD);
+			CP_HDR_INDIRECT_BUFFER_PFE);
 		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu,
 			adreno_dev->pwron_fixup.gpuaddr);
 		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu,
@@ -1301,7 +1301,7 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	} else {
 		*cmds++ = cp_nop_packet(4);
 		*cmds++ = KGSL_START_OF_IB_IDENTIFIER;
-		*cmds++ = CP_HDR_INDIRECT_BUFFER_PFD;
+		*cmds++ = CP_HDR_INDIRECT_BUFFER_PFE;
 		*cmds++ = ibdesc[0].gpuaddr;
 		*cmds++ = ibdesc[0].sizedwords;
 	}
@@ -1315,7 +1315,7 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 		if (ibdesc[i].sizedwords == 0)
 			*cmds++ = cp_nop_packet(2);
 		else
-			*cmds++ = CP_HDR_INDIRECT_BUFFER_PFD;
+			*cmds++ = CP_HDR_INDIRECT_BUFFER_PFE;
 
 		*cmds++ = ibdesc[i].gpuaddr;
 		*cmds++ = ibdesc[i].sizedwords;
