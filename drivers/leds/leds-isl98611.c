@@ -25,6 +25,8 @@
 #include <linux/platform_data/leds-isl98611.h>
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
+#include <linux/notifier.h>
+#include <linux/fb.h>
 
 #define ISL98611_NAME				"isl98611"
 #define ISL98611_QUEUE_NAME			"backlight-workqueue"
@@ -95,6 +97,7 @@ struct isl98611_chip {
 	struct workqueue_struct *ledwq;
 	struct work_struct ledwork;
 	struct led_classdev cdev;
+	struct notifier_block fb_notif;
 };
 
 static const struct regmap_config isl98611_regmap = {
@@ -139,10 +142,9 @@ static int isl98611_update(struct isl98611_chip *pchip,
 }
 
 /* initialize chip */
-static int isl98611_chip_init(struct i2c_client *client)
+static int isl98611_chip_init(struct isl98611_chip *pchip)
 {
 	int rval = 0;
-	struct isl98611_chip *pchip = i2c_get_clientdata(client);
 	struct isl98611_platform_data *pdata = pchip->pdata;
 
 	if (!pdata->no_reset)
@@ -370,6 +372,38 @@ static const struct of_device_id of_isl98611_leds_match;
 
 #endif
 
+static int isl98611_fb_notifier_callback(struct notifier_block *self,
+	unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	struct isl98611_chip *pchip = container_of(self, struct isl98611_chip,
+		fb_notif);
+	int blank;
+
+	dev_dbg(pchip->dev, "%s+\n", __func__);
+
+	blank = *(int *)evdata->data;
+
+	if (event == FB_EVENT_BLANK && blank == FB_BLANK_UNBLANK) {
+		int regval;
+		regval = isl98611_read(pchip, REG_BRGHT_LSB);
+		if (regval) {
+			dev_err(pchip->dev,
+				"%s: REG_BRGHT_LSB is an unexpected value: %d\n",
+				__func__, regval);
+			dev_err(pchip->dev, "%s: Re-initialize the chip\n",
+				__func__);
+			pchip->cdev.brightness = 0;
+			isl98611_write(pchip, REG_BRGHT_MSB, 0);
+			isl98611_chip_init(pchip);
+		}
+	}
+
+	dev_dbg(pchip->dev, "%s-\n", __func__);
+
+	return 0;
+}
+
 static int isl98611_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -430,7 +464,7 @@ static int isl98611_probe(struct i2c_client *client,
 	}
 
 	/* chip initialize */
-	rc = isl98611_chip_init(client);
+	rc = isl98611_chip_init(pchip);
 	if (rc < 0) {
 		dev_err(&client->dev, "fail : init chip");
 		return rc;
@@ -465,11 +499,21 @@ static int isl98611_probe(struct i2c_client *client,
 	if (pdata->default_on)
 		isl98611_led_set(&pchip->cdev, pdata->init_level);
 
+	pchip->fb_notif.notifier_call = isl98611_fb_notifier_callback;
+	rc = fb_register_client(&pchip->fb_notif);
+	if (rc) {
+		dev_err(&client->dev,
+			"Error registering fb_notifier: %d\n", rc);
+		goto fberr;
+	}
+
 	status = isl98611_read(pchip, REG_STATUS);
 	dev_info(pchip->dev, "probe success chip hw status %#x", status);
 
 	return 0;
 
+fberr:
+	led_classdev_unregister(&pchip->cdev);
 classerr:
 	destroy_workqueue(pchip->ledwq);
 	return rc;
@@ -479,6 +523,7 @@ static int isl98611_remove(struct i2c_client *client)
 {
 	struct isl98611_chip *pchip = i2c_get_clientdata(client);
 
+	fb_unregister_client(&pchip->fb_notif);
 	led_classdev_unregister(&pchip->cdev);
 	destroy_workqueue(pchip->ledwq);
 
