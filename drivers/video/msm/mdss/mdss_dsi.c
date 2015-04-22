@@ -338,11 +338,13 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	if (pdata->panel_info.panel_power_initialized) {
 		if (ctrl_pdata->sh_control_enabled) {
 			if (!mdss_dsi_is_panel_dead(pdata)) {
-				pr_info("%s: Skipping power ctrl\n", __func__);
+				if (!ctrl_pdata->ndx)
+					pr_info("%s[%d]: Skipping power ctrl\n",
+						__func__, ctrl_pdata->ndx);
 				goto skip_power_ctrl;
-			} else
-				pr_warn("%s: Panel is dead, toggle panel regulators\n",
-					__func__);
+			} else if (!ctrl_pdata->ndx)
+				pr_warn("%s[%d]: Panel is dead, toggle regs\n",
+						__func__, ctrl_pdata->ndx);
 		}
 	} else if (ctrl_pdata->sh_control_enabled)
 		pr_info("%s: SH control enabled, initialize panel power once\n",
@@ -628,8 +630,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 
 	pr_debug("%s+: ctrl=%pK ndx=%d power_state=%d\n",
 		__func__, ctrl_pdata, ctrl_pdata->ndx, power_state);
-	pr_info("%s+: ctrl=%p ndx=%d\n", __func__,
-			ctrl_pdata, ctrl_pdata->ndx);
+	pr_info("%s[%d]+.\n", __func__, ctrl_pdata->ndx);
 
 	if (power_state == panel_info->panel_power_state) {
 		pr_debug("%s: No change in power state %d -> %d\n", __func__,
@@ -656,7 +657,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 	if ((!pdata->panel_info.ulps_suspend_enabled &&
 			!ctrl_pdata->sh_control_enabled) ||
 					mdss_dsi_is_panel_dead(pdata)) {
-		pr_debug("%s(%d): disable DSI controller and DSI phy\n",
+		pr_debug("%s[%d]: disable DSI controller and DSI phy\n",
 						__func__, ctrl_pdata->ndx);
 		/* disable DSI controller */
 		mdss_dsi_controller_cfg(0, pdata);
@@ -664,7 +665,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 		/* disable DSI phy */
 		mdss_dsi_phy_disable(ctrl_pdata);
 	} else
-		pr_debug("%s(%d): SKIP disable DSI controller and DSI phy\n",
+		pr_debug("%s[%d]: SKIP disable DSI controller and DSI phy\n",
 						__func__, ctrl_pdata->ndx);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
@@ -801,8 +802,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	cur_power_state = pdata->panel_info.panel_power_state;
 	pr_debug("%s+: ctrl=%pK ndx=%d cur_power_state=%d\n", __func__,
 		ctrl_pdata, ctrl_pdata->ndx, cur_power_state);
-	pr_info("%s+: ctrl=%p ndx=%d\n",
-			__func__, ctrl_pdata, ctrl_pdata->ndx);
+	pr_info("%s[%d]+.\n", __func__, ctrl_pdata->ndx);
 
 	pinfo = &pdata->panel_info;
 	mipi = &pdata->panel_info.mipi;
@@ -847,13 +847,13 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	if (((!pdata->panel_info.ulps_suspend_enabled || !ctrl_pdata->ulps) &&
 		!ctrl_pdata->sh_control_enabled)  ||
 			mdss_dsi_is_panel_dead(pdata)) {
-		pr_debug("%s(%d): reset and init DSI phy\n",
+		pr_debug("%s[%d]: reset and init DSI phy\n",
 						__func__, ctrl_pdata->ndx);
 		mdss_dsi_phy_sw_reset(ctrl_pdata);
 		mdss_dsi_phy_init(ctrl_pdata);
 		mdss_dsi_ctrl_setup(ctrl_pdata);
 	} else
-		pr_debug("%s(%d): skip reset and reinit DSI phy\n",
+		pr_debug("%s[%d]: skip reset and reinit DSI phy\n",
 						__func__, ctrl_pdata->ndx);
 
 	/* DSI link clocks need to be on prior to ctrl sw reset */
