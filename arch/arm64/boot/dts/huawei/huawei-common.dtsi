@@ -18,7 +18,7 @@
 		ramoops_mem: ramoops_region@0 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
-			reg = <0 0x0e700000 0 0x00200000>;
+			reg = <0 0x0e800000 0 0x00200000>;
 			label = "ramoops_mem";
 		};
 	};
@@ -29,7 +29,7 @@
 		compatible = "ramoops";
 		status = "ok";
 
-		android,ramoops-buffer-start = <0x0e700000>;
+		android,ramoops-buffer-start = <0x0e800000>;
 		android,ramoops-buffer-size = <0x200000>;
 		android,ramoops-console-size = <0x100000>;
 		android,ramoops-record-size = <0x10000>;
@@ -39,7 +39,7 @@
 		linux,contiguous-region = <&ramoops_mem>;
 		android,ramoops-hole {
 			compatible = "qcom,msm-contig-mem";
-			qcom,memblock-reserve = <0x0e700000 0x00200000>;
+			qcom,memblock-reserve = <0x0e800000 0x00200000>;
 		};
 	};
 };
