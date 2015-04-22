@@ -89,7 +89,7 @@ static const char *get_api_type_str(unsigned int type)
 static inline void _create_ib_ref(struct kgsl_memdesc *memdesc,
 		unsigned int *cmd, unsigned int cnt, unsigned int off)
 {
-	cmd[0] = CP_HDR_INDIRECT_BUFFER_PFD;
+	cmd[0] = CP_HDR_INDIRECT_BUFFER_PFE;
 	cmd[1] = memdesc->gpuaddr + off;
 	cmd[2] = cnt;
 }

@@ -754,16 +754,21 @@ static inline int adreno_context_timestamp(struct kgsl_context *k_ctxt,
 static inline int __adreno_add_idle_indirect_cmds(unsigned int *cmds,
 						unsigned int nop_gpuaddr)
 {
-	/* Adding an indirect buffer ensures that the prefetch stalls until
+	/*
+	 * Adding an indirect buffer ensures that the prefetch stalls until
 	 * the commands in indirect buffer have completed. We need to stall
 	 * prefetch with a nop indirect buffer when updating pagetables
-	 * because it provides stabler synchronization */
-	*cmds++ = CP_HDR_INDIRECT_BUFFER_PFD;
+	 * because it provides stabler synchronization. Adding a WME before
+	 * PFE mimics PFD and hence avoids races
+	 */
+	*cmds++ = cp_type3_packet(CP_WAIT_FOR_ME, 1);
+	*cmds++ = 0;
+	*cmds++ = CP_HDR_INDIRECT_BUFFER_PFE;
 	*cmds++ = nop_gpuaddr;
 	*cmds++ = 2;
 	*cmds++ = cp_type3_packet(CP_WAIT_FOR_IDLE, 1);
 	*cmds++ = 0x00000000;
-	return 5;
+	return 7;
 }
 
 static inline int adreno_add_bank_change_cmds(unsigned int *cmds,
