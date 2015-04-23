@@ -409,6 +409,10 @@ static struct stml0xx_platform_data *stml0xx_of_init(struct spi_device *spi)
 	of_property_read_u32(np, "ct406_prox_gain",
 			     &pdata->ct406_prox_gain);
 
+	pdata->dsp_iface_enable = 0;
+	of_property_read_u32(np, "dsp_iface_enable",
+				&pdata->dsp_iface_enable);
+
 	pdata->headset_detect_enable = 0;
 	pdata->headset_hw_version = 0;
 	pdata->headset_insertion_debounce = 0x01F4;
