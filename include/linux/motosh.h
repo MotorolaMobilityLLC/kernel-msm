@@ -122,7 +122,7 @@
 #define LIFT                            0x51
 
 #define WAKE_MSG_QUEUE                  0x52
-#define NWAKE_MSG_QUEUE_LEN             0x53
+#define NWAKE_STATUS                    0x53
 #define NWAKE_MSG_QUEUE                 0x54
 #define WAKE_MSG_QUEUE_LEN              0x57
 
@@ -160,6 +160,11 @@
 
 #define RESET                           0x7F
 /* MOTOSH memory map end */
+
+/* nwake interrupt mask */
+#define N_DISP_ROTATE           0x01
+#define N_ALS                   0x02
+#define N_DISP_BRIGHTNESS       0x04
 
 #define READ_CMDBUFF_SIZE 512
 
@@ -352,7 +357,6 @@ struct motosh_data {
 	struct mutex lock;
 	struct work_struct irq_work;
 	struct work_struct irq_wake_work;
-	struct work_struct clear_nonwakeable_event_queue_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
 	struct wake_lock reset_wakelock;
@@ -414,6 +418,7 @@ struct motosh_data {
 
 	bool in_reset_and_init;
 	bool is_suspended;
+	bool resume_cleanup;
 	bool pending_wake_work;
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
