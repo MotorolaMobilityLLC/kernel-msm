@@ -542,7 +542,7 @@ static int venus_hfi_read_queue(void *info, u8 *packet, u32 *pb_tx_req_is_set)
 	}
 
 	new_read_idx = queue->qhdr_read_idx + packet_size_in_words;
-	if (((packet_size_in_words << 2) <= VIDC_IFACEQ_VAR_HUGE_PKT_SIZE)
+	if (((packet_size_in_words << 2) <= VIDC_IFACEQ_MED_PKT_SIZE)
 			&& queue->qhdr_read_idx <= queue->qhdr_q_size) {
 		if (new_read_idx < queue->qhdr_q_size) {
 			memcpy(packet, read_ptr,
@@ -961,17 +961,21 @@ static int venus_hfi_vote_active_buses(void *dev,
 					aggregate_load_table[j].bus->
 						sessions_supported,
 					data[i].session);
+			/*
+			* Check for ocmem specifically as there is no
+			* separate low-power ocmem table available for
+			* aggregating ocmem load during low power mode.
+			*/
+			 if (!strnstr(aggregate_load_table[j].bus->pdata->name,
+				"ocmem", strlen(aggregate_load_table[j].
+				bus->pdata->name))) {
+				 matches &= aggregate_load_table[j].
+					bus->low_power == data[i].low_power;
+			 }
 
-			/* Check the session and low_power mode matches*/
-			  matches &= aggregate_load_table[j].bus->low_power ==
-				 data[i].low_power;
 			if (matches) {
 				aggregate_load_table[j].load +=
 					data[i].load;
-				if (data[i].low_power) {
-					aggregate_load_table[3].load +=
-					data[i].load;
-				}
 			}
 		}
 	}
@@ -2249,27 +2253,6 @@ static int venus_hfi_sys_set_debug(struct venus_hfi_device *device, u32 debug)
 	return 0;
 }
 
-static int venus_hfi_sys_set_coverage(struct venus_hfi_device *device, u32 mode)
-{
-	u8 packet[VIDC_IFACEQ_VAR_SMALL_PKT_SIZE];
-	int rc = 0;
-	struct hfi_cmd_sys_set_property_packet *pkt =
-		(struct hfi_cmd_sys_set_property_packet *) &packet;
-
-	rc = call_hfi_pkt_op(device, sys_coverage_config,
-			pkt, mode);
-	if (rc) {
-		dprintk(VIDC_WARN,
-			"Coverage mode setting to FW failed\n");
-		return -ENOTEMPTY;
-	}
-	if (venus_hfi_iface_cmdq_write(device, pkt)) {
-		dprintk(VIDC_WARN, "Failed to send coverage pkt to f/w\n");
-		return -ENOTEMPTY;
-	}
-	return 0;
-}
-
 static int venus_hfi_sys_set_idle_message(struct venus_hfi_device *device,
 	bool enable)
 {
@@ -2728,16 +2711,9 @@ err_create_pkt:
 
 static int venus_hfi_session_end(void *session)
 {
-	struct hal_session *sess;
 	if (!session) {
 		dprintk(VIDC_ERR, "Invalid Params %s\n", __func__);
 		return -EINVAL;
-	}
-	sess = session;
-	if (msm_fw_coverage) {
-		if (venus_hfi_sys_set_coverage(sess->device,
-				msm_fw_coverage))
-			dprintk(VIDC_WARN, "Fw_coverage msg ON failed\n");
 	}
 	return venus_hfi_send_session_cmd(session,
 		HFI_CMD_SYS_SESSION_END);
@@ -3087,13 +3063,13 @@ static int venus_hfi_check_core_registered(
 	return -EINVAL;
 }
 
-static void venus_hfi_process_sys_watchdog_timeout(
+static void __process_fatal_error(
 				struct venus_hfi_device *device)
 {
 	struct msm_vidc_cb_cmd_done cmd_done;
 	memset(&cmd_done, 0, sizeof(struct msm_vidc_cb_cmd_done));
 	cmd_done.device_id = device->device_id;
-	device->callback(SYS_WATCHDOG_TIMEOUT, &cmd_done);
+	device->callback(SYS_ERROR, &cmd_done);
 }
 
 static int venus_hfi_core_pc_prep(void *device)
@@ -3182,6 +3158,8 @@ static void venus_hfi_pm_hndlr(struct work_struct *work)
 	rc = venus_hfi_prepare_pc(device);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to prepare for PC, rc : %d\n", rc);
+		venus_hfi_set_state(device, VENUS_STATE_DEINIT);
+		__process_fatal_error(device);
 		return;
 	}
 
@@ -3288,56 +3266,35 @@ static void venus_hfi_process_msg_event_notify(
 static void venus_hfi_flush_debug_queue(
 	struct venus_hfi_device *device, u8 *packet)
 {
-	bool local_packet = false;
-
+	u8 local_packet[VIDC_IFACEQ_MED_PKT_SIZE];
 	if (!device) {
 		dprintk(VIDC_ERR, "%s: Invalid params\n", __func__);
 		return;
 	}
-	if (!packet) {
-		packet = kzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE, GFP_TEMPORARY);
-		if (!packet) {
-			dprintk(VIDC_ERR, "In %s() Fail to allocate mem\n",
-				__func__);
-			return;
-		}
-		local_packet = true;
-	}
+	if (!packet)
+		packet = local_packet;
 
 	while (!venus_hfi_iface_dbgq_read(device, packet)) {
 		struct hfi_msg_sys_coverage_packet *pkt =
 			(struct hfi_msg_sys_coverage_packet *) packet;
 		if (pkt->packet_type == HFI_MSG_SYS_COV) {
-			int stm_size = 0;
-			dprintk(VIDC_DBG,
-				"DbgQ pkt size:%d\n", pkt->msg_size);
-			stm_size = stm_log_inv_ts(0, 0,
-				pkt->rg_msg_data, pkt->msg_size);
-			if (stm_size == 0)
-				dprintk(VIDC_ERR,
-					"In %s, stm_log returned size of 0\n",
-					__func__);
+			dprintk(VIDC_ERR,
+				"Code coverage support is deprecated\n");
+			continue;
 		} else {
 			struct hfi_msg_sys_debug_packet *pkt =
 				(struct hfi_msg_sys_debug_packet *) packet;
 			dprintk(VIDC_FW, "%s", pkt->rg_msg_data);
 		}
 	}
-	if (local_packet)
-		kfree(packet);
 }
 
 static void venus_hfi_response_handler(struct venus_hfi_device *device)
 {
-	u8 *packet = NULL;
+	u8 packet[VIDC_IFACEQ_MED_PKT_SIZE];
 	u32 rc = 0;
 	struct hfi_sfr_struct *vsfr = NULL;
 
-	packet = kzalloc(VIDC_IFACEQ_VAR_HUGE_PKT_SIZE, GFP_TEMPORARY);
-	if (!packet) {
-		dprintk(VIDC_ERR, "In %s() Fail to allocate mem\n",  __func__);
-		return;
-	}
 	dprintk(VIDC_INFO, "#####venus_hfi_response_handler#####\n");
 	/* Process messages only if device is in valid state*/
 	if (device && device->state != VENUS_STATE_DEINIT) {
@@ -3351,7 +3308,7 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 				dprintk(VIDC_ERR,
 					"SFR Message from FW : %s\n",
 						vsfr->rg_data);
-			venus_hfi_process_sys_watchdog_timeout(device);
+			__process_fatal_error(device);
 		}
 
 		while (!venus_hfi_iface_msgq_read(device, packet)) {
@@ -3397,7 +3354,6 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 	} else {
 		dprintk(VIDC_ERR, "SPURIOUS_INTERRUPT\n");
 	}
-	kfree(packet);
 }
 
 static void venus_hfi_core_work_handler(struct work_struct *work)
@@ -4154,7 +4110,8 @@ static void venus_hfi_unload_fw(void *dev)
 	}
 	if (device->resources.fw.cookie) {
 		cancel_delayed_work(&venus_hfi_pm_work);
-		flush_workqueue(device->venus_pm_workq);
+		if (device->state != VENUS_STATE_DEINIT)
+			flush_workqueue(device->venus_pm_workq);
 		subsystem_put(device->resources.fw.cookie);
 		venus_hfi_interface_queues_release(dev);
 		/* Halt the AXI to make sure there are no pending transactions.

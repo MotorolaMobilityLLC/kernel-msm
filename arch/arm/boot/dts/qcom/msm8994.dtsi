@@ -1539,6 +1539,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <0 131 0>;
 			tx-fifo-resize;
+			snps,usb3-u1u2-disable;
 			usb-phy = <&hsphy0>, <&ssphy0>;
 		};
 	};
@@ -1551,6 +1552,7 @@
 		reg-names = "core", "phy_csr";
 		qcom,hsphy-init = <0x00D191A4>;
 		vdd-supply = <&pm8994_s2_corner>;
+		vddcx-supply = <&pm8994_s1_corner>;
 		vdda18-supply = <&pm8994_l6>;
 		vdda33-supply = <&pm8994_l24>;
 		qcom,vdd-voltage-level = <1 5 7>;
@@ -1620,8 +1622,8 @@
 			qcom,peer-bam = <2>;
 			qcom,src-bam-physical-address = <0xf9304000>;
 			qcom,src-bam-pipe-index = <1>;
-			qcom,data-fifo-size = <0xFFFF>;
-			qcom,descriptor-fifo-size = <0x4000>;
+			qcom,data-fifo-size = <0x8000>;
+			qcom,descriptor-fifo-size = <0x2000>;
 			qcom,reset-bam-on-connect;
 		};
 		qcom,pipe1 {
@@ -1633,8 +1635,8 @@
 			qcom,peer-bam = <2>;
 			qcom,dst-bam-physical-address = <0xf9304000>;
 			qcom,dst-bam-pipe-index = <0>;
-			qcom,data-fifo-size = <0xFFFF>;
-			qcom,descriptor-fifo-size = <0x4000>;
+			qcom,data-fifo-size = <0x8000>;
+			qcom,descriptor-fifo-size = <0x2000>;
 			qcom,reset-bam-on-connect;
 		};
 		qcom,pipe2 {
@@ -1665,8 +1667,8 @@
 			qcom,peer-bam = <2>;
 			qcom,dst-bam-physical-address = <0xf9304000>;
 			qcom,dst-bam-pipe-index = <2>;
-			qcom,data-fifo-size = <0xFFFF>;
-			qcom,descriptor-fifo-size = <0x4000>;
+			qcom,data-fifo-size = <0x8000>;
+			qcom,descriptor-fifo-size = <0x2000>;
 			qcom,reset-bam-on-connect;
 		};
 	};
@@ -2377,6 +2379,25 @@
 			};
 
 			qcom,msm-bus-client@8 {
+				qcom,msm-bus,name = "venc-ddr-lp";
+				qcom,msm-bus,num-cases = <10>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 66800 0>,
+					<63 512 201100 0>,
+					<63 512 201100 0>,
+					<63 512 458300 0>,
+					<63 512 458300 0>,
+					<63 512 889200 0>,
+					<63 512 1218000 0>,
+					<63 512 1218000 0>,
+					<63 512 1218000 0>;
+				qcom,bus-low-power;
+				qcom,bus-configs = <0x0000004>;
+			};
+
+			qcom,msm-bus-client@9 {
 				qcom,msm-bus,name = "venus-arm9-ddr";
 				qcom,msm-bus,num-cases = <2>;
 				qcom,msm-bus,num-paths = <1>;
@@ -2476,8 +2497,8 @@
 		pinctrl-1 = <&i2c_5_sleep>;
 		qcom,noise-rjct-scl = <0>;
 		qcom,noise-rjct-sda = <0>;
-		dmas = <&dma_blsp1 20 64 0x20000020 0x20>,
-			<&dma_blsp1 21 32 0x20000020 0x20>;
+		dmas = <&dma_blsp2 20 64 0x20000020 0x20>,
+			<&dma_blsp2 21 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 		qcom,master-id = <84>;
 	};
@@ -3166,8 +3187,8 @@
 				   "tsens_tz_sensor13", "tsens_tz_sensor14",
 				   "tsens_tz_sensor15", "tsens_tz_sensor6";
 		qcom,freq-mitigation-temp = <95>;
-		qcom,freq-mitigation-temp-hysteresis = <20>;
-		qcom,freq-mitigation-value = <768000>;
+		qcom,freq-mitigation-temp-hysteresis = <10>;
+		qcom,freq-mitigation-value = <960000>;
 		qcom,freq-mitigation-control-mask = <0xF0>;
 		qcom,online-hotplug-core;
 		qcom,synchronous-cluster-id = <0 1>;

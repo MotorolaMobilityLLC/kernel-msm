@@ -485,6 +485,11 @@ void msm_isp_fetch_engine_done_notify(struct vfe_device *vfe_dev,
 	struct msm_isp_event_data fe_rd_done_event;
 	if (!fetch_engine_info->is_busy)
 		return;
+
+	vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id++;
+	if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id == 0)
+		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id = 1;
+
 	memset(&fe_rd_done_event, 0, sizeof(struct msm_isp_event_data));
 	fe_rd_done_event.frame_id =
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
@@ -1548,7 +1553,11 @@ void msm_isp_process_iommu_page_fault(struct vfe_device *vfe_dev)
 
 	pr_err("%s:%d] vfe_dev %p id %d\n", __func__,
 		__LINE__, vfe_dev, vfe_dev->pdev->id);
-
+	msm_isp_axi_disable_all_wm(vfe_dev);
+	msm_isp_stats_disable(vfe_dev);
+	/* VFE_SRC_MAX will call reg update on all stream src */
+	vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev,
+		VFE_SRC_MAX);
 	error_event.frame_id =
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 	vfe_dev->buf_mgr->ops->buf_mgr_debug(vfe_dev->buf_mgr);
@@ -1837,14 +1846,11 @@ static int msm_vfe_iommu_fault_handler(struct iommu_domain *domain,
 
 	if (token) {
 		vfe_dev = (struct vfe_device *)token;
-		msm_isp_axi_disable_all_wm(vfe_dev);
-		msm_isp_stats_disable(vfe_dev);
-		/* VFE_SRC_MAX will call reg update on all stream src */
-		vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev,
-			VFE_SRC_MAX);
-		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops) {
-			pr_err("%s:%d] buf_mgr %p\n", __func__,
-				__LINE__, vfe_dev->buf_mgr);
+		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops ||
+			!vfe_dev->axi_data.num_active_stream) {
+			pr_err("%s:%d] buf_mgr %p active strms %d\n", __func__,
+				__LINE__, vfe_dev->buf_mgr,
+				vfe_dev->axi_data.num_active_stream);
 			goto end;
 		}
 		if (!vfe_dev->buf_mgr->pagefault_debug) {
@@ -1927,6 +1933,7 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	vfe_dev->axi_data.hw_info = vfe_dev->hw_info->axi_hw_info;
 	vfe_dev->taskletq_idx = 0;
 	vfe_dev->vt_enable = 0;
+	/* Register page fault handler */
 	iommu_set_fault_handler(vfe_dev->buf_mgr->iommu_domain,
 		msm_vfe_iommu_fault_handler, vfe_dev);
 	vfe_dev->buf_mgr->pagefault_debug = 0;
@@ -1968,6 +1975,9 @@ int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 		mutex_unlock(&vfe_dev->realtime_mutex);
 		return 0;
 	}
+	/* Unregister page fault handler */
+	iommu_set_fault_handler(vfe_dev->buf_mgr->iommu_domain,
+		NULL, NULL);
 
 	rc = vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev, 1);
 	if (rc <= 0)
@@ -1982,4 +1992,26 @@ int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	mutex_unlock(&vfe_dev->core_mutex);
 	mutex_unlock(&vfe_dev->realtime_mutex);
 	return 0;
+}
+
+void msm_isp_flush_tasklet(struct vfe_device *vfe_dev)
+{
+	unsigned long flags;
+	struct msm_vfe_tasklet_queue_cmd *queue_cmd;
+
+	spin_lock_irqsave(&vfe_dev->tasklet_lock, flags);
+	while (atomic_read(&vfe_dev->irq_cnt)) {
+		queue_cmd = list_first_entry(&vfe_dev->tasklet_q,
+		struct msm_vfe_tasklet_queue_cmd, list);
+		if (!queue_cmd) {
+			atomic_set(&vfe_dev->irq_cnt, 0);
+			break;
+		}
+		atomic_sub(1, &vfe_dev->irq_cnt);
+		list_del(&queue_cmd->list);
+		queue_cmd->cmd_used = 0;
+	}
+	spin_unlock_irqrestore(&vfe_dev->tasklet_lock, flags);
+
+	return;
 }
