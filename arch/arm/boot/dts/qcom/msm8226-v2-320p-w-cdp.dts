@@ -25,10 +25,6 @@
 	qcom,board-id = <1 4>;
 };
 
-&smsc_hub {
-	status = "ok";
-};
-
 &mdss_fb0 {
 	/* cont_splash memory*/
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
@@ -52,4 +48,18 @@
 
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
+};
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,leds@a500 {
+			status = "disabled";
+		};
+	};
+};
+
+&pm8226_mpps {
+	mpp@a500 {
+		status = "disabled";
+	};
 };
