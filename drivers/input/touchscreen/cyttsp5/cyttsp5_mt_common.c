@@ -181,6 +181,7 @@ static void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	if (!palm_flag && palm) {
 		dev_info(md->dev, "palm is detected\n");
 		input_report_key(md->input, KEY_SLEEP, palm);
+		input_sync(md->input);
 		palm_flag = palm;
 		cd->palm_ignore = true;
 		schedule_delayed_work(&cd->work_palm,
@@ -188,6 +189,7 @@ static void report_sumsize_palm(struct cyttsp5_mt_data *md,
 	} else if (palm_flag && !palm) {
 		dev_info(md->dev, "palm is removed\n");
 		input_report_key(md->input, KEY_SLEEP, palm);
+		input_sync(md->input);
 		palm_flag = palm;
 	}
 }
@@ -566,11 +568,9 @@ static void cyttsp5_mt_send_dummy_event(struct cyttsp5_mt_data *md)
 	/* for easy wakeup */
 	cyttsp5_input_report(md->input, ABS_MT_TRACKING_ID,
 			0, CY_OBJ_STANDARD_FINGER);
-	input_report_key(md->input, KEY_WAKEUP, 1);
 	cyttsp5_final_sync(md->input, 0, 1, &ids);
 
 	cyttsp5_report_slot_liftoff(md, 1);
-	input_report_key(md->input, KEY_WAKEUP, 0);
 	cyttsp5_final_sync(md->input, 1, 1, &ids);
 }
 
