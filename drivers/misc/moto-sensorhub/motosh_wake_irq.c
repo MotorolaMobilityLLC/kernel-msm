@@ -402,10 +402,6 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 								 data);
 			break;
 		case GENERIC_INT_STATUS:
-			dev_err(&ps_motosh->client->dev,
-				"Invalid GENERIC_INT_STATUS event [0x%02X]\n",
-				data[0]);
-
 			motosh_ms_data_buffer_write(ps_motosh, DT_GENERIC_INT,
 				data, 1, false);
 			dev_dbg(&ps_motosh->client->dev,
