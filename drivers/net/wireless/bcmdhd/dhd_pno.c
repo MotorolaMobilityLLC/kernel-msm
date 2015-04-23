@@ -2345,7 +2345,7 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 	else
 		*num_buckets = _params->params_gscan.nchannel_buckets;
 
-	*num_buckets_to_fw = *num_buckets;
+	*num_buckets_to_fw = 0;
 
 	ch_bucket = (wl_pfn_gscan_channel_bucket_t *) MALLOC(dhd->osh,
 	   ((*num_buckets) * sizeof(wl_pfn_gscan_channel_bucket_t)));
@@ -2359,7 +2359,7 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 
 	max = gscan_buckets[0].bucket_freq_multiple;
 	num_channels = 0;
-	for (i = 0; i < _params->params_gscan.nchannel_buckets; i++) {
+	for (i = 0; i < _params->params_gscan.nchannel_buckets && nchan; i++) {
 		if (!gscan_buckets[i].band) {
 			num_channels += gscan_buckets[i].num_channels;
 			memcpy(ptr, gscan_buckets[i].chan_list,
@@ -2391,6 +2391,7 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 		if (max < gscan_buckets[i].bucket_freq_multiple)
 			max = gscan_buckets[i].bucket_freq_multiple;
 		nchan = WL_NUMCHANNELS - num_channels;
+		*num_buckets_to_fw = *num_buckets_to_fw + 1;
 		DHD_PNO(("end_idx  %d freq_mult - %d\n",
 		ch_bucket[i].bucket_end_index, ch_bucket[i].bucket_freq_multiple));
 	}
@@ -2404,36 +2405,38 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 		uint16 *legacy_chan_list = _params1->params_legacy.chan_list;
 		uint16 common_freq;
 		uint32 legacy_bucket_idx = _params->params_gscan.nchannel_buckets;
-
-		common_freq = gcd(_params->params_gscan.scan_fr,
-		         _params1->params_legacy.scan_fr);
-		max = gscan_buckets[0].bucket_freq_multiple;
-		/* GSCAN buckets */
-		for (i = 0; i < _params->params_gscan.nchannel_buckets; i++) {
-			ch_bucket[i].bucket_freq_multiple *= _params->params_gscan.scan_fr;
-			ch_bucket[i].bucket_freq_multiple /= common_freq;
-			if (max < gscan_buckets[i].bucket_freq_multiple)
-				max = gscan_buckets[i].bucket_freq_multiple;
+		/* If no space is left then only gscan buckets will be sent to FW */
+		if (nchan) {
+			common_freq = gcd(_params->params_gscan.scan_fr,
+					 _params1->params_legacy.scan_fr);
+			max = gscan_buckets[0].bucket_freq_multiple;
+			/* GSCAN buckets */
+			for (i = 0; i < _params->params_gscan.nchannel_buckets; i++) {
+				ch_bucket[i].bucket_freq_multiple *= _params->params_gscan.scan_fr;
+				ch_bucket[i].bucket_freq_multiple /= common_freq;
+				if (max < gscan_buckets[i].bucket_freq_multiple)
+					max = gscan_buckets[i].bucket_freq_multiple;
+			}
+			/* Legacy PNO bucket */
+			ch_bucket[legacy_bucket_idx].bucket_freq_multiple =
+							_params1->params_legacy.scan_fr;
+			ch_bucket[legacy_bucket_idx].bucket_freq_multiple /=
+							common_freq;
+			_params->params_gscan.max_ch_bucket_freq = MAX(max,
+				   ch_bucket[legacy_bucket_idx].bucket_freq_multiple);
+			ch_bucket[legacy_bucket_idx].flag = CH_BUCKET_REPORT_REGULAR;
+			/* Now add channels to the legacy scan bucket */
+			for (i = 0; i < _params1->params_legacy.nchan && nchan; i++, nchan--) {
+				ptr[i] = legacy_chan_list[i];
+				num_channels++;
+			}
+			ch_bucket[legacy_bucket_idx].bucket_end_index = num_channels - 1;
+			*num_buckets_to_fw = *num_buckets_to_fw + 1;
+			DHD_PNO(("end_idx  %d freq_mult - %d\n",
+						ch_bucket[legacy_bucket_idx].bucket_end_index,
+						ch_bucket[legacy_bucket_idx].bucket_freq_multiple));
 		}
-		/* Legacy PNO bucket */
-		ch_bucket[legacy_bucket_idx].bucket_freq_multiple =
-		                _params1->params_legacy.scan_fr;
-		ch_bucket[legacy_bucket_idx].bucket_freq_multiple /=
-		                common_freq;
-		_params->params_gscan.max_ch_bucket_freq = MAX(max,
-		       ch_bucket[legacy_bucket_idx].bucket_freq_multiple);
-		ch_bucket[legacy_bucket_idx].flag = CH_BUCKET_REPORT_REGULAR;
-		/* Now add channels to the legacy scan bucket */
-		for (i = 0; i < _params1->params_legacy.nchan; i++) {
-			ptr[i] = legacy_chan_list[i];
-			num_channels++;
-		}
-		ch_bucket[legacy_bucket_idx].bucket_end_index = num_channels - 1;
-		DHD_PNO(("end_idx  %d freq_mult - %d\n",
-		                   ch_bucket[legacy_bucket_idx].bucket_end_index,
-		                   ch_bucket[legacy_bucket_idx].bucket_freq_multiple));
 	}
-
 	return ch_bucket;
 }
 
