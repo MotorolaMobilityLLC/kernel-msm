@@ -15,6 +15,7 @@
 #
 
 include $(srctree)/arch/arm64/boot/dts/huawei/Makefile
+include $(srctree)/arch/arm64/boot/dts/qcom/Makefile
 
 targets := Image Image-dtb Image.gz Image.gz-dtb
 
