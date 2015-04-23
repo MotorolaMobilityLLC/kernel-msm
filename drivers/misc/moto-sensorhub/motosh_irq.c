@@ -39,8 +39,6 @@
 
 #include <linux/motosh.h>
 
-static int num_irq;
-
 irqreturn_t motosh_isr(int irq, void *dev)
 {
 	struct motosh_data *ps_motosh = dev;
@@ -48,13 +46,8 @@ irqreturn_t motosh_isr(int irq, void *dev)
 	if (motosh_irq_disable || ps_motosh->is_suspended)
 		return IRQ_HANDLED;
 
-	/* safety check that we don't excessively queue, sensor hub
-	   may interrupt as data is entered into the sensor event queue
-	 */
-	if (num_irq < 2) {
-		num_irq++;
-		queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_work);
-	}
+	queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_work);
+
 	if (ps_motosh->irq_wake == -1)
 		queue_work(ps_motosh->irq_work_queue,
 			&ps_motosh->irq_wake_work);
@@ -64,13 +57,11 @@ irqreturn_t motosh_isr(int irq, void *dev)
 void motosh_irq_work_func(struct work_struct *work)
 {
 	int err;
+	u8 irq_status = 0;
 	u8 queue_length = 0;
 	u8 queue_index = 0;
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_work);
-
-	if (num_irq > 0)
-		num_irq--;
 
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_work_func\n");
 
@@ -87,16 +78,86 @@ void motosh_irq_work_func(struct work_struct *work)
 	if (motosh_misc_data->in_reset_and_init)
 		goto EXIT;
 
-	/* get nwake queue length */
-	motosh_cmdbuff[0] = NWAKE_MSG_QUEUE_LEN;
-	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
+	if (ps_motosh->resume_cleanup) {
+		ps_motosh->resume_cleanup = false;
+
+		/* If we are just coming back from suspend clear all the
+		 * streaming sensor data because it is old.
+		 * A write to the work queue length causes it to be reset */
+		motosh_cmdbuff[0] = NWAKE_STATUS;
+		motosh_cmdbuff[1] = 0x00;
+		motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
+	}
+
+	/* get nwake status (queue length and irq_status) */
+	motosh_cmdbuff[0] = NWAKE_STATUS;
+	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
-			"Reading nwake queue length failed [err: %d]\n", err);
+			"Reading nwake status failed [err: %d]\n", err);
 		goto EXIT;
 	}
 	queue_length = motosh_readbuff[0];
+	irq_status = motosh_readbuff[1];
 
+	/* process the irq status */
+	if (irq_status & N_DISP_ROTATE) {
+		/* read DISP_ROTATE_DATA */
+		motosh_cmdbuff[0] = DISP_ROTATE_DATA;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
+
+		if (err >= 0) {
+			motosh_as_data_buffer_write(ps_motosh, DT_DISP_ROTATE,
+				motosh_readbuff, 1, 0, false);
+
+			/* temporarily print this log to help debug any
+			 * other display rotate issues */
+			dev_err(&ps_motosh->client->dev,
+				"Sending disp_rotate(x)value: %d\n",
+				motosh_readbuff[0]);
+		} else {
+			dev_err(&ps_motosh->client->dev,
+				"Reading DISP_ROTATE_DATA failed [err: %d]\n",
+				err);
+		}
+	}
+	if (irq_status & N_ALS) {
+		/* read ALS_LUX */
+		motosh_cmdbuff[0] = ALS_LUX;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2);
+
+		if (err >= 0) {
+			motosh_as_data_buffer_write(ps_motosh, DT_ALS,
+				motosh_readbuff, 2, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev, "Sending ALS %d\n",
+				STM16_TO_HOST(motosh_readbuff, ALS_VALUE));
+		} else {
+			dev_err(&ps_motosh->client->dev,
+				"Reading ALS_LUX failed [err: %d]\n",
+				err);
+		}
+	}
+	if (irq_status & N_DISP_BRIGHTNESS) {
+		/* read DISPLAY_BRIGHTNESS */
+		motosh_cmdbuff[0] = DISPLAY_BRIGHTNESS;
+		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
+
+		if (err >= 0) {
+			motosh_as_data_buffer_write(ps_motosh, DT_DISP_BRIGHT,
+				motosh_readbuff, 1, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending Display Brightness %d\n",
+				motosh_readbuff[0]);
+		} else {
+			dev_err(&ps_motosh->client->dev,
+				"Reading DISPLAY_BRIGHTNESS failed [err: %d]\n",
+				err);
+		}
+	}
+
+	/* process the nwake queue */
 	dev_dbg(&ps_motosh->client->dev,
 			"nwake queue_length: %d\n", queue_length);
 
@@ -285,14 +346,6 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 1;
 		}
 			break;
-		case ALS_LUX:
-			motosh_as_data_buffer_write(ps_motosh, DT_ALS,
-				data, 2, 0, false);
-
-			dev_dbg(&ps_motosh->client->dev, "Sending ALS %d\n",
-				STM16_TO_HOST(data, ALS_VALUE));
-			queue_index += 2;
-			break;
 		case TEMPERATURE_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_TEMP,
 						    data, 2, 0, false);
@@ -325,24 +378,6 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, GRAV_Z));
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
-		case DISP_ROTATE_DATA:
-			motosh_as_data_buffer_write(ps_motosh, DT_DISP_ROTATE,
-				data, 1, 0, false);
-
-			dev_dbg(&ps_motosh->client->dev,
-				"Sending disp_rotate(x)value: %d\n",
-				data[0]);
-			queue_index += 1;
-			break;
-		case DISPLAY_BRIGHTNESS:
-			motosh_as_data_buffer_write(ps_motosh, DT_DISP_BRIGHT,
-				data, 1, 0, false);
-
-			dev_dbg(&ps_motosh->client->dev,
-				"Sending Display Brightness %d\n",
-				data[0]);
-			queue_index += 1;
-			break;
 		case IR_GESTURE:
 			queue_index += motosh_process_ir_gesture(ps_motosh,
 								 data);
@@ -367,7 +402,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				message_id);
 			/* a write to the work queue length causes
 			   it to be reset */
-			motosh_cmdbuff[0] = NWAKE_MSG_QUEUE_LEN;
+			motosh_cmdbuff[0] = NWAKE_STATUS;
 			motosh_cmdbuff[1] = 0x00;
 			motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
 			goto EXIT;
