@@ -443,6 +443,8 @@ struct stm_response {
 
 #define SH_LOG_LEVEL_REG                0x55
 
+#define DSP_CONTROL                     0x58
+
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
 #define ALGO_EVT_ACCUM_MODALITY         0x63
@@ -620,6 +622,7 @@ struct stml0xx_platform_data {
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
 	int ct406_prox_gain;
+	int dsp_iface_enable;
 	int headset_detect_enable;
 	int headset_hw_version;
 	int headset_insertion_debounce;
