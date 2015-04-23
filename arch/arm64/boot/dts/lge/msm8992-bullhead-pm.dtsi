@@ -73,6 +73,7 @@
         qcom,single-profile;
         qcom,sw-rbias-control;
         qcom,fg-iterm-ma = <400>;
+        qcom,fg-cutoff-voltage-mv = <3400>;
 };
 
 &spmi_bus {
