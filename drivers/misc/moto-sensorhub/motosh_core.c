@@ -939,32 +939,6 @@ static void motosh_gpio_free(struct motosh_platform_data *pdata)
 		gpio_free(pdata->gpio_sh_wake_resp);
 }
 
-void clear_nonwakeable_event_queue_work_func(struct work_struct *work)
-{
-	struct motosh_data *ps_motosh = container_of(work,
-			struct motosh_data, clear_nonwakeable_event_queue_work);
-
-	dev_dbg(&ps_motosh->client->dev, "clear_nonwakeable_event_queue_work_func\n");
-	mutex_lock(&ps_motosh->lock);
-
-	if (ps_motosh->mode == BOOTMODE)
-		goto EXIT;
-
-	if (ps_motosh->is_suspended)
-		goto EXIT;
-
-	motosh_wake(ps_motosh);
-
-	/* a write to the work queue length causes it to be reset */
-	motosh_cmdbuff[0] = NWAKE_MSG_QUEUE_LEN;
-	motosh_cmdbuff[1] = 0x00;
-	motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
-
-	motosh_sleep(ps_motosh);
-EXIT:
-	mutex_unlock(&ps_motosh->lock);
-}
-
 #if defined(CONFIG_FB)
 static int motosh_fb_notifier_callback(struct notifier_block *self,
 	unsigned long event, void *data)
@@ -1111,8 +1085,6 @@ static int motosh_probe(struct i2c_client *client,
 
 	INIT_WORK(&ps_motosh->irq_work, motosh_irq_work_func);
 	INIT_WORK(&ps_motosh->irq_wake_work, motosh_irq_wake_work_func);
-	INIT_WORK(&ps_motosh->clear_nonwakeable_event_queue_work,
-		clear_nonwakeable_event_queue_work_func);
 
 	ps_motosh->irq_work_queue = create_singlethread_workqueue("motosh_wq");
 	if (!ps_motosh->irq_work_queue) {
@@ -1292,6 +1264,7 @@ static int motosh_probe(struct i2c_client *client,
 	motosh_quickwakeup_init(ps_motosh);
 
 	ps_motosh->is_suspended = false;
+	ps_motosh->resume_cleanup = false;
 
 	/* try to go to normal mode, switch to UNINITIALIZED on failure */
 	switch_motosh_mode(NORMALMODE);
@@ -1398,6 +1371,7 @@ static int motosh_resume(struct device *dev)
 	struct motosh_data *ps_motosh = i2c_get_clientdata(to_i2c_client(dev));
 	dev_dbg(dev, "%s\n", __func__);
 
+	ps_motosh->resume_cleanup = true;
 	ps_motosh->is_suspended = false;
 
 	mutex_lock(&ps_motosh->lock);
@@ -1416,9 +1390,12 @@ static int motosh_resume(struct device *dev)
 		ps_motosh->pending_wake_work = false;
 	}
 
+	/* Run the irq_work on resume to update any
+	 * non-wakeable onchanged events. (display rotate / light sensor / etc.)
+	 * Streaming data is now flushed in irq_work */
 	if (motosh_irq_disable == 0)
 		queue_work(ps_motosh->irq_work_queue,
-			&ps_motosh->clear_nonwakeable_event_queue_work);
+			&ps_motosh->irq_work);
 
 	if (ps_motosh->mode > BOOTMODE)
 		motosh_time_sync();
