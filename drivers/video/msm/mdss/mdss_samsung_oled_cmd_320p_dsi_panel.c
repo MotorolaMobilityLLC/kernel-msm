@@ -358,7 +358,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			} else
 				return rc;
 		} else if (!enable && adata->alpm_status(CHECK_CURRENT_STATUS)) {
-			adata->alpm_status(STORE_CURRENT_STATUS);
 			return rc;
 		}
 		pr_debug("[ALPM_DEBUG] %s: Panel reset, enable : %d\n",
@@ -715,17 +714,15 @@ static void mdss_dsi_panel_alpm_ctrl(struct mdss_panel_data *pdata,
 			return;
 		}
 
-		if (adata->alpm_status(CHECK_PREVIOUS_STATUS) != ALPM_MODE_ON)
+		if (adata->alpm_status(CHECK_PREVIOUS_STATUS) != ALPM_MODE_ON) {
+			adata->alpm_status(STORE_CURRENT_STATUS);
 			mdss_samsung_disp_send_cmd(ctrl, PANEL_ALPM_ON, true);
+			pr_info("[ALPM_DEBUG] %s: Send ALPM on cmds\n", __func__);
+		}
 	} else {
 		/* Turn Off ALPM Mode */
 		alpm_enable(ctrl, MODE_OFF);
 	}
-
-	pr_info("[ALPM_DEBUG] %s: Send ALPM %s cmds\n", __func__,
-			mode ? "on" : "off");
-
-	adata->alpm_status(STORE_CURRENT_STATUS);
 }
 
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
