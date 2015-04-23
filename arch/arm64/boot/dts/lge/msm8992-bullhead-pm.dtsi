@@ -56,6 +56,7 @@
 	qcom,float-voltage-mv = <4350>;
 	qcom,resume-delta-mv = <200>;
 	qcom,charging-timeout-mins = <768>;
+	qcom,parallel-usb-min-current-ma = <1000>;
 	qcom,chg-vadc = <&pmi8994_vadc>;
 	/delete-property/ qcom,dc-psy-type;
 	qcom,usb-cc-controller;
@@ -77,6 +78,20 @@
         qcom,fg-iterm-ma = <200>;
         qcom,fg-chg-iterm-ma = <100>;
         qcom,fg-cutoff-voltage-mv = <3400>;
+};
+
+&i2c_6 {
+	status = "ok";
+	smb1358-charger {
+		status = "ok";
+		compatible = "qcom,smb1358-charger";
+		reg = <0x1c>;
+		qcom,parallel-charger;
+		qcom,iterm-ma = <100>;
+		qcom,float-voltage-mv = <4460>;
+		qcom,recharge-thresh-mv = <100>;
+		qcom,charging-timeout-mins = <768>;
+	};
 };
 
 &spmi_bus {
