@@ -111,7 +111,11 @@
 		_IOW(MOTOSH_IOCTL_BASE, 38, char[FW_VERSION_SIZE])
 #define MOTOSH_IOCTL_SET_POSIX_TIME	\
 		_IOW(MOTOSH_IOCTL_BASE, 39, char[1])
-/* 40-42 unused */
+#define MOTOSH_IOCTL_GET_GYRO_CAL \
+		_IOR(MOTOSH_IOCTL_BASE, 40, char[MOTOSH_GYRO_CAL_SIZE])
+#define MOTOSH_IOCTL_SET_GYRO_CAL \
+		_IOR(MOTOSH_IOCTL_BASE, 41, char[MOTOSH_GYRO_CAL_SIZE])
+/* 42 unused */
 #define MOTOSH_IOCTL_SET_ALGO_REQ \
 		_IOR(MOTOSH_IOCTL_BASE, 43, char[1])
 #define MOTOSH_IOCTL_GET_ALGO_EVT \
@@ -150,6 +154,7 @@
 #define MOTOSH_TOUCH_REG_SIZE  8
 /* Used in HAL */
 #define MOTOSH_MAG_CAL_SIZE 32
+#define MOTOSH_GYRO_CAL_SIZE 198 /* 33 entries - 6 bytes each */
 /* Not used */
 #define STM_AOD_INSTRUMENTATION_REG_SIZE 256
 /* Not used in user space */
@@ -296,6 +301,7 @@ enum MOTOSH_data_types {
 	DT_CHOPCHOP,
 	DT_FLUSH,
 	DT_LIFT,
+	DT_GYRO_CAL,
 };
 
 enum {
