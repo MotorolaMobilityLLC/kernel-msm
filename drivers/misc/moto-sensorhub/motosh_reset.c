@@ -268,7 +268,15 @@ int motosh_reset_and_init(enum reset_mode mode)
 	memcpy(&rst_cmdbuff[1], motosh_g_mag_cal,
 		MOTOSH_MAG_CAL_SIZE);
 	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
-					MOTOSH_MAG_CAL_SIZE);
+					MOTOSH_MAG_CAL_SIZE + 1);
+	if (err < 0)
+		ret_err = err;
+
+	rst_cmdbuff[0] = GYRO_CAL_TABLE;
+	memcpy(&rst_cmdbuff[1], motosh_g_gyro_cal,
+		MOTOSH_GYRO_CAL_SIZE);
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
+					MOTOSH_GYRO_CAL_SIZE + 1);
 	if (err < 0)
 		ret_err = err;
 

@@ -103,6 +103,7 @@
 
 #define TEMPERATURE_DATA                0x41
 
+#define GYRO_CAL_TABLE                  0x42
 #define GYRO_X                          0x43
 #define UNCALIB_GYRO_X			0x45
 #define UNCALIB_MAG_X			0x46
@@ -544,6 +545,7 @@ extern unsigned char motosh_g_motion_dur;
 extern unsigned char motosh_g_zmotion_dur;
 extern unsigned char motosh_g_control_reg[MOTOSH_CONTROL_REG_SIZE];
 extern unsigned char motosh_g_mag_cal[MOTOSH_MAG_CAL_SIZE];
+extern unsigned char motosh_g_gyro_cal[MOTOSH_GYRO_CAL_SIZE];
 extern unsigned short motosh_g_control_reg_restore;
 extern unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
 extern bool motosh_g_ir_config_reg_restore;
