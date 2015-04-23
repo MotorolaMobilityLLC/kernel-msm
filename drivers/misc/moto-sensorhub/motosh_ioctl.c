@@ -841,6 +841,41 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		motosh_as_data_buffer_write(ps_motosh, DT_FLUSH,
 				(char *)&handle, 4, 0, false);
 		break;
+	case MOTOSH_IOCTL_GET_GYRO_CAL:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_GYRO_CAL");
+		if (ps_motosh->mode > BOOTMODE) {
+			motosh_cmdbuff[0] = GYRO_CAL_TABLE;
+			err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+				1, MOTOSH_GYRO_CAL_SIZE);
+			if (err < 0) {
+				dev_err(&ps_motosh->client->dev,
+					"Reading get gyro cal failed\n");
+				break;
+			}
+		} else {
+			memcpy(&motosh_readbuff[0], motosh_g_gyro_cal,
+				MOTOSH_GYRO_CAL_SIZE);
+		}
+		if (copy_to_user(argp, &motosh_readbuff[0],
+				MOTOSH_GYRO_CAL_SIZE))
+			err = -EFAULT;
+		break;
+	case MOTOSH_IOCTL_SET_GYRO_CAL:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_GYRO_CAL");
+		if (copy_from_user(&motosh_cmdbuff[1], argp,
+			MOTOSH_GYRO_CAL_SIZE)) {
+			dev_err(&ps_motosh->client->dev,
+				"Copy set gyro cal returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		memcpy(motosh_g_gyro_cal, &motosh_cmdbuff[1],
+			MOTOSH_GYRO_CAL_SIZE);
+		motosh_cmdbuff[0] = GYRO_CAL_TABLE;
+		if (ps_motosh->mode > BOOTMODE)
+			err = motosh_i2c_write(ps_motosh, motosh_cmdbuff,
+				(MOTOSH_GYRO_CAL_SIZE + 1));
+		break;
 	}
 
 	motosh_sleep(ps_motosh);
