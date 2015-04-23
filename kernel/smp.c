@@ -12,6 +12,7 @@
 #include <linux/gfp.h>
 #include <linux/smp.h>
 #include <linux/cpu.h>
+#include <linux/of.h>
 
 #include "smpboot.h"
 
@@ -564,6 +565,29 @@ static int __init boot_cpus(char *str)
 
 early_param("boot_cpus", boot_cpus);
 
+static int __init bareboard_boot_cpus(void)
+{
+	struct device_node *np;
+	bool bare_board;
+	const char *str;
+
+	np = of_find_node_by_path("/chosen");
+	bare_board = of_property_read_bool(np, "mmi,bare_board");
+	if (!bare_board)
+		return 0;
+
+	np = of_find_node_by_path("/bare_board_config");
+	if (!of_property_read_string(np, "boot_cpus", &str)) {
+		if (have_boot_cpu_mask)	{/* Allocated from boot_cpus() */
+			if (cpulist_parse(str, boot_cpu_mask) < 0) {
+				pr_warn("SMP: Incorrect boot_cpus cpumask\n");
+				return -EINVAL;
+			}
+		}
+	}
+	return 0;
+}
+
 /* Setup number of possible processor ids */
 int nr_cpu_ids __read_mostly = NR_CPUS;
 EXPORT_SYMBOL(nr_cpu_ids);
@@ -595,6 +619,7 @@ void __init smp_init(void)
 	unsigned int cpu;
 
 	idle_threads_init();
+	bareboard_boot_cpus();
 
 	/* FIXME: This should be done in userspace --RR */
 	for_each_present_cpu(cpu) {
