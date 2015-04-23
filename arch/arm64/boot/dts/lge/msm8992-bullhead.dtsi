@@ -138,6 +138,7 @@
 
 &hsphy0 {
 	status = "ok";
+	qcom,hsphy-init-host = <0x00D187A4>;
 };
 
 &ssphy0 {
