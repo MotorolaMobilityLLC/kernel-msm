@@ -393,7 +393,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			algo_transition[ALGO_TYPE] = MOTOSH_IDX_ACCUM_MVMT;
 			motosh_ms_data_buffer_write(ps_motosh, DT_ALGO_EVT,
 				algo_transition, 8, false);
-			dev_dbg(&ps_motosh->client->dev, "Sending accum mvmt event\n");
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending accum mvmt event\n");
 			queue_index += 7;
 		}
 			break;
@@ -409,10 +410,17 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				data[0]);
 			queue_index += 1;
 			break;
+		case GYRO_CAL_TABLE:
+			dev_dbg(&ps_motosh->client->dev,
+				"Store gyro calibration\n");
+			motosh_as_data_buffer_write(ps_motosh, DT_GYRO_CAL,
+				NULL, 0, 0, false);
+			break;
 		default:
 			/* ERROR...unknown message
 			   Need to drop the remaining data in this operation. */
-			dev_err(&ps_motosh->client->dev, "ERROR: unknown wake msg: 0x%02X\n",
+			dev_err(&ps_motosh->client->dev,
+				"ERROR: unknown wake msg: 0x%02X\n",
 				message_id);
 			/* a write to the work queue length causes
 			   it to be reset */
