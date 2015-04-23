@@ -270,7 +270,6 @@ config ARCH_MSM8226
 	select ARMBW_HWMON
 	select MSM_DEVFREQ_DEVBW
 	select MSM_PIL
-	select MSM_RUN_QUEUE_STATS
 	select ARM_HAS_SG_CHAIN
 	select REGULATOR
 	select REGULATOR_RPM_SMD
