@@ -1732,6 +1732,9 @@
 
 &pm8994_l29 {
 	regulator-always-on;
+	regulator-min-microvolt = <2900000>;
+	regulator-max-microvolt = <2900000>;
+	qcom,init-voltage = <2900000>;
 };
 
 &mdss_dsi0 {
