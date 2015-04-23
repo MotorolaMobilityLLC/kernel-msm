@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -911,7 +911,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		ctx->panel_power_state, panel_power_state);
 
 	if (mdss_panel_is_power_off(panel_power_state)) {
-		/* request to turn off panel at all */
+		/* Transition to display off */
 		send_panel_events = true;
 		turn_off_clocks = true;
 		panel_off = true;
@@ -928,6 +928,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 				turn_off_clocks = true;
 		}
 	} else {
+		/* Transitions between low power and ultra low power */
 		if (mdss_panel_is_power_on_ulp(panel_power_state)) {
 			/*
 			 * If we are transitioning from low power to ultra low
