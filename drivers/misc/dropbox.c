@@ -243,6 +243,10 @@ static void do_dropbox_trigger_callback(const char *name)
 	pr_err("%s: No callback found for event [%s]", __func__, name);
 }
 
+void dropbox_dummy_test_trigger(void *data)
+{
+	dropbox_queue_event_empty("dropbox_dummy_test");
+}
 
 /* sysfs entry code */
 
@@ -421,6 +425,9 @@ int __init dropbox_init(void)
 	ret = sysfs_create_bin_file(&dropbox_kobj, &attr_data);
 	if (ret)
 		goto done;
+
+	dropbox_register_trigger_callback("dummy_test_trigger",
+		&dropbox_dummy_test_trigger, NULL);
 
 done:
 	return ret;
