@@ -182,6 +182,15 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		ret_err = err;
 	}
 
+	buf[0] = pdata->dsp_iface_enable & 0xff;
+	err = stml0xx_spi_send_write_reg_reset(DSP_CONTROL, buf,
+		1, RESET_NOT_ALLOWED);
+	if (err < 0) {
+		dev_err(&ps_stml0xx->spi->dev,
+			"Unable to write dsp interface enable");
+		ret_err = err;
+	}
+
 	buf[0] = (pdata->headset_insertion_debounce >> 8) & 0xff;
 	buf[1] = pdata->headset_insertion_debounce & 0xff;
 	buf[2] = (pdata->headset_removal_debounce >> 8) & 0xff;
