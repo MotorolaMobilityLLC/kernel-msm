@@ -2953,7 +2953,7 @@ static ssize_t hbm_store(struct device *dev,
 	}
 
 	mutex_lock(&ctl->offlock);
-	if (mfd->panel_power_state != MDSS_PANEL_POWER_ON) {
+	if (mdss_fb_is_power_off(mfd)) {
 		pr_warning("panel is not powered\n");
 		r = -EPERM;
 		goto unlock;
