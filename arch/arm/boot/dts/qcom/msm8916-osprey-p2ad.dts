@@ -13,6 +13,7 @@
 /dts-v1/;
 
 #include "msm8916-osprey.dtsi"
+#include "msm8916-osprey-panel-p1-common.dtsi"
 
 / {
 	qcom,board-id = <0x49 0x82ad>;
