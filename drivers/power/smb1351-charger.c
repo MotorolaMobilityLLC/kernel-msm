@@ -1358,6 +1358,7 @@ static enum power_supply_property smb1351_parallel_properties[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 };
 
 static int smb1351_parallel_set_chg_present(struct smb1351_charger *chip,
@@ -1466,6 +1467,20 @@ static int smb1351_parallel_set_chg_present(struct smb1351_charger *chip,
 			pr_err("Couldn't set fastchg current rc=%d\n", rc);
 			return rc;
 		}
+	} else {
+
+		rc = smb1351_enable_volatile_writes(chip);
+		if (rc) {
+			pr_err("Couldn't configure for volatile rc = %d\n", rc);
+			return rc;
+		}
+
+		/* Disable charging */
+		rc = smb1351_masked_write(chip,
+					  CMD_CHG_REG, CMD_CHG_EN_BIT,
+					  CMD_CHG_ENABLE);
+		if (rc)
+			pr_err("couldn't disable charging\n");
 	}
 
 	chip->parallel_charger_present = present;
@@ -1512,6 +1527,12 @@ static int smb1351_parallel_set_property(struct power_supply *psy,
 			rc = smb1351_set_usb_chg_current(chip,
 						chip->usb_psy_ma);
 		}
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		chip->vfloat_mv =  val->intval / 1000;
+		rc = smb1351_float_voltage_set(chip, chip->vfloat_mv);
+		if (rc)
+			pr_err("float voltage error rc = %d\n", rc);
 		break;
 	default:
 		return -EINVAL;
@@ -1561,6 +1582,9 @@ static int smb1351_parallel_get_property(struct power_supply *psy,
 			val->intval = smb1351_get_prop_batt_status(chip);
 		else
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		val->intval = chip->vfloat_mv * 1000;
 		break;
 	default:
 		return -EINVAL;
