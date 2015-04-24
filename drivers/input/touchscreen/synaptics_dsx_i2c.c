@@ -4313,11 +4313,15 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		dev_err(&client->dev,
 				"%s: Failed to allocate input device\n",
 				__func__);
-		goto err_input_device;
+		goto err_free_gpio;
 	}
 
 	rmi4_data->regulator = regulator_get(&client->dev, "touch_vdd");
 	if (IS_ERR(rmi4_data->regulator)) {
+		if (PTR_ERR(rmi4_data->regulator) == -EPROBE_DEFER) {
+			retval = PTR_ERR(rmi4_data->regulator);
+			goto err_regulator_defer;
+		}
 		dev_warn(&client->dev,
 				"%s: Failed to get regulator\n",
 				__func__);
@@ -4428,8 +4432,14 @@ err_query_device:
 
 err_regulator_enable:
 	synaptics_rmi4_cleanup(rmi4_data);
-	input_free_device(rmi4_data->input_dev);
 
+err_regulator_defer:
+	input_free_device(rmi4_data->input_dev);
+err_free_gpio:
+	if (platform_data->gpio_config)
+		gpio_free(platform_data->irq_gpio);
+	gpio_set_value(platform_data->reset_gpio, 0);
+	gpio_free(platform_data->reset_gpio);
 err_input_device:
 	synaptics_dsx_free_modes(rmi4_data);
 	kfree(rmi4_data);
