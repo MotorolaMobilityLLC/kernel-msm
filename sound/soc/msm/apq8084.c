@@ -3461,10 +3461,10 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.be_id = MSM_FRONTEND_DAI_VOIP,
 	},
 	{
-		.name = "APQ8084 LPA",
-		.stream_name = "LPA",
+		.name = "APQ8084 Media3",
+		.stream_name = "MultiMedia3",
 		.cpu_dai_name	= "MultiMedia3",
-		.platform_name  = "msm-pcm-lpa",
+		.platform_name  = "msm-pcm-dsp.0",
 		.dynamic = 1,
 		.async_ops = ASYNC_DPCM_SND_SOC_PREPARE,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
