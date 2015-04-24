@@ -345,7 +345,7 @@ static inline void mpu6050_set_fifo_start_time(struct mpu6050_sensor *sensor)
 {
 	struct timespec ts;
 
-	ktime_get_ts(&ts);
+	get_monotonic_boottime(&ts);
 	sensor->fifo_start_ns = timespec_to_ns(&ts);
 }
 
@@ -1823,12 +1823,12 @@ static int mpu6050_gyro_cdev_set_latency(struct sensors_classdev *sensors_cdev,
 			struct mpu6050_sensor, gyro_cdev);
 
 	mutex_lock(&sensor->op_lock);
-	if (max_latency <= sensor->gyro_poll_ms) {
-		sensor->gyro_poll_ms = max_latency;
+
+	if (max_latency <= sensor->gyro_poll_ms)
 		sensor->batch_gyro = false;
-	} else {
+	else
 		sensor->batch_gyro = true;
-	}
+
 	sensor->gyro_latency_ms = max_latency;
 	mutex_unlock(&sensor->op_lock);
 	return 0;
