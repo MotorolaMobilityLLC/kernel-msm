@@ -2989,6 +2989,83 @@ static struct attribute_group hbm_attrs_group = {
 	.attrs = hbm_attrs,
 };
 
+static ssize_t acl_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+
+	if (!ctl) {
+		pr_warning("%s: there is no ctl attached to fb\n", __func__);
+		return -ENODEV;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+				ctl->panel_data->panel_info.acl_state);
+}
+
+static ssize_t acl_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	int enable;
+	int r;
+
+	if (!ctl) {
+		pr_warning("%s: there is no ctl attached to fb\n", __func__);
+		r = -ENODEV;
+		goto end;
+	}
+
+	r = kstrtoint(buf, 0, &enable);
+	if ((r) || ((enable != 0) && (enable != 1))) {
+		pr_err("%s: invalid HBM value = %d\n", __func__, enable);
+		r = -EINVAL;
+		goto end;
+	}
+
+	mutex_lock(&ctl->offlock);
+	if (mdss_fb_is_power_off(mfd)) {
+		pr_warning("%s: panel is not powered\n", __func__);
+		r = -EPERM;
+		goto unlock;
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_ACL,
+					(void *)(unsigned long)enable);
+	if (r) {
+		pr_err("%s: Failed sending ACL command, r = %d\n", __func__, r);
+		r = -EFAULT;
+	} else
+		pr_info("%s: ACL state changed by sysfs, state = %d\n",
+							__func__, enable);
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+unlock:
+	mutex_unlock(&ctl->offlock);
+
+end:
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(acl, S_IWUSR | S_IWGRP | S_IRUSR | S_IRGRP,
+		acl_show, acl_store);
+
+static struct attribute *acl_attrs[] = {
+	&dev_attr_acl.attr,
+	NULL,
+};
+
+static struct attribute_group acl_attrs_group = {
+	.attrs = acl_attrs,
+};
+
 static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -5459,6 +5536,15 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 					&hbm_attrs_group);
 		if (rc) {
 			pr_err("Error for HBM sysfs creation ret = %d\n", rc);
+			goto init_fail;
+		}
+	}
+
+	if (mfd->panel_info->acl_feature_enabled) {
+		rc = sysfs_create_group(&dev->kobj,
+					&acl_attrs_group);
+		if (rc) {
+			pr_err("Error for ACL sysfs creation ret = %d\n", rc);
 			goto init_fail;
 		}
 	}
