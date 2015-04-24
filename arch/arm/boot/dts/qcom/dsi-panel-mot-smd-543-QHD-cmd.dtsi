@@ -58,6 +58,11 @@
 			15 01 00 00 00 00 02 53 e0];
 		qcom,mdss-dsi-hbm-off-command = [
 			15 01 00 00 00 00 02 53 20];
+		qcom,mdss-dsi-acl-on-command = [
+			/* 3 = ACL High, 70% setting */
+			15 01 00 00 00 00 02 55 03];
+		qcom,mdss-dsi-acl-off-command = [
+			15 01 00 00 00 00 02 55 00];
 
 		qcom,mdss-dsi-reset-sequence = <0 27>, <1 11>;
 		qcom,mdss-dsi-dis-reset-sequence = <0 3>;
