@@ -494,6 +494,9 @@ static void bluesleep_stop(void)
 	del_timer(&tx_timer);
 	clear_bit(BT_PROTO, &flags);
 
+	/* cancel sleep_workqueue */
+	cancel_delayed_work_sync(&sleep_workqueue);
+
 	atomic_inc(&open_count);
 
 	if (test_bit(BT_ASLEEP, &flags)) {
@@ -544,6 +547,10 @@ static int bluesleep_write_proc_lpm(struct file *file,
 	if (b == '0') {
 		/* HCI_DEV_UNREG */
 		bluesleep_stop();
+
+		/* flush pending works */
+		flush_delayed_work(&uart_awake_wq);
+
 		has_lpm_enabled = false;
 		bsi->uport = NULL;
 	} else {
