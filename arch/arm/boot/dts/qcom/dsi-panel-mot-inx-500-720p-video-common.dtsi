@@ -37,7 +37,7 @@ qcom,mdss-dsi-on-command = [
 	29 01 00 00 00 00 03 D9 03 06		/* Set PWM freq. at 32.55k Hz*/
 	29 01 00 00 00 00 02 EA 09		/* PWM compensation */
 	05 01 00 00 78 00 01 11			/* Exit sleep */
-	15 01 00 00 00 00 02 51 FF		/* Brightness */
+	15 01 00 00 00 00 02 51 CF		/* Brightness */
 	15 01 00 00 00 00 02 53 2C		/* CTRL Display */
 	15 01 00 00 00 00 02 55 01		/* UI CABC mode */
 	15 01 00 00 00 00 02 36 03		/* Rotate display 180 degree */
@@ -52,6 +52,9 @@ qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 
 qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CF];
 
 qcom,mdss-dsi-h-sync-pulse = <1>;
 qcom,mdss-dsi-traffic-mode = "burst_mode";
