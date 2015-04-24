@@ -572,7 +572,9 @@
 
 &pmi8994_charger {
 	status = "okay";
-	qcom,iterm-ma = <100>;
+	/delete-property/ qcom,iterm-ma;
+	qcom,iterm-disabled;
+	/delete-property/ qcom,autoadjust-vfloat;
 	qcom,fastchg-current-ma = <3400>;
 	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
@@ -608,6 +610,8 @@
 	qcom,parallel-allowed-lowering-ma = <500>;
 	qcom,stepchg-voltage-mv = <4200>;
 	qcom,stepchg-current-ma = <2000>;
+	qcom,stepchg-taper-ma = <1800>;
+	qcom,stepchg-iterm-ma = <150>;
 	qcom,hot-temp-c = <60>;
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
@@ -1455,7 +1459,7 @@
 		compatible = "qcom,smb1351-charger";
 		reg = <0x1d>;
 		qcom,parallel-charger;
-		qcom,float-voltage-mv = <4440>;
+		qcom,float-voltage-mv = <4400>;
 		qcom,recharge-mv = <100>;
 	};
 };
