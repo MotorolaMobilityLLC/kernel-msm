@@ -272,7 +272,7 @@
 		intersil,pfm-value = <0x86>;
 		intersil,no-reset;
 		intersil,init-level = <255>;
-		intersil,dimm-threshold = <0>;
+		intersil,dimm-threshold = <0x02>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&backlight_reset_default>;
 	};
