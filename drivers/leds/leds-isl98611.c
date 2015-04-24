@@ -47,6 +47,9 @@
 #define ISL98611_20MA				0x00
 #define ISL98611_25MA				0x80
 #define ISL98611_30MA				0xC0
+/* BIT7 in ENABLE register can only be 0 while IC is resetting. */
+/* BIT3 can be 0 or 1 depending on brightness state. */
+#define REG_ENABLE_DEFAULT			0x37
 
 #define REG_STATUS		0x01
 #define REG_ENABLE		0x02
@@ -243,13 +246,13 @@ static void isl98611_brightness_set(struct work_struct *work)
 
 	if (level != old_level && old_level == 0) {
 		rc = isl98611_update(pchip, REG_ENABLE,
-			VLED_EN_MASK | RESET_MASK, VLED_ON_VAL | NO_RESET_VAL);
+			VLED_EN_MASK, VLED_ON_VAL);
 		printk_ratelimited(KERN_INFO
 			"isl98611 backlight on %s\n", (rc ? "FAILED" : ""));
 	}
 	 else if (level == 0 && old_level != 0) {
 		rc = isl98611_update(pchip, REG_ENABLE,
-			VLED_EN_MASK | RESET_MASK, VLED_OFF_VAL | NO_RESET_VAL);
+			VLED_EN_MASK, VLED_OFF_VAL);
 		printk_ratelimited(KERN_INFO
 			"isl98611 backlight off %s\n", (rc ? "FAILED" : ""));
 	}
@@ -407,12 +410,20 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 	blank = *(int *)evdata->data;
 
 	if (event == FB_EVENT_BLANK && blank == FB_BLANK_UNBLANK) {
-		int regval;
+		int regval, reg2;
+		/* Non zero REG_BRGHT_LSB => chip is reset to PON defaults */
 		regval = isl98611_read(pchip, REG_BRGHT_LSB);
-		if (regval) {
+		reg2 = isl98611_read(pchip, REG_ENABLE);
+		/* REG_ENABLE_DEFAULT - must have bitmask in enable register */
+		reg2 &= REG_ENABLE_DEFAULT;
+		if (regval || (reg2 != REG_ENABLE_DEFAULT)) {
+			/* IC reset or reg ENABLE messed up => reinit the IC */
 			dev_err(pchip->dev,
-				"%s: REG_BRGHT_LSB is an unexpected value: %d\n",
+				"%s: REG_BRGHT_LSB is %#x, expected 0x00\n",
 				__func__, regval);
+			dev_err(pchip->dev,
+				"%s: REG_ENABLE is %#x, expected %#x\n",
+				__func__, reg2, REG_ENABLE_DEFAULT);
 			dev_err(pchip->dev, "%s: Re-initialize the chip\n",
 				__func__);
 			isl98611_dropbox_report_recovery(pchip);
