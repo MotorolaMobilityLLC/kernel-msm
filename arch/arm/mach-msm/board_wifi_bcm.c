@@ -280,7 +280,7 @@ static int bcm_wifi_carddetect(int val)
 }
 
 #define ETHER_ADDR_LEN    6
-#define FILE_WIFI_MACADDR "/data/asusdata/mac.txt"
+#define FILE_WIFI_MACADDR "/factory/mac.txt"
 
 static inline int xdigit (char c)
 {
