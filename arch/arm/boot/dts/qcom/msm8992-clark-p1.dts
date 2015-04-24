@@ -134,3 +134,9 @@
 		external_trigger = <2>; /* Disable ext. trigger */
 	};
 };
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		touch_vdd-supply = <&pm8994_l22>;
+	};
+};
