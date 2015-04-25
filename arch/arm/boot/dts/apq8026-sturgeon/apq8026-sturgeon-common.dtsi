@@ -20,7 +20,7 @@
 	qcom,msm-thermal {
 		qcom,freq-mitigation-temp = <110>;
 		qcom,freq-mitigation-temp-hysteresis = <20>;
-		qcom,freq-mitigation-value = <300000>;
+		qcom,freq-mitigation-value = <787200>;
 		qcom,freq-mitigation-control-mask = <0xf>;
 	};
 };
