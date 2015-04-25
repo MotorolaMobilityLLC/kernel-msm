@@ -2290,6 +2290,12 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = mdwc->health_status;
 		break;
+	case POWER_SUPPLY_PROP_USB_OTG:
+		val->intval = (mdwc->id_state == DWC3_ID_GROUND);
+		break;
+	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
+		val->intval = mdwc->ext_xceiv.cc_power_max;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2312,7 +2318,6 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		mdwc->id_state = val->intval ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
 		if (mdwc->otg_xceiv)
 			queue_work(system_nrt_wq, &mdwc->id_work);
-
 		break;
 	case POWER_SUPPLY_PROP_SCOPE:
 		mdwc->scope = val->intval;
@@ -2394,6 +2399,31 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		mdwc->health_status = val->intval;
 		break;
+	/* Process Type-C CC UFP power notification */
+	case POWER_SUPPLY_PROP_INPUT_CURRENT_MAX:
+		mdwc->ext_xceiv.cc_power_max = val->intval;
+		if (mdwc->vbus_active) {
+			switch (mdwc->charger.chg_type) {
+			case DWC3_SDP_CHARGER:
+				if (dotg->dwc->gadget.speed == USB_SPEED_SUPER)
+					usb_phy_set_power(phy,
+						DWC3_USB30_CHG_MAX);
+				else
+					usb_phy_set_power(phy,
+						CONFIG_USB_GADGET_VBUS_DRAW);
+				break;
+			case DWC3_DCP_CHARGER:
+			case DWC3_PROPRIETARY_CHARGER:
+				usb_phy_set_power(phy, dcp_max_current);
+				break;
+			case DWC3_CDP_CHARGER:
+				usb_phy_set_power(phy, DWC3_IDEV_CHG_MAX);
+				break;
+			default:
+				break;
+			}
+		}
+		return 0;
 	default:
 		return -EINVAL;
 	}
@@ -2458,6 +2488,8 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_SCOPE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_USB_OTG,
+	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX
 };
 
 static void dwc3_init_adc_work(struct work_struct *w);

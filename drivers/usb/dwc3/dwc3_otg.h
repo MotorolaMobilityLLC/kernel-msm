@@ -24,6 +24,7 @@
 
 #define DWC3_IDEV_CHG_MAX 1500
 #define DWC3_HVDCP_CHG_MAX 1800
+#define DWC3_USB30_CHG_MAX 900
 
 /*
  * Module param to override current drawn for DCP charger
@@ -114,6 +115,7 @@ enum dwc3_id_state {
 struct dwc3_ext_xceiv {
 	enum dwc3_id_state	id;
 	bool			bsv;
+	unsigned int	cc_power_max;
 
 	/* to notify OTG about LPM exit event, provided by OTG */
 	void	(*notify_ext_events)(struct usb_otg *otg,

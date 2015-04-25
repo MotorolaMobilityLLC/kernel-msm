@@ -398,7 +398,6 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	enum power_supply_property power_supply_type;
 	struct dwc3_otg *dotg = container_of(phy->otg, struct dwc3_otg, otg);
 
-
 	if (!dotg->psy || !dotg->charger) {
 		dev_err(phy->dev, "no usb power supply/charger registered\n");
 		return 0;
@@ -414,15 +413,13 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 		goto skip_psy_type;
 	}
 
-	if (dotg->charger->chg_type == DWC3_SDP_CHARGER)
-		power_supply_type = POWER_SUPPLY_TYPE_USB;
-	else if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
+	if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_CDP;
 	else if (dotg->charger->chg_type == DWC3_DCP_CHARGER ||
 			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_DCP;
 	else
-		power_supply_type = POWER_SUPPLY_TYPE_UNKNOWN;
+		power_supply_type = POWER_SUPPLY_TYPE_USB;
 
 	power_supply_set_supply_type(dotg->psy, power_supply_type);
 
@@ -430,6 +427,24 @@ skip_psy_type:
 
 	if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		mA = DWC3_IDEV_CHG_MAX;
+
+	/*
+	 * continue higher draw if set by CC. Also overides suspend current,
+	 * like previous version. For type C compliance if standard power
+	 * draw as per CC, then suspend currnet need to be honored
+	 *
+	 * cc_power.intval value is [Default:0mA/1500mA/3000mA]
+	 *
+	 */
+	if (dotg->charger->chg_type == DWC3_SDP_CHARGER && mA == 2) {
+		if (dotg->dwc->gadget.speed == USB_SPEED_SUPER)
+			mA = DWC3_USB30_CHG_MAX;
+		else
+			mA = CONFIG_USB_GADGET_VBUS_DRAW; /* 500mA */
+	}
+
+	if (dotg->ext_xceiv->cc_power_max > 0 && mA != 0)
+		mA = dotg->ext_xceiv->cc_power_max;
 
 	if (dotg->charger->max_power == mA)
 		return 0;
