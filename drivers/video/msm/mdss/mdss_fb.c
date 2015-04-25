@@ -72,6 +72,7 @@
 
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
+static bool fb_need_set_brightness = false;
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -851,6 +852,14 @@ static int mdss_fb_probe(struct platform_device *pdev)
 			&(mfd->boot_notification_led));
 	}
 
+	rc = of_property_read_bool(pdev->dev.of_node,
+		"huawei,set-brightness-enabled");
+
+	if(rc) {
+		pr_info("set brightness enabled\n");
+		fb_need_set_brightness = true;
+	}
+
 	INIT_LIST_HEAD(&mfd->proc_list);
 
 	mutex_init(&mfd->bl_lock);
@@ -1454,6 +1463,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	int ret = 0;
 	int cur_power_state, req_power_state = MDSS_PANEL_POWER_OFF;
 	char trace_buffer[32];
+	struct mdss_panel_data *pdata = NULL;
 
 	if (!mfd || !op_enable)
 		return -EPERM;
@@ -1495,6 +1505,16 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
 		ret = mdss_fb_blank_unblank(mfd);
+		/* set brightness on for lunch box */
+		if(fb_need_set_brightness) {
+			pdata = dev_get_platdata(&mfd->pdev->dev);
+			if(NULL != pdata && NULL != pdata->set_backlight) {
+				mutex_lock(&mfd->bl_lock);
+				pr_info("set backlight on\n");
+				pdata->set_backlight(pdata, 2000);
+				mutex_unlock(&mfd->bl_lock);
+			}
+		}
 		break;
 	case BLANK_FLAG_ULP:
 		req_power_state = MDSS_PANEL_POWER_LP2;
@@ -1527,6 +1547,16 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_POWERDOWN:
 	default:
 		req_power_state = MDSS_PANEL_POWER_OFF;
+		/* set brightness off for lunch box */
+		if(fb_need_set_brightness) {
+			pdata = dev_get_platdata(&mfd->pdev->dev);
+			if(NULL != pdata && NULL != pdata->set_backlight) {
+				mutex_lock(&mfd->bl_lock);
+				pr_info("set backlight off\n");
+				pdata->set_backlight(pdata, 0);
+				mutex_unlock(&mfd->bl_lock);
+			}
+		}
 		pr_debug("blank powerdown called\n");
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;

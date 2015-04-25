@@ -6,3 +6,7 @@
 
 
 #include "hw-panel-cmi-otm1282a-6p1-720p-cmd.dtsi"
+
+&mdss_fb0 {
+	huawei,set-brightness-enabled;
+};
