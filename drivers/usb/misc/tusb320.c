@@ -23,10 +23,10 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
-#include <linux/wakelock.h>
+#include <linux/power_supply.h>
 #include <linux/irq.h>
 #include <linux/delay.h>
-#include <linux/usb/tusb320_notify.h>
+#include <linux/wakelock.h>
 
 #undef  __CONST_FFS
 #define __CONST_FFS(_x) \
@@ -74,13 +74,23 @@
 #define TUBS320_DFP_POWER_HIGH		2
 
 #define TUBS320_UFP_POWER_MODE		BITS(5,4)
+#define TUBS320_UFP_POWER_DEFAULT	0	/* 500/900mA */
+#define TUBS320_UFP_POWER_MEDIUM	1	/* 1.5A */
+#define TUBS320_UFP_POWER_ACC		2	/* Charge through accessory (500mA) */
+#define TUBS320_UFP_POWER_HIGH		3	/* 3A */
 
 #define TUBS320_ACC_CONN		BITS(3,1)
 #define TUBS320_ACC_NOT_ATTACH		0
+#define TUBS320_ACC_AUDIO_DFP		4
+#define TUBS320_ACC_DEBUG_DFP		6
 
 #define TUBS320_CSR_REG_09		0x09
 
 #define TUBS320_ATTACH_STATE		BITS(7,6)
+#define TUBS320_NOT_ATTACH		0
+#define TUBS320_DFP_ATTACH_UFP		1
+#define TUBS320_UFP_ATTACH_DFP		2
+#define TUBS320_ATTACH_ACC		3
 
 #define TUBS320_CABLE_DIR		BIT (5)
 
@@ -116,7 +126,6 @@ struct tusb320_data {
 struct tusb320_chip {
 	struct i2c_client *client;
 	struct tusb320_data *pdata;
-	struct tusb320_notify_param notify_param;
 	int irq_gpio;
 	u8 mode;
 	u8 state;
@@ -125,79 +134,8 @@ struct tusb320_chip {
 	u8 accessory_mode;
 	struct work_struct dwork;
 	struct wake_lock wlock;
+	struct power_supply *usb_psy;
 };
-
-/*
- * Notify TUSB320 CC Controller events to USB or Other devices
- */
-static BLOCKING_NOTIFIER_HEAD(tusb320_notifier_list);
-
-int tusb320_register_notifier(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_register(&tusb320_notifier_list, nb);
-}
-EXPORT_SYMBOL_GPL(tusb320_register_notifier);
-
-int tusb320_unregister_notifier(struct notifier_block *nb)
-{
-	return blocking_notifier_chain_unregister(&tusb320_notifier_list, nb);
-}
-EXPORT_SYMBOL_GPL(tusb320_unregister_notifier);
-
-static void tusb320_update_attach_state(struct tusb320_chip *chip, u8 ufp_pow)
-{
-	switch (chip->state) {
-	case TUBS320_NOT_ATTACH:
-	case TUBS320_DFP_ATTACH_UFP:
-	case TUBS320_UFP_ATTACH_DFP:
-		chip->notify_param.state = chip->state;
-		break;
-	case TUBS320_ATTACH_ACC:
-		chip->notify_param.state = chip->accessory_mode;
-	default:
-		return;
-	}
-
-	chip->notify_param.ufp_power = ufp_pow;
-
-	blocking_notifier_call_chain(&tusb320_notifier_list,
-			TUBS320_ATTACH_STATE_EVENT, &chip->notify_param);
-}
-
-static void tusb320_update_ufp_power(struct tusb320_chip *chip, u8 ufp_pow)
-{
-	if(chip->ufp_power != ufp_pow) {
-		chip->ufp_power = chip->notify_param.ufp_power
-			= ufp_pow;
-
-		blocking_notifier_call_chain(&tusb320_notifier_list,
-				TUBS320_UFP_POWER_UPDATE_EVENT,
-				&chip->notify_param);
-	}
-}
-
-#if 0
-static int tusb320_read_masked_byte(struct i2c_client *client,
-		u8 addr, u8 mask, u8 *val)
-{
-	int rc;
-
-	if (!mask) {
-		/* no actual access */
-		*val = 0;
-		rc = -EINVAL;
-		goto out;
-	}
-
-	rc = i2c_smbus_read_byte_data(client, addr);
-	if (!IS_ERR_VALUE(rc)) {
-		*val = BITS_GET((u8)rc, mask);
-	}
-
-out:
-	return rc;
-}
-#endif
 
 static int tusb320_write_masked_byte(struct i2c_client *client,
 					u8 addr, u8 mask, u8 val)
@@ -230,7 +168,8 @@ static int tusb320_read_device_id(struct tusb320_chip *chip)
 		rc = i2c_smbus_read_word_data(chip->client,
 				TUBS320_CSR_REG_ID(i));
 		if (IS_ERR_VALUE(rc)) {
-			dev_err(cdev, "%s: failed to read REG_ID\n", __func__);
+			dev_err(cdev, "%s: failed to read REG_ID\n",
+							__func__);
 			return rc;
 		}
 		buffer[i] = rc & 0xFF;
@@ -268,7 +207,7 @@ static int tusb320_select_mode(struct tusb320_chip *chip, u8 sel_mode)
 						TUBS320_MODE_SELECT,
 						sel_mode);
 		if (IS_ERR_VALUE(rc)) {
-			dev_err(cdev, "failed to write TUBS320_MODE_SELECT\n");
+			dev_err(cdev, "failed to write MODE_SELECT\n");
 			return rc;
 		}
 
@@ -276,25 +215,6 @@ static int tusb320_select_mode(struct tusb320_chip *chip, u8 sel_mode)
 	}
 
 	dev_dbg(cdev, "%s: mode (%d)\n", __func__, chip->mode);
-
-	return rc;
-}
-
-static int tusb320_set_dfp_power(struct tusb320_chip *chip)
-{
-	struct device *cdev = &chip->client->dev;
-	int rc = 0;
-
-	rc = tusb320_write_masked_byte(chip->client,
-					TUBS320_CSR_REG_08,
-					TUBS320_DFP_POWER_MODE,
-					chip->pdata->dfp_power);
-	if(IS_ERR_VALUE(rc)) {
-		dev_err(cdev, "failed to write TUBS320_DFP_POWER_MODE\n");
-		return rc;
-	}
-
-	dev_dbg(cdev, "%s: dfp_power (%d)\n", __func__, chip->pdata->dfp_power);
 
 	return rc;
 }
@@ -309,7 +229,8 @@ static int tusb320_i2c_reset_device(struct tusb320_chip *chip)
 					TUBS320_SOFT_RESET,
 					TUBS320_RESET_VALUE);
 	if(IS_ERR_VALUE(rc)) {
-		dev_err(cdev, "%s: failed to write REG_0A\n", __func__);
+		dev_err(cdev, "%s: failed to write REG_0A\n",
+						__func__);
 		return rc;
 	}
 
@@ -373,11 +294,11 @@ static int tusb320_reset_device(struct tusb320_chip *chip, int mode)
 }
 
 #define TUSB320_DEV_ATTR(field, format_string)				\
-	static ssize_t								\
+	static ssize_t							\
 field ## _show(struct device *dev, struct device_attribute *attr,	\
 		char *buf)						\
 {									\
-	struct i2c_client *client = to_i2c_client(dev);		\
+	struct i2c_client *client = to_i2c_client(dev);			\
 	struct tusb320_chip *chip = i2c_get_clientdata(client);		\
 	\
 	return snprintf(buf, PAGE_SIZE,					\
@@ -503,22 +424,45 @@ static void tusb320_destory_device(struct device *cdev)
 	device_create_file(cdev, &dev_attr_reset);
 }
 
+static int tusb320_set_current_max(struct power_supply *psy,
+					int icurrent)
+{
+	const union power_supply_propval ret = {icurrent,};
+
+	if (psy->set_property)
+		return psy->set_property(psy,
+				POWER_SUPPLY_PROP_INPUT_CURRENT_MAX, &ret);
+	return -ENXIO;
+}
+
 static void tusb320_not_attach(struct tusb320_chip *chip)
 {
 	struct device *cdev = &chip->client->dev;
 
 	dev_dbg(cdev, "%s: state (%d)\n", __func__, chip->state);
 
+	switch (chip->state) {
+	case TUBS320_UFP_ATTACH_DFP:
+		break;
+	case TUBS320_DFP_ATTACH_UFP:
+		power_supply_set_usb_otg(chip->usb_psy, false);
+		break;
+	case TUBS320_ATTACH_ACC:
+		break;
+	case TUBS320_NOT_ATTACH:
+		break;
+	default:
+		dev_err(cdev, "%s: Invaild state\n", __func__);
+		break;
+	}
+
 	chip->state = TUBS320_NOT_ATTACH;
 	chip->cable_direction = 0;
 	chip->ufp_power = TUBS320_UFP_POWER_DEFAULT;
 	chip->accessory_mode = TUBS320_ACC_NOT_ATTACH;
-
-	tusb320_update_attach_state(chip, TUBS320_UFP_POWER_DEFAULT);
 }
 
-static void tusb320_dfp_attach_ufp(struct tusb320_chip *chip,
-					u8 direction, u8 detail)
+static void tusb320_dfp_attach_ufp(struct tusb320_chip *chip, u8 detail)
 {
 	struct device *cdev = &chip->client->dev;
 
@@ -530,18 +474,14 @@ static void tusb320_dfp_attach_ufp(struct tusb320_chip *chip,
 	}
 
 	switch (chip->state) {
-	case TUBS320_NOT_ATTACH :
-		chip->cable_direction = direction;
+	case TUBS320_NOT_ATTACH:
 		chip->state = TUBS320_DFP_ATTACH_UFP;
-		tusb320_update_attach_state(chip, TUBS320_UFP_POWER_DEFAULT);
-		tusb320_set_dfp_power(chip);
+		power_supply_set_usb_otg(chip->usb_psy, true);
 		break;
-	case TUBS320_DFP_ATTACH_UFP :
-		if (chip->cable_direction != direction)
-			chip->cable_direction = direction;
+	case TUBS320_DFP_ATTACH_UFP:
 		break;
-	case TUBS320_UFP_ATTACH_DFP :
-	case TUBS320_ATTACH_ACC :
+	case TUBS320_UFP_ATTACH_DFP:
+	case TUBS320_ATTACH_ACC:
 	default:
 		tusb320_reset_device(chip, TUBS320_I2C_RESET);
 		dev_err(cdev, "%s: Invaild state\n", __func__);
@@ -549,34 +489,38 @@ static void tusb320_dfp_attach_ufp(struct tusb320_chip *chip,
 	}
 }
 
-static void tusb320_ufp_attach_dfp(struct tusb320_chip *chip,
-				u8 direction, u8 detail)
+static void tusb320_ufp_attach_dfp(struct tusb320_chip *chip, u8 detail)
 {
 	struct device *cdev = &chip->client->dev;
 	u8 ufp_pow = BITS_GET(detail, TUBS320_UFP_POWER_MODE);
+	int limit = 0;
 
 	dev_dbg(cdev, "%s: state (%d)\n", __func__, chip->state);
-	dev_dbg(cdev, "%s: ufp_power [before(%d) vs after(%d)]\n",
-			__func__, chip->ufp_power, ufp_pow);
 
 	if (chip->mode == TUBS320_MODE_DFP) {
 		dev_err(cdev, "%s: mode is DFP\n", __func__);
 		return;
 	}
 
+	dev_dbg(cdev, "%s: ufp_power [before(%d) vs after(%d)]\n",
+			__func__, chip->ufp_power, ufp_pow);
+
+	limit = (ufp_pow == TUBS320_UFP_POWER_HIGH ? 3000 :
+			(ufp_pow == TUBS320_UFP_POWER_MEDIUM ? 1500 : 0));
+
 	switch (chip->state) {
-	case TUBS320_NOT_ATTACH :
-		chip->cable_direction = direction;
+	case TUBS320_NOT_ATTACH:
 		chip->state = TUBS320_UFP_ATTACH_DFP;
-		tusb320_update_attach_state(chip, ufp_pow);
+		chip->ufp_power = ufp_pow;
+		tusb320_set_current_max(chip->usb_psy, limit);
 		break;
-	case TUBS320_UFP_ATTACH_DFP :
-		if(chip->cable_direction != direction)
-			chip->cable_direction = direction;
-		tusb320_update_ufp_power(chip, ufp_pow);
+	case TUBS320_UFP_ATTACH_DFP:
+		if (chip->ufp_power != ufp_pow) {
+			tusb320_set_current_max(chip->usb_psy, limit);
+		}
 		break;
-	case TUBS320_DFP_ATTACH_UFP :
-	case TUBS320_ATTACH_ACC :
+	case TUBS320_DFP_ATTACH_UFP:
+	case TUBS320_ATTACH_ACC:
 	default:
 		tusb320_reset_device(chip, TUBS320_I2C_RESET);
 		dev_err(cdev, "%s: Invaild state\n", __func__);
@@ -588,23 +532,14 @@ static void tusb320_attach_accessory_detail(struct tusb320_chip *chip,
 						u8 acc_conn, u8 detail)
 {
 	struct device *cdev = &chip->client->dev;
-	u8 ufp_pow = BITS_GET(detail, TUBS320_UFP_POWER_MODE);
 
-	dev_dbg(cdev, "%s: ufp_power [before(%d) vs after(%d)]\n",
-			__func__, chip->ufp_power, ufp_pow);
-
-	if (chip->accessory_mode != acc_conn) {
+	if (chip->accessory_mode == TUBS320_ACC_NOT_ATTACH) {
 		chip->accessory_mode = acc_conn;
 
 		switch (acc_conn) {
-		case TUBS320_ACC_AUDIO_DFP :
-		case TUBS320_ACC_DEBUG_DFP :
-			tusb320_update_attach_state(chip,
-					TUBS320_UFP_POWER_DEFAULT);
+		case TUBS320_ACC_AUDIO_DFP:
 			break;
-		case TUBS320_ACC_AUDIO_UFP :
-		case TUBS320_ACC_DEBUG_UFP :
-			tusb320_update_attach_state(chip, ufp_pow);
+		case TUBS320_ACC_DEBUG_DFP:
 			break;
 		default:
 			tusb320_reset_device(chip, TUBS320_I2C_RESET);
@@ -612,15 +547,9 @@ static void tusb320_attach_accessory_detail(struct tusb320_chip *chip,
 			break;
 		}
 	}
-
-	if ((chip->accessory_mode == TUBS320_ACC_AUDIO_UFP) ||
-			(chip->accessory_mode == TUBS320_ACC_DEBUG_UFP)) {
-		tusb320_update_ufp_power(chip, ufp_pow);
-	}
 }
 
-static void tusb320_attach_accessory(struct tusb320_chip *chip,
-					u8 direction, u8 detail)
+static void tusb320_attach_accessory(struct tusb320_chip *chip, u8 detail)
 {
 	struct device *cdev = &chip->client->dev;
 	u8 acc_conn = BITS_GET(detail, TUBS320_ACC_CONN);
@@ -631,13 +560,10 @@ static void tusb320_attach_accessory(struct tusb320_chip *chip,
 
 	switch (chip->state) {
 	case TUBS320_NOT_ATTACH:
-		chip->cable_direction = direction;
 		chip->state = TUBS320_ATTACH_ACC;
 		tusb320_attach_accessory_detail(chip, acc_conn, detail);
 		break;
 	case TUBS320_ATTACH_ACC:
-		if(chip->cable_direction != direction)
-			chip->cable_direction = direction;
 		tusb320_attach_accessory_detail(chip, acc_conn, detail);
 		break;
 	case TUBS320_DFP_ATTACH_UFP:
@@ -647,7 +573,6 @@ static void tusb320_attach_accessory(struct tusb320_chip *chip,
 		dev_err(cdev, "%s: Invaild state\n", __func__);
 		break;
 	}
-
 }
 
 static void tusb320_work_handler(struct work_struct *work)
@@ -656,7 +581,7 @@ static void tusb320_work_handler(struct work_struct *work)
 		container_of(work, struct tusb320_chip, dwork);
 	struct device *cdev = &chip->client->dev;
 	int ret;
-	u8 reg09, reg08, state, direction;
+	u8 reg09, reg08, state;
 
 	wake_lock(&chip->wlock);
 
@@ -669,7 +594,7 @@ static void tusb320_work_handler(struct work_struct *work)
 	reg08 = ret & 0xFF;
 	reg09 = (ret >> 8) & 0xFF;
 
-	dev_dbg(cdev, "reg08[0x%02x] , reg09[0x%02x]\n", reg08, reg09);
+	dev_info(cdev, "reg08[0x%02x] , reg09[0x%02x]\n", reg08, reg09);
 
 	/* Clear Interrupt */
 	ret = tusb320_write_masked_byte(chip->client,
@@ -682,32 +607,28 @@ static void tusb320_work_handler(struct work_struct *work)
 	}
 
 	state = BITS_GET(reg09, TUBS320_ATTACH_STATE);
-	direction = BITS_GET(reg08, TUBS320_CABLE_DIR);
+	chip->cable_direction = BITS_GET(reg09, TUBS320_CABLE_DIR);
 
-	dev_info(cdev, "%s: [state %d] [direction: %d]\n",
-			__func__, state, direction);
+	dev_dbg(cdev, "%s: [state %d] [direction: %d]\n",
+				__func__, state, chip->cable_direction);
 
 	switch (state) {
-		case TUBS320_NOT_ATTACH:
-			tusb320_not_attach(chip);
-			break;
-
-		case TUBS320_DFP_ATTACH_UFP:
-			tusb320_dfp_attach_ufp(chip, direction, reg08);
-			break;
-
-		case TUBS320_UFP_ATTACH_DFP:
-			tusb320_ufp_attach_dfp(chip, direction, reg08);
-			break;
-
-		case TUBS320_ATTACH_ACC:
-			tusb320_attach_accessory(chip, direction, reg08);
-			break;
-
-		default:
-			tusb320_reset_device(chip, TUBS320_I2C_RESET);
-			dev_err(cdev, "%s: Invalid state\n", __func__);
-			break;
+	case TUBS320_NOT_ATTACH:
+		tusb320_not_attach(chip);
+		break;
+	case TUBS320_DFP_ATTACH_UFP:
+		tusb320_dfp_attach_ufp(chip, reg08);
+		break;
+	case TUBS320_UFP_ATTACH_DFP:
+		tusb320_ufp_attach_dfp(chip, reg08);
+		break;
+	case TUBS320_ATTACH_ACC:
+		tusb320_attach_accessory(chip, reg08);
+		break;
+	default:
+		tusb320_reset_device(chip, TUBS320_I2C_RESET);
+		dev_err(cdev, "%s: Invalid state\n", __func__);
+		break;
 	}
 work_unlock:
 	wake_unlock(&chip->wlock);
@@ -833,6 +754,13 @@ static int tusb320_probe(struct i2c_client *client,
 	struct device *cdev = &client->dev;
 	unsigned long flags;
 	int ret = 0, is_active;
+	struct power_supply *usb_psy;
+
+	usb_psy = power_supply_get_by_name("usb");
+	if (!usb_psy) {
+		dev_err(cdev, "USB supply not found, deferring probe\n");
+		return -EPROBE_DEFER;
+	}
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_SMBUS_BYTE_DATA |
@@ -882,6 +810,7 @@ static int tusb320_probe(struct i2c_client *client,
 	chip->cable_direction = 0;
 	chip->ufp_power = TUBS320_UFP_POWER_DEFAULT;
 	chip->accessory_mode = TUBS320_ACC_NOT_ATTACH;
+	chip->usb_psy = usb_psy;
 
 	INIT_WORK(&chip->dwork, tusb320_work_handler);
 	wake_lock_init(&chip->wlock, WAKE_LOCK_SUSPEND, "tusb320_wake");
@@ -906,7 +835,7 @@ static int tusb320_probe(struct i2c_client *client,
 		goto err4;
 	}
 
-	/* Update initial Interrupt state */
+	/* Update initial interrupt state */
 	local_irq_save(flags);
 	is_active = !gpio_get_value(chip->pdata->int_gpio);
 	local_irq_restore(flags);
