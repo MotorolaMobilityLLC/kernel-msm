@@ -52,7 +52,10 @@
 			32 01 00 00 FF 00 02 00 00
 			05 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00
-					05 01 00 00 78 00 02 10 00];
+					05 01 00 00 78 00 02 10 00
+					15 01 00 00 FF 00 02 00 00
+					15 01 00 00 00 00 02 4F 01
+					];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
