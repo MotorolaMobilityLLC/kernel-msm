@@ -484,6 +484,9 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 	}
 	LOGD(&sentral->client->dev, "iio buffer bytes: %s\n", dstr);
 
+	if (sensor_id == SST_ACCELEROMETER)
+		memcpy(&sentral->latest_accel_buffer, buffer, sizeof(buffer));
+
 	rc = iio_push_to_buffers(sentral->indio_dev, buffer);
 	if (rc)
 		LOGE(&sentral->client->dev, "error (%d) pushing to IIO buffers", rc);
@@ -1640,6 +1643,170 @@ exit:
 
 static DEVICE_ATTR(bmmi_mag_status, S_IRUGO, bmmi_mag_status_show, NULL);
 
+static int get_specific_sensor_buffer(struct sentral_device *sentral,
+		int id, u8 *buffer)
+{
+	struct sentral_param_sensor_config config;
+	int rc = 0;
+	u16 original_rate;
+	u16 original_latency;
+
+	// read and store the sensor config
+	rc = sentral_parameter_read(sentral, SPP_SENSORS,
+			id + PARAM_SENSORS_ACTUAL_OFFSET, (void *)&config,
+			sizeof(struct sentral_param_sensor_config));
+	if (rc < 0) {
+		dev_err(&sentral->client->dev, "error (%d) reading config: %d", rc, id);
+		goto exit;
+	}
+	original_rate = config.sample_rate;
+	original_latency = config.max_report_latency;
+	dev_info(&sentral->client->dev,
+			"(READ) config.sample_rate: %d, config.max_report_latency: %d",
+			original_rate, original_latency);
+
+	// set sample rate
+	config.sample_rate = 200;
+	config.max_report_latency = 0;
+	rc = sentral_parameter_write(sentral, SPP_SENSORS,
+			id + PARAM_SENSORS_ACTUAL_OFFSET, (void *)&config,
+			sizeof(struct sentral_param_sensor_config));
+	dev_info(&sentral->client->dev,
+			"(WRITE) config.sample_rate: %d, config.max_report_latency: %d",
+			config.sample_rate, config.max_report_latency);
+	if (rc < 0) {
+		dev_err(&sentral->client->dev, "error (%d) writing config: %d", rc, id);
+		goto exit;
+	}
+
+	queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
+	msleep(20);
+
+	// write back the stored sensor config
+	config.sample_rate = original_rate;
+	config.max_report_latency = original_latency;
+	rc = sentral_parameter_write(sentral, SPP_SENSORS,
+			id + PARAM_SENSORS_ACTUAL_OFFSET, (void *)&config,
+			sizeof(struct sentral_param_sensor_config));
+	dev_info(&sentral->client->dev,
+			"(WRITE) config.sample_rate: %d, config.max_report_latency: %d",
+			config.sample_rate, config.max_report_latency);
+	if (rc < 0) {
+		dev_err(&sentral->client->dev, "error (%d) writing config: %d", rc, id);
+		goto exit;
+	}
+
+	memcpy(&buffer[0], sentral->latest_accel_buffer,
+			sizeof(sentral->latest_accel_buffer));
+
+exit:
+	return rc;
+}
+
+// asus smmi attributes
+
+static ssize_t smmi_acc_rawdata_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u8 buffer[24];
+	int x, y, z;
+	int rc, i;
+
+	for (i = 0; i < sizeof(buffer); i++)
+		buffer[i] = 0;
+
+	mutex_lock(&sentral->lock);
+	rc = get_specific_sensor_buffer(sentral, SST_ACCELEROMETER, buffer);
+	if (rc < 0) {
+		dev_err(&sentral->client->dev, "%s, rc: %d", __func__, rc);
+		rc = sprintf(buf, "0\n");
+		goto exit;
+	}
+	x = (buffer[3] << 8) + buffer[2];
+	y = (buffer[5] << 8) + buffer[4];
+	z = (buffer[7] << 8) + buffer[6];
+	(x >= 32768) ? (x = x - 65536) : (x = x);
+	(y >= 32768) ? (y = y - 65536) : (y = y);
+	(z >= 32768) ? (z = z - 65536) : (z = z);
+
+	rc = sprintf(buf, "%d %d %d\n", x, y, z);
+
+exit:
+	mutex_unlock(&sentral->lock);
+	return rc;
+}
+
+static DEVICE_ATTR(smmi_acc_rawdata, S_IRUGO, smmi_acc_rawdata_show, NULL);
+
+static ssize_t smmi_acc_cali_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	s64 coeffs[3];
+	const int COEFFS_ACCEL_OFFSET = 15;
+	int rc, i;
+
+	dev_info(&sentral->client->dev, "%s", __func__);
+	mutex_lock(&sentral->lock);
+	for (i = 0; i < 3; ++i) {
+		rc = sentral_parameter_read(sentral, SPP_ALGO_WARM_START,
+				COEFFS_ACCEL_OFFSET + i, (void *)&coeffs[i], sizeof(coeffs[i]));
+		if (rc < 0) {
+			dev_err(&sentral->client->dev,
+					"error (%d) reading acc cal coefficients", rc);
+			rc = sprintf(buf, "error (%d) reading acc cal coefficients\n", rc);
+			goto exit;
+		}
+	}
+	dev_info(&sentral->client->dev,
+			"read cali coefficients: (0x%016llx,0x%016llx,0x%016llx)",
+			coeffs[0], coeffs[1], coeffs[2]);
+	rc = sprintf(buf, "0x%016llx 0x%016llx 0x%016llx\n",
+			coeffs[0], coeffs[1], coeffs[2]);
+
+exit:
+	mutex_unlock(&sentral->lock);
+	return rc;
+}
+
+static ssize_t smmi_acc_cali_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	s64 coeffs[3];
+	const int COEFFS_ACCEL_OFFSET = 15;
+	int rc, i;
+
+	dev_info(&sentral->client->dev, "%s", __func__);
+	mutex_lock(&sentral->lock);
+	if (3 != sscanf(buf, "%lld %lld %lld",
+			&coeffs[0], &coeffs[1], &coeffs[2])) {
+		rc = -EINVAL;
+		goto exit;
+	}
+	for (i = 0; i < 3; ++i) {
+		rc = sentral_parameter_write(sentral, SPP_ALGO_WARM_START,
+				COEFFS_ACCEL_OFFSET + i, (void *)&coeffs[i], sizeof(coeffs[i]));
+		if (rc < 0) {
+			dev_err(&sentral->client->dev,
+					"error (%d) writing acc cal coefficients", rc);
+			goto exit;
+		}
+	}
+	dev_info(&sentral->client->dev,
+			"write cali coefficients: (0x%016llx,0x%016llx,0x%016llx)",
+			coeffs[0], coeffs[1], coeffs[2]);
+	rc = count;
+
+exit:
+	mutex_unlock(&sentral->lock);
+	return rc;
+}
+
+static DEVICE_ATTR(smmi_acc_cali, S_IRUGO|S_IWUGO, smmi_acc_cali_show,
+		smmi_acc_cali_store);
+
 static struct attribute *sentral_attributes[] = {
 	&dev_attr_chip_control.attr,
 	&dev_attr_host_status.attr,
@@ -1657,6 +1824,8 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,
 	&dev_attr_bmmi_mag_status.attr,
+	&dev_attr_smmi_acc_rawdata.attr,
+	&dev_attr_smmi_acc_cali.attr,
 	NULL
 };
 
@@ -2123,7 +2292,7 @@ static int sentral_probe(struct i2c_client *client,
 	}
 
 	// startup
-//	schedule_work(&sentral->work_reset);
+	schedule_work(&sentral->work_reset);
 	return 0;
 
 error_sysfs:
