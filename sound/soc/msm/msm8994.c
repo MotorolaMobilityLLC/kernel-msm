@@ -3343,7 +3343,6 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 	struct snd_soc_card *card = &snd_soc_card_msm8994;
 	struct msm8994_asoc_mach_data *pdata;
 	const char *mbhc_audio_jack_type = NULL;
-	int tmp;
 	int ret;
 
 	if (!pdev->dev.of_node) {
@@ -3440,6 +3439,9 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	mbhc_cfg.gpio_level_insert = of_property_read_bool(pdev->dev.of_node,
+					"qcom,headset-jack-type-NC");
+
 	ret = snd_soc_register_card(card);
 	if (ret == -EPROBE_DEFER) {
 		goto err;
@@ -3448,11 +3450,6 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 			ret);
 		goto err;
 	}
-
-	ret = of_property_read_u32(pdev->dev.of_node,
-		"qcom,mbhc-gpio-level-insert", &tmp);
-	if (!ret)
-		mbhc_cfg.gpio_level_insert = (int)tmp;
 
 	ret = of_property_read_string(pdev->dev.of_node,
 		"qcom,mbhc-audio-jack-type", &mbhc_audio_jack_type);
