@@ -476,6 +476,7 @@ struct sentral_device {
 	u32 ts_sensor_stime;
 	u64 enabled_mask;
 	struct sentral_param_sensor_config sensor_config[SST_MAX];
+	u8 latest_accel_buffer[24];
 };
 
 #endif /* _SENTRAL_IIO_H_ */
