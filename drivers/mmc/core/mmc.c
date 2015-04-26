@@ -334,6 +334,18 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	 */
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
 
+	/* Needed here for firmware-specific fixups. */
+	if (card->ext_csd.rev >= 6)
+		card->ext_csd.firmware_version =
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 0] << 0 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 1] << 8 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 2] << 16 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 3] << 24 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 4] << 32 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 5] << 40 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 6] << 48 |
+			(u64)ext_csd[EXT_CSD_FIRMWARE_VERSION + 7] << 56;
+
 	/* fixup device after ext_csd revision field is updated */
 	mmc_fixup_device(card, mmc_fixups);
 
@@ -620,16 +632,6 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	/* eMMC v4.5 or later */
 	if (card->ext_csd.rev >= 7) {
-		card->ext_csd.firmware_version[0] =
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 0] << 0 |
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 1] << 8 |
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 2] << 16 |
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 3] << 24;
-		card->ext_csd.firmware_version[1] =
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 4] << 0 |
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 5] << 8 |
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 6] << 16 |
-			ext_csd[EXT_CSD_FIRMWARE_VERSION + 7] << 24;
 		card->ext_csd.device_version =
 			ext_csd[EXT_CSD_DEVICE_VERSION + 0] << 0 |
 			ext_csd[EXT_CSD_DEVICE_VERSION + 1] << 8;
@@ -736,8 +738,7 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
-MMC_DEV_ATTR(firmware_version, "0x%08x%08x\n",
-	card->ext_csd.firmware_version[1], card->ext_csd.firmware_version[0]);
+MMC_DEV_ATTR(firmware_version, "0x%016llx\n", card->ext_csd.firmware_version);
 MMC_DEV_ATTR(device_version, "0x%04x\n", card->ext_csd.device_version);
 MMC_DEV_ATTR(optimal_trim_unit_size, "%d\n",
 		card->ext_csd.raw_optimal_trim_size);

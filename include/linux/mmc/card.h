@@ -65,7 +65,7 @@ struct mmc_ext_csd {
 	u8			dev_life_time_est_a;
 	u8			dev_life_time_est_b;
 	unsigned int		vendor_health_report[8];
-	unsigned int		firmware_version[2];
+	u64			firmware_version;
 	unsigned int		device_version;
 	unsigned int		part_time;		/* Units: ms */
 	unsigned int		sa_timeout;		/* Units: 100ns */
@@ -121,7 +121,6 @@ struct mmc_ext_csd {
 	u8			raw_sec_feature_support;/* 231 */
 	u8			raw_trim_mult;		/* 232 */
 	u8			raw_bkops_status;	/* 246 */
-	u8			raw_firmware_version[8];/* 254 - 8 bytes */
 	u8			raw_device_version[2];	/* 262 - 2 bytes */
 	u8			raw_optimal_trim_size;	/* 264 */
 	u8			raw_optimal_write_size;	/* 265 */
@@ -493,6 +492,7 @@ struct mmc_fixup {
 	u16 cis_vendor, cis_device;
 	/* for MMC cards */
 	unsigned int ext_csd_rev;
+	unsigned long long ext_csd_fw_ver;
 
 	void (*vendor_fixup)(struct mmc_card *card, int data);
 	int data;
@@ -503,6 +503,7 @@ struct mmc_fixup {
 #define CID_NAME_ANY (NULL)
 
 #define EXT_CSD_REV_ANY (-1u)
+#define EXT_CSD_FW_VER_ANY (-1ull)
 
 #define CID_MANFID_SANDISK	0x2
 #define CID_MANFID_TOSHIBA	0x11
@@ -516,7 +517,7 @@ struct mmc_fixup {
 
 #define _FIXUP_EXT(_name, _manfid, _oemid, _rev_start, _rev_end,	\
 		   _cis_vendor, _cis_device,				\
-		   _fixup, _data, _ext_csd_rev)				\
+		   _fixup, _data, _ext_csd_rev, _ext_csd_fw_ver)	\
 	{						   \
 		.name = (_name),			   \
 		.manfid = (_manfid),			   \
@@ -528,6 +529,7 @@ struct mmc_fixup {
 		.vendor_fixup = (_fixup),		   \
 		.data = (_data),			   \
 		.ext_csd_rev = (_ext_csd_rev),		   \
+		.ext_csd_fw_ver = (_ext_csd_fw_ver),	   \
 	 }
 
 #define MMC_FIXUP_REV(_name, _manfid, _oemid, _rev_start, _rev_end,	\
@@ -535,7 +537,7 @@ struct mmc_fixup {
 	_FIXUP_EXT(_name, _manfid,					\
 		   _oemid, _rev_start, _rev_end,			\
 		   SDIO_ANY_ID, SDIO_ANY_ID,				\
-		   _fixup, _data, _ext_csd_rev)				\
+		   _fixup, _data, _ext_csd_rev, EXT_CSD_FW_VER_ANY)	\
 
 #define MMC_FIXUP(_name, _manfid, _oemid, _fixup, _data)		\
 	MMC_FIXUP_REV(_name, _manfid, _oemid, 0, -1ull, _fixup, _data,	\
@@ -546,11 +548,17 @@ struct mmc_fixup {
 	MMC_FIXUP_REV(_name, _manfid, _oemid, 0, -1ull, _fixup, _data,	\
 		      _ext_csd_rev)
 
+#define MMC_FIXUP_FW_VER(_name, _manfid, _oemid, _fixup, _data,		\
+			 _ext_csd_rev, _ext_csd_fw_ver)			\
+	_FIXUP_EXT(_name, _manfid, _oemid, 0, -1ull,			\
+		   SDIO_ANY_ID, SDIO_ANY_ID, _fixup, _data,		\
+		   _ext_csd_rev, _ext_csd_fw_ver)
+
 #define SDIO_FIXUP(_vendor, _device, _fixup, _data)			\
 	_FIXUP_EXT(CID_NAME_ANY, CID_MANFID_ANY,			\
 		    CID_OEMID_ANY, 0, -1ull,				\
 		   _vendor, _device,					\
-		   _fixup, _data, EXT_CSD_REV_ANY)			\
+		   _fixup, _data, EXT_CSD_REV_ANY, EXT_CSD_FW_VER_ANY)	\
 
 #define cid_rev(hwrev, fwrev, year, month)	\
 	(((u64) hwrev) << 40 |                  \
