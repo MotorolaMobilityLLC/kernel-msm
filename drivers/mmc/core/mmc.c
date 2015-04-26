@@ -82,6 +82,9 @@ static const struct mmc_fixup mmc_fixups[] = {
 	MMC_FIXUP("MMC16G", CID_MANFID_KINGSTON, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_CACHE_DISABLE),
 
+	MMC_FIXUP_FW_VER(CID_NAME_ANY, CID_MANFID_MICRON2, CID_OEMID_ANY,
+			 add_quirk_mmc, MMC_QUIRK_CACHE_DISABLE, 6, 0xaf),
+
 	END_FIXUP
 };
 
@@ -1793,6 +1796,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		} else {
 			card->ext_csd.cache_ctrl = 1;
 		}
+	} else if (card->quirks & MMC_QUIRK_CACHE_DISABLE) {
+		pr_debug("%s: cache disabled\n", mmc_hostname(card->host));
+		card->ext_csd.cache_ctrl = 0;
 	}
 
 	/*
