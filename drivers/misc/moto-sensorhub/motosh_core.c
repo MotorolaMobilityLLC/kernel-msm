@@ -816,6 +816,25 @@ motosh_of_init(struct i2c_client *client)
 				&pdata->ct406_pulse_count);
 	of_property_read_u32(np, "ct406_prox_gain",
 				&pdata->ct406_prox_gain);
+	pdata->ct406_als_lux1_c0_mult = 0x2ED;
+	pdata->ct406_als_lux1_c1_mult = 0x9CA;
+	pdata->ct406_als_lux1_div = 0x46;
+	pdata->ct406_als_lux2_c0_mult = 0x150;
+	pdata->ct406_als_lux2_c1_mult = 0x237;
+	pdata->ct406_als_lux2_div = 0x46;
+	of_property_read_u32(np, "ct406_als_lux1_c0_mult",
+				&pdata->ct406_als_lux1_c0_mult);
+	of_property_read_u32(np, "ct406_als_lux1_c1_mult",
+				&pdata->ct406_als_lux1_c1_mult);
+	of_property_read_u32(np, "ct406_als_lux1_div",
+				&pdata->ct406_als_lux1_div);
+	of_property_read_u32(np, "ct406_als_lux2_c0_mult",
+				&pdata->ct406_als_lux2_c0_mult);
+	of_property_read_u32(np, "ct406_als_lux2_c1_mult",
+				&pdata->ct406_als_lux2_c1_mult);
+	of_property_read_u32(np, "ct406_als_lux2_div",
+				&pdata->ct406_als_lux2_div);
+
 	pdata->accel_orient = 1;
 	pdata->gyro_orient = 1;
 	pdata->mag_orient = 1;
