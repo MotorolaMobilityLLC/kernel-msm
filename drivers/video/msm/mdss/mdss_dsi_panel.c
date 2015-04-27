@@ -833,7 +833,13 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		int do_init = mdss_dsi_quickdraw_check_panel_state(pdata,
 			&pwr_mode, &dropbox_issue);
 		if (!do_init || pdata->mfd->quickdraw_reset_panel) {
-			pr_info("%s: skip panel init cmds\n", __func__);
+			if (!pdata->mfd->quickdraw_reset_panel &&
+			    ctrl->qd_on_cmds.cmd_cnt) {
+				pr_info("%s: send qd init cmds\n", __func__);
+				mdss_dsi_panel_cmds_send(ctrl,
+					&ctrl->qd_on_cmds);
+			} else
+				pr_info("%s: skip panel init cmds\n", __func__);
 			goto end;
 		}
 	}
@@ -2158,6 +2164,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 						"mmi,quickdraw-enabled");
 	pr_info("%s: Quickdraw %s\n", __func__,
 		pinfo->quickdraw_enabled ? "enabled" : "disabled");
+	if (pinfo->quickdraw_enabled)
+		mdss_dsi_parse_optional_dcs_cmds(np, &ctrl_pdata->qd_on_cmds,
+			"qcom,mdss-dsi-qd-on-command",
+			"qcom,mdss-dsi-on-command-state");
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
