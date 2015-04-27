@@ -94,7 +94,7 @@
 #define	FLASH_LED_VPH_DROOP_THRESHOLD_DIVIDER			100
 #define FLASH_LED_HDRM_SNS_ENABLE				0x81
 #define	FLASH_LED_UA_PER_MA					1000
-#define	FLASH_LED_MASK_MODULE_MASK3_ENABLE			0x80
+#define	FLASH_LED_MASK_MODULE_MASK1_MASK3_ENABLE			0xA0
 
 #define FLASH_UNLOCK_SECURE					0xA5
 #define FLASH_LED_TORCH_ENABLE					0x00
@@ -880,7 +880,7 @@ static int qpnp_flash_led_init_settings(struct qpnp_flash_led *led)
 
 	rc = qpnp_led_masked_write(led->spmi_dev, FLASH_MASK_ENABLE(led->base),
 				FLASH_MASK_MODULE_CONTRL_MASK,
-				FLASH_LED_MASK_MODULE_MASK3_ENABLE);
+				FLASH_LED_MASK_MODULE_MASK1_MASK3_ENABLE);
 	if (rc) {
 		dev_err(&led->spmi_dev->dev, "Mask module enable failed\n");
 		return rc;
