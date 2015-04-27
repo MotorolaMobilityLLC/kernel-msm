@@ -78,6 +78,14 @@
 	};
 };
 
+&spi_0 {
+	stml0xx: stml0xx@0 {
+		ct406_detect_threshold = <0x0096>;
+		ct406_undetect_threshold = <0x0073>;
+		ct406_pulse_count = <0x03>;
+	};
+};
+
 &spi_5 {
 	/delete-node/ nmi326@0;
 };
