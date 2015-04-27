@@ -333,6 +333,12 @@ struct motosh_platform_data {
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
 	int ct406_prox_gain;
+	int ct406_als_lux1_c0_mult;
+	int ct406_als_lux1_c1_mult;
+	int ct406_als_lux1_div;
+	int ct406_als_lux2_c0_mult;
+	int ct406_als_lux2_c1_mult;
+	int ct406_als_lux2_div;
 	int accel_orient;
 	int gyro_orient;
 	int mag_orient;
