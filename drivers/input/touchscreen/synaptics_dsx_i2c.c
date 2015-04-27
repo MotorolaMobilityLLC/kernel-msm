@@ -4340,6 +4340,19 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 			"on" : "off");
 	}
 
+	rmi4_data->vdd_quirk = devm_regulator_get(&client->dev, "vdd_quirk");
+	if (!IS_ERR(rmi4_data->vdd_quirk)) {
+		retval = regulator_enable(rmi4_data->vdd_quirk);
+		if (retval) {
+			dev_err(&client->dev, "Failed to enable vdd-quirk\n");
+			goto vdd_quirk_error;
+		}
+	} else {
+		retval = PTR_ERR(rmi4_data->regulator);
+		if (retval == -EPROBE_DEFER)
+			goto vdd_quirk_error;
+	}
+
 	retval = synaptics_dsx_ic_reset(rmi4_data, true);
 	if (retval > 0)
 		pr_debug("successful reset took %dms\n", retval);
@@ -4425,6 +4438,10 @@ err_query_device:
 		rmi4_data->input_dev = NULL;
 	}
 
+	if (!IS_ERR(rmi4_data->vdd_quirk))
+		regulator_disable(rmi4_data->vdd_quirk);
+
+vdd_quirk_error:
 	if (platform_data->regulator_en) {
 		regulator_disable(rmi4_data->regulator);
 		regulator_put(rmi4_data->regulator);
@@ -4487,6 +4504,9 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 		input_unregister_device(rmi4_data->input_dev);
 		rmi4_data->input_dev = NULL;
 	}
+
+	if (!IS_ERR(rmi4_data->vdd_quirk))
+		regulator_disable(rmi4_data->vdd_quirk);
 
 	if (platform_data->regulator_en) {
 		regulator_disable(rmi4_data->regulator);
