@@ -437,6 +437,7 @@ struct mdss_dsi_ctrl_pdata {
 
 	int mipi_d0_sel;
 	bool sh_control_enabled;
+	struct dsi_panel_cmds qd_on_cmds;
 
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
