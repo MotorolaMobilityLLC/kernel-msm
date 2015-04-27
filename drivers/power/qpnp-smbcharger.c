@@ -5275,6 +5275,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->resume_delta_mv, "resume-delta-mv", rc, 1);
 	OF_PROP_READ(chip, chip->parallel.min_current_thr_ma,
 			"parallel-usb-min-current-ma", rc, 1);
+	if (chip->parallel.min_current_thr_ma > 0)
+		smbchg_parallel_en = true ;
 	OF_PROP_READ(chip, chip->parallel.min_9v_current_thr_ma,
 			"parallel-usb-9v-min-current-ma", rc, 1);
 	OF_PROP_READ(chip, chip->parallel.allowed_lowering_ma,
