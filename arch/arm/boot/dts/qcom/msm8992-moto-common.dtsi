@@ -575,7 +575,7 @@
 	/delete-property/ qcom,iterm-ma;
 	qcom,iterm-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
-	qcom,fastchg-current-ma = <3400>;
+	qcom,fastchg-current-ma = <4000>;
 	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
@@ -584,11 +584,18 @@
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
 	qcom,charge-unknown-battery;
-	qcom,chg-thermal-mitigation = <3400>, <3200>, <3100>, <3000>, <2800>,
-				      <2600>, <2500>, <2400>, <2200>, <2100>,
-				      <2000>, <1900>, <1700>, <1600>, <1500>,
-				      <1400>, <1300>;
-	qcom,parallel-charge-current-map = <3400 1800 1600>,
+	qcom,chg-thermal-mitigation = <4000>, <3950>, <3850>, <3750>, <3650>,
+				      <3600>, <3400>, <3200>, <3100>, <3000>,
+				      <2800>, <2600>, <2500>, <2400>, <2200>,
+				      <2100>, <2000>, <1900>, <1700>, <1600>,
+				      <1500>, <1400>, <1300>;
+	qcom,parallel-charge-current-map = <4000 2000 2000>,
+					   <3950 1950 2000>,
+					   <3850 1850 2000>,
+					   <3750 1950 1800>,
+					   <3650 1850 1800>,
+					   <3600 1800 1800>,
+					   <3400 1800 1600>,
 					   <3200 1600 1600>,
 					   <3100 1500 1600>,
 					   <3000 1400 1600>,
@@ -608,7 +615,7 @@
 	qcom,parallel-usb-min-current-ma = <0>; /* Force Parallel Mode only on HVDCP */
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-allowed-lowering-ma = <500>;
-	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-voltage-mv = <4100>;
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
 	qcom,stepchg-iterm-ma = <150>;
