@@ -36,7 +36,8 @@
 #define NUM_INT_REGS      2
 #define NUM_INTS_PER_REG  32
 
-#define EVENT_MASK(event)  (1 <<  ((event >= M4SH_WAKEIRQ__START)? (event - M4SH_WAKEIRQ__START): event))
+#define EVENT_MASK(event)  (1 << ((event >= M4SH_WAKEIRQ__START) ? \
+				(event - M4SH_WAKEIRQ__START) : event))
 
 #define DBG_BUF_LINE_LEN  80
 
@@ -54,7 +55,7 @@ static void m4sensorhub_irq_restore(struct m4sensorhub_data *m4sensorhub,
 
 /* ---------------- Local Declarations -------------- */
 
-static const char *irq_name[] = {
+static const char * const irq_name[] = {
 	[M4SH_NOWAKEIRQ_ACCEL]           = "NOWAKE_ACCEL",
 	[M4SH_NOWAKEIRQ_GYRO]            = "NOWAKE_GYRO",
 	[M4SH_NOWAKEIRQ_COMPASS]         = "NOWAKE_COMPASS",
@@ -119,9 +120,11 @@ static irqreturn_t wake_event_isr(int irq, void *data)
 {
 	struct m4sensorhub_irqdata *irq_data = data;
 
-	/* this wakelock is held to prevent the kernel from going 
-	   to sleep before the event_thread for this irq gets to run
-           and so this is released when the event_thread finishes execution */ 
+	/*
+	 * This wakelock is held to prevent the kernel from going
+	 * to sleep before the event_thread for this irq gets to run
+	 * and so this is released when the event_thread finishes execution
+	 */
 	wake_lock(&irq_data->wake_lock);
 
 	return IRQ_WAKE_THREAD;
@@ -192,11 +195,13 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 		       "m4sensorhub-timed-irq");
 
 	/* request wake irq */
-	retval = request_threaded_irq(m4sensorhub->hwconfig.wakeirq, wake_event_isr,
-				      wake_event_threaded, IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
-			              "m4sensorhub-wakeirq", data);
+	retval = request_threaded_irq(m4sensorhub->hwconfig.wakeirq,
+		wake_event_isr, wake_event_threaded,
+		IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+		"m4sensorhub-wakeirq", data);
 	if (retval) {
-		KDEBUG(M4SH_ERROR, "%s: Failed requesting wakeirq = %d\n", __func__, retval);
+		KDEBUG(M4SH_ERROR, "%s: Failed requesting wakeirq = %d\n",
+			__func__, retval);
 		goto err_destroy_wq;
 	}
 	retval = enable_irq_wake(i2c->irq);
@@ -204,15 +209,17 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 		KDEBUG(M4SH_ERROR, "%s: Failed enabling irq wake.\n", __func__);
 		goto err_free_wakeirq;
 	}
-	
+
 	/* request nowake irq */
-        retval = request_threaded_irq(m4sensorhub->hwconfig.nowakeirq, nowake_event_isr, nowake_event_threaded,
-                IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
-                "m4sensorhub-nowakeirq", data);
-        if (retval) {
-                KDEBUG(M4SH_ERROR, "%s: Failed requesting nowakeirq = %d\n", __func__, retval);
-                goto err_free_nowakeirq;
-        }
+	retval = request_threaded_irq(m4sensorhub->hwconfig.nowakeirq,
+		nowake_event_isr, nowake_event_threaded,
+		IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+		"m4sensorhub-nowakeirq", data);
+	if (retval) {
+		KDEBUG(M4SH_ERROR, "%s: Failed requesting nowakeirq = %d\n",
+			__func__, retval);
+		goto err_free_nowakeirq;
+	}
 
 #ifdef CONFIG_DEBUG_FS
 	data->debugfs = debugfs_create_file("m4sensorhub-irq", S_IRUGO, NULL,
@@ -352,7 +359,7 @@ int m4sensorhub_irq_register(struct m4sensorhub_data *m4sensorhub,
 		retval = -ENODATA;
 		goto m4sensorhub_irq_register_exit;
 	}
-	
+
 	mutex_lock(&irqdata->lock);
 
 	if (irqdata->event_handler[irq].func == NULL) {
@@ -515,8 +522,8 @@ int m4sensorhub_irq_disable(struct m4sensorhub_data *m4sensorhub,
 	}
 
 	mask = EVENT_MASK(irq);
-	retval = m4sensorhub_reg_write(m4sensorhub,
-		get_enable_reg(irq), (unsigned char *)&value, (unsigned char *)&mask);
+	retval = m4sensorhub_reg_write(m4sensorhub, get_enable_reg(irq),
+		(unsigned char *)&value, (unsigned char *)&mask);
 	if (retval < 0) {
 		KDEBUG(M4SH_ERROR, "%s: Register write failed\n", __func__);
 		goto m4sensorhub_irq_disable_fail;
@@ -578,12 +585,12 @@ int m4sensorhub_irq_enable(struct m4sensorhub_data *m4sensorhub,
 	}
 
 	mask = EVENT_MASK(irq);
-	retval = m4sensorhub_reg_write(m4sensorhub,
-		get_enable_reg(irq), (unsigned char*)&mask , (unsigned char *)&mask);
+	retval = m4sensorhub_reg_write(m4sensorhub, get_enable_reg(irq),
+		(unsigned char *)&mask, (unsigned char *)&mask);
 	if (retval < 0) {
 		KDEBUG(M4SH_ERROR, "%s: Register write failed\n", __func__);
 		goto m4sensorhub_irq_enable_fail;
-	} 
+	}
 
 	mutex_lock(&data->lock);
 	data->irq_info[irq].enabled = 1;
@@ -616,18 +623,22 @@ int m4sensorhub_irq_disable_all(struct m4sensorhub_data *m4sensorhub)
 		goto m4sensorhub_irq_disable_all_fail;
 	}
 
-	retval = m4sensorhub_reg_write(m4sensorhub, M4SH_REG_GENERAL_NOWAKEINTENABLE,
-				      (unsigned char *)&value, m4sh_no_mask);
+	retval = m4sensorhub_reg_write(m4sensorhub,
+		M4SH_REG_GENERAL_NOWAKEINTENABLE,
+		(unsigned char *)&value, m4sh_no_mask);
 	if (retval < 0) {
-		KDEBUG(M4SH_ERROR, "%s: Failed to disable no wake irq\n", __func__);
+		KDEBUG(M4SH_ERROR, "%s: Failed to disable no wake irq\n",
+			__func__);
 		goto m4sensorhub_irq_disable_all_fail;
-	} 
-        retval = m4sensorhub_reg_write(m4sensorhub, M4SH_REG_GENERAL_WAKEINTENABLE,
-                                       (unsigned char *)&value, m4sh_no_mask);
+	}
+	retval = m4sensorhub_reg_write(m4sensorhub,
+			M4SH_REG_GENERAL_WAKEINTENABLE,
+			(unsigned char *)&value, m4sh_no_mask);
 	if (retval < 0) {
-                KDEBUG(M4SH_ERROR, "%s: Failed to disable wake irq\n", __func__);
-                goto m4sensorhub_irq_disable_all_fail;
-        }
+		KDEBUG(M4SH_ERROR, "%s: Failed to disable wake irq\n",
+			__func__);
+		goto m4sensorhub_irq_disable_all_fail;
+	}
 
 	data = m4sensorhub->irqdata;
 	mutex_lock(&data->lock);
@@ -647,7 +658,8 @@ static unsigned short get_enable_reg(enum m4sensorhub_irqs event)
 
 	if ((event) >= M4SH_IRQ__NUM)
 		ret = M4SH_REG__INVALID;
-	else if ((event >= M4SH_NOWAKEIRQ__START) && (event < M4SH_NOWAKEIRQ__MAX))
+	else if ((event >= M4SH_NOWAKEIRQ__START) &&
+		(event < M4SH_NOWAKEIRQ__MAX))
 		ret = M4SH_REG_GENERAL_NOWAKEINTENABLE;
 	else if ((event >= M4SH_WAKEIRQ__START) && (event < M4SH_WAKEIRQ__MAX))
 		ret = M4SH_REG_GENERAL_WAKEINTENABLE;
@@ -665,34 +677,35 @@ static void m4sensorhub_print_irq_sources(uint32_t en_ints, char nowake)
 	if (m4sensorhub_debug < M4SH_NOTICE)
 		goto error;
 
-
-	KDEBUG(M4SH_NOTICE, "%s: M4 %s IRQ registers: 0x%x", __func__,
-	       (nowake?"NOWAKE":"WAKE"), en_ints); 
-
-	if (en_ints == 0)
-		KDEBUG(M4SH_NOTICE, "%s: No set bits found\n", __func__);
+	KDEBUG(M4SH_NOTICE, "%s: M4 %s IRQ register: 0x%08X", __func__,
+	       (nowake ? "NOWAKE" : "WAKE"), en_ints);
 
 	/* Decode the bits */
-	KDEBUG(M4SH_NOTICE, "%s: M4 IRQ Sources:\n", __func__);
-	for (i=0; ((i < sizeof(en_ints)) && (en_ints != 0)); i++) {
-
-		if (en_ints & ( 0x01 << i)) {
+	for (i = 0; ((i < sizeof(en_ints)) && (en_ints != 0)); i++) {
+		if (en_ints & (0x01 << i)) {
 			if (nowake)
 				index = i;
 			else
 				index = i + M4SH_WAKEIRQ__START;
 
 			if (index >= M4SH_IRQ__NUM)
-				KDEBUG(M4SH_NOTICE, "%s: IRQ index is %d\n", __func__, index);
+				KDEBUG(M4SH_NOTICE, "%s: IRQ index is %d\n",
+				       __func__, index);
 
-                        if (index <= ARRAY_SIZE(irq_name))
-                                KDEBUG(M4SH_NOTICE, "\t%s\n", irq_name[index]);
-                        else
-                                KDEBUG(M4SH_NOTICE, "\tIRQ %d\n", index);
+			if (index <= ARRAY_SIZE(irq_name))
+				KDEBUG(M4SH_NOTICE, "%s: %s\n",
+				       __func__, irq_name[index]);
+			else
+				KDEBUG(M4SH_NOTICE, "%s: %s IRQ %d\n",
+				       __func__,
+				       (nowake ? "NOWAKE" : "WAKE"), index);
+
 		}
-		/* clear the bit that we finished processing */
+
+		/* Clear the bit that we finished processing */
 		en_ints &= ~(0x01 << i);
 	}
+
 error:
 	return;
 }
@@ -710,7 +723,8 @@ static irqreturn_t wake_event_threaded(int irq, void *devid)
 
 	/* M4 is expected to clear these bits when read */
 	if (m4sensorhub_reg_read(m4sensorhub,
-			M4SH_REG_GENERAL_WAKEINTSTATUS, (unsigned char*)&value) < 0) {
+			M4SH_REG_GENERAL_WAKEINTSTATUS,
+			(unsigned char *)&value) < 0) {
 			dev_err(&m4sensorhub->i2c_client->dev,
 			"Error reading wake int status register\n");
 		goto error;
@@ -771,68 +785,65 @@ error:
 	return IRQ_HANDLED;
 }
 
-
 static irqreturn_t nowake_event_threaded(int irq, void *devid)
 {
-        uint32_t en_ints = 0, value = 0, is_irq_set = 0;
-        int index;
-        struct m4sensorhub_irqdata *data = devid;
-        struct m4sensorhub_data *m4sensorhub;
-        struct i2c_client *i2c;
+	uint32_t en_ints = 0, value = 0, is_irq_set = 0;
+	int index;
+	struct m4sensorhub_irqdata *data = devid;
+	struct m4sensorhub_data *m4sensorhub;
+	struct i2c_client *i2c;
 
-        m4sensorhub = data->m4sensorhub;
-        i2c = m4sensorhub->i2c_client;
+	m4sensorhub = data->m4sensorhub;
+	i2c = m4sensorhub->i2c_client;
 
-        /* M4 is expected to clear these bits when read */
-        if (m4sensorhub_reg_read(m4sensorhub,
-                        M4SH_REG_GENERAL_NOWAKEINTSTATUS, (unsigned char *)&value) < 0) {
-                        dev_err(&m4sensorhub->i2c_client->dev,
-                        "Error reading nowake INT status register\n");
-                goto error;
-        }
+	/* M4 is expected to clear these bits when read */
+	if (m4sensorhub_reg_read(m4sensorhub, M4SH_REG_GENERAL_NOWAKEINTSTATUS,
+		(unsigned char *)&value) < 0) {
+			dev_err(&m4sensorhub->i2c_client->dev,
+			"Error reading nowake INT status register\n");
+		goto error;
+	}
 
-        en_ints = value;
-        is_irq_set |= value;
+	en_ints = value;
+	is_irq_set |= value;
 
-        if (!is_irq_set) {
-		KDEBUG(M4SH_ERROR, "%s: Got nowake int with no bits set", __func__);
-                goto error;
-        }
+	if (!is_irq_set) {
+		KDEBUG(M4SH_ERROR, "%s: Got nowake int with no bits set",
+			__func__);
+		goto error;
+	}
 
-        if (m4sensorhub->irq_dbg.suspend == 1)
-                m4sensorhub_print_irq_sources(en_ints, 1);
+	if (m4sensorhub->irq_dbg.suspend == 1)
+		m4sensorhub_print_irq_sources(en_ints, 1);
 
-        while (en_ints > 0) {
-                struct m4sensorhub_event_handler *event_handler;
+	while (en_ints > 0) {
+		struct m4sensorhub_event_handler *event_handler;
 
-                /* find the first set bit */
-                index = (ffs(en_ints) - 1);
-                if (index >= M4SH_NOWAKEIRQ__MAX)
-                        goto error;
-                /* clear the bit */
-                en_ints &= ~(1 << index);
-                if (data->irq_info[index].enabled) {
-                        event_handler = &data->event_handler[index];
+		/* find the first set bit */
+		index = (ffs(en_ints) - 1);
+		if (index >= M4SH_NOWAKEIRQ__MAX)
+			goto error;
+		/* clear the bit */
+		en_ints &= ~(1 << index);
+		if (data->irq_info[index].enabled) {
+			event_handler = &data->event_handler[index];
 
-                        if (event_handler && event_handler->func) {
-                                event_handler->func(index,
-                                                   event_handler->data);
-                                if (data->irq_info[index].tm_wakelock) {
-                                }
-                        }
-                        mutex_lock(&data->lock);
-                        data->irq_info[index].ena_fired++;
-                        mutex_unlock(&data->lock);
-                } else {
-                        mutex_lock(&data->lock);
-                        data->irq_info[index].disa_fired++;
-                        mutex_unlock(&data->lock);
-                }
-        }
+			if (event_handler && event_handler->func) {
+				event_handler->func(index,
+						    event_handler->data);
+			}
+			mutex_lock(&data->lock);
+			data->irq_info[index].ena_fired++;
+			mutex_unlock(&data->lock);
+		} else {
+			mutex_lock(&data->lock);
+			data->irq_info[index].disa_fired++;
+			mutex_unlock(&data->lock);
+		}
+	}
 error:
-        return IRQ_HANDLED;
+	return IRQ_HANDLED;
 }
-
 
 #ifdef CONFIG_DEBUG_FS
 static int m4sensorhub_dbg_irq_show(struct seq_file *s, void *data)
@@ -852,6 +863,7 @@ static int m4sensorhub_dbg_irq_show(struct seq_file *s, void *data)
 			   irqdata->irq_info[i].ena_fired,
 			   irqdata->irq_info[i].disa_fired);
 	}
+
 	return 0;
 }
 
@@ -861,11 +873,12 @@ static int m4sensorhub_dbg_irq_open(struct inode *inode, struct file *file)
 }
 #endif
 
-/* m4sensorhub_irq_restore()
-
-   Callback Handler is called by Panic after M4 has been restarted
-
-*/
+/*
+ * m4sensorhub_irq_restore()
+ *
+ * Callback Handler is called by Panic after M4 has been restarted
+ *
+ */
 static void m4sensorhub_irq_restore(struct m4sensorhub_data *m4sensorhub,
 	void *data)
 {
@@ -877,28 +890,29 @@ static void m4sensorhub_irq_restore(struct m4sensorhub_data *m4sensorhub,
 	for (i = 0; i < M4SH_IRQ__NUM; i++) {
 		if (!((struct m4sensorhub_irqdata *)data)->irq_info[i].enabled)
 			continue;
-		if( i < M4SH_NOWAKEIRQ__MAX)
+		if (i < M4SH_NOWAKEIRQ__MAX)
 			nowake_en_ints |= EVENT_MASK(i);
 		else
-		   	wake_en_ints |= EVENT_MASK(i);
+			wake_en_ints |= EVENT_MASK(i);
 	}
 	mutex_unlock(&((struct m4sensorhub_irqdata *)data)->lock);
 
-	KDEBUG(M4SH_INFO, "%s: Reseting NOWAKEINT-%x\n", __func__,
-	       nowake_en_ints);
+	KDEBUG(M4SH_INFO, "%s: Resetting NOWAKEINT-%x\n", __func__,
+		nowake_en_ints);
 	if (m4sensorhub_reg_write(m4sensorhub,
-				       M4SH_REG_GENERAL_NOWAKEINTENABLE,
-				       (unsigned char *)&nowake_en_ints,
-				       m4sh_no_mask) < 0) {
-		KDEBUG(M4SH_ERROR, "%s: Failed reseting NOWAKEINT\n",
-                                __func__);		
+				      M4SH_REG_GENERAL_NOWAKEINTENABLE,
+				      (unsigned char *)&nowake_en_ints,
+				      m4sh_no_mask) < 0) {
+		KDEBUG(M4SH_ERROR, "%s: Failed to reset NOWAKEINT\n",
+			__func__);
 	}
 
-        if (m4sensorhub_reg_write(m4sensorhub,
-                                       M4SH_REG_GENERAL_WAKEINTENABLE,
-                                       (unsigned char *)&wake_en_ints,
-                                       m4sh_no_mask) < 0) {
-                KDEBUG(M4SH_ERROR, "%s: Failed reseting WAKEINT\n",
-                                __func__);
-        }
+	KDEBUG(M4SH_INFO, "%s: Resetting WAKEINT-%x\n", __func__,
+		wake_en_ints);
+	if (m4sensorhub_reg_write(m4sensorhub,
+			      M4SH_REG_GENERAL_WAKEINTENABLE,
+			      (unsigned char *)&wake_en_ints,
+			      m4sh_no_mask) < 0) {
+		KDEBUG(M4SH_ERROR, "%s: Failed to reset WAKEINT\n", __func__);
+	}
 }
