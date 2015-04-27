@@ -3479,6 +3479,14 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 			dev_dbg(&pdev->dev, "Unknown value, set to default");
 		}
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+				"qcom,mbhc-micbias-enable-flags",
+				(u32*)&mbhc_cfg.micbias_enable_flags);
+	if (ret)
+		dev_err(&pdev->dev, "failed to get %s\n",
+					"qcom,mbhc-micbias-enable-flags");
+
 	/* Parse US-Euro gpio info from DT. Report no error if us-euro
 	 * entry is not found in DT file as some targets do not support
 	 * US-Euro detection
