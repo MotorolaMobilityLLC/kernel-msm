@@ -235,8 +235,20 @@ int motosh_reset_and_init(enum reset_mode mode)
 	rst_cmdbuff[6] = pdata->ct406_recalibrate_threshold & 0xff;
 	rst_cmdbuff[7] = pdata->ct406_pulse_count & 0xff;
 	rst_cmdbuff[8] = pdata->ct406_prox_gain & 0xff;
+	rst_cmdbuff[9] = (pdata->ct406_als_lux1_c0_mult >> 8) & 0xff;
+	rst_cmdbuff[10] = pdata->ct406_als_lux1_c0_mult & 0xff;
+	rst_cmdbuff[11] = (pdata->ct406_als_lux1_c1_mult >> 8) & 0xff;
+	rst_cmdbuff[12] = pdata->ct406_als_lux1_c1_mult & 0xff;
+	rst_cmdbuff[13] = (pdata->ct406_als_lux1_div >> 8) & 0xff;
+	rst_cmdbuff[14] = pdata->ct406_als_lux1_div & 0xff;
+	rst_cmdbuff[15] = (pdata->ct406_als_lux2_c0_mult >> 8) & 0xff;
+	rst_cmdbuff[16] = pdata->ct406_als_lux2_c0_mult & 0xff;
+	rst_cmdbuff[17] = (pdata->ct406_als_lux2_c1_mult >> 8) & 0xff;
+	rst_cmdbuff[18] = pdata->ct406_als_lux2_c1_mult & 0xff;
+	rst_cmdbuff[19] = (pdata->ct406_als_lux2_div >> 8) & 0xff;
+	rst_cmdbuff[20] = pdata->ct406_als_lux2_div & 0xff;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
-					rst_cmdbuff, 9);
+					rst_cmdbuff, 21);
 	if (err < 0) {
 		dev_err(&motosh_misc_data->client->dev,
 			"unable to write proximity settings %d\n", err);
