@@ -352,6 +352,7 @@ struct synaptics_rmi4_func_packet_regs {
  * @board: constant pointer to platform data
  * @rmi4_mod_info: device information
  * @regulator: pointer to associated regulator
+ * @vdd_quir: pointer to associated regulator for 'quirk' config
  * @rmi4_io_ctrl_mutex: mutex for i2c i/o control
  * @det_work: work thread instance for expansion function detection
  * @det_workqueue: pointer to work queue for work thread instance
@@ -388,6 +389,7 @@ struct synaptics_rmi4_data {
 	const struct synaptics_dsx_platform_data *board;
 	struct synaptics_rmi4_device_info rmi4_mod_info;
 	struct regulator *regulator;
+	struct regulator *vdd_quirk;
 	struct mutex rmi4_io_ctrl_mutex;
 	struct mutex state_mutex;
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
