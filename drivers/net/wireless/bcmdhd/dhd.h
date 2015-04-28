@@ -346,6 +346,9 @@ typedef struct dhd_pub {
 	tcp_ack_info_t tcp_ack_info_tbl[MAXTCPSTREAMS];
 #endif /* DHDTCPACK_SUPPRESS */
 	uint32 arp_version;
+#ifdef GSCAN_SUPPORT
+	bool lazy_roam_enable;
+#endif /* GSCAN_SUPPORT */
 } dhd_pub_t;
 typedef struct dhd_cmn {
 	osl_t *osh;		/* OSL handle */
@@ -551,11 +554,25 @@ extern void dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success);
 #define WIFI_FEATURE_TDLS_OFFCHANNEL    0x2000      /* Support for TDLS off channel     */
 #define WIFI_FEATURE_EPR                0x4000      /* Enhanced power reporting         */
 #define WIFI_FEATURE_AP_STA             0x8000      /* Support for AP STA Concurrency   */
+#define WIFI_FEATURE_LINKSTAT           0x10000     /* Support for Linkstats            */
+#define WIFI_FEATURE_HAL_EPNO           0x40000     /* WiFi PNO enhanced                */
 
 #define MAX_FEATURE_SET_CONCURRRENT_GROUPS  3
 
 extern int dhd_dev_get_feature_set(struct net_device *dev);
 extern int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num);
+
+#ifdef GSCAN_SUPPORT
+extern int dhd_dev_set_lazy_roam_cfg(struct net_device *dev,
+             wlc_roam_exp_params_t *roam_param);
+extern int dhd_dev_lazy_roam_enable(struct net_device *dev, uint32 enable);
+extern int dhd_dev_set_lazy_roam_bssid_pref(struct net_device *dev,
+       wl_bssid_pref_cfg_t *bssid_pref, uint32 flush);
+extern int dhd_dev_set_blacklist_bssid(struct net_device *dev, maclist_t *blacklist,
+    uint32 len, uint32 flush);
+extern int dhd_dev_set_whitelist_ssid(struct net_device *dev, wl_ssid_whitelist_t *whitelist,
+    uint32 len, uint32 flush);
+#endif /* GSCAN_SUPPORT */
 
 /* OS independent layer functions */
 extern int dhd_os_proto_block(dhd_pub_t * pub);
