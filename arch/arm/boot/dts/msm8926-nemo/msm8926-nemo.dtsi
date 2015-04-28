@@ -10,10 +10,10 @@
  * GNU General Public License for more details.
  */
 
-#include "../qcom/apq8026-v2.dtsi"
+#include "../qcom/msm8926-v1.dtsi"
 #include "msm8926-nemo-memory.dtsi"
 #include "../qcom/msm8226-w-qseecom.dtsi"
-#include "../qcom/msm8226-sharedmem.dtsi"
+#include "../qcom/msm8926-w-sharedmem.dtsi"
 #include "../qcom/msm8x26w-gpu.dtsi"
 #include "msm8926-nemo-pm.dtsi"
 #include "msm8926-nemo-panel.dtsi"
@@ -57,11 +57,6 @@
 		qcom,i2c-src-freq = <50000000>;
 		qcom,sda-gpio = <&msmgpio 2 0>;
 		qcom,scl-gpio = <&msmgpio 3 0>;
-	};
-
-	memory_hole: qcom,msm-mem-hole {
-		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x03200000 0x00100000>;
 	};
 
 	qcom,vidc@fdc00000 {
