@@ -2027,7 +2027,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	if (msm_uport->clk_state != MSM_HS_CLK_REQUEST_OFF ||
 	    !uart_circ_empty(tx_buf) || msm_uport->tx.dma_in_flight ||
 	    msm_uport->imr_reg & UARTDM_ISR_TXLEV_BMSK) {
-		if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF)
+		if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
 			msm_uport->clk_state = MSM_HS_CLK_ON;
 			if (!msm_uport->obs) {
 				/*
@@ -2041,6 +2041,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 		mutex_unlock(&msm_uport->clk_mutex);
 		MSM_HS_DBG("%s(): clkstate %d", __func__, msm_uport->clk_state);
 		return -1;
+	}
 
 	/* Make sure the uart is finished with the last byte,
 	 * use BFamily Register
@@ -2281,10 +2282,11 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
 
-	if (cur_clk_state == MSM_HS_CLK_REQUEST_OFF)
+	if (cur_clk_state == MSM_HS_CLK_REQUEST_OFF) {
 		msm_uport->clk_state = MSM_HS_CLK_ON;
 		if (!msm_uport->obs)
 			msm_hs_enable_flow_control(uport);
+	}
 
 	switch (cur_clk_state) {
 	case MSM_HS_CLK_OFF:
