@@ -78,7 +78,7 @@ static void cycapsense_hssp_notify(int status)
 						programming_done, NULL);
 }
 
-static int cycapsense_hssp_verify_cs(struct hssp_data *d)
+static int cycapsense_hssp_verify_swrev(struct hssp_data *d)
 {
 	int ret;
 
@@ -96,7 +96,7 @@ static int cycapsense_hssp_verify_cs(struct hssp_data *d)
 		goto end;
 	}
 
-	ret = VerifyChecksum(d);
+	ret = VerifySwRevision(d);
 
 end:
 	ExitProgrammingMode();
@@ -104,7 +104,6 @@ end:
 	cycapsense_hssp_notify(HSSP_STOP);
 	return ret;
 }
-
 static int cycapsense_hssp_erase(struct hssp_data *d)
 {
 	cycapsense_hssp_notify(HSSP_START);
@@ -407,16 +406,18 @@ int __cycapsense_fw_update(struct cycapsense_ctrl_data *data)
 		goto fw_upd_end;
 
 	if (inf->fw_name[0] ||
-		cycapsense_hssp_verify_cs(&data->hssp_d) != SUCCESS) {
+		cycapsense_hssp_verify_swrev(&data->hssp_d) != SUCCESS) {
 		/* force update regardless check sum, if user requested */
 		dev_info(data->dev, "Flashing firmware %s\n", fw_name);
 		error = cycapsense_hssp_dnld(&data->hssp_d);
 		if (!error)
 			dev_info(data->dev, "%s flashed successful\n",
 						fw_name);
-	} else
+	} else {
+		data->hssp_d.chip_cs = data->hssp_d.inf.cs;
 		dev_info(data->dev,
-				"Checksum is matching. No firmware upgrade.\n");
+				"SW rev is matching. No firmware upgrade.\n");
+	}
 
 fw_upd_end:
 	if (inf->data != NULL) {
@@ -517,7 +518,8 @@ static ssize_t cycapsense_fw_show(struct class *class,
 					char *buf)
 {
 	return snprintf(buf, 16, "0x%x\n",
-				ctrl_data ? ctrl_data->hssp_d.chip_cs : 0);
+				ctrl_data && ctrl_data->hssp_d.chip_cs ?
+				ctrl_data->hssp_d.sw_rev : 0);
 }
 
 static ssize_t cycapsense_reset_show(struct class *class,
