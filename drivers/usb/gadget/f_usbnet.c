@@ -686,6 +686,8 @@ static void do_set_config(struct usb_function *f, u16 new_config)
 			usb_ep_disable(context->bulk_in);
 		if (context->bulk_out)
 			usb_ep_disable(context->bulk_out);
+		if (context->intr_out)
+			usb_ep_disable(context->intr_out);
 		context->ip_addr = 0;
 		context->subnet_mask = 0;
 		context->router_ip = 0;
