@@ -113,6 +113,7 @@
 #define CFG_CUSTOMER_ID2			1
 
 static int upgrade_flag = 0;
+static int enter_lowpower_flag = 0;
 
 //show touch point message flag
 static int TOUCH_P1_DOWN_FLAG = 0;
@@ -306,7 +307,7 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 		if (!forever)
 			count--;
 
-	}while((ucQuery & CMD_STATUS_BUSY) && count);
+	}while((ucQuery & CMD_STATUS_BUSY) && count && !enter_lowpower_flag);
 
 	return !ucQuery;
 }
@@ -469,16 +470,13 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 	if (i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 		ret = false;
-	}
-	if (i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) != 2) {
+	} else if (i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
 		ret = false;
-	}
-	if (i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) != 1) {
+	} else if (i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 		ret = false;
-	}
-	if (i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) != 2) {
+	} else if (i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
 		ret = false;
 	}
@@ -501,6 +499,7 @@ static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
 static void chipLowPowerMode(bool low)
 {
 	int allow_irq_wake = !(driverInLowPower);
+	enter_lowpower_flag = low;
 	ret = -1;
 
 	if (devicePresent) {
@@ -634,12 +633,12 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 
 static ssize_t sysfsUpgradeShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d", fwUploadResult);
+	return sprintf(buf, "%d\n", fwUploadResult);
 }
 
 static ssize_t sysfsCalibrationShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d", calibrationWasSuccessful);
+	return sprintf(buf, "%d\n", calibrationWasSuccessful);
 }
 
 static int chipSendCalibrationCmd(bool autoTuneOn)
@@ -724,15 +723,20 @@ static ssize_t sysfsVersionShow(struct device *dev, struct device_attribute *att
 
 	if (i2cWrite(BUF_COMMAND, cmdReadFwVer, sizeof(cmdReadFwVer)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
-	}
-	if (i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) != 2) {
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "%s\n", "i2c failed.");
+	} else if (i2cRead(BUF_RESPONSE, verFw, VERSION_LENGTH) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
-	}
-	if (i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) != 1) {
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "%s\n", "i2c failed.");
+	} else if (i2cWrite(BUF_COMMAND, cmdReadCfgVer, sizeof(cmdReadCfgVer)) != 1) {
 		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
-	}
-	if (i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) != 2) {
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "%s\n", "i2c failed.");
+	} else if (i2cRead(BUF_RESPONSE, verCfg, VERSION_LENGTH) != 2) {
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "%s\n", "i2c failed.");
 	}
 
 	enable_irq(gl_ts->client->irq);
@@ -963,8 +967,8 @@ static void exitIdleEvt(struct work_struct *work) {
 	LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
 	input_mt_slot(gl_ts->touch_dev,0);
 	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 0);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 0);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, -1);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 20);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
@@ -1007,9 +1011,6 @@ static void readTouchDataPoint(void)
 			}
 			return;
 		}
-	} else {
-		LOGE("[%d] %s i2c read fail. \n", __LINE__, __func__);
-		return;
 	}
 	if (i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData)) != 2) {
 		LOGE(" %s failed to read point data buffer\n", __func__);
@@ -1125,9 +1126,6 @@ static void readTouchDataPoint_Ambient(void)
 				wake_unlock(&touch_lock);
 				return;
 			}
-		} else {
-			LOGE("[%d] %s i2c read fail. \n", __LINE__, __func__);
-			return;
 		}
 		if (i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData)) != 2) {
 			isTouchLocked = true;
@@ -1407,7 +1405,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	INIT_DELAYED_WORK(&gl_ts->touchidle_on_work, touchIdleOnEvt);
 	INIT_DELAYED_WORK(&gl_ts->exit_idle_work, exitIdleEvt);
 
-	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, IRQF_TRIGGER_LOW | IRQF_ONESHOT, client->name, gl_ts)) {
+	if (request_threaded_irq(client->irq, NULL, IT7260_ts_threaded_handler, IRQF_TRIGGER_FALLING | IRQF_ONESHOT, client->name, gl_ts)) {
 		LOGE("request_irq failed\n");
 		goto err_irq_reg;
 	}
