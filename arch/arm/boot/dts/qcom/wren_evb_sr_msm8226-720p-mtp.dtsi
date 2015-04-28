@@ -410,9 +410,9 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_rm69032_320x320_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_x145aln01_280x280_cmd>;
 };
 
-&dsi_rm69032_320x320_cmd {
+&dsi_x145aln01_280x280_cmd {
 	qcom,cont-splash-enabled = <1>;
 };
