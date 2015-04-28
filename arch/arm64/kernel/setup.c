@@ -427,20 +427,9 @@ void __init setup_arch(char **cmdline_p)
 	init_random_pool();
 }
 
-int __init __weak arm64_board_dt_populate(const void *id)
-{
-	return 1;
-}
-
 static int __init arm64_device_init(void)
 {
-	/* If there is a board specific dt popuation, use this.
-	 * Otherwise, just use of_default_bus_match_table for dt population.
-	 */
-	if (arm64_board_dt_populate(of_default_bus_match_table))
-		of_platform_populate(NULL,
-				of_default_bus_match_table, NULL, NULL);
-
+	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 	return 0;
 }
 arch_initcall(arm64_device_init);
