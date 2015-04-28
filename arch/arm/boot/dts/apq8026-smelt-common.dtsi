@@ -201,6 +201,7 @@
 		qcom,msm-bus,name = "uart1";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-obs;
 
 		qcom,msm-bus,vectors-KBps =
 			<86 512 0 0>,
@@ -264,6 +265,7 @@
 		qcom,msm-bus,name = "uart6";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-obs;
 
 		qcom,msm-bus,vectors-KBps =
 			<86 512 0 0>,
