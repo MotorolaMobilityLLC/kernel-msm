@@ -97,10 +97,10 @@
 		"oraes",	/* 80 */
 		"retapac",	/* 81 */
 		"retmea",	/* 82 */
-		"vfit",	    /* 83 */
-		"undefined",	/* 84 */
-		"undefined",	/* 85 */
-		"undefined",	/* 86 */
+		"vfit",	        /* 83 */
+		"vfes",	        /* 84 */
+		"vfeu",	        /* 85 */
+		"3gb",	        /* 86 */
 		"undefined",	/* 87 */
 		"undefined",	/* 88 */
 		"undefined",	/* 89 */
