@@ -1075,6 +1075,20 @@ exit_free:
 	return -ENOMEM;
 }
 
+static int mdss_dsi_parse_optional_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+{
+	int rc;
+
+	if (!of_get_property(np, cmd_key, NULL))
+		return 0;
+
+	rc = mdss_dsi_parse_dcs_cmds(np, pcmds, cmd_key, link_key);
+	if (rc)
+		pr_err("%s : Failed parsing %s commands, rc = %d\n",
+			__func__, cmd_key, rc);
+	return rc;
+}
 
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format)
