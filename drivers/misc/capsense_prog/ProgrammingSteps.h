@@ -138,6 +138,7 @@ unsigned char VerifyFlash(struct hssp_data *d);
 unsigned char ProgramProtectionSettings(struct hssp_data *d);
 unsigned char VerifyProtectionSettings(struct hssp_data *d);
 unsigned char VerifyChecksum(struct hssp_data *d);
+unsigned char VerifySwRevision(struct hssp_data *d);
 void ExitProgrammingMode(void);
 unsigned char ReadHsspErrorStatus(void);
 unsigned char ReadSromStatus(void);
