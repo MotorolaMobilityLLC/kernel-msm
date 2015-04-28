@@ -41,6 +41,124 @@
 
 #include <linux/motosh.h>
 
+struct qd_trace_event_t {
+	u8 op;
+	u8 buffer_id;
+	u8 response;
+	u32 timestamp;
+};
+
+#define QD_TRACE_BUF_SIZE 64
+struct qd_trace_event_t qd_trace[QD_TRACE_BUF_SIZE];
+int qd_trace_index;
+
+#define QD_TRACE_PREPARE 'P'
+#define QD_TRACE_DRAW 'D'
+#define QD_TRACE_ERASE 'E'
+#define QD_TRACE_COMPLETE 'C'
+
+#define QD_TRACE_RXD 'R'
+#define QD_TRACE_DONE 'D'
+#define QD_TRACE_INVALID 'I'
+
+static char QD_parse_cmd(u8 cmd)
+{
+	switch (cmd) {
+	case AOD_WAKEUP_REASON_QP_PREPARE:
+		return QD_TRACE_PREPARE;
+	case AOD_WAKEUP_REASON_QP_DRAW:
+		return QD_TRACE_DRAW;
+	case AOD_WAKEUP_REASON_QP_ERASE:
+		return QD_TRACE_ERASE;
+	case AOD_WAKEUP_REASON_QP_COMPLETE:
+		return QD_TRACE_COMPLETE;
+	}
+	return (cmd < 10) ? (char)(cmd + '0') : 'U';
+}
+
+static char QD_parse_resp(u8 response)
+{
+	switch (response) {
+	case AOD_QP_ACK_RCVD:
+		return QD_TRACE_RXD;
+	case AOD_QP_ACK_DONE:
+		return QD_TRACE_DONE;
+	case AOD_QP_ACK_INVALID:
+		return QD_TRACE_INVALID;
+	}
+	return (response < 10) ? (char)(response + '0') : 'U';
+}
+
+static void dump_one_event(const struct device *dev,
+	struct qd_trace_event_t *event, s64 offset, const char *fmt, ...)
+{
+	va_list va;
+	struct va_format vaf;
+
+	va_start(va, fmt);
+
+	vaf.fmt = fmt;
+	vaf.va = &va;
+
+	dev_info(dev, "%lld %c %c%pV\n", event->timestamp + offset,
+		QD_parse_cmd(event->op), QD_parse_resp(event->response), &vaf);
+
+	va_end(va);
+}
+
+static void motosh_quickpeek_trace_dump(struct motosh_data *ps_motosh,
+	u32 timestamp)
+{
+	struct timespec ts;
+	s64 k_timestamp, offset = 0;
+	int i;
+
+	if (timestamp) {
+		get_monotonic_boottime(&ts);
+		k_timestamp = ts.tv_sec*1000LL + ts.tv_nsec/1000000LL;
+		offset = (s64)timestamp - k_timestamp;
+	}
+
+	dev_info(&ps_motosh->client->dev, "%s: [events: %u]\n", __func__,
+		qd_trace_index);
+	for (i = 0; i < qd_trace_index; i++) {
+		if (qd_trace[i].op == AOD_WAKEUP_REASON_QP_DRAW)
+			dump_one_event(&ps_motosh->client->dev, &qd_trace[i],
+				offset, " %u", qd_trace[i].buffer_id);
+		else
+			dump_one_event(&ps_motosh->client->dev, &qd_trace[i],
+				offset, "");
+	}
+	dev_info(&ps_motosh->client->dev, "%s: END\n", __func__);
+
+	qd_trace_index = 0;
+}
+
+static void QD_trace_add(struct motosh_data *ps_motosh, u8 command,
+	u8 buffer_id, u8 response)
+{
+	struct timespec ts;
+	u32 timestamp;
+
+	if (command == AOD_WAKEUP_REASON_QP_DUMP_TRACE)
+		return;
+
+	get_monotonic_boottime(&ts);
+
+	timestamp = ts.tv_sec*1000LL + ts.tv_nsec/1000000LL;
+
+	qd_trace[qd_trace_index].op = command;
+	qd_trace[qd_trace_index].buffer_id = buffer_id;
+	qd_trace[qd_trace_index].timestamp = timestamp;
+	qd_trace[qd_trace_index].response = response;
+	qd_trace_index++;
+
+	if (qd_trace_index >= QD_TRACE_BUF_SIZE) {
+		dev_err(&ps_motosh->client->dev, "trace buffer overflow!\n");
+		motosh_quickpeek_trace_dump(ps_motosh, 0);
+	}
+}
+
 static int motosh_quickpeek_is_pending_locked(struct motosh_data *ps_motosh)
 {
 	return !list_empty(&ps_motosh->quickpeek_command_list);
@@ -120,6 +238,10 @@ static int motosh_quickpeek_status_ack(struct motosh_data *ps_motosh,
 		qp_message ? qp_message->message : 0, req_bit, ack_return,
 		qp_message ? qp_message->buffer_id : 0, ret);
 
+	QD_trace_add(ps_motosh, qp_message ? qp_message->message : 0,
+		qp_message ? qp_message->buffer_id : 0,
+		(u8)(ack_return & 0x03));
+
 	motosh_sleep(ps_motosh);
 
 	return ret;
@@ -178,6 +300,8 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 
 	switch (aod_qp_reason) {
 	case AOD_WAKEUP_REASON_QP_PREPARE:
+		if (!ps_motosh->qp_prepared)
+			qd_trace_index = 0;
 		dev_dbg(&ps_motosh->client->dev,
 			"Received peek prepare command\n");
 		break;
@@ -237,6 +361,25 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			qp_message->commit, qp_message->x1, qp_message->y1,
 			qp_message->x2, qp_message->y2);
 		break;
+	case AOD_WAKEUP_REASON_QP_DUMP_TRACE:
+		{
+		u32 timestamp;
+		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+			1, 5) < 0) {
+			dev_err(&ps_motosh->client->dev,
+				"Reading peek draw data from STM failed\n");
+			goto error;
+		}
+		timestamp = motosh_readbuff[0] |
+			motosh_readbuff[1] << 8 |
+			motosh_readbuff[2] << 16 |
+			motosh_readbuff[3] << 24;
+		dev_dbg(&ps_motosh->client->dev,
+			"Received trace dump request\n");
+		motosh_quickpeek_trace_dump(ps_motosh, timestamp);
+		}
+		goto ack_only;
 	default:
 		dev_err(&ps_motosh->client->dev,
 			"Unknown quickpeek command [%d]!", aod_qp_reason);
@@ -260,6 +403,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	wake_lock(&ps_motosh->quickpeek_wakelock);
 	mutex_unlock(&ps_motosh->qp_list_lock);
 
+ack_only:
 	motosh_quickpeek_status_ack(ps_motosh, qp_message,
 		AOD_QP_ACK_RCVD);
 
