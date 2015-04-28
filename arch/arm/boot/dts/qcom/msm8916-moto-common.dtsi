@@ -964,6 +964,7 @@
 		headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
 		headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
 		cover_detect_polarity = <1>;
+		reset_hw_type = <0>;
 		accel_swap = <0>;
 		sensor1-supply = <&pm8916_l6>;
 		sensor2-supply = <&pm8916_l17>;

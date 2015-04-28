@@ -1021,6 +1021,7 @@
 		sensor1-supply = <&pm8916_l6>;
 		sensor2-supply = <&pm8916_l17>;
 		cover_detect_polarity = <1>;
+		reset_hw_type = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&stml0xx_inputs_default
 			     &stml0xx_wakeup_default
