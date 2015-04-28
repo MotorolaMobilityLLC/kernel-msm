@@ -472,7 +472,7 @@ rate_rspec2rate(uint32 rspec)
 		}
 	} else if (RSPEC_ISVHT(rspec)) {
 		uint mcs = (rspec & WL_RSPEC_VHT_MCS_MASK);
-		uint nss = (rspec & WL_RSPEC_VHT_MCS_MASK) >> WL_RSPEC_VHT_NSS_SHIFT;
+		uint nss = (rspec & WL_RSPEC_VHT_NSS_MASK) >> WL_RSPEC_VHT_NSS_SHIFT;
 
 		ASSERT(mcs <= 9);
 		ASSERT(nss <= 8);
@@ -1561,6 +1561,7 @@ static wifi_rate_t
 dhd_rtt_convert_rate_to_host(uint32 rspec)
 {
 	wifi_rate_t host_rate;
+	memset(&host_rate, 0, sizeof(wifi_rate_t));
 	if ((rspec & WL_RSPEC_ENCODING_MASK) == WL_RSPEC_ENCODE_RATE) {
 		host_rate.preamble = 0;
 	} else if ((rspec & WL_RSPEC_ENCODING_MASK) == WL_RSPEC_ENCODE_HT) {
@@ -1726,18 +1727,18 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 	event_type = ntoh32_ua((void *)&event->event_type);
 
 	if (event_type != WLC_E_PROXD) {
-		goto exit;
+		return ret;
 	}
 	if (RTT_IS_STOPPED(rtt_status)) {
 		/* Ignore the Proxd event */
-		goto exit;
+		return ret;
 	}
 	p_event = (wl_proxd_event_t *) event_data;
 	version = ltoh16(p_event->version);
 	if (version < WL_PROXD_API_VERSION) {
 		DHD_ERROR(("ignore non-ftm event version = 0x%0x < WL_PROXD_API_VERSION (0x%x)\n",
 			version, WL_PROXD_API_VERSION));
-		goto exit;
+		return ret;
 	}
 	if (!in_atomic()) {
 		mutex_lock(&rtt_status->rtt_mutex);
@@ -1789,11 +1790,8 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 			/* allocate new header for rtt_results */
 			rtt_results_header = kzalloc(sizeof(rtt_results_header_t), GFP_KERNEL);
 			if (!rtt_results_header) {
-				if (!in_atomic()) {
-					mutex_unlock(&rtt_status->rtt_mutex);
-				}
 				ret = -ENOMEM;
-					goto exit;
+				goto exit;
 			}
 			/* Initialize the head of list for rtt result */
 			INIT_LIST_HEAD(&rtt_results_header->result_list);
@@ -1804,9 +1802,6 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 			/* allocate rtt_results for new results */
 			rtt_result = kzalloc(sizeof(rtt_result_t), kflags);
 			if (!rtt_result) {
-				if (!in_atomic()) {
-					mutex_unlock(&rtt_status->rtt_mutex);
-				}
 				ret = -ENOMEM;
 				goto exit;
 			}
@@ -1847,6 +1842,38 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 					__FUNCTION__));
 				goto exit;
 			}
+		}
+		/* In case of no result for the peer device, make fake result for error case */
+		if (is_new) {
+			/* allocate new header for rtt_results */
+			rtt_results_header = kzalloc(sizeof(rtt_results_header_t), GFP_KERNEL);
+			if (!rtt_results_header) {
+				ret = -ENOMEM;
+				goto exit;
+			}
+			/* Initialize the head of list for rtt result */
+			INIT_LIST_HEAD(&rtt_results_header->result_list);
+			rtt_results_header->peer_mac = event->addr;
+			list_add_tail(&rtt_results_header->list, &rtt_status->rtt_results_cache);
+
+			/* allocate rtt_results for new results */
+			rtt_result = kzalloc(sizeof(rtt_result_t), kflags);
+			if (!rtt_result) {
+				ret = -ENOMEM;
+				kfree(rtt_results_header);
+				goto exit;
+			}
+			/* fill out the results from the configuration param */
+			rtt_result->report.ftm_num = rtt_target_info->num_frames_per_burst;
+			rtt_result->report.type = RTT_TWO_WAY;
+			DHD_RTT(("report->ftm_num : %d\n", rtt_result->report.ftm_num));
+			rtt_result->report_len = RTT_REPORT_SIZE;
+			rtt_result->report.status = RTT_REASON_FAIL_NO_RSP;
+			rtt_result->report.addr = rtt_target_info->addr;
+			rtt_result->report.distance = FTM_INVALID;
+			list_add_tail(&rtt_result->list, &rtt_results_header->result_list);
+			rtt_results_header->result_cnt++;
+			rtt_results_header->result_tot_len += rtt_result->report_len;
 		}
 		/* find next target to trigger RTT */
 		for (idx = (rtt_status->cur_idx + 1);
@@ -1923,10 +1950,11 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 		DHD_ERROR(("WLC_E_PROXD: not supported EVENT Type:%d\n", event_type));
 		break;
 	}
+exit:
 	if (!in_atomic()) {
 		mutex_unlock(&rtt_status->rtt_mutex);
 	}
-exit:
+
 	return ret;
 }
 
