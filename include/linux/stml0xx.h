@@ -327,6 +327,12 @@ struct stml0xx_platform_data {
 	int ct406_recalibrate_threshold;
 	int ct406_pulse_count;
 	int ct406_prox_gain;
+	int ct406_als_lux1_c0_mult;
+	int ct406_als_lux1_c1_mult;
+	int ct406_als_lux1_div;
+	int ct406_als_lux2_c0_mult;
+	int ct406_als_lux2_c1_mult;
+	int ct406_als_lux2_div;
 	int dsp_iface_enable;
 	int headset_detect_enable;
 	int headset_hw_version;
