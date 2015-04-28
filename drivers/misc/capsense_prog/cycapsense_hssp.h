@@ -45,6 +45,7 @@ struct hssp_data {
 	int d_offset;
 	void __iomem *gpio_base;
 	u16 chip_cs;
+	u16 sw_rev;
 };
 struct cycapsense_ctrl_data {
 	struct device *dev;
@@ -64,6 +65,7 @@ int cycapsense_hssp_dnld(struct hssp_data *d);
 #define SILICON_ID_BYTE_LENGTH		4
 #define FLASH_ROW_BYTE_SIZE_HEX_FILE	64
 #define NUMBER_OF_FLASH_ROWS_HEX_FILE	256
+#define SW_REVISION_OFFSET		0x3f7d
 
 #define FAILURE 1
 #define SUCCESS 0
