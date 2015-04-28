@@ -396,5 +396,5 @@
 };
 
 &mdss_fb0 {
-	qcom,memblock-reserve = <0x0149c000 0x64000>;
+	/delete-property/ qcom,memblock-reserve;
 };
