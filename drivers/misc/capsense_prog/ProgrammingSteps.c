@@ -895,6 +895,68 @@ unsigned char ProgramFlash(struct hssp_data *d)
 }
 
 /******************************************************************************
+* Function Name: VerifySwRevision
+*******************************************************************************
+*
+* Summary:
+*  This is a way to check Sw revision stored in flash at SW_REVISION_OFFSET.
+*  This is a preliminary step to avoid reflashing with the same SW revision.
+*  The checksum verification may not work because the checksun is changed is
+*  a configuration is stored in the flash. In this Step, flash region is
+*  directly read using Read_IO API defined in SWD_UpperPacketLayer.h and
+*  compared with the HEX File.
+*
+* Parameters:
+*  None
+*
+* Return:
+*  SUCCESS - Returns SUCCESS if function successfully verifies the software
+*		     revision with the HEX File.
+*  FAILURE - Returns Failure if any of the intermediate step returns a fail
+*			 message.
+*
+* Note:
+*
+******************************************************************************/
+unsigned char VerifySwRevision(struct hssp_data *d)
+{
+	unsigned long flashData = 0;
+	unsigned short row;
+	unsigned short offset;
+	unsigned short HexSwRev;
+	unsigned short ChipSwRev;
+	unsigned char rowData[FLASH_ROW_BYTE_SIZE_HEX_FILE];
+
+	/* Get the Sw rev row in the Target PSoC 4 device */
+	row = SW_REVISION_OFFSET / FLASH_ROW_BYTE_SIZE_HEX_FILE;
+	offset = SW_REVISION_OFFSET % FLASH_ROW_BYTE_SIZE_HEX_FILE;
+
+	/* Extract row from the hex-file */
+	HEX_ReadRowData(&d->inf, row, &rowData[0]);
+
+	HexSwRev = (rowData[offset]<<8) | rowData[offset+1];
+
+	/* Read flash via AHB-interface */
+	Read_IO(SW_REVISION_OFFSET, &flashData);
+	if (swd_PacketAck != SWD_OK_ACK)
+		return FAILURE;
+
+	ChipSwRev = ((flashData >> (offset % 4)*8) << 8) & 0xFF00;
+	ChipSwRev |= (flashData >> ((offset % 4 + 1) * 8)) & 0xFF;
+	d->sw_rev = HexSwRev;
+
+	pr_info("cycapsense_hssp: File SW rev 0x%x, Flash SW rev 0x%x\n",
+							 HexSwRev, ChipSwRev);
+
+	if (HexSwRev != ChipSwRev) {
+		swd_PacketAck = swd_PacketAck|VERIFICATION_ERROR;
+		return FAILURE;
+	}
+
+	return SUCCESS;
+}
+
+/******************************************************************************
 * Function Name: VerifyFlash
 *******************************************************************************
 *
