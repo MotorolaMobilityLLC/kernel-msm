@@ -1273,4 +1273,16 @@ config INPUT_MT_WRAPPER
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_HUAWEI_SYNAPTICS_DSX_v25
+	bool "Synaptics DSX touchscreen"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have a Synaptics DSX touchscreen connected
+	  to your system.
+
+	  If unsure, say N.
+
+source "drivers/input/touchscreen/synaptics_dsx25/Kconfig"
+
 endif
