@@ -74,6 +74,9 @@ qcom,mdss-dsi-off-command = [
 	05 01 00 00 0a 00 01 28		/* display_off */
 	05 01 00 00 78 00 01 10];	/* enter sleep mode */
 
+qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
+qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-h-sync-pulse = <0>;
