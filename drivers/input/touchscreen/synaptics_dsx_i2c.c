@@ -1007,6 +1007,12 @@ static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
 static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -1150,6 +1156,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(poweron, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_poweron_show,
 			synaptics_rmi4_store_error),
+	__ATTR(reporting, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			synaptics_rmi4_reporting_show,
+			synaptics_rmi4_reporting_store),
 };
 
 struct synaptics_exp_fn_ctrl {
@@ -1756,6 +1765,36 @@ static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 	}
 }
 
+static bool reporting_stopped;
+
+static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			reporting_stopped ? "STOPPED" : "RUNNING");
+}
+
+static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long value = 0;
+	int err = 0;
+
+	if (*buf == 's' || *buf == 'S') {
+		reporting_stopped = true;
+	} else if (*buf == 'r' || *buf == 'R') {
+		reporting_stopped = false;
+	} else {
+		err = kstrtoul(buf, 10, &value);
+		if (err < 0) {
+			pr_err("Failed to convert value\n");
+			return -EINVAL;
+		}
+		reporting_stopped = value == 0;
+	}
+	return count;
+}
+
 static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -2078,7 +2117,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			data_addr,
 			finger_data,
 			data_size);
-	if (retval < 0)
+	if (retval < 0 || reporting_stopped)
 		return 0;
 
 	if (atomic_read(&rmi4_data->panel_off_flag)) {
@@ -2232,7 +2271,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			data_addr,
 			finger_status_reg,
 			num_of_finger_status_regs);
-	if (retval < 0)
+	if (retval < 0 || reporting_stopped)
 		return 0;
 
 	if (atomic_read(&rmi4_data->panel_off_flag)) {
