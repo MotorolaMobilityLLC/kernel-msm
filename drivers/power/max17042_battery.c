@@ -1049,23 +1049,22 @@ static int max17042_check_temp(struct max17042_chip *chip)
 
 		pr_warn("Battery Temp State = %d\n", chip->temp_state);
 
+		if (!chip->batt_psy && chip->pdata->batt_psy_name) {
+			batt_psy_name = chip->pdata->batt_psy_name;
+			chip->batt_psy =
+				power_supply_get_by_name((char *)batt_psy_name);
+		}
+
+		if (chip->batt_psy) {
+			ps.intval = chip->temp_state;
+			chip->batt_psy->set_property(chip->batt_psy,
+					     POWER_SUPPLY_PROP_HEALTH, &ps);
+		}
+
+		power_supply_changed(&chip->battery);
 		ret = 1;
 	}
 	mutex_unlock(&chip->check_temp_lock);
-
-	if (!chip->batt_psy && chip->pdata->batt_psy_name) {
-		batt_psy_name = chip->pdata->batt_psy_name;
-		chip->batt_psy =
-			power_supply_get_by_name((char *)batt_psy_name);
-	}
-
-	if (chip->batt_psy) {
-		ps.intval = chip->temp_state;
-		chip->batt_psy->set_property(chip->batt_psy,
-					     POWER_SUPPLY_PROP_HEALTH, &ps);
-	}
-
-	power_supply_changed(&chip->battery);
 
 	return ret;
 }
