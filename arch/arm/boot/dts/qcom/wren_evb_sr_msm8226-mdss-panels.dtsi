@@ -10,4 +10,4 @@
  * GNU General Public License for more details.
  */
 
-#include "dsi-panel-rm69032-320x320-cmd.dtsi"
+#include "dsi-panel-x145aln01-280x280-cmd.dtsi"

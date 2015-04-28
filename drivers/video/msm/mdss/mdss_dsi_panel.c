@@ -683,6 +683,11 @@ void mdss_panel_set_panel_on_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		command_has_set = true;
 		printk("[MDSS] set V3 panel on command\n");
 		
+	}else if(panel_id == 0x00){
+		/* for x145aln01 panel */
+		memcpy(&ctrl_pdata->on_cmds,&on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		command_has_set = true;
+		printk("[MDSS] set V2 panel on command panel_id 0x00\n");
 	}else{
 		memcpy(&ctrl_pdata->on_cmds,&on_cmds_V3 ,sizeof(struct dsi_panel_cmds));
 		command_has_set = true;
@@ -724,6 +729,13 @@ void mdss_panel_set_ambient_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		ambient_bl_level = AMBIENT_BL_LEVEL_V3;
 		command_has_set = true;
 		printk("[MDSS] set V3 panel ambient command\n");
+	}else if(panel_id == 0x00){
+		/* set x145aln01 panel */
+		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V2 ,sizeof(struct dsi_panel_cmds));
+		ambient_bl_level = AMBIENT_BL_LEVEL_V2;
+		command_has_set = true;
+		printk("[MDSS] set V2 panel ambient command panel_id 0x00\n");
 	}else{
 		memcpy(&ctrl_pdata->idle_on_cmds ,&idle_on_cmds_V2 ,sizeof(struct dsi_panel_cmds));
 		memcpy(&ctrl_pdata->idle_off_cmds ,&idle_off_cmds_V2 ,sizeof(struct dsi_panel_cmds));
