@@ -13,7 +13,6 @@
 
 &soc {
 	sound {
-		qcom,mbhc-gpio-level-insert = <0>;
 		qcom,mbhc-btn-cal-low =
 			/bits/ 16 <(-50) 111 191 360 751 753 755 757>;
 		qcom,mbhc-btn-cal-high =
