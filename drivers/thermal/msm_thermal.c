@@ -47,6 +47,10 @@
 #include <soc/qcom/msm-core.h>
 #include <linux/cpumask.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #define TRACE_MSM_THERMAL
 #include <trace/trace_thermal.h>
@@ -2271,6 +2275,11 @@ static void msm_thermal_bite(int tsens_id, long temp)
 
 	pr_err("TSENS:%d reached temperature:%ld. System reset\n",
 		tsens_id, temp);
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	lge_set_restart_reason(LGE_RB_MAGIC | LGE_ERR_TZ | LGE_ERR_TZ_THERM_SEC_BITE);
+#endif
+
 	if (!is_scm_armv8()) {
 		scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);
 	} else {

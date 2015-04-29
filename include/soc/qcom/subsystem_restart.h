@@ -100,6 +100,7 @@ struct notif_data {
 extern int subsys_get_restart_level(struct subsys_device *dev);
 extern int subsystem_restart_dev(struct subsys_device *dev);
 extern int subsystem_restart(const char *name);
+extern int subsys_modem_restart(void);
 extern int subsystem_crashed(const char *name);
 
 extern void *subsystem_get(const char *name);

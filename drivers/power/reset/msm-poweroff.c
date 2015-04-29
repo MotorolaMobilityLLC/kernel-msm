@@ -32,6 +32,10 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -42,7 +46,6 @@
 #define SCM_DLOAD_MODE			0X10
 #define SCM_EDLOAD_MODE			0X01
 #define SCM_DLOAD_CMD			0x10
-
 
 static int restart_mode;
 void *restart_reason;
@@ -164,6 +167,11 @@ static int dload_set(const char *val, struct kernel_param *kp)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	if (!download_mode)
+		lge_panic_handler_fb_cleanup();
+#endif
+
 	set_dload_mode(download_mode);
 
 	return 0;
@@ -275,6 +283,21 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	else {
+		__raw_writel(0x776655ff, restart_reason);
+	}
+#endif
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	if (restart_mode == RESTART_DLOAD) {
+		set_dload_mode(0);
+		lge_set_restart_reason(LAF_DLOAD_MODE);
+	}
+
+	if (in_panic)
+		lge_set_panic_reason();
+#endif
 
 	flush_cache_all();
 
@@ -318,7 +341,13 @@ static void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd)
 		.arginfo = SCM_ARGS(2),
 	};
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	struct task_struct *task = current_thread_info()->task;
+	pr_notice("Going down for restart now (pid: %d, comm: %s)\n",
+			task->pid, task->comm);
+#else
 	pr_notice("Going down for restart now\n");
+#endif
 
 	msm_restart_prepare(cmd);
 
@@ -357,7 +386,14 @@ static void do_msm_poweroff(void)
 		.arginfo = SCM_ARGS(2),
 	};
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	struct task_struct *task = current_thread_info()->task;
+	pr_notice("Powering off the SoC (pid: %d, comm: %s)\n",
+			task->pid, task->comm);
+#else
 	pr_notice("Powering off the SoC\n");
+#endif
+
 #ifdef CONFIG_MSM_DLOAD_MODE
 	set_dload_mode(0);
 #endif
@@ -390,7 +426,6 @@ static int msm_restart_probe(struct platform_device *pdev)
 #ifdef CONFIG_MSM_DLOAD_MODE
 	if (scm_is_call_available(SCM_SVC_BOOT, SCM_DLOAD_CMD) > 0)
 		scm_dload_supported = true;
-
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 	np = of_find_compatible_node(NULL, NULL, DL_MODE_PROP);
 	if (!np) {
