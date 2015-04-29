@@ -891,7 +891,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	int ret = 0;
 	int session = 0;
 	bool panel_off = false;
-	bool turn_off_clocks = false;
 	bool send_panel_events = false;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
@@ -915,7 +914,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		goto end;
 	}
 
-panel_events:
 	if ((ctl->num == 0) && send_panel_events) {
 		pr_debug("%s: send panel events\n", __func__);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
