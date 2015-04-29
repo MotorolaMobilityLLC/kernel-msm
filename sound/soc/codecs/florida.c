@@ -40,7 +40,7 @@
 #define FLORIDA_DEFAULT_FRAGMENT_SIZE   4096
 
 #define ADSP2_CONTROL	0x0
-#define ADSP2_START	0x0001
+#define ADSP2_CORE_ENA  0x0002
 
 struct florida_compr {
 	struct mutex lock;
@@ -322,7 +322,7 @@ static int florida_get_dsp_state(struct snd_kcontrol *kcontrol,
 	unsigned int val;
 
 	regmap_read(dsp->regmap, dsp->base + ADSP2_CONTROL, &val);
-	if (val & ADSP2_START)
+	if (val & ADSP2_CORE_ENA)
 		ucontrol->value.integer.value[0] = 1;
 	else
 		ucontrol->value.integer.value[0] = 0;
