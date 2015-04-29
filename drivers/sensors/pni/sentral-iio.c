@@ -350,34 +350,22 @@ static int sentral_sensor_id_is_valid(u8 id)
 	return ((id >= SST_FIRST) && (id < SST_MAX));
 }
 
-static int sentral_sensor_rate_set(struct sentral_device *sentral, u8 id,
-		u16 rate)
+static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
+		u16 rate, u16 timeout_ms)
 {
 	int rc;
-	struct sentral_param_sensor_config config;
-	u16 sample_rate = 0;
+	struct sentral_param_sensor_config config = {
+		.sample_rate = rate,
+		.max_report_latency = timeout_ms,
+		.change_sensitivity = 0,
+		.dynamic_range = 0,
+	};
+
+	LOGD(&sentral->client->dev, "batch set id: %u, rate: %u, timeout: %u\n", id,
+			rate, timeout_ms);
 
 	if (!sentral_sensor_id_is_valid(id))
 		return -EINVAL;
-
-	// read current config
-	rc = sentral_sensor_config_read(sentral, id, &config);
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) reading sensor config for sensor id: %u\n",
-				rc, id);
-
-		return rc;
-	}
-
-	sentral->enabled_mask &= ~(1LL << id);
-
-	if (rate > 0) {
-		sample_rate = MAX(config.sample_rate, rate);
-		sentral->enabled_mask |= (1LL << id);
-	}
-
-	config.sample_rate = sample_rate;
 
 	// update config
 	rc = sentral_sensor_config_write(sentral, id, &config);
@@ -394,37 +382,13 @@ static int sentral_sensor_rate_set(struct sentral_device *sentral, u8 id,
 static int sentral_sensor_enable_set(struct sentral_device *sentral, u8 id,
 		bool enable)
 {
-	return sentral_sensor_rate_set(sentral, id, (enable ? 1 : 0));
-}
+	LOGD(&sentral->client->dev, "enable set id: %u, enable: %u\n", id, enable);
 
-static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
-		u16 rate, u16 timeout_ms)
-{
-	int rc;
-	struct sentral_param_sensor_config config;
-
-	if (!sentral_sensor_id_is_valid(id))
-		return -EINVAL;
-
-	rc = sentral_sensor_config_read(sentral, id, &config);
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) reading sensor config for sensor id: %u\n",
-				rc, id);
-
-		return rc;
-	}
-
-	config.sample_rate = rate;
-	config.max_report_latency = timeout_ms;
-
-	// update config
-	rc = sentral_sensor_config_write(sentral, id, &config);
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) writing sensor config for sensor id: %u\n",
-				rc, id);
-		return rc;
+	if (enable) {
+		sentral->enabled_mask |= 1LL << id;
+	} else {
+		sentral->enabled_mask &= ~(1LL << id);
+		return sentral_sensor_batch_set(sentral, id, 0, 0);
 	}
 
 	return 0;
@@ -496,14 +460,15 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 
 // FIFO
 
-//static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
-//{
-//	int rc;
-//
-//	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
-//	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
-//	return rc;
-//}
+static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
+{
+	int rc;
+
+	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
+	mutex_lock(&sentral->lock_flush);
+	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
+	return rc;
+}
 
 static int sentral_fifo_get_bytes_remaining(struct sentral_device *sentral)
 {
@@ -577,6 +542,9 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_SIGNIFICANT_MOTION:
 		case SST_STEP_DETECTOR:
 		case SST_TILT_DETECTOR:
+		case SST_WAKE_GESTURE:
+		case SST_GLANCE_GESTURE:
+		case SST_PICK_UP_GESTURE:
 			data_size = 0;
 			break;
 
@@ -595,6 +563,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 			break;
 
 		case SST_PRESSURE:
+		case SST_COACH:
 			data_size = 3;
 			break;
 
@@ -628,6 +597,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 
 				// push flush complete events
 				if (meta_data->event_id == SEN_META_FLUSH_COMPLETE) {
+					mutex_unlock(&sentral->lock_flush);
 					sentral_iio_buffer_push(sentral, sensor_id,
 							(void *)&meta_data->byte_1,
 							sizeof(meta_data->byte_1));
@@ -853,21 +823,21 @@ static int sentral_set_host_upload_enable(struct sentral_device *sentral,
 
 // host iface control
 
-//static int sentral_set_host_iface_control_flag(struct sentral_device *sentral,
-//		u8 flag, bool enable)
-//{
-//	return sentral_set_register_flag(sentral, SR_HOST_CONTROL, flag, enable);
-//}
+static int sentral_set_host_iface_control_flag(struct sentral_device *sentral,
+		u8 flag, bool enable)
+{
+	return sentral_set_register_flag(sentral, SR_HOST_CONTROL, flag, enable);
+}
 
 // ap suspend
 
-//static int sentral_set_host_ap_suspend_enable(struct sentral_device *sentral,
-//		bool enable)
-//{
-//	LOGI(&sentral->client->dev, "setting AP suspend to %s\n", ENSTR(enable));
-//	return sentral_set_host_iface_control_flag(sentral,
-//			SEN_HOST_CTRL_AP_SUSPENDED, enable);
-//}
+static int sentral_set_host_ap_suspend_enable(struct sentral_device *sentral,
+		bool enable)
+{
+	LOGI(&sentral->client->dev, "setting AP suspend to %s\n", ENSTR(enable));
+	return sentral_set_host_iface_control_flag(sentral,
+			SEN_HOST_CTRL_AP_SUSPENDED, enable);
+}
 
 static int sentral_firmware_load(struct sentral_device *sentral,
 		const char *firmware_name)
@@ -1418,14 +1388,9 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 			"setting rate for sensor id: %u, delay_ms: %u, rate: %u Hz\n",
 			id, delay_ms, sample_rate);
 
-	rc = sentral_sensor_rate_set(sentral, id, sample_rate);
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) setting rate for sensor id: %u to %u Hz\n",
-				rc, id, sample_rate);
-
+	rc = sentral_sensor_batch_set(sentral, id, sample_rate, 0);
+	if (rc < 0)
 		goto exit;
-	}
 
 	rc = count;
 
@@ -1508,7 +1473,7 @@ static ssize_t sentral_sysfs_flush_store(struct device *dev,
 
 	LOGI(&sentral->client->dev, "flushing FIFO for sensor id: %u\n", sensor_id);
 
-	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
+	rc = sentral_fifo_flush(sentral, sensor_id);
 	if (rc) {
 		LOGE(&sentral->client->dev, "error (%d) writing FIFO flush\n", rc);
 		goto exit;
@@ -2048,64 +2013,64 @@ static const struct iio_info sentral_iio_info = {
 	.driver_module = THIS_MODULE,
 };
 
-//static int sentral_suspend_notifier(struct notifier_block *nb,
-//		unsigned long event, void *data)
-//{
-//	struct sentral_device *sentral = container_of(nb, struct sentral_device,
-//			nb);
-//
-//	int rc;
-//
-//	LOGD(&sentral->client->dev, "suspend nb: %lu\n", event);
-//
-//	switch (event) {
-//
-//	case PM_SUSPEND_PREPARE:
-//		LOGI(&sentral->client->dev, "preparing to suspend ...\n");
-//
-//		// notify sentral of suspend
-//		rc = sentral_set_host_ap_suspend_enable(sentral, true);
-//		if (rc) {
-//			LOGE(&sentral->client->dev,
-//					"error (%d) setting AP suspend to true\n", rc);
-//		}
-//
-//		disable_irq(sentral->irq);
-//
-//		// flush fifo
-//		rc = sentral_fifo_flush(sentral, SST_ALL);
-//		if (rc) {
-//			LOGE(&sentral->client->dev,
-//					"error (%d) flushing FIFO, sensor: %d\n", rc, SST_ALL);
-//		}
-//
-//		// empty fifo
-//		rc = sentral_fifo_read(sentral, (void *)sentral->data_buffer);
-//		if (rc)
-//			LOGE(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
-//
-//		break;
-//
-//	case PM_POST_SUSPEND:
-//		LOGI(&sentral->client->dev, "post suspend ...\n");
-//
-//		enable_irq(sentral->irq);
-//
-//		// notify sentral of wakeup
-//		rc = sentral_set_host_ap_suspend_enable(sentral, false);
-//		if (rc) {
-//			LOGE(&sentral->client->dev,
-//					"error (%d) setting AP suspend to false\n", rc);
-//		}
-//
-//		// queue fifo work
-//		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
-//
-//		break;
-//	}
-//
-//	return NOTIFY_DONE;
-//}
+static int sentral_suspend_notifier(struct notifier_block *nb,
+		unsigned long event, void *data)
+{
+	struct sentral_device *sentral = container_of(nb, struct sentral_device,
+			nb);
+
+	int rc;
+
+	LOGD(&sentral->client->dev, "suspend nb: %lu\n", event);
+
+	switch (event) {
+
+	case PM_SUSPEND_PREPARE:
+		LOGI(&sentral->client->dev, "preparing to suspend ...\n");
+
+		// notify sentral of suspend
+		rc = sentral_set_host_ap_suspend_enable(sentral, true);
+		if (rc) {
+			LOGE(&sentral->client->dev,
+					"error (%d) setting AP suspend to true\n", rc);
+		}
+
+		disable_irq(sentral->irq);
+
+		// flush fifo
+		rc = sentral_fifo_flush(sentral, SST_ALL);
+		if (rc) {
+			LOGE(&sentral->client->dev,
+					"error (%d) flushing FIFO, sensor: %d\n", rc, SST_ALL);
+		}
+
+		// empty fifo
+		rc = sentral_fifo_read(sentral, (void *)sentral->data_buffer);
+		if (rc)
+			LOGE(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
+
+		break;
+
+	case PM_POST_SUSPEND:
+		LOGI(&sentral->client->dev, "post suspend ...\n");
+
+		enable_irq(sentral->irq);
+
+		// notify sentral of wakeup
+		rc = sentral_set_host_ap_suspend_enable(sentral, false);
+		if (rc) {
+			LOGE(&sentral->client->dev,
+					"error (%d) setting AP suspend to false\n", rc);
+		}
+
+		// queue fifo work
+		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
+
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
 
 static int sentral_dt_parse(struct device *dev,
 		struct sentral_platform_data *platform_data)
@@ -2256,6 +2221,7 @@ static int sentral_probe(struct i2c_client *client,
 
 	// init mutex, wakelock
 	mutex_init(&sentral->lock);
+	mutex_init(&sentral->lock_flush);
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
 
 	// setup irq handler
@@ -2272,8 +2238,8 @@ static int sentral_probe(struct i2c_client *client,
 
 	// init pm
 	device_init_wakeup(dev, 1);
-//	sentral->nb.notifier_call = sentral_suspend_notifier;
-//	register_pm_notifier(&sentral->nb);
+	sentral->nb.notifier_call = sentral_suspend_notifier;
+	register_pm_notifier(&sentral->nb);
 
 	// create custom class
 	rc = sentral_class_create(sentral);
