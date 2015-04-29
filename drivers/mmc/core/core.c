@@ -44,6 +44,11 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+#include <linux/fs.h>
+#include <linux/delay.h>
+
+extern void kernel_restart(char *cmd);
+
 /*
  * Background operations can take a long time, depending on the housekeeping
  * operations the card has to perform.
@@ -1468,6 +1473,40 @@ void mmc_set_driver_type(struct mmc_host *host, unsigned int drv_type)
 	mmc_host_clk_release(host);
 }
 
+void mmc_force_poweroff_notify(struct mmc_host *host)
+{
+	int err = 0;
+	unsigned int timeout;
+
+	mmc_claim_host(host);
+
+	if (mmc_card_is_sleep(host->card)) {
+		BUG_ON(!host->bus_ops->resume);
+		err = host->bus_ops->resume(host);
+	}
+
+	if (err) {
+		pr_err("failed to resume for force poweroff notify\n");
+		return;
+	}
+
+	timeout = host->card->ext_csd.generic_cmd6_time;
+
+	pr_info("sending poweroff notify\n");
+	err = mmc_switch(host->card, EXT_CSD_CMD_SET_NORMAL,
+		EXT_CSD_POWER_OFF_NOTIFICATION,
+		EXT_CSD_POWER_OFF_SHORT, timeout);
+	if (err && err != -EBADMSG) {
+		pr_err("Device failed to respond within %d poweroff time\n",
+			timeout);
+		return;
+	}
+
+	pr_info("poweroff notify sent\n");
+	mmc_release_host(host);
+	return;
+}
+
 /*
  * Apply power to the MMC stack.  This is a two-stage process.
  * First, we enable power to the card without the clock running.
@@ -2867,6 +2906,29 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	return 0;
 }
 #endif
+
+
+/* force send poweroff notify to Kingston eMMC
+ * while long press power key before hw reset
+ */
+int force_poweroff_notify(struct notifier_block *notify_block,
+			unsigned long mode, void *unused)
+{
+	struct mmc_host *host = container_of(
+		notify_block, struct mmc_host, force_poweroff_notifier);
+
+	if (host->card == NULL)
+		return 0;
+	/* only for Kingston card */
+	if (mmc_card_mmc(host->card)
+		&& host->card->cid.manfid == 0x70) {
+		emergency_sync();
+		emergency_remount();
+		msleep(1000);
+		kernel_restart(NULL);
+	}
+	return 0;
+}
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 void mmc_set_embedded_sdio_data(struct mmc_host *host,
