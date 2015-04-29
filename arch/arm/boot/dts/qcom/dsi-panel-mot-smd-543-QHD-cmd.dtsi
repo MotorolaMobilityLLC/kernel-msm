@@ -94,18 +94,18 @@
 			15 01 00 00 01 00 02 51 00
 			/* acl_enable_disable_settings */
 			15 01 00 00 01 00 02 55 03
-			/* Unlock level 2 commands */
-			39 01 00 00 01 00 03 F0 5A 5A
 			/* Set index for P9 */
-			15 01 00 00 01 00 02 B0 08
+			15 01 00 00 01 00 02 B0 07
 			/* Turn on memory retention */
-			15 01 00 00 01 00 02 F4 03
+			15 01 00 00 01 00 02 F4 73
 			/* viewable region */
 			39 01 00 00 00 00 05 30 00 00 09 ff
 			/* normal col */
 			39 01 00 00 00 00 05 2a 00 00 05 9f
 			/* normal row */
 			39 01 00 00 00 00 05 2b 00 00 09 ff
+			/* lock level 2 commands */
+			39 01 00 00 01 00 03 F0 A5 A5
 			/* display on */
 			05 01 00 00 00 00 01 29
 			/* Configure dual-dsi link*/
