@@ -29,6 +29,7 @@
 
 
 #define LSM_VOICE_WAKEUP_APP_V2 2
+#define AFE_OUT_PORT_2 2
 #define LISTEN_MIN_NUM_PERIODS     2
 #define LISTEN_MAX_NUM_PERIODS     8
 #define LISTEN_MAX_PERIOD_SIZE     4096
@@ -204,10 +205,14 @@ static int msm_cpe_afe_port_cntl(
 	int rc = 0;
 
 	if (!afe_cfg->port_id) {
-		dev_err(rtd->dev,
+		/*
+		 * It is possible driver can get closed without prepare,
+		 * in which case afe ports will not be initialized.
+		 */
+		dev_dbg(rtd->dev,
 			"%s: Invalid afe port id\n",
 			__func__);
-		return -EINVAL;
+		return 0;
 	}
 
 	switch (cmd) {
@@ -250,6 +255,7 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 	struct cpe_lsm_data *lsm_d = cpe_get_lsm_data(substream);
 	struct cpe_priv *cpe = cpe_get_private_data(substream);
 	struct wcd_cpe_lsm_ops *lsm_ops;
+	struct wcd_cpe_afe_ops *afe_ops;
 	struct cpe_lsm_session *session;
 	struct wcd_cpe_lsm_lab *lab_sess;
 	int rc;
@@ -269,6 +275,7 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 	}
 
 	lsm_ops = &cpe->lsm_ops;
+	afe_ops = &cpe->afe_ops;
 	session = lsm_d->lsm_session;
 	lab_sess = &session->lab;
 
@@ -294,12 +301,20 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 
 		lab_sess->thread_status = MSM_LSM_LAB_THREAD_STOP;
 		rc = lsm_ops->lsm_lab_stop(cpe->core_handle, session);
-		if (rc) {
+		if (rc)
 			dev_err(rtd->dev,
 				"%s: Lab stop failed, error = %d\n",
 				__func__, rc);
-			return rc;
-		}
+		/*
+		 * Even though LAB stop failed,
+		 * output AFE port needs to be stopped
+		 */
+		rc = afe_ops->afe_port_stop(cpe->core_handle,
+					    &session->afe_out_port_cfg);
+		if (rc)
+			dev_err(rtd->dev,
+				"%s: AFE out port stop failed, err = %d\n",
+				__func__, rc);
 	}
 
 	return 0;
@@ -1178,7 +1193,11 @@ static int msm_cpe_lsm_lab_start(struct snd_pcm_substream *substream,
 	struct cpe_priv *cpe = NULL;
 	struct cpe_lsm_session *session = NULL;
 	struct wcd_cpe_lsm_lab *lab_sess = NULL;
+	struct wcd_cpe_lab_hw_params *hw_params;
 	struct wcd_cpe_lsm_ops *lsm_ops;
+	struct wcd_cpe_afe_ops *afe_ops;
+	struct wcd_cpe_afe_port_cfg *out_port;
+	int rc;
 
 	if (!substream || !substream->private_data) {
 		pr_err("%s: invalid substream (%p)\n",
@@ -1206,7 +1225,9 @@ static int msm_cpe_lsm_lab_start(struct snd_pcm_substream *substream,
 
 	session = lsm_d->lsm_session;
 	lsm_ops = &cpe->lsm_ops;
+	afe_ops = &cpe->afe_ops;
 	lab_sess = &session->lab;
+	hw_params = &lab_sess->hw_params;
 
 	if (!session->started) {
 		dev_dbg(rtd->dev,
@@ -1220,6 +1241,29 @@ static int msm_cpe_lsm_lab_start(struct snd_pcm_substream *substream,
 	if (lab_sess->lab_enable &&
 	    event_status->status ==
 	    LSM_VOICE_WAKEUP_STATUS_DETECTED) {
+
+		out_port = &session->afe_out_port_cfg;
+		out_port->port_id = AFE_OUT_PORT_2;
+		out_port->bit_width = hw_params->sample_size;
+		out_port->num_channels = hw_params->channels;
+		out_port->sample_rate = hw_params->sample_rate;
+
+		rc = afe_ops->afe_port_cmd_cfg(cpe->core_handle,
+					       out_port);
+		if (rc) {
+			dev_err(rtd->dev,
+				"%s: Failed afe generic config v2, err = %d\n",
+				__func__, rc);
+			return rc;
+		}
+
+		rc = afe_ops->afe_port_start(cpe->core_handle, out_port);
+		if (rc) {
+			dev_err(rtd->dev,
+				"%s: AFE out port start failed, err = %d\n",
+				__func__, rc);
+			return rc;
+		}
 
 		atomic_set(&lab_sess->abort_read, 0);
 		pr_debug("%s: KW detected,\n"
@@ -1765,6 +1809,7 @@ static int msm_cpe_lsm_hwparams(struct snd_pcm_substream *substream,
 	lab_hw_params->buf_sz = (params_buffer_bytes(params)
 				/ params_periods(params));
 	lab_hw_params->period_count = params_periods(params);
+	lab_hw_params->channels = params_channels(params);
 	lab_hw_params->sample_rate = params_rate(params);
 
 	if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
