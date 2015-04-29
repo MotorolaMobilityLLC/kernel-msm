@@ -86,8 +86,19 @@ static bool is_thumbnail_session(struct msm_vidc_inst *inst)
 	return false;
 }
 
+static inline bool is_non_realtime_session(struct msm_vidc_inst *inst)
+{
+	int rc = 0;
+	struct v4l2_control ctrl = {
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY };
+	rc = v4l2_g_ctrl(&inst->ctrl_handler, &ctrl);
+	if (!rc && ctrl.value)
+		return true;
+	return false;
+}
+
 static int msm_comm_get_load(struct msm_vidc_core *core,
-	enum session_type type)
+	enum session_type type, enum vidc_calculation calc)
 {
 	struct msm_vidc_inst *inst = NULL;
 	int num_mbs_per_sec = 0;
@@ -101,7 +112,12 @@ static int msm_comm_get_load(struct msm_vidc_core *core,
 		if (inst->session_type == type &&
 			inst->state >= MSM_VIDC_OPEN_DONE &&
 			inst->state < MSM_VIDC_STOP_DONE) {
-			if (!is_thumbnail_session(inst))
+			if (is_non_realtime_session(inst) && calc == LOAD)
+				// 1 fps load for non-realtime
+				num_mbs_per_sec += NUM_MBS_PER_SEC(
+					inst->prop.height,
+					inst->prop.width, inst->prop.fps)/inst->prop.fps;
+			else if (!is_thumbnail_session(inst))
 				num_mbs_per_sec += NUM_MBS_PER_SEC(
 					inst->prop.height,
 					inst->prop.width, inst->prop.fps);
@@ -118,6 +134,7 @@ static int msm_comm_scale_bus(struct msm_vidc_core *core,
 	int load;
 	int rc = 0;
 	struct hfi_device *hdev;
+	enum vidc_calculation calc = CLOCKS;
 
 	if (!core || type >= MSM_VIDC_MAX_DEVICES) {
 		dprintk(VIDC_ERR, "Invalid args: %p, %d\n", core, type);
@@ -129,11 +146,10 @@ static int msm_comm_scale_bus(struct msm_vidc_core *core,
 		dprintk(VIDC_ERR, "Invalid device handle %p\n", hdev);
 		return -EINVAL;
 	}
-
 	if (is_turbo_requested(core, type))
 		load = core->resources.max_load;
 	else
-		load = msm_comm_get_load(core, type);
+		load = msm_comm_get_load(core, type, calc);
 
 	rc = call_hfi_op(hdev, scale_bus, hdev->hfi_device_data,
 					 load, type, mtype);
@@ -1220,6 +1236,8 @@ static int msm_comm_scale_clocks(struct msm_vidc_core *core)
 	int num_mbs_per_sec;
 	int rc = 0;
 	struct hfi_device *hdev;
+	enum vidc_calculation calc = CLOCKS;
+
 	if (!core) {
 		dprintk(VIDC_ERR, "%s Invalid args: %p\n", __func__, core);
 		return -EINVAL;
@@ -1236,10 +1254,9 @@ static int msm_comm_scale_clocks(struct msm_vidc_core *core)
 			is_turbo_requested(core, MSM_VIDC_DECODER)) {
 		num_mbs_per_sec = core->resources.max_load;
 	} else {
-		num_mbs_per_sec = msm_comm_get_load(core, MSM_VIDC_ENCODER);
-		num_mbs_per_sec += msm_comm_get_load(core, MSM_VIDC_DECODER);
+		num_mbs_per_sec = msm_comm_get_load(core, MSM_VIDC_ENCODER, calc);
+		num_mbs_per_sec += msm_comm_get_load(core, MSM_VIDC_DECODER, calc);
 	}
-
 	dprintk(VIDC_INFO, "num_mbs_per_sec = %d\n", num_mbs_per_sec);
 	rc = call_hfi_op(hdev, scale_clocks,
 		hdev->hfi_device_data, num_mbs_per_sec);
@@ -1605,6 +1622,7 @@ static int msm_vidc_load_resources(int flipped_state,
 	u32 ocmem_sz = 0;
 	struct hfi_device *hdev;
 	int num_mbs_per_sec = 0;
+	enum vidc_calculation calc = LOAD;
 
 	if (!inst || !inst->core || !inst->core->device) {
 		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
@@ -1616,9 +1634,8 @@ static int msm_vidc_load_resources(int flipped_state,
 				"Core is in bad state can't do load res");
 		return -EINVAL;
 	}
-
-	num_mbs_per_sec = msm_comm_get_load(inst->core, MSM_VIDC_DECODER);
-	num_mbs_per_sec += msm_comm_get_load(inst->core, MSM_VIDC_ENCODER);
+	num_mbs_per_sec = msm_comm_get_load(inst->core, MSM_VIDC_DECODER, calc);
+	num_mbs_per_sec += msm_comm_get_load(inst->core, MSM_VIDC_ENCODER, calc);
 	if (num_mbs_per_sec > inst->core->resources.max_load) {
 		dprintk(VIDC_ERR, "HW is overloaded, needed: %d max: %d\n",
 			num_mbs_per_sec, inst->core->resources.max_load);
@@ -2894,12 +2911,13 @@ int msm_vidc_trigger_ssr(struct msm_vidc_core *core,
 static int msm_vidc_load_supported(struct msm_vidc_inst *inst)
 {
 	int num_mbs_per_sec = 0;
+	enum vidc_calculation calc = LOAD;
 
 	if (inst->state == MSM_VIDC_OPEN_DONE) {
 		num_mbs_per_sec = msm_comm_get_load(inst->core,
-					MSM_VIDC_DECODER);
+					MSM_VIDC_DECODER, calc);
 		num_mbs_per_sec += msm_comm_get_load(inst->core,
-					MSM_VIDC_ENCODER);
+					MSM_VIDC_ENCODER, calc);
 		if (num_mbs_per_sec > inst->core->resources.max_load) {
 			dprintk(VIDC_ERR,
 				"H/w is overloaded. needed: %d max: %d\n",

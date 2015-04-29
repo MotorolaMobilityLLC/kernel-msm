@@ -73,6 +73,11 @@ enum vidc_core_state {
 	VIDC_CORE_INVALID
 };
 
+enum vidc_calculation {
+	CLOCKS = 0,
+	LOAD
+};
+
 /*Donot change the enum values unless
  * you know what you are doing*/
 enum instance_state {
