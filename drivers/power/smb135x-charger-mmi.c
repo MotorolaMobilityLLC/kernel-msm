@@ -333,6 +333,12 @@ struct smb_wakeup_source {
 	unsigned long           disabled;
 };
 
+enum stepchg_state {
+	STEP_ONE,
+	STEP_MAX,
+	STEP_NONE = 0xFF,
+};
+
 struct smb135x_chg {
 	struct i2c_client		*client;
 	struct device			*dev;
@@ -408,6 +414,7 @@ struct smb135x_chg {
 	struct mutex                    batti_change_lock;
 	bool				factory_mode;
 	int				batt_current_ma;
+	int				thermal_current_ma;
 	int				apsd_rerun_cnt;
 	struct smb_wakeup_source        smb_wake_source;
 	struct delayed_work		heartbeat_work;
@@ -439,6 +446,11 @@ struct smb135x_chg {
 	int				prev_batt_health;
 	bool				demo_mode;
 	bool				hb_running;
+	int				stepchg_max_voltage_mv;
+	int				stepchg_max_current_ma;
+	int				stepchg_voltage_mv;
+	int				stepchg_taper_ma;
+	enum stepchg_state		stepchg_state;
 };
 
 static struct smb135x_chg *the_chip;
@@ -1091,6 +1103,28 @@ static int smb135x_get_prop_batt_voltage_now(struct smb135x_chg *chip,
 	return -EINVAL;
 }
 
+static int smb135x_get_prop_batt_current_now(struct smb135x_chg *chip,
+							int *curr_ma)
+{
+	int rc = 0;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
+		if (rc < 0)
+			return rc;
+
+		*curr_ma = ret.intval / 1000;
+		return 0;
+	}
+	return -EINVAL;
+}
+
 static bool smb135x_get_prop_taper_reached(struct smb135x_chg *chip)
 {
 	int rc = 0;
@@ -1694,6 +1728,16 @@ static int smb135x_set_batt_current(struct smb135x_chg *chip,
 	return 0;
 }
 
+static int smb135x_determine_batt_current(struct smb135x_chg *chip)
+{
+	int rc;
+	int current_max_ma;
+
+	current_max_ma = min(chip->thermal_current_ma, chip->batt_current_ma);
+	rc = smb135x_set_batt_current(chip, current_max_ma);
+	return rc;
+}
+
 static int __smb135x_charging(struct smb135x_chg *chip, int enable)
 {
 	int rc = 0;
@@ -1796,7 +1840,8 @@ static int smb135x_system_temp_level_set(struct smb135x_chg *chip,
 		goto out;
 	}
 
-	rc = smb135x_set_batt_current(chip, chip->thermal_mitigation[lvl_sel]);
+	chip->thermal_current_ma = chip->thermal_mitigation[lvl_sel];
+	rc = smb135x_determine_batt_current(chip);
 	if (rc < 0)
 		dev_err(chip->dev,
 			"Couldn't set batt current rc %d\n", rc);
@@ -2749,6 +2794,9 @@ static void heartbeat_work(struct work_struct *work)
 	bool dc_present;
 	int batt_health;
 	int batt_soc;
+	int batt_ma = 0;
+	int batt_mv;
+	int prev_step;
 	bool taper_reached;
 	struct smb135x_chg *chip =
 		container_of(work, struct smb135x_chg,
@@ -2768,6 +2816,8 @@ static void heartbeat_work(struct work_struct *work)
 		return;
 	}
 
+	smb135x_get_prop_batt_current_now(chip, &batt_ma);
+	smb135x_get_prop_batt_voltage_now(chip, &batt_mv);
 	smb_stay_awake(&chip->smb_wake_source);
 	chip->hb_running = true;
 
@@ -2788,6 +2838,7 @@ static void heartbeat_work(struct work_struct *work)
 	usb_present = is_usb_plugged_in(chip);
 	dc_present = is_dc_plugged_in(chip);
 	taper_reached = smb135x_get_prop_taper_reached(chip);
+	prev_step = chip->stepchg_state;
 
 	if (chip->usb_present && !usb_present) {
 		dev_warn(chip->dev, "HB Caught Removal!\n");
@@ -2826,6 +2877,25 @@ static void heartbeat_work(struct work_struct *work)
 			}
 		}
 
+		if (chip->stepchg_state == STEP_NONE) {
+			if (batt_mv >= chip->stepchg_voltage_mv) {
+				chip->stepchg_state = STEP_ONE;
+				chip->vfloat_mv = chip->stepchg_max_voltage_mv;
+				chip->batt_current_ma = chip->stepchg_taper_ma;
+			} else {
+				chip->stepchg_state = STEP_MAX;
+				chip->vfloat_mv = chip->stepchg_voltage_mv;
+				chip->batt_current_ma =
+						chip->stepchg_max_current_ma;
+			}
+		} else if ((chip->stepchg_state == STEP_MAX) && (batt_ma > 0)) {
+			if (batt_ma <= chip->stepchg_taper_ma) {
+				chip->stepchg_state = STEP_ONE;
+				chip->vfloat_mv = chip->stepchg_max_voltage_mv;
+				chip->batt_current_ma = chip->stepchg_taper_ma;
+			}
+		}
+
 		if (!chip->chg_done_batt_full &&
 		    !chip->float_charge_start_time &&
 		    chip->iterm_disabled &&
@@ -2842,7 +2912,14 @@ static void heartbeat_work(struct work_struct *work)
 			chip->chg_done_batt_full = false;
 			dev_warn(chip->dev, "SOC dropped,  Charge Resume!\n");
 		}
+	} else {
+		chip->stepchg_state = STEP_NONE;
+		chip->vfloat_mv = chip->stepchg_max_voltage_mv;
+		chip->batt_current_ma = chip->stepchg_max_current_ma;
 	}
+
+	if (prev_step != chip->stepchg_state)
+		smb135x_determine_batt_current(chip);
 
 	if ((batt_health == POWER_SUPPLY_HEALTH_WARM) ||
 	    (batt_health == POWER_SUPPLY_HEALTH_COOL) ||
@@ -2991,6 +3068,7 @@ static int handle_dc_removal(struct smb135x_chg *chip)
 	if (chip->dc_psy_type != -EINVAL)
 		power_supply_set_online(&chip->dc_psy, chip->dc_present);
 
+	chip->stepchg_state = STEP_NONE;
 	smb_relax(&chip->smb_wake_source);
 	return 0;
 }
@@ -3108,7 +3186,7 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 		pr_debug("setting usb psy present = %d\n", chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 	}
-
+	chip->stepchg_state = STEP_NONE;
 	smb_relax(&chip->smb_wake_source);
 	return 0;
 }
@@ -4501,10 +4579,26 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	if (rc < 0)
 		chip->vfloat_mv = -EINVAL;
 
+	rc = of_property_read_u32(node, "qcom,stepchg-voltage-mv",
+						&chip->stepchg_voltage_mv);
+	if (rc < 0)
+		chip->stepchg_voltage_mv = -EINVAL;
+
+	rc = of_property_read_u32(node, "qcom,stepchg-taper-ma",
+						&chip->stepchg_taper_ma);
+	if (rc < 0)
+		chip->stepchg_taper_ma = -EINVAL;
+
 	rc = of_property_read_u32(node, "qcom,max-batt-curr-ma",
 				  &chip->batt_current_ma);
 	if (rc < 0)
 		chip->batt_current_ma = -EINVAL;
+
+	if ((chip->stepchg_voltage_mv != -EINVAL) &&
+			(chip->stepchg_taper_ma != -EINVAL)) {
+		chip->stepchg_max_voltage_mv = chip->vfloat_mv;
+		chip->stepchg_max_current_ma = chip->batt_current_ma;
+	}
 
 	rc = of_property_read_u32(node, "qcom,charging-timeout",
 						&chip->safety_time);
@@ -5249,6 +5343,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->hvdcp_powerup = false;
 	chip->demo_mode = false;
 	chip->hb_running = false;
+	chip->stepchg_state = STEP_NONE;
 
 	wakeup_source_init(&chip->smb_wake_source.source, "smb135x_wake");
 	INIT_DELAYED_WORK(&chip->wireless_insertion_work,
@@ -5288,6 +5383,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		return rc;
 	}
 
+	chip->thermal_current_ma = chip->batt_current_ma;
 	i2c_set_clientdata(client, chip);
 
 	rc = smb135x_chip_version_and_revision(chip);
