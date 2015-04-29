@@ -2848,21 +2848,26 @@ int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 		adsp->capt_buf_size = WM_ADSP_CAPTURE_BUFFER_SIZE;
 		adsp->capt_buf.buf = vmalloc(adsp->capt_buf_size);
 
-		if (!adsp->capt_buf.buf)
-			return -ENOMEM;
+		if (!adsp->capt_buf.buf) {
+			ret = -ENOMEM;
+			goto err_capt_buf;
+		}
+
+		adsp->capt_buf.head = 0;
+		adsp->capt_buf.tail = 0;
 	}
 	if (!adsp->capt_buf2.buf) {
 		adsp->capt_buf_size = WM_ADSP_CAPTURE_BUFFER_SIZE;
 		adsp->capt_buf2.buf = vmalloc(adsp->capt_buf_size);
 
-		if (!adsp->capt_buf2.buf)
-			return -ENOMEM;
-	}
+		if (!adsp->capt_buf2.buf) {
+			ret = -ENOMEM;
+			goto err_capt_buf;
+		}
 
-	adsp->capt_buf.head = 0;
-	adsp->capt_buf.tail = 0;
-	adsp->capt_buf2.head = 0;
-	adsp->capt_buf2.tail = 0;
+		adsp->capt_buf2.head = 0;
+		adsp->capt_buf2.tail = 0;
+	}
 
 
 	if (!adsp->raw_capt_buf) {
@@ -2881,7 +2886,7 @@ int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 
 		if (!adsp->raw_capt_buf2) {
 			ret = -ENOMEM;
-			goto err_capt_buf;
+			goto err_raw_capt_buf;
 		}
 	}
 
@@ -2921,8 +2926,14 @@ int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 
 err_raw_capt_buf:
 	kfree(adsp->raw_capt_buf);
+	kfree(adsp->raw_capt_buf2);
+	adsp->raw_capt_buf = NULL;
+	adsp->raw_capt_buf2 = NULL;
 err_capt_buf:
 	vfree(adsp->capt_buf.buf);
+	vfree(adsp->capt_buf2.buf);
+	adsp->capt_buf.buf = NULL;
+	adsp->capt_buf2.buf = NULL;
 
 	return ret;
 }
