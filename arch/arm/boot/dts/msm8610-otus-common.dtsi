@@ -351,6 +351,7 @@
 			headset_button_2_keycode = <0x246>; /* KEY_VOICECOMMAND */
 			headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
 			headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
+			reset_hw_type = <0>;
 			sensor1-supply = <&pm8110_l6>;
 			sensor2-supply = <&pm8110_l14>;
 			sensor3-supply = <&pm8110_l19>;
