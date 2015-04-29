@@ -24,6 +24,19 @@
 #include "msm8926-nemo-bt.dtsi"
 #include "msm8926-nemo-sound.dtsi"
 
+/ {
+	qcom,rmtfs_sharedmem@0x08400000 {
+		status = "disabled";
+	};
+
+	qcom,rmtfs_sharedmem@0x08300000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x08300000 0x200000>;
+		reg-names = "rmtfs";
+		qcom,client-id = <0x00000001>;
+	};
+};
+
 &soc {
 	i2c@f9925000 { /* BLSP1 QUP3 */
 		cell-index = <2>;
