@@ -332,6 +332,7 @@ struct sdhci_msm_pltfm_data {
 	bool no_1p8v;
 	bool pin_cfg_sts;
 	bool is_emmc;
+	bool is_sd;
 	struct sdhci_msm_pin_data *pin_data;
 	struct sdhci_pinctrl_data *pctrl_data;
 	u32 *cpu_dma_latency_us;
@@ -1782,6 +1783,10 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		goto out;
 	}
 
+	/* Support HW reset only if it is possible to cut power */
+	if (!pdata->vreg_data->vdd_io_data->is_always_on)
+		pdata->caps |= MMC_CAP_HW_RESET;
+
 	if (sdhci_msm_dt_parse_gpio_info(dev, pdata)) {
 		dev_err(dev, "failed parsing gpio data\n");
 		goto out;
@@ -1852,6 +1857,9 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 
 	if (of_get_property(np, "qcom,emmc", NULL))
 		pdata->is_emmc = true;
+
+	if (of_get_property(np, "qcom,sd", NULL))
+		pdata->is_sd = true;
 
 	return pdata;
 out:
@@ -3892,7 +3900,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps |= msm_host->pdata->mmc_bus_width;
 	msm_host->mmc->caps |= msm_host->pdata->caps;
 	msm_host->mmc->caps |= MMC_CAP_WAIT_WHILE_BUSY;
-	msm_host->mmc->caps |= MMC_CAP_HW_RESET;
 
 	msm_host->mmc->caps2 |= msm_host->pdata->caps2;
 	msm_host->mmc->caps2 |= MMC_CAP2_CORE_RUNTIME_PM;
@@ -3915,6 +3922,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	if (msm_host->pdata->is_emmc)
 		msm_host->mmc->caps2 |= MMC_CAP2_MMC_ONLY;
+
+	if (msm_host->pdata->is_sd)
+		msm_host->mmc->caps2 |= MMC_CAP2_SD_ONLY;
 
 	if (mmc_host_uhs(msm_host->mmc)) {
 		sdhci_caps = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES_1);
