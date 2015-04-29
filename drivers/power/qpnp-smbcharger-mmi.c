@@ -109,9 +109,10 @@ struct smbchg_chip {
 	int				usb_target_current_ma;
 	int				usb_tl_current_ma;
 	int				dc_target_current_ma;
+	int				prev_target_fastchg_current_ma;
 	int				target_fastchg_current_ma;
-	int                             allowed_fastchg_current_ma;
-	bool                            update_allowed_fastchg_current_ma;
+	int				allowed_fastchg_current_ma;
+	bool				update_allowed_fastchg_current_ma;
 	int				fastchg_current_ma;
 	unsigned int			pchg_current_map_len;
 	struct pchg_current_map        *pchg_current_map_data;
@@ -1393,6 +1394,23 @@ out:
 	return rc;
 }
 
+static int smbchg_get_pchg_current_map_index(struct smbchg_chip *chip)
+{
+	int i;
+
+	for (i = 0; i < chip->pchg_current_map_len; i++) {
+		if (chip->target_fastchg_current_ma >=
+		    chip->pchg_current_map_data[i].requested) {
+			break;
+		}
+	}
+
+	if (i >= chip->pchg_current_map_len)
+		i = (chip->pchg_current_map_len - 1);
+
+	return i;
+}
+
 #define CHGPTH_CFG		0xF4
 #define CFG_USB_2_3_SEL_BIT	BIT(7)
 #define CFG_USB_2		0
@@ -1567,7 +1585,7 @@ static int smbchg_get_min_parallel_current_ma(struct smbchg_chip *chip)
 #define PARALLEL_MIN_BATT_VOLT_UV	3300000
 static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 {
-	int min_current_thr_ma, rc, type;
+	int min_current_thr_ma, rc, type, index;
 	u8 reg;
 
 	if (!smbchg_parallel_en) {
@@ -1643,6 +1661,10 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 			chip->usb_tl_current_ma, min_current_thr_ma);
 		return false;
 	}
+
+	index = smbchg_get_pchg_current_map_index(chip);
+	if (chip->pchg_current_map_data[index].secondary == 0)
+		return false;
 
 	return true;
 }
@@ -1778,6 +1800,7 @@ static void taper_irq_en(struct smbchg_chip *chip, bool en)
 
 static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 {
+	int current_max_ma = chip->parallel.current_max_ma;
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 
 	if (!parallel_psy)
@@ -1793,7 +1816,9 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 	chip->usb_tl_current_ma =
 		calc_thermal_limited_current(chip, chip->usb_target_current_ma);
 	smbchg_set_usb_current_max(chip, chip->usb_tl_current_ma);
-	smbchg_rerun_aicl(chip);
+
+	if (current_max_ma != 0)
+		smbchg_rerun_aicl(chip);
 }
 
 #define PARALLEL_TAPER_MAX_TRIES		3
@@ -1904,7 +1929,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	int new_parallel_cl_ma, min_current_thr_ma;
 	int primary_fastchg_current;
 	int secondary_fastchg_current;
-	int i;
+	int index;
 
 	if (!parallel_psy)
 		return;
@@ -1957,7 +1982,9 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 
 	new_parallel_cl_ma = total_current_ma / 2;
 
-	if (new_parallel_cl_ma == parallel_cl_ma) {
+	if ((new_parallel_cl_ma == parallel_cl_ma) &&
+	    (chip->target_fastchg_current_ma ==
+	     chip->prev_target_fastchg_current_ma)) {
 		pr_smb(PR_STATUS,
 			"AICL at %d, old ICL: %d new ICL: %d, skipping\n",
 			current_limit_ma, parallel_cl_ma, new_parallel_cl_ma);
@@ -1967,14 +1994,10 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 			current_limit_ma, parallel_cl_ma, new_parallel_cl_ma);
 	}
 
-	for (i = (chip->pchg_current_map_len - 1); i >= 0; i--) {
-		if (chip->target_fastchg_current_ma <=
-		    chip->pchg_current_map_data[i].requested) {
-			break;
-		}
-	}
-	primary_fastchg_current = chip->pchg_current_map_data[i].primary;
-	secondary_fastchg_current = chip->pchg_current_map_data[i].secondary;
+	index = smbchg_get_pchg_current_map_index(chip);
+	primary_fastchg_current = chip->pchg_current_map_data[index].primary;
+	secondary_fastchg_current =
+		chip->pchg_current_map_data[index].secondary;
 
 	pr_smb(PR_STATUS, "primary charge current=%d\n",
 	       primary_fastchg_current);
@@ -1993,13 +2016,13 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	smbchg_set_usb_current_max(chip, chip->parallel.current_max_ma);
 	power_supply_set_current_limit(parallel_psy,
 				chip->parallel.current_max_ma * 1000);
+
+	chip->prev_target_fastchg_current_ma = chip->target_fastchg_current_ma;
 	return;
 
 disable_parallel:
-	if (chip->parallel.current_max_ma != 0) {
-		pr_smb(PR_STATUS, "disabling parallel charger\n");
-		smbchg_parallel_usb_disable(chip);
-	}
+	pr_smb(PR_STATUS, "disabling parallel charger\n");
+	smbchg_parallel_usb_disable(chip);
 }
 
 static void smbchg_parallel_usb_en_work(struct work_struct *work)
@@ -2012,7 +2035,7 @@ static void smbchg_parallel_usb_en_work(struct work_struct *work)
 	mutex_lock(&chip->parallel.lock);
 	if (smbchg_is_parallel_usb_ok(chip)) {
 		smbchg_parallel_usb_enable(chip);
-	} else if (chip->parallel.current_max_ma != 0) {
+	} else {
 		pr_smb(PR_STATUS, "parallel charging unavailable\n");
 		smbchg_parallel_usb_disable(chip);
 	}
@@ -2032,7 +2055,7 @@ static void smbchg_parallel_usb_check_ok(struct smbchg_chip *chip)
 		schedule_delayed_work(
 			&chip->parallel_en_work,
 			msecs_to_jiffies(PARALLEL_CHARGER_EN_DELAY_MS));
-	} else if (chip->parallel.current_max_ma != 0) {
+	} else {
 		pr_smb(PR_STATUS, "parallel charging unavailable\n");
 		smbchg_parallel_usb_disable(chip);
 	}
