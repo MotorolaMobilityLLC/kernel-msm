@@ -452,14 +452,6 @@ config SLUB_DEBUG_ON
 	  off in a kernel built with CONFIG_SLUB_DEBUG_ON by specifying
 	  "slub_debug=-".
 
-config SLUB_DEBUG_USER_ON
-	bool "SLUB debugging for history user record"
-	depends on SLUB && SLUB_DEBUG && !KMEMCHECK
-	default n
-	help
-	  SLUB debugging for history user record for tracing previous
-	  10 users.Only eable it for debug purpose.
-
 config SLUB_STATS
 	default n
 	bool "Enable SLUB performance statistics"
