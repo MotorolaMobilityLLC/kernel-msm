@@ -109,6 +109,7 @@ static int hdmi_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm8994_auxpcm_rate = 8000;
 
 static struct platform_device *spdev;
+static struct regulator *codec_supply_reg;
 static int ext_us_amp_gpio = -1;
 static int msm8994_spk_control = 1;
 static int msm_slim_0_rx_ch = 1;
@@ -3728,6 +3729,18 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 	if (!pdata) {
 		dev_err(&pdev->dev, "Can't allocate msm8994_asoc_mach_data\n");
 		return -ENOMEM;
+	}
+
+	codec_supply_reg = devm_regulator_get(&pdev->dev, "vreg-wlf1p2");
+	if (PTR_ERR(codec_supply_reg) == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (IS_ERR(codec_supply_reg)) {
+		pr_warn("%s: Cannot get regulator %s.\n",
+			__func__, "vreg-wlf1p2");
+	} else if (regulator_enable(codec_supply_reg)) {
+		pr_err("%s: failed to enable codec supply regulator.\n", __func__);
+	} else {
+		pr_info("%s: enabled codec supply regulator.\n", __func__);
 	}
 
 	pdata->tfa9890_earpiece_gpio = -EINVAL;
