@@ -732,6 +732,16 @@ int msm_vidc_release_buffers(void *instance, int buffer_type)
 
 	if (!inst)
 		return -EINVAL;
+	/*
+	* In dynamic buffer mode, driver needs to release resources,
+	* but not call release buffers on firmware, as the buffers
+	* were never registered with firmware.
+	*/
+	if ((buffer_type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) &&
+		(inst->output_alloc_mode ==
+				HAL_BUFFER_MODE_DYNAMIC)) {
+		goto free_and_unmap;
+	}
 
 	list_for_each_safe(ptr, next, &inst->registered_bufs) {
 		bool release_buf = false;
@@ -773,15 +783,22 @@ int msm_vidc_release_buffers(void *instance, int buffer_type)
 				buffer_info.m.planes[0].length);
 	}
 
+free_and_unmap:
 	mutex_lock(&inst->lock);
 	list_for_each_safe(ptr, next, &inst->registered_bufs) {
 		bi = list_entry(ptr, struct buffer_info, list);
 		if (bi->type == buffer_type) {
 			list_del(&bi->list);
 			for (i = 0; i < bi->num_planes; i++) {
-				if (bi->handle[i])
+				if (bi->handle[i] && bi->mapped[i]) {
+					dprintk(VIDC_DBG,
+						"%s: [UNMAP] binfo = %p, handle[%d] = %p, device_addr = 0x%x, fd = %d, offset = %d, mapped = %d\n",
+						__func__, bi, i, bi->handle[i],
+						bi->device_addr[i], bi->fd[i],
+						bi->buff_off[i], bi->mapped[i]);
 					msm_smem_free(inst->mem_client,
 							bi->handle[i]);
+				}
 			}
 			kfree(bi);
 		}
