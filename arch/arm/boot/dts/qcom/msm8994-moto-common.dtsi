@@ -806,6 +806,14 @@
 		regulator-always-on;
 	};
 
+	vreg_wlf1p2: vreg_wlf1p2 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_wlf1p2";
+		gpio = <&pm8994_gpios 1 0>;
+		enable-active-high;
+		regulator-always-on;
+	};
+
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
 		status = "ok";
@@ -894,6 +902,7 @@
 		pinctrl-names = "sleep",
 			"auxpcm-active",
 			"active";
+		vreg-wlf1p2-supply = <&vreg_wlf1p2>;
 		pinctrl-0 = <&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
 		pinctrl-1 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
 		pinctrl-2 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
@@ -1071,6 +1080,16 @@
 };
 
 &pm8994_gpios {
+	gpio@c000 { /* GPIO 1 - WM5110 1.2V REG */
+		status = "okay";
+		qcom,mode = <1>; /* Output */
+		qcom,pull = <5>; /* None */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,master-en = <1>;
+	};
+
 	gpio@c200 { /* GPIO 3 - VOL_UP */
 		status = "okay";
 		qcom,mode = <0>;
