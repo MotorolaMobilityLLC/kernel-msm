@@ -15,6 +15,8 @@ struct gpio_keys_button {
 	bool can_disable;
 	int value;		/* axis value for EV_ABS */
 	unsigned int irq;	/* Irq number in case of interrupt keys */
+	bool can_reset;		/* key is able to reset system */
+	int reset_interval;	/* reset key interval in msec */
 };
 
 struct gpio_keys_platform_data {
@@ -27,5 +29,13 @@ struct gpio_keys_platform_data {
 	void (*disable)(struct device *dev);
 	const char *name;		/* input device name */
 };
+
+
+#define RESETKEY_PRESS			0x0001 /* power key is pressed */
+#define RESETKEY_RELEASE		0x0002 /* power key is released */
+#define RESETKEY_PREPARE_HWREST		0x0003 /* Going to reset whole system by pmic*/
+
+extern int register_resetkey_notifier(struct notifier_block *nb);
+extern int unregister_resetkey_notifier(struct notifier_block *nb);
 
 #endif
