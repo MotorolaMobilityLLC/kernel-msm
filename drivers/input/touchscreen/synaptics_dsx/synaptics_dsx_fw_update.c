@@ -28,9 +28,6 @@
 #include "synaptics_dsx_core.h"
 
 
-#define FW_IMAGE_OFILM "Ofilm.img"
-
-#define FW_IMAGE_TRULY "Truly.img"
 
 #define DO_STARTUP_FW_UPDATE
 
@@ -78,6 +75,26 @@
 
 #define INT_DISABLE_WAIT_MS 20
 #define ENTER_FLASH_PROG_WAIT_MS 20
+
+
+struct of_device_id_info
+{
+	int     config_id;
+	char	product_id[32];
+	char	firmware_name[32];
+};
+
+static struct of_device_id_info fwu_match_table[] = {
+	{ 0x03, "002", "Truly.img"},
+	{ 0x06, "000", "Ofilm.img"},
+};
+
+#define PRODUCT_INFO_OFFSET 0x40
+#define PRODUCT_INFO_HEAD "MCRYHW"
+
+#define PRODUCT_INFO_HEAD_LEN 6
+#define PRODUCT_INFO_LEN 10
+#define PRODUCT_ID_LEN 3
 
 static int fwu_do_reflash(void);
 
@@ -1759,15 +1776,15 @@ exit:
 	return retval;
 }
 
-#define DEVICE_OFILM	0X06
-#define DEVICE_TRULY	0X03
-
-int get_device_config_id(void)
+int synaptics_rmi4_get_config_id(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval = 0;
 	unsigned char config_id[4];
-	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
-	
+
+	if(rmi4_data == NULL) {
+		pr_err("%s:invalid para!!\n", __func__);
+		return -EINVAL;
+	}
 	/* Get device config ID */
 	retval = synaptics_rmi4_reg_read(rmi4_data,
 				fwu->f34_fd.ctrl_base_addr,
@@ -1777,7 +1794,7 @@ int get_device_config_id(void)
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Failed to read device config ID\n",
 				__func__);
-		return -1;
+		return retval;
 	}
 	dev_info(rmi4_data->pdev->dev.parent,
 			"%s: Device config ID = 0x%02x 0x%02x 0x%02x 0x%02x\n",
@@ -1786,7 +1803,142 @@ int get_device_config_id(void)
 			config_id[1],
 			config_id[2],
 			config_id[3]);
-	return config_id[2];
+	return  config_id[0] << 16 | config_id[1] << 8 | config_id[2];
+}
+
+static int synaptics_rmi4_get_product_id(struct synaptics_rmi4_data *rmi4_data,char * id)
+{
+	int retval;
+	unsigned int len = 0;
+	unsigned char productid_info[PRODUCT_INFO_LEN + 1] = {0};
+
+	if(rmi4_data == NULL || (id == NULL)) {
+		pr_err("%s:invalid para!!\n", __func__);
+		return -EINVAL;
+	}
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+					SYNA_F01_RMI_QUERY11,
+					productid_info,
+					sizeof(productid_info)-1);
+	if (retval < 0) {
+		pr_err("%s:read product id info fail,retval=%d\n", __func__,retval);
+		return retval;
+	}
+	len = strlen(productid_info);
+	if(len < PRODUCT_ID_LEN) {
+		pr_err("%s:read product id info fail,len=%d\n", __func__,len);
+		return -EINVAL;
+	}
+
+	pr_info("%s:product_info=%s\n", __func__ ,productid_info);
+
+	memcpy(id, &productid_info[len - PRODUCT_ID_LEN], PRODUCT_ID_LEN);
+	id[PRODUCT_ID_LEN] = '\0';
+
+	return 0;
+}
+
+static int get_fw_by_product_id(const char *name)
+{
+	int i = 0;
+	for (i = 0; i < ARRAY_SIZE(fwu_match_table); i++) {
+		if (strcmp(fwu_match_table[i].product_id, name) == 0)
+			return i;
+	}
+	return -EINVAL;
+}
+
+static int get_fw_by_config_id(int id)
+{
+	int i = 0;
+	for (i = 0; i < ARRAY_SIZE(fwu_match_table); i++) {
+		if (fwu_match_table[i].config_id == id)
+			return i;
+	}
+	return -EINVAL;
+}
+
+static int find_fw_by_config_id(struct synaptics_rmi4_data *rmi4_data)
+{
+	int id,index;
+
+	id = synaptics_rmi4_get_config_id(rmi4_data);
+	if(id < 0) {
+		pr_err("%s:get id fail\n",__func__);
+		return -EINVAL;
+	}
+	index = get_fw_by_config_id(id);
+	if(index < 0) {
+		pr_err("%s:get fw fail\n",__func__);
+		return -EINVAL;
+	}
+
+	return index;
+}
+
+static int find_fw_by_product_id(struct synaptics_rmi4_data *rmi4_data)
+{
+	unsigned char productid_info[PRODUCT_ID_LEN + 1] = {0};
+	int retval;
+	int index;
+
+	retval = synaptics_rmi4_get_product_id(rmi4_data,productid_info);
+	if(retval < 0) {
+		pr_err("%s:get product id fail\n",__func__);
+		return -EINVAL;
+	}
+
+	index = get_fw_by_product_id(productid_info);
+	if(index < 0) {
+		pr_err("%s:get fw fail\n",__func__);
+		return -EINVAL;
+	}
+
+	return index;
+}
+
+static int get_device_firmware(struct synaptics_rmi4_data *rmi4_data)
+{
+	int index;
+
+	index = find_fw_by_config_id(rmi4_data);
+	if(index < 0) {
+		pr_info("%s:get fw fail\n",__func__);
+	}
+	else{
+		pr_info("%s:get fw from config id,fw=%s\n",__func__,fwu_match_table[index].firmware_name);
+		strncpy(fwu->img.image_name, fwu_match_table[index].firmware_name, MAX_IMAGE_NAME_LEN);
+		return 0;
+	}
+
+	index = find_fw_by_product_id(rmi4_data);
+	if(index < 0) {
+		pr_err("%s:get fw fail\n",__func__);
+		return -EINVAL;
+	}
+	else{
+		pr_info("%s:get fw from product id,fw=%s\n",__func__,fwu_match_table[index].firmware_name);
+		strncpy(fwu->img.image_name, fwu_match_table[index].firmware_name, MAX_IMAGE_NAME_LEN);
+		fwu->force_update = true;
+		return 0;
+	}
+}
+
+static int fw_lockdown_check(const unsigned char *image)
+{
+	unsigned char productid_info[PRODUCT_INFO_HEAD_LEN + 1] = {0};
+
+	if(image == NULL)
+		return -EINVAL;
+
+	memcpy(productid_info, image + PRODUCT_INFO_OFFSET, strlen(PRODUCT_INFO_HEAD));
+	pr_info("%s:product id head=%s\n",__func__,productid_info);
+
+	if (strcmp(productid_info, PRODUCT_INFO_HEAD) == 0)
+		return true;
+	else
+		return false;
+
 }
 
 static int fwu_start_reflash(void)
@@ -1796,8 +1948,7 @@ static int fwu_start_reflash(void)
 	struct f01_device_status f01_device_status;
 	const struct firmware *fw_entry = NULL;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
-	int device_id = 0;
-	
+
 	if (rmi4_data->sensor_sleep) {
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Sensor sleeping\n",
@@ -1810,21 +1961,14 @@ static int fwu_start_reflash(void)
 	pr_notice("%s: Start of reflash process\n", __func__);
 
 	if (fwu->img.image == NULL) {
-		
-		device_id = get_device_config_id();
-		printk("touch device_config_id=%d\n ",device_id);
-		if(device_id == DEVICE_OFILM){
-			strncpy(fwu->img.image_name, FW_IMAGE_OFILM, MAX_IMAGE_NAME_LEN);
-		}
-		else if(device_id == DEVICE_TRULY){
-			strncpy(fwu->img.image_name, FW_IMAGE_TRULY, MAX_IMAGE_NAME_LEN);
-		}
-		else{
-			printk("unhknow device!!!\n");
+
+		retval = get_device_firmware(rmi4_data);
+		if(retval < 0) {
+			pr_info("%s:no matched device fw found!\n",__func__);
 			retval = -EINVAL;
-			goto exit;	 
+			goto exit;
 		}
-		
+
 		dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: Requesting firmware image %s\n",
 				__func__, fwu->img.image_name);
@@ -1871,6 +2015,10 @@ static int fwu_start_reflash(void)
 		fwu->in_flash_prog_mode = false;
 	}
 
+	if(fw_lockdown_check(fwu->img.image) > 0) {
+		pr_info("%s:fw lockdown info found\n",__func__);
+		fwu->do_lockdown = true;
+	}
 	if (fwu->do_lockdown && (fwu->img.lockdown.data != NULL)) {
 		switch (fwu->bl_version) {
 		case V5:
