@@ -185,7 +185,7 @@
 			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@46 {
-			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@47 {
 			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
@@ -233,7 +233,8 @@
 			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
 		};
 		gpio@62 {
-			suspend = <0x0012>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, OUT_LOW */
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
+			active = <0x0002>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_LOW */
 		};
 		gpio@63 {
 			suspend = <0x1000>; /* FUNC_1, DRV_2MA, PULL_NONE, IN */
