@@ -942,6 +942,8 @@ static int get_prop_batt_capacity(struct smbchg_chip *chip)
 }
 
 #define DEFAULT_BATT_TEMP		200
+#define GLITCH_BATT_TEMP		600
+#define ERROR_BATT_TEMP 		597
 static int get_prop_batt_temp(struct smbchg_chip *chip)
 {
 	int temp, rc;
@@ -951,6 +953,12 @@ static int get_prop_batt_temp(struct smbchg_chip *chip)
 		pr_smb(PR_STATUS, "Couldn't get temperature rc = %d\n", rc);
 		temp = DEFAULT_BATT_TEMP;
 	}
+
+	if (temp > GLITCH_BATT_TEMP) {
+		dev_err(chip->dev, "GLITCH: Temperature Read %d \n", temp);
+		temp = ERROR_BATT_TEMP;
+	}
+
 	return temp;
 }
 
