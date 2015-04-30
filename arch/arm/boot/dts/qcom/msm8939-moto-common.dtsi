@@ -662,6 +662,7 @@
 	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off>;
 
 	qcom,nonremovable;
+	qcom,emmc;
 
 	status = "ok";
 };
@@ -689,6 +690,8 @@
 			2 &msm_gpio 25 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msm_gpio 25 0x0>;
+
+	qcom,sd;
 
 	status = "ok";
 };
