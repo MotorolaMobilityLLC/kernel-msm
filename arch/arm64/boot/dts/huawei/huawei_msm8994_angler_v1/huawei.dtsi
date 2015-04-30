@@ -23,7 +23,7 @@
 
 /*#include "huawei-i2c-detect-va.dtsi"*/
 /* add tp and lcd driver */
-/*#include "huawei-lcd.dtsi"*/
+#include "huawei-lcd.dtsi"
 #include "huawei-tp.dtsi"
 /*#include "huawei-camera.dtsi"*/
 /*#include "huawei-sensors.dtsi"*/

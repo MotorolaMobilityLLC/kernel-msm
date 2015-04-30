@@ -300,7 +300,7 @@
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 	qcom,dsi-panel-bias-vreg;
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
-       /* qcom,platform-enable-gpio = <&pm8994_gpios 14 0>; */
+        qcom,platform-enable-gpio = <&pm8994_gpios 14 0>;
 };
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_video_1>;

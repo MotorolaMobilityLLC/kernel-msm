@@ -10,3 +10,8 @@
 &mdss_fb0 {
 	huawei,set-brightness-enabled;
 };
+
+&mdss_dsi0 {
+	/delete-property/ qcom,platform-enable-gpio;
+};
+
