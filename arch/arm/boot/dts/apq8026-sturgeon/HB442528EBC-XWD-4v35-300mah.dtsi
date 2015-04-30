@@ -18,7 +18,7 @@
 		qcom,flat-ocv-threshold-uv = <3800000>;
 		qcom,max-voltage-uv = <4350000>;
 		qcom,v-cutoff-uv = <3400000>;
-		qcom,chg-term-ua = <30000>;
+		qcom,chg-term-ua = <20000>;
 		qcom,batt-id-kohm = <470>;
 		qcom,batt-name = "HB442528EBC-XWD-4v35-300mah";
 		qcom,battery-type = "HB442528EBC-XWD-4v35-300mah";
