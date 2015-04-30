@@ -40,6 +40,9 @@ struct gpio_button_data {
 	spinlock_t lock;
 	bool disabled;
 	bool key_pressed;
+	struct work_struct reset_work;
+	struct timer_list reset_timer;
+	unsigned int timer_hwreset;	/* in msecs */
 };
 
 struct gpio_keys_drvdata {
@@ -332,6 +335,28 @@ static char *key_descriptions[] = {
 };
 #endif
 
+/* Routines for resetkey-transition notifications */
+static BLOCKING_NOTIFIER_HEAD(resetkey_chain_head);
+
+int register_resetkey_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&resetkey_chain_head, nb);
+}
+EXPORT_SYMBOL_GPL(register_resetkey_notifier);
+
+int unregister_resetkey_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&resetkey_chain_head, nb);
+}
+EXPORT_SYMBOL_GPL(unregister_resetkey_notifier);
+
+int resetkey_notifier_call_chain(unsigned long val)
+{
+	int ret = blocking_notifier_call_chain(&resetkey_chain_head, val, NULL);
+
+	return notifier_to_errno(ret);
+}
+
 static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 {
 	const struct gpio_keys_button *button = bdata->button;
@@ -363,6 +388,13 @@ static void gpio_keys_gpio_work_func(struct work_struct *work)
 		pr_info("gpio_keys: %s %s\n", state ? "Pressed" : "Released",
 			key_descriptions[button->code - KEY_VOLUMEDOWN]);
 #endif
+	if (button->can_reset) {
+		if (state)
+			mod_timer(&bdata->reset_timer,
+				jiffies + msecs_to_jiffies(bdata->timer_hwreset));
+		else
+			del_timer_sync(&bdata->reset_timer);
+	}
 	gpio_keys_gpio_report_event(bdata);
 }
 
@@ -371,6 +403,19 @@ static void gpio_keys_gpio_timer(unsigned long _data)
 	struct gpio_button_data *bdata = (struct gpio_button_data *)_data;
 
 	schedule_work(&bdata->work);
+}
+
+static void reset_keys_work_func(struct work_struct *work)
+{
+	pr_info("gpio_keys: notify listeners pmic preparing to reset\n");
+	resetkey_notifier_call_chain(RESETKEY_PREPARE_HWREST);
+}
+
+static void powerkey_gpio_timer(unsigned long _data)
+{
+	struct gpio_button_data *bdata = (struct gpio_button_data *)_data;
+
+	schedule_work(&bdata->reset_work);
 }
 
 static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
@@ -492,6 +537,13 @@ static int __devinit gpio_keys_setup_key(struct platform_device *pdev,
 
 		isr = gpio_keys_gpio_isr;
 		irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
+
+		if (button->can_reset) {
+			INIT_WORK(&bdata->reset_work, reset_keys_work_func);
+			bdata->timer_hwreset = button->reset_interval;
+			setup_timer(&bdata->reset_timer, powerkey_gpio_timer,
+					(unsigned long)bdata);
+		}
 
 	} else {
 		if (!button->irq) {
