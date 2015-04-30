@@ -1176,6 +1176,7 @@ static int req_crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	if (IS_ERR(tfm)) {
 		DMERR("%s ablkcipher tfm allocation failed : error\n",
 					 __func__);
+		tfm = NULL;
 		err =  DM_REQ_CRYPT_ERROR;
 		goto ctr_exit;
 	}
