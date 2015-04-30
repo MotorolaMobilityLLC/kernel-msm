@@ -11,3 +11,4 @@ header-y += drm/
 header-y += xen/
 header-y += scsi/
 header-y += media/
+header-y += uapi/
