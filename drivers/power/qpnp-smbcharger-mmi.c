@@ -299,7 +299,7 @@ enum wake_reason {
 };
 
 static void smbchg_rate_check(struct smbchg_chip *chip);
-static void smbchg_set_temp_chgpath(struct smbchg_chip *chip);
+static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp);
 
 static int smbchg_debug_mask;
 module_param_named(
@@ -4226,7 +4226,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	chip->stepchg_state = STEP_NONE;
 	chip->vfloat_mv = chip->stepchg_max_voltage_mv;
 	set_max_allowed_current_ma(chip, chip->stepchg_current_ma);
-	smbchg_set_temp_chgpath(chip);
+	smbchg_set_temp_chgpath(chip, chip->temp_state);
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	smbchg_relax(chip, PM_CHARGER);
 	cancel_delayed_work(&chip->heartbeat_work);
@@ -6653,7 +6653,7 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 	return;
 }
 
-static void smbchg_set_temp_chgpath(struct smbchg_chip *chip)
+static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 {
 	if (chip->factory_mode)
 		return;
@@ -6673,8 +6673,11 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip)
 	    (chip->stepchg_state == STEP_FULL))
 		smbchg_charging_en(chip, 0);
 	else {
-		smbchg_charging_en(chip, 0);
-		mdelay(10);
+		if ((prev_temp == POWER_SUPPLY_HEALTH_COOL) &&
+		    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)) {
+			smbchg_charging_en(chip, 0);
+			mdelay(10);
+		}
 		smbchg_charging_en(chip, 1);
 	}
 }
@@ -6842,7 +6845,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	    (prev_ext_lvl != chip->ext_high_temp) ||
 	    (prev_step != chip->stepchg_state) ||
 	    (chip->update_allowed_fastchg_current_ma)) {
-		smbchg_set_temp_chgpath(chip);
+		smbchg_set_temp_chgpath(chip, prev_batt_health);
 		if (chip->usb_present) {
 			smbchg_parallel_usb_check_ok(chip);
 			chip->update_allowed_fastchg_current_ma = false;
