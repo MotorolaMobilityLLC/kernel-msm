@@ -36,7 +36,7 @@
 #define GPIO_PM8921_KEY2_VOLUME_UP	PM8921_GPIO_PM_TO_SYS(4)
 #define GPIO_PM8921_KEY2_VOLUME_DOWN	GPIO_PM8921_KEY_VOLUME_DOWN
 
-#define GPIO_KEY(_id, _iswake)		\
+#define GPIO_KEY(_id, _iswake, _isreset)	\
 	{					\
 		.code = _id,			\
 		.gpio = GPIO_##_id,		\
@@ -45,12 +45,14 @@
 		.type = EV_KEY,			\
 		.wakeup = _iswake,		\
 		.debounce_interval = 5,	\
+		.can_reset= _isreset,	\
+		.reset_interval= 7000, \
 	}
 
 static struct gpio_keys_button asustek_keys[] = {
-	[0] = GPIO_KEY(KEY_POWER, 1),
-	[1] = GPIO_KEY(KEY_VOLUMEUP, 0),
-	[2] = GPIO_KEY(KEY_VOLUMEDOWN, 0),
+	[0] = GPIO_KEY(KEY_POWER, 1, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, 0, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, 0, 0),
 };
 
 static struct gpio_keys_platform_data asustek_keys_platform_data = {
