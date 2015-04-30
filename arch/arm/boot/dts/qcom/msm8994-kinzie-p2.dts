@@ -22,3 +22,19 @@
 &pmi8994_charger {
 	qcom,dc-psy-ma = <1000>;
 };
+
+&tlmm_pinmux {
+	cam_sensor_mclk2_active {
+		/* active state */
+		cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+			drive-strength = <12>; /* 12 MA */
+		};
+	};
+
+	cam_sensor_mclk2_suspend {
+		/* suspend state */
+		cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+			drive-strength = <12>; /* 12 MA */
+		};
+	};
+};
