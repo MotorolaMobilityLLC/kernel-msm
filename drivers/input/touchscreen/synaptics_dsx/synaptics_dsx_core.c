@@ -847,6 +847,8 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_f11_data_1_5 data;
 	struct synaptics_rmi4_f11_extra_data *extra_data;
 	unsigned char f11_2d_data28;
+	static bool key_release = true;
+
 	/*
 	 * The number of finger status registers is determined by the
 	 * maximum number of fingers supported - 2 bits per finger. So
@@ -881,7 +883,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 0);
 			input_report_key(rmi4_data->input_dev, BTN_TOUCH, 0);
 			input_sync(rmi4_data->input_dev);
-			rmi4_data->suspend = false;
 		}
 
 		return 0;
@@ -905,6 +906,19 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			vibrator_ctrl_kernel(50);
 			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
 			input_sync(rmi4_data->input_dev);
+			if (!key_release)
+			{
+				input_mt_slot(rmi4_data->input_dev, 0);
+				input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 0);
+				input_report_key(rmi4_data->input_dev,
+				BTN_TOUCH, 0);
+				input_report_key(rmi4_data->input_dev,
+						BTN_TOOL_FINGER, 0);
+				#ifndef TYPE_B_PROTOCOL
+				input_mt_sync(rmi4_data->input_dev);
+				#endif
+				input_sync(rmi4_data->input_dev);
+			}
 			return 0;
 		}
 	}
@@ -998,10 +1012,12 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					x, y, wx, wy);
 
 			touch_count++;
+			key_release = false;
 		}
 	}
 
 	if (touch_count == 0) {
+		key_release = true;
 		input_report_key(rmi4_data->input_dev,
 				BTN_TOUCH, 0);
 		input_report_key(rmi4_data->input_dev,
@@ -3445,9 +3461,10 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && event == FB_EVENT_BLANK && rmi4_data ) {
 		blank = evdata->data;
 
-		if (*blank == FB_BLANK_UNBLANK)
+		if (*blank == FB_BLANK_UNBLANK && rmi4_data->suspend)
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-		else if (*blank == FB_BLANK_POWERDOWN)
+		else if (*blank == FB_BLANK_POWERDOWN ||
+				*blank == FB_BLANK_VSYNC_SUSPEND)
 			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
 	}
 
@@ -3826,6 +3843,11 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	if (rmi4_data->stay_awake)
 		return 0;
+	if (rmi4_data->suspend)
+	{
+		pr_info("%s:already in suspend\n", __func__);
+		return 0;
+	}
 
 	if (rmi4_data->enable_wakeup_gesture) {
 		synaptics_rmi4_wakeup_gesture(rmi4_data, true);
@@ -3896,7 +3918,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 exit:
 	//reset
-        synaptics_rmi4_sw_reset_device(rmi4_data);
+	synaptics_rmi4_sw_reset_device(rmi4_data);
 	synaptics_rmi4_hw_reset_device(rmi4_data);
 	synaptics_rmi4_palm_detect_config(rmi4_data,PALM_DETECT_SIZE);
 	synaptics_rmi4_doze_interval_config(rmi4_data,DOZE_INTERVAL);
@@ -3907,8 +3929,10 @@ exit:
 }
 
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
+#if (!defined(CONFIG_FB) && !defined(CONFIG_HAS_EARLYSUSPEND))
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
+#endif
 };
 #endif
 
