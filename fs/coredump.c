@@ -506,6 +506,48 @@ static int umh_pipe_setup(struct subprocess_info *info, struct cred *new)
 	return err;
 }
 
+#ifdef CONFIG_COREDUMP_PERMISSION_HACK
+static void adjust_permissions(struct cred *cred, int *flag,
+		bool *need_nonrelative)
+{
+	cred->uid = GLOBAL_ROOT_UID;
+	cred->fsuid = GLOBAL_ROOT_UID;
+
+	cap_raise(cred->cap_effective, CAP_SYS_ADMIN);
+	cap_raise(cred->cap_effective, CAP_DAC_OVERRIDE);
+	cap_raise(cred->cap_effective, CAP_FOWNER);
+
+#if defined(CONFIG_SELINUX)
+#define COREDUMP_SECCTX "u:r:coredump:s0"
+	{
+		/* HACK -- selinux hides all of this stuff */
+		struct task_security_struct {
+			u32 osid;		/* SID prior to last execve */
+			u32 sid;		/* current SID */
+			u32 exec_sid;		/* exec SID */
+			u32 create_sid;		/* fscreate SID */
+			u32 keycreate_sid;	/* keycreate SID */
+			u32 sockcreate_sid;	/* fscreate SID */
+		};
+		u32 coredump_secid;
+		struct task_security_struct *tsec = cred->security;
+
+		security_secctx_to_secid(COREDUMP_SECCTX,
+				strlen(COREDUMP_SECCTX), &coredump_secid);
+		if (coredump_secid)
+			tsec->sid = coredump_secid;
+	}
+#undef COREDUMP_SECCTX
+#endif
+
+	*flag = O_EXCL;		/* Stop rewrite attacks */
+	*need_nonrelative = true;
+}
+#else
+static inline void adjust_permissions(struct cred *cred, int *flag,
+		bool *need_nonrelative) {}
+#endif
+
 void do_coredump(const siginfo_t *siginfo)
 {
 	struct core_state core_state;
@@ -560,9 +602,12 @@ void do_coredump(const siginfo_t *siginfo)
 	if (retval < 0)
 		goto fail_creds;
 
-	old_cred = override_creds(cred);
-
 	ispipe = format_corename(&cn, &cprm);
+
+	if (!ispipe)
+		adjust_permissions(cred, &flag, &need_nonrelative);
+
+	old_cred = override_creds(cred);
 
 	if (ispipe) {
 		int dump_count;
