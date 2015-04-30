@@ -22,6 +22,13 @@
 #include <linux/i2c.h>
 #include <linux/of_gpio.h>
 #include <linux/regmap.h>
+#include <linux/delay.h>
+
+#ifdef DW8768_DEBUG
+#define dw_info(...)	pr_info(__VA_ARGS__)
+#else
+#define dw_info(...)	do { } while (0)
+#endif
 
 struct dw8768_regulator {
 	struct device			*dev;
@@ -32,8 +39,20 @@ struct dw8768_regulator {
 	struct device_node		*reg_node;
 	int				ena_gpio;
 	int				enm_gpio;
+	int				pre_on_usleep;
+	int				post_on_usleep;
+	int				pre_off_usleep;
+	int				post_off_usleep;
 	bool				is_enabled;
+	int				curr_uV;
+	u8				vol_set_val;
+	bool				vol_set_postponed;
 };
+
+#define DW8768_REG_VPOS_ADDR		0x00
+#define DW8768_REG_VNEG_ADDR		0x01
+#define DW8768_REG_V_MASK		0x1f
+#define DW8768_REG_EN_ADDR		0x05	/* when no enm*/
 
 #define DW8768_VOLTAGE_MIN		4000000
 #define DW8768_VOLTAGE_MAX		6000000
@@ -41,6 +60,8 @@ struct dw8768_regulator {
 #define DW8768_VOLTAGE_LEVELS	\
 		((DW8768_VOLTAGE_MAX - DW8768_VOLTAGE_MIN) \
 		 / DW8768_VOLTAGE_STEP + 1)
+
+#define DW8768_VOLTAGE_DEFAULT		5500000
 
 static struct of_regulator_match dw8768_reg_matches[] = {
 	{ .name = "dw8768-dsv", .driver_data = (void *)0 },
@@ -51,12 +72,23 @@ static int dw8768_regulator_enable(struct regulator_dev *rdev)
 	struct dw8768_regulator *reg_data = rdev_get_drvdata(rdev);
 	int rc = 0;
 
+	if (!rdev->regmap) {
+		pr_err("invalid regmap\n");
+		return -EINVAL;
+	}
+
+	dw_info("enable, postponed:%d\n", reg_data->vol_set_postponed);
+
+	if (reg_data->pre_on_usleep)
+		usleep(reg_data->pre_on_usleep);
+
 	if (gpio_is_valid(reg_data->ena_gpio)) {
 		gpio_set_value(reg_data->ena_gpio, 1);
 		if (gpio_is_valid(reg_data->enm_gpio)) {
 			gpio_set_value(reg_data->enm_gpio, 1);
 		} else {
-			rc = regmap_write(rdev->regmap, 0x05, 0x0F);
+			rc = regmap_write(rdev->regmap,
+					DW8768_REG_EN_ADDR, 0x0F);
 			if (rc)
 				pr_err("Failed to write i2c. rc=%d\n", rc);
 		}
@@ -66,6 +98,26 @@ static int dw8768_regulator_enable(struct regulator_dev *rdev)
 		rc = -EINVAL;
 	}
 
+	if (reg_data->vol_set_postponed) {
+		rc = regmap_write(rdev->regmap, DW8768_REG_VPOS_ADDR,
+						reg_data->vol_set_val);
+		if (rc) {
+			pr_err("failed to write postponed +V(%d)\n",
+						reg_data->vol_set_val);
+			return rc;
+		}
+		rc = regmap_write(rdev->regmap, DW8768_REG_VNEG_ADDR,
+						reg_data->vol_set_val);
+		if (rc) {
+			pr_err("failed to write postponed -V(%d)\n",
+						reg_data->vol_set_val);
+			return rc;
+		}
+		reg_data->vol_set_postponed = false;
+	}
+
+	if (reg_data->post_on_usleep)
+		usleep(reg_data->post_on_usleep);
 	return rc;
 }
 
@@ -74,11 +126,22 @@ static int dw8768_regulator_disable(struct regulator_dev *rdev)
 	struct dw8768_regulator *reg_data = rdev_get_drvdata(rdev);
 	int rc = 0;
 
+	if (!rdev->regmap) {
+		pr_err("invalid regmap\n");
+		return -EINVAL;
+	}
+
+	dw_info("disable, postponed:%d\n", reg_data->vol_set_postponed);
+
+	if (reg_data->pre_off_usleep)
+		usleep(reg_data->pre_off_usleep);
+
 	if (gpio_is_valid(reg_data->ena_gpio)) {
 		if (gpio_is_valid(reg_data->enm_gpio)) {
 			gpio_set_value(reg_data->enm_gpio, 0);
 		} else {
-			rc = regmap_write(rdev->regmap, 0x05, 0x07);
+			rc = regmap_write(rdev->regmap,
+					DW8768_REG_EN_ADDR, 0x07);
 			if (rc)
 				pr_err("Failed to write i2c. rc=%d\n", rc);
 		}
@@ -89,6 +152,8 @@ static int dw8768_regulator_disable(struct regulator_dev *rdev)
 		rc = -EINVAL;
 	}
 
+	if (reg_data->post_off_usleep)
+		usleep(reg_data->post_off_usleep);
 	return rc;
 }
 
@@ -102,12 +167,86 @@ static int dw8768_regulator_is_enabled(struct regulator_dev *rdev)
 static int dw8768_regulator_set_voltage(struct regulator_dev *rdev,
 			int min_uV, int max_uV, unsigned *selector)
 {
+	struct dw8768_regulator *reg_data = rdev_get_drvdata(rdev);
+	int rc, val, new_uV;
+
+	if (!rdev->regmap) {
+		pr_err("invalid regmap\n");
+		return -EINVAL;
+	}
+
+	val = DIV_ROUND_UP(min_uV - DW8768_VOLTAGE_MIN, DW8768_VOLTAGE_STEP);
+	val = val & DW8768_REG_V_MASK;
+	new_uV = DW8768_VOLTAGE_MIN + (val * DW8768_VOLTAGE_STEP);
+	if (new_uV == reg_data->curr_uV) {
+		dw_info("curV and newV are same\n");
+		return 0;
+	}
+	if (new_uV > max_uV) {
+		pr_err("failed to set voltage (%d %d)\n", min_uV, max_uV);
+		return -EINVAL;
+	}
+
+	reg_data->vol_set_val = val;
+	if (!reg_data->is_enabled) {
+		reg_data->vol_set_postponed = true;
+	} else {
+		rc = regmap_write(rdev->regmap, DW8768_REG_VPOS_ADDR, val);
+		if (rc) {
+			pr_err("failed to write +V(%d %d)\n", min_uV, max_uV);
+			return rc;
+		}
+		rc = regmap_write(rdev->regmap, DW8768_REG_VNEG_ADDR, val);
+		if (rc) {
+			pr_err("failed to write -V(%d %d)\n", min_uV, max_uV);
+			return rc;
+		}
+	}
+
+	reg_data->curr_uV = new_uV;
+	*selector = val;
+
+	dw_info("uV:%d reg:%x postponed:%d\n", new_uV, val,
+					reg_data->vol_set_postponed);
 	return 0;
 }
 
 static int dw8768_regulator_get_voltage(struct regulator_dev *rdev)
 {
-	return 0;
+	struct dw8768_regulator *reg_data = rdev_get_drvdata(rdev);
+	int rc, posval, negval;
+
+	if (!rdev->regmap) {
+		pr_err("invalid regmap\n");
+		return -EINVAL;
+	}
+
+	if (!reg_data->is_enabled) {
+		dw_info("curr_uV:%d (no_enabled)\n", reg_data->curr_uV);
+		return reg_data->curr_uV;
+	}
+
+	rc = regmap_read(rdev->regmap, DW8768_REG_VPOS_ADDR, &posval);
+	if (rc) {
+		pr_err("failed to read +V\n");
+		return rc;
+	}
+	rc = regmap_read(rdev->regmap, DW8768_REG_VNEG_ADDR, &negval);
+	if (rc) {
+		pr_err("failed to read -V\n");
+		return rc;
+	}
+	if (posval != negval) {
+		pr_err("mismatch between +V(%d) and -V(%d)\n",
+							posval, negval);
+		return -EINVAL;
+	}
+	reg_data->curr_uV = (posval & DW8768_REG_V_MASK)* DW8768_VOLTAGE_STEP
+				+ DW8768_VOLTAGE_MIN;
+
+	dw_info("curr_uV:%d\n", reg_data->curr_uV);
+
+	return reg_data->curr_uV;
 }
 
 static int dw8768_regulator_list_voltage(struct regulator_dev *rdev,
@@ -127,6 +266,42 @@ static struct regulator_ops dw8768_ops = {
 	.is_enabled = dw8768_regulator_is_enabled,
 };
 
+static int dw8768_parse_dt_reg(struct dw8768_regulator *reg_data,
+				struct device_node *node)
+{
+	int temp;
+
+	reg_data->ena_gpio = of_get_named_gpio(node, "dw,ena-gpio", 0);
+	if (!gpio_is_valid(reg_data->ena_gpio)) {
+		pr_err("ena-gpio not specified. rd=%d\n",
+						reg_data->ena_gpio);
+		return -EINVAL;
+	}
+
+	reg_data->enm_gpio = of_get_named_gpio(node, "dw,enm-gpio", 0);
+	if (!gpio_is_valid(reg_data->enm_gpio)) {
+		pr_err("enm-gpio not specified. rd=%d\n",
+						reg_data->enm_gpio);
+	}
+
+	if (!of_property_read_u32(node, "dw,pre-on-sleep-us", &temp))
+		reg_data->pre_on_usleep = temp;
+	if (!of_property_read_u32(node, "dw,post-on-sleep-us", &temp))
+		reg_data->post_on_usleep = temp;
+	else
+		reg_data->post_on_usleep = 3700;
+	if (!of_property_read_u32(node, "dw,pre-off-sleep-us", &temp))
+		reg_data->pre_off_usleep = temp;
+	if (!of_property_read_u32(node, "dw,post-off-sleep-us", &temp))
+		reg_data->post_off_usleep = temp;
+
+	dw_info("pre-on:%d post-on:%d pre-off:%d post-off:%d\n",
+		reg_data->pre_on_usleep, reg_data->post_on_usleep,
+		reg_data->pre_off_usleep, reg_data->post_off_usleep);
+
+	return 0;
+}
+
 static int dw8768_parse_dt(struct dw8768_regulator *reg_data,
 					struct i2c_client *client)
 {
@@ -145,14 +320,12 @@ static int dw8768_parse_dt(struct dw8768_regulator *reg_data,
 		return -EINVAL;
 	}
 
-	rc = of_regulator_match(&client->dev, node,
-					dw8768_reg_matches,
+	rc = of_regulator_match(&client->dev, node, dw8768_reg_matches,
 					ARRAY_SIZE(dw8768_reg_matches));
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("Can't match regulator. rc=%d\n", rc);
 		return rc;
 	}
-
 	if (!dw8768_reg_matches[0].init_data) {
 		pr_err("Failed to match regulator\n");
 		return -EINVAL;
@@ -170,29 +343,8 @@ static int dw8768_parse_dt(struct dw8768_regulator *reg_data,
 	reg_data->reg_node = dw8768_reg_matches[0].of_node;
 	reg_data->rdesc.name = constraints->name;
 
-	reg_data->ena_gpio = of_get_named_gpio(dw8768_reg_matches[0].of_node,
-						"dw,ena-gpio", 0);
-	if (!gpio_is_valid(reg_data->ena_gpio)) {
-		pr_err("ena-gpio not specified. rd=%d\n",
-						reg_data->ena_gpio);
-		return -EINVAL;
-	}
-
-	reg_data->enm_gpio = of_get_named_gpio(dw8768_reg_matches[0].of_node,
-						"dw,enm-gpio", 0);
-	if (!gpio_is_valid(reg_data->enm_gpio)) {
-		pr_err("enm-gpio not specified. rd=%d\n",
-						reg_data->enm_gpio);
-	}
-
-	rc = of_property_read_u32(dw8768_reg_matches[0].of_node,
-					"dw,power-on-delay-us",
-					&reg_data->rdesc.enable_time);
-	if (IS_ERR_VALUE(rc)) {
-		pr_err("Can't read power on delay. rc=%d\n", rc);
-		reg_data->rdesc.enable_time = 3700;
-	}
-
+	rc = dw8768_parse_dt_reg(reg_data,
+				dw8768_reg_matches[0].of_node);
 	return rc;
 }
 
@@ -267,6 +419,7 @@ static int dw8768_regulator_probe(struct i2c_client *client,
 	rdesc->n_voltages = DW8768_VOLTAGE_LEVELS;
 	rdesc->ops = &dw8768_ops;
 
+	reg_data->curr_uV = DW8768_VOLTAGE_DEFAULT;
 	reg_data->rdev = regulator_register(rdesc, &config);
 	if (IS_ERR(reg_data->rdev)) {
 		rc = PTR_ERR(reg_data->rdev);
