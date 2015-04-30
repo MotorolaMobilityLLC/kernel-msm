@@ -19,6 +19,12 @@
 	qcom,board-id = <0x42 0x8101>;
 };
 
+&soc {
+	sound {
+		/delete-node/ vreg-wlf1p2-supply;
+	};
+};
+
 &pmi8994_charger {
 	status = "okay";
 	qcom,fastchg-current-ma = <1000>;
