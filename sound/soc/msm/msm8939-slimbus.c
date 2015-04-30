@@ -874,7 +874,7 @@ static const struct snd_soc_pcm_stream tfa9890_params = {
 	.rate_min = 48000,
 	.rate_max = 48000,
 	.channels_min = 1,
-	.channels_max = 1,
+	.channels_max = 2,
 };
 #endif
 
@@ -2002,7 +2002,7 @@ static struct snd_soc_dai_link msm8x16_florida_dai[] = {
 		.cpu_dai_name = "msm-dai-q6-dev.16386",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "florida-codec",
-		.codec_dai_name	= "florida-slim1",
+		.codec_dai_name	= "florida-slim2",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_RX,
 		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
@@ -2015,13 +2015,13 @@ static struct snd_soc_dai_link msm8x16_florida_dai[] = {
 		.name = LPASS_BE_SLIMBUS_1_TX,
 		.stream_name = "Slimbus1 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16387",
-		.platform_name = "msm-pcm-routing",
+		.platform_name = "msm-pcm-hostless",
 		.codec_name = "florida-codec",
-		.codec_dai_name	= "florida-slim1",
-		.no_pcm = 1,
+		.codec_dai_name	= "florida-slim2",
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
 		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
 		.ops = &slimbus_be_ops,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 	},
 	{
@@ -2121,6 +2121,18 @@ static struct snd_soc_dai_link msm8x16_florida_dai[] = {
 	{
 		.name = "florida-tfa9890-left",
 		.stream_name = "TFA9890_LEFT Playback",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "tfa9890.1-0034",
+		.codec_dai_name = "tfa9890_codec_left",
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &tfa9890_params,
+	},
+	{
+		.name = "florida-tfa9890-left-cap",
+		.stream_name = "TFA9890_LEFT Capture",
 		.cpu_name = "florida-codec",
 		.cpu_dai_name = "florida-aif1",
 		.codec_name = "tfa9890.1-0034",
