@@ -14,7 +14,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DISPLAY_STATEE_NOTIFY_H
+#ifndef DISPLAY_STATE_NOTIFY_H
 #define DISPLAY_STATE_NOTIFY_H
 
 #ifdef __KERNEL__

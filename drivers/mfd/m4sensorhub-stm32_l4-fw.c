@@ -21,6 +21,7 @@
 #include <linux/m4sensorhub.h>
 #include <linux/slab.h>
 #include <linux/m4sensorhub_stm32_bl_cmds.h>
+#include <linux/m4sensorhub_notify.h>
 
 /* --------------- Local Declarations -------------- */
 /* We flash code in sector 0 to 255 */
@@ -98,11 +99,12 @@ static int m4sensorhub_bl_erase_fw(struct m4sensorhub_data *m4sensorhub)
      m4sensorhub - pointer to the main m4sensorhub data struct
 */
 
+#define FLASHING_RETRIES 5
 int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	unsigned short force_upgrade, const struct firmware *fm)
 {
 	const struct firmware *firmware = fm;
-	int ret = 0;
+	int ret = -EINVAL;
 	int bytes_left, bytes_to_write;
 	int address_to_write;
 	u8 *buf_to_read, *buf = NULL;
@@ -110,14 +112,14 @@ int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	u16 fw_version_file, fw_version_device;
 	u8 barker_read_from_device[BARKER_SIZE];
 	int loop;
+	int iter;
+	bool writefailed = false;
 
 	if (m4sensorhub == NULL) {
 		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
 		ret = -ENODATA;
 		goto done;
 	}
-
-	m4sensorhub_hw_reset(m4sensorhub);
 
 	/* Always write MAX_TRANSFER_SIZE, even for the last chunk*/
 	buf = kzalloc(MAX_TRANSFER_SIZE, GFP_KERNEL);
@@ -130,13 +132,13 @@ int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	if (firmware == NULL) {
 		ret = request_firmware(&firmware, m4sensorhub->filename,
 			&m4sensorhub->i2c_client->dev);
-	}
-	if (ret < 0) {
-		KDEBUG(M4SH_ERROR, "%s: request_firmware failed for %s\n",
-				__func__, m4sensorhub->filename);
-		KDEBUG(M4SH_ERROR, "Trying to run firmware already on hw.\n");
-		ret = 0;
-		goto done;
+		if (ret < 0) {
+			KDEBUG(M4SH_ERROR, "%s: req fw failed %s, %d\n",
+			       __func__, m4sensorhub->filename, ret);
+			KDEBUG(M4SH_ERROR, "run fw already on hw.\n");
+			ret = 0;
+			goto done;
+		}
 	}
 
 	KDEBUG(M4SH_INFO, "%s: Filename = %s", __func__, m4sensorhub->filename);
@@ -151,165 +153,147 @@ int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 	fw_version_file = *(u16 *)(firmware->data +
 		VERSION_ADDRESS - USER_FLASH_FIRST_PAGE_ADDRESS);
 
-	if (!force_upgrade) {
-		/* Verify Barker number from device */
-		if (m4sensorhub_bl_rm(m4sensorhub, BARKER_ADDRESS,
-				barker_read_from_device,
-				BARKER_SIZE) != 0) {
-			KDEBUG(M4SH_ERROR, "%s : %d : error reading Barker\n",
-				__func__, __LINE__);
-			ret = -EINVAL;
-			goto done;
-		}
-
-		if (memcmp(barker_read_from_device, barker_buffer, BARKER_SIZE) != 0) {
-
-			KDEBUG(M4SH_NOTICE, "Barker Number does not match \n");
-			for (loop = 0; loop < BARKER_SIZE; loop++) {
-				KDEBUG(M4SH_ERROR, "read is 0x%02x ", barker_read_from_device[loop]);
-				KDEBUG(M4SH_ERROR, "expected is  0x%02x ", barker_buffer[loop]);
-			}
-			KDEBUG(M4SH_ERROR, "\n");
-
-
-			KDEBUG(M4SH_NOTICE,
-				"forcing firmware update from file\n");
-			/*
-			 * This is likely a blank flash factory case, so
-			 * skip doing any driver pre-flash callbacks.
-			 */
-			goto m4sensorhub_l4_load_firmware_erase_flash;
-		} else {
-			/* Read firmware version from device */
-			if (m4sensorhub_bl_rm(m4sensorhub, VERSION_ADDRESS,
-					(u8 *)&fw_version_device,
-					sizeof(fw_version_device)) != 0) {
-				KDEBUG(M4SH_ERROR, "%s : %d : Read err\n",
-					__func__, __LINE__);
-				ret = -EINVAL;
-				goto done;
-			}
-
-			if (fw_version_file == fw_version_device) {
-				KDEBUG(M4SH_NOTICE,
-					"Version of firmware on device is 0x%04x\n",
-					fw_version_device);
-				KDEBUG(M4SH_NOTICE,
-					"Firmware on device same as file, not loading firmware.\n");
-				goto done;
-			}
-			/* Print statement below isn't really an ERROR, but
-			 * this ensures it is always printed */
-			KDEBUG(M4SH_ERROR,
-				"Version of firmware on device is 0x%04x\n",
-				fw_version_device);
-			KDEBUG(M4SH_ERROR,
-				"Version of firmware on file is 0x%04x\n",
-				fw_version_file);
-			KDEBUG(M4SH_ERROR,
-				"Firmware on device different from file, updating...\n");
-		}
-	} else {
-		KDEBUG(M4SH_NOTICE, "Version of firmware on file is 0x%04x\n",
-			fw_version_file);
-		/*
-		 * Currently no code uses the force_upgrade path,
-		 * but in case it is used for some recovery (and because
-		 * no numbers or error checking is done), we will skip
-		 * trying to call any driver pre-flash callbacks.
-		 */
-		goto m4sensorhub_l4_load_firmware_erase_flash;
-	}
-
-	/* Boot M4, execute any pre-flash callbacks, then reset for BL mode */
-	if (m4sensorhub_preflash_callbacks_exist()) {
-		KDEBUG(M4SH_ERROR, "%s: Booting M4 to execute callbacks...\n",
-			__func__); /* Not an error (see similar above) */
-		ret = m4sensorhub_bl_jump_to_user(m4sensorhub);
-		if (ret < 0) {
-			KDEBUG(M4SH_ERROR, "%s: %s %s %d.\n", __func__,
-				"Failed to boot M4 for callbacks",
-				"with error code", ret);
-			/*
-			 * Since we don't know the status of M4 at this point,
-			 * we will skip any callbacks, reset the IC to a known
-			 * state, and go ahead with a reflash.
-			 */
-			m4sensorhub_hw_reset(m4sensorhub);
-			goto m4sensorhub_l4_load_firmware_erase_flash;
-		}
-
-		m4sensorhub_call_preflash_callbacks();
-		KDEBUG(M4SH_ERROR, "%s: Callbacks complete, flashing M4...\n",
-			__func__); /* Not an error (see similar above) */
+	for (iter = 0; iter < FLASHING_RETRIES; iter++) {
 		m4sensorhub_hw_reset(m4sensorhub);
-	}
+		KDEBUG(M4SH_INFO, "%s: iter = %d\n", __func__, iter);
+		if (!force_upgrade) {
+			/* Verify Barker number from device */
+			if (m4sensorhub_bl_rm(m4sensorhub, BARKER_ADDRESS,
+					      barker_read_from_device,
+					BARKER_SIZE) != 0) {
+				KDEBUG(M4SH_ERROR, "%s : %d : Barker fail\n",
+				       __func__, __LINE__);
+				continue;
+			}
 
-	/* The flash memory to update has to be erased before updating */
-m4sensorhub_l4_load_firmware_erase_flash:
-	ret = m4sensorhub_bl_erase_fw(m4sensorhub);
-	if (ret < 0) {
-		pr_err("%s: erase failed\n", __func__);
-		/* TODO : Not sure if this is critical error
-		goto done; */
-	}
+			if (memcmp(barker_read_from_device,
+				   barker_buffer, BARKER_SIZE) != 0) {
+				KDEBUG(M4SH_NOTICE, "Barker does not match\n");
+				for (loop = 0; loop < BARKER_SIZE; loop++) {
+					KDEBUG(M4SH_ERROR, "read 0x%02x ",
+					       barker_read_from_device[loop]);
+					KDEBUG(M4SH_ERROR, "expected 0x%02x ",
+					       barker_buffer[loop]);
+				}
+				KDEBUG(M4SH_ERROR, "\n");
 
-	bytes_left = firmware->size;
-	address_to_write = USER_FLASH_FIRST_PAGE_ADDRESS;
-	buf_to_read = (u8 *)firmware->data;
 
-	KDEBUG(M4SH_DEBUG, "%s: %d bytes to be written\n", __func__,
-		(int)firmware->size);
+				KDEBUG(M4SH_NOTICE,
+					"forcing firmware update from file\n");
+			} else {
+				/* Read firmware version from device */
+				if (m4sensorhub_bl_rm(m4sensorhub,
+						      VERSION_ADDRESS,
+						(u8 *)&fw_version_device,
+					sizeof(fw_version_device)) != 0) {
+					KDEBUG(M4SH_ERROR, "Read err at ");
+					KDEBUG(M4SH_ERROR, "%s : %d :\n",
+					       __func__, __LINE__);
+					continue;
+				}
 
-	while (bytes_left) {
-		if (bytes_left > MAX_TRANSFER_SIZE) {
-			bytes_to_write = MAX_TRANSFER_SIZE;
-			write_buf = buf_to_read;
+				if (fw_version_file == fw_version_device) {
+					KDEBUG(M4SH_NOTICE,
+					       "Version of firmware on device is 0x%04x\n",
+						fw_version_device);
+					KDEBUG(M4SH_NOTICE,
+					       "Firmware on device same as file, not loading firmware.\n");
+					ret = 0;
+					goto done;
+				}
+				/* Print statement below isn't
+				* really an ERROR, but
+				* this ensures it is always printed */
+				KDEBUG(M4SH_ERROR,
+				       "Version of firmware on device is 0x%04x\n",
+					fw_version_device);
+				KDEBUG(M4SH_ERROR,
+				       "Version of firmware on file is 0x%04x\n",
+					fw_version_file);
+				KDEBUG(M4SH_ERROR,
+				       "Firmware on device different from file, updating...\n");
+			}
 		} else {
-			bytes_to_write = bytes_left;
-			memcpy(buf, buf_to_read, bytes_to_write);
-			write_buf = buf;
+			KDEBUG(M4SH_NOTICE, "firmware from file is 0x%04x\n",
+			       fw_version_file);
 		}
 
-		if (m4sensorhub_bl_wm(m4sensorhub, address_to_write,
-				write_buf, MAX_TRANSFER_SIZE) != 0) {
-			KDEBUG(M4SH_ERROR, "%s : %d : error writing %d\n",
-				__func__, __LINE__, address_to_write);
-			ret = -EINVAL;
-			goto done;
+		/* The flash memory to update has
+		* to be erased before updating */
+		ret = m4sensorhub_bl_erase_fw(m4sensorhub);
+		if (ret < 0) {
+			KDEBUG(M4SH_ERROR, "%s: erase failed\n", __func__);
+			/* TODO : Not sure if this is critical error
+			goto done; */
 		}
 
-		/* Relying on CRC to take care of errors */
-		address_to_write += bytes_to_write;
-		buf_to_read += bytes_to_write;
-		bytes_left -= bytes_to_write;
+		bytes_left = firmware->size;
+		address_to_write = USER_FLASH_FIRST_PAGE_ADDRESS;
+		buf_to_read = (u8 *)firmware->data;
+
+		KDEBUG(M4SH_DEBUG, "%s: %d bytes to be written\n", __func__,
+		       (int)firmware->size);
+
+		while (bytes_left) {
+			if (bytes_left > MAX_TRANSFER_SIZE) {
+				bytes_to_write = MAX_TRANSFER_SIZE;
+				write_buf = buf_to_read;
+			} else {
+				bytes_to_write = bytes_left;
+				memcpy(buf, buf_to_read, bytes_to_write);
+				write_buf = buf;
+			}
+
+			writefailed = false;
+			if (m4sensorhub_bl_wm(m4sensorhub, address_to_write,
+					      write_buf,
+						  MAX_TRANSFER_SIZE) != 0) {
+				KDEBUG(M4SH_ERROR, "write err addr %d at ",
+				       address_to_write);
+				KDEBUG(M4SH_ERROR, " %s : %d\n",
+				       __func__, __LINE__);
+				writefailed = true;
+				break;
+			}
+
+			/* Relying on CRC to take care of errors */
+			address_to_write += bytes_to_write;
+			buf_to_read += bytes_to_write;
+			bytes_left -= bytes_to_write;
+		}
+
+		if (writefailed == true)
+			continue;
+
+		/* Write barker number when firmware successfully written */
+		if (m4sensorhub_bl_wm(m4sensorhub, BARKER_ADDRESS,
+				      barker_buffer, BARKER_SIZE) != 0) {
+			KDEBUG(M4SH_ERROR, "%s : %d : error writing\n",
+			       __func__, __LINE__);
+			continue;
+		}
+
+
+		KDEBUG(M4SH_NOTICE, "%s: %d bytes written successfully\n",
+		       __func__, (int)firmware->size);
+
+		ret = 0;
+		break;
 	}
-
-	/* Write barker number when firmware successfully written */
-	if (m4sensorhub_bl_wm(m4sensorhub, BARKER_ADDRESS,
-		barker_buffer, BARKER_SIZE) != 0) {
-		KDEBUG(M4SH_ERROR, "%s : %d : error writing\n",
-			__func__, __LINE__);
-		ret = -EINVAL;
-		goto done;
-	}
-
-	KDEBUG(M4SH_NOTICE, "%s: %d bytes written successfully\n",
-		__func__, (int)firmware->size);
-
-	ret = 0;
-
 done:
+	/* If ret is invalid, then we don't try to jump to user code */
+	if (ret >= 0 && m4sensorhub_bl_jump_to_user(m4sensorhub) < 0)
+		/* If jump to user code fails, return failure */
+		ret = -EINVAL;
+
+	KDEBUG(M4SH_INFO, "%s: enabling peripherals\n", __func__);
+	m4sensorhub_notify_subscriber(ENABLE_PERIPHERAL);
 	release_firmware(firmware);
 	kfree(buf);
 
 	/* irrespective of whether we upgraded FW or not,
 	the firmware version will be the same as one in the file*/
 	m4sensorhub->fw_version = fw_version_file;
-	/* If ret is invalid, then we don't try to jump to user code */
-	if (ret >= 0 && m4sensorhub_bl_jump_to_user(m4sensorhub) < 0)
-		/* If jump to user code fails, return failure */
-		ret = -EINVAL;
 
 	return ret;
 }
