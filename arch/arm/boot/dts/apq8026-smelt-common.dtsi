@@ -562,6 +562,7 @@
 			<&msmgpio 16 0>; /* RESET */
 		touch_vdd-supply = <&pm8226_l28>;
 		atmel,atmxt-tdat-filename = "atmxt-r3.tdat";
+		atmel,enable_at_boot = <0x00>;
 	};
 };
 
