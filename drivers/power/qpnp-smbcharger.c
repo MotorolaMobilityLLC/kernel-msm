@@ -1420,10 +1420,8 @@ static int smbchg_get_min_parallel_current_ma(struct smbchg_chip *chip)
 #define DCIN_ACTIVE_PWR_SRC_BIT		BIT(0)
 static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 {
-	/*int min_current_thr_ma, rc, type;*/
-	int min_current_thr_ma, rc;
+	int min_current_thr_ma, rc, type;
 	u8 reg;
-	union power_supply_propval prop = {0,};
 
 	if (!smbchg_parallel_en) {
 		pr_smb(PR_STATUS, "Parallel charging not enabled\n");
@@ -1440,10 +1438,7 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
-	/* mask these code temporarily, as power on by DCP will be detected as SDP */
-	/* use dwc3_msm dwc3_chg_detect_work as charge type detection */
-
-	/*rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
+	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
 		return false;
@@ -1456,24 +1451,6 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 	}
 
 	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
-		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
-		return false;
-	}*/
-
-	rc = chip->usb_psy->get_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_TYPE, &prop);
-	if (rc < 0){
-		dev_err(chip->dev,
-			"could not read USB type property, rc=%d\n", rc);
-		return false;
-	}
-
-	if (prop.intval == POWER_SUPPLY_TYPE_USB_CDP) {
-		pr_smb(PR_STATUS, "CDP adapter, skipping\n");
-		return false;
-	}
-
-	if (prop.intval == POWER_SUPPLY_TYPE_USB) {
 		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
 		return false;
 	}
@@ -3795,8 +3772,8 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 				POWER_SUPPLY_TYPE_UNKNOWN);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
-		/*power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_UNKNOWN);*/
+		power_supply_set_supply_type(chip->usb_psy,
+				POWER_SUPPLY_TYPE_UNKNOWN);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		schedule_work(&chip->usb_set_online_work);
 		rc = power_supply_set_health_state(chip->usb_psy,
@@ -3838,7 +3815,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
 				usb_supply_type);
-		/*power_supply_set_supply_type(chip->usb_psy, usb_supply_type);*/
+		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
