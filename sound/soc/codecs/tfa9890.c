@@ -962,12 +962,15 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN_E("I2S1L", NULL, 0, 0, 0, 0,
 			tfa9890_i2s_playback_event,
 			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_AIF_OUT("I2S0L", NULL, 0,
+			SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_MIXER("BOOST Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			&tfa9890_left_mixer_controls[0],
 			ARRAY_SIZE(tfa9890_left_mixer_controls)),
 	SND_SOC_DAPM_VIRT_MUX("Left SPK Mux", SND_SOC_NOPM, 0, 0,
 			&left_sel_mux),
 	SND_SOC_DAPM_OUTPUT("BOOST Speaker Left"),
+	SND_SOC_DAPM_INPUT("NXP Echo Ref Left"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
@@ -975,6 +978,8 @@ static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
 	{"Left SPK Mux", "On", "I2S1L"},
 	{"BOOST Output Mixer Left", NULL, "Left SPK Mux"},
 	{"BOOST Speaker Left", NULL, "BOOST Output Mixer Left"},
+	{"I2S0L", NULL, "NXP Echo Ref Left"},
+	{"I2S1L Capture", NULL, "I2S0L"},
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
@@ -1004,12 +1009,15 @@ static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN_E("I2S1R", NULL, 0, 0, 0, 0,
 			tfa9890_i2s_playback_event,
 			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_AIF_OUT("I2S0R", NULL, 0,
+			SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_MIXER("BOOST Output Mixer Right", SND_SOC_NOPM, 0, 0,
 			&tfa9890_right_mixer_controls[0],
 			ARRAY_SIZE(tfa9890_right_mixer_controls)),
 	SND_SOC_DAPM_VIRT_MUX("Right SPK Mux", SND_SOC_NOPM, 0, 0,
 			&right_sel_mux),
 	SND_SOC_DAPM_OUTPUT("BOOST Speaker Right"),
+	SND_SOC_DAPM_INPUT("NXP Echo Ref Right"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
@@ -1017,6 +1025,8 @@ static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
 	{"Right SPK Mux", "On", "I2S1R"},
 	{"BOOST Output Mixer Right", NULL, "Right SPK Mux"},
 	{"BOOST Speaker Right", NULL, "BOOST Output Mixer Right"},
+	{"I2S0R", NULL, "NXP Echo Ref Right"},
+	{"I2S1R Capture", NULL, "I2S0R"},
 };
 
 /*
@@ -2117,6 +2127,12 @@ static struct snd_soc_dai_driver tfa9890_left_dai = {
 		     .channels_max = 2,
 		     .rates = TFA9890_RATES,
 		     .formats = TFA9890_FORMATS,},
+	.capture = {
+		.stream_name = "I2S1L Capture",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = TFA9890_RATES,
+		.formats = TFA9890_FORMATS,},
 	.ops = &tfa9890_ops,
 	.symmetric_rates = 1,
 };
@@ -2129,6 +2145,12 @@ static struct snd_soc_dai_driver tfa9890_right_dai = {
 		     .channels_max = 2,
 		     .rates = TFA9890_RATES,
 		     .formats = TFA9890_FORMATS,},
+	.capture = {
+		.stream_name = "I2S1R Capture",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = TFA9890_RATES,
+		.formats = TFA9890_FORMATS,},
 	.ops = &tfa9890_ops,
 	.symmetric_rates = 1,
 };
