@@ -1188,7 +1188,7 @@ static int req_crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	if (!num_engines) {
 		DMERR(KERN_INFO "%s qcrypto_get_num_engines failed\n",
 				__func__);
-		err = -DM_REQ_CRYPT_ERROR;
+		err =  DM_REQ_CRYPT_ERROR;
 		mutex_unlock(&engine_list_mutex);
 		goto ctr_exit;
 	}
