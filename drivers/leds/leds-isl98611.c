@@ -403,13 +403,14 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 	struct fb_event *evdata = data;
 	struct isl98611_chip *pchip = container_of(self, struct isl98611_chip,
 		fb_notif);
-	int blank;
+
+	/* Return immediately if we don't care about the event */
+	if (event != FB_EVENT_BLANK)
+		return 0;
 
 	dev_dbg(pchip->dev, "%s+\n", __func__);
 
-	blank = *(int *)evdata->data;
-
-	if (event == FB_EVENT_BLANK && blank == FB_BLANK_UNBLANK) {
+	if (*(int *)evdata->data == FB_BLANK_UNBLANK) {
 		int regval, reg2;
 		/* Non zero REG_BRGHT_LSB => chip is reset to PON defaults */
 		regval = isl98611_read(pchip, REG_BRGHT_LSB);
