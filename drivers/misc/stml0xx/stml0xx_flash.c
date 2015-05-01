@@ -297,6 +297,9 @@ int switch_stml0xx_mode(enum stm_mode mode)
 	int tries = COMMAND_RETRIES;
 	int rc = 0;
 
+	/* Reset wake-irq work delay */
+	stml0xx_misc_data->irq_wake_work_delay = 0;
+
 	stml0xx_misc_data->mode = mode;
 
 	/* Set to bootloader mode */

@@ -56,7 +56,8 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 		sizeof(struct stml0xx_work_struct),
 		GFP_ATOMIC);
 	if (!stm_ws) {
-		dev_err(dev, "stml0xx_isr: unable to allocate work struct");
+		dev_err(&ps_stml0xx->spi->dev,
+			"stml0xx_isr: unable to allocate work struct");
 		return IRQ_HANDLED;
 	}
 
@@ -80,7 +81,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 	stml0xx_wake(ps_stml0xx);
 
-	if (ps_stml0xx->mode == BOOTMODE)
+	if (!stml0xx_g_booted)
 		goto EXIT;
 
 	if (ps_stml0xx->is_suspended)

@@ -43,8 +43,6 @@
 
 #include <linux/stml0xx.h>
 
-#define RESET_RETRIES		2
-
 int stml0xx_spi_sensorhub_ready(void)
 {
 	int timeout = SPI_SENSORHUB_TIMEOUT;
@@ -182,7 +180,7 @@ int stml0xx_spi_write_read_no_reset(unsigned char *tx_buf, int tx_len,
 
 	if (tries == SPI_RETRIES) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_write_read_no_reset spi failure");
+			"SPI write_read_no_reset error [%d]", ret);
 	}
 
 	return ret;
@@ -207,7 +205,7 @@ int stml0xx_spi_read_no_reset(unsigned char *buf, int len)
 
 	if (tries == SPI_RETRIES) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_read_no_reset spi failure");
+			"SPI read_no_reset error [%d]", ret);
 	}
 
 	return ret;
@@ -232,7 +230,7 @@ int stml0xx_spi_write_no_reset(unsigned char *buf, int len)
 
 	if (tries == SPI_RETRIES) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_write_no_reset spi failure");
+			"SPI write_no_reset error [%d]", ret);
 	}
 
 	return ret;
@@ -266,7 +264,6 @@ int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
 			   unsigned char *rx_buf, int rx_len)
 {
 	int tries;
-	int reset_retries;
 	int ret = -EIO;
 
 	if (stml0xx_misc_data->mode == BOOTMODE)
@@ -275,25 +272,15 @@ int stml0xx_spi_write_read(unsigned char *tx_buf, int tx_len,
 	if (tx_buf == NULL || rx_buf == NULL || tx_len == 0 || rx_len == 0)
 		return -EFAULT;
 
-	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
-	     reset_retries++) {
-		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
-			ret =
-			    stml0xx_spi_write_read_no_retries(tx_buf, tx_len,
-							      rx_buf, rx_len);
-		}
-
-		if (ret < 0) {
-			stml0xx_reset(stml0xx_misc_data->pdata);
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_write_read SPI transfer error [%d], retries left [%d]",
-				ret, reset_retries);
-		}
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret = stml0xx_spi_write_read_no_retries(tx_buf, tx_len,
+							rx_buf, rx_len);
 	}
 
-	if (reset_retries == RESET_RETRIES) {
+	if (ret < 0) {
+		stml0xx_reset(stml0xx_misc_data->pdata);
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_write_read spi failure");
+			"SPI write_read error [%d]", ret);
 	}
 
 	return ret;
@@ -323,7 +310,6 @@ static int stml0xx_spi_read_no_retries(unsigned char *buf, int len)
 int stml0xx_spi_read(unsigned char *buf, int len)
 {
 	int tries;
-	int reset_retries;
 	int ret = -EIO;
 
 	if (buf == NULL || len == 0)
@@ -332,22 +318,13 @@ int stml0xx_spi_read(unsigned char *buf, int len)
 	if (stml0xx_misc_data->mode == BOOTMODE)
 		return -EFAULT;
 
-	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
-	     reset_retries++) {
-		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++)
-			ret = stml0xx_spi_read_no_retries(buf, len);
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++)
+		ret = stml0xx_spi_read_no_retries(buf, len);
 
-		if (ret < 0) {
-			stml0xx_reset(stml0xx_misc_data->pdata);
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_read SPI transfer error [%d], retries left [%d]",
-				ret, reset_retries);
-		}
-	}
-
-	if (reset_retries == RESET_RETRIES) {
+	if (ret < 0) {
+		stml0xx_reset(stml0xx_misc_data->pdata);
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_read spi failure");
+			"SPI read error [%d]", ret);
 	}
 
 	return ret;
@@ -375,28 +352,18 @@ static int stml0xx_spi_write_no_retries(unsigned char *buf, int len)
 int stml0xx_spi_write(unsigned char *buf, int len)
 {
 	int tries;
-	int reset_retries;
 	int ret = -EIO;
 
 	if (stml0xx_misc_data->mode == BOOTMODE)
 		return -EFAULT;
 
-	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
-	     reset_retries++) {
-		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++)
-			ret = stml0xx_spi_write_no_retries(buf, len);
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++)
+		ret = stml0xx_spi_write_no_retries(buf, len);
 
-		if (ret < 0) {
-			stml0xx_reset(stml0xx_misc_data->pdata);
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_write SPI transfer error [%d], retries left [%d]",
-				ret, reset_retries);
-		}
-	}
-
-	if (reset_retries == RESET_RETRIES) {
+	if (ret < 0) {
+		stml0xx_reset(stml0xx_misc_data->pdata);
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_write spi failure");
+			"SPI write error [%d]", ret);
 	}
 
 	return ret;
@@ -474,7 +441,6 @@ int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
 			       uint8_t reset_allowed)
 {
 	int tries;
-	int reset_retries;
 	int ret = -EIO;
 
 	if (!reg_data || reg_size <= 0 ||
@@ -485,29 +451,16 @@ int stml0xx_spi_send_write_reg_reset(unsigned char reg_type,
 		return ret;
 	}
 
-	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
-	     reset_retries++) {
-		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
-			ret =
-			    stml0xx_spi_send_write_reg_no_retries(reg_type,
-								  reg_data,
-								  reg_size);
-		}
-
-		if (ret < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_send_write_reg_reset SPI transfer error [%d], retries left [%d]",
-				ret, reset_retries);
-			if (reset_allowed)
-				stml0xx_reset(stml0xx_misc_data->pdata);
-			else
-				break;
-		}
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret = stml0xx_spi_send_write_reg_no_retries(reg_type,
+			reg_data, reg_size);
 	}
 
-	if (reset_retries == RESET_RETRIES) {
+	if (ret < 0) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_send_write_reg_reset spi failure");
+			"SPI write_reg_reset error [%d]", ret);
+		if (reset_allowed)
+			stml0xx_reset(stml0xx_misc_data->pdata);
 	}
 
 	return ret;
@@ -611,7 +564,6 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 			      uint8_t reset_allowed)
 {
 	int tries;
-	int reset_retries;
 	int ret = -EIO;
 
 	if (!reg_data || reg_size <= 0 ||
@@ -622,31 +574,16 @@ int stml0xx_spi_send_read_reg_reset(unsigned char reg_type,
 		return ret;
 	}
 
-	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
-	     reset_retries++) {
-		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
-			ret =
-				stml0xx_spi_send_read_reg_no_retries(
-						SPI_MSG_TYPE_READ_REG,
-						reg_type,
-						reg_data,
-						reg_size);
-		}
-
-		if (ret < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_send_read_reg_reset SPI transfer error [%d], retries left [%d]",
-				ret, reset_retries);
-			if (reset_allowed)
-				stml0xx_reset(stml0xx_misc_data->pdata);
-			else
-				break;
-		}
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret = stml0xx_spi_send_read_reg_no_retries(
+			SPI_MSG_TYPE_READ_REG, reg_type, reg_data, reg_size);
 	}
 
-	if (reset_retries == RESET_RETRIES) {
+	if (ret < 0) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_send_read_reg_reset spi failure");
+			"SPI read_reg_reset error [%d]", ret);
+		if (reset_allowed)
+			stml0xx_reset(stml0xx_misc_data->pdata);
 	}
 
 	return ret;
@@ -657,7 +594,6 @@ int stml0xx_spi_read_msg_data(enum sh_spi_msg spi_msg,
 				int buffer_size,
 				enum reset_option reset_allowed) {
 	int tries;
-	int reset_retries;
 	int ret = -EIO;
 
 	if (!data_buffer || buffer_size <= 0) {
@@ -667,34 +603,19 @@ int stml0xx_spi_read_msg_data(enum sh_spi_msg spi_msg,
 		return ret;
 	}
 
-	for (reset_retries = 0; reset_retries < RESET_RETRIES && ret < 0;
-	     reset_retries++) {
-		for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
-			ret =
-				stml0xx_spi_send_read_reg_no_retries(spi_msg,
-								0,
-								data_buffer,
-								buffer_size);
-		}
-
-		if (ret < 0) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"stml0xx_spi_read_msg_data SPI transfer error [%d], retries left [%d]",
-				ret, reset_retries);
-			if (reset_allowed)
-				stml0xx_reset(stml0xx_misc_data->pdata);
-			else
-				break;
-		}
+	for (tries = 0; tries < SPI_RETRIES && ret < 0; tries++) {
+		ret = stml0xx_spi_send_read_reg_no_retries(spi_msg,
+				0, data_buffer, buffer_size);
 	}
 
-	if (reset_retries == RESET_RETRIES) {
+	if (ret < 0) {
 		dev_err(&stml0xx_misc_data->spi->dev,
-			"stml0xx_spi_read_msg_data spi failure");
+			"SPI read_msg_data error [%d]", ret);
+		if (reset_allowed)
+			stml0xx_reset(stml0xx_misc_data->pdata);
 	}
 
 	return ret;
-
 }
 
 void stml0xx_spi_swap_bytes(unsigned char *data, int size)
