@@ -65,7 +65,7 @@ enum headset_state_t Headset_State = SH_HEADSET_REMOVED;
 irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 {
 	static struct timespec ts;
-	static struct stml0xx_work_struct *stm_ws;
+	static struct stml0xx_delayed_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = dev;
 	get_monotonic_boottime(&ts);
 
@@ -74,17 +74,35 @@ irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 
 	wake_lock_timeout(&ps_stml0xx->wake_sensor_wakelock, HZ);
 	stm_ws = kmalloc(
-		sizeof(struct stml0xx_work_struct),
+		sizeof(struct stml0xx_delayed_work_struct),
 		GFP_ATOMIC);
 	if (!stm_ws) {
-		dev_err(dev, "stml0xx_wake_isr: unable to allocate work struct");
+		dev_err(&ps_stml0xx->spi->dev,
+			"stml0xx_wake_isr: unable to allocate work struct");
 		return IRQ_HANDLED;
 	}
 
-	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_wake_work_func);
+	INIT_DELAYED_WORK((struct delayed_work *)stm_ws,
+				stml0xx_irq_wake_work_func);
 	stm_ws->ts_ns = ts_to_ns(ts);
 
-	queue_work(ps_stml0xx->irq_work_queue, (struct work_struct *)stm_ws);
+	if (stml0xx_g_booted) {
+		/* No delay if boot completed */
+		ps_stml0xx->irq_wake_work_delay = 0;
+	} else if (ps_stml0xx->irq_wake_work_delay == 0) {
+		/* First interrupt prior to boot complete */
+		ps_stml0xx->irq_wake_work_delay = 1;
+	} else {
+		/* Increase delay, set within allowed min/max range */
+		ps_stml0xx->irq_wake_work_delay =
+			clamp(ps_stml0xx->irq_wake_work_delay * 2,
+					100U, 600000U);
+	}
+
+	queue_delayed_work(ps_stml0xx->irq_work_queue,
+			(struct delayed_work *)stm_ws,
+			msecs_to_jiffies(ps_stml0xx->irq_wake_work_delay));
+
 	return IRQ_HANDLED;
 }
 
@@ -93,7 +111,8 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	int err;
 	unsigned long irq_status;
 	u32 irq2_status;
-	struct stml0xx_work_struct *stm_ws = (struct stml0xx_work_struct *)work;
+	struct stml0xx_delayed_work_struct *stm_ws =
+			(struct stml0xx_delayed_work_struct *)work;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
 	unsigned char buf[SPI_MSG_SIZE];
 
@@ -135,6 +154,12 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	irq2_status = (buf[WAKE_IRQ_IDX_ALGO_STATUS_HI] << 16) |
 	    (buf[WAKE_IRQ_IDX_ALGO_STATUS_MED] << 8) |
 		buf[WAKE_IRQ_IDX_ALGO_STATUS_LO];
+
+	/* If SH not fully booted, filter on relevant msgs only */
+	if (!stml0xx_g_booted) {
+		irq_status &= (M_LOG_MSG | M_INIT_COMPLETE | M_HUB_RESET);
+		irq2_status = 0;
+	}
 
 	/* Check all other status bits */
 	if (irq_status & M_PROXIMITY) {
