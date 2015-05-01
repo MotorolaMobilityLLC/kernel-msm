@@ -70,7 +70,7 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	long long int queue_size;
 	struct as_node *new_tail;
 	struct motosh_android_sensor_data *buffer;
-	struct timespec ts;
+	int64_t now;
 
 	/* Get current queue size */
 	queue_size = AS_QUEUE_SIZE_ESTIMATE;
@@ -151,23 +151,32 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 
 	/* Add new_tail to end of queue */
 	spin_lock(&(ps_motosh->as_queue_lock));
-		/* Have to timestamp after lock to avoid
-		 * out-of-order events
-		 */
-		if (timestamped) {
-			/* if a timestamp is included in the event buffer,
-			   it is the 3 bytes after the data */
-			get_monotonic_boottime(&ts);
-			buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
-			buffer->timestamp =
-					motosh_time_recover((data[size] << 16) |
-							(data[size+1] <<  8) |
-							(data[size+2]),
-							buffer->timestamp);
-		} else
-			buffer->timestamp = motosh_timestamp_ns();
-		list_add_tail(&(new_tail->list), &(ps_motosh->as_queue.list));
-		++as_queue_numadded;
+
+	/* Have to timestamp after lock to avoid
+	 * out-of-order events
+	 */
+	now = motosh_timestamp_ns();
+	if (timestamped) {
+		/* if a timestamp is included in the event buffer,
+		   it is the 3 bytes after the data */
+		buffer->timestamp =
+			motosh_time_recover((data[size] << 16) |
+					    (data[size+1] <<  8) |
+					    (data[size+2]),
+					    now);
+
+		/* check for erroneous future time */
+		if (buffer->timestamp > now) {
+			dev_err(&ps_motosh->client->dev,
+				"future time, delta: %lld\n",
+				buffer->timestamp - now);
+			buffer->timestamp = now;
+		}
+	} else
+		buffer->timestamp = now;
+
+	list_add_tail(&(new_tail->list), &(ps_motosh->as_queue.list));
+	++as_queue_numadded;
 	spin_unlock(&(ps_motosh->as_queue_lock));
 
 	wake_up(&ps_motosh->motosh_as_data_wq);
@@ -223,8 +232,8 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 {
 	int new_head;
 	struct motosh_moto_sensor_data *buffer;
-	struct timespec ts;
 	static bool error_reported;
+	int64_t now;
 
 	new_head = (ps_motosh->motosh_ms_data_buffer_head + 1)
 		& MOTOSH_MS_DATA_QUEUE_MASK;
@@ -248,18 +257,24 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 	}
 	buffer->size = size;
 
+	now = motosh_timestamp_ns();
 	if (timestamped) {
 		/* if a timestamp is included in the event buffer,
 		   it is the 3 bytes after the data */
-		get_monotonic_boottime(&ts);
-		buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
 		buffer->timestamp =
 			motosh_time_recover((data[size] << 16) |
 					    (data[size+1] <<  8) |
 					    (data[size+2]),
-					    buffer->timestamp);
+					    now);
+		/* check for erroneous future time */
+		if (buffer->timestamp > now) {
+			dev_err(&ps_motosh->client->dev,
+				"future time, delta: %lld\n",
+				buffer->timestamp - now);
+			buffer->timestamp = now;
+		}
 	} else
-		buffer->timestamp = motosh_timestamp_ns();
+		buffer->timestamp = now;
 
 	ps_motosh->motosh_ms_data_buffer_head = new_head;
 	wake_up(&ps_motosh->motosh_ms_data_wq);
