@@ -678,7 +678,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	case STML0XX_IOCTL_SET_FLUSH:
 		dev_dbg(&stml0xx_misc_data->spi->dev, "STML0XX_IOCTL_SET_FLUSH");
-		if (ps_stml0xx->mode == BOOTMODE)
+		if (!stml0xx_g_booted)
 			break;
 		if (copy_from_user(&handle, argp, sizeof(unsigned int))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
