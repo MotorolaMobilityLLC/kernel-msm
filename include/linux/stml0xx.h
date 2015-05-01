@@ -348,6 +348,7 @@ struct stml0xx_data {
 	atomic_t enabled;
 	int irq;
 	int irq_wake;
+	unsigned int irq_wake_work_delay;	/* in ms */
 	unsigned int current_addr;
 	enum stm_mode mode;
 	unsigned char intp_mask;
@@ -386,6 +387,13 @@ struct stml0xx_data {
 struct stml0xx_work_struct {
 	/* Base struct */
 	struct work_struct ws;
+	/* Timestamp in nanoseconds */
+	uint64_t ts_ns;
+};
+
+struct stml0xx_delayed_work_struct {
+	/* Base struct */
+	struct delayed_work ws;
 	/* Timestamp in nanoseconds */
 	uint64_t ts_ns;
 };
