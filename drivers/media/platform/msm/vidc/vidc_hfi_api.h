@@ -782,7 +782,7 @@ struct hal_buffer_requirements {
 
 enum hal_priority {/* Priority increases with number */
 	HAL_PRIORITY_LOW = 10,
-	HAL_PRIOIRTY_MEDIUM = 20,
+	HAL_PRIORITY_MEDIUM = 20,
 	HAL_PRIORITY_HIGH = 30,
 	HAL_UNUSED_PRIORITY = 0x10000000,
 };

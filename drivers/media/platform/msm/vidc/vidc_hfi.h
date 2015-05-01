@@ -323,7 +323,7 @@ struct hfi_hybrid_hierp {
 };
 
 #define HFI_PRIORITY_LOW		10
-#define HFI_PRIOIRTY_MEDIUM		20
+#define HFI_PRIORITY_MEDIUM		20
 #define HFI_PRIORITY_HIGH		30
 
 #define HFI_OUTPUT_ORDER_DISPLAY	(HFI_OX_BASE + 0x1)
