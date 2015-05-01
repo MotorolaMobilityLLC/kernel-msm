@@ -40,6 +40,9 @@
 #ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
 #include <linux/wakeup_source_notify.h>
 #endif
+#ifdef CONFIG_MFD_M4SENSORHUB
+#include <linux/m4sensorhub_notify.h>
+#endif
 
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id);
@@ -183,12 +186,49 @@ atmxt_of_init(struct i2c_client *client)
 }
 #endif
 
+#ifdef CONFIG_MFD_M4SENSORHUB
+static int atmxt_m4_notify(struct notifier_block *self,
+				unsigned long action, void *dev)
+{
+	struct atmxt_driver_data *dd =
+		container_of(self, struct atmxt_driver_data, m4_nb);
+	int err;
+
+	pr_debug("%s: received %ld\n", __func__, action);
+	mutex_lock(dd->mutex);
+	if (action == ENABLE_PERIPHERAL) {
+		if (dd->status & (1 << ATMXT_GPIOS_ACQUIRED)) {
+			pr_err("%s:unexpected state\n", __func__);
+			goto done;
+		}
+		err = atmxt_gpio_init(dd);
+		if (err < 0) {
+			pr_err("%s:gpio_init failed (%d)\n", __func__, err);
+			goto done;
+		}
+		err = atmxt_request_irq(dd);
+		if (err < 0) {
+			pr_err("%s:request_irq failed (%d)\n", __func__, err);
+			goto done;
+		}
+		err = atmxt_request_tdat(dd);
+		if (err < 0)
+			pr_err("%s:touch request tdat failed\n", __func__);
+	}
+done:
+	mutex_unlock(dd->mutex);
+
+	return NOTIFY_OK;
+}
+#endif
+
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
 	struct atmxt_driver_data *dd = NULL;
 	int err = 0;
 	bool debugfail = false;
+	u32 val;
 
 	printk(KERN_INFO "%s: Driver: %s, Version: %s, Date: %s\n", __func__,
 		ATMXT_I2C_NAME, ATMXT_DRIVER_VERSION, ATMXT_DRIVER_DATE);
@@ -211,11 +251,21 @@ static int atmxt_probe(struct i2c_client *client,
 	dd->ic_stat = ATMXT_IC_UNKNOWN;
 	dd->status = 0x0000;
 	dd->client = client;
+	dd->enable_at_boot = 1;
+#ifdef CONFIG_MFD_M4SENSORHUB
+	dd->m4_nb.notifier_call = atmxt_m4_notify;
+#endif
 
-	if (client->dev.of_node)
+	if (client->dev.of_node) {
 		dd->pdata = atmxt_of_init(client);
-	else
+#ifdef CONFIG_MFD_M4SENSORHUB
+		if (!of_property_read_u32(client->dev.of_node,
+					  "atmel,enable_at_boot", &val))
+			dd->enable_at_boot = (u8)val;
+#endif
+	} else {
 		dd->pdata = client->dev.platform_data;
+	}
 
 	if (!dd->pdata) {
 		printk(KERN_ERR "%s: No platform data found.\n",
@@ -259,17 +309,20 @@ static int atmxt_probe(struct i2c_client *client,
 	if (err < 0)
 		goto atmxt_probe_fail;
 
-	err = atmxt_gpio_init(dd);
-	if (err < 0)
-		goto atmxt_probe_fail;
+	/* We don't enable touch here.. wait for M4 to be ready */
+	if (dd->enable_at_boot) {
+		err = atmxt_gpio_init(dd);
+		if (err < 0)
+			goto atmxt_probe_fail;
 
-	err = atmxt_request_irq(dd);
-	if (err < 0)
-		goto atmxt_unreg_suspend;
+		err = atmxt_request_irq(dd);
+		if (err < 0)
+			goto atmxt_unreg_suspend;
 
-	err = atmxt_request_tdat(dd);
-	if (err < 0)
-		goto atmxt_free_irq;
+		err = atmxt_request_tdat(dd);
+		if (err < 0)
+			goto atmxt_free_irq;
+	}
 
 	wake_lock_init(&dd->timed_lock, WAKE_LOCK_SUSPEND, "atmxt-timed-lock");
 
@@ -280,6 +333,11 @@ static int atmxt_probe(struct i2c_client *client,
 			__func__, err);
 		debugfail = true;
 	}
+
+#ifdef CONFIG_MFD_M4SENSORHUB
+	if (!dd->enable_at_boot)
+		m4sensorhub_register_notify(&dd->m4_nb);
+#endif
 
 	goto atmxt_probe_pass;
 
@@ -315,6 +373,10 @@ static int atmxt_remove(struct i2c_client *client)
 
 		wake_lock_destroy(&dd->timed_lock);
 		free_irq(dd->client->irq, dd);
+#ifdef CONFIG_MFD_M4SENSORHUB
+		if (!dd->enable_at_boot)
+			m4sensorhub_unregister_notify(&dd->m4_nb);
+#endif
 		atmxt_remove_sysfs_files(dd);
 		gpio_free(dd->pdata->gpio_reset);
 		gpio_free(dd->pdata->gpio_interrupt);
@@ -1039,7 +1101,8 @@ static int atmxt_gpio_init(struct atmxt_driver_data *dd)
 			__func__);
 		goto atmxt_gpio_init_fail;
 	}
-
+	dd->status = dd->status |
+				(1 << ATMXT_GPIOS_ACQUIRED);
 
 atmxt_gpio_init_fail:
 	return err;
@@ -1128,6 +1191,12 @@ static int atmxt_request_irq(struct atmxt_driver_data *dd)
 	int err = 0;
 
 	atmxt_dbg(dd, ATMXT_DBG3, "%s: Requesting IRQ...\n", __func__);
+
+	if (!(dd->status & (1 << ATMXT_GPIOS_ACQUIRED))) {
+		pr_err("%s: rejecting irq request\n", __func__);
+		err = -EINVAL;
+		goto atmxt_request_irq_fail;
+	}
 
 	err = gpio_get_value(dd->pdata->gpio_interrupt);
 	if (err < 0) {

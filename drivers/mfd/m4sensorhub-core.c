@@ -34,6 +34,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/firmware.h>
+#include <linux/m4sensorhub_notify.h>
 
 #define M4SENSORHUB_NUM_GPIOS       6
 
@@ -129,10 +130,29 @@ void m4sensorhub_hw_reset(struct m4sensorhub_data *m4sensorhub)
 		goto m4sensorhub_hw_reset_fail;
 	}
 	usleep_range(5000, 10000);
+	/* if we haven't acquired the gpio.. its not low
+	 to drive it low, acquire it */
+	if (m4sensorhub->hwconfig.reset_acquired == false) {
+		err = gpio_request(m4sensorhub->hwconfig.reset_gpio,
+							"m4sensorhub-reset");
+		if (err) {
+			pr_err("Failed acquiring M4 Sensor Hub Reset GPIO-%d (%d)\n",
+			       m4sensorhub->hwconfig.reset_gpio, err);
+			goto m4sensorhub_hw_reset_fail;
+		}
+		/* hold M4 reset till M4 load firmware procduce starts
+		* this is needed for snowflake touch determination
+		*/
+		gpio_direction_output(m4sensorhub->hwconfig.reset_gpio, 0);
+		m4sensorhub->hwconfig.reset_acquired = true;
+	}
+
 	gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 0);
 	usleep_range(10000, 12000);
-	gpio_set_value(m4sensorhub->hwconfig.reset_gpio, 1);
-	msleep(400);
+	/* release GPIO so that padconf setting takes over*/
+	gpio_free(m4sensorhub->hwconfig.reset_gpio);
+	m4sensorhub->hwconfig.reset_acquired = false;
+	msleep(600);
 
 m4sensorhub_hw_reset_fail:
 	if (err < 0)
@@ -202,6 +222,7 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	 */
 	gpio_direction_output(gpio, 0);
 	m4sensorhub->hwconfig.reset_gpio = gpio;
+	m4sensorhub->hwconfig.reset_acquired = true;
 
 	gpio = of_get_named_gpio_flags(node, "mot,boot0-gpio", 0, NULL);
 	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-boot0");
@@ -216,6 +237,7 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	return 0;
 error_boot0:
 	gpio_free(m4sensorhub->hwconfig.reset_gpio);
+	m4sensorhub->hwconfig.reset_acquired = false;
 	m4sensorhub->hwconfig.reset_gpio = -1;
 error_reset:
 	gpio_free(m4sensorhub->hwconfig.nowakeirq_gpio);
@@ -819,6 +841,8 @@ static int m4sensorhub_probe(struct i2c_client *client,
 		goto err_reg_shutdown;
 	}
 
+	KDEBUG(M4SH_INFO, "%s: disabling peripherals\n", __func__);
+	m4sensorhub_notify_subscriber(DISABLE_PERIPHERAL);
 	err = request_firmware_nowait(THIS_MODULE,
 			FW_ACTION_HOTPLUG, m4sensorhub->filename,
 			&(m4sensorhub->i2c_client->dev),

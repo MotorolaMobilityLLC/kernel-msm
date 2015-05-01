@@ -89,6 +89,7 @@ struct m4sensorhub_hwconfig {
 	int wakeirq_gpio;
 	int nowakeirq_gpio;
 	int reset_gpio;
+	bool reset_acquired;
 	int boot0_gpio;
 	int wakeirq;
 	int nowakeirq;
