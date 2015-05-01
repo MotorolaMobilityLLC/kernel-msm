@@ -35,7 +35,6 @@ void motosh_time_sync(void)
 
 	struct timespec ts;
 	int64_t ap_time1;
-	int64_t midaptime;
 	int64_t hub_time;
 	int64_t delta;
 
@@ -48,8 +47,7 @@ void motosh_time_sync(void)
 	err = motosh_i2c_write_read(motosh_misc_data, motosh_cmdbuff, 1, 8);
 
 	get_monotonic_boottime(&ts);
-	midaptime = (((ts.tv_sec*1000000000LL + ts.tv_nsec) - ap_time1) >> 1)
-		+ ap_time1;
+
 
 	if (err < 0) {
 		dev_err(&motosh_misc_data->client->dev,
@@ -68,14 +66,14 @@ void motosh_time_sync(void)
 		  (uint64_t)motosh_readbuff[7]) * 1000;
 
 	/* ap time will always be greater than hub time */
-	delta = midaptime - hub_time;
+	delta = ap_time1 - hub_time;
 
 	/* re-sync if significant change */
 	if (abs(delta - motosh_realtime_delta) > MOTOSH_RESYNC_THRESH) {
 
 		dev_info(&motosh_misc_data->client->dev,
 			"Sync time - sh: %12lld ap: %12lld offs_delta: %12lld",
-			hub_time, midaptime, delta - motosh_realtime_delta);
+			hub_time, ap_time1, delta - motosh_realtime_delta);
 
 		motosh_realtime_delta = delta;
 	} else
