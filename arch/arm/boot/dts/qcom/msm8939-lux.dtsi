@@ -187,7 +187,7 @@
 	mpp-id-amux-chan = <1>;              /* QPNP_PIN_AIN_AMUX_CH6 */
 	mpp-id-pull = <1>;                   /* QPNP_PIN_MPP_PULL_UP_OPEN */
 	mpp-id-vin = <3>;                    /* LDO6 1.8V */
-	qcom,hsusb-otg-phy-init-seq =
+	qcom,hsusb-otg-factory-phy-init-seq =
 		<0x00 0x80 0x1F 0x81 0x32 0x82 0x3F 0x83 0xffffffff>;
 };
 &soc {
