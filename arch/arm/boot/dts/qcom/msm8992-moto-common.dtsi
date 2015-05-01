@@ -824,6 +824,26 @@
 };
 
 &pmi8994_gpios {
+	gpio@c000 {	/* GPIO 1  RF_BOOST_VSEL */
+	status = "okay";
+		qcom,mode = <1>;	/* Digital Output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,invert = <1>;	/* Output high initially */
+		qcom,master-en = <1>;	/* ENABLE GPIO */
+	};
+
+	gpio@c200 {	/* GPIO 3 - RF_BOOST_BYP_EN */
+		status = "okay";
+		qcom,mode = <1>;        /* Digital Output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,invert = <1>;	/* Output high initially */
+		qcom,master-en = <1>;	/* ENABLE GPIO */
+	};
+
 	gpio@c400 {	/* GPIO 5  OTG SWITCH EN */
 		qcom,mode = <1>;	/* DIGITAL OUT */
 		qcom,pull = <5>;	/* No Pull */
