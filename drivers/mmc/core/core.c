@@ -2204,14 +2204,43 @@ static inline void mmc_bus_put(struct mmc_host *host)
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+/*
+ * Check the physical card detect switch.  Returns 1 if present, 0 if not
+ * present, or -ENODEV if the platform doesn't support a physical detect switch.
+ */
+static int mmc_card_detect_status(struct mmc_host *host)
+{
+	if (host->ops->get_cd)
+		return host->ops->get_cd(host) ? 1 : 0;
+	return -ENODEV;
+}
+
+/*
+ * If the card is removable and was previously detected and/or is currently
+ * detected, then rescan the bus.  This handles the case where the card was
+ * swapped while we were suspended while allowing us to skip the rescan for
+ * nonremovable cards and empty slots.
+ */
+static void mmc_resume_detect_change(struct mmc_host *host)
+{
+	if (!(host->caps & MMC_CAP_NONREMOVABLE) && !host->card_bad &&
+	    (mmc_card_detect_status(host) != 0 ||
+				(host->bus_ops && !host->bus_dead))) {
+		pr_debug("%s: card may have been swapped while suspended\n",
+			mmc_hostname(host));
+		mmc_detect_change(host, 0);
+	}
+}
+
 int mmc_resume_bus(struct mmc_host *host)
 {
 	unsigned long flags;
+	int err;
 
 	if (!mmc_bus_needs_resume(host))
 		return -EINVAL;
 
-	printk("%s: Starting deferred resume\n", mmc_hostname(host));
+	pr_debug("%s: starting deferred resume\n", mmc_hostname(host));
 	spin_lock_irqsave(&host->lock, flags);
 	host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
 	host->rescan_disable = 0;
@@ -2219,13 +2248,33 @@ int mmc_resume_bus(struct mmc_host *host)
 
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
-		mmc_power_up(host);
+		if (!mmc_card_keep_power(host)) {
+			mmc_power_up(host);
+			mmc_select_voltage(host, host->ocr);
+			/*
+			 * Tell runtime PM core we just powered up the card,
+			 * since it still believes the card is powered off.
+			 * Note that currently runtime PM is only enabled
+			 * for SDIO cards that are MMC_CAP_POWER_OFF_CARD
+			 */
+			if (mmc_card_sdio(host->card) &&
+			    (host->caps & MMC_CAP_POWER_OFF_CARD)) {
+				pm_runtime_disable(&host->card->dev);
+				pm_runtime_set_active(&host->card->dev);
+				pm_runtime_enable(&host->card->dev);
+			}
+		}
 		BUG_ON(!host->bus_ops->resume);
-		host->bus_ops->resume(host);
+		err = host->bus_ops->resume(host);
+		if (err) {
+			pr_warning("%s: error %d during deferred resume\n",
+					    mmc_hostname(host), err);
+		}
+		mmc_resume_detect_change(host);
 	}
 
 	mmc_bus_put(host);
-	printk("%s: Deferred resume completed\n", mmc_hostname(host));
+	pr_debug("%s: deferred resume completed\n", mmc_hostname(host));
 	return 0;
 }
 
@@ -3324,19 +3373,6 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 	return -EIO;
 }
 
-/*
- * Check the physical card detect switch.  Returns 1 if present, 0 if not
- * present, or -ENODEV if the platform doesn't support a physical detect switch.
- */
-static int mmc_card_detect_status(struct mmc_host *host)
-{
-	if (host->ops->get_cd)
-		return host->ops->get_cd(host) ? 1 : 0;
-	if (host->slot.get_cd)
-		return host->slot.get_cd(host) ? 1 : 0;
-	return -ENODEV;
-}
-
 int _mmc_detect_card_removed(struct mmc_host *host)
 {
 	int ret;
@@ -3952,20 +3988,8 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		}
 		host->rescan_disable = 0;
 		spin_unlock_irqrestore(&host->lock, flags);
-		/*
-		 * If the card is removable and was previously detected and/or
-		 * is currently detected, then rescan the bus.  This handles
-		 * the case where the card was swapped while we were suspended
-		 * while allowing us to skip the rescan for nonremovable cards
-		 * and empty slots.
-		 */
-		if (!(host->caps & MMC_CAP_NONREMOVABLE) && !host->card_bad &&
-		    (mmc_card_detect_status(host) != 0 ||
-					(host->bus_ops && !host->bus_dead))) {
-			pr_debug("%s: card may have been swapped while suspended\n",
-				mmc_hostname(host));
-			mmc_detect_change(host, 0);
-		}
+
+		mmc_resume_detect_change(host);
 		break;
 
 	default:
