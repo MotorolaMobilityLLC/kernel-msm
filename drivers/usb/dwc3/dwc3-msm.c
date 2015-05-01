@@ -3457,11 +3457,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		enable_irq(mdwc->pmic_id_irq);
 		local_irq_save(flags);
 		mdwc->id_state = !!irq_read_line(mdwc->pmic_id_irq);
-		if (mdwc->id_state == DWC3_ID_GROUND &&
-			(get_prop_usbid_voltage_now(mdwc) < id_gnd_threshold))
+		if (mdwc->id_state == DWC3_ID_GROUND)
 			queue_delayed_work(system_nrt_wq,
 				&mdwc->id_work,
-				msecs_to_jiffies(DWC3_ID_STATUS_DELAY));
+				msecs_to_jiffies(DWC3_ID_STATUS_DELAY * 10));
 		local_irq_restore(flags);
 		enable_irq_wake(mdwc->pmic_id_irq);
 	}
