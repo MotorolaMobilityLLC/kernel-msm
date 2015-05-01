@@ -46,6 +46,7 @@
 #define ATMXT_DBG2                  2
 #define ATMXT_DBG3                  3
 
+/* Beware with the flags, its uint16*/
 #define ATMXT_IRQ_ENABLED_FLAG      0
 #define ATMXT_WAITING_FOR_TDAT      1
 #define ATMXT_CHECKSUM_FAILED       2
@@ -56,6 +57,7 @@
 #define ATMXT_RESTART_REQUIRED      7
 #define ATMXT_SET_MESSAGE_POINTER   8
 #define ATMXT_RESUME_HANDLE_ISR     9
+#define ATMXT_GPIOS_ACQUIRED        10
 
 #define ATMXT_I2C_ATTEMPTS          10
 #define ATMXT_I2C_WAIT_TIME         50
@@ -172,6 +174,10 @@ struct atmxt_debug {
 } __packed;
 
 
+#ifdef CONFIG_MFD_M4SENSORHUB
+struct notifier_block;
+#endif
+
 struct atmxt_driver_data {
 	struct touch_platform_data  *pdata;
 	struct atmxt_util_data      *util;
@@ -189,6 +195,10 @@ struct atmxt_driver_data {
 	struct atmxt_data           *data;
 	struct atmxt_report_data    *rdat;
 	struct atmxt_debug          *dbg;
+#ifdef CONFIG_MFD_M4SENSORHUB
+	struct notifier_block m4_nb;
+#endif
+	uint8_t                     enable_at_boot;
 
 	uint16_t        status;
 	uint16_t        settings;
