@@ -376,11 +376,20 @@ static int msm_cpe_lab_thread(void *data)
 					hw_params->buf_sz);
 		if (rc) {
 			pr_err("%s:Slim read error %d\n", __func__, rc);
+			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
 			goto done;
 		}
 
 		cur_buf = &lab->pcm_buf[0];
 		next_buf = &lab->pcm_buf[1];
+
+		/* Start lab on CPE after first buffer is queued */
+		rc = lsm_ops->lsm_cdc_start_lab(core);
+		if (rc) {
+			pr_err("%s: start lab failed\n", __func__);
+			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
+			goto done;
+		}
 	} else {
 		pr_debug("%s: LAB stopped before starting read\n",
 			 __func__);

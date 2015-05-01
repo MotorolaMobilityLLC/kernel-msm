@@ -2984,6 +2984,19 @@ static int wcd_cpe_dealloc_lsm_session(void *core_handle,
 	return ret;
 }
 
+static int wcd_cpe_cdc_lab_enable(void *core_handle)
+{
+	struct wcd_cpe_core *core = (struct wcd_cpe_core *)core_handle;
+	int rc;
+
+	rc = cpe_svc_toggle_lab(core->cpe_handle, true);
+	if (rc)
+		dev_err(core->dev,
+			"%s: lab enable failed, err = %d\n",
+			__func__, rc);
+	return rc;
+}
+
 static int slim_master_read_enable(void *core_handle,
 				   struct cpe_lsm_session *session)
 {
@@ -3035,12 +3048,7 @@ static int slim_master_read_enable(void *core_handle,
 		rc = -EINVAL;
 		goto fail_slim_open;
 	}
-	rc = cpe_svc_toggle_lab(core->cpe_handle, true);
-	if (rc) {
-		pr_err("%s: SVC toggle codec LAB Enable error\n", __func__);
-		rc = -EINVAL;
-		goto fail_slim_open;
-	}
+
 	init_waitqueue_head(&lab_s->period_wait);
 	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
 	return 0;
@@ -3198,6 +3206,7 @@ int wcd_cpe_get_lsm_ops(struct wcd_cpe_lsm_ops *lsm_ops)
 	lsm_ops->lsm_lab_data_channel_open = slim_master_read_enable;
 	lsm_ops->lsm_set_data = wcd_cpe_lsm_set_data;
 	lsm_ops->lsm_set_fmt_cfg = wcd_cpe_lsm_set_fmt_cfg;
+	lsm_ops->lsm_cdc_start_lab = wcd_cpe_cdc_lab_enable;
 	return 0;
 }
 EXPORT_SYMBOL(wcd_cpe_get_lsm_ops);
