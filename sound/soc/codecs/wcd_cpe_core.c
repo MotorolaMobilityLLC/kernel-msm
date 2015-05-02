@@ -36,7 +36,7 @@
 
 #define CMI_CMD_TIMEOUT (10 * HZ)
 #define WCD_CPE_LSM_MAX_SESSIONS 1
-#define WCD_CPE_AFE_MAX_PORTS 1
+#define WCD_CPE_AFE_MAX_PORTS 2
 #define WCD_CPE_DRAM_SIZE 0x30000
 #define WCD_CPE_DRAM_OFFSET 0x50000
 
@@ -70,6 +70,10 @@
 #define SVASS_FATAL_IRQS \
 	(SVASS_INT_STATUS_RCO_WDOG | \
 	 SVASS_INT_STATUS_WDOG_BITE)
+
+/* AFE out buffer size is always 8 * number of bytes per sample */
+#define AFE_OUT_BUF_SIZE(bit_width) \
+	(8 * (bit_width / BITS_PER_BYTE))
 
 enum afe_port_state {
 	AFE_PORT_STATE_DEINIT = 0,
@@ -3133,6 +3137,43 @@ static int wcd_cpe_lsm_stop_lab(void *core_handle,
 	return rc;
 }
 
+static int wcd_cpe_lsm_set_fmt_cfg(void *core_handle,
+			struct cpe_lsm_session *session)
+{
+	int ret;
+	struct cpe_lsm_output_format_cfg out_fmt_cfg;
+	struct wcd_cpe_core *core = core_handle;
+
+	ret = wcd_cpe_is_valid_lsm_session(core, session, __func__);
+	if (ret)
+		goto done;
+
+	WCD_CPE_GRAB_LOCK(&session->lsm_lock, "lsm");
+
+	memset(&out_fmt_cfg, 0, sizeof(out_fmt_cfg));
+	if (fill_lsm_cmd_header_v0_inband(&out_fmt_cfg.hdr,
+			session->id, OUT_FMT_CFG_CMD_PAYLOAD_SIZE,
+			CPE_LSM_SESSION_CMD_TX_BUFF_OUTPUT_CONFIG)) {
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	out_fmt_cfg.format = session->out_fmt_cfg.format;
+	out_fmt_cfg.packing = session->out_fmt_cfg.pack_mode;
+	out_fmt_cfg.data_path_events = session->out_fmt_cfg.data_path_events;
+
+	ret = wcd_cpe_cmi_send_lsm_msg(core, session, &out_fmt_cfg);
+	if (ret)
+		dev_err(core->dev,
+			"%s: lsm_set_output_format_cfg failed, err = %d\n",
+			__func__, ret);
+
+err_ret:
+	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
+done:
+	return ret;
+}
+
 /*
  * wcd_cpe_get_lsm_ops: register lsm driver to codec
  * @lsm_ops: structure with lsm callbacks
@@ -3156,6 +3197,7 @@ int wcd_cpe_get_lsm_ops(struct wcd_cpe_lsm_ops *lsm_ops)
 	lsm_ops->lsm_lab_data_channel_read_status = slim_master_read_status;
 	lsm_ops->lsm_lab_data_channel_open = slim_master_read_enable;
 	lsm_ops->lsm_set_data = wcd_cpe_lsm_set_data;
+	lsm_ops->lsm_set_fmt_cfg = wcd_cpe_lsm_set_fmt_cfg;
 	return 0;
 }
 EXPORT_SYMBOL(wcd_cpe_get_lsm_ops);
@@ -3476,6 +3518,49 @@ static int wcd_cpe_is_valid_port(struct wcd_cpe_core *core,
 	return 0;
 }
 
+static int wcd_cpe_afe_cmd_port_cfg(void *core_handle,
+		struct wcd_cpe_afe_port_cfg *afe_cfg)
+{
+	struct cpe_afe_cmd_port_cfg port_cfg_cmd;
+	struct wcd_cpe_core *core = core_handle;
+	struct wcd_cmi_afe_port_data *afe_port_d;
+	int ret;
+
+	ret = wcd_cpe_is_valid_port(core, afe_cfg, __func__);
+	if (ret)
+		goto done;
+
+	afe_port_d = &afe_ports[afe_cfg->port_id];
+	afe_port_d->port_id = afe_cfg->port_id;
+
+	WCD_CPE_GRAB_LOCK(&afe_port_d->afe_lock, "afe");
+	memset(&port_cfg_cmd, 0, sizeof(port_cfg_cmd));
+	if (fill_afe_cmd_header(&port_cfg_cmd.hdr,
+			afe_cfg->port_id,
+			CPE_AFE_PORT_CMD_GENERIC_CONFIG,
+			CPE_AFE_CMD_PORT_CFG_PAYLOAD_SIZE,
+			false)) {
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	port_cfg_cmd.bit_width = afe_cfg->bit_width;
+	port_cfg_cmd.num_channels = afe_cfg->num_channels;
+	port_cfg_cmd.sample_rate = afe_cfg->sample_rate;
+	port_cfg_cmd.buffer_size = AFE_OUT_BUF_SIZE(afe_cfg->bit_width);
+
+	ret = wcd_cpe_cmi_send_afe_msg(core, afe_port_d, &port_cfg_cmd);
+	if (ret)
+		dev_err(core->dev,
+			"%s: afe_port_config failed, err = %d\n",
+			__func__, ret);
+
+err_ret:
+	WCD_CPE_REL_LOCK(&afe_port_d->afe_lock, "afe");
+done:
+	return ret;
+}
+
 /*
  * wcd_cpe_afe_set_params: set the parameters for afe port
  * @afe_cfg: configuration data for the port for which the
@@ -3705,6 +3790,7 @@ int wcd_cpe_get_afe_ops(struct wcd_cpe_afe_ops *afe_ops)
 	afe_ops->afe_port_stop = wcd_cpe_afe_port_stop;
 	afe_ops->afe_port_suspend = wcd_cpe_afe_port_suspend;
 	afe_ops->afe_port_resume = wcd_cpe_afe_port_resume;
+	afe_ops->afe_port_cmd_cfg = wcd_cpe_afe_cmd_port_cfg;
 
 	return 0;
 }
