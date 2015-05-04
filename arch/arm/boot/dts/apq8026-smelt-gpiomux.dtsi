@@ -47,10 +47,10 @@
 			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
 		};
 		gpio@2 {
-			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
+			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@3 {
-			suspend = <0x2330>; /* FUNC_2, DRV_8MA, PULL_UP, IN */
+			suspend = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
 		};
 		gpio@4 {
 			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */

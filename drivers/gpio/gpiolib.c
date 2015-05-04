@@ -557,8 +557,8 @@ static ssize_t gpio_wakeup_store(struct device *dev,
 	mutex_unlock(&sysfs_lock);
 
 	if (ret)
-		pr_warn("%s: failed to %s wake on gpio-%d\n", __func__,
-			on ? "enable" : "disable", desc_to_gpio(desc));
+		pr_warn("%s: failed to %s wake\n", __func__,
+			on ? "enable" : "disable");
 
 	return size;
 }
