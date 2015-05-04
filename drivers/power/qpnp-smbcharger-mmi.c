@@ -765,6 +765,9 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
 	POWER_SUPPLY_PROP_TEMP_HOTSPOT,
 	POWER_SUPPLY_PROP_CHARGE_RATE,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CYCLE_COUNT,
 };
 
 #define CHGR_STS			0x0E
@@ -1016,6 +1019,48 @@ static int get_prop_batt_voltage_max_design(struct smbchg_chip *chip)
 		uv = DEFAULT_BATT_VOLTAGE_MAX_DESIGN;
 	}
 	return uv;
+}
+
+#define DEFAULT_CHARGE_FULL	3000000
+static int get_prop_charge_full(struct smbchg_chip *chip)
+{
+	int uah, rc;
+
+	rc = get_property_from_fg(chip,
+			POWER_SUPPLY_PROP_CHARGE_FULL, &uah);
+	if (rc) {
+		pr_smb(PR_STATUS, "Couldn't get charge full rc = %d\n", rc);
+		uah = DEFAULT_CHARGE_FULL;
+	}
+	return uah;
+}
+
+#define DEFAULT_CHARGE_FULL_DESIGN	3000000
+static int get_prop_charge_full_design(struct smbchg_chip *chip)
+{
+	int uah, rc;
+
+	rc = get_property_from_fg(chip,
+			POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &uah);
+	if (rc) {
+		pr_smb(PR_STATUS, "Couldn't get full design rc = %d\n", rc);
+		uah = DEFAULT_CHARGE_FULL_DESIGN;
+	}
+	return uah;
+}
+
+#define DEFAULT_CYCLE_COUNT	0
+static int get_prop_cycle_count(struct smbchg_chip *chip)
+{
+	int count, rc;
+
+	rc = get_property_from_fg(chip,
+			POWER_SUPPLY_PROP_CYCLE_COUNT, &count);
+	if (rc) {
+		pr_smb(PR_STATUS, "Couldn't get cyclec count rc = %d\n", rc);
+		count = DEFAULT_CYCLE_COUNT;
+	}
+	return count;
 }
 
 static int get_prop_batt_health(struct smbchg_chip *chip)
@@ -2925,6 +2970,15 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE:
 		val->intval = chip->safety_timer_en;
+		break;
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+		val->intval = get_prop_cycle_count(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		val->intval = get_prop_charge_full(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = get_prop_charge_full_design(chip);
 		break;
 	default:
 		return -EINVAL;
