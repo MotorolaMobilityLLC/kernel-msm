@@ -317,7 +317,10 @@ static int parse_patch_data(char *value_p, u8 data[], long *bitmask_v)
 		num_of_bytes = strlen(value_p)/2;
 
 	for (i = 0; i < num_of_bytes; i++) {
-		error = kstrtol(value_p, 16, &value_v);
+		char hex_val[3] = {0};
+		hex_val[0] = *value_p;
+		hex_val[1] = *(value_p + 1);
+		error = kstrtol(hex_val, 16, &value_v);
 		if (error)
 			pr_err("value conv error\n");
 		data[i] = (u8)value_v;
