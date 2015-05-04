@@ -33,7 +33,7 @@
 /*belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator end*/
 
 /*belong to the wireless component group, according to the order of wifi bt fm audio begin*/
-/*#include "huawei-wifi.dtsi"*/
+#include "huawei-wifi.dtsi"
 /*#include "huawei-bt.dtsi"*/
 #include "huawei-audio.dtsi"
 /*belong to the wireless component group, according to the order of wifi bt fm audio end*/
