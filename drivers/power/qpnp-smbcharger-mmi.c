@@ -3275,9 +3275,10 @@ static bool smbchg_hvdcp_det_check(struct smbchg_chip *chip)
 	return false;
 }
 
-#define WEAK_CHARGER_THRESHOLD 450
+#define WEAK_CHRG_THRSH 450
 static void smbchg_rate_check(struct smbchg_chip *chip)
 {
+	union power_supply_propval prop = {0,};
 	int prev_chg_rate = chip->charger_rate;
 	char *charge_rate[] = {
 		"None", "Normal", "Weak", "Turbo"
@@ -3288,13 +3289,21 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 		return;
 	}
 
-	if (smbchg_get_aicl_level_ma(chip) < WEAK_CHARGER_THRESHOLD)
-		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
-	else if (smbchg_hvdcp_det_check(chip))
-		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
-	else
+	if (chip->usb_psy &&
+	    !chip->usb_psy->get_property(chip->usb_psy,
+					 POWER_SUPPLY_PROP_TYPE,
+					 &prop)) {
+		if ((prop.intval == POWER_SUPPLY_TYPE_USB_CDP) ||
+		    (prop.intval == POWER_SUPPLY_TYPE_USB))
+			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+		else if (smbchg_hvdcp_det_check(chip))
+			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
+		else if (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH)
+			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
+		else
+			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
+	} else
 		chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
-
 
 	if (prev_chg_rate != chip->charger_rate)
 		dev_err(chip->dev, "%s Charger Detected!\n",
