@@ -607,5 +607,14 @@ config REGULATOR_CPR
 	  suggestions in efuse as initial settings. It converts corner vote
 	  to voltage value before writing to a voltage regulator API, such as
 	  that provided by spm-regulator driver.
+
+config REGULATOR_OTE2005B
+	bool "OTE2005B-HH053 regulator driver"
+	depends on OF
+	help
+	  This driver supports OTE2005B-HH053 charge pump chips. The chip is
+	  used charging pumping with different factor, that is controlled by
+	  master driver(Moto Silego clock generator).
+
 endif
 
