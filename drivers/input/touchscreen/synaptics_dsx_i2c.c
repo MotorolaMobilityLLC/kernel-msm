@@ -288,7 +288,10 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		}
 
 		for (ii = 0; ii < num_of_bytes; ii++) {
-			error = kstrtol(value_p, 16, &value_v);
+			char hex_val[3] = {0};
+			hex_val[0] = *value_p;
+			hex_val[1] = *(value_p + 1);
+			error = kstrtol(hex_val, 16, &value_v);
 			if (error)
 				pr_err("F%x[%d]: value conv error\n", func, i);
 			data[ii] = (u8)value_v;
