@@ -128,7 +128,7 @@ static int mdss_mdp_tearcheck_enable(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	struct mdss_mdp_ctl *sctl;
-	struct mdss_mdp_pp_tear_check *te;
+	struct mdss_mdp_pp_tear_check *te = NULL;
 	struct mdss_mdp_mixer *mixer =
 		mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_LEFT);
 
@@ -143,7 +143,11 @@ static int mdss_mdp_tearcheck_enable(struct mdss_mdp_ctl *ctl)
 	}
 
 	sctl = mdss_mdp_get_split_ctl(ctl);
-	te = &ctl->panel_data->panel_info.te;
+
+	if (!ctl->mfd->quickdraw_in_progress ||
+	    ctl->mfd->quickdraw_panel_state == DSI_DISP_ON_SLEEP_OUT)
+		te = &ctl->panel_data->panel_info.te;
+
 	mdss_mdp_pingpong_write(mixer->pingpong_base,
 		MDSS_MDP_REG_PP_TEAR_CHECK_EN,
 		te ? te->tear_check_en : 0);
@@ -153,7 +157,9 @@ static int mdss_mdp_tearcheck_enable(struct mdss_mdp_ctl *ctl)
 	 * tear check configuration for both.
 	 */
 	if (sctl) {
-		te = &sctl->panel_data->panel_info.te;
+		if (!ctl->mfd->quickdraw_in_progress ||
+		    ctl->mfd->quickdraw_panel_state == DSI_DISP_ON_SLEEP_OUT)
+			te = &sctl->panel_data->panel_info.te;
 		mdss_mdp_pingpong_write(mixer->pingpong_base,
 				MDSS_MDP_REG_PP_TEAR_CHECK_EN,
 				te ? te->tear_check_en : 0);
