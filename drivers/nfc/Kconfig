@@ -36,6 +36,11 @@ config NFC_MEI_PHY
 
 	  If unsure, say N.
 
+config NFC_PN548
+	tristate "PN548 NFC driver"
+	help
+	  NXP PN548 driver.
+
 source "drivers/nfc/pn544/Kconfig"
 source "drivers/nfc/microread/Kconfig"
 
