@@ -63,7 +63,7 @@
 #ifdef WLMEDIA_HTSF
 extern void htsf_update(struct dhd_info *dhd, void *data);
 #endif
-int dhd_msg_level = DHD_ERROR_VAL;
+int dhd_msg_level = DHD_ERROR_VAL | DHD_EVENT_VAL;
 
 
 #include <wl_iw.h>
@@ -1275,33 +1275,33 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 	case WLC_E_START:
 	case WLC_E_DEAUTH:
 	case WLC_E_DISASSOC:
-		DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
+		DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s\n", event_name, eabuf));
 		break;
 
 	case WLC_E_ASSOC_IND:
 	case WLC_E_REASSOC_IND:
 
-		DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
+		DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s\n", event_name, eabuf));
 		break;
 
 	case WLC_E_ASSOC:
 	case WLC_E_REASSOC:
 		if (status == WLC_E_STATUS_SUCCESS) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, SUCCESS\n", event_name, eabuf));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, SUCCESS\n", event_name, eabuf));
 		} else if (status == WLC_E_STATUS_TIMEOUT) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, TIMEOUT\n", event_name, eabuf));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, TIMEOUT\n", event_name, eabuf));
 		} else if (status == WLC_E_STATUS_FAIL) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, FAILURE, reason %d\n",
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, FAILURE, reason %d\n",
 			       event_name, eabuf, (int)reason));
 		} else {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, unexpected status %d\n",
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, unexpected status %d\n",
 			       event_name, eabuf, (int)status));
 		}
 		break;
 
 	case WLC_E_DEAUTH_IND:
 	case WLC_E_DISASSOC_IND:
-		DHD_EVENT(("MACEVENT: %s, MAC %s, reason %d\n", event_name, eabuf, (int)reason));
+		DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, reason %d\n", event_name, eabuf, (int)reason));
 		break;
 
 	case WLC_E_AUTH:
@@ -1315,15 +1315,15 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 			auth_str = err_msg;
 		}
 		if (event_type == WLC_E_AUTH_IND) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, %s\n", event_name, eabuf, auth_str));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, %s\n", event_name, eabuf, auth_str));
 		} else if (status == WLC_E_STATUS_SUCCESS) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, %s, SUCCESS\n",
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, %s, SUCCESS\n",
 				event_name, eabuf, auth_str));
 		} else if (status == WLC_E_STATUS_TIMEOUT) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, %s, TIMEOUT\n",
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, %s, TIMEOUT\n",
 				event_name, eabuf, auth_str));
 		} else if (status == WLC_E_STATUS_FAIL) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s, %s, FAILURE, reason %d\n",
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, %s, FAILURE, reason %d\n",
 			       event_name, eabuf, auth_str, (int)reason));
 		}
 		BCM_REFERENCE(auth_str);
@@ -1334,34 +1334,34 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 	case WLC_E_ROAM:
 	case WLC_E_SET_SSID:
 		if (status == WLC_E_STATUS_SUCCESS) {
-			DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s\n", event_name, eabuf));
 		} else if (status == WLC_E_STATUS_FAIL) {
-			DHD_EVENT(("MACEVENT: %s, failed\n", event_name));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, failed\n", event_name));
 		} else if (status == WLC_E_STATUS_NO_NETWORKS) {
-			DHD_EVENT(("MACEVENT: %s, no networks found\n", event_name));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, no networks found\n", event_name));
 		} else {
-			DHD_EVENT(("MACEVENT: %s, unexpected status %d\n",
+			DHD_EVENT(("[wlan]: MACEVENT: %s, unexpected status %d\n",
 				event_name, (int)status));
 		}
 		break;
 
 	case WLC_E_BEACON_RX:
 		if (status == WLC_E_STATUS_SUCCESS) {
-			DHD_EVENT(("MACEVENT: %s, SUCCESS\n", event_name));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, SUCCESS\n", event_name));
 		} else if (status == WLC_E_STATUS_FAIL) {
-			DHD_EVENT(("MACEVENT: %s, FAIL\n", event_name));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, FAIL\n", event_name));
 		} else {
-			DHD_EVENT(("MACEVENT: %s, status %d\n", event_name, status));
+			DHD_EVENT(("[wlan]: MACEVENT: %s, status %d\n", event_name, status));
 		}
 		break;
 
 	case WLC_E_LINK:
-		DHD_EVENT(("MACEVENT: %s %s\n", event_name, link?"UP":"DOWN"));
+		DHD_EVENT(("[wlan]: MACEVENT: %s %s\n", event_name, link ? "UP" : "DOWN"));
 		BCM_REFERENCE(link);
 		break;
 
 	case WLC_E_MIC_ERROR:
-		DHD_EVENT(("MACEVENT: %s, MAC %s, Group %d, Flush %d\n",
+		DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s, Group %d, Flush %d\n",
 		       event_name, eabuf, group, flush_txq));
 		BCM_REFERENCE(group);
 		BCM_REFERENCE(flush_txq);
@@ -1370,19 +1370,19 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 	case WLC_E_ICV_ERROR:
 	case WLC_E_UNICAST_DECODE_ERROR:
 	case WLC_E_MULTICAST_DECODE_ERROR:
-		DHD_EVENT(("MACEVENT: %s, MAC %s\n",
+		DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s\n",
 		       event_name, eabuf));
 		break;
 
 	case WLC_E_TXFAIL:
-		DHD_EVENT(("MACEVENT: %s, RA %s\n", event_name, eabuf));
+		DHD_EVENT(("[wlan]: MACEVENT: %s, RA %s\n", event_name, eabuf));
 		break;
 
 	case WLC_E_SCAN_COMPLETE:
 	case WLC_E_ASSOC_REQ_IE:
 	case WLC_E_ASSOC_RESP_IE:
 	case WLC_E_PMKID_CACHE:
-		DHD_EVENT(("MACEVENT: %s\n", event_name));
+		DHD_EVENT(("[wlan]: MACEVENT: %s\n", event_name));
 		break;
 
 	case WLC_E_PFN_NET_FOUND:
@@ -1390,18 +1390,18 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 	case WLC_E_PFN_SCAN_COMPLETE:
 	case WLC_E_PFN_SCAN_NONE:
 	case WLC_E_PFN_SCAN_ALLGONE:
-		DHD_EVENT(("PNOEVENT: %s\n", event_name));
+		DHD_EVENT(("[wlan]: PNOEVENT: %s\n", event_name));
 		break;
 
 	case WLC_E_PSK_SUP:
 	case WLC_E_PRUNE:
-		DHD_EVENT(("MACEVENT: %s, status %d, reason %d\n",
+		DHD_EVENT(("[wlan]: MACEVENT: %s, status %d, reason %d\n",
 		           event_name, (int)status, (int)reason));
 		break;
 
 #ifdef WIFI_ACT_FRAME
 	case WLC_E_ACTION_FRAME:
-		DHD_TRACE(("MACEVENT: %s Bssid %s\n", event_name, eabuf));
+		DHD_TRACE(("[wlan]: MACEVENT: %s Bssid %s\n", event_name, eabuf));
 		break;
 #endif /* WIFI_ACT_FRAME */
 
@@ -1603,13 +1603,19 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 #endif /* SHOW_LOGTRACE */
 
 	case WLC_E_RSSI:
-		DHD_EVENT(("MACEVENT: %s %d\n", event_name, ntoh32(*((int *)event_data))));
+		DHD_EVENT(("[wlan]: MACEVENT: %s %d\n", event_name, ntoh32(*((int *)event_data))));
 		break;
 
 	case WLC_E_SERVICE_FOUND:
 	case WLC_E_P2PO_ADD_DEVICE:
 	case WLC_E_P2PO_DEL_DEVICE:
-		DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
+		DHD_EVENT(("[wlan]: MACEVENT: %s, MAC %s\n", event_name, eabuf));
+		break;
+
+	/* ASUS_BSP_WIFI: Ignore these events or it will print log too frequently */
+	case WLC_E_ESCAN_RESULT:
+	case WLC_E_P2P_PROBREQ_MSG:
+	case WLC_E_P2P_DISC_LISTEN_COMPLETE:
 		break;
 
 #ifdef BT_WIFI_HANDOBER
@@ -1619,7 +1625,7 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 #endif
 
 	default:
-		DHD_EVENT(("MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
+		DHD_EVENT(("[wlan]: MACEVENT: %s %d, MAC %s, status %d, reason %d, auth %d\n",
 		       event_name, event_type, eabuf, (int)status, (int)reason,
 		       (int)auth_type));
 		break;
@@ -1629,7 +1635,7 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 	if (DHD_BYTES_ON() && DHD_EVENT_ON() && datalen) {
 		buf = (uchar *) event_data;
 		BCM_REFERENCE(buf);
-		DHD_EVENT((" data (%d) : ", datalen));
+		DHD_EVENT(("[wlan]: MACEVENT: data (%d) : ", datalen));
 		for (i = 0; i < datalen; i++)
 			DHD_EVENT((" 0x%02x ", *buf++));
 		DHD_EVENT(("\n"));
