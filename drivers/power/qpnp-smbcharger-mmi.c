@@ -276,6 +276,7 @@ struct smbchg_chip {
 	struct delayed_work		usb_insertion_work;
 	int				apsd_rerun_cnt;
 	int				charger_rate;
+	bool				usbid_disabled;
 };
 
 static struct smbchg_chip *the_chip;
@@ -4652,6 +4653,9 @@ static irqreturn_t usbid_change_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	bool otg_present;
 
+	if (chip->usbid_disabled)
+		return IRQ_HANDLED;
+
 	pr_smb(PR_INTERRUPT, "triggered\n");
 
 	/*
@@ -5503,6 +5507,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 						"qcom,chg-inhibit-fg");
 	chip->low_volt_dcin = of_property_read_bool(node,
 					"qcom,low-volt-dcin");
+	chip->usbid_disabled = of_property_read_bool(node,
+						"qcom,usbid-disabled");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
