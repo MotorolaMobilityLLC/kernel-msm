@@ -134,6 +134,11 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
+		/* Panel module will be enabled with normal mode */
+		if (DSI_PANEL_PM == i)
+			msm_dss_set_vreg_idle(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, false);
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[i].vreg_config,
 			ctrl_pdata->power_data[i].num_vreg, 1);
@@ -727,6 +732,9 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.blank_state == MDSS_PANEL_BLANK_LOW_POWER) {
 		pr_debug("%s: dsi_unblank with panel always on\n", __func__);
+		msm_dss_set_vreg_idle(
+			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
+			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, false);
 		if (ctrl_pdata->low_power_config)
 			ret = ctrl_pdata->low_power_config(pdata, false);
 		goto error;
@@ -779,6 +787,9 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		pr_debug("%s: low power state requested\n", __func__);
 		if (ctrl_pdata->low_power_config)
 			ret = ctrl_pdata->low_power_config(pdata, true);
+		msm_dss_set_vreg_idle(
+			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
+			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, true);
 		goto error;
 	}
 

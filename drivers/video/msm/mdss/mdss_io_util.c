@@ -272,6 +272,19 @@ vreg_set_opt_mode_fail:
 } /* msm_dss_enable_vreg */
 EXPORT_SYMBOL(msm_dss_enable_vreg);
 
+void msm_dss_set_vreg_idle(struct dss_vreg *in_vreg, int num_vreg, bool idle)
+{
+	int i;
+	unsigned mode = idle ? REGULATOR_MODE_IDLE : REGULATOR_MODE_NORMAL;
+	for (i = 0; i < num_vreg; i++) {
+		int r = regulator_set_mode(in_vreg[i].vreg, mode);
+		DEV_DBG("set %s mode of %s, ret = %d\n",
+			idle ? "idle" : "normal", in_vreg[i].vreg_name, r);
+	}
+} /* msm_dss_set_vreg_idle */
+EXPORT_SYMBOL(msm_dss_set_vreg_idle);
+
+
 int msm_dss_enable_gpio(struct dss_gpio *in_gpio, int num_gpio, int enable)
 {
 	int i = 0, rc = 0;
