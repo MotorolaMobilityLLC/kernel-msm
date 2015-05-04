@@ -708,6 +708,10 @@ and have the following read/write attributes:
 
 		This file exists only if the pin can be configured as an
 		interrupt generating input pin.
+	"wakeup" ... reads as either "enabled" or "disabled".  Write these
+		strings to set/clear the 'wakeup' flag of the IRQ associated
+		with this GPIO. If the IRQ has the 'wakeup' flag set, it can
+		wake the system from sleep states.
 
 	"active_low" ... reads as either 0 (false) or 1 (true).  Write
 		any nonzero value to invert the value attribute both
