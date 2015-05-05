@@ -1041,7 +1041,7 @@ static void dwc3_prepare_trbs(struct dwc3_ep *dep, bool starting)
 	list_for_each_entry_safe(req, n, &dep->request_list, list) {
 		unsigned	length;
 		dma_addr_t	dma;
-		bool		last_req = list_empty(&dep->request_list);
+		bool		last_req = list_is_last(&req->list, &dep->request_list);
 		int		num_trbs_required = 0;
 
 		last_one = false;
