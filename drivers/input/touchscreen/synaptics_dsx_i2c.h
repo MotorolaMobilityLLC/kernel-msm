@@ -345,6 +345,32 @@ struct synaptics_rmi4_func_packet_regs {
 	struct synaptics_rmi4_packet_reg *regs;
 };
 
+struct f54_control_95n {
+	union {
+		struct {
+			/* byte 0 - flags*/
+			unsigned char c95_filter_bw:3;
+			unsigned char c95_byte0_b3_b6:4;
+			unsigned char c95_disable:1;
+
+			/* bytes 1 - 10 */
+			unsigned char c95_first_burst_length_lsb;
+			unsigned char c95_first_burst_length_msb;
+			unsigned char c95_addl_burst_length_lsb;
+			unsigned char c95_addl_burst_length_msb;
+			unsigned char c95_i_stretch;
+			unsigned char c95_r_stretch;
+			unsigned char c95_noise_control1;
+			unsigned char c95_noise_control2;
+			unsigned char c95_noise_control3;
+			unsigned char c95_noise_control4;
+		} __packed;
+		struct {
+			unsigned char data[11];
+		} __packed;
+	};
+};
+
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -480,4 +506,8 @@ int synaptics_rmi4_read_packet_reg(
 int synaptics_rmi4_read_packet_regs(
 	struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_func_packet_regs *regs);
+
+int synaptics_rmi4_scan_f54_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs);
+
 #endif
