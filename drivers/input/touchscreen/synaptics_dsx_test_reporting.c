@@ -1319,32 +1319,6 @@ struct f54_control_40 {
 	unsigned char length;
 };
 
-struct f54_control_95n {
-	union {
-		struct {
-			/* byte 0 - flags*/
-			unsigned char c95_filter_bw:3;
-			unsigned char c95_byte0_b3_b6:4;
-			unsigned char c95_disable:1;
-
-			/* bytes 1 - 10 */
-			unsigned char c95_first_burst_length_lsb;
-			unsigned char c95_first_burst_length_msb;
-			unsigned char c95_addl_burst_length_lsb;
-			unsigned char c95_addl_burst_length_msb;
-			unsigned char c95_i_stretch;
-			unsigned char c95_r_stretch;
-			unsigned char c95_noise_control1;
-			unsigned char c95_noise_control2;
-			unsigned char c95_noise_control3;
-			unsigned char c95_noise_control4;
-		} __packed;
-		struct {
-			unsigned char data[11];
-		} __packed;
-	};
-};
-
 struct f54_control_95 {
 	struct f54_control_95n *data;
 	unsigned short address;
@@ -3172,6 +3146,41 @@ exit_2:
 
 exit_1:
 	return -ENODEV;
+}
+
+/*
+ * Fill in base register address and offset of F54
+ * control register 95 to allow run time patching
+ */
+int synaptics_rmi4_scan_f54_reg_info(
+	struct synaptics_rmi4_func_packet_regs *f54_ctrl_regs)
+{
+	int error = -ENOSYS;
+	if (f54->control.reg_95) {
+		struct synaptics_rmi4_packet_reg *reg = f54_ctrl_regs->regs;
+		struct synaptics_rmi4_subpkt *subpkt = &reg->subpkt[0];
+		unsigned char *data = kzalloc(
+				f54->control.reg_95->length, GFP_KERNEL);
+		int ii, num_of_subpkts;
+		if (!data)
+			return -ENOMEM;
+		f54_ctrl_regs->base_addr = f54->control_base_addr;
+		/* need an offset off of base address here */
+		reg->offset = f54->control.reg_95->address -
+				f54->control_base_addr;
+		reg->size = f54->control.reg_95->length;
+		reg->data = data;
+		/* not going over the number of predefined subpackets */
+		num_of_subpkts = min((int)reg->nr_subpkts,
+			(int)(f54->control.reg_95->length / subpkt->size));
+		for (ii = 0; ii < num_of_subpkts; ii++) {
+			subpkt = &reg->subpkt[ii];
+			subpkt->present = true;
+			subpkt->offset = ii * subpkt->size;
+		}
+		error = 0;
+	}
+	return error;
 }
 
 static int synaptics_rmi4_f54_set_ctrl(void)

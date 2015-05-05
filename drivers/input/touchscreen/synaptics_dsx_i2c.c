@@ -269,6 +269,24 @@ static struct synaptics_rmi4_packet_reg f01_ctrl_reg_array[] = {
 	RMI4_REG_STATIC(9, f01_c9, 1),
 };
 
+static struct f54_control_95n f54_c95_0, f54_c95_1, f54_c95_2,
+	f54_c95_3, f54_c95_4, f54_c95_5, f54_c95_6, f54_c95_7;
+
+static struct synaptics_rmi4_subpkt f54_c95[] = {
+	RMI4_SUBPKT(f54_c95_0),
+	RMI4_SUBPKT(f54_c95_1),
+	RMI4_SUBPKT(f54_c95_2),
+	RMI4_SUBPKT(f54_c95_3),
+	RMI4_SUBPKT(f54_c95_4),
+	RMI4_SUBPKT(f54_c95_5),
+	RMI4_SUBPKT(f54_c95_6),
+	RMI4_SUBPKT(f54_c95_7),
+};
+
+static struct synaptics_rmi4_packet_reg f54_ctrl_reg_array[] = {
+	RMI4_REG(95, f54_c95),
+};
+
 static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 	{
 		.f_number = SYNAPTICS_RMI4_F12,
@@ -290,6 +308,13 @@ static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 		.query_offset = 7,
 		.nr_regs = ARRAY_SIZE(f12_data_reg_array),
 		.regs = f12_data_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F54,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f54_ctrl_reg_array),
+		.regs = f54_ctrl_reg_array,
 	},
 };
 
@@ -4038,6 +4063,16 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 			exp_fhandler->func_init(rmi4_data);
 			state = synaptics_dsx_get_state_safe(rmi4_data);
 			exp_fhandler->inserted = true;
+			if (exp_fhandler->fn_type == RMI_F54) {
+				int error;
+				struct synaptics_rmi4_func_packet_regs *regs =
+					find_function(SYNAPTICS_RMI4_F54);
+				error = synaptics_rmi4_scan_f54_reg_info(regs);
+				if (error) {
+					regs->nr_regs = 0;
+					pr_err("F54_Ctrl_95 scan failed\n");
+				}
+			}
 		} else if ((exp_fhandler->func_init == NULL) &&
 			   (exp_fhandler->inserted == true)) {
 			exp_fhandler->func_remove(rmi4_data);
