@@ -357,7 +357,7 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 		if (len >= READ_CMDBUFF_SIZE)
 			len = READ_CMDBUFF_SIZE - 1;
 
-		dev_err(&ps_motosh->client->dev,
+		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH version len %03d", len);
 		motosh_cmdbuff[0] = FW_VERSION_STR_REG;
 		err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff,
@@ -366,6 +366,8 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 			motosh_readbuff[len] = '\0';
 			strlcpy(ps_motosh->pdata->fw_version_str,
 				motosh_readbuff, FW_VERSION_STR_MAX_LEN);
+			dev_info(&ps_motosh->client->dev, "MOTOSH version str %s",
+						motosh_readbuff);
 			motosh_g_booted = 1;
 		}
 	}
