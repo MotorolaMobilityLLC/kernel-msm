@@ -304,19 +304,45 @@ static struct synaptics_rmi4_packet_reg f01_ctrl_reg_array[] = {
 	RMI4_REG(9, f01_c9),
 };
 
-static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[2] = {
-	{
-		.f_number = SYNAPTICS_RMI4_F12,
-		.base_addr = 0,
-		.nr_regs = ARRAY_SIZE(f12_ctrl_reg_array),
-		.regs = f12_ctrl_reg_array,
-	},
-	{
-		.f_number = SYNAPTICS_RMI4_F01,
-		.base_addr = 0,
-		.nr_regs = ARRAY_SIZE(f01_ctrl_reg_array),
-		.regs = f01_ctrl_reg_array,
-	},
+static struct {
+	struct {
+		unsigned short saturation_cap;
+	} __packed;
+} f54_c2_0;
+
+static struct synaptics_rmi4_subpkt f54_c2[] = {
+	RMI4_SUBPKT(f54_c2_0),
+};
+
+static struct f54_control_95n f54_c95_0, f54_c95_1, f54_c95_2,
+	f54_c95_3, f54_c95_4, f54_c95_5, f54_c95_6, f54_c95_7;
+
+static struct synaptics_rmi4_subpkt f54_c95[] = {
+	RMI4_SUBPKT(f54_c95_0),
+	RMI4_SUBPKT(f54_c95_1),
+	RMI4_SUBPKT(f54_c95_2),
+	RMI4_SUBPKT(f54_c95_3),
+	RMI4_SUBPKT(f54_c95_4),
+	RMI4_SUBPKT(f54_c95_5),
+	RMI4_SUBPKT(f54_c95_6),
+	RMI4_SUBPKT(f54_c95_7),
+};
+
+static struct synaptics_rmi4_packet_reg f54_ctrl_reg_array[] = {
+	RMI4_REG(2, f54_c2),
+	RMI4_REG(95, f54_c95),
+};
+
+static struct {
+	unsigned char command;
+} f54_m0_0;
+
+static struct synaptics_rmi4_subpkt f54_m0[] = {
+	RMI4_SUBPKT(f54_m0_0),
+};
+
+static struct synaptics_rmi4_packet_reg f54_cmd_reg_array[] = {
+	RMI4_REG(0, f54_m0),
 };
 
 #define CTRL_TYPE	(0 << 8)
@@ -364,6 +390,37 @@ static inline unsigned char register_type_to_ascii(int type)
 	}
 	return ascii;
 }
+
+static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
+	{
+		.f_number = SYNAPTICS_RMI4_F12,
+		.base_addr = 0,
+		.query_offset = 4,
+		.nr_regs = ARRAY_SIZE(f12_ctrl_reg_array),
+		.regs = f12_ctrl_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F01,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f01_ctrl_reg_array),
+		.regs = f01_ctrl_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F54,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f54_ctrl_reg_array),
+		.regs = f54_ctrl_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F54 | COMMAND_TYPE,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f54_cmd_reg_array),
+		.regs = f54_cmd_reg_array,
+	},
+};
 
 static unsigned char tsb_buff_clean_flag = 1;
 
@@ -3965,6 +4022,22 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 			exp_fhandler->func_init(rmi4_data);
 			state = synaptics_dsx_get_state_safe(rmi4_data);
 			exp_fhandler->inserted = true;
+			if (exp_fhandler->fn_type == RMI_F54) {
+				int error;
+				struct synaptics_rmi4_func_packet_regs *regs =
+					find_function(SYNAPTICS_RMI4_F54);
+				error = synaptics_rmi4_scan_f54_ctrl_reg_info(regs);
+				if (error) {
+					regs->nr_regs = 0;
+					pr_err("F54_Ctrl_95 scan failed\n");
+				}
+				regs = find_function(SYNAPTICS_RMI4_F54 | COMMAND_TYPE);
+				error = synaptics_rmi4_scan_f54_cmd_reg_info(regs);
+				if (error) {
+					regs->nr_regs = 0;
+					pr_err("F54_Cmd_0 scan failed\n");
+				}
+			}
 		} else if ((exp_fhandler->func_init == NULL) &&
 			   (exp_fhandler->inserted == true)) {
 			exp_fhandler->func_remove(rmi4_data);

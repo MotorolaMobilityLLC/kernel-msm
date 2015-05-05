@@ -1339,32 +1339,6 @@ struct f54_control_40 {
 	unsigned char length;
 };
 
-struct f54_control_95n {
-	union {
-		struct {
-			/* byte 0 - flags*/
-			unsigned char c95_filter_bw:3;
-			unsigned char c95_byte0_b3_b6:4;
-			unsigned char c95_disable:1;
-
-			/* bytes 1 - 10 */
-			unsigned char c95_first_burst_length_lsb;
-			unsigned char c95_first_burst_length_msb;
-			unsigned char c95_addl_burst_length_lsb;
-			unsigned char c95_addl_burst_length_msb;
-			unsigned char c95_i_stretch;
-			unsigned char c95_r_stretch;
-			unsigned char c95_noise_control1;
-			unsigned char c95_noise_control2;
-			unsigned char c95_noise_control3;
-			unsigned char c95_noise_control4;
-		} __packed;
-		struct {
-			unsigned char data[11];
-		} __packed;
-	};
-};
-
 struct f54_control_89 {
 	union {
 		struct {
@@ -1780,7 +1754,6 @@ show_prototype(has_noise_state)
 show_prototype(has_energy_ratio_relaxation)
 show_prototype(number_of_sensing_frequencies)
 show_prototype(q17_num_of_sense_freqs)
-
 show_store_prototype(no_relax)
 show_store_prototype(no_scan)
 show_store_prototype(bursts_per_cluster)
@@ -3515,6 +3488,84 @@ exit_2:
 
 exit_1:
 	return -ENODEV;
+}
+
+/*
+ * Fill in base register address and offset of F54
+ * control registers to allow run time patching
+ */
+int synaptics_rmi4_scan_f54_ctrl_reg_info(
+	struct synaptics_rmi4_func_packet_regs *f54_ctrl_regs)
+{
+	int ii, error = f54_ctrl_regs->nr_regs;
+	unsigned char *data;
+	struct synaptics_rmi4_packet_reg *reg;
+	struct synaptics_rmi4_subpkt *subpkt;
+
+	f54_ctrl_regs->base_addr = f54->control_base_addr;
+	for (ii = 0; ii < f54_ctrl_regs->nr_regs; ii++) {
+		reg = &f54_ctrl_regs->regs[ii];
+		subpkt = &reg->subpkt[0];
+		if (reg->r_number == 2 && f54->control.reg_2) {
+			data = kzalloc(2, GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->control.reg_2->address -
+					f54->control_base_addr;
+			reg->size = 2;
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+			error--;
+		}
+		if (reg->r_number == 95 && f54->control.reg_95) {
+			int jj, num_of_subpkts;
+			data = kzalloc(f54->control.reg_95->length, GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->control.reg_95->address -
+					f54->control_base_addr;
+			reg->size = f54->control.reg_95->length;
+			reg->data = data;
+			/* not going over the number of predefined subpackets */
+			num_of_subpkts = min((int)reg->nr_subpkts,
+				(int)(f54->control.reg_95->length /
+				subpkt->size));
+			for (jj = 0; jj < num_of_subpkts; jj++) {
+				subpkt = &reg->subpkt[jj];
+				subpkt->present = true;
+				subpkt->offset = jj * subpkt->size;
+			}
+			error--;
+		}
+	}
+	return error;
+}
+
+/*
+ * Fill in base register address and offset of F54
+ * command register to allow run time patching
+ */
+int synaptics_rmi4_scan_f54_cmd_reg_info(
+	struct synaptics_rmi4_func_packet_regs *f54_cmd_regs)
+{
+	unsigned char *data;
+	struct synaptics_rmi4_packet_reg *reg = f54_cmd_regs->regs;
+	struct synaptics_rmi4_subpkt *subpkt = &reg->subpkt[0];
+
+	f54_cmd_regs->base_addr = f54->command_base_addr;
+	data = kzalloc(1, GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+	reg->offset = 0;
+	reg->size = 1;
+	reg->data = data;
+	subpkt->present = true;
+	subpkt->offset = 0;
+
+	return 0;
 }
 
 static int synaptics_rmi4_f54_set_ctrl(void)
