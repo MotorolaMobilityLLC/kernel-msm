@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -632,6 +632,9 @@ int mdss_debugfs_init(struct mdss_data_type *mdata)
 			PTR_ERR(mdd->perf));
 		goto err;
 	}
+
+	debugfs_create_bool("allow_cx_vddmin", 0644, mdd->root,
+		(u32 *)&mdata->allow_cx_vddmin);
 
 	mdss_debugfs_perf_init(mdd, mdata);
 
