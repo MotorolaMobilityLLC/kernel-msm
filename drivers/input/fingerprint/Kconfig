@@ -1,0 +1,8 @@
+#
+# fpc fingerprint configuration
+#
+config FINGERPRINT_FPC
+	tristate "fpc fingerprint"
+	default n
+	help
+	  If you say yes here you get support for fpc fingerprint.

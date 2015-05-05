@@ -1940,6 +1940,21 @@ static int msm_spi_unprepare_transfer_hardware(struct spi_master *master)
 	return 0;
 }
 
+int msm_spi_ctl_for_tz(struct spi_device *spi,int enable)
+{
+	int ret = 0;
+
+	if(!spi)
+		return -EINVAL;
+	if(enable)
+		ret = msm_spi_prepare_transfer_hardware(spi->master);
+	else
+		ret = msm_spi_unprepare_transfer_hardware(spi->master);
+	dev_info(&spi->dev, "%s: clk enable = %d,ret=%d\n",__func__, enable,ret);
+
+	return ret;
+}
+
 static int msm_spi_setup(struct spi_device *spi)
 {
 	struct msm_spi	*dd;
