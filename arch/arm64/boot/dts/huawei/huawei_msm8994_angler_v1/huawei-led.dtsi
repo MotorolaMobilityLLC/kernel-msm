@@ -1,0 +1,32 @@
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d000 {
+			qcom,rgb_0 {
+				qcom,start-idx = <1>;
+				qcom,idx-len = <10>;
+				qcom,duty-pcts = [00 19 32 4B 64 64 4B 32 19 00];
+				qcom,pause-lo = <0>;
+				qcom,pause-hi = <0>;
+				qcom,use-blink;
+			};
+
+			qcom,rgb_1 {
+				qcom,start-idx = <1>;
+				qcom,idx-len = <10>;
+				qcom,duty-pcts = [00 19 32 4B 64 64 4B 32 19 00];
+				qcom,pause-lo = <0>;
+				qcom,pause-hi = <0>;
+				qcom,use-blink;
+			};
+
+			qcom,rgb_2 {
+				qcom,start-idx = <1>;
+				qcom,idx-len = <10>;
+				qcom,duty-pcts = [00 19 32 4B 64 64 4B 32 19 00];
+				qcom,pause-lo = <0>;
+				qcom,pause-hi = <0>;
+				qcom,use-blink;
+			};
+		};
+	};
+};
