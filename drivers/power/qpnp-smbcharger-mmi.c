@@ -768,6 +768,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
+	POWER_SUPPLY_PROP_AGE,
 };
 
 #define CHGR_STS			0x0E
@@ -2979,6 +2980,10 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = get_prop_charge_full_design(chip);
+		break;
+	case POWER_SUPPLY_PROP_AGE:
+		val->intval = ((get_prop_charge_full(chip) / 10) /
+			       (get_prop_charge_full_design(chip) / 1000));
 		break;
 	default:
 		return -EINVAL;
