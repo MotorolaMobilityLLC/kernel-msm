@@ -502,7 +502,6 @@
 	};
 
 	rpm-regulator-vsa1 {
-		regulator-always-on;
 		status = "okay";
 		pm8226_lvs1: regulator-lvs1 {
 			status = "okay";

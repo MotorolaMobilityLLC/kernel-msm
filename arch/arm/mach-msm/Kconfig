@@ -991,4 +991,9 @@ config HUAWEI_BATTERY_SETTING
 	default n
 	help
 	  use huawei code
+config HUAWEI_STURGEON
+	bool "Use huawei DTS"
+	default n
+	help
+	  use huawei DTS
 endif

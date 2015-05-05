@@ -1,0 +1,46 @@
+/* Copyright (c) 2015, HUAWEI TECHNOLOGIES CO., LTD. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	/*low speed uart,for MCU*/
+	serial@f991d000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf991d000 0x1000>;
+		interrupts = <0 107 0>;
+		status = "ok";
+
+		qcom,tx-gpio = <&msmgpio 0 0x00>;
+		qcom,rx-gpio = <&msmgpio 1 0x00>;
+		qcom,cts-gpio = <&msmgpio 2 0x00>;
+		qcom,rfr-gpio = <&msmgpio 3 0x00>;
+
+		qcom,msm-bus,name = "blsp1_uart0";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
+	};
+
+	/*The GPIO connect the AP and MCU*/
+	qcom,mcusleep {
+		compatible = "qcom,mcusleep";
+		mcu-ap-status-gpio = <&msmgpio 108 0>;
+		mcu-wake-ap-gpio = <&msmgpio 65 0>;
+		ext-wake-mcu-gpio = <&msmgpio 62 0>;
+		mcu-status-gpio = <&msmgpio 114 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <65 0>;
+		interrupt-names = "mcu_host_wake";
+		tx-timer-interval = <3>;
+	};
+};

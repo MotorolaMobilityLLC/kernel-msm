@@ -1,0 +1,151 @@
+/* Copyright (c) 2015, HUAWEI TECHNOLOGIES CO., LTD. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "HB442528EBC-SCUD-4v35-300mah.dtsi"
+#include "HB442528EBC-XWD-4v35-300mah.dtsi"
+
+&soc {
+    /*ADC for hw version*/
+	qcom,hwversion {
+		compatible = "qcom,hwversion";
+		qcom,hwver0-vadc = <&pm8226_vadc>;/* hwver0 */
+		qcom,hwver1-vadc = <&pm8226_vadc>;/* hwver1 */
+	};
+};
+
+&pm8226_mpps {
+	mpp@a500 { /* MPP 6 */
+		/* HW_VER0 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <1>; /* AMUX 6 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+
+	mpp@a600 { /* MPP 7 */
+		/* HW_VER1 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <2>; /* AMUX 7 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+};
+
+&pm8226_vadc {
+	chan@15 {
+		label = "hw_ver0";
+		reg = <0x15>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <2>;
+	};
+	chan@16 {
+		label = "hw_ver1";
+		reg = <0x16>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <2>;
+	};
+};
+
+&spmi_bus {
+	qcom,pm8226@0 {
+	    /*10s key-press to reset the device*/
+		qcom,power-on@800 {
+			qcom,pon_1 {
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <10256>;
+				qcom,s2-timer = <10>;
+				qcom,s2-type = <7>;
+				qcom.use-bark;
+			};
+		};
+		pm8226_chg: qcom,charger {
+			qcom,vddmax-mv = <4350>;
+			qcom,vddsafe-mv = <4370>;
+			qcom,vinmin-mv = <4370>;
+			low-power-usb-workaround;
+			qcom,vbatdet-delta-mv = <100>;
+			qcom,ibatmax-ma = <300>;
+			qcom,ibatterm-ma = <100>;
+			qcom,ibatsafe-ma = <600>;
+			qcom,thermal-mitigation = <1500 700 600 325>;
+			qcom,resume-soc = <99>;
+			qcom,maxinput-usb-ma = <1100>;
+			qcom,tchg-mins = <150>;
+			qcom,chg-vadc = <&pm8226_vadc>;
+			qcom,chg-adc_tm = <&pm8226_adc_tm>;
+			qcom,pmic-revid = <&pm8226_revid>;
+			qcom,ibatmax-warm-ma = <150>;
+			qcom,warm-bat-decidegc = <450>;
+			qcom,warm-bat-mv = <4100>;
+			qcom,cool-bat-decidegc = <100>;
+			qcom,cool-bat-mv = <4100>;
+			qcom,ibatmax-cool-ma = <100>;
+			qcom,hot-bat-decidegc = <500>;
+			qcom,cold-bat-decidegc = <0>;
+			/delete-property/ qcom,charging-disabled;
+		};
+		pm8226_bms: qcom,bms {
+			/*if want to enable bms,status = "okay"*/
+			status = "okay";
+
+			qcom,r-sense-uohm = <9700>;
+			/*if use external rsense*/
+			qcom,use-external-rsense;
+			qcom,v-cutoff-uv = <3400000>;
+			qcom,max-voltage-uv = <4350000>;
+			qcom,r-conn-mohm = <0>;
+			qcom,shutdown-soc-valid-limit = <40>;
+			qcom,adjust-soc-low-threshold = <15>;
+			qcom,ocv-voltage-high-threshold-uv = <3750000>;
+			qcom,ocv-voltage-low-threshold-uv = <3650000>;
+			qcom,low-soc-calculate-soc-threshold = <15>;
+			qcom,low-voltage-calculate-soc-ms = <1000>;
+			qcom,low-soc-calculate-soc-ms = <5000>;
+			qcom,calculate-soc-ms = <20000>;
+			qcom,chg-term-ua = <100000>;
+			qcom,batt-type = <0>;
+			qcom,tm-temp-margin = <5000>;
+			qcom,low-ocv-correction-limit-uv = <100>;
+			qcom,high-ocv-correction-limit-uv = <250>;
+			qcom,hold-soc-est = <3>;
+			qcom,low-voltage-threshold = <3350000>;
+			qcom,bms-vadc = <&pm8226_vadc>;
+			qcom,bms-iadc = <&pm8226_iadc>;
+			qcom,bms-adc_tm = <&pm8226_adc_tm>;
+		};
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-vsa1 {
+		regulator-always-on;
+	};
+};
+
+/{
+	mtp_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <68>;
+		qcom,vref-batt-therm = <1800000>;
+	};
+};
+
+
+

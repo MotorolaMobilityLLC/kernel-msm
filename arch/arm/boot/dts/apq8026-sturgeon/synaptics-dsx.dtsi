@@ -15,10 +15,7 @@
  */
 
 &soc {
-	i2c@f9927000 {
-		status = "ok";
-		#address-cells = <1>;
-		#size-cells = <0>;
+    i2c@f9927000 {
 		synaptics_dsx@20 {
 			compatible = "synaptics,dsx";
 			reg = <0x20>;
