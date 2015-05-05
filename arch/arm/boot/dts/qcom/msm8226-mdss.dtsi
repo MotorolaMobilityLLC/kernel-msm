@@ -129,8 +129,6 @@
 		vddio-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
-		/*enable lcd gpio 78*/
-		qcom,platform-enable-gpio = <&msmgpio 78 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
 		qcom,platform-strength-ctrl = [ff 06];
 		qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
@@ -171,16 +169,6 @@
 				qcom,supply-disable-load = <100>;
 				qcom,supply-ulp-load = <1000>;
 				qcom,supply-post-on-sleep = <20>;
-			};
-
-			qcom,ctrl-supply-entry@1 {
-				reg = <1>;
-				qcom,supply-name = "vddio";
-				qcom,supply-min-voltage = <1800000>;
-				qcom,supply-max-voltage = <1800000>;
-				qcom,supply-enable-load = <100000>;
-				qcom,supply-disable-load = <100>;
-				qcom,supply-ulp-load = <100>;
 			};
 		};
 

@@ -1,0 +1,35 @@
+/* Copyright (c) 2015, HUAWEI TECHNOLOGIES CO., LTD. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "dsi-panel-edo-rm67160-hvga-video.dtsi"
+#include "dsi-panel-auo-rm69080-hvga-video.dtsi"
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_auo_rm69080_hvga_video>;
+	/*/delete-property/ vdd-supply;
+	/delete-property/ vddio-supply;*/
+	/*enable lcd gpio 78*/
+	qcom,platform-enable-gpio = <&msmgpio 78 0>;
+};
+
+&dsi_auo_rm69080_hvga_video{
+	qcom,cont-splash-enabled;
+};
+
+&dsi_edo_rm67160_hvga_video{
+	qcom,cont-splash-enabled;
+};
+
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0xFA000>;
+};

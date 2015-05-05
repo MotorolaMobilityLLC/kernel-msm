@@ -1,0 +1,39 @@
+/* Copyright (c) 2015, HUAWEI TECHNOLOGIES CO., LTD. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&soc{
+	sound {
+		compatible = "qcom,msm8226-audio-tapan";
+		qcom,model = "msm8226-tapan-snd-card";
+		qcom,tapan-mclk-clk-freq = <9600000>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 49 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 50 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 51 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 52 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
+	};
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-tert {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <2>;
+		};
+		qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-tx-lines = <1>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			vcc_mic-supply = <&pm8226_lvs1>;
+		};
+	};
+};

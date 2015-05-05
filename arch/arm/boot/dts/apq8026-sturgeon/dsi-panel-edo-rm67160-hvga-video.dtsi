@@ -54,7 +54,7 @@
 			15 01 00 00 00 00 02 07 13
 			15 01 00 00 00 00 02 08 08
 			15 01 00 00 00 00 02 09 DC
-  		15 01 00 00 00 00 02 0A 00
+			15 01 00 00 00 00 02 0A 00
 			15 01 00 00 00 00 02 0B 02
 			15 01 00 00 00 00 02 0C 00
 			15 01 00 00 00 00 02 0D 00
@@ -161,7 +161,7 @@
 			15 01 00 00 00 00 02 36 40
 			15 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00
-					05 01 00 00 78 00 02 10 00];
+			05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
@@ -176,7 +176,7 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
-                qcom,mdss-dsi-panel-timings = [6A 16 0E 00 38 3C 12 18 2A 03 04 00];
+		qcom,mdss-dsi-panel-timings = [6A 16 0E 00 38 3C 12 18 2A 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x3c>;
 		qcom,mdss-dsi-t-clk-pre = <0x08>;
 		qcom,mdss-dsi-bl-min-level = <1>;

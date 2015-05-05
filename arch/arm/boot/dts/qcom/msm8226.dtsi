@@ -18,6 +18,7 @@
 	interrupt-parent = <&intc>;
 
 	aliases {
+		spi0 = &spi_0;
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
 		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
 		sdhc3 = &sdhc_3; /* SDC3 SDIO slot */
@@ -246,82 +247,14 @@
 	qcom,wfd {
 		compatible = "qcom,msm-wfd";
 	};
-	qcom,bluesleep {
-		compatible = "qcom,bluesleep";
-		host-wake-gpio = <&msmgpio 64 0>;
-		ext-wake-gpio = <&msmgpio 63 0>;
-		interrupt-parent = <&msmgpio>;
-		interrupts = <64 0>;
-		interrupt-names = "host_wake";
-		tx-timer-interval = <1>;
-	};
 
-	qcom,mcusleep {
-		compatible = "qcom,mcusleep";
-		mcu-ap-status-gpio = <&msmgpio 108 0>;
-		mcu-wake-ap-gpio = <&msmgpio 65 0>;
-		ext-wake-mcu-gpio = <&msmgpio 62 0>;
-		mcu-status-gpio = <&msmgpio 114 0>;
-		interrupt-parent = <&msmgpio>;
-		interrupts = <65 0>;
-		interrupt-names = "mcu_host_wake";
-		tx-timer-interval = <3>;
-	};
-	
 	serial@f991f000 {
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0xf991f000 0x1000>;
 		interrupts = <0 109 0>;
 		status = "disabled";
 	};
-	/*low speed uart,for MCU*/	
-	serial@f991d000 {
-		compatible = "qcom,msm-lsuart-v14";
-		reg = <0xf991d000 0x1000>;
-		interrupts = <0 107 0>;
-		status = "ok";
 
-		qcom,tx-gpio = <&msmgpio 0 0x00>; 
-		qcom,rx-gpio = <&msmgpio 1 0x00>;
-		qcom,cts-gpio = <&msmgpio 2 0x00>;
-		qcom,rfr-gpio = <&msmgpio 3 0x00>;
-		
-		qcom,msm-bus,name = "blsp1_uart0";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<86 512 0 0>,
-				<86 512 500 800>;
-	};
-
-	/*high speed uart,for BT*/
-	hserial:serial@f9920000 {
-		compatible = "qcom,msm-hsuart-v14";
-		status = "ok";
-		reg = <0xf9920000 0x1000>,
-		<0xf9904000 0x19000>;
-		reg-names = "core_mem", "bam_mem";
-		interrupts = <0 110 0>, <0 238 0>;
-		interrupt-names = "core_irq", "bam_irq";
-    
-		qcom,tx-gpio = <&msmgpio 13 0x00>; 
-		qcom,rx-gpio = <&msmgpio 12 0x00>;
-		qcom,cts-gpio = <&msmgpio 15 0x00>;
-		qcom,rfr-gpio = <&msmgpio 14 0x00>;
-    
-		qcom,bam-tx-ep-pipe-index = <6>; 
-		qcom,bam-rx-ep-pipe-index = <7>;
-  
-		qcom,rx-char-to-inject = <0xFD>;
-
-		qcom,msm-bus,name = "blsp1_uart3";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,active-only = <0>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<86 512 0 0>,
-				<86 512 500 800>;
-	};
 	qcom,msm-imem@fe805000 {
 		compatible = "qcom,msm-imem";
 		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */
@@ -550,10 +483,10 @@
 		compatible = "qcom,msm8226-audio-tapan";
 		qcom,model = "msm8226-tapan-snd-card";
 		qcom,tapan-mclk-clk-freq = <9600000>;
-		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 49 0>;
-		qcom,prim-auxpcm-gpio-sync = <&msmgpio 50 0>;
-		qcom,prim-auxpcm-gpio-din  = <&msmgpio 51 0>;
-		qcom,prim-auxpcm-gpio-dout = <&msmgpio 52 0>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 63 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 64 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
 		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
 	};
 
@@ -561,10 +494,10 @@
 		compatible = "qcom,msm8226-audio-tapan";
 		qcom,model = "msm8226-tapan9302-snd-card";
 		qcom,tapan-mclk-clk-freq = <9600000>;
-		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 49 0>;
-		qcom,prim-auxpcm-gpio-sync = <&msmgpio 50 0>;
-		qcom,prim-auxpcm-gpio-din  = <&msmgpio 51 0>;
-		qcom,prim-auxpcm-gpio-dout = <&msmgpio 52 0>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 63 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 64 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
 		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
 		qcom,tapan-codec-9302;
 	};
@@ -737,22 +670,7 @@
                         qcom,msm-dai-q6-dev-id = <32770>;
                 };
 	};
-	qcom,msm-dai-mi2s {
-		compatible = "qcom,msm-dai-mi2s";
-		qcom,msm-dai-q6-mi2s-tert {
-			compatible = "qcom,msm-dai-q6-mi2s";
-			qcom,msm-dai-q6-mi2s-dev-id = <2>;
-			qcom,msm-mi2s-rx-lines = <1>;
-			qcom,msm-mi2s-tx-lines = <2>;
-		};
-		qcom,msm-dai-q6-mi2s-quat {
-			compatible = "qcom,msm-dai-q6-mi2s";
-			qcom,msm-dai-q6-mi2s-dev-id = <3>;
-			qcom,msm-mi2s-tx-lines = <1>;
-			qcom,msm-mi2s-rx-lines = <2>;
-			vcc_mic-supply = <&pm8226_lvs1>;
-		};
-	};
+
 	qcom,msm-pcm-hostless {
 		compatible = "qcom,msm-pcm-hostless";
 	};
@@ -907,12 +825,6 @@
 	qcom,bcl {
 		compatible = "qcom,bcl";
 	};
-	
-	qcom,hwversion {
-		compatible = "qcom,hwversion";
-		qcom,hwver0-vadc = <&pm8226_vadc>;/* hwver0 */
-		qcom,hwver1-vadc = <&pm8226_vadc>;/* hwver1 */		
-	};	
 
 	sdhc_1: sdhci@f9824900 {
 		compatible = "qcom,sdhci-msm";
@@ -1039,24 +951,7 @@
 		qcom,pmic-arb-ee = <0>;
 		qcom,pmic-arb-channel = <0>;
 	};
-    /* Vibrator I2C*/
-	i2c@f9924000 { /* BLSP-1 QUP-2 */
-		cell-index = <7>;
-		compatible = "qcom,i2c-qup";
-		reg = <0xf9924000 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 96 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <19200000>;
-		qcom,sda-gpio = <&msmgpio 6 0>;
-		qcom,scl-gpio = <&msmgpio 7 0>;
-		qcom,master-id = <86>;
-	};
 
-    /* Speaker I2C*/
 	i2c@f9925000 { /* BLSP-1 QUP-3 */
 		cell-index = <2>;
 		compatible = "qcom,i2c-qup";
@@ -1083,7 +978,6 @@
 		qcom,master-id = <86>;
 	};
 
-        /*use for touch*/
 	i2c@f9927000 { /* BLSP1 QUP5 */
 		cell-index = <5>;
 		compatible = "qcom,i2c-qup";
@@ -1343,10 +1237,6 @@
 		qcom,core-control-mask = <0xe>;
 		qcom,hotplug-temp = <110>;
 		qcom,hotplug-temp-hysteresis = <20>;
-		qcom,freq-mitigation-temp = <110>;
-		qcom,freq-mitigation-temp-hysteresis = <20>;
-		qcom,freq-mitigation-value = <300000>;
-		qcom,freq-mitigation-control-mask = <0xf>;
 		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor5",
 				"tsens_tz_sensor2", "tsens_tz_sensor2";
 		qcom,vdd-restriction-temp = <5>;
@@ -1366,6 +1256,29 @@
 		};
 	};
 
+	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9923000 0x1000>,
+		      <0xf9904000 0xF000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 95 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+
+		qcom,gpio-mosi = <&msmgpio 0 0>;
+		qcom,gpio-miso = <&msmgpio 1 0>;
+		qcom,gpio-clk  = <&msmgpio 3 0>;
+		qcom,gpio-cs0  = <&msmgpio 22 0>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <86>;
+	};
 
 	qcom,bam_dmux@fc834000 {
 		compatible = "qcom,bam_dmux";
