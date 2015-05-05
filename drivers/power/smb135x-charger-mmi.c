@@ -352,7 +352,9 @@ struct smb135x_chg {
 	int				vfloat_mv;
 	int				safety_time;
 	int				resume_delta_mv;
-	int				fake_battery_soc;
+	bool				test_mode;
+	int				test_mode_soc;
+	int				test_mode_temp;
 	struct dentry			*debug_root;
 	int				usb_current_arr_size;
 	int				*usb_current_table;
@@ -966,8 +968,9 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip,
 		chip->bms_psy =
 			power_supply_get_by_name((char *)chip->bms_psy_name);
 
-	if (chip->fake_battery_soc >= 0) {
-		*batt_cap = chip->fake_battery_soc;
+	if (chip->test_mode && !(chip->test_mode_soc < 0) &&
+					!(chip->test_mode_soc > 100)) {
+		*batt_cap = chip->test_mode_soc;
 		return rc;
 	}
 
@@ -1904,7 +1907,8 @@ static int smb135x_battery_set_property(struct power_supply *psy,
 		smb135x_charging(chip, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		chip->fake_battery_soc = val->intval;
+		if (chip->test_mode)
+			chip->test_mode_soc = val->intval;
 		power_supply_changed(&chip->batt_psy);
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
@@ -1931,6 +1935,13 @@ static int smb135x_battery_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		smb135x_bms_set_property(chip, prop, val);
 		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		if (chip->test_mode)
+			chip->test_mode_temp = val->intval;
+		cancel_delayed_work(&chip->heartbeat_work);
+		schedule_delayed_work(&chip->heartbeat_work,
+					msecs_to_jiffies(0));
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1949,6 +1960,7 @@ static int smb135x_battery_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 	case POWER_SUPPLY_PROP_HEALTH:
+	case POWER_SUPPLY_PROP_TEMP:
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 		rc = 1;
 		break;
@@ -2046,6 +2058,17 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 		val->intval = chip->charger_rate;
 		break;
 	/* Block from Fuel Gauge */
+	case POWER_SUPPLY_PROP_TEMP:
+		if (chip->test_mode && !(chip->test_mode_temp < -350)
+					&& !(chip->test_mode_temp > 1250))
+			val->intval = chip->test_mode_temp;
+		else {
+			rc = smb135x_bms_get_property(chip, prop, &stat_val);
+			val->intval = stat_val;
+			if (rc < 0)
+				return rc;
+		}
+		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
@@ -2054,7 +2077,6 @@ static int smb135x_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-	case POWER_SUPPLY_PROP_TEMP:
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
@@ -5132,6 +5154,28 @@ static int smb135x_charger_reboot(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+bool smbcharger_test_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *mode;
+	int rc;
+	bool test = false;
+
+	if (!np)
+		return test;
+
+	rc = of_property_read_string(np, "mmi,battery", &mode);
+	if ((rc >= 0) && mode) {
+		if (strcmp(mode, "test") == 0)
+			test = true;
+	}
+	of_node_put(np);
+
+	return test;
+}
+
+#define DEFAULT_TEST_MODE_SOC  52
+#define DEFAULT_TEST_MODE_TEMP  225
 static int smb135x_charger_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -5159,7 +5203,12 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	chip->client = client;
 	chip->dev = &client->dev;
 	chip->usb_psy = usb_psy;
-	chip->fake_battery_soc = -EINVAL;
+	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
+	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
+	chip->test_mode = smbcharger_test_mode();
+	if (chip->test_mode)
+		dev_warn(&client->dev, "Test Mode Enabled\n");
+
 	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
 	chip->aicl_weak_detect = false;
 	chip->invalid_battery = false;
