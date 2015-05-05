@@ -19,6 +19,12 @@
 	qcom,board-id = <0x42 0x8200>;
 };
 
+&spi_7 {
+	florida@0 {
+		/delete-node/ vreg-arizona1p2-supply;
+	};
+};
+
 &soc {
 	sound {
 		/delete-node/ vreg-wlf1p2-supply;
