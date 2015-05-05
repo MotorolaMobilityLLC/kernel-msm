@@ -1924,23 +1924,6 @@ static int get_device_firmware(struct synaptics_rmi4_data *rmi4_data)
 	}
 }
 
-static int fw_lockdown_check(const unsigned char *image)
-{
-	unsigned char productid_info[PRODUCT_INFO_HEAD_LEN + 1] = {0};
-
-	if(image == NULL)
-		return -EINVAL;
-
-	memcpy(productid_info, image + PRODUCT_INFO_OFFSET, strlen(PRODUCT_INFO_HEAD));
-	pr_info("%s:product id head=%s\n",__func__,productid_info);
-
-	if (strcmp(productid_info, PRODUCT_INFO_HEAD) == 0)
-		return true;
-	else
-		return false;
-
-}
-
 static int fwu_start_reflash(void)
 {
 	int retval = 0;
@@ -2015,10 +1998,6 @@ static int fwu_start_reflash(void)
 		fwu->in_flash_prog_mode = false;
 	}
 
-	if(fw_lockdown_check(fwu->img.image) > 0) {
-		pr_info("%s:fw lockdown info found\n",__func__);
-		fwu->do_lockdown = true;
-	}
 	if (fwu->do_lockdown && (fwu->img.lockdown.data != NULL)) {
 		switch (fwu->bl_version) {
 		case V5:
