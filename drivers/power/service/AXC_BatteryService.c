@@ -236,7 +236,7 @@ extern void setFloatVoltage(int StopPercent);
 bool g_alreadyCalFirstCap = false;
 //Eason: AICL work around ---
 //Eason: choose Capacity type SWGauge/BMS +++
-int g_CapType = 0;// 0:SWgauge 1:BMS
+int g_CapType = 1;// 0:SWgauge 1:BMS
 #define DEFAULT_CAP_TYPE_VALUE 0
 extern int get_BMS_capacity(void);
 //Eason: choose Capacity type SWGauge/BMS ---
