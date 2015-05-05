@@ -22,6 +22,8 @@
 
 #include "arizona.h"
 
+static struct regulator *codec_supply_reg;
+
 static int arizona_spi_probe(struct spi_device *spi)
 {
 	const struct spi_device_id *id = spi_get_device_id(spi);
@@ -29,6 +31,18 @@ static int arizona_spi_probe(struct spi_device *spi)
 	const struct regmap_config *regmap_config;
 	unsigned long type;
 	int ret;
+
+	codec_supply_reg = devm_regulator_get(&spi->dev, "vreg-arizona1p2");
+	if (PTR_ERR(codec_supply_reg) == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (IS_ERR(codec_supply_reg)) {
+		pr_warn("%s: Cannot get regulator %s.\n",
+			__func__, "vreg-wlf1p2");
+	} else if (regulator_enable(codec_supply_reg)) {
+		pr_err("%s: failed to enable codec supply regulator.\n", __func__);
+	} else {
+		pr_info("%s: enabled codec supply regulator.\n", __func__);
+	}
 
 	if (spi->dev.of_node)
 		type = arizona_of_get_type(&spi->dev);
