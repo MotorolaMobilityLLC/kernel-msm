@@ -163,7 +163,7 @@ void bluesleep_setup_uart_port(struct uart_port *uport)
 
 static void hsuart_power(int on)
 {
-/*	if (on) {
+	if (on) {
 		printk("BT hsuart_power on\n");
 		msm_hs_request_clock_on(bsi->uport);
 		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
@@ -174,7 +174,7 @@ static void hsuart_power(int on)
 		msm_hs_request_clock_off(bsi->uport);
 		uart_powered = false;
 	}
-*/
+
 }
 
 /**
