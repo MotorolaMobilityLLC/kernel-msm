@@ -5414,6 +5414,7 @@
 		reg = <0xFE0C900C  0x4>,
 		      <0xFE0C9010  0x4>;
 		reg-names = "avtimer_lsb_addr", "avtimer_msb_addr";
+		qcom,clk_div = <27>;
 	};
 };
 
