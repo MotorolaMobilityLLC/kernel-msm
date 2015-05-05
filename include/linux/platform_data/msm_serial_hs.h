@@ -33,6 +33,7 @@
  * @bam_tx_ep_pipe_index : BAM TX Endpoint Pipe Index for HSUART
  * @bam_tx_ep_pipe_index : BAM RX Endpoint Pipe Index for HSUART
  * @no_suspend_delay : Flag used to make system go to suspend
+ * @obs: Flag for out of band sleep usage
  * immediately or not
  */
 struct msm_serial_hs_platform_data {
@@ -49,6 +50,7 @@ struct msm_serial_hs_platform_data {
 	unsigned bam_tx_ep_pipe_index;
 	unsigned bam_rx_ep_pipe_index;
 	bool no_suspend_delay;
+	bool obs;
 };
 
 /* return true when tx is empty */
