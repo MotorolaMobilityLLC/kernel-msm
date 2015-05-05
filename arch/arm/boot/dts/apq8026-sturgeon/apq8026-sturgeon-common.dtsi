@@ -23,6 +23,10 @@
 		qcom,freq-mitigation-value = <787200>;
 		qcom,freq-mitigation-control-mask = <0xf>;
 	};
+	usb_otg: usb@f9a55000 {
+		qcom,hsusb-otg-phy-init-seq =
+			<0x44 0x80 0x68 0x81 0x3C 0x82 0xF3 0x83 0xffffffff>;
+	};
 };
 
 &mdss_fb0 {
