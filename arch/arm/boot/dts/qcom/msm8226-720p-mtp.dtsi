@@ -11,13 +11,11 @@
  */
 
 #include "msm8226-camera-sensor-mtp.dtsi"
-#include "synaptics-dsx.dtsi"
 
 &soc {
 	serial@f991f000 {
 		status = "ok";
 	};
-
 
 
 	i2c@f9925000 { /* BLSP1 QUP3 */
@@ -168,10 +166,12 @@
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
-			1 &intc 0 221 0>;
+			1 &intc 0 221 0
+			2 &msmgpio 38 0x3>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&msmgpio 38 0x1>;
 
-	status = "disabled";
+	status = "ok";
 };
 &sdhc_3 {
 	qcom,sup-voltages = <1800 1800>;
@@ -351,21 +351,9 @@
 	};
 
 	mpp@a500 { /* MPP 6 */
-		/* HW_VER0 config */
-		qcom,mode = <4>; /* AIN input */
-		qcom,invert = <1>; /* Enable MPP */
-		qcom,ain-route = <1>; /* AMUX 6 */
-		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */
 	};
 
 	mpp@a600 { /* MPP 7 */
-		/* HW_VER1 config */
-		qcom,mode = <4>; /* AIN input */
-		qcom,invert = <1>; /* Enable MPP */
-		qcom,ain-route = <2>; /* AMUX 7 */
-		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */
 	};
 
 	mpp@a700 { /* MPP 8 */
@@ -389,26 +377,7 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
-	chan@15 {
-		label = "hw_ver0";
-		reg = <0x15>;
-		qcom,decimation = <0>;
-		qcom,pre-div-channel-scaling = <0>;
-		qcom,calibration-type = "ratiometric";
-		qcom,scale-function = <0>;
-		qcom,hw-settle-time = <2>;
-		qcom,fast-avg-setup = <2>;
-	};
-	chan@16 {
-		label = "hw_ver1";
-		reg = <0x16>;
-		qcom,decimation = <0>;
-		qcom,pre-div-channel-scaling = <0>;
-		qcom,calibration-type = "ratiometric";
-		qcom,scale-function = <0>;
-		qcom,hw-settle-time = <2>;
-		qcom,fast-avg-setup = <2>;
-	};
+
 	chan@17 {
 		label = "pa_therm1";
 		reg = <0x17>;
@@ -423,16 +392,16 @@
 
 / {
 	mtp_batterydata: qcom,battery-data {
-		qcom,rpull-up-kohm = <68>;
+		qcom,rpull-up-kohm = <100>;
 		qcom,vref-batt-therm = <1800000>;
-		/*add batt data file here*/
-		#include "HB442528EBC-SCUD-4v35-300mah.dtsi"
-		#include "HB442528EBC-XWD-4v35-300mah.dtsi"
+
+		#include "batterydata-palladium.dtsi"
+		#include "batterydata-mtp-3000mah.dtsi"
 	};
 };
 
 &pm8226_bms {
-	status = "ok";/*enable or disable*/
+	status = "ok";
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,enable-fcc-learning;
 	qcom,min-fcc-learning-soc = <20>;
@@ -442,7 +411,7 @@
 };
 
 &pm8226_chg {
-	/*qcom,charging-disabled;*/
+	qcom,charging-disabled;
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
@@ -457,20 +426,9 @@
 	batfet-supply = <&pm8226_chg_batif>;
 };
 
-/*edo lcd*/
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_auo_rm69080_hvga_video>;
+	qcom,dsi-pref-prim-pan = <&dsi_nt35590_720_vid>;
 };
-
-
-&dsi_auo_rm69080_hvga_video{
-	qcom,cont-splash-enabled;
-};
-
-&dsi_edo_rm67160_hvga_video{
-	qcom,cont-splash-enabled;
-};
-
 
 &dsi_nt35590_720_vid {
 	qcom,cont-splash-enabled;

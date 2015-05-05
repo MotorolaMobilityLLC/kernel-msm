@@ -1,0 +1,36 @@
+/* Copyright (c) 2015, HUAWEI TECHNOLOGIES CO., LTD. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+#include "qcom/apq8026-v2.dtsi"
+#include "qcom/msm8226-720p-mtp.dtsi"
+#include "qcom/msm8226-w-memory.dtsi"
+#include "qcom/msm8226-w-qseecom.dtsi"
+#include "qcom/msm8226-w-sharedmem.dtsi"
+
+#include "qcom/msm8x26w-gpu.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-mcu.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-pm.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-panel.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-touch.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-bcm.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-vibrator.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-sound.dtsi"
+#include "apq8026-sturgeon/apq8026-sturgeon-common.dtsi"
+
+/ {
+	model = "HUAWEI Technologies, Inc. Sturgeon_APQ8026 MTP";
+	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
+	qcom,board-id = <8 4>;
+};
+
