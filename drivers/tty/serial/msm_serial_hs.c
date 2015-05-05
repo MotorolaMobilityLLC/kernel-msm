@@ -2010,7 +2010,6 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	unsigned long flags;
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct circ_buf *tx_buf = &uport->state->xmit;
-
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
 
@@ -2028,11 +2027,11 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	    msm_uport->imr_reg & UARTDM_ISR_TXLEV_BMSK) {
 		if (msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF) {
 			msm_uport->clk_state = MSM_HS_CLK_ON;
-				/*
-				 * Enable flow control that
-				 * we disabled in request clock off
-				 */
-			if (use_low_power_wakeup(msm_uport))
+			/*
+			 * Enable flow control that
+			 * we disabled in request clock off
+			 */
+			if (!msm_uport->obs)
 				msm_hs_enable_flow_control(uport);
 		}
 		spin_unlock_irqrestore(&uport->lock, flags);
@@ -2064,7 +2063,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	}
 
 	spin_unlock_irqrestore(&uport->lock, flags);
-	if (use_low_power_wakeup(msm_uport))
+	if (!msm_uport->obs)
 		msm_hs_enable_flow_control(uport);
 
 	/* we really want to clock off */
@@ -2090,7 +2089,7 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 	spin_unlock_irqrestore(&uport->lock, flags);
 
 	mutex_unlock(&msm_uport->clk_mutex);
-	MSM_HS_INFO("%s: Clocks Off Successfully\n", __func__);
+	printk("%s: Clocks Off Successfully\n", __func__);
 	return 1;
 }
 
@@ -2099,7 +2098,6 @@ static void hsuart_clock_off_work(struct work_struct *w)
 	struct msm_hs_port *msm_uport = container_of(w, struct msm_hs_port,
 							clock_off_w);
 	struct uart_port *uport = &msm_uport->uport;
-
 	if (!msm_hs_check_clock_off(uport)) {
 		hrtimer_start(&msm_uport->clk_off_timer,
 				msm_uport->clk_off_delay,
@@ -2245,9 +2243,10 @@ void msm_hs_request_clock_off(struct uart_port *uport) {
 	spin_lock_irqsave(&uport->lock, flags);
 	if (msm_uport->clk_state == MSM_HS_CLK_ON) {
 		msm_uport->clk_state = MSM_HS_CLK_REQUEST_OFF;
-
-		if (use_low_power_wakeup(msm_uport))
+		/* No need to disable flow control lines in OBS */
+		if (!msm_uport->obs)
 			msm_hs_disable_flow_control(uport);
+
 		data = msm_hs_read(uport, UART_DM_SR);
 		MSM_HS_DBG("%s(): TXEMT, queuing clock off work\n",
 			__func__);
@@ -2266,7 +2265,6 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	unsigned int data;
 	int ret = 0;
 	int cur_clk_state;
-
 	/*
 	 * cancel the hrtimer first so that
 	 * clk_state can not change in flight
@@ -2278,10 +2276,10 @@ void msm_hs_request_clock_on(struct uart_port *uport)
 	mutex_lock(&msm_uport->clk_mutex);
 	spin_lock_irqsave(&uport->lock, flags);
 
-	if (use_low_power_wakeup(msm_uport) &&
-		msm_uport->clk_state == MSM_HS_CLK_REQUEST_OFF)
-	{
-		msm_hs_enable_flow_control(uport);
+	if (cur_clk_state == MSM_HS_CLK_REQUEST_OFF) {
+		msm_uport->clk_state = MSM_HS_CLK_ON;
+		if (!msm_uport->obs)
+			msm_hs_enable_flow_control(uport);
 	}
 
 	switch (cur_clk_state) {
