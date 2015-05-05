@@ -485,7 +485,7 @@ dhd_dev_pno_set_cfg_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type,
 extern void *
 dhd_dev_pno_get_gscan(struct net_device *dev, dhd_pno_gscan_cmd_cfg_t type, void *info,
         uint32 *len);
-void dhd_dev_pno_lock_access_batch_results(struct net_device *dev);
+int dhd_dev_pno_lock_access_batch_results(struct net_device *dev);
 void dhd_dev_pno_unlock_access_batch_results(struct net_device *dev);
 extern int dhd_dev_pno_run_gscan(struct net_device *dev, bool run, bool flush);
 extern int dhd_dev_pno_enable_full_scan_result(struct net_device *dev, bool real_time);
@@ -498,7 +498,7 @@ void * dhd_dev_process_full_gscan_result(struct net_device *dev,
                                         const void  *data, int *send_evt_bytes);
 extern int dhd_dev_gscan_batch_cache_cleanup(struct net_device *dev);
 extern void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev, hotlist_type_t type);
-extern void dhd_dev_wait_batch_results_complete(struct net_device *dev);
+extern int dhd_dev_wait_batch_results_complete(struct net_device *dev);
 extern void * dhd_dev_process_epno_result(struct net_device *dev,
                         const void  *data, uint32 event, int *send_evt_bytes);
 #endif /* GSCAN_SUPPORT */
@@ -531,7 +531,7 @@ extern int dhd_pno_set_cfg_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
                        void *buf, uint8 flush);
 extern void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type, void *info,
                        uint32 *len);
-extern void dhd_pno_lock_batch_results(dhd_pub_t *dhd);
+extern int dhd_pno_lock_batch_results(dhd_pub_t *dhd);
 extern void dhd_pno_unlock_batch_results(dhd_pub_t *dhd);
 extern int dhd_pno_initiate_gscan_request(dhd_pub_t *dhd, bool run, bool flush);
 extern int dhd_pno_enable_full_scan_result(dhd_pub_t *dhd, bool real_time_flag);
@@ -544,7 +544,7 @@ extern void *dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *event_dat
                        int *send_evt_bytes);
 extern int dhd_gscan_batch_cache_cleanup(dhd_pub_t *dhd);
 extern void dhd_gscan_hotlist_cache_cleanup(dhd_pub_t *dhd, hotlist_type_t type);
-extern void dhd_wait_batch_results_complete(dhd_pub_t *dhd);
+extern int dhd_wait_batch_results_complete(dhd_pub_t *dhd);
 extern void * dhd_pno_process_epno_result(dhd_pub_t *dhd, const void *data,
          uint32 event, int *size);
 #endif /* GSCAN_SUPPORT */

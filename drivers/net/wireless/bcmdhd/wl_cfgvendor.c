@@ -368,8 +368,15 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	struct sk_buff *skb;
 	struct nlattr *scan_hdr, *complete_flag;
 
-	dhd_dev_wait_batch_results_complete(bcmcfg_to_prmry_ndev(cfg));
-	dhd_dev_pno_lock_access_batch_results(bcmcfg_to_prmry_ndev(cfg));
+	err = dhd_dev_wait_batch_results_complete(bcmcfg_to_prmry_ndev(cfg));
+	if (err != BCME_OK)
+		return -EBUSY;
+
+	err = dhd_dev_pno_lock_access_batch_results(bcmcfg_to_prmry_ndev(cfg));
+	if (err != BCME_OK) {
+		WL_ERR(("Can't obtain lock to access batch results %d\n", err));
+		return -EBUSY;
+	}
 	results = dhd_dev_pno_get_gscan(bcmcfg_to_prmry_ndev(cfg),
 	             DHD_PNO_GET_BATCH_RESULTS, NULL, &reply_len);
 
