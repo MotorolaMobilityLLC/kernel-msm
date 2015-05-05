@@ -79,7 +79,7 @@ module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 
 /* Enable Proprietary charger detection */
-static bool prop_chg_detect;
+static bool prop_chg_detect = true;
 module_param(prop_chg_detect, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(prop_chg_detect, "Enable Proprietary charger detection");
 
