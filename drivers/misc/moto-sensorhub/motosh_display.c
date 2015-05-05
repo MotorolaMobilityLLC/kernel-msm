@@ -661,6 +661,20 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 		}
 
 		do {
+			/* issue command again if half way through timeout */
+			if (count == MOTOSH_BUSY_RESUME_COUNT >> 1) {
+				dev_err(&ps_motosh->client->dev,
+					"Write peek status reg retry\n");
+
+				cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+				cmdbuff[1] = 0x00;
+				if (motosh_i2c_write(ps_motosh,
+						     cmdbuff, 2) < 0) {
+					dev_err(&ps_motosh->client->dev,
+						"Write peek status reg failed\n");
+					goto EXIT;
+				}
+			}
 			cmdbuff[0] = MOTOSH_STATUS_REG;
 			if (motosh_i2c_write_read(ps_motosh,
 					cmdbuff, readbuff, 1, 1) < 0) {
@@ -677,9 +691,21 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 			count++;
 		} while (count < MOTOSH_BUSY_RESUME_COUNT);
 
-		if (count == MOTOSH_BUSY_RESUME_COUNT)
+		if (count == MOTOSH_BUSY_RESUME_COUNT) {
+			/* re-use ioexpander reset reason, its not applicable
+			   on this platform and hence unique until resolved */
+			u8 pending_reset_reason = 0x06;
+
 			dev_err(&ps_motosh->client->dev,
 				"timedout while waiting for STMBUSY LOW\n");
+
+			/* notify HAL so we can trigger a bug2go */
+			motosh_as_data_buffer_write(ps_motosh, DT_RESET,
+						&pending_reset_reason,
+						1, 0, false);
+			/* re-gain control the hard way */
+			motosh_reset_and_init(START_RESET);
+		}
 	}
 
 EXIT:
