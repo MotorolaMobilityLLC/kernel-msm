@@ -136,6 +136,18 @@ static struct {
 	unsigned char reported_bytes_per_object;
 } f12_c28_0;
 
+static struct {
+	unsigned char finger_threshold;
+	unsigned char small_finger_threshold;
+	unsigned char small_finger_border;
+	unsigned char negative_finger_threshold;
+
+} f12_c15_0;
+
+static struct synaptics_rmi4_subpkt f12_c15[] = {
+	RMI4_SUBPKT(f12_c15_0),
+};
+
 static struct synaptics_rmi4_subpkt f12_c08[] = {
 	RMI4_SUBPKT(f12_c08_0),
 };
@@ -155,6 +167,7 @@ static struct synaptics_rmi4_subpkt f12_c28[] = {
 
 static struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
 	RMI4_REG(8, f12_c08),
+	RMI4_REG(15, f12_c15),
 	RMI4_REG(20, f12_c20),
 	RMI4_REG(23, f12_c23),
 	RMI4_REG(28, f12_c28),
