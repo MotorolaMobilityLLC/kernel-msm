@@ -31,6 +31,7 @@
 #include <linux/printk.h>
 #include <linux/ratelimit.h>
 #include <linux/debugfs.h>
+#include <linux/reboot.h>
 #include <linux/rtc.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/batterydata-lib.h>
@@ -280,6 +281,7 @@ struct smbchg_chip {
 	int				charger_rate;
 	bool				usbid_disabled;
 	bool				demo_mode;
+	struct notifier_block		smb_reboot;
 };
 
 static struct smbchg_chip *the_chip;
@@ -7056,6 +7058,40 @@ static bool qpnp_smbcharger_test_mode(void)
 	return test;
 }
 
+static int smbchg_reboot(struct notifier_block *nb,
+			 unsigned long event, void *unused)
+{
+	struct smbchg_chip *chip =
+			container_of(nb, struct smbchg_chip, smb_reboot);
+
+	dev_dbg(chip->dev, "SMB Reboot\n");
+	if (!chip) {
+		dev_warn(chip->dev, "called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+	if (chip->factory_mode) {
+		switch (event) {
+		case SYS_POWER_OFF:
+			/* Disable Charging */
+			smbchg_charging_en(chip, 0);
+
+			/* Suspend USB and DC */
+			smbchg_usb_suspend(chip, true);
+			smbchg_dc_suspend(chip, true);
+
+			while (is_usb_present(chip))
+				msleep(100);
+			dev_warn(chip->dev, "VBUS UV wait 1 sec!\n");
+			/* Delay 1 sec to allow more VBUS decay */
+			msleep(1000);
+			break;
+		default:
+			break;
+		}
+	}
+	return NOTIFY_DONE;
+}
 
 #define DEFAULT_TEST_MODE_SOC  52
 #define DEFAULT_TEST_MODE_TEMP  225
@@ -7211,6 +7247,13 @@ static int smbchg_probe(struct spmi_device *spmi)
 	}
 
 	power_supply_set_present(chip->usb_psy, chip->usb_present);
+
+	chip->smb_reboot.notifier_call = smbchg_reboot;
+	chip->smb_reboot.next = NULL;
+	chip->smb_reboot.priority = 1;
+	rc = register_reboot_notifier(&chip->smb_reboot);
+	if (rc)
+		dev_err(chip->dev, "register for reboot failed\n");
 
 	dump_regs(chip);
 	create_debugfs_entries(chip);
