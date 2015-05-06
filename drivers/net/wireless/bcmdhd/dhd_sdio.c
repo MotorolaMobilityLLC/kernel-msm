@@ -4317,6 +4317,7 @@ dhd_txglom_enable(dhd_pub_t *dhdp, bool enable)
 		bus->txglom_enable = FALSE;
 }
 
+int set_sleep_flag = 0;
 int
 dhd_bus_init(dhd_pub_t *dhdp, bool enforce_mutex)
 {
@@ -7761,6 +7762,8 @@ dhdsdio_suspend(void *context)
 
 	dhd_bus_t *bus = (dhd_bus_t*)context;
 	int wait_time = 0;
+
+	DHD_ERROR(("[wlan]: dhdsdio_suspend\n"));
 	if (bus->idletime > 0) {
 		wait_time = msecs_to_jiffies(bus->idletime * dhd_watchdog_ms);
 	}
@@ -7768,6 +7771,8 @@ dhdsdio_suspend(void *context)
 	ret = dhd_os_check_wakelock(bus->dhd);
 	if ((!ret) && (bus->dhd->up)) {
 		if (wait_event_timeout(bus->bus_sleep, bus->sleeping, wait_time) == 0) {
+		    if (!SLPAUTO_ENAB(bus))
+				bus->sleeping = TRUE;
 			if (!bus->sleeping) {
 				return 1;
 			}
@@ -7779,8 +7784,13 @@ dhdsdio_suspend(void *context)
 static int
 dhdsdio_resume(void *context)
 {
-#if defined(OOB_INTR_ONLY)
 	dhd_bus_t *bus = (dhd_bus_t*)context;
+
+	DHD_ERROR(("[wlan]: dhdsdio_resume\n"));
+	if (!SLPAUTO_ENAB(bus))
+		bus->sleeping = FALSE;
+#if defined(OOB_INTR_ONLY)
+	//dhd_bus_t *bus = (dhd_bus_t*)context;
 
 	if (dhd_os_check_if_up(bus->dhd))
 		bcmsdh_oob_intr_set(bus->sdh, TRUE);
