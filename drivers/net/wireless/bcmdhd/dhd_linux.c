@@ -101,6 +101,10 @@
 #include <net/tcp.h>
 #endif /* DHD_TCP_WINSIZE_ADJUST */
 
+/* ASUS_BSP+++ "for wlan wakeup trace" */
+extern int wakeup_irq_flag_function_rx(void);
+/* ASUS_BSP--- "for wlan wakeup trace" */
+
 #ifdef WLMEDIA_HTSF
 #include <linux/time.h>
 #include <htsf.h>
@@ -2875,6 +2879,12 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 	char *dump_data;
 	uint16 protocol;
 #endif /* DHD_RX_DUMP || DHD_8021X_DUMP */
+	/* ASUS_BSP+++ "for wlan wakeup trace" */
+	/*------------------------------*/
+	unsigned char *asus_data = NULL;
+	unsigned int asus_len = 0;
+	/*------------------------------*/
+	/* ASUS_BSP--- "for wlan wakeup trace" */
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -3115,6 +3125,46 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			ifp->stats.rx_bytes += skb->len;
 			ifp->stats.rx_packets++;
 		}
+
+		/* ASUS_BSP+++ "for wlan wakeup trace" */
+		/*----------------------------------------------------------*/
+		asus_data = skb->mac_header;
+		asus_len = skb->len;
+		if ((wakeup_irq_flag_function_rx() == 1) && (asus_len >= 14)) {
+			if ((0x08 == asus_data[12]) && (0x00 == asus_data[13]) && (asus_len >= 38)) {
+				/* IPv4 */
+				printk("[wlan_wakeup]: (DestMac %.2x %.2x %.2x %.2x %.2x %.2x)(SrcMac %.2x %.2x %.2x %.2x %.2x %.2x)(EthType %.2x %.2x)(Protocol:%d)(SrcIP %d.%d.%d.%d)(srcPort %d)(destPort %d)\n",
+					   asus_data[0], asus_data[1], asus_data[2], asus_data[3], asus_data[4], asus_data[5],
+					   asus_data[6], asus_data[7], asus_data[8], asus_data[9], asus_data[10], asus_data[11],
+					   asus_data[12], asus_data[13],
+					   asus_data[23],
+					   asus_data[26], asus_data[27], asus_data[28], asus_data[29],
+					   (asus_data[35]+(asus_data[34]<<8)),
+					   (asus_data[37]+(asus_data[36]<<8)));
+			} else {
+				printk("[wlan_wakeup]: (EthType %.2x %.2x) (%d)\n", asus_data[12], asus_data[13], asus_len);
+
+				if (asus_len >= 38) {
+					printk("[wlan_wakeup]: (DestMac %.2x:%.2x:%.2x:%.2x:%.2x:%.2x)(SrcMac %.2x:%.2x:%.2x:%.2x:%.2x:%.2x)(EthType %.2x %.2x)(Protocol:%d)(SrcIP %d.%d.%d.%d)(srcPort %d)(destPort %d)\n",
+						   asus_data[0], asus_data[1], asus_data[2], asus_data[3], asus_data[4], asus_data[5],
+						   asus_data[6], asus_data[7], asus_data[8], asus_data[9], asus_data[10], asus_data[11],
+						   asus_data[12], asus_data[13],
+						   asus_data[23],
+						   asus_data[26], asus_data[27], asus_data[28], asus_data[29],
+						   (asus_data[35]+(asus_data[34]<<8)),
+						   (asus_data[37]+(asus_data[36]<<8)));
+				} else if ((asus_len < 38) && (asus_len >= 24)) {
+					printk("[wlan_wakeup]: (DestMac %.2x:%.2x:%.2x:%.2x:%.2x:%.2x)(SrcMac %.2x:%.2x:%.2x:%.2x:%.2x:%.2x)(EthType %.2x %.2x)(Protocol:%d)\n",
+						   asus_data[0], asus_data[1], asus_data[2], asus_data[3], asus_data[4], asus_data[5],
+						   asus_data[6], asus_data[7], asus_data[8], asus_data[9], asus_data[10], asus_data[11],
+						   asus_data[12], asus_data[13],
+						   asus_data[23]);
+				}
+			}
+		}
+		/*----------------------------------------------------------*/
+		/* ASUS_BSP--- "for wlan wakeup trace" */
+
 #if defined(DHD_TCP_WINSIZE_ADJUST)
 		if (dhd_use_tcp_window_size_adjust) {
 			if (ifidx == 0 && ntoh16(skb->protocol) == ETHER_TYPE_IP) {
