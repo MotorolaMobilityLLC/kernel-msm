@@ -75,7 +75,8 @@ enum stm_command {
 
 
 static unsigned char motosh_bootloader_ver;
-
+unsigned char motosh_flash_cmdbuff[MOTOSH_MAX_PACKET_LENGTH];
+unsigned char motosh_flash_readbuff[MOTOSH_MAXDATA_LENGTH];
 
 static int motosh_boot_i2c_write(struct motosh_data *ps_motosh,
 	u8 *buf, int len)
@@ -151,10 +152,10 @@ static int motosh_boot_cmd_write(struct motosh_data *ps_motosh,
 {
 	int index = 0;
 
-	motosh_cmdbuff[index++] = command;
-	motosh_cmdbuff[index++] = ~command;
+	motosh_flash_cmdbuff[index++] = command;
+	motosh_flash_cmdbuff[index++] = ~command;
 
-	return motosh_boot_i2c_write(ps_motosh, motosh_cmdbuff, index);
+	return motosh_boot_i2c_write(ps_motosh, motosh_flash_cmdbuff, index);
 }
 
 static int motosh_boot_checksum_write(struct motosh_data *ps_motosh,
@@ -181,33 +182,33 @@ static int motosh_get_boot_ver(void)
 			goto RETRY_VER;
 
 		err = motosh_boot_i2c_read(motosh_misc_data,
-			motosh_readbuff, 1);
+			motosh_flash_readbuff, 1);
 		if (err < 0)
 			goto RETRY_VER;
-		if (motosh_readbuff[0] != ACK_BYTE) {
+		if (motosh_flash_readbuff[0] != ACK_BYTE) {
 			dev_err(&motosh_misc_data->client->dev,
 				"Error sending GET_VERSION command 0x%02x\n",
-				motosh_readbuff[0]);
+				motosh_flash_readbuff[0]);
 			goto RETRY_VER;
 		}
 
 		err = motosh_boot_i2c_read(motosh_misc_data,
-			motosh_readbuff, 1);
+			motosh_flash_readbuff, 1);
 		if (err < 0)
 			goto RETRY_VER;
-		motosh_bootloader_ver = motosh_readbuff[0];
+		motosh_bootloader_ver = motosh_flash_readbuff[0];
 		dev_err(&motosh_misc_data->client->dev,
 			"Bootloader version 0x%02x\n", motosh_bootloader_ver);
 
 		err = motosh_boot_i2c_read(motosh_misc_data,
-			motosh_readbuff, 1);
+			motosh_flash_readbuff, 1);
 		if (err < 0)
 			goto RETRY_VER;
-		if (motosh_readbuff[0] == ACK_BYTE)
+		if (motosh_flash_readbuff[0] == ACK_BYTE)
 			break;
 		dev_err(&motosh_misc_data->client->dev,
 			"Error reading GET_VERSION data 0x%02x\n",
-			motosh_readbuff[0]);
+			motosh_flash_readbuff[0]);
 RETRY_VER:
 		tries--;
 		msleep(COMMAND_DELAY);
@@ -245,34 +246,34 @@ int motosh_boot_flash_erase(void)
 				goto RETRY_ERASE;
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-				motosh_readbuff, 1);
+				motosh_flash_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ERASE;
-			if (motosh_readbuff[0] != ACK_BYTE) {
+			if (motosh_flash_readbuff[0] != ACK_BYTE) {
 				dev_err(&motosh_misc_data->client->dev,
 					"Error sending ERASE command 0x%02x\n",
-					motosh_readbuff[0]);
+					motosh_flash_readbuff[0]);
 				goto RETRY_ERASE;
 			}
 
-			motosh_cmdbuff[index++] = 0xFF;
-			motosh_cmdbuff[index++] = 0xFF;
+			motosh_flash_cmdbuff[index++] = 0xFF;
+			motosh_flash_cmdbuff[index++] = 0xFF;
 			err = motosh_boot_checksum_write(motosh_misc_data,
-				motosh_cmdbuff, index);
+				motosh_flash_cmdbuff, index);
 			if (err < 0) {
 				dev_err(&motosh_misc_data->client->dev,
 					"Error wiping checksum %d\n",
 					tries);
 				goto RETRY_ERASE;
 			}
-			motosh_readbuff[0] = 0;
+			motosh_flash_readbuff[0] = 0;
 
 			do {
 				msleep(ERASE_DELAY);
 				err = motosh_boot_i2c_read(motosh_misc_data,
-					motosh_readbuff, 1);
+					motosh_flash_readbuff, 1);
 				if ((err >= 0) &&
-				    (motosh_readbuff[0] == NACK_BYTE))
+				    (motosh_flash_readbuff[0] == NACK_BYTE))
 					break;
 
 				count++;
@@ -281,10 +282,10 @@ int motosh_boot_flash_erase(void)
 
 				dev_dbg(&motosh_misc_data->client->dev,
 					"Waiting for mass erase, res: %d -- 0x%02X\n",
-					err, motosh_readbuff[0]);
-			} while (motosh_readbuff[0] != ACK_BYTE);
+					err, motosh_flash_readbuff[0]);
+			} while (motosh_flash_readbuff[0] != ACK_BYTE);
 
-			if (motosh_readbuff[0] == ACK_BYTE) {
+			if (motosh_flash_readbuff[0] == ACK_BYTE) {
 				err = 0;
 				dev_dbg(&motosh_misc_data->client->dev,
 					"Flash erase successful\n");
@@ -292,7 +293,7 @@ int motosh_boot_flash_erase(void)
 			}
 			dev_err(&motosh_misc_data->client->dev,
 				"Error waiting for ERASE complete 0x%02x\n",
-				motosh_readbuff[0]);
+				motosh_flash_readbuff[0]);
 RETRY_ERASE:
 			err = -EIO;
 			tries--;
@@ -312,6 +313,9 @@ EXIT:
 int motosh_get_version(struct motosh_data *ps_motosh)
 {
 	int err = 0;
+	char cmdbuff[1];
+	char readbuff[1];
+
 	if (ps_motosh->mode == BOOTMODE) {
 		dev_err(&ps_motosh->client->dev,
 			"Tried to read version in boot mode\n");
@@ -321,12 +325,13 @@ int motosh_get_version(struct motosh_data *ps_motosh)
 
 	motosh_wake(ps_motosh);
 
-	motosh_cmdbuff[0] = REV_ID;
-	err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff, 1, 1);
+	cmdbuff[0] = REV_ID;
+	err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff, readbuff,
+		1, 1);
 	if (err >= 0) {
-		err = (int)motosh_readbuff[0];
+		err = (int)readbuff[0];
 		dev_err(&ps_motosh->client->dev, "MOTOSH version %02x",
-			motosh_readbuff[0]);
+			readbuff[0]);
 		motosh_g_booted = 1;
 	}
 	motosh_sleep(ps_motosh);
@@ -339,6 +344,9 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 {
 	int err = 0;
 	int len;
+	char cmdbuff[1];
+	char readbuff[MOTOSH_MAXDATA_LENGTH];
+
 	if (ps_motosh->mode == BOOTMODE) {
 		dev_err(&ps_motosh->client->dev,
 			"Tried to read version string in boot mode\n");
@@ -348,26 +356,27 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 
 	motosh_wake(ps_motosh);
 
-	motosh_cmdbuff[0] = FW_VERSION_LEN_REG;
-	err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff, 1, 1);
+	cmdbuff[0] = FW_VERSION_LEN_REG;
+	err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff, readbuff,
+		1, 1);
 	if (err >= 0) {
-		len = (int)motosh_readbuff[0];
+		len = (int)readbuff[0];
 		if (len >= FW_VERSION_STR_MAX_LEN)
 			len = FW_VERSION_STR_MAX_LEN - 1;
-		if (len >= READ_CMDBUFF_SIZE)
-			len = READ_CMDBUFF_SIZE - 1;
+		if (len >= MOTOSH_MAXDATA_LENGTH)
+			len = MOTOSH_MAXDATA_LENGTH - 1;
 
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH version len %03d", len);
-		motosh_cmdbuff[0] = FW_VERSION_STR_REG;
-		err = motosh_i2c_write_read_no_reset(ps_motosh, motosh_cmdbuff,
-			1, len + 1);
+		cmdbuff[0] = FW_VERSION_STR_REG;
+		err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff,
+			readbuff, 1, len);
 		if (err >= 0) {
-			motosh_readbuff[len] = '\0';
+			readbuff[len] = '\0';
 			strlcpy(ps_motosh->pdata->fw_version_str,
-				motosh_readbuff, FW_VERSION_STR_MAX_LEN);
+				readbuff, FW_VERSION_STR_MAX_LEN);
 			dev_info(&ps_motosh->client->dev, "MOTOSH version str %s",
-						motosh_readbuff);
+						readbuff);
 			motosh_g_booted = 1;
 		}
 	}
@@ -414,37 +423,38 @@ int switch_motosh_mode(enum stm_mode mode)
 				goto RETRY_ID;
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-						   motosh_readbuff, 1);
+						   motosh_flash_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ID;
 
-			if (motosh_readbuff[0] != ACK_BYTE) {
+			if (motosh_flash_readbuff[0] != ACK_BYTE) {
 				dev_err(&motosh_misc_data->client->dev,
 					"Error sending GET_ID command 0x%02x\n",
-					motosh_readbuff[0]);
+					motosh_flash_readbuff[0]);
 				goto RETRY_ID;
 			}
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-						   motosh_readbuff, 3);
+						   motosh_flash_readbuff, 3);
 			if (err < 0)
 				goto RETRY_ID;
 
 			dev_err(&motosh_misc_data->client->dev,
 				"Part ID 0x%02x 0x%02x 0x%02x\n",
-				motosh_readbuff[0], motosh_readbuff[1],
-				motosh_readbuff[2]);
+				motosh_flash_readbuff[0],
+				motosh_flash_readbuff[1],
+				motosh_flash_readbuff[2]);
 
 			err = motosh_boot_i2c_read(motosh_misc_data,
-						   motosh_readbuff, 1);
+						   motosh_flash_readbuff, 1);
 			if (err < 0)
 				goto RETRY_ID;
 
-			if (motosh_readbuff[0] == ACK_BYTE)
+			if (motosh_flash_readbuff[0] == ACK_BYTE)
 				break;
 			dev_err(&motosh_misc_data->client->dev,
 				"Error reading GETID data 0x%02x\n",
-				motosh_readbuff[0]);
+				motosh_flash_readbuff[0]);
 RETRY_ID:
 			err = -EIO;
 			tries--;
@@ -474,7 +484,7 @@ RETRY_ID:
 			motosh_reset_and_init(START_RESET);
 		} else {
 			motosh_misc_data->mode = mode;
-			motosh_reset(pdata, motosh_cmdbuff);
+			motosh_reset(pdata, motosh_flash_cmdbuff);
 		}
 	} else
 		motosh_misc_data->mode = mode;
@@ -540,91 +550,92 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 				}
 
 				err = motosh_boot_i2c_read(motosh_misc_data,
-					motosh_readbuff, 1);
+					motosh_flash_readbuff, 1);
 				if (err < 0) {
 					dev_err(&motosh_misc_data->client->dev,
 						"error NO_WAIT_WRITE_MEMORY read\n");
 					goto RETRY_WRITE;
 				}
 
-				if (motosh_readbuff[0] != ACK_BYTE) {
+				if (motosh_flash_readbuff[0] != ACK_BYTE) {
 					dev_err(&motosh_misc_data->client->dev,
-							"Error sending WRITE_MEMORY command 0x%02x\n",
-							motosh_readbuff[0]);
+						"Error sending WRITE_MEMORY command 0x%02x\n",
+						motosh_flash_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
-				motosh_cmdbuff[index++]
+				motosh_flash_cmdbuff[index++]
 					= (motosh_misc_data->current_addr >> 24)
 					& 0xFF;
-				motosh_cmdbuff[index++]
+				motosh_flash_cmdbuff[index++]
 					= (motosh_misc_data->current_addr >> 16)
 					& 0xFF;
-				motosh_cmdbuff[index++]
+				motosh_flash_cmdbuff[index++]
 					= (motosh_misc_data->current_addr >> 8)
 					& 0xFF;
-				motosh_cmdbuff[index++]
+				motosh_flash_cmdbuff[index++]
 					= motosh_misc_data->current_addr & 0xFF;
 				err = motosh_boot_checksum_write(
-					motosh_misc_data, motosh_cmdbuff,
+					motosh_misc_data, motosh_flash_cmdbuff,
 					index);
 				if (err < 0)
 					goto RETRY_WRITE;
 
 				err = motosh_boot_i2c_read(motosh_misc_data,
-					motosh_readbuff, 1);
+					motosh_flash_readbuff, 1);
 				if (err < 0)
 					goto RETRY_WRITE;
-				if (motosh_readbuff[0] != ACK_BYTE) {
+				if (motosh_flash_readbuff[0] != ACK_BYTE) {
 					dev_err(&motosh_misc_data->client->dev,
 						"Error sending MEMORY_WRITE address 0x%02x\n",
-						motosh_readbuff[0]);
+						motosh_flash_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
-				motosh_cmdbuff[0] = count - 1;
-				if (copy_from_user(&motosh_cmdbuff[1], buff,
-						count)) {
+				motosh_flash_cmdbuff[0] = count - 1;
+				if (copy_from_user(&motosh_flash_cmdbuff[1],
+						buff, count)) {
 					dev_err(&motosh_misc_data->client->dev,
 						"Copy from user returned error\n");
 					err = -EINVAL;
 					goto EXIT;
 				}
 				if (count & 0x1) {
-					motosh_cmdbuff[count + 1] = 0xFF;
+					motosh_flash_cmdbuff[count + 1] = 0xFF;
 					count++;
 				}
 
 				err = motosh_boot_checksum_write(
-					motosh_misc_data, motosh_cmdbuff,
+					motosh_misc_data, motosh_flash_cmdbuff,
 					count + 1);
 				if (err < 0) {
 					dev_err(&motosh_misc_data->client->dev,
 						"Error sending MEMORY_WRITE data 0x%02x\n",
-						motosh_readbuff[0]);
+						motosh_flash_readbuff[0]);
 					goto RETRY_WRITE;
 				}
 
-				motosh_readbuff[0] = 0;
+				motosh_flash_readbuff[0] = 0;
 				do {
 					usleep_range(WRITE_DELAY_US_MIN,
 						WRITE_DELAY_US_MAX);
 
 					err = motosh_boot_i2c_read(
 						motosh_misc_data,
-						motosh_readbuff, 1);
+						motosh_flash_readbuff, 1);
 
 					/* successfully received a NACK */
-					if ((err >= 0) && (motosh_readbuff[0]
+					if ((err >= 0) &&
+					    (motosh_flash_readbuff[0]
 							== NACK_BYTE))
 						break;
 
 					wait_count++;
 					if (wait_count == WRITE_ACK_NACK_TRIES)
 						break;
-				} while (motosh_readbuff[0] != ACK_BYTE);
+				} while (motosh_flash_readbuff[0] != ACK_BYTE);
 
-				if (motosh_readbuff[0] == ACK_BYTE) {
+				if (motosh_flash_readbuff[0] == ACK_BYTE) {
 					dev_dbg(&motosh_misc_data->client->dev,
 						"MEMORY_WRITE successful\n");
 					err = 0;
@@ -635,7 +646,7 @@ ssize_t motosh_misc_write(struct file *file, const char __user *buff,
 				dev_err(&motosh_misc_data->client->dev,
 					"Error writing MEMORY_WRITE i2c: %d data 0x%02x\n",
 					err,
-					motosh_readbuff[0]);
+					motosh_flash_readbuff[0]);
 RETRY_WRITE:
 				dev_dbg(&motosh_misc_data->client->dev,
 					"Retry MEMORY_WRITE\n");
@@ -659,7 +670,7 @@ RETRY_WRITE:
 	} else {
 		dev_dbg(&motosh_misc_data->client->dev,
 			"Normal mode write started\n");
-		if (copy_from_user(motosh_cmdbuff, buff, count)) {
+		if (copy_from_user(motosh_flash_cmdbuff, buff, count)) {
 			dev_err(&motosh_misc_data->client->dev,
 				"Copy from user returned error\n");
 			err = -EINVAL;
@@ -669,7 +680,7 @@ RETRY_WRITE:
 
 		if (err == 0)
 			err = motosh_i2c_write_no_reset(motosh_misc_data,
-				motosh_cmdbuff, count);
+				motosh_flash_cmdbuff, count);
 
 		motosh_sleep(motosh_misc_data);
 
