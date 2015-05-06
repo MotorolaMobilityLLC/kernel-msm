@@ -91,9 +91,6 @@ unsigned char stat_string[ESR_SIZE+1];
 
 struct motosh_algo_requst_t motosh_g_algo_requst[MOTOSH_NUM_ALGOS];
 
-unsigned char motosh_cmdbuff[512];
-unsigned char motosh_readbuff[READ_CMDBUFF_SIZE];
-
 /* per algo config, request, and event registers */
 const struct motosh_algo_info_t motosh_algo_info[MOTOSH_NUM_ALGOS] = {
 	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
@@ -375,6 +372,7 @@ void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
 	int err;
 	bool factory;
 	struct device_node *np = of_find_node_by_path("/chosen");
+	unsigned char readbuff[2];
 
 	if (np) {
 		/* detect factory cable and disable lowpower mode
@@ -412,10 +410,13 @@ void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
 
 		cmdbuff[0] = LOWPOWER_REG;
 		err =
-		    motosh_i2c_write_read_no_reset(motosh_misc_data,
-						   cmdbuff, 1, 2);
+		    motosh_i2c_write_read_no_reset(
+			motosh_misc_data,
+			cmdbuff,
+			readbuff,
+			1, 2);
 		if (err >= 0) {
-			if ((int)motosh_readbuff[1] == 1)
+			if ((int)readbuff[1] == 1)
 				motosh_misc_data->sh_lowpower_enabled = 1;
 			else
 				motosh_misc_data->sh_lowpower_enabled = 0;
@@ -456,8 +457,12 @@ void motosh_detect_lowpower_mode(unsigned char *cmdbuff)
 	}
 }
 
-int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
-			u8 *buf, int writelen, int readlen)
+int motosh_i2c_write_read_no_reset(
+	struct motosh_data *ps_motosh,
+	u8 *writebuff,
+	u8 *readbuff,
+	int writelen,
+	int readlen)
 {
 	int tries, err = 0;
 	struct i2c_msg msgs[] = {
@@ -465,17 +470,20 @@ int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 			.addr = ps_motosh->client->addr,
 			.flags = ps_motosh->client->flags,
 			.len = writelen,
-			.buf = buf,
+			.buf = writebuff,
 		},
 		{
 			.addr = ps_motosh->client->addr,
 			.flags = ps_motosh->client->flags | I2C_M_RD,
 			.len = readlen,
-			.buf = motosh_readbuff,
+			.buf = readbuff,
 		},
 	};
 
-	if (buf == NULL || writelen == 0 || readlen == 0)
+	if (writebuff == NULL ||
+	    readbuff == NULL ||
+	    writelen == 0 ||
+	    readlen == 0)
 		return -EFAULT;
 
 	if (ps_motosh->mode == BOOTMODE)
@@ -496,7 +504,7 @@ int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
 		dev_dbg(&ps_motosh->client->dev, "Read from MOTOSH: ");
 		for (tries = 0; tries < readlen; tries++)
 			dev_dbg(&ps_motosh->client->dev, "%02x",
-				motosh_readbuff[tries]);
+				readbuff[tries]);
 	}
 
 	return err;
@@ -600,19 +608,26 @@ static int motosh_device_power_on(struct motosh_data *ps_motosh)
 	return err;
 }
 
-int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
-			int writelen, int readlen)
+int motosh_i2c_write_read(
+	struct motosh_data *ps_motosh,
+	u8 *writebuff,
+	u8 *readbuff,
+	int writelen,
+	int readlen)
 {
 	int err = 0;
 
 	if (ps_motosh->mode == BOOTMODE)
 		return -EFAULT;
 
-	if (buf == NULL || writelen == 0 || readlen == 0)
+	if (writebuff == NULL ||
+	    readbuff == NULL ||
+	    writelen == 0 ||
+	    readlen == 0)
 		return -EFAULT;
 
 	err = motosh_i2c_write_read_no_reset(ps_motosh,
-		buf, writelen, readlen);
+		writebuff, readbuff, writelen, readlen);
 	if (err < 0)
 		motosh_reset_and_init(START_RESET);
 
