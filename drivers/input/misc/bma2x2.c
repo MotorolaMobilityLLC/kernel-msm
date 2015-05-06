@@ -1268,7 +1268,7 @@
 
 #define MAX_FIFO_F_LEVEL 32
 #define MAX_FIFO_F_BYTES 6
-#define BMA_MAX_RETRY_I2C_XFER (10)
+#define BMA_MAX_RETRY_I2C_XFER (3)
 
 #ifdef CONFIG_DOUBLE_TAP
 #define DEFAULT_TAP_JUDGE_PERIOD 1000    /* default judge in 1 second */
