@@ -44,6 +44,8 @@ Parent node optional properties:
 					voltage.
 - qcom,cool-bat-mv:			Cool temperature battery target
 					voltage.
+- qcom,cfg-current-limited:		Limited charge current not to exceed
+					this value.
 - qcom,thermal-mitigation:		Array of ibatmax values for different
 					system thermal mitigation level.
 - qcom,tchg-mins:			Maximum total software initialized
@@ -171,6 +173,7 @@ Example:
 		qcom,cool-bat-mv = <4100>;
 		qcom,ibatmax-warm-ma = <360>;
 		qcom,ibatmax-cool-ma = <360>;
+		qcom,cfg-current-limited = <900>;
 		qcom,warm-bat-mv = <4100>;
 		qcom,batt-hot-percentage = <25>;
 		qcom,batt-cold-percentage = <85>;
