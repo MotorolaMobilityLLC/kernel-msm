@@ -167,7 +167,7 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 
 		/* check for erroneous future time */
 		if (buffer->timestamp > now) {
-			dev_err(&ps_motosh->client->dev,
+			dev_dbg(&ps_motosh->client->dev,
 				"future time, delta: %lld\n",
 				buffer->timestamp - now);
 			buffer->timestamp = now;

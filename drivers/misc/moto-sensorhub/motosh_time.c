@@ -23,8 +23,6 @@
 
 #include <linux/motosh.h>
 
-#define MOTOSH_RESYNC_THRESH 4000000 /* 4 ms */
-
 static int64_t motosh_realtime_delta;
 
 /*
@@ -68,18 +66,12 @@ void motosh_time_sync(void)
 	/* ap time will always be greater than hub time */
 	delta = ap_time1 - hub_time;
 
-	/* re-sync if significant change */
-	if (abs(delta - motosh_realtime_delta) > MOTOSH_RESYNC_THRESH) {
+	/* update offset */
+	dev_info(&motosh_misc_data->client->dev,
+		"Sync time - sh: %12lld ap: %12lld offs_delta: %12lld",
+		hub_time, ap_time1, delta - motosh_realtime_delta);
 
-		dev_info(&motosh_misc_data->client->dev,
-			"Sync time - sh: %12lld ap: %12lld offs_delta: %12lld",
-			hub_time, ap_time1, delta - motosh_realtime_delta);
-
-		motosh_realtime_delta = delta;
-	} else
-		dev_dbg(&motosh_misc_data->client->dev,
-			"Time OK - offs_delta: %12lld",
-			 delta - motosh_realtime_delta);
+	motosh_realtime_delta = delta;
 }
 
 /*
