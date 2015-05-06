@@ -67,7 +67,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	bool pending_log_msg = false;
 	bool pending_reset = false;
 	u8 pending_reset_reason;
-
+	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
+	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_wake_work);
 
@@ -93,14 +94,14 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 
 	/* prioritize AoD
 	   [these events operates independent of the wake event queueing] */
-	motosh_cmdbuff[0] = WAKESENSOR_STATUS;
+	cmdbuff[0] = WAKESENSOR_STATUS;
 	if (motosh_misc_data->in_reset_and_init) {
 		/* only apply delay if issue observed before */
 		if (spurious_det)
 			msleep(SPURIOUS_INT_DELAY);
 
 		err = motosh_i2c_write_read_no_reset(ps_motosh,
-						     motosh_cmdbuff, 1, 3);
+						     cmdbuff, readbuff, 1, 3);
 		if (err < 0) {
 			spurious_det = 1;
 			dev_err(&ps_motosh->client->dev,
@@ -110,7 +111,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 	} else {
-		err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
+		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
+			1, 3);
 		if (err < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading wake sensor status failed [err: %d]\n",
@@ -119,9 +121,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		}
 	}
 
-	irq_status = (motosh_readbuff[IRQ_WAKE_HI] << 16)
-			| (motosh_readbuff[IRQ_WAKE_MED] << 8)
-			| motosh_readbuff[IRQ_WAKE_LO];
+	irq_status = (readbuff[IRQ_WAKE_HI] << 16)
+			| (readbuff[IRQ_WAKE_MED] << 8) | readbuff[IRQ_WAKE_LO];
 
 	if (ps_motosh->qw_irq_status) {
 		irq_status |= ps_motosh->qw_irq_status;
@@ -129,14 +130,14 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	}
 
 	/* read wake queue length */
-	motosh_cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
-	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 1);
+	cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
+	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 1);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
 			"Reading wake queue length failed [err: %d]\n", err);
 		goto EXIT;
 	}
-	queue_length = motosh_readbuff[0];
+	queue_length = readbuff[0];
 
 	dev_dbg(&ps_motosh->client->dev,
 			"wake queue_length: %d\n", queue_length);
@@ -168,8 +169,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	}
 
 	/* read wake queue */
-	motosh_cmdbuff[0] = WAKE_MSG_QUEUE;
-	err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, queue_length);
+	cmdbuff[0] = WAKE_MSG_QUEUE;
+	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
+		1, queue_length);
 	if (err < 0) {
 		dev_err(&ps_motosh->client->dev,
 			"Reading wake queue failed [len: %d] [err: %d]\n",
@@ -179,14 +181,14 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	}
 
 	/* process each event from the queue */
-	/* NOTE: the motosh_readbuff should not be modified while the event
+	/* NOTE: the readbuff should not be modified while the event
 	   queue is being processed */
 	while (queue_index < queue_length) {
 		unsigned char *data;
-		unsigned char message_id = motosh_readbuff[queue_index];
+		unsigned char message_id = readbuff[queue_index];
 
 		queue_index += MOTOSH_EVENT_QUEUE_MSG_ID_LEN;
-		data = &motosh_readbuff[queue_index];
+		data = &readbuff[queue_index];
 
 		dev_dbg(&ps_motosh->client->dev,
 			"wake parsing event: 0x%02X\n",
@@ -424,9 +426,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				message_id);
 			/* a write to the work queue length causes
 			   it to be reset */
-			motosh_cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
-			motosh_cmdbuff[1] = 0x00;
-			motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2);
+			cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
+			cmdbuff[1] = 0x00;
+			motosh_i2c_write(ps_motosh, cmdbuff, 2);
 			goto EXIT;
 		};
 	}
@@ -434,14 +436,12 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	/* log messages are stored in a separate register, must read
 	   after queue is processed */
 	if (pending_log_msg) {
-		motosh_cmdbuff[0] = ERROR_STATUS;
-		err = motosh_i2c_write_read(ps_motosh,
-					    motosh_cmdbuff,
+		cmdbuff[0] = ERROR_STATUS;
+		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 					    1, ESR_SIZE);
 
 		if (err >= 0) {
-			memcpy(stat_string, motosh_readbuff,
-			       ESR_SIZE);
+			memcpy(stat_string, readbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_motosh->client->dev,
 				"sensorhub: %s\n",

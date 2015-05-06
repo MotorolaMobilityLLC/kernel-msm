@@ -168,8 +168,6 @@
 #define N_ALS                   0x02
 #define N_DISP_BRIGHTNESS       0x04
 
-#define READ_CMDBUFF_SIZE 512
-
 #define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
 #define MOTOSH_EVENT_QUEUE_MSG_ID_LEN 1
 #define MOTOSH_EVENT_TIMESTAMP_LEN    3
@@ -207,20 +205,22 @@
 #define AOD_QP_ENABLED_VOTE_USER		0x02
 #define AOD_QP_ENABLED_VOTE_MASK		0x03
 
-#define MOTOSH_MAX_GENERIC_DATA		512
-
 #define ESR_SIZE			128
 
 #define I2C_RESPONSE_LENGTH		8
 
 #define MOTOSH_MAXDATA_LENGTH		256
+#define MOTOSH_HEADER_LENGTH        1
+#define MOTOSH_FOOTER_LENGTH        1
+#define MOTOSH_MAX_PACKET_LENGTH    \
+	(MOTOSH_HEADER_LENGTH + MOTOSH_MAXDATA_LENGTH + MOTOSH_FOOTER_LENGTH)
 
 #define MOTOSH_IR_GESTURE_CNT      8
 #define MOTOSH_IR_SZ_GESTURE       4
 #define MOTOSH_IR_SZ_RAW           20
 #define MOTOSH_IR_CONFIG_REG_SIZE  255
 
-/* motosh_readbuff offsets. */
+/* readbuff offsets */
 #define IRQ_WAKE_LO  0
 #define IRQ_WAKE_MED 1
 #define IRQ_WAKE_HI  2
@@ -491,7 +491,10 @@ int motosh_ms_data_buffer_read(struct motosh_data *ps_motosh,
 /* motosh_i2c_write_read_no_reset()
  */
 int motosh_i2c_write_read_no_reset(struct motosh_data *ps_motosh,
-	u8 *buf, int writelen, int readlen);
+	u8 *writebuff,
+	u8 *readbuff,
+	int writelen,
+	int readlen);
 /* motosh_i2c_read_no_reset()
  */
 int motosh_i2c_read_no_reset(struct motosh_data *ps_motosh,
@@ -502,8 +505,11 @@ int motosh_i2c_write_no_reset(struct motosh_data *ps_motosh,
 	u8 *buf, int len);
 /* motosh_i2c_write_read()
  */
-int motosh_i2c_write_read(struct motosh_data *ps_motosh, u8 *buf,
-	int writelen, int readlen);
+int motosh_i2c_write_read(struct motosh_data *ps_motosh,
+	u8 *writebuff,
+	u8 *readbuff,
+	int writelen,
+	int readlen);
 /* motosh_i2c_read()
  */
 int motosh_i2c_read(struct motosh_data *ps_motosh, u8 *buf, int len);
@@ -572,9 +578,6 @@ extern unsigned short motosh_g_control_reg_restore;
 extern unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
 extern bool motosh_g_ir_config_reg_restore;
 extern bool motosh_g_booted;
-
-extern unsigned char motosh_cmdbuff[];
-extern unsigned char motosh_readbuff[];
 
 extern unsigned short motosh_i2c_retry_delay;
 
