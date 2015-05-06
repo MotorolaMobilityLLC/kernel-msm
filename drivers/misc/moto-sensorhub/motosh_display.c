@@ -274,19 +274,21 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	u8 aod_qp_reason;
 	u8 aod_qp_panel_state;
 	struct motosh_quickpeek_message *qp_message = NULL;
+	unsigned char cmdbuff[1];
+	unsigned char readbuff[9];
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
 
-	motosh_cmdbuff[0] = MOTOSH_STATUS_REG;
-	if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 2)
+	cmdbuff[0] = MOTOSH_STATUS_REG;
+	if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 2)
 		< 0) {
 		dev_err(&ps_motosh->client->dev,
 			"Get status reg failed\n");
 		goto error;
 	}
 
-	aod_qp_panel_state = motosh_readbuff[0] & 0x3;
-	aod_qp_reason = (motosh_readbuff[1] >> 4) & 0xf;
+	aod_qp_panel_state = readbuff[0] & 0x3;
+	aod_qp_reason = (readbuff[1] >> 4) & 0xf;
 
 	qp_message = kzalloc(sizeof(*qp_message), GFP_KERNEL);
 	if (!qp_message) {
@@ -306,32 +308,30 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			"Received peek prepare command\n");
 		break;
 	case AOD_WAKEUP_REASON_QP_COMPLETE:
-		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
-		if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 1) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek draw data from STM failed\n");
 			goto error;
 		}
-		qp_message->commit = (motosh_readbuff[0] & 0x80) >> 7;
+		qp_message->commit = (readbuff[0] & 0x80) >> 7;
 		dev_dbg(&ps_motosh->client->dev,
 			"Received peek complete command commit: %d\n",
 			qp_message->commit);
 		break;
 	case AOD_WAKEUP_REASON_QP_DRAW:
-		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
-		if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 5) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek draw data from STM failed\n");
 			goto error;
 		}
-		qp_message->buffer_id = motosh_readbuff[0] & 0x3f;
-		qp_message->commit = (motosh_readbuff[0] & 0x80) >> 7;
-		qp_message->x1 = motosh_readbuff[1] |
-			motosh_readbuff[2] << 8;
-		qp_message->y1 = motosh_readbuff[3] |
-			motosh_readbuff[4] << 8;
+		qp_message->buffer_id = readbuff[0] & 0x3f;
+		qp_message->commit = (readbuff[0] & 0x80) >> 7;
+		qp_message->x1 = readbuff[1] | readbuff[2] << 8;
+		qp_message->y1 = readbuff[3] | readbuff[4] << 8;
 
 		dev_dbg(&ps_motosh->client->dev,
 			"Received peek draw command for buffer: %d commit: %d (coord: %d, %d)\n",
@@ -339,22 +339,18 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			qp_message->x1, qp_message->y1);
 		break;
 	case AOD_WAKEUP_REASON_QP_ERASE:
-		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
-		if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 9) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek erase data from STM failed\n");
 			goto error;
 		}
-		qp_message->commit = (motosh_readbuff[0] & 0x80) >> 7;
-		qp_message->x1 = motosh_readbuff[1] |
-			motosh_readbuff[2] << 8;
-		qp_message->y1 = motosh_readbuff[3] |
-			motosh_readbuff[4] << 8;
-		qp_message->x2 = motosh_readbuff[5] |
-			motosh_readbuff[6] << 8;
-		qp_message->y2 = motosh_readbuff[7] |
-			motosh_readbuff[8] << 8;
+		qp_message->commit = (readbuff[0] & 0x80) >> 7;
+		qp_message->x1 = readbuff[1] | readbuff[2] << 8;
+		qp_message->y1 = readbuff[3] | readbuff[4] << 8;
+		qp_message->x2 = readbuff[5] | readbuff[6] << 8;
+		qp_message->y2 = readbuff[7] | readbuff[8] << 8;
 
 		dev_dbg(&ps_motosh->client->dev,
 			"Received peek erase command: commit: %d (%d, %d) -> (%d, %d)\n",
@@ -364,17 +360,17 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	case AOD_WAKEUP_REASON_QP_DUMP_TRACE:
 		{
 		u32 timestamp;
-		motosh_cmdbuff[0] = MOTOSH_PEEKDATA_REG;
-		if (motosh_i2c_write_read(ps_motosh, motosh_cmdbuff,
+		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 5) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek draw data from STM failed\n");
 			goto error;
 		}
-		timestamp = motosh_readbuff[0] |
-			motosh_readbuff[1] << 8 |
-			motosh_readbuff[2] << 16 |
-			motosh_readbuff[3] << 24;
+		timestamp = readbuff[0] |
+			readbuff[1] << 8 |
+			readbuff[2] << 16 |
+			readbuff[3] << 24;
 		dev_dbg(&ps_motosh->client->dev,
 			"Received trace dump request\n");
 		motosh_quickpeek_trace_dump(ps_motosh, timestamp);
@@ -645,6 +641,8 @@ loop:
 static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 {
 	int count = 0;
+	unsigned char cmdbuff[2];
+	unsigned char readbuff[1];
 
 	dev_dbg(&motosh_misc_data->client->dev, "%s\n", __func__);
 	motosh_wake(ps_motosh);
@@ -652,25 +650,24 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 	if (ps_motosh->mode == NORMALMODE) {
 		motosh_quickpeek_reset_locked(ps_motosh);
 
-		/* New I2C Implementation */
-		motosh_cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
-		motosh_cmdbuff[1] = 0x00;
-		if (motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2) < 0) {
+		cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+		cmdbuff[1] = 0x00;
+		if (motosh_i2c_write(ps_motosh, cmdbuff, 2) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Write peek status reg failed\n");
 			goto EXIT;
 		}
 
 		do {
-			motosh_cmdbuff[0] = MOTOSH_STATUS_REG;
+			cmdbuff[0] = MOTOSH_STATUS_REG;
 			if (motosh_i2c_write_read(ps_motosh,
-					motosh_cmdbuff, 1, 1) < 0) {
+					cmdbuff, readbuff, 1, 1) < 0) {
 				dev_err(&ps_motosh->client->dev,
 					"Get status reg failed\n");
 				goto EXIT;
 			}
 
-			if (!(motosh_readbuff[0] & MOTOSH_BUSY_STATUS_MASK))
+			if (!(readbuff[0] & MOTOSH_BUSY_STATUS_MASK))
 				break;
 
 			usleep_range(MOTOSH_BUSY_SLEEP_USEC,
@@ -691,15 +688,15 @@ EXIT:
 static int motosh_handover_locked(struct motosh_data *ps_motosh)
 {
 	int ret = 0;
+	unsigned char cmdbuff[2];
 
 	dev_dbg(&motosh_misc_data->client->dev, "%s\n", __func__);
 	motosh_wake(ps_motosh);
 
 	if (ps_motosh->mode == NORMALMODE) {
-		/* New I2C Implementation */
-		motosh_cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
-		motosh_cmdbuff[1] = 0x01;
-		if (motosh_i2c_write(ps_motosh, motosh_cmdbuff, 2) < 0) {
+		cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+		cmdbuff[1] = 0x01;
+		if (motosh_i2c_write(ps_motosh, cmdbuff, 2) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Write peek status reg failed\n");
 			ret = -EIO;
@@ -776,10 +773,13 @@ void motosh_store_vote_aod_enabled_locked(struct motosh_data *ps_motosh,
 static unsigned long motosh_get_wake_interrupt_status(
 		struct motosh_data *ps_motosh, int *err)
 {
+	unsigned char cmdbuff[1];
+	unsigned char readbuff[3];
+
 	motosh_wake(ps_motosh);
 
-	motosh_cmdbuff[0] = WAKESENSOR_STATUS;
-	*err = motosh_i2c_write_read(ps_motosh, motosh_cmdbuff, 1, 3);
+	cmdbuff[0] = WAKESENSOR_STATUS;
+	*err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 3);
 	if (*err < 0) {
 		dev_err(&ps_motosh->client->dev, "Reading from STM failed\n");
 		motosh_sleep(ps_motosh);
@@ -787,8 +787,7 @@ static unsigned long motosh_get_wake_interrupt_status(
 	}
 
 	motosh_sleep(ps_motosh);
-	return (motosh_readbuff[2] << 16) | (motosh_readbuff[1] << 8)
-		| motosh_readbuff[0];
+	return (readbuff[2] << 16) | (readbuff[1] << 8) | readbuff[0];
 }
 
 /* WARNING: This code is extrememly prone to race conditions. Be very careful
