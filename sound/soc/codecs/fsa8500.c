@@ -84,7 +84,7 @@ struct fsa8500_data {
 };
 
 /* I2C Read/Write Functions */
-static int fsa8500_i2c_read(struct fsa8500_data *fsa8500,
+static int fsa8500_i2c_read(struct i2c_client *client,
 					u8 reg, u8 *value, int len)
 {
 	int err;
@@ -92,13 +92,13 @@ static int fsa8500_i2c_read(struct fsa8500_data *fsa8500,
 
 	struct i2c_msg msgs[] = {
 		{
-		 .addr = fsa8500_client->addr,
+		 .addr = client->addr,
 		 .flags = 0,
 		 .len = 1,
 		 .buf = &reg,
 		 },
 		{
-		 .addr = fsa8500_client->addr,
+		 .addr = client->addr,
 		 .flags = I2C_M_RD,
 		 .len = len,
 		 .buf = value,
@@ -106,14 +106,15 @@ static int fsa8500_i2c_read(struct fsa8500_data *fsa8500,
 	};
 
 	do {
-		err = i2c_transfer(fsa8500_client->adapter, msgs,
+		err = i2c_transfer(client->adapter, msgs,
 				ARRAY_SIZE(msgs));
 		if (err != ARRAY_SIZE(msgs))
 			msleep_interruptible(I2C_RETRY_DELAY);
+
 	} while ((err != ARRAY_SIZE(msgs)) && (++tries < I2C_RETRIES));
 
 	if (err != ARRAY_SIZE(msgs)) {
-		dev_err(&fsa8500_client->dev, "read transfer error %d\n", err);
+		dev_err(&client->dev, "read transfer error %d\n", err);
 		err = -EIO;
 	} else {
 		err = 0;
@@ -121,7 +122,7 @@ static int fsa8500_i2c_read(struct fsa8500_data *fsa8500,
 
 	return err;
 }
-static int fsa8500_i2c_write(struct fsa8500_data *fsa8500, u8 reg, u8 value)
+static int fsa8500_i2c_write(struct i2c_client *client, u8 reg, u8 value)
 {
 	int err;
 	int tries = 0;
@@ -129,8 +130,8 @@ static int fsa8500_i2c_write(struct fsa8500_data *fsa8500, u8 reg, u8 value)
 
 	struct i2c_msg msgs[] = {
 		{
-		 .addr = fsa8500_client->addr,
-		 .flags = fsa8500_client->flags & I2C_M_TEN,
+		 .addr = client->addr,
+		 .flags = client->flags & I2C_M_TEN,
 		 .len = 2,
 		 .buf = buf,
 		 },
@@ -140,14 +141,14 @@ static int fsa8500_i2c_write(struct fsa8500_data *fsa8500, u8 reg, u8 value)
 	buf[1] = value;
 
 	do {
-		err = i2c_transfer(fsa8500_client->adapter, msgs,
+		err = i2c_transfer(client->adapter, msgs,
 					ARRAY_SIZE(msgs));
 		if (err != ARRAY_SIZE(msgs))
 			msleep_interruptible(I2C_RETRY_DELAY);
 	} while ((err != ARRAY_SIZE(msgs)) && (++tries < I2C_RETRIES));
 
 	if (err != ARRAY_SIZE(msgs)) {
-		dev_err(&fsa8500_client->dev, "write transfer error\n");
+		dev_err(&client->dev, "write transfer error\n");
 		err = -EIO;
 	} else {
 		err = 0;
@@ -157,12 +158,12 @@ static int fsa8500_i2c_write(struct fsa8500_data *fsa8500, u8 reg, u8 value)
 }
 
 
-static int fsa8500_reg_read(struct fsa8500_data *fsa8500, u8 reg, u8 *value)
+static int fsa8500_reg_read(struct i2c_client *client, u8 reg, u8 *value)
 {
-	return fsa8500_i2c_read(fsa8500, reg , value, 1);
+	return fsa8500_i2c_read(client, reg , value, 1);
 }
 
-static int fsa8500_reg_write(struct fsa8500_data *fsa8500,
+static int fsa8500_reg_write(struct i2c_client *client,
 			u8 reg,
 			u8 value,
 			u8 mask)
@@ -172,7 +173,7 @@ static int fsa8500_reg_write(struct fsa8500_data *fsa8500,
 
 	value &= mask;
 
-	retval = fsa8500_reg_read(fsa8500, reg , &old_value);
+	retval = fsa8500_reg_read(client, reg , &old_value);
 
 	if (retval != 0)
 		goto error;
@@ -180,7 +181,7 @@ static int fsa8500_reg_write(struct fsa8500_data *fsa8500,
 	old_value &= ~mask;
 	value |= old_value;
 
-	retval = fsa8500_i2c_write(fsa8500, reg, value);
+	retval = fsa8500_i2c_write(client, reg, value);
 
 error:
 	return retval;
@@ -195,18 +196,20 @@ static int fsa8500_check_console(void)
 	return 0;
 }
 
-static void fsa8500_initialize(struct fsa8500_platform_data *pdata,
+static int fsa8500_initialize(struct fsa8500_platform_data *pdata,
 				struct fsa8500_data *fsa8500)
 {
 	int i;
 	int retval;
 
 	/* Reset */
-	fsa8500_reg_write(fsa8500, FSA8500_RESET_CONTROL, FSA8500_RESET, 0xff);
+	fsa8500_reg_write(fsa8500_client, FSA8500_RESET_CONTROL,
+						FSA8500_RESET, 0xff);
 
 	/* Initialize device registers */
 	for (i = 0; i < pdata->init_regs_num; i++) {
-		retval = fsa8500_reg_write(fsa8500, pdata->init_regs[i].reg,
+		retval = fsa8500_reg_write(fsa8500_client,
+					pdata->init_regs[i].reg,
 					pdata->init_regs[i].value, 0xff);
 		if (retval != 0)
 			goto error;
@@ -217,12 +220,15 @@ static void fsa8500_initialize(struct fsa8500_platform_data *pdata,
 	if (!fsa8500_check_console()) {
 		pr_debug("%s: Console isn't set. Disable UART detection.\n",
 				__func__);
-		fsa8500_reg_write(fsa8500, FSA8500_CONTROL2,
+		fsa8500_reg_write(fsa8500_client, FSA8500_CONTROL2,
 					FSA8500_UART_OFF, FSA8500_UART_OFF);
 	}
+
 	pr_info("fsa8500_initialize success\n");
+	return 0;
 error:
-	return;
+	pr_err("fsa8500_initialize error\n");
+	return -EIO;
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -233,13 +239,12 @@ static struct dentry *fsa8500_set_reg_file;
 
 static int fsa8500_registers_print(struct seq_file *s, void *p)
 {
-	struct fsa8500_data *fsa8500 = s->private;
 	u8 reg;
 	u8 value;
 	pr_info("%s: print registers", __func__);
 	seq_puts(s, "fsa8500 registers:\n");
 	for (reg = 1; reg < FSA8500_MAX_REGISTER_VAL; reg++) {
-		fsa8500_reg_read(fsa8500, reg, &value);
+		fsa8500_reg_read(fsa8500_client, reg, &value);
 		seq_printf(s, "[0x%x]:  0x%x\n", reg, value);
 	}
 
@@ -262,7 +267,6 @@ static ssize_t fsa8500_set_reg(struct file *file,
 				  const char __user *user_buf,
 				  size_t count, loff_t *ppos)
 {
-	struct fsa8500_data *fsa8500 = file->private_data;
 	char buf[32];
 	ssize_t buf_size;
 	unsigned int user_reg;
@@ -285,8 +289,9 @@ static ssize_t fsa8500_set_reg(struct file *file,
 	pr_info("%s: set register 0x%02x value 0x%02x", __func__,
 		user_reg, user_value);
 
-	fsa8500_reg_write(fsa8500, user_reg & 0xFF, user_value & 0XFF, 0xFF);
-	fsa8500_reg_read(fsa8500, user_reg, &reg_read_back);
+	fsa8500_reg_write(fsa8500_client, user_reg & 0xFF,
+						user_value & 0XFF, 0xFF);
+	fsa8500_reg_read(fsa8500_client, user_reg, &reg_read_back);
 
 	pr_info("%s: debug write reg[0x%02x] with 0x%02x after readback: 0x%02x\n",
 				__func__, user_reg, user_value, reg_read_back);
@@ -418,7 +423,7 @@ static int fsa8500_update_device_status(struct fsa8500_data *fsa8500)
 {
 	int err;
 
-	err = fsa8500_i2c_read(fsa8500, FSA8500_INT_REG1,
+	err = fsa8500_i2c_read(fsa8500_client, FSA8500_INT_REG1,
 			fsa8500->irq_status, sizeof(fsa8500->irq_status));
 	if (err == -EIO)
 		return err;
@@ -764,12 +769,33 @@ static int fsa8500_probe(struct i2c_client *client,
 {
 	struct fsa8500_data *fsa8500;
 	struct fsa8500_platform_data *fsa8500_pdata;
+	struct regulator *vdd;
+	u8 device_id;
 	int err;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "check_functionality failed\n");
 		return -EIO;
 	}
+
+	/* enable regulators */
+	vdd = regulator_get(&client->dev, "hs_det_vdd");
+	if (IS_ERR(vdd))
+		pr_warn("%s: Can't get vdd regulator.\n", __func__);
+	else {
+		err = regulator_enable(vdd);
+		if (err < 0) {
+			pr_err("%s: Error enabling vdd regulator.\n", __func__);
+			goto reg_enable_vdd_fail;
+		}
+	}
+
+	if (fsa8500_reg_read(client, FSA8500_DEVICE_ID, &device_id)) {
+		if (!IS_ERR_OR_NULL(vdd))
+			regulator_put(vdd);
+		return -EPROBE_DEFER;
+	} else
+		dev_info(&client->dev, "Device ID is 0x%x\n", device_id>>4);
 
 	if (client->dev.of_node)
 			client->dev.platform_data = fsa8500_of_init(client);
@@ -801,6 +827,7 @@ static int fsa8500_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, fsa8500);
 	mutex_init(&fsa8500->lock);
 	fsa8500->gpio = fsa8500_pdata->irq_gpio;
+	fsa8500->vdd = vdd;
 	fsa8500->inserted = 0;
 	fsa8500->button_pressed = 0;
 	fsa8500->button_jack = NULL;
@@ -811,24 +838,15 @@ static int fsa8500_probe(struct i2c_client *client,
 	 */
 	fsa8500->alwayson_micb = fsa8500_pdata->alwayson_micbias;
 
-	/* enable regulators */
-	fsa8500->vdd = regulator_get(&client->dev, "hs_det_vdd");
-	if (IS_ERR(fsa8500->vdd))
-		pr_warn("%s: Can't get vdd regulator.\n", __func__);
-	else {
-		err = regulator_enable(fsa8500->vdd);
-		if (err < 0) {
-			pr_err("%s: Error enabling vdd regulator.\n", __func__);
-			goto reg_enable_vdd_fail;
-		}
-	}
 
 	wake_lock_init(&fsa8500->wake_lock, WAKE_LOCK_SUSPEND, "hs_det");
 
 	/* Initialize device registers */
 
-	fsa8500_initialize(fsa8500_pdata, fsa8500);
-
+	if (fsa8500_initialize(fsa8500_pdata, fsa8500)) {
+		err = -EIO;
+		goto wq_fail;
+	}
 	fsa8500->wq = create_singlethread_workqueue("fsa8500");
 	if (fsa8500->wq == NULL) {
 		err = -ENOMEM;
@@ -859,15 +877,15 @@ irq_fail:
 	wake_lock_destroy(&fsa8500->wake_lock);
 	destroy_workqueue(fsa8500->wq);
 wq_fail:
-	if (!IS_ERR_OR_NULL(fsa8500->vdd))
-		regulator_disable(fsa8500->vdd);
-reg_enable_vdd_fail:
-	if (!IS_ERR_OR_NULL(fsa8500->vdd))
-		regulator_put(fsa8500->vdd);
 	gpio_free(fsa8500->gpio);
 gpio_init_fail:
 	kfree(fsa8500);
 	fsa8500_client = NULL;
+	if (!IS_ERR_OR_NULL(vdd))
+		regulator_disable(vdd);
+reg_enable_vdd_fail:
+	if (!IS_ERR_OR_NULL(vdd))
+		regulator_put(vdd);
 	return err;
 }
 
