@@ -1434,8 +1434,7 @@
 		compatible = "fairchild,fsa8500";
 		reg = <0x23>;
 		gpios = <&msm_gpio 29 0x0>;
-		hs_det_vdd-supply = <&dummy_vreg>; /* Connected to B+ */
-		hs_det_micvdd-supply = <&pm8994_s4>;
+		hs_det_vdd-supply = <&pm8994_s4>;  /* VIO */
 		fsa8500-init-regs = <0x0C 0x41>,
 				    <0x0F 0xF9>,
 				    <0x11 0x84>,
