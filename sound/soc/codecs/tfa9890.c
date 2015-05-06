@@ -62,8 +62,6 @@ struct tfa9890_priv {
 	struct delayed_work delay_work;
 	struct mutex dsp_init_lock;
 	struct mutex i2c_rw_lock;
-	struct snd_pcm_substream *substream;
-	struct snd_soc_dai *dai;
 	int dsp_init;
 	int speaker_imp;
 	int sysclk;
@@ -555,7 +553,6 @@ static int tfa9890_set_config_left(struct tfa9890_priv *tfa9890)
 			tfa9890->cfg_mode);
 		return ret;
 	}
-
 	tfa9890->update_cfg = 0;
 	return ret;
 }
@@ -829,7 +826,8 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 		 * will be read from sysfs and validated.
 		 */
 		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
-			if (tfa9890->mode_switched == 1)
+			if ((tfa9890->mode_switched == 1) ||
+				(tfa9890->update_cfg == 1))
 				queue_delayed_work(tfa9890->tfa9890_wq,
 				&tfa9890->mode_work,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
@@ -852,7 +850,8 @@ static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		break;
 	case SND_SOC_DAPM_POST_PMU:
-		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE)
+		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE ||
+				tfa9890->is_spkr_prot_disabled)
 			tfa9890_power(codec, 1);
 		tfa9890_handle_playback_event(tfa9890, 1);
 		break;
@@ -1344,7 +1343,6 @@ static void tfa9890_work_read_imp(struct work_struct *work)
 	struct tfa9890_priv *tfa9890 =
 			container_of(work, struct tfa9890_priv,
 			calib_work.work);
-
 	u16 val;
 
 	mutex_lock(&lr_lock);
@@ -1359,7 +1357,6 @@ static void tfa9890_work_mode(struct work_struct *work)
 	struct tfa9890_priv *tfa9890 =
 		container_of(work, struct tfa9890_priv,
 				mode_work.work);
-
 	int ret;
 
 	mutex_lock(&lr_lock);
@@ -1470,7 +1467,7 @@ static void tfa9890_load_preset(struct work_struct *work)
 			}
 		}
 
-		pr_info("%s: looading cfg file %s\n", __func__, cfg_name);
+		pr_info("%s: loading cfg file %s\n", __func__, cfg_name);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(tfa9890_mode); i++) {
@@ -1480,8 +1477,8 @@ static void tfa9890_load_preset(struct work_struct *work)
 		if (!strncmp("left", tfa9890->tfa_dev, 4)) {
 			ret = request_firmware(&left_fw_eq[i], eq_name,
 					codec->dev);
-			if (ret ||
-				left_fw_eq[i]->size != TFA9890_COEFF_FW_SIZE) {
+			if (ret || left_fw_eq[i]->size
+					!= TFA9890_COEFF_FW_SIZE) {
 				pr_err("tfa9890: Failed to load eq!!");
 				tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
 			}
@@ -1495,7 +1492,7 @@ static void tfa9890_load_preset(struct work_struct *work)
 			}
 		}
 
-		pr_info("%s: looading eq file %s\n", __func__, eq_name);
+		pr_info("%s: loading eq file %s\n", __func__, eq_name);
 	}
 
 	kfree(preset_name);
@@ -1537,7 +1534,8 @@ static void tfa9890_monitor(struct work_struct *work)
 static void tfa9890_dsp_init(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, init_work.work);
+			container_of(work, struct tfa9890_priv,
+			init_work.work);
 	struct snd_soc_codec *codec = tfa9890->codec;
 	u16 val;
 	int ret;
@@ -1570,8 +1568,8 @@ static void tfa9890_dsp_init(struct work_struct *work)
 
 	val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
 
-	pr_info("tfa9890: Initializing DSP, status:0x%x codec name %s", val,
-			codec->name);
+	pr_info("tfa9890: Initializing DSP, status:0x%x codec name %s",
+				val, codec->name);
 
 	/* cold boot device before loading firmware and parameters */
 	ret = tfa9890_coldboot(codec);
@@ -1681,7 +1679,8 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 	pr_info("%s: enter\n", __func__);
 	/* validate and set params */
 	if (params_format(params) != SNDRV_PCM_FORMAT_S16_LE) {
-		pr_err("tfa9890: invalid pcm bit lenght\n");
+		pr_err("tfa9890: invalid pcm bit length %i\n",
+			params_format(params));
 		return -EINVAL;
 	}
 
@@ -1732,8 +1731,6 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	tfa9890->substream = substream;
-	tfa9890->dai = dai;
 	return 0;
 }
 
@@ -1745,8 +1742,8 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 	u16 tries = 0;
 
 	if (mute) {
-		cancel_delayed_work_sync(&tfa9890->delay_work);
 		cancel_delayed_work_sync(&tfa9890->mode_work);
+		cancel_delayed_work_sync(&tfa9890->delay_work);
 	}
 	mutex_lock(&tfa9890->dsp_init_lock);
 	if (mute) {
