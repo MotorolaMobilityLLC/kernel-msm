@@ -368,7 +368,7 @@
 	qcom,vinmin-mv = <4470>;
 	qcom,bms-controlled-charging;
 	qcom,disable-vbatdet-based-recharge;
-	qcom,ibatsafe-ma = <950>;
+	qcom,cfg-current-limited = <900>;
 
 	qcom,usbin-ovp-irq = <&msm_gpio 110 0>;
 	pinctrl-names = "ovp-irq";
