@@ -4770,6 +4770,7 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	chg_term_handler(0, chip);
 	usbid_change_handler(0, chip);
 	src_detect_handler(0, chip);
+	smbchg_charging_en(chip, 0);
 
 	mutex_lock(&chip->usb_set_present_lock);
 	chip->usb_present = is_usb_present(chip);
