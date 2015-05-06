@@ -930,16 +930,16 @@ static const struct soc_enum tfa9890_mode_enum[] = {
 };
 
 static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
-	SOC_SINGLE_TLV("BOOST VolumeL", TFA9890_VOL_CTL_REG,
+	SOC_SINGLE_TLV("NXP VolumeL", TFA9890_VOL_CTL_REG,
 			8, 0xff, 0, tlv_step_0_5),
-	SOC_SINGLE_MULTI_EXT("BOOST ModeL", SND_SOC_NOPM, 0, 255,
+	SOC_SINGLE_MULTI_EXT("NXP ModeL", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
-	SOC_SINGLE_EXT("BOOST Left Ch Select", TFA9890_I2S_CTL_REG,
+	SOC_SINGLE_EXT("NXP Left Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0, tfa9890_get_ch_sel,
 					tfa9890_put_ch_sel),
-	SOC_SINGLE_EXT("BOOST ENABLE Spkr Left Prot", 0 , 0, 1,
+	SOC_SINGLE_EXT("NXP DISABLE Spkr Left Prot", 0 , 0, 1,
 				 0, tfa9890_dsp_bypass_get,
 					tfa9890_dsp_bypass_put),
 };
@@ -964,35 +964,35 @@ static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
 			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_AIF_OUT("I2S0L", NULL, 0,
 			SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_MIXER("BOOST Output Mixer Left", SND_SOC_NOPM, 0, 0,
+	SND_SOC_DAPM_MIXER("NXP Output Mixer Left", SND_SOC_NOPM, 0, 0,
 			&tfa9890_left_mixer_controls[0],
 			ARRAY_SIZE(tfa9890_left_mixer_controls)),
 	SND_SOC_DAPM_VIRT_MUX("Left SPK Mux", SND_SOC_NOPM, 0, 0,
 			&left_sel_mux),
-	SND_SOC_DAPM_OUTPUT("BOOST Speaker Left"),
+	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost Left"),
 	SND_SOC_DAPM_INPUT("NXP Echo Ref Left"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
 	{"I2S1L", NULL, "I2S1L Playback"},
 	{"Left SPK Mux", "On", "I2S1L"},
-	{"BOOST Output Mixer Left", NULL, "Left SPK Mux"},
-	{"BOOST Speaker Left", NULL, "BOOST Output Mixer Left"},
+	{"NXP Output Mixer Left", NULL, "Left SPK Mux"},
+	{"NXP Speaker Boost Left", NULL, "NXP Output Mixer Left"},
 	{"I2S0L", NULL, "NXP Echo Ref Left"},
 	{"I2S1L Capture", NULL, "I2S0L"},
 };
 
 static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
-	SOC_SINGLE_TLV("BOOST VolumeR", TFA9890_VOL_CTL_REG,
+	SOC_SINGLE_TLV("NXP VolumeR", TFA9890_VOL_CTL_REG,
 			8, 0xff, 0, tlv_step_0_5),
-	SOC_SINGLE_MULTI_EXT("BOOST ModeR", SND_SOC_NOPM, 0, 255,
+	SOC_SINGLE_MULTI_EXT("NXP ModeR", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 	/* val 1 for left channel, 2 for right and 3 for (l+r)/2 */
-	SOC_SINGLE_EXT("BOOST Right Ch Select", TFA9890_I2S_CTL_REG,
+	SOC_SINGLE_EXT("NXP Right Ch Select", TFA9890_I2S_CTL_REG,
 			3, 0x3, 0, tfa9890_get_ch_sel,
 						tfa9890_put_ch_sel),
-	SOC_SINGLE_EXT("BOOST ENABLE Spkr Right Prot", 0, 0, 1,
+	SOC_SINGLE_EXT("NXP DISABLE Spkr Right Prot", 0, 0, 1,
 				 0, tfa9890_dsp_bypass_get,
 					tfa9890_dsp_bypass_put),
 };
@@ -1011,20 +1011,20 @@ static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
 			SND_SOC_DAPM_POST_PMU|SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_AIF_OUT("I2S0R", NULL, 0,
 			SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_MIXER("BOOST Output Mixer Right", SND_SOC_NOPM, 0, 0,
+	SND_SOC_DAPM_MIXER("NXP Output Mixer Right", SND_SOC_NOPM, 0, 0,
 			&tfa9890_right_mixer_controls[0],
 			ARRAY_SIZE(tfa9890_right_mixer_controls)),
 	SND_SOC_DAPM_VIRT_MUX("Right SPK Mux", SND_SOC_NOPM, 0, 0,
 			&right_sel_mux),
-	SND_SOC_DAPM_OUTPUT("BOOST Speaker Right"),
+	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost Right"),
 	SND_SOC_DAPM_INPUT("NXP Echo Ref Right"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
 	{"I2S1R", NULL, "I2S1R Playback"},
 	{"Right SPK Mux", "On", "I2S1R"},
-	{"BOOST Output Mixer Right", NULL, "Right SPK Mux"},
-	{"BOOST Speaker Right", NULL, "BOOST Output Mixer Right"},
+	{"NXP Output Mixer Right", NULL, "Right SPK Mux"},
+	{"NXP Speaker Boost Right", NULL, "NXP Output Mixer Right"},
 	{"I2S0R", NULL, "NXP Echo Ref Right"},
 	{"I2S1R Capture", NULL, "I2S0R"},
 };
@@ -2186,7 +2186,7 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 				ARRAY_SIZE(tfa9890_left_dapm_routes));
 		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1L");
 		snd_soc_dapm_ignore_suspend(&codec->dapm,
-			"BOOST Speaker Left");
+			"NXP Speaker Boost Left");
 	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
 		snd_soc_add_codec_controls(codec, tfa9890_right_snd_controls,
 			     ARRAY_SIZE(tfa9890_right_snd_controls));
@@ -2197,7 +2197,7 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 				ARRAY_SIZE(tfa9890_right_dapm_routes));
 		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1R");
 		snd_soc_dapm_ignore_suspend(&codec->dapm,
-			"BOOST Speaker Right");
+			"NXP Speaker Boost Right");
 	}
 
 	if (stereo_mode) {
