@@ -545,6 +545,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_WAKE_GESTURE:
 		case SST_GLANCE_GESTURE:
 		case SST_PICK_UP_GESTURE:
+		case SST_INACTIVITY_ALARM:
 			data_size = 0;
 			break;
 
@@ -1923,6 +1924,8 @@ static void sentral_do_work_reset(struct work_struct *work)
 
 	int rc = 0;
 
+	mutex_lock(&sentral->lock_reset);
+
 	// load firmware
 	rc = sentral_firmware_load(sentral, sentral->platform_data.firmware);
 	if (rc) {
@@ -1940,6 +1943,7 @@ static void sentral_do_work_reset(struct work_struct *work)
 	}
 
 	sentral->init_complete = true;
+	mutex_unlock(&sentral->lock_reset);
 
 	// queue a FIFO read
 	queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
@@ -2221,6 +2225,7 @@ static int sentral_probe(struct i2c_client *client,
 
 	// init mutex, wakelock
 	mutex_init(&sentral->lock);
+	mutex_init(&sentral->lock_reset);
 	mutex_init(&sentral->lock_flush);
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
 

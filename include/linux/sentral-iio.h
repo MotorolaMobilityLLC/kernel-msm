@@ -126,6 +126,7 @@ enum sentral_sensor_type {
 	SST_PICK_UP_GESTURE =             25,
 	SST_WRIST_TILT_GESTURE =          26,
 	SST_COACH =                       29,
+	SST_INACTIVITY_ALARM =            30,
 	SST_ACTIVITY =                    31,
 	SST_MAX,
 	SST_FIRST = SST_ACCELEROMETER,
@@ -163,6 +164,7 @@ static const char *sentral_sensor_type_strings[SST_MAX] = {
 	[SST_GLANCE_GESTURE] = "GLANCE_GESTURE",
 	[SST_PICK_UP_GESTURE] = "PICK_UP_GESTURE",
 	[SST_WRIST_TILT_GESTURE] = "WRIST_TILT_GESTURE",
+	[SST_INACTIVITY_ALARM] = "INACTIVITY_ALARM",
 	[SST_COACH] = "COACH",
 	[SST_ACTIVITY] = "ACTIVITY",
 };
@@ -470,6 +472,7 @@ struct sentral_device {
 	struct work_struct work_fifo_read;
 	struct delayed_work work_watchdog;
 	struct mutex lock;
+	struct mutex lock_reset;
 	struct mutex lock_flush;
 	struct wake_lock w_lock;
 	struct notifier_block nb;
