@@ -95,7 +95,7 @@
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
 #define DEVICE_READY_MAX_WAIT		500
-#define DEVICE_READY_MAX_PROBE_WAIT		100
+#define DEVICE_READY_MAX_PROBE_WAIT		50
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -112,8 +112,10 @@
 #define CFG_CUSTOMER_ID1			7
 #define CFG_CUSTOMER_ID2			1
 
-static int upgrade_flag = 0;
+static int fw_upgrade_flag = 0;
+static int config_upgrade_flag = 0;
 static int enter_lowpower_flag = 0;
+static bool probe_flag = false;
 
 //show touch point message flag
 static int TOUCH_P1_DOWN_FLAG = 0;
@@ -302,8 +304,12 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 		if (i2cReadNoReadyCheck(BUF_QUERY, &ucQuery, sizeof(ucQuery)) != 2)
 			ucQuery = CMD_STATUS_BUSY;
 
-		if (slowly)
+		if (slowly) {
 			mdelay(1000);
+		} else if (probe_flag) {
+			mdelay(10);
+		}
+
 		if (!forever)
 			count--;
 
@@ -439,15 +445,21 @@ static bool chipFirmwareUpload(uint32_t fwLen, const uint8_t *fwData, uint32_t c
 		return false;
 
 	/* flash the firmware if requested */
-	if (fwLen && fwData && !chipFlashWriteAndVerify(fwLen, fwData, 0)) {
-		LOGE("failed to upload touch firmware\n");
-		goto out;
+	if (fw_upgrade_flag) {
+		LOGI("start to flash firmware...\n");
+		if (fwLen && fwData && !chipFlashWriteAndVerify(fwLen, fwData, 0)) {
+			LOGE("failed to upload touch firmware\n");
+			goto out;
+		}
 	}
 
 	/* flash config data if requested */
-	if (fwLen && fwData && !chipFlashWriteAndVerify(cfgLen, cfgData, CHIP_FLASH_SIZE - cfgLen)) {
-		LOGE("failed to upload touch cfg data\n");
-		goto out;
+	if (config_upgrade_flag) {
+		LOGI("start to flash config...\n");
+		if (cfgLen && cfgData && !chipFlashWriteAndVerify(cfgLen, cfgData, CHIP_FLASH_SIZE - cfgLen)) {
+			LOGE("failed to upload touch cfg data\n");
+			goto out;
+		}
 	}
 
 	success = true;
@@ -526,7 +538,7 @@ static void chipLowPowerMode(bool low)
 			if (!TP_DLMODE) {
 				//Touch Reset
 				gpio_direction_output(RESET_GPIO,0);
-				msleep(60);
+				mdelay(60);
 				gpio_direction_output(RESET_GPIO,1);
 				msleep(50);
 				chipInLowPower = false;
@@ -584,30 +596,39 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	/* fix touch firmware/config update failed issue */
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
 	fwUploadResult = SYSFS_RESULT_NOT_DONE;
-	upgrade_flag = 0;
+	fw_upgrade_flag = 0;
+	config_upgrade_flag = 0;
 	if (fwLen && cfgLen) {
-		if (manualUpgrade != SYSFS_FW_UPLOAD_MODE_MANUAL) {
+		if (!manualUpgrade) {
 			LOGI("manualUpgrade = %d, compare version.\n", manualUpgrade);
 			if (fw->data[8] == FW_CUSTOMER_ID1 && fw->data[9] == FW_CUSTOMER_ID2 &&
 				cfg->data[cfgLen - 8] == CFG_CUSTOMER_ID1 && cfg->data[cfgLen - 7] == CFG_CUSTOMER_ID2) {
 				if (verFw[5] != FW_CUSTOMER_ID1 || verFw[6] != FW_CUSTOMER_ID2 ||
 					verCfg[1] != CFG_CUSTOMER_ID1 || verCfg[2] != CFG_CUSTOMER_ID2) {
 					LOGI("ic's fw/cfg is wrong, need to upgrade.\n");
-					upgrade_flag = 1;
+					fw_upgrade_flag = 1;
+					config_upgrade_flag = 1;
 				} else {
 					if (verFw[7] == 0xFF || verFw[8] == 0xFF || verFw[7] < fw->data[10] ||
-						(verFw[7] == fw->data[10] && verFw[8] < fw->data[11]) || verCfg[3] == 0xFF || verCfg[4] == 0xFF ||
-						verCfg[3] < cfg->data[cfgLen - 6] || (verCfg[3] == cfg->data[cfgLen - 6] && verCfg[4] < cfg->data[cfgLen - 5])) {
-						LOGI("ic's fw/cfg is too old, need to upgrade.\n");
-						upgrade_flag = 1;
+						(verFw[7] == fw->data[10] && verFw[8] < fw->data[11])) {
+						LOGI("ic's fw is old, force to upgrade.\n");
+						fw_upgrade_flag = 1;
+					}
+					if (verCfg[3] == 0xFF || verCfg[4] == 0xFF || verCfg[3] < cfg->data[cfgLen - 6] ||
+						(verCfg[3] == cfg->data[cfgLen - 6] && verCfg[4] < cfg->data[cfgLen - 5])) {
+						LOGI("ic's cfg is old, force to upgrade.\n");
+						config_upgrade_flag = 1;
 					}
 				}
 			} else {
 				LOGI("fw/cfg file is wrong. Do not need to upgrade.\n");
 			}
+		} else {
+			fw_upgrade_flag = 1;
+			config_upgrade_flag = 1;
 		}
 
-		if (manualUpgrade || upgrade_flag) {
+		if (fw_upgrade_flag || config_upgrade_flag) {
 			LOGI("firmware/config will be upgraded\n");
 			disable_irq(gl_ts->client->irq);
 			success = chipFirmwareUpload(fwLen, fw->data, cfgLen, cfg->data);
@@ -1249,6 +1270,10 @@ static bool chipIdentifyIT7260(bool probe)
 	static const uint8_t expectedID[] = {0x0A, 'I', 'T', 'E', '7', '2', '6', '0'};
 	uint8_t chipID[10] = {0,};
 
+	disable_irq(gl_ts->client->irq);
+
+	LOGI("start to chipIdentifyIT7260...\n");
+
 	waitDeviceReady(false, false, probe);
 
 	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent)) != 1) {
@@ -1262,6 +1287,8 @@ static bool chipIdentifyIT7260(bool probe)
 		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
 		return false;
 	}
+
+	enable_irq(gl_ts->client->irq);
 
 	LOGI("chipIdentifyIT7260 read id: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
 		chipID[0], chipID[1], chipID[2], chipID[3], chipID[4],
@@ -1277,6 +1304,8 @@ static bool chipIdentifyIT7260(bool probe)
 		LOGI("rev BX4 found\n");
 	else	/* unknown, but let's hope it is still a version we can talk to */
 		LOGI("rev (0x%02X 0x%02X) found\n", chipID[8], chipID[9]);
+
+	LOGI("end to chipIdentifyIT7260...\n");
 
 	return true;
 }
@@ -1296,13 +1325,12 @@ int parse_reset_gpio(struct device *dev)
 
 static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	static const uint8_t cmdStart[] = {CMD_UNKNOWN_7};
 	struct IT7260_i2c_platform_data *pdata;
-	uint8_t rsp[2];
 	int ret = -1;
 	int err;
 
 	LOGI("start to probe...\n");
+	probe_flag = true;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		LOGE("need I2C_FUNC_I2C\n");
@@ -1437,14 +1465,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	devicePresent = true;
 	LOGI("[%d] %s set devicePresent = %d.\n", __LINE__, __func__, devicePresent);
 
-	if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart)) != 1) {
-		LOGE("[%d] %s i2c write fail. \n", __LINE__, __func__);
-	}
-	mdelay(10);
-	if (i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp)) != 2 ) {
-		LOGE("[%d] %s i2c read fail. \n", __LINE__, __func__);
-	}
-	mdelay(10);
+	probe_flag = false;
 
 	return 0;
 
@@ -1477,6 +1498,7 @@ err_check_functionality_failed:
 		destroy_workqueue(IT7260_wq);
 
 err_out:
+	probe_flag = false;
 	return ret;
 }
 
