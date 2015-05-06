@@ -357,6 +357,7 @@ struct qpnp_lbc_chip {
 	int				charger_disabled;
 	int				prev_max_ma;
 	int				usb_psy_ma;
+	int				cfg_current_limited;
 	int				delta_vddmax_uv;
 	int				init_trim_uv;
 
@@ -1305,6 +1306,9 @@ static void qpnp_lbc_set_appropriate_current(struct qpnp_lbc_chip *chip)
 {
 	unsigned int chg_current = chip->usb_psy_ma;
 
+	if (chip->cfg_current_limited > 0 &&
+				chg_current > chip->cfg_current_limited)
+		chg_current = chip->cfg_current_limited;
 	if (chip->bat_is_cool && chip->cfg_cool_bat_chg_ma)
 		chg_current = min(chg_current, chip->cfg_cool_bat_chg_ma);
 	if (chip->bat_is_warm && chip->cfg_warm_bat_chg_ma)
@@ -2115,6 +2119,7 @@ static int show_lbc_config(struct seq_file *m, void *data)
 			"cfg_bms_controlled_charging\t=\t%d\n"
 			"cfg_warm_bat_chg_ma\t=\t%d\n"
 			"cfg_cool_bat_chg_ma\t=\t%d\n"
+			"cfg_current_limited\t=\t%d\n"
 			"cfg_safe_voltage_mv\t=\t%d\n"
 			"cfg_max_voltage_mv\t=\t%d\n"
 			"cfg_min_voltage_mv\t=\t%d\n"
@@ -2141,6 +2146,7 @@ static int show_lbc_config(struct seq_file *m, void *data)
 			chip->cfg_bms_controlled_charging,
 			chip->cfg_warm_bat_chg_ma,
 			chip->cfg_cool_bat_chg_ma,
+			chip->cfg_current_limited,
 			chip->cfg_safe_voltage_mv,
 			chip->cfg_max_voltage_mv,
 			chip->cfg_min_voltage_mv,
@@ -2385,6 +2391,18 @@ static int qpnp_charger_read_dt_props(struct qpnp_lbc_chip *chip)
 				chip->cfg_thermal_levels);
 		if (rc) {
 			pr_err("Failed to read threm limits rc = %d\n", rc);
+			return rc;
+		}
+	}
+
+	if (of_find_property(chip->spmi->dev.of_node,
+				"qcom,cfg-current-limited",
+				NULL)) {
+		rc = of_property_read_u32(chip->spmi->dev.of_node,
+				"qcom,cfg-current-limited",
+				&chip->cfg_current_limited);
+		if (rc) {
+			pr_err("Failed to read cfg-current-limited\n");
 			return rc;
 		}
 	}
