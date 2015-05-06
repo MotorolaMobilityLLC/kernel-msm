@@ -211,7 +211,9 @@ struct smbchg_chip {
 	int				recharge_irq;
 	int				fastchg_irq;
 	int				safety_timeout_irq;
+#ifdef QCOM_BASE
 	int				power_ok_irq;
+#endif
 	int				dcin_uv_irq;
 	int				usbin_uv_irq;
 	int				usbin_ov_irq;
@@ -4190,6 +4192,7 @@ static irqreturn_t safety_timeout_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+#ifdef QCOM_BASE
 /**
  * power_ok_handler() - called when the switcher turns on or turns off
  * @chip: pointer to smbchg_chip
@@ -4204,6 +4207,7 @@ static irqreturn_t power_ok_handler(int irq, void *_chip)
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
 	return IRQ_HANDLED;
 }
+#endif
 
 static int handle_dc_removal(struct smbchg_chip *chip)
 {
@@ -5869,8 +5873,10 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			enable_irq_wake(chip->dcin_uv_irq);
 			break;
 		case SMBCHG_MISC_SUBTYPE:
+#ifdef QCOM_BASE
 			REQUEST_IRQ(chip, spmi_resource, chip->power_ok_irq,
 				"power-ok", power_ok_handler, flags, rc);
+#endif
 			REQUEST_IRQ(chip, spmi_resource, chip->chg_hot_irq,
 				"temp-shutdown", chg_hot_handler, flags, rc);
 			REQUEST_IRQ(chip, spmi_resource,
