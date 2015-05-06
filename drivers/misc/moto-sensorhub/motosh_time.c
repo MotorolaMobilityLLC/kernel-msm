@@ -35,14 +35,15 @@ void motosh_time_sync(void)
 	int64_t ap_time1;
 	int64_t hub_time;
 	int64_t delta;
-
+	unsigned char cmdbuff[1];
+	unsigned char readbuff[8];
 	int err = 0;
 
 	get_monotonic_boottime(&ts);
 	ap_time1 = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
-	motosh_cmdbuff[0] = MOTOSH_ELAPSED_RT;
-	err = motosh_i2c_write_read(motosh_misc_data, motosh_cmdbuff, 1, 8);
+	cmdbuff[0] = MOTOSH_ELAPSED_RT;
+	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
 
 	get_monotonic_boottime(&ts);
 
@@ -54,14 +55,14 @@ void motosh_time_sync(void)
 
 	/* nanoseconds */
 	hub_time =
-		(((uint64_t)motosh_readbuff[0] << 56) |
-		 ((uint64_t)motosh_readbuff[1] << 48) |
-		 ((uint64_t)motosh_readbuff[2] << 40) |
-		 ((uint64_t)motosh_readbuff[3] << 32)  |
-		 ((uint64_t)motosh_readbuff[4] << 24) |
-		 ((uint64_t)motosh_readbuff[5] << 16) |
-		 ((uint64_t)motosh_readbuff[6] <<  8) |
-		  (uint64_t)motosh_readbuff[7]) * 1000;
+		(((uint64_t)readbuff[0] << 56) |
+		 ((uint64_t)readbuff[1] << 48) |
+		 ((uint64_t)readbuff[2] << 40) |
+		 ((uint64_t)readbuff[3] << 32)  |
+		 ((uint64_t)readbuff[4] << 24) |
+		 ((uint64_t)readbuff[5] << 16) |
+		 ((uint64_t)readbuff[6] <<  8) |
+		  (uint64_t)readbuff[7]) * 1000;
 
 	/* ap time will always be greater than hub time */
 	delta = ap_time1 - hub_time;
@@ -130,12 +131,14 @@ void motosh_time_compare(void)
 	int err = 0, ret_err = 0;
 	int32_t hubshort_time;
 	int64_t midaptime;
+	unsigned char cmdbuff[1];
+	unsigned char readbuff[8];
 
 	get_monotonic_boottime(&ts);
 	ap_time1 = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
-	motosh_cmdbuff[0] = MOTOSH_ELAPSED_RT;
-	err = motosh_i2c_write_read(motosh_misc_data, motosh_cmdbuff, 1, 8);
+	cmdbuff[0] = MOTOSH_ELAPSED_RT;
+	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
 
 	get_monotonic_boottime(&ts);
 	ap_time2 = ts.tv_sec*1000000000LL + ts.tv_nsec;
@@ -150,29 +153,28 @@ void motosh_time_compare(void)
 
 	/* nanoseconds */
 	hub_time =
-		(((uint64_t)motosh_readbuff[0] << 56) |
-		 ((uint64_t)motosh_readbuff[1] << 48) |
-		 ((uint64_t)motosh_readbuff[2] << 40) |
-		 ((uint64_t)motosh_readbuff[3] << 32)  |
-		 ((uint64_t)motosh_readbuff[4] << 24) |
-		 ((uint64_t)motosh_readbuff[5] << 16) |
-		 ((uint64_t)motosh_readbuff[6] <<  8) |
-		  (uint64_t)motosh_readbuff[7]) * 1000;
+		(((uint64_t)readbuff[0] << 56) |
+		 ((uint64_t)readbuff[1] << 48) |
+		 ((uint64_t)readbuff[2] << 40) |
+		 ((uint64_t)readbuff[3] << 32)  |
+		 ((uint64_t)readbuff[4] << 24) |
+		 ((uint64_t)readbuff[5] << 16) |
+		 ((uint64_t)readbuff[6] <<  8) |
+		  (uint64_t)readbuff[7]) * 1000;
 
 	dev_info(&motosh_misc_data->client->dev,
 		 "%02X %02X %02X %02X %02X %02X %02X %02X",
-		 motosh_readbuff[0],
-		 motosh_readbuff[1],
-		 motosh_readbuff[2],
-		 motosh_readbuff[3],
-		 motosh_readbuff[4],
-		 motosh_readbuff[5],
-		 motosh_readbuff[6],
-		 motosh_readbuff[7]);
+		 readbuff[0],
+		 readbuff[1],
+		 readbuff[2],
+		 readbuff[3],
+		 readbuff[4],
+		 readbuff[5],
+		 readbuff[6],
+		 readbuff[7]);
 
-	hubshort_time = (motosh_readbuff[5] << 16) |
-		(motosh_readbuff[6] <<  8) |
-		(motosh_readbuff[7]);
+	hubshort_time = (readbuff[5] << 16) |
+		(readbuff[6] <<  8) | (readbuff[7]);
 
 	rec_hub_time = motosh_resolve_shorttime(hubshort_time, ap_time2);
 	dev_info(&motosh_misc_data->client->dev,
