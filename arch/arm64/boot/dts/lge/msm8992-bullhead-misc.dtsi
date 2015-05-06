@@ -42,6 +42,7 @@
 	qcom,actuator-type = "lra";
 	qcom,vmax-mv = <2400>;
 	qcom,ilim-ma = <400>;
+	qcom,wave-play-rate-us = <4347>;
 };
 
 &spi_fpc {
