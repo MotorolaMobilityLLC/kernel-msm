@@ -17,6 +17,7 @@
 			/bits/ 16 <(-50) 111 191 360 751 753 755 757>;
 		qcom,mbhc-btn-cal-high =
 			/bits/ 16 <110 190 359 750 752 754 756 758>;
+		qcom,mbhc-micbias-enable-flags = <0x3>;
 	};
 };
 
