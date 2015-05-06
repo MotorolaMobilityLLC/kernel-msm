@@ -370,6 +370,21 @@ static int msm_gpio_suspend(void)
 	return 0;
 }
 
+/* ASUS_BSP+++ "for wlan wakeup trace" */
+int wakeup_irq_flag_rx;
+
+int wakeup_irq_flag_function_rx(void)
+{
+	if (wakeup_irq_flag_rx == 1) {
+		wakeup_irq_flag_rx = 0;
+		return 1;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(wakeup_irq_flag_function_rx);
+/* ASUS_BSP--- "for wlan wakeup trace" */
+
 void msm_gpio_show_resume_irq(void)
 {
 	unsigned long irq_flags;
@@ -400,6 +415,13 @@ void msm_gpio_show_resume_irq(void)
 				gpio_resume_irq[gpio_irq_cnt]=i;
 				gpio_irq_cnt++;
 			}
+
+			/* ASUS_BSP+++ "for wlan wakeup trace" */
+			/* WLAN_HOSTWAKE = GPIO 46 = IRQ 337 */
+			if (irq == 337) {
+				wakeup_irq_flag_rx = 1;
+			}
+			/* ASUS_BSP--- "for wlan wakeup trace" */
 		}
 	}
 	spin_unlock_irqrestore(&tlmm_lock, irq_flags);
