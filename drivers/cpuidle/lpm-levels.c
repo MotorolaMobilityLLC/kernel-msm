@@ -34,6 +34,7 @@
 #include <linux/moduleparam.h>
 #include <linux/sched.h>
 #include <linux/cpu_pm.h>
+#include <linux/quickwakeup.h>
 #include <soc/qcom/spm.h>
 #include <soc/qcom/pm.h>
 #include <soc/qcom/rpm-notifier.h>
@@ -928,6 +929,7 @@ static const struct platform_suspend_ops lpm_suspend_ops = {
 	.valid = suspend_valid_only_mem,
 	.prepare_late = lpm_suspend_prepare,
 	.wake = lpm_suspend_wake,
+	.suspend_again = quickwakeup_suspend_again,
 };
 
 static int lpm_probe(struct platform_device *pdev)
