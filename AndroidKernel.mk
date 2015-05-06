@@ -51,7 +51,11 @@ KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
 KERNEL_CONFIG := $(KERNEL_OUT)/.config
 
 ifeq ($(KERNEL_DEFCONFIG)$(wildcard $(KERNEL_CONFIG)),)
+ifeq ($(BUILD_KERNEL_SOURCE),true)
 $(error Kernel configuration not defined, cannot build kernel)
+else
+$(warning Kernel configuration not defined!)
+endif
 else
 
 ifeq ($(TARGET_USES_UNCOMPRESSED_KERNEL),true)
