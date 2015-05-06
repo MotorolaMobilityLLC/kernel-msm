@@ -61,7 +61,7 @@
 #define BMM_DEFAULT_REPETITION_Z BMM_VAL_NAME(REGULAR_REPZ)
 #define BMM_DEFAULT_ODR BMM_VAL_NAME(REGULAR_DR)
 /* generic */
-#define BMM_MAX_RETRY_I2C_XFER (10)
+#define BMM_MAX_RETRY_I2C_XFER (3)
 #define BMM_MAX_RETRY_WAKEUP (5)
 #define BMM_MAX_RETRY_WAIT_DRDY (100)
 
@@ -1299,6 +1299,9 @@ static int bmm_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct bmm_client_data *client_data = NULL;
 	int dummy;
 
+	/* power on */
+	sensor_set_power(client,1);
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		PERR("i2c_check_functionality error!");
 		err = -EIO;
@@ -1391,9 +1394,6 @@ static int bmm_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 	}
 #endif
-
-	/* power on */
-	sensor_set_power(client,1);
 
 	/* workqueue init */
 	INIT_DELAYED_WORK(&client_data->work, bmm_work_func);
