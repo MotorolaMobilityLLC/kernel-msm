@@ -276,6 +276,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	u8 aod_qp_reason;
 	u8 aod_qp_panel_state;
 	struct motosh_quickpeek_message *qp_message = NULL;
+	bool ack_only = false;
 	unsigned char cmdbuff[1];
 	unsigned char readbuff[9];
 
@@ -377,7 +378,8 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 			"Received trace dump request\n");
 		motosh_quickpeek_trace_dump(ps_motosh, timestamp);
 		}
-		goto ack_only;
+		ack_only = true;
+		break;
 	default:
 		dev_err(&ps_motosh->client->dev,
 			"Unknown quickpeek command [%d]!", aod_qp_reason);
@@ -391,6 +393,14 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 		goto error;
 	}
 
+	motosh_quickpeek_status_ack(ps_motosh, qp_message,
+		AOD_QP_ACK_RCVD);
+
+	if (ack_only) {
+		kfree(qp_message);
+		goto exit;
+	}
+
 	ps_motosh->quickpeek_occurred = true;
 
 	mutex_lock(&ps_motosh->qp_list_lock);
@@ -400,10 +410,6 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 		&ps_motosh->quickpeek_work);
 	wake_lock(&ps_motosh->quickpeek_wakelock);
 	mutex_unlock(&ps_motosh->qp_list_lock);
-
-ack_only:
-	motosh_quickpeek_status_ack(ps_motosh, qp_message,
-		AOD_QP_ACK_RCVD);
 
 exit:
 	/* If this is only us, we dont need a full 1 sec */
