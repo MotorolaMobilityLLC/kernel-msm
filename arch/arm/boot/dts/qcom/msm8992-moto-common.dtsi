@@ -1841,5 +1841,11 @@
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "pchg_therm";
 		};
+		sensor_information21: qcom,sensor-information@21 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "battery";
+			qcom,alias-name  = "batt_therm";
+			qcom,scaling-factor = <1000>;
+		};
 	};
 };
