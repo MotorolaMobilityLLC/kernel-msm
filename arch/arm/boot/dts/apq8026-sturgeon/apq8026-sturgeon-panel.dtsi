@@ -15,7 +15,6 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_auo_rm69080_hvga_video>;
-	vddio-supply = <&pm8226_l6>;
 	/*enable lcd gpio 78*/
 	qcom,platform-enable-gpio = <&msmgpio 78 0>;
 };
