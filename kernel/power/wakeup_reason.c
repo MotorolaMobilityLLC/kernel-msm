@@ -518,7 +518,8 @@ const struct list_head* get_wakeup_reasons(unsigned long timeout,
 		unsigned long signalled = 0;
 		if (timeout)
 			signalled = wait_for_completion_timeout(&wakeups_completion, timeout);
-		if (WARN_ON(!signalled)) {
+		if (!signalled) {
+			pr_warn("%s: completion timeout\n", __func__);
 			stop_logging_wakeup_reasons();
 			walk_irq_node_tree(base_irq_nodes, build_unfinished_nodes, unfinished);
 			return NULL;
