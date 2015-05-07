@@ -37,4 +37,21 @@
 		lge,adc-low-threshold = <810>;
 		lge,adc-high-threshold = <1000>;
 	};
+
+	/* NFC */
+	i2c@f9923000 {
+		bcm2079x@76 {
+			compatible = "bcm,bcm2079x";
+			status = "ok";
+			reg = <0x76>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <21 0x2>;
+			bcm,gpio_sda = <&msmgpio 2 0x00>;
+			bcm,gpio_scl = <&msmgpio 3 0x00>;
+			bcm,gpio_ven = <&msmgpio 20 0x00>;
+			bcm,gpio_mode = <&msmgpio 22 0x00>;
+			bcm,gpio_irq = <&msmgpio 21 0x00>;
+			bcm,i2c-pull-up = <1>;
+		};
+	};
 };
