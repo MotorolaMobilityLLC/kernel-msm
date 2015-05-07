@@ -168,6 +168,8 @@ static void slate_cfg_log_mask(unsigned char cmd_type)
 	struct slate_ctx *ctx = slate_addon.private;
 	unsigned len = 0;
 	unsigned char *ptr = driver->hdlc_buf;
+	struct diag_log_mask_t *log_cfg_mask =
+		(struct diag_log_mask_t *)log_mask.ptr;
 
 	slatedbg(KERN_INFO "slate_cfg_log_mask cmd_type=%d\n", cmd_type);
 	switch (cmd_type) {
@@ -183,7 +185,8 @@ static void slate_cfg_log_mask(unsigned char cmd_type)
 			ptr += 4;
 			*(int *)ptr = 0x04F5;
 			ptr += 4;
-			memcpy(ptr, driver->log_mask, len);
+			log_cfg_mask++;
+			memcpy(ptr, log_cfg_mask->ptr, len);
 			ptr += 13;
 			*ptr |= 0x02; /* Enable 0x1069 EVDO POWER log bit */
 			/* len param not used for 0x73 */
@@ -202,7 +205,8 @@ static void slate_cfg_log_mask(unsigned char cmd_type)
 			ptr += 4;
 			*(int *)ptr = 0x04F5;
 			ptr += 4;
-			memcpy(ptr, driver->log_mask, len);
+			log_cfg_mask++;
+			memcpy(ptr, log_cfg_mask->ptr, len);
 			ptr += 13;
 			/* Enable 0x106E EVDO CONN ATTEMPTS log bit */
 			*ptr |= 0x40;
@@ -225,7 +229,8 @@ static void slate_cfg_log_mask(unsigned char cmd_type)
 			ptr += 4;
 			*(int *)ptr = 0x04F5;
 			ptr += 4;
-			memcpy(ptr, driver->log_mask, len);
+			log_cfg_mask++;
+			memcpy(ptr, log_cfg_mask->ptr, len);
 			ptr += 5;
 			*ptr |= 0x20; /* 1020 (Searcher and Finger) */
 			ptr += 38;
@@ -239,7 +244,11 @@ static void slate_cfg_log_mask(unsigned char cmd_type)
 		}
 		break;
 	case DIAG_MASK_CMD_SAVE:
-		memcpy(ctx->saved_log_masks, driver->log_mask, LOG_MASK_SIZE);
+		log_cfg_mask++;
+		if (ctx->saved_log_masks) {
+			memcpy(ctx->saved_log_masks, log_cfg_mask->ptr,
+				LOG_MASK_SIZE);
+		}
 		break;
 	case DIAG_MASK_CMD_RESTORE:
 	default:
