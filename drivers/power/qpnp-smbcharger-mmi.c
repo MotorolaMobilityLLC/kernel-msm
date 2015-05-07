@@ -1860,7 +1860,8 @@ static void taper_irq_en(struct smbchg_chip *chip, bool en)
 
 static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 {
-	int current_max_ma = chip->parallel.current_max_ma;
+	int current_max_ma;
+	int pcurrent_max_ma = chip->parallel.current_max_ma;
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 
 	if (!parallel_psy)
@@ -1872,12 +1873,19 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 	power_supply_set_current_limit(parallel_psy,
 				SUSPEND_CURRENT_MA * 1000);
 	power_supply_set_present(parallel_psy, false);
-	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
+
+	current_max_ma = chip->stepchg_current_ma;
+	current_max_ma =
+		min(current_max_ma, chip->allowed_fastchg_current_ma);
+	current_max_ma =
+		min(current_max_ma,  chip->target_fastchg_current_ma);
+
+	smbchg_set_fastchg_current(chip, current_max_ma);
 	chip->usb_tl_current_ma =
 		calc_thermal_limited_current(chip, chip->usb_target_current_ma);
 	smbchg_set_usb_current_max(chip, chip->usb_tl_current_ma);
 
-	if (current_max_ma != 0)
+	if (pcurrent_max_ma != 0)
 		smbchg_rerun_aicl(chip);
 }
 
@@ -6823,7 +6831,9 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 					  chip->ext_temp_volt_mv);
 	else {
 		smbchg_float_voltage_set(chip, chip->vfloat_mv);
-		smbchg_set_parallel_vfloat(chip, chip->vfloat_parallel_mv);
+		if (is_usb_present(chip))
+			smbchg_set_parallel_vfloat(chip,
+						   chip->vfloat_parallel_mv);
 	}
 
 	if (chip->ext_high_temp ||
@@ -6880,6 +6890,7 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 #define STEPCHG_MAX_FV_COMP 60
 #define STEPCHG_ONE_FV_COMP 40
 #define STEPCHG_FULL_FV_COMP 100
+#define STEPCHG_CURR_ADJ 200
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -6892,6 +6903,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_batt_health;
 	int prev_ext_lvl;
 	int prev_step;
+	int index;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
@@ -6918,6 +6930,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if ((chip->stepchg_state == STEP_MAX) &&
 		   (batt_ma < 0) && (chip->usb_present)) {
 		batt_ma *= -1;
+
+		index = smbchg_get_pchg_current_map_index(chip);
+		if (chip->pchg_current_map_data[index].primary ==
+		    chip->stepchg_current_ma)
+			batt_ma -= STEPCHG_CURR_ADJ;
+
 		if ((batt_ma <= chip->stepchg_current_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
 		     chip->stepchg_current_ma))
