@@ -52,6 +52,8 @@ struct rmnet_free_vnd_work {
 
 /* ***************** Init and Cleanup *************************************** */
 
+static void rmnet_force_unassociate_device(struct net_device *dev);
+
 #ifdef RMNET_KERNEL_PRE_3_8
 static struct sock *_rmnet_config_start_netlink(void)
 {
@@ -327,7 +329,8 @@ static void _rmnet_netlink_unassociate_network_device
 		return;
 	}
 
-	resp_rmnet->return_code = rmnet_unassociate_network_device(dev);
+	rmnet_force_unassociate_device(dev);
+	resp_rmnet->return_code = RMNET_CONFIG_OK;
 	dev_put(dev);
 }
 
