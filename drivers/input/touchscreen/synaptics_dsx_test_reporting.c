@@ -343,14 +343,34 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 #define show_store_replicated_func_unsigned(rtype, rgrp, propname)\
 show_store_replicated_func(rtype, rgrp, propname, "%u")
 
-#define CTRL_REG_ADD(reg, skip, cond, size) \
+#define CTRL_REG_ADD(reg, skip, cond) \
 	do { if (cond) { \
 		attrs_ctrl_regs_exist[reg_num] = true;\
-		control->reg_##reg = kzalloc(size, GFP_KERNEL);\
+		control->reg_##reg = kzalloc(sizeof(*control->reg_##reg),\
+			GFP_KERNEL);\
 		if (!control->reg_##reg)\
 			goto exit_no_mem;\
 		pr_debug("c%s addr = 0x%02x added\n",\
 			 #reg, reg_addr);\
+		control->reg_##reg->address = reg_addr;\
+		reg_addr += skip;\
+	} \
+	reg_num++;\
+	} while (0)
+
+#define CTRL_REG_ADD_EXT(reg, skip, cond, size) \
+	do { if (cond) { \
+		attrs_ctrl_regs_exist[reg_num] = true;\
+		control->reg_##reg = kzalloc(sizeof(*control->reg_##reg),\
+			GFP_KERNEL);\
+		if (!control->reg_##reg)\
+			goto exit_no_mem;\
+		control->reg_##reg->data = kzalloc(size, GFP_KERNEL);\
+		if (!control->reg_##reg->data)\
+			goto exit_no_mem;\
+		pr_debug("c%s addr = 0x%02x size = %d added\n",\
+			 #reg, reg_addr, (unsigned int)size);\
+		control->reg_##reg->length = size;\
 		control->reg_##reg->address = reg_addr;\
 		reg_addr += skip;\
 	} \
@@ -742,7 +762,7 @@ struct f54_query30 {
 			unsigned char has_ctrl121:1;
 			unsigned char has_ctrl122_query31:1;
 			unsigned char has_ctrl123:1;
-			unsigned char f54_q3_b6:1;
+			unsigned char has_ctrl124:1;
 			unsigned char has_query32:1;
 		} __packed;
 		unsigned char data[1];
@@ -837,7 +857,9 @@ struct f54_query38 {
 			unsigned char has_ctrl147:1;
 			unsigned char has_ctrl148:1;
 			unsigned char has_ctrl149:1;
-			unsigned char f54_q38_b3_to_b6:4;
+			unsigned char f54_q38_b3:1;
+			unsigned char has_ctrl151:1;
+			unsigned char f54_q38_b5b6:2;
 			unsigned char has_query39:1;
 		} __packed;
 		unsigned char data[1];
@@ -3673,7 +3695,7 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(93, 1, query16->has_ctrl93);
 	CTRL_REG_PRESENCE(94, 1, query16->has_ctrl94_query18);
 
-	CTRL_REG_ADD(95, 1, query16->has_ctrl95_query19,
+	CTRL_REG_ADD_EXT(95, 1, query16->has_ctrl95_query19,
 		sizeof(struct f54_control_95n) *
 		query17->q17_num_of_sense_freqs);
 
@@ -3681,8 +3703,7 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(97, 1, query21->has_ctrl97);
 	CTRL_REG_PRESENCE(98, 1, query21->has_ctrl98);
 
-	CTRL_REG_ADD(99, 1, query->touch_controller_family == 2,
-		sizeof(*(control->reg_99)));
+	CTRL_REG_ADD(99, 1, query->touch_controller_family == 2);
 
 	CTRL_REG_PRESENCE(100, 1, query16->has_ctrl100);
 	CTRL_REG_PRESENCE(101, 1, query22->has_ctrl101);
@@ -3692,8 +3713,7 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(105, 1, query22->has_ctrl105);
 	CTRL_REG_PRESENCE(106, 1, query25->has_ctrl106);
 
-	CTRL_REG_ADD(107, 1, query25->has_ctrl107,
-		sizeof(*(control->reg_107)));
+	CTRL_REG_ADD(107, 1, query25->has_ctrl107);
 
 	CTRL_REG_PRESENCE(108, 1, query25->has_ctrl108);
 	CTRL_REG_PRESENCE(109, 1, query25->has_ctrl109);
@@ -3711,7 +3731,7 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(121, 1, query30->has_ctrl121);
 	CTRL_REG_PRESENCE(122, 1, query30->has_ctrl122_query31);
 	CTRL_REG_PRESENCE(123, 1, query30->has_ctrl123);
-	CTRL_REG_PRESENCE(124, 1, 1); /* always present? */
+	CTRL_REG_PRESENCE(124, 1, query30->has_ctrl124);
 	CTRL_REG_PRESENCE(125, 1, query32->has_ctrl125);
 	CTRL_REG_PRESENCE(126, 1, query32->has_ctrl126);
 	CTRL_REG_PRESENCE(127, 1, query32->has_ctrl127);
@@ -3738,7 +3758,7 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_PRESENCE(148, 1, query38->has_ctrl148);
 	CTRL_REG_PRESENCE(149, 1, query38->has_ctrl149);
 	CTRL_REG_RESERVED_PRESENCE(150, 1, 1);
-	CTRL_REG_PRESENCE(151, 1, 1); /* always present? */
+	CTRL_REG_PRESENCE(151, 1, query38->has_ctrl151);
 	CTRL_REG_RESERVED_PRESENCE(152, 1, 1);
 	CTRL_REG_RESERVED_PRESENCE(153, 1, 1);
 	CTRL_REG_RESERVED_PRESENCE(154, 1, 1);
