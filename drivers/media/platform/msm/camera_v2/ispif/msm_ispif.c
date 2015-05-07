@@ -197,9 +197,9 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif)
 		rc = msm_cam_clk_enable(&ispif->pdev->dev,
 			ispif_8626_reset_clk_info, reset_clk1,
 			ARRAY_SIZE(ispif_8626_reset_clk_info), 0);
-		if (rc < 0) {
-			pr_err("%s: cannot disable clock, error = %d",
-				__func__, rc);
+			if (rc < 0) {
+				pr_err("%s: cannot disable clock, error = %d",
+					__func__, rc);
 		}
 	}
 
@@ -1137,7 +1137,8 @@ static int msm_ispif_set_vfe_info(struct ispif_device *ispif,
 	struct msm_ispif_vfe_info *vfe_info)
 {
 	memcpy(&ispif->vfe_info, vfe_info, sizeof(struct msm_ispif_vfe_info));
-
+	if (ispif->vfe_info.num_vfe > ispif->hw_num_isps)
+		return -EINVAL;
 	return 0;
 }
 
