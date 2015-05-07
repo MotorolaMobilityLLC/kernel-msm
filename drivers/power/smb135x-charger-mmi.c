@@ -5140,15 +5140,34 @@ static int smb135x_charger_reboot(struct notifier_block *nb,
 	int rc = 0;
 
 	dev_dbg(chip->dev, "SMB Reboot\n");
+	if (!chip) {
+		dev_warn(chip->dev, "called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
 
 	rc = smb135x_masked_write(chip, CMD_CHG_REG, OTG_EN, 0);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n", rc);
 
-	/* force usb/dc shutdown on halt */
 	if (event == SYS_HALT) {
+		/* force usb/dc shutdown on halt */
 		smb135x_path_suspend(chip, USB, USER, true);
 		smb135x_path_suspend(chip, DC, USER, true);
+	} else if (event == SYS_POWER_OFF) {
+		if (chip->factory_mode) {
+			/* Disable Charging */
+			smb135x_temp_charging(chip, 0);
+
+			/* Suspend USB and DC */
+			smb135x_path_suspend(chip, USB, USER, true);
+			smb135x_path_suspend(chip, DC, USER, true);
+
+			while (is_usb_plugged_in(chip))
+				msleep(100);
+			dev_warn(chip->dev, "VBUS UV wait 1 sec!\n");
+			/* Delay 1 sec to allow more VBUS decay */
+			msleep(1000);
+		}
 	}
 
 	return NOTIFY_DONE;
