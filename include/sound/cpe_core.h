@@ -50,6 +50,7 @@ struct wcd_cpe_lab_hw_params {
 	u16 sample_size;
 	u32 buf_sz;
 	u32 period_count;
+	u16 channels;
 };
 
 struct wcd_cpe_lsm_lab {
@@ -70,6 +71,13 @@ struct wcd_cpe_lsm_lab {
 	struct completion thread_complete;
 };
 
+struct lsm_out_fmt_cfg {
+	u8 format;
+	u8 pack_mode;
+	u8 data_path_events;
+	u8 transfer_mode;
+};
+
 struct cpe_lsm_session {
 	/* sound model related */
 	void *snd_model_data;
@@ -83,6 +91,7 @@ struct cpe_lsm_session {
 
 	struct completion cmd_comp;
 	struct wcd_cpe_afe_port_cfg afe_port_cfg;
+	struct wcd_cpe_afe_port_cfg afe_out_port_cfg;
 	struct mutex lsm_lock;
 
 	u32 snd_model_size;
@@ -93,6 +102,8 @@ struct cpe_lsm_session {
 	struct task_struct *lsm_lab_thread;
 	struct wcd_cpe_lsm_lab lab;
 	bool started;
+
+	struct lsm_out_fmt_cfg out_fmt_cfg;
 };
 
 struct wcd_cpe_afe_ops {
@@ -110,6 +121,9 @@ struct wcd_cpe_afe_ops {
 
 	int (*afe_port_resume) (void *core_handle,
 			       struct wcd_cpe_afe_port_cfg *cfg);
+
+	int (*afe_port_cmd_cfg)(void *core_handle,
+				struct wcd_cpe_afe_port_cfg *cfg);
 };
 
 struct wcd_cpe_lsm_ops {
@@ -170,6 +184,9 @@ struct wcd_cpe_lsm_ops {
 			struct cpe_lsm_session *session,
 			enum lsm_detection_mode detect_mode,
 			bool detect_failure);
+	int (*lsm_set_fmt_cfg)(void *core_handle,
+			struct cpe_lsm_session *session);
+	int (*lsm_cdc_start_lab)(void *core_handle);
 };
 
 int wcd_cpe_get_lsm_ops(struct wcd_cpe_lsm_ops *);
