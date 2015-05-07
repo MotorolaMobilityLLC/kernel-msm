@@ -3092,6 +3092,9 @@ static struct clk_lookup msm_clocks_8226[] = {
 
 	/* NFC */
 	CLK_LOOKUP("ref_clk",            cxo_d1_pin.c, "2-000e"),
+#ifdef CONFIG_NFC_BCM2079X
+	CLK_LOOKUP("ref_clk",            cxo_d1_pin.c, "1-0076"),
+#endif
 	CLK_LOOKUP("bb_clk2",            cxo_d1.c, ""),
 
 	/* PIL-PRONTO */

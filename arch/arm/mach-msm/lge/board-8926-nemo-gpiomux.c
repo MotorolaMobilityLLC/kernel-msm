@@ -355,6 +355,84 @@ static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
 	},
 };
 
+#ifdef CONFIG_NFC_BCM2079X
+static struct gpiomux_setting nfc_bcm2079x_sda_cfg = {
+	.func = GPIOMUX_FUNC_3,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting nfc_bcm2079x_scl_cfg = {
+	.func = GPIOMUX_FUNC_3,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting nfc_bcm2079x_ven_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting nfc_bcm2079x_irq_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting nfc_bcm2079x_mode_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct msm_gpiomux_config msm_nfc_configs[] __initdata = {
+	{
+		/* I2C SDA */
+		.gpio      = 2,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &nfc_bcm2079x_sda_cfg,
+			[GPIOMUX_SUSPENDED] = &nfc_bcm2079x_sda_cfg,
+		},
+	},
+	{
+		/* I2C SCL */
+		.gpio      = 3,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &nfc_bcm2079x_scl_cfg,
+			[GPIOMUX_SUSPENDED] = &nfc_bcm2079x_scl_cfg,
+		},
+	},
+	{
+		/* VEN */
+		.gpio      = 20,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &nfc_bcm2079x_ven_cfg,
+			[GPIOMUX_SUSPENDED] = &nfc_bcm2079x_ven_cfg,
+		},
+	},
+	{
+		/* IRQ */
+		.gpio      = 21,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &nfc_bcm2079x_irq_cfg,
+			[GPIOMUX_SUSPENDED] = &nfc_bcm2079x_irq_cfg,
+		},
+	},
+	{
+		/* MODE *//* WAKE */
+		.gpio      = 22,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &nfc_bcm2079x_mode_cfg,
+			[GPIOMUX_SUSPENDED] = &nfc_bcm2079x_mode_cfg,
+		},
+	},
+};
+#endif
+
 static struct gpiomux_setting bt_gpio_uart_active_config = {
 	.func = GPIOMUX_FUNC_2,
 	.drv = GPIOMUX_DRV_8MA,
@@ -609,4 +687,9 @@ void __init msm8226_init_gpiomux(void)
 
 #endif
 	bluetooth_msm_gpiomux_install();
+
+#if defined(CONFIG_NFC_BCM2079X)
+	msm_gpiomux_install(msm_nfc_configs, ARRAY_SIZE(msm_nfc_configs));
+#endif
+
 }
