@@ -25,7 +25,9 @@ static int gpio_ref_count;
 void msm_camera_io_w(u32 data, void __iomem *addr)
 {
 	CDBG("%s: %08x %08x\n", __func__, (int) (addr), (data));
+	wmb();
 	writel_relaxed((data), (addr));
+	wmb();
 }
 
 void msm_camera_io_w_mb(u32 data, void __iomem *addr)
@@ -38,7 +40,10 @@ void msm_camera_io_w_mb(u32 data, void __iomem *addr)
 
 u32 msm_camera_io_r(void __iomem *addr)
 {
-	uint32_t data = readl_relaxed(addr);
+	uint32_t data;
+	rmb();
+	data = readl_relaxed(addr);
+	rmb();
 	CDBG("%s: %08x %08x\n", __func__, (int) (addr), (data));
 	return data;
 }
@@ -60,8 +65,11 @@ void msm_camera_io_memcpy_toio(void __iomem *dest_addr,
 	u32 *d = (u32 *) dest_addr;
 	u32 *s = (u32 *) src_addr;
 
-	for (i = 0; i < len; i++)
+	for (i = 0; i < len; i++) {
+		wmb();
 		writel_relaxed(*s++, d++);
+		wmb();
+	}
 }
 
 void msm_camera_io_dump(void __iomem *addr, int size)
@@ -78,7 +86,9 @@ void msm_camera_io_dump(void __iomem *addr, int size)
 			snprintf(p_str, 12, "%08x: ", (u32) p);
 			p_str += 10;
 		}
+		rmb();
 		data = readl_relaxed(p++);
+		rmb();
 		snprintf(p_str, 12, "%08x ", data);
 		p_str += 9;
 		if ((i + 1) % 4 == 0) {
