@@ -97,4 +97,11 @@
 &spi_0 {
 	status = "disabled";
 };
+&spmi_bus {
+       qcom,pm8226@1 {
+               qcom,leds@d800 {
+                       status = "disabled";
+               };
+       };
+};
 
