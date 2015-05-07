@@ -1092,16 +1092,17 @@
 		adsps {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			adsp@1100 {
+			adsp@1200 {
 				reg = <0x1200>;
 				firmware {
 					frontend {
 						wlf,wmfw-file = "aov-frontend";
 						wlf,bin-file = "aov-vrgain";
+						wlf,compr-caps = <1 1 4 1 16000>;
 					};
 				};
 			};
-			adsp@1200 {
+			adsp@1300 {
 				reg = <0x1300>;
 				firmware {
 					aov {
