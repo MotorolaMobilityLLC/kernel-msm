@@ -1704,7 +1704,7 @@ send_diag_netlink_data(const u_int8_t *buffer,
             return -1;
         }
 
-        nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, slot_len, 0);
+        nlh = nlmsg_put(skb_out, 0, 0, WLAN_NL_MSG_CNSS_DIAG, slot_len, 0);
         slot = (struct dbglog_slot *) nlmsg_data(nlh);
         slot->diag_type = cmd;
         slot->timestamp = cpu_to_le32(jiffies);
@@ -1712,12 +1712,11 @@ send_diag_netlink_data(const u_int8_t *buffer,
         /* Version mapped to get_version here */
         slot->dropped = get_version;
         memcpy(slot->payload, buffer, len);
-        NETLINK_CB(skb_out).dst_group = 0; /* not in mcast group */
 
-        res = nl_srv_ucast(skb_out, cnss_diag_pid, MSG_DONTWAIT);
+        res = nl_srv_bcast(skb_out);
         if (res < 0) {
             AR_DEBUG_PRINTF(ATH_DEBUG_INFO,
-                            ("nl_srv_ucast failed 0x%x \n", res));
+                            ("nl_srv_bcast failed 0x%x \n", res));
             return res;
         }
     }

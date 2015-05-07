@@ -128,6 +128,12 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
         return;
     }
 
+    if (!lim_validate_received_frame_a1_addr(pMac, pHdr->da, psessionEntry)) {
+        limLog(pMac, LOGE,
+               FL("rx frame doesn't have valid a1 address, dropping it"));
+        return;
+    }
+
 #ifdef WLAN_FEATURE_11W
     /* PMF: If this session is a PMF session, then ensure that this frame was protected */
     if(psessionEntry->limRmfEnabled  && (WDA_GET_RX_DPU_FEEDBACK(pRxPacketInfo) & DPU_FEEDBACK_UNPROTECTED_ERROR))

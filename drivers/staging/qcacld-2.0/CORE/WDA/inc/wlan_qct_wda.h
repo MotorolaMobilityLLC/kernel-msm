@@ -477,6 +477,9 @@ VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
 #define WDA_GET_RX_PAYLOAD_LEN(pRxMeta) \
      (((t_packetmeta *)pRxMeta)->mpdu_data_len)
 
+#define WDA_GET_RX_TSF_DELTA(pRxMeta) \
+    (((t_packetmeta *)pRxMeta)->tsf_delta)
+
 #define WDA_GET_RX_MAC_RATE_IDX(pRxMeta) 0
 
 #define WDA_GET_RX_MPDU_DATA(pRxMeta) \
@@ -975,6 +978,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_SET_PASSPOINT_LIST_REQ          SIR_HAL_SET_PASSPOINT_LIST_REQ
 #define WDA_RESET_PASSPOINT_LIST_REQ        SIR_HAL_RESET_PASSPOINT_LIST_REQ
 #define WDA_EXTSCAN_SET_SSID_HOTLIST_REQ    SIR_HAL_EXTSCAN_SET_SSID_HOTLIST_REQ
+#define WDA_EXTSCAN_STATUS_IND              SIR_HAL_EXTSCAN_STATUS_IND
 
 #endif /* FEATURE_WLAN_EXTSCAN */
 
@@ -995,6 +999,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #endif
 
 #define WDA_SET_SCAN_MAC_OUI_REQ              SIR_HAL_SET_SCAN_MAC_OUI_REQ
+
+#define WDA_FW_MEM_DUMP_REQ                   SIR_HAL_FW_MEM_DUMP_REQ
 
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 

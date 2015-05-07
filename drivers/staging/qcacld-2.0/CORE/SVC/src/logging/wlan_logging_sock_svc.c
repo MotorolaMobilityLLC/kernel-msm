@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -41,6 +41,7 @@
 #include <vos_trace.h>
 #include <kthread.h>
 #include <adf_os_time.h>
+#include "pktlog_ac.h"
 
 #define LOGGING_TRACE(level, args...) \
 		VOS_TRACE(VOS_MODULE_ID_HDD, level, ## args)
@@ -52,6 +53,9 @@
 #define INVALID_PID -1
 
 #define MAX_LOGMSG_LENGTH 4096
+
+#define HOST_LOG_DRIVER_MSG        0x001
+#define HOST_LOG_PER_PKT_STATS     0x002
 
 struct log_msg {
 	struct list_head node;
@@ -90,6 +94,10 @@ struct wlan_logging {
 	/* current logbuf to which the log will be filled to */
 	struct log_msg *pcur_node;
 	bool is_buffer_free;
+	/* Event flag used for wakeup and post indication*/
+	unsigned long eventFlag;
+	/* Indicates logger thread is activated */
+	bool is_active;
 };
 
 static struct wlan_logging gwlan_logging;
@@ -366,8 +374,10 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		/* If there is logger app registered wakeup the logging
 		 * thread
 		 */
-		if (gapp_pid != INVALID_PID)
+		if (gapp_pid != INVALID_PID) {
+			set_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
 			wake_up_interruptible(&gwlan_logging.wait_queue);
+		}
 	}
 
 	if ((gapp_pid != INVALID_PID)
@@ -488,6 +498,9 @@ static int wlan_logging_thread(void *Arg)
 		ret_wait_status = wait_event_interruptible(
 		    gwlan_logging.wait_queue,
 		    (!list_empty(&gwlan_logging.filled_list)
+		  || test_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag)
+		  || test_bit(HOST_LOG_PER_PKT_STATS,
+		     &gwlan_logging.eventFlag)
 		  || gwlan_logging.exit));
 
 		if (ret_wait_status == -ERESTARTSYS) {
@@ -501,9 +514,20 @@ static int wlan_logging_thread(void *Arg)
 			break;
 		}
 
-		ret = send_filled_buffers_to_user();
-		if (-ENOMEM == ret) {
-			msleep(200);
+		if (test_and_clear_bit(HOST_LOG_DRIVER_MSG,
+				       &gwlan_logging.eventFlag)) {
+			ret = send_filled_buffers_to_user();
+			if (-ENOMEM == ret) {
+				msleep(200);
+			}
+		}
+
+		if (test_and_clear_bit(HOST_LOG_PER_PKT_STATS,
+				       &gwlan_logging.eventFlag)) {
+			ret = pktlog_send_per_pkt_stats_to_user();
+			if (-ENOMEM == ret) {
+				msleep(200);
+			}
 		}
 	}
 
@@ -545,6 +569,7 @@ static int wlan_logging_proc_sock_rx_msg(struct sk_buff *skb)
 			wlan_queue_logmsg_for_app();
 		}
 		spin_unlock_bh(&gwlan_logging.spin_lock);
+		set_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
 		wake_up_interruptible(&gwlan_logging.wait_queue);
 	} else {
 		/* This is to set the default levels (WLAN logging
@@ -602,6 +627,8 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 
 	init_waitqueue_head(&gwlan_logging.wait_queue);
 	gwlan_logging.exit = false;
+	clear_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
+	clear_bit(HOST_LOG_PER_PKT_STATS, &gwlan_logging.eventFlag);
 	init_completion(&gwlan_logging.shutdown_comp);
 	gwlan_logging.thread = kthread_create(wlan_logging_thread, NULL,
 					"wlan_logging_thread");
@@ -616,6 +643,7 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 		return -ENOMEM;
 	}
 	wake_up_process(gwlan_logging.thread);
+	gwlan_logging.is_active = true;
 
 	nl_srv_register(ANI_NL_MSG_LOG, wlan_logging_proc_sock_rx_msg);
 
@@ -638,6 +666,9 @@ int wlan_logging_sock_deactivate_svc(void)
 
 	INIT_COMPLETION(gwlan_logging.shutdown_comp);
 	gwlan_logging.exit = true;
+	gwlan_logging.is_active = false;
+	clear_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
+	clear_bit(HOST_LOG_PER_PKT_STATS, &gwlan_logging.eventFlag);
 	wake_up_interruptible(&gwlan_logging.wait_queue);
 	wait_for_completion(&gwlan_logging.shutdown_comp);
 
@@ -666,5 +697,23 @@ int wlan_logging_sock_deinit_svc(void)
 	gapp_pid = INVALID_PID;
 
        return 0;
+}
+
+/**
+ * wlan_logging_set_per_pkt_stats() - This function triggers per packet logging
+ *
+ * This function is used to send signal to the logger thread for logging per
+ * packet stats
+ *
+ * Return: None
+ *
+ */
+void wlan_logging_set_per_pkt_stats(void)
+{
+	if (gwlan_logging.is_active == false)
+		return;
+
+	set_bit(HOST_LOG_PER_PKT_STATS, &gwlan_logging.eventFlag);
+	wake_up_interruptible(&gwlan_logging.wait_queue);
 }
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */

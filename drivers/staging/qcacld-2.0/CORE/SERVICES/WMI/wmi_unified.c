@@ -51,7 +51,6 @@
 #endif
 
 #define WMI_MIN_HEAD_ROOM 64
-#define WMI_MAX_LEN_BYTES 2048
 
 #ifdef WMI_INTERFACE_EVENT_LOGGING
 /* WMI commands */
@@ -117,6 +116,19 @@ struct wmi_event_debug wmi_rx_event_log_buffer[WMI_EVENT_DEBUG_MAX_ENTRY];
 static void __wmi_control_rx(struct wmi_unified *wmi_handle, wmi_buf_t evt_buf);
 int wmi_get_host_credits(wmi_unified_t wmi_handle);
 /* WMI buffer APIs */
+
+/**
+ * wmi_get_max_msg_len() - get maximum WMI message length
+ * @wmi_handle: WMI handle.
+ *
+ * This function returns the maximum WMI message length
+ *
+ * Return: maximum WMI message length
+ */
+uint16_t wmi_get_max_msg_len(wmi_unified_t wmi_handle)
+{
+	return wmi_handle->max_msg_len - WMI_MIN_HEAD_ROOM;
+}
 
 wmi_buf_t
 wmi_buf_alloc(wmi_unified_t wmi_handle, u_int16_t len)

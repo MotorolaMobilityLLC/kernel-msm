@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -177,11 +177,17 @@ limCollectBssDescription(tpAniSirGlobal pMac,
     /**
      * Length of BSS desription is without length of
      * length itself and length of pointer
-     * that holds the next BSS description
+     * that holds ieFields
+     *
+     * tSirBssDescription
+     * +--------+---------------------------------+---------------+
+     * | length | other fields                    | pointer to IEs|
+     * +--------+---------------------------------+---------------+
+     *                                            ^
+     *                                            ieFields
      */
-    pBssDescr->length = (tANI_U16)(
-                    sizeof(tSirBssDescription) - sizeof(tANI_U16) -
-                    sizeof(tANI_U32) + ieLen);
+    pBssDescr->length = (tANI_U16)(offsetof(tSirBssDescription, ieFields[0]) -
+                                   sizeof(pBssDescr->length) + ieLen);
 
     // Copy BSS Id
     vos_mem_copy((tANI_U8 *) &pBssDescr->bssId,
@@ -251,8 +257,13 @@ limCollectBssDescription(tpAniSirGlobal pMac,
 
     //SINR no longer reported by HW
     pBssDescr->sinr = 0;
-
     pBssDescr->nReceivedTime = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
+    pBssDescr->tsf_delta = WDA_GET_RX_TSF_DELTA(pRxPacketInfo);
+
+    limLog(pMac, LOG1,
+        FL("BSSID: "MAC_ADDRESS_STR " rssi: normalized = %d, tsf_delta = %u"),
+        MAC_ADDR_ARRAY(pHdr->bssId), pBssDescr->rssi,
+        pBssDescr->tsf_delta);
 
 #if defined WLAN_FEATURE_VOWIFI
     if( fScanning )

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, 2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -333,7 +333,15 @@ struct ath_pktlog_bufhdr {
 struct ath_pktlog_buf {
     struct ath_pktlog_bufhdr bufhdr;
     int32_t rd_offset;
-    int32_t wr_offset;
+    volatile int32_t wr_offset;
+    /* Whenever this bytes written value croses 4K bytes,
+     * logging will be triggered
+     */
+    int32_t bytes_written;
+    /* Index of the messages sent to userspace */
+    uint32_t msg_index;
+    /* Offset for read */
+    loff_t offset;
     char log_data[0];
 };
 

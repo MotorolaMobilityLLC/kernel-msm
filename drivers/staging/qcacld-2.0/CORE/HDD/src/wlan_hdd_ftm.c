@@ -817,10 +817,6 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
         VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
     }
 
-    //Free up dynamically allocated members inside HDD Adapter
-    kfree(pHddCtx->cfg_ini);
-    pHddCtx->cfg_ini= NULL;
-
 #if defined(QCA_WIFI_FTM) && defined(LINUX_QCMBR)
     spin_lock_bh(&qcmbr_queue_lock);
     if (!list_empty(&qcmbr_queue_head)) {

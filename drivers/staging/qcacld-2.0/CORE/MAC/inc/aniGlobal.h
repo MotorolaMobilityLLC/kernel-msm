@@ -145,6 +145,56 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #define HIGH_SEQ_NUM_MASK				0x0FF0
 #define HIGH_SEQ_NUM_OFFSET				4
 
+/**
+ * enum userspace_log_level - Log level at userspace
+ * @LOG_LEVEL_NO_COLLECTION: verbose_level 0 corresponds to no collection
+ * @LOG_LEVEL_NORMAL_COLLECT: verbose_level 1 correspond to normal log level,
+ * with minimal user impact. this is the default value
+ * @LOG_LEVEL_ISSUE_REPRO: verbose_level 2 are enabled when user is lazily
+ * trying to reproduce a problem, wifi performances and power can be impacted
+ * but device should not otherwise be significantly impacted
+ * @LOG_LEVEL_ACTIVE: verbose_level 3+ are used when trying to
+ * actively debug a problem
+ *
+ * Various log levels defined in the userspace for logging applications
+ */
+enum userspace_log_level {
+	LOG_LEVEL_NO_COLLECTION,
+	LOG_LEVEL_NORMAL_COLLECT,
+	LOG_LEVEL_ISSUE_REPRO,
+	LOG_LEVEL_ACTIVE,
+};
+
+/**
+ * enum wifi_driver_log_level - Log level defined in the driver for logging
+ * @WLAN_LOG_LEVEL_OFF: No logging
+ * @WLAN_LOG_LEVEL_NORMAL: Default logging
+ * @WLAN_LOG_LEVEL_REPRO: Normal debug level
+ * @WLAN_LOG_LEVEL_ACTIVE: Active debug level
+ *
+ * Log levels defined for logging by the wifi driver
+ */
+enum wifi_driver_log_level {
+	WLAN_LOG_LEVEL_OFF,
+	WLAN_LOG_LEVEL_NORMAL,
+	WLAN_LOG_LEVEL_REPRO,
+	WLAN_LOG_LEVEL_ACTIVE,
+};
+
+/**
+ * enum wifi_logging_ring_id - Ring id of logging entities
+ * @RING_ID_WAKELOCK:         Power events ring id
+ * @RING_ID_CONNECTIVITY:     Connectivity event ring id
+ * @RING_ID_PER_PACKET_STATS: Per packet statistic ring id
+ *
+ * This enum has the ring id values of logging rings
+ */
+enum wifi_logging_ring_id {
+	RING_ID_WAKELOCK,
+	RING_ID_CONNECTIVITY,
+	RING_ID_PER_PACKET_STATS,
+};
+
 // -------------------------------------------------------------------
 // Change channel generic scheme
 typedef void (*CHANGE_CHANNEL_CALLBACK)(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,

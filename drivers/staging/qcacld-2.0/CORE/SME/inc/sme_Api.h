@@ -3980,6 +3980,11 @@ eHalStatus sme_SetLinkLayerStatsIndCB
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
+eHalStatus sme_fw_mem_dump(tHalHandle hHal, void *recvd_req);
+eHalStatus sme_fw_mem_dump_register_cb(tHalHandle hHal,
+    void (*callback_routine)(void *cb_context, struct fw_dump_rsp *rsp));
+eHalStatus sme_fw_mem_dump_unregister_cb(tHalHandle hHal);
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /*--------------------------------------------------------------------------
   \brief sme_UpdateRoamOffloadEnabled() - enable/disable roam offload feature
@@ -4091,5 +4096,8 @@ eHalStatus sme_update_roam_scan_hi_rssi_scan_params(tHalHandle hal_handle,
 	uint8_t session_id,
 	uint32_t notify_id,
 	int32_t val);
+
+eHalStatus sme_wifi_start_logger(tHalHandle hal,
+		struct sir_wifi_start_log start_log);
 
 #endif //#if !defined( __SME_API_H )

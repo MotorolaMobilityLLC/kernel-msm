@@ -150,4 +150,6 @@ wmi_set_d0wow_flag(wmi_unified_t wmi_handle, A_BOOL flag);
  WMA Callback to get the Tx complete for WOW_ENABLE
 */
 typedef void (*wma_wow_tx_complete_cbk)(void *scn_handle);
+
+uint16_t wmi_get_max_msg_len(wmi_unified_t wmi_handle);
 #endif /* _WMI_UNIFIED_API_H_ */

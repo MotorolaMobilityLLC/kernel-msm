@@ -339,4 +339,10 @@ void vos_trigger_recovery(void);
 #ifdef FEATURE_WLAN_D0WOW
 v_VOID_t vos_pm_control(v_BOOL_t vote);
 #endif
+
+void vos_set_wakelock_logging(bool value);
+bool vos_is_wakelock_enabled(void);
+void vos_set_ring_log_level(uint32_t ring_id, uint32_t log_level);
+enum wifi_driver_log_level vos_get_ring_log_level(uint32_t ring_id);
+
 #endif // if !defined __VOS_API_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -31,11 +31,6 @@
 #include "pktlog_ac_i.h"
 #include "vos_api.h"
 #include "wlan_qct_wda.h"
-
-void pktlog_init(struct ol_softc *scn);
-int pktlog_enable(struct ol_softc *scn, int32_t log_state);
-int pktlog_setsize(struct ol_softc *scn, int32_t log_state);
-int pktlog_disable(struct ol_softc *scn);
 
 wdi_event_subscribe PKTLOG_TX_SUBSCRIBER;
 wdi_event_subscribe PKTLOG_RX_SUBSCRIBER;
@@ -352,12 +347,17 @@ pktlog_enable(struct ol_softc *scn, int32_t log_state)
 				ASSERT(0);
 				return -1;
 			}
-
-			pl_info->buf->bufhdr.version = CUR_PKTLOG_VER;
-			pl_info->buf->bufhdr.magic_num = PKTLOG_MAGIC_NUM;
-			pl_info->buf->wr_offset = 0;
-			pl_info->buf->rd_offset = -1;
 		}
+
+		pl_info->buf->bufhdr.version = CUR_PKTLOG_VER;
+		pl_info->buf->bufhdr.magic_num = PKTLOG_MAGIC_NUM;
+		pl_info->buf->wr_offset = 0;
+		pl_info->buf->rd_offset = -1;
+		/* These below variables are used by per packet stats*/
+		pl_info->buf->bytes_written = 0;
+		pl_info->buf->msg_index = 1;
+		pl_info->buf->offset = PKTLOG_READ_OFFSET;
+
 		pl_info->start_time_thruput = OS_GET_TIMESTAMP();
 		pl_info->start_time_per = pl_info->start_time_thruput;
 

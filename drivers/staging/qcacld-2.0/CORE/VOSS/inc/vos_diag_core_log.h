@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -64,6 +64,10 @@ extern "C" {
 #define VOS_LOG_MAX_NUM_HO_CANDIDATE_APS                    20
 #define VOS_LOG_MAX_WOW_PTRN_SIZE                           128
 #define VOS_LOG_MAX_WOW_PTRN_MASK_SIZE                      16
+#define VOS_LOG_PKT_LOG_SIZE                                2048
+
+/* Version to be updated whenever format of vos_log_pktlog_info changes */
+#define VERSION_LOG_WLAN_PKT_LOG_INFO_C                     1
 
 /*---------------------------------------------------------------------------
    This packet contains the scan results of the recent scan operation
@@ -365,6 +369,23 @@ typedef struct
   log_hdr_type       hdr;
   v_S7_t            rssi;
 } vos_log_rssi_pkt_type;
+
+/**
+ * struct vos_log_pktlog_info - Packet log info
+ * @log_hdr: Log header
+ * @buf_len: Length of the buffer that follows
+ * @buf:     Buffer containing the packet log info
+ *
+ * Structure containing the packet log information
+ * LOG_WLAN_PKT_LOG_INFO_C          0x18E0
+ */
+struct vos_log_pktlog_info {
+	log_hdr_type log_hdr;
+	uint32_t version;
+	uint32_t seq_no;
+	uint32_t buf_len;
+	uint8_t buf[];
+};
 
 /*-------------------------------------------------------------------------
   Function declarations and documenation
