@@ -27,15 +27,18 @@
 #include <linux/slab.h>
 #include <linux/regulator/consumer.h>
 #include <net/cnss.h>
+#include <linux/platform_data/msm_serial_hs.h>
 
 #define BT_PWR_DBG(fmt, arg...)  pr_debug("%s: " fmt "\n" , __func__ , ## arg)
 #define BT_PWR_INFO(fmt, arg...) pr_info("%s: " fmt "\n" , __func__ , ## arg)
 #define BT_PWR_ERR(fmt, arg...)  pr_err("%s: " fmt "\n" , __func__ , ## arg)
 
+#define UART_CLOCK_ENABLE 1
+#define UART_CLOCK_DISABLE 0
+#define HS_UART_0 0
 
 static struct of_device_id bt_power_match_table[] = {
-	{	.compatible = "qca,ar3002" },
-	{	.compatible = "qca,qca6174" },
+	{	.compatible = "bcm,bcm4358" },
 	{}
 };
 
@@ -190,39 +193,13 @@ static int bluetooth_power(int on)
 	BT_PWR_DBG("on: %d", on);
 
 	if (on) {
+		msm_hs_set_clock(HS_UART_0,UART_CLOCK_ENABLE); //enable ttyHSO uart clock
+		BT_PWR_DBG("uart power on");
 		if (bt_power_pdata->bt_vdd_io) {
 			rc = bt_configure_vreg(bt_power_pdata->bt_vdd_io);
 			if (rc < 0) {
 				BT_PWR_ERR("bt_power vddio config failed");
 				goto out;
-			}
-		}
-		if (bt_power_pdata->bt_vdd_xtal) {
-			rc = bt_configure_vreg(bt_power_pdata->bt_vdd_xtal);
-			if (rc < 0) {
-				BT_PWR_ERR("bt_power vddxtal config failed");
-				goto vdd_xtal_fail;
-			}
-		}
-		if (bt_power_pdata->bt_vdd_pa) {
-			rc = bt_configure_vreg(bt_power_pdata->bt_vdd_pa);
-			if (rc < 0) {
-				BT_PWR_ERR("bt_power vddpa config failed");
-				goto vdd_pa_fail;
-			}
-		}
-		if (bt_power_pdata->bt_vdd_ldo) {
-			rc = bt_configure_vreg(bt_power_pdata->bt_vdd_ldo);
-			if (rc < 0) {
-				BT_PWR_ERR("bt_power vddldo config failed");
-				goto vdd_ldo_fail;
-			}
-		}
-		if (bt_power_pdata->bt_chip_pwd) {
-			rc = bt_configure_vreg(bt_power_pdata->bt_chip_pwd);
-			if (rc < 0) {
-				BT_PWR_ERR("bt_power vddldo config failed");
-				goto chip_pwd_fail;
 			}
 		}
 		if (bt_power_pdata->bt_gpio_sys_rst) {
@@ -233,20 +210,13 @@ static int bluetooth_power(int on)
 			}
 		}
 	} else {
+		msm_hs_set_clock(HS_UART_0, UART_CLOCK_DISABLE);
 		bt_configure_gpios(on);
 gpio_fail:
 		if (bt_power_pdata->bt_gpio_sys_rst)
 			gpio_free(bt_power_pdata->bt_gpio_sys_rst);
-		bt_vreg_disable(bt_power_pdata->bt_chip_pwd);
-chip_pwd_fail:
-		bt_vreg_disable(bt_power_pdata->bt_vdd_ldo);
-vdd_ldo_fail:
-		bt_vreg_disable(bt_power_pdata->bt_vdd_pa);
-vdd_pa_fail:
-		bt_vreg_disable(bt_power_pdata->bt_vdd_xtal);
-vdd_xtal_fail:
-		bt_vreg_disable(bt_power_pdata->bt_vdd_io);
-	}
+			bt_vreg_disable(bt_power_pdata->bt_vdd_io);
+		}
 out:
 	return rc;
 }
@@ -402,7 +372,7 @@ static int bt_power_populate_dt_pinfo(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		bt_power_pdata->bt_gpio_sys_rst =
 			of_get_named_gpio(pdev->dev.of_node,
-						"qca,bt-reset-gpio", 0);
+						"bcm,bt-reset-gpio", 0);
 		if (bt_power_pdata->bt_gpio_sys_rst < 0) {
 			BT_PWR_ERR("bt-reset-gpio not provided in device tree");
 			return bt_power_pdata->bt_gpio_sys_rst;
@@ -410,31 +380,7 @@ static int bt_power_populate_dt_pinfo(struct platform_device *pdev)
 
 		rc = bt_dt_parse_vreg_info(&pdev->dev,
 					&bt_power_pdata->bt_vdd_io,
-					"qca,bt-vdd-io");
-		if (rc < 0)
-			return rc;
-
-		rc = bt_dt_parse_vreg_info(&pdev->dev,
-					&bt_power_pdata->bt_vdd_xtal,
-					"qca,bt-vdd-xtal");
-		if (rc < 0)
-			return rc;
-
-		rc = bt_dt_parse_vreg_info(&pdev->dev,
-					&bt_power_pdata->bt_vdd_pa,
-					"qca,bt-vdd-pa");
-		if (rc < 0)
-			return rc;
-
-		rc = bt_dt_parse_vreg_info(&pdev->dev,
-					&bt_power_pdata->bt_vdd_ldo,
-					"qca,bt-vdd-ldo");
-		if (rc < 0)
-			return rc;
-
-		rc = bt_dt_parse_vreg_info(&pdev->dev,
-					&bt_power_pdata->bt_chip_pwd,
-					"qca,bt-chip-pwd");
+					"bcm,bt-vdd-io");
 		if (rc < 0)
 			return rc;
 
