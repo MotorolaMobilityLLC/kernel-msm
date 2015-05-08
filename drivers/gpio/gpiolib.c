@@ -536,6 +536,9 @@ static ssize_t gpio_wakeup_show(struct device *dev,
 static ssize_t gpio_wakeup_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
+/* Temporarily disable GPIO IRQ wakeup support because it's
+   causing CXO to get stuck on when used on GPIO-2 */
+#ifdef ENABLE_IRQ_WAKE
 	int			ret;
 	unsigned int		on;
 	struct gpio_desc	*desc = dev_get_drvdata(dev);
@@ -559,6 +562,7 @@ static ssize_t gpio_wakeup_store(struct device *dev,
 	if (ret)
 		pr_warn("%s: failed to %s wake\n", __func__,
 			on ? "enable" : "disable");
+#endif
 
 	return size;
 }
