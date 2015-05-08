@@ -33,7 +33,7 @@
 
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 
-	tpio-supply = <&pm8994_l10>;	/* 1V8 */
+	tpio-supply = <&pm8994_l25>;	/* 1V8 */
 	tpvci-supply = <&pm8994_l22>;	/* 3V1 */
 	dsv-supply = <&avdd_reg>;	/* +/-5V5 */
 

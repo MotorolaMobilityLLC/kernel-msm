@@ -11,6 +11,13 @@
  * GNU General Public License for more details.
  */
 
+&pm8994_l10 { /* VTCAM VDDIO */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};
+
 &pm8994_l14 { /* VTCAM DVDD */
 	regulator-min-microvolt = <1200000>;
 	regulator-max-microvolt = <1200000>;
@@ -43,9 +50,10 @@
 	status = "okay";
 };
 
-&pm8994_l21 { /* VTCAM IOVDD */
+&pm8994_l21 { /* FPS */
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
 	qcom,init-voltage = <1800000>;
 	status = "okay";
 };
@@ -57,10 +65,9 @@
 	status = "okay";
 };
 
-&pm8994_l25 { /* FPS */
+&pm8994_l25 { /* Touch/LCD VDDIO */
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <1800000>;
-	regulator-always-on;
 	qcom,init-voltage = <1800000>;
 	status = "okay";
 };
@@ -91,4 +98,3 @@
 		gpio = <&pm8994_gpios 9 0>;
 	};
 };
-

@@ -21,3 +21,37 @@
 	compatible = "qcom,msm8992";
 	qcom,board-id = <0x364 0>;
 };
+
+&i2c_2 {
+	synaptics@20 {
+		vcc_i2c-supply = <&pm8994_l10>;
+	};
+};
+
+&mdss_dsi0 {
+	tpio-supply = <&pm8994_l10>;    /* 1V8 */
+};
+
+&pm8994_l10 { /* Touch/LCD */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	/delete-property/ regulator-always-on;
+	status = "okay";
+};
+
+&pm8994_l21 { /* VT CAM */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	/delete-property/ regulator-always-on;
+	status = "okay";
+};
+
+&pm8994_l25 { /* FPS */
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+	qcom,init-voltage = <1800000>;
+	status = "okay";
+};

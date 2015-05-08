@@ -21,7 +21,7 @@
 		reg = <0x20>;
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <22 0x2008>;
-		vcc_i2c-supply = <&pm8994_l10>;
+		vcc_i2c-supply = <&pm8994_l25>;
 		vdd-supply = <&pm8994_l22>;
 		synaptics,reset-gpio = <&msm_gpio 8 0x00>;
 		synaptics,irq-gpio = <&msm_gpio 22 0x2008>;
