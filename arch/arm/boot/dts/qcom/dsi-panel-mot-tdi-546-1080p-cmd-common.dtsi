@@ -29,7 +29,7 @@ qcom,mdss-dsi-panel-height = <1920>;
 qcom,mdss-pan-physical-width-dimension = <68>;
 qcom,mdss-pan-physical-height-dimension = <121>;
 
-qcom,mdss-dsi-panel-clockrate = <0>;
+qcom,mdss-dsi-panel-clockrate = <807549120>;
 qcom,mdss-dsi-h-front-porch = <24>;
 qcom,mdss-dsi-h-back-porch = <40>;
 qcom,mdss-dsi-h-pulse-width = <4>;
@@ -91,7 +91,7 @@ qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
 qcom,mdss-dsi-lane-3-state;
 qcom,mdss-dsi-panel-timings = [d6 32 22 00 60 66 26 36 28 03 04 00];
-qcom,mdss-dsi-t-clk-post = <0x1a>;
+qcom,mdss-dsi-t-clk-post = <0x1b>;
 qcom,mdss-dsi-t-clk-pre = <0x28>;
 qcom,mdss-dsi-bl-min-level = <1>;
 qcom,mdss-dsi-bl-max-level = <255>;
