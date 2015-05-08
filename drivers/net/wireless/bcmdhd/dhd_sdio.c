@@ -63,6 +63,7 @@
 #include <dhd_bus.h>
 #include <dhd_proto.h>
 #include <dhd_dbg.h>
+#include <dhd_debug.h>
 #include <dhdioctl.h>
 #include <sdiovar.h>
 
