@@ -33,6 +33,7 @@
 #define LED2_STROBE_CURRENT_REG  0x01
 
 #define LED_MAX_STROBE_CURRENT      1500
+#define LED_STROBE_CURRENT_250      0x00
 #define LED_DEFAULT_STROBE_CURRENT  0x0A /* 750 mA */
 #define LED_STROBE_EN_DEFAULT       0x22 /* both enabled */
 
@@ -96,7 +97,7 @@ static struct msm_camera_i2c_reg_array sky81296_init_array[] = {
 	{0x03, 0x11},
 	{0x04, 0x00},
 	{0x05, 0x01}, /* VINM */
-	{0x06, 0x54}, /* VINHYS 3.3v,VINMON 3.2v */
+	{0x06, 0x21}, /* VINHYS 3.0v,VINMON 2.9v */
 	{0x07, 0x11},
 	{0x08, 0x11},
 };
@@ -276,6 +277,7 @@ static int msm_flash_sky81296_led_high(struct msm_led_flash_ctrl_t *fctrl)
 				fctrl->flash_op_current[0]);
 			led1_torch = true;
 			sky81296_high_array[2].reg_data = (0x0f & led1_reg_val);
+			sky81296_high_array[0].reg_data = LED_STROBE_CURRENT_250;
 		}
 
 		if (fctrl->flash_op_current[1] >= 250) {
@@ -292,6 +294,7 @@ static int msm_flash_sky81296_led_high(struct msm_led_flash_ctrl_t *fctrl)
 			led2_torch = true;
 			sky81296_high_array[2].reg_data = ((led2_reg_val << 4) |
 					sky81296_high_array[2].reg_data);
+			sky81296_high_array[1].reg_data = LED_STROBE_CURRENT_250;
 		}
 
 		/* if current level is 0, then turn off LED */
