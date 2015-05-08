@@ -1332,6 +1332,8 @@ static int motosh_probe(struct i2c_client *client,
 
 #if defined(CONFIG_FB)
 	ps_motosh->fb_notif.notifier_call = motosh_fb_notifier_callback;
+	/* We must make sure we are the first callback to run, high priority */
+	ps_motosh->fb_notif.priority = 1;
 	err = fb_register_client(&ps_motosh->fb_notif);
 	if (err) {
 		dev_err(&client->dev,
