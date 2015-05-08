@@ -1087,12 +1087,14 @@ static void fan5404x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 	struct qpnp_vadc_result result;
 	int batt_volt;
 	int rc;
+	int adc_volt = 0;
 
 	pr_err("shutdown voltage tripped\n");
 
 	if (chip->vadc_dev) {
 		rc = qpnp_vadc_read(chip->vadc_dev, VBAT_SNS, &result);
-		pr_info("vbat = %lld, raw = 0x%x\n", result.physical,
+		adc_volt = (int)(result.physical)/1000;
+		pr_info("vbat = %d, raw = 0x%x\n", adc_volt,
 							result.adc_code);
 	}
 
@@ -1100,7 +1102,13 @@ static void fan5404x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 	pr_info("vbat is at %d, state is at %d\n", batt_volt, state);
 
 	if (state == ADC_TM_LOW_STATE)
-		chip->shutdown_voltage_tripped = 1;
+		if (adc_volt <= (chip->low_voltage_uv/1000)) {
+			pr_info("shutdown now\n");
+			chip->shutdown_voltage_tripped = 1;
+		} else {
+			qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+				&chip->vbat_monitor_params);
+		}
 	else
 		qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
 				&chip->vbat_monitor_params);
