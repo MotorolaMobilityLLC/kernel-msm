@@ -212,7 +212,7 @@ static int motosh_quickpeek_status_ack(struct motosh_data *ps_motosh,
 {
 	int ret = 0;
 	unsigned char payload = ack_return & 0x03;
-	unsigned int req_bit = atomic_read(&ps_motosh->qp_enabled) & 0x01;
+	unsigned int req_bit;
 	unsigned char cmdbuff[4];
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
@@ -222,6 +222,8 @@ static int motosh_quickpeek_status_ack(struct motosh_data *ps_motosh,
 	if (qp_message && qp_message->message == AOD_WAKEUP_REASON_QP_DRAW)
 		payload |= (qp_message->buffer_id &
 			AOD_QP_ACK_BUFFER_ID_MASK) << 2;
+
+	req_bit = atomic_read(&ps_motosh->qp_enabled) & 0x01;
 
 	cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
 	cmdbuff[1] = req_bit;
