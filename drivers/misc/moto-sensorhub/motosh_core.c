@@ -86,6 +86,15 @@ unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
 bool motosh_g_ir_config_reg_restore;
 bool motosh_g_booted;
 
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+unsigned char motosh_g_antcap_cal[MOTOSH_ANTCAP_CAL_BUFF_SIZE];
+unsigned char motosh_g_antcap_cfg[MOTOSH_ANTCAP_CFG_BUFF_SIZE];
+unsigned char motosh_g_conn_state;
+unsigned char motosh_g_antcap_enabled;
+unsigned char motosh_g_antcap_hw_ready;
+unsigned char motosh_g_antcap_sw_ready;
+#endif /* CONFIG_CYPRESS_CAPSENSE_HSSP */
+
 /* Store error message */
 unsigned char stat_string[ESR_SIZE+1];
 
@@ -1379,6 +1388,18 @@ static int motosh_probe(struct i2c_client *client,
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	ps_motosh->hall_data = mmi_hall_init();
 #endif
+
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+	if (client->dev.of_node)
+		motosh_antcap_of_init(client);
+
+	err = motosh_antcap_register();
+	if (err)
+		dev_err(&motosh_misc_data->client->dev,
+			"switch_to_motosh motosh_register_antcap failed: %d\n",
+			err);
+#endif
+
 	dev_info(&client->dev, "probe finished\n");
 
 	return 0;
