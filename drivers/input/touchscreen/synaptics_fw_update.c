@@ -297,6 +297,45 @@ static struct synaptics_rmi4_fwu_handle *fwu;
 
 DECLARE_COMPLETION(fwu_remove_complete);
 
+static bool synaptics_rmi4_isalnum(const char *s, size_t sz)
+{
+	int i;
+
+	if (!s)
+		return false;
+
+	/* check if alnum */
+	for (i = 0; i < sz; i++)
+		if (!isalnum(s[i]))
+			return false;
+
+	return true;
+}
+
+/* if alnum, toupper and then copy. otherwise, just copy */
+static void synaptics_rmi4_toupper(char *d, const char *s, size_t sz)
+{
+	int i;
+	bool alnum = false;
+
+	if (!d || !s)
+		return;
+
+	/* check if alnum */
+	alnum = synaptics_rmi4_isalnum(s, sz);
+
+	/* don't need copy if !alnum && s == d */
+	if (!alnum && s == d)
+		return;
+
+	for (i = 0; i < sz; i++) {
+		if (alnum)
+			d[i] = toupper(s[i]);
+		else
+			d[i] = s[i];
+	}
+}
+
 static unsigned int extract_uint(const unsigned char *ptr)
 {
 	return (unsigned int)ptr[0] +
@@ -856,10 +895,7 @@ check_config_id:
 		flash_area = NONE;
 		goto exit;
 	}
-	config_id[0] = toupper(config_id[0]);
-	config_id[1] = toupper(config_id[1]);
-	config_id[2] = toupper(config_id[2]);
-	config_id[3] = toupper(config_id[3]);
+	synaptics_rmi4_toupper(config_id, config_id, 4);
 	deviceConfigID =  extract_uint_be(config_id);
 
 	dev_info(&i2c_client->dev,
@@ -875,10 +911,7 @@ check_config_id:
 			fwu->config_data[3]);
 
 	/* copy to keep debug information */
-	fwu->img_config_data[0] = toupper(fwu->config_data[0]);
-	fwu->img_config_data[1] = toupper(fwu->config_data[1]);
-	fwu->img_config_data[2] = toupper(fwu->config_data[2]);
-	fwu->img_config_data[3] = toupper(fwu->config_data[3]);
+	synaptics_rmi4_toupper(fwu->img_config_data, fwu->config_data, 4);
 
 	imageConfigID =  extract_uint_be(fwu->img_config_data);
 
@@ -2036,8 +2069,9 @@ static ssize_t fwu_sysfs_config_id_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	unsigned char config_id[4];
-	/* device config id */
+	char *fmt = NULL;
 
+	/* device config id */
 	if (fwu->rmi4_data->suspended == true)
 		return snprintf(buf, PAGE_SIZE, "Device is in suspend\n");
 
@@ -2046,12 +2080,14 @@ static ssize_t fwu_sysfs_config_id_show(struct device *dev,
 				config_id,
 				sizeof(config_id));
 
-	config_id[0] = toupper(config_id[0]);
-	config_id[1] = toupper(config_id[1]);
-	config_id[2] = toupper(config_id[2]);
-	config_id[3] = toupper(config_id[3]);
+	if (synaptics_rmi4_isalnum(config_id, 4)) {
+		synaptics_rmi4_toupper(config_id, config_id, 4);
+		fmt = "DEVICE: %c%c%c%c IMG: %c%c%c%c\n";
+	} else {
+		fmt = "DEVICE: %02x%02x%02x%02x IMG: %02x%02x%02x%02x\n";
+	}
 
-	return snprintf(buf, PAGE_SIZE, "DEVICE: %c%c%c%c IMG: %c%c%c%c\n",
+	return snprintf(buf, PAGE_SIZE, fmt,
 		config_id[0], config_id[1], config_id[2], config_id[3],
 		fwu->img_config_data[0], fwu->img_config_data[1],
 		fwu->img_config_data[2], fwu->img_config_data[3]);
