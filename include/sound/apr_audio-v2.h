@@ -2505,6 +2505,7 @@ struct afe_lpass_core_shared_clk_config_command {
 #define VPM_TX_DM_FLUENCE_COPP_TOPOLOGY			0x00010F72
 #define VPM_TX_QMIC_FLUENCE_COPP_TOPOLOGY		0x00010F75
 #define VPM_TX_DM_RFECNS_COPP_TOPOLOGY			0x00010F86
+#define VPM_TX_MOT_COPP_TOPOLOGY			0x1000E004
 #define ADM_CMD_COPP_OPEN_TOPOLOGY_ID_DTS_HPX		0x10015002
 
 /* Memory map regions command payload used by the
