@@ -35,7 +35,6 @@
 /* MOTOSH memory map */
 #define ID                              0x00
 #define REV_ID                          0x01
-#define ERROR_STATUS                    0x02
 #define LOWPOWER_REG                    0x03
 #define MOTOSH_ELAPSED_RT               0x06
 #define RESET_REQUEST                   0x07
@@ -130,6 +129,10 @@
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
+
+#define LOG_MSG_LEN                     0x61
+#define LOG_MSG                         0x62
+
 #define ALGO_EVT_ACCUM_MODALITY         0x63
 
 #define QUATERNION_6AXIS                0x64
