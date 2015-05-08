@@ -1047,6 +1047,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
+		mdss_dsi_get_hw_revision(ctrl_pdata);
 		rc = mdss_dsi_on(pdata);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
 							pdata);
