@@ -30,6 +30,10 @@
 #include <linux/fb.h>
 #endif
 
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+#include <linux/power_supply.h>
+#endif
+
 #define NAME			     "motosh"
 
 /* MOTOSH memory map */
@@ -126,6 +130,11 @@
 #define NWAKE_STATUS                    0x53
 #define NWAKE_MSG_QUEUE                 0x54
 #define WAKE_MSG_QUEUE_LEN              0x57
+
+#define ANTCAP_CTRL                     0x58
+#define ANTCAP_INDEX                    0x59
+#define ANTCAP_CONFIG                   0x5A
+#define ANTCAP_DEBUG                    0x5B
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
@@ -290,6 +299,43 @@
 #define LIFT_ROTATION	4
 #define LIFT_GRAV_DIFF	8
 
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+/* motosh_g_antcap_enabled */
+#define ANTCAP_ENABLED             0x01
+#define ANTCAP_AIRPLANE            0x02
+
+/* motosh_g_conn_state */
+#define ANTCAP_USB                 0x80
+#define ANTCAP_HEADSET             0x40
+
+/* ANTCAP_CTRL, byte 0 */
+#define ANTCAP_CTRL0_ENABLE        0x80
+#define ANTCAP_CTRL0_RESET         0x40
+#define ANTCAP_CTRL0_GETCFG        0x20
+#define ANTCAP_CTRL0_SETCFG        0x10
+#define ANTCAP_CTRL0_FLASH         0x08
+#define ANTCAP_CTRL0_CAL           0x04
+#define ANTCAP_CTRL0_DISABLE       0x00
+
+/* ANTCAP_CTRL, byte 1 */
+#define ANTCAP_CTRL1_USB           ANTCAP_USB
+#define ANTCAP_CTRL1_HEADSET       ANTCAP_HEADSET
+
+#define ANTCAP_CTRL1_NULL          0
+
+#define ANTCAP_CTRL1_GET_INTF      1
+#define ANTCAP_CTRL1_GET_VERS      2
+#define ANTCAP_CTRL1_GET_VALS      3
+#define ANTCAP_CTRL1_GET_CAL       5
+#define ANTCAP_CTRL1_GET_FILT      6
+
+#define ANTCAP_CTRL1_SET_INTF      1
+#define ANTCAP_CTRL1_SET_VALS      3
+#define ANTCAP_CTRL1_SET_CAL       5
+#define ANTCAP_CTRL1_SET_FILT      6
+#define ANTCAP_CTRL1_SET_CALFLASH  7
+#endif
+
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
 #define STM16_TO_HOST(buf, x) ((int16_t) be16_to_cpu(*((u16 *) (buf+(x)))))
@@ -440,6 +486,9 @@ struct motosh_data {
 	struct notifier_block fb_notif;
 #endif
 	struct mmi_hall_data *hall_data;
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+	struct power_supply antcap_psy;
+#endif
 };
 
 /* per algo config, request, and event registers */
@@ -586,6 +635,25 @@ extern unsigned short motosh_g_control_reg_restore;
 extern unsigned char motosh_g_ir_config_reg[MOTOSH_IR_CONFIG_REG_SIZE];
 extern bool motosh_g_ir_config_reg_restore;
 extern bool motosh_g_booted;
+
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+extern unsigned char motosh_g_antcap_cal[MOTOSH_ANTCAP_CAL_BUFF_SIZE];
+extern unsigned char motosh_g_antcap_cfg[MOTOSH_ANTCAP_CFG_BUFF_SIZE];
+extern unsigned char motosh_g_conn_state;
+extern unsigned char motosh_g_antcap_enabled;
+extern unsigned char motosh_g_antcap_hw_ready;
+extern unsigned char motosh_g_antcap_sw_ready;
+
+extern int motosh_antcap_register(void);
+extern int motosh_antcap_of_init(struct i2c_client *);
+extern int motosh_antcap_i2c_send_enable(unsigned char);
+extern int motosh_antcap_i2c_getcal_poll(unsigned char);
+extern int motosh_antcap_i2c_setcal_poll(unsigned char);
+extern int motosh_antcap_i2c_getver_poll(unsigned char);
+extern int motosh_antcap_i2c_flash_poll(unsigned char);
+extern int motosh_antcap_check_cal(void);
+extern int motosh_antcap_read_cal(void);
+#endif
 
 extern unsigned short motosh_i2c_retry_delay;
 
