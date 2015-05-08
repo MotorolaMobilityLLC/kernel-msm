@@ -40,6 +40,9 @@
 
 #include <linux/motosh.h>
 
+#include <linux/firmware.h>
+#include <linux/fs.h>
+
 long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
@@ -59,6 +62,10 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	struct timespec current_time;
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
+
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+	int chk;
+#endif
 
 	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
 		return -EINTR;
@@ -873,6 +880,171 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = motosh_i2c_write(ps_motosh, cmdbuff,
 				(MOTOSH_GYRO_CAL_SIZE + 1));
 		break;
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+	case MOTOSH_IOCTL_SET_ANTCAP_ENABLE:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_ANTCAP_ENABLE");
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_motosh->client->dev, "Copy set antcap enable returned error\n");
+			err = -EFAULT;
+			break;
+		}
+
+		motosh_g_antcap_sw_ready = 1;
+		if (byte)
+			motosh_g_antcap_enabled |=  ANTCAP_ENABLED;
+		else
+			motosh_g_antcap_enabled &= ~ANTCAP_ENABLED;
+
+		err = motosh_antcap_i2c_send_enable(0);
+		dev_info(&ps_motosh->client->dev,
+			"motosh_antcap enable I (err=%04x): en=%02x st=%02x\n",
+			err, motosh_g_antcap_enabled, motosh_g_conn_state);
+
+		break;
+	case MOTOSH_IOCTL_SET_ANTCAP_CFG:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_ANTCAP_CFG");
+		memcpy(&cmdbuff[1], motosh_g_antcap_cfg,
+			MOTOSH_ANTCAP_CFG_BUFF_SIZE);
+
+		if (ps_motosh->mode > BOOTMODE) {
+			/**********************************************/
+			/* copy configuration data into ANTCAP_CONFIG */
+			/**********************************************/
+			cmdbuff[0] = ANTCAP_CONFIG;
+			err = motosh_i2c_write(ps_motosh, cmdbuff,
+				(MOTOSH_ANTCAP_CFG_BUFF_SIZE + 1));
+			if (err) {
+				dev_err(&ps_motosh->client->dev,
+					"Copy set antcap cfg data: failed\n");
+				break;
+			}
+		}
+		break;
+	case MOTOSH_IOCTL_SET_ANTCAP_CAL:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_ANTCAP_CAL");
+		if (copy_from_user(&cmdbuff[1], argp,
+				   MOTOSH_ANTCAP_CAL_BUFF_SIZE)) {
+			dev_err(&ps_motosh->client->dev, "Copy set antcap cal returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		memcpy(motosh_g_antcap_cal, &cmdbuff[1],
+		       MOTOSH_ANTCAP_CAL_BUFF_SIZE);
+
+		if ((motosh_g_antcap_cal[0] != 0x86)
+			|| (motosh_g_antcap_cal[1] < 0x10)
+			|| (motosh_g_antcap_cal[2])) {
+
+			dev_err(&ps_motosh->client->dev,
+				"Copy set antcap cal data: cal data has issues\n");
+			err = -EFAULT;
+			break;
+		}
+
+		dev_info(&ps_motosh->client->dev, "motosh_antcap_i2c_getver\n");
+		err = motosh_antcap_i2c_getver_poll(0);
+		if (err) {
+			dev_err(&ps_motosh->client->dev,
+				"motosh_antcap_i2c_getver_poll 1 failed: %04x\n",
+				err);
+			break;
+		}
+
+		dev_info(&ps_motosh->client->dev, "motosh_antcap_i2c_getcal\n");
+		err = motosh_antcap_i2c_getcal_poll(0);
+		if (err) {
+			dev_err(&ps_motosh->client->dev,
+				"motosh_antcap_i2c_getcal_poll failed: %04x\n",
+				err);
+			break;
+		}
+
+		dev_info(&ps_motosh->client->dev,
+			"motosh_antcap_i2c_check_cal\n");
+		chk = motosh_antcap_check_cal();
+
+		dev_info(&ps_motosh->client->dev,
+			"motosh_antcap_i2c_getver\n");
+		err = motosh_antcap_i2c_getver_poll(0);
+
+		if (err) {
+			dev_err(&ps_motosh->client->dev,
+				"motosh_antcap_i2c_getver_poll 2 failed: %04x\n",
+				err);
+			break;
+		}
+
+		if (chk) {
+			dev_info(&ps_motosh->client->dev,
+				"motosh_antcap_i2c_setcal_poll\n");
+
+			err = motosh_antcap_i2c_setcal_poll(0);
+			if (err) {
+				dev_err(&ps_motosh->client->dev,
+				"motosh_antcap_i2c_setcal_poll failed: %04x\n",
+				err);
+				break;
+			}
+		}
+		break;
+	case MOTOSH_IOCTL_SET_HEADSET_STATE:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_HEADSET_STATE");
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_motosh->client->dev,
+				"Copy set headset state returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		if (byte)
+			motosh_g_conn_state |=  ANTCAP_HEADSET;
+		else
+			motosh_g_conn_state &= ~ANTCAP_HEADSET;
+
+		err = motosh_antcap_i2c_send_enable(0);
+		dev_info(&ps_motosh->client->dev,
+			"motosh_antcap headset (err=%04x): en=%02x st=%02x\n",
+			err, motosh_g_antcap_enabled, motosh_g_conn_state);
+
+		break;
+	case MOTOSH_IOCTL_SET_USBCONN_STATE:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_USBCONN_STATE");
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_motosh->client->dev,
+				"Copy set usbconn state returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		if (byte)
+			motosh_g_conn_state |=  ANTCAP_USB;
+		else
+			motosh_g_conn_state &= ~ANTCAP_USB;
+
+		err = motosh_antcap_i2c_send_enable(0);
+		dev_info(&ps_motosh->client->dev,
+			"motosh_antcap usbconn (err=%04x): en=%02x st=%02x\n",
+			err, motosh_g_antcap_enabled, motosh_g_conn_state);
+
+		break;
+	case MOTOSH_IOCTL_SET_AIRPLANE_MODE:
+		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_AIRPLANE_MODE");
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_motosh->client->dev,
+				"Copy set airplane mode returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		if (byte)
+			motosh_g_antcap_enabled |=  ANTCAP_AIRPLANE;
+		else
+			motosh_g_antcap_enabled &= ~ANTCAP_AIRPLANE;
+
+		err = motosh_antcap_i2c_send_enable(0);
+		dev_info(&ps_motosh->client->dev,
+			"motosh_antcap airplane (err=%04x): en=%02x st=%02x\n",
+			err, motosh_g_antcap_enabled, motosh_g_conn_state);
+
+		break;
+#endif /* CONFIG_CYPRESS_CAPSENSE_HSSP */
 	}
 
 	motosh_sleep(ps_motosh);
