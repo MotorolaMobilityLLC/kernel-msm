@@ -332,6 +332,28 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
+	/* send antcap configuration data */
+	memcpy(&rst_cmdbuff[1], motosh_g_antcap_cfg,
+	       MOTOSH_ANTCAP_CFG_BUFF_SIZE);
+	rst_cmdbuff[0] = ANTCAP_CONFIG;
+	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
+					(MOTOSH_ANTCAP_CFG_BUFF_SIZE + 1));
+	if (err) {
+		dev_err(&motosh_misc_data->client->dev,
+			"unable to write antcap cfg %04x\n", err);
+		ret_err = err;
+	}
+
+	/* send antcap enable */
+	err = motosh_antcap_i2c_send_enable(0);
+	dev_info(&motosh_misc_data->client->dev,
+		"motosh_antcap enable R (err=%04x): en=%02x st=%02x\n",
+		err, motosh_g_antcap_enabled, motosh_g_conn_state);
+	if (err)
+		ret_err = err;
+#endif
+
 	/* sending reset to slpc hal */
 	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0, false);
 
