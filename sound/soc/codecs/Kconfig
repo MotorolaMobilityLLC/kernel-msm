@@ -282,6 +282,12 @@ config SND_SOC_MAX98090
 config SND_SOC_MAX98095
        tristate
 
+config SND_SOC_MAX98925
+	bool "Support MAX98925 stereo system"
+	depends on I2C
+	help
+	MAX98925 driver for a stereo system.
+
 config SND_SOC_MAX9850
 	tristate
 

@@ -53,31 +53,41 @@
 #define I2S_PCM_SEL_PCM       1
 #define I2S_PCM_SEL_I2S       0
 #define I2S_PCM_SEL_OFFSET    1
+#define I2S_MASTER_OFFSET     0
+#define I2S_MASTER_SEL        0
+#define I2S_SLAVE_SEL         1
 
 #define WCD9XXX_MBHC_DEF_BUTTONS    8
 #define WCD9XXX_MBHC_DEF_RLOADS     5
 #define TOMTOM_EXT_CLK_RATE         9600000
 #define ADSP_STATE_READY_TIMEOUT_MS    3000
 
+#define MSM_TERT_MI2S_MASTER
+#define MSM_QUAT_MI2S_MASTER
+
 enum pinctrl_pin_state {
 	STATE_DISABLE = 0,   /* All pins are in sleep state */
 	STATE_AUXPCM_ACTIVE, /* Aux PCM = active, MI2S = sleep */
-	STATE_MI2S_ACTIVE,   /* Aux PCM = sleep, MI2S = active */
+	STATE_PRI_MI2S_ACTIVE,   /* Aux PCM = sleep, PRI_MI2S = active, TERT_MI2S = sleep, QUAT_MI2S = sleep */
+	STATE_TERT_MI2S_ACTIVE,   /* Aux PCM = sleep, PRI_MI2S = sleep, TERT_MI2S = active, QUAT_MI2S = sleep */
+	STATE_QUAT_MI2S_ACTIVE,   /* Aux PCM = sleep, PRI_MI2S = sleep, TERT_MI2S = sleep, QUAT_MI2S = active */
 	STATE_ACTIVE         /* All pins are in active state */
 };
 
 enum mi2s_pcm_mux {
-	PRI_MI2S_PCM = 1,
+	PRI_MI2S_PCM = 0,
 	SEC_MI2S_PCM,
 	TERT_MI2S_PCM,
-	QUAD_MI2S_PCM
+	QUAT_MI2S_PCM
 };
 
 struct msm_pinctrl_info {
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *disable;
-	struct pinctrl_state *mi2s_active;
+	struct pinctrl_state *pri_mi2s_active;
 	struct pinctrl_state *auxpcm_active;
+	struct pinctrl_state *tert_mi2s_active;
+	struct pinctrl_state *quat_mi2s_active;
 	struct pinctrl_state *active;
 	enum pinctrl_pin_state curr_state;
 };
@@ -89,6 +99,8 @@ struct msm8994_asoc_mach_data {
 	struct msm_pinctrl_info pinctrl_info;
 	void __iomem *pri_mux;
 	void __iomem *sec_mux;
+	void __iomem *ter_mux;
+	void __iomem *quad_mux;
 };
 
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -199,6 +211,32 @@ static struct afe_clk_cfg mi2s_tx_clk = {
 	Q6AFE_LPASS_MODE_CLK1_VALID,
 	0,
 };
+
+static struct afe_clk_cfg tert_mi2s_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_DISABLE,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+static struct afe_clk_cfg quat_mi2s_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_DISABLE,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+
+static atomic_t tert_mi2s_rsc_ref, quat_mi2s_rsc_ref;
+static int tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+static int quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+static int tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+static int quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;//SNDRV_PCM_FORMAT_S16_LE;
+
 
 static inline int param_is_mask(int p)
 {
@@ -1101,6 +1139,162 @@ static int msm8994_auxpcm_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int quat_mi2s_sample_rate_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int sample_rate_val = 0;
+
+	switch (quat_mi2s_sample_rate) {
+	case SAMPLING_RATE_192KHZ:
+		sample_rate_val = 2;
+		break;
+
+	case SAMPLING_RATE_96KHZ:
+		sample_rate_val = 1;
+		break;
+
+	case SAMPLING_RATE_48KHZ:
+	default:
+		sample_rate_val = 0;
+		break;
+	}
+
+	ucontrol->value.integer.value[0] = sample_rate_val;
+
+	return 0;
+}
+
+static int quat_mi2s_sample_rate_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 2:
+		quat_mi2s_sample_rate = SAMPLING_RATE_192KHZ;
+		break;
+	case 1:
+		quat_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	case 0:
+	default:
+		quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+	}
+
+	pr_debug("%s: sample_rate = %d\n", __func__, quat_mi2s_sample_rate);
+
+	return 0;
+}
+
+static int quat_mi2s_bit_format_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (quat_mi2s_bit_format) {
+	case SNDRV_PCM_FORMAT_S24_LE:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+
+	case SNDRV_PCM_FORMAT_S16_LE:
+	default:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	}
+
+	return 0;
+}
+
+static int quat_mi2s_bit_format_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 1:
+		quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	case 0:
+	default:
+		quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	pr_debug("%s: bit_format = %d \n", __func__, quat_mi2s_bit_format);
+	return 0;
+}
+
+static int tert_mi2s_sample_rate_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int sample_rate_val = 0;
+
+	switch (tert_mi2s_sample_rate) {
+	case SAMPLING_RATE_192KHZ:
+		sample_rate_val = 2;
+		break;
+
+	case SAMPLING_RATE_96KHZ:
+		sample_rate_val = 1;
+		break;
+
+	case SAMPLING_RATE_48KHZ:
+	default:
+		sample_rate_val = 0;
+		break;
+	}
+
+	ucontrol->value.integer.value[0] = sample_rate_val;
+
+	return 0;
+}
+
+static int tert_mi2s_sample_rate_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 2:
+		tert_mi2s_sample_rate = SAMPLING_RATE_192KHZ;
+		break;
+	case 1:
+		tert_mi2s_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	case 0:
+	default:
+		tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
+	}
+
+	pr_debug("%s: sample_rate = %d\n", __func__, tert_mi2s_sample_rate);
+
+	return 0;
+}
+
+static int tert_mi2s_bit_format_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (tert_mi2s_bit_format) {
+	case SNDRV_PCM_FORMAT_S24_LE:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+
+	case SNDRV_PCM_FORMAT_S16_LE:
+	default:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	}
+
+	return 0;
+}
+
+static int tert_mi2s_bit_format_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 1:
+		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	case 0:
+	default:
+		tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	pr_debug("%s: bit_format = %d \n", __func__, tert_mi2s_bit_format);
+	return 0;
+}
+
 static int msm_proxy_rx_ch_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -1216,11 +1410,31 @@ static int msm_set_pinctrl(struct msm_pinctrl_info *pinctrl_info,
 			goto err;
 		}
 		break;
-	case STATE_MI2S_ACTIVE:
+	case STATE_PRI_MI2S_ACTIVE:
 		ret = pinctrl_select_state(pinctrl_info->pinctrl,
-					   pinctrl_info->mi2s_active);
+					   pinctrl_info->pri_mi2s_active);
 		if (ret) {
-			pr_err("%s: MI2S state select failed with %d\n",
+			pr_err("%s: PRI_MI2S state select failed with %d\n",
+				__func__, ret);
+			ret = -EIO;
+			goto err;
+		}
+		break;
+	case STATE_TERT_MI2S_ACTIVE:
+		ret = pinctrl_select_state(pinctrl_info->pinctrl,
+					   pinctrl_info->tert_mi2s_active);
+		if (ret) {
+			pr_err("%s: TERT_MI2S state select failed with %d\n",
+				__func__, ret);
+			ret = -EIO;
+			goto err;
+		}
+		break;
+	case STATE_QUAT_MI2S_ACTIVE:
+		ret = pinctrl_select_state(pinctrl_info->pinctrl,
+					   pinctrl_info->quat_mi2s_active);
+		if (ret) {
+			pr_err("%s: QUAT_MI2S state select failed with %d\n",
 				__func__, ret);
 			ret = -EIO;
 			goto err;
@@ -1280,11 +1494,31 @@ static int msm_reset_pinctrl(struct msm_pinctrl_info *pinctrl_info,
 			goto err;
 		}
 		break;
-	case STATE_MI2S_ACTIVE:
+	case STATE_PRI_MI2S_ACTIVE:
 		ret = pinctrl_select_state(pinctrl_info->pinctrl,
-					   pinctrl_info->mi2s_active);
+					   pinctrl_info->pri_mi2s_active);
 		if (ret) {
-			pr_err("%s: MI2S state select failed with %d\n",
+			pr_err("%s: PRI_MI2S state select failed with %d\n",
+				__func__, ret);
+			ret = -EIO;
+			goto err;
+		}
+		break;
+	case STATE_TERT_MI2S_ACTIVE:
+		ret = pinctrl_select_state(pinctrl_info->pinctrl,
+					   pinctrl_info->tert_mi2s_active);
+		if (ret) {
+			pr_err("%s: TERT_MI2S state select failed with %d\n",
+				__func__, ret);
+			ret = -EIO;
+			goto err;
+		}
+		break;
+	case STATE_QUAT_MI2S_ACTIVE:
+		ret = pinctrl_select_state(pinctrl_info->pinctrl,
+					   pinctrl_info->quat_mi2s_active);
+		if (ret) {
+			pr_err("%s: QUAT_MI2S state select failed with %d\n",
 				__func__, ret);
 			ret = -EIO;
 			goto err;
@@ -1320,6 +1554,8 @@ static void msm_release_pinctrl(struct platform_device *pdev)
 	if (pinctrl_info) {
 		iounmap(pdata->pri_mux);
 		iounmap(pdata->sec_mux);
+		iounmap(pdata->ter_mux);
+		iounmap(pdata->quad_mux);
 		devm_pinctrl_put(pinctrl_info->pinctrl);
 		pinctrl_info->pinctrl = NULL;
 	}
@@ -1361,10 +1597,22 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 		pr_err("%s: could not get auxpcm pinstate\n", __func__);
 		goto err;
 	}
-	pinctrl_info->mi2s_active = pinctrl_lookup_state(pinctrl,
-						"mi2s-active");
-	if (IS_ERR(pinctrl_info->mi2s_active)) {
-		pr_err("%s: could not get mi2s pinstate\n", __func__);
+	pinctrl_info->pri_mi2s_active = pinctrl_lookup_state(pinctrl,
+						"pri_mi2s-active");
+	if (IS_ERR(pinctrl_info->pri_mi2s_active)) {
+		pr_err("%s: could not get pri_mi2s pinstate\n", __func__);
+		goto err;
+	}
+	pinctrl_info->tert_mi2s_active = pinctrl_lookup_state(pinctrl,
+						"tert_mi2s-active");
+	if (IS_ERR(pinctrl_info->tert_mi2s_active)) {
+		pr_err("%s: could not get tert_mi2s pinstate\n", __func__);
+		goto err;
+	}
+	pinctrl_info->quat_mi2s_active = pinctrl_lookup_state(pinctrl,
+						"quat_mi2s-active");
+	if (IS_ERR(pinctrl_info->quat_mi2s_active)) {
+		pr_err("%s: could not get quat_mi2s pinstate\n", __func__);
 		goto err;
 	}
 	pinctrl_info->active = pinctrl_lookup_state(pinctrl,
@@ -1388,13 +1636,39 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 	muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"lpaif_pri_mode_muxsel");
 	if (!muxsel) {
-		dev_err(&pdev->dev, "MUX addr invalid for MI2S\n");
+		dev_err(&pdev->dev, "MUX addr invalid for PRI_MI2S\n");
 		ret = -ENODEV;
 		goto err;
 	}
 	pdata->pri_mux = ioremap(muxsel->start, resource_size(muxsel));
 	if (pdata->pri_mux == NULL) {
-		pr_err("%s: MI2S muxsel virt addr is null\n", __func__);
+		pr_err("%s: PRI_MI2S muxsel virt addr is null\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"lpaif_tert_mode_muxsel");
+	if (!muxsel) {
+		dev_err(&pdev->dev, "MUX addr invalid for TER_MI2S\n");
+		ret = -ENODEV;
+		goto err;
+	}
+	pdata->ter_mux = ioremap(muxsel->start, resource_size(muxsel));
+	if (pdata->ter_mux == NULL) {
+		pr_err("%s: TER_MI2S muxsel virt addr is null\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	muxsel = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"lpaif_quat_mode_muxsel");
+	if (!muxsel) {
+		dev_err(&pdev->dev, "MUX addr invalid for QUAD_MI2S\n");
+		ret = -ENODEV;
+		goto err;
+	}
+	pdata->quad_mux = ioremap(muxsel->start, resource_size(muxsel));
+	if (pdata->quad_mux == NULL) {
+		pr_err("%s: QUAD_MI2S muxsel virt addr is null\n", __func__);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -1416,6 +1690,10 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 err:
 	if (pdata->pri_mux)
 		iounmap(pdata->pri_mux);
+	if (pdata->ter_mux)
+		iounmap(pdata->ter_mux);
+	if (pdata->quad_mux)
+		iounmap(pdata->quad_mux);
 	devm_pinctrl_put(pinctrl);
 	pinctrl_info->pinctrl = NULL;
 	return -EINVAL;
@@ -1520,7 +1798,7 @@ static int msm8994_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	else
 		pr_err("%s: MI2S muxsel addr is NULL\n", __func__);
 
-	ret = msm_set_pinctrl(pinctrl_info, STATE_MI2S_ACTIVE);
+	ret = msm_set_pinctrl(pinctrl_info, STATE_PRI_MI2S_ACTIVE);
 	if (ret) {
 		pr_err("%s: MI2S TLMM pinctrl set failed with %d\n",
 			__func__, ret);
@@ -1559,11 +1837,303 @@ static void msm8994_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	if (ret < 0)
 		pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
 
-	ret = msm_reset_pinctrl(pinctrl_info, STATE_MI2S_ACTIVE);
+	ret = msm_reset_pinctrl(pinctrl_info, STATE_PRI_MI2S_ACTIVE);
 	if (ret)
 		pr_err("%s: Reset pinctrl failed with %d\n",
 			__func__, ret);
 }
+
+static int msm8994_tert_mi2s_snd_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = &pdata->pinctrl_info;
+
+	pr_info("%s: dai name %s %p  substream = %s  stream = %d bit width =%d sample rate =%d  \n", __func__, cpu_dai->name, cpu_dai->dev,substream->name,
+			substream->stream, tert_mi2s_bit_format, tert_mi2s_sample_rate);
+
+	if (atomic_inc_return(&tert_mi2s_rsc_ref) == 1) {
+		if (pinctrl_info == NULL) {
+			pr_err("%s: pinctrl_info is NULL\n", __func__);
+			ret = -EINVAL;
+			goto err;
+		}
+		if (pdata->ter_mux != NULL)
+			iowrite32(I2S_PCM_SEL_I2S << I2S_PCM_SEL_OFFSET, pdata->ter_mux);
+		else
+			pr_err("%s: MI2S muxsel addr is NULL\n", __func__);
+
+		ret = msm_set_pinctrl(pinctrl_info, STATE_TERT_MI2S_ACTIVE);
+		if (ret) {
+			pr_err("%s: MI2S TLMM pinctrl set failed with %d\n", __func__, ret);
+			return ret;
+		}
+		if(tert_mi2s_bit_format==SNDRV_PCM_FORMAT_S24_LE) {
+			switch(tert_mi2s_sample_rate) {
+			case SAMPLING_RATE_192KHZ:
+				tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_12_P288_MHZ;
+			case SAMPLING_RATE_96KHZ:
+				tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ;
+			case SAMPLING_RATE_48KHZ:
+			default:
+				tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			}
+		} else {
+			switch(tert_mi2s_sample_rate) {
+			case SAMPLING_RATE_192KHZ:
+				tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ;
+			case SAMPLING_RATE_96KHZ :
+				tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			case SAMPLING_RATE_48KHZ :
+			default:
+				tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			}
+		}
+
+#ifdef MSM_TERT_MI2S_MASTER
+#ifdef MSM_TERT_MI2S_MCLK
+		tert_mi2s_clk.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		tert_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_BOTH_VALID;
+#else
+		tert_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+#endif
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX,	&tert_mi2s_clk);
+		if (ret < 0) {
+			pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+			goto err;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			pr_err("%s: set fmt cpu dai failed, err:%d\n", __func__, ret);
+#else
+		iowrite32(I2S_SLAVE_SEL << I2S_MASTER_OFFSET,
+		pdata->ter_mux);
+
+		tert_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+		tert_mi2s_clk.clk_src =Q6AFE_LPASS_CLK_SRC_EXTERNAL;
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX,	&tert_mi2s_clk);
+		if (ret < 0) {
+			pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+			goto err;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
+		if (ret < 0)
+			pr_err("%s: set fmt cpu dai failed, err:%d\n", __func__, ret);
+#endif
+	}
+
+err:
+	return ret;
+}
+
+
+
+static void msm8994_tert_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = &pdata->pinctrl_info;
+	int ret = 0;
+
+	pr_info("%s: dai name %s %p  substream = %s  stream = %d  \n", __func__, cpu_dai->name, cpu_dai->dev,substream->name, substream->stream);
+	if (atomic_dec_return(&tert_mi2s_rsc_ref) == 0) {
+
+		tert_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+		tert_mi2s_clk.clk_val2 = Q6AFE_LPASS_OSR_CLK_DISABLE;
+		tert_mi2s_clk.clk_src =Q6AFE_LPASS_CLK_SRC_INTERNAL;
+		tert_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX,	&tert_mi2s_clk);
+		if (ret < 0)
+			pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+
+		ret = msm_reset_pinctrl(pinctrl_info, STATE_TERT_MI2S_ACTIVE);
+		if (ret)
+			pr_err("%s: Reset pinctrl failed with %d\n", __func__, ret);
+		pr_info("%s Tertiary MI2S Clock is Disabled", __func__);
+	}
+}
+
+
+static int msm8994_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = &pdata->pinctrl_info;
+
+	pr_info("%s: dai name %s %p  substream = %s  stream = %d bit width =%d sample rate =%d  \n", __func__, cpu_dai->name, cpu_dai->dev,substream->name,
+			substream->stream, quat_mi2s_bit_format, quat_mi2s_sample_rate);
+
+	if (atomic_inc_return(&quat_mi2s_rsc_ref) == 1) {
+		if (pinctrl_info == NULL) {
+			pr_err("%s: pinctrl_info is NULL\n", __func__);
+			ret = -EINVAL;
+			goto err;
+		}
+		if (pdata->quad_mux != NULL)
+			iowrite32(I2S_PCM_SEL_I2S << I2S_PCM_SEL_OFFSET, pdata->quad_mux);
+		else
+			pr_err("%s: MI2S muxsel addr is NULL\n", __func__);
+
+		ret = msm_set_pinctrl(pinctrl_info, STATE_QUAT_MI2S_ACTIVE);
+		if (ret) {
+			pr_err("%s: MI2S TLMM pinctrl set failed with %d\n", __func__, ret);
+			return ret;
+		}
+		if(quat_mi2s_bit_format==SNDRV_PCM_FORMAT_S24_LE) {
+			switch(quat_mi2s_sample_rate) {
+			case SAMPLING_RATE_192KHZ:
+				quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_12_P288_MHZ;
+			case SAMPLING_RATE_96KHZ:
+				quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ;
+			case SAMPLING_RATE_48KHZ:
+			default:
+				quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			}
+		} else {
+			switch(quat_mi2s_sample_rate) {
+			case SAMPLING_RATE_192KHZ:
+				quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_6_P144_MHZ;
+			case SAMPLING_RATE_96KHZ:
+				quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			case SAMPLING_RATE_48KHZ:
+			default:
+				quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			}
+		}
+#ifdef MSM_QUAT_MI2S_MASTER
+#ifdef MSM_QUAT_MI2S_MCLK
+		quat_mi2s_clk.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		quat_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_BOTH_VALID;
+#else
+		quat_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+#endif
+		quat_mi2s_clk.clk_src =Q6AFE_LPASS_CLK_SRC_INTERNAL;
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX, &quat_mi2s_clk);
+		if (ret < 0) {
+			pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+			goto err;
+		}
+
+		ret = snd_soc_dai_set_fmt(codec_dai,
+		    SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			pr_err("%s: set fmt codec dai failed, err:%d\n", __func__, ret);
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			pr_err("%s: set fmt cpu dai failed, err:%d\n", __func__, ret);
+#else
+		iowrite32(I2S_SLAVE_SEL << I2S_MASTER_OFFSET,
+		pdata->quad_mux);
+
+		quat_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+		quat_mi2s_clk.clk_src =Q6AFE_LPASS_CLK_SRC_EXTERNAL;
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX, &quat_mi2s_clk);
+		if (ret < 0) {
+			pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+			goto err;
+		}
+
+		ret = snd_soc_dai_set_fmt(codec_dai,
+		    SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
+		if (ret < 0)
+			pr_err("%s: set fmt codec dai failed, err:%d\n", __func__, ret);
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
+		if (ret < 0)
+			pr_err("%s: set fmt cpu dai failed, err:%d\n", __func__, ret);
+#endif
+	}
+
+
+err:
+	return ret;
+}
+
+
+
+static void msm8994_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = &pdata->pinctrl_info;
+	int ret = 0;
+
+	pr_info("%s: dai name %s %p  substream = %s  stream = %d  \n", __func__, cpu_dai->name, cpu_dai->dev,substream->name, substream->stream);
+	if (atomic_dec_return(&quat_mi2s_rsc_ref) == 0) {
+
+		quat_mi2s_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+		quat_mi2s_clk.clk_val2 = Q6AFE_LPASS_OSR_CLK_DISABLE;
+		quat_mi2s_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+		quat_mi2s_clk.clk_src =Q6AFE_LPASS_CLK_SRC_INTERNAL;
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX,	&quat_mi2s_clk);
+		if (ret < 0)
+			pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+
+		ret = msm_reset_pinctrl(pinctrl_info, STATE_QUAT_MI2S_ACTIVE);
+		if (ret)
+			pr_err("%s: Reset pinctrl failed with %d\n", __func__, ret);
+		pr_info("%s Quaternary MI2S Clock is Disabled", __func__);
+	}
+}
+
+
+static int msm_be_tert_mi2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+					    struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+	SNDRV_PCM_HW_PARAM_RATE);
+
+	struct snd_interval *channels = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_CHANNELS);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+			   tert_mi2s_bit_format);
+	rate->min = rate->max = tert_mi2s_sample_rate;
+	channels->min = channels->max = 2;
+	pr_debug("%s Tertiary MI2S Sample Rate =%d, bit Format = %d \n", __func__, tert_mi2s_sample_rate, tert_mi2s_bit_format);
+
+	return 0;
+}
+
+static int msm_be_quat_mi2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+					    struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+	SNDRV_PCM_HW_PARAM_RATE);
+
+	struct snd_interval *channels = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_CHANNELS);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+			   quat_mi2s_bit_format);
+	rate->min = rate->max = quat_mi2s_sample_rate;
+	channels->min = channels->max = 2;
+	pr_debug("%s Quat MI2S Sample Rate =%d, bit Format = %d \n", __func__, quat_mi2s_sample_rate, quat_mi2s_bit_format);
+
+	return 0;
+}
+
+static struct snd_soc_ops msm8994_tert_mi2s_be_ops = {
+	.startup = msm8994_tert_mi2s_snd_startup,
+	.shutdown = msm8994_tert_mi2s_snd_shutdown,
+};
+static struct snd_soc_ops msm8994_quat_mi2s_be_ops = {
+	.startup = msm8994_quat_mi2s_snd_startup,
+	.shutdown = msm8994_quat_mi2s_snd_shutdown,
+};
 
 static struct snd_soc_ops msm8994_mi2s_be_ops = {
 	.startup = msm8994_mi2s_snd_startup,
@@ -1720,6 +2290,14 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			slim0_tx_bit_format_get, slim0_tx_bit_format_put),
 	SOC_ENUM_EXT("SLIM_0_TX SampleRate", msm_snd_enum[5],
 			slim0_tx_sample_rate_get, slim0_tx_sample_rate_put),
+	SOC_ENUM_EXT("TERT_MI2S BitWidth", msm_snd_enum[4],
+			tert_mi2s_bit_format_get, tert_mi2s_bit_format_put),
+	SOC_ENUM_EXT("TERT_MI2S SampleRate", msm_snd_enum[5],
+			tert_mi2s_sample_rate_get, tert_mi2s_sample_rate_put),
+	SOC_ENUM_EXT("QUAT_MI2S BitWidth", msm_snd_enum[4],
+			quat_mi2s_bit_format_get, quat_mi2s_bit_format_put),
+	SOC_ENUM_EXT("QUAT_MI2S SampleRate", msm_snd_enum[5],
+			quat_mi2s_sample_rate_get, quat_mi2s_sample_rate_put),
 };
 
 static bool msm8994_swap_gnd_mic(struct snd_soc_codec *codec)
@@ -2886,6 +3464,38 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.codec_dai_name = "tomtom_mad1",
 		.codec_name = "tomtom_codec",
 	},
+	{
+		.name = "Quaternary MI2S Hostless",
+		.stream_name = "QUAT_MI2S_TX Hostless",
+		.cpu_dai_name = "QUAT_MI2S_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+	{
+		.name = "Tertiary MI2S Hostless",
+		.stream_name = "TERT_MI2S Hostless",
+		.cpu_dai_name = "TERT_MI2S_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+
+
 	/* End of FE DAI LINK */
 	/* Backend FM DAI Links */
 	{
@@ -3177,7 +3787,60 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
 		.ops = &msm8994_mi2s_be_ops,
 		.ignore_suspend = 1,
-	}
+	},
+	{
+		.name = LPASS_BE_TERT_MI2S_RX,
+		.stream_name = "Tertiary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_tert_mi2s_hw_params_fixup,
+		.ops = &msm8994_tert_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_TERT_MI2S_TX,
+		.stream_name = "Tertiary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_tert_mi2s_hw_params_fixup,
+		.ops = &msm8994_tert_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "max98925.3-0031",
+		.codec_dai_name = "max98925-aif1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_quat_mi2s_hw_params_fixup,
+		.ops = &msm8994_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "max98925.3-0031",
+		.codec_dai_name = "max98925-aif1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_quat_mi2s_hw_params_fixup,
+		.ops = &msm8994_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+
 };
 
 static struct snd_soc_dai_link msm8994_hdmi_dai_link[] = {
@@ -3484,6 +4147,9 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		dev_info(&pdev->dev, "msm8994_prepare_us_euro failed (%d)\n",
 			ret);
+
+	atomic_set(&tert_mi2s_rsc_ref, 0);
+	atomic_set(&quat_mi2s_rsc_ref, 0);
 
 	/* Parse pinctrl info from devicetree */
 	ret = msm_get_pinctrl(pdev);
