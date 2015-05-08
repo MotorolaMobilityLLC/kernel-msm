@@ -41,6 +41,8 @@
 #include <linux/motosh.h>
 
 #define SPURIOUS_INT_DELAY 800 /* ms */
+#define MAX_NUM_LOGS_PER_INT  25
+#define MAX_LOG_MSG_LEN       128
 
 irqreturn_t motosh_wake_isr(int irq, void *dev)
 {
@@ -64,13 +66,13 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	u8 queue_index = 0;
 	u8 state = 0;
 	bool valid_queue_len;
-	bool pending_log_msg = false;
 	bool pending_reset = false;
 	u8 pending_reset_reason;
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
 	struct motosh_data *ps_motosh = container_of(work,
 			struct motosh_data, irq_wake_work);
+	int log_msg_ctr = 0;
 
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_wake_work_func\n");
 	mutex_lock(&ps_motosh->lock);
@@ -216,9 +218,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				dev_dbg(&ps_motosh->client->dev, "Sending Flat down %d\n",
 					data[0]);
 				queue_index += 1;
-			} else if (irq_status & M_LOG_MSG) {
-				pending_log_msg = true;
-			};
+			}
 			break;
 		case RESET_REQUEST:
 			pending_reset = true;
@@ -429,29 +429,63 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
 			cmdbuff[1] = 0x00;
 			motosh_i2c_write(ps_motosh, cmdbuff, 2);
-			goto EXIT;
+			/* exit wake queue loop */
+			queue_length = 0;
 		};
 	}
 
-	/* log messages are stored in a separate register, must read
-	   after queue is processed */
-	if (pending_log_msg) {
-		cmdbuff[0] = ERROR_STATUS;
-		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
-					    1, ESR_SIZE);
+	/* Log messages are stored in a separate queue.
+	   Read at most MAX_NUM_LOGS_PER_INT, or if pending_reset is set allow
+	   5 times that many. */
+	log_msg_ctr = (pending_reset ? 5 * MAX_NUM_LOGS_PER_INT :
+				       MAX_NUM_LOGS_PER_INT);
+	for (; log_msg_ctr > 0; log_msg_ctr--) {
+		u8 log_msg_len;
 
-		if (err >= 0) {
-			memcpy(stat_string, readbuff, ESR_SIZE);
-			stat_string[ESR_SIZE] = 0;
+		cmdbuff[0] = LOG_MSG_LEN;
+		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 1);
+		if (err < 0) {
 			dev_err(&ps_motosh->client->dev,
-				"sensorhub: %s\n",
-				stat_string);
-		} else
-			dev_err(&ps_motosh->client->dev,
-				"Failed to read error message [err: %d]\n",
+				"Reading log msg length failed [err: %d]\n",
 				err);
+			goto PROCESS_RESET;
+		}
+		log_msg_len = readbuff[0];
+
+		dev_dbg(&ps_motosh->client->dev,
+				"log msg length: %d\n", log_msg_len);
+
+		if (log_msg_len > MAX_LOG_MSG_LEN) {
+			dev_err(&ps_motosh->client->dev,
+				"ERROR: invalid log msg length: 0x%02X\n",
+				log_msg_len);
+			/* a write to the log queue length causes
+			   it to be reset */
+			cmdbuff[0] = LOG_MSG_LEN;
+			cmdbuff[1] = 0x00;
+			motosh_i2c_write(ps_motosh, cmdbuff, 2);
+			goto PROCESS_RESET;
+		} else if (log_msg_len > 0) {
+			cmdbuff[0] = LOG_MSG;
+			err = motosh_i2c_write_read(ps_motosh, cmdbuff,
+				readbuff, 1, log_msg_len);
+			if (err < 0) {
+				dev_err(&ps_motosh->client->dev,
+					"Reading log queue failed [len: %d] [err: %d]\n",
+					log_msg_len,
+					err);
+				goto PROCESS_RESET;
+			} else {
+				memcpy(stat_string, readbuff, log_msg_len);
+				stat_string[log_msg_len] = 0;
+				dev_err(&ps_motosh->client->dev,
+					"sensorhub%s\n", stat_string);
+			}
+		} else
+			break; /* no more log messages to process */
 	}
 
+PROCESS_RESET:
 	/* process a reset request after dumping any last logs */
 	if (pending_reset) {
 		motosh_as_data_buffer_write(ps_motosh, DT_RESET,
