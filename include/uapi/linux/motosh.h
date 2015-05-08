@@ -142,6 +142,19 @@
 		_IOW(MOTOSH_IOCTL_BASE, 54, char)
 #define MOTOSH_IOCTL_SET_FLUSH \
 		_IOW(MOTOSH_IOCTL_BASE, 55, int)
+#define MOTOSH_IOCTL_SET_ANTCAP_ENABLE \
+		_IOW(MOTOSH_IOCTL_BASE, 56, unsigned char)
+#define MOTOSH_IOCTL_SET_ANTCAP_CFG \
+		_IOW(MOTOSH_IOCTL_BASE, 57, unsigned char*)
+#define MOTOSH_IOCTL_SET_ANTCAP_CAL \
+		_IOW(MOTOSH_IOCTL_BASE, 58, unsigned char*)
+#define MOTOSH_IOCTL_SET_HEADSET_STATE \
+		_IOW(MOTOSH_IOCTL_BASE, 59, unsigned char)
+#define MOTOSH_IOCTL_SET_USBCONN_STATE \
+		_IOW(MOTOSH_IOCTL_BASE, 60, unsigned char)
+#define MOTOSH_IOCTL_SET_AIRPLANE_MODE \
+		_IOW(MOTOSH_IOCTL_BASE, 61, unsigned char)
+
 
 /* Used in HAL */
 #define FW_VERSION_SIZE 12
@@ -165,6 +178,9 @@
 #define MOTOSH_CAMERA_DATA 0x01
 /* Used only for ioctl def */
 #define MOTOSH_ALGO_SIZE         2
+
+#define MOTOSH_ANTCAP_CAL_BUFF_SIZE  64
+#define MOTOSH_ANTCAP_CFG_BUFF_SIZE  64
 
 /* Mask values */
 
