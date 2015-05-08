@@ -718,10 +718,47 @@ err:
 	return result;
 }
 
+/*
+ * Get GPU speed config based on efuse configuration.
+ */
+static int get_gpu_speed_config_data(struct platform_device *pdev,
+		int *speed_config)
+{
+	struct resource *res;
+	void __iomem *base;
+	u32 pte_reg_val, shift = 2, mask = 0x7;
+	int speed_bin;
+	int ret = -EINVAL;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+			"efuse_memory");
+	if (!res)
+		return ret;
+
+	base = ioremap(res->start, resource_size(res));
+
+	if (!base)
+		return ret;
+
+	pte_reg_val = __raw_readl(base);
+
+	iounmap(base);
+
+	speed_bin = (pte_reg_val >> shift) & mask;
+	if (speed_bin == 0)
+		*speed_config = ADRENO_SPEED_CONFIG_1;
+	else
+		*speed_config = ADRENO_SPEED_CONFIG_DEFAULT;
+
+	return 0;
+}
+
 static int adreno_of_get_pdata(struct platform_device *pdev)
 {
 	struct kgsl_device_platform_data *pdata = NULL;
-	int ret = -EINVAL;
+	struct device_node *node = pdev->dev.of_node;
+	int ret = -EINVAL, speed_config;
+	char prop_name[32];
 
 	if (of_property_read_string(pdev->dev.of_node, "label", &pdev->name)) {
 		KGSL_CORE_ERR("Unable to read 'label'\n");
@@ -737,8 +774,26 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 		goto err;
 	}
 
+	/* Get Speed Bin Data */
+	if (of_property_read_bool(pdev->dev.of_node,
+				"qcom,gpu-speed-config")) {
+		ret = get_gpu_speed_config_data(pdev, &speed_config);
+		if (!ret) {
+			if (speed_config == ADRENO_SPEED_CONFIG_1) {
+				snprintf(prop_name, ARRAY_SIZE(prop_name),
+						"%s%d",
+						ADRENO_SPEED_CONFIG_NAME,
+						speed_config);
+				node = adreno_of_find_subnode(pdev->dev.of_node,
+						prop_name);
+			}
+		} else {
+			goto err;
+		}
+	}
+
 	/* pwrlevel Data */
-	ret = adreno_of_get_pwrlevels(pdev->dev.of_node, pdata);
+	ret = adreno_of_get_pwrlevels(node, pdata);
 	if (ret)
 		goto err;
 
