@@ -30,6 +30,8 @@
 #include <linux/dropbox.h>
 
 #define ISL98611_NAME				"isl98611"
+#define ISL98611_REVISION			0x01
+#define ISL98611A_REVISION			0x08
 #define ISL98611_QUEUE_NAME			"backlight-workqueue"
 #define ISL98611_MAX_BRIGHTNESS			255
 #define ISL98611_DEFAULT_BRIGHTNESS		255
@@ -51,12 +53,14 @@
 /* BIT3 can be 0 or 1 depending on brightness state. */
 #define REG_ENABLE_DEFAULT			0x37
 
+#define REG_REVISION		0x00
 #define REG_STATUS		0x01
 #define REG_ENABLE		0x02
 #define REG_VPVNHEAD		0x03
 #define REG_VPLEVEL		0x04
 #define REG_VNLEVEL		0x05
 #define REG_BOOSTCTRL		0x06
+#define REG_EFFICIENCY		0x08
 #define REG_VNPFM		0x09
 #define REG_BRGHT_MSB		0x10
 #define REG_BRGHT_LSB		0x11
@@ -82,6 +86,8 @@
 #define BRGHT_LSB_MASK		0x07
 #define VLED_EN_MASK		0x08
 #define RESET_MASK		0x80
+#define HIGH_CURRENT_MASK	0x40
+#define EFF_MASK		0xF3
 
 #define VLED_ON_VAL		0x08
 #define VLED_OFF_VAL		0x00
@@ -92,6 +98,8 @@
 #define RESET_VAL		0x00
 #define NO_RESET_VAL		0x80
 #define CABC_VAL		0x80
+#define HIGH_CURRENT_VAL	0x40
+#define EFF_VAL			0xF3
 
 struct isl98611_chip {
 	struct isl98611_platform_data *pdata;
@@ -102,6 +110,7 @@ struct isl98611_chip {
 	struct work_struct ledwork;
 	struct led_classdev cdev;
 	struct notifier_block fb_notif;
+	int revision;
 };
 
 static const struct regmap_config isl98611_regmap = {
@@ -145,11 +154,33 @@ static int isl98611_update(struct isl98611_chip *pchip,
 	return rc;
 }
 
+/* ils98611A specific initialization */
+static int isl98611A_init(struct isl98611_chip *pchip)
+{
+	int rval = 0;
+
+	/* enable high VLED limit - 1.5 A */
+	rval |= isl98611_update(pchip, REG_VNPFM,
+			HIGH_CURRENT_MASK, HIGH_CURRENT_VAL);
+
+	/* some undocumented efficiency register... */
+	rval |= isl98611_update(pchip, REG_EFFICIENCY, EFF_MASK, EFF_VAL);
+
+	return rval;
+}
+
 /* initialize chip */
 static int isl98611_chip_init(struct isl98611_chip *pchip)
 {
 	int rval = 0;
 	struct isl98611_platform_data *pdata = pchip->pdata;
+
+
+	pchip->revision = isl98611_read(pchip, REG_REVISION);
+	if (pchip->revision < 0) {
+		dev_err(pchip->dev, "could not read chip revision");
+		return -ENXIO;
+	}
 
 	if (!pdata->no_reset)
 		rval |= isl98611_update(pchip, REG_ENABLE,
@@ -189,6 +220,9 @@ static int isl98611_chip_init(struct isl98611_chip *pchip)
 
 	rval |= isl98611_update(pchip, REG_DIMMCTRL,
 		TRANS_THRESHOLD_MASK, pdata->dimm_threshold);
+
+	if (ISL98611A_REVISION == pchip->revision)
+		rval |= isl98611A_init(pchip);
 
 	return rval;
 }
@@ -543,7 +577,8 @@ static int isl98611_probe(struct i2c_client *client,
 	}
 
 	status = isl98611_read(pchip, REG_STATUS);
-	dev_info(pchip->dev, "probe success chip hw status %#x", status);
+	dev_info(pchip->dev, "probe success chip revision %#x hw status %#x",
+		pchip->revision, status);
 
 	return 0;
 
