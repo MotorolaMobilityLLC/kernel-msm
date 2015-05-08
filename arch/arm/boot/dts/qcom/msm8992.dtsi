@@ -458,8 +458,6 @@
 			     <1 7 0>;
 		interrupt-names = "pri-dbe-irq",
 				  "sec-dbe-irq",
-				  "pri-ext-irq",
-				  "sec-ext-irq",
 				  "cci-irq",
 				  "sbe-irq";
 		poll-delay-ms = <5000>;
