@@ -405,7 +405,7 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 		fb_notif);
 
 	/* Return immediately if we don't care about the event */
-	if (event != FB_EVENT_BLANK)
+	if (event != FB_EARLY_EVENT_BLANK)
 		return 0;
 
 	dev_dbg(pchip->dev, "%s+\n", __func__);
