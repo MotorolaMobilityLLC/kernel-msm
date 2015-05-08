@@ -155,7 +155,7 @@
 		fairchild,ext-temp-volt-mv = <4000>;
 		fairchild,ext-temp-soc = <65>;
 		fairchild,oreg-voltage-mv = <4350>;
-		fairchild,low-voltage-uv = <3200000>;
+		fairchild,low-voltage-uv = <3000000>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&fan5404x_int_default>;
