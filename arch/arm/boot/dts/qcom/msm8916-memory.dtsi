@@ -66,5 +66,30 @@
 			reg = <0x0 0x83000000 0x0 0x1400000>;
 			label = "cont_splash_mem";
 		};
+
+		ramoops_mem: ramoops_region@b8b00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x9ff00000 0x0 0x100000>;
+			label = "ramoops_mem";
+		};
+	};
+};
+
+&soc {
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		linux,contiguous-region = <&ramoops_mem>;
+
+		android,ramoops-buffer-start = <0x9ff00000>;
+		android,ramoops-buffer-size = <0x100000>;
+		android,ramoops-console-size = <0x80000>;
+		android,ramoops-record-size = <0x3F800>;
+		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-pmsg-size = <0x40000>;
+		android,ramoops-dump-oops = <0x1>;
 	};
 };
