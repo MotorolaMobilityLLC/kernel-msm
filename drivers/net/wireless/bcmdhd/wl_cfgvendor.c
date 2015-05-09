@@ -1859,7 +1859,7 @@ static int wl_cfgvendor_dbg_get_mem_dump(struct wiphy *wiphy,
 				buf_len = nla_get_u32(iter);
 				break;
 			case DEBUG_ATTRIBUTE_FW_DUMP_DATA:
-				user_buf = (void __user *) nla_get_u32(iter);
+				user_buf = (void __user *)(unsigned long) nla_get_u64(iter);
 				break;
 			default:
 				WL_ERR(("Unknown type: %d\n", type));
