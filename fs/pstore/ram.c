@@ -35,6 +35,7 @@
 #include <linux/compiler.h>
 #include <linux/pstore_ram.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 
 #define RAMOOPS_KERNMSG_HDR "===="
 #define MIN_MEM_SIZE 4096UL
@@ -445,7 +446,9 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	const struct device *dev = &pdev->dev;
 	struct ramoops_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
-	u32 start = 0, size = 0, console = 0, annotate = 0, pmsg = 0;
+	struct device_node *pnode;
+	u32 start = 0, console = 0, annotate = 0, pmsg = 0;
+	u64 size = 0;
 	u32 record = 0, oops = 0;
 	int ret;
 
@@ -454,13 +457,20 @@ static void  ramoops_of_init(struct platform_device *pdev)
 		pr_err("private data is empty!\n");
 		return;
 	}
-	ret = of_property_read_u32(np, "android,ramoops-buffer-start",
-				&start);
-	if (ret)
+
+	pnode = of_parse_phandle(np, "linux,contiguous-region", 0);
+	if (!pnode)
 		return;
 
-	ret = of_property_read_u32(np, "android,ramoops-buffer-size",
-				&size);
+	start = (u32)of_get_address(pnode, 0, &size, NULL);
+	if (!start) {
+		of_node_put(pnode);
+		return;
+	}
+	of_node_put(pnode);
+
+	ret = of_property_read_u32(np, "android,ramoops-buffer-start",
+				&start);
 	if (ret)
 		return;
 
