@@ -10,17 +10,27 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+/{
+	mtp_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-itech-3000mah.dtsi"
+	};
+};
 
-#include "../qcom/msm8994-v2.0.dtsi"
-#include "../qcom/msm8994-pinctrl.dtsi"
-#include "../qcom/msm8994-mtp.dtsi"
-#include "huawei-common.dtsi"
-#include "lunch_box_va/huawei.dtsi"
+&pmi8994_fg {
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,ext-sense-type;
+};
 
-/ {
-	model = "Huawei Technologies, Inc. MSM8994 Lunch Box";
-	compatible = "qcom,msm8994-mtp", "qcom,msm8994", "qcom,mtp";
-	qcom,board-id= <8000 0>;
-	huawei,modem_id = <0xFD000100 0x0>;
+&pmi8994_charger {
+	qcom,float-voltage-mv = <4300>;
+};
+&i2c_5 {
+	smb1351-charger@1d {
+		compatible = "qcom,smb1351-charger";
+		reg = <0x1d>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4350>;
+		qcom,recharge-thresh-mv = <100>;
+	};
 };

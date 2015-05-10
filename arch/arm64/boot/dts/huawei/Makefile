@@ -1,7 +1,8 @@
 ifeq ($(CONFIG_OF),y)
 
 dtb-$(CONFIG_ARCH_MSM8994) += huawei_lunch_box_va.dtb \
-                              huawei_angler_v1.dtb
+                              huawei_angler_v1.dtb \
+                              huawei_angler_v2.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)

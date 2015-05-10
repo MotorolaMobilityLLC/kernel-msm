@@ -16,11 +16,11 @@
 #include "../qcom/msm8994-pinctrl.dtsi"
 #include "../qcom/msm8994-mtp.dtsi"
 #include "huawei-common.dtsi"
-#include "huawei_msm8994_angler_v1/huawei.dtsi"
+#include "huawei_msm8994_angler_v2/huawei.dtsi"
 
-/{
-	model = "Huawei Technologies, Inc. MSM8994 Angler V1";
+/ {
+	model = "Huawei Technologies, Inc. MSM8994 Angler V2";
 	compatible = "qcom,msm8994-mtp", "qcom,msm8994", "qcom,mtp";
-	qcom,board-id= <8001 0>;
+	qcom,board-id= <8019 0>;
 	huawei,modem_id = <0xFD000100 0x0>;
 };

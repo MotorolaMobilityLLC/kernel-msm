@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,17 +10,12 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
-
-#include "../qcom/msm8994-v2.0.dtsi"
-#include "../qcom/msm8994-pinctrl.dtsi"
-#include "../qcom/msm8994-mtp.dtsi"
-#include "huawei-common.dtsi"
-#include "huawei_msm8994_angler_v1/huawei.dtsi"
-
-/{
-	model = "Huawei Technologies, Inc. MSM8994 Angler V1";
-	compatible = "qcom,msm8994-mtp", "qcom,msm8994", "qcom,mtp";
-	qcom,board-id= <8001 0>;
-	huawei,modem_id = <0xFD000100 0x0>;
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI Angler V2";
+                  fac,hardware_ver = "ANGLER-V2";
+                  fac,software_ver = "MSM8994_ANGLER_V2";
+                  status = "ok";
+        };
 };

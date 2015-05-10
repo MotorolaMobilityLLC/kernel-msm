@@ -1,0 +1,88 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi12 = &spi_12;
+	};
+};
+
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		spi12_active {
+			/* MOSI, MISO, CS, CLK */
+			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <1>;
+			label = "spi12-active";
+			spi12_active: spi_active {
+			       drive-strength = <8>;
+			       bias-disable = <0>;
+		        };
+		};
+
+		spi12_suspend {
+			/* MOSI, MISO, CS, CLK */
+			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <1>;
+			label = "spi12-suspend";
+			spi12_sleep: spi_sleep {
+			       drive-strength = <2>;
+			       bias-pull-down;
+		        };
+		};
+	};
+
+	spi_12: spi_fpc: spi@F9968000 {  /* BLSP2 QUP6 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xF9968000 0x1000>,
+			<0xf9944000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 106 0>, <0 239 0>;
+		spi-max-frequency = <19200000>;
+		qcom,infinite-mode = <0>;
+		#qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <22>;
+		qcom,bam-producer-pipe-index = <23>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi12_active>;
+		pinctrl-1 = <&spi12_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+	};
+};
+
+&spi_12 {
+	status = "ok";
+	fpc1020-spi@0 {
+		compatible = "fpc,fpc1020";
+		reg = <0>;
+		interrupt-parent = <&msm_gpio>;
+		spi-max-frequency = <5000000>;
+		fpc1020,irq_gpio = <&msm_gpio 90 0>;
+		fpc1020,reset_gpio = <&msm_gpio 89 0>;
+		fpc1020,moduleid_gpio = <&msm_gpio 102 0>;
+		vdd-supply = <&pm8994_s4>;
+		fpc1020,vdd = "vdd";
+		interrupts = <90 0>;
+		status = "ok";
+	};
+};
+
