@@ -3429,6 +3429,14 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 						rmi_fd.data_base_addr;
 				rmi4_data->f01_cmd_base_addr =
 						rmi_fd.cmd_base_addr;
+				pr_debug("query_base_addr 0x%04x\n",
+					rmi4_data->f01_query_base_addr);
+				pr_debug("ctrl_base_addr 0x%04x\n",
+					rmi4_data->f01_ctrl_base_addr);
+				pr_debug("data_base_addr 0x%04x\n",
+					rmi4_data->f01_data_base_addr);
+				pr_debug("cmd_base_addr 0x%04x\n",
+					rmi4_data->f01_cmd_base_addr);
 
 				retval = synaptics_rmi4_i2c_read(rmi4_data,
 						rmi4_data->f01_data_base_addr,
