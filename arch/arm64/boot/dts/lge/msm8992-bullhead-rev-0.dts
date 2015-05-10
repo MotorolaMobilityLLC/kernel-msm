@@ -22,6 +22,20 @@
 	qcom,board-id = <0x364 0>;
 };
 
+&i2c_5 {
+	tusb320@60 {
+		status = "ok";
+		compatible = "ti,tusb320";
+		reg = <0x60>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <57 0x2>;
+		tusb320,int-gpio = <&msm_gpio 57 0>;
+		tusb320,enb-gpio = <&msm_gpio 11 0>;
+		tusb320,select-mode = <0>;
+		tusb320,dfp-power = <0>;
+	};
+};
+
 &i2c_2 {
 	synaptics@20 {
 		vcc_i2c-supply = <&pm8994_l10>;
