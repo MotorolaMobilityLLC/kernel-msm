@@ -418,6 +418,13 @@ int switch_motosh_mode(enum stm_mode mode)
 			gpio_set_value(pdata->gpio_reset, 1);
 			msleep(FLASHEN_I2C_DELAY);
 
+			/* de-assert boot pin to reduce chance of collision
+			   with modemm authentication on P2B Clark - hardware
+			   mistakenly shared this GPIO
+			*/
+			gpio_set_value(pdata->gpio_bslen,
+				       !(bslen_pin_active_value));
+
 			err = motosh_boot_cmd_write(motosh_misc_data, GET_ID);
 			if (err < 0)
 				goto RETRY_ID;
@@ -462,9 +469,6 @@ RETRY_ID:
 			/* Exit flash mode so we can re-enter on a retry
 			   Assert reset de-assert flash-enable and release */
 			gpio_set_value(pdata->gpio_reset, 0);
-			msleep(RESET_PULSE);
-			gpio_set_value(pdata->gpio_bslen,
-				       !(bslen_pin_active_value));
 			msleep(RESET_PULSE);
 			gpio_set_value(pdata->gpio_reset, 1);
 
