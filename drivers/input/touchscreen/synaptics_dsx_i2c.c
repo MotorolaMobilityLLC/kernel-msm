@@ -32,6 +32,7 @@
 #include <linux/jiffies.h>
 #include <linux/semaphore.h>
 #include <linux/regulator/consumer.h>
+#include <linux/reboot.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
 #include <linux/pinctrl/consumer.h>
@@ -4253,6 +4254,23 @@ static inline int synaptics_dsx_display_on(struct device *dev)
 	return 0;
 }
 
+static int rmi_reboot(struct notifier_block *nb,
+			unsigned long event,
+			void *unused)
+{
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(nb, struct synaptics_rmi4_data, rmi_reboot);
+	const struct synaptics_dsx_platform_data *platform_data =
+			rmi4_data->board;
+	if (platform_data->regulator_en) {
+		pr_debug("touch reboot - disable regulators\n");
+		regulator_force_disable(rmi4_data->regulator);
+		regulator_put(rmi4_data->regulator);
+		msleep(1000);
+	}
+
+	return NOTIFY_DONE;
+}
  /**
  * synaptics_rmi4_probe()
  *
@@ -4505,6 +4523,13 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
+
+	rmi4_data->rmi_reboot.notifier_call = rmi_reboot;
+	rmi4_data->rmi_reboot.next = NULL;
+	rmi4_data->rmi_reboot.priority = 1;
+	retval = register_reboot_notifier(&rmi4_data->rmi_reboot);
+	if (retval)
+		dev_err(&client->dev, "register for reboot failed\n");
 
 	mutex_lock(&exp_fn_ctrl_mutex);
 	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
