@@ -57,6 +57,7 @@
 				SND_JACK_BTN_6 | SND_JACK_BTN_7)
 
 #define	SND_JACK_BTN_SHIFT	20
+#define	FSA8500_LINT_DEBOUNCE	200
 
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
@@ -632,17 +633,35 @@ static irqreturn_t fsa8500_irq_handler(int irq, void *data)
 
 static void fsa8500_det_thread(struct work_struct *work)
 {
+	u8 tmp_status[5];
 	struct fsa8500_data *irq_data =
 				i2c_get_clientdata(fsa8500_client);
 
 	mutex_lock(&irq_data->lock);
 	wake_lock(&irq_data->wake_lock);
 
-	if (fsa8500_update_device_status(irq_data))
+	if (fsa8500_update_device_status(irq_data)) {
 		queue_delayed_work(irq_data->wq, &irq_data->work_det,
 					msecs_to_jiffies(2000));
-	fsa8500_report_hs(irq_data);
+		goto skip_report;
+	} else if ((irq_data->irq_status[0] & 0x2) &&
+			(irq_data->irq_status[0] & 0x7)) {
+		/* LINT detected, delay for 200ms*/
+		memcpy(tmp_status, irq_data->irq_status, sizeof(tmp_status));
+		msleep(FSA8500_LINT_DEBOUNCE);
+		fsa8500_update_device_status(irq_data);
+		if (irq_data->irq_status[0] & 0x18) {
+			/* Disconnect event in 200ms, retry in 2sec */
+			queue_delayed_work(irq_data->wq, &irq_data->work_det,
+					msecs_to_jiffies(2000));
+			goto skip_report;
+		} else
+			memcpy(irq_data->irq_status,
+				tmp_status, sizeof(tmp_status));
+	}
 
+	fsa8500_report_hs(irq_data);
+skip_report:
 	wake_unlock(&irq_data->wake_lock);
 	mutex_unlock(&irq_data->lock);
 }
