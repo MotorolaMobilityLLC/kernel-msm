@@ -59,3 +59,10 @@
 &mot_inx_570_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
+
+&i2c_2 {
+	synaptics_dsx_i2c@20 {
+		touch_vdd-supply = <&vreg_5p0>;
+		vdd_quirk-supply = <&pm8994_l22>;
+	};
+};
