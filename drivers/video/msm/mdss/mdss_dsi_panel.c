@@ -807,6 +807,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	u8 pwr_mode = 0;
 	char *dropbox_issue = NULL;
 	static int dropbox_count;
+	static int panel_recovery_retry;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -863,7 +864,14 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			pr_err("%s: Panel recovery FAILED!!\n", __func__);
 
 		pdata->panel_info.panel_dead = true;
-	}
+
+		if (panel_recovery_retry++ > 5) {
+			pr_err("%s: panel recovery failed for all retries",
+				__func__);
+			BUG();
+		}
+	} else
+		panel_recovery_retry = 0;
 
 end:
 	if (dropbox_issue != NULL) {
