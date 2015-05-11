@@ -476,6 +476,7 @@ struct synaptics_rmi4_data {
 	struct work_struct resume_work;
 
 	struct synaptics_rmi4_func_packet_regs *f12_data_registers_ptr;
+	struct notifier_block rmi_reboot;
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
