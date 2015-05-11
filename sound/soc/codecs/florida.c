@@ -39,6 +39,8 @@
 #define FLORIDA_DEFAULT_FRAGMENTS       1
 #define FLORIDA_DEFAULT_FRAGMENT_SIZE   4096
 
+#define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
+
 #define ADSP2_CONTROL	0x0
 #define ADSP2_CORE_ENA  0x0002
 
@@ -60,6 +62,7 @@ struct florida_priv {
 	struct arizona_priv core;
 	struct arizona_fll fll[2];
 	struct florida_compr compr_info[FLORIDA_NUM_COMPR_DEVICES];
+	bool dsp_enabled[4];
 
 	struct mutex fw_lock;
 };
@@ -225,11 +228,70 @@ static int florida_sysclk_ev(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static bool florida_check_all_dsps(struct florida_priv *florida)
+{
+	int i;
+	for (i = 0; i < 4; i++) {
+		if (florida->dsp_enabled[i])
+			return true;
+	}
+	return false;
+}
+
+static int florida_set_fll(struct snd_soc_codec *codec, int fll_id, int source,
+		unsigned int Fref, unsigned int Fout)
+{
+	struct florida_priv *florida = snd_soc_codec_get_drvdata(codec);
+	if (!florida_check_all_dsps(florida) && Fref == 32768) {
+		if (fll_id == FLORIDA_FLL1)
+			return arizona_set_fll(&florida->fll[0], source, 0, 0);
+		if (fll_id == FLORIDA_FLL2)
+			return arizona_set_fll(&florida->fll[1], source, 0, 0);
+	}
+
+	switch (fll_id) {
+	case FLORIDA_FLL1:
+		return arizona_set_fll(&florida->fll[0], source, Fref, Fout);
+	case FLORIDA_FLL2:
+		return arizona_set_fll(&florida->fll[1], source, Fref, Fout);
+	case FLORIDA_FLL1_REFCLK:
+		return arizona_set_fll_refclk(&florida->fll[0], source, Fref,
+			Fout);
+	case FLORIDA_FLL2_REFCLK:
+		return arizona_set_fll_refclk(&florida->fll[1], source, Fref,
+			Fout);
+	default:
+		return -EINVAL;
+	}
+}
+
 static int florida_virt_dsp_power_ev(struct snd_soc_dapm_widget *w,
 				    struct snd_kcontrol *kcontrol, int event)
 {
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(w->codec);
 
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		if (!florida_check_all_dsps(florida))
+			arizona_set_fll(&florida->fll[0],
+				ARIZONA_FLL_SRC_MCLK2,
+				32768, FLORIDA_SYSCLK_RATE);
+
+		florida->dsp_enabled[w->shift] = true;
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		florida->dsp_enabled[w->shift] = false;
+		if (!florida_check_all_dsps(florida))
+			arizona_set_fll(&florida->fll[0],
+				ARIZONA_FLL_SRC_MCLK1,
+				0, 0);
+		break;
+	default:
+		break;
+	}
+
+	if (w->shift != 2)
+		return 0;
 	/* The compr_info is hardcoded for DSP3 */
 	mutex_lock(&florida->compr_info[2].lock);
 	if (!florida->compr_info[2].stream)
@@ -1320,15 +1382,18 @@ SND_SOC_DAPM_VIRT_MUX("DSP2 Virtual Input", SND_SOC_NOPM, 0, 0,
 SND_SOC_DAPM_VIRT_MUX("DSP3 Virtual Input", SND_SOC_NOPM, 0, 0,
 		      &florida_memory_mux[1]),
 
-SND_SOC_DAPM_VIRT_MUX("DSP2 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
-		      &florida_dsp_output_mux[0]),
+SND_SOC_DAPM_VIRT_MUX_E("DSP2 Virtual Output Mux", SND_SOC_NOPM, 1, 0,
+		      &florida_dsp_output_mux[0], florida_virt_dsp_power_ev,
+		      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
-SND_SOC_DAPM_VIRT_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
+SND_SOC_DAPM_VIRT_MUX_E("DSP3 Virtual Output Mux", SND_SOC_NOPM, 2, 0,
 		      &florida_dsp_output_mux[1], florida_virt_dsp_power_ev,
-		      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+		      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD |
+		      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 
-SND_SOC_DAPM_VIRT_MUX("DSP4 Virtual Output Mux", SND_SOC_NOPM, 0, 0,
-		      &florida_dsp_output_mux[2]),
+SND_SOC_DAPM_VIRT_MUX_E("DSP4 Virtual Output Mux", SND_SOC_NOPM, 3, 0,
+		      &florida_dsp_output_mux[2], florida_virt_dsp_power_ev,
+		      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 
 ARIZONA_MUX_WIDGETS(ISRC1DEC1, "ISRC1DEC1"),
@@ -1806,27 +1871,6 @@ static const struct snd_soc_dapm_route florida_dapm_routes[] = {
 	{ "DRC2 Signal Activity", NULL, "DRC2L" },
 	{ "DRC2 Signal Activity", NULL, "DRC2R" },
 };
-
-static int florida_set_fll(struct snd_soc_codec *codec, int fll_id, int source,
-			  unsigned int Fref, unsigned int Fout)
-{
-	struct florida_priv *florida = snd_soc_codec_get_drvdata(codec);
-
-	switch (fll_id) {
-	case FLORIDA_FLL1:
-		return arizona_set_fll(&florida->fll[0], source, Fref, Fout);
-	case FLORIDA_FLL2:
-		return arizona_set_fll(&florida->fll[1], source, Fref, Fout);
-	case FLORIDA_FLL1_REFCLK:
-		return arizona_set_fll_refclk(&florida->fll[0], source, Fref,
-					      Fout);
-	case FLORIDA_FLL2_REFCLK:
-		return arizona_set_fll_refclk(&florida->fll[1], source, Fref,
-					      Fout);
-	default:
-		return -EINVAL;
-	}
-}
 
 #define FLORIDA_RATES SNDRV_PCM_RATE_8000_192000
 
