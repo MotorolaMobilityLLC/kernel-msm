@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Motorla Mobility LLC. All rights reserved.
+/* Copyright (c) 2014-2015, Motorla Mobility LLC. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,7 +13,7 @@
 /* RAM OOPS */
 /memreserve/ 0xaf000000 0x80000;
 
-#include "msm8994-v2.dtsi"
+#include "msm8994-v2.0.dtsi"
 #include "msm8994-moto-common.dtsi"
 
 /* There should be no changes to this file unless a v3 shows up. Make your
