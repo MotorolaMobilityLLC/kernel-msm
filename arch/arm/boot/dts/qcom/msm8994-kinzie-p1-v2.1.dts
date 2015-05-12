@@ -13,7 +13,7 @@
 
 /dts-v1/;
 
-#include "msm8994-kinzie-v2.0.dtsi"
+#include "msm8994-kinzie-v2.1.dtsi"
 
 / {
 	qcom,board-id = <0x42 0x8100>;
@@ -35,9 +35,4 @@
 	drv2605@5a {
 		external_trigger = <2>; /* Disable ext. trigger */
 	};
-};
-
-&pmi8994_charger {
-	qcom,dc-psy-ma = <500>;
-	qcom,batt-therm-wa-enabled;
 };
