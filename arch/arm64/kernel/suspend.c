@@ -11,6 +11,34 @@
 #include <asm/tlbflush.h>
 
 extern int __cpu_suspend(unsigned long);
+
+#if defined(CONFIG_ARCH_THREAD_INFO_ALLOCATOR)
+static phys_addr_t stack_page1_virt_to_phys(struct cpu_suspend_ctx *ptr)
+{
+	struct thread_info *ti = current_thread_info();
+
+	if (virt_is_valid_lowmem(ti)) {
+		return virt_to_phys(ptr);
+	} else if (is_vmalloc_addr(ti)) {
+		unsigned long stack_page, low, high;
+
+		stack_page = (unsigned long)task_stack_page(current);
+		low = (unsigned long)end_of_stack(current);
+		high = stack_page + PAGE_SIZE - sizeof(struct cpu_suspend_ctx);
+		BUG_ON(((unsigned long)ptr < low) ||
+			((unsigned long)ptr >= high));
+		return ti->phys_addr + ((unsigned long)ptr - stack_page);
+	} else {
+		BUG();
+	}
+}
+#else
+static inline phys_addr_t stack_page1_virt_to_phys(struct cpu_suspend_ctx *ptr)
+{
+	return virt_to_phys(ptr);
+}
+#endif
+
 /*
  * This is called by __cpu_suspend() to save the state, and do whatever
  * flushing is required to ensure that when the CPU goes to sleep we have
@@ -26,7 +54,7 @@ int __cpu_suspend_finisher(unsigned long arg, struct cpu_suspend_ctx *ptr,
 {
 	int cpu = smp_processor_id();
 
-	*save_ptr = virt_to_phys(ptr);
+	*save_ptr = stack_page1_virt_to_phys(ptr);
 
 	cpu_do_suspend(ptr);
 	/*
