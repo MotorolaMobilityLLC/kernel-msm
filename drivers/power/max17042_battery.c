@@ -116,6 +116,11 @@
 
 #define MAX17042_CHRG_CONV_FCTR         500
 
+#define RETRY_COUNT 5
+int retry_sleep_us[RETRY_COUNT] = {
+	100, 200, 300, 400, 500
+};
+
 struct max17042_wakeup_source {
 	struct wakeup_source    source;
 	unsigned long           disabled;
@@ -168,7 +173,17 @@ static void max17042_relax(struct max17042_wakeup_source *source)
 
 static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 {
-	int ret = i2c_smbus_write_word_data(client, reg, value);
+	int ret = 0;
+	int i = 0;
+
+	for (i = 0; i < RETRY_COUNT; i++) {
+		ret = i2c_smbus_write_word_data(client, reg, value);
+		if (ret < 0) {
+			/* sleep for few micro sec before retrying */
+			usleep(retry_sleep_us[i]);
+		} else
+			break;
+	}
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -178,7 +193,17 @@ static int max17042_write_reg(struct i2c_client *client, u8 reg, u16 value)
 
 static int max17042_read_reg(struct i2c_client *client, u8 reg)
 {
-	int ret = i2c_smbus_read_word_data(client, reg);
+	int ret = 0;
+	int i = 0;
+
+	for (i = 0; i < RETRY_COUNT; i++) {
+		ret = i2c_smbus_read_word_data(client, reg);
+		if (ret < 0) {
+			/* sleep for few micro sec before retrying */
+			usleep(retry_sleep_us[i]);
+		} else
+			break;
+	}
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
@@ -563,18 +588,23 @@ static int max17042_get_property(struct power_supply *psy,
 static int max17042_write_verify_reg(struct i2c_client *client,
 				u8 reg, u16 value)
 {
-	int retries = 8;
 	int ret;
 	u16 read_value;
+	int i = 0;
 
-	do {
+	for (i = 0; i < RETRY_COUNT; i++) {
 		ret = i2c_smbus_write_word_data(client, reg, value);
-		read_value =  max17042_read_reg(client, reg);
-		if (read_value != value) {
-			ret = -EIO;
-			retries--;
+		if (ret < 0) {
+			/* sleep for few micro sec before retrying */
+			usleep(retry_sleep_us[i]);
+		} else {
+			read_value =  max17042_read_reg(client, reg);
+			if (read_value != value) {
+				ret = -EIO;
+			}
+			break;
 		}
-	} while (retries && read_value != value);
+	}
 
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
