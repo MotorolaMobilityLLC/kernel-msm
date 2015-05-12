@@ -1,7 +1,7 @@
 /*
  * Misc useful os-independent macros and functions.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmutils.h 457888 2014-02-25 03:34:39Z $
+ * $Id: bcmutils.h 529304 2015-01-27 04:26:56Z $
  */
 
 #ifndef	_bcmutils_h_
@@ -408,6 +408,8 @@ extern void *pktq_mpeek(struct pktq *pq, uint prec_bmp, int *prec_out);
 #define pktdeq_tail(pq)		pktq_pdeq_tail(((struct pktq *)(void *)pq), 0)
 #define pktqinit(pq, len)	pktq_init(((struct pktq *)(void *)pq), 1, len)
 
+#define UP_TABLE_MAX	((IPV4_TOS_DSCP_MASK >> IPV4_TOS_DSCP_SHIFT) + 1)	/* 64 max */
+
 extern void pktq_init(struct pktq *pq, int num_prec, int max_len);
 extern void pktq_set_max_plen(struct pktq *pq, int prec, int max_len);
 
@@ -452,6 +454,8 @@ extern void *pktoffset(osl_t *osh, void *p,  uint offset);
 #define DSCP_EF		0x2E
 
 extern uint pktsetprio(void *pkt, bool update_vtag);
+extern uint pktsetuserprio(void *pkt, int8* up_table, bool update_vtag);
+extern bool pktgetdscp(uint8 *pktdata, uint pktlen, uint8 *dscp);
 
 /* string */
 extern int bcm_atoi(const char *s);

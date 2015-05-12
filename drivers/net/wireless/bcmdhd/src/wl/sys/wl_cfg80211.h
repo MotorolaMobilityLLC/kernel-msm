@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfg80211.h 470107 2014-04-13 13:08:18Z $
+ * $Id: wl_cfg80211.h 538289 2015-03-03 07:07:36Z $
  */
 
 #ifndef _wl_cfg80211_h_
@@ -610,10 +610,22 @@ struct bcm_cfg80211 {
 	struct delayed_work pm_enable_work;
 	vndr_ie_setbuf_t *ibss_vsie;	/* keep the VSIE for IBSS */
 	int ibss_vsie_len;
+#ifdef WL_RELMCAST
+	u32 rmc_event_pid;
+	u32 rmc_event_seq;
+#endif /* WL_RELMCAST */
 	bool roam_offload;
 #ifdef WLFBT
 	uint8 fbt_key[FBT_KEYLEN];
 #endif
+	bool need_wait_afrx;
+#if defined(CUSTOMER_HW4) && defined(WL_CFG80211_P2P_DEV_IF)
+	bool down_disc_if;
+#endif /* CUSTOMER_HW4 && WL_CFG80211_P2P_DEV_IF */
+#ifdef QOS_MAP_SET
+	uint8	 *up_table;	/* user priority table, size is UP_TABLE_MAX */
+#endif /* QOS_MAP_SET */
+	struct ether_addr last_roamed_addr;
 };
 
 
@@ -1005,6 +1017,10 @@ static inline void wl_escan_print_sync_id(s32 status, u16 result_id, u16 wl_id)
 
 extern void wl_cfg80211_ibss_vsie_set_buffer(vndr_ie_setbuf_t *ibss_vsie, int ibss_vsie_len);
 extern s32 wl_cfg80211_ibss_vsie_delete(struct net_device *dev);
+#ifdef WL_RELMCAST
+extern void wl_cfg80211_set_rmc_pid(int pid);
+#endif /* WL_RELMCAST */
+
 #ifdef WLFBT
 extern void wl_cfg80211_get_fbt_key(uint8 *key);
 #endif
@@ -1020,5 +1036,13 @@ struct net_device *wl_cfg80211_get_remain_on_channel_ndev(struct bcm_cfg80211 *c
 #endif /* WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST */
 
 extern int wl_cfg80211_get_ioctl_version(void);
+
+#ifdef WL_CFG80211_P2P_DEV_IF
+extern void wl_cfg80211_del_p2p_wdev(void);
+#endif /* WL_CFG80211_P2P_DEV_IF */
+
+#ifdef QOS_MAP_SET
+extern int8 *wl_get_up_table(void);
+#endif /* QOS_MAP_SET */
 
 #endif				/* _wl_cfg80211_h_ */

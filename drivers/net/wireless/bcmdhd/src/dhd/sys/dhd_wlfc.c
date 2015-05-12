@@ -1,7 +1,7 @@
 /*
  * DHD PROP_TXSTATUS Module.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_wlfc.c 472502 2014-04-24 05:59:06Z $
+ * $Id: dhd_wlfc.c 531050 2015-02-02 07:21:19Z $
  *
  */
 
@@ -2449,6 +2449,19 @@ _dhd_wlfc_reorderinfo_indicate(uint8 *val, uint8 len, uchar *info_buf, uint *inf
 	}
 }
 
+static void
+_dhd_wlfc_save_rxpath_ac_time(athost_wl_status_info_t* wlfc, uint8 prio)
+{
+	int rx_path_ac = -1;
+
+	if (!wlfc || (prio >= NUMPRIO)) {
+		return;
+	}
+
+	rx_path_ac = prio2fifo[prio];
+	wlfc->rx_timestamp[rx_path_ac] = OSL_SYSUPTIME();
+}
+
 /*
  * public functions
  */
@@ -2516,6 +2529,13 @@ int dhd_wlfc_enable(dhd_pub_t *dhd)
 	}
 
 	dhd->proptxstatus_mode = WLFC_FCMODE_EXPLICIT_CREDIT;
+	/* default to check rx pkt */
+	if (dhd->op_mode & DHD_FLAG_IBSS_MODE) {
+		dhd->wlfc_rxpkt_chk = FALSE;
+	} else {
+		dhd->wlfc_rxpkt_chk = TRUE;
+	}
+
 
 	/* initialize all interfaces to accept traffic */
 	for (i = 0; i < WLFC_MAX_IFNUM; i++) {
@@ -2561,6 +2581,10 @@ dhd_wlfc_parse_header_info(dhd_pub_t *dhd, void* pktbuf, int tlv_hdr_len, uchar 
 			return WLFC_UNSUPPORTED;
 		}
 		wlfc = (athost_wl_status_info_t*)dhd->wlfc_state;
+	}
+
+	if (dhd->wlfc_rxpkt_chk) {
+		_dhd_wlfc_save_rxpath_ac_time(wlfc, PKTPRIO(pktbuf));
 	}
 
 	tmpbuf = (uint8*)PKTDATA(dhd->osh, pktbuf);
@@ -2733,6 +2757,17 @@ dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit, void* commit_ctx
 	}
 
 	for (ac = AC_COUNT; ac >= 0; ac--) {
+		if (dhdp->wlfc_rxpkt_chk) {
+			/* check rx packet */
+			uint32 curr_t = OSL_SYSUPTIME(), delta;
+
+			delta = curr_t - ctx->rx_timestamp[ac];
+			if (delta < WLFC_RX_DETECTION_THRESHOLD_MS) {
+				traffic_map |= (1 << ac);
+				single_ac = ac + 1;
+			}
+		}
+
 		if (ctx->pkt_cnt_per_ac[ac] == 0) {
 			continue;
 		}
@@ -2809,10 +2844,7 @@ dhd_wlfc_commit_packets(dhd_pub_t *dhdp, f_commitpkt_t fcommit, void* commit_ctx
 				goto exit;
 			}
 			/* same ac traffic, check if it lasts enough time */
-			if (curr_t > ctx->single_ac_timestamp)
-				delta = curr_t - ctx->single_ac_timestamp;
-			else
-				delta = (~(uint32)0) - ctx->single_ac_timestamp + curr_t;
+			delta = curr_t - ctx->single_ac_timestamp;
 
 			if (delta >= WLFC_BORROW_DEFER_PERIOD_MS) {
 				/* wait enough time, can borrow now */
@@ -3767,7 +3799,6 @@ int dhd_wlfc_set_mode(dhd_pub_t *dhd, int val)
 
 	dhd_os_wlfc_block(dhd);
 
-	/* two locks for write variable, then read can use any one lock */
 	if (dhd->wlfc_state) {
 		dhd->proptxstatus_mode = val & 0xff;
 	}
@@ -3866,7 +3897,6 @@ int dhd_wlfc_set_module_ignore(dhd_pub_t *dhd, int val)
 	dhd_os_wlfc_block(dhd);
 
 	if ((bool)val != dhd->proptxstatus_module_ignore) {
-		/* two locks for write variable, then read can use any one lock */
 		dhd->proptxstatus_module_ignore = (val != 0);
 		/* force txstatus_ignore sync with proptxstatus_module_ignore */
 		dhd->proptxstatus_txstatus_ignore = dhd->proptxstatus_module_ignore;
@@ -3923,7 +3953,6 @@ int dhd_wlfc_set_credit_ignore(dhd_pub_t *dhd, int val)
 
 	dhd_os_wlfc_block(dhd);
 
-	/* two locks for write variable, then read can use any one lock */
 	dhd->proptxstatus_credit_ignore = (val != 0);
 
 	dhd_os_wlfc_unblock(dhd);
@@ -3956,7 +3985,6 @@ int dhd_wlfc_set_txstatus_ignore(dhd_pub_t *dhd, int val)
 
 	dhd_os_wlfc_block(dhd);
 
-	/* two locks for write variable, then read can use any one lock */
 	dhd->proptxstatus_txstatus_ignore = (val != 0);
 
 	dhd_os_wlfc_unblock(dhd);
@@ -3964,4 +3992,35 @@ int dhd_wlfc_set_txstatus_ignore(dhd_pub_t *dhd, int val)
 	return BCME_OK;
 }
 
+int dhd_wlfc_get_rxpkt_chk(dhd_pub_t *dhd, int *val)
+{
+	if (!dhd || !val) {
+		DHD_ERROR(("Error: %s():%d\n", __FUNCTION__, __LINE__));
+		return BCME_BADARG;
+	}
+
+	dhd_os_wlfc_block(dhd);
+
+	*val = dhd->wlfc_rxpkt_chk;
+
+	dhd_os_wlfc_unblock(dhd);
+
+	return BCME_OK;
+}
+
+int dhd_wlfc_set_rxpkt_chk(dhd_pub_t *dhd, int val)
+{
+	if (!dhd) {
+		DHD_ERROR(("Error: %s():%d\n", __FUNCTION__, __LINE__));
+		return BCME_BADARG;
+	}
+
+	dhd_os_wlfc_block(dhd);
+
+	dhd->wlfc_rxpkt_chk = (val != 0);
+
+	dhd_os_wlfc_unblock(dhd);
+
+	return BCME_OK;
+}
 #endif /* PROP_TXSTATUS */

@@ -1,7 +1,7 @@
 /*
  * Linux platform device for DHD WLAN adapter
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -41,13 +41,20 @@
 #endif
 
 #if !defined(CONFIG_WIFI_CONTROL_FUNC)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58))
+#define WLAN_PLAT_NODFS_FLAG    0x01
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58) */
 struct wifi_platform_data {
 	int (*set_power)(int val);
 	int (*set_reset)(int val);
 	int (*set_carddetect)(int val);
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58))
+	void *(*get_country_code)(char *ccode, u32 flags);
+#else
 	void *(*get_country_code)(char *ccode);
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58) */
 };
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
 
@@ -220,7 +227,11 @@ void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode)
 
 	DHD_TRACE(("%s\n", __FUNCTION__));
 	if (plat_data->get_country_code) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58))
+		return plat_data->get_country_code(ccode, WLAN_PLAT_NODFS_FLAG);
+#else
 		return plat_data->get_country_code(ccode);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58)) */
 	}
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)) */
 
@@ -245,7 +256,7 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 		resource = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcm4329_wlan_irq");
 	if (resource) {
 		adapter->irq_num = resource->start;
-		adapter->intr_flags = resource->flags & IRQF_TRIGGER_MASK;
+		adapter->intr_flags = resource->flags;
 	}
 
 	wifi_plat_dev_probe_ret = dhd_wifi_platform_load();
@@ -376,7 +387,7 @@ static int wifi_ctrlfunc_register_drv(void)
 		adapter->wifi_plat_data = (void *)&dhd_wlan_control;
 		resource = &dhd_wlan_resources;
 		adapter->irq_num = resource->start;
-		adapter->intr_flags = resource->flags & IRQF_TRIGGER_MASK;
+		adapter->intr_flags = resource->flags;
 		wifi_plat_dev_probe_ret = dhd_wifi_platform_load();
 	}
 

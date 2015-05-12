@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Android related functions
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.h 459598 2014-03-04 09:14:30Z $
+ * $Id: wl_android.h 487871 2014-06-27 07:48:00Z $
  */
 
 #include <linux/module.h>
@@ -94,6 +94,7 @@ enum {
 s32 wl_genl_send_msg(struct net_device *ndev, u32 event_type,
 	u8 *string, u16 len, u8 *hdr, u16 hdrlen);
 #endif /* WL_GENL */
+s32 wl_netlink_send_msg(int pid, int type, int seq, void *data, size_t size);
 
 /* hostap mac mode */
 #define MACLIST_MODE_DISABLED   0

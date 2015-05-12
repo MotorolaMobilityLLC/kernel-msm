@@ -1,7 +1,7 @@
 /*
  * Driver O/S-independent utility routines
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -20,7 +20,7 @@
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
- * $Id: bcmutils.c 461404 2014-03-12 01:59:36Z $
+ * $Id: bcmutils.c 529304 2015-01-27 04:26:56Z $
  */
 
 #include <bcm_cfg.h>
@@ -1330,6 +1330,89 @@ pktsetprio(void *pkt, bool update_vtag)
 	return (rc | priority);
 }
 
+/* lookup user priority for specified DSCP */
+static uint8
+dscp2up(uint8 *up_table, uint8 dscp)
+{
+	uint8 up = 255;
+
+	/* lookup up from table if parameters valid */
+	if (up_table != NULL && dscp < UP_TABLE_MAX) {
+		up = up_table[dscp];
+	}
+
+	/* 255 is unused value so return up from dscp */
+	if (up == 255) {
+		up = dscp >> (IPV4_TOS_PREC_SHIFT - IPV4_TOS_DSCP_SHIFT);
+	}
+
+	return up;
+}
+
+/* set user priority by QoS Map Set table (UP table), table size is UP_TABLE_MAX */
+uint BCMFASTPATH
+pktsetprio_qms(void *pkt, int8* up_table, bool update_vtag)
+{
+	if (up_table) {
+		uint8 *pktdata;
+		uint pktlen;
+		uint8 dscp;
+		uint up = 0;
+		uint rc = 0;
+
+		pktdata = (uint8 *)PKTDATA(OSH_NULL, pkt);
+		pktlen = PKTLEN(OSH_NULL, pkt);
+
+		if (pktgetdscp(pktdata, pktlen, &dscp)) {
+			rc = PKTPRIO_DSCP;
+			up = dscp2up(up_table, dscp);
+			PKTSETPRIO(pkt, up);
+			printf("dscp=%d, up=%d\n", dscp, up);
+		}
+
+		return (rc | up);
+	}
+	else {
+		return pktsetprio(pkt, update_vtag);
+	}
+}
+
+/* Returns TRUE and DSCP if IP header found, FALSE otherwise.
+ */
+bool BCMFASTPATH
+pktgetdscp(uint8 *pktdata, uint pktlen, uint8 *dscp)
+{
+	struct ether_header *eh;
+	struct ethervlan_header *evh;
+	uint8 *ip_body;
+	bool rc = FALSE;
+
+	/* minimum length is ether header and IP header */
+	if (pktlen < sizeof(struct ether_header) + IPV4_MIN_HEADER_LEN)
+		return FALSE;
+
+	eh = (struct ether_header *) pktdata;
+
+	if (eh->ether_type == HTON16(ETHER_TYPE_IP)) {
+		ip_body = pktdata + sizeof(struct ether_header);
+		*dscp = IP_DSCP46(ip_body);
+		rc = TRUE;
+	}
+	else if (eh->ether_type == HTON16(ETHER_TYPE_8021Q)) {
+		evh = (struct ethervlan_header *)eh;
+
+		/* minimum length is ethervlan header and IP header */
+		if (pktlen >= sizeof(struct ethervlan_header) + IPV4_MIN_HEADER_LEN &&
+			evh->ether_type == HTON16(ETHER_TYPE_IP)) {
+			ip_body = pktdata + sizeof(struct ethervlan_header);
+			*dscp = IP_DSCP46(ip_body);
+			rc = TRUE;
+		}
+	}
+
+	return rc;
+}
+
 
 static char bcm_undeferrstr[32];
 static const char *bcmerrorstrtable[] = BCMERRSTRINGTABLE;
@@ -1963,8 +2046,6 @@ bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len)
 
 	/* indicate the str was too short */
 	if (flags != 0) {
-		if (len < 2)
-			p -= 2 - len;	/* overwrite last char */
 		p += snprintf(p, 2, ">");
 	}
 
@@ -2152,8 +2233,10 @@ bcm_mkiovar(char *name, char *data, uint datalen, char *buf, uint buflen)
 	strncpy(buf, name, buflen);
 
 	/* append data onto the end of the name string */
-	memcpy(&buf[len], data, datalen);
-	len += datalen;
+	if (data) {
+		memcpy(&buf[len], data, datalen);
+		len += datalen;
+	}
 
 	return len;
 }

@@ -4,7 +4,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wlioctl.h 472452 2014-04-24 01:04:46Z $
+ * $Id: wlioctl.h 531050 2015-02-02 07:21:19Z $
  */
 
 #ifndef _wlioctl_h_
@@ -1061,6 +1061,16 @@ typedef struct wl_ioctl {
 	uint used;	/* bytes read or written (optional) */
 	uint needed;	/* bytes needed (optional) */
 } wl_ioctl_t;
+#ifdef CONFIG_COMPAT
+typedef struct compat_wl_ioctl {
+	uint cmd;	/* common ioctl definition */
+	uint32 buf;	/* pointer to user buffer */
+	uint len;	/* length of user buffer */
+	uint8 set;		/* 1=set IOCTL; 0=query IOCTL */
+	uint used;	/* bytes read or written (optional) */
+	uint needed;	/* bytes needed (optional) */
+} compat_wl_ioctl_t;
+#endif /* CONFIG_COMPAT */
 
 
 /*

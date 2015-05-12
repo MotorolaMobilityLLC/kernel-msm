@@ -1,7 +1,7 @@
 /*
  * Broadcom Event  protocol definitions
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -23,7 +23,7 @@
  *
  * Dependencies: proto/bcmeth.h
  *
- * $Id: bcmevent.h 472452 2014-04-24 01:04:46Z $
+ * $Id: bcmevent.h 487871 2014-06-27 07:48:00Z $
  *
  */
 
@@ -225,10 +225,11 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_BSSID		125	/* to report change in BSSID while roaming */
 #define WLC_E_TX_STAT_ERROR		126	/* tx error indication */
 #define WLC_E_BCMC_CREDIT_SUPPORT	127	/* credit check for BCMC supported */
-#define WLC_E_LAST			128	/* highest val + 1 for range checking */
+#define WLC_E_RMC_EVENT			139	/* RMC event */
+#define WLC_E_LAST			140	/* highest val + 1 for range checking */
 
-#if (WLC_E_LAST > 128)
-#error "WLC_E_LAST: Invalid value for last event; must be <= 128."
+#if (WLC_E_LAST > 140)
+#error "WLC_E_LAST: Invalid value for last event; must be <= 140."
 #endif /* WLC_E_LAST */
 
 
@@ -387,6 +388,11 @@ typedef struct wl_event_data_rssi {
 #define WLC_E_TDLS_PEER_DISCOVERED		0	/* peer is ready to establish TDLS */
 #define WLC_E_TDLS_PEER_CONNECTED		1
 #define WLC_E_TDLS_PEER_DISCONNECTED	2
+
+/* reason codes for WLC_E_RMC_EVENT event */
+#define WLC_E_REASON_RMC_NONE		0
+#define WLC_E_REASON_RMC_AR_LOST		1
+#define WLC_E_REASON_RMC_AR_NO_ACK		2
 
 
 /* GAS event data */

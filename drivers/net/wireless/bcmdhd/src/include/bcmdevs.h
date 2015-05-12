@@ -1,7 +1,7 @@
 /*
  * Broadcom device-specific manifest constants.
  *
- * Copyright (C) 1999-2014, Broadcom Corporation
+ * Copyright (C) 1999-2015, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmdevs.h 468568 2014-04-08 05:33:12Z $
+ * $Id: bcmdevs.h 526216 2015-01-13 14:24:20Z $
  */
 
 #ifndef	_BCMDEVS_H
@@ -229,6 +229,10 @@
 #define BCM43349_D11N2G_ID	0x43e7		/* 43349 802.11n 2.4Ghz band id */
 #define BCM43349_D11N5G_ID	0x43e8		/* 43349 802.11n 5Ghz band id */
 
+#define BCM4356_D11AC_ID	0x43ec		/* 4356 802.11ac dualband device */
+#define BCM4356_D11AC2G_ID	0x43ed		/* 4356 802.11ac 2.4G device */
+#define BCM4356_D11AC5G_ID	0x43ee		/* 4356 802.11ac 5G device */
+
 #define	BCMGPRS_UART_ID		0x4333		/* Uart id used by 4306/gprs card */
 #define	BCMGPRS2_UART_ID	0x4344		/* Uart id used by 4306/gprs card */
 #define FPGA_JTAGM_ID		0x43f0		/* FPGA jtagm device id */
@@ -338,6 +342,7 @@
 #define BCM43342_CHIP_ID	43342		/* 43342 chipcommon chipid */
 #define BCM4350_CHIP_ID		0x4350          /* 4350 chipcommon chipid */
 #define BCM4354_CHIP_ID		0x4354          /* 4354 chipcommon chipid */
+#define BCM4356_CHIP_ID		0x4356          /* 4356 chipcommon chipid */
 #define BCM43556_CHIP_ID	0xAA24          /* 43556 chipcommon chipid */
 #define BCM43558_CHIP_ID	0xAA26          /* 43558 chipcommon chipid */
 #define BCM43566_CHIP_ID	0xAA2E          /* 43566 chipcommon chipid */
@@ -345,12 +350,14 @@
 #define BCM43569_CHIP_ID	0xAA31          /* 43569 chipcommon chipid */
 #define BCM4350_CHIP(chipid)	((CHIPID(chipid) == BCM4350_CHIP_ID) || \
 				(CHIPID(chipid) == BCM4354_CHIP_ID) || \
+				(CHIPID(chipid) == BCM4356_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43556_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43558_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43566_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43568_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43569_CHIP_ID)) /* 4350 variations */
 #define BCM4345_CHIP_ID		0x4345		/* 4345 chipcommon chipid */
+#define BCM43454_CHIP_ID	43454		/* 43454 chipcommon chipid */
 #define BCM43430_CHIP_ID	43430		/* 43430 chipcommon chipid */
 
 #define BCM43602_CHIP_ID	0xaa52		/* 43602 chipcommon chipid */

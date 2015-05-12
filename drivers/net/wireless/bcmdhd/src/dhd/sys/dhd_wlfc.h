@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 1999-2014, Broadcom Corporation
+* Copyright (C) 1999-2015, Broadcom Corporation
 * 
 *      Unless you and Broadcom execute a separate written software license
 * agreement governing use of this software, this software is licensed to you
@@ -18,7 +18,7 @@
 *      Notwithstanding the above, under no circumstances may you combine this
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
-* $Id: dhd_wlfc.h 472502 2014-04-24 05:59:06Z $
+* $Id: dhd_wlfc.h 479444 2014-05-21 04:19:36Z $
 *
 */
 #ifndef __wlfc_host_driver_definitions_h__
@@ -238,6 +238,9 @@ typedef struct athost_wl_stat_counters {
 /* How long to defer flow control in milliseconds */
 #define WLFC_FC_DEFER_PERIOD_MS 200
 
+/* How long to detect occurance per AC in miliseconds */
+#define WLFC_RX_DETECTION_THRESHOLD_MS	100
+
 /* Mask to represent available ACs (note: BC/MC is ignored */
 #define WLFC_AC_MASK 0xF
 
@@ -283,6 +286,7 @@ typedef struct athost_wl_status_info {
 	int	pkt_cnt_per_ac[AC_COUNT+1];
 	uint8	allow_fc;
 	uint32  fc_defer_timestamp;
+	uint32	rx_timestamp[AC_COUNT+1];
 	/* ON/OFF state for flow control to the host network interface */
 	uint8	hostif_flow_state[WLFC_MAX_IFNUM];
 	uint8	host_ifidx;
@@ -502,4 +506,7 @@ int dhd_wlfc_get_credit_ignore(dhd_pub_t *dhd, int *val);
 int dhd_wlfc_set_credit_ignore(dhd_pub_t *dhd, int val);
 int dhd_wlfc_get_txstatus_ignore(dhd_pub_t *dhd, int *val);
 int dhd_wlfc_set_txstatus_ignore(dhd_pub_t *dhd, int val);
+
+int dhd_wlfc_get_rxpkt_chk(dhd_pub_t *dhd, int *val);
+int dhd_wlfc_set_rxpkt_chk(dhd_pub_t *dhd, int val);
 #endif /* __wlfc_host_driver_definitions_h__ */
