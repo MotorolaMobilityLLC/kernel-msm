@@ -83,6 +83,12 @@
 		ct406_detect_threshold = <0x0096>;
 		ct406_undetect_threshold = <0x0073>;
 		ct406_pulse_count = <0x03>;
+		ct406_als_lux1_c0_mult = <0x386>;
+		ct406_als_lux1_c1_mult = <0x693>;
+		ct406_als_lux1_div = <0x80>;
+		ct406_als_lux2_c0_mult = <0x11F>;
+		ct406_als_lux2_c1_mult = <0x1DE>;
+		ct406_als_lux2_div = <0x80>;
 	};
 };
 
