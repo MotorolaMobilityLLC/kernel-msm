@@ -1942,7 +1942,8 @@ static bool is_vptx_topology(int topology)
 	    (topology == VPM_TX_DM_FLUENCE_COPP_TOPOLOGY) ||
 	    (topology == VPM_TX_DM_RFECNS_COPP_TOPOLOGY) ||
 	    (topology == VPM_TX_LEC_STEREO_REF) ||
-	    (topology == VPM_TX_LEC_MONO_REF))
+	    (topology == VPM_TX_LEC_MONO_REF) ||
+	    (topology == VPM_TX_MOT_COPP_TOPOLOGY))
 		return true;
 
 	return false;
