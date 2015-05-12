@@ -2,6 +2,7 @@
 #include <linux/linkage.h>
 #include <asm/asm-offsets.h>
 #include <asm/assembler.h>
+#include "sp-adj-macros.S"
 
 	.text
 /*
@@ -56,6 +57,7 @@
  *  x0 = suspend finisher argument
  */
 ENTRY(__cpu_suspend)
+	adjust_sp_to_page1 x2
 	stp	x29, lr, [sp, #-96]!
 	stp	x19, x20, [sp,#16]
 	stp	x21, x22, [sp,#32]
@@ -102,6 +104,7 @@ ENTRY(__cpu_suspend)
 	ldp	x25, x26, [sp, #64]
 	ldp	x27, x28, [sp, #80]
 	ldp	x29, lr, [sp], #96
+	restore_sp_from_page1 x3
 	ret
 ENDPROC(__cpu_suspend)
 	.ltorg
