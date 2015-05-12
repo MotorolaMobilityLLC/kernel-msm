@@ -196,7 +196,7 @@ qcom,bcl {
 		qcom,bcl-enable;
 		qcom,ibat-vadc = <&pm8916_vadc>;
 		qcom,ibat-threshold-adc_tm = <&pm8916_adc_tm>;
-		qcom,bcl-hotplug-list = <&CPU4 &CPU5 &CPU6 &CPU7 >;
+		qcom,bcl-hotplug-list = <&CPU0 &CPU1 &CPU2 &CPU3 >;
 		qcom,ibat-monitor {
 			high-threshold-uamp = <3000000>;
 			low-threshold-uamp = <1000000>;
