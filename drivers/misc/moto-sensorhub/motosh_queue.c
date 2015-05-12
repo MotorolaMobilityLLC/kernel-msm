@@ -157,6 +157,7 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 	 */
 	now = motosh_timestamp_ns();
 	if (timestamped) {
+
 		/* if a timestamp is included in the event buffer,
 		   it is the 3 bytes after the data */
 		buffer->timestamp =
@@ -164,6 +165,10 @@ int motosh_as_data_buffer_write(struct motosh_data *ps_motosh,
 					    (data[size+1] <<  8) |
 					    (data[size+2]),
 					    now);
+
+		/* compensate for AP/Hub drift based on recovered sample
+		   time and the current time */
+		motosh_time_drift_comp(buffer->timestamp, now);
 
 		/* check for erroneous future time */
 		if (buffer->timestamp > now) {
@@ -268,7 +273,7 @@ int motosh_ms_data_buffer_write(struct motosh_data *ps_motosh,
 					    now);
 		/* check for erroneous future time */
 		if (buffer->timestamp > now) {
-			dev_err(&ps_motosh->client->dev,
+			dev_dbg(&ps_motosh->client->dev,
 				"future time, delta: %lld\n",
 				buffer->timestamp - now);
 			buffer->timestamp = now;
