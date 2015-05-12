@@ -37,3 +37,28 @@
 		adi,adux1050_irq_flags = [ 00000002 ];  /* Signifies the irq Flag, If not set it will be set to IRQF_TRIGGER_FALLING*/
 	};
 };
+
+&spi_5 {
+	sensorhub@0 {
+		compatible = "spidev";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+		spi-cpol;
+		spi-cpha;
+	};
+};
+
+&pm8994_l18 { /* Sensor VDD */
+	regulator-min-microvolt = <2850000>;
+	regulator-max-microvolt = <2850000>;
+	regulator-always-on;
+	qcom,init-voltage = <2850000>;
+	status = "okay";
+};
+
+&pm8994_lvs2 {
+	qcom,init-enable = <1>;
+	regulator-always-on;
+	status = "okay";
+};
+
