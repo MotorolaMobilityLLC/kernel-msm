@@ -177,9 +177,6 @@ typedef struct tagSmeStruct
     v_BOOL_t enableSelfRecovery;
     tCsrLinkStatusCallback linkStatusCallback;
     void *linkStatusContext;
-#ifdef WLAN_FEATURE_MEMDUMP
-    void (*fw_dump_callback)(void *context, struct fw_dump_rsp *rsp);
-#endif
 } tSmeStruct, *tpSmeStruct;
 
 

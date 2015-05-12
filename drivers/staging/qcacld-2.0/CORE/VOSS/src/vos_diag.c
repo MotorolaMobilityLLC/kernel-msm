@@ -210,13 +210,12 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
  *
  */
 void vos_log_wlock_diag(uint32_t reason, const char *wake_lock_name,
-		uint32_t timeout, uint32_t status)
+                       uint32_t timeout, uint32_t status)
 {
 	WLAN_VOS_DIAG_EVENT_DEF(wlan_diag_event,
 			struct vos_event_wlan_wake_lock);
 
-	if ((nl_srv_is_initialized() != 0) ||
-			(vos_is_wakelock_enabled() == false))
+	if (nl_srv_is_initialized() != 0)
 		return;
 
 	wlan_diag_event.status = status;

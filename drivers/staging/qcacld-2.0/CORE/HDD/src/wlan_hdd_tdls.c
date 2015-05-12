@@ -619,7 +619,6 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
                 } else {
                     tmp->link_status = eTDLS_LINK_IDLE;
                     tmp->reason = eTDLS_LINK_UNSPECIFIED;
-                    tmp->staId = 0;
                     tmp->discovery_attempt = 0;
                 }
             }

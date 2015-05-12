@@ -966,13 +966,13 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         pStaDs->timingMeasCap |= (p_ext_cap->timingMeas)?
                                   RTT_TIMING_MEAS_CAPABILITY:
                                   RTT_INVALID;
-        pStaDs->timingMeasCap |= (p_ext_cap->fine_time_meas_initiator)?
-                                  RTT_FINE_TIME_MEAS_INITIATOR_CAPABILITY:
+        pStaDs->timingMeasCap |= (p_ext_cap->fineTimingMeas)?
+                                  RTT_FINE_TIMING_MEAS_CAPABILITY:
                                   RTT_INVALID;
         PELOG1(limLog(pMac, LOG1,
-               FL("ExtCap present, timingMeas: %d ftm_initiator: %d"),
+               FL("ExtCap present, timingMeas: %d fineTimingMeas: %d"),
                p_ext_cap->timingMeas,
-               p_ext_cap->fine_time_meas_initiator);)
+               p_ext_cap->fineTimingMeas);)
 #ifdef FEATURE_WLAN_TDLS
         psessionEntry->tdls_prohibited =
                 p_ext_cap->TDLSProhibited;

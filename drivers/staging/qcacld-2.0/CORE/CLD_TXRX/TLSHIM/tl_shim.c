@@ -567,7 +567,6 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 	rx_pkt->pkt_meta.mpdu_hdr_ptr = adf_nbuf_data(wbuf);
 	rx_pkt->pkt_meta.mpdu_data_ptr = rx_pkt->pkt_meta.mpdu_hdr_ptr +
 					  rx_pkt->pkt_meta.mpdu_hdr_len;
-	rx_pkt->pkt_meta.tsf_delta = hdr->tsf_delta;
 	rx_pkt->pkt_buf = wbuf;
 
 #ifdef BIG_ENDIAN_HOST
@@ -593,11 +592,6 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 #else
 	adf_os_mem_copy(wh, param_tlvs->bufp, hdr->buf_len);
 #endif
-
-	TLSHIM_LOGD(
-		FL("BSSID: "MAC_ADDRESS_STR" snr = %d, rssi = %d tsf_delta: %u"),
-			MAC_ADDR_ARRAY(wh->i_addr3), hdr->snr,
-			rx_pkt->pkt_meta.rssi, hdr->tsf_delta);
 
 	if (!tl_shim->mgmt_rx) {
 		TLSHIM_LOGE("Not registered for Mgmt rx, dropping the frame");

@@ -1553,13 +1553,4 @@ typedef struct wma_roam_invoke_cmd
     u_int8_t bssid[6];
     v_U32_t channel;
 }t_wma_roam_invoke_cmd;
-
-#ifdef REMOVE_PKT_LOG
-static inline void wma_set_wifi_start_logger(void *wma_handle,
-					struct sir_wifi_start_log *start_log)
-{
-	return;
-}
-#endif
-
 #endif

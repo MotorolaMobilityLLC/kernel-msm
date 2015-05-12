@@ -9288,9 +9288,8 @@ typedef struct {
 
 enum _tExtScanEntryFlags
 {
-    WMI_HOTLIST_FLAG_NONE           = 0x00,
-    WMI_HOTLIST_FLAG_PRESENCE       = 0x01,
-    WMI_HOTLIST_FLAG_DUPLICATE_SSID = 0x80,
+    WMI_HOTLIST_FLAG_NONE     = 0x00,
+    WMI_HOTLIST_FLAG_PRESENCE = 0x01
 };
 
 typedef struct {
@@ -9542,7 +9541,6 @@ typedef struct{
     A_UINT32    pattern_id; /* pattern identifier */
     A_UINT32    led_x0; /* led flashing parameter0 */
     A_UINT32    led_x1; /* led flashing parameter1 */
-    A_UINT32    gpio_num; /* GPIO number */
 } wmi_set_led_flashing_cmd_fixed_param;
 
 /**

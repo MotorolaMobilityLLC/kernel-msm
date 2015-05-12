@@ -759,7 +759,6 @@ typedef struct sSirBssDescription
     tANI_U32             WscIeLen;
     tANI_U8              WscIeProbeRsp[WSCIE_PROBE_RSP_LEN];
     tANI_U8              reservedPadding4;
-    tANI_U32             tsf_delta;
 
     tANI_U32             ieFields[1];
 } tSirBssDescription, *tpSirBssDescription;
@@ -4084,20 +4083,6 @@ typedef struct
   tSirMacAddr  bssId;
 } tSirGtkOffloadParams, *tpSirGtkOffloadParams;
 
-/**
- * struct sir_wifi_start_log - Structure to store the params sent to start/
- * stop logging
- * @name:          Attribute which indicates the type of logging like per packet
- *                 statistics, connectivity etc.
- * @verbose_level: Verbose level which can be 0,1,2,3
- * @flag:          Flag field for future use
- */
-struct sir_wifi_start_log {
-	uint32_t ring_id;
-	uint32_t verbose_level;
-	uint32_t flag;
-};
-
 /*---------------------------------------------------------------------------
 * WDA_GTK_OFFLOAD_GETINFO_REQ
 *--------------------------------------------------------------------------*/
@@ -5178,7 +5163,7 @@ typedef struct
  */
 struct sir_extscan_generic_response {
 	uint32_t request_id;
-	int32_t status;
+	uint32_t status;
 };
 
 typedef struct
@@ -5810,8 +5795,7 @@ typedef struct sAniGetLinkStatus
 
 #define RTT_INVALID                     0x00
 #define RTT_TIMING_MEAS_CAPABILITY      0x01
-#define RTT_FINE_TIME_MEAS_INITIATOR_CAPABILITY    0x02
-#define RTT_FINE_TIME_MEAS_RESPONDER_CAPABILITY    0x03
+#define RTT_FINE_TIMING_MEAS_CAPABILITY 0x02
 
 /* number of neighbor reports that we can handle in Neighbor Report Response */
 #define MAX_SUPPORTED_NEIGHBOR_RPT 15
@@ -5840,60 +5824,5 @@ struct sir_guard_time_request
 
 /* Max number of rates allowed in Supported Rates IE */
 #define MAX_NUM_SUPPORTED_RATES (8)
-
-#define MAX_NUM_FW_SEGMENTS 4
-
-/**
- * struct fw_dump_seg_req - individual segment details
- * @seg_id - segment id.
- * @seg_start_addr_lo - lower address of the segment.
- * @seg_start_addr_hi - higher address of the segment.
- * @seg_length - length of the segment.
- * @dst_addr_lo - lower address of the destination buffer.
- * @dst_addr_hi - higher address of the destination buffer.
- *
- * This structure carries the information to firmware about the
- * individual segments. This structure is part of firmware memory
- * dump request.
- */
-struct fw_dump_seg_req
-{
-	uint8_t seg_id;
-	uint32_t seg_start_addr_lo;
-	uint32_t seg_start_addr_hi;
-	uint32_t seg_length;
-	uint32_t dst_addr_lo;
-	uint32_t dst_addr_hi;
-};
-
-/**
- * struct fw_dump_req - firmware memory dump request details.
- * @request_id - request id.
- * @num_seg - requested number of segments.
- * @fw_dump_seg_req - individual segment information.
- *
- * This structure carries information about the firmware
- * memory dump request.
- */
-struct fw_dump_req
-{
-	uint32_t request_id;
-	uint32_t num_seg;
-	struct fw_dump_seg_req segment[MAX_NUM_FW_SEGMENTS];
-};
-
-/**
- * struct fw_dump_rsp - firmware dump response details.
- * @request_id - request id.
- * @dump_complete - copy completion status.
- *
- * This structure is used to store the firmware dump copy complete
- * response from the firmware.
- */
-struct fw_dump_rsp
-{
-	uint32_t request_id;
-	uint32_t dump_complete;
-};
 
 #endif /* __SIR_API_H */

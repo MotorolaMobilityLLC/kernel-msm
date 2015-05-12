@@ -52,8 +52,7 @@
 #ifdef CONFIG_CNSS
 #include <net/cnss.h>
 #endif
-#include "vos_api.h"
-#include "aniGlobal.h"
+#include "vos_diag_core_event.h"
 
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -568,14 +567,9 @@ VOS_STATUS vos_wake_lock_acquire(vos_wake_lock_t *pLock,
 VOS_STATUS vos_wake_lock_timeout_acquire(vos_wake_lock_t *pLock, v_U32_t msec,
                                          uint32_t reason)
 {
-    /* Wakelock for Rx is frequent.
-     * It is reported only during active debug
-     */
-    if (((vos_get_ring_log_level(RING_ID_WAKELOCK) >= WLAN_LOG_LEVEL_ACTIVE)
-         && (WIFI_POWER_EVENT_WAKELOCK_HOLD_RX == reason)) ||
-         (WIFI_POWER_EVENT_WAKELOCK_HOLD_RX != reason)) {
+    if (WIFI_POWER_EVENT_WAKELOCK_HOLD_RX != reason) {
         vos_log_wlock_diag(reason, vos_wake_lock_name(pLock), msec,
-                           WIFI_POWER_EVENT_WAKELOCK_TAKEN);
+                       WIFI_POWER_EVENT_WAKELOCK_TAKEN);
     }
 
 #if defined CONFIG_CNSS

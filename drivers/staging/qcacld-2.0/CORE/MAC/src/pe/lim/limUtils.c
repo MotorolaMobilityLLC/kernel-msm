@@ -8168,34 +8168,3 @@ void lim_set_ht_caps(tpAniSirGlobal p_mac, tpPESession p_session_entry,
         p_ht_cap->txSoundingPPDUs = dot11_ht_cap.txSoundingPPDUs;
     }
 }
-
-/**
- * lim_validate_received_frame_a1_addr() - To validate received frame's A1 addr
- * @mac_ctx: pointer to mac context
- * @a1: received frame's a1 address which is nothing but our self address
- * @session: PE session pointer
- *
- * This routine will validate, A1 addres of the received frame
- *
- * Return: true or false
- */
-bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
-		tSirMacAddr a1, tpPESession session)
-{
-	if (mac_ctx == NULL || session == NULL) {
-		limLog(mac_ctx, LOGE,
-			FL("NULL pointer"));
-		/* let main routine handle it */
-		return true;
-	}
-	if (limIsGroupAddr(a1) || limIsAddrBC(a1)) {
-		/* just for fail safe, don't handle MC/BC a1 in this routine */
-		return true;
-	}
-	if (!vos_mem_compare(a1, session->selfMacAddr, 6)) {
-		limLog(mac_ctx, LOGE,
-			FL("Invalid A1 address in received frame"));
-		return false;
-	}
-	return true;
-}

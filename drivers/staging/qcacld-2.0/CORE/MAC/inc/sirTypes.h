@@ -41,7 +41,6 @@
 
 #include "halTypes.h"
 
-#define FIRST_SCAN_ID 1
 /* ********************************************** *
  *                                                *
  *     SIRIUS ERROR Codes / Return Codes          *

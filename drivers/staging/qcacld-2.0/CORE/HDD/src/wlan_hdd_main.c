@@ -119,7 +119,6 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #ifdef CONFIG_CNSS
 #include <net/cnss.h>
 #endif
-
 extern int hdd_hostapd_stop (struct net_device *dev);
 void hdd_ch_avoid_cb(void *hdd_context,void *indi_param);
 #endif /* FEATURE_WLAN_CH_AVOID */
@@ -130,7 +129,6 @@ void hdd_ch_avoid_cb(void *hdd_context,void *indi_param);
 
 #include "wlan_hdd_debugfs.h"
 #include "epping_main.h"
-#include "wlan_hdd_memdump.h"
 
 #ifdef IPA_OFFLOAD
 #include <wlan_hdd_ipa.h>
@@ -9720,6 +9718,10 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 #ifdef IPA_OFFLOAD
    hdd_ipa_cleanup(pHddCtx);
 #endif
+   //Free up dynamically allocated members inside HDD Adapter
+   kfree(pHddCtx->cfg_ini);
+   pHddCtx->cfg_ini= NULL;
+
 
    /* free the power on lock from platform driver */
    if (free_riva_power_on_lock("wlan"))
@@ -9729,18 +9731,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 
 free_hdd_ctx:
-   /* Free up dynamically allocated members inside HDD Adapter */
-   if (pHddCtx->cfg_ini) {
-       kfree(pHddCtx->cfg_ini);
-       pHddCtx->cfg_ini= NULL;
-   }
-
-   /* FTM mode, WIPHY did not registered
-      If un-register here, system crash will happen */
-   if (VOS_FTM_MODE != hdd_get_conparam())
-   {
-      wiphy_unregister(wiphy) ;
-   }
+   wiphy_unregister(wiphy) ;
    wiphy_free(wiphy) ;
    if (hdd_is_ssr_required())
    {
@@ -10383,7 +10374,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    pHddCtx->wiphy = wiphy;
    pHddCtx->isLoadInProgress = TRUE;
    pHddCtx->ioctl_scan_mode = eSIR_ACTIVE_SCAN;
-   vos_set_wakelock_logging(false);
 
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
 
@@ -10490,16 +10480,10 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    /*
     * cfg80211: Initialization  ...
     */
-#if !defined(LINUX_QCMBR)
-   if (VOS_FTM_MODE != hdd_get_conparam())
-#endif
-   {
-      if (0 < wlan_hdd_cfg80211_init(dev, wiphy, pHddCtx->cfg_ini))
-      {
-          hddLog(VOS_TRACE_LEVEL_FATAL,
-                 "%s: wlan_hdd_cfg80211_init return failure", __func__);
-          goto err_config;
-      }
+   if (0 < wlan_hdd_cfg80211_init(dev, wiphy, pHddCtx->cfg_ini)) {
+      hddLog(VOS_TRACE_LEVEL_FATAL,
+             "%s: wlan_hdd_cfg80211_init return failure", __func__);
+      goto err_config;
    }
 
    /* Initialize struct for saving f/w log setting will be used
@@ -10733,9 +10717,15 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
           goto err_free_ftm_open;
       }
 #endif
+      /* registration of wiphy dev with cfg80211 */
+      if (0 > wlan_hdd_cfg80211_register(wiphy)) {
+          hddLog(LOGE, FL("wiphy register failed"));
+          goto err_free_ftm_open;
+      }
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
       pHddCtx->isLoadInProgress = FALSE;
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: FTM driver loaded", __func__);
+
+      hddLog(LOGE, FL("FTM driver loaded"));
       complete(&wlan_start_comp);
       return VOS_STATUS_SUCCESS;
    }
@@ -11370,7 +11360,6 @@ static int hdd_driver_init( void)
        break;
    } else {
        pr_info("%s: driver loaded\n", WLAN_MODULE_NAME);
-       memdump_init();
        return 0;
    }
 
@@ -11391,7 +11380,7 @@ static int hdd_driver_init( void)
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
       wlan_logging_sock_deinit_svc();
 #endif
-      memdump_deinit();
+
       pr_err("%s: driver load failure\n", WLAN_MODULE_NAME);
    }
    else
@@ -11495,7 +11484,6 @@ static void hdd_driver_exit(void)
    }
 
    vos_wait_for_work_thread_completion(__func__);
-   memdump_deinit();
 
    hif_unregister_driver();
 
