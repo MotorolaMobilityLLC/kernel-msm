@@ -23,6 +23,14 @@
 
 #include <linux/motosh.h>
 
+/* Max latency needs to allow for kernel irq delay and queue depth.
+   Nudging offset at 50 uS per sample allows drift tracking up to
+   .25 mS/s at 5 Hz sample rates.
+*/
+#define MAX_DRIFT_LATENCY 100000000  /* 100 ms in ns */
+#define MIN_DRIFT_LATENCY   2000000  /*   2 ms in ns */
+#define DRIFT_NUDGE           50000  /* .05 ms */
+
 static int64_t motosh_realtime_delta;
 
 /*
@@ -44,10 +52,6 @@ void motosh_time_sync(void)
 
 	cmdbuff[0] = MOTOSH_ELAPSED_RT;
 	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
-
-	get_monotonic_boottime(&ts);
-
-
 	if (err < 0) {
 		dev_err(&motosh_misc_data->client->dev,
 			"Unable to read hub time");
@@ -58,7 +62,7 @@ void motosh_time_sync(void)
 		(((uint64_t)readbuff[0] << 56) |
 		 ((uint64_t)readbuff[1] << 48) |
 		 ((uint64_t)readbuff[2] << 40) |
-		 ((uint64_t)readbuff[3] << 32)  |
+		 ((uint64_t)readbuff[3] << 32) |
 		 ((uint64_t)readbuff[4] << 24) |
 		 ((uint64_t)readbuff[5] << 16) |
 		 ((uint64_t)readbuff[6] <<  8) |
@@ -68,7 +72,7 @@ void motosh_time_sync(void)
 	delta = ap_time1 - hub_time;
 
 	/* update offset */
-	dev_info(&motosh_misc_data->client->dev,
+	dev_dbg(&motosh_misc_data->client->dev,
 		"Sync time - sh: %12lld ap: %12lld offs_delta: %12lld",
 		hub_time, ap_time1, delta - motosh_realtime_delta);
 
@@ -116,6 +120,49 @@ int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time)
 }
 
 /*
+  rec_hub - last recovered hub time in AP time base
+  cur_time - current AP time
+  returns direction of nudge to offset
+ */
+int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time)
+{
+	int64_t offset;
+	int nudged;
+
+#ifdef MOTOSH_TIME_DEBUG
+	static int count;
+#endif
+	/* offset should be a positve value indicating that the
+	   recovered hub time is in the past.
+	*/
+	offset = cur_time - rec_hub;
+
+	if (offset > MAX_DRIFT_LATENCY) {
+		/* increase delta, to reduce offset on next sample */
+		motosh_realtime_delta += DRIFT_NUDGE;
+		nudged = 1;
+	} else if (offset < MIN_DRIFT_LATENCY) {
+		/* reduce delta, to increase offset on next sample */
+		motosh_realtime_delta -= DRIFT_NUDGE;
+		nudged = -1;
+	} else
+		nudged = 0;
+
+#ifdef MOTOSH_TIME_DEBUG
+	if (nudged || count > 999) {
+		count = 0;
+		dev_info(&motosh_misc_data->client->dev,
+			"driftcomp, uS delta: %lld, %d\n",
+			(cur_time - rec_hub)/1000,
+			nudged * DRIFT_NUDGE/1000);
+	}
+	count++;
+#endif
+
+	return nudged;
+}
+
+/*
    For debug use only:
    Utility function to check the current time sync
 */
@@ -156,7 +203,7 @@ void motosh_time_compare(void)
 		(((uint64_t)readbuff[0] << 56) |
 		 ((uint64_t)readbuff[1] << 48) |
 		 ((uint64_t)readbuff[2] << 40) |
-		 ((uint64_t)readbuff[3] << 32)  |
+		 ((uint64_t)readbuff[3] << 32) |
 		 ((uint64_t)readbuff[4] << 24) |
 		 ((uint64_t)readbuff[5] << 16) |
 		 ((uint64_t)readbuff[6] <<  8) |
@@ -176,7 +223,7 @@ void motosh_time_compare(void)
 	hubshort_time = (readbuff[5] << 16) |
 		(readbuff[6] <<  8) | (readbuff[7]);
 
-	rec_hub_time = motosh_resolve_shorttime(hubshort_time, ap_time2);
+	rec_hub_time = motosh_time_recover(hubshort_time, ap_time2);
 	dev_info(&motosh_misc_data->client->dev,
 		 "recovered hub: %12lld full_hub: %12lld ap: %12lld delta: %12lld ",
 		 rec_hub_time,
