@@ -72,7 +72,8 @@ static const char * const irq_name[] = {
 	[M4SH_WAKEIRQ_GESTURE]          = "WAKE_GESTURE",
 	[M4SH_WAKEIRQ_PASSIVE]          = "WAKE_PASSIVE",
 	[M4SH_WAKEIRQ_AP_ALARM_EXPIRED] = "WAKE_ALARM_EXPIRED",
-	[M4SH_WAKEIRQ_M4_READY]         = "M4_READY",
+	[M4SH_WAKEIRQ_M4_READY]         = "WAKE_M4_READY",
+	[M4SH_WAKEIRQ_SIGNIFICANT_MOTION] = "WAKE_SIGNIFICANT_MOTION",
 };
 
 /* -------------- Local Data Structures ------------- */
