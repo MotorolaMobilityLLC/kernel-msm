@@ -89,6 +89,8 @@ void motosh_irq_work_func(struct work_struct *work)
 		cmdbuff[0] = NWAKE_STATUS;
 		cmdbuff[1] = 0x00;
 		motosh_i2c_write(ps_motosh, cmdbuff, 2);
+
+		motosh_time_sync();
 	}
 
 	/* get nwake status (queue length and irq_status) */

@@ -552,6 +552,8 @@ int motosh_bootloadermode(struct motosh_data *ps_motosh);
 
 void motosh_time_sync(void);
 int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time);
+int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time);
+
 void motosh_time_compare(void);
 
 extern struct motosh_data *motosh_misc_data;
