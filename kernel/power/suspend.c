@@ -112,6 +112,35 @@ int suspend_valid_only_mem(suspend_state_t state)
 }
 EXPORT_SYMBOL_GPL(suspend_valid_only_mem);
 
+static bool platform_suspend_again(void)
+{
+	int count;
+	bool suspend = suspend_ops->suspend_again ?
+		suspend_ops->suspend_again() : false;
+
+	if (suspend) {
+		/*
+		 * pm_get_wakeup_count() gets an updated count of wakeup events
+		 * that have occured and will return false (i.e. abort suspend)
+		 * if a wakeup event has been started during suspend_again() and
+		 * is still active. pm_save_wakeup_count() stores the count
+		 * and enables pm_wakeup_pending() to properly analyze wakeup
+		 * events before entering suspend in suspend_enter().
+		 */
+		suspend = pm_get_wakeup_count(&count, false) &&
+			  pm_save_wakeup_count(count);
+
+		if (!suspend)
+			pr_debug("%s: wakeup occurred during suspend_again\n",
+				__func__);
+	}
+
+	pr_debug("%s: votes for: %s\n", __func__,
+		suspend ? "suspend" : "resume");
+
+	return suspend;
+}
+
 static int suspend_test(int level)
 {
 #ifdef CONFIG_PM_DEBUG
@@ -280,7 +309,7 @@ int suspend_devices_and_enter(suspend_state_t state)
 	do {
 		error = suspend_enter(state, &wakeup);
 	} while (!error && !wakeup && need_suspend_ops(state)
-		&& suspend_ops->suspend_again && suspend_ops->suspend_again());
+		&& platform_suspend_again());
 
  Resume_devices:
 	suspend_test_start();
