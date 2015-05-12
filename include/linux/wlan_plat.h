@@ -28,6 +28,8 @@ struct wifi_platform_data {
 #define WIFI_PR_VOTE_FOR_RESUME		2
 #define WIFI_PR_VOTE_FOR_SUSPEND	3
 #define WIFI_PR_WAIT_FOR_READY		4
+#define WIFI_PR_WD_INIT			5
+#define WIFI_PR_WD_COMPLETE		6
 	bool (*partial_resume)(int action);
 #endif
 };
