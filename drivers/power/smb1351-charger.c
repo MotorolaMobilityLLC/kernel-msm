@@ -1529,10 +1529,15 @@ static int smb1351_parallel_set_property(struct power_supply *psy,
 		}
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		chip->vfloat_mv =  val->intval / 1000;
-		rc = smb1351_float_voltage_set(chip, chip->vfloat_mv);
-		if (rc)
-			pr_err("float voltage error rc = %d\n", rc);
+		rc = smb1351_enable_volatile_writes(chip);
+		if (rc) {
+			pr_err("VOLTAGE_MAX: volatile error rc = %d\n", rc);
+		} else {
+			chip->vfloat_mv =  val->intval / 1000;
+			rc = smb1351_float_voltage_set(chip, chip->vfloat_mv);
+			if (rc)
+				pr_err("float voltage error rc = %d\n", rc);
+		}
 		break;
 	default:
 		return -EINVAL;
