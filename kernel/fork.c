@@ -142,6 +142,17 @@ void __weak arch_release_thread_info(struct thread_info *ti)
 {
 }
 
+void __weak arch_account_kernel_stack(struct thread_info *ti, int account)
+{
+	struct zone *zone = page_zone(virt_to_page(ti));
+
+	mod_zone_page_state(zone, NR_KERNEL_STACK, account);
+}
+
+void __weak arch_setup_thread_info(struct thread_info *ti)
+{
+}
+
 #ifndef CONFIG_ARCH_THREAD_INFO_ALLOCATOR
 
 /*
@@ -209,9 +220,7 @@ static ATOMIC_NOTIFIER_HEAD(task_free_notifier);
 
 static void account_kernel_stack(struct thread_info *ti, int account)
 {
-	struct zone *zone = page_zone(virt_to_page(ti));
-
-	mod_zone_page_state(zone, NR_KERNEL_STACK, account);
+	arch_account_kernel_stack(ti, account);
 }
 
 void free_task(struct task_struct *tsk)
@@ -352,6 +361,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 #endif
 
 	setup_thread_stack(tsk, orig);
+	arch_setup_thread_info(ti);
 	clear_user_return_notifier(tsk);
 	clear_tsk_need_resched(tsk);
 	set_task_stack_end_magic(tsk);
