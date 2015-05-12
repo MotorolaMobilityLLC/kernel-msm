@@ -51,6 +51,9 @@ struct thread_info {
 	struct restart_block	restart_block;
 	int			preempt_count;	/* 0 => preemptable, <0 => bug */
 	int			cpu;		/* cpu */
+#ifdef CONFIG_ARCH_THREAD_INFO_ALLOCATOR
+	phys_addr_t		phys_addr;	/* set if vmalloc */
+#endif
 };
 
 #define INIT_THREAD_INFO(tsk)						\
@@ -90,6 +93,12 @@ static inline struct thread_info *current_thread_info(void)
 	((unsigned long)(tsk->thread.cpu_context.sp))
 #define thread_saved_fp(tsk)	\
 	((unsigned long)(tsk->thread.cpu_context.fp))
+
+#ifdef CONFIG_ARCH_THREAD_INFO_ALLOCATOR
+struct thread_info *alloc_thread_info_node(struct task_struct *tsk,
+						  int node);
+void free_thread_info(struct thread_info *ti);
+#endif
 
 #endif
 
