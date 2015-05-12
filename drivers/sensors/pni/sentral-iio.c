@@ -545,6 +545,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_WAKE_GESTURE:
 		case SST_GLANCE_GESTURE:
 		case SST_PICK_UP_GESTURE:
+		case SST_WRIST_TILT_GESTURE:
 		case SST_INACTIVITY_ALARM:
 			data_size = 0;
 			break;
