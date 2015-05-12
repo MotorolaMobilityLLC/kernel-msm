@@ -288,6 +288,7 @@ dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p2d.dtb
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-clark-p3b.dtb
 
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p1-v2.1.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p101.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p2.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p2b.dtb
