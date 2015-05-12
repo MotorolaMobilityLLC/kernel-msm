@@ -117,6 +117,11 @@
 
 #define MAX17042_CHRG_CONV_FCTR         500
 
+#define RETRY_COUNT 5
+int retry_sleep_us[RETRY_COUNT] = {
+	100, 200, 300, 400, 500
+};
+
 struct max17042_wakeup_source {
 	struct wakeup_source    source;
 	unsigned long           disabled;
@@ -542,23 +547,30 @@ static int max17042_get_property(struct power_supply *psy,
 
 static int max17042_write_verify_reg(struct regmap *map, u8 reg, u32 value)
 {
-	int retries = 8;
 	int ret;
 	u32 read_value;
+	int i = 0;
 
-	do {
+	for (i = 0; i < RETRY_COUNT; i++) {
 		ret = regmap_write(map, reg, value);
-		regmap_read(map, reg, &read_value);
-		if (read_value != value) {
-			ret = -EIO;
-			retries--;
+		if (ret < 0) {
+			/* sleep for few micro sec before retrying */
+			usleep(retry_sleep_us[i]);
+		} else {
+			max17042_read_reg(client, reg, &read_value);
+			if (read_value != value) {
+				ret = -EIO;
+			}
+			break;
 		}
-	} while (retries && read_value != value);
+	}
 
-	if (ret < 0)
+	if (ret < 0) {
 		pr_err("%s: err %d\n", __func__, ret);
+		return ret;
+	}
 
-	return ret;
+	return read_value;
 }
 
 static inline void max17042_override_por(struct regmap *map,
