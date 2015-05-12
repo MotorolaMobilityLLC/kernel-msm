@@ -674,7 +674,8 @@ static bool smd_partial_resume(struct partial_resume *pr)
 #define PR_RESUME_OK_STATE	2
 #define PR_SUSPEND_OK_STATE	3
 
-static DECLARE_COMPLETION(bcm_comp);
+static DECLARE_COMPLETION(bcm_pk_comp);
+static DECLARE_COMPLETION(bcm_wd_comp);
 static int bcm_suspend = PR_INIT_STATE;
 static spinlock_t bcm_lock;
 
@@ -700,30 +701,43 @@ static bool bcm_wifi_process_partial_resume(int action)
 		return suspend;
 
 	if (action == WIFI_PR_WAIT_FOR_READY)
-		timeout = wait_for_completion_timeout(&bcm_comp,
+		timeout = wait_for_completion_timeout(&bcm_pk_comp,
 						      msecs_to_jiffies(50));
 
 	spin_lock(&bcm_lock);
 	switch (action) {
 	case WIFI_PR_WAIT_FOR_READY:
 		suspend = (bcm_suspend == PR_SUSPEND_OK_STATE) && (timeout != 0);
+		if (suspend) {
+			spin_unlock(&bcm_lock);
+			timeout = wait_for_completion_timeout(&bcm_wd_comp,
+							msecs_to_jiffies(100));
+			spin_lock(&bcm_lock);
+			suspend = (timeout != 0);
+		}
 		bcm_suspend = PR_INIT_STATE;
 		break;
 	case WIFI_PR_VOTE_FOR_RESUME:
 		bcm_suspend = PR_RESUME_OK_STATE;
-		complete(&bcm_comp);
+		complete(&bcm_pk_comp);
 		break;
 	case WIFI_PR_VOTE_FOR_SUSPEND:
 		if (bcm_suspend == PR_IN_RESUME_STATE)
 			bcm_suspend = PR_SUSPEND_OK_STATE;
-		complete(&bcm_comp);
+		complete(&bcm_pk_comp);
 		break;
 	case WIFI_PR_NOTIFY_RESUME:
-		INIT_COMPLETION(bcm_comp);
+		INIT_COMPLETION(bcm_pk_comp);
 		bcm_suspend = PR_IN_RESUME_STATE;
 		break;
 	case WIFI_PR_INIT:
 		bcm_suspend = PR_INIT_STATE;
+		break;
+	case WIFI_PR_WD_INIT:
+		INIT_COMPLETION(bcm_wd_comp);
+		break;
+	case WIFI_PR_WD_COMPLETE:
+		complete(&bcm_wd_comp);
 		break;
 	}
 	spin_unlock(&bcm_lock);
@@ -805,8 +819,8 @@ int __init wlan_partial_resume_init(void)
 {
 	int rc;
 
-	/* Setup partial resume */
-	spin_lock_init(&bcm_lock);
+	spin_lock_init(&bcm_lock); /* Setup partial resume */
+	complete(&bcm_wd_comp);    /* Prepare for case when WD is not set */
 	wlan_pr.irq = bcm_wifi_device.resource->start;
 	rc = register_partial_resume(&wlan_pr);
 	pr_debug("%s: after registering %pF: %d\n", __func__,
