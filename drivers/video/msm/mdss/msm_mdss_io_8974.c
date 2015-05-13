@@ -484,7 +484,11 @@ int mdss_dsi_clk_div_config(struct mdss_panel_info *panel_info,
 				(h_period * v_period * frame_rate * bpp * 8);
 		}
 	}
+#ifdef CONFIG_ASUS_WREN
+	panel_info->clk_rate=	211000000; // 211MHz
+#else
 	panel_info->clk_rate=	290000000; // 290MHz
+#endif
 	printk("MDSS:DSI:mdss_dsi_clk_div_config():Force panel_info->clk_rate=%d\n",panel_info->clk_rate);
 	pll_divider_config.clk_rate = panel_info->clk_rate;
 
