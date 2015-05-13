@@ -53,7 +53,7 @@
 	status = "ok";
 	qcom,charge-unknown-battery;
 	qcom,iterm-ma = <100>;
-	qcom,float-voltage-mv = <4400>;
+	qcom,float-voltage-mv = <4350>;
 	qcom,resume-delta-mv = <200>;
 	qcom,charging-timeout-mins = <768>;
 	qcom,chg-vadc = <&pmi8994_vadc>;
@@ -61,7 +61,7 @@
 
 /{
         bullhead_batterydata: qcom,battery-data {
-                #include "lge_blt9_2300mah.dtsi"
+                #include "lge_blt9_2300mAh_1956773_PMI8994GUI2165.dtsi"
         };
 };
 
@@ -72,7 +72,8 @@
         qcom,battery-data = <&bullhead_batterydata>;
         qcom,single-profile;
         qcom,sw-rbias-control;
-        qcom,fg-iterm-ma = <400>;
+        qcom,fg-iterm-ma = <200>;
+        qcom,fg-chg-iterm-ma = <100>;
         qcom,fg-cutoff-voltage-mv = <3400>;
 };
 
