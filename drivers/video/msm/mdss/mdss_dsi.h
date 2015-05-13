@@ -421,6 +421,7 @@ struct mdss_dsi_ctrl_pdata {
 	bool dsvreg_pre_on;
 	bool dsvreg_pre_off;
 	struct regulator *dsvreg;
+	bool dfps_status;	/* dynamic refresh status */
 };
 
 struct dsi_status_data {
