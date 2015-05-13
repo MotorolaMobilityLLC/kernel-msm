@@ -157,6 +157,7 @@ static int mdss_mdp_tearcheck_enable(struct mdss_mdp_ctl *ctl)
 	 * tear check configuration for both.
 	 */
 	if (sctl) {
+		mixer = mdss_mdp_mixer_get(sctl, MDSS_MDP_MIXER_MUX_LEFT);
 		if (!ctl->mfd->quickdraw_in_progress ||
 		    ctl->mfd->quickdraw_panel_state == DSI_DISP_ON_SLEEP_OUT)
 			te = &sctl->panel_data->panel_info.te;
