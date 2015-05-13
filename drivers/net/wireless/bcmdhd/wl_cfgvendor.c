@@ -2395,10 +2395,12 @@ static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
 		{ OUI_GOOGLE, GOOGLE_SCAN_COMPLETE_EVENT },
 		{ OUI_GOOGLE, GOOGLE_GSCAN_GEOFENCE_LOST_EVENT },
 		{ OUI_GOOGLE, GOOGLE_SCAN_EPNO_EVENT },
-		{ OUI_GOOGLE, GOOGLE_PNO_HOTSPOT_FOUND_EVENT },
 #endif /* GSCAN_SUPPORT */
 		{ OUI_GOOGLE, GOOGLE_DEBUG_RING_EVENT },
-		{ OUI_GOOGLE, GOOGLE_FW_DUMP_EVENT }
+		{ OUI_GOOGLE, GOOGLE_FW_DUMP_EVENT },
+#ifdef GSCAN_SUPPORT
+		{ OUI_GOOGLE, GOOGLE_PNO_HOTSPOT_FOUND_EVENT }
+#endif /* GSCAN_SUPPORT */
 };
 
 int wl_cfgvendor_attach(struct wiphy *wiphy, dhd_pub_t *dhd)
