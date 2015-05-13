@@ -68,3 +68,17 @@
 		fpc,force_hwid = <0x8210>;
 	};
 };
+
+&i2c_5 {
+	fusb301@21 {
+		status = "ok";
+		compatible = "fc,fusb301";
+		reg = <0x21>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <57 0x2>;
+		fusb301,int-gpio = <&msm_gpio 57 0>;
+		fusb301,init-mode = /bits/ 8 <32>;
+		fusb301,drp-toggle-time = /bits/ 8 <0>;
+		fusb301,host-current = /bits/ 8 <1>;
+	};
+};

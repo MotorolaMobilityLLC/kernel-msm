@@ -34,6 +34,10 @@
 		tusb320,select-mode = <0>;
 		tusb320,dfp-power = <0>;
 	};
+
+	fusb301@21 {
+		status = "disabled";
+	};
 };
 
 &i2c_2 {
