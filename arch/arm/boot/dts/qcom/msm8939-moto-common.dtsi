@@ -152,6 +152,10 @@
 		pinctrl-0 = <&kungpow_default>;
 	};
 
+	android_usb: android_usb@086000c8 {
+		mmi,pm-qos-latency-factory = <2 2 2>;
+        };
+
 	qcom,cci@1b0c000 {
 		vddio-supply = <&pm8916_l10>;
 	};
