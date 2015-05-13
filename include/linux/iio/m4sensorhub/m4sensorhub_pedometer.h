@@ -23,19 +23,50 @@
 #ifndef _M4SENSORHUB_PEDOMETER_IIO_H
 #define _M4SENSORHUB_PEDOMETER_IIO_H
 
-struct m4sensorhub_pedometer_iio_data {
+/*
+ * The pedometer data is sent as a multipart event to the HAL due
+ * to restrictions on the amount of data that can be sent as part
+ * of a single event.
+ */
+enum m4sensorhub_pedometer_iio_type {
+	PEDOMETER_TYPE_EVENT_1 = 0,
+	PEDOMETER_TYPE_EVENT_2 = 1,
+};
+
+struct m4sensorhub_pedometer_event_1 {
 	uint8_t         ped_activity;
 	uint32_t        total_distance;
-	uint32_t        total_steps;
-	uint16_t        current_speed;
-	uint32_t        healthy_minutes;
-	uint32_t        calories;
+	uint32_t	total_steps;
+	uint16_t	current_speed;
+	uint32_t	healthy_minutes;
+	uint32_t	calories;
+	uint8_t         reserved; /* Unused now. For future use */
+} __packed;
+
+struct m4sensorhub_pedometer_event_2 {
 	uint32_t        calories_normr;
+	uint16_t        step_frequency;
+	uint16_t	step_length;
+	uint32_t        reserved[3]; /* Unused now. For future use */
+} __packed;
+
+struct m4sensorhub_pedometer_iio_data {
+	uint8_t         type;
+	union {
+		/*
+		 * 20 bytes is the limit that we have. Whatever
+		 * type we add here should not exceed this limit.
+		 */
+		struct m4sensorhub_pedometer_event_1    event1;
+		struct m4sensorhub_pedometer_event_2    event2;
+	};
 	long long       timestamp;
 } __packed;
 
 #define M4PED_DRIVER_NAME           "m4sensorhub_pedometer"
 #define M4PED_DATA_STRUCT_SIZE_BITS \
 	(sizeof(struct m4sensorhub_pedometer_iio_data) * 8)
+
+#define M4FUS_NUM_PEDOMETER_BUFFERS   2
 
 #endif /* _M4SENSORHUB_PEDOMETER_IIO_H */
