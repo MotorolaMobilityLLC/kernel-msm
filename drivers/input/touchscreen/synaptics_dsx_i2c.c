@@ -3954,28 +3954,30 @@ static void synaptics_rmi4_cleanup(struct synaptics_rmi4_data *rmi4_data)
 
 static void synaptics_dsx_release_all(struct synaptics_rmi4_data *rmi4_data)
 {
-	/*
-	 * Enforce touch release event report to work-around such event
-	 * missing while touch IC is off.
-	 */
-#ifdef TYPE_B_PROTOCOL
-	int i;
-	for (i = 0; i < rmi4_data->num_of_fingers; i++) {
-		input_mt_slot(rmi4_data->input_dev, i);
-		input_mt_report_slot_state(rmi4_data->input_dev,
-				MT_TOOL_FINGER, false);
-	}
-#else
-	input_mt_sync(rmi4_data->input_dev);
-#endif
-	input_sync(rmi4_data->input_dev);
-
 	/* reset some TSB global vars like fingers_on_2d after resume
 	 * of reset touch IC
 	 */
 	if (rmi4_data->button_0d_enabled) {
 		tsb_buff_clean_flag = 1;
 		rmi4_data->fingers_on_2d = false;
+	}
+
+	if (rmi4_data->input_dev) {
+		/*
+		 * Enforce touch release event report to work-around
+		 * such event missing while touch IC is off.
+		*/
+#ifdef TYPE_B_PROTOCOL
+		int i;
+		for (i = 0; i < rmi4_data->num_of_fingers; i++) {
+			input_mt_slot(rmi4_data->input_dev, i);
+			input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, false);
+		}
+#else
+		input_mt_sync(rmi4_data->input_dev);
+#endif
+		input_sync(rmi4_data->input_dev);
 	}
 }
 
@@ -4775,6 +4777,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		return 0;
 
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
+	synaptics_dsx_release_all(rmi4_data);
 
 	if (rmi4_data->purge_enabled) {
 		int value = 1; /* set flag */
@@ -4865,8 +4868,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 		gpio_direction_output(platform_data->reset_gpio, 1);
 		rmi4_data->ic_on = true;
 	}
-
-	synaptics_dsx_release_all(rmi4_data);
 
 	/* perform HW reset if needed and wait for touch IC boot completion */
 	retval = synaptics_dsx_ic_reset(rmi4_data, hw_reset);
