@@ -6855,13 +6855,20 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 {
 	bool usb_present = is_usb_present(chip);
 	bool dc_present = is_dc_present(chip);
+	u8 reg = 0;
+	int rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
+		return;
+	}
+	reg &= USBIN_SRC_DET_BIT;
 
 	mutex_lock(&chip->usb_set_present_lock);
-	if (!chip->usb_present && usb_present) {
+	if (reg && !chip->usb_present && usb_present) {
 		/* USB inserted */
 		chip->usb_present = usb_present;
 		handle_usb_insertion(chip);
-	} else if (chip->usb_present && !usb_present) {
+	} else if (!reg && chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
 		handle_usb_removal(chip);
