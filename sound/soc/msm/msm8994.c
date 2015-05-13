@@ -67,6 +67,8 @@ static int msm8994_tfa9890_earpiece;
 #define TOMTOM_EXT_CLK_RATE         9600000
 #define ADSP_STATE_READY_TIMEOUT_MS    3000
 
+#define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
+
 enum pinctrl_pin_state {
 	STATE_DISABLE = 0,   /* All pins are in sleep state */
 	STATE_AUXPCM_ACTIVE, /* Aux PCM = active, MI2S = sleep */
@@ -734,15 +736,58 @@ exit:
 static int msm8994_mclk_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
+	int ret;
+	struct snd_soc_codec *codec = w->codec;
 	pr_debug("%s: event = %d\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		return msm_snd_enable_codec_ext_clk(w->codec, 1, true);
+		ret = msm_snd_enable_codec_ext_clk(w->codec, 1, true);
+		if (ret < 0) {
+			pr_err("%s Cannot set ext clk %d\n", __func__, ret);
+			goto exit;
+		}
+		ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_MCLK1,
+			9600000,
+			FLORIDA_SYSCLK_RATE);
+		if (ret < 0) {
+			pr_err("%s Cannot set REFCLK 9.6MHz %d\n", __func__,
+				ret);
+			goto exit;
+		}
+		ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_MCLK1,
+			9600000,
+			FLORIDA_SYSCLK_RATE);
+		if (ret < 0)
+			pr_err("%s Cannot set SYNC CLK 9.6MHz %d\n", __func__,
+				ret);
+
+		break;
 	case SND_SOC_DAPM_POST_PMD:
-		return msm_snd_enable_codec_ext_clk(w->codec, 0, true);
+		ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_MCLK2,
+			32768,
+			FLORIDA_SYSCLK_RATE);
+		if (ret < 0) {
+			pr_err("%s Cannot set REFCLK 32kHz %d\n", __func__,
+				ret);
+			goto exit;
+		}
+		ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_MCLK2,
+			32768,
+			FLORIDA_SYSCLK_RATE);
+		if (ret < 0)
+			pr_err("%s Cant set SYNC CLK 32kHz %d\n", __func__,
+				ret);
+
+		ret = msm_snd_enable_codec_ext_clk(w->codec, 0, true);
+		break;
 	}
-	return 0;
+exit:
+	return ret;
 }
 
 static const struct snd_soc_dapm_widget msm8994_dapm_widgets[] = {
@@ -779,6 +824,12 @@ static const struct snd_soc_dapm_widget msm8994_dapm_widgets[] = {
 
 #ifdef CONFIG_SND_SOC_FLORIDA
 static const struct snd_soc_dapm_route florida_audio_routes[] = {
+
+
+	{"Slim1 Playback", NULL, "MCLK"},
+	{"Slim1 Capture", NULL, "MCLK"},
+	{"Slim2 Playback", NULL, "MCLK"},
+	{"Slim2 Capture", NULL, "MCLK"},
 	{"IN1L", NULL, "MICBIAS3"},
 /*	{"IN1R", NULL, ""}, this is supplied by the FSA8500*/
 	{"IN2L", NULL, "MICBIAS3"},
@@ -2175,7 +2226,6 @@ out:
 #define MSM8994_AIF1_BCLK_RATE (SAMPLE_RATE_48KHZ * \
 					MSM8994_AIF1_SAMPLE_DEPTH * \
 					MSM8994_AIF1_CHANNELS)
-#define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
 static struct snd_soc_codec *florida_codec;
 static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -2193,10 +2243,6 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 		return -EINVAL;
 	}
 
-	ret = msm_snd_enable_codec_ext_clk(codec, 1, true);
-	if (ret != 0)
-		dev_err(codec->dev, "Failed to turn on the clock\n");
-
 	dev_crit(codec->dev, "florida_dai_init first BE dai initing ...\n");
 
 	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
@@ -2207,8 +2253,8 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to set FLL1REFCLK\n");
 
 	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
-							ARIZONA_FLL_SRC_MCLK1,
-							9600000,
+							ARIZONA_FLL_SRC_MCLK2,
+							32768,
 							FLORIDA_SYSCLK_RATE);
 
 	if (ret != 0)
