@@ -44,13 +44,28 @@
 
 
 
+#ifdef BCM_SECURE_DMA
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/io.h>
+#include <linux/printk.h>
+#include <linux/errno.h>
+#include <linux/mm.h>
+#include <linux/moduleparam.h>
+#include <asm/io.h>
+#include <linux/skbuff.h>
+#include <linux/vmalloc.h>
+#include <linux/highmem.h>
+#include <linux/dma-mapping.h>
+#include <asm/memory.h>
+#if defined(__ARM_ARCH_7A__)
+#include <arch/arm/include/asm/tlbflush.h>
+#include <arch/arm/mm/mm.h>
+#endif
+#include <linux/brcmstb/cma_driver.h>
+#endif /* BCM_SECURE_DMA */
+
 #include <linux/fs.h>
-
-
-#ifdef BCMPCIE
-#include <bcmpcie.h>
-#endif /* BCMPCIE */
-
 #define PCI_CFG_RETRY		10
 
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
@@ -58,9 +73,16 @@
 #define DUMPBUFSZ 1024
 
 #ifdef CONFIG_DHD_USE_STATIC_BUF
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 #define DHD_SKB_1PAGE_BUFSIZE	(PAGE_SIZE*1)
 #define DHD_SKB_2PAGE_BUFSIZE	(PAGE_SIZE*2)
 #define DHD_SKB_4PAGE_BUFSIZE	(PAGE_SIZE*4)
+#else
+#define DHD_SKB_HDRSIZE		336
+#define DHD_SKB_1PAGE_BUFSIZE	((PAGE_SIZE*1)-DHD_SKB_HDRSIZE)
+#define DHD_SKB_2PAGE_BUFSIZE	((PAGE_SIZE*2)-DHD_SKB_HDRSIZE)
+#define DHD_SKB_4PAGE_BUFSIZE	((PAGE_SIZE*4)-DHD_SKB_HDRSIZE)
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
 
 #define STATIC_BUF_MAX_NUM	16
 #define STATIC_BUF_SIZE	(PAGE_SIZE*2)
@@ -74,7 +96,7 @@ typedef struct bcm_static_buf {
 
 static bcm_static_buf_t *bcm_static_buf = 0;
 
-#if defined(BCMPCIE)
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 #define STATIC_PKT_4PAGE_NUM	0
 #define DHD_SKB_MAX_BUFSIZE	DHD_SKB_2PAGE_BUFSIZE
 #elif defined(ENHANCED_STATIC_BUF)
@@ -83,15 +105,15 @@ static bcm_static_buf_t *bcm_static_buf = 0;
 #else
 #define STATIC_PKT_4PAGE_NUM	0
 #define DHD_SKB_MAX_BUFSIZE DHD_SKB_2PAGE_BUFSIZE
-#endif /* BCMPCIE */
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
 
-#ifdef BCMPCIE
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 #define STATIC_PKT_1PAGE_NUM	0
-#define STATIC_PKT_2PAGE_NUM	16
+#define STATIC_PKT_2PAGE_NUM	64
 #else
 #define STATIC_PKT_1PAGE_NUM	8
 #define STATIC_PKT_2PAGE_NUM	8
-#endif /* BCMPCIE */
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
 
 #define STATIC_PKT_1_2PAGE_NUM	\
 	((STATIC_PKT_1PAGE_NUM) + (STATIC_PKT_2PAGE_NUM))
@@ -99,22 +121,22 @@ static bcm_static_buf_t *bcm_static_buf = 0;
 	((STATIC_PKT_1_2PAGE_NUM) + (STATIC_PKT_4PAGE_NUM))
 
 typedef struct bcm_static_pkt {
-	struct sk_buff *skb_4k[STATIC_PKT_1PAGE_NUM+1];
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 	struct sk_buff *skb_8k[STATIC_PKT_2PAGE_NUM];
-#if !defined(BCMPCIE)
+	spinlock_t osl_pkt_lock;
+	uint32 last_allocated_index;
+#else
+	struct sk_buff *skb_4k[STATIC_PKT_1PAGE_NUM];
+	struct sk_buff *skb_8k[STATIC_PKT_2PAGE_NUM];
 #ifdef ENHANCED_STATIC_BUF
 	struct sk_buff *skb_16k;
 #endif /* ENHANCED_STATIC_BUF */
 	struct semaphore osl_pkt_sem;
-#else
-	spinlock_t osl_pkt_lock;
-#endif /* !BCMPCIE */
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
 	unsigned char pkt_use[STATIC_PKT_MAX_NUM];
 } bcm_static_pkt_t;
 
 static bcm_static_pkt_t *bcm_static_skb = 0;
-
-
 
 void* wifi_platform_prealloc(void *adapter, int section, unsigned long size);
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
@@ -324,13 +346,13 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 	if (!bcm_static_buf && adapter) {
 		if (!(bcm_static_buf = (bcm_static_buf_t *)wifi_platform_prealloc(adapter,
 			3, STATIC_BUF_SIZE + STATIC_BUF_TOTAL_LEN))) {
-			printk("can not alloc static buf!\n");
+			printk("[WLAN] can not alloc static buf!\n");
 			bcm_static_skb = NULL;
 			ASSERT(osh->magic == OS_HANDLE_MAGIC);
 			return -ENOMEM;
 		}
 		else
-			printk("alloc static buf at %x!\n", (unsigned int)bcm_static_buf);
+			printk("[WLAN] alloc static buf at %p!\n", bcm_static_buf);
 
 
 		sema_init(&bcm_static_buf->static_sem, 1);
@@ -338,13 +360,16 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 		bcm_static_buf->buf_ptr = (unsigned char *)bcm_static_buf + STATIC_BUF_SIZE;
 	}
 
+#if defined(BCMPCIE) && !defined(DHD_USE_STATIC_IOCTLBUF)
+	return 0;
+#else
 	if (!bcm_static_skb && adapter) {
 		int i;
 		void *skb_buff_ptr = 0;
 		bcm_static_skb = (bcm_static_pkt_t *)((char *)bcm_static_buf + 2048);
 		skb_buff_ptr = wifi_platform_prealloc(adapter, 4, 0);
 		if (!skb_buff_ptr) {
-			printk("cannot alloc static buf!\n");
+			printk("[WLAN] cannot alloc static buf!\n");
 			bcm_static_buf = NULL;
 			bcm_static_skb = NULL;
 			ASSERT(osh->magic == OS_HANDLE_MAGIC);
@@ -353,16 +378,18 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 
 		bcopy(skb_buff_ptr, bcm_static_skb, sizeof(struct sk_buff *) *
 			(STATIC_PKT_MAX_NUM));
-		for (i = 0; i < STATIC_PKT_MAX_NUM; i++)
+		for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
 			bcm_static_skb->pkt_use[i] = 0;
+		}
 
 #if defined(BCMPCIE)
 		spin_lock_init(&bcm_static_skb->osl_pkt_lock);
+		bcm_static_skb->last_allocated_index = 0;
 #else
 		sema_init(&bcm_static_skb->osl_pkt_sem, 1);
 #endif /* BCMPCIE */
 	}
-
+#endif /* BCMPCIE && !DHD_USE_STATIC_IOCTLBUF */
 #endif /* CONFIG_DHD_USE_STATIC_BUF */
 
 	return 0;
@@ -405,7 +432,6 @@ int osl_static_mem_deinit(osl_t *osh, void *adapter)
 	return 0;
 }
 
-
 static struct sk_buff *osl_alloc_skb(osl_t *osh, unsigned int len)
 {
 	struct sk_buff *skb;
@@ -414,7 +440,6 @@ static struct sk_buff *osl_alloc_skb(osl_t *osh, unsigned int len)
 #if defined(CONFIG_SPARSEMEM) && defined(CONFIG_ZONE_DMA)
 	flags |= GFP_ATOMIC;
 #endif
-
 	skb = __dev_alloc_skb(len, flags);
 #else
 	skb = dev_alloc_skb(len);
@@ -793,6 +818,19 @@ osl_pktfree(osl_t *osh, void *p, bool send)
 
 	PKTDBG_TRACE(osh, (void *) skb, PKTLIST_PKTFREE);
 
+#ifdef DHD_USE_STATIC_IOCTLBUF
+	if (skb && (skb->mac_len == PREALLOC_USED_MAGIC)) {
+		printk("[WLAN] %s: Free Static %p not from pkt free static!\n", __FUNCTION__, p);
+		dump_stack();
+		return;
+	}
+
+	if (skb && (skb->mac_len == PREALLOC_FREE_MAGIC)) {
+		printk("[WLAN] %s: Free Static p %p not in used\n", __FUNCTION__, p);
+		dump_stack();
+		return;
+	}
+#endif /* DHD_USE_STATIC_IOCTLBUF */
 	/* perversion: we use skb->next to chain multi-skb packets */
 	while (skb) {
 		nskb = skb->next;
@@ -826,147 +864,192 @@ osl_pktget_static(osl_t *osh, uint len)
 {
 	int i = 0;
 	struct sk_buff *skb;
-#if defined(BCMPCIE)
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 	unsigned long flags;
-#endif /* BCMPCIE */
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
+	void *p;
 
 	if (!bcm_static_skb)
 		return osl_pktget(osh, len);
 
 	if (len > DHD_SKB_MAX_BUFSIZE) {
-		printk("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
-		return osl_pktget(osh, len);
+		printk("[WLAN] %s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
+		p = osl_pktget(osh, len);
+		return p;
 	}
 
-#if defined(BCMPCIE)
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 	spin_lock_irqsave(&bcm_static_skb->osl_pkt_lock, flags);
-#else
-	down(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 
-	if (len <= DHD_SKB_1PAGE_BUFSIZE) {
-		for (i = 0; i < STATIC_PKT_1PAGE_NUM; i++)
-		{
-			if (bcm_static_skb->pkt_use[i] == 0) {
+	if (len <= DHD_SKB_2PAGE_BUFSIZE) {
+		uint32 index;
+		for (i = 0; i < STATIC_PKT_2PAGE_NUM; i++) {
+			index = bcm_static_skb->last_allocated_index % STATIC_PKT_2PAGE_NUM;
+			bcm_static_skb->last_allocated_index++;
+			if (bcm_static_skb->skb_8k[index] &&
+				bcm_static_skb->pkt_use[index] == 0) {
 				break;
 			}
 		}
 
-		if (i != STATIC_PKT_1PAGE_NUM)
-		{
+		if ((i != STATIC_PKT_2PAGE_NUM) &&
+			(index >= 0) && (index < STATIC_PKT_2PAGE_NUM)) {
+			bcm_static_skb->pkt_use[index] = 1;
+			skb = bcm_static_skb->skb_8k[index];
+			skb->data = skb->head + NET_SKB_PAD;
+			skb->cloned = 0;
+			skb->priority = 0;
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+			skb_set_tail_pointer(skb, len);
+#else
+			skb->tail = skb->data + len;
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
+			skb->len = len;
+			skb->mac_len = PREALLOC_USED_MAGIC;
+			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
+			return skb;
+		}
+	}
+
+	spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
+	printk("[WLAN] %s: all static pkt in use!\n", __FUNCTION__);
+	return NULL;
+#else
+	down(&bcm_static_skb->osl_pkt_sem);
+
+	if (len <= DHD_SKB_1PAGE_BUFSIZE) {
+		for (i = 0; i < STATIC_PKT_1PAGE_NUM; i++) {
+			if (bcm_static_skb->skb_4k[i] &&
+				bcm_static_skb->pkt_use[i] == 0) {
+				break;
+			}
+		}
+
+		if (i != STATIC_PKT_1PAGE_NUM) {
 			bcm_static_skb->pkt_use[i] = 1;
 
 			skb = bcm_static_skb->skb_4k[i];
-			skb->len = len;
-
-#if defined(BCMPCIE)
-#if defined(__ARM_ARCH_7A__)
-			skb->data = skb->head + NET_SKB_PAD;
-			skb->tail = skb->head + NET_SKB_PAD;
-#else
-			skb->data = skb->head + 16;
-			skb->tail = skb->head + 16;
-#endif /* __ARM_ARCH_7A__ */
-			skb->cloned = 0;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
-			skb->list = NULL;
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14) */
-			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+			skb_set_tail_pointer(skb, len);
 #else
 			skb->tail = skb->data + len;
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
+			skb->len = len;
+
 			up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 			return skb;
 		}
 	}
 
 	if (len <= DHD_SKB_2PAGE_BUFSIZE) {
 		for (i = STATIC_PKT_1PAGE_NUM; i < STATIC_PKT_1_2PAGE_NUM; i++) {
-			if (bcm_static_skb->pkt_use[i] == 0)
+			if (bcm_static_skb->skb_8k[i - STATIC_PKT_1PAGE_NUM] &&
+				bcm_static_skb->pkt_use[i] == 0) {
 				break;
+			}
 		}
 
 		if ((i >= STATIC_PKT_1PAGE_NUM) && (i < STATIC_PKT_1_2PAGE_NUM)) {
 			bcm_static_skb->pkt_use[i] = 1;
 			skb = bcm_static_skb->skb_8k[i - STATIC_PKT_1PAGE_NUM];
-			skb->tail = skb->data + len;
-			skb->len = len;
-#if defined(BCMPCIE)
-			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+			skb_set_tail_pointer(skb, len);
 #else
+			skb->tail = skb->data + len;
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
+			skb->len = len;
+
 			up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 			return skb;
 		}
 	}
 
-#if !defined(BCMPCIE)
 #if defined(ENHANCED_STATIC_BUF)
-	if (bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] == 0) {
+	if (bcm_static_skb->skb_16k &&
+		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] == 0) {
 		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] = 1;
 
 		skb = bcm_static_skb->skb_16k;
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+		skb_set_tail_pointer(skb, len);
+#else
 		skb->tail = skb->data + len;
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
 		skb->len = len;
 
 		up(&bcm_static_skb->osl_pkt_sem);
 		return skb;
 	}
 #endif /* ENHANCED_STATIC_BUF */
-#endif /* !BCMPCIE */
-
-#if defined(BCMPCIE)
-	spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
-#else
 	up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
-	printk("%s: all static pkt in use!\n", __FUNCTION__);
-	return osl_pktget(osh, len);
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
+
+	p = osl_pktget(osh, len);
+	return p;
 }
 
 void
 osl_pktfree_static(osl_t *osh, void *p, bool send)
 {
 	int i;
-#if defined(BCMPCIE)
+	struct sk_buff *skb = p;
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 	unsigned long flags;
-#endif /* BCMPCIE */
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
+
+	if (!p) {
+		return;
+	}
 
 	if (!bcm_static_skb) {
 		osl_pktfree(osh, p, send);
 		return;
 	}
 
-#if defined(BCMPCIE)
+#if defined(BCMPCIE) && defined(DHD_USE_STATIC_IOCTLBUF)
 	spin_lock_irqsave(&bcm_static_skb->osl_pkt_lock, flags);
+
+	for (i = 0; i < STATIC_PKT_2PAGE_NUM; i++) {
+		if (p == bcm_static_skb->skb_8k[i]) {
+			if (bcm_static_skb->pkt_use[i] == 0)
+				printk("[WLAN] %s: double free! %d p %p\n", __FUNCTION__, i, p);
+			bcm_static_skb->pkt_use[i] = 0;
+			if (skb->mac_len != PREALLOC_USED_MAGIC)
+			{
+				printk("[WLAN] %s: Free Static p %p not in used\n",
+					__FUNCTION__, p);
+				dump_stack();
+			}
+			skb->mac_len = PREALLOC_FREE_MAGIC;
+			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
+			return;
+		}
+	}
+
+	spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
+	printk("[WLAN] %s: packet %p does not exist in the pool\n", __FUNCTION__, p);
 #else
 	down(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 
 	for (i = 0; i < STATIC_PKT_1PAGE_NUM; i++) {
 		if (p == bcm_static_skb->skb_4k[i]) {
+			if (bcm_static_skb->pkt_use[i] == 0)
+				printk("[WLAN] %s: double free! %d p %p\n", __FUNCTION__, i, p);
 			bcm_static_skb->pkt_use[i] = 0;
-#if defined(BCMPCIE)
-			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
-#else
 			up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 			return;
 		}
 	}
 
 	for (i = STATIC_PKT_1PAGE_NUM; i < STATIC_PKT_1_2PAGE_NUM; i++) {
 		if (p == bcm_static_skb->skb_8k[i - STATIC_PKT_1PAGE_NUM]) {
+			if (bcm_static_skb->pkt_use[i] == 0)
+				printk("[WLAN] %s: double free! %d p %p\n", __FUNCTION__, i, p);
 			bcm_static_skb->pkt_use[i] = 0;
-#if defined(BCMPCIE)
-			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
-#else
 			up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 			return;
 		}
 	}
-#if !defined(BCMPCIE)
 #ifdef ENHANCED_STATIC_BUF
 	if (p == bcm_static_skb->skb_16k) {
 		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] = 0;
@@ -974,14 +1057,9 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 		return;
 	}
 #endif /* ENHANCED_STATIC_BUF */
-#endif /* !BCMPCIE */
-
-#if defined(BCMPCIE)
-	spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
-#else
 	up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 	osl_pktfree(osh, p, send);
+#endif /* BCMPCIE && DHD_USE_STATIC_IOCTLBUF */
 }
 
 void
@@ -1153,7 +1231,7 @@ osl_malloc(osl_t *osh, uint size)
 			if (i == STATIC_BUF_MAX_NUM)
 			{
 				up(&bcm_static_buf->static_sem);
-				printk("all static buff in use!\n");
+				printk("[WLAN] all static buff in use!\n");
 				goto original;
 			}
 
@@ -1351,6 +1429,12 @@ osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction)
 	pci_unmap_single(osh->pdev, (uint32)pa, size, dir);
 }
 
+/* OSL function for CPU relax */
+inline void BCMFASTPATH
+osl_cpu_relax(void)
+{
+	cpu_relax();
+}
 
 #if defined(USE_KMALLOC_FOR_FLOW_RING) && defined(__ARM_ARCH_7A__)
 

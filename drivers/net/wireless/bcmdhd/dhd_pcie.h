@@ -179,6 +179,16 @@ typedef struct dhd_bus {
 	struct msm_pcie_register_event pcie_event;
 	bool islinkdown;
 #endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+#ifdef PCIE_TX_DEFERRAL
+	struct workqueue_struct *tx_wq;
+	struct work_struct create_flow_work;
+	struct work_struct delete_flow_work;
+	unsigned long *delete_flow_map;
+	struct sk_buff_head orphan_list;
+#endif /* PCIE_TX_DEFERRAL */
+	uint32 d0_inform_cnt;
+	uint32 d0_inform_in_use_cnt;
+	uint8 force_suspend;
 } dhd_bus_t;
 
 /* function declarations */
@@ -188,15 +198,20 @@ extern int dhdpcie_bus_register(void);
 extern void dhdpcie_bus_unregister(void);
 extern bool dhdpcie_chipmatch(uint16 vendor, uint16 device);
 
-extern struct dhd_bus* dhdpcie_bus_attach(osl_t *osh, volatile char* regs, volatile char* tcm);
+extern struct dhd_bus* dhdpcie_bus_attach(osl_t *osh, volatile char* regs,
+	volatile char* tcm, uint32 tcm_size);
 extern uint32 dhdpcie_bus_cfg_read_dword(struct dhd_bus *bus, uint32 addr, uint32 size);
 extern void dhdpcie_bus_cfg_write_dword(struct dhd_bus *bus, uint32 addr, uint32 size, uint32 data);
 extern void dhdpcie_bus_intr_disable(struct dhd_bus *bus);
+extern void dhdpcie_bus_remove_prep(struct dhd_bus *bus);
 extern void dhdpcie_bus_release(struct dhd_bus *bus);
 extern int32 dhdpcie_bus_isr(struct dhd_bus *bus);
 extern void dhdpcie_free_irq(dhd_bus_t *bus);
 extern int dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state);
-extern int dhdpcie_pci_suspend_resume(struct pci_dev *dev, bool state);
+extern int dhdpcie_pci_suspend_resume(struct dhd_bus *bus, bool state);
+#ifndef BCMPCIE_OOB_HOST_WAKE
+extern void dhdpcie_pme_active(osl_t *osh, bool enable);
+#endif /* !BCMPCIE_OOB_HOST_WAKE */
 extern int dhdpcie_start_host_pcieclock(dhd_bus_t *bus);
 extern int dhdpcie_stop_host_pcieclock(dhd_bus_t *bus);
 extern int dhdpcie_disable_device(dhd_bus_t *bus);
@@ -204,6 +219,14 @@ extern int dhdpcie_enable_device(dhd_bus_t *bus);
 extern int dhdpcie_alloc_resource(dhd_bus_t *bus);
 extern void dhdpcie_free_resource(dhd_bus_t *bus);
 extern int dhdpcie_bus_request_irq(struct dhd_bus *bus);
+extern int dhdpcie_reg_pcie_notify(void* semaphore);
+extern void dhdpcie_unreg_pcie_notify(void);
+#ifdef BCMPCIE_OOB_HOST_WAKE
+extern int dhdpcie_oob_intr_register(dhd_bus_t *bus);
+extern void dhdpcie_oob_intr_unregister(dhd_bus_t *bus);
+extern void dhdpcie_oob_intr_set(dhd_bus_t *bus, bool enable);
+#endif /* BCMPCIE_OOB_HOST_WAKE */
+
 extern int dhd_buzzz_dump_dngl(dhd_bus_t *bus);
 #ifdef DHD_WAKE_STATUS
 int bcmpcie_get_total_wake(struct dhd_bus *bus);

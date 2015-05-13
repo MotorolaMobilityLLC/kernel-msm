@@ -3004,7 +3004,11 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #endif /* PNO_SUPPORT */
 
 #ifdef DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT
+#if defined(DHD_USE_STATIC_IOCTLBUF)
+			PKTFREE_STATIC(dhdp->osh, pktbuf, FALSE);
+#else
 			PKTFREE(dhdp->osh, pktbuf, FALSE);
+#endif /* DHD_USE_STATIC_IOCTLBUF) */
 			continue;
 #endif /* DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT */
 		} else {

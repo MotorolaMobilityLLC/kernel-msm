@@ -329,6 +329,12 @@ typedef struct sbpcieregs {
 #define PCIE_TLP_TGTDEBUG3		0x07C /* Target Debug Reg3 */
 #define PCIE_TLP_TGTDEBUG4		0x080 /* Target Debug Reg4 */
 
+/* PCIE2 MDIO register offsets */
+#define PCIE2_MDIO_CONTROL    0x128
+#define PCIE2_MDIO_WR_DATA    0x12C
+#define PCIE2_MDIO_RD_DATA    0x130
+
+
 /* MDIO control */
 #define MDIOCTL_DIVISOR_MASK		0x7f	/* clock to be used on MDIO */
 #define MDIOCTL_DIVISOR_VAL		0x2

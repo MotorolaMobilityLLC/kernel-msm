@@ -187,7 +187,11 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 /* API for DMA addressing capability */
 #define OSL_DMADDRWIDTH(osh, addrwidth) ({BCM_REFERENCE(osh); BCM_REFERENCE(addrwidth);})
 
-#if defined(__mips__) || (defined(BCM47XX_CA9) && defined(__ARM_ARCH_7A__))
+/* API for CPU relax */
+extern void osl_cpu_relax(void);
+#define OSL_CPU_RELAX() osl_cpu_relax()
+
+#if defined(USE_KMALLOC_FOR_FLOW_RING) && defined(__ARM_ARCH_7A__)
 	extern void osl_cache_flush(void *va, uint size);
 	extern void osl_cache_inv(void *va, uint size);
 	extern void osl_prefetch(const void *ptr);
@@ -354,6 +358,8 @@ extern int osl_error(int bcmerror);
 #define PKTDBG_TRACE(osh, pkt, bit)	BCM_REFERENCE(osh)
 #define	PKTFREE(osh, skb, send)		osl_pktfree((osh), (skb), (send))
 #ifdef CONFIG_DHD_USE_STATIC_BUF
+#define PREALLOC_FREE_MAGIC             0xFEDC
+#define PREALLOC_USED_MAGIC             0xFCDE
 #define	PKTGET_STATIC(osh, len, send)		osl_pktget_static((osh), (len))
 #define	PKTFREE_STATIC(osh, skb, send)		osl_pktfree_static((osh), (skb), (send))
 #else

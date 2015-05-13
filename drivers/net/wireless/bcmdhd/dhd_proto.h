@@ -107,8 +107,8 @@ extern int dhd_process_pkt_reorder_info(dhd_pub_t *dhd, uchar *reorder_info_buf,
 	uint reorder_info_len, void **pkt, uint32 *free_buf_count);
 
 #ifdef BCMPCIE
-extern int dhd_prot_process_msgbuf_txcpl(dhd_pub_t *dhd);
-extern int dhd_prot_process_msgbuf_rxcpl(dhd_pub_t *dhd);
+extern bool dhd_prot_process_msgbuf_txcpl(dhd_pub_t *dhd, uint bound);
+extern bool dhd_prot_process_msgbuf_rxcpl(dhd_pub_t *dhd, uint bound);
 extern int dhd_prot_process_ctrlbuf(dhd_pub_t * dhd);
 extern bool dhd_prot_dtohsplit(dhd_pub_t * dhd);
 extern int dhd_post_dummy_msg(dhd_pub_t *dhd);

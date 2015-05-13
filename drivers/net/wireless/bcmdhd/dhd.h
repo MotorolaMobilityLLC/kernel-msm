@@ -122,6 +122,11 @@ enum dhd_op_flags {
 #define MAX_CNTL_RX_TIMEOUT 1
 #endif /* MAX_CNTL_RX_TIMEOUT */
 
+#ifdef BCMPCIE
+#ifndef MAX_CNTL_D3ACK_TIMEOUT
+#define MAX_CNTL_D3ACK_TIMEOUT 2
+#endif /* MAX_CNTL_D3ACK_TIMEOUT */
+#endif /* BCMPCIE */
 #define DHD_SCAN_ASSOC_ACTIVE_TIME	20 /* ms: Embedded default Active setting from DHD */
 #define DHD_SCAN_UNASSOC_ACTIVE_TIME	40 /* ms: Embedded def. Unassoc Active setting from DHD */
 #define DHD_SCAN_UNASSOC_ACTIVE_TIME_PS	30
@@ -362,6 +367,9 @@ typedef struct dhd_pub {
 	int   hang_was_sent;
 	int   rxcnt_timeout;		/* counter rxcnt timeout to send HANG */
 	int   txcnt_timeout;		/* counter txcnt timeout to send HANG */
+#ifdef BCMPCIE
+	int   d3ackcnt_timeout;		/* counter d3ack timeout to send HANG */
+#endif /* BCMPCIE */
 	bool hang_report;		/* enable hang report by default */
 #ifdef WLMEDIA_HTSF
 	uint8 htsfdlystat_sz; /* Size of delay stats, max 255B */
@@ -397,6 +405,7 @@ typedef struct dhd_pub {
 	void	*if_flow_lkup;      /* per interface flowid lkup hash table */
 	void	*flowid_lock;		/* per os lock for flowid info protection */
 	uint32  num_flow_rings;
+	uint32 d2h_sync_mode;		/* D2H DMA completion sync mode */
 	uint8  flow_prio_map[NUMPRIO];
 	uint8	flow_prio_map_type;
 	char enable_log[MAX_EVENT];
@@ -420,6 +429,7 @@ typedef struct dhd_pub {
 #endif
 #if defined(WLTDLS) && defined(PCIE_FULL_DONGLE)
 	tdls_peer_tbl_t peer_tbl;
+	bool tx_in_progress;
 #endif
 #ifdef GSCAN_SUPPORT
 	bool lazy_roam_enable;
@@ -427,6 +437,7 @@ typedef struct dhd_pub {
 	uint8 *soc_ram;
 	uint32 soc_ram_length;
 	uint32 memdump_enabled;
+	unsigned int irq_cpu_count[NR_CPUS+1];
 } dhd_pub_t;
 
 #if defined(BCMWDF)
