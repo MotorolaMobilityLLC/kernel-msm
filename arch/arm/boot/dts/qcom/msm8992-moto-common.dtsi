@@ -490,7 +490,8 @@
 
 &hsphy0 {
 	status = "ok";
-	qcom,hsphy-init = <0x00DE07A4>;
+	qcom,hsphy-init = <0x00D29824>;
+	qcom,hsphy-host-init = <0x00DE07A4>;
 };
 
 &ssphy0 {
