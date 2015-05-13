@@ -3898,10 +3898,10 @@ static void msm8x16_wcd_update_reg_defaults(struct snd_soc_codec *codec)
 static const struct msm8x16_wcd_reg_mask_val
 	msm8x16_wcd_codec_reg_init_val[] = {
 
-	/* Initialize current threshold to 350MA
+	/* Initialize current threshold to 280MA
 	 * number of wait and run cycles to 4096
 	 */
-	{MSM8X16_WCD_A_ANALOG_RX_COM_OCP_CTL, 0xFF, 0xD1},
+	{MSM8X16_WCD_A_ANALOG_RX_COM_OCP_CTL, 0xFF, 0x11},
 	{MSM8X16_WCD_A_ANALOG_RX_COM_OCP_COUNT, 0xFF, 0xFF},
 };
 
