@@ -37,3 +37,4 @@ obj-$(CONFIG_USB_QCOM_MDM_BRIDGE) 	+= mdm_bridge.o
 obj-$(CONFIG_USB_QCOM_KS_BRIDGE)	+= ks_bridge.o
 obj-$(CONFIG_USB_QCOM_IPC_BRIDGE)	+= ipc_bridge.o
 obj-$(CONFIG_USB_CC_TUSB320)		+= tusb320.o
+obj-$(CONFIG_USB_CC_FUSB301)		+= fusb301.o
