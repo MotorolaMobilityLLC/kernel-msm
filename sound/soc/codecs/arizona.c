@@ -2575,17 +2575,6 @@ int arizona_init_dai(struct arizona_priv *priv, int id)
 }
 EXPORT_SYMBOL_GPL(arizona_init_dai);
 
-static irqreturn_t arizona_fll_clock_ok(int irq, void *data)
-{
-	struct arizona_fll *fll = data;
-
-	arizona_fll_dbg(fll, "clock OK\n");
-
-	complete(&fll->ok);
-
-	return IRQ_HANDLED;
-}
-
 static struct {
 	unsigned int min;
 	unsigned int max;
@@ -2818,39 +2807,53 @@ static int arizona_calc_fll(struct arizona_fll *fll,
 
 }
 
-static void arizona_apply_fll(struct arizona *arizona, unsigned int base,
+static bool arizona_apply_fll(struct arizona *arizona, unsigned int base,
 			      struct arizona_fll_cfg *cfg, int source,
 			      bool sync)
 {
-	regmap_update_bits(arizona->regmap, base + 3,
-			   ARIZONA_FLL1_THETA_MASK, cfg->theta);
-	regmap_update_bits(arizona->regmap, base + 4,
-			   ARIZONA_FLL1_LAMBDA_MASK, cfg->lambda);
-	regmap_update_bits(arizona->regmap, base + 5,
+	bool change, fll_change;
+
+	fll_change = false;
+	regmap_update_bits_check(arizona->regmap, base + 3,
+			   ARIZONA_FLL1_THETA_MASK, cfg->theta, &change);
+	fll_change |= change;
+	regmap_update_bits_check(arizona->regmap, base + 4,
+			   ARIZONA_FLL1_LAMBDA_MASK, cfg->lambda, &change);
+	fll_change |= change;
+	regmap_update_bits_check(arizona->regmap, base + 5,
 			   ARIZONA_FLL1_FRATIO_MASK,
-			   cfg->fratio << ARIZONA_FLL1_FRATIO_SHIFT);
-	regmap_update_bits(arizona->regmap, base + 6,
+			   cfg->fratio << ARIZONA_FLL1_FRATIO_SHIFT, &change);
+	fll_change |= change;
+	regmap_update_bits_check(arizona->regmap, base + 6,
 			   ARIZONA_FLL1_CLK_REF_DIV_MASK |
 			   ARIZONA_FLL1_CLK_REF_SRC_MASK,
 			   cfg->refdiv << ARIZONA_FLL1_CLK_REF_DIV_SHIFT |
-			   source << ARIZONA_FLL1_CLK_REF_SRC_SHIFT);
+			   source << ARIZONA_FLL1_CLK_REF_SRC_SHIFT, &change);
+	fll_change |= change;
 
 	if (sync) {
-		regmap_update_bits(arizona->regmap, base + 0x7,
+		regmap_update_bits_check(arizona->regmap, base + 0x7,
 				   ARIZONA_FLL1_GAIN_MASK,
-				   cfg->gain << ARIZONA_FLL1_GAIN_SHIFT);
+				   cfg->gain << ARIZONA_FLL1_GAIN_SHIFT,
+				   &change);
+		fll_change |= change;
 	} else {
 		regmap_update_bits(arizona->regmap, base + 0x5,
 				   ARIZONA_FLL1_OUTDIV_MASK,
 				   cfg->outdiv << ARIZONA_FLL1_OUTDIV_SHIFT);
-		regmap_update_bits(arizona->regmap, base + 0x9,
+		regmap_update_bits_check(arizona->regmap, base + 0x9,
 				   ARIZONA_FLL1_GAIN_MASK,
-				   cfg->gain << ARIZONA_FLL1_GAIN_SHIFT);
+				   cfg->gain << ARIZONA_FLL1_GAIN_SHIFT,
+				   &change);
+		fll_change |= change;
 	}
 
-	regmap_update_bits(arizona->regmap, base + 2,
+	regmap_update_bits_check(arizona->regmap, base + 2,
 			   ARIZONA_FLL1_CTRL_UPD | ARIZONA_FLL1_N_MASK,
-			   ARIZONA_FLL1_CTRL_UPD | cfg->n);
+			   ARIZONA_FLL1_CTRL_UPD | cfg->n, &change);
+	fll_change |= change;
+
+	return fll_change;
 }
 
 static int arizona_is_enabled_fll(struct arizona_fll *fll)
@@ -2872,13 +2875,16 @@ static int arizona_is_enabled_fll(struct arizona_fll *fll)
 static int arizona_enable_fll(struct arizona_fll *fll)
 {
 	struct arizona *arizona = fll->arizona;
-	int ret;
 	bool use_sync = false;
 	int already_enabled = arizona_is_enabled_fll(fll);
 	struct arizona_fll_cfg cfg;
+	bool fll_change;
 
 	if (already_enabled < 0)
 		return already_enabled;
+
+	arizona_fll_dbg(fll, "Enabling FLL, initially %s\n",
+			already_enabled ? "enabled" : "disabled");
 
 	if (already_enabled) {
 		/* Facilitate smooth refclk across the transition */
@@ -2896,19 +2902,19 @@ static int arizona_enable_fll(struct arizona_fll *fll)
 	    fll->ref_src != fll->sync_src) {
 		arizona_calc_fll(fll, &cfg, fll->ref_freq, false);
 
-		arizona_apply_fll(arizona, fll->base, &cfg, fll->ref_src,
-				  false);
+		fll_change = arizona_apply_fll(arizona, fll->base, &cfg,
+				  fll->ref_src, false);
 		if (fll->sync_src >= 0) {
 			arizona_calc_fll(fll, &cfg, fll->sync_freq, true);
 
-			arizona_apply_fll(arizona, fll->base + 0x10, &cfg,
-					  fll->sync_src, true);
+			fll_change |= arizona_apply_fll(arizona,
+				  fll->base + 0x10, &cfg, fll->sync_src, true);
 			use_sync = true;
 		}
 	} else if (fll->sync_src >= 0) {
 		arizona_calc_fll(fll, &cfg, fll->sync_freq, false);
 
-		arizona_apply_fll(arizona, fll->base, &cfg,
+		fll_change = arizona_apply_fll(arizona, fll->base, &cfg,
 				  fll->sync_src, false);
 
 		regmap_update_bits(arizona->regmap, fll->base + 0x11,
@@ -2948,10 +2954,21 @@ static int arizona_enable_fll(struct arizona_fll *fll)
 		regmap_update_bits(arizona->regmap, fll->base + 1,
 				   ARIZONA_FLL1_FREERUN, 0);
 
-	ret = wait_for_completion_timeout(&fll->ok,
-					  msecs_to_jiffies(250));
-	if (ret == 0)
-		arizona_fll_warn(fll, "Timed out waiting for lock\n");
+	if (fll_change ||  !already_enabled) {
+		int i;
+		unsigned int val = 0;
+		arizona_fll_dbg(fll, "Waiting for FLL lock...\n");
+		for (i = 0; i < 25; i++) {
+			regmap_read(arizona->regmap,
+				    ARIZONA_INTERRUPT_RAW_STATUS_5,
+				    &val);
+			if (val & (ARIZONA_FLL1_CLOCK_OK_STS << (fll->id - 1)))
+				break;
+			msleep(10);
+		}
+		if (i == 25)
+			arizona_fll_warn(fll, "Timed out waiting for lock\n");
+	}
 
 	return 0;
 }
@@ -2960,6 +2977,10 @@ static void arizona_disable_fll(struct arizona_fll *fll)
 {
 	struct arizona *arizona = fll->arizona;
 	bool change;
+	int i;
+	unsigned int val = 0;
+
+	arizona_fll_dbg(fll, "Disabling FLL\n");
 
 	regmap_update_bits(arizona->regmap, fll->base + 1,
 			   ARIZONA_FLL1_FREERUN, ARIZONA_FLL1_FREERUN);
@@ -2969,6 +2990,18 @@ static void arizona_disable_fll(struct arizona_fll *fll)
 			   ARIZONA_FLL1_SYNC_ENA, 0);
 	regmap_update_bits(arizona->regmap, fll->base + 1,
 			   ARIZONA_FLL1_FREERUN, 0);
+
+	arizona_fll_dbg(fll, "Waiting for FLL disable...\n");
+	for (i = 0; i < 25; i++) {
+		regmap_read(arizona->regmap,
+			    ARIZONA_INTERRUPT_RAW_STATUS_5,
+			    &val);
+		if (!(val & (ARIZONA_FLL1_CLOCK_OK_STS << (fll->id - 1))))
+			break;
+		msleep(10);
+	}
+	if (i == 25)
+		arizona_fll_warn(fll, "Timed out waiting for disable\n");
 
 	if (change)
 		pm_runtime_put_autosuspend(arizona->dev);
@@ -3036,7 +3069,6 @@ EXPORT_SYMBOL_GPL(arizona_set_fll);
 int arizona_init_fll(struct arizona *arizona, int id, int base, int lock_irq,
 		     int ok_irq, struct arizona_fll *fll)
 {
-	int ret;
 	unsigned int val;
 
 	init_completion(&fll->ok);
@@ -3061,13 +3093,6 @@ int arizona_init_fll(struct arizona *arizona, int id, int base, int lock_irq,
 	snprintf(fll->lock_name, sizeof(fll->lock_name), "FLL%d lock", id);
 	snprintf(fll->clock_ok_name, sizeof(fll->clock_ok_name),
 		 "FLL%d clock OK", id);
-
-	ret = arizona_request_irq(arizona, ok_irq, fll->clock_ok_name,
-				  arizona_fll_clock_ok, fll);
-	if (ret != 0) {
-		dev_err(arizona->dev, "Failed to get FLL%d clock OK IRQ: %d\n",
-			id, ret);
-	}
 
 	regmap_update_bits(arizona->regmap, fll->base + 1,
 			   ARIZONA_FLL1_FREERUN, 0);
