@@ -547,8 +547,7 @@ void motosh_store_vote_aod_enabled_locked(struct motosh_data *ps_motosh,
 	int voter, bool enable);
 int motosh_resolve_aod_enabled_locked(struct motosh_data *ps_motosh);
 int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh);
-int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
-	bool releaseWakelock);
+int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh);
 void motosh_quickwakeup_init(struct motosh_data *ps_motosh);
 
 int motosh_boot_flash_erase(void);
