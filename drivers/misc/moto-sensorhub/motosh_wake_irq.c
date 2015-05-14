@@ -185,7 +185,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	if (!valid_queue_len) {
 		dev_dbg(&ps_motosh->client->dev,
 			"Invalid wake queue_length: %d\n", queue_length);
-		goto EXIT;
+		goto PROCESS_LOGS;
 	}
 
 	/* read wake queue */
@@ -450,6 +450,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		};
 	}
 
+PROCESS_LOGS:
 	/* Log messages are stored in a separate queue.
 	   Read at most MAX_NUM_LOGS_PER_INT, or if pending_reset is set allow
 	   5 times that many. */
