@@ -273,6 +273,8 @@ struct dhd_pno_hotlist_params {
 	struct list_head bssid_list;
 };
 #ifdef GSCAN_SUPPORT
+#define DHD_PNO_REPORT_NO_BATCH      (1 << 2)
+
 typedef struct dhd_pno_gscan_channel_bucket {
 	uint16 bucket_freq_multiple;
 	/* band = 1 All bg band channels,
@@ -282,6 +284,8 @@ typedef struct dhd_pno_gscan_channel_bucket {
 	uint16 band;
 	uint8 report_flag;
 	uint8 num_channels;
+	uint16 repeat;
+	uint16 bucket_max_multiple;
 	uint16 chan_list[GSCAN_MAX_CH_BUCKETS];
 } dhd_pno_gscan_channel_bucket_t;
 
@@ -309,6 +313,7 @@ typedef struct dhd_epno_results {
 	int8 rssi;
 	uint16 channel;
 	uint16 flags;
+	struct ether_addr bssid;
 } dhd_epno_results_t;
 
 struct dhd_pno_swc_evt_param {

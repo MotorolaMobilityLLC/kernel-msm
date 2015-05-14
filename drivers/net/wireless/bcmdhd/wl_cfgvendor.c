@@ -581,6 +581,14 @@ static int wl_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 							ch_bucket[j].report_flag = (uint8)
 							     nla_get_u32(iter1);
 							break;
+						case GSCAN_ATTRIBUTE_BUCKET_STEP_COUNT:
+							ch_bucket[j].repeat = (uint16)
+							     nla_get_u32(iter1);
+							break;
+						case GSCAN_ATTRIBUTE_BUCKET_MAX_PERIOD:
+							ch_bucket[j].bucket_max_multiple =
+							     nla_get_u32(iter1)/1000;
+							break;
 					}
 				}
 				j++;
