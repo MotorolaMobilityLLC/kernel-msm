@@ -2958,6 +2958,50 @@ static bool smb1351_charger_mmi_factory(void)
 	return factory;
 }
 
+struct smb1351_otp {
+	int	address;
+	u8	value;
+};
+
+static struct smb1351_otp default_csir_2325_v3[] = {
+	{.address = 0x00, .value = 0x5A},
+	{.address = 0x01, .value = 0x01},
+	{.address = 0x02, .value = 0x97},
+	{.address = 0x03, .value = 0xEB},
+	{.address = 0x04, .value = 0x0D},
+	{.address = 0x05, .value = 0x11},
+	{.address = 0x06, .value = 0x79},
+	{.address = 0x07, .value = 0x55},
+	{.address = 0x08, .value = 0x80},
+	{.address = 0x09, .value = 0x18},
+	{.address = 0x0A, .value = 0x28},
+	{.address = 0x0B, .value = 0x40},
+	{.address = 0x0C, .value = 0x04},
+	{.address = 0x0D, .value = 0x10},
+	{.address = 0x0E, .value = 0x98},
+	{.address = 0x10, .value = 0x77},
+	{.address = 0x11, .value = 0xA2},
+	{.address = 0x12, .value = 0x60},
+	{.address = 0x13, .value = 0x8C},
+	{.address = 0x14, .value = 0x1C},
+};
+
+static void smb1351_charger_set_csir_2325_v3(struct smb1351_charger *chip)
+{
+	int rc;
+	int i;
+	int df_size_tbl = (ARRAY_SIZE(default_csir_2325_v3) /
+			   sizeof(struct smb1351_otp));
+
+	rc = smb1351_enable_volatile_writes(chip);
+	if (rc)
+		pr_err("Couldn't configure volatile writes rc=%d\n", rc);
+
+	for (i = 0; i < df_size_tbl; i++)
+		smb1351_write_reg(chip, default_csir_2325_v3[i].address,
+				  default_csir_2325_v3[i].value);
+}
+
 static int smb1351_main_charger_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -3115,13 +3159,15 @@ fail_smb1351_regulator_init:
 	power_supply_unregister(&chip->batt_psy);
 	return rc;
 }
-
+#define I2C_ADDR_REG 0x16
+#define BAD_PART_I2C_ADDR 0x57
 static int smb1351_parallel_charger_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	int rc;
 	struct smb1351_charger *chip;
 	struct device_node *node = client->dev.of_node;
+	u8 i2c_addr;
 
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip) {
@@ -3146,6 +3192,16 @@ static int smb1351_parallel_charger_probe(struct i2c_client *client,
 		chip->recharge_mv = -EINVAL;
 
 	i2c_set_clientdata(client, chip);
+
+	if (smb1351_read_reg(chip, I2C_ADDR_REG, &i2c_addr) < 0) {
+		pr_err("Device not present at 0x%02x\n", client->addr);
+		return -ENODEV;
+	}
+
+	if (client->addr == BAD_PART_I2C_ADDR) {
+		pr_err("WARNING using an unintended SMB1351 revision!\n");
+		smb1351_charger_set_csir_2325_v3(chip);
+	}
 
 	chip->parallel_psy.name		= "usb-parallel";
 	chip->parallel_psy.type		= POWER_SUPPLY_TYPE_USB_PARALLEL;
