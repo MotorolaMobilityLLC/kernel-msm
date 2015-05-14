@@ -649,10 +649,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		wmb();
 	}
 
-end:
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 
+end:
 	pr_debug("%s-:\n", __func__);
 	return 0;
 }
