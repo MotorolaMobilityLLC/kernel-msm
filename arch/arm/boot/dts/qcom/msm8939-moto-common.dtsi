@@ -280,6 +280,7 @@
 		intersil,no-reset;
 		intersil,init-level = <255>;
 		intersil,dimm-threshold = <0x02>;
+		intersil,current-scale = <63>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&backlight_reset_default>;
 	};
