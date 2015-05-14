@@ -144,6 +144,8 @@
 	mtp_batterydata: qcom,battery-data {
 		qcom,rpull-up-kohm = <68>;
 		qcom,vref-batt-therm = <1800000>;
+		/delete-node/ qcom,palladium-batterydata;
+		/delete-node/ qcom,mtp-3000mah;
 	};
 };
 
