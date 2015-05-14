@@ -129,3 +129,11 @@
 		qcom,cdc-variant = "WCD9330";
 	};
 };
+
+&spmi_bus {
+	qcom,pm8226@1{
+		qcom,leds@d800 {
+			status = "disabled";
+		};
+	};
+};
