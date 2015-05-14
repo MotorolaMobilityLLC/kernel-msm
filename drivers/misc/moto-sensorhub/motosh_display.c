@@ -269,8 +269,7 @@ int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh)
 	return 0;
 }
 
-int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
-	bool releaseWakelock)
+int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 {
 	int ret = 0;
 	u8 aod_qp_reason;
@@ -412,10 +411,6 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh,
 	mutex_unlock(&ps_motosh->qp_list_lock);
 
 exit:
-	/* If this is only us, we dont need a full 1 sec */
-	if (releaseWakelock)
-		wake_unlock(&ps_motosh->wakelock);
-
 	return ret;
 
 error:
