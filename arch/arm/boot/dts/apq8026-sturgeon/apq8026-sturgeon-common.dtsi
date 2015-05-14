@@ -14,6 +14,9 @@
 	i2c@f9927000 { /* BLSP1 QUP5 */
 		synaptics@20 {
 			synaptics,display-coords = <0 0 319 239>;
+			/delete-property/ synaptics,power-down;
+			/delete-property/ synaptics,disable-gpios;
+			synaptics,is_wake;
 		};
 	};
 
@@ -28,29 +31,7 @@
 			<0x44 0x80 0x68 0x81 0x3C 0x82 0xF3 0x83 0xffffffff>;
 		/delete-property/ qcom,hsusb-otg-disable-reset;
 	};
-};
 
-&mdss_fb0 {
-	/* cont_splash memory*/
-	qcom,memblock-reserve = <0x07e9c000 0x64000>;
-};
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
-};
-
-&dsi_nt35590_qvga_cmd {
-	qcom,cont-splash-enabled;
-};
-
-&soc {
-	i2c@f9927000 {
-		synaptics@20 {
-			/delete-property/ synaptics,power-down;
-			/delete-property/ synaptics,disable-gpios;
-			synaptics,is_wake;
-		};
-	};
 	qcom,smem@fa00000 {
 		qcom,smd-modem {
 			status = "disabled";
@@ -86,6 +67,10 @@
 	qcom,pronto@fb21b000 {
 		status = "disabled";
 	};
+};
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x07e9c000 0x64000>;
 };
 
 &pm8x26_rtc {
