@@ -93,6 +93,9 @@
 		ppg {
 			compatible = "mot,m4ppg";
 		};
+		significantmotion {
+			compatible = "mot,m4significantmotion";
+		};
 	};
 
 	gpio-charger {
