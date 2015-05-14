@@ -66,7 +66,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 78 00 01 11
 	39 01 00 00 00 00 03 44 07 08
 	15 01 00 00 00 00 02 35 00
-	15 01 00 00 00 00 02 51 FF
+	15 01 00 00 00 00 02 51 CC
 	15 01 00 00 00 00 02 53 2C
 	15 01 00 00 00 00 02 55 01
 	05 01 00 00 00 00 01 29];	/* display on */
@@ -76,6 +76,9 @@ qcom,mdss-dsi-off-command = [
 
 qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
+qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
+qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
