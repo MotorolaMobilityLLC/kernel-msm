@@ -1035,6 +1035,10 @@
 		pinctrl-0 = <&kungpow_default>;
 	};
 
+	android_usb@fe87f0c8 {
+		mmi,pm-qos-latency-factory = <2 2 2>;
+	};
+
 	hob_ram {
 		compatible = "mmi,hob_ram";
 		mmi,allocation-type-smem;
