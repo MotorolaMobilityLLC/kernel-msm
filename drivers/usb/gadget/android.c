@@ -4387,6 +4387,34 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 	return 0;
 }
 
+static void check_mmi_factory(struct platform_device *pdev,
+		struct android_usb_platform_data *pdata)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool fact_cable = false;
+	int prop_len = 0;
+
+	if (np)
+		fact_cable = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	if (fact_cable) {
+		of_get_property(pdev->dev.of_node,
+				"mmi,pm-qos-latency-factory",
+				&prop_len);
+		if (prop_len == sizeof(pdata->pm_qos_latency)) {
+			pr_info("Overwrite pm_qos latency with factory mode\n");
+			of_property_read_u32_array(pdev->dev.of_node,
+				"mmi,pm-qos-latency-factory",
+				pdata->pm_qos_latency,
+				prop_len/sizeof(*pdata->pm_qos_latency));
+		} else {
+			pr_info("pm_qos latency for factory not specified\n");
+		}
+	}
+}
+
 static int android_probe(struct platform_device *pdev)
 {
 	struct android_usb_platform_data *pdata;
@@ -4413,6 +4441,8 @@ static int android_probe(struct platform_device *pdev)
 		} else {
 			pr_info("pm_qos latency not specified %d\n", prop_len);
 		}
+
+		check_mmi_factory(pdev, pdata);
 
 		ret = of_property_read_u32(pdev->dev.of_node,
 					"qcom,usb-core-id",
