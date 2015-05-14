@@ -1314,6 +1314,8 @@ static int mmc_sd_resume(struct mmc_host *host)
 		if (err) {
 			pr_err("%s: failed to reinitialize SD card (%d) after %lums\n",
 				mmc_hostname(host), err, delay / 1000);
+			if (err == -EILSEQ && mmc_sd_throttle_back(host) == 0)
+				continue;
 			retries--;
 			mmc_power_off(host);
 			usleep_range(delay, delay + 500);
@@ -1468,6 +1470,8 @@ int mmc_attach_sd(struct mmc_host *host)
 	while (retries && !host->rescan_disable) {
 		err = mmc_sd_init_card(host, host->ocr, NULL);
 		if (err) {
+			if (err == -EILSEQ && mmc_sd_throttle_back(host) == 0)
+				continue;
 			retries--;
 			mmc_power_off(host);
 			usleep_range(delay, delay + 500);
