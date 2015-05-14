@@ -145,7 +145,6 @@ static struct gpiomux_setting touch_rst = {				//IT7260
     .func = GPIOMUX_FUNC_GPIO,
     .drv = GPIOMUX_DRV_2MA,
     .pull = GPIOMUX_PULL_NONE,
-    .dir = GPIOMUX_OUT_HIGH,
 };
 static struct gpiomux_setting touch_int = {				//IT7260
     .func = GPIOMUX_FUNC_GPIO,
