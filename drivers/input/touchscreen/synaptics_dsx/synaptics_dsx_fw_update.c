@@ -391,6 +391,7 @@ struct synaptics_rmi4_fwu_handle {
 	bool in_flash_prog_mode;
 	bool do_lockdown;
 	bool has_guest_code;
+	unsigned int update_fail_cnt;
 	unsigned int data_pos;
 	unsigned char *ext_data_source;
 	unsigned char *read_config_buf;
@@ -404,7 +405,7 @@ struct synaptics_rmi4_fwu_handle {
 	unsigned short config_block_count;
 	const unsigned char *config_data;
 	struct workqueue_struct *fwu_workqueue;
-	struct work_struct fwu_work;
+	struct delayed_work fwu_work;
 	struct image_metadata img;
 	struct register_offset off;
 	struct block_count bcount;
@@ -1658,6 +1659,13 @@ static int fwu_do_lockdown(void)
 	if (retval < 0)
 		return retval;
 
+	retval = rmi4_data->reset_device(rmi4_data);
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+			"%s: Failed to reset device\n",
+			__func__);
+		return retval;
+	}
 	pr_notice("%s: Lockdown programmed\n", __func__);
 
 	return retval;
@@ -1924,6 +1932,22 @@ static int get_device_firmware(struct synaptics_rmi4_data *rmi4_data)
 	}
 }
 
+static int fw_lockdown_check(const unsigned char *image)
+{
+	unsigned char productid_info[PRODUCT_INFO_HEAD_LEN + 1] = {0};
+
+	if(image == NULL)
+		return -EINVAL;
+
+	memcpy(productid_info, image + PRODUCT_INFO_OFFSET, strlen(PRODUCT_INFO_HEAD));
+	pr_info("%s:product id head=%s\n",__func__,productid_info);
+
+	if (strcmp(productid_info, PRODUCT_INFO_HEAD) == 0)
+		return true;
+	else
+		return false;
+}
+
 static int fwu_start_reflash(void)
 {
 	int retval = 0;
@@ -1996,6 +2020,11 @@ static int fwu_start_reflash(void)
 		fwu->in_flash_prog_mode = true;
 	} else {
 		fwu->in_flash_prog_mode = false;
+	}
+
+	if(fw_lockdown_check(fwu->img.image) > 0) {
+		pr_info("%s:fw lockdown info found\n",__func__);
+		fwu->do_lockdown = true;
 	}
 
 	if (fwu->do_lockdown && (fwu->img.lockdown.data != NULL)) {
@@ -2078,8 +2107,18 @@ EXPORT_SYMBOL(synaptics_fw_updater);
 #ifdef DO_STARTUP_FW_UPDATE
 static void fwu_startup_fw_update_work(struct work_struct *work)
 {
-	synaptics_fw_updater(NULL);
+	int retval;
 
+	retval = synaptics_fw_updater(NULL);
+
+	if (retval < 0) {
+		fwu->update_fail_cnt++;
+		if(fwu->update_fail_cnt < 3) {
+			queue_delayed_work(fwu->fwu_workqueue,
+				&fwu->fwu_work,
+				msecs_to_jiffies(1000));
+		}
+	}
 	return;
 }
 #endif
@@ -2419,6 +2458,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	fwu->force_update = FORCE_UPDATE;
 	fwu->do_lockdown = DO_LOCKDOWN;
 	fwu->initialized = true;
+	fwu->update_fail_cnt = 0;
 
 	retval = sysfs_create_bin_file(&rmi4_data->input_dev->dev.kobj,
 			&dev_attr_data);
@@ -2443,9 +2483,10 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 
 #ifdef DO_STARTUP_FW_UPDATE
 	fwu->fwu_workqueue = create_singlethread_workqueue("fwu_workqueue");
-	INIT_WORK(&fwu->fwu_work, fwu_startup_fw_update_work);
-	queue_work(fwu->fwu_workqueue,
-			&fwu->fwu_work);
+	INIT_DELAYED_WORK(&fwu->fwu_work, fwu_startup_fw_update_work);
+	queue_delayed_work(fwu->fwu_workqueue,
+			&fwu->fwu_work,
+			0);
 #endif
 
 	return 0;
@@ -2477,7 +2518,7 @@ static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 		goto exit;
 
 #ifdef DO_STARTUP_FW_UPDATE
-	cancel_work_sync(&fwu->fwu_work);
+	cancel_delayed_work_sync(&fwu->fwu_work);
 	flush_workqueue(fwu->fwu_workqueue);
 	destroy_workqueue(fwu->fwu_workqueue);
 #endif
