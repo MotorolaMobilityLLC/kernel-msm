@@ -1511,6 +1511,15 @@
 		qcom,float-voltage-mv = <4400>;
 		qcom,recharge-mv = <100>;
 	};
+
+	smb1351-charger@57 {
+		status = "ok";
+		compatible = "qcom,smb1351-charger";
+		reg = <0x57>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4400>;
+		qcom,recharge-mv = <100>;
+	};
 };
 
 &pm8994_vadc {
