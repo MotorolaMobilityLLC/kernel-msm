@@ -26,6 +26,7 @@
 	usb_otg: usb@f9a55000 {
 		qcom,hsusb-otg-phy-init-seq =
 			<0x44 0x80 0x68 0x81 0x3C 0x82 0xF3 0x83 0xffffffff>;
+		/delete-property/ qcom,hsusb-otg-disable-reset;
 	};
 };
 
