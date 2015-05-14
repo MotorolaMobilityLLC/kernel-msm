@@ -999,6 +999,10 @@
 			"factory_warn";
 	};
 
+	android_usb {
+		mmi,pm-qos-latency-factory = <2 2 2>;
+	};
+
 	hob_ram {
 		compatible = "mmi,hob_ram";
 		mmi,allocation-type-smem;
