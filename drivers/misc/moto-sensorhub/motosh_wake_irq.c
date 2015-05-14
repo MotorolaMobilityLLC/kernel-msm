@@ -149,6 +149,22 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		ps_motosh->qw_irq_status = 0;
 	}
 
+	/* Check if we are coming out of normal reset and/or
+	   the part has self-reset */
+	if (irq_status & M_INIT_COMPLETE) {
+		dev_err(&ps_motosh->client->dev,
+			"sensorhub reports reset [%d]", spurious_det);
+		motosh_reset_and_init(COMPLETE_INIT);
+	}
+	if (irq_status & M_TOUCH) {
+		if (motosh_display_handle_touch_locked(ps_motosh) < 0)
+			goto EXIT;
+	}
+	if (irq_status & M_QUICKPEEK) {
+		if (motosh_display_handle_quickpeek_locked(ps_motosh) < 0)
+			goto EXIT;
+	}
+
 	/* read wake queue length */
 	cmdbuff[0] = WAKE_MSG_QUEUE_LEN;
 	err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 1);
@@ -164,24 +180,6 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 
 	valid_queue_len = ((queue_length > 0) &&
 			   (queue_length <= MOTOSH_MAX_EVENT_QUEUE_SIZE));
-
-	/* Check if we are coming out of normal reset and/or
-	   the part has self-reset */
-	if (irq_status & M_INIT_COMPLETE) {
-		dev_err(&ps_motosh->client->dev,
-			"sensorhub reports reset [%d]", spurious_det);
-		motosh_reset_and_init(COMPLETE_INIT);
-	}
-	if (irq_status & M_TOUCH) {
-		if (motosh_display_handle_touch_locked(ps_motosh) < 0)
-			goto EXIT;
-	}
-	if (irq_status & M_QUICKPEEK) {
-		if (motosh_display_handle_quickpeek_locked(ps_motosh,
-			irq_status == M_QUICKPEEK && !valid_queue_len) < 0)
-			goto EXIT;
-	}
-
 	if (!valid_queue_len) {
 		dev_dbg(&ps_motosh->client->dev,
 			"Invalid wake queue_length: %d\n", queue_length);
@@ -515,6 +513,11 @@ PROCESS_RESET:
 	}
 
 EXIT:
+	/* if there were no surfaced events (only quickpeek/logging),
+	   release the wakelock */
+	if (irq_status == M_QUICKPEEK && !valid_queue_len)
+		wake_unlock(&ps_motosh->wakelock);
+
 	motosh_sleep(ps_motosh);
 EXIT_NO_WAKE:
 	mutex_unlock(&ps_motosh->lock);
