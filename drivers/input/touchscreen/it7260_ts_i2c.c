@@ -537,12 +537,18 @@ static void chipLowPowerMode(bool low)
 			LOGI("[%d] %s TP_DLMODE = %d.\n", __LINE__, __func__, TP_DLMODE);
 			if (!TP_DLMODE) {
 				//Touch Reset
-				gpio_direction_output(RESET_GPIO,0);
-				mdelay(60);
-				gpio_direction_output(RESET_GPIO,1);
+				ret = gpio_request(RESET_GPIO, "CTP_RST_N");
+				if (ret < 0) {
+					LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+				} else {
+					LOGI("[%d] %s touch reset\n", __LINE__, __func__);
+					gpio_direction_output(RESET_GPIO,0);
+					mdelay(60);
+				}
+				gpio_free(RESET_GPIO);
 				msleep(50);
 				chipInLowPower = false;
-				LOGI("[%d] %s touch reset, set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
+				LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
 			}
 			if (!allow_irq_wake) {
 				smp_wmb();
@@ -1327,7 +1333,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 {
 	struct IT7260_i2c_platform_data *pdata;
 	int ret = -1;
-	int err;
 
 	LOGI("start to probe...\n");
 	probe_flag = true;
@@ -1450,11 +1455,7 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	wake_lock_init(&touch_time_lock, WAKE_LOCK_SUSPEND, "touch-time-lock");
 
 	RESET_GPIO = parse_reset_gpio(&client->dev);
-	LOGI("IT7260: gpio_request %d\n", RESET_GPIO);
-	err = gpio_request(RESET_GPIO, "CTP_RST_N");
-	if (err < 0) {
-		LOGE("IT7260: gpio_request %d error: %d\n", RESET_GPIO, err);
-	}
+	LOGI("parse reset gpio RESET_GPIO = %d.\n", RESET_GPIO);
 
 	TP_DLMODE_GPIO_VALUE = gpio_get_value(TP_DLMODE_GPIO);
 	if (TP_DLMODE_GPIO_VALUE == 1) {
