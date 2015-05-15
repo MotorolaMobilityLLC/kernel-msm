@@ -2164,14 +2164,24 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 //ASUS_BSP Ken_Cheng ---
 	/* Secondary AUX PCM Backend DAI Links */
 	{
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 		.name = LPASS_BE_SEC_AUXPCM_RX,
 		.stream_name = "Sec AUX PCM Playback",
 		.cpu_dai_name = "msm-dai-q6-auxpcm.2",
+#else
+		.name = LPASS_BE_AUXPCM_RX,
+		.stream_name = "AUX PCM Playback",
+		.cpu_dai_name = "msm-dai-q6-auxpcm.1",
+#endif
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-rx",
 		.no_pcm = 1,
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 		.be_id = MSM_BACKEND_DAI_SEC_AUXPCM_RX,
+#else
+		.be_id = MSM_BACKEND_DAI_AUXPCM_RX,
+#endif
 		.be_hw_params_fixup = msm_auxpcm_be_params_fixup,
 		.ops = &msm_auxpcm_be_ops,
 		.ignore_pmdown_time = 1,
@@ -2179,14 +2189,24 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		/* this dainlink has playback support */
 	},
 	{
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 		.name = LPASS_BE_SEC_AUXPCM_TX,
 		.stream_name = "Sec AUX PCM Capture",
 		.cpu_dai_name = "msm-dai-q6-auxpcm.2",
+#else
+		.name = LPASS_BE_AUXPCM_TX,
+		.stream_name = "AUX PCM Capture",
+		.cpu_dai_name = "msm-dai-q6-auxpcm.1",
+#endif
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-tx",
 		.no_pcm = 1,
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 		.be_id = MSM_BACKEND_DAI_SEC_AUXPCM_TX,
+#else
+		.be_id = MSM_BACKEND_DAI_AUXPCM_TX,
+#endif
 		.be_hw_params_fixup = msm_auxpcm_be_params_fixup,
 		.ops = &msm_auxpcm_be_ops,
 		.ignore_suspend = 1,
