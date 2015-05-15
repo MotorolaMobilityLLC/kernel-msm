@@ -849,7 +849,9 @@ motosh_of_init(struct i2c_client *client)
 				&pdata->ct406_als_lux2_c1_mult);
 	of_property_read_u32(np, "ct406_als_lux2_div",
 				&pdata->ct406_als_lux2_div);
-
+	pdata->cover_detect_polarity = MOTOSH_HALL_NO_DETECT;
+	of_property_read_u32(np, "cover_detect_polarity",
+				&pdata->cover_detect_polarity);
 	pdata->accel_orient = 1;
 	pdata->gyro_orient = 1;
 	pdata->mag_orient = 1;
