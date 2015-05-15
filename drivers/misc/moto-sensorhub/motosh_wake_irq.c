@@ -89,6 +89,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			(struct delayed_work *)work,
 			struct motosh_data, irq_wake_work);
 	int log_msg_ctr = 0;
+	struct motosh_platform_data *pdata;
+	pdata = ps_motosh->pdata;
 
 	dev_dbg(&ps_motosh->client->dev, "motosh_irq_wake_work_func\n");
 	mutex_lock(&ps_motosh->lock);
@@ -268,11 +270,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			queue_index += 1;
 			break;
 		case COVER_DATA:
-			if (data[COVER_STATE] == MOTOSH_HALL_NORTH)
+			if ((pdata->cover_detect_polarity
+				& data[COVER_STATE]) != MOTOSH_HALL_NO_DETECT)
 				state = 1;
-			else
-				state = 0;
-
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 			/* notify subscribers of cover state change */
 			mmi_hall_notify(MMI_HALL_FOLIO, state);
