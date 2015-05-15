@@ -1847,12 +1847,17 @@ static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 }
 
 static bool reporting_stopped;
+static unsigned int events_cnt;
 
 static ssize_t synaptics_rmi4_reporting_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%s\n",
-			reporting_stopped ? "STOPPED" : "RUNNING");
+	ssize_t length;
+	if (reporting_stopped)
+		length = scnprintf(buf, PAGE_SIZE, "STOPPED(%u)\n", events_cnt);
+	else
+		length = scnprintf(buf, PAGE_SIZE, "RUNNING\n");
+	return length;
 }
 
 static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
@@ -1873,6 +1878,8 @@ static ssize_t synaptics_rmi4_reporting_store(struct device *dev,
 		}
 		reporting_stopped = value == 0;
 	}
+	if (reporting_stopped)
+		events_cnt = 0;
 	return count;
 }
 
@@ -2412,6 +2419,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	fingers_to_process = max(fingers_to_process, active_touch_max_idx);
 
 	if (fingers_to_process == 0) {
+		/* count release event */
+		events_cnt++;
 		synaptics_dsx_release_all(rmi4_data);
 		return 0;
 	}
@@ -2422,7 +2431,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			data_addr + reg_data_1->offset,
 			reg_data_1->data,
 			data_size);
-	if (retval < 0 || reporting_stopped)
+	if (retval < 0)
+		return 0;
+	/* count valid event */
+	events_cnt++;
+	if (reporting_stopped)
 		return 0;
 
 	input_event(rmi4_data->input_dev, EV_SYN,
@@ -2545,6 +2558,10 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			finger_status_reg,
 			num_of_finger_status_regs);
 	if (retval < 0)
+		return 0;
+	/* count valid event */
+	events_cnt++;
+	if (reporting_stopped)
 		return 0;
 
 	if (atomic_read(&rmi4_data->panel_off_flag)) {
