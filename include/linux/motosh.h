@@ -295,8 +295,10 @@
 #define STM16_TO_HOST(buf, x) ((int16_t) be16_to_cpu(*((u16 *) (buf+(x)))))
 #define STM32_TO_HOST(buf, x) ((int32_t) be32_to_cpu(*((u32 *) (buf+(x)))))
 
-#define MOTOSH_HALL_SOUTH 1
-#define MOTOSH_HALL_NORTH 2
+#define MOTOSH_HALL_NO_DETECT 0
+#define MOTOSH_HALL_SOUTH_DETECT 1
+#define MOTOSH_HALL_NORTH_DETECT 2
+#define MOTOSH_HALL_NORTH_OR_SOUTH_DETECT 3
 
 struct motosh_quickpeek_message {
 	u8 message;
@@ -348,6 +350,7 @@ struct motosh_platform_data {
 	int mag_orient;
 	int panel_type;
 	int IR_config;
+	int cover_detect_polarity;
 };
 
 /**
