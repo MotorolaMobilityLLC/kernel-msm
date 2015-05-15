@@ -21,6 +21,7 @@
 #include <linux/of_gpio.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
+#include <linux/hssp_programmer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/input-polldev.h>
@@ -40,6 +41,7 @@
 #include <linux/motosh.h>
 
 #define MOTOSH_RESET_DELAY		5
+#define CAPSENSE_RESET_DELAY		1000
 
 int motosh_load_brightness_table(struct motosh_data *ps_motosh,
 		unsigned char *cmdbuff)
@@ -73,7 +75,14 @@ void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 {
 	dev_err(&motosh_misc_data->client->dev, "motosh_reset\n");
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep(MOTOSH_RESET_DELAY);
+
+	/* Reset the capsense in case it has gotten
+	 * into a bad state. This should allow the sensorhub
+	 * to recover from the scenario where capsense is preventing
+	 * its initialization. */
+	cycapsense_reset();
+	msleep(CAPSENSE_RESET_DELAY);
+
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(MOTOSH_RESET_DELAY);
 	motosh_detect_lowpower_mode(cmdbuff);
