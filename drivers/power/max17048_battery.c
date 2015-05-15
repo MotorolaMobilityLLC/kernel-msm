@@ -56,11 +56,12 @@
 #define MAX17048_VERSION_12    0x12
 
 #define NORMAL_POLL_MS 10000
+#define MAX17048_DEFAULT_TEMP  250
 
 struct max17048_chip {
 	struct i2c_client *client;
 	struct power_supply batt_psy;
-	struct power_supply *ac_psy;
+	struct power_supply *battery;
 	struct max17048_platform_data *pdata;
 	struct dentry *dent;
 	struct notifier_block pm_notifier;
@@ -279,14 +280,30 @@ static uint16_t max17048_get_version(struct max17048_chip *chip)
 	return (uint16_t) max17048_read_word(chip->client, VERSION_REG);
 }
 
-static int max17048_set_rcomp(struct max17048_chip *chip)
+static void max17048_set_rcomp(struct max17048_chip *chip)
 {
 	int ret;
 	int scale_coeff;
 	int rcomp;
-	int temp;
+	int temp = MAX17048_DEFAULT_TEMP;
+	union power_supply_propval val = {0,};
 
-	temp = chip->batt_temp / 10;
+	if (!chip->battery) {
+		chip->battery = power_supply_get_by_name("battery");
+		if (!chip->battery) {
+			pr_err("%s: battery psy is not init yet!\n", __func__);
+			return;
+		}
+	}
+
+	ret = chip->battery->get_property(chip->battery,
+			POWER_SUPPLY_PROP_TEMP, &val);
+	if (ret < 0)
+		pr_warn("%s: failed to get battery temp\n", __func__);
+	else
+		temp = val.intval;
+
+	temp = temp / 10;
 
 	if (temp > 20)
 		scale_coeff = chip->rcomp_co_hot;
@@ -298,7 +315,7 @@ static int max17048_set_rcomp(struct max17048_chip *chip)
 	rcomp = chip->rcomp * 1000 - (temp-20) * scale_coeff;
 	rcomp = bound_check(255, 0, rcomp / 1000);
 
-	pr_info("%s: new RCOMP = 0x%02X\n", __func__, rcomp);
+	pr_debug("%s: new RCOMP = 0x%02X\n", __func__, rcomp);
 
 	rcomp = rcomp << CFG_RCOMP_SHIFT;
 
@@ -306,8 +323,6 @@ static int max17048_set_rcomp(struct max17048_chip *chip)
 			CONFIG_REG, CFG_RCOMP_MASK, rcomp);
 	if (ret < 0)
 		pr_err("%s: failed to set rcomp\n", __func__);
-
-	return ret;
 }
 
 static void max17048_work(struct work_struct *work)
@@ -321,11 +336,7 @@ static void max17048_work(struct work_struct *work)
 	pr_debug("%s.\n", __func__);
 
 	max17048_get_prop_current(chip);
-
-	ret = max17048_set_rcomp(chip);
-	if (ret)
-		pr_err("%s : failed to set rcomp\n", __func__);
-
+	max17048_set_rcomp(chip);
 	max17048_get_vcell(chip);
 	max17048_get_soc(chip);
 
@@ -339,15 +350,15 @@ static void max17048_work(struct work_struct *work)
 
 	ret = max17048_clear_interrupt(chip);
 	if (ret < 0)
-		pr_err("%s : error clear alert irq register.\n", __func__);
+		pr_err("%s: failed to clear alert irq\n", __func__);
 
-	pr_info("%s: raw soc = 0x%04X raw vcell = 0x%04X\n",
+	pr_debug("%s: raw soc = 0x%04X raw vcell = 0x%04X\n",
 			__func__, chip->soc, chip->vcell);
-	pr_info("%s: SOC = %d vbatt_mv = %d\n",
+	pr_debug("%s: SOC = %d vbatt_mv = %d\n",
 			__func__, chip->capacity_level, chip->voltage);
 
-
 	wake_unlock(&chip->alert_lock);
+
 	schedule_delayed_work(&chip->monitor_work,
 			msecs_to_jiffies(NORMAL_POLL_MS));
 }
@@ -356,7 +367,7 @@ static irqreturn_t max17048_interrupt_handler(int irq, void *data)
 {
 	struct max17048_chip *chip = data;
 
-	pr_debug("%s : interupt occured\n", __func__);
+	pr_debug("%s: interupt occured\n", __func__);
 	schedule_delayed_work(&chip->monitor_work, 0);
 
 	return IRQ_HANDLED;
@@ -745,8 +756,6 @@ static int max17048_probe(struct i2c_client *client,
 	int ret;
 	uint16_t version;
 
-	pr_info("%s: start\n", __func__);
-
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
@@ -867,7 +876,7 @@ static int max17048_probe(struct i2c_client *client,
 	schedule_delayed_work(&chip->monitor_work, 0);
 	enable_irq(chip->alert_irq);
 
-	pr_info("%s: done\n", __func__);
+	pr_info("%s: max17048 probed\n", __func__);
 	return 0;
 
 err_hw_init:
