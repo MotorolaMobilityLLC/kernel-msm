@@ -870,6 +870,7 @@
 			mag_orient = <8>;              /* Mag Orientation value */
 			panel_type = <0>;              /* Panel Type value */
 			IR_config = <0>;               /* IR Config value */
+			cover_detect_polarity = <2>;   /*Default to MOTOSH_NORTH_DETECT*/
 			pinctrl-names = "default";
 			pinctrl-0 = <&motosh_out_default &motosh_in_default>;
 		};
