@@ -25,14 +25,6 @@
 	qcom,board-id = <8 5>;
 };
 
-&soc {
-	i2c@f9927000 { /* BLSP1 QUP5 */
-		synaptics@20 {
-			synaptics,display-coords = <0 0 319 239>;
-		};
-	};
-};
-
 &mdss_fb0 {
 	/* cont_splash memory*/
 	qcom,memblock-reserve = <0x07e9c000 0x64000>;
@@ -47,16 +39,10 @@
 };
 
 &soc {
-	i2c@f9927000 {
-		synaptics@20 {
-			/delete-property/ synaptics,power-down;
-			/delete-property/ synaptics,disable-gpios;
-			synaptics,is_wake;
-		};
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		/delete-node/ synaptics@20;
 	};
-};
 
-&soc {
 	sound-9330 {
 		compatible = "qcom,msm8226-audio-tomtom";
 		qcom,model = "msm8226-tomtom-snd-card";
