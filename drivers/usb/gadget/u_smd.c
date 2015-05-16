@@ -52,7 +52,7 @@ struct smd_port_info smd_pi[SMD_N_PORTS] = {
 		.name = "DS",
 	},
 	{
-		.name = "UNUSED",
+		.name = "DATA2",
 	},
 };
 
@@ -485,7 +485,8 @@ static unsigned int convert_acm_sigs_to_uart(unsigned acm_sig)
 
 	if (acm_sig & SMD_ACM_CTRL_DTR)
 		uart_sig |= TIOCM_DTR;
-	if (acm_sig & SMD_ACM_CTRL_RTS)
+	// workaround for pre-SFN test
+	//if (acm_sig & SMD_ACM_CTRL_RTS)
 		uart_sig |= TIOCM_RTS;
 
 	return uart_sig;
