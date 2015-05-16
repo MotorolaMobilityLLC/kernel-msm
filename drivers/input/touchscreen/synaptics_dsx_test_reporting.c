@@ -1592,6 +1592,19 @@ struct f54_data_14 {
 	};
 };
 
+struct f54_data_16 {
+	union {
+		struct {
+			unsigned char d16_freq_scan_im_lsb;
+			unsigned char d16_freq_scan_im_msb;
+		} __packed;
+		struct {
+			unsigned char data[2];
+			unsigned short address;
+		} __packed;
+	};
+};
+
 struct f54_data_17 {
 	union {
 		struct {
@@ -1614,6 +1627,7 @@ struct f54_data {
 	struct f54_data_9 *reg_9;
 	struct f54_data_10 *reg_10;
 	struct f54_data_14 *reg_14;
+	struct f54_data_16 *reg_16;
 	struct f54_data_17 *reg_17;
 };
 
@@ -1823,6 +1837,8 @@ show_prototype(d8_variance_metric_msb)
 show_prototype(d9_averaged_im_lsb)
 show_prototype(d9_averaged_im_msb)
 show_prototype(d10_noise_state)
+show_store_prototype(d16_freq_scan_im_lsb)
+show_store_prototype(d16_freq_scan_im_msb)
 show_prototype(d14_cid_im_lsb)
 show_prototype(d14_cid_im_msb)
 show_store_prototype(d17_inhibit_freq_shift)
@@ -2216,6 +2232,12 @@ static struct attribute *data_attrs_reg_14[] = {
 	NULL,
 };
 
+static struct attribute *data_attrs_reg_16[] = {
+	attrify(d16_freq_scan_im_lsb),
+	attrify(d16_freq_scan_im_msb),
+	NULL,
+};
+
 static struct attribute *data_attrs_reg_17[] = {
 	attrify(d17_freq),
 	attrify(d17_inhibit_freq_shift),
@@ -2231,6 +2253,7 @@ static struct attribute_group attrs_data_regs[] = {
 	GROUP(data_attrs_reg_9),
 	GROUP(data_attrs_reg_10),
 	GROUP(data_attrs_reg_14),
+	GROUP(data_attrs_reg_16),
 	GROUP(data_attrs_reg_17),
 };
 
@@ -2617,6 +2640,7 @@ static void free_data_mem(void)
 	kfree(data.reg_9);
 	kfree(data.reg_10);
 	kfree(data.reg_14);
+	kfree(data.reg_16);
 	kfree(data.reg_17);
 }
 
@@ -3052,6 +3076,8 @@ simple_show_func_unsigned(query17, q17_num_of_sense_freqs)
 show_store_func_unsigned(data, reg_4, d4_inhibit_freq_shift)
 show_store_func_unsigned(data, reg_4, d4_baseline_sel)
 show_store_func_unsigned(data, reg_4, d4_sense_freq_sel)
+show_store_func_unsigned(data, reg_16, d16_freq_scan_im_lsb)
+show_store_func_unsigned(data, reg_16, d16_freq_scan_im_msb)
 show_store_func_unsigned(data, reg_17, d17_inhibit_freq_shift)
 show_store_func_unsigned(data, reg_17, d17_freq)
 show_func_unsigned(data, reg_6, d6_interference_metric_lsb)
@@ -4114,9 +4140,15 @@ static int synaptics_rmi4_f54_set_data(void)
 
 	/* data 16 */
 	if (f54->query13.has_noise_mitigation_enh) {
-		pr_debug("d16 addr = 0x%02x\n", reg_addr);
+		pr_debug("d16 addr = 0x%02x num = %d\n", reg_addr, reg_num);
+		attrs_data_regs_exist[reg_num] = true;
+		data->reg_16 = kzalloc(sizeof(*data->reg_16), GFP_KERNEL);
+		if (!data->reg_16)
+			goto exit_no_mem;
+		data->reg_16->address = reg_addr;
 		reg_addr += 1;
 	}
+	reg_num++;
 
 	/* data 17 */
 	if (f54->query16.has_data17) {
