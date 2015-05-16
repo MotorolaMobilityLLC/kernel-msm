@@ -69,7 +69,7 @@ void msm_camera_io_memcpy_toio(void __iomem *dest_addr,
 
 void msm_camera_io_dump(void __iomem *addr, int size)
 {
-	char line_str[BUFF_SIZE_128], *p_str;
+	char line_str[128], *p_str;
 	int i;
 	u32 *p = (u32 *) addr;
 	u32 data;
@@ -78,11 +78,16 @@ void msm_camera_io_dump(void __iomem *addr, int size)
 	p_str = line_str;
 	for (i = 0; i < size/4; i++) {
 		if (i % 4 == 0) {
-			snprintf(p_str, 12, "0x%p: ",  p);
+#ifdef CONFIG_COMPAT
+			snprintf(p_str, 20, "%016lx: ", (unsigned long) p);
+			p_str += 18;
+#else
+			snprintf(p_str, 12, "%08lx: ", (unsigned long) p);
 			p_str += 10;
+#endif
 		}
 		data = readl_relaxed(p++);
-		snprintf(p_str, 12, "%d ", data);
+		snprintf(p_str, 12, "%08x ", data);
 		p_str += 9;
 		if ((i + 1) % 4 == 0) {
 			CDBG("%s\n", line_str);
