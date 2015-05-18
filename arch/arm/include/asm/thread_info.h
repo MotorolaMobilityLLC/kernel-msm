@@ -16,7 +16,12 @@
 #include <asm/fpstate.h>
 #include <asm/page.h>
 
+#ifndef CONFIG_4KSTACKS
 #define THREAD_SIZE_ORDER	1
+#else
+#define THREAD_SIZE_ORDER	0
+#endif
+
 #define THREAD_SIZE		(PAGE_SIZE << THREAD_SIZE_ORDER)
 #define THREAD_START_SP		(THREAD_SIZE - 8)
 

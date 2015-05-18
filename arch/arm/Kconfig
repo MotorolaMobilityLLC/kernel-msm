@@ -1728,6 +1728,19 @@ config OABI_COMPAT
 	  UNPREDICTABLE (in fact it can be predicted that it won't work
 	  at all). If in doubt say Y.
 
+config 4KSTACKS
+	bool "Use 4K kernel stacks instead of 8K"
+	default n
+	help
+	  This option will use less memory for each kernel stack in the
+	  system, which can save potentially hundreds of kilobytes of memory.
+	  It also helps reduce fragmentation in kernel memory.  However,
+	  it can be dangerous since not all kernel code paths are thrifty
+	  in their use of the stack.  Unless you have carefully monitored your
+	  kernel stack usage and verified that your programs and kernel
+	  usage patterns will not overflow 4K, you should leave this set
+	  to N.
+
 config ARCH_HAS_HOLES_MEMORYMODEL
 	bool
 
