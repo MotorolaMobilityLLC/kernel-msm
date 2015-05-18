@@ -2281,7 +2281,10 @@ static int florida_set_params(struct snd_compr_stream *stream,
 		goto out;
 	}
 
-	ret = wm_adsp_stream_alloc(compr->adsp, params);
+	if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
+		ret = wm_adsp_stream_alloc2(compr->adsp, params);
+	else
+		ret = wm_adsp_stream_alloc(compr->adsp, params);
 	if (ret == 0)
 		compr->allocated = true;
 
@@ -2314,6 +2317,10 @@ static int florida_trigger(struct snd_compr_stream *stream, int cmd)
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+	if (!strcmp(rtd->codec_dai->name, "florida-dsp3-txt"))
+		ret = wm_adsp_stream_start2(
+			florida->compr_info[compr_dev_index].adsp);
+	else
 		ret = wm_adsp_stream_start(florida->compr_info[compr_dev_index].adsp);
 
 		/**
