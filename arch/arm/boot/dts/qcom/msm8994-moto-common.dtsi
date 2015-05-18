@@ -1630,7 +1630,7 @@
 		gpio-names = "pad_detect_n",
 				"charge_complete_n",
 				"charge_terminate";
-		supply-names = "dc", "usb";
+		supply-names = "battery", "dc", "usb";
 		mmi,priority = <1>;
 		mmi,resume-soc = <99>;
 		mmi,resume-vbatt-mv = <4270>;
