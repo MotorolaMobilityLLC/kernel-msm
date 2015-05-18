@@ -63,6 +63,7 @@ struct mmi_wls_chrg_chip {
 	struct dentry *debug_root;
 	u32 peek_poke_address;
 	bool force_shutdown;
+	int mode;
 };
 
 enum mmi_wls_chrg_state {
@@ -77,6 +78,12 @@ enum mmi_wls_chrg_state {
 enum mmi_wls_charger_priority {
 	MMI_WLS_CHRG_WIRELESS = 0,
 	MMI_WLS_CHRG_WIRED,
+};
+
+enum mmi_wls_charger_mode {
+	MMI_WLS_CHRG_PMA = 0,
+	MMI_WLS_CHRG_WPC,
+	MMI_WLS_CHRG_NONE,
 };
 
 #define DEFAULT_PRIORITY MMI_WLS_CHRG_WIRED
@@ -187,6 +194,9 @@ static void mmi_wls_chrg_get_psys(struct mmi_wls_chrg_chip *chip)
 	if (!chip->usb_psy)
 		pr_err("USB PSY Not Found\n");
 }
+
+#define MODE_BIT BIT(0)
+#define WLS_MODE_REGISTER 0xEF
 static void mmi_wls_chrg_worker(struct work_struct *work)
 {
 	int batt_temp;
@@ -194,6 +204,7 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 	int batt_soc;
 	int powered = 0;
 	int wired = 0;
+	int wls_mode = 0;
 	struct delayed_work *dwork;
 	struct mmi_wls_chrg_chip *chip;
 
@@ -251,15 +262,36 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 	if (batt_soc == 0)
 		chip->force_shutdown = true;
 
+	if (powered && (chip->mode == MMI_WLS_CHRG_NONE)) {
+		wls_mode = mmi_wls_chrg_read_reg(chip->client,
+						 WLS_MODE_REGISTER);
+		if (wls_mode & MODE_BIT)
+			chip->mode = MMI_WLS_CHRG_PMA;
+		else
+			chip->mode = MMI_WLS_CHRG_WPC;
+
+		dev_info(chip->dev, "Wireless Power Mode Indicator = %s\n",
+			chip->mode == MMI_WLS_CHRG_PMA ? "PMA" : "WPC");
+	} else if (!powered && chip->mode != MMI_WLS_CHRG_NONE) {
+		chip->state = MMI_WLS_CHRG_WAIT;
+		chip->mode = MMI_WLS_CHRG_NONE;
+		dev_info(chip->dev, "Wireless Power Mode Indicator = %s\n",
+			 "NONE");
+	}
+
 	dev_dbg(chip->dev, "State Before = %d\n", chip->state);
 
 	switch (chip->state) {
 	case MMI_WLS_CHRG_WAIT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (powered) {
 			chip->state = MMI_WLS_CHRG_RUNNING;
+		} else {
+			gpio_set_value(chip->charge_cmplt_n_gpio, 1);
+			gpio_set_value(chip->charge_term_gpio, 0);
 		}
 		break;
 	case MMI_WLS_CHRG_WIRED_CONN:
@@ -270,26 +302,31 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_RUNNING:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (!powered) {
 			gpio_set_value(chip->charge_cmplt_n_gpio, 1);
 			gpio_set_value(chip->charge_term_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WAIT;
 		} else if (batt_temp >= chip->hot_temp) {
-			gpio_set_value(chip->charge_term_gpio, 1);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_HOT;
 		} else if (batt_temp <= chip->cold_temp) {
-			gpio_set_value(chip->charge_term_gpio, 1);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_COLD;
 		} else if (batt_soc >= MMI_WLS_CHRG_CHRG_CMPLT_SOC) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_CHRG_CMPLT;
 		}
 		break;
 	case MMI_WLS_CHRG_OUT_OF_TEMP_HOT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (batt_temp < (chip->hot_temp -
 					MMI_WLS_CHRG_TEMP_HYS_HOT)) {
@@ -300,7 +337,8 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_OUT_OF_TEMP_COLD:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (batt_temp > (chip->cold_temp +
 					MMI_WLS_CHRG_TEMP_HYS_COLD)) {
@@ -311,7 +349,8 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_CHRG_CMPLT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 0);
+			if (chip->mode == MMI_WLS_CHRG_WPC)
+				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if ((batt_soc <= chip->resume_soc) ||
 			   (batt_volt <= chip->resume_vbatt)) {
@@ -550,6 +589,7 @@ static int mmi_wls_chrg_probe(struct i2c_client *client,
 		chip->cold_temp = DEFAULT_COLD_TEMP;
 
 	chip->state = MMI_WLS_CHRG_WAIT;
+	chip->mode = MMI_WLS_CHRG_NONE;
 	INIT_DELAYED_WORK(&chip->mmi_wls_chrg_work, mmi_wls_chrg_worker);
 
 	chip->wl_psy.num_supplies =
