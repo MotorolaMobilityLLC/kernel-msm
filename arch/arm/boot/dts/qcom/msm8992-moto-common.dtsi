@@ -1061,6 +1061,7 @@
 			intersil,vn = <20>;
 			intersil,vp = <20>;
 			intersil,pfm-value = <0x86>;
+			intersil,dimm-threshold = <0x02>;
 			intersil,current-scale = <63>;
 			intersil,cabc-disable;
 			intersil,init-level = <255>;
