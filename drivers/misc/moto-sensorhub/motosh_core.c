@@ -1183,8 +1183,9 @@ static int motosh_probe(struct i2c_client *client,
 	/* clear the interrupt mask */
 	ps_motosh->intp_mask = 0x00;
 
+	ps_motosh->wake_work_delay = 0;
 	INIT_WORK(&ps_motosh->irq_work, motosh_irq_work_func);
-	INIT_WORK(&ps_motosh->irq_wake_work, motosh_irq_wake_work_func);
+	INIT_DELAYED_WORK(&ps_motosh->irq_wake_work, motosh_irq_wake_work_func);
 
 	ps_motosh->irq_work_queue = create_singlethread_workqueue("motosh_wq");
 	if (!ps_motosh->irq_work_queue) {
@@ -1463,8 +1464,8 @@ static void motosh_process_ignored_interrupts_locked(
 	if (ps_motosh->ignored_interrupts) {
 		ps_motosh->ignored_interrupts = 0;
 		wake_lock_timeout(&ps_motosh->wakelock, HZ);
-		queue_work(ps_motosh->irq_work_queue,
-			&ps_motosh->irq_wake_work);
+		queue_delayed_work(ps_motosh->irq_work_queue,
+			&ps_motosh->irq_wake_work, 0);
 	}
 }
 
@@ -1487,8 +1488,9 @@ static int motosh_resume(struct device *dev)
 	motosh_process_ignored_interrupts_locked(ps_motosh);
 
 	if (ps_motosh->pending_wake_work) {
-		queue_work(ps_motosh->irq_work_queue,
-			&ps_motosh->irq_wake_work);
+		queue_delayed_work(ps_motosh->irq_work_queue,
+			&ps_motosh->irq_wake_work,
+			msecs_to_jiffies(ps_motosh->wake_work_delay));
 		ps_motosh->pending_wake_work = false;
 	}
 

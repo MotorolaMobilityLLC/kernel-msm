@@ -53,7 +53,22 @@ irqreturn_t motosh_wake_isr(int irq, void *dev)
 
 	wake_lock_timeout(&ps_motosh->wakelock, HZ);
 
-	queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_wake_work);
+	if (ps_motosh->mode == NORMALMODE) {
+		/* No delay if boot completed */
+		ps_motosh->wake_work_delay = 0;
+	} else if (ps_motosh->wake_work_delay == 0) {
+		/* First interrupt prior to boot complete */
+		ps_motosh->wake_work_delay = 1;
+	} else {
+		/* Increase delay, set within allowed min/max range */
+		ps_motosh->wake_work_delay =
+			clamp(ps_motosh->wake_work_delay * 2,
+				100U, 600000U);
+	}
+
+	queue_delayed_work(ps_motosh->irq_work_queue, &ps_motosh->irq_wake_work,
+		msecs_to_jiffies(ps_motosh->wake_work_delay));
+
 	return IRQ_HANDLED;
 }
 
@@ -70,7 +85,8 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	u8 pending_reset_reason;
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
-	struct motosh_data *ps_motosh = container_of(work,
+	struct motosh_data *ps_motosh = container_of(
+			(struct delayed_work *)work,
 			struct motosh_data, irq_wake_work);
 	int log_msg_ctr = 0;
 

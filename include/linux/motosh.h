@@ -368,8 +368,9 @@ struct motosh_data {
 	/* to avoid two i2c communications at the same time */
 	struct mutex lock;
 	struct work_struct irq_work;
-	struct work_struct irq_wake_work;
+	struct delayed_work irq_wake_work;
 	struct workqueue_struct *irq_work_queue;
+	unsigned int wake_work_delay;
 	struct wake_lock wakelock;
 	struct wake_lock reset_wakelock;
 	struct input_dev *input_dev;
