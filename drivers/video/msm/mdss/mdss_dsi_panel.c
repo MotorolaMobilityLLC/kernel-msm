@@ -33,6 +33,7 @@
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
 #define DT_CMD_HDR 6
+#define MDSS_PWR_ON_RETRIES 5
 
 /* NT35596 panel specific status variables */
 #define NT35596_BUF_3_STATUS 0x02
@@ -755,6 +756,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	u8 pwr_mode = 0;
 	char *dropbox_issue = NULL;
 	static int dropbox_count;
+	static int panel_recovery_retry;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -787,7 +789,14 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
 		dropbox_issue = MDSS_DROPBOX_MSG_PWR_MODE_BLACK;
-	}
+
+		if (panel_recovery_retry++ > MDSS_PWR_ON_RETRIES) {
+			pr_err("%s: panel recovery failed for all retries",
+				__func__);
+			BUG();
+		}
+	} else
+		panel_recovery_retry = 0;
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
