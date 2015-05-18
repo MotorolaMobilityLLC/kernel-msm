@@ -45,7 +45,7 @@
 			ite,reset-delay = <20>;
 			ite,num-fingers = <1>;
 			ite,wakeup;
-			ite,palm-detect;
+			ite,palm-detect-en;
 			ite,palm-detect-keycode = <142>;
 			ite,low-reset;
 			ite,fw-name = "it7260_fw.bin";
