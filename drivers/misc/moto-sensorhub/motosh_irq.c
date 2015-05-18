@@ -48,9 +48,6 @@ irqreturn_t motosh_isr(int irq, void *dev)
 
 	queue_work(ps_motosh->irq_work_queue, &ps_motosh->irq_work);
 
-	if (ps_motosh->irq_wake == -1)
-		queue_work(ps_motosh->irq_work_queue,
-			&ps_motosh->irq_wake_work);
 	return IRQ_HANDLED;
 }
 
