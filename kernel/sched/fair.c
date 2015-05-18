@@ -1906,9 +1906,10 @@ static int best_small_task_cpu(struct task_struct *p, int sync)
 	return best_fallback_cpu;
 }
 
-#define MOVE_TO_BIG_CPU			1
-#define MOVE_TO_LITTLE_CPU		2
-#define MOVE_TO_POWER_EFFICIENT_CPU	3
+#define UP_MIGRATION		1
+#define DOWN_MIGRATION		2
+#define EA_MIGRATION		3
+#define IRQLOAD_MIGRATION	4
 
 static int skip_cpu(struct task_struct *p, int cpu, int reason)
 {
@@ -1923,18 +1924,22 @@ static int skip_cpu(struct task_struct *p, int cpu, int reason)
 		return 1;
 
 	switch (reason) {
-	case MOVE_TO_BIG_CPU:
+	case UP_MIGRATION:
 		skip = (rq->capacity <= task_rq->capacity);
 		break;
 
-	case MOVE_TO_LITTLE_CPU:
+	case DOWN_MIGRATION:
 		skip = (rq->capacity >= task_rq->capacity);
 		break;
 
-	case MOVE_TO_POWER_EFFICIENT_CPU:
+	case EA_MIGRATION:
 		skip = rq->capacity < task_rq->capacity  ||
 			power_cost(p, cpu) >  power_cost(p,  task_cpu(p));
 		break;
+
+	case IRQLOAD_MIGRATION:
+		/* Purposely fall through */
+
 	default:
 		skip = (cpu == task_cpu(p));
 		break;
@@ -2451,17 +2456,38 @@ void post_big_small_task_count_change(const struct cpumask *cpus)
 
 DEFINE_MUTEX(policy_mutex);
 
+#ifdef CONFIG_SCHED_FREQ_INPUT
+static inline int invalid_value_freq_input(unsigned int *data)
+{
+	if (data == &sysctl_sched_migration_fixup)
+		return !(*data == 0 || *data == 1);
+
+	if (data == &sysctl_sched_freq_account_wait_time)
+		return !(*data == 0 || *data == 1);
+
+	return 0;
+}
+#else
+static inline int invalid_value_freq_input(unsigned int *data)
+{
+	return 0;
+}
+#endif
+
 static inline int invalid_value(unsigned int *data)
 {
-	int val = *data;
+	unsigned int val = *data;
 
 	if (data == &sysctl_sched_ravg_hist_size)
 		return (val < 2 || val > RAVG_HIST_SIZE_MAX);
 
 	if (data == &sysctl_sched_window_stats_policy)
-		return (val >= WINDOW_STATS_INVALID_POLICY);
+		return val >= WINDOW_STATS_INVALID_POLICY;
 
-	return 0;
+	if (data == &sysctl_sched_account_wait_time)
+		return !(val == 0 || val == 1);
+
+	return invalid_value_freq_input(data);
 }
 
 /*
@@ -2511,42 +2537,41 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 		loff_t *ppos)
 {
 	int ret;
+	unsigned int old_val;
 	unsigned int *data = (unsigned int *)table->data;
-	unsigned int old_val = *data;
 	int update_min_nice = 0;
+
+	mutex_lock(&policy_mutex);
+
+	old_val = *data;
 
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 
 	if (ret || !write || !sched_enable_hmp)
-		return ret;
+		goto done;
 
 	if (write && (old_val == *data))
-		return 0;
+		goto done;
 
 	if (data == &sysctl_sched_min_runtime) {
 		sched_min_runtime = ((u64) sysctl_sched_min_runtime) * 1000;
-		return 0;
-	}
-	if ((sysctl_sched_downmigrate_pct > sysctl_sched_upmigrate_pct) ||
-				*data > 100) {
-		*data = old_val;
-		return -EINVAL;
+		goto done;
 	}
 
-	if (data == (unsigned int *)&sysctl_sched_upmigrate_min_nice)
-		update_min_nice = 1;
-
-	if (update_min_nice) {
+	if (data == (unsigned int *)&sysctl_sched_upmigrate_min_nice) {
 		if ((*(int *)data) < -20 || (*(int *)data) > 19) {
 			*data = old_val;
-			return -EINVAL;
+			ret = -EINVAL;
+			goto done;
 		}
+		update_min_nice = 1;
 	} else {
 		/* all tunables other than min_nice are in percentage */
 		if (sysctl_sched_downmigrate_pct >
 		    sysctl_sched_upmigrate_pct || *data > 100) {
 			*data = old_val;
-			return -EINVAL;
+			ret = -EINVAL;
+			goto done;
 		}
 	}
 
@@ -2572,7 +2597,9 @@ int sched_hmp_proc_update_handler(struct ctl_table *table, int write,
 		put_online_cpus();
 	}
 
-	return 0;
+done:
+	mutex_unlock(&policy_mutex);
+	return ret;
 }
 
 /*
@@ -2677,7 +2704,7 @@ static inline int migration_needed(struct rq *rq, struct task_struct *p)
 
 	if (sched_boost()) {
 		if (rq->capacity != max_capacity)
-			return MOVE_TO_BIG_CPU;
+			return UP_MIGRATION;
 
 		return 0;
 	}
@@ -2685,18 +2712,21 @@ static inline int migration_needed(struct rq *rq, struct task_struct *p)
 	if (is_small_task(p))
 		return 0;
 
+	if (sched_cpu_high_irqload(cpu_of(rq)))
+		return IRQLOAD_MIGRATION;
+
 	if ((nice > sched_upmigrate_min_nice || upmigrate_discouraged(p)) &&
 			 rq->capacity > min_capacity)
-		return MOVE_TO_LITTLE_CPU;
+		return DOWN_MIGRATION;
 
 	if (!task_will_fit(p, cpu_of(rq)))
-		return MOVE_TO_BIG_CPU;
+		return UP_MIGRATION;
 
 	if (sysctl_sched_enable_power_aware &&
 	    !is_task_migration_throttled(p) &&
 	    is_cpu_throttling_imminent(cpu_of(rq)) &&
 	    lower_power_cpu_available(p, cpu_of(rq)))
-		return MOVE_TO_POWER_EFFICIENT_CPU;
+		return EA_MIGRATION;
 
 	return 0;
 }
@@ -7024,8 +7054,7 @@ find_busiest_group(struct lb_env *env, int *balance)
 	if (!sds.busiest || sds.busiest_nr_running == 0)
 		goto out_balanced;
 
-	if (sched_boost() && (capacity(env->dst_rq) >
-				group_rq_capacity(sds.busiest)))
+	if (env->flags & LBF_HMP_ACTIVE_BALANCE)
 		goto force_balance;
 
 	if (bail_inter_cluster_balance(env, &sds))

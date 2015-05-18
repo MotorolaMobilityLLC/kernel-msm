@@ -124,6 +124,7 @@ enum mdss_bus_clients {
 enum mdss_hw_quirk {
 	MDSS_QUIRK_BWCPANIC,
 	MDSS_QUIRK_DOWNSCALE_HANG,
+	MDSS_QUIRK_DOWNSCALE_HFLIP_MDPCLK,
 	MDSS_QUIRK_MAX,
 };
 
@@ -208,6 +209,8 @@ struct mdss_data_type {
 	u32 *vbif_rt_qos;
 	u32 *vbif_nrt_qos;
 	u32 npriority_lvl;
+	u32 bus_bw_cnt;
+	struct mutex bus_bw_lock;
 
 	u32 reg_bus_hdl;
 
@@ -273,6 +276,8 @@ struct mdss_data_type {
 	int iommu_attached;
 	struct mdss_iommu_map_type *iommu_map;
 
+	struct debug_bus *dbg_bus;
+	u32 dbg_bus_size;
 	struct mdss_debug_inf debug_inf;
 	bool mixer_switched;
 	struct mdss_panel_cfg pan_cfg;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -193,7 +193,8 @@ static struct mdss_mdp_rot_pipe *mdss_mdp_rot_mgr_acquire_pipe(
 		pr_debug("find a free pipe %p\n", rot_pipe->pipe);
 	} else {
 		rot_pipe = busy_rot_pipe;
-		pr_debug("find a busy pipe %p\n", rot_pipe->pipe);
+		if (rot_pipe)
+			pr_debug("find a busy pipe %p\n", rot_pipe->pipe);
 	}
 
 	if (rot_pipe)
@@ -476,8 +477,18 @@ static int mdss_mdp_rotator_busy_wait(struct mdss_mdp_rotator_session *rot,
 	struct mdss_mdp_pipe *pipe)
 {
 	if (rot->busy) {
+		int rc;
 		struct mdss_mdp_ctl *ctl = pipe->mixer_left->ctl;
-		mdss_mdp_display_wait4comp(ctl);
+
+		rc = mdss_mdp_display_wait4comp(ctl);
+		if (rc) {
+			pr_err("wait4comp failed for ctl%d, pipe%d, rc=%d. Reseting ctl path.\n",
+				ctl->num, pipe->num, rc);
+			WARN(mdss_mdp_ctl_reset(ctl),
+				"ctl%d reset failed\n", ctl->num);
+			WARN(mdss_mdp_pipe_fetch_halt(pipe),
+				"pipe%d halt failed\n", pipe->num);
+		}
 		rot->busy = false;
 		if (ctl->shared_lock)
 			mutex_unlock(ctl->shared_lock);
@@ -615,7 +626,6 @@ static void mdss_mdp_rotator_commit_wq_handler(struct work_struct *work)
 		pr_err("rotator queue failed\n");
 
 	if (rot->rot_sync_pt_data) {
-		atomic_inc(&rot->rot_sync_pt_data->commit_cnt);
 		mdss_fb_signal_timeline(rot->rot_sync_pt_data);
 	} else {
 		pr_err("rot_sync_pt_data is NULL\n");
@@ -629,6 +639,7 @@ static struct msm_sync_pt_data *mdss_mdp_rotator_sync_pt_create(
 {
 	struct msm_sync_pt_data *sync_pt_data;
 	char timeline_name[16];
+	int id = rot->session_id & ~MDSS_MDP_ROT_SESSION_MASK;
 
 	rot->rot_sync_pt_data = kzalloc(
 		sizeof(struct msm_sync_pt_data), GFP_KERNEL);
@@ -638,7 +649,7 @@ static struct msm_sync_pt_data *mdss_mdp_rotator_sync_pt_create(
 	sync_pt_data->fence_name = "rot-fence";
 	sync_pt_data->threshold = 1;
 	snprintf(timeline_name, sizeof(timeline_name),
-					"mdss_rot_%d", rot->session_id);
+					"mdss_rot_%d", id);
 	sync_pt_data->timeline = sw_sync_timeline_create(timeline_name);
 	if (sync_pt_data->timeline == NULL) {
 		kfree(rot->rot_sync_pt_data);
@@ -687,10 +698,12 @@ static int mdss_mdp_rotator_queue(struct mdss_mdp_rotator_session *rot)
 {
 	int ret = 0;
 
-	if (rot->use_sync_pt)
+	if (rot->use_sync_pt) {
+		atomic_inc(&rot->rot_sync_pt_data->commit_cnt);
 		queue_work(rot_mgr->rot_work_queue, &rot->commit_work);
-	else
+	} else {
 		ret = mdss_mdp_rotator_queue_helper(rot);
+	}
 
 	pr_debug("rotator session=%x queue done\n", rot->session_id);
 

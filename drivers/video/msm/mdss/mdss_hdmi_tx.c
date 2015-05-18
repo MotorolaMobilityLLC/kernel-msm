@@ -1352,9 +1352,11 @@ static int hdmi_tx_init_panel_info(struct hdmi_tx_ctrl *hdmi_ctrl)
 	pinfo->lcdc.h_back_porch = timing.back_porch_h;
 	pinfo->lcdc.h_front_porch = timing.front_porch_h;
 	pinfo->lcdc.h_pulse_width = timing.pulse_width_h;
+	pinfo->lcdc.h_polarity = timing.active_low_h;
 	pinfo->lcdc.v_back_porch = timing.back_porch_v;
 	pinfo->lcdc.v_front_porch = timing.front_porch_v;
 	pinfo->lcdc.v_pulse_width = timing.pulse_width_v;
+	pinfo->lcdc.v_polarity = timing.active_low_v;
 
 	pinfo->type = DTV_PANEL;
 	pinfo->pdest = DISPLAY_2;
@@ -2894,9 +2896,14 @@ static int hdmi_tx_power_off(struct mdss_panel_data *panel_data)
 	hdmi_ctrl->panel_power_on = false;
 	mutex_unlock(&hdmi_ctrl->power_mutex);
 
+	mutex_lock(&hdmi_ctrl->mutex);
 	if (hdmi_ctrl->hpd_off_pending) {
-		hdmi_tx_hpd_off(hdmi_ctrl);
 		hdmi_ctrl->hpd_off_pending = false;
+		mutex_unlock(&hdmi_ctrl->mutex);
+		if (!hdmi_ctrl->hpd_state)
+			hdmi_tx_hpd_off(hdmi_ctrl);
+	} else {
+		mutex_unlock(&hdmi_ctrl->mutex);
 	}
 
 	if (hdmi_ctrl->hdmi_tx_hpd_done)
@@ -3130,11 +3137,14 @@ static int hdmi_tx_sysfs_enable_hpd(struct hdmi_tx_ctrl *hdmi_ctrl, int on)
 			INIT_COMPLETION(hdmi_ctrl->hpd_off_done);
 			timeout = wait_for_completion_timeout(
 				&hdmi_ctrl->hpd_off_done, HZ);
-
-			if (!timeout)
+			if (!timeout) {
+				hdmi_ctrl->hpd_off_pending = false;
 				DEV_ERR("%s: hpd off still pending\n",
 					__func__);
+				return 0;
+			}
 		}
+
 		rc = hdmi_tx_hpd_on(hdmi_ctrl);
 	} else {
 		mutex_lock(&hdmi_ctrl->power_mutex);
@@ -3551,7 +3561,7 @@ static int hdmi_tx_panel_event_handler(struct mdss_panel_data *panel_data,
 			hdmi_tx_power_off(panel_data);
 			panel_data->panel_info.cont_splash_enabled = false;
 		} else {
-			if (hdmi_ctrl->hpd_feature_on)
+			if (hdmi_ctrl->hpd_feature_on && !hdmi_ctrl->hpd_state)
 				hdmi_tx_hpd_polarity_setup(hdmi_ctrl,
 					HPD_CONNECT_POLARITY);
 		}
