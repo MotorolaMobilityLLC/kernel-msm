@@ -139,6 +139,7 @@ typedef struct
    hdd_wlan_wmm_status_e        lastStatus;
    struct work_struct           wmmAcSetupImplicitQos;
    v_U32_t                      magic;
+   bool                         is_inactivity_timer_running;
 } hdd_wmm_qos_context_t;
 
 /*! @brief WMM related per-AC state & status info

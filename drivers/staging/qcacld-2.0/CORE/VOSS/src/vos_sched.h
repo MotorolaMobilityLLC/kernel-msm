@@ -414,6 +414,11 @@ typedef struct _VosContextType
    /* SSR re-init in progress */
    volatile v_U8_t     isReInitInProgress;
 
+   bool is_wakelock_log_enabled;
+   uint32_t wakelock_log_level;
+   uint32_t connectivity_log_level;
+   uint32_t packet_stats_log_level;
+
 } VosContextType, *pVosContextType;
 
 

@@ -3633,6 +3633,7 @@ FRAME ProbeRequest                        // 7.2.3.8
     OPTIE  WFATPC;
     OPTIE  P2PProbeReq;
     OPTIE  VHTCaps;
+    OPTIE  ExtCap;
 } // End frame ProbeRequest.
 
 FRAME ProbeResponse                       // 7.2.3.9

@@ -6747,6 +6747,12 @@ eHalStatus csrRoamCopyConnectedProfile(tpAniSirGlobal pMac, tANI_U32 sessionId, 
                 status = eHAL_STATUS_SUCCESS;
             if(!HAL_STATUS_SUCCESS(status))
             {
+                smsLog(pMac, LOGE,
+                    FL("failed to allocate memory for BSSID"
+                    "%02x:%02x:%02x:%02x:%02x:%02x"),
+                    pSrcProfile->bssid[0], pSrcProfile->bssid[1],
+                    pSrcProfile->bssid[2], pSrcProfile->bssid[3],
+                    pSrcProfile->bssid[4], pSrcProfile->bssid[5]);
                 break;
             }
             pDstProfile->BSSIDs.numOfBSSIDs = 1;
@@ -6762,6 +6768,12 @@ eHalStatus csrRoamCopyConnectedProfile(tpAniSirGlobal pMac, tANI_U32 sessionId, 
                 status = eHAL_STATUS_SUCCESS;
             if(!HAL_STATUS_SUCCESS(status))
             {
+                smsLog(pMac, LOGE,
+                 FL("failed to allocate memory for SSIDList"
+                    "%02x:%02x:%02x:%02x:%02x:%02x"),
+                    pSrcProfile->bssid[0], pSrcProfile->bssid[1],
+                    pSrcProfile->bssid[2], pSrcProfile->bssid[3],
+                    pSrcProfile->bssid[4], pSrcProfile->bssid[5]);
                 break;
             }
             pDstProfile->SSIDs.numOfSSIDs = 1;
@@ -7985,7 +7997,15 @@ void csrRoamReissueRoamCommand(tpAniSirGlobal pMac)
                 smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
                 return;
             }
-
+            /*
+             * While switching between two AP, csr will reissue roam command
+             * again to the nextbss if it was interrupted by the dissconnect
+             * req for the previous bss. During this csr is incrementing
+             * bRefAssocStartCnt twice. So reset the bRefAssocStartCnt.
+             */
+            if (pSession->bRefAssocStartCnt > 0) {
+                pSession->bRefAssocStartCnt--;
+            }
             if( pCommand->u.roamCmd.fStopWds )
             {
                 vos_mem_set(&roamInfo, sizeof(tCsrRoamInfo), 0);

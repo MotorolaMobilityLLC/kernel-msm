@@ -1534,7 +1534,6 @@ A_UINT32 eCsrAuthType_to_rsn_authmode (eCsrAuthType authtype,
 A_UINT32 eCsrEncryptionType_to_rsn_cipherset (eCsrEncryptionType encr);
 
 #define WMA_TGT_INVALID_SNR (-1)
-#define WMA_DYNAMIC_DTIM_SETTING_THRESHOLD 2
 
 #define WMA_TX_Q_RECHECK_TIMER_WAIT      2    // 2 ms
 #define WMA_TX_Q_RECHECK_TIMER_MAX_WAIT  20   // 20 ms
@@ -1553,4 +1552,13 @@ typedef struct wma_roam_invoke_cmd
     u_int8_t bssid[6];
     v_U32_t channel;
 }t_wma_roam_invoke_cmd;
+
+#ifdef REMOVE_PKT_LOG
+static inline void wma_set_wifi_start_logger(void *wma_handle,
+					struct sir_wifi_start_log *start_log)
+{
+	return;
+}
+#endif
+
 #endif

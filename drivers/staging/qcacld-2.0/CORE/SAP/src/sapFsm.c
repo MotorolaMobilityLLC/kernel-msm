@@ -2531,14 +2531,20 @@ eHalStatus sap_CloseSession(tHalHandle hHal,
          */
          VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
          "sapdfs: no session are valid, so clearing dfs global structure");
+        /*
+         * CAC timer will be initiated and started only when SAP starts on
+         * DFS channel and it will be stopped and destroyed immediately once the
+         * radar detected or timedout. So as per design CAC timer should be
+         * destroyed after stop.
+         */
 
         if (pMac->sap.SapDfsInfo.is_dfs_cac_timer_running)
         {
             vos_timer_stop(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
             pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = 0;
+            vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
         }
         pMac->sap.SapDfsInfo.cac_state = eSAP_DFS_DO_NOT_SKIP_CAC;
-        vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
         sap_CacResetNotify(hHal);
         vos_mem_zero(&pMac->sap, sizeof(pMac->sap));
     }
@@ -3634,7 +3640,7 @@ sapAddMacToACL(v_MACADDR_t *macList, v_U8_t *size, v_U8_t *peerMac)
     v_SINT_t nRes = -1;
     int i;
 
-    if (NULL == macList || *size == 0 || *size > MAX_ACL_MAC_ADDRESS) {
+    if ((NULL == macList) || (*size > MAX_ACL_MAC_ADDRESS)) {
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                   FL("either buffer is NULL or size = %d is incorrect."),
                   *size);

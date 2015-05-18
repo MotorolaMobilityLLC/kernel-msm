@@ -374,8 +374,8 @@ struct s_ext_cap {
 	uint8_t    NwChanControl: 1;
 	uint8_t    WhiteSpaceMap: 1;
 	uint8_t   ChanAvailQuery: 1;
-	uint8_t   fineTimingMeas: 1;
-	uint8_t        reserved7: 1;
+	uint8_t    fine_time_meas_responder: 1;
+	uint8_t    fine_time_meas_initiator: 1;
 };
 
 tANI_U8

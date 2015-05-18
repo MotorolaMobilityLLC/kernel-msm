@@ -51,7 +51,6 @@
 #endif
 
 #define WMI_MIN_HEAD_ROOM 64
-#define WMI_MAX_LEN_BYTES 2048
 
 #ifdef WMI_INTERFACE_EVENT_LOGGING
 /* WMI commands */
@@ -117,6 +116,19 @@ struct wmi_event_debug wmi_rx_event_log_buffer[WMI_EVENT_DEBUG_MAX_ENTRY];
 static void __wmi_control_rx(struct wmi_unified *wmi_handle, wmi_buf_t evt_buf);
 int wmi_get_host_credits(wmi_unified_t wmi_handle);
 /* WMI buffer APIs */
+
+/**
+ * wmi_get_max_msg_len() - get maximum WMI message length
+ * @wmi_handle: WMI handle.
+ *
+ * This function returns the maximum WMI message length
+ *
+ * Return: maximum WMI message length
+ */
+uint16_t wmi_get_max_msg_len(wmi_unified_t wmi_handle)
+{
+	return wmi_handle->max_msg_len - WMI_MIN_HEAD_ROOM;
+}
 
 wmi_buf_t
 wmi_buf_alloc(wmi_unified_t wmi_handle, u_int16_t len)
@@ -749,6 +761,7 @@ int wmi_unified_register_event_handler(wmi_unified_t wmi_handle,
     wmi_handle->event_handler[idx] = handler_func;
     wmi_handle->event_id[idx] = event_id;
     wmi_handle->max_event_idx++;
+
     return 0;
 }
 
@@ -831,6 +844,12 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 	u_int32_t id;
 	u_int8_t *data;
 #endif
+
+	if (vos_is_logp_in_progress(VOS_MODULE_ID_WDA, NULL)) {
+			pr_err("%s: LOPG in progress\n", __func__);
+			return;
+	}
+
 	evt_buf = (wmi_buf_t) htc_packet->pPktContext;
 #ifndef QCA_CONFIG_SMP
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
@@ -890,6 +909,11 @@ void __wmi_control_rx(struct wmi_unified *wmi_handle, wmi_buf_t evt_buf)
 	u_int32_t len;
 	void *wmi_cmd_struct_ptr = NULL;
 	int tlv_ok_status = 0;
+
+	if (vos_is_logp_in_progress(VOS_MODULE_ID_WDA, NULL)) {
+		pr_err("%s: LOPG in progress\n", __func__);
+		return;
+	}
 
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
 
@@ -955,7 +979,7 @@ end:
 	adf_nbuf_free(evt_buf);
 }
 
-void wmi_rx_event_work(struct work_struct *work)
+void __wmi_rx_event_work(struct work_struct *work)
 {
 	struct wmi_unified *wmi = container_of(work, struct wmi_unified,
 					       rx_event_work);
@@ -970,6 +994,13 @@ void wmi_rx_event_work(struct work_struct *work)
 		buf = adf_nbuf_queue_remove(&wmi->event_queue);
 		adf_os_spin_unlock_bh(&wmi->eventq_lock);
 	}
+}
+
+void wmi_rx_event_work(struct work_struct *work)
+{
+	vos_ssr_protect(__func__);
+	__wmi_rx_event_work(work);
+	vos_ssr_unprotect(__func__);
 }
 
 /* WMI Initialization functions */

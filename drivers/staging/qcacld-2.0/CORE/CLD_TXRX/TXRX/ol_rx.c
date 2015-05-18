@@ -1075,7 +1075,7 @@ ol_rx_in_order_indication_handler(
     if (peer) {
         vdev = peer->vdev;
     } else {
-        TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+        TXRX_PRINT(TXRX_PRINT_LEVEL_INFO2,
                    "%s: Couldn't find peer from ID 0x%x\n", __FUNCTION__,
                    peer_id);
         while (head_msdu) {

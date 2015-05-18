@@ -83,6 +83,8 @@ ifeq ($(KERNEL_BUILD), 0)
         ifeq ($(CONFIG_ROME_IF),usb)
                 CONFIG_LINUX_QCMBR :=y
         endif
+	#Flag to enable memdump feature
+	CONFIG_FEATURE_MEMDUMP := y
 endif
 
 # To enable ESE upload, dependent config
@@ -363,6 +365,10 @@ endif
 
 ifeq ($(CONFIG_QCOM_TDLS),y)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_tdls.o
+endif
+
+ifeq ($(CONFIG_FEATURE_MEMDUMP),y)
+HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_memdump.o
 endif
 
 ############ EPPING ############
@@ -1282,6 +1288,10 @@ endif
 # Enable feature support fo Linux version QCMBR
 ifeq ($(CONFIG_LINUX_QCMBR),y)
 CDEFINES += -DLINUX_QCMBR
+endif
+
+ifeq ($(CONFIG_FEATURE_MEMDUMP),y)
+CDEFINES += -DWLAN_FEATURE_MEMDUMP
 endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)

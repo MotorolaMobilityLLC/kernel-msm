@@ -2373,6 +2373,13 @@ htt_rx_hash_deinit(struct htt_pdev_t *pdev)
                  (struct htt_rx_hash_entry *)((char *)list_iter -
                                                pdev->rx_ring.listnode_offset);
             if (hash_entry->netbuf) {
+#ifdef DEBUG_DMA_DONE
+                adf_nbuf_unmap(pdev->osdev, hash_entry->netbuf,
+                                ADF_OS_DMA_BIDIRECTIONAL);
+#else
+                adf_nbuf_unmap(pdev->osdev, hash_entry->netbuf,
+                                ADF_OS_DMA_FROM_DEVICE);
+#endif
                 adf_nbuf_free(hash_entry->netbuf);
                 hash_entry->paddr = 0;
             }

@@ -111,6 +111,7 @@ eHalStatus sme_remainOnChnRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
     tListElem                          *pEntry = NULL;
     tSmeCmd                            *pCommand = NULL;
     tANI_BOOLEAN fFound;
+    tSirSmeRsp *pRsp = (tSirSmeRsp *)pMsg;
 
     if (pMac->fP2pListenOffload)
         pEntry = csrLLPeekHead(&pMac->sme.smeScanCmdActiveList, LL_ACCESS_LOCK);
@@ -124,7 +125,8 @@ eHalStatus sme_remainOnChnRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
             remainOnChanCallback callback = pCommand->u.remainChlCmd.callback;
             /* process the msg */
             if( callback )
-                callback(pMac, pCommand->u.remainChlCmd.callbackCtx, 0);
+                callback(pMac, pCommand->u.remainChlCmd.callbackCtx,
+                         pRsp->statusCode);
 
             if (pMac->fP2pListenOffload)
             {

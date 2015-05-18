@@ -488,11 +488,18 @@ VOS_STATUS hdd_wmm_enable_inactivity_timer(hdd_wmm_qos_context_t* pQosContext, v
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 FL("Starting inactivity timer failed on AC %d"), acType);
+        vos_status = vos_timer_destroy(&pAc->wmmInactivityTimer);
+        if (VOS_STATUS_SUCCESS != vos_status) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    FL("Failed to destroy inactivity timer"));
+        }
         return vos_status;
     }
     pAc->wmmInactivityTime = inactivityTime;
     // Initialize the current tx traffic count on this AC
     pAc->wmmPrevTrafficCnt = pAdapter->hdd_stats.hddTxRxStats.txXmitClassifiedAC[pQosContext->acType];
+
+    pQosContext->is_inactivity_timer_running = true;
 
     return vos_status;
 }
@@ -517,10 +524,23 @@ VOS_STATUS hdd_wmm_disable_inactivity_timer(hdd_wmm_qos_context_t* pQosContext)
     // Clear the timer and the counter
     pAc->wmmInactivityTime = 0;
     pAc->wmmPrevTrafficCnt = 0;
-    vos_timer_stop(&pAc->wmmInactivityTimer);
-    vos_status = vos_timer_destroy(&pAc->wmmInactivityTimer);
 
-    return vos_status;
+    if (pQosContext->is_inactivity_timer_running == true) {
+        pQosContext->is_inactivity_timer_running = false;
+        vos_status = vos_timer_stop(&pAc->wmmInactivityTimer);
+        if (VOS_STATUS_SUCCESS != vos_status) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    FL("Failed to stop inactivity timer"));
+            return vos_status;
+        }
+        vos_status = vos_timer_destroy(&pAc->wmmInactivityTimer);
+        if (VOS_STATUS_SUCCESS != vos_status) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    FL("Failed to destroy inactivity timer:Timer started"));
+        }
+   }
+
+   return vos_status;
 }
 #endif // FEATURE_WLAN_ESE
 
@@ -2053,6 +2073,7 @@ VOS_STATUS hdd_wmm_acquire_access( hdd_adapter_t* pAdapter,
    pQosContext->qosFlowId = 0;
    pQosContext->handle = HDD_WMM_HANDLE_IMPLICIT;
    pQosContext->magic = HDD_WMM_CTX_MAGIC;
+   pQosContext->is_inactivity_timer_running = false;
 
 #ifdef CONFIG_CNSS
    cnss_init_work(&pQosContext->wmmAcSetupImplicitQos,

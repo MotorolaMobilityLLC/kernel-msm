@@ -404,7 +404,8 @@ tSirRetStatus limPostSMStateUpdate(tpAniSirGlobal pMac,
 
 void limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 void limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
-void limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry, tANI_U32 baDirection);
+void limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry,
+                         tANI_U32 baDirection, tSirMacReasonCodes baReasonCode);
 void limDelPerBssBASessionsBtc(tpAniSirGlobal pMac);
 void limDelAllBASessions(tpAniSirGlobal pMac);
 void limDeleteDialogueTokenList(tpAniSirGlobal pMac);
@@ -482,7 +483,7 @@ typedef enum
     WLAN_PE_DIAG_REASSOC_REQ_EVENT,
     WLAN_PE_DIAG_REASSOC_RSP_EVENT,
     WLAN_PE_DIAG_AUTH_REQ_EVENT,
-    WLAN_PE_DIAG_AUTH_RSP_EVENT,
+    WLAN_PE_DIAG_AUTH_RSP_EVENT = 10,
     WLAN_PE_DIAG_DISASSOC_REQ_EVENT,
     WLAN_PE_DIAG_DISASSOC_RSP_EVENT,
     WLAN_PE_DIAG_DISASSOC_IND_EVENT,
@@ -492,7 +493,7 @@ typedef enum
     WLAN_PE_DIAG_DEAUTH_IND_EVENT,
     WLAN_PE_DIAG_START_BSS_REQ_EVENT,
     WLAN_PE_DIAG_START_BSS_RSP_EVENT,
-    WLAN_PE_DIAG_AUTH_IND_EVENT,
+    WLAN_PE_DIAG_AUTH_IND_EVENT = 20,
     WLAN_PE_DIAG_ASSOC_IND_EVENT,
     WLAN_PE_DIAG_ASSOC_CNF_EVENT,
     WLAN_PE_DIAG_REASSOC_IND_EVENT,
@@ -502,7 +503,7 @@ typedef enum
     WLAN_PE_DIAG_STOP_BSS_RSP_EVENT,
     WLAN_PE_DIAG_DEAUTH_CNF_EVENT,
     WLAN_PE_DIAG_ADDTS_REQ_EVENT,
-    WLAN_PE_DIAG_ADDTS_RSP_EVENT,
+    WLAN_PE_DIAG_ADDTS_RSP_EVENT = 30,
     WLAN_PE_DIAG_DELTS_REQ_EVENT,
     WLAN_PE_DIAG_DELTS_RSP_EVENT,
     WLAN_PE_DIAG_DELTS_IND_EVENT,
@@ -512,7 +513,7 @@ typedef enum
     WLAN_PE_DIAG_EXIT_BMPS_RSP_EVENT,
     WLAN_PE_DIAG_EXIT_BMPS_IND_EVENT,
     WLAN_PE_DIAG_ENTER_IMPS_REQ_EVENT,
-    WLAN_PE_DIAG_ENTER_IMPS_RSP_EVENT,
+    WLAN_PE_DIAG_ENTER_IMPS_RSP_EVENT = 40,
     WLAN_PE_DIAG_EXIT_IMPS_REQ_EVENT,
     WLAN_PE_DIAG_EXIT_IMPS_RSP_EVENT,
     WLAN_PE_DIAG_ENTER_UAPSD_REQ_EVENT,
@@ -522,7 +523,7 @@ typedef enum
     WLAN_PE_DIAG_WOWL_ADD_BCAST_PTRN_EVENT,
     WLAN_PE_DIAG_WOWL_DEL_BCAST_PTRN_EVENT,
     WLAN_PE_DIAG_ENTER_WOWL_REQ_EVENT,
-    WLAN_PE_DIAG_ENTER_WOWL_RSP_EVENT,
+    WLAN_PE_DIAG_ENTER_WOWL_RSP_EVENT = 50,
     WLAN_PE_DIAG_EXIT_WOWL_REQ_EVENT,
     WLAN_PE_DIAG_EXIT_WOWL_RSP_EVENT,
     WLAN_PE_DIAG_HAL_ADDBA_REQ_EVENT,
@@ -532,7 +533,7 @@ typedef enum
     WLAN_PE_DIAG_PRE_AUTH_REQ_EVENT,
     WLAN_PE_DIAG_PRE_AUTH_RSP_EVENT,
     WLAN_PE_DIAG_PREAUTH_DONE,
-    WLAN_PE_DIAG_REASSOCIATING,
+    WLAN_PE_DIAG_REASSOCIATING = 60,
     WLAN_PE_DIAG_CONNECTED,
     WLAN_PE_DIAG_ASSOC_REQ_EVENT,
     WLAN_PE_DIAG_AUTH_COMP_EVENT,
@@ -542,10 +543,10 @@ typedef enum
     WLAN_PE_DIAG_REASSOC_START_EVENT,
     WLAN_PE_DIAG_ROAM_AUTH_START_EVENT,
     WLAN_PE_DIAG_ROAM_AUTH_COMP_EVENT,
-    WLAN_PE_DIAG_ROAM_ASSOC_START_EVENT,
+    WLAN_PE_DIAG_ROAM_ASSOC_START_EVENT = 70,
     WLAN_PE_DIAG_ROAM_ASSOC_COMP_EVENT,
-    RESERVED1, /* for SCAN_COMPLETE */
-    RESERVED2, /* for SCAN_RES_FOUND */
+    RESERVED1, /* = 72 for SCAN_COMPLETE */
+    RESERVED2, /*  = 73 for SCAN_RES_FOUND */
 } WLAN_PE_DIAG_EVENT_TYPE;
 
 void limDiagEventReport(tpAniSirGlobal pMac, tANI_U16 eventType, tpPESession pSessionEntry, tANI_U16 status, tANI_U16 reasonCode);
@@ -607,4 +608,7 @@ void lim_set_ht_caps(tpAniSirGlobal p_mac,
 			tpPESession p_session_entry,
 			tANI_U8 *p_ie_start,
 			tANI_U32 num_bytes);
+bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
+		tSirMacAddr a1, tpPESession session);
+
 #endif /* __LIM_UTILS_H */

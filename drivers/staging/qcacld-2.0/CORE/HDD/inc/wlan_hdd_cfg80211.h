@@ -90,7 +90,7 @@
 #define QCOM_OUI2         0xA0
 #define QCOM_OUI3         0xC6
 #define QCOM_VENDOR_IE_AGE_TYPE  0x100
-#define QCOM_VENDOR_IE_AGE_LEN   11
+#define QCOM_VENDOR_IE_AGE_LEN   (sizeof(qcom_ie_age) - 2)
 
 #ifdef FEATURE_WLAN_TDLS
 #define WLAN_IS_TDLS_SETUP_ACTION(action) \
@@ -110,6 +110,7 @@ typedef struct {
    u8 oui_3;
    u32 type;
    u32 age;
+   u32 tsf_delta;
 }__attribute__((packed)) qcom_ie_age ;
 #endif
 
@@ -222,6 +223,8 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_GET_WIFI_CONFIGURATION = 75,
 
     QCA_NL80211_VENDOR_SUBCMD_GET_LOGGER_FEATURE_SET = 76,
+    QCA_NL80211_VENDOR_SUBCMD_TDLS_GET_CAPABILITIES = 78,
+
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -287,6 +290,9 @@ enum qca_nl80211_vendor_subcmds_index {
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_FOUND_INDEX,
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_LOST_INDEX,
 #endif
+#ifdef WLAN_FEATURE_MEMDUMP
+    QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP_INDEX,
+#endif /* WLAN_FEATURE_MEMDUMP */
 };
 
 /* EXT TDLS */
@@ -339,6 +345,18 @@ enum qca_wlan_vendor_attr_tdls_state {
     QCA_WLAN_VENDOR_ATTR_TDLS_STATE_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_TDLS_STATE_MAX =
         QCA_WLAN_VENDOR_ATTR_TDLS_STATE_AFTER_LAST - 1,
+};
+
+/* enum's to provide TDLS capabilites */
+enum qca_wlan_vendor_attr_get_tdls_capabilities {
+	QCA_WLAN_VENDOR_ATTR_TDLS_GET_CAPS_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_TDLS_GET_CAPS_MAX_CONC_SESSIONS = 1,
+	QCA_WLAN_VENDOR_ATTR_TDLS_GET_CAPS_FEATURES_SUPPORTED = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_TDLS_GET_CAPS_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_TDLS_GET_CAPS_MAX =
+	QCA_WLAN_VENDOR_ATTR_TDLS_GET_CAPS_AFTER_LAST - 1,
 };
 
 enum qca_wlan_vendor_attr {
@@ -1306,6 +1324,9 @@ enum qca_wlan_vendor_features {
 #define WIFI_FEATURE_HAL_EPNO           0x40000  /* WiFi PNO enhanced */
 
 /* Add more features here */
+#define WIFI_TDLS_SUPPORT			BIT(0)
+#define WIFI_TDLS_EXTERNAL_CONTROL_SUPPORT	BIT(1)
+#define WIIF_TDLS_OFFCHANNEL_SUPPORT		BIT(2)
 
 /**
  * enum wifi_logger_supported_features - values for supported logger features
@@ -1361,6 +1382,26 @@ enum qca_wlan_vendor_config {
 	QCA_WLAN_VENDOR_ATTR_CONFIG_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
 	QCA_WLAN_VENDOR_ATTR_CONFIG_LAST - 1
+};
+
+/**
+ * enum qca_wlan_vendor_attr_wifi_logger_start - Enum for wifi logger starting
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_INVALID: Invalid attribute
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_RING_ID: Ring ID
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_VERBOSE_LEVEL: Verbose level
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_FLAGS: Flag
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_AFTER_LAST: Last value
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_MAX: Max value
+ */
+enum qca_wlan_vendor_attr_wifi_logger_start {
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_RING_ID = 1,
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_VERBOSE_LEVEL = 2,
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_FLAGS = 3,
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_MAX =
+		QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_AFTER_LAST - 1,
 };
 
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,

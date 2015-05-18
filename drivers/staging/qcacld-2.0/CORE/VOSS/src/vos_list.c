@@ -110,9 +110,9 @@ VOS_STATUS vos_list_destroy( vos_list_t *pList )
 
    if ( pList->count !=0 )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: list length not equal to zero", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_BUSY;
    }
 
@@ -259,9 +259,9 @@ VOS_STATUS vos_list_remove_front( vos_list_t *pList, vos_list_node_t **ppNode )
 
    if ( list_empty( &pList->anchor ) )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -309,9 +309,9 @@ VOS_STATUS vos_list_remove_back( vos_list_t *pList, vos_list_node_t **ppNode )
 
    if ( list_empty( &pList->anchor ) )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -416,9 +416,9 @@ VOS_STATUS vos_list_peek_front( vos_list_t *pList, vos_list_node_t **ppNode )
 
    if ( list_empty(&pList->anchor) )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
    listptr = pList->anchor.next;
@@ -486,9 +486,9 @@ VOS_STATUS vos_list_peek_back( vos_list_t *pList, vos_list_node_t **ppNode )
 
    if ( list_empty(&pList->anchor) )
    {
+       mutex_unlock(&pList->lock);
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                  "%s: list empty", __func__);
-       mutex_unlock(&pList->lock);
        return VOS_STATUS_E_EMPTY;
    }
    listptr = pList->anchor.prev;
@@ -559,9 +559,9 @@ VOS_STATUS vos_list_peek_next( vos_list_t *pList, vos_list_node_t *pNode,
 
    if ( list_empty(&pList->anchor) )
    {
+       mutex_unlock(&pList->lock);
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                  "%s: list empty", __func__);
-       mutex_unlock(&pList->lock);
        return VOS_STATUS_E_EMPTY;
    }
 
@@ -580,9 +580,9 @@ VOS_STATUS vos_list_peek_next( vos_list_t *pList, vos_list_node_t *pNode,
    listptr = pNode->next;
    if (listptr == &pList->anchor)
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -653,9 +653,9 @@ VOS_STATUS vos_list_peek_prev( vos_list_t *pList, vos_list_node_t *pNode,
 
    if ( list_empty(&pList->anchor) )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -675,9 +675,9 @@ VOS_STATUS vos_list_peek_prev( vos_list_t *pList, vos_list_node_t *pNode,
 
    if (listptr == &pList->anchor)
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -743,8 +743,8 @@ VOS_STATUS vos_list_insert_before( vos_list_t *pList, vos_list_node_t *pNodeToIn
 
    if ( list_empty(&pList->anchor) )
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: list empty", __func__);
       mutex_unlock(&pList->lock);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: list empty", __func__);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -825,9 +825,9 @@ VOS_STATUS vos_list_insert_after( vos_list_t *pList, vos_list_node_t *pNodeToIns
 
    if ( list_empty(&pList->anchor) )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 
@@ -905,9 +905,9 @@ VOS_STATUS vos_list_remove_node( vos_list_t *pList, vos_list_node_t *pNodeToRemo
 
    if ( list_empty(&pList->anchor) )
    {
+      mutex_unlock(&pList->lock);
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: list empty", __func__);
-      mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;
    }
 

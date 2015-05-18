@@ -215,22 +215,6 @@ extern VOS_STATUS hdd_softap_tx_low_resource_cbk( vos_pkt_t *pVosPacket,
 extern VOS_STATUS hdd_softap_rx_packet_cbk(v_VOID_t *vosContext,
                                            adf_nbuf_t rxBufChain,
                                            v_U8_t staId);
-#ifdef IPA_OFFLOAD
-/**============================================================================
-  @brief hdd_softap_rx_mul_packet_cbk() - Receive callback registered with TL.
-  IPA integrated platform, TL Shim will give multiple RX frames with NETBUF
-  link. Linked frames should be un-link and send to NETDEV.
-
-  @param vosContext      : [in] pointer to VOS context
-  @param rx_buf_list     : [in] pointer to rx adf_nbuf linked list
-  @param staId           : [in] Station Id (Address 1 Index)
-
-  @return                : VOS_STATUS_E_FAILURE if any errors encountered,
-                         : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-VOS_STATUS hdd_softap_rx_mul_packet_cbk(v_VOID_t *vosContext,
-                                    adf_nbuf_t rx_buf_list, v_U8_t staId);
-#endif /* IPA_OFFLOAD */
 
 /**============================================================================
   @brief hdd_softap_DeregisterSTA - Deregister a station from TL block

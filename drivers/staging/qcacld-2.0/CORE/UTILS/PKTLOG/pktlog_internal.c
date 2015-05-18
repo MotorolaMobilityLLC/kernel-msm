@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -34,11 +34,14 @@
 #include "htt_internal.h"
 #include "pktlog_ac_i.h"
 #include "wma_api.h"
+#include "wlan_logging_sock_svc.h"
 
 #define TX_DESC_ID_LOW_MASK	0xffff
 #define TX_DESC_ID_LOW_SHIFT	0
 #define TX_DESC_ID_HIGH_MASK	0xffff0000
 #define TX_DESC_ID_HIGH_SHIFT	16
+
+#define PER_PACKET_STATS_THRESHOLD 4096
 
 void
 pktlog_getbuf_intsafe(struct ath_pktlog_arg *plarg)
@@ -102,6 +105,7 @@ pktlog_getbuf_intsafe(struct ath_pktlog_arg *plarg)
 
 	while ((cur_wr_offset <= log_buf->rd_offset)
 	       && (cur_wr_offset + log_size) > log_buf->rd_offset) {
+			printk("%s: Buffer overflow\n", __func__);
 			PKTLOG_MOV_RD_IDX(log_buf->rd_offset, log_buf,
 					  buf_size);
 	}
@@ -113,6 +117,31 @@ pktlog_getbuf_intsafe(struct ath_pktlog_arg *plarg)
 			     sizeof(struct ath_pktlog_hdr)) ? cur_wr_offset : 0;
 
 	plarg->buf = log_ptr;
+}
+
+/**
+ * pktlog_check_threshold() - This function checks threshold for triggering
+ * packet stats
+ * @pl_info: Packet log information pointer
+ * @log_size: Size of current packet log information
+ *
+ * This function internally triggers logging of per packet stats when the
+ * incoming data crosses threshold limit
+ *
+ * Return: None
+ *
+ */
+void pktlog_check_threshold(struct ath_pktlog_info *pl_info,
+			    size_t log_size)
+{
+	PKTLOG_LOCK(pl_info);
+	pl_info->buf->bytes_written += log_size + sizeof(struct ath_pktlog_hdr);
+
+	if (pl_info->buf->bytes_written >= PER_PACKET_STATS_THRESHOLD) {
+		wlan_logging_set_per_pkt_stats();
+		pl_info->buf->bytes_written = 0;
+	}
+	PKTLOG_UNLOCK(pl_info);
 }
 
 char *
@@ -142,6 +171,15 @@ pktlog_getbuf(struct ol_pktlog_dev_t *pl_dev,
 		pktlog_getbuf_intsafe(&plarg);
 		PKTLOG_UNLOCK(pl_info);
 	}
+
+	/*
+	 * We do not want to do this packet stats related processing when
+	 * packet log tool is run. i.e., we want this processing to be
+	 * done only when start logging command of packet stats is initiated.
+	 */
+	if (vos_get_ring_log_level(RING_ID_PER_PACKET_STATS) ==
+							WLAN_LOG_LEVEL_ACTIVE)
+		pktlog_check_threshold(pl_info, log_size);
 
 	return plarg.buf;
 }

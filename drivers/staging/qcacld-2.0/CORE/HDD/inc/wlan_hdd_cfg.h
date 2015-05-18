@@ -1560,9 +1560,9 @@ typedef enum
 
 
 #define CFG_ENABLE_PACKET_LOG            "gEnablePacketLog"
-#define CFG_ENABLE_PACKET_LOG_MIN        ( 0 )
-#define CFG_ENABLE_PACKET_LOG_MAX        ( 1 )
-#define CFG_ENABLE_PACKET_LOG_DEFAULT    ( 0 )
+#define CFG_ENABLE_PACKET_LOG_MIN        (0)
+#define CFG_ENABLE_PACKET_LOG_MAX        (1)
+#define CFG_ENABLE_PACKET_LOG_DEFAULT    (1)
 
 #define CFG_ENABLE_FW_LOG_TYPE            "gFwDebugLogType"
 #define CFG_ENABLE_FW_LOG_TYPE_MIN        ( 0 )

@@ -1695,6 +1695,7 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
    hdd_context_t *pHddCtx = NULL;
    int rxstat;
    struct sk_buff *skb = NULL;
+   struct sk_buff *skb_next;
 #ifdef QCA_PKT_PROTO_TRACE
    v_U8_t proto_type;
 #endif /* QCA_PKT_PROTO_TRACE */
@@ -1715,83 +1716,95 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
    }
 
    pAdapter = pHddCtx->sta_to_adapter[staId];
-   if( NULL == pAdapter )
-   {
+   if ((NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)) {
+      hddLog(LOGE, FL("invalid adapter or adapter has invalid magic"));
       return VOS_STATUS_E_FAILURE;
+   }
+
+   if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic) {
+       VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_FATAL,
+          "Magic cookie(%x) for adapter sanity verification is invalid",
+          pAdapter->magic);
+       return VOS_STATUS_E_FAILURE;
    }
    ++pAdapter->hdd_stats.hddTxRxStats.rxChains;
 
    // walk the chain until all are processed
    skb = (struct sk_buff *) rxBuf;
-
-   if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
-   {
-       VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_FATAL,
-       "Magic cookie(%x) for adapter sanity verification is invalid", pAdapter->magic);
-       return eHAL_STATUS_FAILURE;
-   }
-
    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-   if ((pHddStaCtx->conn_info.proxyARPService) &&
-         cfg80211_is_gratuitous_arp_unsolicited_na(skb))
-   {
-         ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
-         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
-            "%s: Dropping HS 2.0 Gratuitous ARP or Unsolicited NA", __func__);
-        kfree_skb(skb);
-        return VOS_STATUS_SUCCESS;
-   }
+   while (NULL != skb) {
+      skb_next = skb->next;
 
-#ifdef FEATURE_WLAN_TDLS
-#endif
+      if ((pHddStaCtx->conn_info.proxyARPService) &&
+         cfg80211_is_gratuitous_arp_unsolicited_na(skb)) {
+            ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
+            VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+               "%s: Dropping HS 2.0 Gratuitous ARP or Unsolicited NA", __func__);
+            kfree_skb(skb);
 
-   wlan_hdd_log_eapol(skb, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED);
+            skb = skb_next;
+            continue;
+      }
+
+      wlan_hdd_log_eapol(skb, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED);
 
 #ifdef QCA_PKT_PROTO_TRACE
-   if ((pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
-       (pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_DHCP))
-   {
-      proto_type = vos_pkt_get_proto_type(skb,
+      if ((pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
+          (pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_DHCP)) {
+         proto_type = vos_pkt_get_proto_type(skb,
                         pHddCtx->cfg_ini->gEnableDebugLog, 0);
-      if (VOS_PKT_TRAC_TYPE_EAPOL & proto_type)
-      {
-         vos_pkt_trace_buf_update("ST:R:EPL");
+         if (VOS_PKT_TRAC_TYPE_EAPOL & proto_type)
+            vos_pkt_trace_buf_update("ST:R:EPL");
+         else if (VOS_PKT_TRAC_TYPE_DHCP & proto_type)
+            vos_pkt_trace_buf_update("ST:R:DHC");
       }
-      else if (VOS_PKT_TRAC_TYPE_DHCP & proto_type)
-      {
-         vos_pkt_trace_buf_update("ST:R:DHC");
-      }
-   }
 #endif /* QCA_PKT_PROTO_TRACE */
 
-   skb->dev = pAdapter->dev;
-   skb->protocol = eth_type_trans(skb, skb->dev);
+      skb->dev = pAdapter->dev;
+      skb->protocol = eth_type_trans(skb, skb->dev);
 
-   /* Check & drop mcast packets (for IPV6) as required */
-   if (drop_ip6_mcast(skb)) {
-         print_hex_dump_bytes("MAC Header", DUMP_PREFIX_NONE, skb_mac_header(skb), 16);
+      /* Check & drop mcast packets (for IPV6) as required */
+      if (drop_ip6_mcast(skb)) {
+         print_hex_dump_bytes("MAC Header",
+            DUMP_PREFIX_NONE, skb_mac_header(skb), 16);
          ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
          VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-            "%s: Dropping multicast to self NA", __func__);
-        kfree_skb(skb);
-        return VOS_STATUS_SUCCESS;
-   }
-   ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
-   ++pAdapter->stats.rx_packets;
-   pAdapter->stats.rx_bytes += skb->len;
+               "%s: Dropping multicast to self NA", __func__);
+         kfree_skb(skb);
+
+         skb = skb_next;
+         continue;
+      }
+
+      ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
+      ++pAdapter->stats.rx_packets;
+      pAdapter->stats.rx_bytes += skb->len;
+
+      /*
+       * If this is not a last packet on the chain
+       * Just put packet into backlog queue, not scheduling RX sirq
+       */
+      if (skb->next) {
+         rxstat = netif_rx(skb);
+      } else {
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
-   vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
-                                 HDD_WAKE_LOCK_DURATION,
-                                 WIFI_POWER_EVENT_WAKELOCK_HOLD_RX);
+         vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
+                                       HDD_WAKE_LOCK_DURATION,
+                                       WIFI_POWER_EVENT_WAKELOCK_HOLD_RX);
 #endif
-   rxstat = netif_rx_ni(skb);
-   if (NET_RX_SUCCESS == rxstat)
-   {
-       ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
-   }
-   else
-   {
-       ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
+         /*
+          * This is the last packet on the chain
+          * Scheduling rx sirq
+          */
+         rxstat = netif_rx_ni(skb);
+      }
+
+      if (NET_RX_SUCCESS == rxstat)
+         ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
+      else
+         ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
+
+      skb = skb_next;
    }
 
    pAdapter->dev->last_rx = jiffies;
@@ -1809,43 +1822,6 @@ void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *phddctx)
 {
 
 }
-
-#ifdef IPA_OFFLOAD
-/**============================================================================
-  @brief hdd_rx_mul_packet_cbk() - Receive callback registered with TL.
-  IPA integrated platform, TL Shim will give multiple RX frames with NETBUF
-  link. Linked frames should be un-link and send to NETDEV.
-
-  @param vosContext      : [in] pointer to VOS context
-  @param rx_buf_list     : [in] pointer to rx adf_nbuf linked list
-  @param staId           : [in] Station Id (Address 1 Index)
-
-  @return                : VOS_STATUS_E_FAILURE if any errors encountered,
-                         : VOS_STATUS_SUCCESS otherwise
-  ===========================================================================*/
-VOS_STATUS hdd_rx_mul_packet_cbk(v_VOID_t *vosContext,
-                                    adf_nbuf_t rx_buf_list, v_U8_t staId)
-{
-   adf_nbuf_t buf, next_buf;
-   VOS_STATUS status;
-
-   buf = rx_buf_list;
-   while(buf)
-   {
-      next_buf = adf_nbuf_queue_next(buf);
-      adf_nbuf_set_next(buf, NULL); /* Add NULL terminator */
-      status = hdd_rx_packet_cbk(vosContext, buf, staId);
-      if(!VOS_IS_STATUS_SUCCESS(status))
-      {
-         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-                   "%s: RX fail, status %d", __func__, status);
-         return status;
-      }
-      buf = next_buf;
-   }
-   return VOS_STATUS_SUCCESS;
-}
-#endif /* IPA_OFFLOAD */
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 

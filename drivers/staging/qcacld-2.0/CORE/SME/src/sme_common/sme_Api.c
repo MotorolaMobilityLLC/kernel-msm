@@ -392,6 +392,7 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
 {
     tSmeCmd *pRetCmd = NULL, *pTempCmd = NULL;
     tListElem *pEntry;
+    static int smeCommandQueueFull = 0;
 
     pEntry = csrLLRemoveHead( &pMac->sme.smeCmdFreeList, LL_ACCESS_LOCK );
 
@@ -401,6 +402,8 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
     if ( pEntry )
     {
         pRetCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+        /* reset when free list is available */
+        smeCommandQueueFull = 0;
     }
     else {
         int idx = 1;
@@ -425,11 +428,14 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
         //dump what is in the pending queue
         csrLLLock(&pMac->sme.smeCmdPendingList);
         pEntry = csrLLPeekHead( &pMac->sme.smeCmdPendingList, LL_ACCESS_NOLOCK );
-        while(pEntry)
+        while(pEntry && !smeCommandQueueFull)
         {
             pTempCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
-            smsLog( pMac, LOGE, "Out of command buffer.... SME pending command #%d (0x%X)",
-                    idx++, pTempCmd->command );
+            /* Print only 1st five commands from pending queue. */
+            if (idx <= 5)
+                smsLog( pMac, LOGE, "Out of command buffer.... SME pending command #%d (0x%X)",
+                        idx, pTempCmd->command );
+            idx++;
             if( eSmeCsrCommandMask & pTempCmd->command )
             {
                 //CSR command is stuck. See what the reason code is for that command
@@ -437,6 +443,8 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
             }
             pEntry = csrLLNext( &pMac->sme.smeCmdPendingList, pEntry, LL_ACCESS_NOLOCK );
         }
+        /* Increament static variable so that it prints pending command only once*/
+        smeCommandQueueFull++;
         csrLLUnlock(&pMac->sme.smeCmdPendingList);
 
         //There may be some more command in CSR's own pending queue
@@ -2339,6 +2347,31 @@ eHalStatus sme_SetEseBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
 
 #endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
+/**
+ * sme_process_fw_mem_dump_rsp - process fw memory dump response from WMA
+ *
+ * @pMac - pointer to MAC handle.
+ * @pMsg - pointer to received SME msg.
+ *
+ * This function process the received SME message and calls the corresponding
+ * callback which was already registered with SME.
+ */
+#ifdef WLAN_FEATURE_MEMDUMP
+static void sme_process_fw_mem_dump_rsp(tpAniSirGlobal pMac, vos_msg_t* pMsg)
+{
+	if (pMsg->bodyptr) {
+		if (pMac->sme.fw_dump_callback)
+			pMac->sme.fw_dump_callback(pMac->hHdd,
+				(struct fw_dump_rsp*) pMsg->bodyptr);
+		vos_mem_free(pMsg->bodyptr);
+	}
+}
+#else
+static void sme_process_fw_mem_dump_rsp(tpAniSirGlobal pMac, vos_msg_t* pMsg)
+{
+}
+#endif
+
 /*--------------------------------------------------------------------------
 
   \brief sme_ProcessMsg() - The main message processor for SME.
@@ -2891,6 +2924,9 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 break;
           }
 #endif
+          case eWNI_SME_FW_DUMP_IND:
+               sme_process_fw_mem_dump_rsp(pMac, pMsg);
+               break;
           default:
 
              if ( ( pMsg->type >= eWNI_SME_MSG_TYPES_BEGIN )
@@ -14319,6 +14355,78 @@ eHalStatus sme_SetLinkLayerStatsIndCB
 }
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
+
+/**
+ * sme_fw_mem_dump_register_cb() - Register fw memory dump callback
+ *
+ * @hHal - MAC global handle
+ * @callback_routine - callback routine from HDD
+ *
+ * This API is invoked by HDD to register its callback in SME
+ *
+ * Return: eHalStatus
+ */
+#ifdef WLAN_FEATURE_MEMDUMP
+eHalStatus sme_fw_mem_dump_register_cb(tHalHandle hal,
+		void (*callback_routine)(void *cb_context,
+					 struct fw_dump_rsp *rsp))
+{
+	eHalStatus status = eHAL_STATUS_SUCCESS;
+	tpAniSirGlobal pmac = PMAC_STRUCT(hal);
+
+	status = sme_AcquireGlobalLock(&pmac->sme);
+	if (eHAL_STATUS_SUCCESS == status) {
+		pmac->sme.fw_dump_callback = callback_routine;
+		sme_ReleaseGlobalLock(&pmac->sme);
+	} else {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("sme_AcquireGlobalLock error"));
+	}
+
+	return status;
+}
+#else
+eHalStatus sme_fw_mem_dump_register_cb(tHalHandle hal,
+		void (*callback_routine)(void *cb_context,
+					 struct fw_dump_rsp *rsp))
+{
+	return eHAL_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_MEMDUMP */
+
+/**
+ * sme_fw_mem_dump_unregister_cb() - Unregister fw memory dump callback
+ *
+ * @hHal - MAC global handle
+ *
+ * This API is invoked by HDD to unregister its callback in SME
+ *
+ * Return: eHalStatus
+ */
+#ifdef WLAN_FEATURE_MEMDUMP
+eHalStatus sme_fw_mem_dump_unregister_cb(tHalHandle hal)
+{
+	eHalStatus status;
+	tpAniSirGlobal pmac = PMAC_STRUCT(hal);
+
+	status = sme_AcquireGlobalLock(&pmac->sme);
+	if (eHAL_STATUS_SUCCESS == status) {
+		pmac->sme.fw_dump_callback = NULL;
+		sme_ReleaseGlobalLock(&pmac->sme);
+	} else {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			  FL("sme_AcquireGlobalLock error"));
+	}
+
+	return status;
+}
+#else
+eHalStatus sme_fw_mem_dump_unregister_cb(tHalHandle hal)
+{
+	return eHAL_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_MEMDUMP */
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /*--------------------------------------------------------------------------
   \brief sme_UpdateRoamOffloadEnabled() - enable/disable roam offload feaure
@@ -14447,6 +14555,80 @@ eHalStatus sme_handle_dfs_chan_scan(tHalHandle hHal, tANI_U8 dfs_flag)
     return status;
 }
 
+/**
+ * sme_fw_mem_dump() - Get FW memory dump
+ *
+ * This API is invoked by HDD to indicate FW to start
+ * dumping firmware memory.
+ *
+ * Return: eHalStatus
+ */
+#ifdef WLAN_FEATURE_MEMDUMP
+eHalStatus sme_fw_mem_dump(tHalHandle hHal, void *recvd_req)
+{
+	eHalStatus status = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+	vos_msg_t msg;
+	struct fw_dump_req* send_req;
+	struct fw_dump_seg_req seg_req;
+	int loop;
+
+	send_req = vos_mem_malloc(sizeof(*send_req));
+	if(!send_req) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			FL("Memory allocation failed for WDA_FW_MEM_DUMP"));
+		return eHAL_STATUS_FAILURE;
+	}
+	vos_mem_copy(send_req, recvd_req, sizeof(*send_req));
+
+	VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+		  FL("request_id:%d num_seg:%d"),
+		  send_req->request_id, send_req->num_seg);
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+		  FL("Segment Information"));
+	for (loop = 0; loop < send_req->num_seg; loop++) {
+		seg_req = send_req->segment[loop];
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+			  FL("seg_number:%d"), loop);
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+			  FL("seg_id:%d start_addr_lo:0x%x start_addr_hi:0x%x"),
+			  seg_req.seg_id, seg_req.seg_start_addr_lo,
+			  seg_req.seg_start_addr_hi);
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+			  FL("seg_length:%d dst_addr_lo:0x%x dst_addr_hi:0x%x"),
+			  seg_req.seg_length, seg_req.dst_addr_lo,
+			  seg_req.dst_addr_hi);
+	}
+
+	if (eHAL_STATUS_SUCCESS == sme_AcquireGlobalLock(&pMac->sme)) {
+		msg.bodyptr = send_req;
+		msg.type = WDA_FW_MEM_DUMP_REQ;
+		msg.reserved = 0;
+
+		vos_status = vos_mq_post_message(VOS_MODULE_ID_WDA, &msg);
+		if (VOS_STATUS_SUCCESS != vos_status) {
+			VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+				  FL("Not able to post WDA_FW_MEM_DUMP"));
+			vos_mem_free(send_req);
+			status = eHAL_STATUS_FAILURE;
+		}
+		sme_ReleaseGlobalLock(&pMac->sme);
+	} else {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			FL("Failed to acquire SME Global Lock"));
+		vos_mem_free(send_req);
+		status = eHAL_STATUS_FAILURE;
+	}
+
+	return status;
+}
+#else
+eHalStatus sme_fw_mem_dump(tHalHandle hHal, void *recvd_req)
+{
+	return eHAL_STATUS_SUCCESS;
+}
+#endif /* WLAN_FEATURE_MEMDUMP */
 
 /**
  * sme_configure_stats_avg_factor() - function to config avg. stats factor
@@ -14454,7 +14636,7 @@ eHalStatus sme_handle_dfs_chan_scan(tHalHandle hHal, tANI_U8 dfs_flag)
  * @session_id: session ID
  * @stats_avg_factor: average stats factor
  *
- * This function configures the guard time in firmware
+ * This function configures the avg stats factor in firmware
  *
  * Return: eHalStatus
  */
@@ -14523,11 +14705,11 @@ eHalStatus sme_configure_guard_time(tHalHandle hHal, tANI_U8 session_id,
 	tpAniSirGlobal pMac  = PMAC_STRUCT(hHal);
 	struct sir_guard_time_request *g_time;
 
-	g_time = vos_mem_malloc(sizeof(g_time));
+	g_time = vos_mem_malloc(sizeof(*g_time));
 
 	if (!g_time) {
 		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-			  "%s: Not able to allocate memory for WDA_SET_MDNS_RESPONSE_CMD",
+			  "%s: Not able to allocate memory for SIR_HAL_CONFIG_GUARD_TIME",
 			  __func__);
 		return eHAL_STATUS_E_MALLOC_FAILED;
 	}
@@ -14706,5 +14888,69 @@ eHalStatus sme_configure_modulated_dtim(tHalHandle h_hal, tANI_U8 session_id,
 		vos_mem_free(iwcmd);
 	}
 
+	return status;
+}
+
+/*
+ * sme_wifi_start_logger() - This function send the command to WMA
+ * to either start/stop logging
+ * @hal: HAL context
+ * @start_log: Structure containing the wifi start logger params
+ *
+ * This function send the command to WMA to either start/stop logging
+ *
+ * Return: eHAL_STATUS_SUCCESS on successful posting
+ */
+eHalStatus sme_wifi_start_logger(tHalHandle hal,
+		struct sir_wifi_start_log start_log)
+{
+	eHalStatus status     = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac   = PMAC_STRUCT(hal);
+	vos_msg_t vos_message;
+	struct sir_wifi_start_log *req_msg;
+	uint32_t len;
+
+	if (start_log.ring_id == RING_ID_PER_PACKET_STATS) {
+		len = sizeof(*req_msg);
+		req_msg = vos_mem_malloc(len);
+		if (!req_msg) {
+			smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+			return eHAL_STATUS_FAILED_ALLOC;
+		}
+
+		vos_mem_zero(req_msg, len);
+
+		req_msg->verbose_level = start_log.verbose_level;
+		req_msg->flag = start_log.flag;
+		req_msg->ring_id = start_log.ring_id;
+
+		status = sme_AcquireGlobalLock(&mac->sme);
+		if (status != eHAL_STATUS_SUCCESS) {
+			smsLog(mac, LOGE,
+				FL("sme_AcquireGlobalLock failed!(status=%d)"),
+				status);
+			vos_mem_free(req_msg);
+			return status;
+		}
+
+		/* Serialize the req through MC thread */
+		vos_message.bodyptr = req_msg;
+		vos_message.type    = SIR_HAL_START_STOP_PACKET_STATS;
+		vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+		if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+			smsLog(mac, LOGE,
+				FL("vos_mq_post_message failed!(err=%d)"),
+				vos_status);
+			vos_mem_free(req_msg);
+			status = eHAL_STATUS_FAILURE;
+		}
+		sme_ReleaseGlobalLock(&mac->sme);
+	} else if (start_log.ring_id == RING_ID_CONNECTIVITY) {
+		/* Start/stop connectivity events */
+		/* No handling for now */
+	} else {
+		smsLog(mac, LOGE, FL("Invalid parameter"));
+	}
 	return status;
 }

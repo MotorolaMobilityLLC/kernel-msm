@@ -45,4 +45,8 @@ config QCOM_LTE_COEX
 	bool "Enable QCOM LTE Coex feature"
 	default n
 
+config CONFIG_FEATURE_MEMDUMP
+	bool "Enable MEMDUMP feature"
+	default n
+
 endif # QCA_CLD_WLAN

@@ -4907,7 +4907,7 @@ tANI_BOOLEAN csrMatchBSS( tHalHandle hHal, tSirBssDescription *pBssDesc, tCsrSca
                           tDot11fBeaconIEs **ppIes)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    tANI_BOOLEAN fRC = eANI_BOOLEAN_FALSE, fCheck;
+    tANI_BOOLEAN fRC = eANI_BOOLEAN_FALSE, fCheck, blacklist_check;
     tANI_U32 i;
     tDot11fBeaconIEs *pIes = NULL;
     tANI_U8 *pb;
@@ -4935,17 +4935,17 @@ tANI_BOOLEAN csrMatchBSS( tHalHandle hHal, tSirBssDescription *pBssDesc, tCsrSca
         if(!fCheck) break;
 
         /* Check for Blacklist BSSID's and avoid connections */
-        fCheck = false;
+        blacklist_check = false;
         blacklist_bssid = (tCsrBssid *)&roam_params->bssid_avoid_list;
         for (i = 0; i < roam_params->num_bssid_avoid_list; i++) {
           if (csrIsMacAddressEqual(pMac, blacklist_bssid,
                (tCsrBssid *)pBssDesc->bssId)) {
-                 fCheck = true;
+                 blacklist_check = true;
                  break;
           }
           blacklist_bssid++;
         }
-        if(fCheck) {
+        if(blacklist_check) {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
               "Do not Attempt connection to blacklist bssid");
             break;

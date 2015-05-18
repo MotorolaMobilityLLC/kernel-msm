@@ -144,7 +144,7 @@ htt_htc_misc_pkt_pool_free(struct htt_pdev_t *pdev)
         next = pkt->u.next;
         netbuf = (adf_nbuf_t)(pkt->u.pkt.htc_pkt.pNetBufContext);
         adf_nbuf_unmap(pdev->osdev, netbuf, ADF_OS_DMA_TO_DEVICE);
-        adf_os_mem_free(netbuf);
+        adf_nbuf_free(netbuf);
         adf_os_mem_free(pkt);
         pkt = next;
     }

@@ -393,6 +393,7 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
     tANI_U8             *p2pIe = NULL;
     tANI_U8             txFlag = 0;
     tANI_U8             smeSessionId = 0;
+    bool                isVHTEnabled = false;
 
 #ifndef GEN4_SCAN
     return eSIR_FAILURE;
@@ -507,19 +508,19 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
 #ifdef WLAN_FEATURE_11AC
     if (psessionEntry != NULL ) {
        psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(dot11mode);
-       //Include HT Capability IE
-       if (psessionEntry->vhtCapability)
-       {
+       /* Include VHT Capability IE */
+       if (psessionEntry->vhtCapability) {
           PopulateDot11fVHTCaps( pMac, psessionEntry, &pr.VHTCaps );
+          isVHTEnabled = true;
        }
-    }  else {
-       if (IS_DOT11_MODE_VHT(dot11mode))
-       {
+    } else {
+       if (IS_DOT11_MODE_VHT(dot11mode)) {
           PopulateDot11fVHTCaps( pMac, psessionEntry, &pr.VHTCaps );
+          isVHTEnabled = true;
        }
     }
 #endif
-
+    PopulateDot11fExtCap(pMac, isVHTEnabled, &pr.ExtCap, psessionEntry);
 
     // That's it-- now we pack it.  First, how much space are we going to
     // need?
@@ -1024,7 +1025,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         if (total_noaLen > (SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN))
         {
             limLog(pMac, LOGE,
-                  FL("Not able to insert NoA because of length constraint"));
+                  FL("Not able to insert NoA, total len=%d"), total_noaLen);
             vos_mem_free(addIE);
             vos_mem_free(pFrm);
             palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -2393,6 +2394,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 #ifndef FEATURE_DISABLE_RM
         PopulateDot11fESERadMgmtCap(&pFrm->ESERadMgmtCap);
 #endif
+        PopulateDot11fESEVersion(&pFrm->ESEVersion);
     }
 #endif
 
@@ -2756,6 +2758,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
 #ifndef FEATURE_DISABLE_RM
         PopulateDot11fESERadMgmtCap(&frm.ESERadMgmtCap);
 #endif
+        PopulateDot11fESEVersion(&frm.ESEVersion);
     }
 #endif //FEATURE_WLAN_ESE
 #endif //FEATURE_WLAN_ESE || FEATURE_WLAN_LFR

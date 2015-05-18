@@ -151,17 +151,15 @@ typedef struct {
 } tdls_req_params_t;
 
 typedef enum {
-    WIFI_TDLS_DISABLED,                /* TDLS is not enabled, or is disabled
-                                          now */
-    WIFI_TDLS_ENABLED,                 /* TDLS is enabled, but not yet tried */
-    WIFI_TDLS_TRYING,                  /* Direct link is being attempted
-                                          (optional) */
-    WIFI_TDLS_ESTABLISHED,             /* Direct link is established */
-    WIFI_TDLS_ESTABLISHED_OFF_CHANNEL, /* Direct link is established using
-                                          MCC */
-    WIFI_TDLS_DROPPED,                 /* Direct link was established, but is
-                                          now dropped */
-    WIFI_TDLS_FAILED                   /* Direct link failed */
+    QCA_WIFI_HAL_TDLS_DISABLED = 1, /* TDLS is not enabled, or is disabled
+                                       now */
+    QCA_WIFI_HAL_TDLS_ENABLED,      /* TDLS is enabled, but not yet tried */
+    QCA_WIFI_HAL_TDLS_ESTABLISHED,  /* Direct link is established */
+    QCA_WIFI_HAL_TDLS_ESTABLISHED_OFF_CHANNEL, /* Direct link is established
+                                                  using MCC */
+    QCA_WIFI_HAL_TDLS_DROPPED,      /* Direct link was established, but is
+                                       now dropped */
+    QCA_WIFI_HAL_TDLS_FAILED        /* Direct link failed */
 } tdls_state_t;
 
 typedef int (*cfg80211_exttdls_callback)(tANI_U8* mac,

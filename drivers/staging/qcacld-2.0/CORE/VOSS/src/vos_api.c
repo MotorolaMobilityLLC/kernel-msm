@@ -2136,11 +2136,17 @@ VOS_STATUS vos_shutdown(v_CONTEXT_t vosContext)
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
   }
 
+  /*
+   * CAC timer will be initiated and started only when SAP starts on
+   * DFS channel and it will be stopped and destroyed immediately once the
+   * radar detected or timedout. So as per design CAC timer should be
+   * destroyed after stop.
+   */
   if (pMac->sap.SapDfsInfo.is_dfs_cac_timer_running) {
      vos_timer_stop(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
      pMac->sap.SapDfsInfo.is_dfs_cac_timer_running = 0;
+     vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
   }
-  vos_timer_destroy(&pMac->sap.SapDfsInfo.sap_dfs_cac_timer);
 
   vosStatus = macClose( ((pVosContextType)vosContext)->pMACContext);
   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -2470,3 +2476,124 @@ v_VOID_t vos_pm_control(v_BOOL_t vote)
 #endif
 }
 #endif
+
+/**
+ * vos_set_wakelock_logging() - Logging of wakelock enabled/disabled
+ * @value: Boolean value
+ *
+ * This function is used to set the flag which will indicate whether
+ * logging of wakelock is enabled or not
+ *
+ * Return: None
+ */
+void vos_set_wakelock_logging(bool value)
+{
+	VosContextType *vos_context;
+
+	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				"vos context is Invald");
+		return;
+	}
+	vos_context->is_wakelock_log_enabled = value;
+}
+
+/**
+ * vos_is_wakelock_enabled() - Check if logging of wakelock is enabled/disabled
+ * @value: Boolean value
+ *
+ * This function is used to check whether logging of wakelock is enabled or not
+ *
+ * Return: true if logging of wakelock is enabled
+ */
+bool vos_is_wakelock_enabled(void)
+{
+	VosContextType *vos_context;
+
+	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				"vos context is Invald");
+		return false;
+	}
+	return vos_context->is_wakelock_log_enabled;
+}
+
+/**
+ * vos_set_ring_log_level() - Convert HLOS values to driver log levels
+ * @ring_id: ring_id
+ * @log_levelvalue: Log level specificed
+ *
+ * This function sets the log level of a particular ring
+ *
+ * Return: None
+ */
+void vos_set_ring_log_level(uint32_t ring_id, uint32_t log_level)
+{
+	VosContextType *vos_context;
+	uint32_t log_val;
+
+	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				"%s: vos context is Invald", __func__);
+		return;
+	}
+
+	switch (log_level) {
+	case LOG_LEVEL_NO_COLLECTION:
+		log_val = WLAN_LOG_LEVEL_OFF;
+		break;
+	case LOG_LEVEL_NORMAL_COLLECT:
+		log_val = WLAN_LOG_LEVEL_NORMAL;
+		break;
+	case LOG_LEVEL_ISSUE_REPRO:
+		log_val = WLAN_LOG_LEVEL_REPRO;
+		break;
+	case LOG_LEVEL_ACTIVE:
+	default:
+		log_val = WLAN_LOG_LEVEL_ACTIVE;
+		break;
+	}
+
+	if (ring_id == RING_ID_WAKELOCK) {
+		vos_context->wakelock_log_level = log_val;
+		return;
+	} else if (ring_id == RING_ID_CONNECTIVITY) {
+		vos_context->connectivity_log_level = log_val;
+		return;
+	} else if (ring_id == RING_ID_PER_PACKET_STATS) {
+		vos_context->packet_stats_log_level = log_val;
+		return;
+	}
+}
+
+/**
+ * vos_get_ring_log_level() - Get the a ring id's log level
+ * @ring_id: Ring id
+ *
+ * Fetch and return the log level corresponding to a ring id
+ *
+ * Return: Log level corresponding to the ring ID
+ */
+enum wifi_driver_log_level vos_get_ring_log_level(uint32_t ring_id)
+{
+	VosContextType *vos_context;
+
+	vos_context = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				"%s: vos context is Invald", __func__);
+		return WLAN_LOG_LEVEL_OFF;
+	}
+
+	if (ring_id == RING_ID_WAKELOCK)
+		return vos_context->wakelock_log_level;
+	else if (ring_id == RING_ID_CONNECTIVITY)
+		return vos_context->connectivity_log_level;
+	else if (ring_id == RING_ID_PER_PACKET_STATS)
+		return vos_context->packet_stats_log_level;
+
+	return WLAN_LOG_LEVEL_OFF;
+}

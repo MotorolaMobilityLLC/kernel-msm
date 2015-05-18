@@ -567,6 +567,7 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 	rx_pkt->pkt_meta.mpdu_hdr_ptr = adf_nbuf_data(wbuf);
 	rx_pkt->pkt_meta.mpdu_data_ptr = rx_pkt->pkt_meta.mpdu_hdr_ptr +
 					  rx_pkt->pkt_meta.mpdu_hdr_len;
+	rx_pkt->pkt_meta.tsf_delta = hdr->tsf_delta;
 	rx_pkt->pkt_buf = wbuf;
 
 #ifdef BIG_ENDIAN_HOST
@@ -592,6 +593,11 @@ static int tlshim_mgmt_rx_process(void *context, u_int8_t *data,
 #else
 	adf_os_mem_copy(wh, param_tlvs->bufp, hdr->buf_len);
 #endif
+
+	TLSHIM_LOGD(
+		FL("BSSID: "MAC_ADDRESS_STR" snr = %d, rssi = %d tsf_delta: %u"),
+			MAC_ADDR_ARRAY(wh->i_addr3), hdr->snr,
+			rx_pkt->pkt_meta.rssi, hdr->tsf_delta);
 
 	if (!tl_shim->mgmt_rx) {
 		TLSHIM_LOGE("Not registered for Mgmt rx, dropping the frame");
@@ -753,6 +759,11 @@ static int tlshim_mgmt_rx_wmi_handler(void *context, u_int8_t *data,
 							   vos_ctx);
 	VOS_STATUS ret = VOS_STATUS_SUCCESS;
 
+	if (vos_is_logp_in_progress(VOS_MODULE_ID_TL, NULL)) {
+			TLSHIM_LOGE("%s: LOPG in progress\n", __func__);
+			return (-1);
+	}
+
 	adf_os_spin_lock_bh(&tl_shim->mgmt_lock);
 	ret = tlshim_mgmt_rx_process(context, data, data_len, FALSE, 0);
 	adf_os_spin_unlock_bh(&tl_shim->mgmt_lock);
@@ -853,16 +864,10 @@ static void tlshim_data_rx_cb(struct txrx_tl_shim_ctx *tl_shim,
 	} else
 		adf_os_spin_unlock_bh(&tl_shim->bufq_lock);
 
-	buf = buf_list;
-	while (buf) {
-		next_buf = adf_nbuf_queue_next(buf);
-		adf_nbuf_set_next(buf, NULL); /* Add NULL terminator */
-		ret = data_rx(vos_ctx, buf, staid);
-		if (ret != VOS_STATUS_SUCCESS) {
-			TLSHIM_LOGE("Frame Rx to HDD failed");
-			adf_nbuf_free(buf);
-		}
-		buf = next_buf;
+	ret = data_rx(vos_ctx, buf_list, staid);
+	if (ret != VOS_STATUS_SUCCESS) {
+		TLSHIM_LOGE("Frame Rx to HDD failed");
+		goto free_buf;
 	}
 	return;
 

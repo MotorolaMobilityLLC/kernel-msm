@@ -261,6 +261,8 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
     }
     vos_mem_free( pRemainChanCtx );
     complete(&pAdapter->cancel_rem_on_chan_var);
+    if (eHAL_STATUS_SUCCESS != status)
+        complete(&pAdapter->rem_on_chan_ready_event);
     mutex_lock(&cfgState->remain_on_chan_ctx_lock);
     pAdapter->is_roc_inprogress = FALSE;
     mutex_unlock(&cfgState->remain_on_chan_ctx_lock);
@@ -583,7 +585,10 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
     if (vos_status != VOS_STATUS_SUCCESS)
     {
          hddLog(VOS_TRACE_LEVEL_ERROR,
-             "%s: Not able to initialize remain_on_chan timer",__func__);
+             FL("Not able to initialize remain_on_chan timer"));
+         cfgState->remain_on_chan_ctx = NULL;
+         vos_mem_free(pRemainChanCtx);
+         return -EINVAL;
     }
 
     mutex_lock(&cfgState->remain_on_chan_ctx_lock);
@@ -884,10 +889,10 @@ int __wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
     if( (cfgState->remain_on_chan_ctx == NULL) ||
         (cfgState->remain_on_chan_ctx->cookie != cookie) )
     {
+        mutex_unlock(&cfgState->remain_on_chan_ctx_lock);
         hddLog( LOGE,
             "%s: No Remain on channel pending with specified cookie value",
              __func__);
-        mutex_unlock(&cfgState->remain_on_chan_ctx_lock);
         return -EINVAL;
     }
 
@@ -1189,12 +1194,12 @@ int __wlan_hdd_mgmt_tx(struct wiphy *wiphy, struct net_device *dev,
                    vos_timer_stop(&cfgState->remain_on_chan_ctx->hdd_remain_on_chan_timer);
                    status = vos_timer_start(&cfgState->remain_on_chan_ctx->hdd_remain_on_chan_timer,
                                                         wait);
+                   mutex_unlock(&cfgState->remain_on_chan_ctx_lock);
                    if(status != VOS_STATUS_SUCCESS)
                    {
                       hddLog( LOGE, "%s: Remain on Channel timer start failed",
                                     __func__);
                    }
-                   mutex_unlock(&cfgState->remain_on_chan_ctx_lock);
                    goto send_frame;
                } else {
 

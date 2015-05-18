@@ -1653,6 +1653,12 @@ limHeartBeatDeactivateAndChangeTimer(tpAniSirGlobal pMac, tpPESession psessionEn
 {
    tANI_U32    val, val1;
 
+   if (NULL == psessionEntry) {
+      limLog(pMac, LOGE, FL("%s: received session id NULL."
+                         " Heartbeat timer config failed"), __func__);
+      return;
+   }
+
    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
