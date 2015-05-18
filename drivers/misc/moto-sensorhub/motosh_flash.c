@@ -397,6 +397,8 @@ int switch_motosh_mode(enum stm_mode mode)
 
 	pdata = motosh_misc_data->pdata;
 
+	motosh_misc_data->wake_work_delay = 0;
+
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
 		/* revert back to non-booted. This prevents TCMD from
