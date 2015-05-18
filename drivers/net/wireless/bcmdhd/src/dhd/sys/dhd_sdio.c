@@ -8942,6 +8942,33 @@ static int concate_revision_bcm43241(dhd_bus_t *bus,
 	return 0;
 }
 
+static int concate_revision_bcm43430(dhd_bus_t *bus,
+	char *fw_path, int fw_path_len, char *nv_path, int nv_path_len)
+{
+	uint32 chip_id, chip_ver;
+	char chipver_tag[4] = {0, };
+
+	DHD_TRACE(("%s: BCM43430 Multiple Revision Check\n", __FUNCTION__));
+
+	chip_id = bus->sih->chip;
+	chip_ver = bus->sih->chiprev;
+
+	if (chip_ver == 0) {
+		DHD_ERROR(("----- CHIP bcm43430_A0 -----\n"));
+		/* nothing */
+	} else if (chip_ver == 1) {
+		DHD_ERROR(("----- CHIP bcm43430_A1 -----\n"));
+		strcat(chipver_tag, "_a1");
+	} else {
+		DHD_ERROR(("----- Invalid chip version (%d)-----\n", chip_ver));
+		return -1;
+	}
+
+	strcat(fw_path, chipver_tag);
+	strcat(nv_path, chipver_tag);
+	return 0;
+}
+
 static int concate_revision_bcm4350(dhd_bus_t *bus,
         char *fw_path, int fw_path_len, char *nv_path, int nv_path_len)
 {
@@ -9095,6 +9122,9 @@ concate_revision(dhd_bus_t *bus, char *fw_path, int fw_path_len, char *nv_path, 
 		break;
 	case BCM4324_CHIP_ID:
 		res = concate_revision_bcm43241(bus, fw_path, fw_path_len, nv_path, nv_path_len);
+		break;
+	case BCM43430_CHIP_ID:
+		res = concate_revision_bcm43430(bus, fw_path, fw_path_len, nv_path, nv_path_len);
 		break;
 	case BCM4350_CHIP_ID:
 		res = concate_revision_bcm4350(bus, fw_path, fw_path_len, nv_path, nv_path_len);
