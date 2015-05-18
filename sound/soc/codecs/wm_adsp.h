@@ -107,6 +107,7 @@ struct wm_adsp {
 	struct circ_buf capt_buf2;
 
 	u32 capt_watermark;
+	u32 capt_watermark2;
 	struct wm_adsp_buffer_region *host_regions;
 	struct wm_adsp_buffer_region *host_regions2;
 	bool buffer_drain_pending;
@@ -161,8 +162,11 @@ extern void wm_adsp_get_caps(const struct wm_adsp *adsp,
 
 extern int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 				const struct snd_compr_params *params);
+extern int wm_adsp_stream_alloc2(struct wm_adsp *adsp,
+				const struct snd_compr_params *params);
 extern int wm_adsp_stream_free(struct wm_adsp *adsp, int buffer);
 extern int wm_adsp_stream_start(struct wm_adsp *adsp);
+extern int wm_adsp_stream_start2(struct wm_adsp *adsp);
 
 extern int wm_adsp_stream_handle_irq(struct wm_adsp *adsp, bool two_buf);
 extern int wm_adsp_stream_read(struct wm_adsp *adsp, char __user *buf,
