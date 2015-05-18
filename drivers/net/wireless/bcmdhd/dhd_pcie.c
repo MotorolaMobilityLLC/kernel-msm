@@ -108,6 +108,10 @@ static uint32 dhdpcie_bus_rtcm32(dhd_bus_t *bus, ulong offset);
 static void dhdpcie_bus_wtcm64(dhd_bus_t *bus, ulong offset, uint64 data);
 static uint64 dhdpcie_bus_rtcm64(dhd_bus_t *bus, ulong offset);
 static void dhdpcie_bus_cfg_set_bar0_win(dhd_bus_t *bus, uint32 data);
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+static void dhdpcie_bus_cfg_set_bar1_win(dhd_bus_t *bus, uint32 data);
+static ulong dhd_bus_cmn_check_offset(dhd_bus_t *bus, ulong offset);
+#endif
 static void dhdpcie_bus_reg_unmap(osl_t *osh, ulong addr, int size);
 static int dhdpcie_cc_nvmshadow(dhd_bus_t *bus, struct bcmstrbuf *b);
 static void dhdpcie_send_mb_data(dhd_bus_t *bus, uint32 h2d_mb_data);
@@ -430,6 +434,12 @@ dhdpcie_dongle_attach(dhd_bus_t *bus)
 	/* Set bar0 window to si_enum_base */
 	dhdpcie_bus_cfg_set_bar0_win(bus, SI_ENUM_BASE);
 
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+	/* Read bar1 window */
+	bus->bar1_win_base = OSL_PCI_READ_CONFIG(bus->osh, PCI_BAR1_WIN, 4);
+	DHD_ERROR(("%s: PCI_BAR1_WIN = %x\n", __FUNCTION__, bus->bar1_win_base));
+#endif
+
 	/* si_attach() will provide an SI handle and scan the backplane */
 	if (!(bus->sih = si_attach((uint)devid, osh, regsva, PCI_BUS, bus,
 	                           &bus->vars, &bus->varsz))) {
@@ -444,6 +454,10 @@ dhdpcie_dongle_attach(dhd_bus_t *bus)
 	/* WAR where the BAR1 window may not be sized properly */
 	W_REG(osh, &sbpcieregs->configaddr, 0x4e0);
 	val = R_REG(osh, &sbpcieregs->configdata);
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+	bus->bar1_win_mask = 0xffffffff - (bus->tcm_size - 1);
+	DHD_ERROR(("%s: BAR1 window val=%d mask=%x\n", __FUNCTION__, val, bus->bar1_win_mask));
+#endif
 	W_REG(osh, &sbpcieregs->configdata, val);
 
 	/* Get info on the ARM and SOCRAM cores... */
@@ -690,6 +704,14 @@ dhdpcie_bus_cfg_set_bar0_win(dhd_bus_t *bus, uint32 data)
 {
 	OSL_PCI_WRITE_CONFIG(bus->osh, PCI_BAR0_WIN, 4, data);
 }
+
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+void
+dhdpcie_bus_cfg_set_bar1_win(dhd_bus_t *bus, uint32 data)
+{
+	OSL_PCI_WRITE_CONFIG(bus->osh, PCI_BAR1_WIN, 4, data);
+}
+#endif
 
 void
 dhdpcie_bus_dongle_setmemsize(struct dhd_bus *bus, int mem_size)
@@ -1531,10 +1553,17 @@ dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uin
 	uint dsize;
 	int detect_endian_flag = 0x01;
 	bool little_endian;
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+	bool is_64bit_unaligned;
+#endif
 
 	/* Detect endianness. */
 	little_endian = *(char *)&detect_endian_flag;
 
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+	/* Check 64bit aligned or not. */
+	is_64bit_unaligned = (address & 0x7);
+#endif
 	/* In remap mode, adjust address beyond socram and redirect
 	 * to devram at SOCDEVRAM_BP_ADDR since remap address > orig_ramsize
 	 * is not backplane accessible
@@ -1546,9 +1575,22 @@ dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uin
 	/* Do the transfer(s) */
 	if (write) {
 		while (size) {
-			if (size >= sizeof(uint64) && little_endian)
+			if (size >= sizeof(uint64) && little_endian) {
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+				if (is_64bit_unaligned) {
+					DHD_INFO(("%s: write unaligned %lx\n",
+					    __FUNCTION__, address));
+					dhdpcie_bus_wtcm32(bus, address, *((uint32 *)data));
+					data += 4;
+					size -= 4;
+					address += 4;
+					is_64bit_unaligned = (address & 0x7);
+					continue;
+				}
+				else
+#endif
 				dhdpcie_bus_wtcm64(bus, address, *((uint64 *)data));
-			else {
+			} else {
 				dsize = sizeof(uint8);
 				dhdpcie_bus_wtcm8(bus, address, *data);
 			}
@@ -1561,9 +1603,22 @@ dhdpcie_bus_membytes(dhd_bus_t *bus, bool write, ulong address, uint8 *data, uin
 		}
 	} else {
 		while (size) {
-			if (size >= sizeof(uint64) && little_endian)
+			if (size >= sizeof(uint64) && little_endian) {
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+				if (is_64bit_unaligned) {
+					DHD_INFO(("%s: read unaligned %lx\n",
+					    __FUNCTION__, address));
+					*(uint32 *)data = dhdpcie_bus_rtcm32(bus, address);
+					data += 4;
+					size -= 4;
+					address += 4;
+					is_64bit_unaligned = (address & 0x7);
+					continue;
+				}
+				else
+#endif
 				*(uint64 *)data = dhdpcie_bus_rtcm64(bus, address);
-			else {
+			} else {
 				dsize = sizeof(uint8);
 				*data = dhdpcie_bus_rtcm8(bus, address);
 			}
@@ -1788,20 +1843,44 @@ dhd_bus_rx_frame(struct dhd_bus *bus, void* pkt, int ifidx, uint pkt_count)
 	dhd_rx_frame(bus->dhd, ifidx, pkt, pkt_count, 0);
 }
 
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+static ulong dhd_bus_cmn_check_offset(dhd_bus_t *bus, ulong offset)
+{
+	uint new_bar1_wbase = 0;
+	ulong address = 0;
+
+	new_bar1_wbase = (uint)offset & bus->bar1_win_mask;
+	if (bus->bar1_win_base != new_bar1_wbase) {
+		bus->bar1_win_base = new_bar1_wbase;
+		dhdpcie_bus_cfg_set_bar1_win(bus, bus->bar1_win_base);
+		DHD_ERROR(("%s: offset=%lx, switch bar1_win_base to %x\n",
+		    __FUNCTION__, offset, bus->bar1_win_base));
+	}
+
+	address = offset - bus->bar1_win_base;
+
+	return address;
+}
+#else
+#define dhd_bus_cmn_check_offset(x, y) y
+#endif /* defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT) */
+
 /** 'offset' is a backplane address */
 void
 dhdpcie_bus_wtcm8(dhd_bus_t *bus, ulong offset, uint8 data)
 {
-	*(volatile uint8 *)(bus->tcm + offset) = (uint8)data;
+	*(volatile uint8 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)) = (uint8)data;
 }
 
 uint8
 dhdpcie_bus_rtcm8(dhd_bus_t *bus, ulong offset)
 {
+	volatile uint8 data;
 #ifdef BCM47XX_ACP_WAR
-	volatile uint8 data = R_REG(bus->dhd->osh, (volatile uint8 *)(bus->tcm + offset));
+	data = R_REG(bus->dhd->osh,
+	    (volatile uint8 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)));
 #else
-	volatile uint8 data = *(volatile uint8 *)(bus->tcm + offset);
+	data = *(volatile uint8 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset));
 #endif
 	return data;
 }
@@ -1809,26 +1888,28 @@ dhdpcie_bus_rtcm8(dhd_bus_t *bus, ulong offset)
 void
 dhdpcie_bus_wtcm32(dhd_bus_t *bus, ulong offset, uint32 data)
 {
-	*(volatile uint32 *)(bus->tcm + offset) = (uint32)data;
+	*(volatile uint32 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)) = (uint32)data;
 }
 void
 dhdpcie_bus_wtcm16(dhd_bus_t *bus, ulong offset, uint16 data)
 {
-	*(volatile uint16 *)(bus->tcm + offset) = (uint16)data;
+	*(volatile uint16 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)) = (uint16)data;
 }
 void
 dhdpcie_bus_wtcm64(dhd_bus_t *bus, ulong offset, uint64 data)
 {
-	*(volatile uint64 *)(bus->tcm + offset) = (uint64)data;
+	*(volatile uint64 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)) = (uint64)data;
 }
 
 uint16
 dhdpcie_bus_rtcm16(dhd_bus_t *bus, ulong offset)
 {
+	volatile uint16 data;
 #ifdef BCM47XX_ACP_WAR
-	volatile uint16 data = R_REG(bus->dhd->osh, (volatile uint16 *)(bus->tcm + offset));
+	data = R_REG(bus->dhd->osh,
+	    (volatile uint16 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)));
 #else
-	volatile uint16 data = *(volatile uint16 *)(bus->tcm + offset);
+	data = *(volatile uint16 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset));
 #endif
 	return data;
 }
@@ -1836,10 +1917,12 @@ dhdpcie_bus_rtcm16(dhd_bus_t *bus, ulong offset)
 uint32
 dhdpcie_bus_rtcm32(dhd_bus_t *bus, ulong offset)
 {
+	volatile uint32 data;
 #ifdef BCM47XX_ACP_WAR
-	volatile uint32 data = R_REG(bus->dhd->osh, (volatile uint32 *)(bus->tcm + offset));
+	data = R_REG(bus->dhd->osh,
+	    (volatile uint32 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)));
 #else
-	volatile uint32 data = *(volatile uint32 *)(bus->tcm + offset);
+	data = *(volatile uint32 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset));
 #endif
 	return data;
 }
@@ -1847,10 +1930,12 @@ dhdpcie_bus_rtcm32(dhd_bus_t *bus, ulong offset)
 uint64
 dhdpcie_bus_rtcm64(dhd_bus_t *bus, ulong offset)
 {
+	volatile uint64 data;
 #ifdef BCM47XX_ACP_WAR
-	volatile uint64 data = R_REG(bus->dhd->osh, (volatile uint64 *)(bus->tcm + offset));
+	data = R_REG(bus->dhd->osh,
+	    (volatile uint64 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset)));
 #else
-	volatile uint64 data = *(volatile uint64 *)(bus->tcm + offset);
+	data = *(volatile uint64 *)(bus->tcm + dhd_bus_cmn_check_offset(bus, offset));
 #endif
 	return data;
 }

@@ -31,7 +31,13 @@
 #include <bcmpcie.h>
 #include <hnd_cons.h>
 #ifdef MSM_PCIE_LINKDOWN_RECOVERY
+#if defined (CONFIG_ARCH_MSM)
+#if defined (CONFIG_64BIT)
+#include <linux/msm_pcie.h>
+#else
 #include <mach/msm_pcie.h>
+#endif
+#endif
 #endif /* MSM_PCIE_LINKDOWN_RECOVERY */
 
 /* defines */
@@ -132,6 +138,11 @@ typedef struct dhd_bus {
 	uint32		dma_rxoffset;
 	volatile char	*regs;		/* pci device memory va */
 	volatile char	*tcm;		/* pci device memory va */
+	uint32		tcm_size;
+#if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+	uint32		bar1_win_base;
+	uint32		bar1_win_mask;
+#endif
 	osl_t		*osh;
 	uint32		nvram_csm;	/* Nvram checksum */
 	uint16		pollrate;
