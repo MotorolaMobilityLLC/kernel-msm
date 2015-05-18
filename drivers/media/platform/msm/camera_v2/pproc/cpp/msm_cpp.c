@@ -2065,13 +2065,13 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			rc = -EINVAL;
 			break;
 		}
-		rc = (copy_from_user(&frame_info,
-			(void __user *)ioctl_ptr->ioctl_ptr,
-			sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
+
+		rc = msm_cpp_copy_from_ioctl_ptr(&frame_info, ioctl_ptr);
 		if (rc) {
 			ERR_COPY_FROM_USER();
 			break;
 		}
+
 		memset(&buff_mgr_info, 0, sizeof(struct msm_buf_mngr_info));
 		buff_mgr_info.session_id =
 			((frame_info.identity >> 16) & 0xFFFF);
@@ -2351,6 +2351,8 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 	int32_t rc = 0;
 	struct msm_camera_v4l2_ioctl_t kp_ioctl;
 	struct msm_camera_v4l2_ioctl32_t up32_ioctl;
+	struct msm_cpp_frame_info32_t k32_frame_info;
+	struct msm_cpp_frame_info_t k64_frame_info;
 	void __user *up = (void __user *)arg;
 
 	if (!vdev || !sd || !cpp_dev)
@@ -2497,8 +2499,25 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 		break;
 	}
 	case VIDIOC_MSM_CPP_POP_STREAM_BUFFER32:
+	{
+		if (kp_ioctl.len != sizeof(struct msm_cpp_frame_info32_t))
+			return -EINVAL;
+		else
+			kp_ioctl.len = sizeof(struct msm_cpp_frame_info_t);
+
+		if (copy_from_user(&k32_frame_info,
+			(void __user *)kp_ioctl.ioctl_ptr,
+			sizeof(k32_frame_info)))
+			return -EFAULT;
+
+		memset(&k64_frame_info, 0, sizeof(k64_frame_info));
+		k64_frame_info.identity = k32_frame_info.identity;
+		k64_frame_info.frame_id = k32_frame_info.frame_id;
+
+		kp_ioctl.ioctl_ptr = (void *)&k64_frame_info;
 		cmd = VIDIOC_MSM_CPP_POP_STREAM_BUFFER;
 		break;
+	}
 	case VIDIOC_MSM_CPP_IOMMU_ATTACH32:
 		cmd = VIDIOC_MSM_CPP_IOMMU_ATTACH;
 		break;
