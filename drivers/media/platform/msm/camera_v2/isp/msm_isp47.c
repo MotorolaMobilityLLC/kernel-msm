@@ -237,6 +237,7 @@ static int msm_vfe47_init_hardware(struct vfe_device *vfe_dev)
 		goto vbif_remap_failed;
 	}
 
+	tasklet_enable(&vfe_dev->vfe_tasklet);
 	rc = request_irq(vfe_dev->vfe_irq->start, msm_isp_process_irq,
 		IRQF_TRIGGER_RISING, "vfe", vfe_dev);
 	if (rc < 0) {
@@ -245,6 +246,7 @@ static int msm_vfe47_init_hardware(struct vfe_device *vfe_dev)
 	}
 	return rc;
 irq_req_failed:
+	tasklet_disable(&vfe_dev->vfe_tasklet);
 	iounmap(vfe_dev->vfe_vbif_base);
 	vfe_dev->vfe_vbif_base = NULL;
 vbif_remap_failed:
@@ -266,13 +268,14 @@ bus_scale_register_failed:
 static void msm_vfe47_release_hardware(struct vfe_device *vfe_dev)
 {
 	free_irq(vfe_dev->vfe_irq->start, vfe_dev);
-	tasklet_kill(&vfe_dev->vfe_tasklet);
+	tasklet_disable(&vfe_dev->vfe_tasklet);
+	msm_isp_flush_tasklet(vfe_dev);
 	iounmap(vfe_dev->vfe_vbif_base);
 	vfe_dev->vfe_vbif_base = NULL;
-	iounmap(vfe_dev->vfe_base);
-	vfe_dev->vfe_base = NULL;
 	msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe47_clk_info,
 		vfe_dev->vfe_clk, vfe_dev->num_clk, 0);
+	iounmap(vfe_dev->vfe_base);
+	vfe_dev->vfe_base = NULL;
 	kfree(vfe_dev->vfe_clk);
 	regulator_disable(vfe_dev->fs_vfe);
 	msm_isp_deinit_bandwidth_mgr(ISP_VFE0 + vfe_dev->pdev->id);
@@ -932,6 +935,13 @@ static void msm_vfe47_cfg_camif(struct vfe_device *vfe_dev,
 	uint32_t val, subsample_period, subsample_pattern;
 	uint32_t irq_sub_period = 32;
 	uint32_t frame_sub_period = 32;
+	struct msm_vfe_camif_subsample_cfg *subsample_cfg =
+		&pix_cfg->camif_cfg.subsample_cfg;
+	uint16_t bus_sub_en = 0;
+	if (subsample_cfg->pixel_skip || subsample_cfg->line_skip)
+		bus_sub_en = 1;
+	else
+		bus_sub_en = 0;
 
 	msm_camera_io_w(pix_cfg->input_mux << 5 | pix_cfg->pixel_pattern,
 		vfe_dev->vfe_base + 0x50);
@@ -945,6 +955,17 @@ static void msm_vfe47_cfg_camif(struct vfe_device *vfe_dev,
 
 	msm_camera_io_w(camif_cfg->lines_per_frame << 16 |
 		camif_cfg->pixels_per_line, vfe_dev->vfe_base + 0x484);
+	if (bus_sub_en) {
+		val = msm_camera_io_r(vfe_dev->vfe_base + 0x47C);
+		val &= 0xFFFFFFDF;
+		val = val | bus_sub_en << 5;
+		msm_camera_io_w(val, vfe_dev->vfe_base + 0x47C);
+		subsample_cfg->pixel_skip &= 0x0000FFFF;
+		subsample_cfg->line_skip  &= 0x0000FFFF;
+		msm_camera_io_w((subsample_cfg->line_skip << 16) |
+			subsample_cfg->pixel_skip, vfe_dev->vfe_base + 0x490);
+	}
+
 
 	msm_camera_io_w(first_pixel << 16 | last_pixel,
 	vfe_dev->vfe_base + 0x488);

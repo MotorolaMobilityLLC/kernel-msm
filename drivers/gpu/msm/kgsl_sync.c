@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -170,16 +170,12 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (context == NULL)
 		goto unlock;
 
-	if (test_bit(KGSL_CONTEXT_PRIV_INVALID, &context->priv)) {
-		KGSL_DRV_ERR(device,
-			"Cannot create a fence: context %d is invalid\n",
-			context->id);
+	if (test_bit(KGSL_CONTEXT_PRIV_INVALID, &context->priv))
 		goto unlock;
-	}
 
 	pt = kgsl_sync_pt_create(context->timeline, context, timestamp);
 	if (pt == NULL) {
-		KGSL_DRV_ERR(device, "kgsl_sync_pt_create failed\n");
+		KGSL_DRV_CRIT_RATELIMIT(device, "kgsl_sync_pt_create failed\n");
 		ret = -ENOMEM;
 		goto unlock;
 	}
@@ -193,14 +189,15 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (fence == NULL) {
 		/* only destroy pt when not added to fence */
 		kgsl_sync_pt_destroy(pt);
-		KGSL_DRV_ERR(device, "sync_fence_create failed\n");
+		KGSL_DRV_CRIT_RATELIMIT(device, "sync_fence_create failed\n");
 		ret = -ENOMEM;
 		goto unlock;
 	}
 
 	priv.fence_fd = get_unused_fd_flags(0);
 	if (priv.fence_fd < 0) {
-		KGSL_DRV_ERR(device, "Unable to get a file descriptor: %d\n",
+		KGSL_DRV_CRIT_RATELIMIT(device,
+			"Unable to get a file descriptor: %d\n",
 			priv.fence_fd);
 		ret = priv.fence_fd;
 		goto unlock;
@@ -236,6 +233,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	return 0;
 
 unlock:
+	kgsl_context_put(context);
 	mutex_unlock(&device->mutex);
 
 out:
@@ -245,7 +243,6 @@ out:
 	if (fence)
 		sync_fence_put(fence);
 
-	kgsl_context_put(context);
 	return ret;
 }
 

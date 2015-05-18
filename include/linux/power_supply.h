@@ -121,6 +121,8 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_EMPTY,
 	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_CHARGE_NOW_RAW,
+	POWER_SUPPLY_PROP_CHARGE_NOW_ERROR,
 	POWER_SUPPLY_PROP_CHARGE_AVG,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_SHADOW,
@@ -142,6 +144,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_CAPACITY_ALERT_MIN, /* in percents! */
 	POWER_SUPPLY_PROP_CAPACITY_ALERT_MAX, /* in percents! */
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_CAPACITY_RAW,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TEMP_ALERT_MIN,
 	POWER_SUPPLY_PROP_TEMP_ALERT_MAX,
@@ -170,6 +173,9 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_UPDATE_NOW,
 	POWER_SUPPLY_PROP_ESR_COUNT,
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
+	POWER_SUPPLY_PROP_CHARGE_DONE,
+	POWER_SUPPLY_PROP_FLASH_ACTIVE,
+	POWER_SUPPLY_PROP_ALLOW_DETECTION,
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
 	/* Properties of type `const char *' */
@@ -291,6 +297,8 @@ extern int power_supply_set_supply_type(struct power_supply *psy,
 extern int power_supply_set_hi_power_state(struct power_supply *psy, int value);
 extern int power_supply_set_low_power_state(struct power_supply *psy,
 							int value);
+extern int power_supply_set_allow_detection(struct power_supply *psy,
+							int value);
 extern int power_supply_is_system_supplied(void);
 extern int power_supply_register(struct device *parent,
 				 struct power_supply *psy);
@@ -334,6 +342,9 @@ static inline int power_supply_set_hi_power_state(struct power_supply *psy,
 							int value)
 							{ return -ENOSYS; }
 static inline int power_supply_set_low_power_state(struct power_supply *psy,
+							int value)
+							{ return -ENOSYS; }
+static inline int power_supply_set_allow_detection(struct power_supply *psy,
 							int value)
 							{ return -ENOSYS; }
 static inline int power_supply_is_system_supplied(void) { return -ENOSYS; }

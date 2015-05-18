@@ -34,7 +34,7 @@
 #define WWAN_METADATA_SHFT 24
 #define WWAN_METADATA_MASK 0xFF000000
 #define WWAN_DATA_LEN 2000
-#define IPA_RM_INACTIVITY_TIMER 1000 /* IPA_RM */
+#define IPA_RM_INACTIVITY_TIMER 100 /* IPA_RM */
 #define HEADROOM_FOR_QMAP   8 /* for mux header */
 #define TAILROOM            0 /* for padding by mux layer */
 #define MAX_NUM_OF_MUX_CHANNEL  10 /* max mux channels */
@@ -2013,6 +2013,7 @@ static int ssr_notifier_cb(struct notifier_block *this,
 		if (SUBSYS_BEFORE_SHUTDOWN == code) {
 			pr_info("IPA received MPSS BEFORE_SHUTDOWN\n");
 			ipa_q6_cleanup();
+			ipa_qmi_stop_workqueues();
 			wan_ioctl_stop_qmi_messages();
 			atomic_set(&is_ssr, 1);
 			if (atomic_read(&is_initialized))
