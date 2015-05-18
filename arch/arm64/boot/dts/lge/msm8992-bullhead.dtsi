@@ -123,6 +123,14 @@
 	};
 };
 
+&dfps_data_mem {
+	status = "disabled";
+};
+
+&cont_splash_mem {
+	reg = <0 0x03400000 0 0xc00000>;
+};
+
 &removed_regions {
 	reg = <0 0x05000000 0 0x2200000>;
 };
