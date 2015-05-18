@@ -849,8 +849,8 @@ static int motosh_qw_check(void *data)
 	ps_motosh->qw_irq_status = irq_status;
 
 	if (irq_status & M_QUICKPEEK) {
-		queue_work(ps_motosh->irq_work_queue,
-			&ps_motosh->irq_wake_work);
+		queue_delayed_work(ps_motosh->irq_work_queue,
+			&ps_motosh->irq_wake_work, 0);
 		ret = 1;
 	}
 
