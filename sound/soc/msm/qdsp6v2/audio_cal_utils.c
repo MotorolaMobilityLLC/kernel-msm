@@ -56,6 +56,7 @@ size_t get_cal_info_size(int32_t cal_type)
 		size = sizeof(struct audio_cal_info_adm_top);
 		break;
 	case ADM_CUST_TOPOLOGY_CAL_TYPE:
+	case CORE_CUSTOM_TOPOLOGIES_CAL_TYPE:
 		size = 0;
 		break;
 	case ADM_AUDPROC_CAL_TYPE:
@@ -174,6 +175,7 @@ size_t get_user_cal_type_size(int32_t cal_type)
 		size = sizeof(struct audio_cal_type_adm_top);
 		break;
 	case ADM_CUST_TOPOLOGY_CAL_TYPE:
+	case CORE_CUSTOM_TOPOLOGIES_CAL_TYPE:
 		size = sizeof(struct audio_cal_type_basic);
 		break;
 	case ADM_AUDPROC_CAL_TYPE:
