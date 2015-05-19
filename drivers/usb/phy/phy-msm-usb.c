@@ -83,8 +83,6 @@ enum msm_otg_phy_reg_mode {
 	USB_PHY_REG_ON,
 	USB_PHY_REG_LPM_ON,
 	USB_PHY_REG_LPM_OFF,
-	USB_PHY_REG_3P3_ON,
-	USB_PHY_REG_3P3_OFF,
 };
 
 static char *override_phy_init;
@@ -261,17 +259,13 @@ static int msm_hsusb_ldo_enable(struct msm_otg *motg,
 			return ret;
 		}
 
-	/* fall through */
-	case USB_PHY_REG_3P3_ON:
 		ret = regulator_set_optimum_mode(hsusb_3p3,
 				USB_PHY_3P3_HPM_LOAD);
 		if (ret < 0) {
 			pr_err("%s: Unable to set HPM of the regulator "
 				"HSUSB_3p3\n", __func__);
-			if (mode == USB_PHY_REG_ON) {
-				regulator_set_optimum_mode(hsusb_1p8, 0);
-				regulator_disable(hsusb_1p8);
-			}
+			regulator_set_optimum_mode(hsusb_1p8, 0);
+			regulator_disable(hsusb_1p8);
 			return ret;
 		}
 
@@ -280,40 +274,36 @@ static int msm_hsusb_ldo_enable(struct msm_otg *motg,
 			dev_err(motg->phy.dev, "%s: unable to enable the hsusb 3p3\n",
 				__func__);
 			regulator_set_optimum_mode(hsusb_3p3, 0);
-			if (mode == USB_PHY_REG_ON) {
-				regulator_set_optimum_mode(hsusb_1p8, 0);
-				regulator_disable(hsusb_1p8);
-			}
+			regulator_set_optimum_mode(hsusb_1p8, 0);
+			regulator_disable(hsusb_1p8);
 			return ret;
 		}
 
 		break;
 
 	case USB_PHY_REG_OFF:
-		ret = regulator_disable(hsusb_1p8);
+		ret = regulator_disable(hsusb_3p3);
 		if (ret) {
-			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 1p8\n",
+			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 3p3\n",
 				__func__);
 			return ret;
 		}
 
-		ret = regulator_set_optimum_mode(hsusb_1p8, 0);
+		ret = regulator_set_optimum_mode(hsusb_3p3, 0);
 		if (ret < 0)
-			pr_err("%s: Unable to set LPM of the regulator "
-				"HSUSB_1p8\n", __func__);
+			pr_err("%s: Unable to set LPM of the regulatorHSUSB_3p3\n",
+				__func__);
 
-	/* fall through */
-	case USB_PHY_REG_3P3_OFF:
-		ret = regulator_disable(hsusb_3p3);
+		ret = regulator_disable(hsusb_1p8);
 		if (ret) {
-			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 3p3\n",
+			dev_err(motg->phy.dev, "%s: unable to disable the hsusb 1p8\n",
 				 __func__);
 			return ret;
 		}
-		ret = regulator_set_optimum_mode(hsusb_3p3, 0);
+		ret = regulator_set_optimum_mode(hsusb_1p8, 0);
 		if (ret < 0)
-			pr_err("%s: Unable to set LPM of the regulator "
-				"HSUSB_3p3\n", __func__);
+			pr_err("%s: Unable to set LPM of the regulatorHSUSB_1p8\n",
+				__func__);
 
 		break;
 
