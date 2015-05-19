@@ -442,6 +442,9 @@ static int max17042_get_property(struct power_supply *psy,
 
 		val->intval = data * 1000 / 2;
 
+		if (chip->factory_mode)
+			break;
+
 		/* If Full Cap deviates from the range report it once */
 		if (!chip->fullcap_report_sent &&
 		    (val->intval > cfd_max ||
