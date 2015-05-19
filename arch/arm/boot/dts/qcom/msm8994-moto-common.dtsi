@@ -873,6 +873,7 @@
 			cover_detect_polarity = <2>;   /*Default to MOTOSH_NORTH_DETECT*/
 			pinctrl-names = "default";
 			pinctrl-0 = <&motosh_out_default &motosh_in_default>;
+			antcap_cfg = [ff ff 10 00 00 00 00 00 00 00 00 00 00 11 98 00 00 00 00 13 88 00 00 00 00 00 00 7f ff 7f ff 13 ec 00 00 00 00 00 de ad be ef 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ];
 		};
 	};
 
