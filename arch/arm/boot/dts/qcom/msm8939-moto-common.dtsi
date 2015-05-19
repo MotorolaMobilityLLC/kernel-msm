@@ -1001,8 +1001,8 @@
 		bslen_pin_active_value = <1>;
 		accel_orientation_1 = <7>;       /* Accel 1  Orientation value */
 		accel_orientation_2 = <7>;       /* Accel 2  Orientation value */
-		ct406_detect_threshold = <0x00C8>;
-		ct406_undetect_threshold = <0x00A5>;
+		ct406_detect_threshold = <0x0082>;
+		ct406_undetect_threshold = <0x0064>;
 		ct406_recalibrate_threshold = <0x0064>;
 		ct406_pulse_count = <0x02>;
 		ct406_prox_gain = <0x02>;
