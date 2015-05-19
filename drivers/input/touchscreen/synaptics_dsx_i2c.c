@@ -145,6 +145,10 @@ static struct {
 
 } f12_c15_0;
 
+static struct {
+	unsigned char data[128];
+} f12_ctrl_dummy;
+
 static struct synaptics_rmi4_subpkt f12_c15[] = {
 	RMI4_SUBPKT(f12_c15_0),
 };
@@ -166,12 +170,102 @@ static struct synaptics_rmi4_subpkt f12_c28[] = {
 	RMI4_SUBPKT(f12_c28_0),
 };
 
+static struct synaptics_rmi4_subpkt f12_c09[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c10[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c11[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c12[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c13[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c14[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c16[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c17[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c18[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c19[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c21[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c22[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c24[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c25[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c26[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c27[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c29[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
+static struct synaptics_rmi4_subpkt f12_c30[] = {
+	RMI4_SUBPKT(f12_ctrl_dummy),
+};
+
 static struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
 	RMI4_REG(8, f12_c08),
+	RMI4_REG(9, f12_c09),
+	RMI4_REG(10, f12_c10),
+	RMI4_REG(11, f12_c11),
+	RMI4_REG(12, f12_c12),
+	RMI4_REG(13, f12_c13),
+	RMI4_REG(14, f12_c14),
 	RMI4_REG(15, f12_c15),
+	RMI4_REG(16, f12_c16),
+	RMI4_REG(17, f12_c17),
+	RMI4_REG(18, f12_c18),
+	RMI4_REG(19, f12_c19),
 	RMI4_REG(20, f12_c20),
+	RMI4_REG(21, f12_c21),
+	RMI4_REG(22, f12_c22),
 	RMI4_REG(23, f12_c23),
+	RMI4_REG(24, f12_c24),
+	RMI4_REG(25, f12_c25),
+	RMI4_REG(26, f12_c26),
+	RMI4_REG(27, f12_c27),
 	RMI4_REG(28, f12_c28),
+	RMI4_REG(29, f12_c29),
+	RMI4_REG(30, f12_c30),
 };
 
 static struct f12_d1_type {
