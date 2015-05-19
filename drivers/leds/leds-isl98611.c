@@ -444,7 +444,7 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 
 	dev_dbg(pchip->dev, "%s+\n", __func__);
 
-	if (*(int *)evdata->data == FB_BLANK_UNBLANK) {
+	if (*(int *)evdata->data != FB_BLANK_POWERDOWN) {
 		int regval, reg2;
 		/* Non zero REG_BRGHT_LSB => chip is reset to PON defaults */
 		regval = isl98611_read(pchip, REG_BRGHT_LSB);
