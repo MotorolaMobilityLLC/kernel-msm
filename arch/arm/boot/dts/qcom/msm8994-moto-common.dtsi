@@ -1429,7 +1429,7 @@
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
 	qcom,dc-psy-type = "Wireless";
-	qcom,dc-psy-ma = <500>;
+	qcom,dc-psy-ma = <1000>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
 	qcom,charge-unknown-battery;
