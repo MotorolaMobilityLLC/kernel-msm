@@ -42,3 +42,7 @@
 		external_trigger = <2>; /* Disable ext. trigger */
 	};
 };
+
+&pmi8994_charger {
+	qcom,dc-psy-ma = <500>;
+};
