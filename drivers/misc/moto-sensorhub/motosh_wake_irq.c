@@ -157,11 +157,11 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 		motosh_reset_and_init(COMPLETE_INIT);
 	}
 	if (irq_status & M_TOUCH) {
-		if (motosh_display_handle_touch_locked(ps_motosh) < 0)
+		if (motosh_display_handle_touch_locked(ps_motosh) == -EIO)
 			goto EXIT;
 	}
 	if (irq_status & M_QUICKPEEK) {
-		if (motosh_display_handle_quickpeek_locked(ps_motosh) < 0)
+		if (motosh_display_handle_quickpeek_locked(ps_motosh) == -EIO)
 			goto EXIT;
 	}
 
