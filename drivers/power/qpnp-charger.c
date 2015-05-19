@@ -3944,6 +3944,9 @@ qpnp_eoc_work(struct work_struct *work)
 	int ibat_ma, vbat_mv, rc = 0;
 	u8 batt_sts = 0, buck_sts = 0, chg_sts = 0;
 	bool vbat_lower_than_vbatdet;
+	enum DEVICE_HWID ASUS_hwID;
+
+	ASUS_hwID = get_hardware_id();
 
 	pm_stay_awake(chip->dev);
 	pr_debug("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
@@ -3991,6 +3994,19 @@ qpnp_eoc_work(struct work_struct *work)
 				ibat_ma, vbat_mv, chip->term_current);
 #endif
 //ASUS_BSP Eason_Chang: show term_current ---
+
+	if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
+		if (get_prop_battery_voltage_now(chip) > 4200000) {
+			printk("VBAT is larger than 4.2V, modify the charging current to 150 mA");
+			qpnp_chg_ibatmax_set(chip, 150);
+		} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
+			printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA");
+			qpnp_chg_ibatmax_set(chip, 50);
+		} else {
+			printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA");
+			qpnp_chg_ibatmax_set(chip, 350);
+		}
+	}
 
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
