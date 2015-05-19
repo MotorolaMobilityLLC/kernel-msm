@@ -1062,13 +1062,13 @@ static int motosh_fb_notifier_callback(struct notifier_block *self,
 	/* determine vote */
 	switch (event) {
 	case FB_EVENT_BLANK:
-		if (blank == FB_BLANK_UNBLANK)
-			goto exit; /* not interested in this event */
-		else
+		if (blank == FB_BLANK_POWERDOWN)
 			vote = true;
+		else
+			goto exit; /* not interested in this event */
 		break;
 	case FB_EARLY_EVENT_BLANK:
-		if (blank == FB_BLANK_UNBLANK)
+		if (blank != FB_BLANK_POWERDOWN)
 			vote = false;
 		else
 			goto exit; /* not interested in these events */
