@@ -50,8 +50,13 @@
 
 #define MAX_BUFFER_SIZE			144
 #define DEVICE_NAME			"IT7260"
+#ifdef CONFIG_ASUS_WREN
+#define SCREEN_X_RESOLUTION		280
+#define SCREEN_Y_RESOLUTION		280
+#else
 #define SCREEN_X_RESOLUTION		320
 #define SCREEN_Y_RESOLUTION		320
+#endif
 
 #define IOC_MAGIC			'd'
 #define IOCTL_SET				_IOW(IOC_MAGIC, 1, struct ioctl_cmd168)
@@ -109,8 +114,13 @@
 
 #define FW_CUSTOMER_ID1			5
 #define FW_CUSTOMER_ID2			13
+#ifdef CONFIG_ASUS_WREN
+#define CFG_CUSTOMER_ID1			7
+#define CFG_CUSTOMER_ID2			2
+#else
 #define CFG_CUSTOMER_ID1			7
 #define CFG_CUSTOMER_ID2			1
+#endif
 
 static int fw_upgrade_flag = 0;
 static int config_upgrade_flag = 0;
@@ -1071,7 +1081,12 @@ static void readTouchDataPoint(void)
 			LOGI("Touch is locked. \n");
 
 		/* filter points when palming or touching screen edge */
-		if (!isTouchLocked && y1 > 13 && y1 < 311 && x1 > 4 && x1 < 316 && pointData.flags & 0x01) {
+#ifdef CONFIG_ASUS_WREN
+		if (!isTouchLocked && y1 > 11 && y1 < 272 && x1 > 3 && x1 < 277 && pointData.flags & 0x01)
+#else
+		if (!isTouchLocked && y1 > 13 && y1 < 311 && x1 > 4 && x1 < 316 && pointData.flags & 0x01)
+#endif
+		{
 			input_mt_slot(gl_ts->touch_dev,0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
@@ -1090,7 +1105,12 @@ static void readTouchDataPoint(void)
 			}
 		}
 
-		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02) {
+#ifdef CONFIG_ASUS_WREN
+		if (!isTouchLocked && y2 > 11 && y2 < 272 && x2 > 3 && x2 < 277 && pointData.flags & 0x02)
+#else
+		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02)
+#endif
+		{
 			input_mt_slot(gl_ts->touch_dev,1);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
