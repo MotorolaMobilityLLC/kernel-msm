@@ -263,7 +263,7 @@ int motosh_display_handle_touch_locked(struct motosh_data *ps_motosh)
 		KOBJ_CHANGE, envp)) {
 		dev_err(&ps_motosh->client->dev,
 			"Failed to create uevent\n");
-		return -EIO;
+		return -EPERM;
 	}
 
 	return 0;
@@ -286,6 +286,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 		< 0) {
 		dev_err(&ps_motosh->client->dev,
 			"Get status reg failed\n");
+		ret = -EIO;
 		goto error;
 	}
 
@@ -296,6 +297,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 	if (!qp_message) {
 		dev_err(&ps_motosh->client->dev,
 			"%s: kzalloc failed!\n", __func__);
+		ret = -ENOMEM;
 		goto error;
 	}
 
@@ -315,6 +317,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			1, 1) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek draw data from STM failed\n");
+			ret = -EIO;
 			goto error;
 		}
 		qp_message->commit = (readbuff[0] & 0x80) >> 7;
@@ -328,6 +331,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			1, 5) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek draw data from STM failed\n");
+			ret = -EIO;
 			goto error;
 		}
 		qp_message->buffer_id = readbuff[0] & 0x3f;
@@ -346,6 +350,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			1, 9) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek erase data from STM failed\n");
+			ret = -EIO;
 			goto error;
 		}
 		qp_message->commit = (readbuff[0] & 0x80) >> 7;
@@ -367,6 +372,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			1, 5) < 0) {
 			dev_err(&ps_motosh->client->dev,
 				"Reading peek draw data from STM failed\n");
+			ret = -EIO;
 			goto error;
 		}
 		timestamp = readbuff[0] |
@@ -382,6 +388,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 	default:
 		dev_err(&ps_motosh->client->dev,
 			"Unknown quickpeek command [%d]!", aod_qp_reason);
+		ret = -EPERM;
 		goto error;
 	}
 
@@ -389,6 +396,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 		dev_dbg(&ps_motosh->client->dev,
 			"%s: Received quickpeek interrupt with quickpeek disabled!\n",
 			__func__);
+		ret = -EPERM;
 		goto error;
 	}
 
@@ -416,7 +424,6 @@ exit:
 error:
 	motosh_quickpeek_status_ack(ps_motosh, qp_message, AOD_QP_ACK_INVALID);
 	kfree(qp_message);
-	ret = -EIO;
 	goto exit;
 }
 
