@@ -363,16 +363,16 @@
 			interrupts = <0x6D 0x0>;
 			reg = <0x36>;
 			max17048,alert_gpio = <&msmgpio 0x6D 0x00>;
-			max17048,rcomp = <77>;
-			max17048,rcomp-co-hot = <700>;
-			max17048,rcomp-co-cold = <5225>;
+			max17048,rcomp = <32>;
+			max17048,rcomp-co-hot = <0>;
+			max17048,rcomp-co-cold = <5687>;
 			max17048,alert_threshold = <2>;
-			max17048,max-mvolt = <4350>;
+			max17048,max-mvolt = <4400>;
 			max17048,min-mvolt = <3200>;
 			max17048,full-soc = <970>;
 			max17048,empty-soc = <10>;
 			max17048,batt-tech = <2>;
-			max17048,fcc-mah = <2300>;
+			max17048,fcc-mah = <570>;
 			max17048,ext-batt-psy;
 			qcom,chg-iadc = <&pm8226_iadc>;
 		};
@@ -405,19 +405,19 @@
 };
 
 &pm8226_chg {
-	qcom,vddmax-mv = <4350>;
-	qcom,vddsafe-mv = <4350>;
-	qcom,vinmin-mv = <4450>;
-	qcom,ibatmax-ma= <410>;
+	qcom,vddmax-mv = <4400>;
+	qcom,vddsafe-mv = <4400>;
+	qcom,vinmin-mv = <4500>;
+	qcom,ibatmax-ma= <550>;
 	qcom,ibatterm-ma = <30>;
-	qcom,ibatsafe-ma = <450>;
-	qcom,vbatdet-delta-mv = <100>;
+	qcom,ibatsafe-ma = <550>;
+	qcom,vbatdet-delta-mv = <200>;
 	qcom,tchg-mins = <480>;
 	qcom,thermal-mitigation = <0>; /* disable */
 	qcom,btc-disabled;
 	qcom,warm-bat-decidegc = <0>; /* disable */
 	qcom,cool-bat-decidegc = <0>; /* disable */
-	qcom,step-dwn-offset-ma = <200>;
+	qcom,step-dwn-offset-ma = <300>;
 	qcom,step-dwn-thr-mv = <4215>;
 };
 
