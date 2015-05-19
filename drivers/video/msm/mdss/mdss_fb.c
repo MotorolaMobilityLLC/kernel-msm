@@ -1337,14 +1337,13 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = false;
 			mutex_lock(&mfd->bl_lock);
 			if (mdss_panel_is_power_off(req_power_state)) {
-				struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
 				/* Save current backlight value */
 				int current_bl = mfd->bl_level;
 
 				/* Stop Display thread */
 				if (mfd->disp_thread)
 					mdss_fb_stop_disp_thread(mfd);
-				pdata->set_backlight(pdata, 0);
+				mdss_fb_set_backlight(mfd, 0);
 				/* Set up backlight for unblank */
 				mfd->bl_updated = 0;
 				mfd->unset_bl_level = current_bl;
