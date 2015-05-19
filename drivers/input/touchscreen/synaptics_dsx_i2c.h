@@ -439,6 +439,8 @@ struct synaptics_rmi4_subpkt {
 
 struct synaptics_rmi4_packet_reg {
 	unsigned short r_number;
+	bool updated;	/* indicate that value in *data has been updated */
+	bool modified;	/* indicate that value in *data has been modified */
 	bool expected;
 	short offset;
 	unsigned int size;
@@ -448,13 +450,16 @@ struct synaptics_rmi4_packet_reg {
 };
 
 #define RMI4_NO_REG(r) {\
-	.r_number = r, .offset = -1, .expected = 0, .size = 0, .data = NULL,\
+	.r_number = r, .offset = -1, .updated = 0, .modified = 0,\
+	.expected = 0, .size = 0, .data = NULL,\
 	.nr_subpkts = 0, .subpkt = NULL}
 #define RMI4_REG(r, s) {\
-	.r_number = r, .offset = -1, .expected = 1, .size = 0, .data = NULL,\
+	.r_number = r, .offset = -1, .updated = 0, .modified = 0,\
+	.expected = 1, .size = 0, .data = NULL,\
 	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
 #define RMI4_REG_STATIC(r, s, sz) {\
-	.r_number = r, .offset = r, .expected = 1, .size = sz, .data = NULL,\
+	.r_number = r, .offset = r, .updated = 0, .modified = 0,\
+	.expected = 1, .size = sz, .data = NULL,\
 	.nr_subpkts = ARRAY_SIZE(s), .subpkt = s}
 
 struct synaptics_rmi4_func_packet_regs {

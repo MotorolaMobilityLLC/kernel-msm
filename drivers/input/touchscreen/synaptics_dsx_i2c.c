@@ -1324,7 +1324,7 @@ static void synaptics_dsx_patch_func(
 		int f_number,
 		struct synaptics_dsx_patch *patch)
 {
-	int error;
+	int r, error;
 	unsigned char *value;
 	struct device *dev = &rmi4_data->i2c_client->dev;
 	struct synaptics_rmi4_subpkt *subpkt;
@@ -1347,23 +1347,29 @@ static void synaptics_dsx_patch_func(
 			continue;
 		}
 
-		error =	synaptics_rmi4_read_packet_reg(rmi4_data, regs,
-			reg->r_number);
-		if (error < 0)
-			return;
+		/* read register only once */
+		if (!reg->updated) {
+			error =	synaptics_rmi4_read_packet_reg(
+					rmi4_data, regs, reg->r_number);
+			if (error < 0)
+				return;
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
-		{
-			int ss, kk;
-			pr_debug("F%x@%d before patching:\n",
+			{
+				int ss, kk;
+				pr_debug("F%x@%d before patching:\n",
 					regs->f_number, reg->r_number);
-			for (ss = 0; ss < reg->nr_subpkts; ss++) {
-				subpkt = reg->subpkt + ss;
-				for (kk = 0; kk < subpkt->size; ++kk)
-					pr_debug("%02x\n",
+				for (ss = 0; ss < reg->nr_subpkts; ss++) {
+					subpkt = reg->subpkt + ss;
+					for (kk = 0; kk < subpkt->size; ++kk)
+						pr_debug("%02x\n",
 					((unsigned char *)subpkt->data)[kk]);
+				}
 			}
-		}
 #endif
+			/* value has been updated */
+			reg->updated = true;
+		}
+
 		subpkt = reg->subpkt + fp->subpkt;
 		if (!subpkt->present || !subpkt->data ||
 			subpkt->size < fp->size) {
@@ -1381,26 +1387,38 @@ static void synaptics_dsx_patch_func(
 		} else
 			memcpy(subpkt->data, fp->data, fp->size);
 
+		/* value has been changed */
+		reg->modified = true;
+
 		dev_dbg(dev, "patched F%x@%d:%d, sz=%d\n",
 			f_number, fp->regstr, fp->subpkt, fp->size);
+	}
+
+	/* update loop */
+	for (r = 0; r < regs->nr_regs; r++) {
+		reg = &regs->regs[r];
+		if (reg->updated && reg->modified) {
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
-		{
-			int ss, kk;
-			pr_debug("F%x@%d after patching:\n",
-					regs->f_number, reg->r_number);
-			for (ss = 0; ss < reg->nr_subpkts; ss++) {
-				subpkt = reg->subpkt + ss;
-				for (kk = 0; kk < subpkt->size; ++kk)
-					pr_debug("%02x\n",
+			{
+				int ss, kk;
+				pr_debug("F%x@%d after patching:\n",
+						regs->f_number, reg->r_number);
+				for (ss = 0; ss < reg->nr_subpkts; ss++) {
+					subpkt = reg->subpkt + ss;
+					for (kk = 0; kk < subpkt->size; ++kk)
+						pr_debug("%02x\n",
 					((unsigned char *)subpkt->data)[kk]);
+				}
 			}
-		}
 #endif
-		error = synaptics_rmi4_write_packet_reg(
-					rmi4_data, regs, reg->r_number);
-		if (error < 0)
-			dev_warn(dev, "F%x@%d patch write failed\n",
-					f_number, reg->r_number);
+			error = synaptics_rmi4_write_packet_reg(rmi4_data,
+							regs, reg->r_number);
+			if (error < 0)
+				dev_warn(dev, "F%x@%d patch write failed\n",
+						f_number, reg->r_number);
+			reg->modified = false;
+		}
+		reg->updated = false;
 	}
 }
 
