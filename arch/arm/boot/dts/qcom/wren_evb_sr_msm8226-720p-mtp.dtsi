@@ -28,7 +28,7 @@
 			compatible = "pni,em7184";
 			reg = <0x28>;
 			interrupt-parent = <&msmgpio>;
-			interrupts = <111 0x4>;
+			interrupts = <111 0x1>;
 			pni,gpio-irq = <&msmgpio 111 0x00>;
 			pni,firmware = "em7184.fw";
 		};

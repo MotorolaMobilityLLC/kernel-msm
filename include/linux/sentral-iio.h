@@ -68,6 +68,7 @@ enum sentral_registers {
 	SR_HOST_CONTROL = 0x55,
 	SR_PARAM_LOAD =   0x5C,
 	SR_PARAM_REQ =    0x64,
+	SR_COACH_SET =    0x65,
 	SR_ROM_VERSION =  0x70,
 	SR_PRODUCT_ID =   0x90,
 	SR_REV_ID =       0x91,
@@ -174,6 +175,7 @@ enum sentral_param_page {
 	SPP_ALGO_WARM_START = 0x02,
 	SPP_SENSORS =         0x03,
 	SPP_ALGO_KNOBS =      0x13,
+	SPP_CUSTOM_PARAM =    14, //For ASUS ONLY
 };
 
 enum sentral_param_system {
@@ -223,6 +225,22 @@ enum sentral_meta_event {
 	SEN_META_SELF_TEST_RESULTS,
 	SEN_META_INITIALIZED,
 	SEN_META_MAX,
+};
+
+enum sentral_coach_activity_ID {
+	SEN_COACH_ACTIVITY_0 = 0,
+	SEN_COACH_ACTIVITY_1 = 10,
+	SEN_COACH_ACTIVITY_2 = 20,
+	SEN_COACH_ACTIVITY_3 = 50,
+	SEN_COACH_ACTIVITY_4 = 100,
+	SEN_COACH_ACTIVITY_5 = 200,
+	SEN_COACH_ACTIVITY_6 = 500,
+	SEN_COACH_ACTIVITY_7 = 1000,
+	SEN_COACH_ACTIVITY_8 = 2000,
+	SEN_COACH_ACTIVITY_9 = 5000,
+	SEN_COACH_ACTIVITY_10 = 10000,
+	SEN_COACH_ACTIVITY_TEST1 = 66,
+	SEN_COACH_ACTIVITY_TEST2 = 33,
 };
 
 struct sentral_data_meta {

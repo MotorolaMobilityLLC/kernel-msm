@@ -547,6 +547,8 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_PICK_UP_GESTURE:
 		case SST_WRIST_TILT_GESTURE:
 		case SST_INACTIVITY_ALARM:
+			if (sensor_id == SST_WRIST_TILT_GESTURE)
+				LOGI(&sentral->client->dev, "get a WRIST_TILT_GESTURE event");
 			data_size = 0;
 			break;
 
@@ -1416,7 +1418,8 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 	u32 delay_ms;
 	u32 timeout_ms;
 
-	u16 sample_rate = 0;
+	u16 sample_rate = 1000/66; // default to 30Hz
+	u16 inactive_time; // 5 mins
 
 	mutex_lock(&sentral->lock);
 	if (4 != sscanf(buf, "%u %u %u %u", &id, &flags, &delay_ms, &timeout_ms)) {
@@ -1430,9 +1433,105 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 	}
 
 	// convert millis to Hz
-	if (delay_ms > 0) {
-		delay_ms = MIN(1000, delay_ms);
-		sample_rate = 1000 / delay_ms;
+	if (delay_ms >= 0) {
+		if (id == SST_COACH) {
+			// delay_ms -> coach mode setting
+			switch (delay_ms) {
+				case SEN_COACH_ACTIVITY_0:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)0);
+					break;
+				case SEN_COACH_ACTIVITY_4:
+				case SEN_COACH_ACTIVITY_1: // push up
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)1);
+					if (rc == 0) {
+						LOGI(&sentral->client->dev,
+							"setting coach success(push up): %u, delay_ms: %u",
+							id, delay_ms);
+						LOGI(&sentral->client->dev,
+							"read back setting(push up): %d",
+							sentral_read_byte(sentral,SR_COACH_SET));
+					}
+					break;
+				case SEN_COACH_ACTIVITY_TEST1:
+				case SEN_COACH_ACTIVITY_TEST2:
+				case SEN_COACH_ACTIVITY_5:
+				case SEN_COACH_ACTIVITY_2: // sit up
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)2);
+					if (rc == 0) {
+						LOGI(&sentral->client->dev,
+							"setting coach success(sit up): %u, delay_ms: %u",
+							id, delay_ms);
+						LOGI(&sentral->client->dev,
+							"read back setting(sit up): %d",
+							sentral_read_byte(sentral,SR_COACH_SET));
+					}
+					break;
+				case SEN_COACH_ACTIVITY_3:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)3);
+					break;
+				/*
+				case SEN_COACH_ACTIVITY_4:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)4);
+					break;
+				case SEN_COACH_ACTIVITY_5:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)5);
+					break;
+				*/
+				case SEN_COACH_ACTIVITY_6:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)6);
+					break;
+				case SEN_COACH_ACTIVITY_7:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)7);
+					break;
+				case SEN_COACH_ACTIVITY_8:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)8);
+					break;
+				case SEN_COACH_ACTIVITY_9:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)9);
+					break;
+				case SEN_COACH_ACTIVITY_10:
+					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)10);
+					break;
+				default :
+					rc = 1;
+					goto exit;
+			}
+			if (rc)
+				LOGE(&sentral->client->dev,
+					"error (%d) setting coach ID: %u, with activity ID: %u\n",
+					rc, id, delay_ms);
+		} else if (id == SST_INACTIVITY_ALARM) {
+			rc = sentral_parameter_read(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, 2);
+			LOGI(&sentral->client->dev,
+				"inactivity rate readback before setting, %d",
+				inactive_time);
+			// delay_ms -> inactivity alarm rate
+			if (delay_ms > 9)
+				inactive_time = delay_ms;
+			else // similar to game mode, 0-9 set as 2-11 mins
+				inactive_time = (delay_ms + 2) * 60;
+			rc = sentral_parameter_write(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, 2);
+			if (rc) {
+				LOGE(&sentral->client->dev,
+					"error (%d) inactivity alarm rate set error",
+					rc);
+			} else {
+				LOGI(&sentral->client->dev,
+					"success inactivity set at %d",
+					inactive_time);
+			}
+			// just checking
+			inactive_time = 0;
+			sentral_parameter_read(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, 2);
+			LOGI(&sentral->client->dev,
+				"inactivity rate readback after setting, %d",
+				inactive_time);
+		} else {
+			if (delay_ms != 0) {
+				delay_ms = MIN(1000, delay_ms);
+				sample_rate = 1000 / delay_ms;
+			}
+		}
 	}
 
 	rc = sentral_sensor_batch_set(sentral, id, sample_rate, timeout_ms);
