@@ -48,6 +48,8 @@
 
 #define COMMAND_GET_REPORT 1
 #define COMMAND_FORCE_CAL 2
+#define COMMAND_FORCE_UPDATE 4
+#define COMMAND_ENTER_IN_CELL_TESTMODE 16
 
 #define HIGH_RESISTANCE_DATA_SIZE 6
 #define FULL_RAW_CAP_MIN_MAX_DATA_SIZE 4
@@ -1734,7 +1736,9 @@ show_prototype_ext(user_get_report1, S_IRUGO)
 show_prototype_ext(user_get_report2, S_IRUGO)
 show_store_prototype(fifoindex)
 store_prototype(get_report)
+show_store_prototype(force_update)
 store_prototype(force_cal)
+show_store_prototype(enter_in_cell_test_mode)
 show_prototype_ext(num_of_rx_electrodes, S_IRUGO)
 show_prototype_ext(num_of_tx_electrodes, S_IRUGO)
 show_prototype(has_image16)
@@ -1899,7 +1903,9 @@ static struct attribute *attrs[] = {
 	attrify(user_get_report2),
 	attrify(fifoindex),
 	attrify(get_report),
+	attrify(force_update),
 	attrify(force_cal),
+	attrify(enter_in_cell_test_mode),
 	attrify(num_of_rx_electrodes),
 	attrify(num_of_tx_electrodes),
 	attrify(has_image16),
@@ -2997,6 +3003,121 @@ static ssize_t synaptics_rmi4_f54_get_report_store(struct device *dev,
 
 	return count;
 }
+
+static ssize_t synaptics_rmi4_f54_force_update_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int retval;
+	unsigned char data[1];
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	retval = f54->fn_ptr->read(rmi4_data,
+			f54->command_base_addr,
+			data,
+			sizeof(data));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to read command 0 register\n",
+				__func__);
+		return retval;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+		(data[0] & COMMAND_FORCE_UPDATE) == COMMAND_FORCE_UPDATE);
+}
+
+static ssize_t synaptics_rmi4_f54_force_update_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int retval;
+	unsigned char command;
+	unsigned long setting;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	retval = sstrtoul(buf, 10, &setting);
+	if (retval)
+		return retval;
+
+	if (setting != 1)
+		return count;
+
+	command = (unsigned char)COMMAND_FORCE_UPDATE;
+
+	if (f54->status == STATUS_BUSY)
+		return -EBUSY;
+
+	retval = f54->fn_ptr->write(rmi4_data,
+			f54->command_base_addr,
+			&command,
+			sizeof(command));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to write force update command\n",
+				__func__);
+		return retval;
+	}
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_f54_enter_in_cell_test_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int retval;
+	unsigned char data[1];
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	retval = f54->fn_ptr->read(rmi4_data,
+			f54->command_base_addr,
+			data,
+			sizeof(data));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to read command 0 register\n",
+				__func__);
+		return retval;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+		(data[0] & COMMAND_ENTER_IN_CELL_TESTMODE) ==
+			COMMAND_ENTER_IN_CELL_TESTMODE);
+}
+
+
+static ssize_t synaptics_rmi4_f54_enter_in_cell_test_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int retval;
+	unsigned char command;
+	unsigned long setting;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	retval = sstrtoul(buf, 10, &setting);
+	if (retval)
+		return retval;
+
+	if (setting != 1)
+		return count;
+
+	command = (unsigned char)COMMAND_ENTER_IN_CELL_TESTMODE;
+
+	if (f54->status == STATUS_BUSY)
+		return -EBUSY;
+
+	retval = f54->fn_ptr->write(rmi4_data,
+			f54->command_base_addr,
+			&command,
+			sizeof(command));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+		"%s: Failed to write Enter In-Cell Test Mode command\n",
+			__func__);
+		return retval;
+	}
+
+	return count;
+}
+
 
 static ssize_t synaptics_rmi4_f54_force_cal_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
