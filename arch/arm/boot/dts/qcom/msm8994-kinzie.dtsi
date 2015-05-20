@@ -20,7 +20,6 @@
 
 &pm8994_l14 {
 	regulator-boot-on;
-	regulator-always-on;
 };
 
 &pm8994_l18 {
@@ -28,12 +27,10 @@
 	regulator-max-microvolt = <3100000>;
 	qcom,init-voltage = <3100000>;
 	regulator-boot-on;
-	regulator-always-on;
 };
 
 &vbat_disp_vreg {
 	regulator-boot-on;
-	regulator-always-on;
 };
 
 &mdss_fb0 {
