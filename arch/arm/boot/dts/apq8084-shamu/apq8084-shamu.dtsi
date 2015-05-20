@@ -410,7 +410,7 @@
 &mot_smd_596_QHD_0_cmd_v0 {
 	qcom,cont-splash-enabled;
 	qcom,partial-update-enabled;
-	qcom,panel-roi-alignment = <0 8 0 0 8 1>;
+	qcom,panel-roi-alignment = <8 8 1 1 8 1>;
 	qcom,partial-update-roi-merge;
 	qcom,dcs-cmd-by-left;
 };
@@ -418,7 +418,7 @@
 &mot_smd_596_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 	qcom,partial-update-enabled;
-	qcom,panel-roi-alignment = <0 8 0 0 8 1>;
+	qcom,panel-roi-alignment = <8 8 1 1 8 1>;
 	qcom,partial-update-roi-merge;
 	qcom,dcs-cmd-by-left;
 };
