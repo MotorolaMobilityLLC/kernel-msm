@@ -25,6 +25,7 @@ Optional properties for backlight led:
 - intersil,dimm-threshold	: integer dimming threshold for dimming control register @ 0x13
 - intersil,switch-supply	: name of the regulator to aquire and enable
 - intersil,pfm-value		: register 0x15 setting for PFM entry threshold
+- intersil,panel-tune		: boolean enable brightness tuning using panel data
 
 Optional properties for display power control settings:
 - intersil,vn		: negative supply voltage calculated as VN = -4.5V - vn*50mV
