@@ -11,38 +11,38 @@
  */
 
 qcom,fb55-lg {
-	/* #1921003_Moto_FB55_3760mAh_averaged_MasterSlave_Mar9th2015*/
+	/* #1921003_Moto_FB55_3760mAh_averaged_MasterSlave_May5th2015*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3760>;
 	qcom,batt-id-kohm = <100>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "FB55-LG-3760mah";
-	qcom,rslow-comp-along-soc-c1-ch-milli = <3504>;
-	qcom,rslow-comp-along-soc-c2-ch-milli = <5951>;
-	qcom,rs-to-rslow-charge-fix-milli = <1073>;
-	qcom,rslow-comp-ch-fix-th-milli = <705>;
-	qcom,checksum = <0xAE7F>;
-	qcom,gui-version = "PMI8994GUI - 2.1.6.2";
+	qcom,chg-rslow-comp-c1 = <3503636>;
+	qcom,chg-rslow-comp-c2 = <5951056>;
+	qcom,chg-rs-to-rslow = <1073290>;
+	qcom,chg-rslow-comp-thr = <0xB4>;
+	qcom,checksum = <0xF9F3>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.5";
 	qcom,fg-profile-data = [
-		 04 88 5F 7E
-		 55 82 E2 7C
-		 75 83 22 7C
-		 E8 8A DF 94
-		 EF 81 1C 99
-		 0C B6 CB C0
-		 5E 18 07 88
-		 35 7E 2F 82
-		 BE 7C 6A 83
-		 23 74 9B 89
-		 AF 94 4B 82
-		 35 98 5B B5
-		 94 C0 58 15
+		 1D 83 0D 69
+		 D6 70 8E 5E
+		 4D 83 34 62
+		 63 78 A7 7D
+		 E7 81 6A 9A
+		 B7 BD F1 CB
+		 7D 0E 06 88
+		 1F 7E 1D 82
+		 AD 7C 70 83
+		 98 75 5C 8A
+		 27 95 4B 82
+		 43 98 7C B5
+		 BC C0 58 16
 		 0A 0F C5 58
 		 14 70 30 FB
-		 04 45 DC 44
-		 56 42 00 00
-		 6F 45 E7 3B
-		 5A 45 00 00
+		 24 4C 9D 45
+		 36 4B 00 00
+		 5D 45 FC 3B
+		 AE 45 00 00
 		 00 00 00 00
 		 00 00 00 00
 		 B9 70 10 70
@@ -55,6 +55,6 @@ qcom,fb55-lg {
 		 5D A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
-		 00 00 00 00
+		 00 00 00 0C
 	];
 };
