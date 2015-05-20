@@ -45,4 +45,5 @@
 
 &pmi8994_charger {
 	qcom,dc-psy-ma = <500>;
+	qcom,batt-therm-wa-enabled;
 };
