@@ -46,3 +46,7 @@
 		};
 	};
 };
+
+&pmi8994_charger {
+	qcom,batt-therm-wa-enabled;
+};
