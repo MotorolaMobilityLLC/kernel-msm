@@ -176,7 +176,7 @@
 				qcom,supply-name = "vddio";
 				qcom,supply-min-voltage = <1800000>;
 				qcom,supply-max-voltage = <1800000>;
-				qcom,supply-enable-load = <100000>;
+				qcom,supply-enable-load = <50000>;
 				qcom,supply-disable-load = <100>;
 			};
 		};
