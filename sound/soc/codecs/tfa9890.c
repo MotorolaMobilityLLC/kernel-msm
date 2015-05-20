@@ -2298,6 +2298,55 @@ tfa9890_of_init(struct i2c_client *client)
 	return NULL;
 }
 #endif
+static int tfa9890_init_hw(struct tfa9890_priv *tfa9890)
+{
+	u8 val;
+	int ret;
+	/* gpio is optional in devtree, if its not specified dont fail
+	 * Its not specified for right IC if the gpio is same for both
+	 * IC's.
+	 */
+	if (gpio_is_valid(tfa9890->rst_gpio)) {
+		ret = gpio_request(tfa9890->rst_gpio, "tfa reset gpio");
+		if (ret < 0) {
+			pr_err("%s: tfa reset gpio_request failed: %d\n",
+				__func__, ret);
+			goto gpio_fail;
+		}
+		gpio_direction_output(tfa9890->rst_gpio, 0);
+	}
+
+	tfa9890->vdd = regulator_get(&tfa9890->control_data->dev, "tfa_vdd");
+	if (IS_ERR(tfa9890->vdd)) {
+		pr_err("%s: Error getting vdd regulator.\n", __func__);
+		ret = PTR_ERR(tfa9890->vdd);
+		goto reg_get_fail;
+	}
+
+	regulator_set_voltage(tfa9890->vdd, 1800000, 1800000);
+
+	ret = regulator_enable(tfa9890->vdd);
+	if (ret < 0) {
+		pr_err("%s: Error enabling vdd regulator %d:\n",
+			__func__, ret);
+		goto reg_enable_fail;
+	}
+
+	if (!tfa9890_i2c_read(tfa9890->control_data,
+				TFA9890_REV_ID, &val, 1)) {
+		pr_info("tfa9890 %s Device ID is 0x%x\n",
+					tfa9890->tfa_dev, val);
+		return 0;
+	}
+	regulator_disable(tfa9890->vdd);
+reg_enable_fail:
+	regulator_put(tfa9890->vdd);
+reg_get_fail:
+	if (gpio_is_valid(tfa9890->rst_gpio))
+		gpio_free(tfa9890->rst_gpio);
+gpio_fail:
+	return -EIO;
+}
 
 static int tfa9890_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
@@ -2341,6 +2390,12 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->fw_name = pdata->fw_name;
 	tfa9890->update_eq = 1;
 	tfa9890->pcm_start_delay = pdata->pcm_start_delay;
+
+	if (tfa9890_init_hw(tfa9890)) {
+		devm_kfree(&i2c->dev, tfa9890);
+		return -EPROBE_DEFER;
+	}
+
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
@@ -2372,36 +2427,6 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 	INIT_WORK(&tfa9890->load_preset, tfa9890_load_preset);
 	INIT_DELAYED_WORK(&tfa9890->delay_work, tfa9890_monitor);
 
-	/* gpio is optional in devtree, if its not specified dont fail
-	 * Its not specified for right IC if the gpio is same for both
-	 * IC's.
-	 */
-	if (gpio_is_valid(tfa9890->rst_gpio)) {
-		ret = gpio_request(tfa9890->rst_gpio, "tfa reset gpio");
-		if (ret < 0) {
-			pr_err("%s: tfa reset gpio_request failed: %d\n",
-				__func__, ret);
-			goto gpio_fail;
-		}
-		gpio_direction_output(tfa9890->rst_gpio, 0);
-	}
-
-	tfa9890->vdd = regulator_get(&i2c->dev, "tfa_vdd");
-	if (IS_ERR(tfa9890->vdd)) {
-		pr_err("%s: Error getting vdd regulator.\n", __func__);
-		ret = PTR_ERR(tfa9890->vdd);
-		goto reg_get_fail;
-	}
-
-	regulator_set_voltage(tfa9890->vdd, 1800000, 1800000);
-
-	ret = regulator_enable(tfa9890->vdd);
-	if (ret < 0) {
-		pr_err("%s: Error enabling vdd regulator %d:",
-			__func__, ret);
-		goto reg_enable_fail;
-	}
-
 	if (!strncmp("left", tfa9890->tfa_dev, 4)) {
 		/* register codec */
 		ret = snd_soc_register_codec(&i2c->dev,
@@ -2425,20 +2450,17 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 		stereo_mode = 1;
 	}
 
-	pr_info("tfa9890 %s probed successfully!", tfa9890->tfa_dev);
+	pr_info("tfa9890 %s probed successfully!\n", tfa9890->tfa_dev);
 
 	return ret;
 
 codec_fail:
-	regulator_disable(tfa9890->vdd);
-reg_enable_fail:
-	regulator_put(tfa9890->vdd);
-reg_get_fail:
-	if (gpio_is_valid(tfa9890->rst_gpio))
-		gpio_free(tfa9890->rst_gpio);
-gpio_fail:
 	destroy_workqueue(tfa9890->tfa9890_wq);
 wq_fail:
+	regulator_disable(tfa9890->vdd);
+	regulator_put(tfa9890->vdd);
+	if (gpio_is_valid(tfa9890->rst_gpio))
+		gpio_free(tfa9890->rst_gpio);
 
 	return ret;
 }
