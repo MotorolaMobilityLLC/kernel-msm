@@ -2408,36 +2408,29 @@ static int sentral_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int sentral_suspend(struct device *dev)
+static int sentral_suspend(struct i2c_client *client, pm_message_t pmesg)
 {
-	struct sentral_device *sentral = dev_get_drvdata(dev);
-	int rc = 0;
+	LOGI(&client->dev, "entered suspend");
 
-	LOGI(dev, "entered suspend\n");
+	if (device_may_wakeup(&client->dev)) {
+		LOGI(&client->dev, "enable wakeup irq: %d", client->irq);
+		enable_irq_wake(client->irq);
+	}
 
-	if (device_may_wakeup(dev))
-		enable_irq_wake(sentral->irq);
-
-	return rc;
+	return 0;
 }
 
-static int sentral_resume(struct device *dev)
+static int sentral_resume(struct i2c_client *client)
 {
-	struct sentral_device *sentral = dev_get_drvdata(dev);
-	int rc = 0;
+	LOGI(&client->dev, "entered resume");
 
-	LOGI(dev, "entered resume\n");
+	if (device_may_wakeup(&client->dev)) {
+		LOGI(&client->dev, "disable wakeup irq: %d", client->irq);
+		disable_irq_wake(client->irq);
+	}
 
-	if (device_may_wakeup(dev))
-		disable_irq_wake(sentral->irq);
-
-	return rc;
+	return 0;
 }
-
-static const struct dev_pm_ops sentral_pm_ops = {
-	.suspend = sentral_suspend,
-	.resume = sentral_resume,
-};
 
 static const struct i2c_device_id sentral_i2c_id_table[] = {
 	{"em7184", 0},
@@ -2458,8 +2451,9 @@ static struct i2c_driver sentral_driver = {
 		.owner = THIS_MODULE,
 		.name = "sentral-iio",
 		.of_match_table = sentral_of_id_table,
-		.pm = &sentral_pm_ops,
 	},
+	.suspend = sentral_suspend,
+	.resume = sentral_resume,
 	.id_table = sentral_i2c_id_table,
 };
 module_i2c_driver(sentral_driver);
