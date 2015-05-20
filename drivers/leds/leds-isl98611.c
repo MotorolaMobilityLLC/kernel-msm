@@ -101,6 +101,11 @@
 #define HIGH_CURRENT_VAL	0x40
 #define EFF_VAL			0xF3
 
+/* Set default panel as a no-correction case */
+#define ISL98611_DEFAULT_PANEL 0x07
+#define ISL98611_DEFAULT_PANEL_BRIGHTNESS 0x09
+#define PANEL_MASK 0x00FF00
+
 struct isl98611_chip {
 	struct isl98611_platform_data *pdata;
 	struct regmap *regmap;
@@ -324,6 +329,44 @@ static void isl98611_led_set(struct led_classdev *led_cdev,
 
 
 #ifdef CONFIG_OF
+
+void isl98611_dt_panel_info(struct i2c_client *client,
+	struct isl98611_platform_data *pdata)
+{
+	struct device_node *np;
+	u64 full_version;
+	int rc;
+
+	pdata->panel_version = ISL98611_DEFAULT_PANEL;
+	pdata->panel_brightness = ISL98611_DEFAULT_PANEL_BRIGHTNESS;
+
+	np = of_find_node_by_path("/chosen");
+	if (!np) {
+		dev_err(&client->dev, "Chosen node error. Using defaults\n");
+		return;
+	}
+
+	rc = of_property_read_u64(np, "mmi,panel_ver", &full_version);
+	if (rc) {
+		dev_err(&client->dev, "Panel version err %d, Using defaults\n",
+			rc);
+		return;
+	}
+
+	pdata->panel_version = (full_version & PANEL_MASK) >> 8;
+	of_property_read_u32(np, "mmi,panel_brightness",
+		&pdata->panel_brightness);
+
+	pdata->cur_scale = ISL98611_90p62SCALE;
+	of_property_read_u32(np, "mmi,led_current_multiplier",
+		&pdata->cur_scale);
+
+	dev_info(&client->dev,
+		"Panel tuning: ver %#llx brightness %#x multiplier %#x\n",
+		pdata->panel_version, pdata->panel_brightness,
+		pdata->cur_scale);
+}
+
 static int isl98611_dt_init(struct i2c_client *client,
 	struct isl98611_platform_data *pdata)
 {
@@ -360,9 +403,6 @@ static int isl98611_dt_init(struct i2c_client *client,
 	pdata->led_current = ISL98611_25MA;
 	of_property_read_u32(np, "intersil,led-current", &pdata->led_current);
 
-	pdata->cur_scale = ISL98611_90p62SCALE;
-	of_property_read_u32(np, "intersil,current-scale", &pdata->cur_scale);
-
 	pdata->pfm_value = ISL98611_DEFAULT_PFM;
 	of_property_read_u32(np, "intersil,pfm-value", &pdata->pfm_value);
 
@@ -389,6 +429,16 @@ static int isl98611_dt_init(struct i2c_client *client,
 		&pdata->supply_name);
 	dev_info(&client->dev, "I2C switch supply: %s\n",
 		(rc ? "not provided" : pdata->supply_name));
+
+	pdata->panel_tune = of_property_read_bool(np, "intersil,panel-tune");
+	if (pdata->panel_tune)
+		isl98611_dt_panel_info(client, pdata);
+	else {
+		pdata->cur_scale = ISL98611_90p62SCALE;
+		of_property_read_u32(np, "intersil,current-scale",
+			&pdata->cur_scale);
+	}
+
 
 	return 0;
 
