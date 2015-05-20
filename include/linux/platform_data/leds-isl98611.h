@@ -26,6 +26,9 @@
  *@dimm_threshold	: dimming threshold for dimming control register
  *@pfm_value		: register 0x15 setting for PFM entry threshold
  *@hbm_on		: enable high brightness mode
+ *@panel_tune		: enable enable brightness tuning using panel data
+ *@panel_version	: panel version
+ *@panel_brightness	: panel brightness
  */
 
 struct isl98611_platform_data {
@@ -50,4 +53,7 @@ struct isl98611_platform_data {
 	/* MMI I2C swicth regulator parameters*/
 	const char *supply_name;
 	struct regulator *vreg;
+	bool panel_tune;
+	u64 panel_version;
+	u32 panel_brightness;
 };
