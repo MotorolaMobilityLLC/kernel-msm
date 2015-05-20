@@ -34,6 +34,11 @@
 #include <linux/string_helpers.h>
 #include <linux/alarmtimer.h>
 #include <linux/qpnp-revid.h>
+#include <linux/dropbox.h>
+
+#define FUEL_GAUGE_REPORT "Fuel-Gauge_Report"
+#define QPNPFG_FULL_CAP "QPNPFG - Full Cap = %d\n"
+#define FUEL_GAUGE_REPORT_SIZE 64
 
 /* Register offsets */
 
@@ -263,6 +268,11 @@ module_param_named(
 	sram_update_period_ms, fg_sram_update_period_ms, int, S_IRUSR | S_IWUSR
 );
 
+static int trigger_fc_report;
+module_param_named(
+	trigger_fc_deviation, trigger_fc_report, int, S_IRUSR | S_IWUSR
+);
+
 struct fg_irq {
 	int			irq;
 	unsigned long		disabled;
@@ -453,6 +463,8 @@ struct fg_chip {
 	bool			batt_cold;
 	int			cold_hysteresis;
 	int			hot_hysteresis;
+	char fg_report_str[FUEL_GAUGE_REPORT_SIZE];
+	bool fullcap_report_sent;
 };
 
 /* FG_MEMIF DEBUGFS structures */
@@ -2078,6 +2090,42 @@ static void battery_age_work(struct work_struct *work)
 	estimate_battery_age(chip, &chip->actual_cap_uah);
 }
 
+static bool is_factory_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
+static bool fg_check_fc_deviation(struct fg_chip *chip)
+{
+	int fc_max, fc_min;
+
+	if (is_factory_mode())
+		return false;
+
+	if (!chip->nom_cap_uah || !chip->learning_data.learned_cc_uah)
+		return false;
+
+	fc_max = chip->nom_cap_uah + ((chip->nom_cap_uah*5) / 100);
+	fc_min = chip->nom_cap_uah/2;
+
+	if ((chip->learning_data.learned_cc_uah > fc_max ||
+		 chip->learning_data.learned_cc_uah < fc_min)) {
+		pr_err("FC Deviation: Full Cap = %lld, Nom Cap = %d\n",
+				chip->learning_data.learned_cc_uah,
+				chip->nom_cap_uah);
+		return true;
+	} else
+		return false;
+}
+
 static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CAPACITY_RAW,
@@ -2178,6 +2226,19 @@ static int fg_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		val->intval = chip->learning_data.learned_cc_uah;
+
+		if (trigger_fc_report || (fg_check_fc_deviation(chip) &&
+			!chip->fullcap_report_sent)) {
+			snprintf(chip->fg_report_str, FUEL_GAUGE_REPORT_SIZE,
+				QPNPFG_FULL_CAP, val->intval);
+			dropbox_queue_event_text(FUEL_GAUGE_REPORT,
+				chip->fg_report_str,
+				strlen(chip->fg_report_str));
+			if (trigger_fc_report)
+				trigger_fc_report = 0;
+			else
+				chip->fullcap_report_sent = true;
+		}
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
 		val->intval = chip->learning_data.cc_uah;
@@ -3866,6 +3927,9 @@ done:
 		return rc;
 	}
 	estimate_battery_age(chip, &chip->actual_cap_uah);
+	if (fg_check_fc_deviation(chip))
+		chip->fullcap_report_sent = true;
+
 	schedule_work(&chip->status_change_work);
 	if (chip->power_supply_registered)
 		power_supply_changed(&chip->bms_psy);
