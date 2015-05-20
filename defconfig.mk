@@ -3,12 +3,17 @@ LJAPDEFCONFIGSRC		:= ${DEFCONFIGSRC}/ext_config
 PRODUCT_SPECIFIC_DEFCONFIGS	:= $(DEFCONFIGSRC)/$(KERNEL_DEFCONFIG)
 TARGET_DEFCONFIG		:= $(KERNEL_OUT)/mapphone_defconfig
 KERNEL_DEBUG_DEFCONFIG          := $(LJAPDEFCONFIGSRC)/debug-$(subst -perf,,$(subst _defconfig,,$(KERNEL_DEFCONFIG))).config
+PRODUCT_KERNEL_DEBUG_DEFCONFIG  := $(LJAPDEFCONFIGSRC)/$(PRODUCT_DEBUG_DEFCONFIG)
 
 # add debug config file for non-user build
 ifneq ($(TARGET_BUILD_VARIANT), user)
 ifneq ($(TARGET_NO_KERNEL_DEBUG), true)
 ifneq ($(wildcard $(KERNEL_DEBUG_DEFCONFIG)),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_DEFCONFIG)
+# Add a product-specific debug defconfig, too
+ifneq ($(PRODUCT_DEBUG_DEFCONFIG),)
+PRODUCT_SPECIFIC_DEFCONFIGS += $(PRODUCT_KERNEL_DEBUG_DEFCONFIG)
+endif
 endif
 endif
 endif
