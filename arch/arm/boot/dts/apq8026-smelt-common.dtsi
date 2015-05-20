@@ -376,6 +376,7 @@
 };
 
 &i2c_2 {
+	qcom,clk-ctl-xfer;
 	status = "ok";
 		m4sensorhub@43 {
 		compatible = "mot,m4sensorhub";
@@ -394,6 +395,7 @@
 	cell-index = <3>;
 	qcom,scl-gpio = <&msmgpio 11 0>;
 	qcom,sda-gpio = <&msmgpio 10 0>;
+	qcom,clk-ctl-xfer;
 	status = "ok";
 
 	max17050@36 {
@@ -554,6 +556,7 @@
 &i2c_5 {
 	status = "ok";
 	qcom,i2c-bus-freq = <400000>;
+	qcom,clk-ctl-xfer;
 	/* drivers here */
 	atmxt@4a {
 		compatible = "atmel,atmxt-ts";
