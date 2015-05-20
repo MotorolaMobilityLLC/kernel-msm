@@ -281,6 +281,7 @@ struct smbchg_chip {
 	int				charger_rate;
 	bool				usbid_disabled;
 	bool				demo_mode;
+	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
 };
 
@@ -968,7 +969,7 @@ static int get_prop_batt_temp(struct smbchg_chip *chip)
 		temp = DEFAULT_BATT_TEMP;
 	}
 
-	if (temp > GLITCH_BATT_TEMP) {
+	if ((chip->batt_therm_wa) && (temp > GLITCH_BATT_TEMP)) {
 		dev_err(chip->dev, "GLITCH: Temperature Read %d \n", temp);
 		temp = ERROR_BATT_TEMP;
 	}
@@ -5593,6 +5594,10 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,low-volt-dcin");
 	chip->usbid_disabled = of_property_read_bool(node,
 						"qcom,usbid-disabled");
+	chip->batt_therm_wa = of_property_read_bool(node,
+					       "qcom,batt-therm-wa-enabled");
+	if (chip->batt_therm_wa)
+		dev_info(chip->dev, "batt_therm workaround is enabled!\n");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
