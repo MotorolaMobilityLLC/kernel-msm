@@ -1076,6 +1076,7 @@
 			intersil,default-on;
 			intersil,vn = <26>;
 			intersil,vp = <26>;
+			intersil,panel-tune;
 			intersil,pfm-value = <0x86>;
 			intersil,dimm-threshold = <0x02>;
 			intersil,current-scale = <63>;
