@@ -436,6 +436,7 @@ static void m4sensorhub_initialize(const struct firmware *firmware,
 			__func__, "Failed to load M4 firmware", err);
 		/* Since download failed, return M4 to boot mode */
 		m4sensorhub_hw_reset(&m4sensorhub_misc_data);
+		panic("%s: forcing panic...\n", __func__);
 		return;
 	}
 
