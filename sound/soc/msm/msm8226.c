@@ -2775,6 +2775,8 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
             dev_err(&pdev->dev, "unable to set voltage level for dmic 1p8\n");
         }
 
+	regulator_set_optimum_mode(dmic_1p8, 700);
+
 #ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 	spk_1p8 = devm_regulator_get(&pdev->dev, "SPK1P8");
 	if (IS_ERR(spk_1p8)) {
