@@ -104,12 +104,12 @@
 			39 01 00 00 00 00 05 2a 00 00 05 9f
 			/* normal row */
 			39 01 00 00 00 00 05 2b 00 00 09 ff
+			/* Configure dual-dsi link*/
+			15 01 00 00 00 00 02 F2 63
 			/* lock level 2 commands */
 			39 01 00 00 01 00 03 F0 A5 A5
 			/* display on */
-			05 01 00 00 00 00 01 29
-			/* Configure dual-dsi link*/
-			15 01 00 00 78 00 02 F2 63];
+			05 01 00 00 00 00 01 29];
 		qcom,mdss-dsi-qd-on-command = [
 			/* normal col */
 			39 01 00 00 00 00 05 2a 00 00 05 9f
