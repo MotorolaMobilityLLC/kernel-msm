@@ -147,6 +147,7 @@ struct max17042_chip {
 	int hotspot_temp;
 
 	struct delayed_work iterm_work;
+	struct delayed_work thread_work;
 	struct max17042_wakeup_source max17042_wake_source;
 	int charge_full_des;
 	int taper_reached;
@@ -478,7 +479,8 @@ static int max17042_get_property(struct power_supply *psy,
 			max17042_write_reg(chip->client, MAX17042_VFSOC0Enable,
 					   MAX17050_FORCE_POR);
 			msleep(MAX17050_POR_WAIT_MS);
-			max17042_thread_handler(0, (void *)chip);
+			schedule_delayed_work(&chip->thread_work,
+				msecs_to_jiffies(0));
 		}
 
 		break;
@@ -1091,9 +1093,21 @@ static void max17042_set_soc_threshold(struct max17042_chip *chip, u16 off)
 static irqreturn_t max17042_thread_handler(int id, void *dev)
 {
 	struct max17042_chip *chip = dev;
-	u32 val;
+
+	schedule_delayed_work(&chip->thread_work,
+			      msecs_to_jiffies(10));
+
+	return IRQ_HANDLED;
+}
+
+static void max17042_thread_worker(struct work_struct *work)
+{
+	u16 val;
 	union power_supply_propval ret = {0, };
 	const char *batt_psy_name;
+	struct max17042_chip *chip =
+		container_of(work, struct max17042_chip,
+				thread_work.work);
 
 	if (!chip->batt_psy && chip->pdata->batt_psy_name) {
 		batt_psy_name = chip->pdata->batt_psy_name;
@@ -1107,7 +1121,7 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 		chip->init_complete = 0;
 		schedule_work(&chip->work);
 
-		return IRQ_HANDLED;
+		return;
 	}
 	if ((val & STATUS_INTR_SOCMIN_BIT) ||
 		(val & STATUS_INTR_SOCMAX_BIT)) {
@@ -1137,8 +1151,7 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 	if (chip->batt_psy)
 		chip->batt_psy->set_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_CAPACITY_LEVEL, &ret);
-
-	return IRQ_HANDLED;
+	return;
 }
 
 static void max17042_init_worker(struct work_struct *work)
@@ -1799,7 +1812,8 @@ static void iterm_work(struct work_struct *work)
 			max17042_write_reg(chip->client, MAX17042_VFSOC0Enable,
 					   MAX17050_FORCE_POR);
 			msleep(MAX17050_POR_WAIT_MS);
-			max17042_thread_handler(0, (void *)chip);
+			schedule_delayed_work(&chip->thread_work,
+				msecs_to_jiffies(0));
 			goto iterm_fail;
 		}
 
@@ -1923,7 +1937,8 @@ static void iterm_work(struct work_struct *work)
 		regmap_write(map, MAX17042_VFSOC0Enable,
 				   MAX17050_FORCE_POR);
 		msleep(MAX17050_POR_WAIT_MS);
-		max17042_thread_handler(0, (void *)chip);
+		schedule_delayed_work(&chip->thread_work,
+			msecs_to_jiffies(0));
 
 		goto iterm_fail;
 	}
@@ -2188,6 +2203,7 @@ static int max17042_probe(struct i2c_client *client,
 			   "max17042_wake");
 	INIT_DELAYED_WORK(&chip->iterm_work,
 			  iterm_work);
+	INIT_DELAYED_WORK(&chip->thread_work, max17042_thread_worker);
 
 	schedule_delayed_work(&chip->iterm_work,
 			      msecs_to_jiffies(10000));
