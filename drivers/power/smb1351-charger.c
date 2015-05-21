@@ -2705,8 +2705,13 @@ static ssize_t force_chg_fail_clear_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	/* do nothing for SMB1351 */
-	r = 0;
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = smb1351_masked_write(the_chip, CMD_HVDCP_REG,
+				 CMD_APSD_RE_RUN_BIT, CMD_APSD_RE_RUN_BIT);
 
 	return r ? r : count;
 }
@@ -2749,6 +2754,11 @@ static ssize_t force_chg_auto_enable_store(struct device *dev,
 			(int)mode, (int)r);
 		return r;
 	}
+
+	smb1351_masked_write(the_chip, CMD_HVDCP_REG,
+			     CMD_APSD_RE_RUN_BIT, CMD_APSD_RE_RUN_BIT);
+
+	msleep(100);
 
 	return r ? r : count;
 }
