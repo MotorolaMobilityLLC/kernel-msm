@@ -62,6 +62,8 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define BMD101_CS_GPIO		53
 #define BMD101_RST_GPIO		55
 
+#define BMD101_filter_array          10
+#define BMD101_setup_time		5
 #define BMD101_timeout_delay_default            300
 #define SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT		-1
 #define SENSOR_HEART_RATE_CONFIDENCE_UNRELIABLE		0
@@ -72,29 +74,24 @@ MODULE_PARM_DESC(debug, "Activate debugging output");
 #define LOW_POWER_MODE_EXIT		1
 #define LOW_POWER_MODE_ENTER		0
 
-#define LSQ_THRESHOLD	3333
-
-#define HR_ENABLED	1
-#define MOOD_ENABLED	2
-
 static struct regulator *pm8921_l28;
+struct bpm_array{
+	int bpm;
+	int weight;
+	int freq;
+};
 static struct sensors_classdev bmd101_cdev = {
 	.name = "bmd101",
 	.vendor = "NeuroSky",
-	.version = 3,		//v1: sensor always on, v2: sensor controlled by HAL, default off, /proc/wellness has ioctl, v3: NS SDK moved to HAL
+	.version = 2,				//v1: sensor always on, v2: sensor controlled by HAL, default off, /proc/wellness has ioctl
 	.enabled = 0,
 	.sensors_enable = NULL,
 };
 struct bmd101_data {
 	struct sensors_classdev cdev;
-	struct input_dev *hr_dev;			/* Pointer to input device */
-	struct input_dev *mood_dev;
-	int enabled_function;
+	struct input_dev		*input_dev;			/* Pointer to input device */
 	int hw_enabled;
-	int bpm;
-	int lsq;
-	int ssq;
-	int mood;
+	unsigned int  bpm;
 	int esd;
 	int status;
 	int count;
@@ -117,24 +114,14 @@ static struct gpiomux_setting gpio_sus_cfg = {
 	.dir = GPIOMUX_IN,
 };
 
-static int bmd101_data_report_hr(int data, int accuracy)
+static int bmd101_data_report(int data, int accuracy)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: bpm(%d) accuracy(%d)\n", __func__, data, accuracy);
-	input_report_abs(sensor_data->hr_dev, ABS_MISC, data);
-	input_event(sensor_data->hr_dev, EV_MSC, MSC_SCAN, accuracy);
-	input_sync(sensor_data->hr_dev);
+	input_report_abs(sensor_data->input_dev, ABS_MISC, data);
+	input_event(sensor_data->input_dev, EV_MSC, MSC_SCAN, accuracy);
+	input_sync(sensor_data->input_dev);
 
 	return 0;
-}
-
-static int bmd101_data_report_mood(int data, int accuracy)
-{
-        sensor_debug(DEBUG_INFO, "[bmd101] %s: mood(%d) accuracy(%d)\n", __func__, data, accuracy);
-        input_report_abs(sensor_data->mood_dev, ABS_MISC, data);
-        input_event(sensor_data->mood_dev, EV_MSC, MSC_SCAN, accuracy);
-        input_sync(sensor_data->mood_dev);
-
-        return 0;
 }
 
 static void bmd101_hw_enable(int enable) {
@@ -192,27 +179,121 @@ static void bmd101_hw_enable(int enable) {
 	
 }
 
+static void sortArray(struct bpm_array *array) {
+	static int x;
+	static int y;
+
+	for(x=0; x<BMD101_filter_array; x++) {
+		for(y=0; y<BMD101_filter_array-1; y++) {
+			if(array[y].bpm>array[y+1].bpm) {
+				int temp = array[y+1].bpm;
+				array[y+1].bpm = array[y].bpm;
+				array[y].bpm = temp;
+				temp = array[y+1].weight;
+				array[y+1].weight = array[y].weight;
+				array[y].weight = temp;
+			}
+		}
+	}
+}
+
+static int findMode(struct bpm_array *array) {
+	int i, maxCount, modeValue;
+	int maxFreq, maxWeight;
+
+	maxFreq = 0;
+	maxCount = 0;
+	modeValue = 0;
+
+	for (i = 0; i < BMD101_filter_array; i++) {
+		if (array[i].bpm > maxCount)
+			maxCount = array[i].bpm;
+		else {
+			if (array[i-1].freq > 0)
+				array[i].freq = array[i-1].freq+1;
+			else
+				array[i].freq++;
+		}
+
+		if(array[i].freq> maxFreq) {
+			maxFreq = array[i].freq;
+			modeValue = array[i].bpm;
+		}
+		else if (array[i].freq == maxFreq) {
+			if (array[i].weight > maxWeight) {
+				maxWeight = array[i].weight;
+				modeValue = array[i].bpm;
+			}
+		}
+		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bpm(%d) freq(%d) weight(%d)\n", __func__, array[i].bpm, array[i].freq, array[i].weight);
+	}
+
+	if(maxFreq==0)
+		return -1;
+	else
+		return modeValue;
+}
+
 static void bmd101_data_filter(int data)
 {
-	if(sensor_data->ssq == -1)
-            sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT;
-	else if(sensor_data->ssq == 5 && sensor_data->lsq > LSQ_THRESHOLD)
-	    sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_HIGH;
-	else if(sensor_data->enabled_function==HR_ENABLED &&sensor_data->bpm < 0)
-	    sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
-	else
-	    sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
+	static struct bpm_array input[BMD101_filter_array];
+	static int setup_complete = 0;
+	int i=0;
 
-	if(sensor_data->enabled_function == HR_ENABLED) {
-		sensor_data->bpm = data;
-		sensor_debug(DEBUG_INFO, "[bmd101] %s: bpm(%d) LSQ(%d) SSQ(%d)", __func__, sensor_data->bpm, sensor_data->lsq, sensor_data->ssq);
-		bmd101_data_report_hr(sensor_data->bpm, sensor_data->accuracy);
+	mutex_lock(&sensor_data->lock);
+	if(sensor_data->status >= 2) {
+		sensor_data->timeout_delay = 0;
+		if(delayed_work_pending(&sensor_data->timeout_work)) {
+			sensor_debug(DEBUG_INFO, "[bmd101] timeout cancelled.\n");
+			cancel_delayed_work_sync(&sensor_data->timeout_work);
+		}
+
+		if((sensor_data->count <= BMD101_setup_time) && !setup_complete) {
+			if(sensor_data->count == BMD101_setup_time) {
+				sensor_data->count = 0;
+				setup_complete = 1;
+				for(i=0; i<BMD101_filter_array; i++) {
+					input[i].bpm = 0;
+					input[i].weight = 0;
+					input[i].freq = 0;
+				}
+			}
+			else
+				sensor_data->count++;
+			sensor_data->bpm = 0;
+			mutex_unlock(&sensor_data->lock);
+			return;
+		}
+
+		sensor_debug(DEBUG_INFO, "[bmd101] %s: (%d) %s count=%d timeout_delay=%d\n", __func__, data, sensor_data->status<2?"DROP":"COLLECT", sensor_data->count, sensor_data->timeout_delay);
+		if(sensor_data->count < BMD101_filter_array) {
+			input[sensor_data->count].bpm = data;
+			input[sensor_data->count].weight = sensor_data->count;
+			sensor_data->count++;
+			sensor_data->bpm = data;
+			sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_LOW;
+		}
+		else {
+			setup_complete = 0;
+			sensor_data->count = 0;
+			sortArray(input);
+			sensor_data->bpm = findMode(input);
+			if(sensor_data->bpm == -1) {
+				sensor_debug(DEBUG_INFO, "[bmd101] %s: bad contact, request user retest\n", __func__);
+				sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_NO_CONTACT;
+			}
+			else
+				sensor_data->accuracy = SENSOR_HEART_RATE_CONFIDENCE_HIGH;
+		}
+
+		bmd101_data_report(sensor_data->bpm, sensor_data->accuracy);
 	}
-	else if(sensor_data->enabled_function == MOOD_ENABLED) {
-		sensor_data->mood = data;
-		sensor_debug(DEBUG_INFO, "[bmd101] %s: mood(%d) LSQ(%d) SSQ(%d)", __func__, sensor_data->mood, sensor_data->lsq, sensor_data->ssq);
-		bmd101_data_report_mood(sensor_data->mood, sensor_data->accuracy);
+	else {
+		sensor_data->count = 0;
+		setup_complete = 0;
+		queue_delayed_work(sensor_data->bmd101_work_queue, &sensor_data->timeout_work, sensor_data->timeout_delay);		//queue timeout delay first time: @3s in between measurements: @1s
 	}
+	mutex_unlock(&sensor_data->lock);
 
 	return;
 }
@@ -220,12 +301,12 @@ static void bmd101_data_filter(int data)
 static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
 {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: sensor currently %s, turning sensor %s\n", __func__, sensor_data->cdev.enabled? "on":"off", enable ? "on":"off");
-	if (!sensor_data->cdev.enabled) {
+	if (enable && !sensor_data->cdev.enabled) {
 		bmd101_hw_enable(enable);
 		sensor_data->timeout_delay = BMD101_timeout_delay_default;
 		sensor_data->cdev.enabled = 1;
 	}
-	else if (enable==0 && sensor_data->cdev.enabled) {
+	else if (!enable && sensor_data->cdev.enabled) {
 		if(delayed_work_pending(&sensor_data->timeout_work)) {
 			printk("[bmd101] timeout cancelled.\n");
 			cancel_delayed_work(&sensor_data->timeout_work);
@@ -235,7 +316,6 @@ static int bmd101_enable_set(struct sensors_classdev *sensors_cdev, unsigned int
 		sensor_data->status = 0;
 		sensor_data->count = 0;
 		sensor_data->timeout_delay = BMD101_timeout_delay_default;
-		sensor_data->enabled_function = 0;
 
 		sensor_debug(DEBUG_VERBOSE, "[bmd101] %s: bmd101_enable(%d)\n", __func__, sensor_data->cdev.enabled);
 	}
@@ -258,7 +338,7 @@ static void bmd101_suspend_resume_work(struct work_struct *work) {
 
 static void bmd101_timeout_work(struct work_struct *work) {
 	sensor_debug(DEBUG_INFO, "[bmd101] %s: no contact detected. TIMEOUT!! \n", __func__);
-	bmd101_data_report_hr(-1, -1);
+	bmd101_data_report(-1, -1);
 	sensor_data->count = 0;
 }
 
@@ -272,7 +352,7 @@ static ssize_t sensors_status_store(struct device *dev, struct device_attribute 
 {
 	unsigned long val;
 
-	if ((kstrtoul(buf, 10, &val) != 0) || (val > 5))
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 2))
 		return -EINVAL;
 
 	sensor_data->status = val;
@@ -294,7 +374,7 @@ static ssize_t bmd101_store_esd(struct device *dev, struct device_attribute *att
 {
 	unsigned long val;
 
-	if ((kstrtoul(buf, 10, &val) != 0) || (val > 1))
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
 		return -EINVAL;
 
 	sensor_debug(DEBUG_VERBOSE, "[als_P01] %s (%d)\n", __func__, (int)val);
@@ -314,92 +394,18 @@ static int bmd101_show_bpm (struct device *dev, struct device_attribute *attr, c
 
 static ssize_t bmd101_store_bpm(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
-	long val;
+	unsigned long val;
 
-	if((kstrtol(buf, 10, &val)) != 0)
+	if ((strict_strtoul(buf, 10, &val) < 0))
 		return -EINVAL;
-        sensor_debug(DEBUG_VERBOSE, "[bmd101] %s (%d)\n", __func__, (int)val);
+
+	sensor_debug(DEBUG_VERBOSE, "[bmd101] %s (%d)\n", __func__, (int)val);
+
 	bmd101_data_filter((int)val);
 
 	return size;
 }
 static DEVICE_ATTR(bpm, S_IWUSR | S_IRUGO, bmd101_show_bpm, bmd101_store_bpm);
-
-static int bmd101_show_mood(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        sensor_debug(DEBUG_VERBOSE, "[bmd101] Relaxation = %d\n",sensor_data->mood);
-        return sprintf(buf, "%d\n", sensor_data->mood);
-}
-
-static ssize_t bmd101_store_mood(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-        long val;
-        if((kstrtol(buf, 10, &val)) != 0)
-                return -EINVAL;
-        sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
-	bmd101_data_filter((int)val);
-
-        return size;
-}
-static DEVICE_ATTR(mood, S_IWUSR | S_IRUGO, bmd101_show_mood, bmd101_store_mood);
-
-static int bmd101_show_function(struct device *dev, struct device_attribute *attr, char *buf)
-{
-        sensor_debug(DEBUG_VERBOSE, "[bmd101] function = %d\n",sensor_data->enabled_function);
-        return sprintf(buf, "%d\n", sensor_data->enabled_function);
-}
-
-static ssize_t bmd101_store_function(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-        long val;
-
-        if((kstrtol(buf, 10, &val)) != 0)
-                return -EINVAL;
-
-	sensor_data->enabled_function = (int)val;
-
-        sensor_debug(DEBUG_VERBOSE, "[bmd101] %s (%d)\n", __func__, (int)val);
-
-        return size;
-}
-static DEVICE_ATTR(function, S_IWUSR | S_IRUGO, bmd101_show_function, bmd101_store_function);
-
-
-static int bmd101_show_lsq (struct device *dev, struct device_attribute *attr, char *buf)
-{
-        return sprintf(buf, "%d\n", sensor_data->lsq);
-}
-
-static ssize_t bmd101_store_lsq(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	long val;
-
-        if ((kstrtol(buf, 10, &val) != 0))
-                return -EINVAL;
-
-	sensor_data->lsq = (int)val;
-
-        return size;
-}
-static DEVICE_ATTR(lsq, S_IWUSR | S_IRUGO, bmd101_show_lsq, bmd101_store_lsq);
-
-static int bmd101_show_ssq (struct device *dev, struct device_attribute *attr, char *buf)
-{
-        return sprintf(buf, "%d\n", sensor_data->ssq);
-}
-
-static ssize_t bmd101_store_ssq(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-        long val;
-
-        if ((kstrtol(buf, 10, &val) != 0))
-                return -EINVAL;
-
-        sensor_data->ssq = (int)val;
-
-        return size;
-}
-static DEVICE_ATTR(ssq, S_IWUSR | S_IRUGO, bmd101_show_ssq, bmd101_store_ssq);
 
 #ifndef ASUS_USER_BUILD
 static int bmd101_show_hw_enable (struct device *dev, struct device_attribute *attr, char *buf)
@@ -412,7 +418,7 @@ static ssize_t bmd101_store_hw_enable(struct device *dev, struct device_attribut
 {
 	unsigned long val;
 
-	if ((kstrtoul(buf, 10, &val) != 0) ||(val > 1))
+	if ((strict_strtoul(buf, 10, &val) < 0) ||(val > 1))
 		return -EINVAL;
 
 	sensor_debug(DEBUG_INFO, "[bmd101] %s (%d)\n", __func__, (int)val);
@@ -427,10 +433,6 @@ static DEVICE_ATTR(hw_enable, S_IWUSR | S_IRUGO, bmd101_show_hw_enable, bmd101_s
 static struct attribute *bmd101_attributes[] = {
 	&dev_attr_status.attr,			//atd interface
 	&dev_attr_bpm.attr,
-	&dev_attr_lsq.attr,
-	&dev_attr_ssq.attr,
-        &dev_attr_mood.attr,
-	&dev_attr_function.attr,
 	#ifndef ASUS_USER_BUILD
 	&dev_attr_esd.attr,				//esd interface
 	&dev_attr_hw_enable.attr,		//sensor hw enable/disable interface
@@ -525,52 +527,29 @@ static struct notifier_block display_mode_notifier = {
 static int bmd101_input_init(void)
 {
 	int ret = 0;
-	struct input_dev *bmd101_hr_dev = NULL;
-	struct input_dev *bmd101_mood_dev = NULL;
+	struct input_dev *bmd101_dev = NULL;
 
-	bmd101_hr_dev = input_allocate_device();
-	if (!bmd101_hr_dev) {
+	bmd101_dev = input_allocate_device();
+	if (!bmd101_dev) {
 		printk("[bmd101]: Failed to allocate input_data device\n");
 		return -ENOMEM;
 	}
 
-	bmd101_hr_dev->name = "ASUS ECG HR";
-	bmd101_hr_dev->id.bustype = BUS_HOST;
-	input_set_capability(bmd101_hr_dev, EV_ABS, ABS_MISC);
-	__set_bit(EV_ABS, bmd101_hr_dev->evbit);
-	__set_bit(ABS_MISC, bmd101_hr_dev->absbit);
-	input_set_abs_params(bmd101_hr_dev, ABS_MISC, 0, 1048576, 0, 0);
-	input_set_capability(bmd101_hr_dev, EV_MSC, MSC_SCAN);
-	__set_bit(MSC_SCAN, bmd101_hr_dev->mscbit);
-	input_set_drvdata(bmd101_hr_dev, sensor_data);
-	ret = input_register_device(bmd101_hr_dev);
+	bmd101_dev->name = "ASUS ECG";
+	bmd101_dev->id.bustype = BUS_HOST;
+	input_set_capability(bmd101_dev, EV_ABS, ABS_MISC);
+	__set_bit(EV_ABS, bmd101_dev->evbit);
+	__set_bit(ABS_MISC, bmd101_dev->absbit);
+	input_set_abs_params(bmd101_dev, ABS_MISC, 0, 1048576, 0, 0);
+	input_set_capability(bmd101_dev, EV_MSC, MSC_SCAN);
+	__set_bit(MSC_SCAN, bmd101_dev->mscbit);
+	input_set_drvdata(bmd101_dev, sensor_data);
+	ret = input_register_device(bmd101_dev);
 	if (ret < 0) {
-		input_free_device(bmd101_hr_dev);
+		input_free_device(bmd101_dev);
 		return ret;
 	}
-	sensor_data->hr_dev = bmd101_hr_dev;
-
-        bmd101_mood_dev = input_allocate_device();
-        if (!bmd101_mood_dev) {
-                printk("[bmd101]: Failed to allocate input_data device\n");
-                return -ENOMEM;
-        }
-
-        bmd101_mood_dev->name = "ASUS ECG MOOD";
-        bmd101_mood_dev->id.bustype = BUS_HOST;
-        input_set_capability(bmd101_mood_dev, EV_ABS, ABS_MISC);
-        __set_bit(EV_ABS, bmd101_mood_dev->evbit);
-        __set_bit(ABS_MISC, bmd101_mood_dev->absbit);
-        input_set_abs_params(bmd101_mood_dev, ABS_MISC, 0, 1048576, 0, 0);
-        input_set_capability(bmd101_mood_dev, EV_MSC, MSC_SCAN);
-        __set_bit(MSC_SCAN, bmd101_mood_dev->mscbit);
-        input_set_drvdata(bmd101_mood_dev, sensor_data);
-        ret = input_register_device(bmd101_mood_dev);
-        if (ret < 0) {
-                input_free_device(bmd101_mood_dev);
-                return ret;
-        }
-        sensor_data->mood_dev = bmd101_mood_dev;
+	sensor_data->input_dev = bmd101_dev;
 
 	return 0;
 }
@@ -589,11 +568,7 @@ static int bmd101_probe(struct platform_device *pdev)
 	}
 	sensor_data->esd = 0;
 	sensor_data->bpm = 0;
-	sensor_data->lsq = 0;
-	sensor_data->ssq = 0;
-	sensor_data->mood = 0;
 	sensor_data->accuracy = 0;
-	sensor_data->enabled_function = 0;
 	sensor_data->hw_enabled = 0;
 	sensor_data->wellness_on = 0;
 	sensor_data->timeout_delay = BMD101_timeout_delay_default;
