@@ -753,6 +753,8 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
+	mdss_dsi_get_pwr_mode(pdata, pwr_mode, DSI_MODE_BIT_LP);
+
 	mfd = pdata->mfd;
 	if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
 		pr_warn("%s: quickdraw requests full reinitialization\n",
@@ -760,8 +762,6 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 		panel_dead = 1;
 		*dropbox_issue = MDSS_DROPBOX_MSG_ESD_SENSORHUB_DROPBOX;
 	} else {
-		mdss_dsi_get_pwr_mode(pdata, pwr_mode, DSI_MODE_BIT_LP);
-
 		if (*pwr_mode == 0xFF) {
 			int gpio_val = gpio_get_value(ctrl->mipi_d0_sel);
 			pr_warn("%s: unable to read power state! [gpio: %d]\n",
