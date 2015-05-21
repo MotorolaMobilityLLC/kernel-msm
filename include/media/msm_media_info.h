@@ -231,8 +231,8 @@ invalid_input:
 static inline unsigned int VENUS_BUFFER_SIZE(
 	int color_fmt, int width, int height)
 {
-	unsigned int uv_alignment;
-	unsigned int size = 0;
+	const unsigned int extra_size = VENUS_EXTRADATA_SIZE(width, height);
+	unsigned int uv_alignment = 0, size = 0;
 	unsigned int y_plane, uv_plane, y_stride,
 		uv_stride, y_sclines, uv_sclines;
 	if (!width || !height)
@@ -248,15 +248,15 @@ static inline unsigned int VENUS_BUFFER_SIZE(
 		uv_alignment = 4096;
 		y_plane = y_stride * y_sclines;
 		uv_plane = uv_stride * uv_sclines + uv_alignment;
-		size = y_plane + uv_plane;
+		size = y_plane + uv_plane + extra_size;
 		size = MSM_MEDIA_ALIGN(size, 4096);
 		break;
 	case COLOR_FMT_NV12_MVTB:
 		uv_alignment = 4096;
 		y_plane = y_stride * y_sclines;
-		uv_plane = uv_stride * uv_sclines;
+		uv_plane = uv_stride * uv_sclines + uv_alignment;
 		size = y_plane + uv_plane;
-		size = 2 * size + uv_alignment;
+		size = 2 * size + extra_size;
 		size = MSM_MEDIA_ALIGN(size, 4096);
 		break;
 	default:
