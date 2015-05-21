@@ -64,6 +64,7 @@ unsigned short stml0xx_g_acc2_delay;
 unsigned short stml0xx_g_mag_delay;
 unsigned short stml0xx_g_gyro_delay;
 unsigned short stml0xx_g_baro_delay;
+unsigned short stml0xx_g_als_delay;
 unsigned long stml0xx_g_nonwake_sensor_state;
 unsigned long stml0xx_g_wake_sensor_state;
 unsigned short stml0xx_g_algo_state;
@@ -84,16 +85,16 @@ unsigned char *stml0xx_boot_readbuff;
 
 /* per algo config, request, and event registers */
 const struct stml0xx_algo_info_t stml0xx_algo_info[STML0XX_NUM_ALGOS] = {
-	{M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
+	{M_ALGO_MODALITY, 0, ALGO_REQ_MODALITY,
 	 ALGO_EVT_MODALITY, STML0XX_EVT_SZ_TRANSITION},
-	{M_ALGO_ORIENTATION, ALGO_CFG_ORIENTATION, ALGO_REQ_ORIENTATION,
+	{M_ALGO_ORIENTATION, 0, ALGO_REQ_ORIENTATION,
 	 ALGO_EVT_ORIENTATION, STML0XX_EVT_SZ_TRANSITION},
-	{M_ALGO_STOWED, ALGO_CFG_STOWED, ALGO_REQ_STOWED,
+	{M_ALGO_STOWED, 0, ALGO_REQ_STOWED,
 	 ALGO_EVT_STOWED, STML0XX_EVT_SZ_TRANSITION},
 	{M_ALGO_ACCUM_MODALITY, ALGO_CFG_ACCUM_MODALITY,
 	 ALGO_REQ_ACCUM_MODALITY, ALGO_EVT_ACCUM_MODALITY,
 	 STML0XX_EVT_SZ_ACCUM_STATE},
-	{M_ALGO_ACCUM_MVMT, ALGO_CFG_ACCUM_MVMT, ALGO_REQ_ACCUM_MVMT,
+	{M_ALGO_ACCUM_MVMT, 0, ALGO_REQ_ACCUM_MVMT,
 	 ALGO_EVT_ACCUM_MVMT, STML0XX_EVT_SZ_ACCUM_MVMT}
 };
 
