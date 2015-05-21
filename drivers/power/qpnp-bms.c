@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -136,7 +136,9 @@ struct fcc_sample {
 struct bms_irq {
 	int		irq;
 	unsigned long	disabled;
+	unsigned long	wake_enabled;
 	bool		ready;
+	bool		is_wake;
 };
 
 struct bms_wakeup_source {
@@ -417,8 +419,11 @@ static void bms_relax(struct bms_wakeup_source *source)
 static void enable_bms_irq(struct bms_irq *irq)
 {
 	if (irq->ready && __test_and_clear_bit(0, &irq->disabled)) {
-		disable_irq(irq->irq); //ASUS_BSP +
+		enable_irq(irq->irq);
 		pr_debug("enabled irq %d\n", irq->irq);
+		if ((irq->is_wake) &&
+				!__test_and_set_bit(0, &irq->wake_enabled))
+			enable_irq_wake(irq->irq);
 	}
 }
 
@@ -427,6 +432,9 @@ static void disable_bms_irq(struct bms_irq *irq)
 	if (irq->ready && !__test_and_set_bit(0, &irq->disabled)) {
 		disable_irq(irq->irq);
 		pr_debug("disabled irq %d\n", irq->irq);
+		if ((irq->is_wake) &&
+				__test_and_clear_bit(0, &irq->wake_enabled))
+			disable_irq_wake(irq->irq);
 	}
 }
 
@@ -435,6 +443,9 @@ static void disable_bms_irq_nosync(struct bms_irq *irq)
 	if (irq->ready && !__test_and_set_bit(0, &irq->disabled)) {
 		disable_irq_nosync(irq->irq);
 		pr_debug("disabled irq %d\n", irq->irq);
+		if ((irq->is_wake) &&
+				__test_and_clear_bit(0, &irq->wake_enabled))
+			disable_irq_wake(irq->irq);
 	}
 }
 
@@ -449,6 +460,11 @@ static int lock_output_data(struct qpnp_bms_chip *chip)
 		pr_err("couldnt lock bms output rc = %d\n", rc);
 		return rc;
 	}
+	/*
+	 * Sleep for at least 60 microseconds here to make sure there has
+	 * been at least two cycles of the sleep clock so that the registers
+	 * are correctly locked.+	 */
+	usleep_range(60, 2000);
 	return 0;
 }
 
@@ -1099,7 +1115,7 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 	}
 
 	rc = read_cc_raw(chip, &raw->cc, CC);
-	rc = read_cc_raw(chip, &raw->shdw_cc, SHDW_CC);
+	rc |= read_cc_raw(chip, &raw->shdw_cc, SHDW_CC);
 	if (rc) {
 		pr_err("Failed to read raw cc data, rc = %d\n", rc);
 		goto param_err;
@@ -2605,7 +2621,12 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 			batt_temp = (int)result.physical;
 
 			mutex_lock(&chip->last_ocv_uv_mutex);
-			read_soc_params_raw(chip, &raw, batt_temp);
+			rc = read_soc_params_raw(chip, &raw, batt_temp);
+			if (rc) {
+				pr_err("Unable to read params, rc: %d\n", rc);
+				soc = 0;
+				goto done;
+			}
 			calculate_soc_params(chip, &raw, &params, batt_temp);
 			if (!is_battery_present(chip)) {
 				pr_debug("battery gone\n");
@@ -2619,6 +2640,7 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 				soc = calculate_raw_soc(chip, &raw,
 							&params, batt_temp);
 			}
+done:
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
@@ -2657,8 +2679,14 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 			batt_temp = (int)result.physical;
 
 			mutex_lock(&chip->last_ocv_uv_mutex);
-			read_soc_params_raw(chip, &raw, batt_temp);
-			soc = calculate_state_of_charge(chip, &raw, batt_temp);
+			rc = read_soc_params_raw(chip, &raw, batt_temp);
+			if (rc) {
+				pr_err("Unable to read params, rc: %d\n", rc);
+				soc = chip->calculated_soc;
+			} else {
+				soc = calculate_state_of_charge(chip,
+						&raw, batt_temp);
+			}
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
@@ -3980,11 +4008,11 @@ static int bms_request_irqs(struct qpnp_bms_chip *chip)
 	int rc;
 
 	SPMI_REQUEST_IRQ(chip, rc, sw_cc_thr);
+	chip->sw_cc_thr_irq.is_wake = true;
 	disable_bms_irq(&chip->sw_cc_thr_irq);
-	//enable_irq_wake(chip->sw_cc_thr_irq.irq); //ASUS_BSP +
 	SPMI_REQUEST_IRQ(chip, rc, ocv_thr);
+	chip->ocv_thr_irq.is_wake = true;
 	disable_bms_irq(&chip->ocv_thr_irq);
-	//enable_irq_wake(chip->ocv_thr_irq.irq); //ASUS_BSP +
 	return 0;
 }
 
@@ -4696,7 +4724,6 @@ static int bms_suspend(struct device *dev)
 
 static int bms_resume(struct device *dev)
 {
-#if 0
 	int rc;
 	int soc_calc_period;
 	int time_until_next_recalc = 0;
@@ -4721,7 +4748,6 @@ static int bms_resume(struct device *dev)
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
 		round_jiffies_relative(msecs_to_jiffies
 		(time_until_next_recalc)));
-#endif
 	return 0;
 }
 
