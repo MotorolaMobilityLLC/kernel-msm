@@ -169,15 +169,18 @@ void ecryptfs_put_lower_file(struct inode *inode)
 	}
 }
 
-enum { ecryptfs_opt_sig, ecryptfs_opt_ecryptfs_sig,
-       ecryptfs_opt_cipher, ecryptfs_opt_ecryptfs_cipher,
-       ecryptfs_opt_ecryptfs_key_bytes,
-       ecryptfs_opt_passthrough, ecryptfs_opt_xattr_metadata,
-       ecryptfs_opt_encrypted_view, ecryptfs_opt_fnek_sig,
-       ecryptfs_opt_fn_cipher, ecryptfs_opt_fn_cipher_key_bytes,
-       ecryptfs_opt_unlink_sigs, ecryptfs_opt_mount_auth_tok_only,
-       ecryptfs_opt_check_dev_ruid,
-       ecryptfs_opt_err };
+enum {
+	ecryptfs_opt_sig, ecryptfs_opt_ecryptfs_sig,
+	ecryptfs_opt_cipher, ecryptfs_opt_ecryptfs_cipher,
+	ecryptfs_opt_ecryptfs_key_bytes,
+	ecryptfs_opt_passthrough, ecryptfs_opt_xattr_metadata,
+	ecryptfs_opt_encrypted_view, ecryptfs_opt_fnek_sig,
+	ecryptfs_opt_fn_cipher, ecryptfs_opt_fn_cipher_key_bytes,
+	ecryptfs_opt_unlink_sigs, ecryptfs_opt_mount_auth_tok_only,
+	ecryptfs_opt_check_dev_ruid,
+	ecryptfs_opt_no_new_encrypted,
+	ecryptfs_opt_err
+};
 
 static const match_table_t tokens = {
 	{ecryptfs_opt_sig, "sig=%s"},
@@ -194,6 +197,7 @@ static const match_table_t tokens = {
 	{ecryptfs_opt_unlink_sigs, "ecryptfs_unlink_sigs"},
 	{ecryptfs_opt_mount_auth_tok_only, "ecryptfs_mount_auth_tok_only"},
 	{ecryptfs_opt_check_dev_ruid, "ecryptfs_check_dev_ruid"},
+	{ecryptfs_opt_no_new_encrypted, "no_new_encrypted"},
 	{ecryptfs_opt_err, NULL}
 };
 
@@ -388,6 +392,9 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 			mount_crypt_stat->flags |=
 				ECRYPTFS_GLOBAL_MOUNT_AUTH_TOK_ONLY;
 			break;
+		case ecryptfs_opt_no_new_encrypted:
+		    mount_crypt_stat->flags |= ECRYPTFS_NO_NEW_ENCRYPTED;
+		    break;
 		case ecryptfs_opt_check_dev_ruid:
 			*check_ruid = 1;
 			break;
