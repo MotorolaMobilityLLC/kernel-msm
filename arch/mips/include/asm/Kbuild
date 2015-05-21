@@ -1,2 +1,0 @@
-# MIPS headers
-generic-y += trace_clock.h

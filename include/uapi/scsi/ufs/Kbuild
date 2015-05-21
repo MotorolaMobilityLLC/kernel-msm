@@ -1,3 +1,0 @@
-# UAPI Header export list
-header-y += ioctl.h
-header-y += ufs.h
