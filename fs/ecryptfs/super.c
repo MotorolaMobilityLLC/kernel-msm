@@ -179,6 +179,8 @@ static int ecryptfs_show_options(struct seq_file *m, struct dentry *root)
 		seq_printf(m, ",ecryptfs_unlink_sigs");
 	if (mount_crypt_stat->flags & ECRYPTFS_GLOBAL_MOUNT_AUTH_TOK_ONLY)
 		seq_printf(m, ",ecryptfs_mount_auth_tok_only");
+	if (mount_crypt_stat->flags & ECRYPTFS_NO_NEW_ENCRYPTED)
+		seq_printf(m, ",no_new_encrypted");
 
 	return 0;
 }
