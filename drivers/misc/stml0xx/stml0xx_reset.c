@@ -121,6 +121,13 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 
 	stml0xx_spi_retry_delay = 10;
 
+	buf[0] = stml0xx_g_als_delay >> 8;
+	buf[1] = stml0xx_g_als_delay & 0xFF;
+	err = stml0xx_spi_send_write_reg_reset(ALS_UPDATE_RATE, buf,
+			2, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
 	buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
 	buf[1] = (stml0xx_g_nonwake_sensor_state >> 8) & 0xFF;
 	buf[2] = stml0xx_g_nonwake_sensor_state >> 16;
