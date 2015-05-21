@@ -100,6 +100,7 @@
 			qcom,cool-bat-decidegc = <100>;
 			qcom,cool-bat-mv = <4350>;
 			qcom,ibatmax-cool-ma = <100>;
+			qcom,use-external-rsense = <1>;
 
 			qcom,chgr@1000 {
 				status = "disabled";
@@ -219,6 +220,7 @@
 			qcom,bms-vadc = <&pm8226_vadc>;
 			qcom,bms-iadc = <&pm8226_iadc>;
 			qcom,bms-adc_tm = <&pm8226_adc_tm>;
+			qcom,use-external-rsense = <1>;
 
 			qcom,batt-pres-status@1208 {
 				reg = <0x1208 0x1>;
