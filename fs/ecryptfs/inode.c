@@ -220,10 +220,18 @@ int ecryptfs_initialize_file(struct dentry *ecryptfs_dentry,
 {
 	struct ecryptfs_crypt_stat *crypt_stat =
 		&ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;
+	struct ecryptfs_mount_crypt_stat *mount_crypt_stat =
+		&ecryptfs_superblock_to_private(
+			ecryptfs_dentry->d_sb)->mount_crypt_stat;
 	int rc = 0;
 
 	if (S_ISDIR(ecryptfs_inode->i_mode)) {
 		ecryptfs_printk(KERN_DEBUG, "This is a directory\n");
+		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
+		goto out;
+	}
+	if (mount_crypt_stat && (mount_crypt_stat->flags
+			& ECRYPTFS_NO_NEW_ENCRYPTED)) {
 		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
 		goto out;
 	}
