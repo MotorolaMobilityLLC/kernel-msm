@@ -85,6 +85,7 @@ struct tfa9890_priv {
 	int is_spkr_prot_disabled;
 	int update_eq;
 	int update_cfg;
+	int is_pcm_triggered;
 	int pcm_start_delay;
 };
 
@@ -807,6 +808,7 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 		int on)
 {
 	if (on) {
+		tfa9890->is_pcm_triggered = 1;
 		/* if in bypass mode dont't do anything */
 		if (tfa9890->is_spkr_prot_disabled)
 			return;
@@ -836,6 +838,8 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 				&tfa9890->calib_work,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
 			}
+	} else {
+		tfa9890->is_pcm_triggered = 0;
 	}
 }
 
@@ -891,8 +895,15 @@ static int tfa9890_put_ch_sel(struct snd_kcontrol *kcontrol,
 				tfa9890_set_config_left(tfa9890);
 			else
 				tfa9890_set_config_right(tfa9890);
-		} else
+		} else {
 			tfa9890->update_cfg = 1;
+			/* if pcm is already triggered,
+			schedule cfg update work */
+			if (tfa9890->is_pcm_triggered)
+				queue_delayed_work(tfa9890->tfa9890_wq,
+					&tfa9890->mode_work,
+					msecs_to_jiffies(tfa9890->pcm_start_delay));
+		}
 
 		val = snd_soc_read(codec, TFA9890_I2S_CTL_REG);
 		val = val & (~TFA9890_I2S_CHS12);
