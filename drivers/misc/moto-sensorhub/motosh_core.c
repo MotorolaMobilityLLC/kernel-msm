@@ -70,6 +70,7 @@ uint8_t motosh_g_rv_9axis_delay = 40;
 uint8_t motosh_g_gravity_delay = 40;
 uint8_t motosh_g_linear_accel_delay = 40;
 unsigned short motosh_g_baro_delay;
+unsigned short motosh_g_als_delay;
 unsigned short motosh_g_step_counter_delay;
 unsigned short motosh_g_ir_gesture_delay;
 unsigned short motosh_g_ir_raw_delay;
@@ -102,16 +103,16 @@ struct motosh_algo_requst_t motosh_g_algo_requst[MOTOSH_NUM_ALGOS];
 
 /* per algo config, request, and event registers */
 const struct motosh_algo_info_t motosh_algo_info[MOTOSH_NUM_ALGOS] = {
-	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
+	{ M_ALGO_MODALITY, 0, ALGO_REQ_MODALITY,
 	  ALGO_EVT_MODALITY, MOTOSH_EVT_SZ_TRANSITION },
-	{ M_ALGO_ORIENTATION, ALGO_CFG_ORIENTATION, ALGO_REQ_ORIENTATION,
+	{ M_ALGO_ORIENTATION, 0, ALGO_REQ_ORIENTATION,
 	  ALGO_EVT_ORIENTATION, MOTOSH_EVT_SZ_TRANSITION },
-	{ M_ALGO_STOWED, ALGO_CFG_STOWED, ALGO_REQ_STOWED,
+	{ M_ALGO_STOWED, 0, ALGO_REQ_STOWED,
 	  ALGO_EVT_STOWED, MOTOSH_EVT_SZ_TRANSITION },
 	{ M_ALGO_ACCUM_MODALITY, ALGO_CFG_ACCUM_MODALITY,
 	   ALGO_REQ_ACCUM_MODALITY, ALGO_EVT_ACCUM_MODALITY,
 	   MOTOSH_EVT_SZ_ACCUM_STATE },
-	{ M_ALGO_ACCUM_MVMT, ALGO_CFG_ACCUM_MVMT, ALGO_REQ_ACCUM_MVMT,
+	{ M_ALGO_ACCUM_MVMT, 0, ALGO_REQ_ACCUM_MVMT,
 	  ALGO_EVT_ACCUM_MVMT, MOTOSH_EVT_SZ_ACCUM_MVMT }
 };
 
