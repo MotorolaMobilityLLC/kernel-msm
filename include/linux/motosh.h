@@ -157,10 +157,7 @@
 
 #define STOWED                          0x6D
 
-#define ALGO_CFG_MODALITY               0x6E
-#define ALGO_CFG_ORIENTATION            0x6F
-#define ALGO_CFG_STOWED                 0x70
-#define ALGO_CFG_ACCUM_MVMT             0x71
+#define ALS_UPDATE_RATE                 0x6F
 
 #define ALGO_REQ_MODALITY               0x72
 #define ALGO_REQ_ORIENTATION            0x73
@@ -621,6 +618,7 @@ extern uint8_t motosh_g_rv_9axis_delay;
 extern uint8_t motosh_g_gravity_delay;
 extern uint8_t motosh_g_linear_accel_delay;
 extern unsigned short motosh_g_baro_delay;
+extern unsigned short motosh_g_als_delay;
 extern unsigned short motosh_g_ir_gesture_delay;
 extern unsigned short motosh_g_ir_raw_delay;
 extern unsigned short motosh_g_step_counter_delay;
