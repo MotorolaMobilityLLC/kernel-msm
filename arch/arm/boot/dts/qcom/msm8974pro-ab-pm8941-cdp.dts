@@ -1,0 +1,32 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8974pro-ab-pm8941.dtsi"
+#include "msm8974-cdp.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8974Pro-AA/AB CDP";
+	compatible = "qcom,msm8974-cdp", "qcom,msm8974", "qcom,cdp";
+	qcom,board-id = <1 0>;
+};
+
+&sdhc_1 {
+	pinctrl-0 = <&sdc1_clk_on_16 &sdc1_cmd_on &sdc1_data_on &sdc1_rclk_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
+};
+
+&ehci {
+	hsusb_vdd_dig-supply = <&pm8841_s2_corner>;
+	qcom,vdd-voltage-level = <1 2 3 5 7>;
+};

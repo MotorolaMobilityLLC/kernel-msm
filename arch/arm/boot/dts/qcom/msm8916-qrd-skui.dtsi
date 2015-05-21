@@ -1,0 +1,229 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8916-qrd.dtsi"
+#include "dsi-panel-otm8019a-fwvga-video.dtsi"
+
+&soc {
+	i2c@78b9000 { /* BLSP1 QUP5 */
+		focaltech@38 {
+			compatible = "focaltech,5x06";
+			reg = <0x38>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <13 0x2008>;
+			vdd-supply = <&pm8916_l17>;
+			vcc_i2c-supply = <&pm8916_l6>;
+			/* pins used by touchscreen */
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			focaltech,name = "ft6436";
+			focaltech,family-id = <0x36>;
+			focaltech,reset-gpio = <&msm_gpio 12 0x0>;
+			focaltech,irq-gpio = <&msm_gpio 13 0x2008>;
+			focaltech,display-coords = <0 0 480 854>;
+			focaltech,panel-coords = <0 0 480 950>;
+			focaltech,button-map= <139 102 158>;
+			focaltech,no-force-update;
+			focaltech,i2c-pull-up;
+			focaltech,group-id = <1>;
+			focaltech,hard-reset-delay-ms = <20>;
+			focaltech,soft-reset-delay-ms = <200>;
+			focaltech,num-max-touches = <5>;
+			focaltech,fw-delay-aa-ms = <30>;
+			focaltech,fw-delay-55-ms = <30>;
+			focaltech,fw-upgrade-id1 = <0x79>;
+			focaltech,fw-upgrade-id2 = <0x18>;
+			focaltech,fw-delay-readid-ms = <10>;
+			focaltech,fw-delay-era-flsh-ms = <2000>;
+			focaltech,fw-auto-cal;
+			focaltech,ignore-id-check;
+		};
+	};
+
+	gen-vkeys {
+		compatible = "qcom,gen-vkeys";
+		label = "ft5x06_ts";
+		qcom,disp-maxx = <480>;
+		qcom,disp-maxy = <854>;
+		qcom,panel-maxx = <480>;
+		qcom,panel-maxy = <946>;
+		qcom,key-codes = <139 172 158>;
+		qcom,y-offset = <0>;
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&button_backlight_off>;
+
+		keypad-backlight {
+			gpios = <&msm_gpio 119 0>;
+			label = "button-backlight";
+			linux,default-trigger = "none";
+		};
+	};
+
+	sound {
+		compatible = "qcom,msm8x16-audio-codec";
+		qcom,model = "msm8x16-skui-snd-card";
+		qcom,msm-snd-card-id = <0>;
+		qcom,msm-ext-pa = "primary";
+		qcom,msm-codec-type = "internal";
+		qcom,msm-mbhc-hphl-swh = <1>;
+		qcom,msm-mbhc-gnd-swh = <0>;
+		qcom,msm-hs-micbias-type = "internal";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"SPK_RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS Internal1", "Handset Mic",
+			"MIC BIAS Internal2", "Headset Mic",
+			"MIC BIAS Internal1", "Secondary Mic",
+			"AMIC1", "MIC BIAS Internal1",
+			"AMIC2", "MIC BIAS Internal2",
+			"AMIC3", "MIC BIAS Internal1";
+		pinctrl-names = "cdc_lines_act",
+				"cdc_lines_sus";
+		pinctrl-0 = <&cdc_pdm_lines_act>;
+		pinctrl-1 = <&cdc_pdm_lines_sus>;
+	};
+};
+
+&pm8916_mpps {
+	mpp@a300 { /* MPP 4 */
+		/* Backlight PWM */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,invert = <0>;		/* Disable invert */
+		qcom,src-sel = <4>;		/* DTEST1 */
+		qcom,vin-sel = <0>;		/* VPH_PWR */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&pmx_mdss {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 25>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_otm8019a_fwvga_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
+
+	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
+};
+
+&dsi_otm8019a_fwvga_video {
+       qcom,cont-splash-enabled;
+};
+
+&tlmm_pinmux {
+	bma2x2_int1_pin {
+		qcom,pins = <&gp 112>;
+		qcom,num-grp-pins = <1>;
+		label = "bma2x2_int1_pin";
+		bma2x2_int1_default: int1_default {
+			  drive-strength = <6>;
+			  bias-pull-up;
+		};
+	};
+
+	bma2x2_int2_pin {
+		qcom,pins = <&gp 114>;
+		qcom,num-grp-pins = <1>;
+		label = "bma2x2_int2_pin";
+		bma2x2_int2_default: int2_default {
+			  drive-strength = <6>;
+			  bias-pull-up;
+		};
+	};
+};
+
+&i2c_0 { /* BLSP1 QUP2 */
+	avago@39 { /* Ambient light and proximity sensor */
+		compatible = "avago,apds9930";
+		reg = <0x39>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&apds99xx_default>;
+		pinctrl-1 = <&apds99xx_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <113 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		avago,irq-gpio = <&msm_gpio 113 0x2002>;
+		avago,ps-threshold = <600>;
+		avago,ps-hysteresis-threshold = <500>;
+		avago,ps-pulse = <8>;
+		avago,ps-pgain = <0>;
+		avago,als-B = <223>;
+		avago,als-C = <70>;
+		avago,als-D = <142>;
+		avago,ga-value = <48>;
+	};
+
+	bosch@18 { /* Accelerometer sensor */
+		compatible = "bosch,bma2x2";
+		reg = <0x18>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&bma2x2_int1_default &bma2x2_int2_default>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <112 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		bosch,init-interval = <200>;
+		bosch,place = <2>;
+		bosch,gpio-int1 = <&msm_gpio 112 0x2002>;
+		bosch,gpio-int2 = <&msm_gpio 114 0x2002>;
+	};
+
+	memsic@30 { /* Magnetic field sensor */
+		compatible = "memsic,mmc3416x";
+		reg = <0x30>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		memsic,dir = "obverse-x-axis-forward";
+		memsic,auto-report;
+	};
+
+	mpu6050@68 {
+		compatible = "invn,mpu6050";
+		reg = <0x68>;
+		pinctrl-names = "mpu_default","mpu_sleep";
+		pinctrl-0 = <&mpu6050_default>;
+		pinctrl-1 = <&mpu6050_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <115 0x2>;
+		vdd-supply = <&pm8916_l17>;
+		vlogic-supply = <&pm8916_l16>;
+		vi2c-supply = <&pm8916_l6>;
+		invn,gpio-int = <&msm_gpio 115 0x2>;
+		invn,place = "Portrait Up Back Side";
+	};
+};
+
+&sdhc_2 {
+	qcom,nonremovable;
+
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 221 0>;
+	interrupt-names = "hc_irq", "pwr_irq";
+	/delete-property/ cd-gpios;
+};
+

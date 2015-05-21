@@ -1,0 +1,127 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * As a general rule, only version-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8226.dtsi file.
+ */
+
+#include "msm8226.dtsi"
+#include "msm8226-v1-pm.dtsi"
+
+/ {
+	qcom,msm-id = <145 0>,
+		      <158 0>,
+		      <159 0>,
+		      <198 0>,
+		      <205 0>,
+		      <220 0>,
+		      <221 0>,
+		      <222 0>,
+		      <223 0>;
+};
+
+&tsens {
+	qcom,sensors = <4>;
+	qcom,slope = <2901 2846 3038 2955>;
+};
+
+&gdsc_venus {
+	qcom,skip-logic-collapse;
+	qcom,retain-periph;
+	qcom,retain-mem;
+};
+
+&gdsc_mdss {
+	qcom,skip-logic-collapse;
+	qcom,retain-periph;
+	qcom,retain-mem;
+};
+
+&gdsc_jpeg {
+	qcom,skip-logic-collapse;
+	qcom,retain-periph;
+	qcom,retain-mem;
+};
+
+&gdsc_vfe {
+	qcom,skip-logic-collapse;
+	qcom,retain-periph;
+	qcom,retain-mem;
+};
+
+&gdsc_oxili_cx {
+	qcom,skip-logic-collapse;
+	qcom,retain-periph;
+	qcom,retain-mem;
+};
+
+&pm8226_s2 {
+	regulator-max-microvolt = <1275000>;
+};
+
+&pm8226_l3 {
+	regulator-max-microvolt = <1287500>;
+};
+
+&pm8226_l3_ao {
+	regulator-max-microvolt = <1287500>;
+};
+
+&pm8226_l3_so {
+	regulator-max-microvolt = <1287500>;
+};
+
+&apc_vreg_corner {
+	regulator-min-microvolt = <1>;
+	regulator-max-microvolt = <3>;
+	qcom,pvs-voltage-table =
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1140000 1260000>,
+		<1050000 1125000 1245000>,
+		<1050000 1110000 1230000>,
+		<1050000 1095000 1215000>,
+		<1050000 1080000 1200000>,
+		<1050000 1065000 1185000>,
+		<1050000 1050000 1170000>,
+		<1050000 1050000 1155000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1050000 1140000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>,
+		<1050000 1150000 1275000>;
+	qcom,cpr-voltage-ceiling = <1050000 1150000 1275000>;
+	qcom,cpr-voltage-floor = <1050000 1050000 1100000>;
+	qcom,cpr-step-quotient = <15>;
+	qcom,cpr-apc-volt-step = <5000>;
+	qcom,cpr-up-threshold = <0>;
+	qcom,cpr-down-threshold = <10>;
+};

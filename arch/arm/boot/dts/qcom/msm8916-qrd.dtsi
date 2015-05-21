@@ -1,0 +1,244 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8916.dtsi"
+#include "msm8916-pinctrl.dtsi"
+
+/ {
+	aliases {
+		serial0 = &blsp1_uart2;
+	};
+};
+
+&soc {
+	i2c@78b9000 { /* BLSP1 QUP5 */
+		synaptics@70 {
+			compatible = "synaptics,rmi4";
+			reg = <0x70>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <13 0x2008>;
+			vdd-supply = <&vdd_vreg>;
+			vcc_i2c-supply = <&pm8916_l16>;
+			/* pins used by touchscreen */
+			pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
+			pinctrl-0 = <&ts_int_active &ts_reset_active>;
+			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+			synaptics,display-coords = <0 0 1100 1756>;
+			synaptics,panel-coords = <0 0 1100 1899>;
+			synaptics,irq-gpio = <&msm_gpio 13 0x2008>;
+			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
+			synaptics,i2c-pull-up;
+			synaptics,power-down;
+			synaptics,disable-gpios;
+			synaptics,fw-image-name = "PR1601177-s3207_8916_qrd_00430000.img";
+		};
+	};
+
+	vdd_vreg: vdd_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "vdd_vreg";
+	};
+
+	gen-vkeys {
+		compatible = "qcom,gen-vkeys";
+		label = "synaptics_rmi4_i2c";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <720>;
+		qcom,panel-maxy = <1369>;
+		qcom,key-codes = <158 172 139>;
+	};
+
+	i2c@78ba000 { /* BLSP1 QUP6 */
+		nfc-nci@e {
+			compatible = "qcom,nfc-nci";
+			reg = <0x0e>;
+			qcom,irq-gpio = <&msm_gpio 21 0x00>;
+			qcom,dis-gpio = <&msm_gpio 20 0x00>;
+			qcom,clk-src = "BBCLK2";
+			qcom,clk-en-gpio = <&msm_gpio 0 0x00>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <21 0>;
+			interrupt-names = "nfc_irq";
+			pinctrl-names = "nfc_active","nfc_suspend";
+			pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
+			pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
+			qcom,clk-gpio = <&pm8916_gpios 2 0>;
+			clocks = <&clock_rpm clk_bb_clk2_pin>;
+			clock-names = "ref_clk";
+		};
+	};
+
+
+};
+
+&android_usb {
+	qcom,android-usb-cdrom;
+};
+
+&blsp1_uart2 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_sleep>;
+};
+
+&mdss_dsi0 {
+	qcom,regulator-ldo-mode;
+	qcom,platform-regulator-settings = [02 09 03 00 20 00 01];
+};
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&msm_gpio 107 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+&pm8916_gpios {
+	gpio@c000 { /* GPIO 1 */
+		/* Battery UICC Alarm */
+		status = "disabled";
+	};
+
+	gpio@c100 { /* GPIO 2 */
+		/* NFC_CLK_REQ */
+		qcom,mode = <0>; /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>; /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>; /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c200 { /* GPIO 3 */
+		/* External regulator control for WTR */
+		status = "disabled";
+	};
+
+	gpio@c300 { /* GPIO 4 */
+		/* External regulator control for APC */
+		status = "disabled";
+	};
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8916_l8>;
+	qcom,vdd-voltage-level = <2900000 2900000>;
+	qcom,vdd-current-level = <200 400000>;
+
+	vdd-io-supply = <&pm8916_l5>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-lpm-sup;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <200 60000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off>;
+
+	qcom,nonremovable;
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&pm8916_l11>;
+	qcom,vdd-voltage-level = <2800000 2950000>;
+	qcom,vdd-current-level = <15000 400000>;
+
+	vdd-io-supply = <&pm8916_l12>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <200 50000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+
+	#address-cells = <0>;
+	interrupt-parent = <&sdhc_2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0
+			2 &msm_gpio 38 0>;
+	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&msm_gpio 38 0x0>;
+
+	status = "ok";
+};
+
+&spmi_bus {
+	qcom,pm8916@1 {
+		qcom,vibrator@c000 {
+			status = "okay";
+			qcom,vib-timeout-ms = <15000>;
+			qcom,vib-vtg-level-mV = <3100>;
+		};
+	};
+};
+
+&qcom_tzlog {
+	status = "okay";
+};
+
+&qcom_rng {
+	status = "okay";
+};
+
+&qcom_crypto {
+	status = "okay";
+};
+
+&qcom_cedev {
+	status = "okay";
+};
+
+&qcom_seecom {
+	status = "okay";
+};
+
+/* CoreSight */
+&tpiu {
+      pinctrl-names = "sdcard", "trace", "swduart",
+		      "swdtrc", "jtag", "spmi";
+       /* NIDnT */
+      pinctrl-0 = <&qdsd_clk_sdcard &qdsd_cmd_sdcard
+                  &qdsd_data0_sdcard &qdsd_data1_sdcard
+                  &qdsd_data2_sdcard &qdsd_data3_sdcard>;
+      pinctrl-1 = <&qdsd_clk_trace &qdsd_cmd_trace
+                  &qdsd_data0_trace &qdsd_data1_trace
+                  &qdsd_data2_trace &qdsd_data3_trace>;
+      pinctrl-2 = <&qdsd_cmd_swduart &qdsd_data0_swduart
+                  &qdsd_data1_swduart &qdsd_data2_swduart
+                  &qdsd_data3_swduart>;
+      pinctrl-3 = <&qdsd_clk_swdtrc &qdsd_cmd_swdtrc
+                  &qdsd_data0_swdtrc &qdsd_data1_swdtrc
+                  &qdsd_data2_swdtrc &qdsd_data3_swdtrc>;
+      pinctrl-4 = <&qdsd_cmd_jtag &qdsd_data0_jtag
+                  &qdsd_data1_jtag &qdsd_data2_jtag
+                  &qdsd_data3_jtag>;
+      pinctrl-5 = <&qdsd_clk_spmi &qdsd_cmd_spmi
+                  &qdsd_data0_spmi &qdsd_data3_spmi>;
+};

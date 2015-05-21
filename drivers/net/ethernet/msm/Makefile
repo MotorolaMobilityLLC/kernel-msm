@@ -1,0 +1,9 @@
+#
+# Makefile for the msm networking support.
+#
+
+obj-$(CONFIG_MSM_EMAC) += emac/
+obj-$(CONFIG_MSM_RMNET_BAM) += msm_rmnet_bam.o
+obj-$(CONFIG_MSM_RMNET_SMUX) += msm_rmnet_smux.o
+obj-$(CONFIG_ECM_IPA) += ecm_ipa.o
+obj-$(CONFIG_RNDIS_IPA) += rndis_ipa.o
