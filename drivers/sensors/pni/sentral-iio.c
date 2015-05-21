@@ -2100,7 +2100,6 @@ static void sentral_iio_buffer_destroy(struct iio_dev *indio_dev)
 	.type = IIO_ACCEL,\
 	.indexed = 1,\
 	.channel = i,\
-	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),\
 	.scan_index = i,\
 	.scan_type = IIO_ST('u', 32, 32, 0),\
 }
