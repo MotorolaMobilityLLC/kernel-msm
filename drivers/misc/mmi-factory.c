@@ -295,7 +295,7 @@ static int mmi_factory_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	struct mmi_factory_info *info;
 	int ret;
-	int i;
+	int i, warn_line;
 
 	match = of_match_device(mmi_factory_of_tbl, &pdev->dev);
 	if (!match) {
@@ -347,6 +347,21 @@ static int mmi_factory_probe(struct platform_device *pdev)
 	} else {
 		dev_err(&pdev->dev, "failed to find device match\n");
 		goto fail;
+	}
+
+	/* Toggle factory kill disable line */
+	warn_line = gpio_get_value(info->list[KP_WARN_INDEX].gpio);
+
+	if (!warn_line && !info->factory_cable) {
+		gpio_direction_output(info->list[KP_KILL_INDEX].gpio, 1);
+		udelay(50);
+		gpio_direction_output(info->list[KP_KILL_INDEX].gpio, 0);
+		udelay(50);
+		gpio_direction_output(info->list[KP_KILL_INDEX].gpio, 1);
+		udelay(50);
+		gpio_direction_output(info->list[KP_KILL_INDEX].gpio, 0);
+		udelay(50);
+		gpio_direction_output(info->list[KP_KILL_INDEX].gpio, 1);
 	}
 
 	if ((info->dev == KUNGPOW) && (info->num_gpios == KP_NUM_GPIOS)) {
