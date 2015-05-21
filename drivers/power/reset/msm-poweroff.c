@@ -216,12 +216,15 @@ static void msm_restart_prepare(const char *cmd)
 
 	if(g_recovery_mode) {
 		printk("%s, Recovery Mode Reboot!\n", __func__);
+		ASUSEvtlog("[PM]%s, Recovery Mode Reboot!\n", __func__);
 		/* Hard reset the PMIC unless memory contents must be maintained. */
 		if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0')) {
 			printk("%s, PON_POWER_OFF_WARM_RESET\n", __func__);
+			ASUSEvtlog("[PM]%s, PON_POWER_OFF_WARM_RESET\n", __func__);
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 		} else {
 			printk("%s, PON_POWER_OFF_HARD_RESET\n", __func__);
+			ASUSEvtlog("[PM]%s, PON_POWER_OFF_HARD_RESET\n", __func__);
 			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 		}
 	}
@@ -232,10 +235,12 @@ static void msm_restart_prepare(const char *cmd)
 
 	if (!in_panic) {
 		printk("%s, not in panic, clean magic number\n", __func__);
+		ASUSEvtlog("[PM]%s, not in panic, clean magic number\n", __func__);
 		// Normal reboot. Clean the printk buffer magic
 		*last_shutdown_log_addr = 0;
 	} else {
 		printk("%s, in panic \n", __func__);
+		ASUSEvtlog("[PM]%s, in panic\n", __func__);
 	}
 
 	//+++ ASUS_BSP: try to support GOOGLE ASIT for bootreason
@@ -290,6 +295,7 @@ static void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd)
 	int ret;
 
 	pr_notice("Going down for restart now\n");
+	ASUSEvtlog("[PM] Going down for restart now\n");
 
 	msm_restart_prepare(cmd);
 
