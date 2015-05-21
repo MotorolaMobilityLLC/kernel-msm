@@ -14,6 +14,7 @@
 
 #include <linux/i2c.h>
 #include <linux/debugfs.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -535,13 +536,26 @@ static struct battery_status batt_s[] = {
 	[BATT_MISSING] = {0, 0, 0, 1, 0},
 };
 
+#define RETRY_COUNT 5
+int retry_slp_ms[RETRY_COUNT] = {
+	10, 20, 30, 40, 50
+};
+
 static int smb1351_read_reg(struct smb1351_charger *chip, int reg, u8 *val)
 {
 	s32 ret;
+	int retry_count = 0;
 
+retry:
 	ret = i2c_smbus_read_byte_data(chip->client, reg);
+	if (ret < 0 && retry_count < RETRY_COUNT) {
+		/* sleep for few ms before retrying */
+		msleep(retry_slp_ms[retry_count++]);
+		goto retry;
+	}
 	if (ret < 0) {
-		pr_err("i2c read fail: can't read from %02x: %d\n", reg, ret);
+		dev_err(chip->dev,
+			"i2c read fail: can't read from %02x: %d\n", reg, ret);
 		return ret;
 	} else {
 		*val = ret;
@@ -553,10 +567,18 @@ static int smb1351_read_reg(struct smb1351_charger *chip, int reg, u8 *val)
 static int smb1351_write_reg(struct smb1351_charger *chip, int reg, u8 val)
 {
 	s32 ret;
+	int retry_count = 0;
 
+retry:
 	ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+	if (ret < 0 && retry_count < RETRY_COUNT) {
+		/* sleep for few ms before retrying */
+		msleep(retry_slp_ms[retry_count++]);
+		goto retry;
+	}
 	if (ret < 0) {
-		pr_err("i2c write fail: can't write %02x to %02x: %d\n",
+		dev_err(chip->dev,
+			"i2c write fail: can't write %02x to %02x: %d\n",
 			val, reg, ret);
 		return ret;
 	}
