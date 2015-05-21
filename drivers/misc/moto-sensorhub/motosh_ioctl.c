@@ -880,6 +880,23 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = motosh_i2c_write(ps_motosh, cmdbuff,
 				(MOTOSH_GYRO_CAL_SIZE + 1));
 		break;
+	case MOTOSH_IOCTL_SET_ALS_DELAY:
+		dev_dbg(&ps_motosh->client->dev,
+			"MOTOSH_IOCTL_SET_ALS_DELAY");
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&ps_motosh->client->dev,
+				"Copy als delay returned error");
+			err = -EFAULT;
+			break;
+		}
+		motosh_g_als_delay = delay;
+		if (ps_motosh->mode > BOOTMODE) {
+			cmdbuff[0] = ALS_UPDATE_RATE;
+			cmdbuff[1] = delay >> 8;
+			cmdbuff[2] = delay & 0xFF;
+			err = motosh_i2c_write(ps_motosh, cmdbuff, 3);
+		}
+		break;
 #ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 	case MOTOSH_IOCTL_SET_ANTCAP_ENABLE:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_ANTCAP_ENABLE");
