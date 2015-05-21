@@ -55,7 +55,7 @@
 #define MAX17048_VERSION_11    0x11
 #define MAX17048_VERSION_12    0x12
 
-#define NORMAL_POLL_MS 10000
+#define NORMAL_POLL_MS 60000
 #define MAX17048_DEFAULT_TEMP  250
 
 struct max17048_chip {
