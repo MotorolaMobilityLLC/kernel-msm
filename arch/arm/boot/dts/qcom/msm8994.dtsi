@@ -1509,6 +1509,7 @@
 		interrupt-names = "hs_phy_irq", "pwr_event_irq", "pmic_id_irq";
 
 		USB3_GDSC-supply = <&gdsc_usb30>;
+		vdda33-supply = <&pm8994_l24>;
 		vbus_dwc3-supply = <&smbcharger_charger_otg>;
 		qcom,dwc-usb3-msm-tx-fifo-size = <29696>;
 		qcom,dwc-usb3-msm-qdss-tx-fifo-size = <8192>;
@@ -2891,6 +2892,7 @@
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <1>;
 		qcom,ce-device = <0>;
+		qcom,clk-mgmt-sus-res;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
@@ -2918,6 +2920,7 @@
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <2>;
 		qcom,ce-device = <0>;
+		qcom,clk-mgmt-sus-res;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
@@ -2945,6 +2948,7 @@
 		qcom,bam-pipe-pair = <0>;
 		qcom,ce-hw-instance = <1>;
 		qcom,ce-device = <1>;
+		qcom,clk-mgmt-sus-res;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
@@ -2972,6 +2976,7 @@
 		qcom,bam-pipe-pair = <0>;
 		qcom,ce-hw-instance = <2>;
 		qcom,ce-device = <1>;
+		qcom,clk-mgmt-sus-res;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;

@@ -938,7 +938,7 @@ static int mdss_iommu_tlb_timeout_notify(struct notifier_block *self,
 	switch (action) {
 	case TLB_SYNC_TIMEOUT:
 		pr_err("cb for TLB SYNC timeout. Dumping XLOG's\n");
-		MDSS_XLOG_TOUT_HANDLER("vbif", "mdp");
+		MDSS_XLOG_TOUT_HANDLER_FATAL_DUMP("vbif", "mdp", "mdp_dbg_bus");
 		break;
 	}
 
@@ -1185,15 +1185,19 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 	/* prevent disable of prefill calculations */
 	mdata->min_prefill_lines = 0xffff;
 
+	mdss_mdp_hw_rev_debug_caps_init(mdata);
+
 	switch (mdata->mdp_rev) {
 	case MDSS_MDP_HW_REV_105:
 	case MDSS_MDP_HW_REV_109:
 		mdss_set_quirk(mdata, MDSS_QUIRK_BWCPANIC);
+		mdss_set_quirk(mdata, MDSS_QUIRK_DOWNSCALE_HFLIP_MDPCLK);
 		mdata->max_target_zorder = 7; /* excluding base layer */
 		mdata->max_cursor_size = 128;
 		break;
 	case MDSS_MDP_HW_REV_110:
 		mdss_set_quirk(mdata, MDSS_QUIRK_BWCPANIC);
+		mdss_set_quirk(mdata, MDSS_QUIRK_DOWNSCALE_HFLIP_MDPCLK);
 		mdata->max_target_zorder = 4; /* excluding base layer */
 		mdata->max_cursor_size = 128;
 		mdata->min_prefill_lines = 12;
@@ -1205,6 +1209,7 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 		mdata->min_prefill_lines = 21;
 		break;
 	default:
+		mdss_set_quirk(mdata, MDSS_QUIRK_DOWNSCALE_HFLIP_MDPCLK);
 		mdata->max_target_zorder = 4; /* excluding base layer */
 		mdata->max_cursor_size = 64;
 	}
