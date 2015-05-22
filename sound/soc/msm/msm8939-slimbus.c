@@ -604,6 +604,38 @@ static char const *slim0_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192"};
 static const char *const slim1_tx_ch_text[] = {"One", "Two"};
 
+static const char *const btsco_rate_text[] = {"8000", "16000"};
+static const struct soc_enum msm_btsco_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, btsco_rate_text),
+};
+
+static int msm_btsco_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_btsco_rate  = %d", __func__, msm_btsco_rate);
+	ucontrol->value.integer.value[0] = msm_btsco_rate;
+	return 0;
+}
+
+static int msm_btsco_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_btsco_rate = BTSCO_RATE_8KHZ;
+		break;
+	case 1:
+		msm_btsco_rate = BTSCO_RATE_16KHZ;
+		break;
+	default:
+		msm_btsco_rate = BTSCO_RATE_8KHZ;
+		break;
+	}
+
+	pr_debug("%s: msm_btsco_rate = %d\n", __func__, msm_btsco_rate);
+	return 0;
+}
+
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
 	SOC_ENUM_SINGLE_EXT(2, slim0_rx_ch_text),
@@ -626,6 +658,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			slim0_rx_sample_rate_get, slim0_rx_sample_rate_put),
 	SOC_ENUM_EXT("SLIM_1_TX Channels", msm_snd_enum[5],
 			msm_slim_1_tx_ch_get, msm_slim_1_tx_ch_put),
+	SOC_ENUM_EXT("Internal BTSCO SampleRate", msm_btsco_enum[0],
+			msm_btsco_rate_get, msm_btsco_rate_put),
 };
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
