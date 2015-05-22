@@ -100,15 +100,6 @@ extern int arizona_mixer_values[ARIZONA_NUM_MIXER_INPUTS];
 #define ARIZONA_MIXER_CONTROLS(name, base) \
 	SOC_SINGLE_RANGE_TLV(name " Input 1 Volume", base + 1,		\
 			     ARIZONA_MIXER_VOL_SHIFT, 0x20, 0x50, 0,	\
-			     arizona_mixer_tlv),			\
-	SOC_SINGLE_RANGE_TLV(name " Input 2 Volume", base + 3,		\
-			     ARIZONA_MIXER_VOL_SHIFT, 0x20, 0x50, 0,	\
-			     arizona_mixer_tlv),			\
-	SOC_SINGLE_RANGE_TLV(name " Input 3 Volume", base + 5,		\
-			     ARIZONA_MIXER_VOL_SHIFT, 0x20, 0x50, 0,	\
-			     arizona_mixer_tlv),			\
-	SOC_SINGLE_RANGE_TLV(name " Input 4 Volume", base + 7,		\
-			     ARIZONA_MIXER_VOL_SHIFT, 0x20, 0x50, 0,	\
 			     arizona_mixer_tlv)
 
 #define ARIZONA_MUX_ENUM_DECL(name, reg) \
@@ -145,9 +136,6 @@ extern int arizona_mixer_values[ARIZONA_NUM_MIXER_INPUTS];
 
 #define ARIZONA_MIXER_WIDGETS(name, name_str)	\
 	ARIZONA_MUX(name_str " Input 1", &name##_in1_mux), \
-	ARIZONA_MUX(name_str " Input 2", &name##_in2_mux), \
-	ARIZONA_MUX(name_str " Input 3", &name##_in3_mux), \
-	ARIZONA_MUX(name_str " Input 4", &name##_in4_mux), \
 	SND_SOC_DAPM_MIXER(name_str " Mixer", SND_SOC_NOPM, 0, 0, NULL, 0)
 
 #define ARIZONA_DSP_WIDGETS(name, name_str) \
@@ -167,13 +155,7 @@ extern int arizona_mixer_values[ARIZONA_NUM_MIXER_INPUTS];
 #define ARIZONA_MIXER_ROUTES(widget, name) \
 	{ widget, NULL, name " Mixer" },         \
 	{ name " Mixer", NULL, name " Input 1" }, \
-	{ name " Mixer", NULL, name " Input 2" }, \
-	{ name " Mixer", NULL, name " Input 3" }, \
-	{ name " Mixer", NULL, name " Input 4" }, \
-	ARIZONA_MIXER_INPUT_ROUTES(name " Input 1"), \
-	ARIZONA_MIXER_INPUT_ROUTES(name " Input 2"), \
-	ARIZONA_MIXER_INPUT_ROUTES(name " Input 3"), \
-	ARIZONA_MIXER_INPUT_ROUTES(name " Input 4")
+	ARIZONA_MIXER_INPUT_ROUTES(name " Input 1")
 
 #define ARIZONA_DSP_ROUTES(name) \
 	{ name, NULL, name " Preloader"}, \
