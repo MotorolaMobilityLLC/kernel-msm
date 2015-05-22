@@ -46,7 +46,6 @@ struct m4fus_driver_data {
 
 	struct m4sensorhub_fusion_iio_data   iiodat[M4FUS_NUM_FUSION_BUFFERS];
 	int16_t         samplerate;
-	int16_t         latest_samplerate;
 	uint16_t        status;
 };
 
@@ -59,15 +58,64 @@ static void m4fus_isr(enum m4sensorhub_irqs int_event, void *handle)
 	int size = 0;
 
 	mutex_lock(&(dd->mutex));
-	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_ROTATIONVECTOR);
+
+	/* Get Linear Accleration Data */
+	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_LINEARACCEL);
 	if (size > (sizeof(int32_t) * ARRAY_SIZE(dd->iiodat[0].values))) {
 		m4fus_err("%s: M4 register is too large.\n", __func__);
 		err = -EOVERFLOW;
 		goto m4fus_isr_fail;
 	}
 
-	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_ROTATIONVECTOR,
+	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_LINEARACCEL,
 		(char *)&(dd->iiodat[0].values[0]));
+	if (err < 0) {
+		m4fus_err("%s: Failed to read linear acceleration data.\n",
+			__func__);
+		goto m4fus_isr_fail;
+	} else if (err != size) {
+		m4fus_err("%s: Read %d bytes instead of %d for %s.\n",
+			  __func__, err, size, "linear acceleration");
+		err = -EBADE;
+		goto m4fus_isr_fail;
+	}
+
+	dd->iiodat[0].type = FUSION_TYPE_LINEAR_ACCELERATION;
+	dd->iiodat[0].timestamp = ktime_to_ns(ktime_get_boottime());
+
+	/* Get Gravity Data */
+	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_GRAVITY);
+	if (size > (sizeof(int32_t) * ARRAY_SIZE(dd->iiodat[1].values))) {
+		m4fus_err("%s: M4 register is too large.\n", __func__);
+		err = -EOVERFLOW;
+		goto m4fus_isr_fail;
+	}
+
+	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_GRAVITY,
+		(char *)&(dd->iiodat[1].values[0]));
+	if (err < 0) {
+		m4fus_err("%s: Failed to read gravity data.\n", __func__);
+		goto m4fus_isr_fail;
+	} else if (err != size) {
+		m4fus_err("%s: Read %d bytes instead of %d for %s.\n",
+			  __func__, err, size, "gravity");
+		err = -EBADE;
+		goto m4fus_isr_fail;
+	}
+
+	dd->iiodat[1].type = FUSION_TYPE_GRAVITY;
+	dd->iiodat[1].timestamp = ktime_to_ns(ktime_get_boottime());
+
+	/* Get Rotation Vector Data (includes accuracy) */
+	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_ROTATIONVECTOR);
+	if (size > (sizeof(int32_t) * ARRAY_SIZE(dd->iiodat[1].values))) {
+		m4fus_err("%s: M4 register is too large.\n", __func__);
+		err = -EOVERFLOW;
+		goto m4fus_isr_fail;
+	}
+
+	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_ROTATIONVECTOR,
+		(char *)&(dd->iiodat[2].values[0]));
 	if (err < 0) {
 		m4fus_err("%s: Failed to read rotation data.\n", __func__);
 		goto m4fus_isr_fail;
@@ -78,55 +126,15 @@ static void m4fus_isr(enum m4sensorhub_irqs int_event, void *handle)
 		goto m4fus_isr_fail;
 	}
 
-	dd->iiodat[0].type = FUSION_TYPE_ROTATION;
-	dd->iiodat[0].timestamp = ktime_to_ns(ktime_get_boottime());
-
-	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_EULERPITCH);
-	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_EULERPITCH,
-		(char *)&(dd->iiodat[1].values[0]));
-	if (err < 0) {
-		m4fus_err("%s: Failed to read euler_pitch data.\n", __func__);
-		goto m4fus_isr_fail;
-	} else if (err != size) {
-		m4fus_err("%s: Read %d bytes instead of %d for %s.\n",
-			  __func__, err, size, "euler_pitch");
-		err = -EBADE;
-		goto m4fus_isr_fail;
-	}
-
-	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_EULERROLL);
-	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_EULERROLL,
-		(char *)&(dd->iiodat[1].values[1]));
-	if (err < 0) {
-		m4fus_err("%s: Failed to read euler_roll data.\n", __func__);
-		goto m4fus_isr_fail;
-	} else if (err != size) {
-		m4fus_err("%s: Read %d bytes instead of %d for %s.\n",
-			  __func__, err, size, "euler_roll");
-		err = -EBADE;
-		goto m4fus_isr_fail;
-	}
-
-	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_FUSION_HEADING);
-	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_FUSION_HEADING,
-		(char *)&(dd->iiodat[1].values[2]));
-	if (err < 0) {
-		m4fus_err("%s: Failed to read heading data.\n", __func__);
-		goto m4fus_isr_fail;
-	} else if (err != size) {
-		m4fus_err("%s: Read %d bytes instead of %d for %s.\n",
-			  __func__, err, size, "heading");
-		err = -EBADE;
-		goto m4fus_isr_fail;
-	}
-
-	dd->iiodat[1].type = FUSION_TYPE_ORIENTATION;
-	dd->iiodat[1].timestamp = ktime_to_ns(ktime_get_boottime());
+	dd->iiodat[2].type = FUSION_TYPE_ROTATION;
+	dd->iiodat[2].timestamp = ktime_to_ns(ktime_get_boottime());
 
 	/*
-	 * For some reason, IIO knows we are sending an array,
-	 * so all FUSION_TYPE_* indicies will be sent
-	 * in this one call (see the M4 passive driver).
+	 * The number of bytes send to the buffers is determined by this call:
+	 *   iio->buffer->access->set_bytes_per_datum(iio->buffer,
+	 *     sizeof(dd->iiodat));
+	 * Since a static struct is used, the full array size is included,
+	 *   so only one call to iio_push_to_buffers() is needed.
 	 */
 	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat[0]));
 
@@ -145,7 +153,6 @@ static int m4fus_set_samplerate(struct iio_dev *iio, int16_t rate)
 	struct m4fus_driver_data *dd = iio_priv(iio);
 	int size = 0;
 
-	dd->latest_samplerate = rate;
 	if (rate == dd->samplerate)
 		goto m4fus_set_samplerate_irq_check;
 
@@ -260,14 +267,20 @@ static ssize_t m4fus_iiodata_show(struct device *dev,
 
 	mutex_lock(&(dd->mutex));
 	size = snprintf(buf, PAGE_SIZE,
-		"%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%hd\n",
-		"rotation[0]: ", dd->iiodat[0].values[0],
-		"rotation[1]: ", dd->iiodat[0].values[1],
-		"rotation[2]: ", dd->iiodat[0].values[2],
-		"rotation[3]: ", dd->iiodat[0].values[3],
-		"euler_pitch: ", dd->iiodat[1].values[0],
-		"euler_roll: ", dd->iiodat[1].values[1],
-		"heading: ", dd->iiodat[1].values[2]);
+		"%s%d\n%s%d\n%s%d\n"
+		"%s%d\n%s%d\n%s%d\n"
+		"%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n",
+		"linear_accel[x]: ", dd->iiodat[0].values[0],
+		"linear_accel[y]: ", dd->iiodat[0].values[1],
+		"linear_accel[z]: ", dd->iiodat[0].values[2],
+		"gravity[x]: ", dd->iiodat[1].values[0],
+		"gravity[y]: ", dd->iiodat[1].values[1],
+		"gravity[z]: ", dd->iiodat[1].values[2],
+		"rotation_vector[x]: ", dd->iiodat[2].values[0],
+		"rotation_vector[y]: ", dd->iiodat[2].values[1],
+		"rotation_vector[z]: ", dd->iiodat[2].values[2],
+		"rotation_vector[scaler]: ", dd->iiodat[2].values[3],
+		"rotation_vector[accuracy]: ", dd->iiodat[2].values[4]);
 	mutex_unlock(&(dd->mutex));
 	return size;
 }
@@ -440,7 +453,6 @@ static int m4fus_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->latest_samplerate = dd->samplerate;
 
 	err = m4fus_create_iiodev(iio); /* iio and dd are freed on fail */
 	if (err < 0) {
@@ -488,15 +500,6 @@ m4fus_remove_exit:
 	return 0;
 }
 
-static int m4fus_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct iio_dev *iio = platform_get_drvdata(pdev);
-	struct m4fus_driver_data *dd = iio_priv(iio);
-	if (m4fus_set_samplerate(iio, dd->latest_samplerate) < 0)
-		m4fus_err("%s: setrate retry failed\n", __func__);
-	return 0;
-}
-
 static struct of_device_id m4fusion_match_tbl[] = {
 	{ .compatible = "mot,m4fusion" },
 	{},
@@ -506,7 +509,7 @@ static struct platform_driver m4fus_driver = {
 	.probe		= m4fus_probe,
 	.remove		= __exit_p(m4fus_remove),
 	.shutdown	= NULL,
-	.suspend	= m4fus_suspend,
+	.suspend	= NULL,
 	.resume		= NULL,
 	.driver		= {
 		.name	= M4FUS_DRIVER_NAME,
