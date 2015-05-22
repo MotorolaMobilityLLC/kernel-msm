@@ -1070,8 +1070,6 @@
 		reg = <0 4>;
 		compatible = "qcom,msm-cpufreq";
 		qcom,cpufreq-table =
-			<  300000 >,
-			<  384000 >,
 			<  600000 >,
 			<  787200 >;
 	};
