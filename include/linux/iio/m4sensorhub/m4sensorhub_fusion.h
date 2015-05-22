@@ -24,13 +24,15 @@
 #define _M4SENSORHUB_FUSION_IIO_H
 
 enum m4sensorhub_fusion_iio_type {
-	FUSION_TYPE_ROTATION = 0,
-	FUSION_TYPE_ORIENTATION = 1,
+	FUSION_TYPE_LINEAR_ACCELERATION = 0,
+	FUSION_TYPE_GRAVITY = 1,
+	FUSION_TYPE_ROTATION = 2,
+	M4FUS_NUM_FUSION_BUFFERS
 };
 
 struct m4sensorhub_fusion_iio_data {
 	uint8_t         type;  /* NOTE: sizeof(enum) can vary but is often 4 */
-	int32_t         values[4]; /* NOTE: this can be a maximum of 5 */
+	int32_t         values[5];  /* NOTE: this can be a maximum of 5 */
 	long long       timestamp;
 } __packed;
 
@@ -38,6 +40,5 @@ struct m4sensorhub_fusion_iio_data {
 #define M4FUS_DATA_STRUCT_SIZE_BITS \
 	(sizeof(struct m4sensorhub_fusion_iio_data) * 8)
 
-#define M4FUS_NUM_FUSION_BUFFERS   2
 
 #endif /* _M4SENSORHUB_FUSION_IIO_H */
