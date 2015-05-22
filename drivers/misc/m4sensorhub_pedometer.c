@@ -48,9 +48,8 @@ struct m4ped_driver_data {
 	struct m4sensorhub_pedometer_iio_data
 		iiodat[M4FUS_NUM_PEDOMETER_BUFFERS];
 	struct m4sensorhub_pedometer_iio_data   base_dat;
-	
+
 	int16_t         samplerate;
-	int16_t         latest_samplerate;
 
 	uint16_t        status;
 };
@@ -237,7 +236,6 @@ static int m4ped_set_samplerate(struct iio_dev *iio, int16_t rate)
 	 * Currently, there is no concept of setting a sample rate for this
 	 * sensor, so this function only enables/disables interrupt reporting.
 	 */
-	dd->latest_samplerate = rate;
 	if (rate == dd->samplerate)
 		goto m4ped_set_samplerate_fail;
 
@@ -375,11 +373,11 @@ static ssize_t m4ped_userdata_show(struct device *dev,
 	struct iio_dev *iio = platform_get_drvdata(pdev);
 	struct m4ped_driver_data *dd = iio_priv(iio);
 	ssize_t size = 0;
-	uint8_t data[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
+	uint8_t data[4] = {0x00, 0x00, 0x00, 0x00};
 
 	mutex_lock(&(dd->mutex));
 
-	err = m4sensorhub_reg_read_n(dd->m4, M4SH_REG_USERSETTINGS_SCREENSTATUS,
+	err = m4sensorhub_reg_read_n(dd->m4, M4SH_REG_USERSETTINGS_USERAGE,
 		(char *)&(data[0]), ARRAY_SIZE(data));
 	if (err < 0) {
 		m4ped_err("%s: Failed to read user data.\n", __func__);
@@ -391,19 +389,12 @@ static ssize_t m4ped_userdata_show(struct device *dev,
 		goto m4ped_userdata_show_fail;
 	}
 
-	if (data[0] > 0) {
-		m4ped_err("%s: User settings version is too new (0x%02X)\n",
-			  __func__, data[0]);
-		err = -EINVAL;
-		goto m4ped_userdata_show_fail;
-	}
-
 	size = snprintf(buf, PAGE_SIZE,
 		"%s%s\n%s%hhu\n%s%hhu\n%s%hhu\n",
-		"Gender (M/F): ", data[2] ? "M" : "F",
-		"Age    (yrs): ", data[1],
-		"Height  (cm): ", data[3],
-		"Weight  (kg): ", data[4]);
+		"Gender (M/F): ", data[1] ? "M" : "F",
+		"Age    (yrs): ", data[0],
+		"Height  (cm): ", data[2],
+		"Weight  (kg): ", data[3]);
 
 m4ped_userdata_show_fail:
 	mutex_unlock(&(dd->mutex));
@@ -779,7 +770,6 @@ static int m4ped_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->latest_samplerate = dd->samplerate;
     dd->status = dd->status | (1 << M4PED_FEATURE_ENABLED_BIT);
 
 	err = m4ped_create_iiodev(iio); /* iio and dd are freed on fail */
