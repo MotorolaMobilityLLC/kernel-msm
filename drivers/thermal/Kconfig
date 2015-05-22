@@ -111,6 +111,12 @@ config THERMAL_MONITOR
 	  entity starts running in the userspace. Monitors TSENS temperature
 	  and limits the max frequency of the cores.
 
+config THERMAL_PROTECT
+	bool "thermal protect cpu mitigation"
+	help
+	  This thermal protect will do cpu mitigation it will set cpu0
+	  freq to 787200, when start kernel.
+
 config SPEAR_THERMAL
 	bool "SPEAr thermal sensor driver"
 	depends on PLAT_SPEAR
