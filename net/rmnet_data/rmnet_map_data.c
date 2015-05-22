@@ -1,0 +1,569 @@
+/*
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * RMNET Data MAP protocol
+ *
+ */
+
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/skbuff.h>
+#include <linux/netdevice.h>
+#include <linux/rmnet_data.h>
+#include <linux/spinlock.h>
+#include <linux/workqueue.h>
+#include <linux/net_map.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <linux/udp.h>
+#include <linux/tcp.h>
+#include <linux/in.h>
+#include <net/ip.h>
+#include <net/checksum.h>
+#include <net/ip6_checksum.h>
+#include "rmnet_data_config.h"
+#include "rmnet_map.h"
+#include "rmnet_data_private.h"
+#include "rmnet_data_stats.h"
+#include "rmnet_data_trace.h"
+
+RMNET_LOG_MODULE(RMNET_DATA_LOGMASK_MAPD);
+
+/* ***************** Local Definitions ************************************** */
+struct agg_work {
+	struct delayed_work work;
+	struct rmnet_phys_ep_conf_s *config;
+};
+
+/******************************************************************************/
+
+/**
+ * rmnet_map_add_map_header() - Adds MAP header to front of skb->data
+ * @skb:        Socket buffer ("packet") to modify
+ * @hdrlen:     Number of bytes of header data which should not be included in
+ *              MAP length field
+ *
+ * Padding is calculated and set appropriately in MAP header. Mux ID is
+ * initialized to 0.
+ *
+ * Return:
+ *      - Pointer to MAP structure
+ *      - 0 (null) if insufficient headroom
+ *      - 0 (null) if insufficient tailroom for padding bytes
+ *
+ * todo: Parameterize skb alignment
+ */
+struct rmnet_map_header_s *rmnet_map_add_map_header(struct sk_buff *skb,
+						    int hdrlen)
+{
+	uint32_t padding, map_datalen;
+	uint8_t *padbytes;
+	struct rmnet_map_header_s *map_header;
+
+	if (skb_headroom(skb) < sizeof(struct rmnet_map_header_s))
+		return 0;
+
+	map_datalen = skb->len - hdrlen;
+	map_header = (struct rmnet_map_header_s *)
+			skb_push(skb, sizeof(struct rmnet_map_header_s));
+	memset(map_header, 0, sizeof(struct rmnet_map_header_s));
+
+	padding = ALIGN(map_datalen, 4) - map_datalen;
+
+	if (skb_tailroom(skb) < padding)
+		return 0;
+
+	padbytes = (uint8_t *) skb_put(skb, padding);
+	LOGD("pad: %d", padding);
+	memset(padbytes, 0, padding);
+
+	map_header->pkt_len = htons(map_datalen + padding);
+	map_header->pad_len = padding&0x3F;
+
+	return map_header;
+}
+
+/**
+ * rmnet_map_deaggregate() - Deaggregates a single packet
+ * @skb:        Source socket buffer containing multiple MAP frames
+ * @config:     Physical endpoint configuration of the ingress device
+ *
+ * Source skb is cloned with skb_clone(). The new skb data and tail pointers are
+ * modified to contain a single MAP frame. Clone happens with GFP_ATOMIC flags
+ * set. User should keep calling deaggregate() on the source skb until 0 is
+ * returned, indicating that there are no more packets to deaggregate.
+ *
+ * Return:
+ *     - Pointer to new skb
+ *     - 0 (null) if no more aggregated packets
+ */
+struct sk_buff *rmnet_map_deaggregate(struct sk_buff *skb,
+				      struct rmnet_phys_ep_conf_s *config)
+{
+	struct sk_buff *skbn;
+	struct rmnet_map_header_s *maph;
+	uint32_t packet_len;
+	uint8_t ip_byte;
+
+	if (skb->len == 0)
+		return 0;
+
+	maph = (struct rmnet_map_header_s *) skb->data;
+	packet_len = ntohs(maph->pkt_len) + sizeof(struct rmnet_map_header_s);
+
+	if ((((int)skb->len) - ((int)packet_len)) < 0) {
+		LOGM("%s", "Got malformed packet. Dropping");
+		return 0;
+	}
+
+	skbn = skb_clone(skb, GFP_ATOMIC);
+	if (!skbn)
+		return 0;
+
+	LOGD("Trimming to %d bytes", packet_len);
+	LOGD("before skbn->len = %d", skbn->len);
+	skb_trim(skbn, packet_len);
+	skb_pull(skb, packet_len);
+	LOGD("after skbn->len = %d", skbn->len);
+
+	/* Some hardware can send us empty frames. Catch them */
+	if (ntohs(maph->pkt_len) == 0) {
+		LOGD("Dropping empty MAP frame");
+		rmnet_kfree_skb(skbn, RMNET_STATS_SKBFREE_DEAGG_DATA_LEN_0);
+		return 0;
+	}
+
+	/* Sanity check */
+	ip_byte = (skbn->data[4]) & 0xF0;
+	if (ip_byte != 0x40 && ip_byte != 0x60) {
+		LOGM("Unknown IP type: 0x%02X", ip_byte);
+		rmnet_kfree_skb(skbn, RMNET_STATS_SKBFREE_DEAGG_UNKOWN_IP_TYP);
+		return 0;
+	}
+
+	return skbn;
+}
+
+/**
+ * rmnet_map_flush_packet_queue() - Transmits aggregeted frame on timeout
+ * @work:        struct agg_work containing delayed work and skb to flush
+ *
+ * This function is scheduled to run in a specified number of jiffies after
+ * the last frame transmitted by the network stack. When run, the buffer
+ * containing aggregated packets is finally transmitted on the underlying link.
+ *
+ */
+static void rmnet_map_flush_packet_queue(struct work_struct *work)
+{
+	struct agg_work *real_work;
+	struct rmnet_phys_ep_conf_s *config;
+	unsigned long flags;
+	struct sk_buff *skb;
+	int rc, agg_count = 0;
+
+	skb = 0;
+	real_work = (struct agg_work *)work;
+	config = real_work->config;
+	LOGD("%s", "Entering flush thread");
+	spin_lock_irqsave(&config->agg_lock, flags);
+	if (likely(config->agg_state == RMNET_MAP_TXFER_SCHEDULED)) {
+		/* Buffer may have already been shipped out */
+		if (likely(config->agg_skb)) {
+			rmnet_stats_agg_pkts(config->agg_count);
+			if (config->agg_count > 1)
+				LOGL("Agg count: %d", config->agg_count);
+			skb = config->agg_skb;
+			agg_count = config->agg_count;
+			config->agg_skb = 0;
+		}
+		config->agg_state = RMNET_MAP_AGG_IDLE;
+	} else {
+		/* How did we get here? */
+		LOGE("Ran queued command when state %s",
+			"is idle. State machine likely broken");
+	}
+
+	spin_unlock_irqrestore(&config->agg_lock, flags);
+	if (skb) {
+		trace_rmnet_map_flush_packet_queue(skb, agg_count);
+		rc = dev_queue_xmit(skb);
+		rmnet_stats_queue_xmit(rc, RMNET_STATS_QUEUE_XMIT_AGG_TIMEOUT);
+	}
+	kfree(work);
+}
+
+/**
+ * rmnet_map_aggregate() - Software aggregates multiple packets.
+ * @skb:        current packet being transmitted
+ * @config:     Physical endpoint configuration of the ingress device
+ *
+ * Aggregates multiple SKBs into a single large SKB for transmission. MAP
+ * protocol is used to separate the packets in the buffer. This funcion consumes
+ * the argument SKB and should not be further processed by any other function.
+ */
+void rmnet_map_aggregate(struct sk_buff *skb,
+			 struct rmnet_phys_ep_conf_s *config) {
+	uint8_t *dest_buff;
+	struct agg_work *work;
+	unsigned long flags;
+	struct sk_buff *agg_skb;
+	int size, rc, agg_count = 0;
+
+
+	if (!skb || !config)
+		BUG();
+	size = config->egress_agg_size-skb->len;
+
+	if (size < 2000) {
+		LOGL("Invalid length %d", size);
+		return;
+	}
+
+new_packet:
+	spin_lock_irqsave(&config->agg_lock, flags);
+	if (!config->agg_skb) {
+		config->agg_skb = skb_copy_expand(skb, 0, size, GFP_ATOMIC);
+		if (!config->agg_skb) {
+			config->agg_skb = 0;
+			config->agg_count = 0;
+			spin_unlock_irqrestore(&config->agg_lock, flags);
+			rmnet_stats_agg_pkts(1);
+			trace_rmnet_map_aggregate(skb, 0);
+			rc = dev_queue_xmit(skb);
+			rmnet_stats_queue_xmit(rc,
+				RMNET_STATS_QUEUE_XMIT_AGG_CPY_EXP_FAIL);
+			return;
+		}
+		config->agg_count = 1;
+		trace_rmnet_start_aggregation(skb);
+		rmnet_kfree_skb(skb, RMNET_STATS_SKBFREE_AGG_CPY_EXPAND);
+		goto schedule;
+	}
+
+	if (skb->len > (config->egress_agg_size - config->agg_skb->len)) {
+		rmnet_stats_agg_pkts(config->agg_count);
+		if (config->agg_count > 1)
+			LOGL("Agg count: %d", config->agg_count);
+		agg_skb = config->agg_skb;
+		agg_count = config->agg_count;
+		config->agg_skb = 0;
+		config->agg_count = 0;
+		spin_unlock_irqrestore(&config->agg_lock, flags);
+		trace_rmnet_map_aggregate(skb, agg_count);
+		rc = dev_queue_xmit(agg_skb);
+		rmnet_stats_queue_xmit(rc,
+					RMNET_STATS_QUEUE_XMIT_AGG_FILL_BUFFER);
+		goto new_packet;
+	}
+
+	dest_buff = skb_put(config->agg_skb, skb->len);
+	memcpy(dest_buff, skb->data, skb->len);
+	config->agg_count++;
+	rmnet_kfree_skb(skb, RMNET_STATS_SKBFREE_AGG_INTO_BUFF);
+
+schedule:
+	if (config->agg_state != RMNET_MAP_TXFER_SCHEDULED) {
+		work = (struct agg_work *)
+			kmalloc(sizeof(struct agg_work), GFP_ATOMIC);
+		if (!work) {
+			LOGE("Failed to allocate work item for packet %s",
+			     "transfer. DATA PATH LIKELY BROKEN!");
+			config->agg_state = RMNET_MAP_AGG_IDLE;
+			spin_unlock_irqrestore(&config->agg_lock, flags);
+			return;
+		}
+		INIT_DELAYED_WORK((struct delayed_work *)work,
+				  rmnet_map_flush_packet_queue);
+		work->config = config;
+		config->agg_state = RMNET_MAP_TXFER_SCHEDULED;
+		schedule_delayed_work((struct delayed_work *)work, 1);
+	}
+	spin_unlock_irqrestore(&config->agg_lock, flags);
+	return;
+}
+
+
+/* ***************** Checksum Offload ************************************** */
+
+static inline uint16_t *rmnet_map_get_checksum_field(unsigned char protocol,
+						 const void *txporthdr)
+{
+	uint16_t *check = 0;
+	switch (protocol) {
+	case IPPROTO_TCP:
+		check = &(((struct tcphdr *)txporthdr)->check);
+		break;
+
+	case IPPROTO_UDP:
+		check = &(((struct udphdr *)txporthdr)->check);
+		break;
+
+	default:
+		check = 0;
+		break;
+	}
+
+	return check;
+}
+
+static inline uint16_t rmnet_map_add_checksums(uint16_t val1, uint16_t val2)
+{
+	int sum = val1+val2;
+	sum = (((sum&0xFFFF0000)>>16) + sum) & 0x0000FFFF;
+	return (uint16_t) (sum&0x0000FFFF);
+}
+
+static inline uint16_t rmnet_map_subtract_checksums(uint16_t val1,
+	uint16_t val2)
+{
+	return rmnet_map_add_checksums(val1, ~val2);
+}
+
+/**
+ * rmnet_map_validate_ipv4_packet_checksum() - Validates TCP/UDP checksum
+ *	value for IPv4 packet
+ * @map_payload:	Pointer to the beginning of the map payload
+ * @cksum_trailer:	Pointer to the checksum trailer
+ *
+ * Validates the TCP/UDP checksum for the packet using the checksum value
+ * from the checksum trailer added to the packet.
+ * The validation formula is the following:
+ * 1. Performs 1's complement over the checksum value from the trailer
+ * 2. Computes 1's complement checksum over IPv4 header and subtracts it from
+ *    the value from step 1
+ * 3. Computes 1's complement checksum over IPv4 pseudo header and adds it to
+ *    the value from step 2
+ * 4. Subtracts the checksum value from the TCP/UDP header from the value from
+ *    step 3
+ * 5. Compares the value from step 4 to the checksum value from the TCP/UDP
+ *    header
+ *
+ * Fragmentation and tunneling are not supported.
+ *
+ * Return: 0 is validation succeeded.
+ */
+static int rmnet_map_validate_ipv4_packet_checksum(unsigned char *map_payload,
+	struct rmnet_map_dl_checksum_trailer_s *cksum_trailer)
+{
+	struct iphdr *ip4h;
+	uint16_t *checksum_field;
+	void *txporthdr;
+	uint16_t pseudo_checksum;
+	uint16_t ip_hdr_checksum;
+	uint16_t checksum_value;
+	uint16_t ip_payload_checksum;
+	uint16_t ip_pseudo_payload_checksum;
+	uint16_t checksum_value_final;
+
+	ip4h = (struct iphdr *) map_payload;
+	if ((ntohs(ip4h->frag_off) & IP_MF)
+		|| ((ntohs(ip4h->frag_off) & IP_OFFSET) > 0))
+		return RMNET_MAP_CHECKSUM_FRAGMENTED_PACKET;
+
+	txporthdr = map_payload + ip4h->ihl*4;
+
+	checksum_field = rmnet_map_get_checksum_field(ip4h->protocol,
+		txporthdr);
+
+	if (unlikely(!checksum_field))
+		return RMNET_MAP_CHECKSUM_ERR_UNKNOWN_TRANSPORT;
+
+	checksum_value = ~ntohs(cksum_trailer->checksum_value);
+	ip_hdr_checksum = ~ip_fast_csum(ip4h, (int)ip4h->ihl);
+	ip_payload_checksum = rmnet_map_subtract_checksums(checksum_value,
+		ip_hdr_checksum);
+
+	pseudo_checksum = ~ntohs(csum_tcpudp_magic(ip4h->saddr, ip4h->daddr,
+		(uint16_t)(ntohs(ip4h->tot_len) - ip4h->ihl*4),
+		(uint16_t)ip4h->protocol, 0));
+	ip_pseudo_payload_checksum = rmnet_map_add_checksums(
+		ip_payload_checksum, pseudo_checksum);
+
+	checksum_value_final = ~rmnet_map_subtract_checksums(
+		ip_pseudo_payload_checksum, ntohs(*checksum_field));
+
+	if (unlikely(checksum_value_final == 0)) {
+		switch (ip4h->protocol) {
+		case IPPROTO_UDP:
+			/* RFC 768 */
+			LOGD("DL4 1's complement rule for UDP checksum 0");
+			checksum_value_final = ~checksum_value_final;
+			break;
+
+		case IPPROTO_TCP:
+			if (*checksum_field == 0xFFFF) {
+				LOGD(
+				"DL4 Non-RFC compliant TCP checksum found");
+				checksum_value_final = ~checksum_value_final;
+			}
+			break;
+		}
+	}
+
+	LOGD(
+	"DL4 cksum: ~HW: %04X, field: %04X, pseudo header: %04X, final: %04X",
+	~ntohs(cksum_trailer->checksum_value), ntohs(*checksum_field),
+	pseudo_checksum, checksum_value_final);
+
+	if (checksum_value_final == ntohs(*checksum_field))
+		return RMNET_MAP_CHECKSUM_OK;
+	else
+		return RMNET_MAP_CHECKSUM_VALIDATION_FAILED;
+}
+
+/**
+ * rmnet_map_validate_ipv6_packet_checksum() - Validates TCP/UDP checksum
+ *	value for IPv6 packet
+ * @map_payload:	Pointer to the beginning of the map payload
+ * @cksum_trailer:	Pointer to the checksum trailer
+ *
+ * Validates the TCP/UDP checksum for the packet using the checksum value
+ * from the checksum trailer added to the packet.
+ * The validation formula is the following:
+ * 1. Performs 1's complement over the checksum value from the trailer
+ * 2. Computes 1's complement checksum over IPv6 header and subtracts it from
+ *    the value from step 1
+ * 3. Computes 1's complement checksum over IPv6 pseudo header and adds it to
+ *    the value from step 2
+ * 4. Subtracts the checksum value from the TCP/UDP header from the value from
+ *    step 3
+ * 5. Compares the value from step 4 to the checksum value from the TCP/UDP
+ *    header
+ *
+ * Fragmentation, extension headers and tunneling are not supported.
+ *
+ * Return: 0 is validation succeeded.
+ */
+static int rmnet_map_validate_ipv6_packet_checksum(unsigned char *map_payload,
+	struct rmnet_map_dl_checksum_trailer_s *cksum_trailer)
+{
+	struct ipv6hdr *ip6h;
+	uint16_t *checksum_field;
+	void *txporthdr;
+	uint16_t pseudo_checksum;
+	uint16_t ip_hdr_checksum;
+	uint16_t checksum_value;
+	uint16_t ip_payload_checksum;
+	uint16_t ip_pseudo_payload_checksum;
+	uint16_t checksum_value_final;
+	uint32_t length;
+
+	ip6h = (struct ipv6hdr *) map_payload;
+
+	txporthdr = map_payload + sizeof(struct ipv6hdr);
+	checksum_field = rmnet_map_get_checksum_field(ip6h->nexthdr,
+		txporthdr);
+
+	if (unlikely(!checksum_field))
+		return RMNET_MAP_CHECKSUM_ERR_UNKNOWN_TRANSPORT;
+
+	checksum_value = ~ntohs(cksum_trailer->checksum_value);
+	ip_hdr_checksum = ~ntohs(ip_compute_csum(ip6h,
+		(int)(txporthdr - (void *)map_payload)));
+	ip_payload_checksum = rmnet_map_subtract_checksums(checksum_value,
+		ip_hdr_checksum);
+
+	length = (ip6h->nexthdr == IPPROTO_UDP) ?
+		ntohs(((struct udphdr *)txporthdr)->len) :
+		ntohs(ip6h->payload_len);
+	pseudo_checksum = ~ntohs(csum_ipv6_magic(&ip6h->saddr, &ip6h->daddr,
+		length, ip6h->nexthdr, 0));
+	ip_pseudo_payload_checksum = rmnet_map_add_checksums(
+		ip_payload_checksum, pseudo_checksum);
+
+	checksum_value_final = ~rmnet_map_subtract_checksums(
+		ip_pseudo_payload_checksum, ntohs(*checksum_field));
+
+	if (unlikely(checksum_value_final == 0)) {
+		switch (ip6h->nexthdr) {
+		case IPPROTO_UDP:
+			/* RFC 2460 section 8.1 */
+			LOGD("DL6 One's complement rule for UDP checksum 0");
+			checksum_value_final = ~checksum_value_final;
+			break;
+
+		case IPPROTO_TCP:
+			if (*checksum_field == 0xFFFF) {
+				LOGD(
+				"DL6 Non-RFC compliant TCP checksum found");
+				checksum_value_final = ~checksum_value_final;
+			}
+			break;
+		}
+	}
+
+	LOGD(
+	"DL6 cksum: ~HW: %04X, field: %04X, pseudo header: %04X, final: %04X",
+	~ntohs(cksum_trailer->checksum_value), ntohs(*checksum_field),
+	pseudo_checksum, checksum_value_final);
+
+	if (checksum_value_final == ntohs(*checksum_field))
+		return RMNET_MAP_CHECKSUM_OK;
+	else
+		return RMNET_MAP_CHECKSUM_VALIDATION_FAILED;
+	}
+
+/**
+ * rmnet_map_checksum_downlink_packet() - Validates checksum on
+ * a downlink packet
+ * @skb:	Pointer to the packet's skb.
+ *
+ * Validates packet checksums. Function takes a pointer to
+ * the beginning of a buffer which contains the entire MAP
+ * frame: MAP header + IP payload + padding + checksum trailer.
+ * Currently, only IPv4 and IPv6 are supported along with
+ * TCP & UDP. Fragmented or tunneled packets are not supported.
+ *
+ * Return:
+ *   - RMNET_MAP_CHECKSUM_OK: Validation of checksum succeeded.
+ *   - RMNET_MAP_CHECKSUM_ERR_BAD_BUFFER: Skb buffer given is corrupted.
+ *   - RMNET_MAP_CHECKSUM_VALID_FLAG_NOT_SET: Valid flag is not set in the
+ *					      checksum trailer.
+ *   - RMNET_MAP_CHECKSUM_FRAGMENTED_PACKET: The packet is a fragment.
+ *   - RMNET_MAP_CHECKSUM_ERR_UNKNOWN_TRANSPORT: The transport header is
+ *						   not TCP/UDP.
+ *   - RMNET_MAP_CHECKSUM_ERR_UNKNOWN_IP_VERSION: Unrecognized IP header.
+ *   - RMNET_MAP_CHECKSUM_VALIDATION_FAILED: In case the validation failed.
+ */
+int rmnet_map_checksum_downlink_packet(struct sk_buff *skb)
+{
+	struct rmnet_map_dl_checksum_trailer_s *cksum_trailer;
+	unsigned int data_len;
+	unsigned char *map_payload;
+	unsigned char ip_version;
+
+	data_len = RMNET_MAP_GET_LENGTH(skb);
+
+	if (unlikely(skb->len < (sizeof(struct rmnet_map_header_s) + data_len +
+	    sizeof(struct rmnet_map_dl_checksum_trailer_s))))
+		return RMNET_MAP_CHECKSUM_ERR_BAD_BUFFER;
+
+	cksum_trailer = (struct rmnet_map_dl_checksum_trailer_s *)
+			(skb->data + data_len
+			+ sizeof(struct rmnet_map_header_s));
+
+	if (unlikely(!ntohs(cksum_trailer->valid)))
+		return RMNET_MAP_CHECKSUM_VALID_FLAG_NOT_SET;
+
+	map_payload = (unsigned char *)(skb->data
+		+ sizeof(struct rmnet_map_header_s));
+
+	ip_version = (*map_payload & 0xF0) >> 4;
+	if (ip_version == 0x04)
+		return rmnet_map_validate_ipv4_packet_checksum(map_payload,
+			cksum_trailer);
+	else if (ip_version == 0x06)
+		return rmnet_map_validate_ipv6_packet_checksum(map_payload,
+			cksum_trailer);
+
+	return RMNET_MAP_CHECKSUM_ERR_UNKNOWN_IP_VERSION;
+}

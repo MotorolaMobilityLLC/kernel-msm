@@ -1,0 +1,10 @@
+config MSM_VPU
+	tristate "MSM VPU"
+	depends on VIDEO_V4L2
+	---help---
+		This flag enables enables the MSM VPU driver.
+		This device allows for advanced video post processing using the
+		v4l2 api.
+		In its original version (no tunneling features) buffers are
+		received from HLOS and sent back to HLOS after VPU hardware
+		processing.

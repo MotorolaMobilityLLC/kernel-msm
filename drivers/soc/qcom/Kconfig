@@ -1,0 +1,491 @@
+# When adding new entries keep the list in alphabetical order
+
+if ARCH_MSM
+
+config CP_ACCESS64
+	depends on ARM64
+        tristate "CP 64-bit register access tool"
+        help
+          Provide support for AARCH64 CP register access using /sys
+          interface. Read and write to CP registers from userspace
+          through sysfs interface. A sys file (cp_rw) will be created under
+          /sys/devices/cpaccess/cpaccess0.
+
+          If unsure, say N.
+
+config MSM_BAM_DMUX
+	bool "BAM Data Mux Driver"
+	depends on SPS
+	help
+	  Support Muxed Data Channels over BAM interface.
+	  BAM has a limited number of pipes.  This driver
+	  provides a means to support more logical channels
+	  via muxing than BAM could without muxing.
+
+config MSM_EVENT_TIMER
+	bool "Event timer"
+	help
+	  This option enables a modules that manages a list of event timers that
+	  need to be monitored by the PM. The enables the PM code to monitor
+	  events that require the core to be awake and ready to handle the
+	  event.
+
+config MSM_IPC_ROUTER_SMD_XPRT
+	depends on MSM_SMD
+	depends on IPC_ROUTER
+	bool "MSM SMD XPRT Layer"
+	help
+	  SMD Transport Layer that enables IPC Router communication within
+	  a System-on-Chip(SoC). When the SMD channels become available,
+	  this layer registers a transport with IPC Router and enable
+	  message exchange.
+
+config MSM_IPC_ROUTER_HSIC_XPRT
+	depends on USB_QCOM_IPC_BRIDGE
+	depends on IPC_ROUTER
+	bool "MSM HSIC XPRT Layer"
+	help
+	  HSIC Transport Layer that enables off-chip communication of
+	  IPC Router. When the HSIC endpoint becomes available, this layer
+	  registers the transport with IPC Router and enable message
+	  exchange.
+
+config MSM_JTAG
+	bool "Debug and ETM trace support across power collapse"
+	help
+	  Enables support for debugging (specifically breakpoints) and ETM
+	  processor tracing across power collapse both for JTag and OS hosted
+	  software running on the target. Enabling this will ensure debug
+	  and ETM registers are saved and restored across power collapse.
+
+	  If unsure, say 'N' here to avoid potential power, performance and
+	  memory penalty.
+
+config MSM_JTAG_MM
+	bool "Debug and ETM trace support across power collapse using memory mapped access"
+	help
+	  Enables support for debugging (specifically breakpoints) and ETM
+	  processor tracing across power collapse both for JTag and OS hosted
+	  software running on the target. Enabling this will ensure debug
+	  and ETM registers are saved and restored across power collapse.
+
+	  Required on targets on which cp14 access to debug and ETM registers is
+	  not permitted and so memory mapped access is necessary.
+
+	  If unsure, say 'N' here to avoid potential power, performance and
+	  memory penalty.
+
+config MSM_JTAGV8
+	bool "Debug and ETM trace support across power collapse for ARMv8"
+	help
+	  Enables support for debugging (specifically breakpoints) and ETM
+	  processor tracing across power collapse both for JTag and OS hosted
+	  software running on ARMv8 target. Enabling this will ensure debug
+	  and ETM registers are saved and restored across power collapse.
+
+	  If unsure, say 'N' here to avoid potential power, performance and
+	  memory penalty.
+
+config MSM_QMI_INTERFACE
+	depends on IPC_ROUTER
+	depends on QMI_ENCDEC
+	bool "MSM QMI Interface Library"
+	help
+	  Library to send and receive QMI messages over IPC Router.
+	  This library provides interface functions to the kernel drivers
+	  to perform QMI message marshaling and transport them over IPC
+	  Router.
+
+config MSM_SMD
+	depends on MSM_SMEM
+	bool "MSM Shared Memory Driver (SMD)"
+	help
+	  Support for the shared memory interprocessor communication protocol
+	  which provides virual point to point serial channels between processes
+	  on the apps processor and processes on other processors in the SoC.
+	  Also includes support for the Shared Memory State Machine (SMSM)
+	  protocol which provides a mechanism to publish single bit state
+	  information to one or more processors in the SoC.
+
+config MSM_SMD_DEBUG
+	depends on MSM_SMD
+	bool "MSM SMD debug support"
+	help
+	  Support for debugging SMD and SMSM communication between apps and
+	  other processors in the SoC. Debug support primarily consists of
+	  logs consisting of information such as what interrupts were processed,
+	  what channels caused interrupt activity, and when internal state
+	  change events occur.
+
+config MSM_MPM_OF
+	bool "Modem Power Manager"
+	depends on OF
+	help
+	  MPM is a dedicated hardware resource responsible for entering and
+	  waking up from a system wide low power mode. The MPM driver tracks
+	  the wakeup interrupts and configures the MPM to monitor the wakeup
+	  interrupts when going to a system wide sleep mode. This config option
+	  enables the MPM driver that supports initialization from a device
+	  tree
+
+config MSM_RPM_SMD
+	select MSM_MPM_OF
+	bool "RPM driver using SMD protocol"
+	help
+	  RPM is the dedicated hardware engine for managing shared SoC
+	  resources. This config adds driver support for using SMD as a
+	  transport layer communication with RPM hardware. It also selects
+	  the MSM_MPM config that programs the MPM module to monitor interrupts
+	  during sleep modes.
+
+config MSM_RPM_RBCPR_STATS_V2_LOG
+	tristate "MSM Resource Power Manager RPBCPR Stat Driver"
+	depends on DEBUG_FS
+	help
+	  This option enables v2 of the rpmrbcpr_stats driver which reads RPM
+	  memory for statistics pertaining to RPM's RBCPR(Rapid Bridge Core
+	  Power Reduction) driver. The drivers outputs the message via a
+	  debugfs node.
+
+config MSM_RPM_LOG
+	tristate "MSM Resource Power Manager Log Driver"
+	depends on DEBUG_FS
+	depends on MSM_RPM_SMD
+	default n
+	help
+          This option enables a driver which can read from a circular buffer
+          of messages produced by the RPM. These messages provide diagnostic
+          information about RPM operation. The driver outputs the messages
+          via a debugfs node.
+
+config MSM_RPM_STATS_LOG
+        tristate "MSM Resource Power Manager Stat Driver"
+        depends on DEBUG_FS
+        depends on MSM_RPM_SMD
+        default n
+          help
+          This option enables a driver which reads RPM messages from a shared
+          memory location. These messages provide statistical information about
+          the low power modes that RPM enters. The drivers outputs the message
+          via a debugfs node.
+
+config MSM_RUN_QUEUE_STATS
+	bool "Enable collection and exporting of MSM Run Queue stats to userspace"
+	default n
+	help
+	This option enables the driver to periodically collecting the statistics
+	of kernel run queue information and calculate the load of the system.
+	This information is exported to usespace via sysfs entries and userspace
+	algorithms uses info and decide when to turn on/off the cpu cores.
+
+config MSM_SMEM
+	depends on REMOTE_SPINLOCK_MSM
+	bool "MSM Shared Memory (SMEM)"
+	help
+	  Support for the shared memory interface between the various
+	  processors in the System on a Chip (SoC) which allows basic
+	  inter-processor communication.
+
+config MSM_SMEM_LOGGING
+	depends on MSM_SMEM
+	bool "MSM Shared Memory Logger"
+	help
+	  Enable the shared memory logging to log the events between
+	  the various processors in the system. This option exposes
+	  the shared memory logger at /dev/smem_log and a debugfs node
+	  named smem_log.
+
+config MSM_SMP2P
+	bool "SMSM Point-to-Point (SMP2P)"
+	depends on MSM_SMEM
+	help
+	  Provide point-to-point remote signaling support.
+	  SMP2P enables transferring 32-bit values between
+	  the local and a remote system using shared
+	  memory and interrupts. A client can open multiple
+	  32-bit values by specifying a unique string and
+	  remote processor ID.
+
+config MSM_SMP2P_TEST
+	bool "SMSM Point-to-Point Test"
+	depends on MSM_SMP2P
+	help
+	  Enables loopback and unit testing support for
+	  SMP2P. Loopback support is used by other
+	  processors to do unit testing. Unit tests
+	  are used to verify the local and remote
+	  implementations.
+
+config MSM_SPM_V2
+	bool "Driver support for SPM Version 2"
+	help
+	  Enables the support for Version 2 of the SPM driver. SPM hardware is
+	  used to manage the processor power during sleep. The driver allows
+	  configuring SPM to allow different low power modes for both core and
+	  L2.
+
+config MSM_L2_SPM
+	bool "SPM support for L2 cache"
+	depends on MSM_SPM_V2
+	help
+	  Enable SPM driver support for L2 cache. Some MSM chipsets allow
+	  control of L2 cache low power mode with a Subsystem Power manager.
+	  Enabling this driver allows configuring L2 SPM for low power modes
+	  on supported chipsets.
+
+config MSM_QDSP6_APRV2
+	bool "Audio QDSP6 APRv2 support"
+	depends on MSM_SMD
+	help
+	  Enable APRv2 IPC protocol support between
+	  application processor and QDSP6. APR is
+	  used by audio driver to configure QDSP6's
+	  ASM, ADM and AFE.
+
+config MSM_QDSP6_APRV3
+	bool "Audio QDSP6 APRv3 support"
+	depends on MSM_SMD
+	help
+	  Enable APRv2 IPC protocol support between
+	  application processor and QDSP6. APR is
+	  used by audio driver to configure QDSP6v2's
+	  ASM, ADM and AFE.
+
+config MSM_ADSP_LOADER
+	tristate "ADSP loader support"
+	select SND_SOC_MSM_APRV2_INTF
+	depends on MSM_QDSP6_APRV2 || MSM_QDSP6_APRV3
+	help
+	  Enable ADSP image loader.
+	  The ADSP loader brings ADSP out of reset
+	  for the platforms that use APRv2.
+	  Say M if you want to enable this module.
+
+config MSM_MEMORY_DUMP
+	bool "MSM Memory Dump Support"
+	help
+	  This enables memory dump feature. It allows various client
+	  subsystems to register respective dump regions. At the time
+	  of deadlocks or cpu hangs these dump regions are captured to
+	  give a snapshot of the system at the time of the crash.
+
+config MSM_MEMORY_DUMP_V2
+	bool "MSM Memory Dump v2 Support"
+	help
+	  This enables memory dump feature. It allows various client
+	  subsystems to register respective dump regions. At the time
+	  of deadlocks or cpu hangs these dump regions are captured to
+	  give a snapshot of the system at the time of the crash.
+
+config MSM_DEBUG_LAR_UNLOCK
+	bool "MSM Debug LAR Unlock Support"
+	depends on MSM_MEMORY_DUMP_V2
+	help
+	  This allows unlocking Core Debug lock to allow capture
+	  of upper 32 bits of program counter at the time of
+	  system crash. This is useful in getting correct crash
+	  location.
+
+config MSM_DDR_HEALTH
+	bool "MSM DDR Health Driver"
+	default n
+	help
+	  This option enables a driver which allocates DDR buffer of requested
+	  size and sends it's locatoin to RPM sub system. RPM subsystem can
+	  make use of this buffer to monitor DDR health.
+
+config MSM_COMMON_LOG
+	bool "MSM Common Log Support"
+	help
+	 Use this to export symbols of some log address and variables
+	 that need to parse crash dump files to a memory dump table. This
+	 table can be used by post analysis tools to extract information
+	 from memory when device crashes.
+
+config MSM_WATCHDOG_V2
+	bool "MSM Watchdog Support"
+	help
+	  This enables the watchdog module. It causes kernel panic if the
+	  watchdog times out. It allows for detection of cpu hangs and
+	  deadlocks. It does not run during the bootup process, so it will
+	  not catch any early lockups.
+
+config MSM_SUBSYSTEM_RESTART
+	bool "MSM Subsystem Restart"
+	help
+	  This option enables the MSM subsystem restart framework.
+
+	  The MSM subsystem restart framework provides support to boot,
+	  shutdown, and restart subsystems with a reference counted API.
+	  It also notifies userspace of transitions between these states via
+	  sysfs.
+
+config MSM_SYSMON_COMM
+	bool "MSM System Monitor communication support"
+	depends on MSM_SMD && MSM_SUBSYSTEM_RESTART
+	help
+	  This option adds support for MSM System Monitor library, which
+	  provides an API that may be used for notifying subsystems within
+	  the SoC about other subsystems' power-up/down state-changes.
+
+config MSM_PIL
+	bool "Peripheral image loading"
+	select FW_LOADER
+	default n
+	help
+	  Some peripherals need to be loaded into memory before they can be
+	  brought out of reset.
+
+	  Say yes to support these devices.
+
+config MSM_PIL_SSR_GENERIC
+	tristate "MSM Subsystem Boot Support"
+	depends on MSM_PIL && MSM_SUBSYSTEM_RESTART
+	help
+	  Support for booting and shutting down MSM Subsystem processors.
+	  This driver also monitors the SMSM status bits and the watchdog
+	  interrupt for the subsystem and restarts it on a watchdog bite
+	  or a fatal error. Subsystems include LPASS, Venus, VPU, WCNSS and
+	  BCSS.
+
+config MSM_PIL_MSS_QDSP6V5
+	tristate "MSS QDSP6v5 (Hexagon) Boot Support"
+	depends on MSM_PIL && MSM_SUBSYSTEM_RESTART
+	help
+	  Support for booting and shutting down QDSP6v5 (Hexagon) processors
+	  in modem subsystems. If you would like to make or receive phone
+	  calls then say Y here.
+
+	  If unsure, say N.
+
+config MSM_PIL_FEMTO
+	tristate "FSM99XX Boot Support"
+	depends on MSM_PIL && ARCH_FSM9900
+	help
+	  Support for loading and booting firmware images for multiple
+	  modems on the FSM9900 family targets.
+	  Select Y if you want the modems to boot.
+	  If unsure, select N.
+
+config MSM_OCMEM
+        bool "MSM On-Chip memory driver (OCMEM)"
+        help
+          Enable support for On-Chip Memory available on certain MSM chipsets.
+          OCMEM is a low latency, high performance pool shared by subsystems.
+
+config MSM_OCMEM_LOCAL_POWER_CTRL
+        bool "OCMEM Local Power Control"
+        depends on MSM_OCMEM
+        help
+          Enable direct power management of the OCMEM core by the
+          OCMEM driver. By default power management is delegated to
+          the RPM. Selecting this option causes the OCMEM driver to
+          directly handle the various macro power transitions.
+
+config MSM_OCMEM_DEBUG
+        bool "OCMEM Debug Support"
+        depends on MSM_OCMEM
+        help
+          Enable debug options for On-chip Memory (OCMEM) driver.
+          Various debug options include memory, power and latency.
+          Choosing one of these options allows debugging of each
+          individual subsystem separately.
+
+config MSM_OCMEM_NONSECURE
+        bool "OCMEM Non Secure Mode"
+        depends on MSM_OCMEM_DEBUG
+        help
+          Disable OCMEM interaction with secure processor.
+          By default OCMEM is secured and accesses for each master
+          is requested by the OCMEM driver. Selecting this option
+          causes the OCMEM memory to be in non-secure state unless
+          its locked down by the secure processor.
+
+config MSM_OCMEM_POWER_DEBUG
+        bool "OCMEM Power Debug Support"
+        depends on MSM_OCMEM_DEBUG
+        help
+          Enable debug support for OCMEM power management.
+          This adds support for verifying all power management
+          related operations of OCMEM. Both local power management
+          and RPM assisted power management operations are supported.
+
+config MSM_OCMEM_DEBUG_ALWAYS_ON
+        bool "Keep OCMEM always turned ON"
+        depends on MSM_OCMEM_DEBUG
+        help
+          Always vote for all OCMEM clocks and keep all OCMEM
+          macros turned ON and never allow them to be turned OFF.
+          Both local power management and RPM assisted power modes
+          are supported for individual macro power control operations.
+
+config MSM_OCMEM_POWER_DISABLE
+        bool "OCMEM Disable Power Control"
+        depends on MSM_OCMEM
+        help
+          Disable all OCMEM power management.
+          Skip all OCMEM power operations that turn ON or
+          turn OFF the macros. Both local power management and
+          RPM assisted power management operations are skipped.
+          Enable this configuration if OCMEM is being exclusively
+          used as GMEM or OCIMEM.
+
+config MSM_BOOT_STATS
+	bool "Use MSM boot stats reporting"
+	help
+	 Use this to report msm boot stats such as bootloader throughput,
+	 display init, total boot time.
+	 This figures are reported in mpm sleep clock cycles and have a
+	 resolution of 31 bits as 1 bit is used as an overflow check.
+
+config MSM_SCM
+	bool "Secure Channel Manager (SCM) support"
+	default n
+
+config MAXIMUM_CURRENT_THROTTLING
+	tristate "CPU current throttling driver"
+	help
+	  Say Y to enable maximum current throttling.
+	  The maximum current throttling driver enables application to
+	  turn on/off CPU based current throttling by setting the
+	  credit/upper limit in the CPU registers.
+
+config MSM_CPU_PWR_CTL
+	bool "Cpu subsystem power control"
+	depends on SMP && (ARM || ARM64)
+	default y
+	help
+	  Provides routines to power on cpu rails and l2 cache
+	  controller during coldboot.
+
+config MSM_XPU_ERR_FATAL
+	bool "Configure XPU violations as fatal errors"
+	help
+	 Select if XPU violations have to be configured as fatal errors.
+
+config MSM_CACHE_DUMP
+	bool "Cache dumping support"
+	help
+	  Add infrastructure to dump the L1 and L2 caches to an allocated buffer.
+	  This allows for analysis of the caches in case cache corruption is
+	  suspected.
+	  If unsure, say N
+
+config MSM_CACHE_DUMP_ON_PANIC
+	bool "Dump caches on panic"
+	depends on MSM_CACHE_DUMP
+	help
+	  By default, the caches are flushed on panic. This means that trying to
+	  look at them in a RAM dump will give useless data. Select this if you
+	  want to dump the L1 and L2 caches on panic before any flush occurs.
+	  If unsure, say N
+
+config MSM_SHARED_HEAP_ACCESS
+	bool "Shared Heap access"
+	help
+	 Enable support to provide access to clients to certain HLOS regions
+	 which are protected by the secure environment.
+
+source "drivers/soc/qcom/memshare/Kconfig"
+
+endif # ARCH_MSM
