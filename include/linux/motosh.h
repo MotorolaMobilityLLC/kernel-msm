@@ -300,6 +300,7 @@
 /* motosh_g_antcap_enabled */
 #define ANTCAP_ENABLED             0x01
 #define ANTCAP_AIRPLANE            0x02
+#define ANTCAP_CHECK_CAL           0x04
 
 /* motosh_g_conn_state */
 #define ANTCAP_USB                 0x80
