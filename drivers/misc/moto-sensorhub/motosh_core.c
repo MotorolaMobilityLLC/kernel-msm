@@ -91,7 +91,7 @@ bool motosh_g_booted;
 unsigned char motosh_g_antcap_cal[MOTOSH_ANTCAP_CAL_BUFF_SIZE];
 unsigned char motosh_g_antcap_cfg[MOTOSH_ANTCAP_CFG_BUFF_SIZE];
 unsigned char motosh_g_conn_state;
-unsigned char motosh_g_antcap_enabled;
+unsigned char motosh_g_antcap_enabled = ANTCAP_CHECK_CAL;
 unsigned char motosh_g_antcap_hw_ready;
 unsigned char motosh_g_antcap_sw_ready;
 #endif /* CONFIG_CYPRESS_CAPSENSE_HSSP */
