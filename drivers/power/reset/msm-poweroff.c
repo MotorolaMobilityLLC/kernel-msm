@@ -118,10 +118,10 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
-/*static bool get_dload_mode(void)
+static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
-}*/
+}
 
 static void enable_emergency_dload_mode(void)
 {
@@ -225,16 +225,12 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
-	qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-
-#if 0
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 
-#endif
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			__raw_writel(0x77665500, restart_reason);
@@ -423,6 +419,7 @@ static int msm_restart_probe(struct platform_device *pdev)
 		scm_deassert_ps_hold_supported = true;
 
 	set_dload_mode(download_mode);
+
 	return 0;
 
 err_restart_reason:
