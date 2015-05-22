@@ -69,3 +69,9 @@
 	qcom,init-voltage = <1800000>;
 	status = "okay";
 };
+
+&soc {
+	qcom,cnss {
+		wlan-bootstrap-gpio = <&msm_gpio 112 0>;
+	};
+};

@@ -109,7 +109,7 @@
 	};
 
 	qcom,cnss {
-		wlan-bootstrap-gpio = <&msm_gpio 112 0>;
+		wlan-bootstrap-gpio = <&msm_gpio 1 0>;
 	};
 };
 
