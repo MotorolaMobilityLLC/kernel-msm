@@ -205,8 +205,7 @@ static uint32_t msm_isp_axi_get_plane_size(
 	case V4L2_PIX_FMT_QRGGB8:
 	case V4L2_PIX_FMT_JPEG:
 	case V4L2_PIX_FMT_META:
-		size = plane_cfg[plane_idx].output_height *
-		plane_cfg[plane_idx].output_width;
+		size = plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_SBGGR10:
 	case V4L2_PIX_FMT_SGBRG10:
@@ -217,8 +216,7 @@ static uint32_t msm_isp_axi_get_plane_size(
 	case V4L2_PIX_FMT_QGRBG10:
 	case V4L2_PIX_FMT_QRGGB10:
 		/* TODO: fix me */
-		size = plane_cfg[plane_idx].output_height *
-		plane_cfg[plane_idx].output_width;
+		size = plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_SBGGR12:
 	case V4L2_PIX_FMT_SGBRG12:
@@ -237,38 +235,31 @@ static uint32_t msm_isp_axi_get_plane_size(
 	case V4L2_PIX_FMT_QGRBG14:
 	case V4L2_PIX_FMT_QRGGB14:
 		/* TODO: fix me */
-		size = plane_cfg[plane_idx].output_height *
-		plane_cfg[plane_idx].output_width;
+		size = plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_P16BGGR10:
 	case V4L2_PIX_FMT_P16GBRG10:
 	case V4L2_PIX_FMT_P16GRBG10:
 	case V4L2_PIX_FMT_P16RGGB10:
-		size = plane_cfg[plane_idx].output_height *
-		plane_cfg[plane_idx].output_width;
+		size = plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_NV12:
 	case V4L2_PIX_FMT_NV21:
 		if (plane_cfg[plane_idx].output_plane_format == Y_PLANE)
-			size = plane_cfg[plane_idx].output_height *
-				plane_cfg[plane_idx].output_width;
+			size = plane_cfg[plane_idx].output_width;
 		else
-			size = plane_cfg[plane_idx].output_height *
-				plane_cfg[plane_idx].output_width;
+			size = plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_NV14:
 	case V4L2_PIX_FMT_NV41:
 		if (plane_cfg[plane_idx].output_plane_format == Y_PLANE)
-			size = plane_cfg[plane_idx].output_height *
-				plane_cfg[plane_idx].output_width;
+			size = plane_cfg[plane_idx].output_width;
 		else
-			size = plane_cfg[plane_idx].output_height *
-				plane_cfg[plane_idx].output_width;
+			size = plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_NV16:
 	case V4L2_PIX_FMT_NV61:
-		size = plane_cfg[plane_idx].output_height *
-			plane_cfg[plane_idx].output_width;
+		size = plane_cfg[plane_idx].output_width;
 		break;
 	/*TD: Add more image format*/
 	default:
@@ -603,8 +594,10 @@ void msm_isp_calculate_bandwidth(
 	} else {
 		int rdi = SRC_TO_INTF(stream_info->stream_src);
 		if (rdi < VFE_SRC_MAX)
+			/*Need to consider the bits per pixel of sensor output
+			while calculating the bandwidth*/
 			stream_info->bandwidth =
-				axi_data->src_info[rdi].pixel_clock;
+				(axi_data->src_info[rdi].pixel_clock * 10)/8;
 		else
 			pr_err("%s: Invalid rdi interface\n", __func__);
 	}
