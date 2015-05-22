@@ -26,6 +26,7 @@
 #include <linux/platform_device.h>
 #include <linux/input/synaptics_dsx.h>
 #include "synaptics_dsx_core.h"
+#include <linux/wakelock.h>
 
 
 
@@ -412,6 +413,7 @@ struct synaptics_rmi4_fwu_handle {
 	struct f34_flash_properties flash_properties;
 	struct synaptics_rmi4_fn_desc f34_fd;
 	struct synaptics_rmi4_data *rmi4_data;
+	struct wake_lock        tp_wake_lock;
 };
 
 static struct bin_attribute dev_attr_data = {
@@ -1659,13 +1661,6 @@ static int fwu_do_lockdown(void)
 	if (retval < 0)
 		return retval;
 
-	retval = rmi4_data->reset_device(rmi4_data);
-	if (retval < 0) {
-		dev_err(rmi4_data->pdev->dev.parent,
-			"%s: Failed to reset device\n",
-			__func__);
-		return retval;
-	}
 	pr_notice("%s: Lockdown programmed\n", __func__);
 
 	return retval;
@@ -1909,6 +1904,7 @@ static int get_device_firmware(struct synaptics_rmi4_data *rmi4_data)
 {
 	int index;
 
+	fwu->force_update = FORCE_UPDATE;
 	index = find_fw_by_config_id(rmi4_data);
 	if(index < 0) {
 		pr_info("%s:get fw fail\n",__func__);
@@ -2025,6 +2021,8 @@ static int fwu_start_reflash(void)
 	if(fw_lockdown_check(fwu->img.image) > 0) {
 		pr_info("%s:fw lockdown info found\n",__func__);
 		fwu->do_lockdown = true;
+	} else {
+		fwu->do_lockdown = false;
 	}
 
 	if (fwu->do_lockdown && (fwu->img.lockdown.data != NULL)) {
@@ -2036,6 +2034,13 @@ static int fwu_start_reflash(void)
 				dev_err(rmi4_data->pdev->dev.parent,
 						"%s: Failed to do lockdown\n",
 						__func__);
+			}
+			retval = rmi4_data->reset_device(rmi4_data);
+			if (retval < 0) {
+				dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to reset device\n",
+				__func__);
+				goto reset_fail;
 			}
 			break;
 		default:
@@ -2076,6 +2081,7 @@ static int fwu_start_reflash(void)
 exit:
 	rmi4_data->reset_device(rmi4_data);
 
+reset_fail:
 	if (fw_entry)
 		release_firmware(fw_entry);
 
@@ -2109,8 +2115,8 @@ static void fwu_startup_fw_update_work(struct work_struct *work)
 {
 	int retval;
 
+	wake_lock(&fwu->tp_wake_lock);
 	retval = synaptics_fw_updater(NULL);
-
 	if (retval < 0) {
 		fwu->update_fail_cnt++;
 		if(fwu->update_fail_cnt < 3) {
@@ -2119,6 +2125,7 @@ static void fwu_startup_fw_update_work(struct work_struct *work)
 				msecs_to_jiffies(1000));
 		}
 	}
+	wake_unlock(&fwu->tp_wake_lock);
 	return;
 }
 #endif
@@ -2489,6 +2496,8 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 			0);
 #endif
 
+	wake_lock_init(&fwu->tp_wake_lock, WAKE_LOCK_SUSPEND, "tp_wake_lock");
+
 	return 0;
 
 exit_remove_attrs:
@@ -2516,6 +2525,8 @@ static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 
 	if (!fwu)
 		goto exit;
+
+	wake_lock_destroy(&fwu->tp_wake_lock);
 
 #ifdef DO_STARTUP_FW_UPDATE
 	cancel_delayed_work_sync(&fwu->fwu_work);
