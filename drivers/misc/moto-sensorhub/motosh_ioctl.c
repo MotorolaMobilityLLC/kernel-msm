@@ -1003,6 +1003,9 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 				break;
 			}
 		}
+
+		motosh_g_antcap_enabled &= ~ANTCAP_CHECK_CAL;
+
 		break;
 	case MOTOSH_IOCTL_SET_HEADSET_STATE:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_SET_HEADSET_STATE");
