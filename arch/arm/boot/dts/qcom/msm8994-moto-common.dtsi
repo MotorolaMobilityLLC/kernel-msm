@@ -1574,8 +1574,7 @@
 		rated_voltage = <0x72>;         /* 2.4v */
 		overdrive_voltage = <0xD1>;     /* 4.6v */
 		rtp_overdrive_voltage = <0xEA>; /* 4.991v */
-		vibrator_vdd-supply = <&vreg_5p0>;
-		static-vdd-supply = <&pm8994_l18>;
+		static-vdd-supply = <&vreg_5p0>;
 	};
 
 	tfa9890: tfa9890@34 {
