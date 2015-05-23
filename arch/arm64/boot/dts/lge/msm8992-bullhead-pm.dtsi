@@ -58,6 +58,7 @@
 	qcom,charging-timeout-mins = <768>;
 	qcom,chg-vadc = <&pmi8994_vadc>;
 	/delete-property/ qcom,dc-psy-type;
+	qcom,usb-cc-controller;
 };
 
 /{
