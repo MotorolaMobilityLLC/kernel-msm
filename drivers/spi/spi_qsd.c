@@ -1868,6 +1868,8 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 					&dd->bam.cons.config);
 		}
 	}
+	else if (master->bus_num == 12)
+		reset_core(dd);
 
 	if (dd->suspended || !msm_spi_is_valid_state(dd)) {
 		dev_err(dd->dev, "%s: SPI operational state not valid\n",
