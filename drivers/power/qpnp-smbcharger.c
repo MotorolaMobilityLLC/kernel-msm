@@ -235,6 +235,7 @@ struct smbchg_chip {
 	bool				apsd_rerun;
 	bool				apsd_rerun_ignore_uv_irq;
 	struct completion		apsd_src_det_lowered;
+	bool				usb_cc_controller;
 };
 
 enum print_reason {
@@ -4641,7 +4642,8 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	batt_cool_handler(0, chip);
 	batt_cold_handler(0, chip);
 	chg_term_handler(0, chip);
-	usbid_change_handler(0, chip);
+	if (!chip->usb_cc_controller)
+		usbid_change_handler(0, chip);
 	src_detect_handler(0, chip);
 
 	chip->usb_present = is_usb_present(chip);
@@ -5308,6 +5310,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,low-volt-dcin");
 	chip->force_aicl_rerun = of_property_read_bool(node,
 					"qcom,force-aicl-rerun");
+	chip->usb_cc_controller = of_property_read_bool(node,
+					"usb-cc-controller");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
@@ -5503,16 +5507,19 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			REQUEST_IRQ(chip, spmi_resource, chip->aicl_done_irq,
 				"aicl-done",
 				aicl_done_handler, flags, rc);
-			REQUEST_IRQ(chip, spmi_resource,
-				chip->usbid_change_irq, "usbid-change",
-				usbid_change_handler,
-				(IRQF_TRIGGER_FALLING | IRQF_ONESHOT), rc);
+			if (!chip->usb_cc_controller) {
+				REQUEST_IRQ(chip, spmi_resource,
+					chip->usbid_change_irq, "usbid-change",
+					usbid_change_handler,
+					(IRQF_TRIGGER_FALLING | IRQF_ONESHOT), rc);
+			}
 			enable_irq_wake(chip->usbin_uv_irq);
 			enable_irq_wake(chip->usbin_ov_irq);
 			enable_irq_wake(chip->src_detect_irq);
 			enable_irq_wake(chip->otg_fail_irq);
 			enable_irq_wake(chip->otg_oc_irq);
-			enable_irq_wake(chip->usbid_change_irq);
+			if (!chip->usb_cc_controller)
+				enable_irq_wake(chip->usbid_change_irq);
 			if (chip->parallel.avail && chip->usb_present) {
 				rc = enable_irq_wake(chip->aicl_done_irq);
 				chip->enable_aicl_wake = true;
