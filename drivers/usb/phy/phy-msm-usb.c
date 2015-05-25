@@ -4187,6 +4187,62 @@ const struct file_operations msm_otg_phy_parameter_d_fops = {
 };
 //ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 
+//ASUS_BSP+++ "[USB][NA][Spec] add reset on disconnect flag debug file"
+static int asus_otg_reset_on_disconnect_show(struct seq_file *s, void *unused)
+{
+	struct msm_otg *motg = the_msm_otg;
+	struct msm_otg_platform_data *pdata = motg->pdata;
+
+	if (pdata->disable_reset_on_disconnect) {
+		seq_printf(s, "1\n");
+	} else {
+		seq_printf(s, "0\n");
+	}
+
+	return 0;
+}
+
+static int asus_otg_reset_on_disconnect_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, asus_otg_reset_on_disconnect_show, inode->i_private);
+}
+
+static ssize_t asus_otg_reset_on_disconnect_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	struct msm_otg *motg = the_msm_otg;
+	struct msm_otg_platform_data *pdata = motg->pdata;
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	if (!strncmp(buf, "1", 1)) {
+		pdata->disable_reset_on_disconnect = 1;
+	} else if (!strncmp(buf, "0", 1)) {
+		pdata->disable_reset_on_disconnect = 0;
+	} else {
+		status = -EINVAL;
+		goto out;
+	}
+out:
+	return status;
+}
+
+const struct file_operations asus_otg_reset_on_disconnect_fops = {
+	.open = asus_otg_reset_on_disconnect_open,
+	.read = seq_read,
+	.write = asus_otg_reset_on_disconnect_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+//ASUS_BSP--- "[USB][NA][Spec] add reset on disconnect flag debug file"
+
 static struct dentry *msm_otg_dbg_root;
 
 static int msm_otg_debugfs_init(struct msm_otg *motg)
@@ -4276,6 +4332,17 @@ static int msm_otg_debugfs_init(struct msm_otg *motg)
 		return -ENODEV;
 	}
 	//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
+
+	//ASUS_BSP+++ "[USB][NA][Spec] add reset on disconnect flag debug file"
+	msm_otg_dentry = debugfs_create_file("disable_reset_on_disconnect", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&asus_otg_reset_on_disconnect_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+	//ASUS_BSP--- "[USB][NA][Spec] add reset on disconnect flag debug file"
 	return 0;
 }
 
