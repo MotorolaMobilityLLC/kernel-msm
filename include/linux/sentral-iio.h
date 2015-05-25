@@ -54,6 +54,8 @@
 
 #define SENTRAL_WATCHDOG_WORK_MSECS 500
 
+#define SENTRAL_GESTURE_WRIST_TILT_WRAP 4
+
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
 	SR_FIFO_FLUSH =   0x32,
@@ -64,6 +66,7 @@ enum sentral_registers {
 	SR_FIFO_BYTES =   0x38,
 	SR_PARAM_ACK =    0x3A,
 	SR_PARAM_SAVE =   0x3B,
+	SR_WAKE_SRC =     0x4D,
 	SR_PARAM_PAGE =   0x54,
 	SR_HOST_CONTROL = 0x55,
 	SR_PARAM_LOAD =   0x5C,
@@ -467,6 +470,16 @@ struct sentral_fw_cds {
 	u8 device_name[16];
 } __attribute__((__packed__));
 
+struct sentral_wake_src_count {
+	union {
+		u8 byte;
+		struct {
+			u8 wrist_tilt:2;
+			u8 reserved:6;
+		} bits;
+	};
+};
+
 struct sentral_platform_data {
 	unsigned int gpio_irq;
 	const char *firmware;
@@ -492,6 +505,7 @@ struct sentral_device {
 	struct mutex lock;
 	struct mutex lock_reset;
 	struct mutex lock_flush;
+	struct mutex lock_i2c;
 	struct wake_lock w_lock;
 	struct notifier_block nb;
 	u8 *data_buffer;
@@ -502,6 +516,8 @@ struct sentral_device {
 	u32 ts_sensor_stime;
 	u64 enabled_mask;
 	struct sentral_param_sensor_config sensor_config[SST_MAX];
+	struct sentral_wake_src_count wake_src_count;
+	struct sentral_wake_src_count wake_src_count_pending;
 	u8 latest_accel_buffer[24];
 };
 
