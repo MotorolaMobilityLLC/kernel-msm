@@ -94,7 +94,7 @@
 #define SYSFS_RESULT_FAIL		(-1)
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
-#define DEVICE_READY_MAX_WAIT		10
+#define DEVICE_READY_MAX_WAIT		50
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -282,7 +282,7 @@ static bool waitDeviceReady(bool forever, bool slowly)
 			ucQuery = CMD_STATUS_BUSY;
 
 		if (slowly)
-			mdelay(1000);
+			mdelay(10);
 		if (!forever)
 			count--;
 
@@ -840,8 +840,8 @@ static void exitIdleEvt(struct work_struct *work) {
 	isTouchLocked = true;
 	input_mt_slot(gl_ts->touch_dev,0);
 	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 0);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 0);	
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, -1);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, -1);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
@@ -879,7 +879,7 @@ static void readTouchDataPoint(void)
 	/* verify there is point data to read & it is readable and valid */
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
 	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
-		LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
+		//LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
 		return;
 	}
 	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
@@ -956,23 +956,23 @@ static void readTouchDataPoint_Ambient(void)
 	if (!isTouchLocked){
 	i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus));
 	if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
-		LOGE("readTouchDataPoint() called when no data available (0x%02X)\n", devStatus);
+		//LOGE("readTouchDataPoint_Ambient() called when no data available (0x%02X)\n", devStatus);
 		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 		return;
 	}
 	if (!i2cReadNoReadyCheck(BUF_POINT_INFO, (void*)&pointData, sizeof(pointData))) {
-		LOGE("readTouchDataPoint() failed to read point data buffer\n");
+		LOGE("readTouchDataPoint_Ambient() failed to read point data buffer\n");
 		isTouchLocked = true;
 		wake_unlock(&touch_lock);
 		return;
 	}	
 	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
 		if (pointData.flags == 16){
-			LOGE("readTouchDataPoint() send touch event by type 0x%02X\n", pointData.flags);
+			LOGE("readTouchDataPoint_Ambient() send touch event by type 0x%02X\n", pointData.flags);
 		} 
 		else{
-			LOGE("readTouchDataPoint() dropping non-point data of type 0x%02X\n", pointData.flags);
+			LOGE("readTouchDataPoint_Ambient() dropping non-point data of type 0x%02X\n", pointData.flags);
 			isTouchLocked = true;
 			wake_unlock(&touch_lock);
 			return;
@@ -1070,14 +1070,14 @@ static bool chipIdentifyIT7260(void)
 	static const uint8_t expectedID[] = {0x0A, 'I', 'T', 'E', '7', '2', '6', '0'};
 	uint8_t chipID[10] = {0,};
 
-	waitDeviceReady(false, false);
+	waitDeviceReady(false, true);
 	
 	if (!i2cWriteNoReadyCheck(BUF_COMMAND, cmdIdent, sizeof(cmdIdent))) {
 		LOGE("i2cWrite() failed\n");
 		return false;
 	}
 
-	waitDeviceReady(false, false);
+	waitDeviceReady(false, true);
 	
 	if (!i2cReadNoReadyCheck(BUF_RESPONSE, chipID, sizeof(chipID))) {
 		LOGE("i2cRead() failed\n");
@@ -1117,9 +1117,7 @@ int parse_reset_gpio(struct device *dev)
 
 static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	static const uint8_t cmdStart[] = {CMD_UNKNOWN_7};
 	struct IT7260_i2c_platform_data *pdata;
-	uint8_t rsp[2];
 	int ret = -1;
 	int err;
 	int RESET_GPIO;
@@ -1249,11 +1247,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	}
 	
 	devicePresent = true;
-
-	i2cWriteNoReadyCheck(BUF_COMMAND, cmdStart, sizeof(cmdStart));
-	mdelay(10);
-	i2cReadNoReadyCheck(BUF_RESPONSE, rsp, sizeof(rsp));
-	mdelay(10);
 
 	return 0;
 
