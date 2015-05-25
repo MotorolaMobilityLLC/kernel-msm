@@ -106,16 +106,14 @@ static int mode_write_proc_interactive (struct file *filp, const char __user *bu
 		return -EFAULT;
 
 	if (!strncmp(msg,"FB_BLANK_ENTER_INTERACTIVE",len-1)){
-		if (interactive_status == 0)
-			queue_work(notify_workQueue, &notify_on_Work);
+		queue_work(notify_workQueue, &notify_on_Work);
 	}
 	else if (!strncmp(msg,"FB_BLANK_ENTER_NON_INTERACTIVE",len-1)){
 	
 		wake_lock_timeout(&ambient_drawing_wakelock, WAIT_FOR_AMBIENT_DRAW_MS);
 		printk("wake_lock_timeout(Hz) for ambient mode UI...\n");
 		
-		if (interactive_status == 1)
-			queue_work(notify_workQueue, &notify_off_Work);
+		queue_work(notify_workQueue, &notify_off_Work);
 	}
 	else {
 		//printk ("%s", msg);
