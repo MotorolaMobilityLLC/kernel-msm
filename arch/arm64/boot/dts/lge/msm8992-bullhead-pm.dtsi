@@ -82,6 +82,7 @@
 	qcom,hot-bat-decidegc = <550>;
 	qcom,cool-bat-decidegc = <0>;
 	qcom,cold-bat-decidegc = <(-100)>;
+	qcom,vbat-estimate-diff-mv = <200>;
 };
 
 &i2c_6 {
