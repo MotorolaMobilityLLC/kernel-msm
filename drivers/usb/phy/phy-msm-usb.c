@@ -126,6 +126,12 @@ static struct regulator *vbus_otg;
 static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
 
+//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+static int g_phy_parameter_b = 0;
+static int g_phy_parameter_c = 0;
+static int g_phy_parameter_d = 0;
+//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
+
 static bool aca_id_turned_on;
 static bool legacy_power_supply;
 static inline bool aca_enabled(void)
@@ -414,6 +420,9 @@ static void ulpi_init(struct msm_otg *motg)
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	int aseq[10];
 	int *seq = NULL;
+	//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+	int addr = 0, value = 0;
+	//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 
 	if (override_phy_init) {
 		pr_debug("%s(): HUSB PHY Init:%s\n", __func__,
@@ -428,13 +437,39 @@ static void ulpi_init(struct msm_otg *motg)
 		return;
 
 	while (seq[0] >= 0) {
+		//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+		addr = seq [1];
+		value = seq[0];
+		if (seq[1] == 0x81) {
+			if (g_phy_parameter_b > 0) {
+				value = g_phy_parameter_b;
+			} else {
+				value = seq[0];
+			}
+		}
+		if (seq[1] == 0x82) {
+			if (g_phy_parameter_c > 0) {
+				value = g_phy_parameter_c;
+			} else {
+				value = seq[0];
+			}
+		}
+		if (seq[1] == 0x83) {
+			if (g_phy_parameter_d > 0) {
+				value = g_phy_parameter_d;
+			} else {
+				value = seq[0];
+			}
+		}
+
 		if (override_phy_init)
 			pr_debug("ulpi: write 0x%02x to 0x%02x\n",
-					seq[0], seq[1]);
+					value, addr);
 
-		dev_vdbg(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
-				seq[0], seq[1]);
-		ulpi_write(&motg->phy, seq[0], seq[1]);
+		dev_info(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
+				value, addr);
+		ulpi_write(&motg->phy, value, addr);
+		//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 		seq += 2;
 	}
 }
@@ -4015,6 +4050,143 @@ const struct file_operations msm_otg_bus_fops = {
 	.release = single_release,
 };
 
+//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+static int myxtoi(const char *name)
+{
+	int val = 0;
+
+	for (;; name++) {
+		switch (*name) {
+		case '0' ... '9':
+			val = 16*val+(*name-'0');
+			break;
+		case 'A' ... 'F':
+			val = 16*val+(*name-'A'+10);
+			break;
+		case 'a' ... 'f':
+			val = 16*val+(*name-'a'+10);
+			break;
+		default:
+			return val;
+		}
+	}
+}
+
+static int msm_otg_phy_parameter_b_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "reg: 0x81, value: 0x%X\n", g_phy_parameter_b);
+	return 0;
+}
+
+static int msm_otg_phy_parameter_b_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_otg_phy_parameter_b_show, inode->i_private);
+}
+
+static ssize_t msm_otg_phy_parameter_b_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	g_phy_parameter_b = myxtoi(buf);
+
+out:
+	return status;
+}
+
+const struct file_operations msm_otg_phy_parameter_b_fops = {
+	.open = msm_otg_phy_parameter_b_open,
+	.read = seq_read,
+	.write = msm_otg_phy_parameter_b_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int msm_otg_phy_parameter_c_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "reg: 0x82, value: 0x%X\n", g_phy_parameter_c);
+	return 0;
+}
+
+static int msm_otg_phy_parameter_c_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_otg_phy_parameter_c_show, inode->i_private);
+}
+
+static ssize_t msm_otg_phy_parameter_c_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	g_phy_parameter_c = myxtoi(buf);
+
+out:
+	return status;
+}
+
+const struct file_operations msm_otg_phy_parameter_c_fops = {
+	.open = msm_otg_phy_parameter_c_open,
+	.read = seq_read,
+	.write = msm_otg_phy_parameter_c_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int msm_otg_phy_parameter_d_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "reg: 0x83, value: 0x%X\n", g_phy_parameter_d);
+	return 0;
+}
+
+static int msm_otg_phy_parameter_d_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_otg_phy_parameter_d_show, inode->i_private);
+}
+
+static ssize_t msm_otg_phy_parameter_d_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	g_phy_parameter_d = myxtoi(buf);
+
+out:
+	return status;
+}
+
+const struct file_operations msm_otg_phy_parameter_d_fops = {
+	.open = msm_otg_phy_parameter_d_open,
+	.read = seq_read,
+	.write = msm_otg_phy_parameter_d_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
+
 static struct dentry *msm_otg_dbg_root;
 
 static int msm_otg_debugfs_init(struct msm_otg *motg)
@@ -4075,6 +4247,35 @@ static int msm_otg_debugfs_init(struct msm_otg *motg)
 		debugfs_remove_recursive(msm_otg_dbg_root);
 		return -ENODEV;
 	}
+
+	//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+	msm_otg_dentry = debugfs_create_file("phy_parameter_b", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&msm_otg_phy_parameter_b_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+
+	msm_otg_dentry = debugfs_create_file("phy_parameter_c", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&msm_otg_phy_parameter_c_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+
+	msm_otg_dentry = debugfs_create_file("phy_parameter_d", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&msm_otg_phy_parameter_d_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+	//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 	return 0;
 }
 
