@@ -69,14 +69,13 @@ qcom,palladium-batterydata {
 	};
 
 	qcom,rbatt-sf-lut {
-		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-col-legend = <(-20) (-10) 0 25 40 60>;
 		qcom,lut-row-legend = <100 95 90 85 80>,
 				<75 70 65 60 55>,
 				<50 45 40 35 30>,
 				<25 20 16 13 11>,
 				<10 9 8 7 6>,
-				<5 4 3 2 1>,
-				<0>;
+				<5 4 3 2 1>;
 		qcom,lut-data = <1859 726 327 100 74 61>,
 				<1859 726 327 100 74 61>,
 				<1715 718 328 101 74 61>,
