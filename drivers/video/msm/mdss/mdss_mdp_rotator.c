@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -255,6 +255,11 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 	rot_pipe = rot->pipe;
 
 	pr_debug("queue rotator pnum=%d\n", rot_pipe->num);
+
+	if (!rot_pipe->mixer_left) {
+		pr_debug("Mixer left is null\n");
+		return -EINVAL;
+	}
 
 	orig_ctl = rot_pipe->mixer_left->ctl;
 	if (orig_ctl->shared_lock)

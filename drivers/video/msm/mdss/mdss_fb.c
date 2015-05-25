@@ -326,7 +326,7 @@ static void mdss_fb_parse_dt_split(struct msm_fb_data_type *mfd)
 static ssize_t mdss_fb_store_split(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
-	u32 data[2] = {0};
+	int data[2] = {0};
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 
@@ -920,8 +920,6 @@ static int mdss_fb_resume_sub(struct msm_fb_data_type *mfd)
 	mfd->op_enable = mfd->suspend.op_enable;
 
 	/*
-	 * If the fb was explicitly blanked during suspend, then unblank it
-	 * during resume.
 	 * If the fb was explicitly blanked or transitioned to ulp during
 	 * suspend, then undo it during resume with the appropriate unblank
 	 * flag. If fb was in ulp state when entering suspend, then nothing
@@ -1293,6 +1291,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
+		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
 		ret = mdss_fb_blank_unblank(mfd);
 		break;
 	case BLANK_FLAG_ULP:
@@ -1302,6 +1301,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			pr_debug("Unsupp transition: off --> ulp\n");
 			return 0;
 		}
+
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
 	case BLANK_FLAG_LP:
@@ -1319,7 +1319,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 				break;
 		}
 
-		/* Enter doze mode only if unblank succeeded */
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
 	case FB_BLANK_HSYNC_SUSPEND:
@@ -1449,6 +1448,7 @@ int mdss_fb_alloc_fb_ion_memory(struct msm_fb_data_type *mfd, size_t fb_size)
 		}
 	} else {
 		pr_err("No IOMMU Domain\n");
+		rc = -EINVAL;
 		goto fb_mmap_failed;
 	}
 
@@ -1916,10 +1916,10 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 
 	/*
 	 * Populate smem length here for uspace to get the
-	 * Franebuffer size when FBIO_FSCREENINFO ioctl is
+	 * Framebuffer size when FBIO_FSCREENINFO ioctl is
 	 * called.
 	 */
-	fix->smem_len = fix->line_length * var->yres_virtual;
+	fix->smem_len = PAGE_ALIGN(fix->line_length * var->yres) * mfd->fb_page;
 
 	/* id field for fb app  */
 	id = (int *)&mfd->panel;
