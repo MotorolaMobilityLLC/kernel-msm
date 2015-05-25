@@ -10,6 +10,7 @@
 #include <linux/firmware.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
+#include <linux/time.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
@@ -458,6 +459,46 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 	return rc;
 }
 
+static int sentral_iio_buffer_push_wrist_tilt(struct sentral_device *sentral)
+{
+	LOGI(&sentral->client->dev, "sending wake-up wrist-tilt event\n");
+	sentral->ts_sensor_utime = sentral->ts_irq_utime;
+	return sentral_iio_buffer_push(sentral, SST_WRIST_TILT_GESTURE, NULL, 0);
+}
+
+static int sentral_handle_special_wakeup(struct sentral_device *sentral,
+		struct sentral_wake_src_count curr)
+{
+	int rc;
+	int i;
+	struct sentral_wake_src_count prev = sentral->wake_src_count;
+	struct sentral_wake_src_count pending = sentral->wake_src_count_pending;
+
+	// wrist tilt
+	LOGD(&sentral->client->dev,
+		"curr: %u, prev: %u, pending: %u\n",
+		curr.bits.wrist_tilt, prev.bits.wrist_tilt, pending.bits.wrist_tilt);
+
+	if (curr.bits.wrist_tilt != prev.bits.wrist_tilt) {
+		// check for wrap
+		if (curr.bits.wrist_tilt < prev.bits.wrist_tilt) {
+			pending.bits.wrist_tilt += ((curr.bits.wrist_tilt
+					+ SENTRAL_GESTURE_WRIST_TILT_WRAP) - prev.bits.wrist_tilt);
+		} else {
+			pending.bits.wrist_tilt += (curr.bits.wrist_tilt - prev.bits.wrist_tilt);
+		}
+		for (i = 0; i < pending.bits.wrist_tilt; i++) {
+			rc = sentral_iio_buffer_push_wrist_tilt(sentral);
+			if (rc) {
+				LOGE(&sentral->client->dev,
+						"error (%d) sending wrist-tilt event\n", rc);
+			}
+		}
+	}
+	sentral->wake_src_count = curr;
+	return 0;
+}
+
 // FIFO
 
 static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
@@ -477,6 +518,7 @@ static int sentral_fifo_get_bytes_remaining(struct sentral_device *sentral)
 
 	rc = sentral_read_block(sentral, SR_FIFO_BYTES, (void *)&bytes,
 			sizeof(bytes));
+	LOGD(&sentral->client->dev, "FIFO bytes remaining: %u\n", bytes);
 
 	if (rc < 0) {
 		LOGE(&sentral->client->dev, "error (%d) reading FIFO bytes remaining\n",
@@ -493,6 +535,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 {
 	u8 sensor_id;
 	size_t data_size;
+	u8 wrist_tilt_flag = 1;
 
 	while (bytes) {
 		// get sensor id
@@ -545,13 +588,18 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_WAKE_GESTURE:
 		case SST_GLANCE_GESTURE:
 		case SST_PICK_UP_GESTURE:
-		case SST_WRIST_TILT_GESTURE:
 		case SST_INACTIVITY_ALARM:
-			if (sensor_id == SST_WRIST_TILT_GESTURE)
-				LOGI(&sentral->client->dev, "get a WRIST_TILT_GESTURE event");
 			data_size = 0;
 			break;
-
+		case SST_WRIST_TILT_GESTURE:
+			// ignore wrist tilt
+			wrist_tilt_flag = 0;
+			data_size = 0;
+			if (sentral->wake_src_count_pending.bits.wrist_tilt) {
+				sentral->wake_src_count_pending.bits.wrist_tilt--;
+				continue;
+			}
+			break;
 		case SST_HEART_RATE:
 			data_size = 1;
 			break;
@@ -622,7 +670,8 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 			return -EINVAL;
 		}
 
-		sentral_iio_buffer_push(sentral, sensor_id, (void *)buffer, data_size);
+		if (wrist_tilt_flag)
+			sentral_iio_buffer_push(sentral, sensor_id, (void *)buffer, data_size);
 
 		buffer += data_size;
 		bytes -= data_size;
@@ -1501,16 +1550,13 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 					"error (%d) setting coach ID: %u, with activity ID: %u\n",
 					rc, id, delay_ms);
 		} else if (id == SST_INACTIVITY_ALARM) {
-			rc = sentral_parameter_read(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, 2);
-			LOGI(&sentral->client->dev,
-				"inactivity rate readback before setting, %d",
-				inactive_time);
+
 			// delay_ms -> inactivity alarm rate
 			if (delay_ms > 9)
 				inactive_time = delay_ms;
 			else // similar to game mode, 0-9 set as 2-11 mins
 				inactive_time = (delay_ms + 2) * 60;
-			rc = sentral_parameter_write(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, 2);
+			rc = sentral_parameter_write(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, sizeof(inactive_time));
 			if (rc) {
 				LOGE(&sentral->client->dev,
 					"error (%d) inactivity alarm rate set error",
@@ -1520,12 +1566,6 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 					"success inactivity set at %d",
 					inactive_time);
 			}
-			// just checking
-			inactive_time = 0;
-			sentral_parameter_read(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, 2);
-			LOGI(&sentral->client->dev,
-				"inactivity rate readback after setting, %d",
-				inactive_time);
 		} else {
 			if (delay_ms != 0) {
 				delay_ms = MIN(1000, delay_ms);
@@ -1986,6 +2026,8 @@ static void sentral_sysfs_destroy(struct sentral_device *sentral)
 static irqreturn_t sentral_irq_handler(int irq, void *dev_id)
 {
 	struct sentral_device *sentral = dev_id;
+	struct sentral_wake_src_count wake_src_count;
+	int rc;
 
 	LOGD(&sentral->client->dev, "IRQ received\n");
 
@@ -1995,6 +2037,21 @@ static irqreturn_t sentral_irq_handler(int irq, void *dev_id)
 			flush_workqueue(sentral->sentral_wq);
 
 		sentral->ts_irq_utime = sentral_get_ktime_us();
+		// check for special wakeup source
+		rc = sentral_read_block(sentral, SR_WAKE_SRC, (void *)&wake_src_count,
+				sizeof(wake_src_count));
+		if (rc < 0)
+			LOGE(&sentral->client->dev, "error (%d) reading wake source\n", rc);
+
+		// handle wakeup source
+		if (wake_src_count.byte != sentral->wake_src_count.byte) {
+			rc = sentral_handle_special_wakeup(sentral, wake_src_count);
+			if (rc) {
+				LOGE(&sentral->client->dev, "error (%d) handling wake source\n",
+						rc);
+			}
+		}
+
 		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
 	}
 
@@ -2043,6 +2100,10 @@ static void sentral_do_work_reset(struct work_struct *work)
 	}
 
 	sentral->init_complete = true;
+
+	// set watermark
+	//sentral_set_watermark(sentral, 200);
+
 	mutex_unlock(&sentral->lock_reset);
 
 	// queue a FIFO read
@@ -2324,9 +2385,14 @@ static int sentral_probe(struct i2c_client *client,
 
 	// init mutex, wakelock
 	mutex_init(&sentral->lock);
+	mutex_init(&sentral->lock_i2c);
 	mutex_init(&sentral->lock_reset);
 	mutex_init(&sentral->lock_flush);
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
+
+	// zero wake source counters
+	sentral->wake_src_count.byte = 0;
+	sentral->wake_src_count_pending.byte = 0;
 
 	// setup irq handler
 	LOGI(&sentral->client->dev, "requesting IRQ: %d, GPIO: %u\n", sentral->irq,
