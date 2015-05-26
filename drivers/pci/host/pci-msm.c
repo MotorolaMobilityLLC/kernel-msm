@@ -475,6 +475,7 @@ struct msm_pcie_dev_t {
 	spinlock_t			 cfg_lock;
 	unsigned long		    irqsave_flags;
 	struct mutex		     setup_lock;
+	struct mutex		     enumerate_lock;
 
 	struct irq_domain		*irq_domain;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_NR_IRQS);
@@ -3691,6 +3692,7 @@ int msm_pcie_enumerate(u32 rc_idx)
 		return -EPROBE_DEFER;
 	}
 
+	mutex_lock(&dev->enumerate_lock);
 	if (!dev->enumerated) {
 		ret = msm_pcie_enable(dev, PM_ALL);
 
@@ -3739,6 +3741,7 @@ int msm_pcie_enumerate(u32 rc_idx)
 				PCIE_ERR(dev,
 					"PCIe: Did not find PCI device for RC%d.\n",
 					dev->rc_idx);
+				mutex_unlock(&dev->enumerate_lock);
 				return -ENODEV;
 			}
 
@@ -3749,6 +3752,7 @@ int msm_pcie_enumerate(u32 rc_idx)
 				PCIE_ERR(dev,
 					"PCIe: Failed to set up device table for RC%d\n",
 					dev->rc_idx);
+				mutex_unlock(&dev->enumerate_lock);
 				return -ENODEV;
 			}
 		} else {
@@ -3759,6 +3763,7 @@ int msm_pcie_enumerate(u32 rc_idx)
 		PCIE_ERR(dev, "PCIe: RC%d has already been enumerated.\n",
 			dev->rc_idx);
 	}
+	mutex_unlock(&dev->enumerate_lock);
 
 	return ret;
 }
@@ -4898,6 +4903,7 @@ int __init pcie_init(void)
 		spin_lock_init(&msm_pcie_dev[i].cfg_lock);
 		msm_pcie_dev[i].cfg_access = true;
 		mutex_init(&msm_pcie_dev[i].setup_lock);
+		mutex_init(&msm_pcie_dev[i].enumerate_lock);
 		mutex_init(&msm_pcie_dev[i].recovery_lock);
 		spin_lock_init(&msm_pcie_dev[i].linkdown_lock);
 		spin_lock_init(&msm_pcie_dev[i].wakeup_lock);
