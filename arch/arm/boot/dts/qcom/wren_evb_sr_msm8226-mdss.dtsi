@@ -106,6 +106,7 @@
 			cell-index = <0>;
 			compatible = "qcom,mdss-fb";
 			qcom,memblock-reserve = <0x03200000 0xFA0000>;
+			linux,contiguous-region = <&fb_mem>;
 		};
 
 		mdss_fb1: qcom,mdss_fb_wfd {
@@ -197,8 +198,8 @@
 			qcom,panel-supply-entry@1 {
 				reg = <1>;
 				qcom,supply-name = "panel";
-				qcom,supply-min-voltage = <1900000>;
-				qcom,supply-max-voltage = <1900000>;
+				qcom,supply-min-voltage = <1800000>;
+				qcom,supply-max-voltage = <1800000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
 			};
