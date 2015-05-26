@@ -69,8 +69,11 @@ static void m4acc_work_func(struct work_struct *work)
 						    struct m4acc_driver_data,
 						    m4acc_work.work);
 	int size = 0;
+	struct timespec ts;
 
 	mutex_lock(&(dd->mutex));
+
+	get_monotonic_boottime(&ts);
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_ACCEL_X);
 	if (size < 0) {
@@ -129,6 +132,8 @@ static void m4acc_work_func(struct work_struct *work)
 		goto m4acc_isr_fail;
 	}
 
+	input_event(dd->indev, EV_MSC, MSC_TIMESTAMP, ts.tv_sec);
+	input_event(dd->indev, EV_MSC, MSC_TIMESTAMP, ts.tv_nsec);
 	input_report_abs(dd->indev, ABS_X, dd->sensdat.x);
 	input_report_abs(dd->indev, ABS_Y, dd->sensdat.y);
 	input_report_abs(dd->indev, ABS_Z, dd->sensdat.z);
@@ -310,6 +315,7 @@ static int m4acc_create_m4eventdev(struct m4acc_driver_data *dd)
 	input_set_abs_params(dd->indev, ABS_X, INT_MIN, INT_MAX, 0, 0);
 	input_set_abs_params(dd->indev, ABS_Y, INT_MIN, INT_MAX, 0, 0);
 	input_set_abs_params(dd->indev, ABS_Z, INT_MIN, INT_MAX, 0, 0);
+	input_set_capability(dd->indev, EV_MSC, MSC_TIMESTAMP);
 
 	err = input_register_device(dd->indev);
 	if (err < 0) {
