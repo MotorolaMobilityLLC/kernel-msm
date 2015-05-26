@@ -25,6 +25,7 @@
 #include <linux/utsname.h>
 #include <linux/platform_device.h>
 #include <linux/pm_qos.h>
+#include <linux/reboot.h>
 #include <linux/of.h>
 
 #include <linux/usb/ch9.h>
@@ -221,6 +222,9 @@ struct android_dev {
 
 	/* A list node inside the android_dev_list */
 	struct list_head list_item;
+
+	/* reboot notifier */
+	 struct notifier_block android_reboot;
 };
 
 struct android_configuration {
@@ -4387,19 +4391,23 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 	return 0;
 }
 
-static void check_mmi_factory(struct platform_device *pdev,
-		struct android_usb_platform_data *pdata)
+static bool is_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
 	bool fact_cable = false;
-	int prop_len = 0;
 
 	if (np)
 		fact_cable = of_property_read_bool(np, "mmi,factory-cable");
 
 	of_node_put(np);
+	return fact_cable;
+}
 
-	if (fact_cable) {
+static void configure_mmi_factory(struct platform_device *pdev,
+		struct android_usb_platform_data *pdata)
+{
+	int prop_len = 0;
+	if (is_mmi_factory()) {
 		of_get_property(pdev->dev.of_node,
 				"mmi,pm-qos-latency-factory",
 				&prop_len);
@@ -4413,6 +4421,17 @@ static void check_mmi_factory(struct platform_device *pdev,
 			pr_info("pm_qos latency for factory not specified\n");
 		}
 	}
+}
+
+static int android_reboot_notifier(struct notifier_block *nb,
+				unsigned long event,
+				void *unused)
+{
+	struct android_dev *dev =
+		container_of(nb, struct android_dev, android_reboot);
+	pr_err("Android reboot  - de-enumerate\n");
+	android_disable(dev);
+	return NOTIFY_DONE;
 }
 
 static int android_probe(struct platform_device *pdev)
@@ -4442,7 +4461,7 @@ static int android_probe(struct platform_device *pdev)
 			pr_info("pm_qos latency not specified %d\n", prop_len);
 		}
 
-		check_mmi_factory(pdev, pdata);
+		configure_mmi_factory(pdev, pdata);
 
 		ret = of_property_read_u32(pdev->dev.of_node,
 					"qcom,usb-core-id",
@@ -4567,6 +4586,15 @@ static int android_probe(struct platform_device *pdev)
 	}
 	strlcpy(android_dev->pm_qos, "high", sizeof(android_dev->pm_qos));
 
+	if (is_mmi_factory()) {
+		android_dev->android_reboot.notifier_call =
+						android_reboot_notifier;
+		android_dev->android_reboot.next = NULL;
+		android_dev->android_reboot.priority = 2;
+		ret = register_reboot_notifier(&android_dev->android_reboot);
+		if (ret)
+			dev_err(&pdev->dev, "register for reboot failed\n");
+	}
 	return ret;
 err_probe:
 	android_destroy_device(android_dev);
