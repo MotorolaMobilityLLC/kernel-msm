@@ -22,12 +22,12 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <480>;
 		qcom,mdss-dsi-panel-height = <480>;
-		qcom,mdss-dsi-h-front-porch = <164>;
-		qcom,mdss-dsi-h-back-porch = <140>;
-		qcom,mdss-dsi-h-pulse-width = <8>;
+		qcom,mdss-dsi-h-front-porch = <5>;
+		qcom,mdss-dsi-h-back-porch = <5>;
+		qcom,mdss-dsi-h-pulse-width = <4>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <1>;
-		qcom,mdss-dsi-v-front-porch = <6>;
+		qcom,mdss-dsi-v-back-porch = <5>;
+		qcom,mdss-dsi-v-front-porch = <5>;
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
@@ -42,18 +42,14 @@
 		qcom,mdss-dsi-panel-status-check-mode ="te_signal_check";
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-on-command = [
-					39 01 00 00 00 00 05 2A 00 00 01 DF /* Column Addess Setting */
-					39 01 00 00 00 00 05 2B 00 00 01 DF /* Page Addess Setting */
 					15 01 00 00 00 00 02 53 20 /* Display Control */
-					15 01 00 00 00 00 02 55 00 /* Write Power Save */
-					15 01 00 00 00 00 02 36 00 /* Memory Access Control*/
-					39 01 00 00 00 00 03 51 F2 02 /* DBV Setting */
-					05 01 00 00 00 00 01 11 /* Sleep out */
-					05 01 00 00 78 00 01 35 /* TE On */
+					39 01 00 00 00 00 03 51 F2 00 /* DBV Setting */
+					05 01 00 00 78 00 01 11 /* Sleep out */
+					05 01 00 00 00 00 01 35 /* TE On */
 					05 01 00 00 00 00 01 29 /* Display On */
 					];
-		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
-					05 01 00 00 70 00 01 10];
+		qcom,mdss-dsi-off-command = [05 01 00 00 0A 00 01 28
+					05 01 00 00 6E 00 01 10];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-on-command = [
@@ -83,9 +79,9 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
-		qcom,mdss-dsi-panel-timings = [40 1F 17 00 2F 2D 1C 21 29 03 04 00];
-		qcom,mdss-dsi-t-clk-post = <0x20>;
-		qcom,mdss-dsi-t-clk-pre = <0x28>;
+		qcom,mdss-dsi-panel-timings = [6A 16 0E 00 38 3A 12 18 10 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x04>;
+		qcom,mdss-dsi-t-clk-pre = <0x23>;
 		qcom,mdss-dsi-bl-min-level = <0>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
@@ -97,7 +93,7 @@
 		qcom,ulps-enabled;
 		qcom,partial-update-enabled;
 		qcom,blmap = /bits/ 8 <
-			0 0 0 0 1 1 1 1 1 1                         /* 0-9 */
+			0 1 1 1 1 1 1 1 1 1                         /* 0-9 */
 			1 7 14 15 16 17 18 19 20 21                 /* 10-19 */
 			22 23 24 25 26 26 27 28 29 30               /* 20-29 */
 			31 32 33 34 35 36 37 38 39 40               /* 30-39 */
