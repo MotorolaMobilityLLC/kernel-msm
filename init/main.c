@@ -169,6 +169,12 @@ static int set_hardware_id(char *str)
 	} else if ( strcmp("WREN_EVB_SR", str) == 0 ) {
 		g_ASUS_hwID = WREN_EVB_SR;
 		printk("Kernel HW ID = WREN_EVB_SR\n");
+	} else if ( strcmp("WREN_ER", str) == 0 ) {
+		g_ASUS_hwID = WREN_ER;
+		printk("Kernel HW ID = WREN_ER\n");
+	} else if ( strcmp("WREN_PR", str) == 0 ) {
+		g_ASUS_hwID = WREN_PR;
+		printk("Kernel HW ID = WREN_PR\n");
 	}
 	printk("g_ASUS_hwID = %d\n", g_ASUS_hwID);
 	return 0;
