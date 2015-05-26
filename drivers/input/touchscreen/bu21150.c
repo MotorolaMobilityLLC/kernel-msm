@@ -183,6 +183,7 @@ static void get_frame_timer_init(void);
 static void get_frame_timer_handler(unsigned long data);
 static void get_frame_timer_delete(void);
 static int bu21150_fb_suspend(struct device *dev);
+static int bu21150_fb_early_resume(struct device *dev);
 static int bu21150_fb_resume(struct device *dev);
 static int fb_notifier_callback(struct notifier_block *self,
 					unsigned long event, void *data);
@@ -1032,7 +1033,7 @@ err_power_disable:
 	return rc;
 }
 
-static int bu21150_fb_resume(struct device *dev)
+static int bu21150_fb_early_resume(struct device *dev)
 {
 	struct bu21150_data *ts = spi_get_drvdata(g_client_bu21150);
 	int rc;
@@ -1069,9 +1070,8 @@ static int bu21150_fb_resume(struct device *dev)
 	rc = bu21150_write_register(REG_INT_RUN_ENB, (u16)sizeof(buf), buf);
 	if (rc)
 		dev_err(&ts->client->dev,
-			"%s: failed to write to REG_INT_RUN_ENB (%d)\n",
-			__func__, rc);
-
+			"%s: failed to write %d to REG_INT_RUN_ENB (%d)\n",
+			__func__, buf[0], rc);
 	ts->suspended = false;
 
 	return 0;
@@ -1082,6 +1082,23 @@ err_pin_enable:
 	return rc;
 }
 
+static int bu21150_fb_resume(struct device *dev)
+{
+	struct bu21150_data *ts = spi_get_drvdata(g_client_bu21150);
+	int rc;
+	u8 buf[2] = {0x01, 0x00};
+
+	buf[0] = 0x03;
+	rc = bu21150_write_register(REG_INT_RUN_ENB, (u16)sizeof(buf), buf);
+	if (rc)
+		dev_err(&ts->client->dev,
+			"%s: failed to write %d to REG_INT_RUN_ENB (%d)\n",
+			__func__, buf[0], rc);
+	usleep(1000);
+
+	return 0;
+}
+
 static int fb_notifier_callback(struct notifier_block *self,
 					unsigned long event, void *data)
 {
@@ -1090,14 +1107,16 @@ static int fb_notifier_callback(struct notifier_block *self,
 	bool cont_splash = msm_fb_get_cont_splash();
 	struct bu21150_data *ts =
 			container_of(self, struct bu21150_data, fb_notif);
+	struct device *dev;
 
 	if (evdata && evdata->data && ts && ts->client) {
+		dev = &ts->client->dev;
 		blank = evdata->data;
 		if (event == FB_EARLY_EVENT_BLANK) {
 			if (*blank == FB_BLANK_UNBLANK) {
 				ts->lcd_on = true;
 				if (!cont_splash)
-					bu21150_fb_resume(&ts->client->dev);
+					bu21150_fb_early_resume(dev);
 			} else if (*blank == FB_BLANK_POWERDOWN) {
 				ts->lcd_on = false;
 			}
@@ -1105,14 +1124,17 @@ static int fb_notifier_callback(struct notifier_block *self,
 			if (*blank == FB_BLANK_UNBLANK) {
 				ts->lcd_on = false;
 				if (!cont_splash)
-					bu21150_fb_resume(&ts->client->dev);
+					bu21150_fb_early_resume(dev);
 			} else if (*blank == FB_BLANK_POWERDOWN) {
 				ts->lcd_on = true;
 			}
 		} else if (event == FB_EVENT_BLANK && *blank ==
 							FB_BLANK_POWERDOWN) {
 			if (!cont_splash)
-				bu21150_fb_suspend(&ts->client->dev);
+				bu21150_fb_suspend(dev);
+		} else if (event == FB_EVENT_BLANK && *blank ==
+							FB_BLANK_UNBLANK) {
+			bu21150_fb_resume(dev);
 		}
 	}
 
