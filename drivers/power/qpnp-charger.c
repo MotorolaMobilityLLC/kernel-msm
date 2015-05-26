@@ -1707,12 +1707,12 @@ qpnp_chg_regulator_batfet_set(struct qpnp_chg_chip *chip, bool enable)
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + CHGR_BAT_IF_SPARE,
 			BATFET_LPM_MASK,
-			enable ? BATFET_NO_LPM : BATFET_LPM, 1);
+			BATFET_NO_LPM, 1);
 	else
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + CHGR_BAT_IF_BATFET_CTRL4,
 			BATFET_LPM_MASK,
-			enable ? BATFET_NO_LPM : BATFET_LPM, 1);
+			BATFET_NO_LPM, 1);
 
 	return rc;
 }
