@@ -1811,10 +1811,11 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-	case SNDRV_PCM_TRIGGER_STOP:
-		tfa9890_handle_playback_event(tfa9890, 0);
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		tfa9890_handle_playback_event(tfa9890, 0);
 		break;
 	default:
 		ret = -EINVAL;
