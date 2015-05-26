@@ -227,6 +227,8 @@ struct sdhci_host {
 	struct tasklet_struct finish_tasklet;
 
 	struct timer_list timer;	/* Timer for timeouts */
+	unsigned long timeout_jiffies;	/* Current timeout in jiffies */
+	unsigned int last_blocks;	/* Blocks transferred since last timeout */
 
 	unsigned int caps;	/* Alternative capabilities */
 
