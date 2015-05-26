@@ -70,8 +70,11 @@ static void m4com_work_func(struct work_struct *work)
 						    struct m4com_driver_data,
 						    m4com_work.work);
 	int size = 0;
+	struct timespec ts;
 
 	mutex_lock(&(dd->mutex));
+
+	get_monotonic_boottime(&ts);
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_COMPASS_X);
 	if (size < 0) {
@@ -149,6 +152,8 @@ static void m4com_work_func(struct work_struct *work)
 		goto m4com_isr_fail;
 	}
 
+	input_event(dd->indev, EV_MSC, MSC_TIMESTAMP, ts.tv_sec);
+	input_event(dd->indev, EV_MSC, MSC_TIMESTAMP, ts.tv_nsec);
 	input_report_rel(dd->indev, REL_X, dd->sensdat.x);
 	input_report_rel(dd->indev, REL_Y, dd->sensdat.y);
 	input_report_rel(dd->indev, REL_Z, dd->sensdat.z);
@@ -333,6 +338,7 @@ static int m4com_create_m4eventdev(struct m4com_driver_data *dd)
 
 	set_bit(EV_ABS, dd->indev->evbit);
 	input_set_abs_params(dd->indev, ABS_MISC, 0, 3, 0, 0);
+	input_set_capability(dd->indev, EV_MSC, MSC_TIMESTAMP);
 
 	err = input_register_device(dd->indev);
 	if (err < 0) {
