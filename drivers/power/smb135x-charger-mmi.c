@@ -2216,6 +2216,7 @@ static int smb135x_dc_get_property(struct power_supply *psy,
 	return 0;
 }
 
+#define HVDCP_INPUT_CURRENT_MAX 1600
 static void smb135x_external_power_changed(struct power_supply *psy)
 {
 	struct smb135x_chg *chip = container_of(psy,
@@ -2234,6 +2235,10 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 			"could not read USB current_max property, rc=%d\n", rc);
 	else
 		current_limit = prop.intval / 1000;
+
+	if ((chip->charger_rate == POWER_SUPPLY_CHARGE_RATE_TURBO) &&
+	    (current_limit != 0))
+		current_limit = HVDCP_INPUT_CURRENT_MAX;
 
 	pr_debug("current_limit = %d\n", current_limit);
 
@@ -2723,7 +2728,6 @@ static int smb135x_get_charge_rate(struct smb135x_chg *chip)
 	return POWER_SUPPLY_CHARGE_RATE_NORMAL;
 }
 
-#define HVDCP_INPUT_CURRENT_MAX 1600
 static void rate_check_work(struct work_struct *work)
 {
 	struct smb135x_chg *chip =
