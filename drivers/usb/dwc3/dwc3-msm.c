@@ -97,7 +97,7 @@ int dcp_max_current = DWC3_IDEV_CHG_MAX;
 module_param(dcp_max_current, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(dcp_max_current, "max current drawn for DCP charger");
 
-static int id_gnd_threshold = 400000;  /* 400 mV */
+static int id_gnd_threshold = 200000;  /* 200 mV */
 module_param(id_gnd_threshold, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(id_gnd_threshold, "Threshold for ID GND Voltage");
 
@@ -2632,7 +2632,7 @@ static int get_prop_usbid_voltage_now(struct dwc3_msm *mdwc)
 reset_pin:
 	dwc3_msm_idpin_enable(mdwc, 1);
 
-	pr_debug("id_voltage = %d\n", id_voltage);
+	pr_err("id_voltage = %d\n", id_voltage);
 	return id_voltage;
 }
 
