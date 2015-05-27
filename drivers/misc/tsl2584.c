@@ -476,6 +476,7 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 	int lux1 = 0;
 	int lux2 = 0;
 	unsigned int threshold_delta;
+	struct timespec ts;
 
 	reg_data[0] = (TSL2584_DATA0LOW | TSL2584_COMMAND_AUTO_INCREMENT);
 	error = tsl2584_i2c_read(ct, reg_data, 4);
@@ -573,6 +574,10 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 	if (tsl2584_debug & TSL2584_DBG_INPUT)
 		pr_info("%s: LUX = %d\n", __func__, lux1);
 
+	get_monotonic_boottime(&ts);
+
+	input_event(ct->dev, EV_MSC, MSC_TIMESTAMP, ts.tv_sec);
+	input_event(ct->dev, EV_MSC, MSC_TIMESTAMP, ts.tv_nsec);
 	input_event(ct->dev, EV_MSC, MSC_RAW, lux1);
 	input_sync(ct->dev);
 	tsl2584_check_als_range(ct, lux1);
@@ -941,6 +946,7 @@ static int tsl2584_probe(struct i2c_client *client,
 	}
 
 	tsl->dev->name = "light";
+	input_set_capability(tsl->dev, EV_MSC, MSC_TIMESTAMP);
 	input_set_capability(tsl->dev, EV_MSC, MSC_RAW);
 
 	tsl2584_misc_data = tsl;
