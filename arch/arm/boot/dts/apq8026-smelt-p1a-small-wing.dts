@@ -49,3 +49,13 @@
 	qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
 	05 01 00 00 21 00 01 10];
 };
+
+&i2c_3 {
+	tsl2584@29 {
+		ams,lux1ch0_coeff = <1932>;
+		ams,lux1ch1_coeff = <3054>;
+		ams,lux2ch0_coeff = <1726>;
+		ams,lux2ch1_coeff = <2539>;
+	};
+
+};

@@ -20,3 +20,13 @@
 	qcom,msm-id =
 		<199 0x41 0x0704>; /* Large P2B Portable */
 };
+
+&i2c_3 {
+	tsl2584@29 {
+		ams,lux1ch0_coeff = <1627>;
+		ams,lux1ch1_coeff = <2485>;
+		ams,lux2ch0_coeff = <1536>;
+		ams,lux2ch1_coeff = <2259>;
+	};
+
+};
