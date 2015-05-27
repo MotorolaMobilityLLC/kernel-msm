@@ -81,6 +81,7 @@ struct fsa8500_data {
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct delayed_work work_det;
+	struct delayed_work work_restore;
 	struct workqueue_struct *wq;
 };
 
@@ -631,6 +632,7 @@ static irqreturn_t fsa8500_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static int lint_counter;
 static void fsa8500_det_thread(struct work_struct *work)
 {
 	u8 tmp_status[5];
@@ -644,24 +646,53 @@ static void fsa8500_det_thread(struct work_struct *work)
 		queue_delayed_work(irq_data->wq, &irq_data->work_det,
 					msecs_to_jiffies(2000));
 		goto skip_report;
-	} else if ((irq_data->irq_status[0] & 0x2) &&
+	} else if ((irq_data->irq_status[0] & 0x20) &&
 			(irq_data->irq_status[0] & 0x7)) {
 		/* LINT detected, delay for 200ms*/
 		memcpy(tmp_status, irq_data->irq_status, sizeof(tmp_status));
 		msleep(FSA8500_LINT_DEBOUNCE);
 		fsa8500_update_device_status(irq_data);
 		if (irq_data->irq_status[0] & 0x18) {
-			/* Disconnect event in 200ms, retry in 2sec */
-			queue_delayed_work(irq_data->wq, &irq_data->work_det,
-					msecs_to_jiffies(2000));
+			lint_counter++;
 			goto skip_report;
 		} else
 			memcpy(irq_data->irq_status,
 				tmp_status, sizeof(tmp_status));
 	}
 
+	if (irq_data->irq_status[0])
+			lint_counter = 0;
 	fsa8500_report_hs(irq_data);
+
 skip_report:
+	if (lint_counter == 5) {
+		/* Disable LINT detect to avoid false detection */
+		pr_info("%s:Too many LINT irq.Disable LINT detection\n",
+								__func__);
+		fsa8500_reg_write(fsa8500_client, FSA8500_CONTROL2,
+					FSA8500_LINT_OFF, FSA8500_LINT_OFF);
+		lint_counter = 0;
+		/* Schedule LINT mode re-enable in 5 min */
+		queue_delayed_work(irq_data->wq, &irq_data->work_restore,
+					msecs_to_jiffies(5 * 60 * 1000));
+	}
+	wake_unlock(&irq_data->wake_lock);
+	mutex_unlock(&irq_data->lock);
+}
+
+static int lint_counter;
+static void fsa8500_restore_thread(struct work_struct *work)
+{
+	struct fsa8500_data *irq_data =
+				i2c_get_clientdata(fsa8500_client);
+
+	mutex_lock(&irq_data->lock);
+	wake_lock(&irq_data->wake_lock);
+
+	pr_info("%s:Re-enable LINT detection\n", __func__);
+	fsa8500_reg_write(fsa8500_client, FSA8500_CONTROL2,
+					0, FSA8500_LINT_OFF);
+	lint_counter = 0;
 	wake_unlock(&irq_data->wake_lock);
 	mutex_unlock(&irq_data->lock);
 }
@@ -873,6 +904,7 @@ static int fsa8500_probe(struct i2c_client *client,
 	}
 
 	INIT_DELAYED_WORK(&fsa8500->work_det, fsa8500_det_thread);
+	INIT_DELAYED_WORK(&fsa8500->work_restore, fsa8500_restore_thread);
 
 	fsa8500->gpio_irq = gpio_to_irq(fsa8500->gpio);
 	/* active low interrupt */
