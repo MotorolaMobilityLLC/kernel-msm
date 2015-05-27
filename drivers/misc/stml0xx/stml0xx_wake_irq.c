@@ -180,6 +180,10 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		if ((pdata->cover_detect_polarity
 			& buf[WAKE_IRQ_IDX_COVER]) != 0)
 				state = 1;
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+		/* notify subscribers of cover state change */
+		mmi_hall_notify(MMI_HALL_FOLIO, state);
+#endif
 		input_report_switch(ps_stml0xx->input_dev, SW_LID, state);
 		input_sync(ps_stml0xx->input_dev);
 

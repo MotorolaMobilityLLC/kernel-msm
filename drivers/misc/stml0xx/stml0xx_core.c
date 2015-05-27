@@ -994,6 +994,10 @@ static int stml0xx_probe(struct spi_device *spi)
 
 	switch_stml0xx_mode(NORMALMODE);
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	ps_stml0xx->hall_data = mmi_hall_init();
+#endif
+
 	mutex_unlock(&ps_stml0xx->lock);
 
 	dev_dbg(&spi->dev, "probed finished");
