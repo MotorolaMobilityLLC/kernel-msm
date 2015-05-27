@@ -44,14 +44,9 @@
 
 		/* Assign runtime functions to pins */
 		qcom,use-pinctrl;
-		pinctrl-names = "spi_default","spi_sleep";
-		pinctrl-0 = <&spi_fpc_active>;
-		pinctrl-1 = <&spi_fpc_suspend>;
-
-		qcom,gpio-mosi = <&msm_gpio 53 0>;
-		qcom,gpio-miso = <&msm_gpio 54 0>;
-		qcom,gpio-cs0 = <&msm_gpio 55 0>;
-		qcom,gpio-clk = <&msm_gpio 56 0>;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_fpc_default &spi_fpc_cs_active>;
+		pinctrl-1 = <&spi_fpc_sleep &spi_fpc_cs_sleep>;
 	};
 
 	spi_7: spi@f9963000 {
@@ -111,6 +106,17 @@
 	qcom,cnss {
 		wlan-bootstrap-gpio = <&msm_gpio 1 0>;
 	};
+
+	sound {
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+		/delete-property/ pinctrl-2;
+		/delete-property/ pinctrl-3;
+		pinctrl-0 = <&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
+		pinctrl-1 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
+		pinctrl-2 = <&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
+		pinctrl-3 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
+	};
 };
 
 &modem_mem {
@@ -120,11 +126,36 @@
 &blsp1_uart2 {
 	status= "ok";
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart_console_sleep>;
+	pinctrl-0 = <&uart_enable>;
 };
 
 &spi_0 {
 	status = "disabled";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
+&tspp {
+	status = "disabled";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+	/delete-property/ pinctrl-2;
+	/delete-property/ pinctrl-3;
+	/delete-property/ pinctrl-4;
+	/delete-property/ pinctrl-5;
+	/delete-property/ pinctrl-6;
+};
+
+&cti6 {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+};
+
+&cti8 {
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
 };
 
 &usb3 {
@@ -163,10 +194,6 @@
 	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
 	qcom,nonremovable;
 	status = "ok";
-};
-
-&sdhc_2 {
-	status = "disabled";
 };
 
 &pm8994_vadc {

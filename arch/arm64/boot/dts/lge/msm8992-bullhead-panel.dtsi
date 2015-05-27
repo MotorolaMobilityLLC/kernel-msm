@@ -19,11 +19,6 @@
 	qcom,mdss-ib-factor = <2 1>;
 };
 
-&pmx_mdss {
-	qcom,num-grp-pins = <3>;
-	qcom,pins = <&gp 78>, <&gp 89> ,<&gp 90>;
-};
-
 &mdss_dsi0 {
 	status = "ok";
 	qcom,dsi-pref-prim-pan = <&dsi_jdi_r69338_fhd_vid>;
