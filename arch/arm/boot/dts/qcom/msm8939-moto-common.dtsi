@@ -197,6 +197,9 @@
 		qcom,cdc-us-euro-gpios = <&msm_gpio 120 0>;
 		qcom,headset-jack-type-NC;
 
+		clock-names = "bb_clk2";
+		clocks = <&clock_rpm clk_bb_clk2>;
+
 		pinctrl-names = "cdc_slim_lines_act", "cdc_slim_lines_sus";
 		pinctrl-0 = <&cdc_slim_lines_act>;
 		pinctrl-1 = <&cdc_slim_lines_sus>;
