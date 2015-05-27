@@ -38,6 +38,7 @@
 #include "touchx.h"
 #endif
 #include <linux/pinctrl/consumer.h>
+#include <linux/mmi_hall_notifier.h>
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
@@ -89,6 +90,10 @@
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
 #define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+static int folio_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data);
+#endif
 static void synaptics_dsx_resumeinfo_start(
 		struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_dsx_resumeinfo_finish(
@@ -1440,6 +1445,7 @@ static inline void synaptics_dsx_set_alternate_mode(
 	rmi4_data->current_mode = mode;
 	if (wakeable)
 		synaptics_dsx_enable_wakeup_source(rmi4_data, true);
+	pr_debug("set alternate mode\n");
 }
 
 static inline void synaptics_dsx_restore_default_mode(
@@ -1450,6 +1456,7 @@ static inline void synaptics_dsx_restore_default_mode(
 	rmi4_data->mode_is_wakeable = false;
 	rmi4_data->mode_is_persistent = true;
 	rmi4_data->current_mode = rmi4_data->default_mode;
+	pr_debug("set default mode\n");
 }
 
 static void synaptics_dsx_state_config(
@@ -1458,7 +1465,10 @@ static void synaptics_dsx_state_config(
 	int i;
 	struct synaptics_dsx_patch *patch =
 			&rmi4_data->current_mode->patch_data[state];
-
+	pr_debug("applying %s mode config in %s state\n",
+			rmi4_data->current_mode == rmi4_data->default_mode ?
+			"DEFAULT" : "ALTERNATE",
+			state == ACTIVE_IDX ? "ACTIVE" : "SUSPEND");
 	if (!patch || !patch->cfg_num) {
 		pr_debug("patchset is empty!\n");
 		return;
@@ -1471,17 +1481,12 @@ static void synaptics_dsx_state_config(
 		for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++)
 			synaptics_dsx_patch_func(rmi4_data,
 				synaptics_cfg_regs[i].f_number, patch);
-
-		pr_debug("applied %s in mode %s\n",
-			state == ACTIVE_IDX ? "ACTIVE" : "SUSPEND",
-			rmi4_data->current_mode == rmi4_data->default_mode ?
-			"DEFAULT" : "OTHER");
 	}
 }
 
-#define DSX(a)	(#a)
-static const char * const synaptics_state_names[] = SYNAPTICS_DSX_STATES;
-#undef DSX
+static const char * const synaptics_state_names[] = {"UNKNOWN",
+	"ACTIVE", "SUSPEND", "UNUSED", "STANDBY", "BL", "INIT",
+	"FLASH", "QUERY", "INVALID" };
 
 static const char *synaptics_dsx_state_name(int state)
 {
@@ -4168,6 +4173,21 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
 	mutex_unlock(&exp_fn_ctrl_mutex);
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	/* register notifier at the end of probe to */
+	/* avoid unnecessary reset in STANDBY state */
+	rmi4_data->folio_notif.notifier_call = folio_notifier_callback;
+	dev_dbg(&client->dev, "registering folio notifier\n");
+	retval = mmi_hall_register_notifier(&rmi4_data->folio_notif,
+				MMI_HALL_FOLIO, true);
+	if (retval) {
+		dev_err(&client->dev,
+			"Error registering folio_notifier: %d\n", retval);
+		/* inability to register folio notifications handler */
+		/* is not fatal, thus reset return value to success */
+		retval = 0;
+	}
+#endif
 	return retval;
 
 err_sysfs:
@@ -4286,6 +4306,68 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		}
 	}
 
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+static int folio_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data)
+{
+	int state, folio_state = *(int *)data;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(self, struct synaptics_rmi4_data, folio_notif);
+
+	if (rmi4_data && event == MMI_HALL_FOLIO &&
+			rmi4_data && rmi4_data->i2c_client) {
+
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+		dev_dbg(&rmi4_data->i2c_client->dev,
+			"state: %s(%d), suspend flag: %d, BL flag: %d\n",
+			synaptics_dsx_state_name(state), state,
+			atomic_read(&rmi4_data->touch_stopped),
+			rmi4_data->in_bootloader);
+		if (folio_state)
+			/* close */
+			synaptics_dsx_set_alternate_mode(rmi4_data,
+				rmi4_data->alternate_mode, false, true);
+		else	/* open */
+			synaptics_dsx_restore_default_mode(rmi4_data);
+
+		dev_dbg(&rmi4_data->i2c_client->dev, "folio: %s\n",
+			folio_state ? "CLOSED" : "OPENED");
+
+		if (!(state & STATE_UI)) {
+			dev_dbg(&rmi4_data->i2c_client->dev, "Not in UI\n");
+			goto done;
+		}
+
+		if (!rmi4_data->in_bootloader) {
+			if (state == STATE_ACTIVE) {
+				int retval;
+				/* set unknown state to ensure IRQ gets */
+				/* enabled on state transition to active */
+				synaptics_dsx_sensor_state(
+						rmi4_data, STATE_UNKNOWN);
+				/* disable IRQ to handle reset */
+				synaptics_rmi4_irq_enable(rmi4_data, false);
+				/* perform SW reset to restore defaults */
+				retval = synaptics_dsx_ic_reset(
+						rmi4_data, RMI4_SW_RESET);
+				if (retval < 0)
+					dev_err(&rmi4_data->i2c_client->dev,
+						"folio: sw reset failed %d\n",
+						retval);
+				synaptics_dsx_sensor_ready_state(
+							rmi4_data, false);
+			}
+
+			synaptics_dsx_state_config(rmi4_data,
+					(state == STATE_SUSPEND) ?
+					SUSPEND_IDX : ACTIVE_IDX);
+		}
+	}
+done:
 	return 0;
 }
 #endif
