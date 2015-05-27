@@ -350,7 +350,11 @@ static int mmi_factory_probe(struct platform_device *pdev)
 	}
 
 	if ((info->dev == KUNGPOW) && (info->num_gpios == KP_NUM_GPIOS)) {
-		if (info->factory_cable) {
+		/* Disable Kill if not powered up by a factory cable */
+		if (!info->factory_cable)
+			gpio_direction_output(info->list[KP_KILL_INDEX].gpio,
+						1);
+		else {
 			ret = device_create_file(&pdev->dev,
 						 &dev_attr_usr_rst_sw_dis);
 			if (ret)
