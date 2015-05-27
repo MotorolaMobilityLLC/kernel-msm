@@ -19,7 +19,8 @@ struct ltr559_platform_data {
 	unsigned int als_poll_interval;
 
 	unsigned int int_gpio;
-        unsigned int irq_gpio_flags;
+	unsigned int irq_gpio_flags;
+	unsigned int prox_default_noise;
 };
 
 /* POWER SUPPLY VOLTAGE RANGE */
