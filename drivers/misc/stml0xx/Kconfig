@@ -12,3 +12,10 @@ config SENSORS_STML0XX
 	help
 	  Say yes here if you wish to include the STM
 	  STML0XX Sensor processor driver.
+
+config MMI_HALL_NOTIFICATIONS
+	bool "Enable hall effect sensor notifier"
+	default n
+	depends on SENSORS_STML0XX
+	help
+	  Support for hall effect sensor notifications.
