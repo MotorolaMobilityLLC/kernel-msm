@@ -299,6 +299,7 @@ static void msm_vfe47_init_hardware_reg(struct vfe_device *vfe_dev)
 	msm_camera_io_w_mb(0xFFFFFFFF, vfe_dev->vfe_base + 0x60);
 	msm_camera_io_w(0xFFFFFFFF, vfe_dev->vfe_base + 0x64);
 	msm_camera_io_w_mb(0xFFFFFFFF, vfe_dev->vfe_base + 0x68);
+	msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x58);
 }
 
 static void msm_vfe47_clear_status_reg(struct vfe_device *vfe_dev)
@@ -375,9 +376,11 @@ static void msm_vfe47_process_error_status(struct vfe_device *vfe_dev)
 {
 	uint32_t error_status1 = vfe_dev->error_info.error_mask1;
 
-	if (error_status1 & (1 << 0))
-		pr_err("%s: camif error status: 0x%x\n",
+	if (error_status1 & (1 << 0)) {
+		pr_err("%s: camif error status = 0x%x\n",
 			__func__, vfe_dev->error_info.camif_status);
+		msm_camera_io_dump_2(vfe_dev->vfe_base + 0x478, 0x30);
+	}
 	if (error_status1 & (1 << 1))
 		pr_err("%s: stats bhist overwrite\n", __func__);
 	if (error_status1 & (1 << 2))
@@ -433,11 +436,18 @@ static void msm_vfe47_process_error_status(struct vfe_device *vfe_dev)
 static void msm_vfe47_read_irq_status(struct vfe_device *vfe_dev,
 	uint32_t *irq_status0, uint32_t *irq_status1)
 {
+	uint32_t irq_mask0 = 0, irq_mask1 = 0;
+	irq_mask0 = msm_camera_io_r(vfe_dev->vfe_base + 0x5C);
+	irq_mask1 = msm_camera_io_r(vfe_dev->vfe_base + 0x60);
+
 	*irq_status0 = msm_camera_io_r(vfe_dev->vfe_base + 0x6C);
 	*irq_status1 = msm_camera_io_r(vfe_dev->vfe_base + 0x70);
 	msm_camera_io_w(*irq_status0, vfe_dev->vfe_base + 0x64);
 	msm_camera_io_w(*irq_status1, vfe_dev->vfe_base + 0x68);
 	msm_camera_io_w_mb(1, vfe_dev->vfe_base + 0x58);
+
+	*irq_status0 &= irq_mask0;
+	*irq_status1 &= irq_mask1;
 
 	if (*irq_status1 & (1 << 0))
 		vfe_dev->error_info.camif_status =
@@ -935,6 +945,13 @@ static void msm_vfe47_cfg_camif(struct vfe_device *vfe_dev,
 	uint32_t val, subsample_period, subsample_pattern;
 	uint32_t irq_sub_period = 32;
 	uint32_t frame_sub_period = 32;
+	struct msm_vfe_camif_subsample_cfg *subsample_cfg =
+		&pix_cfg->camif_cfg.subsample_cfg;
+	uint16_t bus_sub_en = 0;
+	if (subsample_cfg->pixel_skip || subsample_cfg->line_skip)
+		bus_sub_en = 1;
+	else
+		bus_sub_en = 0;
 
 	msm_camera_io_w(pix_cfg->input_mux << 5 | pix_cfg->pixel_pattern,
 		vfe_dev->vfe_base + 0x50);
@@ -948,6 +965,17 @@ static void msm_vfe47_cfg_camif(struct vfe_device *vfe_dev,
 
 	msm_camera_io_w(camif_cfg->lines_per_frame << 16 |
 		camif_cfg->pixels_per_line, vfe_dev->vfe_base + 0x484);
+	if (bus_sub_en) {
+		val = msm_camera_io_r(vfe_dev->vfe_base + 0x47C);
+		val &= 0xFFFFFFDF;
+		val = val | bus_sub_en << 5;
+		msm_camera_io_w(val, vfe_dev->vfe_base + 0x47C);
+		subsample_cfg->pixel_skip &= 0x0000FFFF;
+		subsample_cfg->line_skip  &= 0x0000FFFF;
+		msm_camera_io_w((subsample_cfg->line_skip << 16) |
+			subsample_cfg->pixel_skip, vfe_dev->vfe_base + 0x490);
+	}
+
 
 	msm_camera_io_w(first_pixel << 16 | last_pixel,
 	vfe_dev->vfe_base + 0x488);
@@ -1028,9 +1056,16 @@ static void msm_vfe47_update_camif_state(struct vfe_device *vfe_dev,
 
 	val = msm_camera_io_r(vfe_dev->vfe_base + 0x47C);
 	if (update_state == ENABLE_CAMIF) {
+		msm_camera_io_w(0xFF801F, vfe_dev->vfe_base + 0x64);
+		msm_camera_io_w_mb(0x1FF008F, vfe_dev->vfe_base + 0x68);
+		msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x58);
+
 		val = msm_camera_io_r(vfe_dev->vfe_base + 0x5C);
 		val |= 0xF5;
 		msm_camera_io_w_mb(val, vfe_dev->vfe_base + 0x5C);
+
+		/* configure EPOCH0 for 20 lines */
+		msm_camera_io_w_mb(0x140000, vfe_dev->vfe_base + 0x4A0);
 
 		bus_en =
 			((vfe_dev->axi_data.
@@ -1044,7 +1079,7 @@ static void msm_vfe47_update_camif_state(struct vfe_device *vfe_dev,
 		msm_camera_io_w(val, vfe_dev->vfe_base + 0x47C);
 		msm_camera_io_w_mb(0x4, vfe_dev->vfe_base + 0x478);
 		msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x478);
-		msm_camera_io_w_mb(0x200, vfe_dev->vfe_base + 0x4A0);
+
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 1;
 		/* testgen GO*/
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].input_mux == TESTGEN)
@@ -1370,6 +1405,7 @@ static int msm_vfe47_axi_restart(struct vfe_device *vfe_dev,
 	msm_camera_io_w(0x7FFFFFFF, vfe_dev->vfe_base + 0x64);
 	msm_camera_io_w(0xFFFFFEFF, vfe_dev->vfe_base + 0x68);
 	msm_camera_io_w(0x1, vfe_dev->vfe_base + 0x58);
+	msm_camera_io_w_mb(0x140000, vfe_dev->vfe_base + 0x4A0);
 
 	/* Start AXI */
 	msm_camera_io_w(0x0, vfe_dev->vfe_base + 0x400);

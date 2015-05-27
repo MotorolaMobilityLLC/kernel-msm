@@ -792,16 +792,10 @@
 		mincpubw-cpufreq {
 			target-dev = <&mincpubw>;
 			cpu-to-dev-map-0 =
-				<  300000 1525 >,
-				<  460800 2288 >,
-				<  600000 3509 >,
-				<  672000 4173 >,
-				< 1440000 5271 >;
+				< 1440000 1525 >;
 			cpu-to-dev-map-4 =
-				<  480000 2288 >,
-				<  633600 3509 >,
-				<  768000 4173 >,
-				< 1824000 5271 >;
+				< 1689600 1525 >,
+				< 1824000 5928 >;
 		};
 
 		cci-cpufreq {
@@ -1146,6 +1140,8 @@
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <72 0>;
 		interrupt-names = "cdc-int";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wcd_intr_default>;
 	};
 
 	i2c_5: i2c@f9967000 { /* BLSP2 QUP5 */
@@ -2459,6 +2455,7 @@
 		qcom,bam-pipe-pair = <2>;
 		qcom,ce-hw-instance = <1>;
 		qcom,ce-device = <0>;
+		qcom,clk-mgmt-sus-res;
 		qcom,msm-bus,name = "qcrypto-noc";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
@@ -2686,6 +2683,7 @@
 		interrupt-names = "hs_phy_irq", "pwr_event_irq";
 
 		USB3_GDSC-supply = <&gdsc_usb30>;
+		vdda33-supply = <&pm8994_l24>;
 		vbus_dwc3-supply = <&smbcharger_charger_otg>;
 		qcom,dwc-usb3-msm-tx-fifo-size = <29696>;
 		qcom,dwc-usb3-msm-qdss-tx-fifo-size = <8192>;
