@@ -64,6 +64,9 @@
 /* Disable UART detection bit */
 #define FSA8500_UART_OFF		0x08
 
+/* Disable UART detection bit */
+#define FSA8500_LINT_OFF		0x02
+
 /* amp states */
 #define FSA8500_AMP_DISABLED		0
 #define FSA8500_AMP_ENABLED		1
