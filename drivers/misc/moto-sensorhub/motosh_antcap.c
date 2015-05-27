@@ -551,6 +551,19 @@ static int motosh_antcap_ps_get_property(struct power_supply *psy,
 
 static const char * const motosh_antcap_usb_supply[] = { "usb", };
 
+static struct work_struct motosh_antcap_headset_work;
+
+static void motosh_antcap_headset_update(struct work_struct *work)
+{
+	int err = 0;
+
+	err = motosh_antcap_i2c_send_enable(1);
+
+	dev_dbg(&motosh_misc_data->client->dev,
+		"switch_to_motosh_report: err=%d en=%02x st=%02x\n",
+		err, motosh_g_antcap_enabled, motosh_g_conn_state);
+}
+
 int motosh_antcap_of_init(struct i2c_client *client)
 {
 	int                len;
@@ -607,6 +620,11 @@ int motosh_antcap_of_init(struct i2c_client *client)
 		goto fail;
 	}
 
+	/*****************************************************/
+	/* create thread for I2C writes from headset handler */
+	/*****************************************************/
+	INIT_WORK(&motosh_antcap_headset_work, motosh_antcap_headset_update);
+
 fail:
 	return ret;
 }
@@ -637,7 +655,7 @@ static void switch_to_motosh_report(unsigned long state)
 			((int) motosh_g_conn_state),
 			((int) motosh_g_antcap_enabled));
 
-		err = motosh_antcap_i2c_send_enable(1);
+		err = schedule_work(&motosh_antcap_headset_work);
 
 		dev_dbg(&motosh_misc_data->client->dev,
 			"switch_to_motosh_report: err=%d en=%02x st=%02x\n",
