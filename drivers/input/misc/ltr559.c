@@ -48,10 +48,10 @@ struct ps_thre {
 	int th_lo;
 };
 static struct ps_thre psthre_data[] = {
-	{50,  37,  12},
-	{100, 40,  16},
-	{200, 50,  30},
-	{400, 100, 50},
+	{50,  20,  12},
+	{100, 24,  16},
+	{200, 40,  30},
+	{400, 80, 50},
 	{1200,200, 100},
 	{1650,200, 100},
 };
@@ -474,7 +474,7 @@ static void ltr559_ps_work_func(struct work_struct *work)
 			data->ps_state = ps_state_last;
 		}
 
-		if(ps_state_last != data->ps_state)
+		if((ps_state_last != data->ps_state) || (data->ps_state == 0))
 		{
 			input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
 			input_sync(data->input_dev_ps);
@@ -846,6 +846,18 @@ static ssize_t ltr559_ps_dynamic_caliberate(struct sensors_classdev *sensors_cde
 
 	noise = data_total/count;
 	data->dynamic_noise = noise;
+
+/*if the noise twice bigger than boot, we treat it as covered mode */
+	   if(pdata->prox_default_noise == 0){
+		   pdata->prox_default_noise = data->dynamic_noise;
+	   }
+	   else if(data->dynamic_noise > (pdata->prox_default_noise * 2)){
+		   noise = pdata->prox_default_noise;
+		   data->dynamic_noise = pdata->prox_default_noise;
+	   }
+	   else if((data->dynamic_noise * 2) < pdata->prox_default_noise){
+		   pdata->prox_default_noise = data->dynamic_noise;
+	   }
 
 	for(j=0; j<ARRAY_SIZE(psthre_data); j++) {
 		if(noise < psthre_data[j].noise) {
@@ -1369,6 +1381,11 @@ int ltr559_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		dev_err(&client->dev,"Unable to register to ps sensor class\n");
 		goto exit_unregister_als_class;
 	}
+
+	/* Enable / disable to trigger calibration at boot */
+	pdata->prox_default_noise=0;
+	ltr559_ps_enable(client,1);
+	ltr559_ps_enable(client,0);
 
 	dev_dbg(&client->dev,"probe succece\n");
 	return 0;
