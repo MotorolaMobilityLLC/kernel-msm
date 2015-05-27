@@ -55,8 +55,14 @@
 	m4sensor {
 		compatible = "simple-bus";
 
-		mpu9150 {
-			compatible = "mot,m4mpu9150";
+		accelerometer {
+			compatible = "mot,m4accelerometer";
+		};
+		compass {
+			compatible = "mot,m4compass";
+		};
+		gyro {
+			compatible = "mot,m4gyro";
 		};
 		pedometer {
 			compatible = "mot,m4pedometer";
