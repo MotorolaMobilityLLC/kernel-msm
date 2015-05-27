@@ -21,7 +21,7 @@
 #include <linux/spinlock.h>
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
-#include <mach/mmi_hall_notifier.h>
+#include <linux/mmi_hall_notifier.h>
 #endif
 
 #include <linux/fb_quickdraw.h>
