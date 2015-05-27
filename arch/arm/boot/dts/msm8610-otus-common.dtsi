@@ -250,6 +250,12 @@
 			<0x44 0x80 0x49 0x81 0x36 0x82 0x3C 0x83 0xffffffff>;
 	};
 
+	i2c_1: i2c@f9923000 { /* BLSP-1 QUP-1 */
+		synaptics_dsx_i2c@20 {
+			/delete-property/ touch_vdd-supply;
+		};
+	};
+
 	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 */
 		cell-index = <2>;
 		compatible = "qcom,i2c-qup";
