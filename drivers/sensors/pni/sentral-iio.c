@@ -1629,6 +1629,100 @@ exit:
 
 static DEVICE_ATTR(flush, S_IWUGO, NULL, sentral_sysfs_flush_store);
 
+// fifo control
+
+static ssize_t sentral_sysfs_fifo_watermark_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
+	size_t count = 0;
+
+	mutex_lock(&sentral->lock);
+
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		count = rc;
+		goto exit;
+	}
+
+	count = scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.watermark);
+exit:
+	mutex_unlock(&sentral->lock);
+	return count;
+}
+
+static ssize_t sentral_sysfs_fifo_watermark_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
+	u16 watermark;
+
+	rc = kstrtou16(buf, 10, &watermark);
+	if (rc) {
+		LOGE(dev, "error (%d) parsing value\n", rc);
+		return rc;
+	}
+
+	mutex_lock(&sentral->lock);
+
+	// read current fifo control param
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		count = rc;
+		goto exit;
+	}
+
+	// update watermark portion
+	fifo_ctrl.fifo.watermark = watermark;
+
+	rc = sentral_parameter_write(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc)
+		count = rc;
+
+exit:
+	mutex_unlock(&sentral->lock);
+	return count;
+}
+
+static DEVICE_ATTR(fifo_watermark, S_IRUGO | S_IWUGO,
+		sentral_sysfs_fifo_watermark_show, sentral_sysfs_fifo_watermark_store);
+
+static ssize_t sentral_sysfs_fifo_size_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
+	size_t count = 0;
+
+	mutex_lock(&sentral->lock);
+
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		count = rc;
+		goto exit;
+	}
+
+	count = scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.size);
+exit:
+	mutex_unlock(&sentral->lock);
+	return count;
+}
+
+static DEVICE_ATTR(fifo_size, S_IRUGO, sentral_sysfs_fifo_size_show, NULL);
+
 // asus bmmi attributes
 
 static ssize_t bmmi_chip_status_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -1926,6 +2020,8 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_delay_ms.attr,
 	&dev_attr_batch.attr,
 	&dev_attr_flush.attr,
+	&dev_attr_fifo_watermark.attr,
+	&dev_attr_fifo_size.attr,
 	&dev_attr_bmmi_chip_status.attr,
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,
@@ -2100,9 +2196,6 @@ static void sentral_do_work_reset(struct work_struct *work)
 	}
 
 	sentral->init_complete = true;
-
-	// set watermark
-	//sentral_set_watermark(sentral, 200);
 
 	mutex_unlock(&sentral->lock_reset);
 
