@@ -3466,6 +3466,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't set usb current rc = %d\n", rc);
+		smbchg_rerun_aicl(chip);
 	}
 	mutex_unlock(&chip->current_change_lock);
 
