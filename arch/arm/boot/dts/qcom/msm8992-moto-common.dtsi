@@ -1131,6 +1131,7 @@
 				<&msm_gpio 65 0>,       /* WakeIRQ      */
 				<&msm_gpio 68 0>,       /* SH Wake      */
 				<&msm_gpio 106 0>;       /* SH Wake Resp */
+			motosh_fw_version = "stml47x";
 			lux_table = <5 50 100 1500 3000 8000>;
 			brightness_table = <5 7 9 23 34 50 140>;
 			bslen_pin_active_value = <1>;
