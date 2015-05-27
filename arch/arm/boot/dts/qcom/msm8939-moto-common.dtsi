@@ -1079,6 +1079,9 @@
 		wlf,reset = <&msm_gpio 31 0>;
 		wlf,irq = <&msm_gpio 98 0>;
 		wlf,out-mono = <0 1 0 0 0 0>;
+		wlf,micbias1 = <1800 1 1 0 0>;
+		wlf,micbias2 = <1800 1 1 0 0>;
+		wlf,micbias3 = <1800 1 1 0 0>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
