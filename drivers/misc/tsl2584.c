@@ -96,6 +96,19 @@
 
 #define TSL2584_ALS_IRQ_DELTA_PERCENT	5
 
+#define TSL2584_ALS_LUX1_CH0_COEFF_DEFAULT	1000
+#define TSL2584_ALS_LUX1_CH1_COEFF_DEFAULT	2005
+#define TSL2584_ALS_LUX2_CH0_COEFF_DEFAULT	604
+#define TSL2584_ALS_LUX2_CH1_COEFF_DEFAULT	1090
+
+#define TSL2584_ALS_HIGH_LUX_DEN	128
+#define TSL2584_ALS_LOW_LUX_DEN		(TSL2584_ALS_HIGH_LUX_DEN * 8)
+
+static u32 lux1ch0_coeff = TSL2584_ALS_LUX1_CH0_COEFF_DEFAULT;
+static u32 lux1ch1_coeff = TSL2584_ALS_LUX1_CH1_COEFF_DEFAULT;
+static u32 lux2ch0_coeff = TSL2584_ALS_LUX2_CH0_COEFF_DEFAULT;
+static u32 lux2ch1_coeff = TSL2584_ALS_LUX2_CH1_COEFF_DEFAULT;
+
 enum tsl2584_als_mode {
 	TSL2584_ALS_MODE_LOW_LUX,
 	TSL2584_ALS_MODE_HIGH_LUX,
@@ -534,34 +547,32 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 	} else {
 		switch (ct->als_mode) {
 		case TSL2584_ALS_MODE_LOW_LUX:
-			if (c0data == 0x4800 || c1data == 0x4800)
-				lux1 = TSL2584_ALS_LOW_TO_HIGH_THRESHOLD;
-			else {
-				lux1 = ((1000 * c0data) - (2005 * c1data))
-					/ (71 * 8);
-				if (lux1 < 0)
-					lux1 = 0;
-				lux2 = ((604 * c0data) - (1090 * c1data))
-					/ (71 * 8);
-				if (lux2 < 0)
-					lux2 = 0;
-				if (lux1 < lux2)
-					lux1 = lux2;
-			}
+			lux1 = ((lux1ch0_coeff * c0data)
+				- (lux1ch1_coeff * c1data))
+				/ TSL2584_ALS_LOW_LUX_DEN;
+			if (lux1 < 0)
+				lux1 = 0;
+			lux2 = ((lux2ch0_coeff * c0data)
+				- (lux2ch1_coeff * c1data))
+				/ TSL2584_ALS_LOW_LUX_DEN;
+			if (lux2 < 0)
+				lux2 = 0;
+			if (lux1 < lux2)
+				lux1 = lux2;
 			break;
 		case TSL2584_ALS_MODE_HIGH_LUX:
-			if (c0data == 0x4800 || c1data == 0x4800)
-				lux1 = 0xFFFF;
-			else {
-				lux1 = ((1000 * c0data) - (2005 * c1data)) / 71;
-				if (lux1 < 0)
-					lux1 = 0;
-				lux2 = ((604 * c0data) - (1090 * c1data)) / 71;
-				if (lux2 < 0)
-					lux2 = 0;
-				if (lux1 < lux2)
-					lux1 = lux2;
-			}
+			lux1 = ((lux1ch0_coeff * c0data)
+				- (lux1ch1_coeff * c1data))
+				/ TSL2584_ALS_HIGH_LUX_DEN;
+			if (lux1 < 0)
+				lux1 = 0;
+			lux2 = ((lux2ch0_coeff * c0data)
+				- (lux2ch1_coeff * c1data))
+				/ TSL2584_ALS_HIGH_LUX_DEN;
+			if (lux2 < 0)
+				lux2 = 0;
+			if (lux1 < lux2)
+				lux1 = lux2;
 			break;
 		default:
 			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
@@ -871,7 +882,19 @@ tsl2584_of_init(struct i2c_client *client)
 	}
 
 	if (!of_property_read_u32(np, "ams,ink_type", &val))
-	pdata->ink_type = (u8)val;
+		pdata->ink_type = (u8)val;
+
+	if (!of_property_read_u32(np, "ams,lux1ch0_coeff", &val))
+		lux1ch0_coeff = val;
+
+	if (!of_property_read_u32(np, "ams,lux1ch1_coeff", &val))
+		lux1ch1_coeff = val;
+
+	if (!of_property_read_u32(np, "ams,lux2ch0_coeff", &val))
+		lux2ch0_coeff = val;
+
+	if (!of_property_read_u32(np, "ams,lux2ch1_coeff", &val))
+		lux2ch1_coeff = val;
 
 	pdata->gpio_irq = of_get_gpio(np, 0);
 	if (!gpio_is_valid(pdata->gpio_irq)) {
