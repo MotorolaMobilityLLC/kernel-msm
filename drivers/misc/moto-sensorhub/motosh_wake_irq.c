@@ -271,6 +271,9 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			if ((pdata->cover_detect_polarity
 				& data[COVER_STATE]) != MOTOSH_HALL_NO_DETECT)
 				state = 1;
+			else
+				state = 0;
+
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 			/* notify subscribers of cover state change */
 			mmi_hall_notify(MMI_HALL_FOLIO, state);
