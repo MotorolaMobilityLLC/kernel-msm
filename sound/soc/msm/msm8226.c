@@ -65,6 +65,7 @@ static void *adsp_state_notifier;
 static int msm8226_auxpcm_rate = 8000;
 static atomic_t auxpcm_rsc_ref;
 static atomic_t pri_mi2s_rsc_ref;
+static atomic_t ter_mi2s_rsc_ref;
 static const char *const auxpcm_rate_text[] = {"rate_8000", "rate_16000"};
 static const struct soc_enum msm8226_auxpcm_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, auxpcm_rate_text),
@@ -78,6 +79,10 @@ static const struct soc_enum msm8226_auxpcm_enum[] = {
 
 #define I2S_PCM_SEL 1
 #define I2S_PCM_SEL_OFFSET 1
+
+#define I2S_SLAVE_SEL 1
+#define I2S_MASTER_SEL 0
+#define I2S_MASTER_OFFSET 0
 
 void *def_tapan_mbhc_cal(void);
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
@@ -121,6 +126,7 @@ struct msm8226_asoc_mach_data {
 	int mclk_gpio;
 	u32 mclk_freq;
 	struct msm_auxpcm_ctrl *auxpcm_ctrl;
+	struct msm_auxpcm_ctrl *tert_mi2s_ctrl;
 	int us_euro_gpio;
 };
 
@@ -134,7 +140,15 @@ static char *msm_auxpcm_gpio_name[][2] = {
 	{"PRIM_AUXPCM_DOUT",      "qcom,prim-auxpcm-gpio-dout"},
 };
 
+static char *msm_tert_mi2s_gpio_name[][2] = {
+	{"TERT_MI2S_CLK",       "qcom,tert-mi2s-gpio-clk"},
+	{"TERT_MI2S_SYNC",      "qcom,tert-mi2s-gpio-sync"},
+	{"TERT_MI2S_DIN",       "qcom,tert-mi2s-gpio-din"},
+	{"TERT_MI2S_DOUT",      "qcom,tert-mi2s-gpio-dout"},
+};
+
 void *lpaif_pri_muxsel_virt_addr;
+void *lpaif_ter_muxsel_virt_addr;
 
 /* Shared channel numbers for Slimbus ports that connect APQ to MDM. */
 enum {
@@ -550,10 +564,26 @@ static int msm_be_fm_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			SNDRV_PCM_HW_PARAM_CHANNELS);
 
 	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = SAMPLING_RATE_48KHZ;
 	channels->min = channels->max = 2;
 
 	return 0;
+}
+
+static int msm_be_ter_mi2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+                                struct snd_pcm_hw_params *params)
+{
+        struct snd_interval *rate = hw_param_interval(params,
+                                        SNDRV_PCM_HW_PARAM_RATE);
+
+        struct snd_interval *channels = hw_param_interval(params,
+                        SNDRV_PCM_HW_PARAM_CHANNELS);
+
+        pr_debug("%s()\n", __func__);
+        rate->min = rate->max = SAMPLING_RATE_48KHZ;
+        channels->min = channels->max = 2;
+
+        return 0;
 }
 
 static int msm8226_auxpcm_rate_get(struct snd_kcontrol *kcontrol,
@@ -665,7 +695,7 @@ static int msm_proxy_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	if (channels->max < 2)
 		channels->min = channels->max = 2;
 	channels->min = channels->max = msm_proxy_rx_ch;
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = SAMPLING_RATE_48KHZ;
 	return 0;
 }
 
@@ -675,7 +705,7 @@ static int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *rate = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_RATE);
 
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = SAMPLING_RATE_48KHZ;
 	return 0;
 }
 
@@ -822,7 +852,7 @@ static int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 					slim0_rx_bit_format);
 
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = SAMPLING_RATE_48KHZ;
 	channels->min = channels->max = msm_slim_0_tx_ch;
 
 	return 0;
@@ -835,7 +865,7 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					SNDRV_PCM_HW_PARAM_RATE);
 
 	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = SAMPLING_RATE_48KHZ;
 
 	return 0;
 }
@@ -1213,6 +1243,26 @@ static struct snd_soc_ops msm8226_be_ops = {
 };
 
 
+static struct afe_clk_cfg lpass_ter_i2s_enable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+
+static struct afe_clk_cfg lpass_ter_i2s_disable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	0,
+	0,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+
 static struct afe_clk_cfg lpass_pri_i2s_enable = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ,
@@ -1230,6 +1280,105 @@ static struct afe_clk_cfg lpass_pri_i2s_disable = {
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
 	Q6AFE_LPASS_MODE_BOTH_VALID,
 	0,
+};
+
+static int msm8226_mi2s_ter_snd_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+		       SNDRV_PCM_FORMAT_S16_LE);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = SAMPLING_RATE_48KHZ;
+	rate->max = SAMPLING_RATE_48KHZ;
+	channels->min = 2;
+	channels->max = 2;
+
+	return 0;
+}
+
+static void  msm8226_mi2s_ter_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct msm_auxpcm_ctrl *ter_mi2s_ctrl = NULL;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	ter_mi2s_ctrl = pdata->tert_mi2s_ctrl;
+
+	pr_debug("%s(): substream = %s, ter_mi2s_rsc_ref counter = %d\n",
+		 __func__, substream->name, atomic_read(&ter_mi2s_rsc_ref));
+
+	if (atomic_dec_return(&ter_mi2s_rsc_ref) == 0) {
+		msm_aux_pcm_free_gpios(ter_mi2s_ctrl);
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX,
+			&lpass_ter_i2s_disable);
+		if (ret < 0)
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+	}
+}
+
+static int msm8226_mi2s_ter_snd_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_auxpcm_ctrl *ter_mi2s_ctrl = NULL;
+	ter_mi2s_ctrl = pdata->tert_mi2s_ctrl;
+
+	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+	if (atomic_inc_return(&ter_mi2s_rsc_ref) == 1) {
+		pr_debug("%s: acquire mi2s resources\n", __func__);
+
+		ret = msm_aux_pcm_get_gpios(ter_mi2s_ctrl);
+		if (ret < 0) {
+			pr_err("%s: TER MI2S GPIO request failed\n", __func__);
+			atomic_dec_return(&ter_mi2s_rsc_ref);
+			return -EINVAL;
+		}
+
+		iowrite32(I2S_MASTER_SEL << I2S_MASTER_OFFSET,
+			  lpaif_ter_muxsel_virt_addr);
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX,
+					  &lpass_ter_i2s_enable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+			goto ter_clk_fail;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
+					  SND_SOC_DAIFMT_NB_NF |
+					  SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0) {
+			dev_err(cpu_dai->dev, "set format for CPU dai failed\n");
+			goto ter_fmt_fail;
+		}
+	}
+	return ret;
+
+ter_fmt_fail:
+	/* disable clock */
+	afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX,
+			    &lpass_ter_i2s_disable);
+ter_clk_fail:
+	msm_aux_pcm_free_gpios(ter_mi2s_ctrl);
+	atomic_dec_return(&ter_mi2s_rsc_ref);
+	return ret;
+}
+
+static const struct snd_soc_ops msm8226_mi2s_ter_be_ops = {
+	.startup = msm8226_mi2s_ter_snd_startup,
+	.hw_params = msm8226_mi2s_ter_snd_hw_params,
+	.shutdown = msm8226_mi2s_ter_snd_shutdown,
 };
 
 static struct regulator *mic_regulator;
@@ -1284,7 +1433,6 @@ static void  msm8226_mi2s_pri_snd_shutdown(struct snd_pcm_substream *substream)
 			&lpass_pri_i2s_disable);
 		if (ret < 0)
 			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
-
 		regulator_disable(mic_regulator);
 	}
 }
@@ -1999,6 +2147,20 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ops = &msm8226_mi2s_pri_be_ops,
 		.ignore_suspend = 1,
 	},
+	/* Backend I2S DAI Links */
+	{
+		.name = LPASS_BE_TERT_MI2S_RX,
+		.stream_name = "Tertiary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.2",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_ter_mi2s_hw_params_fixup,
+		.ops = &msm8226_mi2s_ter_be_ops,
+		.ignore_suspend = 1,
+	},
 };
 
 static struct snd_soc_dai_link msm8226_9306_dai[] = {
@@ -2554,6 +2716,14 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	/* Parse TERT MI2S info from DT */
+	ret = msm8226_dtparse_auxpcm(pdev, &pdata->tert_mi2s_ctrl,
+					msm_tert_mi2s_gpio_name);
+	if (ret) {
+		dev_err(&pdev->dev,
+		"%s: Tert MI2s pin data parse failed\n", __func__);
+	}
+
 	vdd_spkr_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,cdc-vdd-spkr-gpios", 0);
 	if (vdd_spkr_gpio < 0) {
@@ -2601,6 +2771,7 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 			pdev->dev.of_node->full_name);
 		goto err_lineout_spkr;
 	}
+
 	if (!strcmp(auxpcm_pri_gpio_set, "prim-gpio-prim")) {
 		lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_PRI_MODE_MUXSEL, 4);
 	} else if (!strcmp(auxpcm_pri_gpio_set, "prim-gpio-tert")) {
@@ -2611,8 +2782,14 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err_lineout_spkr;
 	}
-	if (lpaif_pri_muxsel_virt_addr == NULL) {
-		pr_err("%s Pri muxsel virt addr is null\n", __func__);
+
+	lpaif_ter_muxsel_virt_addr = ioremap(LPAIF_TER_MODE_MUXSEL, 4);
+
+	if (lpaif_pri_muxsel_virt_addr == NULL ||
+	    lpaif_ter_muxsel_virt_addr == NULL) {
+		pr_err("%s Pri muxsel virt addr is null Pri %08x Ter %08x\n",
+		       __func__, (int)lpaif_pri_muxsel_virt_addr,
+		       (int)lpaif_ter_muxsel_virt_addr);
 		ret = -EINVAL;
 		goto err_lineout_spkr;
 	}
