@@ -83,6 +83,7 @@
 	qcom,cool-bat-decidegc = <0>;
 	qcom,cold-bat-decidegc = <(-100)>;
 	qcom,vbat-estimate-diff-mv = <200>;
+	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
 };
 
 &i2c_6 {
