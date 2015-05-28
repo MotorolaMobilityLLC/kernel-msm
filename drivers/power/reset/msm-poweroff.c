@@ -340,6 +340,24 @@ static void msm_restart_prepare(const char *cmd)
 					     restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+		} else if (!strncmp(cmd, "post-wdt", 8)) {
+			/* set  flag in PMIC to nofity BL post watchdog reboot */
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_POST_REBOOT_MASK,
+				RESET_EXTRA_POST_WDT_REASON);
+			 /* force cold reboot */
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+		} else if (!strncmp(cmd, "post-pmicwdt", 12)) {
+			/* set  flag in PMIC to nofity BL post pmic watchdog reboot */
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_POST_REBOOT_MASK,
+				RESET_EXTRA_POST_PMICWDT_REASON);
+			 /* force cold reboot */
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+		} else if (!strncmp(cmd, "post-panic", 10)) {
+			/* set  flag in PMIC to nofity BL post panic reboot */
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_POST_REBOOT_MASK,
+				RESET_EXTRA_POST_PANIC_REASON);
+			 /* force cold reboot */
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
