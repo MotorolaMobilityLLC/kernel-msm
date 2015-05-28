@@ -122,7 +122,7 @@
 			/* CMD1 is selected */
 			15 01 00 00 00 00 02 FF 10
 			/* 8 bits DBV = 0xFF (100%) */
-			15 01 00 00 00 00 02 51 FF
+			15 01 00 00 00 00 02 51 CC
 			/* Write CTRL display */
 			15 01 00 00 00 00 02 53 2C
 			/* CABC on, UI-mode */
@@ -144,6 +144,12 @@
 			/* enter sleep mode */
 			05 01 00 00 46 00 01 10];
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+                qcom,mdss-dsi-hbm-on-command = [
+			/* PWM set to 100% */
+			15 01 00 00 00 00 02 51 ff];
+                qcom,mdss-dsi-hbm-off-command = [
+			/* PWM set to 80% */
+			15 01 00 00 00 00 02 51 cc];
 
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
