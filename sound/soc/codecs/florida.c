@@ -772,8 +772,8 @@ static const struct soc_enum florida_memory_enum =
 			florida_memory_mux_texts);
 
 static const struct snd_kcontrol_new florida_memory_mux[] = {
-	SOC_DAPM_ENUM_VIRT("DSP2 Virtual Input", florida_memory_enum),
-	SOC_DAPM_ENUM_VIRT("DSP3 Virtual Input", florida_memory_enum),
+	SOC_DAPM_ENUM_VIRT("DSP2 Virtual Input Mux", florida_memory_enum),
+	SOC_DAPM_ENUM_VIRT("DSP3 Virtual Input Mux", florida_memory_enum),
 };
 
 static const char * const florida_aec_loopback_texts[] = {
@@ -846,6 +846,7 @@ SND_SOC_DAPM_INPUT("IN3L"),
 SND_SOC_DAPM_INPUT("IN3R"),
 SND_SOC_DAPM_INPUT("IN4L"),
 SND_SOC_DAPM_INPUT("IN4R"),
+SND_SOC_DAPM_INPUT("DSP Virtual Input"),
 
 SND_SOC_DAPM_OUTPUT("DRC1 Signal Activity"),
 SND_SOC_DAPM_OUTPUT("DRC2 Signal Activity"),
@@ -1297,9 +1298,9 @@ ARIZONA_DSP_WIDGETS(DSP2, "DSP2"),
 ARIZONA_DSP_WIDGETS(DSP3, "DSP3"),
 ARIZONA_DSP_WIDGETS(DSP4, "DSP4"),
 
-SND_SOC_DAPM_VIRT_MUX("DSP2 Virtual Input", SND_SOC_NOPM, 0, 0,
+SND_SOC_DAPM_VIRT_MUX("DSP2 Virtual Input Mux", SND_SOC_NOPM, 0, 0,
 		      &florida_memory_mux[0]),
-SND_SOC_DAPM_VIRT_MUX("DSP3 Virtual Input", SND_SOC_NOPM, 0, 0,
+SND_SOC_DAPM_VIRT_MUX("DSP3 Virtual Input Mux", SND_SOC_NOPM, 0, 0,
 		      &florida_memory_mux[1]),
 
 SND_SOC_DAPM_VIRT_MUX_E("DSP2 Virtual Output Mux", SND_SOC_NOPM, 1, 0,
@@ -1687,11 +1688,12 @@ static const struct snd_soc_dapm_route florida_dapm_routes[] = {
 	ARIZONA_DSP_ROUTES("DSP3"),
 	ARIZONA_DSP_ROUTES("DSP4"),
 
-	{ "DSP2 Preloader",  NULL, "DSP2 Virtual Input" },
-	{ "DSP2 Virtual Input", "Shared Memory", "DSP3" },
-	{ "DSP3 Preloader", NULL, "DSP3 Virtual Input" },
-	{ "DSP3 Virtual Input", "Shared Memory", "DSP2" },
+	{ "DSP2 Preloader",  NULL, "DSP2 Virtual Input Mux" },
+	{ "DSP2 Virtual Input Mux", "Shared Memory", "DSP3" },
+	{ "DSP3 Preloader", NULL, "DSP3 Virtual Input Mux" },
+	{ "DSP3 Virtual Input Mux", "Shared Memory", "DSP2" },
 
+	{ "DSP2 Preloader", NULL, "DSP Virtual Input"},
 	{ "DSP2 Virtual Output", NULL, "DSP2 Virtual Output Mux" },
 	{ "DSP2 Virtual Output Mux", "DSP2", "DSP2" },
 	{ "DSP2 Virtual Output", NULL, "SYSCLK" },
