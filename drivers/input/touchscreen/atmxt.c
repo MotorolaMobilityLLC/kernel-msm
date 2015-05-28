@@ -407,15 +407,15 @@ static int atmxt_suspend(struct i2c_client *client, pm_message_t message)
 
 	drv_state = atmxt_get_drv_state(dd);
 	switch (drv_state) {
+	case ATMXT_DRV_INIT:
+		break;
 	case ATMXT_DRV_ACTIVE:
 	case ATMXT_DRV_IDLE:
 		atmxt_set_drv_state(dd, ATMXT_DRV_SUSPENDED);
 		break;
-
 	case ATMXT_DRV_SUSPENDED:
 		pr_err("%s: Driver has already suspended.\n", __func__);
 		break;
-
 	default:
 		pr_err("%s: Cannot suspend in driver state %s.\n",
 			__func__, atmxt_driver_state_string[drv_state]);
