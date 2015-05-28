@@ -645,7 +645,14 @@
 
 		qcom,bus-width = <8>;
 
+		qcom,qos-planes = <3>;
 		qcom,cpu-dma-latency-us = <2 401 701>;
+		qcom,cpu-dma-latency-us-r = <2 401 701>;
+		qcom,cpu-dma-latency-us-w = <2 401 701>;
+		qcom,cpu-affinity-r = "all_cores";
+
+		qcom,modified-dynamic-qos;
+
 		qcom,msm-bus,name = "sdhc1";
 		qcom,msm-bus,num-cases = <8>;
 		qcom,msm-bus,num-paths = <1>;
