@@ -45,6 +45,7 @@
 #define SCM_SVC_SEC_WDOG_DIS	0x7
 #define MAX_CPU_CTX_SIZE	2048
 
+unsigned int watchdog_flag;
 static struct workqueue_struct *wdog_wq;
 static struct msm_watchdog_data *wdog_data;
 
@@ -385,6 +386,7 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 		wdog_dd->last_pet, nanosec_rem / 1000);
 	if (wdog_dd->do_ipi_ping)
 		dump_cpu_alive_mask(wdog_dd);
+	watchdog_flag = 1;
 	printk(KERN_INFO "Causing a watchdog bite!");
 	__raw_writel(1, wdog_dd->base + WDT0_BITE_TIME);
 	mb();
@@ -400,6 +402,12 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	panic("Failed to cause a watchdog bite! - Falling back to kernel panic!");
 	return IRQ_HANDLED;
 }
+
+unsigned int get_watchdog_flag(void)
+{
+	return watchdog_flag;
+}
+EXPORT_SYMBOL(get_watchdog_flag);
 
 static irqreturn_t wdog_ppi_bark(int irq, void *dev_id)
 {
@@ -646,6 +654,8 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct msm_watchdog_data *wdog_dd;
+
+	watchdog_flag = 0;
 
 	wdog_wq = alloc_workqueue("wdog", WQ_HIGHPRI, 0);
 	if (!wdog_wq) {
