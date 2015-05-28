@@ -775,7 +775,6 @@ static int slim0_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-
 static int msm_auxpcm_be_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -1663,6 +1662,22 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 #endif
 //ASUS_BSP Jessy ---
 //ASUS_BSP Ken_Cheng +++
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
+	{
+		.name = "MI2S_TX HOSTLESS",
+		.stream_name = "MI2S_TX HOSTLESS",
+		.cpu_dai_name = "MI2S_TX_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+#endif
 #if defined(ASUS_CW_WITH_CODEC)
 	/* Hostless PCM purpose */
 	{
@@ -1733,6 +1748,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		 /* this dainlink has playback support */
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA4,
 	},
+#endif
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 	{
 		.name = "AUXPCM Hostless",
 		.stream_name = "AUXPCM Hostless",
@@ -2015,6 +2032,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_name = "snd-soc-dummy",
 		.be_id = MSM_FRONTEND_DAI_LSM8,
 	},
+#endif
+#ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 	{/* hw:x,28 */
 		.name = "INT_HFP_BT Hostless",
 		.stream_name = "INT_HFP_BT Hostless",
@@ -2046,6 +2065,8 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA6,
 	},
+#endif
+#if defined(ASUS_CW_WITH_CODEC)
 	{/* hw:x,30 */
 		.name = "VoWLAN",
 		.stream_name = "VoWLAN",
