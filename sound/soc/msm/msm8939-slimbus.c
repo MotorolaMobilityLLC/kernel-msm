@@ -72,7 +72,9 @@
 #define WCD9XXX_MBHC_DEF_BUTTONS    8
 #define WCD9XXX_MBHC_DEF_RLOADS     5
 #define CODEC_EXT_CLK_RATE         9600000
+#ifdef CONFIG_SND_SOC_FLORIDA
 #define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
+#endif
 
 #define PRI_MI2S_ID	(1 << 0)
 #define SEC_MI2S_ID	(1 << 1)
@@ -96,7 +98,9 @@ static int msm_slim_1_tx_ch = 1;
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
 static int msm_btsco_ch = 1;
 static int msm8939_spk_control = 1;
+#ifdef CONFIG_SND_SOC_FLORIDA
 static struct clk *codec_clk;
+#endif
 static int clk_users;
 static struct platform_device *spdev;
 
@@ -390,6 +394,7 @@ exit:
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_FLORIDA
 static int msm_snd_enable_pmic_bb_clk2(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
@@ -435,17 +440,21 @@ exit:
 	mutex_unlock(&pdata->cdc_mclk_mutex);
 	return ret;
 }
+#endif
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
+#ifdef CONFIG_SND_SOC_FLORIDA
 	int ret;
 	struct snd_soc_codec *codec = w->codec;
+#endif
 	pr_debug("%s: event = %d\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		ret = msm_snd_enable_pmic_bb_clk2(w->codec, 1, true);
+#ifdef CONFIG_SND_SOC_FLORIDA
+		ret = msm_snd_enable_pmic_bb_clk2(codec, 1, true);
 		if (ret < 0) {
 			pr_err("%s Cannot set ext clk %d\n", __func__, ret);
 			goto exit;
@@ -467,7 +476,11 @@ static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 			pr_err("%s Cannot set SYNC CLK 9.6MHz %d\n", __func__,
 				ret);
 		break;
+#else
+		return msm_snd_enable_codec_ext_clk(w->codec, 1, true);
+#endif
 	case SND_SOC_DAPM_POST_PMD:
+#ifdef CONFIG_SND_SOC_FLORIDA
 		ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
 			ARIZONA_FLL_SRC_MCLK2,
 			32768,
@@ -485,16 +498,21 @@ static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 			pr_err("%s Cant set SYNC CLK 32kHz %d\n", __func__,
 				ret);
 
-		ret = msm_snd_enable_pmic_bb_clk2(w->codec, 0, true);
+		ret = msm_snd_enable_pmic_bb_clk2(codec, 0, true);
 		if (ret < 0) {
 			pr_err("%s Cannot set ext clk %d\n", __func__, ret);
 			goto exit;
 		}
 		break;
+#else
+		return msm_snd_enable_codec_ext_clk(w->codec, 0, true);
+#endif
 	}
 	return 0;
+#ifdef CONFIG_SND_SOC_FLORIDA
 exit:
 	return ret;
+#endif
 }
 
 static const struct snd_soc_dapm_widget msm8939_dapm_widgets[] = {
