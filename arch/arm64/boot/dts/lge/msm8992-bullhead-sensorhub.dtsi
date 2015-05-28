@@ -1,9 +1,14 @@
 &spi_7 {
 	sensorhub@0 {
-		compatible = "spidev";
+		compatible = "contexthub,spich";
 		reg = <0>;
 		spi-max-frequency = <25000000>;
 		spi-cpol;
 		spi-cpha;
+
+                contexthub,int1 = <&msm_gpio 65 0x00>;
+                contexthub,int2 = <&msm_gpio 66 0x00>;
+                contexthub,nrst = <&msm_gpio 59 0x00>;
+                contexthub,boot0 = <&msm_gpio 60 0x00>;
 	};
 };
