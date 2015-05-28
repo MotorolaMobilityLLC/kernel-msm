@@ -41,6 +41,9 @@
 #define SCM_EDLOAD_MODE			0X01
 #define SCM_DLOAD_CMD			0x10
 
+#define WATCHDOG_RESTART_REASON   0x77665505
+#define KERNEL_PANIC_RESTART_REASON   0x77665506
+
 
 static int restart_mode;
 void *restart_reason;
@@ -58,6 +61,9 @@ static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
+#ifdef CONFIG_MSM_WATCHDOG_V2
+extern unsigned int get_watchdog_flag(void);
+#endif
 static int dload_set(const char *val, struct kernel_param *kp);
 static int download_mode = 1;
 module_param_call(download_mode, dload_set, param_get_int,
@@ -66,6 +72,15 @@ static int panic_prep_restart(struct notifier_block *this,
 			      unsigned long event, void *ptr)
 {
 	in_panic = 1;
+#ifdef CONFIG_MSM_WATCHDOG_V2
+	if( 1 ==  get_watchdog_flag())
+	{
+		__raw_writel(WATCHDOG_RESTART_REASON, restart_reason);
+	}else
+#endif
+	{
+		__raw_writel(KERNEL_PANIC_RESTART_REASON, restart_reason);
+	}
 	return NOTIFY_DONE;
 }
 
@@ -195,12 +210,13 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
+	if (get_dload_mode() || (cmd != NULL))
+
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	else
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 
-	if (cmd != NULL) {
+	if (cmd != NULL && restart_reason) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			__raw_writel(0x77665500, restart_reason);
 		} else if (!strncmp(cmd, "recovery", 8)) {
@@ -310,6 +326,8 @@ static int msm_restart_probe(struct platform_device *pdev)
 				"qcom,msm-imem-restart_reason");
 	if (!np) {
 		pr_err("unable to find DT imem restart reason node\n");
+		ret = -ENOMEM;
+		goto err_restart_reason;
 	} else {
 		restart_reason = of_iomap(np, 0);
 		if (!restart_reason) {
