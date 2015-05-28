@@ -1038,10 +1038,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			wy = temp;
 		}
 
-		if (rmi4_data->hw_if->board_data->x_flip)
-			x = rmi4_data->sensor_max_x - x;
-		if (rmi4_data->hw_if->board_data->y_flip)
-			y = rmi4_data->sensor_max_y - y;
+		if (rmi4_data->num_of_rx < 32) {
+			if (rmi4_data->hw_if->board_data->x_flip)
+				x = rmi4_data->sensor_max_x - x;
+			if (rmi4_data->hw_if->board_data->y_flip)
+				y = rmi4_data->sensor_max_y - y;
+		}
 
 		switch (finger_status) {
 		case F12_FINGER_STATUS:
@@ -1899,6 +1901,9 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 		rmi4_data->sensor_max_y =
 				((unsigned short)ctrl_8.max_y_coord_lsb << 0) |
 				((unsigned short)ctrl_8.max_y_coord_msb << 8);
+
+		rmi4_data->num_of_rx = ctrl_8.num_of_rx;
+		rmi4_data->num_of_tx = ctrl_8.num_of_tx;
 
 		rmi4_data->max_touch_width = MAX_F12_TOUCH_WIDTH;
 	} else {
@@ -2858,6 +2863,34 @@ static int synaptics_rmi4_enable_reg(struct synaptics_rmi4_data *rmi4_data,
 		goto disable_pwr_reg;
 	}
 
+	if (rmi4_data->pwr_reg) {
+		retval = regulator_enable(rmi4_data->pwr_reg);
+		if (retval < 0) {
+			dev_err(rmi4_data->pdev->dev.parent,
+					"%s: Failed to enable power regulator\n",
+					__func__);
+			goto disable_bus_reg;
+		} else {
+			tp_log_debug("%s: pwr_reg enabled !\n",__func__);
+		}
+	}
+
+	msleep(5);
+
+	if (bdata->vbus_gpio >= 0) {
+		retval = synaptics_rmi4_gpio_setup(
+				bdata->vbus_gpio,
+				true, 1, (int)enable);
+		if (retval < 0) {
+			dev_err(rmi4_data->pdev->dev.parent,
+					"%s: Failed to configure vbus GPIO\n",
+					__func__);
+			goto exit;
+		} else {
+			tp_log_debug("%s: vbus_gpio(%d) enabled !\n",__func__,bdata->vbus_gpio);
+		}
+	}
+
 	if (rmi4_data->bus_reg) {
 		retval = regulator_enable(rmi4_data->bus_reg);
 		if (retval < 0) {
@@ -2870,18 +2903,7 @@ static int synaptics_rmi4_enable_reg(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
-	if (rmi4_data->pwr_reg) {
-		retval = regulator_enable(rmi4_data->pwr_reg);
-		if (retval < 0) {
-			dev_err(rmi4_data->pdev->dev.parent,
-					"%s: Failed to enable power regulator\n",
-					__func__);
-			goto disable_bus_reg;
-		} else {
-			tp_log_debug("%s: pwr_reg enabled !\n",__func__);
-		}
-		msleep(bdata->power_delay_ms);
-	}
+	msleep(bdata->power_delay_ms);
 
 	return 0;
 
@@ -2890,6 +2912,20 @@ disable_pwr_reg:
 		regulator_disable(rmi4_data->pwr_reg);
 
 disable_bus_reg:
+	if (bdata->vbus_gpio >= 0) {
+		retval = synaptics_rmi4_gpio_setup(
+				bdata->vbus_gpio,
+				true, 1, (int)!enable);
+		if (retval < 0) {
+			dev_err(rmi4_data->pdev->dev.parent,
+					"%s: Failed to configure vbus GPIO\n",
+					__func__);
+			goto exit;
+		} else {
+			tp_log_debug("%s: vbus_gpio(%d) disabled !\n",__func__,bdata->vbus_gpio);
+		}
+	}
+
 	if (rmi4_data->bus_reg)
 		regulator_disable(rmi4_data->bus_reg);
 

@@ -96,6 +96,17 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		bdata->bus_reg_name = name;
 	}
 
+	prop = of_find_property(np, "synaptics,vbus-gpio", NULL);
+	if (prop && prop->length) {
+		bdata->vbus_gpio = of_get_named_gpio_flags(np,
+				"synaptics,vbus-gpio", 0, NULL);
+		tp_log_debug("%s: vbus-gpio(%d) !\n",
+				__func__,bdata->vbus_gpio);
+	} else {
+		tp_log_debug("%s: vbus_gpio not defined!\n",__func__);
+		bdata->vbus_gpio = -1;
+	}
+
 	if (of_property_read_bool(np, "synaptics,power-gpio")) {
 		bdata->power_gpio = of_get_named_gpio_flags(np,
 				"synaptics,power-gpio", 0, NULL);

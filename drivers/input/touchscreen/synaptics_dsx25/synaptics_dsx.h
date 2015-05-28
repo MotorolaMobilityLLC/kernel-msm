@@ -82,6 +82,7 @@ struct synaptics_dsx_board_data {
 	int irq_gpio;
 	int irq_on_state;
 	int power_gpio;
+	int vbus_gpio;
 	int power_on_state;
 	int reset_gpio;
 	int reset_on_state;
