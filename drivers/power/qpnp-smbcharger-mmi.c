@@ -1824,12 +1824,20 @@ static int smbchg_parallel_usb_charging_en(struct smbchg_chip *chip, bool en)
 static int smbchg_sw_esr_pulse_en(struct smbchg_chip *chip, bool en)
 {
 	int rc;
+	int index = 0;
+	int target_current = chip->target_fastchg_current_ma;
+
+	if (chip->parallel.current_max_ma != 0) {
+		index = smbchg_get_pchg_current_map_index(chip);
+		target_current = chip->pchg_current_map_data[index].primary;
+	}
 
 	chip->sw_esr_pulse_en = en;
-	rc = smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
+	rc = smbchg_set_fastchg_current(chip, target_current);
 	if (rc)
 		return rc;
-	rc = smbchg_parallel_usb_charging_en(chip, !en);
+	if (chip->parallel.current_max_ma != 0)
+		rc = smbchg_parallel_usb_charging_en(chip, !en);
 	return rc;
 }
 
