@@ -30,6 +30,10 @@
 #include <linux/switch.h>
 #include <linux/wakelock.h>
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+#include <linux/mmi_hall_notifier.h>
+#endif
+
 enum sh_spi_msg {
 	SPI_MSG_TYPE_READ_REG = 1,
 	SPI_MSG_TYPE_WRITE_REG,
@@ -376,6 +380,9 @@ struct stml0xx_data {
 
 	bool is_suspended;
 	bool pending_wake_work;
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	struct mmi_hall_data *hall_data;
+#endif
 };
 
 #ifndef ts_to_ns
