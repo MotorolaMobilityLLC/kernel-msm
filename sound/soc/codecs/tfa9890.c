@@ -821,11 +821,11 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 			queue_delayed_work(tfa9890->tfa9890_wq,
 				&tfa9890->init_work,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
-		/* will need to read speaker impedence here if its not read yet
-		 * to complete the calibartion process. This step will enable
+		/* will need to read speaker impedance here if its not read yet
+		 * to complete the calibration process. This step will enable
 		 * device to calibrate if its not calibrated/validated in the
-		 * factory. When the factory process is in place speaker imp
-		 * will be read from sysfs and validated.
+		 * factory. When the factory process is in place, speaker
+		 * impedance will be read from sysfs and validated.
 		 */
 		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
 			if ((tfa9890->mode_switched == 1) ||
@@ -854,7 +854,7 @@ static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE ||
-				tfa9890->is_spkr_prot_disabled)
+			tfa9890->is_spkr_prot_disabled)
 			tfa9890_power(codec, 1);
 		tfa9890_handle_playback_event(tfa9890, 1);
 		break;
@@ -1274,7 +1274,6 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 
 	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s%s.%s.speaker",
 		tfa9890->fw_path, tfa9890->tfa_dev, tfa9890->fw_name);
-		ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate speaker model!!");
@@ -1289,7 +1288,6 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 			fw_speaker->size, TFA9890_DSP_WRITE, 0);
 	if (ret < 0)
 		goto out;
-
 
 	if (!strncmp("left", tfa9890->tfa_dev, 4)) {
 		ret = tfa9890_set_mode_left(tfa9890);
@@ -1324,12 +1322,12 @@ out:
 	return ret;
 }
 
-static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
+static void tfa9890_calibration(struct tfa9890_priv *tfa9890)
 {
 	u16 val;
 	struct snd_soc_codec *codec = tfa9890->codec;
 
-	/* Ensure no audio playback while calibarating but leave
+	/* Ensure no audio playback while calibrating but leave
 	 * amp enabled*/
 	tfa9890_set_mute(codec, TFA9890_DIGITAL_MUTE);
 
@@ -1375,6 +1373,7 @@ static void tfa9890_work_mode(struct work_struct *work)
 	ret = tfa9890_wait_pll_sync(tfa9890);
 	if (ret < 0)
 		goto out;
+
 	if (!strncmp("left", tfa9890->tfa_dev, 4)) {
 		if (tfa9890->mode_switched)
 			tfa9890_set_mode_left(tfa9890);
@@ -1414,7 +1413,7 @@ static void tfa9890_load_preset(struct work_struct *work)
 	eq_name = kzalloc(FIRMWARE_NAME_SIZE, GFP_KERNEL);
 
 	if (!preset_name || !cfg_name || !eq_name) {
-				tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
+		tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
 		pr_err("tfa9890 : Load preset allocation failure\n");
 		kfree(preset_name);
 		kfree(cfg_name);
@@ -1521,6 +1520,7 @@ static void tfa9890_monitor(struct work_struct *work)
 	/* check IC status bits: cold start, amp switching, speaker error
 	 * and DSP watch dog bit to re init */
 	if (((TFA9890_STATUS_ACS & val) || (TFA9890_STATUS_WDS & val) ||
+		(TFA9890_STATUS_SPKS & val) ||
 		!(TFA9890_STATUS_AMP_SWS & val)) &&
 		!(tfa9890->is_spkr_prot_disabled)) {
 		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
@@ -1547,6 +1547,9 @@ static void tfa9890_dsp_init(struct work_struct *work)
 
 	mutex_lock(&lr_lock);
 	mutex_lock(&tfa9890->dsp_init_lock);
+
+	/* update eq every time dsp is init-ed again */
+	tfa9890->update_eq = 1;
 
 	/* if the initialzation is pending treat it as cold
 	 * startcase, need to put the dsp in reset and and
@@ -1587,18 +1590,18 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	}
 
 	val = snd_soc_read(codec, TFA9890_MTP_REG);
-	/* check if calibaration completed, Calibaration is one time event.
+	/* check if calibration completed, Calibration is one time event.
 	 * Will be done only once when device boots up for the first time.Once
-	 * calibarated info is stored in non-volatile memory of the device.
-	 * It will be part of the factory test to validate spkr imp.
+	 * calibrated info is stored in non-volatile memory of the device.
+	 * It will be part of the factory test to validate spkr impedance.
 	 * The MTPEX will be set to 1 always after calibration, on subsequent
 	 * power down/up as well.
 	 */
 	if (!(val & TFA9890_STATUS_MTPEX)) {
 		pr_info("tfa9890:Calib not completed initiating ..");
-		tfa9890_calibaration(tfa9890);
+		tfa9890_calibration(tfa9890);
 	} else
-		/* speaker impedence available to read */
+		/* speaker impedance available to read */
 		tfa9890->speaker_imp = tfa9890_read_spkr_imp(tfa9890);
 
 	tfa9890->dsp_init = TFA9890_DSP_INIT_DONE;
@@ -1634,6 +1637,7 @@ static int tfa9890_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
 	u16 val;
+
 	/* set master/slave audio interface */
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBS_CFS:
@@ -1679,7 +1683,7 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 
 	/* validate and set params */
 	if (params_format(params) != SNDRV_PCM_FORMAT_S16_LE) {
-		pr_err("tfa9890: invalid pcm bit lenght %i\n",
+		pr_err("tfa9890: invalid pcm bit length %i\n",
 			params_format(params));
 		return -EINVAL;
 	}
@@ -1979,10 +1983,10 @@ static ssize_t tfa9890_show_ic_temp(struct device *dev,
 		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 		if ((val & TFA9890_STATUS_PLLS) &&
 				(val & TFA9890_STATUS_CLKS)) {
-			/* calibaration should take place when the IC temp is
-			 * between 0 and 50C, factory test command will verify
-			 * factory test command will verify the temp along
-			 * with impdedence to pass the test.
+			/* Calibration should take place when the IC temp is
+			 * between 0 and 50C.  The factory test command will
+			 * verify the temp along with impedance to pass the
+			 * test.
 			 */
 			val = snd_soc_read(tfa9890->codec,
 						TFA9890_TEMP_STATUS_REG);
@@ -1992,7 +1996,7 @@ static ssize_t tfa9890_show_ic_temp(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%u\n", temp);
 }
 
-static ssize_t tfa9890_force_calibaration(struct device *dev,
+static ssize_t tfa9890_force_calibration(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -2005,7 +2009,7 @@ static ssize_t tfa9890_force_calibaration(struct device *dev,
 	if (val < 0 || val > 1)
 		return -EINVAL;
 
-	tfa9890_calibaration(tfa9890);
+	tfa9890_calibration(tfa9890);
 
 	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 
@@ -2042,7 +2046,7 @@ static DEVICE_ATTR(spkr_imp, S_IRUGO,
 		   tfa9890_show_spkr_imp, NULL);
 
 static DEVICE_ATTR(force_calib, S_IWUSR,
-		   NULL, tfa9890_force_calibaration);
+		   NULL, tfa9890_force_calibration);
 
 static struct attribute *tfa9890_attributes[] = {
 	&dev_attr_spkr_imp.attr,
