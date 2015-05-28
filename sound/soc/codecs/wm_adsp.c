@@ -3244,10 +3244,17 @@ static int wm_adsp_ack_buffer2_interrupt(struct wm_adsp *adsp)
 int wm_adsp_stream_handle_irq(struct wm_adsp *adsp, bool two_buf)
 {
 	int ret = 0, bytes_captured = 0;
+	adsp->dsp_error = 0;
 
-	ret = wm_adsp_host_buffer_read(adsp,
-				       HOST_BUFFER_FIELD(error),
-				       &adsp->dsp_error);
+	if (!two_buf)
+		ret = wm_adsp_host_buffer_read(adsp,
+			       HOST_BUFFER_FIELD(error),
+			       &adsp->dsp_error);
+	else
+		ret = wm_adsp_host_buffer2_read(adsp,
+				HOST_BUFFER_FIELD(error),
+				&adsp->dsp_error);
+
 	if (ret < 0)
 		return ret;
 	if (adsp->dsp_error != 0) {
