@@ -37,7 +37,7 @@
 	regulator-max-microvolt = <14>;
 	qcom,cpr-up-threshold = <0>;
 	qcom,cpr-down-threshold = <5>;
-	qcom,cpr-corner-map = <1 1 2 2 3 3 3 3 3 3 3 3 3 3>;
+	qcom,cpr-corner-map = <1 1 1 2 3 3 3 3 3 3 3 3 3 3>;
 	qcom,pvs-version-fuse-sel = <22 4 2 0>;
 	qcom,cpr-corner-frequency-map =
 			<1 300000000>,
@@ -84,6 +84,7 @@
 		qcom,speed0-bin-v2 =
 			<         0 0>,
 			< 384000000 2>,
+			< 600000000 3>,
 			< 787200000 4>,
 			< 998400000 5>,
 			<1094400000 6>,
