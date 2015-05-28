@@ -214,6 +214,26 @@ dhd_pno_idx_to_ssid(struct dhd_pno_gscan_params *gscan_params,
 	return;
 }
 
+/* Cleanup all results */
+static void
+dhd_gscan_clear_all_batch_results(dhd_pub_t *dhd)
+{
+	struct dhd_pno_gscan_params *gscan_params;
+	dhd_pno_status_info_t *_pno_state;
+	gscan_results_cache_t *iter;
+
+	_pno_state = PNO_GET_PNOSTATE(dhd);
+	gscan_params = &_pno_state->pno_params_arr[INDEX_OF_GSCAN_PARAMS].params_gscan;
+	iter = gscan_params->gscan_batch_cache;
+	/* Mark everything as consumed */
+	while (iter) {
+		iter->tot_consumed = iter->tot_count;
+		iter = iter->next;
+	}
+	dhd_gscan_batch_cache_cleanup(dhd);
+	return;
+}
+
 static int
 _dhd_pno_gscan_cfg(dhd_pub_t *dhd, wl_pfn_gscan_cfg_t *pfncfg_gscan_param, int size)
 {
@@ -857,13 +877,16 @@ _dhd_pno_cfg(dhd_pub_t *dhd, uint16 *channel_list, int nchan)
 	if (nchan) {
 		NULL_CHECK(channel_list, "nchan is NULL", err);
 	}
+	if (nchan > WL_NUMCHANNELS) {
+		return BCME_RANGE;
+	}
 	DHD_PNO(("%s enter :  nchan : %d\n", __FUNCTION__, nchan));
 	memset(&pfncfg_param, 0, sizeof(wl_pfn_cfg_t));
 	/* Setup default values */
 	pfncfg_param.reporttype = htod32(WL_PFN_REPORT_ALLNET);
 	pfncfg_param.channel_num = htod32(0);
 
-	for (i = 0; i < nchan && nchan < WL_NUMCHANNELS; i++)
+	for (i = 0; i < nchan; i++)
 		pfncfg_param.channel_list[i] = channel_list[i];
 
 	pfncfg_param.channel_num = htod32(nchan);
@@ -2147,19 +2170,25 @@ dhd_pno_set_for_gscan(dhd_pub_t *dhd, struct dhd_pno_gscan_params *gscan_params)
 	    _chan_list, &tot_num_buckets, &num_buckets_to_fw)))
 		goto exit;
 
+	mutex_lock(&_pno_state->pno_mutex);
+	/* Clear any pre-existing results in our cache
+	 * not consumed by framework
+	 */
+	dhd_gscan_clear_all_batch_results(dhd);
 	if (_pno_state->pno_mode & (DHD_PNO_GSCAN_MODE | DHD_PNO_LEGACY_MODE)) {
 		/* store current pno_mode before disabling pno */
 		mode = _pno_state->pno_mode;
 		err = dhd_pno_clean(dhd);
 		if (err < 0) {
 			DHD_ERROR(("%s : failed to disable PNO\n", __FUNCTION__));
+			mutex_unlock(&_pno_state->pno_mutex);
 			goto exit;
 		}
 		/* restore the previous mode */
 		_pno_state->pno_mode = mode;
 	}
-
 	_pno_state->pno_mode |= DHD_PNO_GSCAN_MODE;
+	mutex_unlock(&_pno_state->pno_mutex);
 
 	if (_pno_state->pno_mode & DHD_PNO_LEGACY_MODE) {
 		pssid_list = dhd_pno_get_legacy_pno_ssid(dhd, _pno_state);
@@ -2353,7 +2382,7 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
                                   uint32 *num_buckets,
                                   uint32 *num_buckets_to_fw)
 {
-	int i, num_channels, err, nchan = WL_NUMCHANNELS;
+	int i, num_channels, err, nchan = WL_NUMCHANNELS, ch_cnt;
 	uint16 *ptr = chan_list, max;
 	wl_pfn_gscan_ch_bucket_cfg_t *ch_bucket;
 	dhd_pno_params_t *_params = &_pno_state->pno_params_arr[INDEX_OF_GSCAN_PARAMS];
@@ -2379,12 +2408,16 @@ dhd_pno_gscan_create_channel_list(dhd_pub_t *dhd,
 
 	max = gscan_buckets[0].bucket_freq_multiple;
 	num_channels = 0;
+	/* nchan is the remaining space left in chan_list buffer
+	 * So any overflow list of channels is ignored
+	 */
 	for (i = 0; i < _params->params_gscan.nchannel_buckets && nchan; i++) {
 		if (!gscan_buckets[i].band) {
-			num_channels += gscan_buckets[i].num_channels;
+			ch_cnt = MIN(gscan_buckets[i].num_channels, (uint8)nchan);
+			num_channels += ch_cnt;
 			memcpy(ptr, gscan_buckets[i].chan_list,
-			    gscan_buckets[i].num_channels * sizeof(uint16));
-			ptr = ptr + gscan_buckets[i].num_channels;
+			    ch_cnt * sizeof(uint16));
+			ptr = ptr + ch_cnt;
 		} else {
 			/* get a valid channel list based on band B or A */
 			err = _dhd_pno_get_channels(dhd, ptr,
@@ -2627,6 +2660,7 @@ exit:
 	return err;
 }
 
+/* Cleanup any consumed results */
 int dhd_gscan_batch_cache_cleanup(dhd_pub_t *dhd)
 {
 	int ret = 0;
@@ -2698,13 +2732,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 
 	mutex_lock(&_pno_state->pno_mutex);
 
-	iter = gscan_params->gscan_batch_cache;
-	/* If a cache has not been consumed , just delete it */
-	while (iter) {
-		iter->tot_consumed = iter->tot_count;
-		iter = iter->next;
-	}
-	dhd_gscan_batch_cache_cleanup(dhd);
+	dhd_gscan_clear_all_batch_results(dhd);
 
 	if (!(_pno_state->pno_mode & DHD_PNO_GSCAN_MODE)) {
 		DHD_ERROR(("%s : GSCAN is not enabled\n", __FUNCTION__));

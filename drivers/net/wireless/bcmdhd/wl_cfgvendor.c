@@ -565,7 +565,7 @@ static int wl_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 							break;
 						case GSCAN_ATTRIBUTE_BUCKET_CHANNELS:
 							nla_for_each_nested(iter2, iter1, tmp2) {
-								if (k >= PFN_SWC_RSSI_WINDOW_MAX)
+								if (k >= GSCAN_MAX_CHANNELS_IN_BUCKET)
 									break;
 								ch_bucket[j].chan_list[k] =
 								     nla_get_u32(iter2);
