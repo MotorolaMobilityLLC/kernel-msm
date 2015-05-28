@@ -2959,6 +2959,22 @@ skip_set_iusb_max:
 	power_supply_changed(&chip->batt_psy);
 }
 
+int asus_get_bms_capacity (void)
+{
+	union power_supply_propval ret = {0,};
+	struct power_supply *bms_psy = power_supply_get_by_name("bms");
+	int rc;
+
+	if (bms_psy) {
+		rc = bms_psy->get_property(bms_psy,
+					POWER_SUPPLY_PROP_CAPACITY, &ret);
+		if (rc) {
+			pr_debug("BMS does not export online: %d\n", rc);
+		}
+	}
+	return ret.intval;
+}
+
 static int
 qpnp_batt_power_get_property(struct power_supply *psy,
 				       enum power_supply_property psp,
@@ -3006,9 +3022,7 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 #ifdef CONFIG_BATTERY_ASUS
-		//ASUS_BSP Eason +++ get BMS capacity only in BatteryServiceGauge_OnCapacityReply  get_BMS_capacity(AXC_BatteryService.c)
-		val->intval = asus_bat_report_phone_capacity(100);
-		//ASUS_BSP Eason --- get BMS capacity only in BatteryServiceGauge_OnCapacityReply  get_BMS_capacity(AXC_BatteryService.c)
+		val->intval = asus_get_bms_capacity();
 #else
  		val->intval = get_prop_capacity(chip);
 #endif // CONFIG_BATTERY_ASUS

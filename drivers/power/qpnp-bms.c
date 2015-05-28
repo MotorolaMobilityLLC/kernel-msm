@@ -2450,6 +2450,7 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 	struct soc_params params;
 	int soc, previous_soc, shutdown_soc, new_calculated_soc;
 	int remaining_usable_charge_uah;
+	struct power_supply *bat_psy = power_supply_get_by_name("battery");
 
 	calculate_soc_params(chip, raw, &params, batt_temp);
 	if (!is_battery_present(chip)) {
@@ -2551,6 +2552,8 @@ done_calculating:
 
 	if (new_calculated_soc != previous_soc && chip->bms_psy_registered) {
 		power_supply_changed(&chip->bms_psy);
+		if (bat_psy)
+			power_supply_changed(bat_psy);
 		pr_debug("power supply changed\n");
 	} else {
 		/*
@@ -4354,29 +4357,38 @@ static int PM8226Dump_proc_show(struct seq_file *seq, void *v)
 	int batt_temp;
 	//struct raw_soc_params raw;
 	//struct soc_params params;
-	
+	union power_supply_propval ret = {0,};
+	struct power_supply *bat_psy = power_supply_get_by_name("battery");
+	int rc;
+
 	batt_temp = pm8226_get_prop_batt_temp();
 	//Eason don't calculate BMS actively, only read+++
 	//read_soc_params_raw(g_qpnp_bms_chip, &raw, batt_temp);
 	//calculate_soc_params(g_qpnp_bms_chip, &raw, &params, batt_temp);
 	//Eason don't calculate BMS actively, only read---
-	
-	return seq_printf(seq, "FCC(mAh): %d\n"
-						"RM(mAh): %d\n"
-						"SOC: %d\n"
-						"VOLT(mV): %d\n"
-						"AI(mA): %d\n"
-						"TEMP(degC): %d\n"
-						"BMS: %d\n"
-						"SWgauge: %d\n\n"
+
+	if (bat_psy) {
+		rc = bat_psy->get_property(bat_psy,
+			POWER_SUPPLY_PROP_CAPACITY, &ret);
+		if (rc) {
+			pr_debug("Battery does not export online: %d\n", rc);
+		}
+	}
+
+	return seq_printf(seq, "FCC(mAh):  %d\n"
+						"RM(mAh):  %d\n"
+						"SOC(BMS):  %d\n"
+						"VOLT(mV):  %d\n"
+						"AI(mA):  %d\n"
+						"TEMP(degC):  %d\n"
+						"BMS:  %d\n"
 						, g_bms_fcc - g_bms_uuc
 						, g_bms_ocv_charge - g_bms_cc - g_bms_uuc
-						, asus_bat_report_phone_capacity(100)
+						, ret.intval
 						, get_voltage_for_ASUSswgauge()
 						, get_current_for_ASUSswgauge()
 						, batt_temp
 						, get_prop_bms_capacity(g_qpnp_bms_chip)
-						, cal_SWgauge_capacity()
 						);
 }
 
