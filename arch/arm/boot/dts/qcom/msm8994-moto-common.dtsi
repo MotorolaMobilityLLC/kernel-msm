@@ -1369,6 +1369,9 @@
 		wlf,reset = <&msm_gpio 68 0>;
 		wlf,irq = <&msm_gpio 67 0>;
 		wlf,out-mono = <0 1 0 0 0 0>;
+		wlf,micbias1 = <1800 1 1 0 0>;
+		wlf,micbias2 = <1800 1 1 0 0>;
+		wlf,micbias3 = <1800 1 1 0 0>;
 		vreg-arizona1p2-supply = <&vreg_wlf1p2>;
 
 		pinctrl-names = "default";
