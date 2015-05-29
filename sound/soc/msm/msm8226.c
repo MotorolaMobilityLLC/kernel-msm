@@ -1045,6 +1045,10 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream,int id,struc
 
 		ret  = 0;
 	}
+        if(AFE_PORT_ID_QUATERNARY_MI2S_TX == id)
+	{
+	    usleep(200000); /*sleep 200ms for mic self calibration*/
+	}
 	return ret;
 }
 static int msm8226_tert_mi2s_startup(struct snd_pcm_substream *substream)
