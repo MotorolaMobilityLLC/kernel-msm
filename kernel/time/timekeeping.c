@@ -464,6 +464,46 @@ EXPORT_SYMBOL(getnstime_raw_and_real);
 
 #endif /* CONFIG_NTP_PPS */
 
+static RAW_NOTIFIER_HEAD(time_update_chain);
+
+static void update_time_update(void)
+{
+	raw_notifier_call_chain(&time_update_chain, 0, 0);
+}
+
+/**
+ * time_update_register_notifier - register a time update listener
+ */
+int time_update_register_notifier(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret;
+
+	raw_spin_lock_irqsave(&timekeeper_lock, flags);
+	ret = raw_notifier_chain_register(&time_update_chain, nb);
+	raw_spin_unlock_irqrestore(&timekeeper_lock, flags);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(time_update_register_notifier);
+
+/**
+ * time_update_unregister_notifier - unregister a time update
+ * listener
+ */
+int time_update_unregister_notifier(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret;
+
+	raw_spin_lock_irqsave(&timekeeper_lock, flags);
+	ret = raw_notifier_chain_unregister(&time_update_chain, nb);
+	raw_spin_unlock_irqrestore(&timekeeper_lock, flags);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(time_update_unregister_notifier);
+
 /**
  * do_gettimeofday - Returns the time of day in a timeval
  * @tv:		pointer to the timeval to be set
@@ -512,6 +552,9 @@ int do_settimeofday(const struct timespec *tv)
 
 	write_seqcount_end(&timekeeper_seq);
 	raw_spin_unlock_irqrestore(&timekeeper_lock, flags);
+
+	/* Notify time update listeners */
+	update_time_update();
 
 	/* signal hrtimers about time change */
 	clock_was_set();
