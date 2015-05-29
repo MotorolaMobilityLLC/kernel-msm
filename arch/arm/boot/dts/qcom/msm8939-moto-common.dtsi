@@ -631,6 +631,7 @@
 &i2c_4 {
 	qcom,clk-freq-out = <400000>;
 
+	/delete-node/ fan53555-regulator@60;
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
