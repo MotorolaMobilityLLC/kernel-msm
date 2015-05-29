@@ -3996,15 +3996,17 @@ qpnp_eoc_work(struct work_struct *work)
 //ASUS_BSP Eason_Chang: show term_current ---
 
 	if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
-		if (get_prop_battery_voltage_now(chip) > 4200000) {
-			printk("VBAT is larger than 4.2V, modify the charging current to 150 mA");
-			qpnp_chg_ibatmax_set(chip, 150);
-		} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
-			printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA");
-			qpnp_chg_ibatmax_set(chip, 50);
-		} else {
-			printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA");
-			qpnp_chg_ibatmax_set(chip, 350);
+		if (!chip->bat_is_warm || !chip->bat_is_cool) {
+			if (get_prop_battery_voltage_now(chip) > 4200000) {
+				printk("VBAT is larger than 4.2V, modify the charging current to 150 mA");
+				qpnp_chg_ibatmax_set(chip, 150);
+			} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
+				printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA");
+				qpnp_chg_ibatmax_set(chip, 50);
+			} else {
+				printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA");
+				qpnp_chg_ibatmax_set(chip, 350);
+			}
 		}
 	}
 
