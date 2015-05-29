@@ -217,9 +217,11 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 			break;
 		case MSM_ACTUATOR_WRITE_DIR_REG:
 			if (next_lens_position > last_lens_position)
-				i2c_tbl.reg_data = 0x0180; /* toward macro */
+				i2c_tbl.reg_data =
+					(uint16_t)(0+write_arr[i].reg_data);
 			else
-				i2c_tbl.reg_data = 0xFE80; /* toward inf */
+				i2c_tbl.reg_data =
+					(uint16_t)(0-write_arr[i].reg_data);
 
 			i2c_tbl.reg_addr = write_arr[i].reg_addr;
 			i2c_tbl.delay = write_arr[i].delay;
