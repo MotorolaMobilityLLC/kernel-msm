@@ -364,6 +364,7 @@
 #define BCM4356_CHIP_ID		0x4356          /* 4356 chipcommon chipid */
 #define BCM43556_CHIP_ID	0xAA24          /* 43556 chipcommon chipid */
 #define BCM43558_CHIP_ID	0xAA26          /* 43558 chipcommon chipid */
+#define BCM43562_CHIP_ID	0xAA2A          /* 43562 chipcommon chipid */
 #define BCM43566_CHIP_ID	0xAA2E          /* 43566 chipcommon chipid */
 #define BCM43568_CHIP_ID	0xAA30          /* 43568 chipcommon chipid */
 #define BCM43569_CHIP_ID	0xAA31          /* 43569 chipcommon chipid */
@@ -374,6 +375,7 @@
 				(CHIPID(chipid) == BCM4356_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43556_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43558_CHIP_ID) || \
+				(CHIPID(chipid) == BCM43562_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43566_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43568_CHIP_ID) || \
 				(CHIPID(chipid) == BCM43569_CHIP_ID) || \
