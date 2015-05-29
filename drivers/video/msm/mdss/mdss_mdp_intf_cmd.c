@@ -891,6 +891,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 	int ret = 0;
 	int session = 0;
 	bool panel_off = false;
+	bool turn_off_clocks = false;
 	bool send_panel_events = false;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
@@ -899,6 +900,62 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		return -ENODEV;
 	}
 
+	if (__mdss_mdp_cmd_is_panel_power_off(ctx)) {
+		pr_debug("%s: panel already off\n", __func__);
+		return 0;
+	}
+
+	if (ctx->panel_power_state == panel_power_state) {
+		pr_debug("%s: no transition needed %d --> %d\n", __func__,
+			ctx->panel_power_state, panel_power_state);
+		return 0;
+	}
+
+	pr_debug("%s: transition from %d --> %d\n", __func__,
+		ctx->panel_power_state, panel_power_state);
+
+	if (__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
+		if (mdss_panel_is_power_on_lp(panel_power_state)) {
+			/*
+			 * If we are transitioning from interactive to low
+			 * power, then we need to send events to the interface
+			 * so that the panel can be configured in low power
+			 * mode.
+			 */
+			send_panel_events = true;
+			if (mdss_panel_is_power_on_ulp(panel_power_state))
+				turn_off_clocks = true;
+		} else if (mdss_panel_is_power_off(panel_power_state)) {
+			send_panel_events = true;
+			turn_off_clocks = true;
+			panel_off = true;
+		}
+	} else {
+		if (mdss_panel_is_power_on_ulp(panel_power_state)) {
+			/*
+			 * If we are transitioning from low power to ultra low
+			 * power mode, no more display updates are expected.
+			 * Turn off the interface clocks.
+			 */
+			pr_debug("%s: turn off clocks\n", __func__);
+			turn_off_clocks = true;
+		} else {
+			/*
+			 * Transition from ultra low power to low power does
+			 * not require any special handling. Just rest the
+			 * intf_stopped flag so that the clocks would
+			 * get turned on when the first update comes.
+			 */
+			pr_debug("%s: reset intf_stopped flag.\n", __func__);
+			ctx->intf_stopped = 0;
+			goto end;
+		}
+	}
+
+	if (!turn_off_clocks)
+		goto panel_events;
+
+	pr_debug("%s: turn off interface clocks\n", __func__);
 	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list) {
 		list_add(&handle->saved_list, &ctl->saved_vsync_handlers);
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
@@ -914,6 +971,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		goto end;
 	}
 
+panel_events:
 	if ((ctl->num == 0) && send_panel_events) {
 		pr_debug("%s: send panel events\n", __func__);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
