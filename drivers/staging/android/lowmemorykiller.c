@@ -461,6 +461,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 				"   Slab UnReclaimable is %ldkB\n" \
 				"   Total Slab is %ldkB\n" \
 				"   ION is %ldkB\n" \
+				"   ION_POOL is %ldkB\n" \
 				"   ION_CMA is %ldkB\n" \
 				"   GFP mask is 0x%x\n",
 			     selected->comm, selected->pid,
@@ -489,6 +490,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     global_page_state(NR_SLAB_UNRECLAIMABLE) *
 				(long)(PAGE_SIZE / 1024),
 			     global_page_state(NR_ION_PAGES) *
+				(long)(PAGE_SIZE / 1024),
+			     global_page_state(NR_ION_POOL_PAGES) *
 				(long)(PAGE_SIZE / 1024),
 			     global_page_state(NR_ION_CMA_PAGES) *
 				(long)(PAGE_SIZE / 1024),
