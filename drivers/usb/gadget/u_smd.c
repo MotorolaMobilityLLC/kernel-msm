@@ -648,8 +648,8 @@ static void gsmd_notify_modem(void *gptr, u8 portno, int ctrl_bits)
 	}
 
 	smd_tiocmset(port->pi->ch,
-			port->cbits_to_modem,
-			~port->cbits_to_modem);
+			port->cbits_to_modem | TIOCM_RTS,
+			~(port->cbits_to_modem | TIOCM_RTS));
 }
 
 int gsmd_connect(struct gserial *gser, u8 portno)
