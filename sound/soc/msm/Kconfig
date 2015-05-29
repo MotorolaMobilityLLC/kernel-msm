@@ -319,13 +319,9 @@ config SND_SOC_MSM8994
 	select SND_SOC_FLORIDA
 	select SND_SOC_WCD9330
 	select SND_SOC_MSM_HDMI_CODEC_RX
-	select QTI_PP
-	select DTS_SRS_TM
 	select SND_SOC_CPE
 	select MSM_ULTRASOUND
-	select DOLBY_DS2
 	select SND_HWDEP
-        select DTS_EAGLE
 	select SND_SOC_TFA9890
 	select SND_SOC_FSA8500
 	help
