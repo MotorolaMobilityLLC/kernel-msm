@@ -414,6 +414,7 @@ si_chipid_fixup(si_t *sih)
 	switch (sih->chip) {
 		case BCM43570_CHIP_ID:
 		case BCM4358_CHIP_ID:
+		case BCM43562_CHIP_ID:
 			sii->chipnew = sih->chip; /* save it */
 			sii->pub.chip = BCM43569_CHIP_ID; /* chip class */
 		break;
@@ -513,6 +514,7 @@ si_doattach(si_info_t *sii, uint devid, osl_t *osh, void *regs,
 
 	if ((sih->chip == BCM4358_CHIP_ID) ||
 		(sih->chip == BCM43570_CHIP_ID) ||
+		(sih->chip == BCM43562_CHIP_ID) ||
 		(sih->chip == BCM4358_CHIP_ID)) {
 		si_chipid_fixup(sih);
 	}
