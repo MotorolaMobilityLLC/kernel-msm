@@ -744,6 +744,7 @@ const char * const vmstat_text[] = {
 	"nr_free_cma",
 	"nr_swapcache",
 	"nr_ion",
+	"nr_ion_pool",
 	"nr_ion_cma",
 	"nr_dirty_threshold",
 	"nr_dirty_background_threshold",
