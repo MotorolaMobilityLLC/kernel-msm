@@ -1,0 +1,7 @@
+config TYPEC
+	bool "support Type C feature"
+	default n
+	---help---
+	  Say Y here to support Type C feature
+
+source "drivers/usb/typec/tusb320/Kconfig"

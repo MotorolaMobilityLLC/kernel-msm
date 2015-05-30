@@ -1,0 +1,9 @@
+# TI Type C Connector
+
+config TUSB320_TYPEC
+	tristate "tusb320 typec connector"
+	depends on TYPEC && GPIOLIB && I2C
+	default n
+	help
+	  Say Y here to enable tusb320 Type C Connector support.
+
