@@ -853,6 +853,8 @@ struct max98925_priv {
 	unsigned int sysclk;
 	unsigned int iv_status;
 	unsigned int switch_en_gpio;
+	unsigned int left_en;
+	unsigned int right_en;
 	struct max98925_cdata dai[1];
 };
 

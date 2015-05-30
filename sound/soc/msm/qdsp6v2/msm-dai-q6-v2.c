@@ -2496,6 +2496,11 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_FORMAT_S24_LE:
 		dai_data->port_config.i2s.bit_width = 24;
 		dai_data->bitwidth = 24;
+
+		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			dai_data->port_config.i2s.bit_width = 32;
+			dai_data->bitwidth = 32;
+		}
 		break;
 	default:
 		pr_err("%s: format %d\n",
@@ -2515,9 +2520,7 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	    test_bit(STATUS_PORT_STARTED,
 	    mi2s_dai_data->tx_dai.mi2s_dai_data.hwfree_status))) {
 		if ((mi2s_dai_data->tx_dai.mi2s_dai_data.rate !=
-		    mi2s_dai_data->rx_dai.mi2s_dai_data.rate) ||
-		   (mi2s_dai_data->rx_dai.mi2s_dai_data.bitwidth !=
-		    mi2s_dai_data->tx_dai.mi2s_dai_data.bitwidth)) {
+		    mi2s_dai_data->rx_dai.mi2s_dai_data.rate)) {
 			dev_err(dai->dev, "%s: Error mismatch in HW params\n"
 				"Tx sample_rate = %u bit_width = %hu\n"
 				"Rx sample_rate = %u bit_width = %hu\n"

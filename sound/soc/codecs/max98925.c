@@ -27,17 +27,16 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 
+#define USE_DSM_MISC_DEV
+
 #undef MAXDSM_MAX_DEVICES
-#undef USE_DSM_MISC_DEV
 #undef DSM_ALWAYS_ON
 
 #ifdef USE_DSM_MISC_DEV
-extern int32_t dsm_open(int32_t port_id,uint32_t*  dsm_params, u8* param);
-//static void dsm_onoff_func(int onoff);
-//int get_dsm_onoff_status(void);
-//static void set_dsm_onoff_status(int onoff);
+extern int afe_dsm_param_ctrl(uint32_t dir, uint32_t size, uint8_t *payload);
 #endif
 
+#define DSM_MAX_SIZE_RW          (284 * sizeof(int))
 #define GPIO_PULL_UP             1
 #define GPIO_PULL_DOWN           0
 #define DEFAULT_SWITCH_NONEED    0
@@ -279,7 +278,8 @@ void reg_dump(struct max98925_priv *max98925)
 
 #ifdef USE_DSM_MISC_DEV
 
-static int param[100];
+static int param_array[384];
+static uint8_t *payload = (uint8_t *)&param_array[100];
 
 static int maxdsm_open(struct inode *inode, struct file *filep)
 {
@@ -290,15 +290,15 @@ static ssize_t maxdsm_read(struct file *filep, char __user *buf,
 			size_t count, loff_t *ppos)
 {
 	int rc;
-	uint32_t filter_set;
-	int32_t port_id = 0x1000; // hardcoded to PRI_MI2S_RX
 
 	mutex_lock(&dsm_lock);
 
-	filter_set = 8;	// GET PARAM
-	dsm_open(port_id, &filter_set, (u8 *) param);
+	afe_dsm_param_ctrl(0, 0, payload);
 
-	rc = copy_to_user(buf, param, count);
+	if (count > DSM_MAX_SIZE_RW)
+		count = DSM_MAX_SIZE_RW;
+
+	rc = copy_to_user(buf, payload, count);
 	if (rc != 0) {
 		pr_err("%s: copy_to_user failed - %d\n", __func__, rc);
 		mutex_unlock(&dsm_lock);
@@ -314,12 +314,13 @@ static ssize_t maxdsm_write(struct file *filep, const char __user *buf,
 			size_t count, loff_t *ppos)
 {
 	int rc;
-	uint32_t filter_set;
-    int32_t port_id =0x1000; //hardcoded to PRI_MI2S_RX
 
 	mutex_lock(&dsm_lock);
 
-	rc = copy_from_user(param, buf, count);
+	if (count > DSM_MAX_SIZE_RW)
+		count =  DSM_MAX_SIZE_RW;
+
+	rc = copy_from_user(payload, buf, count);
 	if (rc != 0) {
 		pr_err("%s: copy_from_user failed - %d\n", __func__, rc);
 		mutex_unlock(&dsm_lock);
@@ -327,8 +328,7 @@ static ssize_t maxdsm_write(struct file *filep, const char __user *buf,
 	}
 
 	/* set params from the algorithm to application */
-	filter_set = 9;	// SET PARAM
-	dsm_open(port_id, &filter_set, (u8*)param);
+	afe_dsm_param_ctrl(1, count, payload);
 	mutex_unlock(&dsm_lock);
 
 	return rc;
@@ -467,11 +467,9 @@ static int max98925_left_en_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
-	int data;
 
-	regmap_read(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE, &data);
 	ucontrol->value.integer.value[0] =
-			(data & M98925_EN_MASK) >> M98925_EN_SHIFT;
+			(max98925->left_en & M98925_EN_MASK) >> M98925_EN_SHIFT;
 
 	return 0;
 }
@@ -491,8 +489,7 @@ static int max98925_left_en_put(struct snd_kcontrol *kcontrol,
 		pr_err("%s: spk&rcver switch gpio had pulled down",__func__);
 	}
 
-	regmap_update_bits(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
-		M98925_EN_MASK, sel << M98925_EN_SHIFT);
+	max98925->left_en =  sel << M98925_EN_SHIFT;
 
 	pr_info("%s: left speaker set to %d\n", __func__, sel);
 	return 0;
@@ -503,11 +500,9 @@ static int max98925_right_en_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
-	int data;
 
-	regmap_read(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE, &data);
 	ucontrol->value.integer.value[0] =
-			(data & M98925_EN_MASK) >> M98925_EN_SHIFT;
+			(max98925->right_en & M98925_EN_MASK) >> M98925_EN_SHIFT;
 
 	return 0;
 }
@@ -519,8 +514,7 @@ static int max98925_right_en_put(struct snd_kcontrol *kcontrol,
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	unsigned int sel = ucontrol->value.integer.value[0];
 
-	regmap_update_bits(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
-		M98925_EN_MASK, sel << M98925_EN_SHIFT);
+	max98925->right_en =  sel << M98925_EN_SHIFT;
 
 	pr_info("%s: right speaker set to %d\n", __func__, sel);
 	return 0;
@@ -531,15 +525,12 @@ static int max98925_receiver_en_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
-	int data;
 
 	/*TBD: Read GPIO status here*/
 
-	regmap_read(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE, &data);
-
 	/*AND with GPIO value*/
 	ucontrol->value.integer.value[0] =
-			(data & M98925_EN_MASK) >> M98925_EN_SHIFT;
+			(max98925->left_en & M98925_EN_MASK) >> M98925_EN_SHIFT;
 
 	return 0;
 }
@@ -560,8 +551,7 @@ static int max98925_receiver_en_put(struct snd_kcontrol *kcontrol,
 		pr_err("%s: spk&rcver switch gpio had pulled up",__func__);
 	}
 
-	regmap_update_bits(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
-		M98925_EN_MASK, sel << M98925_EN_SHIFT);
+	max98925->left_en = sel << M98925_EN_SHIFT;
 
 	return 0;
 }
@@ -1048,18 +1038,10 @@ static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 	pr_info("%s: mute %d\n", __func__, mute);
 
 	if (mute) {
-		regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
-			M98925_SPK_GAIN_MASK, 0x00);
-		regmap_update_bits(max98925->regmapR, MAX98925_R02D_GAIN,
-			M98925_SPK_GAIN_MASK, 0x00);
-
-		/*Comment these two lines out if you want HAL control these amplifiers*/
-		/*
 		regmap_update_bits(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
 			M98925_EN_MASK, 0x0);
 		regmap_update_bits(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
 			M98925_EN_MASK, 0x0);
-		*/
 	}
 	else	{
 		regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
@@ -1078,13 +1060,10 @@ static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
 				M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK);
 
-		/*Comment these two lines out if you want HAL control these amplifiers*/
-		/*
 		regmap_write(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
-			M98925_EN_MASK);
+			max98925->left_en);
 		regmap_write(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
-			M98925_EN_MASK);
-		*/
+			max98925->right_en);
 	}
 
 
@@ -1360,7 +1339,6 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 			max98925_dai, ARRAY_SIZE(max98925_dai));
 
 #ifdef USE_DSM_MISC_DEV
-	memset(param, 0, sizeof(param));
 	pr_info("%s: maxdsm_init() returned %d\n", __func__, maxdsm_init());
 #endif
 

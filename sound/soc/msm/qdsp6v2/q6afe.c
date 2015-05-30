@@ -86,6 +86,7 @@ struct afe_ctl {
 		uint32_t token, uint32_t *payload, void *priv);
 	void *tx_private_data;
 	void *rx_private_data;
+	void *dsm_resp_buf;
 	uint32_t mmap_handle;
 
 	struct cal_type_data *cal_data[MAX_AFE_CAL_TYPES];
@@ -206,6 +207,16 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		}
 		memcpy(&this_afe.calib_data, payload,
 			   sizeof(this_afe.calib_data));
+
+#ifdef CONFIG_SND_SOC_MAX98925
+		if (AFE_MODULE_DSM_RX == this_afe.calib_data.pdata.module_id &&
+			AFE_PARAM_ID_DSM_RX_CFG == this_afe.calib_data.pdata.param_id) {
+			if (this_afe.dsm_resp_buf) {
+				memcpy(this_afe.dsm_resp_buf, (payload + sizeof(struct afe_port_param_data_v2) + sizeof(uint32_t)),
+					this_afe.calib_data.pdata.param_size);
+			}
+		}
+#endif
 		if (!this_afe.calib_data.status) {
 			atomic_set(&this_afe.state, 0);
 			pr_err("%s: rest = %d %d state = %s\n", __func__
@@ -3508,6 +3519,91 @@ static void config_debug_fs_exit(void)
 {
 	return;
 }
+#endif
+
+
+#ifdef CONFIG_SND_SOC_MAX98925
+
+int afe_dsm_param_ctrl(uint32_t dir, uint32_t size, uint8_t *payload)
+{
+	int ret = -EINVAL;
+	struct afe_dsm_set_command *set_cfg = NULL;
+	struct afe_dsm_get_command *get_cfg = NULL;
+
+	if (!payload) {
+		pr_err("%s: Invalid params\n", __func__);
+		goto fail_cmd;
+	}
+
+	if (dir) {
+		set_cfg = (struct afe_dsm_set_command *)(payload - sizeof(struct afe_dsm_set_command));
+		memset(set_cfg, 0 , sizeof(struct afe_dsm_set_command));
+
+		set_cfg->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+					APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+		set_cfg->hdr.pkt_size = sizeof(struct afe_dsm_set_command) + size;
+		set_cfg->hdr.src_port = 0;
+		set_cfg->hdr.dest_port = 0;
+		set_cfg->hdr.token = IDX_AFE_PORT_ID_QUATERNARY_MI2S_RX;
+		set_cfg->hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
+		set_cfg->param.port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
+		set_cfg->param.payload_size = sizeof(struct afe_port_param_data_v2) + size;
+
+		set_cfg->pdata.module_id = AFE_MODULE_DSM_RX;
+		set_cfg->pdata.param_id = AFE_PARAM_ID_DSM_RX_CFG;
+		set_cfg->pdata.param_size = size;
+	}
+	else {
+		size = 258 << 2;
+		get_cfg = (struct afe_dsm_get_command *)(payload - sizeof(struct afe_dsm_get_command));
+		memset(get_cfg, 0 , sizeof(struct afe_dsm_get_command));
+
+		get_cfg->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+					APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+		get_cfg->hdr.pkt_size = sizeof(struct afe_dsm_get_command) + size;
+		get_cfg->hdr.src_port = 0;
+		get_cfg->hdr.dest_port = 0;
+		get_cfg->hdr.token = IDX_AFE_PORT_ID_QUATERNARY_MI2S_RX;
+		get_cfg->hdr.opcode = AFE_PORT_CMD_GET_PARAM_V2;
+		get_cfg->param.port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
+		get_cfg->param.module_id = AFE_MODULE_DSM_RX;
+		get_cfg->param.param_id = AFE_PARAM_ID_DSM_RX_CFG;
+		get_cfg->param.payload_size = sizeof(struct afe_port_param_data_v2) + size;
+
+		get_cfg->pdata.module_id = AFE_MODULE_DSM_RX;
+		get_cfg->pdata.param_id = AFE_PARAM_ID_DSM_RX_CFG;
+		get_cfg->pdata.param_size = size;
+
+		this_afe.dsm_resp_buf = payload;
+	}
+
+	atomic_set(&this_afe.state, 1);
+	ret = apr_send_pkt(this_afe.apr, (dir) ? (uint32_t *) (set_cfg) : (uint32_t *)(get_cfg));
+	if (ret < 0) {
+		pr_err("%s: failed %d\n", __func__,  ret);
+		goto fail_cmd;
+	}
+	ret = wait_event_timeout(this_afe.wait[IDX_AFE_PORT_ID_QUATERNARY_MI2S_RX],
+		(atomic_read(&this_afe.state) == 0),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: wait_event timeout\n", __func__);
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	if (atomic_read(&this_afe.status) != 0) {
+		pr_err("%s: config cmd failed\n", __func__);
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+	ret = 0;
+fail_cmd:
+	pr_debug("%s: status %d\n", __func__, ret);
+	this_afe.dsm_resp_buf = NULL;
+	return ret;
+}
+
 #endif
 
 void afe_set_dtmf_gen_rx_portid(u16 port_id, int set)
