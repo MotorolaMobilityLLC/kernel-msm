@@ -16,20 +16,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _PN547_H_
-#define _PN547_H_
-#define PN544_MAGIC 0xE9
+#ifndef _PN548_H_
+#define _PN548_H_
+#define PN548_MAGIC 0xE9
 
 /*
- * PN547 power control via ioctl
- * PN547_SET_PWR(0): power off
- * PN547_SET_PWR(1): power on
- * PN547_SET_PWR(>1): power on with firmware download enabled
+ * PN548 power control via ioctl
+ * PN548_SET_PWR(0): power off
+ * PN548_SET_PWR(1): power on
+ * PN548_SET_PWR(>1): power on with firmware download enabled
  */
-#define PN544_SET_PWR _IOW(PN544_MAGIC, 0x01, unsigned int)
-#define PN544_DEVICE_NAME "pn544"
+#define PN548_SET_PWR _IOW(PN548_MAGIC, 0x01, unsigned int)
+#define PN548_DEVICE_NAME "pn54x"
 
-struct pn547_i2c_platform_data {
+struct pn548_i2c_platform_data {
 	int irq_gpio;
 	int fwdl_en_gpio;
 	int clk_req_gpio;
