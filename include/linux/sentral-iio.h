@@ -1,3 +1,25 @@
+/*
+ * COPYRIGHT (C) 2015 PNI SENSOR CORPORATION
+ *
+ * LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE");
+ * YOU MAY NOT USE THIS FILE EXCEPT IN COMPLIANCE WITH THE LICENSE.
+ * YOU MAY OBTAIN A COPY OF THE LICENSE AT
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED BY PNI SENSOR CORPORATION "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL PNI SENSOR CORPORATION BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #ifndef _SENTRAL_IIO_H_
 #define _SENTRAL_IIO_H_
 
@@ -177,17 +199,17 @@ enum sentral_param_page {
 	SPP_SYS =             0x01,
 	SPP_ALGO_WARM_START = 0x02,
 	SPP_SENSORS =         0x03,
-	SPP_ALGO_KNOBS =      0x13,
+	SPP_ALGO_KNOBS =      13,
 	SPP_CUSTOM_PARAM =    14, //For ASUS ONLY
 };
 
 enum sentral_param_system {
-	SP_SYS_META_EVENT_CONTROL = 0x01,
-	SP_SYS_FIFO_CONTROL = 0x02,
-	SP_SYS_SENSOR_STATUS_B0 = 0x03,
-	SP_SYS_SENSOR_STATUS_B1 = 0x04,
-	SP_SYS_HOST_IRQ_TS = 0x30,
-	SP_SYS_PHYS_SENSOR_STATUS = 0x31,
+	SP_SYS_META_EVENT_CONTROL = 01,
+	SP_SYS_FIFO_CONTROL =       02,
+	SP_SYS_SENSOR_STATUS_B0 =   03,
+	SP_SYS_SENSOR_STATUS_B1 =   04,
+	SP_SYS_HOST_IRQ_TS =        30,
+	SP_SYS_PHYS_SENSOR_STATUS = 31,
 };
 
 enum sentral_sensor_power_mode {
@@ -320,12 +342,12 @@ struct sentral_param_sensor_status_bank_page {
 };
 
 // system param #30
-struct sentral_param_timestamp_page {
+struct sentral_param_timestamp {
 	union {
 		u64 bytes;
 		struct {
-			u32 host_irq_ts;
-			u32 current_ts;
+			u32 int_stime;
+			u32 current_stime;
 		} ts;
 	};
 };
@@ -505,16 +527,17 @@ struct sentral_device {
 	struct mutex lock;
 	struct mutex lock_reset;
 	struct mutex lock_flush;
+	struct mutex lock_ts;
 	struct mutex lock_i2c;
 	struct wake_lock w_lock;
 	struct notifier_block nb;
 	u8 *data_buffer;
 	bool init_complete;
-	u64 ts_irq_utime;
-	u32 ts_irq_stime;
-	u64 ts_sensor_utime;
+	u64 ts_ref_ntime;
+	u32 ts_ref_stime;
+	u64 ts_sensor_ntime;
 	u32 ts_sensor_stime;
-	u64 enabled_mask;
+	unsigned long enabled_mask;
 	struct sentral_param_sensor_config sensor_config[SST_MAX];
 	struct sentral_wake_src_count wake_src_count;
 	struct sentral_wake_src_count wake_src_count_pending;
