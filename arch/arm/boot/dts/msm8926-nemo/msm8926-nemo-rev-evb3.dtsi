@@ -13,5 +13,13 @@
 #include "msm8926-nemo.dtsi"
 
 &dsi_lgd_lg4262_cmd {
-	/delete-property/ qcom,mdss-dsi-bl-pmic-control-type;
+	/delete-property/ qcom,mdss-dsi-idle-on-command;
+	/delete-property/ qcom,mdss-dsi-idle-off-command;
+	qcom,mdss-dsi-on-command = [
+				15 01 00 00 00 00 02 53 20 /* Display Control */
+				39 01 00 00 00 00 03 51 F2 00 /* DBV Setting */
+				05 01 00 00 78 00 01 11 /* Sleep out */
+				05 01 00 00 00 00 01 35 /* TE On */
+				05 01 00 00 00 00 01 29 /* Display On */
+				];
 };
