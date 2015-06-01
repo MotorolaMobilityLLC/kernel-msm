@@ -13,6 +13,7 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
+#include "apq8026-smelt-small-tsl2584-config.dtsi"
 #include "apq8026-smelt-panel-nt35350.dtsi"
 #include "apq8026-smelt-regulator-ote2005b.dtsi"
 
@@ -26,14 +27,4 @@
 &dsi_mot_nt35350_360p_cmd {
 	qcom,mdss-dsi-panel-height = <325>;
 	qcom,mdss-dsi-v-back-porch = <55>;
-};
-
-&i2c_3 {
-	tsl2584@29 {
-		ams,lux1ch0_coeff = <1932>;
-		ams,lux1ch1_coeff = <3054>;
-		ams,lux2ch0_coeff = <1726>;
-		ams,lux2ch1_coeff = <2539>;
-	};
-
 };
