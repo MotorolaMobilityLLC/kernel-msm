@@ -57,6 +57,7 @@
 
 #define ID_TIMER_FREQ		(jiffies + msecs_to_jiffies(500))
 #define CHG_RECHECK_DELAY	(jiffies + msecs_to_jiffies(2000))
+#define USB_ENUM_DELAY		(msecs_to_jiffies(500))
 #define ULPI_IO_TIMEOUT_USEC	(10 * 1000)
 #define USB_PHY_3P3_VOL_MIN	3050000 /* uV */
 #define USB_PHY_3P3_VOL_MAX	3300000 /* uV */
@@ -2703,6 +2704,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 						OTG_STATE_B_PERIPHERAL;
 					break;
 				case USB_SDP_CHARGER:
+					set_current_state(TASK_INTERRUPTIBLE);
+					schedule_timeout(USB_ENUM_DELAY);
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
