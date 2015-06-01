@@ -6,10 +6,10 @@
 		spi-cpol;
 		spi-cpha;
 
-                contexthub,int1 = <&msm_gpio 65 0x00>;
-                contexthub,int2 = <&msm_gpio 66 0x00>;
-                contexthub,nrst = <&msm_gpio 59 0x00>;
-                contexthub,boot0 = <&msm_gpio 60 0x00>;
+		contexthub,ap2sh = <&msm_gpio 65 0x00>;
+		contexthub,sh2ap = <&msm_gpio 66 0x00>;
+		contexthub,nrst = <&msm_gpio 59 0x00>;
+		contexthub,boot0 = <&msm_gpio 60 0x00>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&sensorhub_ctrl_active

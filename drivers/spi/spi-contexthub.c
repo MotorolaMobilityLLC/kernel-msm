@@ -62,15 +62,15 @@ struct spich_data {
 	u8 *buffer;
 	u8 *bufferrx;
 	u32 flags;
-	int int1_irq;
-	struct completion int1_completion;
+	int sh2ap_irq;
+	struct completion sh2ap_completion;
 	struct gpio gpio_array[4];
 };
 
-#define GPIO_IDX_INT1  0
-#define GPIO_IDX_INT2  1
-#define GPIO_IDX_BOOT0 2
-#define GPIO_IDX_NRST  3
+#define GPIO_IDX_AP2SH  0
+#define GPIO_IDX_SH2AP  1
+#define GPIO_IDX_BOOT0  2
+#define GPIO_IDX_NRST   3
 
 static int spich_suspend(struct spi_device *spi, pm_message_t state)
 {
@@ -84,11 +84,11 @@ static int spich_resume(struct spi_device *spi)
 	return 0;
 }
 
-static irqreturn_t int1_isr(int irq, void *data)
+static irqreturn_t sh2ap_isr(int irq, void *data)
 {
 	struct spich_data *spich = data;
 
-	complete(&spich->int1_completion);
+	complete(&spich->sh2ap_completion);
 
 	return IRQ_HANDLED;
 }
@@ -119,13 +119,13 @@ static int spich_init_instance(struct spich_data *spich)
 		goto bail3;
 	}
 
-	spich->int1_irq = gpio_to_irq(spich->gpio_array[GPIO_IDX_INT1].gpio);
+	spich->sh2ap_irq = gpio_to_irq(spich->gpio_array[GPIO_IDX_SH2AP].gpio);
 
-	init_completion(&spich->int1_completion);
+	init_completion(&spich->sh2ap_completion);
 
 	status = devm_request_irq(&spich->spi->dev,
-				  spich->int1_irq,
-				  int1_isr,
+				  spich->sh2ap_irq,
+				  sh2ap_isr,
 				  IRQF_TRIGGER_FALLING,
 				  dev_name(&spich->spi->dev), spich);
 
@@ -153,7 +153,7 @@ bail:
 
 static void spich_destroy_instance(struct spich_data *spich)
 {
-	devm_free_irq(&spich->spi->dev, spich->int1_irq, spich);
+	devm_free_irq(&spich->spi->dev, spich->sh2ap_irq, spich);
 
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
@@ -223,7 +223,7 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 	message->complete = spich_complete;
 	message->context = &done;
 
-	gpio_set_value(spich->gpio_array[GPIO_IDX_INT2].gpio, 1);
+	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 1);
 
 	spin_lock_irq(&spich->spi_lock);
 	if (spich->spi == NULL) {
@@ -241,7 +241,7 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 		}
 	}
 
-	gpio_set_value(spich->gpio_array[GPIO_IDX_INT2].gpio, 0);
+	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 0);
 
 	return status;
 }
@@ -550,9 +550,9 @@ static long spich_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			}
 
 			if (gpio_get_value
-			    (spich->gpio_array[GPIO_IDX_INT1].gpio) == 1) {
+			    (spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 1) {
 				wait_for_completion_interruptible
-				    (&spich->int1_completion);
+				    (&spich->sh2ap_completion);
 			}
 
 			err = spich_message(spich, &t, 1);
@@ -659,8 +659,8 @@ static ssize_t spich_read(struct file *filp, char __user * buf, size_t count,
 	}
 
 	spich = filp->private_data;
-	if (gpio_get_value(spich->gpio_array[GPIO_IDX_INT1].gpio) == 1) {
-		wait_for_completion_interruptible(&spich->int1_completion);
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 1) {
+		wait_for_completion_interruptible(&spich->sh2ap_completion);
 	}
 
 	mutex_lock(&spich->buf_lock);
@@ -691,11 +691,11 @@ static unsigned int spich_poll(struct file *filp,
 
 	spich = filp->private_data;
 
-	if (gpio_get_value(spich->gpio_array[GPIO_IDX_INT1].gpio) == 1) {
-		poll_wait(filp, &spich->int1_completion.wait, wait);
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 1) {
+		poll_wait(filp, &spich->sh2ap_completion.wait, wait);
 	}
 
-	if (gpio_get_value(spich->gpio_array[GPIO_IDX_INT1].gpio) == 0) {
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 0) {
 		mask |= POLLIN | POLLRDNORM;
 	}
 
@@ -731,10 +731,10 @@ static int spich_probe(struct spi_device *spi)
 	spin_lock_init(&spich->spi_lock);
 	mutex_init(&spich->buf_lock);
 
-	spich->gpio_array[GPIO_IDX_INT1].flags = GPIOF_DIR_IN;
-	spich->gpio_array[GPIO_IDX_INT1].label = "contexthub,int1";
-	spich->gpio_array[GPIO_IDX_INT2].flags = GPIOF_OUT_INIT_LOW;
-	spich->gpio_array[GPIO_IDX_INT2].label = "contexthub,int2";
+	spich->gpio_array[GPIO_IDX_AP2SH].flags = GPIOF_OUT_INIT_LOW;
+	spich->gpio_array[GPIO_IDX_AP2SH].label = "contexthub,ap2sh";
+	spich->gpio_array[GPIO_IDX_SH2AP].flags = GPIOF_DIR_IN;
+	spich->gpio_array[GPIO_IDX_SH2AP].label = "contexthub,sh2ap";
 	spich->gpio_array[GPIO_IDX_BOOT0].flags = GPIOF_OUT_INIT_LOW;
 	spich->gpio_array[GPIO_IDX_BOOT0].label = "contexthub,boot0";
 	spich->gpio_array[GPIO_IDX_NRST].flags = GPIOF_OUT_INIT_HIGH;
