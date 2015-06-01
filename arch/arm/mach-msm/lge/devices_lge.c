@@ -40,7 +40,7 @@ int __init lge_boot_reason(char *s)
 			"Last boot reason: %s\n", s);
 	return 1;
 }
-__setup("bootreason=", lge_boot_reason);
+__setup("androidboot.bootreason=", lge_boot_reason);
 
 static struct ramoops_platform_data lge_ramoops_data = {
 	.mem_size     = LGE_PERSISTENT_RAM_SIZE,
