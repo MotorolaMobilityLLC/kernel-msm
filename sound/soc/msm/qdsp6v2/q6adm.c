@@ -1526,7 +1526,7 @@ static int send_adm_cal_tx_gain(int port_id, int copp_idx, int perf_mode)
 	s32 result = 0;
 	struct adm_cmd_set_pp_params_v5 *adm_params = NULL;
 
-	uint32_t params[12] =  {0x00010BFE,0x00010BFF,0x00000004,0x0002cc64,  /* Tx mic gain 2cc64 for 27db */
+	uint32_t params[12] =  {0x00010BFE,0x00010BFF,0x00000004,0x0000b3f3,  /* Tx mic gain b3f3 for 15db */
 				0x00010C3D,0x00010C3E,0x00000004,0x00000001,  /* TX HPF enable/disable */
 				0x00010C3D,0x00010C3F,0x00000004,0x00002000}; /* TX HPF PreGain */
 
