@@ -1889,6 +1889,7 @@ int slim_dealloc_ch(struct slim_device *sb, u16 chanh)
 	mutex_lock(&ctrl->sched.m_reconf);
 	if (slc->state == SLIM_CH_FREE) {
 		mutex_unlock(&ctrl->sched.m_reconf);
+		pr_info("%s SLIM CH FREE\n", __func__);
 		return -ENOTCONN;
 	}
 	if (slc->ref > 1) {
@@ -3020,9 +3021,10 @@ int slim_control_ch(struct slim_device *sb, u16 chanh,
 		u8 add_mark_removal  = true;
 
 		slc = &ctrl->chans[chan];
-		dev_dbg(&ctrl->dev, "chan:%d,ctrl:%d,def:%d", chan, chctrl,
+		dev_info(&ctrl->dev, "chan:%d,ctrl:%d,def:%d", chan, chctrl,
 					slc->def);
 		if (slc->state < SLIM_CH_DEFINED) {
+			dev_err(&ctrl->dev, " %s SLIM DEF CH\n", __func__);
 			ret = -ENOTCONN;
 			break;
 		}
@@ -3040,6 +3042,7 @@ int slim_control_ch(struct slim_device *sb, u16 chanh,
 				break;
 		} else {
 			if (slc->state < SLIM_CH_ACTIVE) {
+			dev_err(&ctrl->dev, " %s SLIM DEF ACT\n", __func__);
 				ret = -ENOTCONN;
 				break;
 			}
