@@ -2133,6 +2133,8 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_left_dapm_routes,
 				ARRAY_SIZE(tfa9890_left_dapm_routes));
 		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1L");
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "NXP Echo Ref Left");
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S0L");
 		snd_soc_dapm_ignore_suspend(&codec->dapm,
 			"NXP Speaker Boost Left");
 	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
