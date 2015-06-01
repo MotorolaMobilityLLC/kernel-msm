@@ -10,21 +10,12 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+&i2c_3 {
+	tsl2584@29 {
+		ams,lux1ch0_coeff = /bits/ 32 <1627>;
+		ams,lux1ch1_coeff = /bits/ 32 <2485>;
+		ams,lux2ch0_coeff = /bits/ 32 <1536>;
+		ams,lux2ch1_coeff = /bits/ 32 <2259>;
+	};
 
-#include "apq8026-smelt-common.dtsi"
-#include "apq8026-smelt-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35350.dtsi"
-
-/ {
-	qcom,msm-id =
-		<199 0x41 0x0400>, /* P2A Wingboard */
-		<199 0x41 0x0407>, /* Small P2A Portable */
-		<199 0x41 0x0507>; /* Small P2AA Portable */
-};
-
-/* small panel is 360 x 325 */
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-height = <325>;
-	qcom,mdss-dsi-v-back-porch = <55>;
 };
