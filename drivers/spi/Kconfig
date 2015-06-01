@@ -148,6 +148,12 @@ config SPI_COLDFIRE_QSPI
 	  This enables support for the Coldfire QSPI controller in master
 	  mode.
 
+config SPI_CONTEXTHUB
+	tristate "User mode SPI context hub device driver support"
+        depends on (OF)
+	help
+	  This supports user mode SPI context hub protocol drivers.
+
 config SPI_DAVINCI
 	tristate "Texas Instruments DaVinci/DA8x/OMAP-L/AM1x SoC SPI controller"
 	depends on ARCH_DAVINCI
