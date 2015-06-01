@@ -557,9 +557,9 @@ static void chipLowPowerMode(bool low)
 				}
 				gpio_free(RESET_GPIO);
 				msleep(50);
-				chipInLowPower = false;
-				LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
 			}
+			chipInLowPower = false;
+			LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
 			if (!allow_irq_wake) {
 				smp_wmb();
 				ret = disable_irq_wake(gl_ts->client->irq);
@@ -652,6 +652,10 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 
 			fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
 			LOGI("upload %s\n", success ? "success" : "failed");
+			if (success && TP_DLMODE) {
+				TP_DLMODE = false;
+				LOGI("leave tp download mode.\n");
+			}
 		} else {
 			LOGI("firmware/config upgrade not needed\n");
 		}
@@ -1385,9 +1389,33 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_sysfs_grp_create_1;
 	}
 
+	RESET_GPIO = parse_reset_gpio(&client->dev);
+	LOGI("parse reset gpio RESET_GPIO = %d.\n", RESET_GPIO);
+
 	if (!chipIdentifyIT7260(true)) {
 		LOGE("chipIdentifyIT7260 FAIL\n");
-		goto err_ident_fail_or_input_alloc;
+		ret = gpio_request(RESET_GPIO, "CTP_RST_N");
+		if (ret < 0) {
+			LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+			gpio_free(RESET_GPIO);
+		} else {
+			ret = gpio_request(TP_DLMODE_GPIO, "CTP_DLM_N");
+			if (ret < 0) {
+				LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, TP_DLMODE_GPIO, ret);
+				gpio_free(TP_DLMODE_GPIO);
+			} else {
+				gpio_direction_output(TP_DLMODE_GPIO, 1);
+				mdelay(10);
+				gpio_direction_output(RESET_GPIO,0);
+				mdelay(60);
+				gpio_free(RESET_GPIO);
+				mdelay(100);
+				gpio_set_value(TP_DLMODE_GPIO, 0);
+				mdelay(200);
+				TP_DLMODE = true;
+				LOGI("chipIdentifyIT7260 FAIL in tp download mode.\n");
+			}
+		}
 	}
 
 	gl_ts->touch_dev = input_allocate_device();
@@ -1474,13 +1502,12 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	wake_lock_init(&touch_lock, WAKE_LOCK_SUSPEND, "touch-lock");
 	wake_lock_init(&touch_time_lock, WAKE_LOCK_SUSPEND, "touch-time-lock");
 
-	RESET_GPIO = parse_reset_gpio(&client->dev);
-	LOGI("parse reset gpio RESET_GPIO = %d.\n", RESET_GPIO);
-
-	TP_DLMODE_GPIO_VALUE = gpio_get_value(TP_DLMODE_GPIO);
-	if (TP_DLMODE_GPIO_VALUE == 1) {
-		TP_DLMODE = true;
-		LOGI("in tp download mode.\n");
+	if (!TP_DLMODE) {
+		TP_DLMODE_GPIO_VALUE = gpio_get_value(TP_DLMODE_GPIO);
+		if (TP_DLMODE_GPIO_VALUE == 1) {
+			TP_DLMODE = true;
+			LOGI("in tp download mode.\n");
+		}
 	}
 
 	devicePresent = true;
