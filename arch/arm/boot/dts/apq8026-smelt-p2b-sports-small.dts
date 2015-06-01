@@ -13,6 +13,7 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
+#include "apq8026-smelt-sports-small-tsl2584-config.dtsi"
 #include "apq8026-smelt-panel-nt35355.dtsi"
 #include "apq8026-smelt-regulator-ote2005b.dtsi"
 
