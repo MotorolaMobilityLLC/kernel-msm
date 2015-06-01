@@ -49,7 +49,7 @@
 #define I2C_ID_NAME "bcm2079x"
 #define I2C_DEVICE_ADDR 0x76
 
-struct bcm2079x_platform_data platform_data;
+static struct bcm2079x_platform_data platform_data;
 
 /* Read data */
 #define PACKET_HEADER_SIZE_NCI  (4)
@@ -70,11 +70,9 @@ struct bcm2079x_dev {
 	spinlock_t irq_enabled_lock;
 	unsigned int count_irq;
 	bool irq_wake_enabled;
+	struct wake_lock wlock;
+	struct clk *s_clk;
 };
-
-struct wake_lock nfc_wake_lock;
-
-struct clk *s_clk;
 
 static void bcm2079x_init_stat(struct bcm2079x_dev *bcm2079x_dev)
 {
@@ -170,7 +168,7 @@ static irqreturn_t bcm2079x_dev_irq_handler(int irq, void *dev_id)
 {
 	struct bcm2079x_dev *bcm2079x_dev = dev_id;
 	wake_up(&bcm2079x_dev->read_wq);
-	wake_lock(&nfc_wake_lock);
+	wake_lock(&bcm2079x_dev->wlock);
 
 	return IRQ_HANDLED;
 }
@@ -250,7 +248,7 @@ static ssize_t bcm2079x_dev_read(struct file *filp, char __user * buf,
 		pr_err("failed to copy to user space, total = %d\n", total);
 		total = -EFAULT;
 	}
-	wake_unlock(&nfc_wake_lock);
+	wake_unlock(&bcm2079x_dev->wlock);
 	return total;
 }
 
@@ -314,7 +312,7 @@ static long bcm2079x_dev_unlocked_ioctl(struct file *filp,
 		return change_client_addr(bcm2079x_dev, arg);
 	case BCMNFC_POWER_CTL:
 		if (arg == 0)
-			wake_unlock(&nfc_wake_lock);
+			wake_unlock(&bcm2079x_dev->wlock);
 		gpio_set_value(bcm2079x_dev->en_gpio, arg);
 		break;
 	case BCMNFC_WAKE_CTL:
@@ -343,12 +341,13 @@ static int bcm2079x_probe(struct i2c_client *client,
 {
 	int ret;
 	struct bcm2079x_dev *bcm2079x_dev = NULL;
+
 	bcm2079x_dev = kzalloc(sizeof(*bcm2079x_dev), GFP_KERNEL);
 	if (bcm2079x_dev == NULL) {
 		pr_err("failed to allocate memory for module data\n");
-		ret = -ENOMEM;
-		goto err_exit;
+		return -ENOMEM;
 	}
+
 	if (client->dev.of_node) {
 		platform_data.irq_gpio =
 		    of_get_named_gpio_flags(client->dev.of_node, "bcm,gpio_irq",
@@ -367,29 +366,26 @@ static int bcm2079x_probe(struct i2c_client *client,
 
 	} else {
 		pr_err("nfc probe of_node fail\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_mem;
 	}
-	s_clk = clk_get(&client->dev, "ref_clk");
-	clk_prepare_enable(s_clk);
+
+	bcm2079x_dev->s_clk = clk_get(&client->dev, "ref_clk");
+	clk_prepare_enable(bcm2079x_dev->s_clk);
 
 	ret = gpio_request_one(platform_data.irq_gpio, GPIOF_IN, "nfc_int");
 	if (ret)
-		goto err_en;
-	ret =
-	    gpio_request_one(platform_data.en_gpio, GPIOF_OUT_INIT_LOW,
+		goto err_irq;
+
+	ret = gpio_request_one(platform_data.en_gpio, GPIOF_OUT_INIT_LOW,
 			     "nfc_ven");
 	if (ret)
-		goto err_wake;
-	ret =
-	    gpio_request_one(platform_data.wake_gpio, GPIOF_OUT_INIT_LOW,
+		goto err_en;
+
+	ret = gpio_request_one(platform_data.wake_gpio, GPIOF_OUT_INIT_LOW,
 			     "nfc_firm");
 	if (ret)
-		goto err_exit;
-
-	gpio_set_value(platform_data.en_gpio, 0);
-	msleep(50);
-	gpio_set_value(platform_data.en_gpio, 0);
-	gpio_set_value(platform_data.wake_gpio, 0);
+		goto err_wake;
 
 	bcm2079x_dev->wake_gpio = platform_data.wake_gpio;
 	bcm2079x_dev->irq_gpio = platform_data.irq_gpio;
@@ -411,7 +407,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 		goto err_misc_register;
 	}
 
-	wake_lock_init(&nfc_wake_lock, WAKE_LOCK_SUSPEND, "NFCWAKE");
+	wake_lock_init(&bcm2079x_dev->wlock, WAKE_LOCK_SUSPEND, "NFCWAKE");
 
 	/* request irq.  the irq is set whenever the chip has data available
 	 * for reading.  it is cleared when all data has been read.
@@ -428,35 +424,41 @@ static int bcm2079x_probe(struct i2c_client *client,
 	bcm2079x_dev->irq_wake_enabled = false;
 	bcm2079x_disable_irq(bcm2079x_dev);
 	i2c_set_clientdata(client, bcm2079x_dev);
+
 	pr_info("%s, probing bcm2079x driver exited successfully\n", __func__);
 	return 0;
 
 err_request_irq_failed:
+	wake_lock_destroy(&bcm2079x_dev->wlock);
 	misc_deregister(&bcm2079x_dev->bcm2079x_device);
 err_misc_register:
 	mutex_destroy(&bcm2079x_dev->rw_mutex);
-err_exit:
 	gpio_free(platform_data.wake_gpio);
 err_wake:
 	gpio_free(platform_data.en_gpio);
 err_en:
 	gpio_free(platform_data.irq_gpio);
-
+err_irq:
+	clk_disable_unprepare(bcm2079x_dev->s_clk);
+	clk_put(bcm2079x_dev->s_clk);
+err_mem:
 	kfree(bcm2079x_dev);
 	return ret;
 }
 
 static int bcm2079x_remove(struct i2c_client *client)
 {
-	struct bcm2079x_dev *bcm2079x_dev;
+	struct bcm2079x_dev *bcm2079x_dev = i2c_get_clientdata(client);
 
-	bcm2079x_dev = i2c_get_clientdata(client);
 	free_irq(client->irq, bcm2079x_dev);
+	wake_lock_destroy(&bcm2079x_dev->wlock);
 	misc_deregister(&bcm2079x_dev->bcm2079x_device);
 	mutex_destroy(&bcm2079x_dev->rw_mutex);
 	gpio_free(bcm2079x_dev->irq_gpio);
 	gpio_free(bcm2079x_dev->en_gpio);
 	gpio_free(bcm2079x_dev->wake_gpio);
+	clk_disable_unprepare(bcm2079x_dev->s_clk);
+	clk_put(bcm2079x_dev->s_clk);
 	kfree(bcm2079x_dev);
 
 	return 0;
