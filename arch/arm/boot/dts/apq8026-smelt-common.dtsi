@@ -623,9 +623,10 @@
 
 &pm8226_l28 {
 	regulator-max-microvolt = <3400000>;
-	qcom,init-voltage = <3100000>;
+	qcom,init-voltage = <2800000>;
 	regulator-boot-on;
 	regulator-always-on;
+	qcom,init-ldo-mode = <1>;
 };
 
 &spi_4 {
