@@ -104,10 +104,10 @@
 #define TSL2584_ALS_HIGH_LUX_DEN	128
 #define TSL2584_ALS_LOW_LUX_DEN		(TSL2584_ALS_HIGH_LUX_DEN * 8)
 
-static u32 lux1ch0_coeff = TSL2584_ALS_LUX1_CH0_COEFF_DEFAULT;
-static u32 lux1ch1_coeff = TSL2584_ALS_LUX1_CH1_COEFF_DEFAULT;
-static u32 lux2ch0_coeff = TSL2584_ALS_LUX2_CH0_COEFF_DEFAULT;
-static u32 lux2ch1_coeff = TSL2584_ALS_LUX2_CH1_COEFF_DEFAULT;
+static s32 lux1ch0_coeff = TSL2584_ALS_LUX1_CH0_COEFF_DEFAULT;
+static s32 lux1ch1_coeff = TSL2584_ALS_LUX1_CH1_COEFF_DEFAULT;
+static s32 lux2ch0_coeff = TSL2584_ALS_LUX2_CH0_COEFF_DEFAULT;
+static s32 lux2ch1_coeff = TSL2584_ALS_LUX2_CH1_COEFF_DEFAULT;
 
 enum tsl2584_als_mode {
 	TSL2584_ALS_MODE_LOW_LUX,
@@ -885,16 +885,16 @@ tsl2584_of_init(struct i2c_client *client)
 		pdata->ink_type = (u8)val;
 
 	if (!of_property_read_u32(np, "ams,lux1ch0_coeff", &val))
-		lux1ch0_coeff = val;
+		lux1ch0_coeff = (s32)val;
 
 	if (!of_property_read_u32(np, "ams,lux1ch1_coeff", &val))
-		lux1ch1_coeff = val;
+		lux1ch1_coeff = (s32)val;
 
 	if (!of_property_read_u32(np, "ams,lux2ch0_coeff", &val))
-		lux2ch0_coeff = val;
+		lux2ch0_coeff = (s32)val;
 
 	if (!of_property_read_u32(np, "ams,lux2ch1_coeff", &val))
-		lux2ch1_coeff = val;
+		lux2ch1_coeff = (s32)val;
 
 	pdata->gpio_irq = of_get_gpio(np, 0);
 	if (!gpio_is_valid(pdata->gpio_irq)) {
