@@ -408,17 +408,17 @@
 	qcom,vddmax-mv = <4400>;
 	qcom,vddsafe-mv = <4400>;
 	qcom,vinmin-mv = <4500>;
-	qcom,ibatmax-ma= <550>;
+	qcom,ibatmax-ma= <500>;
 	qcom,ibatterm-ma = <30>;
 	qcom,ibatsafe-ma = <550>;
-	qcom,vbatdet-delta-mv = <200>;
+	qcom,vbatdet-delta-mv = <150>;
 	qcom,tchg-mins = <480>;
 	qcom,thermal-mitigation = <0>; /* disable */
 	qcom,btc-disabled;
 	qcom,warm-bat-decidegc = <0>; /* disable */
 	qcom,cool-bat-decidegc = <0>; /* disable */
-	qcom,step-dwn-offset-ma = <300>;
-	qcom,step-dwn-thr-mv = <4215>;
+	qcom,step-dwn-offset-ma = <250>;
+	qcom,step-dwn-thr-mv = <4250>;
 };
 
 &pm8226_bms{
