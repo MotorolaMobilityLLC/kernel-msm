@@ -12,7 +12,7 @@
  */
 
 &i2c {
-	actuator0: qcom,actuator@6c {
+	actuator0: qcom,actuator@18 {
 		cell-index = <1>;
 		reg = <0x18 0x0>;
 		compatible = "qcom,actuator";

@@ -214,6 +214,10 @@
 	/include/ "batterydata-ft40-lishen.dtsi"
 };
 
+&i2c {
+	/delete-node/ qcom,camera@6c;
+};
+
 &i2c_3 {
 	status = "disabled";
 };
