@@ -32,6 +32,7 @@
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #include <linux/switch.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
@@ -42,7 +43,33 @@
 
 #define SPURIOUS_INT_DELAY 800 /* ms */
 #define MAX_NUM_LOGS_PER_INT  25
-#define MAX_LOG_MSG_LEN       128
+
+static int process_log_message(
+	struct motosh_data *ps_motosh,
+	char *logmsg,
+	u8 log_msg_len)
+{
+	char *token = NULL;
+
+	if (ps_motosh == NULL || logmsg == NULL || log_msg_len == 0
+			|| log_msg_len > MAX_LOG_MSG_LEN)
+		return -EINVAL;
+
+	/* make sure the given string ends in null */
+	logmsg[log_msg_len] = '\0';
+
+	/* loop over the message buffer and print separate
+	 * dev_err logs for each \n found from the hub */
+	do {
+		token = strsep(&logmsg, "\n\0");
+		if (token != NULL && strlen(token) > 0) {
+			dev_err(&ps_motosh->client->dev,
+				"sensorhub %s\n", token);
+		}
+	} while (token != NULL);
+
+	return 0;
+}
 
 irqreturn_t motosh_wake_isr(int irq, void *dev)
 {
@@ -494,10 +521,9 @@ PROCESS_LOGS:
 					err);
 				goto PROCESS_RESET;
 			} else {
-				memcpy(stat_string, readbuff, log_msg_len);
-				stat_string[log_msg_len] = 0;
-				dev_err(&ps_motosh->client->dev,
-					"sensorhub%s\n", stat_string);
+				process_log_message(ps_motosh,
+						readbuff,
+						log_msg_len);
 			}
 		} else
 			break; /* no more log messages to process */
