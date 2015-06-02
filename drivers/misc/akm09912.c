@@ -600,8 +600,9 @@ AKECS_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		dev_vdbg(&akm->i2c->dev, "IOCTL_GET_OPEN_STATUS called.");
 		ret = AKECS_GetOpenStatus(akm);
 		if (ret < 0) {
-			dev_err(&akm->i2c->dev,
-				"Get Open returns error (%d).", ret);
+			if (ret != -ERESTARTSYS)
+				dev_err(&akm->i2c->dev,
+					"Get Open returns error (%d).", ret);
 			return ret;
 		}
 		break;
@@ -609,8 +610,9 @@ AKECS_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		dev_vdbg(&akm->i2c->dev, "IOCTL_GET_CLOSE_STATUS called.");
 		ret = AKECS_GetCloseStatus(akm);
 		if (ret < 0) {
-			dev_err(&akm->i2c->dev,
-				"Get Close returns error (%d).", ret);
+			if (ret != -ERESTARTSYS)
+				dev_err(&akm->i2c->dev,
+					"Get Close returns error (%d).", ret);
 			return ret;
 		}
 		break;
