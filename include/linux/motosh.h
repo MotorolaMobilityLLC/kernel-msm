@@ -306,6 +306,7 @@
 /* motosh_g_conn_state */
 #define ANTCAP_USB                 0x80
 #define ANTCAP_HEADSET             0x40
+#define ANTCAP_APM                 0x20
 
 /* ANTCAP_CTRL, byte 0 */
 #define ANTCAP_CTRL0_ENABLE        0x80
