@@ -1003,6 +1003,29 @@ error:
 	return ret;
 }
 
+static void mdss_dsi_chk_shutdown_pending(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+								panel_data);
+	if (pdata->mfd && pdata->mfd->shutdown_pending) {
+		struct mdss_dsi_ctrl_pdata *sctrl_pdata = NULL;
+
+		ctrl_pdata->sh_control_enabled = false;
+		if (pdata->next)
+			sctrl_pdata = container_of(pdata->next,
+					struct mdss_dsi_ctrl_pdata, panel_data);
+		else if (pdata->prev)
+			sctrl_pdata = container_of(pdata->prev,
+					struct mdss_dsi_ctrl_pdata, panel_data);
+
+		if (sctrl_pdata)
+			sctrl_pdata->sh_control_enabled = false;
+	}
+}
+
+
 static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 {
 	int ret = 0;
@@ -1017,6 +1040,9 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi = &pdata->panel_info.mipi;
+
+	/* Allow the panel to Power OFF during normal shutdown */
+	mdss_dsi_chk_shutdown_pending(pdata);
 
 	pr_debug("%s+: ctrl=%pK ndx=%d power_state=%d\n",
 		__func__, ctrl_pdata, ctrl_pdata->ndx, power_state);
