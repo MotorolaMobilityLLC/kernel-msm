@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,11 +43,10 @@
 /*belong to the factory group, according to the order of fac end*/
 
 /*belong to the OS group, according to the order of battery memery begin*/
-/*#include "huawei-battery.dtsi"*/
+#include "huawei-battery.dtsi"
 /*#include "huawei-memory.dtsi"*/
 /*#include "huawei-emmc.dtsi" */
 /*#include "huawei-sdcard.dtsi"*/
 /*belong to the OS group, according to the order of battery memery end*/
-
-#include "huawei-nfc.dtsi"
+/*#include "huawei-nfc.dtsi"*/
 #include "huawei-usb.dtsi"

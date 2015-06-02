@@ -11,6 +11,8 @@
  */
 
 #include "hw-panel-samsung-s6e3fa3x01-5p7-1080p-cmd.dtsi"
+#include "hw-panel-samsung-s6e3ha3x01-5p7-1440p-dual0-cmd.dtsi"
+#include "hw-panel-samsung-s6e3ha3x01-5p7-1440p-dual1-cmd.dtsi"
 &mdss_dsi0 {
 	/delete-property/ qcom,dsi-panel-bias-vreg;
 	/delete-property/ qcom,platform-enable-gpio;
