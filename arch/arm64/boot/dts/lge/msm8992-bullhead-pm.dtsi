@@ -63,21 +63,24 @@
 };
 
 /{
-        bullhead_batterydata: qcom,battery-data {
-                #include "lge_blt9_2300mAh_1956773_PMI8994GUI2165.dtsi"
-        };
+	bullhead_batterydata: qcom,battery-data {
+		#include "lge_blt9_2300mAh_1956773_PMI8994GUI2165.dtsi"
+	};
 };
 
 &pmi8994_fg {
-        status = "ok";
-
-        qcom,ext-sense-type;
-        qcom,battery-data = <&bullhead_batterydata>;
-        qcom,single-profile;
-        qcom,sw-rbias-control;
-        qcom,fg-iterm-ma = <200>;
-        qcom,fg-chg-iterm-ma = <100>;
-        qcom,fg-cutoff-voltage-mv = <3400>;
+	status = "ok";
+	qcom,ext-sense-type;
+	qcom,battery-data = <&bullhead_batterydata>;
+	qcom,single-profile;
+	qcom,sw-rbias-control;
+	qcom,fg-iterm-ma = <200>;
+	qcom,fg-chg-iterm-ma = <100>;
+	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,warm-bat-decidegc = <450>;
+	qcom,hot-bat-decidegc = <550>;
+	qcom,cool-bat-decidegc = <0>;
+	qcom,cold-bat-decidegc = <(-100)>;
 };
 
 &i2c_6 {
