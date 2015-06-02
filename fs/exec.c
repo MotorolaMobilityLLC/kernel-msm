@@ -982,19 +982,21 @@ static int de_thread(struct task_struct *tsk)
 		transfer_pid(leader, tsk, PIDTYPE_SID);
 
 		list_replace_rcu(&leader->tasks, &tsk->tasks);
-		/*
-		 * need to delete leader from adj tree, because it will not be
-		 * group leader (exit_signal = -1) soon. release_task(leader)
-		 * can't delete it.
-		 */
-		delete_from_adj_tree(leader);
-		add_2_adj_tree(tsk);
 		list_replace_init(&leader->sibling, &tsk->sibling);
 
 		tsk->group_leader = tsk;
 		leader->group_leader = tsk;
 
 		tsk->exit_signal = SIGCHLD;
+		/*
+		 * need to delete leader from adj tree, because it will not be
+		 * group leader (exit_signal = -1) soon. release_task(leader)
+		 * can't delete it.
+		 */
+		spin_lock_irq(lock);
+		delete_from_adj_tree(leader);
+		add_2_adj_tree(tsk);
+		spin_unlock_irq(lock);
 		leader->exit_signal = -1;
 
 		BUG_ON(leader->exit_state != EXIT_ZOMBIE);
