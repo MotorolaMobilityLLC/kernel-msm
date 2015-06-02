@@ -13,9 +13,8 @@
 /{
 	bcmdhd {
 		compatible = "android,bcmdhd_wlan";
-		wlpower_on = <&msm_gpio 113 0>;         /* wifi reg_on pin */
-		wlreg_on-supply = <&pm8994_l28>;        /* wifi vddio pin */
-		gpios = <&msm_gpio 37 0>;               /* wifi oob pin */
+		wl_reg_on = <&msm_gpio 113 0>;		/* wifi reg_on pin */
+		wl_host_wake = <&msm_gpio 37 0>;	/* wifi oob pin */
 	};
 };
 
