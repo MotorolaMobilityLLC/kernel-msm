@@ -2227,8 +2227,8 @@ static int fg_power_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		val->intval = chip->learning_data.learned_cc_uah;
 
-		if (trigger_fc_report || (fg_check_fc_deviation(chip) &&
-			!chip->fullcap_report_sent)) {
+		if (trigger_fc_report || (!chip->fullcap_report_sent &&
+			fg_check_fc_deviation(chip))) {
 			snprintf(chip->fg_report_str, FUEL_GAUGE_REPORT_SIZE,
 				QPNPFG_FULL_CAP, val->intval);
 			dropbox_queue_event_text(FUEL_GAUGE_REPORT,
