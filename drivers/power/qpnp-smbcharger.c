@@ -914,6 +914,17 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_GOOD;
 }
 
+/* add for healthd, as healthd do not have warm/cool */
+static int get_batt_health(struct smbchg_chip *chip)
+{
+	if (chip->batt_hot)
+		return POWER_SUPPLY_HEALTH_OVERHEAT;
+	else if (chip->batt_cold)
+		return POWER_SUPPLY_HEALTH_COLD;
+	else
+		return POWER_SUPPLY_HEALTH_GOOD;
+}
+
 static const int usb_current_table[] = {
 	300,
 	400,
@@ -2723,7 +2734,8 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = smbchg_float_voltage_get(chip);
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
-		val->intval = get_prop_batt_health(chip);
+		/* modify for healthd, as healthd do not have warm/cool */
+		val->intval = get_batt_health(chip);
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
