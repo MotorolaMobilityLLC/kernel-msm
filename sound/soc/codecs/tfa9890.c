@@ -819,11 +819,11 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 			queue_delayed_work(tfa9890->tfa9890_wq,
 				&tfa9890->init_work,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
-		/* will need to read speaker impedence here if its not read yet
+		/* will need to read speaker impedance here if its not read yet
 		 * to complete the calibartion process. This step will enable
 		 * device to calibrate if its not calibrated/validated in the
-		 * factory. When the factory process is in place speaker imp
-		 * will be read from sysfs and validated.
+		 * factory. When the factory process is in place speaker
+		 * impedance will be read from sysfs and validated.
 		 */
 		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE) {
 			if ((tfa9890->mode_switched == 1) ||
@@ -1314,12 +1314,12 @@ out:
 	return ret;
 }
 
-static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
+static void tfa9890_calibration(struct tfa9890_priv *tfa9890)
 {
 	u16 val;
 	struct snd_soc_codec *codec = tfa9890->codec;
 
-	/* Ensure no audio playback while calibarating but leave
+	/* Ensure no audio playback while calibrating but leave
 	 * amp enabled*/
 	tfa9890_set_mute(codec, TFA9890_DIGITAL_MUTE);
 
@@ -1585,18 +1585,18 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	}
 
 	val = snd_soc_read(codec, TFA9890_MTP_REG);
-	/* check if calibaration completed, Calibaration is one time event.
+	/* check if calibration completed, Calibration is one time event.
 	 * Will be done only once when device boots up for the first time.Once
-	 * calibarated info is stored in non-volatile memory of the device.
-	 * It will be part of the factory test to validate spkr imp.
+	 * calibrated info is stored in non-volatile memory of the device.
+	 * It will be part of the factory test to validate spkr impedance.
 	 * The MTPEX will be set to 1 always after calibration, on subsequent
 	 * power down/up as well.
 	 */
 	if (!(val & TFA9890_STATUS_MTPEX)) {
 		pr_info("tfa9890:Calib not completed initiating ..");
-		tfa9890_calibaration(tfa9890);
+		tfa9890_calibration(tfa9890);
 	} else
-		/* speaker impedence available to read */
+		/* speaker impedance available to read */
 		tfa9890->speaker_imp = tfa9890_read_spkr_imp(tfa9890);
 
 	tfa9890->dsp_init = TFA9890_DSP_INIT_DONE;
@@ -2030,10 +2030,10 @@ static ssize_t tfa9890_show_ic_temp(struct device *dev,
 		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 		if ((val & TFA9890_STATUS_PLLS) &&
 				(val & TFA9890_STATUS_CLKS)) {
-			/* calibaration should take place when the IC temp is
-			 * between 0 and 50C, factory test command will verify
-			 * factory test command will verify the temp along
-			 * with impdedence to pass the test.
+			/* calibration should take place when the IC temp is
+			 * between 0 and 50C.  The factory test command will
+			 * verify the temp along with impedance to pass the
+			 * test.
 			 */
 			val = snd_soc_read(tfa9890->codec,
 						TFA9890_TEMP_STATUS_REG);
@@ -2043,7 +2043,7 @@ static ssize_t tfa9890_show_ic_temp(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%u\n", temp);
 }
 
-static ssize_t tfa9890_force_calibaration(struct device *dev,
+static ssize_t tfa9890_force_calibration(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -2056,7 +2056,7 @@ static ssize_t tfa9890_force_calibaration(struct device *dev,
 	if (val < 0 || val > 1)
 		return -EINVAL;
 
-	tfa9890_calibaration(tfa9890);
+	tfa9890_calibration(tfa9890);
 
 	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 	return count;
@@ -2092,7 +2092,7 @@ static DEVICE_ATTR(spkr_imp, S_IRUGO,
 		   tfa9890_show_spkr_imp, NULL);
 
 static DEVICE_ATTR(force_calib, S_IWUSR,
-		   NULL, tfa9890_force_calibaration);
+		   NULL, tfa9890_force_calibration);
 
 static struct attribute *tfa9890_attributes[] = {
 	&dev_attr_spkr_imp.attr,
@@ -2184,6 +2184,8 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S1L");
 		snd_soc_dapm_ignore_suspend(&codec->dapm,
 			"NXP Speaker Boost Left");
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "NXP Echo Ref Left");
+		snd_soc_dapm_ignore_suspend(&codec->dapm, "I2S0L");
 	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
 		snd_soc_add_codec_controls(codec, tfa9890_right_snd_controls,
 			     ARRAY_SIZE(tfa9890_right_snd_controls));
