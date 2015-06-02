@@ -486,7 +486,7 @@ static int parse_recovery_factory_reset_command(void)
 void kernel_restart(char *cmd)
 {
 #ifdef CONFIG_PARSE_RECOVERY_RESET_COMMAND
-	if (!strncmp(cmd, "recovery", 8)){
+	if (cmd != NULL && !strncmp(cmd, "recovery", 8)){
 		printk(KERN_EMERG "Kernel restart with recovery command.\n");
 		if(parse_recovery_factory_reset_command()==0)
 		{
