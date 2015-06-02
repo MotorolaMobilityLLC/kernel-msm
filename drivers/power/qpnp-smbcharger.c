@@ -1486,21 +1486,24 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
-	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
-		return false;
-	}
+	if (!chip->usb_cc_controller) {
+		rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't read status 5 rc = %d\n", rc);
+			return false;
+		}
 
-	type = get_type(reg);
-	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB_CDP) {
-		pr_smb(PR_STATUS, "CDP adapter, skipping\n");
-		return false;
-	}
+		type = get_type(reg);
+		if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB_CDP) {
+			pr_smb(PR_STATUS, "CDP adapter, skipping\n");
+			return false;
+		}
 
-	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
-		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
-		return false;
+		if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
+			pr_smb(PR_STATUS, "SDP adapter, skipping\n");
+			return false;
+		}
 	}
 
 	rc = smbchg_read(chip, &reg,
