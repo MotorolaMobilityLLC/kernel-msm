@@ -96,9 +96,6 @@ unsigned char motosh_g_antcap_hw_ready;
 unsigned char motosh_g_antcap_sw_ready;
 #endif /* CONFIG_CYPRESS_CAPSENSE_HSSP */
 
-/* Store error message */
-unsigned char stat_string[ESR_SIZE+1];
-
 struct motosh_algo_requst_t motosh_g_algo_requst[MOTOSH_NUM_ALGOS];
 
 /* per algo config, request, and event registers */
