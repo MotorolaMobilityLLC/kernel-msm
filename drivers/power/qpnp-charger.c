@@ -1991,6 +1991,13 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	if (host_mode)
 		return IRQ_HANDLED;
 
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	/*avoid the battery can not be charged when usb do not report any port*/
+	if(usb_present)
+	{
+		qpnp_chg_iusbmax_set(chip, USB_WALL_THRESHOLD_MA);
+	}
+#endif
 	if (chip->usb_present ^ usb_present) {
 /* irq_handler do not allow call function who has use mutex ,it will cause crash*/
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
