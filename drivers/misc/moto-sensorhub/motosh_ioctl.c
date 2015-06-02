@@ -1053,10 +1053,13 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
-		if (byte)
+		if (byte) {
 			motosh_g_antcap_enabled |=  ANTCAP_AIRPLANE;
-		else
+			motosh_g_conn_state     |=  ANTCAP_APM;
+		} else {
 			motosh_g_antcap_enabled &= ~ANTCAP_AIRPLANE;
+			motosh_g_conn_state     &= ~ANTCAP_APM;
+		}
 
 		err = motosh_antcap_i2c_send_enable(0);
 		dev_info(&ps_motosh->client->dev,
