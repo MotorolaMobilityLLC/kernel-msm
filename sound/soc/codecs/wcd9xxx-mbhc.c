@@ -35,6 +35,7 @@
 #include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/input.h>
+#include <linux/of_gpio.h>
 #include "wcd9320.h"
 #include "wcd9306.h"
 #include "wcd9xxx-mbhc.h"
@@ -152,6 +153,9 @@ MODULE_PARM_DESC(z_det_box_car_avg,
 		 "Number of samples for impedance detection");
 
 static bool detect_use_vddio_switch;
+
+/* used for micbias power up or power down */
+static int g_headset_switch_gpio=-1;
 
 struct wcd9xxx_mbhc_detect {
 	u16 dce;
@@ -3337,6 +3341,9 @@ static void wcd9xxx_swch_irq_handler(struct wcd9xxx_mbhc *mbhc)
 	pr_debug("%s: Current plug type %d, insert %d\n", __func__,
 		 mbhc->current_plug, insert);
 	if ((mbhc->current_plug == PLUG_TYPE_NONE) && insert) {
+		/* when insert headset, set gpio to high to power up micbias */
+		if( gpio_is_valid(g_headset_switch_gpio) )
+			gpio_direction_output(g_headset_switch_gpio,1);
 
 		mbhc->lpi_enabled = false;
 		wmb();
@@ -3359,6 +3366,10 @@ static void wcd9xxx_swch_irq_handler(struct wcd9xxx_mbhc *mbhc)
 		snd_soc_update_bits(codec, WCD9XXX_A_MBHC_HPH, 0x01, 0x00);
 		wcd9xxx_mbhc_detect_plug_type(mbhc);
 	} else if ((mbhc->current_plug != PLUG_TYPE_NONE) && !insert) {
+		/* when remove headset, set gpio to low to power down micbias */
+		if( gpio_is_valid(g_headset_switch_gpio) )
+			gpio_direction_output(g_headset_switch_gpio,0);
+
 		mbhc->lpi_enabled = false;
 		wmb();
 		/* cancel detect plug */
@@ -5520,6 +5531,23 @@ int wcd9xxx_mbhc_init(struct wcd9xxx_mbhc *mbhc, struct wcd9xxx_resmgr *resmgr,
 	wcd9xxx_regmgr_cond_register(resmgr, 1 << WCD9XXX_COND_HPH_MIC |
 					     1 << WCD9XXX_COND_HPH);
 
+	if( -1 == g_headset_switch_gpio) {
+		struct device_node *of_sound_asoc_node = NULL ;
+		of_sound_asoc_node = of_find_compatible_node(NULL, NULL, "qcom,msm8994-asoc-snd");
+		if( of_sound_asoc_node ) {
+			g_headset_switch_gpio = of_get_named_gpio(of_sound_asoc_node, "headset_mic_switch", 0);
+			if( gpio_is_valid(g_headset_switch_gpio) ) {
+				ret = gpio_request(g_headset_switch_gpio, "headset_mic_switch");
+				if( ret )
+					pr_err("%s:request headset_mic_switch error",__func__);
+			}else{
+				g_headset_switch_gpio = -1 ;
+				pr_err("%s:can not find headset_mic_switch in dtsi",__func__);
+			}
+		}else
+			pr_err("%s: can not find qcom,msm8994-asoc-snd node",__func__);
+	}
+
 	pr_debug("%s: leave ret %d\n", __func__, ret);
 	return ret;
 
@@ -5562,6 +5590,9 @@ void wcd9xxx_mbhc_deinit(struct wcd9xxx_mbhc *mbhc)
 	mutex_destroy(&mbhc->mbhc_lock);
 	wcd9xxx_resmgr_unregister_notifier(mbhc->resmgr, &mbhc->nblock);
 	wcd9xxx_cleanup_debugfs(mbhc);
+
+	if (gpio_is_valid(g_headset_switch_gpio))
+		gpio_free(g_headset_switch_gpio);
 }
 EXPORT_SYMBOL(wcd9xxx_mbhc_deinit);
 
