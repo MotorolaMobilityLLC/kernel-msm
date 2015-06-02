@@ -13,14 +13,13 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
-#include "apq8026-smelt-sports-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35355.dtsi"
+#include "apq8026-smelt-small-tsl2584-config.dtsi"
+#include "apq8026-smelt-panel-nt35350.dtsi"
 #include "apq8026-smelt-regulator-ote2005b.dtsi"
-#include "apq8026-smelt-gps.dtsi"
 
 / {
 	qcom,msm-id =
-		<199 0x41 0x070A>; /* Sports Small P2B Portable */
+		<199 0x41 0x0707>; /* Small P2B Portable */
 };
 
 /* small panel is 360 x 325 */
