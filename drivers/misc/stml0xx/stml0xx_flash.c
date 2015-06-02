@@ -312,10 +312,14 @@ int switch_stml0xx_mode(enum stm_mode mode)
 		msleep(stml0xx_spi_retry_delay);
 
 		/* Toggle reset */
+		if (pdata->reset_hw_type != 0)
+			gpio_direction_output(pdata->gpio_reset, 1);
 		gpio_set_value(pdata->gpio_reset, 0);
 		msleep(stml0xx_spi_retry_delay);
 		gpio_set_value(pdata->gpio_reset, 1);
 		msleep(STML0XX_RESET_DELAY);
+		if (pdata->reset_hw_type != 0)
+			gpio_direction_input(pdata->gpio_reset);
 
 		/* Send SPI bootloader synchronization byte */
 		rc = stml0xx_boot_cmd_write(SPI_SYNC, true);
