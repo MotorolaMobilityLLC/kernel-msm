@@ -50,7 +50,7 @@
 			15 01 00 00 00 00 02 35 00
 			05 01 00 00 00 00 02 11 00
 			15 01 00 00 00 00 02 36 40
-			32 01 00 00 FF 00 02 00 00
+			32 01 00 00 78 00 02 00 00
 			05 01 00 00 00 00 02 29 00];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 02 28 00
 					05 01 00 00 78 00 02 10 00
@@ -79,7 +79,7 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-		qcom,mdss-dsi-reset-sequence = <1 150>, <0 20>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <0 5>, <1 10>;
 		qcom,mdss-pan-physical-width-dimension = <36>;
 		qcom,mdss-pan-physical-height-dimension = <36>;
 	};

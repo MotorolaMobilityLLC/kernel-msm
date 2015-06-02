@@ -199,7 +199,7 @@
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-		qcom,mdss-dsi-reset-sequence = <1 150>, <0 20>, <1 10>;
+		qcom,mdss-dsi-reset-sequence = <0 5>, <1 10>;
 		qcom,mdss-pan-physical-width-dimension = <36>;
 		qcom,mdss-pan-physical-height-dimension = <36>;
 	};
