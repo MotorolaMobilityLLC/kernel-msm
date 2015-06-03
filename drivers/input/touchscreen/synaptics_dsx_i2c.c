@@ -4401,6 +4401,11 @@ static int rmi_reboot(struct notifier_block *nb,
 		container_of(nb, struct synaptics_rmi4_data, rmi_reboot);
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&rmi4_data->panel_nb);
+#elif defined(CONFIG_FB)
+	fb_unregister_client(&rmi4_data->panel_nb);
+#endif
 	if (platform_data->regulator_en) {
 		pr_debug("touch reboot - disable regulators\n");
 		regulator_force_disable(rmi4_data->regulator);
