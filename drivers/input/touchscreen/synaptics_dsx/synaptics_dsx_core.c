@@ -106,6 +106,7 @@ static int synaptics_rmi4_doze_interval_config(struct synaptics_rmi4_data *rmi4_
 static int synaptics_rmi4_palm_detect_config(struct synaptics_rmi4_data *rmi4_data,unsigned char val);
 static int synaptics_rmi4_hw_reset_device(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_sw_reset_device(struct synaptics_rmi4_data *rmi4_data);
+static int synaptics_rmi4_device_reset(struct synaptics_rmi4_data *rmi4_data);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static ssize_t synaptics_rmi4_full_pm_cycle_show(struct device *dev,
@@ -3831,9 +3832,21 @@ static int synaptics_rmi4_sw_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	if (retval < 0)
 		return retval;
 
-	msleep(20);
+	msleep(5);
 
 	return 0;
+}
+
+static int synaptics_rmi4_device_reset(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval;
+
+	retval = synaptics_rmi4_sw_reset_device(rmi4_data);
+	if (retval) {
+		retval = synaptics_rmi4_hw_reset_device(rmi4_data);
+	}
+
+	return retval;
 }
 
 static int synaptics_rmi4_suspend(struct device *dev)
@@ -3918,8 +3931,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 exit:
 	//reset
-	synaptics_rmi4_sw_reset_device(rmi4_data);
-	synaptics_rmi4_hw_reset_device(rmi4_data);
+	synaptics_rmi4_device_reset(rmi4_data);
 	synaptics_rmi4_palm_detect_config(rmi4_data,PALM_DETECT_SIZE);
 	synaptics_rmi4_doze_interval_config(rmi4_data,DOZE_INTERVAL);
 
