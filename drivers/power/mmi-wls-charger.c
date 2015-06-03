@@ -310,12 +310,10 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 			gpio_set_value(chip->charge_term_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WAIT;
 		} else if (batt_temp >= chip->hot_temp) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_term_gpio, 1);
+			gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_HOT;
 		} else if (batt_temp <= chip->cold_temp) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_term_gpio, 1);
+			gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_COLD;
 		} else if (batt_soc >= MMI_WLS_CHRG_CHRG_CMPLT_SOC) {
 			if (chip->mode == MMI_WLS_CHRG_WPC)
