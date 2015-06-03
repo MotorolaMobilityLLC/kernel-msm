@@ -1279,6 +1279,10 @@ enum enable_reason {
 	 * charger does not accidentally try to charge from the external supply.
 	 */
 	REASON_OTG = BIT(5),
+	/*
+	 * The Store DEMO App is running, ensure proper USB Suspend.
+	 */
+	REASON_DEMO = BIT(6),
 };
 
 enum battchg_enable_reason {
@@ -6908,6 +6912,8 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 #define STEPCHG_ONE_FV_COMP 40
 #define STEPCHG_FULL_FV_COMP 100
 #define STEPCHG_CURR_ADJ 200
+#define DEMO_MODE_MAX_SOC 35
+#define DEMO_MODE_HYS_SOC 5
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -6938,6 +6944,16 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	if (chip->demo_mode) {
 		chip->stepchg_state = STEP_NONE;
 		dev_warn(chip->dev, "Battery in Demo Mode charging Limited\n");
+		if ((!!!(chip->usb_suspended & REASON_DEMO)) &&
+		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+			smbchg_usb_en(chip, false, REASON_DEMO);
+			smbchg_dc_en(chip, false, REASON_DEMO);
+		} else if (!!(chip->usb_suspended & REASON_DEMO) &&
+			(batt_soc <=
+			 (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			smbchg_usb_en(chip, true, REASON_DEMO);
+			smbchg_dc_en(chip, true, REASON_DEMO);
+		}
 	} else if ((chip->stepchg_state == STEP_NONE) && (chip->usb_present)) {
 		if (batt_mv >= chip->stepchg_voltage_mv)
 			chip->stepchg_state = STEP_ONE;
