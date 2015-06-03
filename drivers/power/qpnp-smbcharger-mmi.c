@@ -308,6 +308,7 @@ enum wake_reason {
 
 static void smbchg_rate_check(struct smbchg_chip *chip);
 static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp);
+static int get_prop_batt_capacity(struct smbchg_chip *chip);
 
 static int smbchg_debug_mask;
 module_param_named(
@@ -794,6 +795,9 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	int rc, status = POWER_SUPPLY_STATUS_DISCHARGING;
 	u8 reg = 0, chg_type;
 	bool charger_present, chg_inhibit;
+	int batt_soc;
+
+	batt_soc = get_prop_batt_capacity(chip);
 
 	rc = smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
 	if (rc < 0) {
@@ -805,8 +809,8 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
 		return POWER_SUPPLY_STATUS_FULL;
 
-	if ((chip->stepchg_state == STEP_FULL) && !chip->demo_mode &&
-	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
+	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
+	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	charger_present = is_usb_present(chip) | is_dc_present(chip);
