@@ -228,7 +228,7 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 	message->complete = spich_complete;
 	message->context = &done;
 
-	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 1);
+	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 0);
 
 	spin_lock_irq(&spich->spi_lock);
 	if (spich->spi == NULL) {
@@ -246,7 +246,7 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 		}
 	}
 
-	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 0);
+	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 1);
 
 	return status;
 }
@@ -748,7 +748,7 @@ static int spich_probe(struct spi_device *spi)
 	spin_lock_init(&spich->spi_lock);
 	mutex_init(&spich->buf_lock);
 
-	spich->gpio_array[GPIO_IDX_AP2SH].flags = GPIOF_OUT_INIT_LOW;
+	spich->gpio_array[GPIO_IDX_AP2SH].flags = GPIOF_OUT_INIT_HIGH;
 	spich->gpio_array[GPIO_IDX_AP2SH].label = "contexthub,ap2sh";
 	spich->gpio_array[GPIO_IDX_SH2AP].flags = GPIOF_DIR_IN;
 	spich->gpio_array[GPIO_IDX_SH2AP].label = "contexthub,sh2ap";
