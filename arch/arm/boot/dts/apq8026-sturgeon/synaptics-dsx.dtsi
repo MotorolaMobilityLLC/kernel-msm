@@ -32,7 +32,7 @@
 			synaptics,power-delay-ms = <160>;
 			synaptics,reset-on-state = <0>;
 			synaptics,reset-active-ms = <10>;
-			synaptics,reset-delay-ms = <200>;
+			synaptics,reset-delay-ms = <150>;
 			//synaptics,max-y-for-2d = <800>; /* remove if no virtual buttons */
 			synaptics,vir-button-codes = <102 100 900 100 60 158 300 900 100 60>;
 		};
