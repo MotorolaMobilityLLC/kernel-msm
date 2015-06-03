@@ -325,7 +325,7 @@
 			/* CS */
 			qcom,pins = <&gp 43>;
 			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <0>;
+			qcom,pin-func = <1>;
 			label = "spi7-cs-suspend";
 			spi7_cs_sleep: cs_sleep {
 				drive-strength = <2>;
