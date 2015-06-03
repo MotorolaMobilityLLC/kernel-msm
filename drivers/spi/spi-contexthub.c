@@ -19,6 +19,7 @@
 #include <linux/cdev.h>
 #include <linux/compat.h>
 #include <linux/completion.h>
+#include <linux/cred.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -168,13 +169,17 @@ static int spich_open(struct inode *inode, struct file *filp)
 {
 	struct spich_data *spich;
 	unsigned users;
+	unsigned uid = current_uid();
 
 	spich = container_of(inode->i_cdev, struct spich_data, cdev);
 
 	spin_lock_irq(&spich->spi_lock);
 	users = spich->users++;
 
-	if (users != 0) {
+	/* Processes running as root (uid 0) can always open the device;
+	 * otherwise, non-root processes must wait until all other processes
+	 * close the device */
+	if ((uid != 0) && (users != 0)) {
 		--spich->users;
 		spin_unlock_irq(&spich->spi_lock);
 		return -EBUSY;
@@ -688,12 +693,24 @@ static unsigned int spich_poll(struct file *filp,
 {
 	struct spich_data *spich;
 	unsigned int mask = 0;
+	unsigned users;
+	unsigned uid = current_uid();
 
 	spich = filp->private_data;
 
 	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 1) {
 		poll_wait(filp, &spich->sh2ap_completion.wait, wait);
 	}
+
+	/* If this a non-root process and there is another (root) user,
+	 * then only the root user gets access to SPI traffic */
+	spin_lock_irq(&spich->spi_lock);
+	users = spich->users;
+	if ((uid != 0) && (users > 1)) {
+		spin_unlock_irq(&spich->spi_lock);
+		return 0;
+	}
+	spin_unlock_irq(&spich->spi_lock);
 
 	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 0) {
 		mask |= POLLIN | POLLRDNORM;
