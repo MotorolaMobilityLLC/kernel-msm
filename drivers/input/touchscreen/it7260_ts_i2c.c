@@ -528,6 +528,8 @@ static void chipLowPowerMode(bool low)
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
+			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+			input_sync(gl_ts->touch_dev);
 			if (allow_irq_wake) {
 				smp_wmb();
 				ret = enable_irq_wake(gl_ts->client->irq);
@@ -543,7 +545,6 @@ static void chipLowPowerMode(bool low)
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
-
 			LOGI("[%d] %s TP_DLMODE = %d.\n", __LINE__, __func__, TP_DLMODE);
 			if (!TP_DLMODE) {
 				//Touch Reset
@@ -785,7 +786,7 @@ static ssize_t sysfsVersionShow(struct device *dev, struct device_attribute *att
 	LOGI("[%d] %s current versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n", __LINE__, __func__,
 		verFw[5], verFw[6], verFw[7], verFw[8],verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
 
-	sprintf(local_fwVersion, "%x,%x,%x,%x # %x,%x,%x,%x",verFw[5], verFw[6], verFw[7], verFw[8],
+	sprintf(local_fwVersion, "%x-%x-%x-%x#%x-%x-%x-%x",verFw[5], verFw[6], verFw[7], verFw[8],
 			 verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
 
 	ret = sprintf(buf, "%s\n", local_fwVersion);
@@ -1033,6 +1034,8 @@ static void sendPalmEvt(void)
 		input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 0);
 		input_sync(gl_ts->palm_dev);
 	}
+	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+	input_sync(gl_ts->touch_dev);
 }
 
 /* contrary to the name this code does not just read data - lots of processing happens */
