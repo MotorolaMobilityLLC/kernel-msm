@@ -1483,6 +1483,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			get_monotonic_boottime(&rmi4_data->palm_debounce);
 			timespec_add_ns(&rmi4_data->palm_debounce,
 					PALM_DEBOUNCE_MSEC * NSEC_PER_MSEC);
+
+			input_report_key(rmi4_data->input_dev,
+					 rmi4_data->board->palm_detect_keycode,
+					 0);
+			input_sync(rmi4_data->input_dev);
+
 			return 0;
 		}
 
@@ -1501,11 +1507,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_report_key(rmi4_data->input_dev,
 					 rmi4_data->board->palm_detect_keycode,
 					 1);
-			input_sync(rmi4_data->input_dev);
-
-			input_report_key(rmi4_data->input_dev,
-					 rmi4_data->board->palm_detect_keycode,
-					 0);
 			input_sync(rmi4_data->input_dev);
 
 			rmi4_data->palm_detected = true;
