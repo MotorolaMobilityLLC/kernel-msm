@@ -17,6 +17,7 @@
 #include "msm8916-camera-sensor-l8150.dtsi"
 #include "dsi-panel-dijingILI9881C-720p-video.dtsi"
 #include "dsi-panel-booyiOTM1287-720p-video.dtsi"
+#include "dsi-panel-dijingOTM1287-720p-video.dtsi"
 #include "msm8916-memory.dtsi"
 
 / {
