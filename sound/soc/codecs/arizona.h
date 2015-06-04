@@ -265,6 +265,7 @@ struct arizona_fll {
 	unsigned int sync_freq;
 	int ref_src;
 	unsigned int ref_freq;
+	struct mutex lock;
 
 	char lock_name[ARIZONA_FLL_NAME_LEN];
 	char clock_ok_name[ARIZONA_FLL_NAME_LEN];
@@ -276,6 +277,9 @@ extern int arizona_set_fll_refclk(struct arizona_fll *fll, int source,
 				  unsigned int Fref, unsigned int Fout);
 extern int arizona_set_fll(struct arizona_fll *fll, int source,
 			   unsigned int Fref, unsigned int Fout);
+extern int arizona_get_fll(struct arizona_fll *fll, int *source,
+			   unsigned int *Fref, unsigned int *Fout);
+
 
 extern int arizona_init_spk(struct snd_soc_codec *codec);
 extern int arizona_init_gpio(struct snd_soc_codec *codec);
