@@ -5014,7 +5014,7 @@ static void bma2x2_report_axis_data(struct bma2x2_data *bma2x2,
 	ktime_t ts;
 	int err;
 
-	ts = ktime_get();
+	ts = ktime_get_boottime();
 	err = bma2x2_read_accel_xyz(bma2x2->bma2x2_client,
 			bma2x2->sensor_type, value);
 	if (err < 0) {
@@ -7906,7 +7906,7 @@ static int bma2x2_probe(struct i2c_client *client,
 	data->cdev.resolution = sensor_type_map[data->chip_type].resolution;
 	if (pdata->int_en)
 		data->cdev.max_delay = BMA_INT_MAX_DELAY;
-	err = sensors_classdev_register(&client->dev, &data->cdev);
+	err = sensors_classdev_register(&data->input->dev, &data->cdev);
 	if (err) {
 		dev_err(&client->dev, "create class device file failed!\n");
 		err = -EINVAL;
