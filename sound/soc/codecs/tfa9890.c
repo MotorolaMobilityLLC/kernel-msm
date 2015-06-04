@@ -1120,10 +1120,9 @@ static int tfa9890_read_spkr_imp(struct tfa9890_priv *tfa9890)
 			TFA9890_DSP_MOD_SPEAKERBOOST,
 			TFA9890_PARAM_GET_RE0, 0, ARRAY_SIZE(buf),
 			TFA9890_DSP_READ, buf);
-	if (ret == 0) {
+	if (ret == 0)
 		imp = (buf[0] << 16 | buf[1] << 8 | buf[2]);
-		imp = imp/(1 << (23 - TFA9890_SPKR_IMP_EXP));
-	} else
+	else
 		imp = 0;
 
 	return imp;
@@ -1838,6 +1837,7 @@ static ssize_t tfa9890_show_spkr_imp(struct device *dev,
 	struct tfa9890_priv *tfa9890 =
 				i2c_get_clientdata(to_i2c_client(dev));
 	u16 val;
+	int imp;
 
 	if (tfa9890->codec) {
 		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
@@ -1849,6 +1849,28 @@ static ssize_t tfa9890_show_spkr_imp(struct device *dev,
 			tfa9890->speaker_imp =
 				tfa9890_read_spkr_imp(tfa9890);
 	}
+	imp = (tfa9890->speaker_imp)/(1 << (23 - TFA9890_SPKR_IMP_EXP));
+	return scnprintf(buf, PAGE_SIZE, "%u\n", imp);
+}
+
+static ssize_t tfa9890_show_spkr_imp_raw(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct tfa9890_priv *tfa9890 =
+				i2c_get_clientdata(to_i2c_client(dev));
+	u16 val;
+
+	if (tfa9890->codec) {
+		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) &&
+				(val & TFA9890_STATUS_CLKS))
+			/* if I2S CLKS are ON read from DSP mem, otherwise print
+			 * stored value as DSP mem cannot be accessed.
+			 */
+			tfa9890->speaker_imp =
+				tfa9890_read_spkr_imp(tfa9890);
+	}
+
 	return scnprintf(buf, PAGE_SIZE, "%u\n", tfa9890->speaker_imp);
 }
 
@@ -2048,10 +2070,14 @@ static DEVICE_ATTR(spkr_imp, S_IRUGO,
 static DEVICE_ATTR(force_calib, S_IWUSR,
 		   NULL, tfa9890_force_calibration);
 
+static DEVICE_ATTR(spkr_imp_raw, S_IRUGO,
+		   tfa9890_show_spkr_imp_raw, NULL);
+
 static struct attribute *tfa9890_attributes[] = {
 	&dev_attr_spkr_imp.attr,
 	&dev_attr_force_calib.attr,
 	&dev_attr_ic_temp.attr,
+	&dev_attr_spkr_imp_raw.attr,
 	NULL
 };
 
