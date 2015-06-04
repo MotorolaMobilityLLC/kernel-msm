@@ -3033,6 +3033,21 @@ int arizona_set_fll_refclk(struct arizona_fll *fll, int source,
 }
 EXPORT_SYMBOL_GPL(arizona_set_fll_refclk);
 
+int arizona_get_fll(struct arizona_fll *fll, int *source,
+		    unsigned int *Fref, unsigned int *Fout)
+{
+	if (!fll || !source || !Fref || !Fout)
+		return -EINVAL;
+
+	mutex_lock(&fll->lock);
+	*source = fll->sync_src;
+	*Fref = fll->sync_freq;
+	*Fout = fll->fout;
+	mutex_unlock(&fll->lock);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_get_fll);
+
 int arizona_set_fll(struct arizona_fll *fll, int source,
 		    unsigned int Fref, unsigned int Fout)
 {
@@ -3054,9 +3069,11 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 			return ret;
 	}
 
+	mutex_lock(&fll->lock);
 	fll->sync_src = source;
 	fll->sync_freq = Fref;
 	fll->fout = Fout;
+	mutex_unlock(&fll->lock);
 
 	if (Fout)
 		ret = arizona_enable_fll(fll);
@@ -3078,6 +3095,7 @@ int arizona_init_fll(struct arizona *arizona, int id, int base, int lock_irq,
 	fll->base = base;
 	fll->arizona = arizona;
 	fll->sync_src = ARIZONA_FLL_SRC_NONE;
+	mutex_init(&fll->lock);
 
 	/* Configure default refclk to 32kHz if we have one */
 	regmap_read(arizona->regmap, ARIZONA_CLOCK_32K_1, &val);
