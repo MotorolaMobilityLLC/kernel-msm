@@ -142,7 +142,6 @@ static struct {
 	unsigned char small_finger_threshold;
 	unsigned char small_finger_border;
 	unsigned char negative_finger_threshold;
-
 } f12_c15_0;
 
 static struct {
@@ -382,6 +381,31 @@ static struct synaptics_rmi4_packet_reg f54_ctrl_reg_array[] = {
 	RMI4_REG(95, f54_c95),
 };
 
+struct f51_c1_type {
+	unsigned char freq_hop:1;
+	unsigned char nm_switch:1;
+	unsigned char im_reset:1;
+	unsigned char unused:5;
+} __packed;
+
+static struct {
+	union {
+		struct {
+			unsigned char dynamic_supp_xy;
+			struct f51_c1_type f51_intr_en;
+		} __packed;
+		unsigned char data[2];
+	};
+} f51_c0_0;
+
+static struct synaptics_rmi4_subpkt f51_c0[] = {
+	RMI4_SUBPKT(f51_c0_0),
+};
+
+static struct synaptics_rmi4_packet_reg f51_ctrl_reg_array[] = {
+	RMI4_REG(0, f51_c0),
+};
+
 static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 	{
 		.f_number = SYNAPTICS_RMI4_F12,
@@ -410,6 +434,13 @@ static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 		.query_offset = 0,	/* does not matter */
 		.nr_regs = ARRAY_SIZE(f54_ctrl_reg_array),
 		.regs = f54_ctrl_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F51,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f51_ctrl_reg_array),
+		.regs = f51_ctrl_reg_array,
 	},
 };
 
@@ -1505,7 +1536,7 @@ static void synaptics_dsx_patch_func(
 	struct synaptics_rmi4_func_packet_regs *regs =
 				find_function(f_number);
 
-	pr_debug("patching F%x\n", regs->f_number);
+	pr_debug("patching F%x\n", regs->f_number & 0x7f);
 	list_for_each_entry(fp, &patch->cfg_head, link) {
 		if (fp->func != f_number)
 			continue;
@@ -2952,6 +2983,9 @@ static void synaptics_rmi4_report_touch(struct synaptics_rmi4_data *rmi4_data,
 		synaptics_rmi4_f01_handler(rmi4_data, fhandler);
 		break;
 
+	case SYNAPTICS_RMI4_F51:
+		break;
+
 	case SYNAPTICS_RMI4_F11:
 		synaptics_dsx_resumeinfo_isr(rmi4_data);
 
@@ -3316,6 +3350,62 @@ static int synaptics_rmi4_f1a_alloc_mem(struct synaptics_rmi4_data *rmi4_data,
 		return -ENOMEM;
 	}
 
+	return 0;
+}
+
+static int synaptics_rmi4_f51_init(struct synaptics_rmi4_data *rmi4_data,
+		struct synaptics_rmi4_fn *fhandler,
+		struct synaptics_rmi4_fn_desc *fd,
+		unsigned int intr_count)
+{
+	int retval;
+	unsigned char ii;
+	unsigned char intr_offset;
+	struct synaptics_rmi4_func_packet_regs *regs;
+
+	regs = find_function(SYNAPTICS_RMI4_F51);
+	if (regs) {
+		unsigned char *data;
+		struct synaptics_rmi4_packet_reg *reg;
+		struct synaptics_rmi4_subpkt *subpkt;
+
+		regs->base_addr = fhandler->full_addr.ctrl_base;
+		reg = &regs->regs[0];
+		subpkt = &reg->subpkt[0];
+		pr_debug("F51: size %u\n", subpkt->size);
+		data = kzalloc(subpkt->size, GFP_KERNEL);
+		if (data) {
+			reg->offset = 0;
+			reg->size = subpkt->size;
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+		}
+	}
+
+	fhandler->fn_number = fd->fn_number;
+	fhandler->num_of_data_sources = (fd->intr_src_count  & MASK_3BIT);
+	fhandler->intr_reg_num = (intr_count + 7) / 8;
+	if (fhandler->intr_reg_num != 0)
+		fhandler->intr_reg_num -= 1;
+	/* Set an enable bit for each data source */
+	intr_offset = intr_count % 8;
+	fhandler->intr_mask = 0;
+	for (ii = intr_offset;
+			ii < ((fd->intr_src_count & MASK_3BIT) +
+			intr_offset);
+			ii++)
+		fhandler->intr_mask |= 1 << ii;
+	/* FIXME: interrupt bit 5 (belongs F54) is used for some reason */
+	fhandler->intr_mask = 0x40;
+
+	retval = synaptics_rmi4_read_packet_regs(rmi4_data, regs);
+	if (retval < 0)
+		dev_err(&rmi4_data->i2c_client->dev, "Error reading F51\n");
+	else
+		dev_info(&rmi4_data->i2c_client->dev,
+			"F51: ctrl [0]=%02x, [1]=%02x\n",
+			f51_c0_0.dynamic_supp_xy, f51_c0_0.data[1]);
 	return 0;
 }
 
@@ -3844,6 +3934,22 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 					page_number);
 
 			switch (rmi_fd.fn_number) {
+			case SYNAPTICS_RMI4_F51:
+				retval = synaptics_rmi4_alloc_fh(&fhandler,
+						&rmi_fd, page_number);
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+						"%s: Failed to alloc for F%x\n",
+						__func__, rmi_fd.fn_number);
+					return retval;
+				}
+
+				retval = synaptics_rmi4_f51_init(rmi4_data,
+						fhandler, &rmi_fd, intr_count);
+				if (retval < 0)
+					return retval;
+					break;
+
 			case SYNAPTICS_RMI4_F34:
 				retval = synaptics_rmi4_i2c_read(rmi4_data,
 						rmi_fd.query_base_addr +
@@ -3965,6 +4071,8 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 			intr_count += (rmi_fd.intr_src_count & MASK_3BIT);
 
 			if (fhandler && rmi_fd.intr_src_count) {
+				pr_debug("adding handler for F%x\n",
+						fhandler->fn_number);
 				list_add_tail(&fhandler->link,
 						&rmi->support_fn_list);
 			}
@@ -4195,29 +4303,38 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 				next_list_entry,
 				&exp_fn_ctrl.fn_list,
 				link) {
-		if ((exp_fhandler->func_init != NULL) &&
-				(exp_fhandler->inserted == false)) {
-			if (rmi4_data->in_bootloader &&
-			   (exp_fhandler->mode == IC_MODE_UI))
-				continue;
-			exp_fhandler->func_init(rmi4_data);
-			state = synaptics_dsx_get_state_safe(rmi4_data);
-			exp_fhandler->inserted = true;
-			if (exp_fhandler->fn_type == RMI_F54) {
-				int error;
-				struct synaptics_rmi4_func_packet_regs *regs =
-					find_function(SYNAPTICS_RMI4_F54);
-				error = synaptics_rmi4_scan_f54_reg_info(regs);
-				if (error) {
-					regs->nr_regs = 0;
-					pr_err("F54_Ctrl_95 scan failed\n");
-				}
+		if (exp_fhandler->func_init == NULL) {
+			if (exp_fhandler->inserted == true) {
+				exp_fhandler->func_remove(rmi4_data);
+				list_del(&exp_fhandler->link);
+				kfree(exp_fhandler);
 			}
-		} else if ((exp_fhandler->func_init == NULL) &&
-			   (exp_fhandler->inserted == true)) {
-			exp_fhandler->func_remove(rmi4_data);
-			list_del(&exp_fhandler->link);
-			kfree(exp_fhandler);
+			continue;
+		}
+
+		if (exp_fhandler->inserted == true)
+			continue;
+
+		if (rmi4_data->in_bootloader &&
+			(exp_fhandler->mode == IC_MODE_UI))
+			continue;
+
+		exp_fhandler->func_init(rmi4_data);
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+		exp_fhandler->inserted = true;
+		if (exp_fhandler->fn_type == RMI_F54) {
+			int error;
+			struct synaptics_rmi4_func_packet_regs *regs;
+
+			regs = find_function(SYNAPTICS_RMI4_F54);
+			if (!regs)
+				continue;
+
+			error = synaptics_rmi4_scan_f54_reg_info(regs);
+			if (error) {
+				regs->nr_regs = 0;
+				pr_err("F54_Ctrl_95 scan failed\n");
+			}
 		}
 	}
 
