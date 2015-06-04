@@ -269,10 +269,13 @@ static int florida_virt_dsp_power_ev(struct snd_soc_dapm_widget *w,
 				    struct snd_kcontrol *kcontrol, int event)
 {
 	struct florida_priv *florida = snd_soc_codec_get_drvdata(w->codec);
+	int source;
+	unsigned int Fref, Fout;
 
+	arizona_get_fll(&florida->fll[0], &source, &Fref, &Fout);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (!florida_check_all_dsps(florida))
+		if (!florida_check_all_dsps(florida) && Fref <= 0)
 			arizona_set_fll(&florida->fll[0],
 				ARIZONA_FLL_SRC_MCLK2,
 				32768, FLORIDA_SYSCLK_RATE);
@@ -281,7 +284,9 @@ static int florida_virt_dsp_power_ev(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		florida->dsp_enabled[w->shift] = false;
-		if (!florida_check_all_dsps(florida))
+		if (!florida_check_all_dsps(florida)
+			&& Fref == 32768
+			&& source == ARIZONA_FLL_SRC_MCLK2)
 			arizona_set_fll(&florida->fll[0],
 				ARIZONA_FLL_SRC_MCLK1,
 				0, 0);
