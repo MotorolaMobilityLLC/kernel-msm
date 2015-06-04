@@ -258,6 +258,7 @@ static void mmc3416x_poll(struct work_struct *work)
 	struct mmc3416x_vec report;
 	struct mmc3416x_data *memsic = container_of((struct delayed_work *)work,
 			struct mmc3416x_data, dwork);
+	ktime_t timestamp;
 
 	vec.x = vec.y = vec.z = 0;
 
@@ -272,9 +273,16 @@ static void mmc3416x_poll(struct work_struct *work)
 	report.y = tmp[3] * vec.x + tmp[4] * vec.y + tmp[5] * vec.z;
 	report.z = tmp[6] * vec.x + tmp[7] * vec.y + tmp[8] * vec.z;
 
+	timestamp = ktime_get_boottime();
 	input_report_abs(memsic->idev, ABS_X, report.x);
 	input_report_abs(memsic->idev, ABS_Y, report.y);
 	input_report_abs(memsic->idev, ABS_Z, report.z);
+	input_event(memsic->idev,
+			EV_SYN, SYN_TIME_SEC,
+			ktime_to_timespec(timestamp).tv_sec);
+	input_event(memsic->idev,
+		EV_SYN, SYN_TIME_NSEC,
+		ktime_to_timespec(timestamp).tv_nsec);
 	input_sync(memsic->idev);
 
 exit:
@@ -682,7 +690,7 @@ static int mmc3416x_probe(struct i2c_client *client, const struct i2c_device_id 
 	memsic->cdev = sensors_cdev;
 	memsic->cdev.sensors_enable = mmc3416x_set_enable;
 	memsic->cdev.sensors_poll_delay = mmc3416x_set_poll_delay;
-	res = sensors_classdev_register(&client->dev, &memsic->cdev);
+	res = sensors_classdev_register(&memsic->idev->dev, &memsic->cdev);
 	if (res) {
 		dev_err(&client->dev, "sensors class register failed.\n");
 		goto out_register_classdev;
