@@ -225,6 +225,10 @@
 &soc {
 	/delete-node/ fan5646;
 
+	/delete-node/ vddio_disp_vreg;
+
+	/delete-node/ lcd_vci_vreg;
+
 	sound {
 		/delete-property/ qcom,ext-spk-amp-gpio;
 	};
