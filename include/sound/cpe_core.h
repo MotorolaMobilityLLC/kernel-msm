@@ -167,7 +167,8 @@ struct wcd_cpe_lsm_ops {
 			       u32 bufsz, u32 bufcnt,
 			       bool enable);
 
-	int (*lsm_lab_stop)(void *core_handle, struct cpe_lsm_session *session);
+	int (*lsm_lab_stop)(void *core_handle, struct cpe_lsm_session *session,
+			    bool post_stop);
 
 	int (*lsm_lab_data_channel_open)(void *core_handle,
 				       struct cpe_lsm_session *session);

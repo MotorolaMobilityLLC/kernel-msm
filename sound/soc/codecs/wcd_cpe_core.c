@@ -3116,7 +3116,8 @@ int slim_master_read(void *core_handle,
 	return rc;
 }
 static int wcd_cpe_lsm_stop_lab(void *core_handle,
-				struct cpe_lsm_session *session)
+				struct cpe_lsm_session *session,
+				bool post_stop)
 {
 	struct wcd_cpe_lsm_lab *lab_s = NULL;
 	struct wcd_cpe_core *core = (struct wcd_cpe_core *)core_handle;
@@ -3128,39 +3129,47 @@ static int wcd_cpe_lsm_stop_lab(void *core_handle,
 	wcd9xxx = codec->control_data;
 	lab_s = &session->lab;
 	WCD_CPE_GRAB_LOCK(&session->lsm_lock, "lsm");
-	/* This seqeunce should be followed strictly for closing sequence */
-	if (core->cpe_cdc_cb->lab_cdc_ch_ctl)
-		core->cpe_cdc_cb->lab_cdc_ch_ctl(codec, 0);
-	else
-		pr_err("%s: Failed to disable codec slave port\n",
-			__func__);
 
-	rc = wcd9xxx_slim_ch_master_close(wcd9xxx, &lab_s->slim_handle);
-	if (rc != 0)
-		pr_err("%s: wcd9xxx_slim_pcm_close rc %d\n",
-			__func__, rc);
+	if (!post_stop) {
+		/*
+		 * This seqeunce should be followed
+		 * strictly for closing sequence
+		 */
+		if (core->cpe_cdc_cb->lab_cdc_ch_ctl)
+			core->cpe_cdc_cb->lab_cdc_ch_ctl(codec, 0);
+		else
+			pr_err("%s: Failed to disable codec slave port\n",
+				__func__);
 
-	rc = wcd_cpe_lsm_eob(core, session);
-	if (rc != 0)
-		dev_err(core->dev,
-			"%s: wcd_cpe_lsm_eob failed, rc %d\n",
-		       __func__, rc);
+		rc = wcd9xxx_slim_ch_master_close(wcd9xxx, &lab_s->slim_handle);
+		if (rc != 0)
+			pr_err("%s: wcd9xxx_slim_pcm_close rc %d\n",
+				__func__, rc);
+	} else {
 
-	rc = cpe_svc_toggle_lab(core->cpe_handle, false);
-	if (rc)
-		dev_err(core->dev,
-			"%s: LAB Voice Tx codec error, rc %d\n",
-			__func__, rc);
+		rc = wcd_cpe_lsm_eob(core, session);
+		if (rc != 0)
+			dev_err(core->dev,
+				"%s: wcd_cpe_lsm_eob failed, rc %d\n",
+				__func__, rc);
 
-	lab_s->buf_idx = 0;
-	lab_s->thread_status = MSM_LSM_LAB_THREAD_STOP;
-	atomic_set(&lab_s->in_count, 0);
-	lab_s->dma_write = 0;
-	if (core->cpe_cdc_cb->cdc_ext_clk)
-		core->cpe_cdc_cb->cdc_ext_clk(codec, false, false);
-	else
-		pr_err("%s: Failed to disable cdc ext clk\n",
-			__func__);
+		rc = cpe_svc_toggle_lab(core->cpe_handle, false);
+		if (rc)
+			dev_err(core->dev,
+				"%s: LAB Voice Tx codec error, rc %d\n",
+				__func__, rc);
+
+		lab_s->buf_idx = 0;
+		lab_s->thread_status = MSM_LSM_LAB_THREAD_STOP;
+		atomic_set(&lab_s->in_count, 0);
+		lab_s->dma_write = 0;
+		if (core->cpe_cdc_cb->cdc_ext_clk)
+			core->cpe_cdc_cb->cdc_ext_clk(codec, false, false);
+		else
+			pr_err("%s: Failed to disable cdc ext clk\n",
+				__func__);
+	}
+
 	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
 	return rc;
 }

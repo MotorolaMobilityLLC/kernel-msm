@@ -303,10 +303,10 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 		}
 
 		lab_sess->thread_status = MSM_LSM_LAB_THREAD_STOP;
-		rc = lsm_ops->lsm_lab_stop(cpe->core_handle, session);
+		rc = lsm_ops->lsm_lab_stop(cpe->core_handle, session, false);
 		if (rc)
 			dev_err(rtd->dev,
-				"%s: Lab stop failed, error = %d\n",
+				"%s: Lab channel stop failed, error = %d\n",
 				__func__, rc);
 		/*
 		 * Even though LAB stop failed,
@@ -317,6 +317,12 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 		if (rc)
 			dev_err(rtd->dev,
 				"%s: AFE out port stop failed, err = %d\n",
+				__func__, rc);
+
+		rc = lsm_ops->lsm_lab_stop(cpe->core_handle, session, true);
+		if (rc)
+			dev_err(rtd->dev,
+				"%s: Lab channel stop failed, error = %d\n",
 				__func__, rc);
 	}
 
@@ -337,8 +343,11 @@ static int msm_cpe_lab_thread(void *data)
 	struct wcd_cpe_core *core = (struct wcd_cpe_core *)lab->core_handle;
 	struct snd_pcm_substream *substream = lab->substream;
 	struct cpe_priv *cpe = cpe_get_private_data(substream);
+	struct cpe_lsm_data *lsm_d = NULL;
 	struct wcd_cpe_lsm_ops *lsm_ops;
+	struct wcd_cpe_afe_ops *afe_ops;
 	struct wcd_cpe_data_pcm_buf *cur_buf, *next_buf;
+	struct cpe_lsm_session *session = NULL;
 	int rc = 0;
 	u32 done_len = 0;
 	u32 buf_count = 1;
@@ -357,6 +366,9 @@ static int msm_cpe_lab_thread(void *data)
 	}
 
 	lsm_ops = &cpe->lsm_ops;
+	afe_ops = &cpe->afe_ops;
+	lsm_d = cpe_get_lsm_data(substream);
+	session = lsm_d->lsm_session;
 	memset(lab->pcm_buf[0].mem, 0, lab->pcm_size);
 
 	if (lsm_ops->lsm_lab_data_channel_read == NULL ||
@@ -393,6 +405,15 @@ static int msm_cpe_lab_thread(void *data)
 			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
 			goto done;
 		}
+
+		rc = afe_ops->afe_port_start(cpe->core_handle,
+					     &session->afe_out_port_cfg);
+		if (rc) {
+			pr_err("%s: AFE out port start failed, err = %d\n",
+				__func__, rc);
+			return rc;
+		}
+
 	} else {
 		pr_debug("%s: LAB stopped before starting read\n",
 			 __func__);
@@ -1268,14 +1289,6 @@ static int msm_cpe_lsm_lab_start(struct snd_pcm_substream *substream,
 		if (rc) {
 			dev_err(rtd->dev,
 				"%s: Failed afe generic config v2, err = %d\n",
-				__func__, rc);
-			return rc;
-		}
-
-		rc = afe_ops->afe_port_start(cpe->core_handle, out_port);
-		if (rc) {
-			dev_err(rtd->dev,
-				"%s: AFE out port start failed, err = %d\n",
 				__func__, rc);
 			return rc;
 		}
