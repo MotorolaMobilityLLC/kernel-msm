@@ -724,8 +724,10 @@
 	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd_vid_v0>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcd_vci-supply = <&lcd_vci_vreg>;
-	/delete-property/ vdd-supply;
-	/delete-node/ qcom,platform-supply-entry1;
+	/delete-property/ vddio-supply;
+	/delete-property/ vdda-supply;
+	/delete-node/ qcom,platform-supply-entry2;
+	/delete-node/ qcom,platform-supply-entry3;
 };
 
 &mot_tianma_qhd_vid_v0 {
