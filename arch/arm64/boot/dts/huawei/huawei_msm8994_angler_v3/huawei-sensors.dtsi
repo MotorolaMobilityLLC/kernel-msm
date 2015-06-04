@@ -40,11 +40,16 @@
 
 &spi_5 {
 	sensorhub@0 {
-		compatible = "spidev";
+		compatible = "contexthub,spich";
 		reg = <0>;
 		spi-max-frequency = <50000000>;
 		spi-cpol;
 		spi-cpha;
+
+		contexthub,ap2sh = <&msm_gpio 39 0x00>;
+		contexthub,sh2ap = <&msm_gpio 41 0x00>;
+		contexthub,nrst = <&msm_gpio 93 0x00>;
+		contexthub,boot0 = <&msm_gpio 94 0x00>;
 	};
 };
 
