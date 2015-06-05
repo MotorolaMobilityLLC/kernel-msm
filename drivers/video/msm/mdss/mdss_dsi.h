@@ -18,7 +18,6 @@
 #include <linux/mdss_io_util.h>
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/wakelock.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -366,7 +365,6 @@ struct dsi_status_data {
 	struct notifier_block fb_notifier;
 	struct delayed_work check_status;
 	struct msm_fb_data_type *mfd;
-	struct wake_lock fb_suspend_wake_lock;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,

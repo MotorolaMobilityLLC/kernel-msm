@@ -125,18 +125,9 @@ static int fb_event_callback(struct notifier_block *self,
 				msecs_to_jiffies(interval));
 			break;
 		case FB_BLANK_POWERDOWN:
-			cancel_delayed_work(&pdata->check_status);
-			break;
 		case FB_BLANK_HSYNC_SUSPEND:
 		case FB_BLANK_VSYNC_SUSPEND:
 		case FB_BLANK_NORMAL:
-			// b/20833149: this is a temporary work around.
-			// Hold a wake lock for 50ms every time the framebuffer
-			// changes to DOZE_SUSPEND mode to allow HWC has enough time
-			// to draw ambient watch face.
-			if (!wake_lock_active(&pdata->fb_suspend_wake_lock)) {
-				wake_lock_timeout(&pdata->fb_suspend_wake_lock, HZ / 20);
-			}
 			cancel_delayed_work(&pdata->check_status);
 			break;
 		default:
@@ -202,8 +193,6 @@ int __init mdss_dsi_status_init(void)
 		return -EPERM;
 	}
 
-	wake_lock_init(&pstatus_data->fb_suspend_wake_lock, WAKE_LOCK_SUSPEND, "fb_suspend_wake_lock");
-
 	pr_info("%s: DSI status check interval:%d\n", __func__,	interval);
 
 	INIT_DELAYED_WORK(&pstatus_data->check_status, check_dsi_ctrl_status);
@@ -217,9 +206,6 @@ void __exit mdss_dsi_status_exit(void)
 {
 	fb_unregister_client(&pstatus_data->fb_notifier);
 	cancel_delayed_work_sync(&pstatus_data->check_status);
-
-	wake_lock_destroy(&pstatus_data->fb_suspend_wake_lock);
-
 	kfree(pstatus_data);
 	pr_debug("%s: DSI ctrl status work queue removed\n", __func__);
 }
