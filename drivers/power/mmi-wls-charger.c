@@ -35,7 +35,7 @@
 #define MMI_WLS_CHRG_PSY_NAME "wireless"
 
 #define MMI_WLS_CHRG_TEMP_HYS_COLD 2
-#define MMI_WLS_CHRG_TEMP_HYS_HOT  5
+#define MMI_WLS_CHRG_TEMP_HYS_HOT  2
 #define MMI_WLS_CHRG_CHRG_CMPLT_SOC 100
 #define MMI_WLS_NUM_GPIOS 3
 
@@ -273,8 +273,8 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		dev_info(chip->dev, "Wireless Power Mode Indicator = %s\n",
 			chip->mode == MMI_WLS_CHRG_PMA ? "PMA" : "WPC");
 	} else if (!powered && chip->mode != MMI_WLS_CHRG_NONE) {
-		chip->state = MMI_WLS_CHRG_WAIT;
 		chip->mode = MMI_WLS_CHRG_NONE;
+		power_supply_changed(&chip->wl_psy);
 		dev_info(chip->dev, "Wireless Power Mode Indicator = %s\n",
 			 "NONE");
 	}
@@ -305,10 +305,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 			if (chip->mode == MMI_WLS_CHRG_WPC)
 				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
-		} else if (!powered) {
-			gpio_set_value(chip->charge_cmplt_n_gpio, 1);
-			gpio_set_value(chip->charge_term_gpio, 0);
-			chip->state = MMI_WLS_CHRG_WAIT;
 		} else if (batt_temp >= chip->hot_temp) {
 			gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_HOT;
@@ -319,6 +315,10 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 			if (chip->mode == MMI_WLS_CHRG_WPC)
 				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_CHRG_CMPLT;
+		}  else if (!powered) {
+			gpio_set_value(chip->charge_cmplt_n_gpio, 1);
+			gpio_set_value(chip->charge_term_gpio, 0);
+			chip->state = MMI_WLS_CHRG_WAIT;
 		}
 		break;
 	case MMI_WLS_CHRG_OUT_OF_TEMP_HOT:
@@ -391,14 +391,24 @@ static int mmi_wls_chrg_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = !gpio_get_value(chip->pad_det_n_gpio);
+		if ((chip->state == MMI_WLS_CHRG_OUT_OF_TEMP_HOT) ||
+		    (chip->state == MMI_WLS_CHRG_OUT_OF_TEMP_COLD))
+			val->intval = 0;
+		else
+			val->intval = !gpio_get_value(chip->pad_det_n_gpio);
+
 		if (chip->force_shutdown)
 			val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		if (chip->dc_psy) {
-			mmi_wls_chrg_get_psy_info(chip->dc_psy,
-				      POWER_SUPPLY_PROP_PRESENT, &powered);
+			if ((chip->state == MMI_WLS_CHRG_OUT_OF_TEMP_HOT) ||
+			    (chip->state == MMI_WLS_CHRG_OUT_OF_TEMP_COLD))
+				powered = 0;
+			else
+				mmi_wls_chrg_get_psy_info(chip->dc_psy,
+					  POWER_SUPPLY_PROP_PRESENT, &powered);
+
 			val->intval = powered;
 		} else {
 			val->intval = (!gpio_get_value(chip->pad_det_n_gpio) &&
