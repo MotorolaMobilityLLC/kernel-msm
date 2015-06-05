@@ -17,7 +17,7 @@
 		qcom,rbatt-capacitive-mohm = <0>;
 		qcom,flat-ocv-threshold-uv = <3800000>;
 		qcom,max-voltage-uv = <4350000>;
-		qcom,v-cutoff-uv = <3400000>;
+		qcom,v-cutoff-uv = <3200000>;
 		qcom,chg-term-ua = <20000>;
 		qcom,batt-id-kohm = <10>;
 		qcom,batt-name = "HB442528EBC-SCUD-4v35-300mah";

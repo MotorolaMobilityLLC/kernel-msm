@@ -117,9 +117,9 @@ module_param_named(
 
 
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-#define CUTOFF_BATTERY_LEVEL 2
+#define CUTOFF_BATTERY_LEVEL 0
 #define VOLTAGE_CONFIRM_MAX_COUNTER    4
-#define CUTOFF_VOLTAGE_UV 3400000
+#define CUTOFF_VOLTAGE_UV 3200000
 #define CUTOFF_VOLTAGE_DELTA_UV     50000
 #define OCV_VBAT_MAX_DELTA_UV       200000
 #define ZERO_SOC 0
@@ -1134,7 +1134,7 @@ static int estimate_ocv(struct qpnp_bms_chip *chip, int batt_temp)
 	return ocv_est_uv;
 }
 
-#define MIN_IAVG_MA 250
+#define MIN_IAVG_MA 60
 static void reset_for_new_battery(struct qpnp_bms_chip *chip, int batt_temp)
 {
 	chip->last_ocv_uv = chip->insertion_ocv_uv;
@@ -2707,16 +2707,18 @@ out_check_cutoff_v:
 
         chip->last_ocv_uv = find_ocv_for_pc(chip, batt_temp,find_pc_for_soc(chip, params, soc));
         fake_low_level_flag = true;
-        pr_err("adjust to cutoff level + 1\n");
+        pr_debug("adjust to cutoff level + 1\n");
     }
     else if(( hw_ocv_est_uv < chip->v_cutoff_uv + CUTOFF_VOLTAGE_DELTA_UV ) && (soc > CUTOFF_BATTERY_LEVEL))
     {
         lower_than_cutoff_v_count ++;
-        pr_err("lower_than_cutoff_v_count++\n");
+        pr_debug("lower_than_cutoff_v_count++\n");
     }
     else
     {
         lower_than_cutoff_v_count = 0;
+        fake_low_level_flag = false;
+        adjust_to_cutoff_batt_level_flag = false;
 
     }
     if(lower_than_cutoff_v_count > VOLTAGE_CONFIRM_MAX_COUNTER)
@@ -2724,13 +2726,13 @@ out_check_cutoff_v:
         soc = CUTOFF_BATTERY_LEVEL;
         chip->last_ocv_uv = find_ocv_for_pc(chip, batt_temp,find_pc_for_soc(chip, params, soc));
         adjust_to_cutoff_batt_level_flag = true;
-        printk("adjust to cutoff level \n");
+        pr_debug("adjust to cutoff level \n");
     }
 
     if((true == adjust_to_cutoff_batt_level_flag) && (soc > CUTOFF_BATTERY_LEVEL))
     {
         soc = CUTOFF_BATTERY_LEVEL;
-        printk("soc = CUTOFF_BATTERY_LEVEL; \n");
+        pr_debug("soc = CUTOFF_BATTERY_LEVEL; \n");
     }
     /* if soc is zero during discharing, give a fake soc
     * as one to avoid immediate poweroff
@@ -2934,7 +2936,7 @@ static int calculate_raw_soc(struct qpnp_bms_chip *chip,
 	return soc;
 }
 
-#define SLEEP_RECALC_INTERVAL	3
+#define SLEEP_RECALC_INTERVAL	15
 static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 					struct raw_soc_params *raw,
 					int batt_temp)
