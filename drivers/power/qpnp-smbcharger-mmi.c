@@ -3802,6 +3802,11 @@ module_param(vf_adjust_trim_steps_per_adjust, int, 0644);
 static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 				       int current_ma)
 {
+	if (!chip->usb_present) {
+		pr_smb(PR_STATUS, "NO allowed current, No USB\n");
+		return;
+	}
+
 	chip->target_fastchg_current_ma =
 		min(current_ma, chip->allowed_fastchg_current_ma);
 	pr_smb(PR_STATUS, "requested=%d: allowed=%d: result=%d\n",
@@ -7070,6 +7075,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		if (chip->usb_present) {
 			smbchg_parallel_usb_check_ok(chip);
 			chip->update_allowed_fastchg_current_ma = false;
+		} else if (chip->dc_present) {
+			smbchg_set_fastchg_current(chip,
+					      chip->target_fastchg_current_ma);
 		}
 	}
 
