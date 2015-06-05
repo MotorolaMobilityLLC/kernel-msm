@@ -12,6 +12,7 @@
  */
 
 #include "dsi-panel-jdi-fhd-video.dtsi"
+#include "dsi-panel-jd35695b-1080p-cmd.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
@@ -20,11 +21,10 @@
 };
 
 &mdss_dsi0 {
-	status = "ok";
-	qcom,dsi-pref-prim-pan = <&dsi_jdi_r69338_fhd_vid>;
+	qcom,dsi-pref-prim-pan = <&dsi_jd35695b_1080p_cmd>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_dsi_active>;
-	pinctrl-1 = <&mdss_dsi_suspend>;
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 
@@ -61,6 +61,10 @@
 			qcom,supply-post-on-sleep = <1>;
 		};
 	};
+};
+
+&mdss_dsi1{
+	status="disabled";
 };
 
 &spmi_bus {
