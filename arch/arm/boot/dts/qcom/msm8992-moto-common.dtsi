@@ -1059,8 +1059,8 @@
 			linux,name = "wled:backlight";
 			linux,default-trigger = "bkl-trigger";
 			intersil,default-on;
-			intersil,vn = <20>;
-			intersil,vp = <20>;
+			intersil,vn = <26>;
+			intersil,vp = <26>;
 			intersil,pfm-value = <0x86>;
 			intersil,dimm-threshold = <0x02>;
 			intersil,current-scale = <63>;
