@@ -38,8 +38,13 @@
 #define ISL98611_HBM_ON_BRIGHTNESS		(ISL98611_MAX_BRIGHTNESS + 2)
 #define ISL98611_HBM_OFF_BRIGHTNESS		(ISL98611_MAX_BRIGHTNESS + 1)
 #define ISL98611_DEFAULT_TRIGGER		"bkl-trigger"
-#define ISL98611_DEFAULT_VN_LEVEL		20
-#define ISL98611_DEFAULT_VP_LEVEL		20
+/* VN,VP levels are calculated as 4.5 V + N*50 mv */
+/* default is set to be 5.8 V as safe of pLC and nLC panels */
+#define ISL98611_DEFAULT_VN_LEVEL		26
+#define ISL98611_DEFAULT_VP_LEVEL		26
+/* 5.5 V is alternate voltage used if pLC panel is detected */
+#define ISL98611_PLC_VN_LEVEL			20
+#define ISL98611_PLC_VP_LEVEL			20
 #define ISL98611_DEFAULT_PFM			0x87
 #define ISL98611_8BITPWM			0x00
 #define ISL98611_10BITPWM			0x80
@@ -430,15 +435,19 @@ static int isl98611_dt_init(struct i2c_client *client,
 	dev_info(&client->dev, "I2C switch supply: %s\n",
 		(rc ? "not provided" : pdata->supply_name));
 
+	isl98611_dt_panel_info(client, pdata);
+
 	pdata->panel_tune = of_property_read_bool(np, "intersil,panel-tune");
-	if (pdata->panel_tune)
-		isl98611_dt_panel_info(client, pdata);
-	else {
+	if (!pdata->panel_tune) {
 		pdata->cur_scale = ISL98611_90p62SCALE;
 		of_property_read_u32(np, "intersil,current-scale",
 			&pdata->cur_scale);
 	}
 
+	if ((pdata->panel_version == 4) || (pdata->panel_version >= 6)) {
+		pdata->vp_level = ISL98611_PLC_VP_LEVEL;
+		pdata->vn_level = ISL98611_PLC_VN_LEVEL;
+	}
 
 	return 0;
 
