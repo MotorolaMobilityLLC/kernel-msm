@@ -3072,16 +3072,24 @@ static int smbchg_dc_get_property(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = is_dc_present(chip);
+		if ((chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) ||
+		    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD))
+			val->intval = 0;
+		else
+			val->intval = is_dc_present(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		val->intval = chip->dc_suspended == 0;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		/* return if dc is charging the battery */
-		val->intval = (smbchg_get_pwr_path(chip) == PWR_PATH_DC)
+		if ((chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) ||
+		    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD))
+			val->intval = 0;
+		else
+			val->intval = (smbchg_get_pwr_path(chip) == PWR_PATH_DC)
 				&& (get_prop_batt_status(chip)
-					== POWER_SUPPLY_STATUS_CHARGING);
+				    == POWER_SUPPLY_STATUS_CHARGING);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = chip->dc_max_current_ma * 1000;
