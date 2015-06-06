@@ -281,7 +281,6 @@ dhd_dump(dhd_pub_t *dhdp, char *buf, int buflen)
 
 	struct bcmstrbuf b;
 	struct bcmstrbuf *strbuf = &b;
-	int i;
 
 	bcm_binit(strbuf, buf, buflen);
 
@@ -316,12 +315,6 @@ dhd_dump(dhd_pub_t *dhdp, char *buf, int buflen)
 	            dhdp->rx_ctlpkts, dhdp->rx_ctlerrs, dhdp->rx_dropped);
 	bcm_bprintf(strbuf, "rx_readahead_cnt %lu tx_realloc %lu\n",
 	            dhdp->rx_readahead_cnt, dhdp->tx_realloc);
-	bcm_bprintf(strbuf, "\n");
-
-	bcm_bprintf(strbuf, "irq stats:\n");
-	for (i = 0; i < NR_CPUS; i++) {
-		bcm_bprintf(strbuf, "CPU%d[%d] ", i, dhdp->irq_cpu_count[i]);
-	}
 	bcm_bprintf(strbuf, "\n");
 
 	/* Add any prot info */
