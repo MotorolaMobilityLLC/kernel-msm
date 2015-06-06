@@ -126,6 +126,8 @@
 			compatible = "gpu-speed-config@1";
 			/* Power levels */
 			qcom,gpu-pwrlevels {
+				#address-cells = <1>;
+				#size-cells = <0>;
 
 				compatible = "qcom,gpu-pwrlevels";
 
