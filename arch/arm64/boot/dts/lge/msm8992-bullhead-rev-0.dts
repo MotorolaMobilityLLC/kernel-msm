@@ -58,6 +58,12 @@
 	status = "okay";
 };
 
+&cci {
+	lge,camera1@6c {
+		cam_vio-supply = <&pm8994_l21>;
+	};
+};
+
 &pm8994_l21 { /* VT CAM */
 	regulator-min-microvolt = <1800000>;
 	regulator-max-microvolt = <1800000>;
