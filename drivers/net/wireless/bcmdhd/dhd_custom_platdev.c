@@ -622,3 +622,5 @@ void __exit dhd_wlan_exit(void)
 {
 	/* TODO: Add memory cleanup */
 }
+
+device_initcall(dhd_wlan_init);
