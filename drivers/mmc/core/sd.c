@@ -999,6 +999,10 @@ int mmc_sd_setup_card(struct mmc_host *host, struct mmc_card *card,
 					       mmc_hostname(host));
 				}
 				break;
+			} else if (err == -ENOMEDIUM) {
+				pr_warn("%s: read switch failed on removed card\n",
+				       mmc_hostname(host));
+				break;
 			} else {
 				pr_warn("%s: read switch failed (attempt %d)\n",
 				       mmc_hostname(host), retries);
@@ -1229,7 +1233,10 @@ static void mmc_sd_detect(struct mmc_host *host)
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	while(retries) {
 		err = mmc_send_status(host->card, NULL);
-		if (err) {
+		if (err == -ENOMEDIUM) {
+			pr_warn("%s: failed to re-detect removed SD card\n",
+			       mmc_hostname(host));
+		} else if (err) {
 			retries--;
 			udelay(5);
 			continue;
@@ -1310,12 +1317,15 @@ static int mmc_sd_resume(struct mmc_host *host)
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, host->card);
-
-		if (err) {
+		if (err == -ENOMEDIUM) {
+			pr_warn("%s: failed to reinitialize removed SD card\n",
+			       mmc_hostname(host));
+		} else if (err == -EILSEQ) {
+			if (mmc_sd_throttle_back(host) == 0)
+				continue;
+		} else if (err) {
 			pr_err("%s: failed to reinitialize SD card (%d) after %lums\n",
 				mmc_hostname(host), err, delay / 1000);
-			if (err == -EILSEQ && mmc_sd_throttle_back(host) == 0)
-				continue;
 			retries--;
 			mmc_power_off(host);
 			usleep_range(delay, delay + 500);
@@ -1471,9 +1481,13 @@ int mmc_attach_sd(struct mmc_host *host)
 	 */
 	while (retries && !host->rescan_disable) {
 		err = mmc_sd_init_card(host, host->ocr, NULL);
-		if (err) {
-			if (err == -EILSEQ && mmc_sd_throttle_back(host) == 0)
+		if (err == -ENOMEDIUM) {
+			pr_warn("%s: failed to initialize removed SD card\n",
+			       mmc_hostname(host));
+		} else if (err == -EILSEQ) {
+			if (mmc_sd_throttle_back(host) == 0)
 				continue;
+		} else if (err) {
 			retries--;
 			mmc_power_off(host);
 			usleep_range(delay, delay + 500);
