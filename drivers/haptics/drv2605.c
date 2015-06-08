@@ -923,15 +923,14 @@ static int drv2605_probe(struct i2c_client* client, const struct i2c_device_id* 
 		}
 	}
 
-    /* Put hardware in standby */
-    drv2605_change_mode(pDrv2605data, WORK_IDLE, DEV_STANDBY);
-
-    Haptics_init(pDrv2605data);
-	
+	/* Put hardware in standby */
+	drv2605_change_mode(pDrv2605data, WORK_IDLE, DEV_STANDBY);
+	/* Set max VOLTAGE*/
+	drv2605_reg_write(pDrv2605data, OVERDRIVE_CLAMP_VOLTAGE_REG, 0x96);
+	Haptics_init(pDrv2605data);
 	pDRV2605data = pDrv2605data;
-    printk("drv2605 probe succeeded\n");
-
-    return 0;
+	printk("drv2605 probe succeeded\n");
+	return 0;
 
 exit_gpio_request_failed:
 	if(pDrv2605data->PlatData.GpioTrigger){
