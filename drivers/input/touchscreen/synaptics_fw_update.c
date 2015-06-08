@@ -2060,15 +2060,14 @@ static ssize_t fwu_sysfs_config_id_show(struct device *dev,
 				config_id,
 				sizeof(config_id));
 
-	config_id[0] = toupper(config_id[0]);
-	config_id[1] = toupper(config_id[1]);
-	config_id[2] = toupper(config_id[2]);
-	config_id[3] = toupper(config_id[3]);
-
-	return snprintf(buf, PAGE_SIZE, "DEVICE: %c%c%c%c IMG: %c%c%c%c\n",
-		config_id[0], config_id[1], config_id[2], config_id[3],
-		fwu->img_config_data[0], fwu->img_config_data[1],
-		fwu->img_config_data[2], fwu->img_config_data[3]);
+	return snprintf(buf, PAGE_SIZE,"DEVICE: 0x%x 0x%x 0x%x 0x%x,  "
+				"IMG: 0x%x 0x%x 0x%x 0x%x\n",
+				config_id[0], config_id[1],
+				config_id[2], config_id[3],
+				fwu->img_config_data[0],
+				fwu->img_config_data[1],
+				fwu->img_config_data[2],
+				fwu->img_config_data[3]);
 }
 
 static ssize_t fwu_sysfs_package_id_show(struct device *dev,
