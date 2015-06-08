@@ -19,6 +19,7 @@
 #include <linux/msm_mdp.h>
 #include <linux/types.h>
 #include <linux/notifier.h>
+#include <linux/wakelock.h>
 
 #include "mdss_panel.h"
 #include "mdss_mdp_splash_logo.h"
@@ -260,6 +261,8 @@ struct msm_fb_data_type {
 
 	u32 wait_for_kickoff;
 	u32 thermal_level;
+
+	struct wake_lock vsync_suspend_wake_lock;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)

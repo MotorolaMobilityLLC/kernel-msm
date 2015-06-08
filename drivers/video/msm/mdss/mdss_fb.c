@@ -796,6 +796,8 @@ static int mdss_fb_remove(struct platform_device *pdev)
 		led_classdev_unregister(&backlight_led);
 	}
 
+	wake_lock_destroy(&mfd->vsync_suspend_wake_lock);
+
 	return 0;
 }
 
@@ -1273,6 +1275,14 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = mdss_fb_blank_unblank(mfd);
 			if (ret)
 				break;
+		}
+
+		// b/20833149: this is a temporary work around.
+		// Hold a wake lock for 50ms every time the framebuffer
+		// changes to DOZE_SUSPEND mode to allow HWC has enough time
+		// to draw ambient watch face.
+		if (!wake_lock_active(&mfd->vsync_suspend_wake_lock)) {
+			wake_lock_timeout(&mfd->vsync_suspend_wake_lock, HZ / 20);
 		}
 
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
@@ -1902,6 +1912,9 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	atomic_set(&mfd->commits_pending, 0);
 	atomic_set(&mfd->ioctl_ref_cnt, 0);
 	atomic_set(&mfd->kickoff_pending, 0);
+
+	wake_lock_init(&mfd->vsync_suspend_wake_lock, WAKE_LOCK_SUSPEND,
+			"vsync_suspend_wake_lock");
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
