@@ -587,7 +587,12 @@
 	regulator-min-microvolt = <2850000>;
 	regulator-max-microvolt = <2850000>;
 	qcom,init-voltage = <2850000>;
+	qcom,init-ldo-mode = <1>;
 	regulator-always-on;
+};
+
+&pm8226_l21 {
+	qcom,init-enable = <1>;
 };
 
 &pm8226_l23 {
