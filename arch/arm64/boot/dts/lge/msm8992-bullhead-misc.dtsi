@@ -40,7 +40,7 @@
 &pmi8994_haptics {
 	status = "okay";
 	qcom,actuator-type = "lra";
-	qcom,vmax-mv = <2400>;
+	qcom,vmax-mv = <2050>;
 	qcom,ilim-ma = <400>;
 	qcom,wave-play-rate-us = <4347>;
 };
