@@ -423,6 +423,10 @@ struct smb1360_chip {
 	struct mutex			fg_access_request_lock;
 	struct otp_backup_pool		otp_backup;
 	u8				current_gain_otp_reg;
+	bool				otp_hard_jeita_config;
+	int				otp_cold_bat_decidegc;
+	int				otp_hot_bat_decidegc;
+	u8				hard_jeita_otp_reg;
 };
 
 static int chg_time[] = {
@@ -629,6 +633,32 @@ static int smb1360_masked_write(struct smb1360_chip *chip, int reg,
 out:
 	mutex_unlock(&chip->read_write_lock);
 	return rc;
+}
+
+static int smb1360_select_fg_i2c_address(struct smb1360_chip *chip)
+{
+	unsigned short addr = chip->default_i2c_addr << 0x1;
+
+	switch (chip->fg_access_type) {
+	case FG_ACCESS_CFG:
+		addr = (addr & ~FG_I2C_CFG_MASK) | FG_CFG_I2C_ADDR;
+		break;
+	case FG_ACCESS_PROFILE_A:
+		addr = (addr & ~FG_I2C_CFG_MASK) | FG_PROFILE_A_ADDR;
+		break;
+	case FG_ACCESS_PROFILE_B:
+		addr = (addr & ~FG_I2C_CFG_MASK) | FG_PROFILE_B_ADDR;
+		break;
+	default:
+		pr_err("Invalid FG access type=%d\n", chip->fg_access_type);
+		return -EINVAL;
+	}
+
+	chip->fg_i2c_addr = addr >> 0x1;
+	pr_debug("FG_access_type=%d fg_i2c_addr=%x\n", chip->fg_access_type,
+							chip->fg_i2c_addr);
+
+	return 0;
 }
 
 #define EXPONENT_MASK		0xF800
@@ -1599,6 +1629,7 @@ static int smb1360_set_jeita_comp_curr(struct smb1360_chip *chip,
 }
 
 #define TEMP_THRE_SET(x) ((x + 300) / 10)
+#define TEMP_THRE_GET(x) ((x * 10) - 300)
 static int smb1360_set_soft_jeita_threshold(struct smb1360_chip *chip,
 					int cold_threshold, int hot_threshold)
 {
@@ -1607,7 +1638,7 @@ static int smb1360_set_soft_jeita_threshold(struct smb1360_chip *chip,
 	rc = smb1360_write(chip, JEITA_SOFT_COLD_REG,
 				TEMP_THRE_SET(cold_threshold));
 	if (rc) {
-		pr_err("Couldn't set cold threshold, rc = %d\n", rc);
+		pr_err("Couldn't set soft cold threshold, rc = %d\n", rc);
 		return rc;
 	} else {
 		chip->soft_cold_thresh = cold_threshold;
@@ -1616,10 +1647,147 @@ static int smb1360_set_soft_jeita_threshold(struct smb1360_chip *chip,
 	rc = smb1360_write(chip, JEITA_SOFT_HOT_REG,
 				TEMP_THRE_SET(hot_threshold));
 	if (rc) {
-		pr_err("Couldn't set hot threshold, rc = %d\n", rc);
+		pr_err("Couldn't set soft hot threshold, rc = %d\n", rc);
 		return rc;
 	} else {
 		chip->soft_hot_thresh = hot_threshold;
+	}
+
+	return rc;
+}
+
+static int smb1360_get_soft_jeita_threshold(struct smb1360_chip *chip,
+				int *cold_threshold, int *hot_threshold)
+{
+	int rc = 0;
+	u8 value;
+
+	rc = smb1360_read(chip, JEITA_SOFT_COLD_REG, &value);
+	if (rc) {
+		pr_err("Couldn't get soft cold threshold, rc = %d\n", rc);
+		return rc;
+	}
+	*cold_threshold = TEMP_THRE_GET(value);
+
+	rc = smb1360_read(chip, JEITA_SOFT_HOT_REG, &value);
+	if (rc) {
+		pr_err("Couldn't get soft hot threshold, rc = %d\n", rc);
+		return rc;
+	}
+	*hot_threshold = TEMP_THRE_GET(value);
+
+	return rc;
+}
+
+#define OTP_HARD_COLD_REG_ADDR	0x12
+#define OTP_HARD_HOT_REG_ADDR	0x13
+static int smb1360_set_otp_hard_jeita_threshold(struct smb1360_chip *chip,
+				int cold_threshold, int hot_threshold)
+{
+	int rc = 0, i;
+	u8 reg[4] = { 0 };
+	u8 otp_reg = 0;
+	int temp_code;
+
+	if (cold_threshold > chip->cool_bat_decidegc ||
+		chip->cool_bat_decidegc >= chip->warm_bat_decidegc ||
+		chip->warm_bat_decidegc > hot_threshold) {
+		pr_err("cold:%d, cool:%d, warm:%d, hot:%d should be ordered in size\n",
+			cold_threshold, chip->cool_bat_decidegc,
+			chip->warm_bat_decidegc, hot_threshold);
+		return -EINVAL;
+	}
+	pr_debug("cold:%d, cool:%d, warm:%d, hot:%d\n",
+			cold_threshold, chip->cool_bat_decidegc,
+			chip->warm_bat_decidegc, hot_threshold);
+	if (!chip->hard_jeita_otp_reg) {
+		otp_reg = smb1360_alloc_otp_backup_register(chip,
+				ARRAY_SIZE(reg), OTP_BACKUP_FG_USE);
+		if (otp_reg <= 0) {
+			pr_err("OTP reg allocation failed for hard JEITA\n");
+			return otp_reg;
+		}
+
+		chip->hard_jeita_otp_reg = otp_reg;
+	} else {
+		otp_reg = chip->hard_jeita_otp_reg;
+	}
+	pr_debug("hard_jeita_otp_reg = 0x%x\n", chip->hard_jeita_otp_reg);
+
+	reg[0] = (u8)OTP_HARD_HOT_REG_ADDR;
+	temp_code = TEMP_THRE_SET(hot_threshold);
+	if (temp_code < 0) {
+		pr_err("hard hot temp encode failed\n");
+		return temp_code;
+	}
+	reg[1] = (u8)temp_code;
+	reg[2] = (u8)OTP_HARD_COLD_REG_ADDR;
+	temp_code = TEMP_THRE_SET(cold_threshold);
+	if (temp_code < 0) {
+		pr_err("hard cold temp encode failed\n");
+		return temp_code;
+	}
+	reg[3] = (u8)temp_code;
+
+	rc = smb1360_enable_fg_access(chip);
+	if (rc) {
+		pr_err("Couldn't request FG access rc = %d\n", rc);
+		return rc;
+	}
+	chip->fg_access_type = FG_ACCESS_CFG;
+
+	rc = smb1360_select_fg_i2c_address(chip);
+	if (rc) {
+		pr_err("Unable to set FG access I2C address\n");
+		goto restore_fg;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(reg); i++) {
+		rc = smb1360_fg_write(chip, (otp_reg + i), reg[i]);
+		if (rc) {
+			pr_err("Write FG address 0x%x: 0x%x failed, rc = %d\n",
+					otp_reg + i, reg[i], rc);
+			goto restore_fg;
+		}
+		pr_debug("Write FG addr=0x%x, value=0x%x\n",
+					otp_reg + i, reg[i]);
+	}
+	rc = smb1360_otp_backup_alg_update(chip);
+	if (rc) {
+		pr_err("Update OTP backup algorithm failed\n");
+		goto restore_fg;
+	}
+
+	rc = smb1360_masked_write(chip, CFG_FG_BATT_CTRL_REG,
+			CFG_FG_OTP_BACK_UP_ENABLE, CFG_FG_OTP_BACK_UP_ENABLE);
+	if (rc) {
+		pr_err("Write reg 0x0E failed, rc = %d\n", rc);
+		goto restore_fg;
+	}
+
+restore_fg:
+	rc = smb1360_disable_fg_access(chip);
+	if (rc) {
+		pr_err("Couldn't disable FG access rc = %d\n", rc);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int smb1360_hard_jeita_otp_init(struct smb1360_chip *chip)
+{
+	int rc = 0;
+
+	if (!chip->otp_hard_jeita_config)
+		return rc;
+
+	rc = smb1360_set_otp_hard_jeita_threshold(chip,
+		chip->otp_cold_bat_decidegc, chip->otp_hot_bat_decidegc);
+	if (rc) {
+		dev_err(chip->dev,
+			"Couldn't set OTP hard jeita threshold,rc = %d\n", rc);
+		return rc;
 	}
 
 	return rc;
@@ -2134,32 +2302,6 @@ static int batt_id_complete_handler(struct smb1360_chip *chip, u8 rt_stat)
 {
 	pr_debug("batt_id = %x\n", (rt_stat & BATT_ID_RESULT_BIT)
 						>> BATT_ID_SHIFT);
-
-	return 0;
-}
-
-static int smb1360_select_fg_i2c_address(struct smb1360_chip *chip)
-{
-	unsigned short addr = chip->default_i2c_addr << 0x1;
-
-	switch (chip->fg_access_type) {
-	case FG_ACCESS_CFG:
-		addr = (addr & ~FG_I2C_CFG_MASK) | FG_CFG_I2C_ADDR;
-		break;
-	case FG_ACCESS_PROFILE_A:
-		addr = (addr & ~FG_I2C_CFG_MASK) | FG_PROFILE_A_ADDR;
-		break;
-	case FG_ACCESS_PROFILE_B:
-		addr = (addr & ~FG_I2C_CFG_MASK) | FG_PROFILE_B_ADDR;
-		break;
-	default:
-		pr_err("Invalid FG access type=%d\n", chip->fg_access_type);
-		return -EINVAL;
-	}
-
-	chip->fg_i2c_addr = addr >> 0x1;
-	pr_debug("FG_access_type=%d fg_i2c_addr=%x\n", chip->fg_access_type,
-							chip->fg_i2c_addr);
 
 	return 0;
 }
@@ -4093,6 +4235,14 @@ static int smb1360_delayed_hw_init(struct smb1360_chip *chip)
 
 	pr_debug("delayed hw init start!\n");
 
+	if (chip->otp_hard_jeita_config) {
+		rc = smb1360_hard_jeita_otp_init(chip);
+		if (rc) {
+			pr_err("Unable to change the OTP hard jeita, rc=%d\n",
+				rc);
+			return rc;
+		}
+	}
 	rc = smb1360_check_batt_profile(chip);
 	if (rc) {
 		pr_err("Unable to modify battery profile, rc=%d\n", rc);
@@ -4261,6 +4411,29 @@ static int smb1360_parse_jeita_params(struct smb1360_chip *chip)
 		pr_debug("config_hard_thresholds = %d, cold_bat_decidegc = %d, hot_bat_decidegc = %d\n",
 			chip->config_hard_thresholds, chip->cold_bat_decidegc,
 			chip->hot_bat_decidegc);
+	} else if (of_property_read_bool(node, "qcom,otp-hard-jeita-config")) {
+		rc = of_property_read_u32(node, "qcom,otp-cold-bat-decidegc",
+					&chip->otp_cold_bat_decidegc);
+		if (rc) {
+			pr_err("otp-cold-bat-decidegc property error, rc = %d\n",
+								rc);
+			return -EINVAL;
+		}
+
+		rc = of_property_read_u32(node, "qcom,otp-hot-bat-decidegc",
+					&chip->otp_hot_bat_decidegc);
+
+		if (rc) {
+			pr_err("otp-hot-bat-decidegc property error, rc = %d\n",
+								rc);
+			return -EINVAL;
+		}
+
+		chip->otp_hard_jeita_config = true;
+		pr_debug("otp_hard_jeita_config = %d, otp_cold_bat_decidegc = %d, otp_hot_bat_decidegc = %d\n",
+					chip->otp_hard_jeita_config,
+					chip->otp_cold_bat_decidegc,
+					chip->otp_hot_bat_decidegc);
 	}
 
 	if (of_property_read_bool(node, "qcom,soft-jeita-supported")) {
@@ -4309,6 +4482,20 @@ static int smb1360_parse_jeita_params(struct smb1360_chip *chip)
 		}
 
 		chip->soft_jeita_supported = true;
+	} else {
+		/*
+		 * If no soft JEITA configuration required from devicetree,
+		 * read the default soft JEITA setting for hard JEITA
+		 * configuration sanity check.
+		 */
+		rc = smb1360_get_soft_jeita_threshold(chip,
+				&chip->cool_bat_decidegc,
+				&chip->warm_bat_decidegc);
+		if (rc) {
+			pr_err("get default soft JEITA threshold failed, rc=%d\n",
+							rc);
+			return rc;
+		}
 	}
 
 	pr_debug("soft-jeita-enabled = %d, warm-bat-decidegc = %d, cool-bat-decidegc = %d, cool-bat-mv = %d, warm-bat-mv = %d, cool-bat-ma = %d, warm-bat-ma = %d\n",
