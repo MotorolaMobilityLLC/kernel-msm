@@ -22,6 +22,10 @@
 };
 
 &soc {
+	qcom,qseecom@5100000 {
+		reg = <0x5100000 0x1900000>;
+	};
+
 	spi_fpc: spi_fpc@f9966000{
 		status = "ok";
 		compatible = "qcom,spi-qup-v2";
@@ -117,6 +121,10 @@
 		pinctrl-2 = <&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
 		pinctrl-3 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
 	};
+};
+
+&removed_regions {
+	reg = <0 0x05000000 0 0x2200000>;
 };
 
 &modem_mem {
