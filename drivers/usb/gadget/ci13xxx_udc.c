@@ -2464,8 +2464,14 @@ __acquires(udc->lock)
 	}
 
 	/*stop charging upon reset */
-	if (udc->transceiver)
-		usb_phy_set_power(udc->transceiver, 100);
+	if (udc->transceiver){
+		/*
+		 *when usb report only adb port and pc can not install adb driver,
+		 *usb supply 100ma can not triger 8026 pmic chip into charging mode.
+		 *so change usb supply from 100ma to 150ma
+		 */
+		usb_phy_set_power(udc->transceiver, 150);
+	}
 
 	retval = _gadget_stop_activity(&udc->gadget);
 	if (retval)
