@@ -24,6 +24,7 @@
 
 &pmi8994_charger {
 	qcom,float-voltage-mv = <4400>;
+	qcom,fastchg-current-ma = <3200>;
 };
 &i2c_5 {
 	smb1351-charger@1d {
