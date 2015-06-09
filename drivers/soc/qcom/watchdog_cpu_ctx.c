@@ -27,6 +27,7 @@
 #include <asm/cputype.h>
 #include <soc/qcom/memory_dump.h>
 #include <soc/qcom/bootinfo.h>
+#include <soc/qcom/socinfo.h>
 #include "watchdog_cpu_ctx.h"
 
 #define DUMP_MAGIC_NUMBER	0x42445953
@@ -793,6 +794,16 @@ static void msm_wdt_unwind(struct task_struct *p,
 
 #endif
 
+static inline int convert_dump_cpu(int cpu)
+{
+	int dump_cpu;
+	if (cpu_is_msm8939())
+		dump_cpu = (cpu + 4) % 8;
+	else
+		dump_cpu = cpu;
+	return dump_cpu;
+}
+
 static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 				phys_addr_t paddr, size_t ctx_size)
 {
@@ -804,13 +815,15 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 	cpumask_t cpus, cpus_nodump, cpus_regs, cpus_dd;
 	unsigned long stack_tmp = 0;
 	int cpu;
+	int dump_cpu;
 
 	cpumask_clear(&cpus);
 	for_each_cpu(cpu, cpu_present_mask) {
 		ctxi = &ctx[cpu];
 		cpu_data = &ctxi->cpu_data;
+		dump_cpu = convert_dump_cpu(cpu);
 		if (msm_wdog_ctx_header_check(ctxi)) {
-			MSMWDTD_IFWDOG("CPU%d: ctx header invalid\n", cpu);
+			MSMWDTD_IFWDOG("CPU%d: ctx header invalid\n", dump_cpu);
 			continue;
 		}
 
@@ -821,15 +834,16 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 				(info->size != WDOG_CPUCTX_SIZE_PERCPU) ||
 				(info->ret != ERR_NONE)) {
 			MSMWDTD_IFWDOG("CPU%d: sig %x rev %x/%x sz %x ret %x\n",
-					cpu, info->sig, (unsigned)info->rev,
+					dump_cpu, info->sig, (unsigned)info->rev,
 					info->rev2, info->size, info->ret);
 			continue;
 		}
 
 		this_paddr = paddr + (cpu * sizeof(*ctxi));
+
 		if ((cpu_data->addr != this_paddr) ||
 				(cpu_data->len != sizeof(*ctxi))) {
-			MSMWDTD_IFWDOG("CPU%d: addr %llx len %llx ", cpu,
+			MSMWDTD_IFWDOG("CPU%d: addr %llx len %llx ", dump_cpu,
 					cpu_data->addr, cpu_data->len);
 			MSMWDTD_IFWDOG("expect %pa %zx\n", &this_paddr,
 					sizeof(*ctxi));
@@ -851,25 +865,27 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 		cpu_data = &ctxi->cpu_data;
 		stat = &ctxi->stat;
 
+		dump_cpu = convert_dump_cpu(cpu);
+
 		if (!cpu_data->magic && !cpu_data->version &&
 				!ctxi->sysdbg.data.status[0]) {
-			MSMWDTD_IFWDOG("CPU%d: No Dump!\n", cpu);
+			MSMWDTD_IFWDOG("CPU%d: No Dump!\n", dump_cpu);
 			cpumask_set_cpu(cpu, &cpus_nodump);
 			continue;
 		}
 		if (cpu_data->magic != DUMP_MAGIC_NUMBER) {
 			MSMWDTD_IFWDOG("CPU%d: dump magic mismatch %x/%x\n",
-				cpu, cpu_data->magic, DUMP_MAGIC_NUMBER);
+				dump_cpu, cpu_data->magic, DUMP_MAGIC_NUMBER);
 			continue;
 		}
 		if (msm_wdog_cpu_regs_version_unknown(cpu_data->version)) {
 			MSMWDTD_IFWDOG("CPU%d: unknown version %d\n",
-				cpu, cpu_data->version);
+				dump_cpu, cpu_data->version);
 			continue;
 		}
 		cpumask_set_cpu(cpu, &cpus_regs);
 		status = &ctxi->sysdbg.data.status[0];
-		MSMWDTD("CPU%d: %x %x ", cpu, status[0], status[1]);
+		MSMWDTD("CPU%d: %x %x ", dump_cpu, status[0], status[1]);
 		msm_wdog_show_sc_status(status[1]);
 		if (stat->ret == ERR_NONE)
 			cpumask_set_cpu(cpu, &cpus_dd);
@@ -887,7 +903,9 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 
 		ctxi = &ctx[cpu];
 		stat = &ctxi->stat;
-		MSMWDTD("CPU%d: ret %x", cpu, stat->ret);
+		dump_cpu = convert_dump_cpu(cpu);
+
+		MSMWDTD("CPU%d: ret %x", dump_cpu, stat->ret);
 		if (stat->stack_va) {
 			MSMWDTD(" stack %lx ", (unsigned long)stat->stack_va);
 			job = &stat->jobs[LNX_STACK];
@@ -903,7 +921,9 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 	}
 	for_each_cpu_mask(cpu, cpus_regs) {
 		ctxi = &ctx[cpu];
-		MSMWDTD("\nCPU%d\n", cpu);
+		dump_cpu = convert_dump_cpu(cpu);
+
+		MSMWDTD("\nCPU%d\n", dump_cpu);
 		msm_wdt_show_regs(&ctxi->sysdbg.data);
 	}
 	for_each_cpu_mask(cpu, cpus_dd) {
@@ -925,7 +945,9 @@ static void msm_wdog_ctx_print(struct msm_wdog_cpuctx *ctx,
 			data = (unsigned long)ctxi->stack;
 		}
 
-		MSMWDTD("\nCPU%d\n", cpu);
+		dump_cpu = convert_dump_cpu(cpu);
+
+		MSMWDTD("\nCPU%d\n", dump_cpu);
 		msm_wdt_show_task(&ctxi->task,
 					(struct thread_info *)ctxi->stack);
 		msm_wdt_unwind(&ctxi->task, &ctxi->sysdbg.data,
