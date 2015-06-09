@@ -858,6 +858,21 @@ static void fusb301_set_audio_acc_mode(struct fusb301_chip *chip)
 	}
 }
 
+static bool fusb301_is_vbus_ok(struct fusb301_chip *chip)
+{
+	struct device *cdev = &chip->client->dev;
+	int rc;
+
+	rc = i2c_smbus_read_byte_data(chip->client,
+				FUSB301_REG_STATUS);
+	if (rc < 0) {
+		dev_err(cdev, "%s: failed to read status\n", __func__);
+		return false;
+	}
+
+	return !!(rc & FUSB301_VBUS_OK);
+}
+
 #define MAX_TRY_COUNT 10
 static void fusb301_attach(struct fusb301_chip *chip)
 {
@@ -879,19 +894,16 @@ static void fusb301_attach(struct fusb301_chip *chip)
 	dev_info(cdev, "sts[0x%02x], type[0x%02x]\n", status, type);
 	if (chip->dev_id == FUSB301_REV10) {
 		/* workaround BC Level detection on Rev1.0 */
-		if (!(status & FUSB301_BCLVL_MASK) &&
-			(type & FUSB301_DET_SRC) &&
-			(try_attcnt < MAX_TRY_COUNT)) {
-			u8 rc;
-			rc = i2c_smbus_write_byte_data(chip->client,
-					FUSB301_REG_MANUAL,
-					FUSB301_ERR_REC);
-			if (IS_ERR_VALUE(rc)) {
-				dev_err(cdev, "%s: failed to write manual\n",
-						__func__);
-			}
+		if ((type & FUSB301_DET_SRC || type == FUSB301_NO_TYPE) &&
+				!(status & FUSB301_BCLVL_MASK) &&
+				(try_attcnt < MAX_TRY_COUNT)) {
+			i2c_smbus_write_byte_data(chip->client,
+						FUSB301_REG_MANUAL,
+						FUSB301_ERR_REC);
 			msleep(100);
 			try_attcnt++;
+			if (!fusb301_is_vbus_ok(chip))
+				try_attcnt = 0;
 			return;
 		}
 		try_attcnt = 0;
