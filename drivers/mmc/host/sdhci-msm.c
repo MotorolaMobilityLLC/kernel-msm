@@ -213,8 +213,6 @@ enum sdc_mpm_pin_state {
 /* Timeout value to avoid infinite waiting for pwr_irq */
 #define MSM_PWR_IRQ_TIMEOUT_MS 5000
 
-void sdhci_msm_dump_pwr_regs(struct sdhci_host *host);
-
 static const u32 tuning_block_64[] = {
 	0x00FF0FFF, 0xCCC3CCFF, 0xFFCC3CC3, 0xEFFEFFFE,
 	0xDDFFDFFF, 0xFBFFFBFF, 0xFF7FFFBF, 0xEFBDF777,
@@ -250,8 +248,6 @@ int __init setup_sdhci_msm_drv_types(char *s)
 }
 __setup("msmsdcc_drvtypes=", setup_sdhci_msm_drv_types);
 #endif
-
-static int sdhci_msm_enable_controller_clock(struct sdhci_host *host);
 
 /* This structure keeps information per regulator */
 struct sdhci_msm_reg_data {
@@ -2373,13 +2369,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 	int pwr_state = 0, io_level = 0;
 	unsigned long flags;
 
-	if (!IS_ERR(msm_host->pclk)) {
-		ret = clk_prepare_enable(msm_host->pclk);
-		if (ret)
-			pr_err("%s: %s: failed to enable the pclk with error %d\n",
-			       mmc_hostname(host->mmc), __func__, ret);
-	}
-
 	irq_status = readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS);
 	pr_debug("%s: Received IRQ(%d), status=0x%x\n",
 		mmc_hostname(msm_host->mmc), irq, irq_status);
@@ -2393,23 +2382,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 	 * completed before its next update to registers within hc_mem.
 	 */
 	mb();
-	if (irq_status &
-		readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS)) {
-		pr_err("%s: power ctrl status not cleared for event %x\n",
-				mmc_hostname(msm_host->mmc), irq_status);
-		sdhci_msm_dump_pwr_regs(host);
-		sdhci_dumpregs(host);
-		BUG_ON(1);
-	}
-	if ((irq_status & msm_host->curr_pwr_state) ||
-			(irq_status & msm_host->curr_io_level)) {
-		pr_err("spurious IRQ 0x%x pwr_ctrl_reg 0x%x\n", irq_status,
-			readl_relaxed(msm_host->core_mem + CORE_PWRCTL_CTL));
-		sdhci_msm_dump_pwr_regs(host);
-		sdhci_dumpregs(host);
-		BUG_ON(1);
-		goto out;
-	}
 
 	/* Handle BUS ON/OFF*/
 	if (irq_status & CORE_PWRCTL_BUS_ON) {
@@ -2473,14 +2445,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 	 * completed before its next update to registers within hc_mem.
 	 */
 	mb();
-	if (irq_status &
-		readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS)) {
-		pr_err("%s: power ctrl status got set again after ACK %x\n",
-				mmc_hostname(msm_host->mmc), irq_status);
-		sdhci_msm_dump_pwr_regs(host);
-		sdhci_dumpregs(host);
-		BUG_ON(1);
-	}
 
 	if (io_level & REQ_IO_HIGH)
 		writel_relaxed((readl_relaxed(host->ioaddr + CORE_VENDOR_SPEC) &
@@ -2491,14 +2455,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 				CORE_IO_PAD_PWR_SWITCH),
 				host->ioaddr + CORE_VENDOR_SPEC);
 	mb();
-	if (irq_status &
-		readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS)) {
-		pr_err("%s: power ctrl status at end of IRQ handler %x\n",
-				mmc_hostname(msm_host->mmc), irq_status);
-		sdhci_msm_dump_pwr_regs(host);
-		sdhci_dumpregs(host);
-		BUG_ON(1);
-	}
 
 	pr_debug("%s: Handled IRQ(%d), ret=%d, ack=0x%x\n",
 		mmc_hostname(msm_host->mmc), irq, ret, irq_ack);
@@ -2509,10 +2465,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 		msm_host->curr_io_level = io_level;
 	complete(&msm_host->pwr_irq_completion);
 	spin_unlock_irqrestore(&host->lock, flags);
-
-out:
-	if (!IS_ERR(msm_host->pclk))
-		clk_disable_unprepare(msm_host->pclk);
 
 	return IRQ_HANDLED;
 }
@@ -3214,21 +3166,6 @@ static void sdhci_msm_disable_data_xfer(struct sdhci_host *host)
 
 #define MAX_TEST_BUS 20
 
-void sdhci_msm_dump_pwr_regs(struct sdhci_host *host)
-{
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_msm_host *msm_host = pltfm_host->priv;
-
-	pr_info("----------PWR REGS(%s)---------\n", mmc_hostname(host->mmc));
-	pr_info("%s: PWRCTL_STATUS: 0x%08x | PWRCTL_MASK: 0x%08x | PWRCTL_CTL: 0x%08x\n",
-			mmc_hostname(host->mmc),
-			readl_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS),
-			readl_relaxed(msm_host->core_mem + CORE_PWRCTL_MASK),
-			readl_relaxed(msm_host->core_mem + CORE_PWRCTL_CTL));
-	pr_info("%s: SDHCI_HOST_CONTROL: 0x%08x\n", mmc_hostname(host->mmc),
-		sdhci_readl(host, SDHCI_HOST_CONTROL));
-}
-
 void sdhci_msm_dump_vendor_regs(struct sdhci_host *host)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -3280,25 +3217,6 @@ void sdhci_msm_dump_vendor_regs(struct sdhci_host *host)
 	/* Disable test bus */
 	writel_relaxed(~CORE_TESTBUS_ENA, msm_host->core_mem +
 			CORE_TESTBUS_CONFIG);
-	pr_info("-------- MCI Registers -------- \n");
-
-	for (i = 0; i < 0x1C0; i += 16) {
-		pr_info("0x%08X: 0x%08X 0x%08X 0x%08X 0x%08X\n", i,
-			readl_relaxed(msm_host->core_mem + i),
-			readl_relaxed(msm_host->core_mem + i + 4),
-			readl_relaxed(msm_host->core_mem + i + 8),
-			readl_relaxed(msm_host->core_mem + i + 12));
-	}
-
-	pr_info("-------- HC Registers -------- \n");
-
-	for (i = 0; i < 0x1C0; i += 16) {
-		pr_info("0x%08X: 0x%08X 0x%08X 0x%08X 0x%08X\n", i,
-			readl_relaxed(host->ioaddr + i),
-			readl_relaxed(host->ioaddr + i + 4),
-			readl_relaxed(host->ioaddr + i + 8),
-			readl_relaxed(host->ioaddr + i + 12));
-	}
 }
 
 #if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)

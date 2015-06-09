@@ -106,7 +106,7 @@ static void sdhci_dump_state(struct sdhci_host *host)
 	sdhci_dump_rpm_info(host);
 }
 
-void sdhci_dumpregs(struct sdhci_host *host)
+static void sdhci_dumpregs(struct sdhci_host *host)
 {
 	pr_info(DRIVER_NAME ": =========== REGISTER DUMP (%s)===========\n",
 		mmc_hostname(host->mmc));
@@ -170,7 +170,6 @@ void sdhci_dumpregs(struct sdhci_host *host)
 	sdhci_dump_state(host);
 	pr_info(DRIVER_NAME ": ===========================================\n");
 }
-EXPORT_SYMBOL(sdhci_dumpregs);
 
 static ssize_t
 show_sdhci_pm_qos_tracer(struct device *dev, struct device_attribute *attr,
