@@ -2792,6 +2792,7 @@ static void toggle_usbin_aicl(struct smb135x_chg *chip)
 #define INPUT_CURR_CHECK_THRES 0x0C /*  1100 mA */
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
+#define HYST_STEP_MV 50
 static void heartbeat_work(struct work_struct *work)
 {
 	u8 reg;
@@ -2910,7 +2911,8 @@ static void heartbeat_work(struct work_struct *work)
 						chip->stepchg_max_current_ma;
 			}
 		} else if ((chip->stepchg_state == STEP_MAX) && (batt_ma > 0)) {
-			if (batt_ma <= chip->stepchg_taper_ma) {
+			if ((batt_ma <= chip->stepchg_taper_ma) &&
+		       ((batt_mv + HYST_STEP_MV) >= chip->stepchg_voltage_mv)) {
 				chip->stepchg_state = STEP_ONE;
 				chip->vfloat_mv = chip->stepchg_max_voltage_mv;
 				chip->batt_current_ma = chip->stepchg_taper_ma;
