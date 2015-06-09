@@ -3831,7 +3831,9 @@ static int qseecom_release(struct inode *inode, struct file *file)
 			ret = qseecom_unregister_listener(data);
 			break;
 		case QSEECOM_CLIENT_APP:
+			mutex_lock(&app_access_lock);
 			ret = qseecom_unload_app(data);
+			mutex_unlock(&app_access_lock);
 			break;
 		case QSEECOM_SECURE_SERVICE:
 		case QSEECOM_GENERIC:
