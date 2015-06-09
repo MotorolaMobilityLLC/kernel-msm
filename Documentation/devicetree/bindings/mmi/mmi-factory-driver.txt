@@ -21,6 +21,9 @@ Required properties:
 - gpio-names: matching label to apply to the above GPIO list. It must contain
     same number of entries as the gpio array.
 
+- active-low: list of flags for each GPIO configuring it as active low.  It
+    must contain same number of entries as the gpio array.
+
 Example:
 
 factory_support {
