@@ -89,7 +89,6 @@ static inline void sdhci_be32bs_writeb(struct sdhci_host *host, u8 val, int reg)
 #endif /* CONFIG_MMC_SDHCI_BIG_ENDIAN_32BIT_BYTE_SWAPPER */
 
 extern void sdhci_get_of_property(struct platform_device *pdev);
-extern void sdhci_dumpregs(struct sdhci_host *host);
 
 extern struct sdhci_host *sdhci_pltfm_init(struct platform_device *pdev,
 					  const struct sdhci_pltfm_data *pdata);
