@@ -1379,11 +1379,12 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 #define RX_STREAM_3 152
 
 static u32 rx_porth1[2], rx_porth2[1], rx_porth3[2], rx_porth1m[1];
-static u32 tx_porth1[2], tx_porth2[1], tx_porth3[1], tx_porth1s[2];
+static u32 tx_porth1[4], tx_porth2[1], tx_porth3[1];
 static u16 rx_handles1[] = { RX_STREAM_1, RX_STREAM_1 + 1 };
 static u16 rx_handles2[] = { RX_STREAM_2 };
 static u16 rx_handles3[] = { RX_STREAM_3, RX_STREAM_3 + 1 };
-static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1 };
+static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1,
+			     TX_STREAM_1 + 2, TX_STREAM_1 + 3 };
 static u16 tx_handles2[] = { TX_STREAM_2 };
 static u16 tx_handles3[] = { TX_STREAM_3 };
 static u16 rx_group1, rx_group2, rx_group3;
@@ -1410,14 +1411,6 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		handles = tx_handles1;
 		group = &tx_group1;
 		chcnt = ARRAY_SIZE(tx_porth1);
-		break;
-	case ARIZONA_SLIMTX3_ENA_SHIFT:
-		dev_dbg(codec->dev, "TX1S\n");
-		mutex_lock(&slim_tx_lock);
-		porth = tx_porth1s;
-		handles = tx_handles1;
-		group = &tx_group1;
-		chcnt = ARRAY_SIZE(tx_porth1s);
 		break;
 	case ARIZONA_SLIMTX5_ENA_SHIFT:
 		dev_dbg(codec->dev, "TX2\n");
@@ -1640,11 +1633,6 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 				   &tx_porth1[i], SLIM_SRC);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(tx_porth1s); i++) {
-		slim_get_slaveport(laddr, i + 10,
-				   &tx_porth1s[i], SLIM_SRC);
-	}
-
 	for (i = 0; i < ARRAY_SIZE(tx_porth2); i++) {
 		slim_get_slaveport(laddr, i + 12,
 				   &tx_porth2[i], SLIM_SRC);
@@ -1722,9 +1710,11 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 		*rx_num = 2;
 		rx_slot[0] = RX_STREAM_1;
 		rx_slot[1] = RX_STREAM_1 + 1;
-		*tx_num = 2;
+		*tx_num = 4;
 		tx_slot[0] = TX_STREAM_1;
 		tx_slot[1] = TX_STREAM_1 + 1;
+		tx_slot[2] = TX_STREAM_1 + 2;
+		tx_slot[3] = TX_STREAM_1 + 3;
 		break;
 	case ARIZONA_SLIM2:
 		*rx_num = 1;
