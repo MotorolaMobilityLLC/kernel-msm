@@ -658,6 +658,7 @@ static struct attribute *default_attrs[] = {
 	NULL
 };
 
+static struct kset *cpufreq_kset;
 struct kobject *cpufreq_global_kobject;
 EXPORT_SYMBOL(cpufreq_global_kobject);
 
@@ -770,6 +771,7 @@ static int cpufreq_add_dev_interface(struct cpufreq_policy *policy,
 	int ret = 0;
 
 	/* prepare interface data */
+	policy->kobj.kset = cpufreq_kset;
 	ret = kobject_init_and_add(&policy->kobj, &ktype_cpufreq,
 				   &dev->kobj, "cpufreq");
 	if (ret)
@@ -2252,8 +2254,9 @@ static int __init cpufreq_core_init(void)
 	if (cpufreq_disabled())
 		return -ENODEV;
 
-	cpufreq_global_kobject = kobject_create_and_add("cpufreq", &cpu_subsys.dev_root->kobj);
-	BUG_ON(!cpufreq_global_kobject);
+	cpufreq_kset = kset_create_and_add("cpufreq", NULL, &cpu_subsys.dev_root->kobj);
+	BUG_ON(!cpufreq_kset);
+	cpufreq_global_kobject = &cpufreq_kset->kobj;
 	register_syscore_ops(&cpufreq_syscore_ops);
 
 	return 0;
