@@ -37,6 +37,7 @@
 #include <linux/of_batterydata.h>
 #include <linux/msm_bcl.h>
 #include <linux/ktime.h>
+#include <linux/usb/typec.h>
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -902,7 +903,10 @@ static int get_prop_batt_voltage_max_design(struct smbchg_chip *chip)
 
 static int get_prop_batt_health(struct smbchg_chip *chip)
 {
-	if (chip->batt_hot)
+	/* temporarily mask these code for 3A charging, as the heat */
+	/* is a little serious when 3A charging so far, need improve later*/
+	/* we will recover these code after heat loss is improved*/
+	/*if (chip->batt_hot)
 		return POWER_SUPPLY_HEALTH_OVERHEAT;
 	else if (chip->batt_cold)
 		return POWER_SUPPLY_HEALTH_COLD;
@@ -910,8 +914,8 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_WARM;
 	else if (chip->batt_cool)
 		return POWER_SUPPLY_HEALTH_COOL;
-	else
-		return POWER_SUPPLY_HEALTH_GOOD;
+	else*/
+	return POWER_SUPPLY_HEALTH_GOOD;
 }
 
 /* add for healthd, as healthd do not have warm/cool */
@@ -1387,22 +1391,13 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 	}
 	if (current_ma < CURRENT_150_MA) {
 		/* force 100mA */
-		/*rc = smbchg_sec_masked_write(chip,
+		rc = smbchg_sec_masked_write(chip,
 					chip->usb_chgpth_base + CHGPTH_CFG,
 					CFG_USB_2_3_SEL_BIT, CFG_USB_2);
 		rc |= smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_100MA);
-		chip->usb_max_current_ma = 100;*/
-		/* temporary modify to 900mA, it is because type-C charger do not short D+/-*/
-		/* so far, once the type-C charger short D+/-, we will revert this commit*/
-		rc = smbchg_sec_masked_write(chip,
-					chip->usb_chgpth_base + CHGPTH_CFG,
-					CFG_USB_2_3_SEL_BIT, CFG_USB_3);
-		rc |= smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
-					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
-					USBIN_LIMITED_MODE | USB51_500MA);
-		chip->usb_max_current_ma = 900;
+		chip->usb_max_current_ma = 100;
 		goto out;
 	}
 	/* specific current values */
@@ -1477,9 +1472,10 @@ static int smbchg_get_min_parallel_current_ma(struct smbchg_chip *chip)
 #define PARALLEL_REENABLE_TIMER_MS	30000
 static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 {
-	int min_current_thr_ma, rc, type;
+	int min_current_thr_ma, rc;
 	ktime_t kt_since_last_disable;
 	u8 reg;
+	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
 
 	if (!smbchg_parallel_en) {
 		pr_smb(PR_STATUS, "Parallel charging not enabled\n");
@@ -1505,20 +1501,9 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
-	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
-		return false;
-	}
-
-	type = get_type(reg);
-	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB_CDP) {
-		pr_smb(PR_STATUS, "CDP adapter, skipping\n");
-		return false;
-	}
-
-	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
-		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
+	current_mode = typec_current_mode_detect();
+	if (TYPEC_CURRENT_MODE_HIGH != current_mode) {
+		pr_smb(PR_STATUS, "not typec high current mode, skipping\n");
 		return false;
 	}
 
@@ -2280,6 +2265,58 @@ static int smbchg_set_thermal_limited_dc_current_max(struct smbchg_chip *chip,
 }
 
 /*
+ * get input current according to type-c protocol
+ */
+#define MEDIUM_CURRENT		1500
+#define TYPEC_HIGH_CURRENT		3000
+static int get_typec_input_current(void)
+{
+	int typec_current = 0;
+	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+
+	current_mode = typec_current_mode_detect();
+	switch (current_mode) {
+	case TYPEC_CURRENT_MODE_HIGH:
+		typec_current = TYPEC_HIGH_CURRENT;
+		break;
+	case TYPEC_CURRENT_MODE_MID:
+		typec_current = MEDIUM_CURRENT;
+		break;
+	case TYPEC_CURRENT_MODE_DEFAULT:
+	default:
+		typec_current = CURRENT_500_MA;
+		break;
+	}
+
+	return typec_current;
+}
+
+/*
+ * determine the input current according to BC1.2 and type-c protocol
+ * typeC charger/usb with 10k ohm pull-up resistance is 3A; hvdcp is 1.8A;
+ * BC1.2 DCP with D+/- shorted is 1.5A; SDP 0.5A; floated charger is 1A
+ */
+static int determine_target_input_current(int current_ma)
+{
+	int target_current = 0, typec_current = 0;
+
+	typec_current = get_typec_input_current();
+
+	if ((SUSPEND_CURRENT_MA >= current_ma)
+		|| (MEDIUM_CURRENT < current_ma)) {
+		/* for usb suspend or HVDCP */
+		target_current = current_ma;
+	} else {
+		/* typec high and medium current mode has high priority*/
+		target_current = max(typec_current, current_ma);
+	}
+
+	pr_info("target_current = %d\n", target_current);
+
+	return target_current;
+}
+
+/*
  * set the usb charge path's maximum allowed current draw
  * that may be limited by the system's thermal level
  */
@@ -2287,10 +2324,15 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 							int current_ma)
 {
 	int rc, aicl_ma;
+	int target_ma = 0;
 
 	aicl_ma = smbchg_get_aicl_level_ma(chip);
+	/* determine the input current by typec protocol and BC1.2 */
+	target_ma = determine_target_input_current(current_ma);
+
 	chip->usb_tl_current_ma =
-		calc_thermal_limited_current(chip, current_ma);
+		calc_thermal_limited_current(chip, target_ma);
+
 	rc = smbchg_set_usb_current_max(chip, chip->usb_tl_current_ma);
 	if (rc) {
 		pr_err("Failed to set usb current max: %d\n", rc);
@@ -4153,7 +4195,9 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
 				usb_supply_type);
-		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
+		/* for floated charger detection, need use dwc3_chg_det_work*/
+		if (POWER_SUPPLY_TYPE_USB != usb_supply_type)
+			power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
@@ -4811,8 +4855,9 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	 *
 	 * If this is set, AICL will not rerun at 9V for HVDCPs
 	 */
+	/* use register for current setting for typec charger */
 	rc = smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
-			USE_REGISTER_FOR_CURRENT, 0);
+			USE_REGISTER_FOR_CURRENT, USE_REGISTER_FOR_CURRENT);
 
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set input limit cmd rc=%d\n", rc);

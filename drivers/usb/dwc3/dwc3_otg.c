@@ -407,7 +407,10 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	if (dotg->charger->charging_disabled)
 		return 0;
 
-	if (dotg->charger->chg_type != DWC3_INVALID_CHARGER) {
+	/* for SDP and floated charger, use dwc3_chg_det_work to detect them */
+	if (dotg->charger->chg_type != DWC3_INVALID_CHARGER
+		&& dotg->charger->chg_type != DWC3_FLOATED_CHARGER
+		&& dotg->charger->chg_type != DWC3_SDP_CHARGER) {
 		dev_dbg(phy->dev,
 			"SKIP setting power supply type again,chg_type = %d\n",
 			dotg->charger->chg_type);
@@ -418,8 +421,10 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 		power_supply_type = POWER_SUPPLY_TYPE_USB;
 	else if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_CDP;
+	/* for floated charger, we set DCP type */
 	else if (dotg->charger->chg_type == DWC3_DCP_CHARGER ||
-			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER)
+			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER ||
+			dotg->charger->chg_type == DWC3_FLOATED_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_DCP;
 	else
 		power_supply_type = POWER_SUPPLY_TYPE_UNKNOWN;
@@ -595,7 +600,8 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					 */
 					if (dotg->charger_retry_count ==
 						max_chgr_retry_count) {
-						dwc3_otg_set_power(phy, 0);
+						/* modified for floated charger */
+						dwc3_otg_set_power(phy, DWC3_FLOAT_CHG_MAX);
 						dbg_event(0xFF, "FLCHG put", 0);
 						pm_runtime_put_sync(phy->dev);
 						break;
