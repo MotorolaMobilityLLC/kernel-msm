@@ -121,12 +121,13 @@
 
 	factory_support {
 		compatible = "mmi,factory-support-kungpow";
-		gpios = <&msmgpio 116 0x0>, /* GPIOF_OUT_INIT_LOW */
+		gpios = <&msmgpio 116 0x2>, /* GPIOF_OUT_INIT_HIGH */
 			<&msmgpio 112 0x1>, /* GPIOF_IN */
 			<&msmgpio 111 0x1>; /* GPIOF_IN */
 		gpio-names = "factory_kill_disable",
 			     "factory_cable_detect",
 			     "factory_warn";
+		active-low = <0 1 1>;
 	};
 
 	bq5105x-ctrl {
