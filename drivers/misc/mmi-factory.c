@@ -38,6 +38,7 @@ enum mmi_factory_device_list {
 struct mmi_factory_info {
 	int num_gpios;
 	struct gpio *list;
+	uint32_t *active_low;
 	int factory_cable;
 	enum mmi_factory_device_list dev;
 	struct delayed_work warn_irq_work;
@@ -69,9 +70,10 @@ static void warn_irq_w(struct work_struct *w)
 	struct mmi_factory_info *info = container_of(w,
 						     struct mmi_factory_info,
 						     warn_irq_work.work);
-	int warn_line = gpio_get_value(info->list[KP_WARN_INDEX].gpio);
+	int warn_line = info->active_low[KP_CABLE_INDEX] ^
+			gpio_get_value(info->list[KP_WARN_INDEX].gpio);
 
-	if (!warn_line) {
+	if (warn_line) {
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
 		qpnp_pon_store_extra_reset_info(
@@ -99,20 +101,29 @@ static void fac_cbl_irq_w(struct work_struct *w)
 	struct mmi_factory_info *info = container_of(w,
 						     struct mmi_factory_info,
 						     fac_cbl_irq_work.work);
-	int fac_cbl_line = gpio_get_value(info->list[KP_CABLE_INDEX].gpio);
-	int fac_cbl_kill_line = gpio_get_value(info->list[KP_KILL_INDEX].gpio);
+	int fac_cbl_line = info->active_low[KP_CABLE_INDEX] ^
+			   gpio_get_value(info->list[KP_CABLE_INDEX].gpio);
+	int fac_kill_disable = info->active_low[KP_KILL_INDEX] ^
+				gpio_get_value(info->list[KP_KILL_INDEX].gpio);
 
 	if (fac_cbl_line) {
 		pr_info("Factory Cable Attached!\n");
 		info->factory_cable = 1;
+		if (fac_kill_disable) {
+			pr_info("Arming factory kill by setting gpio-%d to: %d\n",
+				info->list[KP_KILL_INDEX].gpio,
+				info->active_low[KP_KILL_INDEX]);
+			gpio_set_value(info->list[KP_KILL_INDEX].gpio,
+				       info->active_low[KP_KILL_INDEX]);
+		}
 	} else
 		if (info->factory_cable) {
 			pr_info("Factory Cable Detached!\n");
-			if (fac_cbl_kill_line) {
+			if (fac_kill_disable) {
 				info->factory_cable = 0;
-				pr_info("Factory Kill Disabled!\n");
+				pr_info("Factory kill was disabled; remaining on\n");
 			} else {
-				pr_info("2 sec to power off.\n");
+				pr_info("Powering off.\n");
 				kernel_power_off();
 				return;
 			}
@@ -169,15 +180,25 @@ static struct mmi_factory_info *mmi_parse_of(struct platform_device *pdev)
 	if (!info->list)
 		return NULL;
 
+	info->active_low = devm_kzalloc(&pdev->dev,
+				sizeof(bool) * gpio_count,
+				GFP_KERNEL);
+	if (!info->list)
+		return NULL;
+
 	info->num_gpios = gpio_count;
 	for (i = 0; i < gpio_count; i++) {
 		info->list[i].gpio = of_get_gpio_flags(np, i, &flags);
 		info->list[i].flags = flags;
 		of_property_read_string_index(np, "gpio-names", i,
 						&info->list[i].label);
-		dev_dbg(&pdev->dev, "GPIO: %d  FLAGS: %ld  LABEL: %s\n",
+		of_property_read_u32_index(np, "active-low", i,
+					   &(info->active_low[i]));
+		dev_dbg(&pdev->dev, "GPIO: %d  FLAGS: %ld  LABEL: %s  "
+			"ACTIVE_LOW: %d\n",
 			info->list[i].gpio, info->list[i].flags,
-			info->list[i].label);
+			info->list[i].label,
+			info->active_low[i]);
 	}
 
 	return info;
@@ -294,6 +315,9 @@ static int mmi_factory_probe(struct platform_device *pdev)
 			goto remove_warn;
 		}
 	}
+
+	/*schedule IRQ thread to run once to initialize state */
+	schedule_work(&info->fac_cbl_irq_work.work);
 
 	platform_set_drvdata(pdev, info);
 
