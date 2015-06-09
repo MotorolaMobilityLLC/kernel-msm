@@ -405,11 +405,11 @@
 };
 
 &pm8226_chg {
-	qcom,vddmax-mv = <4400>;
-	qcom,vddsafe-mv = <4400>;
+	qcom,vddmax-mv = <4430>;
+	qcom,vddsafe-mv = <4430>;
 	qcom,vinmin-mv = <4500>;
 	qcom,ibatmax-ma= <500>;
-	qcom,ibatterm-ma = <30>;
+	qcom,ibatterm-ma = <50>;
 	qcom,ibatsafe-ma = <550>;
 	qcom,vbatdet-delta-mv = <150>;
 	qcom,tchg-mins = <480>;
