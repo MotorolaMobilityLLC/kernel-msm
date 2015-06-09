@@ -245,7 +245,7 @@ static bool suspend_again(bool *drivers_resumed)
 	 * callbacks.  Don't bother thawing the kernel threads if a match is
 	 * not found.
          */
-	irqs = get_wakeup_reasons(HZ, &unfinished);
+	irqs = get_wakeup_reasons(msecs_to_jiffies(100), &unfinished);
 	if (!suspend_again_match(irqs, &unfinished))
 		return false;
 
