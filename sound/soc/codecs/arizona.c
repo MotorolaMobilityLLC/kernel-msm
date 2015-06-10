@@ -1409,14 +1409,15 @@ int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
 		dev_dbg(arizona->dev, "Stop slimbus Tx\n");
 		ret = slim_control_ch(slim_audio_dev, *group,
 					SLIM_CH_REMOVE, true);
+		mutex_unlock(&slim_tx_lock);
 		if (ret != 0)
 			dev_err(arizona->dev, "Failed to remove tx: %d\n", ret);
 
-		mutex_unlock(&slim_tx_lock);
 		/* Cargo culted from QC */
 		usleep_range(15000, 15000);
 		break;
 	default:
+		mutex_unlock(&slim_tx_lock);
 		break;
 	}
 	return 0;
@@ -1480,7 +1481,6 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	prop.auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
 	prop.ratem = (48000/4000);
 	prop.sampleszbits = 16;
-	mutex_unlock(&slim_rx_lock);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1508,8 +1508,8 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 
 		ret = slim_control_ch(slim_audio_dev, *group,
 					SLIM_CH_ACTIVATE, true);
+		mutex_unlock(&slim_rx_lock);
 		if (ret != 0) {
-			mutex_unlock(&slim_rx_lock);
 			dev_err(arizona->dev, "Failed to activate: %d\n", ret);
 			return ret;
 		}
@@ -1528,6 +1528,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		usleep_range(15000, 15000);
 		break;
 	default:
+		mutex_unlock(&slim_rx_lock);
 		break;
 	}
 	return 0;
@@ -3227,7 +3228,7 @@ EXPORT_SYMBOL_GPL(arizona_set_custom_jd);
 
 static int arizona_slim_audio_probe(struct slim_device *slim)
 {
-	dev_crit(&slim->dev, "Probed\n");
+	dev_crit(&slim->dev, "%s Probed\n", __func__);
 
 	slim_audio_dev = slim;
 	mutex_init(&slim_tx_lock);
