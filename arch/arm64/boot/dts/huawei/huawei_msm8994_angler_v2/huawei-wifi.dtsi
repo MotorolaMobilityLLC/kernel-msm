@@ -14,6 +14,6 @@
 	bcmdhd {
 		compatible = "android,bcmdhd_wlan";
 		wl_reg_on = <&msm_gpio 113 0>;		/* wifi reg_on pin */
-		wl_host_wkae = <&msm_gpio 37 0>;	/* wifi oob pin */
+		wl_host_wake = <&msm_gpio 37 0>;	/* wifi oob pin */
 	};
 };
