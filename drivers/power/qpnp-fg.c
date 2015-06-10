@@ -1545,7 +1545,8 @@ static void update_temp_data(struct work_struct *work)
 
 	fg_stay_awake(&chip->update_temp_wakeup_source);
 	if (chip->sw_rbias_ctrl) {
-		INIT_COMPLETION(chip->sram_access_revoked);
+		if (chip->last_temp_update_time)
+			INIT_COMPLETION(chip->sram_access_revoked);
 		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
 				BATT_TEMP_CNTRL_MASK,
 				BATT_TEMP_ON,
@@ -4760,6 +4761,7 @@ static int fg_probe(struct spmi_device *spmi)
 			fg_cap_learning_alarm_cb);
 	init_completion(&chip->sram_access_granted);
 	init_completion(&chip->sram_access_revoked);
+	complete_all(&chip->sram_access_revoked);
 	init_completion(&chip->batt_id_avail);
 	dev_set_drvdata(&spmi->dev, chip);
 
