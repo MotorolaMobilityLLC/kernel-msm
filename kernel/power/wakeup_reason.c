@@ -42,6 +42,10 @@ static spinlock_t resume_reason_lock;
 bool log_wakeups __read_mostly;
 struct completion wakeups_completion;
 
+static unsigned long wakeup_ready_timeout;
+static unsigned long wakeup_ready_wait;
+static unsigned long wakeup_ready_nowait;
+
 static struct timespec last_xtime; /* wall time before last suspend */
 static struct timespec curr_xtime; /* wall time after last suspend */
 static struct timespec last_stime; /* sleep time before last suspend */
@@ -286,11 +290,14 @@ static ssize_t suspend_since_boot_show(struct kobject *kobj,
 	struct timespec xtime;
 
 	xtime = timespec_sub(total_xtime, total_stime);
-	return sprintf(buf, "%lu %lu %lu.%09lu %lu.%09lu %lu.%09lu\n",
+	return sprintf(buf, "%lu %lu %lu.%09lu %lu.%09lu %lu.%09lu\n"
+			    "%lu %lu %u\n",
 				suspend_count, abort_count,
 				xtime.tv_sec, xtime.tv_nsec,
 				total_atime.tv_sec, total_atime.tv_nsec,
-				total_stime.tv_sec, total_stime.tv_nsec);
+				total_stime.tv_sec, total_stime.tv_nsec,
+				wakeup_ready_nowait, wakeup_ready_timeout,
+				jiffies_to_msecs(wakeup_ready_wait));
 }
 
 static struct kobj_attribute resume_reason = __ATTR_RO(last_resume_reason);
@@ -515,17 +522,25 @@ const struct list_head* get_wakeup_reasons(unsigned long timeout,
 
 	if (logging_wakeup_reasons()) {
 		unsigned long signalled = 0;
+		unsigned long time_waited;
+
 		if (timeout)
 			signalled = wait_for_completion_timeout(&wakeups_completion, timeout);
 		if (!signalled) {
 			pr_warn("%s: completion timeout\n", __func__);
+			wakeup_ready_timeout++;
 			stop_logging_wakeup_reasons();
 			walk_irq_node_tree(base_irq_nodes, build_unfinished_nodes, unfinished);
 			return NULL;
 		}
+		time_waited = timeout - signalled;
 		pr_info("%s: waited for %u ms\n",
 				__func__,
-				jiffies_to_msecs(timeout - signalled));
+				jiffies_to_msecs(time_waited));
+		if (time_waited > wakeup_ready_wait)
+			wakeup_ready_wait = time_waited;
+	} else {
+		wakeup_ready_nowait++;
 	}
 
 	return get_wakeup_reasons_nosync();
