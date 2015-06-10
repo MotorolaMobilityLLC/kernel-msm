@@ -834,6 +834,16 @@
 		qcom,cpr-down-threshold = <8>;
 };
 
+&pm8916_chg {
+	status = "ok";
+	qcom,use-external-charger;
+};
+
+&pm8916_bms {
+	status = "ok";
+	qcom,disable-bms;
+};
+
 &i2c_1 {
         smb1357_otg_vreg: smb1357-charger@1c {
                 compatible = "qcom,smb1359-charger";
