@@ -35,7 +35,7 @@
 #ifdef CONFIG_FB
 #define WAIT_FOR_FB_READY
 #define FB_READY_WAIT_MS 100
-#define FB_READY_TIMEOUT_S 30
+#define FB_READY_TIMEOUT_S 20
 #endif
 #endif
 
@@ -103,6 +103,8 @@
 
 #define INT_DISABLE_WAIT_MS 20
 #define ENTER_FLASH_PROG_WAIT_MS 20
+
+#define BASE_NUM 32
 
 static int fwu_do_reflash(void);
 
@@ -3239,6 +3241,13 @@ static int fwu_start_reflash(void)
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
 	tp_log_debug("%s: in!\n",__func__);
+
+	/* Only reflash FW when detected 2K LCD by number of rx */
+	if (rmi4_data->num_of_rx < BASE_NUM) {
+		tp_log_debug("%s: Condition is not suitable, cancel FW upgrade!!!\n", __func__);
+		return -EINVAL;
+	}
+
 	if (rmi4_data->sensor_sleep) {
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Sensor sleeping\n",
