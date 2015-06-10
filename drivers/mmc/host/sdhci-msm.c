@@ -2400,9 +2400,11 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 		retry++;
 		udelay(10);
 	}
-	if (retry)
+	if (retry) {
 		pr_info("%s: success clearing (%d) pwrctl status register after retry %d\n",
 				mmc_hostname(host->mmc), irq_status, retry);
+		BUG_ON(1);
+	}
 
 	/* Handle BUS ON/OFF*/
 	if (irq_status & CORE_PWRCTL_BUS_ON) {
