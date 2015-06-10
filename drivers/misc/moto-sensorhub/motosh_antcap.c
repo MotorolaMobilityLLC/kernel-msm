@@ -551,7 +551,7 @@ static int motosh_antcap_ps_get_property(struct power_supply *psy,
 
 static const char * const motosh_antcap_usb_supply[] = { "usb", };
 
-static struct work_struct motosh_antcap_headset_work;
+struct work_struct *motosh_antcap_headset_work;
 
 static void motosh_antcap_headset_update(struct work_struct *work)
 {
@@ -623,7 +623,17 @@ int motosh_antcap_of_init(struct i2c_client *client)
 	/*****************************************************/
 	/* create thread for I2C writes from headset handler */
 	/*****************************************************/
-	INIT_WORK(&motosh_antcap_headset_work, motosh_antcap_headset_update);
+	motosh_antcap_headset_work =
+		devm_kzalloc(&motosh_misc_data->client->dev,
+				sizeof(struct work_struct), GFP_KERNEL);
+	if (motosh_antcap_headset_work == NULL) {
+		dev_err(&motosh_misc_data->client->dev,
+			"Failed to allocate memory for motosh_antcap_headset_work\n");
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	INIT_WORK(motosh_antcap_headset_work, motosh_antcap_headset_update);
 
 fail:
 	return ret;
@@ -655,7 +665,7 @@ static void switch_to_motosh_report(unsigned long state)
 			((int) motosh_g_conn_state),
 			((int) motosh_g_antcap_enabled));
 
-		err = schedule_work(&motosh_antcap_headset_work);
+		err = schedule_work(motosh_antcap_headset_work);
 
 		dev_dbg(&motosh_misc_data->client->dev,
 			"switch_to_motosh_report: err=%d en=%02x st=%02x\n",
