@@ -266,6 +266,8 @@ struct fan5404x_chg {
 	bool factory_configured;
 	int max_rate_cap;
 	struct delayed_work iusb_work;
+	bool demo_mode;
+	bool usb_suspended;
 };
 
 static struct fan5404x_chg *the_chip;
@@ -1195,9 +1197,32 @@ static void fan5404x_charge_enable(struct fan5404x_chg *chip, bool enable)
 	}
 }
 
+static void fan5404x_usb_suspend(struct fan5404x_chg *chip, bool enable)
+{
+	int rc;
+
+	if ((chip->usb_suspended && enable) ||
+	    (!chip->usb_suspended && !enable))
+		return;
+
+	rc = fan5404x_masked_write(the_chip, REG_CONTROL1,
+				   CONTROL1_HZ_MODE,
+				   enable ? CONTROL1_HZ_MODE : 0);
+	if (rc < 0)
+		dev_err(chip->dev,
+			"Failed to set USB suspend rc = %d, enable = %d\n",
+			rc, (int)enable);
+	else
+		chip->usb_suspended = enable;
+}
+
 static void fan5404x_set_chrg_path_temp(struct fan5404x_chg *chip)
 {
-	if (chip->batt_cool && !chip->ext_high_temp)
+	if (chip->demo_mode) {
+		fan5404x_set_oreg(chip, 4000);
+		fan5404x_temp_charging(chip, 1);
+		return;
+	} else if (chip->batt_cool && !chip->ext_high_temp)
 		fan5404x_set_oreg(chip, chip->ext_temp_volt_mv);
 	else
 		fan5404x_set_oreg(chip, chip->voreg_mv);
@@ -1449,6 +1474,8 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 	return 0;
 }
 
+#define DEMO_MODE_MAX_SOC 35
+#define DEMO_MODE_HYS_SOC 5
 static void heartbeat_work(struct work_struct *work)
 {
 	struct fan5404x_chg *chip =
@@ -1476,7 +1503,18 @@ static void heartbeat_work(struct work_struct *work)
 	    (batt_health == POWER_SUPPLY_HEALTH_COLD))
 		fan5404x_check_temp_range(chip);
 
-	if (taper_reached && !chip->chg_done_batt_full) {
+	if (chip->demo_mode) {
+		dev_warn(chip->dev, "Battery in Demo Mode charging Limited\n");
+
+		if (!chip->usb_suspended &&
+		    (batt_soc >= DEMO_MODE_MAX_SOC))
+			fan5404x_usb_suspend(chip, true);
+		else if (chip->usb_suspended &&
+			   (batt_soc <=
+			    (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC)))
+			fan5404x_usb_suspend(chip, false);
+
+	} else if (taper_reached && !chip->chg_done_batt_full) {
 		dev_dbg(chip->dev, "Charge Complete!\n");
 		chip->chg_done_batt_full = true;
 	} else if (chip->chg_done_batt_full && batt_soc < 100) {
@@ -1652,6 +1690,49 @@ static int fan5404x_read_chip_id(struct fan5404x_chg *chip, uint8_t *val)
 
 
 #define CHG_SHOW_MAX_SIZE 50
+static ssize_t force_demo_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	the_chip->demo_mode = (mode) ? true : false;
+
+	return r ? r : count;
+}
+
+static ssize_t force_demo_mode_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	state = (the_chip->demo_mode) ? 1 : 0;
+
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_demo_mode, 0644,
+		force_demo_mode_show,
+		force_demo_mode_store);
+
 #define USB_SUSPEND_BIT BIT(4)
 static ssize_t force_chg_usb_suspend_store(struct device *dev,
 					struct device_attribute *attr,
@@ -2314,6 +2395,8 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->usb_psy = usb_psy;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
+	chip->demo_mode = false;
+	chip->usb_suspended = false;
 	chip->factory_mode = false;
 	chip->test_mode = false;
 	chip->factory_present = false;
@@ -2436,6 +2519,13 @@ static int fan5404x_charger_probe(struct i2c_client *client,
 	chip->notifier.notifier_call = &fan5404x_charging_reboot;
 	the_chip = chip;
 
+	rc = device_create_file(chip->dev,
+				&dev_attr_force_demo_mode);
+	if (rc) {
+		pr_err("couldn't create force_demo_mode\n");
+		goto unregister_batt_psy;
+	}
+
 	chip->debug_root = debugfs_create_dir("fan5404x", NULL);
 	if (!chip->debug_root)
 		dev_err(chip->dev, "Couldn't create debug dir\n");
@@ -2554,6 +2644,8 @@ static int fan5404x_charger_remove(struct i2c_client *client)
 {
 	struct fan5404x_chg *chip = i2c_get_clientdata(client);
 
+	device_remove_file(chip->dev,
+			   &dev_attr_force_demo_mode);
 	unregister_reboot_notifier(&chip->notifier);
 	debugfs_remove_recursive(chip->debug_root);
 	power_supply_unregister(&chip->batt_psy);
