@@ -906,7 +906,7 @@ int create_pkt_cmd_session_set_property(
 		hfi = (struct hfi_enable *) &pkt->rg_property_data[1];
 		hfi->enable = !(((struct hfi_enable *) pdata)->enable);
 		pkt->size += sizeof(u32) * 2;
-		dprintk(VIDC_ERR, "Setting Final Priority to %d\n", hfi->enable);
+		dprintk(VIDC_DBG, "Setting Final Priority to %d\n", hfi->enable);
 		break;
 	}
 	case HAL_PARAM_BUFFER_COUNT_ACTUAL:

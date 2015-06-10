@@ -2668,7 +2668,6 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		property_id = HAL_CONFIG_REALTIME;
 		enable.enable = ctrl->val;
 		pdata = &enable;
-		dprintk(VIDC_ERR, "Priority set to %d\n", enable.enable);
 		break;
 	default:
 		dprintk(VIDC_ERR, "Unsupported index: %x\n", ctrl->id);

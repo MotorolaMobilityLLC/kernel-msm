@@ -84,7 +84,6 @@ static inline bool is_non_realtime_session(struct msm_vidc_inst *inst)
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY
 		};
 	rc = v4l2_g_ctrl(&inst->ctrl_handler, &ctrl);
-	dprintk(VIDC_ERR, "RC: %d, value: %d\n", rc, ctrl.value);
 	if (!rc && ctrl.value)
 		return true;
 	return false;
@@ -172,9 +171,9 @@ static int msm_comm_get_inst_load(struct msm_vidc_inst *inst,
 	if ((is_non_realtime_session(inst)) &&
 		(quirks & LOAD_CALC_IGNORE_NON_REALTIME_LOAD)) {
 		load = msm_comm_get_mbs_per_sec(inst)/inst->prop.fps;
-		dprintk(VIDC_ERR, "NON REALTIME Session so load is: %d", load);
+		dprintk(VIDC_DBG, "NON REALTIME Session so load is: %d", load);
 	} else
-		dprintk(VIDC_ERR, "REALTIME Session so load is: %d", load);
+		dprintk(VIDC_DBG, "REALTIME Session so load is: %d", load);
 	return load;
 }
 
