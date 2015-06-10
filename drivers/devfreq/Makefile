@@ -13,6 +13,7 @@ obj-$(CONFIG_ARMBW_HWMON)		+= armbw-pm.o
 obj-$(CONFIG_ARM_MEMLAT_MON)		+= arm-memlat-mon.o
 obj-$(CONFIG_MSMCCI_HWMON)		+= msmcci-hwmon.o
 obj-$(CONFIG_MSM_M4M_HWMON)		+= m4m-hwmon.o
+obj-$(CONFIG_ADRENO_IDLER)		+= adreno_idler.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_BW_HWMON)	+= governor_bw_hwmon.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_CACHE_HWMON)	+= governor_cache_hwmon.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_GPUBW_MON)        += governor_gpubw_mon.o
