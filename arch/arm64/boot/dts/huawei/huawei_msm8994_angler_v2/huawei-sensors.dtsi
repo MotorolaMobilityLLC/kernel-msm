@@ -58,6 +58,20 @@
 	};
 };
 
+&spi_0 {
+	status = "disabled";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
+&i2c_3 {
+	status = "disabled";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
 &spi_5 {
 	sensorhub@0 {
 		compatible = "contexthub,spich";
@@ -71,7 +85,7 @@
 		contexthub,nrst = <&msm_gpio 93 0x00>;
 		contexthub,boot0 = <&msm_gpio 94 0x00>;
 
-		pinctrl-names = "default";
+		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&sensorhub_ctrl_active>;
 		pinctrl-1 = <&sensorhub_ctrl_sleep>;
 	};
@@ -90,4 +104,3 @@
 	regulator-always-on;
 	status = "okay";
 };
-
