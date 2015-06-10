@@ -47,6 +47,13 @@ enum dss_vreg_type {
 	DSS_REG_VS,
 };
 
+enum dss_vreg_mode {
+	DSS_REG_MODE_ENABLE,
+	DSS_REG_MODE_DISABLE,
+	DSS_REG_MODE_LP,
+	DSS_REG_MODE_ULP,
+};
+
 struct dss_vreg {
 	struct regulator *vreg; /* vreg handle */
 	char vreg_name[32];
@@ -54,6 +61,8 @@ struct dss_vreg {
 	int max_voltage;
 	int enable_load;
 	int disable_load;
+	int lp_load;
+	int ulp_load;
 	int pre_on_sleep;
 	int post_on_sleep;
 	int pre_off_sleep;
@@ -98,6 +107,8 @@ int msm_dss_gpio_enable(struct dss_gpio *in_gpio, int num_gpio, int enable);
 int msm_dss_config_vreg(struct device *dev, struct dss_vreg *in_vreg,
 	int num_vreg, int config);
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg,	int enable);
+int msm_dss_config_vreg_opt_mode(struct dss_vreg *in_vreg, int num_vreg,
+	u32 mode);
 
 int msm_dss_get_clk(struct device *dev, struct dss_clk *clk_arry, int num_clk);
 void msm_dss_put_clk(struct dss_clk *clk_arry, int num_clk);

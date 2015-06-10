@@ -208,6 +208,65 @@ vreg_get_fail:
 } /* msm_dss_config_vreg */
 EXPORT_SYMBOL(msm_dss_config_vreg);
 
+int msm_dss_config_vreg_opt_mode(struct dss_vreg *in_vreg, int num_vreg,
+	u32 mode)
+{
+	int i = 0, rc = 0;
+
+	for (i = 0; i < num_vreg; i++) {
+		rc = PTR_RET(in_vreg[i].vreg);
+		if (rc) {
+			DEV_ERR("%pS->%s: %s regulator error. rc=%d\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name, rc);
+			goto error;
+		}
+
+		DEV_DBG("%s: Setting optimum mode %d for %s\n",
+			__func__, mode, in_vreg[i].vreg_name);
+		switch (mode) {
+		case DSS_REG_MODE_ENABLE:
+			rc = regulator_set_optimum_mode(in_vreg[i].vreg,
+				in_vreg[i].enable_load);
+			break;
+		case DSS_REG_MODE_LP:
+			rc = regulator_set_optimum_mode(in_vreg[i].vreg,
+				in_vreg[i].lp_load);
+			break;
+		case DSS_REG_MODE_ULP:
+			rc = regulator_set_optimum_mode(in_vreg[i].vreg,
+				in_vreg[i].ulp_load);
+			break;
+		case DSS_REG_MODE_DISABLE:
+			rc = regulator_set_optimum_mode(in_vreg[i].vreg,
+				in_vreg[i].disable_load);
+			break;
+		default:
+			pr_err("%pS->%s: invalid mode %d\n",
+				__builtin_return_address(0), __func__, mode);
+			rc = -EINVAL;
+			goto error;
+		}
+		if (rc < 0) {
+			DEV_ERR("%pS->%s: %s set opt mode failed. rc=%d\n",
+				__builtin_return_address(0), __func__,
+				in_vreg[i].vreg_name, rc);
+			goto error;
+		} else {
+			/*
+			 * regulator_set_optimum_mode can return non-zero
+			 * value for success. However, this API is expected
+			 * to return 0 for success.
+			 */
+			rc = 0;
+		}
+	}
+
+error:
+	return rc;
+}
+EXPORT_SYMBOL(msm_dss_config_vreg_opt_mode);
+
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 {
 	int i = 0, rc = 0;
