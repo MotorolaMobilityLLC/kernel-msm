@@ -302,6 +302,7 @@
 #define ANTCAP_ENABLED             0x01
 #define ANTCAP_AIRPLANE            0x02
 #define ANTCAP_CHECK_CAL           0x04
+#define ANTCAP_BROKEN              0x08
 
 /* motosh_g_conn_state */
 #define ANTCAP_USB                 0x80
@@ -335,6 +336,18 @@
 #define ANTCAP_CTRL1_SET_FILT      6
 #define ANTCAP_CTRL1_SET_CALFLASH  7
 #endif
+
+/* RESET REASONS */
+#define RESET_REASON_WATCHDOG             1
+#define RESET_REASON_MODALITY_ENGINE      2
+#define RESET_REASON_MODALITY_EVENT       3
+#define RESET_REASON_MODALITY_ACCUM_EVENT 4
+#define RESET_REASON_ALGO_ENGINE          5
+#define RESET_REASON_IOEXPANDER           6
+#define RESET_REASON_PANIC                7
+#define RESET_REASON_EXIT                 8
+#define RESET_REASON_HEAP_ACCESS          9
+#define RESET_REASON_ANTCAP               10
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
