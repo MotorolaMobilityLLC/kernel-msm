@@ -50,7 +50,11 @@ enum PANEL_AMBIENT_MODE{
 
 /* Lock backlight of ambient mode to 28nits */
 #define AMBIENT_BL_LEVEL_V1	(86)
+#ifdef CONFIG_ASUS_WREN
+#define AMBIENT_BL_LEVEL_V2	(61)
+#else
 #define AMBIENT_BL_LEVEL_V2	(95)
+#endif
 #define AMBIENT_BL_LEVEL_V3	(80)
 static int ambient_bl_level = AMBIENT_BL_LEVEL_V2;
 static int backup_bl_level = 0;
