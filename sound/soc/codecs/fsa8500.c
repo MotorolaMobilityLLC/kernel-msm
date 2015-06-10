@@ -58,6 +58,7 @@
 
 #define	SND_JACK_BTN_SHIFT	20
 #define	FSA8500_LINT_DEBOUNCE	200
+#define	FSA8500_DETECT_DEBOUNCE	2000
 
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
@@ -77,7 +78,7 @@ struct fsa8500_data {
 	int amp_state;
 	int mic_state;
 	int alwayson_micb;
-	int button_detect_state;
+	u32 detect_time_ms;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct delayed_work work_det;
@@ -490,6 +491,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 		snd_soc_jack_report(fsa8500->hs_jack,
 					fsa8500->hs_acc_type,
 					fsa8500->hs_jack->jack->type);
+		fsa8500->detect_time_ms = ktime_to_ms(ktime_get());
 	}
 
 	/* Disconnect or UART */
@@ -529,6 +531,20 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 
 	/* Key Long press */
 	if (fsa8500->irq_status[2] & 0x7F) {
+		if ((ktime_to_ms(ktime_get()) - fsa8500->detect_time_ms)
+						< FSA8500_DETECT_DEBOUNCE) {
+			pr_debug("%s: key event < 2 sec. Re-detect headset.\n",
+								__func__);
+			snd_soc_jack_report_no_dapm(fsa8500->hs_jack, 0,
+					fsa8500->hs_jack->jack->type);
+			fsa8500->inserted = 0;
+			fsa8500_reg_write(fsa8500_client,
+					FSA8500_RESET_CONTROL,
+					FSA8500_RESET_DETECT,
+					FSA8500_RESET_DETECT);
+			return 0;
+		}
+
 		status = fsa8500->irq_status[2] & 0x7F;
 		pr_debug("%s:report key 0x%x long press\n", __func__, status);
 		snd_soc_jack_report(fsa8500->button_jack,
