@@ -17,7 +17,6 @@
 #include <asm/uaccess.h>
 #include "ext4_jbd2.h"
 #include "ext4.h"
-#include "ext4_extents.h"
 
 #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
 
@@ -102,28 +101,18 @@ static long swap_inode_boot_loader(struct super_block *sb,
 	handle_t *handle;
 	int err;
 	struct inode *inode_bl;
-	struct ext4_inode_info *ei;
 	struct ext4_inode_info *ei_bl;
-	struct ext4_sb_info *sbi;
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
 
-	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode)) {
-		err = -EINVAL;
-		goto swap_boot_out;
-	}
+	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode))
+		return -EINVAL;
 
-	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN)) {
-		err = -EPERM;
-		goto swap_boot_out;
-	}
-
-	sbi = EXT4_SB(sb);
-	ei = EXT4_I(inode);
+	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
+		return -EPERM;
 
 	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
-	if (IS_ERR(inode_bl)) {
-		err = PTR_ERR(inode_bl);
-		goto swap_boot_out;
-	}
+	if (IS_ERR(inode_bl))
+		return PTR_ERR(inode_bl);
 	ei_bl = EXT4_I(inode_bl);
 
 	filemap_flush(inode->i_mapping);
@@ -131,7 +120,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
 
 	/* Protect orig inodes against a truncate and make sure,
 	 * that only 1 swap_inode_boot_loader is running. */
-	ext4_inode_double_lock(inode, inode_bl);
+	lock_two_nondirectories(inode, inode_bl);
 
 	truncate_inode_pages(&inode->i_data, 0);
 	truncate_inode_pages(&inode_bl->i_data, 0);
@@ -198,20 +187,14 @@ static long swap_inode_boot_loader(struct super_block *sb,
 			ext4_mark_inode_dirty(handle, inode);
 		}
 	}
-
 	ext4_journal_stop(handle);
-
 	ext4_double_up_write_data_sem(inode, inode_bl);
 
 journal_err_out:
 	ext4_inode_resume_unlocked_dio(inode);
 	ext4_inode_resume_unlocked_dio(inode_bl);
-
-	ext4_inode_double_unlock(inode, inode_bl);
-
+	unlock_two_nondirectories(inode, inode_bl);
 	iput(inode_bl);
-
-swap_boot_out:
 	return err;
 }
 
@@ -348,8 +331,7 @@ flags_out:
 		if (!inode_owner_or_capable(inode))
 			return -EPERM;
 
-		if (EXT4_HAS_RO_COMPAT_FEATURE(inode->i_sb,
-				EXT4_FEATURE_RO_COMPAT_METADATA_CSUM)) {
+		if (ext4_has_metadata_csum(inode->i_sb)) {
 			ext4_warning(sb, "Setting inode version is not "
 				     "supported with metadata_csum enabled.");
 			return -ENOTTY;
@@ -633,6 +615,8 @@ resizefs_out:
 
 		return 0;
 	}
+	case EXT4_IOC_PRECACHE_EXTENTS:
+		return ext4_ext_precache(inode);
 
 	default:
 		return -ENOTTY;
@@ -697,6 +681,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case EXT4_IOC_MOVE_EXT:
 	case FITRIM:
 	case EXT4_IOC_RESIZE_FS:
+	case EXT4_IOC_PRECACHE_EXTENTS:
 		break;
 	default:
 		return -ENOIOCTLCMD;
