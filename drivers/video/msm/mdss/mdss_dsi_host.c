@@ -262,9 +262,12 @@ void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
 
 void mdss_dsi_get_hw_revision(struct mdss_dsi_ctrl_pdata *ctrl)
 {
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
+	if (ctrl->hw_rev)
+		return;
+
+	mdss_dsi_clk_ctrl(ctrl, DSI_BUS_CLKS, 1);
 	ctrl->hw_rev = MIPI_INP(ctrl->ctrl_base);
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
+	mdss_dsi_clk_ctrl(ctrl, DSI_BUS_CLKS, 0);
 
 	pr_debug("%s: ndx=%d hw_rev=%x\n", __func__,
 				ctrl->ndx, ctrl->hw_rev);
@@ -433,6 +436,7 @@ void mdss_dsi_set_tx_power_mode(int mode, struct mdss_panel_data *pdata)
 void mdss_dsi_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl, bool restore)
 {
 	u32 data0;
+	unsigned long flag;
 
 	if (!ctrl) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -461,6 +465,12 @@ void mdss_dsi_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl, bool restore)
 		MIPI_OUTP(ctrl->ctrl_base + 0x0004, data0);
 		wmb();	/* make sure dsi controller enabled again */
 	}
+
+	/* It is safe to clear mdp_busy as reset is happening */
+	spin_lock_irqsave(&ctrl->mdp_lock, flag);
+	ctrl->mdp_busy = false;
+	complete_all(&ctrl->mdp_comp);
+	spin_unlock_irqrestore(&ctrl->mdp_lock, flag);
 }
 
 static void mdss_dsi_cfg_lane_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
@@ -1220,7 +1230,7 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 					struct dsi_buf *tp)
 {
 	int len, i, ret = 0, data = 0;
-	u32 *bp, ctrl_rev;
+	u32 *bp;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 
 	if (tp->len > DMA_TPG_FIFO_LEN) {
@@ -1228,9 +1238,9 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		return -EINVAL;
 	}
 
-	ctrl_rev = MIPI_INP(ctrl->ctrl_base);
+	mdss_dsi_get_hw_revision(ctrl);
 
-	if (ctrl_rev < MDSS_DSI_HW_REV_103) {
+	if (ctrl->hw_rev < MDSS_DSI_HW_REV_103) {
 		pr_err("CMD DMA TPG not supported for this DSI version\n");
 		return -EINVAL;
 	}
@@ -2125,7 +2135,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	bool use_iommu = false;
 	int ret = -EINVAL;
 	int rc = 0;
-	u32 ctrl_rev;
 	bool hs_req = false;
 
 	if (mdss_get_sd_client_cnt())
@@ -2152,10 +2161,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	/* make sure dsi_cmd_mdp is idle */
 	mdss_dsi_cmd_mdp_busy(ctrl);
 
-	ctrl_rev = MIPI_INP(ctrl->ctrl_base);
+	mdss_dsi_get_hw_revision(ctrl);
 
 	/* For DSI versions less than 1.3.0, CMD DMA TPG is not supported */
-	if (ctrl_rev < MDSS_DSI_HW_REV_103)
+	if (ctrl->hw_rev < MDSS_DSI_HW_REV_103)
 		req->flags &= ~CMD_REQ_DMA_TPG;
 
 	pr_debug("%s: ctrl=%d from_mdp=%d pid=%d\n", __func__,
@@ -2284,7 +2293,6 @@ static int dsi_event_thread(void *data)
 	u32 todo = 0, ln_status;
 	u32 arg;
 	int ret;
-	u32 ctrl_rev;
 
 	param.sched_priority = 16;
 	ret = sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
@@ -2332,7 +2340,7 @@ static int dsi_event_thread(void *data)
 			mdss_dsi_sw_reset(ctrl, true);
 
 		if (todo & DSI_EV_DLNx_FIFO_OVERFLOW) {
-			ctrl_rev = MIPI_INP(ctrl->ctrl_base);
+			mdss_dsi_get_hw_revision(ctrl);
 			mutex_lock(&dsi_mtx);
 			/*
 			 * For targets other than msm8994,
@@ -2344,7 +2352,7 @@ static int dsi_event_thread(void *data)
 			pr_debug("%s: lane_status: 0x%x\n",
 				       __func__, ln_status);
 			if (ctrl->recovery
-					&& (ctrl_rev != MDSS_DSI_HW_REV_103)
+					&& (ctrl->hw_rev != MDSS_DSI_HW_REV_103)
 					&& (ln_status
 						& DSI_DATA_LANES_STOP_STATE)
 					&& !(ln_status
@@ -2357,7 +2365,7 @@ static int dsi_event_thread(void *data)
 						DSI_INTR_ERROR_MASK, 1);
 				mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
 			} else if (ctrl->recovery
-					&& (ctrl_rev
+					&& (ctrl->hw_rev
 					    == MDSS_DSI_HW_REV_103)) {
 				pr_debug("%s: Handle overflow->Rev_103\n",
 								__func__);
@@ -2462,7 +2470,16 @@ void mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	/* fifo underflow, overflow and empty*/
 	if (status & 0xcccc4489) {
 		MIPI_OUTP(base + 0x000c, status);
-		pr_err("%s: status=%x\n", __func__, status);
+
+		/*
+		 * During dynamic refresh rate update, DSI fifo errors are
+		 * expected, Check the dfps status and avoid the log. However,
+		 * FIFO errors needs to be cleared.
+		 */
+		if (!ctrl->dfps_status)
+			pr_err("%s: ctrl ndx=%d status=%x\n", __func__,
+					ctrl->ndx, status);
+
 		if (status & 0x44440000) {/* DLNx_HS_FIFO_OVERFLOW */
 			dsi_send_events(ctrl, DSI_EV_DLNx_FIFO_OVERFLOW, 0);
 			/* Ignore FIFO EMPTY when overflow happens */
@@ -2473,6 +2490,9 @@ void mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 		if (status & 0x11110000) /* DLN_FIFO_EMPTY */
 			dsi_send_events(ctrl, DSI_EV_DSI_FIFO_EMPTY, 0);
 	}
+
+	if (ctrl->dfps_status)
+		ctrl->dfps_status = false;
 }
 
 void mdss_dsi_status(struct mdss_dsi_ctrl_pdata *ctrl)
