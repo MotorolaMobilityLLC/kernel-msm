@@ -895,17 +895,14 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		data_addr + extra_data->data28_offset,
 		&f11_2d_data28,
 		sizeof(f11_2d_data28));
-		 if (retval < 0)
-		 {
-			 pr_err("%s: read data 28 fail\n", __func__);
-		 }
-		 else if (f11_2d_data28 & 0x02)
+		if (retval < 0)
+		{
+			pr_err("%s: read data 28 fail\n", __func__);
+		}
+		else if (f11_2d_data28 & 0x02 && !rmi4_data->palm_down)
 		{
 			pr_debug("%s: palm detect success\n", __func__);
 			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 1);
-			input_sync(rmi4_data->input_dev);
-			vibrator_ctrl_kernel(50);
-			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
 			input_sync(rmi4_data->input_dev);
 			if (!key_release)
 			{
@@ -920,6 +917,13 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				#endif
 				input_sync(rmi4_data->input_dev);
 			}
+			rmi4_data->palm_down = true;
+			return 0;
+		} else if ((f11_2d_data28 & 0x02) == 0 && rmi4_data->palm_down) {
+			rmi4_data->palm_down = false;
+			// finish KEY_SLEEP UP event
+			input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+			input_sync(rmi4_data->input_dev);
 			return 0;
 		}
 	}
@@ -3220,6 +3224,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	rmi4_data->suspend = false;
 	rmi4_data->irq_enabled = false;
 	rmi4_data->fingers_on_2d = false;
+	rmi4_data->palm_down = false;
 
 	rmi4_data->reset_device = synaptics_rmi4_reset_device;
 	rmi4_data->irq_enable = synaptics_rmi4_irq_enable;
@@ -3860,6 +3865,13 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	{
 		pr_info("%s:already in suspend\n", __func__);
 		return 0;
+	}
+
+	if (rmi4_data->palm_down) {
+		rmi4_data->palm_down = false;
+		// finish KEY_SLEEP UP event
+		input_report_key(rmi4_data->input_dev, KEY_SLEEP, 0);
+		input_sync(rmi4_data->input_dev);
 	}
 
 	if (rmi4_data->enable_wakeup_gesture) {
