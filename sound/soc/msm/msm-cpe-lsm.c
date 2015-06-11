@@ -1872,6 +1872,16 @@ static int msm_cpe_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 			goto done;
 		}
 
+		if (u_event_status32.payload_size >
+		   LISTEN_MAX_STATUS_PAYLOAD_SIZE) {
+			dev_err(rtd->dev,
+				"%s: payload_size %d is invalid, max allowed = %d\n",
+				__func__, u_event_status32.payload_size,
+				LISTEN_MAX_STATUS_PAYLOAD_SIZE);
+			err = -EINVAL;
+			goto done;
+		}
+
 		u_pld_size = sizeof(struct snd_lsm_event_status) +
 				u_event_status32.payload_size;
 		event_status = kzalloc(u_pld_size, GFP_KERNEL);
