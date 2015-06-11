@@ -152,6 +152,8 @@ struct arizona {
 
 	uint16_t out_comp_coeff;
 	uint8_t out_comp_enabled;
+
+	int anc_ng;
 };
 
 #define ARIZONA_DVFS_SR1_RQ          0x00000001

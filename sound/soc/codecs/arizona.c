@@ -790,6 +790,81 @@ int arizona_put_anc_input(struct snd_kcontrol *kcontrol,
 }
 EXPORT_SYMBOL_GPL(arizona_put_anc_input);
 
+static const char * const arizona_anc_ng_texts[] = {
+	"None",
+	"Internal",
+};
+
+const struct soc_enum arizona_anc_ng_enum =
+	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(arizona_anc_ng_texts),
+		 arizona_anc_ng_texts);
+EXPORT_SYMBOL_GPL(arizona_anc_ng_enum);
+
+int arizona_get_anc_ng(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
+
+	ucontrol->value.enumerated.item[0] = arizona->anc_ng;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_get_anc_ng);
+
+int arizona_put_anc_ng(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	int sel = ucontrol->value.enumerated.item[0];
+	int ret;
+	struct snd_soc_dapm_route routes[2] = {
+		{ "RXANCL", NULL, "RXANC NG Clock" },
+		{ "RXANCR", NULL, "RXANC NG Clock" },
+	};
+
+	if (sel >= e->max)
+		return -EINVAL;
+
+	if (sel == arizona->anc_ng)
+		return 0;
+
+	switch (sel) {
+	case 0:
+		snd_soc_dapm_del_routes(&codec->dapm, routes,
+			ARRAY_SIZE(routes));
+		/*
+		* As the clock is a supply widget this call simply ensures
+		* we add it to the dirty list.
+		*/
+		snd_soc_dapm_enable_pin(&codec->dapm, "RXANC NG Clock");
+		break;
+	case 1:
+		snd_soc_dapm_add_routes(&codec->dapm, routes,
+			ARRAY_SIZE(routes));
+		/*
+		* As the clock is a supply widget this call simply ensures
+		* we add it to the dirty list.
+		*/
+		snd_soc_dapm_disable_pin(&codec->dapm, "RXANC NG Clock");
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = snd_soc_dapm_sync(&codec->dapm);
+	if (ret) {
+		dev_err(arizona->dev, "Failed to sync DAPM for ANC NG: %d\n",
+			ret);
+		return ret;
+	}
+
+	arizona->anc_ng = sel;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_put_anc_ng);
+
 const struct soc_enum arizona_anc_input_src[] = {
 	SOC_VALUE_ENUM_SINGLE(ARIZONA_FCL_ADC_REFORMATTER_CONTROL,
 			      ARIZONA_FCL_MIC_MODE_SEL_SHIFT, 0,
