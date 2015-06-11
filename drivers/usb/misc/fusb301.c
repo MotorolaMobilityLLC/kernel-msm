@@ -207,6 +207,27 @@ static int fusb301_read_device_id(struct fusb301_chip *chip)
 	return 0;
 }
 
+static int fusb301_update_status(struct fusb301_chip *chip)
+{
+	struct device *cdev = &chip->client->dev;
+	int rc;
+	u16 control_now;
+
+	/* read mode & control register */
+	rc = i2c_smbus_read_word_data(chip->client, FUSB301_REG_MODES);
+	if (IS_ERR_VALUE(rc)) {
+		dev_err(cdev, "%s: fail to read mode\n", __func__);
+		return rc;
+	}
+	chip->mode = (u8)(rc & 0xFF);
+	control_now = (u8)((rc >> 8) & 0xFF);
+
+	chip->dfp_power = BITS_GET(control_now, FUSB301_HOST_CUR_MASK);
+	chip->dttime = BITS_GET(control_now, FUSB301_TGL_MASK);
+
+	return 0;
+}
+
 static int fusb301_set_mode(struct fusb301_chip *chip, u8 mode)
 {
 	struct device *cdev = &chip->client->dev;
@@ -341,6 +362,8 @@ static int fusb301_reset_device(struct fusb301_chip *chip)
 
 	msleep(10);
 
+	fusb301_update_status(chip);
+
 	rc = fusb301_init_reg(chip);
 	if (IS_ERR_VALUE(rc))
 		dev_err(cdev, "fail to init reg\n");
@@ -355,7 +378,8 @@ static int fusb301_reset_device(struct fusb301_chip *chip)
 		return rc;
 	}
 
-	dev_dbg(cdev, "reset sucessed\n");
+	dev_info(cdev, "mode[0x%02x], host_cur[0x%02x], dttime[0x%02x]\n",
+			chip->mode, chip->dfp_power, chip->dttime);
 
 	return rc;
 }
@@ -983,32 +1007,14 @@ static irqreturn_t fusb301_interrupt(int irq, void *data)
 
 int fusb301_init_reg(struct fusb301_chip *chip)
 {
-	struct device *cdev = &chip->client->dev;
-	u16 rc;
-	u8 mode_now, control_now, cur_now, tgl_now;
+	int rc;
 
-	/* read mode & control register */
-	rc = i2c_smbus_read_word_data(chip->client, FUSB301_REG_MODES);
-	if (IS_ERR_VALUE(rc)) {
-		dev_err(cdev, "%s: fail read mode\n", __func__);
-		return rc;
-	}
-
-	mode_now = rc & 0xFF;
-	control_now = rc >> 8;
-
-	cur_now = BITS_GET(control_now, FUSB301_HOST_CUR_MASK);
-	tgl_now = BITS_GET(control_now, FUSB301_TGL_MASK);
 	/* set disable bit */
 	rc = i2c_smbus_write_byte_data(chip->client,
 			FUSB301_REG_MANUAL,
 			FUSB301_DISABLED);
 	if (IS_ERR_VALUE(rc))
 		return rc;
-
-	chip->mode = mode_now;
-	chip->dfp_power = cur_now;
-	chip->dttime = tgl_now;
 
 	/* change mode */
 	fusb301_set_mode(chip, chip->pdata->init_mode);
@@ -1165,9 +1171,11 @@ static int fusb301_probe(struct i2c_client *client,
 		goto err2;
 	}
 
-	chip->mode = FUSB301_DRP_ACC;
-	chip->dfp_power = FUSB301_HOST_DEFAULT;
-	chip->dttime = FUSB301_TGL_35MS;
+	ret = fusb301_update_status(chip);
+	if (ret) {
+		dev_err(cdev, "fail to update status\n");
+		goto err3;
+	}
 
 	chip->state = FUSB301_NO_TYPE;
 	chip->ufp_power = FUSB301_SNK_0MA;
