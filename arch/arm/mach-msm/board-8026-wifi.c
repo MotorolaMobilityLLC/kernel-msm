@@ -11,6 +11,7 @@
 #include <linux/ctype.h>
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
+#include <linux/regulator/consumer.h>
 
 #define GPIO_WL_HOST_WAKE 66
 #define GPIO_WL_REG_ON 110
@@ -21,6 +22,7 @@
 #define ETHER_STR_LEN 12
 #define ETHER_BUFFER_LEN 16
 
+static int power_enabled = 0;
 char g_wlan_ether_addr[] = {0x00,0x00,0x00,0x00,0x00,0x00};
 
 typedef enum
@@ -201,27 +203,51 @@ int __init brcm_wifi_init_gpio(void)
 
 static int brcm_wlan_power(int onoff)
 {
-	printk(KERN_INFO"------------------------------------------------");
-	printk(KERN_INFO"------------------------------------------------\n");
+	static struct regulator *reg_batfet = NULL;
+	int ret = 0;
+
 	printk(KERN_INFO"%s Enter: power %s\n", __func__, onoff ? "on" : "off");
+
+	if (!reg_batfet) {
+		reg_batfet = regulator_get(NULL, "batfet");
+		if (IS_ERR(reg_batfet)) {
+			pr_warn("%s: failed to get regualtor(batfet)\n",
+						__func__);
+			reg_batfet = NULL;
+		}
+	}
+
+	onoff = !!onoff;
+	if (!(power_enabled ^ onoff)) {
+		printk(KERN_INFO"%s: power already %s\n", __func__, onoff ? "on" : "off");
+		return 0;
+	}
+
 	if (onoff) {
-		/*
-		if (gpio_request(GPIO_WL_REG_ON, "WL_REG_ON"))
-		{
-			printk("Failed to request for WL_REG_ON\n");
-		}*/
 		if (gpio_direction_output(GPIO_WL_REG_ON, 1)) {
 			printk(KERN_ERR "%s: WL_REG_ON  failed to pull up\n",
 				__func__);
 			return -EIO;
 		}
-	} else {
-		/*
-		if (gpio_request(GPIO_WL_REG_ON, "WL_REG_ON"))
-		{
-			printk("Failed to request for WL_REG_ON\n");
+
+		power_enabled = 1;
+
+		if (reg_batfet) {
+			ret = regulator_enable(reg_batfet);
+			if (ret)
+			pr_warn("%s: failed to enable regulator(batfet)\n",
+						__func__);
 		}
-		*/
+	} else {
+		power_enabled = 0;
+
+		if (reg_batfet) {
+			ret = regulator_disable(reg_batfet);
+			if (ret)
+				pr_warn("%s: failed to disable regulator(batfet)\n",
+						__func__);
+			}
+
 		if (gpio_direction_output(GPIO_WL_REG_ON, 0)) {
 			printk(KERN_ERR "%s: WL_REG_ON  failed to pull down\n",
 				__func__);
