@@ -635,6 +635,9 @@ ARIZONA_MIXER_CONTROLS("SLIMTX5", ARIZONA_SLIMTX5MIX_INPUT_1_SOURCE),
 ARIZONA_MIXER_CONTROLS("SLIMTX6", ARIZONA_SLIMTX6MIX_INPUT_1_SOURCE),
 ARIZONA_MIXER_CONTROLS("SLIMTX7", ARIZONA_SLIMTX7MIX_INPUT_1_SOURCE),
 ARIZONA_MIXER_CONTROLS("SLIMTX8", ARIZONA_SLIMTX8MIX_INPUT_1_SOURCE),
+
+SOC_ENUM_EXT("RXANC NG Source", arizona_anc_ng_enum,
+	arizona_get_anc_ng, arizona_put_anc_ng),
 };
 
 ARIZONA_MIXER_ENUMS(EQ1, ARIZONA_EQ1MIX_INPUT_1_SOURCE);
@@ -1010,6 +1013,10 @@ SND_SOC_DAPM_PGA("ISRC3DEC4", ARIZONA_ISRC_3_CTRL_3,
 SND_SOC_DAPM_VALUE_MUX("AEC Loopback", ARIZONA_DAC_AEC_CONTROL_1,
 		       ARIZONA_AEC_LOOPBACK_ENA_SHIFT, 0,
 		       &florida_aec_loopback_mux),
+
+SND_SOC_DAPM_SUPPLY("RXANC NG Clock", SND_SOC_NOPM,
+	ARIZONA_CLK_NG_ENA_SET_SHIFT, 0, arizona_anc_ev,
+	SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
 SND_SOC_DAPM_MUX("RXANCL Input", SND_SOC_NOPM, 0, 0, &florida_anc_input_mux[0]),
 SND_SOC_DAPM_MUX("RXANCR Input", SND_SOC_NOPM, 0, 0, &florida_anc_input_mux[1]),
@@ -2232,7 +2239,6 @@ static int florida_free(struct snd_compr_stream *stream)
 	else
 		wm_adsp_stream_free(florida->compr_info[compr_dev_index].adsp,
 			1);
-
 	mutex_unlock(&florida->compr_info[compr_dev_index].lock);
 	return 0;
 }
