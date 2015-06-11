@@ -665,6 +665,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			dev_dbg(phy->dev, "B_FALSE_SDP - TA Charger ?\n");
 			dwc3_otg_start_peripheral(&dotg->otg, 0);
 			phy->state = OTG_STATE_B_IDLE;
+			dotg->notify_psy = true;
 			if (charger)
 				charger->chg_type = DWC3_PROPRIETARY_CHARGER;
 			clear_bit(B_FALSE_SDP, &dotg->inputs);
