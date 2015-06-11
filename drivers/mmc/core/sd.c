@@ -1243,11 +1243,11 @@ static void mmc_sd_detect(struct mmc_host *host)
 		}
 		break;
 	}
-	if (!retries) {
+	if (!retries)
 		pr_err("%s: failed to re-detect SD card after %d attempts (%d)\n",
 		       mmc_hostname(host), PARANOID_SD_INIT_RETRIES, err);
+	if (err)
 		err = _mmc_detect_card_removed(host);
-	}
 #else
 	err = _mmc_detect_card_removed(host);
 #endif
@@ -1503,9 +1503,10 @@ int mmc_attach_sd(struct mmc_host *host)
 		break;
 	}
 
-	if (!retries) {
+	if (!retries)
 		pr_err("%s: failed to initialize SD card after %d attempts (%d)\n",
 		       mmc_hostname(host), PARANOID_SD_INIT_RETRIES, err);
+	if (err) {
 		/* A card was detected, but we couldn't initialize it. */
 		host->card_bad = 1;
 		goto err;
