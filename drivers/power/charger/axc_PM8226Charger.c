@@ -178,11 +178,6 @@ static int pm_power_get_property(struct power_supply *psy,
 			}
 		}
 
-		if(true == g_AcUsbOnline_Change0){
-			val->intval = 0;
-			printk("[BAT][Chg]: set online 0 to shutdown device\n");   
-		}
-
 		//Eason: Factory5060Mode+++
 		#ifdef ASUS_FACTORY_BUILD
 		if( false == g_5060modeCharging)

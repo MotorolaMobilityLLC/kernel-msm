@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -951,7 +951,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			goto end;
 		}
 	}
- 
+
 	if (!turn_off_clocks)
 		goto panel_events;
 
@@ -982,6 +982,7 @@ panel_events:
 				(void *) (long int) panel_power_state);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 	}
+
 
 	if (!panel_off) {
 		pr_debug("%s: cmd_stop with panel always on\n", __func__);
@@ -1074,7 +1075,7 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 
 	ctx->recovery.fxn = mdss_mdp_cmd_underflow_recovery;
 	ctx->recovery.data = ctx;
-	
+
 	ctx->intf_stopped = 0;
 
 	pr_debug("%s: ctx=%p num=%d mixer=%d\n", __func__,

@@ -27,7 +27,7 @@
 #include <linux/uaccess.h>
 #include <asm/arch_timer.h>
 #include "rpm_stats.h"
-
+#include <linux/asusdebug.h>
 
 enum {
 	ID_COUNTER,
@@ -484,12 +484,14 @@ static int rpm_stats_resume(struct device *dev)
 			stat_type, data.count, time_in_last_mode,
 			time_since_last_mode, actual_last_sleep,
 			data.client_votes, data.subsystem_votes);
+			ASUSEvtlog("[PM] Resume: RPM Mode:%s, count:%d, Client votes: 0x%x, Subsystem votes: 0x%x\n", stat_type, data.count, data.client_votes, data.subsystem_votes);
 		}
 		else {
 			printk("[RPM] Resume: RPM Mode:%s\n\t count:%d\n time in last mode(msec):%llu\n"
 			"time since last mode(sec):%llu\n actual last sleep(msec):%llu\n",
 			stat_type, data.count, time_in_last_mode,
 			time_since_last_mode, actual_last_sleep);
+			ASUSEvtlog("[PM] Resume: RPM Mode:%s, count:%d\n", stat_type, data.count);
 		}
 	}
 	iounmap(reg);

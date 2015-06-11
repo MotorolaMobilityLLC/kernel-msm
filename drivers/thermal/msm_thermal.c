@@ -40,6 +40,7 @@
 #include <soc/qcom/rpm-smd.h>
 #include <soc/qcom/scm.h>
 #include <linux/reboot.h>
+#include <linux/asusdebug.h>
 
 #define MAX_CURRENT_UA 100000
 #define MAX_RAILS 5
@@ -1744,6 +1745,8 @@ static void vdd_mx_notify(struct therm_threshold *trig_thresh)
 
 static void msm_thermal_bite(int tsens_id, long temp)
 {
+	ASUSEvtlog("[TSENS]tsens-%d reached temperature:%ld. System reset !!!\n",
+                tsens_id, temp);
 	pr_err("TSENS:%d reached temperature:%ld. System reset\n",
 		tsens_id, temp);
 	//scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);

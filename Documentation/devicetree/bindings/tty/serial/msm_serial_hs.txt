@@ -70,7 +70,7 @@ This should be configured when wakeup interrupt is configured.
 be configured when wakeup interrupt is configured.
 - qcom, no-suspend-delay : This decides system to go to suspend immediately
 or not
-qcom, msm-obs : This flag is used to indicate support for OBS mechanism.
+- qcom, msm-obs : This flag is used to indicate support for OBS mechanism.
 
 - Refer to "Documentation/devicetree/bindings/arm/msm/msm_bus.txt" for
 below optional properties:

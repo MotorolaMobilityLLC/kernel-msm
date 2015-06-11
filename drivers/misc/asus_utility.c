@@ -22,6 +22,7 @@
 #include <linux/workqueue.h>
 #include <linux/wakelock.h>
 #include <linux/asus_utility.h>
+#include <linux/asusdebug.h>
 
 #define MODE_PROC_MAX_BUFF_SIZE  256
 #define WAIT_FOR_AMBIENT_DRAW_MS                (HZ)
@@ -53,7 +54,8 @@ int modeSendNotify(unsigned long val)
 {
        int ret = 0;
        printk("%s++ , val =%lu\r\n",__FUNCTION__,val);
-       
+
+       ASUSEvtlog("[MODE] Interactive mode : %lu\n", val);
        ret = (raw_notifier_call_chain(&mode_chain_head, val, NULL) == NOTIFY_BAD) ? -EINVAL : 0;
        
        printk("%s-- , val =%lu\r\n",__FUNCTION__,val);

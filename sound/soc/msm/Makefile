@@ -57,7 +57,7 @@ obj-$(CONFIG_SND_SOC_APQ8074) += snd-soc-apq8074.o
 #for MDM9625 sound card driver
 
 #for MSM 8226 sound card driver
-snd-soc-msm8226-objs := msm8226.o
+snd-soc-msm8226-objs := msm8226.o msm8226-wear.o
 obj-$(CONFIG_SND_SOC_MSM8226) += snd-soc-msm8226.o
 
 # for MSM 8x10 sound card driver

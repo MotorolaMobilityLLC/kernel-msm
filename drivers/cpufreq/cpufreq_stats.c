@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <asm/cputime.h>
+#include <linux/asusdebug.h>
 
 static spinlock_t cpufreq_stats_lock;
 
@@ -52,6 +53,28 @@ static int cpufreq_stats_update(unsigned int cpu)
 	stat->last_time = cur_time;
 	spin_unlock(&cpufreq_stats_lock);
 	return 0;
+}
+
+static ssize_t show_dump_cpufreq_stats(struct cpufreq_policy *policy, char *buf)
+{
+        ssize_t len = 0;
+        int i;
+	struct cpufreq_stats *stat = per_cpu(cpufreq_stats_table, policy->cpu);
+        if (!stat)
+                return 0;
+
+	len = sprintf(buf, "%d; ",
+                        per_cpu(cpufreq_stats_table, stat->cpu)->total_trans);
+
+	cpufreq_stats_update(stat->cpu);
+        for (i = 0; i < stat->state_num; i++) {
+                len += sprintf(buf + len, "%uhz:%llu ", stat->freq_table[i],
+                        (unsigned long long)
+                        jiffies_64_to_clock_t(stat->time_in_state[i]));
+        }
+
+	ASUSEvtlog("[CPU] total trans: %s\n", buf);
+	return len;
 }
 
 static ssize_t show_total_trans(struct cpufreq_policy *policy, char *buf)
@@ -125,11 +148,12 @@ static ssize_t show_trans_table(struct cpufreq_policy *policy, char *buf)
 }
 cpufreq_freq_attr_ro(trans_table);
 #endif
-
+cpufreq_freq_attr_ro(dump_cpufreq_stats);
 cpufreq_freq_attr_ro(total_trans);
 cpufreq_freq_attr_ro(time_in_state);
 
 static struct attribute *default_attrs[] = {
+	&dump_cpufreq_stats.attr,
 	&total_trans.attr,
 	&time_in_state.attr,
 #ifdef CONFIG_CPU_FREQ_STAT_DETAILS

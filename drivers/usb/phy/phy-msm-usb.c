@@ -126,6 +126,12 @@ static struct regulator *vbus_otg;
 static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
 
+//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+static int g_phy_parameter_b = 0;
+static int g_phy_parameter_c = 0;
+static int g_phy_parameter_d = 0;
+//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
+
 static bool aca_id_turned_on;
 static bool legacy_power_supply;
 static inline bool aca_enabled(void)
@@ -138,6 +144,8 @@ static inline bool aca_enabled(void)
 }
 
 static int vdd_val[VDD_VAL_MAX];
+
+extern bool getSoftconnect(void);
 
 static int msm_hsusb_ldo_init(struct msm_otg *motg, int init)
 {
@@ -414,6 +422,9 @@ static void ulpi_init(struct msm_otg *motg)
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	int aseq[10];
 	int *seq = NULL;
+	//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+	int addr = 0, value = 0;
+	//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 
 	if (override_phy_init) {
 		pr_debug("%s(): HUSB PHY Init:%s\n", __func__,
@@ -428,13 +439,39 @@ static void ulpi_init(struct msm_otg *motg)
 		return;
 
 	while (seq[0] >= 0) {
+		//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+		addr = seq [1];
+		value = seq[0];
+		if (seq[1] == 0x81) {
+			if (g_phy_parameter_b > 0) {
+				value = g_phy_parameter_b;
+			} else {
+				value = seq[0];
+			}
+		}
+		if (seq[1] == 0x82) {
+			if (g_phy_parameter_c > 0) {
+				value = g_phy_parameter_c;
+			} else {
+				value = seq[0];
+			}
+		}
+		if (seq[1] == 0x83) {
+			if (g_phy_parameter_d > 0) {
+				value = g_phy_parameter_d;
+			} else {
+				value = seq[0];
+			}
+		}
+
 		if (override_phy_init)
 			pr_debug("ulpi: write 0x%02x to 0x%02x\n",
-					seq[0], seq[1]);
+					value, addr);
 
-		dev_vdbg(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
-				seq[0], seq[1]);
-		ulpi_write(&motg->phy, seq[0], seq[1]);
+		dev_info(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
+				value, addr);
+		ulpi_write(&motg->phy, value, addr);
+		//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 		seq += 2;
 	}
 }
@@ -2359,14 +2396,21 @@ static const char *chg_to_string(enum usb_chg_type chg_type)
 #ifdef CONFIG_CHARGER_ASUS
 static void asus_usb_detect_work(struct work_struct *w)
 {
+	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
 	cancel_delayed_work_sync(&asus_chg_work);
 	g_charger_mode = ASUS_CHG_SRC_USB;
 	asus_chg_set_chg_mode(ASUS_CHG_SRC_USB);
 	printk("[USB] set_chg_mode: USB\n");
+	if (!getSoftconnect()) {
+		g_usb_boot = MSM_OTG_USB_BOOT_INIT;
+		usb_gadget_disconnect(otg->gadget);
+	}
 }
 static void asus_chg_detect_work(struct work_struct *w)
 {
 	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
 	if(g_usb_boot == MSM_OTG_USB_BOOT_DOWN){
 		if(msm_otg_bsv){
 			g_charger_mode = ASUS_CHG_SRC_UNKNOWN;
@@ -2378,10 +2422,12 @@ static void asus_chg_detect_work(struct work_struct *w)
 			queue_work(system_nrt_wq, &motg->sm_work);
 		}
 	}else{
-		printk("[USB] asus_chg_detect_work: g_usb_boot is %d , add more 2 sec\n",g_usb_boot);
+		printk("[USB] asus_chg_detect_work: g_usb_boot is %d , add more 2 sec softconnect=%d\n",g_usb_boot ,getSoftconnect());
 		if(g_usb_boot == MSM_OTG_USB_BOOT_IRQ){
 			g_usb_boot = MSM_OTG_USB_BOOT_DOWN;
 		}
+		if ( !getSoftconnect() )
+			usb_gadget_connect(otg->gadget);
 		schedule_delayed_work(&asus_chg_work, (2000 * HZ/1000));
 	}
 }
@@ -2818,6 +2864,10 @@ static void msm_otg_sm_work(struct work_struct *w)
 			g_charger_mode = ASUS_CHG_SRC_NONE;
 			asus_chg_set_chg_mode(ASUS_CHG_SRC_NONE);
 			printk("[USB] set_chg_mode: None\n");
+			if ( !getSoftconnect() ) {
+				g_usb_boot = MSM_OTG_USB_BOOT_INIT;
+				usb_gadget_disconnect(otg->gadget);
+			}
 #endif
 //ASUS_BSP--- "[USB][NA][Spec] Add ASUS charger mode support"
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
@@ -4015,6 +4065,199 @@ const struct file_operations msm_otg_bus_fops = {
 	.release = single_release,
 };
 
+//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+static int myxtoi(const char *name)
+{
+	int val = 0;
+
+	for (;; name++) {
+		switch (*name) {
+		case '0' ... '9':
+			val = 16*val+(*name-'0');
+			break;
+		case 'A' ... 'F':
+			val = 16*val+(*name-'A'+10);
+			break;
+		case 'a' ... 'f':
+			val = 16*val+(*name-'a'+10);
+			break;
+		default:
+			return val;
+		}
+	}
+}
+
+static int msm_otg_phy_parameter_b_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "reg: 0x81, value: 0x%X\n", g_phy_parameter_b);
+	return 0;
+}
+
+static int msm_otg_phy_parameter_b_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_otg_phy_parameter_b_show, inode->i_private);
+}
+
+static ssize_t msm_otg_phy_parameter_b_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	g_phy_parameter_b = myxtoi(buf);
+
+out:
+	return status;
+}
+
+const struct file_operations msm_otg_phy_parameter_b_fops = {
+	.open = msm_otg_phy_parameter_b_open,
+	.read = seq_read,
+	.write = msm_otg_phy_parameter_b_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int msm_otg_phy_parameter_c_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "reg: 0x82, value: 0x%X\n", g_phy_parameter_c);
+	return 0;
+}
+
+static int msm_otg_phy_parameter_c_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_otg_phy_parameter_c_show, inode->i_private);
+}
+
+static ssize_t msm_otg_phy_parameter_c_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	g_phy_parameter_c = myxtoi(buf);
+
+out:
+	return status;
+}
+
+const struct file_operations msm_otg_phy_parameter_c_fops = {
+	.open = msm_otg_phy_parameter_c_open,
+	.read = seq_read,
+	.write = msm_otg_phy_parameter_c_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static int msm_otg_phy_parameter_d_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "reg: 0x83, value: 0x%X\n", g_phy_parameter_d);
+	return 0;
+}
+
+static int msm_otg_phy_parameter_d_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_otg_phy_parameter_d_show, inode->i_private);
+}
+
+static ssize_t msm_otg_phy_parameter_d_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	g_phy_parameter_d = myxtoi(buf);
+
+out:
+	return status;
+}
+
+const struct file_operations msm_otg_phy_parameter_d_fops = {
+	.open = msm_otg_phy_parameter_d_open,
+	.read = seq_read,
+	.write = msm_otg_phy_parameter_d_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
+
+//ASUS_BSP+++ "[USB][NA][Spec] add reset on disconnect flag debug file"
+static int asus_otg_reset_on_disconnect_show(struct seq_file *s, void *unused)
+{
+	struct msm_otg *motg = the_msm_otg;
+	struct msm_otg_platform_data *pdata = motg->pdata;
+
+	if (pdata->disable_reset_on_disconnect) {
+		seq_printf(s, "1\n");
+	} else {
+		seq_printf(s, "0\n");
+	}
+
+	return 0;
+}
+
+static int asus_otg_reset_on_disconnect_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, asus_otg_reset_on_disconnect_show, inode->i_private);
+}
+
+static ssize_t asus_otg_reset_on_disconnect_write(struct file *file, const char __user *ubuf,
+				size_t count, loff_t *ppos)
+{
+	struct msm_otg *motg = the_msm_otg;
+	struct msm_otg_platform_data *pdata = motg->pdata;
+	char buf[16];
+	int status = count;
+
+	memset(buf, 0x00, sizeof(buf));
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count))) {
+		status = -EFAULT;
+		goto out;
+	}
+
+	if (!strncmp(buf, "1", 1)) {
+		pdata->disable_reset_on_disconnect = 1;
+	} else if (!strncmp(buf, "0", 1)) {
+		pdata->disable_reset_on_disconnect = 0;
+	} else {
+		status = -EINVAL;
+		goto out;
+	}
+out:
+	return status;
+}
+
+const struct file_operations asus_otg_reset_on_disconnect_fops = {
+	.open = asus_otg_reset_on_disconnect_open,
+	.read = seq_read,
+	.write = asus_otg_reset_on_disconnect_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+//ASUS_BSP--- "[USB][NA][Spec] add reset on disconnect flag debug file"
+
 static struct dentry *msm_otg_dbg_root;
 
 static int msm_otg_debugfs_init(struct msm_otg *motg)
@@ -4075,6 +4318,46 @@ static int msm_otg_debugfs_init(struct msm_otg *motg)
 		debugfs_remove_recursive(msm_otg_dbg_root);
 		return -ENODEV;
 	}
+
+	//ASUS_BSP+++ "[USB][NA][Spec] add dynamic setting support for phy parameters"
+	msm_otg_dentry = debugfs_create_file("phy_parameter_b", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&msm_otg_phy_parameter_b_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+
+	msm_otg_dentry = debugfs_create_file("phy_parameter_c", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&msm_otg_phy_parameter_c_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+
+	msm_otg_dentry = debugfs_create_file("phy_parameter_d", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&msm_otg_phy_parameter_d_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+	//ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
+
+	//ASUS_BSP+++ "[USB][NA][Spec] add reset on disconnect flag debug file"
+	msm_otg_dentry = debugfs_create_file("disable_reset_on_disconnect", S_IRUGO |
+		S_IWUSR, msm_otg_dbg_root, motg,
+		&asus_otg_reset_on_disconnect_fops);
+
+	if (!msm_otg_dentry) {
+		debugfs_remove_recursive(msm_otg_dbg_root);
+		return -ENODEV;
+	}
+	//ASUS_BSP--- "[USB][NA][Spec] add reset on disconnect flag debug file"
 	return 0;
 }
 

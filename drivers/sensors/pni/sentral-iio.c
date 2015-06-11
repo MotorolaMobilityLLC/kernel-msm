@@ -1,3 +1,25 @@
+/*
+ * COPYRIGHT (C) 2015 PNI SENSOR CORPORATION
+ *
+ * LICENSED UNDER THE APACHE LICENSE, VERSION 2.0 (THE "LICENSE");
+ * YOU MAY NOT USE THIS FILE EXCEPT IN COMPLIANCE WITH THE LICENSE.
+ * YOU MAY OBTAIN A COPY OF THE LICENSE AT
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * THIS SOFTWARE IS PROVIDED BY PNI SENSOR CORPORATION "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL PNI SENSOR CORPORATION BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/err.h>
@@ -116,11 +138,12 @@ static int sentral_read_block(struct sentral_device *sentral, u8 reg,
 
 // misc
 
-static u64 sentral_get_ktime_us(void)
+static u64 sentral_get_boottime_ns(void)
 {
-	struct timeval tv;
-	do_gettimeofday(&tv);
-	return (u64)(tv.tv_sec) * USEC_PER_SEC + tv.tv_usec;
+	struct timespec t;
+	t.tv_sec = t.tv_nsec = 0;
+	get_monotonic_boottime(&t);
+	return (u64)(t.tv_sec) * NSEC_PER_SEC + t.tv_nsec;
 }
 
 static int sentral_parameter_read(struct sentral_device *sentral,
@@ -253,6 +276,33 @@ exit_error_page:
 	return rc;
 }
 
+static int sentral_sync_timestamp(struct sentral_device *sentral)
+{
+	struct sentral_param_timestamp stime;
+	int rc;
+
+	mutex_lock(&sentral->lock_ts);
+
+	// get host current time micros
+	sentral->ts_ref_ntime = sentral_get_boottime_ns();
+
+	// get hub time stime
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
+			(void *)&stime, sizeof(stime));
+	if (rc)
+		return rc;
+
+	sentral->ts_ref_stime = stime.ts.current_stime;
+
+	mutex_unlock(&sentral->lock_ts);
+
+	LOGI(&sentral->client->dev,
+			"synched time: { ts_ref_ntime: %llu, ts_ref_stime: %u }\n",
+			sentral->ts_ref_ntime, sentral->ts_ref_stime);
+
+	return 0;
+}
+
 // Sensors
 
 static int sentral_sensor_config_read(struct sentral_device *sentral, u8 id,
@@ -377,6 +427,8 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		return rc;
 	}
 
+	rc = sentral_sync_timestamp(sentral);
+
 	return 0;
 }
 
@@ -386,9 +438,9 @@ static int sentral_sensor_enable_set(struct sentral_device *sentral, u8 id,
 	LOGD(&sentral->client->dev, "enable set id: %u, enable: %u\n", id, enable);
 
 	if (enable) {
-		sentral->enabled_mask |= 1LL << id;
+		set_bit(id, &sentral->enabled_mask);
 	} else {
-		sentral->enabled_mask &= ~(1LL << id);
+		clear_bit(id, &sentral->enabled_mask);
 		return sentral_sensor_batch_set(sentral, id, 0, 0);
 	}
 
@@ -441,7 +493,7 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 		memcpy(&buffer[2], data, bytes);
 
 	// timestamp 16-23
-	memcpy(&buffer[16], &sentral->ts_sensor_utime, sizeof(u64));
+	memcpy(&buffer[16], &sentral->ts_sensor_ntime, sizeof(u64));
 
 	for (i = 0, dstr_len = 0; i < sizeof(buffer); i++) {
 		dstr_len += scnprintf(dstr + dstr_len, PAGE_SIZE - dstr_len,
@@ -461,8 +513,18 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 
 static int sentral_iio_buffer_push_wrist_tilt(struct sentral_device *sentral)
 {
+	struct sentral_param_timestamp stime;
+	int rc;
+
 	LOGI(&sentral->client->dev, "sending wake-up wrist-tilt event\n");
-	sentral->ts_sensor_utime = sentral->ts_irq_utime;
+	// get interrupt time
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
+			(void *)&stime, sizeof(stime));
+	if (rc)
+		return rc;
+
+	sentral->ts_sensor_ntime = stime.ts.int_stime;
+	//sentral->ts_sensor_ntime = sentral->ts_irq_utime;
 	return sentral_iio_buffer_push(sentral, SST_WRIST_TILT_GESTURE, NULL, 0);
 }
 
@@ -548,8 +610,11 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_TIMESTAMP_MSW:
 			{
 				u16 ts = *(u16 *)buffer;
-				u16 *ts_ptr = (u16 *)&sentral->ts_sensor_stime;
-				ts_ptr[0] = ts;
+				//u16 *ts_ptr = (u16 *)&sentral->ts_sensor_stime;
+				//ts_ptr[0] = ts;
+				sentral->ts_sensor_stime = ts << 16;
+
+				LOGD(&sentral->client->dev, "ts_msw: { ts: %5u 0x%04X }\n", ts, ts);
 
 				buffer += sizeof(u16);
 				bytes -= sizeof(u16);
@@ -560,18 +625,24 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_TIMESTAMP_LSW:
 			{
 				u16 ts = *(u16 *)buffer;
-				u32 dt_stime;
-				u64 dt_utime;
+				s32 dt_stime;
+				s64 dt_ntime;
 
-				u16 *ts_ptr = (u16 *)&sentral->ts_sensor_stime;
-				ts_ptr[1] = ts;
+				// u16 *ts_ptr = (u16 *)&sentral->ts_sensor_stime;
+				// ts_ptr[1] = ts;
+				sentral->ts_sensor_stime &= 0xFFFF0000;
+				sentral->ts_sensor_stime |= ts;
 
-				sentral->ts_irq_stime = sentral->ts_sensor_stime;
-				dt_stime = sentral->ts_sensor_stime - sentral->ts_irq_stime;
-				dt_utime = ((u64)dt_stime * SENTRAL_SENSOR_TIMESTAMP_SCALE_NS)
-						/ 1000;
+				mutex_lock(&sentral->lock_ts);
+				dt_stime = sentral->ts_sensor_stime - sentral->ts_ref_stime;
+				mutex_unlock(&sentral->lock_ts);
 
-				sentral->ts_sensor_utime = sentral->ts_irq_utime + dt_utime;
+				dt_ntime = ((s64)dt_stime * SENTRAL_SENSOR_TIMESTAMP_SCALE_NS);
+
+				sentral->ts_sensor_ntime = sentral->ts_ref_ntime + dt_ntime;
+				LOGD(&sentral->client->dev,
+						"ts_lsw: { ts: %5u 0x%04X, dt_stime: %d, dt_ntime: %lld, ts_sensor_stime: %u, ts_ref_stime: %u, ts_sensor_ntime: %llu }\n",
+						ts, ts, dt_stime, dt_ntime, sentral->ts_sensor_stime, sentral->ts_ref_stime, sentral->ts_sensor_ntime);
 
 				buffer += sizeof(u16);
 				bytes -= sizeof(u16);
@@ -1363,6 +1434,24 @@ static ssize_t sentral_sysfs_reset(struct device *dev,
 
 static DEVICE_ATTR(reset, S_IWUGO, NULL, sentral_sysfs_reset);
 
+static ssize_t sentral_sysfs_ts_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_timestamp ts;
+	int rc;
+	u64 ktime = sentral_get_boottime_ns();
+
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
+			(void *)&ts, sizeof(ts));
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u,%llu\n", ts.ts.current_stime, ktime);
+}
+
+static DEVICE_ATTR(ts, S_IRUGO, sentral_sysfs_ts_show, NULL);
+
 // ANDROID sensor_poll_device_t method support
 
 // activate
@@ -1628,6 +1717,100 @@ exit:
 }
 
 static DEVICE_ATTR(flush, S_IWUGO, NULL, sentral_sysfs_flush_store);
+
+// fifo control
+
+static ssize_t sentral_sysfs_fifo_watermark_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
+	size_t count = 0;
+
+	mutex_lock(&sentral->lock);
+
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		count = rc;
+		goto exit;
+	}
+
+	count = scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.watermark);
+exit:
+	mutex_unlock(&sentral->lock);
+	return count;
+}
+
+static ssize_t sentral_sysfs_fifo_watermark_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
+	u16 watermark;
+
+	rc = kstrtou16(buf, 10, &watermark);
+	if (rc) {
+		LOGE(dev, "error (%d) parsing value\n", rc);
+		return rc;
+	}
+
+	mutex_lock(&sentral->lock);
+
+	// read current fifo control param
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		count = rc;
+		goto exit;
+	}
+
+	// update watermark portion
+	fifo_ctrl.fifo.watermark = watermark;
+
+	rc = sentral_parameter_write(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc)
+		count = rc;
+
+exit:
+	mutex_unlock(&sentral->lock);
+	return count;
+}
+
+static DEVICE_ATTR(fifo_watermark, S_IRUGO | S_IWUGO,
+		sentral_sysfs_fifo_watermark_show, sentral_sysfs_fifo_watermark_store);
+
+static ssize_t sentral_sysfs_fifo_size_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
+	size_t count = 0;
+
+	mutex_lock(&sentral->lock);
+
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		count = rc;
+		goto exit;
+	}
+
+	count = scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.size);
+exit:
+	mutex_unlock(&sentral->lock);
+	return count;
+}
+
+static DEVICE_ATTR(fifo_size, S_IRUGO, sentral_sysfs_fifo_size_show, NULL);
 
 // asus bmmi attributes
 
@@ -1919,6 +2102,7 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_chip_status.attr,
 	&dev_attr_registers.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_ts.attr,
 	&dev_attr_sensor_info.attr,
 	&dev_attr_sensor_config.attr,
 	&dev_attr_sensor_status.attr,
@@ -1926,6 +2110,8 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_delay_ms.attr,
 	&dev_attr_batch.attr,
 	&dev_attr_flush.attr,
+	&dev_attr_fifo_watermark.attr,
+	&dev_attr_fifo_size.attr,
 	&dev_attr_bmmi_chip_status.attr,
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,
@@ -2036,11 +2222,11 @@ static irqreturn_t sentral_irq_handler(int irq, void *dev_id)
 		if (cancel_delayed_work(&sentral->work_watchdog) == 0)
 			flush_workqueue(sentral->sentral_wq);
 
-		sentral->ts_irq_utime = sentral_get_ktime_us();
+		//sentral->ts_irq_utime = sentral_get_ktime_us();
 		// check for special wakeup source
 		rc = sentral_read_block(sentral, SR_WAKE_SRC, (void *)&wake_src_count,
 				sizeof(wake_src_count));
-		if (rc < 0)
+		if (rc < 1)
 			LOGE(&sentral->client->dev, "error (%d) reading wake source\n", rc);
 
 		// handle wakeup source
@@ -2101,8 +2287,12 @@ static void sentral_do_work_reset(struct work_struct *work)
 
 	sentral->init_complete = true;
 
-	// set watermark
-	//sentral_set_watermark(sentral, 200);
+	// sync timestamp
+	rc = sentral_sync_timestamp(sentral);
+	if (rc) {
+		LOGE(&sentral->client->dev, "error (%d) syncing timestamp\n", rc);
+		return;
+	}
 
 	mutex_unlock(&sentral->lock_reset);
 
@@ -2226,6 +2416,9 @@ static int sentral_suspend_notifier(struct notifier_block *nb,
 			LOGE(&sentral->client->dev,
 					"error (%d) setting AP suspend to false\n", rc);
 		}
+
+		// sync timestamp
+		rc = sentral_sync_timestamp(sentral);
 
 		// queue fifo work
 		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
@@ -2386,6 +2579,7 @@ static int sentral_probe(struct i2c_client *client,
 	// init mutex, wakelock
 	mutex_init(&sentral->lock);
 	mutex_init(&sentral->lock_i2c);
+	mutex_init(&sentral->lock_ts);
 	mutex_init(&sentral->lock_reset);
 	mutex_init(&sentral->lock_flush);
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));

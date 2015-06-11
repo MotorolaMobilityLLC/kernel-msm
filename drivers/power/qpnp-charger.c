@@ -1707,12 +1707,12 @@ qpnp_chg_regulator_batfet_set(struct qpnp_chg_chip *chip, bool enable)
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + CHGR_BAT_IF_SPARE,
 			BATFET_LPM_MASK,
-			enable ? BATFET_NO_LPM : BATFET_LPM, 1);
+			BATFET_NO_LPM, 1);
 	else
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + CHGR_BAT_IF_BATFET_CTRL4,
 			BATFET_LPM_MASK,
-			enable ? BATFET_NO_LPM : BATFET_LPM, 1);
+			BATFET_NO_LPM, 1);
 
 	return rc;
 }
@@ -2959,6 +2959,22 @@ skip_set_iusb_max:
 	power_supply_changed(&chip->batt_psy);
 }
 
+int asus_get_bms_capacity (void)
+{
+	union power_supply_propval ret = {0,};
+	struct power_supply *bms_psy = power_supply_get_by_name("bms");
+	int rc;
+
+	if (bms_psy) {
+		rc = bms_psy->get_property(bms_psy,
+					POWER_SUPPLY_PROP_CAPACITY, &ret);
+		if (rc) {
+			pr_debug("BMS does not export online: %d\n", rc);
+		}
+	}
+	return ret.intval;
+}
+
 static int
 qpnp_batt_power_get_property(struct power_supply *psy,
 				       enum power_supply_property psp,
@@ -3006,9 +3022,7 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 #ifdef CONFIG_BATTERY_ASUS
-		//ASUS_BSP Eason +++ get BMS capacity only in BatteryServiceGauge_OnCapacityReply  get_BMS_capacity(AXC_BatteryService.c)
-		val->intval = asus_bat_report_phone_capacity(100);
-		//ASUS_BSP Eason --- get BMS capacity only in BatteryServiceGauge_OnCapacityReply  get_BMS_capacity(AXC_BatteryService.c)
+		val->intval = asus_get_bms_capacity();
 #else
  		val->intval = get_prop_capacity(chip);
 #endif // CONFIG_BATTERY_ASUS
@@ -3996,15 +4010,17 @@ qpnp_eoc_work(struct work_struct *work)
 //ASUS_BSP Eason_Chang: show term_current ---
 
 	if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
-		if (get_prop_battery_voltage_now(chip) > 4200000) {
-			printk("VBAT is larger than 4.2V, modify the charging current to 150 mA");
-			qpnp_chg_ibatmax_set(chip, 150);
-		} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
-			printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA");
-			qpnp_chg_ibatmax_set(chip, 50);
-		} else {
-			printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA");
-			qpnp_chg_ibatmax_set(chip, 350);
+		if (!chip->bat_is_warm || !chip->bat_is_cool) {
+			if (get_prop_battery_voltage_now(chip) > 4200000) {
+				printk("VBAT is larger than 4.2V, modify the charging current to 150 mA");
+				qpnp_chg_ibatmax_set(chip, 150);
+			} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
+				printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA");
+				qpnp_chg_ibatmax_set(chip, 50);
+			} else {
+				printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA");
+				qpnp_chg_ibatmax_set(chip, 350);
+			}
 		}
 	}
 

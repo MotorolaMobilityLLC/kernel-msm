@@ -35,6 +35,7 @@
  * @no_suspend_delay : Flag used to make system go to suspend
  * @obs: Flag for out of band sleep usage
  * immediately or not
+ * @obs: Flag for out of band sleep usage
  */
 struct msm_serial_hs_platform_data {
 	int wakeup_irq;  /* wakeup irq */

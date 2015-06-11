@@ -1064,6 +1064,7 @@ static void _qcrypto_remove_engine(struct crypto_engine *pengine)
 	cancel_work_sync(&pengine->bw_reaper_ws);
 	cancel_work_sync(&pengine->bw_allocate_ws);
 	del_timer_sync(&pengine->bw_reaper_timer);
+	device_init_wakeup(&pengine->pdev->dev, false);
 
 	if (pengine->bus_scale_handle != 0)
 		msm_bus_scale_unregister_client(pengine->bus_scale_handle);
@@ -1821,12 +1822,12 @@ static int _qcrypto_process_aead(struct  crypto_engine *pengine,
 			rctx->orig_src = req->src;
 			rctx->orig_dst = req->dst;
 
-			if ((MAX_ALIGN_SIZE*2 > ULONG_MAX - req->assoclen) ||
-				((MAX_ALIGN_SIZE*2 + req->assoclen) >
-						ULONG_MAX - qreq.authsize) ||
-				((MAX_ALIGN_SIZE*2 + req->assoclen +
+			if ((MAX_ALIGN_SIZE*2 > UINT_MAX - qreq.assoclen) ||
+				((MAX_ALIGN_SIZE*2 + qreq.assoclen) >
+						UINT_MAX - qreq.authsize) ||
+				((MAX_ALIGN_SIZE*2 + qreq.assoclen +
 						qreq.authsize) >
-						ULONG_MAX - req->cryptlen)) {
+						UINT_MAX - req->cryptlen)) {
 				pr_err("Integer overflow on aead req length.\n");
 				return -EINVAL;
 			}
@@ -4509,6 +4510,7 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 	pengine->last_active_seq = 0;
 	pengine->check_flag = false;
 	qcrypto_bw_set_timeout(pengine);
+	device_init_wakeup(&pengine->pdev->dev, true);
 
 	tasklet_init(&pengine->done_tasklet, req_done, (unsigned long)pengine);
 	crypto_init_queue(&pengine->req_queue, MSM_QCRYPTO_REQ_QUEUE_LENGTH);
