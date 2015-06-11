@@ -630,7 +630,7 @@ static void msm_cpp_delete_buff_queue(struct cpp_device *cpp_dev)
 
 	for (i = 0; i < cpp_dev->num_buffq; i++) {
 		if (cpp_dev->buff_queue[i].used == 1) {
-			pr_err("Queue not free sessionid: %d, streamid: %d\n",
+			pr_info("Queue not free sessionid: %d, streamid: %d\n",
 				cpp_dev->buff_queue[i].session_id,
 				cpp_dev->buff_queue[i].stream_id);
 			msm_cpp_dequeue_buff_info_list
@@ -756,35 +756,35 @@ static irqreturn_t msm_cpp_irq(int irq_num, void *data)
 
 		tasklet_schedule(&cpp_dev->cpp_tasklet);
 	} else if (irq_status & 0x7C0) {
-		pr_err("%s: fatal error: 0x%x\n", __func__, irq_status);
-		pr_err("%s: DEBUG_SP: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x40));
-		pr_err("%s: DEBUG_T: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x44));
-		pr_err("%s: DEBUG_N: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x48));
-		pr_err("%s: DEBUG_R: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x4C));
-		pr_err("%s: DEBUG_OPPC: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x50));
-		pr_err("%s: DEBUG_MO: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x54));
-		pr_err("%s: DEBUG_TIMER0: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x60));
-		pr_err("%s: DEBUG_TIMER1: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x64));
-		pr_err("%s: DEBUG_GPI: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x70));
-		pr_err("%s: DEBUG_GPO: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x74));
-		pr_err("%s: DEBUG_T0: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x80));
-		pr_err("%s: DEBUG_R0: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x84));
-		pr_err("%s: DEBUG_T1: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x88));
-		pr_err("%s: DEBUG_R1: 0x%x\n", __func__,
-			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x8C));
+		pr_debug("irq_status: 0x%x\n", irq_status);
+		pr_debug("DEBUG_SP: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x40));
+		pr_debug("DEBUG_T: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x44));
+		pr_debug("DEBUG_N: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x48));
+		pr_debug("DEBUG_R: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x4C));
+		pr_debug("DEBUG_OPPC: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x50));
+		pr_debug("DEBUG_MO: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x54));
+		pr_debug("DEBUG_TIMER0: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x60));
+		pr_debug("DEBUG_TIMER1: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x64));
+		pr_debug("DEBUG_GPI: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x70));
+		pr_debug("DEBUG_GPO: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x74));
+		pr_debug("DEBUG_T0: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x80));
+		pr_debug("DEBUG_R0: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x84));
+		pr_debug("DEBUG_T1: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x88));
+		pr_debug("DEBUG_R1: 0x%x\n",
+			msm_camera_io_r(cpp_dev->base + 0x8C));
 	}
 	msm_camera_io_w(irq_status, cpp_dev->base + MSM_CPP_MICRO_IRQGEN_CLR);
 	return IRQ_HANDLED;
@@ -858,14 +858,15 @@ static void cpp_get_clk_freq_tbl(struct clk *clk, struct cpp_hw_info *hw_info,
 
 	for (i = 0; i < MAX_FREQ_TBL; i++) {
 		freq_tbl_entry = clk->ops->list_rate(clk, i);
-		pr_info("entry=%ld\n", freq_tbl_entry);
+		pr_debug("entry=%ld\n", freq_tbl_entry);
 		if (freq_tbl_entry >= 0) {
 			if (freq_tbl_entry >= min_clk_rate) {
 				hw_info->freq_tbl[idx++] = freq_tbl_entry;
-				pr_err("tbl[%d]=%ld\n", idx-1, freq_tbl_entry);
+				pr_debug("tbl[%d]=%ld\n", idx-1,
+					freq_tbl_entry);
 			}
 		} else {
-			pr_info("freq table returned invalid entry/end %ld\n",
+			pr_debug("freq table returned invalid entry/end %ld\n",
 				freq_tbl_entry);
 			break;
 		}
@@ -1177,7 +1178,7 @@ static void cpp_release_hardware(struct cpp_device *cpp_dev)
 	regulator_put(cpp_dev->fs_cpp);
 	cpp_dev->fs_cpp = NULL;
 	if (cpp_dev->stream_cnt > 0) {
-		pr_err("error: stream count active\n");
+		pr_info("stream count active\n");
 		if (cpp_dev->bus_master_flag)
 			rc = msm_cpp_update_bandwidth(cpp_dev, 0, 0);
 		else
@@ -2685,13 +2686,13 @@ STREAM_BUFF_END:
 			rc = -EINVAL;
 			break;
 		}
-		rc = (copy_from_user(&frame_info,
-			(void __user *)ioctl_ptr->ioctl_ptr,
-			sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
+
+		rc = msm_cpp_copy_from_ioctl_ptr(&frame_info, ioctl_ptr);
 		if (rc) {
 			ERR_COPY_FROM_USER();
 			break;
 		}
+
 		memset(&buff_mgr_info, 0, sizeof(struct msm_buf_mngr_info));
 		buff_mgr_info.session_id =
 			((frame_info.identity >> 16) & 0xFFFF);
@@ -3058,6 +3059,8 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 	struct msm_cpp_clock_settings_t clock_settings;
 	struct msm_pproc_queue_buf_info k_queue_buf;
 	struct msm_cpp_stream_buff_info_t k_cpp_buff_info;
+	struct msm_cpp_frame_info32_t k32_frame_info;
+	struct msm_cpp_frame_info_t k64_frame_info;
 	void __user *up = (void __user *)arg;
 
 	if (sd == NULL) {
@@ -3240,6 +3243,7 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 		}
 		process_frame = event_qcmd->command;
 
+		memset(&k32_process_frame, 0, sizeof(k32_process_frame));
 		get_compat_frame_from_64bit(process_frame, &k32_process_frame);
 
 		CPP_DBG("fid %d\n", process_frame->frame_id);
@@ -3310,8 +3314,25 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 		break;
 	}
 	case VIDIOC_MSM_CPP_POP_STREAM_BUFFER32:
+	{
+		if (kp_ioctl.len != sizeof(struct msm_cpp_frame_info32_t))
+			return -EINVAL;
+		else
+			kp_ioctl.len = sizeof(struct msm_cpp_frame_info_t);
+
+		if (copy_from_user(&k32_frame_info,
+			(void __user *)kp_ioctl.ioctl_ptr,
+			sizeof(k32_frame_info)))
+			return -EFAULT;
+
+		memset(&k64_frame_info, 0, sizeof(k64_frame_info));
+		k64_frame_info.identity = k32_frame_info.identity;
+		k64_frame_info.frame_id = k32_frame_info.frame_id;
+
+		kp_ioctl.ioctl_ptr = (void *)&k64_frame_info;
 		cmd = VIDIOC_MSM_CPP_POP_STREAM_BUFFER;
 		break;
+	}
 	case VIDIOC_MSM_CPP_IOMMU_ATTACH32:
 		cmd = VIDIOC_MSM_CPP_IOMMU_ATTACH;
 		break;

@@ -1282,6 +1282,9 @@ static void mdss_mdp_overlay_cleanup(struct msm_fb_data_type *mfd,
 			mdss_mdp_mixer_pipe_unstage(pipe, pipe->mixer_right);
 		}
 		__overlay_pipe_cleanup(mfd, pipe);
+		ctl->mixer_left->next_pipe_map &= ~pipe->ndx;
+		if (ctl->mixer_right)
+			ctl->mixer_right->next_pipe_map &= ~pipe->ndx;
 	}
 	mutex_unlock(&mdp5_data->list_lock);
 }
@@ -2656,7 +2659,7 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 		rc = mdss_mdp_ctl_update_fps(mdp5_data->ctl, dfps);
 	}
 	if (!rc) {
-		pr_info("%s: configured to '%d' FPS\n", __func__, dfps);
+		pr_debug("%s: configured to '%d' FPS\n", __func__, dfps);
 	} else {
 		pr_err("Failed to configure '%d' FPS. rc = %d\n",
 							dfps, rc);
