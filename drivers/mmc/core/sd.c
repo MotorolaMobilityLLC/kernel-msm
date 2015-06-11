@@ -1259,11 +1259,11 @@ static void mmc_sd_detect(struct mmc_host *host)
 		}
 		break;
 	}
-	if (!retries) {
+	if (!retries)
 		printk(KERN_ERR "%s(%s): Unable to re-detect card (%d)\n",
 		       __func__, mmc_hostname(host), err);
+	if (err)
 		err = _mmc_detect_card_removed(host);
-	}
 #else
 	err = _mmc_detect_card_removed(host);
 #endif
@@ -1559,9 +1559,10 @@ int mmc_attach_sd(struct mmc_host *host)
 		break;
 	}
 
-	if (!retries) {
+	if (!retries)
 		printk(KERN_ERR "%s: mmc_sd_init_card() failure (err = %d)\n",
 		       mmc_hostname(host), err);
+	if (err) {
 		goto err;
 	}
 
