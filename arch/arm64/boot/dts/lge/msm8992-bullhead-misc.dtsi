@@ -54,18 +54,39 @@
 		vdd_io-supply = <&pm8994_lvs2>;
 		vdd-supply = <&pm8994_l25>;
 
-		spi-max-frequency = <15000000>;
+		fpc,use_fpc2050 = <1>;
+		fpc,enable-on-boot;
+		/delete-property/ fpc,enable-wakeup;
+		fpc,event-type = <4>;
+		fpc,event-code = <4>;
 
-		clock-names = "fpc_xo";
-		clocks = <&clock_rpm clk_div_clk3>;
+		spi-max-frequency = <1000000>;
 
-		pinctrl-names = "default", "suspend";
-		pinctrl-0 = <&fpc_int_active &fpc_rst_active>;
-		pinctrl-1 = <&fpc_int_suspend &fpc_rst_suspend>;
+		qcom,spi-qup-id = <10>;
+
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup4_spi_apps_clk>;
+
+		pinctrl-names = "fpc1020_spi_active",
+			"fpc1020_reset_reset",
+			"fpc1020_reset_active",
+			"fpc1020_cs_low",
+			"fpc1020_cs_high",
+			"fpc1020_cs_active",
+			"fpc1020_irq_active";
+
+		pinctrl-0 = <&fpc_spi_active>;
+		pinctrl-1 = <&fpc_reset_reset>;
+		pinctrl-2 = <&fpc_reset_active>;
+		pinctrl-3 = <&fpc_cs_low>;
+		pinctrl-4 = <&fpc_cs_high>;
+		pinctrl-5 = <&fpc_cs_active>;
+		pinctrl-6 = <&fpc_irq_active>;
 
 		fpc,gpio_irq = <&msm_gpio 61 0x00>;
-		fpc,gpio_reset = <&msm_gpio 62 0x00>;
-		fpc,force_hwid = <0x8210>;
+		fpc,gpio_rst = <&msm_gpio 62 0x00>;
+		fpc,gpio_cs0 = <&msm_gpio 55 0x00>;
 	};
 };
 

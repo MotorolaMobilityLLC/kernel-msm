@@ -379,81 +379,71 @@
 			};
 		};
 
-		pmx_spi_fpc_active {
-			/* MOSI, MISO, CLK */
-			qcom,pins = <&gp 53>, <&gp 54>, <&gp 56>;
-			qcom,num-grp-pins = <3>;
+		fpc_spi_active {
+			qcom,pins =  <&gp 53>, <&gp 54>, <&gp 55>, <&gp 56>;
+			qcom,num-grp-pins = <4>;
 			qcom,pin-func = <2>;
-			label = "spi_fpc_active";
-			spi_fpc_default: default {
+			label = "fpc_spi_active";
+			fpc_spi_active: active {
 				drive-strength = <2>;
 				bias-disable;
 			};
 		};
 
-		pmx_spi_fpc_suspend {
-			/* MOSI, MISO, CLK */
-			qcom,pins = <&gp 53>, <&gp 54>, <&gp 56>;
-			qcom,num-grp-pins = <3>;
+		fpc_reset {
+			qcom,pins = <&gp 62>;
+			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
-			label = "spi_fpc_suspend";
-			spi_fpc_sleep: sleep {
-				drive-strength = <2>;
+			label = "fpc_reset";
+			fpc_reset_reset: reset {
+				drive-strength = <12>;
+				bias-pull-down;
+				output-low;
+			};
+			fpc_reset_active: active {
+				drive-strength = <12>;
+				bias-pull-down;
+				output-high;
+			};
+		};
+
+		fpc_cs_manual {
+			qcom,pins = <&gp 55>;
+			qcom,num-grp-pins = <1>;
+			label = "fpc_cs_manual";
+			qcom,pin-func = <2>;
+			fpc_cs_low: output-low {
+				drive-strength = <1>;
+				bias-pull-down;
+				output-low;
+			};
+			fpc_cs_high: output-high {
+				drive-strength = <12>;
+				bias-pull-down;
+				output-high;
+			};
+		};
+
+		fpc_cs_active {
+			qcom,pins = <&gp 55>;
+			qcom,num-grp-pins = <1>;
+			label = "fpc_cs_active";
+			qcom,pin-func = <2>;
+			fpc_cs_active: spi-active {
+				drive-strength = <12>;
 				bias-pull-down;
 			};
 		};
 
-		pmx_spi_fpc_cs_active {
-			/* CS */
-			qcom,pins = <&gp 55>;
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <2>;
-			label = "spi_fpc_cs_active";
-			spi_fpc_cs_active: cs_active {
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		pmx_spi_fpc_cs_suspend {
-			/* CS */
-			qcom,pins = <&gp 55>;
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <0>;
-			label = "spi_fpc_cs_suspend";
-			spi_fpc_cs_sleep: cs_sleep {
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		pmx_fpc_rst {
-			qcom,pins = <&gp 62>;
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <0>;
-			label = "pmx_fpc_rst";
-			fpc_rst_active: rst_active {
-				drive-strength = <2>;
-				bias-disable;
-			};
-			fpc_rst_suspend: rst_suspend {
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		pmx_fpc_int {
+		fpc_irq_active {
 			qcom,pins = <&gp 61>;
 			qcom,num-grp-pins = <1>;
 			qcom,pin-func = <0>;
-			label = "pmx_fpc_int";
-			fpc_int_active: fpc_int_active {
-				drive-strength = <2>;
-				bias-disable;
-			};
-			fpc_int_suspend: fpc_int_suspend {
-				drive-strength = <2>;
-				bias-disable;
+			label = "fpc_irq_active";
+			fpc_irq_active: active {
+				drive-strength = <12>;
+				bias-pull-down;
+				input-enable;
 			};
 		};
 
