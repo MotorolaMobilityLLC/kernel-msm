@@ -43,11 +43,13 @@
 static int idleworkload = 5000;
 module_param_named(adreno_idler_idleworkload, idleworkload, int, 0664);
 
-/* Time to wait for entering idle, measured in milliseconds.
+/* Numbers to wait before entering idle.
+   The idlewait'th events before must be all idle before Adreno idler ramps
+   down the frequency.
    This implementation is to prevent micro-lags on scrolling or playing games,
    meaning the lower it gets, the slower & low-power it would get. */
-static int idlewaitms = 500;
-module_param_named(adreno_idler_idlewaitms, idlewaitms, int, 0664);
+static int idlewait = 20;
+module_param_named(adreno_idler_idlewait, idlewait, int, 0664);
 
 /* Taken from ondemand */
 static int downdifferenctial = 20;
@@ -57,14 +59,7 @@ module_param_named(adreno_idler_downdifferenctial, downdifferenctial, int, 0664)
 static int adreno_idler_active = 1;
 module_param_named(adreno_idler_active, adreno_idler_active, int, 0664);
 
-static inline int64_t get_time_inms(void) {
-	int64_t tinms;
-	struct timespec cur_time = current_kernel_time();
-	tinms  = cur_time.tv_sec  * MSEC_PER_SEC;
-	tinms += cur_time.tv_nsec / NSEC_PER_MSEC;
-	return tinms;
-}
-static int64_t idle_lasttime = 0;
+static unsigned int idlecount = 0;
 
 int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
 		 unsigned long *freq)
@@ -74,23 +69,23 @@ int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
 
 	if (stats.busy_time < idleworkload) {
 		/* busy_time >= idleworkload should be considered as a non-idle workload. */
-		if (!idle_lasttime)
-			idle_lasttime = get_time_inms();
+		idlecount++;
 		if (*freq == devfreq->profile->freq_table[devfreq->profile->max_state - 1]) {
 			/* frequency is already at its lowest.
 			   No need to calculate things, so bail out. */
 			return 1;
 		}
-		if (idle_lasttime + idlewaitms <= get_time_inms() &&
+		if (idlecount >= idlewait &&
 		    stats.busy_time * 100 < stats.total_time * downdifferenctial) {
 			/* We are idle for idlewaitms! Ramp down the frequency now. */
 			*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 1];
+			idlecount--;
 			return 1;
 		}
 	} else {
 		/* This is the case where msm-adreno-tz don't use the lowest frequency.
 		   Mimic this behavior by bumping up the frequency. */
-		idle_lasttime = 0;
+		idlecount = 0;
 		*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 2];
 		/* Do not return 1 here and allow rest of the algorithm to
 		   figure out the appropriate frequency for current workload.
