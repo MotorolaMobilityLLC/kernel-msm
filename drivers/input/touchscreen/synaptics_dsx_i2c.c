@@ -102,6 +102,9 @@ static void synaptics_dsx_free_patch(
 		struct synaptics_dsx_patch *patch);
 static struct synaptics_dsx_patch *
 		synaptics_dsx_init_patch(const char *name);
+static int synaptics_rmi4_set_page(
+		struct synaptics_rmi4_data *rmi4_data,
+		unsigned int address);
 
 /* F12 packet register description */
 static struct {
@@ -1681,6 +1684,9 @@ static void synaptics_dsx_state_config(
 			rmi4_data->current_mode == rmi4_data->default_mode ?
 			"DEFAULT" : "OTHER");
 	}
+
+	/* keep page 0 active */
+	synaptics_rmi4_set_page(rmi4_data, 0);
 }
 
 #define DSX(a)	(#a)
