@@ -218,6 +218,12 @@ extern const struct soc_enum arizona_in_dmic_osr[];
 extern const struct soc_enum arizona_anc_input_src[];
 extern const struct soc_enum arizona_output_anc_src[];
 
+extern const struct soc_enum arizona_anc_ng_enum;
+extern int arizona_get_anc_ng(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol);
+extern int arizona_put_anc_ng(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol);
+
 extern int arizona_put_anc_input(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol);
 
