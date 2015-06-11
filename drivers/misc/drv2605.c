@@ -777,8 +777,11 @@ static int drv260x_probe(struct i2c_client *client,
 	drv260x->trigger_gpio = pdata->trigger_gpio;
 	drv260x->external_trigger = pdata->external_trigger;
 	drv260x->vibrator_vdd = pdata->vibrator_vdd;
-	if (PTR_ERR(drv260x->vibrator_vdd) == -EPROBE_DEFER)
+	if (PTR_ERR(drv260x->vibrator_vdd) == -EPROBE_DEFER) {
+		if (!IS_ERR(pdata->static_vdd))
+			regulator_disable(pdata->static_vdd);
 		return -EPROBE_DEFER;
+	}
 	if(IS_ERR(drv260x->vibrator_vdd))
 		printk(KERN_ALERT "drv260x->vibrator_vdd not initialized\n");
 
