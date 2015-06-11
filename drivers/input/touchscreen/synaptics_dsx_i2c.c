@@ -212,6 +212,52 @@ static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[2] = {
 	},
 };
 
+#define CTRL_TYPE	(0 << 8)
+#define DATA_TYPE	(1 << 8)
+#define QUERY_TYPE	(2 << 8)
+#define COMMAND_TYPE	(3 << 8)
+
+static inline int register_ascii_to_type(unsigned char *symbol)
+{
+	int reg_type = CTRL_TYPE;
+	switch (*symbol) {
+	case 'Q':
+		reg_type = QUERY_TYPE;
+			break;
+	case 'D':
+		reg_type = DATA_TYPE;
+			break;
+	case 'M':
+		reg_type = COMMAND_TYPE;
+			break;
+	case 'C':
+			break;
+	default: return reg_type;
+	}
+	*symbol = '\0';
+	return reg_type;
+}
+
+static inline unsigned char register_type_to_ascii(int type)
+{
+	unsigned char ascii;
+	switch (type) {
+	case QUERY_TYPE:
+		ascii = 'Q';
+			break;
+	case DATA_TYPE:
+		ascii = 'D';
+			break;
+	case COMMAND_TYPE:
+		ascii = 'M';
+			break;
+	case CTRL_TYPE:
+	default:
+		ascii = 'C';
+	}
+	return ascii;
+}
+
 static unsigned char tsb_buff_clean_flag = 1;
 
 static char *synaptics_dsx_find_patch(char *head, char *delimiters, char **next)
@@ -233,12 +279,14 @@ static char *synaptics_dsx_find_patch(char *head, char *delimiters, char **next)
 static int synaptics_dsx_parse_patch(int func, char *query,
 		struct synaptics_dsx_patch *patch_ptr)
 {
-	int i, ii, error, num_of_bytes;
+	int i, ii, error, rt_mod, function, num_of_bytes;
 	u8 data[64];
 	char *next, *bitmask_p, *subpkt_p, *value_p, *pair = query;
 	long regstr_v, bitmask_v, subpkt_v, value_v;
 	struct synaptics_dsx_func_patch *patch;
 
+	rt_mod = func & 0xf00;
+	function = func & 0xff;
 	for (i = 0; pair; pair = next, i++) {
 		num_of_bytes = 1;
 		bitmask_v = subpkt_v = 0L;
@@ -248,7 +296,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		value_p = strpbrk(pair, "=");
 		if (!value_p) {
 			pr_err("F%x[%d]: invalid syntax '%s'\n",
-				func, i, pair);
+				function, i, pair);
 			continue;
 		}
 
@@ -261,7 +309,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			error = kstrtol(subpkt_p, 10, &subpkt_v);
 			if (error) {
 				pr_err("F%x[%d]: subpacket conv error\n",
-					func, i);
+					function, i);
 				continue;
 			}
 		}
@@ -269,7 +317,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		error = kstrtol(pair, 10, &regstr_v);
 		if (error) {
 			pr_err("F%x[%d]: register conv error\n",
-				func, i);
+				function, i);
 			continue;
 		}
 
@@ -282,14 +330,14 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			error = kstrtol(bitmask_p, 16, &bitmask_v);
 			if (error)
 				pr_err("F%x[%d]: bitmask conv error\n",
-					func, i);
+					function, i);
 		}
 
 		/* detect multiple bytes data */
 		if ((strlen(value_p)%2) == 0) {
 			num_of_bytes = strlen(value_p)/2;
 			pr_debug("F%x[%d]: %d byte(s) of data\n",
-					func, i, num_of_bytes);
+					function, i, num_of_bytes);
 		}
 
 		for (ii = 0; ii < num_of_bytes; ii++) {
@@ -298,15 +346,15 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			hex_val[1] = *(value_p + 1);
 			error = kstrtol(hex_val, 16, &value_v);
 			if (error)
-				pr_err("F%x[%d]: value conv error\n", func, i);
+				pr_err("F%x[%d]: value conv error\n", function, i);
 			data[ii] = (u8)value_v;
 			value_p += 2;
 		}
 
 		/* primitive data validation */
-		if (func <= 0 || func > 255 ||
+		if (function <= 0 || function > 255 ||
 		    regstr_v < 0 || regstr_v > 255) {
-			pr_err("F%x[%d]: invalid values\n", func, i);
+			pr_err("F%x[%d]: invalid values\n", function, i);
 			continue;
 		}
 
@@ -322,7 +370,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			return -ENOMEM;
 		}
 
-		patch->func = (u8)func;
+		patch->func = (u16)func;
 		patch->regstr = (u8)regstr_v;
 		patch->subpkt = (u8)subpkt_v;
 		patch->size = (u8)num_of_bytes;
@@ -330,7 +378,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		memcpy(patch->data, data, num_of_bytes);
 
 		pr_debug("F%x[%d], register %d, subpkt %d, size %d, mask %x\n",
-			patch->func, i, patch->regstr, patch->subpkt,
+			function, i, patch->regstr, patch->subpkt,
 			patch->size, patch->bitmask);
 		patch_ptr->cfg_num++;
 		list_add_tail(&patch->link, &patch_ptr->cfg_head);
@@ -356,7 +404,7 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 	long number_v;
 	char *patch_string;
 	char *config_p, *next, *patch_set;
-	int i, error;
+	int i, error, rt_mod = 0;
 
 	patch_string = kstrdup(patch_ptr, GFP_KERNEL);
 	for (i = 0, patch_set = patch_string; patch_set; patch_set = next) {
@@ -372,6 +420,9 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 			continue;
 		}
 
+		rt_mod = register_ascii_to_type(config_p-1);
+		dev_dbg(dev, "register type modifier %d\n", rt_mod);
+
 		/* strip non digits */
 		*config_p++ = '\0';
 
@@ -382,7 +433,7 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 		}
 
 		error = synaptics_dsx_parse_patch(
-					(int)number_v, config_p, patch);
+				(int)number_v + rt_mod, config_p, patch);
 		if (error < 0) {
 			dev_err(dev, "invalid patch; parse error %d\n", error);
 			continue;
@@ -591,7 +642,9 @@ int synaptics_rmi4_read_packet_reg(
 		return -ENOENT;
 	}
 
-	pr_debug("F%02x reading r%d@%x, size %d to @%p\n", regs->f_number,
+	pr_debug("F%02x%c reading r%d@%x, size %d to @%p\n",
+			regs->f_number & 0xff,
+			register_type_to_ascii(regs->f_number & 0xf00),
 			reg->r_number, regs->base_addr + reg->offset,
 			reg->size, reg->data);
 
@@ -636,8 +689,9 @@ int synaptics_rmi4_read_packet_regs(
 	int retval = 0;
 
 	for (r = 0; r < regs->nr_regs; ++r) {
-		pr_debug("about to read F%02x register %d [%d/%d]\n",
-				regs->f_number,
+		pr_debug("about to read F%02x%c register %d [%d/%d]\n",
+				regs->f_number & 0xff,
+				register_type_to_ascii(regs->f_number & 0xf00),
 				regs->regs[r].r_number,
 				regs->regs[r].expected,
 				regs->regs[r].offset >= 0);
@@ -1329,26 +1383,29 @@ static void synaptics_dsx_patch_func(
 		int f_number,
 		struct synaptics_dsx_patch *patch)
 {
-	int r, error;
-	unsigned char *value;
+	int r, error, function;
+	unsigned char *value, rt_mod;
 	struct device *dev = &rmi4_data->i2c_client->dev;
 	struct synaptics_rmi4_subpkt *subpkt;
 	struct synaptics_dsx_func_patch *fp;
 	struct synaptics_rmi4_packet_reg *reg;
 	struct synaptics_rmi4_func_packet_regs *regs = find_function(f_number);
 
-	pr_debug("patching F%x\n", regs->f_number);
+	function = regs->f_number & 0xff;
+	rt_mod = register_type_to_ascii(regs->f_number & 0xf00);
+	pr_debug("patching F%x%c\n",  function, rt_mod);
 	list_for_each_entry(fp, &patch->cfg_head, link) {
 		if (fp->func != f_number)
 			continue;
 		reg = find_packet_reg(regs, fp->regstr);
 		if (!reg || reg->offset < 0) {
-			pr_err("F%x@%d not present\n", f_number, fp->regstr);
+			pr_err("F%x%c@%d not present\n",
+				function, rt_mod, fp->regstr);
 			continue;
 		}
 		if (fp->subpkt >= reg->nr_subpkts) {
-			pr_err("F%x@%d:%d not present\n",
-				f_number, fp->regstr, fp->subpkt);
+			pr_err("F%x%c@%d:%d not present\n",
+				function, rt_mod, fp->regstr, fp->subpkt);
 			continue;
 		}
 
@@ -1361,8 +1418,8 @@ static void synaptics_dsx_patch_func(
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 			{
 				int ss, kk;
-				pr_debug("F%x@%d before patching:\n",
-					regs->f_number, reg->r_number);
+				pr_debug("F%x%c@%d before patching:\n",
+					function, rt_mod, reg->r_number);
 				for (ss = 0; ss < reg->nr_subpkts; ss++) {
 					subpkt = reg->subpkt + ss;
 					for (kk = 0; kk < subpkt->size; ++kk)
@@ -1378,8 +1435,8 @@ static void synaptics_dsx_patch_func(
 		subpkt = reg->subpkt + fp->subpkt;
 		if (!subpkt->present || !subpkt->data ||
 			subpkt->size < fp->size) {
-			pr_debug("F%x@%d:%d improperly allocated\n",
-				f_number, fp->regstr, fp->subpkt);
+			pr_debug("F%x%c@%d:%d improperly allocated\n",
+				function, rt_mod, fp->regstr, fp->subpkt);
 			continue;
 		}
 		if (fp->bitmask && fp->size == 1) {
@@ -1395,8 +1452,8 @@ static void synaptics_dsx_patch_func(
 		/* value has been changed */
 		reg->modified = true;
 
-		dev_dbg(dev, "patched F%x@%d:%d, sz=%d\n",
-			f_number, fp->regstr, fp->subpkt, fp->size);
+		dev_dbg(dev, "patched F%x%c@%d:%d, sz=%d\n",
+			function, rt_mod, fp->regstr, fp->subpkt, fp->size);
 	}
 
 	/* update loop */
@@ -1406,8 +1463,8 @@ static void synaptics_dsx_patch_func(
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 			{
 				int ss, kk;
-				pr_debug("F%x@%d after patching:\n",
-						regs->f_number, reg->r_number);
+				pr_debug("F%x%c@%d after patching:\n",
+						function, rt_mod, reg->r_number);
 				for (ss = 0; ss < reg->nr_subpkts; ss++) {
 					subpkt = reg->subpkt + ss;
 					for (kk = 0; kk < subpkt->size; ++kk)
@@ -1419,8 +1476,8 @@ static void synaptics_dsx_patch_func(
 			error = synaptics_rmi4_write_packet_reg(rmi4_data,
 							regs, reg->r_number);
 			if (error < 0)
-				dev_warn(dev, "F%x@%d patch write failed\n",
-						f_number, reg->r_number);
+				dev_warn(dev, "F%x%c@%d patch write failed\n",
+					function, rt_mod, reg->r_number);
 			reg->modified = false;
 		}
 		reg->updated = false;
