@@ -6999,6 +6999,7 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 #define STEPCHG_CURR_ADJ 200
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
+#define HYST_STEP_MV 50
 static void smbchg_heartbeat_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -7049,7 +7050,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_state = STEP_MAX;
 		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_MAX) &&
-		   (batt_ma < 0) && (chip->usb_present)) {
+		   (batt_ma < 0) && (chip->usb_present) &&
+		   ((batt_mv + HYST_STEP_MV) >= chip->stepchg_voltage_mv)) {
 		batt_ma *= -1;
 
 		index = smbchg_get_pchg_current_map_index(chip);
@@ -7068,7 +7070,9 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		else
 			chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_ONE) &&
-		   (batt_ma < 0) && (chip->usb_present)) {
+		   (batt_ma < 0) && (chip->usb_present) &&
+		   ((batt_mv + HYST_STEP_MV) >=
+		    chip->stepchg_max_voltage_mv)) {
 		batt_ma *= -1;
 		if ((batt_ma <= chip->stepchg_taper_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
