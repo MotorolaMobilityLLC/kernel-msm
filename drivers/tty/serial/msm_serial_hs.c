@@ -91,6 +91,8 @@ static int hs_serial_debug_mask = DBG_LEV;
 module_param_named(debug_mask, hs_serial_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
+static bool hs_serial_clock_mask = true;
+
 #define MSM_HS_DBG(x...) do { \
 	if (hs_serial_debug_mask >= DBG_LEV) { \
 		if (ipc_msm_hs_log_ctxt) \
@@ -1452,8 +1454,21 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	struct platform_device *pdev;
 	const struct msm_serial_hs_platform_data *pdata;
 
+	if(hs_serial_clock_mask == false) {
+		MSM_HS_WARN("%s:Failed.Clock mask are OFF\n", __func__);
+		printk(KERN_INFO "(msm_serial_hs) msm_serial_hs_rx_tlet.Clock mask are OFF\n");
+		return;
+	}
+
 	msm_uport = container_of((struct tasklet_struct *)tlet_ptr,
 				 struct msm_hs_port, rx.tlet);
+
+	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
+		MSM_HS_WARN("%s:Failed.Clocks are OFF\n", __func__);
+		printk(KERN_INFO "(msm_serial_hs) msm_serial_hs_rx_tlet.Clocks are OFF\n");
+		return;
+	}
+
 	uport = &msm_uport->uport;
 	tty = uport->state->port.tty;
 	notify = &msm_uport->notify;
@@ -1726,8 +1741,11 @@ void msm_hs_set_mctrl_locked(struct uart_port *uport,
 	if (msm_uport->clk_state != MSM_HS_CLK_ON) {
 		MSM_HS_WARN("%s:Failed.Clocks are OFF\n", __func__);
 		printk(KERN_INFO "(msm_serial_hs) msm_hs_set_mctrl_locked.Clocks are OFF\n");
+		hs_serial_clock_mask = false;
 		return;
 	}
+	hs_serial_clock_mask = true;
+
 	/* RTS is active low */
 	set_rts = TIOCM_RTS & mctrl ? 0 : 1;
 
