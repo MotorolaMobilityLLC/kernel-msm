@@ -55,10 +55,6 @@
 	m4sensor {
 		compatible = "simple-bus";
 
-		rtc {
-			compatible = "mot,m4rtc";
-		};
-
 		accelerometer {
 			compatible = "mot,m4accelerometer";
 		};
