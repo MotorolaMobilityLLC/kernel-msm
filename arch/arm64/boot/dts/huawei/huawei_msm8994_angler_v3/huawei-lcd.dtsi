@@ -42,3 +42,6 @@
 		};
 	};
 };
+&mdss_fb0 {
+	huawei,set-brightness-enabled;
+};
