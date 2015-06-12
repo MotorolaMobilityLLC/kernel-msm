@@ -67,7 +67,9 @@ dtb-$(CONFIG_ASUS_SPARROW) += \
 	sparrow_sr_ql_apq8026-v2-320p-w-mtp.dtb \
 	sparrow_sr2_apq8026-v2-320p-w-mtp.dtb \
 	sparrow_er_apq8026-v2-320p-w-mtp.dtb \
-	sparrow_pr_apq8026-v2-320p-w-mtp.dtb
+	sparrow_er_105_apq8026-v2-320p-w-mtp.dtb \
+	sparrow_pr_apq8026-v2-320p-w-mtp.dtb \
+	sparrow_pr_105_apq8026-v2-320p-w-mtp.dtb
 dtb-$(CONFIG_ASUS_WREN) += \
 	wren_evb_sr_apq8026-v2-320p-w-mtp.dtb \
 	wren_er_apq8026-v2-320p-w-mtp.dtb \
