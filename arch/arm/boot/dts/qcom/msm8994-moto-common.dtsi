@@ -857,8 +857,8 @@
 			ct406_recalibrate_threshold = <0x0064>;
 			ct406_pulse_count = <0x02>;
 			ct406_prox_gain = <0x02>;
-			ct406_als_lux1_c0_mult = <0x386>;
-			ct406_als_lux1_c1_mult = <0x693>;
+			ct406_als_lux1_c0_mult = <0x46E>;
+			ct406_als_lux1_c1_mult = <0x85A>;
 			ct406_als_lux1_div = <0x80>;
 			ct406_als_lux2_c0_mult = <0x11F>;
 			ct406_als_lux2_c1_mult = <0x1DE>;
