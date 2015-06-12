@@ -49,6 +49,9 @@
 #include <linux/fcntl.h>
 #include <linux/fs.h>
 
+#if defined(CONFIG_BCMDHD_PCIE) && defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+#include <linux/msm_pcie.h>
+#endif
 
 #define BCM_DBG pr_debug
 
@@ -327,15 +330,6 @@ int dhd_wifi_init_gpio(void)
 	else
 		pr_err("%s: gpio_request WL_REG_ON done\n", __func__);
 
-	if (gpio_direction_output(gpio_wl_reg_on, 1))
-		pr_err("%s: WL_REG_ON failed to pull up\n", __func__);
-	else
-		BCM_DBG("%s: WL_REG_ON is pulled up\n", __func__);
-
-	if (gpio_get_value(gpio_wl_reg_on))
-		BCM_DBG("%s: Initial WL_REG_ON: [%d]\n",
-			__func__, gpio_get_value(gpio_wl_reg_on));
-
 	return 0;
 }
 
@@ -367,7 +361,12 @@ static int dhd_wlan_reset(int onoff)
 
 static int dhd_wlan_set_carddetect(int val)
 {
+#if defined(CONFIG_BCMDHD_PCIE) && defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
+	return msm_pcie_enumerate(1);
+#else
 	return 0;
+#endif /* CONFIG_BCMDHD_PCIE && defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT) */
+
 }
 
 /* Customized Locale table : OPTIONAL feature */

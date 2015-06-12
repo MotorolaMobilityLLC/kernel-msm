@@ -527,7 +527,6 @@ static int dhd_wifi_platform_load_pcie(void)
 	if (dhd_wifi_platdata == NULL) {
 		err = dhd_bus_register();
 	} else {
-		if (dhd_download_fw_on_driverload) {
 			/* power up all adapters */
 			for (i = 0; i < dhd_wifi_platdata->num_adapters; i++) {
 				int retry = POWERUP_MAX_RETRY;
@@ -571,13 +570,11 @@ static int dhd_wifi_platform_load_pcie(void)
 					return -ENODEV;
 				}
 			}
-		}
 
 		err = dhd_bus_register();
 
 		if (err) {
 			DHD_ERROR(("%s: pcie_register_driver failed\n", __FUNCTION__));
-			if (dhd_download_fw_on_driverload) {
 				/* power down all adapters */
 				for (i = 0; i < dhd_wifi_platdata->num_adapters; i++) {
 					adapter = &dhd_wifi_platdata->adapters[i];
@@ -585,7 +582,6 @@ static int dhd_wifi_platform_load_pcie(void)
 					wifi_platform_set_power(adapter,
 						FALSE, WIFI_TURNOFF_DELAY);
 				}
-			}
 		}
 	}
 
