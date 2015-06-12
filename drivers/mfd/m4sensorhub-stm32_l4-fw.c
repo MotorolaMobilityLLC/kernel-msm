@@ -67,7 +67,9 @@ static int m4sensorhub_bl_jump_to_user(struct m4sensorhub_data *m4sensorhub)
 	if (memcmp(barker_read_from_device, barker_buffer, BARKER_SIZE) == 0) {
 		m4sensorhub_bl_go(m4sensorhub, USER_FLASH_FIRST_PAGE_ADDRESS);
 		KDEBUG(M4SH_NOTICE, "Waiting for M4 setup\n");
-		msleep(5000);
+		/* M4 takes about 1.47s to boot up with our binary running,
+		adding some cushion and sleeping for 2.5s */
+		msleep(2500);
 		KDEBUG(M4SH_NOTICE, "Executing M4 code\n");
 		ret = 0;
 	} else {
