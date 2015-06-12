@@ -77,6 +77,16 @@ build_mmio_write(__writel, "l", unsigned int, "r", )
 #define __raw_writew __writew
 #define __raw_writel __writel
 
+#define readb_no_log(c)		readb(c)
+#define readw_no_log(c)		readw(c)
+#define readl_no_log(c)		readl(c)
+#define readq_no_log(c)		readq(c)
+
+#define writeb_no_log(v, c)		writeb((v), (c))
+#define writew_no_log(v, c)		writew((v), (c))
+#define writel_no_log(v, c)		writel((v), (c))
+#define writeq_no_log(v, c)		writeq((v), (c))
+
 #define mmiowb() barrier()
 
 #ifdef CONFIG_X86_64
