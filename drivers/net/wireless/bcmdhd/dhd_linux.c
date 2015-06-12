@@ -5938,6 +5938,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		ret = ret2;
 	if (ret2 == 0) { /* event_msgs_ext must be supported */
 		bcopy(iov_buf, eventmask_msg, msglen);
+		setbit(eventmask_msg->mask, WLC_E_RSSI_LQM);
 #ifdef GSCAN_SUPPORT
 		setbit(eventmask_msg->mask, WLC_E_PFN_GSCAN_FULL_RESULT);
 		setbit(eventmask_msg->mask, WLC_E_PFN_SCAN_COMPLETE);
@@ -7720,6 +7721,9 @@ int dhd_dev_get_feature_set(struct net_device *dev)
 		feature_set |= WIFI_FEATURE_HAL_EPNO;
 #endif /* GSCAN_SUPPORT */
 	}
+	if (FW_SUPPORTED(dhd, rssi_mon)) {
+		feature_set |= WIFI_FEATUE_RSSI_MONITOR;
+	}
 #endif /* PNO_SUPPORT */
 #ifdef WL11U
 	feature_set |= WIFI_FEATURE_HOTSPOT;
@@ -7751,6 +7755,7 @@ int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
 	         (feature_set_full & WIFI_FEATURE_PNO) |
 	         (feature_set_full & WIFI_FEATURE_HAL_EPNO) |
+	         (feature_set_full & WIFI_FEATUE_RSSI_MONITOR) |
 	         (feature_set_full & WIFI_FEATURE_BATCH_SCAN) |
 	         (feature_set_full & WIFI_FEATURE_GSCAN) |
 	         (feature_set_full & WIFI_FEATURE_HOTSPOT) |
@@ -7759,6 +7764,7 @@ int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 
 	ret[1] = (feature_set_full & WIFI_FEATURE_INFRA) |
 	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
+	         (feature_set_full & WIFI_FEATUE_RSSI_MONITOR) |
 	         /* Not yet verified NAN with P2P */
 	         /* (feature_set_full & WIFI_FEATURE_NAN) | */
 	         (feature_set_full & WIFI_FEATURE_P2P) |
@@ -7768,6 +7774,7 @@ int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 
 	ret[2] = (feature_set_full & WIFI_FEATURE_INFRA) |
 	         (feature_set_full & WIFI_FEATURE_INFRA_5G) |
+	         (feature_set_full & WIFI_FEATUE_RSSI_MONITOR) |
 	         (feature_set_full & WIFI_FEATURE_NAN) |
 	         (feature_set_full & WIFI_FEATURE_D2D_RTT) |
 	         (feature_set_full & WIFI_FEATURE_D2AP_RTT) |
@@ -8107,6 +8114,25 @@ void * dhd_dev_process_anqpo_result(struct net_device *dev,
 	return (dhd_pno_process_anqpo_result(&dhd->pub, data, event, send_evt_bytes));
 }
 #endif /* GSCAN_SUPPORT */
+
+int dhd_dev_set_rssi_monitor_cfg(struct net_device *dev, int start,
+             int8 max_rssi, int8 min_rssi)
+{
+	int err;
+	wl_rssi_monitor_cfg_t rssi_monitor;
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+
+	rssi_monitor.version = RSSI_MONITOR_VERSION;
+	rssi_monitor.max_rssi = max_rssi;
+	rssi_monitor.min_rssi = min_rssi;
+	rssi_monitor.flags = start ? 0: RSSI_MONITOR_STOP;
+	err = dhd_iovar(&(dhd->pub), 0, "rssi_monitor", (char *)&rssi_monitor,
+	       sizeof(rssi_monitor), 1);
+	if (err != BCME_OK) {
+		DHD_ERROR(("%s : Failed to execute rssi_monitor %d\n", __FUNCTION__, err));
+	}
+	return err;
+}
 
 bool dhd_dev_is_legacy_pno_enabled(struct net_device *dev)
 {

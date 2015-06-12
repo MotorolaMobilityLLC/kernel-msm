@@ -1292,6 +1292,36 @@ exit:
 }
 #endif /* GSCAN_SUPPORT */
 
+static int wl_cfgvendor_set_rssi_monitor(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	int err = 0, tmp, type, start = 0;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	int8 max_rssi = 0, min_rssi = 0;
+	const struct nlattr *iter;
+
+	nla_for_each_attr(iter, data, len, tmp) {
+		type = nla_type(iter);
+		switch (type) {
+			case RSSI_MONITOR_ATTRIBUTE_MAX_RSSI:
+				max_rssi = (int8) nla_get_u32(iter);
+				break;
+			case RSSI_MONITOR_ATTRIBUTE_MIN_RSSI:
+				min_rssi = (int8) nla_get_u32(iter);
+				break;
+			case RSSI_MONITOR_ATTRIBUTE_START:
+				start = nla_get_u32(iter);
+		}
+	}
+
+	if (dhd_dev_set_rssi_monitor_cfg(bcmcfg_to_prmry_ndev(cfg),
+	       start, max_rssi, min_rssi) < 0) {
+		WL_ERR(("Could not set rssi monitor cfg\n"));
+		err = -EINVAL;
+	}
+	return err;
+}
+
 #ifdef RTT_SUPPORT
 void
 wl_cfgvendor_rtt_evt(void *ctx, void *rtt_data)
@@ -2526,8 +2556,16 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		},
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_stop_mkeep_alive
-	}
+	},
 #endif /* KEEP_ALIVE */
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = WIFI_SUBCMD_SET_RSSI_MONITOR
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_set_rssi_monitor
+	}
 };
 
 static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
@@ -2553,8 +2591,9 @@ static const struct  nl80211_vendor_cmd_info wl_vendor_events [] = {
 		{ OUI_GOOGLE, GOOGLE_PNO_HOTSPOT_FOUND_EVENT },
 #endif /* GSCAN_SUPPORT */
 #ifdef KEEP_ALIVE
-		{ OUI_GOOGLE, GOOGLE_MKEEP_ALIVE_EVENT }
+		{ OUI_GOOGLE, GOOGLE_MKEEP_ALIVE_EVENT },
 #endif /* KEEP_ALIVE */
+		{ OUI_GOOGLE, GOOGLE_RSSI_MONITOR_EVENT }
 };
 
 int wl_cfgvendor_attach(struct wiphy *wiphy, dhd_pub_t *dhd)
