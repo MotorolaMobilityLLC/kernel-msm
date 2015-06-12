@@ -18,3 +18,9 @@
 / {
 	qcom,board-id = <0x42 0x8300>;
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,config-info = "kinziep3";
+	};
+};
