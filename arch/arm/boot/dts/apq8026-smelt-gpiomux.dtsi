@@ -330,7 +330,7 @@
 			suspend = <0x0000>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, IN */
 		};
 		gpio@94 {
-			suspend = <0x0001>; /* FUNC_GPIO, DRV_2MA, PULL_NONE, OUT_HIGH */
+			suspend = <0x0030>; /* FUNC_GPIO, DRV_2MA, PULL_UP, IN */
 		};
 		gpio@95 {
 			suspend = <0x0010>; /* FUNC_GPIO, DRV_2MA, PULL_DOWN, IN */
