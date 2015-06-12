@@ -293,6 +293,7 @@ dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p101.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p2.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p2c.dtb
+dtb-$(CONFIG_ARCH_MSM8994) += msm8994-kinzie-p3.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
