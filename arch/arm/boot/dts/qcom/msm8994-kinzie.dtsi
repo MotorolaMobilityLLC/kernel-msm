@@ -67,3 +67,9 @@
 &i2c_2 {
 	/delete-node/ atmel_mxt_ts@4a;
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,config-info = "kinzie";
+	};
+};
