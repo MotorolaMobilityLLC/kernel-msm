@@ -26,3 +26,9 @@
 &mdss_dsi0 {
 	mmi,mipi-d0-sel = <&msm_gpio 108 0>;
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,config-info = "clark";
+	};
+};
