@@ -283,6 +283,7 @@ struct smbchg_chip {
 	bool				demo_mode;
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
+	int				aicl_wait_retries;
 };
 
 static struct smbchg_chip *the_chip;
@@ -4399,6 +4400,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	chip->vbat_above_headroom = false;
 	chip->stepchg_state = STEP_NONE;
 	chip->vfloat_mv = chip->stepchg_max_voltage_mv;
+	chip->aicl_wait_retries = 0;
 	set_max_allowed_current_ma(chip, chip->stepchg_current_ma);
 	smbchg_set_temp_chgpath(chip, chip->temp_state);
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
@@ -6954,6 +6956,41 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 		schedule_work(&chip->usb_set_online_work);
 }
 
+#define AICL_WAIT_COUNT 3
+static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
+{
+	int rc;
+	union power_supply_propval prop = {0, };
+
+	if (chip->factory_mode || chip->demo_mode)
+		return false;
+
+	if (chip->usb_psy && !chip->usb_psy->get_property(chip->usb_psy,
+							POWER_SUPPLY_PROP_TYPE,
+							&prop)) {
+		if ((prop.intval != POWER_SUPPLY_TYPE_USB_HVDCP) &&
+			(prop.intval != POWER_SUPPLY_TYPE_USB_DCP)) {
+			chip->aicl_wait_retries = 0;
+			return false;
+		}
+	}
+
+	if (!is_usb_present(chip) || smbchg_is_aicl_complete(chip)) {
+		chip->aicl_wait_retries = 0;
+		return false;
+	}
+
+	if (++chip->aicl_wait_retries > AICL_WAIT_COUNT) {
+		chip->aicl_wait_retries = 0;
+		dev_err(chip->dev, "AICL Stuck, Re-run APSD\n");
+		rc = smbchg_force_apsd(chip);
+		if (rc < 0)
+			dev_err(chip->dev, "Couldn't rerun apsd rc = %d\n", rc);
+		return true;
+	} else
+		return false;
+}
+
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
 #define STEPCHG_MAX_FV_COMP 60
@@ -6976,7 +7013,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int prev_step;
 	int index;
 
+
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
+	if (smbchg_check_and_kick_aicl(chip))
+		goto end_hb;
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
 	batt_mv = get_prop_batt_voltage_now(chip) / 1000;
 	batt_ma = get_prop_batt_current_now(chip) / 1000;
@@ -7116,6 +7156,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		}
 	}
 
+end_hb:
 	power_supply_changed(&chip->batt_psy);
 
 	if (!chip->stepchg_state_holdoff)
