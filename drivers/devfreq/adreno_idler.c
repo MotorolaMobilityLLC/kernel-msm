@@ -25,9 +25,6 @@
  * calculating idle frequency(mostly by ondemand's method).
  * The higher frequencies are not touched with this algorithm, so high-demanding
  * games will (most likely) not suffer from worsened performance.
- *
- * The additional idle_lasttime detects if last 500ms was idle before
- * ramping down the frequency to prevent micro-lags on scrolling or playing games.
  */
 
 #include <linux/module.h>
@@ -38,16 +35,18 @@
 #define ADRENO_IDLER_MINOR_VERSION 1
 
 /* stats.busy_time threshold for determining if the given workload is idle.
-   Any workload higher than this will be treated as non-idle workload,
-   meaning the higher it gets, the slower & low-power it would get. */
+   Any workload higher than this will be treated as a non-idle workload.
+   Adreno idler will more actively try to ramp down the frequency
+   if this is set to a higher value. */
 static unsigned long idleworkload = 5000;
 module_param_named(adreno_idler_idleworkload, idleworkload, ulong, 0664);
 
-/* Numbers to wait before entering idle.
-   The idlewait'th events before must be all idle before Adreno idler ramps
-   down the frequency.
-   This implementation is to prevent micro-lags on scrolling or playing games,
-   meaning the lower it gets, the slower & low-power it would get. */
+/* Number of events to wait before ramping down the frequency.
+   The idlewait'th events before current one must be all idle before
+   Adreno idler ramps down the frequency.
+   This implementation is to prevent micro-lags on scrolling or playing games.
+   Adreno idler will more actively try to ramp down the frequency
+   if this is set to a lower value. */
 static unsigned int idlewait = 20;
 module_param_named(adreno_idler_idlewait, idlewait, uint, 0664);
 
@@ -55,7 +54,7 @@ module_param_named(adreno_idler_idlewait, idlewait, uint, 0664);
 static unsigned int downdifferenctial = 20;
 module_param_named(adreno_idler_downdifferenctial, downdifferenctial, uint, 0664);
 
-/* Master switch to activate whole routine */
+/* Master switch to activate the whole routine */
 static bool adreno_idler_active = true;
 module_param_named(adreno_idler_active, adreno_idler_active, bool, 0664);
 
@@ -71,13 +70,13 @@ int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
 		/* busy_time >= idleworkload should be considered as a non-idle workload. */
 		idlecount++;
 		if (*freq == devfreq->profile->freq_table[devfreq->profile->max_state - 1]) {
-			/* frequency is already at its lowest.
+			/* Frequency is already at its lowest.
 			   No need to calculate things, so bail out. */
 			return 1;
 		}
 		if (idlecount >= idlewait &&
 		    stats.busy_time * 100 < stats.total_time * downdifferenctial) {
-			/* We are idle for idlewaitms! Ramp down the frequency now. */
+			/* We are idle for (idlewait + 1)'th time! Ramp down the frequency now. */
 			*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 1];
 			idlecount--;
 			return 1;
@@ -86,7 +85,7 @@ int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
 		idlecount = 0;
 		/* Do not return 1 here and allow rest of the algorithm to
 		   figure out the appropriate frequency for current workload.
-		   It can even set it back to lowest frequency. */
+		   It can even set it back to the lowest frequency. */
 	}
 	return 0;
 }
