@@ -152,6 +152,7 @@ extern bool ap_fw_loaded;
 
 /* enable HOSTIP cache update from the host side when an eth0:N is up */
 #define AOE_IP_ALIAS_SUPPORT 1
+#define RSSI_ADJUST_THRESHOLD -50 /* rssi threshold to be adjust */
 
 #ifdef BCM_FD_AGGR
 #include <bcm_rpc.h>
@@ -3624,6 +3625,7 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 	int ret;
 	void *local_buf = NULL;
 	u16 buflen = 0;
+	scb_val_t *scb_val = NULL;
 
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_PERIM_LOCK(&dhd->pub);
@@ -3752,6 +3754,18 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 
 	if (!bcmerror && buflen && local_buf && ioc.buf) {
 		DHD_PERIM_UNLOCK(&dhd->pub);
+		if(WLC_GET_RSSI == ioc.cmd)
+		{
+			scb_val = (scb_val_t *)local_buf;
+			if (scb_val->val <= RSSI_ADJUST_THRESHOLD)
+			{
+				scb_val->val += 4; /* rssi adjust: below -50dbm adjust 4dbm */
+			}
+			else
+			{
+				scb_val->val += 2; /* rssi adjust: above -50dbm adjust 2dbm */
+			}
+		}
 		if (copy_to_user(ioc.buf, local_buf, buflen))
 			bcmerror = -EFAULT;
 		DHD_PERIM_LOCK(&dhd->pub);
