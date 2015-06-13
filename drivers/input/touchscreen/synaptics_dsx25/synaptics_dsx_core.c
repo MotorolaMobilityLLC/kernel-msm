@@ -3921,7 +3921,8 @@ exit:
 	return 0;
 }
 
-#ifdef CONFIG_PM
+/* Use either FB or PM for sleep */
+#if !defined(CONFIG_FB) && defined(CONFIG_PM)
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
@@ -3932,7 +3933,7 @@ static struct platform_driver synaptics_rmi4_driver = {
 	.driver = {
 		.name = PLATFORM_DRIVER_NAME,
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM
+#if !defined(CONFIG_FB) && defined(CONFIG_PM)
 		.pm = &synaptics_rmi4_dev_pm_ops,
 #endif
 	},

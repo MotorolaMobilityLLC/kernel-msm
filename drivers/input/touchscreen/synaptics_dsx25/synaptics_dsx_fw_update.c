@@ -27,17 +27,14 @@
 #include "synaptics_dsx.h"
 #include "synaptics_dsx_core.h"
 
-#define FW_IMAGE_NAME "synaptics/startup_fw_update.img"
+/* Support two panels with resolution of FHD and 2K */
+#define FW_IMAGE_NAME_2K "synaptics/startup_fw_update.img"
+#define FW_IMAGE_NAME_FHD "synaptics/startup_fw_update-fhd.img"
+
+/* Different rx num : FHD_rx=31 while 2K_rx=32 */
+#define PANEL2K_RX_NUM 32
 
 #define DO_STARTUP_FW_UPDATE
-
-#ifdef DO_STARTUP_FW_UPDATE
-#ifdef CONFIG_FB
-#define WAIT_FOR_FB_READY
-#define FB_READY_WAIT_MS 100
-#define FB_READY_TIMEOUT_S 20
-#endif
-#endif
 
 #define FORCE_UPDATE false
 #define DO_LOCKDOWN false
@@ -103,8 +100,6 @@
 
 #define INT_DISABLE_WAIT_MS 20
 #define ENTER_FLASH_PROG_WAIT_MS 20
-
-#define BASE_NUM 32
 
 static int fwu_do_reflash(void);
 
@@ -3226,7 +3221,7 @@ static void synaptics_refresh_configid(void)
 			config_id[29],
 			config_id[30],
 			config_id[31]);
-	
+
 	fwu->rmi4_data->config_id = be_to_uint(&config_id[28]);
 
 exit:
@@ -3241,12 +3236,6 @@ static int fwu_start_reflash(void)
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
 	tp_log_debug("%s: in!\n",__func__);
-
-	/* Only reflash FW when detected 2K LCD by number of rx */
-	if (rmi4_data->num_of_rx < BASE_NUM) {
-		tp_log_debug("%s: Condition is not suitable, cancel FW upgrade!!!\n", __func__);
-		return -EINVAL;
-	}
 
 	if (rmi4_data->sensor_sleep) {
 		dev_err(rmi4_data->pdev->dev.parent,
@@ -3263,9 +3252,18 @@ static int fwu_start_reflash(void)
 	pr_notice("%s: Start of reflash process\n", __func__);
 
 	if (fwu->image == NULL) {
-		retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
-				FW_IMAGE_NAME, sizeof(FW_IMAGE_NAME),
-				sizeof(FW_IMAGE_NAME));
+		/* Need to reflash different FW, because panel rx number is different */
+		if (rmi4_data->num_of_rx < PANEL2K_RX_NUM) {
+			retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
+			FW_IMAGE_NAME_FHD, sizeof(FW_IMAGE_NAME_FHD),
+			sizeof(FW_IMAGE_NAME_FHD));
+			tp_log_debug("%s: Panel resolution is Full-HD!!!\n", __func__);
+		} else {
+			retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
+			FW_IMAGE_NAME_2K, sizeof(FW_IMAGE_NAME_2K),
+			sizeof(FW_IMAGE_NAME_2K));
+			tp_log_debug("%s: Panel resolution is 2k!!!\n", __func__);
+		}
 		if (retval < 0) {
 			dev_err(rmi4_data->pdev->dev.parent,
 					"%s: Failed to copy image file name\n",
