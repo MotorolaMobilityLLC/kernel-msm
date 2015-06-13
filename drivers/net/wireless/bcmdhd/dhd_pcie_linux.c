@@ -185,6 +185,13 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 		bus = pch->bus;
 	}
 
+	if (!state)
+		if (bus && bus->dev && bus->dev->bus) {
+			ret = msm_pcie_pm_control(MSM_PCIE_RESUME, bus->dev->bus->number,
+				bus->dev, NULL, 0);
+		}
+
+
 	/* When firmware is not loaded do the PCI bus */
 	/* suspend/resume only */
 	if (bus && (bus->dhd->busstate == DHD_BUS_DOWN) &&
@@ -199,6 +206,14 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 
 		ret = dhdpcie_bus_suspend(bus, state);
 	}
+
+	if (state)
+		if (bus && bus->dev && bus->dev->bus) {
+			ret = msm_pcie_pm_control(MSM_PCIE_SUSPEND, bus->dev->bus->number,
+				bus->dev, NULL, 0);
+		}
+
+
 	DHD_INFO(("%s Exit with state :%d\n", __FUNCTION__, ret));
 	return ret;
 }
