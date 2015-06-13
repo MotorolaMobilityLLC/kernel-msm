@@ -1903,6 +1903,8 @@ static void taper_irq_en(struct smbchg_chip *chip, bool en)
 	mutex_unlock(&chip->taper_irq_lock);
 }
 
+#define HVDCP_ICL_MAX 2600
+#define HVDCP_ICL_TAPER 1600
 static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 {
 	int current_max_ma;
@@ -2050,7 +2052,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	pr_smb(PR_STATUS, "Attempting to enable parallel charger\n");
 	min_current_thr_ma = smbchg_get_min_parallel_current_ma(chip);
 	if (min_current_thr_ma <= 0) {
-		pr_smb(PR_STATUS, "parallel charger unavailable for thr: %d\n",
+		pr_warn("parallel charger unavailable for thr: %d\n",
 				min_current_thr_ma);
 		goto disable_parallel;
 	}
@@ -2061,7 +2063,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 
 	if (chip->parallel.initial_aicl_ma == 0) {
 		if (current_limit_ma < min_current_thr_ma) {
-			pr_smb(PR_STATUS, "Initial AICL very low: %d < %d\n",
+			pr_warn("Initial AICL very low: %d < %d\n",
 				current_limit_ma, min_current_thr_ma);
 			goto disable_parallel;
 		}
@@ -2084,8 +2086,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 
 	if (total_current_ma < chip->parallel.initial_aicl_ma
 			- chip->parallel.allowed_lowering_ma) {
-		pr_smb(PR_STATUS,
-			"Too little total current : %d (%d + %d) < %d - %d\n",
+		pr_warn("Too little total current : %d (%d + %d) < %d - %d\n",
 			total_current_ma,
 			current_limit_ma, parallel_cl_ma,
 			chip->parallel.initial_aicl_ma,
@@ -2134,7 +2135,14 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	return;
 
 disable_parallel:
-	pr_smb(PR_STATUS, "disabling parallel charger\n");
+	pr_warn("disabling parallel charger\n");
+
+	if (chip->usb_target_current_ma == HVDCP_ICL_MAX) {
+		mutex_lock(&chip->current_change_lock);
+		chip->usb_target_current_ma = HVDCP_ICL_TAPER;
+		mutex_unlock(&chip->current_change_lock);
+	}
+
 	smbchg_parallel_usb_disable(chip);
 }
 
@@ -3445,8 +3453,6 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 
 }
 
-#define HVDCP_ICL_MAX 3000
-#define HVDCP_ICL_TAPER 1600
 #define UNKNOWN_BATT_TYPE	"Unknown Battery"
 #define LOADING_BATT_TYPE	"Loading Battery Data"
 static void smbchg_external_power_changed(struct power_supply *psy)
