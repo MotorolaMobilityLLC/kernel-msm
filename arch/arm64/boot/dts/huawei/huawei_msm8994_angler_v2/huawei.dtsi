@@ -29,7 +29,7 @@
 #include "huawei-fingerprint.dtsi"
 #include "huawei-camera.dtsi"
 #include "huawei-sensors.dtsi"
-/*#include "huawei-vibrator.dtsi"*/
+#include "huawei-haptics.dtsi"
 /*belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator end*/
 
 /*belong to the wireless component group, according to the order of wifi bt fm audio begin*/
