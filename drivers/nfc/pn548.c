@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Trusted Logic S.A.
+ * modifications copyright (C) 2015 NXP B.V.
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -12,7 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
  */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
@@ -25,16 +30,14 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
+#include <linux/io.h>
+#include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/of_gpio.h>
 #include <linux/clk.h>
-#include <linux/platform_device.h>
-#include <linux/of_platform.h>
-#include <linux/of_device.h>
 #include <linux/regulator/consumer.h>
-#include <linux/miscdevice.h>
-#include <linux/io.h>
 #include <linux/err.h>
 #include <linux/time.h>
 #include <linux/spinlock_types.h>
@@ -43,8 +46,15 @@
 #include "pn548.h"
 #include <linux/wakelock.h>
 
-#define NFC_TRY_NUM 3
-#define MAX_BUFFER_SIZE	512
+#define NFC_TRY_NUM    3
+#define MAX_BUFFER_SIZE    512
+
+#define MODE_OFF    0
+#define MODE_RUN    1
+#define MODE_FW     2
+
+#define CHIP "pn54x"
+#define DRIVER_DESC "NFC driver for PN54x Family"
 
 struct pn548_dev {
 	wait_queue_head_t	read_wq;
@@ -64,32 +74,6 @@ struct pn548_dev {
 	bool cancel_read;
 };
 
-
-/*
- *FUNCTION: pn548_enable_nfc
- *DESCRIPTION: reset cmd sequence to enable pn548
- *Parameters
- * struct  pn548_dev *pdev: device structure
- *RETURN VALUE
- * none
- */
-static void pn548_enable_nfc(struct  pn548_dev *pdev)
-{
-	/*hardware reset*/
-	/* power on */
-	gpio_set_value(pdev->ven_gpio, 1);
-	msleep(20);
-
-	/* power off */
-	gpio_set_value(pdev->ven_gpio, 0);
-	msleep(60);
-
-	/* power on */
-	gpio_set_value(pdev->ven_gpio, 1);
-	msleep(20);
-
-	return ;
-}
 /*
  *FUNCTION: pn548_disable_irq
  *DESCRIPTION: disable irq function
@@ -158,6 +142,72 @@ static irqreturn_t pn548_dev_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 /*
+ *FUNCTION: pn548_enable
+ *DESCRIPTION: reset cmd sequence to enable pn548
+ *Parameters
+ * struct  pn548_dev *pdev: device structure
+ * int mode:run mode
+ *RETURN VALUE
+ * none
+ */
+static void pn548_enable(struct  pn548_dev *pdev, int mode)
+{
+	/* power on */
+	if (MODE_RUN == mode) {
+		pr_info("%s power on\n", __func__);
+		if (gpio_is_valid(pdev->firm_gpio)) {
+			gpio_set_value(pdev->firm_gpio, 0);
+		}
+		gpio_set_value(pdev->ven_gpio, 1);
+		msleep(100);
+	}
+	else if (MODE_FW == mode) {
+		if (!gpio_is_valid(pdev->firm_gpio)) {
+			pr_err("%s invalid firm_gpio, mode %d\n", __func__, mode);
+			return;
+		}
+		/* power on with firmware download (requires hw reset)
+		 */
+		pr_info("%s power on with firmware\n", __func__);
+		gpio_set_value(pdev->ven_gpio, 1);
+		msleep(20);
+		gpio_set_value(pdev->firm_gpio, 1);
+		msleep(20);
+		gpio_set_value(pdev->ven_gpio, 0);
+		msleep(100);
+		gpio_set_value(pdev->ven_gpio, 1);
+		msleep(20);
+	}
+	else {
+		pr_err("%s bad arg %d\n", __func__, mode);
+		return;
+	}
+
+	return;
+}
+
+/*
+ *FUNCTION: pn548_disable
+ *DESCRIPTION: power off pn548
+ *Parameters
+ * struct  pn548_dev *pdev: device structure
+ *RETURN VALUE
+ * none
+ */
+static void pn548_disable(struct  pn548_dev *pdev)
+{
+	/* power off */
+	pr_info("%s power off\n", __func__);
+	if (gpio_is_valid(pdev->firm_gpio)) {
+		gpio_set_value(pdev->firm_gpio, 0);
+	}
+	gpio_set_value(pdev->ven_gpio, 0);
+	msleep(100);
+
+	return;
+}
+
+/*
  *FUNCTION: pn548_dev_read
  *DESCRIPTION: read i2c data
  *Parameters
@@ -225,6 +275,10 @@ static ssize_t pn548_dev_read(struct file *filp, char __user *buf,
 	}
 
 	mutex_unlock(&pn548_dev->read_mutex);
+
+	/* pn548 seems to be slow in handling I2C read requests
+	 * so add 1ms delay after recv operation */
+	udelay(1000);
 
 	if (ret < 0) {
 		pr_err("%s: PN548 i2c_master_recv returned %d\n", __func__, ret);
@@ -299,9 +353,37 @@ static ssize_t pn548_dev_write(struct file *filp, const char __user *buf,
 		ret = -EIO;
 	}
 
+	/* pn548 seems to be slow in handling I2C write requests
+	 * so add 1ms delay after I2C send oparation */
+	udelay(1000);
+
 	return ret;
 }
+/*
+ *FUNCTION: pn548_reset
+ *DESCRIPTION: reset pn548
+ *Parameters
+ * struct  pn548_dev *pdev: device structure
+ *RETURN VALUE
+ * none
+ */
+static void pn548_reset(struct  pn548_dev *pdev)
+{
+	/*hardware reset*/
+	/* power on */
+	gpio_set_value(pdev->ven_gpio, 1);
+	msleep(20);
 
+	/* power off */
+	gpio_set_value(pdev->ven_gpio, 0);
+	msleep(60);
+
+	/* power on */
+	gpio_set_value(pdev->ven_gpio, 1);
+	msleep(20);
+
+	return;
+}
 /*
  *FUNCTION: check_pn548
  *DESCRIPTION: To test if nfc chip is ok
@@ -318,9 +400,9 @@ static int check_pn548(struct i2c_client *client, struct  pn548_dev *pdev)
 	const char host_to_pn548[1] = {0x20};
 	const char firm_dload_cmd[8]={0x00, 0x04, 0xD0, 0x09, 0x00, 0x00, 0xB1, 0x84};
 
-	/* power on */
+	/* reset chip */
 	gpio_set_value(pdev->firm_gpio, 0);
-	pn548_enable_nfc(pdev);
+	pn548_reset(pdev);
 
 	do {
 		ret = i2c_master_send(client,  host_to_pn548, sizeof(host_to_pn548));
@@ -329,7 +411,7 @@ static int check_pn548(struct i2c_client *client, struct  pn548_dev *pdev)
 		} else {
 			pr_info("%s:pn548_i2c_write success and ret = %d,at %d times\n",__func__,ret,count);
 			msleep(10);
-			pn548_enable_nfc(pdev);
+			pn548_reset(pdev);
 			break;
 		}
 		count++;
@@ -340,7 +422,7 @@ static int check_pn548(struct i2c_client *client, struct  pn548_dev *pdev)
 	if (count == NFC_TRY_NUM) {
 		for (count = 0; count < NFC_TRY_NUM;count++) {
 			gpio_set_value(pdev->firm_gpio, 1);
-			pn548_enable_nfc(pdev);
+			pn548_reset(pdev);
 
 			ret = i2c_master_send(client,  firm_dload_cmd, sizeof(firm_dload_cmd));
 			if (ret < 0) {
@@ -348,7 +430,7 @@ static int check_pn548(struct i2c_client *client, struct  pn548_dev *pdev)
 				continue;
 			}
 			gpio_set_value(pdev->firm_gpio, 0);
-			pn548_enable_nfc(pdev);
+			pn548_reset(pdev);
 			break;
 		}
 	}
@@ -375,7 +457,22 @@ static int pn548_dev_open(struct inode *inode, struct file *filp)
 
 	filp->private_data = pn548_dev;
 	pn548_enable_irq(pn548_dev);
-	pr_err("%s : %d,%d\n", __func__, imajor(inode), iminor(inode));
+	pr_info("%s : %d,%d\n", __func__, imajor(inode), iminor(inode));
+
+	return 0;
+}
+/*
+ *FUNCTION: pn548_dev_release
+ *DESCRIPTION: pn548_dev_release, used by user space to release pn548
+ *Parameters
+ * struct inode *inode:device inode
+ * struct file *filp:device file
+ *RETURN VALUE
+ * int: result
+ */
+static int pn548_dev_release(struct inode *inode, struct file *filp)
+{
+	pr_info("%s : closing %d,%d\n", __func__, imajor(inode), iminor(inode));
 
 	return 0;
 }
@@ -394,42 +491,49 @@ static long pn548_dev_ioctl(struct file *filp,
 {
 	struct pn548_dev *pn548_dev = filp->private_data;
 
-	pr_info("%s ++    cmd = 0x%x \n", __func__,cmd);
+	pr_info("%s, cmd=%d, arg=%lu\n", __func__, cmd, arg);
 
 	switch (cmd) {
 	case PN548_SET_PWR:
-		if (arg == 2) {
+		if (2 == arg) {
 			/* power on with firmware download (requires hw reset)
 			 */
 			pr_err("%s power on with firmware\n", __func__);
-			gpio_set_value(pn548_dev->ven_gpio,0);
-			gpio_set_value(pn548_dev->firm_gpio, 1);
-			msleep(60);
-			gpio_set_value(pn548_dev->ven_gpio, 0);
-			msleep(60);
-			gpio_set_value(pn548_dev->ven_gpio, 1);
-			msleep(60);
-		} else if (arg == 1) {
+			pn548_enable(pn548_dev, MODE_FW);
+		} else if (1 == arg) {
 			/* power on */
 			pr_err("%s power on\n", __func__);
-			gpio_set_value(pn548_dev->firm_gpio, 0);
-			gpio_set_value(pn548_dev->ven_gpio, 1);// 1
+			pn548_enable(pn548_dev, MODE_RUN);
 			irq_set_irq_wake(pn548_dev->client->irq,1);
 			msleep(20);
-		} else  if (arg == 0) {
+		} else  if (0 == arg) {
 			/* power off */
 			pr_err("%s power off\n", __func__);
-			gpio_set_value(pn548_dev->firm_gpio, 0);
-			gpio_set_value(pn548_dev->ven_gpio, 0); //0
+			pn548_disable(pn548_dev);
 			irq_set_irq_wake(pn548_dev->client->irq,0);
 			msleep(60);
-		} else if (arg == 3) {
+		} else if (3 == arg) {
 			pr_info("%s Read Cancel\n", __func__);
 			pn548_dev->cancel_read = true;
 			pn548_dev->do_reading = 1;
 			wake_up(&pn548_dev->read_wq);
 		} else {
-			pr_err("%s bad arg %lu\n", __func__, arg);
+			pr_err("%s bad SET_PWR arg %lu\n", __func__, arg);
+			return -EINVAL;
+		}
+		break;
+	case PN548_CLK_REQ:
+		if(1 == arg){
+			if(gpio_is_valid(pn548_dev->clk_req_gpio)){
+				gpio_set_value(pn548_dev->clk_req_gpio, 1);
+			}
+		}
+		else if(0 == arg) {
+			if(gpio_is_valid(pn548_dev->clk_req_gpio)){
+				gpio_set_value(pn548_dev->clk_req_gpio, 0);
+			}
+		} else {
+			pr_err("%s bad CLK_REQ arg %lu\n", __func__, arg);
 			return -EINVAL;
 		}
 		break;
@@ -447,6 +551,7 @@ static const struct file_operations pn548_dev_fops = {
 	.read	= pn548_dev_read,
 	.write	= pn548_dev_write,
 	.open	= pn548_dev_open,
+	.release   = pn548_dev_release,
 	.unlocked_ioctl	= pn548_dev_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl   = pn548_dev_ioctl,
@@ -606,7 +711,7 @@ static int pn548_probe(struct i2c_client *client,
 	struct pn548_i2c_platform_data *platform_data;
 	struct pn548_dev *pn548_dev;
 
-	dev_dbg(&client->dev, "%s begin:\n", __func__);
+	pr_info("%s\n", __func__);
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s : need I2C_FUNC_I2C\n", __func__);
@@ -682,8 +787,10 @@ static int pn548_probe(struct i2c_client *client,
 	mutex_init(&pn548_dev->read_mutex);
 	spin_lock_init(&pn548_dev->irq_enabled_lock);
 	wake_lock_init(&pn548_dev->wl,WAKE_LOCK_SUSPEND,"nfc_locker");
+
+	/* register as a misc device - character based with one entry point */
 	pn548_dev->pn548_device.minor = MISC_DYNAMIC_MINOR;
-	pn548_dev->pn548_device.name = "pn54x";
+	pn548_dev->pn548_device.name = CHIP;
 	pn548_dev->pn548_device.fops = &pn548_dev_fops;
 
 	ret = misc_register(&pn548_dev->pn548_device);
@@ -696,11 +803,10 @@ static int pn548_probe(struct i2c_client *client,
 	/* request irq.  the irq is set whenever the chip has data available
 	 * for reading.  it is cleared when all data has been read.
 	 */
-	dev_info(&client->dev, "%s : requesting IRQ %d\n",
-		__func__, client->irq);
+	pr_info("%s : requesting IRQ %d\n", __func__, client->irq);
 	pn548_dev->irq_enabled = true;
 	ret = request_irq(client->irq, pn548_dev_irq_handler,
-			IRQF_TRIGGER_RISING | IRQF_NO_SUSPEND | IRQF_ONESHOT,
+			IRQF_TRIGGER_HIGH | IRQF_NO_SUSPEND | IRQF_ONESHOT,
 			client->name, pn548_dev);
 	if (ret) {
 		dev_err(&client->dev, "request_irq failed\n");
@@ -709,13 +815,14 @@ static int pn548_probe(struct i2c_client *client,
 	pn548_disable_irq(pn548_dev);
 	i2c_set_clientdata(client, pn548_dev);
 
-	dev_dbg(&client->dev, "%s success.\n", __func__);
+	pr_info("%s success.\n", __func__);
 	return 0;
 
 err_request_irq_failed:
 	misc_deregister(&pn548_dev->pn548_device);
 err_misc_register:
 	mutex_destroy(&pn548_dev->read_mutex);
+	wake_lock_destroy(&pn548_dev->wl);
 	kfree(pn548_dev);
 err_exit:
 err_i2c:
@@ -743,7 +850,8 @@ static int pn548_remove(struct i2c_client *client)
 {
 	struct pn548_dev *pn548_dev;
 
-	dev_info(&client->dev, "%s ++\n", __func__);
+	pr_info("%s\n", __func__);
+
 	pn548_dev = i2c_get_clientdata(client);
 	free_irq(client->irq, pn548_dev);
 	misc_deregister(&pn548_dev->pn548_device);
@@ -762,15 +870,19 @@ static int pn548_remove(struct i2c_client *client)
 	return 0;
 }
 
+static struct of_device_id pn548_match_table[] = {
+	{ .compatible = "nxp,pn548", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, pn548_match_table);
+
 static const struct i2c_device_id pn548_id[] = {
 	{ "pn548", 0 },
 	{ }
 };
 
-static struct of_device_id pn548_match_table[] = {
-	{ .compatible = "nxp,pn548", },
-	{ },
-};
+MODULE_DEVICE_TABLE(i2c, pn548_id);
 
 static struct i2c_driver pn548_driver = {
 	.id_table	= pn548_id,
@@ -787,17 +899,19 @@ static struct i2c_driver pn548_driver = {
  */
 static int __init pn548_dev_init(void)
 {
-	pr_info("### %s begin! \n",__func__);
+	pr_info("%s\n", __func__);
 	return i2c_add_driver(&pn548_driver);
 }
-module_init(pn548_dev_init);
 
 static void __exit pn548_dev_exit(void)
 {
+	pr_info("%s\n", __func__);
 	i2c_del_driver(&pn548_driver);
 }
+
+module_init(pn548_dev_init);
 module_exit(pn548_dev_exit);
 
-MODULE_AUTHOR("SERI");
-MODULE_DESCRIPTION("NFC pn548 driver");
+MODULE_AUTHOR("Sylvain Fonteneau");
+MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");

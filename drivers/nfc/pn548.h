@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2013 NXP Semiconductors N.V.
+ * Copyright (C) 2010 Trusted Logic S.A.
+ * modifications copyright (C) 2015 NXP B.V.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +25,10 @@
  * PN548 power control via ioctl
  * PN548_SET_PWR(0): power off
  * PN548_SET_PWR(1): power on
- * PN548_SET_PWR(>1): power on with firmware download enabled
+ * PN548_SET_PWR(2): reset and power on with firmware download enabled
  */
 #define PN548_SET_PWR _IOW(PN548_MAGIC, 0x01, unsigned int)
-#define PN548_DEVICE_NAME "pn54x"
+#define PN548_CLK_REQ _IOW(PN548_MAGIC, 0x02, unsigned int)
 
 struct pn548_i2c_platform_data {
 	int irq_gpio;
