@@ -14,17 +14,11 @@
 
 #include "apq8026-smelt-common.dtsi"
 #include "apq8026-smelt-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35350.dtsi"
+#include "apq8026-smelt-panel-nt35350-small.dtsi"
 
 / {
 	qcom,msm-id =
 		<199 0x41 0x0400>, /* P2A Wingboard */
 		<199 0x41 0x0407>, /* Small P2A Portable */
 		<199 0x41 0x0507>; /* Small P2AA Portable */
-};
-
-/* small panel is 360 x 325 */
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-height = <325>;
-	qcom,mdss-dsi-v-back-porch = <55>;
 };
