@@ -14,16 +14,10 @@
 
 #include "apq8026-smelt-common.dtsi"
 #include "apq8026-smelt-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35350.dtsi"
+#include "apq8026-smelt-panel-nt35350-small.dtsi"
 #include "apq8026-smelt-regulator-ote2005b.dtsi"
 
 / {
 	qcom,msm-id =
 		<199 0x41 0x0707>; /* Small P2B Portable */
-};
-
-/* small panel is 360 x 325 */
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-height = <325>;
-	qcom,mdss-dsi-v-back-porch = <55>;
 };

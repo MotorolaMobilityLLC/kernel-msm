@@ -14,18 +14,12 @@
 
 #include "apq8026-smelt-common.dtsi"
 #include "apq8026-smelt-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35350.dtsi"
+#include "apq8026-smelt-panel-nt35350-small.dtsi"
 
 / {
 	qcom,msm-id =
 		<199 0x41 0x0300>, /* P1A Wingboard */
 		<199 0x41 0x0308>; /* Small P1A Portable (BCM4343W)*/
-};
-
-/* small panel is 360 x 325 */
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-height = <325>;
-	qcom,mdss-dsi-v-back-porch = <55>;
 };
 
 /* workaround to support nt35350 cut 1.1
@@ -38,13 +32,21 @@
 		/delete-node/ qcom,panel-supply-entry@1;
 	};
 };
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-name = "mot 360p command mode dsi panel 1.1";
+&dsi_mot_nt35350_360p_cmd_small {
+	qcom,mdss-dsi-panel-name = "mot nt35350 command mode dsi panel 1.1";
 	/* workaround to support nt35350 cut 1.1
-	 * do not change the last 2 dis-on commandss
+	 * it should only change the waiting time of sleep in/out and
+	 *   display on/off command to meet panel 1.1 specifications
 	 */
-	qcom,mdss-dsi-on-command = [39 01 00 00 00 00 05 2A 00 00 01 67
+	qcom,mdss-dsi-on-command = [15 01 00 00 00 00 02 FF 24
+	15 01 00 00 00 00 02 FB 01
+	15 01 00 00 00 00 02 93 6D
+	15 01 00 00 00 00 02 98 91
+	15 01 00 00 00 00 02 FF 10
+	15 01 00 00 00 00 02 FB 01
+	39 01 00 00 00 00 05 2A 00 00 01 67
 	39 01 00 00 00 00 05 2B 00 00 01 67
+	15 01 00 00 00 00 02 C0 01
 	05 01 00 00 14 00 01 11
 	05 01 00 00 28 00 01 29];
 	qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
