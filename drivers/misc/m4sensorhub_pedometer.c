@@ -486,6 +486,121 @@ m4ped_userdata_store_fail:
 static IIO_DEVICE_ATTR(userdata, S_IRUSR | S_IWUSR,
 		m4ped_userdata_show, m4ped_userdata_store, 0);
 
+static ssize_t m4ped_userstridefactor_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4ped_driver_data *dd = iio_priv(iio);
+	ssize_t size = 0;
+	uint8_t data[2] = {0x00, 0x00};
+
+	mutex_lock(&(dd->mutex));
+
+	err = m4sensorhub_reg_read_n(
+		dd->m4,
+		M4SH_REG_USERSETTINGS_USERWALKCORRECTIONFACTOR,
+		(char *)&(data[0]),
+		ARRAY_SIZE(data));
+	if (err < 0) {
+		m4ped_err("%s: Failed to read user data.\n", __func__);
+		goto m4ped_userstridefactor_show_fail;
+	} else if (err < ARRAY_SIZE(data)) {
+		m4ped_err("%s: Read %d bytes instead of %d.\n",
+			  __func__, err, size);
+		err = -EBADE;
+		goto m4ped_userstridefactor_show_fail;
+	}
+
+	size = snprintf(buf, PAGE_SIZE,
+		"%s%hhu\n%s%hhu\n",
+		"User Walk Correction Factor : ", data[0],
+		"User Run Correction Factor  : ", data[1]);
+
+m4ped_userstridefactor_show_fail:
+	mutex_unlock(&(dd->mutex));
+
+	if (err < 0)
+		size = snprintf(buf, PAGE_SIZE, "Read failed (check dmesg)\n");
+
+	return size;
+}
+
+/*
+ * Expected input is Walk Correction Factor, Run Correction Factor
+ * 0xWW,0xRR\n
+ */
+static ssize_t m4ped_userstridefactor_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4ped_driver_data *dd = iio_priv(iio);
+	unsigned int value = 0;
+	unsigned char convbuf[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
+	unsigned char outbuf[2] = {0x00, 0x00};
+	int i = 0;
+
+	mutex_lock(&(dd->mutex));
+
+	/* Size includes a terminating '\n' but not the terminating null */
+	if (size != 10) {
+		m4ped_err("%s: Invalid data format.  %s\n",
+			  __func__, "Use \"0xWW,0xRR\\n\" instead.");
+		err = -EINVAL;
+		goto m4ped_userstridefactor_store_fail;
+	}
+
+	for (i = 0; i < 2; i++) {
+		memcpy(convbuf, &(buf[i*5]), 4);
+		err = kstrtouint(convbuf, 16, &value);
+		if (err < 0) {
+			m4ped_err("%s: Argument %d conversion failed.\n",
+				  __func__, i);
+			goto m4ped_userstridefactor_store_fail;
+		} else if (value > 255) {
+			m4ped_err("%s: Value 0x%08X is too large.\n",
+				  __func__, value);
+			err = -EOVERFLOW;
+			goto m4ped_userstridefactor_store_fail;
+		}
+		outbuf[i] = (unsigned char) value;
+	}
+
+	err = m4sensorhub_reg_write(
+		dd->m4,
+		M4SH_REG_USERSETTINGS_USERWALKCORRECTIONFACTOR,
+		&(outbuf[0]),
+		m4sh_no_mask);
+	if (err < 0) {
+		m4ped_err("%s: Failed to write user walk correction factor.\n",
+			  __func__);
+		goto m4ped_userstridefactor_store_fail;
+	}
+
+	err = m4sensorhub_reg_write(
+		dd->m4,
+		M4SH_REG_USERSETTINGS_USERRUNCORRECTIONFACTOR,
+		&(outbuf[1]),
+		m4sh_no_mask);
+	if (err < 0) {
+		m4ped_err("%s: Failed to write user run correction factor.\n",
+			  __func__);
+		goto m4ped_userstridefactor_store_fail;
+	}
+
+	err = size;
+
+m4ped_userstridefactor_store_fail:
+	mutex_unlock(&(dd->mutex));
+
+	return (ssize_t) err;
+}
+static IIO_DEVICE_ATTR(userstridefactor, S_IRUSR | S_IWUSR,
+		m4ped_userstridefactor_show, m4ped_userstridefactor_store, 0);
+
 static ssize_t m4ped_feature_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -582,6 +697,7 @@ static struct attribute *m4ped_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	&iio_dev_attr_userdata.dev_attr.attr,
+	&iio_dev_attr_userstridefactor.dev_attr.attr,
 	&iio_dev_attr_feature_enable.dev_attr.attr,
 	NULL,
 };
