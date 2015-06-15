@@ -21,21 +21,3 @@
 	compatible = "qcom,msm8992";
 	qcom,board-id = <0x464 0>;
 };
-
-&soc {
-	gpio_keys {
-		vol_up {
-			linux,code = <114>;
-		};
-	};
-};
-
-&spmi_bus {
-	qcom,pm8994@0 {
-		qcom,power-on@800 {
-			qcom,pon_2 {
-				linux,code = <115>;
-			};
-		};
-	};
-};

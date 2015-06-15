@@ -11,7 +11,6 @@
  * GNU General Public License for more details.
  */
 
-
 /dts-v1/;
 
 #include "../qcom/msm8992.dtsi"
@@ -20,5 +19,5 @@
 / {
 	model = "LGE MSM8992 BULLHEAD rev-b";
 	compatible = "qcom,msm8992";
-	qcom,board-id = <0x564 0>;
+	qcom,board-id = <0x664 0>;
 };

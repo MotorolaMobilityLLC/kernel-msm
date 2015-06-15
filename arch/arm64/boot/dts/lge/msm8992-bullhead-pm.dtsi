@@ -33,6 +33,7 @@
 			};
 			qcom,pon_2 { /* RESIN_N reset   */
 				status = "ok";
+				linux,code = <115>;
 				qcom,support-reset = <0>;
 			};
 			qcom,pon_3 { /* KPD_PWR_N AND RESIN_N reset */

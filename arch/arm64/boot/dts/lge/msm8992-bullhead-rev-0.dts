@@ -88,8 +88,24 @@
 	qcom,cnss {
 		wlan-bootstrap-gpio = <&msm_gpio 112 0>;
 	};
+
+	gpio_keys {
+		vol_up {
+			linux,code = <115>;
+		};
+	};
 };
 
 &pmi8994_charger {
 	qcom,fastchg-current-ma = <2000>;
+};
+
+&spmi_bus {
+	qcom,pm8994@0 {
+		qcom,power-on@800 {
+			qcom,pon_2 {
+				linux,code = <114>;
+			};
+		};
+	};
 };
