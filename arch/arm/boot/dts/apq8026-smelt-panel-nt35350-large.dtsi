@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "qcom/dsi-panel-mot-nt35350-360p-cmd.dtsi"
+#include "qcom/dsi-panel-mot-nt35350-360p-cmd-large.dtsi"
 
 &soc {
 	avdd_avee_vreg: avdd_avee_vreg {
@@ -33,7 +33,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35350_360p_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35350_360p_cmd_large>;
 	qcom,platform-reset-gpio = <&msmgpio 36 0>;
 	qcom,platform-te-gpio = <&msmgpio 24 0>;
 	vddio_disp-supply = <&pm8226_l27>;
@@ -62,8 +62,4 @@
 			qcom,supply-post-off-sleep = <0>;
 		};
 	};
-};
-
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-dcs-idle-enable;
 };

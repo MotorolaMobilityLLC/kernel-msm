@@ -1,0 +1,91 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* panel nt35355 is similar panel nt35350, it has same hardware configure
+ * and timing settings, only the difference is that the nt35355 is
+ * transflective panel
+ */
+#include "qcom/dsi-panel-mot-nt35355-360p-cmd-small.dtsi"
+
+&soc {
+	avdd_avee_vreg: avdd_avee_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "avdd_avee_5.4v";
+		regulator-min-microvolt = <5400000>;
+		regulator-max-microvolt = <5400000>;
+		regulator-boot-on;
+		enable-active-high;
+		gpio = <&msmgpio 33 0x0>;
+	};
+};
+
+&pm8226_l27 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	qcom,init-disallow-bypass = <1>;
+	regulator-boot-on;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35355_360p_cmd_small>;
+	qcom,platform-reset-gpio = <&msmgpio 36 0>;
+	qcom,platform-te-gpio = <&msmgpio 24 0>;
+	vddio_disp-supply = <&pm8226_l27>;
+	avdd_avee_disp-supply = <&avdd_avee_vreg>;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@0 {
+			qcom,supply-name = "vddio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,panel-supply-entry@1 {
+			qcom,supply-name = "avdd_avee_disp";
+			qcom,supply-min-voltage = <5400000>;
+			qcom,supply-max-voltage = <5400000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <10>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
+};
+
+&dsi_mot_nt35355_360p_cmd_small {
+	qcom,mdss-dsi-transflective-panel {
+		qcom,mdss-dsi-panel-tf-normal = "transmissive";
+		qcom,mdss-dsi-panel-tf-lowpower = "reflective";
+		qcom,mdss-dsi-panel-tf-transmissive-command = [15 01 00 00 00 00 02 FF 28
+		15 01 00 00 00 00 02 37 01
+		15 01 00 00 00 00 02 FF 10];
+		qcom,mdss-dsi-panel-tf-reflective-command = [15 01 00 00 00 00 02 FF 28
+		15 01 00 00 00 00 02 37 02
+		15 01 00 00 00 00 02 FF 10];
+		qcom,mdss-dsi-panel-tf-transflective-command = [15 01 00 00 00 00 02 FF 28
+		15 01 00 00 00 00 02 37 03
+		15 01 00 00 00 00 02 FF 10];
+	};
+};
+
+&i2c_3 {
+	lm3535@0x38 {
+		lm3535,turn_off_when_disp_in_lp;
+	};
+};

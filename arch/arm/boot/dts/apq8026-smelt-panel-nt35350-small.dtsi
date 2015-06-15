@@ -10,11 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/* panel nt35355 is similar panel nt35350, it has same hardware configure
- * and timing settings, only the difference is that the nt35355 is
- * transflective panel
- */
-#include "qcom/dsi-panel-mot-nt35350-360p-cmd.dtsi"
+#include "qcom/dsi-panel-mot-nt35350-360p-cmd-small.dtsi"
 
 &soc {
 	avdd_avee_vreg: avdd_avee_vreg {
@@ -37,7 +33,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35350_360p_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_mot_nt35350_360p_cmd_small>;
 	qcom,platform-reset-gpio = <&msmgpio 36 0>;
 	qcom,platform-te-gpio = <&msmgpio 24 0>;
 	vddio_disp-supply = <&pm8226_l27>;
@@ -65,28 +61,5 @@
 			qcom,supply-pre-off-sleep = <0>;
 			qcom,supply-post-off-sleep = <0>;
 		};
-	};
-};
-
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-dcs-idle-enable;
-	qcom,mdss-dsi-transflective-panel {
-		qcom,mdss-dsi-panel-tf-normal = "transmissive";
-		qcom,mdss-dsi-panel-tf-lowpower = "reflective";
-		qcom,mdss-dsi-panel-tf-transmissive-command = [15 01 00 00 00 00 02 FF 28
-		15 01 00 00 00 00 02 37 01
-		15 01 00 00 00 00 02 FF 10];
-		qcom,mdss-dsi-panel-tf-reflective-command = [15 01 00 00 00 00 02 FF 28
-		15 01 00 00 00 00 02 37 02
-		15 01 00 00 00 00 02 FF 10];
-		qcom,mdss-dsi-panel-tf-transflective-command = [15 01 00 00 00 00 02 FF 28
-		15 01 00 00 00 00 02 37 03
-		15 01 00 00 00 00 02 FF 10];
-	};
-};
-
-&i2c_3 {
-	lm3535@0x38 {
-		lm3535,turn_off_when_disp_in_lp;
 	};
 };
