@@ -102,7 +102,8 @@ again:
 	page = NULL;
 	/* CMA can be used only in the context which permits sleeping */
 	if (flag & __GFP_WAIT)
-		page = dma_alloc_from_contiguous(dev, count, get_order(size));
+		page = pfn_to_page(dma_alloc_from_contiguous(dev, count,
+							     get_order(size)));
 	/* fallback */
 	if (!page)
 		page = alloc_pages_node(dev_to_node(dev), flag, get_order(size));
@@ -131,7 +132,7 @@ void dma_generic_free_coherent(struct device *dev, size_t size, void *vaddr,
 	unsigned int count = PAGE_ALIGN(size) >> PAGE_SHIFT;
 	struct page *page = virt_to_page(vaddr);
 
-	if (!dma_release_from_contiguous(dev, page, count))
+	if (!dma_release_from_contiguous(dev, page_to_pfn(page), count))
 		free_pages((unsigned long)vaddr, get_order(size));
 }
 
