@@ -633,6 +633,11 @@ config UID_CPUTIME
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
+config LOAD_SW_CONTROL
+	bool "Load switch control"
+	help
+	  This program is for reducing the power off leakage current.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

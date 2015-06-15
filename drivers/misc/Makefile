@@ -69,3 +69,4 @@ obj-$(CONFIG_QCOM_LIQUID_DOCK)	+= qcom_liquid_dock.o
 obj-y				+= qcom/
 obj-$(CONFIG_MSM_PWM_VIBRATOR) += msm_pwm_vibrator.o
 obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
+obj-$(CONFIG_LOAD_SW_CONTROL) += load_sw_control.o
