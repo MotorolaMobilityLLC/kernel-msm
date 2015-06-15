@@ -14,15 +14,9 @@
 
 #include "apq8026-smelt-common.dtsi"
 #include "apq8026-smelt-sports-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35355.dtsi"
+#include "apq8026-smelt-panel-nt35355-small.dtsi"
 
 / {
 	qcom,msm-id =
 		<199 0x41 0x040A>; /* Sports Small P2A Portable */
-};
-
-/* small panel is 360 x 325 */
-&dsi_mot_nt35350_360p_cmd {
-	qcom,mdss-dsi-panel-height = <325>;
-	qcom,mdss-dsi-v-back-porch = <55>;
 };
