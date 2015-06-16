@@ -516,10 +516,21 @@ int synaptics_rmi4_read_packet_regs(
 	struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_func_packet_regs *regs);
 
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING)
 int synaptics_rmi4_scan_f54_ctrl_reg_info(
 	struct synaptics_rmi4_func_packet_regs *regs);
 
 int synaptics_rmi4_scan_f54_cmd_reg_info(
 	struct synaptics_rmi4_func_packet_regs *regs);
+#else
+static inline int synaptics_rmi4_scan_f54_ctrl_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
 
+static inline int synaptics_rmi4_scan_f54_cmd_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
+#endif
 #endif
