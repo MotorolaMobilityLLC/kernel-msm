@@ -55,3 +55,11 @@
 		qcom,master-en = <1>;
 	};
 };
+
+&soc {
+	i2c_5: i2c@f9927000 {
+		motosh@43 {
+			aod_touch_mode = <1>;	/* AOD touch mode <1> enables both interrupt and polling modes */
+		};
+	};
+};
