@@ -167,6 +167,7 @@
 		mag_orient = <5>;       /* Mag Orientation value */
 		panel_type = <0>;       /* Panel Type value */
 		IR_config = <0>;        /* IR Config value */
+		aod_touch_mode = <1>;	/* AOD touch mode <1> enables both interrupt and polling modes */
 };
 
 &drv2605 {
