@@ -1154,7 +1154,7 @@ static void readTouchDataPoint(void)
 #ifdef CONFIG_ASUS_WREN
 		if (!isTouchLocked && y1 > 11 && y1 < 272 && x1 > 3 && x1 < 277 && pointData.flags & 0x01)
 #else
-		if (!isTouchLocked && y1 > 13 && y1 < 311 && x1 > 4 && x1 < 316 && pointData.flags & 0x01)
+		if (!isTouchLocked && y1 > 11 && pointData.flags & 0x01)
 #endif
 		{
 			input_mt_slot(gl_ts->touch_dev,0);
@@ -1178,7 +1178,7 @@ static void readTouchDataPoint(void)
 #ifdef CONFIG_ASUS_WREN
 		if (!isTouchLocked && y2 > 11 && y2 < 272 && x2 > 3 && x2 < 277 && pointData.flags & 0x02)
 #else
-		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02)
+		if (!isTouchLocked && y2 > 11 && pointData.flags & 0x02)
 #endif
 		{
 			input_mt_slot(gl_ts->touch_dev,1);
