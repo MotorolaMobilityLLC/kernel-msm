@@ -84,6 +84,7 @@
 				dw,ena-gpio = <&msm_gpio 89 0>;
 				dw,enm-gpio = <&msm_gpio 90 0>;
 				dw,post-on-sleep-us = <3700>;
+				dw,post-off-sleep-us = <6000>;
 			};
 		};
 	};
