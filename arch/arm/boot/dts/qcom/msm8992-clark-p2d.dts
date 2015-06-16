@@ -59,3 +59,11 @@
 &mot_inx_570_QHD_1_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
+
+&soc {
+	i2c_5: i2c@f9927000 {
+		motosh@43 {
+			aod_touch_mode = <1>;	/* AOD touch mode <1> enables both interrupt and polling modes */
+		};
+	};
+};
