@@ -205,6 +205,7 @@ static bool isDriverAvailable = true;
 static bool chipInLowPower = false;
 static bool driverInLowPower = false;
 static bool TP_DLMODE = false;
+static bool first_leavelowpower = true;
 static bool touchMissed;
 static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
@@ -554,22 +555,25 @@ static void chipLowPowerMode(bool low)
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
-			LOGI("[%d] %s TP_DLMODE = %d.\n", __LINE__, __func__, TP_DLMODE);
-			if (!TP_DLMODE) {
+			LOGI("[%d] %s TP_DLMODE = %d, update_flag = %d.\n", __LINE__, __func__, TP_DLMODE, update_flag);
+			if (first_leavelowpower && !TP_DLMODE && !update_flag) {
 				//Touch Reset
 				ret = gpio_request(RESET_GPIO, "CTP_RST_N");
 				if (ret < 0) {
 					LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+					gpio_free(RESET_GPIO);
+					msleep(50);
 				} else {
 					LOGI("[%d] %s touch reset\n", __LINE__, __func__);
 					gpio_direction_output(RESET_GPIO,0);
 					mdelay(60);
+					gpio_free(RESET_GPIO);
+					msleep(50);
+					chipInLowPower = false;
+					LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
+					first_leavelowpower = false;
 				}
-				gpio_free(RESET_GPIO);
-				msleep(50);
 			}
-			chipInLowPower = false;
-			LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
 			if (!allow_irq_wake) {
 				smp_wmb();
 				ret = disable_irq_wake(gl_ts->client->irq);
@@ -1102,6 +1106,10 @@ static void readTouchDataPoint(void)
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x1, y1, x2, y2;
 
+	if (chipInLowPower) {
+		chipInLowPower = false;
+	}
+
 	/* verify there is point data to read & it is readable and valid */
 	if (i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus)) == 2) {
 		if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
@@ -1219,6 +1227,10 @@ static void readTouchDataPoint_Ambient(void)
 	uint16_t x1, y1;
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x2, y2;
+
+	if (chipInLowPower) {
+		chipInLowPower = false;
+	}
 
 	if (isTouchLocked && !TP_DLMODE)
 		LOGI("[%d] %s isTouchLocked = %d, isDriverAvailable = %d. \n",
