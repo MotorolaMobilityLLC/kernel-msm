@@ -672,6 +672,19 @@ static struct kset *cpufreq_kset;
 struct kobject *cpufreq_global_kobject;
 EXPORT_SYMBOL(cpufreq_global_kobject);
 
+static bool cpu_frozen;
+static int cpufreq_uevent_filter(struct kset *kset, struct kobject *kobj)
+{
+	if (cpu_frozen)
+		return 0;
+	else
+		return 1;
+}
+
+static const struct kset_uevent_ops cpufreq_uevent_ops = {
+	.filter = cpufreq_uevent_filter,
+};
+
 #define to_policy(k) container_of(k, struct cpufreq_policy, kobj)
 #define to_attr(a) container_of(a, struct freq_attr, attr)
 
@@ -2124,6 +2137,11 @@ static int cpufreq_cpu_callback(struct notifier_block *nfb,
 	struct device *dev;
 	bool frozen = false;
 
+	if (action & CPU_TASKS_FROZEN)
+		cpu_frozen = true;
+	else
+		cpu_frozen = false;
+
 	dev = get_cpu_device(cpu);
 	if (dev) {
 
@@ -2271,7 +2289,7 @@ static int __init cpufreq_core_init(void)
 	if (cpufreq_disabled())
 		return -ENODEV;
 
-	cpufreq_kset = kset_create_and_add("cpufreq", NULL, &cpu_subsys.dev_root->kobj);
+	cpufreq_kset = kset_create_and_add("cpufreq", &cpufreq_uevent_ops, &cpu_subsys.dev_root->kobj);
 	BUG_ON(!cpufreq_kset);
 	cpufreq_global_kobject = &cpufreq_kset->kobj;
 	register_syscore_ops(&cpufreq_syscore_ops);
