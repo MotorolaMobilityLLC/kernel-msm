@@ -4846,10 +4846,6 @@ static void hw_tm_set_configure(enum hw_high_low_temp_configure_type zone,struct
     {
         chip->bat_is_cool = bat_cool;
         chip->bat_is_warm = bat_warm;
-
-        if (bat_cool || bat_warm)
-            chip->resuming_charging = false;
-
         /**
          * set appropriate voltages and currents.
          *
@@ -4857,9 +4853,27 @@ static void hw_tm_set_configure(enum hw_high_low_temp_configure_type zone,struct
          * driver will not resume with SoC. Only vbatdet is used to
          * determine resume of charging.
          */
-        qpnp_chg_set_appropriate_vddmax(chip);
-        qpnp_chg_set_appropriate_battery_current(chip);
-        qpnp_chg_set_appropriate_vbatdet(chip);
+        if (bat_cool || bat_warm)
+        {
+            chip->resuming_charging = false;
+            qpnp_chg_set_appropriate_vbatdet(chip);
+
+            /* To avoid ARB, only vbatdet is configured in
+             * warm/cold zones. Once vbat < vbatdet the
+             * appropriate vddmax/ibatmax adjustments will
+             * be made in the fast charge interrupt. */
+            bypass_vbatdet_comp(chip, 1);
+            qpnp_chg_charge_en(chip, !chip->charging_disabled);
+            qpnp_chg_charge_en(chip, chip->charging_disabled);
+            qpnp_chg_charge_en(chip, !chip->charging_disabled);
+        }
+        else
+        {
+            bypass_vbatdet_comp(chip, 0);
+            qpnp_chg_set_appropriate_vddmax(chip);
+            qpnp_chg_set_appropriate_battery_current(chip);
+            qpnp_chg_set_appropriate_vbatdet(chip);
+        }
     }
 
     pr_debug("warm %d, cool %d, low = %d deciDegC, high = %d deciDegC ,hot = %d ,warm = %d , cool = %d , cold = %d \n",
