@@ -86,6 +86,7 @@
 	i2c_5: i2c@f9927000 {
 		motosh@43 {
 			antcap_cfg = [50 40 10 00 00 09 59 00 00 0d 89 00 00 09 e9 00 00 17 33 13 88 00 00 00 00 00 00 14 1E 01 48 7f ff 00 00 00 00 00 de ad be ef 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ];
+			aod_touch_mode = <1>;	/* AOD touch mode <1> enables both interrupt and polling modes */
 		};
 	};
 };
