@@ -40,21 +40,16 @@ struct m4als_driver_data {
 	struct m4sensorhub_data     *m4;
 	struct mutex                mutex; /* controls driver entry points */
 	struct input_dev            *indev;
-	struct delayed_work         m4als_work;
 
 	uint16_t        luminosity;
 	int16_t         samplerate;
-	int16_t         latest_samplerate;
-	int16_t         fastest_rate;
 	uint16_t        status;
 };
 
-static void m4als_work_func(struct work_struct *work)
+static void m4als_isr(enum m4sensorhub_irqs int_event, void *handle)
 {
 	int err = 0;
-	struct m4als_driver_data *dd = container_of(work,
-						    struct m4als_driver_data,
-						    m4als_work.work);
+	struct m4als_driver_data *dd = handle;
 	int size = 0;
 	uint16_t luminosity = 0;
 
@@ -83,9 +78,6 @@ static void m4als_work_func(struct work_struct *work)
 
 	input_event(dd->indev, EV_MSC, MSC_RAW, dd->luminosity);
 	input_sync(dd->indev);
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4als_work),
-				      msecs_to_jiffies(dd->samplerate));
 
 m4als_isr_fail:
 	if (err < 0)
@@ -101,15 +93,8 @@ static int m4als_set_samplerate(struct m4als_driver_data *dd, int16_t rate)
 	int err = 0;
 	int size = 0;
 
-	if ((rate >= 0) && (rate <= dd->fastest_rate))
-		rate = dd->fastest_rate;
-
-	/* This variabled is to be always updated ireespective of the
-	   transaction status */
-	dd->latest_samplerate = rate;
-
 	if (rate == dd->samplerate)
-		goto m4als_set_samplerate_fail;
+		goto m4als_set_samplerate_irq_check;
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_LIGHTSENSOR_SAMPLERATE);
 	if (size < 0) {
@@ -130,11 +115,34 @@ static int m4als_set_samplerate(struct m4als_driver_data *dd, int16_t rate)
 		err = -EBADE;
 		goto m4als_set_samplerate_fail;
 	}
-	cancel_delayed_work(&(dd->m4als_work));
 	dd->samplerate = rate;
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4als_work),
-				      msecs_to_jiffies(rate));
+
+m4als_set_samplerate_irq_check:
+	if (rate >= 0) {
+		/* Enable the IRQ if necessary */
+		if (!(dd->status & (1 << M4ALS_IRQ_ENABLED_BIT))) {
+			err = m4sensorhub_irq_enable(dd->m4,
+				M4SH_NOWAKEIRQ_ALS);
+			if (err < 0) {
+				m4als_err("%s: Failed to enable irq.\n",
+					  __func__);
+				goto m4als_set_samplerate_fail;
+			}
+			dd->status = dd->status | (1 << M4ALS_IRQ_ENABLED_BIT);
+		}
+	} else {
+		/* Disable the IRQ if necessary */
+		if (dd->status & (1 << M4ALS_IRQ_ENABLED_BIT)) {
+			err = m4sensorhub_irq_disable(dd->m4,
+				M4SH_NOWAKEIRQ_ALS);
+			if (err < 0) {
+				m4als_err("%s: Failed to disable irq.\n",
+					  __func__);
+				goto m4als_set_samplerate_fail;
+			}
+			dd->status = dd->status & ~(1 << M4ALS_IRQ_ENABLED_BIT);
+		}
+	}
 
 m4als_set_samplerate_fail:
 	return err;
@@ -284,10 +292,7 @@ static void m4als_panic_restore(struct m4sensorhub_data *m4sensorhub,
 		m4als_err("%s: Wrote %d bytes instead of %d.\n",
 			  __func__, err, size);
 	}
-	cancel_delayed_work(&(dd->m4als_work));
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4als_work),
-				      msecs_to_jiffies(dd->samplerate));
+
 	mutex_unlock(&(dd->mutex));
 }
 
@@ -310,12 +315,18 @@ static int m4als_driver_init(struct init_calldata *p_arg)
 		goto m4als_driver_init_sysfs_fail;
 	}
 
-	INIT_DELAYED_WORK(&(dd->m4als_work), m4als_work_func);
+	err = m4sensorhub_irq_register(dd->m4,
+		M4SH_NOWAKEIRQ_ALS, m4als_isr, dd, 0);
+	if (err < 0) {
+		m4acc_err("%s: Failed to register M4 IRQ.\n", __func__);
+		goto m4als_driver_init_fail;
+	}
 
 	err = m4sensorhub_panic_register(dd->m4, PANICHDL_ALS_RESTORE,
 					 m4als_panic_restore, dd);
 	if (err < 0)
 		KDEBUG(M4SH_ERROR, "Als panic callback register failed\n");
+
 	goto m4als_driver_init_exit;
 
 m4als_driver_init_sysfs_fail:
@@ -343,8 +354,6 @@ static int m4als_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, dd);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->latest_samplerate = dd->samplerate;
-	dd->fastest_rate = 80; /* in milli secs */
 
 	dd->m4 = m4sensorhub_client_get_drvdata();
 	if (dd->m4 == NULL) {
@@ -374,7 +383,11 @@ static int __exit m4als_remove(struct platform_device *pdev)
 	struct m4als_driver_data *dd = platform_get_drvdata(pdev);
 
 	mutex_lock(&(dd->mutex));
-	cancel_delayed_work(&(dd->m4als_work));
+	if (dd->status & (1 << M4ALS_IRQ_ENABLED_BIT)) {
+		m4sensorhub_irq_disable(dd->m4, M4SH_NOWAKEIRQ_ALS);
+		dd->status = dd->status & ~(1 << M4ALS_IRQ_ENABLED_BIT);
+	}
+	m4sensorhub_irq_unregister(dd->m4, M4SH_NOWAKEIRQ_ALS);
 	m4als_remove_sysfs(dd);
 	m4sensorhub_unregister_initcall(m4als_driver_init);
 	if (dd->indev != NULL)
@@ -385,13 +398,6 @@ static int __exit m4als_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int m4als_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct m4als_driver_data *dd = platform_get_drvdata(pdev);
-	if (m4als_set_samplerate(dd, dd->latest_samplerate) < 0)
-		m4als_err("%s: setrate retry failed\n", __func__);
-	return 0;
-}
 
 static struct of_device_id m4als_match_tbl[] = {
 	{ .compatible = "mot,m4als" },
@@ -402,7 +408,7 @@ static struct platform_driver m4als_driver = {
 	.probe		= m4als_probe,
 	.remove		= __exit_p(m4als_remove),
 	.shutdown	= NULL,
-	.suspend        = m4als_suspend,
+	.suspend        = NULL,
 	.resume         = NULL,
 	.driver		= {
 		.name	= M4ALS_DRIVER_NAME,

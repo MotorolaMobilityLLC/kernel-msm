@@ -36,12 +36,6 @@
 
 #define M4ACC_IRQ_ENABLED_BIT       0
 
-/*
- * The fastest sample rate in milliseconds that is
- * supported by the driver
- */
-#define M4ACC_FASTEST_SAMPLE_RATE   40
-
 struct m4acc_sensor_data {
 	int32_t         x;
 	int32_t         y;
@@ -53,21 +47,17 @@ struct m4acc_driver_data {
 	struct m4sensorhub_data     *m4;
 	struct mutex                mutex; /* controls driver entry points */
 	struct input_dev            *indev;
-	struct delayed_work         m4acc_work;
 
 	struct m4acc_sensor_data    sensdat;
 
 	int16_t         samplerate;
-	int16_t         fastest_rate;
 	uint16_t        status;
 };
 
-static void m4acc_work_func(struct work_struct *work)
+static void m4acc_isr(enum m4sensorhub_irqs int_event, void *handle)
 {
 	int err = 0;
-	struct m4acc_driver_data *dd = container_of(work,
-						    struct m4acc_driver_data,
-						    m4acc_work.work);
+	struct m4acc_driver_data *dd = handle;
 	int size = 0;
 	struct timespec ts;
 
@@ -139,10 +129,6 @@ static void m4acc_work_func(struct work_struct *work)
 	input_report_abs(dd->indev, ABS_Z, dd->sensdat.z);
 	input_sync(dd->indev);
 
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4acc_work),
-				   msecs_to_jiffies(dd->samplerate));
-
 m4acc_isr_fail:
 	if (err < 0)
 		m4acc_err("%s: Failed with error code %d.\n", __func__, err);
@@ -157,11 +143,8 @@ static int m4acc_set_samplerate(struct m4acc_driver_data *dd, int16_t rate)
 	int err = 0;
 	int size = 0;
 
-	if ((rate >= 0) && (rate <= dd->fastest_rate))
-		rate = dd->fastest_rate;
-
 	if (rate == dd->samplerate)
-		goto m4acc_set_samplerate_fail;
+		goto m4acc_set_samplerate_irq_check;
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_ACCEL_SAMPLERATE);
 	if (size < 0) {
@@ -182,11 +165,34 @@ static int m4acc_set_samplerate(struct m4acc_driver_data *dd, int16_t rate)
 		err = -EBADE;
 		goto m4acc_set_samplerate_fail;
 	}
-	cancel_delayed_work(&(dd->m4acc_work));
 	dd->samplerate = rate;
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4acc_work),
-				   msecs_to_jiffies(rate));
+
+m4acc_set_samplerate_irq_check:
+	if (rate >= 0) {
+		/* Enable the IRQ if necessary */
+		if (!(dd->status & (1 << M4ACC_IRQ_ENABLED_BIT))) {
+			err = m4sensorhub_irq_enable(dd->m4,
+				M4SH_NOWAKEIRQ_ACCEL);
+			if (err < 0) {
+				m4acc_err("%s: Failed to enable irq.\n",
+					  __func__);
+				goto m4acc_set_samplerate_fail;
+			}
+			dd->status = dd->status | (1 << M4ACC_IRQ_ENABLED_BIT);
+		}
+	} else {
+		/* Disable the IRQ if necessary */
+		if (dd->status & (1 << M4ACC_IRQ_ENABLED_BIT)) {
+			err = m4sensorhub_irq_disable(dd->m4,
+				M4SH_NOWAKEIRQ_ACCEL);
+			if (err < 0) {
+				m4acc_err("%s: Failed to disable irq.\n",
+					  __func__);
+				goto m4acc_set_samplerate_fail;
+			}
+			dd->status = dd->status & ~(1 << M4ACC_IRQ_ENABLED_BIT);
+		}
+	}
 
 m4acc_set_samplerate_fail:
 	return err;
@@ -354,10 +360,7 @@ static void m4acc_panic_restore(struct m4sensorhub_data *m4sensorhub,
 		m4acc_err("%s: Wrote %d bytes instead of %d.\n",
 			  __func__, err, size);
 	}
-	cancel_delayed_work(&(dd->m4acc_work));
-	if (dd->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(dd->m4acc_work),
-				   msecs_to_jiffies(dd->samplerate));
+
 	mutex_unlock(&(dd->mutex));
 }
 
@@ -374,12 +377,18 @@ static int m4acc_driver_init(struct init_calldata *p_arg)
 		goto m4acc_driver_init_fail;
 	}
 
-	INIT_DELAYED_WORK(&(dd->m4acc_work), m4acc_work_func);
+	err = m4sensorhub_irq_register(dd->m4,
+		M4SH_NOWAKEIRQ_ACCEL, m4acc_isr, dd, 0);
+	if (err < 0) {
+		m4acc_err("%s: Failed to register M4 IRQ.\n", __func__);
+		goto m4acc_driver_init_fail;
+	}
 
 	err = m4sensorhub_panic_register(dd->m4, PANICHDL_ACCEL_RESTORE,
 					 m4acc_panic_restore, dd);
 	if (err < 0)
 		KDEBUG(M4SH_ERROR, "Acc panic callback register failed\n");
+
 	goto m4acc_driver_init_exit;
 
 m4acc_driver_init_fail:
@@ -405,7 +414,6 @@ static int m4acc_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, dd);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->fastest_rate = M4ACC_FASTEST_SAMPLE_RATE;
 
 	dd->m4 = m4sensorhub_client_get_drvdata();
 	if (dd->m4 == NULL) {
@@ -443,7 +451,11 @@ static int __exit m4acc_remove(struct platform_device *pdev)
 	struct m4acc_driver_data *dd = platform_get_drvdata(pdev);
 
 	mutex_lock(&(dd->mutex));
-	cancel_delayed_work(&(dd->m4acc_work));
+	if (dd->status & (1 << M4ACC_IRQ_ENABLED_BIT)) {
+		m4sensorhub_irq_disable(dd->m4, M4SH_NOWAKEIRQ_ACCEL);
+		dd->status = dd->status & ~(1 << M4ACC_IRQ_ENABLED_BIT);
+	}
+	m4sensorhub_irq_unregister(dd->m4, M4SH_NOWAKEIRQ_ACCEL);
 	m4acc_remove_sysfs(dd);
 	m4sensorhub_unregister_initcall(m4acc_driver_init);
 	if (dd->indev != NULL)

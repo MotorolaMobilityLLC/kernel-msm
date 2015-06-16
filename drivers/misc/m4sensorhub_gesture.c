@@ -54,7 +54,6 @@ struct m4ges_driver_data {
 
 	struct m4sensorhub_gesture_iio_data   iiodat;
 	int16_t         samplerate;
-	int16_t         latest_samplerate;
 	uint32_t        gesture_count;
 	uint16_t        status;
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
@@ -149,7 +148,6 @@ static int m4ges_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 	 * Currently, there is no concept of setting a sample rate for this
 	 * sensor, so this function only enables/disables interrupt reporting.
 	 */
-	dd->latest_samplerate = rate;
 	if (rate == dd->samplerate)
 		goto m4ges_set_samplerate_fail;
 
@@ -432,7 +430,6 @@ static int m4ges_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->latest_samplerate = dd->samplerate;
 
 	err = m4ges_create_iiodev(iio); /* iio and dd are freed on fail */
 	if (err < 0) {
@@ -469,12 +466,10 @@ static int __exit m4ges_remove(struct platform_device *pdev)
 
 	mutex_lock(&(dd->mutex));
 	if (dd->status & (1 << M4GES_IRQ_ENABLED_BIT)) {
-		m4sensorhub_irq_disable(dd->m4,
-					M4SH_WAKEIRQ_GESTURE);
+		m4sensorhub_irq_disable(dd->m4, M4SH_WAKEIRQ_GESTURE);
 		dd->status = dd->status & ~(1 << M4GES_IRQ_ENABLED_BIT);
 	}
-	m4sensorhub_irq_unregister(dd->m4,
-				   M4SH_WAKEIRQ_GESTURE);
+	m4sensorhub_irq_unregister(dd->m4, M4SH_WAKEIRQ_GESTURE);
 	m4sensorhub_unregister_initcall(m4ges_driver_init);
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 	display_state_unregister_notify(&dd->display_nb);
@@ -482,17 +477,6 @@ static int __exit m4ges_remove(struct platform_device *pdev)
 	m4ges_remove_iiodev(iio);  /* dd is freed here */
 
 m4ges_remove_exit:
-	return 0;
-}
-
-static int m4ges_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct iio_dev *iio = platform_get_drvdata(pdev);
-	struct m4ges_driver_data *dd = iio_priv(iio);
-	mutex_lock(&(dd->mutex));
-	if (m4ges_set_samplerate_locked(iio, dd->latest_samplerate) < 0)
-		m4ges_err("%s: setrate retry failed\n", __func__);
-	mutex_unlock(&(dd->mutex));
 	return 0;
 }
 
@@ -505,7 +489,7 @@ static struct platform_driver m4ges_driver = {
 	.probe		= m4ges_probe,
 	.remove		= __exit_p(m4ges_remove),
 	.shutdown	= NULL,
-	.suspend	= m4ges_suspend,
+	.suspend	= NULL,
 	.resume		= NULL,
 	.driver		= {
 		.name	= M4GES_DRIVER_NAME,
