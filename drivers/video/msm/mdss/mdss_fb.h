@@ -208,6 +208,7 @@ struct msm_mdp_interface {
 	int (*stop_histogram)(struct msm_fb_data_type *mfd);
 	int (*ad_calc_bl)(struct msm_fb_data_type *mfd, int bl_in,
 		int *bl_out, bool *bl_out_notify);
+	int (*ad_shutdown_cleanup)(struct msm_fb_data_type *mfd);
 	int (*panel_register_done)(struct mdss_panel_data *pdata);
 	u32 (*fb_stride)(u32 fb_index, u32 xres, int bpp);
 	int (*splash_init_fnc)(struct msm_fb_data_type *mfd);
@@ -419,4 +420,5 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		     unsigned long arg);
 int mdss_fb_compat_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg);
+void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd);
 #endif /* MDSS_FB_H */

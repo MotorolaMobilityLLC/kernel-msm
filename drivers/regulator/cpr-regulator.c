@@ -1025,6 +1025,7 @@ static int cpr_regulator_disable(struct regulator_dev *rdev)
 	return rc;
 }
 
+/* Note that cpr_vreg->cpr_mutex must be held by the caller. */
 static int cpr_regulator_set_voltage(struct regulator_dev *rdev,
 		int corner, bool reset_quot)
 {
@@ -1033,8 +1034,6 @@ static int cpr_regulator_set_voltage(struct regulator_dev *rdev,
 	int new_volt;
 	enum voltage_change_dir change_dir = NO_CHANGE;
 	int fuse_corner = cpr_vreg->corner_map[corner];
-
-	mutex_lock(&cpr_vreg->cpr_mutex);
 
 	if (cpr_is_allowed(cpr_vreg)) {
 		cpr_ctl_disable(cpr_vreg);
@@ -1053,7 +1052,7 @@ static int cpr_regulator_set_voltage(struct regulator_dev *rdev,
 
 	rc = cpr_scale_voltage(cpr_vreg, corner, new_volt, change_dir);
 	if (rc)
-		goto _exit;
+		return rc;
 
 	if (cpr_is_allowed(cpr_vreg) && cpr_vreg->vreg_enabled) {
 		cpr_irq_clr(cpr_vreg);
@@ -1066,16 +1065,20 @@ static int cpr_regulator_set_voltage(struct regulator_dev *rdev,
 
 	cpr_vreg->corner = corner;
 
-_exit:
-	mutex_unlock(&cpr_vreg->cpr_mutex);
-
 	return rc;
 }
 
 static int cpr_regulator_set_voltage_op(struct regulator_dev *rdev,
 		int corner, int corner_max, unsigned *selector)
 {
-	return cpr_regulator_set_voltage(rdev, corner, false);
+	struct cpr_regulator *cpr_vreg = rdev_get_drvdata(rdev);
+	int rc;
+
+	mutex_lock(&cpr_vreg->cpr_mutex);
+	rc = cpr_regulator_set_voltage(rdev, corner, false);
+	mutex_unlock(&cpr_vreg->cpr_mutex);
+
+	return rc;
 }
 
 static int cpr_regulator_get_voltage(struct regulator_dev *rdev)
@@ -2490,13 +2493,19 @@ static int cpr_get_corner_quot_adjustment(struct cpr_regulator *cpr_vreg,
 		freq_max[i] /= 1000000;
 
 	for (i = CPR_FUSE_CORNER_MIN + 1; i <= highest_fuse_corner; i++) {
-		if (cpr_vreg->fuse_quot_offset)
+		if (cpr_vreg->fuse_quot_offset &&
+			(cpr_vreg->cpr_fuse_ro_sel[i] !=
+				cpr_vreg->cpr_fuse_ro_sel[i - 1])) {
 			scaling[i] = 1000 * cpr_vreg->fuse_quot_offset[i]
 				/ (freq_max[i] - freq_max[i - 1]);
-		else
+		} else {
 			scaling[i] = 1000 * (cpr_vreg->cpr_fuse_target_quot[i]
 				      - cpr_vreg->cpr_fuse_target_quot[i - 1])
 				  / (freq_max[i] - freq_max[i - 1]);
+			if (cpr_vreg->cpr_fuse_target_quot[i]
+				< cpr_vreg->cpr_fuse_target_quot[i - 1])
+				scaling[i] = 0;
+		}
 		scaling[i] = min(scaling[i], max_factor[i]);
 		cpr_info(cpr_vreg, "fuse corner %d quotient adjustment scaling factor: %d.%03d\n",
 			i, scaling[i] / 1000, scaling[i] % 1000);
@@ -3143,18 +3152,20 @@ static int cpr_init_cpr_efuse(struct platform_device *pdev,
 			cpr_vreg->cpr_fuse_target_quot[i]);
 	}
 
+	rc = cpr_adjust_target_quots(pdev, cpr_vreg);
+	if (rc)
+		goto error;
+
 	for (i = CPR_FUSE_CORNER_MIN + 1;
 				i <= cpr_vreg->num_fuse_corners; i++) {
 		if (cpr_vreg->cpr_fuse_target_quot[i]
-				< cpr_vreg->cpr_fuse_target_quot[i - 1]) {
+				< cpr_vreg->cpr_fuse_target_quot[i - 1] &&
+			cpr_vreg->cpr_fuse_ro_sel[i] ==
+				cpr_vreg->cpr_fuse_ro_sel[i - 1]) {
 			cpr_vreg->cpr_fuse_disable = true;
 			cpr_err(cpr_vreg, "invalid quotient values; permanently disabling CPR\n");
 		}
 	}
-
-	rc = cpr_adjust_target_quots(pdev, cpr_vreg);
-	if (rc)
-		goto error;
 
 	if (cpr_vreg->flags & FLAGS_UPLIFT_QUOT_VOLT) {
 		cpr_voltage_uplift_wa_inc_quot(cpr_vreg, of_node);
@@ -3545,9 +3556,8 @@ static int cpr_regulator_cpu_callback(struct notifier_block *nb,
 {
 	struct cpr_regulator *cpr_vreg = container_of(nb, struct cpr_regulator,
 					cpu_notifier);
-	int prev_online_cpus = cpr_vreg->online_cpus;
 	int cpu = (long)data;
-	int rc, i;
+	int prev_online_cpus, rc, i;
 
 	action &= ~CPU_TASKS_FROZEN;
 
@@ -3555,18 +3565,15 @@ static int cpr_regulator_cpu_callback(struct notifier_block *nb,
 	    && action != CPU_DEAD)
 		return NOTIFY_OK;
 
-	if (cpr_vreg->skip_voltage_change_during_suspend) {
-		mutex_lock(&cpr_vreg->cpr_mutex);
+	mutex_lock(&cpr_vreg->cpr_mutex);
 
-		if (cpr_vreg->is_cpr_suspended) {
-			/* Do nothing during system suspend/resume */
-			mutex_unlock(&cpr_vreg->cpr_mutex);
-			return NOTIFY_OK;
-		}
-
-		mutex_unlock(&cpr_vreg->cpr_mutex);
+	if (cpr_vreg->skip_voltage_change_during_suspend
+	    && cpr_vreg->is_cpr_suspended) {
+		/* Do nothing during system suspend/resume */
+		goto done;
 	}
 
+	prev_online_cpus = cpr_vreg->online_cpus;
 	cpr_regulator_set_online_cpus(cpr_vreg);
 
 	if (action == CPU_UP_PREPARE)
@@ -3577,10 +3584,10 @@ static int cpr_regulator_cpu_callback(struct notifier_block *nb,
 			}
 
 	if (cpr_vreg->online_cpus == prev_online_cpus)
-		return NOTIFY_OK;
+		goto done;
 
-	cpr_debug(cpr_vreg, "adjusting quotient for %d cpus\n",
-			cpr_vreg->online_cpus);
+	cpr_debug(cpr_vreg, "adjusting corner %d quotient for %d cpus\n",
+		cpr_vreg->corner, cpr_vreg->online_cpus);
 
 	cpr_regulator_switch_adj_cpus(cpr_vreg);
 
@@ -3592,6 +3599,8 @@ static int cpr_regulator_cpu_callback(struct notifier_block *nb,
 				rc);
 	}
 
+done:
+	mutex_unlock(&cpr_vreg->cpr_mutex);
 	return NOTIFY_OK;
 }
 

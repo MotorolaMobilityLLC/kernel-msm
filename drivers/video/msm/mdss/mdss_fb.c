@@ -1231,6 +1231,8 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		mfd->panel_info->cont_splash_enabled) {
 		mfd->unset_bl_level = bkl_lvl;
 		return;
+	} else if (mdss_fb_is_power_on(mfd) && mfd->panel_info->panel_dead) {
+		mfd->unset_bl_level = mfd->bl_level;
 	} else {
 		mfd->unset_bl_level = 0;
 	}
@@ -2385,7 +2387,7 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdss_fb_proc_info *pinfo = NULL, *temp_pinfo = NULL;
 	struct mdss_fb_proc_info *proc_info = NULL;
-	int ret = 0;
+	int ret = 0, ad_ret = 0;
 	int pid = current->tgid;
 	bool unknown_pid = true, release_needed = false;
 	struct task_struct *task = current->group_leader;
@@ -2478,6 +2480,13 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		/* resources (if any) will be released during blank */
 		if (mfd->mdp.release_fnc)
 			mfd->mdp.release_fnc(mfd, true, pid);
+
+		if (mfd->mdp.ad_shutdown_cleanup) {
+			ad_ret = (*mfd->mdp.ad_shutdown_cleanup)(mfd);
+			if (ad_ret)
+				pr_err("AD shutdown cleanup failed ret = %d\n",
+									ad_ret);
+		}
 
 		ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info,
 			mfd->op_enable);
@@ -3991,4 +4000,30 @@ int mdss_fb_suspres_panel(struct device *dev, void *data)
 				mfd->index, rc);
 	}
 	return rc;
+}
+
+/*
+ * mdss_fb_report_panel_dead() - Sends the PANEL_ALIVE=0 status to HAL layer.
+ * @mfd   : frame buffer structure associated with fb device.
+ *
+ * This function is called if the panel fails to respond as expected to
+ * the register read/BTA or if the TE signal is not coming as expected
+ * from the panel. The function sends the PANEL_ALIVE=0 status to HAL
+ * layer.
+ */
+void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
+{
+	char *envp[2] = {"PANEL_ALIVE=0", NULL};
+	struct mdss_panel_data *pdata =
+		dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("Panel data not available\n");
+		return;
+	}
+
+	pdata->panel_info.panel_dead = true;
+	kobject_uevent_env(&mfd->fbi->dev->kobj,
+		KOBJ_CHANGE, envp);
+	pr_err("Panel has gone bad, sending uevent - %s\n", envp[0]);
+	return;
 }
