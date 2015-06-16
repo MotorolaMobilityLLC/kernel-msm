@@ -2626,7 +2626,7 @@ static int wm_adsp_read_buffer(struct wm_adsp *adsp, int32_t read_index,
 					  adsp->capt_buf.tail,
 					  adsp->capt_buf_size) /
 			       WM_ADSP_DATA_WORD_SIZE;
-	u8 *capt_buf = (u8 *)adsp->capt_buf.buf;
+	u8 *capt_buf;
 	int capt_buf_h = adsp->capt_buf.head;
 	int capt_buf_mask = adsp->capt_buf_size - 1;
 	int mem_type;
@@ -2634,6 +2634,11 @@ static int wm_adsp_read_buffer(struct wm_adsp *adsp, int32_t read_index,
 	int num_words;
 	int i, ret;
 
+	if (!adsp->capt_buf.buf) {
+		adsp_err(adsp, "Invalid argument\n");
+		return -EINVAL;
+	}
+	capt_buf = (u8 *)adsp->capt_buf.buf;
 	/* Calculate read parameters */
 	for (i = 0; i < adsp->firmwares[adsp->fw].caps->num_host_regions; ++i) {
 		if (read_index < adsp->host_regions[i].cumulative_size)
@@ -2659,6 +2664,10 @@ static int wm_adsp_read_buffer(struct wm_adsp *adsp, int32_t read_index,
 		return 0;
 
 	/* Read data from DSP */
+	if (!adsp->raw_capt_buf) {
+		adsp_err(adsp, "Raw capture buffer is NULL\n");
+		return -EINVAL;
+	}
 	ret = wm_adsp_read_data_block(adsp, mem_type, adsp_addr,
 				      num_words, adsp->raw_capt_buf);
 	if (ret != 0)
@@ -2688,7 +2697,7 @@ static int wm_adsp_read_buffer2(struct wm_adsp *adsp, int32_t read_index,
 					  adsp->capt_buf2.tail,
 					  adsp->capt_buf_size) /
 			       WM_ADSP_DATA_WORD_SIZE;
-	u8 *capt_buf = (u8 *)adsp->capt_buf2.buf;
+	u8 *capt_buf;
 	int capt_buf_h = adsp->capt_buf2.head;
 	int capt_buf_mask = adsp->capt_buf_size - 1;
 	int mem_type;
@@ -2696,6 +2705,11 @@ static int wm_adsp_read_buffer2(struct wm_adsp *adsp, int32_t read_index,
 	int num_words;
 	int i, ret;
 
+	if (!adsp->capt_buf2.buf) {
+		adsp_err(adsp, "Invalid argument\n");
+		return -EINVAL;
+	}
+	capt_buf = (u8 *)adsp->capt_buf2.buf;
 	/* Calculate read parameters */
 	for (i = 0; i < adsp->firmwares[adsp->fw].caps->num_host_regions; ++i) {
 		if (read_index < adsp->host_regions2[i].cumulative_size)
@@ -2722,6 +2736,10 @@ static int wm_adsp_read_buffer2(struct wm_adsp *adsp, int32_t read_index,
 		return 0;
 
 	/* Read data from DSP */
+	if (!adsp->raw_capt_buf2) {
+		adsp_err(adsp, "Raw capture buffer is NULL\n");
+		return -EINVAL;
+	}
 	ret = wm_adsp_read_data_block(adsp, mem_type, adsp_addr,
 				      num_words, adsp->raw_capt_buf2);
 	if (ret != 0)
@@ -2748,12 +2766,17 @@ static int wm_adsp_read_buffer2(struct wm_adsp *adsp, int32_t read_index,
 static int wm_adsp_capture_block(struct wm_adsp *adsp, int *avail)
 {
 	int last_region = adsp->firmwares[adsp->fw].caps->num_host_regions -1;
-	int host_size = adsp->host_regions[last_region].cumulative_size;
+	int host_size;
 	int num_words;
 	u32 next_read_index, next_write_index;
 	int32_t write_index, read_index;
 	int ret;
 
+	if (!adsp->host_regions || last_region < 0 || !avail) {
+		adsp_err(adsp, "Invalid argument\n");
+		return -EINVAL;
+	}
+	host_size = adsp->host_regions[last_region].cumulative_size;
 	/* Get current host buffer status */
 	ret = wm_adsp_host_buffer_read(adsp,
 				       HOST_BUFFER_FIELD(next_read_index),
@@ -2803,12 +2826,17 @@ static int wm_adsp_capture_block(struct wm_adsp *adsp, int *avail)
 static int wm_adsp_capture_block2(struct wm_adsp *adsp, int *avail)
 {
 	int last_region = adsp->firmwares[adsp->fw].caps->num_host_regions -1;
-	int host_size = adsp->host_regions2[last_region].cumulative_size;
+	int host_size;
 	int num_words;
 	u32 next_read_index, next_write_index;
 	int32_t write_index, read_index;
 	int ret;
 
+	if (!adsp->host_regions2 || last_region < 0 || !avail) {
+		adsp_err(adsp, "Invalid argument\n");
+		return -EINVAL;
+	}
+	host_size = adsp->host_regions2[last_region].cumulative_size;
 	/* Get current host buffer status */
 	ret = wm_adsp_host_buffer2_read(adsp,
 				       HOST_BUFFER_FIELD(next_read_index),
@@ -3156,6 +3184,10 @@ static int wm_adsp_stream_capture(struct wm_adsp *adsp)
 	int total_read = 0;
 	int ret = 0;
 
+	if (!adsp) {
+		pr_err("%s Invalid argument\n", __func__);
+		return -EINVAL;
+	}
 	adsp->buffer_drain_pending = false;
 
 	do {
@@ -3183,6 +3215,10 @@ static int wm_adsp_stream_capture2(struct wm_adsp *adsp)
 	int amount_read;
 	int total_read = 0;
 	int ret = 0;
+	if (!adsp) {
+		pr_err("%s Invalid argument\n", __func__);
+		return -EINVAL;
+	}
 
 	adsp->buffer2_drain_pending = false;
 
