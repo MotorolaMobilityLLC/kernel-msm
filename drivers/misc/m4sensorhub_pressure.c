@@ -43,8 +43,7 @@
 struct m4sensorhub_pressure_drvdata {
 	struct m4sensorhub_data *p_m4sensorhub;
 	int samplerate;
-	bool enable;
-	struct delayed_work read_data_work;
+	bool irq_enabled;
 	struct platform_device      *pdev;
 	struct m4sensorhub_pressure_data read_data;
 	struct mutex                mutex;
@@ -71,11 +70,9 @@ static const struct iio_chan_spec m4sensorhub_pressure_channels[] = {
 };
 
 
-static void m4pressure_work_func(struct work_struct *work)
+static void m4pressure_isr(enum m4sensorhub_irqs int_event, void *handle)
 {
-	struct m4sensorhub_pressure_drvdata *p_priv_data = container_of(work,
-                            struct m4sensorhub_pressure_drvdata,
-                            read_data_work.work);
+	struct m4sensorhub_pressure_drvdata *p_priv_data = handle;
 	struct m4sensorhub_data *p_m4sensorhub = p_priv_data->p_m4sensorhub;
 	struct iio_dev *p_iio_dev = platform_get_drvdata(p_priv_data->pdev);
 	sPressureData pressure;
@@ -93,16 +90,14 @@ static void m4pressure_work_func(struct work_struct *work)
 	p_priv_data->read_data.altitude = pressure.absoluteAltitude;
 	p_priv_data->read_data.timestamp = ktime_to_ns(ktime_get_boottime());
 
-	iio_push_to_buffers(p_iio_dev, (unsigned char *)&(p_priv_data->read_data));
-
-	queue_delayed_work(system_freezable_wq, &(p_priv_data->read_data_work),
-		msecs_to_jiffies(p_priv_data->samplerate));
+	iio_push_to_buffers(p_iio_dev,
+		(unsigned char *)&(p_priv_data->read_data));
 
 	mutex_unlock(&(p_priv_data->mutex));
 }
 
-static void m4sensorhub_pressure_panic_restore(struct m4sensorhub_data *m4sensorhub,
-                void *data)
+static void m4pressure_panic_restore(struct m4sensorhub_data *m4sensorhub,
+	void *data)
 {
 	struct m4sensorhub_pressure_drvdata *p_priv_data =
 			(struct m4sensorhub_pressure_drvdata *)data;
@@ -123,10 +118,6 @@ static void m4sensorhub_pressure_panic_restore(struct m4sensorhub_data *m4sensor
 		goto err;
 	}
 
-	cancel_delayed_work(&(p_priv_data->read_data_work));
-	if (p_priv_data->samplerate > 0)
-		queue_delayed_work(system_freezable_wq, &(p_priv_data->read_data_work),
-		msecs_to_jiffies(p_priv_data->samplerate));
 err:
 	mutex_unlock(&(p_priv_data->mutex));
 }
@@ -139,10 +130,20 @@ static int m4sensorhub_pressure_driver_initcallback(struct init_calldata *p_arg)
 	int ret;
 
 	p_priv_data->p_m4sensorhub = p_m4sensorhub;
-	INIT_DELAYED_WORK(&(p_priv_data->read_data_work), m4pressure_work_func);
 
-	ret = m4sensorhub_panic_register(p_m4sensorhub, PANICHDL_PRESSURE_RESTORE,
-				m4sensorhub_pressure_panic_restore, p_priv_data);
+	ret = m4sensorhub_irq_register(p_m4sensorhub,
+		M4SH_NOWAKEIRQ_PRESSURE, m4pressure_isr,
+		p_priv_data, 0);
+	if (ret < 0) {
+		pr_err("%s: Failed to register M4 IRQ.\n", __func__);
+		return ret;
+	}
+
+	ret = m4sensorhub_panic_register(p_m4sensorhub,
+		PANICHDL_PRESSURE_RESTORE,
+		m4pressure_panic_restore, p_priv_data);
+	if (ret < 0)
+		pr_err("%s: Panic registration failed.\n", __func__);
 
 	return 0;
 }
@@ -153,8 +154,7 @@ static ssize_t m4sensorhub_pressure_store_setdelay(struct device *p_dev,
 			const char *p_buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(p_dev);
-	struct iio_dev *p_iio_dev =
-						platform_get_drvdata(pdev);
+	struct iio_dev *p_iio_dev = platform_get_drvdata(pdev);
 	struct m4sensorhub_pressure_drvdata *p_priv_data = iio_priv(p_iio_dev);
 	int ret;
 	int samplerate;
@@ -164,7 +164,8 @@ static ssize_t m4sensorhub_pressure_store_setdelay(struct device *p_dev,
 		return ret;
 
 	if (samplerate < -1) {
-		pr_err("%s: non -1 negative sample rate, rejecting\n", __func__);
+		pr_err("%s: non -1 negative sample rate, rejecting\n",
+			__func__);
 		return -EINVAL;
 	}
 
@@ -181,13 +182,34 @@ static ssize_t m4sensorhub_pressure_store_setdelay(struct device *p_dev,
 		}
 
 		p_priv_data->samplerate = samplerate;
+	}
 
-		/* setup the work to start reading data at this rate */
-		cancel_delayed_work(&(p_priv_data->read_data_work));
-		if (p_priv_data->samplerate > 0)
-			queue_delayed_work(system_freezable_wq, &(p_priv_data->read_data_work),
-				msecs_to_jiffies(p_priv_data->samplerate));
-
+	if (samplerate >= 0) {
+		/* Enable the IRQ if necessary */
+		if (!(p_priv_data->irq_enabled)) {
+			ret = m4sensorhub_irq_enable(
+				p_priv_data->p_m4sensorhub,
+				M4SH_NOWAKEIRQ_PRESSURE);
+			if (ret < 0) {
+				pr_err("%s: Failed to enable irq.\n",
+					  __func__);
+				goto err;
+			}
+			p_priv_data->irq_enabled = true;
+		}
+	} else {
+		/* Disable the IRQ if necessary */
+		if (p_priv_data->irq_enabled) {
+			ret = m4sensorhub_irq_disable(
+				p_priv_data->p_m4sensorhub,
+				M4SH_NOWAKEIRQ_PRESSURE);
+			if (ret < 0) {
+				pr_err("%s: Failed to disable irq.\n",
+					  __func__);
+				goto err;
+			}
+			p_priv_data->irq_enabled = false;
+		}
 	}
 
 err:
@@ -224,7 +246,8 @@ static ssize_t m4sensorhub_pressure_show_iiodata(struct device *p_dev,
 						platform_get_drvdata(pdev);
 	struct m4sensorhub_pressure_drvdata *p_priv_data = iio_priv(p_iio_dev);
 	return snprintf(p_buf, PAGE_SIZE, "Pressure:%d\nAltitude:%d\n",
-		p_priv_data->read_data.pressure, p_priv_data->read_data.altitude);
+		p_priv_data->read_data.pressure,
+		p_priv_data->read_data.altitude);
 }
 static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 					m4sensorhub_pressure_show_iiodata,
@@ -297,7 +320,7 @@ static int m4sensorhub_pressure_probe(struct platform_device *pdev)
 	p_priv_data = iio_priv(p_iio_dev);
 	p_priv_data->pdev = pdev;
 	p_priv_data->samplerate = -1;
-	p_priv_data->enable = false;
+	p_priv_data->irq_enabled = false;
 	p_priv_data->p_m4sensorhub = NULL;
 	mutex_init(&(p_priv_data->mutex));
 
@@ -351,7 +374,13 @@ static int __exit m4sensorhub_pressure_remove(struct platform_device *pdev)
 
 	mutex_lock(&(p_priv_data->mutex));
 
-	cancel_delayed_work(&(p_priv_data->read_data_work));
+	if (p_priv_data->irq_enabled) {
+		m4sensorhub_irq_disable(p_priv_data->p_m4sensorhub,
+			M4SH_NOWAKEIRQ_PRESSURE);
+		p_priv_data->irq_enabled = false;
+	}
+	m4sensorhub_irq_unregister(p_priv_data->p_m4sensorhub,
+		M4SH_NOWAKEIRQ_PRESSURE);
 	m4sensorhub_unregister_initcall(
 				m4sensorhub_pressure_driver_initcallback);
 
@@ -363,41 +392,8 @@ static int __exit m4sensorhub_pressure_remove(struct platform_device *pdev)
 	iio_device_free(p_iio_dev);
 	platform_set_drvdata(pdev, NULL);
 
-
 	return 0;
 }
-
-static void m4sensorhub_pressure_shutdown(struct platform_device *pdev)
-{
-	return;
-}
-/* when we suspend, we disable pressure IRQ and set samplerate to -1
-when we resume, we wait for the app to re-register and that re-enables
-the sensor. This is global M4 strategy, nothing specific for this driver */
-#ifdef CONFIG_PM
-static int m4sensorhub_pressure_suspend(struct platform_device *pdev,
-				pm_message_t message)
-{
-	struct iio_dev *p_iio_dev =
-						platform_get_drvdata(pdev);
-	struct m4sensorhub_pressure_drvdata *p_priv_data = iio_priv(p_iio_dev);
-	struct m4sensorhub_data *p_m4sensorhub = p_priv_data->p_m4sensorhub;
-	int samplerate = -1;
-
-	m4sensorhub_reg_write(p_m4sensorhub,
-				M4SH_REG_PRESSURE_SAMPLERATE,
-				(char *)&samplerate, m4sh_no_mask);
-	return 0;
-}
-
-static int m4sensorhub_pressure_resume(struct platform_device *pdev)
-{
-	return 0;
-}
-#else
-#define m4sensorhub_pressure_suspend NULL
-#define m4sensorhub_pressure_resume  NULL
-#endif
 
 static struct of_device_id m4sensorhub_pressure_match_tbl[] = {
 	{ .compatible = "mot,m4pressure" },
@@ -407,9 +403,9 @@ static struct of_device_id m4sensorhub_pressure_match_tbl[] = {
 static struct platform_driver m4sensorhub_pressure_driver = {
 	.probe		= m4sensorhub_pressure_probe,
 	.remove		= __exit_p(m4sensorhub_pressure_remove),
-	.shutdown	= m4sensorhub_pressure_shutdown,
-	.suspend	= m4sensorhub_pressure_suspend,
-	.resume		= m4sensorhub_pressure_resume,
+	.shutdown	= NULL,
+	.suspend	= NULL,
+	.resume		= NULL,
 	.driver		= {
 		.name	= m4sensorhub_pressure_DRIVER_NAME,
 		.owner	= THIS_MODULE,
