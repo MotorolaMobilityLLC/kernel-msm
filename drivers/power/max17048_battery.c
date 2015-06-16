@@ -916,6 +916,19 @@ static int max17048_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void max17048_shutdown(struct i2c_client *client)
+{
+	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int ret;
+
+	ret = max17048_write_word(chip->client, HIBRT_REG, 0xFFFF);
+	if (ret)
+		pr_warn("%s: hibernate mode enable failed", __func__);
+
+	ret = max17048_read_word(chip->client, HIBRT_REG);
+	pr_debug("%s: HIBRT_REG: 0x%04X\n", __func__, ret);
+}
+
 static struct of_device_id max17048_match_table[] = {
 	{ .compatible = "maxim,max17048", },
 	{ },
@@ -936,6 +949,7 @@ static struct i2c_driver max17048_i2c_driver = {
 	.probe = max17048_probe,
 	.remove = max17048_remove,
 	.id_table = max17048_id,
+	.shutdown  = max17048_shutdown,
 };
 
 static int __init max17048_init(void)
