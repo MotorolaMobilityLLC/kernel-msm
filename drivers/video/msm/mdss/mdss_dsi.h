@@ -301,7 +301,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*on) (struct mdss_panel_data *pdata);
 	int (*off) (struct mdss_panel_data *pdata);
 	int (*low_power_config) (struct mdss_panel_data *pdata, int enable);
-	int (*set_col_page_addr) (struct mdss_panel_data *pdata);
+	int (*set_col_page_addr)(struct mdss_panel_data *pdata, bool force);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*check_read_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
@@ -417,6 +417,8 @@ struct mdss_dsi_ctrl_pdata {
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
 	struct mdss_util_intf *mdss_util;
+
+	bool dfps_status;	/* dynamic refresh status */
 };
 
 struct dsi_status_data {
