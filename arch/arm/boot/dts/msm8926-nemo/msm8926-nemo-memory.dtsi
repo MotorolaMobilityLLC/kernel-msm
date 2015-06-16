@@ -28,11 +28,11 @@
 			label = "audio_mem";
 		};
 
-		adsp_pil_mem: adsp_region@1b00000 {
+		adsp_pil_mem: adsp_region@1d00000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-			reg = <0x01b00000 0x1400000>;
+			reg = <0x01d00000 0x1200000>;
 			label = "adsp_pil_mem";
 		};
 
