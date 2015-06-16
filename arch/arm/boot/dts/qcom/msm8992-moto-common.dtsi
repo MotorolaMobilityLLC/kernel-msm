@@ -620,6 +620,7 @@
 	qcom,bmd-algo-disabled;
 	qcom,bmd-pin-src = "bpd_none";
 	qcom,usbid-disabled;
+	qcom,force-aicl-rerun;
 };
 
 /{
