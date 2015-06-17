@@ -93,8 +93,7 @@
 		regulator-name = "fan54046_otg_vreg";
 
 		fairchild,bms-psy-name = "max170xx_battery";
-		fairchild,ext-temp-volt-mv = <4000>;
-		fairchild,ext-temp-soc = <65>;
+		fairchild,ext-temp-volt-mv = <4200>;
 		fairchild,oreg-voltage-mv = <4350>;
 		fairchild,low-voltage-uv = <3200000>;
 
