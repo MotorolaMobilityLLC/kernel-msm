@@ -143,8 +143,9 @@ int motosh_reset_and_init(enum reset_mode mode)
 	rst_cmdbuff[3] = pdata->mag_orient & 0xff;
 	rst_cmdbuff[4] = pdata->panel_type & 0xff;
 	rst_cmdbuff[5] = pdata->IR_config & 0xff;
+	rst_cmdbuff[6] = pdata->aod_touch_mode & 0xff;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
-					rst_cmdbuff, 6);
+					rst_cmdbuff, 7);
 	if (err < 0) {
 		dev_err(&motosh_misc_data->client->dev,
 			"Unable to write sensor orientation value");
