@@ -87,11 +87,6 @@ void panic(const char *fmt, ...)
 	long i, i_next = 0;
 	int state = 0;
 
-	/* disable watchdog timer to avoid unexpected watchdog bite */
-#ifdef CONFIG_LGE_HANDLE_PANIC
-	lge_disable_watchdog();
-#endif
-
 	trace_kernel_panic(0);
 	/*
 	 * Disable local interrupts. This will prevent panic_smp_self_stop
