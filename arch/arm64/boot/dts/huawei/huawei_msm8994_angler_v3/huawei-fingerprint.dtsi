@@ -14,6 +14,19 @@
 	aliases {
 		spi12 = &spi_12;
 	};
+
+	memory {
+		cont_splash_mem: cont_splash_mem@0 {
+			reg = <0 0x03401000 0 0x1000000>;
+		};
+		tzapp_mem: tzapp_region@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0 0x04800000 0 0x1900000>;
+			label = "tzapp_mem";
+		};
+	};
 };
 
 &soc {
@@ -66,6 +79,10 @@
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+	};
+
+	qcom,qseecom@6500000 {
+		reg = <0x4800000 0x1900000>;
 	};
 };
 
