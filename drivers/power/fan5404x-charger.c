@@ -250,7 +250,6 @@ struct fan5404x_chg {
 	u32    peek_poke_address;
 	struct fan5404x_regulator	otg_vreg;
 	int ext_temp_volt_mv;
-	int ext_temp_soc;
 	int ext_high_temp;
 	int temp_check;
 	int bms_check;
@@ -1222,7 +1221,8 @@ static void fan5404x_set_chrg_path_temp(struct fan5404x_chg *chip)
 		fan5404x_set_oreg(chip, 4000);
 		fan5404x_temp_charging(chip, 1);
 		return;
-	} else if (chip->batt_cool && !chip->ext_high_temp)
+	} else if ((chip->batt_cool || chip->batt_warm)
+		   && !chip->ext_high_temp)
 		fan5404x_set_oreg(chip, chip->ext_temp_volt_mv);
 	else
 		fan5404x_set_oreg(chip, chip->voreg_mv);
@@ -1247,10 +1247,8 @@ static int fan5404x_check_temp_range(struct fan5404x_chg *chip)
 
 	batt_soc = fan5404x_get_prop_batt_capacity(chip);
 
-	if (((chip->batt_cool) &&
-		(batt_volt > chip->ext_temp_volt_mv)) ||
-		((chip->batt_warm) &&
-		(batt_soc > chip->ext_temp_soc)))
+	if ((chip->batt_cool || chip->batt_warm) &&
+		(batt_volt > chip->ext_temp_volt_mv))
 			ext_high_temp = 1;
 
 	if (chip->ext_high_temp != ext_high_temp) {
@@ -1544,11 +1542,6 @@ static int fan5404x_of_init(struct fan5404x_chg *chip)
 						&chip->ext_temp_volt_mv);
 	if (rc < 0)
 		chip->ext_temp_volt_mv = 0;
-
-	rc = of_property_read_u32(node, "fairchild,ext-temp-soc",
-						&chip->ext_temp_soc);
-	if (rc < 0)
-		chip->ext_temp_soc = 0;
 
 	rc = of_property_read_u32(node, "fairchild,oreg-voltage-mv",
 						&chip->voreg_mv);
