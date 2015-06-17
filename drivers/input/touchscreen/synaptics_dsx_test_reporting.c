@@ -1463,6 +1463,8 @@ struct f54_control {
 	struct f54_control_99 *reg_99;
 	struct f54_control_107 *reg_107;
 	struct f54_control_137 *reg_137;
+	struct f55_control_0 *reg_0_f55;
+	struct f55_control_8 *reg_8_f55;
 };
 
 struct f54_data_4 {
@@ -1607,7 +1609,7 @@ struct f54_data {
 	struct f54_data_17 *reg_17;
 };
 
-struct f55_query {
+struct f55_query_0_2 {
 	union {
 		struct {
 			/* query 0 */
@@ -1620,12 +1622,55 @@ struct f55_query {
 			unsigned char has_sensor_assignment:1;
 			unsigned char has_edge_compensation:1;
 			unsigned char curve_compensation_mode:2;
-			unsigned char reserved:4;
+			unsigned char has_ctrl6:1;
+			unsigned char has_alternate_tx_assignment:1;
+			unsigned char f55_q2_has_single_layer_multitouch:1;
+			unsigned char has_query5:1;
 		} __packed;
 		unsigned char data[3];
 	};
 };
 
+struct f55_query_3 {
+	union {
+		struct {
+			unsigned char f55_q3_has_ctrl8:1;
+			unsigned char has_ctrl9:1;
+			unsigned char has_on_cell_pattern:1;
+			unsigned char has_data0:1;
+			unsigned char has_single_wide_pattern:1;
+			unsigned char has_mirrored_tx_pattern:1;
+			unsigned char has_discrete_pattern:1;
+			unsigned char has_query9:1;
+		} __packed;
+		unsigned char data[1];
+	};
+};
+
+struct f55_control_0 {
+	union {
+		struct {
+			unsigned char f55_c0_receivers_on_x:1;
+			unsigned char f55_c0_curve_compensation_on_tx:1;
+			unsigned char f55_c0_trx_sense:1;
+			unsigned char f55_c0_trx_config:1;
+			unsigned char f55_c0_guard_disable:1;
+			unsigned char f55_c0_b5_b7:3;
+		} __packed;
+		unsigned char data[1];
+		unsigned short address;
+	};
+};
+
+struct f55_control_8 {
+	union {
+		struct {
+			unsigned char f55_c8_pattern_type;
+		} __packed;
+		unsigned char data[1];
+		unsigned short address;
+	};
+};
 
 struct synaptics_rmi4_fn55_desc {
 	unsigned short query_base_addr;
@@ -1694,6 +1739,8 @@ struct synaptics_rmi4_f54_handle {
 	struct synaptics_rmi4_exp_fn_ptr *fn_ptr;
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_fn55_desc *fn55;
+	struct f55_query_0_2 query_f55_0_2;
+	struct f55_query_3 query_f55_3;
 	struct wake_lock test_wake_lock;
 };
 
@@ -1857,6 +1904,9 @@ show_store_prototype(c107_abs_adc_clock_div)
 show_store_prototype(c107_abs_sub_burtst_size)
 show_store_prototype(c107_abs_trigger_delay)
 show_store_prototype(c137_cmnr_adjust)
+show_prototype(f55_q2_has_single_layer_multitouch)
+show_prototype(f55_c0_receivers_on_x)
+show_prototype(f55_c8_pattern_type)
 
 static ssize_t synaptics_rmi4_f54_data_read(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
@@ -1920,6 +1970,7 @@ static struct attribute *attrs[] = {
 	attrify(has_energy_ratio_relaxation),
 	attrify(number_of_sensing_frequencies),
 	attrify(q17_num_of_sense_freqs),
+	attrify(f55_q2_has_single_layer_multitouch),
 	NULL,
 };
 
@@ -2130,6 +2181,16 @@ static struct attribute *attrs_reg_137[] = {
 	NULL,
 };
 
+static struct attribute *attrs_f55_c0[] = {
+	attrify(f55_c0_receivers_on_x),
+	NULL,
+};
+
+static struct attribute *attrs_f55_c8[] = {
+	attrify(f55_c8_pattern_type),
+	NULL,
+};
+
 static struct attribute_group attrs_ctrl_regs[] = {
 	GROUP(attrs_reg_0),
 	GROUP(attrs_reg_1),
@@ -2161,6 +2222,8 @@ static struct attribute_group attrs_ctrl_regs[] = {
 	GROUP(attrs_reg_99),
 	GROUP(attrs_reg_107),
 	GROUP(attrs_reg_137),
+	GROUP(attrs_f55_c0),
+	GROUP(attrs_f55_c8),
 };
 
 static bool attrs_ctrl_regs_exist[ARRAY_SIZE(attrs_ctrl_regs)];
@@ -3279,6 +3342,10 @@ show_store_func_unsigned(control, reg_107, c107_abs_trigger_delay)
 
 show_store_func_unsigned(control, reg_137, c137_cmnr_adjust)
 
+simple_show_func_unsigned(query_f55_0_2, f55_q2_has_single_layer_multitouch)
+show_func_unsigned(control, reg_0_f55, f55_c0_receivers_on_x)
+show_func_unsigned(control, reg_8_f55, f55_c8_pattern_type)
+
 static ssize_t synaptics_rmi4_f54_burst_count_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -4170,6 +4237,23 @@ static int synaptics_rmi4_f54_set_ctrl(void)
 	CTRL_REG_RESERVED_PRESENCE(178, 1, 0);
 	CTRL_REG_PRESENCE(179, 1, query46->has_ctrl179);
 
+	/* add F55 control registers */
+	reg_addr = f54->fn55->control_base_addr;
+
+	CTRL_REG_ADD(0_f55, 1, f54->query_f55_0_2.has_sensor_assignment);
+
+	CTRL_REG_PRESENCE(1_f55, 1, f54->query_f55_0_2.has_sensor_assignment);
+	CTRL_REG_PRESENCE(2_f55, 1, f54->query_f55_0_2.has_sensor_assignment);
+	CTRL_REG_PRESENCE(3_f55, 1, f54->query_f55_0_2.has_edge_compensation);
+	CTRL_REG_PRESENCE(4_f55, 1, f54->query_f55_0_2.curve_compensation_mode);
+	CTRL_REG_PRESENCE(5_f55, 1, f54->query_f55_0_2.curve_compensation_mode);
+	CTRL_REG_PRESENCE(6_f55, 1, f54->query_f55_0_2.has_ctrl6);
+	CTRL_REG_PRESENCE(7_f55, 1,
+		f54->query_f55_0_2.has_alternate_tx_assignment);
+
+	CTRL_REG_ADD(8_f55, 1,
+		f54->query_f55_0_2.f55_q2_has_single_layer_multitouch &&
+		f54->query_f55_3.f55_q3_has_ctrl8);
 	return 0;
 
 exit_no_mem:
@@ -4347,6 +4431,34 @@ exit_no_mem:
 	return -ENOMEM;
 }
 
+static int synaptics_rmi4_f55_read_query(void)
+{
+	int retval;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	uint16_t reg_addr;
+
+	retval = f54->fn_ptr->read(rmi4_data,
+			f54->fn55->query_base_addr,
+			f54->query_f55_0_2.data,
+			sizeof(f54->query_f55_0_2.data));
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to read F55 query registers 0-2\n",
+				__func__);
+		goto err;
+	}
+
+	reg_addr  = f54->fn55->query_base_addr;
+
+	QUERY_REG_READ(_f55_0_2, 1);
+	QUERY_REG_READ(_f55_3,
+		f54->query_f55_0_2.f55_q2_has_single_layer_multitouch);
+return 0;
+
+err:
+	return retval;
+}
+
 static void synaptics_rmi4_f54_sensor_mapping(void)
 {
 	int retval;
@@ -4357,7 +4469,6 @@ static void synaptics_rmi4_f54_sensor_mapping(void)
 	unsigned char *buffer;
 	unsigned char *rx_buffer;
 	unsigned char *tx_buffer;
-	struct f55_query query;
 	unsigned short offset;
 	int i;
 
@@ -4370,20 +4481,9 @@ static void synaptics_rmi4_f54_sensor_mapping(void)
 		offset = control->reg_15->address;
 
 	} else if (f54->fn55) {
-		retval = f54->fn_ptr->read(rmi4_data,
-				f54->fn55->query_base_addr,
-				query.data,
-				sizeof(query.data));
-		if (retval < 0) {
-			dev_err(&rmi4_data->i2c_client->dev,
-					"%s: Failed to read query registers\n",
-					__func__);
-			return;
-		}
-
-		if (query.has_sensor_assignment) {
-			rx_len = query.num_of_rx_electrodes;
-			tx_len = query.num_of_tx_electrodes;
+		if (f54->query_f55_0_2.has_sensor_assignment) {
+			rx_len = f54->query_f55_0_2.num_of_rx_electrodes;
+			tx_len = f54->query_f55_0_2.num_of_tx_electrodes;
 
 			offset = f54->fn55->control_base_addr + 1;
 		} else {
@@ -4705,6 +4805,14 @@ found:
 		goto exit_free_mem;
 	}
 
+	retval = synaptics_rmi4_f55_read_query();
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to set up F55 query registers\n",
+				__func__);
+		goto exit_free_control;
+	}
+
 	retval = synaptics_rmi4_f54_set_ctrl();
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
@@ -4712,6 +4820,7 @@ found:
 				__func__);
 		goto exit_free_control;
 	}
+
 	synaptics_rmi4_f54_sensor_mapping();
 
 	retval = synaptics_rmi4_f54_set_data();
