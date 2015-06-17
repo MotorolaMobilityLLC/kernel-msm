@@ -1668,7 +1668,7 @@ static void synaptics_dsx_state_config(
 
 	if (!patch || !patch->cfg_num) {
 		pr_debug("patchset is empty!\n");
-		return;
+		goto nothing_to_patch;
 	}
 
 	if (rmi4_data->mode_is_wakeable)
@@ -1685,6 +1685,7 @@ static void synaptics_dsx_state_config(
 			"DEFAULT" : "OTHER");
 	}
 
+nothing_to_patch:
 	/* keep page 0 active */
 	synaptics_rmi4_set_page(rmi4_data, 0);
 }
