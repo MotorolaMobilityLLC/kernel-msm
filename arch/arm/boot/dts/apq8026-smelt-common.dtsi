@@ -382,6 +382,7 @@
 
 &i2c_3 {
 	cell-index = <3>;
+	qcom,i2c-bus-freq = <200000>;
 	qcom,scl-gpio = <&msmgpio 11 0>;
 	qcom,sda-gpio = <&msmgpio 10 0>;
 	qcom,clk-ctl-xfer;
