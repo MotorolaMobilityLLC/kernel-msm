@@ -65,7 +65,7 @@ static bool scm_dload_supported;
 extern unsigned int get_watchdog_flag(void);
 #endif
 static int dload_set(const char *val, struct kernel_param *kp);
-static int download_mode = 1;
+static int download_mode = 0;
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
