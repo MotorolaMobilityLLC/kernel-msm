@@ -2330,8 +2330,12 @@ static void age_active_anon(struct zone *zone, struct scan_control *sc)
 static bool zone_balanced(struct zone *zone, int order,
 			  unsigned long balance_gap, int classzone_idx)
 {
+	int alloc_flags = 0;
+
+	if (zone_idx(zone) == ZONE_MOVABLE)
+		alloc_flags |= ALLOC_CMA;
 	if (!zone_watermark_ok_safe(zone, order, high_wmark_pages(zone) +
-				    balance_gap, classzone_idx, 0))
+				    balance_gap, classzone_idx, alloc_flags))
 		return false;
 
 	if (COMPACTION_BUILD && order && !compaction_suitable(zone, order))
@@ -2538,6 +2542,7 @@ loop_again:
 			struct zone *zone = pgdat->node_zones + i;
 			int nr_slab, testorder;
 			unsigned long balance_gap;
+			int alloc_flags = 0;
 
 			if (!populated_zone(zone))
 				continue;
@@ -2612,13 +2617,16 @@ loop_again:
 
 			if (!zone_balanced(zone, testorder, 0, end_zone)) {
 				all_zones_ok = 0;
+				if (i == ZONE_MOVABLE)
+					alloc_flags |= ALLOC_CMA;
 				/*
 				 * We are still under min water mark.  This
 				 * means that we have a GFP_ATOMIC allocation
 				 * failure risk. Hurry up!
 				 */
 				if (!zone_watermark_ok_safe(zone, order,
-					    min_wmark_pages(zone), end_zone, 0))
+					    min_wmark_pages(zone), end_zone,
+					    alloc_flags))
 					has_under_min_watermark_zone = 1;
 			} else {
 				/*
@@ -2701,13 +2709,17 @@ out:
 
 		for (i = 0; i <= end_zone; i++) {
 			struct zone *zone = pgdat->node_zones + i;
+			int alloc_flags = 0;
 
 			if (!populated_zone(zone))
 				continue;
 
+			if (i == ZONE_MOVABLE)
+				alloc_flags |= ALLOC_CMA;
 			/* Check if the memory needs to be defragmented. */
 			if (zone_watermark_ok(zone, order,
-				    low_wmark_pages(zone), *classzone_idx, 0))
+				    low_wmark_pages(zone), *classzone_idx,
+				    alloc_flags))
 				zones_need_compaction = 0;
 
 			/* If balanced, clear the congested flag */
@@ -2895,6 +2907,7 @@ static int kswapd(void *p)
 void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 {
 	pg_data_t *pgdat;
+	int alloc_flags = 0;
 
 	if (!populated_zone(zone))
 		return;
@@ -2908,7 +2921,10 @@ void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 	}
 	if (!waitqueue_active(&pgdat->kswapd_wait))
 		return;
-	if (zone_watermark_ok_safe(zone, order, low_wmark_pages(zone), 0, 0))
+	if (zone_idx(zone) == ZONE_MOVABLE)
+		alloc_flags |= ALLOC_CMA;
+	if (zone_watermark_ok_safe(zone, order, low_wmark_pages(zone), 0,
+					alloc_flags))
 		return;
 
 	trace_mm_vmscan_wakeup_kswapd(pgdat->node_id, zone_idx(zone), order);

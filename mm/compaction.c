@@ -806,6 +806,7 @@ static int compact_finished(struct zone *zone,
 {
 	unsigned int order;
 	unsigned long watermark;
+	int alloc_flags = 0;
 
 	if (fatal_signal_pending(current))
 		return COMPACT_PARTIAL;
@@ -835,7 +836,9 @@ static int compact_finished(struct zone *zone,
 	watermark = low_wmark_pages(zone);
 	watermark += (1 << cc->order);
 
-	if (!zone_watermark_ok(zone, cc->order, watermark, 0, 0))
+	if (current_is_kswapd() && (zone_idx(zone) == ZONE_MOVABLE))
+		alloc_flags |= ALLOC_CMA;
+	if (!zone_watermark_ok(zone, cc->order, watermark, 0, alloc_flags))
 		return COMPACT_CONTINUE;
 
 	/* Direct compactor: Is a suitable page free? */
@@ -865,6 +868,7 @@ unsigned long compaction_suitable(struct zone *zone, int order)
 {
 	int fragindex;
 	unsigned long watermark;
+	int alloc_flags = 0;
 
 	/*
 	 * order == -1 is expected when compacting via
@@ -873,13 +877,15 @@ unsigned long compaction_suitable(struct zone *zone, int order)
 	if (order == -1)
 		return COMPACT_CONTINUE;
 
+	if (current_is_kswapd() && (zone_idx(zone) == ZONE_MOVABLE))
+		alloc_flags |= ALLOC_CMA;
 	/*
 	 * Watermarks for order-0 must be met for compaction. Note the 2UL.
 	 * This is because during migration, copies of pages need to be
 	 * allocated and for a short time, the footprint is higher
 	 */
 	watermark = low_wmark_pages(zone) + (2UL << order);
-	if (!zone_watermark_ok(zone, 0, watermark, 0, 0))
+	if (!zone_watermark_ok(zone, 0, watermark, 0, alloc_flags))
 		return COMPACT_SKIPPED;
 
 	/*
@@ -898,7 +904,7 @@ unsigned long compaction_suitable(struct zone *zone, int order)
 		return COMPACT_SKIPPED;
 
 	if (fragindex == -1000 && zone_watermark_ok(zone, order, watermark,
-	    0, 0))
+	    0, alloc_flags))
 		return COMPACT_PARTIAL;
 
 	return COMPACT_CONTINUE;
@@ -1165,8 +1171,13 @@ static int __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
 			compact_zone(zone, cc);
 
 		if (cc->order > 0) {
-			int ok = zone_watermark_ok(zone, cc->order,
-						low_wmark_pages(zone), 0, 0);
+			int alloc_flags = 0;
+			int ok;
+
+			if (current_is_kswapd() && (zoneid == ZONE_MOVABLE))
+				alloc_flags |= ALLOC_CMA;
+			ok = zone_watermark_ok(zone, cc->order,
+					low_wmark_pages(zone), 0, alloc_flags);
 			if (ok && cc->order >= zone->compact_order_failed)
 				zone->compact_order_failed = cc->order + 1;
 			/* Currently async compaction is never deferred. */
