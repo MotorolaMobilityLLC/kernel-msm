@@ -37,13 +37,6 @@
 	/delete-property/ pinctrl-1;
 };
 
-&i2c_3 {
-	status = "disabled";
-	/delete-property/ pinctrl-names;
-	/delete-property/ pinctrl-0;
-	/delete-property/ pinctrl-1;
-};
-
 &spi_5 {
 	sensorhub@0 {
 		compatible = "contexthub,spich";
