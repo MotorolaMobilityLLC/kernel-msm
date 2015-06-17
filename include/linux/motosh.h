@@ -397,6 +397,7 @@ struct motosh_platform_data {
 	int panel_type;
 	int IR_config;
 	int cover_detect_polarity;
+	int aod_touch_mode;
 };
 
 /**
