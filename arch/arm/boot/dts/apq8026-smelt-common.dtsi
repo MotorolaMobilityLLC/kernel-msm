@@ -533,6 +533,7 @@
 		lm3535,en_gpio = <&msmgpio 35 0>; // is not supported by driver yet
 	};
 
+
 	tsl2584@29 {
 		compatible = "ams,tsl2584";
 		reg = <0x29>;
@@ -540,6 +541,7 @@
 		ams,ink_type = <0x01>;
 	};
 
+	/delete-node/ nfc-nci@0e;
 };
 
 &i2c_5 {
