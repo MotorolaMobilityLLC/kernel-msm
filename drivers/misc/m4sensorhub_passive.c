@@ -46,7 +46,6 @@ struct m4pas_driver_data {
 
 	struct m4sensorhub_passive_iio_data   iiodat[M4PAS_NUM_PASSIVE_BUFFERS];
 	int16_t         samplerate;
-	int16_t         latest_samplerate;
 	uint16_t        status;
 };
 
@@ -184,7 +183,6 @@ static int m4pas_set_samplerate(struct iio_dev *iio, int16_t rate)
 	 * Currently, there is no concept of setting a sample rate for this
 	 * sensor, so this function only enables/disables interrupt reporting.
 	 */
-	dd->latest_samplerate = rate;
 	if (dd->samplerate == rate)
 		goto m4pas_set_samplerate_fail;
 
@@ -485,7 +483,6 @@ static int m4pas_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
-	dd->latest_samplerate = dd->samplerate;
 
 	err = m4pas_create_iiodev(iio); /* iio and dd are freed on fail */
 	if (err < 0) {
@@ -522,27 +519,14 @@ static int __exit m4pas_remove(struct platform_device *pdev)
 
 	mutex_lock(&(dd->mutex));
 	if (dd->status & (1 << M4PAS_IRQ_ENABLED_BIT)) {
-		m4sensorhub_irq_disable(dd->m4,
-					M4SH_WAKEIRQ_PASSIVE);
+		m4sensorhub_irq_disable(dd->m4, M4SH_WAKEIRQ_PASSIVE);
 		dd->status = dd->status & ~(1 << M4PAS_IRQ_ENABLED_BIT);
 	}
-	m4sensorhub_irq_unregister(dd->m4,
-				   M4SH_WAKEIRQ_PASSIVE);
+	m4sensorhub_irq_unregister(dd->m4, M4SH_WAKEIRQ_PASSIVE);
 	m4sensorhub_unregister_initcall(m4pas_driver_init);
 	m4pas_remove_iiodev(iio);  /* dd is freed here */
 
 m4pas_remove_exit:
-	return 0;
-}
-
-static int m4pas_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	struct iio_dev *iio = platform_get_drvdata(pdev);
-	struct m4pas_driver_data *dd = iio_priv(iio);
-	mutex_lock(&(dd->mutex));
-	if (m4pas_set_samplerate(iio, dd->latest_samplerate) < 0)
-		m4pas_err("%s: setrate retry failed\n", __func__);
-	mutex_unlock(&(dd->mutex));
 	return 0;
 }
 
@@ -555,7 +539,7 @@ static struct platform_driver m4pas_driver = {
 	.probe		= m4pas_probe,
 	.remove		= __exit_p(m4pas_remove),
 	.shutdown	= NULL,
-	.suspend	= m4pas_suspend,
+	.suspend	= NULL,
 	.resume		= NULL,
 	.driver		= {
 		.name	= M4PAS_DRIVER_NAME,
