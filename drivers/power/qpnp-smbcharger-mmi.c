@@ -7214,7 +7214,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 end_hb:
 	power_supply_changed(&chip->batt_psy);
 
-	if (!chip->stepchg_state_holdoff)
+	if (!chip->stepchg_state_holdoff && !chip->aicl_wait_retries)
 		schedule_delayed_work(&chip->heartbeat_work,
 				      msecs_to_jiffies(HEARTBEAT_DELAY_MS));
 	else
