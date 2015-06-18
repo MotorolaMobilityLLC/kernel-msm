@@ -651,13 +651,13 @@
 			patch-data = "";
 		};
 		default_suspended: touchstate_aod_suspended {
-			patch-data = "";
+			patch-data = "F1@0=1&7";
 		};
 		alternate_active: touchstate_folio_active {
 			patch-data = "F54@2=7800;F54M@0=4";
 		};
 		alternate_suspended: touchstate_folio_suspended {
-			patch-data = "F54@2=7800;F54M@0=4";
+			patch-data = "F1@0=1&7";
 		};
 	};
 };
