@@ -735,7 +735,7 @@ static void bcl_periph_mode_set(enum bcl_device_mode mode)
 		bcl_soc_state = BCL_THRESHOLD_DISABLED;
 		bcl_vph_notify(BCL_HIGH_THRESHOLD);
 		bcl_ibat_notify(BCL_LOW_THRESHOLD);
-		bcl_hotplug_request = 0;
+		bcl_handle_hotplug(NULL);
 	}
 }
 

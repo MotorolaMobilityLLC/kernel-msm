@@ -1658,9 +1658,8 @@ static void msm_isp_process_overflow_irq(
 
 		error_event.frame_id =
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
-		error_event.u.error_info.error_mask = 1 << ISP_WM_BUS_OVERFLOW;
-		msm_isp_send_event(vfe_dev,
-			ISP_EVENT_WM_BUS_OVERFLOW, &error_event);
+		error_event.u.error_info.err_type = ISP_ERROR_BUS_OVERFLOW;
+		msm_isp_send_event(vfe_dev, ISP_EVENT_ERROR, &error_event);
 	}
 }
 
@@ -1827,14 +1826,11 @@ static int msm_vfe_iommu_fault_handler(struct iommu_domain *domain,
 
 	if (token) {
 		vfe_dev = (struct vfe_device *)token;
-		msm_isp_axi_disable_all_wm(vfe_dev);
-		msm_isp_stats_disable(vfe_dev);
-		/* VFE_SRC_MAX will call reg update on all stream src */
-		vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev,
-			VFE_SRC_MAX);
-		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops) {
-			pr_err("%s:%d] buf_mgr %p\n", __func__,
-				__LINE__, vfe_dev->buf_mgr);
+		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops ||
+			!vfe_dev->axi_data.num_active_stream) {
+			pr_err("%s:%d] buf_mgr %p active strms %d\n", __func__,
+				__LINE__, vfe_dev->buf_mgr,
+				vfe_dev->axi_data.num_active_stream);
 			goto end;
 		}
 		if (!vfe_dev->buf_mgr->pagefault_debug) {

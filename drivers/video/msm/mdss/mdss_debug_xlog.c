@@ -293,8 +293,8 @@ static void mdss_dump_reg(u32 reg_dump_flag,
 	len /= 16;
 
 	if (in_mem) {
-		if (!dump_mem)
-			dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
+		if (!(*dump_mem))
+			*dump_mem = dma_alloc_coherent(&mdata->pdev->dev,
 				len * 16, &phys, GFP_KERNEL);
 
 		if (*dump_mem) {

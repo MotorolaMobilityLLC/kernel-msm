@@ -232,6 +232,7 @@ struct smbchg_chip {
 	struct mutex			usb_status_lock;
 	/* apsd workaround */
 	struct work_struct		rerun_apsd_work;
+	bool				do_apsd_reruns;
 	bool				apsd_rerun;
 	bool				apsd_rerun_ignore_uv_irq;
 	struct completion		apsd_src_det_lowered;
@@ -258,7 +259,7 @@ module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
 );
 
-static int smbchg_parallel_en;
+static int smbchg_parallel_en = 1;
 module_param_named(
 	parallel_en, smbchg_parallel_en, int, S_IRUSR | S_IWUSR
 );
@@ -645,7 +646,7 @@ static inline char *get_usb_type_name(int type)
 
 static enum power_supply_type usb_type_enum[] = {
 	POWER_SUPPLY_TYPE_USB,		/* bit 0 */
-	POWER_SUPPLY_TYPE_UNKNOWN,	/* bit 1 */
+	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 1 */
 	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 2 */
 	POWER_SUPPLY_TYPE_USB_CDP,	/* bit 3 */
 	POWER_SUPPLY_TYPE_USB,		/* bit 4 error case, report SDP */
@@ -1272,7 +1273,7 @@ static int smbchg_dc_en(struct smbchg_chip *chip, bool enable,
 		goto out;
 	}
 
-	if (chip->psy_registered)
+	if (chip->dc_psy_type != -EINVAL)
 		power_supply_changed(&chip->dc_psy);
 	pr_smb(PR_STATUS, "dc charging %s, suspended = %02x\n",
 			suspended == 0 ? "enabled"
@@ -1864,11 +1865,6 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	taper_irq_en(chip, true);
 	chip->parallel.current_max_ma = new_parallel_cl_ma;
 	power_supply_set_present(parallel_psy, true);
-	chip->target_fastchg_current_ma = chip->cfg_fastchg_current_ma / 2;
-	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
-	pval.intval = chip->target_fastchg_current_ma * 1000;
-	parallel_psy->set_property(parallel_psy,
-			POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX, &pval);
 	smbchg_set_usb_current_max(chip, chip->parallel.current_max_ma);
 	power_supply_set_current_limit(parallel_psy,
 				chip->parallel.current_max_ma * 1000);
@@ -3911,11 +3907,14 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 		return;
 	}
 
+	pr_smb(PR_STATUS, "HVDCP_STS = 0x%02x\n", reg);
 	/*
 	 * If a valid HVDCP is detected, notify it to the usb_psy only
 	 * if USB is still present.
 	 */
 	if ((reg & USBIN_HVDCP_SEL_BIT) && is_usb_present(chip)) {
+		pr_smb(PR_MISC, "setting usb psy type = %d\n",
+				POWER_SUPPLY_TYPE_USB_HVDCP);
 		power_supply_set_supply_type(chip->usb_psy,
 				POWER_SUPPLY_TYPE_USB_HVDCP);
 		smbchg_aicl_deglitch_wa_check(chip);
@@ -4126,7 +4125,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		power_supply_set_allow_detection(chip->usb_psy, 1);
 	}
 
-	if (!chip->apsd_rerun && usb_supply_type == POWER_SUPPLY_TYPE_USB) {
+	if (chip->do_apsd_reruns && !chip->apsd_rerun
+			&& usb_supply_type == POWER_SUPPLY_TYPE_USB) {
 		chip->apsd_rerun = true;
 		schedule_work(&chip->rerun_apsd_work);
 		return;
@@ -4157,9 +4157,11 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
 		schedule_work(&chip->usb_set_online_work);
+	}
+
+	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
 		schedule_delayed_work(&chip->hvdcp_det_work,
 					msecs_to_jiffies(HVDCP_NOTIFY_MS));
-	}
 	if (parallel_psy)
 		power_supply_set_present(parallel_psy, true);
 
@@ -5313,6 +5315,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,low-volt-dcin");
 	chip->force_aicl_rerun = of_property_read_bool(node,
 					"qcom,force-aicl-rerun");
+	chip->do_apsd_reruns = of_property_read_bool(node,
+					"qcom,rerun-apsd");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
