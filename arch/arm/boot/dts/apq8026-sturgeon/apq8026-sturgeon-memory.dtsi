@@ -1,0 +1,70 @@
+/* Copyright (c) 2015, HUAWEI TECHNOLOGIES CO., LTD. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../qcom/msm8226-w-ion.dtsi"
+
+/ {
+	memory {
+		qsecom_mem: qsecom_region@0 {
+			linux,reserve-contiguous-region;
+			reg = <0 0xd00000>;
+			label = "qsecom_mem";
+		};
+
+		audio_mem: audio_region@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			reg = <0 0x314000>;
+			label = "audio_mem";
+		};
+
+		sbl_mem: sbl_region@2f00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x02f00000 0x100000>;
+			label = "sbl_mem";
+		};
+
+		external_image_mem: external_image_region@3000000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x3000000 0x300000>;
+			label = "external_image_mem";
+		};
+
+		adsp_pil_mem: adsp_region@3300000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x03300000 0x1400000>;
+			label = "adsp_pil_mem";
+		};
+	};
+};
+
+&modem_pil {
+	/delete-property/ linux,contiguous-region;
+};
+
+&venus_pil {
+	/delete-property/ linux,contiguous-region;
+};
+
+&pronto_pil {
+	/delete-property/ linux,contiguous-region;
+};
+
+&lpass_pil {
+	linux,contiguous-region = <&adsp_pil_mem>;
+};
