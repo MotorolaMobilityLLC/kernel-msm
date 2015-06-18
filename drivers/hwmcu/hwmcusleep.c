@@ -226,6 +226,38 @@ static ssize_t mcusleep_read_proc_lpm
 }
 
 /**
+* write mcu sleep lpm proc, 0 - add wake lock, 1 -wake lock unlock
+*/
+static int mcusleep_write_proc_lpm(struct file *file,
+    const char __user * buffer, size_t count,
+    loff_t * ppos)
+{
+    char b = 0;
+
+    if (count < 1)
+    {
+        return -EINVAL;
+    }
+    if (copy_from_user(&b, buffer, 1))
+    {
+        return -EFAULT;
+    }
+    if (b == '0')
+    {
+        wake_lock_timeout(&mcuinfo->wake_lock, (MIN_MCU_DELAY_TIME * HZ));
+        pr_info("mcusleep wake_lock\n");
+    }
+    else
+    {
+        wake_unlock(&mcuinfo->wake_lock);
+        pr_info("mcusleep wake_unlock\n");
+    }
+
+    return count;
+}
+
+
+/**
 * read mcu sleep status
 */
 static ssize_t mcusleep_read_proc_sleep
@@ -589,6 +621,7 @@ static struct platform_driver mcusleep_driver =
 static const struct file_operations lpm_fops = 
 {
     .owner = THIS_MODULE,
+    .write = mcusleep_write_proc_lpm,
     .read = mcusleep_read_proc_lpm,
 };
 
