@@ -28,6 +28,7 @@
 
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 #include <linux/export.h>
 
 static unsigned sev_pos(const struct v4l2_subscribed_event *sev, unsigned idx)
@@ -209,6 +210,7 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 	struct v4l2_subscribed_event *sev, *found_ev;
 	unsigned long flags;
 	unsigned i;
+	size_t sev_size;
 
 	if (sub->type == V4L2_EVENT_ALL)
 		return -EINVAL;
@@ -216,7 +218,11 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 	if (elems < 1)
 		elems = 1;
 
-	sev = kzalloc(sizeof(*sev) + sizeof(struct v4l2_kevent) * elems, GFP_KERNEL);
+	sev_size = sizeof(*sev) + sizeof(struct v4l2_kevent) * elems;
+	if (sev_size > PAGE_SIZE)
+		sev = vzalloc(sev_size);
+	else
+		sev = kzalloc(sev_size, GFP_KERNEL);
 	if (!sev)
 		return -ENOMEM;
 	for (i = 0; i < elems; i++)
@@ -234,7 +240,7 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 	spin_unlock_irqrestore(&fh->vdev->fh_lock, flags);
 
 	if (found_ev) {
-		kfree(sev);
+		kvfree(sev);
 		return 0; /* Already listening */
 	}
 
@@ -306,7 +312,7 @@ int v4l2_event_unsubscribe(struct v4l2_fh *fh,
 	if (sev && sev->ops && sev->ops->del)
 		sev->ops->del(sev);
 
-	kfree(sev);
+	kvfree(sev);
 
 	return 0;
 }
