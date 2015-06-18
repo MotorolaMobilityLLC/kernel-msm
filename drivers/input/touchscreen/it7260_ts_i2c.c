@@ -96,11 +96,13 @@
 #define FW_WRITE_RETRY_COUNT		4
 #define CHIP_FLASH_SIZE			0x8000
 #define SYSFS_FW_UPLOAD_MODE_MANUAL	2
+#define SYSFS_FW_UPDATE_SCRIPT	1
 #define SYSFS_RESULT_FAIL		(-1)
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
 #define DEVICE_READY_MAX_WAIT		500
 #define DEVICE_READY_MAX_PROBE_WAIT		50
+#define DEVICE_READY_MAX_UPDATE_WAIT		50
 
 //result of reading with BUF_QUERY bits
 #define CMD_STATUS_BITS			0x07
@@ -126,6 +128,7 @@ static int fw_upgrade_flag = 0;
 static int config_upgrade_flag = 0;
 static int enter_lowpower_flag = 0;
 static bool probe_flag = false;
+static bool update_flag = false;
 
 //show touch point message flag
 static int TOUCH_P1_DOWN_FLAG = 0;
@@ -202,6 +205,7 @@ static bool isDriverAvailable = true;
 static bool chipInLowPower = false;
 static bool driverInLowPower = false;
 static bool TP_DLMODE = false;
+static bool first_leavelowpower = true;
 static bool touchMissed;
 static int suspend_touch_down = 0;
 static int suspend_touch_up = 0;
@@ -306,6 +310,8 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 
 	if (probe) {
 		count = DEVICE_READY_MAX_PROBE_WAIT;
+	} else if (update_flag) {
+		count = DEVICE_READY_MAX_UPDATE_WAIT;
 	} else {
 		count = DEVICE_READY_MAX_WAIT;
 	}
@@ -317,6 +323,10 @@ static int waitDeviceReady(bool forever, bool slowly, bool probe)
 		if (slowly) {
 			mdelay(1000);
 		} else if (probe_flag) {
+			mdelay(10);
+		}
+
+		if (update_flag && (ucQuery & CMD_STATUS_BUSY)) {
 			mdelay(10);
 		}
 
@@ -545,22 +555,25 @@ static void chipLowPowerMode(bool low)
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
-			LOGI("[%d] %s TP_DLMODE = %d.\n", __LINE__, __func__, TP_DLMODE);
-			if (!TP_DLMODE) {
+			LOGI("[%d] %s TP_DLMODE = %d, update_flag = %d.\n", __LINE__, __func__, TP_DLMODE, update_flag);
+			if (first_leavelowpower && !TP_DLMODE && !update_flag) {
 				//Touch Reset
 				ret = gpio_request(RESET_GPIO, "CTP_RST_N");
 				if (ret < 0) {
 					LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+					gpio_free(RESET_GPIO);
+					msleep(50);
 				} else {
 					LOGI("[%d] %s touch reset\n", __LINE__, __func__);
 					gpio_direction_output(RESET_GPIO,0);
 					mdelay(60);
+					gpio_free(RESET_GPIO);
+					msleep(50);
+					chipInLowPower = false;
+					LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
+					first_leavelowpower = false;
 				}
-				gpio_free(RESET_GPIO);
-				msleep(50);
 			}
-			chipInLowPower = false;
-			LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
 			if (!allow_irq_wake) {
 				smp_wmb();
 				ret = disable_irq_wake(gl_ts->client->irq);
@@ -752,6 +765,48 @@ static ssize_t sysfsStatusStore(struct device *dev, struct device_attribute *att
 	return count;
 }
 
+static ssize_t sysfsResetShow(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = gpio_request(RESET_GPIO, "CTP_RST_N");
+	if (ret < 0) {
+		LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+		gpio_free(RESET_GPIO);
+		msleep(50);
+	} else {
+		LOGI("[%d] %s touch reset\n", __LINE__, __func__);
+		gpio_direction_output(RESET_GPIO,0);
+		mdelay(60);
+		gpio_free(RESET_GPIO);
+		msleep(50);
+		chipInLowPower = false;
+		LOGI("[%d] %s set chipInLowPower = %d.\n", __LINE__, __func__, chipInLowPower);
+	}
+
+	return ret;
+}
+
+static ssize_t sysfsResetStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
+
+static ssize_t sysfsUpdateFlagShow(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", update_flag);
+}
+
+static ssize_t sysfsUpdateFlagStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode = 0;
+
+	sscanf(buf, "%d", &mode);
+	update_flag = mode == SYSFS_FW_UPDATE_SCRIPT;
+	LOGI("[%d] %s update_flag = %d.\n", __LINE__, __func__, update_flag);
+	return count;
+}
+
 static ssize_t sysfsVersionShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	uint8_t verFw[10] = {0};
@@ -848,11 +903,13 @@ static ssize_t sysfsSleepStore(struct device *dev, struct device_attribute *attr
 static DEVICE_ATTR(status, S_IRUGO|S_IWUSR, sysfsStatusShow, sysfsStatusStore);
 static DEVICE_ATTR(version, S_IRUGO|S_IWUSR, sysfsVersionShow, sysfsVersionStore);
 static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR, sysfsSleepShow, sysfsSleepStore);
+static DEVICE_ATTR(reset, S_IRUGO|S_IWUSR, sysfsResetShow, sysfsResetStore);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
 	&dev_attr_version.attr,
 	&dev_attr_sleep.attr,
+	&dev_attr_reset.attr,
 	NULL
 };
 
@@ -863,10 +920,12 @@ static const struct attribute_group it7260_attrstatus_group = {
 static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR, sysfsCalibrationShow, sysfsCalibrationStore);
 static DEVICE_ATTR(upgrade, S_IRUGO|S_IWUSR, sysfsUpgradeShow, sysfsUpgradeStore);
 static DEVICE_ATTR(point, S_IRUGO|S_IWUSR, sysfsPointShow, sysfsPointStore);
+static DEVICE_ATTR(updateflag, S_IRUGO|S_IWUSR, sysfsUpdateFlagShow, sysfsUpdateFlagStore);
 
 static struct attribute *it7260_attributes[] = {
 	&dev_attr_calibration.attr,
 	&dev_attr_upgrade.attr,
+	&dev_attr_updateflag.attr,
 	&dev_attr_point.attr,
 	NULL
 };
@@ -917,7 +976,7 @@ EXPORT_SYMBOL(enableAutoTune);
 #ifdef CONFIG_ASUS_UTILITY
 static int mode_notify_sys(struct notifier_block *notif, unsigned long code, void *data)
 {
-	LOGI("[PF]%s +\n", __func__);
+	LOGI("[PF]%s code = %ld +\n", __func__, code);
 	switch (code) {
 	case 0: //FB_BLANK_ENTER_NON_INTERACTIVE
 		chipLowPowerMode(1);
@@ -929,7 +988,7 @@ static int mode_notify_sys(struct notifier_block *notif, unsigned long code, voi
 		LOGI("[PF]%s default +\n", __func__);
 		break;
 	}
-	LOGI("[PF]%s -\n", __func__);
+	LOGI("[PF]%s code = %ld -\n", __func__, code);
 	return 0;
 }
 
@@ -1047,6 +1106,10 @@ static void readTouchDataPoint(void)
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x1, y1, x2, y2;
 
+	if (chipInLowPower) {
+		chipInLowPower = false;
+	}
+
 	/* verify there is point data to read & it is readable and valid */
 	if (i2cReadNoReadyCheck(BUF_QUERY, &devStatus, sizeof(devStatus)) == 2) {
 		if (!((devStatus & PT_INFO_BITS) & PT_INFO_YES)) {
@@ -1091,7 +1154,7 @@ static void readTouchDataPoint(void)
 #ifdef CONFIG_ASUS_WREN
 		if (!isTouchLocked && y1 > 11 && y1 < 272 && x1 > 3 && x1 < 277 && pointData.flags & 0x01)
 #else
-		if (!isTouchLocked && y1 > 13 && y1 < 311 && x1 > 4 && x1 < 316 && pointData.flags & 0x01)
+		if (!isTouchLocked && y1 > 11 && pointData.flags & 0x01)
 #endif
 		{
 			input_mt_slot(gl_ts->touch_dev,0);
@@ -1115,7 +1178,7 @@ static void readTouchDataPoint(void)
 #ifdef CONFIG_ASUS_WREN
 		if (!isTouchLocked && y2 > 11 && y2 < 272 && x2 > 3 && x2 < 277 && pointData.flags & 0x02)
 #else
-		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02)
+		if (!isTouchLocked && y2 > 11 && pointData.flags & 0x02)
 #endif
 		{
 			input_mt_slot(gl_ts->touch_dev,1);
@@ -1164,6 +1227,10 @@ static void readTouchDataPoint_Ambient(void)
 	uint16_t x1, y1;
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x2, y2;
+
+	if (chipInLowPower) {
+		chipInLowPower = false;
+	}
 
 	if (isTouchLocked && !TP_DLMODE)
 		LOGI("[%d] %s isTouchLocked = %d, isDriverAvailable = %d. \n",
