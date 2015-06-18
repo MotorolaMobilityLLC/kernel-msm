@@ -470,8 +470,8 @@
 			qcom,flash_0 {
 				/delete-property/ qcom,power-detect-enabled;
 				qcom,max-current = <1000>;
-				qcom,duration = <90>;
-				qcom,current = <75>;
+				qcom,duration = <120>;
+				qcom,current = <150>;
 				qcom,clamp-current = <25>;
 			};
 			qcom,torch_0 {
