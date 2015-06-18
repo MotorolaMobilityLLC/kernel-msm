@@ -87,6 +87,8 @@ struct synaptics_rmi4_platform_data {
 	unsigned palm_detect_keycode;
 	unsigned doze_interval_active;
 	unsigned doze_interval_sleep;
+	unsigned recalibration_interval_active;
+	unsigned recalibration_interval_sleep;
 	const char *fw_image_name;
 	unsigned int package_id;
 	int (*gpio_config)(unsigned gpio, bool configure);

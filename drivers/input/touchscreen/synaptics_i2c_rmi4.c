@@ -220,6 +220,9 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 static int synaptics_rmi4_set_doze_interval(struct synaptics_rmi4_data
 						*rmi4_data, int active);
 
+static int synaptics_rmi4_set_recalibration_interval(struct synaptics_rmi4_data
+						*rmi4_data, int active);
+
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 
 static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
@@ -1081,10 +1084,13 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 
 	rmi4_data->idle_mode = idle_mode;
 
-	if (idle_mode)
+	if (idle_mode) {
 		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
-	else
+		synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_SLEEP);
+	} else {
 		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
+		synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_ACTIVE);
+	}
 
 	return count;
 }
@@ -2090,6 +2096,14 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 	rc = of_property_read_u32(np, "synaptics,doze-interval-sleep", &temp_val);
 	if (!rc)
 		rmi4_pdata->doze_interval_sleep = temp_val;
+
+	rc = of_property_read_u32(np, "synaptics,recalibration-interval-active", &temp_val);
+	if (!rc)
+		rmi4_pdata->recalibration_interval_active = temp_val;
+
+	rc = of_property_read_u32(np, "synaptics,recalibration-interval-sleep", &temp_val);
+	if (!rc)
+		rmi4_pdata->recalibration_interval_sleep = temp_val;
 
 	rc = of_property_read_u32(np, "synaptics,palm-detect-threshold", &temp_val);
 	if (!rc)
@@ -3707,6 +3721,24 @@ static int synaptics_rmi4_set_doze_interval(struct synaptics_rmi4_data
 	return retval;
 }
 
+static int synaptics_rmi4_set_recalibration_interval(struct synaptics_rmi4_data
+						*rmi4_data, int active)
+{
+	int retval = 0;
+	unsigned char interval;
+
+	interval = active ? rmi4_data->board->recalibration_interval_active :
+				rmi4_data->board->recalibration_interval_sleep;
+
+	if (interval)
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+					rmi4_data->f01_ctrl_base_addr + 5 +
+					rmi4_data->num_of_intr_regs,
+					&interval, 1);
+
+	return retval;
+}
+
  /**
  * synaptics_rmi4_probe()
  *
@@ -3868,6 +3900,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
+	synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_ACTIVE);
 
 	if (platform_data->detect_device) {
 		retval = synaptics_rmi4_parse_dt_children(&client->dev,
