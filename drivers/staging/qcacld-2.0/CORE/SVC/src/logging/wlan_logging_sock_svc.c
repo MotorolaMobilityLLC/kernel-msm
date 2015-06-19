@@ -56,6 +56,7 @@
 
 #define HOST_LOG_DRIVER_MSG        0x001
 #define HOST_LOG_PER_PKT_STATS     0x002
+#define HOST_LOG_FW_FLUSH_COMPLETE 0x003
 
 struct log_msg {
 	struct list_head node;
@@ -98,6 +99,8 @@ struct wlan_logging {
 	unsigned long eventFlag;
 	/* Indicates logger thread is activated */
 	bool is_active;
+	/* Flush completion check */
+	bool is_flush_complete;
 };
 
 static struct wlan_logging gwlan_logging;
@@ -218,14 +221,11 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 
 static void set_default_logtoapp_log_level(void)
 {
-	vos_trace_setValue(VOS_MODULE_ID_WDI, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
-	vos_trace_setValue(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
-	vos_trace_setValue(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
-	vos_trace_setValue(VOS_MODULE_ID_PE,  VOS_TRACE_LEVEL_ALL, VOS_TRUE);
-	vos_trace_setValue(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
-	vos_trace_setValue(VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ALL,
-			VOS_TRUE);
-	vos_trace_setValue(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
+	int i;
+
+	/* module id 0 is reserved */
+	for (i = 1; i < VOS_MODULE_ID_MAX; i++)
+		vos_trace_setValue(i, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
 }
 
 static void clear_default_logtoapp_log_level(void)
@@ -277,8 +277,8 @@ static int wlan_queue_logmsg_for_app(void)
 		gwlan_logging.pcur_node =
 			(struct log_msg *)(gwlan_logging.filled_list.next);
 		++gwlan_logging.drop_count;
-		if (gapp_pid != INVALID_PID && !gwlan_logging.is_buffer_free) {
-			pr_err("%s: drop_count = %u index = %d filled_length = %d\n",
+		if (vos_is_multicast_logging() && !gwlan_logging.is_buffer_free) {
+			pr_info("%s: drop_count = %u index = %d filled_length = %d\n",
 				__func__, gwlan_logging.drop_count,
 				gwlan_logging.pcur_node->index,
 				gwlan_logging.pcur_node->filled_length);
@@ -305,9 +305,10 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 	unsigned int *pfilled_length;
 	bool wake_up_thread = false;
 	unsigned long flags;
-	u_int64_t ts;
+	uint64_t ts;
+	uint32_t rem;
 
-	if (gapp_pid == INVALID_PID) {
+	if (!vos_is_multicast_logging()) {
 		/*
 		 * This is to make sure that we print the logs to kmsg console
 		 * when no logger app is running. This is also needed to
@@ -317,76 +318,79 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		 * messages.
 		 */
 		pr_info("%s\n", to_be_sent);
-	}
+	} else {
+		/* Format the Log time [Seconds.microseconds] */
+		ts = adf_get_boottime();
+		rem = do_div(ts, VOS_TIMER_TO_SEC_UNIT);
+		tlen = snprintf(tbuf, sizeof(tbuf), "[%s][%lu.%06lu] ",
+				current->comm,
+				(unsigned long) ts, (unsigned long)rem);
 
-	/* Format the Log time [Seconds.microseconds] */
-	ts = adf_get_boottime();
-	tlen = snprintf(tbuf, sizeof(tbuf), "[%s][%lu.%06lu] ", current->comm,
-			(unsigned long) (ts / VOS_TIMER_TO_SEC_UNIT),
-			(unsigned long) (ts % VOS_TIMER_TO_SEC_UNIT));
+		/* 1+1 indicate '\n'+'\0' */
+		total_log_len = length + tlen + 1 + 1;
 
-	/* 1+1 indicate '\n'+'\0' */
-	total_log_len = length + tlen + 1 + 1;
+		spin_lock_irqsave(&gwlan_logging.spin_lock, flags);
+		// wlan logging svc resources are not yet initialized
+		if (!gwlan_logging.pcur_node) {
+			spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
+			return -EIO;
+		}
 
-	spin_lock_irqsave(&gwlan_logging.spin_lock, flags);
-	// wlan logging svc resources are not yet initialized
-	if (!gwlan_logging.pcur_node) {
-		spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
-		return -EIO;
-	}
-
-	pfilled_length = &gwlan_logging.pcur_node->filled_length;
-
-	 /* Check if we can accomodate more log into current node/buffer */
-	if ((MAX_LOGMSG_LENGTH - (*pfilled_length + sizeof(tAniNlHdr))) <
-			total_log_len) {
-		wake_up_thread = true;
-		wlan_queue_logmsg_for_app();
 		pfilled_length = &gwlan_logging.pcur_node->filled_length;
-	}
 
-	ptr = &gwlan_logging.pcur_node->logbuf[sizeof(tAniHdr)];
-
-	/* Assumption here is that we receive logs which is always less than
-	 * MAX_LOGMSG_LENGTH, where we can accomodate the
-	 *   tAniNlHdr + [context][timestamp] + log
-	 * VOS_ASSERT if we cannot accomodate the the complete log into
-	 * the available buffer.
-	 *
-	 * Continue and copy logs to the available length and discard the rest.
-	 */
-	if (MAX_LOGMSG_LENGTH < (sizeof(tAniNlHdr) + total_log_len)) {
-		VOS_ASSERT(0);
-		total_log_len = MAX_LOGMSG_LENGTH - sizeof(tAniNlHdr) - 2;
-	}
-
-	memcpy(&ptr[*pfilled_length], tbuf, tlen);
-	memcpy(&ptr[*pfilled_length + tlen], to_be_sent,
-			min(length, (total_log_len - tlen)));
-	*pfilled_length += tlen + min(length, total_log_len - tlen);
-	ptr[*pfilled_length] = '\n';
-	*pfilled_length += 1;
-
-	spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
-
-	/* Wakeup logger thread */
-	if ((true == wake_up_thread)) {
-		/* If there is logger app registered wakeup the logging
-		 * thread
+		/* Check if we can accomodate more log into current
+		 * node/buffer
 		 */
-		if (gapp_pid != INVALID_PID) {
+		if ((MAX_LOGMSG_LENGTH -
+		    (*pfilled_length + sizeof(tAniNlHdr))) < total_log_len) {
+			wake_up_thread = true;
+			wlan_queue_logmsg_for_app();
+			pfilled_length =
+				&gwlan_logging.pcur_node->filled_length;
+		}
+
+		ptr = &gwlan_logging.pcur_node->logbuf[sizeof(tAniHdr)];
+
+		/* Assumption here is that we receive logs which is always
+		 * less than MAX_LOGMSG_LENGTH, where we can accomodate the
+		 *   tAniNlHdr + [context][timestamp] + log
+		 * VOS_ASSERT if we cannot accomodate the the complete log into
+		 * the available buffer.
+		 *
+		 * Continue and copy logs to the available length and
+		 * discard the rest.
+		 */
+		if (MAX_LOGMSG_LENGTH < (sizeof(tAniNlHdr) + total_log_len)) {
+			VOS_ASSERT(0);
+			total_log_len = MAX_LOGMSG_LENGTH -
+						sizeof(tAniNlHdr) - 2;
+		}
+
+		memcpy(&ptr[*pfilled_length], tbuf, tlen);
+		memcpy(&ptr[*pfilled_length + tlen], to_be_sent,
+				min(length, (total_log_len - tlen)));
+		*pfilled_length += tlen + min(length, total_log_len - tlen);
+		ptr[*pfilled_length] = '\n';
+		*pfilled_length += 1;
+
+		spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
+
+		/* Wakeup logger thread */
+		if ((true == wake_up_thread)) {
+			/* If there is logger app registered wakeup the logging
+			 * thread (or) if always multicasting of host messages
+			 * is enabled, wake up the logging thread
+			 */
 			set_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
 			wake_up_interruptible(&gwlan_logging.wait_queue);
 		}
-	}
 
-	if ((gapp_pid != INVALID_PID)
-		&& gwlan_logging.log_fe_to_console
-		&& ((VOS_TRACE_LEVEL_FATAL == log_level)
-		|| (VOS_TRACE_LEVEL_ERROR == log_level))) {
-		pr_info("%s\n", to_be_sent);
+		if (gwlan_logging.log_fe_to_console
+			&& ((VOS_TRACE_LEVEL_FATAL == log_level)
+			|| (VOS_TRACE_LEVEL_ERROR == log_level))) {
+			pr_info("%s\n", to_be_sent);
+		}
 	}
-
 	return 0;
 }
 
@@ -430,7 +434,7 @@ static int send_filled_buffers_to_user(void)
 			sizeof(wnl->radio) + sizeof(tAniHdr);
 
 		tot_msg_len = NLMSG_SPACE(payload_len);
-		nlh = nlmsg_put(skb, gapp_pid, nlmsg_seq++,
+		nlh = nlmsg_put(skb, 0, nlmsg_seq++,
 				ANI_NL_MSG_LOG, payload_len,
 				NLM_F_REQUEST);
 		if (NULL == nlh) {
@@ -460,13 +464,11 @@ static int send_filled_buffers_to_user(void)
 				&gwlan_logging.free_list);
 		spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
 
-		ret = nl_srv_ucast(skb, gapp_pid, 0);
+		ret = nl_srv_bcast(skb);
 		if (ret < 0) {
 			pr_err("%s: Send Failed %d drop_count = %u\n",
 				__func__, ret, ++gwlan_logging.drop_count);
 			skb = NULL;
-			gapp_pid = INVALID_PID;
-			clear_default_logtoapp_log_level();
 			wlan_logging_srv_nl_ready_indication();
 		} else {
 			skb = NULL;
@@ -475,6 +477,53 @@ static int send_filled_buffers_to_user(void)
 	}
 
 	return ret;
+}
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+/**
+ * wlan_report_log_completion() - Report bug report completion to userspace
+ * @is_fatal: Type of event, fatal or not
+ * @indicator: Source of bug report, framework/host/firmware
+ * @reason_code: Reason for triggering bug report
+ *
+ * This function is used to report the bug report completion to userspace
+ *
+ * Return: None
+ */
+void wlan_report_log_completion(uint32_t is_fatal,
+				uint32_t indicator,
+				uint32_t reason_code)
+{
+	WLAN_VOS_DIAG_EVENT_DEF(wlan_diag_event,
+				struct vos_event_wlan_log_complete);
+
+	wlan_diag_event.is_fatal = is_fatal;
+	wlan_diag_event.indicator = indicator;
+	wlan_diag_event.reason_code = reason_code;
+	wlan_diag_event.reserved = 0;
+
+	WLAN_VOS_DIAG_EVENT_REPORT(&wlan_diag_event, EVENT_WLAN_LOG_COMPLETE);
+}
+#endif
+
+/**
+ * send_flush_completion_to_user() - Indicate flush completion to the user
+ *
+ * This function is used to send the flush completion message to user space
+ *
+ * Return: None
+ */
+void send_flush_completion_to_user(void)
+{
+	uint32_t is_fatal, indicator, reason_code;
+
+	vos_get_log_completion(&is_fatal, &indicator, &reason_code);
+
+	/* Error on purpose, so that it will get logged in the kmsg */
+	LOGGING_TRACE(VOS_TRACE_LEVEL_ERROR,
+			"%s: Sending flush done to userspace", __func__);
+
+	wlan_report_log_completion(is_fatal, indicator, reason_code);
 }
 
 /**
@@ -500,6 +549,8 @@ static int wlan_logging_thread(void *Arg)
 		    (!list_empty(&gwlan_logging.filled_list)
 		  || test_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag)
 		  || test_bit(HOST_LOG_PER_PKT_STATS,
+		     &gwlan_logging.eventFlag)
+		  || test_bit(HOST_LOG_FW_FLUSH_COMPLETE,
 		     &gwlan_logging.eventFlag)
 		  || gwlan_logging.exit));
 
@@ -527,6 +578,29 @@ static int wlan_logging_thread(void *Arg)
 			ret = pktlog_send_per_pkt_stats_to_user();
 			if (-ENOMEM == ret) {
 				msleep(200);
+			}
+		}
+
+		if (test_and_clear_bit(HOST_LOG_FW_FLUSH_COMPLETE,
+					&gwlan_logging.eventFlag)) {
+			/* Flush bit could have been set while we were mid
+			 * way in the logging thread. So, need to check other
+			 * buffers like log messages, per packet stats again
+			 * to flush any residual data in them
+			 */
+			if (gwlan_logging.is_flush_complete == true) {
+				gwlan_logging.is_flush_complete = false;
+				send_flush_completion_to_user();
+			} else {
+				gwlan_logging.is_flush_complete = true;
+				set_bit(HOST_LOG_DRIVER_MSG,
+						&gwlan_logging.eventFlag);
+				set_bit(HOST_LOG_PER_PKT_STATS,
+						&gwlan_logging.eventFlag);
+				set_bit(HOST_LOG_FW_FLUSH_COMPLETE,
+						&gwlan_logging.eventFlag);
+				wake_up_interruptible(
+					&gwlan_logging.wait_queue);
 			}
 		}
 	}
@@ -629,6 +703,7 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 	gwlan_logging.exit = false;
 	clear_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
 	clear_bit(HOST_LOG_PER_PKT_STATS, &gwlan_logging.eventFlag);
+	clear_bit(HOST_LOG_FW_FLUSH_COMPLETE, &gwlan_logging.eventFlag);
 	init_completion(&gwlan_logging.shutdown_comp);
 	gwlan_logging.thread = kthread_create(wlan_logging_thread, NULL,
 					"wlan_logging_thread");
@@ -644,6 +719,7 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 	}
 	wake_up_process(gwlan_logging.thread);
 	gwlan_logging.is_active = true;
+	gwlan_logging.is_flush_complete = false;
 
 	nl_srv_register(ANI_NL_MSG_LOG, wlan_logging_proc_sock_rx_msg);
 
@@ -667,13 +743,17 @@ int wlan_logging_sock_deactivate_svc(void)
 	INIT_COMPLETION(gwlan_logging.shutdown_comp);
 	gwlan_logging.exit = true;
 	gwlan_logging.is_active = false;
+	vos_set_multicast_logging(0);
+	gwlan_logging.is_flush_complete = false;
 	clear_bit(HOST_LOG_DRIVER_MSG, &gwlan_logging.eventFlag);
 	clear_bit(HOST_LOG_PER_PKT_STATS, &gwlan_logging.eventFlag);
+	clear_bit(HOST_LOG_FW_FLUSH_COMPLETE, &gwlan_logging.eventFlag);
 	wake_up_interruptible(&gwlan_logging.wait_queue);
 	wait_for_completion(&gwlan_logging.shutdown_comp);
 
 	spin_lock_irqsave(&gwlan_logging.spin_lock, irq_flag);
 	vfree(gplog_msg);
+	gplog_msg = NULL;
 	gwlan_logging.pcur_node = NULL;
 	spin_unlock_irqrestore(&gwlan_logging.spin_lock, irq_flag);
 
@@ -714,6 +794,36 @@ void wlan_logging_set_per_pkt_stats(void)
 		return;
 
 	set_bit(HOST_LOG_PER_PKT_STATS, &gwlan_logging.eventFlag);
+	wake_up_interruptible(&gwlan_logging.wait_queue);
+}
+
+/**
+ * wlan_logging_set_log_level() - Set the logging level
+ *
+ * This function is used to set the logging level of host debug messages
+ *
+ * Return: None
+ */
+void wlan_logging_set_log_level(void)
+{
+	set_default_logtoapp_log_level();
+}
+
+/*
+ * wlan_logging_set_fw_flush_complete() - FW log flush completion
+ *
+ * This function is used to send signal to the logger thread to indicate
+ * that the flushing of FW logs is complete by the FW
+ *
+ * Return: None
+ *
+ */
+void wlan_logging_set_fw_flush_complete(void)
+{
+	if (gwlan_logging.is_active == false)
+		return;
+
+	set_bit(HOST_LOG_FW_FLUSH_COMPLETE, &gwlan_logging.eventFlag);
 	wake_up_interruptible(&gwlan_logging.wait_queue);
 }
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */

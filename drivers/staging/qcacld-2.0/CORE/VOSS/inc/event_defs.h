@@ -1903,6 +1903,7 @@ typedef enum
   EVENT_SNS_DRV_OPMODE_CHANGE = 0x768,
   EVENT_WLAN_EAPOL = 0xA8D,/* 18 bytes payload */
   EVENT_WLAN_WAKE_LOCK = 0xAA2, /* 96 bytes payload */
+  EVENT_WLAN_LOG_COMPLETE = 0xAA7, /* 16 bytes payload */
 
   EVENT_NEXT_UNUSED_EVENT,
   EVENT_RSVD_START = 0x0800,

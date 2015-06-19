@@ -59,6 +59,7 @@
 #define HTT_TX_EXT_TID_NON_QOS_MCAST_BCAST 16
 #define HTT_TX_EXT_TID_MGMT                17
 #define HTT_TX_EXT_TID_INVALID             31
+#define HTT_TX_EXT_TID_NONPAUSE            19
 
 /**
  * @brief General specification of the tx frame contents

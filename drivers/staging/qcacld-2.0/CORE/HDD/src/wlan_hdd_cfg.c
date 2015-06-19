@@ -3583,6 +3583,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_INITIAL_DWELL_TIME_MIN,
                  CFG_INITIAL_DWELL_TIME_MAX ),
 
+   REG_VARIABLE( CFG_INITIAL_SCAN_NO_DFS_CHNL_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, initial_scan_no_dfs_chnl,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_INITIAL_SCAN_NO_DFS_CHNL_DEFAULT,
+                 CFG_INITIAL_SCAN_NO_DFS_CHNL_MIN,
+                 CFG_INITIAL_SCAN_NO_DFS_CHNL_MAX ),
+
    REG_VARIABLE( CFG_ACS_BAND_SWITCH_THRESHOLD, WLAN_PARAM_Integer,
                  hdd_config_t, acsBandSwitchThreshold,
 #ifndef WLAN_FEATURE_MBSSID
@@ -3621,12 +3628,12 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ADVERTISE_CONCURRENT_OPERATION_MIN,
                  CFG_ADVERTISE_CONCURRENT_OPERATION_MAX ),
 
-   REG_VARIABLE( CFG_ENABLE_HYSTERETIC_MODE, WLAN_PARAM_Integer,
-                 hdd_config_t, enableHystereticMode,
+   REG_VARIABLE( CFG_ENABLE_MEMORY_DEEP_SLEEP, WLAN_PARAM_Integer,
+                 hdd_config_t, enableMemDeepSleep,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 CFG_ENABLE_HYSTERETIC_MODE_DEFAULT,
-                 CFG_ENABLE_HYSTERETIC_MODE_MIN,
-                 CFG_ENABLE_HYSTERETIC_MODE_MAX ),
+                 CFG_ENABLE_MEMORY_DEEP_SLEEP_DEFAULT,
+                 CFG_ENABLE_MEMORY_DEEP_SLEEP_MIN,
+                 CFG_ENABLE_MEMORY_DEEP_SLEEP_MAX ),
 
    REG_VARIABLE( CFG_DEFAULT_RATE_INDEX_24GH, WLAN_PARAM_Integer,
                  hdd_config_t, defaultRateIndex24Ghz,
@@ -3990,6 +3997,20 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_SAP_DOT11MC_DEFAULT,
                 CFG_SAP_DOT11MC_MIN,
                 CFG_SAP_DOT11MC_MAX ),
+
+   REG_VARIABLE(CFG_MULTICAST_HOST_FW_MSGS, WLAN_PARAM_Integer,
+                hdd_config_t, multicast_host_fw_msgs,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_MULTICAST_HOST_FW_MSGS_DEFAULT,
+                CFG_MULTICAST_HOST_FW_MSGS_MIN,
+                CFG_MULTICAST_HOST_FW_MSGS_MAX),
+
+   REG_VARIABLE(CFG_FINE_TIME_MEAS_CAPABILITY, WLAN_PARAM_HexInteger,
+                hdd_config_t, fine_time_meas_cap,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_FINE_TIME_MEAS_CAPABILITY_DEFAULT,
+                CFG_FINE_TIME_MEAS_CAPABILITY_MIN,
+                CFG_FINE_TIME_MEAS_CAPABILITY_MAX),
 };
 
 #ifdef WLAN_FEATURE_MBSSID
@@ -4616,6 +4637,8 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
                    pHddCtx->cfg_ini->extWowApp2TcpRxTimeout);
 #endif
 
+  hddLog(LOG2, "Name = [gfine_time_meas_cap] Value = [%u]",
+                   pHddCtx->cfg_ini->fine_time_meas_cap);
 }
 
 #define CFG_VALUE_MAX_LEN 256
@@ -5357,6 +5380,33 @@ VOS_STATUS hdd_set_idle_ps_config(hdd_context_t *pHddCtx, v_U32_t val)
    return status;
 }
 
+/**
+ * hdd_set_fine_time_meas_cap() - set fine timing measurement capability
+ * @hdd_ctx: HDD context
+ * @sme_config: pointer to SME config
+ *
+ * This function is used to pass fine timing measurement capability coming
+ * from INI to SME. This function make sure that configure INI is supported
+ * by the device. Use bit mask to mask out the unsupported capabilities.
+ *
+ * Return: None
+ */
+static void hdd_set_fine_time_meas_cap(hdd_context_t *hdd_ctx,
+				       tSmeConfigParams *sme_config)
+{
+	hdd_config_t *config = hdd_ctx->cfg_ini;
+	uint32_t capability = config->fine_time_meas_cap;
+
+	/* Make sure only supported capabilities are enabled in INI */
+	capability &= CFG_FINE_TIME_MEAS_CAPABILITY_MAX;
+	sme_config->fine_time_meas_cap = capability;
+
+	hddLog(LOG1, FL("fine time meas capability - INI: %04x Enabled: %04x"),
+		config->fine_time_meas_cap, sme_config->fine_time_meas_cap);
+
+	return;
+}
+
 VOS_STATUS hdd_string_to_u8_array( char *str, tANI_U8 *intArray, tANI_U8 *len,
     tANI_U8 intArrayMaxLen )
 {
@@ -5887,7 +5937,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
      val16 = (tANI_U16)val;
      phtCapInfo = (tSirMacHTCapabilityInfo *)&val16;
      phtCapInfo->rxSTBC = pConfig->enableRxSTBC;
-     phtCapInfo->txSTBC = pConfig->enableTxSTBC;
      phtCapInfo->advCodingCap = pConfig->enableRxLDPC;
      val = val16;
      if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_HT_CAP_INFO,
@@ -6176,6 +6225,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.nRoamingTime             = pConfig->nRoamingTime;
    smeConfig->csrConfig.IsIdleScanEnabled        = pConfig->nEnableIdleScan;
    smeConfig->csrConfig.nInitialDwellTime        = pConfig->nInitialDwellTime;
+   smeConfig->csrConfig.initial_scan_no_dfs_chnl =
+                                            pConfig->initial_scan_no_dfs_chnl;
    smeConfig->csrConfig.nActiveMaxChnTime        = pConfig->nActiveMaxChnTime;
    smeConfig->csrConfig.nActiveMinChnTime        = pConfig->nActiveMinChnTime;
    smeConfig->csrConfig.nPassiveMaxChnTime       = pConfig->nPassiveMaxChnTime;
@@ -6388,6 +6439,9 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.isRoamOffloadEnabled =
                         pHddCtx->cfg_ini->isRoamOffloadEnabled;
 #endif
+
+   vos_set_multicast_logging(pHddCtx->cfg_ini->multicast_host_fw_msgs);
+   hdd_set_fine_time_meas_cap(pHddCtx, smeConfig);
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
@@ -6692,3 +6746,157 @@ tANI_BOOLEAN hdd_is_okc_mode_enabled(hdd_context_t *pHddCtx)
     return eANI_BOOLEAN_FALSE;
 #endif
 }
+
+/**
+ * hdd_update_nss() - configures the provided nss value to the driver
+ *
+ * @hdd_ctx: the pointer to hdd context
+ * @nss    : the number of spatial streams to be updated
+ *
+ * Return: VOS_STATUS_SUCCESS if nss is correctly updated,
+ *              otherwise VOS_STATUS_E_FAILURE would be returned
+ */
+VOS_STATUS hdd_update_nss(hdd_context_t *hdd_ctx, uint8_t nss)
+{
+	hdd_config_t *hdd_config = hdd_ctx->cfg_ini;
+	uint32_t  temp = 0;
+	uint32_t  rx_supp_data_rate, tx_supp_data_rate;
+	uint8_t   status = TRUE;
+	tSirMacHTCapabilityInfo *ht_cap_info;
+	uint8_t   mcs_set[SIZE_OF_SUPPORTED_MCS_SET] = {0};
+	uint8_t   mcs_set_temp[SIZE_OF_SUPPORTED_MCS_SET];
+	uint32_t  val;
+	uint16_t  val16;
+	uint8_t   enable2x2;
+
+	if ((nss == 2) && (hdd_ctx->num_rf_chains != 2)) {
+		hddLog(LOGE, "No support for 2 spatial streams");
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	enable2x2 = (nss == 1) ? 0 : 1;
+
+	if (hdd_config->enable2x2 == enable2x2) {
+		hddLog(LOGE, "NSS same as requested");
+		return VOS_STATUS_SUCCESS;
+	}
+
+	if (TRUE == sme_is_any_session_in_connected_state(hdd_ctx->hHal)) {
+		hddLog(LOGE, "Connected sessions present, Do not change NSS");
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	hdd_config->enable2x2 = enable2x2;
+
+	if (!hdd_config->enable2x2) {
+		/* 1x1 */
+		rx_supp_data_rate = HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_1_1;
+		tx_supp_data_rate = HDD_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_1_1;
+	} else {
+		/* 2x2 */
+		rx_supp_data_rate = HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_2_2;
+		tx_supp_data_rate = HDD_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_2_2;
+	}
+
+	/* Update Rx Highest Long GI data Rate */
+	if (ccmCfgSetInt(hdd_ctx->hHal,
+			 WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE,
+			 rx_supp_data_rate, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE,
+			"Could not pass on WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE to CCM");
+	}
+
+	/* Update Tx Highest Long GI data Rate */
+	if (ccmCfgSetInt(hdd_ctx->hHal,
+			 WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE,
+			 tx_supp_data_rate, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE,
+		       "Could not pass on HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_1_1 to CCM");
+	}
+
+	ccmCfgGetInt(hdd_ctx->hHal, WNI_CFG_HT_CAP_INFO, &temp);
+	val16 = (uint16_t)temp;
+	ht_cap_info = (tSirMacHTCapabilityInfo *)&val16;
+	if (!(hdd_ctx->ht_tx_stbc_supported && hdd_config->enable2x2))
+		ht_cap_info->txSTBC = 0;
+	else
+		ht_cap_info->txSTBC = hdd_config->enableTxSTBC;
+	temp = val16;
+	if (ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_HT_CAP_INFO,
+			 temp, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE, "Could not pass on WNI_CFG_HT_CAP_INFO to CCM");
+	}
+
+	ccmCfgGetInt(hdd_ctx->hHal, WNI_CFG_VHT_BASIC_MCS_SET, &temp);
+	temp = (temp & 0xFFFC) | hdd_config->vhtRxMCS;
+	if (hdd_config->enable2x2)
+		temp = (temp & 0xFFF3) | (hdd_config->vhtRxMCS2x2 << 2);
+	else
+		temp |= 0x000C;
+
+	if (ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_VHT_BASIC_MCS_SET,
+			 temp, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE,
+			"Could not pass on WNI_CFG_VHT_BASIC_MCS_SET to CCM");
+	}
+
+	ccmCfgGetInt(hdd_ctx->hHal, WNI_CFG_VHT_RX_MCS_MAP, &temp);
+	temp = (temp & 0xFFFC) | hdd_config->vhtRxMCS;
+	if (hdd_config->enable2x2)
+		temp = (temp & 0xFFF3) | (hdd_config->vhtRxMCS2x2 << 2);
+	else
+		temp |= 0x000C;
+
+	if (ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_VHT_RX_MCS_MAP,
+			 temp, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE, "Could not pass on WNI_CFG_VHT_RX_MCS_MAP to CCM");
+	}
+
+	ccmCfgGetInt(hdd_ctx->hHal, WNI_CFG_VHT_TX_MCS_MAP, &temp);
+	temp = (temp & 0xFFFC) | hdd_config->vhtTxMCS;
+	if (hdd_config->enable2x2)
+		temp = (temp & 0xFFF3) | (hdd_config->vhtTxMCS2x2 << 2);
+	else
+		temp |= 0x000C;
+
+	if (ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_VHT_TX_MCS_MAP,
+			 temp, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE, "Could not pass on WNI_CFG_VHT_TX_MCS_MAP to CCM");
+	}
+
+#define WLAN_HDD_RX_MCS_ALL_NSTREAM_RATES 0xff
+	val = SIZE_OF_SUPPORTED_MCS_SET;
+	ccmCfgGetStr(hdd_ctx->hHal, WNI_CFG_SUPPORTED_MCS_SET,
+		     mcs_set_temp, &val);
+
+	mcs_set[0] = mcs_set_temp[0];
+	if (hdd_config->enable2x2)
+		for (val = 0; val < nss; val++)
+			mcs_set[val] = WLAN_HDD_RX_MCS_ALL_NSTREAM_RATES;
+
+	if (ccmCfgSetStr(hdd_ctx->hHal, WNI_CFG_SUPPORTED_MCS_SET,
+			 mcs_set, SIZE_OF_SUPPORTED_MCS_SET, NULL,
+			 eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+		status = FALSE;
+		hddLog(LOGE, "Could not pass on MCS SET to CCM");
+	}
+#undef WLAN_HDD_RX_MCS_ALL_NSTREAM_RATES
+
+	if (eHAL_STATUS_SUCCESS != sme_update_nss(hdd_ctx->hHal, nss))
+		status = FALSE;
+
+	return (status == FALSE) ? VOS_STATUS_E_FAILURE : VOS_STATUS_SUCCESS;
+}
+

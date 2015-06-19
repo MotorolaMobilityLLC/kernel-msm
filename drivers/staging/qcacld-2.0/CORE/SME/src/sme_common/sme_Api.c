@@ -405,7 +405,8 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
         /* reset when free list is available */
         smeCommandQueueFull = 0;
     }
-    else {
+    else
+    {
         int idx = 1;
 
         //Cannot change pRetCmd here since it needs to return later.
@@ -443,22 +444,30 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
             }
             pEntry = csrLLNext( &pMac->sme.smeCmdPendingList, pEntry, LL_ACCESS_NOLOCK );
         }
-        /* Increament static variable so that it prints pending command only once*/
-        smeCommandQueueFull++;
         csrLLUnlock(&pMac->sme.smeCmdPendingList);
 
+        idx = 1;
         //There may be some more command in CSR's own pending queue
         csrLLLock(&pMac->roam.roamCmdPendingList);
         pEntry = csrLLPeekHead( &pMac->roam.roamCmdPendingList, LL_ACCESS_NOLOCK );
-        while(pEntry)
+        while(pEntry && !smeCommandQueueFull)
         {
             pTempCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
-            smsLog( pMac, LOGE, "Out of command buffer.... CSR pending command #%d (0x%X)",
-                    idx++, pTempCmd->command );
+            /* Print only 1st five commands from CSR pending queue */
+            if (idx <= 5)
+                smsLog( pMac, LOGE,
+                     "Out of command buffer.... CSR roamCmdPendingList command #%d (0x%X)",
+                     idx, pTempCmd->command );
+            idx++;
             dumpCsrCommandInfo(pMac, pTempCmd);
             pEntry = csrLLNext( &pMac->roam.roamCmdPendingList, pEntry, LL_ACCESS_NOLOCK );
         }
+        /* Increament static variable so that it prints pending command only once*/
+        smeCommandQueueFull++;
         csrLLUnlock(&pMac->roam.roamCmdPendingList);
+
+        /* panic with out-of-command */
+        VOS_BUG(0);
     }
 
     /* memset to zero */
@@ -864,6 +873,8 @@ sme_process_cmd:
                     {
                         //Force this command to wake up the chip
                         csrLLInsertHead( &pMac->sme.smeCmdActiveList, &pPmcCmd->Link, LL_ACCESS_NOLOCK );
+                        MTRACE(vos_trace(VOS_MODULE_ID_SME,
+                           TRACE_CODE_SME_COMMAND, pPmcCmd->sessionId, pPmcCmd->command));
                         csrLLUnlock( &pMac->sme.smeCmdActiveList );
                         /* Handle PS Offload Case Separately */
                         if(pMac->psOffloadEnabled)
@@ -1656,6 +1667,7 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
 
    pMac->enable5gEBT = pSmeConfigParams->enable5gEBT;
    pMac->sme.enableSelfRecovery = pSmeConfigParams->enableSelfRecovery;
+   pMac->fine_time_meas_cap = pSmeConfigParams->fine_time_meas_cap;
 
    return status;
 }
@@ -3797,11 +3809,11 @@ eHalStatus sme_RoamDisconnectSta(tHalHandle hHal, tANI_U8 sessionId,
     \brief To disassociate a station. This is an asynchronous API.
     \param hHal - Global structure
     \param sessionId - sessionId of SoftAP
-    \param pPeerMacAddr - Caller allocated memory filled with peer MAC address (6 bytes)
+    \param pDelStaParams -Pointer to parameters of the station to deauthenticate
     \return eHalStatus  SUCCESS  Roam callback will be called to indicate actual results
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamDeauthSta(tHalHandle hHal, tANI_U8 sessionId,
-                                tANI_U8 *pPeerMacAddr)
+                             struct tagCsrDelStaParams *pDelStaParams)
 {
    eHalStatus status = eHAL_STATUS_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -3817,8 +3829,7 @@ eHalStatus sme_RoamDeauthSta(tHalHandle hHal, tANI_U8 sessionId,
    {
       if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
       {
-         status = csrRoamIssueDeauthStaCmd( pMac, sessionId, pPeerMacAddr,
-                     eSIR_MAC_DEAUTH_LEAVING_BSS_REASON);
+         status = csrRoamIssueDeauthStaCmd( pMac, sessionId, pDelStaParams);
       }
       else
       {
@@ -4311,6 +4322,7 @@ eHalStatus sme_GetConfigParam(tHalHandle hHal, tSmeConfigParams *pParam)
       pParam->fP2pListenOffload = pMac->fP2pListenOffload;
       pParam->max_intf_count = pMac->sme.max_intf_count;
       pParam->enableSelfRecovery = pMac->sme.enableSelfRecovery;
+      pParam->fine_time_meas_cap = pMac->fine_time_meas_cap;
       sme_ReleaseGlobalLock( &pMac->sme );
    }
 
@@ -12005,76 +12017,106 @@ void sme_enable_disable_split_scan (tHalHandle hHal, tANI_U8 nNumStaChan,
 
 }
 
-/* ---------------------------------------------------------------------------
-    \fn sme_AddPeriodicTxPtrn
-    \brief  API to Periodic TX Pattern Offload feature
-    \param  hHal - The handle returned by macOpen
-    \param  addPeriodicTxPtrnParams - Pointer to the add pattern structure
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_AddPeriodicTxPtrn(tHalHandle hHal, tSirAddPeriodicTxPtrn
-                                 *addPeriodicTxPtrnParams)
+/**
+ * sme_AddPeriodicTxPtrn() - Add Periodic TX Pattern
+ * @hal: global hal handle
+ * @addPeriodicTxPtrnParams: request message
+ *
+ * Return: eHalStatus enumeration
+ */
+eHalStatus
+sme_AddPeriodicTxPtrn(tHalHandle hal,
+		      struct sSirAddPeriodicTxPtrn *addPeriodicTxPtrnParams)
 {
-    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-    eHalStatus status;
-    vos_msg_t msg;
+	eHalStatus status     = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac   = PMAC_STRUCT(hal);
+	struct sSirAddPeriodicTxPtrn *req_msg;
+	vos_msg_t msg;
 
-    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme)))
-    {
-        msg.type     = WDA_ADD_PERIODIC_TX_PTRN_IND;
-        msg.bodyptr  = addPeriodicTxPtrnParams;
+	smsLog(mac, LOG1, FL("enter"));
 
-        if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
-        {
-            VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,"%s: Not able "
-                       "to post WDA_ADD_PERIODIC_TX_PTRN_IND to WDA!",
-                       __func__);
+	req_msg = vos_mem_malloc(sizeof(*req_msg));
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
 
-            sme_ReleaseGlobalLock(&pMac->sme);
-            return eHAL_STATUS_FAILURE;
-        }
+	*req_msg = *addPeriodicTxPtrnParams;
 
-        sme_ReleaseGlobalLock(&pMac->sme);
-        return eHAL_STATUS_SUCCESS;
-    }
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		vos_mem_free(req_msg);
+		return status;
+	}
 
-    return status;
+	/* Serialize the req through MC thread */
+	msg.bodyptr = req_msg;
+	msg.type    = WDA_ADD_PERIODIC_TX_PTRN_IND;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &msg);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		vos_mem_free(req_msg);
+		status = eHAL_STATUS_FAILURE;
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+	return status;
 }
 
-/* ---------------------------------------------------------------------------
-    \fn sme_DelPeriodicTxPtrn
-    \brief  API to Periodic TX Pattern Offload feature
-    \param  hHal - The handle returned by macOpen
-    \param  delPeriodicTxPtrnParams - Pointer to the delete pattern structure
-    \return eHalStatus
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_DelPeriodicTxPtrn(tHalHandle hHal, tSirDelPeriodicTxPtrn
-                                 *delPeriodicTxPtrnParams)
+/**
+ * sme_DelPeriodicTxPtrn() - Delete Periodic TX Pattern
+ * @hal: global hal handle
+ * @delPeriodicTxPtrnParams: request message
+ *
+ * Return: eHalStatus enumeration
+ */
+eHalStatus
+sme_DelPeriodicTxPtrn(tHalHandle hal,
+		      struct sSirDelPeriodicTxPtrn *delPeriodicTxPtrnParams)
 {
-    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-    eHalStatus status;
-    vos_msg_t msg;
+	eHalStatus status     = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac   = PMAC_STRUCT(hal);
+	struct sSirDelPeriodicTxPtrn *req_msg;
+	vos_msg_t msg;
 
-    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme)))
-    {
-        msg.type     = WDA_DEL_PERIODIC_TX_PTRN_IND;
-        msg.bodyptr  = delPeriodicTxPtrnParams;
+	smsLog(mac, LOG1, FL("enter"));
 
-        if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
-        {
-            VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,"%s: Not able "
-                       "to post WDA_DEL_PERIODIC_TX_PTRN_IND to WDA!",
-                       __func__);
+	req_msg = vos_mem_malloc(sizeof(*req_msg));
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
 
-            sme_ReleaseGlobalLock(&pMac->sme);
-            return eHAL_STATUS_FAILURE;
-        }
+	*req_msg = *delPeriodicTxPtrnParams;
 
-        sme_ReleaseGlobalLock(&pMac->sme);
-        return eHAL_STATUS_SUCCESS;
-    }
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		vos_mem_free(req_msg);
+		return status;
+	}
 
-    return status;
+	/* Serialize the req through MC thread */
+	msg.bodyptr = req_msg;
+	msg.type    = WDA_DEL_PERIODIC_TX_PTRN_IND;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &msg);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		vos_mem_free(req_msg);
+		status = eHAL_STATUS_FAILURE;
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+	return status;
 }
 
 void smeGetCommandQStatus( tHalHandle hHal )
@@ -14954,3 +14996,105 @@ eHalStatus sme_wifi_start_logger(tHalHandle hal,
 	}
 	return status;
 }
+
+/**
+ * vos_send_flush_logs_cmd_to_fw() - Flush FW logs
+ * @mac: MAC handle
+ *
+ * This function is used to send the command that will
+ * be used to flush the logs in the firmware
+ *
+ * Return: eHalStatus
+ */
+eHalStatus vos_send_flush_logs_cmd_to_fw(tpAniSirGlobal mac)
+{
+	eHalStatus status;
+	VOS_STATUS vos_status;
+	vos_msg_t vos_message;
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		return status;
+	}
+
+	/* Serialize the req through MC thread */
+	vos_message.bodyptr = NULL;
+	vos_message.type    = SIR_HAL_FLUSH_LOG_TO_FW;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		status = eHAL_STATUS_FAILURE;
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+	return status;
+}
+
+/**
+ * sme_update_nss() - SME API to change the number for spatial streams (1 or 2)
+ * @hal:            - Handle returned by macOpen
+ * @nss:            - Number of spatial streams
+ *
+ * This function is used to update the number of spatial streams supported.
+ *
+ * Return: Success upon successfully changing nss else failure
+ *
+ */
+eHalStatus sme_update_nss(tHalHandle h_hal, uint8_t nss)
+{
+	eHalStatus status;
+	tpAniSirGlobal mac_ctx = PMAC_STRUCT(h_hal);
+	uint32_t  i, value = 0;
+	union {
+		uint16_t                        cfg_value16;
+		tSirMacHTCapabilityInfo         ht_cap_info;
+	} uHTCapabilityInfo;
+	tCsrRoamSession *csr_session;
+
+	status = sme_AcquireGlobalLock(&mac_ctx->sme);
+
+	if (eHAL_STATUS_SUCCESS == status) {
+		mac_ctx->roam.configParam.enable2x2 = (nss == 1) ? 0 : 1;
+
+		/* get the HT capability info*/
+		ccmCfgGetInt(mac_ctx, WNI_CFG_HT_CAP_INFO, &value);
+		uHTCapabilityInfo.cfg_value16 = (0xFFFF & value);
+
+		for (i = 0; i < CSR_ROAM_SESSION_MAX; i++) {
+			if (CSR_IS_SESSION_VALID(mac_ctx, i)) {
+				csr_session = CSR_GET_SESSION(mac_ctx, i);
+				if (!csr_session) {
+					smsLog(mac_ctx, LOGE,
+					       FL("Session does not exist for interface %d"),
+					       i);
+					continue;
+				}
+				csr_session->htConfig.ht_tx_stbc =
+					uHTCapabilityInfo.ht_cap_info.txSTBC;
+			}
+		}
+
+		sme_ReleaseGlobalLock(&mac_ctx->sme);
+	}
+
+	return status;
+}
+
+uint8_t sme_is_any_session_in_connected_state(tHalHandle h_hal)
+{
+	tpAniSirGlobal mac_ctx = PMAC_STRUCT(h_hal);
+	eHalStatus     status;
+	uint8_t        ret     = FALSE;
+
+	status = sme_AcquireGlobalLock(&mac_ctx->sme);
+	if (eHAL_STATUS_SUCCESS == status) {
+		ret = csrIsAnySessionInConnectState(mac_ctx);
+		sme_ReleaseGlobalLock(&mac_ctx->sme);
+	}
+	return ret;
+}
+

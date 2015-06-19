@@ -134,9 +134,6 @@
 /** Maximum time(ms) to wait for tdls initiator to start direct communication **/
 #define WAIT_TIME_TDLS_INITIATOR    600
 
-/* Maximum time to get linux regulatory entry settings */
-#define LINUX_REG_WAIT_TIME 300
-
 /* Scan Req Timeout */
 #define WLAN_WAIT_TIME_SCAN_REQ 100
 
@@ -293,7 +290,8 @@ extern spinlock_t hdd_context_lock;
 
 #define HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_1_1       390
 #define HDD_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_1_1       390
-
+#define HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_2_2       780
+#define HDD_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_2_2       780
 
 typedef struct hdd_tx_rx_stats_s
 {
@@ -1203,8 +1201,7 @@ struct hdd_context_s
    /* Completion  variable to indicate Mc Thread Suspended */
    struct completion mc_sus_event_var;
 
-   /* Completion variable for regulatory hint  */
-   struct completion linux_reg_req;
+   struct completion reg_init;
 
    v_BOOL_t isWlanSuspended;
 
@@ -1452,6 +1449,12 @@ struct hdd_context_s
     struct mutex memdump_lock;
     bool memdump_in_progress;
 #endif /* WLAN_FEATURE_MEMDUMP */
+
+    /* number of rf chains supported by target */
+    uint32_t  num_rf_chains;
+
+    /* Is htTxSTBC supported by target */
+    uint8_t   ht_tx_stbc_supported;
 };
 
 /*---------------------------------------------------------------------------
@@ -1604,6 +1607,8 @@ void wlan_hdd_auto_shutdown_enable(hdd_context_t *hdd_ctx, v_U8_t enable);
 hdd_adapter_t *hdd_get_con_sap_adapter(hdd_adapter_t *this_sap_adapter);
 
 boolean hdd_is_5g_supported(hdd_context_t * pHddCtx);
+
+int wlan_hdd_scan_abort(hdd_adapter_t *pAdapter);
 
 #ifdef FEATURE_GREEN_AP
 boolean hdd_wlan_green_ap_is_ps_on(hdd_context_t *pHddCtx);

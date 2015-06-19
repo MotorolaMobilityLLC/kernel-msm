@@ -327,6 +327,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
             goto failure;
         }
         vos_mem_free(cmd);
+        vos_mem_free(delPeriodicTxPtrnParams);
         return count;
     }
 
@@ -405,6 +406,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
         goto failure;
     }
     vos_mem_free(cmd);
+    vos_mem_free(addPeriodicTxPtrnParams);
     return count;
 
 failure:

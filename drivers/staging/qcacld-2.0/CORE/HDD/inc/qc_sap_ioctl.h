@@ -240,6 +240,9 @@ enum {
     QCASAP_NSS_CMD,
     QCSAP_IPA_UC_STAT,
     QCASAP_SET_PHYMODE,
+    QCASAP_PARAM_LDPC,
+    QCASAP_PARAM_TX_STBC,
+    QCASAP_PARAM_RX_STBC,
 };
 
 int iw_softap_get_channel_list(struct net_device *dev,

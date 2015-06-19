@@ -430,6 +430,11 @@ if (adf_os_unlikely(pdev->rx_ring.rx_reset)) {
             peer_id = HTT_RX_IND_PEER_ID_GET(*msg_word);
             tid = HTT_RX_IND_EXT_TID_GET(*msg_word);
 
+            if (tid >= OL_TXRX_NUM_EXT_TIDS) {
+                adf_os_print("HTT_T2H_MSG_TYPE_RX_IND, invalid tid %d\n", tid);
+                break;
+            }
+
             num_msdu_bytes = HTT_RX_IND_FW_RX_DESC_BYTES_GET(
                 *(msg_word + 2 + HTT_RX_PPDU_DESC_SIZE32));
             /*

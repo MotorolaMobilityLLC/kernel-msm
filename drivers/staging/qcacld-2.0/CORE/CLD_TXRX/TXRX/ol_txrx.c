@@ -153,11 +153,16 @@ ol_txrx_peer_find_by_local_id(
     struct ol_txrx_pdev_t *pdev,
     u_int8_t local_peer_id)
 {
+    struct ol_txrx_peer_t *peer;
     if ((local_peer_id == OL_TXRX_INVALID_LOCAL_PEER_ID) ||
         (local_peer_id >= OL_TXRX_NUM_LOCAL_PEER_IDS)) {
         return NULL;
     }
-    return pdev->local_peer_ids.map[local_peer_id];
+
+    adf_os_spin_lock_bh(&pdev->local_peer_ids.lock);
+    peer = pdev->local_peer_ids.map[local_peer_id];
+    adf_os_spin_unlock_bh(&pdev->local_peer_ids.lock);
+    return peer;
 }
 
 static void
@@ -1839,6 +1844,22 @@ ol_txrx_fw_stats_handler(
             case HTT_DBG_STATS_TX_PPDU_LOG:
                 bytes = 0; /* TO DO: specify how many bytes are present */
                 /* TO DO: add copying to the requestor's buffer */
+                break;
+
+            case HTT_DBG_STATS_RX_REMOTE_RING_BUFFER_INFO:
+
+                bytes = sizeof(struct rx_remote_buffer_mgmt_stats);
+                if (req->base.copy.buf) {
+                    int limit;
+
+                    limit = sizeof(struct rx_remote_buffer_mgmt_stats);
+                    if (req->base.copy.byte_limit < limit) {
+                        limit = req->base.copy.byte_limit;
+                    }
+                    buf = req->base.copy.buf + req->offset;
+                    adf_os_mem_copy(buf, stats_data, limit);
+                }
+                break;
 
             default:
                 break;

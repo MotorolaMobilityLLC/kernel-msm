@@ -1971,7 +1971,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #endif
        if( linkStateParams->callback )
        {
-          linkStateParams->callback( pMac, linkStateParams->callbackArg );
+          linkStateParams->callback(pMac, linkStateParams->callbackArg,
+                                    linkStateParams->status);
        }
        vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
        limMsg->bodyptr = NULL;

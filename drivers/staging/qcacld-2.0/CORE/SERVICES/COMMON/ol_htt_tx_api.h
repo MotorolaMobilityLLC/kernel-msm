@@ -668,7 +668,7 @@ void htt_tx_desc_set_chanfreq(void *htt_tx_desc, u_int16_t chanfreq)
     u_int16_t *chanfreq_field_ptr;
 
     chanfreq_field_ptr = (u_int16_t *)
-        (htt_tx_desc + HTT_TX_DESC_CHANFREQ_DESC_PADDR_OFFSET_BYTES);
+        (htt_tx_desc + HTT_TX_DESC_CHAN_FREQ_OFFSET_BYTES);
 
     *chanfreq_field_ptr = chanfreq;
 }

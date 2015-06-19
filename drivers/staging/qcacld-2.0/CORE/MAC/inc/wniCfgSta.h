@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1564,7 +1564,7 @@
 #define WNI_CFG_BTC_A2DP_DHCP_BT_SUB_INTERVALS_STADEF    7
 
 #define WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD_STAMIN    0
-#define WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD_STAMAX    65535
+#define WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD_STAMAX    1000
 #define WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD_STADEF    0
 
 #define WNI_CFG_ASSOC_STA_LIMIT_STAMIN    1

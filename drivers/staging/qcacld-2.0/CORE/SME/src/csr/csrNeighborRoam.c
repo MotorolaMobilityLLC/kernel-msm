@@ -390,11 +390,11 @@ csrNeighborRoamUpdateFastRoamingEnabled(tpAniSirGlobal pMac,
                                       WLANTL_HO_THRESHOLD_DOWN,
                                       csrNeighborRoamNeighborLookupDOWNCallback,
                                       VOS_MODULE_ID_SME, pUsrCtx);
+            vos_mem_free(pUsrCtx);
             if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
                 smsLog(pMac, LOGW,
                        FL("Failed to register RSSI indication callback = %d"),
                        vosStatus);
-                vos_mem_free(pUsrCtx);
                 vosStatus = VOS_STATUS_E_FAILURE;
             }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -473,14 +473,12 @@ VOS_STATUS csrNeighborRoamUpdateEseModeEnabled(tpAniSirGlobal pMac,
                                       WLANTL_HO_THRESHOLD_DOWN,
                                       csrNeighborRoamNeighborLookupDOWNCallback,
                                       VOS_MODULE_ID_SME, pUsrCtx);
-
+            vos_mem_free(pUsrCtx);
             if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
                 smsLog(pMac, LOGW,
                  FL("Failed to register RSSI indication callback: Status = %d"),
                  vosStatus);
 
-                /* Registration failed, freeup user context */
-                vos_mem_free(pUsrCtx);
                 vosStatus = VOS_STATUS_E_FAILURE;
             }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -576,14 +574,12 @@ VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac,
                        WLANTL_HO_THRESHOLD_DOWN,
                        csrNeighborRoamNeighborLookupDOWNCallback,
                        VOS_MODULE_ID_SME, pUsrCtx);
-
+           vos_mem_free(pUsrCtx);
            if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
               smsLog(pMac, LOGE,
                FL("Failed to register DOWN event with TL: Status = %d"),
                vosStatus);
 
-              /* Registration failed, freeup user context as well */
-              vos_mem_free(pUsrCtx);
               vosStatus = VOS_STATUS_E_FAILURE;
            }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -1292,11 +1288,23 @@ eHalStatus csrNeighborRoamAddBssIdToPreauthFailList(tpAniSirGlobal pMac,
                                                     tANI_U8 sessionId,
                                                     tSirMacAddr bssId)
 {
+    tANI_U8 i = 0;
     tpCsrNeighborRoamControlInfo pNeighborRoamInfo =
                                  &pMac->roam.neighborRoamInfo[sessionId];
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL(" Added BSSID "MAC_ADDRESS_STR
+    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Added BSSID "MAC_ADDRESS_STR
                         " to Preauth failed list"), MAC_ADDR_ARRAY(bssId));
+
+    for (i = 0; i < pNeighborRoamInfo->FTRoamInfo.preAuthFailList.numMACAddress;
+                i++) {
+        if (VOS_TRUE == vos_mem_compare(
+                    pNeighborRoamInfo->FTRoamInfo.preAuthFailList.macAddress[i],
+                    bssId, sizeof(tSirMacAddr))) {
+            smsLog(pMac, LOGW, FL("BSSID "MAC_ADDRESS_STR" already present in preauth fail list"),
+                   MAC_ADDR_ARRAY(bssId));
+            return eHAL_STATUS_SUCCESS;
+        }
+    }
 
     if ((pNeighborRoamInfo->FTRoamInfo.preAuthFailList.numMACAddress + 1) >
             MAX_NUM_PREAUTH_FAIL_LIST_ADDRESS)
@@ -1659,12 +1667,11 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac,
                               WLANTL_HO_THRESHOLD_UP,
                               csrNeighborRoamNeighborLookupUPCallback,
                               VOS_MODULE_ID_SME, pUsrCtx);
+          vos_mem_free(pUsrCtx);
           if(!VOS_IS_STATUS_SUCCESS(vosStatus))
           {
               //err msg
               smsLog(pMac, LOGE, FL(" Couldn't register csrNeighborRoamNeighborLookupCallback UP event with TL: Status = %d"), status);
-
-              vos_mem_free(pUsrCtx);
           }
 
           /* Start the neighbor results refresh timer and transition to REPORT_SCAN state to perform scan again */
@@ -2228,6 +2235,10 @@ csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
                     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
                                FL("Skipping because received AP "
                                "(probe rsp/beacon) is old."));
+                    if (pBssInfo->pBssDescription)
+                        vos_mem_free(pBssInfo->pBssDescription);
+                    if (pBssInfo)
+                        vos_mem_free(pBssInfo);
                     continue;
                 }
             }
@@ -2445,12 +2456,12 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac,
                         csrNeighborRoamNeighborLookupDOWNCallback,
                         VOS_MODULE_ID_SME, pUsrCtx);
 
+        vos_mem_free(pUsrCtx);
         if(!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
             smsLog(pMac, LOGW,
                    FL("Couldn't re-register csrNeighborRoamNeighborLookupDOWNCallback"
                       " with TL: Status = %d"), status);
-            vos_mem_free(pUsrCtx);
         }
 
 #ifdef FEATURE_WLAN_LFR
@@ -2759,14 +2770,13 @@ static eHalStatus csrNeighborRoamProcessScanComplete (tpAniSirGlobal pMac,
                                             WLANTL_HO_THRESHOLD_DOWN,
                                             csrNeighborRoamReassocIndCallback,
                                             VOS_MODULE_ID_SME, pUsrCtx);
-
+                vos_mem_free(pUsrCtx);
                 if (!VOS_IS_STATUS_SUCCESS(vosStatus))
                 {
                     //err msg
                     smsLog(pMac, LOGW, FL(
                      "Couldn't register with TL: Status = %d"),
                                     vosStatus);
-                    vos_mem_free(pUsrCtx);
                 }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
             }
@@ -2778,19 +2788,31 @@ if (csrRoamIsRoamOffloadScanEnabled(pMac))
    {
     if (!tempVal || !roamNow)
     {
-       if (pNeighborRoamInfo->uOsRequestedHandoff)
-       {
-          csrRoamOffloadScan(pMac, sessionId, ROAM_SCAN_OFFLOAD_START,
-                             REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
-          pNeighborRoamInfo->uOsRequestedHandoff = 0;
-       }
-       else
-       {
-         /* There is no candidate or We are not roaming Now.
-          * Inform the FW to restart Roam Offload Scan  */
-          csrRoamOffloadScan(pMac, sessionId, ROAM_SCAN_OFFLOAD_RESTART,
-                             REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
-       }
+        if ((eSME_ROAM_TRIGGER_SCAN == pNeighborRoamInfo->cfgRoamEn) ||
+            (eSME_ROAM_TRIGGER_FAST_ROAM == pNeighborRoamInfo->cfgRoamEn))
+        {
+           /* This is ioctl based roaming if we did not find any roamable
+            * candidate then just log it. */
+           smsLog(pMac, LOGE,
+                  FL("tempVal = %u, roamNow = %d uOsRequestedHandoff = %d"),
+                  tempVal, roamNow, pNeighborRoamInfo->uOsRequestedHandoff);
+        }
+        else
+        {
+           if (pNeighborRoamInfo->uOsRequestedHandoff)
+           {
+              csrRoamOffloadScan(pMac, sessionId, ROAM_SCAN_OFFLOAD_START,
+                                 REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+              pNeighborRoamInfo->uOsRequestedHandoff = 0;
+           }
+           else
+           {
+            /* There is no candidate or We are not roaming Now.
+             * Inform the FW to restart Roam Offload Scan  */
+              csrRoamOffloadScan(pMac, sessionId, ROAM_SCAN_OFFLOAD_RESTART,
+                                 REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+           }
+        }
        CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED,
                                           sessionId);
     }
@@ -4548,11 +4570,11 @@ VOS_STATUS  csrNeighborRoamNeighborLookupUpEvent(tpAniSirGlobal pMac,
 #ifdef FEATURE_WLAN_LFR
     pNeighborRoamInfo->lookupDOWNRssi = 0;
 #endif
+    vos_mem_free(pUsrCtx);
     if (!VOS_IS_STATUS_SUCCESS(vosStatus))
     {
        //err msg
        smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupCallback DOWN event with TL: Status = %d"), vosStatus);
-       vos_mem_free(pUsrCtx);
     }
 
 
@@ -4652,6 +4674,7 @@ VOS_STATUS  csrNeighborRoamNeighborLookupDownEvent(tpAniSirGlobal pMac,
                                       WLANTL_HO_THRESHOLD_UP,
                                       csrNeighborRoamNeighborLookupUPCallback,
                                       VOS_MODULE_ID_SME, pUsrCtx);
+            vos_mem_free(pUsrCtx);
             if(!VOS_IS_STATUS_SUCCESS(vosStatus))
             {
                //err msg
@@ -4659,7 +4682,6 @@ VOS_STATUS  csrNeighborRoamNeighborLookupDownEvent(tpAniSirGlobal pMac,
                       FL(" Couldn't register csrNeighborRoamNeighborLookupCallback"
                       "UP event with TL: Status = %d"),
                       status);
-               vos_mem_free(pUsrCtx);
             }
             break;
         default:
@@ -5260,11 +5282,11 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac,
 #ifdef FEATURE_WLAN_LFR
                 pNeighborRoamInfo->lookupDOWNRssi = 0;
 #endif
+                vos_mem_free(pUsrCtx);
                 if(!VOS_IS_STATUS_SUCCESS(vstatus))
                 {
                    //err msg
                    smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupDOWNCallback with TL: Status = %d"), vstatus);
-                   vos_mem_free(pUsrCtx);
                    status = eHAL_STATUS_FAILURE;
                 }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD

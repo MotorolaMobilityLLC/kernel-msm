@@ -1012,18 +1012,23 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
         }
     }
 
-    if (eCSR_ROAM_IBSS_LEAVE == roamStatus)
-    {
-        sta_id = IBSS_BROADCAST_STAID;
-    }
-    else
-    {
-        sta_id = pHddStaCtx->conn_info.staId[0];
-    }
      hdd_wmm_adapter_clear(pAdapter);
 #if defined(WLAN_FEATURE_VOWIFI_11R)
     sme_FTReset(WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId);
 #endif
+    if (eCSR_ROAM_IBSS_LEAVE == roamStatus) {
+        sta_id = IBSS_BROADCAST_STAID;
+        vstatus = hdd_roamDeregisterSTA(pAdapter, sta_id);
+        if (!VOS_IS_STATUS_SUCCESS(vstatus)) {
+            hddLog(LOGE,
+                   FL("hdd_roamDeregisterSTA() failed for staID %d Status=%d [0x%x]"),
+                   sta_id, status, status);
+            status = eHAL_STATUS_FAILURE;
+        }
+        pHddCtx->sta_to_adapter[sta_id] = NULL;
+    }
+    sta_id = pHddStaCtx->conn_info.staId[0];
+
     //We should clear all sta register with TL, for now, only one.
     vstatus = hdd_roamDeregisterSTA( pAdapter, sta_id );
     if ( !VOS_IS_STATUS_SUCCESS(vstatus ) )
@@ -2764,7 +2769,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
         }
         case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
         {
-            for ( staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            for (staIdx = 0; staIdx < pHddCtx->max_num_tdls_sta; staIdx++)
             {
                 if ((pHddCtx->tdlsConnInfo[staIdx].sessionId == pRoamInfo->sessionId) &&
                     pRoamInfo->staId == pHddCtx->tdlsConnInfo[staIdx].staId)
@@ -2779,7 +2784,6 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                         wlan_hdd_tdls_decrement_peer_count(pAdapter);
                     }
                     wlan_hdd_tdls_reset_peer(pAdapter, pRoamInfo->peerMac);
-                    (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
 
                     pHddCtx->tdlsConnInfo[staIdx].staId = 0 ;
                     pHddCtx->tdlsConnInfo[staIdx].sessionId = 255;
@@ -2809,7 +2813,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
         case eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND:
         {
             /* 0 staIdx is assigned to AP we dont want to touch that */
-            for ( staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            for (staIdx = 0; staIdx < pHddCtx->max_num_tdls_sta; staIdx++)
             {
                 if ((pHddCtx->tdlsConnInfo[staIdx].sessionId == pRoamInfo->sessionId) &&
                     pHddCtx->tdlsConnInfo[staIdx].staId)
@@ -2845,7 +2849,6 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                     }
                     wlan_hdd_tdls_decrement_peer_count(pAdapter);
 
-                    (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[staIdx] = NULL;
                     vos_mem_zero(&pHddCtx->tdlsConnInfo[staIdx].peerMac,
                                                sizeof(v_MACADDR_t)) ;
                     pHddCtx->tdlsConnInfo[staIdx].staId = 0 ;

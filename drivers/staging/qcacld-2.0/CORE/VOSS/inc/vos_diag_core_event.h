@@ -282,6 +282,25 @@ struct vos_event_wlan_wake_lock
 };
 
 /*-------------------------------------------------------------------------
+  Event ID: EVENT_WLAN_LOG_COMPLETE
+  ------------------------------------------------------------------------*/
+/**
+ * struct vos_event_wlan_log_complete - Holds log completion details
+ * @is_fatal: Indicates if the event is fatal or not
+ * @indicator: Source of the bug report - Framework/Host/Firmware
+ * @reason_code: Reason for triggering bug report
+ * @reserved: Reserved field
+ *
+ * This structure holds the log completion related information
+ */
+struct vos_event_wlan_log_complete {
+	uint32_t is_fatal;
+	uint32_t indicator;
+	uint32_t reason_code;
+	uint32_t reserved;
+};
+
+/*-------------------------------------------------------------------------
   Function declarations and documenation
   ------------------------------------------------------------------------*/
 

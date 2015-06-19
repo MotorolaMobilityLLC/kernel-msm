@@ -966,6 +966,24 @@ limProcessMlmReassocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         vos_mem_free(psessionEntry->pLimReAssocReq);
         psessionEntry->pLimReAssocReq = NULL;
     }
+
+    /* Upon Reassoc success or failure, freeup the cached
+     * preauth request, to ensure that channel switch is now
+     * allowed following any change in HT params.
+     */
+    if (psessionEntry->ftPEContext.pFTPreAuthReq) {
+        limLog(pMac, LOG1, FL("Freeing pFTPreAuthReq= %p"),
+               psessionEntry->ftPEContext.pFTPreAuthReq);
+        if (psessionEntry->ftPEContext.pFTPreAuthReq->pbssDescription) {
+            vos_mem_free(
+                psessionEntry->ftPEContext.pFTPreAuthReq->pbssDescription);
+            psessionEntry->ftPEContext.pFTPreAuthReq->pbssDescription = NULL;
+        }
+        vos_mem_free(psessionEntry->ftPEContext.pFTPreAuthReq);
+        psessionEntry->ftPEContext.pFTPreAuthReq = NULL;
+        psessionEntry->ftPEContext.ftPreAuthSession = VOS_FALSE;
+    }
+
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
     if (psessionEntry->bRoamSynchInProgress) {
             VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_DEBUG,

@@ -398,6 +398,7 @@
 #define SIR_MAC_ANI_WORKAROUND_EID_MIN     0
 #define SIR_MAC_ANI_WORKAROUND_EID_MAX     255
 
+#define SIR_MAC_MAX_ADD_IE_LENGTH       500
 /// Maximum length of each IE
 #define SIR_MAC_MAX_IE_LENGTH       255
 

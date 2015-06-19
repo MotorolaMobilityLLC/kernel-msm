@@ -50,6 +50,10 @@
 #include "if_usb.h"
 #endif
 
+#if defined(QCA_WIFI_2_0) && !defined(QCA_WIFI_ISOC) && defined(CONFIG_CNSS)
+#include <net/cnss.h>
+#endif
+
 #define WMI_MIN_HEAD_ROOM 64
 
 #ifdef WMI_INTERFACE_EVENT_LOGGING
@@ -630,9 +634,18 @@ static u_int8_t* get_wmi_cmd_string(WMI_CMD_ID wmi_command)
 		CASE_RETURN_STRING(WMI_DCC_CLEAR_STATS_CMDID);
 		CASE_RETURN_STRING(WMI_DCC_UPDATE_NDL_CMDID);
 		CASE_RETURN_STRING(WMI_ROAM_FILTER_CMDID);
+		CASE_RETURN_STRING(WMI_DEBUG_MESG_FLUSH_CMDID);
 	}
 	return "Invalid WMI cmd";
 }
+
+/* worker thread to recover when Target doesn't respond with credits */
+static void recovery_work_handler(struct work_struct *recovery)
+{
+    cnss_device_self_recovery();
+}
+
+static DECLARE_WORK(recovery_work, recovery_work_handler);
 
 /* WMI command API */
 int wmi_unified_cmd_send(wmi_unified_t wmi_handle, wmi_buf_t buf, int len,
@@ -682,7 +695,8 @@ int wmi_unified_cmd_send(wmi_unified_t wmi_handle, wmi_buf_t buf, int len,
 		//dump_CE_debug_register(scn->hif_sc);
 		adf_os_atomic_dec(&wmi_handle->pending_cmds);
 		pr_err("%s: MAX 1024 WMI Pending cmds reached.\n", __func__);
-		VOS_BUG(0);
+		vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+		schedule_work(&recovery_work);
 		return -EBUSY;
 	}
 
@@ -845,11 +859,6 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 	u_int8_t *data;
 #endif
 
-	if (vos_is_logp_in_progress(VOS_MODULE_ID_WDA, NULL)) {
-			pr_err("%s: LOPG in progress\n", __func__);
-			return;
-	}
-
 	evt_buf = (wmi_buf_t) htc_packet->pPktContext;
 #ifndef QCA_CONFIG_SMP
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
@@ -909,11 +918,6 @@ void __wmi_control_rx(struct wmi_unified *wmi_handle, wmi_buf_t evt_buf)
 	u_int32_t len;
 	void *wmi_cmd_struct_ptr = NULL;
 	int tlv_ok_status = 0;
-
-	if (vos_is_logp_in_progress(VOS_MODULE_ID_WDA, NULL)) {
-		pr_err("%s: LOPG in progress\n", __func__);
-		return;
-	}
 
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
 

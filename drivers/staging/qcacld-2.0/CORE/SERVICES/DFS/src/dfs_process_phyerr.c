@@ -237,7 +237,7 @@ dfs_process_phyerr_sowl(struct ath_dfs *dfs, void *buf, u_int16_t datalen,
    const char *cbuf = (const char *) buf;
    u_int8_t dur = 0;
    u_int8_t pulse_bw_info, pulse_length_ext, pulse_length_pri;
-   int pri_found, ext_found;
+   int pri_found = 0, ext_found = 0;
    int early_ext = 0;
    int event_width;
 

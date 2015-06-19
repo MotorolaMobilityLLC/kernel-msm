@@ -1122,8 +1122,10 @@ endif
 ifeq ($(CONFIG_HIF_USB), 1)
 CDEFINES += -DHIF_USB
 CDEFINES += -DCONFIG_HL_SUPPORT
-CDEFINES += -DCONFIG_FW_LOGS_BASED_ON_INI
 endif
+
+#Enable FW logs through ini
+CDEFINES += -DCONFIG_FW_LOGS_BASED_ON_INI
 
 #Enable pci read/write config functions
 ifeq ($(CONFIG_ATH_PCI), 1)

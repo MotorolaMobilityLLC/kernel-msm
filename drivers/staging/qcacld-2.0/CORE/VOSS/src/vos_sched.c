@@ -1015,8 +1015,6 @@ VosMCThread
 
 v_BOOL_t isWDresetInProgress(void)
 {
-   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                "%s: Reset is in Progress...",__func__);
    if(gpVosWatchdogContext!=NULL)
    {
       return gpVosWatchdogContext->resetInProgress;

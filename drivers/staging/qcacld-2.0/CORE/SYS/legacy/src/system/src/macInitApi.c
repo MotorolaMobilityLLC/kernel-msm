@@ -62,41 +62,14 @@ tSirRetStatus macReset(tpAniSirGlobal pMac, tANI_U32 rc);
 
 tSirRetStatus macPreStart(tHalHandle hHal)
 {
-   tSirRetStatus status = eSIR_SUCCESS;
-   tANI_BOOLEAN memAllocFailed = eANI_BOOLEAN_FALSE;
    tpAniSirGlobal pMac = (tpAniSirGlobal) hHal;
-   tANI_U8 i;
-
-   for(i=0; i<MAX_DUMP_TABLE_ENTRY; i++)
-   {
-      pMac->dumpTableEntry[i] = vos_mem_malloc(sizeof(tDumpModuleEntry));
-      if ( NULL == pMac->dumpTableEntry[i] )
-      {
-         memAllocFailed = eANI_BOOLEAN_TRUE;
-         break;
-      }
-      else
-      {
-         vos_mem_set(pMac->dumpTableEntry[i], sizeof(tSirMbMsg), 0);
-      }
-   }
-   if( memAllocFailed )
-   {
-      while(i>0)
-      {
-         i--;
-         vos_mem_free(pMac->dumpTableEntry[i]);
-      }
-      sysLog(pMac, LOGE, FL("pMac->dumpTableEntry is NULL\n"));
-      status = eSIR_FAILURE;
-   }
 
 #if defined(ANI_LOGDUMP)
    //logDumpInit must be called before any module starts
    logDumpInit(pMac);
 #endif //#if defined(ANI_LOGDUMP)
 
-   return status;
+   return eSIR_SUCCESS;
 }
 
 tSirRetStatus macStart(tHalHandle hHal, void* pHalMacStartParams)
@@ -152,7 +125,6 @@ tSirRetStatus macStart(tHalHandle hHal, void* pHalMacStartParams)
 
 tSirRetStatus macStop(tHalHandle hHal, tHalStopType stopType)
 {
-    tANI_U8 i;
     tpAniSirGlobal pMac = (tpAniSirGlobal) hHal;
     peStop(pMac);
     cfgCleanup( pMac );
@@ -162,11 +134,6 @@ tSirRetStatus macStop(tHalHandle hHal, tHalStopType stopType)
     {
         vos_mem_free(pMac->pResetMsg);
         pMac->pResetMsg = NULL;
-    }
-    /* Free the DumpTableEntry */
-    for(i=0; i<MAX_DUMP_TABLE_ENTRY; i++)
-    {
-        vos_mem_free(pMac->dumpTableEntry[i]);
     }
 
     return eSIR_SUCCESS;
@@ -186,6 +153,8 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
 {
     tpAniSirGlobal p_mac = NULL;
     tSirRetStatus status = eSIR_SUCCESS;
+    uint8_t i =0;
+    bool mem_alloc_failed = false;
 
     if(pHalHandle == NULL)
         return eSIR_FAILURE;
@@ -244,8 +213,36 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
     status = peOpen(p_mac, pMacOpenParms);
 
     if (eSIR_SUCCESS != status) {
-        vos_mem_free(p_mac);
         sysLog(p_mac, LOGE, FL("macOpen failure\n"));
+        vos_mem_free(p_mac);
+        return status;
+    }
+
+    for (i=0; i<MAX_DUMP_TABLE_ENTRY; i++)
+    {
+       p_mac->dumpTableEntry[i] = vos_mem_malloc(sizeof(tDumpModuleEntry));
+       if (NULL == p_mac->dumpTableEntry[i])
+       {
+          mem_alloc_failed = eANI_BOOLEAN_TRUE;
+          break;
+       }
+       else
+       {
+          vos_mem_set(p_mac->dumpTableEntry[i], sizeof(tSirMbMsg), 0);
+       }
+    }
+
+    if (mem_alloc_failed)
+    {
+       while (i>0)
+       {
+          i--;
+          vos_mem_free(p_mac->dumpTableEntry[i]);
+       }
+
+       peClose(p_mac);
+       vos_mem_free(p_mac);
+       return eSIR_FAILURE;
     }
 
     return status;
@@ -263,6 +260,7 @@ tSirRetStatus macClose(tHalHandle hHal)
 {
 
     tpAniSirGlobal pMac = (tpAniSirGlobal) hHal;
+    uint8_t i =0;
 
     peClose(pMac);
     pMac->psOffloadEnabled = FALSE;
@@ -271,6 +269,12 @@ tSirRetStatus macClose(tHalHandle hHal)
     cfgDeInit(pMac);
 
     logDeinit(pMac);
+
+    /* Free the DumpTableEntry */
+    for(i=0; i<MAX_DUMP_TABLE_ENTRY; i++)
+    {
+        vos_mem_free(pMac->dumpTableEntry[i]);
+    }
 
     // Finally, de-allocate the global MAC datastructure:
     vos_mem_free( pMac );

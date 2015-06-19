@@ -594,13 +594,21 @@ static void wlan_hdd_restart_sap(hdd_adapter_t *ap_adapter)
     hdd_hostapd_state_t *pHostapdState;
     VOS_STATUS vos_status;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(ap_adapter);
+    struct tagCsrDelStaParams delStaParams;
 
     pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(ap_adapter);
 
     mutex_lock(&pHddCtx->sap_lock);
     if (test_bit(SOFTAP_BSS_STARTED, &ap_adapter->event_flags)) {
+        WLANSAP_PopulateDelStaParams(NULL, eCsrForcedDeauthSta,
+                            (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
+#ifdef CFG80211_DEL_STA_V2
         wlan_hdd_cfg80211_del_station(ap_adapter->wdev.wiphy, ap_adapter->dev,
-                                                                          NULL);
+                                      &delStaParams);
+#else
+        wlan_hdd_cfg80211_del_station(ap_adapter->wdev.wiphy, ap_adapter->dev,
+                                      NULL);
+#endif
         hdd_cleanup_actionframe(pHddCtx, ap_adapter);
 
         pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(ap_adapter);
@@ -2777,6 +2785,11 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
    tANI_U8 *command = NULL;
    int ret = 0;
 
+   if (VOS_FTM_MODE == hdd_get_conparam()) {
+       hddLog(LOGE, FL("Command not allowed in FTM mode"));
+       return -EINVAL;
+   }
+
    /*
     * Note that valid pointers are provided by caller
     */
@@ -3207,7 +3220,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 	   }
        }
        /* GETROAMMODE */
-       else if (strncmp(priv_data.buf, "GETROAMMODE", SIZE_OF_GETROAMMODE) == 0)
+       else if (strncmp(command, "GETROAMMODE", SIZE_OF_GETROAMMODE) == 0)
        {
 	   tANI_BOOLEAN roamMode = sme_getIsLfrFeatureEnabled(pHddCtx->hHal);
 	   char extra[32];
@@ -3274,7 +3287,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            sme_UpdateRoamRssiDiff(pHddCtx->hHal,
                                   pAdapter->sessionId, roamRssiDiff);
        }
-       else if (strncmp(priv_data.buf, "GETROAMDELTA", 12) == 0)
+       else if (strncmp(command, "GETROAMDELTA", 12) == 0)
        {
            tANI_U8 roamRssiDiff = sme_getRoamRssiDiff(pHddCtx->hHal);
            char extra[32];
@@ -3727,7 +3740,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            sme_UpdateRoamScanNProbes(pHddCtx->hHal, pAdapter->sessionId,
                                      nProbes);
        }
-       else if (strncmp(priv_data.buf, "GETSCANNPROBES", 14) == 0)
+       else if (strncmp(command, "GETSCANNPROBES", 14) == 0)
        {
            tANI_U8 val = sme_getRoamScanNProbes(pHddCtx->hHal);
            char extra[32];
@@ -3786,7 +3799,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
                                               homeAwayTime, eANI_BOOLEAN_TRUE);
            }
        }
-       else if (strncmp(priv_data.buf, "GETSCANHOMEAWAYTIME", 19) == 0)
+       else if (strncmp(command, "GETSCANHOMEAWAYTIME", 19) == 0)
        {
            tANI_U16 val = sme_getRoamScanHomeAwayTime(pHddCtx->hHal);
            char extra[32];
@@ -3843,7 +3856,7 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            pHddCtx->cfg_ini->isWESModeEnabled = wesMode;
            sme_UpdateWESMode(pHddCtx->hHal, wesMode, pAdapter->sessionId);
        }
-       else if (strncmp(priv_data.buf, "GETWESMODE", 10) == 0)
+       else if (strncmp(command, "GETWESMODE", 10) == 0)
        {
            tANI_BOOLEAN wesMode = sme_GetWESMode(pHddCtx->hHal);
            char extra[32];
@@ -4263,11 +4276,34 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
 
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to change okc mode = %d", __func__, okcMode);
-
            pHddCtx->cfg_ini->isOkcIniFeatureEnabled = okcMode;
        }
 #endif  /* FEATURE_WLAN_OKC */
-       else if (strncmp(priv_data.buf, "GETROAMSCANCONTROL", 18) == 0)
+       else if (strncmp(command, "BTCOEXMODE", 10) == 0 )
+       {
+           char *bcMode;
+           int ret;
+
+           bcMode = command + 11;
+           if ('1' == *bcMode)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
+                         FL("BTCOEXMODE %d"), *bcMode);
+               pHddCtx->btCoexModeSet = TRUE;
+               ret = wlan_hdd_scan_abort(pAdapter);
+               if (ret < 0) {
+                   hddLog(LOGE,
+                          FL("Failed to abort existing scan status:%d"), ret);
+               }
+           }
+           else if ('2' == *bcMode)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
+                         FL("BTCOEXMODE %d"), *bcMode);
+               pHddCtx->btCoexModeSet = FALSE;
+           }
+       }
+       else if (strncmp(command, "GETROAMSCANCONTROL", 18) == 0)
        {
            tANI_BOOLEAN roamScanControl = sme_GetRoamScanControl(pHddCtx->hHal);
            char extra[32];
@@ -5366,14 +5402,6 @@ static void hdd_update_tgt_services(hdd_context_t *hdd_ctx,
     {
         cfg_ini->fEnableTDLSSleepSta = FALSE;
     }
-    if (cfg_ini->fEnableTDLSSleepSta || cfg_ini->fEnableTDLSBufferSta)
-    {
-        /* Adjust max TDLS sta number if self is either sleep STA or buf STA */
-        hdd_ctx->max_num_tdls_sta = HDD_MAX_NUM_TDLS_STA_P_UAPSD;
-        hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-               "%s: P-UAPSD: sleep or buffer sta enabled, max_tdls_peer_# = %d",
-               __func__, hdd_ctx->max_num_tdls_sta);
-    }
 #endif
     pMac->beacon_offload = cfg->beacon_offload;
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
@@ -5391,6 +5419,7 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     hdd_config_t *pconfig = hdd_ctx->cfg_ini;
     tSirMacHTCapabilityInfo *phtCapInfo;
     tANI_U8 mcs_set[SIZE_OF_SUPPORTED_MCS_SET];
+    uint8_t enable_tx_stbc;
 
     /* check and update RX STBC */
     if (pconfig->enableRxSTBC && !cfg->ht_rx_stbc)
@@ -5443,6 +5472,11 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     if (pconfig->ShortGI40MhzEnable && !cfg->ht_sgi_40)
         pconfig->ShortGI40MhzEnable = cfg->ht_sgi_40;
 
+    hdd_ctx->num_rf_chains     = cfg->num_rf_chains;
+    hdd_ctx->ht_tx_stbc_supported = cfg->ht_tx_stbc;
+
+    enable_tx_stbc = pconfig->enableTxSTBC;
+
     if (pconfig->enable2x2 && (cfg->num_rf_chains == 2))
     {
         pconfig->enable2x2 = 1;
@@ -5450,7 +5484,7 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     else
     {
         pconfig->enable2x2 = 0;
-        pconfig->enableTxSTBC = 0;
+        enable_tx_stbc = 0;
 
         /* 1x1 */
         /* Update Rx Highest Long GI data Rate */
@@ -5474,9 +5508,9 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     }
     if (!(cfg->ht_tx_stbc && pconfig->enable2x2))
     {
-        pconfig->enableTxSTBC = 0;
+        enable_tx_stbc = 0;
     }
-    phtCapInfo->txSTBC = pconfig->enableTxSTBC;
+    phtCapInfo->txSTBC = enable_tx_stbc;
 
     val32 = val16;
     status = ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_HT_CAP_INFO,
@@ -5648,7 +5682,6 @@ static void hdd_update_tgt_vht_cap(hdd_context_t *hdd_ctx,
                               WNI_CFG_VHT_SHORT_GI_160_AND_80_PLUS_80MHZ,
                               cfg->vht_short_gi_160, NULL,
                               eANI_BOOLEAN_FALSE);
-
         if (status == eHAL_STATUS_FAILURE) {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                       "%s: could not set SHORT GI 80 & 160 to CCM",
@@ -7989,7 +8022,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
   {
        ret = process_wma_set_command((int)pAdapter->sessionId,
                          (int)WMI_PDEV_PARAM_HYST_EN,
-                         (int)pHddCtx->cfg_ini->enableHystereticMode,
+                         (int)pHddCtx->cfg_ini->enableMemDeepSleep,
                          PDEV_CMD);
 
        if (ret != 0)
@@ -8005,13 +8038,14 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
 
   /* Enable FW logs based on INI configuration */
   if ((VOS_FTM_MODE != vos_get_conparam()) &&
-             (pHddCtx->cfg_ini->enableFwLogType))
+             (pHddCtx->cfg_ini->enablefwlog))
   {
      tANI_U8 count = 0;
      tANI_U32 value = 0;
      tANI_U8 numEntries = 0;
      tANI_U8 moduleLoglevel[FW_MODULE_LOG_LEVEL_STRING_LENGTH];
 
+     pHddCtx->fw_log_settings.dl_type = pHddCtx->cfg_ini->enableFwLogType;
      ret = process_wma_set_command( (int)pAdapter->sessionId,
                                   (int)WMI_DBGLOG_TYPE,
                                   pHddCtx->cfg_ini->enableFwLogType, DBG_CMD );
@@ -8020,6 +8054,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
           hddLog(LOGE, FL("Failed to enable FW log type ret %d"), ret);
      }
 
+     pHddCtx->fw_log_settings.dl_loglevel = pHddCtx->cfg_ini->enableFwLogLevel;
      ret = process_wma_set_command((int)pAdapter->sessionId,
                                    (int)WMI_DBGLOG_LOG_LEVEL,
                                    pHddCtx->cfg_ini->enableFwLogLevel, DBG_CMD);
@@ -10413,8 +10448,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
 
    hdd_init_ll_stats_ctx(pHddCtx);
 
-   init_completion(&pHddCtx->linux_reg_req);
-
    spin_lock_init(&pHddCtx->schedScan_lock);
 
    hdd_list_init( &pHddCtx->hddAdapters, MAX_NUMBER_OF_ADAPTERS );
@@ -10979,6 +11012,8 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       }
    }
 #endif
+   if (vos_is_multicast_logging())
+       wlan_logging_set_log_level();
 
    hdd_register_mcast_bcast_filter(pHddCtx);
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
@@ -11666,7 +11701,8 @@ void hdd_set_conparam ( v_UINT_t newParam )
 
   --------------------------------------------------------------------------*/
 
-VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddress)
+VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter,
+                                 struct tagCsrDelStaParams *pDelStaParams)
 {
 #ifndef WLAN_FEATURE_MBSSID
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
@@ -11679,13 +11715,14 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
            (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     //Ignore request to deauth bcmc station
-    if( pDestMacAddress[0] & 0x1 )
+    if (pDelStaParams->peerMacAddr[0] & 0x1)
        return vosStatus;
 
 #ifdef WLAN_FEATURE_MBSSID
-    vosStatus = WLANSAP_DeauthSta(WLAN_HDD_GET_SAP_CTX_PTR(pAdapter), pDestMacAddress);
+    vosStatus = WLANSAP_DeauthSta(WLAN_HDD_GET_SAP_CTX_PTR(pAdapter),
+                                  pDelStaParams);
 #else
-    vosStatus = WLANSAP_DeauthSta(pVosContext, pDestMacAddress);
+    vosStatus = WLANSAP_DeauthSta(pVosContext, pDelStaParams);
 #endif
 
     EXIT();
@@ -12191,16 +12228,19 @@ static v_U8_t hdd_find_prefd_safe_chnl(hdd_context_t *hdd_ctxt)
 {
    v_U16_t             safe_channels[NUM_20MHZ_RF_CHANNELS];
    v_U16_t             safe_channel_count;
+   uint16_t            unsafe_channel_count;
    v_U8_t              is_unsafe = 1;
    v_U16_t             i;
    v_U16_t             channel_loop;
 
    safe_channel_count = 0;
+   unsafe_channel_count = min((uint16_t)hdd_ctxt->unsafe_channel_count,
+                              (uint16_t)NUM_20MHZ_RF_CHANNELS);
+
    for (i = 0; i < NUM_20MHZ_RF_CHANNELS; i++) {
       is_unsafe = 0;
       for (channel_loop = 0;
-           channel_loop < hdd_ctxt->unsafe_channel_count;
-           channel_loop++) {
+           channel_loop < unsafe_channel_count; channel_loop++) {
          if (rfChannels[i].channelNum ==
              hdd_ctxt->unsafe_channel_list[channel_loop]) {
             is_unsafe = 1;

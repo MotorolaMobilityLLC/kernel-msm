@@ -1479,9 +1479,13 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         goto returnAfterError;
     }
 
-    limLog( pMac, LOGW,
-      FL( "ADDBA Req from STA with AID %d, tid = %d" ),
-      aid, frmAddBAReq.AddBAParameterSet.tid);
+    limLog( pMac, LOG1, FL( "ADDBA Req from STA "MAC_ADDRESS_STR " with AID %d"
+                            " tid = %d policy = %d buffsize = %d"
+                            " amsduSupported = %d"), MAC_ADDR_ARRAY(pHdr->sa),
+                            aid, frmAddBAReq.AddBAParameterSet.tid,
+                            frmAddBAReq.AddBAParameterSet.policy,
+                            frmAddBAReq.AddBAParameterSet.bufferSize,
+                            frmAddBAReq.AddBAParameterSet.amsduSupported);
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
     // we can only do BA on "hard" STAs
@@ -1671,9 +1675,15 @@ tANI_U8 *pBody;
     PELOG2(sirDumpBuf( pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frameLen );)
   }
 
-  limLog( pMac, LOGE,
-      FL( "ADDBA Rsp from STA with AID %d, tid = %d, status = %d" ),
-      aid, frmAddBARsp.AddBAParameterSet.tid, frmAddBARsp.Status.status);
+  limLog( pMac, LOG1, FL( "ADDBA Rsp from STA "MAC_ADDRESS_STR " with AID %d "
+                          "tid = %d policy = %d buffsize = %d "
+                          "amsduSupported = %d status = %d"),
+                          MAC_ADDR_ARRAY(pHdr->sa), aid,
+                          frmAddBARsp.AddBAParameterSet.tid,
+                          frmAddBARsp.AddBAParameterSet.policy,
+                          frmAddBARsp.AddBAParameterSet.bufferSize,
+                          frmAddBARsp.AddBAParameterSet.amsduSupported,
+                          frmAddBARsp.Status.status);
 
   //if there is no matchin dialougue token then ignore the response.
 

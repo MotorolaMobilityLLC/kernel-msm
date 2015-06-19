@@ -4297,10 +4297,10 @@ HAL
 WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD   I    4    7
 V    RW    NP
 HAL
-0    65535    0
+0    1000     0
 V    RW    NP
 HAL
-0    65535    0
+0    1000     0
 
 * Limit on number of associated stations
 * (applies to peer stations in IBSS, SoftAP, BT-AMP AP, & P2P-GO modes)

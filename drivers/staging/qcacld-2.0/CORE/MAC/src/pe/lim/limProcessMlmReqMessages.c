@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2043,6 +2043,67 @@ static void limProcessMlmOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 }
 #endif //FEATURE_OEM_DATA_SUPPORT
 
+/**
+ * lim_post_join_set_link_state_callback()- registered callback to perform post
+ * peer creation operations
+ *
+ * @mac: pointer to global mac structure
+ * @callback_arg: registered callback argument
+ * @status: peer creation status
+ *
+ * this is registered callback function during association to perform
+ * post peer creation operation based on the peer creation status
+ *
+ * Return: none
+ */
+void lim_post_join_set_link_state_callback(tpAniSirGlobal mac,
+		void *callback_arg, bool status)
+{
+	uint8_t chan_num, sec_chan_offset;
+	tpPESession session_entry = (tpPESession) callback_arg;
+	tLimMlmJoinCnf mlm_join_cnf;
+
+	limLog(mac, LOG1, FL("Sessionid %d set link state(%d) cb status:%d"),
+			session_entry->peSessionId, session_entry->limMlmState,
+			status);
+
+	if (!status) {
+		limLog(mac, LOGE, FL("failed to find pe session for session id:%d"),
+			session_entry->peSessionId);
+		goto failure;
+	}
+
+	if (session_entry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE) {
+		chan_num = session_entry->currentOperChannel;
+		sec_chan_offset = session_entry->htSecondaryChannelOffset;
+		/*
+		 * store the channel switch sessionEntry in the lim
+		 * global variable
+		 */
+		session_entry->channelChangeReasonCode =
+				 LIM_SWITCH_CHANNEL_JOIN;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
+		session_entry->pLimMlmReassocRetryReq = NULL;
+#endif
+		limLog(mac, LOG1, FL("[limProcessMlmJoinReq]: suspend link on sessionid: %d setting channel to: %d with secChanOffset:%d and maxtxPower: %d"),
+					session_entry->peSessionId, chan_num,
+					sec_chan_offset,
+					session_entry->maxTxPower);
+		limSetChannel(mac, chan_num, sec_chan_offset,
+				 session_entry->maxTxPower,
+				 session_entry->peSessionId);
+		return;
+	}
+
+failure:
+	MTRACE(macTrace(mac, TRACE_CODE_MLM_STATE, session_entry->peSessionId,
+			 session_entry->limMlmState));
+	session_entry->limMlmState = eLIM_MLM_IDLE_STATE;
+	mlm_join_cnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
+	mlm_join_cnf.sessionId = session_entry->peSessionId;
+	mlm_join_cnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
+	limPostSmeMessage(mac, LIM_MLM_JOIN_CNF, (tANI_U32 *) &mlm_join_cnf);
+}
 
 /**
  * limProcessMlmPostJoinSuspendLink()
@@ -2070,7 +2131,6 @@ static void limProcessMlmOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 static void
 limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *ctx)
 {
-    tANI_U8             chanNum, secChanOffset;
     tLimMlmJoinCnf      mlmJoinCnf;
     tpPESession         psessionEntry = (tpPESession)ctx;
     tSirLinkState       linkState;
@@ -2099,7 +2159,8 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
 
     if (limSetLinkState(pMac, linkState,
          psessionEntry->pLimMlmJoinReq->bssDescription.bssId,
-         psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS )
+         psessionEntry->selfMacAddr, lim_post_join_set_link_state_callback,
+         psessionEntry) != eSIR_SUCCESS )
     {
         limLog(pMac, LOGE,
                FL("SessionId:%d limSetLinkState to eSIR_LINK_PREASSOC_STATE Failed!!"),
@@ -2112,29 +2173,13 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
         goto error;
     }
 
-    chanNum = psessionEntry->currentOperChannel;
-    secChanOffset = psessionEntry->htSecondaryChannelOffset;
-    //store the channel switch sessionEntry in the lim global var
-    psessionEntry->channelChangeReasonCode = LIM_SWITCH_CHANNEL_JOIN;
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
-    psessionEntry->pLimMlmReassocRetryReq = NULL;
-#endif
-    limLog(pMac, LOG1, FL("[limProcessMlmJoinReq]: suspend link success(%d) "
-             "on sessionid: %d setting channel to: %d with secChanOffset:%d "
-             "and maxtxPower: %d"), status, psessionEntry->peSessionId,
-             chanNum, secChanOffset, psessionEntry->maxTxPower);
-    limSetChannel(pMac, chanNum, secChanOffset, psessionEntry->maxTxPower, psessionEntry->peSessionId);
-
     return;
 error:
     mlmJoinCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
     mlmJoinCnf.sessionId = psessionEntry->peSessionId;
     mlmJoinCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
     limPostSmeMessage(pMac, LIM_MLM_JOIN_CNF, (tANI_U32 *) &mlmJoinCnf);
-
 }
-
-
 
 /**
  * limProcessMlmJoinReq()

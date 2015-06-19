@@ -1227,7 +1227,8 @@ WLANSAP_DisassocSta
 
     IN
     pvosGCtx            : Pointer to vos global context structure
-    pPeerStaMac         : Mac address of the station to deauthenticate
+    pDelStaParams       : Pointer to parameters of the station to
+                          deauthenticate
 
   RETURN VALUE
     The VOS_STATUS code associated with performing the operation
@@ -1240,7 +1241,7 @@ VOS_STATUS
 WLANSAP_DeauthSta
 (
     v_PVOID_t pvosGCtx,
-    v_U8_t *pPeerStaMac
+    struct tagCsrDelStaParams *pDelStaParams
 );
 
 /*==========================================================================
@@ -2299,6 +2300,30 @@ WLANSAP_Get_DfsNol(v_PVOID_t pSapCtx);
 VOS_STATUS
 WLANSAP_Set_DfsNol(v_PVOID_t pSapCtx, eSapDfsNolType conf);
 
+/*==========================================================================
+  FUNCTION    WLANSAP_PopulateDelStaParams
+
+  DESCRIPTION
+  This API is used to populate del station parameters
+  DEPENDENCIES
+  NA.
+
+  PARAMETERS
+  IN
+  mac:           pointer to peer mac address.
+  reason_code:   Reason code for the disassoc/deauth.
+  subtype:       subtype points to either disassoc/deauth frame.
+  pDelStaParams: address where parameters to be populated.
+
+  RETURN VALUE NONE
+
+  SIDE EFFECTS
+============================================================================*/
+
+void WLANSAP_PopulateDelStaParams(const v_U8_t *mac,
+                                  v_U16_t reason_code,
+                                  v_U8_t subtype,
+                                  struct tagCsrDelStaParams *pDelStaParams);
 #ifdef __cplusplus
  }
 #endif

@@ -410,8 +410,11 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                         }
                         else
                         {
-
-                            limDeleteTDLSPeers(pMac, psessionEntry);
+                            /* Delete all the TDLS peers only if Deauth
+                             * is received from the AP
+                             */
+                            if (IS_CURRENT_BSSID(pMac, pHdr->sa, psessionEntry))
+                               limDeleteTDLSPeers(pMac, psessionEntry);
 #endif
                            /**
                             * This could be Deauthentication frame from

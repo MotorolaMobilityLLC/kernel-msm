@@ -327,11 +327,6 @@ eHalStatus csr_init_chan_list(tpAniSirGlobal mac, v_U8_t *alpha2)
     smsLog(mac, LOGE, FL("init time country code %.2s"),
            mac->scan.countryCodeDefault);
 
-    if ('0' == mac->scan.countryCodeDefault[0] &&
-          '0' == mac->scan.countryCodeDefault[1]) {
-       source = COUNTRY_QUERY;
-    }
-
     status = csrGetRegulatoryDomainForCountry(mac,
                                               mac->scan.countryCodeDefault,
                                               &reg_id, source);
@@ -1154,6 +1149,7 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.doBMPSWorkaround = 0;
 
     pMac->roam.configParam.nInitialDwellTime = 0;
+    pMac->roam.configParam.initial_scan_no_dfs_chnl = 0;
 }
 eCsrBand csrGetCurrentBand(tHalHandle hHal)
 {
@@ -1662,6 +1658,10 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 
         //if HDD passed down non zero values then only update,
         //otherwise keep using the defaults
+        if (pParam->initial_scan_no_dfs_chnl) {
+            pMac->roam.configParam.initial_scan_no_dfs_chnl =
+                                        pParam->initial_scan_no_dfs_chnl;
+        }
         if (pParam->nInitialDwellTime)
         {
             pMac->roam.configParam.nInitialDwellTime =
@@ -2048,6 +2048,8 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
                                 pMac->roam.configParam.allowDFSChannelRoam;
         pParam->nInitialDwellTime =
                                 pMac->roam.configParam.nInitialDwellTime;
+        pParam->initial_scan_no_dfs_chnl =
+                                pMac->roam.configParam.initial_scan_no_dfs_chnl;
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
         pParam->isRoamOffloadEnabled =
                                 pMac->roam.configParam.isRoamOffloadEnabled;
@@ -2931,14 +2933,12 @@ eHalStatus csrRoamIssueDisassociateStaCmd( tpAniSirGlobal pMac,
     \fn csrRoamIssueDeauthSta
     \brief csr function that HDD calls to delete a associated station
     \param sessionId    - session Id for Soft AP
-    \param pPeerMacAddr - MAC of associated station to delete
-    \param reason - reason code, be one of the tSirMacReasonCodes
+    \param pDelStaParams- Pointer to parameters of the station to deauthenticate
     \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus csrRoamIssueDeauthStaCmd( tpAniSirGlobal pMac,
                                      tANI_U32 sessionId,
-                                     tANI_U8 *pPeerMacAddr,
-                                     tANI_U32 reason)
+                                     struct tagCsrDelStaParams *pDelStaParams)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSmeCmd *pCommand;
@@ -2955,8 +2955,10 @@ eHalStatus csrRoamIssueDeauthStaCmd( tpAniSirGlobal pMac,
         pCommand->command = eSmeCommandRoam;
         pCommand->sessionId = (tANI_U8)sessionId;
         pCommand->u.roamCmd.roamReason = eCsrForcedDeauthSta;
-        vos_mem_copy(pCommand->u.roamCmd.peerMac, pPeerMacAddr, 6);
-        pCommand->u.roamCmd.reason = (tSirMacReasonCodes)reason;
+        vos_mem_copy(pCommand->u.roamCmd.peerMac, pDelStaParams->peerMacAddr,
+                     sizeof(tSirMacAddr));
+        pCommand->u.roamCmd.reason =
+                    (tSirMacReasonCodes)pDelStaParams->reason_code;
         status = csrQueueSmeCommand(pMac, pCommand, eANI_BOOLEAN_FALSE);
         if( !HAL_STATUS_SUCCESS( status ) )
         {
@@ -4560,17 +4562,16 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
         //For WDS, the indication is eCSR_ROAM_WDS_IND
         if( CSR_IS_INFRASTRUCTURE( pProfile ) )
         {
-            if(pRoamInfo)
+            if (pSession->bRefAssocStartCnt)
             {
-                if(pSession->bRefAssocStartCnt)
-                {
-                    pSession->bRefAssocStartCnt--;
-                    pRoamInfo->pProfile = pProfile;
-                    //Complete the last association attemp because a new one is about to be tried
-                    csrRoamCallCallback(pMac, sessionId, pRoamInfo, pCommand->u.roamCmd.roamId,
-                                        eCSR_ROAM_ASSOCIATION_COMPLETION,
-                                        eCSR_ROAM_RESULT_NOT_ASSOCIATED);
-                }
+                pSession->bRefAssocStartCnt--;
+                pRoamInfo->pProfile = pProfile;
+                /* Complete the last association attempt because a new one
+                   is about to be tried */
+                csrRoamCallCallback(pMac, sessionId, pRoamInfo,
+                                    pCommand->u.roamCmd.roamId,
+                                    eCSR_ROAM_ASSOCIATION_COMPLETION,
+                                    eCSR_ROAM_RESULT_NOT_ASSOCIATED);
             }
             /* If the roaming has stopped, not to continue the roaming command*/
             if ( !CSR_IS_ROAMING(pSession) && CSR_IS_ROAMING_COMMAND(pCommand) )
@@ -11084,6 +11085,11 @@ void csrRoamWaitForKeyTimeOutHandler(void *pv)
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, pInfo->sessionId );
     eHalStatus status = eHAL_STATUS_FAILURE;
 
+    if(pSession == NULL) {
+        smsLog(pMac, LOGE, "%s: session not found", __func__);
+        return;
+    }
+
     smsLog(pMac, LOGW, FL("WaitForKey timer expired in state=%s sub-state=%s"),
            macTraceGetNeighbourRoamState(
            pMac->roam.neighborRoamInfo[pInfo->sessionId].neighborRoamState),
@@ -11116,32 +11122,24 @@ void csrRoamWaitForKeyTimeOutHandler(void *pv)
                                   pInfo->sessionId);
         }
 
-        if (pSession)
+        if( csrIsConnStateConnectedInfra(pMac, pInfo->sessionId) )
         {
-            if( csrIsConnStateConnectedInfra(pMac, pInfo->sessionId) )
+            csrRoamLinkUp(pMac, pSession->connectedProfile.bssid);
+            smeProcessPendingQueue(pMac);
+            status = sme_AcquireGlobalLock(&pMac->sme);
+            if (HAL_STATUS_SUCCESS(status ))
             {
-                csrRoamLinkUp(pMac, pSession->connectedProfile.bssid);
-                smeProcessPendingQueue(pMac);
-                status = sme_AcquireGlobalLock(&pMac->sme);
-                if (HAL_STATUS_SUCCESS(status ))
-                {
-                    csrRoamDisconnect(pMac, pInfo->sessionId,
+                csrRoamDisconnect(pMac, pInfo->sessionId,
                                   eCSR_DISCONNECT_REASON_UNSPECIFIED);
-                    sme_ReleaseGlobalLock(&pMac->sme);
-                }
-            }
-            else
-            {
-                smsLog(pMac, LOGE, "%s: Session id %d is disconnected",
-                        __func__, pInfo->sessionId);
+                sme_ReleaseGlobalLock(&pMac->sme);
             }
         }
         else
         {
-            smsLog(pMac, LOGE, "%s: session not found", __func__);
+            smsLog(pMac, LOGE, "%s: Session id %d is disconnected",
+                   __func__, pInfo->sessionId);
         }
     }
-
 }
 
 eHalStatus csrRoamStartWaitForKeyTimer(tpAniSirGlobal pMac, tANI_U32 interval)
@@ -18136,6 +18134,7 @@ csrRoamIssueFTPreauthReq(tHalHandle hHal, tANI_U32 sessionId,
     {
         smsLog(pMac, LOGE,
                FL("Memory allocation for FT Preauth request failed"));
+        vos_mem_free(pftPreAuthReq);
         return eHAL_STATUS_RESOURCES;
     }
 
@@ -18211,8 +18210,12 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
    pSession->ftSmeContext.FTState = eFT_AUTH_COMPLETE;
    // Indicate SME QoS module the completion of Preauth success. This will trigger the creation of RIC IEs
    pSession->ftSmeContext.psavedFTPreAuthRsp = pFTPreAuthRsp;
-   /* No need to notify qos module if this is a non 11r roam*/
-   if (csrRoamIs11rAssoc(pMac, pFTPreAuthRsp->smeSessionId))
+   /* No need to notify qos module if this is a non 11r & ESE roam*/
+   if (csrRoamIs11rAssoc(pMac, pFTPreAuthRsp->smeSessionId)
+#if defined(FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_ESE_UPLOAD)
+       || csrRoamIsESEAssoc(pMac, pFTPreAuthRsp->smeSessionId)
+#endif
+      )
    {
       sme_QosCsrEventInd(pMac,
             pSession->ftSmeContext.smeSessionId,
@@ -18737,7 +18740,6 @@ csrRoamModifyAddIEs(tpAniSirGlobal pMac,
            FL("Failed to send eWNI_SME_UPDATE_ADDTIONAL_IES msg"
            "!!! status %d"), status);
        vos_mem_free(pLocalBuffer);
-       vos_mem_free(pModifyAddIEInd);
     }
     return status;
 }
@@ -18811,7 +18813,6 @@ csrRoamUpdateAddIEs(tpAniSirGlobal pMac,
            FL("Failed to send eWNI_SME_UPDATE_ADDTIONAL_IES msg"
            "!!! status %d"), status);
        vos_mem_free(pLocalBuffer);
-       vos_mem_free(pUpdateAddIEs);
     }
     return status;
 }

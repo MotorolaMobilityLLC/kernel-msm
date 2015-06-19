@@ -1651,9 +1651,8 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
     newChannel = (tANI_U8) pBeacon->channelNumber;
 
     if ( ( false == psessionEntry->limSentCapsChangeNtf ) &&
-        ( ( ( limIsNullSsid(&pBeacon->ssId) ) ||
-          ( ( !limIsNullSsid(&pBeacon->ssId) ) &&
-             ( false == limCmpSSid(pMac, &pBeacon->ssId, psessionEntry) ) ) ) ||
+        ( ( ( !limIsNullSsid(&pBeacon->ssId) ) &&
+             ( false == limCmpSSid(pMac, &pBeacon->ssId, psessionEntry) ) ) ||
           ( (SIR_MAC_GET_ESS(apNewCaps.capabilityInfo) !=
              SIR_MAC_GET_ESS(psessionEntry->limCurrentBssCaps) ) ||
           ( SIR_MAC_GET_PRIVACY(apNewCaps.capabilityInfo) !=
@@ -2039,13 +2038,22 @@ eHalStatus limRoamFillBssDescr(tpAniSirGlobal pMac,
      return eHAL_STATUS_RESOURCES;
    }
      vos_mem_zero(pBssDescr, sizeof(tSirBssDescription));
-   /* Length of BSS desription is without length of
-    * length itself and length of pointer
-    * that holds the next BSS description
-    */
-   pBssDescr->length = (tANI_U16)(
-                       sizeof(tSirBssDescription) - sizeof(tANI_U16) -
-                       sizeof(tANI_U32) + uLen);
+
+    /**
+     * Length of BSS desription is without length of
+     * length itself and length of pointer
+     * that holds ieFields
+     *
+     * tSirBssDescription
+     * +--------+---------------------------------+---------------+
+     * | length | other fields                    | pointer to IEs|
+     * +--------+---------------------------------+---------------+
+     *                                            ^
+     *                                            ieFields
+     */
+    pBssDescr->length = (tANI_U16)(offsetof(tSirBssDescription, ieFields[0]) -
+                                   sizeof(pBssDescr->length) + uLen);
+
    if (pParsedFrame->dsParamsPresent)
    {
      pBssDescr->channelId = pParsedFrame->channelNumber;

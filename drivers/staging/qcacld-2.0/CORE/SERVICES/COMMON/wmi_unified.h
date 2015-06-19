@@ -552,6 +552,9 @@ typedef enum {
     /** Request for getting the Firmware Memory Dump */
     WMI_GET_FW_MEM_DUMP_CMDID,
 
+    /** Request to flush of the buffered debug messages */
+    WMI_DEBUG_MESG_FLUSH_CMDID,
+
     /** ARP OFFLOAD REQUEST*/
     WMI_SET_ARP_NS_OFFLOAD_CMDID=WMI_CMD_GRP_START_ID(WMI_GRP_ARP_NS_OFL),
 
@@ -1002,6 +1005,8 @@ typedef enum {
     /** Set OCB Sched Response, deprecated */
     WMI_OCB_SET_SCHED_EVENTID,
 
+    /** event to indicate the flush of the buffered debug messages is complete*/
+    WMI_DEBUG_MESG_FLUSH_COMPLETE_EVENTID,
     /* GPIO Event */
     WMI_GPIO_INPUT_EVENTID=WMI_EVT_GRP_START_ID(WMI_GRP_GPIO),
     /** upload H_CV info WMI event
@@ -1161,6 +1166,7 @@ WMI_CHANNEL_CHANGE_CAUSE_CSA,
      } while(0)
 #define WMI_GET_CHANNEL_ANTENNA_MAX(pwmi_channel) ((pwmi_channel)->reg_info_2 & 0xff )
 
+/* max tx power is in 1 dBm units */
 #define WMI_SET_CHANNEL_MAX_TX_POWER(pwmi_channel,val) do { \
      (pwmi_channel)->reg_info_2 &= 0xffff00ff;              \
      (pwmi_channel)->reg_info_2 |= ((val&0xff)<<8);         \
@@ -2944,6 +2950,16 @@ typedef struct {
 
 /** Default value for stats if the stats collection has not started */
 #define WMI_STATS_VALUE_INVALID       0xffffffff
+
+typedef struct {
+    A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_debug_mesg_flush_fixed_param*/
+    A_UINT32 reserved0; /** placeholder for future */
+} wmi_debug_mesg_flush_fixed_param;
+
+typedef struct {
+    A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_debug_mesg_flush_complete_fixed_param*/
+    A_UINT32 reserved0; /** placeholder for future */
+} wmi_debug_mesg_flush_complete_fixed_param;
 
 typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_fw_mem_dump */

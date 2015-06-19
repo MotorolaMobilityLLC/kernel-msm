@@ -118,6 +118,7 @@ typedef struct _smeConfigParams
     tANI_U8       max_intf_count;
     tANI_BOOLEAN  enable5gEBT;
     tANI_BOOLEAN  enableSelfRecovery;
+    uint32_t      fine_time_meas_cap;
 } tSmeConfigParams, *tpSmeConfigParams;
 
 typedef enum
@@ -748,11 +749,11 @@ eHalStatus sme_RoamDisconnectSta(tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *pP
     \brief To disassociate a station. This is an asynchronous API.
     \param hHal - Global structure
     \param sessionId - sessionId of SoftAP
-    \param pPeerMacAddr - Caller allocated memory filled with peer MAC address (6 bytes)
+    \param pDelStaParams- Pointer to parameters of the station to deauthenticate
     \return eHalStatus  SUCCESS  Roam callback will be called to indicate actual results
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamDeauthSta(tHalHandle hHal, tANI_U8 sessionId,
-                                tANI_U8 *pPeerMacAddr);
+                             struct tagCsrDelStaParams *pDelStaParams);
 
 /* ---------------------------------------------------------------------------
     \fn sme_RoamTKIPCounterMeasures
@@ -4099,5 +4100,9 @@ eHalStatus sme_update_roam_scan_hi_rssi_scan_params(tHalHandle hal_handle,
 
 eHalStatus sme_wifi_start_logger(tHalHandle hal,
 		struct sir_wifi_start_log start_log);
+
+eHalStatus sme_update_nss(tHalHandle h_hal, uint8_t nss);
+
+uint8_t    sme_is_any_session_in_connected_state(tHalHandle h_hal);
 
 #endif //#if !defined( __SME_API_H )

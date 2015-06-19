@@ -453,7 +453,10 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
         if(!limIsconnectedOnDFSChannel(psessionEntry->currentOperChannel))
         {
             /*** Detected continuous Beacon Misses ***/
-             psessionEntry->LimHBFailureStatus= eANI_BOOLEAN_TRUE;
+            psessionEntry->LimHBFailureStatus= eANI_BOOLEAN_TRUE;
+
+            /*Reset the HB packet count before sending probe*/
+            limResetHBPktCount(psessionEntry);
             /**
              * Send Probe Request frame to AP to see if
              * it is still around. Wait until certain

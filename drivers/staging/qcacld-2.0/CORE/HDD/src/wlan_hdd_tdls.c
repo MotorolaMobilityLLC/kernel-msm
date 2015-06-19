@@ -397,7 +397,7 @@ static v_VOID_t wlan_hdd_tdls_discovery_timeout_peer_cb(v_PVOID_t userData)
                 mutex_unlock(&pHddCtx->tdls_lock);
                 wlan_hdd_tdls_set_peer_link_status(tmp,
                                                    eTDLS_LINK_IDLE,
-                                                   eTDLS_LINK_UNSPECIFIED);
+                                                   eTDLS_LINK_NOT_SUPPORTED);
                 mutex_lock(&pHddCtx->tdls_lock);
             }
         }
@@ -638,9 +638,17 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
     pHddCtx->tdls_scan_ctxt.reject = 0;
     pHddCtx->tdls_scan_ctxt.scan_request = NULL;
 
-    pHddCtx->max_num_tdls_sta = HDD_MAX_NUM_TDLS_STA;
+    if (pHddCtx->cfg_ini->fEnableTDLSSleepSta ||
+        pHddCtx->cfg_ini->fEnableTDLSBufferSta ||
+        pHddCtx->cfg_ini->fEnableTDLSOffChannel)
+        pHddCtx->max_num_tdls_sta = HDD_MAX_NUM_TDLS_STA_P_UAPSD_OFFCHAN;
+    else
+        pHddCtx->max_num_tdls_sta = HDD_MAX_NUM_TDLS_STA;
 
-    for (staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++)
+    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, FL("max_num_tdls_sta: %d"),
+           pHddCtx->max_num_tdls_sta);
+
+    for (staIdx = 0; staIdx < pHddCtx->max_num_tdls_sta; staIdx++)
     {
          pHddCtx->tdlsConnInfo[staIdx].staId = 0;
          pHddCtx->tdlsConnInfo[staIdx].sessionId = 255;
@@ -2928,7 +2936,7 @@ void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
 
     wlan_hdd_tdls_set_peer_link_status(curr_peer,
                                        eTDLS_LINK_TEARING,
-                                       eTDLS_LINK_DROPPED_BY_REMOTE);
+                                       eTDLS_LINK_UNSPECIFIED);
     cfg80211_tdls_oper_request(pAdapter->dev,
                                curr_peer->peerMac,
                                NL80211_TDLS_TEARDOWN,
@@ -2966,10 +2974,10 @@ void wlan_hdd_tdls_get_wifi_hal_state(hddTdlsPeer_t *curr_peer,
     switch(curr_peer->link_status)
     {
         case eTDLS_LINK_IDLE:
-        case eTDLS_LINK_DISCOVERING:
         case eTDLS_LINK_DISCOVERED:
             *state = QCA_WIFI_HAL_TDLS_ENABLED;
             break;
+        case eTDLS_LINK_DISCOVERING:
         case eTDLS_LINK_CONNECTING:
             *state = QCA_WIFI_HAL_TDLS_ENABLED;
             break;

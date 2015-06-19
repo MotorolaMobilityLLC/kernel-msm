@@ -344,5 +344,19 @@ void vos_set_wakelock_logging(bool value);
 bool vos_is_wakelock_enabled(void);
 void vos_set_ring_log_level(uint32_t ring_id, uint32_t log_level);
 enum wifi_driver_log_level vos_get_ring_log_level(uint32_t ring_id);
-
+void vos_set_multicast_logging(uint8_t value);
+uint8_t vos_is_multicast_logging(void);
+VOS_STATUS vos_set_log_completion(uint32_t is_fatal,
+		uint32_t type,
+		uint32_t sub_type);
+void vos_get_log_completion(uint32_t *is_fatal,
+		uint32_t *type,
+		uint32_t *sub_type);
+bool vos_is_log_report_in_progress(void);
+void vos_init_log_completion(void);
+void vos_deinit_log_completion(void);
+VOS_STATUS vos_flush_logs(uint32_t is_fatal,
+		uint32_t indicator,
+		uint32_t reason_code);
+void vos_logging_set_fw_flush_complete(void);
 #endif // if !defined __VOS_API_H

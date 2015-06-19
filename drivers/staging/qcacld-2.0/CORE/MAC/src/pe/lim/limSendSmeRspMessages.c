@@ -3256,6 +3256,7 @@ limProcessBeaconTxSuccessInd(tpAniSirGlobal pMac, tANI_U16 msgType, void *event)
       {
          /* Done with CSA IE update, send response back to SME */
          psessionEntry->gLimChannelSwitch.switchCount = 0;
+         psessionEntry->gLimChannelSwitch.switchMode = 0;
          psessionEntry->dfsIncludeChanSwIe = VOS_FALSE;
          psessionEntry->dfsIncludeChanWrapperIe = VOS_FALSE;
 

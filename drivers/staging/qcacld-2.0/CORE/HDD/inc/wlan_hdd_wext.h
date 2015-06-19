@@ -62,7 +62,7 @@
 
 #define MHZ 6
 
-#define WE_MAX_STR_LEN                                 1024
+#define WE_MAX_STR_LEN                                 IW_PRIV_SIZE_MASK
 #define WLAN_HDD_UI_BAND_AUTO                          0
 #define WLAN_HDD_UI_BAND_5_GHZ                         1
 #define WLAN_HDD_UI_BAND_2_4_GHZ                       2
@@ -416,6 +416,13 @@ VOS_STATUS wlan_hdd_get_station_stats(hdd_adapter_t *pAdapter);
 VOS_STATUS wlan_hdd_get_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 
 VOS_STATUS wlan_hdd_get_snr(hdd_adapter_t *pAdapter, v_S7_t *snr);
+
+int hdd_get_ldpc(hdd_adapter_t *adapter, int *value);
+int hdd_set_ldpc(hdd_adapter_t *adapter, int value);
+int hdd_get_tx_stbc(hdd_adapter_t *adapter, int *value);
+int hdd_set_tx_stbc(hdd_adapter_t *adapter, int value);
+int hdd_get_rx_stbc(hdd_adapter_t *adapter, int *value);
+int hdd_set_rx_stbc(hdd_adapter_t *adapter, int value);
 
 void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter);
 

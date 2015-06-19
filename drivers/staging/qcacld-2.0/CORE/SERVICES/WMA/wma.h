@@ -139,7 +139,7 @@
 #define WMA_HOST_ROAM_SCAN_REQID_PREFIX  0xA800
 /* Prefix used by scan requestor id on host */
 #define WMA_HOST_SCAN_REQUESTOR_ID_PREFIX 0xA000
-#define WMA_HW_DEF_SCAN_MAX_DURATION	  30000 /* 30 secs */
+#define WMA_HW_DEF_SCAN_MAX_DURATION      30000 /* 30 secs */
 
 /* Max offchannel duration */
 #define WMA_BURST_SCAN_MAX_NUM_OFFCHANNELS  (3)
@@ -739,6 +739,7 @@ typedef struct {
 #ifdef FEATURE_WLAN_D0WOW
 	atomic_t in_d0wow;
 #endif
+	vos_timer_t log_completion_timer;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1123,6 +1124,7 @@ u_int16_t get_regdmn_5g(u_int32_t reg_dmn);
 #define WMA_FW_TX_PPDU_STATS	0x4
 #define WMA_FW_TX_CONCISE_STATS 0x5
 #define WMA_FW_TX_RC_STATS	0x6
+#define WMA_FW_RX_REM_RING_BUF 0xc
 
 /*
  * Setting the Tx Comp Timeout to 1 secs.
@@ -1560,5 +1562,7 @@ static inline void wma_set_wifi_start_logger(void *wma_handle,
 	return;
 }
 #endif
+
+void wma_send_flush_logs_to_fw(tp_wma_handle wma_handle);
 
 #endif

@@ -65,6 +65,8 @@ ol_pdev_handle ol_pdev_cfg_attach(adf_os_device_t osdev,
 	cfg_ctx->rx_pn_check = 1;
 #if CFG_TGT_DEFAULT_RX_SKIP_DEFRAG_TIMEOUT_DUP_DETECTION_CHECK
 	cfg_ctx->defrag_timeout_check = 1;
+#else
+	cfg_ctx->defrag_timeout_check = 0;
 #endif
 	cfg_ctx->max_peer_id = 511;
 	cfg_ctx->max_vdev = CFG_TGT_NUM_VDEV;

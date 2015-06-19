@@ -57,8 +57,6 @@
 #define IEEE80211_CHAN_NO_80MHZ		1<<7
 #endif
 
-static v_REGDOMAIN_t cur_reg_domain = REGDOMAIN_COUNT;
-static char linux_reg_cc[2] = {0, 0};
 static v_REGDOMAIN_t temp_reg_domain = REGDOMAIN_COUNT;
 /* true if init happens thru init time driver hint */
 static v_BOOL_t init_by_driver = VOS_FALSE;
@@ -71,7 +69,7 @@ static v_BOOL_t init_by_reg_core = VOS_FALSE;
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
 #define MAX_COUNTRY_COUNT        300
-
+#define REG_WAIT_TIME            50
 /*
  * This is a set of common rules used by our world regulatory domains.
  * We have 12 world regulatory domains. To save space we consolidate
@@ -1086,7 +1084,6 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
     hdd_context_t *pHddCtx = NULL;
     struct wiphy *wiphy = NULL;
     int i;
-    int wait_result;
 
     /* sanity checks */
     if (NULL == pRegDomain)
@@ -1127,6 +1124,14 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         return VOS_STATUS_E_FAULT;
     }
 
+    wiphy = pHddCtx->wiphy;
+
+    if (false == wiphy->registered) {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   ("wiphy is not yet registered with the kernel") );
+        return VOS_STATUS_E_FAULT;
+    }
+
     temp_reg_domain = REGDOMAIN_COUNT;
     /* lookup the country in the local database */
     for (i = 0; i < countryInfoTable.countryCount &&
@@ -1153,127 +1158,37 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         temp_reg_domain = REGDOMAIN_WORLD;
     }
 
-    if (COUNTRY_QUERY == source)
-    {
+    if (COUNTRY_QUERY == source) {
         *pRegDomain = temp_reg_domain;
          return VOS_STATUS_SUCCESS;
     }
 
-    wiphy = pHddCtx->wiphy;
-
-    if (false == wiphy->registered)
-    {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                   ("wiphy is not yet registered with the kernel") );
-        return VOS_STATUS_E_FAULT;
-    }
-
-    /* We need to query the kernel to get the regulatory information
-       for this country */
-
-
-    /* First compare the country code with the existing current country code
-       . If both are same there is no need to query any database */
-
     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                    ("regdomain request"));
 
-    if ((country_code[0] == linux_reg_cc[0]) &&
-        (country_code[1] == linux_reg_cc[1])) {
+    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+               (" get country information from kernel db"));
 
-        /* country code already exists */
+    if ((COUNTRY_INIT == source) && (VOS_FALSE == init_by_reg_core)) {
+        init_by_driver = VOS_TRUE;
 
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                   (" country code already exists"));
-
-        *pRegDomain = cur_reg_domain;
-
-        return VOS_STATUS_SUCCESS;
-    }
-    else {
-
-        /* get the regulatory information from the kernel
-           database */
-
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-                   (" get country information from kernel db"));
-
-
-        if ((COUNTRY_INIT == source) && (VOS_FALSE == init_by_reg_core))
-        {
-            init_by_driver = VOS_TRUE;
-
-            INIT_COMPLETION(pHddCtx->linux_reg_req);
+        if (('0' != country_code[0]) || ('0' != country_code[1])) {
+            INIT_COMPLETION(pHddCtx->reg_init);
             regulatory_hint(wiphy, country_code);
-            wait_result = wait_for_completion_timeout(
-                &pHddCtx->linux_reg_req,
-                msecs_to_jiffies(LINUX_REG_WAIT_TIME));
-
-            /* if the country information does not exist with the kernel,
-               then the driver callback would not be called */
-
-            if (wait_result > 0) {
-
-                /* the driver callback was called. this means the country
-                   regulatory information was found in the kernel database.
-                   The callback would have updated the internal database. Here
-                   update the country and the return value for the regulatory
-                   domain */
-
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                           ("init time regulatory hint callback got called"));
-
-                *pRegDomain = temp_reg_domain;
-                cur_reg_domain = temp_reg_domain;
-                linux_reg_cc[0] = country_code[0];
-                linux_reg_cc[1] = country_code[1];
-
-                return VOS_STATUS_SUCCESS;
-            }
-            else {
-
-                /* the country information has not been found in the kernel
-                   database, return failure */
-
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                           ("init time reg hint callback not called"));
-
-                /* Set to world only if kernel never respnded before*/
-                if ((linux_reg_cc[0] == 0) && (linux_reg_cc[1] == 0))
-                {
-                   temp_reg_domain = REGDOMAIN_WORLD;
-                   cur_reg_domain = temp_reg_domain;
-
-                   if (create_linux_regulatory_entry(wiphy,
-                            pHddCtx->cfg_ini->nBandCapability) != 0)
-                   {
-                      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                            ("Error while creating regulatory entry"));
-                      return VOS_STATUS_E_FAULT;
-                   }
-                }
-                *pRegDomain = temp_reg_domain;
-
-                return VOS_STATUS_SUCCESS;
-            }
+            wait_for_completion_timeout(&pHddCtx->reg_init,
+                                        msecs_to_jiffies(REG_WAIT_TIME));
         }
-        else if (COUNTRY_IE == source || COUNTRY_USER == source)
-        {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
-            regulatory_hint_user(country_code,NL80211_USER_REG_HINT_USER);
+
+    } else if (COUNTRY_IE == source || COUNTRY_USER == source) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0)) || defined(WITH_BACKPORTS)
+        regulatory_hint_user(country_code, NL80211_USER_REG_HINT_USER);
 #else
-            regulatory_hint_user(country_code);
+        regulatory_hint_user(country_code);
 #endif
-            *pRegDomain = temp_reg_domain;
-        }
-        else if (COUNTRY_INIT == source)
-        {
-            *pRegDomain = temp_reg_domain;
-        }
+    }
 
-   }
-
-   return VOS_STATUS_SUCCESS;
+    *pRegDomain = temp_reg_domain;
+    return VOS_STATUS_SUCCESS;
 }
 
 
@@ -1587,7 +1502,6 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
             {
                 hdd_checkandupdate_phymode( pHddCtx);
             }
-            complete(&pHddCtx->linux_reg_req);
             break;
         }
 
@@ -1643,22 +1557,20 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
             hdd_checkandupdate_phymode( pHddCtx);
         }
 
-        cur_reg_domain = temp_reg_domain;
-        linux_reg_cc[0] = country_code[0];
-        linux_reg_cc[1] = country_code[1];
+        if (NL80211_REGDOM_SET_BY_DRIVER == request->initiator)
+            complete(&pHddCtx->reg_init);
 
-        if ((VOS_TRUE == init_by_reg_core) || (VOS_TRUE == init_by_driver)) {
-            /* now pass the new country information to sme */
-            if (request->alpha2[0] == '0' && request->alpha2[1] == '0')
-            {
-                sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
-                                             REGDOMAIN_COUNT);
-            }
-            else
-            {
-                sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
+
+        /* now pass the new country information to sme */
+        if (request->alpha2[0] == '0' && request->alpha2[1] == '0')
+        {
+            sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
+                                         REGDOMAIN_COUNT);
+        }
+        else
+        {
+            sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
                                          temp_reg_domain);
-            }
         }
 
         if ((VOS_FALSE == init_by_driver) &&
@@ -1741,6 +1653,8 @@ VOS_STATUS vos_init_wiphy_from_eeprom(void)
          return VOS_STATUS_E_FAULT;
       }
    }
+
+   init_completion(&pHddCtx->reg_init);
 
    /* send CTL info to firmware */
    regdmn_set_regval(&pHddCtx->reg);

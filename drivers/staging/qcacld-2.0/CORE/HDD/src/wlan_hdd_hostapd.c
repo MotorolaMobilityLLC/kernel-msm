@@ -290,11 +290,14 @@ int hdd_hostapd_stop (struct net_device *dev)
 {
    ENTER();
 
-   //Stop all tx queues
-   netif_tx_disable(dev);
+   if (NULL != dev) {
+       //Stop all tx queues
+       hddLog(LOG1, FL("Disabling queues"));
+       netif_tx_disable(dev);
 
-   //Turn OFF carrier state
-   netif_carrier_off(dev);
+       //Turn OFF carrier state
+       netif_carrier_off(dev);
+   }
 
    EXIT();
    return 0;
@@ -354,6 +357,11 @@ static int hdd_hostapd_driver_command(hdd_adapter_t *pAdapter,
 {
    tANI_U8 *command = NULL;
    int ret = 0;
+
+   if (VOS_FTM_MODE == hdd_get_conparam()) {
+        hddLog(LOGE, FL("Command not allowed in FTM mode"));
+        return -EINVAL;
+   }
 
    /*
     * Note that valid pointers are provided by caller
@@ -701,7 +709,8 @@ void hdd_clear_all_sta(hdd_adapter_t *pHostapdAdapter, v_PVOID_t usrDataForCallb
     }
 }
 
-static int hdd_stop_p2p_link(hdd_adapter_t *pHostapdAdapter,v_PVOID_t usrDataForCallback)
+static int hdd_stop_bss_link(hdd_adapter_t *pHostapdAdapter,
+                             v_PVOID_t usrDataForCallback)
 {
     struct net_device *dev;
     hdd_context_t     *pHddCtx = NULL;
@@ -725,9 +734,8 @@ static int hdd_stop_p2p_link(hdd_adapter_t *pHostapdAdapter,v_PVOID_t usrDataFor
         status = WLANSAP_StopBss((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext);
 #endif
         if (VOS_IS_STATUS_SUCCESS(status))
-        {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("Deleting P2P link!!!!!!"));
-        }
+            hddLog(LOGE, FL("Deleting SAP/P2P link!!!!!!"));
+
         clear_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags);
         wlan_hdd_decr_active_session(pHddCtx, pHostapdAdapter->device_mode);
     }
@@ -862,8 +870,10 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
 
                 //@@@ need wep logic here to set privacy bit
                 vos_status = hdd_softap_Register_BC_STA(pHostapdAdapter, pHddApCtx->uPrivacy);
-                if (!VOS_IS_STATUS_SUCCESS(vos_status))
+                if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
                     hddLog(LOGW, FL("Failed to register BC STA %d"), vos_status);
+                    hdd_stop_bss_link(pHostapdAdapter, usrDataForCallback);
+                }
             }
 #ifdef IPA_OFFLOAD
             if (hdd_ipa_is_enabled(pHddCtx))
@@ -1046,26 +1056,20 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
         case eSAP_DFS_CAC_START:
             wlan_hdd_send_svc_nlink_msg(WLAN_SVC_DFS_CAC_START_IND,
                                       &dfs_info, sizeof(struct wlan_dfs_info));
-#ifdef WLAN_FEATURE_MBSSID
             pHddCtx->dev_dfs_cac_status = DFS_CAC_IN_PROGRESS;
-#endif
             break;
 
         case eSAP_DFS_CAC_END:
             wlan_hdd_send_svc_nlink_msg(WLAN_SVC_DFS_CAC_END_IND,
                                       &dfs_info, sizeof(struct wlan_dfs_info));
             pHddApCtx->dfs_cac_block_tx = VOS_FALSE;
-#ifdef WLAN_FEATURE_MBSSID
             pHddCtx->dev_dfs_cac_status = DFS_CAC_ALREADY_DONE;
-#endif
             break;
 
         case eSAP_DFS_RADAR_DETECT:
             wlan_hdd_send_svc_nlink_msg(WLAN_SVC_DFS_RADAR_DETECT_IND,
                                       &dfs_info, sizeof(struct wlan_dfs_info));
-#ifdef WLAN_FEATURE_MBSSID
             pHddCtx->dev_dfs_cac_status = DFS_CAC_NEVER_DONE;
-#endif
             break;
 
         case eSAP_DFS_NO_AVAILABLE_CHANNEL:
@@ -1448,11 +1452,10 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             return VOS_STATUS_SUCCESS;
 
         case eSAP_MAC_TRIG_STOP_BSS_EVENT :
-            vos_status = hdd_stop_p2p_link(pHostapdAdapter, usrDataForCallback);
+            vos_status = hdd_stop_bss_link(pHostapdAdapter, usrDataForCallback);
             if (!VOS_IS_STATUS_SUCCESS(vos_status))
-            {
-                hddLog(LOGW, FL("hdd_stop_p2p_link failed %d"), vos_status);
-            }
+                hddLog(LOGW, FL("hdd_stop_bss_link failed %d"), vos_status);
+
             return VOS_STATUS_SUCCESS;
 
         case eSAP_CHANNEL_CHANGE_EVENT:
@@ -2734,6 +2737,19 @@ static iw_softap_setparam(struct net_device *dev,
                 ret = wlan_hdd_update_phymode(dev, hHal, set_value, phddctx);
                 break;
             }
+
+        case QCASAP_PARAM_LDPC:
+            ret = hdd_set_ldpc(pHostapdAdapter, set_value);
+            break;
+
+        case QCASAP_PARAM_TX_STBC:
+            ret = hdd_set_tx_stbc(pHostapdAdapter, set_value);
+            break;
+
+        case QCASAP_PARAM_RX_STBC:
+            ret = hdd_set_rx_stbc(pHostapdAdapter, set_value);
+            break;
+
         default:
             hddLog(LOGE, FL("Invalid setparam command %d value %d"),
                     sub_cmd, set_value);
@@ -2944,6 +2960,18 @@ static iw_softap_getparam(struct net_device *dev,
                         VDEV_CMD);
             break;
         }
+
+    case QCASAP_PARAM_LDPC:
+        ret = hdd_get_ldpc(pHostapdAdapter, value);
+        break;
+
+    case QCASAP_PARAM_TX_STBC:
+        ret = hdd_get_tx_stbc(pHostapdAdapter, value);
+        break;
+
+    case QCASAP_PARAM_RX_STBC:
+        ret = hdd_get_rx_stbc(pHostapdAdapter, value);
+        break;
 
     default:
         hddLog(LOGE, FL("Invalid getparam command %d"), sub_cmd);
@@ -4735,6 +4763,19 @@ static const struct iw_priv_args hostapd_private_args[] = {
         0,
         "setphymode" },
 
+    {   QCASAP_PARAM_LDPC,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "set_ldpc" },
+    {   QCASAP_PARAM_TX_STBC,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "set_tx_stbc" },
+    {   QCASAP_PARAM_RX_STBC,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "set_rx_stbc" },
+
   { QCSAP_IOCTL_GETPARAM, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "getparam" },
   { QCSAP_IOCTL_GETPARAM, 0,
@@ -4769,6 +4810,12 @@ static const struct iw_priv_args hostapd_private_args[] = {
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "getdfsnol" },
   { QCSAP_GET_ACL, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_acl_list" },
+  { QCASAP_PARAM_LDPC, 0,
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_ldpc" },
+  { QCASAP_PARAM_TX_STBC, 0,
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_tx_stbc" },
+  { QCASAP_PARAM_RX_STBC, 0,
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_rx_stbc" },
   { QCASAP_TX_CHAINMASK_CMD, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_txchainmask" },
   { QCASAP_RX_CHAINMASK_CMD, 0,

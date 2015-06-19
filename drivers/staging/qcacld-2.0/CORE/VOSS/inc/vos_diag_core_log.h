@@ -65,6 +65,7 @@ extern "C" {
 #define VOS_LOG_MAX_WOW_PTRN_SIZE                           128
 #define VOS_LOG_MAX_WOW_PTRN_MASK_SIZE                      16
 #define VOS_LOG_PKT_LOG_SIZE                                2048
+#define VOS_LOG_PKT_LOG_THRESHOLD                           40960
 
 /* Version to be updated whenever format of vos_log_pktlog_info changes */
 #define VERSION_LOG_WLAN_PKT_LOG_INFO_C                     1

@@ -76,7 +76,7 @@ hdd_TranslateWPAToCsrAuthType(u_int8_t auth_suite[4]);
 eCsrEncryptionType
 hdd_TranslateWPAToCsrEncryptionType(u_int8_t cipher_suite[4]);
 
-VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t*,v_U8_t*);
+VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t*, struct tagCsrDelStaParams*);
 void hdd_softap_sta_disassoc(hdd_adapter_t*,v_U8_t*);
 void hdd_softap_tkip_mic_fail_counter_measure(hdd_adapter_t*,v_BOOL_t);
 int hdd_softap_unpackIE( tHalHandle halHandle,

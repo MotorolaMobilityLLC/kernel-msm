@@ -7322,7 +7322,8 @@ void limHandleHeartBeatFailureTimeout(tpAniSirGlobal pMac)
 #endif
                 if (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)
                 {
-                    if ((psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE) &&
+                    if ((!LIM_IS_CONNECTION_ACTIVE(psessionEntry))&&
+                       (psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE) &&
                        (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE))
                     {
                         limLog(pMac, LOGE, FL("Probe_hb_failure: for session:%d " ),psessionEntry->peSessionId);
@@ -8104,7 +8105,7 @@ void lim_set_ht_caps(tpAniSirGlobal p_mac, tpPESession p_session_entry,
                      tANI_U8 *p_ie_start,tANI_U32 num_bytes)
 {
     v_U8_t              *p_ie=NULL;
-    tDot11fIEHTCaps     dot11_ht_cap;
+    tDot11fIEHTCaps     dot11_ht_cap = {0,};
 
     PopulateDot11fHTCaps(p_mac, p_session_entry, &dot11_ht_cap);
     p_ie = limGetIEPtr(p_mac, p_ie_start, num_bytes, DOT11F_EID_HTCAPS,
@@ -8185,8 +8186,8 @@ bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
 		tSirMacAddr a1, tpPESession session)
 {
 	if (mac_ctx == NULL || session == NULL) {
-		limLog(mac_ctx, LOGE,
-			FL("NULL pointer"));
+		VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+				"mac or session context is null");
 		/* let main routine handle it */
 		return true;
 	}
@@ -8200,4 +8201,33 @@ bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
 		return false;
 	}
 	return true;
+}
+
+/**
+ * lim_set_stads_rtt_cap() - update station node RTT capability
+ * @sta_ds: Station hash node
+ * @ext_cap: Pointer to extended capability
+ *
+ * This funciton update hash node's RTT capability based on received
+ * Extended capability IE.
+ *
+ * Return: None
+ */
+void lim_set_stads_rtt_cap(tpDphHashNode sta_ds, struct s_ext_cap *ext_cap)
+{
+	sta_ds->timingMeasCap = 0;
+	sta_ds->timingMeasCap |= (ext_cap->timingMeas)?
+				  RTT_TIMING_MEAS_CAPABILITY :
+				  RTT_INVALID;
+	sta_ds->timingMeasCap |= (ext_cap->fine_time_meas_initiator)?
+				  RTT_FINE_TIME_MEAS_INITIATOR_CAPABILITY :
+				  RTT_INVALID;
+	sta_ds->timingMeasCap |= (ext_cap->fine_time_meas_responder)?
+				  RTT_FINE_TIME_MEAS_RESPONDER_CAPABILITY :
+				  RTT_INVALID;
+
+	PELOG1(limLog(pMac, LOG1,
+	       FL("ExtCap present, timingMeas: %d Initiator: %d Responder: %d"),
+	       ext_cap->timingMeas, ext_cap->fine_time_meas_initiator,
+	       ext_cap->fine_time_meas_responder);)
 }

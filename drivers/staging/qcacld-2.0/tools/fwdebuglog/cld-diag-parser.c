@@ -665,8 +665,10 @@ parse_dbfile()
                 p += strlen("VERSION:");
                 gdiag_header->file_version = atoi(p);
             }
-            else
+            else {
+                fclose(fd);
                 return 0;
+            }
         }
         else {
             p = strtok_r(line, ",", &save);
@@ -719,8 +721,10 @@ parse_dbfile()
                 pack = strdup(pbuf);
                 free(q);
             }
-            if (!diag_insert_db(format, pack, id))
+            if (!diag_insert_db(format, pack, id)) {
+                fclose(fd);
                 return 0;
+            }
         }
         memset(line, 0 , sizeof(line));
     }
@@ -800,6 +804,7 @@ sendcnss_cmd(int sock_fd, int32_t cmd, int len, uint8_t *buf)
     nlh = malloc(NLMSG_SPACE(slot_len));
     if (nlh == NULL) {
         fprintf(stderr, "Cannot allocate memory \n");
+        free(slot_buf);
         return -1;
     }
     memset(nlh, 0, NLMSG_SPACE(slot_len));
@@ -809,7 +814,9 @@ sendcnss_cmd(int sock_fd, int32_t cmd, int len, uint8_t *buf)
     nlh->nlmsg_flags = NLM_F_REQUEST;
 
     memcpy(NLMSG_DATA(nlh), slot_buf, slot_len);
+    free(slot_buf);
 
+    memset(&msg, 0, sizeof(msg));
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
     msg.msg_name = (void *)&dest_addr;
@@ -990,11 +997,9 @@ process_diagfw_msg(uint8_t *datap, uint16_t len, uint32_t optionflag,
             }
             entry = diag_find_by_id(id);
             if (entry) {
-                if (entry->format && entry->pack) {
+                if ((payloadlen > 0) && (entry->format && entry->pack)) {
                     debug_printf("entry->format = %s pack = %s\n",
                                     entry->format, entry->pack);
-                }
-                if ((payloadlen > 0) && entry->pack) {
                     if (payloadlen < BUF_SIZ)
                         memcpy(payload_buf, payload, payloadlen);
                     else

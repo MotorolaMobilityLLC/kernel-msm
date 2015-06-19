@@ -78,7 +78,7 @@ htt_tx_attach(struct htt_pdev_t *pdev, int desc_pool_elems)
 {
     int i, pool_size;
     u_int32_t **p;
-    adf_os_dma_addr_t pool_paddr;
+    adf_os_dma_addr_t pool_paddr = {0};
 
     if (pdev->cfg.is_high_latency) {
         pdev->tx_descs.size = sizeof(struct htt_host_tx_desc_t);
@@ -98,9 +98,7 @@ htt_tx_attach(struct htt_pdev_t *pdev, int desc_pool_elems)
             + (ol_cfg_netbuf_frags_max(pdev->ctrl_pdev)+1) * 8 // 2x u_int32_t
             + 4; /* u_int32_t fragmentation list terminator */
     }
-    if (pdev->tx_descs.size < sizeof(u_int32_t *)) {
-        pdev->tx_descs.size = sizeof(u_int32_t *);
-    }
+
     /*
      * Make sure tx_descs.size is a multiple of 4-bytes.
      * It should be, but round up just to be sure.

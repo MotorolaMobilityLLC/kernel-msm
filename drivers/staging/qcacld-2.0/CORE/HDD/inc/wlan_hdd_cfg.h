@@ -1543,10 +1543,10 @@ typedef enum
 #define CFG_PPS_ENABLE_5G_EBT_FEATURE_MAX     ( 1 )
 #define CFG_PPS_ENABLE_5G_EBT_FEATURE_DEFAULT ( 0 )
 
-#define CFG_ENABLE_HYSTERETIC_MODE            "gEnableHystereticMode"
-#define CFG_ENABLE_HYSTERETIC_MODE_MIN        ( 0 )
-#define CFG_ENABLE_HYSTERETIC_MODE_MAX        ( 1 )
-#define CFG_ENABLE_HYSTERETIC_MODE_DEFAULT    ( 0 )
+#define CFG_ENABLE_MEMORY_DEEP_SLEEP          "gEnableMemDeepSleep"
+#define CFG_ENABLE_MEMORY_DEEP_SLEEP_MIN      ( 0 )
+#define CFG_ENABLE_MEMORY_DEEP_SLEEP_MAX      ( 1 )
+#define CFG_ENABLE_MEMORY_DEEP_SLEEP_DEFAULT  ( 1 )
 
 /* In cfg.dat 1=1MBPS, 2=2MBPS, 3=5_5MBPS, 4=11MBPS, 5=6MBPS, 6=9MBPS,
  * 7=12MBPS, 8=18MBPS, 9=24MBPS. But 6=9MBPS and 8=18MBPS are not basic
@@ -1564,18 +1564,28 @@ typedef enum
 #define CFG_ENABLE_PACKET_LOG_MAX        (1)
 #define CFG_ENABLE_PACKET_LOG_DEFAULT    (1)
 
+/* gFwDebugLogType takes values from enum dbglog_process_t,
+ * make default value as DBGLOG_PROCESS_NET_RAW to give the
+ * logs to net link since cnss_diag service is started at boot
+ * time by default.
+ */
 #define CFG_ENABLE_FW_LOG_TYPE            "gFwDebugLogType"
 #define CFG_ENABLE_FW_LOG_TYPE_MIN        ( 0 )
 #define CFG_ENABLE_FW_LOG_TYPE_MAX        ( 255 )
-#define CFG_ENABLE_FW_LOG_TYPE_DEFAULT    ( 0 )
+#define CFG_ENABLE_FW_LOG_TYPE_DEFAULT    ( 3 )
 
-
+/* gFwDebugLogLevel takes values from enum DBGLOG_LOG_LVL,
+ * make default value as DBGLOG_ERR to enable error logs by
+ * default.
+ */
 #define CFG_ENABLE_FW_DEBUG_LOG_LEVEL          "gFwDebugLogLevel"
 #define CFG_ENABLE_FW_DEBUG_LOG_LEVEL_MIN      ( 0 )
 #define CFG_ENABLE_FW_DEBUG_LOG_LEVEL_MAX      ( 255 )
-#define CFG_ENABLE_FW_DEBUG_LOG_LEVEL_DEFAULT  ( 0 )
+#define CFG_ENABLE_FW_DEBUG_LOG_LEVEL_DEFAULT  ( 5 )
 
-
+/* For valid values of log levels check enum DBGLOG_LOG_LVL and
+ * for valid values of module ids check enum WLAN_MODULE_ID.
+ */
 #define CFG_ENABLE_FW_MODULE_LOG_LEVEL    "gFwDebugModuleLoglevel"
 #define CFG_ENABLE_FW_MODULE_LOG_DEFAULT  ""
 
@@ -2573,6 +2583,11 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_INITIAL_DWELL_TIME_MIN             (0)
 #define CFG_INITIAL_DWELL_TIME_MAX             (100)
 
+#define CFG_INITIAL_SCAN_NO_DFS_CHNL_NAME         "gInitialScanNoDFSChnl"
+#define CFG_INITIAL_SCAN_NO_DFS_CHNL_DEFAULT      (0)
+#define CFG_INITIAL_SCAN_NO_DFS_CHNL_MIN          (0)
+#define CFG_INITIAL_SCAN_NO_DFS_CHNL_MAX          (1)
+
 #define CFG_OVERRIDE_COUNTRY_CODE                "gStaCountryCode"
 #define CFG_OVERRIDE_COUNTRY_CODE_DEFAULT        "000"
 
@@ -2707,8 +2722,8 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 /* Number of buffers to be used for WLAN logging */
 #define CFG_WLAN_LOGGING_NUM_BUF_NAME               "wlanLoggingNumBuf"
 #define CFG_WLAN_LOGGING_NUM_BUF_MIN                ( 4 )
-#define CFG_WLAN_LOGGING_NUM_BUF_MAX                ( 64 )
-#define CFG_WLAN_LOGGING_NUM_BUF_DEFAULT            ( 32 )
+#define CFG_WLAN_LOGGING_NUM_BUF_MAX                ( 512 )
+#define CFG_WLAN_LOGGING_NUM_BUF_DEFAULT            ( 256 )
 #endif /* WLAN_LOGGING_SOCK_SVC_ENABLE */
 
 #define CFG_ENABLE_SIFS_BURST                      "gEnableSifsBurst"
@@ -2831,6 +2846,39 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ROAM_SCAN_HI_RSSI_UB_MAX               (0)
 #define CFG_ROAM_SCAN_HI_RSSI_UB_DEFAULT           (-30)
 
+
+#define CFG_MULTICAST_HOST_FW_MSGS          "gMulticastHostFwMsgs"
+#define CFG_MULTICAST_HOST_FW_MSGS_MIN      (0)
+#define CFG_MULTICAST_HOST_FW_MSGS_MAX      (1)
+#define CFG_MULTICAST_HOST_FW_MSGS_DEFAULT  (1)
+
+/*
+ * fine timing measurement capability information
+ *
+ * <----- fine_time_meas_cap (in bits) ----->
+ *+----------+-----+-----+------+------+-------+-------+-----+-----+
+ *|   9-31   |  8  |  7  |   5  |   4  |   3   |   2   |  1  |  0  |
+ *+----------+-----+-----+------+------+-------+-------+-----+-----+
+ *| reserved | SAP | SAP |P2P-GO|P2P-GO|P2P-CLI|P2P-CLI| STA | STA |
+ *|          |resp |init |resp  |init  |resp   |init   |resp |init |
+ *+----------+-----+-----+------+------+-------+-------+-----+-----+
+ *
+ * resp - responder role; init- initiator role
+ *
+ * CFG_FINE_TIME_MEAS_CAPABILITY_MAX computed based on the table
+ * +-----------------+-----------------+-----------+
+ * |  Device Role    |   Initiator     | Responder |
+ * +-----------------+-----------------+-----------+
+ * |   Station       |       Y         |     N     |
+ * |   P2P-CLI       |       Y         |     Y     |
+ * |   P2P-GO        |       Y         |     Y     |
+ * |   SAP           |       N         |     Y     |
+ * +-----------------+-----------------+-----------+
+ */
+#define CFG_FINE_TIME_MEAS_CAPABILITY              "gfine_time_meas_cap"
+#define CFG_FINE_TIME_MEAS_CAPABILITY_MIN          (0x0000)
+#define CFG_FINE_TIME_MEAS_CAPABILITY_MAX          (0x00BD)
+#define CFG_FINE_TIME_MEAS_CAPABILITY_DEFAULT      (0x000D)
 
 /*---------------------------------------------------------------------------
   Type declarations
@@ -2985,6 +3033,7 @@ typedef struct
    v_U32_t        nActiveMaxChnTime;     //in units of milliseconds
 
    v_U32_t        nInitialDwellTime;     //in units of milliseconds
+   bool           initial_scan_no_dfs_chnl;
 
    v_U32_t        nActiveMinChnTimeBtc;     //in units of milliseconds
    v_U32_t        nActiveMaxChnTimeBtc;     //in units of milliseconds
@@ -3345,7 +3394,7 @@ typedef struct
    v_U8_t                      apMaxOffloadPeers;
    v_U8_t                      apMaxOffloadReorderBuffs;
    v_BOOL_t                    advertiseConcurrentOperation;
-   v_BOOL_t                    enableHystereticMode;
+   v_BOOL_t                    enableMemDeepSleep;
 
    v_U32_t                     defaultRateIndex24Ghz;
    char                        overrideCountryCode[4];
@@ -3436,6 +3485,8 @@ typedef struct
    v_BOOL_t                    gEnableDeauthToDisassocMap;
    bool                        enable_mac_spoofing;
    uint8_t                     sap_dot11mc;
+   uint8_t                     multicast_host_fw_msgs;
+   uint32_t                    fine_time_meas_cap;
 } hdd_config_t;
 
 #ifdef WLAN_FEATURE_MBSSID
@@ -3587,4 +3638,5 @@ v_VOID_t hdd_mbssid_apply_def_cfg_ini(hdd_adapter_t *pAdapter);
 #endif
 
 void print_hdd_cfg(hdd_context_t *pHddCtx);
+VOS_STATUS hdd_update_nss(hdd_context_t *hdd_ctx, uint8_t nss);
 #endif

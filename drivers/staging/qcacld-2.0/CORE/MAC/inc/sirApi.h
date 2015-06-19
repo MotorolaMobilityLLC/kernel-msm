@@ -793,10 +793,10 @@ typedef struct sSirSmeStartBssRsp
     tSirBssType         bssType;//Add new type for WDS mode
     tANI_U16            beaconInterval;//Beacon Interval for both type
     tANI_U32            staId;//Staion ID for Self
-    tSirBssDescription  bssDescription;//Peer BSS description
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
     tSirSmeHTProfile    HTProfile;
 #endif
+    tSirBssDescription  bssDescription;//Peer BSS description
 } tSirSmeStartBssRsp, *tpSirSmeStartBssRsp;
 
 
@@ -1182,10 +1182,11 @@ typedef struct sSirSmeJoinRsp
     bool tdls_chan_swit_prohibited;
 #endif
 
-    tANI_U8         frames[ 1 ];
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
     tSirSmeHTProfile    HTProfile;
 #endif
+
+    tANI_U8         frames[ 1 ];
 } tSirSmeJoinRsp, *tpSirSmeJoinRsp;
 
 /// Definition for Authentication indication from peer
@@ -5835,6 +5836,29 @@ typedef struct sAniGetLinkStatus
 #define RTT_TIMING_MEAS_CAPABILITY      0x01
 #define RTT_FINE_TIME_MEAS_INITIATOR_CAPABILITY    0x02
 #define RTT_FINE_TIME_MEAS_RESPONDER_CAPABILITY    0x03
+
+/**
+ * enum fine_time_meas_mask - bit mask to identify device's
+ *                            fine timing measurement capability
+ * @FINE_TIME_MEAS_STA_INITIATOR - STA role, Initiator capability is supported
+ * @FINE_TIME_MEAS_STA_RESPONDER - STA role, Responder capability is supported
+ * @FINE_TIME_MEAS_P2PCLI_INITIATOR - P2P-CLI supports initiator capability
+ * @FINE_TIME_MEAS_P2PCLI_RESPONDER - P2P-CLI supports responder capability
+ * @FINE_TIME_MEAS_P2PGO_INITIATOR - P2P-GO supports initiator capability
+ * @FINE_TIME_MEAS_P2PGO_RESPONDER - P2P-GO supports responder capability
+ * @FINE_TIME_MEAS_SAP_INITIATOR - SAP role, Initiator capability is supported
+ * @FINE_TIME_MEAS_SAP_RESPONDER - SAP role, Responder capability is supported
+ */
+enum fine_time_meas_mask {
+	FINE_TIME_MEAS_STA_INITIATOR    = (1 << (0)),
+	FINE_TIME_MEAS_STA_RESPONDER    = (1 << (1)),
+	FINE_TIME_MEAS_P2PCLI_INITIATOR = (1 << (2)),
+	FINE_TIME_MEAS_P2PCLI_RESPONDER = (1 << (3)),
+	FINE_TIME_MEAS_P2PGO_INITIATOR  = (1 << (4)),
+	FINE_TIME_MEAS_P2PGO_RESPONDER  = (1 << (5)),
+	FINE_TIME_MEAS_SAP_INITIATOR    = (1 << (6)),
+	FINE_TIME_MEAS_SAP_RESPONDER    = (1 << (7)),
+};
 
 /* number of neighbor reports that we can handle in Neighbor Report Response */
 #define MAX_SUPPORTED_NEIGHBOR_RPT 15

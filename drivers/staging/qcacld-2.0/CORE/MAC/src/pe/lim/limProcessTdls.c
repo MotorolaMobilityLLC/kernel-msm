@@ -2177,7 +2177,8 @@ limTdlsPopulateMatchingRateSet(tpAniSirGlobal pMac,
 static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
               tSirTdlsAddStaReq *pTdlsAddStaReq, tpPESession psessionEntry)
 {
-    tDot11fIEHTCaps htCap, *htCaps;
+    tDot11fIEHTCaps htCap = {0,};
+    tDot11fIEHTCaps *htCaps;
     tDot11fIEVHTCaps *pVhtCaps = NULL;
     tDot11fIEVHTCaps *pVhtCaps_txbf = NULL;
 #ifdef WLAN_FEATURE_11AC

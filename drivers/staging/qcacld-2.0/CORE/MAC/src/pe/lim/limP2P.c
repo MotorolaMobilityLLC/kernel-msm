@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -88,7 +88,8 @@ eHalStatus limP2PActionCnf(tpAniSirGlobal pMac, tANI_U32 txCompleteSuccess);
  * P2P of limSetLinkState
  *
  *------------------------------------------------------------------*/
-void limSetLinkStateP2PCallback(tpAniSirGlobal pMac, void *callbackArg)
+void limSetLinkStateP2PCallback(tpAniSirGlobal pMac, void *callbackArg,
+            bool status)
 {
     //Send Ready on channel indication to SME
     if(pMac->lim.gpLimRemainOnChanReq)

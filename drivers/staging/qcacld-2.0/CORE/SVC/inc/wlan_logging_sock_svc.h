@@ -45,5 +45,18 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf);
 int wlan_logging_sock_deactivate_svc(void);
 int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length);
 void wlan_logging_set_per_pkt_stats(void);
-
+void wlan_logging_set_log_level(void);
+void wlan_logging_set_fw_flush_complete(void);
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void wlan_report_log_completion(uint32_t is_fatal,
+		uint32_t indicator,
+		uint32_t reason_code);
+#else
+static inline void wlan_report_log_completion(uint32_t is_fatal,
+		uint32_t indicator,
+		uint32_t reason_code)
+{
+	return;
+}
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 #endif /* WLAN_LOGGING_SOCK_SVC_H */

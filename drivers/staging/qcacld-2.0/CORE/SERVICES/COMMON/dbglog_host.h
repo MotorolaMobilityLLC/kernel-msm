@@ -45,6 +45,7 @@ extern "C" {
 #define CONSOLE_FLAG           0x02
 #define QXDM_FLAG              0x04
 #define SILENT_FLAG            0x08
+#define DEBUG_FLAG             0x10
 
 #define ATH6KL_FWLOG_PAYLOAD_SIZE              1500
 

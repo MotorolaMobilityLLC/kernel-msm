@@ -589,6 +589,7 @@ int pktlog_send_per_pkt_stats_to_user(void)
 		vos_get_context(VOS_MODULE_ID_TXRX, vos);
 	struct ath_pktlog_info *pl_info;
 	bool read_complete;
+	uint32_t num_bytes_read = 0;
 
 	/*
 	 * We do not want to do this packet stats related processing when
@@ -684,6 +685,19 @@ int pktlog_send_per_pkt_stats_to_user(void)
 			WLAN_VOS_DIAG_LOG_REPORT(pktlog);
 		} else {
 			vos_mem_free(pktlog);
+		}
+		num_bytes_read += ret_val;
+		/*
+		 * If the logger thread is scheduled late and the proc entry
+		 * is having too much data to be read, we might start to starve
+		 * the other threads if we continuously keep reading the proc
+		 * entry. So, having a threshold to break this read from proc
+		 * entry.
+		 */
+		if (num_bytes_read > VOS_LOG_PKT_LOG_THRESHOLD) {
+			read_complete = true;
+			printk(PKTLOG_TAG " %s: Break read to prevent starve\n",
+				__func__);
 		}
 	} while (read_complete == false);
 

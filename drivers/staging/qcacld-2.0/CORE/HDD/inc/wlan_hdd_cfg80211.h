@@ -223,6 +223,7 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_GET_WIFI_CONFIGURATION = 75,
 
     QCA_NL80211_VENDOR_SUBCMD_GET_LOGGER_FEATURE_SET = 76,
+    QCA_NL80211_VENDOR_SUBCMD_GET_RING_DATA = 77,
     QCA_NL80211_VENDOR_SUBCMD_TDLS_GET_CAPABILITIES = 78,
 
 };
@@ -1404,6 +1405,22 @@ enum qca_wlan_vendor_attr_wifi_logger_start {
 		QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_START_AFTER_LAST - 1,
 };
 
+/*
+ * enum qca_wlan_vendor_attr_wifi_logger_get_ring_data - Get ring data
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_INVALID: Invalid attribute
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_ID: Ring ID
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_AFTER_LAST: Last value
+ * @QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_MAX: Max value
+ */
+enum qca_wlan_vendor_attr_wifi_logger_get_ring_data {
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_ID = 1,
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_MAX =
+		QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_AFTER_LAST - 1,
+};
+
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );
@@ -1472,8 +1489,14 @@ void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel);
 
 v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(v_U8_t *pIes, int length, v_U8_t eid);
 
+#ifdef CFG80211_DEL_STA_V2
 int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
-                                         struct net_device *dev, u8 *mac);
+                                  struct net_device *dev,
+                                  struct station_del_parameters *param);
+#else
+int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
+                                  struct net_device *dev, u8 *mac);
+#endif
 
 #if  defined(QCA_WIFI_FTM)     && defined(CONFIG_NL80211_TESTMODE)
 void wlan_hdd_testmode_rx_event(void *buf, size_t buf_len);

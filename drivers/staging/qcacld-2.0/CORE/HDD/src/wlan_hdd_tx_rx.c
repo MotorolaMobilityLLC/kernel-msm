@@ -431,7 +431,12 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
        if( (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK)
                                        == HDD_FRAME_SUBTYPE_DEAUTH )
        {
-          hdd_softap_sta_deauth( pAdapter, hdr->addr1 );
+          struct tagCsrDelStaParams delStaParams;
+
+          WLANSAP_PopulateDelStaParams(hdr->addr1,
+                                     eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
+                                    (SIR_MAC_MGMT_DEAUTH >> 4), &delStaParams);
+          hdd_softap_sta_deauth (pAdapter, &delStaParams);
           goto mgmt_handled;
        }
        else if( (hdr->frame_control & HDD_FRAME_SUBTYPE_MASK)
@@ -751,6 +756,15 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 #endif
 
    ++pAdapter->hdd_stats.hddTxRxStats.txXmitCalled;
+
+   if(vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
+       VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_WARN,
+            "LOPG in progress, dropping the packet\n");
+       ++pAdapter->stats.tx_dropped;
+       ++pAdapter->hdd_stats.hddTxRxStats.txXmitDropped;
+       kfree_skb(skb);
+       return NETDEV_TX_OK;
+   }
 
    if (WLAN_HDD_IBSS == pAdapter->device_mode)
    {

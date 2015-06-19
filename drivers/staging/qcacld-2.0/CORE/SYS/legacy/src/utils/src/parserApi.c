@@ -850,32 +850,21 @@ PopulateDot11fVHTCaps(tpAniSirGlobal           pMac,
                          nCfgValue );
 
         pDot11f->ldpcCodingCap = (nCfgValue & 0x0001);
-        /* In AP mode set the SGI80 based on channel bandwidth */
-        if (psessionEntry->vhtTxChannelWidthSet !=
-                            WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ)
-            pDot11f->shortGI80MHz= 0;
-        else {
-            nCfgValue = 0;
-            if (psessionEntry->htConfig.ht_sgi)
-                CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SHORT_GI_80MHZ,
-                             nCfgValue );
 
-            pDot11f->shortGI80MHz= (nCfgValue & 0x0001);
-        }
+        nCfgValue = 0;
+        if (psessionEntry->htConfig.ht_sgi)
+            CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SHORT_GI_80MHZ,
+                         nCfgValue );
 
-        /* In AP mode set the SGI 160/(80+80) based on channel bandwidth */
-        if (psessionEntry->vhtTxChannelWidthSet <
-                            WNI_CFG_VHT_CHANNEL_WIDTH_160MHZ)
-            pDot11f->shortGI160and80plus80MHz = 0;
-        else {
-            nCfgValue = 0;
-            if (psessionEntry->htConfig.ht_sgi)
-                CFG_GET_INT( nStatus, pMac,
-                             WNI_CFG_VHT_SHORT_GI_160_AND_80_PLUS_80MHZ,
-                             nCfgValue );
+        pDot11f->shortGI80MHz= (nCfgValue & 0x0001);
 
-             pDot11f->shortGI160and80plus80MHz = (nCfgValue & 0x0001);
-        }
+        nCfgValue = 0;
+        if (psessionEntry->htConfig.ht_sgi)
+            CFG_GET_INT( nStatus, pMac,
+                         WNI_CFG_VHT_SHORT_GI_160_AND_80_PLUS_80MHZ,
+                         nCfgValue );
+
+        pDot11f->shortGI160and80plus80MHz = (nCfgValue & 0x0001);
 
         nCfgValue = 0;
         if (psessionEntry->htConfig.ht_tx_stbc)
@@ -1117,7 +1106,17 @@ PopulateDot11fExtCap(tpAniSirGlobal   pMac,
 
     if (val)   // If set to true then set RTTv3
     {
-       p_ext_cap->fine_time_meas_initiator = 1;
+        if (LIM_IS_STA_ROLE(psessionEntry)) {
+            p_ext_cap->fine_time_meas_initiator =
+              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_STA_INITIATOR) ? 1 : 0;
+            p_ext_cap->fine_time_meas_responder =
+              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_STA_RESPONDER) ? 1 : 0;
+        } else if (LIM_IS_AP_ROLE(psessionEntry)) {
+            p_ext_cap->fine_time_meas_initiator =
+              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_SAP_INITIATOR) ? 1 : 0;
+            p_ext_cap->fine_time_meas_responder =
+              (pMac->fine_time_meas_cap & FINE_TIME_MEAS_SAP_RESPONDER) ? 1 : 0;
+        }
     }
 
 #ifdef QCA_HT_2040_COEX
@@ -1838,6 +1837,7 @@ void PopulateDot11fReAssocTspec(tpAniSirGlobal pMac, tDot11fReAssocRequest *pRea
     if (numTspecs) {
         for (idx=0; idx<numTspecs; idx++) {
             PopulateDot11fWMMTSPEC(&pTspec->tspec, &pReassoc->WMMTSPEC[idx]);
+            pTspec->tspec.mediumTime = 0;
             pTspec++;
         }
     }
@@ -2591,8 +2591,9 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
 
         p_ext_cap = (struct s_ext_cap *)&pAssocReq->ExtCap.bytes;
         limLog(pMac, LOG1,
-               FL("ExtCap is present, timingMeas: %d, ftm_initiator: %d"),
-               p_ext_cap->timingMeas, p_ext_cap->fine_time_meas_initiator);
+               FL("ExtCap present, timingMeas: %d Initiator: %d Responder: %d"),
+               p_ext_cap->timingMeas, p_ext_cap->fine_time_meas_initiator,
+               p_ext_cap->fine_time_meas_responder);
     }
     vos_mem_free(ar);
     return eSIR_SUCCESS;
@@ -2783,8 +2784,9 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
                      ar.ExtCap.num_bytes);
         p_ext_cap = (struct s_ext_cap *)&pAssocRsp->ExtCap.bytes;
         limLog(pMac, LOG1,
-               FL("ExtCap is present, timingMeas: %d, ftm_initiator: %d"),
-               p_ext_cap->timingMeas, p_ext_cap->fine_time_meas_initiator);
+               FL("ExtCap present, timingMeas: %d Initiator: %d Responder: %d"),
+               p_ext_cap->timingMeas, p_ext_cap->fine_time_meas_initiator,
+               p_ext_cap->fine_time_meas_responder);
     }
 
     if ( ar.QosMapSet.present )
@@ -2982,8 +2984,9 @@ sirConvertReassocReqFrame2Struct(tpAniSirGlobal pMac,
         vos_mem_copy(&pAssocReq->ExtCap.bytes, &ar.ExtCap.bytes,
                      ar.ExtCap.num_bytes);
         limLog(pMac, LOG1,
-               FL("ExtCap is present, timingMeas: %d, ftm_initiator: %d"),
-               p_ext_cap->timingMeas, p_ext_cap->fine_time_meas_initiator);
+               FL("ExtCap present, timingMeas: %d Initiator: %d Responder: %d"),
+               p_ext_cap->timingMeas, p_ext_cap->fine_time_meas_initiator,
+               p_ext_cap->fine_time_meas_responder);
     }
 
     return eSIR_SUCCESS;

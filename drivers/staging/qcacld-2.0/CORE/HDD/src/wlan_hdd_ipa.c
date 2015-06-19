@@ -2194,16 +2194,14 @@ static void hdd_ipa_i2w_cb(void *priv, enum ipa_dp_evt_type evt,
 	adf_nbuf_t skb;
 	struct hdd_ipa_pm_tx_cb *pm_tx_cb = NULL;
 
+	iface_context = (struct hdd_ipa_iface_context *) priv;
 	if (evt != IPA_RECEIVE) {
 		skb = (adf_nbuf_t) data;
 		dev_kfree_skb_any(skb);
 		iface_context->stats.num_tx_drop++;
 		return;
 	}
-
-	iface_context = (struct hdd_ipa_iface_context *) priv;
 	ipa_tx_desc = (struct ipa_rx_data *)data;
-
 	hdd_ipa = iface_context->hdd_ipa;
 
 	/*

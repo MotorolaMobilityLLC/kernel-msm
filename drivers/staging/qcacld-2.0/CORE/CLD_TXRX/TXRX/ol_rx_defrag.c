@@ -448,14 +448,17 @@ ol_rx_defrag_waitlist_remove(
     struct ol_txrx_pdev_t *pdev = peer->vdev->pdev;
     struct ol_rx_reorder_t *rx_reorder = &peer->tids_rx_reorder[tid];
 
-    if (rx_reorder->defrag_waitlist_elem.tqe_next != NULL ||
-        rx_reorder->defrag_waitlist_elem.tqe_prev != NULL) {
+    if (rx_reorder->defrag_waitlist_elem.tqe_prev != NULL) {
 
         TAILQ_REMOVE(&pdev->rx.defrag.waitlist, rx_reorder,
                 defrag_waitlist_elem);
 
         rx_reorder->defrag_waitlist_elem.tqe_next = NULL;
         rx_reorder->defrag_waitlist_elem.tqe_prev = NULL;
+    } else if (rx_reorder->defrag_waitlist_elem.tqe_next != NULL) {
+        TXRX_PRINT(TXRX_PRINT_LEVEL_FATAL_ERR, "waitlist->tqe_prv = NULL\n");
+        VOS_ASSERT(0);
+        rx_reorder->defrag_waitlist_elem.tqe_next = NULL;
     }
 }
 
