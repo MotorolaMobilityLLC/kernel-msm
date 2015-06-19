@@ -35,7 +35,11 @@
 #include <linux/reboot.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+#include "touchx.h"
+#endif
 #include <linux/pinctrl/consumer.h>
+#include <linux/mmi_hall_notifier.h>
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
@@ -43,6 +47,10 @@
 #define DRIVER_NAME "synaptics_dsx_i2c"
 #define INPUT_PHYS_NAME "synaptics_dsx_i2c/input0"
 #define TYPE_B_PROTOCOL
+
+#define RMI4_WAIT_READY 0
+#define RMI4_HW_RESET 1
+#define RMI4_SW_RESET 2
 
 #define NO_0D_WHILE_2D
 /*
@@ -77,15 +85,16 @@
 #define F12_STD_CTRL_LEN 4
 #define F12_STD_DATA_LEN 80
 
-#define CTRL_TYPE (0 << 8)
-#define DATA_TYPE (1 << 8)
-
 #define RESET_GPIO_NAME "touch_reset"
 #define IRQ_GPIO_NAME "touch_irq"
 
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
 #define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+static int folio_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data);
+#endif
 static void synaptics_dsx_resumeinfo_start(
 		struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_dsx_resumeinfo_finish(
@@ -366,6 +375,16 @@ static struct synaptics_rmi4_packet_reg f01_ctrl_reg_array[] = {
 	RMI4_REG_STATIC(9, f01_c9, 1),
 };
 
+static struct {
+	struct {
+		unsigned short saturation_cap;
+	} __packed;
+} f54_c2_0;
+
+static struct synaptics_rmi4_subpkt f54_c2[] = {
+	RMI4_SUBPKT(f54_c2_0),
+};
+
 static struct f54_control_95n f54_c95_0, f54_c95_1, f54_c95_2,
 	f54_c95_3, f54_c95_4, f54_c95_5, f54_c95_6, f54_c95_7;
 
@@ -381,33 +400,93 @@ static struct synaptics_rmi4_subpkt f54_c95[] = {
 };
 
 static struct synaptics_rmi4_packet_reg f54_ctrl_reg_array[] = {
+	RMI4_REG(2, f54_c2),
 	RMI4_REG(95, f54_c95),
 };
 
-struct f51_c1_type {
-	unsigned char freq_hop:1;
-	unsigned char nm_switch:1;
-	unsigned char im_reset:1;
-	unsigned char unused:5;
-} __packed;
+static struct {
+	unsigned char command;
+} f54_m0_0;
+
+static struct synaptics_rmi4_subpkt f54_m0[] = {
+	RMI4_SUBPKT(f54_m0_0),
+};
+
+static struct synaptics_rmi4_packet_reg f54_cmd_reg_array[] = {
+	RMI4_REG(0, f54_m0),
+};
+
+static struct {
+	unsigned char dynamic_supp_xy;
+} f51_c0_0;
 
 static struct {
 	union {
 		struct {
-			unsigned char dynamic_supp_xy;
-			struct f51_c1_type f51_intr_en;
+		unsigned char freq_hop:1;
+		unsigned char nm_switch:1;
+		unsigned char im_reset:1;
+		unsigned char unused:5;
 		} __packed;
-		unsigned char data[2];
+		unsigned char data[1];
 	};
-} f51_c0_0;
+} f51_c0_1;
 
 static struct synaptics_rmi4_subpkt f51_c0[] = {
 	RMI4_SUBPKT(f51_c0_0),
+	RMI4_SUBPKT(f51_c0_1),
 };
 
 static struct synaptics_rmi4_packet_reg f51_ctrl_reg_array[] = {
 	RMI4_REG(0, f51_c0),
 };
+
+
+#define CTRL_TYPE	(0 << 8)
+#define DATA_TYPE	(1 << 8)
+#define QUERY_TYPE	(2 << 8)
+#define COMMAND_TYPE	(3 << 8)
+
+static inline int register_ascii_to_type(unsigned char *symbol)
+{
+	int reg_type = CTRL_TYPE;
+	switch (*symbol) {
+	case 'Q':
+		reg_type = QUERY_TYPE;
+			break;
+	case 'D':
+		reg_type = DATA_TYPE;
+			break;
+	case 'M':
+		reg_type = COMMAND_TYPE;
+			break;
+	case 'C':
+			break;
+	default: return reg_type;
+	}
+	*symbol = '\0';
+	return reg_type;
+}
+
+static inline unsigned char register_type_to_ascii(int type)
+{
+	unsigned char ascii;
+	switch (type) {
+	case QUERY_TYPE:
+		ascii = 'Q';
+			break;
+	case DATA_TYPE:
+		ascii = 'D';
+			break;
+	case COMMAND_TYPE:
+		ascii = 'M';
+			break;
+	case CTRL_TYPE:
+	default:
+		ascii = 'C';
+	}
+	return ascii;
+}
 
 static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 	{
@@ -437,6 +516,13 @@ static struct synaptics_rmi4_func_packet_regs synaptics_cfg_regs[] = {
 		.query_offset = 0,	/* does not matter */
 		.nr_regs = ARRAY_SIZE(f54_ctrl_reg_array),
 		.regs = f54_ctrl_reg_array,
+	},
+	{
+		.f_number = SYNAPTICS_RMI4_F54 | COMMAND_TYPE,
+		.base_addr = 0,
+		.query_offset = 0,	/* does not matter */
+		.nr_regs = ARRAY_SIZE(f54_cmd_reg_array),
+		.regs = f54_cmd_reg_array,
 	},
 	{
 		.f_number = SYNAPTICS_RMI4_F51,
@@ -500,12 +586,14 @@ static int parse_patch_data(char *value_p, u8 data[], long *bitmask_v)
 static int synaptics_dsx_parse_patch(int func, char *query,
 		struct synaptics_dsx_patch *patch_ptr, bool expect_data)
 {
-	int i, error, num_of_bytes;
+	int i, error, rt_mod, function, num_of_bytes;
 	u8 data[64];
 	char *next, *subpkt_p, *value_p, *pair = query;
 	long regstr_v, bitmask_v, subpkt_v;
 	struct synaptics_dsx_func_patch *patch;
 
+	rt_mod = func & 0xf00;
+	function = func & 0xff;
 	for (i = 0; pair; pair = next, i++) {
 		num_of_bytes = 0;
 		bitmask_v = subpkt_v = 0L;
@@ -515,7 +603,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		value_p = strpbrk(pair, "=");
 		if (!value_p) {
 			pr_err("F%x[%d]: invalid syntax '%s'\n",
-				func, i, pair);
+				function, i, pair);
 			continue;
 		}
 
@@ -528,7 +616,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			error = kstrtol(subpkt_p, 10, &subpkt_v);
 			if (error) {
 				pr_err("F%x[%d]: subpacket conv error\n",
-					func, i);
+					function, i);
 				continue;
 			}
 		}
@@ -536,7 +624,7 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 		error = kstrtol(pair, 10, &regstr_v);
 		if (error) {
 			pr_err("F%x[%d]: register conv error\n",
-				func, i);
+				function, i);
 			continue;
 		}
 
@@ -544,9 +632,9 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			num_of_bytes = parse_patch_data(
 						++value_p, data, &bitmask_v);
 		/* primitive data validation */
-		if (func <= 0 || func > 255 ||
+		if (function <= 0 || function > 255 ||
 		    regstr_v < 0 || regstr_v > 255) {
-			pr_err("F%x[%d]: invalid values\n", func, i);
+			pr_err("F%x[%d]: invalid values\n", function, i);
 			continue;
 		}
 
@@ -565,14 +653,14 @@ static int synaptics_dsx_parse_patch(int func, char *query,
 			memcpy(patch->data, data, num_of_bytes);
 		}
 
-		patch->func = (u8)func;
+		patch->func = (u16)func;
 		patch->regstr = (u8)regstr_v;
 		patch->subpkt = (u8)subpkt_v;
 		patch->size = (u8)num_of_bytes;
 		patch->bitmask = (u8)bitmask_v;
 
 		pr_debug("F%x[%d], register %d, subpkt %d, size %d, mask %x\n",
-			patch->func, i, patch->regstr, patch->subpkt,
+			function, i, patch->regstr, patch->subpkt,
 			patch->size, patch->bitmask);
 		patch_ptr->cfg_num++;
 		list_add_tail(&patch->link, &patch_ptr->cfg_head);
@@ -600,7 +688,7 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 	long number_v;
 	char *patch_string;
 	char *config_p, *next, *patch_set;
-	int i, error;
+	int i, error, rt_mod = 0;
 
 	patch_string = kstrdup(patch_ptr, GFP_KERNEL);
 	for (i = 0, patch_set = patch_string; patch_set; patch_set = next) {
@@ -616,6 +704,9 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 			continue;
 		}
 
+		rt_mod = register_ascii_to_type(config_p-1);
+		dev_dbg(dev, "register type modifier %d\n", rt_mod);
+
 		/* strip non digits */
 		*config_p++ = '\0';
 
@@ -625,7 +716,7 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 			continue;
 		}
 
-		error = synaptics_dsx_parse_patch((int)number_v,
+		error = synaptics_dsx_parse_patch((int)number_v + rt_mod,
 					config_p, patch, expect_data);
 		if (error < 0) {
 			dev_err(dev, "invalid patch; parse error %d\n", error);
@@ -644,6 +735,10 @@ static void synaptics_dsx_parse_string(struct synaptics_rmi4_data *data,
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
 #define NR_SUBPKT_PRESENCE_BITS 7
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+struct touchxs touchxp;
+EXPORT_SYMBOL(touchxp);
+#endif
 
 static struct synaptics_rmi4_func_packet_regs *find_function(int f_number)
 {
@@ -831,7 +926,9 @@ int synaptics_rmi4_read_packet_reg(
 		return -ENOENT;
 	}
 
-	pr_debug("F%02x reading r%d{%X}, size %d to @%p\n", regs->f_number,
+	pr_debug("F%02x%c reading r%d{%X}, size %d to @%p\n",
+			regs->f_number & 0xff,
+			register_type_to_ascii(regs->f_number & 0xf00),
 			reg->r_number, regs->base_addr + reg->offset,
 			reg->size, reg->data);
 
@@ -876,8 +973,9 @@ int synaptics_rmi4_read_packet_regs(
 	int retval = 0;
 
 	for (r = 0; r < regs->nr_regs; ++r) {
-		pr_debug("about to read F%02x register %d [%d/%d]\n",
-				regs->f_number,
+		pr_debug("about to read F%02x%c register %d [%d/%d]\n",
+				regs->f_number & 0xff,
+				register_type_to_ascii(regs->f_number & 0xf00),
 				regs->regs[r].r_number,
 				regs->regs[r].expected,
 				regs->regs[r].offset >= 0);
@@ -1465,8 +1563,75 @@ static irqreturn_t synaptics_dsx_reset_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+int synaptics_rmi4_sw_reset(struct synaptics_rmi4_data *rmi4_data,
+				bool requery) {
+	int retval;
+	unsigned char page_number;
+	unsigned short pdt_entry_addr;
+	struct synaptics_rmi4_fn_desc rmi_fd;
+	unsigned short cmd_reg_addr;
+	bool cmd_reg_found = false;
+
+	if (!requery) {
+		cmd_reg_addr = rmi4_data->f01_cmd_base_addr;
+		cmd_reg_found = true;
+		goto sw_reset;
+	}
+
+	for (page_number = 0; !cmd_reg_found && page_number < PAGES_TO_SERVICE;
+			page_number++) {
+		for (pdt_entry_addr = PDT_START; pdt_entry_addr > PDT_END;
+				pdt_entry_addr -= PDT_ENTRY_SIZE) {
+			pdt_entry_addr |= (page_number << 8);
+
+			retval = synaptics_rmi4_i2c_read(rmi4_data,
+					pdt_entry_addr,
+					(unsigned char *)&rmi_fd,
+					sizeof(rmi_fd));
+			if (retval < 0)
+				return retval;
+
+			if (rmi_fd.fn_number == 0) {
+				dev_dbg(&rmi4_data->i2c_client->dev,
+						"%s: Reached end of PDT\n",
+						__func__);
+				break;
+			}
+
+			dev_dbg(&rmi4_data->i2c_client->dev,
+					"%s: F%02x found (page %d)\n",
+					__func__, rmi_fd.fn_number,
+					page_number);
+
+			if (rmi_fd.fn_number == SYNAPTICS_RMI4_F01) {
+				cmd_reg_addr = rmi_fd.cmd_base_addr;
+				cmd_reg_found = true;
+				break;
+			}
+		}
+	}
+
+sw_reset:
+	if (cmd_reg_found) {
+		uint8_t command = 1;
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+			cmd_reg_addr,
+			&command, sizeof(command));
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to issue SW reset command, error = %d\n",
+				__func__, retval);
+			return retval;
+		}
+		return 0;
+	} else
+		return -ENOENT;
+
+}
+
+
 static int synaptics_dsx_ic_reset(
-		struct synaptics_rmi4_data *rmi4_data, bool hw_reset)
+		struct synaptics_rmi4_data *rmi4_data, int reset)
 {
 	int retval;
 	unsigned long start = jiffies;
@@ -1475,9 +1640,13 @@ static int synaptics_dsx_ic_reset(
 
 	sema_init(&reset_semaphore, 0);
 
-	if (hw_reset) {
+	if (reset == RMI4_HW_RESET) {
 		gpio_set_value(platform_data->reset_gpio, 0);
 		udelay(1500);
+	} else if (reset == RMI4_SW_RESET) {
+		retval = synaptics_rmi4_sw_reset(rmi4_data, true);
+		if (retval < 0)
+			return retval;
 	}
 
 	retval = request_irq(rmi4_data->irq, synaptics_dsx_reset_irq,
@@ -1488,7 +1657,7 @@ static int synaptics_dsx_ic_reset(
 				"%s: Failed to request irq: %d\n",
 				__func__, retval);
 
-	if (hw_reset)
+	if (reset == RMI4_HW_RESET)
 		gpio_set_value(platform_data->reset_gpio, 1);
 
 	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(100));
@@ -1503,6 +1672,10 @@ static int synaptics_dsx_ic_reset(
 	}
 
 	free_irq(rmi4_data->irq, &reset_semaphore);
+
+	/* perform SW reset if HW reset failed */
+	if (reset != RMI4_SW_RESET && retval == -ETIMEDOUT)
+		retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_SW_RESET);
 
 	return retval;
 }
@@ -1530,27 +1703,29 @@ static void synaptics_dsx_patch_func(
 		int f_number,
 		struct synaptics_dsx_patch *patch)
 {
-	int r, error;
-	unsigned char *value;
+	int r, error, function;
+	unsigned char *value, rt_mod;
 	struct device *dev = &rmi4_data->i2c_client->dev;
 	struct synaptics_rmi4_subpkt *subpkt;
 	struct synaptics_dsx_func_patch *fp;
 	struct synaptics_rmi4_packet_reg *reg;
-	struct synaptics_rmi4_func_packet_regs *regs =
-				find_function(f_number);
+	struct synaptics_rmi4_func_packet_regs *regs = find_function(f_number);
 
-	pr_debug("patching F%x\n", regs->f_number & 0x7f);
+	function = regs->f_number & 0xff;
+	rt_mod = register_type_to_ascii(regs->f_number & 0xf00);
+	pr_debug("patching F%x%c\n",  function, rt_mod);
 	list_for_each_entry(fp, &patch->cfg_head, link) {
 		if (fp->func != f_number)
 			continue;
 		reg = find_packet_reg(regs, fp->regstr);
 		if (!reg || reg->offset < 0) {
-			pr_err("F%x@%d not present\n", f_number, fp->regstr);
+			pr_err("F%x%c@%d not present\n",
+				function, rt_mod, fp->regstr);
 			continue;
 		}
 		if (fp->subpkt >= reg->nr_subpkts) {
-			pr_err("F%x@%d:%d not present\n",
-				f_number, fp->regstr, fp->subpkt);
+			pr_err("F%x%c@%d:%d not present\n",
+				function, rt_mod, fp->regstr, fp->subpkt);
 			continue;
 		}
 
@@ -1563,8 +1738,8 @@ static void synaptics_dsx_patch_func(
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 			{
 				int ss, kk;
-				pr_debug("F%x@%d before patching:\n",
-					regs->f_number, reg->r_number);
+				pr_debug("F%x%c@%d before patching:\n",
+					function, rt_mod, reg->r_number);
 				for (ss = 0; ss < reg->nr_subpkts; ss++) {
 					subpkt = reg->subpkt + ss;
 					for (kk = 0; kk < subpkt->size; ++kk)
@@ -1580,8 +1755,8 @@ static void synaptics_dsx_patch_func(
 		subpkt = reg->subpkt + fp->subpkt;
 		if (!subpkt->present || !subpkt->data ||
 			subpkt->size < fp->size) {
-			pr_debug("F%x@%d:%d improperly allocated\n",
-				f_number, fp->regstr, fp->subpkt);
+			pr_debug("F%x%c@%d:%d improperly allocated\n",
+				function, rt_mod, fp->regstr, fp->subpkt);
 			continue;
 		}
 		if (fp->bitmask && fp->size == 1) {
@@ -1597,8 +1772,8 @@ static void synaptics_dsx_patch_func(
 		/* value has been changed */
 		reg->modified = true;
 
-		dev_dbg(dev, "patched F%x@%d:%d, sz=%d\n",
-			f_number, fp->regstr, fp->subpkt, fp->size);
+		dev_dbg(dev, "patched F%x%c@%d:%d, sz=%d\n",
+			function, rt_mod, fp->regstr, fp->subpkt, fp->size);
 	}
 
 	/* update loop */
@@ -1608,8 +1783,8 @@ static void synaptics_dsx_patch_func(
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
 			{
 				int ss, kk;
-				pr_debug("F%x@%d after patching:\n",
-						regs->f_number, reg->r_number);
+				pr_debug("F%x%c@%d after patching:\n",
+						function, rt_mod, reg->r_number);
 				for (ss = 0; ss < reg->nr_subpkts; ss++) {
 					subpkt = reg->subpkt + ss;
 					for (kk = 0; kk < subpkt->size; ++kk)
@@ -1621,8 +1796,8 @@ static void synaptics_dsx_patch_func(
 			error = synaptics_rmi4_write_packet_reg(rmi4_data,
 							regs, reg->r_number);
 			if (error < 0)
-				dev_warn(dev, "F%x@%d patch write failed\n",
-						f_number, reg->r_number);
+				dev_warn(dev, "F%x%c@%d patch write failed\n",
+					function, rt_mod, reg->r_number);
 			reg->modified = false;
 		}
 		reg->updated = false;
@@ -1647,6 +1822,7 @@ static inline void synaptics_dsx_set_alternate_mode(
 	rmi4_data->current_mode = mode;
 	if (wakeable)
 		synaptics_dsx_enable_wakeup_source(rmi4_data, true);
+	pr_debug("set alternate mode\n");
 }
 
 static inline void synaptics_dsx_restore_default_mode(
@@ -1657,6 +1833,7 @@ static inline void synaptics_dsx_restore_default_mode(
 	rmi4_data->mode_is_wakeable = false;
 	rmi4_data->mode_is_persistent = true;
 	rmi4_data->current_mode = rmi4_data->default_mode;
+	pr_debug("set default mode\n");
 }
 
 static void synaptics_dsx_state_config(
@@ -1690,9 +1867,9 @@ nothing_to_patch:
 	synaptics_rmi4_set_page(rmi4_data, 0);
 }
 
-#define DSX(a)	(#a)
-static const char * const synaptics_state_names[] = SYNAPTICS_DSX_STATES;
-#undef DSX
+static const char * const synaptics_state_names[] = {"UNKNOWN",
+	"ACTIVE", "SUSPEND", "UNUSED", "STANDBY", "BL", "INIT",
+	"FLASH", "QUERY", "INVALID" };
 
 static const char *synaptics_dsx_state_name(int state)
 {
@@ -1847,13 +2024,12 @@ static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 	if (reset != 1)
 		return -EINVAL;
 
-	retval = synaptics_rmi4_reset_device(rmi4_data, NULL);
-	if (retval < 0) {
-		dev_err(dev,
-				"%s: Failed to issue reset command, error = %d\n",
-				__func__, retval);
-		return retval;
-	}
+	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
+	if (retval > 0)
+		pr_debug("successful reset took %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	return count;
 }
@@ -2154,7 +2330,8 @@ static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 	struct synaptics_rmi4_data *rmi4_data =
 					i2c_get_clientdata(to_i2c_client(dev));
 	return scnprintf(buf, PAGE_SIZE, "%d\n",
-		atomic_read(&rmi4_data->touch_stopped) == 0);
+		atomic_read(&rmi4_data->touch_stopped) == 0 &&
+		rmi4_data->flash_enabled);
 }
 
 static struct synaptics_dsx_patch *query_data;
@@ -2527,6 +2704,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				&rmi4_data->f12_data_registers_ptr->regs[0];
 	struct synaptics_rmi4_packet_reg *reg_data_15 =
 				&rmi4_data->f12_data_registers_ptr->regs[1];
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	unsigned char number_of_fingers_actually_touching = 0;
+#endif
 
 	if (atomic_read(&rmi4_data->panel_off_flag)) {
 		synaptics_dsx_resumeinfo_ignore(rmi4_data);
@@ -2593,6 +2773,19 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	input_event(rmi4_data->input_dev, EV_SYN,
 			SYN_TIME_NSEC, hw_time.tv_nsec);
 
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_lock(&touchxp.virtual_touch_mutex);
+
+	finger_data = (struct f12_d1_type *)reg_data_1->data;
+	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
+		finger_status = finger_data->type_and_stylus;
+		if (finger_status == 0)
+			continue;
+		number_of_fingers_actually_touching++;
+	}
+#endif
+
 	finger_data = (struct f12_d1_type *)reg_data_1->data;
 	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
 		finger_status = finger_data->type_and_stylus;
@@ -2611,6 +2804,13 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+			touchxp.touch_magic_dev = rmi4_data->input_dev;
+			if (touchxp.touchx)
+				touchxp.touchx(&x, &y, finger,
+					       number_of_fingers_actually_touching);
+#endif
 
 			dev_dbg(&rmi4_data->i2c_client->dev,
 						"%s: Finger %d:\n"
@@ -2646,6 +2846,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	}
 
 	if (!touch_count) {
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+		touchxp.finger_down = 0;
+#endif
 		active_touch_max_idx = 0;
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
@@ -2654,6 +2857,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_unlock(&touchxp.virtual_touch_mutex);
+#endif
 
 	return touch_count;
 }
@@ -2691,6 +2899,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wy;
 	int z;
 	struct timespec hw_time = ktime_to_timespec(ktime_get());
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	unsigned char number_of_fingers_actually_touching = 0;
+#endif
 
 	/*
 	 * The number of finger status registers is determined by the
@@ -2724,6 +2935,20 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			SYN_TIME_SEC, hw_time.tv_sec);
 	input_event(rmi4_data->input_dev, EV_SYN,
 			SYN_TIME_NSEC, hw_time.tv_nsec);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_lock(&touchxp.virtual_touch_mutex);
+
+	for (finger = 0; finger < fingers_supported; finger++) {
+		reg_index = finger / 4;
+		finger_shift = (finger % 4) * 2;
+		finger_status = (finger_status_reg[reg_index] >> finger_shift)
+				& MASK_2BIT;
+		if (finger_status)
+			number_of_fingers_actually_touching++;
+	}
+#endif
 
 	for (finger = 0; finger < fingers_supported; finger++) {
 		reg_index = finger / 4;
@@ -2765,6 +2990,13 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
 
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+			touchxp.touch_magic_dev = rmi4_data->input_dev;
+			if (touchxp.touchx)
+				touchxp.touchx(&x, &y, finger,
+					number_of_fingers_actually_touching);
+#endif
+
 			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Finger %d:\n"
 					"x = %d\n"
@@ -2803,6 +3035,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
 
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (!touch_count)
+		touchxp.finger_down = 0;
+#endif
+
 #ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
@@ -2810,6 +3047,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
+
+#ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
+	if (touchxp.touchx)
+		mutex_unlock(&touchxp.virtual_touch_mutex);
+#endif
 
 	return touch_count;
 }
@@ -3412,7 +3654,7 @@ static int synaptics_rmi4_f51_init(struct synaptics_rmi4_data *rmi4_data,
 	else
 		dev_info(&rmi4_data->i2c_client->dev,
 			"F51: ctrl [0]=%02x, [1]=%02x\n",
-			f51_c0_0.dynamic_supp_xy, f51_c0_0.data[1]);
+			f51_c0_0.dynamic_supp_xy, f51_c0_1.data[0]);
 	return 0;
 }
 
@@ -4245,7 +4487,12 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 		need_to_query = true;
 	}
 
-	synaptics_dsx_ic_reset(rmi4_data, true);
+	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
+	if (retval > 0)
+		pr_debug("successful reset took %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	if (need_to_query) {
 		if (!rmi4_data->input_dev) {
@@ -4337,10 +4584,17 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 			if (!regs)
 				continue;
 
-			error = synaptics_rmi4_scan_f54_reg_info(regs);
+			error = synaptics_rmi4_scan_f54_ctrl_reg_info(regs);
 			if (error) {
 				regs->nr_regs = 0;
-				pr_err("F54_Ctrl_95 scan failed\n");
+				pr_err("F54_Ctrl scan failed\n");
+			}
+
+			regs = find_function(SYNAPTICS_RMI4_F54 | COMMAND_TYPE);
+			error = synaptics_rmi4_scan_f54_cmd_reg_info(regs);
+			if (error) {
+				regs->nr_regs = 0;
+				pr_err("F54_Cmd scan failed\n");
 			}
 		}
 	}
@@ -4616,6 +4870,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->irq_enabled = false;
 	atomic_set(&rmi4_data->touch_stopped, 1);
 	rmi4_data->ic_on = true;
+	rmi4_data->flash_enabled = false;
 	rmi4_data->f12_data_registers_ptr =
 				find_function(SYNAPTICS_RMI4_F12 | DATA_TYPE);
 	rmi4_data->i2c_read = synaptics_rmi4_i2c_read;
@@ -4731,9 +4986,12 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 			goto vdd_quirk_error;
 	}
 
-	retval = synaptics_dsx_ic_reset(rmi4_data, true);
+	retval = synaptics_dsx_ic_reset(rmi4_data, RMI4_HW_RESET);
 	if (retval > 0)
 		pr_debug("successful reset took %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	retval = synaptics_rmi4_query_device(rmi4_data);
 	if (retval < 0) {
@@ -4803,6 +5061,21 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
 	mutex_unlock(&exp_fn_ctrl_mutex);
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	/* register notifier at the end of probe to */
+	/* avoid unnecessary reset in STANDBY state */
+	rmi4_data->folio_notif.notifier_call = folio_notifier_callback;
+	dev_dbg(&client->dev, "registering folio notifier\n");
+	retval = mmi_hall_register_notifier(&rmi4_data->folio_notif,
+				MMI_HALL_FOLIO, true);
+	if (retval) {
+		dev_err(&client->dev,
+			"Error registering folio_notifier: %d\n", retval);
+		/* inability to register folio notifications handler */
+		/* is not fatal, thus reset return value to success */
+		retval = 0;
+	}
+#endif
 	return retval;
 
 err_sysfs:
@@ -4940,6 +5213,68 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 }
 #endif
 
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+static int folio_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data)
+{
+	int state, folio_state = *(int *)data;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(self, struct synaptics_rmi4_data, folio_notif);
+
+	if (rmi4_data && event == MMI_HALL_FOLIO &&
+			rmi4_data && rmi4_data->i2c_client) {
+
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+		dev_dbg(&rmi4_data->i2c_client->dev,
+			"state: %s(%d), suspend flag: %d, BL flag: %d\n",
+			synaptics_dsx_state_name(state), state,
+			atomic_read(&rmi4_data->touch_stopped),
+			rmi4_data->in_bootloader);
+		if (folio_state)
+			/* close */
+			synaptics_dsx_set_alternate_mode(rmi4_data,
+				rmi4_data->alternate_mode, false, true);
+		else	/* open */
+			synaptics_dsx_restore_default_mode(rmi4_data);
+
+		dev_dbg(&rmi4_data->i2c_client->dev, "folio: %s\n",
+			folio_state ? "CLOSED" : "OPENED");
+
+		if (!(state & STATE_UI)) {
+			dev_dbg(&rmi4_data->i2c_client->dev, "Not in UI\n");
+			goto done;
+		}
+
+		if (!rmi4_data->in_bootloader) {
+			if (state == STATE_ACTIVE) {
+				int retval;
+				/* set unknown state to ensure IRQ gets */
+				/* enabled on state transition to active */
+				synaptics_dsx_sensor_state(
+						rmi4_data, STATE_UNKNOWN);
+				/* disable IRQ to handle reset */
+				synaptics_rmi4_irq_enable(rmi4_data, false);
+				/* perform SW reset to restore defaults */
+				retval = synaptics_dsx_ic_reset(
+						rmi4_data, RMI4_SW_RESET);
+				if (retval < 0)
+					dev_err(&rmi4_data->i2c_client->dev,
+						"folio: sw reset failed %d\n",
+						retval);
+				synaptics_dsx_sensor_ready_state(
+							rmi4_data, false);
+			}
+
+			synaptics_dsx_state_config(rmi4_data,
+					(state == STATE_SUSPEND) ?
+					SUSPEND_IDX : ACTIVE_IDX);
+		}
+	}
+done:
+	return 0;
+}
+#endif
+
 static void synaptics_dsx_resumeinfo_start(
 		struct synaptics_rmi4_data *rmi4_data)
 {
@@ -5042,6 +5377,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 0, 1) == 1)
 		return 0;
 
+	rmi4_data->flash_enabled = false;
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
 	synaptics_dsx_release_all(rmi4_data);
 
@@ -5087,7 +5423,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 static int synaptics_rmi4_resume(struct device *dev)
 {
 	int retval;
-	bool hw_reset = true;
+	int reset = RMI4_HW_RESET;
 	struct pinctrl *pinctrl;
 	struct synaptics_rmi4_data *rmi4_data =
 					i2c_get_clientdata(to_i2c_client(dev));
@@ -5117,7 +5453,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 		retval = gpio_get_value(platform_data->reset_gpio);
 		pr_debug("reset gpio state: %d\n", retval);
 		if (retval == 0)
-			hw_reset = false;
+			reset = RMI4_WAIT_READY;
 
 		pinctrl = devm_pinctrl_get_select(&rmi4_data->i2c_client->dev,
 			"active");
@@ -5136,11 +5472,17 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	/* perform HW reset if needed and wait for touch IC boot completion */
-	retval = synaptics_dsx_ic_reset(rmi4_data, hw_reset);
-	pr_debug("waited for idle %dms\n", retval);
+	retval = synaptics_dsx_ic_reset(rmi4_data, reset);
+	if (retval > 0)
+		pr_debug("waited for idle %dms\n", retval);
+	else
+		dev_warn(&rmi4_data->i2c_client->dev, "%s: timed out waiting for idle\n",
+			__func__);
 
 	/* read touch IC state */
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
+	/* transition to active state is completed - allow flashing */
+	rmi4_data->flash_enabled = true;
 
 	if (rmi4_data->purge_enabled) {
 		int value = 0; /* clear flag */
@@ -5149,7 +5491,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	synaptics_dsx_resumeinfo_finish(rmi4_data);
-
 	return 0;
 }
 
