@@ -24,7 +24,7 @@
 
 #include <linux/version.h>
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
-#include <mach/mmi_panel_notifier.h>
+#include <linux/mmi_panel_notifier.h>
 #elif defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
@@ -201,7 +201,7 @@ struct synaptics_rmi4_device_info {
 };
 
 struct synaptics_dsx_func_patch {
-	unsigned char func;
+	unsigned short func;
 	unsigned char regstr;
 	unsigned char subpkt;
 	unsigned char size;
@@ -241,19 +241,45 @@ struct f34_properties {
 	};
 };
 
-#define SYNAPTICS_DSX_STATES { \
-	DSX(UNKNOWN), \
-	DSX(ACTIVE), \
-	DSX(STANDBY), \
-	DSX(SUSPEND), \
-	DSX(BL), \
-	DSX(INIT), \
-	DSX(FLASH), \
-	DSX(INVALID) }
+struct f54_control_95n {
+	union {
+		struct {
+			/* byte 0 - flags*/
+			unsigned char c95_filter_bw:3;
+			unsigned char c95_byte0_b3_b6:4;
+			unsigned char c95_disable:1;
 
-#define DSX(a)	STATE_##a
-enum SYNAPTICS_DSX_STATES;
-#undef DSX
+			/* bytes 1 - 10 */
+			unsigned char c95_first_burst_length_lsb;
+			unsigned char c95_first_burst_length_msb;
+			unsigned char c95_addl_burst_length_lsb;
+			unsigned char c95_addl_burst_length_msb;
+			unsigned char c95_i_stretch;
+			unsigned char c95_r_stretch;
+			unsigned char c95_noise_control1;
+			unsigned char c95_noise_control2;
+			unsigned char c95_noise_control3;
+			unsigned char c95_noise_control4;
+		} __packed;
+		struct {
+			unsigned char data[11];
+		} __packed;
+	};
+};
+
+enum {
+	STATE_UNKNOWN,
+	STATE_ACTIVE,
+	STATE_SUSPEND,
+	STATE_STANDBY = 4,
+	STATE_BL,
+	STATE_INIT,
+	STATE_FLASH,
+	STATE_QUERY,
+	STATE_INVALID
+};
+
+#define STATE_UI       (STATE_ACTIVE | STATE_SUSPEND)
 
 enum ic_modes {
 	IC_MODE_ANY = 0,
@@ -351,32 +377,6 @@ struct synaptics_rmi4_func_packet_regs {
 	struct synaptics_rmi4_packet_reg *regs;
 };
 
-struct f54_control_95n {
-	union {
-		struct {
-			/* byte 0 - flags*/
-			unsigned char c95_filter_bw:3;
-			unsigned char c95_byte0_b3_b6:4;
-			unsigned char c95_disable:1;
-
-			/* bytes 1 - 10 */
-			unsigned char c95_first_burst_length_lsb;
-			unsigned char c95_first_burst_length_msb;
-			unsigned char c95_addl_burst_length_lsb;
-			unsigned char c95_addl_burst_length_msb;
-			unsigned char c95_i_stretch;
-			unsigned char c95_r_stretch;
-			unsigned char c95_noise_control1;
-			unsigned char c95_noise_control2;
-			unsigned char c95_noise_control3;
-			unsigned char c95_noise_control4;
-		} __packed;
-		struct {
-			unsigned char data[11];
-		} __packed;
-	};
-};
-
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -384,7 +384,7 @@ struct f54_control_95n {
  * @board: constant pointer to platform data
  * @rmi4_mod_info: device information
  * @regulator: pointer to associated regulator
- * @vdd_quir: pointer to associated regulator for 'quirk' config
+ * @vdd_quirk: pointer to associated regulator for 'quirk' config
  * @rmi4_io_ctrl_mutex: mutex for i2c i/o control
  * @det_work: work thread instance for expansion function detection
  * @det_workqueue: pointer to work queue for work thread instance
@@ -401,7 +401,9 @@ struct f54_control_95n {
  * @sensor_max_x: sensor maximum x value
  * @sensor_max_y: sensor maximum y value
  * @irq_enabled: flag for indicating interrupt enable status
- * @touch_stopped: flag to stop interrupt thread processing
+ * @touch_stopped: touch is in suspend state
+ * @flash_enabled: allow flashing once transition to active state is complete
+ * @ic_on: touch ic power state
  * @fingers_on_2d: flag to indicate presence of fingers in 2d area
  * @wait: wait queue for touch data polling in interrupt thread
  * @number_resumes: total number of remembered resumes
@@ -413,7 +415,6 @@ struct f54_control_95n {
  * @i2c_read: pointer to i2c read function
  * @i2c_write: pointer to i2c write function
  * @irq_enable: pointer to irq enable function
- * @ic_on: touch ic power state
  */
 struct synaptics_rmi4_data {
 	struct i2c_client *i2c_client;
@@ -428,6 +429,9 @@ struct synaptics_rmi4_data {
 	struct mmi_notifier panel_nb;
 #elif defined(CONFIG_FB)
 	struct notifier_block panel_nb;
+#endif
+#ifdef CONFIG_MMI_HALL_NOTIFICATIONS
+	struct notifier_block folio_notif;
 #endif
 	atomic_t panel_off_flag;
 	unsigned char current_page;
@@ -449,6 +453,7 @@ struct synaptics_rmi4_data {
 	int sensor_max_y;
 	bool irq_enabled;
 	atomic_t touch_stopped;
+	bool flash_enabled;
 	bool ic_on;
 	bool fingers_on_2d;
 	bool input_registered;
@@ -514,7 +519,21 @@ int synaptics_rmi4_read_packet_regs(
 	struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_func_packet_regs *regs);
 
-int synaptics_rmi4_scan_f54_reg_info(
+#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING)
+int synaptics_rmi4_scan_f54_ctrl_reg_info(
 	struct synaptics_rmi4_func_packet_regs *regs);
 
+int synaptics_rmi4_scan_f54_cmd_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs);
+#else
+static inline int synaptics_rmi4_scan_f54_ctrl_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
+
+static inline int synaptics_rmi4_scan_f54_cmd_reg_info(
+	struct synaptics_rmi4_func_packet_regs *regs) {
+	return -ENOSYS;
+}
+#endif
 #endif
