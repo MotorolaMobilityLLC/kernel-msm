@@ -95,7 +95,7 @@
 		      <0xf9944000 0x19000>;
 		interrupt-names = "qup_irq", "bam_irq";
 		interrupts = <0 103 0>, <0 239 0>;
-		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-out = <1000000>;
 		qcom,clk-freq-in  = <19200000>;
 		qcom,disable-dma;
 		clock-names = "iface_clk", "core_clk";
