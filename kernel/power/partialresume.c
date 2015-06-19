@@ -96,8 +96,10 @@ int register_partial_resume(struct partial_resume *handler)
 	mutex_lock(&pr_handlers_lock);
 	list_for_each_entry(e, &pr_handlers, next_handler) {
 		if (e->irq == handler->irq) {
-			if (e->partial_resume == handler->partial_resume)
+			if (e->partial_resume == handler->partial_resume) {
+				mutex_unlock(&pr_handlers_lock);
 				return 0;
+			}
 			pr_err("%s: error registering %pF for irq %d: "\
 			       "%pF already registered\n",
 				__func__,
