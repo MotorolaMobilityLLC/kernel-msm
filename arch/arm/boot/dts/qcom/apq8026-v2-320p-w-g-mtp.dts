@@ -183,3 +183,18 @@
 		status = "disabled";
 	};
 };
+
+&mtp_batterydata {
+	#include "batterydata-springpower-cv90-450mAh.dtsi"
+};
+
+&pm8226_chg {
+	/delete-property/ qcom,charging-disabled;
+};
+
+&pm8226_bms {
+	qcom,s1-vsense-thr-uv = <195>;
+	qcom,s2-vsense-thr-uv = <152>;
+	qcom,use-dynamic-ocv-setting;
+	qcom,ocv-rbatt-compensation;
+};
