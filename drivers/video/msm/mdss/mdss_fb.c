@@ -1278,11 +1278,11 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 
 		// b/20833149: this is a temporary work around.
-		// Hold a wake lock for 50ms every time the framebuffer
+		// Hold a wake lock for 100ms every time the framebuffer
 		// changes to DOZE_SUSPEND mode to allow HWC has enough time
 		// to draw ambient watch face.
 		if (!wake_lock_active(&mfd->vsync_suspend_wake_lock)) {
-			wake_lock_timeout(&mfd->vsync_suspend_wake_lock, HZ / 20);
+			wake_lock_timeout(&mfd->vsync_suspend_wake_lock, msecs_to_jiffies(100));
 		}
 
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
