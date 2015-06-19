@@ -91,7 +91,7 @@ static int sdcardfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	lower_file = sdcardfs_lower_file(file);
 
 	lower_file->f_pos = file->f_pos;
-	err = vfs_readdir(lower_file, filldir, dirent);
+	err =  vfs_readdir(lower_file, filldir, dirent);
 	file->f_pos = lower_file->f_pos;
 	if (err >= 0)		/* copy the atime */
 		fsstack_copy_attr_atime(dentry->d_inode,
@@ -191,7 +191,6 @@ static int sdcardfs_mmap(struct file *file, struct vm_area_struct *vma)
 	 */
 	file_accessed(file);
 	vma->vm_ops = &sdcardfs_vm_ops;
-	vma->vm_flags |= VM_CAN_NONLINEAR;
 
 	file->f_mapping->a_ops = &sdcardfs_aops; /* set our aops */
 	if (!SDCARDFS_F(file)->lower_vm_ops) /* save for our ->fault */
@@ -242,8 +241,8 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 
 	/* open lower object and link sdcardfs's file struct to lower's */
 	sdcardfs_get_lower_path(file->f_path.dentry, &lower_path);
-	lower_file = dentry_open(lower_path.dentry, lower_path.mnt,
-				 file->f_flags, current_cred());
+	lower_file = dentry_open(&lower_path, file->f_flags, current_cred());
+	path_put(&lower_path);
 	if (IS_ERR(lower_file)) {
 		err = PTR_ERR(lower_file);
 		lower_file = sdcardfs_lower_file(file);
@@ -296,19 +295,23 @@ static int sdcardfs_file_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int
-sdcardfs_fsync(struct file *file, int datasync)
+static int sdcardfs_fsync(struct file *file, loff_t start, loff_t end,
+			int datasync)
 {
 	int err;
 	struct file *lower_file;
 	struct path lower_path;
 	struct dentry *dentry = file->f_path.dentry;
 
+	err = generic_file_fsync(file, start, end, datasync);
+	if (err)
+		goto out;
+
 	lower_file = sdcardfs_lower_file(file);
 	sdcardfs_get_lower_path(dentry, &lower_path);
-	err = vfs_fsync(lower_file, datasync);
+	err = vfs_fsync_range(lower_file, start, end, datasync);
 	sdcardfs_put_lower_path(dentry, &lower_path);
-
+out:
 	return err;
 }
 
