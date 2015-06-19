@@ -5319,6 +5319,9 @@ static int smb135x_charger_reboot(struct notifier_block *nb,
 			dev_warn(chip->dev, "VBUS UV wait 1 sec!\n");
 			/* Delay 1 sec to allow more VBUS decay */
 			msleep(1000);
+		} else if (is_usb_plugged_in(chip)) {
+			/* Disable Charging */
+			smb135x_temp_charging(chip, 0);
 		}
 	}
 
