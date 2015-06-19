@@ -2915,8 +2915,8 @@ qpnp_chg_ibatterm_set(struct qpnp_chg_chip *chip, int term_current)
 
 	if (term_current < QPNP_CHG_ITERM_MIN_MA
 			|| term_current > QPNP_CHG_ITERM_MAX_MA) {
-		pr_err("bad mA=%d asked to set\n", term_current);
-		return -EINVAL;
+		pr_info("bad mA=%d asked to set\n", term_current);
+		return 0;
 	}
 
 	temp = (term_current - QPNP_CHG_ITERM_MIN_MA)
