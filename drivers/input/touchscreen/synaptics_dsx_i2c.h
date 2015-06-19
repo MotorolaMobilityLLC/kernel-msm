@@ -56,6 +56,7 @@
 #define SYNAPTICS_RMI4_F12 (0x12)
 #define SYNAPTICS_RMI4_F1A (0x1a)
 #define SYNAPTICS_RMI4_F34 (0x34)
+#define SYNAPTICS_RMI4_F51 (0x51)
 #define SYNAPTICS_RMI4_F54 (0x54)
 #define SYNAPTICS_RMI4_F55 (0x55)
 
@@ -215,14 +216,14 @@ struct synaptics_dsx_patch {
 	struct list_head cfg_head;
 };
 
-struct synaptics_dsx_patchset {
-	int	patch_num;
-	struct synaptics_dsx_patch *patch_data;
-};
-
 #define ACTIVE_IDX	0
 #define SUSPEND_IDX	1
 #define MAX_NUM_STATES	2
+
+struct synaptics_dsx_patchset {
+	int	patch_num;
+	struct synaptics_dsx_patch *patch_data[MAX_NUM_STATES];
+};
 
 struct f34_properties {
 	union {
@@ -383,6 +384,7 @@ struct synaptics_rmi4_func_packet_regs {
  * @board: constant pointer to platform data
  * @rmi4_mod_info: device information
  * @regulator: pointer to associated regulator
+ * @vdd_quirk: pointer to associated regulator for 'quirk' config
  * @rmi4_io_ctrl_mutex: mutex for i2c i/o control
  * @det_work: work thread instance for expansion function detection
  * @det_workqueue: pointer to work queue for work thread instance
@@ -485,6 +487,7 @@ struct synaptics_rmi4_data {
 	struct work_struct resume_work;
 
 	struct synaptics_rmi4_func_packet_regs *f12_data_registers_ptr;
+	struct notifier_block rmi_reboot;
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
