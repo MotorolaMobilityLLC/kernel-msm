@@ -366,8 +366,8 @@ show_store_replicated_func(rtype, rgrp, propname, "%u")
 		control->reg_##reg->data = kzalloc(size, GFP_KERNEL);\
 		if (!control->reg_##reg->data)\
 			goto exit_no_mem;\
-		pr_debug("c%s addr = 0x%02x size = %d added\n",\
-			 #reg, reg_addr, (unsigned int)size);\
+		pr_debug("c%s addr = 0x%02x size = %zu added\n",\
+			 #reg, reg_addr, size);\
 		control->reg_##reg->length = size;\
 		control->reg_##reg->address = reg_addr;\
 		reg_addr += skip;\
@@ -3507,7 +3507,8 @@ int synaptics_rmi4_scan_f54_ctrl_reg_info(
 		reg = &f54_ctrl_regs->regs[ii];
 		subpkt = &reg->subpkt[0];
 		if (reg->r_number == 2 && f54->control.reg_2) {
-			data = kzalloc(2, GFP_KERNEL);
+			data = kzalloc(sizeof(f54->control.reg_2->data),
+					GFP_KERNEL);
 			if (!data)
 				return -ENOMEM;
 			/* need an offset off of base address here */
