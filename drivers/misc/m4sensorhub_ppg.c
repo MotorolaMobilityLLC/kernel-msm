@@ -92,9 +92,12 @@ static void m4_read_ppg_data_locked(struct m4sensorhub_ppg_drvdata *priv_data)
 		return;
 	}
 
-	for (i = 0; i < priv_data->num_buffered_samples; i = i + 2) {
+	for (i = 0; i < priv_data->num_buffered_samples; i = i + 5) {
 		priv_data->read_data.raw_data1 = priv_data->data[i];
 		priv_data->read_data.raw_data2 = priv_data->data[i+1];
+		priv_data->read_data.x = priv_data->data[i+2];
+		priv_data->read_data.y = priv_data->data[i+3];
+		priv_data->read_data.z = priv_data->data[i+4];
 
 		priv_data->read_data.timestamp =
 			ktime_to_ns(ktime_get_boottime());
