@@ -700,16 +700,8 @@ static bool is_usb_present(struct smbchg_chip *chip)
 		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
 		return false;
 	}
-	if ((reg & USBIN_UV_BIT) || (reg & USBIN_OV_BIT))
-		return false;
 
-	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + INPUT_STS, 1);
-	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read usb status rc = %d\n", rc);
-		return false;
-	}
-
-	return !!(reg & (USBIN_9V | USBIN_UNREG | USBIN_LV));
+	return !(reg & USBIN_UV_BIT) || !!(reg & USBIN_SRC_DET_BIT);
 }
 
 static char *usb_type_str[] = {
@@ -4620,46 +4612,27 @@ out:
  */
 static irqreturn_t src_detect_handler(int irq, void *_chip)
 {
-#ifdef QCOM_BASE
 	int rc;
 	u8 reg;
-	union power_supply_propval prop = {0, };
-#endif
+
 	struct smbchg_chip *chip = _chip;
-	bool usb_present = is_usb_present(chip);
+	bool usb_present;
 
 	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
-#ifdef QCOM_BASE
 	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
-		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
-		goto out;
-	}
-	reg &= USBIN_SRC_DET_BIT;
-
-	if (reg) {
-		if (!chip->usb_present && usb_present) {
-			/* USB inserted */
-			chip->usb_present = usb_present;
-			handle_usb_insertion(chip);
-		}
-	} else if (chip->usb_psy && !chip->usb_psy->get_property(chip->usb_psy,
-							POWER_SUPPLY_PROP_TYPE,
-							&prop)) {
-		if (((prop.intval == POWER_SUPPLY_TYPE_USB_CDP) ||
-			(prop.intval == POWER_SUPPLY_TYPE_USB)) &&
-			chip->usb_present) {
-				/* CDP or SDP removed */
-				chip->usb_present = !chip->usb_present;
-				handle_usb_removal(chip);
-				chip->aicl_irq_count = 0;
-		}
+		dev_err(chip->dev,
+			"Couldn't read src_det rt status rc = %d\n", rc);
+		return IRQ_HANDLED;
 	}
 
-out:
-#endif
+	usb_present = !!(reg & USBIN_SRC_DET_BIT);
+
+	pr_smb(PR_STATUS, "chip->usb_present = %d usb_present = %d\n",
+			chip->usb_present, usb_present);
+
 	mutex_lock(&chip->usb_set_present_lock);
 	if (!chip->usb_present && usb_present) {
 		/* USB inserted */
@@ -4885,7 +4858,7 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	usbid_change_handler(0, chip);
 	src_detect_handler(0, chip);
 	smbchg_charging_en(chip, 0);
-
+#ifdef QCOM_BASE
 	mutex_lock(&chip->usb_set_present_lock);
 	chip->usb_present = is_usb_present(chip);
 	if (chip->usb_present)
@@ -4893,7 +4866,7 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	else
 		handle_usb_removal(chip);
 	mutex_unlock(&chip->usb_set_present_lock);
-
+#endif
 	mutex_lock(&chip->dc_set_present_lock);
 	chip->dc_present = is_dc_present(chip);
 	if (chip->dc_present)
@@ -6971,7 +6944,12 @@ static void smbchg_sync_accy_property_status(struct smbchg_chip *chip)
 	bool usb_present = is_usb_present(chip);
 	bool dc_present = is_dc_present(chip);
 	u8 reg = 0;
-	int rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
+	int rc;
+
+	if (chip->apsd_rerun_cnt)
+		return;
+
+	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RT_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read usb rt status rc = %d\n", rc);
 		return;
