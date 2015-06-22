@@ -267,7 +267,6 @@ struct smbchg_chip {
 	int				cool_temp_c;
 	int				ext_high_temp;
 	int				ext_temp_volt_mv;
-	int				ext_temp_soc;
 	int				stepchg_voltage_mv;
 	int				stepchg_current_ma;
 	int				stepchg_taper_ma;
@@ -5652,11 +5651,6 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (chip->ext_temp_volt_mv == -EINVAL)
 		chip->ext_temp_volt_mv = 4000;
 
-	OF_PROP_READ(chip, chip->ext_temp_soc,
-		     "ext-temp-soc", rc, 1);
-	if (chip->ext_temp_soc == -EINVAL)
-		chip->ext_temp_soc = 65;
-
 	OF_PROP_READ(chip, chip->hotspot_thrs_c,
 		     "hotspot-thrs-c", rc, 1);
 	if (chip->hotspot_thrs_c == -EINVAL)
@@ -6838,15 +6832,16 @@ static int smbchg_check_temp_range(struct smbchg_chip *chip,
 {
 	int ext_high_temp = 0;
 
-	if (((batt_health == POWER_SUPPLY_HEALTH_COOL) &&
-	     (batt_volt > chip->ext_temp_volt_mv)) ||
-	    ((batt_health == POWER_SUPPLY_HEALTH_WARM) &&
-	     (batt_soc > chip->ext_temp_soc) &&
-	     (smbchg_is_max_thermal_level(chip))))
+	if (((batt_health == POWER_SUPPLY_HEALTH_COOL) ||
+	    ((batt_health == POWER_SUPPLY_HEALTH_WARM)
+	    && (smbchg_is_max_thermal_level(chip))))
+	    && (batt_volt > chip->ext_temp_volt_mv))
 		ext_high_temp = 1;
 
-	if ((prev_batt_health == POWER_SUPPLY_HEALTH_COOL) &&
-	    (batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	if ((((prev_batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	    (batt_health == POWER_SUPPLY_HEALTH_COOL)) ||
+	    ((prev_batt_health == POWER_SUPPLY_HEALTH_WARM) &&
+	    (batt_health == POWER_SUPPLY_HEALTH_WARM))) &&
 	    !chip->ext_high_temp)
 		ext_high_temp = 0;
 
@@ -6944,15 +6939,19 @@ static void smbchg_check_temp_state(struct smbchg_chip *chip, int batt_temp)
 	return;
 }
 
+#define DEMO_MODE_VOLTAGE 4000
 static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 {
 	if (chip->factory_mode)
 		return;
 
-	if (((chip->temp_state == POWER_SUPPLY_HEALTH_COOL) &&
-	     !chip->ext_high_temp) || chip->demo_mode)
+	if (chip->demo_mode)
+		smbchg_float_voltage_set(chip, DEMO_MODE_VOLTAGE);
+	else if (((chip->temp_state == POWER_SUPPLY_HEALTH_COOL)
+		  || (chip->temp_state == POWER_SUPPLY_HEALTH_WARM))
+		 && !chip->ext_high_temp)
 		smbchg_float_voltage_set(chip,
-					  chip->ext_temp_volt_mv);
+					 chip->ext_temp_volt_mv);
 	else {
 		smbchg_float_voltage_set(chip, chip->vfloat_mv);
 		if (is_usb_present(chip))
@@ -6966,7 +6965,8 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 	    (chip->stepchg_state == STEP_FULL))
 		smbchg_charging_en(chip, 0);
 	else {
-		if ((prev_temp == POWER_SUPPLY_HEALTH_COOL) &&
+		if (((prev_temp == POWER_SUPPLY_HEALTH_COOL) ||
+		    (prev_temp == POWER_SUPPLY_HEALTH_WARM)) &&
 		    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)) {
 			smbchg_charging_en(chip, 0);
 			mdelay(10);
