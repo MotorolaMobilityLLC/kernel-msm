@@ -285,6 +285,7 @@ struct smbchg_chip {
 	bool				batt_therm_wa;
 	struct notifier_block		smb_reboot;
 	int				aicl_wait_retries;
+	bool				hvdcp_det_done;
 };
 
 static struct smbchg_chip *the_chip;
@@ -3468,7 +3469,8 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		else if (smbchg_hvdcp_det_check(chip))
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
-		else if (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH)
+		else if (chip->hvdcp_det_done && chip->aicl_complete &&
+			 (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH))
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
 		else
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
@@ -4227,6 +4229,7 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 	int rc;
 	u8 reg;
 
+	chip->hvdcp_det_done = true;
 	rc = smbchg_read(chip, &reg,
 			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
 	if (rc < 0) {
@@ -4402,6 +4405,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 
 	cancel_delayed_work(&chip->usb_insertion_work);
 	chip->apsd_rerun_cnt = 0;
+	chip->hvdcp_det_done = false;
 
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->force_aicl_rerun) {
@@ -4502,6 +4506,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
 		schedule_work(&chip->usb_set_online_work);
+		chip->hvdcp_det_done = false;
 		schedule_delayed_work(&chip->hvdcp_det_work,
 					msecs_to_jiffies(HVDCP_NOTIFY_MS));
 	}
@@ -7324,6 +7329,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->dev = &spmi->dev;
 	chip->usb_psy = usb_psy;
 	chip->demo_mode = false;
+	chip->hvdcp_det_done = false;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
