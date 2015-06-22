@@ -541,6 +541,30 @@ static int mmc_host_caps_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(mmc_host_caps_fops, mmc_host_caps_get,
 			mmc_host_caps_set, "0x%016llx\n");
 
+static int mmc_host_detect_get(void *data, u64 *val)
+{
+	struct mmc_host *host = data;
+
+	*val = (u64)(((host->rescan_entered & 1) << 3) |
+		     ((host->rescan_disable & 1) << 2) |
+		     ((host->bus_dead & 1) << 1) |
+		     (host->detect_change & 1));
+
+	return 0;
+}
+
+static int mmc_host_detect_set(void *data, u64 val)
+{
+	struct mmc_host *host = data;
+
+	mmc_detect_change(host, msecs_to_jiffies(val));
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_host_detect_fops, mmc_host_detect_get,
+			mmc_host_detect_set, "0x%016llx\n");
+
 void mmc_add_host_debugfs(struct mmc_host *host)
 {
 	struct dentry *root;
@@ -569,6 +593,10 @@ void mmc_add_host_debugfs(struct mmc_host *host)
 
 	if (!debugfs_create_file("caps", S_IRUSR | S_IWUSR, root, host,
 			&mmc_host_caps_fops))
+		goto err_node;
+
+	if (!debugfs_create_file("detect", S_IRUSR | S_IWUSR, root, host,
+			&mmc_host_detect_fops))
 		goto err_node;
 
 #ifdef CONFIG_MMC_CLKGATE
