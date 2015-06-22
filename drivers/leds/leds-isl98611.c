@@ -496,6 +496,7 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 	struct fb_event *evdata = data;
 	struct isl98611_chip *pchip = container_of(self, struct isl98611_chip,
 		fb_notif);
+	struct isl98611_platform_data *pdata = pchip->pdata;
 
 	/* Return immediately if we don't care about the event */
 	if (event != FB_EARLY_EVENT_BLANK)
@@ -504,13 +505,14 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 	dev_dbg(pchip->dev, "%s+\n", __func__);
 
 	if (*(int *)evdata->data != FB_BLANK_POWERDOWN) {
-		int regval, reg2;
+		int regval, reg2, status;
 		/* Non zero REG_BRGHT_LSB => chip is reset to PON defaults */
 		regval = isl98611_read(pchip, REG_BRGHT_LSB);
 		reg2 = isl98611_read(pchip, REG_ENABLE);
+		status = isl98611_read(pchip, REG_STATUS);
 		/* REG_ENABLE_DEFAULT - must have bitmask in enable register */
 		reg2 &= REG_ENABLE_DEFAULT;
-		if (regval || (reg2 != REG_ENABLE_DEFAULT)) {
+		if (status || regval || (reg2 != REG_ENABLE_DEFAULT)) {
 			/* IC reset or reg ENABLE messed up => reinit the IC */
 			dev_err(pchip->dev,
 				"%s: REG_BRGHT_LSB is %#x, expected 0x00\n",
@@ -520,9 +522,16 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 				__func__, reg2, REG_ENABLE_DEFAULT);
 			dev_err(pchip->dev, "%s: Re-initialize the chip\n",
 				__func__);
+			if (status)
+				dev_err(pchip->dev, "%s: FAULT detected %#x\n",
+					__func__, status);
 			isl98611_dropbox_report_recovery(pchip);
 			pchip->cdev.brightness = 0;
 			isl98611_write(pchip, REG_BRGHT_MSB, 0);
+			/* If reset is not part of config - reset here*/
+			if (status && pdata->no_reset)
+				isl98611_update(pchip, REG_ENABLE,
+					RESET_MASK, RESET_VAL);
 			isl98611_chip_init(pchip);
 		}
 	}
