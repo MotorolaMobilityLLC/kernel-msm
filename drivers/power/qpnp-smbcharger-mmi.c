@@ -7121,7 +7121,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	} else if ((chip->stepchg_state == STEP_TAPER) &&
 		   (batt_ma < 0) && (chip->usb_present)) {
 		batt_ma *= -1;
-		if ((batt_ma <= chip->stepchg_iterm_ma) &&
+		if ((batt_soc >= 100) &&
+		    (batt_ma <= chip->stepchg_iterm_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
 		     chip->stepchg_iterm_ma))
 			if (chip->stepchg_state_holdoff >= 2) {
