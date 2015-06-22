@@ -421,7 +421,6 @@ struct smb135x_chg {
 	struct smb_wakeup_source        smb_wake_source;
 	struct delayed_work		heartbeat_work;
 	int				ext_temp_volt_mv;
-	int				ext_temp_soc;
 	int				ext_high_temp;
 	int				temp_check;
 	int				bms_check;
@@ -1418,7 +1417,8 @@ static int smb135x_temp_charging(struct smb135x_chg *chip, int enable)
 
 static void smb135x_set_chrg_path_temp(struct smb135x_chg *chip)
 {
-	if ((chip->batt_cool && !chip->ext_high_temp) || chip->demo_mode)
+	if (((chip->batt_cool || chip->batt_warm)
+		&& !chip->ext_high_temp) || chip->demo_mode)
 		smb135x_float_voltage_set(chip,
 					  chip->ext_temp_volt_mv);
 	else
@@ -1464,16 +1464,16 @@ static int smb135x_check_temp_range(struct smb135x_chg *chip)
 	if (smb135x_get_prop_batt_health(chip, &batt_health))
 		return 0;
 
-	if (((chip->batt_cool) &&
-	     (batt_volt > chip->ext_temp_volt_mv)) ||
-	    ((chip->batt_warm) &&
-	     (batt_soc > chip->ext_temp_soc) &&
-	     (smb135x_is_max_thermal_level(chip))))
+	if ((chip->batt_cool || ((chip->batt_warm)
+	    && (smb135x_is_max_thermal_level(chip))))
+	    && (batt_volt > chip->ext_temp_volt_mv))
 		ext_high_temp = 1;
 
-	if ((chip->prev_batt_health == POWER_SUPPLY_HEALTH_COOL) &&
-	    (batt_health == POWER_SUPPLY_HEALTH_COOL) &&
-	    !chip->ext_high_temp)
+	if ((((chip->prev_batt_health == POWER_SUPPLY_HEALTH_COOL) &&
+	   (batt_health == POWER_SUPPLY_HEALTH_COOL)) ||
+	   ((chip->prev_batt_health == POWER_SUPPLY_HEALTH_WARM) &&
+	   (batt_health == POWER_SUPPLY_HEALTH_WARM))) &&
+	   !chip->ext_high_temp)
 		ext_high_temp = 0;
 
 	chip->prev_batt_health = batt_health;
@@ -4708,11 +4708,6 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 				  &chip->ext_temp_volt_mv);
 	if (rc < 0)
 		chip->ext_temp_volt_mv = 0;
-
-	rc = of_property_read_u32(node, "qcom,ext-temp-soc",
-				  &chip->ext_temp_soc);
-	if (rc < 0)
-		chip->ext_temp_soc = 0;
 
 	chip->aicl_disabled = of_property_read_bool(node,
 						    "qcom,aicl-disabled");
