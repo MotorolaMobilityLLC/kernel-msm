@@ -68,7 +68,8 @@ lookup_exec_domain(unsigned int personality)
 				goto out;
 	}
 
-#ifdef CONFIG_MODULES
+
+#if 0
 	read_unlock(&exec_domains_lock);
 	request_module("personality-%d", pers);
 	read_lock(&exec_domains_lock);
