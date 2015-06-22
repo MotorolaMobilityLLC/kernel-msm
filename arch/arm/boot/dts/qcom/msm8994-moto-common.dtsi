@@ -1468,8 +1468,7 @@
 	qcom,cold-temp-c = <(-20)>;
 	qcom,warm-temp-c = <45>;
 	qcom,cool-temp-c = <0>;
-	qcom,ext-temp-volt-mv = <4000>;
-	qcom,ext-temp-soc = <65>;
+	qcom,ext-temp-volt-mv = <4200>;
 	qcom,hotspot-thrs-c = <50>;
 	qcom,charging-timeout-mins = <0>;
 	qcom,precharging-timeout-mins = <0>;
