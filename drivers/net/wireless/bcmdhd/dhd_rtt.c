@@ -1583,8 +1583,8 @@ dhd_rtt_convert_results_to_host(rtt_report_t *rtt_report, uint8 *p_data, uint16 
 	/* status */
 	rtt_report->status = ftm_get_statusmap_info(proxd_status,
 			&ftm_status_map_info[0], ARRAYSIZE(ftm_status_map_info));
-	/* rssi */
-	rtt_report->rssi = (int16)ltoh16_ua(&p_data_info->avg_rtt.rssi);
+	/* rssi (0.5db) */
+	rtt_report->rssi = (int16)ltoh16_ua(&p_data_info->avg_rtt.rssi) * 2;
 	/* rx rate */
 	ratespec = ltoh32_ua(&p_data_info->avg_rtt.ratespec);
 	rtt_report->rx_rate = dhd_rtt_convert_rate_to_host(ratespec);
@@ -1600,7 +1600,7 @@ dhd_rtt_convert_results_to_host(rtt_report_t *rtt_report, uint8 *p_data, uint16 
 	rtt_report->rtt = FTM_INTVL2NSEC(&rtt) * 10; /* nano -> 0.1 nano */
 	rtt_report->rtt_sd = ltoh16_ua(&p_data_info->sd_rtt); /* nano -> 0.1 nano */
 	DHD_RTT(("rtt_report->rtt : %llu\n", rtt_report->rtt));
-	DHD_RTT(("rtt_report->rssi : %d\n", rtt_report->rssi));
+	DHD_RTT(("rtt_report->rssi : %d (0.5db)\n", rtt_report->rssi));
 
 	/* average distance */
 	if (avg_dist != FTM_INVALID) {
