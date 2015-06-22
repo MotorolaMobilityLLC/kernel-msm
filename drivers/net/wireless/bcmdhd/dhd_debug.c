@@ -417,6 +417,10 @@ dhd_dbg_custom_evnt_handler(dhd_pub_t *dhdp, event_log_hdr_t *hdr, uint32 *data)
 	char eabuf[ETHER_ADDR_STR_LEN];
 	char chanbuf[CHANSPEC_STR_LEN];
 
+	/* get a event type and version */
+	wl_log_id.t = *data;
+	if (wl_log_id.version != DIAG_VERSION) return BCME_VERSION;
+
 	ts_hdr = (void *)data - sizeof(event_log_hdr_t);
 	if (ts_hdr->tag == EVENT_LOG_TAG_TS) {
 		ts_data = (uint32 *)ts_hdr - ts_hdr->count;
@@ -437,13 +441,6 @@ dhd_dbg_custom_evnt_handler(dhd_pub_t *dhdp, event_log_hdr_t *hdr, uint32 *data)
 	msg_hdr.flags |= DBG_RING_ENTRY_FLAGS_HAS_TIMESTAMP;
 	msg_hdr.flags |= DBG_RING_ENTRY_FLAGS_HAS_BINARY;
 	msg_hdr.type = DBG_RING_ENTRY_EVENT_TYPE;
-	/* get a event type and version */
-	wl_log_id.t = *data;
-	if (wl_log_id.version != DIAG_VERSION) {
-		DHD_ERROR(("The version %d of event data is not match with current version %d\n",
-			wl_log_id.version, DIAG_VERSION));
-		return BCME_VERSION;
-	}
 
 	/* convert the data to log_conn_event_t format */
 	for (i = 0; i < ARRAYSIZE(event_map); i++) {
