@@ -20,6 +20,10 @@
 #include <linux/batterydata-lib.h>
 #include <linux/power_supply.h>
 
+/* default battery id is 1000k ohm, it is used for unknown battery */
+/* and huawei battery ids are from 10K to 470K, no 1000k */
+#define DEFAULT_BATT_ID	1000
+
 static int of_batterydata_read_lut(const struct device_node *np,
 			int max_cols, int max_rows, int *ncols, int *nrows,
 			int *col_legend_data, int *row_legend_data,
@@ -311,7 +315,7 @@ struct device_node *of_batterydata_get_best_profile(
 		const char *psy_name,  const char  *batt_type)
 {
 	struct batt_ids batt_ids;
-	struct device_node *node, *best_node = NULL;
+	struct device_node *node, *best_node = NULL, *default_node = NULL;
 	struct power_supply *psy;
 	const char *battery_type = NULL;
 	union power_supply_propval ret = {0, };
@@ -332,8 +336,6 @@ struct device_node *of_batterydata_get_best_profile(
 	}
 
 	batt_id_kohm = ret.intval / 1000;
-
-	batt_id_kohm = 100;
 
 	/* read battery id range percentage for best profile */
 	rc = of_property_read_u32(batterydata_container_node,
@@ -381,12 +383,18 @@ struct device_node *of_batterydata_get_best_profile(
 					best_delta = delta;
 					best_id_kohm = batt_ids.kohm[i];
 				}
+				if (batt_ids.kohm[i] == DEFAULT_BATT_ID)
+					default_node = node;
 			}
 		}
 	}
 
 	if (best_node == NULL) {
 		pr_err("No battery data found\n");
+		/* if no battery id is matched, we will use default */
+		/* qcom profile (itech-3000mah) which's id is 1000k */
+		best_node = default_node;
+		pr_info("use default battery data\n");
 		return best_node;
 	}
 
