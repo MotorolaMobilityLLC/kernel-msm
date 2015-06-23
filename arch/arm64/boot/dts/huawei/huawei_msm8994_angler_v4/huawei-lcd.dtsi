@@ -1,0 +1,48 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "hw-panel-samsung-s6e3fa3x01-5p7-1080p-cmd.dtsi"
+#include "hw-panel-samsung-s6e3ha3x01-5p7-1440p-dual0-cmd.dtsi"
+#include "hw-panel-samsung-s6e3ha3x01-5p7-1440p-dual1-cmd.dtsi"
+&mdss_dsi0 {
+	/delete-property/ qcom,dsi-panel-bias-vreg;
+	/delete-property/ qcom,platform-enable-gpio;
+	vci-supply = <&pm8994_l19>;
+	qcom,panel-supply-entries {
+			qcom,panel-supply-entry@1 {
+				reg = <0>;
+				qcom,supply-name = "vci";
+				qcom,supply-min-voltage = <3300000>;
+				qcom,supply-max-voltage = <3300000>;
+				qcom,supply-enable-load = <100000>;
+				qcom,supply-disable-load = <100>;
+				qcom,supply-post-on-sleep = <5>;
+			};
+	};
+};
+
+&rpm_bus {
+	/delete-property/ rpm-regulator-ldoa19;
+	rpm-regulator-ldoa19 {
+		status = "okay";
+		pm8994_l19: regulator-l19 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			qcom,init-voltage = <3300000>;
+			status = "okay";
+		};
+	};
+};
+
+&mdss_fb0 {
+	huawei,set-brightness-enabled;
+};

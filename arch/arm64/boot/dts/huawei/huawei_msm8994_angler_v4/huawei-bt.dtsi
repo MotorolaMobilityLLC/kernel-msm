@@ -1,0 +1,31 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+ / {
+        bt_sleep{
+                  compatible = "bcm,bluesleep";
+                  bt_host_wake = <&msm_gpio 9 0>;
+                  bt_ext_wake = <&msm_gpio 8 0>;
+                  status = "ok";
+        };
+};
+
+
+/ {
+        bt_bcm4358{
+                compatible = "bcm,bcm4358";
+                bcm,bt-reset-gpio = <&pm8994_gpios 19 0>; /* BT_EN */
+                bcm,bt-vdd-io-supply = <&pm8994_s4>;
+                bcm,bt-vdd-io-voltage-level = <1800000 1800000>;
+        };
+};
+

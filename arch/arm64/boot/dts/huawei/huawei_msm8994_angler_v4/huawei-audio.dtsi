@@ -1,0 +1,93 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* pm gpio 1-2 */
+&pm8994_gpios {
+	gpio@c000 {
+		reg = <0xc000 0x100>;
+		qcom,pin-num = <1>;
+		status = "okay";
+	 };
+
+	gpio@c100 {
+		reg = <0xc100 0x100>;
+		qcom,pin-num = <2>;
+		status = "okay";
+	 };
+};
+
+&soc {
+	sound {
+		qcom,audio-routing =
+			"AIF4 VI", "MCLK",
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"MADINPUT", "MCLK",
+			"ultrasound amp", "LINEOUT1",
+			"ultrasound amp", "LINEOUT3",
+			"AMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 Internal1", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS1 External",
+			"MIC BIAS2 External", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS1 External",
+			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"AMIC5", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Analog Mic5",
+			"AMIC6", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Analog Mic6",
+			"DMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic4",
+			"DMIC5", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic5",
+			"DMIC6", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic6";
+		/delete-property/ qcom,us-euro-gpios;
+		/delete-property/ qcom,hdmi-audio-rx;
+		/delete-property/ qcom,ext-ult-spk-amp-gpio;
+		asoc-codec = <&stub_codec>;
+		asoc-codec-names = "msm-stub-codec.1";
+		headset_mic_switch = <&pm8994_gpios 2 0>;
+	};
+};
+
+/*this modify freed gpio 32 for spk&recv switch, gpio 34 is used for uart for v1*/
+&pmx_hdmi_ddc {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 33>;
+};
+
+&pmx_hdmi_hpd {
+	qcom,num-grp-pins = <1>;
+	qcom,pins = <&gp 33>;
+};
+
+&i2c_3 {
+	max98925@31 {
+		compatible = "maxim,max98925";
+
+		reg = <0x31>;
+		right-reg = <0x34>;
+
+		i2c-pull-up;
+		vdd-supply = <&pm8994_s4>;
+		vcc_i2c-supply = <&pm8994_lvs2>;
+		speaker_receiver_switch = <&msm_gpio 32 0x0>;
+	};
+};
