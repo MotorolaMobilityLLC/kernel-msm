@@ -3586,7 +3586,9 @@ int synaptics_rmi4_scan_f54_ctrl_reg_info(
 			subpkt->present = true;
 			subpkt->offset = 0;
 			error--;
+			continue;
 		}
+
 		if (reg->r_number == 95 && f54->control.reg_95) {
 			int jj, num_of_subpkts;
 			data = kzalloc(f54->control.reg_95->length, GFP_KERNEL);
@@ -3632,8 +3634,132 @@ int synaptics_rmi4_scan_f54_cmd_reg_info(
 	reg->data = data;
 	subpkt->present = true;
 	subpkt->offset = 0;
-
 	return 0;
+}
+
+/*
+  * Fill in base register address and offset of F54 query
+  * register 12 to allow run time access
+  */
+int synaptics_rmi4_scan_f54_query_reg_info(
+	struct synaptics_rmi4_func_packet_regs *f54_query_regs)
+{
+	struct synaptics_rmi4_packet_reg *reg = f54_query_regs->regs;
+	struct synaptics_rmi4_subpkt *subpkt = &reg->subpkt[0];
+	unsigned char *data = kzalloc(sizeof(f54->query12.data),
+					GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+	f54_query_regs->base_addr = f54->query_base_addr;
+	/* need an offset off of base address here */
+	reg->offset = 12;
+	reg->size = sizeof(f54->query12.data);
+	reg->data = data;
+	subpkt->present = true;
+	subpkt->offset = 0;
+	return 0;
+}
+
+/*
+ * Fill in base register address and offset of F54 data
+ * registers 10 & 17 to allow run time access
+ */
+int synaptics_rmi4_scan_f54_data_reg_info(
+	struct synaptics_rmi4_func_packet_regs *f54_data_regs)
+{
+	int ii, error = f54_data_regs->nr_regs;
+	unsigned char *data;
+	struct synaptics_rmi4_subpkt *subpkt;
+	struct synaptics_rmi4_packet_reg *reg;
+
+	f54_data_regs->base_addr = f54->data_base_addr;
+	for (ii = 0; ii < f54_data_regs->nr_regs; ii++) {
+		reg = &f54_data_regs->regs[ii];
+		if (reg->r_number == 6 && f54->data.reg_6) {
+			subpkt = &reg->subpkt[0];
+			data = kzalloc(sizeof(f54->data.reg_6->data),
+					GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->data.reg_6->address -
+					f54->data_base_addr;
+			reg->size = sizeof(f54->data.reg_6->data);
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+			error--;
+			continue;
+		}
+
+		if (reg->r_number == 10 && f54->data.reg_10) {
+			subpkt = &reg->subpkt[0];
+			data = kzalloc(sizeof(f54->data.reg_10->data),
+					GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->data.reg_10->address -
+					f54->data_base_addr;
+			reg->size = sizeof(f54->data.reg_10->data);
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+			error--;
+			continue;
+		}
+
+		if (reg->r_number == 14 && f54->data.reg_14) {
+			subpkt = &reg->subpkt[0];
+			data = kzalloc(sizeof(f54->data.reg_14->data),
+					GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->data.reg_14->address -
+					f54->data_base_addr;
+			reg->size = sizeof(f54->data.reg_14->data);
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+			error--;
+			continue;
+		}
+
+		if (reg->r_number == 16 && f54->data.reg_16) {
+			subpkt = &reg->subpkt[0];
+			data = kzalloc(sizeof(f54->data.reg_16->data),
+					GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->data.reg_16->address -
+					f54->data_base_addr;
+			reg->size = sizeof(f54->data.reg_16->data);
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+			error--;
+			continue;
+		}
+
+		if (reg->r_number == 17 && f54->data.reg_17) {
+			subpkt = &reg->subpkt[0];
+			data = kzalloc(sizeof(f54->data.reg_17->data),
+					GFP_KERNEL);
+			if (!data)
+				return -ENOMEM;
+			/* need an offset off of base address here */
+			reg->offset = f54->data.reg_17->address -
+					f54->data_base_addr;
+			reg->size = sizeof(f54->data.reg_17->data);
+			reg->data = data;
+			subpkt->present = true;
+			subpkt->offset = 0;
+			error--;
+		}
+	}
+	return error ? -ENOSYS : error;
 }
 
 static int synaptics_rmi4_f54_set_ctrl(void)
