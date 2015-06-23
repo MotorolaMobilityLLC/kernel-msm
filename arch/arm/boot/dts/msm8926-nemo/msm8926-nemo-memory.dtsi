@@ -56,7 +56,7 @@
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-			reg = <0x03300000 0x4800000>;
+			reg = <0x03300000 0x4a00000>;
 			label = "modem_mem";
 		};
 
