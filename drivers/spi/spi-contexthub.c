@@ -292,7 +292,7 @@ static int spich_message(struct spich_data *spich,
 	}
 
 	if (spich->flags & SPICH_FLAG_TIMESTAMPS_ENABLED) {
-		do_posix_clock_monotonic_gettime(&t);
+		get_monotonic_boottime(&t);
 		now_us = t.tv_sec * 1000000ull + (t.tv_nsec + 500ull) / 1000ull;
 	}
 
