@@ -16,13 +16,14 @@
 		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
 		reg = <0x01c00000 0x10000
 		       0x01c10000 0x10000
-		       0x0005c00c 0x8>;
-		reg-names = "kgsl_3d0_reg_memory" , "kgsl_3d0_shader_memory" , "efuse_memory";
+		       0x0005C000 0x204>;
+		reg-names = "kgsl_3d0_reg_memory" , "kgsl_3d0_shader_memory" ,
+			    "qfprom_memory";
 		interrupts = <0 33 0>;
 		interrupt-names = "kgsl_3d0_irq";
 		qcom,id = <0>;
 
-		qcom,gpu-speed-config;
+		qcom,gpu-speed-config = <0>;
 
 		qcom,chipid = <0x03000400>;
 
@@ -98,8 +99,8 @@
 			};
 		};
 
-		qcom,gpu-speed-config@1 {
-			compatible = "gpu-speed-config@1";
+		qcom,gpu-speed-config@0 {
+			compatible = "gpu-speed-config@0";
 			/* Power levels */
 			qcom,gpu-pwrlevels {
 
