@@ -211,6 +211,37 @@ dhd_os_start_logging(dhd_pub_t *dhdp, char *ring_name, int log_level,
 }
 
 int
+dhd_os_reset_logging(dhd_pub_t *dhdp)
+{
+	int ret = BCME_OK;
+	int ring_id;
+	linux_dbgring_info_t *os_priv, *ring_info;
+
+	os_priv = dhd_dbg_get_priv(dhdp);
+	if (!os_priv)
+		return BCME_ERROR;
+
+	/* Stop all rings */
+	for (ring_id = DEBUG_RING_ID_INVALID + 1; ring_id < DEBUG_RING_ID_MAX; ring_id++) {
+		DHD_RING(("%s: Stop ring buffer %d\n", __FUNCTION__, ring_id));
+
+		ring_info = &os_priv[ring_id];
+		/* cancel any pending work */
+		cancel_delayed_work_sync(&ring_info->work);
+		/* log level zero makes stop logging on that ring */
+		ring_info->log_level = 0;
+		ring_info->interval = 0;
+		/* change the configuration */
+		ret = dhd_dbg_set_configuration(dhdp, ring_id, 0, 0, 0);
+		if (ret) {
+			DHD_ERROR(("dhd_set_configuration is failed : %d\n", ret));
+			return ret;
+		}
+	}
+	return ret;
+}
+
+int
 dhd_os_get_ring_status(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_status_t *dbg_ring_status)
 {
 	return dhd_dbg_get_ring_status(dhdp, ring_id, dbg_ring_status);

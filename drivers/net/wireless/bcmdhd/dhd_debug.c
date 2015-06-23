@@ -316,8 +316,9 @@ dhd_dbg_ring_push(dhd_pub_t *dhdp, int ring_id, dhd_dbg_ring_entry_t *hdr, void 
 		ring->stat.written_records, ring->stat.written_bytes));
 
 	/* if the current pending size is bigger than threshold */
-	if (READ_AVAIL_SPACE(ring->wp, ring->rp, ring->ring_size) >=
-	    ring->threshold)
+	if (ring->threshold > 0 &&
+		(READ_AVAIL_SPACE(ring->wp, ring->rp, ring->ring_size) >=
+	    ring->threshold))
 		dhdp->dbg->pullreq(dhdp->dbg->private, ring->id);
 	return  BCME_OK;
 }

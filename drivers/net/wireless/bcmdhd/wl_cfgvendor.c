@@ -1817,6 +1817,21 @@ exit:
 	return ret;
 }
 
+static int wl_cfgvendor_dbg_reset_logging(struct wiphy *wiphy,
+	struct wireless_dev *wdev, const void  *data, int len)
+{
+	int ret = BCME_OK;
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+	dhd_pub_t *dhd_pub = cfg->pub;
+
+	ret = dhd_os_reset_logging(dhd_pub);
+	if (ret < 0) {
+		WL_ERR(("reset logging is failed ret: %d\n", ret));
+	}
+
+	return ret;
+}
+
 static int wl_cfgvendor_dbg_trigger_mem_dump(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
@@ -2438,6 +2453,14 @@ static const struct wiphy_vendor_command wl_vendor_cmds [] = {
 		},
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = wl_cfgvendor_dbg_start_logging
+	},
+	{
+		{
+			.vendor_id = OUI_GOOGLE,
+			.subcmd = DEBUG_RESET_LOGGING
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
+		.doit = wl_cfgvendor_dbg_reset_logging
 	},
 	{
 		{
