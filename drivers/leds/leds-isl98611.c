@@ -477,7 +477,7 @@ void isl98611_dropbox_report_recovery(struct isl98611_chip *pchip)
 	u8 buf[REG_MAX+1];
 	int i = 0;
 
-	regmap_bulk_read(pchip->regmap, REG_STATUS, buf, REG_MAX);
+	regmap_bulk_read(pchip->regmap, REG_REVISION, buf, REG_MAX);
 
 	for (i = 0; i <= REG_MAX; i++) {
 		int len = scnprintf(cur, size, "%02x: %02x\n", i, buf[i]);
