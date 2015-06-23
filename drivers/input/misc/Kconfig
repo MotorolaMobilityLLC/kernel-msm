@@ -863,5 +863,14 @@ config SENSORS_ISL29044A
 	help
 	 This option enables support for the INTERSIL ISL29044A P/L sensor.
 
+config LASER_STMVL6180
+	tristate "STM VL6180 Proximity support"
+	depends on I2C
+	help
+	  Say Y here if you want to use STMicroelectronics's proximity sensor
+	  through I2C interface.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called stmvl6180.
 endif
 
