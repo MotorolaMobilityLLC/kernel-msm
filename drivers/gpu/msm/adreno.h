@@ -32,9 +32,6 @@
 
 #define DEVICE_3D_NAME "kgsl-3d"
 #define DEVICE_3D0_NAME "kgsl-3d0"
-#define ADRENO_SPEED_CONFIG_NAME "gpu-speed-config@"
-#define ADRENO_SPEED_CONFIG_DEFAULT 0
-#define ADRENO_SPEED_CONFIG_1 1
 
 #define ADRENO_PRIORITY_MAX_RB_LEVELS	4
 
