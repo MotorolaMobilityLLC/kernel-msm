@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,6 +33,7 @@
 #include <linux/coresight-cti.h>
 #include <linux/moduleparam.h>
 #include <linux/sched.h>
+#include <linux/cpu_pm.h>
 #include <soc/qcom/spm.h>
 #include <soc/qcom/pm.h>
 #include <soc/qcom/rpm-notifier.h>
@@ -477,6 +478,10 @@ static int cluster_configure(struct lpm_cluster *cluster, int idx,
 				level->notify_rpm);
 		if (ret)
 			goto failed_set_mode;
+
+		if (level->mode[i] == MSM_SPM_MODE_POWER_COLLAPSE)
+			cpu_cluster_pm_enter(cluster->aff_level);
+
 	}
 	if (level->notify_rpm) {
 		struct cpumask nextcpu;
@@ -621,6 +626,11 @@ static void cluster_unprepare(struct lpm_cluster *cluster,
 				level->mode[i],
 				level->notify_rpm);
 		BUG_ON(ret);
+
+		if (cluster->levels[last_level].mode[i] ==
+				MSM_SPM_MODE_POWER_COLLAPSE)
+			cpu_cluster_pm_exit(cluster->aff_level);
+
 	}
 unlock_return:
 	spin_unlock(&cluster->sync_lock);
