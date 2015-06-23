@@ -748,7 +748,7 @@ static int drv260x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	struct drv260x_platform_data *pdata = NULL;
-	int err;
+	int err, i;
 
 	if (client->dev.of_node)
 		pdata = drv260x_of_init(client);
@@ -801,7 +801,14 @@ static int drv260x_probe(struct i2c_client *client,
 
 	udelay(850);
 	/* Read status */
-	err = drv260x_read_reg(STATUS_REG);
+
+	for (i = 0; i < I2C_RETRIES; i++) {
+		err = drv260x_read_reg(STATUS_REG);
+		if (err < 0)
+			msleep_interruptible(100);
+		else
+			break;
+	}
 
 	if (err < 0) {
 		pr_err("drv260x: HW init failed\n");
@@ -1263,7 +1270,7 @@ static void drv260x_exit(void)
 	printk(KERN_ALERT "drv260x: exit\n");
 }
 
-module_init(drv260x_init);
+late_initcall(drv260x_init);
 module_exit(drv260x_exit);
 
 /*  Current code version: 182 */
