@@ -202,6 +202,7 @@ enum i2c_msm_power_state {
 #define I2C_MSM_TIMEOUT_SAFTY_COEF      (10)
 #define I2C_MSM_TIMEOUT_MIN_USEC        (500000)
 #define I2C_QUP_MAX_BUS_RECOVERY_RETRY  (10)
+#define I2C_QUP_RECOVER_FAILED_PANIC	(200)
 
 /* QUP v2 tags */
 #define QUP_TAG2_DATA_WRITE        (0x82ULL)
@@ -462,13 +463,19 @@ struct i2c_msm_resources {
 	struct qup_i2c_clk_path_vote clk_path_vote;
 	int                          irq;
 	bool                         disable_dma;
+	int                          recovery_count;
+	bool                         extended_recovery;
 	struct pinctrl              *pinctrl;
 	struct pinctrl_state        *gpio_state_active;
 	struct pinctrl_state        *gpio_state_suspend;
+	struct pinctrl_state        *gpio_state_out;
+	struct pinctrl_state        *gpio_state_in;
 };
 
 #define I2C_MSM_PINCTRL_ACTIVE       "i2c_active"
 #define I2C_MSM_PINCTRL_SUSPEND      "i2c_sleep"
+#define I2C_MSM_PINCTRL_OUT          "gpio_out"
+#define I2C_MSM_PINCTRL_IN           "gpio_in"
 
 /*
  * i2c_msm_xfer_buf: current xfer position and preprocessed tags
