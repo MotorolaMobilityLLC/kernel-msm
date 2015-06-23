@@ -599,7 +599,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 	size_t data_size;
 	u8 wrist_tilt_flag = 1;
 
-	while (bytes) {
+	while (bytes > 0) {
 		// get sensor id
 		sensor_id = *buffer++;
 		bytes--;
@@ -738,6 +738,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 
 		default:
 			LOGE(&sentral->client->dev, "invalid sensor type: %u\n", sensor_id);
+			mutex_unlock(&sentral->lock_flush);
 			return -EINVAL;
 		}
 

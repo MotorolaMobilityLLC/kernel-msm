@@ -1308,7 +1308,7 @@ void ASUSEvtlog(const char *fmt, ...)
         getnstimeofday(&ts);
         ts.tv_sec -= sys_tz.tz_minuteswest * 60; // to get correct timezone information
         rtc_time_to_tm(ts.tv_sec, &tm);
-        getrawmonotonic(&ts);
+        get_monotonic_boottime(&ts);
         sprintf(buffer, "(%ld)%04d-%02d-%02d %02d:%02d:%02d :",ts.tv_sec,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     
         va_start(args, fmt);
