@@ -100,6 +100,46 @@
 		clock-names = "cam_src_clk", "cam_clk";
 	};
 
+	ov5693_eeprom: qcom,eeprom@a0 {
+		cell-index = <1>;
+		reg = <0xa0 0x0>;
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xa0>;
+		qcom,cci-master = <1>;
+		qcom,eeprom-name = "rohm_brcb032gwz-3";
+		qcom,num-blocks = <1>;
+		qcom,page0 = <0 0x0 2 0x0 1 20>;
+		qcom,poll0 = <0 0x0 2 0x0 1 20>;
+		qcom,mem0 = <0x900 0x0000 2 0 1 0>;
+		cam_vdig-supply = <&pm8994_l14>;
+		cam_vio-supply = <&pm8994_l10>;
+		cam_vana-supply = <&pm8994_l29>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+		qcom,cam-vreg-type = <0 0 0>;
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000>;
+		qcom,cam-vreg-op-mode = <1200000 1800000 2800000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
+		gpios = <&msm_gpio 15 0>,	/* VT_CAM_MCLK */
+			<&msm_gpio 104 0>;		/* VT_CAM_RESET_N */
+		qcom,gpio-reset = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					  "CAM_RESET2";
+		qcom,cam-power-seq-type = "sensor_vreg";
+		qcom,cam-power-seq-val = "cam_vio";
+		qcom,cam-power-seq-cfg-val = <1>;
+		qcom,cam-power-seq-delay = <5>;
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+			<&clock_mmss clk_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+
 	lge,camera1@6c {
 		cell-index = <1>;
 		compatible = "qcom,camera";
@@ -107,6 +147,7 @@
 		qcom,slave-id = <0x6c 0x300a 0x5690>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
+		qcom,eeprom-src = <&ov5693_eeprom>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "ov5693";
 		cam_vdig-supply = <&pm8994_l14>;
@@ -121,8 +162,8 @@
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
 		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
-		gpios = <&msm_gpio 15 0>,	//VT_CAM_MCLK
-			<&msm_gpio 104 0>;		//VT_CAM_RESET_N
+		gpios = <&msm_gpio 15 0>,	/* VT_CAM_MCLK */
+			<&msm_gpio 104 0>;		/* VT_CAM_RESET_N */
 		qcom,gpio-reset = <1>;
 		qcom,gpio-req-tbl-num = <0 1>;
 		qcom,gpio-req-tbl-flags = <0 0>;

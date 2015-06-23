@@ -59,6 +59,10 @@
 };
 
 &cci {
+	qcom,eeprom@a0 {
+		cam_vio-supply = <&pm8994_l21>;
+	};
+
 	lge,camera1@6c {
 		cam_vio-supply = <&pm8994_l21>;
 	};
