@@ -32,6 +32,10 @@ Optional property:
 	register. When missing, default to the value given in driver.
  - qcom,fs-clk-div: fs divider value to configure clk-ctl register. When
 	missing, default to the value given in driver.
+ - mmi,extended-recovery: enable extended 1-clk pulse recovery. This option
+	requires pinctrl configuration for the clock and the data pins in
+	gpio mode. The driver will set "gpio_out" config for 20 us,
+	then set "gpio_in" config, wait 20 us and set i2c active config.
 
 Example:
 	aliases {
