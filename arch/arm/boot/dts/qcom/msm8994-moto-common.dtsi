@@ -441,6 +441,42 @@
 			bias-pull-down; /* PULL DOWN */
 		};
 	};
+
+	pmx_i2c_5_recovery_sda {
+		qcom,pins = <&gp 83>; /* SDA */
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "pmx_i2c_5_recovery_sda";
+
+		i2c_5_sda_out: i2c_5_sda_out {
+			drive-strength = <2>;
+			output-high;
+			};
+
+		i2c_5_sda_in: i2c_5_sda_in {
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+			};
+		};
+
+	pmx_i2c_5_recovery_clk {
+		qcom,pins = <&gp 84>; /* SCL */
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "pmx_i2c_5_recovery_clk";
+
+		i2c_5_clk_out: i2c_5_clk_out {
+			drive-strength = <2>;
+			output-low;
+			};
+
+		i2c_5_clk_in: i2c_5_clk_in {
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+			};
+		};
 };
 
 &spi_0 {
@@ -1474,6 +1510,11 @@
 	qcom,clk-freq-out = <400000>;
 	qcom,noise-rjct-scl = <2>;
 	qcom,noise-rjct-sda = <2>;
+
+	mmi,extended-recovery;
+	pinctrl-names = "i2c_active", "i2c_sleep", "gpio_out", "gpio_in";
+	pinctrl-2 = <&i2c_5_sda_out &i2c_5_clk_out>;
+	pinctrl-3 = <&i2c_5_sda_in &i2c_5_clk_in>;
 
 	fsa8500@23 {
 		compatible = "fairchild,fsa8500";
