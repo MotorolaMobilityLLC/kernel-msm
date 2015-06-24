@@ -17,7 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_mot_nt35350_360p_cmd_small: qcom,mdss_dsi_mot_nt35350_360p_cmd_small {
-		qcom,mdss-dsi-panel-config-version = "1.02.01";
+		qcom,mdss-dsi-panel-config-version = "1.03.01";
 		qcom,mdss-dsi-panel-name = "mot nt35350 command mode dsi panel 2.0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -28,12 +28,12 @@
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <360>;
-		qcom,mdss-dsi-panel-height = <324>;
+		qcom,mdss-dsi-panel-height = <325>;
 		qcom,mdss-dsi-h-front-porch = <0>;
 		qcom,mdss-dsi-h-back-porch = <0>;
 		qcom,mdss-dsi-h-pulse-width = <0>;
 		qcom,mdss-dsi-h-sync-skew = <0>;
-		qcom,mdss-dsi-v-back-porch = <56>;
+		qcom,mdss-dsi-v-back-porch = <55>;
 		qcom,mdss-dsi-v-front-porch = <20>;
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
@@ -43,11 +43,7 @@
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
-		qcom,mdss-dsi-on-command = [15 01 00 00 00 00 02 FF 24
-		15 01 00 00 00 00 02 FB 01
-		15 01 00 00 00 00 02 93 6D
-		15 01 00 00 00 00 02 98 91
-		15 01 00 00 00 00 02 FF 10
+		qcom,mdss-dsi-on-command = [15 01 00 00 00 00 02 FF 10
 		15 01 00 00 00 00 02 FB 01
 		39 01 00 00 00 00 05 2A 00 00 01 67
 		39 01 00 00 00 00 05 2B 00 00 01 67
@@ -79,5 +75,6 @@
 		qcom,cont-splash-enabled;
 		qcom,mdss-backlight-disabled;
 		qcom,mdss-dsi-dcs-idle-enable;
+		qcom,even-line-align;
 	};
 };
