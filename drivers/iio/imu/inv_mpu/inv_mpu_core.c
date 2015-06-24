@@ -887,6 +887,13 @@ static ssize_t _dmp_mem_store(struct device *dev,
 		if (result)
 			goto dmp_mem_store_fail;
 		st->chip_config.smd_enable = !!data;
+#ifdef CONFIG_DTS_INV_MPU_IIO
+		if(st->chip_config.smd_enable == 1)
+			enable_irq_wake(st->irq);
+		else
+			disable_irq_wake(st->irq);
+#endif
+
 		break;
 	case ATTR_DMP_SMD_THLD:
 		if (data < 0 || data > SHRT_MAX)
@@ -2987,10 +2994,13 @@ static int inv_mpu_probe(struct i2c_client *client,
 	int result;
 
 	printk("[sensor] %s +++\n", __func__);
+
+//ASUS_BSP ++ Maggie Remove enable_irq_wake to prevent power leak
+/*
 #ifdef CONFIG_DTS_INV_MPU_IIO
 	enable_irq_wake(client->irq);
 #endif
-
+*/
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		result = -ENOSYS;
 		pr_err("I2c function error\n");
