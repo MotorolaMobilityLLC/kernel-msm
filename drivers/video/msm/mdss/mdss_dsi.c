@@ -486,7 +486,7 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata, int power_state)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
 #ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
-if (!is_ambient_on())
+//if (!is_ambient_on())
 {
 	mdss_dsi_ulps_for_suspend(ctrl_pdata,1);
 }
