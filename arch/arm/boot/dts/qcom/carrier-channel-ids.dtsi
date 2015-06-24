@@ -48,7 +48,7 @@
 		"tefunl",	/* 31 */
 		"tigca",	/* 32 */
 		"tigca1st",	/* 33 */
-		"undefined",	/* 34 */
+		"retmx",	/* 34 */
 		"undefined",	/* 35 */
 		"undefined",	/* 36 */
 		"undefined",	/* 37 */
@@ -97,10 +97,10 @@
 		"oraes",	/* 80 */
 		"retapac",	/* 81 */
 		"retmea",	/* 82 */
-		"undefined",	/* 83 */
-		"undefined",	/* 84 */
-		"undefined",	/* 85 */
-		"undefined",	/* 86 */
+		"vfit",	        /* 83 */
+		"vfes",	        /* 84 */
+		"vfeu",	        /* 85 */
+		"3gb",	        /* 86 */
 		"undefined",	/* 87 */
 		"undefined",	/* 88 */
 		"undefined",	/* 89 */
@@ -158,9 +158,9 @@
 		"retus",	/* 141 */
 		"???",		/* 142 */
 		"rcica",	/* 143 */
-		"undefined",	/* 144 */
-		"undefined",	/* 145 */
-		"undefined",	/* 146 */
+		"wndca",	/* 144 */
+		"dmc",		/* 145 */
+		"bby",  	/* 146 */
 		"undefined",	/* 147 */
 		"undefined",	/* 148 */
 		"undefined",	/* 149 */
@@ -208,8 +208,8 @@
 		"undefined",	/* 191 */
 		"retin",	/* 192 - Asia & Oceania */
 		"retcn",	/* 193 */
-		"undefined",	/* 194 */
-		"undefined",	/* 195 */
+		"telstra",	/* 194 */
+		"vfau",	/* 195 */
 		"undefined",	/* 196 */
 		"undefined",	/* 197 */
 		"undefined",	/* 198 */
