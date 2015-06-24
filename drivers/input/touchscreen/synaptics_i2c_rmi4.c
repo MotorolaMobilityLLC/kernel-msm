@@ -4307,6 +4307,9 @@ static int synaptics_rmi4_regulator_lpm(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		if (rmi4_data->board->power_down_enable) {
+			if (gpio_is_valid(rmi4_data->board->reset_gpio))
+				gpio_set_value(rmi4_data->board->reset_gpio, 0);
+
 			retval = regulator_disable(rmi4_data->vcc_i2c);
 			if (retval) {
 				dev_err(&rmi4_data->i2c_client->dev,
@@ -4334,10 +4337,6 @@ static int synaptics_rmi4_regulator_lpm(struct synaptics_rmi4_data *rmi4_data,
 				retval);
 			goto fail_regulator_lpm;
 		}
-
-		if (gpio_is_valid(rmi4_data->board->reset_gpio) &&
-					!rmi4_data->board->disable_gpios)
-			gpio_set_value(rmi4_data->board->reset_gpio, 0);
 	}
 
 	pr_info("touch off\n");
