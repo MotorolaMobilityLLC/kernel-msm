@@ -23,6 +23,7 @@
 					"resin-bark", "kpdpwr-resin-bark";
 			qcom,s3-debounce = <16>;
 			qcom,s3-src = "kpdpwr";
+			qcom,store-hard-reset-reason;
 			qcom,pon_1 { /* KPD_PWR_N reset */
 				status = "ok";
 				qcom,s1-timer = <6720>;
