@@ -1423,8 +1423,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		if (!strncmp(data, "bl_ctrl_wled", 12)) {
 			led_trigger_register_simple("bkl-trigger",
 				&bl_led_trigger);
-			pr_debug("%s: SUCCESS-> WLED TRIGGER register\n",
-				__func__);
 			ctrl_pdata->bklt_ctrl = BL_WLED;
 			pinfo->bklt_ctrl = BL_WLED;
 		} else if (!strncmp(data, "bl_ctrl_pwm", 11)) {
@@ -1458,12 +1456,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_external", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_EXTERNAL;
 			pinfo->bklt_ctrl = BL_EXTERNAL;
-			pr_debug("%s: Configured PWM bklt ctrl\n", __func__);
-		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
-			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
-			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
-								__func__);
 		}
+		pr_debug("%s: blacklight control type: %s\n",
+				__func__, data);
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
