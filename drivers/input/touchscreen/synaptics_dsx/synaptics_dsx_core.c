@@ -878,11 +878,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			 */
 			input_mt_slot(rmi4_data->input_dev, 0);
 			input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 1);
-			input_report_key(rmi4_data->input_dev, BTN_TOUCH, 1);
 			input_sync(rmi4_data->input_dev);
 			input_mt_slot(rmi4_data->input_dev, 0);
 			input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 0);
-			input_report_key(rmi4_data->input_dev, BTN_TOUCH, 0);
 			input_sync(rmi4_data->input_dev);
 		}
 
@@ -908,10 +906,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			{
 				input_mt_slot(rmi4_data->input_dev, 0);
 				input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 0);
-				input_report_key(rmi4_data->input_dev,
-				BTN_TOUCH, 0);
-				input_report_key(rmi4_data->input_dev,
-						BTN_TOOL_FINGER, 0);
+				#ifndef TYPE_B_PROTOCOL
+				input_mt_sync(rmi4_data->input_dev);
+				#endif
+				input_mt_slot(rmi4_data->input_dev, 1);
+				input_mt_report_slot_state(rmi4_data->input_dev, MT_TOOL_FINGER, 0);
 				#ifndef TYPE_B_PROTOCOL
 				input_mt_sync(rmi4_data->input_dev);
 				#endif
@@ -987,10 +986,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			if (rmi4_data->hw_if->board_data->y_flip)
 				y = rmi4_data->sensor_max_y - y;
 
-			input_report_key(rmi4_data->input_dev,
-					BTN_TOUCH, 1);
-			input_report_key(rmi4_data->input_dev,
-					BTN_TOOL_FINGER, 1);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
@@ -1023,10 +1018,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	if (touch_count == 0) {
 		key_release = true;
-		input_report_key(rmi4_data->input_dev,
-				BTN_TOUCH, 0);
-		input_report_key(rmi4_data->input_dev,
-				BTN_TOOL_FINGER, 0);
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
 #endif
@@ -1177,10 +1168,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					MT_TOOL_FINGER, 1);
 #endif
 
-			input_report_key(rmi4_data->input_dev,
-					BTN_TOUCH, 1);
-			input_report_key(rmi4_data->input_dev,
-					BTN_TOOL_FINGER, 1);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
@@ -1241,10 +1228,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #ifdef F12_DATA_15_WORKAROUND
 		fingers_already_present = 0;
 #endif
-		input_report_key(rmi4_data->input_dev,
-				BTN_TOUCH, 0);
-		input_report_key(rmi4_data->input_dev,
-				BTN_TOOL_FINGER, 0);
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
 #endif
@@ -2753,8 +2736,6 @@ static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
 	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
 	set_bit(EV_KEY, rmi4_data->input_dev->evbit);
 	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
-	set_bit(BTN_TOUCH, rmi4_data->input_dev->keybit);
-	set_bit(BTN_TOOL_FINGER, rmi4_data->input_dev->keybit);
 	set_bit(KEY_SLEEP, rmi4_data->input_dev->keybit);
 #ifdef INPUT_PROP_DIRECT
 	set_bit(INPUT_PROP_DIRECT, rmi4_data->input_dev->propbit);
@@ -2967,10 +2948,6 @@ static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
 				MT_TOOL_FINGER, 0);
 	}
 #endif
-	input_report_key(rmi4_data->input_dev,
-			BTN_TOUCH, 0);
-	input_report_key(rmi4_data->input_dev,
-			BTN_TOOL_FINGER, 0);
 #ifndef TYPE_B_PROTOCOL
 	input_mt_sync(rmi4_data->input_dev);
 #endif
