@@ -3286,6 +3286,7 @@ int afe_validate_port(u16 port_id)
 	case AFE_PORT_ID_QUATERNARY_MI2S_RX:
 	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
 	case AFE_PORT_ID_TERTIARY_MI2S_TX:
+	case AFE_PORT_ID_TERTIARY_MI2S_RX:
 	{
 		ret = 0;
 		break;
