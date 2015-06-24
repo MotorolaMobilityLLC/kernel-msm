@@ -833,10 +833,11 @@ static int dhd_sar_callback(struct notifier_block *nfb, unsigned long action, vo
 		 * qtxpower variable allows us to overwrite TX power.
 		 */
 		txpower = *(s32*)data;
-		if (txpower == -1 || txpower > 127)
+		if (txpower == -1 || txpower >= 127)
 			txpower = 127; /* Max val of 127 qdbm */
+		else
+			txpower |= WL_TXPWR_OVERRIDE;
 
-		txpower |= WL_TXPWR_OVERRIDE;
 		txpower = htod32(txpower);
 
 		bcm_mkiovar("qtxpower", (char *)&txpower, 4, iovbuf, sizeof(iovbuf));
