@@ -1180,6 +1180,30 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 	return current_ma;
 }
 
+static int calc_dc_thermal_limited_current(struct smbchg_chip *chip,
+					   int current_ma)
+{
+	int therm_ma;
+
+	if (chip->dc_therm_lvl_sel > 0
+			&& chip->dc_therm_lvl_sel < chip->dc_thermal_levels) {
+		/*
+		 * consider thermal limit only when it is active and not at
+		 * the highest level
+		 */
+		therm_ma =
+		    (int)chip->dc_thermal_mitigation[chip->dc_therm_lvl_sel];
+		if (therm_ma < current_ma) {
+			pr_smb(PR_STATUS,
+				"Limiting dc current due to thermal: %d mA",
+				therm_ma);
+			return therm_ma;
+		}
+	}
+
+	return current_ma;
+}
+
 #define CMD_CHG_REG	0x42
 #define EN_BAT_CHG_BIT		BIT(1)
 static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
@@ -2473,7 +2497,7 @@ DEFINE_SIMPLE_ATTRIBUTE(force_dcin_icl_ops, NULL,
 static int smbchg_set_thermal_limited_dc_current_max(struct smbchg_chip *chip,
 							int current_ma)
 {
-	current_ma = calc_thermal_limited_current(chip, current_ma);
+	current_ma = calc_dc_thermal_limited_current(chip, current_ma);
 	return smbchg_set_dc_current_max(chip, current_ma);
 }
 
@@ -6788,6 +6812,13 @@ static bool smbchg_is_max_thermal_level(struct smbchg_chip *chip)
 	     ((chip->usb_present) &&
 	      ((chip->chg_therm_lvl_sel >= (chip->chg_thermal_levels - 1)) ||
 	       (chip->chg_therm_lvl_sel == -EINVAL)))))
+		return true;
+	else if ((chip->dc_thermal_levels == 0) ||
+		 ((chip->dc_thermal_levels > 0) &&
+		  ((chip->dc_present) &&
+		   ((chip->dc_therm_lvl_sel >=
+		     (chip->dc_thermal_levels - 1)) ||
+		    (chip->dc_therm_lvl_sel == -EINVAL)))))
 		return true;
 	else
 		return false;
