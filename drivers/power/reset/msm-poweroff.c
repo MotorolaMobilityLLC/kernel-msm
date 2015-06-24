@@ -121,11 +121,6 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
-static bool get_dload_mode(void)
-{
-	return dload_mode_enabled;
-}
-
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -184,10 +179,6 @@ static void enable_emergency_dload_mode(void)
 	pr_err("dload mode is not enabled on target\n");
 }
 
-static bool get_dload_mode(void)
-{
-	return false;
-}
 #endif
 
 void msm_set_restart_mode(int mode)
@@ -222,7 +213,7 @@ static void halt_spmi_pmic_arbiter(void)
 
 static void msm_restart_prepare(const char *cmd)
 {
-	bool need_warm_reset = false;
+	enum pon_power_off_type poff = PON_POWER_OFF_HARD_RESET;
 
 #ifdef CONFIG_MSM_DLOAD_MODE
 
@@ -235,41 +226,19 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
-	need_warm_reset = (get_dload_mode() ||
-				(cmd != NULL && cmd[0] != '\0'));
-
-	if (qpnp_pon_check_hard_reset_stored()) {
-		/* Set warm reset as true when device is in dload mode
-		 *  or device doesn't boot up into recovery, bootloader or rtc.
-		 */
-		if (get_dload_mode() ||
-			((cmd != NULL && cmd[0] != '\0') &&
-			strcmp(cmd, "recovery") &&
-			strcmp(cmd, "bootloader") &&
-			strcmp(cmd, "rtc")))
-			need_warm_reset = true;
-	}
-
-	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (need_warm_reset || in_panic) {
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-	} else {
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
-	}
-
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_BOOTLOADER);
-			__raw_writel(0x77665500, restart_reason);
 		} else if (!strncmp(cmd, "recovery", 8)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RECOVERY);
-			__raw_writel(0x77665502, restart_reason);
-		} else if (!strcmp(cmd, "rtc")) {
+		} else if (!strncmp(cmd, "rtc", 3)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RTC);
-			__raw_writel(0x77665503, restart_reason);
+		} else if (!strncmp(cmd, "dm-verity device corrupted", 26 )) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_DMVERITY);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			int ret;
@@ -277,15 +246,25 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+			poff = PON_POWER_OFF_WARM_RESET;
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_UNKNOWN);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+			poff = PON_POWER_OFF_WARM_RESET;
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_UNKNOWN);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_UNKNOWN);
 		}
 	}
 #ifdef CONFIG_LGE_HANDLE_PANIC
 	else {
 		__raw_writel(0x776655ff, restart_reason);
+		qpnp_pon_set_restart_reason(
+			PON_RESTART_REASON_UNKNOWN);
 	}
 #endif
 
@@ -299,6 +278,10 @@ static void msm_restart_prepare(const char *cmd)
 		lge_set_panic_reason();
 #endif
 
+	if (download_mode || dload_mode_enabled || restart_mode || in_panic)
+		poff = PON_POWER_OFF_WARM_RESET;
+
+	qpnp_pon_system_pwr_off(poff);
 	flush_cache_all();
 
 	/*outer_flush_all is not supported by 64bit kernel*/
