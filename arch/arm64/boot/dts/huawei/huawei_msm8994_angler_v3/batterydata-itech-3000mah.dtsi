@@ -12,7 +12,7 @@
 
 qcom,itech-3000mah {
 	qcom,max-voltage-uv = <4350000>;
-	qcom,v-cutoff-uv = <3400000>;
+	qcom,v-cutoff-uv = <3700000>;
 	qcom,chg-term-ua = <100000>;
 	qcom,batt-id-kohm = <100>;
 	qcom,battery-type = "itech_3000mah";
