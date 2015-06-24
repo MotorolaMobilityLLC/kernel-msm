@@ -349,7 +349,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (ctrl_pdata->dsvreg && !ctrl_pdata->dsvreg_pre_off)
 			if (regulator_disable(ctrl_pdata->dsvreg))
-				pr_err("%s: failed to pre-off dsv\n",
+				pr_err("%s: failed to post-off dsv\n",
 							__func__);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
