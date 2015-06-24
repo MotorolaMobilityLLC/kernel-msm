@@ -1207,8 +1207,7 @@ static int get_prop_capacity(struct fg_chip *chip)
 	if (fg_debug_mask & FG_POWER_SUPPLY)
 		pr_info_ratelimited("capacity: %d, raw: 0x%02x\n",
 				capacity, cap[0]);
-	if(capacity == 0)
-		capacity = 1;
+
 	return capacity;
 }
 
