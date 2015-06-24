@@ -386,7 +386,8 @@ typedef struct wlc_ssid {
 typedef struct wlc_ssid_ext {
 	bool       hidden;
 	uint16     flags;
-	uint16	   SSID_len;
+	uint8	   SSID_len;
+	int8	   rssi_thresh;
 	uchar		SSID[DOT11_MAX_SSID_LEN];
 } wlc_ssid_ext_t;
 

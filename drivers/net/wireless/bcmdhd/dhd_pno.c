@@ -561,6 +561,7 @@ _dhd_pno_add_ssid(dhd_pub_t *dhd, wlc_ssid_ext_t* ssids_list, int nssid)
 	int err = BCME_OK;
 	int i = 0;
 	wl_pfn_t pfn_element;
+
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	if (nssid) {
 		NULL_CHECK(ssids_list, "ssid list is NULL", err);
@@ -569,9 +570,9 @@ _dhd_pno_add_ssid(dhd_pub_t *dhd, wlc_ssid_ext_t* ssids_list, int nssid)
 	{
 		int j;
 		for (j = 0; j < nssid; j++) {
-			DHD_PNO(("%s size = %d hidden = %d flags = %x\n",
+			DHD_PNO(("%s size = %d hidden = %d flags = %x rssi_thresh %d\n",
 				ssids_list[j].SSID, ssids_list[j].SSID_len, ssids_list[j].hidden,
-				ssids_list[j].flags));
+				ssids_list[j].flags, ssids_list[i].rssi_thresh));
 		}
 	}
 	/* Check for broadcast ssid */
@@ -594,6 +595,12 @@ _dhd_pno_add_ssid(dhd_pub_t *dhd, wlc_ssid_ext_t* ssids_list, int nssid)
 		else
 			pfn_element.flags = 0;
 		pfn_element.flags |= htod32(ssids_list[i].flags);
+		/* If a single RSSI threshold is defined, use that */
+#ifdef PNO_MIN_RSSI_TRIGGER
+		pfn_element.flags |= ((PNO_MIN_RSSI_TRIGGER & 0xFF) << WL_PFN_RSSI_SHIFT);
+#else
+		pfn_element.flags |= ((ssids_list[i].rssi_thresh & 0xFF) << WL_PFN_RSSI_SHIFT);
+#endif /* PNO_MIN_RSSI_TRIGGER */
 		memcpy((char *)pfn_element.ssid.SSID, ssids_list[i].SSID,
 			ssids_list[i].SSID_len);
 		pfn_element.ssid.SSID_len = ssids_list[i].SSID_len;
@@ -1161,6 +1168,7 @@ static wlc_ssid_ext_t * dhd_pno_get_legacy_pno_ssid(dhd_pub_t *dhd,
 	list_for_each_entry_safe(iter, next, &_params1->params_legacy.ssid_list, list) {
 		p_ssid_list[i].SSID_len = iter->SSID_len;
 		p_ssid_list[i].hidden = iter->hidden;
+		p_ssid_list[i].rssi_thresh = iter->rssi_thresh;
 		memcpy(p_ssid_list[i].SSID, iter->SSID, p_ssid_list[i].SSID_len);
 		i++;
 	}
@@ -1213,6 +1221,7 @@ static int dhd_epno_set_ssid(dhd_pub_t *dhd,
 			flags |= (iter->flags & DHD_EPNO_BG_BAND_TRIG) ?
 			       WL_PFN_SSID_BG_BAND_TRIG: 0;
 			ssid_elem.flags = flags;
+			ssid_elem.rssi_thresh = iter->rssi_thresh;
 			memcpy(ssid_elem.SSID, iter->ssid, iter->ssid_len);
 			if ((err = _dhd_pno_add_ssid(dhd, &ssid_elem, 1)) < 0) {
 				DHD_ERROR(("failed to add ssid list (err %d) in firmware\n", err));
@@ -1288,6 +1297,7 @@ dhd_pno_add_to_ssid_list(dhd_pno_params_t *params, wlc_ssid_ext_t *ssid_list,
 		}
 		_pno_ssid->SSID_len = ssid_list[i].SSID_len;
 		_pno_ssid->hidden = ssid_list[i].hidden;
+		_pno_ssid->rssi_thresh = ssid_list[i].rssi_thresh;
 		memcpy(_pno_ssid->SSID, ssid_list[i].SSID, _pno_ssid->SSID_len);
 		list_add_tail(&_pno_ssid->list, &params->params_legacy.ssid_list);
 		params->params_legacy.nssid++;
@@ -3813,7 +3823,7 @@ dhd_pno_process_epno_result(dhd_pub_t *dhd, const void *data, uint32 event, int 
 		wl_pfn_net_info_t *net;
 
 		if (pfn_result->version != PFN_SCANRESULT_VERSION) {
-			DHD_PNO(("%s event %d: Incorrect version %d %d\n", __FUNCTION__, event,
+			DHD_ERROR(("%s event %d: Incorrect version %d %d\n", __FUNCTION__, event,
 			          pfn_result->version, PFN_SCANRESULT_VERSION));
 			return NULL;
 		}
