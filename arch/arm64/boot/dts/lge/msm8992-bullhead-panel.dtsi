@@ -18,6 +18,7 @@
 	qcom,mdss-pref-prim-intf = "dsi";
 	qcom,mdss-ab-factor = <1 1>;
 	qcom,mdss-ib-factor = <2 1>;
+	/delete-property/ qcom,mdss-ad-off;
 };
 
 &mdss_dsi0 {
@@ -27,6 +28,7 @@
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
 
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
+	qcom,platform-te-gpio = <&msm_gpio 10 0>;
 
 	tpio-supply = <&pm8994_l25>;	/* 1V8 */
 	tpvci-supply = <&pm8994_l22>;	/* 3V1 */
