@@ -2289,18 +2289,19 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 #endif
 //ASUS_BSP Ken_Cheng ---
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
-        {
-                .name = LPASS_BE_PRI_MI2S_TX,
-                .stream_name = "Primary MI2S Capture",
-                .cpu_dai_name = "msm-dai-q6-mi2s.0",
-                .platform_name = "msm-pcm-routing",
-                .codec_name     = "msm-stub-codec.1",
-                .codec_dai_name = "msm-stub-tx",
-                .no_pcm = 1,
-                .be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
-                .be_hw_params_fixup = msm_be_hw_params_fixup,
-                .ops = &msm8226_mi2s_be_ops,
-        },
+	{
+		.name = LPASS_BE_PRI_MI2S_TX,
+		.stream_name = "Primary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8226_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
 #ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 	{
 		.name = LPASS_BE_TERT_MI2S_RX,
@@ -2313,6 +2314,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm8226_tert_mi2s_be_ops,
+		.ignore_suspend = 1,
 	},
 #endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---
