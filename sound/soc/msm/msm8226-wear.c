@@ -1771,6 +1771,12 @@ static int msm8226_asoc_machine_probe(struct platform_device *pdev)
 
 	card = populate_snd_card_dailinks(&pdev->dev);
 
+	if (!card) {
+		dev_err(&pdev->dev, "%s: Card uninitialized\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
