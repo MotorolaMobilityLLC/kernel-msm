@@ -78,6 +78,10 @@
 		contexthub,nrst = <&msm_gpio 93 0x00>;
 		contexthub,boot0 = <&msm_gpio 94 0x00>;
 
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <41 0x2>;
+		interrupt-names = "contexthub_wake_irq";
+
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&sensorhub_ctrl_active>;
 		pinctrl-1 = <&sensorhub_ctrl_sleep>;
