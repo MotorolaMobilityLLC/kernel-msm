@@ -28,6 +28,7 @@
 #include <linux/notifier.h>
 #include <linux/fb.h>
 #include <linux/dropbox.h>
+#include <soc/qcom/bootinfo.h>
 
 #define ISL98611_NAME				"isl98611"
 #define ISL98611_REVISION			0x01
@@ -76,6 +77,7 @@
 #define REG_VLEDFREQ		0x16
 #define REG_VLEDCONFIG		0x17
 #define REG_MAX			0x17
+#define REGS_CNT		(REG_MAX+1)
 
 #define VPLEVEL_MASK		0x1F
 #define VNLEVEL_MASK		0x1F
@@ -471,19 +473,23 @@ static const struct of_device_id of_isl98611_leds_match;
 
 void isl98611_dropbox_report_recovery(struct isl98611_chip *pchip)
 {
-	char dropbox_entry[REG_MAX*7+1];
+	char dropbox_entry[REGS_CNT*7+14+1];
 	size_t size = sizeof(dropbox_entry);
 	char *cur = dropbox_entry;
 	u8 buf[REG_MAX+1];
-	int i = 0;
+	int i = 0, len;
 
-	regmap_bulk_read(pchip->regmap, REG_REVISION, buf, REG_MAX);
+	regmap_bulk_read(pchip->regmap, REG_REVISION, buf, REGS_CNT);
 
 	for (i = 0; i <= REG_MAX; i++) {
-		int len = scnprintf(cur, size, "%02x: %02x\n", i, buf[i]);
+		len = scnprintf(cur, size, "%02x: %02x\n", i, buf[i]);
 		cur += len;
 		size -= len;
 	}
+
+	len = scnprintf(cur, size, "hwrev: %#04x\n", system_rev);
+	cur += len;
+	size -= len;
 
 	pr_err("%s: dump:\n%s\n", __func__, dropbox_entry);
 	dropbox_queue_event_text("isl98611_reset_recovery", dropbox_entry,
