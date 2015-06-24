@@ -39,6 +39,7 @@
 #include <linux/slab.h>
 #include <linux/spi/spi-contexthub.h>
 #include <linux/spi/spi.h>
+#include <linux/wakelock.h>
 
 #include <asm/poll.h>
 #include <asm/uaccess.h>
@@ -66,6 +67,15 @@ struct spich_data {
 	int sh2ap_irq;
 	struct completion sh2ap_completion;
 	struct gpio gpio_array[4];
+	struct wake_lock sh2ap_wakelock;
+
+	enum {
+		AP_ACTIVE,
+		AP_SUSPENDED,
+	} ap_state;
+
+	struct timer_list resume_timer;
+	int force_read;
 };
 
 #define GPIO_IDX_AP2SH  0
@@ -75,20 +85,84 @@ struct spich_data {
 
 static int spich_suspend(struct spi_device *spi, pm_message_t state)
 {
+	struct spich_data *spich = spi_get_drvdata(spi);
+	int status;
+
 	dev_dbg(&spi->dev, "spich_suspend\n");
+
+	status = enable_irq_wake(spich->sh2ap_irq);
+
+	if (status != 0) {
+		dev_err(&spi->dev, "spich_suspend/enable_irq_wake FAILED\n");
+	}
+
+	if (spich->ap_state == AP_ACTIVE) {
+		/* We consider ourselves in suspended state as soon as we see
+		 * a call to spich_suspend. We continue to consider ourselves
+		 * suspended unless we stay "resumed" for an extended period of
+		 * time.
+		 */
+		spich->ap_state = AP_SUSPENDED;
+	}
+
+	del_timer(&spich->resume_timer);
+
 	return 0;
 }
 
 static int spich_resume(struct spi_device *spi)
 {
+	struct spich_data *spich = spi_get_drvdata(spi);
+	int status;
+
 	dev_dbg(&spi->dev, "spich_resume\n");
+
+	status = disable_irq_wake(spich->sh2ap_irq);
+
+	if (status != 0) {
+		dev_err(&spi->dev, "spich_resume/disable_irq_wake FAILED\n");
+	}
+
+	/* To avoid constantly going in and out of suspend mode, we only
+	 * consider ourselves "resumed" if we remain so for at least 2 secs
+	 * without being interrupted by another "suspend". This delay has been
+	 * chosen arbitrarily and may need to be find-tuned.
+	 */
+	mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
+
 	return 0;
+}
+
+static void spich_resume_timer_expired(unsigned long me)
+{
+	struct spich_data *spich = (struct spich_data *)me;
+
+	dev_dbg(&spich->spi->dev, "spich_resume_timer_expired\n");
+
+        /* We're lying, we don't actually know that there's something for the
+         * client to read - but there's no harm in having the client poll
+         * the hub at this point. In fact, the hub will probably never send
+         * us any data ever again because it still thinks we're suspended.
+         */
+	wake_lock(&spich->sh2ap_wakelock);
+	spich->force_read = 1;
+	complete(&spich->sh2ap_completion);
+
+	spich->ap_state = AP_ACTIVE;
 }
 
 static irqreturn_t sh2ap_isr(int irq, void *data)
 {
 	struct spich_data *spich = data;
 
+	dev_dbg(&spich->spi->dev, "sh2ap_isr\n");
+
+	/* This ISR triggered on a falling edge, so the sh2ap line is now low.
+	 * We'll prevent the AP from going to suspend as long as the line is low
+	 * to ensure that the client has read all available data.
+	 */
+
+	wake_lock(&spich->sh2ap_wakelock);
 	complete(&spich->sh2ap_completion);
 
 	return IRQ_HANDLED;
@@ -124,6 +198,9 @@ static int spich_init_instance(struct spich_data *spich)
 
 	init_completion(&spich->sh2ap_completion);
 
+	wake_lock_init(
+		&spich->sh2ap_wakelock, WAKE_LOCK_SUSPEND, "sh2ap_wakelock");
+
 	status = devm_request_irq(&spich->spi->dev,
 				  spich->sh2ap_irq,
 				  sh2ap_isr,
@@ -135,9 +212,18 @@ static int spich_init_instance(struct spich_data *spich)
 		goto bail4;
 	}
 
+	setup_timer(
+		&spich->resume_timer,
+		spich_resume_timer_expired,
+		(unsigned long)spich);
+
+	spich->ap_state = AP_ACTIVE;
+	spich->force_read = 0;
+
 	return 0;
 
 bail4:
+	wake_lock_destroy(&spich->sh2ap_wakelock);
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
 bail3:
@@ -154,7 +240,11 @@ bail:
 
 static void spich_destroy_instance(struct spich_data *spich)
 {
+	del_timer(&spich->resume_timer);
+
 	devm_free_irq(&spich->spi->dev, spich->sh2ap_irq, spich);
+
+	wake_lock_destroy(&spich->sh2ap_wakelock);
 
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
@@ -253,6 +343,10 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 
 	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 1);
 
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) != 0) {
+		wake_unlock(&spich->sh2ap_wakelock);
+	}
+
 	return status;
 }
 
@@ -325,8 +419,19 @@ static int spich_message(struct spich_data *spich,
 				goto done;
 			}
 
-			if (u_tmp->len >= 9
+			if (u_tmp->len >= 10
 			    && (spich->flags & SPICH_FLAG_TIMESTAMPS_ENABLED)) {
+				/* Bit 7 of the cmd byte is used as an indication
+				 * of whether or not the AP considers itself
+				 * suspended at the time of the transaction.
+				 */
+				uint8_t modified_cmd = buf[9] & 0x7f;
+				if (spich->ap_state == AP_SUSPENDED) {
+					modified_cmd |= 0x80;
+				}
+
+				buf[9] = modified_cmd;
+
 				SET_U64(&buf[1], now_us);
 			}
 		}
@@ -717,8 +822,11 @@ static unsigned int spich_poll(struct file *filp,
 	}
 	spin_unlock_irq(&spich->spi_lock);
 
-	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 0) {
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 0
+		|| spich->force_read) {
 		mask |= POLLIN | POLLRDNORM;
+
+		spich->force_read = 0;
 	}
 
 	return mask;
@@ -810,6 +918,8 @@ static int spich_probe(struct spi_device *spi)
 			 spich->gpio_array[i].gpio);
 	}
 
+	device_init_wakeup(&spi->dev, 1 /* wakeup */);
+
 	error = spich_init_instance(spich);
 	if (error) {
 		dev_err(&spich->spi->dev, "spich_init_instance failed.\n");
@@ -839,6 +949,8 @@ static int spich_remove(struct spi_device *spi)
 {
 	struct spich_data *spich = spi_get_drvdata(spi);
 	unsigned users;
+
+	device_init_wakeup(&spi->dev, 0 /* wakeup */);
 
 	cdev_del(&spich->cdev);
 	device_destroy(spich->class, spich->devno);
