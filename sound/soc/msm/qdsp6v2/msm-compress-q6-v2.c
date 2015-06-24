@@ -543,6 +543,19 @@ static void compr_event_handler(uint32_t opcode,
 	}
 }
 
+static int msm_compr_get_partial_drain_delay(int frame_sz, int sample_rate)
+{
+	int delay_time_ms = 0;
+
+	delay_time_ms = ((DSP_NUM_OUTPUT_FRAME_BUFFERED * frame_sz * 1000) /
+			sample_rate) + DSP_PP_BUFFERING_IN_MSEC;
+	delay_time_ms = delay_time_ms > PARTIAL_DRAIN_ACK_EARLY_BY_MSEC ?
+			delay_time_ms - PARTIAL_DRAIN_ACK_EARLY_BY_MSEC : 0;
+
+	pr_debug("%s: partial drain delay %d\n", __func__, delay_time_ms);
+	return delay_time_ms;
+}
+
 static void populate_codec_list(struct msm_compr_audio *prtd)
 {
 	pr_debug("%s\n", __func__);
@@ -1165,7 +1178,7 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 {
 	struct snd_compr_runtime *runtime = cstream->runtime;
 	struct msm_compr_audio *prtd = runtime->private_data;
-	int ret = 0, frame_sz = 0, delay_time_ms;
+	int ret = 0, frame_sz = 0;
 	int i, num_rates;
 	bool is_format_gapless = false;
 
@@ -1251,6 +1264,9 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 	case SND_AUDIOCODEC_FLAC: {
 		pr_debug("%s: SND_AUDIOCODEC_FLAC\n", __func__);
 		prtd->codec = FORMAT_FLAC;
+		frame_sz =
+			prtd->codec_param.codec.options.flac_dec.min_blk_size;
+		is_format_gapless = true;
 		break;
 	}
 
@@ -1277,17 +1293,11 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 		return -EINVAL;
 	}
 
-	if (!is_format_gapless) {
+	if (!is_format_gapless)
 		prtd->gapless_state.use_dsp_gapless_mode = false;
-	} else {
-		delay_time_ms =
-			((DSP_NUM_OUTPUT_FRAME_BUFFERED * frame_sz * 1000) /
-			prtd->sample_rate) + DSP_PP_BUFFERING_IN_MSEC;
-		delay_time_ms =
-			delay_time_ms > PARTIAL_DRAIN_ACK_EARLY_BY_MSEC ?
-			delay_time_ms - PARTIAL_DRAIN_ACK_EARLY_BY_MSEC : 0;
-	}
-	prtd->partial_drain_delay = delay_time_ms;
+
+	prtd->partial_drain_delay =
+		msm_compr_get_partial_drain_delay(frame_sz, prtd->sample_rate);
 
 	/*
 	 * To support 12000 and 24000 sample rates, allow raw HZ values.
@@ -2089,6 +2099,9 @@ static int msm_compr_set_metadata(struct snd_compr_stream *cstream,
 		if (ret < 0)
 			pr_err("%s: CMD Format block failed ret %d\n",
 				__func__, ret);
+
+		prtd->partial_drain_delay = msm_compr_get_partial_drain_delay(
+				flac_cfg.min_blk_size, prtd->sample_rate);
 	}
 	return 0;
 }
