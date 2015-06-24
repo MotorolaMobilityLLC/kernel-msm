@@ -154,6 +154,11 @@
 		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
 		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
 		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
+
+		qcom,tert-mi2s-gpio-clk  = <&msmgpio 49 0>;
+		qcom,tert-mi2s-gpio-sync = <&msmgpio 50 0>;
+		qcom,tert-mi2s-gpio-din  = <&msmgpio 51 0>;
+		qcom,tert-mi2s-gpio-dout = <&msmgpio 52 0>;
 		qcom,no-codec;
 		qcom,mic-power-supply = <&pm8226_l23>;
 
@@ -168,6 +173,13 @@
 		qcom,msm-dai-q6-mi2s-dev-id = <0>;
 		qcom,msm-mi2s-rx-lines = <0>;
 		qcom,msm-mi2s-tx-lines = <1>;
+	};
+
+	qcom,msm-dai-q6-mi2s-tert {
+		compatible = "qcom,msm-dai-q6-mi2s";
+		qcom,msm-dai-q6-mi2s-dev-id = <2>;
+		qcom,msm-mi2s-rx-lines = <2>;
+		qcom,msm-mi2s-tx-lines = <0>;
 	};
 
 	slim@fe12f000 {
