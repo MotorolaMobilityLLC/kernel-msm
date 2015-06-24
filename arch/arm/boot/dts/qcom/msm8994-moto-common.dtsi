@@ -1121,6 +1121,8 @@
 			gpio_base_addr = <0xFD511004>;
 			gpio_base_size = <0x4000>;
 	};
+
+	/delete-node/ usb-otg-switch;
 };
 
 &pm8994_gpios {
