@@ -1592,6 +1592,8 @@ int mdss_mdp_ctl_setup(struct mdss_mdp_ctl *ctl)
 
 	width = get_panel_width(ctl);
 	height = ctl->panel_data->panel_info.yres;
+	if (ctl->panel_data->panel_info.even_line_align)
+		height = ((height + 1) >> 1) << 1;
 	max_mixer_width = ctl->mdata->max_mixer_width;
 
 	split_fb = (ctl->mfd->split_fb_left &&
@@ -1859,6 +1861,8 @@ int mdss_mdp_ctl_split_display_setup(struct mdss_mdp_ctl *ctl,
 
 	sctl->width = pdata->panel_info.xres;
 	sctl->height = pdata->panel_info.yres;
+	if (pdata->panel_info.even_line_align)
+		sctl->height = ((sctl->height + 1) >> 1) << 1;
 	sctl->roi = (struct mdss_rect){0, 0, sctl->width, sctl->height};
 
 	ctl->mixer_left = mdss_mdp_mixer_alloc(ctl, MDSS_MDP_MIXER_TYPE_INTF,

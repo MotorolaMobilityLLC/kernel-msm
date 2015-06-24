@@ -297,6 +297,10 @@ Optional properties:
 					as below:
 					--> Reset GPIO value
 					--> Sleep value (in ms)
+- qcom,even-line-align:			Boolean used to enable even line align for
+					command mode panels. This will let DSI mixer
+					add one line for odd lines panel, that allow
+					dsi engine send even lines per frame
 - qcom,partial-update-enabled:		Boolean used to enable partial
 					panel update for command mode panels.
 - qcom,mdss-dsi-horizontal-line-idle:	List of width ranges (EC - SC) in pixels indicating
