@@ -702,6 +702,8 @@ static void mdss_dsi_mode_setup(struct mdss_panel_data *pdata)
 			bpp = 3;	/* Default format set to RGB888 */
 
 		ystride = width * bpp + 1;
+		if (pdata->panel_info.even_line_align)
+			height = ((height + 1) >> 1) << 1;
 
 		/* DSI_COMMAND_MODE_MDP_STREAM_CTRL */
 		data = (ystride << 16) | (mipi->vc << 8) | DTYPE_DCS_LWRITE;

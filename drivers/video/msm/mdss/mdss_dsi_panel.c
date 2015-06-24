@@ -1257,6 +1257,11 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		"qcom,cont-splash-enabled");
 
 	if (pinfo->mipi.mode == DSI_CMD_MODE) {
+		pinfo->even_line_align =
+			of_property_read_bool(np, "qcom,even-line-align");
+		pr_info("%s: even_line_align=%d\n",
+			__func__, pinfo->even_line_align);
+
 		pinfo->partial_update_enabled = of_property_read_bool(np,
 				"qcom,partial-update-enabled");
 		pr_info("%s: partial_update_enabled=%d\n", __func__,
