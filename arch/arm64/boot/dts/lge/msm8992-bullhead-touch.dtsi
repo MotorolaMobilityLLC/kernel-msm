@@ -30,6 +30,7 @@
 		synaptics,fw-image-name = "synaptics_fw.bin";
 		synaptics,check-build;
 		synaptics,pon-delay = <66>;
+		synaptics,disable-gpios;
 
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&ts_reset_active &ts_int_active>;
