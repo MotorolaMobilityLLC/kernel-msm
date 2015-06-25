@@ -2368,8 +2368,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 	int ret = 0;
 	int pwr_state = 0, io_level = 0;
 	unsigned long flags;
-	unsigned long timeout = 10000;
-	u32 retry = 0;
 
 	irq_status = readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS);
 	pr_debug("%s: Received IRQ(%d), status=0x%x\n",
@@ -2384,25 +2382,6 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 	 * completed before its next update to registers within hc_mem.
 	 */
 	mb();
-	while (irq_status & readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS)) {
-		if (timeout == 0) {
-			pr_info("%s: Timedout clearing (%d) pwrctl status register\n",
-				mmc_hostname(host->mmc), irq_status);
-			pr_info("%s: PWRCTL_STATUS: 0x%08x | PWRCTL_MASK: 0x%08x | PWRCTL_CTL: 0x%08x\n",
-					mmc_hostname(host->mmc),
-					readl_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS),
-					readl_relaxed(msm_host->core_mem + CORE_PWRCTL_MASK),
-					readl_relaxed(msm_host->core_mem + CORE_PWRCTL_CTL));
-			BUG_ON(1);
-		}
-		writeb_relaxed(irq_status, (msm_host->core_mem + CORE_PWRCTL_CLEAR));
-		timeout--;
-		retry++;
-		udelay(10);
-	}
-	if (retry)
-		pr_info("%s: success clearing (%d) pwrctl status register after retry %d\n",
-				mmc_hostname(host->mmc), irq_status, retry);
 
 	/* Handle BUS ON/OFF*/
 	if (irq_status & CORE_PWRCTL_BUS_ON) {
