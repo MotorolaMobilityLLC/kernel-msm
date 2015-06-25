@@ -27,7 +27,7 @@
 #include "mdss_panel.h"
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
-
+struct mdss_dsi_ctrl_pdata *g_ctrl_pdata = NULL;
 #ifdef CONFIG_MDSS_ULPS_BEFORE_PANEL_OFF
 static int mdss_dsi_ulps_for_suspend(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	int enable);
@@ -864,6 +864,24 @@ end:
 	return 0;
 }
 
+void mdss_dsi_set_idle_count(unsigned int idle){
+
+	u32 tmp = 0;
+	pr_debug("%s: MDSS: set idle count = 0x%x\n", __func__, idle);
+
+	if (idle)
+		idle |= BIT(12); //enable
+
+	if(g_ctrl_pdata != NULL)
+		MIPI_OUTP((g_ctrl_pdata->ctrl_base) + 0x194, idle);
+	else
+		pr_err("%s: MDSS: fail to set idle count\n", __func__);
+
+	tmp = MIPI_INP((g_ctrl_pdata->ctrl_base) + 0x194);
+	pr_debug("%s: MDSS: read idle count = %d\n", __func__, tmp);
+	return;
+}
+
 static int mdss_dsi_pinctrl_set_state(
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool active)
@@ -1350,6 +1368,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
 		rc = mdss_dsi_on(pdata);
+		mdss_dsi_set_idle_count(0x03);
 		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
 							pdata);
 		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE)
@@ -1580,7 +1599,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		}
 		platform_set_drvdata(pdev, ctrl_pdata);
 	}
-
+	g_ctrl_pdata = ctrl_pdata;
 	ctrl_name = of_get_property(pdev->dev.of_node, "label", NULL);
 	if (!ctrl_name)
 		pr_info("%s:%d, DSI Ctrl name not specified\n",
