@@ -155,6 +155,8 @@ static int sentral_parameter_read(struct sentral_device *sentral,
 	if (size > PARAM_READ_SIZE_MAX)
 		return -EINVAL;
 
+	mutex_lock(&sentral->lock_pio);
+
 	// select page
 	rc = sentral_write_byte(sentral, SR_PARAM_PAGE, page_number);
 	if (rc) {
@@ -188,6 +190,8 @@ static int sentral_parameter_read(struct sentral_device *sentral,
 		if (rc == param_number)
 			goto acked;
 	}
+	// no ack does not return negative value
+	rc = -EIO;
 	LOGE(&sentral->client->dev, "parameter ack retries (%d) exhausted\n",
 			PARAM_MAX_RETRY);
 
@@ -207,6 +211,8 @@ exit:
 exit_error_param:
 	(void)sentral_write_byte(sentral, SR_PARAM_REQ, 0);
 exit_error_page:
+
+	mutex_unlock(&sentral->lock_pio);
 	return rc;
 }
 
@@ -218,6 +224,8 @@ static int sentral_parameter_write(struct sentral_device *sentral,
 
 	if (size > PARAM_WRITE_SIZE_MAX)
 		return -EINVAL;
+
+	mutex_lock(&sentral->lock_pio);
 
 	// select page
 	rc = sentral_write_byte(sentral, SR_PARAM_PAGE, page_number);
@@ -260,6 +268,8 @@ static int sentral_parameter_write(struct sentral_device *sentral,
 		if (rc == param_number)
 			goto acked;
 	}
+	// without ack
+	rc = -EIO;
 	LOGE(&sentral->client->dev, "parameter ack retries (%d) exhausted\n",
 			PARAM_MAX_RETRY);
 
@@ -273,6 +283,8 @@ exit:
 exit_error_param:
 	(void)sentral_write_byte(sentral, SR_PARAM_REQ, 0);
 exit_error_page:
+
+	mutex_unlock(&sentral->lock_pio);
 	return rc;
 }
 
@@ -290,17 +302,47 @@ static int sentral_sync_timestamp(struct sentral_device *sentral)
 	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
 			(void *)&stime, sizeof(stime));
 	if (rc)
-		return rc;
+		goto exit;
 
 	sentral->ts_ref_stime = stime.ts.current_stime;
-
-	mutex_unlock(&sentral->lock_ts);
 
 	LOGI(&sentral->client->dev,
 			"synched time: { ts_ref_ntime: %llu, ts_ref_stime: %u }\n",
 			sentral->ts_ref_ntime, sentral->ts_ref_stime);
 
-	return 0;
+exit:
+	mutex_unlock(&sentral->lock_ts);
+	return rc;
+}
+
+static void find_time_scale(struct sentral_device *sentral, u8 period)
+{
+	u64 ntime[SENTRAL_TICK_STAT];
+	u32 stime[SENTRAL_TICK_STAT];
+	u64 diff_ntime[SENTRAL_TICK_STAT - 1];
+	u32 diff_stime[SENTRAL_TICK_STAT - 1];
+	u32 tick_ratio[SENTRAL_TICK_STAT - 1];
+	u32 time_scale = 0;
+	u8 i;
+
+	// find ticks statistically
+	for (i = 0; i < SENTRAL_TICK_STAT; i++) {
+		sentral_sync_timestamp(sentral);
+		ntime[i] = sentral->ts_ref_ntime;
+		stime[i] = sentral->ts_ref_stime;
+		mdelay(period);
+	}
+	for (i = 0; i < SENTRAL_TICK_STAT - 1; i++) {
+		diff_ntime[i] = ntime[i + 1] - ntime[i];
+		diff_stime[i] = stime[i + 1] - stime[i];
+		tick_ratio[i] = (u32)(diff_ntime[i]) / diff_stime[i];
+		time_scale += tick_ratio[i];
+		LOGD(&sentral->client->dev, "tick_ratio[%u]: %u, time_scale: %u",
+				i, tick_ratio[i], time_scale);
+	}
+	time_scale /= SENTRAL_TICK_STAT;
+	sentral->ts_timestamp_scale = (u64)time_scale;
+	LOGI(&sentral->client->dev, "final time scale: %lld", sentral->ts_timestamp_scale);
 }
 
 // Sensors
@@ -401,6 +443,56 @@ static int sentral_sensor_id_is_valid(u8 id)
 	return ((id >= SST_FIRST) && (id < SST_MAX));
 }
 
+// Register Set
+
+static int sentral_set_register_flag(struct sentral_device *sentral, u8 reg,
+		u8 flag, bool enable)
+{
+	int rc;
+	u8 value;
+
+	LOGD(&sentral->client->dev, "setting register 0x%02X flag 0x%02X to %u\n",
+			reg, flag, enable);
+
+	rc = sentral_read_byte(sentral, reg);
+	if (rc < 0) {
+		LOGE(&sentral->client->dev, "error (%d) reading register 0x%02X\n", rc,
+				reg);
+
+		return rc;
+	}
+
+	value = rc & ~(flag);
+	if (enable)
+		value |= flag;
+
+	if (value == rc)
+		return 0;
+
+	rc = sentral_write_byte(sentral, reg, value);
+	if (rc) {
+		LOGE(&sentral->client->dev,
+				"error (%d) setting register 0x%02X to 0x%02X\n", rc, reg,
+				value);
+
+		return rc;
+	}
+
+	return 0;
+}
+
+static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
+{
+	int rc;
+
+	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
+	mutex_lock(&sentral->lock_flush);
+	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
+	return rc;
+}
+
+// rate setting
+
 static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		u16 rate, u16 timeout_ms)
 {
@@ -412,11 +504,13 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		.dynamic_range = 0,
 	};
 
-	LOGD(&sentral->client->dev, "batch set id: %u, rate: %u, timeout: %u\n", id,
-			rate, timeout_ms);
-
 	if (!sentral_sensor_id_is_valid(id))
 		return -EINVAL;
+
+	LOGD(&sentral->client->dev, "batch set id: %u, rate: %u, timeout: %u\n",
+		id, rate, timeout_ms);
+
+	rc = sentral_sync_timestamp(sentral);
 
 	// update config
 	rc = sentral_sensor_config_write(sentral, id, &config);
@@ -427,7 +521,14 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		return rc;
 	}
 
-	rc = sentral_sync_timestamp(sentral);
+	// flush when disable sensor
+	if (rate == 0) {
+		rc = sentral_fifo_flush(sentral, id);
+		if (rc) {
+			LOGE(&sentral->client->dev, "error (%d) writing FIFO flush before batch set\n", rc);
+			return -EINVAL;
+		}
+	}
 
 	return 0;
 }
@@ -524,7 +625,6 @@ static int sentral_iio_buffer_push_wrist_tilt(struct sentral_device *sentral)
 		return rc;
 
 	sentral->ts_sensor_ntime = stime.ts.int_stime;
-	//sentral->ts_sensor_ntime = sentral->ts_irq_utime;
 	return sentral_iio_buffer_push(sentral, SST_WRIST_TILT_GESTURE, NULL, 0);
 }
 
@@ -563,16 +663,6 @@ static int sentral_handle_special_wakeup(struct sentral_device *sentral,
 
 // FIFO
 
-static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
-{
-	int rc;
-
-	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
-	mutex_lock(&sentral->lock_flush);
-	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
-	return rc;
-}
-
 static int sentral_fifo_get_bytes_remaining(struct sentral_device *sentral)
 {
 	int rc;
@@ -610,9 +700,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_TIMESTAMP_MSW:
 			{
 				u16 ts = *(u16 *)buffer;
-				//u16 *ts_ptr = (u16 *)&sentral->ts_sensor_stime;
-				//ts_ptr[0] = ts;
-				sentral->ts_sensor_stime = ts << 16;
+				sentral->ts_sensor_stime = ((u32)ts) << 16;
 
 				LOGD(&sentral->client->dev, "ts_msw: { ts: %5u 0x%04X }\n", ts, ts);
 
@@ -625,21 +713,23 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_TIMESTAMP_LSW:
 			{
 				u16 ts = *(u16 *)buffer;
-				s32 dt_stime;
-				s64 dt_ntime;
+				u32 dt_stime;
+				u64 dt_ntime;
 
-				// u16 *ts_ptr = (u16 *)&sentral->ts_sensor_stime;
-				// ts_ptr[1] = ts;
+				LOGD(&sentral->client->dev,"ts_lsw id %u, MSW %u, LSW %u ",
+						sensor_id, sentral->ts_sensor_stime >> 16, ts);
+
 				sentral->ts_sensor_stime &= 0xFFFF0000;
 				sentral->ts_sensor_stime |= ts;
 
 				mutex_lock(&sentral->lock_ts);
 				dt_stime = sentral->ts_sensor_stime - sentral->ts_ref_stime;
+				if (sentral->ts_sensor_stime < sentral->ts_ref_stime)
+					dt_stime = 0;
+				dt_ntime = ((u64)dt_stime * sentral->ts_timestamp_scale);
+				sentral->ts_sensor_ntime = sentral->ts_ref_ntime + dt_ntime;
 				mutex_unlock(&sentral->lock_ts);
 
-				dt_ntime = ((s64)dt_stime * SENTRAL_SENSOR_TIMESTAMP_SCALE_NS);
-
-				sentral->ts_sensor_ntime = sentral->ts_ref_ntime + dt_ntime;
 				LOGD(&sentral->client->dev,
 						"ts_lsw: { ts: %5u 0x%04X, dt_stime: %d, dt_ntime: %lld, ts_sensor_stime: %u, ts_ref_stime: %u, ts_sensor_ntime: %llu }\n",
 						ts, ts, dt_stime, dt_ntime, sentral->ts_sensor_stime, sentral->ts_ref_stime, sentral->ts_sensor_ntime);
@@ -717,6 +807,9 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 
 				if (sentral_log_meta_event(sentral, meta_data))
 					LOGE(&sentral->client->dev, "error parsing meta event\n");
+
+				LOGD(&sentral->client->dev,"META id %u, byte1 %u\n",
+						meta_data->event_id, meta_data->byte_1);
 
 				// push flush complete events
 				if (meta_data->event_id == SEN_META_FLUSH_COMPLETE) {
@@ -886,41 +979,7 @@ static void sentral_do_work_fifo_read(struct work_struct *work)
 			msecs_to_jiffies(SENTRAL_WATCHDOG_WORK_MSECS));
 }
 
-static int sentral_set_register_flag(struct sentral_device *sentral, u8 reg,
-		u8 flag, bool enable)
-{
-	int rc;
-	u8 value;
 
-	LOGD(&sentral->client->dev, "setting register 0x%02X flag 0x%02X to %u\n",
-			reg, flag, enable);
-
-	rc = sentral_read_byte(sentral, reg);
-	if (rc < 0) {
-		LOGE(&sentral->client->dev, "error (%d) reading register 0x%02X\n", rc,
-				reg);
-
-		return rc;
-	}
-
-	value = rc & ~(flag);
-	if (enable)
-		value |= flag;
-
-	if (value == rc)
-		return 0;
-
-	rc = sentral_write_byte(sentral, reg, value);
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) setting register 0x%02X to 0x%02X\n", rc, reg,
-				value);
-
-		return rc;
-	}
-
-	return 0;
-}
 
 // chip control
 
@@ -1507,7 +1566,7 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 
 	u32 id;
 	u32 delay_ms;
-	u16 sample_rate = 0;
+	u16 sample_rate = 1000000/SENTRAL_DEFAULT_RATE;
 
 	mutex_lock(&sentral->lock);
 	if (2 != sscanf(buf, "%u %u", &id, &delay_ms)) {
@@ -1527,8 +1586,12 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 		sample_rate = 1000 / delay_ms;
 	}
 
+	// cap the rate for virtual sensors
+	if (id > SENTRAL_VIRTUAL_SENSOR_BOUNDARY && sample_rate > 1000/66)
+		sample_rate = 1000/66;
+
 	LOGI(&sentral->client->dev,
-			"setting rate for sensor id: %u, delay_ms: %u, rate: %u Hz\n",
+			"delay_ms_store > setting rate for sensor id: %u, delay_ms: %u, rate: %u Hz\n",
 			id, delay_ms, sample_rate);
 
 	rc = sentral_sensor_batch_set(sentral, id, sample_rate, 0);
@@ -1557,7 +1620,7 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 	u32 delay_ms;
 	u32 timeout_ms;
 
-	u16 sample_rate = 1000/66; // default to 30Hz
+	u16 sample_rate = 1000000/SENTRAL_DEFAULT_RATE;
 	u16 inactive_time; // 5 mins
 
 	mutex_lock(&sentral->lock);
@@ -1664,7 +1727,17 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 		}
 	}
 
-	rc = sentral_sensor_batch_set(sentral, id, sample_rate, timeout_ms);
+	// cap the rate for virtual sensors
+	if (id > SENTRAL_VIRTUAL_SENSOR_BOUNDARY && sample_rate > 1000/66)
+		sample_rate = 1000/66;
+
+	if (timeout_ms <= SENTRAL_MAX_BATCH_LENGTH)
+		rc = sentral_sensor_batch_set(sentral, id, sample_rate, timeout_ms);
+	else
+		rc = sentral_sensor_batch_set(sentral, id, sample_rate, SENTRAL_MAX_BATCH_LENGTH);
+
+	LOGD(&sentral->client->dev, "batch_store > setting rate id: %u sample rate: %u, timeout %u", id, sample_rate, timeout_ms);
+
 	if (rc) {
 		LOGE(&sentral->client->dev,
 				"error (%d) setting batch for sensor id: %u, rate: %u, timeout: %u\n",
@@ -2223,7 +2296,6 @@ static irqreturn_t sentral_irq_handler(int irq, void *dev_id)
 		if (cancel_delayed_work(&sentral->work_watchdog) == 0)
 			flush_workqueue(sentral->sentral_wq);
 
-		//sentral->ts_irq_utime = sentral_get_ktime_us();
 		// check for special wakeup source
 		rc = sentral_read_block(sentral, SR_WAKE_SRC, (void *)&wake_src_count,
 				sizeof(wake_src_count));
@@ -2265,7 +2337,6 @@ static void sentral_do_work_reset(struct work_struct *work)
 {
 	struct sentral_device *sentral = container_of(work, struct sentral_device,
 			work_reset);
-
 	int rc = 0;
 
 	mutex_lock(&sentral->lock_reset);
@@ -2274,6 +2345,7 @@ static void sentral_do_work_reset(struct work_struct *work)
 	rc = sentral_firmware_load(sentral, sentral->platform_data.firmware);
 	if (rc) {
 		LOGE(&sentral->client->dev, "error (%d) loading firmware\n", rc);
+		mutex_unlock(&sentral->lock_reset);
 		return;
 	}
 
@@ -2283,19 +2355,24 @@ static void sentral_do_work_reset(struct work_struct *work)
 	rc = sentral_set_cpu_run_enable(sentral, true);
 	if (rc) {
 		LOGE(&sentral->client->dev, "error (%d) enabling cpu run\n", rc);
+		mutex_unlock(&sentral->lock_reset);
 		return;
 	}
 
 	sentral->init_complete = true;
 
+	mutex_unlock(&sentral->lock_reset);
+
+	find_time_scale(sentral, 50);
+
+	mdelay(100);
 	// sync timestamp
+	sentral->ts_ref_stime = 0;
 	rc = sentral_sync_timestamp(sentral);
 	if (rc) {
 		LOGE(&sentral->client->dev, "error (%d) syncing timestamp\n", rc);
 		return;
 	}
-
-	mutex_unlock(&sentral->lock_reset);
 
 	// queue a FIFO read
 	queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
@@ -2417,9 +2494,6 @@ static int sentral_suspend_notifier(struct notifier_block *nb,
 			LOGE(&sentral->client->dev,
 					"error (%d) setting AP suspend to false\n", rc);
 		}
-
-		// sync timestamp
-		rc = sentral_sync_timestamp(sentral);
 
 		// queue fifo work
 		queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
@@ -2583,6 +2657,7 @@ static int sentral_probe(struct i2c_client *client,
 	mutex_init(&sentral->lock_ts);
 	mutex_init(&sentral->lock_reset);
 	mutex_init(&sentral->lock_flush);
+	mutex_init(&sentral->lock_pio);
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
 
 	// zero wake source counters
