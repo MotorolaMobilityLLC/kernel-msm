@@ -13,18 +13,16 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
-#include "apq8026-smelt-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35350-small.dtsi"
+#include "apq8026-smelt-large-tsl2584-config.dtsi"
+#include "apq8026-smelt-panel-nt35350-large.dtsi"
 
 / {
 	qcom,msm-id =
-		<199 0x41 0x0400>, /* P2A Wingboard */
-		<199 0x41 0x0407>, /* Small P2A Portable */
-		<199 0x41 0x0507>; /* Small P2AA Portable */
+		<199 0x41 0x0300>; /* P2A Wingboard */
 };
 
 &i2c_5 {
 	atmxt@4a {
-		atmel,atmxt-tdat-filename = "atmxt-r3_small.tdat";
+		atmel,atmxt-tdat-filename = "atmxt-r3_large.tdat";
 	};
 };

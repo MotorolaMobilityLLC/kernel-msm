@@ -1,0 +1,29 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "apq8026-smelt-common.dtsi"
+#include "apq8026-smelt-small-tsl2584-config.dtsi"
+#include "apq8026-smelt-panel-nt35350-small.dtsi"
+
+/ {
+	qcom,msm-id =
+		<199 0x41 0x0407>, /* Small P2A Portable */
+		<199 0x41 0x0507>; /* Small P2AA Portable */
+};
+
+&i2c_5 {
+	atmxt@4a {
+		atmel,atmxt-tdat-filename = "atmxt-r3_small.tdat";
+	};
+};
