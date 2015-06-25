@@ -590,6 +590,8 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					work = 1;
 					break;
 				case DWC3_SDP_CHARGER:
+					dwc3_otg_set_power(phy,
+						CONFIG_USB_GADGET_VBUS_DRAW);
 					dwc3_otg_start_peripheral(&dotg->otg,
 									1);
 					phy->state = OTG_STATE_B_PERIPHERAL;
