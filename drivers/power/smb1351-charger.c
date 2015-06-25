@@ -541,6 +541,8 @@ int retry_slp_ms[RETRY_COUNT] = {
 	10, 20, 30, 40, 50
 };
 
+static bool parallel_probe_completed;
+
 static int smb1351_read_reg(struct smb1351_charger *chip, int reg, u8 *val)
 {
 	s32 ret;
@@ -3201,6 +3203,9 @@ static int smb1351_parallel_charger_probe(struct i2c_client *client,
 	struct device_node *node = client->dev.of_node;
 	u8 i2c_addr;
 
+	if (parallel_probe_completed)
+		return -EEXIST;
+
 	chip = devm_kzalloc(&client->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip) {
 		pr_err("Couldn't allocate memory\n");
@@ -3293,6 +3298,7 @@ static int smb1351_parallel_charger_probe(struct i2c_client *client,
 	dump_regs(chip);
 
 	pr_info("smb1351 parallel successfully probed.\n");
+	parallel_probe_completed = true;
 
 	return 0;
 }
@@ -3314,6 +3320,8 @@ static int smb1351_charger_remove(struct i2c_client *client)
 
 	mutex_destroy(&chip->irq_complete);
 	debugfs_remove_recursive(chip->debug_root);
+	if (chip->parallel_charger)
+		parallel_probe_completed = false;
 	return 0;
 }
 
