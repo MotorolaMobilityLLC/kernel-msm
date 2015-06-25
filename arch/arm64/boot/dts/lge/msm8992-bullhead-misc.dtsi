@@ -101,5 +101,9 @@
 		fusb301,init-mode = /bits/ 8 <32>;
 		fusb301,drp-toggle-time = /bits/ 8 <0>;
 		fusb301,host-current = /bits/ 8 <1>;
+		fusb301,use-try-snk-emulation;
+		fusb301,ttry-timer-value = <250 600>;
+		fusb301,ccdebounce-timer-value = <20 200>;
+
 	};
 };
