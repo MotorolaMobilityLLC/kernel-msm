@@ -27,11 +27,3 @@ config ZRAM_LZ4_COMPRESS
 	  compared to LZO compression.
 
 	  See https://code.google.com/p/lz4/ for more information about LZ4.
-
-config ZRAM_DEBUG
-	bool "Compressed RAM block device debug support"
-	depends on ZRAM
-	default n
-	help
-	  This option adds additional debugging code to the compressed
-	  RAM block device driver.
