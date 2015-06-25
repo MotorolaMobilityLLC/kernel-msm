@@ -13,3 +13,9 @@
 
 #include "msm8996-v3.dtsi"
 #include "msm8996-pinctrl.dtsi"
+
+&uartblsp2dm1 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_active>;
+};
