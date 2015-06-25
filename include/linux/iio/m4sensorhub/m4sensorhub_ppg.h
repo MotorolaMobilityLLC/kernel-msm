@@ -22,9 +22,12 @@
 #include <linux/types.h>
 
 struct m4sensorhub_ppg_data {
-	int raw_data1;
-	int raw_data2;
+	int32_t raw_data1;
+	int32_t raw_data2;
+	int32_t x;
+	int32_t y;
+	int32_t z;
 	long long timestamp;
-};
+} __packed;
 
 #endif /*__M4SENSORHUB_PPG_H__ */
