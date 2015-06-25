@@ -66,7 +66,9 @@
 
 /{
 	bullhead_batterydata: qcom,battery-data {
-		#include "lge_blt9_2300mAh_1956773_PMI8994GUI2165.dtsi"
+		qcom,batt-id-range-pct = <15>;
+		#include "lge_blt19_byd_2700mAh_2022234_PMI8994GUI2165.dtsi"
+		#include "lge_blt19_tocad_2700mAh_2022227_PMI8994GUI2165.dtsi"
 	};
 };
 
@@ -74,7 +76,6 @@
 	status = "ok";
 	qcom,ext-sense-type;
 	qcom,battery-data = <&bullhead_batterydata>;
-	qcom,single-profile;
 	qcom,sw-rbias-control;
 	qcom,resume-soc = <99>;
 	qcom,fg-iterm-ma = <200>;

@@ -1,0 +1,48 @@
+qcom,lge_blt19_byd_2700mAh_2022234_PMI8994GUI2165 {
+	/* #lge_blt19_byd_2700mAh_2022234_PMI8994GUI2165*/
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <2620>;
+	qcom,batt-id-kohm = <4>;
+	qcom,battery-beta = <4150>;
+	qcom,battery-type = "lge_blt19_byd_2700mAh_2022234_PMI8994GUI2165";
+	qcom,chg-rslow-comp-c1 = <3573924>;
+	qcom,chg-rslow-comp-c2 = <5526911>;
+	qcom,chg-rs-to-rslow = <1060320>;
+	qcom,chg-rslow-comp-thr = <0xAC>;
+	qcom,checksum = <0x9604>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.5";
+	qcom,fg-profile-data = [
+		 EA 83 2E 7D
+		 39 81 7E 77
+		 4D 83 AC 43
+		 73 81 D0 8C
+		 40 82 A1 98
+		 A6 B6 78 C2
+		 58 13 FB 83
+		 31 7D 16 81
+		 13 77 5B 83
+		 24 5C D7 82
+		 37 8E 48 82
+		 E8 99 58 BD
+		 8B CA 5A 0E
+		 91 0A F9 5A
+		 CE 6E 7D FF
+		 DD 1C 44 47
+		 36 3B 00 00
+		 F3 4C 09 42
+		 FD 3E 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 DE 70 61 6B
+		 FB 77 5B 88
+		 28 7C EF 70
+		 09 64 24 82
+		 1E 76 98 6A
+		 75 66 57 B0
+		 27 34 68 A1
+		 65 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
