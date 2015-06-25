@@ -1287,6 +1287,8 @@ static int zram_add(int device_id)
 	strlcpy(zram->compressor, default_compressor, sizeof(zram->compressor));
 	zram->meta = NULL;
 	zram->max_comp_streams = 1;
+
+	pr_info("Added device: %s\n", zram->disk->disk_name);
 	return 0;
 
 out_free_disk:
@@ -1303,6 +1305,7 @@ out_free_dev:
 
 static void zram_remove(struct zram *zram)
 {
+	pr_info("Removed device: %s\n", zram->disk->disk_name);
 	/*
 	 * Remove sysfs first, so no one will perform a disksize
 	 * store while we destroy the devices
@@ -1329,7 +1332,6 @@ static void destroy_devices(void)
 	idr_for_each(&zram_index_idr, &zram_remove_cb, NULL);
 	idr_destroy(&zram_index_idr);
 	unregister_blkdev(zram_major, "zram");
-	pr_info("Destroyed device(s)\n");
 }
 
 static int __init zram_init(void)
@@ -1349,8 +1351,6 @@ static int __init zram_init(void)
 	}
 
 	show_mem_notifier_register(&zram_show_mem_notifier_block);
-	pr_info("Created %u device(s) ...\n", num_devices);
-
 	return 0;
 
 out_error:
