@@ -18,7 +18,6 @@
 
 / {
 	qcom,msm-id =
-		<199 0x41 0x0300>, /* P1A Wingboard */
 		<199 0x41 0x0308>; /* Small P1A Portable (BCM4343W)*/
 };
 
