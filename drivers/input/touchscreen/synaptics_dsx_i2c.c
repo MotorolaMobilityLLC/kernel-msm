@@ -34,6 +34,10 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reboot.h>
 #include <linux/input/synaptics_rmi_dsx.h>
+
+/* define to enable USB charger detection */
+#undef USB_CHARGER_DETECTION
+
 #include "synaptics_dsx_i2c.h"
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 #include "touchx.h"
@@ -1263,6 +1267,11 @@ static struct synaptics_dsx_platform_data *
 	if (of_property_read_bool(np, "synaptics,purge-enabled")) {
 		pr_notice("using purge\n");
 		rmi4_data->purge_enabled = true;
+	}
+
+	if (of_property_read_bool(np, "synaptics,charger-detection")) {
+		pr_notice("using charger detection\n");
+		rmi4_data->charger_detection = true;
 	}
 
 	return pdata;
@@ -4811,6 +4820,126 @@ static int rmi_reboot(struct notifier_block *nb,
 
 	return NOTIFY_DONE;
 }
+
+#if defined(USB_CHARGER_DETECTION)
+/***************************************************************/
+/* USB charging source info from power_supply driver directly  */
+/***************************************************************/
+static enum power_supply_property ps_props[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+};
+
+static const char * const ps_usb_supply[] = { "usb", };
+static bool ps_usb_present;
+static unsigned char ps_data[2] = { 0x20, 0 };
+static struct synaptics_dsx_func_patch ps_active = {
+	.func = 1,
+	.regstr = 0,
+	.subpkt = 0,
+	.size = 1,
+	.bitmask = 0x20,
+	.data = &ps_data[0],
+};
+static struct synaptics_dsx_func_patch ps_set = {
+	.func = 1,
+	.regstr = 0,
+	.subpkt = 0,
+	.size = 1,
+	.bitmask = 0x20,
+	.data = &ps_data[0],
+};
+static struct synaptics_dsx_func_patch ps_clear = {
+	.func = 1,
+	.regstr = 0,
+	.subpkt = 0,
+	.size = 1,
+	.bitmask = 0x20,
+	.data = &ps_data[1],
+};
+static int ps_get_property(struct power_supply *psy,
+	enum power_supply_property psp, union power_supply_propval *val)
+{
+	val->intval = 0;
+	return 0;
+}
+static struct synaptics_dsx_patch ps_patch[] = {
+	{
+		.name = "ps_clear",
+		.cfg_num = 1,
+	},
+	{
+		.name = "ps_set",
+		.cfg_num = 1,
+	},
+};
+
+static void ps_external_power_changed(struct power_supply *psy)
+{
+	struct power_supply *usb_psy = power_supply_get_by_name("usb");
+	union power_supply_propval pval = {0};
+	struct synaptics_rmi4_data *rmi4_data = container_of(psy,
+				struct synaptics_rmi4_data, psy);
+	struct device *dev = &rmi4_data->i2c_client->dev;
+
+	if (!usb_psy || !usb_psy->get_property)
+		return;
+
+	usb_psy->get_property(usb_psy, POWER_SUPPLY_PROP_PRESENT, &pval);
+	dev_dbg(dev, "external_power_changed: %d\n", pval.intval);
+
+	if (ps_usb_present != (pval.intval == 1)) {
+		int index = !!pval.intval;
+		struct synaptics_dsx_patch *patch_ptr =
+				rmi4_data->default_mode->patch_data[ACTIVE_IDX];
+		if (index == 1) {
+			list_add_tail(&ps_active.link, &patch_ptr->cfg_head);
+			patch_ptr->cfg_num++;
+		} else {
+			list_del(&ps_active.link);
+			patch_ptr->cfg_num--;
+		}
+		synaptics_dsx_patch_func(rmi4_data,
+				SYNAPTICS_RMI4_F01, &ps_patch[index]);
+		dev_info(dev, "power supply presence %d\n", pval.intval);
+	}
+	ps_usb_present = pval.intval == 1;
+}
+
+#define ps_notifier_unregister(r) power_supply_unregister(&r->psy)
+
+static int ps_notifier_register(struct synaptics_rmi4_data *rmi4_data)
+{
+	int error;
+	struct device *dev = &rmi4_data->i2c_client->dev;
+
+	rmi4_data->psy.num_supplies = 1;
+	rmi4_data->psy.supplied_from = ((char **) ps_usb_supply);
+	rmi4_data->psy.name = "synaptics-psy";
+	rmi4_data->psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	rmi4_data->psy.properties = ps_props;
+	rmi4_data->psy.num_properties = ARRAY_SIZE(ps_props);
+	rmi4_data->psy.get_property = ps_get_property;
+	rmi4_data->psy.external_power_changed = ps_external_power_changed;
+
+	INIT_LIST_HEAD(&ps_patch[0].cfg_head);
+	list_add_tail(&ps_clear.link, &ps_patch[0].cfg_head);
+
+	INIT_LIST_HEAD(&ps_patch[1].cfg_head);
+	list_add_tail(&ps_set.link, &ps_patch[1].cfg_head);
+
+	error = power_supply_register(dev, &rmi4_data->psy);
+	if (error < 0) {
+		dev_err(dev, "power_supply_register failed rc=%d\n", error);
+		return error;
+	}
+	return 0;
+}
+#else
+#define ps_notifier_register(r)
+#define ps_notifier_unregister(r)
+#endif
+
  /**
  * synaptics_rmi4_probe()
  *
@@ -5094,6 +5223,10 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		retval = 0;
 	}
 #endif
+
+	if (rmi4_data->charger_detection)
+		ps_notifier_register(rmi4_data);
+
 	return retval;
 
 err_sysfs:
@@ -5135,6 +5268,8 @@ err_free_gpio:
 	gpio_free(platform_data->reset_gpio);
 err_input_device:
 	synaptics_dsx_free_modes(rmi4_data);
+	if (rmi4_data->charger_detection)
+		ps_notifier_unregister(rmi4_data);
 	kfree(rmi4_data);
 
 	return retval;
@@ -5196,6 +5331,8 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 #endif
 	synaptics_rmi4_cleanup(rmi4_data);
 	synaptics_dsx_free_modes(rmi4_data);
+	if (rmi4_data->charger_detection)
+		ps_notifier_unregister(rmi4_data);
 	kfree(rmi4_data);
 
 	return 0;
