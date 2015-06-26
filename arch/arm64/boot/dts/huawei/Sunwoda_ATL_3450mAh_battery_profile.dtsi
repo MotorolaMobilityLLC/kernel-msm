@@ -1,0 +1,59 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,sunwoda_atl_3450mah {
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3450>;
+	qcom,batt-id-kohm = <22>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "sunwoda_atl_3450mah";
+	qcom,chg-rslow-comp-c1 = <3079513>;
+	qcom,chg-rslow-comp-c2 = <4067844>;
+	qcom,chg-rs-to-rslow = <816990>;
+	qcom,chg-rslow-comp-thr = <0x9F>;
+	qcom,checksum = <0xC130>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.5";
+	qcom,fg-profile-data = [
+		 FE 83 FF 7D
+		 0D 82 89 7C
+		 5B 83 FE 66
+		 EA 82 6D 8D
+		 1D 82 C9 99
+		 8A BC D9 C8
+		 5C 0F 0F 88
+		 B2 7E 77 82
+		 E0 7C 40 83
+		 37 78 F5 7F
+		 12 7A 87 82
+		 06 93 C7 B4
+		 66 C0 5E 13
+		 6B 0E 0A 5A
+		 14 70 35 FE
+		 F6 3D B4 46
+		 C6 42 00 00
+		 99 4D CA 3A
+		 5B 41 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 04 6B 93 69
+		 B5 52 BE 89
+		 E3 75 88 69
+		 3F 5D EE 7B
+		 22 74 1D 62
+		 38 60 FF B1
+		 17 9B 63 85
+		 66 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
