@@ -826,6 +826,13 @@ static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 	if (reset != 1)
 		return -EINVAL;
 
+	if (rmi4_data->suspended == true) {
+		dev_err(dev,
+			"%s: cannot reset while device is in suspend\n",
+			__func__);
+		return -EBUSY;
+	}
+
 	retval = synaptics_rmi4_reset_device(rmi4_data);
 	if (retval < 0) {
 		dev_err(dev,
