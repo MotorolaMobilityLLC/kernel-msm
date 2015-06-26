@@ -640,6 +640,7 @@
 		gpios = <&msm_gpio 21 0>, /* IRQ */
 			<&msm_gpio 20 0>; /* RESET */
 		synaptics,gpio-config;
+		synaptics,charger-detection;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
