@@ -1809,9 +1809,9 @@ void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 			/* Hardcoding these values for now, need to get
 			 * these values from FW, will change in a later check-in
 			 */
-			ptr->max_scan_cache_size = 12;
+			ptr->max_scan_cache_size = GSCAN_MAX_AP_CACHE;
 			ptr->max_scan_buckets = GSCAN_MAX_CH_BUCKETS;
-			ptr->max_ap_cache_per_scan = 16;
+			ptr->max_ap_cache_per_scan = GSCAN_MAX_AP_CACHE_PER_SCAN;
 			ptr->max_rssi_sample_size = PFN_SWC_RSSI_WINDOW_MAX;
 			ptr->max_scan_reporting_threshold = 100;
 			ptr->max_hotlist_aps = PFN_HOTLIST_MAX_NUM_APS;
