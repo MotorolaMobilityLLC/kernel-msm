@@ -929,6 +929,8 @@ struct dwc3 {
 	unsigned                irq_event_count[MAX_INTR_STATS];
 	unsigned                irq_dbg_index;
 	wait_queue_head_t	wait_linkstate;
+
+	bool			no_set_vbus_power;
 };
 
 /* -------------------------------------------------------------------------- */
