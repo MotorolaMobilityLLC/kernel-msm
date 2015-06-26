@@ -79,7 +79,7 @@
 		//qcom,actuator-src = <&actuator>;
 		//qcom,eeprom-src = <&eeprom>;
 		//qcom,led-flash-src = <&led_flash0>;
-		qcom,mount-angle = <90>;
+		qcom,mount-angle = <270>;
 		qcom,sensor-name = "imx377";
 		cam_vdig-supply = <&pm8994_l3>;
 		cam_vio-supply = <&pm8994_lvs1>;
@@ -118,7 +118,7 @@
 		qcom,slave-id = <0x6c 0x300a 0x5690>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <2>;
-		qcom,mount-angle = <90>;
+		qcom,mount-angle = <270>;
 		qcom,sensor-name = "ov5693";
 		cam_vdig-supply = <&pm8994_l14>;
 		cam_vio-supply = <&pm8994_l10>;
