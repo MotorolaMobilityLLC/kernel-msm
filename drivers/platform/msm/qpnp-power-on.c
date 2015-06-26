@@ -191,6 +191,8 @@ static const char * const qpnp_poff_reason[] = {
 	[15] = "Triggered from STAGE3 (Stage 3 reset)",
 };
 
+static bool key_block_value = false;
+
 /*
  * On the kernel command line specify
  * qpnp-power-on.warm_boot=1 to indicate a warm
@@ -513,6 +515,9 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
 
+	/* if key block value is true,block the event of key */
+	if (key_block_value)
+		return 0;
 	/* simulate press event in case release event occured
 	 * without a press event
 	 */
@@ -1403,6 +1408,57 @@ static void qpnp_pon_debugfs_remove(struct spmi_device *spmi)
 {}
 #endif
 
+static ssize_t key_block_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", key_block_value?1:0);
+
+}
+
+static ssize_t key_block_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+
+	if (NULL == buf || 1 != count)
+	{
+		return -EINVAL;
+	}
+	if ('0' == buf[0])
+	{
+		key_block_value = false;
+	}
+	else if ('1' == buf[0])
+	{
+		key_block_value = true;
+	}
+	else
+	{
+		pr_err("key_block:Invalid parameter\n");
+	}
+
+	return count;
+
+}
+
+static struct kobj_attribute keyblock_attribute = __ATTR(key_block_value, 0600, key_block_show, key_block_store);
+
+static struct kobject *keyblock_kobj;
+
+static int  device_create_key_block_file(void)
+
+{
+	int rc;
+
+	keyblock_kobj = kobject_create_and_add("key_block", kernel_kobj);
+
+	if (!keyblock_kobj)
+		return -ENOMEM;
+
+	rc = sysfs_create_file(keyblock_kobj, &keyblock_attribute.attr);
+	if (rc)
+		kobject_put(keyblock_kobj);
+
+	return rc;
+}
+
 static int qpnp_pon_probe(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon;
@@ -1594,6 +1650,9 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 	}
 
 	qpnp_pon_debugfs_init(spmi);
+	if (device_create_key_block_file()) {
+		pr_err("sys key block file creation failed.\n");
+	}
 	return rc;
 }
 
