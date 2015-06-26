@@ -305,6 +305,7 @@ enum {
 	USER = BIT(0),
 	THERMAL = BIT(1),
 	CURRENT = BIT(2),
+	DEMO = BIT(3),
 };
 
 enum path_type {
@@ -2714,6 +2715,8 @@ static void toggle_usbin_aicl(struct smb135x_chg *chip)
 
 #define FLOAT_CHG_TIME_SECS 1800
 #define INPUT_CURR_CHECK_THRES 0x0C /*  1100 mA */
+#define DEMO_MODE_MAX_SOC 35
+#define DEMO_MODE_HYS_SOC 5
 static void heartbeat_work(struct work_struct *work)
 {
 	u8 reg;
@@ -2741,6 +2744,19 @@ static void heartbeat_work(struct work_struct *work)
 		schedule_delayed_work(&chip->heartbeat_work,
 				      msecs_to_jiffies(1000));
 		return;
+	}
+
+	if (chip->demo_mode) {
+		if ((!!!(chip->usb_suspended & DEMO)) &&
+		    (batt_soc >= DEMO_MODE_MAX_SOC)) {
+			smb135x_path_suspend(chip, USB, DEMO, true);
+			smb135x_path_suspend(chip, DC, DEMO, true);
+		} else if (!!(chip->usb_suspended & DEMO) &&
+			   (batt_soc <=
+			 (DEMO_MODE_MAX_SOC - DEMO_MODE_HYS_SOC))) {
+			smb135x_path_suspend(chip, USB, DEMO, false);
+			smb135x_path_suspend(chip, DC, DEMO, false);
+		}
 	}
 
 	smb_stay_awake(&chip->smb_wake_source);
