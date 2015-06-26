@@ -4826,6 +4826,10 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
 				"qcom,hsusb-otg-rw-during-lpm-workaround");
 
+    //ASUS_BSP+++ "[USB][NA][FIX] Enable msm_otg_reset on usb disconncet"
+    pdata->disable_reset_on_disconnect = 0;
+    //ASUS_BSP--- "[USB][NA][FIX] Enable msm_otg_reset on usb disconncet"
+
 	return pdata;
 }
 
