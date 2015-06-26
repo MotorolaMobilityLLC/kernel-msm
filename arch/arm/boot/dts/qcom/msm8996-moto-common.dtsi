@@ -13,6 +13,7 @@
 
 #include "msm8996-v3.dtsi"
 #include "msm8996-pinctrl.dtsi"
+#include "msm8996-moto-pinctrl.dtsi"
 
 / {
 	aliases {
