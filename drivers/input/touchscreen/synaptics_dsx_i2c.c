@@ -35,6 +35,10 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reboot.h>
 #include <linux/input/synaptics_rmi_dsx.h>
+
+/* define to enable USB charger detection */
+#define USB_CHARGER_DETECTION
+
 #include "synaptics_dsx_i2c.h"
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 #include "touchx.h"
@@ -4818,6 +4822,7 @@ static int rmi_reboot(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+#if defined(USB_CHARGER_DETECTION)
 /***************************************************************/
 /* USB charging source info from power_supply driver directly  */
 /***************************************************************/
@@ -4826,7 +4831,7 @@ static enum power_supply_property ps_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 };
 
-static const char *ps_usb_supply[] = { "usb", };
+static const char * const ps_usb_supply[] = { "usb", };
 static bool ps_usb_present;
 static unsigned char ps_data[2] = { 0x20, 0 };
 static struct synaptics_dsx_func_patch ps_active = {
@@ -4931,6 +4936,10 @@ static int ps_notifier_register(struct synaptics_rmi4_data *rmi4_data)
 	}
 	return 0;
 }
+#else
+#define ps_notifier_register(r)
+#define ps_notifier_unregister(r)
+#endif
 
  /**
  * synaptics_rmi4_probe()

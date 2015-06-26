@@ -23,7 +23,10 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION "DSX 1.1"
 
 #include <linux/version.h>
+#if defined(USB_CHARGER_DETECTION)
+#include <linux/usb.h>
 #include <linux/power_supply.h>
+#endif
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 #include <linux/mmi_panel_notifier.h>
 #elif defined(CONFIG_FB)
@@ -490,8 +493,9 @@ struct synaptics_rmi4_data {
 
 	struct synaptics_rmi4_func_packet_regs *f12_data_registers_ptr;
 	struct notifier_block rmi_reboot;
-
+#if defined(USB_CHARGER_DETECTION)
 	struct power_supply psy;
+#endif
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
