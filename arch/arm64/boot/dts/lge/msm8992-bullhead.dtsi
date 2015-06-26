@@ -185,6 +185,7 @@
 
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
+		no-set-vbus-power;
 	};
 };
 
