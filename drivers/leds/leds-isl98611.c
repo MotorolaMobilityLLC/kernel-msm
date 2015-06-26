@@ -58,6 +58,8 @@
 /* BIT7 in ENABLE register can only be 0 while IC is resetting. */
 /* BIT3 can be 0 or 1 depending on brightness state. */
 #define REG_ENABLE_DEFAULT			0x37
+#define ISL98611_RESET_DELAY_US_MIN		8000
+#define ISL98611_RESET_DELAY_US_MAX		9000
 
 #define REG_REVISION		0x00
 #define REG_STATUS		0x01
@@ -166,6 +168,21 @@ static int isl98611_update(struct isl98611_chip *pchip,
 	return rc;
 }
 
+static void isl98611_reset(struct isl98611_chip *pchip)
+{
+	int rval =  0, status;
+
+	rval = isl98611_update(pchip, REG_ENABLE, RESET_MASK, RESET_VAL);
+	usleep_range(ISL98611_RESET_DELAY_US_MIN, ISL98611_RESET_DELAY_US_MAX);
+	status = isl98611_read(pchip, REG_STATUS);
+	/* status register should read 0 after reset */
+	if (status)
+		dev_err(pchip->dev, "%s failed: status %#x ret %#x\n",
+			__func__, status, rval);
+	else
+		dev_info(pchip->dev, "%s success\n", __func__);
+}
+
 /* ils98611A specific initialization */
 static int isl98611A_init(struct isl98611_chip *pchip)
 {
@@ -195,8 +212,7 @@ static int isl98611_chip_init(struct isl98611_chip *pchip)
 	}
 
 	if (!pdata->no_reset)
-		rval |= isl98611_update(pchip, REG_ENABLE,
-			RESET_MASK, RESET_VAL);
+		isl98611_reset(pchip);
 
 	if (pdata->cabc_off)
 		isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, 0x00);
@@ -536,8 +552,7 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 			isl98611_write(pchip, REG_BRGHT_MSB, 0);
 			/* If reset is not part of config - reset here*/
 			if (status && pdata->no_reset)
-				isl98611_update(pchip, REG_ENABLE,
-					RESET_MASK, RESET_VAL);
+				isl98611_reset(pchip);
 			isl98611_chip_init(pchip);
 		}
 	}
