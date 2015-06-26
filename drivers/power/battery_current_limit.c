@@ -263,10 +263,12 @@ static void __ref bcl_handle_hotplug(void)
 			if (cpu_online(_cpu))
 				continue;
 			ret = cpu_up(_cpu);
-			if (ret)
+			if (ret) {
 				pr_err("Error %d onlining core %d\n",
 					ret, _cpu);
-			else
+				if (-EBUSY == ret)
+					bcl_hotplug_request += BIT(_cpu);
+			} else
 				pr_info("Allow Online CPU:%d\n", _cpu);
 		}
 	}
