@@ -23,6 +23,7 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION "DSX 1.1"
 
 #include <linux/version.h>
+#include <linux/power_supply.h>
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 #include <linux/mmi_panel_notifier.h>
 #elif defined(CONFIG_FB)
@@ -459,6 +460,7 @@ struct synaptics_rmi4_data {
 	bool input_registered;
 	bool in_bootloader;
 	bool purge_enabled;
+	bool charger_detection;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
@@ -488,6 +490,8 @@ struct synaptics_rmi4_data {
 
 	struct synaptics_rmi4_func_packet_regs *f12_data_registers_ptr;
 	struct notifier_block rmi_reboot;
+
+	struct power_supply psy;
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
