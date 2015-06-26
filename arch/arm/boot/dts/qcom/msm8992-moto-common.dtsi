@@ -63,6 +63,13 @@
 			reg = <0x0 0xaf000000 0x0 0x80000>;
 			label = "ramoops_mem";
 		};
+
+		mmns_mem: mmns_region@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			reg = <0 0 0 0x12c00000>; /* 300 MB */
+			label = "mmns_mem";
+		};
 	};
 
 };
@@ -970,6 +977,15 @@
 
 		linux,contiguous-region = <&ramoops_mem>;
         };
+
+	qcom,ion {
+		qcom,ion-heap@30 { /* MMNS HEAP */
+			reg = <30>;
+			qcom,heap-align = <0x1000>;
+			linux,contiguous-region = <&mmns_mem>;
+			qcom,ion-heap-type = "DMA";
+		};
+	};
 
 	vreg_5p0: vreg_5v {
 		compatible = "regulator-fixed";
