@@ -1428,11 +1428,13 @@ static struct cal_block_data *adm_find_cal_by_path(int cal_index, int path)
 
 		if (cal_index == ADM_AUDPROC_CAL) {
 			audproc_cal_info = cal_block->cal_info;
-			if (audproc_cal_info->path == path)
+			if ((audproc_cal_info->path == path) &&
+			    (cal_block->cal_data.size > 0))
 				return cal_block;
 		} else if (cal_index == ADM_AUDVOL_CAL) {
 			audvol_cal_info = cal_block->cal_info;
-			if (audvol_cal_info->path == path)
+			if ((audvol_cal_info->path == path) &&
+			    (cal_block->cal_data.size > 0))
 				return cal_block;
 		}
 	}
@@ -1460,13 +1462,15 @@ static struct cal_block_data *adm_find_cal(int cal_index, int path,
 			audproc_cal_info = cal_block->cal_info;
 			if ((audproc_cal_info->path == path) &&
 			    (audproc_cal_info->app_type == app_type) &&
-			    (audproc_cal_info->acdb_id == acdb_id))
+			    (audproc_cal_info->acdb_id == acdb_id) &&
+			    (cal_block->cal_data.size > 0))
 				return cal_block;
 		} else if (cal_index == ADM_AUDVOL_CAL) {
 			audvol_cal_info = cal_block->cal_info;
 			if ((audvol_cal_info->path == path) &&
 			    (audvol_cal_info->app_type == app_type) &&
-			    (audvol_cal_info->acdb_id == acdb_id))
+			    (audvol_cal_info->acdb_id == acdb_id) &&
+			    (cal_block->cal_data.size > 0))
 				return cal_block;
 		}
 	}
