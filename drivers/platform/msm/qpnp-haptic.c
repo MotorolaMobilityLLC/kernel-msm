@@ -117,6 +117,9 @@
 #define QPNP_HAP_MAX_RETRIES		5
 #define QPNP_HAP_CYCLS			5
 
+#define QPNP_HAP_DISABLE_AUTO_RES	0x0
+#define QPNP_HAP_ENABLE_AUTO_RES	0x24
+
 /* haptic debug register set */
 static u8 qpnp_hap_dbg_regs[] = {
 	0x0a, 0x0b, 0x0c, 0x46, 0x48, 0x4c, 0x4d, 0x4e, 0x4f, 0x51, 0x52, 0x53,
@@ -314,14 +317,27 @@ static int qpnp_hap_mod_enable(struct qpnp_hap *hap, int on)
 	return 0;
 }
 
+/*  If you used QWD mode (0x3C04F = 0x24) then
+ *  you need to DISABLE auto-res before enabling PLAY bit.
+ *  After PLAY bit is high, delay 20ms, and then ENABLE auto-res.
+ *  This is needed for QWD only.
+ */
 static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 {
 	u8 val;
 	int rc;
+	u8 disable = QPNP_HAP_DISABLE_AUTO_RES;
+	u8 enable = QPNP_HAP_ENABLE_AUTO_RES;
 
 	val = hap->reg_play;
-	if (on)
+	if (on) {
+		rc = qpnp_hap_write_reg(hap, &disable,
+				QPNP_HAP_LRA_AUTO_RES_REG(hap->base));
+		if (rc < 0)
+			return rc;
+
 		val |= QPNP_HAP_PLAY_EN;
+	}
 	else
 		val &= ~QPNP_HAP_PLAY_EN;
 
@@ -329,6 +345,14 @@ static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 			QPNP_HAP_PLAY_REG(hap->base));
 	if (rc < 0)
 		return rc;
+
+	if (val & QPNP_HAP_PLAY_EN) {
+		msleep(20);
+		rc = qpnp_hap_write_reg(hap, &enable,
+				QPNP_HAP_LRA_AUTO_RES_REG(hap->base));
+		if (rc < 0)
+			return rc;
+	}
 
 	hap->reg_play = val;
 
