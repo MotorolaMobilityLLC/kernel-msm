@@ -31,6 +31,33 @@
 
 &soc {
 	tlmm_pinmux: pinctrl@fd510000 {
+		fpc_reset {
+			qcom,pins = <&gp 89>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "fpc_reset";
+			fpc_reset_reset: reset {
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+			fpc_reset_active: active {
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+		fpc_irq_active {
+			qcom,pins = <&gp 90>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "fpc_irq_active";
+			fpc_irq_active: active {
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
 		spi12_active {
 			/* MOSI, MISO, CS, CLK */
 			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
@@ -38,11 +65,10 @@
 			qcom,pin-func = <1>;
 			label = "spi12-active";
 			spi12_active: spi_active {
-			       drive-strength = <8>;
-			       bias-disable = <0>;
+				drive-strength = <8>;
+				bias-disable = <0>;
 			};
 		};
-
 		spi12_suspend {
 			/* MOSI, MISO, CS, CLK */
 			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
@@ -50,8 +76,8 @@
 			qcom,pin-func = <1>;
 			label = "spi12-suspend";
 			spi12_sleep: spi_sleep {
-			       drive-strength = <2>;
-			       bias-pull-down;
+				drive-strength = <2>;
+				bias-pull-down;
 			};
 		};
 	};
@@ -80,7 +106,6 @@
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
 	};
-
 	qcom,qseecom@6500000 {
 		reg = <0x4800000 0x1900000>;
 	};
@@ -89,16 +114,32 @@
 &spi_12 {
 	status = "ok";
 	fpc1020-spi@0 {
-		compatible = "fpc,fpc1020";
 		reg = <0>;
+		compatible = "fpc,fpc1020";
+		input-device-name = "fpc1020";
 		interrupt-parent = <&msm_gpio>;
-		spi-max-frequency = <5000000>;
-		fpc1020,irq_gpio = <&msm_gpio 90 0>;
-		fpc1020,reset_gpio = <&msm_gpio 89 0>;
+		interrupts = <90 0x0>;
 		fpc1020,moduleid_gpio = <&msm_gpio 102 0>;
-		vdd-supply = <&pm8994_s4>;
-		fpc1020,vdd = "vdd";
-		interrupts = <90 0>;
+		fpc,gpio_rst    = <&msm_gpio 89 0>;
+		fpc,gpio_irq    = <&msm_gpio 90 0>;
+		vcc_spi-supply  = <&pm8994_s4>;
+		fpc,use_fpc2050 = <1>;
+		fpc,enable-wakeup;
+		/* EV_MSC, MSC_SCAN */
+		fpc,event-type = <4>;
+		fpc,event-code = <4>;
+		spi-max-frequency = <4800000>;
+		spi-qup-id = <0>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+
+		pinctrl-names = "fpc1020_reset_reset",
+				"fpc1020_reset_active",
+				"fpc1020_irq_active";
+		pinctrl-0 = <&fpc_reset_reset>;
+		pinctrl-1 = <&fpc_reset_active>;
+		pinctrl-2 = <&fpc_irq_active>;
 		status = "ok";
 	};
 };
