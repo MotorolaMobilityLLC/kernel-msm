@@ -28,6 +28,7 @@
 #include <linux/printk.h>
 #include <linux/ratelimit.h>
 #include <linux/irqchip/qpnp-int.h>
+#include <linux/wakeup_reason.h>
 
 #include <asm/irq.h>
 
@@ -625,6 +626,7 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 		struct irq_desc *desc;
 		const char *name = "null";
 
+		log_base_wakeup_reason(irq);
 		desc = irq_to_desc(irq);
 		if (desc == NULL)
 			name = "stray irq";
