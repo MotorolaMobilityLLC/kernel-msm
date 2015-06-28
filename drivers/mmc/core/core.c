@@ -409,10 +409,28 @@ void mmc_blk_init_bkops_statistics(struct mmc_card *card)
 	bkops_stats->suspend = 0;
 	bkops_stats->hpi = 0;
 	bkops_stats->enabled = true;
+	bkops_stats->auto_start = 0;
+	bkops_stats->auto_stop = 0;
 
 	spin_unlock(&bkops_stats->lock);
 }
 EXPORT_SYMBOL(mmc_blk_init_bkops_statistics);
+
+static void mmc_update_bkops_auto_on(struct mmc_bkops_stats *stats)
+{
+	spin_lock_irq(&stats->lock);
+	if (stats->enabled)
+		stats->auto_start++;
+	spin_unlock_irq(&stats->lock);
+}
+
+static void mmc_update_bkops_auto_off(struct mmc_bkops_stats *stats)
+{
+	spin_lock_irq(&stats->lock);
+	if (stats->enabled)
+		stats->auto_stop++;
+	spin_unlock_irq(&stats->lock);
+}
 
 static void mmc_start_cmdq_request(struct mmc_host *host,
 				   struct mmc_request *mrq)
@@ -515,10 +533,14 @@ int mmc_set_auto_bkops(struct mmc_card *card, bool enable)
 		pr_err("%s: %s: error in setting auto bkops to %d (%d)\n",
 			mmc_hostname(card->host), __func__, enable, ret);
 	} else {
-		if (enable)
+		if (enable) {
 			mmc_card_set_auto_bkops(card);
-		else
+			mmc_update_bkops_auto_on(&card->bkops_info.bkops_stats);
+		} else {
 			mmc_card_clr_auto_bkops(card);
+			mmc_update_bkops_auto_off(
+					&card->bkops_info.bkops_stats);
+		}
 		card->ext_csd.bkops_en = bkops_en;
 	}
 out:
