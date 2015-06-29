@@ -2806,8 +2806,14 @@ int mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl)
 {
 	u32 status = 1;
 	int cnt = 20;
-	struct mdss_mdp_mixer *mixer = ctl->mixer_left;
+	struct mdss_mdp_mixer *mixer;
 
+	if (!ctl) {
+		pr_err("ctl not initialized\n");
+		return -EINVAL;
+	}
+
+	mixer = ctl->mixer_left;
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_SW_RESET, 1);
 
 	/*
@@ -2830,8 +2836,9 @@ int mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl)
 	if (mixer) {
 		mdss_mdp_pipe_reset(mixer);
 
-		if (ctl->mfd->split_mode == MDP_DUAL_LM_SINGLE_DISPLAY)
-			mdss_mdp_pipe_reset(ctl->mixer_right);
+		if (ctl->mfd &&
+			(ctl->mfd->split_mode == MDP_DUAL_LM_SINGLE_DISPLAY))
+				mdss_mdp_pipe_reset(ctl->mixer_right);
 	}
 
 	return 0;
@@ -3753,10 +3760,14 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 		/* postprocessing setup, including dspp */
 		mdss_mdp_pp_setup_locked(ctl);
 
-	if (sctl && ctl->split_flush_en) {
-		ctl->flush_bits |= sctl->flush_bits;
-		sctl->flush_bits = 0;
-		sctl_flush_bits = sctl->flush_bits;
+	if (sctl) {
+		if (ctl->split_flush_en) {
+			ctl->flush_bits |= sctl->flush_bits;
+			sctl->flush_bits = 0;
+			sctl_flush_bits = 0;
+		} else {
+			sctl_flush_bits = sctl->flush_bits;
+		}
 	}
 	ctl_flush_bits = ctl->flush_bits;
 

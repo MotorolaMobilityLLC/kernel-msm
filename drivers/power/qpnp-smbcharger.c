@@ -1273,7 +1273,7 @@ static int smbchg_dc_en(struct smbchg_chip *chip, bool enable,
 		goto out;
 	}
 
-	if (chip->dc_psy_type != -EINVAL)
+	if (chip->dc_psy_type != -EINVAL && chip->psy_registered)
 		power_supply_changed(&chip->dc_psy);
 	pr_smb(PR_STATUS, "dc charging %s, suspended = %02x\n",
 			suspended == 0 ? "enabled"
@@ -1350,7 +1350,7 @@ static int smbchg_set_high_usb_chg_current(struct smbchg_chip *chip,
 static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 							int current_ma)
 {
-	int rc;
+	int rc = 0;
 	bool changed;
 
 	if (!chip->batt_present) {
@@ -1384,7 +1384,6 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_100MA);
 		chip->usb_max_current_ma = 100;
-		goto out;
 	}
 	/* specific current values */
 	if (current_ma == CURRENT_150_MA) {
@@ -1395,7 +1394,6 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_100MA);
 		chip->usb_max_current_ma = 150;
-		goto out;
 	}
 	if (current_ma == CURRENT_500_MA) {
 		rc = smbchg_sec_masked_write(chip,
@@ -1405,7 +1403,6 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_500MA);
 		chip->usb_max_current_ma = 500;
-		goto out;
 	}
 	if (current_ma == CURRENT_900_MA) {
 		rc = smbchg_sec_masked_write(chip,
@@ -1415,16 +1412,15 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_500MA);
 		chip->usb_max_current_ma = 900;
-		goto out;
 	}
 
-out:
 	rc = smbchg_set_high_usb_chg_current(chip, current_ma);
-	pr_smb(PR_STATUS, "usb current set to %d mA\n",
-			chip->usb_max_current_ma);
 	if (rc < 0)
 		dev_err(chip->dev,
 			"Couldn't set %dmA rc = %d\n", current_ma, rc);
+out:
+	pr_smb(PR_STATUS, "usb current set to %d mA\n",
+			chip->usb_max_current_ma);
 	return rc;
 }
 
@@ -4012,7 +4008,7 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 	if (chip->dc_present != dc_present) {
 		/* dc changed */
 		chip->dc_present = dc_present;
-		if (chip->psy_registered)
+		if (chip->dc_psy_type != -EINVAL && chip->psy_registered)
 			power_supply_changed(&chip->dc_psy);
 		smbchg_charging_status_change(chip);
 		smbchg_aicl_deglitch_wa_check(chip);
