@@ -183,6 +183,18 @@ static void isl98611_reset(struct isl98611_chip *pchip)
 		dev_info(pchip->dev, "%s success\n", __func__);
 }
 
+static void isl98611_cabc(struct isl98611_chip *pchip)
+{
+	int rval =  0;
+	struct isl98611_platform_data *pdata = pchip->pdata;
+
+	dev_info(pchip->dev, "Enabling CABC");
+	rval |= isl98611_update(pchip, REG_PWMCTRL, PWMRES_MASK, pdata->pwm_res);
+	rval |= isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, CABC_VAL);
+	if (rval)
+		dev_err(pchip->dev, "%s failed ret %#x\n", __func__, rval);
+}
+
 /* ils98611A specific initialization */
 static int isl98611A_init(struct isl98611_chip *pchip)
 {
@@ -299,12 +311,8 @@ static void isl98611_brightness_set(struct work_struct *work)
 	}
 
 	/* set configure pwm input on first brightness command */
-	if (old_level == -1 && !pdata->cabc_off) {
-		dev_info(pchip->dev, "Enabling CABC");
-		isl98611_update(pchip, REG_PWMCTRL,
-			PWMRES_MASK, pdata->pwm_res);
-		isl98611_update(pchip, REG_DIMMCTRL, CABC_MASK, CABC_VAL);
-	}
+	if (old_level == -1 && !pdata->cabc_off)
+		isl98611_cabc(pchip);
 
 	if (level != old_level && old_level == 0) {
 		rc = isl98611_update(pchip, REG_ENABLE,
@@ -553,6 +561,9 @@ static int isl98611_fb_notifier_callback(struct notifier_block *self,
 			/* If reset is not part of config - reset here*/
 			if (status && pdata->no_reset)
 				isl98611_reset(pchip);
+			/* CABC is not part of the init call. Add it here */
+			if (!pdata->cabc_off)
+				isl98611_cabc(pchip);
 			isl98611_chip_init(pchip);
 		}
 	}
