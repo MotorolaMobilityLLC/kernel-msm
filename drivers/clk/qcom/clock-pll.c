@@ -260,12 +260,15 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 {
 	unsigned long flags;
 	struct pll_clk *pll = to_pll_clk(c);
-	int ret = 0, count;
+	int ret = 0, count, i;
 	u32 mode, testlo;
 	u32 lockmask = pll->masks.lock_mask ?: PLL_LOCKED_BIT;
 	u32 mode_lock;
 	u64 time;
 	bool early_lock = false;
+	u32 test_ctl_lo[4], test_alt_status[4];
+	u32 mode_reg, l_reg, test_ctl_hi_reg, test_ctl_lo_reg;
+	u32 user_ctl_reg, config_ctl_reg;
 
 	spin_lock_irqsave(&pll_reg_lock, flags);
 
@@ -343,30 +346,19 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 	mode_lock = readl_relaxed(PLL_STATUS_REG(pll));
 
 	if (!(mode_lock & lockmask)) {
-		pr_err("PLL lock bit detection total wait time: %lld ns", time);
-		pr_err("PLL %s didn't lock after enabling for L value 0x%x!\n",
-			c->dbg_name, readl_relaxed(PLL_L_REG(pll)));
-		pr_err("mode register is 0x%x\n",
-			readl_relaxed(PLL_STATUS_REG(pll)));
-		pr_err("user control register is 0x%x\n",
-			readl_relaxed(PLL_CONFIG_REG(pll)));
-		pr_err("config control register is 0x%x\n",
-			readl_relaxed(PLL_CFG_CTL_REG(pll)));
-		pr_err("test control high register is 0x%x\n",
-			readl_relaxed(PLL_TEST_CTL_HI_REG(pll)));
-		pr_err("test control low register is 0x%x\n",
-			readl_relaxed(PLL_TEST_CTL_LO_REG(pll)));
-		pr_err("early lock? %s\n", early_lock ? "yes" : "no");
+
+		l_reg = readl_relaxed(PLL_L_REG(pll));
+		mode_reg = readl_relaxed(PLL_STATUS_REG(pll));
+		test_ctl_hi_reg = readl_relaxed(PLL_TEST_CTL_HI_REG(pll));
+		test_ctl_lo_reg = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
 
 		testlo = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
 		testlo &= ~BM(7, 6);
 		writel_relaxed(testlo, PLL_TEST_CTL_LO_REG(pll));
 		/* Wait for the write to complete */
 		mb();
-
-		pr_err("test_ctl_lo = 0x%x, pll status is: 0x%x\n",
-			readl_relaxed(PLL_TEST_CTL_LO_REG(pll)),
-			readl_relaxed(PLL_ALT_STATUS_REG(pll)));
+		test_ctl_lo[0] = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
+		test_alt_status[0] = readl_relaxed(PLL_ALT_STATUS_REG(pll));
 
 		testlo = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
 		testlo &= ~BM(7, 6);
@@ -374,9 +366,9 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 		writel_relaxed(testlo, PLL_TEST_CTL_LO_REG(pll));
 		/* Wait for the write to complete */
 		mb();
-		pr_err("test_ctl_lo = 0x%x, pll status is: 0x%x\n",
-			readl_relaxed(PLL_TEST_CTL_LO_REG(pll)),
-			readl_relaxed(PLL_ALT_STATUS_REG(pll)));
+		test_ctl_lo[1] = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
+		test_alt_status[1] = readl_relaxed(PLL_ALT_STATUS_REG(pll));
+
 
 		testlo = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
 		testlo &= ~BM(7, 6);
@@ -384,10 +376,8 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 		writel_relaxed(testlo, PLL_TEST_CTL_LO_REG(pll));
 		/* Wait for the write to complete */
 		mb();
-
-		pr_err("test_ctl_lo = 0x%x, pll status is: 0x%x\n",
-			readl_relaxed(PLL_TEST_CTL_LO_REG(pll)),
-			readl_relaxed(PLL_ALT_STATUS_REG(pll)));
+		test_ctl_lo[2] = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
+		test_alt_status[2] = readl_relaxed(PLL_ALT_STATUS_REG(pll));
 
 		testlo = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
 		testlo &= ~BM(7, 6);
@@ -395,10 +385,24 @@ static int variable_rate_pll_clk_enable(struct clk *c)
 		writel_relaxed(testlo, PLL_TEST_CTL_LO_REG(pll));
 		/* Wait for the write to complete */
 		mb();
+		test_ctl_lo[3] = readl_relaxed(PLL_TEST_CTL_LO_REG(pll));
+		test_alt_status[3] = readl_relaxed(PLL_ALT_STATUS_REG(pll));
 
-		pr_err("test_ctl_lo = 0x%x, pll status is: 0x%x\n",
-			readl_relaxed(PLL_TEST_CTL_LO_REG(pll)),
-			readl_relaxed(PLL_ALT_STATUS_REG(pll)));
+		user_ctl_reg = readl_relaxed(PLL_CONFIG_REG(pll));
+		config_ctl_reg = readl_relaxed(PLL_CFG_CTL_REG(pll));
+
+		pr_err("PLL lock bit detection total wait time: %lld ns", time);
+		pr_err("PLL %s didn't lock after enabling for L value 0x%x!\n",
+			c->dbg_name, l_reg);
+		pr_err("mode register is 0x%x\n", mode_reg);
+		for (i = 0; i < 4; i++)
+			pr_err("test_ctl_lo = 0x%x, pll status is: 0x%x\n",
+					test_ctl_lo[i], test_alt_status[i]);
+		pr_err("user control register is 0x%x\n", user_ctl_reg);
+		pr_err("config control register is 0x%x\n", config_ctl_reg);
+		pr_err("test control high register is 0x%x\n", test_ctl_hi_reg);
+		pr_err("test control low register is 0x%x\n", test_ctl_lo_reg);
+		pr_err("early lock? %s\n", early_lock ? "yes" : "no");
 		panic("failed to lock %s PLL\n", c->dbg_name);
 	}
 
