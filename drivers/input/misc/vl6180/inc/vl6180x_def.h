@@ -38,7 +38,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
 
-
 #ifndef _VL6180x_DEF
 #define _VL6180x_DEF
 
@@ -47,15 +46,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /** API minor version */
 #define VL6180x_API_REV_MINOR   0
 /** API sub version */
-#define VL6180x_API_REV_SUB     0xB3
+#define VL6180x_API_REV_SUB     1
 
 #define VL6180X_STR_HELPER(x) #x
 #define VL6180X_STR(x) VL6180X_STR_HELPER(x)
 
 #include "vl6180x_cfg.h"
 #include "vl6180x_types.h"
-#include "vl6180x_appcfg.h"
-
 
 /*
  * check configuration macro raise error or warning and suggest a default value
@@ -93,22 +90,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VL6180x_WRAP_AROUND_FILTER_SUPPORT 0
 #endif
 
-
-
-
 /****************************************
  * PRIVATE define do not edit
  ****************************************/
 
 /** Maximal buffer size ever use in i2c */
-#define VL6180x_MAX_I2C_XFER_SIZE   8 /* At present time it 6 byte max but that can change */
+#define VL6180x_MAX_I2C_XFER_SIZE   8	/* At present time it 6 byte max but that can change */
 
 #if VL6180x_UPSCALE_SUPPORT < 0
 /**
  * @def VL6180x_HAVE_UPSCALE_DATA
  * @brief  is defined if device data structure has data so when user configurable up-scale is active
  */
-#define VL6180x_HAVE_UPSCALE_DATA /* have data only for user configurable up-scale config */
+#define VL6180x_HAVE_UPSCALE_DATA	/* have data only for user configurable up-scale config */
 #endif
 
 #if VL6180x_WRAP_AROUND_FILTER_SUPPORT
@@ -127,9 +121,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VL6180x_HAVE_ALS_DATA
 #endif
 
-
 #if VL6180x_WRAP_AROUND_FILTER_SUPPORT || VL6180x_HAVE_DMAX_RANGING
-	#define	VL6180x_HAVE_RATE_DATA
+#define	VL6180x_HAVE_RATE_DATA
 #endif
 
 /** Error and warning code returned by API
@@ -137,26 +130,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * negative value are true error mostly fatal\n
  * positive value  are warning most of time it's ok to continue\n
  */
-enum VL6180x_ErrCode_t{
-	API_NO_ERROR        = 0,
-    CALIBRATION_WARNING = 1,  /*!< warning invalid calibration data may be in used \a  VL6180x_InitData() \a VL6180x_GetOffsetCalibrationData \a VL6180x_SetOffsetCalibrationData*/
-    MIN_CLIPED          = 2,  /*!< warning parameter passed was clipped to min before to be applied */
-    NOT_GUARANTEED      = 3,  /*!< Correct operation is not guaranteed typically using extended ranging on vl6180x */
-    NOT_READY           = 4,  /*!< the data is not ready retry */
+enum VL6180x_ErrCode_t {
+	API_NO_ERROR = 0,
+	CALIBRATION_WARNING = 1,	/*!< warning invalid calibration data may be in used \a  VL6180x_InitData() \a VL6180x_GetOffsetCalibrationData \a VL6180x_SetOffsetCalibrationData */
+	MIN_CLIPED = 2,		/*!< warning parameter passed was clipped to min before to be applied */
+	NOT_GUARANTEED = 3,	/*!< Correct operation is not guaranteed typically using extended ranging on vl6180x */
+	NOT_READY = 4,		/*!< the data is not ready retry */
 
-    API_ERROR      = -1,    /*!< Unqualified error */
-    INVALID_PARAMS = -2,    /*!< parameter passed is invalid or out of range */
-    NOT_SUPPORTED  = -3,    /*!< function is not supported in current mode or configuration */
-    RANGE_ERROR    = -4,    /*!< device report a ranging error interrupt status */
-    TIME_OUT       = -5,    /*!< aborted due to time out */
+	API_ERROR = -1,		/*!< Unqualified error */
+	INVALID_PARAMS = -2,	/*!< parameter passed is invalid or out of range */
+	NOT_SUPPORTED = -3,	/*!< function is not supported in current mode or configuration */
+	RANGE_ERROR = -4,	/*!< device report a ranging error interrupt status */
+	TIME_OUT = -5,		/*!< aborted due to time out */
 };
 
 /**
  * Filtered result data structure  range data is to be used
  */
 typedef struct RangeFilterResult_tag {
-    uint16_t range_mm;      /*!< Filtered ranging value */
-    uint16_t rawRange_mm;   /*!< raw range value (scaled) */
+	uint16_t range_mm;	/*!< Filtered ranging value */
+	uint16_t rawRange_mm;	/*!< raw range value (scaled) */
 } RangeFilterResult_t;
 
 /**
@@ -164,7 +157,7 @@ typedef struct RangeFilterResult_tag {
  *
  * if data space saving is not a concern it can be change to platform native unsigned int
  */
-typedef uint8_t  FilterType1_t;
+typedef uint8_t FilterType1_t;
 
 /**
  * @def FILTER_NBOF_SAMPLES
@@ -175,28 +168,30 @@ typedef uint8_t  FilterType1_t;
  * Wrap around filter internal data
  */
 struct FilterData_t {
-    uint32_t MeasurementIndex;                      /*!< current measurement index */
-    uint16_t LastTrueRange[FILTER_NBOF_SAMPLES];    /*!< filtered/corrected  distance history */
-    uint32_t LastReturnRates[FILTER_NBOF_SAMPLES];  /*!< Return rate history */
-    uint16_t StdFilteredReads;                      /*!< internal use */
-    FilterType1_t Default_ZeroVal;                  /*!< internal use */
-    FilterType1_t Default_VAVGVal;                  /*!< internal use */
-    FilterType1_t NoDelay_ZeroVal;                  /*!< internal use */
-    FilterType1_t NoDelay_VAVGVal;                  /*!< internal use */
-    FilterType1_t Previous_VAVGDiff;                /*!< internal use */
+	uint32_t MeasurementIndex;	/*!< current measurement index */
+	uint16_t LastTrueRange[FILTER_NBOF_SAMPLES];	/*!< filtered/corrected  distance history */
+	uint32_t LastReturnRates[FILTER_NBOF_SAMPLES];	/*!< Return rate history */
+	uint16_t StdFilteredReads;	/*!< internal use */
+	FilterType1_t Default_ZeroVal;	/*!< internal use */
+	FilterType1_t Default_VAVGVal;	/*!< internal use */
+	FilterType1_t NoDelay_ZeroVal;	/*!< internal use */
+	FilterType1_t NoDelay_VAVGVal;	/*!< internal use */
+	FilterType1_t Previous_VAVGDiff;	/*!< internal use */
 };
 
 #if  VL6180x_HAVE_DMAX_RANGING
 typedef int32_t DMaxFix_t;
 struct DMaxData_t {
-    int ambTuningWindowFactor_K; /*!<  internal algo tuning (*1000) */
+	uint32_t ambTuningWindowFactor_K;	/*!<  internal algo tuning (*1000) */
 
-    DMaxFix_t retSignalAt0mm;  /*!< intermediate dmax computation value caching @a #SYSRANGE_CROSSTALK_COMPENSATION_RATE and private reg 0x02A */
-    int32_t RegB8;              /*!< register 0xB8 cached to speed reduce i2c traffic for dmax computation */
-    /* place all word data below to optimize struct packing */
-
-    /* place all byte data below to optimize packing */
-    uint8_t MaxConvTime;        /*!< cached max convergence time @a #SYSRANGE_MAX_CONVERGENCE_TIME*/
+	DMaxFix_t retSignalAt400mm;	/*!< intermediate dmax computation value caching @a #SYSRANGE_CROSSTALK_COMPENSATION_RATE and private reg 0x02A */
+	//int32_t RegB8;              /*!< register 0xB8 cached to speed reduce i2c traffic for dmax computation */
+	/* place all word data below to optimize struct packing */
+	//int32_t minSignalNeeded;    /*!< optimized computation intermediate base on register cached value */
+	int32_t snrLimit_K;	/*!< cached and optimized computation intermediate from  @a #SYSRANGE_MAX_AMBIENT_LEVEL_MULT */
+	uint16_t ClipSnrLimit;	/*!< Max value for snr limit */
+	/* place all byte data below to optimize packing */
+	//uint8_t MaxConvTime;        /*!< cached max convergence time @a #SYSRANGE_MAX_CONVERGENCE_TIME*/
 };
 #endif
 
@@ -209,66 +204,87 @@ struct DMaxData_t {
  * These must never access directly but only via VL6180xDev/SetData(dev, field) macro
  */
 struct VL6180xDevData_t {
-    uint16_t EceFactorM;        /*!< Ece Factor M numerator  */
-    uint16_t EceFactorD;        /*!< Ece Factor D denominator*/
+
+	uint32_t Part2PartAmbNVM;	/*!< backed up NVM value */
+	uint32_t XTalkCompRate_KCps;	/*! Cached XTlak Compensation Rate */
+
+	uint16_t EceFactorM;	/*!< Ece Factor M numerator  */
+	uint16_t EceFactorD;	/*!< Ece Factor D denominator */
 
 #ifdef VL6180x_HAVE_ALS_DATA
-    uint16_t IntegrationPeriod; /*!< cached als Integration period avoid slow read from device at each measure */
-    uint16_t AlsGainCode;       /*!< cached Als gain avoid slow read from device at each measure */
-    uint16_t AlsScaler;         /*!< cached Als scaler avoid slow read from device at each measure */
+	uint16_t IntegrationPeriod;	/*!< cached als Integration period avoid slow read from device at each measure */
+	uint16_t AlsGainCode;	/*!< cached Als gain avoid slow read from device at each measure */
+	uint16_t AlsScaler;	/*!< cached Als scaler avoid slow read from device at each measure */
 #endif
 
 #ifdef VL6180x_HAVE_UPSCALE_DATA
-    uint8_t UpscaleFactor;      /*!<  up-scaling factor*/
+	uint8_t UpscaleFactor;	/*!<  up-scaling factor */
 #endif
 
 #ifdef  VL6180x_HAVE_WRAP_AROUND_DATA
-    uint8_t WrapAroundFilterActive; /*!< Filter on/off */
-    struct FilterData_t FilterData; /*!< Filter internal data state history ... */
+	uint8_t WrapAroundFilterActive;	/*!< Filter on/off */
+	struct FilterData_t FilterData;	/*!< Filter internal data state history ... */
 #endif
 
 #if  VL6180x_HAVE_DMAX_RANGING
-    struct DMaxData_t DMaxData;
+	struct DMaxData_t DMaxData;
+	uint8_t DMaxEnable;
 #endif
-    int8_t  Part2PartOffsetNVM;     /*!< backed up NVM value */
+	int8_t Part2PartOffsetNVM;	/*!< backed up NVM value */
 };
 
 #if VL6180x_SINGLE_DEVICE_DRIVER
-extern  struct VL6180xDevData_t SingleVL6180xDevData;
+extern struct VL6180xDevData_t SingleVL6180xDevData;
 #define VL6180xDevDataGet(dev, field) (SingleVL6180xDevData.field)
 /* is also used as direct accessor like VL6180xDevDataGet(dev, x)++*/
 #define VL6180xDevDataSet(dev, field, data) (SingleVL6180xDevData.field)=(data)
 #endif
-
 
 /**
  * @struct VL6180x_RangeData_t
  * @brief Range and any optional measurement data.
  */
 typedef struct {
-    int32_t range_mm;          /*!< range distance in mm. */
-    int32_t signalRate_mcps;   /*!< signal rate (MCPS)\n these is a 9.7 fix point value, which is effectively a measure of target reflectance.*/
-    uint32_t errorStatus;      /*!< Error status of the current measurement. \n
-                                  see @a ::RangeError_u @a VL6180x_GetRangeStatusErrString() */
-
+	int32_t range_mm;	/*!< range distance in mm. */
+	int32_t signalRate_mcps;	/*!< signal rate (MCPS)\n these is a 9.7 fix point value, which is effectively a measure of target reflectance. */
+	uint32_t errorStatus;	/*!< Error status of the current measurement. \n
+				   see @a ::RangeError_u @a VL6180x_GetRangeStatusErrString() */
 
 #ifdef VL6180x_HAVE_RATE_DATA
-    uint32_t rtnAmbRate;    /*!< Return Ambient rate in KCount per sec related to \a RESULT_RANGE_RETURN_AMB_COUNT */
-    uint32_t rtnRate;       /*!< Return rate in KCount per sec  related to \a RESULT_RANGE_RETURN_SIGNAL_COUNT  */
-    uint32_t rtnConvTime;   /*!< Return Convergence time \a RESULT_RANGE_RETURN_CONV_TIME */
-    uint32_t refConvTime;   /*!< Reference convergence time \a RESULT_RANGE_REFERENCE_CONV_TIME */
+	uint32_t rtnAmbRate;	/*!< Return Ambient rate in KCount per sec related to \a RESULT_RANGE_RETURN_AMB_COUNT */
+	uint32_t rtnRate;	/*!< Return rate in KCount per sec  related to \a RESULT_RANGE_RETURN_SIGNAL_COUNT  */
+	uint32_t rtnConvTime;	/*!< Return Convergence time \a RESULT_RANGE_RETURN_CONV_TIME */
+	uint32_t refConvTime;	/*!< Reference convergence time \a RESULT_RANGE_REFERENCE_CONV_TIME */
 #endif
 
-
 #if  VL6180x_HAVE_DMAX_RANGING
-    uint32_t DMax;              /*!< DMax  when applicable */
+	uint32_t DMax;		/*!< DMax  when applicable */
 #endif
 
 #ifdef  VL6180x_HAVE_WRAP_AROUND_DATA
-    RangeFilterResult_t FilteredData; /*!< Filter result main range_mm is updated */
+	RangeFilterResult_t FilteredData;	/*!< Filter result main range_mm is updated */
 #endif
-}VL6180x_RangeData_t;
+} VL6180x_RangeData_t;
 
+/**
+ * @struct VL6180x_RangeResultData_t
+ * @brief Range Result data from device.
+
+ */
+typedef struct {
+	uint8_t Result_range_status;
+	uint8_t Result_interrupt_status;
+	uint8_t Result_range_val;
+	uint8_t Result_range_raw;
+	uint16_t Result_range_return_rate;
+	uint16_t Result_range_reference_rate;
+	uint32_t Result_range_return_signal_count;
+	uint32_t Result_range_reference_signal_count;
+	uint32_t Result_range_return_amb_count;
+	uint32_t Result_range_reference_amb_count;
+	uint32_t Result_range_return_conv_time;
+	uint32_t Result_range_reference_conv_time;
+} VL6180x_RangeResultData_t;
 
 /** use where fix point 9.7 bit values are expected
  *
@@ -281,12 +297,12 @@ typedef uint32_t lux_t;
 /**
  * @brief This data type defines als  measurement data.
  */
-typedef struct VL6180x_AlsData_st{
-    lux_t lux;                 /**< Light measurement (Lux) */
-    uint32_t errorStatus;      /**< Error status of the current measurement. \n
+typedef struct VL6180x_AlsData_st {
+	lux_t lux;	       /**< Light measurement (Lux) */
+	uint32_t errorStatus;  /**< Error status of the current measurement. \n
      * No Error := 0. \n
      * Refer to product sheets for other error codes. */
-}VL6180x_AlsData_t;
+} VL6180x_AlsData_t;
 
 /**
  * @brief Range status Error code
@@ -295,33 +311,31 @@ typedef struct VL6180x_AlsData_st{
  * related to register @a #RESULT_RANGE_STATUS and additional post processing
  */
 typedef enum {
-    NoError_=0,                /*!< 0  0b0000 NoError  */
-    VCSEL_Continuity_Test,     /*!< 1  0b0001 VCSEL_Continuity_Test */
-    VCSEL_Watchdog_Test,       /*!< 2  0b0010 VCSEL_Watchdog_Test */
-    VCSEL_Watchdog,            /*!< 3  0b0011 VCSEL_Watchdog */
-    PLL1_Lock,                 /*!< 4  0b0100 PLL1_Lock */
-    PLL2_Lock,                 /*!< 5  0b0101 PLL2_Lock */
-    Early_Convergence_Estimate,/*!< 6  0b0110 Early_Convergence_Estimate */
-    Max_Convergence,           /*!< 7  0b0111 Max_Convergence */
-    No_Target_Ignore,          /*!< 8  0b1000 No_Target_Ignore */
-    Not_used_9,                /*!< 9  0b1001 Not_used */
-    Not_used_10,               /*!< 10 0b1010 Not_used_ */
-    Max_Signal_To_Noise_Ratio, /*!< 11 0b1011 Max_Signal_To_Noise_Ratio*/
-    Raw_Ranging_Algo_Underflow,/*!< 12 0b1100 Raw_Ranging_Algo_Underflow*/
-    Raw_Ranging_Algo_Overflow, /*!< 13 0b1101 Raw_Ranging_Algo_Overflow */
-    Ranging_Algo_Underflow,    /*!< 14 0b1110 Ranging_Algo_Underflow */
-    Ranging_Algo_Overflow,     /*!< 15 0b1111 Ranging_Algo_Overflow */
+	NoError_ = 0,		/*!< 0  0b0000 NoError  */
+	VCSEL_Continuity_Test,	/*!< 1  0b0001 VCSEL_Continuity_Test */
+	VCSEL_Watchdog_Test,	/*!< 2  0b0010 VCSEL_Watchdog_Test */
+	VCSEL_Watchdog,		/*!< 3  0b0011 VCSEL_Watchdog */
+	PLL1_Lock,		/*!< 4  0b0100 PLL1_Lock */
+	PLL2_Lock,		/*!< 5  0b0101 PLL2_Lock */
+	Early_Convergence_Estimate,	/*!< 6  0b0110 Early_Convergence_Estimate */
+	Max_Convergence,	/*!< 7  0b0111 Max_Convergence */
+	No_Target_Ignore,	/*!< 8  0b1000 No_Target_Ignore */
+	Not_used_9,		/*!< 9  0b1001 Not_used */
+	Not_used_10,		/*!< 10 0b1010 Not_used_ */
+	Max_Signal_To_Noise_Ratio,	/*!< 11 0b1011 Max_Signal_To_Noise_Ratio */
+	Raw_Ranging_Algo_Underflow,	/*!< 12 0b1100 Raw_Ranging_Algo_Underflow */
+	Raw_Ranging_Algo_Overflow,	/*!< 13 0b1101 Raw_Ranging_Algo_Overflow */
+	Ranging_Algo_Underflow,	/*!< 14 0b1110 Ranging_Algo_Underflow */
+	Ranging_Algo_Overflow,	/*!< 15 0b1111 Ranging_Algo_Overflow */
 
-    /* code below are addition for API/software side they are not hardware*/
-    RangingFiltered =0x10,     /*!< 16 0b10000 filtered by post processing*/
+	/* code below are addition for API/software side they are not hardware */
+	RangingFiltered = 0x10,	/*!< 16 0b10000 filtered by post processing */
 
 } RangeError_u;
-
 
 /** @defgroup device_regdef Device registers & masks definitions
  *  @brief    Device registers and masks definitions
  */
-
 
 /** @ingroup device_regdef
  * @{*/
@@ -338,7 +352,6 @@ typedef enum {
  * Revision identifier of the Device for minor change.
  */
 #define IDENTIFICATION_MODULE_REV_MINOR         0x004
-
 
 /**
  * @def SYSTEM_MODE_GPIO0
@@ -358,20 +371,19 @@ typedef enum {
  */
 #define SYSTEM_MODE_GPIO1                       0x011
     /** gpio pad POLARITY mask in #SYSTEM_MODE_GPIO1 (and/or 0) write  1  to set active high polarity (positive edge) */
-    #define GPIOx_POLARITY_SELECT_MASK              0x20
+#define GPIOx_POLARITY_SELECT_MASK              0x20
     /** gpio pad Function select shift in #SYSTEM_MODE_GPIO1 or 0 */
-    #define GPIOx_FUNCTIONALITY_SELECT_SHIFT          1
+#define GPIOx_FUNCTIONALITY_SELECT_SHIFT          1
     /** gpio pad Function select mask in #SYSTEM_MODE_GPIO1 or 0 */
-    #define GPIOx_FUNCTIONALITY_SELECT_MASK          (0xF<<GPIOx_FUNCTIONALITY_SELECT_SHIFT)
+#define GPIOx_FUNCTIONALITY_SELECT_MASK          (0xF<<GPIOx_FUNCTIONALITY_SELECT_SHIFT)
     /** select no interrupt in #SYSTEM_MODE_GPIO1 pad is put in  Hi-Z*/
-    #define GPIOx_SELECT_OFF                        0x00
+#define GPIOx_SELECT_OFF                        0x00
     /** select gpiox as interrupt output in  #SYSTEM_MODE_GPIO1 */
-    #define GPIOx_SELECT_GPIO_INTERRUPT_OUTPUT      0x08
+#define GPIOx_SELECT_GPIO_INTERRUPT_OUTPUT      0x08
     /** select range as source for interrupt on in #SYSTEM_MODE_GPIO1 */
-    #define GPIOx_MODE_SELECT_RANGING               0x00
+#define GPIOx_MODE_SELECT_RANGING               0x00
     /** select als as source for interrupt on in #SYSTEM_MODE_GPIO1 */
-    #define GPIOx_MODE_SELECT_ALS                   0x01
-
+#define GPIOx_MODE_SELECT_ALS                   0x01
 
 /**
  * @def SYSTEM_INTERRUPT_CONFIG_GPIO
@@ -394,23 +406,23 @@ typedef enum {
  */
 #define SYSTEM_INTERRUPT_CONFIG_GPIO           0x014
     /** RANGE bits shift in #SYSTEM_INTERRUPT_CONFIG_GPIO */
-    #define CONFIG_GPIO_RANGE_SHIFT            0
+#define CONFIG_GPIO_RANGE_SHIFT            0
     /** RANGE bits mask in #SYSTEM_INTERRUPT_CONFIG_GPIO  (unshifted)*/
-    #define CONFIG_GPIO_RANGE_MASK             (0x7<<CONFIG_GPIO_RANGE_SHIFT)
+#define CONFIG_GPIO_RANGE_MASK             (0x7<<CONFIG_GPIO_RANGE_SHIFT)
     /** ALS bits shift in #SYSTEM_INTERRUPT_CONFIG_GPIO */
-    #define CONFIG_GPIO_ALS_SHIFT              3
+#define CONFIG_GPIO_ALS_SHIFT              3
     /** ALS bits mask in #SYSTEM_INTERRUPT_CONFIG_GPIO  (unshifted)*/
-    #define CONFIG_GPIO_ALS_MASK               (0x7<<CONFIG_GPIO_ALS_SHIFT)
+#define CONFIG_GPIO_ALS_MASK               (0x7<<CONFIG_GPIO_ALS_SHIFT)
     /** interrupt is disabled */
-    #define CONFIG_GPIO_INTERRUPT_DISABLED         0x00
+#define CONFIG_GPIO_INTERRUPT_DISABLED         0x00
     /** trigger when value < low threshold */
-    #define CONFIG_GPIO_INTERRUPT_LEVEL_LOW        0x01
+#define CONFIG_GPIO_INTERRUPT_LEVEL_LOW        0x01
     /** trigger when value < low threshold */
-    #define CONFIG_GPIO_INTERRUPT_LEVEL_HIGH       0x02
+#define CONFIG_GPIO_INTERRUPT_LEVEL_HIGH       0x02
     /** trigger when outside range defined by high low threshold */
-    #define CONFIG_GPIO_INTERRUPT_OUT_OF_WINDOW    0x03
+#define CONFIG_GPIO_INTERRUPT_OUT_OF_WINDOW    0x03
     /** trigger when new sample are ready */
-    #define CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY 0x04
+#define CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY 0x04
 
 /**
  *  @def SYSTEM_INTERRUPT_CLEAR
@@ -421,11 +433,11 @@ typedef enum {
  */
 #define SYSTEM_INTERRUPT_CLEAR                0x015
     /** clear ranging interrupt in write to #SYSTEM_INTERRUPT_CLEAR */
-    #define INTERRUPT_CLEAR_RANGING                0x01
+#define INTERRUPT_CLEAR_RANGING                0x01
     /** clear als interrupt  in write to #SYSTEM_INTERRUPT_CLEAR */
-    #define INTERRUPT_CLEAR_ALS                    0x02
+#define INTERRUPT_CLEAR_ALS                    0x02
     /** clear error interrupt in write to #SYSTEM_INTERRUPT_CLEAR */
-    #define INTERRUPT_CLEAR_ERROR                  0x04
+#define INTERRUPT_CLEAR_ERROR                  0x04
 
 /** After power up or reset this register will start reading 1 when device is ready */
 #define SYSTEM_FRESH_OUT_OF_RESET             0x016
@@ -447,7 +459,6 @@ typedef enum {
  */
 #define SYSTEM_GROUPED_PARAMETER_HOLD         0x017
 
-
 /**
  * @def SYSRANGE_START
  * @brief Start/stop and set operating range mode
@@ -458,13 +469,13 @@ typedef enum {
  */
 #define SYSRANGE_START                        0x018
     /** mask existing bit in #SYSRANGE_START*/
-    #define MODE_MASK          0x03
+#define MODE_MASK          0x03
     /** bit 0 in #SYSRANGE_START write 1 toggle state in continuous mode and arm next shot in single shot mode */
-    #define MODE_START_STOP    0x01
+#define MODE_START_STOP    0x01
     /** bit 1 write 1 in #SYSRANGE_START set continuous operation mode */
-    #define MODE_CONTINUOUS    0x02
+#define MODE_CONTINUOUS    0x02
     /** bit 1 write 0 in #SYSRANGE_START set single shot mode */
-    #define MODE_SINGLESHOT    0x00
+#define MODE_SINGLESHOT    0x00
 
 /**
  * @def SYSRANGE_THRESH_HIGH
@@ -523,9 +534,9 @@ typedef enum {
  *  @a VL6180x_RangeSetEceState()
  */
 #define SYSRANGE_RANGE_CHECK_ENABLES          0x02D
-    #define RANGE_CHECK_ECE_ENABLE_MASK      0x01
-    #define RANGE_CHECK_RANGE_ENABLE_MASK    0x02
-    #define RANGE_CHECK_SNR_ENABLKE          0x10
+#define RANGE_CHECK_ECE_ENABLE_MASK      0x01
+#define RANGE_CHECK_RANGE_ENABLE_MASK    0x02
+#define RANGE_CHECK_SNR_ENABLKE          0x10
 
 #define SYSRANGE_VHV_RECALIBRATE              0x02E
 #define SYSRANGE_VHV_REPEAT_RATE              0x031
@@ -557,11 +568,11 @@ typedef enum {
  */
 #define RESULT_RANGE_STATUS                   0x04D
     /** Device ready for new command bit 0*/
-    #define RANGE_DEVICE_READY_MASK       0x01
+#define RANGE_DEVICE_READY_MASK       0x01
     /** mask for error status covers bits [7:4]  in #RESULT_RANGE_STATUS @a ::RangeError_u */
-    #define RANGE_ERROR_CODE_MASK         0xF0 /* */
+#define RANGE_ERROR_CODE_MASK         0xF0	/* */
     /** range error bit position in #RESULT_RANGE_STATUS */
-    #define RANGE_ERROR_CODE_SHIFT        4
+#define RANGE_ERROR_CODE_SHIFT        4
 
 /**
  * @def RESULT_ALS_STATUS
@@ -570,7 +581,7 @@ typedef enum {
  */
 #define RESULT_ALS_STATUS                     0x4E
     /** Device ready for new command bit 0*/
-   #define ALS_DEVICE_READY_MASK       0x01
+#define ALS_DEVICE_READY_MASK       0x01
 
 /**
  * @def RESULT_ALS_VAL
@@ -589,18 +600,17 @@ typedef enum {
  */
 #define FW_ALS_RESULT_SCALER                  0x120
 
-
 /**
  * these union can be use as a generic bit field type for map #RESULT_INTERRUPT_STATUS_GPIO register
  * @ingroup device_regdef
  */
-typedef union IntrStatus_u{
-    uint8_t val;           /*!< raw 8 bit register value*/
-    struct  {
-        unsigned Range     :3; /*!< Range status one of :\n  \a #RES_INT_STAT_GPIO_LOW_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_HIGH_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_OUT_OF_WINDOW \n \a #RES_INT_STAT_GPIO_NEW_SAMPLE_READY */
-        unsigned Als       :3; /*!< Als status one of: \n \a #RES_INT_STAT_GPIO_LOW_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_HIGH_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_OUT_OF_WINDOW \n \a #RES_INT_STAT_GPIO_NEW_SAMPLE_READY  */
-        unsigned Error     :2; /*!<  Error status of: \n \a #RES_INT_ERROR_LASER_SAFETY  \n \a #RES_INT_ERROR_PLL */
-     } status;                 /*!< interrupt status as bit field */
+typedef union IntrStatus_u {
+	uint8_t val;		/*!< raw 8 bit register value */
+	struct {
+		unsigned Range:3;	/*!< Range status one of :\n  \a #RES_INT_STAT_GPIO_LOW_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_HIGH_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_OUT_OF_WINDOW \n \a #RES_INT_STAT_GPIO_NEW_SAMPLE_READY */
+		unsigned Als:3;	/*!< Als status one of: \n \a #RES_INT_STAT_GPIO_LOW_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_HIGH_LEVEL_THRESHOLD  \n \a #RES_INT_STAT_GPIO_OUT_OF_WINDOW \n \a #RES_INT_STAT_GPIO_NEW_SAMPLE_READY  */
+		unsigned Error:2;	/*!<  Error status of: \n \a #RES_INT_ERROR_LASER_SAFETY  \n \a #RES_INT_ERROR_PLL */
+	} status;		/*!< interrupt status as bit field */
 } IntrStatus_t;
 
 /**
@@ -621,30 +631,30 @@ typedef union IntrStatus_u{
  */
 #define RESULT_INTERRUPT_STATUS_GPIO          0x4F
     /** ranging interrupt 1st bit position in #RESULT_INTERRUPT_STATUS_GPIO */
-    #define RES_INT_RANGE_SHIFT  0
+#define RES_INT_RANGE_SHIFT  0
     /** ALS interrupt 1st bit position in #RESULT_INTERRUPT_STATUS_GPIO */
-    #define RES_INT_ALS_SHIFT    3
+#define RES_INT_ALS_SHIFT    3
     /** interrupt bit position in #RESULT_INTERRUPT_STATUS_GPIO */
-    #define RES_INT_ERROR_SHIFT  6
+#define RES_INT_ERROR_SHIFT  6
     /** Ranging interrupt mask in #RESULT_INTERRUPT_STATUS_GPIO (prior to shift)  \sa IntrStatus_t */
-    #define RES_INT_RANGE_MASK (0x7<<RES_INT_RANGE_SHIFT)
+#define RES_INT_RANGE_MASK (0x7<<RES_INT_RANGE_SHIFT)
     /** als interrupt mask in #RESULT_INTERRUPT_STATUS_GPIO (prior to shift)  \sa IntrStatus_t */
-    #define RES_INT_ALS_MASK   (0x7<<RES_INT_ALS_SHIFT)
+#define RES_INT_ALS_MASK   (0x7<<RES_INT_ALS_SHIFT)
 
     /** low threshold condition in #RESULT_INTERRUPT_STATUS_GPIO for */
-    #define RES_INT_STAT_GPIO_LOW_LEVEL_THRESHOLD  0x01
+#define RES_INT_STAT_GPIO_LOW_LEVEL_THRESHOLD  0x01
     /** high threshold condition in #RESULT_INTERRUPT_STATUS_GPIO for ALs or Rage*/
-    #define RES_INT_STAT_GPIO_HIGH_LEVEL_THRESHOLD 0x02
+#define RES_INT_STAT_GPIO_HIGH_LEVEL_THRESHOLD 0x02
     /** out of window condition in #RESULT_INTERRUPT_STATUS_GPIO */
-    #define RES_INT_STAT_GPIO_OUT_OF_WINDOW        0x03
+#define RES_INT_STAT_GPIO_OUT_OF_WINDOW        0x03
     /** new sample ready in #RESULT_INTERRUPT_STATUS_GPIO */
-    #define RES_INT_STAT_GPIO_NEW_SAMPLE_READY     0x04
+#define RES_INT_STAT_GPIO_NEW_SAMPLE_READY     0x04
     /** error  in #RESULT_INTERRUPT_STATUS_GPIO */
-    #define RES_INT_ERROR_MASK (0x3<<RES_INT_ERROR_SHIFT)
-        /** laser safety error on #RES_INT_ERROR_MASK of #RESULT_INTERRUPT_STATUS_GPIO */
-        #define RES_INT_ERROR_LASER_SAFETY  1
-        /** pll 1 or 2 error on #RES_INT_ERROR_MASK of #RESULT_INTERRUPT_STATUS_GPIO*/
-        #define RES_INT_ERROR_PLL           2
+#define RES_INT_ERROR_MASK (0x3<<RES_INT_ERROR_SHIFT)
+	/** laser safety error on #RES_INT_ERROR_MASK of #RESULT_INTERRUPT_STATUS_GPIO */
+#define RES_INT_ERROR_LASER_SAFETY  1
+	/** pll 1 or 2 error on #RES_INT_ERROR_MASK of #RESULT_INTERRUPT_STATUS_GPIO*/
+#define RES_INT_ERROR_PLL           2
 
 /**
  * Final range result value presented to the user for use. Unit is in mm.
@@ -701,7 +711,6 @@ typedef union IntrStatus_u{
  * sensor count output value attributed to signal on the Reference array.
  */
 #define RESULT_RANGE_REFERENCE_CONV_TIME        0x080
-
 
 /**
  * @def RANGE_SCALER

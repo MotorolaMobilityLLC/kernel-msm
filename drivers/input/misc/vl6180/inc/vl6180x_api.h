@@ -31,11 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * $Revision: 2047 $
  */
 
-
-
 #ifndef VL6180x_API_H_
 #define VL6180x_API_H_
 
+#include "vl6180x_appcfg.h"
 #include "vl6180x_def.h"
 #include "vl6180x_platform.h"
 
@@ -51,7 +50,6 @@ extern "C" {
  *  @brief    API High level functions
  */
 
-
 /*
  * Check and set default platform dependent configuration
  */
@@ -59,7 +57,6 @@ extern "C" {
 #error "VL6180x_SINGLE_DEVICE_DRIVER not defined"
 /* TODO you may remove or comment these #error but it is best you update your vl6180x_platform.h file to define it*/
 #endif
-
 
 #ifndef  VL6180x_RANGE_STATUS_ERRSTRING
 #warning "VL6180x_RANGE_STATUS_ERRSTRING not defined ?"
@@ -78,7 +75,7 @@ extern "C" {
 /**
  * force VL6180X_SAFE_POLLING_ENTER to off when not in cfg file
  */
-#define VL6180X_SAFE_POLLING_ENTER 0 /* off by default as in api 2.0 */
+#define VL6180X_SAFE_POLLING_ENTER 0	/* off by default as in api 2.0 */
 #endif
 
 #ifndef VL6180X_LOG_ENABLE
@@ -94,7 +91,6 @@ extern "C" {
  */
 #define  VL6180x_HAVE_RANGE_STATUS_ERRSTRING
 #endif
-
 
 /** @brief Get API version as "hex integer" 0xMMnnss
  */
@@ -238,9 +234,14 @@ int VL6180x_RangePollMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDa
  * @brief Check for measure readiness and get it if ready
  *
  * @par Function Description
+ * Using this function is an alternative to @a VL6180x_RangePollMeasurement() to avoid polling operation. This is suitable for applications
+ * where host CPU is triggered on a interrupt (not from VL6180X) to perform ranging operation. In this scenario, we assume that the very first ranging
+ * operation is triggered by a call to @a VL6180x_RangeStartSingleShot(). Then, host CPU regularly calls @a VL6180x_RangeGetMeasurementIfReady() to
+ * get a distance measure if ready. In case the distance is not ready, host may get it at the next call.\n
  *
- * \n This function clears Range Interrupt for measure ready , but not error one for that uses  @a VL6180x_ClearErrorInterrupt() \n
- * \n This function do not start nor restart new single shot measure , for that use @a VL6180x_RangeStartSingleShot() \n
+ * @warning 
+ * This function does not re-start a new measurement : this is up to the host CPU to do it.\n 
+ * This function clears Range Interrupt for measure ready , but not error interrupts. For that, uses  @a VL6180x_ClearErrorInterrupt() \n
  *
  * @param dev  The device
  * @param pRangeData  Will be populated with the result ranging data if available
@@ -264,7 +265,7 @@ int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pR
  * @return            0 on success
  */
 int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData);
-
+int VL6180x_RangeGetMeasurement_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData);
 /**
  * @brief Get ranging result and only that
  *
@@ -280,6 +281,7 @@ int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDat
  * @return           0 on success
  */
 int VL6180x_RangeGetResult(VL6180xDev_t dev, int32_t *pRange_mm);
+int VL6180x_RangeGetResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, int32_t *pRange_mm);
 
 /**
  * @brief Configure ranging interrupt reported to application
@@ -326,7 +328,7 @@ int VL6180x_RangeGetInterruptStatus(VL6180xDev_t dev, uint8_t *pIntStatus);
 
 #if VL6180x_RANGE_STATUS_ERRSTRING
 
-extern const char * ROMABLE_DATA VL6180x_RangeStatusErrString[];
+	extern const char *ROMABLE_DATA VL6180x_RangeStatusErrString[];
 /**
  * @brief Human readable error string for range error status
  *
@@ -334,7 +336,7 @@ extern const char * ROMABLE_DATA VL6180x_RangeStatusErrString[];
  * @return  error string , NULL for invalid RangeErrCode
  * @sa ::RangeError_u
  */
-const char * VL6180x_RangeGetStatusErrString(uint8_t RangeErrCode);
+	const char *VL6180x_RangeGetStatusErrString(uint8_t RangeErrCode);
 #else
 #define VL6180x_RangeGetStatusErrString(...) NULL
 #endif
@@ -375,7 +377,7 @@ int VL6180x_AlsPollMeasurement(VL6180xDev_t dev, VL6180x_AlsData_t *pAlsData);
  * @param pAlsData   Pointer to measurement struct @a VL6180x_AlsData_t
  * @return  0 on success
  */
-int VL6180x_AlsGetMeasurement(VL6180xDev_t dev, VL6180x_AlsData_t *pAlsData);
+int VL6180x_AlsGetMeasurement(VL6180xDev_t dev, VL6180x_AlsData_t * pAlsData);
 
 /**
  * @brief  Configure ALS interrupts provide to application
@@ -390,7 +392,6 @@ int VL6180x_AlsGetMeasurement(VL6180xDev_t dev, VL6180x_AlsData_t *pAlsData);
  * @return               0 on success may return #INVALID_PARAMS for invalid mode
  */
 int VL6180x_AlsConfigInterrupt(VL6180xDev_t dev, uint8_t ConfigGpioInt);
-
 
 /**
  * @brief Set ALS integration period
@@ -444,7 +445,7 @@ int VL6180x_AlsSetThresholds(VL6180xDev_t dev, uint8_t low, uint8_t high);
  * @param dev    The device
  * @return  0    On success
  */
- #define VL6180x_AlsClearInterrupt(dev) VL6180x_ClearInterrupt(dev, INTERRUPT_CLEAR_ALS)
+#define VL6180x_AlsClearInterrupt(dev) VL6180x_ClearInterrupt(dev, INTERRUPT_CLEAR_ALS)
 
 /**
  * Read ALS interrupt status
@@ -635,6 +636,23 @@ int VL6180x_FilterSetState(VL6180xDev_t dev, int state);
  */
 int VL6180x_FilterGetState(VL6180xDev_t dev);
 
+
+/**
+ * @brief Set activation state of  DMax computation
+ * @param dev   The device
+ * @param state New activation state (0=off,  otherwise on)
+ * @return      0 on success
+ */
+int VL6180x_DMaxSetState(VL6180xDev_t dev, int state);
+
+/**
+ * Get activation state of DMax computation
+ * @param dev  The device
+ * @return     Filter enabled or not, when filter is not supported it always returns 0S
+ */
+int VL6180x_DMaxGetState(VL6180xDev_t dev);
+
+
 /**
  * @brief Set ranging mode and start/stop measure (use high level functions instead : @a VL6180x_RangeStartSingleShot() or @a VL6180x_RangeStartContinuousMode())
  *
@@ -718,8 +736,6 @@ void VL6180x_SetOffset(VL6180xDev_t dev, int8_t offset);
  */
 void VL6180x_SetUserXTalkCompensationRate(VL6180xDev_t dev, FixPoint97_t offset);
 /** @}  */
-
-
 
 #if VL6180x_ALS_SUPPORT
 /** @defgroup api_ll_als ALS functions
@@ -854,8 +870,6 @@ int VL6180x_DisableGPIOxOut(VL6180xDev_t dev, int pin);
 
 /** @}  */
 
-
-
 /**
  * polarity use in @a VL6180x_SetupGPIOx() , @a VL6180x_SetupGPIO1()
  */
@@ -896,7 +910,7 @@ int VL6180x_ClearInterrupt(VL6180xDev_t dev, uint8_t IntClear );
  * @param dev    The device
  * @return  0    On success
  */
- #define VL6180x_ClearErrorInterrupt(dev) VL6180x_ClearInterrupt(dev, INTERRUPT_CLEAR_ERROR)
+#define VL6180x_ClearErrorInterrupt(dev) VL6180x_ClearInterrupt(dev, INTERRUPT_CLEAR_ERROR)
 
 /**
  * @brief Clear All interrupt causes (als+range+error)
@@ -907,7 +921,6 @@ int VL6180x_ClearInterrupt(VL6180xDev_t dev, uint8_t IntClear );
 #define VL6180x_ClearAllInterrupt(dev) VL6180x_ClearInterrupt(dev, INTERRUPT_CLEAR_ERROR|INTERRUPT_CLEAR_RANGING|INTERRUPT_CLEAR_ALS)
 
 /** @}  */
-
 
 /** @defgroup api_reg API Register access functions
  *  @brief    Registers access functions called by API core functions
@@ -978,6 +991,16 @@ int VL6180x_RdWord(VL6180xDev_t dev, uint16_t index, uint16_t *data);
  * @return 0 on success
  */
 int VL6180x_RdDWord(VL6180xDev_t dev, uint16_t index, uint32_t *data);
+
+/**
+ * Read VL6180x a sequnce of registers
+ * @param dev   The device
+ * @param index The register index
+ * @param pdata  pointer to buffer
+ * @param count  number of registers to read
+ * @return 0 on success
+ */
+int VL6180x_RdBuffer(VL6180xDev_t dev, uint16_t index, uint8_t *pdata, uint8_t count);
 
 /** @}  */
 

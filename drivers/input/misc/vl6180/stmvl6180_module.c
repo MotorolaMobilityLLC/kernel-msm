@@ -40,6 +40,7 @@
 #include "vl6180x_def.h"
 #include "vl6180x_platform.h"
 #include "stmvl6180.h"
+#include "vl6180x_i2c.h"
 stmvl6180x_dev vl6180x_dev;
 //#define USE_INT
 #define IRQ_NUM        59
@@ -61,6 +62,8 @@ stmvl6180x_dev vl6180x_dev;
 #define VL6180_IOCTL_READCALB       _IO('p', 0x0c)
 struct mutex vl6180_mutex;
 static unsigned int cs_gpio_num;
+static struct regulator *vdd_stmvl6180;
+static struct regulator *vcc_stmvl6180;
 
 #define CALIBRATION_FILE 1
 #ifdef CALIBRATION_FILE
@@ -200,22 +203,139 @@ static void stmvl6180_write_xtalk_calibration_file(int data)
 	return;
 }
 
+static void stmvl6180_power_enable(unsigned int enable)
+{
+	pr_info("%s: enable = %d\n", __func__, enable);
+	if (enable) {
+		if (regulator_enable(vdd_stmvl6180) < 0) {
+			pr_err("%s: failed to enable st vdd\n", __func__);
+		}
+		if (regulator_enable(vcc_stmvl6180) < 0) {
+			pr_err("%s: failed to enable st vcc\n", __func__);
+		}
+		gpio_set_value(cs_gpio_num, 1);
+	} else {
+		if (regulator_disable(vdd_stmvl6180) < 0) {
+			pr_err("%s: failed to disable st vdd\n", __func__);
+		}
+		if (regulator_disable(vcc_stmvl6180) < 0) {
+			pr_err("%s: failed to disable st vcc\n", __func__);
+		}
+		gpio_set_value(cs_gpio_num, 0);
+	}
+	return;
+}
+
+#endif
+#ifdef MULTI_READ
+static uint32_t get_unsigned_int_from_buffer(uint8_t * pdata, int8_t count)
+{
+	uint32_t value = 0;
+	while (count-- > 0) {
+		value = (value << 8) | (uint32_t) * pdata++;
+	}
+	return value;
+}
+
+static uint16_t get_unsigned_short_from_buffer(uint8_t * pdata, int8_t count)
+{
+	uint16_t value = 0;
+	while (count-- > 0) {
+		value = (value << 8) | (uint16_t) * pdata++;
+	}
+	return value;
+}
+
+static int stmvl6180_ps_read_result(struct i2c_client *client)
+{
+	struct stmvl6180_data *data = i2c_get_clientdata(client);
+	int status = 0;
+	status =
+	    VL6180x_RdBuffer(vl6180x_dev, RESULT_RANGE_STATUS,
+			     data->ResultBuffer, RESULT_REG_COUNT);
+	return status;
+}
+
+static void stmvl6180_ps_parse_result(struct i2c_client *client)
+{
+	struct stmvl6180_data *data = i2c_get_clientdata(client);
+
+	//RESULT_RANGE_STATUS:0x004D
+	data->rangeResult.Result_range_status = data->ResultBuffer[0];
+	//RESULT_INTERRUPT_STATUS:0x004F
+	data->rangeResult.Result_interrupt_status = data->ResultBuffer[1];
+	//RESULT_RANGE_VAL:0x0062
+	data->rangeResult.Result_range_val = data->ResultBuffer[(0x62 - 0x4d)];
+	//RESULT_RANGE_RAW:0x0064
+	data->rangeResult.Result_range_raw = data->ResultBuffer[(0x64 - 0x4d)];
+	//RESULT_RANGE_RETURN_RATE:0x0066
+	data->rangeResult.Result_range_return_rate =
+	    get_unsigned_short_from_buffer(data->ResultBuffer + (0x66 - 0x4d),
+					   2);
+	//RESULT_RANGE_REFERENCE_RATE:0x0068
+	data->rangeResult.Result_range_reference_rate =
+	    get_unsigned_short_from_buffer(data->ResultBuffer + (0x68 - 0x4d),
+					   2);
+	//RESULT_RANGE_RETURN_SIGNAL_COUNT:0x006c
+	data->rangeResult.Result_range_return_signal_count =
+	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x6c - 0x4d), 4);
+	//RESULT_RANGE_REFERENCE_SIGNAL_COUNT:0x0070
+	data->rangeResult.Result_range_reference_signal_count =
+	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x70 - 0x4d), 4);
+	//RESULT_RANGE_RETURN_AMB_COUNT:0x0074
+	data->rangeResult.Result_range_return_amb_count =
+	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x74 - 0x4d), 4);
+	//RESULT_RANGE_REFERENCE_AMB_COUNT:0x0078
+	data->rangeResult.Result_range_reference_amb_count =
+	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x78 - 0x4d), 4);
+	//RESULT_RANGE_RETURN_CONV_TIME:0x007c
+	data->rangeResult.Result_range_return_conv_time =
+	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x7c - 0x4d), 4);
+	//RESULT_RANGE_REFERENCE_CONV_TIME:0x0080
+	data->rangeResult.Result_range_reference_conv_time =
+	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x80 - 0x4d), 4);
+
+	return;
+}
 #endif
 static void stmvl6180_ps_read_measurement(struct i2c_client *client)
 {
 	struct stmvl6180_data *data = i2c_get_clientdata(client);
+	struct timeval tv;
 
+#ifdef MULTI_READ
+	VL6180x_RangeGetMeasurement_ext(vl6180x_dev, &(data->rangeResult),
+					&(data->rangeData));
+#else
 	VL6180x_RangeGetMeasurement(vl6180x_dev, &(data->rangeData));
+#endif
+	do_gettimeofday(&tv);
 
 	data->ps_data = data->rangeData.range_mm;
 
 	input_report_abs(data->input_dev_ps, ABS_DISTANCE,
 			 (int)(data->ps_data + 5) / 10);
-	input_report_abs(data->input_dev_ps, ABS_HAT0X,
+	//input_report_abs(data->input_dev_ps, ABS_HAT0X,data->rangeData.range_mm);
+	//input_report_abs(data->input_dev_ps, ABS_X,data->rangeData.signalRate_mcps);
+	input_report_abs(data->input_dev_ps, ABS_HAT0X, tv.tv_sec);
+	input_report_abs(data->input_dev_ps, ABS_HAT0Y, tv.tv_usec);
+	input_report_abs(data->input_dev_ps, ABS_HAT1X,
 			 data->rangeData.range_mm);
-	input_report_abs(data->input_dev_ps, ABS_X,
+	input_report_abs(data->input_dev_ps, ABS_HAT1Y,
+			 data->rangeData.errorStatus);
+#ifdef VL6180x_HAVE_RATE_DATA
+	input_report_abs(data->input_dev_ps, ABS_HAT2X,
 			 data->rangeData.signalRate_mcps);
+	input_report_abs(data->input_dev_ps, ABS_HAT2Y,
+			 data->rangeData.rtnAmbRate);
+	input_report_abs(data->input_dev_ps, ABS_HAT3X,
+			 data->rangeData.rtnConvTime);
+#endif
+#if  VL6180x_HAVE_DMAX_RANGING
+	input_report_abs(data->input_dev_ps, ABS_HAT3Y, data->rangeData.DMax);
+#endif
 	input_sync(data->input_dev_ps);
+
 	if (data->enableDebug)
 		pr_info
 		    ("range:%d, signalrate_mcps:%d, error:0x%x,rtnsgnrate:%u, rtnambrate:%u,rtnconvtime:%u\n",
@@ -230,12 +350,31 @@ static void stmvl6180_work_handler(struct work_struct *work)
 	struct stmvl6180_data *data =
 	    container_of(work, struct stmvl6180_data, dwork.work);
 	struct i2c_client *client = data->client;
-	uint8_t gpio_status = 0;
+#ifndef MULTI_READ
+	uint8_t gpio_status = 0, range_start = 0, range_status = 0;
+#endif
 	uint8_t to_startPS = 0;
 
 	mutex_lock(&data->work_mutex);
+
+#ifdef MULTI_READ
+	ret = stmvl6180_ps_read_result(client);
+	if (ret == 0 && ((data->ResultBuffer[0] & 0x01) == 0x01)) {
+		if (data->enable_ps_sensor) {
+			stmvl6180_ps_parse_result(client);
+			stmvl6180_ps_read_measurement(client);
+			if (data->ps_is_singleshot)
+				to_startPS = 1;
+
+		}
+	}
+#else
 	VL6180x_RangeGetInterruptStatus(vl6180x_dev, &gpio_status);
-	if (gpio_status == RES_INT_STAT_GPIO_NEW_SAMPLE_READY) {
+	VL6180x_RdByte(vl6180x_dev, RESULT_RANGE_STATUS, &range_status);
+	VL6180x_RdByte(vl6180x_dev, SYSRANGE_START, &range_start);
+
+	//if (gpio_status == RES_INT_STAT_GPIO_NEW_SAMPLE_READY)
+	if (((range_status & 0x01) == 0x01) && (range_start == 0x00)) {
 		if (data->enable_ps_sensor) {
 			stmvl6180_ps_read_measurement(client);
 			if (data->ps_is_singleshot)
@@ -244,13 +383,16 @@ static void stmvl6180_work_handler(struct work_struct *work)
 		VL6180x_RangeClearInterrupt(vl6180x_dev);
 
 	}
-
+#endif
 	if (to_startPS) {
 		VL6180x_RangeSetSystemMode(vl6180x_dev,
 					   MODE_START_STOP | MODE_SINGLESHOT);
 	}
-	schedule_delayed_work(&data->dwork, msecs_to_jiffies((INT_POLLING_DELAY)));	/* restart timer */
+
+	schedule_delayed_work(&data->dwork, msecs_to_jiffies((data->delay_ms)));	/* restart timer */
+
 	mutex_unlock(&data->work_mutex);
+
 	return;
 }
 
@@ -299,8 +441,11 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 	mutex_lock(&data->work_mutex);
 	if (val == 1) {
 		/* turn on p sensor */
+		stmvl6180_power_enable(val);
+		msleep(3);
 		if (data->enable_ps_sensor == 0) {
 			stmvl6180_set_enable(client, 0);	/* Power Off */
+
 			/* re-init */
 			VL6180x_Prepare(vl6180x_dev);
 			VL6180x_UpscaleSetScaling(vl6180x_dev, 3);
@@ -323,8 +468,7 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 			 */
 			cancel_delayed_work(&data->dwork);
 			schedule_delayed_work(&data->dwork,
-					      msecs_to_jiffies
-					      (INT_POLLING_DELAY));
+					      msecs_to_jiffies(data->delay_ms));
 			spin_unlock_irqrestore(&data->update_lock.wait_lock,
 					       flags);
 
@@ -347,7 +491,8 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 		 */
 		cancel_delayed_work(&data->dwork);
 		spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
-
+		//msleep(3);
+		//stmvl6180_power_enable(val);
 	}
 
 	mutex_unlock(&data->work_mutex);
@@ -390,9 +535,43 @@ static ssize_t stmvl6180_store_enable_debug(struct device *dev,
 static DEVICE_ATTR(enable_debug, S_IWUSR | S_IRUGO,
 		   stmvl6180_show_enable_debug, stmvl6180_store_enable_debug);
 
+static ssize_t stmvl6180_show_set_delay_ms(struct device *dev,
+					   struct device_attribute *attr,
+					   char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct stmvl6180_data *data = i2c_get_clientdata(client);
+
+	return sprintf(buf, "%d\n", data->delay_ms);
+}
+
+//for als integration time setup
+static ssize_t stmvl6180_store_set_delay_ms(struct device *dev,
+					    struct device_attribute *attr,
+					    const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct stmvl6180_data *data = i2c_get_clientdata(client);
+	long delay_ms = simple_strtol(buf, NULL, 10);
+	//printk("stmvl6180_store_set_delay_ms as %ld======\n",delay_ms);
+	if (delay_ms == 0) {
+		pr_err("%s: set delay_ms=%ld\n", __func__, delay_ms);
+		return count;
+	}
+	mutex_lock(&data->work_mutex);
+	data->delay_ms = delay_ms;
+	mutex_unlock(&data->work_mutex);
+	return count;
+}
+
+//DEVICE_ATTR(name,mode,show,store)
+static DEVICE_ATTR(set_delay_ms, S_IWUSR | S_IRUGO,
+		   stmvl6180_show_set_delay_ms, stmvl6180_store_set_delay_ms);
+
 static struct attribute *stmvl6180_attributes[] = {
 	&dev_attr_enable_ps_sensor.attr,
 	&dev_attr_enable_debug.attr,
+	&dev_attr_set_delay_ms.attr,
 	NULL
 };
 
@@ -424,7 +603,7 @@ static int stmvl6180_ioctl_handler(struct file *file,
 				    ("ioclt INIT to enable PS sensor=====\n");
 				stmvl6180_set_enable(client, 0);	/* Power Off */
 				/* re-init */
-				gpio_set_value(cs_gpio_num, 1);
+				stmvl6180_power_enable(1);
 				VL6180x_Prepare(vl6180x_dev);
 				VL6180x_UpscaleSetScaling(vl6180x_dev, 3);
 #if VL6180x_WRAP_AROUND_FILTER_SUPPORT
@@ -450,9 +629,10 @@ static int stmvl6180_ioctl_handler(struct file *file,
 				cancel_delayed_work(&data->dwork);
 				schedule_delayed_work(&data->dwork,
 						      msecs_to_jiffies
-						      (INT_POLLING_DELAY));
-				spin_unlock_irqrestore(&data->update_lock.
-						       wait_lock, flags);
+						      (data->delay_ms));
+				spin_unlock_irqrestore(&data->
+						       update_lock.wait_lock,
+						       flags);
 
 				stmvl6180_set_enable(client, 1);	/* Power On */
 			}
@@ -500,7 +680,7 @@ static int stmvl6180_ioctl_handler(struct file *file,
 				cancel_delayed_work(&data->dwork);
 				schedule_delayed_work(&data->dwork,
 						      msecs_to_jiffies
-						      (INT_POLLING_DELAY));
+						      (data->delay_ms));
 				spin_unlock_irqrestore
 				    (&data->update_lock.wait_lock, flags);
 
@@ -571,7 +751,7 @@ static int stmvl6180_ioctl_handler(struct file *file,
 				cancel_delayed_work(&data->dwork);
 				schedule_delayed_work(&data->dwork,
 						      msecs_to_jiffies
-						      (INT_POLLING_DELAY));
+						      (data->delay_ms));
 				spin_unlock_irqrestore
 				    (&data->update_lock.wait_lock, flags);
 
@@ -679,7 +859,7 @@ static int stmvl6180_flush(struct file *file1, fl_owner_t id)
 
 			stmvl6180_set_enable(client, 0);
 
-			gpio_set_value(cs_gpio_num, 0);
+			stmvl6180_power_enable(0);
 
 			spin_lock_irqsave(&data->update_lock.wait_lock, flags);
 			/*
@@ -750,7 +930,7 @@ static int stmvl6180_init_client(struct i2c_client *client)
 	data->ps_data = 0;
 	data->enableDebug = 0;
 #ifdef CALIBRATION_FILE
-	//stmvl6180_read_calibration_file();
+	stmvl6180_read_calibration_file();
 #endif
 
 	/* VL6180 Initialization */
@@ -765,9 +945,6 @@ static int stmvl6180_init_client(struct i2c_client *client)
 /*
  * I2C init/probing/exit functions
  */
-struct regulator *vdd_stmvl6180;
-struct regulator *vcc_stmvl6180;
-
 static struct i2c_driver stmvl6180_driver;
 static char const *power_pin_vdd;
 static char const *power_pin_vcc;
@@ -818,12 +995,6 @@ static int stmvl6180_probe(struct i2c_client *client,
 		goto exit_vdd_regulator_put;
 	}
 
-	err = regulator_enable(vdd_stmvl6180);
-	if (err < 0) {
-		pr_err("%s: failed to enable st vdd\n", __func__);
-		goto exit_vdd_regulator_put;
-	}
-
 	/* VCC power on */
 	vcc_stmvl6180 = regulator_get(dev, power_pin_vcc);
 
@@ -838,12 +1009,6 @@ static int stmvl6180_probe(struct i2c_client *client,
 		goto exit_vcc_regulator_put;
 	}
 
-	err = regulator_enable(vcc_stmvl6180);
-	if (err < 0) {
-		pr_err("%s: failed to enable st vcc\n", __func__);
-		goto exit_vcc_regulator_put;
-	}
-
 	err = gpio_request(cs_gpio_num, "tmvl6180");
 	if (err < 0) {
 		pr_err("%s: failed to get cs gpio\n", __func__);
@@ -855,7 +1020,7 @@ static int stmvl6180_probe(struct i2c_client *client,
 		pr_err("%s: failed to get cs gpio\n", __func__);
 		goto exit_vcc_regulator_put;
 	}
-	gpio_set_value(cs_gpio_num, 1);
+	stmvl6180_power_enable(1);
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE)) {
 		err = -EIO;
@@ -924,8 +1089,14 @@ static int stmvl6180_probe(struct i2c_client *client,
 	set_bit(EV_ABS, data->input_dev_ps->evbit);
 
 	input_set_abs_params(data->input_dev_ps, ABS_DISTANCE, 0, 76, 0, 0);	//range in cm
-	input_set_abs_params(data->input_dev_ps, ABS_HAT0X, 0, 765, 0, 0);	//range in_mm
-	input_set_abs_params(data->input_dev_ps, ABS_X, 0, 65535, 0, 0);	//rtnRate
+	input_set_abs_params(data->input_dev_ps, ABS_HAT0X, 0, 0xffffffff, 0, 0);	//timeval.tv_sec
+	input_set_abs_params(data->input_dev_ps, ABS_HAT0Y, 0, 0xffffffff, 0, 0);	//timeval.tv_usec
+	input_set_abs_params(data->input_dev_ps, ABS_HAT1X, 0, 765, 0, 0);	//range in mm
+	input_set_abs_params(data->input_dev_ps, ABS_HAT1Y, 0, 0xffffffff, 0, 0);	//errorStatus
+	input_set_abs_params(data->input_dev_ps, ABS_HAT2X, 0, 0xffffffff, 0, 0);	//signal rate (MCPS)
+	input_set_abs_params(data->input_dev_ps, ABS_HAT2Y, 0, 0xffffffff, 0, 0);	//Return Ambient rate in KCPS
+	input_set_abs_params(data->input_dev_ps, ABS_HAT3X, 0, 0xffffffff, 0, 0);	// Return Convergence time
+	input_set_abs_params(data->input_dev_ps, ABS_HAT3Y, 0, 0xffffffff, 0, 0);	//DMax
 
 	data->input_dev_ps->name = "STM VL6180 proximity sensor";
 
@@ -943,6 +1114,8 @@ static int stmvl6180_probe(struct i2c_client *client,
 		pr_err("%sUnable to create sysfs group\n", __func__);
 		goto exit_unregister_dev_ps;
 	}
+
+	stmvl6180_power_enable(0);
 
 	pr_err("%s support ver. %s enabled\n", __func__, DRIVER_VERSION);
 

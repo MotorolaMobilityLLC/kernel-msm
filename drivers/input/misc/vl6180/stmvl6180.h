@@ -24,7 +24,8 @@
 
 #define DRIVER_VERSION		"1.0"
 #define I2C_M_WR			0x00
-#define INT_POLLING_DELAY	5
+//#define INT_POLLING_DELAY     20
+#define RESULT_REG_COUNT	56
 
 //if don't want to have output from vl6180_dbgmsg, comment out #DEBUG macro
 #define DEBUG
@@ -43,15 +44,15 @@
 
 #define VL6180_REVISION_ID_REG			    0x0005
 #define VL6180_REVISION_ID_REG_BYTES		1
-#define VL6180_DATE_HI_REG			    	0x0006
+#define VL6180_DATE_HI_REG				0x0006
 #define VL6180_DATE_HI_REG_BYTES		    1
-#define VL6180_DATE_LO_REG			    	0x0007
-#define VL6180_DATE_LO_REG_BYTES	   	    1
-#define VL6180_TIME_REG			    	    0x0008
+#define VL6180_DATE_LO_REG				0x0007
+#define VL6180_DATE_LO_REG_BYTES		    1
+#define VL6180_TIME_REG				    0x0008
 #define VL6180_TIME_REG_BYTES			    2
-#define VL6180_CODE_REG			    	    0x000a
+#define VL6180_CODE_REG				    0x000a
 #define VL6180_CODE_REG_BYTES			    1
-#define VL6180_FIRMWARE_REVISION_ID_REG	    	    0x000b
+#define VL6180_FIRMWARE_REVISION_ID_REG		    0x000b
 #define VL6180_FIRMWARE_REVISION_ID_REG_BYTES	    1
 
 /* Result Registers */
@@ -95,9 +96,14 @@ struct stmvl6180_data {
 	unsigned int enable_distance_filter;
 
 	/* Range Data */
-	//RangeData rangeData;
-	//sensor_RowRangeData rangeData;
 	VL6180x_RangeData_t rangeData;
+
+	/* Range Result Register Data */
+	VL6180x_RangeResultData_t rangeResult;
+	uint8_t ResultBuffer[RESULT_REG_COUNT];
+
+	/* delay time */
+	uint8_t delay_ms;	// work handler delay time in miniseconds
 
 	struct mutex work_mutex;
 	unsigned int ps_count;

@@ -79,6 +79,8 @@ typedef struct MyVL6180Dev_t *VL6180xDev_t;
  * @endcode
  */
 
+struct i2c_client *i2c_getclient(void);
+
 /**
  * @def I2C_BUFFER_CONFIG
  *
@@ -107,7 +109,7 @@ typedef struct MyVL6180Dev_t *VL6180xDev_t;
  * @return      0 on success
  * @ingroup cci_i2c
  */
-int  VL6180x_I2CWrite(VL6180xDev_t dev, uint8_t  *buff, uint8_t len);
+int VL6180x_I2CWrite(VL6180xDev_t dev, uint8_t *buff, uint8_t len);
 
 /**
  *
@@ -119,7 +121,6 @@ int  VL6180x_I2CWrite(VL6180xDev_t dev, uint8_t  *buff, uint8_t len);
  * @ingroup  cci_i2c
  */
 int VL6180x_I2CRead(VL6180xDev_t dev, uint8_t *buff, uint8_t len);
-
 
 /**
  * @brief Declare any required variables used by i2c lock (@a VL6180x_DoneI2CAccess() and @a VL6180x_GetI2CAccess())
@@ -147,7 +148,7 @@ void VL6180x_GetI2CAccess(VL6180xDev_t dev);
  * @brief Default 'do-nothing' macro for @a VL6180x_GetI2CAccess(). Delete if used.
  * @ingroup cci_i2c
  */
-#define VL6180x_GetI2CAccess(dev) (void)0 /* TODO delete if function used */
+#define VL6180x_GetI2CAccess(dev) (void)0	/* TODO delete if function used */
 
 /**
  * @brief Release acquired lock or mutex for i2c access.\n
@@ -163,7 +164,7 @@ void VL6180x_DoneI2CAccess(VL6180xDev_t dev);
  * @brief Default 'do-nothing' macro for @a VL6180x_DoneI2CAcces(). Delete if used.
  * @ingroup cci_i2c
  */
-#define VL6180x_DoneI2CAcces(dev) (void)0  /*TODO delete  if function used */
+#define VL6180x_DoneI2CAcces(dev) (void)0	/*TODO delete  if function used */
 
 /**
  * @brief Provided data buffer for i2c access for at least n_byte.
@@ -178,11 +179,7 @@ void VL6180x_DoneI2CAccess(VL6180xDev_t dev);
  */
 uint8_t *VL6180x_GetI2cBuffer(VL6180xDev_t dev, int n_byte);
 #if I2C_BUFFER_CONFIG == 2
-#error /* TODO add your macro of code here for VL6180x_GetI2cBuffer */
+#error				/* TODO add your macro of code here for VL6180x_GetI2cBuffer */
 #endif
-
-
-
-
 
 #endif /* VL6180_I2C_H_ */
