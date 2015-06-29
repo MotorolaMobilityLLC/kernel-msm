@@ -54,4 +54,9 @@
 			bcm,i2c-pull-up = <1>;
 		};
 	};
+
+	charger-dock {
+		compatible = "charger-dock-detector";
+		status = "ok";
+	};
 };
