@@ -49,5 +49,5 @@
 /*#include "huawei-emmc.dtsi" */
 /*#include "huawei-sdcard.dtsi"*/
 /*belong to the OS group, according to the order of battery memery end*/
-/*#include "huawei-nfc.dtsi"*/
+#include "huawei-nfc.dtsi"
 #include "huawei-usb.dtsi"
