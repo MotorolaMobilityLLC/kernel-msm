@@ -4303,6 +4303,9 @@ int ipa_tag_process(struct ipa_desc desc[],
 		WARN_ON(1);
 		if (atomic_dec_return(&comp->cnt) == 0)
 			kfree(comp);
+#ifdef CONFIG_MSM_IPA_PANIC_ON_TIMEOUT
+		BUG();
+#endif
 		return -ETIME;
 	}
 

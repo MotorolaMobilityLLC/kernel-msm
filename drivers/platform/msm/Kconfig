@@ -254,4 +254,11 @@ config SEEMP_CORE
 	help
 		This option enables malware protection component
 		to log on-device software API activity.
+
+config 	MSM_IPA_PANIC_ON_TIMEOUT
+	bool "Force crash if IPA driver times out"
+	depends on IPA && MSM_QMI_INTERFACE
+	help
+		This option is meant to capture debug info if IPA times out
+		and restore modem connectivty by triggering reset.
 endmenu
