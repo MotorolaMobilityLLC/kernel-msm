@@ -51,6 +51,7 @@ struct m4acc_driver_data {
 	struct m4acc_sensor_data    sensdat;
 
 	int16_t         samplerate;
+	uint16_t        maxlatency;
 	uint16_t        status;
 };
 
@@ -198,6 +199,40 @@ m4acc_set_samplerate_fail:
 	return err;
 }
 
+static int m4acc_set_maxlatency_locked(struct m4acc_driver_data *dd,
+	uint16_t maxlatency)
+{
+	int err = 0;
+	int size = 0;
+
+	if (maxlatency == dd->maxlatency)
+		goto m4acc_set_maxlatency_fail;
+
+	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_ACCEL_REPORTLATENCY);
+	if (size < 0) {
+		m4acc_err("%s: Writing to invalid register %d.\n",
+			  __func__, size);
+		err = size;
+		goto m4acc_set_maxlatency_fail;
+	}
+
+	err = m4sensorhub_reg_write(dd->m4, M4SH_REG_ACCEL_REPORTLATENCY,
+		(char *)&maxlatency, m4sh_no_mask);
+	if (err < 0) {
+		m4acc_err("%s: Failed to set maxlatency.\n", __func__);
+		goto m4acc_set_maxlatency_fail;
+	} else if (err != size) {
+		m4acc_err("%s: Wrote %d bytes instead of %d.\n",
+			  __func__, err, size);
+		err = -EBADE;
+		goto m4acc_set_maxlatency_fail;
+	}
+	dd->maxlatency = maxlatency;
+
+m4acc_set_maxlatency_fail:
+	return err;
+}
+
 static ssize_t m4acc_setrate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -251,6 +286,59 @@ m4acc_enable_store_exit:
 static DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
 		m4acc_setrate_show, m4acc_setrate_store);
 
+static ssize_t m4acc_maxlatency_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct m4acc_driver_data *dd = dev_get_drvdata(dev);
+	ssize_t size = 0;
+
+	mutex_lock(&(dd->mutex));
+	size = snprintf(buf, PAGE_SIZE, "Current max_latency: %hu\n", dd->maxlatency);
+	mutex_unlock(&(dd->mutex));
+	return size;
+}
+
+static ssize_t m4acc_maxlatency_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct m4acc_driver_data *dd = dev_get_drvdata(dev);
+	uint32_t value = 0;
+
+	mutex_lock(&(dd->mutex));
+
+	err = kstrtouint(buf, 10, &value);
+	if (err < 0) {
+		m4acc_err("%s: Failed to convert value.\n", __func__);
+		goto m4acc_maxlatency_store_exit;
+	}
+
+	if (value > 65535) {
+		m4acc_err("%s: Invalid max_latency requested = %u\n",
+			  __func__, value);
+		err = -EOVERFLOW;
+		goto m4acc_maxlatency_store_exit;
+	}
+
+	err = m4acc_set_maxlatency_locked(dd, (uint16_t)value);
+	if (err < 0) {
+		m4acc_err("%s: Failed to set max_latency.\n", __func__);
+		goto m4acc_maxlatency_store_exit;
+	}
+
+m4acc_maxlatency_store_exit:
+	if (err < 0) {
+		m4acc_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+
+static DEVICE_ATTR(maxlatency, S_IRUSR | S_IWUSR,
+		m4acc_maxlatency_show, m4acc_maxlatency_store);
+
 static ssize_t m4acc_sensordata_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -278,6 +366,13 @@ static int m4acc_create_sysfs(struct m4acc_driver_data *dd)
 		goto m4acc_create_sysfs_exit;
 	}
 
+	err = device_create_file(&(dd->pdev->dev), &dev_attr_maxlatency);
+	if (err < 0) {
+		m4acc_err("%s: Failed to create maxlatency %s %d.\n",
+			  __func__, "with error", err);
+		goto m4acc_create_sysfs_maxlatency_fail;
+	}
+
 	err = device_create_file(&(dd->pdev->dev), &dev_attr_sensordata);
 	if (err < 0) {
 		m4acc_err("%s: Failed to create sensordata %s %d.\n",
@@ -288,6 +383,8 @@ static int m4acc_create_sysfs(struct m4acc_driver_data *dd)
 	goto m4acc_create_sysfs_exit;
 
 m4acc_create_sysfs_sensordata_fail:
+	device_remove_file(&(dd->pdev->dev), &dev_attr_maxlatency);
+m4acc_create_sysfs_maxlatency_fail:
 	device_remove_file(&(dd->pdev->dev), &dev_attr_setrate);
 m4acc_create_sysfs_exit:
 	return err;
@@ -298,6 +395,7 @@ static int m4acc_remove_sysfs(struct m4acc_driver_data *dd)
 	int err = 0;
 
 	device_remove_file(&(dd->pdev->dev), &dev_attr_setrate);
+	device_remove_file(&(dd->pdev->dev), &dev_attr_maxlatency);
 	device_remove_file(&(dd->pdev->dev), &dev_attr_sensordata);
 
 	return err;

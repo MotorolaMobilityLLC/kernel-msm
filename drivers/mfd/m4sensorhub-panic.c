@@ -45,6 +45,7 @@ static const char *callback_name[PANICHDL_MAX] = {
 	[PANICHDL_EXTERN_RESTORE] = "extern_restore",
 	[PANICHDL_PRESSURE_RESTORE] = "pressure_restore",
 	[PANICHDL_ADS_RESTORE] = "ads_restore",
+	[PANICHDL_BATCH_RESTORE] = "batch_restore",
 	[PANICHDL_PPG_RESTORE] = "ppg_restore",
 };
 
