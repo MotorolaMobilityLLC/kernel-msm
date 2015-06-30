@@ -1546,6 +1546,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 						DHD_ERROR(("failed to set nd_ra_filter (%d)\n",
 							ret));
 				}
+				dhd_os_suppress_logging(dhd, TRUE);
 			} else {
 #ifdef PKT_FILTER_SUPPORT
 				dhd->early_suspended = 0;
@@ -1590,6 +1591,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 						DHD_ERROR(("failed to set nd_ra_filter (%d)\n",
 							ret));
 				}
+				dhd_os_suppress_logging(dhd, FALSE);
 			}
 	}
 	dhd_suspend_unlock(dhd);
