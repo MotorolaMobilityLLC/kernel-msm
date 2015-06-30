@@ -150,6 +150,43 @@
 		qcom,disable-dma;
 	};
 
+	blsp2_uart5: uart@075b3000 { /* BLSP2 UART5 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0x075b3000 0x1000>,
+		    <0x7584000 0x2b000>;
+		status = "disabled";
+		reg-names = "core_mem", "bam_mem";
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp2_uart5>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 117 0
+			    1 &intc 0 239 0
+			    2 &tlmm 59 0>;
+
+		qcom,inject-rx-on-wakeup;
+		qcom,rx-char-to-inject = <0xFD>;
+
+		qcom,bam-tx-ep-pipe-index = <8>;
+		qcom,bam-rx-ep-pipe-index = <9>;
+		qcom,master-id = <84>;
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_uart5_apps_clk>,
+		    <&clock_gcc clk_gcc_blsp2_ahb_clk>;
+		pinctrl-names = "sleep", "default";
+		pinctrl-0 = <&blsp2_uart5_sleep>;
+		pinctrl-1 = <&blsp2_uart5_active>;
+
+		qcom,msm-bus,name = "buart11";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			    <84 512 0 0>,
+			    <84 512 500 800>;
+	};
+
 	spi_12: spi@75ba000 { /* BLSP2 QUP6 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
