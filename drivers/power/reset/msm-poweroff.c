@@ -214,6 +214,7 @@ static void halt_spmi_pmic_arbiter(void)
 static void msm_restart_prepare(const char *cmd)
 {
 	enum pon_power_off_type poff = PON_POWER_OFF_HARD_RESET;
+	enum pon_restart_reason reason = PON_RESTART_REASON_UNKNOWN;
 
 #ifdef CONFIG_MSM_DLOAD_MODE
 
@@ -228,17 +229,13 @@ static void msm_restart_prepare(const char *cmd)
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_BOOTLOADER);
+			reason = PON_RESTART_REASON_BOOTLOADER;
 		} else if (!strncmp(cmd, "recovery", 8)) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_RECOVERY);
+			reason = PON_RESTART_REASON_RECOVERY;
 		} else if (!strncmp(cmd, "rtc", 3)) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_RTC);
+			reason = PON_RESTART_REASON_RTC;
 		} else if (!strncmp(cmd, "dm-verity device corrupted", 26 )) {
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_DMVERITY);
+			reason = PON_RESTART_REASON_DMVERITY;
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			int ret;
@@ -247,24 +244,17 @@ static void msm_restart_prepare(const char *cmd)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
 			poff = PON_POWER_OFF_WARM_RESET;
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_UNKNOWN);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 			poff = PON_POWER_OFF_WARM_RESET;
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_UNKNOWN);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
-			qpnp_pon_set_restart_reason(
-				PON_RESTART_REASON_UNKNOWN);
+			reason = PON_RESTART_REASON_OTHER;
 		}
 	}
 #ifdef CONFIG_LGE_HANDLE_PANIC
 	else {
 		__raw_writel(0x776655ff, restart_reason);
-		qpnp_pon_set_restart_reason(
-			PON_RESTART_REASON_UNKNOWN);
 	}
 #endif
 
@@ -278,7 +268,8 @@ static void msm_restart_prepare(const char *cmd)
 		lge_set_panic_reason();
 #endif
 
-	if (download_mode || dload_mode_enabled || restart_mode || in_panic)
+	qpnp_pon_set_restart_reason(reason);
+	if (in_panic || download_mode || dload_mode_enabled || restart_mode)
 		poff = PON_POWER_OFF_WARM_RESET;
 
 	qpnp_pon_system_pwr_off(poff);

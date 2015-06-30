@@ -47,13 +47,17 @@ enum pon_power_off_type {
 	PON_POWER_OFF_HARD_RESET	= 0x07,
 };
 
-// only 3bits used in the SOFT_RB_SPARE reg
+/* only 3bits used in the SOFT_RB_SPARE reg
+   default reg value is 0x0, which should
+   correspond to unknown/invalid
+*/
 enum pon_restart_reason {
 	PON_RESTART_REASON_UNKNOWN	= 0x00,
 	PON_RESTART_REASON_RECOVERY	= 0x01,
 	PON_RESTART_REASON_BOOTLOADER	= 0x02,
 	PON_RESTART_REASON_RTC		= 0x03,
 	PON_RESTART_REASON_DMVERITY	= 0x04,
+	PON_RESTART_REASON_OTHER	= 0x05,
 };
 
 #ifdef CONFIG_QPNP_POWER_ON
