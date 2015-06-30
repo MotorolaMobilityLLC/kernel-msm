@@ -37,7 +37,7 @@ config BCMDHD_WEXT
 	help
 	  Enables WEXT support
 
-config DHD_USE_STATIC_BUF
+config BROADCOM_WIFI_RESERVED_MEM
 	bool "Enable memory preallocation"
 	depends on BCMDHD
 	default n
