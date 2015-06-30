@@ -74,7 +74,7 @@ static bool mmi_factory_cable_present(void)
 	return true;
 }
 
-/* Factory kill should be enabled if any of these contitions are met:
+/* Factory kill should be enabled if any of these conditions are met:
  *    keep_factory_kill_enabled is set
  *    factory cable present
  *    SE-1 charger is present
