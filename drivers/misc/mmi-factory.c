@@ -21,9 +21,15 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/power_supply.h>
 #include <linux/reboot.h>
 #include <linux/slab.h>
 #include <linux/qpnp/power-on.h>
+
+static int keep_factory_kill_enabled;
+module_param(keep_factory_kill_enabled, int, 0);
+MODULE_PARM_DESC(keep_factory_kill_enabled,
+		 "Override factory kill disable logic to keep it always armed");
 
 enum mmi_factory_device_list {
 	HONEYFUFU = 0,
@@ -36,15 +42,18 @@ enum mmi_factory_device_list {
 #define KP_NUM_GPIOS 3
 #define PMIO_PON_EXTRA_RESET_KUNPOW_BIT BIT(9)
 struct mmi_factory_info {
+	struct device *device;
 	int num_gpios;
 	struct gpio *list;
 	uint32_t *active_low;
-	int factory_cable;
+	int factory_cable_present;
 	enum mmi_factory_device_list dev;
 	struct delayed_work warn_irq_work;
 	struct delayed_work fac_cbl_irq_work;
 	int warn_irq;
 	int fac_cbl_irq;
+	struct notifier_block nb;
+	struct power_supply *psy;
 };
 
 /* The driver should only be present when booting with the environment variable
@@ -64,6 +73,59 @@ static bool mmi_factory_cable_present(void)
 
 	return true;
 }
+
+/* Factory kill should be enabled if any of these contitions are met:
+ *    keep_factory_kill_enabled is set
+ *    factory cable present
+ *    SE-1 charger is present
+ * Otherwise it should be disabled
+ */
+static void configure_factory_kill(struct mmi_factory_info *info)
+{
+	bool fac_cbl_line = info->active_low[KP_CABLE_INDEX] ^
+			   gpio_get_value(info->list[KP_CABLE_INDEX].gpio);
+	bool factory_kill_disabled = info->active_low[KP_KILL_INDEX] ^
+				     gpio_get_value(
+					info->list[KP_KILL_INDEX].gpio);
+	bool dcp_present = (info->psy->type == POWER_SUPPLY_TYPE_USB_DCP);
+
+	if ((keep_factory_kill_enabled || fac_cbl_line || dcp_present) &&
+	    factory_kill_disabled) {
+		dev_info(info->device, "Arming factory kill: %s%s%s\n",
+			 keep_factory_kill_enabled ?
+				"keep_factory_kill_enabled set " : "",
+			 fac_cbl_line ? "Factory cable present" : "",
+			 dcp_present ? "Charger present " : "");
+		gpio_set_value(info->list[KP_KILL_INDEX].gpio,
+			       info->active_low[KP_KILL_INDEX]);
+	} else if (!keep_factory_kill_enabled && !fac_cbl_line &&
+		   !dcp_present && !factory_kill_disabled) {
+		dev_info(info->device, "Disabling factory kill\n");
+		gpio_set_value(info->list[KP_KILL_INDEX].gpio,
+			       !info->active_low[KP_KILL_INDEX]);
+	}
+}
+
+static int mmi_factory_notifier_call(struct notifier_block *nb,
+				     unsigned long val, void *v)
+{
+	struct mmi_factory_info *info =
+		container_of(nb, struct mmi_factory_info, nb);
+	struct power_supply *psy = v;
+
+	if (val != PSY_EVENT_PROP_CHANGED)
+		return NOTIFY_OK;
+
+	if (psy != info->psy)
+		return NOTIFY_OK;
+
+	if (info->psy->type == POWER_SUPPLY_TYPE_USB_DCP ||
+	    info->psy->type == POWER_SUPPLY_TYPE_UNKNOWN)
+		configure_factory_kill(info);
+
+	return NOTIFY_OK;
+}
+
 
 static void warn_irq_w(struct work_struct *w)
 {
@@ -106,28 +168,22 @@ static void fac_cbl_irq_w(struct work_struct *w)
 	int fac_kill_disable = info->active_low[KP_KILL_INDEX] ^
 				gpio_get_value(info->list[KP_KILL_INDEX].gpio);
 
-	if (fac_cbl_line) {
-		pr_info("Factory Cable Attached!\n");
-		info->factory_cable = 1;
+	if (info->factory_cable_present && !fac_cbl_line) {
+		info->factory_cable_present = 0;
+		dev_info(info->device, "Factory Cable Removed\n");
 		if (fac_kill_disable) {
-			pr_info("Arming factory kill by setting gpio-%d to: %d\n",
-				info->list[KP_KILL_INDEX].gpio,
-				info->active_low[KP_KILL_INDEX]);
-			gpio_set_value(info->list[KP_KILL_INDEX].gpio,
-				       info->active_low[KP_KILL_INDEX]);
+			dev_info(info->device, "Factory kill was disabled; remaining on\n");
+		} else {
+			pr_info("Powering off.\n");
+			kernel_power_off();
+			return;
 		}
-	} else
-		if (info->factory_cable) {
-			pr_info("Factory Cable Detached!\n");
-			if (fac_kill_disable) {
-				info->factory_cable = 0;
-				pr_info("Factory kill was disabled; remaining on\n");
-			} else {
-				pr_info("Powering off.\n");
-				kernel_power_off();
-				return;
-			}
-		}
+	} else if (fac_cbl_line) {
+			info->factory_cable_present = 1;
+			dev_info(info->device, "Factory Cable Attached!\n");
+	}
+
+	configure_factory_kill(info);
 }
 
 #define FAC_CBL_IRQ_DELAY	5 /* 5msec */
@@ -235,6 +291,7 @@ static int mmi_factory_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to parse node\n");
 		return -ENODEV;
 	}
+	info->device = &pdev->dev;
 
 	ret = gpio_request_array(info->list, info->num_gpios);
 	if (ret) {
@@ -263,8 +320,25 @@ static int mmi_factory_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "factory cable not present\n");
 	} else {
 		pr_info("Factory Cable Attached at Power up!\n");
-		info->factory_cable = 1;
+		info->factory_cable_present = 1;
 	}
+
+	if (keep_factory_kill_enabled)
+		pr_info("Factory kill override enabled\n");
+
+	info->psy = power_supply_get_by_name("usb");
+	if (info->psy == NULL) {
+		dev_err(&pdev->dev, "Failed to find USB power supply\n");
+		goto fail;
+	}
+
+	info->nb.notifier_call = mmi_factory_notifier_call;
+	ret = power_supply_reg_notifier(&info->nb);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to reg notifier: %d\n", ret);
+		goto fail;
+	}
+
 
 	if (match && match->data) {
 		info->dev = *(enum mmi_factory_device_list *)(match->data);
@@ -368,8 +442,8 @@ static void __exit mmi_factory_exit(void)
 	platform_driver_unregister(&mmi_factory_driver);
 }
 
-module_init(mmi_factory_init);
-module_exit(mmi_factory_exit);
+/* init late so that USB power supply is available before probe */
+late_initcall(mmi_factory_init);
 
 MODULE_ALIAS("platform:mmi_factory");
 MODULE_AUTHOR("Motorola Mobility LLC");
