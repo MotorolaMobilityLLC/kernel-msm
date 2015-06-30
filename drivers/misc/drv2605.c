@@ -769,7 +769,7 @@ static int drv260x_probe(struct i2c_client *client,
 		dev_err(&client->dev, "vibrator static vreg error\n");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		printk(KERN_ALERT "drv260x probe failed");
+		dev_err(&client->dev, "probe failed");
 		return -ENODEV;
 	}
 
@@ -783,10 +783,10 @@ static int drv260x_probe(struct i2c_client *client,
 		return -EPROBE_DEFER;
 	}
 	if(IS_ERR(drv260x->vibrator_vdd))
-		printk(KERN_ALERT "drv260x->vibrator_vdd not initialized\n");
+		dev_err(&client->dev, "drv260x->vibrator_vdd not initialized\n");
 
 	if (gpio_request(drv260x->en_gpio, "vibrator-en") < 0) {
-		printk(KERN_ALERT "drv260x: error requesting gpio\n");
+		dev_err(&client->dev, "error requesting gpio\n");
 		return -ENODEV;
 	}
 	drv260x->client = client;
@@ -811,7 +811,7 @@ static int drv260x_probe(struct i2c_client *client,
 	}
 
 	if (err < 0) {
-		pr_err("drv260x: HW init failed\n");
+		dev_err(&client->dev, "HW init failed\n");
 		device_destroy(drv260x->class, drv260x->version);
 		class_destroy(drv260x->class);
 		return -ENODEV;
@@ -859,6 +859,7 @@ static int drv260x_probe(struct i2c_client *client,
 static void probe_work(struct work_struct *work)
 {
 	int status;
+	struct i2c_client *client = drv260x->client;
 
 	drv260x_update_init_sequence(ERM_autocal_sequence,
 					sizeof(ERM_autocal_sequence),
@@ -895,7 +896,7 @@ static void probe_work(struct work_struct *work)
 	if (drv260x->disable_calibration) {
 		status = drv260x_read_reg(AUTOCAL_MEM_INTERFACE_REG);
 		if (status & AUTOCAL_OTP_STATUS) {
-			pr_info("drv260x: Boot-up calibration disabled\n");
+			dev_info(&client->dev, "Boot-up calibration disabled\n");
 			/* OTP mem programmed,update init sequence with
 			   stored values */
 			drv260x_update_cali_result(ERM_autocal_sequence,
@@ -907,7 +908,7 @@ static void probe_work(struct work_struct *work)
 					sizeof(ERM_autocal_sequence),
 					GO_REG, 0);
 		} else
-			pr_warn("drv260x: OTP memory is not programmed.\n");
+			dev_warn(&client->dev, "OTP memory is not programmed.\n");
 	}
 
 	/* Wait 30 us */
@@ -940,7 +941,7 @@ static void probe_work(struct work_struct *work)
 #if SKIP_LRA_AUTOCAL == 0
 	/* Check result */
 	if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-		printk(KERN_ALERT "drv260x auto-cal failed.\n");
+		dev_err(&client->dev, "auto-cal failed.\n");
 		if (g_effect_bank == LIBRARY_F)
 			drv260x_write_reg_val(LRA_autocal_sequence,
 					      sizeof(LRA_autocal_sequence));
@@ -950,7 +951,7 @@ static void probe_work(struct work_struct *work)
 		drv2605_poll_go_bit();
 		status = drv260x_read_reg(STATUS_REG);
 		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-			printk(KERN_ALERT "drv260x auto-cal retry failed.\n");
+			dev_err(&client->dev, "auto-cal retry failed.\n");
 			// return -ENODEV;
 		}
 	}
@@ -966,13 +967,13 @@ static void probe_work(struct work_struct *work)
 	device_id = (status & DEV_ID_MASK);
 	switch (device_id) {
 	case DRV2605:
-		printk(KERN_ALERT "drv260x driver found: drv2605.\n");
+		dev_err(&client->dev, "driver found: drv2605.\n");
 		break;
 	case DRV2604:
-		printk(KERN_ALERT "drv260x driver found: drv2604.\n");
+		dev_err(&client->dev, "driver found: drv2604.\n");
 		break;
 	default:
-		printk(KERN_ALERT "drv260x driver found: unknown.\n");
+		dev_err(&client->dev, "driver found: unknown.\n");
 		break;
 	}
 
@@ -980,19 +981,19 @@ static void probe_work(struct work_struct *work)
 	drv260x_standby();
 
 	if (timed_output_dev_register(&to_dev) < 0) {
-		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
+		dev_err(&client->dev, "fail to create timed output dev\n");
 		drv260x_exit();
 		/* return -ENODEV; */
 		return;
 	}
 
-	printk(KERN_ALERT "drv260x probe work succeeded");
+	dev_err(&client->dev, "probe work succeeded");
 	return;
 }
 
 static int drv260x_remove(struct i2c_client *client)
 {
-	printk(KERN_ALERT "drv260x remove");
+	dev_err(&client->dev, "remove");
 	return 0;
 }
 
@@ -1181,22 +1182,20 @@ static int drv260x_init(void)
 
 	drv260x = kzalloc(sizeof(struct drv260x), GFP_KERNEL);
 	if (!drv260x) {
-		printk(KERN_ALERT
-		       "drv260x: cannot allocate memory for drv260x driver\n");
+		pr_alert("drv260x: error kzalloc memory for drv260x driver\n");
 		goto alloc_err;
 	}
 
 	drv260x->version = MKDEV(0, 0);
 	reval = alloc_chrdev_region(&drv260x->version, 0, 1, DEVICE_NAME);
 	if (reval < 0) {
-		printk(KERN_ALERT "drv260x: error getting major number %d\n",
-		       reval);
+		pr_alert("drv260x: error getting major number\n");
 		goto region_err;
 	}
 
 	drv260x->class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (!drv260x->class) {
-		printk(KERN_ALERT "drv260x: error creating class\n");
+		pr_alert("drv260x: error creating class\n");
 		goto class_err;
 	}
 
@@ -1204,7 +1203,7 @@ static int drv260x_init(void)
 	    device_create(drv260x->class, NULL, drv260x->version, NULL,
 			  DEVICE_NAME);
 	if (!drv260x->device) {
-		printk(KERN_ALERT "drv260x: error creating device 2605\n");
+		pr_alert("drv260x: error creating device 2605\n");
 		goto device_err;
 	}
 
@@ -1214,7 +1213,7 @@ static int drv260x_init(void)
 	reval = cdev_add(&drv260x->cdev, drv260x->version, 1);
 
 	if (reval) {
-		printk(KERN_ALERT "drv260x: fail to add cdev\n");
+		pr_alert("drv260x: fail to add cdev\n");
 		goto cdev_err;
 	}
 
@@ -1263,7 +1262,7 @@ static void drv260x_exit(void)
 	kfree(drv260x);
 	i2c_del_driver(&drv260x_driver);
 
-	printk(KERN_ALERT "drv260x: exit\n");
+	pr_alert("drv260x: exit\n");
 }
 
 late_initcall(drv260x_init);
