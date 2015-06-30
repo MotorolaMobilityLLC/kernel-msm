@@ -51,6 +51,23 @@
 		};
 	};
 
+	/* These are defined in msm8996-pinctrl.dtsi but we need to add CS on
+	 * GPIO2 since our reference design includes it.
+	 */
+	spi_0 {
+		spi_0_active: spi_0_active {
+			spi_0 {
+				pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			};
+		};
+
+		spi_0_sleep: spi_0_sleep {
+			spi_0 {
+				pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			};
+		};
+	};
+
 	spi_12 {
 		spi_12_active: spi_12_active {
 			spi_12 {
