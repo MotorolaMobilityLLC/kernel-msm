@@ -1190,9 +1190,12 @@ static int smb1351_set_usb_chg_current(struct smb1351_charger *chip,
 	} else if (current_ma == USB2_MAX_CURRENT_MA) {
 		/* USB 2.0 - 500mA */
 		reg = CMD_USB_2_MODE | CMD_USB_500_MODE;
-	} else if (current_ma == USB3_MAX_CURRENT_MA) {
-		/* USB 3.0 - 900mA */
-		reg = CMD_USB_3_MODE | CMD_USB_500_MODE;
+	/*
+	 * remove code of USB3.0 - 900mA, use HC mode for 900ma.
+	 * hvdcp input current is 1.8A, for parallel charging
+	 * chip: smb1351, set 50% of 1.8A(900ma) as input current
+	 * note: smb1351 do not have 900ma, so use 700ma
+	 */
 	} else if (current_ma > USB2_MAX_CURRENT_MA) {
 		/* HC mode  - if none of the above */
 		reg = CMD_USB_AC_MODE;

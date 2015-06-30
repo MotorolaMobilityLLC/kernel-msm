@@ -1445,10 +1445,11 @@ static int smbchg_get_min_parallel_current_ma(struct smbchg_chip *chip)
 #define USBIN_SUSPEND_STS_BIT		BIT(3)
 #define USBIN_ACTIVE_PWR_SRC_BIT	BIT(1)
 #define DCIN_ACTIVE_PWR_SRC_BIT		BIT(0)
-#define PARALLEL_REENABLE_TIMER_MS	30000
+/* change parallel reenable timer to 2.5 seconds */
+#define PARALLEL_REENABLE_TIMER_MS	2500
 static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 {
-	int min_current_thr_ma, rc;
+	int min_current_thr_ma, rc, type;
 	ktime_t kt_since_last_disable;
 	u8 reg;
 	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
@@ -1477,9 +1478,23 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
+	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
+		return false;
+	}
+
+	type = get_type(reg);
+	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB_CDP) {
+		pr_smb(PR_STATUS, "CDP adapter, skipping\n");
+		return false;
+	}
+
 	current_mode = typec_current_mode_detect();
-	if (TYPEC_CURRENT_MODE_HIGH != current_mode) {
-		pr_smb(PR_STATUS, "not typec high current mode, skipping\n");
+	if ((get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB)
+		&& ((current_mode == TYPEC_CURRENT_MODE_DEFAULT)
+			|| (current_mode == TYPEC_CURRENT_MODE_UNSPPORTED))) {
+		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
 		return false;
 	}
 
@@ -2243,6 +2258,7 @@ static int smbchg_set_thermal_limited_dc_current_max(struct smbchg_chip *chip,
 /*
  * get input current according to type-c protocol
  */
+#define FLOAT_CURRENT		1000
 #define MEDIUM_CURRENT		1500
 #define TYPEC_HIGH_CURRENT		3000
 static int get_typec_input_current(void)
@@ -3257,6 +3273,15 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 
 	pr_smb(PR_MISC, "current_limit = %d\n", current_limit);
 	pr_info("smbchg_external_power_changed: current_limit = %d\n", current_limit);
+	/*
+	 * typec charger is detected as floated charger by BC1.2, so dwc3-msm driver
+	 * set 1A to smbcharger, we modify it to 1.5A here, as if parallel charging
+	 * cannot be allowed(such as jeita), we will use 1.5A as the input current
+	 * for pmi8994 smbcharger.
+	 */
+	if ((FLOAT_CURRENT == current_limit)
+		&& (CURRENT_500_MA != get_typec_input_current()))
+		current_limit = MEDIUM_CURRENT;
 	mutex_lock(&chip->current_change_lock);
 	if (current_limit != chip->usb_target_current_ma) {
 		pr_smb(PR_STATUS, "changed current_limit = %d\n",

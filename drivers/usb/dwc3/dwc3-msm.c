@@ -2373,6 +2373,10 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 			break;
 		case POWER_SUPPLY_TYPE_USB_HVDCP:
 			mdwc->charger.chg_type = DWC3_DCP_CHARGER;
+			/* healthd do not support hvdcp, and hvdcp is
+			 * a kind of dcp chargers, report dcp to healthd
+			 */
+			psy->type = POWER_SUPPLY_TYPE_USB_DCP;
 			usb_phy_set_power(phy, hvdcp_max_current);
 			break;
 		case POWER_SUPPLY_TYPE_USB_CDP:
