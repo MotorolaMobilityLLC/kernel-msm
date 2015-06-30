@@ -303,6 +303,8 @@ extern int dhd_os_dbg_register_urgent_notifier(dhd_pub_t *dhdp,
 extern int dhd_os_start_logging(dhd_pub_t *dhdp, char *ring_name, int log_level,
 		int flags, int time_intval, int threshold);
 extern int dhd_os_reset_logging(dhd_pub_t *dhdp);
+extern int dhd_os_suppress_logging(dhd_pub_t *dhdp, bool suppress);
+
 extern int dhd_os_get_ring_status(dhd_pub_t *dhdp, int ring_id,
 		dhd_dbg_ring_status_t *dbg_ring_status);
 extern int dhd_os_trigger_get_ring_data(dhd_pub_t *dhdp, char *ring_name);
