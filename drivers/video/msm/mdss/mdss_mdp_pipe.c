@@ -931,7 +931,7 @@ static struct mdss_mdp_pipe *mdss_mdp_pipe_init(struct mdss_mdp_mixer *mixer,
 
 cursor_done:
 	if (!pipe)
-		pr_err("no %d type pipes available\n", type);
+		pr_debug("no %d type pipes available\n", type);
 
 	return pipe;
 }

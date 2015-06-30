@@ -561,6 +561,7 @@ struct mdss_overlay_private {
 	struct mutex list_lock;
 	struct list_head pipes_used;
 	struct list_head pipes_cleanup;
+	struct list_head pipes_destroy;
 	struct list_head rot_proc_list;
 	bool mixer_swap;
 
