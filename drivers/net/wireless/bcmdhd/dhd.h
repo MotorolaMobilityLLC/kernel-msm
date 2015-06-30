@@ -427,6 +427,7 @@ typedef struct dhd_pub {
 	uint8 *soc_ram;
 	uint32 soc_ram_length;
 	uint32 memdump_enabled;
+	uint8 rand_mac_oui[DOT11_OUI_LEN];
 } dhd_pub_t;
 
 #if defined(BCMWDF)
@@ -651,6 +652,8 @@ extern void dhd_txcomplete(dhd_pub_t *dhdp, void *txp, bool success);
 extern int dhd_dev_get_feature_set(struct net_device *dev);
 extern int *dhd_dev_get_feature_set_matrix(struct net_device *dev, int *num);
 extern int dhd_dev_set_nodfs(struct net_device *dev, u32 nodfs);
+extern int dhd_dev_cfg_rand_mac_oui(struct net_device *dev, uint8 *oui);
+extern int dhd_set_rand_mac_oui(dhd_pub_t *dhd);
 
 #ifdef GSCAN_SUPPORT
 extern int dhd_dev_set_lazy_roam_cfg(struct net_device *dev,
