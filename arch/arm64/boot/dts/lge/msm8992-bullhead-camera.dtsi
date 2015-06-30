@@ -12,11 +12,6 @@
  */
 
 &cci {
-
-	/delete-property/ qcom,camera@0;
-	/delete-property/ qcom,camera@1;
-	/delete-property/ qcom,camera@2;
-
 	actuator0: qcom,actuator@0 {
 		cell-index = <0>;
 		reg = <0x0>;
@@ -97,7 +92,7 @@
 
 	lge,camera1@6c {
 		cell-index = <1>;
-		compatible = "qcom,ov5693";
+		compatible = "qcom,camera";
 		reg = <0x6c>;
 		qcom,slave-id = <0x6c 0x300a 0x5690>;
 		qcom,csiphy-sd-index = <2>;
