@@ -470,9 +470,10 @@ static int isl98611_dt_init(struct i2c_client *client,
 			&pdata->cur_scale);
 	}
 
-	if ((pdata->panel_version == 4) || (pdata->panel_version >= 6)) {
-		pdata->vp_level = ISL98611_PLC_VP_LEVEL;
-		pdata->vn_level = ISL98611_PLC_VN_LEVEL;
+	if ((pdata->panel_version == 4) || (pdata->panel_version == 6)
+		|| (pdata->panel_version >= 9)) {
+			pdata->vp_level = ISL98611_PLC_VP_LEVEL;
+			pdata->vn_level = ISL98611_PLC_VN_LEVEL;
 	}
 
 	return 0;
