@@ -215,3 +215,8 @@
 			 <&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
 	};
 };
+
+&blsp1_uart2 {
+	status = "ok";
+};
+
