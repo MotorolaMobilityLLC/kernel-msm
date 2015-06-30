@@ -1183,13 +1183,7 @@ static int drv260x_init(void)
 	if (!drv260x) {
 		printk(KERN_ALERT
 		       "drv260x: cannot allocate memory for drv260x driver\n");
-		goto fail0;
-	}
-
-	reval = i2c_add_driver(&drv260x_driver);
-	if (reval) {
-		printk(KERN_ALERT "drv260x driver initialization error \n");
-		goto fail2;
+		goto alloc_err;
 	}
 
 	drv260x->version = MKDEV(0, 0);
@@ -1197,13 +1191,13 @@ static int drv260x_init(void)
 	if (reval < 0) {
 		printk(KERN_ALERT "drv260x: error getting major number %d\n",
 		       reval);
-		goto fail3;
+		goto region_err;
 	}
 
 	drv260x->class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (!drv260x->class) {
 		printk(KERN_ALERT "drv260x: error creating class\n");
-		goto fail4;
+		goto class_err;
 	}
 
 	drv260x->device =
@@ -1211,7 +1205,7 @@ static int drv260x_init(void)
 			  DEVICE_NAME);
 	if (!drv260x->device) {
 		printk(KERN_ALERT "drv260x: error creating device 2605\n");
-		goto fail5;
+		goto device_err;
 	}
 
 	cdev_init(&drv260x->cdev, &fops);
@@ -1221,7 +1215,7 @@ static int drv260x_init(void)
 
 	if (reval) {
 		printk(KERN_ALERT "drv260x: fail to add cdev\n");
-		goto fail6;
+		goto cdev_err;
 	}
 
 	hrtimer_init(&vibdata.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -1232,19 +1226,27 @@ static int drv260x_init(void)
 	wake_lock_init(&vibdata.wklock, WAKE_LOCK_SUSPEND, "vibrator");
 	mutex_init(&vibdata.lock);
 
-	printk(KERN_ALERT "drv260x: initialized\n");
+	reval = i2c_add_driver(&drv260x_driver);
+	if (reval) {
+		pr_alert("drv260x driver initialization error\n");
+		goto i2c_err;
+	}
+
+	pr_alert("drv260x: %s success\n", __func__);
 	return 0;
 
- fail6:
+i2c_err:
+	cdev_del(&drv260x->cdev);
+cdev_err:
 	device_destroy(drv260x->class, drv260x->version);
- fail5:
+device_err:
 	class_destroy(drv260x->class);
- fail4:
- fail3:
-	i2c_del_driver(&drv260x_driver);
- fail2:
+class_err:
+	unregister_chrdev_region(drv260x->version, 1);
+region_err:
 	kfree(drv260x);
- fail0:
+alloc_err:
+	pr_alert("drv260x: %s failed ret=%d\n", __func__, reval);
 	return reval;
 }
 
