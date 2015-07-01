@@ -30,6 +30,10 @@ static int override_phy_init;
 module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 
+static int override_phy_host_init;
+module_param(override_phy_host_init, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_host_init, "Override HSPHY Host Init Seq");
+
 
 #define PORT_OFFSET(i) ((i == 0) ? 0x0 : ((i == 1) ? 0x6c : 0x88))
 
@@ -339,6 +343,16 @@ static void msm_hsphy_init_seq(struct msm_hsphy *phy)
 					phy->hsphy_init_seq & 0x03FFFFFF);
 }
 
+static void msm_hsphy_init_host_seq(struct msm_hsphy *phy)
+{
+	if (override_phy_host_init)
+		phy->hsphy_init_host_seq = override_phy_host_init;
+	if (phy->hsphy_init_host_seq)
+		msm_usb_write_readback(phy->base,
+				PARAMETER_OVERRIDE_X_REG(0), 0x03FFFFFF,
+				phy->hsphy_init_host_seq & 0x03FFFFFF);
+}
+
 static int msm_hsphy_init(struct usb_phy *uphy)
 {
 	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
@@ -381,7 +395,6 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 
 		writel_relaxed(val, phy->base + HS_PHY_CTRL_COMMON_REG);
 	}
-
 	msm_hsphy_init_seq(phy);
 
 	return 0;
@@ -628,11 +641,8 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 			}
 		}
 
-		if (host && phy->hsphy_init_host_seq)
-			msm_usb_write_readback(phy->base,
-					PARAMETER_OVERRIDE_X_REG(0),
-					0x03FFFFFF,
-					phy->hsphy_init_host_seq & 0x03FFFFFF);
+		if (host)
+			msm_hsphy_init_host_seq(phy);
 		else
 			msm_hsphy_init_seq(phy);
 	}
@@ -664,11 +674,8 @@ static int msm_hsphy_notify_connect(struct usb_phy *uphy,
 					"unable to set voltage for vdda33\n");
 		}
 
-		if (phy->hsphy_init_host_seq)
-			msm_usb_write_readback(phy->base,
-					PARAMETER_OVERRIDE_X_REG(0),
-					0x03FFFFFF,
-					phy->hsphy_init_host_seq & 0x03FFFFFF);
+		msm_hsphy_init_host_seq(phy);
+
 		return 0;
 	}
 
