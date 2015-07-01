@@ -306,7 +306,7 @@ static int sentral_sync_timestamp(struct sentral_device *sentral)
 
 	sentral->ts_ref_stime = stime.ts.current_stime;
 
-	LOGI(&sentral->client->dev,
+	LOGD(&sentral->client->dev,
 			"synched time: { ts_ref_ntime: %llu, ts_ref_stime: %u }\n",
 			sentral->ts_ref_ntime, sentral->ts_ref_stime);
 
@@ -491,8 +491,6 @@ static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
 	return rc;
 }
 
-// rate setting
-
 static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		u16 rate, u16 timeout_ms)
 {
@@ -504,8 +502,24 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		.dynamic_range = 0,
 	};
 
+	struct sentral_param_sensor_config disable_config = {
+		.sample_rate = 0,
+		.max_report_latency = 0,
+		.change_sensitivity = 0,
+		.dynamic_range = 0,
+	};
+
 	if (!sentral_sensor_id_is_valid(id))
 		return -EINVAL;
+
+	if (rate != 0 && id < SENTRAL_VIRTUAL_SENSOR_BOUNDARY) {
+		rc = sentral_sensor_config_write(sentral, id, &disable_config);
+		rc = sentral_fifo_flush(sentral, id);
+		if (rc) {
+			LOGE(&sentral->client->dev, "error (%d) writing FIFO flush after batch set\n", rc);
+			return -EINVAL;
+		}
+	}
 
 	LOGD(&sentral->client->dev, "batch set id: %u, rate: %u, timeout: %u\n",
 		id, rate, timeout_ms);
@@ -525,7 +539,7 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 	if (rate == 0) {
 		rc = sentral_fifo_flush(sentral, id);
 		if (rc) {
-			LOGE(&sentral->client->dev, "error (%d) writing FIFO flush before batch set\n", rc);
+			LOGE(&sentral->client->dev, "error (%d) writing FIFO flush after batch set\n", rc);
 			return -EINVAL;
 		}
 	}
@@ -818,6 +832,9 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 							(void *)&meta_data->byte_1,
 							sizeof(meta_data->byte_1));
 				}
+
+				if (meta_data->event_id == SEN_META_FIFO_OVERFLOW)
+					LOGI(&sentral->client->dev, "FIFO overflow: %u\n", sensor_id);
 
 				// restore sensors on init
 				if (meta_data->event_id == SEN_META_INITIALIZED)
