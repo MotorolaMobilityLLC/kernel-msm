@@ -2788,7 +2788,7 @@ static void toggle_usbin_aicl(struct smb135x_chg *chip)
 		dev_err(chip->dev, "Couldn't enable AICL\n");
 }
 
-#define FLOAT_CHG_TIME_SECS 1800
+#define FLOAT_CHG_TIME_SECS 0
 #define INPUT_CURR_CHECK_THRES 0x0C /*  1100 mA */
 #define DEMO_MODE_MAX_SOC 35
 #define DEMO_MODE_HYS_SOC 5
