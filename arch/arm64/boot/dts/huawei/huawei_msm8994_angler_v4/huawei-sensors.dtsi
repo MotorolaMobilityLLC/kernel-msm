@@ -38,6 +38,33 @@
 	};
 };
 
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		sensorhub_ctrl {
+			/* NRST, BOOT0, AP2SH, SH2AP */
+			qcom,pins = <&gp 93>, <&gp 94>, <&gp 39>, <&gp 41>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <0>;
+			label = "sensorhub_ctrl";
+			sensorhub_ctrl_sleep: sensorhub_ctrl_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+			sensorhub_ctrl_active: sensorhub_ctrl_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+};
+
+&spi_0 {
+	status = "disabled";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
 &spi_5 {
 	sensorhub@0 {
 		compatible = "contexthub,spich";
@@ -50,6 +77,14 @@
 		contexthub,sh2ap = <&msm_gpio 41 0x00>;
 		contexthub,nrst = <&msm_gpio 93 0x00>;
 		contexthub,boot0 = <&msm_gpio 94 0x00>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <41 0x2>;
+		interrupt-names = "contexthub_wake_irq";
+
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&sensorhub_ctrl_active>;
+		pinctrl-1 = <&sensorhub_ctrl_sleep>;
 	};
 };
 

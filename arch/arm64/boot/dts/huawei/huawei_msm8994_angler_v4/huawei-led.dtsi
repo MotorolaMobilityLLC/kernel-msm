@@ -20,6 +20,7 @@
 				qcom,pause-lo = <0>;
 				qcom,pause-hi = <0>;
 				qcom,use-blink;
+				linux,default-trigger = "none";
 			};
 
 			qcom,rgb_1 {
@@ -29,6 +30,7 @@
 				qcom,pause-lo = <0>;
 				qcom,pause-hi = <0>;
 				qcom,use-blink;
+				linux,default-trigger = "none";
 			};
 
 			qcom,rgb_2 {
