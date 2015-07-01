@@ -910,6 +910,8 @@
 				<&msm_gpio 16 0>;       /* SH Wake Resp */
 			lux_table = <5 50 100 1500 3000 8000>;
 			brightness_table = <9 14 18 46 67 93 140>;
+			qd_pm_qos_latency = <350>;
+			qd_pm_qos_timeout = <500000>;
 			bslen_pin_active_value = <1>;
 			ct406_detect_threshold = <0x006E>;
 			ct406_undetect_threshold = <0x0050>;
