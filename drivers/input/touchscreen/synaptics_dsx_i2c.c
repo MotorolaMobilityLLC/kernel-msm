@@ -1921,22 +1921,36 @@ static int synaptics_dsx_sensor_ready_state(
 		struct synaptics_rmi4_data *rmi4_data, bool standby)
 {
 	bool ui_mode;
-	int retval, state;
+	int retval, state, i;
 	struct synaptics_rmi4_f01_device_status status;
 
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-				rmi4_data->f01_data_base_addr,
-				status.data,
-				sizeof(status.data));
-	if (retval < 0) {
-		pr_err("failed to query touch ic status\n");
-		return retval;
+	for (i = 0; i < 10; ++i) {
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+					rmi4_data->f01_data_base_addr,
+					status.data,
+					sizeof(status.data));
+		if (retval < 0) {
+			pr_err("(%d) Failed to query touch ic status\n", i);
+			return retval;
+		}
+
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+
+		ui_mode = status.flash_prog == 0;
+		pr_debug("(%d) UI mode: %s\n", i, ui_mode ? "true" : "false");
+
+		if (ui_mode)
+			break;
+
+		msleep(20);
 	}
 
-	state = synaptics_dsx_get_state_safe(rmi4_data);
-
-	ui_mode = status.flash_prog == 0;
-	pr_debug("UI mode: %s\n", ui_mode ? "true" : "false");
+	if (!ui_mode && state == STATE_SUSPEND && rmi4_data->input_registered) {
+		/* expecting touch IC to enter UI mode based on */
+		/* its previous known good state */
+		pr_err("Timed out waiting for UI mode - UI mode forced\n");
+		ui_mode = 1;
+	}
 
 	if (ui_mode) {
 		state = standby ? STATE_STANDBY : STATE_ACTIVE;
@@ -1973,7 +1987,12 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		if (!rmi4_data->in_bootloader)
 			synaptics_dsx_state_config(rmi4_data, ACTIVE_IDX);
 
-		synaptics_rmi4_irq_enable(rmi4_data, true);
+		if (rmi4_data->input_registered)
+			synaptics_rmi4_irq_enable(rmi4_data, true);
+		else {
+			synaptics_rmi4_irq_enable(rmi4_data, true);
+			pr_err("Active state without input device\n");
+		}
 
 		if (!rmi4_data->mode_is_persistent) {
 			synaptics_dsx_restore_default_mode(rmi4_data);
