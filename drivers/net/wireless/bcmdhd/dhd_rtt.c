@@ -1414,6 +1414,8 @@ dhd_rtt_start(dhd_pub_t *dhd)
 		}
 
 	}
+	/* use random mac address */
+	dhd_set_rand_mac_oui(dhd);
 	dhd_rtt_ftm_config(dhd, FTM_DEFAULT_SESSION, FTM_CONFIG_CAT_GENERAL,
 		ftm_params, ftm_param_cnt);
 
