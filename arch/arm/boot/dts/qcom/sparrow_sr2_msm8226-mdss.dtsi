@@ -188,8 +188,8 @@
 			qcom,panel-supply-entry@0 {
 				reg = <0>;
 				qcom,supply-name = "vdd";
-				qcom,supply-min-voltage = <2850000>;
-				qcom,supply-max-voltage = <2850000>;
+				qcom,supply-min-voltage = <3000000>;
+				qcom,supply-max-voltage = <3000000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
 			};

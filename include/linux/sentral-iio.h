@@ -63,7 +63,6 @@
 
 #define DATA_BUFFER_SIZE 16384
 #define SENTRAL_FIFO_BLOCK_SIZE 50
-#define SENTRAL_SENSOR_TIMESTAMP_SCALE_NS 31250
 
 #define FW_IMAGE_SIGNATURE 0x652A
 #define FW_CDS_SIGNATURE 0xC88B
@@ -77,6 +76,11 @@
 #define SENTRAL_WATCHDOG_WORK_MSECS 500
 
 #define SENTRAL_GESTURE_WRIST_TILT_WRAP 4
+
+#define SENTRAL_MAX_BATCH_LENGTH 10000
+#define SENTRAL_DEFAULT_RATE 5000
+#define SENTRAL_VIRTUAL_SENSOR_BOUNDARY 16
+#define SENTRAL_TICK_STAT 20
 
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
@@ -121,6 +125,7 @@ enum sentral_host_control_flags {
 enum sentral_chip_control_flags {
 	SEN_CHIP_CTRL_CPU_RUN =       1 << 0,
 	SEN_CHIP_CTRL_UPLOAD_ENABLE = 1 << 1,
+	SEN_CHIP_CTRL_INTERRUPT =     1 << 3,
 };
 
 enum sentral_sensor_type {
@@ -529,12 +534,14 @@ struct sentral_device {
 	struct mutex lock_flush;
 	struct mutex lock_ts;
 	struct mutex lock_i2c;
+	struct mutex lock_pio;
 	struct wake_lock w_lock;
 	struct notifier_block nb;
 	u8 *data_buffer;
 	bool init_complete;
 	u64 ts_ref_ntime;
 	u32 ts_ref_stime;
+	u64 ts_timestamp_scale;
 	u64 ts_sensor_ntime;
 	u32 ts_sensor_stime;
 	unsigned long enabled_mask;
