@@ -30,6 +30,7 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
+#include <linux/pm_qos.h>
 #include <linux/quickwakeup.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -281,6 +282,11 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 
 	dev_dbg(&ps_motosh->client->dev, "%s\n", __func__);
 
+	/* set pm qos restriction to limit cpu idle during quickdraw */
+	pm_qos_update_request_timeout(&ps_motosh->pm_qos_req_dma,
+		ps_motosh->pdata->qd_pm_qos_latency,
+		ps_motosh->pdata->qd_pm_qos_timeout);
+
 	cmdbuff[0] = MOTOSH_STATUS_REG;
 	if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 2)
 		< 0) {
@@ -462,6 +468,9 @@ void motosh_quickpeek_reset_locked(struct motosh_data *ps_motosh)
 		kfree(entry);
 	}
 
+	/* remove pm qos restriction */
+	pm_qos_update_request(&ps_motosh->pm_qos_req_dma, PM_QOS_DEFAULT_VALUE);
+
 	/* This is the ONLY place we should set this explicitly instead of using
 	   the helper */
 	ps_motosh->qp_prepared = false;
@@ -639,6 +648,10 @@ loop:
 		!ps_motosh->qp_prepared) {
 		wake_unlock(&ps_motosh->quickpeek_wakelock);
 		wake_up_all(&ps_motosh->quickpeek_wait_queue);
+
+		/* remove pm qos restriction */
+		pm_qos_update_request(&ps_motosh->pm_qos_req_dma,
+			PM_QOS_DEFAULT_VALUE);
 	}
 
 	motosh_quickpeek_set_in_progress_locked(ps_motosh, false);

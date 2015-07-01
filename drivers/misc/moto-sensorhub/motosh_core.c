@@ -30,6 +30,7 @@
 #include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/pm_qos.h>
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -813,6 +814,19 @@ motosh_of_init(struct i2c_client *client)
 		return NULL;
 	}
 
+	if (of_property_read_u32(np, "qd_pm_qos_latency",
+				&pdata->qd_pm_qos_latency)) {
+		dev_warn(&motosh_misc_data->client->dev,
+			"PM QoS latency not configured!\n");
+		pdata->qd_pm_qos_latency = PM_QOS_DEFAULT_VALUE;
+	}
+	if (of_property_read_u32(np, "qd_pm_qos_timeout",
+				&pdata->qd_pm_qos_timeout)) {
+		dev_warn(&motosh_misc_data->client->dev,
+			"PM QoS timeout not configured!\n");
+		pdata->qd_pm_qos_timeout = 0;
+	}
+
 	of_property_read_u32(np, "bslen_pin_active_value",
 				&pdata->bslen_pin_active_value);
 
@@ -1381,6 +1395,9 @@ static int motosh_probe(struct i2c_client *client,
 	ps_motosh->is_suspended = false;
 	ps_motosh->resume_cleanup = false;
 
+	pm_qos_add_request(&ps_motosh->pm_qos_req_dma,
+			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+
 	/* try to go to normal mode, switch to UNINITIALIZED on failure */
 	switch_motosh_mode(NORMALMODE);
 
@@ -1465,6 +1482,7 @@ static int motosh_remove(struct i2c_client *client)
 	wake_unlock(&ps_motosh->reset_wakelock);
 	wake_lock_destroy(&ps_motosh->reset_wakelock);
 	disable_irq_wake(ps_motosh->irq);
+	pm_qos_remove_request(&ps_motosh->pm_qos_req_dma);
 
 	regulator_disable(ps_motosh->regulator_2);
 	regulator_disable(ps_motosh->regulator_1);

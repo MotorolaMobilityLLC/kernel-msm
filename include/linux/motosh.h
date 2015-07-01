@@ -25,6 +25,7 @@
 #endif
 
 #include <linux/fb_quickdraw.h>
+#include <linux/pm_qos.h>
 #if defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
@@ -391,6 +392,8 @@ struct motosh_platform_data {
 	unsigned int bslen_pin_active_value;
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
+	int qd_pm_qos_latency;
+	unsigned int qd_pm_qos_timeout;
 	char fw_version[FW_VERSION_SIZE];
 	char fw_version_str[FW_VERSION_STR_MAX_LEN];
 	int ct406_detect_threshold;
@@ -491,6 +494,7 @@ struct motosh_data {
 	bool qp_in_progress;
 	bool qp_prepared;
 	struct mutex qp_list_lock;
+	struct pm_qos_request pm_qos_req_dma;
 
 	bool in_reset_and_init;
 	bool is_suspended;
