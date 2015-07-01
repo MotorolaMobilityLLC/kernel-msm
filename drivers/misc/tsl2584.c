@@ -196,7 +196,6 @@ static int tsl2584_i2c_read(struct tsl2584_data *tsl, u8 *buf, int len)
 	} while ((err != 2) && (++tries < TSL2584_I2C_RETRIES));
 
 	if (err != 2) {
-		pr_err("%s: read transfer error.\n", __func__);
 		dev_err(&tsl->client->dev, "read transfer error\n");
 		err = -EIO;
 	} else {
@@ -227,7 +226,6 @@ static int tsl2584_i2c_write(struct tsl2584_data *tsl, u8 *buf, int len)
 	} while ((err != 1) && (++tries < TSL2584_I2C_RETRIES));
 
 	if (err != 1) {
-		pr_err("%s: write transfer error.\n", __func__);
 		dev_err(&tsl->client->dev, "write transfer error\n");
 		err = -EIO;
 	} else {
@@ -250,8 +248,8 @@ static int tsl2584_device_power(struct tsl2584_data *tsl, bool on)
 		reg_data[1] = 0x00;
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error) {
-		pr_err("%s: control power write failed: %d\n",
-			__func__, error);
+		dev_err(&tsl->client->dev,
+			"Error: control power write failed: %d\n", error);
 		return error;
 	}
 
@@ -259,8 +257,8 @@ static int tsl2584_device_power(struct tsl2584_data *tsl, bool on)
 		usleep_range(3000, 3100);
 
 	if (tsl2584_debug & TSL2584_DBG_ENABLE_DISABLE)
-		pr_info("%s: writing CONTROL=0x%02x\n",
-			 __func__, reg_data[1]);
+		dev_info(&tsl->client->dev, "writing CONTROL=0x%02x\n",
+			 reg_data[1]);
 
 	return error;
 }
@@ -280,8 +278,8 @@ static void tsl2584_write_als_thresholds(struct tsl2584_data *tsl)
 
 	error = tsl2584_i2c_write(tsl, reg_data, 5);
 	if (error < 0)
-		pr_err("%s: Error writing new ALS thresholds: %d\n",
-			__func__, error);
+		dev_err(&tsl->client->dev,
+			"Error: Error writing new ALS thresholds: %d\n", error);
 }
 
 static void tsl2584_als_mode_low_lux(struct tsl2584_data *tsl)
@@ -294,7 +292,8 @@ static void tsl2584_als_mode_low_lux(struct tsl2584_data *tsl)
 	reg_data[1] = TSL2584_ANALOG_AGAIN_8X;
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error < 0) {
-		pr_err("%s: error writing ALS gain: %d\n", __func__, error);
+		dev_err(&tsl->client->dev, "error writing ALS gain: %d\n",
+			error);
 		return;
 	}
 
@@ -303,7 +302,7 @@ static void tsl2584_als_mode_low_lux(struct tsl2584_data *tsl)
 	reg_data[1] = 0xEE;
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error < 0) {
-		pr_err("%s: error writing ATIME: %d\n", __func__, error);
+		dev_err(&tsl->client->dev, "error writing ATIME: %d\n", error);
 		return;
 	}
 
@@ -323,7 +322,8 @@ static void tsl2584_als_mode_high_lux(struct tsl2584_data *tsl)
 	reg_data[1] = TSL2584_ANALOG_AGAIN_1X;
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error < 0) {
-		pr_err("%s: error writing ALS gain: %d\n", __func__, error);
+		dev_err(&tsl->client->dev,
+			"error writing ALS gain: %d\n", error);
 		return;
 	}
 
@@ -332,7 +332,7 @@ static void tsl2584_als_mode_high_lux(struct tsl2584_data *tsl)
 	reg_data[1] = 0xEE;
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error < 0) {
-		pr_err("%s: error writing ATIME: %d\n", __func__, error);
+		dev_err(&tsl->client->dev, "error writing ATIME: %d\n", error);
 		return;
 	}
 
@@ -352,7 +352,7 @@ static int tsl2584_device_init(struct tsl2584_data *tsl)
 	reg_data[1] = 0xEE; /* 49 ms */
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error < 0) {
-		pr_err("%s: Error  %d\n", __func__, error);
+		dev_err(&tsl->client->dev, "Error: %d\n", error);
 		return error;
 	}
 
@@ -365,7 +365,7 @@ static int tsl2584_device_init(struct tsl2584_data *tsl)
 
 	error = tsl2584_i2c_write(tsl, reg_data, 2);
 	if (error < 0) {
-		pr_err("%s: Error  %d\n", __func__, error);
+		dev_err(&tsl->client->dev, "I2C write error: %d\n", error);
 		return error;
 	}
 
@@ -378,7 +378,7 @@ static int tsl2584_device_init(struct tsl2584_data *tsl)
 static void tsl2584_power_off(struct tsl2584_data *tsl)
 {
 	if (atomic_cmpxchg(&tsl->power_on, 1, 0)) {
-		pr_err("%s:\n",	__func__);
+		dev_dbg(&tsl->client->dev, "%s:\n", __func__);
 		tsl2584_device_power(tsl, 0);
 		if (!IS_ERR_OR_NULL(tsl->regulator))
 			regulator_disable(tsl->regulator);
@@ -390,17 +390,19 @@ static int tsl2584_power_on(struct tsl2584_data *tsl)
 	int error;
 
 	if (!atomic_cmpxchg(&tsl->power_on, 0, 1)) {
-		pr_err("%s:\n",	__func__);
+		dev_dbg(&tsl->client->dev, "%s:\n", __func__);
 
 		if (!IS_ERR_OR_NULL(tsl->regulator)) {
 			error = regulator_enable(tsl->regulator);
 			if (error) {
-				pr_err("%s: regulator_enable failed: %d\n",
-					__func__, error);
+				dev_err(&tsl->client->dev,
+					"regulator_enable failed: %d\n", error);
 				atomic_set(&tsl->power_on, 0);
 				return error;
 			}
 		}
+
+		usleep(5000);
 
 		error = tsl2584_device_power(tsl, 1);
 		if (error) {
@@ -429,8 +431,14 @@ static int tsl2584_als_enable(struct tsl2584_data *tsl)
 	u8 reg_data[2] = {0};
 
 	if (!atomic_cmpxchg(&tsl->als_enabled, 0, 1)) {
-		tsl2584_power_on(tsl);
-		tsl2584_device_init(tsl);
+		if (tsl2584_power_on(tsl) != 0) {
+			dev_err(&tsl->client->dev, "Power on failure\n");
+			goto clear_state;
+		}
+		if (tsl2584_device_init(tsl) != 0) {
+			dev_err(&tsl->client->dev, "Deveice init failure\n");
+			goto power_off;
+		}
 		/* write ALS interrupt persistence */
 		reg_data[0] = TSL2584_INTR;
 		if (tsl->pdata->irq)
@@ -439,8 +447,9 @@ static int tsl2584_als_enable(struct tsl2584_data *tsl)
 			reg_data[1] =  tsl->als_apers;
 		error = tsl2584_i2c_write(tsl, reg_data, 2);
 		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
-			return error;
+			dev_err(&tsl->client->dev, "I2C write error: %d\n",
+				error);
+			goto power_off;
 		}
 
 		/* ADC Enable */
@@ -448,8 +457,9 @@ static int tsl2584_als_enable(struct tsl2584_data *tsl)
 		reg_data[1] = TSL2584_CONTROL_ADC_EN | TSL2584_CONTROL_POWER;
 		error = tsl2584_i2c_write(tsl, reg_data, 2);
 		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
-			return error;
+			dev_err(&tsl->client->dev, "I2C write error  %d\n",
+				error);
+			goto power_off;
 		}
 
 		if (!tsl->pdata->irq)
@@ -457,11 +467,16 @@ static int tsl2584_als_enable(struct tsl2584_data *tsl)
 
 	}
 	return 0;
+power_off:
+	tsl2584_power_off(tsl);
+clear_state:
+	atomic_set(&tsl->als_enabled, 0);
+	return error;
 }
 
 static int tsl2584_als_disable(struct tsl2584_data *tsl)
 {
-	int error;
+	int error = 0;
 	u8 reg_data[2] = {0};
 
 	cancel_delayed_work_sync(&tsl->dwork);
@@ -470,13 +485,12 @@ static int tsl2584_als_disable(struct tsl2584_data *tsl)
 		reg_data[0] = TSL2584_CONTROL;
 		reg_data[1] = TSL2584_CONTROL_POWER;
 		error = tsl2584_i2c_write(tsl, reg_data, 2);
-		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
-			return error;
-		}
+		if (error < 0)
+			dev_err(&tsl->client->dev, "I2C write error  %d\n",
+				error);
 		tsl2584_power_off(tsl);
 	}
-	return 0;
+	return error;
 }
 
 static void tsl2584_report_als(struct tsl2584_data *ct)
@@ -499,8 +513,8 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 	c0data = (reg_data[1] << 8) | reg_data[0];
 	c1data = (reg_data[3] << 8) | reg_data[2];
 	if (tsl2584_debug & TSL2584_DBG_INPUT)
-		pr_info("%s: C0DATA = %d, C1DATA = %d\n",
-			 __func__, c0data, c1data);
+		dev_info(&ct->client->dev, "C0DATA = %d, C1DATA = %d\n",
+			 c0data, c1data);
 
 	threshold_delta = c0data * TSL2584_ALS_IRQ_DELTA_PERCENT / 100;
 	if (threshold_delta == 0)
@@ -542,7 +556,8 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 				lux1 = 0;
 			break;
 		default:
-			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+			dev_err(&ct->client->dev, "ALS mode is %d!\n",
+				ct->als_mode);
 		}
 	} else {
 		switch (ct->als_mode) {
@@ -575,7 +590,8 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 				lux1 = lux2;
 			break;
 		default:
-			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+			dev_err(&ct->client->dev, "ALS mode is %d!\n",
+				ct->als_mode);
 		}
 	}
 
@@ -583,7 +599,7 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 	lux1 = (lux1 >= 2) ? lux1 : 2;
 
 	if (tsl2584_debug & TSL2584_DBG_INPUT)
-		pr_info("%s: LUX = %d\n", __func__, lux1);
+		dev_info(&ct->client->dev, "LUX = %d\n", lux1);
 
 	get_monotonic_boottime(&ts);
 
@@ -685,8 +701,9 @@ static ssize_t tsl2584_registers_show(struct device *dev,
 		reg_data[0] = tsl2584_regs[i].reg;
 		error = tsl2584_i2c_read(ct, reg_data, 1);
 		if (error < 0) {
-		pr_err("%s: Unable to read %s register: %d\n",
-			__func__, tsl2584_regs[i].name, error);
+			dev_err(&ct->client->dev,
+				"Unable to read %s register: %d\n",
+				tsl2584_regs[i].name, error);
 		}
 		n += scnprintf(buf + n, PAGE_SIZE - n,
 			"%-20s = 0x%02X\n",
@@ -712,12 +729,12 @@ static ssize_t tsl2584_registers_store(struct device *dev,
 	char name[30];
 
 	if (count >= 30) {
-		pr_err("%s:input too long\n", __func__);
+		dev_err(&ct->client->dev, "input too long\n");
 		return -EMSGSIZE;
 	}
 
 	if (sscanf(buf, "%30s %x", name, &value) != 2) {
-		pr_err("%s:unable to parse input\n", __func__);
+		dev_err(&ct->client->dev, "unable to parse input\n");
 		return -EINVAL;
 	}
 
@@ -728,15 +745,15 @@ static ssize_t tsl2584_registers_store(struct device *dev,
 			error = tsl2584_i2c_write(ct, reg_data, 2);
 			mutex_unlock(&ct->mutex);
 			if (error) {
-				pr_err("%s:Failed to write register %s\n",
-					__func__, name);
+				dev_err(&ct->client->dev,
+					"Failed to write register %s\n", name);
 				return error;
 			}
 			return count;
 		}
 	}
 
-	pr_err("%s:no such register %s\n", __func__, name);
+	dev_err(&ct->client->dev, "no such register %s\n", name);
 	return -EINVAL;
 }
 
@@ -769,8 +786,8 @@ static void tsl2584_work_func(struct work_struct *work)
 	reg_data[0] = TSL2584_CONTROL;
 	error = tsl2584_i2c_read(tsl, reg_data, 1);
 	if (error < 0) {
-		pr_err("%s: Unable to read interrupt register: %d\n",
-			__func__, error);
+		dev_err(&tsl->client->dev,
+			"Unable to read interrupt register: %d\n", error);
 		if (wake_lock_active(&tsl->wl_isr))
 			wake_unlock(&tsl->wl_isr);
 		return;
@@ -791,7 +808,8 @@ static void tsl2584_work_func(struct work_struct *work)
 		reg_data[1] = TSL2584_CONTROL_POWER;
 		error = tsl2584_i2c_write(tsl, reg_data, 2);
 		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
+			dev_err(&tsl->client->dev,
+				"I2C write error  %d\n", error);
 		}
 
 		reg_data[0] = TSL2584_COMMAND_SELECT | TSL2584_COMMAND_SPECIAL_FUNCTION
@@ -804,16 +822,20 @@ static void tsl2584_work_func(struct work_struct *work)
 		reg_data[1] = TSL2584_CONTROL_ADC_EN | TSL2584_CONTROL_POWER;
 		error = tsl2584_i2c_write(tsl, reg_data, 2);
 		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
+			dev_err(&tsl->client->dev,
+				"I2C write error  %d\n", error);
 		}
 	}
 
 	if (tsl->client->irq) {
-		pr_err("%s: enable irq\n", __func__);
+		if (tsl2584_debug & TSL2584_DBG_ENABLE_DISABLE)
+			dev_info(&tsl->client->dev,
+				 "enable irq\n");
 		enable_irq(tsl->client->irq);
 	}
 	else
-		queue_delayed_work(tsl->workqueue, &tsl->dwork, msecs_to_jiffies(280));
+		queue_delayed_work(tsl->workqueue,
+				   &tsl->dwork, msecs_to_jiffies(280));
 
 	mutex_unlock(&tsl->mutex);
 
@@ -825,10 +847,13 @@ static void tsl2584_work_func(struct work_struct *work)
 static int tsl2584_suspend(struct tsl2584_data *tsl)
 {
 	if (tsl2584_debug & TSL2584_DBG_SUSPEND_RESUME)
-		pr_info("%s\n", __func__);
+		dev_info(&tsl->client->dev, "%s\n", __func__);
 
-	/* TODO : move this out, if using interactive mode */
-	tsl2584_power_off(tsl);
+	if (atomic_read(&tsl->power_on)) {
+		dev_err(&tsl->client->dev,
+			"Error: can't suspend with device enabled\n");
+		return -EBUSY;
+	}
 
 	return 0;
 }
@@ -836,11 +861,7 @@ static int tsl2584_suspend(struct tsl2584_data *tsl)
 static int tsl2584_resume(struct tsl2584_data *tsl)
 {
 	if (tsl2584_debug & TSL2584_DBG_SUSPEND_RESUME)
-		pr_info("%s\n", __func__);
-
-	/* TODO : move this out, if using interactive mode */
-	tsl2584_power_on(tsl);
-	tsl2584_device_init(tsl);
+		dev_info(&tsl->client->dev, "%s\n", __func__);
 
 	return 0;
 }
@@ -935,13 +956,14 @@ static int tsl2584_probe(struct i2c_client *client,
 		pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
-		pr_err("%s: platform data required\n", __func__);
+		dev_err(&tsl->client->dev,
+			"Error: platform data required\n");
 		return -ENODEV;
 	}
 
 	client->irq = pdata->irq;
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		pr_err("%s:I2C_FUNC_I2C not supported\n", __func__);
+		dev_err(&tsl->client->dev, "Error: I2C_FUNC_I2C not supported\n");
 		goto i2c_check_fail;
 	}
 
@@ -963,8 +985,8 @@ static int tsl2584_probe(struct i2c_client *client,
 	tsl->dev = input_allocate_device();
 	if (!tsl->dev) {
 		error = -ENOMEM;
-		pr_err("%s: input device allocate failed: %d\n", __func__,
-			error);
+		dev_err(&tsl->client->dev,
+			"Error: input device allocate failed: %d\n", error);
 		goto error_input_allocate_failed;
 	}
 
@@ -978,7 +1000,7 @@ static int tsl2584_probe(struct i2c_client *client,
 	tsl->miscdevice.fops = &tsl2584_misc_fops;
 	error = misc_register(&tsl->miscdevice);
 	if (error < 0) {
-		pr_err("%s: misc_register failed\n", __func__);
+		dev_err(&tsl->client->dev, "Error: misc_register failed\n");
 		goto error_misc_register_failed;
 	}
 
@@ -993,7 +1015,7 @@ static int tsl2584_probe(struct i2c_client *client,
 
 	tsl->workqueue = create_singlethread_workqueue("als_wq");
 	if (!tsl->workqueue) {
-		pr_err("%s: Cannot create work queue\n", __func__);
+		dev_err(&tsl->client->dev, "Cannot create work queue\n");
 		error = -ENOMEM;
 		goto error_create_wq_failed;
 	}
@@ -1007,7 +1029,8 @@ static int tsl2584_probe(struct i2c_client *client,
 		error = request_irq(client->irq, tsl2584_irq_handler,
 			IRQF_TRIGGER_LOW, LD_TSL2584_NAME, tsl);
 		if (error != 0) {
-			pr_err("%s: irq request failed: %d\n", __func__, error);
+			dev_err(&tsl->client->dev,
+				"Error: irq request failed: %d\n", error);
 			error = -ENODEV;
 			goto error_req_irq_failed;
 		}
@@ -1015,14 +1038,15 @@ static int tsl2584_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, tsl);
 	error = input_register_device(tsl->dev);
 	if (error) {
-		pr_err("%s: input device register failed:%d\n", __func__,
-			error);
+		dev_err(&tsl->client->dev,
+			"Error: input device register failed:%d\n", error);
 		goto error_input_register_failed;
 	}
 
 	error = device_create_file(&client->dev, &dev_attr_registers);
 	if (error < 0) {
-		pr_err("%s:File device creation failed: %d\n", __func__, error);
+		dev_err(&tsl->client->dev,
+			"Error: File device creation failed: %d\n", error);
 		error = -ENODEV;
 		goto error_create_registers_file_failed;
 	}
@@ -1030,12 +1054,10 @@ static int tsl2584_probe(struct i2c_client *client,
 	tsl->pm_notifier.notifier_call = tsl2584_pm_event;
 	error = register_pm_notifier(&tsl->pm_notifier);
 	if (error < 0) {
-		pr_err("%s:Register_pm_notifier failed: %d\n", __func__, error);
+		dev_err(&tsl->client->dev,
+			"Error: Register_pm_notifier failed: %d\n", error);
 		goto error_revision_read_failed;
 	}
-
-	tsl2584_power_on(tsl);
-	tsl2584_device_init(tsl);
 
 	return 0;
 
