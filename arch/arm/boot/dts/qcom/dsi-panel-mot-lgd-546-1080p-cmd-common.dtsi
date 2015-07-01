@@ -46,7 +46,7 @@ qcom,mdss-dsi-on-command = [
 	05 01 00 00 00 00 01 29];	/* display on */
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 0a 00 01 28		/* display_off */
-	05 01 00 00 78 00 01 10];	/* enter sleep mode */
+	05 01 00 00 55 00 01 10];	/* enter sleep mode */
 
 /* TODO - Enable/verify CABC
 qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
@@ -76,7 +76,7 @@ qcom,mdss-dsi-dma-trigger = "trigger_sw";
 qcom,mdss-dsi-mdp-trigger = "none";
 qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 qcom,mdss-dsi-reset-sequence = <1 11>;
-qcom,mdss-dsi-dis-reset-sequence = <0 6>;
+qcom,mdss-dsi-dis-reset-sequence = <0 4>;
 qcom,mdss-dsi-lp11-init;
 qcom,mdss-dsi-tx-eot-append;
 
@@ -128,7 +128,7 @@ qcom,panel-supply-entries {
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <15>;
+		qcom,supply-post-off-sleep = <5>;
 	};
 	qcom,panel-supply-entry@3 {
 		qcom,supply-name = "vsn_disp";
@@ -139,6 +139,6 @@ qcom,panel-supply-entries {
 		qcom,supply-pre-on-sleep = <0>;
 		qcom,supply-post-on-sleep = <2>;
 		qcom,supply-pre-off-sleep = <0>;
-		qcom,supply-post-off-sleep = <11>;
+		qcom,supply-post-off-sleep = <1>;
 	};
 };
