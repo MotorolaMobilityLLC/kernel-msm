@@ -25,9 +25,9 @@
 	 * with VM-BMS
 	 */
 	i2c@78b8000 {
-		smb358_otg_vreg: smb358-charger@57 {
+		smb358_otg_vreg: smb358-charger@6c {
 			compatible = "qcom,smb358-charger";
-			reg = <0x57>;
+			reg = <0x6c>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <110 8>;
 			pinctrl-names = "default";
@@ -44,6 +44,9 @@
 			qcom,bms-controlled-charging;
 			qcom,iterm-disabled;
 			qcom,chg-inhibit-disabled;
+			qcom,chg-vadc = <&pm8916_vadc>;
+			qcom,chg-adc_tm = <&pm8916_adc_tm>;
+			qcom,irq-gpio = <&msm_gpio 110 0x00>;
 
 			qcom,using-pmic-therm;
 			qcom,hot-bat-decidegc = <600>;
