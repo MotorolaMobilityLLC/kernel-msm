@@ -556,6 +556,7 @@
 		reg = <0x29>;
 		vdd-supply = <&pm8226_l18>;
 		ams,ink_type = <0x01>;
+		gpios = <&msmgpio 71 0x0>;  /* IRQ */
 	};
 
 	/delete-node/ nfc-nci@0e;
