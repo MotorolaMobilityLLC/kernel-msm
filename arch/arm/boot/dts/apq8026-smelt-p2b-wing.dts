@@ -13,8 +13,8 @@
 /dts-v1/;
 
 #include "apq8026-smelt-common.dtsi"
-#include "apq8026-smelt-small-tsl2584-config.dtsi"
-#include "apq8026-smelt-panel-nt35350-small.dtsi"
+#include "apq8026-smelt-large-tsl2584-config.dtsi"
+#include "apq8026-smelt-panel-nt35350-large.dtsi"
 #include "apq8026-smelt-regulator-ote2005b.dtsi"
 #include "apq8026-smelt-gps.dtsi"
 
@@ -25,6 +25,6 @@
 
 &i2c_5 {
 	atmxt@4a {
-		atmel,atmxt-tdat-filename = "atmxt-r3_small.tdat";
+		atmel,atmxt-tdat-filename = "atmxt-r3_large.tdat";
 	};
 };
