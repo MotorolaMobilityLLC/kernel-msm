@@ -43,10 +43,7 @@
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-on-command = [
 					15 01 00 00 00 00 02 53 20 /* Display Control */
-					39 01 00 00 00 00 03 51 F2 00 /* DBV Setting */
 					05 01 00 00 78 00 01 11 /* Sleep out */
-					15 01 00 00 0A 00 02 B0 AC /* MDS access Key */
-					15 01 00 00 0A 00 02 BF 00 /* Gamma type select */
 					05 01 00 00 00 00 01 35 /* TE On */
 					05 01 00 00 00 00 01 29 /* Display On */
 					];
@@ -55,35 +52,45 @@
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-on-command = [
-					/* Black + Dimming in */
-					39 01 00 00 00 00 03 61 55 00
+					39 01 00 00 00 00 05 2A 00 00 01 DF
+					39 01 00 00 00 00 05 2B 00 00 01 DF
+					39 01 00 00 00 00 03 61 4D 00
 					15 01 00 00 00 00 02 63 A9
 					15 01 00 00 00 00 02 B0 AC
 					39 01 00 00 00 00 2B DB
-					01 1B FF A3 FF 12
-					3F 3F 3F 06 1F 84
+					01 1B FF A7 FF 12
+					3F 3F 3F 00 1F 84
 					80 80 67 25 00 3F
 					1C 26 22 22 AA 20
-					33 26 0A 20 5A 20
-					66 00 55 00 29 00
-					66 00 55 00 29 00 /* PSM */
+					33 10 0A 20 5A 20
+					60 00 4D 00 01 00
+					60 00 4D 00 01 00 /* PSM */
 					05 01 00 00 00 00 01 39 /* Idle Mode On */
 					];
 		qcom,mdss-dsi-idle-on-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-off-command = [
-					/* Black Out */
-					39 01 00 00 00 00 03 61 55 00
+					39 01 00 00 00 00 05 2A 00 00 01 DF
+					39 01 00 00 00 00 05 2B 00 00 01 DF
+					39 01 00 00 00 00 03 61 4D 00
 					15 01 00 00 00 00 02 63 A0
 					15 01 00 00 00 00 02 B0 AC
-					39 01 00 00 00 00 18 DB
-					01 1B FF A3 FF 12
-					3F 3F 3F 06 1F 84
+					39 01 00 00 00 00 26 D0
+					1A E7 07 61 87 5C
+					87 00 00 00 0C 0F
+					1B 1E 2A 2D 39 3C
+					48 4B 57 0C 1B 2A
+					39 48 57 0C 1B 2A
+					39 48 57 03 03 00
+					00
+					39 01 00 00 00 00 2B DB
+					01 1B FF A7 FF 12
+					3F 3F 3F 00 1F 84
 					80 80 67 25 00 3F
-					1C 26 22 22 AA /* PSM */
+					1C 26 22 22 AA 20
+					33 10 0A 20 5A 20
+					60 00 4D 00 01 00
+					60 00 4D 00 01 00 /* PSM */
 					05 01 00 00 32 00 01 38 /* Idle Mode Off  */
-					39 01 00 00 00 00 0C DB
-					01 1B FF A3 FF 12
-					3F 3F 3F 07 34 /* PSM */
 					];
 		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-reset-command =[
