@@ -17,7 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_mot_nt35350_360p_cmd_large: qcom,mdss_dsi_mot_nt35350_360p_cmd_large {
-		qcom,mdss-dsi-panel-config-version = "1.02.01";
+		qcom,mdss-dsi-panel-config-version = "1.04.01";
 		qcom,mdss-dsi-panel-name = "mot nt35350 command mode dsi panel 2.0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -44,6 +44,12 @@
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-on-command = [15 01 00 00 00 00 02 FF 24
+		15 01 00 00 00 00 02 FB 01
+		15 01 00 00 00 00 02 D2 E1
+		15 01 00 00 00 00 02 D3 E1
+		15 01 00 00 00 00 02 D4 C2
+		15 01 00 00 00 00 02 D5 01
+		15 01 00 00 00 00 02 D8 43
 		15 01 00 00 00 00 02 FF 10
 		15 01 00 00 00 00 02 FB 01
 		39 01 00 00 00 00 05 2A 00 00 01 67
