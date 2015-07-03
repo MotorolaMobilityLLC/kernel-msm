@@ -281,6 +281,10 @@ static void hdd_set_multicast_list(struct net_device *dev);
 
 void hdd_wlan_initial_scan(hdd_adapter_t *pAdapter);
 
+/* Internal function declarations */
+static int hdd_driver_init(void);
+static void hdd_driver_exit(void);
+
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand);
 static int hdd_parse_channellist(const tANI_U8 *pValue, tANI_U8 *pChannelList,
@@ -4960,7 +4964,15 @@ static int hdd_driver_ioctl(hdd_adapter_t *pAdapter, struct ifreq *ifr)
    return ret;
 }
 
-int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
+/**
+ * __hdd_ioctl() - HDD ioctl handler
+ * @dev: pointer to net_device structure
+ * @ifr: pointer to ifreq structure
+ * @cmd: ioctl command
+ *
+ * Return: 0 for success and error number for failure.
+ */
+static int __hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx;
@@ -5014,6 +5026,25 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    }
  exit:
    return ret;
+}
+
+/**
+ * hdd_ioctl() - Wrapper function to protect __hdd_ioctl() function from SSR
+ * @dev: pointer to net_device structure
+ * @ifr: pointer to ifreq structure
+ * @cmd: ioctl command
+ *
+ * Return: 0 for success and error number for failure.
+ */
+static int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __hdd_ioctl(dev, ifr, cmd);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
@@ -6506,18 +6537,15 @@ v_BOOL_t hdd_is_valid_mac_address(const tANI_U8 *pMacAddr)
     return (xdigit == 12 && (separator == 5 || separator == 0));
 }
 
-/**---------------------------------------------------------------------------
-
-  \brief hdd_open() - HDD Open function
-
-  This is called in response to ifconfig up
-
-  \param  - dev Pointer to net_device structure
-
-  \return - 0 for success non-zero for failure
-
-  --------------------------------------------------------------------------*/
-int hdd_open (struct net_device *dev)
+/**
+ * __hdd_open() - HDD Open function
+ * @dev: pointer to net_device structure
+ *
+ * This is called in response to ifconfig up
+ *
+ * Return: 0 for success and error number for failure
+ */
+static int __hdd_open(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx =  WLAN_HDD_GET_CTX(pAdapter);
@@ -6564,25 +6592,170 @@ int hdd_open (struct net_device *dev)
    return ret;
 }
 
+/**
+ * hdd_open() - Wrapper function for __hdd_open to protect it from SSR
+ * @dev: pointer to net_device structure
+ *
+ * This is called in response to ifconfig up
+ *
+ * Return: 0 for success and error number for failure
+ */
+static int hdd_open(struct net_device *dev)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __hdd_open(dev);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+
 int hdd_mon_open (struct net_device *dev)
 {
    netif_start_queue(dev);
 
    return 0;
 }
-/**---------------------------------------------------------------------------
 
-  \brief hdd_stop() - HDD stop function
+#ifdef MODULE
+/**
+ * wlan_hdd_stop_enter_lowpower() - Enter low power mode
+ * @hdd_ctx:	HDD context
+ *
+ * For module, when all the interfaces are down, enter low power mode.
+ */
+static inline void wlan_hdd_stop_enter_lowpower(hdd_context_t *hdd_ctx)
+{
+	hddLog(VOS_TRACE_LEVEL_INFO,
+			"%s: All Interfaces are Down entering standby",
+			__func__);
+	if (VOS_STATUS_SUCCESS != wlan_hdd_enter_lowpower(hdd_ctx)) {
+		hddLog(VOS_TRACE_LEVEL_ERROR,
+				"%s: Failed to put wlan in power save",
+				__func__);
+	}
+}
 
-  This is called in response to ifconfig down
+/**
+ * wlan_hdd_stop_can_enter_lowpower() - Enter low power mode
+ * @adapter:	Adapter context
+ *
+ * Check if hardware can enter low power mode when all the interfaces are down.
+ */
+static inline int wlan_hdd_stop_can_enter_lowpower(hdd_adapter_t *adapter)
+{
+	/* SoftAP ifaces should never go in power save mode making
+	 * sure same here.
+	 */
+	if ((WLAN_HDD_SOFTAP == adapter->device_mode) ||
+			(WLAN_HDD_MONITOR == adapter->device_mode) ||
+			(WLAN_HDD_P2P_GO == adapter->device_mode))
+		return 0;
 
-  \param  - dev Pointer to net_device structure
+	return 1;
+}
+#else
 
-  \return - 0 for success non-zero for failure
+/**
+ * kickstart_driver_handler() - Work queue handler for kickstart_driver
+ *
+ * Use worker queue to exit if it is not possible to call kickstart_driver()
+ * directly in the caller context like in interface down context
+ */
+static void kickstart_driver_handler(struct work_struct *work)
+{
+	hdd_driver_exit();
+	wlan_hdd_inited = 0;
+}
 
-  --------------------------------------------------------------------------*/
+static DECLARE_WORK(kickstart_driver_work, kickstart_driver_handler);
 
-int hdd_stop (struct net_device *dev)
+/**
+ * kickstart_driver() - Initialize and Clean-up driver
+ * @load:	True: initialize, False: Clean-up driver
+ *
+ * Delayed driver initialization when driver is statically linked and Clean-up
+ * when all the interfaces are down or any other condition which requires to
+ * save power by bringing down hardware.
+ * This routine is invoked when module parameter fwpath is modified from user
+ * space to signal the initialization of the WLAN driver or when all the
+ * interfaces are down and user space no longer need WLAN interfaces. Userspace
+ * needs to write to fwpath again to get the WLAN interfaces
+ *
+ * Return: 0 on success, non zero on failure
+ */
+static int kickstart_driver(bool load)
+{
+	int ret_status;
+
+	pr_info("%s: load: %d wlan_hdd_inited: %d, caller: %pf\n", __func__,
+			load, wlan_hdd_inited, (void *)_RET_IP_);
+
+	/* Make sure unload and load are synchronized */
+	flush_work(&kickstart_driver_work);
+
+	/* No-Op, If unload requested even though driver is not loaded */
+	if (!load && !wlan_hdd_inited)
+		return 0;
+
+	/* Unload is requested */
+	if (!load && wlan_hdd_inited) {
+		schedule_work(&kickstart_driver_work);
+		return 0;
+	}
+
+	if (!wlan_hdd_inited) {
+		ret_status = hdd_driver_init();
+		wlan_hdd_inited = ret_status ? 0 : 1;
+		return ret_status;
+	}
+
+	hdd_driver_exit();
+
+	msleep(200);
+
+	ret_status = hdd_driver_init();
+	wlan_hdd_inited = ret_status ? 0 : 1;
+	return ret_status;
+}
+
+/**
+ * wlan_hdd_stop_enter_lowpower() - Enter low power mode
+ * @hdd_ctx:	HDD context
+ *
+ * For static driver, when all the interfaces are down, enter low power mode by
+ * bringing down WLAN hardware.
+ */
+static inline void wlan_hdd_stop_enter_lowpower(hdd_context_t *hdd_ctx)
+{
+	kickstart_driver(false);
+}
+
+/**
+ * wlan_hdd_stop_can_enter_lowpower() - Enter low power mode
+ * @adapter:	Adapter context
+ *
+ * Check if hardware can enter low power mode when all the interfaces are down.
+ * For static driver, hardware can enter low power mode for all types of
+ * interfaces.
+ */
+static inline int wlan_hdd_stop_can_enter_lowpower(hdd_adapter_t *adapter)
+{
+	return 1;
+}
+#endif
+
+/**
+ * __hdd_stop() - HDD stop function
+ * @dev: pointer to net_device structure
+ *
+ * This is called in response to ifconfig down
+ *
+ * Return: 0 for success and error number for failure
+ */
+static int __hdd_stop(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    hdd_context_t *pHddCtx =  WLAN_HDD_GET_CTX(pAdapter);
@@ -6593,7 +6766,7 @@ int hdd_stop (struct net_device *dev)
 
    ENTER();
 
-   MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_OPEN_REQUEST,
+   MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_STOP_REQUEST,
                     pAdapter->sessionId, pAdapter->device_mode));
 
    ret = wlan_hdd_validate_context(pHddCtx);
@@ -6634,14 +6807,11 @@ int hdd_stop (struct net_device *dev)
    hdd_stop_adapter(pHddCtx, pAdapter, VOS_FALSE);
 
    /* DeInit the adapter. This ensures datapath cleanup as well */
-   hdd_deinit_adapter(pHddCtx, pAdapter);
+   hdd_deinit_adapter(pHddCtx, pAdapter, true);
 
    /* SoftAP ifaces should never go in power save mode
       making sure same here. */
-   if ( (WLAN_HDD_SOFTAP == pAdapter->device_mode ) ||
-        (WLAN_HDD_MONITOR == pAdapter->device_mode) ||
-        (WLAN_HDD_P2P_GO == pAdapter->device_mode )
-      )
+   if (!wlan_hdd_stop_can_enter_lowpower(pAdapter))
    {
       /* SoftAP mode, so return from here */
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -6671,71 +6841,84 @@ int hdd_stop (struct net_device *dev)
    }
 
    if (TRUE == enter_standby)
-   {
-       hddLog(VOS_TRACE_LEVEL_INFO, "%s: All Interfaces are Down "
-                 "entering standby", __func__);
-       if (VOS_STATUS_SUCCESS != wlan_hdd_enter_lowpower(pHddCtx))
-       {
-           /*log and return success*/
-           hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failed to put "
-                   "wlan in power save", __func__);
-       }
-   }
+      wlan_hdd_stop_enter_lowpower(pHddCtx);
 
    EXIT();
    return 0;
 }
 
-/**---------------------------------------------------------------------------
+/**
+ * hdd_stop() - Wrapper function for __hdd_stop to protect it from SSR
+ * @dev: pointer to net_device structure
+ *
+ * This is called in response to ifconfig down
+ *
+ * Return: 0 for success and error number for failure
+ */
+static int hdd_stop (struct net_device *dev)
+{
+	int ret;
 
-  \brief hdd_uninit() - HDD uninit function
+	vos_ssr_protect(__func__);
+	ret = __hdd_stop(dev);
+	vos_ssr_unprotect(__func__);
 
-  This is called during the netdev unregister to uninitialize all data
-associated with the device
+	return ret;
+}
 
-  \param  - dev Pointer to net_device structure
-
-  \return - void
-
-  --------------------------------------------------------------------------*/
-static void hdd_uninit (struct net_device *dev)
+/**
+ * __hdd_uninit() - HDD uninit function
+ * @dev: pointer to net_device structure
+ *
+ * This is called during the netdev unregister to uninitialize all data
+ * associated with the device
+ *
+ * Return: none
+ */
+static void __hdd_uninit(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
    ENTER();
 
-   do
-   {
-      if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: Invalid magic", __func__);
-         break;
+	if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic) {
+		hddLog(LOGP, FL("Invalid magic"));
+		return;
       }
 
-      if (NULL == pAdapter->pHddCtx)
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: NULL pHddCtx", __func__);
-         break;
+	if (NULL == pAdapter->pHddCtx) {
+		hddLog(LOGP, FL("NULL pHddCtx"));
+		return;
       }
 
       if (dev != pAdapter->dev)
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: Invalid device reference", __func__);
-         /* we haven't validated all cases so let this go for now */
-      }
+		hddLog(LOGP, FL("Invalid device reference"));
 
-      hdd_deinit_adapter(pAdapter->pHddCtx, pAdapter);
+	hdd_deinit_adapter(pAdapter->pHddCtx, pAdapter, true);
 
-      /* after uninit our adapter structure will no longer be valid */
+	/* After uninit our adapter structure will no longer be valid */
       pAdapter->dev = NULL;
       pAdapter->magic = 0;
-   } while (0);
 
    EXIT();
 }
+
+/**
+ * hdd_uninit() - Wrapper function to protect __hdd_uninit from SSR
+ * @dev: pointer to net_device structure
+ *
+ * This is called during the netdev unregister to uninitialize all data
+ * associated with the device
+ *
+ * Return: none
+ */
+static void hdd_uninit(struct net_device *dev)
+{
+	vos_ssr_protect(__func__);
+	__hdd_uninit(dev);
+	vos_ssr_unprotect(__func__);
+}
+
 
 /**---------------------------------------------------------------------------
      \brief hdd_full_pwr_cbk() - HDD full power callback function
@@ -6876,24 +7059,20 @@ VOS_STATUS hdd_read_cfg_file(v_VOID_t *pCtx, char *pFileName,
    return VOS_STATUS_SUCCESS;
 }
 
-/**---------------------------------------------------------------------------
-
-  \brief hdd_set_mac_address() -
-
-   This function sets the user specified mac address using
-   the command ifconfig wlanX hw ether <mac adress>.
-
-  \param  - dev - Pointer to the net device.
-              - addr - Pointer to the sockaddr.
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-
-static int hdd_set_mac_address(struct net_device *dev, void *addr)
+/**
+ * __hdd_set_mac_address() - HDD set mac address
+ * @dev: pointer to net_device structure
+ * @addr: Pointer to the sockaddr
+ *
+ * This function sets the user specified mac address using
+ * the command ifconfig wlanX hw ether <mac adress>.
+ *
+ * Return: 0 for success.
+ */
+static int __hdd_set_mac_address(struct net_device *dev, void *addr)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    struct sockaddr *psta_mac_addr = addr;
-   eHalStatus halStatus = eHAL_STATUS_SUCCESS;
 
    ENTER();
 
@@ -6901,7 +7080,29 @@ static int hdd_set_mac_address(struct net_device *dev, void *addr)
    memcpy(dev->dev_addr, psta_mac_addr->sa_data, ETH_ALEN);
 
    EXIT();
-   return halStatus;
+	return 0;
+}
+
+/**
+ * hdd_set_mac_address() - Wrapper function to protect __hdd_set_mac_address()
+ *			function from SSR
+ * @dev: pointer to net_device structure
+ * @addr: Pointer to the sockaddr
+ *
+ * This function sets the user specified mac address using
+ * the command ifconfig wlanX hw ether <mac adress>.
+ *
+ * Return: 0 for success.
+ */
+static int hdd_set_mac_address(struct net_device *dev, void *addr)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __hdd_set_mac_address(dev, addr);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 tANI_U8* wlan_hdd_get_intf_addr(hdd_context_t* pHddCtx)
@@ -7300,7 +7501,8 @@ void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
    return;
 }
 
-void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
+void hdd_deinit_adapter(hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
+                        bool rtnl_held)
 {
    ENTER();
    switch ( pAdapter->device_mode )
@@ -7345,7 +7547,7 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 
          hdd_cleanup_actionframe(pHddCtx, pAdapter);
 
-         hdd_unregister_hostapd(pAdapter);
+         hdd_unregister_hostapd(pAdapter, rtnl_held);
 
          // set con_mode to STA only when no SAP concurrency mode
          if (!(hdd_get_concurrency_mode() & (VOS_SAP | VOS_P2P_GO)))
@@ -7751,7 +7953,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          status = hdd_register_interface( pAdapter, rtnl_held );
          if( VOS_STATUS_SUCCESS != status )
          {
-            hdd_deinit_adapter(pHddCtx, pAdapter);
+            hdd_deinit_adapter(pHddCtx, pAdapter, rtnl_held);
             goto err_free_netdev;
          }
          // Workqueue which gets scheduled in IPv4 notification callback
@@ -7777,6 +7979,13 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          netif_tx_disable(pAdapter->dev);
          //netif_tx_disable(pWlanDev);
          netif_carrier_off(pAdapter->dev);
+
+         if (WLAN_HDD_P2P_CLIENT == session_type ||
+                 WLAN_HDD_P2P_DEVICE == session_type) {
+             /* Initialize the work queue to defer the
+              * back to back RoC request */
+             INIT_DELAYED_WORK(&pAdapter->roc_work, hdd_p2p_roc_work_queue);
+         }
 
 #ifdef QCA_LL_TX_FLOW_CT
          /* SAT mode default TX Flow control instance
@@ -7821,7 +8030,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          status = hdd_register_hostapd( pAdapter, rtnl_held );
          if( VOS_STATUS_SUCCESS != status )
          {
-            hdd_deinit_adapter(pHddCtx, pAdapter);
+            hdd_deinit_adapter(pHddCtx, pAdapter, rtnl_held);
             goto err_free_netdev;
          }
 
@@ -7829,6 +8038,12 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          netif_carrier_off(pAdapter->dev);
 
          hdd_set_conparam( 1 );
+         if (WLAN_HDD_P2P_GO == session_type) {
+             /* Initialize the work queue to
+              * defer the back to back RoC request */
+             INIT_DELAYED_WORK(&pAdapter->roc_work, hdd_p2p_roc_work_queue);
+         }
+
          break;
       }
       case WLAN_HDD_MONITOR:
@@ -8311,6 +8526,9 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
          }
          if (pAdapter->device_mode != WLAN_HDD_INFRA_STATION) {
              wlan_hdd_cleanup_remain_on_channel_ctx(pAdapter);
+#ifdef WLAN_OPEN_SOURCE
+             cancel_delayed_work_sync(&pAdapter->roc_work);
+#endif
          }
 
          if (pAdapter->ipv4_notifier_registered)
@@ -8374,6 +8592,9 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
          //Any softap specific cleanup here...
          if (pAdapter->device_mode == WLAN_HDD_P2P_GO) {
              wlan_hdd_cleanup_remain_on_channel_ctx(pAdapter);
+#ifdef WLAN_OPEN_SOURCE
+             cancel_delayed_work_sync(&pAdapter->roc_work);
+#endif
          }
 
 #ifdef QCA_LL_TX_FLOW_CT
@@ -9762,6 +9983,10 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to free power on lock",
                                            __func__);
    }
+
+   /* Free up RoC request queue and flush workqueue */
+   vos_flush_work(&pHddCtx->rocReqWork);
+   hdd_list_destroy(&pHddCtx->hdd_roc_req_q);
 
 free_hdd_ctx:
    /* Free up dynamically allocated members inside HDD Adapter */
@@ -11156,6 +11381,14 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
                              pHddCtx->target_hw_name);
 #endif
 
+   /* Initialize the RoC Request queue and work. */
+   hdd_list_init((&pHddCtx->hdd_roc_req_q), MAX_ROC_REQ_QUEUE_ENTRY);
+#ifdef CONFIG_CNSS
+   cnss_init_work(&pHddCtx->rocReqWork, wlan_hdd_roc_request_dequeue);
+#else
+   INIT_WORK(&pHddCtx->rocReqWork, wlan_hdd_roc_request_dequeue);
+#endif
+
    complete(&wlan_start_comp);
    goto success;
 
@@ -11583,37 +11816,6 @@ static int con_mode_handler(const char *kmessage,
 }
 #endif
 #else /* #ifdef MODULE */
-/**---------------------------------------------------------------------------
-
-  \brief kickstart_driver
-
-   This is the driver entry point
-   - delayed driver initialization when driver is statically linked
-   - invoked when module parameter fwpath is modified from user space to signal
-     initializing the WLAN driver or when con_mode is modified from user space
-     to signal a switch in operating mode
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-static int kickstart_driver(void)
-{
-   int ret_status;
-
-   if (!wlan_hdd_inited) {
-      ret_status = hdd_driver_init();
-      wlan_hdd_inited = ret_status ? 0 : 1;
-      return ret_status;
-   }
-
-   hdd_driver_exit();
-
-   msleep(200);
-
-   ret_status = hdd_driver_init();
-   wlan_hdd_inited = ret_status ? 0 : 1;
-   return ret_status;
-}
 
 /**---------------------------------------------------------------------------
 
@@ -11631,7 +11833,7 @@ static int fwpath_changed_handler(const char *kmessage,
 
    ret = param_set_copystring(kmessage, kp);
    if (0 == ret)
-      ret = kickstart_driver();
+      ret = kickstart_driver(true);
    return ret;
 }
 
@@ -11655,7 +11857,7 @@ static int con_mode_handler(const char *kmessage, struct kernel_param *kp)
 
    ret = param_set_int(kmessage, kp);
    if (0 == ret)
-      ret = kickstart_driver();
+      ret = kickstart_driver(true);
    return ret;
 }
 #endif

@@ -95,7 +95,7 @@ static struct file_operations pktlog_fops = {
 
 static struct ol_pktlog_dev_t *get_pl_handle(struct ol_softc *scn)
 {
-	if (!scn)
+	if (!scn || !scn->pdev_txrx_handle)
 		return NULL;
 	return scn->pdev_txrx_handle->pl_dev;
 }

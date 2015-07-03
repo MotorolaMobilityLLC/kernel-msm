@@ -1232,15 +1232,14 @@ int hdd_wmmps_helper(hdd_adapter_t *pAdapter, tANI_U8 *ptr)
    return 0;
 }
 
-/**============================================================================
-  @brief hdd_wmm_do_implicit_qos() - Function which will attempt to setup
-  QoS for any AC requiring it
-
-  @param work     : [in]  pointer to work structure
-
-  @return         : void
-  ===========================================================================*/
-static void hdd_wmm_do_implicit_qos(struct work_struct *work)
+/**
+ * __hdd_wmm_do_implicit_qos() - Function which will attempt to setup
+ *				QoS for any AC requiring it.
+ * @work: [in] pointer to work structure.
+ *
+ * Return: none
+ */
+static void __hdd_wmm_do_implicit_qos(struct work_struct *work)
 {
    hdd_wmm_qos_context_t* pQosContext =
       container_of(work, hdd_wmm_qos_context_t, wmmAcSetupImplicitQos);
@@ -1252,6 +1251,7 @@ static void hdd_wmm_do_implicit_qos(struct work_struct *work)
    sme_QosStatusType smeStatus;
 #endif
    sme_QosWmmTspecInfo qosInfo;
+   hdd_context_t *hdd_ctx;
 
    VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO_LOW,
              "%s: Entered, context %p",
@@ -1266,6 +1266,13 @@ static void hdd_wmm_do_implicit_qos(struct work_struct *work)
    }
 
    pAdapter = pQosContext->pAdapter;
+
+   hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
+   if (0 != wlan_hdd_validate_context(hdd_ctx)) {
+       hddLog(LOGE, FL("HDD context is not valid"));
+       return;
+   }
+
    acType = pQosContext->acType;
    pAc = &pAdapter->hddWmmStatus.wmmAcStatus[acType];
 
@@ -1469,6 +1476,19 @@ static void hdd_wmm_do_implicit_qos(struct work_struct *work)
 
 }
 
+/**
+ * hdd_wmm_do_implicit_qos() - SSR wraper function for hdd_wmm_do_implicit_qos
+ * @work: pointer to work_struct
+ *
+ * Return: none
+ */
+static void hdd_wmm_do_implicit_qos(struct work_struct *work)
+{
+	vos_ssr_protect(__func__);
+	__hdd_wmm_do_implicit_qos(work);
+	vos_ssr_unprotect(__func__);
+}
+
 /**============================================================================
   @brief hdd_wmm_init() - Function which will initialize the WMM configuration
   and status to an initial state.  The configuration can later be overwritten
@@ -1596,7 +1616,10 @@ VOS_STATUS hdd_wmm_adapter_close ( hdd_adapter_t* pAdapter )
 #ifdef FEATURE_WLAN_ESE
       hdd_wmm_disable_inactivity_timer(pQosContext);
 #endif
-      vos_flush_work(&pQosContext->wmmAcSetupImplicitQos);
+      if (pQosContext->handle == HDD_WMM_HANDLE_IMPLICIT
+          && pQosContext->magic == HDD_WMM_CTX_MAGIC)
+          vos_flush_work(&pQosContext->wmmAcSetupImplicitQos);
+
       hdd_wmm_free_context(pQosContext);
    }
 
@@ -2285,7 +2308,16 @@ VOS_STATUS hdd_wmm_connect( hdd_adapter_t* pAdapter,
 
          // admission is required
          pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessRequired = VOS_TRUE;
-         pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessAllowed = VOS_FALSE;
+         /*
+          * Mark wmmAcAccessAllowed as True if implicit Qos is disabled as there
+          * is no need to hold packets in queue during hdd_tx_fetch_packet_cbk
+          */
+         if (!(WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->bImplicitQosEnabled)
+              pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessAllowed =
+                                                                      VOS_TRUE;
+         else
+              pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessAllowed =
+                                                                     VOS_FALSE;
          pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcAccessGranted = VOS_FALSE;
          //after reassoc if we have valid tspec, allow access
          if (pAdapter->hddWmmStatus.wmmAcStatus[ac].wmmAcTspecValid &&

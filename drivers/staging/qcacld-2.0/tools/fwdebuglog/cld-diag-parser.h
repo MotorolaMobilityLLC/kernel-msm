@@ -135,6 +135,7 @@
 #define SILENT_FLAG            0x08
 #define DEBUG_FLAG             0x10
 
+#define INIT_WITH_SLEEP            10
 #define ATH6KL_FWLOG_PAYLOAD_SIZE              1500
 
 #define HDRLEN 16
@@ -272,6 +273,17 @@ static inline unsigned int aniNlLen(unsigned int len)
 
 /* KERNEL DEFS END */
 
+#ifdef CONFIG_ANDROID_LOG
+#include <android/log.h>
+
+#define FWDEBUG_LOG_NAME        "ROME"
+#define FWDEBUG_NAME            "ROME_DEBUG"
+#define android_printf(...) \
+       __android_log_print(ANDROID_LOG_INFO, FWDEBUG_LOG_NAME, __VA_ARGS__);
+#else
+#define android_printf printf
+#endif
+
 #define WLAN_NL_MSG_CNSS_DIAG   27 /* Msg type between user space/wlan driver */
 #define WLAN_NL_MSG_CNSS_HOST_MSG    28
 #define WLAN_NL_MSG_CNSS_HOST_EVENT_LOG    17
@@ -286,8 +298,10 @@ static inline unsigned int aniNlLen(unsigned int len)
 #define MAX_MSG_SIZE 50000
 #define DIAG_MSG_MAX_LEN 4096
 #define DIAG_MSG_OVERHEAD_LEN 48
+/* PKT SIZE for intf */
+#define MAX_PKT_SIZE 8192
 
-/* SPECIAL DIAG HANDLING*/
+/* SPECIAL DIAG HANDLING */
 #define DIAG_WLAN_MODULE_STA_PWRSAVE  34292
 #define DIAG_WLAN_MODULE_WAL          42996
 #define DIAG_NAN_MODULE_ID            56820
@@ -325,7 +339,7 @@ int32_t
 dbglog_parse_debug_logs(u_int8_t *datap, u_int16_t len, u_int16_t dropped);
 
 void
-diag_initialize(boolean isDriverLoaded, int sock_fd, uint32_t optionflag);
+diag_initialize(int sock_fd, uint32_t optionflag);
 
 void
 process_diaghost_msg(uint8_t *datap, uint16_t len);

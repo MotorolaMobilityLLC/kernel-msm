@@ -1150,7 +1150,7 @@ static int is_driver_dfs_capable(struct wiphy *wiphy,
 }
 
 static int
-wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
+__wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
                                          struct wireless_dev *wdev,
                                          const void *data,
                                          int data_len)
@@ -1158,6 +1158,13 @@ wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
     hdd_context_t *pHddCtx      = wiphy_priv(wiphy);
     struct sk_buff *skb         = NULL;
     tANI_U32       fset         = 0;
+    int ret;
+
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret) {
+        hddLog(LOGE, FL("Hdd context not valid"));
+        return -EINVAL;
+    }
 
     if (wiphy->interface_modes & BIT(NL80211_IFTYPE_STATION)) {
         hddLog(LOG1, FL("Infra Station mode is supported by driver"));
@@ -1258,6 +1265,30 @@ nla_put_failure:
     return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_get_supported_features() - get supported features
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
+static int
+wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_get_supported_features(wiphy, wdev,
+						data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 static int
 wlan_hdd_cfg80211_set_scanning_mac_oui(struct wiphy *wiphy,
                                        struct wireless_dev *wdev,
@@ -1324,7 +1355,7 @@ fail:
 }
 
 static int
-wlan_hdd_cfg80211_get_concurrency_matrix(struct wiphy *wiphy,
+__wlan_hdd_cfg80211_get_concurrency_matrix(struct wiphy *wiphy,
                                          struct wireless_dev *wdev,
                                          const void *data,
                                          int data_len)
@@ -1333,8 +1364,16 @@ wlan_hdd_cfg80211_get_concurrency_matrix(struct wiphy *wiphy,
     uint8_t i, feature_sets, max_feature_sets;
     struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_MAX + 1];
     struct sk_buff *reply_skb;
+    hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
+    int ret;
 
     ENTER();
+
+    ret = wlan_hdd_validate_context(hdd_ctx);
+    if (0 != ret) {
+        hddLog(LOGE, FL("HDD context is not valid"));
+        return ret;
+    }
 
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_GET_CONCURRENCY_MATRIX_MAX,
                   data, data_len, NULL)) {
@@ -1392,8 +1431,31 @@ max_buffer_err:
     return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_get_concurrency_matrix() - get concurrency matrix
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
 static int
-wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
+wlan_hdd_cfg80211_get_concurrency_matrix(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_get_concurrency_matrix(wiphy, wdev, data,
+                                                     data_len);
+	vos_ssr_unprotect(__func__);
+	return ret;
+}
+
+static int
+__wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
                                    struct wireless_dev *wdev,
                                    const void *data,
                                    int data_len)
@@ -1410,6 +1472,14 @@ wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
 	int rem, i;
 	uint32_t buf_len = 0;
 	uint8_t *buf;
+	int ret;
+
+	ret = wlan_hdd_validate_context(pHddCtx);
+	if (0 != ret) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
+
 	if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_MAX,
 		data, data_len,
 		NULL)) {
@@ -1656,6 +1726,31 @@ wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
 	return 0;
 fail:
 	return -EINVAL;
+}
+
+/**
+ * wlan_hdd_cfg80211_set_ext_roam_params() - set ext scan roam params
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
+static int
+wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
+				struct wireless_dev *wdev,
+				const void *data,
+				int data_len)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_set_ext_roam_params(wiphy, wdev,
+							data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 #ifdef WLAN_FEATURE_STATS_EXT
@@ -1915,7 +2010,7 @@ nla_put_failure:
 #undef MAX_NUM_EPNO_NETS_BY_SSID
 #undef MAX_NUM_WHITELISTED_SSID
 
-static int wlan_hdd_cfg80211_extscan_get_capabilities(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_extscan_get_capabilities(struct wiphy *wiphy,
                                                 struct wireless_dev *wdev,
                                                 const void *data,
                                                 int data_len)
@@ -1931,6 +2026,13 @@ static int wlan_hdd_cfg80211_extscan_get_capabilities(struct wiphy *wiphy,
     eHalStatus status;
 
     ENTER();
+
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (0 != ret) {
+        hddLog(LOGE, FL("HDD context is not valid"));
+        return -EINVAL;
+    }
+
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
                     data, data_len,
                     wlan_hdd_extscan_config_policy)) {
@@ -1989,6 +2091,31 @@ fail:
     return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_extscan_get_capabilities() - get ext scan capabilities
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wdev
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 for success, non-zero for failure
+ */
+static int wlan_hdd_cfg80211_extscan_get_capabilities(struct wiphy *wiphy,
+						struct wireless_dev *wdev,
+						const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_get_capabilities(wiphy, wdev, data,
+		data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+
+
 /*
  * define short names for the global vendor params
  * used by wlan_hdd_cfg80211_extscan_get_cached_results()
@@ -2000,7 +2127,7 @@ fail:
 #define PARAM_FLUSH \
 	QCA_WLAN_VENDOR_ATTR_EXTSCAN_GET_CACHED_SCAN_RESULTS_CONFIG_PARAM_FLUSH
 /**
- * wlan_hdd_cfg80211_extscan_get_cached_results() - extscan get cached results
+ * __wlan_hdd_cfg80211_extscan_get_cached_results() - extscan get cached results
  * @wiphy: wiphy pointer
  * @wdev: pointer to struct wireless_dev
  * @data: pointer to incoming NL vendor data
@@ -2018,7 +2145,7 @@ fail:
  *
  * Return: 0 on success; error number otherwise.
  */
-static int wlan_hdd_cfg80211_extscan_get_cached_results(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_extscan_get_cached_results(struct wiphy *wiphy,
                                                   struct wireless_dev *wdev,
                                                   const void *data,
                                                   int data_len)
@@ -2034,6 +2161,12 @@ static int wlan_hdd_cfg80211_extscan_get_cached_results(struct wiphy *wiphy,
 	unsigned long rc;
 
 	ENTER();
+
+	status = wlan_hdd_validate_context(pHddCtx);
+	if (0 != status) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
 
 	if (nla_parse(tb, PARAM_MAX, data, data_len,
 			wlan_hdd_extscan_config_policy)) {
@@ -2108,7 +2241,41 @@ fail:
 #undef PARAM_REQUEST_ID
 #undef PARAM_FLUSH
 
-static int wlan_hdd_cfg80211_extscan_set_bssid_hotlist(struct wiphy *wiphy,
+/**
+ * wlan_hdd_cfg80211_extscan_get_cached_results() - extscan get cached results
+ * @wiphy: wiphy pointer
+ * @wdev: pointer to struct wireless_dev
+ * @data: pointer to incoming NL vendor data
+ * @data_len: length of @data
+ *
+ * This function parses the incoming NL vendor command data attributes and
+ * invokes the SME Api and blocks on a completion variable.
+ * Each WMI event with cached scan results data chunk results in
+ * function call wlan_hdd_cfg80211_extscan_cached_results_ind and each
+ * data chunk is sent up the layer in cfg80211_vendor_cmd_alloc_reply_skb.
+ *
+ * If timeout happens before receiving all of the data, this function sets
+ * a context variable @ignore_cached_results to %true, all of the next data
+ * chunks are checked against this variable and dropped.
+ *
+ * Return: 0 on success; error number otherwise.
+ */
+static int wlan_hdd_cfg80211_extscan_get_cached_results(struct wiphy *wiphy,
+						struct wireless_dev *wdev,
+						const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_get_cached_results(wiphy, wdev, data,
+								data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+
+static int __wlan_hdd_cfg80211_extscan_set_bssid_hotlist(struct wiphy *wiphy,
                                                  struct wireless_dev *wdev,
                                                  const void *data,
                                                  int data_len)
@@ -2128,6 +2295,12 @@ static int wlan_hdd_cfg80211_extscan_set_bssid_hotlist(struct wiphy *wiphy,
     unsigned long rc;
 
     ENTER();
+
+    status = wlan_hdd_validate_context(pHddCtx);
+    if (0 != status) {
+        hddLog(LOGE, FL("HDD context is not valid"));
+        return -EINVAL;
+    }
 
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
                     data, data_len,
@@ -2250,6 +2423,29 @@ fail:
     return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_extscan_set_bssid_hotlist() - set ext scan bssid hotlist
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wdev
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 for success, non-zero for failure
+ */
+static int wlan_hdd_cfg80211_extscan_set_bssid_hotlist(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_set_bssid_hotlist(wiphy, wdev, data,
+					data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 
 /*
  * define short names for the global vendor params
@@ -2275,7 +2471,7 @@ fail:
 		QCA_WLAN_VENDOR_ATTR_EXTSCAN_SSID_THRESHOLD_PARAM_RSSI_HIGH
 
 /**
- * wlan_hdd_cfg80211_extscan_set_ssid_hotlist() - set ssid hot list
+ * __wlan_hdd_cfg80211_extscan_set_ssid_hotlist() - set ssid hot list
  * @wiphy: Pointer to wireless phy
  * @wdev: Pointer to wireless device
  * @data: Pointer to data
@@ -2284,7 +2480,7 @@ fail:
  * Return: 0 on success, negative errno on failure
  */
 static int
-wlan_hdd_cfg80211_extscan_set_ssid_hotlist(struct wiphy *wiphy,
+__wlan_hdd_cfg80211_extscan_set_ssid_hotlist(struct wiphy *wiphy,
 					   struct wireless_dev *wdev,
 					   const void *data,
 					   int data_len)
@@ -2305,6 +2501,12 @@ wlan_hdd_cfg80211_extscan_set_ssid_hotlist(struct wiphy *wiphy,
 	unsigned long rc;
 
 	ENTER();
+
+	retval = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != retval) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
 
 	if (nla_parse(tb, PARAM_MAX,
 		      data, data_len,
@@ -2455,7 +2657,32 @@ fail:
 #undef PARAM_RSSI_LOW
 #undef PARAM_RSSI_HIGH
 
-static int wlan_hdd_cfg80211_extscan_set_significant_change(
+/**
+ * wlan_hdd_cfg80211_extscan_set_ssid_hotlist() - set ssid hot list
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int
+wlan_hdd_cfg80211_extscan_set_ssid_hotlist(struct wiphy *wiphy,
+					   struct wireless_dev *wdev,
+					   const void *data,
+					   int data_len)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_set_ssid_hotlist(wiphy, wdev, data,
+							data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+static int __wlan_hdd_cfg80211_extscan_set_significant_change(
                                         struct wiphy *wiphy,
                                         struct wireless_dev *wdev,
                                         const void *data,
@@ -2477,6 +2704,12 @@ static int wlan_hdd_cfg80211_extscan_set_significant_change(
     unsigned long rc;
 
     ENTER();
+
+    retval = wlan_hdd_validate_context(pHddCtx);
+    if (0 != retval) {
+       hddLog(LOGE, FL("HDD context is not valid"));
+       return -EINVAL;
+    }
 
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
                     data, data_len,
@@ -2621,7 +2854,30 @@ fail:
     return -EINVAL;
 }
 
-static int wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
+/**
+ * wlan_hdd_cfg80211_extscan_set_significant_change() - set significant change
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int wlan_hdd_cfg80211_extscan_set_significant_change(struct wiphy *wiphy,
+				struct wireless_dev *wdev,
+				const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_set_significant_change(wiphy, wdev,
+					data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+static int __wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
                                         struct wireless_dev *wdev,
                                         const void *data,
                                         int data_len)
@@ -2635,8 +2891,15 @@ static int wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
     eHalStatus status;
     struct sk_buff *reply_skb;
     tANI_U8 i;
+    int retval;
 
     ENTER();
+
+    retval = wlan_hdd_validate_context(pHddCtx);
+    if (0 != retval) {
+       hddLog(LOGE, FL("HDD context is not valid"));
+       return -EINVAL;
+    }
 
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
                   data, data_len,
@@ -2705,6 +2968,29 @@ static int wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
     }
     hddLog(LOGE, FL("valid channels: buffer alloc fail"));
     return -EINVAL;
+}
+
+/**
+ * wlan_hdd_cfg80211_extscan_get_valid_channels() - get ext scan valid channels
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_get_valid_channels(wiphy, wdev, data,
+			data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 /**
@@ -3154,7 +3440,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 	QCA_WLAN_VENDOR_ATTR_EXTSCAN_SCAN_CMD_PARAMS_NUM_BUCKETS
 
 /**
- * wlan_hdd_cfg80211_extscan_start() - start extscan
+ * __wlan_hdd_cfg80211_extscan_start() - start extscan
  * @wiphy: Pointer to wireless phy.
  * @wdev: Pointer to wireless device.
  * @data: Pointer to input data.
@@ -3162,7 +3448,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
  *
  * Return: 0 on success, negative errno on failure
  */
-static int wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
 					   struct wireless_dev *wdev,
 					   const void *data,
 					   int data_len)
@@ -3179,6 +3465,12 @@ static int wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
 	unsigned long rc;
 
 	ENTER();
+
+	retval = wlan_hdd_validate_context(pHddCtx);
+	if (0 != retval) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
 
 	if (nla_parse(tb, PARAM_MAX, data, data_len,
 		wlan_hdd_extscan_config_policy)) {
@@ -3307,6 +3599,28 @@ fail:
 #undef PARAMS_RPT_THRHLD_NUM_SCANS
 #undef PARAMS_NUM_BUCKETS
 
+/**
+ * wlan_hdd_cfg80211_extscan_start() - start extscan
+ * @wiphy: Pointer to wireless phy.
+ * @wdev: Pointer to wireless device.
+ * @data: Pointer to input data.
+ * @data_len: Length of @data.
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_start(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 /*
  * define short names for the global vendor params
  * used by wlan_hdd_cfg80211_extscan_stop()
@@ -3325,7 +3639,7 @@ fail:
  *
  * Return: 0 on success, negative errno on failure
  */
-static int wlan_hdd_cfg80211_extscan_stop(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_extscan_stop(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
 					  const void *data,
 					  int data_len)
@@ -3342,6 +3656,12 @@ static int wlan_hdd_cfg80211_extscan_stop(struct wiphy *wiphy,
 	unsigned long rc;
 
 	ENTER();
+
+	retval = wlan_hdd_validate_context(pHddCtx);
+	if (0 != retval) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
 
 	if (nla_parse(tb, PARAM_MAX, data, data_len,
 			wlan_hdd_extscan_config_policy)) {
@@ -3402,6 +3722,28 @@ fail:
     return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_extscan_stop() - stop extscan
+ * @wiphy: Pointer to wireless phy.
+ * @wdev: Pointer to wireless device.
+ * @data: Pointer to input data.
+ * @data_len: Length of @data.
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int wlan_hdd_cfg80211_extscan_stop(struct wiphy *wiphy,
+                                        struct wireless_dev *wdev,
+                                        const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_stop(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 /*
  * done with short names for the global vendor params
  * used by wlan_hdd_cfg80211_extscan_stop()
@@ -3409,7 +3751,7 @@ fail:
 #undef PARAM_MAX
 #undef PARAM_REQUEST_ID
 
-static int wlan_hdd_cfg80211_extscan_reset_bssid_hotlist(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_extscan_reset_bssid_hotlist(struct wiphy *wiphy,
                                         struct wireless_dev *wdev,
                                         const void *data,
                                         int data_len)
@@ -3426,6 +3768,12 @@ static int wlan_hdd_cfg80211_extscan_reset_bssid_hotlist(struct wiphy *wiphy,
     unsigned long rc;
 
     ENTER();
+
+    retval = wlan_hdd_validate_context(pHddCtx);
+    if (0 != retval) {
+        hddLog(LOGE, FL("HDD context is not valid"));
+        return -EINVAL;
+    }
 
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
                     data, data_len,
@@ -3497,7 +3845,30 @@ fail:
 		QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_REQUEST_ID
 
 /**
- * wlan_hdd_cfg80211_extscan_reset_ssid_hotlist() - reset ssid hot list
+ * wlan_hdd_cfg80211_extscan_reset_bssid_hotlist() - reset bssid hot list
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int wlan_hdd_cfg80211_extscan_reset_bssid_hotlist(struct wiphy *wiphy,
+                                        struct wireless_dev *wdev,
+                                        const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_reset_bssid_hotlist(wiphy, wdev,
+								data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+/**
+ * __wlan_hdd_cfg80211_extscan_reset_ssid_hotlist() - reset ssid hot list
  * @wiphy: Pointer to wireless phy
  * @wdev: Pointer to wireless device
  * @data: Pointer to data
@@ -3506,7 +3877,7 @@ fail:
  * Return: 0 on success, negative errno on failure
  */
 static int
-wlan_hdd_cfg80211_extscan_reset_ssid_hotlist(struct wiphy *wiphy,
+__wlan_hdd_cfg80211_extscan_reset_ssid_hotlist(struct wiphy *wiphy,
 					     struct wireless_dev *wdev,
 					     const void *data,
 					     int data_len)
@@ -3523,6 +3894,12 @@ wlan_hdd_cfg80211_extscan_reset_ssid_hotlist(struct wiphy *wiphy,
 	unsigned long rc;
 
 	ENTER();
+
+	retval = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != retval) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
 
 	if (nla_parse(tb, PARAM_MAX,
 		      data, data_len,
@@ -3589,6 +3966,30 @@ fail:
 	return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_extscan_reset_ssid_hotlist() - reset ssid hot list
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int
+wlan_hdd_cfg80211_extscan_reset_ssid_hotlist(struct wiphy *wiphy,
+					     struct wireless_dev *wdev,
+					     const void *data,
+					     int data_len)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_reset_ssid_hotlist(wiphy, wdev,
+							data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
 /*
  * done with short names for the global vendor params
  * used by wlan_hdd_cfg80211_extscan_reset_ssid_hotlist()
@@ -3596,7 +3997,7 @@ fail:
 #undef PARAM_MAX
 #undef PARAM_REQUEST_ID
 
-static int wlan_hdd_cfg80211_extscan_reset_significant_change(
+static int __wlan_hdd_cfg80211_extscan_reset_significant_change(
                                         struct wiphy *wiphy,
                                         struct wireless_dev *wdev,
                                         const void *data,
@@ -3614,6 +4015,13 @@ static int wlan_hdd_cfg80211_extscan_reset_significant_change(
     unsigned long rc;
 
     ENTER();
+
+    retval = wlan_hdd_validate_context(pHddCtx);
+    if (0 != retval) {
+         hddLog(LOGE, FL("HDD context is not valid"));
+         return -EINVAL;
+    }
+
 
     if (nla_parse(tb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
                     data, data_len,
@@ -3675,6 +4083,32 @@ fail:
     vos_mem_free(pReqMsg);
     return -EINVAL;
 }
+
+/**
+ * wlan_hdd_cfg80211_extscan_reset_significant_change() - reset significant
+ *							change
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static
+int wlan_hdd_cfg80211_extscan_reset_significant_change(struct wiphy *wiphy,
+						struct wireless_dev *wdev,
+						const void *data, int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_extscan_reset_significant_change(wiphy, wdev,
+						data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 
 /**
  * hdd_extscan_epno_fill_network_list() - epno fill network list
@@ -5125,7 +5559,7 @@ qca_wlan_vendor_ll_set_policy[QCA_WLAN_VENDOR_ATTR_LL_STATS_SET_MAX +1] =
     { .type = NLA_U32 },
 };
 
-static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
                                           struct wireless_dev *wdev,
                                           const void *data,
                                           int data_len)
@@ -5206,6 +5640,29 @@ static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
     return 0;
 }
 
+/**
+ * wlan_hdd_cfg80211_ll_stats_set() - set ll stats
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wdev
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 if success, non-zero for failure
+ */
+static int wlan_hdd_cfg80211_ll_stats_set(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data,
+					int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_ll_stats_set(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 const struct
 nla_policy
 qca_wlan_vendor_ll_get_policy[QCA_WLAN_VENDOR_ATTR_LL_STATS_GET_MAX +1] =
@@ -5223,7 +5680,7 @@ qca_wlan_vendor_ll_get_policy[QCA_WLAN_VENDOR_ATTR_LL_STATS_GET_MAX +1] =
     [QCA_WLAN_VENDOR_ATTR_LL_STATS_GET_CONFIG_REQ_MASK] = { .type = NLA_U32 }
 };
 
-static int wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
                                           struct wireless_dev *wdev,
                                           const void *data,
                                           int data_len)
@@ -5319,6 +5776,29 @@ static int wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
     return 0;
 }
 
+/**
+ * wlan_hdd_cfg80211_ll_stats_get() - get ll stats
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wdev
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 if success, non-zero for failure
+ */
+static int wlan_hdd_cfg80211_ll_stats_get(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data,
+					int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_ll_stats_get(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 const struct
 nla_policy
 qca_wlan_vendor_ll_clr_policy[QCA_WLAN_VENDOR_ATTR_LL_STATS_CLR_MAX +1] =
@@ -5329,7 +5809,7 @@ qca_wlan_vendor_ll_clr_policy[QCA_WLAN_VENDOR_ATTR_LL_STATS_CLR_MAX +1] =
     [QCA_WLAN_VENDOR_ATTR_LL_STATS_CLR_CONFIG_STOP_RSP] = {.type = NLA_U8 },
 };
 
-static int wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
                                             struct wireless_dev *wdev,
                                             const void *data,
                                             int data_len)
@@ -5438,8 +5918,33 @@ static int wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
 
     return -EINVAL;
 }
+
+/**
+ * wlan_hdd_cfg80211_ll_stats_clear() - clear ll stats
+ * @wiphy: Pointer to wiphy
+ * @wdev: Pointer to wdev
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 if success, non-zero for failure
+ */
+static int wlan_hdd_cfg80211_ll_stats_clear(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data,
+					int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_ll_stats_clear(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
+#ifdef FEATURE_WLAN_TDLS
 /* EXT TDLS */
 static const struct nla_policy
 wlan_hdd_tdls_config_enable_policy[QCA_WLAN_VENDOR_ATTR_TDLS_ENABLE_MAX +1] =
@@ -5611,7 +6116,7 @@ wlan_hdd_tdls_config_get_status_policy[
     [QCA_WLAN_VENDOR_ATTR_TDLS_GET_STATUS_REASON] = {.type = NLA_S32 },
 
 };
-static int wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
                                                 struct wireless_dev *wdev,
                                                 const void *data,
                                                 int data_len)
@@ -5686,6 +6191,30 @@ nla_put_failure:
     return -EINVAL;
 }
 
+/**
+ * wlan_hdd_cfg80211_exttdls_get_status() - get ext tdls status
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
+static int wlan_hdd_cfg80211_exttdls_get_status(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data,
+					int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_exttdls_get_status(wiphy, wdev, data,
+							data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
 static int wlan_hdd_cfg80211_exttdls_callback(tANI_U8* mac,
                                               tANI_S32 state,
                                               tANI_S32 reason,
@@ -5736,7 +6265,7 @@ nla_put_failure:
     return -EINVAL;
 }
 
-static int wlan_hdd_cfg80211_exttdls_enable(struct wiphy *wiphy,
+static int __wlan_hdd_cfg80211_exttdls_enable(struct wiphy *wiphy,
                                             struct wireless_dev *wdev,
                                             const void *data,
                                             int data_len)
@@ -5827,7 +6356,30 @@ static int wlan_hdd_cfg80211_exttdls_enable(struct wiphy *wiphy,
                                  pReqMsg.min_bandwidth_kbps));
 }
 
-static int wlan_hdd_cfg80211_exttdls_disable(struct wiphy *wiphy,
+/**
+ * wlan_hdd_cfg80211_exttdls_enable() - enable ext tdls
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
+static int wlan_hdd_cfg80211_exttdls_enable(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data,
+					int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_exttdls_enable(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+static int __wlan_hdd_cfg80211_exttdls_disable(struct wiphy *wiphy,
                                              struct wireless_dev *wdev,
                                              const void *data,
                                              int data_len)
@@ -5868,6 +6420,31 @@ static int wlan_hdd_cfg80211_exttdls_disable(struct wiphy *wiphy,
 
     return (wlan_hdd_tdls_extctrl_deconfig_peer(pAdapter, peer));
 }
+
+/**
+ * wlan_hdd_cfg80211_exttdls_disable() - disable ext tdls
+ * @wiphy:   pointer to wireless wiphy structure.
+ * @wdev:    pointer to wireless_dev structure.
+ * @data:    Pointer to the data to be passed via vendor interface
+ * @data_len:Length of the data to be passed
+ *
+ * Return:   Return the Success or Failure code.
+ */
+static int wlan_hdd_cfg80211_exttdls_disable(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					const void *data,
+					int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_exttdls_disable(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+#endif
 
 
 static const struct nla_policy
@@ -9430,7 +10007,7 @@ static int wlan_hdd_change_iface_to_sta_mode(struct net_device *ndev,
 
     wdev = ndev->ieee80211_ptr;
     hdd_stop_adapter(pHddCtx, pAdapter, VOS_TRUE);
-    hdd_deinit_adapter(pHddCtx, pAdapter);
+    hdd_deinit_adapter(pHddCtx, pAdapter, true);
     wdev->iftype = type;
     /*Check for sub-string p2p to confirm its a p2p interface*/
     if (NULL != strnstr(ndev->name, "p2p", 3)) {
@@ -9608,14 +10185,14 @@ static int __wlan_hdd_cfg80211_change_iface(struct wiphy *wiphy,
 
                 if (pP2pAdapter) {
                     hdd_stop_adapter(pHddCtx, pP2pAdapter, VOS_TRUE);
-                    hdd_deinit_adapter(pHddCtx, pP2pAdapter);
+                    hdd_deinit_adapter(pHddCtx, pP2pAdapter, true);
                     hdd_close_adapter(pHddCtx, pP2pAdapter, VOS_TRUE);
                 }
             }
             hdd_stop_adapter(pHddCtx, pAdapter, VOS_TRUE);
 
             /* De-init the adapter */
-            hdd_deinit_adapter(pHddCtx, pAdapter);
+            hdd_deinit_adapter(pHddCtx, pAdapter, true);
             memset(&pAdapter->sessionCtx, 0, sizeof(pAdapter->sessionCtx));
             pAdapter->device_mode = (type == NL80211_IFTYPE_AP) ?
                                    WLAN_HDD_SOFTAP : WLAN_HDD_P2P_GO;
@@ -10973,70 +11550,6 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
 }
 
 /*
- * FUNCTION: wlan_hdd_cfg80211_inform_bss
- * This function is used to inform the BSS details to nl80211 interface.
- */
-static struct cfg80211_bss* wlan_hdd_cfg80211_inform_bss(
-                    hdd_adapter_t *pAdapter, tCsrRoamConnectedProfile *roamProfile)
-{
-    struct net_device *dev = pAdapter->dev;
-    struct wireless_dev *wdev = dev->ieee80211_ptr;
-    struct wiphy *wiphy = wdev->wiphy;
-    tSirBssDescription *pBssDesc = roamProfile->pBssDesc;
-    int chan_no;
-    int ie_length;
-    const char *ie;
-    unsigned int freq;
-    struct ieee80211_channel *chan;
-    int rssi = 0;
-    struct cfg80211_bss *bss = NULL;
-
-    ENTER();
-
-    if (NULL == pBssDesc) {
-        hddLog(VOS_TRACE_LEVEL_FATAL, FL("pBssDesc is NULL"));
-        return bss;
-    }
-
-    chan_no = pBssDesc->channelId;
-    ie_length = GET_IE_LEN_IN_BSS_DESC( pBssDesc->length );
-    ie =  ((ie_length != 0) ? (const char *)&pBssDesc->ieFields: NULL);
-
-    if (NULL == ie) {
-       hddLog(VOS_TRACE_LEVEL_FATAL, FL("IE of BSS descriptor is NULL"));
-       return bss;
-    }
-
-    if (chan_no <= ARRAY_SIZE(hdd_channels_2_4_GHZ)) {
-        freq = ieee80211_channel_to_frequency(chan_no, IEEE80211_BAND_2GHZ);
-    } else {
-        freq = ieee80211_channel_to_frequency(chan_no, IEEE80211_BAND_5GHZ);
-    }
-
-    chan = __ieee80211_get_channel(wiphy, freq);
-
-    if (!chan) {
-       hddLog(LOGE, FL("chan pointer is NULL"));
-       return NULL;
-    }
-
-    bss = cfg80211_get_bss(wiphy, chan, pBssDesc->bssId,
-                           &roamProfile->SSID.ssId[0], roamProfile->SSID.length,
-                           WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
-    if (bss == NULL) {
-        rssi = (VOS_MIN ((pBssDesc->rssi + pBssDesc->sinr), 0))*100;
-
-        return (cfg80211_inform_bss(wiphy, chan, pBssDesc->bssId,
-                le64_to_cpu(*(__le64 *)pBssDesc->timeStamp),
-                pBssDesc->capabilityInfo,
-                pBssDesc->beaconInterval, ie, ie_length,
-                rssi, GFP_KERNEL ));
-    } else {
-        return bss;
-    }
-}
-
-/*
  * FUNCTION: wlan_hdd_cfg80211_update_bss_list
  * This function is used to inform nl80211 interface that BSS might have
  * been lost.
@@ -11262,11 +11775,11 @@ wlan_hdd_cfg80211_update_bss_db(hdd_adapter_t *pAdapter,
     sme_RoamGetConnectProfile(hHal, pAdapter->sessionId, &roamProfile);
 
     if (NULL != roamProfile.pBssDesc) {
-        bss = wlan_hdd_cfg80211_inform_bss(pAdapter,
-                &roamProfile);
+        bss = wlan_hdd_cfg80211_inform_bss_frame(pAdapter,
+                                                 roamProfile.pBssDesc);
 
         if (NULL == bss) {
-            hddLog(LOG1, FL("cfg80211_inform_bss return NULL"));
+            hddLog(LOG1, FL("wlan_hdd_cfg80211_inform_bss_frame return NULL"));
         }
 
         sme_RoamFreeConnectProfile(hHal, &roamProfile);
@@ -12420,8 +12933,8 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                    "%s: Set HDD connState to eConnectionState_Connecting",
                    __func__);
-            hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
-                                                 eConnectionState_Connecting);
+            hdd_connSetConnectionState(pAdapter,
+                                        eConnectionState_Connecting);
         }
 
         /* After 8-way handshake supplicant should give the scan command
@@ -12450,8 +12963,8 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s: sme_RoamConnect (session %d) failed with "
                                       "status %d. -> NotConnected", __func__, pAdapter->sessionId, status);
             /* change back to NotAssociated */
-            hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
-                                             eConnectionState_NotConnected);
+            hdd_connSetConnectionState(pAdapter,
+                                       eConnectionState_NotConnected);
         }
 
         pRoamProfile->ChannelInfo.ChannelList = NULL;
@@ -13425,7 +13938,8 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
 disconnected:
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
              FL("Set HDD connState to eConnectionState_NotConnected"));
-    pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
+    hdd_connSetConnectionState(pAdapter,
+                                eConnectionState_NotConnected);
 
     return result;
 }
@@ -16151,21 +16665,6 @@ static int __wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy,
                     {
                         tANI_U8 i;
 
-                        if (pTdlsPeer->is_responder == 0)
-                        {
-                            v_U8_t staId = (v_U8_t)pTdlsPeer->staId;
-
-                            wlan_hdd_tdls_timer_restart(pAdapter,
-                                                        &pTdlsPeer->initiatorWaitTimeoutTimer,
-                                                       WAIT_TIME_TDLS_INITIATOR);
-                            /*
-                             * Suspend initiator TX until it receives direct
-                             * packet from the responder or
-                             * WAIT_TIME_TDLS_INITIATOR timer expires
-                             */
-                            WLANTL_SuspendDataTx( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                                                   &staId, NULL);
-                        }
                         vos_mem_zero(&smeTdlsPeerStateParams,
                                      sizeof(tSmeTdlsPeerStateParams));
 

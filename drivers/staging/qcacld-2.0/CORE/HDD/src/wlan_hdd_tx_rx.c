@@ -47,6 +47,7 @@
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
+#include <vos_sched.h>
 #ifdef IPV6_MCAST_WAR
 #include <linux/if_ether.h>
 #endif
@@ -368,12 +369,14 @@ static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter)
    return skb;
 }
 
-void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
+static void __hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
 {
    hdd_cfg80211_state_t *cfgState;
    struct sk_buff* skb;
    hdd_adapter_t* pMonAdapter = NULL;
    struct ieee80211_hdr *hdr;
+   hdd_context_t *hdd_ctx;
+   int ret = 0;
 
    if (pAdapter == NULL)
    {
@@ -381,6 +384,13 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
        FL("pAdapter is NULL"));
       VOS_ASSERT(0);
       return;
+   }
+
+   hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
+   ret = wlan_hdd_validate_context(hdd_ctx);
+   if (0 != ret) {
+       hddLog(LOGE, FL("HDD context is not valid"));
+       return;
    }
 
    pMonAdapter = hdd_get_adapter( pAdapter->pHddCtx, WLAN_HDD_MONITOR );
@@ -473,10 +483,37 @@ fail:
    return;
 }
 
-void hdd_mon_tx_work_queue(struct work_struct *work)
+/**
+ * hdd_mon_tx_mgmt_pkt() - monitor mode tx packet api
+ * @Adapter: Pointer to adapter
+ *
+ * Return: none
+ */
+void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
+{
+	vos_ssr_protect(__func__);
+	__hdd_mon_tx_mgmt_pkt(pAdapter);
+	vos_ssr_unprotect(__func__);
+}
+
+
+static void __hdd_mon_tx_work_queue(struct work_struct *work)
 {
    hdd_adapter_t* pAdapter = container_of(work, hdd_adapter_t, monTxWorkQueue);
-   hdd_mon_tx_mgmt_pkt(pAdapter);
+   __hdd_mon_tx_mgmt_pkt(pAdapter);
+}
+
+/**
+ * hdd_mon_tx_work_queue() - monitor mode tx work handler
+ * @work: Pointer to work
+ *
+ * Return: none
+ */
+void hdd_mon_tx_work_queue(struct work_struct *work)
+{
+	vos_ssr_protect(__func__);
+	__hdd_mon_tx_work_queue(work);
+	vos_ssr_unprotect(__func__);
 }
 
 int hdd_mon_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -792,6 +829,15 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
    else
    {
+      if (eConnectionState_Associated != pHddStaCtx->conn_info.connState) {
+         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+                FL("Tx frame in not associated state in %d context"),
+                    pAdapter->device_mode);
+         ++pAdapter->stats.tx_dropped;
+         ++pAdapter->hdd_stats.hddTxRxStats.txXmitDropped;
+         kfree_skb(skb);
+         return NETDEV_TX_OK;
+      }
       STAId = pHddStaCtx->conn_info.staId[0];
    }
 
@@ -974,15 +1020,17 @@ VOS_STATUS hdd_Ibss_GetStaId(hdd_station_ctx_t *pHddStaCtx, v_MACADDR_t *pMacAdd
     return VOS_STATUS_E_FAILURE;
 }
 
-/**============================================================================
-  @brief hdd_tx_timeout() - Function called by OS if there is any
-  timeout during transmission. Since HDD simply enqueues packet
-  and returns control to OS right away, this would never be invoked
-
-  @param dev : [in] pointer to Libra network device
-  @return    : None
-  ===========================================================================*/
-void hdd_tx_timeout(struct net_device *dev)
+/**
+ * __hdd_tx_timeout() - HDD tx timeout handler
+ * @dev: pointer to net_device structure
+ *
+ * Function called by OS if there is any timeout during transmission.
+ * Since HDD simply enqueues packet and returns control to OS right away,
+ * this would never be invoked
+ *
+ * Return: none
+ */
+static void __hdd_tx_timeout(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
    struct netdev_queue *txq;
@@ -1018,6 +1066,23 @@ void hdd_tx_timeout(struct net_device *dev)
 
    VOS_TRACE( VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
               "carrier state: %d", netif_carrier_ok(dev));
+}
+
+/**
+ * hdd_tx_timeout() - Wrapper function to protect __hdd_tx_timeout from SSR
+ * @dev: pointer to net_device structure
+ *
+ * Function called by OS if there is any timeout during transmission.
+ * Since HDD simply enqueues packet and returns control to OS right away,
+ * this would never be invoked
+ *
+ * Return: none
+ */
+void hdd_tx_timeout(struct net_device *dev)
+{
+	vos_ssr_protect(__func__);
+	__hdd_tx_timeout(dev);
+	vos_ssr_unprotect(__func__);
 }
 
 

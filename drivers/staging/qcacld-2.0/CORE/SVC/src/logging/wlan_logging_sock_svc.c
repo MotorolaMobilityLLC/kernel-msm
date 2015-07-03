@@ -50,8 +50,6 @@
 
 #define ANI_NL_MSG_LOG_TYPE 89
 #define ANI_NL_MSG_READY_IND_TYPE 90
-#define INVALID_PID -1
-
 #define MAX_LOGMSG_LENGTH 4096
 
 #define HOST_LOG_DRIVER_MSG        0x001
@@ -94,7 +92,6 @@ struct wlan_logging {
 	unsigned int drop_count;
 	/* current logbuf to which the log will be filled to */
 	struct log_msg *pcur_node;
-	bool is_buffer_free;
 	/* Event flag used for wakeup and post indication*/
 	unsigned long eventFlag;
 	/* Indicates logger thread is activated */
@@ -108,64 +105,6 @@ static struct log_msg *gplog_msg;
 
 /* PID of the APP to log the message */
 static int gapp_pid = INVALID_PID;
-static char wlan_logging_ready[] = "WLAN LOGGING READY";
-
-/*
- * Broadcast Logging service ready indication to any Logging application
- * Each netlink message will have a message of type tAniMsgHdr inside.
- */
-void wlan_logging_srv_nl_ready_indication(void)
-{
-	struct sk_buff *skb = NULL;
-	struct nlmsghdr *nlh;
-	tAniNlHdr *wnl = NULL;
-	int payload_len;
-	int    err;
-	static int rate_limit;
-
-	payload_len = sizeof(tAniHdr) + sizeof(wlan_logging_ready) +
-		sizeof(wnl->radio);
-	skb = dev_alloc_skb(NLMSG_SPACE(payload_len));
-	if (NULL == skb) {
-		if (!rate_limit) {
-			LOGGING_TRACE(VOS_TRACE_LEVEL_ERROR,
-					"NLINK: skb alloc fail %s", __func__);
-		}
-		rate_limit = 1;
-		return;
-	}
-	rate_limit = 0;
-
-	nlh = nlmsg_put(skb, 0, 0, ANI_NL_MSG_LOG, payload_len,
-			NLM_F_REQUEST);
-	if (NULL == nlh) {
-		LOGGING_TRACE(VOS_TRACE_LEVEL_ERROR,
-				"%s: nlmsg_put() failed for msg size[%d]",
-				__func__, payload_len);
-		kfree_skb(skb);
-		return;
-	}
-
-	wnl = (tAniNlHdr *) nlh;
-	wnl->radio = 0;
-	wnl->wmsg.type = ANI_NL_MSG_READY_IND_TYPE;
-	wnl->wmsg.length = sizeof(wlan_logging_ready);
-	memcpy((char*)&wnl->wmsg + sizeof(tAniHdr),
-			wlan_logging_ready,
-			sizeof(wlan_logging_ready));
-
-	/* sender is in group 1<<0 */
-	NETLINK_CB(skb).dst_group = WLAN_NLINK_MCAST_GRP_ID;
-
-	/*multicast the message to all listening processes*/
-	err = nl_srv_bcast(skb);
-	if (err) {
-		LOGGING_TRACE(VOS_TRACE_LEVEL_INFO_LOW,
-			"NLINK: Ready Indication Send Fail %s, err %d",
-			__func__, err);
-	}
-	return;
-}
 
 /* Utility function to send a netlink message to an application
  * in user space
@@ -267,8 +206,6 @@ static int wlan_queue_logmsg_for_app(void)
 		gwlan_logging.pcur_node =
 			(struct log_msg *)(gwlan_logging.free_list.next);
 		list_del_init(gwlan_logging.free_list.next);
-		 /* reset when free list is available. */
-		gwlan_logging.is_buffer_free = FALSE;
 	} else if (!list_empty(&gwlan_logging.filled_list)) {
 		/* Get buffer from filled list */
 		/* This condition will drop the packet from being
@@ -277,13 +214,13 @@ static int wlan_queue_logmsg_for_app(void)
 		gwlan_logging.pcur_node =
 			(struct log_msg *)(gwlan_logging.filled_list.next);
 		++gwlan_logging.drop_count;
-		if (vos_is_multicast_logging() && !gwlan_logging.is_buffer_free) {
+		/* print every 64th drop count */
+		if (vos_is_multicast_logging() &&
+				(!(gwlan_logging.drop_count % 0x40))) {
 			pr_info("%s: drop_count = %u index = %d filled_length = %d\n",
 				__func__, gwlan_logging.drop_count,
 				gwlan_logging.pcur_node->index,
 				gwlan_logging.pcur_node->filled_length);
-				/* print above logs only 1st time. */
-				gwlan_logging.is_buffer_free = TRUE;
 		}
 		list_del_init(gwlan_logging.filled_list.next);
 		ret = 1;
@@ -465,11 +402,11 @@ static int send_filled_buffers_to_user(void)
 		spin_unlock_irqrestore(&gwlan_logging.spin_lock, flags);
 
 		ret = nl_srv_bcast(skb);
-		if (ret < 0) {
+		/* print every 64th drop count */
+		if (ret < 0 && (!(gwlan_logging.drop_count % 0x40))) {
 			pr_err("%s: Send Failed %d drop_count = %u\n",
 				__func__, ret, ++gwlan_logging.drop_count);
 			skb = NULL;
-			wlan_logging_srv_nl_ready_indication();
 		} else {
 			skb = NULL;
 			ret = 0;
@@ -723,8 +660,6 @@ int wlan_logging_sock_activate_svc(int log_fe_to_console, int num_buf)
 
 	nl_srv_register(ANI_NL_MSG_LOG, wlan_logging_proc_sock_rx_msg);
 
-	/*Broadcast SVC ready message to logging app/s running*/
-	wlan_logging_srv_nl_ready_indication();
 	pr_info("%s: Activated wlan_logging svc\n", __func__);
 	return 0;
 }

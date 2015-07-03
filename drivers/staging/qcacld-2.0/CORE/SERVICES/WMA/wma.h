@@ -1131,6 +1131,8 @@ u_int16_t get_regdmn_5g(u_int32_t reg_dmn);
  * TODO: Need to Revist the Timing
  */
 #define WMA_TX_FRAME_COMPLETE_TIMEOUT  1000
+#define WMA_TX_FRAME_BUFFER_NO_FREE    0
+#define WMA_TX_FRAME_BUFFER_FREE       1
 
 struct wma_tx_ack_work_ctx {
 	tp_wma_handle wma_handle;

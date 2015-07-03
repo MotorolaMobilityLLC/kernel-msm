@@ -555,6 +555,11 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         }
     }
 
+    if (LIM_IS_AP_ROLE(psessionEntry)) {
+       vos_timer_stop(&psessionEntry->protection_fields_reset_timer);
+       vos_timer_destroy(&psessionEntry->protection_fields_reset_timer);
+    }
+
 #if defined (WLAN_FEATURE_VOWIFI_11R)
     /* Delete FT related information */
     limFTCleanup(pMac, psessionEntry);
@@ -723,11 +728,6 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         vos_timer_destroy(&psessionEntry->pmfComebackTimer);
     }
 #endif
-
-    if (LIM_IS_AP_ROLE(psessionEntry)) {
-       vos_timer_stop(&psessionEntry->protection_fields_reset_timer);
-       vos_timer_destroy(&psessionEntry->protection_fields_reset_timer);
-    }
 
     psessionEntry->valid = FALSE;
     return;

@@ -621,6 +621,12 @@ typedef struct sSapDfsInfo
      * operating DFS channel.
      */
     v_U8_t              sap_operating_chan_preferred_location;
+
+    /*
+     * Flag to indicate if DFS test mode is enabled and
+     * channel switch is disabled.
+     */
+    v_U8_t              disable_dfs_ch_switch;
 } tSapDfsInfo;
 
 typedef struct tagSapCtxList

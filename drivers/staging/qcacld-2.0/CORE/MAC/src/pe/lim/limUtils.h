@@ -610,6 +610,12 @@ void lim_set_ht_caps(tpAniSirGlobal p_mac,
 			tANI_U32 num_bytes);
 bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
 		tSirMacAddr a1, tpPESession session);
+#ifdef WLAN_FEATURE_11AC
+void lim_set_vht_caps(tpAniSirGlobal p_mac,
+			tpPESession p_session_entry,
+			tANI_U8 *p_ie_start,
+			tANI_U32 num_bytes);
+#endif /* WLAN_FEATURE_11AC */
 
 void lim_set_stads_rtt_cap(tpDphHashNode sta_ds, struct s_ext_cap *ext_cap);
 #endif /* __LIM_UTILS_H */

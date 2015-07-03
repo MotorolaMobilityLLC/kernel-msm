@@ -316,19 +316,29 @@ associated with the device
   --------------------------------------------------------------------------*/
 static void hdd_hostapd_uninit (struct net_device *dev)
 {
-   hdd_adapter_t *pHostapdAdapter = netdev_priv(dev);
+	hdd_adapter_t *adapter = netdev_priv(dev);
+	hdd_context_t *hdd_ctx;
 
-   ENTER();
+	ENTER();
 
-   if (pHostapdAdapter && pHostapdAdapter->pHddCtx)
-   {
-      hdd_deinit_adapter(pHostapdAdapter->pHddCtx, pHostapdAdapter);
+	if (WLAN_HDD_ADAPTER_MAGIC != adapter->magic) {
+		hddLog(LOGE, FL("Invalid magic"));
+		return;
+	}
 
-      /* after uninit our adapter structure will no longer be valid */
-      pHostapdAdapter->dev = NULL;
-   }
+	hdd_ctx = WLAN_HDD_GET_CTX(adapter);
+	if (NULL == hdd_ctx) {
+		hddLog(LOGE, FL("NULL hdd_ctx"));
+		return;
+	}
 
-   EXIT();
+	hdd_deinit_adapter(hdd_ctx, adapter, true);
+
+	/* after uninit our adapter structure will no longer be valid */
+	adapter->dev = NULL;
+	adapter->magic = 0;
+
+	EXIT();
 }
 
 
@@ -5218,7 +5228,7 @@ VOS_STATUS hdd_register_hostapd( hdd_adapter_t *pAdapter, tANI_U8 rtnl_lock_held
    return status;
 }
 
-VOS_STATUS hdd_unregister_hostapd(hdd_adapter_t *pAdapter)
+VOS_STATUS hdd_unregister_hostapd(hdd_adapter_t *pAdapter, bool rtnl_held)
 {
 #ifdef WLAN_FEATURE_MBSSID
    VOS_STATUS status;
@@ -5234,7 +5244,13 @@ VOS_STATUS hdd_unregister_hostapd(hdd_adapter_t *pAdapter)
       detach the wireless device handlers */
    if (pAdapter->dev)
    {
-      pAdapter->dev->wireless_handlers = NULL;
+      if (rtnl_held)
+          pAdapter->dev->wireless_handlers = NULL;
+      else {
+          rtnl_lock();
+          pAdapter->dev->wireless_handlers = NULL;
+          rtnl_unlock();
+      }
    }
 
 #ifdef WLAN_FEATURE_MBSSID

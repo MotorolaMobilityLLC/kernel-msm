@@ -406,6 +406,7 @@ vos_attach_mmie(v_U8_t *igtk, v_U8_t *ipn, u_int16_t key_id,
     if (IS_ERR(tfm))
     {
         ret = PTR_ERR(tfm);
+        tfm = NULL;
         VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR,
              "%s: crypto_alloc_cipher failed (%d)", __func__, ret);
         goto err_tfm;
@@ -530,6 +531,7 @@ v_BOOL_t vos_is_mmie_valid(v_U8_t *igtk, v_U8_t *ipn,
 #endif
     if (IS_ERR(tfm)) {
         ret = PTR_ERR(tfm);
+        tfm = NULL;
         VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR,
              "crypto_alloc_cipher failed (%d)", ret);
         goto err_tfm;

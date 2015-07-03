@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -4078,6 +4078,12 @@ REG_TABLE_ENTRY mbssid_sap_dyn_ini_reg_table[] =
                  CFG_SAP_FORCE_11AC_FOR_11N_MIN,
                  CFG_SAP_FORCE_11AC_FOR_11N_MAX ),
 
+   REG_VARIABLE(CFG_P2P_LISTEN_DEFER_INTERVAL_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, p2p_listen_defer_interval,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_P2P_LISTEN_DEFER_INTERVAL_DEFAULT,
+                CFG_P2P_LISTEN_DEFER_INTERVAL_MIN,
+                CFG_P2P_LISTEN_DEFER_INTERVAL_MAX),
 };
 #endif
 
@@ -4639,6 +4645,8 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
 
   hddLog(LOG2, "Name = [gfine_time_meas_cap] Value = [%u]",
                    pHddCtx->cfg_ini->fine_time_meas_cap);
+  hddLog(LOG2, "Name = [gP2PListenDeferInterval] Value = [%u]",
+                   pHddCtx->cfg_ini->p2p_listen_defer_interval);
 }
 
 #define CFG_VALUE_MAX_LEN 256

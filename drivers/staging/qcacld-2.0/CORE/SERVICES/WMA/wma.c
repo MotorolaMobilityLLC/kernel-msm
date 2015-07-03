@@ -185,6 +185,27 @@
 
 #define WMA_LOG_COMPLETION_TIMER 10000 /* 10 seconds */
 
+#ifdef FEATURE_WLAN_EXTSCAN
+/**
+ * enum extscan_report_events_type - extscan report events type
+ * @EXTSCAN_REPORT_EVENTS_BUFFER_FULL: report only when scan history is % full
+ * @EXTSCAN_REPORT_EVENTS_EACH_SCAN: report a scan completion event after scan
+ * @EXTSCAN_REPORT_EVENTS_FULL_RESULTS: forward scan results
+ *		(beacons/probe responses + IEs)
+ *		in real time to HAL, in addition to completion events.
+ *		Note: To keep backward compatibility,
+ *		fire completion events regardless of REPORT_EVENTS_EACH_SCAN.
+ * @EXTSCAN_REPORT_EVENTS_NO_BATCH: controls batching,
+ *		0 => batching, 1 => no batching
+ */
+enum extscan_report_events_type {
+	EXTSCAN_REPORT_EVENTS_BUFFER_FULL   = 0x00,
+	EXTSCAN_REPORT_EVENTS_EACH_SCAN     = 0x01,
+	EXTSCAN_REPORT_EVENTS_FULL_RESULTS  = 0x02,
+	EXTSCAN_REPORT_EVENTS_NO_BATCH      = 0x04,
+};
+#endif
+
 /* Data rate 100KBPS based on IE Index */
 struct index_data_rate_type
 {
@@ -1077,6 +1098,7 @@ wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle, u_int32_t if_id,
 	wmi_vdev_set_param_cmd_fixed_param *cmd;
 	wmi_buf_t buf;
 	u_int16_t len = sizeof(*cmd);
+	tp_wma_handle wma;
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf) {
@@ -1093,6 +1115,17 @@ wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle, u_int32_t if_id,
 	cmd->param_value = param_value;
 	WMA_LOGD("Setting vdev %d param = %x, value = %u",
 				if_id, param_id, param_value);
+
+	wma = vos_get_context(VOS_MODULE_ID_WDA,
+			vos_get_global_context(VOS_MODULE_ID_WDA, NULL));
+
+	if (!wma->interfaces[if_id].vdev_up) {
+		WMA_LOGE("%s:vdev %d is not up. Skipping to send set param cmd"
+				, __func__, if_id);
+		wmi_buf_free(buf);
+		return -EINVAL;
+	}
+
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 					WMI_VDEV_SET_PARAM_CMDID);
 	if (ret < 0) {
@@ -22000,20 +22033,34 @@ static VOS_STATUS wma_process_ll_stats_getReq
 		dest_blist->channel_band = src_bucket->band;
 		dest_blist->num_channels = src_bucket->numChannels;
 		dest_blist->notify_extscan_events = 0;
-		if (src_bucket->reportEvents >= 2) {
+
+		if (src_bucket->reportEvents & EXTSCAN_REPORT_EVENTS_EACH_SCAN)
+			dest_blist->notify_extscan_events =
+					WMI_EXTSCAN_BUCKET_COMPLETED_EVENT;
+
+		if (src_bucket->reportEvents &
+				EXTSCAN_REPORT_EVENTS_FULL_RESULTS) {
 			dest_blist->forwarding_flags =
 				WMI_EXTSCAN_FORWARD_FRAME_TO_HOST;
+			dest_blist->notify_extscan_events |=
+				WMI_EXTSCAN_BUCKET_COMPLETED_EVENT |
+				WMI_EXTSCAN_CYCLE_STARTED_EVENT |
+				WMI_EXTSCAN_CYCLE_COMPLETED_EVENT;
 		} else {
 			dest_blist->forwarding_flags =
 				WMI_EXTSCAN_NO_FORWARDING;
 		}
-		if (src_bucket->reportEvents >= 1)
-			dest_blist->notify_extscan_events =
-					WMI_EXTSCAN_BUCKET_COMPLETED_EVENT;
-		if (src_bucket->reportEvents >= 2)
-			dest_blist->notify_extscan_events |=
-				WMI_EXTSCAN_CYCLE_STARTED_EVENT |
-				WMI_EXTSCAN_CYCLE_COMPLETED_EVENT;
+
+		if (src_bucket->reportEvents & EXTSCAN_REPORT_EVENTS_NO_BATCH)
+			dest_blist->configuration_flags = 0;
+		else
+			dest_blist->configuration_flags =
+				WMI_EXTSCAN_BUCKET_CACHE_RESULTS;
+
+		WMA_LOGI("%s: ntfy_extscan_events:%u cfg_flags:%u fwd_flags:%u",
+			__func__, dest_blist->notify_extscan_events,
+			dest_blist->configuration_flags,
+			dest_blist->forwarding_flags);
 
 		dest_blist->min_dwell_time_active = src_bucket->min_dwell_time_active;
 		dest_blist->max_dwell_time_active = src_bucket->max_dwell_time_active;
@@ -26571,7 +26618,9 @@ VOS_STATUS WDA_TxPacket(void *wma_context, void *tx_frame, u_int16_t frmLen,
 			adf_nbuf_unmap_single(pdev->osdev, skb, ADF_OS_DMA_TO_DEVICE);
 			/* Call Download Cb so that umac can free the buffer */
 			if (tx_frm_download_comp_cb)
-				tx_frm_download_comp_cb(wma_handle->mac_context, tx_frame, 1);
+				tx_frm_download_comp_cb(wma_handle->mac_context,
+						tx_frame,
+						WMA_TX_FRAME_BUFFER_FREE);
 			wma_handle->umac_data_ota_ack_cb = NULL;
 			wma_handle->last_umac_data_nbuf = NULL;
 			return VOS_STATUS_E_FAILURE;
@@ -26579,7 +26628,9 @@ VOS_STATUS WDA_TxPacket(void *wma_context, void *tx_frame, u_int16_t frmLen,
 
 		/* Call Download Callback if passed */
 		if (tx_frm_download_comp_cb)
-			tx_frm_download_comp_cb(wma_handle->mac_context, tx_frame, 0);
+			tx_frm_download_comp_cb(wma_handle->mac_context,
+						tx_frame,
+						WMA_TX_FRAME_BUFFER_NO_FREE);
 
 		return VOS_STATUS_SUCCESS;
 	}
@@ -26669,9 +26720,13 @@ VOS_STATUS WDA_TxPacket(void *wma_context, void *tx_frame, u_int16_t frmLen,
 
 	/*
 	 * Failed to send Tx Mgmt Frame
-	 * Return Failure so that umac can freeup the buf
 	 */
 	if (status) {
+	/* Call Download Cb so that umac can free the buffer */
+		if (tx_frm_download_comp_cb)
+			tx_frm_download_comp_cb(wma_handle->mac_context,
+						tx_frame,
+						WMA_TX_FRAME_BUFFER_FREE);
 		WMA_LOGP("%s: Failed to send Mgmt Frame", __func__);
 		goto error;
 	}
@@ -26711,7 +26766,8 @@ VOS_STATUS WDA_TxPacket(void *wma_context, void *tx_frame, u_int16_t frmLen,
 		 * callback once the frame is successfully
 		 * given to txrx module
 		 */
-		tx_frm_download_comp_cb(wma_handle->mac_context, tx_frame, 0);
+		tx_frm_download_comp_cb(wma_handle->mac_context, tx_frame,
+					WMA_TX_FRAME_BUFFER_NO_FREE);
 	}
 
 	return VOS_STATUS_SUCCESS;
@@ -28217,6 +28273,7 @@ int wma_dfs_indicate_radar(struct ieee80211com *ic,
 	struct wma_dfs_radar_indication *radar_event;
 	struct hdd_dfs_radar_ind hdd_radar_event;
 	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
+	tpAniSirGlobal pmac = NULL;
 
 	wma = (tp_wma_handle) vos_get_context(VOS_MODULE_ID_WDA, vos_context);
 
@@ -28227,6 +28284,9 @@ int wma_dfs_indicate_radar(struct ieee80211com *ic,
 	}
 
 	hdd_ctx = vos_get_context(VOS_MODULE_ID_HDD,wma->vos_context);
+	pmac = (tpAniSirGlobal)
+		vos_get_context(VOS_MODULE_ID_PE, wma->vos_context);
+
 	if (wma->dfs_ic != ic)
 	{
 		WMA_LOGE("%s:DFS- Invalid WMA handle",__func__);
@@ -28242,8 +28302,11 @@ int wma_dfs_indicate_radar(struct ieee80211com *ic,
 
 	/*
 	 * Do not post multiple Radar events on the same channel.
+	 * But, when DFS test mode is enabled, allow multiple dfs
+	 * radar events to be posted on the same channel.
 	 */
-	if ( ichan->ic_ieee  != (wma->dfs_ic->last_radar_found_chan) )
+	if ((ichan->ic_ieee  != (wma->dfs_ic->last_radar_found_chan)) ||
+	    ( pmac->sap.SapDfsInfo.disable_dfs_ch_switch == VOS_TRUE) )
 	{
 		wma->dfs_ic->last_radar_found_chan = ichan->ic_ieee;
 		/* Indicate the radar event to HDD to stop the netif Tx queues*/

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -933,7 +933,7 @@ static void ramdump_work_handler(struct work_struct *ramdump)
 		goto out_fail;
 
 	printk("%s: RAM dump collecting completed!\n", __func__);
-	msleep(250);
+
 #if defined(HIF_SDIO)
 	panic("CNSS Ram dump collected\n");
 #else
@@ -1184,7 +1184,7 @@ void ol_target_failure(void *instance, A_STATUS status)
 		printk("[%02d]   :  0x%08X\n", i, reg_dump_values[i]);
 	}
 
-	if (scn->enablefwlog) {
+	if (!scn->enablefwlog) {
 		printk("%s: FWLog is disabled in ini\n", __func__);
 		goto disable_fwlog;
 	}

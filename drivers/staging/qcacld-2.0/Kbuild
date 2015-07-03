@@ -84,7 +84,7 @@ ifeq ($(KERNEL_BUILD), 0)
                 CONFIG_LINUX_QCMBR :=y
         endif
 	#Flag to enable memdump feature
-	CONFIG_FEATURE_MEMDUMP := y
+	CONFIG_WLAN_FEATURE_MEMDUMP := y
 endif
 
 # To enable ESE upload, dependent config
@@ -367,7 +367,7 @@ ifeq ($(CONFIG_QCOM_TDLS),y)
 HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_hdd_tdls.o
 endif
 
-ifeq ($(CONFIG_FEATURE_MEMDUMP),y)
+ifeq ($(CONFIG_WLAN_FEATURE_MEMDUMP),y)
 HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_memdump.o
 endif
 
@@ -1292,7 +1292,7 @@ ifeq ($(CONFIG_LINUX_QCMBR),y)
 CDEFINES += -DLINUX_QCMBR
 endif
 
-ifeq ($(CONFIG_FEATURE_MEMDUMP),y)
+ifeq ($(CONFIG_WLAN_FEATURE_MEMDUMP),y)
 CDEFINES += -DWLAN_FEATURE_MEMDUMP
 endif
 

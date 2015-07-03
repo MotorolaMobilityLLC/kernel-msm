@@ -644,6 +644,7 @@ WLANSAP_StartBss
     ptSapContext pSapCtx = NULL;
     tANI_BOOLEAN restartNeeded;
     tHalHandle hHal;
+    tpAniSirGlobal pmac = NULL;
     int ret;
 
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
@@ -735,6 +736,13 @@ WLANSAP_StartBss
             }
         }
 
+        pmac = PMAC_STRUCT( hHal );
+        /*
+         * Copy the DFS Test Mode setting to pmac for
+         * access in lower layers
+         */
+        pmac->sap.SapDfsInfo.disable_dfs_ch_switch =
+                                   pConfig->disableDFSChSwitch;
         // Copy MAC filtering settings to sap context
         pSapCtx->eSapMacAddrAclMode = pConfig->SapMacaddr_acl;
         vos_mem_copy(pSapCtx->acceptMacList, pConfig->accept_mac, sizeof(pConfig->accept_mac));

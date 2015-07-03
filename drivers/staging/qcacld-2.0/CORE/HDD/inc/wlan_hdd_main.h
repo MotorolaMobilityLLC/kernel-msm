@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -195,7 +195,7 @@
 #define WLAN_HDD_QOS_MAP_CONFIGURE 4
 #define HDD_SAP_WAKE_LOCK_DURATION 10000 //in msecs
 
-#define HDD_MOD_EXIT_SSR_MAX_RETRIES 30
+#define HDD_MOD_EXIT_SSR_MAX_RETRIES 60
 
 /* Maximum number of interfaces allowed(STA, P2P Device, P2P Interfaces) */
 #ifndef WLAN_OPEN_P2P_INTERFACE
@@ -587,6 +587,14 @@ typedef struct hdd_remain_on_chan_ctx
   action_pkt_buffer_t action_pkt_buff;
   v_BOOL_t hdd_remain_on_chan_cancel_in_progress;
 }hdd_remain_on_chan_ctx_t;
+
+/* RoC Request entry */
+typedef struct hdd_roc_req
+{
+    hdd_list_node_t node; /* MUST be first element */
+    hdd_adapter_t *pAdapter;
+    hdd_remain_on_chan_ctx_t *pRemainChanCtx;
+}hdd_roc_req_t;
 
 typedef enum{
     HDD_IDLE,
@@ -1008,6 +1016,12 @@ struct hdd_adapter_s
    v_BOOL_t isLinkLayerStatsSet;
 #endif
    v_U8_t linkStatus;
+
+    /* Time stamp for last completed RoC request */
+    v_TIME_t lastRocTs;
+
+    /* work queue to defer the back to back p2p_listen */
+    struct delayed_work roc_work;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -1455,6 +1469,9 @@ struct hdd_context_s
 
     /* Is htTxSTBC supported by target */
     uint8_t   ht_tx_stbc_supported;
+    /* RoC request queue and work */
+    struct work_struct rocReqWork;
+    hdd_list_t hdd_roc_req_q;
 };
 
 /*---------------------------------------------------------------------------
@@ -1500,7 +1517,8 @@ hdd_adapter_t * hdd_get_adapter_by_macaddr( hdd_context_t *pHddCtx, tSirMacAddr 
 hdd_adapter_t * hdd_get_mon_adapter( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter );
 hdd_adapter_t * hdd_get_adapter( hdd_context_t *pHddCtx, device_mode_t mode );
-void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
+void hdd_deinit_adapter(hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
+                        bool rtnl_held);
 VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
                              const v_BOOL_t bCloseSession);
 void hdd_set_station_ops( struct net_device *pWlanDev );

@@ -41,6 +41,7 @@
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
+#include <sys/prctl.h>
 #include <linux/prctl.h>
 #include <pwd.h>
 #ifdef ANDROID
@@ -48,6 +49,8 @@
 #endif
 #include <sys/socket.h>
 #include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <net/if.h>
 #include "event.h"
 #include "msg.h"
 #include "log.h"
@@ -57,6 +60,8 @@
 #include "diagcmd.h"
 #include "diag.h"
 #include "cld-diag-parser.h"
+
+#define CNSS_INTF "wlan0"
 
 #ifdef ANDROID
 /* CAPs needed
@@ -96,16 +101,14 @@ struct msghdr msg;
 static FILE *fwlog_res;
 FILE *log_out = NULL;
 const char *fwlog_res_file;
+static int cnss_sock = -1;
 int32_t max_records;
 int32_t record = 0;
 const char *progname;
 char dbglogoutfile[PATH_MAX];
 int32_t optionflag = 0;
-boolean isDriverLoaded = FALSE;
-const char driverLoaded[] = "KNLREADY";
-const char driverUnLoaded[] = "KNLCLOSE";
-
 int32_t rec_limit = 100000000; /* Million records is a good default */
+boolean isDriverLoaded = FALSE;
 
 static void
 usage(void)
@@ -247,7 +250,7 @@ static void cleanup(void) {
 
 static void stop(int32_t signum)
 {
-
+    signum; /* Avoid warning */
     if(optionflag & LOGFILE_FLAG){
         printf("Recording stopped\n");
         cleanup();
@@ -380,7 +383,7 @@ static int32_t create_nl_socket()
     return sock_fd;
 }
 
-static uint32_t initialize(int32_t sock_fd)
+static int initialize(int32_t sock_fd)
 {
     char *mesg = "Hello";
 
@@ -414,17 +417,216 @@ static uint32_t initialize(int32_t sock_fd)
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
 
-    sendmsg(sock_fd, &msg, 0);
+    if (sendmsg(sock_fd, &msg, 0) < 0) {
+        android_printf("%s error ", __func__);
+        return -1;
+    }
+    return 1;
+}
+
+static int
+cnss_read_ifname(struct nlmsghdr *h, size_t len)
+{
+    struct ifinfomsg *ifi;
+    int attrlen, nlmsg_len, rta_len;
+    struct rtattr *attr;
+
+    if (!h) {
+        android_printf("%s null error ", __func__);
+        return 0;
+    }
+
+    if (len < sizeof(*ifi)) {
+        android_printf("%s len error ", __func__);
+        return 0;
+    }
+
+    ifi = NLMSG_DATA(h);
+
+    nlmsg_len = NLMSG_ALIGN(sizeof(struct ifinfomsg));
+
+    attrlen = h->nlmsg_len - nlmsg_len;
+    if (attrlen < 0)
+        return 0;
+
+    attr = (struct rtattr *) (((char *) ifi) + nlmsg_len);
+
+    rta_len = RTA_ALIGN(sizeof(struct rtattr));
+    while (RTA_OK(attr, attrlen)) {
+        char ifname[IFNAMSIZ + 1];
+
+        if (attr->rta_type == IFLA_IFNAME) {
+            int n = attr->rta_len - rta_len;
+            if (n < 0)
+                break;
+
+            memset(ifname, 0, sizeof(ifname));
+
+            if ((size_t) n > sizeof(ifname))
+                n = sizeof(ifname);
+            memcpy(ifname, ((char *) attr) + rta_len, n);
+            if (strcmp(ifname, CNSS_INTF) == 0)
+                return 1;
+            else
+                return 0;
+        }
+
+        attr = RTA_NEXT(attr, attrlen);
+    }
     return 0;
+}
+
+static int cnss_intf_receive(int sock)
+{
+    char buf[MAX_PKT_SIZE];
+    int left, sleep_cnt = 0;
+    struct sockaddr_nl from;
+    socklen_t fromlen;
+    struct nlmsghdr *h;
+
+    fromlen = sizeof(from);
+    while ( 1 ) {
+        left = recvfrom(sock, buf, sizeof(buf), MSG_DONTWAIT,
+                        (struct sockaddr *) &from, &fromlen);
+        if (left < 0) {
+            return -1;
+        }
+
+        h = (struct nlmsghdr *) buf;
+        while (left >= (int) sizeof(*h)) {
+            int len, plen;
+
+            len = h->nlmsg_len;
+            plen = len - sizeof(*h);
+            if (len > left || plen < 0) {
+                break;
+            }
+
+            switch (h->nlmsg_type) {
+                case RTM_NEWLINK:
+                    if (cnss_read_ifname(h, plen)) {
+                        if (!isDriverLoaded) {
+                            isDriverLoaded = TRUE;
+                            sleep_cnt = 0;
+                            while ( 1 ) {
+                                if (initialize(sock_fd) < 0) {
+                                    android_printf("%s error retrying",
+                                                    __func__);
+                                    sleep_cnt++;
+                                    sleep(1);
+                                    /*  DONT LOOP EVER */
+                                    if (sleep_cnt >= INIT_WITH_SLEEP)
+                                        break;
+                                    else
+                                        continue;
+                                }
+                                diag_initialize(sock_fd, optionflag);
+                                cnssdiag_register_kernel_logging(sock_fd, nlh);
+                                break;
+                            }
+                        }
+
+                    }
+                break;
+                case RTM_DELLINK:
+                    if (cnss_read_ifname(h, plen)) {
+                        isDriverLoaded = FALSE;
+                    }
+                break;
+            }
+
+            len = NLMSG_ALIGN(len);
+            left -= len;
+            h = (struct nlmsghdr *) ((char *) h + len);
+        }
+    }
+    return 0;
+}
+
+static int cnss_intf_init()
+{
+    struct sockaddr_nl local;
+    cnss_sock = socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+    if (cnss_sock < 0) {
+        return -1;
+    }
+
+    memset(&local, 0, sizeof(local));
+    local.nl_family = AF_NETLINK;
+    local.nl_groups = RTMGRP_LINK;
+    if (bind(cnss_sock, (struct sockaddr *) &local, sizeof(local)) < 0) {
+        close(cnss_sock);
+        return -1;
+    }
+    return 1;
+}
+
+static inline void* cnss_intf_wait_receive(void * arg)
+{
+    arg; /* Avoid warning */
+    fd_set  fds;
+    int     oldfd, ret;
+    int sock;
+
+    cnss_intf_init();
+    sock = cnss_sock;
+
+    if (sock < 0) {
+        android_printf("%s error Netlink Socket Not Available", __func__);
+        return NULL;
+    }
+    while ( 1 ) {
+        /* Initialize fds */
+        FD_ZERO(&fds);
+        FD_SET(sock, &fds);
+        oldfd = sock;
+
+        /* Wait for some trigger event */
+        ret = select(oldfd + 1, &fds, NULL, NULL, NULL);
+
+        if (ret < 0) {
+            /* Error Occurred */
+            android_printf("%s error Netlink select fail", __func__);
+            return NULL;
+        } else if (!ret) {
+            android_printf("%s error Select on Netlink Socket Timed Out",
+                            __func__);
+            /* Timeout Occurred */
+            return NULL;
+        }
+
+        /* Check if any event is available for us */
+        if (FD_ISSET(sock, &fds)) {
+            cnss_intf_receive(sock);
+        }
+    }
+    return NULL;
+}
+
+static inline boolean is_interface(const char *interface, int len)
+{
+    struct ifreq ifr;
+    int sock = socket(PF_INET6, SOCK_DGRAM, IPPROTO_IP);
+    memset(&ifr, 0, sizeof(ifr));
+    if (interface) {
+       strlcpy(ifr.ifr_name, interface, len);
+    }
+    if (ioctl(sock, SIOCGIFFLAGS, &ifr) < 0) {
+            return FALSE;
+    }
+    close(sock);
+    return TRUE;
 }
 
 int32_t main(int32_t argc, char *argv[])
 {
-    uint32_t res =0;
+    int res =0;
     uint8_t *eventbuf = NULL;
     uint8_t *dbgbuf = NULL;
     int32_t c;
     struct dbglog_slot *slot;
+    int cnss_intf_len = strlen(CNSS_INTF) +  1;
+    pthread_t thd_id;
 
     progname = argv[0];
     uint16_t diag_type = 0;
@@ -497,14 +699,18 @@ int32_t main(int32_t argc, char *argv[])
 #endif
     }
 
+    pthread_create(&thd_id, NULL, &cnss_intf_wait_receive, NULL);
+
     sock_fd = create_nl_socket();
     if (sock_fd < 0) {
         fprintf(stderr, "Socket creation failed sock_fd 0x%x \n", sock_fd);
         return -1;
     }
 
-    initialize(sock_fd);
-    cnssdiag_register_kernel_logging(sock_fd, nlh);
+    if (is_interface(CNSS_INTF, cnss_intf_len)) {
+        initialize(sock_fd);
+        cnssdiag_register_kernel_logging(sock_fd, nlh);
+    }
 
     signal(SIGINT, stop);
     signal(SIGTERM, stop);
@@ -518,7 +724,7 @@ int32_t main(int32_t argc, char *argv[])
             free(nlh);
             return -1;
         }
-        max_records = rec_limit / RECLEN;
+        max_records = rec_limit;
         printf("Storing last %d records\n", max_records);
 
         log_out = fopen(dbglogoutfile, "w");
@@ -535,44 +741,17 @@ int32_t main(int32_t argc, char *argv[])
 
     parser_init();
 
-    while ((res = recvmsg(sock_fd, &msg, 0)) > 0)  {
-       if ((isDriverLoaded == FALSE) &&
-            (res == SIZEOF_NL_MSG_LOAD)) {
-           eventbuf = (uint8_t *)NLMSG_DATA(nlh);
-           if (0 == strncmp(driverLoaded, (const char *)eventbuf,
-                            strlen(driverLoaded))) {
-               isDriverLoaded = TRUE;
-               close(sock_fd);
-               /* Wait for driver to Load */
-               sleep(10);
-               sock_fd = create_nl_socket();
-               if (sock_fd < 0) {
-                   printf("create nl sock failed ret %d \n", sock_fd);
-                   return -1;
-              }
-              initialize(sock_fd);
-              diag_initialize(isDriverLoaded, sock_fd, optionflag);
-              cnssdiag_register_kernel_logging(sock_fd, nlh);
-           }
-       } else if ((isDriverLoaded == TRUE) &&
-                   (res == SIZEOF_NL_MSG_UNLOAD)) {
-           eventbuf = (uint8_t *)NLMSG_DATA(nlh);
-           if (0 == strncmp(driverUnLoaded, (const char *)eventbuf,
-                            strlen(driverUnLoaded))) {
-               isDriverLoaded = FALSE;
-               diag_initialize(isDriverLoaded, sock_fd, optionflag);
-           }
-       } else if (((res >= sizeof(struct dbglog_slot)) &&
-                 (res != SIZEOF_NL_MSG_LOAD) &&
-                 (res != SIZEOF_NL_MSG_UNLOAD)) ||
-                 (nlh->nlmsg_type == WLAN_NL_MSG_CNSS_HOST_EVENT_LOG)) {
-           isDriverLoaded = TRUE;
-           process_cnss_diag_msg((tAniNlHdr *)nlh);
-           memset(nlh,0,NLMSG_SPACE(MAX_MSG_SIZE));
-       } else {
-           /* Ignore other messages that might be broadcast */
-           continue;
-       }
+    while ( 1 )  {
+        if ((res = recvmsg(sock_fd, &msg, 0)) < 0)
+                  continue;
+        if ((res >= (int)sizeof(struct dbglog_slot)) ||
+                  (nlh->nlmsg_type == WLAN_NL_MSG_CNSS_HOST_EVENT_LOG)) {
+            process_cnss_diag_msg((tAniNlHdr *)nlh);
+            memset(nlh,0,NLMSG_SPACE(MAX_MSG_SIZE));
+        } else {
+            /* Ignore other messages that might be broadcast */
+            continue;
+        }
     }
     /* Release the handle to Diag*/
     Diag_LSM_DeInit();

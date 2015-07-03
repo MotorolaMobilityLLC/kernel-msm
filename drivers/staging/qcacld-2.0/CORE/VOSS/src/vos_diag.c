@@ -146,13 +146,6 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
     if (nl_srv_is_initialized() != 0)
         return;
 
-#ifdef WLAN_KD_READY_NOTIFIER
-    /* NL is not ready yet, WLAN KO started first */
-    if ((pHddCtx->kd_nl_init) && (!pHddCtx->ptt_pid))
-    {
-        nl_srv_nl_ready_indication();
-    }
-#endif /* WLAN_KD_READY_NOTIFIER */
 
    /* Send the log data to the ptt app only if it is registered
     * with the wlan driver
@@ -273,14 +266,6 @@ void vos_event_report_payload(v_U16_t event_Id, v_U16_t length, v_VOID_t *pPaylo
 
     if (nl_srv_is_initialized() != 0)
         return;
-
-#ifdef WLAN_KD_READY_NOTIFIER
-    /* NL is not ready yet, WLAN KO started first */
-    if ((pHddCtx->kd_nl_init) && (!pHddCtx->ptt_pid))
-    {
-        nl_srv_nl_ready_indication();
-    }
-#endif /* WLAN_KD_READY_NOTIFIER */
 
     /* Send the log data to the ptt app only if it is registered
      * with the wlan driver

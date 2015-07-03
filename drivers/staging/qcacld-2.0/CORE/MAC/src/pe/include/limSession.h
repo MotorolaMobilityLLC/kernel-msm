@@ -487,6 +487,8 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef FEATURE_WLAN_ESE
     uint8_t is_ese_version_ie_present;
 #endif
+    /* flag to indicate country code in beacon */
+    tANI_U8 countryInfoPresent;
 } tPESession, *tpPESession;
 
 /*-------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -56,6 +56,8 @@
 #ifdef WLAN_FEATURE_11W
 #define WLAN_HDD_SET_WEP_FRM_FC(__fc__)     ( (__fc__) = ((__fc__) | 0x40))
 #endif //WLAN_FEATURE_11W
+
+#define HDD_P2P_MAX_ROC_DURATION 1000
 
 enum hdd_rx_flags {
     HDD_RX_FLAG_DECRYPTED        = 1 << 0,
@@ -183,5 +185,11 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev );
 #endif
 
 void wlan_hdd_cleanup_remain_on_channel_ctx(hdd_adapter_t *pAdapter);
+
+/* Max entry for RoC request */
+#define MAX_ROC_REQ_QUEUE_ENTRY 10
+
+void wlan_hdd_roc_request_dequeue(struct work_struct *work);
+void hdd_p2p_roc_work_queue(struct work_struct *work);
 
 #endif // __P2P_H

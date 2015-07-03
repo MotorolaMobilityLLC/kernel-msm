@@ -7705,25 +7705,34 @@ typedef struct
     A_UINT32 netWorkStartIndex;  /* indicate the start index of network info*/
 } wmi_batch_scan_result_scan_list;
 
-#define LPI_IE_BITMAP_BSSID                  0x00000001
-#define LPI_IE_BITMAP_IS_PROBE               0x00000002
-#define LPI_IE_BITMAP_SSID                   0x00000004
-#define LPI_IE_BITMAP_RSSI                   0x00000008
-#define LPI_IE_BITMAP_CHAN                   0x00000010
-#define LPI_IE_BITMAP_AP_TX_PWR              0x00000020
-#define LPI_IE_BITMAP_TX_RATE                0x00000040
-#define LPI_IE_BITMAP_80211_MC_SUPPORT       0x00000080
-#define LPI_IE_BITMAP_TSF_TIMER_VALUE        0x00000100
-#define LPI_IE_BITMAP_AGE_OF_MESAUREMENT     0x00000200
-#define LPI_IE_BITMAP_CONN_STATUS            0x00000400
-#define LPI_IE_BITMAP_MSAP_IE                0x00000800
-#define LPI_IE_BITMAP_SEC_STATUS             0x00001000
-#define LPI_IE_BITMAP_DEVICE_TYPE            0x00002000
-#define LPI_IE_BITMAP_CHAN_IS_PASSIVE        0x00004000
-#define LPI_IE_BITMAP_DWELL_TIME             0x00008000
-#define LPI_IE_BITMAP_BAND_CENTER_FREQ1      0x00010000
-#define LPI_IE_BITMAP_BAND_CENTER_FREQ2      0x00020000
-#define LPI_IE_BITMAP_PHY_MODE               0x00040000
+#define LPI_IE_BITMAP_BSSID                  0x00000001     // if this bit is set, bssid of the scan response frame is sent as the first IE in the data buffer sent to LOWI LP.
+#define LPI_IE_BITMAP_IS_PROBE               0x00000002     // send true or false based on scan response frame being a Probe Rsp or not
+#define LPI_IE_BITMAP_SSID                   0x00000004     // send ssid from received scan response frame
+#define LPI_IE_BITMAP_RSSI                   0x00000008     // send RSSI value reported by HW for the received scan response after adjusting with noise floor
+#define LPI_IE_BITMAP_CHAN                   0x00000010     // send channel number from the received scan response
+#define LPI_IE_BITMAP_AP_TX_PWR              0x00000020     // send Tx power from TPC IE of scan rsp
+#define LPI_IE_BITMAP_TX_RATE                0x00000040     // send rate of the received frame as reported by HW.
+#define LPI_IE_BITMAP_80211_MC_SUPPORT       0x00000080     // send true or false based on the received scan rsp was from a 11mc supported AP or not.
+#define LPI_IE_BITMAP_TSF_TIMER_VALUE        0x00000100     // send timestamp reported in the received scan rsp frame.
+#define LPI_IE_BITMAP_AGE_OF_MEASUREMENT     0x00000200     // (current system time - received time) = duration of time scan rsp frame data is kept in the buffer before sending to LOWI LP.
+/*
+ * TEMPORARY alias of incorrect old name the correct name.
+ * This alias will be removed once all references to the old name have been fixed.
+ */
+#define LPI_IE_BITMAP_AGE_OF_MESAUREMENT LPI_IE_BITMAP_AGE_OF_MEASUREMENT
+#define LPI_IE_BITMAP_CONN_STATUS            0x00000400     // If an infra STA is active and connected to an AP, true value is sent else false.
+#define LPI_IE_BITMAP_MSAP_IE                0x00000800     // info on the vendor specific proprietary IE MSAP
+#define LPI_IE_BITMAP_SEC_STATUS             0x00001000     // we indicate true or false based on if the AP has WPA or RSN security enabled
+#define LPI_IE_BITMAP_DEVICE_TYPE            0x00002000     // info about the beacons coming from an AP or P2P or NAN device.
+#define LPI_IE_BITMAP_CHAN_IS_PASSIVE        0x00004000     // info on whether the scan rsp was received from a passive channel
+#define LPI_IE_BITMAP_DWELL_TIME             0x00008000     // send the scan dwell time of the channel on which the current scan rsp frame was received.
+#define LPI_IE_BITMAP_BAND_CENTER_FREQ1      0x00010000     // the center frequencies in case AP is supporting wider channels than 20 MHz
+#define LPI_IE_BITMAP_BAND_CENTER_FREQ2      0x00020000     // same as above
+#define LPI_IE_BITMAP_PHY_MODE               0x00040000     // PHY mode indicates a, b, ,g, ac and other combinations
+#define LPI_IE_BITMAP_SCAN_MODULE_ID         0x00080000     // scan module id indicates the scan client who originated the scan
+#define LPI_IE_BITMAP_SCAN_ID                0x00100000     // extscan inserts the scan cycle count for this value; other scan clients can insert the scan id of the scan, if needed.
+#define LPI_IE_BITMAP_FLAGS                  0x00200000     // reserved as a bitmap to indicate more scan information; one such use being to indicate if the on-going scan is interrupted or not
+#define LPI_IE_BITMAP_CACHING_REQD           0x00400000     // extscan will use this field to indicate if this frame info needs to be cached in LOWI LP or not
 #define LPI_IE_BITMAP_ALL                    0xFFFFFFFF
 
 typedef struct {
@@ -8709,8 +8718,13 @@ typedef enum {
 } wmi_extscan_forwarding_flags;
 
 typedef enum {
-    WMI_EXTSCAN_USE_MSD = 0x0001,    // Use Motion Sensor Detection */
+    WMI_EXTSCAN_USE_MSD                 = 0x0001,    // Use Motion Sensor Detection */
+    WMI_EXTSCAN_EXTENDED_BATCHING_EN    = 0x0002,    // Extscan LPASS extended batching feature is supported and enabled
 } wmi_extscan_configuration_flags;
+
+typedef enum {
+    WMI_EXTSCAN_BUCKET_CACHE_RESULTS    = 0x0001,    // Cache the results of bucket whose configuration flags has this bit set
+} wmi_extscan_bucket_configuration_flags;
 
 typedef enum {
     WMI_EXTSCAN_STATUS_OK    = 0,
@@ -8749,7 +8763,7 @@ typedef struct {
     A_UINT32        notify_extscan_events;
     /** Options to forward scan results - see wmi_extscan_forwarding_flags */
     A_UINT32        forwarding_flags;
-    /** ExtScan configuration flags - wmi_extscan_configuration_flags */
+    /** ExtScan configuration flags - wmi_extscan__bucket_configuration_flags */
     A_UINT32        configuration_flags;
     /** DEPRECATED member: multiplier to be applied to the periodic scan's base period */
     A_UINT32        base_period_multiplier;

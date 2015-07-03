@@ -8203,6 +8203,70 @@ bool lim_validate_received_frame_a1_addr(tpAniSirGlobal mac_ctx,
 	return true;
 }
 
+#ifdef WLAN_FEATURE_11AC
+void lim_set_vht_caps(tpAniSirGlobal p_mac, tpPESession p_session_entry,
+                     tANI_U8 *p_ie_start,tANI_U32 num_bytes)
+{
+    v_U8_t              *p_ie=NULL;
+    tDot11fIEVHTCaps     dot11_vht_cap;
+
+    PopulateDot11fVHTCaps(p_mac, p_session_entry, &dot11_vht_cap);
+    p_ie = limGetIEPtr(p_mac, p_ie_start, num_bytes, DOT11F_EID_VHTCAPS,
+                       ONE_BYTE);
+
+    if(p_ie) {
+        tSirMacVHTCapabilityInfo *vht_cap =
+                                  (tSirMacVHTCapabilityInfo *) &p_ie[2];
+        tSirVhtMcsInfo *vht_mcs = (tSirVhtMcsInfo *)
+                                  &p_ie[2 + sizeof(tSirMacVHTCapabilityInfo)];
+        union {
+            tANI_U16                       u_value;
+            tSirMacVHTRxSupDataRateInfo    vht_rx_supp_rate;
+            tSirMacVHTTxSupDataRateInfo    vht_tx_supp_rate;
+        } u_vht_data_rate_info;
+
+
+        vht_cap->maxMPDULen = dot11_vht_cap.maxMPDULen;
+        vht_cap->supportedChannelWidthSet =
+                               dot11_vht_cap.supportedChannelWidthSet;
+        vht_cap->ldpcCodingCap = dot11_vht_cap.ldpcCodingCap;
+        vht_cap->shortGI80MHz = dot11_vht_cap.shortGI80MHz;
+        vht_cap->shortGI160and80plus80MHz =
+                               dot11_vht_cap.shortGI160and80plus80MHz;
+        vht_cap->txSTBC = dot11_vht_cap.txSTBC;
+        vht_cap->rxSTBC = dot11_vht_cap.rxSTBC;
+        vht_cap->suBeamFormerCap = dot11_vht_cap.suBeamFormerCap;
+        vht_cap->suBeamformeeCap = dot11_vht_cap.suBeamformeeCap;
+        vht_cap->csnofBeamformerAntSup = dot11_vht_cap.csnofBeamformerAntSup;
+        vht_cap->numSoundingDim = dot11_vht_cap.numSoundingDim;
+        vht_cap->muBeamformerCap = dot11_vht_cap.muBeamformerCap;
+        vht_cap->muBeamformeeCap = dot11_vht_cap.muBeamformeeCap;
+        vht_cap->vhtTXOPPS = dot11_vht_cap.vhtTXOPPS;
+        vht_cap->htcVHTCap = dot11_vht_cap.htcVHTCap;
+        vht_cap->maxAMPDULenExp = dot11_vht_cap.maxAMPDULenExp;
+        vht_cap->vhtLinkAdaptCap = dot11_vht_cap.vhtLinkAdaptCap;
+        vht_cap->rxAntPattern = dot11_vht_cap.rxAntPattern;
+        vht_cap->txAntPattern = dot11_vht_cap.txAntPattern;
+        vht_cap->reserved1 = dot11_vht_cap.reserved1;
+
+        /* Populate VHT MCS Information */
+        vht_mcs->rxMcsMap = dot11_vht_cap.rxMCSMap;
+        u_vht_data_rate_info.vht_rx_supp_rate.rxSupDataRate =
+                            dot11_vht_cap.rxHighSupDataRate;
+        u_vht_data_rate_info.vht_rx_supp_rate.reserved =
+                            dot11_vht_cap.reserved2;
+        vht_mcs->rxHighest = u_vht_data_rate_info.u_value;
+
+        vht_mcs->txMcsMap = dot11_vht_cap.txMCSMap;
+        u_vht_data_rate_info.vht_tx_supp_rate.txSupDataRate =
+                            dot11_vht_cap.txSupDataRate;
+        u_vht_data_rate_info.vht_tx_supp_rate.reserved =
+                            dot11_vht_cap.reserved3;
+        vht_mcs->txHighest = u_vht_data_rate_info.u_value;
+    }
+}
+#endif /* WLAN_FEATURE_11AC */
+
 /**
  * lim_set_stads_rtt_cap() - update station node RTT capability
  * @sta_ds: Station hash node
