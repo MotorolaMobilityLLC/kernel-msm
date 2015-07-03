@@ -18,6 +18,7 @@
 #include <linux/mdss_io_util.h>
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/wakelock.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -350,7 +351,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
 	struct dsi_panel_cmds status_cmds;
-	u32 status_value;
+	u8 status_values[2];
 	struct dsi_panel_tfmode *panel_tfmode;
 
 	struct dsi_panel_cmds video2cmd;
@@ -394,6 +395,8 @@ struct dsi_status_data {
 	struct notifier_block fb_notifier;
 	struct delayed_work check_status;
 	struct msm_fb_data_type *mfd;
+	struct wake_lock status_wakelock;
+	struct timespec check_start_time;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
