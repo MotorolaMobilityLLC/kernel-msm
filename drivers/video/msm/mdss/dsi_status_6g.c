@@ -18,6 +18,37 @@
 #include "mdss_dsi.h"
 #include "mdss_mdp.h"
 
+#define STATUS_CHECK_TIMEOUT_MS 10000
+
+/*
+ * mdss_report_panel_dead() - Sends the PANEL_ALIVE=0 status to HAL layer.
+ * @pstatus_data   : dsi status data
+ *
+ * This function is called if the panel fails to respond as expected to
+ * the register read/BTA or if the TE signal is not coming as expected
+ * from the panel. The function sends the PANEL_ALIVE=0 status to HAL
+ * layer.
+ */
+static void mdss_report_panel_dead(struct dsi_status_data *pstatus_data)
+{
+	char *envp[2] = {"PANEL_ALIVE=0", NULL};
+	struct mdss_panel_data *pdata =
+		dev_get_platdata(&pstatus_data->mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: Panel data not available\n", __func__);
+		return;
+	}
+
+	pdata->panel_info.panel_dead = true;
+	wake_lock_timeout(&pstatus_data->status_wakelock,
+			msecs_to_jiffies(STATUS_CHECK_TIMEOUT_MS));
+	kobject_uevent_env(&pstatus_data->mfd->fbi->dev->kobj,
+		KOBJ_CHANGE, envp);
+	pr_err("%s: Panel has gone bad, sending uevent - %s\n",
+		__func__, envp[0]);
+	return;
+}
+
 /*
  * mdss_check_dsi_ctrl_status() - Check MDP5 DSI controller status periodically.
  * @work     : dsi controller status data
@@ -87,6 +118,8 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 		return;
 	}
 
+	wake_lock(&pstatus_data->status_wakelock);
+
 	/*
 	 * For the command mode panels, we return pan display
 	 * IOCTL on vsync interrupt. So, after vsync interrupt comes
@@ -106,23 +139,18 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	ret = ctrl_pdata->check_status(ctrl_pdata);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 
+	wake_unlock(&pstatus_data->status_wakelock);
+
 	mutex_unlock(&mdp5_data->ov_lock);
 	if (ctl->shared_lock)
 		mutex_unlock(ctl->shared_lock);
 	mutex_unlock(&ctrl_pdata->mutex);
 
-	if ((pstatus_data->mfd->panel_power_state == MDSS_PANEL_POWER_ON)) {
-		if (ret > 0) {
+	if ((pstatus_data->mfd->panel_power_state != MDSS_PANEL_POWER_OFF)) {
+		if (ret > 0)
 			schedule_delayed_work(&pstatus_data->check_status,
 				msecs_to_jiffies(interval));
-		} else {
-			char *envp[2] = {"PANEL_ALIVE=0", NULL};
-			pdata->panel_info.panel_dead = true;
-			ret = kobject_uevent_env(
-				&pstatus_data->mfd->fbi->dev->kobj,
-							KOBJ_CHANGE, envp);
-			pr_err("%s: Panel has gone bad, sending uevent - %s\n",
-							__func__, envp[0]);
-		}
+		else
+			mdss_report_panel_dead(pstatus_data);
 	}
 }

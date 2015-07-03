@@ -572,7 +572,7 @@ static int mdss_dsi_read_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.cmds = ctrl->status_cmds.cmds;
 	cmdreq.cmds_cnt = ctrl->status_cmds.cmd_cnt;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_RX;
-	cmdreq.rlen = 0;
+	cmdreq.rlen = 1;
 	cmdreq.cb = NULL;
 	cmdreq.rbuf = ctrl->status_buf.data;
 
@@ -612,10 +612,15 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		mdss_dsi_set_tx_power_mode(1, &ctrl_pdata->panel_data);
 
 	if (ret == 0) {
-		if (ctrl_pdata->status_buf.data[0] !=
-						ctrl_pdata->status_value) {
-			pr_err("%s: Read back value from panel is incorrect\n",
-								__func__);
+		u8 value = ctrl_pdata->status_values[0];
+		struct mdss_panel_info *pinfo = &ctrl_pdata->panel_data.panel_info;
+		if (pinfo->mipi.idle_enable &&
+		    (pinfo->blank_state == MDSS_PANEL_BLANK_LOW_POWER))
+			value = ctrl_pdata->status_values[1];
+		if (value != ctrl_pdata->status_buf.data[0]) {
+			pr_err("%s: Read back value from panel is incorrect"
+				"%02X <> %02X\n", __func__,
+				ctrl_pdata->status_buf.data[0], value);
 			ret = -EINVAL;
 		} else {
 			ret = 1;
@@ -986,7 +991,6 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	char cmd;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 
-
 	/*
 	 * Turn on cmd mode in order to transmit the commands.
 	 * For video mode, do not send cmds more than one pixel line,
@@ -1119,7 +1123,7 @@ do_send:
 	cmd = rp->data[0];
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
-		pr_debug("%s: rx ACK_ERR_PACLAGE\n", __func__);
+		pr_err("%s: rx ACK_ERR_PACLAGE\n", __func__);
 		rp->len = 0;
 	case DTYPE_GEN_READ1_RESP:
 	case DTYPE_DCS_READ1_RESP:

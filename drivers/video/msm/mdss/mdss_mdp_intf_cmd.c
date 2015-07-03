@@ -39,7 +39,7 @@ struct mdss_mdp_cmd_ctx {
 	struct list_head vsync_handlers;
 	int panel_power_state;
 	atomic_t koff_cnt;
-	u32 intf_stopped;
+	atomic_t intf_stopped;
 	int clk_enabled;
 	int vsync_enabled;
 	int rdptr_enabled;
@@ -556,6 +556,21 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 					atomic_read(&ctx->koff_cnt));
 
 		if (rc <= 0) {
+			u32 status, mask;
+
+			mask = BIT(MDSS_MDP_IRQ_PING_PONG_COMP + ctx->pp_num);
+			status = mask & readl_relaxed(ctl->mdata->mdp_base +
+					MDSS_MDP_REG_INTR_STATUS);
+			writel_relaxed(mask, ctl->mdata->mdp_base +
+					MDSS_MDP_REG_INTR_CLEAR);
+
+			if (status || try_wait_for_completion(&ctx->pp_comp)) {
+				WARN(status, "pp done but irq not triggered\n");
+				rc = 1;
+			}
+		}
+
+		if (rc <= 0) {
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 						rc, ctl->num);
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
@@ -664,7 +679,7 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 				MDSS_EVENT_REGISTER_RECOVERY_HANDLER,
 				(void *)&ctx->recovery);
 
-		ctx->intf_stopped = 0;
+		atomic_set(&ctx->intf_stopped, 0);
 	} else {
 		pr_err("%s: Panel already on\n", __func__);
 	}
@@ -696,7 +711,7 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
-	if (ctx->intf_stopped) {
+	if (atomic_read(&ctx->intf_stopped)) {
 		pr_err("ctx=%d stopped already\n", ctx->pp_num);
 		return -EPERM;
 	}
@@ -815,9 +830,9 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		return -ENODEV;
 	}
 
-	/* intf stopped,  no more kickoff */
-	ctx->intf_stopped = 1;
 	spin_lock_irqsave(&ctx->clk_lock, flags);
+	/* intf stopped,  no more kickoff */
+	atomic_set(&ctx->intf_stopped, 1);
 	if (ctx->rdptr_enabled) {
 		INIT_COMPLETION(ctx->stop_comp);
 		need_wait = 1;
@@ -945,7 +960,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 			 * get turned on when the first update comes.
 			 */
 			pr_debug("%s: reset intf_stopped flag.\n", __func__);
-			ctx->intf_stopped = 0;
+			atomic_set(&ctx->intf_stopped, 0);
 			goto end;
 		}
 	}
@@ -1072,7 +1087,7 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	ctx->recovery.fxn = mdss_mdp_cmd_underflow_recovery;
 	ctx->recovery.data = ctx;
 
-	ctx->intf_stopped = 0;
+	atomic_set(&ctx->intf_stopped, 0);
 
 	pr_debug("%s: ctx=%p num=%d mixer=%d\n", __func__,
 				ctx, ctx->pp_num, mixer->num);
