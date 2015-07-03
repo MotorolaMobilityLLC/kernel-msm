@@ -1662,8 +1662,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->status_cmds,
 			"qcom,mdss-dsi-panel-status-command",
 				"qcom,mdss-dsi-panel-status-command-state");
-	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-status-value", &tmp);
-	ctrl_pdata->status_value = (!rc ? tmp : 0);
+	memset(ctrl_pdata->status_values, 0, sizeof(ctrl_pdata->status_values));
+	data = of_get_property(np, "qcom,mdss-dsi-panel-status-values", &len);
+	if (data) {
+		if (len > sizeof(ctrl_pdata->status_values))
+			len = sizeof(ctrl_pdata->status_values);
+		memcpy(ctrl_pdata->status_values, data, len);
+	}
 
 
 	ctrl_pdata->status_mode = ESD_MAX;
