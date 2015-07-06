@@ -72,7 +72,7 @@ static int sentral_write_block(struct sentral_device *sentral, u8 reg,
 
 	u8 xfer_count;
 
-	while (count) {
+	while (count > 0) {
 		xfer_count = MIN(I2C_BLOCK_SIZE_MAX, count);
 		rc = i2c_smbus_write_i2c_block_data(sentral->client, reg, xfer_count,
 				(u8 *)buffer + total);
@@ -109,7 +109,7 @@ static int sentral_read_block(struct sentral_device *sentral, u8 reg,
 	int i;
 	u8 xfer_count;
 
-	while (count) {
+	while (count > 0) {
 		xfer_count = MIN(I2C_BLOCK_SIZE_MAX, count);
 		rc = i2c_smbus_read_i2c_block_data(sentral->client, reg, xfer_count,
 				(u8 *)buffer + total);
@@ -872,7 +872,7 @@ static int sentral_fifo_read_block(struct sentral_device *sentral, u8 *buffer,
 
 	LOGD(&sentral->client->dev, "%s\n", __func__);
 
-	while (bytes) {
+	while (bytes > 0) {
 		bytes_to_read = I2C_BLOCK_SIZE_MAX;
 		if ((bytes_read % SENTRAL_FIFO_BLOCK_SIZE + I2C_BLOCK_SIZE_MAX)
 					> SENTRAL_FIFO_BLOCK_SIZE) {
@@ -1101,7 +1101,7 @@ static int sentral_firmware_load(struct sentral_device *sentral,
 	fw_data = (u32 *)(((u8 *)fw->data) + sizeof(*fw_header));
 	fw_data_size = fw->size - sizeof(*fw_header);
 
-	while (fw_data_size) {
+	while (fw_data_size > 0) {
 		u32 buf[MIN(RAM_BUF_LEN, I2C_BLOCK_SIZE_MAX) / sizeof(u32)];
 		size_t ul_size = MIN(fw_data_size, sizeof(buf));
 		int i;
