@@ -19,7 +19,6 @@
 
 &pmi8994_fg {
 	qcom,battery-data = <&mtp_batterydata>;
-	qcom,fg-cutoff-voltage-mv = <3700>;
 	qcom,ext-sense-type;
 };
 
