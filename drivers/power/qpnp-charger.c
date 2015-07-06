@@ -1821,7 +1821,9 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 	int usb_present, host_mode, usbin_health;
 	u8 psy_health_sts;
 	u8 chg_led = 0x0; //ASUS_BSP +
-	
+	u8 chg_sts = 0;
+	int rc;
+
 	usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
 	host_mode = qpnp_chg_is_otg_en_set(chip);
 	printk("usbin-valid triggered: %d host_mode: %d\n",
@@ -1896,6 +1898,15 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			printk("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
 			schedule_work(&chip->soc_check_work);
+
+			rc = qpnp_chg_read(chip, &chg_sts, INT_RT_STS(chip->chgr_base), 1);
+			if (rc) {
+				pr_err("failed to read chg_sts rc=%d\n", rc);
+			}
+			if( (chg_sts & VBAT_DET_LOW_IRQ) && !(chg_sts & FAST_CHG_ON_IRQ) ) {
+				chip->resuming_charging = true;
+				qpnp_chg_set_appropriate_vbatdet(chip);
+			}
 		}
 
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
