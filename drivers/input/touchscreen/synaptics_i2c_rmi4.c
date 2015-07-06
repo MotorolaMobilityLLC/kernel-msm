@@ -4214,7 +4214,9 @@ static int fb_notifier_callback(struct notifier_block *self,
 			synaptics_secure_touch_stop(rmi4_data, 0);
 		else if (event == FB_EVENT_BLANK) {
 			blank = evdata->data;
-			if (*blank == FB_BLANK_UNBLANK)
+			if ((*blank == FB_BLANK_UNBLANK) ||
+			    (*blank == FB_BLANK_VSYNC_SUSPEND &&
+			     rmi4_data->suspended))
 				synaptics_rmi4_resume(
 					&(rmi4_data->input_dev->dev));
 			else if (*blank == FB_BLANK_POWERDOWN)
