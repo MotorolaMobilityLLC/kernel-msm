@@ -67,7 +67,6 @@ struct spich_data {
 	int sh2ap_irq;
 	struct completion sh2ap_completion;
 	struct gpio gpio_array[4];
-	struct wake_lock sh2ap_wakelock;
 
 	enum {
 		AP_ACTIVE,
@@ -90,10 +89,13 @@ static int spich_suspend(struct spi_device *spi, pm_message_t state)
 
 	dev_dbg(&spi->dev, "spich_suspend\n");
 
-	status = enable_irq_wake(spich->sh2ap_irq);
-
-	if (status != 0) {
-		dev_err(&spi->dev, "spich_suspend/enable_irq_wake FAILED\n");
+	if ((spich->flags & SPICH_FLAG_TIMESTAMPS_ENABLED) == 0) {
+		/* We're not in "contexthub" mode. Don't prevent the device
+		 * from entering suspend mode. The status of the GPIO pin
+		 * (SH2AP) is undefined.
+		 */
+		del_timer(&spich->resume_timer);
+		return 0;
 	}
 
 	if (spich->ap_state == AP_ACTIVE) {
@@ -103,6 +105,23 @@ static int spich_suspend(struct spi_device *spi, pm_message_t state)
 		 * time.
 		 */
 		spich->ap_state = AP_SUSPENDED;
+	}
+
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 0) {
+		dev_dbg(&spi->dev, "returning -EBUSY\n");
+
+		/* After returning failure here we won't see a matching
+		 * call to spich_resume, make sure we consider ourselves
+		 * active again after a timeout.
+		 */
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
+		return -EBUSY;
+	}
+
+	status = enable_irq_wake(spich->sh2ap_irq);
+
+	if (status != 0) {
+		dev_err(&spi->dev, "spich_suspend/enable_irq_wake FAILED\n");
 	}
 
 	del_timer(&spich->resume_timer);
@@ -116,6 +135,14 @@ static int spich_resume(struct spi_device *spi)
 	int status;
 
 	dev_dbg(&spi->dev, "spich_resume\n");
+
+	if ((spich->flags & SPICH_FLAG_TIMESTAMPS_ENABLED) == 0) {
+		/* We're not in "contexthub" mode. Don't prevent the device
+		 * from entering suspend mode. The status of the GPIO pin
+		 * (SH2AP) is undefined.
+		 */
+		return 0;
+	}
 
 	status = disable_irq_wake(spich->sh2ap_irq);
 
@@ -139,16 +166,15 @@ static void spich_resume_timer_expired(unsigned long me)
 
 	dev_dbg(&spich->spi->dev, "spich_resume_timer_expired\n");
 
+	spich->ap_state = AP_ACTIVE;
+
         /* We're lying, we don't actually know that there's something for the
          * client to read - but there's no harm in having the client poll
          * the hub at this point. In fact, the hub will probably never send
          * us any data ever again because it still thinks we're suspended.
          */
-	wake_lock(&spich->sh2ap_wakelock);
 	spich->force_read = 1;
 	complete(&spich->sh2ap_completion);
-
-	spich->ap_state = AP_ACTIVE;
 }
 
 static irqreturn_t sh2ap_isr(int irq, void *data)
@@ -161,8 +187,6 @@ static irqreturn_t sh2ap_isr(int irq, void *data)
 	 * We'll prevent the AP from going to suspend as long as the line is low
 	 * to ensure that the client has read all available data.
 	 */
-
-	wake_lock(&spich->sh2ap_wakelock);
 	complete(&spich->sh2ap_completion);
 
 	return IRQ_HANDLED;
@@ -198,9 +222,6 @@ static int spich_init_instance(struct spich_data *spich)
 
 	init_completion(&spich->sh2ap_completion);
 
-	wake_lock_init(
-		&spich->sh2ap_wakelock, WAKE_LOCK_SUSPEND, "sh2ap_wakelock");
-
 	status = devm_request_irq(&spich->spi->dev,
 				  spich->sh2ap_irq,
 				  sh2ap_isr,
@@ -223,7 +244,6 @@ static int spich_init_instance(struct spich_data *spich)
 	return 0;
 
 bail4:
-	wake_lock_destroy(&spich->sh2ap_wakelock);
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
 bail3:
@@ -243,8 +263,6 @@ static void spich_destroy_instance(struct spich_data *spich)
 	del_timer(&spich->resume_timer);
 
 	devm_free_irq(&spich->spi->dev, spich->sh2ap_irq, spich);
-
-	wake_lock_destroy(&spich->sh2ap_wakelock);
 
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
@@ -342,10 +360,6 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 	}
 
 	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 1);
-
-	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) != 0) {
-		wake_unlock(&spich->sh2ap_wakelock);
-	}
 
 	return status;
 }
