@@ -97,6 +97,7 @@ struct mod_info_t {
 	uint8_t FocuserInf[2];
 	uint8_t ShutterCal[16];
 	uint8_t SensorHwRev[5];
+	char SensorName[10];
 };
 
 enum {
