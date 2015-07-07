@@ -63,6 +63,8 @@
 #ifdef GSCAN_SUPPORT
 
 #define GSCAN_MAX_CH_BUCKETS         8
+#define GSCAN_MAX_AP_CACHE_PER_SCAN      16
+#define GSCAN_MAX_AP_CACHE               160
 #define GSCAN_BG_BAND_MASK             (1 << 0)
 #define GSCAN_A_BAND_MASK              (1 << 1)
 #define GSCAN_DFS_MASK                 (1 << 2)
