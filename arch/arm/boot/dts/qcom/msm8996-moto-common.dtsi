@@ -216,6 +216,16 @@
 	};
 };
 
+&pm8994_gpios {
+	gpio@c100 { /* GPIO 2 - VOLUME UP */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		status = "okay";
+	};
+};
+
 &blsp1_uart2 {
 	status = "ok";
 };
