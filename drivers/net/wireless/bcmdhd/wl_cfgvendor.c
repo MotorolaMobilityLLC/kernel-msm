@@ -1193,20 +1193,39 @@ static int wl_cfgvendor_priv_string_handler(struct wiphy *wiphy,
 	return err;
 }
 
+#define NUM_CHAN 11
 static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	struct wireless_dev *wdev, const void  *data, int len)
 {
 	struct wl_priv *cfg = wiphy_priv(wiphy);
 	int err = 0;
 	wifi_iface_stat *ptr;
+	wifi_radio_stat *radio;
 	wl_wme_cnt_t *wl_wme_cnt;
 	wl_cnt_t *wl_cnt;
+	char *output;
+	uint32 reply_len = sizeof(wifi_radio_stat)+
+				NUM_CHAN*sizeof(wifi_channel_stat)+
+				sizeof(wifi_iface_stat);
 
 	WL_INFO(("%s: Enter \n", __func__));
 
 	bzero(cfg->ioctl_buf, WLC_IOCTL_MAXLEN);
 
-	ptr = (wifi_iface_stat *)cfg->ioctl_buf;
+	output = cfg->ioctl_buf;
+	radio = (wifi_radio_stat *)output;
+
+	radio->num_channels = NUM_CHAN;
+	output += sizeof(wifi_radio_stat);
+	output += (NUM_CHAN*sizeof(wifi_channel_stat));
+
+	ptr = (wifi_iface_stat *)output;
+
+	err = (reply_len > WLC_IOCTL_MAXLEN) ? -EPERM : 0;
+	if (unlikely(err)) {
+		WL_ERR(("link stats buffer overruns (%d)\n", err));
+		return err;
+	}
 
 	err = wldev_iovar_getbuf(wl_to_prmry_ndev(cfg), "wme_counters", NULL, 0,
 		iovar_buf, WLC_IOCTL_MAXLEN, NULL);
@@ -1253,8 +1272,10 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 		return err;
 	}
 
+	ptr->num_peers = 0;
+
 	err =  wl_cfgvendor_send_cmd_reply(wiphy, wl_to_prmry_ndev(cfg),
-	                   cfg->ioctl_buf, sizeof(wifi_iface_stat));
+		cfg->ioctl_buf, reply_len);
 	if (unlikely(err))
 		WL_ERR(("Vendor Command reply failed ret:%d \n", err));
 
