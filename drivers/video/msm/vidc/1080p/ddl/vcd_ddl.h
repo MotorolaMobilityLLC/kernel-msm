@@ -343,6 +343,8 @@ struct ddl_decoder_data {
 	struct ddl_mp2_datadumpenabletype mp2_datadump_enable;
 	u32 mp2_datadump_status;
 	u32 extn_user_data_enable;
+	u32 adaptive_width;
+	u32 adaptive_height;
 };
 union ddl_codec_data{
 	struct ddl_codec_data_hdr  hdr;

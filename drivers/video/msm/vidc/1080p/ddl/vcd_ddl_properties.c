@@ -288,7 +288,11 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 				ddl_set_default_decoder_buffer_req(decoder,
 					true);
 			}
-			DDL_MSG_LOW("set  VCD_I_FRAME_SIZE width = %d"
+			if (decoder->cont_mode) {
+				decoder->adaptive_width = decoder->client_frame_size.width;
+				decoder->adaptive_height = decoder->client_frame_size.height;
+			}
+			DDL_MSG_LOW("set VCD_I_FRAME_SIZE width = %d"
 				" height = %d\n",
 				frame_size->width, frame_size->height);
 			vcd_status = VCD_S_SUCCESS;
@@ -1792,6 +1796,8 @@ void ddl_set_default_dec_property(struct ddl_client_context *ddl)
 	decoder->output_order = VCD_DEC_ORDER_DISPLAY;
 	decoder->field_needed_for_prev_ip = 0;
 	decoder->cont_mode = 0;
+	decoder->adaptive_width = 0;
+	decoder->adaptive_height = 0;
 	decoder->reconfig_detected = false;
 	decoder->dmx_disable = false;
 	ddl_set_default_metadata_flag(ddl);
