@@ -1580,10 +1580,9 @@
 		reg = <0x5a>;
 		gpios = <&pm8994_gpios 11 0>;   /* EN_GPIO */
 		external_trigger = <1>;         /* Enable ext. trigger */
-		default_effect = <4>;           /* Sharp Click 100% */
-		rated_voltage = <0x72>;         /* 2.4v */
-		overdrive_voltage = <0xD1>;     /* 4.6v */
-		rtp_overdrive_voltage = <0xEA>; /* 4.991v */
+		default_effect = <17>;           /* Sharp Click 100% */
+		rated_voltage = <0x70>;         /* 2.4v */
+		overdrive_voltage = <0x89>;     /* 4.6v */
 		static-vdd-supply = <&vreg_5p0>;
 	};
 
