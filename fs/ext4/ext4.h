@@ -1718,6 +1718,11 @@ static inline u32 ext4_chksum(struct ext4_sb_info *sbi, u32 crc,
 	} desc;
 	int err;
 
+	if (unlikely(!sbi->s_chksum_driver)){
+		WARN_ON_ONCE(1);
+		return 0xDEADBEEF;
+	}
+
 	BUG_ON(crypto_shash_descsize(sbi->s_chksum_driver)!=sizeof(desc.ctx));
 
 	desc.shash.tfm = sbi->s_chksum_driver;
