@@ -19,9 +19,6 @@ Optional properties :
  - maxim,enable_por_init : Define this property to execute POR init from Maxim
    appnote.
 
- - maxim,batt_undervoltage_zero_soc : Define this property to report "0" SOC
-   if and only if battery undervoltage interrupt has fired.
-
 Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
@@ -85,7 +82,6 @@ Example:
 		gpios = <&gpio5 12 0x1>;
 		gpio-names = "alert-pin";
 		maxim,enable_por_init;
-		maxim,batt_undervoltage_zero_soc;
 		maxim,configuration {
 			/* Required properties */
 			config		= /bits/ 16 <0x2250>;

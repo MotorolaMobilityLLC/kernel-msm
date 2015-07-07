@@ -41,7 +41,6 @@
 /* Status register bits */
 #define STATUS_POR_BIT         (1 << 1)
 #define STATUS_BST_BIT         (1 << 3)
-#define STATUS_VMN_BIT         (1 << 8)
 #define STATUS_TMN_BIT         (1 << 9)
 #define STATUS_SMN_BIT         (1 << 10)
 #define STATUS_BI_BIT          (1 << 11)
@@ -107,7 +106,6 @@ struct max17042_chip {
 	struct max17042_platform_data *pdata;
 	struct work_struct work;
 	int    init_complete;
-	bool batt_undervoltage;
 	u16 alert_threshold;
 #ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
 	struct dentry *debugfs_root;
@@ -287,23 +285,11 @@ static int max17042_get_property(struct power_supply *psy,
 			break;
 		}
 #endif
-		if (chip->pdata->batt_undervoltage_zero_soc &&
-		    chip->batt_undervoltage) {
-			val->intval = 0;
-			break;
-		}
-
 		ret = max17042_read_reg(chip->client, MAX17042_RepSOC);
 		if (ret < 0)
 			return ret;
 
-		ret >>= 8;
-		if (ret == 0 &&
-		    chip->pdata->batt_undervoltage_zero_soc &&
-		    !chip->batt_undervoltage)
-			val->intval = 1;
-		else
-			val->intval = ret;
+		val->intval = ret >> 8;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
@@ -761,11 +747,6 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 			val &= ~STATUS_SMN_BIT & ~STATUS_SMX_BIT;
 	}
 
-	if (val & STATUS_VMN_BIT) {
-		dev_dbg(&chip->client->dev, "Battery undervoltage INTR\n");
-		chip->batt_undervoltage = true;
-	}
-
 	/* if sticky bits are used, clear them */
 	if (chip->pdata->config_data->config & CONFIG_STICK_ALL_ENBL)
 		max17042_write_reg(chip->client, MAX17042_STATUS, val);
@@ -1082,9 +1063,6 @@ max17042_get_pdata(struct device *dev)
 
 	pdata->enable_por_init =
 		of_property_read_bool(np, "maxim,enable_por_init");
-
-	pdata->batt_undervoltage_zero_soc =
-		of_property_read_bool(np, "maxim,batt_undervoltage_zero_soc");
 
 	pdata->config_data = max17042_get_config_data(dev);
 	if (!pdata->config_data)
