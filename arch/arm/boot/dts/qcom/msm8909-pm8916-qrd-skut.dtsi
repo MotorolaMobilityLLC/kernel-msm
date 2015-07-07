@@ -69,12 +69,12 @@
 			"RX_BIAS", "MCLK",
 			"SPK_RX_BIAS", "MCLK",
 			"INT_LDO_H", "MCLK",
-			"MIC BIAS Internal1", "Handset Mic",
+			"MIC BIAS External", "Handset Mic",
 			"MIC BIAS Internal2", "Headset Mic",
-			"MIC BIAS Internal1", "Secondary Mic",
-			"AMIC1", "MIC BIAS Internal1",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
 			"AMIC2", "MIC BIAS Internal2",
-			"AMIC3", "MIC BIAS Internal1";
+			"AMIC3", "MIC BIAS External";
 		pinctrl-names = "cdc_lines_act",
 				"cdc_lines_sus";
 		pinctrl-0 = <&cdc_pdm_lines_act>;
