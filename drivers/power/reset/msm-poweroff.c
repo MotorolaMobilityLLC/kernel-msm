@@ -483,6 +483,30 @@ static struct platform_driver msm_restart_driver = {
 	},
 };
 
+#ifdef CONFIG_MSM_DLOAD_MODE
+static int __init download_mode_setup(char *p)
+{
+	unsigned int value = 0;
+
+	if (NULL == p) {
+		pr_err("%s: input null\n", __func__);
+		return -EINVAL;
+	}
+
+	/* from string to unsigned int */
+	if (kstrtouint(p, 0, &value) < 0) {
+		pr_err("%s: Failed to get download mode\n", __func__);
+		return -EINVAL;
+	}
+
+	download_mode = value;
+
+	return 0;
+}
+
+early_param("restart.download_mode", download_mode_setup);
+#endif
+
 static int __init msm_restart_init(void)
 {
 	return platform_driver_register(&msm_restart_driver);
