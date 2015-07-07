@@ -33,17 +33,24 @@
 
 &soc {
 	/delete-node/ avdd_avee_vreg;
-	avdd_avee_vreg: avdd_avee_vreg {
-		compatible = "mot,regulator-ote2005b";
-		regulator-name = "avdd_avee_5.4v";
-		parent-supply = <&pm8226_l14>;
-		regulator-min-microvolt = <5400000>;
-		regulator-max-microvolt = <5400000>;
-		regulator-boot-on;
-		mot,ctrl-gpios = <&msmgpio 33 0x0>,
-				 <&msmgpio 25 0x0>;
-		mot,gpio-state-off = [00 00];
-		mot,gpio-state-on  = [01 01];
-		mot,gpio-state-idle= [01 00];
+};
+
+&spmi_bus {
+	qcom,pm8226@1 {
+		avdd_avee_vreg: avdd_avee_vreg {
+			compatible = "mot,regulator-ote2005b";
+			regulator-name = "avdd_avee_5.4v";
+			parent-supply = <&pm8226_l14>;
+			reg = <0x4d00 0x100>;
+			regulator-min-microvolt = <5400000>;
+			regulator-max-microvolt = <5400000>;
+			regulator-boot-on;
+			mot,ctrl-gpios = <&msmgpio 33 0x0>,
+					 <&msmgpio 25 0x0>;
+			mot,gpio-state-off = [00 00];
+			mot,gpio-state-on  = [01 01];
+			mot,gpio-state-idle= [01 00];
+			mot,pull-down-delay = <200>;
+		};
 	};
 };
