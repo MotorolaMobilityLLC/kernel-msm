@@ -124,4 +124,11 @@
 			bias-pull-up;
 		};
 	};
+
+	muc_attach: muc_attach@0 {
+		config {
+			pins = "gpio73";
+			bias-disable;
+		};
+	};
 };
