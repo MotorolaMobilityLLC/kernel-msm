@@ -484,6 +484,9 @@ int ipa2_rm_register(enum ipa_rm_resource_name resource_name,
 	unsigned long flags;
 	struct ipa_rm_resource *resource;
 
+	if (!ipa_rm_ctx)
+		return -ENODEV;
+
 	IPA_RM_DBG("%s\n", ipa_rm_resource_str(resource_name));
 
 	if (!IPA_RM_RESORCE_IS_PROD(resource_name)) {
@@ -525,6 +528,9 @@ int ipa2_rm_deregister(enum ipa_rm_resource_name resource_name,
 	int result;
 	unsigned long flags;
 	struct ipa_rm_resource *resource;
+
+	if (!ipa_rm_ctx)
+		return -ENODEV;
 
 	IPA_RM_DBG("%s\n", ipa_rm_resource_str(resource_name));
 
