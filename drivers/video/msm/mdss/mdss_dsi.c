@@ -105,12 +105,14 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
+#ifndef CONFIG_ASUS_WREN
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[i].vreg_config,
 			ctrl_pdata->power_data[i].num_vreg, 0);
 		if (ret)
 			pr_err("%s: failed to disable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
+#endif
 	}
 
 end:
@@ -1732,6 +1734,27 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_ASUS_WREN
+static void mdss_dsi_ctrl_shutdown(struct platform_device *pdev)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = platform_get_drvdata(pdev);
+	int i = 0, ret = 0;
+
+	pr_debug("%s: x145aln01 panel power off\n", __func__);
+
+	if (!ctrl_pdata) {
+		pr_err("%s: no driver data\n", __func__);
+	}
+
+	gpio_set_value_cansleep((ctrl_pdata->rst_gpio), 0);
+
+	for (i = DSI_MAX_PM - 1; i >= 0; i--) {
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data[i].vreg_config,
+			ctrl_pdata->power_data[i].num_vreg, 0);
+	}
+}
+#endif
 struct device dsi_dev;
 
 int mdss_dsi_retrieve_ctrl_resources(struct platform_device *pdev, int mode,
@@ -2066,7 +2089,11 @@ MODULE_DEVICE_TABLE(of, mdss_dsi_ctrl_dt_match);
 static struct platform_driver mdss_dsi_ctrl_driver = {
 	.probe = mdss_dsi_ctrl_probe,
 	.remove = mdss_dsi_ctrl_remove,
+#ifdef CONFIG_ASUS_WREN
+	.shutdown = mdss_dsi_ctrl_shutdown,
+#else
 	.shutdown = NULL,
+#endif
 	.driver = {
 		.name = "mdss_dsi_ctrl",
 		.of_match_table = mdss_dsi_ctrl_dt_match,
