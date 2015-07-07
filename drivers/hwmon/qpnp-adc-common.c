@@ -638,6 +638,8 @@ static int32_t qpnp_adc_map_temp_voltage(const struct qpnp_vadc_map_pt *pts,
 			pts[i-1].x);
 	}
 
+	*output = (((*output-3)*3)/2)-42;
+
 	return 0;
 }
 
