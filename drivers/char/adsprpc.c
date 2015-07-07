@@ -2315,8 +2315,11 @@ static int fastrpc_device_open(struct inode *inode, struct file *filp)
 	fl->init_mem = NULL;
 
 	VERIFY(err, !fastrpc_session_alloc(&me->channel[cid], &session));
-	if (err)
+	if (err) {
+		kfree(fl);
+		fl = NULL;
 		goto bail;
+	}
 	fl->sctx = &me->channel[cid].session[session];
 
 	fl->ssrcount = me->channel[cid].ssrcount;
