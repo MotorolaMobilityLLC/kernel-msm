@@ -1950,7 +1950,7 @@ static int dwc3_gadget_vbus_draw(struct usb_gadget *g, unsigned mA)
 	struct dwc3		*dwc = gadget_to_dwc(g);
 	struct dwc3_otg		*dotg = dwc->dotg;
 
-	if (dotg && dotg->otg.phy)
+	if (dotg && dotg->otg.phy && !dwc->no_set_vbus_power)
 		return usb_phy_set_power(dotg->otg.phy, mA);
 
 	return -ENOTSUPP;
@@ -3008,7 +3008,7 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 
 	dwc3_gadget_usb3_phy_suspend(dwc, false);
 
-	if (dotg && dotg->otg.phy)
+	if (dotg && dotg->otg.phy && !dwc->no_set_vbus_power)
 		usb_phy_set_power(dotg->otg.phy, 0);
 
 	if (dwc->gadget.speed != USB_SPEED_UNKNOWN)
