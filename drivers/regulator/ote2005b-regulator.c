@@ -26,6 +26,15 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/spmi.h>
+#include <linux/delay.h>
+
+#define OTE2005B_REGULATOR_DRIVER_NAME	"mot,regulator-ote2005b"
+#define REG_ENABLE_OFFSET		0x46
+#define REG_ENABLE_MASK			0x80
+#define REG_PULLDOWN_OFFSET		0x48
+#define REG_PULLDOWN_MASK		0x80
+
 
 #define dbg_out		pr_debug
 
@@ -40,14 +49,54 @@ enum ote2005b_mode {
 
 struct ote2005b_data {
 	struct regulator_desc desc;
-	struct regulator_dev *dev;
+	struct spmi_device *spmi_dev;
+	struct regulator_dev *rdev;
 	int enabled;
 	unsigned int cur_mode;
 	int microvolts;
 	int gpio_cnt;
 	int *ctrl_gpios;
 	u8 *gpio_state[MODE_MAX];
+	int pull_down_delay;
+	u16 spmi_base_addr;
 };
+
+static int spmi_masked_write(struct spmi_device *spmi,
+				u16 addr, u8 value, u8 mask)
+{
+	int r;
+	u8 write = value & mask;
+	if (mask && (mask != 0xFF)) {
+		u8 read;
+		int r = spmi_ext_register_readl(spmi->ctrl, spmi->sid,
+						addr, &read, 1);
+		if (r)
+			return r;
+		dbg_out("read %02x write %02x mask %02x\n", read, value, mask);
+		if ((read&mask) == write)
+			return 0;
+		write |= (read & ~mask);
+	}
+	r = spmi_ext_register_writel(spmi->ctrl, spmi->sid, addr, &write, 1);
+	dbg_out("write to %x%04x with %02x, r = %d\n",
+		spmi->sid, addr, write, r);
+	return r;
+}
+
+static int ote2005b_set_pulldown(struct ote2005b_data *drvdata, bool enable)
+{
+	int r = spmi_masked_write(drvdata->spmi_dev,
+				  drvdata->spmi_base_addr+REG_PULLDOWN_OFFSET,
+				  enable ? REG_PULLDOWN_MASK : 0,
+				  REG_PULLDOWN_MASK);
+	if (r) {
+		pr_err("Failed(%d) set pull down %d\n", r, enable);
+		return r;
+	}
+	return spmi_masked_write(drvdata->spmi_dev,
+			      drvdata->spmi_base_addr + REG_ENABLE_OFFSET,
+			      0, REG_ENABLE_MASK);
+}
 
 static void ote2005b_set_mode(struct ote2005b_data *drvdata,
 				enum ote2005b_mode mode)
@@ -88,8 +137,21 @@ static int ote2005b_regulator_disable(struct regulator_dev *rdev)
 {
 	struct ote2005b_data *drvdata = rdev_get_drvdata(rdev);
 
-	dbg_out("current enabled = %d\n", drvdata->enabled);
+	dbg_out("current enabled = %d, PD delay = %d ms\n",
+		drvdata->enabled, drvdata->pull_down_delay);
 	if (drvdata->enabled) {
+		/* Workaround for charger pump shut down:
+		 * it needs let charger pump works a while without pull down
+		 * that could discharge the big capacity connect with display
+		 */
+		if (drvdata->pull_down_delay) {
+			if (drvdata->cur_mode == REGULATOR_MODE_IDLE)
+				ote2005b_set_mode(drvdata,
+						  REGULATOR_MODE_NORMAL);
+			ote2005b_set_pulldown(drvdata, false);
+			usleep(drvdata->pull_down_delay * 1000);
+			ote2005b_set_pulldown(drvdata, true);
+		}
 		ote2005b_set_mode(drvdata, MODE_OFF);
 		drvdata->enabled = false;
 	}
@@ -206,6 +268,8 @@ static int ote2005b_regulator_init_dt(struct device *dev,
 			return -EINVAL;
 		}
 	}
+	if (!of_property_read_u32(of, "mot,pull-down-delay", &i))
+		drvdata->pull_down_delay = i;
 
 	init_data->supply_regulator = "parent";
 	init_data->constraints.apply_uV = 0;
@@ -227,72 +291,94 @@ static int ote2005b_regulator_init_dt(struct device *dev,
 	return 0;
 }
 
-static int ote2005b_regulator_probe(struct platform_device *pdev)
+static int ote2005b_regulator_probe(struct spmi_device *spmi)
 {
 	struct ote2005b_data *drvdata;
+	struct resource *res;
 	struct regulator_config cfg = { };
 	int r;
 
-	drvdata = devm_kzalloc(&pdev->dev, sizeof(struct ote2005b_data),
+	drvdata = devm_kzalloc(&spmi->dev, sizeof(struct ote2005b_data),
 			       GFP_KERNEL);
 	if (drvdata == NULL) {
-		dev_err(&pdev->dev, "Failed to allocate device data\n");
+		dev_err(&spmi->dev, "Failed to allocate device data\n");
 		r = -ENOMEM;
 		return r;
 	}
 
-	r = ote2005b_regulator_init_dt(&(pdev->dev), drvdata, &cfg);
+	res = spmi_get_resource(spmi, NULL, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(&spmi->dev, "Node is missing base address\n");
+		return -EINVAL;
+	}
+	drvdata->spmi_base_addr = res->start;
+
+	r = ote2005b_regulator_init_dt(&spmi->dev, drvdata, &cfg);
 	if (r) {
-		dev_err(&pdev->dev, "Failed to initialize device data\n");
+		dev_err(&spmi->dev, "Failed to initialize device data\n");
 		return r;
 	}
 
-	drvdata->dev = regulator_register(&drvdata->desc, &cfg);
-	if (IS_ERR(drvdata->dev)) {
-		r = PTR_ERR(drvdata->dev);
-		dev_err(&pdev->dev, "Failed to register regulator: %d\n", r);
+	drvdata->spmi_dev = spmi;
+	drvdata->rdev = regulator_register(&drvdata->desc, &cfg);
+	if (IS_ERR(drvdata->rdev)) {
+		r = PTR_ERR(drvdata->rdev);
+		dev_err(&spmi->dev, "Failed to register regulator: %d\n", r);
 		return r;
 	}
 
-	platform_set_drvdata(pdev, drvdata);
+	dev_set_drvdata(&spmi->dev, drvdata);
 
 	return r;
 }
 
-static int ote2005b_regulator_remove(struct platform_device *pdev)
+static int ote2005b_regulator_remove(struct spmi_device *spmi)
 {
-	struct regulator_dev *rdev = platform_get_drvdata(pdev);
+	struct ote2005b_data *drvdata = dev_get_drvdata(&spmi->dev);
 
-	regulator_unregister(rdev);
-	platform_set_drvdata(pdev, NULL);
+	if (drvdata != NULL) {
+		dev_set_drvdata(&spmi->dev, NULL);
+		regulator_unregister(drvdata->rdev);
+	}
 
 	return 0;
 }
 
 static const struct of_device_id ote2005b_of_match[] = {
-	{ .compatible = "mot,regulator-ote2005b", },
+	{ .compatible = OTE2005B_REGULATOR_DRIVER_NAME, },
 	{},
 };
-MODULE_DEVICE_TABLE(of, ote2005b_of_match);
 
-static struct platform_driver ote2005b_regulator_driver = {
+static const struct spmi_device_id ote2005b_regulator_id[] = {
+	{ OTE2005B_REGULATOR_DRIVER_NAME, 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(spmi, ote2005b_of_match);
+
+static struct spmi_driver ote2005b_regulator_driver = {
 	.driver = {
-		.name	= "ote2005b-regulator",
+		.name	= OTE2005B_REGULATOR_DRIVER_NAME,
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(ote2005b_of_match),
 	},
 	.probe	= ote2005b_regulator_probe,
 	.remove	= ote2005b_regulator_remove,
+	.id_table	= ote2005b_regulator_id,
 };
 
 static int __init ote2005b_regulator_init(void)
 {
-	return platform_driver_register(&ote2005b_regulator_driver);
+	static bool has_registered;
+
+	if (has_registered)
+		return 0;
+	has_registered = true;
+	return spmi_driver_register(&ote2005b_regulator_driver);
 }
 
 static void __exit ote2005b_regulator_exit(void)
 {
-	platform_driver_unregister(&ote2005b_regulator_driver);
+	spmi_driver_unregister(&ote2005b_regulator_driver);
 }
 
 subsys_initcall(ote2005b_regulator_init);
