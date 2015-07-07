@@ -596,8 +596,8 @@ static ssize_t synaptics_rmi4_f01_buildid_show(struct device *dev,
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "firmware_id:%u\n config_id:%u\n",
-			rmi4_data->firmware_id,rmi4_data->config_id);
+	return snprintf(buf, PAGE_SIZE, "firmware_id:%u\nconfig_id:0x%x\n",
+			rmi4_data->firmware_id, rmi4_data->config_id);
 }
 
 static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
@@ -794,9 +794,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			return 0;
 
 		if (detected_gestures) {
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
 			input_sync(rmi4_data->input_dev);
 			rmi4_data->suspend = false;
 		}
@@ -949,15 +949,18 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				data_addr + extra_data->data4_offset,
 				&detected_gestures,
 				sizeof(detected_gestures));
-		if (retval < 0)
+		if (retval < 0) {
+			tp_log_debug("%s:fail to read gesture data\n", __func__);
 			return 0;
-
-		if (detected_gestures) {
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 1);
+		}
+		if(rmi4_data->gesture_sleep && detected_gestures) {
+			tp_log_debug("%s:gesture detected!\n", __func__);
+			wake_lock_timeout(&rmi4_data->rmi4_wake_lock, 5*HZ);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_POWER, 0);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
 			input_sync(rmi4_data->input_dev);
-			rmi4_data->suspend = false;
+			rmi4_data->gesture_sleep = false;
 		}
 
 		return 0;
@@ -2613,8 +2616,8 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	if (rmi4_data->f11_wakeup_gesture || rmi4_data->f12_wakeup_gesture) {
-		set_bit(KEY_POWER, rmi4_data->input_dev->keybit);
-		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_POWER);
+		set_bit(KEY_WAKEUP, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_WAKEUP);
 	}
 
 	return;
@@ -3317,6 +3320,7 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	rmi4_data->suspend = false;
 	rmi4_data->irq_enabled = false;
 	rmi4_data->fingers_on_2d = false;
+	rmi4_data->gesture_sleep = false;
 
 	rmi4_data->reset_device = synaptics_rmi4_reset_device;
 	rmi4_data->irq_enable = synaptics_rmi4_irq_enable;
@@ -3407,6 +3411,9 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 				__func__);
 		goto err_enable_irq;
 	}
+	device_init_wakeup(&rmi4_data->input_dev->dev, true);
+	wake_lock_init(&rmi4_data->rmi4_wake_lock,
+			WAKE_LOCK_SUSPEND, "rmi4_wake_lock");
 
 	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	if (vir_button_map->nbuttons) {
@@ -3666,6 +3673,20 @@ static void synaptics_rmi4_f12_wg(struct synaptics_rmi4_data *rmi4_data,
 				"%s: Failed to change reporting mode\n",
 				__func__);
 		return;
+	}
+
+	if (enable) {
+		if (device_may_wakeup(&rmi4_data->input_dev->dev) &&
+				!enable_irq_wake(rmi4_data->irq)) {
+			rmi4_data->gesture_sleep = true;
+			dev_info(rmi4_data->pdev->dev.parent,
+					"%s: Change into gesture mode\n", __func__);
+		}
+	} else {
+		rmi4_data->gesture_sleep = false;
+		disable_irq_wake(rmi4_data->irq);
+		dev_info(rmi4_data->pdev->dev.parent,
+				"%s: exist gesture mode\n",	__func__);
 	}
 
 	return;

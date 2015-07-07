@@ -2235,10 +2235,10 @@ static enum flash_area fwu_go_nogo(void)
 	dev_info(rmi4_data->pdev->dev.parent,
 			"%s: Device config ID = 0x%02x 0x%02x 0x%02x 0x%02x\n",
 			__func__,
-			config_id[28],
-			config_id[29],
-			config_id[30],
-			config_id[31]);
+			config_id[0],
+			config_id[1],
+			config_id[2],
+			config_id[3]);
 
 	/* Get image config ID */
 	image_config_id = be_to_uint(fwu->img.ui_config.data);
@@ -3217,12 +3217,13 @@ static void synaptics_refresh_configid(void)
 	tp_log_debug("%s(line %d): "
 			"Device config ID = 0x%02x 0x%02x 0x%02x 0x%02x\n",
 			__func__,__LINE__,
-			config_id[28],
-			config_id[29],
-			config_id[30],
-			config_id[31]);
+			config_id[0],
+			config_id[1],
+			config_id[2],
+			config_id[3]);
 
-	fwu->rmi4_data->config_id = be_to_uint(&config_id[28]);
+	fwu->rmi4_data->config_id = (unsigned int)(config_id[0] << 24
+			| config_id[1] << 16 | config_id[2] << 8 | config_id[3]);
 
 exit:
 	return;
