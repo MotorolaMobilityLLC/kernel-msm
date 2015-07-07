@@ -323,6 +323,25 @@
 			qcom,supply-post-off-sleep = <1>;
 		};
 	};
+
+	muc@0 {
+		compatible = "mmi,muc";
+		reg = <0x00>;
+
+		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
+		        <&tlmm 130 0>,  /* gpio_muc_bplus_en, output-low */
+		        <&tlmm 72 0>;   /* gpio_muc_vbus_en,  output-low */
+		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+					"gpio_muc_bplus_en",
+					"gpio_muc_vbus_en";
+
+		mmi,muc-ctrl-det-hysteresis = <500>;
+		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 300>;
+		mmi,muc-ctrl-dis-seq = <1 0 200>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&muc_attach>;
+	};
 };
 
 &pm8994_gpios {
