@@ -5238,7 +5238,7 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	chip->force_aicl_rerun = of_property_read_bool(node,
 					"qcom,force-aicl-rerun");
 	chip->usb_cc_controller = of_property_read_bool(node,
-					"usb-cc-controller");
+					"qcom,usb-cc-controller");
 	chip->disable_apsd = of_property_read_bool(node,
 					"qcom,disable-apsd");
 	chip->disable_hvdcp = of_property_read_bool(node,
