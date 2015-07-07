@@ -73,6 +73,12 @@ static void mon_enable(struct bwmon *m)
 static void mon_disable(struct bwmon *m)
 {
 	writel_relaxed(0x0, MON_EN(m));
+	/*
+	 * mon_disable() and mon_irq_clear(),
+	 * If latter goes first and count happen to trigger irq, we would
+	 * have the irq line high but no one handling it.
+	 */
+	mb();
 }
 
 static void mon_clear(struct bwmon *m)
@@ -93,6 +99,11 @@ static void mon_irq_enable(struct bwmon *m)
 	val = readl_relaxed(MON_INT_EN(m));
 	val |= 0x1;
 	writel_relaxed(val, MON_INT_EN(m));
+	/*
+	 * make Sure irq enable complete for local and global
+	 * to avoid race with other monitor calls
+	 */
+	mb();
 }
 
 static void mon_irq_disable(struct bwmon *m)
@@ -108,6 +119,11 @@ static void mon_irq_disable(struct bwmon *m)
 	val = readl_relaxed(MON_INT_EN(m));
 	val &= ~0x1;
 	writel_relaxed(val, MON_INT_EN(m));
+	/*
+	 * make Sure irq disable complete for local and global
+	 * to avoid race with other monitor calls
+	 */
+	mb();
 }
 
 static unsigned int mon_irq_status(struct bwmon *m)
@@ -259,9 +275,9 @@ static void stop_bw_hwmon(struct bw_hwmon *hw)
 {
 	struct bwmon *m = to_bwmon(hw);
 
+	mon_irq_disable(m);
 	free_irq(m->irq, m);
 	mon_disable(m);
-	mon_irq_disable(m);
 	mon_clear(m);
 	mon_irq_clear(m);
 }
@@ -270,9 +286,9 @@ static int suspend_bw_hwmon(struct bw_hwmon *hw)
 {
 	struct bwmon *m = to_bwmon(hw);
 
+	mon_irq_disable(m);
 	free_irq(m->irq, m);
 	mon_disable(m);
-	mon_irq_disable(m);
 	mon_irq_clear(m);
 
 	return 0;
@@ -284,8 +300,6 @@ static int resume_bw_hwmon(struct bw_hwmon *hw)
 	int ret;
 
 	mon_clear(m);
-	mon_irq_enable(m);
-	mon_enable(m);
 	ret = request_threaded_irq(m->irq, NULL, bwmon_intr_handler,
 				  IRQF_ONESHOT | IRQF_SHARED,
 				  dev_name(m->dev), m);
@@ -294,6 +308,9 @@ static int resume_bw_hwmon(struct bw_hwmon *hw)
 				ret);
 		return ret;
 	}
+
+	mon_irq_enable(m);
+	mon_enable(m);
 
 	return 0;
 }
