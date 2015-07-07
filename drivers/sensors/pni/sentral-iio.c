@@ -151,12 +151,17 @@ static int sentral_parameter_read(struct sentral_device *sentral,
 {
 	int rc;
 	int i;
+	bool ack_not_detected = false;
 
 	if (size > PARAM_READ_SIZE_MAX)
 		return -EINVAL;
 
 	mutex_lock(&sentral->lock_pio);
 
+	if (size < PARAM_READ_SIZE_MAX)
+		page_number = (size << 4) | (page_number & 0x0F);
+
+retry:
 	// select page
 	rc = sentral_write_byte(sentral, SR_PARAM_PAGE, page_number);
 	if (rc) {
@@ -194,8 +199,12 @@ static int sentral_parameter_read(struct sentral_device *sentral,
 	rc = -EIO;
 	LOGE(&sentral->client->dev, "parameter ack retries (%d) exhausted\n",
 			PARAM_MAX_RETRY);
-
-	goto exit;
+	if (ack_not_detected) {
+		LOGE(&sentral->client->dev, "parameter retries failed twice\n");
+		goto exit;
+	} else
+		ack_not_detected = true;
+	goto retry;
 
 acked:
 	// read values
@@ -221,12 +230,17 @@ static int sentral_parameter_write(struct sentral_device *sentral,
 {
 	int rc;
 	int i;
+	bool ack_not_detected = false;
 
 	if (size > PARAM_WRITE_SIZE_MAX)
 		return -EINVAL;
 
 	mutex_lock(&sentral->lock_pio);
 
+	if (size < PARAM_READ_SIZE_MAX)
+		page_number = (size << 4) | (page_number & 0x0F);
+
+retry:
 	// select page
 	rc = sentral_write_byte(sentral, SR_PARAM_PAGE, page_number);
 	if (rc) {
@@ -272,8 +286,12 @@ static int sentral_parameter_write(struct sentral_device *sentral,
 	rc = -EIO;
 	LOGE(&sentral->client->dev, "parameter ack retries (%d) exhausted\n",
 			PARAM_MAX_RETRY);
-
-	goto exit;
+	if (ack_not_detected) {
+		LOGE(&sentral->client->dev, "parameter retries failed twice\n");
+		goto exit;
+	} else
+		ack_not_detected = true;
+	goto retry;
 
 acked:
 	rc = 0;
@@ -364,6 +382,11 @@ static int sentral_sensor_config_read(struct sentral_device *sentral, u8 id,
 		return rc;
 	}
 
+	LOGI(&sentral->client->dev,
+		"read config: { 0x%04X, 0x%04X, 0x%04X, 0x%04X }\n",
+		config->sample_rate, config->max_report_latency,
+		config->change_sensitivity, config->dynamic_range);
+
 	return 0;
 }
 
@@ -383,6 +406,11 @@ static int sentral_sensor_config_write(struct sentral_device *sentral, u8 id,
 
 		return rc;
 	}
+
+	LOGI(&sentral->client->dev,
+		"write config: { 0x%04X, 0x%04X, 0x%04X, 0x%04X }\n",
+		config->sample_rate, config->max_report_latency,
+		config->change_sensitivity, config->dynamic_range);
 
 	// update current sensor config
 	memcpy(&sentral->sensor_config[id], config,
@@ -682,9 +710,11 @@ static int sentral_fifo_get_bytes_remaining(struct sentral_device *sentral)
 	int rc;
 	u16 bytes;
 
+	mutex_lock(&sentral->lock_pio);
 	rc = sentral_read_block(sentral, SR_FIFO_BYTES, (void *)&bytes,
 			sizeof(bytes));
 	LOGD(&sentral->client->dev, "FIFO bytes remaining: %u\n", bytes);
+	mutex_unlock(&sentral->lock_pio);
 
 	if (rc < 0) {
 		LOGE(&sentral->client->dev, "error (%d) reading FIFO bytes remaining\n",
@@ -872,6 +902,7 @@ static int sentral_fifo_read_block(struct sentral_device *sentral, u8 *buffer,
 
 	LOGD(&sentral->client->dev, "%s\n", __func__);
 
+	mutex_lock(&sentral->lock_pio);
 	while (bytes > 0) {
 		bytes_to_read = I2C_BLOCK_SIZE_MAX;
 		if ((bytes_read % SENTRAL_FIFO_BLOCK_SIZE + I2C_BLOCK_SIZE_MAX)
@@ -892,6 +923,7 @@ static int sentral_fifo_read_block(struct sentral_device *sentral, u8 *buffer,
 
 		if (rc < 0) {
 			LOGE(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
+			mutex_unlock(&sentral->lock_pio);
 			return rc;
 		}
 
@@ -899,7 +931,7 @@ static int sentral_fifo_read_block(struct sentral_device *sentral, u8 *buffer,
 		bytes_read += rc;
 
 	}
-
+	mutex_unlock(&sentral->lock_pio);
 	return bytes_read;
 }
 
@@ -2380,9 +2412,10 @@ static void sentral_do_work_reset(struct work_struct *work)
 
 	mutex_unlock(&sentral->lock_reset);
 
+	mdelay(100);
+
 	find_time_scale(sentral, 50);
 
-	mdelay(100);
 	// sync timestamp
 	sentral->ts_ref_stime = 0;
 	rc = sentral_sync_timestamp(sentral);
