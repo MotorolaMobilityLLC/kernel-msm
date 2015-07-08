@@ -1040,6 +1040,7 @@ static void readTouchDataPoint_Ambient(void)
 		if (isDriverAvailable){
 			wake_lock(&touch_lock);
 			isTouchLocked = false;
+			chipInLowPower = false;
 			suspend_touch_down = getMsTime();
 			if (lastTouch == TOUCH_UP)
 				lastTouch = TOUCH_DOWN;
