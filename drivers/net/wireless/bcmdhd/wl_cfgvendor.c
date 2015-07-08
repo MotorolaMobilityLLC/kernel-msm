@@ -343,15 +343,22 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 	int err = 0;
 	struct wl_priv *cfg = wiphy_priv(wiphy);
 	gscan_results_cache_t *results, *iter;
-	uint32 reply_len, complete = 1, num_results_iter;
-	int32 mem_needed;
+	uint32 reply_len, complete = 1;
+	int32 mem_needed, num_results_iter;
 	wifi_gscan_result_t *ptr;
 	uint16 num_scan_ids, num_results;
 	struct sk_buff *skb;
 	struct nlattr *scan_hdr, *complete_flag;
 
-	dhd_dev_wait_batch_results_complete(wl_to_prmry_ndev(cfg));
-	dhd_dev_pno_lock_access_batch_results(wl_to_prmry_ndev(cfg));
+	err = dhd_dev_wait_batch_results_complete(wl_to_prmry_ndev(cfg));
+	if (err != BCME_OK)
+		return -EBUSY;
+
+	err = dhd_dev_pno_lock_access_batch_results(wl_to_prmry_ndev(cfg));
+	if (err != BCME_OK) {
+		WL_ERR(("Can't obtain lock to access batch results %d\n", err));
+		return -EBUSY;
+	}
 	results = dhd_dev_pno_get_gscan(wl_to_prmry_ndev(cfg),
 	             DHD_PNO_GET_BATCH_RESULTS, NULL, &reply_len);
 
@@ -538,7 +545,7 @@ static int wl_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 							break;
 						case GSCAN_ATTRIBUTE_BUCKET_CHANNELS:
 							nla_for_each_nested(iter2, iter1, tmp2) {
-								if (k >= PFN_SWC_RSSI_WINDOW_MAX)
+								if (k >= GSCAN_MAX_CHANNELS_IN_BUCKET)
 									break;
 								ch_bucket[j].chan_list[k] =
 								     nla_get_u32(iter2);
@@ -557,12 +564,10 @@ static int wl_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 						case GSCAN_ATTRIBUTE_BUCKET_STEP_COUNT:
 							ch_bucket[j].repeat = (uint16)
 							     nla_get_u32(iter1);
-							    printk("step count %d\n", ch_bucket[j].repeat);
 							break;
 						case GSCAN_ATTRIBUTE_BUCKET_MAX_PERIOD:
 							ch_bucket[j].bucket_max_multiple =
 							     nla_get_u32(iter1)/1000;
-							    printk("bucket_max_multiple %d\n", ch_bucket[j].bucket_max_multiple);
 							break;
 					}
 				}
