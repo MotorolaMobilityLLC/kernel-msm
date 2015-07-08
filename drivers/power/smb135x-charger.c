@@ -3283,16 +3283,8 @@ static void smb135x_notify_vbat(enum qpnp_tm_state state, void *ctx)
 		if (batt_volt < chip->low_gauge_mv) {
 			chip->shutdown_voltage_tripped = true;
 		} else {
-			usleep_range(2000, 2100);
-			rc = qpnp_vadc_read(chip->vadc_dev, VSYS, &result);
-			pr_info("VSYS = %lld, raw = 0x%x\n",
-			result.physical, result.adc_code);
-			if (result.physical < chip->low_voltage_uv) {
-				chip->shutdown_voltage_tripped = true;
-			} else {
-				qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+			qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
 				&chip->vbat_monitor_params);
-			}
 		}
 	}
 	else
