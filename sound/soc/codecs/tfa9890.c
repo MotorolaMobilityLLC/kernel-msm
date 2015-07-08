@@ -842,6 +842,7 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
 			}
 	} else {
+		cancel_delayed_work_sync(&tfa9890->delay_work);
 		tfa9890->is_pcm_triggered = 0;
 	}
 }
