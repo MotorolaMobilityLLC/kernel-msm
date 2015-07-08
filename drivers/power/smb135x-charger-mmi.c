@@ -3177,7 +3177,13 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	cancel_delayed_work(&chip->usb_insertion_work);
 	cancel_delayed_work(&chip->aicl_check_work);
 	cancel_delayed_work(&chip->rate_check_work);
-	chip->apsd_rerun_cnt = 0;
+	if (chip->apsd_rerun_cnt && !chip->factory_mode) {
+		chip->apsd_rerun_cnt = 0;
+		if (chip->usb_psy) {
+			pr_debug("setting usb psy allow detection 0\n");
+			power_supply_set_allow_detection(chip->usb_psy, 0);
+		}
+	}
 	chip->aicl_weak_detect = false;
 	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
@@ -3249,6 +3255,10 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 	if ((reg & SDP_BIT) && !chip->apsd_rerun_cnt) {
 		dev_info(chip->dev, "HW Detected SDP!\n");
 		smb_stay_awake(&chip->smb_wake_source);
+		if (chip->usb_psy) {
+			pr_debug("setting usb psy allow detection 1\n");
+			power_supply_set_allow_detection(chip->usb_psy, 1);
+		}
 		chip->apsd_rerun_cnt++;
 		chip->usb_present = 0;
 		schedule_delayed_work(&chip->usb_insertion_work,
@@ -3256,7 +3266,13 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 		return 0;
 	}
 
-	chip->apsd_rerun_cnt = 0;
+	if (chip->apsd_rerun_cnt && !chip->factory_mode) {
+		chip->apsd_rerun_cnt = 0;
+		if (chip->usb_psy) {
+			pr_debug("setting usb psy allow detection 0\n");
+			power_supply_set_allow_detection(chip->usb_psy, 0);
+		}
+	}
 
 	if (!chip->aicl_disabled) {
 		/* Set AICL Glich to 15 us */
