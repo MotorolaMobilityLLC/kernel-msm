@@ -97,6 +97,8 @@
 #define RESET_MASK		0x80
 #define HIGH_CURRENT_MASK	0x40
 #define EFF_MASK		0xF3
+#define VBST_MASK		0x20
+#define VP_RES_MASK		0x10
 
 #define VLED_ON_VAL		0x08
 #define VLED_OFF_VAL		0x00
@@ -109,6 +111,10 @@
 #define CABC_VAL		0x80
 #define HIGH_CURRENT_VAL	0x40
 #define EFF_VAL			0xF3
+/* Enable shutdown of VBST at OTP or UV detection */
+#define VBST_VAL		0x20
+/* Disable VP discharge resistor */
+#define VP_RES_VAL		0x10
 
 /* Set default panel as a no-correction case */
 #define ISL98611_DEFAULT_PANEL 0x07
@@ -245,6 +251,12 @@ static int isl98611_chip_init(struct isl98611_chip *pchip)
 	} else
 		rval |= isl98611_update(pchip, REG_ENABLE,
 			VNEN_MASK, VNOFF_VAL);
+
+	/* Enable shutdown of VBST at OTP or UV detection */
+	rval |= isl98611_update(pchip, REG_ENABLE, VBST_MASK, VBST_VAL);
+
+	/* Disable VP discharge resistor */
+	rval |= isl98611_update(pchip, REG_ENABLE, VP_RES_MASK, VP_RES_VAL);
 
 	rval |= isl98611_update(pchip, REG_CURRENT,
 			CURRENT_MASK, pdata->led_current);
