@@ -97,6 +97,8 @@
 #define CHIP_FLASH_SIZE			0x8000
 #define SYSFS_FW_UPLOAD_MODE_MANUAL	2
 #define SYSFS_FW_UPDATE_SCRIPT	1
+#define SYSFS_FILTER_OPEN	1
+#define SYSFS_POINT_LOG_OPEN	1
 #define SYSFS_RESULT_FAIL		(-1)
 #define SYSFS_RESULT_NOT_DONE		0
 #define SYSFS_RESULT_SUCCESS		1
@@ -129,6 +131,8 @@ static int config_upgrade_flag = 0;
 static int enter_lowpower_flag = 0;
 static bool probe_flag = false;
 static bool update_flag = false;
+static bool filter = true;
+static bool point_log = false;
 
 //show touch point message flag
 static int TOUCH_P1_DOWN_FLAG = 0;
@@ -807,6 +811,36 @@ static ssize_t sysfsUpdateFlagStore(struct device *dev, struct device_attribute 
 	return count;
 }
 
+static ssize_t sysfsFilterShow(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", filter);
+}
+
+static ssize_t sysfsFilterStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode = 0;
+
+	sscanf(buf, "%d", &mode);
+	filter = mode == SYSFS_FILTER_OPEN;
+	LOGI("[%d] %s filter = %d.\n", __LINE__, __func__, filter);
+	return count;
+}
+
+static ssize_t sysfsPointLogShow(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", point_log);
+}
+
+static ssize_t sysfsPointLogStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int mode = 0;
+
+	sscanf(buf, "%d", &mode);
+	point_log = mode == SYSFS_POINT_LOG_OPEN;
+	LOGI("[%d] %s point_log = %d.\n", __LINE__, __func__, point_log);
+	return count;
+}
+
 static ssize_t sysfsVersionShow(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	uint8_t verFw[10] = {0};
@@ -904,12 +938,16 @@ static DEVICE_ATTR(status, S_IRUGO|S_IWUSR, sysfsStatusShow, sysfsStatusStore);
 static DEVICE_ATTR(version, S_IRUGO|S_IWUSR, sysfsVersionShow, sysfsVersionStore);
 static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR, sysfsSleepShow, sysfsSleepStore);
 static DEVICE_ATTR(reset, S_IRUGO|S_IWUSR, sysfsResetShow, sysfsResetStore);
+static DEVICE_ATTR(pointlog, S_IRUGO|S_IWUSR, sysfsPointLogShow, sysfsPointLogStore);
+static DEVICE_ATTR(filter, S_IRUGO|S_IWUSR, sysfsFilterShow, sysfsFilterStore);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
 	&dev_attr_version.attr,
 	&dev_attr_sleep.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_pointlog.attr,
+	&dev_attr_filter.attr,
 	NULL
 };
 
@@ -1150,52 +1188,107 @@ static void readTouchDataPoint(void)
 		if (isTouchLocked)
 			LOGI("Touch is locked. \n");
 
-		/* filter points when palming or touching screen edge */
+		if (filter) {
+			/* filter points when palming or touching screen edge */
 #ifdef CONFIG_ASUS_WREN
-		if (!isTouchLocked && y1 > 11 && y1 < 272 && x1 > 3 && x1 < 277 && pointData.flags & 0x01)
+			if (!isTouchLocked && y1 > 11 && y1 < 272 && x1 > 3 && x1 < 277 && pointData.flags & 0x01)
 #else
-		if (!isTouchLocked && y1 > 13 && pointData.flags & 0x01)
+			if (!isTouchLocked && pointData.flags & 0x01)
 #endif
-		{
-			input_mt_slot(gl_ts->touch_dev,0);
-			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
-			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
-			if (TOUCH_P1_DOWN_FLAG == 0) {
-				LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
-				TOUCH_P1_DOWN_FLAG = 1;
+			{
+				input_mt_slot(gl_ts->touch_dev,0);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
+				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+				if (point_log) {
+					LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
+				} else {
+					if (TOUCH_P1_DOWN_FLAG == 0) {
+						LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
+						TOUCH_P1_DOWN_FLAG = 1;
+					}
+				}
+			} else {
+				input_mt_slot(gl_ts->touch_dev, 0);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+				if (!point_log && TOUCH_P1_DOWN_FLAG == 1) {
+					LOGI("TOUCH P1 UP.\n");
+					TOUCH_P1_DOWN_FLAG = 0;
+				}
 			}
-		} else {
-			input_mt_slot(gl_ts->touch_dev, 0);
-			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
-			if (TOUCH_P1_DOWN_FLAG == 1) {
-				LOGI("TOUCH P1 UP.\n");
-				TOUCH_P1_DOWN_FLAG = 0;
-			}
-		}
 
 #ifdef CONFIG_ASUS_WREN
-		if (!isTouchLocked && y2 > 11 && y2 < 272 && x2 > 3 && x2 < 277 && pointData.flags & 0x02)
+			if (!isTouchLocked && y2 > 11 && y2 < 272 && x2 > 3 && x2 < 277 && pointData.flags & 0x02)
 #else
-		if (!isTouchLocked && y2 > 13 && pointData.flags & 0x02)
+			if (!isTouchLocked && pointData.flags & 0x02)
 #endif
-		{
-			input_mt_slot(gl_ts->touch_dev,1);
-			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
-			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
-			if (TOUCH_P2_DOWN_FLAG == 0) {
-				LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
-				TOUCH_P2_DOWN_FLAG = 1;
+			{
+				input_mt_slot(gl_ts->touch_dev,1);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
+				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+				if (point_log) {
+					LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
+				} else {
+					if (TOUCH_P2_DOWN_FLAG == 0) {
+						LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
+						TOUCH_P2_DOWN_FLAG = 1;
+					}
+				}
+			} else {
+				input_mt_slot(gl_ts->touch_dev, 1);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+				if (!point_log && TOUCH_P2_DOWN_FLAG == 1) {
+					LOGI("TOUCH P2 UP.\n");
+					TOUCH_P2_DOWN_FLAG = 0;
+				}
 			}
 		} else {
-			input_mt_slot(gl_ts->touch_dev, 1);
-			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
-			if (TOUCH_P2_DOWN_FLAG == 1) {
-				LOGI("TOUCH P2 UP.\n");
-				TOUCH_P2_DOWN_FLAG = 0;
+			if (!isTouchLocked && pointData.flags & 0x01) {
+				input_mt_slot(gl_ts->touch_dev,0);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
+				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+				if (point_log) {
+					LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
+				} else {
+					if (TOUCH_P1_DOWN_FLAG == 0) {
+						LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
+						TOUCH_P1_DOWN_FLAG = 1;
+					}
+				}
+			} else {
+				input_mt_slot(gl_ts->touch_dev, 0);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+				if (!point_log && TOUCH_P1_DOWN_FLAG == 1) {
+					LOGI("TOUCH P1 UP.\n");
+					TOUCH_P1_DOWN_FLAG = 0;
+				}
+			}
+			if (!isTouchLocked && pointData.flags & 0x02) {
+				input_mt_slot(gl_ts->touch_dev,1);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
+				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
+				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+				if (point_log) {
+					LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
+				} else {
+					if (TOUCH_P2_DOWN_FLAG == 0) {
+						LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
+						TOUCH_P2_DOWN_FLAG = 1;
+					}
+				}
+			} else {
+				input_mt_slot(gl_ts->touch_dev, 1);
+				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+				if (!point_log && TOUCH_P2_DOWN_FLAG == 1) {
+					LOGI("TOUCH P2 UP.\n");
+					TOUCH_P2_DOWN_FLAG = 0;
+				}
 			}
 		}
 
@@ -1208,11 +1301,11 @@ static void readTouchDataPoint(void)
 		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
 		input_sync(gl_ts->touch_dev);
 
-		if (TOUCH_P1_DOWN_FLAG == 1) {
+		if (!point_log && TOUCH_P1_DOWN_FLAG == 1) {
 			LOGI("TOUCH P1 UP.\n");
 			TOUCH_P1_DOWN_FLAG = 0;
 		}
-		if (TOUCH_P2_DOWN_FLAG == 1) {
+		if (!point_log && TOUCH_P2_DOWN_FLAG == 1) {
 			LOGI("TOUCH P2 UP.\n");
 			TOUCH_P2_DOWN_FLAG = 0;
 		}
