@@ -85,6 +85,13 @@
 };
 
 &soc {
+	vreg_5p0: vreg_5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_5p0";
+		gpio = <&pm8994_gpios 3 0>;
+		enable-active-high;
+	};
+
 	/* BLSP12 not used for i2c */
 	/delete-node/ i2c@75ba000;
 
@@ -222,6 +229,16 @@
 		qcom,pull = <0>;
 		qcom,vin-sel = <2>;
 		qcom,src-sel = <0>;
+		status = "okay";
+	};
+
+	gpio@c200 { /* GPIO 3 - SPK_5V_BOOST_EN */
+		qcom,mode = <1>;         /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;  /* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,vin-sel = <2>;      /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;      /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,out-strength = <1>; /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
 		status = "okay";
 	};
 };
