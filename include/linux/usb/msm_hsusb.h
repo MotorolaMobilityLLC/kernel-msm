@@ -320,6 +320,7 @@ struct msm_otg_platform_data {
 #define PHY_HOST_MODE			BIT(2)
 #define PHY_CHARGER_CONNECTED		BIT(3)
 #define PHY_VBUS_VALID_OVERRIDE		BIT(4)
+#define PHY_RM_PULLDOWN			BIT(5)
 
 /* Timeout (in msec) values (min - max) associated with OTG timers */
 
