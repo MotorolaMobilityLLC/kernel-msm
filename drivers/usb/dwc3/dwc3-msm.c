@@ -2454,7 +2454,7 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		}
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		mdwc->online = val->intval;
+		mdwc->online = val->intval & mdwc->vbus_active;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		mdwc->voltage_max = val->intval;
