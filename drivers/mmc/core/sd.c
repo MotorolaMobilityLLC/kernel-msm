@@ -1497,9 +1497,6 @@ int mmc_attach_sd(struct mmc_host *host)
 		if (err == -ENOMEDIUM) {
 			pr_warn("%s: failed to initialize removed SD card\n",
 			       mmc_hostname(host));
-		} else if (err == -EILSEQ) {
-			if (mmc_sd_throttle_back(host) == 0)
-				continue;
 		} else if (err) {
 			retries--;
 			mmc_power_off(host);
@@ -1521,6 +1518,8 @@ int mmc_attach_sd(struct mmc_host *host)
 		       mmc_hostname(host), PARANOID_SD_INIT_RETRIES, err);
 	if (err) {
 		/* A card was detected, but we couldn't initialize it. */
+		pr_err("%s: could not initialize detected card\n",
+			mmc_hostname(host));
 		host->card_bad = 1;
 		goto err;
 	}
