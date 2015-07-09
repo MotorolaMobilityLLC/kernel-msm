@@ -1368,7 +1368,7 @@ static const char *chg_to_string(enum dwc3_chg_type chg_type)
 }
 
 #define DWC3_CHG_DCD_POLL_TIME		(100 * HZ/1000) /* 100 msec */
-#define DWC3_CHG_DCD_MAX_RETRIES	6 /* Tdcd_tmout = 6 * 100 msec */
+#define DWC3_CHG_DCD_MAX_RETRIES	8 /* Tdcd_tmout = 8 * 100 msec */
 #define DWC3_CHG_PRIMARY_DET_TIME	(50 * HZ/1000) /* TVDPSRC_ON */
 #define DWC3_CHG_SECONDARY_DET_TIME	(50 * HZ/1000) /* TVDMSRC_ON */
 
@@ -1399,8 +1399,14 @@ static void dwc3_chg_detect_work(struct work_struct *w)
 			dwc3_chg_disable_dcd(mdwc);
 			usleep_range(1000, 1200);
 			if (dwc3_chg_det_check_linestate(mdwc)) {
-				mdwc->charger.chg_type =
-						DWC3_PROPRIETARY_CHARGER;
+				mdwc->charger.chg_type = DWC3_PROPRIETARY_CHARGER;
+				mdwc->chg_state = USB_CHG_STATE_DETECTED;
+				delay = 0;
+				break;
+			}
+			/* set DCP charger when dcd failed */
+			if(tmout) {
+				mdwc->charger.chg_type = DWC3_DCP_CHARGER;
 				mdwc->chg_state = USB_CHG_STATE_DETECTED;
 				delay = 0;
 				break;
@@ -1424,8 +1430,7 @@ static void dwc3_chg_detect_work(struct work_struct *w)
 			 * charger detection is enabled.
 			 */
 			if (!dcd && prop_chg_detect)
-				mdwc->charger.chg_type =
-						DWC3_FLOATED_CHARGER;
+				mdwc->charger.chg_type = DWC3_FLOATED_CHARGER;
 			else
 				mdwc->charger.chg_type = DWC3_SDP_CHARGER;
 			mdwc->chg_state = USB_CHG_STATE_DETECTED;
