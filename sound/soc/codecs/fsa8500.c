@@ -486,7 +486,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 		fsa8500->hs_acc_type = fsa8500_get_hs_acc_type(fsa8500);
 		pr_debug("%s:report HS insert,type %d\n", __func__,
 					fsa8500->hs_acc_type);
-		snd_soc_jack_report_no_dapm(fsa8500->hs_jack,
+		snd_soc_jack_report(fsa8500->hs_jack,
 					fsa8500->hs_acc_type,
 					fsa8500->hs_jack->jack->type);
 	}
@@ -495,11 +495,11 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 	if ((fsa8500->irq_status[0] & 0x18) && fsa8500->inserted) {
 		pr_debug("%s:report HS removal,type %d\n", __func__,
 					fsa8500->hs_acc_type);
-		snd_soc_jack_report_no_dapm(fsa8500->hs_jack, 0,
+		snd_soc_jack_report(fsa8500->hs_jack, 0,
 					fsa8500->hs_jack->jack->type);
 		if (fsa8500->button_pressed) {
 			pr_debug("%s:report button release\n", __func__);
-			snd_soc_jack_report_no_dapm(fsa8500->button_jack,
+			snd_soc_jack_report(fsa8500->button_jack,
 				0, fsa8500->button_jack->jack->type);
 		fsa8500->button_pressed = 0;
 		}
@@ -515,14 +515,14 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 		status = fsa8500->irq_status[1] & 0x7F;
 		pr_debug("%s:report key 0x%x short press & release\n",
 					__func__, status);
-		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
+		snd_soc_jack_report(fsa8500->button_jack,
 					status<<SND_JACK_BTN_SHIFT,
 					status<<SND_JACK_BTN_SHIFT);
 		/* The framework can ignore events if they came
 		to close to each other. Add small delay between
 		press and release events */
 		usleep(10000);
-		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
+		snd_soc_jack_report(fsa8500->button_jack,
 					0, status<<SND_JACK_BTN_SHIFT);
 	}
 
@@ -530,7 +530,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 	if (fsa8500->irq_status[2] & 0x7F) {
 		status = fsa8500->irq_status[2] & 0x7F;
 		pr_debug("%s:report key 0x%x long press\n", __func__, status);
-		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
+		snd_soc_jack_report(fsa8500->button_jack,
 					status<<SND_JACK_BTN_SHIFT,
 					status<<SND_JACK_BTN_SHIFT);
 
@@ -541,7 +541,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 	if (fsa8500->irq_status[3] & 0x7F) {
 		status = fsa8500->irq_status[3] & 0x7F;
 		pr_debug("%s:report key %d release\n", __func__, status);
-		snd_soc_jack_report_no_dapm(fsa8500->button_jack,
+		snd_soc_jack_report(fsa8500->button_jack,
 					0, status<<SND_JACK_BTN_SHIFT);
 
 		fsa8500->button_pressed &= ~status;
