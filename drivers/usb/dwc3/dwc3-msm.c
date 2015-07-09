@@ -1480,7 +1480,8 @@ static void dwc3_start_chg_det(struct dwc3_charger *charger, bool start)
 
 	/* Skip if charger type was already detected externally */
 	if (mdwc->chg_state == USB_CHG_STATE_DETECTED &&
-		charger->chg_type != DWC3_INVALID_CHARGER)
+			charger->chg_type != DWC3_INVALID_CHARGER &&
+			!mdwc->charger.internal_chg_detect)
 		return;
 
 	mdwc->chg_state = USB_CHG_STATE_UNDEFINED;
@@ -2367,6 +2368,8 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		psy->type = val->intval;
+		if (mdwc->charger.internal_chg_detect)
+			break;
 
 		switch (psy->type) {
 		case POWER_SUPPLY_TYPE_USB:
@@ -3045,6 +3048,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "power collapse=%d, POR=%d\n",
 		mdwc->power_collapse, mdwc->power_collapse_por);
+
+	mdwc->charger.internal_chg_detect = of_property_read_bool(node,
+				"qcom,internal-chg-detect");
 
 	ret = of_property_read_u32(node, "qcom,lpm-to-suspend-delay-ms",
 				&mdwc->lpm_to_suspend_delay);
