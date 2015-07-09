@@ -63,6 +63,7 @@
 	/delete-property/ qcom,dc-psy-type;
 	qcom,usb-cc-controller;
 	qcom,disable-apsd;
+	qcom,disable-hvdcp;
 };
 
 /{
