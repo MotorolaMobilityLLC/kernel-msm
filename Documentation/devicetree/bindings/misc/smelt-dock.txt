@@ -1,0 +1,30 @@
+Smelt dock detection
+
+Required properties:
+- compatible:		Must be "mmi,smelt-dock".
+- gpio:			GPIO indicating docked status.
+
+Optional properties:
+- charger-name:		Name of wireless charger power_supply device.
+- switch-name:		Name of dock switch device.
+- active_low:		Define this property if GPIO is active low.
+- supplied_to:		Names of the batteries this charger supplies power to.
+- num_supplicants:	Number of entries in the supplied_to array.
+- debounce_window,s:	Duration debouncing is enabled when turned on (in sec).
+- debounce_duration,ms: Debounce duration for an undock event (in ms).
+- suspend_delay,ms:	Duration device suspend is prevented after dock/undock events (in ms).
+
+Example:
+
+	dock {
+		compatible = "mmi,smelt-dock";
+		charger-name = "wireless";
+		switch-name = "dock";
+		gpio = <&msmgpio 54 0>;
+		active_low;
+		supplied_to = "max170xx_battery";
+		debounce-window,s = <3>;
+		debounce-duration,ms = <1800>;
+		suspend-delay,ms = <2000>;
+	};
+
