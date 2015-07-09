@@ -35,9 +35,6 @@
 #include <linux/reboot.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 
-/* define to enable USB charger detection */
-#undef USB_CHARGER_DETECTION
-
 #include "synaptics_dsx_i2c.h"
 #include "synaptics_dsx_control_access_block.h"
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
@@ -1807,8 +1804,7 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
 
-static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
-		unsigned char *f01_cmd_base_addr);
+static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data);
 
 static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		bool enable);
@@ -5184,6 +5180,7 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_device_info *rmi;
 	struct f34_properties f34_query;
+	struct f34_properties_v2 f34_query_v2;
 	struct synaptics_rmi4_f01_device_status status;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
@@ -5213,9 +5210,9 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 			}
 
 			dev_dbg(&rmi4_data->i2c_client->dev,
-					"%s: F%02x found (page %d)\n",
-					__func__, rmi_fd.fn_number,
-					page_number);
+				"%s: F%02x v%d found (page %d)\n",
+				__func__, rmi_fd.fn_number, rmi_fd.fn_version,
+				page_number);
 
 			switch (rmi_fd.fn_number) {
 			case SYNAPTICS_RMI4_F51:
@@ -5241,22 +5238,44 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 				break;
 
 			case SYNAPTICS_RMI4_F34:
-				retval = synaptics_rmi4_i2c_read(rmi4_data,
+				if (rmi_fd.fn_version < 2) {
+					retval = synaptics_rmi4_i2c_read(
+						rmi4_data,
 						rmi_fd.query_base_addr +
 							F34_PROPERTIES_OFFSET,
 						&f34_query.data[0],
 						sizeof(f34_query));
-				if (retval < 0)
-					return retval;
+					if (retval < 0)
+						return retval;
 
-				if (f34_query.has_config_id) {
-					retval = synaptics_rmi4_i2c_read(
+					if (f34_query.has_config_id) {
+						retval = synaptics_rmi4_i2c_read(
 							rmi4_data,
 							rmi_fd.ctrl_base_addr,
 							rmi->config_id,
 							sizeof(rmi->config_id));
+						if (retval < 0)
+							return retval;
+					}
+				} else if (rmi_fd.fn_version == 2) {
+					retval = synaptics_rmi4_i2c_read(
+							rmi4_data,
+							rmi_fd.query_base_addr +
+							F34_PROPERTIES_OFFSET_V2,
+							&f34_query_v2.data[0],
+							sizeof(f34_query_v2));
 					if (retval < 0)
 						return retval;
+
+					if (f34_query_v2.has_config_id) {
+						retval = synaptics_rmi4_i2c_read(
+							rmi4_data,
+							rmi_fd.ctrl_base_addr,
+							rmi->config_id,
+							sizeof(rmi->config_id));
+						if (retval < 0)
+							return retval;
+					}
 				}
 				break;
 
@@ -5519,8 +5538,7 @@ static void synaptics_dsx_release_all(struct synaptics_rmi4_data *rmi4_data)
 	}
 }
 
-static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
-		unsigned char *f01_cmd_base_addr)
+static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int current_state, retval;
 	bool need_to_query = false;
