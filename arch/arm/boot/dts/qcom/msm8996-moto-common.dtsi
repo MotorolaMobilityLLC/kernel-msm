@@ -247,3 +247,9 @@
 	status = "ok";
 };
 
+&pm8994_l18 {
+	regulator-always-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
