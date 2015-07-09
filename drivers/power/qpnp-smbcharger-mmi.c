@@ -3899,6 +3899,7 @@ static void set_max_allowed_current_ma(struct smbchg_chip *chip,
 {
 	if (!chip->usb_present) {
 		pr_smb(PR_STATUS, "NO allowed current, No USB\n");
+		chip->target_fastchg_current_ma = current_ma;
 		return;
 	}
 
