@@ -643,8 +643,8 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 					fw_upgrade_flag = 1;
 					config_upgrade_flag = 1;
 				} else {
-					if (verFw[7] == 0xFF || verFw[8] == 0xFF || verFw[7] < fw->data[10] ||
-						(verFw[7] == fw->data[10] && verFw[8] < fw->data[11])) {
+					if (verFw[7] == 0xFF || verFw[8] == 0xFF || verFw[8] < fw->data[11] ||
+						(verFw[8] == fw->data[11] && verFw[7] < fw->data[10])) {
 						LOGI("ic's fw is old, force to upgrade.\n");
 						fw_upgrade_flag = 1;
 					}
