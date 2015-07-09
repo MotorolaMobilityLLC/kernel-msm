@@ -182,6 +182,7 @@
 &usb3 {
 	status = "ok";
 	qcom,usbin-vadc = <&pmi8994_vadc>;
+	qcom,internal-chg-detect;
 
 	dwc3@f9200000 {
 		maximum-speed = "high-speed";
