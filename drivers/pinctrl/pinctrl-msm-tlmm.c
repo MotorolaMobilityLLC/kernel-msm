@@ -21,6 +21,7 @@
 #include <linux/pinctrl/pinconf-generic.h>
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
+#include <linux/irqchip/qpnp-int.h>
 #include "pinctrl-msm.h"
 
 /* config translations */
@@ -758,6 +759,30 @@ static void msm_tlmm_set_intr_cfg_type(struct msm_tlmm_irq_chip *ic,
 	udelay(5);
 }
 
+static int msm_tlmm_gp_show_resume_irq(struct msm_tlmm_irq_chip *ic)
+{
+	unsigned long i;
+
+	for_each_set_bit(i, ic->wake_irqs, ic->num_irqs) {
+		if (msm_tlmm_get_intr_status(ic, i)) {
+			struct irq_desc *desc;
+			const char *name = "null";
+			int irq = gpio_to_irq((unsigned int)i);
+
+			desc = irq_to_desc(irq);
+			if (desc == NULL)
+				name = "stray irq";
+			else if (desc->action && desc->action->name)
+				name = desc->action->name;
+
+			pr_warn("%s: [%d] triggered by gpio[%d] : %s\n",
+				__func__, irq, (unsigned int)i, name);
+		}
+	}
+
+	return 0;
+}
+
 static irqreturn_t msm_tlmm_gp_handle_irq(int irq, struct msm_tlmm_irq_chip *ic)
 {
 	unsigned long i;
@@ -955,6 +980,9 @@ static void msm_tlmm_gp_irq_resume(void)
 	unsigned long i;
 	struct msm_tlmm_irq_chip *ic = &msm_tlmm_gp_irq;
 	int num_irqs = ic->num_irqs;
+
+	if (qpnpint_show_resume_irq())
+		msm_tlmm_gp_show_resume_irq(ic);
 
 	spin_lock_irqsave(&ic->irq_lock, irq_flags);
 	for_each_set_bit(i, ic->wake_irqs, num_irqs)
