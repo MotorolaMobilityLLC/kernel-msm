@@ -111,15 +111,17 @@
 		};
 	};
 
-	gpio-charger {
-		compatible = "gpio-charger";
-		gpio = <&msmgpio 54 0>;
-		gpio_active_low;
-		charger-type = <8>; /* POWER_SUPPLY_TYPE_WIRELESS */
+	dock {
+		reg = <0 0>;
+		compatible = "mmi,smelt-dock";
 		charger-name = "wireless";
-		supplied_to = "max170xx_battery";
 		switch-name = "dock";
-		wakeup;
+		gpio = <&msmgpio 54 0>;
+		active_low;
+		supplied_to = "max170xx_battery";
+		debounce-window,s = <3>;
+		debounce-duration,ms = <1800>;
+		suspend-delay,ms = <500>;
 	};
 
 	factory_support {
