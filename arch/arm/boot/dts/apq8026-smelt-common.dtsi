@@ -418,6 +418,7 @@
 		maxim,regs-init-data = <
 			0x01 0xFF00 /* Valrt Threshold, IRQ disabled */
 			0x02 0x7F80 /* Talrt Threshold, IRQ disabled */
+			0x1D 0x4254 /* CONFIG register, the same value as in batt configs below */
 		>;
 
 		maxim,enable_por_init;
