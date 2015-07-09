@@ -84,6 +84,20 @@
 	status = "ok";
 };
 
+&i2c_7 {
+	drv2605: drv2605@5a {
+		compatible = "ti,drv2605";
+		reg = <0x5a>;
+		gpios = <&pm8994_gpios 12 0>;   /* EN_GPIO */
+		external_trigger = <1>;         /* Enable ext. trigger */
+		default_effect = <4>;           /* Sharp Click 100% */
+		rated_voltage = <0x72>;         /* 2.4v */
+		overdrive_voltage = <0xd1>;     /* 4.6v */
+		rtp_overdrive_voltage = <0xea>; /* 4.991v */
+		static-vdd-supply = <&vreg_5p0>;
+	};
+};
+
 &soc {
 	vreg_5p0: vreg_5v {
 		compatible = "regulator-fixed";
@@ -241,6 +255,15 @@
 		qcom,master-en = <1>;
 		status = "okay";
 	};
+
+	gpio@cb00 { /* GPIO 12 - AP_VIB_EN */
+		qcom,mode = <1>;         /* Digital output*/
+		qcom,vin-sel = <2>;      /* VIN2 */
+		qcom,src-sel = <0>;      /* GPIO */
+		qcom,master-en = <1>;    /* Enable GPIO */
+		status = "okay";
+	};
+
 };
 
 &blsp1_uart2 {
