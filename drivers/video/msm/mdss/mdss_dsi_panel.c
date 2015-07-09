@@ -28,8 +28,8 @@
 #include "mdss_asus_debug.h"
 #endif
 
-#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
 #include <linux/debugfs.h>
+#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
 #include <linux/uaccess.h>
 #endif
 /* ASUS support V2 panel low power mode */
