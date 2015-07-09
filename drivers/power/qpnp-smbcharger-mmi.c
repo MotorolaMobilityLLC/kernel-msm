@@ -4798,15 +4798,7 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 				elapsed_seconds, chip->first_aicl_seconds,
 				now_seconds, chip->aicl_irq_count);
 			if (elapsed_seconds <= AICL_IRQ_LIMIT_SECONDS) {
-				pr_smb(PR_INTERRUPT, "Disable AICL rerun\n");
-				/*
-				 * Disable AICL rerun since many interrupts were
-				 * triggered in a short time
-				 */
-				rc = smbchg_hw_aicl_rerun_en(chip, false);
-				if (rc)
-					pr_err("Couldn't turn off AICL rerun rc:%d\n",
-						rc);
+				pr_smb(PR_INTERRUPT, "Many IRQ for AICL!\n");
 				bad_charger = true;
 			}
 			chip->aicl_irq_count = 0;
