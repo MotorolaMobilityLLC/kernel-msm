@@ -721,6 +721,13 @@ static ssize_t synaptics_rmi4_wake_gesture_store(struct device *dev,
 	if (sscanf(buf, "%u", &input) != 1)
 		return -EINVAL;
 
+	if (rmi4_data->suspend) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s:Wake_gesture can not operate when the system is suspended\n",
+				__func__);
+		return -EINVAL;
+	}
+
 	input = input > 0 ? 1 : 0;
 
 	if (rmi4_data->f11_wakeup_gesture || rmi4_data->f12_wakeup_gesture)
@@ -3686,7 +3693,7 @@ static void synaptics_rmi4_f12_wg(struct synaptics_rmi4_data *rmi4_data,
 		rmi4_data->gesture_sleep = false;
 		disable_irq_wake(rmi4_data->irq);
 		dev_info(rmi4_data->pdev->dev.parent,
-				"%s: exist gesture mode\n",	__func__);
+				"%s: exist gesture mode\n", __func__);
 	}
 
 	return;
