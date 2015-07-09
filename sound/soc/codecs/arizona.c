@@ -79,6 +79,8 @@
 static struct mutex slim_tx_lock;
 static struct mutex slim_rx_lock;
 
+static struct snd_soc_codec *arizona_codec;
+
 static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol,
 			  int event)
@@ -160,6 +162,13 @@ static irqreturn_t arizona_thermal_shutdown(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
+
+int arizona_init_codec(struct snd_soc_codec *codec)
+{
+	arizona_codec = codec;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_init_codec);
 
 static const struct snd_soc_dapm_widget arizona_spkl =
 	SND_SOC_DAPM_PGA_E("OUT4L", SND_SOC_NOPM,
@@ -3309,6 +3318,22 @@ static int arizona_slim_audio_probe(struct slim_device *slim)
 	return 0;
 }
 
+static int arizona_slim_device_up(struct slim_device *slim)
+{
+	dev_crit(&slim->dev, "****%s****\n", __func__);
+	snd_soc_card_change_online_state(arizona_codec->card, 1);
+	msleep(100);
+	return 0;
+}
+
+static int arizona_slim_device_down(struct slim_device *slim)
+{
+	dev_crit(&slim->dev, "****%s****\n", __func__);
+	snd_soc_card_change_online_state(arizona_codec->card, 0);
+	msleep(100);
+	return 0;
+}
+
 static const struct slim_device_id arizona_slim_id[] = {
 	{ "florida-slim-audio", 0 },
 	{ },
@@ -3321,6 +3346,8 @@ static struct slim_driver arizona_slim_audio = {
 	},
 
 	.probe = arizona_slim_audio_probe,
+	.device_up = arizona_slim_device_up,
+	.device_down = arizona_slim_device_down,
 	.id_table = arizona_slim_id,
 };
 
