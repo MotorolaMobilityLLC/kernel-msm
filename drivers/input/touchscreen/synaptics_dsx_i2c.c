@@ -5211,7 +5211,8 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
 	if ((event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK) &&
-			evdata && evdata->data && rmi4_data) {
+			evdata && evdata->info && evdata->info->node == 0 &&
+			evdata->data && rmi4_data) {
 		int *blank = evdata->data;
 		pr_debug("fb notification: event = %lu blank = %d\n", event, *blank);
 		/* entering suspend upon early blank event */
