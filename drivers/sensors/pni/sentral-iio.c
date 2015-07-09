@@ -33,6 +33,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/time.h>
+#include <linux/sort.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
@@ -333,6 +334,18 @@ exit:
 	return rc;
 }
 
+// find time scale
+
+static int compare(const void *a, const void *b)
+{
+	u32 a_integer = *(const u32 *)(a);
+	u32 b_integer = *(const u32 *)(b);
+
+	if (a_integer < b_integer) return -1;
+	if (a_integer > b_integer) return 1;
+	return 0;
+}
+
 static void find_time_scale(struct sentral_device *sentral, u8 period)
 {
 	u64 ntime[SENTRAL_TICK_STAT];
@@ -354,11 +367,16 @@ static void find_time_scale(struct sentral_device *sentral, u8 period)
 		diff_ntime[i] = ntime[i + 1] - ntime[i];
 		diff_stime[i] = stime[i + 1] - stime[i];
 		tick_ratio[i] = (u32)(diff_ntime[i]) / diff_stime[i];
+		LOGD(&sentral->client->dev, "tick_ratio[%u]: %u",
+				i, tick_ratio[i]);
+	}
+	sort(tick_ratio, SENTRAL_TICK_STAT - 1, sizeof(u32), &compare, NULL);
+	for (i = 3; i < SENTRAL_TICK_STAT - 4; i++) {
 		time_scale += tick_ratio[i];
 		LOGD(&sentral->client->dev, "tick_ratio[%u]: %u, time_scale: %u",
 				i, tick_ratio[i], time_scale);
 	}
-	time_scale /= SENTRAL_TICK_STAT;
+	time_scale /= (SENTRAL_TICK_STAT - 7);
 	sentral->ts_timestamp_scale = (u64)time_scale;
 	LOGI(&sentral->client->dev, "final time scale: %lld", sentral->ts_timestamp_scale);
 }
@@ -514,7 +532,6 @@ static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
 	int rc;
 
 	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
-	mutex_lock(&sentral->lock_flush);
 	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
 	return rc;
 }
@@ -614,6 +631,46 @@ static int sentral_log_meta_event(struct sentral_device *sentral,
 			data->byte_2);
 
 	return 0;
+}
+
+static int sentral_iio_buffer_push_t1(struct sentral_device *sentral,
+		u8 sensor_id, void *data, size_t bytes)
+{
+	u8 buffer[24] = { 0 };
+	int rc;
+	int i;
+	char dstr[sizeof(buffer) * 5 + 1];
+	size_t dstr_len = 0;
+	u16 sensor_id_u16 = (u16)sensor_id;
+	//u8 accuracy;
+	u32 stime;
+	u64 stime_l;
+
+	// sensor id 0-1
+	memcpy(&buffer[0], &sensor_id_u16, sizeof(sensor_id_u16));
+
+	// data 2-14
+	if (bytes > 0) {
+		memcpy(&buffer[2], data, 12); // get x,y,z 4 bytes each
+		memcpy(&buffer[14], ((u8 *)data)+16,1); // get accuracy
+	}
+
+	memcpy (&stime, ((u8 *)data) + 12, 4);
+	stime_l = (u64)stime;
+	// timestamp 19-23 set to stime
+	memcpy(&buffer[16], &stime_l, sizeof(stime_l));
+
+	for (i = 0, dstr_len = 0; i < sizeof(buffer); i++) {
+		dstr_len += scnprintf(dstr + dstr_len, PAGE_SIZE - dstr_len,
+				" 0x%02X", buffer[i]);
+	}
+	LOGD(&sentral->client->dev, " T1 iio buffer bytes: %s\n", dstr);
+
+	rc = iio_push_to_buffers(sentral->indio_dev, buffer);
+	if (rc)
+		LOGE(&sentral->client->dev, "error (%d) pushing to IIO buffers", rc);
+
+	return rc;
 }
 
 // IIO
@@ -732,6 +789,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 	u8 sensor_id;
 	size_t data_size;
 	u8 wrist_tilt_flag = 1;
+	u8 t1_accel_flag = 1;
 
 	while (bytes > 0) {
 		// get sensor id
@@ -838,7 +896,12 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_GEOMAGNETIC_ROTATION_VECTOR:
 			data_size = 10;
 			break;
-
+		case SST_T1_ACCELEROMETER:
+			data_size = 17;
+			sentral_iio_buffer_push_t1(sentral, sensor_id, (void *)buffer, data_size);
+			t1_accel_flag = 0;
+			LOGD(&sentral->client->dev, "T1 Accel data received\n");
+			break;
 		case SST_MAGNETIC_FIELD_UNCALIBRATED:
 		case SST_GYROSCOPE_UNCALIBRATED:
 			data_size = 13;
@@ -857,7 +920,6 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 
 				// push flush complete events
 				if (meta_data->event_id == SEN_META_FLUSH_COMPLETE) {
-					mutex_unlock(&sentral->lock_flush);
 					sentral_iio_buffer_push(sentral, sensor_id,
 							(void *)&meta_data->byte_1,
 							sizeof(meta_data->byte_1));
@@ -878,11 +940,10 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 
 		default:
 			LOGE(&sentral->client->dev, "invalid sensor type: %u\n", sensor_id);
-			mutex_unlock(&sentral->lock_flush);
 			return -EINVAL;
 		}
 
-		if (wrist_tilt_flag)
+		if (wrist_tilt_flag & t1_accel_flag)
 			sentral_iio_buffer_push(sentral, sensor_id, (void *)buffer, data_size);
 
 		buffer += data_size;
@@ -1028,7 +1089,30 @@ static void sentral_do_work_fifo_read(struct work_struct *work)
 			msecs_to_jiffies(SENTRAL_WATCHDOG_WORK_MSECS));
 }
 
+// watermark setting
+static int sentral_fifo_watermark_setting(struct sentral_device *sentral,
+		u16 margin)
+{
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
+	int rc;
 
+	// read back fifo control param
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+	if (rc) {
+		goto exit;
+	}
+
+	// set watermark portion
+	fifo_ctrl.fifo.watermark = fifo_ctrl.fifo.size - margin;
+
+	rc = sentral_parameter_write(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+
+exit:
+	return rc;
+}
 
 // chip control
 
@@ -2416,6 +2500,12 @@ static void sentral_do_work_reset(struct work_struct *work)
 
 	find_time_scale(sentral, 50);
 
+	rc = sentral_fifo_watermark_setting(sentral, (u16)SENTRAL_WATERMARK_MARGIN);
+	if (rc) {
+		LOGE(&sentral->client->dev, "error (%d) setting watermark\n", rc);
+		return;
+	}
+
 	// sync timestamp
 	sentral->ts_ref_stime = 0;
 	rc = sentral_sync_timestamp(sentral);
@@ -2706,7 +2796,6 @@ static int sentral_probe(struct i2c_client *client,
 	mutex_init(&sentral->lock_i2c);
 	mutex_init(&sentral->lock_ts);
 	mutex_init(&sentral->lock_reset);
-	mutex_init(&sentral->lock_flush);
 	mutex_init(&sentral->lock_pio);
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
 
