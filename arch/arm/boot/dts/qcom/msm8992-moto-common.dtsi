@@ -647,7 +647,7 @@
 	qcom,parallel-usb-min-current-ma = <0>; /* Force Parallel Mode only on HVDCP */
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-allowed-lowering-ma = <500>;
-	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-voltage-mv = <4100>;
 	qcom,stepchg-current-ma = <2000>;
 	qcom,stepchg-taper-ma = <1800>;
 	qcom,stepchg-iterm-ma = <150>;
