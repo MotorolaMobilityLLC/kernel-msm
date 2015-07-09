@@ -7472,13 +7472,17 @@ dhdsdio_suspend(void *context)
 	}
 
 	ret = dhd_os_check_wakelock(bus->dhd);
-	if ((!ret) && (bus->dhd->up)) {
-		if (wait_event_timeout(bus->bus_sleep, bus->sleeping, wait_time) == 0) {
-			if (!bus->sleeping) {
-				return 0;
-				//return 1;
+	if(SLPAUTO_ENAB(bus)) {
+		if ((!ret) && (bus->dhd->up)) {
+			if (wait_event_timeout(bus->bus_sleep, bus->sleeping, wait_time) == 0) {
+				if (!bus->sleeping) {
+					return 1;
+				}
 			}
 		}
+	} else {
+		if(bus->clkstate != CLK_NONE)
+			return 1;
 	}
 	return ret;
 }
