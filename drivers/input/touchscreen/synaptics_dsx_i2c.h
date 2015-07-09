@@ -13,7 +13,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
 
@@ -21,6 +21,9 @@
 #define _SYNAPTICS_DSX_RMI4_H_
 
 #define SYNAPTICS_DSX_DRIVER_VERSION "DSX 1.1"
+
+/* define to enable USB charger detection */
+#define USB_CHARGER_DETECTION
 
 #include <linux/version.h>
 #include <linux/ktime.h>
@@ -62,9 +65,12 @@
 #define SYNAPTICS_RMI4_F12 (0x12)
 #define SYNAPTICS_RMI4_F1A (0x1a)
 #define SYNAPTICS_RMI4_F34 (0x34)
+#define SYNAPTICS_RMI4_F35 (0x35)
+#define SYNAPTICS_RMI4_F38 (0x38)
 #define SYNAPTICS_RMI4_F51 (0x51)
 #define SYNAPTICS_RMI4_F54 (0x54)
 #define SYNAPTICS_RMI4_F55 (0x55)
+#define SYNAPTICS_RMI4_FDB (0xdb)
 
 #define SYNAPTICS_RMI4_PRODUCT_INFO_SIZE 2
 #define SYNAPTICS_RMI4_PRODUCT_ID_SIZE 10
@@ -77,6 +83,7 @@
 #define PACKAGE_ID_OFFSET 17
 #define FW_VERSION_OFFSET 18
 #define F34_PROPERTIES_OFFSET 1
+#define F34_PROPERTIES_OFFSET_V2 0
 
 #define MAX_NUMBER_OF_FINGERS 10
 #define MAX_NUMBER_OF_BUTTONS 4
@@ -93,6 +100,10 @@
 #define MASK_1BIT 0x01
 
 #define MAX_NUMBER_TRACKED_RESUMES 10
+
+#define PRODUCT_INFO_SIZE 2
+#define PRODUCT_ID_SIZE 10
+
 /*
  * struct synaptics_rmi4_resume_info - information about a resume
  * @start: time when resume started
@@ -133,7 +144,10 @@ struct synaptics_rmi4_fn_desc {
 	unsigned char cmd_base_addr;
 	unsigned char ctrl_base_addr;
 	unsigned char data_base_addr;
-	unsigned char intr_src_count;
+	unsigned char intr_src_count:3;
+	unsigned char reserved_1:2;
+	unsigned char fn_version:2;
+	unsigned char reserved_2:1;
 	unsigned char fn_number;
 };
 
@@ -257,6 +271,19 @@ struct f34_properties {
 			unsigned char has_display_config:1;
 			unsigned char has_blob_config:1;
 			unsigned char reserved:1;
+		} __packed;
+		unsigned char data[1];
+	};
+};
+
+struct f34_properties_v2 {
+	union {
+		struct {
+			unsigned char query0_subpkt1_size:3;
+			unsigned char has_config_id:1;
+			unsigned char reserved:1;
+			unsigned char has_thqa:1;
+			unsigned char reserved2:2;
 		} __packed;
 		unsigned char data[1];
 	};
@@ -495,8 +522,7 @@ struct synaptics_rmi4_data {
 	void (*set_state)(struct synaptics_rmi4_data *rmi4_data, int state);
 	int (*ready_state)(struct synaptics_rmi4_data *rmi4_data, bool standby);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
-	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data,
-			unsigned char *f01_cmd_base_addr);
+	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
 	int number_resumes;
 	int last_resume;
 	struct synaptics_rmi4_resume_info *resume_info;
@@ -521,6 +547,7 @@ struct synaptics_rmi4_data {
 #endif
 	bool clipping_on;
 	struct synaptics_clip_area *clipa;
+	struct mutex rmi4_exp_init_mutex;
 };
 
 struct time_keeping {
@@ -586,6 +613,40 @@ int synaptics_rmi4_read_packet_reg(
 int synaptics_rmi4_read_packet_regs(
 	struct synaptics_rmi4_data *rmi4_data,
 	struct synaptics_rmi4_func_packet_regs *regs);
+
+static inline int secure_memcpy(unsigned char *dest, unsigned int dest_size,
+		const unsigned char *src, unsigned int src_size,
+		unsigned int count)
+{
+	if (dest == NULL || src == NULL)
+		return -EINVAL;
+
+	if (count > dest_size || count > src_size)
+		return -EINVAL;
+
+	memcpy((void *)dest, (const void *)src, count);
+
+	return 0;
+}
+
+static inline int synaptics_rmi4_reg_read(
+		struct synaptics_rmi4_data *rmi4_data,
+		unsigned short addr,
+		unsigned char *data,
+		unsigned short len)
+{
+	return rmi4_data->i2c_read(rmi4_data, addr, data, len);
+}
+
+static inline int synaptics_rmi4_reg_write(
+		struct synaptics_rmi4_data *rmi4_data,
+		unsigned short addr,
+		unsigned char *data,
+		unsigned short len)
+{
+	return rmi4_data->i2c_write(rmi4_data, addr, data, len);
+}
+
 
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING)
 int synaptics_rmi4_scan_f54_ctrl_reg_info(
