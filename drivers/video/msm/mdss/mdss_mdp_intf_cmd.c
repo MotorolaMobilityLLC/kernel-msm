@@ -785,6 +785,12 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	mb();
 	MDSS_XLOG(ctl->num,  atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 						ctx->rdptr_enabled);
+
+	if (ctl->panel_data->panel_info.dummy_panel_enabled) {
+		mdss_mdp_cmd_pingpong_done(ctl);
+		if (sctl)
+			mdss_mdp_cmd_pingpong_done(sctl);
+	}
 	return 0;
 }
 
