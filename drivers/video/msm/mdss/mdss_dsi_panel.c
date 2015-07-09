@@ -1736,8 +1736,15 @@ int mdss_dsi_panel_init(struct device_node *node,
 		return rc;
 	}
 
-	if (!cmd_cfg_cont_splash)
+	if (!cmd_cfg_cont_splash) {
 		pinfo->cont_splash_enabled = false;
+		/* for the case bootloader did not turn on panel correctly */
+		if (!mdss_panel_get_boot_cfg()) {
+			pinfo->dummy_panel_enabled = true;
+			pr_info("%s: panel is not on bootloader, "
+				"using it as dummy\n", __func__);
+		}
+	}
 	pr_info("%s: Continuous splash %s\n", __func__,
 		pinfo->cont_splash_enabled ? "enabled" : "disabled");
 
