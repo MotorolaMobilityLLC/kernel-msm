@@ -26,6 +26,7 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/of_gpio.h>
 #endif
+#include <linux/wakelock.h>
 #define FPC1020_RESET_LOW_US 1000
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
@@ -47,6 +48,8 @@
 #define SUPPLY_SPI_REQ_CURRENT  10U
 #define SUPPLY_IO_REQ_CURRENT   6000U
 #define SUPPLY_ANA_REQ_CURRENT  6000U
+
+#define FPC_TTW_HOLD_TIME 500
 
 static const char * const pctl_names[] = {
 	"fpc1020_spi_active",
@@ -82,6 +85,7 @@ struct fpc1020_data {
 	struct regulator *vreg[ARRAY_SIZE(vreg_conf)];
 	struct regulator *vdd_io;
 	struct mutex lock;
+	struct wake_lock ttw_wl;
 	int irq_gpio;
 	int cs0_gpio;
 	int rst_gpio;
@@ -93,6 +97,7 @@ struct fpc1020_data {
 	bool prepared;
 	bool wakeup_enabled;
 	bool power_enabled;
+	bool ready_for_ttw;
 };
 
 int fpc1020_io_regulator_release(struct fpc1020_data *fpc1020)
@@ -575,7 +580,7 @@ static ssize_t wakeup_enable_set(struct device *dev,
 		return -EINVAL;
 	}
 
-	return 0;
+	return count;
 }
 static DEVICE_ATTR(wakeup_enable, S_IWUSR, NULL, wakeup_enable_set);
 
@@ -636,10 +641,9 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	 */
 	smp_rmb();
 
-	/* Wake up platform if allowed */
-	if( fpc1020->wakeup_enabled ) {
-		input_report_key(fpc1020->idev, KEY_WAKEUP, 1);
-		input_report_key(fpc1020->idev, KEY_WAKEUP, 0);
+	if (fpc1020->wakeup_enabled && fpc1020->ready_for_ttw) {
+		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
+		fpc1020->ready_for_ttw = false;
 	}
 
 	/* Send irq event and possible wakeup key event */
@@ -829,6 +833,9 @@ static int fpc1020_probe(struct spi_device *spi)
 	/* Request that the interrupt should be wakeable */
 	enable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
 
+	wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
+	fpc1020->ready_for_ttw = false;
+
 	rc = sysfs_create_group(&dev->kobj, &attribute_group);
 	if (rc) {
 		dev_err(dev, "could not create sysfs\n");
@@ -851,10 +858,20 @@ static int fpc1020_remove(struct spi_device *spi)
 
 	sysfs_remove_group(&spi->dev.kobj, &attribute_group);
 	mutex_destroy(&fpc1020->lock);
+	wake_lock_destroy(&fpc1020->ttw_wl);
 	(void)vreg_setup(fpc1020, "vdd_io", false);
 	(void)vreg_setup(fpc1020, "vcc_spi", false);
 	(void)vreg_setup(fpc1020, "vdd_ana", false);
 	dev_info(&spi->dev, "%s\n", __func__);
+	return 0;
+}
+
+static int fpc1020_suspend(struct spi_device * spi, pm_message_t mesg)
+{
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
+
+	fpc1020->ready_for_ttw = true;
+
 	return 0;
 }
 
@@ -872,6 +889,7 @@ static struct spi_driver fpc1020_driver = {
 	},
 	.probe	= fpc1020_probe,
 	.remove	= fpc1020_remove,
+	.suspend = fpc1020_suspend,
 };
 
 static int __init fpc1020_init(void)
