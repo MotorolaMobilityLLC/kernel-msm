@@ -665,6 +665,14 @@ config INPUT_TSL2584
 	  Say Y here if you wish to include support for the TSL2584 ALS sensor.
 	  If unsure, say N.
 
+config SMELT_DOCK
+	tristate "Smelt Dock Detection driver"
+	depends on OF && SWITCH
+	help
+	  This option enables device driver to detect the presense of a Smelt
+	  charging dock.
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
