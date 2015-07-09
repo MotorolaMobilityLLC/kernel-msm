@@ -836,8 +836,10 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 				&tfa9890->calib_work,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
 			}
-	} else
+	} else {
+		cancel_delayed_work_sync(&tfa9890->delay_work);
 		tfa9890->is_pcm_triggered = 0;
+	}
 }
 
 static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
