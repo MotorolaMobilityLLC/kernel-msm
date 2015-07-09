@@ -378,6 +378,9 @@ extern int
 wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev, struct bcm_cfg80211 *cfg);
 #endif /* WL_CFG80211_P2P_DEV_IF */
 
+extern int
+wl_cfgp2p_check_enabled(struct bcm_cfg80211 *cfg);
+
 /* WiFi Direct */
 #define SOCIAL_CHAN_1 1
 #define SOCIAL_CHAN_2 6
