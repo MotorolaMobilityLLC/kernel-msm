@@ -1342,9 +1342,13 @@ void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 				__func__, current->pid);
 		if (!wait_for_completion_timeout(&ctrl->mdp_comp,
 					msecs_to_jiffies(DMA_TX_TIMEOUT))) {
-			pr_err("%s: timeout error\n", __func__);
-			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
-						"edp", "hdmi", "panic");
+			struct mdss_panel_info *pinfo;
+			pinfo = &ctrl->panel_data.panel_info;
+			if (!(pinfo->dummy_panel_enabled)) {
+				pr_err("%s: timeout error\n", __func__);
+				MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
+						       "edp", "hdmi", "panic");
+			}
 		}
 	}
 	pr_debug("%s: done pid=%d\n", __func__, current->pid);
