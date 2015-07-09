@@ -100,8 +100,8 @@ static int fb_event_callback(struct notifier_block *self,
 
 	pinfo = &ctrl_pdata->panel_data.panel_info;
 
-	if (!(pinfo->esd_check_enabled)) {
-		pr_debug("ESD check is not enaled in panel dtsi\n");
+	if (!(pinfo->esd_check_enabled) || pinfo->dummy_panel_enabled) {
+		pr_debug("ESD check is not enabled\n");
 		return NOTIFY_DONE;
 	}
 
@@ -134,7 +134,7 @@ static int fb_event_callback(struct notifier_block *self,
 		}
 	} else if (event == FB_EVENT_SUSPEND) {
 		pr_debug("%s: ESD suspended\n", __func__);
-		cancel_delayed_work(&pdata->check_status);
+		cancel_delayed_work_sync(&pdata->check_status);
 	} else if (event == FB_EVENT_RESUME) {
 		int delay_ms = 0, ms;
 		struct timespec ts;
