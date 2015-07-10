@@ -11,48 +11,48 @@
  */
 
 qcom,fx30-lg {
-	/* #1928848_Moto_FX30_3000mAh_averaged_MasterSlave_Apr30th2015*/
+	/* #2056696_Moto_FX30_3000mAh_averaged_MasterSlave_June26th2015*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3000>;
 	qcom,batt-id-kohm = <100>;
 	qcom,battery-beta = <3900>;
-	qcom,battery-type = "FX30-LG-3000mah-v2";
-	qcom,chg-rslow-comp-c1 = <3039290>;
-	qcom,chg-rslow-comp-c2 = <4016069>;
-	qcom,chg-rs-to-rslow = <905982>;
-	qcom,chg-rslow-comp-thr = <0x9F>;
-	qcom,checksum = <0xECE3>;
-	qcom,gui-version = "PMI8994GUI - 2.1.6.5";
+	qcom,battery-type = "FX30-LG-3000mah-v3";
+	qcom,chg-rslow-comp-c1 = <3743593>;
+	qcom,chg-rslow-comp-c2 = <6632799>;
+	qcom,chg-rs-to-rslow = <1033837>;
+	qcom,chg-rslow-comp-thr = <0xB7>;
+	qcom,checksum = <0xFD18>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.6";
 	qcom,fg-profile-data = [
-		 E9 82 59 71
-		 D4 63 A9 41
-		 4A 83 FD 68
-		 16 71 86 76
-		 37 82 01 98
-		 AB B4 5F BB
-		 83 13 09 88
-		 7B 7E 98 82
-		 47 7D 7D 83
-		 7F 7C 16 90
-		 45 96 2D 82
-		 2D 99 44 B7
-		 CC C2 58 16
-		 D5 0B A9 59
-		 14 70 71 FD
-		 9F 47 E7 45
-		 AA 4A 00 00
-		 94 47 F2 30
-		 AE 35 00 00
+		 4E 83 85 57
+		 5C 78 E8 6C
+		 49 83 19 69
+		 40 72 26 7D
+		 D4 81 8D 9A
+		 B2 BC 80 C8
+		 77 17 08 88
+		 52 7E 51 82
+		 E6 7C 75 83
+		 E3 76 0A 8B
+		 98 95 31 82
+		 0E 99 08 B7
+		 86 C2 58 16
+		 DA 0B 72 59
+		 14 70 29 FC
+		 2B 46 8C 44
+		 CA 49 00 00
+		 33 45 AF 33
+		 7A 44 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 63 70 F5 6A
-		 49 69 5E 8A
-		 B2 77 82 6B
-		 25 74 D0 7A
-		 1C 76 D0 68
-		 64 84 1A C3
-		 0C 39 59 FD
-		 54 A0 71 0C
+		 EC 70 92 6B
+		 90 4E 40 89
+		 2F 7C 17 70
+		 19 6D 82 79
+		 3A 76 6B 68
+		 04 74 13 B0
+		 21 EB 60 07
+		 5E A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
 		 00 00 00 0C
