@@ -62,6 +62,8 @@
 
 #define MEMBLOCK	2048		/* Block size used for downloading of dongle image */
 #define MAX_NVRAMBUF_SIZE	6144	/* max nvram buf size */
+#define MAX_WKLK_IDLE_CHECK	3	/* times wake_lock checked before deciding not to suspend */
+
 
 #define ARMCR4REG_BANKIDX	(0x40/sizeof(uint32))
 #define ARMCR4REG_BANKPDA	(0x4C/sizeof(uint32))
@@ -3007,6 +3009,9 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 	int timeleft;
 	bool pending;
 	int rc = 0;
+	int idle_retry = 0;
+	int active;
+
 	DHD_INFO(("%s Enter with state :%d\n", __FUNCTION__, state));
 
 	if (bus->dhd == NULL) {
@@ -3038,9 +3043,16 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		timeleft = dhd_os_d3ack_wait(bus->dhd, &bus->wait_for_d3_ack, &pending);
 		dhd_os_set_ioctl_resp_timeout(IOCTL_RESP_TIMEOUT);
 		DHD_OS_WAKE_LOCK_RESTORE(bus->dhd);
+
 		if (bus->wait_for_d3_ack == 1) {
 			/* Got D3 Ack. Suspend the bus */
-			if (dhd_os_check_wakelock_all(bus->dhd)) {
+			/* To allow threads that got pre-empted to complete. */
+			while ((active = dhd_os_check_wakelock_all(bus->dhd)) &&
+				(idle_retry < MAX_WKLK_IDLE_CHECK)) {
+				msleep(1);
+				idle_retry++;
+			}
+			if (active) {
 				DHD_ERROR(("Suspend failed because of wakelock\n"));
 				bus->dev->current_state = PCI_D3hot;
 				pci_set_master(bus->dev);
