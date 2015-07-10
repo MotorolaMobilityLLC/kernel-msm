@@ -128,6 +128,9 @@
 		qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-value = <0x9c>;
+		qcom,panel-roi-alignment = <8 8 0 0 0 0>;
+		qcom,partial-update-enabled;
+		qcom,partial-update-roi-merge;
 	};
 
 	mot_smd_543_QHD_1_cmd_v0: qcom,mdss_dsi_mot_smd_543_QHD_dualmipi1_cmd_v0 {
@@ -184,5 +187,8 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
+		qcom,panel-roi-alignment = <8 8 0 0 0 0>;
+		qcom,partial-update-enabled;
+		qcom,partial-update-roi-merge;
 	};
 };
