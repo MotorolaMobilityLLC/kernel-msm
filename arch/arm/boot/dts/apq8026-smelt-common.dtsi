@@ -59,6 +59,9 @@
 			compatible = "mot,m4rtc";
 		};
 
+		batch {
+			compatible = "mot,m4batch";
+		};
 		accelerometer {
 			compatible = "mot,m4accelerometer";
 		};
