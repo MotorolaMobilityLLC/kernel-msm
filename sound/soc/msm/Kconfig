@@ -154,6 +154,7 @@ config SND_SOC_MSM8996
 	select DOLBY_DS2
 	select SND_HWDEP
         select DTS_EAGLE
+	select SND_SOC_FSA8500
 	help
 	 To add support for SoC audio on MSM8996.
 	 This will enable sound soc drivers which
