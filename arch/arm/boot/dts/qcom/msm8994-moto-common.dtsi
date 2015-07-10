@@ -908,8 +908,8 @@
 				<&msm_gpio 65 0>,       /* WakeIRQ      */
 				<&msm_gpio 89 0>,       /* SH Wake      */
 				<&msm_gpio 16 0>;       /* SH Wake Resp */
-			lux_table = <5 50 100 1500 3000 8000>;
-			brightness_table = <9 14 18 46 67 93 140>;
+			lux_table = <6 52 100 1560 3500 9500>;
+			brightness_table = <7 20 25 66 92 137 220>;
 			qd_pm_qos_latency = <350>;
 			qd_pm_qos_timeout = <500000>;
 			bslen_pin_active_value = <1>;
