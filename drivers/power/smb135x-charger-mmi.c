@@ -2939,6 +2939,14 @@ static void heartbeat_work(struct work_struct *work)
 		chip->stepchg_state = STEP_NONE;
 		chip->vfloat_mv = chip->stepchg_max_voltage_mv;
 		chip->batt_current_ma = chip->stepchg_max_current_ma;
+		if (chip->apsd_rerun_cnt && !chip->factory_mode) {
+			chip->apsd_rerun_cnt = 0;
+			if (chip->usb_psy) {
+				pr_debug("SMB - usb psy allow detection 0\n");
+				power_supply_set_allow_detection(chip->usb_psy,
+									0);
+			}
+		}
 	}
 
 	if (prev_step != chip->stepchg_state)
@@ -3180,7 +3188,7 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	if (chip->apsd_rerun_cnt && !chip->factory_mode) {
 		chip->apsd_rerun_cnt = 0;
 		if (chip->usb_psy) {
-			pr_debug("setting usb psy allow detection 0\n");
+			pr_debug("SMB - setting usb psy allow detection 0\n");
 			power_supply_set_allow_detection(chip->usb_psy, 0);
 		}
 	}
@@ -3253,11 +3261,12 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 
 	/* Rerun APSD 1 sec later */
 	if ((reg & SDP_BIT) && !chip->apsd_rerun_cnt) {
-		dev_info(chip->dev, "HW Detected SDP!\n");
+		dev_info(chip->dev, "SMB HW Detected SDP!\n");
 		smb_stay_awake(&chip->smb_wake_source);
 		if (chip->usb_psy) {
-			pr_debug("setting usb psy allow detection 1\n");
+			pr_debug("SMB - setting usb psy allow detection 1\n");
 			power_supply_set_allow_detection(chip->usb_psy, 1);
+			power_supply_set_present(chip->usb_psy, 0);
 		}
 		chip->apsd_rerun_cnt++;
 		chip->usb_present = 0;
@@ -3269,7 +3278,7 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 	if (chip->apsd_rerun_cnt && !chip->factory_mode) {
 		chip->apsd_rerun_cnt = 0;
 		if (chip->usb_psy) {
-			pr_debug("setting usb psy allow detection 0\n");
+			pr_debug("SMB - setting usb psy allow detection 0\n");
 			power_supply_set_allow_detection(chip->usb_psy, 0);
 		}
 	}
@@ -3295,7 +3304,7 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 	chip->aicl_weak_detect = false;
 	usb_type_name = get_usb_type_name(reg);
 	usb_supply_type = get_usb_supply_type(reg);
-	pr_debug("inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
+	pr_debug("SMB inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
 			usb_type_name, usb_supply_type, reg);
 	if (chip->usb_psy) {
 		pr_debug("setting usb psy type = %d\n", usb_supply_type);
@@ -3377,7 +3386,7 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 	bool usb_present = !rt_stat;
 	int health;
 
-	pr_info("chip->usb_present = %d usb_present = %d\n",
+	pr_info("SMB chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
 	if (ignore_disconnect) {
@@ -3485,7 +3494,7 @@ static int src_detect_handler(struct smb135x_chg *chip, u8 rt_stat)
 {
 	bool usb_present = !!rt_stat;
 
-	pr_info("chip->usb_present = %d usb_present = %d\n",
+	pr_info("SMB chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 
 	if (!chip->usb_present && usb_present) {
@@ -4079,10 +4088,15 @@ static int determine_initial_status(struct smb135x_chg *chip)
 	chip->dc_present = !(reg & IRQ_E_DC_OV_BIT) && !(reg & IRQ_E_DC_UV_BIT);
 
 	if (chip->usb_present) {
-		handle_usb_insertion(chip);
 		if (smb135x_get_charge_rate(chip) ==
 		    POWER_SUPPLY_CHARGE_RATE_TURBO)
 			chip->hvdcp_powerup = true;
+		/*
+		 * For charger connections at powerup force APSD
+		 * instead of calling the handler here.
+		 */
+		chip->usb_present = 0;
+		smb135x_force_apsd(chip);
 	} else
 		handle_usb_removal(chip);
 
