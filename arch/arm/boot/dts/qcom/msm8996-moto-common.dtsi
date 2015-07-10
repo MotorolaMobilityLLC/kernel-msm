@@ -470,3 +470,30 @@
 		/delete-node/ qcom,leds@d800;
 	};
 };
+
+&spi_0 {
+	muc_spi@0 {
+		compatible = "moto,muc_spi";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <26 0>;
+		spi-max-frequency = <960000>;
+		gpios = <&tlmm 74 0>, /* WAKE_N */
+			<&tlmm 82 0>; /* RDY_N  */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&muc_spi_ctrl>;
+	};
+};
+
+&pm8994_gpios {
+	gpio@c600 { /* GPIO 7 - APBA_1P1_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high */
+		status = "okay";
+	};
+};
