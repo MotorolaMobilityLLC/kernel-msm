@@ -521,7 +521,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 		/* The framework can ignore events if they came
 		to close to each other. Add small delay between
 		press and release events */
-		usleep(10000);
+		usleep_range(10000, 10000);
 		snd_soc_jack_report(fsa8500->button_jack,
 					0, status<<SND_JACK_BTN_SHIFT);
 	}
