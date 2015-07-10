@@ -457,6 +457,44 @@ int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		sensor_i2c_client);
 }
 
+/*SENSOR_GPIO_CUSTOM1 used for cam id gpio*/
+static int msm_sensor_check_cam_id_pin(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int rc = 0, cam_id = -1;
+	const char *sensor_name = NULL;
+	unsigned gpio = 0;
+
+	if (!s_ctrl->sensordata->power_info.gpio_conf->
+		gpio_num_info->valid[SENSOR_GPIO_CUSTOM1]) {
+		pr_info("no define SENSOR_GPIO_CUSTOM1 gpio\n");
+		return 0;
+	}
+
+	gpio = s_ctrl->sensordata->power_info.gpio_conf->gpio_num_info->
+		gpio_num[SENSOR_GPIO_CUSTOM1];
+	sensor_name = s_ctrl->sensordata->sensor_name;
+
+	if (s_ctrl->sensordata->slave_info->camera_id_pin == 1 ||
+		s_ctrl->sensordata->slave_info->camera_id_pin == 0) {
+		cam_id = gpio_get_value(gpio);
+		if (cam_id == s_ctrl->sensordata->slave_info->camera_id_pin) {
+			pr_info("%s:%s gpio %d except value:%d match\n",
+				__func__, sensor_name, gpio, cam_id);
+			rc = 0;
+		} else {
+			pr_info("%s:%s gpio %d value:%d not match\n",
+				__func__, sensor_name, gpio, cam_id);
+			rc = -1;
+		}
+	} else {
+		pr_info("%s:%s gpio %d value:%d no need to match CAMID\n",
+			__func__, sensor_name, gpio, cam_id);
+		return 0;
+	}
+
+	return rc;
+}
+
 int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int rc;
@@ -493,6 +531,16 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			sensor_i2c_client);
 		if (rc < 0)
 			return rc;
+
+		/*first check camera id gpio*/
+		rc = msm_sensor_check_cam_id_pin(s_ctrl);
+		if (rc < 0) {
+			msm_camera_power_down(power_info,
+				s_ctrl->sensor_device_type, sensor_i2c_client);
+			msleep(10);
+			break;
+		}
+
 		rc = msm_sensor_check_id(s_ctrl);
 		if (rc < 0) {
 			msm_camera_power_down(power_info,

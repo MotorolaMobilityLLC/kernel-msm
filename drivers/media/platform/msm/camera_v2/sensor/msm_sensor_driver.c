@@ -719,14 +719,15 @@ int32_t msm_sensor_driver_probe(void *setting,
 	}
 
 	/* Print slave info */
-	CDBG("camera id %d Slave addr 0x%X addr_type %d\n",
+	pr_info("camera id %d Slave addr 0x%X addr_type %d\n",
 		slave_info->camera_id, slave_info->slave_addr,
 		slave_info->addr_type);
-	CDBG("sensor_id_reg_addr 0x%X sensor_id 0x%X sensor id mask %d",
+	pr_info("sensor_id_reg_addr 0x%X sensor_id 0x%X sensor id mask %d cam_id %d",
 		slave_info->sensor_id_info.sensor_id_reg_addr,
 		slave_info->sensor_id_info.sensor_id,
-		slave_info->sensor_id_info.sensor_id_mask);
-	CDBG("power up size %d power down size %d\n",
+		slave_info->sensor_id_info.sensor_id_mask,
+		slave_info->sensor_id_info.camera_id_pin);
+	pr_info("power up size %d power down size %d\n",
 		slave_info->power_setting_array.size,
 		slave_info->power_setting_array.size_down);
 
@@ -802,6 +803,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 		slave_info->sensor_id_info.sensor_id_reg_addr;
 	camera_info->sensor_id = slave_info->sensor_id_info.sensor_id;
 	camera_info->sensor_id_mask = slave_info->sensor_id_info.sensor_id_mask;
+	camera_info->camera_id_pin = slave_info->sensor_id_info.camera_id_pin;
 
 	/* Fill CCI master, slave address and CCI default params */
 	if (!s_ctrl->sensor_i2c_client) {

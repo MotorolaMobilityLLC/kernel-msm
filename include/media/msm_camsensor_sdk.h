@@ -200,6 +200,7 @@ struct msm_sensor_id_info_t {
 	unsigned short sensor_id_reg_addr;
 	unsigned short sensor_id;
 	unsigned short sensor_id_mask;
+	unsigned short camera_id_pin;
 };
 
 struct msm_camera_sensor_slave_info {
