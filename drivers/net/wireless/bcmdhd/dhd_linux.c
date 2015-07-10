@@ -8228,7 +8228,7 @@ int dhd_dev_set_rssi_monitor_cfg(struct net_device *dev, int start,
 	rssi_monitor.flags = start ? 0: RSSI_MONITOR_STOP;
 	err = dhd_iovar(&(dhd->pub), 0, "rssi_monitor", (char *)&rssi_monitor,
 	       sizeof(rssi_monitor), 1);
-	if (err != BCME_OK) {
+	if (err < 0 && err != BCME_UNSUPPORTED) {
 		DHD_ERROR(("%s : Failed to execute rssi_monitor %d\n", __FUNCTION__, err));
 	}
 	return err;

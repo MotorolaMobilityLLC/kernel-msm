@@ -8545,6 +8545,8 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 					return 0;
 				}
 				wl_clr_drv_status(cfg, CONNECTED, ndev);
+				/* clear RSSI monitor, framework will set new cfg */
+				dhd_dev_set_rssi_monitor_cfg(bcmcfg_to_prmry_ndev(cfg), FALSE, 0, 0);
 				if (!wl_get_drv_status(cfg, DISCONNECTING, ndev)) {
 					/* To make sure disconnect, explictly send dissassoc
 					*  for BSSID 00:00:00:00:00:00 issue
