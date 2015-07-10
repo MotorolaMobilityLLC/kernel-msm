@@ -995,7 +995,6 @@ void msm_isp_axi_stream_update(struct vfe_device *vfe_dev,
 	unsigned long flags;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 
-	spin_lock_irqsave(&vfe_dev->shared_data_lock, flags);
 	for (i = 0; i < MAX_NUM_STREAM; i++) {
 		if (SRC_TO_INTF(axi_data->stream_info[i].stream_src) !=
 			frame_src) {
@@ -1022,9 +1021,11 @@ void msm_isp_axi_stream_update(struct vfe_device *vfe_dev,
 		}
 	}
 
+	spin_lock_irqsave(&vfe_dev->shared_data_lock, flags);
 	if (vfe_dev->axi_data.stream_update[frame_src]) {
 		vfe_dev->axi_data.stream_update[frame_src]--;
 	}
+	spin_unlock_irqrestore(&vfe_dev->shared_data_lock, flags);
 
 	if (vfe_dev->axi_data.pipeline_update == DISABLE_CAMIF ||
 		(vfe_dev->axi_data.pipeline_update ==
@@ -1036,8 +1037,6 @@ void msm_isp_axi_stream_update(struct vfe_device *vfe_dev,
 
 	if (vfe_dev->axi_data.stream_update[frame_src] == 0)
 		complete(&vfe_dev->stream_config_complete);
-
-	spin_unlock_irqrestore(&vfe_dev->shared_data_lock, flags);
 }
 
 static void msm_isp_reload_ping_pong_offset(struct vfe_device *vfe_dev,
@@ -1677,8 +1676,13 @@ static int msm_isp_axi_wait_for_cfg_done(struct vfe_device *vfe_dev,
 		msecs_to_jiffies(VFE_MAX_CFG_TIMEOUT));
 	if (rc == 0) {
 		for (i = 0; i < VFE_SRC_MAX; i++) {
-			if (src_mask & (1 << i))
+			if (src_mask & (1 << i)) {
+				spin_lock_irqsave(&vfe_dev->shared_data_lock,
+					flags);
 				vfe_dev->axi_data.stream_update[i] = 0;
+				spin_unlock_irqrestore(&vfe_dev->
+					shared_data_lock, flags);
+			}
 		}
 		pr_err("%s: wait timeout\n", __func__);
 		rc = -EBUSY;
@@ -2255,8 +2259,8 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		if (rc < 0)
 			pr_err("%s:%d failed: return_empty_buffer src %d\n",
 				__func__, __LINE__, frame_src);
-		vfe_dev->hw_info->vfe_ops.axi_ops.cfg_framedrop(vfe_dev,
-			stream_info, 0, 0);
+		vfe_dev->hw_info->vfe_ops.axi_ops.cfg_framedrop(
+			vfe_dev->vfe_base, stream_info, 0, 0);
 		stream_info->framedrop_pattern = 0;
 		stream_info->framedrop_period = 0;
 		return 0;
