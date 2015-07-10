@@ -3806,7 +3806,9 @@ static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
 			if (*transition == FB_BLANK_POWERDOWN) {
 				synaptics_rmi4_suspend(&rmi4_data->pdev->dev);
 				rmi4_data->fb_ready = false;
-			} else if (*transition == FB_BLANK_UNBLANK) {
+			} else if ((*transition == FB_BLANK_UNBLANK) ||
+				   (*transition == FB_BLANK_VSYNC_SUSPEND &&
+				    !rmi4_data->fb_ready)) {
 				synaptics_rmi4_resume(&rmi4_data->pdev->dev);
 				rmi4_data->fb_ready = true;
 			}
