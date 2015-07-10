@@ -234,6 +234,7 @@ typedef BWL_PRE_PACKED_STRUCT struct bcm_event {
 #define WLC_E_ROAM_EXP_EVENT    143  /* Expanded roam event */
 #define WLC_E_LAST			144	/* highest val + 1 for range checking */
 
+extern const char *bcmevent_get_name(uint event_type);
 
 /* Table of event name strings for UIs and debugging dumps */
 typedef struct {

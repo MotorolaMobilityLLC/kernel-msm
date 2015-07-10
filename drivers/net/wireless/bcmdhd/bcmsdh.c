@@ -48,18 +48,6 @@
 #define SDIOH_API_ACCESS_RETRY_LIMIT	2
 const uint bcmsdh_msglevel = BCMSDH_ERROR_VAL;
 
-/**
- * BCMSDH API context
- */
-struct bcmsdh_info
-{
-	bool	init_success;	/* underlying driver successfully attached */
-	void	*sdioh;		/* handler for sdioh */
-	uint32  vendevid;	/* Target Vendor and Device ID on SD bus */
-	osl_t   *osh;
-	bool	regfail;	/* Save status of last reg_read/reg_write call */
-	uint32	sbwad;		/* Save backplane window address */
-};
 /* local copy of bcm sd handler */
 bcmsdh_info_t * l_bcmsdh = NULL;
 

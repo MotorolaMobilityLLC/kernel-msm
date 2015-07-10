@@ -2,13 +2,13 @@
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -81,7 +81,6 @@
 #ifdef WL_CFG80211
 extern void wl_cfg80211_set_parent_dev(void *dev);
 #endif
-
 extern void sdioh_sdmmc_devintr_off(sdioh_info_t *sd);
 extern void sdioh_sdmmc_devintr_on(sdioh_info_t *sd);
 extern int dhd_os_check_wakelock(void *dhdp);
@@ -228,7 +227,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 #ifdef CONFIG_PARTIALRESUME
 	wifi_process_partial_resume(WIFI_PR_INIT);
 #endif
-#endif 
+#endif
 	dhd_mmc_suspend = TRUE;
 	smp_mb();
 
@@ -239,18 +238,26 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 {
 #if defined(OOB_INTR_ONLY)
 	struct sdio_func *func = dev_to_sdio_func(pdev);
-#endif 
+#endif
+	int wakeup = 0;
+#if defined(CONFIG_PARTIALRESUME) || defined(DHD_WAKE_STATUS)
+	wakeup = check_wakeup_reason(bcmsdh_get_irq());
+#endif /* CONFIG_PARTIALRESUME || DHD_WAKE_STATUS */
 	sd_trace(("%s Enter\n", __FUNCTION__));
 	dhd_mmc_suspend = FALSE;
 #if defined(OOB_INTR_ONLY)
 	if ((func->num == 2) && dhd_os_check_if_up(bcmsdh_get_drvdata())) {
+		if (wakeup) {
 #ifdef CONFIG_PARTIALRESUME
-		if (check_wakeup_reason(bcmsdh_get_irq()))
 			wifi_process_partial_resume(WIFI_PR_NOTIFY_RESUME);
 #endif
+#ifdef DHD_WAKE_STATUS
+			bcmsdh_set_get_wake(1);
+#endif
+		}
 		bcmsdh_oob_intr_set(1);
 	}
-#endif 
+#endif
 	smp_mb();
 	return 0;
 }

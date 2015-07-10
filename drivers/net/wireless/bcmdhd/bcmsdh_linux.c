@@ -2,13 +2,13 @@
  * SDIO access interface for drivers - linux specific (pci only)
  *
  * Copyright (C) 1999-2013, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,7 +16,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -35,6 +35,9 @@
 
 #include <linux/pci.h>
 #include <linux/completion.h>
+#ifdef DHD_WAKE_STATUS
+#include <linux/wakeup_reason.h>
+#endif
 
 #include <osl.h>
 #include <pcicfg.h>
@@ -47,7 +50,7 @@ extern void dhdsdio_isr(void * args);
 #include <bcmutils.h>
 #include <dngl_stats.h>
 #include <dhd.h>
-#endif 
+#endif
 
 /**
  * SDIO Host Controller info
@@ -71,7 +74,7 @@ struct bcmsdh_hc {
 	bool oob_irq_enable_flag;
 #if defined(OOB_INTR_ONLY)
 	spinlock_t irq_lock;
-#endif 
+#endif
 };
 static bcmsdh_hc_t *sdhcinfo = NULL;
 
@@ -146,11 +149,11 @@ EXPORT_SYMBOL(bcmsdh_remove);
 /* forward declarations */
 static int __devinit bcmsdh_probe(struct device *dev);
 static int __devexit bcmsdh_remove(struct device *dev);
-#endif 
+#endif
 
 #if !defined(BCMLXSDMMC)
 static
-#endif 
+#endif
 int bcmsdh_probe(struct device *dev)
 {
 	osl_t *osh = NULL;
@@ -160,7 +163,7 @@ int bcmsdh_probe(struct device *dev)
 #if !defined(BCMLXSDMMC) && defined(BCMPLATFORM_BUS)
 	struct platform_device *pdev;
 	struct resource *r;
-#endif 
+#endif
 	int irq = 0;
 	uint32 vendevid;
 	unsigned long irq_flags = 0;
@@ -171,7 +174,7 @@ int bcmsdh_probe(struct device *dev)
 	irq = platform_get_irq(pdev, 0);
 	if (!r || irq < 0)
 		return -ENXIO;
-#endif 
+#endif
 
 #if defined(OOB_INTR_ONLY)
 #ifdef HW_OOB
@@ -187,7 +190,7 @@ int bcmsdh_probe(struct device *dev)
 		SDLX_MSG(("%s: Host irq is not defined\n", __FUNCTION__));
 		goto err;
 	}
-#endif 
+#endif
 	/* allocate SDIO Host Controller state info */
 	if (!(osh = osl_attach(dev, PCI_BUS, FALSE))) {
 		SDLX_MSG(("%s: osl_attach failed\n", __FUNCTION__));
@@ -216,7 +219,7 @@ int bcmsdh_probe(struct device *dev)
 		SDLX_MSG(("%s: bcmsdh_attach failed\n", __FUNCTION__));
 		goto err;
 	}
-#endif 
+#endif
 	sdhc->sdh = sdh;
 	sdhc->oob_irq = irq;
 	sdhc->oob_flags = irq_flags;
@@ -224,7 +227,7 @@ int bcmsdh_probe(struct device *dev)
 	sdhc->oob_irq_enable_flag = FALSE;
 #if defined(OOB_INTR_ONLY)
 	spin_lock_init(&sdhc->irq_lock);
-#endif 
+#endif
 
 	/* chain SDIO Host Controller info together */
 	sdhc->next = sdhcinfo;
@@ -260,9 +263,34 @@ err:
 	return -ENODEV;
 }
 
+#ifdef DHD_WAKE_STATUS
+int bcmsdh_get_total_wake(bcmsdh_info_t *bcmsdh)
+{
+	return bcmsdh->total_wake_count;
+}
+
+int bcmsdh_set_get_wake(int flag)
+{
+	unsigned long flags;
+	int ret = 0;
+
+	if (sdhcinfo) {
+		bcmsdh_info_t *bcmsdh = sdhcinfo->sdh;
+		spin_lock_irqsave(&sdhcinfo->irq_lock, flags);
+
+		ret = bcmsdh->pkt_wake;
+		bcmsdh->total_wake_count += flag;
+		bcmsdh->pkt_wake = flag;
+
+		spin_unlock_irqrestore(&sdhcinfo->irq_lock, flags);
+	}
+	return ret;
+}
+#endif
+
 #if !defined(BCMLXSDMMC)
 static
-#endif 
+#endif
 int bcmsdh_remove(struct device *dev)
 {
 	bcmsdh_hc_t *sdhc, *prev;
@@ -311,7 +339,7 @@ int bcmsdh_remove(struct device *dev)
 
 #if !defined(BCMLXSDMMC) || defined(OOB_INTR_ONLY)
 	dev_set_drvdata(dev, NULL);
-#endif 
+#endif
 
 	return 0;
 }
@@ -698,7 +726,7 @@ bool bcmsdh_is_oob_intr_registered(void)
 	else
 		return FALSE;
 }
-#endif 
+#endif
 
 #if defined(BCMLXSDMMC)
 void *bcmsdh_get_drvdata(void)

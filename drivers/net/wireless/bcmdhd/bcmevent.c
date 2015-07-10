@@ -162,3 +162,22 @@ const bcmevent_name_t bcmevent_names[] = {
 };
 
 const int bcmevent_names_size = ARRAYSIZE(bcmevent_names);
+
+const char *bcmevent_get_name(uint event_type)
+{
+	const char *event_name = NULL;
+
+	uint idx;
+	for (idx = 0; idx < bcmevent_names_size; idx++) {
+
+		if (bcmevent_names[idx].event == event_type) {
+			event_name = bcmevent_names[idx].name;
+			break;
+		}
+	}
+
+	/* if we find an event name in the array, return it.
+	 * otherwise return unknown string.
+	 */
+	return ((event_name) ? event_name : "Unknown Event");
+}
