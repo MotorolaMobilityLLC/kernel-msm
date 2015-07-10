@@ -15,6 +15,10 @@
 #include "msm8996-pinctrl.dtsi"
 #include "msm8996-moto-pinctrl.dtsi"
 
+&sdcc1_ice {
+        status = "ok";
+};
+
 / {
 	aliases {
 		/delete-property/ i2c12;
@@ -57,6 +61,7 @@
 	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 96000000 192000000 384000000>;
+	qcom,ice-clk-rates = <300000000>;
 	qcom,nonremovable;
 	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
 
@@ -85,6 +90,25 @@
 };
 
 &i2c_7 {
+	fsa8500@23 {
+		compatible = "fairchild,fsa8500";
+		reg = <0x23>;
+		gpios = <&tlmm 63 0x0>;
+		fsa8500-init-regs = <0x0c 0x41>,
+				    <0x0f 0xf9>,
+				    <0x11 0x84>,
+				    <0x13 0xbf>,
+				    <0x14 0x69>;
+
+		fsa8500-keymap = <0x4000000 0xe2>, /* SND_JACK_BTN_0 - KEY_MEDIA */
+				 <0x0400000 0x246>, /* SND_JACK_BTN_4 - KEY_VOICECOMMAND */
+				 <0x0200000 0x73>, /* SND_JACK_BTN_5 - KEY_VOLUMEUP */
+				 <0x0100000 0x72>; /* SND_JACK_BTN_6 - KEY_VOLUMEDOWN */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa8500_hs_det_default>;
+	};
+
 	drv2605: drv2605@5a {
 		compatible = "ti,drv2605";
 		reg = <0x5a>;
@@ -99,6 +123,11 @@
 };
 
 &soc {
+	qcom,cnss {
+		/delete-property/ wlan-bootstrap-gpio; /* Pulled high with S4 */
+		wlan-en-gpio = <&tlmm 121 0>;
+	};
+
 	vreg_5p0: vreg_5v {
 		compatible = "regulator-fixed";
 		regulator-name = "vreg_5p0";
@@ -256,6 +285,17 @@
 		status = "okay";
 	};
 
+	gpio@ca00 { /* GPIO 11 - REG_3P3_ENABLE */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* MOS logic */
+		qcom,invert = <1>;		/* Output high */
+		qcom,vin-sel = <0>;		/* VPH_PWR */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* High drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
 	gpio@cb00 { /* GPIO 12 - AP_VIB_EN */
 		qcom,mode = <1>;         /* Digital output*/
 		qcom,vin-sel = <2>;      /* VIN2 */
@@ -264,6 +304,26 @@
 		status = "okay";
 	};
 
+	gpio@d100 { /* GPIO 18 - Rome Sleep Clock */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,invert = <0>;		/* Output low initially */
+		qcom,vin-sel = <2>;		/* VIN 2 */
+		qcom,src-sel = <3>;		/* Function 2 */
+		qcom,out-strength = <2>;	/* Medium */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d200 { /* GPIO 19 - Rome BT Reset */
+		qcom,mode = <1>;		/* Digital output*/
+		qcom,pull = <4>;		/* Pulldown 10uA */
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,invert = <0>;		/* Invert */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
 };
 
 &blsp1_uart2 {
@@ -275,4 +335,23 @@
 	regulator-min-microvolt = <3000000>;
 	regulator-max-microvolt = <3000000>;
 	qcom,init-voltage = <3000000>;
+};
+
+/* 3.3V QCA Supply */
+&rome_vreg {
+	gpio = <&pm8994_gpios 11 0>;
+};
+
+/ {
+	bluetooth: bt_qca6174 {
+		compatible = "qca,qca6174";
+		qca,bt-reset-gpio = <&pm8994_gpios 19 0>; /* BT_EN */
+		qca,bt-vdd-core-supply = <&pm8994_s3>;
+		qca,bt-vdd-pa-supply = <&rome_vreg>;
+		qca,bt-vdd-io-supply = <&pm8994_s4>;
+		qca,bt-vdd-xtal-supply = <&pm8994_l30>;
+		qca,bt-chip-pwd-voltage-level = <1300000 1300000>;
+		qca,bt-vdd-io-voltage-level = <1800000 1800000>;
+		qca,bt-vdd-xtal-voltage-level = <1800000 1800000>;
+	};
 };
