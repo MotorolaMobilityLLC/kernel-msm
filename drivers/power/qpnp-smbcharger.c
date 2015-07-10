@@ -2717,7 +2717,8 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = get_prop_batt_capacity(chip);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		val->intval = get_prop_batt_current_now(chip);
+		/* positive value indicates current entering battery */
+		val->intval = -1 * get_prop_batt_current_now(chip);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = get_prop_batt_voltage_now(chip);
