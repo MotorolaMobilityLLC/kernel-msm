@@ -11,6 +11,14 @@
  */
 
 &tlmm {
+	cnss_pins {
+		cnss_default: cnss_default {
+			cnss_pins {
+				pins = "gpio121";
+			};
+		};
+	};
+
 	i2c_5 {
 		i2c_5_active: i2c_5_active {
 			i2c_5 {
@@ -106,6 +114,14 @@
 			pins = "gpio58", "gpio59", "gpio60", "gpio61";
 			drive-strength = <2>;
 			bias-disable;
+		};
+	};
+
+	fsa8500_hs_det_default: fsa8500_hs_det_default {
+		config {
+			pins = "gpio63";
+			drive-strength = <2>;
+			bias-pull-up;
 		};
 	};
 };
