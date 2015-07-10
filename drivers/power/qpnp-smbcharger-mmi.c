@@ -3560,6 +3560,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	if (smbchg_hvdcp_det_check(chip)) {
 		if ((chip->stepchg_state == STEP_TAPER) ||
 		    (chip->stepchg_state == STEP_FULL) ||
+		    (chip->usb_target_current_ma <= HVDCP_ICL_TAPER) ||
 		    (chip->demo_mode))
 			current_limit = HVDCP_ICL_TAPER;
 		else
