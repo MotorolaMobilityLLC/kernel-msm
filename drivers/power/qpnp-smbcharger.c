@@ -232,6 +232,7 @@ struct smbchg_chip {
 	int				aicl_irq_count;
 	struct mutex			usb_status_lock;
 	bool				usb_cc_controller;
+	bool				disable_apsd;
 };
 
 enum print_reason {
@@ -3888,10 +3889,12 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 	 * if USB is still present.
 	 */
 	if ((reg & USBIN_HVDCP_SEL_BIT) && is_usb_present(chip)) {
-		pr_smb(PR_MISC, "setting usb psy type = %d\n",
-				POWER_SUPPLY_TYPE_USB_HVDCP);
-		power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_USB_HVDCP);
+		if (!chip->disable_apsd) {
+			pr_smb(PR_MISC, "setting usb psy type = %d\n",
+					POWER_SUPPLY_TYPE_USB_HVDCP);
+			power_supply_set_supply_type(chip->usb_psy,
+					POWER_SUPPLY_TYPE_USB_HVDCP);
+		}
 		if (chip->psy_registered)
 			power_supply_changed(&chip->batt_psy);
 		smbchg_aicl_deglitch_wa_check(chip);
@@ -4023,16 +4026,20 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	if (chip->usb_ov_det)
 		chip->usb_ov_det = false;
 	if (chip->usb_psy) {
-		pr_smb(PR_MISC, "setting usb psy type = %d\n",
-				POWER_SUPPLY_TYPE_USB);
-		power_supply_set_supply_type(chip->usb_psy,
-				POWER_SUPPLY_TYPE_USB);
+		if (!chip->disable_apsd) {
+			pr_smb(PR_MISC, "setting usb psy type = %d\n",
+					POWER_SUPPLY_TYPE_USB);
+			power_supply_set_supply_type(chip->usb_psy,
+					POWER_SUPPLY_TYPE_USB);
+		}
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
-		pr_smb(PR_MISC, "setting usb psy allow detection 0\n");
-		power_supply_set_allow_detection(chip->usb_psy, 0);
-		schedule_work(&chip->usb_set_online_work);
+		if (!chip->disable_apsd) {
+			pr_smb(PR_MISC, "setting usb psy allow detection 0\n");
+			power_supply_set_allow_detection(chip->usb_psy, 0);
+			schedule_work(&chip->usb_set_online_work);
+		}
 		rc = power_supply_set_health_state(chip->usb_psy,
 				POWER_SUPPLY_HEALTH_UNKNOWN);
 		if (rc)
@@ -4097,9 +4104,12 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->usb_psy) {
-		pr_smb(PR_MISC, "setting usb psy type = %d\n",
-				usb_supply_type);
-		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
+		if (!chip->disable_apsd) {
+			pr_smb(PR_MISC, "setting usb psy type = %d\n",
+						usb_supply_type);
+			power_supply_set_supply_type(chip->usb_psy,
+						usb_supply_type);
+		}
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
@@ -4119,7 +4129,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					"usb psy does not allow updating prop %d rc = %d\n",
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
-		schedule_work(&chip->usb_set_online_work);
+		if (!chip->disable_apsd)
+			schedule_work(&chip->usb_set_online_work);
 	}
 
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
@@ -4227,7 +4238,8 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 	 * set usb_psy's allow_detection if this is a new insertion, i.e. it is
 	 * not already src_detected and usbin_uv is seen falling
 	 */
-	if (!(reg & USBIN_UV_BIT) && !(reg & USBIN_SRC_DET_BIT)) {
+	if (!(reg & USBIN_UV_BIT) && !(reg & USBIN_SRC_DET_BIT)
+					&& !chip->disable_apsd) {
 		pr_smb(PR_MISC, "setting usb psy allow detection 1\n");
 		power_supply_set_allow_detection(chip->usb_psy, 1);
 	}
@@ -5211,6 +5223,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,force-aicl-rerun");
 	chip->usb_cc_controller = of_property_read_bool(node,
 					"usb-cc-controller");
+	chip->disable_apsd = of_property_read_bool(node,
+					"qcom,disable-apsd");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
