@@ -22,7 +22,6 @@
 #include <linux/fs.h>
 #include <linux/gfp.h>
 #include <linux/gpio.h>
-#include <linux/hssp_programmer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/input-polldev.h>
@@ -111,7 +110,6 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	bool valid_queue_len;
 	bool pending_reset = false;
 	u8 pending_reset_reason;
-	static u8 antcap_reset;
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
 	struct motosh_data *ps_motosh = container_of(
@@ -534,33 +532,12 @@ PROCESS_LOGS:
 PROCESS_RESET:
 	/* process a reset request after dumping any last logs */
 	if (pending_reset) {
-		if (pending_reset_reason == RESET_REASON_ANTCAP) {
-			antcap_reset++;
-			if (antcap_reset < 4) {
-#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
-				cycapsense_reset();
-#endif /* CONFIG_CYPRESS_CAPSENSE_HSSP */
-				dev_err(&ps_motosh->client->dev,
-					"sensorhub requested antcap reset\n");
-			} else if (antcap_reset == 4) {
-				goto SENSORHUB_RESET;
-			} else {
-				motosh_g_antcap_enabled |= ANTCAP_BROKEN;
-				err = motosh_antcap_i2c_send_enable(0);
-				dev_err(&ps_motosh->client->dev,
-					"sensorhub got too many antcap resets\n");
-			}
-		} else {
-SENSORHUB_RESET:
-			motosh_as_data_buffer_write(ps_motosh, DT_RESET,
-						    &pending_reset_reason,
-						    1, 0, false);
+		motosh_as_data_buffer_write(ps_motosh, DT_RESET,
+					    &pending_reset_reason,
+					    1, 0, false);
 
-			motosh_reset_and_init(START_RESET);
-			dev_err(&ps_motosh->client->dev,
-				"sensorhub requested a reset (reason=%d)\n",
-				pending_reset_reason);
-		}
+		motosh_reset_and_init(START_RESET);
+		dev_err(&ps_motosh->client->dev, "sensorhub requested a reset\n");
 		goto EXIT;
 	}
 
