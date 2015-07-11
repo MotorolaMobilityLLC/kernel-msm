@@ -269,7 +269,7 @@ static void msm_restart_prepare(const char *cmd)
 #endif
 
 	qpnp_pon_set_restart_reason(reason);
-	if (in_panic || download_mode || dload_mode_enabled || restart_mode)
+	if (in_panic || restart_mode)
 		poff = PON_POWER_OFF_WARM_RESET;
 
 	qpnp_pon_system_pwr_off(poff);
