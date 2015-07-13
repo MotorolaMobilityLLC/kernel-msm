@@ -1980,7 +1980,7 @@ skip_max_pkt_size:
 	cmd = rp->data[0];
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
-		pr_debug("%s: rx ACK_ERR_PACLAGE\n", __func__);
+		pr_info("%s: rx ACK_ERR_PACKAGE\n", __func__);
 		rp->len = 0;
 		rp->read_cnt = 0;
 	case DTYPE_GEN_READ1_RESP:
