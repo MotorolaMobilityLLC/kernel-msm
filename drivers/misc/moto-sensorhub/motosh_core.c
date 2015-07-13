@@ -1078,7 +1078,8 @@ static int motosh_fb_notifier_callback(struct notifier_block *self,
 	dev_dbg(&ps_motosh->client->dev, "%s+\n", __func__);
 
 	if ((event != FB_EVENT_BLANK && event != FB_EARLY_EVENT_BLANK) ||
-	    !evdata || !evdata->data)
+		!evdata || !evdata->data || !evdata->info
+			|| evdata->info->node != 0)
 		goto exit;
 
 	blank = *(int *)evdata->data;
