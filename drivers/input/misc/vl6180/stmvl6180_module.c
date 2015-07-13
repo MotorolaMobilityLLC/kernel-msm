@@ -1,7 +1,7 @@
 /*
- *  stmvl6180.c - Linux kernel modules for STM VL6180 FlightSense Time-of-Flight sensor
+ *  stmvl6180.c - Linux kernel modules for STM VL6180 FlightSense TOF sensor
  *
- *  Copyright (C) 2014 STMicroelectronics Imaging Division.
+ *  Copyright (C) 2015 STMicroelectronics Imaging Division.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,38 +32,55 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
-#include <linux/of_gpio.h>
-#include <linux/regulator/consumer.h>
-#include <linux/pinctrl/consumer.h>
-
+#include <linux/time.h>
+#include <linux/platform_device.h>
+#include <linux/kobject.h>
+/*
+ * API includes
+ */
 #include "vl6180x_api.h"
 #include "vl6180x_def.h"
 #include "vl6180x_platform.h"
-#include "stmvl6180.h"
 #include "vl6180x_i2c.h"
-stmvl6180x_dev vl6180x_dev;
-//#define USE_INT
-#define IRQ_NUM        59
-#define VL6180_I2C_ADDRESS  (0x52>>1)
+#include "stmvl6180-i2c.h"
+#include "stmvl6180-cci.h"
+#include "stmvl6180.h"
+
+/* #define USE_INT */
+#define IRQ_NUM	   59
 
 /*
  * Global data
- *
-******************************** IOCTL definitions
-*/
-#define VL6180_IOCTL_INIT       _IO('p', 0x01)
-#define VL6180_IOCTL_XTALKCALB      _IO('p', 0x02)
-#define VL6180_IOCTL_OFFCALB        _IO('p', 0x03)
-#define VL6180_IOCTL_STOP       _IO('p', 0x05)
-#define VL6180_IOCTL_SETXTALK       _IOW('p', 0x06, unsigned int)
-#define VL6180_IOCTL_SETOFFSET      _IOW('p', 0x07, int8_t)
-#define VL6180_IOCTL_GETDATA        _IOR('p', 0x0a, unsigned long)
-#define VL6180_IOCTL_GETDATAS       _IOR('p', 0x0b, VL6180x_RangeData_t)
-#define VL6180_IOCTL_READCALB       _IO('p', 0x0c)
-struct mutex vl6180_mutex;
-static unsigned int cs_gpio_num;
-static struct regulator *vdd_stmvl6180;
-static struct regulator *vcc_stmvl6180;
+ */
+stmvl6180x_dev vl6180x_dev;
+static struct stmvl6180_data *gp_vl6180_data;
+
+#ifdef CAMERA_CCI
+static struct stmvl6180_module_fn_t stmvl6180_module_func_tbl = {
+	.init = stmvl6180_init_cci,
+	.deinit = stmvl6180_exit_cci,
+	.power_up = stmvl6180_power_up_cci,
+	.power_down = stmvl6180_power_down_cci,
+};
+#else
+static struct stmvl6180_module_fn_t stmvl6180_module_func_tbl = {
+	.init = stmvl6180_init_i2c,
+	.deinit = stmvl6180_exit_i2c,
+	.power_up = stmvl6180_power_up_i2c,
+	.power_down = stmvl6180_power_down_i2c,
+};
+#endif
+
+/*
+ * IOCTL definitions
+ */
+#define VL6180_IOCTL_INIT			_IO('p', 0x01)
+#define VL6180_IOCTL_XTALKCALB		_IO('p', 0x02)
+#define VL6180_IOCTL_OFFCALB		_IO('p', 0x03)
+#define VL6180_IOCTL_STOP			_IO('p', 0x05)
+#define VL6180_IOCTL_SETXTALK		_IOW('p', 0x06, unsigned int)
+#define VL6180_IOCTL_SETOFFSET		_IOW('p', 0x07, int8_t)
+#define VL6180_IOCTL_GETDATAS		_IOR('p', 0x0b, VL6180x_RangeData_t)
 
 #define CALIBRATION_FILE 1
 #ifdef CALIBRATION_FILE
@@ -75,14 +92,15 @@ static struct regulator *vcc_stmvl6180;
 int8_t offset_calib = 0;
 int16_t xtalk_calib = 0;
 #endif
-extern void i2c_setclient(struct i2c_client *client);
-struct i2c_client *i2c_getclient(void);
-static int stmvl6180_set_enable(struct i2c_client *client, unsigned int enable)
-{
 
-	return 0;
-
-}
+static long stmvl6180_ioctl(struct file *file,
+							unsigned int cmd,
+							unsigned long arg);
+static int stmvl6180_flush(struct file *file, fl_owner_t id);
+static int stmvl6180_open(struct inode *inode, struct file *file);
+static int stmvl6180_init_client(struct stmvl6180_data *data);
+static int stmvl6180_start(struct stmvl6180_data *data, uint8_t scaling, init_mode_e mode);
+static int stmvl6180_stop(struct stmvl6180_data *data);
 
 #ifdef CALIBRATION_FILE
 static void stmvl6180_read_calibration_file(void)
@@ -117,7 +135,7 @@ static void stmvl6180_read_calibration_file(void)
 		if (is_sign == 1)
 			offset_calib = -offset_calib;
 		pr_info("offset_calib as %d\n", offset_calib);
-		VL6180x_SetUserOffsetCalibration(vl6180x_dev, offset_calib);
+		VL6180x_SetOffsetCalibrationData(vl6180x_dev, offset_calib);
 		filp_close(f, NULL);
 		set_fs(fs);
 	}
@@ -147,7 +165,7 @@ static void stmvl6180_read_calibration_file(void)
 		if (is_sign == 1)
 			xtalk_calib = -xtalk_calib;
 		pr_info("xtalk_calib as %d\n", xtalk_calib);
-		VL6180x_SetUserXTalkCompensationRate(vl6180x_dev, xtalk_calib);
+		VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalk_calib);
 		filp_close(f, NULL);
 		set_fs(fs);
 	}
@@ -155,7 +173,7 @@ static void stmvl6180_read_calibration_file(void)
 	return;
 }
 
-static void stmvl6180_write_offset_calibration_file(int8_t data)
+static void stmvl6180_write_offset_calibration_file(void)
 {
 	struct file *f = NULL;
 	char buf[8];
@@ -170,16 +188,15 @@ static void stmvl6180_write_offset_calibration_file(int8_t data)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	f->f_pos = 0;
-	sprintf(buf, "%d", data);
+	sprintf(buf, "%d", offset_calib);
 	vfs_write(f, buf, 8, &f->f_pos);
-	VL6180x_SetUserOffsetCalibration(vl6180x_dev, offset_calib);
 	filp_close(f, NULL);
 	set_fs(fs);
 
 	return;
 }
 
-static void stmvl6180_write_xtalk_calibration_file(int data)
+static void stmvl6180_write_xtalk_calibration_file(void)
 {
 	struct file *f = NULL;
 	char buf[8];
@@ -194,142 +211,33 @@ static void stmvl6180_write_xtalk_calibration_file(int data)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	f->f_pos = 0;
-	sprintf(buf, "%d", data);
+	sprintf(buf, "%d", xtalk_calib);
 	vfs_write(f, buf, 8, &f->f_pos);
-	VL6180x_SetUserXTalkCompensationRate(vl6180x_dev, xtalk_calib);
 	filp_close(f, NULL);
 	set_fs(fs);
 
 	return;
 }
-
-static void stmvl6180_power_enable(unsigned int enable)
-{
-	pr_info("%s: enable = %d\n", __func__, enable);
-	if (enable) {
-		if (regulator_enable(vdd_stmvl6180) < 0) {
-			pr_err("%s: failed to enable st vdd\n", __func__);
-		}
-		if (regulator_enable(vcc_stmvl6180) < 0) {
-			pr_err("%s: failed to enable st vcc\n", __func__);
-		}
-		gpio_set_value(cs_gpio_num, 1);
-	} else {
-		if (regulator_disable(vdd_stmvl6180) < 0) {
-			pr_err("%s: failed to disable st vdd\n", __func__);
-		}
-		if (regulator_disable(vcc_stmvl6180) < 0) {
-			pr_err("%s: failed to disable st vcc\n", __func__);
-		}
-		gpio_set_value(cs_gpio_num, 0);
-	}
-	return;
-}
-
 #endif
-#ifdef MULTI_READ
-static uint32_t get_unsigned_int_from_buffer(uint8_t * pdata, int8_t count)
-{
-	uint32_t value = 0;
-	while (count-- > 0) {
-		value = (value << 8) | (uint32_t) * pdata++;
-	}
-	return value;
-}
 
-static uint16_t get_unsigned_short_from_buffer(uint8_t * pdata, int8_t count)
-{
-	uint16_t value = 0;
-	while (count-- > 0) {
-		value = (value << 8) | (uint16_t) * pdata++;
-	}
-	return value;
-}
 
-static int stmvl6180_ps_read_result(struct i2c_client *client)
+static void stmvl6180_ps_read_measurement(void)
 {
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-	int status = 0;
-	status =
-	    VL6180x_RdBuffer(vl6180x_dev, RESULT_RANGE_STATUS,
-			     data->ResultBuffer, RESULT_REG_COUNT);
-	return status;
-}
-
-static void stmvl6180_ps_parse_result(struct i2c_client *client)
-{
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-
-	//RESULT_RANGE_STATUS:0x004D
-	data->rangeResult.Result_range_status = data->ResultBuffer[0];
-	//RESULT_INTERRUPT_STATUS:0x004F
-	data->rangeResult.Result_interrupt_status = data->ResultBuffer[1];
-	//RESULT_RANGE_VAL:0x0062
-	data->rangeResult.Result_range_val = data->ResultBuffer[(0x62 - 0x4d)];
-	//RESULT_RANGE_RAW:0x0064
-	data->rangeResult.Result_range_raw = data->ResultBuffer[(0x64 - 0x4d)];
-	//RESULT_RANGE_RETURN_RATE:0x0066
-	data->rangeResult.Result_range_return_rate =
-	    get_unsigned_short_from_buffer(data->ResultBuffer + (0x66 - 0x4d),
-					   2);
-	//RESULT_RANGE_REFERENCE_RATE:0x0068
-	data->rangeResult.Result_range_reference_rate =
-	    get_unsigned_short_from_buffer(data->ResultBuffer + (0x68 - 0x4d),
-					   2);
-	//RESULT_RANGE_RETURN_SIGNAL_COUNT:0x006c
-	data->rangeResult.Result_range_return_signal_count =
-	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x6c - 0x4d), 4);
-	//RESULT_RANGE_REFERENCE_SIGNAL_COUNT:0x0070
-	data->rangeResult.Result_range_reference_signal_count =
-	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x70 - 0x4d), 4);
-	//RESULT_RANGE_RETURN_AMB_COUNT:0x0074
-	data->rangeResult.Result_range_return_amb_count =
-	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x74 - 0x4d), 4);
-	//RESULT_RANGE_REFERENCE_AMB_COUNT:0x0078
-	data->rangeResult.Result_range_reference_amb_count =
-	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x78 - 0x4d), 4);
-	//RESULT_RANGE_RETURN_CONV_TIME:0x007c
-	data->rangeResult.Result_range_return_conv_time =
-	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x7c - 0x4d), 4);
-	//RESULT_RANGE_REFERENCE_CONV_TIME:0x0080
-	data->rangeResult.Result_range_reference_conv_time =
-	    get_unsigned_int_from_buffer(data->ResultBuffer + (0x80 - 0x4d), 4);
-
-	return;
-}
-#endif
-static void stmvl6180_ps_read_measurement(struct i2c_client *client)
-{
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
+	struct stmvl6180_data *data = gp_vl6180_data;
 	struct timeval tv;
 
-#ifdef MULTI_READ
-	VL6180x_RangeGetMeasurement_ext(vl6180x_dev, &(data->rangeResult),
-					&(data->rangeData));
-#else
-	VL6180x_RangeGetMeasurement(vl6180x_dev, &(data->rangeData));
-#endif
 	do_gettimeofday(&tv);
 
 	data->ps_data = data->rangeData.range_mm;
-
-	input_report_abs(data->input_dev_ps, ABS_DISTANCE,
-			 (int)(data->ps_data + 5) / 10);
-	//input_report_abs(data->input_dev_ps, ABS_HAT0X,data->rangeData.range_mm);
-	//input_report_abs(data->input_dev_ps, ABS_X,data->rangeData.signalRate_mcps);
+	input_report_abs(data->input_dev_ps, ABS_DISTANCE, (int)(data->ps_data +  5) / 10);
 	input_report_abs(data->input_dev_ps, ABS_HAT0X, tv.tv_sec);
 	input_report_abs(data->input_dev_ps, ABS_HAT0Y, tv.tv_usec);
-	input_report_abs(data->input_dev_ps, ABS_HAT1X,
-			 data->rangeData.range_mm);
-	input_report_abs(data->input_dev_ps, ABS_HAT1Y,
-			 data->rangeData.errorStatus);
+	input_report_abs(data->input_dev_ps, ABS_HAT1X, data->rangeData.range_mm);
+	input_report_abs(data->input_dev_ps, ABS_HAT1Y, data->rangeData.errorStatus);
 #ifdef VL6180x_HAVE_RATE_DATA
-	input_report_abs(data->input_dev_ps, ABS_HAT2X,
-			 data->rangeData.signalRate_mcps);
-	input_report_abs(data->input_dev_ps, ABS_HAT2Y,
-			 data->rangeData.rtnAmbRate);
-	input_report_abs(data->input_dev_ps, ABS_HAT3X,
-			 data->rangeData.rtnConvTime);
+	input_report_abs(data->input_dev_ps, ABS_HAT2X, data->rangeData.signalRate_mcps);
+	input_report_abs(data->input_dev_ps, ABS_HAT2Y, data->rangeData.rtnAmbRate);
+	input_report_abs(data->input_dev_ps, ABS_HAT3X, data->rangeData.rtnConvTime);
 #endif
 #if  VL6180x_HAVE_DMAX_RANGING
 	input_report_abs(data->input_dev_ps, ABS_HAT3Y, data->rangeData.DMax);
@@ -339,57 +247,73 @@ static void stmvl6180_ps_read_measurement(struct i2c_client *client)
 	if (data->enableDebug)
 		pr_info
 		    ("range:%d, signalrate_mcps:%d, error:0x%x,rtnsgnrate:%u, rtnambrate:%u,rtnconvtime:%u\n",
-		     data->rangeData.range_mm, data->rangeData.signalRate_mcps,
-		     data->rangeData.errorStatus, data->rangeData.rtnRate,
-		     data->rangeData.rtnAmbRate, data->rangeData.rtnConvTime);
+			data->rangeData.range_mm,
+			data->rangeData.signalRate_mcps,
+			data->rangeData.errorStatus,
+			data->rangeData.rtnRate,
+			data->rangeData.rtnAmbRate,
+			data->rangeData.rtnConvTime);
+}
+
+static void stmvl6180_cancel_handler(struct stmvl6180_data *data)
+{
+	unsigned long flags;
+	bool ret;
+
+	spin_lock_irqsave(&data->update_lock.wait_lock, flags);
+	/*
+	 * If work is already scheduled then subsequent schedules will not
+	 * change the scheduled time that's why we have to cancel it first.
+	 */
+	ret = cancel_delayed_work(&data->dwork);
+	if (ret == 0)
+		vl6180_errmsg("cancel_delayed_work return FALSE\n");
+
+	spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
+
+	return;
+}
+
+static void stmvl6180_schedule_handler(struct stmvl6180_data *data)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&data->update_lock.wait_lock, flags);
+	/*
+	 * If work is already scheduled then subsequent schedules will not
+	 * change the scheduled time that's why we have to cancel it first.
+	 */
+	cancel_delayed_work(&data->dwork);
+	schedule_delayed_work(&data->dwork, msecs_to_jiffies(data->delay_ms));
+	spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
+
+	return;
 }
 
 /* interrupt work handler */
 static void stmvl6180_work_handler(struct work_struct *work)
 {
-	struct stmvl6180_data *data =
-	    container_of(work, struct stmvl6180_data, dwork.work);
-	struct i2c_client *client = data->client;
-#ifndef MULTI_READ
-	uint8_t gpio_status = 0, range_start = 0, range_status = 0;
-#endif
+	struct stmvl6180_data *data = gp_vl6180_data;
+	int ret = 0;
 	uint8_t to_startPS = 0;
-
 	mutex_lock(&data->work_mutex);
 
-#ifdef MULTI_READ
-	ret = stmvl6180_ps_read_result(client);
-	if (ret == 0 && ((data->ResultBuffer[0] & 0x01) == 0x01)) {
-		if (data->enable_ps_sensor) {
-			stmvl6180_ps_parse_result(client);
-			stmvl6180_ps_read_measurement(client);
-			if (data->ps_is_singleshot)
-				to_startPS = 1;
+	if (data->enable_ps_sensor == 1) {
 
-		}
-	}
-#else
-	VL6180x_RangeGetInterruptStatus(vl6180x_dev, &gpio_status);
-	VL6180x_RdByte(vl6180x_dev, RESULT_RANGE_STATUS, &range_status);
-	VL6180x_RdByte(vl6180x_dev, SYSRANGE_START, &range_start);
 
-	//if (gpio_status == RES_INT_STAT_GPIO_NEW_SAMPLE_READY)
-	if (((range_status & 0x01) == 0x01) && (range_start == 0x00)) {
-		if (data->enable_ps_sensor) {
-			stmvl6180_ps_read_measurement(client);
+		data->rangeData.errorStatus = 0xFF; /* to reset the data, should be set by API */
+		ret = VL6180x_RangeGetMeasurementIfReady(vl6180x_dev, &(data->rangeData));
+		if (ret != DataNotReady) {
 			if (data->ps_is_singleshot)
 				to_startPS = 1;
 		}
-		VL6180x_RangeClearInterrupt(vl6180x_dev);
-
-	}
-#endif
-	if (to_startPS) {
-		VL6180x_RangeSetSystemMode(vl6180x_dev,
-					   MODE_START_STOP | MODE_SINGLESHOT);
-	}
+		stmvl6180_ps_read_measurement(); /* to update data */
+		if (to_startPS)
+			VL6180x_RangeSetSystemMode(vl6180x_dev, MODE_START_STOP |  MODE_SINGLESHOT);
 
 	schedule_delayed_work(&data->dwork, msecs_to_jiffies((data->delay_ms)));	/* restart timer */
+
+	}
 
 	mutex_unlock(&data->work_mutex);
 
@@ -399,8 +323,8 @@ static void stmvl6180_work_handler(struct work_struct *work)
 #ifdef USE_INT
 static irqreturn_t stmvl6180_interrupt_handler(int vec, void *info)
 {
-	struct i2c_client *client = (struct i2c_client *)info;
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
+
+	struct stmvl6180_data *data = gp_vl6180_data;
 
 	if (data->irq == vec) {
 		vl6180_dbgmsg("==>interrupt_handler\n");
@@ -417,22 +341,17 @@ static ssize_t stmvl6180_show_enable_ps_sensor(struct device *dev,
 					       struct device_attribute *attr,
 					       char *buf)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-
-	return sprintf(buf, "%d\n", data->enable_ps_sensor);
+	return sprintf(buf, "%d\n", gp_vl6180_data->enable_ps_sensor);
 }
 
 static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 						struct device_attribute *attr,
 						const char *buf, size_t count)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
+	struct stmvl6180_data *data = gp_vl6180_data;
 	unsigned long val = simple_strtoul(buf, NULL, 10);
-	unsigned long flags;
 
-	vl6180_dbgmsg("enable ps senosr ( %ld),addr:0x%x\n", val, client->addr);
+	vl6180_dbgmsg("enable ps senosr ( %ld)\n", val);
 
 	if ((val != 0) && (val != 1)) {
 		pr_err("%s:store unvalid value=%ld\n", __func__, val);
@@ -440,61 +359,22 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 	}
 	mutex_lock(&data->work_mutex);
 	if (val == 1) {
-		/* turn on p sensor */
-		stmvl6180_power_enable(val);
-		msleep(3);
+		/* turn on tof sensor */
 		if (data->enable_ps_sensor == 0) {
-			stmvl6180_set_enable(client, 0);	/* Power Off */
-
-			/* re-init */
-			VL6180x_Prepare(vl6180x_dev);
-			VL6180x_UpscaleSetScaling(vl6180x_dev, 3);
-
-			VL6180x_RangeConfigInterrupt(vl6180x_dev,
-						     CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY);
-
-			/* start */
-			VL6180x_RangeSetSystemMode(vl6180x_dev,
-						   MODE_START_STOP |
-						   MODE_SINGLESHOT);
-			data->ps_is_singleshot = 1;
-			data->enable_ps_sensor = 1;
-
-			/* we need this polling timer routine for house keeping */
-			spin_lock_irqsave(&data->update_lock.wait_lock, flags);
-			/*
-			 * If work is already scheduled then subsequent schedules will not
-			 * change the scheduled time that's why we have to cancel it first.
-			 */
-			cancel_delayed_work(&data->dwork);
-			schedule_delayed_work(&data->dwork,
-					      msecs_to_jiffies(data->delay_ms));
-			spin_unlock_irqrestore(&data->update_lock.wait_lock,
-					       flags);
-
-			stmvl6180_set_enable(client, 1);	/* Power On */
+			/* to start */
+			stmvl6180_start(data, 3, NORMAL_MODE);
+		} else {
+			vl6180_errmsg("Already enabled. Skip !");
 		}
 	} else {
-		/* turn off p sensor */
-		data->enable_ps_sensor = 0;
-		if (data->ps_is_singleshot == 0)
-			VL6180x_RangeSetSystemMode(vl6180x_dev,
-						   MODE_START_STOP);
-		VL6180x_RangeClearInterrupt(vl6180x_dev);
-
-		stmvl6180_set_enable(client, 0);
-
-		spin_lock_irqsave(&data->update_lock.wait_lock, flags);
-		/*
-		 * If work is already scheduled then subsequent schedules will not
-		 * change the scheduled time that's why we have to cancel it first.
-		 */
-		cancel_delayed_work(&data->dwork);
-		spin_unlock_irqrestore(&data->update_lock.wait_lock, flags);
-		//msleep(3);
-		//stmvl6180_power_enable(val);
+		/* turn off tof sensor */
+		if (data->enable_ps_sensor == 1) {
+			data->enable_ps_sensor = 0;
+			/* to stop */
+			stmvl6180_stop(data);
+		}
 	}
-
+	vl6180_dbgmsg("End\n");
 	mutex_unlock(&data->work_mutex);
 
 	return count;
@@ -508,10 +388,7 @@ static ssize_t stmvl6180_show_enable_debug(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-
-	return sprintf(buf, "%d\n", data->enableDebug);
+	return sprintf(buf, "%d\n", gp_vl6180_data->enableDebug);
 }
 
 /* for als integration time setup */
@@ -519,11 +396,11 @@ static ssize_t stmvl6180_store_enable_debug(struct device *dev,
 					    struct device_attribute *attr,
 					    const char *buf, size_t count)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-	long on = simple_strtol(buf, NULL, 10);
-	if ((on != 0) && (on != 1)) {
-		pr_err("%s: set debug=%ld\n", __func__, on);
+	struct stmvl6180_data *data = gp_vl6180_data;
+	long on = simple_strtoul(buf, NULL, 10);
+
+	if ((on != 0) &&  (on != 1)) {
+		vl6180_errmsg("set debug=%ld\n", on);
 		return count;
 	}
 	data->enableDebug = on;
@@ -539,20 +416,17 @@ static ssize_t stmvl6180_show_set_delay_ms(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-
+	struct stmvl6180_data *data = gp_vl6180_data;
 	return sprintf(buf, "%d\n", data->delay_ms);
 }
 
-//for als integration time setup
+/* for work handler scheduler time */
 static ssize_t stmvl6180_store_set_delay_ms(struct device *dev,
 					    struct device_attribute *attr,
 					    const char *buf, size_t count)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-	long delay_ms = simple_strtol(buf, NULL, 10);
+	struct stmvl6180_data *data = gp_vl6180_data;
+	long delay_ms = simple_strtoul(buf, NULL, 10);
 	//printk("stmvl6180_store_set_delay_ms as %ld======\n",delay_ms);
 	if (delay_ms == 0) {
 		pr_err("%s: set delay_ms=%ld\n", __func__, delay_ms);
@@ -564,9 +438,9 @@ static ssize_t stmvl6180_store_set_delay_ms(struct device *dev,
 	return count;
 }
 
-//DEVICE_ATTR(name,mode,show,store)
-static DEVICE_ATTR(set_delay_ms, S_IWUSR | S_IRUGO,
-		   stmvl6180_show_set_delay_ms, stmvl6180_store_set_delay_ms);
+/* DEVICE_ATTR(name,mode,show,store) */
+static DEVICE_ATTR(set_delay_ms, S_IWUGO | S_IRUGO,
+				   stmvl6180_show_set_delay_ms, stmvl6180_store_set_delay_ms);
 
 static struct attribute *stmvl6180_attributes[] = {
 	&dev_attr_enable_ps_sensor.attr,
@@ -588,249 +462,88 @@ static int stmvl6180_ioctl_handler(struct file *file,
 {
 
 	int rc = 0;
-	unsigned long flags;
-	unsigned long distance = 0;
-	struct i2c_client *client;
+	unsigned int xtalkint = 0;
+	int8_t offsetint = 0;
+	struct stmvl6180_data *data = gp_vl6180_data;
+
+	if (!data)
+		return -EINVAL;
+
+	vl6180_dbgmsg("Enter enable_ps_sensor:%d\n", data->enable_ps_sensor);
 	switch (cmd) {
-	case VL6180_IOCTL_INIT:	/* init. */
-		client = i2c_getclient();
-		if (client) {
-			struct stmvl6180_data *data =
-			    i2c_get_clientdata(client);
-			/* turn on p sensor only if it's not enabled by other client */
-			if (data->enable_ps_sensor == 0) {
-				pr_info
-				    ("ioclt INIT to enable PS sensor=====\n");
-				stmvl6180_set_enable(client, 0);	/* Power Off */
-				/* re-init */
-				stmvl6180_power_enable(1);
-				VL6180x_Prepare(vl6180x_dev);
-				VL6180x_UpscaleSetScaling(vl6180x_dev, 3);
-#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
-				VL6180x_FilterSetState(vl6180x_dev, 1);	/* turn on wrap around filter */
-#endif
-				VL6180x_RangeConfigInterrupt(vl6180x_dev,
-							     CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY);
-				VL6180x_RangeClearInterrupt(vl6180x_dev);
-
-				VL6180x_RangeSetSystemMode(vl6180x_dev,
-							   MODE_START_STOP |
-							   MODE_SINGLESHOT);
-				data->ps_is_singleshot = 1;
-				data->enable_ps_sensor = 1;
-
-				/* we need this polling timer routine for house keeping */
-				spin_lock_irqsave(&data->update_lock.wait_lock,
-						  flags);
-				/*
-				 * If work is already scheduled then subsequent schedules will not
-				 * change the scheduled time that's why we have to cancel it first.
-				 */
-				cancel_delayed_work(&data->dwork);
-				schedule_delayed_work(&data->dwork,
-						      msecs_to_jiffies
-						      (data->delay_ms));
-				spin_unlock_irqrestore(&data->
-						       update_lock.wait_lock,
-						       flags);
-
-				stmvl6180_set_enable(client, 1);	/* Power On */
-			}
-		}
+	/* enable */
+	case VL6180_IOCTL_INIT:
+		vl6180_dbgmsg("VL6180_IOCTL_INIT\n");
+		/* turn on tof sensor only if it's not enabled by other client */
+		if (data->enable_ps_sensor == 0) {
+			/* to start */
+			stmvl6180_start(data, 3, NORMAL_MODE);
+		} else
+			rc = -EINVAL;
 		break;
-	case VL6180_IOCTL_XTALKCALB:	/* crosstalk calibration */
-		client = i2c_getclient();
-		if (client) {
-			struct stmvl6180_data *data =
-			    i2c_get_clientdata(client);
-			/* turn on p sensor only if it's not enabled by other client */
-			if (data->enable_ps_sensor == 0) {
-				pr_info
-				    ("ioclt XTALKCALB to enable PS sensor for crosstalk calibration=====\n");
-				stmvl6180_set_enable(client, 0);	/* Power Off */
-				//re-init
-				VL6180x_Prepare(vl6180x_dev);
-				VL6180x_UpscaleSetScaling(vl6180x_dev, 3);
-#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
-				VL6180x_FilterSetState(vl6180x_dev, 1);	/* turn off wrap around filter */
-#endif
-
-				VL6180x_RangeConfigInterrupt
-				    (vl6180x_dev,
-				     CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY);
-				VL6180x_RangeClearInterrupt(vl6180x_dev);
-				VL6180x_WrWord(vl6180x_dev,
-					       SYSRANGE_CROSSTALK_COMPENSATION_RATE,
-					       0);
-
-				/* start */
-				VL6180x_RangeSetSystemMode(vl6180x_dev,
-							   MODE_START_STOP
-							   | MODE_SINGLESHOT);
-				data->ps_is_singleshot = 1;
-				data->enable_ps_sensor = 1;
-
-				/* we need this polling timer routine for house keeping */
-				spin_lock_irqsave(&data->update_lock.wait_lock,
-						  flags);
-				/*
-				 * If work is already scheduled then subsequent schedules will not
-				 * change the scheduled time that's why we have to cancel it first.
-				 */
-				cancel_delayed_work(&data->dwork);
-				schedule_delayed_work(&data->dwork,
-						      msecs_to_jiffies
-						      (data->delay_ms));
-				spin_unlock_irqrestore
-				    (&data->update_lock.wait_lock, flags);
-
-				stmvl6180_set_enable(client, 1);	/* Power On */
-			}
-
-		}
+	/* crosstalk calibration */
+	case VL6180_IOCTL_XTALKCALB:
+		vl6180_dbgmsg("VL6180_IOCTL_XTALKCALB\n");
+		/* turn on tof sensor only if it's not enabled by other client */
+		if (data->enable_ps_sensor == 0) {
+			/* to start */
+			stmvl6180_start(data, 3, XTALKCALIB_MODE);
+		} else
+			rc = -EINVAL;
 		break;
+	/* set up Xtalk value */
 	case VL6180_IOCTL_SETXTALK:
-		client = i2c_getclient();
-		if (client) {
-			int xtalkint = 0;
-			if (copy_from_user(&xtalkint, (int *)p, sizeof(int))) {
-				rc = -EFAULT;
-			}
-			pr_info("ioctl SETXTALK as 0x%x\n", xtalkint);
+		vl6180_dbgmsg("VL6180_IOCTL_SETXTALK\n");
+		if (copy_from_user(&xtalkint, (unsigned int *)p, sizeof(unsigned int))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		vl6180_dbgmsg("SETXTALK as 0x%x\n", xtalkint);
 #ifdef CALIBRATION_FILE
-			xtalk_calib = xtalkint;
-			stmvl6180_write_xtalk_calibration_file(xtalkint);
+		xtalk_calib = xtalkint;
+		stmvl6180_write_xtalk_calibration_file();
 #endif
-			VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalkint);
-
-		}
+		VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalkint);
 		break;
-	case VL6180_IOCTL_OFFCALB:	/* offset calibration */
-		client = i2c_getclient();
-		if (client) {
-			struct stmvl6180_data *data =
-			    i2c_get_clientdata(client);
-			/* turn on p sensor only if it's not enabled by other client */
-			if (data->enable_ps_sensor == 0) {
-				pr_info
-				    ("ioclt OFFCALB to enable PS sensor for offset calibration=====\n");
-				stmvl6180_set_enable(client, 0);	/* Power Off */
-				//re-init
-				VL6180x_Prepare(vl6180x_dev);
-
-				VL6180x_UpscaleSetScaling(vl6180x_dev, 3);
-#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
-				VL6180x_FilterSetState(vl6180x_dev, 0);	/* turn off wrap around filter */
-#endif
-
-				VL6180x_RangeConfigInterrupt
-				    (vl6180x_dev,
-				     CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY);
-				VL6180x_RangeClearInterrupt(vl6180x_dev);
-				VL6180x_WrWord(vl6180x_dev,
-					       SYSRANGE_PART_TO_PART_RANGE_OFFSET,
-					       0);
-				VL6180x_WrWord(vl6180x_dev,
-					       SYSRANGE_CROSSTALK_COMPENSATION_RATE,
-					       0);
-
-				/* start */
-				VL6180x_RangeSetSystemMode(vl6180x_dev,
-							   MODE_START_STOP
-							   | MODE_SINGLESHOT);
-				data->ps_is_singleshot = 1;
-				data->enable_ps_sensor = 1;
-
-				/* we need this polling timer routine for house keeping */
-				spin_lock_irqsave(&data->update_lock.wait_lock,
-						  flags);
-				/*
-				 * If work is already scheduled then subsequent schedules will not
-				 * change the scheduled time that's why we have to cancel it first.
-				 */
-				cancel_delayed_work(&data->dwork);
-				schedule_delayed_work(&data->dwork,
-						      msecs_to_jiffies
-						      (data->delay_ms));
-				spin_unlock_irqrestore
-				    (&data->update_lock.wait_lock, flags);
-
-				stmvl6180_set_enable(client, 1);	/* Power On */
-			}
-		}
+	/* offset calibration */
+	case VL6180_IOCTL_OFFCALB:
+		vl6180_dbgmsg("VL6180_IOCTL_OFFCALB\n");
+		if (data->enable_ps_sensor == 0) {
+			/* to start */
+			stmvl6180_start(data, 3, OFFSETCALIB_MODE);
+		} else
+			rc = -EINVAL;
 		break;
+	/* set up offset value */
 	case VL6180_IOCTL_SETOFFSET:
-		client = i2c_getclient();
-		if (client) {
-			int8_t offsetint = 0;
-			if (copy_from_user
-			    (&offsetint, (int8_t *) p, sizeof(int8_t))) {
-				rc = -EFAULT;
-			}
-			pr_info("ioctl SETOFFSET as %d\n", offsetint);
-#ifdef CALIBRATION_FILE
-			offset_calib = offsetint;
-			stmvl6180_write_offset_calibration_file(offsetint);
-#endif
-			VL6180x_SetOffset(vl6180x_dev, offsetint);
+		vl6180_dbgmsg("VL6180_IOCTL_SETOFFSET\n");
+		if (copy_from_user(&offsetint, (int8_t *)p, sizeof(int8_t))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
 		}
+		vl6180_dbgmsg("SETOFFSET as %d\n", offsetint);
+#ifdef CALIBRATION_FILE
+		offset_calib = offsetint;
+		stmvl6180_write_offset_calibration_file();
+#endif
+		VL6180x_SetOffsetCalibrationData(vl6180x_dev, offsetint);
 		break;
 	case VL6180_IOCTL_STOP:
-		client = i2c_getclient();
-		if (client) {
-			struct stmvl6180_data *data =
-			    i2c_get_clientdata(client);
-			/* turn off p sensor only if it's enabled by other client */
-			if (data->enable_ps_sensor == 1) {
-				/* turn off p sensor */
-				data->enable_ps_sensor = 0;
-				if (data->ps_is_singleshot == 0)
-					VL6180x_RangeSetSystemMode
-					    (vl6180x_dev, MODE_START_STOP);
-				VL6180x_RangeClearInterrupt(vl6180x_dev);
-				stmvl6180_set_enable(client, 0);
-				spin_lock_irqsave(&data->update_lock.wait_lock,
-						  flags);
-				/*
-				 * If work is already scheduled then subsequent schedules will not
-				 * change the scheduled time that's why we have to cancel it first.
-				 */
-				cancel_delayed_work(&data->dwork);
-				spin_unlock_irqrestore
-				    (&data->update_lock.wait_lock, flags);
-			}
+		vl6180_dbgmsg("VL6180_IOCTL_STOP\n");
+		/* turn off tof sensor only if it's enabled by other client */
+		if (data->enable_ps_sensor == 1) {
+			data->enable_ps_sensor = 0;
+			/* to stop */
+			stmvl6180_stop(data);
 		}
 		break;
-	case VL6180_IOCTL_GETDATA:	/* Get proximity value only */
-		client = i2c_getclient();
-		if (client) {
-			struct stmvl6180_data *data =
-			    i2c_get_clientdata(client);
-			distance = data->rangeData.FilteredData.range_mm;
-		}
-		pr_debug("vl6180_getDistance return %ld\n", distance);
-		return put_user(distance, (unsigned long *)p);
-		break;
-	case VL6180_IOCTL_GETDATAS:	/* Get all range data */
-		client = i2c_getclient();
-		if (client) {
-			struct stmvl6180_data *data =
-			    i2c_get_clientdata(client);
-			pr_debug("IOCTL_GETDATAS, range_mm:%d===\n",
-				 data->rangeData.range_mm);
-			if (copy_to_user
-			    ((VL6180x_RangeData_t *) p, &(data->rangeData),
-			     sizeof(VL6180x_RangeData_t))) {
-				rc = -EFAULT;
-			}
-		} else
+	/* Get all range data */
+	case VL6180_IOCTL_GETDATAS:
+		vl6180_dbgmsg("VL6180_IOCTL_GETDATAS\n");
+		if (copy_to_user((VL6180x_RangeData_t *)p, &(data->rangeData), sizeof(VL6180x_RangeData_t))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
 			return -EFAULT;
-
-		break;
-	case VL6180_IOCTL_READCALB:	/* Read calibration data */
-#ifdef CALIBRATION_FILE
-		stmvl6180_read_calibration_file();
-#endif
+		}
 		break;
 	default:
 		rc = -EINVAL;
@@ -844,31 +557,18 @@ static int stmvl6180_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int stmvl6180_flush(struct file *file1, fl_owner_t id)
+static int stmvl6180_flush(struct file *file, fl_owner_t id)
 {
-	unsigned long flags;
-	struct i2c_client *client;
-	client = i2c_getclient();
+	struct stmvl6180_data *data = gp_vl6180_data;
+	(void) file;
+	(void) id;
 
-	if (client) {
-		struct stmvl6180_data *data = i2c_get_clientdata(client);
+	if (data) {
 		if (data->enable_ps_sensor == 1) {
-			/* turn off p sensor if it's enabled */
+			/* turn off tof sensor if it's enabled */
 			data->enable_ps_sensor = 0;
-			VL6180x_RangeClearInterrupt(vl6180x_dev);
-
-			stmvl6180_set_enable(client, 0);
-
-			stmvl6180_power_enable(0);
-
-			spin_lock_irqsave(&data->update_lock.wait_lock, flags);
-			/*
-			 * If work is already scheduled then subsequent schedules will not
-			 * change the scheduled time that's why we have to cancel it first.
-			 */
-			cancel_delayed_work(&data->dwork);
-			spin_unlock_irqrestore(&data->update_lock.wait_lock,
-					       flags);
+			/* to stop */
+			stmvl6180_stop(data);
 		}
 	}
 	return 0;
@@ -878,9 +578,10 @@ static long stmvl6180_ioctl(struct file *file,
 			    unsigned int cmd, unsigned long arg)
 {
 	int ret;
-	mutex_lock(&vl6180_mutex);
+
+	mutex_lock(&gp_vl6180_data->work_mutex);
 	ret = stmvl6180_ioctl_handler(file, cmd, arg, (void __user *)arg);
-	mutex_unlock(&vl6180_mutex);
+	mutex_unlock(&gp_vl6180_data->work_mutex);
 
 	return ret;
 }
@@ -888,16 +589,15 @@ static long stmvl6180_ioctl(struct file *file,
 /*
  * Initialization function
  */
-static int stmvl6180_init_client(struct i2c_client *client)
+static int stmvl6180_init_client(struct stmvl6180_data *data)
 {
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
 	uint8_t id = 0, module_major = 0, module_minor = 0;
 	uint8_t model_major = 0, model_minor = 0;
 	uint8_t i = 0, val;
 
 	/* Read Model ID */
 	VL6180x_RdByte(vl6180x_dev, VL6180_MODEL_ID_REG, &id);
-	pr_info("read MODLE_ID: 0x%x, i2cAddr:0x%x\n", id, client->addr);
+	pr_info("read MODLE_ID: 0x%x\n", id);
 	if (id == 0xb4) {
 		pr_info("STM VL6180 Found\n");
 	} else if (id == 0) {
@@ -919,276 +619,104 @@ static int stmvl6180_init_client(struct i2c_client *client)
 
 	/* Read Identification */
 	pr_info("STM VL6180 Serial Numbe: ");
-	for (i = 0;
-	     i <=
-	     (VL6180_FIRMWARE_REVISION_ID_REG - VL6180_REVISION_ID_REG); i++) {
+	for (i = 0; i <= (VL6180_FIRMWARE_REVISION_ID_REG - VL6180_REVISION_ID_REG); i++) {
 		VL6180x_RdByte(vl6180x_dev, (VL6180_REVISION_ID_REG + i), &val);
 		pr_info("0x%x-", val);
 	}
 	pr_info("\n");
 
-	data->ps_data = 0;
-	data->enableDebug = 0;
+
+	/* intialization */
+	if (data->reset) {
+		/* no need
+		vl6180_dbgmsg("WaitDeviceBoot");
+		VL6180x_WaitDeviceBooted(vl6180x_dev);
+		*/
+		/* only called if device being reset, otherwise data being overwrite */
+		vl6180_dbgmsg("Init data!");
+		VL6180x_InitData(vl6180x_dev); /* only called if device being reset */
+		data->reset = 0;
+	}
+	/* set user calibration data - need to be called after VL6180x_InitData */
 #ifdef CALIBRATION_FILE
 	stmvl6180_read_calibration_file();
 #endif
 
-	/* VL6180 Initialization */
-	VL6180x_WaitDeviceBooted(vl6180x_dev);
-	VL6180x_InitData(vl6180x_dev);
-	//VL6180x_FilterSetState(vl6180x_dev, 1); /* activate wrap around filter */
-	//VL6180x_DisableGPIOxOut(vl6180x_dev, 1); /* diable gpio 1 output, not needed when polling */
 
 	return 0;
+}
+
+static int stmvl6180_start(struct stmvl6180_data *data, uint8_t scaling, init_mode_e mode)
+{
+	int rc = 0;
+	vl6180_dbgmsg("Enter\n");
+
+	/* Power up */
+	rc = data->pmodule_func_tbl->power_up(&data->client_object, &data->reset);
+	if (rc) {
+		vl6180_errmsg("%d,error rc %d\n", __LINE__, rc);
+		return rc;
+	}
+	/* init */
+	rc = stmvl6180_init_client(data);
+	if (rc) {
+		vl6180_errmsg("%d, error rc %d\n", __LINE__, rc);
+		data->pmodule_func_tbl->power_down(&data->client_object);
+		return -EINVAL;
+	}
+	/* prepare */
+	VL6180x_Prepare(vl6180x_dev);
+	VL6180x_UpscaleSetScaling(vl6180x_dev, scaling);
+
+	/* check mode */
+	if (mode != NORMAL_MODE) {
+#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
+		/* turn off wrap around filter */
+		VL6180x_FilterSetState(vl6180x_dev, 0);
+#endif
+		VL6180x_SetXTalkCompensationRate(vl6180x_dev, 0);
+	}
+	if (mode == OFFSETCALIB_MODE)
+		VL6180x_SetOffsetCalibrationData(vl6180x_dev, 0);
+
+	/* start - single shot mode */
+	VL6180x_RangeSetSystemMode(vl6180x_dev, MODE_START_STOP|MODE_SINGLESHOT);
+	data->ps_is_singleshot = 1;
+	data->enable_ps_sensor = 1;
+
+	/* enable work handler */
+	stmvl6180_schedule_handler(data);
+
+
+	return rc;
+}
+
+static int stmvl6180_stop(struct stmvl6180_data *data)
+{
+	int rc = 0;
+	vl6180_dbgmsg("Enter\n");
+
+	/* stop - if continuous mode */
+	if (data->ps_is_singleshot == 0)
+		VL6180x_RangeSetSystemMode(vl6180x_dev, MODE_START_STOP);
+	/* clean interrupt */
+	VL6180x_RangeClearInterrupt(vl6180x_dev);
+	/* cancel work handler */
+	stmvl6180_cancel_handler(data);
+	/* power down */
+	rc = data->pmodule_func_tbl->power_down(&data->client_object);
+	if (rc) {
+		vl6180_errmsg("%d, error rc %d\n", __LINE__, rc);
+		return rc;
+	}
+	vl6180_dbgmsg("End\n");
+
+	return rc;
 }
 
 /*
  * I2C init/probing/exit functions
  */
-static struct i2c_driver stmvl6180_driver;
-static char const *power_pin_vdd;
-static char const *power_pin_vcc;
-
-static int stmvl6180_probe(struct i2c_client *client,
-			   const struct i2c_device_id *id)
-{
-	struct device *dev = &client->dev;
-	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-	struct stmvl6180_data *data;
-	int err = 0;
-#ifdef USE_INT
-	int irq = 0;
-#endif
-	pr_info("stmvl6180_probe==========\n");
-
-	err = of_property_read_string(dev->of_node, "st,vdd", &power_pin_vdd);
-	if (err) {
-		pr_err("%s: OF error rc=%d at line %d for st,vdd\n",
-		       __func__, err, __LINE__);
-		goto exit;
-	}
-
-	err = of_property_read_string(dev->of_node, "st,vcc", &power_pin_vcc);
-	if (err) {
-		pr_err("%s: OF error rc=%d at line %d for st,vdd\n",
-		       __func__, err, __LINE__);
-		goto exit;
-	}
-	cs_gpio_num = of_get_named_gpio(dev->of_node, "st,cs_gpio", 0);
-	if (!gpio_is_valid(cs_gpio_num)) {
-		pr_err("%s: OF error rc=%d at line %d for cy,cs_gpio\n",
-		       __func__, err, __LINE__);
-		goto exit;
-	}
-
-	/* VDD power on */
-	vdd_stmvl6180 = regulator_get(dev, power_pin_vdd);
-
-	if (IS_ERR(vdd_stmvl6180)) {
-		pr_err("%s: failed to get st vdd\n", __func__);
-		goto exit;
-	}
-
-	err = regulator_set_voltage(vdd_stmvl6180, 2850000, 2850000);
-	if (err < 0) {
-		pr_err("%s: failed to set st vdd\n", __func__);
-		goto exit_vdd_regulator_put;
-	}
-
-	/* VCC power on */
-	vcc_stmvl6180 = regulator_get(dev, power_pin_vcc);
-
-	if (IS_ERR(vcc_stmvl6180)) {
-		pr_err("%s: failed to get st vcc\n", __func__);
-		goto exit_vdd_regulator_put;
-	}
-
-	err = regulator_set_voltage(vcc_stmvl6180, 0, 0);
-	if (err < 0) {
-		pr_err("%s: failed to set st vcc\n", __func__);
-		goto exit_vcc_regulator_put;
-	}
-
-	err = gpio_request(cs_gpio_num, "tmvl6180");
-	if (err < 0) {
-		pr_err("%s: failed to get cs gpio\n", __func__);
-		goto exit_vcc_regulator_put;
-	}
-
-	err = gpio_direction_output(cs_gpio_num, 1);
-	if (err < 0) {
-		pr_err("%s: failed to get cs gpio\n", __func__);
-		goto exit_vcc_regulator_put;
-	}
-	stmvl6180_power_enable(1);
-
-	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE)) {
-		err = -EIO;
-		goto exit_vcc_regulator_put;
-	}
-
-	data = kzalloc(sizeof(struct stmvl6180_data), GFP_KERNEL);
-	if (!data) {
-		err = -ENOMEM;
-		goto exit_vcc_regulator_put;
-	}
-	data->client = client;
-	i2c_set_clientdata(client, data);
-
-	data->enable = 0;	/* default mode is standard */
-
-	pr_info("enable = %x\n", data->enable);
-
-	mutex_init(&data->update_lock);
-	mutex_init(&data->work_mutex);
-	mutex_init(&vl6180_mutex);
-
-	/* setup platform i2c client */
-	i2c_setclient(client);
-	//vl6180x_dev.I2cAddress = client->addr;
-
-/* interrupt set up */
-#ifdef USE_INT
-	gpio_request(IRQ_NUM, "vl6180_gpio_int");
-	gpio_direction_input(IRQ_NUM);
-	irq = gpio_to_irq(IRQ_NUM);
-	if (irq < 0) {
-		pr_err("filed to map GPIO :%d to interrupt:%d\n", IRQ_NUM, irq);
-	} else {
-		int result;
-		vl6180_dbgmsg("register_irq:%d\n", irq);
-		if ((result = request_threaded_irq(irq, NULL, stmvl6180_interrupt_handler, IRQF_TRIGGER_RISING,	//IRQF_TRIGGER_FALLING- poliarity:0 IRQF_TRIGGER_RISNG - poliarty:1
-						   "vl6180_lb_gpio_int",
-						   (void *)client))) {
-			pr_err
-			    ("%s Could not allocate STMVL6180_INT ! result:%d\n",
-			     __func__, result);
-			goto exit_free_irq;
-		}
-	}
-	//disable_irq(irq);
-	data->irq = irq;
-	vl6180_dbgmsg("%s interrupt is hooked\n", __func__);
-#endif
-
-	INIT_DELAYED_WORK(&data->dwork, stmvl6180_work_handler);
-
-	/* Initialize the STM VL6180 chip */
-	err = stmvl6180_init_client(client);
-	if (err)
-		goto exit_kfree;
-
-	/* Register to Input Device */
-	data->input_dev_ps = input_allocate_device();
-	if (!data->input_dev_ps) {
-		err = -ENOMEM;
-		pr_err("%s Failed to allocate input device ps\n", __func__);
-		goto exit_free_dev_ps;
-	}
-
-	set_bit(EV_ABS, data->input_dev_ps->evbit);
-
-	input_set_abs_params(data->input_dev_ps, ABS_DISTANCE, 0, 76, 0, 0);	//range in cm
-	input_set_abs_params(data->input_dev_ps, ABS_HAT0X, 0, 0xffffffff, 0, 0);	//timeval.tv_sec
-	input_set_abs_params(data->input_dev_ps, ABS_HAT0Y, 0, 0xffffffff, 0, 0);	//timeval.tv_usec
-	input_set_abs_params(data->input_dev_ps, ABS_HAT1X, 0, 765, 0, 0);	//range in mm
-	input_set_abs_params(data->input_dev_ps, ABS_HAT1Y, 0, 0xffffffff, 0, 0);	//errorStatus
-	input_set_abs_params(data->input_dev_ps, ABS_HAT2X, 0, 0xffffffff, 0, 0);	//signal rate (MCPS)
-	input_set_abs_params(data->input_dev_ps, ABS_HAT2Y, 0, 0xffffffff, 0, 0);	//Return Ambient rate in KCPS
-	input_set_abs_params(data->input_dev_ps, ABS_HAT3X, 0, 0xffffffff, 0, 0);	// Return Convergence time
-	input_set_abs_params(data->input_dev_ps, ABS_HAT3Y, 0, 0xffffffff, 0, 0);	//DMax
-
-	data->input_dev_ps->name = "STM VL6180 proximity sensor";
-
-	err = input_register_device(data->input_dev_ps);
-	if (err) {
-		err = -ENOMEM;
-		pr_err("%sUnable to register input device ps: %s\n",
-		       __func__, data->input_dev_ps->name);
-		goto exit_unregister_dev_ps;
-	}
-
-	/* Register sysfs hooks */
-	err = sysfs_create_group(&client->dev.kobj, &stmvl6180_attr_group);
-	if (err) {
-		pr_err("%sUnable to create sysfs group\n", __func__);
-		goto exit_unregister_dev_ps;
-	}
-
-	stmvl6180_power_enable(0);
-
-	pr_err("%s support ver. %s enabled\n", __func__, DRIVER_VERSION);
-
-	return 0;
-
-exit_unregister_dev_ps:
-	input_unregister_device(data->input_dev_ps);
-exit_free_dev_ps:
-	input_free_device(data->input_dev_ps);
-#ifdef USE_INT
-exit_free_irq:
-	free_irq(irq, client);
-#endif
-exit_kfree:
-	kfree(data);
-exit_vcc_regulator_put:
-	regulator_put(vcc_stmvl6180);
-exit_vdd_regulator_put:
-	regulator_put(vdd_stmvl6180);
-exit:
-	return err;
-}
-
-static int stmvl6180_remove(struct i2c_client *client)
-{
-	struct stmvl6180_data *data = i2c_get_clientdata(client);
-
-	//input_unregister_device(data->input_dev_als);
-	input_unregister_device(data->input_dev_ps);
-
-	//input_free_device(data->input_dev_als);
-	input_free_device(data->input_dev_ps);
-
-#ifdef  USE_INT
-	free_irq(data->irq, client);
-#endif
-
-	sysfs_remove_group(&client->dev.kobj, &stmvl6180_attr_group);
-
-	/* Power down the device */
-	stmvl6180_set_enable(client, 0);
-
-	kfree(data);
-
-	return 0;
-}
-
-#ifdef CONFIG_PM
-
-static int stmvl6180_suspend(struct i2c_client *client, pm_message_t mesg)
-{
-	return stmvl6180_set_enable(client, 0);
-}
-
-static int stmvl6180_resume(struct i2c_client *client)
-{
-	return stmvl6180_set_enable(client, 0);
-}
-
-#else
-
-#define stmvl6180_suspend   NULL
-#define stmvl6180_resume    NULL
-
-#endif /* CONFIG_PM */
-
-static const struct i2c_device_id stmvl6180_id[] = {
-	{STMVL6180_DRV_NAME, 0},
-	{}
-};
-
-MODULE_DEVICE_TABLE(i2c, stmvl6180_id);
-
 static const struct file_operations stmvl6180_ranging_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = stmvl6180_ioctl,
@@ -1202,44 +730,177 @@ static struct miscdevice stmvl6180_ranging_dev = {
 	.fops = &stmvl6180_ranging_fops
 };
 
-static const struct of_device_id stmvl6180_of_id_table[] = {
-	{.compatible = "st,stmvl6180"},
-	{},
-};
+static int stmvl6180_setup(struct stmvl6180_data *data)
+{
+	int rc = 0;
+#ifdef USE_INT
+	int irq = 0;
+#endif
 
-static struct i2c_driver stmvl6180_driver = {
-	.driver = {
-		   .name = STMVL6180_DRV_NAME,
-		   .owner = THIS_MODULE,
-		   .of_match_table = stmvl6180_of_id_table,
-		   },
-	.suspend = stmvl6180_suspend,
-	.resume = stmvl6180_resume,
-	.probe = stmvl6180_probe,
-	.remove = stmvl6180_remove,
-	.id_table = stmvl6180_id,
+	vl6180_dbgmsg("Enter\n");
 
-};
+	/* init mutex */
+	mutex_init(&data->update_lock);
+	mutex_init(&data->work_mutex);
+
+#ifdef USE_INT
+	/* init interrupt */
+	gpio_request(IRQ_NUM, "vl6180_gpio_int");
+	gpio_direction_input(IRQ_NUM);
+	irq = gpio_to_irq(IRQ_NUM);
+	if (irq < 0) {
+		vl6180_errmsg("filed to map GPIO: %d to interrupt:%d\n", IRQ_NUM, irq);
+	} else {
+		int result;
+		vl6180_dbgmsg("register_irq:%d\n", irq);
+		/* IRQF_TRIGGER_FALLING- poliarity:0 IRQF_TRIGGER_RISNG - poliarty:1 */
+		rc = request_threaded_irq(irq, NULL, stmvl6180_interrupt_handler, IRQF_TRIGGER_RISING, "vl6180_lb_gpio_int", (void *)data);
+		if (rc) {
+			vl6180_errmsg("%d, Could not allocate STMVL6180_INT ! result:%d\n",  __LINE__, result);
+			return rc;
+		}
+	}
+	data->irq = irq;
+	vl6180_dbgmsg("interrupt is hooked\n");
+#endif
+
+	/* init work handler */
+	INIT_DELAYED_WORK(&data->dwork, stmvl6180_work_handler);
+
+	/* Register to Input Device */
+	data->input_dev_ps = input_allocate_device();
+	if (!data->input_dev_ps) {
+		rc = -ENOMEM;
+		vl6180_errmsg("%d error:%d\n", __LINE__, rc);
+#ifdef USE_INT
+		free_irq(irq, data);
+#endif
+		return rc;
+	}
+	set_bit(EV_ABS, data->input_dev_ps->evbit);
+	/* range in cm*/
+	input_set_abs_params(data->input_dev_ps, ABS_DISTANCE, 0, 76, 0, 0);
+	/* tv_sec */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT0X, 0, 0xffffffff, 0, 0);
+	/* tv_usec */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT0Y, 0, 0xffffffff, 0, 0);
+	/* range in_mm */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT1X, 0, 765, 0, 0);
+	/* error code change maximum to 0xff for more flexibility */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT1Y, 0, 0xff, 0, 0);
+	/* rtnRate */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT2X, 0, 0xffffffff, 0, 0);
+	/* rtn_amb_rate */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT2Y, 0, 0xffffffff, 0, 0);
+	/* rtn_conv_time */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT3X, 0, 0xffffffff, 0, 0);
+	/* dmax */
+	input_set_abs_params(data->input_dev_ps, ABS_HAT3Y, 0, 0xffffffff, 0, 0);
+	data->input_dev_ps->name = "STM VL6180 proximity sensor";
+
+	rc = input_register_device(data->input_dev_ps);
+	if (rc) {
+		rc = -ENOMEM;
+		vl6180_errmsg("%d error:%d\n", __LINE__, rc);
+#ifdef USE_INT
+		free_irq(irq, data);
+#endif
+		input_free_device(data->input_dev_ps);
+		return rc;
+	}
+
+	/* Register sysfs hooks */
+	data->range_kobj = kobject_create_and_add("range", kernel_kobj);
+	if (!data->range_kobj) {
+		rc = -ENOMEM;
+		vl6180_errmsg("%d error:%d\n", __LINE__, rc);
+#ifdef USE_INT
+		free_irq(irq, data);
+#endif
+		input_unregister_device(data->input_dev_ps);
+		input_free_device(data->input_dev_ps);
+		return rc;
+	}
+	rc = sysfs_create_group(data->range_kobj, &stmvl6180_attr_group);
+	if (rc) {
+		rc = -ENOMEM;
+		vl6180_errmsg("%d error:%d\n", __LINE__, rc);
+#ifdef USE_INT
+		free_irq(irq, data);
+#endif
+		kobject_put(data->range_kobj);
+		input_unregister_device(data->input_dev_ps);
+		input_free_device(data->input_dev_ps);
+		return rc;
+	}
+
+	/* to register as a misc device */
+	if (misc_register(&stmvl6180_ranging_dev) != 0)
+		vl6180_errmsg("Could not register misc. dev for stmvl6180 ranging\n");
+
+	/* init default value */
+	data->enable_ps_sensor = 0;
+	data->reset = 1;
+	data->delay_ms = 30;	/* delay time to 30ms */
+	data->enableDebug = 0;
+	data->client_object.power_up = 0; /* for those one-the-fly power on/off flag */
+
+	vl6180_dbgmsg("support ver. %s enabled\n", DRIVER_VERSION);
+	vl6180_dbgmsg("End");
+
+	return rc;
+}
 
 static int __init stmvl6180_init(void)
 {
+	struct stmvl6180_data *vl6180_data = NULL;
 	int ret = 0;
 
-	pr_info("stmvl6180_init===\n");
-	/* to register as a misc device */
-	if (misc_register(&stmvl6180_ranging_dev) != 0)
-		pr_info(KERN_INFO
-			"Could not register misc. dev for stmvl6180 ranging\n");
+	vl6180_dbgmsg("Enter\n");
 
-	ret = i2c_add_driver(&stmvl6180_driver);
+	vl6180_data = kzalloc(sizeof(struct stmvl6180_data), GFP_KERNEL);
+	if (!vl6180_data) {
+		vl6180_errmsg("%d failed no memory\n", __LINE__);
+		return -ENOMEM;
+	}
+	/* assign to global variable */
+	gp_vl6180_data = vl6180_data;
+	/* assign function table */
+	vl6180_data->pmodule_func_tbl = &stmvl6180_module_func_tbl;
+	/* client specific init function */
+	ret = vl6180_data->pmodule_func_tbl->init();
+	if (!ret)
+		ret = stmvl6180_setup(vl6180_data);
+	if (ret) {
+		kfree(vl6180_data);
+		gp_vl6180_data = NULL;
+		vl6180_errmsg("%d failed with %d\n", __LINE__, ret);
+	}
+	vl6180_dbgmsg("End\n");
 
 	return ret;
 }
 
 static void __exit stmvl6180_exit(void)
 {
-	pr_info("stmvl6180_exit===\n");
-	i2c_del_driver(&stmvl6180_driver);
+	vl6180_dbgmsg("Enter\n");
+	if (gp_vl6180_data) {
+		input_unregister_device(gp_vl6180_data->input_dev_ps);
+		input_free_device(gp_vl6180_data->input_dev_ps);
+#ifdef USE_INT
+		free_irq(data->irq, gp_vl6180_data);
+#endif
+		sysfs_remove_group(gp_vl6180_data->range_kobj, &stmvl6180_attr_group);
+		gp_vl6180_data->pmodule_func_tbl->deinit(&gp_vl6180_data->client_object);
+		kfree(gp_vl6180_data);
+		gp_vl6180_data = NULL;
+	}
+	vl6180_dbgmsg("End\n");
+}
+
+struct stmvl6180_data *stmvl6180_getobject(void)
+{
+	return gp_vl6180_data;
 }
 
 MODULE_AUTHOR("STMicroelectronics Imaging Division");

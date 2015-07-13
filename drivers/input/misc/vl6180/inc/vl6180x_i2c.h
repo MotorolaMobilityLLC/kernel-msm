@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright ?2014, STMicroelectronics International N.V.
+Copyright ?2015, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -78,8 +78,8 @@ typedef struct MyVL6180Dev_t *VL6180xDev_t;
 #define VL6180x_DoneI2CAcces(dev)   pthread_mutex_unlock(dev->lock)
  * @endcode
  */
-
-struct i2c_client *i2c_getclient(void);
+void i2c_setclient(void *client);
+void *i2c_getclient(void);
 
 /**
  * @def I2C_BUFFER_CONFIG

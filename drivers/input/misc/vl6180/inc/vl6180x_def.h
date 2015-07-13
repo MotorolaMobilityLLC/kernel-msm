@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2014, STMicroelectronics International N.V.
+Copyright © 2015, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 
 /*
- * $Date: 2015-01-14 06:37:10 -0800 (Wed, 14 Jan 2015) $
- * $Revision: 2047 $
+ * $Date: 2015-07-07 14:58:59 -0700 (Tue, 07 Jul 2015) $
+ * $Revision: 2449 $
  */
 
 /**
@@ -46,7 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /** API minor version */
 #define VL6180x_API_REV_MINOR   0
 /** API sub version */
-#define VL6180x_API_REV_SUB     1
+#define VL6180x_API_REV_SUB     3a
 
 #define VL6180X_STR_HELPER(x) #x
 #define VL6180X_STR(x) VL6180X_STR_HELPER(x)
@@ -88,6 +88,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * force VL6180x_WRAP_AROUND_FILTER_SUPPORT to not supported when not part of cfg file
  */
 #define VL6180x_WRAP_AROUND_FILTER_SUPPORT 0
+#endif
+
+
+
+#ifndef VL6180x_HAVE_MULTI_READ
+#   define VL6180x_HAVE_MULTI_READ  0
+#endif
+
+/**
+ * Force VL6180x_CACHED_REG to default 0 when not defined
+ */
+#ifndef VL6180x_CACHED_REG
+#   define VL6180x_CACHED_REG  0
+#else
+#   define VL6180x_FIRST_CACHED_INDEX      0x04D
+#   define VL6180x_LAST_CACHED_INDEX       (VL6180x_FIRST_CACHED_INDEX+55)
+#   define VL6180x_CACHED_REG_CNT           (VL6180x_LAST_CACHED_INDEX-VL6180x_FIRST_CACHED_INDEX+1)
 #endif
 
 /****************************************
@@ -135,7 +152,6 @@ enum VL6180x_ErrCode_t {
 	CALIBRATION_WARNING = 1,	/*!< warning invalid calibration data may be in used \a  VL6180x_InitData() \a VL6180x_GetOffsetCalibrationData \a VL6180x_SetOffsetCalibrationData */
 	MIN_CLIPED = 2,		/*!< warning parameter passed was clipped to min before to be applied */
 	NOT_GUARANTEED = 3,	/*!< Correct operation is not guaranteed typically using extended ranging on vl6180x */
-	NOT_READY = 4,		/*!< the data is not ready retry */
 
 	API_ERROR = -1,		/*!< Unqualified error */
 	INVALID_PARAMS = -2,	/*!< parameter passed is invalid or out of range */
@@ -226,19 +242,17 @@ struct VL6180xDevData_t {
 	struct FilterData_t FilterData;	/*!< Filter internal data state history ... */
 #endif
 
-#if  VL6180x_HAVE_DMAX_RANGING
+#if VL6180x_CACHED_REG
+	uint8_t CacheFilled;             /*!< Set if valid data got fetched use to control when to fill up register cache */
+	uint8_t CachedRegs[VL6180x_CACHED_REG_CNT];          /*!< Cache register storage */
+#endif
+#if VL6180x_HAVE_DMAX_RANGING
 	struct DMaxData_t DMaxData;
 	uint8_t DMaxEnable;
 #endif
 	int8_t Part2PartOffsetNVM;	/*!< backed up NVM value */
 };
 
-#if VL6180x_SINGLE_DEVICE_DRIVER
-extern struct VL6180xDevData_t SingleVL6180xDevData;
-#define VL6180xDevDataGet(dev, field) (SingleVL6180xDevData.field)
-/* is also used as direct accessor like VL6180xDevDataGet(dev, x)++*/
-#define VL6180xDevDataSet(dev, field, data) (SingleVL6180xDevData.field)=(data)
-#endif
 
 /**
  * @struct VL6180x_RangeData_t
@@ -266,25 +280,6 @@ typedef struct {
 #endif
 } VL6180x_RangeData_t;
 
-/**
- * @struct VL6180x_RangeResultData_t
- * @brief Range Result data from device.
-
- */
-typedef struct {
-	uint8_t Result_range_status;
-	uint8_t Result_interrupt_status;
-	uint8_t Result_range_val;
-	uint8_t Result_range_raw;
-	uint16_t Result_range_return_rate;
-	uint16_t Result_range_reference_rate;
-	uint32_t Result_range_return_signal_count;
-	uint32_t Result_range_reference_signal_count;
-	uint32_t Result_range_return_amb_count;
-	uint32_t Result_range_reference_amb_count;
-	uint32_t Result_range_return_conv_time;
-	uint32_t Result_range_reference_conv_time;
-} VL6180x_RangeResultData_t;
 
 /** use where fix point 9.7 bit values are expected
  *
@@ -311,25 +306,27 @@ typedef struct VL6180x_AlsData_st {
  * related to register @a #RESULT_RANGE_STATUS and additional post processing
  */
 typedef enum {
-	NoError_ = 0,		/*!< 0  0b0000 NoError  */
-	VCSEL_Continuity_Test,	/*!< 1  0b0001 VCSEL_Continuity_Test */
-	VCSEL_Watchdog_Test,	/*!< 2  0b0010 VCSEL_Watchdog_Test */
-	VCSEL_Watchdog,		/*!< 3  0b0011 VCSEL_Watchdog */
-	PLL1_Lock,		/*!< 4  0b0100 PLL1_Lock */
-	PLL2_Lock,		/*!< 5  0b0101 PLL2_Lock */
-	Early_Convergence_Estimate,	/*!< 6  0b0110 Early_Convergence_Estimate */
-	Max_Convergence,	/*!< 7  0b0111 Max_Convergence */
-	No_Target_Ignore,	/*!< 8  0b1000 No_Target_Ignore */
-	Not_used_9,		/*!< 9  0b1001 Not_used */
-	Not_used_10,		/*!< 10 0b1010 Not_used_ */
-	Max_Signal_To_Noise_Ratio,	/*!< 11 0b1011 Max_Signal_To_Noise_Ratio */
-	Raw_Ranging_Algo_Underflow,	/*!< 12 0b1100 Raw_Ranging_Algo_Underflow */
-	Raw_Ranging_Algo_Overflow,	/*!< 13 0b1101 Raw_Ranging_Algo_Overflow */
-	Ranging_Algo_Underflow,	/*!< 14 0b1110 Ranging_Algo_Underflow */
-	Ranging_Algo_Overflow,	/*!< 15 0b1111 Ranging_Algo_Overflow */
+	NoError = 0,               /*!< 0  0b0000 NoError  */
+	VCSEL_Continuity_Test,     /*!< 1  0b0001 VCSEL_Continuity_Test */
+	VCSEL_Watchdog_Test,       /*!< 2  0b0010 VCSEL_Watchdog_Test */
+	VCSEL_Watchdog,            /*!< 3  0b0011 VCSEL_Watchdog */
+	PLL1_Lock,                 /*!< 4  0b0100 PLL1_Lock */
+	PLL2_Lock,                 /*!< 5  0b0101 PLL2_Lock */
+	Early_Convergence_Estimate,/*!< 6  0b0110 Early_Convergence_Estimate */
+	Max_Convergence,           /*!< 7  0b0111 Max_Convergence */
+	No_Target_Ignore,          /*!< 8  0b1000 No_Target_Ignore */
+	Not_used_9,                /*!< 9  0b1001 Not_used */
+	Not_used_10,               /*!< 10 0b1010 Not_used_ */
+	Max_Signal_To_Noise_Ratio, /*!< 11 0b1011 Max_Signal_To_Noise_Ratio*/
+	Raw_Ranging_Algo_Underflow,/*!< 12 0b1100 Raw_Ranging_Algo_Underflow*/
+	Raw_Ranging_Algo_Overflow, /*!< 13 0b1101 Raw_Ranging_Algo_Overflow */
+	Ranging_Algo_Underflow,    /*!< 14 0b1110 Ranging_Algo_Underflow */
+	Ranging_Algo_Overflow,     /*!< 15 0b1111 Ranging_Algo_Overflow */
 
-	/* code below are addition for API/software side they are not hardware */
-	RangingFiltered = 0x10,	/*!< 16 0b10000 filtered by post processing */
+	/* code below are addition for API/software side they are not hardware*/
+	RangingFiltered = 0x10,     /*!< 16 0b10000 filtered by post processing*/
+	RangingFilteringOnGoing = 0x11,  /*!< 17 0b10001 ranging filter on going (need few measurements)*/
+	DataNotReady = 0x12,             /*!< 18 0b10011 New data sample not ready */
 
 } RangeError_u;
 
@@ -469,7 +466,7 @@ typedef enum {
  */
 #define SYSRANGE_START                        0x018
     /** mask existing bit in #SYSRANGE_START*/
-#define MODE_MASK          0x03
+#define SYSRANGE_START_MODE_MASK          0x03
     /** bit 0 in #SYSRANGE_START write 1 toggle state in continuous mode and arm next shot in single shot mode */
 #define MODE_START_STOP    0x01
     /** bit 1 write 1 in #SYSRANGE_START set continuous operation mode */
@@ -514,7 +511,7 @@ typedef enum {
  */
 #define SYSRANGE_MAX_CONVERGENCE_TIME         0x01C
 /**@brief Cross talk compensation rate
- *
+ * @warning  never write register directly use @a VL6180x_SetXTalkCompensationRate()
  * refer to manual for calibration procedure and computation
  * @ingroup device_regdef
  */

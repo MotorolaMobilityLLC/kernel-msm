@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2014, STMicroelectronics International N.V.
+Copyright © 2015, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,15 +27,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 /*
  * @file VL6180x_api.h
- * $Date: 2015-01-14 06:37:10 -0800 (Wed, 14 Jan 2015) $
- * $Revision: 2047 $
+ * $Date: 2015-07-07 08:37:10 -0700 (Tue, 07 Jul 2015) $
+ * $Revision: 2443 $
  */
 
 #ifndef VL6180x_API_H_
 #define VL6180x_API_H_
 
-#include "vl6180x_appcfg.h"
-#include "vl6180x_def.h"
 #include "vl6180x_platform.h"
 
 #ifdef __cplusplus
@@ -265,7 +263,7 @@ int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pR
  * @return            0 on success
  */
 int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData);
-int VL6180x_RangeGetMeasurement_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData);
+
 /**
  * @brief Get ranging result and only that
  *
@@ -281,7 +279,6 @@ int VL6180x_RangeGetMeasurement_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t 
  * @return           0 on success
  */
 int VL6180x_RangeGetResult(VL6180xDev_t dev, int32_t *pRange_mm);
-int VL6180x_RangeGetResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, int32_t *pRange_mm);
 
 /**
  * @brief Configure ranging interrupt reported to application
@@ -685,12 +682,13 @@ int VL6180x_RangeSetSystemMode(VL6180xDev_t dev, uint8_t mode);
 int8_t VL6180x_GetOffsetCalibrationData(VL6180xDev_t dev);
 
 /**
- * Set or over-write part to part calibration offset
+ * Set or over-write part to part calibration offset and apply it immediately
  * \sa VL6180x_InitData(), VL6180x_GetOffsetCalibrationData()
  * @param dev     The device
  * @param offset   Offset
+ * @return  0 on success
  */
-void VL6180x_SetOffsetCalibrationData(VL6180xDev_t dev, int8_t offset);
+int  VL6180x_SetOffsetCalibrationData(VL6180xDev_t dev, int8_t offset);
 
 /**
  * @brief Set Cross talk compensation rate
@@ -704,37 +702,6 @@ void VL6180x_SetOffsetCalibrationData(VL6180xDev_t dev, int8_t offset);
  */
 int  VL6180x_SetXTalkCompensationRate(VL6180xDev_t dev, FixPoint97_t Rate);
 
-/**
- * Set user configured part to part calibration offset
- * \sa VL6180x_InitData()   VL6180x_GetOffsetCalibrationData()
- * @param dev     The device
- * @param offset   Offset
- * @ingroup api_adv
- */
-void VL6180x_SetUserOffsetCalibration(VL6180xDev_t dev, int8_t offset);
-
-/**
- * Set or over-hide part to part calibration offset and program the
- * after scaling offset into register
- * \sa VL6180x_InitData()   VL6180x_GetOffsetCalibrationData()
- * @param dev     The device
- * @param offset   Offset
- * @ingroup api_adv
- */
-void VL6180x_SetOffset(VL6180xDev_t dev, int8_t offset);
-
-/**
- * @brief Set User configured Cross talk compensation rate
- *
- * @par Function Description
- * It sets the user_xatalk_calib variable vaule
- *
- * @param dev  The device
- * @param Rate Compensation rate (9.7 fix point) see datasheet for details
- * @return     0 on success
- * @ingroup api_adv
- */
-void VL6180x_SetUserXTalkCompensationRate(VL6180xDev_t dev, FixPoint97_t offset);
 /** @}  */
 
 #if VL6180x_ALS_SUPPORT
@@ -993,14 +960,15 @@ int VL6180x_RdWord(VL6180xDev_t dev, uint16_t index, uint16_t *data);
 int VL6180x_RdDWord(VL6180xDev_t dev, uint16_t index, uint32_t *data);
 
 /**
- * Read VL6180x a sequnce of registers
+ * Read VL6180x multiple bytes
+ * @note required only if #VL6180x_HAVE_MULTI_READ is set
  * @param dev   The device
  * @param index The register index
- * @param pdata  pointer to buffer
- * @param count  number of registers to read
+ * @param data  pointer to 8 bit data
+ * @param nData number of data bytes to read
  * @return 0 on success
  */
-int VL6180x_RdBuffer(VL6180xDev_t dev, uint16_t index, uint8_t *pdata, uint8_t count);
+int VL6180x_RdMulti(VL6180xDev_t dev, uint16_t index, uint8_t *data, int nData);
 
 /** @}  */
 

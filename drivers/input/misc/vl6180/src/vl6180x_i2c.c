@@ -1,6 +1,6 @@
 
 /*******************************************************************************
-Copyright © 2014, STMicroelectronics International N.V.
+Copyright © 2015, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 /*
- * $Date: 2015-01-08 05:30:24 -0800 (Thu, 08 Jan 2015) $
- * $Revision: 2039 $
+ * $Date: 2015-07-06 15:44:31 +0200 (Mon, 06 Jul 2015) $
+ * $Revision: 2430 $
  */
 
 /**
@@ -130,10 +130,12 @@ int VL6180x_UpdateByte(VL6180xDev_t dev, uint16_t index, uint8_t AndData,
 	status = VL6180x_I2CWrite(dev, (uint8_t *) buffer, (uint8_t) 2);
 	if (!status) {
 		/* read data direct onto buffer */
-		status = VL6180x_I2CRead(dev, &buffer[2], 1);
+		status = VL6180x_I2CRead(dev, buffer, 1);
 		if (!status) {
-			buffer[2] = (buffer[2] & AndData) | OrData;
-			status = VL6180x_I2CWrite(dev, buffer, (uint8_t) 3);
+			buffer[2] = (buffer[0] & AndData) | OrData;
+			buffer[0] = index >> 8;
+			buffer[1] = index & 0xFF;
+			status = VL6180x_I2CWrite(dev, buffer, (uint8_t)3);
 		}
 	}
 
@@ -202,32 +204,29 @@ int VL6180x_RdDWord(VL6180xDev_t dev, uint16_t index, uint32_t * data)
 		status = VL6180x_I2CRead(dev, buffer, 4);
 		if (!status) {
 			/* VL6180x register are Big endian if cpu is be direct read direct into data is possible */
-			*data =
-			    ((uint32_t) buffer[0] << 24) | ((uint32_t) buffer[1]
-							    << 16) | ((uint32_t)
-								      buffer[2]
-								      << 8) |
-			    ((uint32_t) buffer[3]);
+			*data = ((uint32_t)buffer[0] << 24) | ((uint32_t)buffer[1] << 16) | ((uint32_t)buffer[2] << 8) |  ((uint32_t)buffer[3]);
 		}
 	}
 	VL6180x_DoneI2CAcces(dev);
 	return status;
 }
 
-int VL6180x_RdBuffer(VL6180xDev_t dev, uint16_t index, uint8_t * pdata,
-		     uint8_t count)
+
+int  VL6180x_RdMulti(VL6180xDev_t dev, uint16_t index, uint8_t *data, int nData)
 {
 	VL6180x_I2C_USER_VAR int status;
 	uint8_t *buffer;
 	DECL_I2C_BUFFER VL6180x_GetI2CAccess(dev);
-	buffer = VL6180x_GetI2cBuffer(dev, 4);
+	buffer = VL6180x_GetI2cBuffer(dev, 2);
 
 	buffer[0] = index >> 8;
 	buffer[1] = index & 0xFF;
 
 	status = VL6180x_I2CWrite(dev, (uint8_t *) buffer, (uint8_t) 2);
 	if (!status) {
-		status = VL6180x_I2CRead(dev, pdata, count);
+		data[0] = index >> 8;
+		data[1] = index & 0xFF;
+		status = VL6180x_I2CRead(dev, data, nData);
 	}
 	VL6180x_DoneI2CAcces(dev);
 	return status;

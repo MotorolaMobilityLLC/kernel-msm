@@ -20,9 +20,13 @@
 /*
  * Defines
  */
+#ifndef STMVL6180_H
+#define STMVL6180_H
+
 #define STMVL6180_DRV_NAME	"stmvl6180"
 
-#define DRIVER_VERSION		"1.0"
+
+#define DRIVER_VERSION		"2.0.1"
 #define I2C_M_WR			0x00
 //#define INT_POLLING_DELAY     20
 #define RESULT_REG_COUNT	56
@@ -31,6 +35,7 @@
 #define DEBUG
 //#define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args)
 #define vl6180_dbgmsg(str, args...) printk("%s: " str, __func__, ##args)
+#define vl6180_errmsg(str, args...) printk(KERN_ERR "%s: " str, __func__, ##args)
 
 /**
  * VL6180 register addresses
@@ -75,38 +80,65 @@
 #define VL6180_RESULT__RANGE_REFERENCE_CONV_TIME_REG                0x0080
 #define VL6180_RESULT__RANGE_REFERENCE_CONV_TIME_REG_BYTES          4
 
+typedef enum {
+	NORMAL_MODE = 0,
+	OFFSETCALIB_MODE = 1,
+	XTALKCALIB_MODE = 2,
+} init_mode_e;
+
 /*
  *  driver data structs
  */
 struct stmvl6180_data {
-	struct i2c_client *client;
+
+#ifdef CAMERA_CCI
+	struct cci_data client_object;
+#else
+	struct i2c_data client_object;
+#endif
 	struct mutex update_lock;
-	struct delayed_work dwork;	/* for PS  work handler */
+	struct delayed_work	dwork;		/* for PS  work handler */
 	struct input_dev *input_dev_ps;
+	struct kobject *range_kobj;
+
+	/* function pointer */
+	struct stmvl6180_module_fn_t *pmodule_func_tbl;
 
 	int irq;
-	unsigned int enable;
+	unsigned int reset;
 
 	/* control flag from HAL */
 	unsigned int enable_ps_sensor;
 
 	/* PS parameters */
 	unsigned int ps_is_singleshot;
-	unsigned int ps_data;	/* to store PS data */
-	unsigned int enable_distance_filter;
+	unsigned int ps_data;			/* to store PS data */
 
 	/* Range Data */
 	VL6180x_RangeData_t rangeData;
 
 	/* Range Result Register Data */
-	VL6180x_RangeResultData_t rangeResult;
-	uint8_t ResultBuffer[RESULT_REG_COUNT];
+	uint8_t  ResultBuffer[RESULT_REG_COUNT];
 
 	/* delay time */
 	uint8_t delay_ms;	// work handler delay time in miniseconds
 
 	struct mutex work_mutex;
-	unsigned int ps_count;
+
 	/* Debug */
 	unsigned int enableDebug;
 };
+
+/*
+ *  funtion pointer structs
+ */
+struct stmvl6180_module_fn_t {
+	int (*init)(void);
+	void (*deinit)(void *);
+	int (*power_up)(void *, unsigned int *);
+	int (*power_down)(void *);
+};
+
+struct stmvl6180_data *stmvl6180_getobject(void);
+
+#endif /* STMVL6180_H */
