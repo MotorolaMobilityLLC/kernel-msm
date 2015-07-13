@@ -65,6 +65,7 @@
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,ext-sense-type;
 	qcom,thermal-coefficients = [c2 86 bb 50 cf 37];
+	qcom,resume-soc-raw = <254>;
 };
 
 &i2c_5 {
