@@ -31,9 +31,7 @@
 #define FW_IMAGE_NAME_2K "synaptics/startup_fw_update.img"
 #define FW_IMAGE_NAME_FHD "synaptics/startup_fw_update-fhd.img"
 
-/* Different rx num : FHD_rx=31 while 2K_rx=32 */
-#define PANEL2K_RX_NUM 32
-
+#define LCD_PANEL2K_CMDLINE "1:dsi:0:qcom,mdss_dsi_dualmipi0_cmd:1:qcom,mdss_dsi_dualmipi1_cmd"
 #define DO_STARTUP_FW_UPDATE
 
 #define FORCE_UPDATE false
@@ -656,6 +654,39 @@ static struct device_attribute attrs[] = {
 static struct synaptics_rmi4_fwu_handle *fwu;
 
 DECLARE_COMPLETION(dsx_fwu_remove_complete);
+
+static bool tp_2k_panel = false;
+/**
+ * early_param: Parse system early startup parameters.
+ * early_parse_tp_panel_cmdline: early_param handler for tp_panel.
+ * @arg: The string of the panel from cmdline.
+ *
+ * Based on the current design, the length of different arg is not
+ * the same and unchanged. Thus, it is feasible and reliable to
+ * distinguish it by the length of arg.
+ *
+ * Return: 0 success.
+ */
+static int __init early_parse_tp_panel_cmdline(char *arg)
+{
+	int len = 0;
+
+	if (arg) {
+		len = strlen(arg);
+		if(len == strlen(LCD_PANEL2K_CMDLINE)) {
+			tp_2k_panel = true;
+			tp_log_debug("%s : touch panel is 2K, cmdlen = %d\n", __func__, len);
+		} else {
+			tp_2k_panel = false;
+			tp_log_debug("%s : touch panel is FHD, cmdlen = %d\n", __func__, len);
+		}
+	} else {
+		tp_log_debug("%s : touch panel is invalid\n", __func__);
+	}
+
+	return 0;
+}
+early_param("mdss_mdp.panel", early_parse_tp_panel_cmdline);
 
 static unsigned int le_to_uint(const unsigned char *ptr)
 {
@@ -3253,17 +3284,17 @@ static int fwu_start_reflash(void)
 	pr_notice("%s: Start of reflash process\n", __func__);
 
 	if (fwu->image == NULL) {
-		/* Need to reflash different FW, because panel rx number is different */
-		if (rmi4_data->num_of_rx < PANEL2K_RX_NUM) {
-			retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
-			FW_IMAGE_NAME_FHD, sizeof(FW_IMAGE_NAME_FHD),
-			sizeof(FW_IMAGE_NAME_FHD));
-			tp_log_debug("%s: Panel resolution is Full-HD!!!\n", __func__);
-		} else {
+		/* Need to reflash different FW, because panel is different */
+		if (tp_2k_panel) {
 			retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
 			FW_IMAGE_NAME_2K, sizeof(FW_IMAGE_NAME_2K),
 			sizeof(FW_IMAGE_NAME_2K));
 			tp_log_debug("%s: Panel resolution is 2k!!!\n", __func__);
+		} else {
+			retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
+			FW_IMAGE_NAME_FHD, sizeof(FW_IMAGE_NAME_FHD),
+			sizeof(FW_IMAGE_NAME_FHD));
+			tp_log_debug("%s: Panel resolution is Full-HD!!!\n", __func__);
 		}
 		if (retval < 0) {
 			dev_err(rmi4_data->pdev->dev.parent,
@@ -3353,14 +3384,17 @@ static int fwu_start_reflash(void)
 	switch (flash_area) {
 	case UI_FIRMWARE:
 		retval = fwu_do_reflash();
+		tp_log_debug("%s: fwu_do_reflash out,retval=%d!\n",__func__,retval);
 		rmi4_data->reset_device(rmi4_data, false);
 		break;
 	case UI_CONFIG:
 		retval = fwu_check_ui_configuration_size();
+		tp_log_debug("%s: fwu_check_ui_configuration_size out,retval=%d!\n",__func__,retval);
 		if (retval < 0)
 			break;
 		fwu->config_area = UI_CONFIG_AREA;
 		retval = fwu_erase_configuration();
+		tp_log_debug("%s: fwu_erase_configuration out,retval=%d!\n",__func__,retval);
 		if (retval < 0)
 			break;
 		retval = fwu_write_ui_configuration();
