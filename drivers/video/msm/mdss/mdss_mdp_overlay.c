@@ -40,6 +40,7 @@
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
 	(((size) > (max_size)) || ((offset) > ((max_size) - (size))))
+#define EVEN_ALIGN(n)          ((((n) + 1) >> 1) << 1)
 
 #define IS_RIGHT_MIXER_OV(flags, dst_x, left_lm_w)	\
 	((flags & MDSS_MDP_RIGHT_MIXER) || (dst_x >= left_lm_w))
@@ -227,6 +228,8 @@ int mdss_mdp_overlay_req_check(struct msm_fb_data_type *mfd,
 	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
 
 	yres = mfd->fbi->var.yres;
+	if (mfd->panel_info->even_line_align)
+		yres = EVEN_ALIGN(yres);
 
 	content_secure = (req->flags & MDP_SECURE_OVERLAY_SESSION);
 	if (!ctl->is_secure && content_secure &&
@@ -1841,6 +1844,8 @@ static int mdss_mdp_overlay_get_fb_pipe(struct msm_fb_data_type *mfd,
 
 		pr_debug("allocating base pipe mux=%d\n", mixer_mux);
 
+		if (mfd->panel_info->even_line_align)
+			req.dst_rect.h = EVEN_ALIGN(req.dst_rect.h);
 		ret = mdss_mdp_overlay_pipe_setup(mfd, &req, &pipe, NULL,
 			false);
 		if (ret)
