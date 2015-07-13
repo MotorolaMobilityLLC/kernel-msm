@@ -250,6 +250,9 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p2ad.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-osprey-p2bd.dtb
 
+# Sparrowhawk or Osprey refresh
+dtb-$(CONFIG_ARCH_MSM8916) += msm8929-sparrowhawk-p0.dtb
+
 # Motorola 8936 Devices
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-lux-p1.dtb
