@@ -312,7 +312,7 @@ static void vibrator_enable( struct timed_output_dev *dev, int value)
 		if(pDrv2605data->audio_haptics_enabled == NO){
 			wake_lock(&pDrv2605data->wklock);
 		}
-
+		mdelay(WAKE_STANDBY_DELAY);
 		drv2605_change_mode(pDrv2605data, WORK_VIBRATOR, DEV_READY);
 		pDrv2605data->vibrator_is_playing = YES;
 		switch_set_state(&pDrv2605data->sw_dev, SW_STATE_RTP_PLAYBACK);			
@@ -322,6 +322,7 @@ static void vibrator_enable( struct timed_output_dev *dev, int value)
     }
 	
 	mutex_unlock(&pDrv2605data->lock);
+	mdelay(WAKE_STANDBY_DELAY);
 }
 
 static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)

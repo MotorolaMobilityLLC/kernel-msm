@@ -51,7 +51,7 @@
 
 #define GO_BIT_POLL_INTERVAL    15
 #define STANDBY_WAKE_DELAY      1
-#define WAKE_STANDBY_DELAY      3
+#define WAKE_STANDBY_DELAY      10
 
 /* Commands */
 #define HAPTIC_CMDID_PLAY_SINGLE_EFFECT     0x01
