@@ -1946,6 +1946,19 @@ static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		rp->read_cnt = (max_pktsize[0] + 6);
 	}
 
+	/* Sometimes target/display responds with the MIPI DSI acknowledge
+	 * and Error report after returning MIPI DSI read value, that cause
+	 * mdss_dsi_cmd_dma_rx() fails to parse. Print out all 8 bytes,
+	 * ack_err and DSI read response short packages to investigate this
+	 * issue
+	 */
+	if (ack_error && (rx_byte == 4))
+		pr_warning("%s: read_cnt=%d DSI_RDBK_DATA1=0x%x "
+				"DSI_RDBK_DATA0=0x%x\n", __func__,
+				MIPI_INP((ctrl->ctrl_base) + 0x01d4) >> 16,
+				MIPI_INP((ctrl->ctrl_base) + 0x070),
+				MIPI_INP((ctrl->ctrl_base) + 0x06c));
+
 	/*
 	 * In case of multiple reads from the panel, after the first read, there
 	 * is possibility that there are some bytes in the payload repeating in
