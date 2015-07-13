@@ -840,11 +840,11 @@ static void exitIdleEvt(struct work_struct *work) {
 	isTouchLocked = true;
 	input_mt_slot(gl_ts->touch_dev,0);
 	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, -1);
-	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, -1);
-	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 160);
+	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 160);
 	input_sync(gl_ts->touch_dev);
-	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+	input_mt_slot(gl_ts->touch_dev,0);
+	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 	input_sync(gl_ts->touch_dev);
 	wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 	wake_unlock(&touch_lock);
@@ -915,7 +915,6 @@ static void readTouchDataPoint(void)
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 		}else{
 			input_mt_slot(gl_ts->touch_dev, 0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
@@ -926,7 +925,6 @@ static void readTouchDataPoint(void)
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 		}else{
 			input_mt_slot(gl_ts->touch_dev, 1);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
@@ -938,7 +936,10 @@ static void readTouchDataPoint(void)
 		hadFingerDown = false;
 		hadPalmDown = false;
 		
-		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+		input_mt_slot(gl_ts->touch_dev,0);
+		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+		input_mt_slot(gl_ts->touch_dev,1);
+		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		input_sync(gl_ts->touch_dev);
 	}
 
@@ -1010,17 +1011,17 @@ static void readTouchDataPoint_Ambient(void)
 
 		if (touchMissed || suspend_touch_up - suspend_touch_down < 1000) {
 			if (touchMissed) {
-				LOGI("%s: touch down missed, send BTN_TOUCH\n",
+				LOGI("%s: touch down missed, send touch up\n",
 					 __func__);
 				touchMissed = false;
 			}
 			input_mt_slot(gl_ts->touch_dev,0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
-			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 160);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 160);
 			input_sync(gl_ts->touch_dev);
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+			input_mt_slot(gl_ts->touch_dev,0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 			input_sync(gl_ts->touch_dev);
 			wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 			last_time_exit_low = jiffies;
@@ -1172,7 +1173,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(EV_KEY, gl_ts->touch_dev->evbit);
 	set_bit(EV_ABS, gl_ts->touch_dev->evbit);
 	set_bit(INPUT_PROP_DIRECT,gl_ts->touch_dev->propbit);
-	set_bit(BTN_TOUCH, gl_ts->touch_dev->keybit);
 	set_bit(KEY_SLEEP,gl_ts->touch_dev->keybit);
 	input_mt_init_slots(gl_ts->touch_dev, 2, 0);
 	input_set_abs_params(gl_ts->touch_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);
