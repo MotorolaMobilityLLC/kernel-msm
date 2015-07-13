@@ -1265,6 +1265,20 @@ static bool fusb301_is_vbus_off(struct fusb301_chip *chip)
 	return !((rc & FUSB301_ATTACH) && (rc & FUSB301_VBUS_OK));
 }
 
+static bool fusb301_is_vbus_on(struct fusb301_chip *chip)
+{
+	struct device *cdev = &chip->client->dev;
+	int rc;
+
+	rc = i2c_smbus_read_byte_data(chip->client, FUSB301_REG_STATUS);
+	if (IS_ERR_VALUE(rc)) {
+		dev_err(cdev, "%s: failed to read status\n", __func__);
+		return false;
+	}
+
+	return !!(rc & FUSB301_VBUS_OK);
+}
+
 /* workaround BC Level detection plugging slowly with C ot A on Rev1.0 */
 static bool fusb301_bclvl_detect_wa(struct fusb301_chip *chip,
 							u8 status, u8 type)
@@ -1382,13 +1396,23 @@ static void fusb301_timer_work_handler(struct work_struct *work)
 {
 	struct fusb301_chip *chip =
 			container_of(work, struct fusb301_chip, twork.work);
+	struct device *cdev = &chip->client->dev;
 
 	mutex_lock(&chip->mlock);
 
-	if (chip->state == FUSB_STATE_TRY_SNK)
+	if (chip->state == FUSB_STATE_TRY_SNK) {
+		if (fusb301_is_vbus_on(chip)) {
+			if (IS_ERR_VALUE(fusb301_set_mode(chip,	chip->pdata->init_mode))) {
+				dev_err(cdev, "%s: failed to set init mode\n", __func__);
+			}
+			chip->triedsnk = !chip->pdata->try_snk_emulation;
+			mutex_unlock(&chip->mlock);
+			return;
+		}
 		fusb301_timer_try_expired(chip);
-	else if (chip->state == FUSB_STATE_TRYWAIT_SRC)
+	} else if (chip->state == FUSB_STATE_TRYWAIT_SRC) {
 		fusb301_detach(chip);
+	}
 
 	mutex_unlock(&chip->mlock);
 }
