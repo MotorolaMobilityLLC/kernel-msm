@@ -1754,6 +1754,17 @@ do_send:
 	return len;
 }
 
+static void mdss_dsi_cmd_rx_data_log(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	pr_warn("%s: read_cnt = %d, DATA3 = 0x%08x, DATA2 = 0x%08x, DATA1 = 0x%08x, DATA0 = 0x%08x\n",
+		__func__,
+		MIPI_INP((ctrl->ctrl_base) + 0x01d4) >> 16,
+		MIPI_INP((ctrl->ctrl_base) + 0x078),
+		MIPI_INP((ctrl->ctrl_base) + 0x074),
+		MIPI_INP((ctrl->ctrl_base) + 0x070),
+		MIPI_INP((ctrl->ctrl_base) + 0x06c));
+}
+
 /* MIPI_DSI_MRPS, Maximum Return Packet Size */
 static char max_pktsize[2] = {0x00, 0x00}; /* LSB tx first, 10 bytes */
 
@@ -1985,7 +1996,8 @@ skip_max_pkt_size:
 		mdss_dsi_long_read_resp(rp);
 		break;
 	default:
-		pr_warning("%s:Invalid response cmd\n", __func__);
+		pr_warn("%s:Invalid response cmd=0x%x\n", __func__, cmd);
+		mdss_dsi_cmd_rx_data_log(ctrl);
 		rp->len = 0;
 		rp->read_cnt = 0;
 	}
@@ -2176,6 +2188,14 @@ static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	} else {
 		rp->read_cnt = (max_pktsize[0] + 6);
 	}
+
+	/* Sometimes target/display responds with the MIPI DSI acknowledge
+	 * and Error report after returning MIPI DSI read value, that cause
+	 * mdss_dsi_cmd_dma_rx() fails to parse. Print out all read registers
+	 * to investigate this issue
+	 */
+	if (ack_error && (rx_byte == 4))
+		mdss_dsi_cmd_rx_data_log(ctrl);
 
 	/*
 	 * In case of multiple reads from the panel, after the first read, there
