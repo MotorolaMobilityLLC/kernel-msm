@@ -43,9 +43,11 @@
 #include <linux/spi/spi.h>
 #include <soc/qcom/scm.h>
 
+#include <linux/wakelock.h>
 #define FPC1020_RESET_LOW_US 1000
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
+#define FPC_TTW_HOLD_TIME 500
 
 static const char *const pctl_names[] = {
 	"fpc1020_reset_reset",
@@ -72,6 +74,7 @@ struct fpc1020_data {
 	struct clk *iface_clk;
 	struct clk *core_clk;
 	struct regulator *vreg[ARRAY_SIZE(vreg_conf)];
+	struct wake_lock ttw_wl;
 	int irq_gpio;
 	int rst_gpio;
 	struct input_dev *idev;
@@ -579,14 +582,13 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	/* Make sure 'wakeup_enabled' is updated before using it
 	 ** since this is interrupt context (other thread...) */
 	smp_rmb();
-	/* Wake up platform if allowed */
+
 	if (fpc1020->wakeup_enabled) {
-		input_report_key(fpc1020->idev, KEY_WAKEUP, 1);
-		input_report_key(fpc1020->idev, KEY_WAKEUP, 0);
+		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
 	/* Send irq event and possible wakeup key event */
 	input_sync(fpc1020->idev);
-	dev_dbg(fpc1020->dev, "%s %d\n", __func__, fpc1020->irq_num);
+	dev_info(fpc1020->dev, "%s %d\n", __func__, fpc1020->irq_num);
 	return IRQ_HANDLED;
 }
 
@@ -761,6 +763,7 @@ static int fpc1020_probe(struct spi_device *spi)
 	/* Request that the interrupt should be wakeable */
 	enable_irq_wake(gpio_to_irq(fpc1020->irq_gpio));
 
+	wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
 	rc = sysfs_create_group(&dev->kobj, &attribute_group);
 	if (rc) {
 		dev_err(dev, "could not create sysfs\n");
@@ -783,6 +786,7 @@ static int fpc1020_remove(struct spi_device *spi)
 
 	sysfs_remove_group(&spi->dev.kobj, &attribute_group);
 	mutex_destroy(&fpc1020->lock);
+	wake_lock_destroy(&fpc1020->ttw_wl);
 	(void)vreg_setup(fpc1020, "vcc_spi", false);
 	dev_info(&spi->dev, "%s\n", __func__);
 	return 0;
