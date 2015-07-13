@@ -1750,7 +1750,7 @@ skip_max_pkt_size:
 		mdss_dsi_long_read_resp(rp);
 		break;
 	default:
-		pr_warning("%s:Invalid response cmd\n", __func__);
+		pr_warning("%s:Invalid response cmd=0x%x\n", __func__, cmd);
 		rp->len = 0;
 		rp->read_cnt = 0;
 	}
