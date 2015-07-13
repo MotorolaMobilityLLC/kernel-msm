@@ -110,8 +110,8 @@
 			15 01 00 00 00 00 02 0F 8B
 			15 01 00 00 00 00 02 10 11
 			15 01 00 00 00 00 02 11 A2
-			15 01 00 00 00 00 02 12 60
-			15 01 00 00 00 00 02 14 01
+			15 01 00 00 00 00 02 12 80
+			15 01 00 00 00 00 02 14 81
 			15 01 00 00 00 00 02 15 82
 			15 01 00 00 00 00 02 18 47
 			15 01 00 00 00 00 02 19 36
@@ -178,6 +178,18 @@
 					15 01 00 00 00 00 02 4F 01];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-idle-on-command = [
+					15 01 00 00 00 00 02 FE 00
+					15 01 00 00 00 00 02 53 20
+					05 01 00 00 00 00 02 39 00/*Idle Mode on*/
+					];
+		qcom,mdss-dsi-idle-on-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-idle-off-command = [
+					15 01 00 00 00 00 02 FE 00
+					15 01 00 00 00 00 02 53 28
+					05 01 00 00 00 00 02 38 00/*Idle Mode Off*/
+					];
+		qcom,mdss-dsi-idle-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
 		qcom,mdss-dsi-lane-map = "lane_map_3012";
