@@ -727,6 +727,21 @@ static enum flash_area fwu_go_nogo(void)
 		goto exit;
 	}
 
+	retval = fwu_read_f01_device_status(&f01_device_status);
+	if (retval < 0) {
+		flash_area = NONE;
+		goto exit;
+	}
+
+	/* Force update firmware when device is in bootloader mode */
+	if (f01_device_status.flash_prog) {
+		dev_info(&i2c_client->dev,
+			"%s: In flash prog mode\n",
+			__func__);
+		flash_area = UI_FIRMWARE;
+		goto exit;
+	}
+
 	if (img->is_contain_build_info) {
 		/* if package id does not match, do not update firmware */
 		fwu->fn_ptr->read(fwu->rmi4_data,
@@ -764,21 +779,6 @@ static enum flash_area fwu_go_nogo(void)
 			fwu->config_block_count * fwu->block_size,
 			img->config_size);
 		flash_area = NONE;
-		goto exit;
-	}
-
-	retval = fwu_read_f01_device_status(&f01_device_status);
-	if (retval < 0) {
-		flash_area = NONE;
-		goto exit;
-	}
-
-	/* Force update firmware when device is in bootloader mode */
-	if (f01_device_status.flash_prog) {
-		dev_info(&i2c_client->dev,
-			"%s: In flash prog mode\n",
-			__func__);
-		flash_area = UI_FIRMWARE;
 		goto exit;
 	}
 

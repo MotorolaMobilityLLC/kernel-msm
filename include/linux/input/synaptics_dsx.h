@@ -81,6 +81,9 @@ struct synaptics_rmi4_platform_data {
 	unsigned disp_maxy;
 	unsigned reset_delay;
 	unsigned pon_delay;
+	unsigned num_of_tx;
+	unsigned num_of_rx;
+	unsigned num_of_fingers;
 	const char *fw_image_name;
 	unsigned int package_id;
 	int (*gpio_config)(unsigned gpio, bool configure);

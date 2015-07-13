@@ -2092,6 +2092,18 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 		}
 	}
 
+	rc = of_property_read_u32(np, "synaptics,num-of-tx", &temp_val);
+	if (!rc)
+		rmi4_pdata->num_of_tx = temp_val;
+
+	rc = of_property_read_u32(np, "synaptics,num-of-rx", &temp_val);
+	if (!rc)
+		rmi4_pdata->num_of_rx = temp_val;
+
+	rc = of_property_read_u32(np, "synaptics,num-of-fingers", &temp_val);
+	if (!rc)
+		rmi4_pdata->num_of_fingers = temp_val;
+
 	return 0;
 }
 #else
@@ -3837,6 +3849,14 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		rmi4_data->disp_miny = rmi4_data->board->disp_miny;
 	else
 		rmi4_data->disp_miny = 0;
+
+	if (!rmi4_data->max_touch_width) {
+		rmi4_data->max_touch_width = max(rmi4_data->board->num_of_rx,
+			rmi4_data->board->num_of_tx);
+	}
+
+	if (!rmi4_data->num_of_fingers)
+		rmi4_data->num_of_fingers = rmi4_data->board->num_of_fingers;
 
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_X, rmi4_data->disp_minx,
