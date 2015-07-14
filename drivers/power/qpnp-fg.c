@@ -432,6 +432,8 @@ struct fg_chip {
 	int			status;
 	int			prev_status;
 	int			health;
+	int			fcc_ma;
+	int			fcc_down_ma;
 	enum fg_batt_aging_mode	batt_aging_mode;
 	/* capacity learning */
 	struct fg_learning_data	learning_data;
@@ -2588,6 +2590,29 @@ static bool is_input_present(struct fg_chip *chip)
 	return is_usb_present(chip) || is_dc_present(chip);
 }
 
+static int fg_set_fast_chg_current(struct fg_chip *chip, int ma)
+{
+	union power_supply_propval pval = {0, };
+
+	if (!chip->batt_psy && chip->batt_psy_name)
+		chip->batt_psy =
+			power_supply_get_by_name(chip->batt_psy_name);
+
+	if (!chip->batt_psy)
+		return -ENODEV;
+
+	/* change it to uA */
+	pval.intval = ma * 1000;
+
+	if (fg_debug_mask & FG_POWER_SUPPLY)
+		pr_info("set fcc to %dmA\n", ma);
+
+	chip->batt_psy->set_property(chip->batt_psy,
+		POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX, &pval);
+
+	return 0;
+}
+
 static void status_change_work(struct work_struct *work)
 {
 	struct fg_chip *chip = container_of(work,
@@ -2605,6 +2630,7 @@ static void status_change_work(struct work_struct *work)
 		if (get_prop_capacity(chip) == 100)
 			fg_configure_soc(chip);
 	} else if (chip->status == POWER_SUPPLY_STATUS_DISCHARGING) {
+		fg_set_fast_chg_current(chip, chip->fcc_ma);
 		if (chip->vbat_low_irq_enabled) {
 			disable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
 			disable_irq_nosync(chip->batt_irq[VBATT_LOW].irq);
@@ -2837,6 +2863,11 @@ static irqreturn_t fg_vbatt_low_handler(int irq, void *_chip)
 			disable_irq_nosync(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = false;
 		}
+
+		if (vbatt_low_sts)
+			fg_set_fast_chg_current(chip, chip->fcc_ma);
+		else
+			fg_set_fast_chg_current(chip, chip->fcc_down_ma);
 	}
 	if (chip->power_supply_registered)
 		power_supply_changed(&chip->bms_psy);
@@ -3839,6 +3870,7 @@ static int fg_of_init(struct fg_chip *chip)
 	int rc = 0, sense_type, len = 0;
 	const char *data;
 	struct device_node *node = chip->spmi->dev.of_node;
+	struct device_node *charger_node;
 
 	OF_READ_SETTING(FG_MEM_SOFT_HOT, "warm-bat-decidegc", rc, 1);
 	OF_READ_SETTING(FG_MEM_SOFT_COLD, "cool-bat-decidegc", rc, 1);
@@ -3931,6 +3963,19 @@ static int fg_of_init(struct fg_chip *chip)
 				"qcom,cycle-counter-en");
 	if (chip->cyc_ctr.en)
 		chip->cyc_ctr.id = 1;
+
+	charger_node = of_parse_phandle(node, "qcom,charger", 0);
+	if (!charger_node) {
+		pr_err("Missing qcom,charger property\n");
+		return -EINVAL;
+	}
+
+	rc = of_property_read_u32(charger_node, "qcom,fastchg-current-ma",
+						&chip->fcc_ma);
+	rc |= of_property_read_u32(charger_node, "qcom,fastchg-down-current-ma",
+						&chip->fcc_down_ma);
+	if (rc)
+		pr_err("failed to get charger prop\n");
 
 	return rc;
 }
@@ -4087,11 +4132,13 @@ static int fg_init_irqs(struct fg_chip *chip)
 				rc = -EINVAL;
 				return rc;
 			}
-			rc = devm_request_irq(chip->dev,
+			rc = devm_request_threaded_irq(chip->dev,
 					chip->batt_irq[VBATT_LOW].irq,
+					NULL,
 					fg_vbatt_low_handler,
 					IRQF_TRIGGER_RISING |
-					IRQF_TRIGGER_FALLING,
+					IRQF_TRIGGER_FALLING |
+					IRQF_ONESHOT,
 					"vbatt-low", chip);
 			if (rc < 0) {
 				pr_err("Can't request %d vbatt-low: %d\n",
