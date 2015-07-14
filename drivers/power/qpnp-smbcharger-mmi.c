@@ -3340,9 +3340,6 @@ static void smbchg_aicl_deglitch_wa_en(struct smbchg_chip *chip, bool en)
 {
 	int rc;
 
-	if (chip->force_aicl_rerun)
-		return;
-
 	if (en && !chip->aicl_deglitch_short) {
 		rc = smbchg_sec_masked_write(chip,
 			chip->usb_chgpth_base + USB_AICL_CFG,
@@ -3356,11 +3353,6 @@ static void smbchg_aicl_deglitch_wa_en(struct smbchg_chip *chip, bool en)
 			DC_AICL_DEGLITCH_MASK, DC_AICL_DEGLITCH_SHORT);
 		if (rc) {
 			pr_err("Couldn't write to DC_AICL_CFG rc=%d\n", rc);
-			return;
-		}
-		rc = smbchg_hw_aicl_rerun_en(chip, true);
-		if (rc) {
-			pr_err("Couldn't enable AICL rerun rc=%d\n", rc);
 			return;
 		}
 		pr_smb(PR_STATUS, "AICL deglitch set to short\n");
@@ -3377,11 +3369,6 @@ static void smbchg_aicl_deglitch_wa_en(struct smbchg_chip *chip, bool en)
 			DC_AICL_DEGLITCH_MASK, DC_AICL_DEGLITCH_LONG);
 		if (rc) {
 			pr_err("Couldn't write to DC_AICL_CFG rc=%d\n", rc);
-			return;
-		}
-		smbchg_hw_aicl_rerun_en(chip, false);
-		if (rc) {
-			pr_err("Couldn't disable AICL rerun rc=%d\n", rc);
 			return;
 		}
 		pr_smb(PR_STATUS, "AICL deglitch set to normal\n");
@@ -3492,7 +3479,8 @@ static void smbchg_rate_check(struct smbchg_chip *chip)
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NORMAL;
 		else if (smbchg_hvdcp_det_check(chip))
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
-		else if (chip->hvdcp_det_done && chip->aicl_complete &&
+		else if (!chip->vbat_above_headroom &&
+			 chip->hvdcp_det_done && chip->aicl_complete &&
 			 (smbchg_get_aicl_level_ma(chip) < WEAK_CHRG_THRSH))
 			chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_WEAK;
 		else
@@ -7218,6 +7206,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			smbchg_set_fastchg_current(chip,
 					      chip->target_fastchg_current_ma);
 		}
+		smbchg_aicl_deglitch_wa_check(chip);
 	}
 
 end_hb:
