@@ -86,7 +86,12 @@ static struct sk_buff_head *msm_ipc_router_build_msg(unsigned int num_sect,
 			if (last)
 				request_size += align_size;
 
-			msg = alloc_skb(request_size, GFP_KERNEL);
+			if ((SKB_DATA_ALIGN(request_size) + SKB_DATA_ALIGN(
+				sizeof(struct skb_shared_info))) < PAGE_SIZE)
+				msg = alloc_skb(request_size, GFP_KERNEL);
+			else
+				msg = alloc_skb(request_size, GFP_KERNEL |
+					__GFP_NOWARN | __GFP_NORETRY);
 			if (!msg) {
 				if (request_size <= (PAGE_SIZE/2)) {
 					IPC_RTR_ERR(
