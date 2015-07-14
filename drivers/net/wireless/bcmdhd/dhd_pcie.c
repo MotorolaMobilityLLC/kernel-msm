@@ -1838,9 +1838,9 @@ done:
 
 /* Process rx frame , Send up the layer to netif */
 void BCMFASTPATH
-dhd_bus_rx_frame(struct dhd_bus *bus, void* pkt, int ifidx, uint pkt_count)
+dhd_bus_rx_frame(struct dhd_bus *bus, void* pkt, int ifidx, uint pkt_count, int pkt_wake)
 {
-	dhd_rx_frame(bus->dhd, ifidx, pkt, pkt_count, 0);
+	dhd_rx_frame(bus->dhd, ifidx, pkt, pkt_count, 0, pkt_wake, &bus->wake_counts);
 }
 
 #if defined(CONFIG_ARCH_MSM) && defined(CONFIG_64BIT)
@@ -3397,8 +3397,8 @@ void dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 
 #ifdef DHD_WAKE_STATUS
 	bcm_bprintf(strbuf, "wake %u rxwake %u readctrlwake %u\n",
-		    bcmpcie_get_total_wake(dhdp->bus), dhdp->bus->rxwake,
-		    dhdp->bus->rcwake);
+		    bcmpcie_get_total_wake(dhdp->bus), dhdp->bus->wake_counts.rxwake,
+		    dhdp->bus->wake_counts.rcwake);
 #endif
 	dhd_prot_print_info(dhdp, strbuf);
 	for (flowid = 0; flowid < dhdp->num_flow_rings; flowid++) {

@@ -2787,7 +2787,8 @@ dhd_is_rxthread_enabled(dhd_pub_t *dhdp)
 #endif /* DHD_WMF */
 
 void
-dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
+dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
+	     int pkt_wake, wake_counts_t *wcp)
 {
 	dhd_info_t *dhd = (dhd_info_t *)dhdp->info;
 	struct sk_buff *skb;
@@ -3036,6 +3037,11 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			}
 #endif /* PNO_SUPPORT */
 
+#ifdef DHD_WAKE_STATUS
+			wcp->rcwake += pkt_wake;
+			pkt_wake = 0;
+#endif
+
 #ifdef DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT
 			PKTFREE(dhdp->osh, pktbuf, FALSE);
 			continue;
@@ -3050,6 +3056,11 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #ifdef PROP_TXSTATUS
 			dhd_wlfc_save_rxpath_ac_time(dhdp, (uint8)PKTPRIO(skb));
 #endif /* PROP_TXSTATUS */
+
+#ifdef DHD_WAKE_STATUS
+			wcp->rxwake += pkt_wake;
+			pkt_wake = 0;
+#endif
 		}
 
 		ASSERT(ifidx < DHD_MAX_IFS && dhd->iflist[ifidx]);

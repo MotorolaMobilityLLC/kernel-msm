@@ -1833,8 +1833,10 @@ dhd_prot_event_process(dhd_pub_t *dhd, void* buf, uint16 len)
 	void* pkt;
 	unsigned long flags;
 	dhd_prot_t *prot = dhd->prot;
+	int pkt_wake = 0;
+
 #ifdef DHD_WAKE_STATUS
-	int pkt_wake = bcmpcie_set_get_wake(dhd->bus, 0);
+	pkt_wake = bcmpcie_set_get_wake(dhd->bus, 0);
 #endif
 	/* Event complete header */
 	evnt = (wlevent_req_msg_t *)buf;
@@ -1865,10 +1867,7 @@ dhd_prot_event_process(dhd_pub_t *dhd, void* buf, uint16 len)
 
 	PKTSETLEN(dhd->osh, pkt, buflen);
 
-#ifdef DHD_WAKE_STATUS
-	dhd->bus->rcwake += pkt_wake;
-#endif
-	dhd_bus_rx_frame(dhd->bus, pkt, ifidx, 1);
+	dhd_bus_rx_frame(dhd->bus, pkt, ifidx, 1, pkt_wake);
 }
 
 static void BCMFASTPATH
@@ -1880,8 +1879,10 @@ dhd_prot_rxcmplt_process(dhd_pub_t *dhd, void* buf, uint16 msglen)
 	unsigned long flags;
 	static uint8 current_phase = 0;
 	uint ifidx;
+	int pkt_wake = 0;
+
 #ifdef DHD_WAKE_STATUS
-	int pkt_wake = bcmpcie_set_get_wake(dhd->bus, 0);
+	pkt_wake = bcmpcie_set_get_wake(dhd->bus, 0);
 #endif
 	/* RXCMPLT HDR */
 	rxcmplt_h = (host_rxbuf_cmpl_t *)buf;
@@ -1936,15 +1937,12 @@ dhd_prot_rxcmplt_process(dhd_pub_t *dhd, void* buf, uint16 msglen)
 	memset(buf, 0 , msglen);
 	rxcmplt_h->marker = PCIE_D2H_RESET_MARK;
 
-#ifdef DHD_WAKE_STATUS
-	dhd->bus->rxwake += pkt_wake;
-#endif
 #ifdef DHD_RX_CHAINING
 	/* Chain the packets */
 	dhd_rxchain_frame(dhd, pkt, ifidx);
 #else /* ! DHD_RX_CHAINING */
 	/* offset from which data starts is populated in rxstatus0 */
-	dhd_bus_rx_frame(dhd->bus, pkt, ifidx, 1);
+	dhd_bus_rx_frame(dhd->bus, pkt, ifidx, 1, pkt_wake);
 #endif /* ! DHD_RX_CHAINING */
 }
 
