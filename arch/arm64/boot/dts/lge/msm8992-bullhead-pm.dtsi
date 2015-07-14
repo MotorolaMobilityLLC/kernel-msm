@@ -56,6 +56,7 @@
 	qcom,charge-unknown-battery;
 	qcom,iterm-ma = <100>;
 	qcom,fastchg-current-ma = <2400>;
+	qcom,fastchg-down-current-ma = <1800>;
 	qcom,float-voltage-mv = <4350>;
 	qcom,resume-delta-mv = <200>;
 	qcom,charging-timeout-mins = <768>;
@@ -79,6 +80,8 @@
 	status = "ok";
 	qcom,ext-sense-type;
 	qcom,battery-data = <&bullhead_batterydata>;
+	qcom,charger = <&pmi8994_charger>;
+	qcom,fg-vbatt-low-threshold = <4200>;
 	qcom,resume-soc = <99>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
