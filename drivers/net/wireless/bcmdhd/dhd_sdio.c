@@ -2581,6 +2581,14 @@ dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 	bcm_bprintf(strbuf, "wake %u rxwake %u readctrlwake %u\n",
 	            bcmsdh_get_total_wake(bus->sdh), bus->wake_counts.rxwake,
 	            bus->wake_counts.rcwake);
+#ifdef DHD_WAKE_RX_STATUS
+	bcm_bprintf(strbuf, " unicast %u multicast %u broadcast %u arp %u\n",
+	            bus->wake_counts.rx_ucast, bus->wake_counts.rx_mcast,
+	            bus->wake_counts.rx_bcast, bus->wake_counts.rx_arp);
+	bcm_bprintf(strbuf, " multi4 %u multi6 %u icmp6 %u multiother %u\n",
+	            bus->wake_counts.rx_multi_ipv4, bus->wake_counts.rx_multi_ipv6,
+	            bus->wake_counts.rx_icmpv6, bus->wake_counts.rx_multi_other);
+#endif
 #endif
 	bcm_bprintf(strbuf, "pollrate %u pollcnt %u regfails %u\n",
 	            bus->pollrate, bus->pollcnt, bus->regfails);

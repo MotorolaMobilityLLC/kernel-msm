@@ -3058,8 +3058,33 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #endif /* PROP_TXSTATUS */
 
 #ifdef DHD_WAKE_STATUS
-			wcp->rxwake += pkt_wake;
-			pkt_wake = 0;
+			if (unlikely(pkt_wake)) {
+				wcp->rxwake++;
+#ifdef DHD_WAKE_RX_STATUS
+#define ETHER_ICMP6_HEADER	20
+				if (ntoh16(skb->protocol) == ETHER_TYPE_ARP) /* Arp */
+					wcp->rx_arp++;
+				if (dump_data[0] == 0xFF) { /* Broadcast */
+					wcp->rx_bcast++;
+				} else if (dump_data[0] & 0x01) { /* Multicast */
+					wcp->rx_mcast++;
+					if (ntoh16(skb->protocol) == ETHER_TYPE_IPV6) {
+						wcp->rx_multi_ipv6++;
+						if ((skb->len > ETHER_ICMP6_HEADER) &&
+						    (dump_data[ETHER_ICMP6_HEADER] == IPPROTO_ICMPV6))
+							wcp->rx_icmpv6++;
+					} else if (dump_data[2] == 0x5E) {
+						wcp->rx_multi_ipv4++;
+					} else {
+						wcp->rx_multi_other++;
+					}
+				} else { /* Unicast */
+					wcp->rx_ucast++;
+				}
+#undef ETHER_ICMP6_HEADER
+#endif
+				pkt_wake = 0;
+			}
 #endif
 		}
 
