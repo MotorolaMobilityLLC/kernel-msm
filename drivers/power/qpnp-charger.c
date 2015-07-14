@@ -4020,6 +4020,7 @@ qpnp_eoc_work(struct work_struct *work)
 #endif
 //ASUS_BSP Eason_Chang: show term_current ---
 
+#if 0
 		if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				if (get_prop_battery_voltage_now(chip) > 4200000) {
@@ -4034,6 +4035,7 @@ qpnp_eoc_work(struct work_struct *work)
 				}
 			}
 		}
+#endif
 
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
