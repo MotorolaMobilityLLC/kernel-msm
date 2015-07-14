@@ -376,7 +376,7 @@ static void find_time_scale(struct sentral_device *sentral, u8 period)
 		LOGD(&sentral->client->dev, "tick_ratio[%u]: %u, time_scale: %u",
 				i, tick_ratio[i], time_scale);
 	}
-	time_scale /= (SENTRAL_TICK_STAT - 7);
+	time_scale /= (SENTRAL_TICK_STAT - 6);
 	sentral->ts_timestamp_scale = (u64)time_scale;
 	LOGI(&sentral->client->dev, "final time scale: %lld", sentral->ts_timestamp_scale);
 }
