@@ -81,6 +81,7 @@
 #define SENTRAL_DEFAULT_RATE 5000
 #define SENTRAL_VIRTUAL_SENSOR_BOUNDARY 17
 #define SENTRAL_TICK_STAT 20
+#define SENTRAL_WATERMARK_MARGIN 500
 
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
@@ -156,6 +157,7 @@ enum sentral_sensor_type {
 	SST_GLANCE_GESTURE =              24,
 	SST_PICK_UP_GESTURE =             25,
 	SST_WRIST_TILT_GESTURE =          26,
+	SST_T1_ACCELEROMETER =            27,
 	SST_COACH =                       29,
 	SST_INACTIVITY_ALARM =            30,
 	SST_ACTIVITY =                    31,
@@ -531,7 +533,6 @@ struct sentral_device {
 	struct delayed_work work_watchdog;
 	struct mutex lock;
 	struct mutex lock_reset;
-	struct mutex lock_flush;
 	struct mutex lock_ts;
 	struct mutex lock_i2c;
 	struct mutex lock_pio;

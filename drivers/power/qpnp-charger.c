@@ -412,8 +412,6 @@ struct qpnp_chg_chip {
 	bool				ext_ovp_ic_gpio_enabled;
 	unsigned int			ext_ovp_isns_gpio;
 	unsigned int			usb_trim_default;
-	struct delayed_work		bat_is_cooler_check_work;
-	struct mutex			bat_is_cooler_lock;
 };
 
 static void
@@ -466,7 +464,6 @@ extern char g_CHG_mode;
 #endif
 //ASUS_BSP ---
 
-static bool g_bat_is_cooler = false;
 
 enum bpd_type {
 	BPD_TYPE_BAT_ID,
@@ -3341,15 +3338,8 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 {
 	unsigned int chg_current = chip->max_bat_chg_current;
 
-	if (chip->bat_is_cool){
-		if (g_bat_is_cooler == true){
-			chg_current = 100;
-			pr_debug("qpnp_chg_set_appropriate_battery_current(): g_bat_is_cooler\n");
-		}else{
-			chg_current = min(chg_current, chip->cool_bat_chg_ma);
-			pr_debug("qpnp_chg_set_appropriate_battery_current(): bat_is_cool\n");
-		}
-	}
+	if (chip->bat_is_cool)
+		chg_current = min(chg_current, chip->cool_bat_chg_ma);
 
 	if (chip->bat_is_warm)
 		chg_current = min(chg_current, chip->warm_bat_chg_ma);
@@ -4030,6 +4020,7 @@ qpnp_eoc_work(struct work_struct *work)
 #endif
 //ASUS_BSP Eason_Chang: show term_current ---
 
+#if 0
 		if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				if (get_prop_battery_voltage_now(chip) > 4200000) {
@@ -4044,6 +4035,7 @@ qpnp_eoc_work(struct work_struct *work)
 				}
 			}
 		}
+#endif
 
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
@@ -4235,42 +4227,6 @@ qpnp_chg_soc_check_work(struct work_struct *work)
 }
 
 #define HYSTERISIS_DECIDEGC 20
-
-static void
-asus_bat_is_cooler_check_work(struct work_struct *work)
-{
-	int temp;
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct qpnp_chg_chip *chip = container_of(dwork,
-				struct qpnp_chg_chip, bat_is_cooler_check_work);
-
-	pr_debug("asus_bat_is_cooler_check_work()\n");
-
-	mutex_lock(&chip->bat_is_cooler_lock);
-	temp = get_prop_batt_temp(chip);
-	if ((temp <= 100) && (g_bat_is_cooler == false)){
-		g_bat_is_cooler = true;
-		qpnp_chg_set_appropriate_battery_current(chip);
-		pr_debug("g_bat_is_cooler is true!\n");
-	}else if ((temp >= (100+HYSTERISIS_DECIDEGC)) && (g_bat_is_cooler == true)){
-		g_bat_is_cooler = false;
-		qpnp_chg_set_appropriate_battery_current(chip);
-		pr_debug("g_bat_is_cooler is false!\n");
-	}else if (!chip->bat_is_cool){
-		g_bat_is_cooler = false;
-		pr_debug("g_bat_is_cooler is cancelled!\n");
-		mutex_unlock(&chip->bat_is_cooler_lock);
-		return;
-	}
-
-	schedule_delayed_work(&chip->bat_is_cooler_check_work,
-		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
-
-	mutex_unlock(&chip->bat_is_cooler_lock);
-	return;
-
-}
-
 static void
 qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 {
@@ -4317,9 +4273,6 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 				chip->cool_bat_decidegc + HYSTERISIS_DECIDEGC;
 			chip->adc_param.state_request =
 				ADC_TM_WARM_THR_ENABLE;
-			schedule_delayed_work(&chip->bat_is_cooler_check_work,
-				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
-			pr_debug("qpnp_chg_adc_notification(): Normal to cool!\n");
 		} else if (temp <=
 				chip->warm_bat_decidegc - HYSTERISIS_DECIDEGC){
 			/* Warm to normal */
@@ -6208,8 +6161,6 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	}
 
 	INIT_DELAYED_WORK(&chip->eoc_work, qpnp_eoc_work);
-	mutex_init(&chip->bat_is_cooler_lock);
-	INIT_DELAYED_WORK(&chip->bat_is_cooler_check_work, asus_bat_is_cooler_check_work);
 	INIT_DELAYED_WORK(&chip->arb_stop_work, qpnp_arb_stop_work);
 	INIT_DELAYED_WORK(&chip->usbin_health_check,
 			qpnp_usbin_health_check_work);
@@ -6372,7 +6323,6 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	cancel_delayed_work_sync(&chip->usbin_health_check);
 	cancel_delayed_work_sync(&chip->arb_stop_work);
 	cancel_delayed_work_sync(&chip->eoc_work);
-	cancel_delayed_work_sync(&chip->bat_is_cooler_check_work);
 	cancel_work_sync(&chip->adc_disable_work);
 	cancel_work_sync(&chip->adc_measure_work);
 	power_supply_unregister(&chip->batt_psy);
@@ -6383,7 +6333,6 @@ qpnp_charger_remove(struct spmi_device *spmi)
 
 	mutex_destroy(&chip->batfet_vreg_lock);
 	mutex_destroy(&chip->jeita_configure_lock);
-	mutex_destroy(&chip->bat_is_cooler_lock);
 
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
