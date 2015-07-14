@@ -1459,6 +1459,12 @@ static int  device_create_key_block_file(void)
 	return rc;
 }
 
+static void device_remove_key_block_file(void)
+{
+	if (keyblock_kobj)
+		sysfs_remove_file(keyblock_kobj, &keyblock_attribute.attr);
+}
+
 static int qpnp_pon_probe(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon;
@@ -1663,6 +1669,7 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 	device_remove_file(&spmi->dev, &dev_attr_debounce_us);
 
 	cancel_delayed_work_sync(&pon->bark_work);
+	device_remove_key_block_file();
 
 	if (pon->pon_input)
 		input_unregister_device(pon->pon_input);
