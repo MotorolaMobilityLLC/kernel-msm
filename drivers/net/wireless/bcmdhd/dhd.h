@@ -433,6 +433,17 @@ typedef struct dhd_pub {
 typedef struct {
 	uint rxwake;
 	uint rcwake;
+#ifdef DHD_WAKE_RX_STATUS
+	uint rx_bcast;
+	uint rx_arp;
+	uint rx_mcast;
+	uint rx_multi_ipv6;
+	uint rx_icmpv6;
+	uint rx_multi_ipv4;
+	uint rx_multi_other;
+	uint rx_ucast;
+#endif
+
 } wake_counts_t;
 
 #if defined(BCMWDF)
