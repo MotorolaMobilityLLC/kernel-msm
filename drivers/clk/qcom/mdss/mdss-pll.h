@@ -175,6 +175,11 @@ struct mdss_pll_resources {
 	 */
 	uint32_t index;
 
+	/*
+	 * Mutex to handle pll resource access
+	 */
+	struct mutex res_lock;
+
 	struct dfps_info *dfps;
 };
 
