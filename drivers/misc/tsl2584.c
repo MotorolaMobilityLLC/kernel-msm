@@ -956,14 +956,14 @@ static int tsl2584_probe(struct i2c_client *client,
 		pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
-		dev_err(&tsl->client->dev,
+		dev_err(&client->dev,
 			"Error: platform data required\n");
 		return -ENODEV;
 	}
 
 	client->irq = pdata->irq;
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		dev_err(&tsl->client->dev, "Error: I2C_FUNC_I2C not supported\n");
+		dev_err(&client->dev, "Error: I2C_FUNC_I2C not supported\n");
 		goto i2c_check_fail;
 	}
 
