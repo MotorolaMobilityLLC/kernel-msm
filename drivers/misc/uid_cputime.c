@@ -119,7 +119,7 @@ static int uid_stat_show(struct seq_file *m, void *v)
 							uid_entry->active_stime;
 		unsigned long long total_power = uid_entry->power +
 							uid_entry->active_power;
-		seq_printf(m, "%d: %u %u %llu\n", uid_entry->uid,
+		seq_printf(m, "%d: %llu %llu %llu\n", uid_entry->uid,
 						cputime_to_usecs(total_utime),
 						cputime_to_usecs(total_stime),
 						total_power);
