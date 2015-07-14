@@ -58,7 +58,9 @@
 #ifdef CONFIG_SND_PCM
 #include "f_audio_source.c"
 #endif
+#ifdef CONFIG_SND_RAWMIDI
 #include "f_midi.c"
+#endif
 #include "f_mass_storage.c"
 #include "u_serial.c"
 #include "u_sdio.c"
@@ -2187,6 +2189,7 @@ static struct android_usb_function usbnet_function = {
 	.ctrlrequest	= usbnet_function_ctrlrequest,
 };
 
+#ifdef CONFIG_SND_RAWMIDI
 static int midi_function_init(struct android_usb_function *f,
 					struct usb_composite_dev *cdev)
 {
@@ -2240,6 +2243,7 @@ static struct android_usb_function midi_function = {
 	.bind_config	= midi_function_bind_config,
 	.attributes	= midi_function_attributes,
 };
+#endif
 
 static struct android_usb_function *supported_functions[] = {
 	&mbim_function,
@@ -2269,7 +2273,9 @@ static struct android_usb_function *supported_functions[] = {
 #ifdef CONFIG_SND_PCM
 	&audio_source_function,
 #endif
+#ifdef CONFIG_SND_RAWMIDI
 	&midi_function,
+#endif
 	&uasp_function,
 	&usbnet_function,
 	NULL
