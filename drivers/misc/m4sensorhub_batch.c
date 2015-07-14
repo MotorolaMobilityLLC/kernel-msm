@@ -170,8 +170,28 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 						priv_data);
 
 			} else {
-				pr_err("%s: Gyro Callback is null\n", __func__);
+				pr_err("%s: Gyro Callback is null\n",
+				       __func__);
 			}
+		} else if (dd->data[i].sensor_id == M4SH_TYPE_ACCEL) {
+			if (batch_data_callback_list[
+				M4SH_BATCH_SENSOR_TYPE_ACCEL].
+				data_callback != NULL) {
+				batch_data_callback_list[
+					M4SH_BATCH_SENSOR_TYPE_ACCEL].
+					data_callback(
+						&(dd->data[i]),
+						batch_data_callback_list[
+						M4SH_BATCH_SENSOR_TYPE_ACCEL].
+						priv_data);
+
+			} else {
+				pr_err("%s: Accel Callback is null\n",
+				       __func__);
+			}
+		} else {
+			pr_err("%s: Invalid sensor id in data: %d\n",
+			       __func__, dd->data[i].sensor_id);
 		}
 	}
 }
