@@ -151,10 +151,9 @@ typedef struct dhd_bus {
 	uint32  *pcie_mb_intr_addr;
 	void    *pcie_mb_intr_osh;
 	bool	sleep_allowed;
-#ifdef DHD_WAKE_STATUS
-	uint		rxwake;
-	uint		rcwake;
-#endif
+
+	wake_counts_t	wake_counts;
+
 	/* version 3 shared struct related info start */
 	ring_sh_info_t	ring_sh[BCMPCIE_COMMON_MSGRINGS + MAX_DHD_TX_FLOWS];
 	uint8	h2d_ring_count;

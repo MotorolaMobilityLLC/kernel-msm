@@ -430,6 +430,11 @@ typedef struct dhd_pub {
 	uint8 rand_mac_oui[DOT11_OUI_LEN];
 } dhd_pub_t;
 
+typedef struct {
+	uint rxwake;
+	uint rcwake;
+} wake_counts_t;
+
 #if defined(BCMWDF)
 typedef struct {
 	dhd_pub_t *dhd_pub;
@@ -616,7 +621,8 @@ extern void dhd_store_conn_status(uint32 event, uint32 status, uint32 reason);
 extern bool dhd_prec_enq(dhd_pub_t *dhdp, struct pktq *q, void *pkt, int prec);
 
 /* Receive frame for delivery to OS.  Callee disposes of rxp. */
-extern void dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *rxp, int numpkt, uint8 chan);
+extern void dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *rxp, int numpkt,
+	uint8 chan, int pkt_wake, wake_counts_t *wcp);
 
 /* Return pointer to interface name */
 extern char *dhd_ifname(dhd_pub_t *dhdp, int idx);

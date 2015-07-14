@@ -156,7 +156,7 @@ extern void dhd_bus_cmn_writeshared(struct dhd_bus *bus, void * data, uint32 len
 extern void dhd_bus_ringbell(struct dhd_bus *bus, uint32 value);
 extern void dhd_bus_cmn_readshared(struct dhd_bus *bus, void* data, uint8 type, uint16 ringid);
 extern uint32 dhd_bus_get_sharedflags(struct dhd_bus *bus);
-extern void dhd_bus_rx_frame(struct dhd_bus *bus, void* pkt, int ifidx, uint pkt_count);
+extern void dhd_bus_rx_frame(struct dhd_bus *bus, void* pkt, int ifidx, uint pkt_count, int pkt_wake);
 extern void dhd_bus_start_queue(struct dhd_bus *bus);
 extern void dhd_bus_stop_queue(struct dhd_bus *bus);
 extern void dhd_bus_update_retlen(struct dhd_bus *bus, uint32 retlen, uint32 cmd_id, uint16 status,
