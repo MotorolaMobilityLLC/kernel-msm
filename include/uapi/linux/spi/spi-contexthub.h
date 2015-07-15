@@ -84,5 +84,6 @@ struct spi_ioc_transfer {
 #define SPI_IOC_ENABLE_TIMESTAMPS       _IOW(SPI_IOC_MAGIC, 5, __u8)
 #define SPI_IOC_RESET_HUB               _IOW(SPI_IOC_MAGIC, 6, __u8)
 #define SPI_IOC_TXRX                    _IOW(SPI_IOC_MAGIC, 7, char[SPI_MSGSIZE(1)])
+#define SPI_IOC_NOTIFY_HUB_SUSPENDED    _IOW(SPI_IOC_MAGIC, 8, __u8)
 
 #endif // SPI_CONTEXHUB_H
