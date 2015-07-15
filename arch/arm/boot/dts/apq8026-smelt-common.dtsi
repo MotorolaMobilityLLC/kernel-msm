@@ -145,6 +145,27 @@
 			     "chg_rate",
 			     "chg_n";
 	};
+
+	qcom,rmtfs_sharedmem@07f00000 {
+		status = "disabled";
+	};
+
+	memory {
+		qsecom_region@0 {
+			reg = <0 0x400000>;
+		};
+
+		/delete-node/ adsp_region@3900000;
+
+		adsp_pil_mem: adsp_region@3300000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x03300000 0x1400000>;
+			label = "adsp_pil_mem";
+		};
+
+	};
 };
 
 &soc {
@@ -289,6 +310,18 @@
 		status = "disabled";
 	};
 
+	qcom,pronto@fb21b000 {
+		status = "disabled";
+	};
+
+	qcom,msm-ssc-sensors {
+		status = "disabled";
+	};
+
+	qcom,iris-fm {
+		status = "disabled";
+	};
+
 	bluesleep {
 		compatible = "qcom,bluesleep";
 		bt_port_id = <6>;
@@ -302,9 +335,20 @@
 
 };
 
+&peripheral_mem {
+	status = "disabled";
+};
+
+&modem_mem {
+	status = "disabled";
+};
+
+&modem_efs {
+	status = "disabled";
+};
+
 &modem_pil {
 	status = "disabled";
-	/delete-property/ linux,contiguous-region;
 };
 
 &mdss_fb0 {
