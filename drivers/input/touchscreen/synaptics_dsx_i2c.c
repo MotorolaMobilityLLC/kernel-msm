@@ -1934,8 +1934,6 @@ static int synaptics_dsx_sensor_ready_state(
 			return retval;
 		}
 
-		state = synaptics_dsx_get_state_safe(rmi4_data);
-
 		ui_mode = status.flash_prog == 0;
 		pr_debug("(%d) UI mode: %s\n", i, ui_mode ? "true" : "false");
 
@@ -1945,6 +1943,7 @@ static int synaptics_dsx_sensor_ready_state(
 		msleep(20);
 	}
 
+	state = synaptics_dsx_get_state_safe(rmi4_data);
 	if (!ui_mode && state == STATE_SUSPEND && rmi4_data->input_registered) {
 		/* expecting touch IC to enter UI mode based on */
 		/* its previous known good state */
