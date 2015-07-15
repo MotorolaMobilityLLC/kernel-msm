@@ -2622,7 +2622,9 @@ exit:
 	return err;
 }
 
-/* Cleanup any consumed results */
+/* Cleanup any consumed results 
+ * Return TRUE if all results consumed else FALSE
+ */
 int dhd_gscan_batch_cache_cleanup(dhd_pub_t *dhd)
 {
 	int ret = 0;
@@ -2662,7 +2664,7 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 	wifi_gscan_result_t *result;
 	uint8 *nAPs_per_scan = NULL;
 	uint8 num_scans_in_cur_iter;
-	uint16 count, scan_id = 0;
+	uint16 count;
 
 	NULL_CHECK(dhd, "dhd is NULL\n", err);
 	NULL_CHECK(dhd->pno_state, "pno_state is NULL", err);
@@ -2723,7 +2725,10 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 				plbestnet->version, PFN_SCANRESULT_VERSION));
 			goto exit_mutex_unlock;
 		}
-
+		if (plbestnet->count == 0) {
+			DHD_PNO(("No more batch results\n"));
+			goto exit_mutex_unlock;
+		}
 		num_scans_in_cur_iter = 0;
 		timestamp = plbestnet->netinfo[0].timestamp;
 		/* find out how many scans' results did we get in this batch of FW results */
@@ -2765,11 +2770,11 @@ static int _dhd_pno_get_gscan_batch_from_fw(dhd_pub_t *dhd)
 			 * maybe a continuation of previous sets' scan results
 			 */
 			if (TIME_DIFF_MS(ts, plnetinfo->timestamp) > timediff)
-				iter->scan_id = ++scan_id;
+				iter->scan_id = ++gscan_params->scan_id;
 			else
-				iter->scan_id = scan_id;
+				iter->scan_id = gscan_params->scan_id;
 
-			DHD_PNO(("scan_id %d tot_count %d\n", scan_id, nAPs_per_scan[i]));
+			DHD_PNO(("scan_id %d tot_count %d\n", gscan_params->scan_id, nAPs_per_scan[i]));
 			iter->tot_count = nAPs_per_scan[i];
 			iter->tot_consumed = 0;
 			iter->flag = 0;

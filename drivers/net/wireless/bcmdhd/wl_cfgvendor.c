@@ -400,7 +400,6 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 
 	if (mem_needed > (int32)NLMSG_DEFAULT_SIZE) {
 		mem_needed = (int32)NLMSG_DEFAULT_SIZE;
-		complete = 0;
 	}
 
 	WL_TRACE(("complete %d mem_needed %d max_mem %d\n", complete, mem_needed,
@@ -419,10 +418,11 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 
 	while (iter) {
 		num_results_iter =
-		    (mem_needed - GSCAN_BATCH_RESULT_HDR_LEN)/sizeof(wifi_gscan_result_t);
+		    (mem_needed - (int32)GSCAN_BATCH_RESULT_HDR_LEN)/(int32)sizeof(wifi_gscan_result_t);
 		if (num_results_iter <= 0 ||
-		    ((iter->tot_count - iter->tot_consumed) > num_results_iter))
+		    ((iter->tot_count - iter->tot_consumed) > num_results_iter)) {
 			break;
+		}
 		scan_hdr = nla_nest_start(skb, GSCAN_ATTRIBUTE_SCAN_RESULTS);
 		/* no more room? we are done then (for now) */
 		if (scan_hdr == NULL) {
@@ -445,8 +445,9 @@ static int wl_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 		    (num_results_iter * sizeof(wifi_gscan_result_t));
 		iter = iter->next;
 	}
+	/* Returns TRUE if all result consumed */
+	complete = dhd_dev_gscan_batch_cache_cleanup(bcmcfg_to_prmry_ndev(cfg));
 	memcpy(nla_data(complete_flag), &complete, sizeof(complete));
-	dhd_dev_gscan_batch_cache_cleanup(bcmcfg_to_prmry_ndev(cfg));
 	dhd_dev_pno_unlock_access_batch_results(bcmcfg_to_prmry_ndev(cfg));
 	return cfg80211_vendor_cmd_reply(skb);
 }

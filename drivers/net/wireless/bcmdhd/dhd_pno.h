@@ -399,6 +399,7 @@ struct dhd_pno_gscan_params {
 	struct list_head hotlist_bssid_list;
 	struct list_head significant_bssid_list;
 	struct list_head epno_ssid_list;
+	uint32 scan_id;
 };
 
 typedef struct gscan_scan_params {
