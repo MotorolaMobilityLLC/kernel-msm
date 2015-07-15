@@ -110,31 +110,37 @@ static ssize_t pn548_dev_read(struct file *filp, char __user *buf,
 	struct pn548_dev *pn548_dev = filp->private_data;
 	static char tmp[MAX_BUFFER_SIZE];
 	int ret;
-	static bool isFinalPacket = true;
+	static bool isFirstPacket = true;
 	unsigned long flags;
 
 	if (count > MAX_BUFFER_SIZE)
 	count = MAX_BUFFER_SIZE;
 
-wait:
-	if (isFinalPacket == true) {
+	if (isFirstPacket == false) {
 		ret = wait_event_interruptible_timeout(pn548_dev->read_wq,
 				gpio_get_value(pn548_dev->irq_gpio),
 				msecs_to_jiffies(NFC_TIMEOUT_MS));
 		if (ret == 0) {
+			pr_err("%s: no more interrupt after %dms (%d)!\n",
+			       __func__, NFC_TIMEOUT_MS,
+			       gpio_get_value(pn548_dev->irq_gpio));
 			spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
 			if (sIsWakeLocked == true) {
 				wake_unlock(&nfc_wake_lock);
 				sIsWakeLocked = false;
 			}
-			spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
-			isFinalPacket = false;
-			goto wait;
+			spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock,
+					       flags);
+			isFirstPacket = true;
 		}
-	} else {
+	}
+
+	if (isFirstPacket == true)
+	{
 		ret = wait_event_interruptible(pn548_dev->read_wq,
 					gpio_get_value(pn548_dev->irq_gpio));
-		isFinalPacket = true;
+		if (ret == 0)
+			isFirstPacket = false;
 	}
 
 	if (ret == -ERESTARTSYS)
