@@ -1101,13 +1101,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 		}
 	case HAPTIC_CMDID_STOP:
 		{
-			if (vibrator_is_playing) {
-				vibrator_is_playing = NO;
-				if (audio_haptics_enabled)
-					setAudioHapticsEnabled(YES);
-				else
-					drv260x_standby();
-			}
+			schedule_work(&vibdata.work);
 			vibdata.should_stop = YES;
 			break;
 		}
