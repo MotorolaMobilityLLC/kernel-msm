@@ -597,7 +597,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	pgprot_t page_prot = pgprot_writecombine(PAGE_KERNEL);
 	void *ptr;
 	unsigned int align;
-	int step = ((VMALLOC_END - VMALLOC_START)/8) >> PAGE_SHIFT;
+	int step = SZ_2M >> PAGE_SHIFT;
 
 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
 
