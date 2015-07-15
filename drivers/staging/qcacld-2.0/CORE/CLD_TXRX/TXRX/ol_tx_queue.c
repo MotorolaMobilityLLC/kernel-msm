@@ -458,7 +458,7 @@ ol_txrx_throttle_pause(ol_txrx_pdev_handle pdev)
     pdev->tx_throttle.is_paused = TRUE;
     adf_os_spin_unlock_bh(&pdev->tx_throttle.mutex);
 #endif
-    ol_txrx_pdev_pause(pdev);
+    ol_txrx_pdev_pause(pdev, 0);
 }
 
 void
@@ -475,32 +475,56 @@ ol_txrx_throttle_unpause(ol_txrx_pdev_handle pdev)
     pdev->tx_throttle.is_paused = FALSE;
     adf_os_spin_unlock_bh(&pdev->tx_throttle.mutex);
 #endif
-    ol_txrx_pdev_unpause(pdev);
+    ol_txrx_pdev_unpause(pdev, 0);
 }
-
-void
-ol_txrx_pdev_pause(ol_txrx_pdev_handle pdev)
-{
-    struct ol_txrx_vdev_t *vdev = NULL, *tmp;
-
-    TAILQ_FOREACH_SAFE(vdev, &pdev->vdev_list, vdev_list_elem, tmp) {
-        ol_txrx_vdev_pause(vdev, 0);
-    }
-}
-
-void
-ol_txrx_pdev_unpause(ol_txrx_pdev_handle pdev)
-{
-    struct ol_txrx_vdev_t *vdev = NULL, *tmp;
-
-    TAILQ_FOREACH_SAFE(vdev, &pdev->vdev_list, vdev_list_elem, tmp) {
-        ol_txrx_vdev_unpause(vdev, 0);
-    }
-}
-
 #endif /* defined(CONFIG_HL_SUPPORT) */
 
 #if defined(CONFIG_HL_SUPPORT) || defined(QCA_SUPPORT_TXRX_VDEV_PAUSE_LL)
+/**
+ * ol_txrx_pdev_pause() - Suspend all tx data for the specified physical device.
+ * @data_pdev: the physical device being paused.
+ * @reason:  pause reason.
+ *
+ * This function applies to HL systems -
+ * in LL systems, applies when txrx_vdev_pause_all is enabled.
+ * In some systems it is necessary to be able to temporarily
+ * suspend all WLAN traffic, e.g. to allow another device such as bluetooth
+ * to temporarily have exclusive access to shared RF chain resources.
+ * This function suspends tx traffic within the specified physical device.
+ *
+ *
+ * Return: None
+ */
+void
+ol_txrx_pdev_pause(ol_txrx_pdev_handle pdev, u_int32_t reason)
+{
+	struct ol_txrx_vdev_t *vdev = NULL, *tmp;
+
+	TAILQ_FOREACH_SAFE(vdev, &pdev->vdev_list, vdev_list_elem, tmp) {
+		ol_txrx_vdev_pause(vdev, reason);
+	}
+}
+
+/**
+ * ol_txrx_pdev_unpause() - Resume tx for the specified physical device..
+ * @data_pdev: the physical device being paused.
+ * @reason:  pause reason.
+ *
+ *  This function applies to HL systems -
+ *  in LL systems, applies when txrx_vdev_pause_all is enabled.
+ *
+ *
+ * Return: None
+ */
+void
+ol_txrx_pdev_unpause(ol_txrx_pdev_handle pdev, u_int32_t reason)
+{
+	struct ol_txrx_vdev_t *vdev = NULL, *tmp;
+
+	TAILQ_FOREACH_SAFE(vdev, &pdev->vdev_list, vdev_list_elem, tmp) {
+		ol_txrx_vdev_unpause(vdev, reason);
+	}
+}
 
 void
 ol_txrx_vdev_pause(ol_txrx_vdev_handle vdev, u_int32_t reason)
@@ -554,7 +578,11 @@ ol_txrx_vdev_unpause(ol_txrx_vdev_handle vdev, u_int32_t reason)
         if (vdev->ll_pause.paused_reason & reason)
         {
             vdev->ll_pause.paused_reason &= ~reason;
-            if (!vdev->ll_pause.paused_reason) {
+            if (reason == OL_TXQ_PAUSE_REASON_VDEV_SUSPEND) {
+                adf_os_spin_unlock_bh(&vdev->ll_pause.mutex);
+                ol_tx_vdev_ll_pause_start_timer(vdev);
+            }
+            else if (!vdev->ll_pause.paused_reason) {
                 adf_os_spin_unlock_bh(&vdev->ll_pause.mutex);
                 ol_tx_vdev_ll_pause_queue_send(vdev);
             } else {
@@ -752,14 +780,14 @@ void ol_tx_throttle_init(struct ol_txrx_pdev_t *pdev)
             pdev->osdev,
             &pdev->tx_throttle.phase_timer,
             ol_tx_pdev_throttle_phase_timer,
-            pdev);
+            pdev, ADF_DEFERRABLE_TIMER);
 
 #ifdef QCA_SUPPORT_TXRX_VDEV_LL_TXQ
     adf_os_timer_init(
             pdev->osdev,
             &pdev->tx_throttle.tx_timer,
             ol_tx_pdev_throttle_tx_timer,
-            pdev);
+            pdev, ADF_DEFERRABLE_TIMER);
 #endif
 
     pdev->tx_throttle.tx_threshold = THROTTLE_TX_THRESHOLD;

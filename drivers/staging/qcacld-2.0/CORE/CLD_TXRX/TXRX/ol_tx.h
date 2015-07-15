@@ -73,6 +73,20 @@ ol_tx_reinject(struct ol_txrx_vdev_t *vdev, adf_nbuf_t msdu, u_int16_t peer_id);
 void
 ol_txrx_mgmt_tx_complete(void *ctxt, adf_nbuf_t netbuf, int err);
 
+/**
+ * ol_tx_vdev_ll_pause_start_timer() - Start ll-q pause timer for specific virtual device
+ * @vdev: the virtual device
+ *
+ *  When system comes out of suspend, it is necessary to start the timer
+ *  which will ensure to pull out all the queued packets after expiry.
+ *  This function restarts the ll-pause timer, for the specific vdev device.
+ *
+ *
+ * Return: None
+ */
+void
+ol_tx_vdev_ll_pause_start_timer(struct ol_txrx_vdev_t *vdev);
+
 void
 ol_tx_pdev_ll_pause_queue_send_all(struct ol_txrx_pdev_t *pdev);
 #endif /* _OL_TX__H_ */

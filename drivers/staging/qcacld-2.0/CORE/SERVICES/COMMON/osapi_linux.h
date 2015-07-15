@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -170,7 +170,7 @@ typedef spinlock_t                      A_MUTEX_T;
 typedef struct timer_list               A_TIMER;
 
 #define A_INIT_TIMER(pTimer, pFunction, pArg) do {              \
-    init_timer(pTimer);                                         \
+    init_timer_deferrable(pTimer);                              \
     (pTimer)->function = (pFunction);                           \
     (pTimer)->data   = (unsigned long)(pArg);                   \
 } while (0)

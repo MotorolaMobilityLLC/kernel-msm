@@ -226,6 +226,8 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_GET_RING_DATA = 77,
     QCA_NL80211_VENDOR_SUBCMD_TDLS_GET_CAPABILITIES = 78,
 
+    QCA_NL80211_VENDOR_SUBCMD_OFFLOADED_PACKETS = 79,
+    QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI = 80,
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -294,6 +296,7 @@ enum qca_nl80211_vendor_subcmds_index {
 #ifdef WLAN_FEATURE_MEMDUMP
     QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP_INDEX,
 #endif /* WLAN_FEATURE_MEMDUMP */
+    QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI_INDEX,
 };
 
 /* EXT TDLS */
@@ -1323,6 +1326,7 @@ enum qca_wlan_vendor_features {
 #define WIFI_FEATURE_LINK_LAYER_STATS   0x10000  /* Link layer stats */
 #define WIFI_FEATURE_LOGGER             0x20000  /* WiFi Logger */
 #define WIFI_FEATURE_HAL_EPNO           0x40000  /* WiFi PNO enhanced */
+#define WIFI_FEATURE_RSSI_MONITOR       0x80000  /* RSSI Monitor */
 
 /* Add more features here */
 #define WIFI_TDLS_SUPPORT			BIT(0)
@@ -1421,6 +1425,90 @@ enum qca_wlan_vendor_attr_wifi_logger_get_ring_data {
 		QCA_WLAN_VENDOR_ATTR_WIFI_LOGGER_GET_RING_DATA_AFTER_LAST - 1,
 };
 
+#ifdef WLAN_FEATURE_OFFLOAD_PACKETS
+/**
+ * enum wlan_offloaded_packets_control - control commands
+ * @WLAN_START_OFFLOADED_PACKETS: start offloaded packets
+ * @WLAN_STOP_OFFLOADED_PACKETS: stop offloaded packets
+ *
+ */
+enum wlan_offloaded_packets_control {
+	WLAN_START_OFFLOADED_PACKETS = 1,
+	WLAN_STOP_OFFLOADED_PACKETS  = 2
+};
+
+/**
+ * enum qca_wlan_vendor_attr_offloaded_packets - offloaded packets
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_INVALID: invalid
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_SENDING_CONTROL: control
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_REQUEST_ID: request id
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_IP_PACKET_DATA: ip packet data
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_SRC_MAC_ADDR: src mac address
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_DST_MAC_ADDR: destination mac address
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_PERIOD: period in milli seconds
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_AFTER_LAST: after last
+ * @QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_MAX: max
+ */
+enum qca_wlan_vendor_attr_offloaded_packets {
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_SENDING_CONTROL,
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_REQUEST_ID,
+
+	/* Packet in hex format */
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_IP_PACKET_DATA,
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_SRC_MAC_ADDR,
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_DST_MAC_ADDR,
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_PERIOD,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_MAX =
+		QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_AFTER_LAST - 1,
+};
+#endif
+
+/**
+ * enum qca_wlan_rssi_monitoring_control - rssi control commands
+ * @QCA_WLAN_RSSI_MONITORING_CONTROL_INVALID: invalid
+ * @QCA_WLAN_RSSI_MONITORING_START: rssi monitoring start
+ * @QCA_WLAN_RSSI_MONITORING_STOP: rssi monitoring stop
+ */
+enum qca_wlan_rssi_monitoring_control {
+	QCA_WLAN_RSSI_MONITORING_CONTROL_INVALID = 0,
+	QCA_WLAN_RSSI_MONITORING_START,
+	QCA_WLAN_RSSI_MONITORING_STOP,
+};
+
+/**
+ * enum qca_wlan_vendor_attr_rssi_monitoring - rssi monitoring
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_INVALID: Invalid
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CONTROL: control
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MAX_RSSI: max rssi
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MIN_RSSI: min rssi
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CUR_BSSID: current bssid
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CUR_RSSI: current rssi
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_AFTER_LAST: after last
+ * @QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MAX: max
+ */
+enum qca_wlan_vendor_attr_rssi_monitoring {
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_INVALID = 0,
+
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CONTROL,
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_REQUEST_ID,
+
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MAX_RSSI,
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MIN_RSSI,
+
+	/* attributes to be used/received in callback */
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CUR_BSSID,
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CUR_RSSI,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MAX =
+		QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_AFTER_LAST - 1,
+};
+
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );
@@ -1516,6 +1604,9 @@ void wlan_hdd_cfg80211_extscan_callback(void *ctx,
                                       const tANI_U16 evType,
                                       void *pMsg);
 #endif /* FEATURE_WLAN_EXTSCAN */
+
+void hdd_rssi_threshold_breached(void *hddctx,
+				 struct rssi_breach_event *data);
 
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_list(
    hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo);

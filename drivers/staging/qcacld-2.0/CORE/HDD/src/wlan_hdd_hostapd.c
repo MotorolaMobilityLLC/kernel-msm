@@ -705,6 +705,7 @@ void hdd_clear_all_sta(hdd_adapter_t *pHostapdAdapter, v_PVOID_t usrDataForCallb
 {
     v_U8_t staId = 0;
     struct net_device *dev;
+    struct tagCsrDelStaParams delStaParams;
     dev = (struct net_device *)usrDataForCallback;
 
     hddLog(LOGE, FL("Clearing all the STA entry...."));
@@ -713,8 +714,12 @@ void hdd_clear_all_sta(hdd_adapter_t *pHostapdAdapter, v_PVOID_t usrDataForCallb
         if ( pHostapdAdapter->aStaInfo[staId].isUsed &&
            ( staId != (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->uBCStaId))
         {
+             WLANSAP_PopulateDelStaParams(&pHostapdAdapter->aStaInfo[staId].macAddrSTA.bytes[0],
+                                                    eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
+                                                    (SIR_MAC_MGMT_DISASSOC >> 4),
+                                                     &delStaParams);
             //Disconnect all the stations
-            hdd_softap_sta_disassoc(pHostapdAdapter, &pHostapdAdapter->aStaInfo[staId].macAddrSTA.bytes[0]);
+            hdd_softap_sta_disassoc(pHostapdAdapter, &delStaParams);
         }
     }
 }
@@ -3236,6 +3241,7 @@ static iw_softap_disassoc_sta(struct net_device *dev,
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     v_U8_t *peerMacAddr;
+    struct tagCsrDelStaParams delStaParams;
 
     ENTER();
     /* iwpriv tool or framework calls this ioctl with
@@ -3245,7 +3251,14 @@ static iw_softap_disassoc_sta(struct net_device *dev,
 
     hddLog(LOG1, "%s data "  MAC_ADDRESS_STR,
            __func__, MAC_ADDR_ARRAY(peerMacAddr));
-    hdd_softap_sta_disassoc(pHostapdAdapter, peerMacAddr);
+
+
+    WLANSAP_PopulateDelStaParams(peerMacAddr,
+                   eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
+                   (SIR_MAC_MGMT_DISASSOC >> 4),
+                   &delStaParams);
+
+    hdd_softap_sta_disassoc(pHostapdAdapter, &delStaParams);
     EXIT();
     return 0;
 }
@@ -3290,6 +3303,18 @@ static iw_softap_ap_stats(struct net_device *dev,
     }
     wrqu->data.length -= len;
     kfree(pstatbuf);
+    return 0;
+}
+
+int
+static iw_softap_get_stats(struct net_device *dev,
+                           struct iw_request_info *info,
+                           union iwreq_data *wrqu, char *extra)
+{
+    hdd_adapter_t *p_host_adapter = netdev_priv(dev);
+
+    hdd_wlan_get_stats(p_host_adapter, &(wrqu->data.length),
+                       extra, WE_MAX_STR_LEN);
     return 0;
 }
 
@@ -4851,6 +4876,8 @@ static const struct iw_priv_args hostapd_private_args[] = {
         IW_PRIV_TYPE_BYTE | IW_PRIV_SIZE_FIXED | 6 , 0, "disassoc_sta" },
   { QCSAP_IOCTL_AP_STATS, 0,
         IW_PRIV_TYPE_CHAR | QCSAP_MAX_WSC_IE, "ap_stats" },
+  { QCSAP_IOCTL_GET_STATS, 0,
+        IW_PRIV_TYPE_CHAR | WE_MAX_STR_LEN, "get_stats" },
   { QCSAP_IOCTL_PRIV_GET_SOFTAP_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
         IW_PRIV_TYPE_CHAR | 5, "getLinkSpeed" },
@@ -4959,6 +4986,7 @@ static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_ASSOC_STA_MACADDR - SIOCIWFIRSTPRIV] = iw_softap_getassoc_stamacaddr,
    [QCSAP_IOCTL_DISASSOC_STA - SIOCIWFIRSTPRIV] = iw_softap_disassoc_sta,
    [QCSAP_IOCTL_AP_STATS - SIOCIWFIRSTPRIV] = iw_softap_ap_stats,
+   [QCSAP_IOCTL_GET_STATS - SIOCIWFIRSTPRIV] = iw_softap_get_stats,
    [QCSAP_IOCTL_PRIV_SET_THREE_INT_GET_NONE - SIOCIWFIRSTPRIV]  = iw_set_three_ints_getnone,
    [QCSAP_IOCTL_PRIV_SET_VAR_INT_GET_NONE - SIOCIWFIRSTPRIV]     = iw_set_var_ints_getnone,
    [QCSAP_IOCTL_SET_CHANNEL_RANGE - SIOCIWFIRSTPRIV] = iw_softap_set_channel_range,

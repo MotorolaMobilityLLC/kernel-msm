@@ -327,6 +327,9 @@ htt_rx_detach(struct htt_pdev_t *pdev)
         return;
     }
 
+    adf_os_timer_cancel(&pdev->rx_ring.refill_retry_timer);
+    adf_os_timer_free(&pdev->rx_ring.refill_retry_timer);
+
     if (pdev->cfg.is_full_reorder_offload) {
         adf_os_mem_free_consistent(
             pdev->osdev,
@@ -354,9 +357,6 @@ htt_rx_detach(struct htt_pdev_t *pdev)
         }
         adf_os_mem_free(pdev->rx_ring.buf.netbufs_ring);
     }
-
-    adf_os_timer_cancel(&pdev->rx_ring.refill_retry_timer);
-    adf_os_timer_free(&pdev->rx_ring.refill_retry_timer);
 
     adf_os_mem_free_consistent(
         pdev->osdev,
@@ -2498,7 +2498,8 @@ htt_rx_attach(struct htt_pdev_t *pdev)
 
         /* Initialize the Rx refill retry timer */
         adf_os_timer_init(pdev->osdev, &pdev->rx_ring.refill_retry_timer,
-                          htt_rx_ring_refill_retry, (void *)pdev);
+                          htt_rx_ring_refill_retry, (void *)pdev,
+                          ADF_DEFERRABLE_TIMER);
 
         pdev->rx_ring.fill_cnt = 0;
 #ifdef DEBUG_DMA_DONE

@@ -1439,7 +1439,7 @@ VOS_STATUS
 WLANSAP_DisassocSta
 (
     v_PVOID_t pCtx,
-    v_U8_t *pPeerStaMac
+    struct tagCsrDelStaParams *pDelStaParams
 )
 {
     ptSapContext pSapCtx = VOS_GET_SAP_CB(pCtx);
@@ -1456,7 +1456,7 @@ WLANSAP_DisassocSta
     }
 
     sme_RoamDisconnectSta(VOS_GET_HAL_CB(pSapCtx->pvosGCtx), pSapCtx->sessionId,
-                            pPeerStaMac);
+                            pDelStaParams);
 
     return VOS_STATUS_SUCCESS;
 }

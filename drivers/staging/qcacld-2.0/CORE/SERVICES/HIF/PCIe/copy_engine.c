@@ -1563,7 +1563,7 @@ CE_init(struct hif_pci_softc *sc,
             /* poll timer */
             if ((CE_state->attr_flags & CE_ATTR_ENABLE_POLL)) {
                 adf_os_timer_init(scn->adf_dev, &CE_state->poll_timer,
-                        CE_poll_timeout, CE_state);
+                        CE_poll_timeout, CE_state, ADF_DEFERRABLE_TIMER);
                 CE_state->timer_inited = true;
                 adf_os_timer_mod(&CE_state->poll_timer, CE_POLL_TIMEOUT);
             }

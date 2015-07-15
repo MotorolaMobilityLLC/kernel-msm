@@ -188,7 +188,7 @@ ol_rx_reorder_timeout_init(struct ol_txrx_pdev_t *pdev)
         /* init the per-AC timers */
         adf_os_timer_init(
             pdev->osdev, &rx_reorder_timeout_ac->timer,
-            ol_rx_reorder_timeout, rx_reorder_timeout_ac);
+            ol_rx_reorder_timeout, rx_reorder_timeout_ac, ADF_DEFERRABLE_TIMER);
         /* init the virtual timer list */
         TAILQ_INIT(&rx_reorder_timeout_ac->virtual_timer_list);
         rx_reorder_timeout_ac->pdev = pdev;

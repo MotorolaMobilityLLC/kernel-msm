@@ -1325,6 +1325,7 @@ void hdd_suspend_wlan(void (*callback)(void *callbackContext, boolean suspended)
 send_suspend_ind:
        //stop all TX queues before suspend
        netif_tx_disable(pAdapter->dev);
+       WLANTL_PauseUnPauseQs(pVosContext, true);
 
       /* Keep this suspend indication at the end (before processing next adaptor)
        * for discrete. This indication is considered as trigger point to start
@@ -1649,6 +1650,9 @@ void hdd_resume_wlan(void)
 
 send_resume_ind:
       //wake the tx queues
+      hddLog(LOG1, FL("Enabling queues"));
+      WLANTL_PauseUnPauseQs(pVosContext, false);
+
       netif_tx_wake_all_queues(pAdapter->dev);
 
       hdd_conf_resume_ind(pAdapter);
@@ -2035,20 +2039,6 @@ VOS_STATUS hdd_wlan_re_init(void *hif_sc)
       goto err_vosclose;
    }
 
-   /* initialize the NV module. This is required so that
-      we can initialize the channel information in wiphy
-      from the NV.bin data. The channel information in
-      wiphy needs to be initialized before wiphy registration */
-
-   vosStatus = vos_init_wiphy_from_eeprom();
-   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-   {
-      /* NV module cannot be initialized */
-      hddLog(VOS_TRACE_LEVEL_FATAL,
-             "%s: vos_init_wiphy_from_eeprom failed", __func__);
-      goto err_vosclose;
-   }
-
    vosStatus = hdd_set_sme_chan_list(pHddCtx);
    if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
       hddLog(VOS_TRACE_LEVEL_FATAL,
@@ -2199,6 +2189,7 @@ VOS_STATUS hdd_wlan_re_init(void *hif_sc)
       goto err_unregister_pmops;
    }
    vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, FALSE);
+   sme_set_rssi_threshold_breached_cb(pHddCtx->hHal, hdd_rssi_threshold_breached);
 
 #ifdef WLAN_FEATURE_LPSS
    wlan_hdd_send_all_scan_intf_info(pHddCtx);

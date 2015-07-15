@@ -618,4 +618,16 @@ void lim_set_vht_caps(tpAniSirGlobal p_mac,
 #endif /* WLAN_FEATURE_11AC */
 
 void lim_set_stads_rtt_cap(tpDphHashNode sta_ds, struct s_ext_cap *ext_cap);
+eHalStatus lim_send_ext_cap_ie(tpAniSirGlobal mac_ctx,
+			       uint32_t session_id,
+			       tDot11fIEExtCap *extracted_extcap, bool merge);
+
+tSirRetStatus lim_strip_extcap_ie(tpAniSirGlobal mac_ctx, uint8_t *addn_ie,
+			uint16_t *addn_ielen, uint8_t *extracted_extcap);
+void lim_update_extcap_struct(tpAniSirGlobal mac_ctx, uint8_t *buf,
+			       tDot11fIEExtCap *ext_cap);
+tSirRetStatus lim_strip_extcap_update_struct(tpAniSirGlobal mac_ctx,
+		uint8_t* addn_ie, uint16_t *addn_ielen, tDot11fIEExtCap *dst);
+void lim_merge_extcap_struct(tDot11fIEExtCap *dst, tDot11fIEExtCap *src);
+
 #endif /* __LIM_UTILS_H */

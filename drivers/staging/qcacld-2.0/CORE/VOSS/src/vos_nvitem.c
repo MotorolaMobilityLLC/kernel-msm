@@ -1124,6 +1124,13 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         return VOS_STATUS_E_FAULT;
     }
 
+    if (pHddCtx->isLogpInProgress) {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   (" SSR in progress, return") );
+        *pRegDomain = temp_reg_domain;
+         return VOS_STATUS_SUCCESS;
+    }
+
     wiphy = pHddCtx->wiphy;
 
     if (false == wiphy->registered) {

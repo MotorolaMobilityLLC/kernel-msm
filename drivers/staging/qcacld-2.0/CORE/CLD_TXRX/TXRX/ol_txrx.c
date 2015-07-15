@@ -884,7 +884,7 @@ ol_txrx_vdev_attach(
             pdev->osdev,
             &vdev->ll_pause.timer,
             ol_tx_vdev_ll_pause_queue_send,
-            vdev);
+            vdev, ADF_DEFERRABLE_TIMER);
     adf_os_atomic_init(&vdev->os_q_paused);
     adf_os_atomic_set(&vdev->os_q_paused, 0);
     vdev->tx_fl_lwm = 0;

@@ -1765,6 +1765,11 @@ void hif_pci_crash_shutdown(struct pci_dev *pdev)
         return;
     }
 
+    if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
+        pr_info("%s: Load/unload is in progress, ignore!\n", __func__);
+        return;
+    }
+
     adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
 
 #ifdef DEBUG

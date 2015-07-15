@@ -158,13 +158,40 @@ static int wlan_send_sock_msg_to_app(tAniHdr *wmsg, int radio,
 	return err;
 }
 
+/**
+ * is_data_path_module() - To check for a Datapath module
+ * @mod_id: Module id
+ *
+ * Checks if the input module id belongs to data path.
+ *
+ * Return: True if the module belongs to data path, false otherwise
+ */
+static bool is_data_path_module(VOS_MODULE_ID mod_id)
+{
+	switch (mod_id) {
+	case VOS_MODULE_ID_HDD_DATA:
+	case VOS_MODULE_ID_HDD_SAP_DATA:
+	case VOS_MODULE_ID_HTC:
+	case VOS_MODULE_ID_TXRX:
+	case VOS_MODULE_ID_HIF:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static void set_default_logtoapp_log_level(void)
 {
 	int i;
 
 	/* module id 0 is reserved */
-	for (i = 1; i < VOS_MODULE_ID_MAX; i++)
-		vos_trace_setValue(i, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
+	for (i = 1; i < VOS_MODULE_ID_MAX; i++) {
+		if (is_data_path_module(i))
+			vos_trace_set_module_trace_level(i,
+						VOS_DATA_PATH_TRACE_LEVEL);
+		else
+			vos_trace_setValue(i, VOS_TRACE_LEVEL_ALL, VOS_TRUE);
+	}
 }
 
 static void clear_default_logtoapp_log_level(void)
@@ -588,7 +615,6 @@ static int wlan_logging_proc_sock_rx_msg(struct sk_buff *skb)
 		 * logger app is registered for the first time.
 		 */
 		gapp_pid = wnl->nlh.nlmsg_pid;
-		set_default_logtoapp_log_level();
 	}
 
 	ret = wlan_send_sock_msg_to_app(&wnl->wmsg, 0,

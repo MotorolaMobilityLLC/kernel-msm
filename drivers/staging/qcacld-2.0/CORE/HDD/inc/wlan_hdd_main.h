@@ -298,39 +298,25 @@ typedef struct hdd_tx_rx_stats_s
    // start_xmit stats
    __u32    txXmitCalled;
    __u32    txXmitDropped;
-   __u32    txXmitBackPressured;
-   __u32    txXmitQueued;
    __u32    txXmitClassifiedAC[NUM_TX_QUEUES];
    __u32    txXmitDroppedAC[NUM_TX_QUEUES];
-   __u32    txXmitBackPressuredAC[NUM_TX_QUEUES];
-   __u32    txXmitQueuedAC[NUM_TX_QUEUES];
-   // fetch_cbk stats
-   __u32    txFetched;
-   __u32    txFetchedAC[NUM_TX_QUEUES];
-   __u32    txFetchEmpty;
-   __u32    txFetchLowResources;
-   __u32    txFetchDequeueError;
-   __u32    txFetchDequeued;
-   __u32    txFetchDequeuedAC[NUM_TX_QUEUES];
-   __u32    txFetchDePressured;
-   __u32    txFetchDePressuredAC[NUM_TX_QUEUES];
    // complete_cbk_stats
    __u32    txCompleted;
-   // flush stats
-   __u32    txFlushed;
-   __u32    txFlushedAC[NUM_TX_QUEUES];
-   // Deque depressure stats
-   __u32    txDequeDePressured;
-   __u32    txDequeDePressuredAC[NUM_TX_QUEUES];
    // rx stats
    __u32    rxChains;
    __u32    rxPackets;
    __u32    rxDropped;
    __u32    rxDelivered;
    __u32    rxRefused;
-   __u32    pkt_tx_count; //TX pkt Counter used for dynamic splitscan
-   __u32    pkt_rx_count; //RX pkt Counter used for dynamic splitscan
 
+   __u32    netq_disable_cnt;
+   __u32    netq_enable_cnt;
+   bool     netq_state_off;
+
+   bool     is_txflow_paused;
+   __u32    txflow_pause_cnt;
+   __u32    txflow_unpause_cnt;
+   __u32    txflow_timer_cnt;
 } hdd_tx_rx_stats_t;
 
 #ifdef WLAN_FEATURE_11W
@@ -1165,6 +1151,29 @@ struct hdd_ll_stats_context {
 };
 #endif /* End of WLAN_FEATURE_LINK_LAYER_STATS */
 
+#ifdef WLAN_FEATURE_OFFLOAD_PACKETS
+/**
+ * struct hdd_offloaded_packets - request id to pattern id mapping
+ * @request_id: request id
+ * @pattern_id: pattern id
+ *
+ */
+struct hdd_offloaded_packets {
+	uint32_t request_id;
+	uint8_t  pattern_id;
+};
+
+/**
+ * struct hdd_offloaded_packets_ctx - offloaded packets context
+ * @op_table: request id to pattern id table
+ * @op_lock: mutex lock
+ */
+struct hdd_offloaded_packets_ctx {
+	struct hdd_offloaded_packets op_table[MAXNUM_PERIODIC_TX_PTRNS];
+	struct mutex op_lock;
+};
+#endif
+
 /** Adapter stucture definition */
 
 struct hdd_context_s
@@ -1469,9 +1478,14 @@ struct hdd_context_s
 
     /* Is htTxSTBC supported by target */
     uint8_t   ht_tx_stbc_supported;
+
     /* RoC request queue and work */
     struct work_struct rocReqWork;
     hdd_list_t hdd_roc_req_q;
+
+#ifdef WLAN_FEATURE_OFFLOAD_PACKETS
+    struct hdd_offloaded_packets_ctx op_ctx;
+#endif
 };
 
 /*---------------------------------------------------------------------------
@@ -1567,7 +1581,7 @@ int wlan_hdd_validate_context(hdd_context_t *pHddCtx);
 v_BOOL_t hdd_is_valid_mac_address(const tANI_U8* pMacAddr);
 VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
 void hdd_ipv4_notifier_work_queue(struct work_struct *work);
-v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx );
+bool hdd_isConnectionInProgress(hdd_context_t *pHddCtx);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 sessionId);
 #endif

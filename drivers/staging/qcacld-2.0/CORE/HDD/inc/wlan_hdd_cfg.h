@@ -1226,6 +1226,11 @@ typedef enum
 #define CFG_ROAM_RESCAN_RSSI_DIFF_MAX                   (100)
 #define CFG_ROAM_RESCAN_RSSI_DIFF_DEFAULT               (5)
 
+#define CFG_DROPPED_PKT_DISCONNECT_TH_NAME      "gDroppedPktDisconnectTh"
+#define CFG_DROPPED_PKT_DISCONNECT_TH_MIN       (48)
+#define CFG_DROPPED_PKT_DISCONNECT_TH_MAX       (256)
+#define CFG_DROPPED_PKT_DISCONNECT_TH_DEFAULT   (96)
+
 /*
  * This parameter is the RSSI diff above neighbor lookup threshold, when
  * opportunistic scan should be triggered.
@@ -1343,6 +1348,13 @@ typedef enum
 #define CFG_ENABLE_HOST_SSDP_MIN               ( 0 )
 #define CFG_ENABLE_HOST_SSDP_MAX               ( 1 )
 #define CFG_ENABLE_HOST_SSDP_DEFAULT           ( 1 )
+
+#ifdef FEATURE_SECURE_FIRMWARE
+#define CFG_ENABLE_FW_HASH_CHECK_NAME          "gEnableFWHashCheck"
+#define CFG_ENABLE_FW_HASH_CHECK_MIN           ( 0 )
+#define CFG_ENABLE_FW_HASH_CHECK_MAX           ( 1 )
+#define CFG_ENABLE_FW_HASH_CHECK_DEFAULT       ( 1 )
+#endif
 
 #define CFG_ENABLE_HOST_NSOFFLOAD_NAME         "hostNSOffload"
 #define CFG_ENABLE_HOST_NSOFFLOAD_MIN          ( 0 )
@@ -1636,6 +1648,13 @@ typedef enum
 #define CFG_VOS_TRACE_ENABLE_VOSS_NAME    "vosTraceEnableVOSS"
 #define CFG_VOS_TRACE_ENABLE_SAP_NAME     "vosTraceEnableSAP"
 #define CFG_VOS_TRACE_ENABLE_HDD_SAP_NAME "vosTraceEnableHDDSAP"
+#define CFG_VOS_TRACE_ENABLE_CFG_NAME     "vosTraceEnableCFG"
+#define CFG_VOS_TRACE_ENABLE_ADF_NAME     "vosTraceEnableADF"
+#define CFG_VOS_TRACE_ENABLE_TXRX_NAME    "vosTraceEnableTXRX"
+#define CFG_VOS_TRACE_ENABLE_HTC_NAME     "vosTraceEnableHTC"
+#define CFG_VOS_TRACE_ENABLE_HIF_NAME     "vosTraceEnableHIF"
+#define CFG_VOS_TRACE_ENABLE_HDD_SAP_DATA_NAME     "vosTraceEnableHDDSAPDATA"
+#define CFG_VOS_TRACE_ENABLE_HDD_DATA_NAME         "vosTraceEnableHDDDATA"
 
 #define CFG_VOS_TRACE_ENABLE_MIN          (0)
 #define CFG_VOS_TRACE_ENABLE_MAX          (0xff)
@@ -3193,6 +3212,13 @@ typedef struct
    v_U16_t                     vosTraceEnableVOSS;
    v_U16_t                     vosTraceEnableSAP;
    v_U16_t                     vosTraceEnableHDDSAP;
+   v_U16_t                     vosTraceEnableCFG;
+   v_U16_t                     vosTraceEnableADF;
+   v_U16_t                     vosTraceEnableTXRX;
+   v_U16_t                     vosTraceEnableHTC;
+   v_U16_t                     vosTraceEnableHIF;
+   v_U16_t                     vosTraceEnableHDDSAPDATA;
+   v_U16_t                     vosTraceEnableHDDDATA;
 
    v_U16_t                     nTeleBcnTransListenInterval;
    v_U16_t                     nTeleBcnMaxListenInterval;
@@ -3493,6 +3519,10 @@ typedef struct
    uint8_t                     multicast_host_fw_msgs;
    uint32_t                    fine_time_meas_cap;
    uint16_t                    p2p_listen_defer_interval;
+#ifdef FEATURE_SECURE_FIRMWARE
+   bool                        enable_fw_hash_check;
+#endif
+   uint16_t                    pkt_err_disconn_th;
 } hdd_config_t;
 
 #ifdef WLAN_FEATURE_MBSSID

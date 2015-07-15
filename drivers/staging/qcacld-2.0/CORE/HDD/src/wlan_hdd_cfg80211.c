@@ -1108,6 +1108,10 @@ static const struct nl80211_vendor_cmd_info wlan_hdd_cfg80211_vendor_events[] =
         .subcmd = QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP
     },
 #endif /* WLAN_FEATURE_MEMDUMP */
+    [QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI_INDEX] = {
+        .vendor_id = QCA_NL80211_VENDOR_ID,
+        .subcmd = QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI
+    },
 };
 
 static int is_driver_dfs_capable(struct wiphy *wiphy,
@@ -1240,6 +1244,7 @@ __wlan_hdd_cfg80211_get_supported_features(struct wiphy *wiphy,
     /* AP+STA concurrency is supported currently by default */
     fset |= WIFI_FEATURE_AP_STA;
 #endif
+    fset |= WIFI_FEATURE_RSSI_MONITOR;
 
     if (hdd_link_layer_stats_supported())
         fset |= WIFI_FEATURE_LINK_LAYER_STATS;
@@ -5502,6 +5507,13 @@ static void wlan_hdd_cfg80211_link_layer_stats_callback(void *ctx,
                                    linkLayerStatsResults->num_peers);
 
                 spin_lock(&hdd_context_lock);
+                /* Firmware doesn't send peerstats event if no peers are
+                 * connected. HDD should not wait for any peerstats in this case
+                 * and return the status to middlewre after receiving iface
+                 * stats
+                 */
+                if (!linkLayerStatsResults->num_peers)
+                     context->request_bitmap &= ~(WMI_LINK_STATS_ALL_PEER);
                 context->request_bitmap &= ~(WMI_LINK_STATS_IFACE);
                 spin_unlock(&hdd_context_lock);
 
@@ -6962,6 +6974,607 @@ static int wlan_hdd_cfg80211_wifi_logger_get_ring_data(struct wiphy *wiphy,
 	return ret;
 }
 
+#ifdef WLAN_FEATURE_OFFLOAD_PACKETS
+/**
+ * hdd_map_req_id_to_pattern_id() - map request id to pattern id
+ * @hdd_ctx: HDD context
+ * @request_id: [input] request id
+ * @pattern_id: [output] pattern id
+ *
+ * This function loops through request id to pattern id array
+ * if the slot is available, store the request id and return pattern id
+ * if entry exists, return the pattern id
+ *
+ * Return: 0 on success and errno on failure
+ */
+static int hdd_map_req_id_to_pattern_id(hdd_context_t *hdd_ctx,
+					  uint32_t request_id,
+					  uint8_t *pattern_id)
+{
+	uint32_t i;
+
+	mutex_lock(&hdd_ctx->op_ctx.op_lock);
+	for (i = 0; i < MAXNUM_PERIODIC_TX_PTRNS; i++) {
+		if (hdd_ctx->op_ctx.op_table[i].request_id == 0) {
+			hdd_ctx->op_ctx.op_table[i].request_id = request_id;
+			*pattern_id = hdd_ctx->op_ctx.op_table[i].pattern_id;
+			mutex_unlock(&hdd_ctx->op_ctx.op_lock);
+			return 0;
+		} else if (hdd_ctx->op_ctx.op_table[i].request_id ==
+					request_id) {
+			*pattern_id = hdd_ctx->op_ctx.op_table[i].pattern_id;
+			mutex_unlock(&hdd_ctx->op_ctx.op_lock);
+			return 0;
+		}
+	}
+	mutex_unlock(&hdd_ctx->op_ctx.op_lock);
+	return -EINVAL;
+}
+
+/**
+ * hdd_unmap_req_id_to_pattern_id() - unmap request id to pattern id
+ * @hdd_ctx: HDD context
+ * @request_id: [input] request id
+ * @pattern_id: [output] pattern id
+ *
+ * This function loops through request id to pattern id array
+ * reset request id to 0 (slot available again) and
+ * return pattern id
+ *
+ * Return: 0 on success and errno on failure
+ */
+static int hdd_unmap_req_id_to_pattern_id(hdd_context_t *hdd_ctx,
+					  uint32_t request_id,
+					  uint8_t *pattern_id)
+{
+	uint32_t i;
+
+	mutex_lock(&hdd_ctx->op_ctx.op_lock);
+	for (i = 0; i < MAXNUM_PERIODIC_TX_PTRNS; i++) {
+		if (hdd_ctx->op_ctx.op_table[i].request_id == request_id) {
+			hdd_ctx->op_ctx.op_table[i].request_id = 0;
+			*pattern_id = hdd_ctx->op_ctx.op_table[i].pattern_id;
+			mutex_unlock(&hdd_ctx->op_ctx.op_lock);
+			return 0;
+		}
+	}
+	mutex_unlock(&hdd_ctx->op_ctx.op_lock);
+	return -EINVAL;
+}
+
+
+/*
+ * define short names for the global vendor params
+ * used by __wlan_hdd_cfg80211_offloaded_packets()
+ */
+#define PARAM_MAX QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_MAX
+#define PARAM_REQUEST_ID \
+		QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_REQUEST_ID
+#define PARAM_CONTROL \
+		QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_SENDING_CONTROL
+#define PARAM_IP_PACKET \
+		QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_IP_PACKET_DATA
+#define PARAM_SRC_MAC_ADDR \
+		QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_SRC_MAC_ADDR
+#define PARAM_DST_MAC_ADDR \
+		QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_DST_MAC_ADDR
+#define PARAM_PERIOD QCA_WLAN_VENDOR_ATTR_OFFLOADED_PACKETS_PERIOD
+
+/**
+ * wlan_hdd_add_tx_ptrn() - add tx pattern
+ * @adapter: adapter pointer
+ * @hdd_ctx: hdd context
+ * @tb: nl attributes
+ *
+ * This function reads the NL attributes and forms a AddTxPtrn message
+ * posts it to SME.
+ *
+ */
+static int
+wlan_hdd_add_tx_ptrn(hdd_adapter_t *adapter, hdd_context_t *hdd_ctx,
+			struct nlattr **tb)
+{
+	struct sSirAddPeriodicTxPtrn *add_req;
+	eHalStatus status;
+	uint32_t request_id, ret, len;
+	uint8_t pattern_id = 0;
+	v_MACADDR_t dst_addr;
+	uint16_t eth_type = htons(ETH_P_IP);
+
+	if (!hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(adapter))) {
+		hddLog(LOGE, FL("Not in Connected state!"));
+		return -ENOTSUPP;
+	}
+
+	add_req = vos_mem_malloc(sizeof(*add_req));
+	if (!add_req) {
+		hddLog(LOGE, FL("memory allocation failed"));
+		return -ENOMEM;
+	}
+
+	/* Parse and fetch request Id */
+	if (!tb[PARAM_REQUEST_ID]) {
+		hddLog(LOGE, FL("attr request id failed"));
+		goto fail;
+	}
+
+	request_id = nla_get_u32(tb[PARAM_REQUEST_ID]);
+	hddLog(LOG1, FL("Request Id: %u"), request_id);
+	if (request_id == 0) {
+		hddLog(LOGE, FL("request_id cannot be zero"));
+		return -EINVAL;
+	}
+
+	if (!tb[PARAM_PERIOD]) {
+		hddLog(LOGE, FL("attr period failed"));
+		goto fail;
+	}
+	add_req->usPtrnIntervalMs = nla_get_u32(tb[PARAM_PERIOD]);
+	hddLog(LOG1, FL("Period: %u ms"), add_req->usPtrnIntervalMs);
+	if (add_req->usPtrnIntervalMs == 0) {
+		hddLog(LOGE, FL("Invalid interval zero, return failure"));
+		goto fail;
+	}
+
+	if (!tb[PARAM_SRC_MAC_ADDR]) {
+		hddLog(LOGE, FL("attr source mac address failed"));
+		goto fail;
+	}
+	nla_memcpy(add_req->macAddress, tb[PARAM_SRC_MAC_ADDR],
+			VOS_MAC_ADDR_SIZE);
+	hddLog(LOG1, "input src mac address: "MAC_ADDRESS_STR,
+			MAC_ADDR_ARRAY(add_req->macAddress));
+
+	if (memcmp(add_req->macAddress, adapter->macAddressCurrent.bytes,
+		VOS_MAC_ADDR_SIZE)) {
+		hddLog(LOGE, FL("input src mac address and connected ap bssid are different"));
+		goto fail;
+	}
+
+	if (!tb[PARAM_DST_MAC_ADDR]) {
+		hddLog(LOGE, FL("attr dst mac address failed"));
+		goto fail;
+	}
+	nla_memcpy(dst_addr.bytes, tb[PARAM_DST_MAC_ADDR], VOS_MAC_ADDR_SIZE);
+	hddLog(LOG1, "input dst mac address: "MAC_ADDRESS_STR,
+			MAC_ADDR_ARRAY(dst_addr.bytes));
+
+	if (!tb[PARAM_IP_PACKET]) {
+		hddLog(LOGE, FL("attr ip packet failed"));
+		goto fail;
+	}
+	add_req->ucPtrnSize = nla_len(tb[PARAM_IP_PACKET]);
+	hddLog(LOG1, FL("IP packet len: %u"), add_req->ucPtrnSize);
+
+	if (add_req->ucPtrnSize < 0 ||
+		add_req->ucPtrnSize > (PERIODIC_TX_PTRN_MAX_SIZE -
+					HDD_ETH_HEADER_LEN)) {
+		hddLog(LOGE, FL("Invalid IP packet len: %d"),
+				add_req->ucPtrnSize);
+		goto fail;
+	}
+
+	len = 0;
+	vos_mem_copy(&add_req->ucPattern[0], dst_addr.bytes, VOS_MAC_ADDR_SIZE);
+	len += VOS_MAC_ADDR_SIZE;
+	vos_mem_copy(&add_req->ucPattern[len], add_req->macAddress,
+			VOS_MAC_ADDR_SIZE);
+	len += VOS_MAC_ADDR_SIZE;
+	vos_mem_copy(&add_req->ucPattern[len], &eth_type, 2);
+	len += 2;
+
+	/*
+	 * This is the IP packet, add 14 bytes Ethernet (802.3) header
+	 * ------------------------------------------------------------
+	 * | 14 bytes Ethernet (802.3) header | IP header and payload |
+	 * ------------------------------------------------------------
+	 */
+	vos_mem_copy(&add_req->ucPattern[len],
+			nla_data(tb[PARAM_IP_PACKET]),
+			add_req->ucPtrnSize);
+	add_req->ucPtrnSize += len;
+
+	VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+				add_req->ucPattern, add_req->ucPtrnSize);
+
+	ret = hdd_map_req_id_to_pattern_id(hdd_ctx, request_id, &pattern_id);
+	if (ret) {
+		hddLog(LOGW, FL("req id to pattern id failed (ret=%d)"), ret);
+		goto fail;
+	}
+	add_req->ucPtrnId = pattern_id;
+	hddLog(LOG1, FL("pattern id: %d"), add_req->ucPtrnId);
+
+	status = sme_AddPeriodicTxPtrn(hdd_ctx->hHal, add_req);
+	if (!HAL_STATUS_SUCCESS(status)) {
+		hddLog(LOGE,
+			FL("sme_AddPeriodicTxPtrn failed (err=%d)"), status);
+		goto fail;
+	}
+
+	EXIT();
+	vos_mem_free(add_req);
+	return 0;
+
+fail:
+	vos_mem_free(add_req);
+	return -EINVAL;
+}
+
+/**
+ * wlan_hdd_del_tx_ptrn() - delete tx pattern
+ * @adapter: adapter pointer
+ * @hdd_ctx: hdd context
+ * @tb: nl attributes
+ *
+ * This function reads the NL attributes and forms a DelTxPtrn message
+ * posts it to SME.
+ *
+ */
+static int
+wlan_hdd_del_tx_ptrn(hdd_adapter_t *adapter, hdd_context_t *hdd_ctx,
+			struct nlattr **tb)
+{
+	struct sSirDelPeriodicTxPtrn *del_req;
+	eHalStatus status;
+	uint32_t request_id, ret;
+	uint8_t pattern_id = 0;
+
+	/* Parse and fetch request Id */
+	if (!tb[PARAM_REQUEST_ID]) {
+		hddLog(LOGE, FL("attr request id failed"));
+		return -EINVAL;
+	}
+	request_id = nla_get_u32(tb[PARAM_REQUEST_ID]);
+	if (request_id == 0) {
+		hddLog(LOGE, FL("request_id cannot be zero"));
+		return -EINVAL;
+	}
+
+	ret = hdd_unmap_req_id_to_pattern_id(hdd_ctx, request_id, &pattern_id);
+	if (ret) {
+		hddLog(LOGW, FL("req id to pattern id failed (ret=%d)"), ret);
+		return -EINVAL;
+	}
+
+	del_req = vos_mem_malloc(sizeof(*del_req));
+	if (!del_req) {
+		hddLog(LOGE, FL("memory allocation failed"));
+		return -ENOMEM;
+	}
+
+	vos_mem_copy(del_req->macAddress, adapter->macAddressCurrent.bytes,
+			VOS_MAC_ADDR_SIZE);
+	hddLog(LOG1, MAC_ADDRESS_STR, MAC_ADDR_ARRAY(del_req->macAddress));
+	del_req->ucPtrnId = pattern_id;
+	hddLog(LOG1, FL("Request Id: %u Pattern id: %d"),
+			 request_id, del_req->ucPtrnId);
+
+	status = sme_DelPeriodicTxPtrn(hdd_ctx->hHal, del_req);
+	if (!HAL_STATUS_SUCCESS(status)) {
+		hddLog(LOGE,
+			FL("sme_DelPeriodicTxPtrn failed (err=%d)"), status);
+		goto fail;
+	}
+
+	EXIT();
+	vos_mem_free(del_req);
+	return 0;
+
+fail:
+	vos_mem_free(del_req);
+	return -EINVAL;
+}
+
+
+/**
+ * __wlan_hdd_cfg80211_offloaded_packets() - send offloaded packets
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int
+__wlan_hdd_cfg80211_offloaded_packets(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     const void *data,
+				     int data_len)
+{
+	struct net_device *dev = wdev->netdev;
+	hdd_adapter_t *adapter = WLAN_HDD_GET_PRIV_PTR(dev);
+	hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
+	struct nlattr *tb[PARAM_MAX + 1];
+	uint8_t control;
+	int ret;
+	static const struct nla_policy policy[PARAM_MAX + 1] = {
+			[PARAM_REQUEST_ID] = { .type = NLA_U32 },
+			[PARAM_CONTROL] = { .type = NLA_U32 },
+			[PARAM_SRC_MAC_ADDR] = { .type = NLA_BINARY,
+						.len = VOS_MAC_ADDR_SIZE },
+			[PARAM_DST_MAC_ADDR] = { .type = NLA_BINARY,
+						.len = VOS_MAC_ADDR_SIZE },
+			[PARAM_PERIOD] = { .type = NLA_U32 },
+	};
+
+	ENTER();
+
+	ret = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != ret) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return ret;
+	}
+
+	if (!sme_IsFeatureSupportedByFW(WLAN_PERIODIC_TX_PTRN)) {
+		hddLog(LOGE,
+			FL("Periodic Tx Pattern Offload feature is not supported in FW!"));
+		return -ENOTSUPP;
+	}
+
+	if (nla_parse(tb, PARAM_MAX, data, data_len, policy)) {
+		hddLog(LOGE, FL("Invalid ATTR"));
+		return -EINVAL;
+	}
+
+	if (!tb[PARAM_CONTROL]) {
+		hddLog(LOGE, FL("attr control failed"));
+		return -EINVAL;
+	}
+	control = nla_get_u32(tb[PARAM_CONTROL]);
+	hddLog(LOG1, FL("Control: %d"), control);
+
+	if (control == WLAN_START_OFFLOADED_PACKETS)
+		return wlan_hdd_add_tx_ptrn(adapter, hdd_ctx, tb);
+	else if (control == WLAN_STOP_OFFLOADED_PACKETS)
+		return wlan_hdd_del_tx_ptrn(adapter, hdd_ctx, tb);
+	else {
+		hddLog(LOGE, FL("Invalid control: %d"), control);
+		return -EINVAL;
+	}
+}
+
+/*
+ * done with short names for the global vendor params
+ * used by __wlan_hdd_cfg80211_offloaded_packets()
+ */
+#undef PARAM_MAX
+#undef PARAM_REQUEST_ID
+#undef PARAM_CONTROL
+#undef PARAM_IP_PACKET
+#undef PARAM_SRC_MAC_ADDR
+#undef PARAM_DST_MAC_ADDR
+#undef PARAM_PERIOD
+
+/**
+ * wlan_hdd_cfg80211_offloaded_packets() - Wrapper to offload packets
+ * @wiphy:    wiphy structure pointer
+ * @wdev:     Wireless device structure pointer
+ * @data:     Pointer to the data received
+ * @data_len: Length of @data
+ *
+ * Return: 0 on success; errno on failure
+ */
+static int wlan_hdd_cfg80211_offloaded_packets(struct wiphy *wiphy,
+						struct wireless_dev *wdev,
+						const void *data,
+						int data_len)
+{
+	int ret = 0;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_offloaded_packets(wiphy,
+					wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+#endif
+
+/*
+ * define short names for the global vendor params
+ * used by __wlan_hdd_cfg80211_monitor_rssi()
+ */
+#define PARAM_MAX QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MAX
+#define PARAM_REQUEST_ID QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_REQUEST_ID
+#define PARAM_CONTROL QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CONTROL
+#define PARAM_MIN_RSSI QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MIN_RSSI
+#define PARAM_MAX_RSSI QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_MAX_RSSI
+
+/**
+ * __wlan_hdd_cfg80211_monitor_rssi() - monitor rssi
+ * @wiphy: Pointer to wireless phy
+ * @wdev: Pointer to wireless device
+ * @data: Pointer to data
+ * @data_len: Data length
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+static int
+__wlan_hdd_cfg80211_monitor_rssi(struct wiphy *wiphy,
+				 struct wireless_dev *wdev,
+				 const void *data,
+				 int data_len)
+{
+	struct net_device *dev = wdev->netdev;
+	hdd_adapter_t *adapter = WLAN_HDD_GET_PRIV_PTR(dev);
+	hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
+	struct nlattr *tb[PARAM_MAX + 1];
+	struct rssi_monitor_req req;
+	eHalStatus status;
+	int ret;
+	uint32_t control;
+	static const struct nla_policy policy[PARAM_MAX + 1] = {
+			[PARAM_REQUEST_ID] = { .type = NLA_U32 },
+			[PARAM_CONTROL] = { .type = NLA_U32 },
+			[PARAM_MIN_RSSI] = { .type = NLA_S8 },
+			[PARAM_MAX_RSSI] = { .type = NLA_S8 },
+	};
+
+	ENTER();
+
+	ret = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != ret) {
+		hddLog(LOGE, FL("HDD context is not valid"));
+		return -EINVAL;
+	}
+
+	if (!hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(adapter))) {
+		hddLog(LOGE, FL("Not in Connected state!"));
+		return -ENOTSUPP;
+	}
+
+	if (nla_parse(tb, PARAM_MAX, data, data_len, policy)) {
+		hddLog(LOGE, FL("Invalid ATTR"));
+		return -EINVAL;
+	}
+
+	if (!tb[PARAM_REQUEST_ID]) {
+		hddLog(LOGE, FL("attr request id failed"));
+		return -EINVAL;
+	}
+
+	if (!tb[PARAM_CONTROL]) {
+		hddLog(LOGE, FL("attr control failed"));
+		return -EINVAL;
+	}
+
+	req.request_id = nla_get_u32(tb[PARAM_REQUEST_ID]);
+	req.session_id = adapter->sessionId;
+	control = nla_get_u32(tb[PARAM_CONTROL]);
+
+	if (control == QCA_WLAN_RSSI_MONITORING_START) {
+		req.control = true;
+		if (!tb[PARAM_MIN_RSSI]) {
+			hddLog(LOGE, FL("attr min rssi failed"));
+			return -EINVAL;
+		}
+
+		if (!tb[PARAM_MAX_RSSI]) {
+			hddLog(LOGE, FL("attr max rssi failed"));
+			return -EINVAL;
+		}
+
+		req.min_rssi = nla_get_s8(tb[PARAM_MIN_RSSI]);
+		req.max_rssi = nla_get_s8(tb[PARAM_MAX_RSSI]);
+
+		if (!(req.min_rssi < req.max_rssi)) {
+			hddLog(LOGW, FL("min_rssi: %d must be less than max_rssi: %d"),
+					req.min_rssi, req.max_rssi);
+			return -EINVAL;
+		}
+		hddLog(LOG1, FL("Min_rssi: %d Max_rssi: %d"),
+			req.min_rssi, req.max_rssi);
+
+	} else if (control == QCA_WLAN_RSSI_MONITORING_STOP)
+		req.control = false;
+	else {
+		hddLog(LOGE, FL("Invalid control cmd: %d"), control);
+		return -EINVAL;
+	}
+	hddLog(LOG1, FL("Request Id: %u Session_id: %d Control: %d"),
+			req.request_id, req.session_id, req.control);
+
+	status = sme_set_rssi_monitoring(hdd_ctx->hHal, &req);
+	if (!HAL_STATUS_SUCCESS(status)) {
+		hddLog(LOGE,
+			FL("sme_set_rssi_monitoring failed(err=%d)"), status);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/*
+ * done with short names for the global vendor params
+ * used by __wlan_hdd_cfg80211_monitor_rssi()
+ */
+#undef PARAM_MAX
+#undef PARAM_CONTROL
+#undef PARAM_REQUEST_ID
+#undef PARAM_MAX_RSSI
+#undef PARAM_MIN_RSSI
+
+/**
+ * wlan_hdd_cfg80211_monitor_rssi() - SSR wrapper to rssi monitoring
+ * @wiphy:    wiphy structure pointer
+ * @wdev:     Wireless device structure pointer
+ * @data:     Pointer to the data received
+ * @data_len: Length of @data
+ *
+ * Return: 0 on success; errno on failure
+ */
+static int
+wlan_hdd_cfg80211_monitor_rssi(struct wiphy *wiphy, struct wireless_dev *wdev,
+			       const void *data, int data_len)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __wlan_hdd_cfg80211_monitor_rssi(wiphy, wdev, data, data_len);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
+}
+
+/**
+ * hdd_rssi_threshold_breached() - rssi breached NL event
+ * @hddctx: HDD context
+ * @data: rssi breached event data
+ *
+ * This function reads the rssi breached event %data and fill in the skb with
+ * NL attributes and send up the NL event.
+ *
+ * Return: none
+ */
+void hdd_rssi_threshold_breached(void *hddctx,
+				 struct rssi_breach_event *data)
+{
+	hdd_context_t *hdd_ctx  = hddctx;
+	struct sk_buff *skb;
+
+	ENTER();
+
+	if (wlan_hdd_validate_context(hdd_ctx) || !data) {
+		hddLog(LOGE, FL("HDD context is invalid or data(%p) is null"),
+			data);
+		return;
+	}
+
+	skb = cfg80211_vendor_event_alloc(hdd_ctx->wiphy,
+				  EXTSCAN_EVENT_BUF_SIZE + NLMSG_HDRLEN,
+				  QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI_INDEX,
+				  GFP_KERNEL);
+
+	if (!skb) {
+		hddLog(LOGE, FL("cfg80211_vendor_event_alloc failed"));
+		return;
+	}
+
+	hddLog(LOG1, "Req Id: %u Current rssi: %d",
+			data->request_id, data->curr_rssi);
+	hddLog(LOG1, "Current BSSID: "MAC_ADDRESS_STR,
+			MAC_ADDR_ARRAY(data->curr_bssid.bytes));
+
+	if (nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_REQUEST_ID,
+		data->request_id) ||
+	    nla_put(skb, QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CUR_BSSID,
+		sizeof(data->curr_bssid), data->curr_bssid.bytes) ||
+	    nla_put_s8(skb, QCA_WLAN_VENDOR_ATTR_RSSI_MONITORING_CUR_RSSI,
+		data->curr_rssi)) {
+		hddLog(LOGE, FL("nla put fail"));
+		goto fail;
+	}
+
+	cfg80211_vendor_event(skb, GFP_KERNEL);
+	return;
+
+fail:
+	kfree_skb(skb);
+	return;
+}
+
+
 const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 {
     {
@@ -7254,6 +7867,24 @@ const struct wiphy_vendor_command hdd_wiphy_vendor_commands[] =
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
 			WIPHY_VENDOR_CMD_NEED_NETDEV,
 		.doit = (void *)wlan_hdd_cfg80211_wifi_logger_get_ring_data
+	},
+#ifdef WLAN_FEATURE_OFFLOAD_PACKETS
+	{
+		.info.vendor_id = QCA_NL80211_VENDOR_ID,
+		.info.subcmd = QCA_NL80211_VENDOR_SUBCMD_OFFLOADED_PACKETS,
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			WIPHY_VENDOR_CMD_NEED_NETDEV |
+			WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = wlan_hdd_cfg80211_offloaded_packets
+	},
+#endif
+	{
+		.info.vendor_id = QCA_NL80211_VENDOR_ID,
+		.info.subcmd = QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI,
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			WIPHY_VENDOR_CMD_NEED_NETDEV |
+			WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = wlan_hdd_cfg80211_monitor_rssi
 	},
 };
 
@@ -9340,6 +9971,8 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
 #endif
 
     pSapEventCallback = hdd_hostapd_SAPEventCB;
+
+    (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->dfs_cac_block_tx = VOS_TRUE;
 
     status = WLANSAP_StartBss(
 #ifdef WLAN_FEATURE_MBSSID
@@ -12165,82 +12798,99 @@ allow_suspend:
  * Go through each adapter and check if Connection is in progress
  *
  */
-v_BOOL_t hdd_isConnectionInProgress( hdd_context_t *pHddCtx )
+bool hdd_isConnectionInProgress(hdd_context_t *pHddCtx)
 {
-    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
-    hdd_station_ctx_t *pHddStaCtx = NULL;
-    hdd_adapter_t *pAdapter = NULL;
-    VOS_STATUS status = 0;
-    v_U8_t staId = 0;
-    v_U8_t *staMac = NULL;
+	hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+	hdd_station_ctx_t *pHddStaCtx = NULL;
+	hdd_adapter_t *pAdapter = NULL;
+	VOS_STATUS status = 0;
+	v_U8_t staId = 0;
+	v_U8_t *staMac = NULL;
 
-    if (TRUE == pHddCtx->btCoexModeSet)
-    {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-           FL("BTCoex Mode operation in progress"));
-        return VOS_TRUE;
-    }
+	if (TRUE == pHddCtx->btCoexModeSet) {
+		hddLog(LOG1, FL("BTCoex Mode operation in progress"));
+		return true;
+	}
 
-    status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+	status = hdd_get_front_adapter(pHddCtx, &pAdapterNode);
 
-    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
-    {
-        pAdapter = pAdapterNode->pAdapter;
+	while (NULL != pAdapterNode && VOS_STATUS_SUCCESS == status) {
+		pAdapter = pAdapterNode->pAdapter;
 
-        if( pAdapter )
-        {
-            hddLog(VOS_TRACE_LEVEL_INFO,
-                    "%s: Adapter with device mode %d exists",
-                    __func__, pAdapter->device_mode);
-            if (((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
-                 (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
-                 (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode)) &&
-                 (eConnectionState_Connecting ==
-                (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
-            {
-                hddLog(VOS_TRACE_LEVEL_ERROR,
-                       "%s: %p(%d) Connection is in progress", __func__,
-                       WLAN_HDD_GET_STATION_CTX_PTR(pAdapter), pAdapter->sessionId);
-                return VOS_TRUE;
-            }
-            if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
-                    (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
-                    (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode))
-            {
-                pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-                if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
-                        (VOS_FALSE == pHddStaCtx->conn_info.uIsAuthenticated))
-                {
-                    staMac = (v_U8_t *) &(pAdapter->macAddressCurrent.bytes[0]);
-                    hddLog(VOS_TRACE_LEVEL_ERROR,
-                           "%s: client " MAC_ADDRESS_STR " is in the middle of WPS/EAPOL exchange.",
-                           __func__,MAC_ADDR_ARRAY(staMac));
-                    return VOS_TRUE;
-                }
-            }
-            else if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
-                    (WLAN_HDD_P2P_GO == pAdapter->device_mode))
-            {
-                for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++)
-                {
-                    if ((pAdapter->aStaInfo[staId].isUsed) &&
-                            (WLANTL_STA_CONNECTED == pAdapter->aStaInfo[staId].tlSTAState))
-                    {
-                        staMac = (v_U8_t *) &(pAdapter->aStaInfo[staId].macAddrSTA.bytes[0]);
+		if (pAdapter) {
+			hddLog(VOS_TRACE_LEVEL_INFO,
+				"%s: Adapter with device mode %d exists",
+				__func__, pAdapter->device_mode);
+			if (((WLAN_HDD_INFRA_STATION ==
+					pAdapter->device_mode) ||
+				(WLAN_HDD_P2P_CLIENT ==
+					pAdapter->device_mode) ||
+				(WLAN_HDD_P2P_DEVICE ==
+					pAdapter->device_mode)) &&
+				(eConnectionState_Connecting ==
+				(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->
+					conn_info.connState)) {
+				hddLog(LOGE,
+					FL("%p(%d) Connection is in progress"),
+					WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
+					pAdapter->sessionId);
+				return true;
+			}
+			if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+				smeNeighborRoamIsHandoffInProgress(
+				WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId))
+			{
+				hddLog(VOS_TRACE_LEVEL_ERROR,
+				"%s: %p(%d) Reassociation is in progress", __func__,
+				WLAN_HDD_GET_STATION_CTX_PTR(pAdapter), pAdapter->sessionId);
+				return VOS_TRUE;
+			}
+			if ((WLAN_HDD_INFRA_STATION ==
+					pAdapter->device_mode) ||
+				(WLAN_HDD_P2P_CLIENT ==
+					pAdapter->device_mode) ||
+				(WLAN_HDD_P2P_DEVICE ==
+					pAdapter->device_mode)) {
+				pHddStaCtx =
+					WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+				if ((eConnectionState_Associated ==
+					pHddStaCtx->conn_info.connState) &&
+					(VOS_FALSE ==
+						pHddStaCtx->conn_info.
+							uIsAuthenticated)) {
+					staMac = (v_U8_t *) &(pAdapter->
+						macAddressCurrent.bytes[0]);
+					hddLog(LOGE,
+						FL("client " MAC_ADDRESS_STR " is in the middle of WPS/EAPOL exchange."),
+						MAC_ADDR_ARRAY(staMac));
+					return true;
+				}
+			} else if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
+				   (WLAN_HDD_P2P_GO == pAdapter->device_mode)) {
+				for (staId = 0; staId < WLAN_MAX_STA_COUNT;
+					staId++) {
+					if ((pAdapter->aStaInfo[staId].
+							isUsed) &&
+						(WLANTL_STA_CONNECTED ==
+						 pAdapter->aStaInfo[staId].
+								tlSTAState)) {
+						staMac = (v_U8_t *) &(pAdapter->
+							aStaInfo[staId].
+							macAddrSTA.bytes[0]);
 
-                        hddLog(VOS_TRACE_LEVEL_ERROR,
-                               "%s: client " MAC_ADDRESS_STR " of SoftAP/P2P-GO is in the "
-                               "middle of WPS/EAPOL exchange.", __func__,
-                                MAC_ADDR_ARRAY(staMac));
-                        return VOS_TRUE;
-                    }
-                }
-            }
-        }
-        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
-        pAdapterNode = pNext;
-    }
-    return VOS_FALSE;
+					hddLog(LOGE,
+						FL("client " MAC_ADDRESS_STR " of SoftAP/P2P-GO is in the "
+						"middle of WPS/EAPOL exchange."),
+						MAC_ADDR_ARRAY(staMac));
+					return true;
+					}
+				}
+			}
+		}
+		status = hdd_get_next_adapter(pHddCtx, pAdapterNode, &pNext);
+		pAdapterNode = pNext;
+	}
+	return false;
 }
 
 static void wlan_hdd_cfg80211_scan_block_cb(struct work_struct *work)
@@ -12427,9 +13077,8 @@ int __wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     /* Check if scan is allowed at this point of time.
      */
-    if (hdd_isConnectionInProgress(pHddCtx))
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Scan not allowed", __func__);
+    if (hdd_isConnectionInProgress(pHddCtx)) {
+        hddLog(LOGE, FL("Scan not allowed"));
         return -EBUSY;
     }
 
@@ -15357,8 +16006,8 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                            MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
 
                     /* Send disassoc and deauth both to avoid some IOT issues */
-                    hdd_softap_sta_disassoc(pAdapter,
-                                            pDelStaParams->peerMacAddr);
+                    hdd_softap_sta_disassoc(pAdapter, pDelStaParams);
+
                     vos_status = hdd_softap_sta_deauth(pAdapter, pDelStaParams);
                     if (VOS_IS_STATUS_SUCCESS(vos_status))
                         pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
@@ -15396,7 +16045,7 @@ static int __wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                    MAC_ADDR_ARRAY(pDelStaParams->peerMacAddr));
 
             /* Send disassoc and deauth both to avoid some IOT issues */
-            hdd_softap_sta_disassoc(pAdapter, pDelStaParams->peerMacAddr);
+            hdd_softap_sta_disassoc(pAdapter, pDelStaParams);
             vos_status = hdd_softap_sta_deauth(pAdapter, pDelStaParams);
             if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
                 pAdapter->aStaInfo[staId].isDeauthInProgress = FALSE;

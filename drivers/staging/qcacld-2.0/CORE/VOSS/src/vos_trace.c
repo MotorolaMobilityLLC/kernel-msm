@@ -154,6 +154,25 @@ void vos_trace_setLevel( VOS_MODULE_ID module, VOS_TRACE_LEVEL level )
    }
 }
 
+/**
+ * vos_trace_set_module_trace_level() - Set module trace level
+ * @module: Module id
+ * @level: Trace level for a module, as a bitmask as per 'moduleTraceInfo'
+ *
+ * Sets the module trace level where the trace level is given as a bit mask
+ *
+ * Return: None
+ */
+void vos_trace_set_module_trace_level(VOS_MODULE_ID module, uint32_t level)
+{
+	if (module < 0 || module >= VOS_MODULE_ID_MAX) {
+		pr_err("%s: Invalid module id %d passed\n", __func__, module);
+		return;
+	}
+
+	gVosTraceInfo[module].moduleTraceLevel = level;
+}
+
 void vos_trace_setValue( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, v_U8_t on)
 {
    // Make sure the caller is passing in a valid LEVEL.

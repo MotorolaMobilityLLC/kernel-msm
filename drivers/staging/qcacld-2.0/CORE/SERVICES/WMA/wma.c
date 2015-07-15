@@ -1098,7 +1098,6 @@ wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle, u_int32_t if_id,
 	wmi_vdev_set_param_cmd_fixed_param *cmd;
 	wmi_buf_t buf;
 	u_int16_t len = sizeof(*cmd);
-	tp_wma_handle wma;
 
 	buf = wmi_buf_alloc(wmi_handle, len);
 	if (!buf) {
@@ -1115,17 +1114,6 @@ wmi_unified_vdev_set_param_send(wmi_unified_t wmi_handle, u_int32_t if_id,
 	cmd->param_value = param_value;
 	WMA_LOGD("Setting vdev %d param = %x, value = %u",
 				if_id, param_id, param_value);
-
-	wma = vos_get_context(VOS_MODULE_ID_WDA,
-			vos_get_global_context(VOS_MODULE_ID_WDA, NULL));
-
-	if (!wma->interfaces[if_id].vdev_up) {
-		WMA_LOGE("%s:vdev %d is not up. Skipping to send set param cmd"
-				, __func__, if_id);
-		wmi_buf_free(buf);
-		return -EINVAL;
-	}
-
 	ret = wmi_unified_cmd_send(wmi_handle, buf, len,
 					WMI_VDEV_SET_PARAM_CMDID);
 	if (ret < 0) {
@@ -1405,6 +1393,8 @@ static int wma_peer_sta_kickout_event_handler(void *handle, u8 *event, u32 len)
 			return -EINVAL;
 		}
 
+		del_sta_ctx->is_tdls = true;
+		del_sta_ctx->vdev_id = vdev_id;
 		del_sta_ctx->staId = peer_id;
 		vos_mem_copy(del_sta_ctx->addr2, macaddr, IEEE80211_ADDR_LEN);
 		vos_mem_copy(del_sta_ctx->bssId, wma->interfaces[vdev_id].bssid,
@@ -1466,6 +1456,7 @@ static int wma_peer_sta_kickout_event_handler(void *handle, u8 *event, u32 len)
 		break;
 
 	    case WMI_PEER_STA_KICKOUT_REASON_INACTIVITY:
+		/* This could be for STA or SAP role */
 	    default:
 		break;
 	}
@@ -1479,6 +1470,8 @@ static int wma_peer_sta_kickout_event_handler(void *handle, u8 *event, u32 len)
 		return -EINVAL;
 	}
 
+	del_sta_ctx->is_tdls = false;
+	del_sta_ctx->vdev_id = vdev_id;
 	del_sta_ctx->staId = peer_id;
 	vos_mem_copy(del_sta_ctx->addr2, macaddr, IEEE80211_ADDR_LEN);
 	vos_mem_copy(del_sta_ctx->bssId, wma->interfaces[vdev_id].addr,
@@ -5431,6 +5424,53 @@ static int wma_roam_synch_event_handler(void *handle, u_int8_t *event, u_int32_t
 	return 0;
 }
 #endif
+
+/**
+ * wma_rssi_breached_event_handler() - rssi breached event handler
+ * @handle: wma handle
+ * @cmd_param_info: event handler data
+ * @len: length of @cmd_param_info
+ *
+ * Return: 0 on success; error number otherwise
+ */
+static int wma_rssi_breached_event_handler(void *handle,
+				u_int8_t  *cmd_param_info, u_int32_t len)
+{
+	tp_wma_handle wma = (tp_wma_handle)handle;
+	WMI_RSSI_BREACH_EVENTID_param_tlvs *param_buf;
+	wmi_rssi_breach_event_fixed_param  *event;
+	struct rssi_breach_event  rssi;
+	tpAniSirGlobal mac = (tpAniSirGlobal)vos_get_context(
+					VOS_MODULE_ID_PE, wma->vos_context);
+	if (!mac) {
+		WMA_LOGE("%s: Invalid mac context", __func__);
+		return -EINVAL;
+	}
+	if (!mac->sme.rssi_threshold_breached_cb) {
+		WMA_LOGE("%s: Callback not registered", __func__);
+		return -EINVAL;
+	}
+	param_buf = (WMI_RSSI_BREACH_EVENTID_param_tlvs *)cmd_param_info;
+	if (!param_buf) {
+		WMA_LOGE("%s: Invalid rssi breached event", __func__);
+		return -EINVAL;
+	}
+	event = param_buf->fixed_param;
+
+	rssi.request_id = event->request_id;
+	rssi.session_id = event->vdev_id;
+	rssi.curr_rssi = event->rssi + WMA_TGT_NOISE_FLOOR_DBM;
+	WMI_MAC_ADDR_TO_CHAR_ARRAY(&event->bssid, rssi.curr_bssid.bytes);
+
+	WMA_LOGD("%s: req_id: %u vdev_id: %d curr_rssi: %d", __func__,
+		rssi.request_id, rssi.session_id, rssi.curr_rssi);
+	WMA_LOGI("%s: curr_bssid: %pM", __func__, rssi.curr_bssid.bytes);
+
+	mac->sme.rssi_threshold_breached_cb(mac->hHdd, &rssi);
+	WMA_LOGD("%s: Invoke HDD rssi breached callback", __func__);
+	return 0;
+}
+
 /*
  * Send WMI_DFS_PHYERR_FILTER_ENA_CMDID or
  * WMI_DFS_PHYERR_FILTER_DIS_CMDID command
@@ -5933,6 +5973,12 @@ VOS_STATUS WDA_open(v_VOID_t *vos_context, v_VOID_t *os_ctx,
 		goto err_event_init;
 	}
 
+	vos_status = vos_event_init(&wma_handle->recovery_event);
+	if (vos_status != VOS_STATUS_SUCCESS) {
+		WMA_LOGP("%s: recovery event initialization failed", __func__);
+		goto err_event_init;
+	}
+
 	INIT_LIST_HEAD(&wma_handle->vdev_resp_queue);
 	adf_os_spinlock_init(&wma_handle->vdev_respq_lock);
 	adf_os_spinlock_init(&wma_handle->vdev_detach_lock);
@@ -6082,6 +6128,10 @@ VOS_STATUS WDA_open(v_VOID_t *vos_context, v_VOID_t *os_ctx,
 	         WMI_ROAM_SYNCH_EVENTID,
 	        wma_roam_synch_event_handler);
 #endif /* WLAN_FEATURE_ROAM_OFFLOAD */
+
+	wmi_unified_register_event_handler(wma_handle->wmi_handle,
+				WMI_RSSI_BREACH_EVENTID,
+				wma_rssi_breached_event_handler);
 	return VOS_STATUS_SUCCESS;
 
 err_dbglog_init:
@@ -6392,6 +6442,8 @@ static VOS_STATUS wma_vdev_detach(tp_wma_handle wma_handle,
                 WMA_LOGE("handle of vdev_id %d is NULL vdev is already freed",
                     vdev_id);
                 adf_os_spin_unlock_bh(&wma_handle->vdev_detach_lock);
+		vos_mem_free(pdel_sta_self_req_param);
+		pdel_sta_self_req_param = NULL;
 		return status;
         }
 
@@ -6958,7 +7010,7 @@ static ol_txrx_vdev_handle wma_vdev_attach(tp_wma_handle wma_handle,
 		(struct sAniSirGlobal*)vos_get_context(VOS_MODULE_ID_PE,
 						      wma_handle->vos_context);
 	tANI_U32 cfg_val;
-    tANI_U16 val16;
+        tANI_U16 val16;
 	int ret;
 	tSirMacHTCapabilityInfo *phtCapInfo;
 
@@ -7073,6 +7125,12 @@ static ol_txrx_vdev_handle wma_vdev_attach(tp_wma_handle wma_handle,
 					self_sta_req->sessionId);
 		}
 	}
+	ret = wmi_unified_vdev_set_param_send(wma_handle->wmi_handle,
+					      self_sta_req->sessionId,
+					      WMI_VDEV_PARAM_DISCONNECT_TH,
+					      self_sta_req->pkt_err_disconn_th);
+	if (ret)
+		WMA_LOGE("Failed to set WMI_VDEV_PARAM_DISCONNECT_TH");
 
 	if (wlan_cfgGetInt(mac, WNI_CFG_RTS_THRESHOLD,
 			&cfg_val) == eSIR_SUCCESS) {
@@ -11874,6 +11932,24 @@ static int wmi_crash_inject(wmi_unified_t wmi_handle, u_int32_t type,
 	return ret;
 }
 
+/**
+ * wma_crash_inject() - sends command to FW to simulate crash
+ * @wma_handle:         pointer of WMA context
+ * @type:               subtype of the command
+ * @delay_time_ms:      time in milliseconds for FW to delay the crash
+ *
+ * This function will send a command to FW in order to simulate different
+ * kinds of FW crashes.
+ *
+ * Return: 0 for success or reasons for failure
+ */
+
+int wma_crash_inject(tp_wma_handle wma_handle, uint32_t type,
+			uint32_t delay_time_ms)
+{
+	return wmi_crash_inject(wma_handle->wmi_handle, type, delay_time_ms);
+}
+
 static int32_t wmi_unified_set_sta_ps_param(wmi_unified_t wmi_handle,
 		u_int32_t vdev_id, u_int32_t param, u_int32_t value)
 {
@@ -12816,6 +12892,12 @@ wma_update_protection_mode(tp_wma_handle wma, u_int8_t vdev_id,
 	enum ieee80211_protmode prot_mode;
 
 	prot_mode = llbcoexist ? IEEE80211_PROT_CTSONLY : IEEE80211_PROT_NONE;
+
+	if (!wma->interfaces[vdev_id].vdev_up) {
+		WMA_LOGE("%s:vdev %d is not up. Skipping to send PROTECTION_MODE"
+				, __func__, vdev_id);
+		return;
+	}
 
 	ret = wmi_unified_vdev_set_param_send(wma->wmi_handle, vdev_id,
 					      WMI_VDEV_PARAM_PROTECTION_MODE,
@@ -17490,6 +17572,8 @@ static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason)
 	case WOW_REASON_EXTSCAN:
 		return "WOW_REASON_EXTSCAN";
 #endif
+	case WOW_REASON_RSSI_BREACH_EVENT:
+		return "WOW_REASON_RSSI_BREACH_EVENT";
 	}
 	return "unknown";
 }
@@ -17697,6 +17781,7 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		break;
 
 	case WOW_REASON_AP_ASSOC_LOST:
+		wake_lock_duration = WMA_BMISS_EVENT_WAKE_LOCK_DURATION;
 		WMA_LOGA("Beacon miss indication on vdev %x",
 			 wake_info->vdev_id);
 		wma_beacon_miss_handler(wma, wake_info->vdev_id);
@@ -17801,6 +17886,31 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		}
 		break;
 #endif
+	case WOW_REASON_RSSI_BREACH_EVENT:
+		{
+			WMI_RSSI_BREACH_EVENTID_param_tlvs param;
+
+			WMA_LOGD("Host woken up because of rssi breach reason");
+			/* rssi breach event is embedded in wow_packet_buffer */
+			if (param_buf->wow_packet_buffer) {
+				vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
+					param_buf->wow_packet_buffer, 4);
+				if (wow_buf_pkt_len >= sizeof(param)) {
+					param.fixed_param =
+					(wmi_rssi_breach_event_fixed_param *)
+					(param_buf->wow_packet_buffer + 4);
+					wma_rssi_breached_event_handler(handle,
+							(u_int8_t *)&param,
+							sizeof(param));
+				} else {
+					WMA_LOGE("%s: Wrong length: %d bytes",
+						__func__, wow_buf_pkt_len);
+				}
+			} else
+			    WMA_LOGD("No wow_packet_buffer present");
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -18196,8 +18306,7 @@ int wma_enable_wow_in_fw(WMA_HANDLE handle)
 			wmi_get_pending_cmds(wma->wmi_handle));
 #ifdef CONFIG_CNSS
 		if (pMac->sme.enableSelfRecovery) {
-			vos_set_logp_in_progress(VOS_MODULE_ID_HIF, TRUE);
-			cnss_schedule_recovery_work();
+			vos_trigger_recovery();
 		} else {
 			VOS_BUG(0);
 		}
@@ -19204,9 +19313,7 @@ static VOS_STATUS wma_send_host_wakeup_ind_to_fw(tp_wma_handle wma)
 		if (!vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL)) {
 #ifdef CONFIG_CNSS
 			if (pMac->sme.enableSelfRecovery) {
-				vos_set_logp_in_progress(VOS_MODULE_ID_HIF,
-							TRUE);
-				cnss_schedule_recovery_work();
+				vos_trigger_recovery();
 			} else {
 				VOS_BUG(0);
 			}
@@ -23441,6 +23548,79 @@ static VOS_STATUS wma_process_fw_mem_dump_req(tp_wma_handle wma,
 }
 #endif /* WLAN_FEATURE_MEMDUMP */
 
+/*
+ * wma_process_set_ie_info() - Function to send IE info to firmware
+ * @wma:                Pointer to WMA handle
+ * @ie_data:       Pointer for ie data
+ *
+ * This function sends IE information to firmware
+ *
+ * Return: VOS_STATUS_SUCCESS for success otherwise failure
+ *
+ */
+static VOS_STATUS wma_process_set_ie_info(tp_wma_handle wma,
+					  struct vdev_ie_info* ie_info)
+{
+	wmi_vdev_set_ie_cmd_fixed_param *cmd;
+	wmi_buf_t buf;
+	uint8_t *buf_ptr;
+	uint32_t len, ie_len_aligned;
+	int ret;
+
+	if (!ie_info || !wma) {
+		WMA_LOGE(FL("input pointer is NULL"));
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	/* Validate the input */
+	if (ie_info->length  <= 0) {
+		WMA_LOGE(FL("Invalid IE length"));
+		return -EINVAL;
+	}
+
+	ie_len_aligned = roundup(ie_info->length, sizeof(uint32_t));
+	/* Allocate memory for the WMI command */
+	len = sizeof(*cmd) + WMI_TLV_HDR_SIZE + ie_len_aligned;
+
+	buf = wmi_buf_alloc(wma->wmi_handle, len);
+	if (!buf) {
+		WMA_LOGE(FL("wmi_buf_alloc failed"));
+		return VOS_STATUS_E_NOMEM;
+	}
+
+	buf_ptr = wmi_buf_data(buf);
+	vos_mem_zero(buf_ptr, len);
+
+	/* Populate the WMI command */
+	cmd = (wmi_vdev_set_ie_cmd_fixed_param *)buf_ptr;
+
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		       WMITLV_TAG_STRUC_wmi_vdev_set_ie_cmd_fixed_param,
+		       WMITLV_GET_STRUCT_TLVLEN(
+			wmi_vdev_set_ie_cmd_fixed_param));
+	cmd->vdev_id = ie_info->vdev_id;
+	cmd->ie_id = ie_info->ie_id;
+	cmd->ie_len = ie_info->length;
+
+	WMA_LOGE(FL("IE:%d of size:%d sent for vdev:%d"), ie_info->ie_id,
+		 ie_info->length, ie_info->vdev_id);
+
+	buf_ptr += sizeof(*cmd);
+	WMITLV_SET_HDR(buf_ptr, WMITLV_TAG_ARRAY_BYTE, ie_len_aligned);
+	buf_ptr += WMI_TLV_HDR_SIZE;
+
+	vos_mem_copy(buf_ptr, ie_info->data, cmd->ie_len);
+
+	ret = wmi_unified_cmd_send(wma->wmi_handle, buf, len,
+				   WMI_VDEV_SET_IE_CMDID);
+	if (ret != EOK) {
+		WMA_LOGE(FL("Failed to send set IE command ret = %d"), ret);
+		wmi_buf_free(buf);
+	}
+
+	return ret;
+}
+
 #if !defined(REMOVE_PKT_LOG)
 /**
  * wma_set_wifi_start_logger() - Send the WMA commands to start/stop logging
@@ -23529,6 +23709,64 @@ void wma_send_flush_logs_to_fw(tp_wma_handle wma_handle)
 				 WMA_LOG_COMPLETION_TIMER);
 	if (status != VOS_STATUS_SUCCESS)
 		WMA_LOGE("Failed to start the log completion timer");
+}
+
+/**
+ * wma_set_rssi_monitoring() - set rssi monitoring
+ * @handle: WMA handle
+ * @req: rssi monitoring request structure
+ *
+ * This function reads the incoming @req and fill in the destination
+ * WMI structure and send down the rssi monitoring configs down to the firmware
+ *
+ * Return: 0 on success; error number otherwise
+ */
+static VOS_STATUS wma_set_rssi_monitoring(tp_wma_handle wma,
+					struct rssi_monitor_req *req)
+{
+	wmi_rssi_breach_monitor_config_fixed_param *cmd;
+	wmi_buf_t buf;
+	int ret, len = sizeof(*cmd);
+
+	buf = wmi_buf_alloc(wma->wmi_handle, len);
+	if (!buf) {
+		WMA_LOGP("%s: wmi_buf_alloc failed", __func__);
+		return VOS_STATUS_E_NOMEM;
+	}
+
+	cmd = (wmi_rssi_breach_monitor_config_fixed_param *) wmi_buf_data(buf);
+	WMITLV_SET_HDR(&cmd->tlv_header,
+		WMITLV_TAG_STRUC_wmi_rssi_breach_monitor_config_fixed_param,
+		WMITLV_GET_STRUCT_TLVLEN(
+			wmi_rssi_breach_monitor_config_fixed_param));
+
+	cmd->vdev_id = req->session_id;
+	cmd->request_id = req->request_id;
+	cmd->lo_rssi_reenable_hysteresis = 0;
+	cmd->hi_rssi_reenable_histeresis = 0;
+	cmd->min_report_interval = 0;
+	cmd->max_num_report = 1;
+	if (req->control) {
+		/* enable one threshold for each min/max */
+		cmd->enabled_bitmap = 0x09;
+		cmd->low_rssi_breach_threshold[0] = req->min_rssi;
+		cmd->hi_rssi_breach_threshold[0] = req->max_rssi;
+	} else {
+		cmd->enabled_bitmap = 0;
+		cmd->low_rssi_breach_threshold[0] = 0;
+		cmd->hi_rssi_breach_threshold[0] = 0;
+	}
+
+	ret = wmi_unified_cmd_send(wma->wmi_handle, buf, len,
+				   WMI_RSSI_BREACH_MONITOR_CONFIG_CMDID);
+	if (ret != EOK) {
+		WMA_LOGE("Failed to send WMI_RSSI_BREACH_MONITOR_CONFIG_CMDID");
+		wmi_buf_free(buf);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	WMA_LOGI("Sent WMI_RSSI_BREACH_MONITOR_CONFIG_CMDID to FW");
+	return VOS_STATUS_SUCCESS;
 }
 
 /*
@@ -24149,6 +24387,16 @@ VOS_STATUS wma_mc_process_msg(v_VOID_t *vos_context, vos_msg_t *msg)
 		case SIR_HAL_FLUSH_LOG_TO_FW:
 			wma_send_flush_logs_to_fw(wma_handle);
 			/* Body ptr is NULL here */
+			break;
+		case WDA_SET_IE_INFO:
+			wma_process_set_ie_info(wma_handle,
+					(struct vdev_ie_info *) msg->bodyptr);
+			vos_mem_free(msg->bodyptr);
+			break;
+		case WDA_SET_RSSI_MONITOR_REQ:
+			wma_set_rssi_monitoring(wma_handle,
+				(struct rssi_monitor_req *)msg->bodyptr);
+			vos_mem_free(msg->bodyptr);
 			break;
 		default:
 			WMA_LOGD("unknow msg type %x", msg->type);
@@ -25545,6 +25793,7 @@ VOS_STATUS wma_close(v_VOID_t *vos_ctx)
 	vos_event_destroy(&wma_handle->target_suspend);
 	vos_event_destroy(&wma_handle->wma_resume_event);
 	vos_event_destroy(&wma_handle->wow_tx_complete);
+	vos_event_destroy(&wma_handle->recovery_event);
 	wma_cleanup_vdev_resp(wma_handle);
 	for(idx = 0; idx < wma_handle->num_mem_chunks; ++idx) {
 		adf_os_mem_free_consistent(

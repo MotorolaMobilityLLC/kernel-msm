@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -35,6 +35,9 @@
 #include <linux/jiffies.h>
 #include <adf_os_types.h>
 
+#define ADF_DEFERRABLE_TIMER 0
+#define ADF_NON_DEFERRABLE_TIMER 1
+
 /*
  * timer data type
  */
@@ -53,9 +56,13 @@ static inline a_status_t
 __adf_os_timer_init(adf_os_handle_t      hdl,
                     struct timer_list   *timer,
                     adf_os_timer_func_t  func,
-                    void                *arg)
+                    void                *arg,
+                    uint8_t type)
 {
-    init_timer(timer);
+    if (ADF_DEFERRABLE_TIMER == type)
+        init_timer_deferrable(timer);
+    else
+        init_timer(timer);
     timer->function = (adf_dummy_timer_func_t)func;
     timer->data = (unsigned long)arg;
 

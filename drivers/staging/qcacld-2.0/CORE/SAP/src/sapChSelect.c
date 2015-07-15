@@ -741,8 +741,6 @@ v_U32_t sapweightRssiCount(v_S7_t rssi, v_U16_t count)
 
     if(countWeight > SOFTAP_COUNT_WEIGHT)
         countWeight = SOFTAP_COUNT_WEIGHT;
-    else if (countWeight < 0)
-        countWeight = 0;
 
     rssicountWeight =  rssiWeight + countWeight;
 

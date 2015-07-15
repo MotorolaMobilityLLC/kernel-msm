@@ -95,6 +95,7 @@
 #endif
 #include "vos_utils.h"
 #include "wlan_logging_sock_svc.h"
+#include "wma.h"
 
 /*---------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -225,6 +226,23 @@ VOS_STATUS vos_preClose( v_CONTEXT_t *pVosContext )
    return VOS_STATUS_SUCCESS;
 
 } /* vos_preClose()*/
+
+#if defined (FEATURE_SECURE_FIRMWARE) && defined (FEATURE_FW_HASH_CHECK)
+static inline void vos_fw_hash_check_config(struct ol_softc *scn,
+					hdd_context_t *pHddCtx)
+{
+	scn->enable_fw_hash_check = pHddCtx->cfg_ini->enable_fw_hash_check;
+}
+#elif defined (FEATURE_SECURE_FIRMWARE)
+static inline void vos_fw_hash_check_config(struct ol_softc *scn,
+					hdd_context_t *pHddCtx)
+{
+	scn->enable_fw_hash_check = true;
+}
+#else
+static inline void vos_fw_hash_check_config(struct ol_softc *scn,
+					hdd_context_t *pHddCtx) { }
+#endif
 
 /*---------------------------------------------------------------------------
 
@@ -361,6 +379,8 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
 #ifdef WLAN_FEATURE_LPSS
    scn->enablelpasssupport = pHddCtx->cfg_ini->enablelpasssupport;
 #endif
+
+   vos_fw_hash_check_config(scn, pHddCtx);
 
    /* Initialize BMI and Download firmware */
    if (bmi_download_firmware(scn)) {
@@ -2440,22 +2460,47 @@ v_BOOL_t vos_is_packet_log_enabled(void)
    return pHddCtx->cfg_ini->enablePacketLog;
 }
 
-#if defined(CONFIG_CNSS)
-/* worker thread to recover when target does not respond over PCIe */
-void self_recovery_work_handler(struct work_struct *recovery)
-{
-    cnss_device_self_recovery();
-}
-
-static DECLARE_WORK(self_recovery_work, self_recovery_work_handler);
-#endif
-
 void vos_trigger_recovery(void)
 {
+	pVosContextType vos_context;
+	tp_wma_handle wma_handle;
+	VOS_STATUS status = VOS_STATUS_SUCCESS;
+
+	vos_context = vos_get_global_context(VOS_MODULE_ID_VOSS, NULL);
+	if (!vos_context) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			"VOS context is invald!");
+		return;
+	}
+
+	wma_handle = (tp_wma_handle)vos_get_context(VOS_MODULE_ID_WDA,
+						vos_context);
+	if (!wma_handle) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			"WMA context is invald!");
+		return;
+	}
+
+	wma_crash_inject(wma_handle, RECOVERY_SIM_SELF_RECOVERY, 0);
+
+	status = vos_wait_single_event(&wma_handle->recovery_event,
+		WMA_CRASH_INJECT_TIMEOUT);
+
+	if (VOS_STATUS_SUCCESS != status) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+			"CRASH_INJECT command is timed out!");
 #ifdef CONFIG_CNSS
-    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-    schedule_work(&self_recovery_work);
+		if (vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
+			VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"LOGP is in progress, ignore!");
+			return;
+		}
+		vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+		cnss_schedule_recovery_work();
 #endif
+
+		return;
+	}
 }
 
 v_U64_t vos_get_monotonic_boottime(void)

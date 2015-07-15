@@ -2060,7 +2060,8 @@ limDecideApProtection(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpdateBeac
           gfSupported = eHAL_CLEAR;
         }
         //Station joining is HT 20Mhz
-        if(eHT_CHANNEL_WIDTH_20MHZ == pStaDs->htSupportedChannelWidthSet)
+        if((eHT_CHANNEL_WIDTH_20MHZ == pStaDs->htSupportedChannelWidthSet)&&
+           (eHT_CHANNEL_WIDTH_20MHZ != psessionEntry->htSupportedChannelWidthSet))
         {
             protStaCacheType = eLIM_PROT_STA_CACHE_TYPE_HT20;
             limEnableHT20Protection(pMac, true, false, pBeaconParams, psessionEntry);
@@ -4138,9 +4139,13 @@ limEnable11gProtection(tpAniSirGlobal pMac, tANI_U8 enable,
                     }
                     else if(psessionEntry->gLimHt20Params.protectionEnabled)
                     {
-                        //Commenting because of CR 258588 WFA cert
-                        //psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
-                        psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
+                        if(eHT_CHANNEL_WIDTH_20MHZ ==
+                              psessionEntry->htSupportedChannelWidthSet)
+                              psessionEntry->htOperMode =
+                                   eSIR_HT_OP_MODE_PURE;
+                        else
+                              psessionEntry->htOperMode =
+                                   eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
                         PELOGE(limLog(pMac, LOG1, FL("===> 11G Protection Disabled"));)
                         limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                     }
@@ -4389,9 +4394,13 @@ limEnableHtProtectionFrom11g(tpAniSirGlobal pMac, tANI_U8 enable,
                         limEnableHtOBSSProtection(pMac,  false, overlap, pBeaconParams,psessionEntry);
 
                         if(psessionEntry->gLimHt20Params.protectionEnabled){
-                            //Commenting because of CR 258588 WFA cert
-                            //psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
-                            psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
+                            if(eHT_CHANNEL_WIDTH_20MHZ ==
+                                 psessionEntry->htSupportedChannelWidthSet)
+                                 psessionEntry->htOperMode =
+                                      eSIR_HT_OP_MODE_PURE;
+                            else
+                                 psessionEntry->htOperMode =
+                                      eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
                         }
                         else
                             psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
@@ -4422,9 +4431,13 @@ limEnableHtProtectionFrom11g(tpAniSirGlobal pMac, tANI_U8 enable,
                     }
                     else if(psessionEntry->gLimHt20Params.protectionEnabled)
                     {
-                        //Commenting because of CR 258588 WFA cert
-                        //psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
-                        psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
+                        if(eHT_CHANNEL_WIDTH_20MHZ ==
+                              psessionEntry->htSupportedChannelWidthSet)
+                              psessionEntry->htOperMode =
+                                   eSIR_HT_OP_MODE_PURE;
+                        else
+                              psessionEntry->htOperMode =
+                                   eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
                         limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                     }
                     else
@@ -4437,7 +4450,7 @@ limEnableHtProtectionFrom11g(tpAniSirGlobal pMac, tANI_U8 enable,
             if(!psessionEntry->gLimOverlap11gParams.protectionEnabled &&
                   !psessionEntry->gLim11gParams.protectionEnabled)
             {
-                PELOG1(limLog(pMac, LOG1, FL("===> Protection from 11G Disabled"));)
+                limLog(pMac, LOG1, FL("===> Protection from 11G Disabled"));
                 pBeaconParams->llgCoexist = psessionEntry->beaconParams.llgCoexist = false;
                 pBeaconParams->paramChangeBitmap |= PARAM_llGCOEXIST_CHANGED;
             }
@@ -4663,9 +4676,7 @@ limEnableHT20Protection(tpAniSirGlobal pMac, tANI_U8 enable,
                psessionEntry->gLimHt20Params.protectionEnabled = true;
                 if(eSIR_HT_OP_MODE_PURE == psessionEntry->htOperMode)
                 {
-                    //Commenting because of CR 258588 WFA cert
-                    //psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
-                    psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
+                    psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
                     limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                     limEnableHtOBSSProtection(pMac,  false, overlap, pBeaconParams,psessionEntry);
                 }
@@ -7456,7 +7467,7 @@ void limProcessAddStaSelfRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
    tpAddStaSelfParams      pAddStaSelfParams;
    tSirMsgQ                mmhMsg;
    tpSirSmeAddStaSelfRsp   pRsp;
-
+   eHalStatus              status;
 
    pAddStaSelfParams = (tpAddStaSelfParams)limMsgQ->bodyptr;
 
@@ -7477,6 +7488,25 @@ void limProcessAddStaSelfRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
    pRsp->status = pAddStaSelfParams->status;
 
    vos_mem_copy( pRsp->selfMacAddr, pAddStaSelfParams->selfMacAddr, sizeof(tSirMacAddr) );
+
+   /*
+    * For FW generated probe requests, Host needs to send Extended Capbilities
+    * IE information. With this fix, Host will send the extended capabilites
+    * on getting eWNI_SME_ADD_STA_SELF_RSP message(after vdev create).
+    *
+    * This information is required for only STA/P2P as they are the one which
+    * sends probe request.
+    */
+   if (VOS_STATUS_SUCCESS == pRsp->status &&
+       (WMI_VDEV_TYPE_STA == pAddStaSelfParams->type ||
+       (WMI_VDEV_TYPE_AP == pAddStaSelfParams->type &&
+        WMI_UNIFIED_VDEV_SUBTYPE_P2P_DEVICE == pAddStaSelfParams->subType))) {
+        limLog(pMac, LOG1, FL("Add sta success - send ext cap IE"));
+        status = lim_send_ext_cap_ie(pMac, pAddStaSelfParams->sessionId, NULL,
+                                     false);
+        if (eHAL_STATUS_SUCCESS != status)
+            limLog(pMac, LOGE, FL("Unable to send ExtCap to FW"));
+   }
 
    vos_mem_free(pAddStaSelfParams);
    limMsgQ->bodyptr = NULL;
@@ -8294,4 +8324,247 @@ void lim_set_stads_rtt_cap(tpDphHashNode sta_ds, struct s_ext_cap *ext_cap)
 	       FL("ExtCap present, timingMeas: %d Initiator: %d Responder: %d"),
 	       ext_cap->timingMeas, ext_cap->fine_time_meas_initiator,
 	       ext_cap->fine_time_meas_responder);)
+}
+
+/**
+ * lim_send_ext_cap_ie() - send ext cap IE to FW
+ * @mac_ctx: global MAC context
+ * @session_entry: PE session
+ * @extra_extcap: extracted ext cap
+ * @merge: merge extra ext cap
+ *
+ * This function is invoked after VDEV is created to update firmware
+ * about the extended capabilities that the corresponding VDEV is capable
+ * of. Since STA/SAP can have different Extended capabilities set, this function
+ * is called per vdev creation.
+ *
+ * Return: eHalStatus
+ */
+eHalStatus lim_send_ext_cap_ie(tpAniSirGlobal mac_ctx,
+			       uint32_t session_id,
+			       tDot11fIEExtCap *extra_extcap, bool merge)
+{
+	tDot11fIEExtCap ext_cap_data = {0};
+	uint32_t dot11mode, num_bytes;
+	bool vht_enabled = false;
+	struct vdev_ie_info *vdev_ie;
+	vos_msg_t msg = {0};
+	tSirRetStatus status;
+	uint8_t *temp, i;
+
+	wlan_cfgGetInt(mac_ctx, WNI_CFG_DOT11_MODE, &dot11mode);
+	if (IS_DOT11_MODE_VHT(dot11mode))
+		vht_enabled = true;
+
+	status = PopulateDot11fExtCap(mac_ctx, vht_enabled, &ext_cap_data,
+				      NULL);
+	if (eSIR_SUCCESS != status) {
+		limLog(mac_ctx, LOGE, FL("Failed to populate ext cap IE"));
+		return eHAL_STATUS_FAILURE;
+	}
+	num_bytes = ext_cap_data.num_bytes;
+
+	if (merge && NULL != extra_extcap && extra_extcap->num_bytes > 0) {
+		if (extra_extcap->num_bytes > ext_cap_data.num_bytes)
+			num_bytes = extra_extcap->num_bytes;
+		lim_merge_extcap_struct(&ext_cap_data, extra_extcap);
+	}
+
+	/* Allocate memory for the WMI request, and copy the parameter */
+	vdev_ie = vos_mem_malloc(sizeof(*vdev_ie) + num_bytes);
+	if (!vdev_ie) {
+		limLog(mac_ctx, LOGE, FL("Failed to allocate memory"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
+
+	vdev_ie->vdev_id = session_id;
+	vdev_ie->ie_id = DOT11F_EID_EXTCAP;
+	vdev_ie->length = num_bytes;
+
+	limLog(mac_ctx, LOG1, FL("vdev %d ieid %d len %d"), session_id,
+			DOT11F_EID_EXTCAP, num_bytes);
+	temp = ext_cap_data.bytes;
+	for (i=0; i < num_bytes; i++, temp++)
+		limLog(mac_ctx, LOG1, FL("%d byte is %02x"), i+1, *temp);
+
+	vdev_ie->data = (uint8_t *)vdev_ie + sizeof(*vdev_ie);
+	vos_mem_copy(vdev_ie->data, ext_cap_data.bytes, num_bytes);
+
+	msg.type = WDA_SET_IE_INFO;
+	msg.bodyptr = vdev_ie;
+	msg.reserved = 0;
+
+	if (VOS_STATUS_SUCCESS !=
+		vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)) {
+		limLog(mac_ctx, LOGE,
+		       FL("Not able to post WDA_SET_IE_INFO to WDA"));
+		vos_mem_free(vdev_ie);
+		return eHAL_STATUS_FAILURE;
+	}
+
+	return eHAL_STATUS_SUCCESS;
+}
+
+/**
+ * lim_strip_extcap_ie() - strip extended capability IE from IE buffer
+ * @mac_ctx: global MAC context
+ * @addn_ie: Additional IE buffer
+ * @addn_ielen: Length of additional IE
+ * @extracted_ie: if not NULL, copy the stripped IE to this buffer
+ *
+ * This utility function is used to strip of the extended capability IE present
+ * in additional IE buffer.
+ *
+ * Return: tSirRetStatus
+ */
+tSirRetStatus lim_strip_extcap_ie(tpAniSirGlobal mac_ctx,
+		uint8_t *addn_ie, uint16_t *addn_ielen, uint8_t *extracted_ie)
+{
+	uint8_t* tempbuf = NULL;
+	uint16_t templen = 0;
+	int left = *addn_ielen;
+	uint8_t *ptr = addn_ie;
+	uint8_t elem_id, elem_len;
+
+	if (NULL == addn_ie) {
+		limLog(mac_ctx, LOG1, FL("NULL addn_ie pointer"));
+		return eSIR_IGNORE_IE ;
+	}
+
+	tempbuf = vos_mem_malloc(left);
+	if (NULL == tempbuf) {
+		limLog(mac_ctx, LOGE, FL("Unable to allocate memory"));
+		return eSIR_MEM_ALLOC_FAILED;
+	}
+
+	while(left >= 2) {
+		elem_id  = ptr[0];
+		elem_len = ptr[1];
+		left -= 2;
+		if (elem_len > left) {
+			limLog( mac_ctx, LOGE,
+				FL("Invalid IEs eid = %d elem_len=%d left=%d"),
+				elem_id, elem_len, left);
+			vos_mem_free(tempbuf);
+			return eSIR_FAILURE;
+		}
+		if (!(DOT11F_EID_EXTCAP == elem_id)) {
+			vos_mem_copy (tempbuf + templen, &ptr[0], elem_len + 2);
+			templen += (elem_len + 2);
+		} else {
+			if (NULL != extracted_ie) {
+				vos_mem_set(extracted_ie,
+					DOT11F_IE_EXTCAP_MAX_LEN + 2, 0);
+				if (elem_len <= DOT11F_IE_EXTCAP_MAX_LEN)
+					vos_mem_copy(extracted_ie, &ptr[0],
+						     elem_len + 2);
+			}
+		}
+		left -= elem_len;
+		ptr += (elem_len + 2);
+	}
+	vos_mem_copy (addn_ie, tempbuf, templen);
+
+	*addn_ielen = templen;
+	vos_mem_free(tempbuf);
+
+	return eSIR_SUCCESS;
+}
+
+/**
+ * lim_update_extcap_struct() - poputlate the dot11f structure
+ * @mac_ctx: global MAC context
+ * @buf: extracted IE buffer
+ * @dst: extended capability IE structure to be updated
+ *
+ * This function is used to update the extended capability structure
+ * with @buf.
+ *
+ * Return: None
+ */
+void lim_update_extcap_struct(tpAniSirGlobal mac_ctx,
+	uint8_t *buf, tDot11fIEExtCap *dst)
+{
+	uint8_t out[DOT11F_IE_EXTCAP_MAX_LEN];
+
+	if (NULL == buf) {
+		limLog( mac_ctx, LOGE, FL("Invalid Buffer Address"));
+		return;
+	}
+
+	if(NULL == dst) {
+		limLog(mac_ctx, LOGE, FL("NULL dst pointer"));
+		return ;
+	}
+
+	if (DOT11F_EID_EXTCAP != buf[0] || buf[1] > DOT11F_IE_EXTCAP_MAX_LEN) {
+		limLog(mac_ctx, LOG1, FL("Invalid IEs eid = %d elem_len=%d "),
+				buf[0],buf[1]);
+		return;
+	}
+
+	vos_mem_set((uint8_t *)&out[0], DOT11F_IE_EXTCAP_MAX_LEN, 0);
+	vos_mem_copy(&out[0], &buf[2], DOT11F_IE_EXTCAP_MAX_LEN);
+
+	if (DOT11F_PARSE_SUCCESS != dot11fUnpackIeExtCap(mac_ctx, &out[0],
+					DOT11F_IE_EXTCAP_MAX_LEN, dst))
+		limLog(mac_ctx, LOGE, FL("dot11fUnpackIeExtCap Parse Error "));
+}
+
+/**
+ * lim_strip_extcap_update_struct - strip extended capability IE and populate
+ *                                  the dot11f structure
+ * @mac_ctx: global MAC context
+ * @addn_ie: Additional IE buffer
+ * @addn_ielen: Length of additional IE
+ * @dst: extended capability IE structure to be updated
+ *
+ * This function is used to strip extended capability IE from IE buffer and
+ * update the passed structure.
+ *
+ * Return: tSirRetStatus
+ */
+tSirRetStatus lim_strip_extcap_update_struct(tpAniSirGlobal mac_ctx,
+		uint8_t* addn_ie, uint16_t *addn_ielen, tDot11fIEExtCap *dst)
+{
+	uint8_t extracted_buff[DOT11F_IE_EXTCAP_MAX_LEN + 2];
+	tSirRetStatus status;
+
+	vos_mem_set((uint8_t* )&extracted_buff[0], DOT11F_IE_EXTCAP_MAX_LEN + 2,
+		     0);
+	status = lim_strip_extcap_ie(mac_ctx, addn_ie, addn_ielen,
+				     extracted_buff);
+	if (eSIR_SUCCESS != status) {
+		limLog(mac_ctx, LOG1,
+		       FL("Failed to strip extcap IE status = (%d)."), status);
+		return status;
+	}
+
+	/* update the extracted ExtCap to struct*/
+	lim_update_extcap_struct(mac_ctx, extracted_buff, dst);
+	return status;
+}
+
+/**
+ * lim_merge_extcap_struct() - merge extended capabilities info
+ * @dst: destination extended capabilities
+ * @src: source extended capabilities
+ *
+ * This function is used to take @src info and merge it with @dst
+ * extended capabilities info.
+ *
+ * Return: None
+ */
+void lim_merge_extcap_struct(tDot11fIEExtCap *dst,
+			     tDot11fIEExtCap *src)
+{
+	uint8_t *tempdst = (uint8_t *)dst->bytes;
+	uint8_t *tempsrc = (uint8_t *)src->bytes;
+	uint8_t structlen = member_size(tDot11fIEExtCap, bytes);
+
+	while(tempdst && tempsrc && structlen--) {
+		*tempdst |= *tempsrc;
+		tempdst++;
+		tempsrc++;
+	}
 }

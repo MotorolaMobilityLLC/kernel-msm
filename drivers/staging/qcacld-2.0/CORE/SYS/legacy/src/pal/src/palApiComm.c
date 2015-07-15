@@ -163,6 +163,8 @@ eHalStatus palSpinLockAlloc( tHddHandle hHdd, tPalSpinLockHandle *pHandle )
 
       if ( NULL == pLock ) break;
 
+      vos_mem_set(pLock, sizeof(vos_lock_t), 0);
+
       vosStatus = vos_lock_init( pLock );
       if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
       {

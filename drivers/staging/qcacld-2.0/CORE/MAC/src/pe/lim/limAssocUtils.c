@@ -1110,7 +1110,6 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                                     pStaDs->staAddr, sizeof(tSirMacAddr)))
                             {
                                 psessionEntry->gLim11aParams.numSta--;
-                                psessionEntry->protStaCache[i].active = false;
                                 break;
                             }
                         }
@@ -1217,7 +1216,6 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                                 pStaDs->staAddr, sizeof(tSirMacAddr)))
                         {
                             psessionEntry->gLimNonGfParams.numSta--;
-                            psessionEntry->protStaCache[i].active = false;
                             break;
                         }
                     }
@@ -1253,7 +1251,6 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                                 pStaDs->staAddr, sizeof(tSirMacAddr)))
                         {
                             psessionEntry->gLimLsigTxopParams.numSta--;
-                            psessionEntry->protStaCache[i].active = false;
                             break;
                         }
                     }

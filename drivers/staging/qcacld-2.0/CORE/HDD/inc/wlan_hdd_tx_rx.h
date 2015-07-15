@@ -75,6 +75,8 @@
 #define SME_QOS_UAPSD_CFG_VI_CHANGED_MASK     0xF4
 #define SME_QOS_UAPSD_CFG_VO_CHANGED_MASK     0xF8
 
+#define HDD_ETH_HEADER_LEN      14
+
 /*---------------------------------------------------------------------------
   Type declarations
   -------------------------------------------------------------------------*/

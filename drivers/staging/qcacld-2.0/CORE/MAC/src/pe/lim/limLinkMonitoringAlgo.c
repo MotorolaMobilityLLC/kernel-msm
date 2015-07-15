@@ -100,16 +100,16 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     tpDeleteStaContext  pMsg = (tpDeleteStaContext)limMsg->bodyptr;
     tpDphHashNode       pStaDs;
     tpPESession psessionEntry ;
-    tANI_U8     sessionId;
 
     if(NULL == pMsg)
     {
         PELOGE(limLog(pMac, LOGE,FL("Invalid body pointer in message"));)
         return;
     }
-    if((psessionEntry = peFindSessionByBssid(pMac,pMsg->bssId,&sessionId))== NULL)
+    psessionEntry = pe_find_session_by_sme_session_id(pMac, pMsg->vdev_id);
+    if(NULL == psessionEntry)
     {
-        PELOGE(limLog(pMac, LOGE,FL("session does not exist for given BSSId"));)
+        limLog(pMac, LOGE, FL("session not found for given sme session"));
         vos_mem_free(pMsg);
         return;
     }
@@ -117,7 +117,23 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     switch(pMsg->reasonCode)
     {
         case HAL_DEL_STA_REASON_CODE_KEEP_ALIVE:
-        case HAL_DEL_STA_REASON_CODE_TIM_BASED:
+             if (LIM_IS_STA_ROLE(psessionEntry) && !pMsg->is_tdls) {
+                 pStaDs = dphGetHashEntry(pMac,
+                                          DPH_STA_HASH_INDEX_PEER,
+                                          &psessionEntry->dph.dphHashTable);
+                 if (NULL == pStaDs) {
+                     limLog(pMac, LOGE, FL("Dph entry not found."));
+                     vos_mem_free(pMsg);
+                     return;
+                 }
+                 limSendDeauthMgmtFrame(pMac,
+                                   eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON,
+                                   pMsg->addr2, psessionEntry, FALSE);
+                 limTearDownLinkWithAp(pMac, psessionEntry->peSessionId,
+                                       eSIR_MAC_UNSPEC_FAILURE_REASON);
+                 /* only break for STA role (non TDLS) */
+                 break;
+             }
              PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d"), pMsg->staId, pMsg->reasonCode);)
              if (eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole)
                  return;

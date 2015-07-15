@@ -285,6 +285,7 @@ tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
     pStaDs->apsdMaxSpLen = 0;
     pStaDs->acMode[0] = pStaDs->acMode[1] = pStaDs->acMode[2] = pStaDs->acMode[3] =  0;
 #endif /* WMM_APSD */
+    pStaDs->isDisassocDeauthInProgress = 0;
     pStaDs->valid = 1;
     return pStaDs;
 }
@@ -429,6 +430,7 @@ tSirRetStatus dphDeleteHashEntry(tpAniSirGlobal pMac, tSirMacAddr staAddr, tANI_
       else
          prev->next = ptr->next;
       ptr->added = 0;
+      ptr->isDisassocDeauthInProgress = 0;
       ptr->next = 0;
     }
   else

@@ -296,7 +296,7 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     psessionEntry->ftPEContext.pFTPreAuthReq = ftPreAuthReq;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOG1, FL("PE Auth ft_ies_length=%02x%02x%02x"),
+    PELOGE(limLog( pMac, LOG1, FL("PRE Auth ft_ies_length=%02x%02x%02x"),
         psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies[0],
         psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies[1],
         psessionEntry->ftPEContext.pFTPreAuthReq->ft_ies[2]);)

@@ -2206,6 +2206,15 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_HOST_SSDP_MIN,
                  CFG_ENABLE_HOST_SSDP_MAX ),
 
+#ifdef FEATURE_SECURE_FIRMWARE
+   REG_VARIABLE(CFG_ENABLE_FW_HASH_CHECK_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, enable_fw_hash_check,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_ENABLE_FW_HASH_CHECK_DEFAULT,
+                CFG_ENABLE_FW_HASH_CHECK_MIN,
+                CFG_ENABLE_FW_HASH_CHECK_MAX),
+#endif
+
    REG_VARIABLE( CFG_ENABLE_HOST_NSOFFLOAD_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fhostNSOffload,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -2391,6 +2400,55 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_VOS_TRACE_ENABLE_DEFAULT,
                  CFG_VOS_TRACE_ENABLE_MIN,
                  CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_CFG_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableCFG,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_ADF_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableADF,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_TXRX_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableTXRX,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_HTC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableHTC,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_HIF_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableHIF,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_HDD_SAP_DATA_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableHDDSAPDATA,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
+
+   REG_VARIABLE(CFG_VOS_TRACE_ENABLE_HDD_DATA_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnableHDDDATA,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX),
 
    REG_VARIABLE( CFG_TELE_BCN_TRANS_LI_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nTeleBcnTransListenInterval,
@@ -4011,6 +4069,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_FINE_TIME_MEAS_CAPABILITY_DEFAULT,
                 CFG_FINE_TIME_MEAS_CAPABILITY_MIN,
                 CFG_FINE_TIME_MEAS_CAPABILITY_MAX),
+
+   REG_VARIABLE(CFG_DROPPED_PKT_DISCONNECT_TH_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, pkt_err_disconn_th,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_DROPPED_PKT_DISCONNECT_TH_DEFAULT,
+                CFG_DROPPED_PKT_DISCONNECT_TH_MIN,
+                CFG_DROPPED_PKT_DISCONNECT_TH_MAX),
 };
 
 #ifdef WLAN_FEATURE_MBSSID
@@ -4411,6 +4476,10 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [mcastBcastFilterSetting] Value = [%u] ",pHddCtx->cfg_ini->mcastBcastFilterSetting);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [fhostArpOffload] Value = [%u] ",pHddCtx->cfg_ini->fhostArpOffload);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ssdp] Value = [%u] ", pHddCtx->cfg_ini->ssdp);
+#ifdef FEATURE_SECURE_FIRMWARE
+  hddLog(LOG2, "Name = [enable_fw_hash_check] Value = [%u]",
+         pHddCtx->cfg_ini->enable_fw_hash_check);
+#endif
 #ifdef FEATURE_WLAN_RA_FILTERING
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [RArateLimitInterval] Value = [%u] ", pHddCtx->cfg_ini->RArateLimitInterval);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [IsRArateLimitEnabled] Value = [%u] ", pHddCtx->cfg_ini->IsRArateLimitEnabled);
@@ -6450,6 +6519,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    vos_set_multicast_logging(pHddCtx->cfg_ini->multicast_host_fw_msgs);
    hdd_set_fine_time_meas_cap(pHddCtx, smeConfig);
+   smeConfig->csrConfig.pkt_err_disconn_th =
+                   pHddCtx->cfg_ini->pkt_err_disconn_th;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )

@@ -2425,8 +2425,6 @@ void vos_ssr_protect(const char *caller_func)
      unsigned long irq_flags;
 
      count = atomic_inc_return(&ssr_protect_entry_count);
-     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-               "%s: ENTRY ACTIVE %d", caller_func, count);
 
      spin_lock_irqsave(&ssr_protect_lock, irq_flags);
 
@@ -2466,8 +2464,6 @@ void vos_ssr_unprotect(const char *caller_func)
    unsigned long irq_flags;
 
    count = atomic_dec_return(&ssr_protect_entry_count);
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-             "%s: ENTRY INACTIVE %d", caller_func, count);
 
    spin_lock_irqsave(&ssr_protect_lock, irq_flags);
 

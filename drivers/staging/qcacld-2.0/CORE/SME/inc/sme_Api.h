@@ -742,7 +742,8 @@ eHalStatus sme_RoamGetAssociatedStas(tHalHandle hHal, tANI_U8 sessionId,
     \param pPeerMacAddr - Caller allocated memory filled with peer MAC address (6 bytes)
     \return eHalStatus  SUCCESS  Roam callback will be called to indicate actual results
   -------------------------------------------------------------------------------*/
-eHalStatus sme_RoamDisconnectSta(tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *pPeerMacAddr);
+eHalStatus sme_RoamDisconnectSta(tHalHandle hHal, tANI_U8 sessionId,
+                         struct tagCsrDelStaParams *pDelStaParams);
 
 /* ---------------------------------------------------------------------------
     \fn sme_RoamDeauthSta
@@ -4104,5 +4105,14 @@ eHalStatus sme_wifi_start_logger(tHalHandle hal,
 eHalStatus sme_update_nss(tHalHandle h_hal, uint8_t nss);
 
 uint8_t    sme_is_any_session_in_connected_state(tHalHandle h_hal);
+
+eHalStatus sme_set_rssi_monitoring(tHalHandle hal,
+					struct rssi_monitor_req *input);
+eHalStatus sme_set_rssi_threshold_breached_cb(tHalHandle hal,
+			void (*cb)(void *, struct rssi_breach_event *));
+
+eHalStatus sme_disable_non_fcc_channel(tHalHandle hHal,
+				       bool fcc_constraint);
+bool smeNeighborRoamIsHandoffInProgress(tHalHandle hHal, tANI_U8 sessionId);
 
 #endif //#if !defined( __SME_API_H )

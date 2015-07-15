@@ -114,6 +114,30 @@ ol_tx_ll(ol_txrx_vdev_handle vdev, adf_nbuf_t msdu_list)
 
 #define OL_TX_VDEV_PAUSE_QUEUE_SEND_MARGIN 400
 #define OL_TX_VDEV_PAUSE_QUEUE_SEND_PERIOD_MS 5
+
+/**
+ * ol_tx_vdev_ll_pause_start_timer() - Start ll-q pause timer for specific virtual device
+ * @vdev: the virtual device
+ *
+ *  When system comes out of suspend, it is necessary to start the timer
+ *  which will ensure to pull out all the queued packets after expiry.
+ *  This function restarts the ll-pause timer, for the specific vdev device.
+ *
+ *
+ * Return: None
+ */
+void
+ol_tx_vdev_ll_pause_start_timer(struct ol_txrx_vdev_t *vdev)
+{
+	adf_os_spin_lock_bh(&vdev->ll_pause.mutex);
+	if (vdev->ll_pause.txq.depth) {
+		adf_os_timer_cancel(&vdev->ll_pause.timer);
+		adf_os_timer_start(&vdev->ll_pause.timer,
+				OL_TX_VDEV_PAUSE_QUEUE_SEND_PERIOD_MS);
+	}
+	adf_os_spin_unlock_bh(&vdev->ll_pause.mutex);
+}
+
 static void
 ol_tx_vdev_ll_pause_queue_send_base(struct ol_txrx_vdev_t *vdev)
 {
@@ -201,8 +225,8 @@ ol_tx_vdev_pause_queue_append(
         adf_nbuf_set_next(vdev->ll_pause.txq.tail, NULL);
     }
 
+    adf_os_timer_cancel(&vdev->ll_pause.timer);
     if (start_timer) {
-        adf_os_timer_cancel(&vdev->ll_pause.timer);
         adf_os_timer_start(
                 &vdev->ll_pause.timer, OL_TX_VDEV_PAUSE_QUEUE_SEND_PERIOD_MS);
     }
@@ -237,7 +261,10 @@ ol_tx_ll_queue(ol_txrx_vdev_handle vdev, adf_nbuf_t msdu_list)
                 return msdu_list;
             }
         }
-        msdu_list = ol_tx_vdev_pause_queue_append(vdev, msdu_list, 1);
+        if (paused_reason & OL_TXQ_PAUSE_REASON_VDEV_SUSPEND)
+            msdu_list = ol_tx_vdev_pause_queue_append(vdev, msdu_list, 0);
+        else
+            msdu_list = ol_tx_vdev_pause_queue_append(vdev, msdu_list, 1);
     } else {
         if (vdev->ll_pause.txq.depth > 0 ||
             vdev->pdev->tx_throttle.current_throttle_level !=
@@ -355,16 +382,16 @@ ol_tx_pdev_ll_pause_queue_send_all(struct ol_txrx_pdev_t *pdev)
 
 void ol_tx_vdev_ll_pause_queue_send(void *context)
 {
-#ifdef QCA_SUPPORT_TXRX_VDEV_LL_TXQ
     struct ol_txrx_vdev_t *vdev = (struct ol_txrx_vdev_t *) context;
 
+#ifdef QCA_SUPPORT_TXRX_VDEV_LL_TXQ
     if (vdev->pdev->tx_throttle.current_throttle_level != THROTTLE_LEVEL_0 &&
         vdev->pdev->tx_throttle.current_throttle_phase == THROTTLE_PHASE_OFF) {
         return;
     }
+#endif
 
     ol_tx_vdev_ll_pause_queue_send_base(vdev);
-#endif
 }
 
 static inline int

@@ -282,6 +282,9 @@ struct ol_softc {
 #ifdef WLAN_FEATURE_LPSS
     bool                    enablelpasssupport;
 #endif
+#ifdef FEATURE_SECURE_FIRMWARE
+    bool enable_fw_hash_check;
+#endif
 };
 
 #ifdef PERE_IP_HDR_ALIGNMENT_WAR

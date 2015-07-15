@@ -3775,7 +3775,7 @@ eHalStatus sme_RoamStopBss(tHalHandle hHal, tANI_U8 sessionId)
     \return eHalStatus  SUCCESS  Roam callback will be called to indicate actual results
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamDisconnectSta(tHalHandle hHal, tANI_U8 sessionId,
-                                tANI_U8 *pPeerMacAddr)
+                                struct tagCsrDelStaParams *pDelStaParams)
 {
    eHalStatus status = eHAL_STATUS_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -3791,8 +3791,7 @@ eHalStatus sme_RoamDisconnectSta(tHalHandle hHal, tANI_U8 sessionId,
    {
       if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
       {
-         status = csrRoamIssueDisassociateStaCmd( pMac, sessionId, pPeerMacAddr,
-                                                  eSIR_MAC_DEAUTH_LEAVING_BSS_REASON);
+         status = csrRoamIssueDisassociateStaCmd( pMac, sessionId, pDelStaParams);
       }
       else
       {
@@ -7923,6 +7922,18 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
            status = eHAL_STATUS_FAILURE;
            return status;
        }
+       /*
+        * Update the 11d country to default country from NV bin so that when
+        * callback is received for this default country, driver will not
+        * disable the 11d taking it as valid country by user.
+        */
+        smsLog(pMac, LOG1,
+         FL
+         ("Set default country code (%c%c) from NV as invalid country received"),
+         pMsg->countryCode[0],pMsg->countryCode[1]);
+        vos_mem_copy(pMac->scan.countryCode11d, pMsg->countryCode,
+                      WNI_CFG_COUNTRY_CODE_LEN);
+
    }
    else
    {
@@ -11741,19 +11752,19 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
    {
       if (pMac->roam.configParam.channelBondingMode5GHz) {
           if ( channel== 36 || channel == 52 || channel == 100 ||
-                channel == 116 || channel == 149 )
+                channel == 116 || channel == 149 || channel == 132)
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW;
           }
           else if ( channel == 40 || channel == 56 || channel == 104 ||
-                channel == 120 || channel == 153 )
+                channel == 120 || channel == 153 || channel == 136)
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW;
           }
           else if ( channel == 44 || channel == 60 || channel == 108 ||
-                channel == 124 || channel == 157 )
+                channel == 124 || channel == 157 || channel == 140)
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH;
@@ -11764,20 +11775,10 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH;
           }
-          else if ( channel == 165 || channel == 140 )
+          else if ( channel == 165 )
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_SINGLE_CHANNEL_CENTERED;
-          }
-          else if ( channel == 132 )
-          {
-             smeConfig.csrConfig.channelBondingMode5GHz =
-                eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY;
-          }
-          else if ( channel == 136 )
-          {
-             smeConfig.csrConfig.channelBondingMode5GHz =
-                eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY;
           }
       }
       /*TODO: Set HT40+ / HT40- for channel 5-7 based on ACS */
@@ -11792,7 +11793,6 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
              smeConfig.csrConfig.channelBondingMode24GHz =
                 eCSR_INI_SINGLE_CHANNEL_CENTERED;
       }
-
    }
 #endif
 
@@ -11803,7 +11803,7 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
           if ( channel== 40 || channel == 48 || channel == 56 ||
                 channel == 64 || channel == 104 || channel == 112 ||
                 channel == 120 || channel == 128 || channel == 136 ||
-                channel == 153 || channel == 161 )
+                channel == 153 || channel == 161 || channel == 144)
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_DOUBLE_CHANNEL_HIGH_PRIMARY;
@@ -11811,12 +11811,12 @@ VOS_STATUS sme_SelectCBMode(tHalHandle hHal, eCsrPhyMode eCsrPhyMode, tANI_U8 ch
           else if ( channel== 36 || channel == 44 || channel == 52 ||
                 channel == 60 || channel == 100 || channel == 108 ||
                 channel == 116 || channel == 124 || channel == 132 ||
-                channel == 149 || channel == 157 )
+                channel == 149 || channel == 157 || channel == 140)
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_DOUBLE_CHANNEL_LOW_PRIMARY;
           }
-          else if ( channel == 165 || channel == 140)
+          else if ( channel == 165 )
           {
              smeConfig.csrConfig.channelBondingMode5GHz =
                 eCSR_INI_SINGLE_CHANNEL_CENTERED;
@@ -14174,6 +14174,86 @@ eHalStatus sme_ExtScanRegisterCallback (tHalHandle hHal,
 
 #endif /* FEATURE_WLAN_EXTSCAN */
 
+/**
+ * sme_set_rssi_threshold_breached_cb() - set rssi threshold breached callback
+ * @hal: global hal handle
+ * @cb: callback function pointer
+ *
+ * This function stores the rssi threshold breached callback function.
+ *
+ * Return: eHalStatus enumeration.
+ */
+eHalStatus sme_set_rssi_threshold_breached_cb(tHalHandle hal,
+				void (*cb)(void *, struct rssi_breach_event *))
+{
+	eHalStatus status  = eHAL_STATUS_SUCCESS;
+	tpAniSirGlobal mac = PMAC_STRUCT(hal);
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		return status;
+	}
+
+	mac->sme.rssi_threshold_breached_cb = cb;
+	sme_ReleaseGlobalLock(&mac->sme);
+	return status;
+}
+
+/**
+ * sme_set_rssi_monitoring() - set rssi monitoring
+ * @hal: global hal handle
+ * @input: request message
+ *
+ * This function constructs the vos message and fill in message type,
+ * bodyptr with @input and posts it to WDA queue.
+ *
+ * Return: eHalStatus enumeration
+ */
+eHalStatus sme_set_rssi_monitoring(tHalHandle hal,
+					struct rssi_monitor_req *input)
+{
+	eHalStatus status     = eHAL_STATUS_SUCCESS;
+	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
+	tpAniSirGlobal mac    = PMAC_STRUCT(hal);
+	vos_msg_t vos_message;
+	struct rssi_monitor_req *req_msg;
+
+	smsLog(mac, LOG1, FL("enter"));
+	req_msg = vos_mem_malloc(sizeof(*req_msg));
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("memory allocation failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
+
+	*req_msg = *input;
+
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
+			FL("sme_AcquireGlobalLock failed!(status=%d)"),
+			status);
+		vos_mem_free(req_msg);
+		return status;
+	}
+
+	/* Serialize the req through MC thread */
+	vos_message.bodyptr = req_msg;
+	vos_message.type    = WDA_SET_RSSI_MONITOR_REQ;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
+			FL("vos_mq_post_message failed!(err=%d)"),
+			vos_status);
+		vos_mem_free(req_msg);
+	}
+	sme_ReleaseGlobalLock(&mac->sme);
+
+	return status;
+}
+
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
 
 /* ---------------------------------------------------------------------------
@@ -15098,3 +15178,49 @@ uint8_t sme_is_any_session_in_connected_state(tHalHandle h_hal)
 	return ret;
 }
 
+/**
+ * sme_disable_non_fcc_channel() - non-fcc channel disable request
+ * @hal: HAL pointer
+ * @fcc_constraint: true: disable, false; enable
+ *
+ * Return: eHalStatus.
+ */
+eHalStatus sme_disable_non_fcc_channel(tHalHandle hal, bool fcc_constraint)
+{
+	eHalStatus status = eHAL_STATUS_SUCCESS;
+	tpAniSirGlobal mac_ptr  = PMAC_STRUCT(hal);
+
+	status = sme_AcquireGlobalLock(&mac_ptr->sme);
+
+	if (eHAL_STATUS_SUCCESS == status) {
+
+		if (fcc_constraint != mac_ptr->scan.fcc_constraint) {
+			mac_ptr->scan.fcc_constraint = fcc_constraint;
+
+			/* update the channel list to the firmware */
+			status = csrUpdateChannelList(mac_ptr);
+		}
+
+		sme_ReleaseGlobalLock(&mac_ptr->sme);
+	}
+
+	return status;
+}
+
+/**
+ * smeNeighborRoamIsHandoffInProgress() - Function to know if
+ * handoff is in progress
+ * @hal:                Handle returned by macOpen
+ * @sessionId: sessionId of the STA session
+ *
+ * This function is a wrapper to call
+ * csrNeighborRoamIsHandoffInProgress to know if handoff is in
+ * progress
+ *
+ * Return: True or False
+ *
+ */
+bool smeNeighborRoamIsHandoffInProgress(tHalHandle hHal, tANI_U8 sessionId)
+{
+	return csrNeighborRoamIsHandoffInProgress(PMAC_STRUCT(hHal), sessionId);
+}

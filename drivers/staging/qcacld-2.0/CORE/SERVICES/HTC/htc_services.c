@@ -279,7 +279,7 @@ A_STATUS HTCConnectService(HTC_HANDLE               HTCHandle,
                 target->osdev,
                 &pEndpoint->ul_poll_timer,
                 HTCSendCompleteCheckCleanup,
-                pEndpoint);
+                pEndpoint, ADF_DEFERRABLE_TIMER);
         }
 
         AR_DEBUG_PRINTF(ATH_DEBUG_SETUP, ("HTC Service:0x%4.4X, ULpipe:%d DLpipe:%d id:%d Ready\n",

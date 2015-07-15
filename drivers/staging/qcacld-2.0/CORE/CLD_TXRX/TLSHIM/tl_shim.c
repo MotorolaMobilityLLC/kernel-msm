@@ -2026,6 +2026,20 @@ void *tl_shim_get_vdev_by_sta_id(void *vos_context, uint8_t sta_id)
 	return peer->vdev;
 }
 
+void
+WLANTL_PauseUnPauseQs(void *vos_context, v_BOOL_t flag)
+{
+	ol_txrx_pdev_handle pdev = vos_get_context(VOS_MODULE_ID_TXRX,
+					vos_context);
+
+	if (true == flag)
+		wdi_in_pdev_pause(pdev,
+				   OL_TXQ_PAUSE_REASON_VDEV_SUSPEND);
+	else
+		wdi_in_pdev_unpause(pdev,
+				   OL_TXQ_PAUSE_REASON_VDEV_SUSPEND);
+}
+
 #ifdef QCA_LL_TX_FLOW_CT
 /*=============================================================================
   FUNCTION    WLANTL_GetTxResource

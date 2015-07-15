@@ -605,7 +605,8 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 		goto end;
 	}
 
-	if (ol_check_fw_hash(fw_mem, fw_entry_size, file)) {
+	if (scn->enable_fw_hash_check &&
+	    ol_check_fw_hash(fw_entry->data, fw_entry_size, file)) {
 		pr_err("Hash Check failed for file:%s\n", filename);
 		status = A_ERROR;
 		goto end;
@@ -1106,6 +1107,8 @@ void ol_ramdump_handler(struct ol_softc *scn)
 void ol_target_failure(void *instance, A_STATUS status)
 {
 	struct ol_softc *scn = (struct ol_softc *)instance;
+	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
+	tp_wma_handle wma = vos_get_context(VOS_MODULE_ID_WDA, vos_context);
 #ifndef CONFIG_CNSS
 	A_UINT32 reg_dump_area = 0;
 	A_UINT32 reg_dump_values[REGISTER_DUMP_LEN_MAX];
@@ -1115,8 +1118,6 @@ void ol_target_failure(void *instance, A_STATUS status)
 	struct dbglog_hdr_host dbglog_hdr;
 	struct dbglog_buf_host dbglog_buf;
 	A_UINT8 *dbglog_data;
-	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
-	tp_wma_handle wma = vos_get_context(VOS_MODULE_ID_WDA, vos_context);
 #else
 	int ret;
 #endif
@@ -1130,12 +1131,19 @@ void ol_target_failure(void *instance, A_STATUS status)
 	}
 #endif
 
+	vos_event_set(&wma->recovery_event);
+
 	if (OL_TRGET_STATUS_RESET == scn->target_status) {
 		printk("Target is already asserted, ignore!\n");
 		return;
 	}
 
 	scn->target_status = OL_TRGET_STATUS_RESET;
+
+	if (vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
+		pr_info("%s: LOGP is in progress, ignore!\n", __func__);
+		return;
+	}
 
 	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
 		printk("%s: Loading/Unloading is in progress, ignore!\n",

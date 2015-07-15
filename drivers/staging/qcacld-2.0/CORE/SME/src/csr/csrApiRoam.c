@@ -485,6 +485,12 @@ eHalStatus csrUpdateChannelList(tpAniSirGlobal pMac)
 
     for (i = 0; i < pScan->base20MHzChannels.numChannels; i++)
     {
+        if (pScan->fcc_constraint) {
+            if (pScan->base20MHzChannels.channelList[i] == 12)
+                continue;
+            if (pScan->base20MHzChannels.channelList[i] == 13)
+                continue;
+        }
         channel_state =
             vos_nv_getChannelEnabledState(
                 pScan->base20MHzChannels.channelList[i]);
@@ -1615,6 +1621,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 
     if(pParam)
     {
+        pMac->roam.configParam.pkt_err_disconn_th = pParam->pkt_err_disconn_th;
         pMac->roam.configParam.WMMSupportMode = pParam->WMMSupportMode;
         pMac->roam.configParam.Is11eSupportEnabled = pParam->Is11eSupportEnabled;
         pMac->roam.configParam.FragmentationThreshold = pParam->FragmentationThreshold;
@@ -2897,8 +2904,8 @@ eHalStatus csrRoamIssueDisassociate( tpAniSirGlobal pMac, tANI_U32 sessionId,
   ---------------------------------------------------------------------------*/
 eHalStatus csrRoamIssueDisassociateStaCmd( tpAniSirGlobal pMac,
                                            tANI_U32 sessionId,
-                                           tANI_U8 *pPeerMacAddr,
-                                           tANI_U32 reason)
+                                           struct tagCsrDelStaParams
+                                           *pDelStaParams)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSmeCmd *pCommand;
@@ -2915,8 +2922,10 @@ eHalStatus csrRoamIssueDisassociateStaCmd( tpAniSirGlobal pMac,
         pCommand->command = eSmeCommandRoam;
         pCommand->sessionId = (tANI_U8)sessionId;
         pCommand->u.roamCmd.roamReason = eCsrForcedDisassocSta;
-        vos_mem_copy(pCommand->u.roamCmd.peerMac, pPeerMacAddr, 6);
-        pCommand->u.roamCmd.reason = (tSirMacReasonCodes)reason;
+        vos_mem_copy(pCommand->u.roamCmd.peerMac, pDelStaParams->peerMacAddr,
+                     sizeof(tSirMacAddr));
+        pCommand->u.roamCmd.reason =
+                    (tSirMacReasonCodes)pDelStaParams->reason_code;
         status = csrQueueSmeCommand(pMac, pCommand, eANI_BOOLEAN_FALSE);
         if( !HAL_STATUS_SUCCESS( status ) )
         {
@@ -5926,6 +5935,15 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                        roamInfo.pbFrames = pSession->connectedInfo.pbFrames;
                    }
                 }
+
+                /* Update the staId from the previous connected profile info
+                   as the reassociation is triggred at SME/HDD */
+                if ((eCsrHddIssuedReassocToSameAP ==
+                                    pCommand->u.roamCmd.roamReason) ||
+                    (eCsrSmeIssuedReassocToSameAP ==
+                                    pCommand->u.roamCmd.roamReason))
+                    roamInfo.staId = pSession->connectedInfo.staId;
+
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
                 // Indicate SME-QOS with reassoc success event, only after
                 // copying the frames
@@ -15037,7 +15055,7 @@ eHalStatus csrSendMBAddSelfStaReqMsg( tpAniSirGlobal pMac,
       pMsg->type = pAddStaReq->type;
       pMsg->subType = pAddStaReq->subType;
       pMsg->sessionId = sessionId;
-
+      pMsg->pkt_err_disconn_th = pMac->roam.configParam.pkt_err_disconn_th;
       smsLog( pMac, LOG1, FL("selfMac="MAC_ADDRESS_STR),
               MAC_ADDR_ARRAY(pMsg->selfMacAddr));
       status = palSendMBMessage(pMac->hHdd, pMsg);
@@ -16831,6 +16849,61 @@ static void check_allowed_ssid_list(tSirRoamOffloadScanReq *req_buffer,
 	}
 }
 
+/*
+ * Below Table describe whether RSO command can be send down to fimrware or not.
+ * Host check it on the basis of previous RSO command sent down to firmware.
+ *||==========================================================================||
+ *|| New cmd        |            LAST SENT COMMAND --->                       ||
+ *||====|=====================================================================||
+ *||    V           |  RSO_START  |  RSO_STOP  |  RSO_RESTART | RSO_UPDATE_CFG||
+ *|| -------------------------------------------------------------------------||
+ *|| RSO_START      |     NO      |   YES      |     NO       |      NO       ||
+ *|| RSO_STOP       |    YES      |   YES      |     YES      |      YES      ||
+ *|| RSO_RESTART    |    YES      |   NO       |     NO       |      YES      ||
+ *|| RSO_UPDATE_CFG |    YES      |   NO       |     YES      |      YES      ||
+ *||==========================================================================||
+ **/
+#define RSO_START_BIT       (1<<ROAM_SCAN_OFFLOAD_START)
+#define RSO_STOP_BIT        (1<<ROAM_SCAN_OFFLOAD_STOP)
+#define RSO_RESTART_BIT     (1<<ROAM_SCAN_OFFLOAD_RESTART)
+#define RSO_UPDATE_CFG_BIT  (1<<ROAM_SCAN_OFFLOAD_UPDATE_CFG)
+#define RSO_START_ALLOW_MASK   ( RSO_STOP_BIT )
+#define RSO_STOP_ALLOW_MASK    ( RSO_UPDATE_CFG_BIT | RSO_RESTART_BIT | \
+		RSO_STOP_BIT | RSO_START_BIT )
+#define RSO_RESTART_ALLOW_MASK ( RSO_UPDATE_CFG_BIT | RSO_START_BIT )
+#define RSO_UPDATE_CFG_ALLOW_MASK  (RSO_UPDATE_CFG_BIT | RSO_STOP_BIT | \
+		RSO_START_BIT)
+
+bool csr_is_RSO_cmd_allowed(tpAniSirGlobal mac_ctx, uint8_t command,
+		uint8_t session_id)
+{
+	tpCsrNeighborRoamControlInfo neigh_roam_info =
+		&mac_ctx->roam.neighborRoamInfo[session_id];
+	tANI_U8 desiredMask = 0;
+	bool ret_val;
+
+	switch(command) {
+	case ROAM_SCAN_OFFLOAD_START:
+		desiredMask = RSO_START_ALLOW_MASK;
+		break;
+	case ROAM_SCAN_OFFLOAD_STOP:
+		desiredMask = RSO_STOP_ALLOW_MASK;
+		break;
+	case ROAM_SCAN_OFFLOAD_RESTART:
+		desiredMask = RSO_RESTART_ALLOW_MASK;
+		break;
+	case ROAM_SCAN_OFFLOAD_UPDATE_CFG:
+		desiredMask = RSO_UPDATE_CFG_ALLOW_MASK;
+		break;
+	default:
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			FL("Wrong RSO command %d, not allowed"), command);
+		return 0;/*Cmd Not allowed*/
+	}
+	ret_val = desiredMask & ( 1 << neigh_roam_info->lastSentCmd);
+	return ret_val;
+}
+
 eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
                               tANI_U8 command, tANI_U8 reason)
 {
@@ -16876,10 +16949,17 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
       return eHAL_STATUS_FAILURE;
    }
 
+   if (!csr_is_RSO_cmd_allowed(pMac, command, sessionId) &&
+          reason != REASON_ROAM_SET_BLACKLIST_BSSID) {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+        FL("RSO out-of-sync command %d lastSentCmd %d"),
+        command, pNeighborRoamInfo->lastSentCmd);
+      return eHAL_STATUS_FAILURE;
+   }
    if ((VOS_TRUE == bRoamScanOffloadStarted) && (ROAM_SCAN_OFFLOAD_START == command))
    {
-        smsLog( pMac, LOGE,"Roam Scan Offload is already started");
-        return eHAL_STATUS_FAILURE;
+     smsLog( pMac, LOGE,"Roam Scan Offload is already started");
+     return eHAL_STATUS_FAILURE;
    }
    /*The Dynamic Config Items Update may happen even if the state is in INIT.
     * It is important to ensure that the command is passed down to the FW only
@@ -17256,7 +17336,9 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 sessionId,
             bRoamScanOffloadStarted = VOS_TRUE;
         else if (ROAM_SCAN_OFFLOAD_STOP == command)
             bRoamScanOffloadStarted = VOS_FALSE;
-    }
+   }
+   /* update the last sent cmd */
+   pNeighborRoamInfo->lastSentCmd = command;
 
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, "Roam Scan Offload Command %d, Reason %d", command, reason);
    return status;

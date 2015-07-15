@@ -2782,6 +2782,41 @@ int hdd_set_miracast_mode(hdd_adapter_t *pAdapter, tANI_U8 *command)
     return 0;
 }
 
+/**
+ * drv_cmd_set_fcc_channel() - handle fcc constraint request
+ * @hdd_ctx: HDD context
+ * @cmd: command ptr
+ * @cmd_len: command len
+ *
+ * Return: status
+ */
+static int drv_cmd_set_fcc_channel(hdd_context_t *hdd_ctx, uint8_t *cmd,
+                                   uint8_t cmd_len)
+{
+	uint8_t *value;
+	uint8_t fcc_constraint;
+	eHalStatus status;
+	int ret = 0;
+
+	value =  cmd + cmd_len + 1;
+
+	ret = kstrtou8(value, 10, &fcc_constraint);
+	if ((ret < 0) || (fcc_constraint > 1)) {
+		/*
+		 *  If the input value is greater than max value of datatype,
+		 *  then also it is a failure
+		 */
+		hddLog(LOGE, FL("value out of range"));
+		return -EINVAL;
+	}
+
+	status = sme_disable_non_fcc_channel(hdd_ctx->hHal, !fcc_constraint);
+	if (status != eHAL_STATUS_SUCCESS)
+		ret = -EPERM;
+
+	return ret;
+}
+
 static int hdd_driver_command(hdd_adapter_t *pAdapter,
                               hdd_priv_data_t *ppriv_data)
 {
@@ -4895,7 +4930,20 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
            ret = hdd_set_tdls_scan_type(pHddCtx, set_value);
        }
 #endif
-       else {
+       else if (strncasecmp(command, "SET_FCC_CHANNEL", 15) == 0) {
+           /*
+            * this command wld be called by user-space when it detects WLAN
+            * ON after airplane mode is set. When APM is set, WLAN turns off.
+            * But it can be turned back on. Otherwise; when APM is turned back
+            * off, WLAN wld turn back on. So at that point the command is
+            * expected to come down. 0 means disable, 1 means enable. The
+            * constraint is removed when parameter 1 is set or different
+            * country code is set
+            */
+
+           ret = drv_cmd_set_fcc_channel(pHddCtx, command, 15);
+
+       } else {
            MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                             TRACE_CODE_HDD_UNSUPPORTED_IOCTL,
                             pAdapter->sessionId, 0));
@@ -5937,8 +5985,11 @@ void hdd_update_tgt_cfg(void *context, void *param)
                FL("ini BandCapability not supported by the target"));
     }
 
-    hdd_ctx->reg.reg_domain = cfg->reg_domain;
-    hdd_ctx->reg.eeprom_rd_ext = cfg->eeprom_rd_ext;
+
+    if (!hdd_ctx->isLogpInProgress) {
+        hdd_ctx->reg.reg_domain = cfg->reg_domain;
+        hdd_ctx->reg.eeprom_rd_ext = cfg->eeprom_rd_ext;
+    }
 
     /* This can be extended to other configurations like ht, vht cap... */
 
@@ -10580,6 +10631,29 @@ static eHalStatus hdd_11d_scan_done(tHalHandle halHandle, void *pContext,
     return eHAL_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_FEATURE_OFFLOAD_PACKETS
+/**
+ * hdd_init_offloaded_packets_ctx() - Initialize offload packets context
+ * @hdd_ctx: hdd global context
+ *
+ * Return: none
+ */
+static void hdd_init_offloaded_packets_ctx(hdd_context_t *hdd_ctx)
+{
+	uint8_t i;
+
+	mutex_init(&hdd_ctx->op_ctx.op_lock);
+	for (i = 0; i < MAXNUM_PERIODIC_TX_PTRNS; i++) {
+		hdd_ctx->op_ctx.op_table[i].request_id = 0;
+		hdd_ctx->op_ctx.op_table[i].pattern_id = i;
+	}
+}
+#else
+static void hdd_init_offloaded_packets_ctx(hdd_context_t *hdd_ctx)
+{
+}
+#endif
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_startup() - HDD init function
@@ -10685,6 +10759,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    mutex_init(&pHddCtx->tdls_lock);
 #endif
 
+   hdd_init_offloaded_packets_ctx(pHddCtx);
    // Load all config first as TL config is needed during vos_open
    pHddCtx->cfg_ini = (hdd_config_t*) kmalloc(sizeof(hdd_config_t), GFP_KERNEL);
    if(pHddCtx->cfg_ini == NULL)
@@ -10795,6 +10870,20 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
                         pHddCtx->cfg_ini->vosTraceEnableSAP);
    hdd_vos_trace_enable(VOS_MODULE_ID_HDD_SOFTAP,
                         pHddCtx->cfg_ini->vosTraceEnableHDDSAP);
+   hdd_vos_trace_enable(VOS_MODULE_ID_HDD_DATA,
+                        pHddCtx->cfg_ini->vosTraceEnableHDDDATA);
+   hdd_vos_trace_enable(VOS_MODULE_ID_HDD_SAP_DATA,
+                        pHddCtx->cfg_ini->vosTraceEnableHDDSAPDATA);
+   hdd_vos_trace_enable(VOS_MODULE_ID_HIF,
+                        pHddCtx->cfg_ini->vosTraceEnableHIF);
+   hdd_vos_trace_enable(VOS_MODULE_ID_TXRX,
+                        pHddCtx->cfg_ini->vosTraceEnableTXRX);
+   hdd_vos_trace_enable(VOS_MODULE_ID_HTC,
+                        pHddCtx->cfg_ini->vosTraceEnableHTC);
+   hdd_vos_trace_enable(VOS_MODULE_ID_ADF,
+                        pHddCtx->cfg_ini->vosTraceEnableADF);
+   hdd_vos_trace_enable(VOS_MODULE_ID_CFG,
+                        pHddCtx->cfg_ini->vosTraceEnableCFG);
 
    print_hdd_cfg(pHddCtx);
 
@@ -11370,6 +11459,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
     sme_ExtScanRegisterCallback(pHddCtx->hHal,
                                 wlan_hdd_cfg80211_extscan_callback);
 #endif /* FEATURE_WLAN_EXTSCAN */
+    sme_set_rssi_threshold_breached_cb(pHddCtx->hHal, hdd_rssi_threshold_breached);
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
    wlan_hdd_cfg80211_link_layer_stats_init(pHddCtx);
 #endif
@@ -11945,7 +12035,8 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter,
 
   --------------------------------------------------------------------------*/
 
-void hdd_softap_sta_disassoc(hdd_adapter_t *pAdapter,v_U8_t *pDestMacAddress)
+void hdd_softap_sta_disassoc(hdd_adapter_t *pAdapter,
+                             struct tagCsrDelStaParams *pDelStaParams)
 {
 #ifndef WLAN_FEATURE_MBSSID
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
@@ -11956,13 +12047,13 @@ void hdd_softap_sta_disassoc(hdd_adapter_t *pAdapter,v_U8_t *pDestMacAddress)
     hddLog( LOGE, "hdd_softap_sta_disassoc:(%p, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     //Ignore request to disassoc bcmc station
-    if( pDestMacAddress[0] & 0x1 )
+    if( pDelStaParams->peerMacAddr[0] & 0x1 )
        return;
 
 #ifdef WLAN_FEATURE_MBSSID
-    WLANSAP_DisassocSta(WLAN_HDD_GET_SAP_CTX_PTR(pAdapter), pDestMacAddress);
+    WLANSAP_DisassocSta(WLAN_HDD_GET_SAP_CTX_PTR(pAdapter), pDelStaParams);
 #else
-    WLANSAP_DisassocSta(pVosContext,pDestMacAddress);
+    WLANSAP_DisassocSta(pVosContext, pDelStaParams);
 #endif
 }
 
