@@ -5256,7 +5256,7 @@ static int folio_notifier_callback(struct notifier_block *self,
 		else	/* open */
 			synaptics_dsx_restore_default_mode(rmi4_data);
 
-		dev_dbg(&rmi4_data->i2c_client->dev, "folio: %s\n",
+		dev_info(&rmi4_data->i2c_client->dev, "folio: %s\n",
 			folio_state ? "CLOSED" : "OPENED");
 
 		if (!(state & STATE_UI)) {
