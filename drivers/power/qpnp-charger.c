@@ -4091,7 +4091,7 @@ qpnp_eoc_work(struct work_struct *work)
 			count = 0;
 		} else {
 			if (count == CONSECUTIVE_COUNT) {
-				if (!chip->bat_is_cool && !chip->bat_is_warm) {
+				if (!chip->bat_is_warm) {
 					printk("End of Charging\n");
 					chip->chg_done = true;
 				} else {
