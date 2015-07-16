@@ -1211,7 +1211,6 @@ static void fusb301_detach(struct fusb301_chip *chip)
 		fusb301_init_force_dfp_power(chip);
 		break;
 	case FUSB_STATE_ATTACHED_SNK:
-		power_supply_set_present(chip->usb_psy, false);
 		fusb301_power_set_icurrent_max(chip, 0);
 		break;
 	case FUSB_STATE_DEBUG_ACCESSORY:
