@@ -87,7 +87,7 @@ void mmi_hall_notify(unsigned long stype, int state)
 	stored = !!(mdata->state & (1 << stype));
 	mdata->state &= ~(1 << stype);
 	mdata->state |= state << stype;
-	pr_debug("%s: current state %d (0x%x)\n", __func__,
+	pr_info("%s: current state %d (0x%x)\n", __func__,
 				state, mdata->state);
 
 	if ((mdata->enabled & (1 << stype)) && stored != state) {
