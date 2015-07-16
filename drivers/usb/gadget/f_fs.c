@@ -239,6 +239,7 @@ struct ffs_data {
 	 * destroyed by ffs_epfiles_destroy().
 	 */
 	struct ffs_epfile		*epfiles;
+	unsigned short			eps_pending_free_count;
 };
 
 /* Reference counter handling */
@@ -1450,6 +1451,7 @@ static void ffs_data_reset(struct ffs_data *ffs)
 
 	ffs->strings_count = 0;
 	ffs->interfaces_count = 0;
+	ffs->eps_pending_free_count = ffs->eps_count;
 	ffs->eps_count = 0;
 
 	ffs->ev.count = 0;
@@ -1609,6 +1611,15 @@ static void ffs_func_free(struct ffs_function *func)
 
 	ENTER();
 
+	if (!count) {
+		if (!func->ffs->eps_pending_free_count) {
+			pr_err("%s - ffs eps already freed\n", __func__);
+			return;
+		}
+
+		count = func->ffs->eps_pending_free_count;
+	}
+
 	/* cleanup after autoconfig */
 	spin_lock_irqsave(&func->ffs->eps_lock, flags);
 	do {
@@ -1618,6 +1629,7 @@ static void ffs_func_free(struct ffs_function *func)
 		ep->ep = NULL;
 		++ep;
 	} while (--count);
+	func->ffs->eps_pending_free_count = 0;
 	spin_unlock_irqrestore(&func->ffs->eps_lock, flags);
 
 	ffs_data_put(func->ffs);
@@ -1638,6 +1650,15 @@ static void ffs_func_eps_disable(struct ffs_function *func)
 	struct ffs_epfile *epfile = func->ffs->epfiles;
 	unsigned count            = func->ffs->eps_count;
 	unsigned long flags;
+
+	if (!count) {
+		if (!func->ffs->eps_pending_free_count) {
+			pr_err("%s - ffs eps already disabled\n", __func__);
+			return;
+		}
+
+		count = func->ffs->eps_pending_free_count;
+	}
 
 	spin_lock_irqsave(&func->ffs->eps_lock, flags);
 	do {
