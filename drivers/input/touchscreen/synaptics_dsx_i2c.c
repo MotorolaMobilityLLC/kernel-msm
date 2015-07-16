@@ -2553,7 +2553,7 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		if (rmi4_data->input_registered)
 			synaptics_rmi4_irq_enable(rmi4_data, true);
 		else {
-			synaptics_rmi4_irq_enable(rmi4_data, true);
+			synaptics_rmi4_irq_enable(rmi4_data, false);
 			pr_err("Active state without input device\n");
 		}
 
@@ -6034,6 +6034,7 @@ static void ps_external_power_changed(struct power_supply *psy)
 	struct synaptics_rmi4_data *rmi4_data = container_of(psy,
 				struct synaptics_rmi4_data, psy);
 	struct device *dev = &rmi4_data->i2c_client->dev;
+	int state;
 
 	if (!usb_psy || !usb_psy->get_property)
 		return;
@@ -6052,9 +6053,14 @@ static void ps_external_power_changed(struct power_supply *psy)
 			list_del(&ps_active.link);
 			patch_ptr->cfg_num--;
 		}
-		synaptics_dsx_patch_func(rmi4_data,
+
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+		dev_info(dev, "power supply presence %d in state %d\n",
+			pval.intval, state);
+
+		if (state == STATE_ACTIVE)
+			synaptics_dsx_patch_func(rmi4_data,
 				SYNAPTICS_RMI4_F01, &ps_patch[index]);
-		dev_info(dev, "power supply presence %d\n", pval.intval);
 	}
 	ps_usb_present = pval.intval == 1;
 }
