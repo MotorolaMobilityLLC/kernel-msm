@@ -92,11 +92,14 @@
 #define F11_WAKEUP_GESTURE_MODE 0x04
 #define F12_CONTINUOUS_MODE 0x00
 #define F12_WAKEUP_GESTURE_MODE 0x02
-#define DSX_VDD_VTG_MIN		3000000
-#define DSX_VDD_VTG_MAX		3000000
+#define DSX_VDD_VTG_MIN 3000000
+#define DSX_VDD_VTG_MAX 3000000
 
-#define DSX_VBUS_VTG_MIN	1800000
-#define DSX_VBUS_VTG_MAX	1800000
+#define DSX_VBUS_VTG_MIN 1800000
+#define DSX_VBUS_VTG_MAX 1800000
+
+#define DSX_VBUS_VTG_MIN_VN1 1850000
+#define DSX_VBUS_VTG_MAX_VN1 1850000
 
 static int synaptics_rmi4_f12_set_enables(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short ctrl28);
@@ -2817,7 +2820,7 @@ static int synaptics_rmi4_get_reg(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
-	/*Vbus 1.8V get and set*/
+	/*Vbus vtg get and set*/
 	if ((bdata->bus_reg_name != NULL) && (*bdata->bus_reg_name != 0)) {
 		rmi4_data->bus_reg = regulator_get(rmi4_data->pdev->dev.parent,
 				bdata->bus_reg_name);
@@ -2832,8 +2835,13 @@ static int synaptics_rmi4_get_reg(struct synaptics_rmi4_data *rmi4_data,
 		}
 
 		if (regulator_count_voltages(rmi4_data->bus_reg) > 0) {
-			retval = regulator_set_voltage(rmi4_data->bus_reg,
+			if (bdata->vbus_gpio >= 0) {
+				retval = regulator_set_voltage(rmi4_data->bus_reg,
+				DSX_VBUS_VTG_MIN_VN1, DSX_VBUS_VTG_MAX_VN1);
+			} else {
+				retval = regulator_set_voltage(rmi4_data->bus_reg,
 				DSX_VBUS_VTG_MIN, DSX_VBUS_VTG_MAX);
+			}
 			if (retval) {
 				dev_err(rmi4_data->pdev->dev.parent,
 					"regulator set bus_reg(Vbus) failed retval =%d\n",
@@ -2887,6 +2895,18 @@ static int synaptics_rmi4_enable_reg(struct synaptics_rmi4_data *rmi4_data,
 
 	msleep(5);
 
+	if (rmi4_data->bus_reg) {
+		retval = regulator_enable(rmi4_data->bus_reg);
+		if (retval < 0) {
+			dev_err(rmi4_data->pdev->dev.parent,
+					"%s: Failed to enable bus pullup regulator\n",
+					__func__);
+			goto exit;
+		} else {
+			tp_log_debug("%s: bus_reg enabled !\n",__func__);
+		}
+	}
+
 	if (bdata->vbus_gpio >= 0) {
 		retval = synaptics_rmi4_gpio_setup(
 				bdata->vbus_gpio,
@@ -2901,18 +2921,6 @@ static int synaptics_rmi4_enable_reg(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
-	if (rmi4_data->bus_reg) {
-		retval = regulator_enable(rmi4_data->bus_reg);
-		if (retval < 0) {
-			dev_err(rmi4_data->pdev->dev.parent,
-					"%s: Failed to enable bus pullup regulator\n",
-					__func__);
-			goto exit;
-		} else {
-			tp_log_debug("%s: pwr_reg enabled !\n",__func__);
-		}
-	}
-
 	msleep(bdata->power_delay_ms);
 
 	return 0;
@@ -2922,6 +2930,9 @@ disable_pwr_reg:
 		regulator_disable(rmi4_data->pwr_reg);
 
 disable_bus_reg:
+	if (rmi4_data->bus_reg)
+		regulator_disable(rmi4_data->bus_reg);
+
 	if (bdata->vbus_gpio >= 0) {
 		retval = synaptics_rmi4_gpio_setup(
 				bdata->vbus_gpio,
@@ -2935,9 +2946,6 @@ disable_bus_reg:
 			tp_log_debug("%s: vbus_gpio(%d) disabled !\n",__func__,bdata->vbus_gpio);
 		}
 	}
-
-	if (rmi4_data->bus_reg)
-		regulator_disable(rmi4_data->bus_reg);
 
 exit:
 	return retval;
