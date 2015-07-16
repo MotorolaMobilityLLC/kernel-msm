@@ -5299,14 +5299,13 @@ static DEVICE_ATTR(force_chg_usb_otg_ctl, 0664,
 static bool smb135x_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
-	bool factory = false;
+	u32 fact_cable = 0;
 
 	if (np)
-		factory = of_property_read_bool(np, "mmi,factory-cable");
+		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
 
 	of_node_put(np);
-
-	return factory;
+	return !!fact_cable ? true : false;
 }
 
 static int smb135x_charger_reboot(struct notifier_block *nb,
