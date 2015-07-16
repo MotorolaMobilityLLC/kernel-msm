@@ -45,14 +45,15 @@ struct m4sensorhub_batch_sample {
 	u8 batch_enabled;
 	u8 padding;
 	s32 sensor_data[3];
-	u32 seq;
+	u32 ts_delta;
 };
 
 int m4sensorhub_batch_register_data_callback(u8 sensor_type, void *priv_data,
-				void (*data_callback)(void *batch_event_data,
-					void *priv_data));
+	void (*data_callback)(void *batch_event_data, void *priv_data,
+		int64_t monobase, int num_events));
 
-int m4sensorhub_batch_unregister_data_callback(u8 sensor_type, void (*data_callback)(
-				void *batch_event_data, void *priv_data));
+int m4sensorhub_batch_unregister_data_callback(u8 sensor_type,
+	void (*data_callback)(void *batch_event_data, void *priv_data,
+		int64_t monobase, int num_events));
 #endif /* __KERNEL__ */
 #endif  /* __M4SENSORHUB_BATCH_H__ */
