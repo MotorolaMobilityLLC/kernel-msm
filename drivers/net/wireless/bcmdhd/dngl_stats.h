@@ -208,6 +208,15 @@ typedef struct {
    wifi_interface_handle iface;          // wifi interface
    wifi_interface_info info;             // current state of the interface
    u32 beacon_rx;                        // access point beacon received count from connected AP
+   u64 average_tsf_offset;               // average beacon offset encountered (beacon_TSF - TBTT)
+                                         // The average_tsf_offset field is used so as to calculate the
+                                         // typical beacon contention time on the channel as well may be
+                                         // used to debug beacon synchronization and related power consumption issue
+   u32 leaky_ap_detected;                // indicate that this AP typically leaks packets beyond the driver guard time.
+   u32 leaky_ap_avg_num_frames_leaked;   // average number of frame leaked by AP after frame with PM bit set was ACK'ed by AP
+   u32 leaky_ap_guard_time;              // guard time currently in force (when implementing IEEE power management based on
+                                         // frame control PM bit), How long driver waits before shutting down the radio and
+                                         // after receiving an ACK for a data frame with PM bit set)
    u32 mgmt_rx;                          // access point mgmt frames received count from connected AP (including Beacon)
    u32 mgmt_action_rx;                   // action frames received count
    u32 mgmt_action_tx;                   // action frames transmit count
