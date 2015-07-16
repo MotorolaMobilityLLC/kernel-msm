@@ -620,6 +620,15 @@ config HAPTIC_DRV2605
 	  If you say yes here you get support for the TI DRV2605
 	  haptic driver.
 
+config APBA_CTRL
+	tristate "UniPro APBA Control driver"
+	default n
+	depends on MTD && GPIOLIB && OF
+	help
+	  This option enables support for the UniPro APBA device.  It sets up
+	  the clock and GPIOs.  It also manages the firmware using an associated
+	  SPI flash device.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
