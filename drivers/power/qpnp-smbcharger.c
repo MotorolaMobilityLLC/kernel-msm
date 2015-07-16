@@ -234,6 +234,7 @@ struct smbchg_chip {
 	bool				usb_cc_controller;
 	bool				disable_apsd;
 	bool				disable_hvdcp;
+	bool				customized_jeita;
 };
 
 enum print_reason {
@@ -1564,6 +1565,10 @@ static int smbchg_set_fastchg_current(struct smbchg_chip *chip,
 	mutex_lock(&chip->fcc_lock);
 	if (chip->sw_esr_pulse_en)
 		current_ma = 300;
+
+	if (chip->customized_jeita && chip->batt_warm)
+		current_ma = min(current_ma, chip->fastchg_current_comp);
+
 	/* If the requested FCC is same, do not configure it again */
 	if (current_ma == chip->fastchg_current_ma) {
 		pr_smb(PR_STATUS, "not configuring FCC current: %d FCC: %d\n",
@@ -1751,7 +1756,7 @@ static int smbchg_get_aicl_level_ma(struct smbchg_chip *chip)
 	return usb_current_table[reg];
 }
 
-#define PARALLEL_CHG_THRESHOLD_CURRENT	1800
+#define PARALLEL_CHG_THRESHOLD_CURRENT	1000
 static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
@@ -3762,10 +3767,17 @@ static irqreturn_t batt_hot_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	bool unused, new_state;
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
-	chip->batt_hot = !!(reg & HOT_BAT_HARD_BIT);
+	new_state = !!(reg & HOT_BAT_HARD_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+
+	/* keep to disable charging until warm threshold */
+	if (chip->customized_jeita && !new_state && chip->batt_hot)
+		smbchg_battchg_en(chip, 0, REASON_BATTCHG_USER, &unused);
+
+	chip->batt_hot = new_state;
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
@@ -3780,10 +3792,17 @@ static irqreturn_t batt_cold_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	bool unused, new_state;
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
-	chip->batt_cold = !!(reg & COLD_BAT_HARD_BIT);
+	new_state = !!(reg & COLD_BAT_HARD_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+
+	/* keep to disable charging until cool threshold */
+	if (chip->customized_jeita && !new_state && chip->batt_cold)
+		smbchg_battchg_en(chip, 0, REASON_BATTCHG_USER, &unused);
+
+	chip->batt_cold = new_state;
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
@@ -3796,10 +3815,20 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	bool unused;
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_warm = !!(reg & HOT_BAT_SOFT_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+
+	if (chip->customized_jeita) {
+		smbchg_set_fastchg_current(chip,
+				chip->cfg_fastchg_current_ma);
+		if (!chip->batt_warm)
+			smbchg_battchg_en(chip, 1,
+				REASON_BATTCHG_USER, &unused);
+	}
+
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
@@ -3812,10 +3841,15 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	bool unused;
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_cool = !!(reg & COLD_BAT_SOFT_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+
+	if (chip->customized_jeita && !chip->batt_cool)
+		smbchg_battchg_en(chip, 1, REASON_BATTCHG_USER, &unused);
+
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
@@ -4663,6 +4697,10 @@ static inline int get_bpd(const char *name)
 #define AICL_WL_SEL_MASK		SMB_MASK(1, 0)
 #define AICL_WL_SEL_45S		0
 #define CHGR_CCMP_CFG			0xFA
+#define COLD_SL_CHG_I_COMP		BIT(0)
+#define HOT_SL_CHG_I_COMP		BIT(1)
+#define COLD_SL_FV_COMP		BIT(2)
+#define HOT_SL_FV_COMP			BIT(3)
 #define JEITA_TEMP_HARD_LIMIT_BIT	BIT(5)
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
@@ -4798,7 +4836,8 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	}
 
 	/* set the fast charge current compensation */
-	if (chip->fastchg_current_comp != -EINVAL) {
+	if (!chip->customized_jeita &&
+			chip->fastchg_current_comp != -EINVAL) {
 		rc = smbchg_fastchg_current_comp_set(chip,
 			chip->fastchg_current_comp);
 		if (rc < 0) {
@@ -4808,6 +4847,19 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		}
 		pr_smb(PR_STATUS, "set fastchg current comp to %d\n",
 			chip->fastchg_current_comp);
+	}
+
+	/* set customized JEITA configuration*/
+	if (chip->customized_jeita) {
+		rc = smbchg_sec_masked_write(chip,
+					chip->chgr_base + CHGR_CCMP_CFG,
+					HOT_SL_CHG_I_COMP | COLD_SL_CHG_I_COMP |
+					COLD_SL_FV_COMP ,0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't disable hw comp rc = %d\n", rc);
+			return rc;
+		}
 	}
 
 	/* set the float voltage compensation */
@@ -5256,6 +5308,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 					"qcom,disable-apsd");
 	chip->disable_hvdcp = of_property_read_bool(node,
 					"qcom,disable-hvdcp");
+	chip->customized_jeita = of_property_read_bool(node,
+					"qcom,customized-jeita");
 
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
