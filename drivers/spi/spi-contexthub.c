@@ -67,11 +67,30 @@ struct spich_data {
 	int sh2ap_irq;
 	struct completion sh2ap_completion;
 	struct gpio gpio_array[4];
+	struct wake_lock sh2ap_wakelock;
+	struct wake_lock sh2ap_data_wakelock;
 
 	enum {
-		AP_ACTIVE,
-		AP_SUSPENDED,
-	} ap_state;
+		HUB_ACTIVE,
+
+		/* driver has seen spich_suspend(), acquired the wakelock,
+		 * told the contexthub of our intention to suspend
+		 * and returned -EBUSY.
+		 */
+		HUB_SUSPENDING,
+
+		/* contexthub has acknowledged our intention to suspend, will
+		 * no longer send traffic other than that for wakeup-sensors.
+		 * we're no longer holding the wakelock.
+		 */
+		HUB_SUSPENDED,
+
+		/* driver has been resumed for a sufficient duration,
+		 * acquired the wakelock and told the contexthub to resume again.
+		 */
+		HUB_WAKING,
+
+	} hub_state;
 
 	struct timer_list resume_timer;
 	int force_read;
@@ -85,7 +104,6 @@ struct spich_data {
 static int spich_suspend(struct spi_device *spi, pm_message_t state)
 {
 	struct spich_data *spich = spi_get_drvdata(spi);
-	int status;
 
 	dev_dbg(&spi->dev, "spich_suspend\n");
 
@@ -94,45 +112,46 @@ static int spich_suspend(struct spi_device *spi, pm_message_t state)
 		 * from entering suspend mode. The status of the GPIO pin
 		 * (SH2AP) is undefined.
 		 */
-		del_timer(&spich->resume_timer);
 		return 0;
-	}
-
-	if (spich->ap_state == AP_ACTIVE) {
-		/* We consider ourselves in suspended state as soon as we see
-		 * a call to spich_suspend. We continue to consider ourselves
-		 * suspended unless we stay "resumed" for an extended period of
-		 * time.
-		 */
-		spich->ap_state = AP_SUSPENDED;
-	}
-
-	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 0) {
-		dev_dbg(&spi->dev, "returning -EBUSY\n");
-
-		/* After returning failure here we won't see a matching
-		 * call to spich_resume, make sure we consider ourselves
-		 * active again after a timeout.
-		 */
-		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
-		return -EBUSY;
-	}
-
-	status = enable_irq_wake(spich->sh2ap_irq);
-
-	if (status != 0) {
-		dev_err(&spi->dev, "spich_suspend/enable_irq_wake FAILED\n");
 	}
 
 	del_timer(&spich->resume_timer);
 
+	switch (spich->hub_state) {
+		case HUB_ACTIVE:
+		{
+			wake_lock(&spich->sh2ap_wakelock);
+			spich->hub_state = HUB_SUSPENDING;
+			spich->force_read = 1;
+			complete(&spich->sh2ap_completion);
+			return -EBUSY;
+		}
+
+		case HUB_SUSPENDING:
+		{
+			/* SHOULD NEVER BE HERE, we're holding the wakelock */
+			break;
+		}
+
+		case HUB_SUSPENDED:
+		{
+			return 0;
+		}
+
+		case HUB_WAKING:
+		{
+			/* SHOULD NEVER BE HERE, we're holding the wakelock */
+			break;
+		}
+	}
+
+	/* SHOULD NEVER BE HERE */
 	return 0;
 }
 
 static int spich_resume(struct spi_device *spi)
 {
 	struct spich_data *spich = spi_get_drvdata(spi);
-	int status;
 
 	dev_dbg(&spi->dev, "spich_resume\n");
 
@@ -144,18 +163,9 @@ static int spich_resume(struct spi_device *spi)
 		return 0;
 	}
 
-	status = disable_irq_wake(spich->sh2ap_irq);
-
-	if (status != 0) {
-		dev_err(&spi->dev, "spich_resume/disable_irq_wake FAILED\n");
+	if (spich->hub_state == HUB_SUSPENDED) {
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
 	}
-
-	/* To avoid constantly going in and out of suspend mode, we only
-	 * consider ourselves "resumed" if we remain so for at least 2 secs
-	 * without being interrupted by another "suspend". This delay has been
-	 * chosen arbitrarily and may need to be find-tuned.
-	 */
-	mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
 
 	return 0;
 }
@@ -166,15 +176,55 @@ static void spich_resume_timer_expired(unsigned long me)
 
 	dev_dbg(&spich->spi->dev, "spich_resume_timer_expired\n");
 
-	spich->ap_state = AP_ACTIVE;
+	switch (spich->hub_state) {
+		case HUB_ACTIVE:
+		{
+			// SHOULD NEVER BE HERE
+			break;
+		}
 
-        /* We're lying, we don't actually know that there's something for the
-         * client to read - but there's no harm in having the client poll
-         * the hub at this point. In fact, the hub will probably never send
-         * us any data ever again because it still thinks we're suspended.
-         */
-	spich->force_read = 1;
-	complete(&spich->sh2ap_completion);
+		case HUB_SUSPENDING:
+		{
+			// SHOULD NEVER BE HERE
+			break;
+		}
+
+		case HUB_SUSPENDED:
+		{
+			/* We stayed 'resumed' long enough to tell the hub to consider itself
+			 * resumed as well.
+			 */
+			wake_lock(&spich->sh2ap_wakelock);
+			spich->hub_state = HUB_WAKING;
+			spich->force_read = 1;
+			complete(&spich->sh2ap_completion);
+			break;
+		}
+
+		case HUB_WAKING:
+		{
+			// SHOULD NEVER BE HERE
+			break;
+		}
+        }
+}
+
+static void spich_hub_suspended(struct spich_data *spich, int suspended) {
+	/* The hub has now acknowledged being either suspended or resumed,
+	 * our driver receives this notification in one of the two transitional
+	 * states, HUB_SUSPENDING or HUB_WAKING. In both cases we're currently
+	 * holding the wakelock.
+	 */
+	if (suspended) {
+		dev_dbg(&spich->spi->dev, "hub is now suspended\n");
+		spich->hub_state = HUB_SUSPENDED;
+
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
+	} else {
+		dev_dbg(&spich->spi->dev, "hub is now resumed\n");
+		spich->hub_state = HUB_ACTIVE;
+	}
+	wake_unlock(&spich->sh2ap_wakelock);
 }
 
 static irqreturn_t sh2ap_isr(int irq, void *data)
@@ -187,6 +237,14 @@ static irqreturn_t sh2ap_isr(int irq, void *data)
 	 * We'll prevent the AP from going to suspend as long as the line is low
 	 * to ensure that the client has read all available data.
 	 */
+
+	if (spich->hub_state == HUB_SUSPENDED) {
+		/* We only acquire the wakelock if the hub has acknowledged
+		 * its suspend state, i.e. all the traffic it sends must be
+		 * important.
+		 */
+		wake_lock(&spich->sh2ap_data_wakelock);
+	}
 	complete(&spich->sh2ap_completion);
 
 	return IRQ_HANDLED;
@@ -222,6 +280,12 @@ static int spich_init_instance(struct spich_data *spich)
 
 	init_completion(&spich->sh2ap_completion);
 
+	wake_lock_init(
+		&spich->sh2ap_wakelock, WAKE_LOCK_SUSPEND, "sh2ap_wakelock");
+
+	wake_lock_init(
+		&spich->sh2ap_data_wakelock, WAKE_LOCK_SUSPEND, "sh2ap_data_wakelock");
+
 	status = devm_request_irq(&spich->spi->dev,
 				  spich->sh2ap_irq,
 				  sh2ap_isr,
@@ -233,17 +297,29 @@ static int spich_init_instance(struct spich_data *spich)
 		goto bail4;
 	}
 
+	status = enable_irq_wake(spich->sh2ap_irq);
+
+	if (status != 0) {
+		dev_err(&spich->spi->dev, "open/enable_irq_wake FAILED\n");
+		goto bail5;
+	}
+
 	setup_timer(
 		&spich->resume_timer,
 		spich_resume_timer_expired,
 		(unsigned long)spich);
 
-	spich->ap_state = AP_ACTIVE;
+	spich->hub_state = HUB_ACTIVE;
 	spich->force_read = 0;
 
 	return 0;
 
+bail5:
+	devm_free_irq(&spich->spi->dev, spich->sh2ap_irq, spich);
+
 bail4:
+	wake_lock_destroy(&spich->sh2ap_data_wakelock);
+	wake_lock_destroy(&spich->sh2ap_wakelock);
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
 bail3:
@@ -263,6 +339,9 @@ static void spich_destroy_instance(struct spich_data *spich)
 	del_timer(&spich->resume_timer);
 
 	devm_free_irq(&spich->spi->dev, spich->sh2ap_irq, spich);
+
+	wake_lock_destroy(&spich->sh2ap_data_wakelock);
+	wake_lock_destroy(&spich->sh2ap_wakelock);
 
 	gpio_free_array(spich->gpio_array, ARRAY_SIZE(spich->gpio_array));
 
@@ -361,6 +440,10 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 
 	gpio_set_value(spich->gpio_array[GPIO_IDX_AP2SH].gpio, 1);
 
+	if (gpio_get_value(spich->gpio_array[GPIO_IDX_SH2AP].gpio) != 0) {
+		wake_unlock(&spich->sh2ap_data_wakelock);
+	}
+
 	return status;
 }
 
@@ -436,11 +519,12 @@ static int spich_message(struct spich_data *spich,
 			if (u_tmp->len >= 10
 			    && (spich->flags & SPICH_FLAG_TIMESTAMPS_ENABLED)) {
 				/* Bit 7 of the cmd byte is used as an indication
-				 * of whether or not the AP considers itself
+				 * of whether or not the hub should considers itself
 				 * suspended at the time of the transaction.
 				 */
 				uint8_t modified_cmd = buf[9] & 0x7f;
-				if (spich->ap_state == AP_SUSPENDED) {
+				if (spich->hub_state != HUB_ACTIVE
+					&& spich->hub_state != HUB_WAKING) {
 					modified_cmd |= 0x80;
 				}
 
@@ -547,8 +631,28 @@ static long spich_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			mdelay(50);
 			gpio_set_value(spich->gpio_array[GPIO_IDX_NRST].gpio,
 				       1);
+
+			spich->hub_state = HUB_ACTIVE;
+			wake_unlock(&spich->sh2ap_wakelock);
 			break;
 		}
+
+	case SPI_IOC_NOTIFY_HUB_SUSPENDED:
+	{
+		u32 tmp;
+		err = __get_user(tmp, (u8 __user *)arg);
+
+		if (err != 0) {
+			break;
+		}
+
+		if (spich->hub_state == HUB_SUSPENDING && tmp) {
+			spich_hub_suspended(spich, 1);
+		} else if (spich->hub_state == HUB_WAKING && !tmp) {
+			spich_hub_suspended(spich, 0);
+		}
+		break;
+	}
 
 	case SPI_IOC_ENABLE_TIMESTAMPS:
 		{
