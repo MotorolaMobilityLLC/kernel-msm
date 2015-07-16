@@ -1042,6 +1042,8 @@ static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 			M98925_EN_MASK, 0x0);
 		regmap_update_bits(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
 			M98925_EN_MASK, 0x0);
+		if (DEFAULT_SWITCH_NONEED != max98925->switch_en_gpio)
+			gpio_direction_output(max98925->switch_en_gpio, GPIO_PULL_DOWN);
 	}
 	else	{
 		regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
@@ -1236,6 +1238,10 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	regmap_write(max98925->regmapL, MAX98925_R03A_BOOST_LIMITER, 0xF8);
 	regmap_write(max98925->regmapR, MAX98925_R03A_BOOST_LIMITER, 0xF8);
 
+	/* set drv strength to 3.25mA */
+	regmap_write(max98925->regmapL, MAX98925_R02B_DOUT_DRV_STRENGTH, 0x00);
+	regmap_write(max98925->regmapR, MAX98925_R02B_DOUT_DRV_STRENGTH, 0x00);
+
 	regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
 			M98925_DAC_IN_SEL_MASK, M98925_DAC_IN_SEL_LEFT_DAI);
 	regmap_update_bits(max98925->regmapR, MAX98925_R02D_GAIN,
@@ -1349,11 +1355,14 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 	} else {
 		pr_err("%s: read hac gpio  %d\n", __func__,ret);
 		max98925->switch_en_gpio = ret;
-		/* request var for hac */
+		/* request var for gpio with receiver */
 		ret = gpio_request(max98925->switch_en_gpio, "receiver_switch_gpio");
 		if (ret) {
 			pr_err("%s: Failed to configure spk&receiver switch "
 					"gpio %u\n", __func__, max98925->switch_en_gpio);
+			max98925->switch_en_gpio = DEFAULT_SWITCH_NONEED;
+		} else {
+			gpio_direction_output(max98925->switch_en_gpio, GPIO_PULL_DOWN);
 		}
 	}
 

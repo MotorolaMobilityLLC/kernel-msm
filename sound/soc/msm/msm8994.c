@@ -151,7 +151,8 @@ static struct audio_plug_dev *apq8094_db_ext_fp_out_dev;
 
 
 static const char *const pin_states[] = {"sleep", "auxpcm-active",
-					 "mi2s-active", "active"};
+					 "pri_mi2s-active", "tert_mi2s-active",
+					 "quat_mi2s-active", "active"};
 static const char *const spk_function[] = {"Off", "On"};
 static const char *const slim0_rx_ch_text[] = {"One", "Two"};
 static const char *const slim5_rx_ch_text[] = {"One", "Two"};

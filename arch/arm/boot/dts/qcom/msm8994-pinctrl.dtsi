@@ -1543,7 +1543,7 @@
 				bias-pull-down;		/* PULL DOWN */
 			};
 			quat_mi2s_active: quat_mi2s_active {
-				drive-strength = <8>;	/* 8 mA */
+				drive-strength = <4>;	/* 4 mA */
 				bias-disable;		/* NO PULL */
 				output-high;
 			};
@@ -1574,7 +1574,7 @@
 				bias-pull-down;		/* PULL DOWN */
 			};
 			quat_mi2s_sd0_active: quat_mi2s_sd0_active {
-				drive-strength = <8>;	/* 8 mA */
+				drive-strength = <4>;	/* 4 mA */
 				bias-disable;		/* NO PULL */
 			};
 		};
