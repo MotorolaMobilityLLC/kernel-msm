@@ -31,6 +31,10 @@
 		synaptics,check-build;
 		synaptics,pon-delay = <66>;
 		synaptics,disable-gpios;
+		synaptics,display-coords = <0 0 1079 1919>;
+		synaptics,num-of-tx = <28>;
+		synaptics,num-of-rx = <16>;
+		synaptics,num-of-fingers = <10>;
 
 		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 		pinctrl-0 = <&ts_reset_active &ts_int_active>;
