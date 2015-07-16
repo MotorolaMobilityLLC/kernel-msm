@@ -3924,13 +3924,13 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 static bool is_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
-	bool fact_cable = false;
+	u32 fact_cable = 0;
 
 	if (np)
-		fact_cable = of_property_read_bool(np, "mmi,factory-cable");
+		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
 
 	of_node_put(np);
-	return fact_cable;
+	return !!fact_cable ? true : false;
 }
 
 static void configure_mmi_factory(struct platform_device *pdev,
