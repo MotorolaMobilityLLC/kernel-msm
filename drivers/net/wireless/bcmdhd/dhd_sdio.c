@@ -3138,7 +3138,7 @@ dhdsdio_mem_dump(dhd_bus_t *bus)
 {
 	int ret = 0;
 	int size; /* Full mem size */
-	int start = bus->dongle_ram_base; /* Start address */
+	uint32 start = bus->dongle_ram_base; /* Start address */
 	int read_size = 0; /* Read size of each iteration */
 	uint8 *databuf = NULL;
 	dhd_pub_t *dhd = bus->dhd;
@@ -3147,10 +3147,12 @@ dhdsdio_mem_dump(dhd_bus_t *bus)
 		DHD_ERROR(("%s : dhd->soc_ram is NULL\n", __FUNCTION__));
 		return -1;
 	}
+	BUS_WAKE(bus);
+	dhdsdio_clkctl(bus, CLK_AVAIL, FALSE);
 
 	size = dhd->soc_ram_length = bus->ramsize;
 	/* Read mem content */
-	DHD_ERROR(("Dump dongle memory"));
+	DHD_ERROR(("Dump dongle memory\n"));
 	databuf = dhd->soc_ram;
 	while (size)
 	{
@@ -3166,6 +3168,11 @@ dhdsdio_mem_dump(dhd_bus_t *bus)
 		databuf += read_size;
 	}
 	DHD_ERROR(("Done\n"));
+
+	if ((bus->idletime == DHD_IDLE_IMMEDIATE) && !bus->dpc_sched) {
+		bus->activity = FALSE;
+		dhdsdio_clkctl(bus, CLK_NONE, TRUE);
+	}
 
 	dhd_save_fwdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
 	return 0;
