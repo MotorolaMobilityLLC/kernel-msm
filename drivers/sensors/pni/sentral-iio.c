@@ -33,12 +33,14 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/time.h>
-#include <linux/sort.h>
+#include <linux/wait.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/kfifo_buf.h>
 
 #include <linux/sentral-iio.h>
+
+static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id);
 
 // I2C
 static int sentral_read_byte(struct sentral_device *sentral, u8 reg)
@@ -82,11 +84,7 @@ static int sentral_write_block(struct sentral_device *sentral, u8 reg,
 	buf[0] = reg;
 	memcpy(&buf[1], buffer, count);
 
-	mutex_lock(&sentral->lock_i2c);
-
 	rc = i2c_transfer(sentral->client->adapter, msg, 1);
-
-	mutex_unlock(&sentral->lock_i2c);
 
 	if (rc != 1) {
 		LOGE(&sentral->client->dev, "error (%d) writing data\n", rc);
@@ -118,11 +116,7 @@ static int sentral_read_block(struct sentral_device *sentral, u8 reg,
 	if (!count)
 		return count;
 
-	mutex_lock(&sentral->lock_i2c);
-
 	rc = i2c_transfer(sentral->client->adapter, msg, 2);
-
-	mutex_unlock(&sentral->lock_i2c);
 
 	if (rc != 2) {
 		LOGE(&sentral->client->dev, "error (%d) reading data\n", rc);
@@ -147,22 +141,32 @@ static int sentral_parameter_read(struct sentral_device *sentral,
 {
 	int rc;
 	int i;
-	bool ack_not_detected = false;
+
+#ifdef SEN_DBG_PIO
+	u8 dbuf[size * 5 + 1];
+	size_t dcount = 0;
+	u8 *dparam = (u8 *)param;
+#endif /* SEN_DBG_PIO */
 
 	if (size > PARAM_READ_SIZE_MAX)
 		return -EINVAL;
 
+#ifdef SEN_DBG_PIO
+	LOGD(&sentral->client->dev, "[PIO RD] page: %u, number: %u, count: %zu\n",
+			page_number, param_number, size);
+#endif /* SEN_DBG_PIO */
+
 	if (size < PARAM_READ_SIZE_MAX)
 		page_number = (size << 4) | (page_number & 0x0F);
 
-	mutex_lock(&sentral->lock_pio);
+	mutex_lock(&sentral->lock_special);
 
-retry:
 	// select page
 	rc = sentral_write_byte(sentral, SR_PARAM_PAGE, page_number);
 	if (rc) {
-		LOGE(&sentral->client->dev, "error (%d) selecting parameter page: %u\n",
-				rc, page_number);
+		LOGE(&sentral->client->dev,
+				"[PIO RD] error (%d) selecting parameter page: %u\n", rc,
+				page_number);
 
 		goto exit_error_page;
 	}
@@ -171,7 +175,7 @@ retry:
 	rc = sentral_write_byte(sentral, SR_PARAM_REQ, param_number);
 	if (rc) {
 		LOGE(&sentral->client->dev,
-				"error (%d) selecting parameter number: %u\n", rc,
+				"[PIO RD] error (%d) selecting parameter number: %u\n", rc,
 				param_number);
 
 		goto exit_error_param;
@@ -182,41 +186,48 @@ retry:
 		usleep_range(8000, 10000);
 		rc = sentral_read_byte(sentral, SR_PARAM_ACK);
 		if (rc < 0) {
-			LOGE(&sentral->client->dev, "error (%d) reading parameter ack\n",
-					rc);
+			LOGE(&sentral->client->dev,
+					"[PIO RD] error (%d) reading parameter ack\n", rc);
 
 			goto exit;
 		}
 
 		if (rc == param_number)
 			goto acked;
+
+#ifdef SEN_DBG_PIO
+		LOGD(&sentral->client->dev,
+				"[PIO RD] ack: 0x%02X, expected: 0x%02X\n", rc, param_number);
+#endif /* SEN_DBG_PIO */
 	}
-	// no ack does not return negative value
-	rc = -EIO;
-	LOGE(&sentral->client->dev, "parameter ack retries (%d) exhausted\n",
+	LOGE(&sentral->client->dev, "[PIO RD] parameter ack retries (%d) exhausted\n",
 			PARAM_MAX_RETRY);
-	if (ack_not_detected) {
-		LOGE(&sentral->client->dev, "parameter retries failed twice\n");
-		goto exit;
-	} else
-		ack_not_detected = true;
-	goto retry;
+
+	rc = -EIO;
+	goto exit;
 
 acked:
 	// read values
 	rc = sentral_read_block(sentral, SR_PARAM_SAVE, param, size);
 	if (rc < 0) {
-		LOGE(&sentral->client->dev, "error (%d) reading parameter data\n", rc);
+		LOGE(&sentral->client->dev,
+				"[PIO RD] error (%d) reading parameter data\n", rc);
 		goto exit;
 	}
 	rc = 0;
-
+#ifdef SEN_DBG_PIO
+	for (i = 0; i < size; i++) {
+		dcount += scnprintf(dbuf + dcount, PAGE_SIZE - dcount, "0x%02X ",
+				*(dparam + i));
+	}
+	LOGD(&sentral->client->dev, "[PIO RD] bytes: %s\n", dbuf);
+#endif /* SEN_DBG_PIO */
 exit:
 	(void)sentral_write_byte(sentral, SR_PARAM_PAGE, 0);
 exit_error_param:
 	(void)sentral_write_byte(sentral, SR_PARAM_REQ, 0);
 exit_error_page:
-	mutex_unlock(&sentral->lock_pio);
+	mutex_unlock(&sentral->lock_special);
 	return rc;
 }
 
@@ -225,22 +236,39 @@ static int sentral_parameter_write(struct sentral_device *sentral,
 {
 	int rc;
 	int i;
-	bool ack_not_detected = false;
+
+#ifdef SEN_DBG_PIO
+	u8 dbuf[size * 5 + 1];
+	size_t dcount = 0;
+	u8 *dparam = (u8 *)param;
+#endif /* SEN_DBG_PIO */
 
 	if (size > PARAM_WRITE_SIZE_MAX)
 		return -EINVAL;
 
+#ifdef SEN_DBG_PIO
+	LOGD(&sentral->client->dev,
+			"[PIO WR] page: %u, number: %u, count: %zu\n",
+			page_number, param_number, size);
+
+	for (i = 0; i < size; i++) {
+		dcount += scnprintf(dbuf + dcount, PAGE_SIZE - dcount, "0x%02X ",
+				*(dparam + i));
+	}
+	LOGD(&sentral->client->dev, "[PIO WR] bytes: %s\n", dbuf);
+#endif /* SEN_DBG_PIO */
+
 	if (size < PARAM_WRITE_SIZE_MAX)
 		page_number = (size << 4) | (page_number & 0x0F);
 
-	mutex_lock(&sentral->lock_pio);
+	mutex_lock(&sentral->lock_special);
 
-retry:
 	// select page
 	rc = sentral_write_byte(sentral, SR_PARAM_PAGE, page_number);
 	if (rc) {
-		LOGE(&sentral->client->dev, "error (%d) selecting parameter page: %u\n",
-			rc, page_number);
+		LOGE(&sentral->client->dev,
+				"[PIO WR] error (%d) selecting parameter page: %u\n", rc,
+				page_number);
 
 		goto exit_error_page;
 	}
@@ -248,7 +276,8 @@ retry:
 	// write values
 	rc = sentral_write_block(sentral, SR_PARAM_LOAD, param, size);
 	if (rc < 0) {
-		LOGE(&sentral->client->dev, "error (%d) writing parameter data\n", rc);
+		LOGE(&sentral->client->dev,
+				"[PIO WR] error (%d) writing parameter data\n", rc);
 		goto exit_error_page;
 	}
 
@@ -257,36 +286,41 @@ retry:
 	rc = sentral_write_byte(sentral, SR_PARAM_REQ, param_number);
 	if (rc) {
 		LOGE(&sentral->client->dev,
-				"error (%d) selecting parameter number: %u\n", rc,
+				"[PIO WR] error (%d) selecting parameter number: %u\n", rc,
 				param_number);
 
 		goto exit_error_param;
 	}
 
+	LOGD(&sentral->client->dev, "[PIO WR] Page: 0x%02X, Param: 0x%02X\n",
+			page_number, param_number);
+
 	// wait for ack
 	for (i = 0; i < PARAM_MAX_RETRY; i++) {
 		usleep_range(8000, 10000);
 		rc = sentral_read_byte(sentral, SR_PARAM_ACK);
+
+#ifdef SEN_DBG_PIO
+		LOGD(&sentral->client->dev,
+				"[PIO WR] ack: 0x%02X, expected: 0x%02X\n", rc, param_number);
+#endif /* SEN_DBG_PIO */
+
 		if (rc < 0) {
-			LOGE(&sentral->client->dev, "error (%d) reading parameter ack\n",
-					rc);
+			LOGE(&sentral->client->dev,
+					"[PIO WR] error (%d) reading parameter ack\n", rc);
 
 			goto exit;
 		}
 
 		if (rc == param_number)
 			goto acked;
+
 	}
-	// without ack
+	LOGE(&sentral->client->dev,
+			"[PIO WR] parameter ack retries (%d) exhausted\n", PARAM_MAX_RETRY);
+
 	rc = -EIO;
-	LOGE(&sentral->client->dev, "parameter ack retries (%d) exhausted\n",
-			PARAM_MAX_RETRY);
-	if (ack_not_detected) {
-		LOGE(&sentral->client->dev, "parameter retries failed twice\n");
-		goto exit;
-	} else
-		ack_not_detected = true;
-	goto retry;
+	goto exit;
 
 acked:
 	rc = 0;
@@ -296,82 +330,23 @@ exit:
 exit_error_param:
 	(void)sentral_write_byte(sentral, SR_PARAM_REQ, 0);
 exit_error_page:
-	mutex_unlock(&sentral->lock_pio);
+	mutex_unlock(&sentral->lock_special);
 	return rc;
 }
 
-static int sentral_sync_timestamp(struct sentral_device *sentral)
+static int sentral_stime_current_get(struct sentral_device *sentral, u32 *ts)
 {
-	struct sentral_param_timestamp stime;
+	struct sentral_param_timestamp stime = {{ 0 }};
 	int rc;
 
-	mutex_lock(&sentral->lock_ts);
-
-	// get host current time micros
-	sentral->ts_ref_ntime = sentral_get_boottime_ns();
-
-	// get hub time stime
 	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
 			(void *)&stime, sizeof(stime));
 	if (rc)
-		goto exit;
+		return rc;
 
-	sentral->ts_ref_stime = stime.ts.current_stime;
+	*ts = stime.ts.current_stime;
 
-	LOGD(&sentral->client->dev,
-			"synched time: { ts_ref_ntime: %llu, ts_ref_stime: %u }\n",
-			sentral->ts_ref_ntime, sentral->ts_ref_stime);
-
-exit:
-	mutex_unlock(&sentral->lock_ts);
-	return rc;
-}
-
-// find time scale
-
-static int compare(const void *a, const void *b)
-{
-	u32 a_integer = *(const u32 *)(a);
-	u32 b_integer = *(const u32 *)(b);
-
-	if (a_integer < b_integer) return -1;
-	if (a_integer > b_integer) return 1;
 	return 0;
-}
-
-static void find_time_scale(struct sentral_device *sentral, u8 period)
-{
-	u64 ntime[SENTRAL_TICK_STAT];
-	u32 stime[SENTRAL_TICK_STAT];
-	u64 diff_ntime[SENTRAL_TICK_STAT - 1];
-	u32 diff_stime[SENTRAL_TICK_STAT - 1];
-	u32 tick_ratio[SENTRAL_TICK_STAT - 1];
-	u32 time_scale = 0;
-	u8 i;
-
-	// find ticks statistically
-	for (i = 0; i < SENTRAL_TICK_STAT; i++) {
-		sentral_sync_timestamp(sentral);
-		ntime[i] = sentral->ts_ref_ntime;
-		stime[i] = sentral->ts_ref_stime;
-		mdelay(period);
-	}
-	for (i = 0; i < SENTRAL_TICK_STAT - 1; i++) {
-		diff_ntime[i] = ntime[i + 1] - ntime[i];
-		diff_stime[i] = stime[i + 1] - stime[i];
-		tick_ratio[i] = (u32)(diff_ntime[i]) / diff_stime[i];
-		LOGD(&sentral->client->dev, "tick_ratio[%u]: %u",
-				i, tick_ratio[i]);
-	}
-	sort(tick_ratio, SENTRAL_TICK_STAT - 1, sizeof(u32), &compare, NULL);
-	for (i = 3; i < SENTRAL_TICK_STAT - 4; i++) {
-		time_scale += tick_ratio[i];
-		LOGD(&sentral->client->dev, "tick_ratio[%u]: %u, time_scale: %u",
-				i, tick_ratio[i], time_scale);
-	}
-	time_scale /= (SENTRAL_TICK_STAT - 6);
-	sentral->ts_timestamp_scale = (u64)time_scale;
-	LOGI(&sentral->client->dev, "final time scale: %lld", sentral->ts_timestamp_scale);
 }
 
 // Sensors
@@ -393,11 +368,6 @@ static int sentral_sensor_config_read(struct sentral_device *sentral, u8 id,
 		return rc;
 	}
 
-	LOGI(&sentral->client->dev,
-		"read config: { 0x%04X, 0x%04X, 0x%04X, 0x%04X }\n",
-		config->sample_rate, config->max_report_latency,
-		config->change_sensitivity, config->dynamic_range);
-
 	return 0;
 }
 
@@ -418,11 +388,6 @@ static int sentral_sensor_config_write(struct sentral_device *sentral, u8 id,
 		return rc;
 	}
 
-	LOGI(&sentral->client->dev,
-		"write config: { 0x%04X, 0x%04X, 0x%04X, 0x%04X }\n",
-		config->sample_rate, config->max_report_latency,
-		config->change_sensitivity, config->dynamic_range);
-
 	// update current sensor config
 	memcpy(&sentral->sensor_config[id], config,
 			sizeof(struct sentral_param_sensor_config));
@@ -437,7 +402,7 @@ static int sentral_sensor_config_restore(struct sentral_device *sentral)
 
 	if (sentral->enabled_mask) {
 		for (i = 0; i < SST_MAX; i++) {
-			if (!(sentral->enabled_mask & (1LL << i)))
+			if (!test_bit(i, &sentral->enabled_mask))
 				continue;
 
 			LOGI(&sentral->client->dev, "restoring state for sensor id: %d\n",
@@ -482,51 +447,65 @@ static int sentral_sensor_id_is_valid(u8 id)
 	return ((id >= SST_FIRST) && (id < SST_MAX));
 }
 
-// Register Set
-
-static int sentral_set_register_flag(struct sentral_device *sentral, u8 reg,
-		u8 flag, bool enable)
+static int sentral_inactivity_timeout_get(struct sentral_device *sentral,
+		u16 *timeout_s)
 {
-	int rc;
-	u8 value;
+	return sentral_parameter_read(sentral, SPP_ASUS,
+			SP_ASUS_INACTIVITY_TIMEOUT, (void *)timeout_s, sizeof(timeout_s));
+}
 
-	LOGD(&sentral->client->dev, "setting register 0x%02X flag 0x%02X to %u\n",
-			reg, flag, enable);
+static int sentral_inactivity_timeout_set(struct sentral_device *sentral,
+		u16 timeout_s)
+{
+	LOGI(&sentral->client->dev, "setting intactivity timeout to: %u seconds\n",
+			timeout_s);
 
-	rc = sentral_read_byte(sentral, reg);
-	if (rc < 0) {
-		LOGE(&sentral->client->dev, "error (%d) reading register 0x%02X\n", rc,
-				reg);
+	return sentral_parameter_write(sentral, SPP_ASUS,
+			SP_ASUS_INACTIVITY_TIMEOUT, (void *)&timeout_s, sizeof(timeout_s));
+}
 
-		return rc;
+static int sentral_rate_to_fitness_id(struct sentral_device *sentral,
+		u16 rate)
+{
+	int fitness_id = 0;
+	int i;
+
+	for (i = 1; i < ARRAY_SIZE(sentral_fitness_id_rates); i++) {
+		if (rate >= sentral_fitness_id_rates[i])
+			fitness_id = i;
 	}
 
-	value = rc & ~(flag);
-	if (enable)
-		value |= flag;
+	return fitness_id;
+}
 
-	if (value == rc)
-		return 0;
-
-	rc = sentral_write_byte(sentral, reg, value);
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) setting register 0x%02X to 0x%02X\n", rc, reg,
-				value);
-
+static int sentral_coach_fitness_id_get(struct sentral_device *sentral,
+		u8 *fitness_id)
+{
+	int rc = sentral_read_byte(sentral, SR_FITNESS_ID);
+	if (rc < 0)
 		return rc;
-	}
 
+	*fitness_id = (u8)rc;
 	return 0;
 }
 
-static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
+static int sentral_coach_fitness_id_set(struct sentral_device *sentral,
+		u8 fitness_id)
 {
-	int rc;
+	LOGI(&sentral->client->dev, "setting coach fitness id to : %u\n",
+			fitness_id);
 
-	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
-	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
-	return rc;
+	return sentral_write_byte(sentral, SR_FITNESS_ID, fitness_id);
+}
+
+static int sentral_error_get(struct sentral_device *sentral)
+{
+	return sentral_read_byte(sentral, SR_ERROR);
+}
+
+static int sentral_crc_get(struct sentral_device *sentral, u32 *crc)
+{
+	return sentral_read_block(sentral, SR_CRC_HOST, (void *)crc, sizeof(*crc));
 }
 
 static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
@@ -540,29 +519,44 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		.dynamic_range = 0,
 	};
 
-	struct sentral_param_sensor_config disable_config = {
-		.sample_rate = 0,
-		.max_report_latency = 0,
-		.change_sensitivity = 0,
-		.dynamic_range = 0,
-	};
+	LOGI(&sentral->client->dev, "batch set id: %u, rate: %u, timeout: %u\n", id,
+			rate, timeout_ms);
 
 	if (!sentral_sensor_id_is_valid(id))
 		return -EINVAL;
 
-	if (rate != 0 && id < SENTRAL_VIRTUAL_SENSOR_BOUNDARY) {
-		rc = sentral_sensor_config_write(sentral, id, &disable_config);
-		rc = sentral_fifo_flush(sentral, id);
-		if (rc) {
-			LOGE(&sentral->client->dev, "error (%d) writing FIFO flush after batch set\n", rc);
-			return -EINVAL;
-		}
+	clear_bit(id, &sentral->sensor_warmup_mask);
+	if (!config.sample_rate)
+		set_bit(id, &sentral->sensor_warmup_mask);
+
+	// inactivity sensor uses rate param to set timeout value
+	if (id == SST_INACTIVITY_ALARM) {
+		rc = sentral_inactivity_timeout_set(sentral, rate);
+		if (rc)
+			return rc;
+
+		// change rate param to a real rate
+		if (rate)
+			config.sample_rate = SENTRAL_INACTIVITY_RATE_HZ;
 	}
 
-	LOGD(&sentral->client->dev, "batch set id: %u, rate: %u, timeout: %u\n",
-		id, rate, timeout_ms);
+	// coach sensor uses rate param to set fitness id
+	if (id == SST_COACH) {
+		int fitness_id = 0;
 
-	rc = sentral_sync_timestamp(sentral);
+		rc = sentral_rate_to_fitness_id(sentral, rate);
+		if (rc < 0)
+			return rc;
+
+		fitness_id = rc;
+		rc = sentral_coach_fitness_id_set(sentral, fitness_id);
+		if (rc)
+			return rc;
+
+		// change rate param to a real rate
+		if (rate)
+			config.sample_rate = SENTRAL_COACH_RATE_HZ;
+	}
 
 	// update config
 	rc = sentral_sensor_config_write(sentral, id, &config);
@@ -573,14 +567,9 @@ static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		return rc;
 	}
 
-	// flush when disable sensor
-	if (rate == 0) {
-		rc = sentral_fifo_flush(sentral, id);
-		if (rc) {
-			LOGE(&sentral->client->dev, "error (%d) writing FIFO flush after batch set\n", rc);
-			return -EINVAL;
-		}
-	}
+	// flush on disable
+	if (!rate)
+		(void)sentral_fifo_flush(sentral, id);
 
 	return 0;
 }
@@ -609,67 +598,51 @@ static int sentral_request_reset(struct sentral_device *sentral)
 	return rc;
 }
 
-static int sentral_log_meta_event(struct sentral_device *sentral,
-		struct sentral_data_meta *data)
+static int sentral_sensor_ref_time_get(struct sentral_device *sentral,
+		struct sentral_sensor_ref_time *ref_time)
 {
-	if (data->event_id >= SEN_META_MAX) {
-		LOGE(&sentral->client->dev, "Invalid meta event received: 0x%02X\n",
-				data->event_id);
+	int rc;
 
-		return -EINVAL;
-	}
+	cancel_delayed_work_sync(&sentral->work_ts_ref_reset);
 
-	LOGI(&sentral->client->dev, "Meta Event: %s { 0x%02X, 0x%02X }\n",
-			sentral_meta_event_strings[data->event_id], data->byte_1,
-			data->byte_2);
+	ref_time->system_ns = sentral_get_boottime_ns();
+
+	rc = sentral_stime_current_get(sentral, &ref_time->hub_stime);
+	if (rc)
+		return rc;
+
+	queue_delayed_work(sentral->sentral_wq, &sentral->work_ts_ref_reset,
+			(SENTRAL_TS_REF_RESET_WORK_SECS * HZ));
 
 	return 0;
 }
 
-static int sentral_iio_buffer_push_t1(struct sentral_device *sentral,
-		u8 sensor_id, void *data, size_t bytes)
+static void sentral_wq_wake_flush_complete(struct sentral_device *sentral)
 {
-	u8 buffer[24] = { 0 };
-	int rc;
-	int i;
-	char dstr[sizeof(buffer) * 5 + 1];
-	size_t dstr_len = 0;
-	u16 sensor_id_u16 = (u16)sensor_id;
-	//u8 accuracy;
-	u32 stime;
-	u64 stime_l;
+	LOGD(&sentral->client->dev, "Flush pending: %s\n",
+			TFSTR(sentral->flush_pending));
 
-	// sensor id 0-1
-	memcpy(&buffer[0], &sensor_id_u16, sizeof(sensor_id_u16));
+	sentral->flush_complete = true;
 
-	// data 2-14
-	if (bytes > 0) {
-		memcpy(&buffer[2], data, 12); // get x,y,z 4 bytes each
-		memcpy(&buffer[14], ((u8 *)data)+16,1); // get accuracy
-	}
+	if (sentral->flush_pending)
+		wake_up_interruptible(&sentral->wq_flush);
 
-	memcpy (&stime, ((u8 *)data) + 12, 4);
-	stime_l = (u64)stime;
-	// timestamp 19-23 set to stime
-	memcpy(&buffer[16], &stime_l, sizeof(stime_l));
+	sentral->flush_pending = false;
+}
 
-	for (i = 0, dstr_len = 0; i < sizeof(buffer); i++) {
-		dstr_len += scnprintf(dstr + dstr_len, PAGE_SIZE - dstr_len,
-				" 0x%02X", buffer[i]);
-	}
-	LOGD(&sentral->client->dev, " T1 iio buffer bytes: %s\n", dstr);
+static void sentral_crash_reset(struct sentral_device *sentral)
+{
+	LOGI(&sentral->client->dev, "[CRASH] Probable crash %u detected, restarting device ...\n",
+			++sentral->crash_count);
 
-	rc = iio_push_to_buffers(sentral->indio_dev, buffer);
-	if (rc)
-		LOGE(&sentral->client->dev, "error (%d) pushing to IIO buffers", rc);
-
-	return rc;
+	// queue reset
+	queue_work(sentral->sentral_wq, &sentral->work_reset);
 }
 
 // IIO
 
 static int sentral_iio_buffer_push(struct sentral_device *sentral,
-		u8 sensor_id, void *data, size_t bytes)
+		u8 sensor_id, void *data, u32 event_stime, size_t bytes)
 {
 	u8 buffer[24] = { 0 };
 	int rc;
@@ -677,16 +650,87 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 	char dstr[sizeof(buffer) * 5 + 1];
 	size_t dstr_len = 0;
 	u16 sensor_id_u16 = (u16)sensor_id;
+	u64 ts = 0;
+	s64 dt_stime = 0;
+	s64 dt_nanos = 0;
+	u64 now = 0;
+
+	if (sensor_id != SST_META_EVENT) {
+		if (test_bit(sensor_id, &sentral->sensor_warmup_mask)) {
+			LOGD(&sentral->client->dev,
+					"[IIO] pending enable for sensor id %u, dropping warm-up sample ...\n",
+					sensor_id);
+			return 0;
+		}
+
+		if (!test_bit(sensor_id, &sentral->enabled_mask)) {
+			LOGD(&sentral->client->dev,
+					"[IIO] dropping sample from disabled sensor: %d\n", sensor_id);
+			return 0;
+		}
+	}
+
+
+	if (sensor_id < SST_MAX) {
+		mutex_lock(&sentral->lock_ts);
+
+		if (test_bit(sensor_id, &sentral->ts_ref_reset_mask)) {
+			rc = sentral_sensor_ref_time_get(sentral, &sentral->ts_sensor_ref[sensor_id]);
+			if (rc) {
+				LOGE(&sentral->client->dev,
+						"[TS] error (%d) retrieving sensor reference time\n", rc);
+				mutex_unlock(&sentral->lock_ts);
+				return rc;
+			}
+			LOGD(&sentral->client->dev,
+					"[TS] ref time sync { sensor_id: %u, system_ns: %llu, hub_stime: %u }\n",
+					sensor_id, sentral->ts_sensor_ref[sensor_id].system_ns,
+					sentral->ts_sensor_ref[sensor_id].hub_stime);
+
+			clear_bit(sensor_id, &sentral->ts_ref_reset_mask);
+		}
+		now = sentral_get_boottime_ns();
+
+		dt_stime = (s64)(event_stime)
+				- (s64)(sentral->ts_sensor_ref[sensor_id].hub_stime);
+
+		if (sentral->ts_msw_offset[sensor_id])
+			dt_stime += sentral->ts_msw_offset[sensor_id] * 65536;
+
+		dt_nanos = dt_stime * sentral->stime_scale;
+		ts = sentral->ts_sensor_ref[sensor_id].system_ns + dt_nanos;
+
+		LOGD(&sentral->client->dev,
+				"[TS] %u,%llu,%llu,%u,%u,%u,%u,%lld,%lld,%lld,%lld\n",
+				sensor_id, now, sentral->ts_sensor_ref[sensor_id].system_ns,
+				sentral->ts_sensor_ref[sensor_id].hub_stime,
+				event_stime, sentral->ts_msw_offset[sensor_id],
+				sentral->stime_scale, dt_stime, dt_nanos, ts, now - ts);
+
+		mutex_unlock(&sentral->lock_ts);
+	}
 
 	// sensor id 0-1
 	memcpy(&buffer[0], &sensor_id_u16, sizeof(sensor_id_u16));
 
 	// data 2-15
-	if (bytes > 0)
-		memcpy(&buffer[2], data, bytes);
+	if (bytes > 0) {
+		if (sensor_id == SST_ALGO_DATA) {
+			// full algo data won't fit, so copy x,y,z part here and stime
+			// part into timestamp field
+			memcpy(&buffer[2], data, 12);
+		} else {
+			memcpy(&buffer[2], data, bytes);
+		}
+	}
 
 	// timestamp 16-23
-	memcpy(&buffer[16], &sentral->ts_sensor_ntime, sizeof(u64));
+	if (sensor_id == SST_ALGO_DATA) {
+		// copy algo stime here
+		memcpy(&buffer[16], &(((u8 *)data)[12]), 4);
+	} else {
+		memcpy(&buffer[16], &ts, sizeof(ts));
+	}
 
 	for (i = 0, dstr_len = 0; i < sizeof(buffer); i++) {
 		dstr_len += scnprintf(dstr + dstr_len, PAGE_SIZE - dstr_len,
@@ -706,27 +750,70 @@ static int sentral_iio_buffer_push(struct sentral_device *sentral,
 
 static int sentral_iio_buffer_push_wrist_tilt(struct sentral_device *sentral)
 {
-	struct sentral_param_timestamp stime;
+	LOGI(&sentral->client->dev, "sending wake-up wrist-tilt event\n");
+	return sentral_iio_buffer_push(sentral, SST_WRIST_TILT_GESTURE, NULL,
+			sentral->ts_sensor_stime, 0);
+}
+
+// FIFO
+
+static int sentral_fifo_ctrl_get(struct sentral_device *sentral,
+		struct sentral_param_fifo_control *fifo_ctrl)
+{
+	return sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)fifo_ctrl, sizeof(struct sentral_param_fifo_control));
+}
+
+static int sentral_fifo_ctrl_set(struct sentral_device *sentral,
+		struct sentral_param_fifo_control *fifo_ctrl)
+{
+	return sentral_parameter_write(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
+			(void *)fifo_ctrl, sizeof(struct sentral_param_fifo_control));
+}
+
+static int sentral_fifo_watermark_autoset(struct sentral_device *sentral)
+{
+	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
 	int rc;
 
-	LOGI(&sentral->client->dev, "sending wake-up wrist-tilt event\n");
-	// get interrupt time
-	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
-			(void *)&stime, sizeof(stime));
-	if (rc)
+	// get FIFO size
+	rc = sentral_fifo_ctrl_get(sentral, &fifo_ctrl);
+	if (rc) {
+		LOGE(&sentral->client->dev, "error (%d) getting FIFO control\n", rc);
 		return rc;
+	}
 
-	sentral->ts_sensor_ntime = stime.ts.int_stime;
-	return sentral_iio_buffer_push(sentral, SST_WRIST_TILT_GESTURE, NULL, 0);
+	// set the watermark below FIFO size
+	if (fifo_ctrl.fifo.size > SENTRAL_FIFO_WATERMARK_BUFFER) {
+		fifo_ctrl.fifo.watermark = fifo_ctrl.fifo.size
+				- SENTRAL_FIFO_WATERMARK_BUFFER;
+		LOGI(&sentral->client->dev, "setting FIFO watermark to %u\n",
+				fifo_ctrl.fifo.watermark);
+
+		rc = sentral_fifo_ctrl_set(sentral, &fifo_ctrl);
+		if (rc) {
+			LOGE(&sentral->client->dev, "error (%d) setting FIFO control\n", rc);
+			return rc;
+		}
+	}
+	return 0;
 }
 
 static int sentral_handle_special_wakeup(struct sentral_device *sentral,
 		struct sentral_wake_src_count curr)
 {
-	int rc;
-	int i;
 	struct sentral_wake_src_count prev = sentral->wake_src_count;
 	struct sentral_wake_src_count pending = sentral->wake_src_count_pending;
+	u32 ts = 0;
+	int rc;
+	int i;
+
+	// get current stime
+	rc = sentral_stime_current_get(sentral, &ts);
+	if (rc)
+		LOGE(&sentral->client->dev, "error (%d) getting current stime\n", rc);
+
+	sentral->ts_sensor_stime = ts;
 
 	// wrist tilt
 	LOGD(&sentral->client->dev,
@@ -742,6 +829,7 @@ static int sentral_handle_special_wakeup(struct sentral_device *sentral,
 			pending.bits.wrist_tilt += (curr.bits.wrist_tilt - prev.bits.wrist_tilt);
 		}
 		for (i = 0; i < pending.bits.wrist_tilt; i++) {
+			sentral->wake_src_count_pending.bits.wrist_tilt++;
 			rc = sentral_iio_buffer_push_wrist_tilt(sentral);
 			if (rc) {
 				LOGE(&sentral->client->dev,
@@ -753,18 +841,148 @@ static int sentral_handle_special_wakeup(struct sentral_device *sentral,
 	return 0;
 }
 
-// FIFO
+static int sentral_handle_meta_data(struct sentral_device *sentral,
+		void *buffer)
+{
+	struct sentral_data_meta *data = (struct sentral_data_meta *)buffer;
+
+	LOGI(&sentral->client->dev, "Meta Event: %s { 0x%02X, 0x%02X }\n",
+			(data->event_id >= SEN_META_MAX)
+					? "Unknown"
+					: sentral_meta_event_strings[data->event_id],
+			data->byte_1, data->byte_2);
+
+	switch (data->event_id) {
+
+	// push flush complete events
+	case SEN_META_FLUSH_COMPLETE:
+		sentral_iio_buffer_push(sentral, SST_META_EVENT, (void *)&data->byte_1,
+				sentral->ts_sensor_stime, sizeof(data->byte_1));
+		sentral_wq_wake_flush_complete(sentral);
+		set_bit(data->byte_1, &sentral->ts_ref_reset_mask);
+		break;
+
+	// restore sensors on init
+	case SEN_META_INITIALIZED:
+		(void)sentral_fifo_watermark_autoset(sentral);
+		(void)sentral_sensor_config_restore(sentral);
+		sentral_wq_wake_flush_complete(sentral);
+		break;
+
+	// clear enable pending filter
+	case SEN_META_SAMPLE_RATE_CHANGED:
+		if (data->byte_1 < SST_MAX) {
+			sentral->ts_msw_meta_rate_change[data->byte_1] = sentral->ts_msw_last;
+			sentral->ts_msw_offset_reset[data->byte_1] = 1;
+			set_bit(data->byte_1, &sentral->ts_ref_reset_mask);
+		}
+
+		clear_bit(data->byte_1, &sentral->sensor_warmup_mask);
+		break;
+	}
+
+	return sizeof(*data);
+}
+
+static int sentral_handle_ts_msw(struct sentral_device *sentral, void *buffer)
+{
+	u16 ts = *(u16 *)buffer;
+
+	mutex_lock(&sentral->lock_ts);
+
+	sentral->ts_sensor_stime = ts << 16;
+
+	if (ts < (sentral->ts_msw_last - 1)) {
+		LOGI(&sentral->client->dev, "[TS] MSW wrapped\n");
+		sentral->ts_ref_reset_mask = ULONG_MAX;
+	}
+
+	sentral->ts_msw_last = ts;
+
+	mutex_unlock(&sentral->lock_ts);
+
+	LOGD(&sentral->client->dev, "[TS] MSW: { ts: %5u 0x%04X }\n", ts, ts);
+
+	return sizeof(ts);
+}
+
+static int sentral_handle_ts_lsw(struct sentral_device *sentral, void *buffer)
+{
+	u16 ts = *(u16 *)buffer;
+
+	mutex_lock(&sentral->lock_ts);
+
+	sentral->ts_sensor_stime &= 0xFFFF0000;
+	sentral->ts_sensor_stime |= ts;
+	sentral->ts_lsw_last = ts;
+
+	mutex_unlock(&sentral->lock_ts);
+
+	LOGD(&sentral->client->dev, "[TS] LSW: { ts: %5u 0x%04X }\n", ts, ts);
+
+	return sizeof(ts);
+}
+
+static int sentral_handle_debug_data(struct sentral_device *sentral,
+		void *buffer)
+{
+	struct sentral_data_debug *data = (struct sentral_data_debug *)buffer;
+	char buf[60];
+	size_t i;
+	size_t count = 0;
+
+	switch (data->attr.type) {
+	case SEN_DEBUG_STRING:
+		for (i = 0; (i < data->attr.length) && (i < sizeof(buf)); i++)
+			count += scnprintf(buf + count, PAGE_SIZE - count, "%c",
+					data->value[i]);
+		break;
+
+	case SEN_DEBUG_BINARY:
+		for (i = 0; (i < data->attr.length) && (i < sizeof(buf)); i++)
+			count += scnprintf(buf + count, PAGE_SIZE - count, "0x%02X ",
+					data->value[i]);
+		break;
+
+	default:
+		break;
+	}
+	dev_info(&sentral->client->dev, "Debug Event: %s\n", buf);
+
+	return sizeof(*data);
+}
+
+static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
+{
+	bool prev_flush_pending;
+	int rc;
+
+	mutex_lock(&sentral->lock_flush);
+
+	LOGI(&sentral->client->dev, "FIFO flush sensor ID: 0x%02X\n", sensor_id);
+
+	prev_flush_pending = sentral->flush_pending;
+	sentral->flush_pending = true;
+	sentral->flush_complete = false;
+
+	if (prev_flush_pending)
+		wait_event_interruptible(sentral->wq_flush, sentral->flush_complete);
+
+	rc = sentral_write_byte(sentral, SR_FIFO_FLUSH, sensor_id);
+
+	mutex_unlock(&sentral->lock_flush);
+	return rc;
+}
 
 static int sentral_fifo_get_bytes_remaining(struct sentral_device *sentral)
 {
 	int rc;
 	u16 bytes;
 
-	mutex_lock(&sentral->lock_pio);
 	rc = sentral_read_block(sentral, SR_FIFO_BYTES, (void *)&bytes,
 			sizeof(bytes));
+
 	LOGD(&sentral->client->dev, "FIFO bytes remaining: %u\n", bytes);
-	mutex_unlock(&sentral->lock_pio);
 
 	if (rc < 0) {
 		LOGE(&sentral->client->dev, "error (%d) reading FIFO bytes remaining\n",
@@ -781,8 +999,6 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 {
 	u8 sensor_id;
 	size_t data_size;
-	u8 wrist_tilt_flag = 1;
-	u8 t1_accel_flag = 1;
 
 	while (bytes > 0) {
 		// get sensor id
@@ -793,47 +1009,16 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		switch (sensor_id) {
 
 		case SST_TIMESTAMP_MSW:
-			{
-				u16 ts = *(u16 *)buffer;
-				sentral->ts_sensor_stime = ((u32)ts) << 16;
-
-				LOGD(&sentral->client->dev, "ts_msw: { ts: %5u 0x%04X }\n", ts, ts);
-
-				buffer += sizeof(u16);
-				bytes -= sizeof(u16);
-				continue;
-			}
-			break;
+			data_size = sentral_handle_ts_msw(sentral, buffer);
+			buffer += data_size;
+			bytes -= data_size;
+			continue;
 
 		case SST_TIMESTAMP_LSW:
-			{
-				u16 ts = *(u16 *)buffer;
-				u32 dt_stime;
-				u64 dt_ntime;
-
-				LOGD(&sentral->client->dev,"ts_lsw id %u, MSW %u, LSW %u ",
-						sensor_id, sentral->ts_sensor_stime >> 16, ts);
-
-				sentral->ts_sensor_stime &= 0xFFFF0000;
-				sentral->ts_sensor_stime |= ts;
-
-				mutex_lock(&sentral->lock_ts);
-				dt_stime = sentral->ts_sensor_stime - sentral->ts_ref_stime;
-				if (sentral->ts_sensor_stime < sentral->ts_ref_stime)
-					dt_stime = 0;
-				dt_ntime = ((u64)dt_stime * sentral->ts_timestamp_scale);
-				sentral->ts_sensor_ntime = sentral->ts_ref_ntime + dt_ntime;
-				mutex_unlock(&sentral->lock_ts);
-
-				LOGD(&sentral->client->dev,
-						"ts_lsw: { ts: %5u 0x%04X, dt_stime: %d, dt_ntime: %lld, ts_sensor_stime: %u, ts_ref_stime: %u, ts_sensor_ntime: %llu }\n",
-						ts, ts, dt_stime, dt_ntime, sentral->ts_sensor_stime, sentral->ts_ref_stime, sentral->ts_sensor_ntime);
-
-				buffer += sizeof(u16);
-				bytes -= sizeof(u16);
-				continue;
-			}
-			break;
+			data_size = sentral_handle_ts_lsw(sentral, buffer);
+			buffer += data_size;
+			bytes -= data_size;
+			continue;
 
 		case SST_NOP:
 			continue;
@@ -847,15 +1032,15 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_INACTIVITY_ALARM:
 			data_size = 0;
 			break;
+
 		case SST_WRIST_TILT_GESTURE:
-			// ignore wrist tilt
-			wrist_tilt_flag = 0;
 			data_size = 0;
 			if (sentral->wake_src_count_pending.bits.wrist_tilt) {
 				sentral->wake_src_count_pending.bits.wrist_tilt--;
 				continue;
 			}
 			break;
+
 		case SST_HEART_RATE:
 			data_size = 1;
 			break;
@@ -889,57 +1074,49 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_GEOMAGNETIC_ROTATION_VECTOR:
 			data_size = 10;
 			break;
-		case SST_T1_ACCELEROMETER:
+
+		case SST_ALGO_DATA:
 			data_size = 17;
-			sentral_iio_buffer_push_t1(sentral, sensor_id, (void *)buffer, data_size);
-			t1_accel_flag = 0;
-			LOGD(&sentral->client->dev, "T1 Accel data received\n");
 			break;
+
 		case SST_MAGNETIC_FIELD_UNCALIBRATED:
 		case SST_GYROSCOPE_UNCALIBRATED:
 			data_size = 13;
 			break;
 
 		case SST_META_EVENT:
-			{
-				struct sentral_data_meta *meta_data =
-						(struct sentral_data_meta *)buffer;
+			data_size = sentral_handle_meta_data(sentral, buffer);
+			buffer += data_size;
+			bytes -= data_size;
+			continue;
 
-				if (sentral_log_meta_event(sentral, meta_data))
-					LOGE(&sentral->client->dev, "error parsing meta event\n");
-
-				LOGD(&sentral->client->dev,"META id %u, byte1 %u\n",
-						meta_data->event_id, meta_data->byte_1);
-
-				// push flush complete events
-				if (meta_data->event_id == SEN_META_FLUSH_COMPLETE) {
-					sentral_iio_buffer_push(sentral, sensor_id,
-							(void *)&meta_data->byte_1,
-							sizeof(meta_data->byte_1));
-				}
-
-				if (meta_data->event_id == SEN_META_FIFO_OVERFLOW) {
-					LOGE(&sentral->client->dev, "FIFO overflow: %u\n", sensor_id);
-					queue_work(sentral->sentral_wq, &sentral->work_reset);
-				}
-
-				// restore sensors on init
-				if (meta_data->event_id == SEN_META_INITIALIZED)
-					(void)sentral_sensor_config_restore(sentral);
-
-				buffer += 3;
-				bytes -= 3;
-				continue;
-			}
-			break;
+		case SST_DEBUG:
+			data_size = sentral_handle_debug_data(sentral, buffer);
+			buffer += data_size;
+			bytes -= data_size;
+			continue;
 
 		default:
 			LOGE(&sentral->client->dev, "invalid sensor type: %u\n", sensor_id);
 			return -EINVAL;
 		}
 
-		if (wrist_tilt_flag & t1_accel_flag)
-			sentral_iio_buffer_push(sentral, sensor_id, (void *)buffer, data_size);
+		if ((sensor_id < SST_MAX)
+				&& (sentral->ts_msw_offset_reset[sensor_id] == 1)) {
+			if (sentral->ts_msw_meta_rate_change[sensor_id] >= sentral->ts_msw_last) {
+				sentral->ts_msw_offset[sensor_id]
+						= sentral->ts_msw_meta_rate_change[sensor_id]
+						- sentral->ts_msw_last;
+
+				LOGD(&sentral->client->dev, "msw offset for sensor id %d %u\n",
+						sensor_id, sentral->ts_msw_offset[sensor_id]);
+
+				sentral->ts_msw_offset_reset[sensor_id] = 0;
+			}
+		}
+
+		sentral_iio_buffer_push(sentral, sensor_id, (void *)buffer,
+				sentral->ts_sensor_stime, data_size);
 
 		buffer += data_size;
 		bytes -= data_size;
@@ -951,14 +1128,19 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 static int sentral_fifo_read_block(struct sentral_device *sentral, u8 *buffer,
 		size_t bytes)
 {
-	return sentral_read_block(sentral, SR_FIFO_START, buffer, bytes);
+	int rc;
+
+	mutex_lock(&sentral->lock_special);
+	rc = sentral_read_block(sentral, SR_FIFO_START, buffer, bytes);
+	mutex_unlock(&sentral->lock_special);
+
+	return rc;
 }
 
 static int sentral_fifo_read(struct sentral_device *sentral, u8 *buffer)
 {
 	int rc;
 	u16 bytes_remaining = 0;
-	u32 crc;
 
 	LOGD(&sentral->client->dev, "%s\n", __func__);
 
@@ -972,21 +1154,6 @@ static int sentral_fifo_read(struct sentral_device *sentral, u8 *buffer)
 	}
 	bytes_remaining = (u16)rc;
 
-	// check for crash
-	if (bytes_remaining == 0) {
-		rc = sentral_read_block(sentral, SR_CRC_HOST, (void *)&crc,
-				sizeof(crc));
-
-		LOGD(&sentral->client->dev, "empty FIFO, crc: 0x%08X\n", crc);
-
-		// probable crash, queue reset
-		if (crc == 0xFFFFFFFF) {
-			LOGE(&sentral->client->dev, "crash detected, resetting ...\n");
-			queue_work(sentral->sentral_wq, &sentral->work_reset);
-			return -EINVAL;
-		}
-	}
-
 	// get interrupt status
 	while (sentral_read_byte(sentral, SR_INT_STATUS) > 0) {
 
@@ -996,7 +1163,7 @@ static int sentral_fifo_read(struct sentral_device *sentral, u8 *buffer)
 		if (bytes_remaining > DATA_BUFFER_SIZE) {
 			LOGE(&sentral->client->dev, "FIFO read buffer overflow (%u > %u)\n",
 					bytes_remaining, DATA_BUFFER_SIZE);
-			queue_work(sentral->sentral_wq, &sentral->work_reset);
+
 			return -EINVAL;
 		}
 
@@ -1047,29 +1214,40 @@ static void sentral_do_work_fifo_read(struct work_struct *work)
 			msecs_to_jiffies(SENTRAL_WATCHDOG_WORK_MSECS));
 }
 
-// watermark setting
-static int sentral_fifo_watermark_setting(struct sentral_device *sentral,
-		u16 margin)
+static int sentral_set_register_flag(struct sentral_device *sentral, u8 reg,
+		u8 flag, bool enable)
 {
-	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
 	int rc;
+	u8 value;
 
-	// read back fifo control param
-	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
-			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+	LOGD(&sentral->client->dev, "setting register 0x%02X flag 0x%02X to %u\n",
+			reg, flag, enable);
 
-	if (rc) {
-		goto exit;
+	rc = sentral_read_byte(sentral, reg);
+	if (rc < 0) {
+		LOGE(&sentral->client->dev, "error (%d) reading register 0x%02X\n", rc,
+				reg);
+
+		return rc;
 	}
 
-	// set watermark portion
-	fifo_ctrl.fifo.watermark = fifo_ctrl.fifo.size - margin;
+	value = rc & ~(flag);
+	if (enable)
+		value |= flag;
 
-	rc = sentral_parameter_write(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
-			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+	if (value == rc)
+		return 0;
 
-exit:
-	return rc;
+	rc = sentral_write_byte(sentral, reg, value);
+	if (rc) {
+		LOGE(&sentral->client->dev,
+				"error (%d) setting register 0x%02X to 0x%02X\n", rc, reg,
+				value);
+
+		return rc;
+	}
+
+	return 0;
 }
 
 // chip control
@@ -1122,7 +1300,6 @@ static int sentral_firmware_load(struct sentral_device *sentral,
 	struct sentral_fw_cds *fw_cds;
 	u32 *fw_data;
 	size_t fw_data_size;
-	u32 crc;
 
 	int rc = 0;
 	LOGI(&sentral->client->dev, "loading firmware: %s\n", firmware_name);
@@ -1200,19 +1377,19 @@ static int sentral_firmware_load(struct sentral_device *sentral,
 	}
 
 	// check CRC
-	rc = sentral_read_block(sentral, SR_CRC_HOST, (void *)&crc, sizeof(crc));
+	rc = sentral_crc_get(sentral, &sentral->fw_crc);
 	if (rc < 0) {
 		LOGE(&sentral->client->dev, "error (%d) reading host CRC\n", rc);
 		goto exit_release;
 	}
 
-	LOGI(&sentral->client->dev, "host CRC: 0x%08X, fw CRC: 0x%08X\n", crc,
-			fw_header->text_crc);
+	LOGI(&sentral->client->dev, "host CRC: 0x%08X, fw CRC: 0x%08X\n",
+			sentral->fw_crc, fw_header->text_crc);
 
-	if (crc != fw_header->text_crc) {
+	if (sentral->fw_crc != fw_header->text_crc) {
 		LOGE(&sentral->client->dev,
-				"invalid firmware CRC, expected 0x%08X got 0x%08X\n", crc,
-				fw_header->text_crc);
+				"invalid firmware CRC, expected 0x%08X got 0x%08X\n",
+				sentral->fw_crc, fw_header->text_crc);
 
 		goto exit_release;
 	}
@@ -1238,14 +1415,10 @@ static ssize_t sentral_sysfs_chip_control_show(struct device *dev,
 	int rc;
 	struct sentral_chip_control chip_control;
 
-	mutex_lock(&sentral->lock);
 	rc = sentral_read_byte(sentral, SR_CHIP_CONTROL);
-	if (rc < 0) {
-		LOGE(dev, "error (%d) reading chip control\n", rc);
-		goto exit;
-	}
+	if (rc < 0)
+		return rc;
 
-	LOGD(dev, "read chip_control: %d\n", rc);
 	chip_control.byte = rc;
 
 	count += scnprintf(buf + count, PAGE_SIZE - count, "%-16s: %s\n",
@@ -1255,11 +1428,7 @@ static ssize_t sentral_sysfs_chip_control_show(struct device *dev,
 			"Upload Enable",
 			(chip_control.bits.upload_enable ? "true" : "false"));
 
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(chip_control, S_IRUGO, sentral_sysfs_chip_control_show,
@@ -1275,14 +1444,10 @@ static ssize_t sentral_sysfs_host_status_show(struct device *dev,
 	int rc;
 	struct sentral_host_status host_status;
 
-	mutex_lock(&sentral->lock);
 	rc = sentral_read_byte(sentral, SR_HOST_STATUS);
-	if (rc < 0) {
-		LOGE(dev, "error (%d) reading host status\n", rc);
-		goto exit;
-	}
+	if (rc < 0)
+		return rc;
 
-	LOGD(dev, "read host_status: %d\n", rc);
 	host_status.byte = rc;
 
 	count += scnprintf(buf + count, PAGE_SIZE - count, "%-16s: %s\n",
@@ -1297,11 +1462,7 @@ static ssize_t sentral_sysfs_host_status_show(struct device *dev,
 	count += scnprintf(buf + count, PAGE_SIZE - count, "%-16s: %u\n",
 			"Algo ID", (host_status.bits.algo_id >> 5) & 0x07);
 
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(host_status, S_IRUGO, sentral_sysfs_host_status_show, NULL);
@@ -1312,30 +1473,23 @@ static ssize_t sentral_sysfs_chip_status_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
+	const char bit_strings[][20] = {
+		"EEPROM", "EEUploadDone", "EEUploadError", "Idle", "NoEEPROM",
+	};
 	ssize_t count = 0;
 	int rc;
-	const char bit_strings[][20] = { "EEPROM", "EEUploadDone", "EEUploadError",
-			"Idle", "NoEEPROM" };
-
 	int i;
 
-	mutex_lock(&sentral->lock);
 	rc = sentral_read_byte(sentral, SR_CHIP_STATUS);
-	if (rc < 0) {
-		LOGE(dev, "error (%d) reading chip status\n", rc);
-		goto exit;
-	}
+	if (rc < 0)
+		return rc;
 
-	LOGD(dev, "read chip_status: %d\n", rc);
 	for (i = 0; i < sizeof(bit_strings) / 20; i++) {
 		count += scnprintf(buf + count, PAGE_SIZE - count, "%-16s: %s\n",
 				bit_strings[i], (rc & (1 << i) ? "true" : "false"));
 	}
-	rc = count;
 
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(chip_status, S_IRUGO, sentral_sysfs_chip_status_show, NULL);
@@ -1346,54 +1500,44 @@ static ssize_t sentral_sysfs_registers_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
-	ssize_t count = SR_MAX - SR_FIRST + 1;
-	ssize_t used = 0;
-	u8 regs[count];
+	ssize_t len = SR_MAX - SR_FIRST + 1;
+	ssize_t count = 0;
+	u8 regs[len];
 	int rc;
 	int i;
 
-	mutex_lock(&sentral->lock);
-	rc = sentral_read_block(sentral, SR_FIRST, (void *)&regs, count);
+	rc = sentral_read_block(sentral, SR_FIRST, (void *)&regs, len);
 	if (rc < 0)
-		goto exit;
+		return rc;
 
-	for (i = 0; i < count; i++)
-		used += scnprintf(buf + used, PAGE_SIZE - used, "0x%02X: 0x%02X\n",
+	for (i = 0; i < len; i++)
+		count += scnprintf(buf + count, PAGE_SIZE - count, "0x%02X: 0x%02X\n",
 				SR_FIRST + i, regs[i]);
 
-	rc = used;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static ssize_t sentral_sysfs_registers_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
-	u32 addr;
-	u32 value;
+	unsigned int addr;
+	unsigned int value;
 	int rc;
-	if (2 != sscanf(buf, "%i,%i", &addr, &value))
+
+	if (2 != sscanf(buf, "%u,%u", &addr, &value))
 		return -EINVAL;
 
 	if ((addr > SR_MAX) || (addr < SR_FIRST))
 		return -EINVAL;
 
-	if (value > 0xFF)
-		return -EINVAL;
+	I("[SYSFS] registers { addr: 0x%02X, value: 0x%02X }\n", addr, value);
 
-	mutex_lock(&sentral->lock);
 	rc = sentral_write_byte(sentral, (u8)addr, (u8)value);
-	if (rc)
-		goto exit;
+	if (rc < 0)
+		return rc;
 
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(registers, S_IRUGO | S_IWUGO, sentral_sysfs_registers_show, sentral_sysfs_registers_store);
@@ -1409,21 +1553,14 @@ static ssize_t sentral_sysfs_sensor_info_show(struct device *dev,
 	int i;
 	struct sentral_param_sensor_info sensor_info;
 
-	mutex_lock(&sentral->lock);
-
 	count += scnprintf(buf + count, PAGE_SIZE - count,
 			"%-33s,%4s,%6s,%6s,%4s,%8s,%6s,%6s\n", "SensorType",
 			"Ver", "Power", "Range", "Res", "MaxRate", "FRes", "FMax");
 
 	for (i = SST_FIRST; i < SST_MAX; i++) {
 		rc = sentral_sensor_info_read(sentral, i, &sensor_info);
-		if (rc) {
-			LOGE(&sentral->client->dev,
-					"error (%d) reading sensor info for sensor id: %u\n",
-					rc, i);
-
-			goto exit;
-		}
+		if (rc)
+			return rc;
 
 		if (!sensor_info.driver_id)
 			continue;
@@ -1440,12 +1577,7 @@ static ssize_t sentral_sysfs_sensor_info_show(struct device *dev,
 				sensor_info.fifo_reserved,
 				sensor_info.fifo_max);
 	}
-
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(sensor_info, S_IRUGO, sentral_sysfs_sensor_info_show, NULL);
@@ -1461,20 +1593,14 @@ static ssize_t sentral_sysfs_sensor_config_show(struct device *dev,
 	int i;
 	struct sentral_param_sensor_config sensor_config;
 
-	mutex_lock(&sentral->lock);
 	count += scnprintf(buf + count, PAGE_SIZE - count,
 			"%-33s,%6s,%11s,%12s,%13s\n", "SensorType", "Rate",
 			"MaxLatency", "Sensitivity", "DynamicRange");
 
 	for (i = SST_FIRST; i < SST_MAX; i++) {
 		rc = sentral_sensor_config_read(sentral, i, &sensor_config);
-		if (rc) {
-			LOGE(&sentral->client->dev,
-					"error (%d) reading sensor config for sensor id: %d\n",
-					rc, i);
-
-			goto exit;
-		}
+		if (rc)
+			return rc;
 
 		if (!sentral_sensor_type_strings[i])
 			continue;
@@ -1489,15 +1615,48 @@ static ssize_t sentral_sysfs_sensor_config_show(struct device *dev,
 				sensor_config.dynamic_range);
 	}
 
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(sensor_config, S_IRUGO, sentral_sysfs_sensor_config_show,
 		NULL);
+
+static ssize_t sentral_sysfs_phys_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	struct sentral_param_phys_sensor_status_page phys = {{ 0 }};
+	ssize_t count = 0;
+	int rc;
+
+	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_PHYS_SENSOR_STATUS,
+			(void *)&phys, sizeof(phys));
+	if (rc)
+		return rc;
+
+	count += scnprintf(buf + count, PAGE_SIZE - count,
+			"%-15s, %5s, %5s, %5s, %10s\n", "Sensor", "Rate", "Range", "Int",
+			"PowerMode");
+
+	count += scnprintf(buf + count, PAGE_SIZE - count,
+			"%-15s, %5u, %5u, %5u, %10u\n", "Accelerometer",
+			phys.accel.sample_rate, phys.accel.dynamic_range,
+			phys.accel.flags.bits.int_enable, phys.accel.flags.bits.power_mode);
+
+	count += scnprintf(buf + count, PAGE_SIZE - count,
+			"%-15s, %5u, %5u, %5u, %10u\n", "Gyroscope",
+			phys.gyro.sample_rate, phys.gyro.dynamic_range,
+			phys.gyro.flags.bits.int_enable, phys.gyro.flags.bits.power_mode);
+
+	count += scnprintf(buf + count, PAGE_SIZE - count,
+			"%-15s, %5u, %5u, %5u, %10u\n", "Magnetometer",
+			phys.mag.sample_rate, phys.mag.dynamic_range,
+			phys.mag.flags.bits.int_enable, phys.mag.flags.bits.power_mode);
+
+	return count;
+}
+
+static DEVICE_ATTR(phys_status, S_IRUGO, sentral_sysfs_phys_status_show, NULL);
 
 // sensor status
 
@@ -1510,7 +1669,6 @@ static ssize_t sentral_sysfs_sensor_status_show(struct device *dev,
 	int i, j;
 	struct sentral_param_sensor_status sensor_status[16];
 
-	mutex_lock(&sentral->lock);
 	count += scnprintf(buf + count, PAGE_SIZE - count,
 			"%5s%10s%10s%10s%10s%10s%10s\n", "SID", "DataAvail", "I2CNACK",
 			"DevIDErr", "TransErr", "DataLost", "PowerMode");
@@ -1520,12 +1678,9 @@ static ssize_t sentral_sysfs_sensor_status_show(struct device *dev,
 				SP_SYS_SENSOR_STATUS_B0 + i, (void *)&sensor_status,
 				sizeof(sensor_status));
 
-		if (rc < 0) {
-			LOGE(&sentral->client->dev,
-					"error (%d) reading sensor status, bank: %d\n", rc, i);
+		if (rc < 0)
+			return rc;
 
-			goto exit;
-		}
 		for (j = 0; j < 16; j++) {
 			count += scnprintf(buf + count, PAGE_SIZE - count, "%5d",
 					i * 16 + j + 1);
@@ -1552,11 +1707,7 @@ static ssize_t sentral_sysfs_sensor_status_show(struct device *dev,
 		}
 	}
 
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(sensor_status, S_IRUGO, sentral_sysfs_sensor_status_show,
@@ -1566,86 +1717,176 @@ static ssize_t sentral_sysfs_reset(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
-	u8 reset;
-	int rc;
 
-	rc = kstrtou8(buf, 10, &reset);
-	if (rc) {
-		LOGE(dev, "error (%d) parsing value\n", rc);
-		return rc;
-	}
-
-	mutex_lock(&sentral->lock);
 	sentral->init_complete = false;
 	queue_work(sentral->sentral_wq, &sentral->work_reset);
-	mutex_unlock(&sentral->lock);
 
 	return count;
 }
 
 static DEVICE_ATTR(reset, S_IWUGO, NULL, sentral_sysfs_reset);
 
+// inactivity timeout
+
+static ssize_t sentral_sysfs_inactivity_timeout_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u16 timeout_s = 0;
+	int rc;
+
+	rc = sentral_inactivity_timeout_get(sentral, &timeout_s);
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", timeout_s);
+}
+
+static ssize_t sentral_sysfs_inactivity_timeout_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u16 timeout_s = 0;
+	int rc;
+
+	rc = kstrtou16(buf, 10, &timeout_s);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] inactivity_timeout { timeout_s: %u }\n", timeout_s);
+
+	rc = sentral_inactivity_timeout_set(sentral, timeout_s);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static DEVICE_ATTR(inactivity_timeout, S_IRUGO | S_IWUGO,
+		sentral_sysfs_inactivity_timeout_show,
+		sentral_sysfs_inactivity_timeout_store);
+
+// coach fitness id
+
+static ssize_t sentral_sysfs_coach_fitness_id_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u8 fitness_id = 0;
+	int rc;
+
+	rc = sentral_coach_fitness_id_get(sentral, &fitness_id);
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", fitness_id);
+}
+
+static ssize_t sentral_sysfs_coach_fitness_id_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u8 fitness_id = 0;
+	int rc;
+
+	rc = kstrtou8(buf, 10, &fitness_id);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] coach_fitness_id { fitness_id: %u }\n", fitness_id);
+
+	rc = sentral_coach_fitness_id_set(sentral, fitness_id);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static DEVICE_ATTR(coach_fitness_id, S_IRUGO | S_IWUGO,
+		sentral_sysfs_coach_fitness_id_show,
+		sentral_sysfs_coach_fitness_id_store);
+
 static ssize_t sentral_sysfs_ts_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
-	struct sentral_param_timestamp ts;
-	int rc;
+	u32 stime = 0;
 	u64 ktime = sentral_get_boottime_ns();
+	int rc;
 
-	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_HOST_IRQ_TS,
-			(void *)&ts, sizeof(ts));
+	rc = sentral_stime_current_get(sentral, &stime);
 	if (rc)
 		return rc;
 
-	return scnprintf(buf, PAGE_SIZE, "%u,%llu\n", ts.ts.current_stime, ktime);
+	return scnprintf(buf, PAGE_SIZE, "%u,%llu\n", stime, ktime);
 }
 
 static DEVICE_ATTR(ts, S_IRUGO, sentral_sysfs_ts_show, NULL);
+
+static ssize_t sentral_sysfs_cal_ts_data_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%u\n", sentral->stime_scale);
+}
+
+static ssize_t sentral_sysfs_cal_ts_data_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	unsigned int value = 0;
+	int rc;
+
+	rc = kstrtouint(buf, 10, &value);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] cal_ts_data { value: %u }\n", value);
+
+	sentral->stime_scale = value;
+
+	return count;
+}
+
+static DEVICE_ATTR(cal_ts_data, S_IRUGO | S_IWUGO, sentral_sysfs_cal_ts_data_show,
+		sentral_sysfs_cal_ts_data_store);
 
 // ANDROID sensor_poll_device_t method support
 
 // activate
 
+static ssize_t sentral_sysfs_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%lu\n", sentral->enabled_mask);
+}
+
 static ssize_t sentral_sysfs_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
+	unsigned int id;
+	unsigned int enable;
 	int rc;
 
-	u32 id;
-	u32 enable;
+	if (2 != sscanf(buf, "%u %u", &id, &enable))
+		return -EINVAL;
 
-	mutex_lock(&sentral->lock);
-	if (2 != sscanf(buf, "%u %u", &id, &enable)) {
-		rc = -EINVAL;
-		goto exit;
-	}
+	if (!sentral_sensor_id_is_valid(id))
+		return -EINVAL;
 
-	if (!sentral_sensor_id_is_valid(id)) {
-		rc = -EINVAL;
-		goto exit;
-	}
-
-	LOGI(&sentral->client->dev, "setting sensor id: %u to %s\n", id,
-			ENSTR(enable));
+	I("[SYSFS] enable { id: %u, enable: %u }\n", id, enable);
 
 	rc = sentral_sensor_enable_set(sentral, id, enable);
-	if (rc) {
-		LOGE(&sentral->client->dev, "error (%d) setting sensor id: %u to %s\n",
-				rc, id, ENSTR(enable));
+	if (rc)
+		return rc;
 
-		goto exit;
-	}
-
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
-static DEVICE_ATTR(enable, S_IWUGO, NULL, sentral_sysfs_enable_store);
+static DEVICE_ATTR(enable, S_IRUGO | S_IWUGO, sentral_sysfs_enable_show,
+		sentral_sysfs_enable_store);
 
 // set_delay
 
@@ -1653,46 +1894,38 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
+	unsigned int id;
+	unsigned int delay_ms;
+	unsigned int sample_rate = 0;
 	int rc;
 
-	u32 id;
-	u32 delay_ms;
-	u16 sample_rate = 1000000/SENTRAL_DEFAULT_RATE;
+	if (2 != sscanf(buf, "%u %u", &id, &delay_ms))
+		return -EINVAL;
 
-	mutex_lock(&sentral->lock);
-	if (2 != sscanf(buf, "%u %u", &id, &delay_ms)) {
-		LOGE(&sentral->client->dev, "invalid parameters\n");
-		rc = -EINVAL;
-		goto exit;
-	}
+	I("[SYSFS] delay_ms { id: %u, delay_ms: %u }\n", id, delay_ms);
 
-	if (!sentral_sensor_id_is_valid(id)) {
-		rc = -EINVAL;
-		goto exit;
-	}
+	if (!sentral_sensor_id_is_valid(id))
+		return -EINVAL;
+
+	switch (id) {
+	// do not convert delay_ms to Hz for these sensors
+	case SST_INACTIVITY_ALARM:
+	case SST_COACH:
+		sample_rate = delay_ms / 1000;
+		break;
 
 	// convert millis to Hz
-	if (delay_ms > 0) {
-		delay_ms = MIN(1000, delay_ms);
-		sample_rate = 1000 / delay_ms;
+	default:
+		if (delay_ms > 0) {
+			delay_ms = MIN(1000, delay_ms);
+			sample_rate = 1000 / delay_ms;
+		}
 	}
 
-	// cap the rate for virtual sensors
-	if (id > SENTRAL_VIRTUAL_SENSOR_BOUNDARY && sample_rate > 1000/66)
-		sample_rate = 1000/66;
-
-	LOGI(&sentral->client->dev,
-			"delay_ms_store > setting rate for sensor id: %u, delay_ms: %u, rate: %u Hz\n",
-			id, delay_ms, sample_rate);
-
 	rc = sentral_sensor_batch_set(sentral, id, sample_rate, 0);
-	if (rc < 0)
-		goto exit;
+	if (rc)
+		return rc;
 
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
 	return rc;
 }
 
@@ -1704,144 +1937,48 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
+	unsigned int id;
+	unsigned int flags;
+	unsigned int delay_ms;
+	unsigned int timeout_ms;
+	u16 sample_rate = 0;
 	int rc;
 
-	u32 id;
-	u32 flags;
-	u32 delay_ms;
-	u32 timeout_ms;
+	if (4 != sscanf(buf, "%u %u %u %u", &id, &flags, &delay_ms, &timeout_ms))
+		return -EINVAL;
 
-	u16 sample_rate = 1000000/SENTRAL_DEFAULT_RATE;
-	u16 inactive_time; // 5 mins
+	I("[SYSFS] batch { id: %u, flags: %u, delay_ms: %u, timeout_ms: %u }\n",
+			id, flags, delay_ms, timeout_ms);
 
-	mutex_lock(&sentral->lock);
-	if (4 != sscanf(buf, "%u %u %u %u", &id, &flags, &delay_ms, &timeout_ms)) {
-		rc = -EINVAL;
-		goto exit;
-	}
+	if (!sentral_sensor_id_is_valid(id))
+		return -EINVAL;
 
-	if (!sentral_sensor_id_is_valid(id)) {
-		rc = -EINVAL;
-		goto exit;
-	}
+	if (timeout_ms > USHRT_MAX)
+		timeout_ms = USHRT_MAX;
+
+	switch (id) {
+	// do not convert delay_ms to Hz for these sensors
+	case SST_INACTIVITY_ALARM:
+	case SST_COACH:
+		sample_rate = delay_ms / 1000;
+		break;
 
 	// convert millis to Hz
-	if (delay_ms >= 0) {
-		if (id == SST_COACH) {
-			// delay_ms -> coach mode setting
-			switch (delay_ms) {
-				case SEN_COACH_ACTIVITY_0:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)0);
-					break;
-				case SEN_COACH_ACTIVITY_4:
-				case SEN_COACH_ACTIVITY_1: // push up
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)1);
-					if (rc == 0) {
-						LOGI(&sentral->client->dev,
-							"setting coach success(push up): %u, delay_ms: %u",
-							id, delay_ms);
-						LOGI(&sentral->client->dev,
-							"read back setting(push up): %d",
-							sentral_read_byte(sentral,SR_COACH_SET));
-					}
-					break;
-				case SEN_COACH_ACTIVITY_TEST1:
-				case SEN_COACH_ACTIVITY_TEST2:
-				case SEN_COACH_ACTIVITY_5:
-				case SEN_COACH_ACTIVITY_2: // sit up
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)2);
-					if (rc == 0) {
-						LOGI(&sentral->client->dev,
-							"setting coach success(sit up): %u, delay_ms: %u",
-							id, delay_ms);
-						LOGI(&sentral->client->dev,
-							"read back setting(sit up): %d",
-							sentral_read_byte(sentral,SR_COACH_SET));
-					}
-					break;
-				case SEN_COACH_ACTIVITY_3:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)3);
-					break;
-				/*
-				case SEN_COACH_ACTIVITY_4:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)4);
-					break;
-				case SEN_COACH_ACTIVITY_5:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)5);
-					break;
-				*/
-				case SEN_COACH_ACTIVITY_6:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)6);
-					break;
-				case SEN_COACH_ACTIVITY_7:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)7);
-					break;
-				case SEN_COACH_ACTIVITY_8:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)8);
-					break;
-				case SEN_COACH_ACTIVITY_9:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)9);
-					break;
-				case SEN_COACH_ACTIVITY_10:
-					rc = sentral_write_byte(sentral,SR_COACH_SET,(u8)10);
-					break;
-				default :
-					rc = 1;
-					goto exit;
-			}
-			if (rc)
-				LOGE(&sentral->client->dev,
-					"error (%d) setting coach ID: %u, with activity ID: %u\n",
-					rc, id, delay_ms);
-		} else if (id == SST_INACTIVITY_ALARM) {
-
-			// delay_ms -> inactivity alarm rate
-			if (delay_ms > 9)
-				inactive_time = delay_ms;
-			else // similar to game mode, 0-9 set as 2-11 mins
-				inactive_time = (delay_ms + 2) * 60;
-			rc = sentral_parameter_write(sentral, SPP_CUSTOM_PARAM, 1, &inactive_time, sizeof(inactive_time));
-			if (rc) {
-				LOGE(&sentral->client->dev,
-					"error (%d) inactivity alarm rate set error",
-					rc);
-			} else {
-				LOGI(&sentral->client->dev,
-					"success inactivity set at %d",
-					inactive_time);
-			}
-		} else {
-			if (delay_ms != 0) {
-				delay_ms = MIN(1000, delay_ms);
-				sample_rate = 1000 / delay_ms;
-			}
+	default:
+		if (delay_ms > 0) {
+			delay_ms = MIN(1000, delay_ms);
+			sample_rate = 1000 / delay_ms;
 		}
 	}
 
-	// cap the rate for virtual sensors
-	if (id > SENTRAL_VIRTUAL_SENSOR_BOUNDARY && sample_rate > 1000/66)
-		sample_rate = 1000/66;
+	if (sample_rate)
+		mdelay(20);
 
-	if (timeout_ms <= SENTRAL_MAX_BATCH_LENGTH)
-		rc = sentral_sensor_batch_set(sentral, id, sample_rate, timeout_ms);
-	else
-		rc = sentral_sensor_batch_set(sentral, id, sample_rate, SENTRAL_MAX_BATCH_LENGTH);
+	rc = sentral_sensor_batch_set(sentral, id, sample_rate, timeout_ms);
+	if (rc)
+		return rc;
 
-	LOGD(&sentral->client->dev, "batch_store > setting rate id: %u sample rate: %u, timeout %u", id, sample_rate, timeout_ms);
-
-	if (rc) {
-		LOGE(&sentral->client->dev,
-				"error (%d) setting batch for sensor id: %u, rate: %u, timeout: %u\n",
-				rc, id, sample_rate, timeout_ms);
-
-		goto exit;
-	}
-
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(batch, S_IWUGO, NULL, sentral_sysfs_batch_store);
@@ -1852,33 +1989,23 @@ static ssize_t sentral_sysfs_flush_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
-	u8 sensor_id;
+	u8 id;
 	int rc;
 
-	rc = kstrtou8(buf, 10, &sensor_id);
-	if (rc) {
-		LOGE(dev, "error (%d) parsing value\n", rc);
+	rc = kstrtou8(buf, 10, &id);
+	if (rc)
 		return rc;
-	}
 
-	if ((sensor_id < SST_FIRST) || (sensor_id >= SST_MAX))
+	I("[SYSFS] fifo_flush { id: %u }\n", id);
+
+	if (((id < SST_FIRST) || (id >= SST_MAX)) && (id != SST_ALL))
 		return -EINVAL;
 
-	mutex_lock(&sentral->lock);
+	rc = sentral_fifo_flush(sentral, id);
+	if (rc)
+		return rc;
 
-	LOGI(&sentral->client->dev, "flushing FIFO for sensor id: %u\n", sensor_id);
-
-	rc = sentral_fifo_flush(sentral, sensor_id);
-	if (rc) {
-		LOGE(&sentral->client->dev, "error (%d) writing FIFO flush\n", rc);
-		goto exit;
-	}
-
-	rc = count;
-
-exit:
-	mutex_unlock(&sentral->lock);
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(flush, S_IWUGO, NULL, sentral_sysfs_flush_store);
@@ -1891,22 +2018,13 @@ static ssize_t sentral_sysfs_fifo_watermark_show(struct device *dev,
 	struct sentral_device *sentral = dev_get_drvdata(dev);
 	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
 	int rc;
-	size_t count = 0;
-
-	mutex_lock(&sentral->lock);
 
 	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
 			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+	if (rc)
+		return rc;
 
-	if (rc) {
-		count = rc;
-		goto exit;
-	}
-
-	count = scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.watermark);
-exit:
-	mutex_unlock(&sentral->lock);
-	return count;
+	return scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.watermark);
 }
 
 static ssize_t sentral_sysfs_fifo_watermark_store(struct device *dev,
@@ -1914,37 +2032,29 @@ static ssize_t sentral_sysfs_fifo_watermark_store(struct device *dev,
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
 	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
-	int rc;
 	u16 watermark;
+	int rc;
 
 	rc = kstrtou16(buf, 10, &watermark);
-	if (rc) {
-		LOGE(dev, "error (%d) parsing value\n", rc);
+	if (rc)
 		return rc;
-	}
 
-	mutex_lock(&sentral->lock);
+	I("[SYSFS] fifo_watermark { watermark: %u }\n", watermark);
 
 	// read current fifo control param
 	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
 			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
-
-	if (rc) {
-		count = rc;
-		goto exit;
-	}
+	if (rc)
+		return rc;
 
 	// update watermark portion
 	fifo_ctrl.fifo.watermark = watermark;
 
 	rc = sentral_parameter_write(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
 			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
-
 	if (rc)
-		count = rc;
+		return rc;
 
-exit:
-	mutex_unlock(&sentral->lock);
 	return count;
 }
 
@@ -1957,22 +2067,13 @@ static ssize_t sentral_sysfs_fifo_size_show(struct device *dev,
 	struct sentral_device *sentral = dev_get_drvdata(dev);
 	struct sentral_param_fifo_control fifo_ctrl = {{ 0 }};
 	int rc;
-	size_t count = 0;
-
-	mutex_lock(&sentral->lock);
 
 	rc = sentral_parameter_read(sentral, SPP_SYS, SP_SYS_FIFO_CONTROL,
 			(void *)&fifo_ctrl, sizeof(fifo_ctrl));
+	if (rc)
+		return rc;
 
-	if (rc) {
-		count = rc;
-		goto exit;
-	}
-
-	count = scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.size);
-exit:
-	mutex_unlock(&sentral->lock);
-	return count;
+	return scnprintf(buf, PAGE_SIZE, "%u\n", fifo_ctrl.fifo.size);
 }
 
 static DEVICE_ATTR(fifo_size, S_IRUGO, sentral_sysfs_fifo_size_show, NULL);
@@ -2267,16 +2368,20 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_chip_status.attr,
 	&dev_attr_registers.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_inactivity_timeout.attr,
+	&dev_attr_coach_fitness_id.attr,
 	&dev_attr_ts.attr,
 	&dev_attr_sensor_info.attr,
 	&dev_attr_sensor_config.attr,
 	&dev_attr_sensor_status.attr,
+	&dev_attr_phys_status.attr,
 	&dev_attr_enable.attr,
 	&dev_attr_delay_ms.attr,
 	&dev_attr_batch.attr,
 	&dev_attr_flush.attr,
 	&dev_attr_fifo_watermark.attr,
 	&dev_attr_fifo_size.attr,
+	&dev_attr_cal_ts_data.attr,
 	&dev_attr_bmmi_chip_status.attr,
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,
@@ -2412,10 +2517,29 @@ static void sentral_do_work_watchdog(struct work_struct *work)
 {
 	struct sentral_device *sentral = container_of((struct delayed_work *)work,
 			struct sentral_device, work_watchdog);
-
+	u8 err = 0;
+	u32 crc = 0;
 	int rc;
 
-	LOGD(&sentral->client->dev, "%s\n", __func__);
+	LOGD(&sentral->client->dev, "[WD] Watchdog bite\n");
+
+	// check error register
+	err = sentral_error_get(sentral);
+	switch (err) {
+	case SEN_ERR_MATH:
+	case SEN_ERR_MEM:
+		I("[WD] Fatal error: %u\n", err);
+		sentral_crash_reset(sentral);
+		return;
+	}
+
+	// check CRC for memory corruption
+	rc = sentral_crc_get(sentral, &crc);
+	if (rc || (crc != sentral->fw_crc)) {
+		I("[WD] CRC error { fw: %u, read: %u }\n", sentral->fw_crc, crc);
+		sentral_crash_reset(sentral);
+		return;
+	}
 
 	rc = sentral_fifo_read(sentral, (void *)sentral->data_buffer);
 	if (rc) {
@@ -2424,10 +2548,22 @@ static void sentral_do_work_watchdog(struct work_struct *work)
 	}
 }
 
+static void sentral_do_work_ts_ref_reset(struct work_struct *work)
+{
+	struct sentral_device *sentral = container_of((struct delayed_work *)work,
+			struct sentral_device, work_ts_ref_reset);
+
+	LOGI(&sentral->client->dev, "[TS] Queuing timestamp ref sync\n");
+
+	sentral->ts_ref_reset_mask = ULONG_MAX;
+
+}
+
 static void sentral_do_work_reset(struct work_struct *work)
 {
 	struct sentral_device *sentral = container_of(work, struct sentral_device,
 			work_reset);
+
 	int rc = 0;
 
 	mutex_lock(&sentral->lock_reset);
@@ -2436,8 +2572,7 @@ static void sentral_do_work_reset(struct work_struct *work)
 	rc = sentral_firmware_load(sentral, sentral->platform_data.firmware);
 	if (rc) {
 		LOGE(&sentral->client->dev, "error (%d) loading firmware\n", rc);
-		mutex_unlock(&sentral->lock_reset);
-		return;
+		goto exit;
 	}
 
 	mdelay(100);
@@ -2446,34 +2581,17 @@ static void sentral_do_work_reset(struct work_struct *work)
 	rc = sentral_set_cpu_run_enable(sentral, true);
 	if (rc) {
 		LOGE(&sentral->client->dev, "error (%d) enabling cpu run\n", rc);
-		mutex_unlock(&sentral->lock_reset);
-		return;
+		goto exit;
 	}
 
 	sentral->init_complete = true;
 
-	mutex_unlock(&sentral->lock_reset);
-
 	mdelay(100);
-
-	find_time_scale(sentral, 50);
-
-	rc = sentral_fifo_watermark_setting(sentral, (u16)SENTRAL_WATERMARK_MARGIN);
-	if (rc) {
-		LOGE(&sentral->client->dev, "error (%d) setting watermark\n", rc);
-		return;
-	}
-
-	// sync timestamp
-	sentral->ts_ref_stime = 0;
-	rc = sentral_sync_timestamp(sentral);
-	if (rc) {
-		LOGE(&sentral->client->dev, "error (%d) syncing timestamp\n", rc);
-		return;
-	}
 
 	// queue a FIFO read
 	queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
+exit:
+	mutex_unlock(&sentral->lock_reset);
 }
 
 // IIO
@@ -2748,13 +2866,16 @@ static int sentral_probe(struct i2c_client *client,
 	INIT_WORK(&sentral->work_reset, sentral_do_work_reset);
 	INIT_WORK(&sentral->work_fifo_read, sentral_do_work_fifo_read);
 	INIT_DELAYED_WORK(&sentral->work_watchdog, &sentral_do_work_watchdog);
+	INIT_DELAYED_WORK(&sentral->work_ts_ref_reset, &sentral_do_work_ts_ref_reset);
 
 	// init mutex, wakelock
 	mutex_init(&sentral->lock);
-	mutex_init(&sentral->lock_i2c);
-	mutex_init(&sentral->lock_ts);
+	mutex_init(&sentral->lock_special);
+	mutex_init(&sentral->lock_flush);
 	mutex_init(&sentral->lock_reset);
-	mutex_init(&sentral->lock_pio);
+	mutex_init(&sentral->lock_ts);
+	init_waitqueue_head(&sentral->wq_flush);
+
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
 
 	// zero wake source counters
@@ -2772,6 +2893,11 @@ static int sentral_probe(struct i2c_client *client,
 		LOGE(&sentral->client->dev, "error (%d) requesting irq handler\n", rc);
 		return rc;
 	}
+
+	// set ts defaults
+	memset(sentral->ts_sensor_ref, 0, sizeof(sentral->ts_sensor_ref));
+	sentral->ts_ref_reset_mask = ULONG_MAX;
+	sentral->stime_scale = SENTRAL_SENSOR_TIMESTAMP_SCALE_NS;
 
 	// init pm
 	device_init_wakeup(dev, 1);
