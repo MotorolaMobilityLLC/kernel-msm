@@ -1114,14 +1114,13 @@ static int32_t mt9v113_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 static bool mt9v113_sensor_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
-	bool factory = false;
+	u32 fact_cable = 0;
 
 	if (np)
-		factory = of_property_read_bool(np, "mmi,factory-cable");
+		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
 
 	of_node_put(np);
-
-	return factory;
+	return !!fact_cable ? true : false;
 }
 
 int32_t MT9V113_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,

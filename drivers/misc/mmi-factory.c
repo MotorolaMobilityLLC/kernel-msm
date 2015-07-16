@@ -118,17 +118,14 @@ static DEVICE_ATTR(fac_kill_sw_dis, 0664,
  */
 static bool mmi_factory_cable_present(void)
 {
-	struct device_node *np;
-	bool fact_cable;
+	struct device_node *np = of_find_node_by_path("/chosen");
+	u32 fact_cable = 0;
 
-	np = of_find_node_by_path("/chosen");
-	fact_cable = of_property_read_bool(np, "mmi,factory-cable");
+	if (np)
+		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
+
 	of_node_put(np);
-
-	if (!np || !fact_cable)
-		return false;
-
-	return true;
+	return !!fact_cable ? true : false;
 }
 
 static void warn_irq_w(struct work_struct *w)
