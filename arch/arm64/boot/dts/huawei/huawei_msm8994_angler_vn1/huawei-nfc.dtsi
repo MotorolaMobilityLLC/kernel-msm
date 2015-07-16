@@ -1,0 +1,76 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	pinctrl@fd510000 {
+		spi_0_active {
+			status = "disabled";
+		};
+		spi_0_suspend {
+			status = "disabled";
+		};
+		pmx_i2c_1 {
+			status = "ok";
+		};
+	};
+	spi@f9923000 { /* BLSP1 QUP1 */
+		status = "disabled";
+		/delete-property/ qcom,infinite-mode;
+		/delete-property/ qcom,use-bam;
+		/delete-property/ qcom,ver-reg-exists;
+		/delete-property/ qcom,bam-consumer-pipe-index;
+		/delete-property/ qcom,bam-producer-pipe-index;
+		/delete-property/ qcom,use-pinctrl;
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+		/delete-property/ clock-names;
+		/delete-property/ clocks;
+	};
+
+	i2c@f9923000 { /* BLSP1 QUP1 */
+		qcom,clk-freq-out = <1000000>;
+		dmas = <&dma_blsp1 12 64 0x20000020 0x20>,
+			<&dma_blsp1 13 32 0x20000020 0x20>;
+		status = "ok";
+		nfc@0x28 {
+			compatible = "nxp,pn548";
+			status = "ok";
+			reg = <0x28>;
+			nxp,nfc_int = <&msm_gpio 29 0x00>;
+			nxp,nfc_ven = <&msm_gpio 30 0x00>;
+			nxp,nfc_firm = <&msm_gpio 16 0>;
+			nxp,clk-src = "BBCLK2";
+			nxp,nfc_clk = <&pm8994_gpios 10 0>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <29 0>;  /*1 = low-to-high edge triggered
+						2 = high-to-low edge triggered
+						4 = active high level-sensitive
+						8 = active low level-sensitive */
+			interrupt-names = "nfc_irq";
+			pinctrl-names = "nfc_active","nfc_suspend";
+			pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
+			pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
+			clocks = <&clock_rpm clk_bb_clk2_pin>;
+			clock-names = "pn548_clk";
+		};
+	};
+	i2c@f9928000 { /* BLSP1 QUP6 */
+		nfc-nci@e {
+			status = "disabled";
+			/delete-property/ pinctrl-names;
+			/delete-property/ pinctrl-0;
+			/delete-property/ pinctrl-1;
+		};
+	};
+};
+

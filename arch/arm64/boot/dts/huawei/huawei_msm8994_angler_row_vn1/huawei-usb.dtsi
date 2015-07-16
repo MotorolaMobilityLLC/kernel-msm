@@ -1,0 +1,40 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&hsphy0 {
+	qcom,hsphy-init = <0x00D191A4>;
+};
+
+&pm8994_mpps {
+	mpp@a700 { /* MPP 8 */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		qcom,invert = <0>;
+		status = "ok";
+	};
+};
+
+&soc {
+	/* BLSP1 QUP6 */
+	i2c@f9928000 {
+		status = "ok";
+		qcom,clk-freq-out = <100000>;
+		tusb320@60 {
+			compatible = "huawei,tusb320";
+			reg = <0x60>;
+			tusb320_typec,gpio_enb = <&pm8994_mpps 8 0>;
+			tusb320_typec,gpio_intb = <&msm_gpio 108 0>;
+		};
+	};
+};

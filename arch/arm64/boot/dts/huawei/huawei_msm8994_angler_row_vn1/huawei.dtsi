@@ -1,0 +1,53 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*                      Regulations
+ * 1.The "DTSxxx" just be allowed to  add at the begin and the tail.
+ * 2.The dtsi files which belong to a group need to be put together,
+ * and will be separated by remarks.
+ * 3.When we add one new boardid,it would be inherted from the similar one
+ * and modify the product name in the files of huawei-fac.dtsi huawei-wifi.dtsi huawei-audio.dtsi,
+ * and the other groups need to do some modify with DTSxxx.
+ */
+
+/* belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator begin */
+
+/*#include "huawei-i2c-detect-va.dtsi"*/
+/* add tp and lcd driver */
+#include "huawei-lcd.dtsi"
+#include "huawei-led.dtsi"
+#include "huawei-tp.dtsi"
+#include "huawei-fingerprint.dtsi"
+#include "huawei-camera.dtsi"
+#include "huawei-stvl6180.dtsi"
+#include "huawei-sensors.dtsi"
+#include "huawei-haptics.dtsi"
+/*belong to the component group, according to the order of i2c lcd tp camera sensors compass tricolors vibrator end*/
+
+/*belong to the wireless component group, according to the order of wifi bt fm audio begin*/
+#include "huawei-wifi.dtsi"
+#include "huawei-bt.dtsi"
+#include "huawei-audio.dtsi"
+/*belong to the wireless component group, according to the order of wifi bt fm audio end*/
+
+/*belong to the factory group, according to the order of fac begin*/
+#include "huawei-fac.dtsi"
+/*belong to the factory group, according to the order of fac end*/
+
+/*belong to the OS group, according to the order of battery memery begin*/
+#include "huawei-battery.dtsi"
+/*#include "huawei-memory.dtsi"*/
+/*#include "huawei-emmc.dtsi" */
+/*#include "huawei-sdcard.dtsi"*/
+/*belong to the OS group, according to the order of battery memery end*/
+#include "huawei-nfc.dtsi"
+#include "huawei-usb.dtsi"

@@ -1,0 +1,115 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d000 {
+			qcom,rgb_0 {
+				qcom,start-idx = <1>;
+				qcom,idx-len = <10>;
+				qcom,duty-pcts = [00 19 32 4B 64 64 4B 32 19 00];
+				qcom,pause-lo = <0>;
+				qcom,pause-hi = <0>;
+				qcom,use-blink;
+				linux,default-trigger = "none";
+			};
+
+			qcom,rgb_1 {
+				qcom,start-idx = <1>;
+				qcom,idx-len = <10>;
+				qcom,duty-pcts = [00 19 32 4B 64 64 4B 32 19 00];
+				qcom,pause-lo = <0>;
+				qcom,pause-hi = <0>;
+				qcom,use-blink;
+				linux,default-trigger = "none";
+			};
+
+			qcom,rgb_2 {
+				qcom,start-idx = <1>;
+				qcom,idx-len = <10>;
+				qcom,duty-pcts = [00 19 32 4B 64 64 4B 32 19 00];
+				qcom,pause-lo = <0>;
+				qcom,pause-hi = <0>;
+				qcom,use-blink;
+			};
+		};
+		qcom,leds@d300 {
+			compatible = "qcom,qpnp-flash-led";
+			status = "okay";
+			reg = <0xd300 0x100>;
+			label = "flash";
+			qcom,headroom = <500>;
+			qcom,startup-dly = <128>;
+			qcom,clamp-curr = <200>;
+			qcom,pmic-charger-support;
+			qcom,self-check-enabled;
+			qcom,thermal-derate-enabled;
+			qcom,thermal-derate-threshold = <100>;
+			qcom,thermal-derate-rate = "5_PERCENT";
+			qcom,current-ramp-enabled;
+			qcom,ramp_up_step = "6P7_US";
+			qcom,ramp_dn_step = "6P7_US";
+			qcom,vph-pwr-droop-enabled;
+			qcom,vph-pwr-droop-threshold = <3000>;
+			qcom,vph-pwr-droop-debounce-time = <10>;
+			qcom,headroom-sense-ch0-enabled;
+			qcom,headroom-sense-ch1-enabled;
+			qcom,power-detect-enabled;
+
+			pmi8994_flash0: qcom,flash_0 {
+				label = "flash";
+				qcom,led-name = "led:flash_0";
+				qcom,default-led-trigger =
+						"flash0_trigger";
+				qcom,max-current = <1000>;
+				qcom,duration = <1280>;
+				qcom,id = <0>;
+				qcom,current = <625>;
+			};
+
+			pmi8994_flash1: qcom,flash_1 {
+				label = "flash";
+				qcom,led-name = "led:flash_1";
+				qcom,default-led-trigger =
+						"flash1_trigger";
+				qcom,max-current = <1000>;
+				qcom,duration = <1280>;
+				qcom,id = <1>;
+				qcom,current = <625>;
+			};
+
+			pmi8994_torch0: qcom,torch_0 {
+				label = "torch";
+				qcom,led-name = "led:torch_0";
+				qcom,default-led-trigger =
+						"torch0_trigger";
+				qcom,max-current = <200>;
+				qcom,id = <0>;
+				qcom,current = <120>;
+				boost-supply = <&pmi8994_boostbypass>;
+				boost-voltage-max = <3600000>;
+			};
+
+			pmi8994_torch1: qcom,torch_1 {
+				label = "torch";
+				qcom,led-name = "led:torch_1";
+				qcom,default-led-trigger =
+						"torch1_trigger";
+				qcom,max-current = <200>;
+				qcom,id = <1>;
+				qcom,current = <120>;
+				boost-supply = <&pmi8994_boostbypass>;
+				boost-voltage-max = <3600000>;
+			};
+		};
+	};
+};

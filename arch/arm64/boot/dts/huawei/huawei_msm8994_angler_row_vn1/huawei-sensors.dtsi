@@ -1,0 +1,104 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* BLSP1 QUP6 */
+&i2c_6 {
+	status = "ok";
+	adux1050@2c {
+		compatible = "adi,adux1050";
+		reg = <0x2c>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <14 0x2>;
+		interrupts-name = "adux1050_2c";
+		interrupt-gpio = <&msm_gpio 14 0>;
+		vdd-supply = <&pm8994_l18>;
+		vio-supply = <&pm8994_lvs2>;
+		vdd_int-supply = <&pm8994_s4>;
+		/* Specifies the initial configuration registers */
+		adi,adux1050_reg = [ 00010303 00028530 000301EE 00050f51 00061902 00070270
+			00080200 00092500 000a0000 000b9999 000c03e8 000d0200 000e0000 000f000c
+			00109999 001105e8 00120200 00130000 0014000c 00159999 001607e8 00170200
+			00180000 0019000c 00797d00 007a8000 007b8000 007c8000 ];
+		/*Signifies the required Baseline for the device*/
+		adi,adux1050_stg0_base = [ 00007D00 ];
+		adi,adux1050_stg1_base = [ 00004e20 ];
+		adi,adux1050_stg2_base = [ 00007530 ];
+		adi,adux1050_stg3_base = [ 00009c40 ];
+		/*Signifies the required Baseline for the device*/
+		adi,adux1050_irq_flags = [ 00000002 ];  /* Signifies the irq Flag, If not set it will be set to IRQF_TRIGGER_FALLING*/
+	};
+};
+
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		sensorhub_ctrl {
+			/* NRST, BOOT0, AP2SH, SH2AP */
+			qcom,pins = <&gp 93>, <&gp 94>, <&gp 39>, <&gp 41>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <0>;
+			label = "sensorhub_ctrl";
+			sensorhub_ctrl_sleep: sensorhub_ctrl_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+			sensorhub_ctrl_active: sensorhub_ctrl_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+};
+
+&spi_0 {
+	status = "disabled";
+	/delete-property/ pinctrl-names;
+	/delete-property/ pinctrl-0;
+	/delete-property/ pinctrl-1;
+};
+
+&spi_5 {
+	sensorhub@0 {
+		compatible = "contexthub,spich";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+		spi-cpol;
+		spi-cpha;
+
+		contexthub,ap2sh = <&msm_gpio 39 0x00>;
+		contexthub,sh2ap = <&msm_gpio 41 0x00>;
+		contexthub,nrst = <&msm_gpio 93 0x00>;
+		contexthub,boot0 = <&msm_gpio 94 0x00>;
+
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <41 0x2>;
+		interrupt-names = "contexthub_wake_irq";
+
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&sensorhub_ctrl_active>;
+		pinctrl-1 = <&sensorhub_ctrl_sleep>;
+	};
+};
+
+&pm8994_l18 { /* Sensor VDD */
+	regulator-min-microvolt = <2850000>;
+	regulator-max-microvolt = <2850000>;
+	regulator-always-on;
+	qcom,init-voltage = <2850000>;
+	status = "okay";
+};
+
+&pm8994_lvs2 {
+	qcom,init-enable = <1>;
+	regulator-always-on;
+	status = "okay";
+};
+

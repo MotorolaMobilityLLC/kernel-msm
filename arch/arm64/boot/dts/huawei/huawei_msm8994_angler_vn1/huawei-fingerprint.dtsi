@@ -1,0 +1,146 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi12 = &spi_12;
+	};
+
+	memory {
+		cont_splash_mem: cont_splash_mem@0 {
+			reg = <0 0x03401000 0 0x1000000>;
+		};
+		tzapp_mem: tzapp_region@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0 0x04800000 0 0x1900000>;
+			label = "tzapp_mem";
+		};
+	};
+};
+
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		fpc_reset {
+			qcom,pins = <&gp 89>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "fpc_reset";
+			fpc_reset_reset: reset {
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+			fpc_reset_active: active {
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+		fpc_irq_active {
+			qcom,pins = <&gp 90>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "fpc_irq_active";
+			fpc_irq_active: active {
+				drive-strength = <2>;
+				bias-disable;
+				input-enable;
+			};
+		};
+		spi12_active {
+			/* MOSI, MISO, CS, CLK */
+			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <1>;
+			label = "spi12-active";
+			spi12_active: spi_active {
+				drive-strength = <8>;
+				bias-disable = <0>;
+			};
+		};
+		spi12_suspend {
+			/* MOSI, MISO, CS, CLK */
+			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <1>;
+			label = "spi12-suspend";
+			spi12_sleep: spi_sleep {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
+	spi_12: spi_fpc: spi@F9968000 {  /* BLSP2 QUP6 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xF9968000 0x1000>,
+			<0xf9944000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 106 0>, <0 239 0>;
+		spi-max-frequency = <19200000>;
+		qcom,infinite-mode = <0>;
+		#qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <22>;
+		qcom,bam-producer-pipe-index = <23>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi12_active>;
+		pinctrl-1 = <&spi12_sleep>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+	};
+	qcom,qseecom@6500000 {
+		reg = <0x4800000 0x1900000>;
+	};
+};
+
+&spi_12 {
+	status = "ok";
+	fpc1020-spi@0 {
+		reg = <0>;
+		compatible = "fpc,fpc1020";
+		input-device-name = "fpc1020";
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <90 0x0>;
+		fpc1020,moduleid_gpio = <&msm_gpio 102 0>;
+		fpc,gpio_rst    = <&msm_gpio 89 0>;
+		fpc,gpio_irq    = <&msm_gpio 90 0>;
+		vcc_spi-supply  = <&pm8994_s4>;
+		fpc,use_fpc2050 = <1>;
+		fpc,enable-wakeup;
+		/* EV_MSC, MSC_SCAN */
+		fpc,event-type = <4>;
+		fpc,event-code = <4>;
+		spi-max-frequency = <4800000>;
+		spi-qup-id = <0>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+
+		pinctrl-names = "fpc1020_reset_reset",
+				"fpc1020_reset_active",
+				"fpc1020_irq_active";
+		pinctrl-0 = <&fpc_reset_reset>;
+		pinctrl-1 = <&fpc_reset_active>;
+		pinctrl-2 = <&fpc_irq_active>;
+		status = "ok";
+	};
+};
+

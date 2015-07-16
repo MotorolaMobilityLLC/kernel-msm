@@ -1,0 +1,103 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&rpm_bus {
+	rpm-regulator-ldoa30 {
+		pm8994_l30: regulator-l30 {
+			regulator-min-microvolt = <1850000>;
+			regulator-max-microvolt = <1850000>;
+		};
+	};
+};
+&tlmm_pinmux {
+
+	synaptics_int_pin {
+		qcom,pins = <&gp 77>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "synaptics-irq";
+		synaptics_int_default: synaptics_int_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		synaptics_int_sleep: synaptics_int_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+&soc {
+	/* BLSP1 QUP2 */
+	i2c@f9924000 {
+		status = "ok";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,clk-freq-out = <400000>;
+		synaptics@70 {
+			compatible = "synaptics,dsx25-i2c";
+			reg = <0x70>;
+			pinctrl-names = "int_default","int_sleep";
+			pinctrl-0 = <&synaptics_int_default>;
+			pinctrl-1 = <&synaptics_int_sleep>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <77 0x2008>;
+			vcc_i2c-supply = <&pm8994_l30>;
+			vdd-supply = <&pm8994_l22>;
+			synaptics,pwr-reg-name = "vdd";
+			synaptics,bus-reg-name = "vcc_i2c";
+			synaptics,vbus-gpio = <&msm_gpio 38 0x0>;
+			synaptics,power-delay-ms = <200>;
+			synaptics,irq-gpio = <&msm_gpio 77 0x2008>;
+			synaptics,irq-on-state = <0>;
+			synaptics,irq-flags = <0x2008>; /* IRQF_ONESHOT | IRQF_TRIGGER_LOW */
+			synaptics,reset-gpio = <&msm_gpio 96 0x0>;
+			synaptics,reset-on-state = <0>;
+			synaptics,reset-delay-ms = <200>;
+			synaptics,reset-active-ms = <20>;
+			synaptics,x-flip = <1>;
+			synaptics,y-flip = <1>;
+			synaptics,product_name = "Nxx";
+		};
+
+		synaptics@20 {
+			status = "disabled";
+			compatible = "synaptics,dsx";
+			reg = <0x20>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <61 0x2008>;
+			vdd-supply = <&pm8994_l14>;
+			avdd-supply = <&pm8994_l22>;
+			pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+			pinctrl-0 = <&ts_active>;
+			pinctrl-1 = <&ts_suspend>;
+			synaptics,display-coords = <0 0 1599 2559>;
+			synaptics,panel-coords = <0 0 1599 2703>;
+			synaptics,reset-gpio = <&msm_gpio 60 0x00>;
+			synaptics,irq-gpio = <&msm_gpio 61 0x2008>;
+			synaptics,disable-gpios;
+		};
+
+	};
+
+	/*To disable gen-vkeys.c probe,avoid generate kobject*/
+	gen-vkeys {
+		compatible = "huawei,gen-vkeys";
+		label = "synaptics_rmi4_i2c";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <720>;
+		qcom,panel-maxy = <1369>;
+		qcom,key-codes = <158 172 139>;
+	};
+
+};
