@@ -490,6 +490,16 @@ static int tsl2584_als_disable(struct tsl2584_data *tsl)
 				error);
 		tsl2584_power_off(tsl);
 	}
+	if (wake_lock_active(&tsl->wl_isr)) {
+		wake_unlock(&tsl->wl_isr);
+		if (tsl->client->irq) {
+			/* Need to re-enable irq if delayed work was canceled */
+			if (tsl2584_debug & TSL2584_DBG_ENABLE_DISABLE)
+				dev_info(&tsl->client->dev, "enable irq\n");
+			enable_irq(tsl->client->irq);
+		}
+	}
+
 	return error;
 }
 
