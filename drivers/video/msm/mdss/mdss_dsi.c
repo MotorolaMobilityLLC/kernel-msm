@@ -45,17 +45,37 @@ static struct mdss_dsi_data *mdss_dsi_res;
 
 static struct pm_qos_request mdss_dsi_pm_qos_request;
 
-static void mdss_dsi_pm_qos_add_request(void)
+static void mdss_dsi_pm_qos_add_request(struct dsi_shared_data *sdata)
 {
-	pr_debug("%s: add request", __func__);
-	pm_qos_add_request(&mdss_dsi_pm_qos_request, PM_QOS_CPU_DMA_LATENCY,
-			PM_QOS_DEFAULT_VALUE);
+	if (!sdata)
+		return;
+
+	mutex_lock(&sdata->pm_qos_lock);
+	if (!sdata->pm_qos_req_cnt) {
+		pr_debug("%s: add request", __func__);
+		pm_qos_add_request(&mdss_dsi_pm_qos_request,
+			PM_QOS_CPU_DMA_LATENCY,	PM_QOS_DEFAULT_VALUE);
+	}
+	sdata->pm_qos_req_cnt++;
+	mutex_unlock(&sdata->pm_qos_lock);
 }
 
-static void mdss_dsi_pm_qos_remove_request(void)
+static void mdss_dsi_pm_qos_remove_request(struct dsi_shared_data *sdata)
 {
-	pr_debug("%s: remove request", __func__);
-	pm_qos_remove_request(&mdss_dsi_pm_qos_request);
+	if (!sdata)
+		return;
+
+	mutex_lock(&sdata->pm_qos_lock);
+	if (sdata->pm_qos_req_cnt) {
+		sdata->pm_qos_req_cnt--;
+		if (!sdata->pm_qos_req_cnt) {
+			pr_debug("%s: remove request", __func__);
+			pm_qos_remove_request(&mdss_dsi_pm_qos_request);
+		}
+	} else {
+		pr_warn("%s: unbalanced pm_qos ref count\n", __func__);
+	}
+	mutex_unlock(&sdata->pm_qos_lock);
 }
 
 static void mdss_dsi_pm_qos_update_request(int val)
@@ -3192,7 +3212,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	else
 		ctrl_pdata->shared_data->dsi1_active = true;
 
-	mdss_dsi_pm_qos_add_request();
+	mdss_dsi_pm_qos_add_request(ctrl_pdata->shared_data);
 
 	return 0;
 
@@ -3390,6 +3410,7 @@ static int mdss_dsi_res_init(struct platform_device *pdev)
 		}
 
 		mutex_init(&sdata->phy_reg_lock);
+		mutex_init(&sdata->pm_qos_lock);
 
 		for (i = 0; i < DSI_CTRL_MAX; i++) {
 			mdss_dsi_res->ctrl_pdata[i] = devm_kzalloc(&pdev->dev,
@@ -3660,7 +3681,7 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	mdss_dsi_pm_qos_remove_request();
+	mdss_dsi_pm_qos_remove_request(ctrl_pdata->shared_data);
 
 	if (msm_dss_config_vreg(&pdev->dev,
 			ctrl_pdata->panel_power_data.vreg_config,
