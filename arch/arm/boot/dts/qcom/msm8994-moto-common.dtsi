@@ -1141,6 +1141,10 @@
 	};
 
 	/delete-node/ usb-otg-switch;
+
+	mdss_hdmi_tx: qcom,hdmi_tx@fd9a8000{
+		status = "disabled";
+	};
 };
 
 &pm8994_gpios {
