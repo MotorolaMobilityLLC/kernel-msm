@@ -96,7 +96,6 @@
 #define VLED_EN_MASK		0x08
 #define RESET_MASK		0x80
 #define HIGH_CURRENT_MASK	0x40
-#define EFF_MASK		0xF3
 #define VBST_MASK		0x20
 #define VP_RES_MASK		0x10
 
@@ -110,7 +109,7 @@
 #define NO_RESET_VAL		0x80
 #define CABC_VAL		0x80
 #define HIGH_CURRENT_VAL	0x40
-#define EFF_VAL			0xF3
+#define EFF_VAL			0xB1
 /* Enable shutdown of VBST at OTP or UV detection */
 #define VBST_VAL		0x20
 /* Disable VP discharge resistor */
@@ -211,7 +210,7 @@ static int isl98611A_init(struct isl98611_chip *pchip)
 			HIGH_CURRENT_MASK, HIGH_CURRENT_VAL);
 
 	/* some undocumented efficiency register... */
-	rval |= isl98611_update(pchip, REG_EFFICIENCY, EFF_MASK, EFF_VAL);
+	rval |= isl98611_write(pchip, REG_EFFICIENCY, EFF_VAL);
 
 	return rval;
 }
