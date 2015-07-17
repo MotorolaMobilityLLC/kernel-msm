@@ -76,6 +76,11 @@ struct ilim_map {
 	struct ilim_entry	*entries;
 };
 
+struct ibat_limit {
+	unsigned int pmi;
+	unsigned int parallel;
+};
+
 struct smbchg_chip {
 	struct device			*dev;
 	struct spmi_device		*spmi;
@@ -235,6 +240,9 @@ struct smbchg_chip {
 	bool				disable_apsd;
 	bool				disable_hvdcp;
 	bool				customized_jeita;
+	struct ibat_limit		*ibat_therm_tbl;
+	int				pmi_ibat_ma;
+	int				parallel_ibat_ma;
 };
 
 enum print_reason {
@@ -969,6 +977,9 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 						int current_ma)
 {
 	int therm_ma;
+
+	if (!chip->thermal_mitigation)
+		return current_ma;
 
 	if (chip->therm_lvl_sel > 0
 			&& chip->therm_lvl_sel < (chip->thermal_levels - 1)) {
@@ -1762,6 +1773,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 	union power_supply_propval pval = {0, };
 	int current_limit_ma, parallel_cl_ma, total_current_ma;
+	int new_main_cl_ma;
 	int new_parallel_cl_ma, min_current_thr_ma, rc;
 
 	if (!parallel_psy || !chip->parallel_charger_detected)
@@ -1825,14 +1837,30 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 			rc);
 		goto disable_parallel;
 	}
-	chip->target_fastchg_current_ma = chip->cfg_fastchg_current_ma / 2;
+
+	if ((chip->cfg_fastchg_current_ma
+			< (chip->pmi_ibat_ma + chip->parallel_ibat_ma))
+			|| !chip->ibat_therm_tbl) {
+		chip->target_fastchg_current_ma =
+				chip->cfg_fastchg_current_ma / 2;
+		pval.intval = chip->target_fastchg_current_ma * 1000;
+		new_parallel_cl_ma = total_current_ma / 2;
+		new_main_cl_ma = new_parallel_cl_ma;
+	} else {
+		chip->target_fastchg_current_ma = chip->pmi_ibat_ma;
+		pval.intval = chip->parallel_ibat_ma * 1000;
+		new_parallel_cl_ma = total_current_ma * chip->parallel_ibat_ma;
+		if (new_parallel_cl_ma)
+			new_parallel_cl_ma /=
+				(chip->pmi_ibat_ma + chip->parallel_ibat_ma);
+		new_main_cl_ma = total_current_ma - new_parallel_cl_ma;
+	}
+
 	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
-	pval.intval = chip->target_fastchg_current_ma * 1000;
 	parallel_psy->set_property(parallel_psy,
 			POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX, &pval);
 
 	chip->parallel.enabled_once = true;
-	new_parallel_cl_ma = total_current_ma / 2;
 
 	if (new_parallel_cl_ma == parallel_cl_ma) {
 		pr_smb(PR_STATUS,
@@ -1847,7 +1875,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	taper_irq_en(chip, true);
 	chip->parallel.current_max_ma = new_parallel_cl_ma;
 	power_supply_set_present(parallel_psy, true);
-	smbchg_set_usb_current_max(chip, chip->parallel.current_max_ma);
+	smbchg_set_usb_current_max(chip, new_main_cl_ma);
 	power_supply_set_current_limit(parallel_psy,
 				chip->parallel.current_max_ma * 1000);
 	return;
@@ -2274,7 +2302,7 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	int rc = 0;
 	int prev_therm_lvl;
 
-	if (!chip->thermal_mitigation) {
+	if (!chip->thermal_mitigation && !chip->ibat_therm_tbl) {
 		dev_err(chip->dev, "Thermal mitigation not supported\n");
 		return -EINVAL;
 	}
@@ -2316,10 +2344,16 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 		goto out;
 	}
 
-	rc = smbchg_set_thermal_limited_usb_current_max(chip,
-					chip->usb_target_current_ma);
-	rc = smbchg_set_thermal_limited_dc_current_max(chip,
-					chip->dc_target_current_ma);
+	if (!chip->ibat_therm_tbl) {
+		rc = smbchg_set_thermal_limited_usb_current_max(chip,
+						chip->usb_target_current_ma);
+		rc = smbchg_set_thermal_limited_dc_current_max(chip,
+						chip->dc_target_current_ma);
+	} else {
+		chip->pmi_ibat_ma = chip->ibat_therm_tbl[lvl_sel].pmi;
+		chip->parallel_ibat_ma = chip->ibat_therm_tbl[lvl_sel].parallel;
+		smbchg_parallel_usb_check_ok(chip);
+	}
 
 	if (prev_therm_lvl == chip->thermal_levels - 1) {
 		/*
@@ -5368,8 +5402,37 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (rc)
 		chip->battery_psy_name = "battery";
 
-	if (of_find_property(node, "qcom,thermal-mitigation",
+	if (of_find_property(node, "qcom,ibat-thermal-mitigation",
 					&chip->thermal_levels)) {
+		chip->ibat_therm_tbl =
+				devm_kzalloc(chip->dev,
+						chip->thermal_levels,
+						GFP_KERNEL);
+		if (chip->ibat_therm_tbl == NULL) {
+			dev_err(chip->dev,
+				"ibat thermal mitigation alloc failed.\n");
+			return -ENOMEM;
+		}
+
+		chip->thermal_levels /= sizeof(int);
+		rc = of_property_read_u32_array(node,
+				"qcom,ibat-thermal-mitigation",
+				(int*)chip->ibat_therm_tbl,
+				chip->thermal_levels);
+		if (rc) {
+			dev_err(chip->dev,
+				"Couldn't read ibat threm limits\n");
+			return rc;
+		}
+
+		chip->thermal_levels /= 2;
+		chip->pmi_ibat_ma = chip->ibat_therm_tbl[0].pmi;
+		chip->parallel_ibat_ma = chip->ibat_therm_tbl[0].parallel;
+	}
+
+	if (!chip->ibat_therm_tbl &&
+			of_find_property(node, "qcom,thermal-mitigation",
+						&chip->thermal_levels)) {
 		chip->thermal_mitigation = devm_kzalloc(chip->dev,
 			chip->thermal_levels,
 			GFP_KERNEL);
