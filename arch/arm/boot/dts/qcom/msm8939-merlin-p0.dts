@@ -10,10 +10,10 @@
 * GNU General Public License for more details.
 */
 
-#include "msm8929-moto-common.dtsi"
+/dts-v1/;
+
+#include "msm8939-merlin.dtsi"
 
 / {
-	model = "Motorola Mobility MSM 8929 Sparrowhawk";
-	compatible = "qcom,msm8929-sparrowhawk", "qcom,msm8929-moto",
-			"qcom,msm8929";
+	qcom,board-id = <0x4B 0x8000>;
 };
