@@ -17,43 +17,79 @@
 
 #include "power_supply.h"
 
+#define BATTERY_LOW	15
+#define BATTERY_HIGH	90
+
+static bool off_charge_flag;
+
 /* Battery specific LEDs triggers. */
 
 static void power_supply_update_bat_leds(struct power_supply *psy)
 {
 	union power_supply_propval status;
-	unsigned long delay_on = 0;
-	unsigned long delay_off = 0;
+	union power_supply_propval capacity;
+	union power_supply_propval profile_status;
+
+	/* only control the leds in off charge mode */
+	if (!off_charge_flag)
+		return;
+
+	/* set the leds color after battery proflie loaded */
+	if (psy->get_property(psy, POWER_SUPPLY_PROP_PROFILE_STATUS,
+		&profile_status))
+		return;
+
+	if (profile_status.intval == 0)
+		return;
 
 	if (psy->get_property(psy, POWER_SUPPLY_PROP_STATUS, &status))
 		return;
 
-	dev_dbg(psy->dev, "%s %d\n", __func__, status.intval);
-
-	switch (status.intval) {
-	case POWER_SUPPLY_STATUS_FULL:
-		led_trigger_event(psy->charging_full_trig, LED_FULL);
-		led_trigger_event(psy->charging_trig, LED_OFF);
-		led_trigger_event(psy->full_trig, LED_FULL);
-		led_trigger_event(psy->charging_blink_full_solid_trig,
-			LED_FULL);
-		break;
-	case POWER_SUPPLY_STATUS_CHARGING:
-		led_trigger_event(psy->charging_full_trig, LED_FULL);
-		led_trigger_event(psy->charging_trig, LED_FULL);
-		led_trigger_event(psy->full_trig, LED_OFF);
-		led_trigger_blink(psy->charging_blink_full_solid_trig,
-			&delay_on, &delay_off);
-		break;
-	default:
+	/* turn off the leds while not charging */
+	if (status.intval != POWER_SUPPLY_STATUS_FULL
+		&& status.intval != POWER_SUPPLY_STATUS_CHARGING){
 		led_trigger_event(psy->charging_full_trig, LED_OFF);
 		led_trigger_event(psy->charging_trig, LED_OFF);
 		led_trigger_event(psy->full_trig, LED_OFF);
-		led_trigger_event(psy->charging_blink_full_solid_trig,
-			LED_OFF);
-		break;
+		led_trigger_event(psy->charging_blink_full_solid_trig, LED_OFF);
+		return;
+	}
+
+	if (psy->get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &capacity))
+		return;
+
+	if (capacity.intval < 0) {
+		return;
+	} else if (capacity.intval < BATTERY_LOW) {
+		/* set led red */
+		led_trigger_event(psy->charging_full_trig, LED_OFF);
+		led_trigger_event(psy->charging_trig, LED_FULL);
+		led_trigger_event(psy->full_trig, LED_OFF);
+		led_trigger_event(psy->charging_blink_full_solid_trig, LED_OFF);
+	} else if (capacity.intval < BATTERY_HIGH) {
+		/* set led yellow */
+		led_trigger_event(psy->charging_full_trig, LED_OFF);
+		led_trigger_event(psy->charging_trig, LED_FULL);
+		led_trigger_event(psy->full_trig, LED_FULL);
+		led_trigger_event(psy->charging_blink_full_solid_trig, LED_OFF);
+	} else {
+		/* set led green */
+		led_trigger_event(psy->charging_full_trig, LED_OFF);
+		led_trigger_event(psy->charging_trig, LED_OFF);
+		led_trigger_event(psy->full_trig, LED_FULL);
+		led_trigger_event(psy->charging_blink_full_solid_trig, LED_OFF);
 	}
 }
+
+static int __init early_parse_off_charge_flag(char *p)
+{
+	if (p) {
+		if (!strcmp(p, "charger"))
+			off_charge_flag = true;
+	}
+	return 0;
+}
+early_param("androidboot.mode", early_parse_off_charge_flag);
 
 static int power_supply_create_bat_triggers(struct power_supply *psy)
 {

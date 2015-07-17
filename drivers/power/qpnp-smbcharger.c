@@ -659,6 +659,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
 	POWER_SUPPLY_PROP_FLASH_ACTIVE,
+	POWER_SUPPLY_PROP_PROFILE_STATUS,
 };
 
 #define CHGR_STS			0x0E
@@ -907,6 +908,19 @@ static int get_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_COLD;
 	else
 		return POWER_SUPPLY_HEALTH_GOOD;
+}
+
+static int get_prop_batt_profile(struct smbchg_chip *chip)
+{
+	int profile_status, rc;
+
+	rc = get_property_from_fg(chip,
+			POWER_SUPPLY_PROP_PROFILE_STATUS, &profile_status);
+	if (rc) {
+		pr_smb(PR_STATUS, "Couldn't get profile status rc = %d\n", rc);
+		profile_status = 0;
+	}
+	return profile_status;
 }
 
 static const int usb_current_table[] = {
@@ -2810,6 +2824,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_FLASH_ACTIVE:
 		val->intval = chip->otg_pulse_skip_en;
+		break;
+	case POWER_SUPPLY_PROP_PROFILE_STATUS:
+		val->intval = get_prop_batt_profile(chip);
 		break;
 	default:
 		return -EINVAL;
