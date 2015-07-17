@@ -479,7 +479,7 @@
 		reg = <0>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <26 0>;
-		spi-max-frequency = <960000>;
+		spi-max-frequency = <4800000>;
 		gpios = <&tlmm 74 0>, /* WAKE_N */
 			<&tlmm 82 0>; /* RDY_N  */
 
