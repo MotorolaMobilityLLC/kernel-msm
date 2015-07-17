@@ -10,9 +10,10 @@
 * GNU General Public License for more details.
 */
 
+
 /memreserve/ 0xaf000000 0x00080000;
 
-#include "msm8929.dtsi"
+#include "msm8939.dtsi"
 #include "msm8939-pinctrl.dtsi"
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "dsi-panel-mot-inx-500-720p-video.dtsi"
@@ -23,6 +24,9 @@
 #include <moto-mem-reserve.h>
 
 / {
+	model = "Motorola Mobility MSM8939 Merlin";
+	compatible = "qcom,msm8939-merlin", "qcom,msm8939-moto",
+			"qcom,msm8939";
 
 	aliases {
 		serial0 = &blsp1_ls_uart1;
