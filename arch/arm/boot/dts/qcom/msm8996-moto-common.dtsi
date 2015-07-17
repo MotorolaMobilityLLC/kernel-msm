@@ -472,6 +472,8 @@
 };
 
 &spi_0 {
+	qcom,use-hw-cs;
+
 	muc_spi@0 {
 		compatible = "moto,muc_spi";
 		reg = <0>;
