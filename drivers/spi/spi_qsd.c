@@ -1510,6 +1510,9 @@ static inline void msm_spi_set_cs(struct spi_device *spi, bool set_flag)
 
 	msm_spi_clk_path_vote(dd, spi->max_speed_hz);
 
+	if (dd->pdata->use_hw_cs)
+		return;
+
 	if (!(spi->mode & SPI_CS_HIGH))
 		set_flag = !set_flag;
 
@@ -2248,6 +2251,8 @@ struct msm_spi_platform_data *msm_spi_dt_to_pdata(
 			&pdata->rt_priority,		 DT_OPT,  DT_BOOL,  0},
 		{"qcom,shared",
 			&pdata->is_shared,		 DT_OPT,  DT_BOOL,  0},
+		{"qcom,use-hw-cs",
+			&pdata->use_hw_cs,               DT_OPT,  DT_BOOL,  0},
 		{NULL,  NULL,                            0,       0,        0},
 		};
 
