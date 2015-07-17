@@ -155,6 +155,7 @@ struct msm_hsphy {
 	bool			ext_vbus_id;
 	int			num_ports;
 	bool			cable_connected;
+	bool			disable_hvdcp;
 };
 
 /* global reference counter between all HSPHY instances */
@@ -509,7 +510,7 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 
 		/* Minimize VDD if charger is connected */
 		if ((phy->lpm_flags & PHY_RETENTIONED && !phy->cable_connected)
-				|| chg_connected) {
+				|| (chg_connected && phy->disable_hvdcp)) {
 			msm_hsusb_config_vdd(phy, 0);
 			phy->lpm_flags |= PHY_VDD_MINIMIZED;
 		}
@@ -751,6 +752,7 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int ret = 0;
+	struct device_node *charger_node;
 
 	phy = devm_kzalloc(dev, sizeof(*phy), GFP_KERNEL);
 	if (!phy) {
@@ -900,6 +902,13 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 
 	phy->set_pllbtune = of_property_read_bool(dev->of_node,
 						 "qcom,set-pllbtune");
+
+	charger_node = of_parse_phandle(dev->of_node, "qcom,charger", 0);
+	if (!charger_node)
+		dev_err(dev, "missing qcom,charger property\n");
+	else
+		phy->disable_hvdcp = of_property_read_bool(charger_node,
+						 "qcom,disable-hvdcp");
 
 	/*
 	 * If this workaround flag is enabled, the HW requires the 1.8 and 3.x
