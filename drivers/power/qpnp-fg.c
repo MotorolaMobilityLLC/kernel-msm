@@ -35,6 +35,7 @@
 #include <linux/string_helpers.h>
 #include <linux/alarmtimer.h>
 #include <linux/qpnp/qpnp-revid.h>
+#include <linux/reboot.h>
 
 /* Register offsets */
 
@@ -610,6 +611,8 @@ struct fg_chip {
 	struct delayed_work	check_sanity_work;
 	struct fg_wakeup_source	sanity_wakeup_source;
 	u8			last_beat_count;
+	struct notifier_block	fg_reboot;
+	bool			shutdown_in_process;
 };
 
 /* FG_MEMIF DEBUGFS structures */
@@ -939,9 +942,9 @@ wait:
 static int fg_release_access(struct fg_chip *chip)
 {
 	int rc;
-
-	rc = fg_masked_write(chip, MEM_INTF_CFG(chip),
-			RIF_MEM_ACCESS_REQ, 0, 1);
+	if (!chip->shutdown_in_process)
+		rc = fg_masked_write(chip, MEM_INTF_CFG(chip),
+				     RIF_MEM_ACCESS_REQ, 0, 1);
 	fg_relax(&chip->memif_wakeup_source);
 	reinit_completion(&chip->sram_access_granted);
 
@@ -8134,6 +8137,38 @@ done:
 	fg_cleanup(chip);
 }
 
+static int fg_reboot_handler(struct notifier_block *nb,
+		     unsigned long event, void *unused)
+{
+	struct fg_chip *chip =
+			container_of(nb, struct fg_chip, fg_reboot);
+	int rc;
+
+	dev_dbg(chip->dev, "FG Reboot\n");
+	if (!chip) {
+		dev_warn(chip->dev, "called before chip valid!\n");
+		return NOTIFY_DONE;
+	}
+
+
+	switch (event) {
+	case SYS_POWER_OFF:
+		chip->shutdown_in_process = true;
+		dev_warn(chip->dev, "Assert SRAM to Stop RBIAS!\n");
+		rc = fg_masked_write(chip, MEM_INTF_CFG(chip),
+				     RIF_MEM_ACCESS_REQ,
+				     RIF_MEM_ACCESS_REQ, 1);
+		if (rc)
+			pr_err("failed to set mem access bit\n");
+		msleep(2000);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
 static int fg_probe(struct spmi_device *spmi)
 {
 	struct device *dev = &(spmi->dev);
@@ -8284,6 +8319,8 @@ static int fg_probe(struct spmi_device *spmi)
 		}
 	}
 
+	chip->shutdown_in_process = false;
+
 	rc = fg_detect_pmic_type(chip);
 	if (rc) {
 		pr_err("Unable to detect PMIC type rc=%d\n", rc);
@@ -8364,6 +8401,13 @@ static int fg_probe(struct spmi_device *spmi)
 
 	/* Fake temperature till the actual temperature is read */
 	chip->last_good_temp = 250;
+	chip->fg_reboot.notifier_call = fg_reboot_handler;
+	chip->fg_reboot.next = NULL;
+	chip->fg_reboot.priority = 1;
+	rc = register_reboot_notifier(&chip->fg_reboot);
+	if (rc)
+		dev_err(chip->dev, "register for reboot failed\n");
+
 	schedule_work(&chip->init_work);
 
 	pr_info("FG Probe success - FG Revision DIG:%d.%d ANA:%d.%d PMIC subtype=%d\n",
