@@ -19,14 +19,21 @@ config CPU_IDLE_MULTIPLE_DRIVERS
          states. If unsure say N.
 
 config CPU_IDLE_GOV_LADDER
-	bool
+	bool "Ladder idle governor"
 	depends on CPU_IDLE
 	default y
 
 config CPU_IDLE_GOV_MENU
-	bool
+	bool "Menu idle governor"
 	depends on CPU_IDLE && NO_HZ
 	default y
+
+config CPU_IDLE_GOV_NULL
+	bool "Null idle governor"
+	depends on CPU_IDLE
+	default y
+	help
+	  Do not use - except with qct lpm idle driver which neglects governor input.
 
 config ARCH_NEEDS_CPU_IDLE_COUPLED
 	def_bool n
