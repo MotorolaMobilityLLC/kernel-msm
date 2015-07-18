@@ -19,5 +19,11 @@
 			"MIC BIAS1 External", "Handset Mic";
 
 		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
+
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 49 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 50 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 51 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 52 0>;
+		qcom,prim-auxpcm-gpio-set  = "prim-gpio-tert";
 	};
 };
