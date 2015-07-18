@@ -627,6 +627,49 @@ static struct msm_gpiomux_config vibrator_configs[] = {
 };
 #endif
 
+static struct gpiomux_setting auxpcm_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting auxpcm_sus_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_auxpcm_configs[] __initdata = {
+	{
+		.gpio = 49,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 50,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 51,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 52,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+};
+
 static void bluetooth_msm_gpiomux_install(void)
 {
 	/* UART */
@@ -692,4 +735,6 @@ void __init msm8226_init_gpiomux(void)
 	msm_gpiomux_install(msm_nfc_configs, ARRAY_SIZE(msm_nfc_configs));
 #endif
 
+	msm_gpiomux_install(msm_auxpcm_configs,
+			ARRAY_SIZE(msm_auxpcm_configs));
 }
