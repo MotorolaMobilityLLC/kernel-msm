@@ -65,76 +65,71 @@ static int sentral_write_byte(struct sentral_device *sentral, u8 reg, u8 value)
 static int sentral_write_block(struct sentral_device *sentral, u8 reg,
 		void *buffer, size_t count)
 {
-	char dstr[I2C_BLOCK_SIZE_MAX * 5 + 1];
-	size_t dstr_len = 0;
-	int i;
+	u8 buf[1 + count];
+	struct i2c_msg msg[] = {
+		{
+			.addr = sentral->client->addr,
+			.flags = 0,
+			.len = sizeof(buf),
+			.buf = buf,
+		},
+	};
 	int rc;
-	int total = 0;
 
-	u8 xfer_count;
+	if (!count)
+		return count;
 
-	while (count > 0) {
-		xfer_count = MIN(I2C_BLOCK_SIZE_MAX, count);
-		rc = i2c_smbus_write_i2c_block_data(sentral->client, reg, xfer_count,
-				(u8 *)buffer + total);
-		if (rc < 0) {
-			LOGE(&sentral->client->dev, "write block error: %d\n", rc);
-			return rc;
-		}
+	buf[0] = reg;
+	memcpy(&buf[1], buffer, count);
 
-		LOGD(&sentral->client->dev,
-				"write block: reg: 0x%02X, count: %zu, rc: %d\n", reg, count,
-				rc);
+	mutex_lock(&sentral->lock_i2c);
 
-		for (i = 0, dstr_len = 0; i < xfer_count; i++) {
-			dstr_len += scnprintf(dstr + dstr_len, PAGE_SIZE - dstr_len,
-					" 0x%02X", *((u8 *)(buffer + total + i)));
-		}
-		LOGD(&sentral->client->dev, "write block bytes:%s\n", dstr);
+	rc = i2c_transfer(sentral->client->adapter, msg, 1);
 
-		reg += xfer_count;
-		count -= xfer_count;
-		total += xfer_count;
+	mutex_unlock(&sentral->lock_i2c);
 
+	if (rc != 1) {
+		LOGE(&sentral->client->dev, "error (%d) writing data\n", rc);
+		return rc;
 	}
-	return total;
+
+	return 0;
 }
 
 static int sentral_read_block(struct sentral_device *sentral, u8 reg,
 		void *buffer, size_t count)
 {
-	int rc = 0;
-	int total = 0;
-	char dstr[I2C_BLOCK_SIZE_MAX * 5 + 1];
-	size_t dstr_len = 0;
-	int i;
-	u8 xfer_count;
+	struct i2c_msg msg[] = {
+		{
+			.addr = sentral->client->addr,
+			.flags = 0,
+			.len = 1,
+			.buf = &reg,
+		},
+		{
+			.addr = sentral->client->addr,
+			.flags = I2C_M_RD,
+			.len = count,
+			.buf = buffer,
+		},
+	};
+	int rc;
 
-	while (count > 0) {
-		xfer_count = MIN(I2C_BLOCK_SIZE_MAX, count);
-		rc = i2c_smbus_read_i2c_block_data(sentral->client, reg, xfer_count,
-				(u8 *)buffer + total);
-		if (rc < 0) {
-			LOGE(&sentral->client->dev, "read block error: %d\n", rc);
-			return rc;
-		}
+	if (!count)
+		return count;
 
-		LOGD(&sentral->client->dev,
-				"read block: reg: 0x%02X, count: %zu, rc: %d\n", reg, count,
-				rc);
+	mutex_lock(&sentral->lock_i2c);
 
-		for (i = 0, dstr_len = 0; i < xfer_count; i++) {
-			dstr_len += scnprintf(dstr + dstr_len, PAGE_SIZE - dstr_len,
-					" 0x%02X", *((u8 *)(buffer + total + i)));
-		}
-		LOGD(&sentral->client->dev, "read block bytes:%s\n", dstr);
+	rc = i2c_transfer(sentral->client->adapter, msg, 2);
 
-		reg += rc;
-		count -= rc;
-		total += rc;
+	mutex_unlock(&sentral->lock_i2c);
 
+	if (rc != 2) {
+		LOGE(&sentral->client->dev, "error (%d) reading data\n", rc);
+		return rc;
 	}
-	return total;
+
+	return 0;
 }
 
 // misc
@@ -157,10 +152,10 @@ static int sentral_parameter_read(struct sentral_device *sentral,
 	if (size > PARAM_READ_SIZE_MAX)
 		return -EINVAL;
 
-	mutex_lock(&sentral->lock_pio);
-
 	if (size < PARAM_READ_SIZE_MAX)
 		page_number = (size << 4) | (page_number & 0x0F);
+
+	mutex_lock(&sentral->lock_pio);
 
 retry:
 	// select page
@@ -221,7 +216,6 @@ exit:
 exit_error_param:
 	(void)sentral_write_byte(sentral, SR_PARAM_REQ, 0);
 exit_error_page:
-
 	mutex_unlock(&sentral->lock_pio);
 	return rc;
 }
@@ -236,10 +230,10 @@ static int sentral_parameter_write(struct sentral_device *sentral,
 	if (size > PARAM_WRITE_SIZE_MAX)
 		return -EINVAL;
 
-	mutex_lock(&sentral->lock_pio);
-
-	if (size < PARAM_READ_SIZE_MAX)
+	if (size < PARAM_WRITE_SIZE_MAX)
 		page_number = (size << 4) | (page_number & 0x0F);
+
+	mutex_lock(&sentral->lock_pio);
 
 retry:
 	// select page
@@ -302,7 +296,6 @@ exit:
 exit_error_param:
 	(void)sentral_write_byte(sentral, SR_PARAM_REQ, 0);
 exit_error_page:
-
 	mutex_unlock(&sentral->lock_pio);
 	return rc;
 }
@@ -925,8 +918,10 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 							sizeof(meta_data->byte_1));
 				}
 
-				if (meta_data->event_id == SEN_META_FIFO_OVERFLOW)
-					LOGI(&sentral->client->dev, "FIFO overflow: %u\n", sensor_id);
+				if (meta_data->event_id == SEN_META_FIFO_OVERFLOW) {
+					LOGE(&sentral->client->dev, "FIFO overflow: %u\n", sensor_id);
+					queue_work(sentral->sentral_wq, &sentral->work_reset);
+				}
 
 				// restore sensors on init
 				if (meta_data->event_id == SEN_META_INITIALIZED)
@@ -956,44 +951,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 static int sentral_fifo_read_block(struct sentral_device *sentral, u8 *buffer,
 		size_t bytes)
 {
-	int rc;
-	size_t bytes_read = 0;
-	size_t bytes_to_read = 0;
-	u8 fifo_offset;
-
-	LOGD(&sentral->client->dev, "%s\n", __func__);
-
-	mutex_lock(&sentral->lock_pio);
-	while (bytes > 0) {
-		bytes_to_read = I2C_BLOCK_SIZE_MAX;
-		if ((bytes_read % SENTRAL_FIFO_BLOCK_SIZE + I2C_BLOCK_SIZE_MAX)
-					> SENTRAL_FIFO_BLOCK_SIZE) {
-			bytes_to_read = SENTRAL_FIFO_BLOCK_SIZE - bytes_read
-					% SENTRAL_FIFO_BLOCK_SIZE;
-		}
-
-		bytes_to_read = MIN(bytes, bytes_to_read);
-		fifo_offset = bytes_read % SENTRAL_FIFO_BLOCK_SIZE;
-
-		LOGD(&sentral->client->dev,
-				"bytes: %zu, bytes_read: %zu, offset: %u, count: %zu\n", bytes,
-				bytes_read, fifo_offset, bytes_to_read);
-
-		rc = sentral_read_block(sentral, SR_FIFO_START + fifo_offset,
-				buffer + bytes_read, bytes_to_read);
-
-		if (rc < 0) {
-			LOGE(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
-			mutex_unlock(&sentral->lock_pio);
-			return rc;
-		}
-
-		bytes -= rc;
-		bytes_read += rc;
-
-	}
-	mutex_unlock(&sentral->lock_pio);
-	return bytes_read;
+	return sentral_read_block(sentral, SR_FIFO_START, buffer, bytes);
 }
 
 static int sentral_fifo_read(struct sentral_device *sentral, u8 *buffer)
@@ -1038,7 +996,7 @@ static int sentral_fifo_read(struct sentral_device *sentral, u8 *buffer)
 		if (bytes_remaining > DATA_BUFFER_SIZE) {
 			LOGE(&sentral->client->dev, "FIFO read buffer overflow (%u > %u)\n",
 					bytes_remaining, DATA_BUFFER_SIZE);
-
+			queue_work(sentral->sentral_wq, &sentral->work_reset);
 			return -EINVAL;
 		}
 
@@ -2432,7 +2390,7 @@ static irqreturn_t sentral_irq_handler(int irq, void *dev_id)
 		// check for special wakeup source
 		rc = sentral_read_block(sentral, SR_WAKE_SRC, (void *)&wake_src_count,
 				sizeof(wake_src_count));
-		if (rc < 1)
+		if (rc)
 			LOGE(&sentral->client->dev, "error (%d) reading wake source\n", rc);
 
 		// handle wakeup source
