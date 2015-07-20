@@ -16,32 +16,17 @@
 #include "msm8994-kinzie-v2.1.dtsi"
 
 / {
-	qcom,board-id = <0x42 0x82c0>;
+	qcom,board-id = <0x42 0x8301>;
 };
 
 &soc {
 	qcom,msm-thermal {
-		qcom,config-info = "kinziep2c";
-	};
-
-	i2c_5: i2c@f9927000 {
-		motosh@43 {
-			aod_touch_mode = <1>;
-		};
+		qcom,config-info = "kinziep3";
 	};
 };
 
 &i2c_11 {
-	smb1351-charger@57 {
-		status = "ok";
-		compatible = "qcom,smb1351-charger";
-		reg = <0x57>;
-		qcom,parallel-charger;
-		qcom,float-voltage-mv = <4400>;
-		qcom,recharge-mv = <100>;
-	};
-
 	mmi_wls_chrg@6c {
-		mmi,fod-offset = <195>;
+		mmi,fod-offset = <0>;
 	};
 };
