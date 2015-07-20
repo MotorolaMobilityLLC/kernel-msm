@@ -3038,8 +3038,14 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #endif /* PNO_SUPPORT */
 
 #ifdef DHD_WAKE_STATUS
-			wcp->rcwake += pkt_wake;
-			pkt_wake = 0;
+			if (unlikely(pkt_wake)) {
+				wcp->rcwake++;
+#ifdef DHD_WAKE_EVENT_STATUS
+				if (event.event_type < WLC_E_LAST)
+					wcp->rc_event[event.event_type]++;
+#endif
+				pkt_wake = 0;
+			}
 #endif
 
 #ifdef DHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT

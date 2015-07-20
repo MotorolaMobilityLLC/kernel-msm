@@ -443,7 +443,9 @@ typedef struct {
 	uint rx_multi_other;
 	uint rx_ucast;
 #endif
-
+#ifdef DHD_WAKE_EVENT_STATUS
+	uint rc_event[WLC_E_LAST];
+#endif
 } wake_counts_t;
 
 #if defined(BCMWDF)

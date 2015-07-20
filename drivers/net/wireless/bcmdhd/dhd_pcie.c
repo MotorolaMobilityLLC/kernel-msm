@@ -3407,6 +3407,13 @@ void dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 		    dhdp->bus->wake_counts.rx_multi_ipv4, dhdp->bus->wake_counts.rx_multi_ipv6,
 		    dhdp->bus->wake_counts.rx_icmpv6, dhdp->bus->wake_counts.rx_multi_other);
 #endif
+#ifdef DHD_WAKE_EVENT_STATUS
+	for (flowid = 0; flowid < WLC_E_LAST; flowid++)
+		if (dhdp->bus->wake_counts.rc_event[flowid] != 0)
+			bcm_bprintf(strbuf, " event[%d] = %u", flowid,
+				    dhdp->bus->wake_counts.rc_event[flowid]);
+	bcm_bprintf(strbuf, "\n");
+#endif
 #endif
 	dhd_prot_print_info(dhdp, strbuf);
 	for (flowid = 0; flowid < dhdp->num_flow_rings; flowid++) {
