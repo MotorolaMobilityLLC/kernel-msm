@@ -22,6 +22,7 @@
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
 #include <linux/irqchip/qpnp-int.h>
+#include <linux/wakeup_reason.h>
 #include "pinctrl-msm.h"
 
 /* config translations */
@@ -765,18 +766,9 @@ static int msm_tlmm_gp_show_resume_irq(struct msm_tlmm_irq_chip *ic)
 
 	for_each_set_bit(i, ic->wake_irqs, ic->num_irqs) {
 		if (msm_tlmm_get_intr_status(ic, i)) {
-			struct irq_desc *desc;
-			const char *name = "null";
 			int irq = gpio_to_irq((unsigned int)i);
 
-			desc = irq_to_desc(irq);
-			if (desc == NULL)
-				name = "stray irq";
-			else if (desc->action && desc->action->name)
-				name = desc->action->name;
-
-			pr_warn("%s: [%d] triggered by gpio[%d] : %s\n",
-				__func__, irq, (unsigned int)i, name);
+			log_base_wakeup_reason(irq);
 		}
 	}
 
