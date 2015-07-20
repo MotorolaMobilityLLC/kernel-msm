@@ -147,7 +147,7 @@ m4fus_isr_fail:
 	return;
 }
 
-static int m4fus_set_samplerate(struct iio_dev *iio, int16_t rate)
+static int m4fus_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 {
 	int err = 0;
 	struct m4fus_driver_data *dd = iio_priv(iio);
@@ -201,6 +201,24 @@ m4fus_set_samplerate_fail:
 	return err;
 }
 
+static int m4fus_send_flush_locked(struct iio_dev *iio, int32_t handle)
+{
+	int err = 0;
+	int i = 0;
+	struct m4fus_driver_data *dd = iio_priv(iio);
+
+	dd->iiodat[0].type = FUSION_TYPE_FLUSH;
+	dd->iiodat[0].values[0] = handle;
+	dd->iiodat[0].timestamp = ktime_to_ns(ktime_get_boottime());
+
+	/* The below are invalid events being sent to satisfy iio and HAL */
+	for (i = 1; i < M4FUS_NUM_FUSION_BUFFERS; i++)
+		dd->iiodat[i].type = FUSION_TYPE_NONE;
+
+	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat[0]));
+	return err;
+}
+
 static ssize_t m4fus_setrate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -238,7 +256,7 @@ static ssize_t m4fus_setrate_store(struct device *dev,
 		goto m4fus_enable_store_exit;
 	}
 
-	err = m4fus_set_samplerate(iio, value);
+	err = m4fus_set_samplerate_locked(iio, value);
 	if (err < 0) {
 		m4fus_err("%s: Failed to set sample rate.\n", __func__);
 		goto m4fus_enable_store_exit;
@@ -257,6 +275,42 @@ m4fus_enable_store_exit:
 static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
 		m4fus_setrate_show, m4fus_setrate_store, 0);
 
+static ssize_t m4fus_flush_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4fus_driver_data *dd = iio_priv(iio);
+	int value = 0;
+
+	mutex_lock(&(dd->mutex));
+
+	err = kstrtoint(buf, 10, &value);
+	if (err < 0) {
+		m4fus_err("%s: Failed to convert value.\n", __func__);
+		goto m4fus_flush_store_exit;
+	}
+
+	err = m4fus_send_flush_locked(iio, value);
+	if (err < 0) {
+		m4fus_err("%s: Failed to send flush.\n", __func__);
+		goto m4fus_flush_store_exit;
+	}
+
+m4fus_flush_store_exit:
+	if (err < 0) {
+		m4fus_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+static IIO_DEVICE_ATTR(flush, S_IRUSR | S_IWUSR,
+		NULL, m4fus_flush_store, 0);
+
 static ssize_t m4fus_iiodata_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -266,21 +320,26 @@ static ssize_t m4fus_iiodata_show(struct device *dev,
 	ssize_t size = 0;
 
 	mutex_lock(&(dd->mutex));
-	size = snprintf(buf, PAGE_SIZE,
-		"%s%d\n%s%d\n%s%d\n"
-		"%s%d\n%s%d\n%s%d\n"
-		"%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n",
-		"linear_accel[x]: ", dd->iiodat[0].values[0],
-		"linear_accel[y]: ", dd->iiodat[0].values[1],
-		"linear_accel[z]: ", dd->iiodat[0].values[2],
-		"gravity[x]: ", dd->iiodat[1].values[0],
-		"gravity[y]: ", dd->iiodat[1].values[1],
-		"gravity[z]: ", dd->iiodat[1].values[2],
-		"rotation_vector[x]: ", dd->iiodat[2].values[0],
-		"rotation_vector[y]: ", dd->iiodat[2].values[1],
-		"rotation_vector[z]: ", dd->iiodat[2].values[2],
-		"rotation_vector[scaler]: ", dd->iiodat[2].values[3],
-		"rotation_vector[accuracy]: ", dd->iiodat[2].values[4]);
+	if (dd->iiodat[0].type == FUSION_TYPE_FLUSH) {
+		size = snprintf(buf, PAGE_SIZE, "Flush event handle: %d\n",
+				dd->iiodat[0].values[0]);
+	} else {
+		size = snprintf(buf, PAGE_SIZE,
+			"%s%d\n%s%d\n%s%d\n"
+			"%s%d\n%s%d\n%s%d\n"
+			"%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n",
+			"linear_accel[x]: ", dd->iiodat[0].values[0],
+			"linear_accel[y]: ", dd->iiodat[0].values[1],
+			"linear_accel[z]: ", dd->iiodat[0].values[2],
+			"gravity[x]: ", dd->iiodat[1].values[0],
+			"gravity[y]: ", dd->iiodat[1].values[1],
+			"gravity[z]: ", dd->iiodat[1].values[2],
+			"rotation_vector[x]: ", dd->iiodat[2].values[0],
+			"rotation_vector[y]: ", dd->iiodat[2].values[1],
+			"rotation_vector[z]: ", dd->iiodat[2].values[2],
+			"rotation_vector[scaler]: ", dd->iiodat[2].values[3],
+			"rotation_vector[accuracy]: ", dd->iiodat[2].values[4]);
+	}
 	mutex_unlock(&(dd->mutex));
 	return size;
 }
@@ -288,6 +347,7 @@ static IIO_DEVICE_ATTR(iiodata, S_IRUGO, m4fus_iiodata_show, NULL, 0);
 
 static struct attribute *m4fus_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	NULL,
 };

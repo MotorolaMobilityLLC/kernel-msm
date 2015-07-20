@@ -21,12 +21,22 @@
 
 #include <linux/types.h>
 
-struct m4sensorhub_ppg_data {
+enum m4sensorhub_ppg_iio_type {
+	PPG_TYPE_EVENT_DATA = 0,
+	PPG_TYPE_EVENT_FLUSH = 1,
+};
+
+struct m4sensorhub_ppg_event_data {
 	int32_t raw_data1;
 	int32_t raw_data2;
 	int32_t x;
 	int32_t y;
 	int32_t z;
+} __packed;
+
+struct m4sensorhub_ppg_iio_data {
+	uint8_t type;
+	struct m4sensorhub_ppg_event_data  event_data;
 	long long timestamp;
 } __packed;
 

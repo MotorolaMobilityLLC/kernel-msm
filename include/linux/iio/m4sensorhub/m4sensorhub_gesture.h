@@ -23,10 +23,20 @@
 #ifndef _M4SENSORHUB_GESTURE_IIO_H
 #define _M4SENSORHUB_GESTURE_IIO_H
 
-struct m4sensorhub_gesture_iio_data {
+enum m4sensorhub_gesture_iio_type {
+	GESTURE_TYPE_EVENT_DATA = 0,
+	GESTURE_TYPE_EVENT_FLUSH = 1,
+};
+
+struct m4sensorhub_gesture_event_data {
 	uint8_t         gesture_type;
 	uint8_t         gesture_confidence;
 	int8_t          gesture_value;
+} __packed;
+
+struct m4sensorhub_gesture_iio_data {
+	uint8_t         type;
+	struct m4sensorhub_gesture_event_data event_data;
 	long long       timestamp;
 } __packed;
 

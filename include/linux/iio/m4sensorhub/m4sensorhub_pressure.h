@@ -24,9 +24,20 @@
 /* This needs to be thought through when we
 add other sensors */
 
-struct m4sensorhub_pressure_data {
-	int pressure;
-	int altitude;
-	long long timestamp;
+enum m4sensorhub_pressure_iio_type {
+	PRESSURE_TYPE_EVENT_DATA = 0,
+	PRESSURE_TYPE_EVENT_FLUSH = 1,
 };
+
+struct m4sensorhub_pressure_event_data {
+	int32_t pressure;
+	int32_t altitude;
+} __packed;
+
+struct m4sensorhub_pressure_iio_data {
+	uint8_t   type;
+	struct m4sensorhub_pressure_event_data event_data;
+	long long timestamp;
+} __packed;
+
 #endif /* __M4SENSORHUB_PRESSURE_H__ */

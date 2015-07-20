@@ -23,9 +23,19 @@
 #ifndef _M4SENSORHUB_HEARTRATE_IIO_H
 #define _M4SENSORHUB_HEARTRATE_IIO_H
 
-struct m4sensorhub_heartrate_iio_data {
+enum m4sensorhub_heartrate_iio_type {
+	HEARTRATE_TYPE_EVENT_DATA = 0,
+	HEARTRATE_TYPE_EVENT_FLUSH = 1,
+};
+
+struct m4sensorhub_heartrate_event_data {
 	uint16_t        heartrate;
 	uint8_t         confidence;
+} __packed;
+
+struct m4sensorhub_heartrate_iio_data {
+	uint8_t         type;
+	struct m4sensorhub_heartrate_event_data event_data;
 	long long       timestamp;
 } __packed;
 

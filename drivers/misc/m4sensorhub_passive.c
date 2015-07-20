@@ -149,12 +149,14 @@ static void m4pas_isr(enum m4sensorhub_irqs int_event, void *handle)
 	}
 
 	for (i = 0; i < M4PAS_NUM_PASSIVE_BUFFERS; i++) {
-		dd->iiodat[i].passive_timestamp = passive_timestamp[i];
-		dd->iiodat[i].steps = steps[i];
-		dd->iiodat[i].calories = calories[i];
-		dd->iiodat[i].heartrate = heartrate[i];
-		dd->iiodat[i].hrconfidence = hrconfidence[i];
-		dd->iiodat[i].healthy_minutes = healthy_minutes[i];
+		dd->iiodat[i].type = PASSIVE_TYPE_EVENT_DATA;
+		dd->iiodat[i].event_data.passive_timestamp =
+			passive_timestamp[i];
+		dd->iiodat[i].event_data.steps = steps[i];
+		dd->iiodat[i].event_data.calories = calories[i];
+		dd->iiodat[i].event_data.heartrate = heartrate[i];
+		dd->iiodat[i].event_data.hrconfidence = hrconfidence[i];
+		dd->iiodat[i].event_data.healthy_minutes = healthy_minutes[i];
 		dd->iiodat[i].timestamp = ktime_to_ns(ktime_get_boottime());
 	}
 
@@ -174,7 +176,7 @@ m4pas_isr_fail:
 	return;
 }
 
-static int m4pas_set_samplerate(struct iio_dev *iio, int16_t rate)
+static int m4pas_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 {
 	int err = 0;
 	struct m4pas_driver_data *dd = iio_priv(iio);
@@ -236,6 +238,22 @@ m4pas_set_samplerate_fail:
 	return err;
 }
 
+static int m4pas_send_flush_locked(struct iio_dev *iio, int16_t value)
+{
+	int err = 0;
+	int i = 0;
+	struct m4pas_driver_data *dd = iio_priv(iio);
+
+	dd->iiodat[0].type = PASSIVE_TYPE_EVENT_FLUSH;
+	dd->iiodat[0].timestamp = ktime_to_ns(ktime_get_boottime());
+
+	for (i = 1; i < M4PAS_NUM_PASSIVE_BUFFERS; i++)
+		dd->iiodat[i].type = PASSIVE_TYPE_EVENT_NONE;
+
+	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat[0]));
+	return err;
+}
+
 static ssize_t m4pas_setrate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -273,7 +291,7 @@ static ssize_t m4pas_setrate_store(struct device *dev,
 		goto m4pas_enable_store_exit;
 	}
 
-	err = m4pas_set_samplerate(iio, value);
+	err = m4pas_set_samplerate_locked(iio, value);
 	if (err < 0) {
 		m4pas_err("%s: Failed to set sample rate.\n", __func__);
 		goto m4pas_enable_store_exit;
@@ -292,6 +310,30 @@ m4pas_enable_store_exit:
 static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
 		m4pas_setrate_show, m4pas_setrate_store, 0);
 
+static ssize_t m4pas_flush_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4pas_driver_data *dd = iio_priv(iio);
+	int value = 1;
+
+	mutex_lock(&(dd->mutex));
+
+	err = m4pas_send_flush_locked(iio, value);
+	if (err < 0) {
+		m4pas_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+static IIO_DEVICE_ATTR(flush, S_IRUSR | S_IWUSR,
+		NULL, m4pas_flush_store, 0);
+
 static ssize_t m4pas_iiodata_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -302,17 +344,29 @@ static ssize_t m4pas_iiodata_show(struct device *dev,
 	int i = 0;
 
 	mutex_lock(&(dd->mutex));
-	buf[0] = '\0';  /* Start with NULL terminator for concatenation */;
-	for (i = 0; i < M4PAS_NUM_PASSIVE_BUFFERS; i++) {
-		size = snprintf(buf, PAGE_SIZE,
-			"%s%s%d\n%s%u\n%s%hu\n%s%hu\n%s%hu\n%s%hhu\n%s%hhu\n",
-			buf, "Buffer ", i,
-			"passive_timestamp: ", dd->iiodat[i].passive_timestamp,
-			"steps: ", dd->iiodat[i].steps,
-			"calories: ", dd->iiodat[i].calories,
-			"heartrate: ", dd->iiodat[i].heartrate,
-			"hrconfidence: ", dd->iiodat[i].hrconfidence,
-			"healthy_minutes: ", dd->iiodat[i].healthy_minutes);
+	if (dd->iiodat[0].type == PASSIVE_TYPE_EVENT_FLUSH) {
+		size = snprintf(buf, PAGE_SIZE, "Flush Event\n");
+	} else if (dd->iiodat[0].type == PASSIVE_TYPE_EVENT_DATA) {
+		/* Start with NULL terminator for concatenation */
+		buf[0] = '\0';
+		for (i = 0; i < M4PAS_NUM_PASSIVE_BUFFERS; i++) {
+			size = snprintf(buf, PAGE_SIZE,
+				"%s%s%d\n%s%u\n%s%hu\n%s%hu\n"
+				"%s%hu\n%s%hhu\n%s%hhu\n",
+				buf, "Buffer ", i,
+				"passive_timestamp: ",
+				dd->iiodat[i].event_data.passive_timestamp,
+				"steps: ",
+				dd->iiodat[i].event_data.steps,
+				"calories: ",
+				dd->iiodat[i].event_data.calories,
+				"heartrate: ",
+				dd->iiodat[i].event_data.heartrate,
+				"hrconfidence: ",
+				dd->iiodat[i].event_data.hrconfidence,
+				"healthy_minutes: ",
+				dd->iiodat[i].event_data.healthy_minutes);
+		}
 	}
 	mutex_unlock(&(dd->mutex));
 	return size;
@@ -321,6 +375,7 @@ static IIO_DEVICE_ATTR(iiodata, S_IRUGO, m4pas_iiodata_show, NULL, 0);
 
 static struct attribute *m4pas_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	NULL,
 };

@@ -44,14 +44,14 @@ struct m4sensorhub_ppg_drvdata {
 	int samplerate;
 	bool enable;
 	struct platform_device      *pdev;
-	struct m4sensorhub_ppg_data read_data;
+	struct m4sensorhub_ppg_iio_data read_data;
 	/* mutex to control access to instance datastructure*/
 	struct mutex				mutex;
 	int *data;
 	int num_buffered_samples;
 };
 
-#define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ppg_data) * 8)
+#define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_ppg_iio_data) * 8)
 
 static const struct iio_chan_spec m4sensorhub_ppg_channels[] = {
 	{
@@ -92,12 +92,15 @@ static void m4_read_ppg_data_locked(struct m4sensorhub_ppg_drvdata *priv_data)
 		return;
 	}
 
+	priv_data->read_data.type = PPG_TYPE_EVENT_DATA;
+
 	for (i = 0; i < priv_data->num_buffered_samples; i = i + 5) {
-		priv_data->read_data.raw_data1 = priv_data->data[i];
-		priv_data->read_data.raw_data2 = priv_data->data[i+1];
-		priv_data->read_data.x = priv_data->data[i+2];
-		priv_data->read_data.y = priv_data->data[i+3];
-		priv_data->read_data.z = priv_data->data[i+4];
+		priv_data->read_data.event_data.raw_data1 = priv_data->data[i];
+		priv_data->read_data.event_data.raw_data2 =
+			priv_data->data[i+1];
+		priv_data->read_data.event_data.x = priv_data->data[i+2];
+		priv_data->read_data.event_data.y = priv_data->data[i+3];
+		priv_data->read_data.event_data.z = priv_data->data[i+4];
 
 		priv_data->read_data.timestamp =
 			ktime_to_ns(ktime_get_boottime());
@@ -272,16 +275,47 @@ static IIO_DEVICE_ATTR(setdelay, S_IRUGO | S_IWUSR,
 					m4sensorhub_ppg_show_setdelay,
 					m4sensorhub_ppg_store_setdelay, 0);
 
+static ssize_t m4sensorhub_ppg_store_flush(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
+	struct m4sensorhub_ppg_drvdata *priv_data = iio_priv(iio_dev);
+	int ret;
+
+	mutex_lock(&(priv_data->mutex));
+
+	priv_data->read_data.type = PPG_TYPE_EVENT_FLUSH;
+	priv_data->read_data.timestamp =
+		ktime_to_ns(ktime_get_boottime());
+	iio_push_to_buffers(iio_dev,
+			    (unsigned char *)&(priv_data->read_data));
+	ret = count;
+	mutex_unlock(&(priv_data->mutex));
+	return ret;
+}
+
+static IIO_DEVICE_ATTR(flush, S_IRUGO | S_IWUSR,
+					NULL,
+					m4sensorhub_ppg_store_flush, 0);
+
 static ssize_t m4sensorhub_ppg_show_iiodata(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct iio_dev *iio_dev =
-						platform_get_drvdata(pdev);
+	struct iio_dev *iio_dev = platform_get_drvdata(pdev);
 	struct m4sensorhub_ppg_drvdata *priv_data = iio_priv(iio_dev);
-	return snprintf(buf, PAGE_SIZE, "ppg::ch1 %d, ch2 %d\n",
-					priv_data->read_data.raw_data1,
-					priv_data->read_data.raw_data2);
+	ssize_t size = 0;
+
+	if (priv_data->read_data.type == PPG_TYPE_EVENT_DATA) {
+		size = snprintf(buf, PAGE_SIZE, "ppg::ch1 %d, ch2 %d\n",
+				priv_data->read_data.event_data.raw_data1,
+				priv_data->read_data.event_data.raw_data2);
+	} else if (priv_data->read_data.type == PPG_TYPE_EVENT_FLUSH) {
+		size = snprintf(buf, PAGE_SIZE, "Flush Event");
+	}
+	return size;
 }
 static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 					m4sensorhub_ppg_show_iiodata,
@@ -292,6 +326,7 @@ static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 
 static struct attribute *m4sensorhub_ppg_attributes[] = {
 	M4_DEV_ATTR(setdelay),
+	M4_DEV_ATTR(flush),
 	M4_DEV_ATTR(iiodata),
 	NULL
 };
@@ -328,7 +363,7 @@ static int m4sensorhub_ppg_setup_buffer(struct iio_dev *iio_dev)
 		goto err;
 	}
 	buffer->access->set_bytes_per_datum(buffer,
-				sizeof(struct m4sensorhub_ppg_data));
+				sizeof(struct m4sensorhub_ppg_iio_data));
 
 	ret = 0;
 	return ret;
@@ -360,8 +395,8 @@ static int m4sensorhub_ppg_probe(struct platform_device *pdev)
 	priv_data->m4sensorhub = NULL;
 	priv_data->data = NULL;
 	mutex_init(&(priv_data->mutex));
-	priv_data->read_data.raw_data1 = -1;
-	priv_data->read_data.raw_data2 = -1;
+	priv_data->read_data.event_data.raw_data1 = -1;
+	priv_data->read_data.event_data.raw_data2 = -1;
 	priv_data->num_buffered_samples = -1;
 
 	platform_set_drvdata(pdev, iio_dev);
