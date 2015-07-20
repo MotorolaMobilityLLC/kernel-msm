@@ -50,7 +50,8 @@ struct m4sensorhub_batch_drvdata {
 
 struct m4sensorhub_batch_data_callback {
 	void *priv_data;
-	void (*data_callback)(void *batch_event_data, void *priv_data);
+	void (*data_callback)(void *batch_event_data, void *priv_data,
+		int64_t monobase, int num_events);
 };
 
 /* --------------- Local Declarations -------------- */
@@ -60,8 +61,8 @@ struct m4sensorhub_batch_data_callback
 	batch_data_callback_list[M4SH_BATCH_SENSOR_TYPE_MAX];
 
 int m4sensorhub_batch_register_data_callback(u8 sensor_type, void *priv_data,
-				void (*data_callback)(void *batch_event_data,
-					void *priv_data))
+	void (*data_callback)(void *batch_event_data, void *priv_data,
+		int64_t monobase, int num_events))
 {
 	int ret = 0;
 	struct m4sensorhub_batch_drvdata *dd = &m4sensorhub_drvdata;
@@ -104,7 +105,8 @@ err:
 EXPORT_SYMBOL_GPL(m4sensorhub_batch_register_data_callback);
 
 int m4sensorhub_batch_unregister_data_callback(u8 sensor_type,
-	void (*data_callback)(void *batch_event_data, void *priv_data))
+	void (*data_callback)(void *batch_event_data, void *priv_data,
+	int64_t monobase, int num_events))
 {
 	int ret = 0;
 	struct m4sensorhub_batch_drvdata *dd = &m4sensorhub_drvdata;
@@ -128,7 +130,7 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 {
 	int ret, i;
 	int bytes_to_read;
-
+	int64_t monobase;
 
 	/* read the amount of data M4 expects to push.
 	 * This keeps changing at runtime */
@@ -148,6 +150,8 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 	bytes_to_read = dd->num_buffered_samples *
 		sizeof(struct m4sensorhub_batch_sample);
 
+	monobase = ktime_to_ns(ktime_get_boottime());
+
 	ret = m4sensorhub_reg_read_buffer(dd->m4sensorhub,
 			M4SH_REG_GENERAL_READBATCHSAMPLES,
 			(u8 *)dd->data, bytes_to_read);
@@ -157,43 +161,15 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 		return;
 	}
 
-	for (i = 0; i < dd->num_buffered_samples; i++) {
-		if (dd->data[i].sensor_id == M4SH_TYPE_GYRO) {
-			if (batch_data_callback_list[M4SH_BATCH_SENSOR_TYPE_GYRO].
-				data_callback != NULL) {
-				batch_data_callback_list[
-					M4SH_BATCH_SENSOR_TYPE_GYRO].
-					data_callback(
-						&(dd->data[i]),
-						batch_data_callback_list[
-						M4SH_BATCH_SENSOR_TYPE_GYRO].
-						priv_data);
-
-			} else {
-				pr_err("%s: Gyro Callback is null\n",
-				       __func__);
-			}
-		} else if (dd->data[i].sensor_id == M4SH_TYPE_ACCEL) {
-			if (batch_data_callback_list[
-				M4SH_BATCH_SENSOR_TYPE_ACCEL].
-				data_callback != NULL) {
-				batch_data_callback_list[
-					M4SH_BATCH_SENSOR_TYPE_ACCEL].
-					data_callback(
-						&(dd->data[i]),
-						batch_data_callback_list[
-						M4SH_BATCH_SENSOR_TYPE_ACCEL].
-						priv_data);
-
-			} else {
-				pr_err("%s: Accel Callback is null\n",
-				       __func__);
-			}
-		} else {
-			pr_err("%s: Invalid sensor id in data: %d\n",
-			       __func__, dd->data[i].sensor_id);
+	for (i = 0; i < M4SH_BATCH_SENSOR_TYPE_MAX; i++) {
+		if (batch_data_callback_list[i].data_callback != NULL) {
+			batch_data_callback_list[i].data_callback(
+				dd->data, batch_data_callback_list[i].priv_data,
+				monobase, dd->num_buffered_samples);
 		}
 	}
+
+	return;
 }
 
 static void m4sensorhub_batch_panic_restore(
@@ -221,8 +197,8 @@ static int m4sensorhub_batch_driver_initcallback(struct init_calldata *arg)
 	struct m4sensorhub_batch_drvdata *dd = arg->p_data;
 	int ret;
 
-	ret = m4sensorhub_panic_register(dd->m4sensorhub, PANICHDL_BATCH_RESTORE,
-				m4sensorhub_batch_panic_restore, dd);
+	ret = m4sensorhub_panic_register(dd->m4sensorhub,
+		PANICHDL_BATCH_RESTORE, m4sensorhub_batch_panic_restore, dd);
 	if (ret < 0)
 		pr_err("%s: failed panic register(%d)\n", __func__, ret);
 

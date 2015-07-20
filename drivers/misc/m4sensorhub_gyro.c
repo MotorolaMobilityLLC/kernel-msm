@@ -55,30 +55,55 @@ struct m4gyr_driver_data {
 	uint8_t         dbg_addr;
 };
 
-static void m4gyr_data_callback(void *event_data, void *priv_data)
+static void m4gyr_data_callback(void *event_data, void *priv_data,
+	int64_t monobase, int num_events)
 {
 	struct iio_dev *iio = (struct iio_dev *)priv_data;
 	struct m4gyr_driver_data *dd = iio_priv(iio);
-	struct m4sensorhub_batch_sample *gyro_data =
+	struct m4sensorhub_batch_sample *fifo_data =
 		(struct m4sensorhub_batch_sample *)event_data;
+	int i;
+	int64_t cur_ts;
 
 	mutex_lock(&(dd->mutex));
 
-	if (dd->enable) {
-		if (gyro_data->cmd_id == M4SH_BATCH_CMD_FLUSH) {
+	if (!dd->enable)
+		goto m4gyr_data_callback_exit;
+
+	/* Need to set the correct timebase first */
+	cur_ts = monobase;
+	for (i = num_events - 1; i >= 0; i--) {
+		if (fifo_data[i].sensor_id != M4SH_TYPE_GYRO)
+			continue;
+
+		cur_ts -= (fifo_data[i].ts_delta * 1000000);
+	}
+	/* cur_ts should be before the timestamp of the first event */
+
+	for (i = 0; i < num_events; i++) {
+		if (fifo_data[i].sensor_id != M4SH_TYPE_GYRO)
+			continue;
+
+		if (fifo_data[i].cmd_id == M4SH_BATCH_CMD_FLUSH) {
 			dd->iiodat.type = GYRO_TYPE_EVENT_FLUSH;
 		} else {
 			dd->iiodat.type = GYRO_TYPE_EVENT_DATA;
-			dd->iiodat.event_data.x = gyro_data->sensor_data[0];
-			dd->iiodat.event_data.y = gyro_data->sensor_data[1];
-			dd->iiodat.event_data.z = gyro_data->sensor_data[2];
-			dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
+			dd->iiodat.event_data.x = fifo_data[i].sensor_data[0];
+			dd->iiodat.event_data.y = fifo_data[i].sensor_data[1];
+			dd->iiodat.event_data.z = fifo_data[i].sensor_data[2];
 		}
-		dd->iiodat.seq_num = gyro_data->seq;
+
+		cur_ts += (fifo_data[i].ts_delta * 1000000);
+		dd->iiodat.timestamp = cur_ts;
 		iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
-	} else {
-		m4gyr_err("%s: Gyro not enabled. Ignore event.\n", __func__);
 	}
+	/* cur_ts should be the monobase value again */
+
+	if (cur_ts != monobase)
+		m4gyr_err("%s: %s (monobase=%lld, cur_ts=%lld)\n", __func__,
+			"Timebase alignment error", monobase, cur_ts);
+
+m4gyr_data_callback_exit:
 	mutex_unlock(&(dd->mutex));
 	return;
 }
@@ -247,7 +272,8 @@ static ssize_t m4gyr_maxlatency_show(struct device *dev,
 	struct m4gyr_driver_data *dd = iio_priv(iio);
 
 	mutex_lock(&(dd->mutex));
-	size = snprintf(buf, PAGE_SIZE, "Current max_latency: %hu\n", dd->maxlatency);
+	size = snprintf(buf, PAGE_SIZE, "Current max_latency: %hu\n",
+		dd->maxlatency);
 	mutex_unlock(&(dd->mutex));
 	return size;
 }
