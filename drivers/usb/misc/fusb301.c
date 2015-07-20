@@ -1740,6 +1740,17 @@ static int fusb301_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void fusb301_shutdown(struct i2c_client *client)
+{
+	struct fusb301_chip *chip = i2c_get_clientdata(client);
+	struct device *cdev = &client->dev;
+
+	if (IS_ERR_VALUE(fusb301_set_mode(chip, FUSB301_SNK)) ||
+			IS_ERR_VALUE(fusb301_set_chip_state(chip,
+					FUSB_STATE_ERROR_RECOVERY)))
+		dev_err(cdev, "%s: failed to set sink mode\n", __func__);
+}
+
 #ifdef CONFIG_PM
 static int fusb301_suspend(struct device *dev)
 {
@@ -1783,6 +1794,7 @@ static struct i2c_driver fusb301_i2c_driver = {
 	},
 	.probe = fusb301_probe,
 	.remove = fusb301_remove,
+	.shutdown = fusb301_shutdown,
 	.id_table = fusb301_id_table,
 };
 
