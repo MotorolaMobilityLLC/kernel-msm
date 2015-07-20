@@ -44,9 +44,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /** API major version */
 #define VL6180x_API_REV_MAJOR   3
 /** API minor version */
-#define VL6180x_API_REV_MINOR   0
+#define VL6180x_API_REV_MINOR   1
 /** API sub version */
-#define VL6180x_API_REV_SUB     3a
+#define VL6180x_API_REV_SUB     0
 
 #define VL6180X_STR_HELPER(x) #x
 #define VL6180X_STR(x) VL6180X_STR_HELPER(x)
@@ -164,8 +164,9 @@ enum VL6180x_ErrCode_t {
  * Filtered result data structure  range data is to be used
  */
 typedef struct RangeFilterResult_tag {
-	uint16_t range_mm;	/*!< Filtered ranging value */
-	uint16_t rawRange_mm;	/*!< raw range value (scaled) */
+	uint16_t range_mm;      /*!< Filtered ranging value */
+	uint16_t rawRange_mm;   /*!< raw range value (scaled) */
+	uint32_t filterError;   /*!< current filter error code */
 } RangeFilterResult_t;
 
 /**
@@ -173,7 +174,7 @@ typedef struct RangeFilterResult_tag {
  *
  * if data space saving is not a concern it can be change to platform native unsigned int
  */
-typedef uint8_t FilterType1_t;
+typedef uint32_t  FilterType1_t;
 
 /**
  * @def FILTER_NBOF_SAMPLES
@@ -184,15 +185,17 @@ typedef uint8_t FilterType1_t;
  * Wrap around filter internal data
  */
 struct FilterData_t {
-	uint32_t MeasurementIndex;	/*!< current measurement index */
-	uint16_t LastTrueRange[FILTER_NBOF_SAMPLES];	/*!< filtered/corrected  distance history */
-	uint32_t LastReturnRates[FILTER_NBOF_SAMPLES];	/*!< Return rate history */
-	uint16_t StdFilteredReads;	/*!< internal use */
-	FilterType1_t Default_ZeroVal;	/*!< internal use */
-	FilterType1_t Default_VAVGVal;	/*!< internal use */
-	FilterType1_t NoDelay_ZeroVal;	/*!< internal use */
-	FilterType1_t NoDelay_VAVGVal;	/*!< internal use */
-	FilterType1_t Previous_VAVGDiff;	/*!< internal use */
+	uint32_t MeasurementIndex;                      /*!< current measurement index */
+	uint32_t MeasurementsSinceLastFlush;            /*!< Number of measurements done since last time buffer has been flushed */
+	uint16_t LastTrueRange[FILTER_NBOF_SAMPLES];    /*!< filtered/corrected  distance history */
+	uint32_t LastReturnRates[FILTER_NBOF_SAMPLES];  /*!< Return rate history */
+	uint16_t StdFilteredReads;                      /*!< internal use */
+	FilterType1_t Default_ZeroVal;                  /*!< internal use */
+	FilterType1_t Default_VAVGVal;                  /*!< internal use */
+	FilterType1_t NoDelay_ZeroVal;                  /*!< internal use */
+	FilterType1_t NoDelay_VAVGVal;                  /*!< internal use */
+	FilterType1_t Previous_VAVGDiff;                /*!< internal use */
+	uint32_t filterError;                           /*!< current filter error code */
 };
 
 #if  VL6180x_HAVE_DMAX_RANGING

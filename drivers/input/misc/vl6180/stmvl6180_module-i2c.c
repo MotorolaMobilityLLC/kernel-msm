@@ -238,8 +238,9 @@ static struct i2c_driver stmvl6180_driver = {
 int stmvl6180_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 {
 	int ret = 0;
+#ifndef STM_TEST
 	struct i2c_data *data = (struct i2c_data *)i2c_object;
-
+#endif
 	vl6180_dbgmsg("Enter\n");
 
 	/* actual power on */
@@ -268,7 +269,9 @@ int stmvl6180_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 int stmvl6180_power_down_i2c(void *i2c_object)
 {
 	int ret = 0;
+#ifndef STM_TEST
 	struct i2c_data *data = (struct i2c_data *)i2c_object;
+#endif
 
 	vl6180_dbgmsg("Enter\n");
 #ifndef STM_TEST

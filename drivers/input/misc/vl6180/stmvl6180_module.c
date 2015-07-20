@@ -81,6 +81,7 @@ static struct stmvl6180_module_fn_t stmvl6180_module_func_tbl = {
 #define VL6180_IOCTL_SETXTALK		_IOW('p', 0x06, unsigned int)
 #define VL6180_IOCTL_SETOFFSET		_IOW('p', 0x07, int8_t)
 #define VL6180_IOCTL_GETDATAS		_IOR('p', 0x0b, VL6180x_RangeData_t)
+#define VL6180_IOCTL_REGISTER		_IOWR('p', 0x0c, struct stmvl6180_register)
 
 #define CALIBRATION_FILE 1
 #ifdef CALIBRATION_FILE
@@ -299,15 +300,25 @@ static void stmvl6180_work_handler(struct work_struct *work)
 	mutex_lock(&data->work_mutex);
 
 	if (data->enable_ps_sensor == 1) {
-
-
+		uint8_t range_status=0, range_start=0;
 		data->rangeData.errorStatus = 0xFF; /* to reset the data, should be set by API */
-		ret = VL6180x_RangeGetMeasurementIfReady(vl6180x_dev, &(data->rangeData));
-		if (ret != DataNotReady) {
-			if (data->ps_is_singleshot)
-				to_startPS = 1;
+                VL6180x_RdByte(vl6180x_dev, RESULT_RANGE_STATUS, &range_status);
+                VL6180x_RdByte(vl6180x_dev, SYSRANGE_START, &range_start);	
+		if (data->enableDebug) {
+			vl6180_errmsg("RangeStatus as 0x%x,RangeStart: 0x%x\n",range_status,range_start);
 		}
-		stmvl6180_ps_read_measurement(); /* to update data */
+		if (range_start == 0 && (range_status & 0x01) == 0x01) {
+			ret = VL6180x_RangeGetMeasurementIfReady(vl6180x_dev, &(data->rangeData));
+			if (!ret && data->rangeData.errorStatus !=DataNotReady ) {
+				if (data->ps_is_singleshot)
+					to_startPS = 1;
+				if (data->rangeData.errorStatus == 17)
+					data->rangeData.errorStatus = 16;
+				stmvl6180_ps_read_measurement(); /* to update data */
+			}
+		}
+		//if (!ret)
+		//	stmvl6180_ps_read_measurement(); /* to update data */
 		if (to_startPS)
 			VL6180x_RangeSetSystemMode(vl6180x_dev, MODE_START_STOP |  MODE_SINGLESHOT);
 
@@ -465,6 +476,7 @@ static int stmvl6180_ioctl_handler(struct file *file,
 	unsigned int xtalkint = 0;
 	int8_t offsetint = 0;
 	struct stmvl6180_data *data = gp_vl6180_data;
+	struct stmvl6180_register reg;
 
 	if (!data)
 		return -EINVAL;
@@ -541,6 +553,48 @@ static int stmvl6180_ioctl_handler(struct file *file,
 	case VL6180_IOCTL_GETDATAS:
 		vl6180_dbgmsg("VL6180_IOCTL_GETDATAS\n");
 		if (copy_to_user((VL6180x_RangeData_t *)p, &(data->rangeData), sizeof(VL6180x_RangeData_t))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		break;
+	case VL6180_IOCTL_REGISTER:
+		vl6180_dbgmsg("VL6180_IOCTL_REGISTER\n");
+		if (copy_from_user(&reg, (struct stmvl6180_register *)p,
+							sizeof(struct stmvl6180_register))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		reg.status = 0;
+		switch (reg.reg_bytes) {
+		case(4):
+			if (reg.is_read)
+				reg.status = VL6180x_RdDWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											&reg.reg_data);
+			else
+				reg.status = VL6180x_WrDWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											reg.reg_data);
+			break;
+		case(2):
+			if (reg.is_read)
+				reg.status = VL6180x_RdWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint16_t *)&reg.reg_data);
+			else
+				reg.status = VL6180x_WrWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint16_t)reg.reg_data);
+			break;
+		case(1):
+			if (reg.is_read)
+				reg.status = VL6180x_RdByte(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint8_t *)&reg.reg_data);
+			else
+				reg.status = VL6180x_WrByte(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint8_t)reg.reg_data);
+			break;
+		default:
+			reg.status = -1;
+		}
+		if (copy_to_user((struct stmvl6180_register *)p, &reg,
+							sizeof(struct stmvl6180_register))) {
 			vl6180_errmsg("%d, fail\n", __LINE__);
 			return -EFAULT;
 		}

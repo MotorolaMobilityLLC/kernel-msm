@@ -26,7 +26,7 @@
 #define STMVL6180_DRV_NAME	"stmvl6180"
 
 
-#define DRIVER_VERSION		"2.0.1"
+#define DRIVER_VERSION		"2.0.3"
 #define I2C_M_WR			0x00
 //#define INT_POLLING_DELAY     20
 #define RESULT_REG_COUNT	56
@@ -86,6 +86,17 @@ typedef enum {
 	XTALKCALIB_MODE = 2,
 } init_mode_e;
 
+/*
+ *  IOCTL register data structs
+ */
+struct stmvl6180_register {
+	uint32_t is_read; //1: read 0: write
+	uint32_t reg_index;
+	uint32_t reg_bytes;
+	uint32_t reg_data;
+	int32_t status;
+};
+ 
 /*
  *  driver data structs
  */
