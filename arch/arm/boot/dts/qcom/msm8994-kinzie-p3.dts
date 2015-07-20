@@ -24,3 +24,9 @@
 		qcom,config-info = "kinziep3";
 	};
 };
+
+&i2c_11 {
+	mmi_wls_chrg@6c {
+		mmi,fod-offset = <195>;
+	};
+};
