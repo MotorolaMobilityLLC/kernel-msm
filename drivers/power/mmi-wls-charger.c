@@ -39,6 +39,17 @@
 #define MMI_WLS_CHRG_CHRG_CMPLT_SOC 100
 #define MMI_WLS_NUM_GPIOS 3
 
+#define MMI_WLS_FOD_REG 0xE1
+#define MMI_WLS_FOD_OFFSET_EN BIT(6)
+#define MMI_WLS_FOD_0MW 0
+#define MMI_WLS_FOD_39MW BIT(3)
+#define MMI_WLS_FOD_78MW BIT(4)
+#define MMI_WLS_FOD_117MW (BIT(4) | BIT(3))
+#define MMI_WLS_FOD_156MW BIT(5)
+#define MMI_WLS_FOD_195MW (BIT(5) | BIT(3))
+#define MMI_WLS_FOD_234MW (BIT(5) | BIT(4))
+#define MMI_WLS_FOD_273MW (BIT(5) | BIT(4) | BIT(3))
+
 struct mmi_wls_chrg_chip {
 	struct i2c_client *client;
 	struct device *dev;
@@ -64,6 +75,7 @@ struct mmi_wls_chrg_chip {
 	u32 peek_poke_address;
 	bool force_shutdown;
 	int mode;
+	int fod_offset;
 };
 
 enum mmi_wls_chrg_state {
@@ -136,6 +148,31 @@ static int set_reg(void *data, u64 val)
 	return 0;
 }
 DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
+
+static int mmi_wls_find_fod_offset(struct mmi_wls_chrg_chip *chip)
+{
+	if (!chip) {
+		pr_err_once("Chip not ready\n");
+		return 0;
+	}
+
+	if (chip->fod_offset >= 273)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_273MW;
+	else if (chip->fod_offset >= 234)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_234MW;
+	else if (chip->fod_offset >= 195)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_195MW;
+	else if (chip->fod_offset >= 156)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_156MW;
+	else if (chip->fod_offset >= 117)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_117MW;
+	else if (chip->fod_offset >= 78)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_78MW;
+	else if (chip->fod_offset >= 39)
+		return MMI_WLS_FOD_OFFSET_EN | MMI_WLS_FOD_39MW;
+
+	return MMI_WLS_FOD_0MW;
+}
 
 static int mmi_wls_chrg_get_psy_info(struct power_supply *psy,
 				     enum power_supply_property psp, int *data)
@@ -280,6 +317,10 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 	}
 
 	dev_dbg(chip->dev, "State Before = %d\n", chip->state);
+
+	if (powered)
+		mmi_wls_chrg_write_reg(chip->client, MMI_WLS_FOD_REG,
+				       mmi_wls_find_fod_offset(chip));
 
 	switch (chip->state) {
 	case MMI_WLS_CHRG_WAIT:
@@ -445,6 +486,9 @@ static irqreturn_t pad_det_handler(int irq, void *dev_id)
 
 	if (gpio_get_value(chip->pad_det_n_gpio))
 		power_supply_changed(&chip->wl_psy);
+	else
+		mmi_wls_chrg_write_reg(chip->client, MMI_WLS_FOD_REG,
+				       mmi_wls_find_fod_offset(chip));
 
 	dev_dbg(chip->dev, "pad_det_handler pad_det_n =%x\n",
 			gpio_get_value(chip->pad_det_n_gpio));
@@ -570,6 +614,10 @@ static int mmi_wls_chrg_probe(struct i2c_client *client,
 			goto fail_gpios;
 		}
 	}
+
+	ret = of_property_read_u32(np, "mmi,fod-offset", &chip->fod_offset);
+	if (ret < 0)
+		chip->fod_offset = 0;
 
 	ret = of_property_read_u32(np, "mmi,priority",
 						&chip->priority);
