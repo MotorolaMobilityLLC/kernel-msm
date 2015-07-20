@@ -2568,7 +2568,9 @@ void
 dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 {
 	dhd_bus_t *bus = dhdp->bus;
-
+#if defined(DHD_WAKE_STATUS) && defined(DHD_WAKE_EVENT_STATUS)
+	int i;
+#endif
 	bcm_bprintf(strbuf, "Bus SDIO structure:\n");
 	bcm_bprintf(strbuf, "hostintmask 0x%08x intstatus 0x%08x sdpcm_ver %d\n",
 	            bus->hostintmask, bus->intstatus, bus->sdpcm_ver);
@@ -2588,6 +2590,13 @@ dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 	bcm_bprintf(strbuf, " multi4 %u multi6 %u icmp6 %u multiother %u\n",
 	            bus->wake_counts.rx_multi_ipv4, bus->wake_counts.rx_multi_ipv6,
 	            bus->wake_counts.rx_icmpv6, bus->wake_counts.rx_multi_other);
+#endif
+#ifdef DHD_WAKE_EVENT_STATUS
+	for (i = 0; i < WLC_E_LAST; i++)
+		if (bus->wake_counts.rc_event[i] != 0)
+			bcm_bprintf(strbuf, " event[%d] = %u", i,
+				    bus->wake_counts.rc_event[i]);
+	bcm_bprintf(strbuf, "\n");
 #endif
 #endif
 	bcm_bprintf(strbuf, "pollrate %u pollcnt %u regfails %u\n",
