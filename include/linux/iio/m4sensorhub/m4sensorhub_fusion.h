@@ -27,7 +27,14 @@ enum m4sensorhub_fusion_iio_type {
 	FUSION_TYPE_LINEAR_ACCELERATION = 0,
 	FUSION_TYPE_GRAVITY = 1,
 	FUSION_TYPE_ROTATION = 2,
-	M4FUS_NUM_FUSION_BUFFERS
+	FUSION_TYPE_FLUSH = 3,
+	/* FUSION_TYPE_NONE is needed for flush by HAL
+	 * because HAL always expects M4FUS_NUM_FUSION_BUFFERS
+	 * iio buffers to be sent. In case of flush we only
+	 * set the first buffer to FUSION_TYPE_FLUSH and the
+	 * rest are set to FUSION_TYPE_NONE
+	 */
+	FUSION_TYPE_NONE = 4,
 };
 
 struct m4sensorhub_fusion_iio_data {
@@ -40,5 +47,6 @@ struct m4sensorhub_fusion_iio_data {
 #define M4FUS_DATA_STRUCT_SIZE_BITS \
 	(sizeof(struct m4sensorhub_fusion_iio_data) * 8)
 
+#define M4FUS_NUM_FUSION_BUFFERS 3
 
 #endif /* _M4SENSORHUB_FUSION_IIO_H */

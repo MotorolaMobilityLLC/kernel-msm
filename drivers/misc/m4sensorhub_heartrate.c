@@ -62,9 +62,10 @@ static void m4hrt_isr(enum m4sensorhub_irqs int_event, void *handle)
 
 	mutex_lock(&(dd->mutex));
 
+	dd->iiodat.type = HEARTRATE_TYPE_EVENT_DATA;
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_HEARTRATE_HEARTRATE);
 	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_HEARTRATE_HEARTRATE,
-		(char *)&(dd->iiodat.heartrate));
+		(char *)&(dd->iiodat.event_data.heartrate));
 	if (err < 0) {
 		m4hrt_err("%s: Failed to read heartrate data.\n", __func__);
 		goto m4hrt_isr_fail;
@@ -77,7 +78,7 @@ static void m4hrt_isr(enum m4sensorhub_irqs int_event, void *handle)
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_HEARTRATE_CONFIDENCE);
 	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_HEARTRATE_CONFIDENCE,
-		(char *)&(dd->iiodat.confidence));
+		(char *)&(dd->iiodat.event_data.confidence));
 	if (err < 0) {
 		m4hrt_err("%s: Failed to read confidence data.\n", __func__);
 		goto m4hrt_isr_fail;
@@ -100,7 +101,7 @@ m4hrt_isr_fail:
 	return;
 }
 
-static int m4hrt_set_samplerate(struct iio_dev *iio, int32_t rate)
+static int m4hrt_set_samplerate_locked(struct iio_dev *iio, int32_t rate)
 {
 	int err = 0;
 	struct m4hrt_driver_data *dd = iio_priv(iio);
@@ -155,6 +156,18 @@ m4hrt_set_samplerate_fail:
 	return err;
 }
 
+static int m4hrt_send_flush_locked(struct iio_dev *iio, int32_t rate)
+{
+	int err = 0;
+	struct m4hrt_driver_data *dd = iio_priv(iio);
+
+	dd->iiodat.type = HEARTRATE_TYPE_EVENT_FLUSH;
+	dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
+	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
+
+	return err;
+}
+
 static ssize_t m4hrt_setrate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -192,7 +205,7 @@ static ssize_t m4hrt_setrate_store(struct device *dev,
 		goto m4hrt_enable_store_exit;
 	}
 
-	err = m4hrt_set_samplerate(iio, value);
+	err = m4hrt_set_samplerate_locked(iio, value);
 	if (err < 0) {
 		m4hrt_err("%s: Failed to set sample rate.\n", __func__);
 		goto m4hrt_enable_store_exit;
@@ -211,6 +224,30 @@ m4hrt_enable_store_exit:
 static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
 		m4hrt_setrate_show, m4hrt_setrate_store, 0);
 
+static ssize_t m4hrt_flush_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4hrt_driver_data *dd = iio_priv(iio);
+	int value = 1;
+
+	mutex_lock(&(dd->mutex));
+
+	err = m4hrt_send_flush_locked(iio, value);
+	if (err < 0) {
+		m4hrt_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+static IIO_DEVICE_ATTR(flush, S_IRUSR | S_IWUSR,
+		NULL, m4hrt_flush_store, 0);
+
 static ssize_t m4hrt_iiodata_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -220,9 +257,13 @@ static ssize_t m4hrt_iiodata_show(struct device *dev,
 	ssize_t size = 0;
 
 	mutex_lock(&(dd->mutex));
-	size = snprintf(buf, PAGE_SIZE, "%s%hu\n%s%hhu\n",
-		"heartrate: ", dd->iiodat.heartrate,
-		"confidence: ", dd->iiodat.confidence);
+	if (dd->iiodat.type == HEARTRATE_TYPE_EVENT_DATA) {
+		size = snprintf(buf, PAGE_SIZE, "%s%hu\n%s%hhu\n",
+			"heartrate: ", dd->iiodat.event_data.heartrate,
+			"confidence: ", dd->iiodat.event_data.confidence);
+	} else if (dd->iiodat.type == HEARTRATE_TYPE_EVENT_FLUSH) {
+		size = snprintf(buf, PAGE_SIZE, "Flush event\n");
+	}
 	mutex_unlock(&(dd->mutex));
 	return size;
 }
@@ -391,6 +432,7 @@ static IIO_DEVICE_ATTR(regdata, S_IRUSR | S_IWUSR,
 
 static struct attribute *m4hrt_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	&iio_dev_attr_regaddr.dev_attr.attr,
 	&iio_dev_attr_regdata.dev_attr.attr,

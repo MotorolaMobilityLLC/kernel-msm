@@ -45,11 +45,11 @@ struct m4sensorhub_pressure_drvdata {
 	int samplerate;
 	bool irq_enabled;
 	struct platform_device      *pdev;
-	struct m4sensorhub_pressure_data read_data;
+	struct m4sensorhub_pressure_iio_data read_data;
 	struct mutex                mutex;
 };
 
-#define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_pressure_data) * 8)
+#define DATA_SIZE_IN_BITS  (sizeof(struct m4sensorhub_pressure_iio_data) * 8)
 
 /* We are ADC with 1 channel */
 static const struct iio_chan_spec m4sensorhub_pressure_channels[] = {
@@ -79,6 +79,7 @@ static void m4pressure_isr(enum m4sensorhub_irqs int_event, void *handle)
 
 	mutex_lock(&(p_priv_data->mutex));
 
+	p_priv_data->read_data.type = PRESSURE_TYPE_EVENT_DATA;
 	m4sensorhub_reg_read(p_m4sensorhub,
 				M4SH_REG_PRESSURE_PRESSURE,
 				(char *)&pressure.pressure);
@@ -86,8 +87,8 @@ static void m4pressure_isr(enum m4sensorhub_irqs int_event, void *handle)
 				M4SH_REG_PRESSURE_ABSOLUTEALTITUDE,
 				(char *)&pressure.absoluteAltitude);
 
-	p_priv_data->read_data.pressure = pressure.pressure;
-	p_priv_data->read_data.altitude = pressure.absoluteAltitude;
+	p_priv_data->read_data.event_data.pressure = pressure.pressure;
+	p_priv_data->read_data.event_data.altitude = pressure.absoluteAltitude;
 	p_priv_data->read_data.timestamp = ktime_to_ns(ktime_get_boottime());
 
 	iio_push_to_buffers(p_iio_dev,
@@ -238,16 +239,45 @@ static IIO_DEVICE_ATTR(setdelay, S_IRUGO | S_IWUSR,
 					m4sensorhub_pressure_show_setdelay,
 					m4sensorhub_pressure_store_setdelay, 0);
 
+static ssize_t m4sensorhub_pressure_store_flush(struct device *p_dev,
+			struct device_attribute *p_attr,
+			const char *p_buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(p_dev);
+	struct iio_dev *p_iio_dev = platform_get_drvdata(pdev);
+	struct m4sensorhub_pressure_drvdata *p_priv_data = iio_priv(p_iio_dev);
+
+	mutex_lock(&(p_priv_data->mutex));
+	p_priv_data->read_data.type = PRESSURE_TYPE_EVENT_FLUSH;
+	p_priv_data->read_data.timestamp = ktime_to_ns(ktime_get_boottime());
+
+	iio_push_to_buffers(p_iio_dev,
+			    (unsigned char *)&(p_priv_data->read_data));
+
+	mutex_unlock(&(p_priv_data->mutex));
+
+	return count;
+}
+
+static IIO_DEVICE_ATTR(flush, S_IRUGO | S_IWUSR, NULL,
+		       m4sensorhub_pressure_store_flush, 0);
+
 static ssize_t m4sensorhub_pressure_show_iiodata(struct device *p_dev,
 				struct device_attribute *p_attr, char *p_buf)
 {
 	struct platform_device *pdev = to_platform_device(p_dev);
-	struct iio_dev *p_iio_dev =
-						platform_get_drvdata(pdev);
+	struct iio_dev *p_iio_dev = platform_get_drvdata(pdev);
 	struct m4sensorhub_pressure_drvdata *p_priv_data = iio_priv(p_iio_dev);
-	return snprintf(p_buf, PAGE_SIZE, "Pressure:%d\nAltitude:%d\n",
-		p_priv_data->read_data.pressure,
-		p_priv_data->read_data.altitude);
+	ssize_t size = 0;
+
+	if (p_priv_data->read_data.type == PRESSURE_TYPE_EVENT_DATA) {
+		size = snprintf(p_buf, PAGE_SIZE, "Pressure:%d\nAltitude:%d\n",
+				p_priv_data->read_data.event_data.pressure,
+				p_priv_data->read_data.event_data.altitude);
+	} else if (p_priv_data->read_data.type == PRESSURE_TYPE_EVENT_FLUSH) {
+		size = snprintf(p_buf, PAGE_SIZE, "Flush Event\n");
+	}
+	return size;
 }
 static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 					m4sensorhub_pressure_show_iiodata,
@@ -256,6 +286,7 @@ static IIO_DEVICE_ATTR(iiodata, S_IRUGO | S_IWUSR,
 
 static struct attribute *m4sensorhub_pressure_attributes[] = {
 	M4_DEV_ATTR(setdelay),
+	M4_DEV_ATTR(flush),
 	M4_DEV_ATTR(iiodata),
 	NULL
 };
@@ -292,7 +323,7 @@ static int m4sensorhub_pressure_setup_buffer(struct iio_dev *p_iio_dev)
 		goto err;
 	}
 	p_buffer->access->set_bytes_per_datum(p_buffer,
-				sizeof(struct m4sensorhub_pressure_data));
+				sizeof(struct m4sensorhub_pressure_iio_data));
 
 	ret = 0;
 	return ret;

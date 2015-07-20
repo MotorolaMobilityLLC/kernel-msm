@@ -695,6 +695,35 @@ module_param_call(als_enable, tsl2584_set_als_enable_param,
 	tsl2584_get_als_enable_param, &tsl2584_als_enable_param, 0644);
 MODULE_PARM_DESC(als_enable, "enable/disable the ALS.");
 
+static int tsl2584_als_flush_param;
+
+static int tsl2584_set_als_flush_param(const char *char_value,
+	struct kernel_param *kp)
+{
+	int  ret = 0;
+	int flush_value = 1;
+	struct tsl2584_data *tsl = tsl2584_misc_data;
+
+	if (!char_value)
+		return -EINVAL;
+
+	if (!tsl2584_misc_data)
+		return -EINVAL;
+
+	mutex_lock(&tsl2584_misc_data->mutex);
+
+	input_event(tsl->dev, EV_REL, REL_MISC, flush_value);
+	input_sync(tsl->dev);
+
+	mutex_unlock(&tsl2584_misc_data->mutex);
+
+	return ret;
+}
+
+module_param_call(als_flush, tsl2584_set_als_flush_param,
+		  NULL, &tsl2584_als_flush_param, 0644);
+MODULE_PARM_DESC(als_flush, "flush the ALS.");
+
 static ssize_t tsl2584_registers_show(struct device *dev,
 				    struct device_attribute *attr,
 				    char *buf)
@@ -1003,6 +1032,7 @@ static int tsl2584_probe(struct i2c_client *client,
 	tsl->dev->name = "light";
 	input_set_capability(tsl->dev, EV_MSC, MSC_TIMESTAMP);
 	input_set_capability(tsl->dev, EV_MSC, MSC_RAW);
+	input_set_capability(tsl->dev, EV_REL, REL_MISC);
 
 	tsl2584_misc_data = tsl;
 	tsl->miscdevice.minor = MISC_DYNAMIC_MINOR;

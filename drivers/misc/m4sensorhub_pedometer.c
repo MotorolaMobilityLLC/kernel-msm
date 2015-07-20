@@ -227,7 +227,7 @@ static void m4ped_isr(enum m4sensorhub_irqs int_event, void *handle)
 	return;
 }
 
-static int m4ped_set_samplerate(struct iio_dev *iio, int16_t rate)
+static int m4ped_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 {
 	int err = 0;
 	struct m4ped_driver_data *dd = iio_priv(iio);
@@ -273,6 +273,21 @@ m4ped_set_samplerate_fail:
 	return err;
 }
 
+static int m4ped_send_flush_locked(struct iio_dev *iio, int32_t handle)
+{
+	int err = 0;
+	struct m4ped_driver_data *dd = iio_priv(iio);
+
+	dd->iiodat[0].type = PEDOMETER_TYPE_EVENT_FLUSH;
+	dd->iiodat[1].type = PEDOMETER_TYPE_EVENT_NONE;
+
+	dd->iiodat[0].event_flush.handle = handle;
+	dd->iiodat[0].timestamp = ktime_to_ns(ktime_get_boottime());
+
+	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
+	return err;
+}
+
 static ssize_t m4ped_setrate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -310,7 +325,7 @@ static ssize_t m4ped_setrate_store(struct device *dev,
 		goto m4ped_enable_store_exit;
 	}
 
-	err = m4ped_set_samplerate(iio, value);
+	err = m4ped_set_samplerate_locked(iio, value);
 	if (err < 0) {
 		m4ped_err("%s: Failed to set sample rate.\n", __func__);
 		goto m4ped_enable_store_exit;
@@ -340,6 +355,38 @@ m4ped_enable_store_exit:
 static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
 		m4ped_setrate_show, m4ped_setrate_store, 0);
 
+static ssize_t m4ped_flush_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4ped_driver_data *dd = iio_priv(iio);
+	int value = 0;
+
+	mutex_lock(&(dd->mutex));
+
+	err = kstrtoint(buf, 10, &value);
+	if (err < 0) {
+		m4ped_err("%s: Failed to convert value.\n", __func__);
+		goto m4ped_flush_store_exit;
+	}
+
+	err = m4ped_send_flush_locked(iio, value);
+
+m4ped_flush_store_exit:
+	if (err < 0) {
+		m4ped_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+static IIO_DEVICE_ATTR(flush, S_IRUSR | S_IWUSR,
+		NULL, m4ped_flush_store, 0);
+
 static ssize_t m4ped_iiodata_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -349,17 +396,25 @@ static ssize_t m4ped_iiodata_show(struct device *dev,
 	ssize_t size = 0;
 
 	mutex_lock(&(dd->mutex));
-	size = snprintf(buf, PAGE_SIZE,
-		"%s%hhu\n%s%u\n%s%u\n%s%hu\n%s%u\n%s%u\n%s%u\n%s%hu\n%s%hu\n",
-		"ped_activity: ", dd->iiodat[0].event1.ped_activity,
-		"total_distance: ", dd->iiodat[0].event1.total_distance,
-		"total_steps: ", dd->iiodat[0].event1.total_steps,
-		"current_speed: ", dd->iiodat[0].event1.current_speed,
-		"healthy_minutes: ", dd->iiodat[0].event1.healthy_minutes,
-		"calories: ", dd->iiodat[0].event1.calories,
-		"calories_normr: ", dd->iiodat[1].event2.calories_normr,
-		"step_frequency: ", dd->iiodat[1].event2.step_frequency,
-		"step_length: ", dd->iiodat[1].event2.step_length);
+	if (dd->iiodat[0].type == PEDOMETER_TYPE_EVENT_FLUSH) {
+		size = snprintf(buf, PAGE_SIZE,
+			"Flush event for handle: %d\n",
+			dd->iiodat[0].event_flush.handle);
+	} else {
+		size = snprintf(buf, PAGE_SIZE,
+			"%s%hhu\n%s%u\n%s%u\n%s%hu\n%s%u\n%s%u\n"
+			"%s%u\n%s%hu\n%s%hu\n",
+			"ped_activity: ", dd->iiodat[0].event1.ped_activity,
+			"total_distance: ", dd->iiodat[0].event1.total_distance,
+			"total_steps: ", dd->iiodat[0].event1.total_steps,
+			"current_speed: ", dd->iiodat[0].event1.current_speed,
+			"healthy_minutes: ",
+			dd->iiodat[0].event1.healthy_minutes,
+			"calories: ", dd->iiodat[0].event1.calories,
+			"calories_normr: ", dd->iiodat[1].event2.calories_normr,
+			"step_frequency: ", dd->iiodat[1].event2.step_frequency,
+			"step_length: ", dd->iiodat[1].event2.step_length);
+	}
 	mutex_unlock(&(dd->mutex));
 	return size;
 }
@@ -695,6 +750,7 @@ static IIO_DEVICE_ATTR(feature_enable, S_IRUSR | S_IWUSR,
 
 static struct attribute *m4ped_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	&iio_dev_attr_userdata.dev_attr.attr,
 	&iio_dev_attr_userstridefactor.dev_attr.attr,

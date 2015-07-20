@@ -71,9 +71,11 @@ static void m4ges_isr(enum m4sensorhub_irqs int_event, void *handle)
 
 	mutex_lock(&(dd->mutex));
 
+	dd->iiodat.type = GESTURE_TYPE_EVENT_DATA;
+
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_GESTURE_GESTURE1);
 	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_GESTURE_GESTURE1,
-		(char *)&(dd->iiodat.gesture_type));
+		(char *)&(dd->iiodat.event_data.gesture_type));
 	if (err < 0) {
 		m4ges_err("%s: Failed to read gesture_type data.\n", __func__);
 		goto m4ges_isr_fail;
@@ -86,7 +88,7 @@ static void m4ges_isr(enum m4sensorhub_irqs int_event, void *handle)
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_GESTURE_CONFIDENCE1);
 	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_GESTURE_CONFIDENCE1,
-		(char *)&(dd->iiodat.gesture_confidence));
+		(char *)&(dd->iiodat.event_data.gesture_confidence));
 	if (err < 0) {
 		m4ges_err("%s: Failed to read gesture_confidence data.\n",
 			  __func__);
@@ -100,7 +102,7 @@ static void m4ges_isr(enum m4sensorhub_irqs int_event, void *handle)
 
 	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_GESTURE_VALUE1);
 	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_GESTURE_VALUE1,
-		(char *)&(dd->iiodat.gesture_value));
+		(char *)&(dd->iiodat.event_data.gesture_value));
 	if (err < 0) {
 		m4ges_err("%s: Failed to read gesture_value data.\n", __func__);
 		goto m4ges_isr_fail;
@@ -112,10 +114,10 @@ static void m4ges_isr(enum m4sensorhub_irqs int_event, void *handle)
 	}
 
 #ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
-	if (dd->iiodat.gesture_type == GESTURE_WRIST_ROTATE) {
+	if (dd->iiodat.event_data.gesture_type == GESTURE_WRIST_ROTATE) {
 		notify_display_wakeup(GESTURE);
-	} else if (dd->iiodat.gesture_type == GESTURE_VIEW) {
-		if (dd->iiodat.gesture_value == GESTURE_VIEW_ON)
+	} else if (dd->iiodat.event_data.gesture_type == GESTURE_VIEW) {
+		if (dd->iiodat.event_data.gesture_value == GESTURE_VIEW_ON)
 			notify_display_wakeup(GESTURE_VIEWON);
 		else
 			notify_display_wakeup(GESTURE_VIEWOFF);
@@ -183,6 +185,18 @@ m4ges_set_samplerate_fail:
 	return err;
 }
 
+static int m4ges_send_flush_locked(struct iio_dev *iio, int16_t rate)
+{
+	int err = 0;
+	struct m4ges_driver_data *dd = iio_priv(iio);
+
+	dd->iiodat.type = GESTURE_TYPE_EVENT_FLUSH;
+	dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
+	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
+
+	return err;
+}
+
 static ssize_t m4ges_setrate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -239,6 +253,30 @@ m4ges_enable_store_exit:
 static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
 		m4ges_setrate_show, m4ges_setrate_store, 0);
 
+static ssize_t m4ges_flush_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4ges_driver_data *dd = iio_priv(iio);
+	int value = 1;
+
+	mutex_lock(&(dd->mutex));
+
+	err = m4ges_send_flush_locked(iio, value);
+	if (err < 0) {
+		m4ges_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+static IIO_DEVICE_ATTR(flush, S_IRUSR | S_IWUSR,
+		NULL, m4ges_flush_store, 0);
+
 static ssize_t m4ges_iiodata_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -248,12 +286,21 @@ static ssize_t m4ges_iiodata_show(struct device *dev,
 	ssize_t size = 0;
 
 	mutex_lock(&(dd->mutex));
-	size = snprintf(buf, PAGE_SIZE,
-		"%s%hhu\n%s%hhu\n%s%hhd\n%s%u\n",
-		"gesture_type: ", dd->iiodat.gesture_type,
-		"gesture_confidence: ", dd->iiodat.gesture_confidence,
-		"gesture_value: ", dd->iiodat.gesture_value,
-		"gesture_count: ", dd->gesture_count);
+	if (dd->iiodat.type == GESTURE_TYPE_EVENT_DATA) {
+		size = snprintf(buf, PAGE_SIZE,
+			"%s%hhu\n%s%hhu\n%s%hhd\n%s%u\n",
+			"gesture_type: ",
+			dd->iiodat.event_data.gesture_type,
+			"gesture_confidence: ",
+			dd->iiodat.event_data.gesture_confidence,
+			"gesture_value: ",
+			dd->iiodat.event_data.gesture_value,
+			"gesture_count: ",
+			dd->gesture_count);
+	} else if (dd->iiodat.type == GESTURE_TYPE_EVENT_FLUSH) {
+		size = snprintf(buf, PAGE_SIZE,
+			"Flush event\n");
+	}
 	mutex_unlock(&(dd->mutex));
 	return size;
 }
@@ -261,6 +308,7 @@ static IIO_DEVICE_ATTR(iiodata, S_IRUGO, m4ges_iiodata_show, NULL, 0);
 
 static struct attribute *m4ges_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
+	&iio_dev_attr_flush.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	NULL,
 };

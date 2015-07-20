@@ -23,13 +23,24 @@
 #ifndef _M4SENSORHUB_PASSIVE_IIO_H
 #define _M4SENSORHUB_PASSIVE_IIO_H
 
-struct m4sensorhub_passive_iio_data {
+enum m4sensorhub_passive_iio_type {
+	PASSIVE_TYPE_EVENT_DATA = 0,
+	PASSIVE_TYPE_EVENT_FLUSH = 1,
+	PASSIVE_TYPE_EVENT_NONE = 2,
+};
+
+struct m4sensorhub_passive_event_data {
 	uint32_t        passive_timestamp;
 	uint16_t        steps;
 	uint16_t        calories;
 	uint16_t        heartrate;
 	uint8_t         hrconfidence;
 	uint8_t         healthy_minutes;
+} __packed;
+
+struct m4sensorhub_passive_iio_data {
+	uint8_t type;
+	struct m4sensorhub_passive_event_data event_data;
 	long long       timestamp;
 } __packed;
 

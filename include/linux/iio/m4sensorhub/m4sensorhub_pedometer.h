@@ -31,6 +31,8 @@
 enum m4sensorhub_pedometer_iio_type {
 	PEDOMETER_TYPE_EVENT_1 = 0,
 	PEDOMETER_TYPE_EVENT_2 = 1,
+	PEDOMETER_TYPE_EVENT_FLUSH = 2,
+	PEDOMETER_TYPE_EVENT_NONE = 3,
 };
 
 struct m4sensorhub_pedometer_event_1 {
@@ -50,6 +52,10 @@ struct m4sensorhub_pedometer_event_2 {
 	uint32_t        reserved[3]; /* Unused now. For future use */
 } __packed;
 
+struct m4sensorhub_pedometer_event_flush {
+	uint32_t        handle;
+} __packed;
+
 struct m4sensorhub_pedometer_iio_data {
 	uint8_t         type;
 	union {
@@ -59,6 +65,7 @@ struct m4sensorhub_pedometer_iio_data {
 		 */
 		struct m4sensorhub_pedometer_event_1    event1;
 		struct m4sensorhub_pedometer_event_2    event2;
+		struct m4sensorhub_pedometer_event_flush    event_flush;
 	};
 	long long       timestamp;
 } __packed;
