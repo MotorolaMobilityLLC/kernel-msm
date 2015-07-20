@@ -43,6 +43,9 @@ Optional Properties:
 				the Wireless Pad.
 				Units are Degrees Celsius
 				Driver Defaults to -20 C.
+- mmi,fod-offset		Indicates the FOD offset to be used by the Part.
+				Units are in milliWatts.
+				Applicable settings are 0, 39, 78, 117, 156, 195, 234, and 273
 
 Example:
 	i2c@f9967000 {
