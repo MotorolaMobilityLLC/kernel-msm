@@ -66,6 +66,7 @@ enum qseecom_qceos_cmd_id {
 	QSEOS_FSM_LTEOTA_REQ_RSP_CMD = 0x110,
 	QSEOS_FSM_IKE_REQ_CMD = 0x203,
 	QSEOS_FSM_IKE_REQ_RSP_CMD = 0x204,
+	QSEOS_CONTINUE_BLOCKED_REQ_COMMAND,
 	QSEOS_FSM_OEM_FUSE_WRITE_ROW = 0x301,
 	QSEOS_FSM_OEM_FUSE_READ_ROW = 0x302,
 	QSEOS_CMD_MAX     = 0xEFFFFFFF
@@ -83,6 +84,15 @@ enum qseecom_pipe_type {
 	QSEOS_PIPE_ENC_XTS = 0x2,
 	QSEOS_PIPE_AUTH = 0x4,
 	QSEOS_PIPE_ENUM_FILL = 0x7FFFFFFF
+};
+
+/* QSEE Reentrancy support phase */
+enum qseecom_qsee_reentrancy_phase {
+	QSEE_REENTRANCY_PHASE_0 = 0,
+	QSEE_REENTRANCY_PHASE_1,
+	QSEE_REENTRANCY_PHASE_2,
+	QSEE_REENTRANCY_PHASE_3,
+	QSEE_REENTRANCY_PHASE_MAX = 0xFF
 };
 
 __packed  struct qsee_apps_region_info_ireq {
@@ -297,6 +307,11 @@ __packed struct qseecom_client_send_fsm_key_req {
 	uint32_t rsp_len;
 };
 
+__packed struct qseecom_continue_blocked_request_ireq {
+	uint32_t qsee_cmd_id;
+	uint32_t app_id;
+};
+
 
 /**********      ARMV8 SMC INTERFACE TZ MACRO     *******************/
 
@@ -399,6 +414,13 @@ __packed struct qseecom_client_send_fsm_key_req {
    Macro used to obtain the Parameter ID associated with the syscall
  */
 #define TZ_SYSCALL_GET_PARAM_ID(CMD_ID)        CMD_ID ## _PARAM_ID
+
+/** Helper macro to extract the owning entity from the SMC ID. */
+#define TZ_SYSCALL_OWNER_ID(r0)   ((r0 & TZ_MASK_BITS(29, 24)) >> 24)
+
+/** Helper macro for checking whether an owning entity is of type trusted OS. */
+#define IS_OWNER_TRUSTED_OS(owner_id) \
+			(((owner_id >= 50) && (owner_id <= 63)) ? 1:0)
 
 #define TZ_SYSCALL_PARAM_TYPE_VAL              0x0     /** type of value */
 #define TZ_SYSCALL_PARAM_TYPE_BUF_RO           0x1     /** type of buffer read-only */
