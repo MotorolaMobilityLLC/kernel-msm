@@ -56,6 +56,10 @@
 		qcom,float-voltage-mv = <4400>;
 		qcom,recharge-mv = <100>;
 	};
+
+	mmi_wls_chrg@6c {
+		mmi,fod-offset = <195>;
+	};
 };
 
 &pmi8994_charger {
