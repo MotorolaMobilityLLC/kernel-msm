@@ -138,6 +138,7 @@ static bool point_log = false;
 static int TOUCH_P1_DOWN_FLAG = 0;
 static int TOUCH_P2_DOWN_FLAG = 0;
 static int AMB_TOUCH_HAD_SEND_FLAG = 0;
+static uint16_t AMB_x1, AMB_y1;
 
 /* use this to include integers in commands */
 #define CMD_UINT16(v)		((uint8_t)(v)) , ((uint8_t)((v) >> 8))
@@ -194,8 +195,8 @@ struct ite7260_perfile_data {
 };
 
 enum {
-	TOUCH_UP = 1,
-	TOUCH_DOWN
+	TOUCH_UP = 0,
+	TOUCH_DOWN = 1
 };
 
 static int8_t fwUploadResult = SYSFS_RESULT_NOT_DONE;
@@ -545,7 +546,10 @@ static void chipLowPowerMode(bool low)
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
-			input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+			input_mt_slot(gl_ts->touch_dev, 0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+			input_mt_slot(gl_ts->touch_dev, 1);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 			input_sync(gl_ts->touch_dev);
 			if (allow_irq_wake) {
 				smp_wmb();
@@ -1104,14 +1108,14 @@ static void exitIdleEvt(struct work_struct *work) {
 	exit_idle_event_time = getMsTime();
 	if (exit_idle_event_time - last_time_send_palm > 800) {
 		isTouchLocked = true;
-		LOGI("[%d] %s Touch DOWN x = -1, y = 20.\n", __LINE__, __func__);
+		LOGI("[%d] %s Touch DOWN x = 1, y = 1.\n", __LINE__, __func__);
 		input_mt_slot(gl_ts->touch_dev,0);
 		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-		input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, -1);
-		input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 20);
-		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+		input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 1);
+		input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 1);
 		input_sync(gl_ts->touch_dev);
-		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+		input_mt_slot(gl_ts->touch_dev,0);
+		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		input_sync(gl_ts->touch_dev);
 		wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 		wake_unlock(&touch_lock);
@@ -1138,7 +1142,10 @@ static void sendPalmEvt(void)
 		input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 0);
 		input_sync(gl_ts->palm_dev);
 	}
-	input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+	input_mt_slot(gl_ts->touch_dev, 0);
+	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+	input_mt_slot(gl_ts->touch_dev, 1);
+	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 	input_sync(gl_ts->touch_dev);
 }
 
@@ -1206,7 +1213,6 @@ static void readTouchDataPoint(void)
 				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
-				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 				if (point_log) {
 					LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
 				} else {
@@ -1234,7 +1240,6 @@ static void readTouchDataPoint(void)
 				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
-				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 				if (point_log) {
 					LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
 				} else {
@@ -1257,7 +1262,6 @@ static void readTouchDataPoint(void)
 				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
-				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 				if (point_log) {
 					LOGI("TOUCH P1 DOWN, x = %d, y = %d.\n", x1, y1);
 				} else {
@@ -1279,7 +1283,6 @@ static void readTouchDataPoint(void)
 				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y2);
-				input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
 				if (point_log) {
 					LOGI("TOUCH P2 DOWN, x = %d, y = %d.\n", x2, y2);
 				} else {
@@ -1304,7 +1307,10 @@ static void readTouchDataPoint(void)
 		hadFingerDown = false;
 		hadPalmDown = false;
 
-		input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+		input_mt_slot(gl_ts->touch_dev, 0);
+		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+		input_mt_slot(gl_ts->touch_dev, 1);
+		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		input_sync(gl_ts->touch_dev);
 
 		if (!point_log && TOUCH_P1_DOWN_FLAG == 1) {
@@ -1365,8 +1371,11 @@ static void readTouchDataPoint_Ambient(void)
 			}
 		}
 
-		if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 0x03)
+		if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 0x03) {
 			readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
+			AMB_x1 = x1;
+			AMB_y1 = y1;
+		}
 
 		if ((pointData.palm & PD_PALM_FLAG_BIT)) {
 			if (hadFingerDown) {
@@ -1382,6 +1391,8 @@ static void readTouchDataPoint_Ambient(void)
 				hadFingerDown = true;
 			}
 			readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
+			AMB_x1 = x1;
+			AMB_y1 = y1;
 		} else if (hadFingerDown && (!(pointData.palm & PD_PALM_FLAG_BIT))) {
 			hadFingerDown = false;
 			suspend_touch_up = getMsTime();
@@ -1394,20 +1405,22 @@ static void readTouchDataPoint_Ambient(void)
 				touchMissed = false;
 			}
 			if ((touchMissed || (suspend_touch_up - suspend_touch_down < 1000)) && (suspend_touch_up - last_time_send_palm > 800)) {
-				if (touchMissed) {
+				if (touchMissed)
 					LOGI("[%d] %s touch down missed.\n", __LINE__, __func__);
-					touchMissed = false;
-				}
 
 				if (!AMB_TOUCH_HAD_SEND_FLAG) {
-					LOGI("[%d] %s Touch DOWN x = %d, y = %d.\n", __LINE__, __func__, x1, y1);
+					if (AMB_x1 <= 0 || AMB_y1 <= 0) {
+						AMB_x1 = 1;
+						AMB_y1 = 1;
+					}
+					LOGI("[%d] %s Touch DOWN x = %d, y = %d.\n", __LINE__, __func__, AMB_x1, AMB_y1);
 					input_mt_slot(gl_ts->touch_dev,0);
 					input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-					input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
-					input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, y1);
-					input_report_key(gl_ts->touch_dev, BTN_TOUCH, 1);
+					input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, AMB_x1);
+					input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, AMB_y1);
 					input_sync(gl_ts->touch_dev);
-					input_report_key(gl_ts->touch_dev, BTN_TOUCH, 0);
+					input_mt_slot(gl_ts->touch_dev,0);
+					input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 					input_sync(gl_ts->touch_dev);
 					wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 					last_time_exit_low = jiffies;
@@ -1426,6 +1439,8 @@ static void readTouchDataPoint_Ambient(void)
 			wake_unlock(&touch_lock);
 		} else if (pointData.flags == 16) {
 			hadFingerDown = true;
+			AMB_x1 = 0;
+			AMB_y1 = 0;
 			queue_delayed_work(IT7260_wq, &gl_ts->exit_idle_work, 5);
 		} else if (pressure1 == 0 && pressure2 == 0 && (!(pointData.palm & PD_PALM_FLAG_BIT))){
 			if (driverInLowPower) {
@@ -1449,10 +1464,8 @@ static void readTouchDataPoint_Ambient(void)
 				LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
 			}
 			suspend_touch_down = getMsTime();
-			if (lastTouch == TOUCH_UP)
-				lastTouch = TOUCH_DOWN;
-			else
-				touchMissed = true;
+			lastTouch = TOUCH_DOWN;
+			touchMissed = false;
 			readTouchDataPoint_Ambient();
 		}
 	}
@@ -1612,7 +1625,6 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	set_bit(EV_KEY, gl_ts->touch_dev->evbit);
 	set_bit(EV_ABS, gl_ts->touch_dev->evbit);
 	set_bit(INPUT_PROP_DIRECT,gl_ts->touch_dev->propbit);
-	set_bit(BTN_TOUCH, gl_ts->touch_dev->keybit);
 	set_bit(KEY_SLEEP,gl_ts->touch_dev->keybit);
 	input_mt_init_slots(gl_ts->touch_dev, 2, 0);
 	input_set_abs_params(gl_ts->touch_dev, ABS_X, 0, SCREEN_X_RESOLUTION, 0, 0);

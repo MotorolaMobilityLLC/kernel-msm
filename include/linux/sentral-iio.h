@@ -203,18 +203,18 @@ static const char *sentral_sensor_type_strings[SST_MAX] = {
 };
 
 enum sentral_param_page {
-	SPP_SYS =             0x01,
-	SPP_ALGO_WARM_START = 0x02,
-	SPP_SENSORS =         0x03,
+	SPP_SYS =              1,
+	SPP_ALGO_WARM_START =  2,
+	SPP_SENSORS =          3,
 	SPP_ALGO_KNOBS =      13,
 	SPP_CUSTOM_PARAM =    14, //For ASUS ONLY
 };
 
 enum sentral_param_system {
-	SP_SYS_META_EVENT_CONTROL = 01,
-	SP_SYS_FIFO_CONTROL =       02,
-	SP_SYS_SENSOR_STATUS_B0 =   03,
-	SP_SYS_SENSOR_STATUS_B1 =   04,
+	SP_SYS_META_EVENT_CONTROL =  1,
+	SP_SYS_FIFO_CONTROL =        2,
+	SP_SYS_SENSOR_STATUS_B0 =    3,
+	SP_SYS_SENSOR_STATUS_B1 =    4,
 	SP_SYS_HOST_IRQ_TS =        30,
 	SP_SYS_PHYS_SENSOR_STATUS = 31,
 };
