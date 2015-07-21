@@ -106,6 +106,8 @@
 			39 01 00 00 00 00 05 2b 00 00 09 ff
 			/* Configure dual-dsi link*/
 			15 01 00 00 00 00 02 F2 63
+			/* Set POC_Bypass to Enabled */
+			15 01 00 00 00 00 02 C3 51
 			/* lock level 2 commands */
 			39 01 00 00 01 00 03 F0 A5 A5
 			/* display on */
