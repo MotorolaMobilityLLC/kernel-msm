@@ -1416,6 +1416,12 @@
 	};
 };
 
+/* Since mdss_hdmi_tx status = "disabled" above, change the writeback cell-index
+ * from 2 to 1 or the writeback fb will defer probe forever */
+&mdss_fb2 {
+	cell-index = <1>;
+};
+
 &spi_0 {
 	florida: florida@0 {
 		compatible = "wlf,wm8280";
