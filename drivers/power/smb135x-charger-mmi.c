@@ -4091,12 +4091,24 @@ static int determine_initial_status(struct smb135x_chg *chip)
 		if (smb135x_get_charge_rate(chip) ==
 		    POWER_SUPPLY_CHARGE_RATE_TURBO)
 			chip->hvdcp_powerup = true;
+
+		/* Check if SDP inserted */
+		rc = smb135x_read(chip, STATUS_5_REG, &reg);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't read status 5 rc = %d\n",
+								 rc);
+			return rc;
+		}
+
 		/*
-		 * For charger connections at powerup force APSD
-		 * instead of calling the handler here.
-		 */
-		chip->usb_present = 0;
-		smb135x_force_apsd(chip);
+		* For SDP connections at powerup force APSD
+		* instead of calling the handler here.
+		*/
+		if (reg & SDP_BIT) {
+			chip->usb_present = 0;
+			smb135x_force_apsd(chip);
+		} else
+			handle_usb_insertion(chip);
 	} else
 		handle_usb_removal(chip);
 
