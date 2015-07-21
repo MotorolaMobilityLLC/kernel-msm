@@ -132,6 +132,37 @@
 		};
 	};
 
+	apba_default: apba_default@0 {
+		apba_bootret {
+			pins = "gpio27";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		apba_reset_n {
+			pins = "gpio131";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		mod_mphy_i2s_sel {
+			pins = "gpio81";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+		apba_wake {
+			pins = "gpio25";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		apba_int_n {
+			pins = "gpio132";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	muc_spi_ctrl: muc_spi_ctrl@0 {
 		config {
 			pins = "gpio26", "gpio74", "gpio82";
