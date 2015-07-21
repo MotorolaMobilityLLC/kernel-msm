@@ -341,6 +341,35 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&muc_attach>;
+    };
+
+	apba_ctrl {
+		compatible = "mmi,apba-ctrl";
+		reg = <0 0>;
+		clock-names = "apba_mclk";
+		clocks = <&clock_gcc clk_bb_clk2_ao>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&apba_default>;
+		gpios = <&pm8994_gpios 7 2>, /* APBA_1P1_EN, output-high */
+			<&pm8994_gpios 1 2>, /* APBA_SFLASH_EN, output-high */
+			<&tlmm 27 0>,        /* APBA_BOOTRET, output-low */
+			<&pm8994_mpps 2 0>,  /* MOD_MPHY_I2S_EN_N, output-low */
+			<&tlmm 81 0>,        /* MOD_MPHY_I2S_SEL, output-low */
+			<&tlmm 131 0>,       /* APBA_RESET_N, output-low */
+			<&tlmm 132 1>,       /* APBA_INT_N, in */
+			<&tlmm 25 2>;        /* APBA_WAKE, output-high */
+		mmi,gpio-labels = "gpio_apba_1p1_en",
+				  "gpio_apba_sflash_en",
+				  "gpio_apba_bootret",
+				  "gpio_mphy_i2s_en_n",
+				  "gpio_mphy_i2s_sel",
+				  "gpio_apba_rst_n",
+				  "gpio_apba_int_n",
+				  "gpio_apba_wake";
+		mmi,int-index = <6>;
+		mmi,enable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 0 0>, <4 0 0>, <5 0 50>, <5 1 50>;
+		mmi,disable-seq = <0 1 0>, <1 1 0>, <2 0 0>, <3 0 0>, <4 1 0>, <5 0 50>;
+		mmi,wake-seq = <7 0 50>, <7 1 0>;
 	};
 };
 
