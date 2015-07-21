@@ -225,7 +225,7 @@ struct synaptics_rmi4_data {
 	struct delayed_work det_work;
 	struct workqueue_struct *det_workqueue;
 	struct work_struct recovery_work;
-	struct delayed_work init_work;
+	struct work_struct init_work;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
