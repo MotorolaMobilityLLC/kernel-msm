@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -298,6 +298,14 @@ static int handle_alloc_generic_req(void *req_h, void *req)
 			alloc_req->client_id, alloc_req->proc_id);
 	client_id = check_client(alloc_req->client_id, alloc_req->proc_id,
 								CHECK);
+
+	if (client_id >= MAX_CLIENTS) {
+		pr_err("memshare: %s client not found, requested client: %d, proc_id: %d\n",
+			__func__, alloc_req->client_id,
+			alloc_req->proc_id);
+		return -EINVAL;
+	}
+
 	if (!memblock[client_id].alloted) {
 		rc = memshare_alloc(memsh_drv->dev, alloc_req->num_bytes,
 					&memblock[client_id]);
