@@ -18,3 +18,38 @@
 	compatible = "qcom,msm8996-princeton", "qcom,msm8996-moto",
 			"qcom,msm8996";
 };
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&isl98611a_pos {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&isl98611a_neg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&pm8994_l14 {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
+	vddio_disp-supply = <&pm8994_l14>;
+	vsp_disp-supply = <&isl98611a_pos>;
+	vsn_disp-supply = <&isl98611a_neg>;
+};
+
+&mdss_dsi1 {
+	status = "disabled";
+};
+
+
+&mot_tdi_546_1080p_cmd_v0 {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
