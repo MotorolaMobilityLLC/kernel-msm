@@ -1363,6 +1363,11 @@ dhd_prot_rxbufpost_ctrl(dhd_pub_t *dhd, bool event_buf)
 	unsigned long flags;
 	uint8 buf_type;
 
+	if (dhd->busstate == DHD_BUS_DOWN) {
+		DHD_ERROR(("%s: bus is already down.\n", __FUNCTION__));
+		return -1;
+	}
+
 	if (event_buf) {
 		/* Allocate packet for event buffer post */
 		pktsz = DHD_FLOWRING_RX_BUFPOST_PKTSZ;
@@ -1381,6 +1386,13 @@ dhd_prot_rxbufpost_ctrl(dhd_pub_t *dhd, bool event_buf)
 #else
 	p = PKTGET(dhd->osh, pktsz, FALSE);
 #endif
+
+	if (p == NULL) {
+		DHD_ERROR(("%s:%d: PKTGET for %s rxbuf failed\n",
+			__FUNCTION__, __LINE__, event_buf ? "event" :
+				"ioctl"));
+		return -1;
+	}
 
 	pktlen = PKTLEN(dhd->osh, p);
 	physaddr = DMA_MAP(dhd->osh, PKTDATA(dhd->osh, p), pktlen, DMA_RX, p, 0);
