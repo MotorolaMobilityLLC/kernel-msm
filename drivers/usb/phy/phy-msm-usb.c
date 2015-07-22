@@ -2654,6 +2654,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			if (!ret) {
 				dev_dbg(motg->phy.dev, "%s: timeout waiting for PMIC VBUS\n",
 					__func__);
+				printk("[USB] %s: timeout waiting for PMIC VBUS\n", __func__);
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				pmic_vbus_init.done = 1;
 			}
@@ -2679,6 +2680,7 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			if (!ret) {
 				dev_dbg(motg->phy.dev, "%s: timeout waiting for PMIC VBUS\n",
 					__func__);
+				printk("[USB] %s: timeout waiting for PMIC VBUS\n", __func__);
 				clear_bit(B_SESS_VLD, &motg->inputs);
 				pmic_vbus_init.done = 1;
 			}
@@ -2742,6 +2744,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 		motg->pm_done = 0;
 	}
 	pr_debug("%s work\n", usb_otg_state_string(otg->phy->state));
+	printk("[USB] %s work\n", usb_otg_state_string(otg->phy->state));
 	switch (otg->phy->state) {
 	case OTG_STATE_UNDEFINED:
 		msm_otg_reset(otg->phy);
@@ -3458,6 +3461,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 	} else if (usbsts & STS_PCI) {
 		pc = readl_relaxed(USB_PORTSC);
 		pr_debug("portsc = %x\n", pc);
+		printk("[USB] Port Change Detect, portsc = %x\n", pc);
 		ret = IRQ_NONE;
 		/*
 		 * HCD Acks PCI interrupt. We use this to switch
@@ -3505,6 +3509,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 		}
 	} else if (usbsts & STS_URI) {
 		ret = IRQ_NONE;
+		printk("[USB] RESET recv'd\n");
 		switch (otg->phy->state) {
 		case OTG_STATE_A_PERIPHERAL:
 			/*
@@ -3520,6 +3525,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 		}
 	} else if (usbsts & STS_SLI) {
 		ret = IRQ_NONE;
+		printk("[USB] suspend state entered\n");
 		work = 0;
 		switch (otg->phy->state) {
 		case OTG_STATE_B_PERIPHERAL:
