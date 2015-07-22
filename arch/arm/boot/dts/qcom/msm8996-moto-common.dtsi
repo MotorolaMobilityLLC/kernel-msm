@@ -344,6 +344,14 @@
 		status = "okay";
 	};
 
+	gpio@c400 { /* GPIO 5  - DISP_V2_EN */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		status = "okay";
+	};
+
 	gpio@ca00 { /* GPIO 11 - REG_3P3_ENABLE */
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* MOS logic */
