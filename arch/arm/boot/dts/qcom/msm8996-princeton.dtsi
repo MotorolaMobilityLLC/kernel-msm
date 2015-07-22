@@ -43,6 +43,7 @@
 	vddio_disp-supply = <&pm8994_l14>;
 	vsp_disp-supply = <&isl98611a_pos>;
 	vsn_disp-supply = <&isl98611a_neg>;
+	qcom,platform-bklight-en-gpio = <&tlmm 94 0>;
 };
 
 &mdss_dsi1 {
