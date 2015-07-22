@@ -3160,6 +3160,7 @@ dhdsdio_mem_dump(dhd_bus_t *bus)
 		DHD_ERROR(("%s : dhd->soc_ram is NULL\n", __FUNCTION__));
 		return -1;
 	}
+	dhd_os_sdlock(bus->dhd);
 	BUS_WAKE(bus);
 	dhdsdio_clkctl(bus, CLK_AVAIL, FALSE);
 
@@ -3173,7 +3174,7 @@ dhdsdio_mem_dump(dhd_bus_t *bus)
 		if ((ret = dhdsdio_membytes(bus, FALSE, start, databuf, read_size)))
 		{
 			DHD_ERROR(("%s: Error membytes %d\n", __FUNCTION__, ret));
-			return -1;
+			break;
 		}
 		/* Decrement size and increment start address */
 		size -= read_size;
@@ -3186,9 +3187,10 @@ dhdsdio_mem_dump(dhd_bus_t *bus)
 		bus->activity = FALSE;
 		dhdsdio_clkctl(bus, CLK_NONE, TRUE);
 	}
-
-	dhd_save_fwdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
-	return 0;
+	dhd_os_sdunlock(bus->dhd);
+	if (!ret)
+		dhd_save_fwdump(bus->dhd, dhd->soc_ram, dhd->soc_ram_length);
+	return ret;
 }
 
 int
