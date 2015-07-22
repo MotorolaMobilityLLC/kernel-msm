@@ -132,10 +132,10 @@ extern bool reportRtcReady(void);
 #define AC_SUSPEND_CHG_CURRENT 1000
 
 #define BAT_CAP_REPLY_ERR	-1
-#define RESUME_UPDATE_TIME   120      //10 min
-#define RESUME_UPDATE_TIMEwhenCapLess20  120  //10min
-#define RESUME_UPDATE_TIMEwhenBATlow  120  //5min
-#define FORCERESUME_UPDATE_TIME   120  //5 min
+#define RESUME_UPDATE_TIME   120      //2 min
+#define RESUME_UPDATE_TIMEwhenCapLess20  120  //2min
+#define RESUME_UPDATE_TIMEwhenBATlow  120  //2min
+#define FORCERESUME_UPDATE_TIME   120  //2 min
 #define DOCKRESUME_UPDATE_TIME   300  //5 min
 #define RTC_READY_DELAY_TIME   20
 #define KEEP_CAPACITY_TIME 300

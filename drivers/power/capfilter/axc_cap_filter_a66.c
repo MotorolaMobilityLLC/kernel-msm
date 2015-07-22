@@ -68,23 +68,12 @@ static int cntPastAvgCurr(int interval, int filRealSusTime, int resCurr)
 {
 	int resumeP;
 	int suspendP;
-//	int susCurr;
 
 	resumeP = (interval-filRealSusTime)*100/interval; //resume percent
 	suspendP = (filRealSusTime*100)/interval;  //suspend percent
-#if 0	
-	susCurr = resCurr-DIFF_EARLYSUSPEND_SUSPEND_CUR; //suspend current
-	if(susCurr < MIN_SUSPEND_CUR)
-		susCurr = MIN_SUSPEND_CUR;
-
-	if(resCurr < 0)
-		return 0;
 
 	printk("[BAT][Fil]resumeP:%d, suspendP:%d\n",resumeP,suspendP);
-	return ( (resumeP*resCurr/100) + (suspendP*susCurr/100) );
-#else
 	return ( (resumeP*70/100) + (suspendP*10/100) );
-#endif
 }
 //Eason:fix Cap drop too slowly in unattended mode---
 //Eason: more accuracy for discharge after dot+++
