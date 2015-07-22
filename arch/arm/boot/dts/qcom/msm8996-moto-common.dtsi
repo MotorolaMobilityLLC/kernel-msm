@@ -135,6 +135,22 @@
 		enable-active-high;
 	};
 
+	isl98611a_pos: isl98611a_pos {
+		compatible = "regulator-fixed";
+		regulator-name = "isl98611a_pos";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	isl98611a_neg: isl98611a_neg {
+		compatible = "regulator-fixed";
+		regulator-name = "isl98611a_neg";
+		gpio = <&pm8994_gpios 5 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
 	/* BLSP12 not used for i2c */
 	/delete-node/ i2c@75ba000;
 
@@ -264,6 +280,49 @@
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			 <&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
 	};
+
+	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vddio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <300000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vsp_disp";
+			qcom,supply-min-voltage = <5500000>;
+			qcom,supply-max-voltage = <5500000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <2>;
+			qcom,supply-pre-off-sleep = <0>;
+		};
+
+		qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vsn_disp";
+			qcom,supply-min-voltage = <5500000>;
+			qcom,supply-max-voltage = <5500000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <2>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <1>;
+		};
+	};
 };
 
 &pm8994_gpios {
@@ -340,6 +399,28 @@
 /* 3.3V QCA Supply */
 &rome_vreg {
 	gpio = <&pm8994_gpios 11 0>;
+};
+
+#include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+};
+
+&mot_tdi_546_1080p_cmd_v0 {
+	qcom,mdss-dsi-panel-timings-8996 = [23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 18 07 08 05 03 04 a0];
 };
 
 / {
