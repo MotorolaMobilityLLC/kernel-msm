@@ -1,0 +1,49 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	mot_tdi_546_1080p_cmd_v0: qcom,mdss_dsi_mot_tdi_546_1080p_cmd_v0 {
+		#include "dsi-panel-mot-tdi-546-1080p-cmd-common.dtsi"
+	};
+};
+
+
+&mot_tdi_546_1080p_cmd_v0 {
+	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_tdi_1080p_546_v0";
+	qcom,mdss-dsi-on-command = [
+		15 01 00 00 00 00 02 FF 26 /* Touch improvements start */
+		15 01 00 00 00 00 02 31 30
+		15 01 00 00 00 00 02 52 30
+		15 01 00 00 00 00 02 6c 30
+		15 01 00 00 00 00 02 82 30
+		15 01 00 00 00 00 02 FB 01
+		15 01 00 00 00 00 02 FF 10 /* Touch improvements end */
+		15 01 00 00 00 00 02 FF 23 /* CABC config start */
+		15 01 00 00 00 00 02 13 FF
+		15 01 00 00 00 00 02 14 F5
+		15 01 00 00 00 00 02 15 ED
+		15 01 00 00 00 00 02 16 E5
+		15 01 00 00 00 00 02 FB 01
+		15 01 00 00 00 00 02 39 95
+		15 01 00 00 00 00 02 07 00
+		15 01 00 00 00 00 02 08 02
+		15 01 00 00 00 00 02 46 B8
+		15 01 00 00 00 00 02 FF 10 /* CABC config end */
+		05 01 00 00 64 00 01 11
+		15 01 00 00 00 00 02 36 03
+		39 01 00 00 00 00 03 44 07 08
+		15 01 00 00 00 00 02 35 00
+		15 01 00 00 00 00 02 51 CC
+		15 01 00 00 00 00 02 53 2C
+		15 01 00 00 00 00 02 55 01
+		05 01 00 00 00 00 01 29];	/* display on */
+};
