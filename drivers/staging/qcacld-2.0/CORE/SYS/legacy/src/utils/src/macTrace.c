@@ -817,6 +817,10 @@ tANI_U8* macTraceGetWdaMsgString( tANI_U16 wdaMsg )
 #endif
         CASE_RETURN_STRING(SIR_HAL_SET_BASE_MACADDR_IND);
         CASE_RETURN_STRING(WDA_LINK_STATUS_GET_REQ);
+#ifdef FEATURE_RUNTIME_PM
+        CASE_RETURN_STRING(WDA_RUNTIME_PM_SUSPEND_IND);
+        CASE_RETURN_STRING(WDA_RUNTIME_PM_RESUME_IND);
+#endif
         default:
             return((tANI_U8*) "UNKNOWN" );
             break;

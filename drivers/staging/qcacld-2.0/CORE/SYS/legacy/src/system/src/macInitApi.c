@@ -262,6 +262,9 @@ tSirRetStatus macClose(tHalHandle hHal)
     tpAniSirGlobal pMac = (tpAniSirGlobal) hHal;
     uint8_t i =0;
 
+    if (!pMac)
+        return eHAL_STATUS_FAILURE;
+
     peClose(pMac);
     pMac->psOffloadEnabled = FALSE;
 

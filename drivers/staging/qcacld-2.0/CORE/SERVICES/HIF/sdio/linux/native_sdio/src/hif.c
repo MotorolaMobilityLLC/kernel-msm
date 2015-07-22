@@ -1898,7 +1898,18 @@ static int hifDeviceSuspend(struct device *dev)
                 return ret;
             }
 
-            /* TODO:WOW support */
+            if (wma_is_wow_mode_selected(temp_module)) {
+                if (wma_enable_wow_in_fw(temp_module, 0)) {
+                    AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("wow mode failure\n"));
+                    return -1;
+                }
+            } else {
+                if (wma_suspend_target(temp_module, 0)) {
+                   AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("PDEV Suspend Failed\n"));
+                   return -1;
+                }
+            }
+
             if (pm_flag & MMC_PM_WAKE_SDIO_IRQ){
                 AR_DEBUG_PRINTF(ATH_DEBUG_INFO, ("hifDeviceSuspend: wow enter\n"));
                 config = HIF_DEVICE_POWER_DOWN;
@@ -2009,6 +2020,15 @@ static int hifDeviceResume(struct device *dev)
         status = osdrvCallbacks.deviceResumeHandler(device->claimedContext);
         device->is_suspend = FALSE;
     }
+
+    /* No need to send WMI_PDEV_RESUME_CMDID to FW if WOW is enabled */
+    if (!wma_is_wow_mode_selected(temp_module)) {
+        wma_resume_target(temp_module, 0);
+    } else if (wma_disable_wow_in_fw(temp_module, 0)) {
+        AR_DEBUG_PRINTF(ATH_DEBUG_ERROR, ("%s: disable wow in fw failed\n", __func__));
+        status = (-1);
+    }
+
     AR_DEBUG_PRINTF(ATH_DEBUG_TRACE, ("AR6000: -hifDeviceResume\n"));
     device->DeviceState = HIF_DEVICE_STATE_ON;
 

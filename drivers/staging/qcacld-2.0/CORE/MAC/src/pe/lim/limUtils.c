@@ -4104,12 +4104,15 @@ limEnable11gProtection(tpAniSirGlobal pMac, tANI_U8 enable,
                         {
                             limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                             limEnableHtOBSSProtection(pMac,  false, overlap, pBeaconParams,psessionEntry);
-                            if(psessionEntry->gLimHt20Params.protectionEnabled){
-                                //Commenting out beacuse of CR 258588 WFA cert
-                                //psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
-                                psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
-                            }
-                            else
+                            if (psessionEntry->gLimHt20Params.protectionEnabled) {
+                                if (eHT_CHANNEL_WIDTH_20MHZ ==
+                                      psessionEntry->htSupportedChannelWidthSet)
+                                    psessionEntry->htOperMode =
+                                        eSIR_HT_OP_MODE_PURE;
+                                else
+                                    psessionEntry->htOperMode =
+                                        eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
+                            } else
                                 psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
                         }
                     }
@@ -4676,7 +4679,10 @@ limEnableHT20Protection(tpAniSirGlobal pMac, tANI_U8 enable,
                psessionEntry->gLimHt20Params.protectionEnabled = true;
                 if(eSIR_HT_OP_MODE_PURE == psessionEntry->htOperMode)
                 {
-                    psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
+                    if (psessionEntry->htSupportedChannelWidthSet !=
+                            eHT_CHANNEL_WIDTH_20MHZ)
+                        psessionEntry->htOperMode =
+                            eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
                     limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                     limEnableHtOBSSProtection(pMac,  false, overlap, pBeaconParams,psessionEntry);
                 }
@@ -4736,9 +4742,11 @@ limEnableHT20Protection(tpAniSirGlobal pMac, tANI_U8 enable,
                     {
                         if(psessionEntry->gLimHt20Params.protectionEnabled)
                         {
-                            //Commented beacuse of CR 258588 for WFA Cert
-                            //psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
-                            psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
+                            if (psessionEntry->htSupportedChannelWidthSet ==
+                                    eHT_CHANNEL_WIDTH_20MHZ)
+                               psessionEntry->htOperMode = eSIR_HT_OP_MODE_PURE;
+                            else
+                               psessionEntry->htOperMode = eSIR_HT_OP_MODE_NO_LEGACY_20MHZ_HT;
                             limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                             limEnableHtOBSSProtection(pMac,  false, overlap, pBeaconParams,psessionEntry);
                         }
@@ -5704,7 +5712,7 @@ limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
 
 void
 limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry,
-                    tANI_U32 baDirection, tSirMacReasonCodes baReasonCode)
+                    tANI_U32 baDirection)
 {
     tANI_U32 i;
     tANI_U8 tid;
@@ -5732,14 +5740,14 @@ limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry,
                                        (baDirection & BA_INITIATOR))
                         {
                             limPostMlmDelBAReq(pMac, pSta, eBA_INITIATOR, tid,
-                                               baReasonCode,
+                                               eSIR_MAC_UNSPEC_FAILURE_REASON,
                                                pSessionEntry);
                         }
                         if ((eBA_ENABLE == pSta->tcCfg[tid].fUseBARx) &&
                                         (baDirection & BA_RECIPIENT))
                         {
                             limPostMlmDelBAReq(pMac, pSta, eBA_RECIPIENT, tid,
-                                               baReasonCode,
+                                               eSIR_MAC_UNSPEC_FAILURE_REASON,
                                                pSessionEntry);
                         }
                     }
@@ -5757,14 +5765,14 @@ limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry,
                                     (baDirection & BA_INITIATOR))
                     {
                         limPostMlmDelBAReq(pMac, pSta, eBA_INITIATOR, tid,
-                                           baReasonCode,
+                                           eSIR_MAC_UNSPEC_FAILURE_REASON,
                                            pSessionEntry);
                     }
                     if ((eBA_ENABLE == pSta->tcCfg[tid].fUseBARx) &&
                                     (baDirection & BA_RECIPIENT))
                     {
                         limPostMlmDelBAReq(pMac, pSta, eBA_RECIPIENT, tid,
-                                           baReasonCode,
+                                           eSIR_MAC_UNSPEC_FAILURE_REASON,
                                            pSessionEntry);
                     }
                 }
@@ -5790,8 +5798,7 @@ void limDelAllBASessions(tpAniSirGlobal pMac)
         pSessionEntry = peFindSessionBySessionId(pMac, i);
         if (pSessionEntry)
         {
-            limDeleteBASessions(pMac, pSessionEntry, BA_BOTH_DIRECTIONS,
-                                eSIR_MAC_UNSPEC_FAILURE_REASON);
+            limDeleteBASessions(pMac, pSessionEntry, BA_BOTH_DIRECTIONS);
         }
     }
 }
@@ -5814,8 +5821,7 @@ void limDelPerBssBASessionsBtc(tpAniSirGlobal pMac)
     {
         PELOGW(limLog(pMac, LOGW,
         "Deleting the BA for session %d as host got BTC event", sessionId);)
-        limDeleteBASessions(pMac, pSessionEntry, BA_RECIPIENT,
-                            eSIR_MAC_PEER_TIMEDOUT_REASON);
+        limDeleteBASessions(pMac, pSessionEntry, BA_RECIPIENT);
     }
 }
 

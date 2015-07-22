@@ -651,6 +651,18 @@ static void recovery_work_handler(struct work_struct *recovery)
 
 static DECLARE_WORK(recovery_work, recovery_work_handler);
 
+#ifdef FEATURE_RUNTIME_PM
+static inline int wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
+{
+	return adf_os_atomic_read(&wmi_handle->runtime_pm_inprogress);
+}
+#else
+static inline int wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
+{
+	return 0;
+}
+#endif
+
 /* WMI command API */
 int wmi_unified_cmd_send(wmi_unified_t wmi_handle, wmi_buf_t buf, int len,
 			 WMI_CMD_ID cmd_id)
@@ -659,15 +671,39 @@ int wmi_unified_cmd_send(wmi_unified_t wmi_handle, wmi_buf_t buf, int len,
 	A_STATUS status;
 	void *vos_context;
 	struct ol_softc *scn;
+	A_UINT16 htc_tag = 0;
+
+	if (wmi_get_runtime_pm_inprogress(wmi_handle))
+		goto skip_suspend_check;
 
 	if (adf_os_atomic_read(&wmi_handle->is_target_suspended) &&
-		( (WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID != cmd_id) &&
-		  (WMI_PDEV_RESUME_CMDID != cmd_id)) ){
-		pr_err("%s: Target is suspended  could not send WMI command\n", __func__);
+			( (WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID != cmd_id) &&
+			  (WMI_PDEV_RESUME_CMDID != cmd_id)) ) {
+		pr_err("%s: Target is suspended  could not send WMI command\n",
+				__func__);
 		VOS_ASSERT(0);
 		return -EBUSY;
+	} else
+		goto dont_tag;
+
+skip_suspend_check:
+	switch(cmd_id) {
+	case WMI_WOW_ENABLE_CMDID:
+	case WMI_PDEV_SUSPEND_CMDID:
+	case WMI_WOW_ENABLE_DISABLE_WAKE_EVENT_CMDID:
+	case WMI_WOW_ADD_WAKE_PATTERN_CMDID:
+	case WMI_WOW_HOSTWAKEUP_FROM_SLEEP_CMDID:
+	case WMI_PDEV_RESUME_CMDID:
+	case WMI_WOW_DEL_WAKE_PATTERN_CMDID:
+#ifdef FEATURE_WLAN_D0WOW
+	case WMI_D0_WOW_ENABLE_DISABLE_CMDID:
+#endif
+		htc_tag = HTC_TX_PACKET_TAG_AUTO_PM;
+	default:
+		break;
 	}
 
+dont_tag:
 	/* Do sanity check on the TLV parameter structure */
 	{
 		void *buf_ptr = (void *) adf_nbuf_data(buf);
@@ -718,7 +754,7 @@ int wmi_unified_cmd_send(wmi_unified_t wmi_handle, wmi_buf_t buf, int len,
 			len + sizeof(WMI_CMD_HDR),
 			/* htt_host_data_dl_len(buf)+20 */
 			wmi_handle->wmi_endpoint_id,
-			0/*htc_tag*/);
+			htc_tag);
 
 	SET_HTC_PACKET_NET_BUF_CONTEXT(pkt, buf);
 
@@ -1026,6 +1062,9 @@ wmi_unified_attach(ol_scn_t scn_handle, wma_wow_tx_complete_cbk func)
     wmi_handle->scn_handle = scn_handle;
     adf_os_atomic_init(&wmi_handle->pending_cmds);
     adf_os_atomic_init(&wmi_handle->is_target_suspended);
+#ifdef FEATURE_RUNTIME_PM
+    adf_os_atomic_init(&wmi_handle->runtime_pm_inprogress);
+#endif
     adf_os_spinlock_init(&wmi_handle->eventq_lock);
     adf_nbuf_queue_init(&wmi_handle->event_queue);
 #ifdef CONFIG_CNSS
@@ -1138,6 +1177,13 @@ void wmi_set_target_suspend(wmi_unified_t wmi_handle, A_BOOL val)
 {
 	adf_os_atomic_set(&wmi_handle->is_target_suspended, val);
 }
+
+#ifdef FEATURE_RUNTIME_PM
+void wmi_set_runtime_pm_inprogress(wmi_unified_t wmi_handle, A_BOOL val)
+{
+	adf_os_atomic_set(&wmi_handle->runtime_pm_inprogress, val);
+}
+#endif
 
 #ifdef FEATURE_WLAN_D0WOW
 void wmi_set_d0wow_flag(wmi_unified_t wmi_handle, A_BOOL flag)

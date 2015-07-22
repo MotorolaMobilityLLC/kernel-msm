@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -261,6 +261,7 @@ void        HTCProcessCreditRpt(HTC_TARGET        *target,
                                 HTC_ENDPOINT_ID    FromEndpoint);
 void        HTCFwEventHandler(void *context, A_STATUS status);
 void        HTCSendCompleteCheckCleanup(void *context);
+void        HTCTxResumeAllHandler(void *context);
 
 
 static inline void HTCSendCompletePollTimerStop(HTC_ENDPOINT *pEndpoint)

@@ -53,6 +53,28 @@ struct ol_softc;
 /* An address (e.g. of a buffer) in Copy Engine space. */
 typedef ath_dma_addr_t CE_addr_t;
 
+#ifdef FEATURE_RUNTIME_PM
+/* Driver States for Runtime Power Management */
+enum hif_pm_runtime_state {
+	HIF_PM_RUNTIME_STATE_ON,
+	HIF_PM_RUNTIME_STATE_INPROGRESS,
+	HIF_PM_RUNTIME_STATE_SUSPENDED,
+};
+
+/* Debugging stats for Runtime PM */
+struct hif_pci_pm_stats {
+	u32 suspended;
+	u32 suspend_err;
+	u32 resumed;
+	u32 runtime_get;
+	u32 runtime_put;
+	u32 request_resume;
+	u32 allow_suspend;
+	u32 prevent_suspend;
+	void *last_resume_caller;
+	unsigned long suspend_jiffies;
+};
+#endif
 struct hif_pci_softc {
     void __iomem *mem; /* PCI address. */
                        /* For efficiency, should be first in struct */
@@ -90,6 +112,14 @@ struct hif_pci_softc {
     bool hif_init_done;
     bool recovery;
     int htc_endpoint;
+#ifdef FEATURE_RUNTIME_PM
+    atomic_t pm_state;
+    struct hif_pci_pm_stats pm_stats;
+    struct work_struct pm_work;
+#ifdef WLAN_OPEN_SOURCE
+    struct dentry *pm_dentry;
+#endif
+#endif
 };
 #define TARGID(sc) ((A_target_id_t)(&(sc)->mem))
 #define TARGID_TO_HIF(targid) (((struct hif_pci_softc *)((char *)(targid) - (char *)&(((struct hif_pci_softc *)0)->mem)))->hif_device)
@@ -121,6 +151,7 @@ extern int pktlogmod_init(void *context);
 extern void pktlogmod_exit(void *context);
 #endif
 
+int hif_pci_set_ram_config_reg(struct hif_pci_softc *sc, uint32_t config);
 int hif_pci_check_fw_reg(struct hif_pci_softc *sc);
 int hif_pci_check_soc_status(struct hif_pci_softc *sc);
 void dump_CE_debug_register(struct hif_pci_softc *sc);

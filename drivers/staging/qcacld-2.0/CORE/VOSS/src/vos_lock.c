@@ -48,6 +48,7 @@
 #include "vos_lock.h"
 #include "vos_memory.h"
 #include "vos_trace.h"
+#include "hif.h"
 #include "i_vos_diag_core_event.h"
 #ifdef CONFIG_CNSS
 #include <net/cnss.h>
@@ -625,4 +626,48 @@ VOS_STATUS vos_wake_lock_destroy(vos_wake_lock_t *pLock)
     wake_lock_destroy(pLock);
 #endif
     return VOS_STATUS_SUCCESS;
+}
+
+VOS_STATUS vos_runtime_pm_prevent_suspend(void)
+{
+	void *ol_sc;
+	int ret = 0;
+
+	ol_sc = vos_get_context(VOS_MODULE_ID_HIF,
+			vos_get_global_context(VOS_MODULE_ID_SYS, NULL));
+
+	if (ol_sc == NULL) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"%s: HIF context is null!", __func__);
+		return VOS_STATUS_E_INVAL;
+	}
+
+	ret = hif_pm_runtime_prevent_suspend(ol_sc);
+
+	if (ret)
+		return VOS_STATUS_E_FAILURE;
+
+	return VOS_STATUS_SUCCESS;
+}
+
+VOS_STATUS vos_runtime_pm_allow_suspend(void)
+{
+	void *ol_sc;
+	int ret = 0;
+
+	ol_sc = vos_get_context(VOS_MODULE_ID_HIF,
+			vos_get_global_context(VOS_MODULE_ID_SYS, NULL));
+
+	if (ol_sc == NULL) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"%s: HIF context is null!", __func__);
+		return VOS_STATUS_E_INVAL;
+	}
+
+	ret = hif_pm_runtime_allow_suspend(ol_sc);
+
+	if (ret)
+		return VOS_STATUS_E_FAILURE;
+
+	return VOS_STATUS_SUCCESS;
 }

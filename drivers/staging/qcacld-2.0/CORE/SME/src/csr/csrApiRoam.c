@@ -7871,6 +7871,33 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
     return (status);
 }
 
+
+static boolean is_disconnect_pending(tpAniSirGlobal pmac,
+				uint8_t sessionid)
+{
+	tListElem *entry = NULL;
+	tListElem *next_entry = NULL;
+	tSmeCmd *command = NULL;
+	bool disconnect_cmd_exist = false;
+
+	csrLLLock(&pmac->sme.smeCmdPendingList);
+	entry = csrLLPeekHead(&pmac->sme.smeCmdPendingList, LL_ACCESS_NOLOCK);
+	while (entry) {
+		next_entry = csrLLNext(&pmac->sme.smeCmdPendingList,
+					entry, LL_ACCESS_NOLOCK);
+
+		command = GET_BASE_ADDR(entry, tSmeCmd, Link);
+		if (command && CSR_IS_DISCONNECT_COMMAND(command) &&
+				command->sessionId == sessionid){
+			disconnect_cmd_exist = true;
+			break;
+		}
+		entry = next_entry;
+	}
+	csrLLUnlock(&pmac->sme.smeCmdPendingList);
+	return disconnect_cmd_exist;
+}
+
 static void csrRoamJoinRspProcessor( tpAniSirGlobal pMac, tSirSmeJoinRsp *pSmeJoinRsp )
 {
    tListElem *pEntry = NULL;
@@ -7912,6 +7939,7 @@ static void csrRoamJoinRspProcessor( tpAniSirGlobal pMac, tSirSmeJoinRsp *pSmeJo
    else
    {
         tANI_U32 roamId = 0;
+        bool is_dis_pending;
         //The head of the active list is the request we sent
         //Try to get back the same profile and roam again
         if(pCommand)
@@ -7930,7 +7958,14 @@ static void csrRoamJoinRspProcessor( tpAniSirGlobal pMac, tSirSmeJoinRsp *pSmeJo
             csrNeighborRoamIndicateConnect(pMac, pSmeJoinRsp->sessionId, VOS_STATUS_E_FAILURE);
         }
 #endif
-        if (pCommand && (pSession->join_bssid_count < CSR_MAX_BSSID_COUNT))
+        /*
+         * if userspace has issued disconnection,
+         * driver should not continue connecting
+         */
+        is_dis_pending = is_disconnect_pending(pMac, pSession->sessionId);
+
+        if (pCommand && (pSession->join_bssid_count < CSR_MAX_BSSID_COUNT) &&
+            !is_dis_pending)
         {
             if(CSR_IS_WDS_STA( &pCommand->u.roamCmd.roamProfile ))
             {
@@ -7961,6 +7996,10 @@ static void csrRoamJoinRspProcessor( tpAniSirGlobal pMac, tSirSmeJoinRsp *pSmeJo
           if (pSession->join_bssid_count >= CSR_MAX_BSSID_COUNT)
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                FL("Excessive Join Request Failures"));
+
+          if (is_dis_pending)
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+               FL("disconnect is pending, complete roam"));
           pSession->join_bssid_count = 0;
           csrRoamComplete(pMac, eCsrNothingToJoin, NULL);
         }

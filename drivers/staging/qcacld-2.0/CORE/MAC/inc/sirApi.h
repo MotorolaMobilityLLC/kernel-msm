@@ -4879,6 +4879,14 @@ typedef enum
    WIFI_SCAN_COMPLETE,
 } tWifiScanEventType;
 
+/**
+ * enum extscan_configuration_flags - extscan config flags
+ * @EXTSCAN_LP_EXTENDED_BATCHING: extended batching
+ */
+enum extscan_configuration_flags {
+	EXTSCAN_LP_EXTENDED_BATCHING = 0x00000001,
+};
+
 typedef struct
 {
    tSirMacAddr    bssid;
@@ -5175,6 +5183,7 @@ typedef struct
  * @max_dwell_time_active: per bucket maximum active dwell time
  * @min_dwell_time_passive: per bucket minimum passive dwell time
  * @max_dwell_time_passive: per bucket maximum passive dwell time
+ * @configuration_flags: configuration flags
  * @buckets: bucket list
  */
 typedef struct
@@ -5192,6 +5201,7 @@ typedef struct
 	uint32_t                max_dwell_time_active;
 	uint32_t                min_dwell_time_passive;
 	uint32_t                max_dwell_time_passive;
+	uint32_t                configuration_flags;
 	tSirWifiScanBucketSpec  buckets[WLAN_EXTSCAN_MAX_BUCKETS];
 } tSirWifiScanCmdReqParams, *tpSirWifiScanCmdReqParams;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -66,6 +66,7 @@ typedef struct _HTC_TX_PACKET_INFO {
 #define HTC_TX_PACKET_TAG_INTERNAL     1                                /* internal tags start here */
 #define HTC_TX_PACKET_TAG_USER_DEFINED (HTC_TX_PACKET_TAG_INTERNAL + 9) /* user-defined tags start here */
 #define HTC_TX_PACKET_TAG_BUNDLED      HTC_TX_PACKET_TAG_USER_DEFINED + 1 /* indicate this is bundled TX packet */
+#define HTC_TX_PACKET_TAG_AUTO_PM      HTC_TX_PACKET_TAG_USER_DEFINED + 2 /* indicate this is AUTO PM tagged */
 
 #define HTC_TX_PACKET_FLAG_FIXUP_NETBUF (1 << 0)
 

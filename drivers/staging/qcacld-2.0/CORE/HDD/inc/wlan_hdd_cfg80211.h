@@ -526,7 +526,8 @@ enum qca_wlan_vendor_attr_extscan_config_params
     /* Signed 32-bit value */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_SSID_THRESHOLD_PARAM_RSSI_HIGH,
 
-
+    /* Unsigned 32-bit value; a bitmask w/additional extscan config flag. */
+    QCA_WLAN_VENDOR_ATTR_EXTSCAN_CONFIGURATION_FLAGS,
 
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_AFTER_LAST,

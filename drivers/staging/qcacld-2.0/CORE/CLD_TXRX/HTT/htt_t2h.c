@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -146,6 +146,7 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
     switch (msg_type) {
     case HTT_T2H_MSG_TYPE_VERSION_CONF:
         {
+            htc_pm_runtime_put(pdev->htc_pdev);
             pdev->tgt_ver.major = HTT_VER_CONF_MAJOR_GET(*msg_word);
             pdev->tgt_ver.minor = HTT_VER_CONF_MINOR_GET(*msg_word);
             adf_os_print("target uses HTT version %d.%d; host uses %d.%d\n",
@@ -290,6 +291,7 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
             }
             ol_tx_single_completion_handler(
                 pdev->txrx_pdev, compl_msg->status, compl_msg->desc_id);
+            htc_pm_runtime_put(pdev->htc_pdev);
             HTT_TX_SCHED(pdev);
             break;
         }
@@ -303,6 +305,7 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
             cookie |= ((u_int64_t) (*(msg_word + 2))) << 32;
 
             stats_info_list = (u_int8_t *) (msg_word + 3);
+            htc_pm_runtime_put(pdev->htc_pdev);
             ol_txrx_fw_stats_handler(pdev->txrx_pdev, cookie, stats_info_list);
             break;
         }
@@ -353,6 +356,7 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
             u_int8_t *op_msg_buffer;
             u_int8_t *msg_start_ptr;
 
+            htc_pm_runtime_put(pdev->htc_pdev);
             msg_start_ptr = (u_int8_t *)msg_word;
             op_code = HTT_WDI_IPA_OP_RESPONSE_OP_CODE_GET(*msg_word);
             msg_word++;

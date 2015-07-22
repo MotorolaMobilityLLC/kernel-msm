@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -395,6 +395,7 @@ htt_htc_attach(struct htt_pdev_t *pdev)
     connect.EpCallbacks.EpTxComplete = htt_h2t_send_complete;
     connect.EpCallbacks.EpTxCompleteMultiple = NULL;
     connect.EpCallbacks.EpRecv = htt_t2h_msg_handler;
+    connect.EpCallbacks.EpResumeTxQueue = htt_tx_resume_handler;
 
     /* rx buffers currently are provided by HIF, not by EpRecvRefill */
     connect.EpCallbacks.EpRecvRefill = NULL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -60,6 +60,14 @@
 #define container_of(ptr, type, member) ((type *)( \
                 (char *)(ptr) - (char *)(&((type *)0)->member) ) )
 #endif
+
+void
+htt_tx_resume_handler(void *context)
+{
+   struct htt_pdev_t *pdev =  (struct htt_pdev_t *) context;
+
+   htt_tx_sched(pdev);
+}
 
 static void
 htt_h2t_send_complete_free_netbuf(
@@ -332,6 +340,7 @@ htt_h2t_rx_ring_cfg_msg_ll(struct htt_pdev_t *pdev)
 #ifdef ATH_11AC_TXCOMPACT
     if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
         htt_htc_misc_pkt_list_add(pdev, pkt);
+        htc_pm_runtime_put(pdev->htc_pdev);
     }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
@@ -623,6 +632,7 @@ htt_h2t_sync_msg(struct htt_pdev_t *pdev, u_int8_t sync_cnt)
 #ifdef ATH_11AC_TXCOMPACT
     if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
         htt_htc_misc_pkt_list_add(pdev, pkt);
+        htc_pm_runtime_put(pdev->htc_pdev);
     }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
@@ -694,6 +704,7 @@ htt_h2t_aggr_cfg_msg(struct htt_pdev_t *pdev,
 #ifdef ATH_11AC_TXCOMPACT
     if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
         htt_htc_misc_pkt_list_add(pdev, pkt);
+        htc_pm_runtime_put(pdev->htc_pdev);
     }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
@@ -795,8 +806,10 @@ int htt_h2t_ipa_uc_rsc_cfg_msg(struct htt_pdev_t *pdev)
     SET_HTC_PACKET_NET_BUF_CONTEXT(&pkt->htc_pkt, msg);
 
 #ifdef ATH_11AC_TXCOMPACT
-    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK)
+    if (HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt) == A_OK) {
         htt_htc_misc_pkt_list_add(pdev, pkt);
+        htc_pm_runtime_put(pdev->htc_pdev);
+    }
 #else
     HTCSendPkt(pdev->htc_pdev, &pkt->htc_pkt);
 #endif

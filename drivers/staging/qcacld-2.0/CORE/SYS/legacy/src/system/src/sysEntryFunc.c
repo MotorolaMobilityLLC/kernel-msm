@@ -190,7 +190,9 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
             ret = (tSirRetStatus) limPostMsgApi(pMac, pMsg);
             if (ret != eSIR_SUCCESS)
             {
-                PELOGE(sysLog(pMac, LOGE, FL("posting to LIM2 failed, ret %d\n"), ret);)
+                /* Print only one debug failure out of 512 failure messages */
+                if(pMac->sys.gSysBbtReceived & 0x0200)
+                   sysLog(pMac, LOGE, FL("posting to LIM2 failed, ret %d\n"), ret);
                 goto fail;
             }
             pMac->sys.gSysBbtPostedToLim++;

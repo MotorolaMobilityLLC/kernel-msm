@@ -3676,7 +3676,7 @@ VOS_STATUS csrNeighborRoamMergeChannelLists(
              __func__, inputNumOfChannels);
          return VOS_STATUS_E_INVAL;
     }
-    if (outputNumOfChannels > WNI_CFG_VALID_CHANNEL_LIST_LEN)
+    if (outputNumOfChannels >= WNI_CFG_VALID_CHANNEL_LIST_LEN)
     {
          VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
              "%s: Wrong Number of Output Channels %d",

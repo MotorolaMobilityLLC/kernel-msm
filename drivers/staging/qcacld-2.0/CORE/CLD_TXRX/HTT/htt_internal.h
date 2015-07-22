@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -362,6 +362,9 @@ htt_htc_attach(struct htt_pdev_t *pdev);
 
 void
 htt_t2h_msg_handler(void *context, HTC_PACKET *pkt);
+
+void
+htt_tx_resume_handler(void *);
 
 void
 htt_h2t_send_complete(void *context, HTC_PACKET *pkt);

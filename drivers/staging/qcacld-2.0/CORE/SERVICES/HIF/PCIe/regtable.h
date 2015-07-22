@@ -112,6 +112,7 @@ typedef struct targetdef_s {
     u_int32_t d_PCIE_INTR_FIRMWARE_MASK;
     u_int32_t d_PCIE_INTR_CE_MASK_ALL;
     u_int32_t d_CORE_CTRL_CPU_INTR_MASK;
+    u_int32_t d_FW_RAM_CONFIG_ADDRESS;
     u_int32_t d_SR_WR_INDEX_ADDRESS;
     u_int32_t d_DST_WATERMARK_ADDRESS;
 
@@ -368,6 +369,7 @@ typedef struct targetdef_s {
 #define PCIE_INTR_CLR_ADDRESS                    (sc->targetdef->d_PCIE_INTR_CLR_ADDRESS)
 #define PCIE_INTR_FIRMWARE_MASK                  (sc->targetdef->d_PCIE_INTR_FIRMWARE_MASK)
 #define PCIE_INTR_CE_MASK_ALL                    (sc->targetdef->d_PCIE_INTR_CE_MASK_ALL)
+#define FW_RAM_CONFIG_ADDRESS                    (sc->targetdef->d_FW_RAM_CONFIG_ADDRESS)
 #define CORE_CTRL_CPU_INTR_MASK                  (sc->targetdef->d_CORE_CTRL_CPU_INTR_MASK)
 #define PCIE_INTR_CAUSE_ADDRESS                  (sc->targetdef->d_PCIE_INTR_CAUSE_ADDRESS)
 #define SOC_RESET_CONTROL_ADDRESS                (sc->targetdef->d_SOC_RESET_CONTROL_ADDRESS)

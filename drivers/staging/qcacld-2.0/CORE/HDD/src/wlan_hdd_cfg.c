@@ -2215,6 +2215,22 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_ENABLE_FW_HASH_CHECK_MAX),
 #endif
 
+#ifdef FEATURE_RUNTIME_PM
+   REG_VARIABLE( CFG_ENABLE_RUNTIME_PM, WLAN_PARAM_Integer,
+                 hdd_config_t, runtime_pm,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_ENABLE_RUNTIME_PM_DEFAULT,
+                 CFG_ENABLE_RUNTIME_PM_MIN,
+                 CFG_ENABLE_RUNTIME_PM_MAX ),
+
+   REG_VARIABLE( CFG_RUNTIME_PM_AUTO_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, runtime_pm_delay,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_RUNTIME_PM_AUTO_DEFAULT,
+                 CFG_RUNTIME_PM_AUTO_MIN,
+                 CFG_RUNTIME_PM_AUTO_MAX ),
+#endif
+
    REG_VARIABLE( CFG_ENABLE_HOST_NSOFFLOAD_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fhostNSOffload,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -4476,10 +4492,17 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [mcastBcastFilterSetting] Value = [%u] ",pHddCtx->cfg_ini->mcastBcastFilterSetting);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [fhostArpOffload] Value = [%u] ",pHddCtx->cfg_ini->fhostArpOffload);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ssdp] Value = [%u] ", pHddCtx->cfg_ini->ssdp);
+
 #ifdef FEATURE_SECURE_FIRMWARE
   hddLog(LOG2, "Name = [enable_fw_hash_check] Value = [%u]",
          pHddCtx->cfg_ini->enable_fw_hash_check);
 #endif
+
+#ifdef FEATURE_RUNTIME_PM
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [runtime_pm] Value = [%u] ", pHddCtx->cfg_ini->runtime_pm);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [runtime_pm_delay] Value = [%u] ", pHddCtx->cfg_ini->runtime_pm_delay);
+#endif
+
 #ifdef FEATURE_WLAN_RA_FILTERING
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [RArateLimitInterval] Value = [%u] ", pHddCtx->cfg_ini->RArateLimitInterval);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [IsRArateLimitEnabled] Value = [%u] ", pHddCtx->cfg_ini->IsRArateLimitEnabled);

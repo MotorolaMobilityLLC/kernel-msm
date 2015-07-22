@@ -561,7 +561,6 @@ static int wlan_hdd_execute_remain_on_channel(hdd_adapter_t *pAdapter,
     else
          duration = P2P_ROC_DURATION_MULTIPLIER_GO_ABSENT * duration;
 
-
     hdd_prevent_suspend(WIFI_POWER_EVENT_WAKELOCK_ROC);
     INIT_COMPLETION(pAdapter->rem_on_chan_ready_event);
 

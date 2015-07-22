@@ -498,6 +498,7 @@ HIF_PCI_CE_recv_data(struct CE_handle *copyeng, void *ce_context, void *transfer
 
     compl_queue_head = compl_queue_tail = NULL;
     do {
+        hif_pm_runtime_mark_last_busy(sc->dev);
         adf_os_spin_lock(&pipe_info->completion_freeq_lock);
         compl_state = pipe_info->completion_freeq_head;
         ASSERT(compl_state != NULL);
@@ -2991,3 +2992,92 @@ void HIFIpaGetCEResource(HIF_DEVICE *hif_device,
 }
 #endif /* IPA_UC_OFFLOAD */
 
+
+#ifdef FEATURE_RUNTIME_PM
+int hif_pm_runtime_get(HIF_DEVICE *hif_device)
+{
+	struct HIF_CE_state *hif_state = (struct HIF_CE_state *)hif_device;
+	struct hif_pci_softc *sc = hif_state->sc;
+	int ret = 0;
+
+	if (adf_os_atomic_read(&sc->pm_state) == HIF_PM_RUNTIME_STATE_ON) {
+		sc->pm_stats.runtime_get++;
+		ret = __hif_pm_runtime_get(sc->dev);
+
+		/* Get can return 1 if the device is already active, just return
+		 * success in that case
+		 */
+		if (ret > 0)
+			ret = 0;
+
+		if (ret < 0)
+			hif_pm_runtime_put(hif_device);
+
+		return ret;
+	}
+
+	sc->pm_stats.request_resume++;
+	sc->pm_stats.last_resume_caller = (void *)_RET_IP_;
+	ret = hif_pm_request_resume(sc->dev);
+
+	return -EAGAIN;
+}
+
+int hif_pm_runtime_put(HIF_DEVICE *hif_device)
+{
+	struct HIF_CE_state *hif_state = (struct HIF_CE_state *)hif_device;
+	struct hif_pci_softc *sc = hif_state->sc;
+	int ret = 0;
+
+	sc->pm_stats.runtime_put++;
+
+	hif_pm_runtime_mark_last_busy(sc->dev);
+	ret = hif_pm_runtime_put_auto(sc->dev);
+
+	return 0;
+}
+
+int hif_pm_runtime_prevent_suspend(void *ol_sc)
+{
+	struct ol_softc *sc = (struct ol_softc *)ol_sc;
+	struct hif_pci_softc *hif_sc = sc->hif_sc;
+	int ret = 0;
+
+	hif_sc->pm_stats.prevent_suspend++;
+
+	ret = __hif_pm_runtime_get(hif_sc->dev);
+
+	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
+			"%s: request resume:%pS in pm_state:%d ret: %d\n",
+			__func__, (void *)_RET_IP_,
+			adf_os_atomic_read(&hif_sc->pm_state), ret);
+	return 0;
+
+}
+int hif_pm_runtime_allow_suspend(void *ol_sc)
+{
+	struct ol_softc *sc = (struct ol_softc *)ol_sc;
+	struct hif_pci_softc *hif_sc = sc->hif_sc;
+	int ret = 0;
+
+	hif_sc->pm_stats.allow_suspend++;
+
+	hif_pm_runtime_mark_last_busy(hif_sc->dev);
+	ret = hif_pm_runtime_put_auto(hif_sc->dev);
+
+	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
+			"%s: %pS in pm_state:%d ret: %d\n",
+			__func__, (void *)_RET_IP_,
+			adf_os_atomic_read(&hif_sc->pm_state), ret);
+	return 0;
+}
+#else
+int hif_pm_runtime_prevent_suspend(void *ol_sc)
+{
+	return 0;
+}
+int hif_pm_runtime_allow_suspend(void *ol_sc)
+{
+	return 0;
+}
+#endif

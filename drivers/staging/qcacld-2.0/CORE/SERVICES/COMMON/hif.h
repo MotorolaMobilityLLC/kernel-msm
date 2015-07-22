@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -813,6 +813,22 @@ void HIFIpaGetCEResource(HIF_DEVICE *hif_device,
                           A_UINT32 *ce_reg_paddr);
 #endif /* IPA_UC_OFFLOAD */
 
+#ifdef FEATURE_RUNTIME_PM
+/* Runtime power management API of HIF to control
+ * runtime pm. During Runtime Suspend the get API
+ * return -EAGAIN. The caller can queue the cmd or return.
+ * The put API decrements the usage count.
+ * The get API increments the usage count.
+ * The API's are exposed to HTT and WMI Services only.
+ */
+int hif_pm_runtime_get(HIF_DEVICE *);
+int hif_pm_runtime_put(HIF_DEVICE *);
+#else
+static inline int hif_pm_runtime_get(HIF_DEVICE *device) { return 0; }
+static inline int hif_pm_runtime_put(HIF_DEVICE *device) { return 0; }
+#endif
+int hif_pm_runtime_prevent_suspend(void *ol_sc);
+int hif_pm_runtime_allow_suspend(void *ol_sc);
 #ifdef __cplusplus
 }
 #endif

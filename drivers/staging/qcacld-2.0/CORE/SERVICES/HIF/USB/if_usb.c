@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -308,7 +308,7 @@ static int hif_usb_suspend(struct usb_interface *interface, pm_message_t state)
 	sc->local_state = state;
 	/* No need to send WMI_PDEV_SUSPEND_CMDID to FW if WOW is enabled */
 	if (wma_is_wow_mode_selected(temp_module)) {
-		if (wma_enable_wow_in_fw(temp_module)) {
+		if (wma_enable_wow_in_fw(temp_module, 0)) {
 			pr_warn("%s[%d]: fail\n", __func__, __LINE__);
 			return -1;
 		}
@@ -358,9 +358,10 @@ static int hif_usb_resume(struct usb_interface *interface)
 #endif
 	/* No need to send WMI_PDEV_RESUME_CMDID to FW if WOW is enabled */
 	if (!wma_is_wow_mode_selected(temp_module)) {
-		wma_resume_target(temp_module);
-	} else if (wma_disable_wow_in_fw(temp_module)) {
-	    return (-1);
+		wma_resume_target(temp_module, 0);
+	} else if (wma_disable_wow_in_fw(temp_module, 0)) {
+		pr_warn("%s[%d]: fail\n", __func__, __LINE__);
+		return (-1);
 	}
 
 	return 0;
@@ -580,4 +581,24 @@ void hif_set_fw_info(void *ol_sc, u32 target_fw_version)
 {
 	((struct ol_softc *)ol_sc)->target_fw_version = target_fw_version;
 }
+
+int hif_pm_runtime_prevent_suspend(void *ol_sc)
+{
+	if (usb_sc && usb_sc->interface)
+		return usb_autopm_get_interface_async(usb_sc->interface);
+	else {
+		pr_err("%s: USB interface isn't ready for autopm\n", __func__);
+		return 0;
+	}
+}
+
+int hif_pm_runtime_allow_suspend(void *ol_sc)
+{
+	if (usb_sc && usb_sc->interface)
+		usb_autopm_put_interface_async(usb_sc->interface);
+	else
+		pr_err("%s: USB interface isn't ready for autopm\n", __func__);
+	return 0;
+}
+
 MODULE_LICENSE("Dual BSD/GPL");
