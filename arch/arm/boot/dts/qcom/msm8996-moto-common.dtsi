@@ -444,3 +444,10 @@
 		qca,bt-vdd-xtal-voltage-level = <1800000 1800000>;
 	};
 };
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		/* HACK, disable PMIC LED because it keeps detected short */
+		/delete-node/ qcom,leds@d800;
+	};
+};
