@@ -1416,7 +1416,7 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 	}
 
 	if (hap->act_type == QPNP_HAP_LRA) {
-		hap->auto_res_mode = QPNP_HAP_AUTO_RES_ZXD_EOP;
+		hap->auto_res_mode = QPNP_HAP_AUTO_RES_QWD;
 		rc = of_property_read_string(spmi->dev.of_node,
 				"qcom,lra-auto-res-mode", &temp_str);
 		if (!rc) {
@@ -1435,7 +1435,7 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 			return rc;
 		}
 
-		hap->lra_high_z = QPNP_HAP_LRA_HIGH_Z_OPT3;
+		hap->lra_high_z = QPNP_HAP_LRA_HIGH_Z_OPT1;
 		rc = of_property_read_string(spmi->dev.of_node,
 				"qcom,lra-high-z", &temp_str);
 		if (!rc) {
@@ -1451,8 +1451,9 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 			dev_err(&spmi->dev, "Unable to read LRA high-z\n");
 			return rc;
 		}
-
-		hap->lra_res_cal_period = QPNP_HAP_RES_CAL_PERIOD_MAX;
+		hap->lra_res_cal_period =
+			(hap->auto_res_mode == QPNP_HAP_AUTO_RES_ZXD_EOP) ?
+			QPNP_HAP_RES_CAL_PERIOD_MAX : QPNP_HAP_RES_CAL_PERIOD_MIN;
 		rc = of_property_read_u32(spmi->dev.of_node,
 				"qcom,lra-res-cal-period", &temp);
 		if (!rc) {
