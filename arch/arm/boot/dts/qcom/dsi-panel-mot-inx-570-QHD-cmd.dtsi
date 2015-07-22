@@ -164,6 +164,9 @@
 		/* for Dynamic CABC */
 		qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 		qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
+
+		qcom,panel-roi-alignment = <720 720 16 16 0 0>;
+		qcom,partial-update-enabled;
 	};
 
 	mot_inx_570_QHD_1_cmd_v0: qcom,mdss_dsi_mot_inx_570_QHD_dualmipi1_cmd_v0 {
@@ -219,5 +222,8 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
+
+		qcom,panel-roi-alignment = <720 720 16 16 0 0>;
+		qcom,partial-update-enabled;
 	};
 };
