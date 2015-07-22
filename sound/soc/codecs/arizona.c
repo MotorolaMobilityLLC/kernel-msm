@@ -1506,10 +1506,13 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
 	struct arizona *arizona = priv->arizona;
 	struct slim_ch prop;
-	int ret, i;
+	int ret, i, j = 0;
 	u32 *porth;
 	u16 *handles, *group;
 	int chcnt;
+	unsigned int slim_status;
+	bool slim_enabled = false;
+	bool slim_rx_good = false;
 
 	/* BODGE: should do this per port */
 	switch (w->shift) {
@@ -1558,7 +1561,6 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-	case SND_SOC_DAPM_POST_PMU:
 		dev_dbg(arizona->dev, "Start slimbus\n");
 		ret = slim_define_ch(slim_audio_dev, &prop, handles, chcnt,
 				     true, group);
@@ -1574,7 +1576,8 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 						handles[i]);
 			if (ret != 0) {
 				mutex_unlock(&slim_rx_lock);
-				dev_err(arizona->dev, "sink connect fail %d: %d\n",
+				dev_err(arizona->dev,
+					"sink connect fail %d: %d\n",
 					i, ret);
 				return ret;
 			}
@@ -1589,6 +1592,74 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 		}
 		break;
 
+	case SND_SOC_DAPM_POST_PMU:
+		while (!slim_rx_good && j < 5) {
+			slim_status = snd_soc_read(codec,
+					ARIZONA_SLIMBUS_RX_PORT_STATUS);
+			slim_enabled = !!((slim_status) & (1 << w->shift));
+			if (!slim_enabled) {
+				msleep(100);
+				dev_err(arizona->dev,
+					"Re-enabling SLIMRX%d Try %d\n",
+					w->shift, j);
+				ret = slim_control_ch(slim_audio_dev, *group,
+					SLIM_CH_REMOVE, true);
+				if (ret != 0)
+					dev_err(arizona->dev,
+						"Failed to remove rx: %d\n",
+					ret);
+
+				/* Cargo culted from QC */
+				usleep_range(15000, 15000);
+
+				snd_soc_update_bits(codec,
+					ARIZONA_SLIMBUS_RX_CHANNEL_ENABLE,
+						1 << w->shift, 0);
+
+				ret = slim_define_ch(slim_audio_dev, &prop,
+					handles, chcnt, true, group);
+				if (ret != 0) {
+					dev_err(arizona->dev,
+						"slim_define_ch() failed: %d\n",
+						ret);
+					return ret;
+				}
+
+				for (i = 0; i < chcnt; i++) {
+					ret = slim_connect_sink(slim_audio_dev,
+						&porth[i], 1,
+						handles[i]);
+					if (ret != 0) {
+						dev_err(arizona->dev,
+						"sink connect fail %d: %d\n",
+						i, ret);
+						return ret;
+					}
+				}
+
+				ret = slim_control_ch(slim_audio_dev, *group,
+					SLIM_CH_ACTIVATE, true);
+				if (ret != 0) {
+					dev_err(arizona->dev,
+						"Failed to activate: %d\n",
+						ret);
+					return ret;
+				}
+
+				snd_soc_update_bits(codec,
+					ARIZONA_SLIMBUS_RX_CHANNEL_ENABLE,
+						1 << w->shift, 1 << w->shift);
+			}  else {
+				slim_rx_good = true;
+			}
+			j++;
+		}
+		mutex_unlock(&slim_rx_lock);
+		if (!slim_rx_good)
+			dev_err(arizona->dev,
+				"CANNOT Establish slim rx%d link.\n", w->shift);
+
+		break;
 	case SND_SOC_DAPM_POST_PMD:
 	case SND_SOC_DAPM_PRE_PMD:
 		dev_dbg(arizona->dev, "Stop slimbus Rx %x\n", *group);
