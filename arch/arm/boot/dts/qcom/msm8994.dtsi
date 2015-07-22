@@ -1463,8 +1463,8 @@
 		qcom,master-id = <86>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi5_active1 &spi5_active2 &spi5_cs0_active>;
-		pinctrl-1 = <&spi5_sleep1 &spi5_sleep2 &spi5_cs0_sleep>;
+		pinctrl-0 = <&spi5_active1 &spi5_active2>;
+		pinctrl-1 = <&spi5_sleep1 &spi5_sleep2>;
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp1_qup5_spi_apps_clk>;
@@ -1490,8 +1490,8 @@
 		qcom,master-id = <86>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi5_active1 &spi5_active2 &spi5_cs0_active>;
-		pinctrl-1 = <&spi5_sleep1 &spi5_sleep2 &spi5_cs0_sleep>;
+		pinctrl-0 = <&spi5_active1 &spi5_active2>;
+		pinctrl-1 = <&spi5_sleep1 &spi5_sleep2>;
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp1_qup5_spi_apps_clk>;

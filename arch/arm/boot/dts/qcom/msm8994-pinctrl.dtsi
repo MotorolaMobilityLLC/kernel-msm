@@ -262,32 +262,6 @@
 			};
 		};
 
-		spi5_cs0_active {
-			/* CS1 */
-			qcom,pins = <&gp 23>;
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <2>;
-			label = "spi5-cs0-active";
-
-			spi5_cs0_active: cs0_active {
-				drive-strength = <2>;
-				bias-disable = <0>;
-			};
-		};
-
-		spi5_cs0_suspend {
-			/* CS1 */
-			qcom,pins = <&gp 23>;
-			qcom,num-grp-pins = <1>;
-			qcom,pin-func = <2>;
-			label = "spi5-cs0-suspend";
-
-			spi5_cs0_sleep: cs0_sleep {
-				drive-strength = <2>;
-				bias-disable = <0>;
-			};
-		};
-
 		pmx_i2c_1 {
 			qcom,pins = <&gp 2>, <&gp 3>; /* SDA, SCL */
 			qcom,num-grp-pins = <2>;

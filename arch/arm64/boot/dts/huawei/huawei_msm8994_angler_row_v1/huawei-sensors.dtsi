@@ -41,9 +41,9 @@
 &soc {
 	tlmm_pinmux: pinctrl@fd510000 {
 		sensorhub_ctrl {
-			/* NRST, BOOT0, AP2SH, SH2AP */
-			qcom,pins = <&gp 93>, <&gp 94>, <&gp 39>, <&gp 41>;
-			qcom,num-grp-pins = <4>;
+			/* NRST, BOOT0, SPI5 CS, AP2SH, SH2AP */
+			qcom,pins = <&gp 93>, <&gp 94>, <&gp 23>, <&gp 39>, <&gp 41>;
+			qcom,num-grp-pins = <5>;
 			qcom,pin-func = <0>;
 			label = "sensorhub_ctrl";
 			sensorhub_ctrl_sleep: sensorhub_ctrl_sleep {
@@ -67,20 +67,30 @@
 
 &spi_5 {
 	sensorhub@0 {
-		compatible = "contexthub,spich";
+		compatible = "nanohub";
 		reg = <0>;
 		spi-max-frequency = <50000000>;
 		spi-cpol;
 		spi-cpha;
 
-		contexthub,ap2sh = <&msm_gpio 39 0x00>;
-		contexthub,sh2ap = <&msm_gpio 41 0x00>;
-		contexthub,nrst = <&msm_gpio 93 0x00>;
-		contexthub,boot0 = <&msm_gpio 94 0x00>;
-
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <41 0x2>;
-		interrupt-names = "contexthub_wake_irq";
+		sensorhub,wakeup-gpio = <&msm_gpio 39 0>;
+		sensorhub,nreset-gpio = <&msm_gpio 93 0>;
+		sensorhub,boot0-gpio = <&msm_gpio 94 0>;
+		sensorhub,irq1-gpio = <&msm_gpio 41 0>;
+		sensorhub,spi-cs-gpio = <&msm_gpio 23 0>;
+		sensorhub,bl-addr = <0x08000000>;
+		sensorhub,kernel-addr = <0x0800C000>;
+		sensorhub,shared-addr = <0x08020000>;
+		sensorhub,flash-banks = <0 0x08000000 0x04000>,
+			<3 0x0800C000 0x04000>,
+			<4 0x08010000 0x10000>,
+			<5 0x08020000 0x20000>;
+		sensorhub,num-flash-banks = <4>;
+		sensorhub,shared-flash-banks = <6 0x08040000 0x20000>,
+			<7 0x08060000 0x20000>;
+		sensorhub,num-shared-flash-banks = <2>;
 
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&sensorhub_ctrl_active>;
