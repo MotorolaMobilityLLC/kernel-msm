@@ -182,6 +182,7 @@ struct mdss_data_type {
 
 	struct mutex fs_ena_lock;
 	int suspend_fs_ena;
+	u8 clk_ena;
 	u8 fs_ena;
 	u8 vsync_ena;
 

@@ -852,6 +852,7 @@ void mdss_mdp_clk_ctrl(int enable)
 		if (enable)
 			mdss_mdp_footswitch_ctrl(mdata, true);
 
+		mdata->clk_ena = enable;
 		mdss_mdp_clk_update(MDSS_CLK_AHB, enable);
 		mdss_mdp_clk_update(MDSS_CLK_AXI, enable);
 		mdss_mdp_clk_update(MDSS_CLK_MDP_CORE, enable);
@@ -1294,6 +1295,7 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	}
 
 	mdata->res_init = true;
+	mdata->clk_ena = false;
 	mdss_mdp_hw.irq_info->irq_mask = MDSS_MDP_DEFAULT_INTR_MASK;
 	mdss_mdp_hw.irq_info->irq_ena = false;
 
