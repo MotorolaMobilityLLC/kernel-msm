@@ -1868,8 +1868,6 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 					&dd->bam.cons.config);
 		}
 	}
-	else if (master->bus_num == 12)
-		reset_core(dd);
 
 	if (dd->suspended || !msm_spi_is_valid_state(dd)) {
 		dev_err(dd->dev, "%s: SPI operational state not valid\n",
@@ -1940,21 +1938,6 @@ static int msm_spi_unprepare_transfer_hardware(struct spi_master *master)
 	pm_runtime_mark_last_busy(dd->dev);
 	pm_runtime_put_autosuspend(dd->dev);
 	return 0;
-}
-
-int msm_spi_ctl_for_tz(struct spi_device *spi,int enable)
-{
-	int ret = 0;
-
-	if(!spi)
-		return -EINVAL;
-	if(enable)
-		ret = msm_spi_prepare_transfer_hardware(spi->master);
-	else
-		ret = msm_spi_unprepare_transfer_hardware(spi->master);
-	dev_info(&spi->dev, "%s: clk enable = %d,ret=%d\n",__func__, enable,ret);
-
-	return ret;
 }
 
 static int msm_spi_setup(struct spi_device *spi)

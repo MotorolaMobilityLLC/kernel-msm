@@ -58,6 +58,17 @@
 				input-enable;
 			};
 		};
+		fpc_mid_default {
+			qcom,pins = <&gp 102>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "fpc_mid_default";
+			fpc_mid_default: default {
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
 		spi12_active {
 			/* MOSI, MISO, CS, CLK */
 			qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
@@ -98,10 +109,10 @@
 		qcom,bam-consumer-pipe-index = <22>;
 		qcom,bam-producer-pipe-index = <23>;
 		qcom,master-id = <86>;
-		qcom,use-pinctrl;
-		pinctrl-names = "spi_default", "spi_sleep";
-		pinctrl-0 = <&spi12_active>;
-		pinctrl-1 = <&spi12_sleep>;
+		#qcom,use-pinctrl;
+		#pinctrl-names = "spi_default", "spi_sleep";
+		#pinctrl-0 = <&spi12_active>;
+		#pinctrl-1 = <&spi12_sleep>;
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
 			<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
@@ -119,7 +130,7 @@
 		input-device-name = "fpc1020";
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <90 0x0>;
-		fpc1020,moduleid_gpio = <&msm_gpio 102 0>;
+		fpc,gpio_mid = <&msm_gpio 102 0>;
 		fpc,gpio_rst    = <&msm_gpio 89 0>;
 		fpc,gpio_irq    = <&msm_gpio 90 0>;
 		vcc_spi-supply  = <&pm8994_s4>;
@@ -136,10 +147,16 @@
 
 		pinctrl-names = "fpc1020_reset_reset",
 				"fpc1020_reset_active",
-				"fpc1020_irq_active";
+				"fpc1020_irq_active",
+				"fpc1020_mid_default",
+				"fpc1020_spi_active",
+				"fpc1020_spi_sleep";
 		pinctrl-0 = <&fpc_reset_reset>;
 		pinctrl-1 = <&fpc_reset_active>;
 		pinctrl-2 = <&fpc_irq_active>;
+		pinctrl-3 = <&fpc_mid_default>;
+		pinctrl-4 = <&spi12_active>;
+		pinctrl-5 = <&spi12_sleep>;
 		status = "ok";
 	};
 };

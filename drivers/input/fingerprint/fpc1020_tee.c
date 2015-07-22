@@ -53,6 +53,9 @@ static const char *const pctl_names[] = {
 	"fpc1020_reset_reset",
 	"fpc1020_reset_active",
 	"fpc1020_irq_active",
+	"fpc1020_mid_default",
+	"fpc1020_spi_active",
+	"fpc1020_spi_sleep",
 };
 
 struct vreg_config {
@@ -77,6 +80,7 @@ struct fpc1020_data {
 	struct wake_lock ttw_wl;
 	int irq_gpio;
 	int rst_gpio;
+	int mid_gpio;
 	struct input_dev *idev;
 	int irq_num;
 	int qup_id;
@@ -457,28 +461,38 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 		spi_bus_lock(fpc1020->spi->master);
 		fpc1020->prepared = true;
 
+		rc = select_pin_ctl(fpc1020, "fpc1020_spi_active");
+		if (rc)
+			goto exit_1;
+
+#ifdef SET_FABRIC
 		rc = spi_set_fabric(fpc1020, true);
 		if (rc)
-			goto exit_3;
+			goto exit_2;
+#endif
 		rc = set_clks(fpc1020, true);
 		if (rc)
-			goto exit_4;
+			goto exit_3;
 
 #ifdef SET_PIPE_OWNERSHIP
 		rc = set_pipe_ownership(fpc1020, true);
 		if (rc)
-			goto exit_5;
+			goto exit_4;
 #endif
 	} else if (!enable && fpc1020->prepared) {
 		rc = 0;
 #ifdef SET_PIPE_OWNERSHIP
 		(void)set_pipe_ownership(fpc1020, false);
-exit_5:
+exit_4:
 #endif
 		(void)set_clks(fpc1020, false);
-exit_4:
-		(void)spi_set_fabric(fpc1020, false);
 exit_3:
+#ifdef SET_FABRIC
+		(void)spi_set_fabric(fpc1020, false);
+exit_2:
+#endif
+		(void)select_pin_ctl(fpc1020, "fpc1020_spi_sleep");
+exit_1:
 		fpc1020->prepared = false;
 		spi_bus_unlock(fpc1020->spi->master);
 	} else {
@@ -578,6 +592,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
 	struct fpc1020_data *fpc1020 = handle;
 	input_event(fpc1020->idev, EV_MSC, MSC_SCAN, ++fpc1020->irq_num);
+	input_sync(fpc1020->idev);
 
 	/* Make sure 'wakeup_enabled' is updated before using it
 	 ** since this is interrupt context (other thread...) */
@@ -586,9 +601,7 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	if (fpc1020->wakeup_enabled) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
-	/* Send irq event and possible wakeup key event */
-	input_sync(fpc1020->idev);
-	dev_info(fpc1020->dev, "%s %d\n", __func__, fpc1020->irq_num);
+	dev_dbg(fpc1020->dev, "%s %d\n", __func__, fpc1020->irq_num);
 	return IRQ_HANDLED;
 }
 
@@ -646,6 +659,10 @@ static int fpc1020_probe(struct spi_device *spi)
 		goto exit;
 	rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_rst",
 					&fpc1020->rst_gpio);
+	if (rc)
+		goto exit;
+	rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_mid",
+					&fpc1020->mid_gpio);
 	if (rc)
 		goto exit;
 
@@ -711,7 +728,10 @@ static int fpc1020_probe(struct spi_device *spi)
 	rc = select_pin_ctl(fpc1020, "fpc1020_reset_active");
 	if (rc)
 		goto exit;
-
+	rc = select_pin_ctl(fpc1020, "fpc1020_mid_default");
+	if (rc)
+		goto exit;
+	dev_info(dev,"module id:%d\n", gpio_get_value(fpc1020->mid_gpio));
 	rc = of_property_read_u32(np, "fpc,event-type", &val);
 	fpc1020->event_type = rc < 0 ? EV_MSC : val;
 
@@ -773,6 +793,16 @@ static int fpc1020_probe(struct spi_device *spi)
 	if (of_property_read_bool(dev->of_node, "fpc,enable-on-boot")) {
 		dev_info(dev, "Enabling hardware\n");
 		(void)device_prepare(fpc1020, true);
+	}
+	rc = spi_set_fabric(fpc1020, true);
+	if (rc) {
+		dev_err(dev, "could not enable spi fabric\n");
+		goto exit;
+	}
+	rc = set_clks(fpc1020, false);
+	if (rc) {
+		dev_err(dev, "could not disable spi clk\n");
+		goto exit;
 	}
 
 	dev_info(dev, "%s: ok\n", __func__);

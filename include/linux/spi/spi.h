@@ -915,5 +915,4 @@ spi_unregister_device(struct spi_device *spi)
 
 extern const struct spi_device_id *
 spi_get_device_id(const struct spi_device *sdev);
-int msm_spi_ctl_for_tz(struct spi_device *spi,int enable);
 #endif /* __LINUX_SPI_H */
