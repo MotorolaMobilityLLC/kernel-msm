@@ -17,3 +17,18 @@
 		wl_host_wake = <&msm_gpio 37 0>;	/* wifi oob pin */
 	};
 };
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		pcie1_wake {
+			pcie1_wake_default: pcie1_wake_default {
+				/delete-property/bias-pull-down;
+				bias-pull-up;
+			};
+
+			pcie1_wake_sleep: pcie1_wake_sleep {
+				/delete-property/bias-disable;
+				bias-pull-up;
+			};
+		};
+	};
+};
