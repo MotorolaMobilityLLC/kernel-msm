@@ -348,6 +348,7 @@ struct qpnp_bms_chip {
     int             current_remain_capacity;
     int             warm_reset_shutdown_soc_valid_limit;
     int             estimate_new_ocv_flag;
+    const char      *battery_type;
 #endif
 };
 
@@ -371,8 +372,9 @@ static enum power_supply_property msm_bms_power_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-    POWER_SUPPLY_PROP_VOLTAGE_NOW,
-    POWER_SUPPLY_PROP_CURRENT_REMAIN_CAPACITY,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CURRENT_REMAIN_CAPACITY,
+	POWER_SUPPLY_PROP_BATTERY_TYPE,
 #endif
 };
 
@@ -4114,12 +4116,15 @@ static int qpnp_bms_power_get_property(struct power_supply *psy,
 		val->intval = chip->charge_cycles;
 		break;
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-    case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-        val->intval = estimate_ocv(chip,0);
-        break;
-    case POWER_SUPPLY_PROP_CURRENT_REMAIN_CAPACITY:
-        val->intval = get_prop_current_remain_capacity(chip);
-        break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = estimate_ocv(chip,0);
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_REMAIN_CAPACITY:
+		val->intval = get_prop_current_remain_capacity(chip);
+		break;
+	case POWER_SUPPLY_PROP_BATTERY_TYPE:
+		val->strval = chip->battery_type;
+		break;
 #endif
 	default:
 		return -EINVAL;
@@ -4410,6 +4415,7 @@ assign_data:
 	chip->default_rbatt_mohm = batt_data->default_rbatt_mohm;
 	chip->rbatt_capacitive_mohm = batt_data->rbatt_capacitive_mohm;
 	chip->flat_ocv_threshold_uv = batt_data->flat_ocv_threshold_uv;
+	chip->battery_type = batt_data->battery_type;
 
 	/* Override battery properties if specified in the battery profile */
 	if (batt_data->max_voltage_uv >= 0 && dt_data)

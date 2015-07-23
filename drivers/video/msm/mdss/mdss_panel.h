@@ -395,6 +395,7 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
+	const char *panel_name;
 };
 
 struct mdss_panel_data {
