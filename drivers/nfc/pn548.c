@@ -116,7 +116,6 @@ static ssize_t pn548_dev_read(struct file *filp, char __user *buf,
 	if (count > MAX_BUFFER_SIZE)
 	count = MAX_BUFFER_SIZE;
 
-wait:
 	if (isFirstPacket == false) {
 		ret = wait_event_interruptible_timeout(pn548_dev->read_wq,
 				gpio_get_value(pn548_dev->irq_gpio),
@@ -145,7 +144,7 @@ wait:
 	}
 
 	if (ret == -ERESTARTSYS)
-		goto wait;
+		return -0xFF;
 
 	/* Read data */
 	mutex_lock(&pn548_dev->read_mutex);
