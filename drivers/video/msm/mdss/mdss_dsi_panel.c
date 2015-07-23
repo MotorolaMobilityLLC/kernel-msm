@@ -1416,8 +1416,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	if (!panel_name)
 		pr_info("%s:%d, Panel name not specified\n",
 						__func__, __LINE__);
-	else
+	else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
+		pinfo->panel_name = panel_name;
+	}
 
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {

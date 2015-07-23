@@ -582,6 +582,26 @@ static ssize_t mdss_fb_get_src_split_info(struct device *dev,
 	return ret;
 }
 
+static ssize_t mdss_fb_get_panel_type(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	pinfo = &pdata->panel_info;
+
+	if (mfd->index == 0) {
+		if (pinfo && pinfo->panel_name)
+			return sprintf(buf, "%s\n", pinfo->panel_name);
+	}
+
+	return 0;
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO | S_IWUSR, mdss_fb_show_split,
 					mdss_fb_store_split);
@@ -595,6 +615,8 @@ static DEVICE_ATTR(msm_fb_src_split_info, S_IRUGO, mdss_fb_get_src_split_info,
 static DEVICE_ATTR(msm_fb_thermal_level, S_IRUGO | S_IWUSR,
 	mdss_fb_get_thermal_level, mdss_fb_set_thermal_level);
 
+static DEVICE_ATTR(mdss_fb_panel_type, S_IRUGO, mdss_fb_get_panel_type, NULL);
+
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_split.attr,
@@ -604,6 +626,7 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_panel_info.attr,
 	&dev_attr_msm_fb_src_split_info.attr,
 	&dev_attr_msm_fb_thermal_level.attr,
+	&dev_attr_mdss_fb_panel_type.attr,
 	NULL,
 };
 
