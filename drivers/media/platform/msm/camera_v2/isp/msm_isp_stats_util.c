@@ -105,7 +105,6 @@ static int32_t msm_isp_stats_buf_divert(struct vfe_device *vfe_dev,
 	int32_t rc = 0, frame_id = 0, drop_buffer = 0;
 	struct msm_isp_stats_event *stats_event = NULL;
 	struct msm_isp_sw_framskip *sw_skip = NULL;
-	unsigned long flags;
 
 	if (!vfe_dev || !done_buf || !ts || !buf_event || !stream_info ||
 		!comp_stats_type_mask) {
@@ -135,7 +134,6 @@ static int32_t msm_isp_stats_buf_divert(struct vfe_device *vfe_dev,
 		}
 	}
 
-	spin_lock_irqsave(&done_buf->lock, flags);
 	rc = vfe_dev->buf_mgr->ops->buf_divert(
 		vfe_dev->buf_mgr, done_buf->bufq_handle,
 		done_buf->buf_idx, &ts->buf_time,
@@ -150,10 +148,8 @@ static int32_t msm_isp_stats_buf_divert(struct vfe_device *vfe_dev,
 			[stream_info->stats_type] =
 			done_buf->buf_idx;
 		done_buf->frame_id = frame_id;
-		spin_unlock_irqrestore(&done_buf->lock, flags);
 		return rc;
 	}
-	spin_unlock_irqrestore(&done_buf->lock, flags);
 
 	if (drop_buffer) {
 		vfe_dev->buf_mgr->ops->put_buf(
@@ -568,6 +564,53 @@ static int msm_isp_stats_update_cgc_override(struct vfe_device *vfe_dev,
 		vfe_dev->hw_info->vfe_ops.stats_ops.update_cgc_override(
 			vfe_dev, stats_mask, stream_cfg_cmd->enable);
 	}
+	return 0;
+}
+
+int msm_isp_stats_reset(struct vfe_device *vfe_dev)
+{
+	int i = 0;
+	struct msm_vfe_stats_stream *stream_info = NULL;
+	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
+	struct msm_isp_bufq *bufq = NULL;
+
+	for (i = 0; i < MSM_ISP_STATS_MAX; i++) {
+		stream_info = &stats_data->stream_info[i];
+		if (stream_info->state != STATS_ACTIVE)
+			continue;
+
+		bufq = vfe_dev->buf_mgr->ops->get_bufq(vfe_dev->buf_mgr,
+			stream_info->bufq_handle);
+		if (!bufq) {
+			pr_err("%s Error! bufq is NULL\n", __func__);
+			continue;
+		}
+
+		if (bufq->buf_type != ISP_SHARE_BUF)
+			msm_isp_deinit_stats_ping_pong_reg(vfe_dev,
+				stream_info);
+		else
+			vfe_dev->buf_mgr->ops->flush_buf(vfe_dev->buf_mgr,
+				stream_info->bufq_handle,
+				MSM_ISP_BUFFER_FLUSH_ALL);
+	}
+
+	return 0;
+}
+
+int msm_isp_stats_restart(struct vfe_device *vfe_dev)
+{
+	int i = 0;
+	struct msm_vfe_stats_stream *stream_info = NULL;
+	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
+
+	for (i = 0; i < MSM_ISP_STATS_MAX; i++) {
+		stream_info = &stats_data->stream_info[i];
+			if (stream_info->state < STATS_ACTIVE)
+				continue;
+		msm_isp_init_stats_ping_pong_reg(vfe_dev, stream_info);
+	}
+
 	return 0;
 }
 
