@@ -221,6 +221,8 @@ static int mdss_quickdraw_execute(void *data,
 	memset(&prim_commit, 0, sizeof(struct mdp_display_commit));
 	prim_commit.flags = MDP_DISPLAY_COMMIT_OVERLAY;
 	prim_commit.wait_for_finish = 1;
+	prim_commit.l_roi.w = mfd->fbi->var.xres;
+	prim_commit.l_roi.h = mfd->fbi->var.yres;
 
 	mdss_fb_pan_display_ex(mfd->fbi, &prim_commit);
 
