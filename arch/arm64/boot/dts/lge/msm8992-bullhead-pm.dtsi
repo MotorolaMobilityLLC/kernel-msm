@@ -55,6 +55,8 @@
 	status = "ok";
 	qcom,charge-unknown-battery;
 	qcom,iterm-ma = <100>;
+	qcom,float-voltage-comp = <13>; /* 4.1V */
+	qcom,fastchg-current-comp = <500>; /* 500mA */
 	qcom,fastchg-current-ma = <2400>;
 	qcom,fastchg-down-current-ma = <1800>;
 	qcom,float-voltage-mv = <4350>;
@@ -66,6 +68,7 @@
 	qcom,usb-cc-controller;
 	qcom,disable-apsd;
 	qcom,disable-hvdcp;
+	qcom,customized-jeita;
 };
 
 /{
@@ -88,7 +91,7 @@
 	qcom,fg-cutoff-voltage-mv = <3400>;
 	qcom,warm-bat-decidegc = <450>;
 	qcom,hot-bat-decidegc = <550>;
-	qcom,cool-bat-decidegc = <0>;
+	qcom,cool-bat-decidegc = <(-50)>;
 	qcom,cold-bat-decidegc = <(-100)>;
 	qcom,vbat-estimate-diff-mv = <200>;
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
