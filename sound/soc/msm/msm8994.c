@@ -2775,8 +2775,8 @@ static void *def_codec_mbhc_cal(void)
 	S(t_ins_retry, 200);
 #undef S
 #define S(X, Y) ((WCD9XXX_MBHC_CAL_PLUG_TYPE_PTR(codec_cal)->X) = (Y))
-	S(v_no_mic, 30);
-	S(v_hs_max, 2400);
+	S(v_no_mic, 20);
+	S(v_hs_max, 2700);
 #undef S
 #define S(X, Y) ((WCD9XXX_MBHC_CAL_BTN_DET_PTR(codec_cal)->X) = (Y))
 	S(c[0], 62);
@@ -2794,14 +2794,14 @@ static void *def_codec_mbhc_cal(void)
 	btn_low = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_V_BTN_LOW);
 	btn_high = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg,
 					       MBHC_BTN_DET_V_BTN_HIGH);
-	btn_low[0] = -50;
-	btn_high[0] = 20;
-	btn_low[1] = 21;
-	btn_high[1] = 61;
-	btn_low[2] = 62;
-	btn_high[2] = 104;
-	btn_low[3] = 105;
-	btn_high[3] = 148;
+	btn_low[0] = -200;
+	btn_high[0] = 75;
+	btn_low[1] = 76;
+	btn_high[1] = 165;
+	btn_low[2] = 166;
+	btn_high[2] = 290;
+	btn_low[3] = 291;
+	btn_high[3] = 550;
 	btn_low[4] = 149;
 	btn_high[4] = 189;
 	btn_low[5] = 190;
