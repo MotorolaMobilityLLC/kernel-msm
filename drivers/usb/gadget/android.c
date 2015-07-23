@@ -115,6 +115,7 @@ static const char longname[] = "Gadget Android";
 #define MIDI_INPUT_PORTS    1
 #define MIDI_OUTPUT_PORTS   1
 #define MIDI_BUFFER_SIZE    256
+#define MIDI_DWC3_BUFFER_SIZE 512
 #define MIDI_QUEUE_LENGTH   32
 
 struct android_usb_function {
@@ -2213,9 +2214,13 @@ static int midi_function_bind_config(struct android_usb_function *f,
 						struct usb_configuration *c)
 {
 	struct midi_alsa_config *config = f->config;
+	unsigned int buflen = MIDI_BUFFER_SIZE;
+
+	if (gadget_is_dwc3(c->cdev->gadget))
+		buflen = MIDI_DWC3_BUFFER_SIZE;
 
 	return f_midi_bind_config(c, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1,
-			MIDI_INPUT_PORTS, MIDI_OUTPUT_PORTS, MIDI_BUFFER_SIZE,
+			MIDI_INPUT_PORTS, MIDI_OUTPUT_PORTS, buflen,
 			MIDI_QUEUE_LENGTH, config);
 }
 
