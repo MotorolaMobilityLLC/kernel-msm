@@ -46,5 +46,8 @@ void lge_set_ram_console_addr(unsigned int addr, unsigned int size);
 void lge_set_panic_reason(void);
 void lge_set_fb1_addr(unsigned int addr);
 void lge_set_restart_reason(unsigned int);
+void lge_check_crash_skiped(char *reason);
+bool lge_is_crash_skipped(void);
+void lge_clear_crash_skipped(void);
 
 #endif

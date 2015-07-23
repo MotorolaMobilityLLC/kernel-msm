@@ -134,6 +134,27 @@ void lge_set_restart_reason(unsigned int reason)
 }
 EXPORT_SYMBOL(lge_set_restart_reason);
 
+static bool lge_crash_handler_skiped = false;
+void lge_check_crash_skiped(char *reason)
+{
+	char *p;
+
+	p = strstr(reason, "This crash is expected!!!");
+	if (p)
+		lge_crash_handler_skiped = true;
+}
+EXPORT_SYMBOL(lge_check_crash_skiped);
+
+bool lge_is_crash_skipped(void)
+{
+	return lge_crash_handler_skiped;
+}
+
+void lge_clear_crash_skipped(void)
+{
+	lge_crash_handler_skiped = false;
+}
+EXPORT_SYMBOL(lge_clear_crash_skipped);
 
 static int gen_bug(const char *val, struct kernel_param *kp)
 {
