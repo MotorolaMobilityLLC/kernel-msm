@@ -83,11 +83,12 @@ struct of_device_id_info
 	int     config_id;
 	char	product_id[32];
 	char	firmware_name[32];
+	char	panel_type[32];
 };
 
 static struct of_device_id_info fwu_match_table[] = {
-	{ 0x03, "002", "Truly.img"},
-	{ 0x06, "000", "Ofilm.img"},
+	{ 0x03, "002", "Truly.img","Truly"},
+	{ 0x06, "000", "Ofilm.img","Ofilm"},
 };
 
 #define PRODUCT_INFO_OFFSET 0x40
@@ -148,6 +149,9 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t fwu_sysfs_panel_type_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
 
 enum bl_version {
 	V5 = 5,
@@ -469,6 +473,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(writeguestcode, S_IWUGO,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_guest_code_store),
+	__ATTR(panel_type, S_IRUGO,
+			fwu_sysfs_panel_type_show,
+			synaptics_rmi4_store_error),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -1900,6 +1907,26 @@ static int find_fw_by_product_id(struct synaptics_rmi4_data *rmi4_data)
 	return index;
 }
 
+static int get_panel_type_index(struct synaptics_rmi4_data *rmi4_data)
+{
+	int index;
+
+	index = find_fw_by_config_id(rmi4_data);
+	if(index < 0) {
+		pr_err("%s:get fw from config id fail\n",__func__);
+	}
+	else{
+		return index;
+	}
+
+	index = find_fw_by_product_id(rmi4_data);
+	if(index < 0) {
+		pr_err("%s:get fw from product fail\n",__func__);
+	}
+
+	return index;
+}
+
 static int get_device_firmware(struct synaptics_rmi4_data *rmi4_data)
 {
 	int index;
@@ -2360,6 +2387,21 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%u\n", fwu->bcount.guest_code);
+}
+
+static ssize_t fwu_sysfs_panel_type_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int index;
+
+	index = get_panel_type_index(fwu->rmi4_data);
+	if(index < 0) {
+		return snprintf(buf, PAGE_SIZE, "%s,fw_id:%d\n", "unknow",0);
+	}
+	else {
+		return snprintf(buf, PAGE_SIZE, "%s,fw_id:%d\n",
+			fwu_match_table[index].panel_type,fwu->img.firmware_id);
+	}
 }
 
 static ssize_t fwu_sysfs_write_guest_code_store(struct device *dev,
