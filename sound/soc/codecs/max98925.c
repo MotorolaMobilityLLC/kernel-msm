@@ -1042,6 +1042,7 @@ static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 			M98925_EN_MASK, 0x0);
 		regmap_update_bits(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
 			M98925_EN_MASK, 0x0);
+		msleep(20);
 		if (DEFAULT_SWITCH_NONEED != max98925->switch_en_gpio)
 			gpio_direction_output(max98925->switch_en_gpio, GPIO_PULL_DOWN);
 	}
