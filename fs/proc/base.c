@@ -3245,6 +3245,9 @@ static const struct pid_entry tid_base_stuff[] = {
 	ONE("status",    S_IRUGO, proc_pid_status),
 	ONE("personality", S_IRUGO, proc_pid_personality),
 	INF("limits",	 S_IRUGO, proc_pid_limits),
+#ifdef CONFIG_SMP
+	REG("sched_wake_up_idle",      S_IRUGO|S_IWUSR, proc_pid_sched_wake_up_idle_operations),
+#endif
 #ifdef CONFIG_SCHED_DEBUG
 	REG("sched",     S_IRUGO|S_IWUSR, proc_pid_sched_operations),
 #endif
