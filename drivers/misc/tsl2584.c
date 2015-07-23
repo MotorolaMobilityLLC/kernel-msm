@@ -829,6 +829,7 @@ static void tsl2584_work_func(struct work_struct *work)
 			"Unable to read interrupt register: %d\n", error);
 		if (wake_lock_active(&tsl->wl_isr))
 			wake_unlock(&tsl->wl_isr);
+		mutex_unlock(&tsl->mutex);
 		return;
 	}
 
