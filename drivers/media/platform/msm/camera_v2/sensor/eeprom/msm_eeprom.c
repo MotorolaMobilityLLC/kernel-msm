@@ -918,10 +918,87 @@ static long msm_eeprom_subdev_fops_ioctl32(struct file *file, unsigned int cmd,
 
 #endif
 
-static int msm_eeprom_platform_probe(struct platform_device *pdev)
+static void read_eeprom_memory_work(struct work_struct *w)
 {
 	int rc = 0;
 	int j = 0;
+	struct msm_eeprom_ctrl_t *e_ctrl =
+		container_of(w, struct msm_eeprom_ctrl_t, work);
+	struct msm_camera_cci_client *cci_client =
+		e_ctrl->i2c_client.cci_client;
+	struct msm_eeprom_board_info *eb_info = e_ctrl->eboard_info;
+	struct msm_camera_power_ctrl_t *power_info = &eb_info->power_info;
+
+	rc = msm_camera_power_up(power_info, e_ctrl->eeprom_device_type,
+		&e_ctrl->i2c_client);
+	if (rc) {
+		pr_err("failed rc %d\n", rc);
+		goto memdata_free;
+	}
+
+	rc = read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
+	if (eb_info->i2c_slaveaddr2 != 0 && rc < 0) {
+		eb_info->i2c_slaveaddr = eb_info->i2c_slaveaddr2;
+		cci_client->sid = eb_info->i2c_slaveaddr2 >> 1;
+		rc = read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
+	}
+
+	if (rc < 0) {
+		pr_err("%s: eeprom memory failed\n", __func__);
+		goto power_down;
+	}
+
+	for (j = 0; j < e_ctrl->cal_data.num_data; j++)
+		CDBG("memory_data[%d] = 0x%X\n", j,
+			e_ctrl->cal_data.mapdata[j]);
+
+	e_ctrl->is_supported |= msm_eeprom_match_crc(&e_ctrl->cal_data);
+
+	rc = msm_camera_power_down(power_info, e_ctrl->eeprom_device_type,
+		&e_ctrl->i2c_client);
+	if (rc) {
+		pr_err("failed rc %d\n", rc);
+		goto memdata_free;
+	}
+	v4l2_subdev_init(&e_ctrl->msm_sd.sd,
+		e_ctrl->eeprom_v4l2_subdev_ops);
+	v4l2_set_subdevdata(&e_ctrl->msm_sd.sd, e_ctrl);
+	platform_set_drvdata(e_ctrl->pdev, &e_ctrl->msm_sd.sd);
+	e_ctrl->msm_sd.sd.internal_ops = &msm_eeprom_internal_ops;
+	e_ctrl->msm_sd.sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	snprintf(e_ctrl->msm_sd.sd.name,
+		ARRAY_SIZE(e_ctrl->msm_sd.sd.name), "msm_eeprom");
+	media_entity_init(&e_ctrl->msm_sd.sd.entity, 0, NULL, 0);
+	e_ctrl->msm_sd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV;
+	e_ctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_EEPROM;
+	msm_sd_register(&e_ctrl->msm_sd);
+
+#ifdef CONFIG_COMPAT
+	msm_eeprom_v4l2_subdev_fops = v4l2_subdev_fops;
+	msm_eeprom_v4l2_subdev_fops.compat_ioctl32 =
+		msm_eeprom_subdev_fops_ioctl32;
+	e_ctrl->msm_sd.sd.devnode->fops = &msm_eeprom_v4l2_subdev_fops;
+#endif
+
+	e_ctrl->is_supported = (e_ctrl->is_supported << 1) | 1;
+	CDBG("%s X\n", __func__);
+	return;
+
+power_down:
+	msm_camera_power_down(power_info, e_ctrl->eeprom_device_type,
+		&e_ctrl->i2c_client);
+memdata_free:
+	kfree(e_ctrl->cal_data.mapdata);
+	kfree(e_ctrl->cal_data.map);
+	kfree(e_ctrl->eboard_info);
+	kfree(e_ctrl->i2c_client.cci_client);
+	kfree(e_ctrl);
+	return;
+}
+
+static int msm_eeprom_platform_probe(struct platform_device *pdev)
+{
+	int rc = 0;
 	uint32_t temp;
 	uint32_t temp2 = 0;
 
@@ -1040,67 +1117,10 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 	if (rc < 0)
 		goto board_free;
 
-	rc = msm_camera_power_up(power_info, e_ctrl->eeprom_device_type,
-		&e_ctrl->i2c_client);
-	if (rc) {
-		pr_err("failed rc %d\n", rc);
-		goto memdata_free;
-	}
-
-	rc = read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
-	if (eb_info->i2c_slaveaddr2 != 0 && rc < 0) {
-		eb_info->i2c_slaveaddr = eb_info->i2c_slaveaddr2;
-		cci_client->sid = eb_info->i2c_slaveaddr2 >> 1;
-		rc = read_eeprom_memory(e_ctrl, &e_ctrl->cal_data);
-	}
-
-	if (rc < 0) {
-		pr_err("%s: eeprom memory failed\n", __func__);
-		goto power_down;
-	}
-
-	for (j = 0; j < e_ctrl->cal_data.num_data; j++)
-		CDBG("memory_data[%d] = 0x%X\n", j,
-			e_ctrl->cal_data.mapdata[j]);
-
-	e_ctrl->is_supported |= msm_eeprom_match_crc(&e_ctrl->cal_data);
-
-	rc = msm_camera_power_down(power_info, e_ctrl->eeprom_device_type,
-		&e_ctrl->i2c_client);
-	if (rc) {
-		pr_err("failed rc %d\n", rc);
-		goto memdata_free;
-	}
-	v4l2_subdev_init(&e_ctrl->msm_sd.sd,
-		e_ctrl->eeprom_v4l2_subdev_ops);
-	v4l2_set_subdevdata(&e_ctrl->msm_sd.sd, e_ctrl);
-	platform_set_drvdata(pdev, &e_ctrl->msm_sd.sd);
-	e_ctrl->msm_sd.sd.internal_ops = &msm_eeprom_internal_ops;
-	e_ctrl->msm_sd.sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-	snprintf(e_ctrl->msm_sd.sd.name,
-		ARRAY_SIZE(e_ctrl->msm_sd.sd.name), "msm_eeprom");
-	media_entity_init(&e_ctrl->msm_sd.sd.entity, 0, NULL, 0);
-	e_ctrl->msm_sd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV;
-	e_ctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_EEPROM;
-	msm_sd_register(&e_ctrl->msm_sd);
-
-#ifdef CONFIG_COMPAT
-	msm_eeprom_v4l2_subdev_fops = v4l2_subdev_fops;
-	msm_eeprom_v4l2_subdev_fops.compat_ioctl32 =
-		msm_eeprom_subdev_fops_ioctl32;
-	e_ctrl->msm_sd.sd.devnode->fops = &msm_eeprom_v4l2_subdev_fops;
-#endif
-
-	e_ctrl->is_supported = (e_ctrl->is_supported << 1) | 1;
-	CDBG("%s X\n", __func__);
+	INIT_WORK(&e_ctrl->work, read_eeprom_memory_work);
+	schedule_work(&e_ctrl->work);
 	return rc;
 
-power_down:
-	msm_camera_power_down(power_info, e_ctrl->eeprom_device_type,
-		&e_ctrl->i2c_client);
-memdata_free:
-	kfree(e_ctrl->cal_data.mapdata);
-	kfree(e_ctrl->cal_data.map);
 board_free:
 	kfree(e_ctrl->eboard_info);
 cciclient_free:

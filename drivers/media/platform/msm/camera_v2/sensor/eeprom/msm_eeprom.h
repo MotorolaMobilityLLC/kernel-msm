@@ -21,6 +21,7 @@
 #include "msm_camera_spi.h"
 #include "msm_camera_io_util.h"
 #include "msm_camera_dt_util.h"
+#include <linux/workqueue.h>
 
 struct msm_eeprom_ctrl_t;
 
@@ -44,6 +45,7 @@ struct msm_eeprom_ctrl_t {
 	uint8_t is_supported;
 	struct msm_eeprom_board_info *eboard_info;
 	uint32_t subdev_id;
+	struct work_struct work;
 };
 
 #endif
