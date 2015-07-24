@@ -67,8 +67,9 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	int chk;
 #endif
 
-	if (mutex_lock_interruptible(&ps_motosh->lock) != 0)
-		return -EINTR;
+	err = mutex_lock_interruptible(&ps_motosh->lock);
+	if (err != 0)
+		return err;
 
 	motosh_wake(ps_motosh);
 
