@@ -15,6 +15,7 @@
 
 #include <linux/file.h>
 #include <linux/kref.h>
+#include <linux/rwsem.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
@@ -23,8 +24,7 @@ struct fb_quickdraw_buffer {
 	struct fb_quickdraw_buffer_data data;
 	struct file *file;
 	int mem_fd;
-	atomic_t locked;
-	wait_queue_head_t wait_queue;
+	struct rw_semaphore rwsem;
 	struct list_head list;
 	struct kref kref;
 	struct work_struct delete_work;
@@ -49,8 +49,8 @@ struct fb_quickdraw_buffer *fb_quickdraw_alloc_buffer(
 	struct fb_quickdraw_buffer_data *data, size_t size);
 int fb_quickdraw_get_buffer(struct fb_quickdraw_buffer *buffer);
 int fb_quickdraw_put_buffer(struct fb_quickdraw_buffer *buffer);
-int fb_quickdraw_lock_buffer(struct fb_quickdraw_buffer *buffer);
-int fb_quickdraw_unlock_buffer(struct fb_quickdraw_buffer *buffer);
+int fb_quickdraw_lock_buffer_read(struct fb_quickdraw_buffer *buffer);
+int fb_quickdraw_unlock_buffer_read(struct fb_quickdraw_buffer *buffer);
 
 static inline int fb_quickdraw_check_alignment(int value, int align)
 {

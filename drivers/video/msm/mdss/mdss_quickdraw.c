@@ -359,9 +359,9 @@ static int mdss_quickdraw_execute(void *data,
 
 	/* Unlock previous buffer */
 	if (active_mdss_buffer)
-		fb_quickdraw_unlock_buffer(&active_mdss_buffer->buffer);
+		fb_quickdraw_unlock_buffer_read(&active_mdss_buffer->buffer);
 
-	fb_quickdraw_lock_buffer(buffer);
+	fb_quickdraw_lock_buffer_read(buffer);
 
 	if (buffer->file) {
 		ret = set_overlay(mfd, mdss_buffer, x, y);
@@ -382,7 +382,7 @@ static int mdss_quickdraw_execute(void *data,
 	/* If we had errors earlier, we need to cleanup */
 	if (ret) {
 		pr_err("%s: error setting up overlay, cleanup\n", __func__);
-		fb_quickdraw_unlock_buffer(buffer);
+		fb_quickdraw_unlock_buffer_read(buffer);
 		fb_quickdraw_put_buffer(buffer);
 		active_mdss_buffer = NULL;
 		goto exit;
@@ -485,7 +485,7 @@ static int mdss_quickdraw_cleanup(void *data)
 	/* Free the last used buffer */
 	if (active_mdss_buffer) {
 		unset_overlay(mfd, active_mdss_buffer);
-		fb_quickdraw_unlock_buffer(&active_mdss_buffer->buffer);
+		fb_quickdraw_unlock_buffer_read(&active_mdss_buffer->buffer);
 		fb_quickdraw_put_buffer(&active_mdss_buffer->buffer);
 	}
 	active_mdss_buffer = NULL;
