@@ -1225,7 +1225,7 @@ static int get_prop_capacity(struct fg_chip *chip)
 		return EMPTY_CAPACITY;
 	else if (msoc == FULL_SOC_RAW)
 		return FULL_CAPACITY;
-	return DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
+	return DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 1),
 			FULL_SOC_RAW - 2) + 1;
 }
 
