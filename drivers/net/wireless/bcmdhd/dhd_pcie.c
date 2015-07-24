@@ -55,6 +55,7 @@
 #ifdef DHDTCPACK_SUPPRESS
 #include <dhd_ip.h>
 #endif /* DHDTCPACK_SUPPRESS */
+#include <proto/bcmevent.h>
 
 #ifdef BCMEMBEDIMAGE
 #include BCMEMBEDIMAGE
@@ -3406,11 +3407,14 @@ void dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 	bcm_bprintf(strbuf, " multi4 %u multi6 %u icmp6 %u multiother %u\n",
 		    dhdp->bus->wake_counts.rx_multi_ipv4, dhdp->bus->wake_counts.rx_multi_ipv6,
 		    dhdp->bus->wake_counts.rx_icmpv6, dhdp->bus->wake_counts.rx_multi_other);
+	bcm_bprintf(strbuf, " icmp6_ra %u, icmp6_na %u, icmp6_ns %u\n",
+			dhdp->bus->wake_counts.rx_icmpv6_ra, dhdp->bus->wake_counts.rx_icmpv6_na,
+			dhdp->bus->wake_counts.rx_icmpv6_ns);
 #endif
 #ifdef DHD_WAKE_EVENT_STATUS
 	for (flowid = 0; flowid < WLC_E_LAST; flowid++)
 		if (dhdp->bus->wake_counts.rc_event[flowid] != 0)
-			bcm_bprintf(strbuf, " event[%d] = %u", flowid,
+			bcm_bprintf(strbuf, " %s = %u\n", bcmevent_get_name(flowid),
 				    dhdp->bus->wake_counts.rc_event[flowid]);
 	bcm_bprintf(strbuf, "\n");
 #endif

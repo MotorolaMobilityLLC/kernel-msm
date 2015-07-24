@@ -2803,9 +2803,9 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 	void *skbhead = NULL;
 	void *skbprev = NULL;
 	uint16 protocol;
-#if defined(DHD_RX_DUMP) || defined(DHD_8021X_DUMP)
+#if defined(DHD_RX_DUMP) || defined(DHD_8021X_DUMP) || defined(DHD_WAKE_STATUS)
 	char *dump_data;
-#endif /* DHD_RX_DUMP || DHD_8021X_DUMP */
+#endif /* DHD_RX_DUMP || DHD_8021X_DUMP || DHD_WAKE_STATUS */
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -2927,7 +2927,8 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 		if (protocol == ETHER_TYPE_802_1X) {
 			DBG_EVENT_LOG(dhdp, WIFI_EVENT_DRIVER_EAPOL_FRAME_RECEIVED);
 		}
-#if defined(DHD_RX_DUMP) || defined(DHD_8021X_DUMP) || defined(DHD_DHCP_DUMP)
+#if defined(DHD_RX_DUMP) || defined(DHD_8021X_DUMP) || defined(DHD_DHCP_DUMP) \
+	|| defined(DHD_WAKE_STATUS)
 		dump_data = skb->data;
 #endif /* DHD_RX_DUMP || DHD_8021X_DUMP || DHD_DHCP_DUMP */
 #ifdef DHD_8021X_DUMP
@@ -3068,7 +3069,13 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 				wcp->rxwake++;
 #ifdef DHD_WAKE_RX_STATUS
 #define ETHER_ICMP6_HEADER	20
-				if (ntoh16(skb->protocol) == ETHER_TYPE_ARP) /* Arp */
+#define ETHER_IPV6_SADDR (ETHER_ICMP6_HEADER + 2)
+#define ETHER_IPV6_DAADR (ETHER_IPV6_SADDR + IPV6_ADDR_LEN)
+#define ETHER_ICMPV6_TYPE (ETHER_IPV6_DAADR + IPV6_ADDR_LEN)
+#define ICMPV6_PKT_TYPE_RA	134
+#define ICMPV6_PKT_TYPE_NS	135
+#define ICMPV6_PKT_TYPE_NA	136
+				if (ntoh16(skb->protocol) == ETHER_TYPE_ARP) /* ARP */
 					wcp->rx_arp++;
 				if (dump_data[0] == 0xFF) { /* Broadcast */
 					wcp->rx_bcast++;
@@ -3077,8 +3084,21 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 					if (ntoh16(skb->protocol) == ETHER_TYPE_IPV6) {
 						wcp->rx_multi_ipv6++;
 						if ((skb->len > ETHER_ICMP6_HEADER) &&
-						    (dump_data[ETHER_ICMP6_HEADER] == IPPROTO_ICMPV6))
+						    (dump_data[ETHER_ICMP6_HEADER] == IPPROTO_ICMPV6)) {
 							wcp->rx_icmpv6++;
+
+							switch (dump_data[ETHER_ICMPV6_TYPE]) {
+							case ICMPV6_PKT_TYPE_RA:
+								wcp->rx_icmpv6_ra++;
+								break;
+							case ICMPV6_PKT_TYPE_NA:
+								wcp->rx_icmpv6_ra++;
+								break;
+							case ICMPV6_PKT_TYPE_NS:
+								wcp->rx_icmpv6_ns++;
+								break;
+							}
+						}
 					} else if (dump_data[2] == 0x5E) {
 						wcp->rx_multi_ipv4++;
 					} else {
@@ -3088,6 +3108,12 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 					wcp->rx_ucast++;
 				}
 #undef ETHER_ICMP6_HEADER
+#undef ETHER_IPV6_SADDR
+#undef ETHER_IPV6_DAADR
+#undef ETHER_ICMPV6_TYPE
+#undef ICMPV6_PKT_TYPE_RA
+#undef ICMPV6_PKT_TYPE_NS
+#undef ICMPV6_PKT_TYPE_NA
 #endif
 				pkt_wake = 0;
 			}
