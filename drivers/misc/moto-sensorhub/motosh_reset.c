@@ -80,8 +80,10 @@ void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 	 * into a bad state. This should allow the sensorhub
 	 * to recover from the scenario where capsense is preventing
 	 * its initialization. */
-	cycapsense_reset();
-	msleep(CAPSENSE_RESET_DELAY);
+	if (cycapsense_reset() == -ENODEV)
+		msleep(MOTOSH_RESET_DELAY);
+	else
+		msleep(CAPSENSE_RESET_DELAY);
 
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(MOTOSH_RESET_DELAY);
