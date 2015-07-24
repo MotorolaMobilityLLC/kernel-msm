@@ -39,7 +39,7 @@
 #include "msm-dolby-dap-config.h"
 #include "q6voice.h"
 #include "sound/q6lsm.h"
-#include "audio_cal_utils.h"
+#include <sound/audio_cal_utils.h>
 #include "msm-dts-eagle.h"
 
 static int get_cal_path(int path_type);
@@ -3321,6 +3321,16 @@ static const struct snd_kcontrol_new pri_mi2s_rx_switch_mixer_controls =
 	0, 1, 0, msm_routing_get_switch_mixer,
 	msm_routing_put_switch_mixer);
 
+static const struct snd_kcontrol_new hfp_aux_switch_mixer_controls =
+	SOC_SINGLE_EXT("Switch", SND_SOC_NOPM,
+	0, 1, 0, msm_routing_get_switch_mixer,
+	msm_routing_put_switch_mixer);
+
+static const struct snd_kcontrol_new hfp_int_switch_mixer_controls =
+	SOC_SINGLE_EXT("Switch", SND_SOC_NOPM,
+	0, 1, 0, msm_routing_get_switch_mixer,
+	msm_routing_put_switch_mixer);
+
 static const struct soc_enum lsm_mux_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mad_audio_mux_text), mad_audio_mux_text);
 
@@ -3854,6 +3864,10 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 				&pcm_rx_switch_mixer_controls),
 	SND_SOC_DAPM_SWITCH("PRI_MI2S_RX_DL_HL", SND_SOC_NOPM, 0, 0,
 				&pri_mi2s_rx_switch_mixer_controls),
+	SND_SOC_DAPM_SWITCH("HFP_AUX_UL_HL", SND_SOC_NOPM, 0, 0,
+				&hfp_aux_switch_mixer_controls),
+	SND_SOC_DAPM_SWITCH("HFP_INT_UL_HL", SND_SOC_NOPM, 0, 0,
+				&hfp_int_switch_mixer_controls),
 
 	/* Mux Definitions */
 	SND_SOC_DAPM_MUX("LSM1 MUX", SND_SOC_NOPM, 0, 0, &lsm1_mux),
@@ -4747,6 +4761,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	{"INT_FM_RX", NULL, "INTFM_DL_HL"},
 	{"INTFM_UL_HL", NULL, "INT_FM_TX"},
+	{"INTHFP_UL_HL", "NULL", "HFP_AUX_UL_HL"},
+	{"HFP_AUX_UL_HL", "Switch", "SEC_AUX_PCM_TX"},
+	{"INTHFP_UL_HL", "NULL", "HFP_INT_UL_HL"},
+	{"HFP_INT_UL_HL", "Switch", "INT_BT_SCO_TX"},
 	{"AUX_PCM_RX", NULL, "AUXPCM_DL_HL"},
 	{"AUXPCM_UL_HL", NULL, "AUX_PCM_TX"},
 	{"MI2S_RX", NULL, "MI2S_DL_HL"},
@@ -5247,19 +5265,6 @@ done:
 	return ret;
 }
 
-static bool msm_routing_match_cal_by_path(struct cal_block_data *cal_block,
-					void *data)
-{
-	struct audio_cal_info_adm_top	*block_cal_info = cal_block->cal_info;
-	struct audio_cal_type_adm_top	*user_data = data;
-	pr_debug("%s\n", __func__);
-
-	if (block_cal_info->path == user_data->cal_info.path)
-		return true;
-
-	return false;
-}
-
 static void msm_routing_delete_cal_data(void)
 {
 	pr_debug("%s\n", __func__);
@@ -5276,7 +5281,7 @@ static int msm_routing_init_cal_data(void)
 		{ADM_TOPOLOGY_CAL_TYPE,
 		{NULL, NULL, NULL,
 		msm_routing_set_cal, NULL, NULL} },
-		{NULL, NULL, msm_routing_match_cal_by_path}
+		{NULL, NULL, cal_utils_match_buf_num}
 	};
 	pr_debug("%s\n", __func__);
 
