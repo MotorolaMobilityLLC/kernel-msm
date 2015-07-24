@@ -79,7 +79,6 @@
 	status = "ok";
 	qcom,ext-sense-type;
 	qcom,battery-data = <&bullhead_batterydata>;
-	qcom,sw-rbias-control;
 	qcom,resume-soc = <99>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
