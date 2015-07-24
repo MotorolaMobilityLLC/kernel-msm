@@ -49,8 +49,8 @@ struct m4ped_driver_data {
 		iiodat[M4FUS_NUM_PEDOMETER_BUFFERS];
 	struct m4sensorhub_pedometer_iio_data   base_dat;
 
+	uint8_t         enable;
 	int16_t         samplerate;
-
 	uint16_t        status;
 };
 
@@ -222,7 +222,8 @@ static void m4ped_isr(enum m4sensorhub_irqs int_event, void *handle)
 	mutex_lock(&(dd->mutex));
 	err = m4ped_read_report_data(iio, dd);
 	if (err < 0)
-		m4ped_err("%s: Failed with error code %d.\n", __func__, err);
+		m4ped_err("%s: Failed with error code %d.\n",
+			  __func__, err);
 	mutex_unlock(&(dd->mutex));
 	return;
 }
@@ -234,12 +235,21 @@ static int m4ped_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 
 	/*
 	 * Currently, there is no concept of setting a sample rate for this
-	 * sensor, so this function only enables/disables interrupt reporting.
+	 * sensor, This just sets the internal variable.
 	 */
-	if (rate == dd->samplerate)
-		goto m4ped_set_samplerate_fail;
+	dd->samplerate = rate;
+	return err;
+}
 
-	if (rate >= 0) {
+static int m4ped_set_enable_locked(struct iio_dev *iio, uint8_t enable)
+{
+	int err = 0;
+	struct m4ped_driver_data *dd = iio_priv(iio);
+
+	if (enable == dd->enable)
+		goto m4ped_set_enable_fail;
+
+	if (enable > 0) {
 		/* Enable the IRQ if necessary */
 		if (!(dd->status & (1 << M4PED_IRQ_ENABLED_BIT))) {
 			err = m4sensorhub_irq_enable(dd->m4,
@@ -247,11 +257,11 @@ static int m4ped_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 			if (err < 0) {
 				m4ped_err("%s: Failed to enable ped irq.\n",
 					  __func__);
-				goto m4ped_set_samplerate_fail;
+				goto m4ped_set_enable_fail;
 			}
 
 			dd->status = dd->status | (1 << M4PED_IRQ_ENABLED_BIT);
-			dd->samplerate = rate;
+			dd->enable = enable;
 		}
 	} else {
 		/* Disable the IRQ if necessary */
@@ -261,15 +271,15 @@ static int m4ped_set_samplerate_locked(struct iio_dev *iio, int16_t rate)
 			if (err < 0) {
 				m4ped_err("%s: Failed to disable ped irq.\n",
 					  __func__);
-				goto m4ped_set_samplerate_fail;
+				goto m4ped_set_enable_fail;
 			}
 
 			dd->status = dd->status & ~(1 << M4PED_IRQ_ENABLED_BIT);
-			dd->samplerate = rate;
+			dd->enable = enable;
 		}
 	}
 
-m4ped_set_samplerate_fail:
+m4ped_set_enable_fail:
 	return err;
 }
 
@@ -330,7 +340,64 @@ static ssize_t m4ped_setrate_store(struct device *dev,
 		m4ped_err("%s: Failed to set sample rate.\n", __func__);
 		goto m4ped_enable_store_exit;
 	}
-	if (value >= 0) {
+
+m4ped_enable_store_exit:
+	if (err < 0) {
+		m4ped_err("%s: Failed with error code %d.\n", __func__, err);
+		size = err;
+	}
+
+	mutex_unlock(&(dd->mutex));
+
+	return size;
+}
+static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
+		m4ped_setrate_show, m4ped_setrate_store, 0);
+
+static ssize_t m4ped_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4ped_driver_data *dd = iio_priv(iio);
+	ssize_t size = 0;
+
+	mutex_lock(&(dd->mutex));
+	size = snprintf(buf, PAGE_SIZE, "Enable: %hhu\n", dd->enable);
+	mutex_unlock(&(dd->mutex));
+	return size;
+}
+
+static ssize_t m4ped_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int err = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct iio_dev *iio = platform_get_drvdata(pdev);
+	struct m4ped_driver_data *dd = iio_priv(iio);
+	int value = 0;
+
+	mutex_lock(&(dd->mutex));
+
+	err = kstrtoint(buf, 10, &value);
+	if (err < 0) {
+		m4ped_err("%s: Failed to convert value.\n", __func__);
+		goto m4ped_enable_store_exit;
+	}
+
+	if ((value < 0) || (value > 255)) {
+		m4ped_err("%s: Invalid enable %d passed.\n",
+			  __func__, value);
+		err = -EINVAL;
+		goto m4ped_enable_store_exit;
+	}
+
+	err = m4ped_set_enable_locked(iio, (uint8_t)value);
+	if (err < 0) {
+		m4ped_err("%s: Failed to set enable.\n", __func__);
+		goto m4ped_enable_store_exit;
+	}
+	if (value > 0) {
 		/* When an app registers, there is no data reported
 		unless the user starts walking. But the application
 		would like to have atleast one set of data sent
@@ -352,8 +419,8 @@ m4ped_enable_store_exit:
 
 	return size;
 }
-static IIO_DEVICE_ATTR(setrate, S_IRUSR | S_IWUSR,
-		m4ped_setrate_show, m4ped_setrate_store, 0);
+static IIO_DEVICE_ATTR(enable, S_IRUSR | S_IWUSR,
+		m4ped_enable_show, m4ped_enable_store, 0);
 
 static ssize_t m4ped_flush_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
@@ -750,6 +817,7 @@ static IIO_DEVICE_ATTR(feature_enable, S_IRUSR | S_IWUSR,
 
 static struct attribute *m4ped_iio_attributes[] = {
 	&iio_dev_attr_setrate.dev_attr.attr,
+	&iio_dev_attr_enable.dev_attr.attr,
 	&iio_dev_attr_flush.dev_attr.attr,
 	&iio_dev_attr_iiodata.dev_attr.attr,
 	&iio_dev_attr_userdata.dev_attr.attr,
@@ -942,7 +1010,7 @@ static int m4ped_probe(struct platform_device *pdev)
 	mutex_init(&(dd->mutex));
 	platform_set_drvdata(pdev, iio);
 	dd->samplerate = -1; /* We always start disabled */
-    dd->status = dd->status | (1 << M4PED_FEATURE_ENABLED_BIT);
+	dd->status = dd->status | (1 << M4PED_FEATURE_ENABLED_BIT);
 
 	err = m4ped_create_iiodev(iio); /* iio and dd are freed on fail */
 	if (err < 0) {
