@@ -73,6 +73,7 @@
 #ifdef DHDTCPACK_SUPPRESS
 #include <dhd_ip.h>
 #endif /* DHDTCPACK_SUPPRESS */
+#include <proto/bcmevent.h>
 
 bool dhd_mp_halting(dhd_pub_t *dhdp);
 extern void bcmsdh_waitfor_iodrain(void *sdh);
@@ -2590,11 +2591,14 @@ dhd_bus_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
 	bcm_bprintf(strbuf, " multi4 %u multi6 %u icmp6 %u multiother %u\n",
 	            bus->wake_counts.rx_multi_ipv4, bus->wake_counts.rx_multi_ipv6,
 	            bus->wake_counts.rx_icmpv6, bus->wake_counts.rx_multi_other);
+	bcm_bprintf(strbuf, " icmp6_ra %u, icmp6_na %u, icmp6_ns %u\n",
+                    bus->wake_counts.rx_icmpv6_ra, bus->wake_counts.rx_icmpv6_na,
+                    bus->wake_counts.rx_icmpv6_ns);
 #endif
 #ifdef DHD_WAKE_EVENT_STATUS
 	for (i = 0; i < WLC_E_LAST; i++)
 		if (bus->wake_counts.rc_event[i] != 0)
-			bcm_bprintf(strbuf, " event[%d] = %u", i,
+			bcm_bprintf(strbuf, " %s = %u\n", bcmevent_get_name(i),
 				    bus->wake_counts.rc_event[i]);
 	bcm_bprintf(strbuf, "\n");
 #endif

@@ -437,6 +437,9 @@ typedef struct {
 	uint rx_mcast;
 	uint rx_multi_ipv6;
 	uint rx_icmpv6;
+	uint rx_icmpv6_ra;
+	uint rx_icmpv6_na;
+	uint rx_icmpv6_ns;
 	uint rx_multi_ipv4;
 	uint rx_multi_other;
 	uint rx_ucast;
