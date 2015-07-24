@@ -4617,6 +4617,7 @@ static int bcl_trim_workaround(struct fg_chip *chip)
 #define FG_ADC_CONFIG_REG		0x4B8
 #define FG_BCL_CONFIG_OFFSET		0x3
 #define BCL_FORCED_HPM_IN_CHARGE	BIT(2)
+#define BATT_TEMP_INIT		0x02
 static int fg_common_hw_init(struct fg_chip *chip)
 {
 	int rc;
@@ -4683,6 +4684,15 @@ static int fg_common_hw_init(struct fg_chip *chip)
 		fg_mem_write(chip, chip->thermal_coefficients,
 			THERMAL_COEFF_ADDR, THERMAL_COEFF_N_BYTES,
 			THERMAL_COEFF_OFFSET, 0);
+	}
+
+	if(!chip->sw_rbias_ctrl) {
+		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
+			BATT_TEMP_CNTRL_MASK,
+			BATT_TEMP_INIT,
+			BATT_TEMP_OFFSET);
+		if (rc)
+			pr_err("failed to write BATT_TEMP_INIT rc=%d\n", rc);
 	}
 
 	return 0;
