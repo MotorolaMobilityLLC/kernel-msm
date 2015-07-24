@@ -228,6 +228,15 @@ config SENSORS_LIS3DH
 	  To compile this driver as a module, choose M here: the
 	  module will be called lis3dh_acc.
 
+config STMVL6180
+	tristate "STMVL6180"
+	default y
+	help
+	  Say Y here if you want to use STMicroelectronics proximity sensor
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called stmvl6180.
+
 config INPUT_APANEL
 	tristate "Fujitsu Lifebook Application Panel buttons"
 	depends on X86 && I2C && LEDS_CLASS

@@ -21,6 +21,24 @@
 };
 
 &cci {
+	tof0: stmvl6180@0 {
+		cell-index = <0x0>;
+		reg = <0x0>;
+		compatible = "st,stmvl6180";
+		qcom,cci-master = <0>;
+		cam_tof-supply = <&pm8994_l17>;
+		cam_vio-supply = <&pm8994_lvs1>;
+		qcom,cam-vreg-name = "cam_vio", "cam_tof";
+		qcom,cam-vreg-min-voltage = <0 2700000>;
+		qcom,cam-vreg-max-voltage = <0 2700000>;
+		qcom,cam-vreg-op-mode = <0 100000>;
+		qcom,i2c-freq-mode = <0>;
+		qcom,slave-addr = <0x29>;
+		stmvl6180,ldaf-en-gpio = <&msm_gpio 74 0>;
+		stmvl6180,ldaf-int-gpio = <&msm_gpio 95 0>;
+		status = "ok";
+	};
+
 	actuator0: qcom,actuator@0 {
 		cell-index = <0>;
 		reg = <0x0>;
@@ -70,6 +88,7 @@
 		qcom,eeprom-src = <&eeprom5>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
+		qcom,tof-src = <&tof0>;
 		cam_vdig-supply = <&pm8994_l3>;
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vana-supply = <&pm8994_l17>;
