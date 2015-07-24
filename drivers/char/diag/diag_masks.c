@@ -277,13 +277,15 @@ static void diag_send_msg_mask_update(struct diag_smd_info *smd_info,
 	}
 
 	for (i = 0; i < driver->msg_mask_tbl_count; i++, mask++) {
-		if (((first < mask->ssid_first) || (last > mask->ssid_last)) &&
-							first != ALL_SSID) {
+		if (((first < mask->ssid_first) ||
+		     (last > mask->ssid_last_tools)) && first != ALL_SSID) {
 			continue;
 		}
 
+		mutex_lock(&mask->lock);
 		if (msg_mask.status == DIAG_CTRL_MASK_VALID) {
-			mask_size = mask->ssid_last - mask->ssid_first + 1;
+			mask_size =
+				mask->ssid_last_tools - mask->ssid_first + 1;
 			temp_len = mask_size * sizeof(uint32_t);
 			if (temp_len + header_len <= msg_mask.update_buf_len)
 				goto proceed;
@@ -307,13 +309,14 @@ proceed:
 		header.stream_id = 1;
 		header.msg_mode = 0;
 		header.ssid_first = mask->ssid_first;
-		header.ssid_last = mask->ssid_last;
+		header.ssid_last = mask->ssid_last_tools;
 		header.msg_mask_size = mask_size;
 		mask_size *= sizeof(uint32_t);
 		header.data_len = MSG_MASK_CTRL_HEADER_LEN + mask_size;
 		memcpy(buf, &header, header_len);
 		if (mask_size > 0)
 			memcpy(buf + header_len, mask->ptr, mask_size);
+		mutex_unlock(&mask->lock);
 
 		err = diag_smd_write(smd_info, buf, header_len + mask_size);
 		if (err) {
@@ -409,7 +412,7 @@ static int diag_cmd_get_ssid_range(unsigned char *src_buf, int src_len,
 			break;
 		}
 		ssid_range.ssid_first = mask_ptr->ssid_first;
-		ssid_range.ssid_last = mask_ptr->ssid_last;
+		ssid_range.ssid_last = mask_ptr->ssid_last_tools;
 		memcpy(dest_buf + write_len, &ssid_range, sizeof(ssid_range));
 		write_len += sizeof(ssid_range);
 	}
@@ -501,7 +504,7 @@ static int diag_cmd_get_msg_mask(unsigned char *src_buf, int src_len,
 	mask = (struct diag_msg_mask_t *)msg_mask.ptr;
 	for (i = 0; i < driver->msg_mask_tbl_count; i++, mask++) {
 		if ((req->ssid_first < mask->ssid_first) ||
-		    (req->ssid_first > mask->ssid_last)) {
+		    (req->ssid_first > mask->ssid_last_tools)) {
 			continue;
 		}
 		mask_size = mask->range * sizeof(uint32_t);
@@ -531,6 +534,7 @@ static int diag_cmd_set_msg_mask(unsigned char *src_buf, int src_len,
 	struct diag_msg_mask_t *mask = NULL;
 	struct diag_msg_build_mask_t *req = NULL;
 	struct diag_msg_build_mask_t rsp;
+	uint32_t *temp = NULL;
 
 	if (!src_buf || !dest_buf || src_len <= 0 || dest_len <= 0) {
 		pr_err("diag: Invalid input in %s, src_buf: %p, src_len: %d, dest_buf: %p, dest_len: %d",
@@ -544,30 +548,49 @@ static int diag_cmd_set_msg_mask(unsigned char *src_buf, int src_len,
 	mask = (struct diag_msg_mask_t *)msg_mask.ptr;
 	for (i = 0; i < driver->msg_mask_tbl_count; i++, mask++) {
 		if ((req->ssid_first < mask->ssid_first) ||
-		    (req->ssid_first > mask->ssid_last)) {
+		    (req->ssid_first > mask->ssid_last_tools)) {
 			continue;
 		}
 		found = 1;
-		if (req->ssid_last > mask->ssid_last) {
-			pr_debug("diag: Msg SSID range mismatch\n");
-			mask->ssid_last = req->ssid_last;
-		}
+		mutex_lock(&mask->lock);
 		mask_size = req->ssid_last - req->ssid_first + 1;
-		if (mask_size > mask->range) {
+		if (mask_size > MAX_SSID_PER_RANGE) {
 			pr_warn("diag: In %s, truncating ssid range, %d-%d to max allowed: %d\n",
 				__func__, mask->ssid_first, mask->ssid_last,
-				mask->range);
-			mask_size = mask->range;
-			mask->ssid_last = mask->ssid_first + mask->range;
+				MAX_SSID_PER_RANGE);
+			mask_size = MAX_SSID_PER_RANGE;
+			mask->range_tools = MAX_SSID_PER_RANGE;
+			mask->ssid_last_tools =
+				mask->ssid_first + mask->range_tools;
 		}
+		if (req->ssid_last > mask->ssid_last_tools) {
+			pr_debug("diag: Msg SSID range mismatch\n");
+			if (mask_size != MAX_SSID_PER_RANGE)
+				mask->ssid_last_tools = req->ssid_last;
+			temp = krealloc(mask->ptr,
+					mask_size * sizeof(uint32_t),
+					GFP_KERNEL);
+			if (!temp) {
+				pr_err_ratelimited("diag: In %s, unable to allocate memory for msg mask ptr, mask_size: %d\n",
+						   __func__, mask_size);
+				mutex_unlock(&mask->lock);
+				mutex_unlock(&msg_mask.lock);
+				return -ENOMEM;
+			}
+			mask->ptr = temp;
+			mask->range_tools = mask_size;
+		}
+
 		offset = req->ssid_first - mask->ssid_first;
-		if (offset + mask_size > mask->range) {
-			pr_err("diag: In %s, Not enough space for msg mask, mask_size: %d\n",
-			       __func__, mask_size);
+		if (offset + mask_size > mask->range_tools) {
+			pr_err("diag: In %s, Not in msg mask range, mask_size: %d, offset: %d\n",
+			       __func__, mask_size, offset);
+			mutex_unlock(&mask->lock);
 			break;
 		}
 		mask_size = mask_size * sizeof(uint32_t);
 		memcpy(mask->ptr + offset, src_buf + header_len, mask_size);
+		mutex_unlock(&mask->lock);
 		msg_mask.status = DIAG_CTRL_MASK_VALID;
 		break;
 	}
@@ -1039,9 +1062,12 @@ int diag_create_msg_mask_table_entry(struct diag_msg_mask_t *msg_mask,
 		return -EINVAL;
 	msg_mask->ssid_first = range->ssid_first;
 	msg_mask->ssid_last = range->ssid_last;
+	msg_mask->ssid_last_tools = range->ssid_last;
 	msg_mask->range = msg_mask->ssid_last - msg_mask->ssid_first + 1;
 	if (msg_mask->range < MAX_SSID_PER_RANGE)
 		msg_mask->range = MAX_SSID_PER_RANGE;
+	msg_mask->range_tools = msg_mask->range;
+	mutex_init(&msg_mask->lock);
 	if (msg_mask->range > 0) {
 		msg_mask->ptr = kzalloc(msg_mask->range * sizeof(uint32_t),
 					GFP_KERNEL);
@@ -1393,19 +1419,23 @@ int diag_copy_to_user_msg_mask(char __user *buf, size_t count)
 	for (i = 0; i < driver->msg_mask_tbl_count; i++, mask++) {
 		ptr = msg_mask.update_buf;
 		len = 0;
+		mutex_lock(&mask->lock);
 		header.ssid_first = mask->ssid_first;
-		header.ssid_last = mask->ssid_last;
-		header.range = mask->range;
+		header.ssid_last = mask->ssid_last_tools;
+		header.range = mask->range_tools;
 		memcpy(ptr, &header, sizeof(header));
 		len += sizeof(header);
-		copy_len = (sizeof(uint32_t) * mask->range);
+		copy_len = (sizeof(uint32_t) * mask->range_tools);
 		if ((len + copy_len) > msg_mask.update_buf_len) {
 			pr_err("diag: In %s, no space to update msg mask, first: %d, last: %d\n",
-			       __func__, mask->ssid_first, mask->ssid_last);
+			       __func__, mask->ssid_first,
+			       mask->ssid_last_tools);
+			mutex_unlock(&mask->lock);
 			continue;
 		}
 		memcpy(ptr + len, mask->ptr, copy_len);
 		len += copy_len;
+		mutex_unlock(&mask->lock);
 		/* + sizeof(int) to account for data_type already in buf */
 		if (total_len + sizeof(int) + len > count) {
 			pr_err("diag: In %s, unable to send msg masks to user space, total_len: %d, count: %zu\n",
