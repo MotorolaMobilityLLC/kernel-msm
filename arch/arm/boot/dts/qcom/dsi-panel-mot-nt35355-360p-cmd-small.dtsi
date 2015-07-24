@@ -89,5 +89,10 @@
 		qcom,mdss-backlight-disabled;
 		qcom,mdss-dsi-dcs-idle-enable;
 		qcom,even-line-align;
+		qcom,esd-check-enabled;
+		qcom,mdss-dsi-panel-status-command = [14 01 00 01 01 00 01 0A];
+		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+		qcom,mdss-dsi-panel-status-values = [9C DC];
 	};
 };
