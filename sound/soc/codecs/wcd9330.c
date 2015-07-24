@@ -4771,6 +4771,14 @@ static void tomtom_shutdown(struct snd_pcm_substream *substream,
 		 substream->name, substream->stream);
 }
 
+static void tomtom_vote_regulator_mode(struct snd_soc_codec *codec,
+				char *regulator_name, bool active_vote)
+{
+	struct wcd9xxx *core = dev_get_drvdata(codec->dev->parent);
+
+	wcd9xxx_cdc_vote_regulator_mode(core, regulator_name, active_vote);
+}
+
 int tomtom_mclk_enable(struct snd_soc_codec *codec, int mclk_enable, bool dapm)
 {
 	struct tomtom_priv *tomtom = snd_soc_codec_get_drvdata(codec);
@@ -4780,6 +4788,8 @@ int tomtom_mclk_enable(struct snd_soc_codec *codec, int mclk_enable, bool dapm)
 
 	WCD9XXX_BG_CLK_LOCK(&tomtom->resmgr);
 	if (mclk_enable) {
+		tomtom_vote_regulator_mode(codec, NULL,
+					WCD9XXX_REGULATOR_ACTIVE_VOTE);
 		wcd9xxx_resmgr_get_bandgap(&tomtom->resmgr,
 					   WCD9XXX_BANDGAP_AUDIO_MODE);
 		wcd9xxx_resmgr_get_clk_block(&tomtom->resmgr, WCD9XXX_CLK_MCLK);
@@ -4788,6 +4798,8 @@ int tomtom_mclk_enable(struct snd_soc_codec *codec, int mclk_enable, bool dapm)
 		wcd9xxx_resmgr_put_clk_block(&tomtom->resmgr, WCD9XXX_CLK_MCLK);
 		wcd9xxx_resmgr_put_bandgap(&tomtom->resmgr,
 					   WCD9XXX_BANDGAP_AUDIO_MODE);
+		tomtom_vote_regulator_mode(codec, NULL,
+					WCD9XXX_REGULATOR_SLEEP_VOTE);
 	}
 	WCD9XXX_BG_CLK_UNLOCK(&tomtom->resmgr);
 
