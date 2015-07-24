@@ -43,13 +43,6 @@
 			qcom,memblock-reserve = <0x1fe00000 0x00200000>;
 		};
 	};
-
-	qcom,msm-imem@fe87f000 {
-		reset_magic_addr@fec {
-			compatible = "qcom,msm-imem-reset_magic_addr";
-			reg = <0xfec 4>;
-		};
-	};
 };
 
 /* battery related change */
