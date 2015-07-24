@@ -25,6 +25,7 @@
 #include <linux/of_gpio.h>
 #include <linux/clk.h>
 #include <linux/mtd/mtd.h>
+#include <linux/vmalloc.h>
 
 #define APBA_FIRMWARE_NAME ("apba.bin")
 #define APBA_NUM_GPIOS (8)
@@ -245,17 +246,20 @@ static int apba_flash_firmware(const struct firmware *fw,
 		goto cleanup;
 	}
 
-	data = kzalloc(fw->size, GFP_KERNEL);
-	if (!data)
+	data = vmalloc(fw->size);
+	if (!data) {
+		err = -ENOMEM;
 		goto cleanup;
+	}
 
 	memcpy((char *)data, (char *)fw->data, fw->size);
-	mtd_info->_write(mtd_info, 0, fw->size, &retlen, data);
+	err = mtd_info->_write(mtd_info, 0, fw->size, &retlen, data);
 
 	/* FIXME: temp delay for regulator enable from rpm */
-	msleep(25000);
+	if (!err)
+		msleep(25000);
 
-	kfree(data);
+	vfree(data);
 cleanup:
 	put_mtd_device(mtd_info);
 	apba_enable(ctrl, true);
