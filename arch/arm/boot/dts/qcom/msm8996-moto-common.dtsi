@@ -374,6 +374,16 @@
 };
 
 &pm8994_gpios {
+	gpio@c000 { /* GPIO 1 - APBA_SFLASH_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high (enabled) */
+		status = "okay";
+	};
+
 	gpio@c100 { /* GPIO 2 - VOLUME UP */
 		qcom,mode = <0>;
 		qcom,pull = <0>;
@@ -397,6 +407,16 @@
 		qcom,pull = <0>;
 		qcom,vin-sel = <2>;
 		qcom,src-sel = <0>;
+		status = "okay";
+	};
+
+	gpio@c600 { /* GPIO 7 - APBA_1P1_EN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high */
 		status = "okay";
 	};
 
@@ -440,6 +460,18 @@
 		status = "okay";
 	};
 };
+
+&pm8994_mpps {
+	mpp@a100 { /* MPP 2 - MOD_MPHY_I2S_EN_N */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
+		qcom,invert = <1>;	/* Output high (disabled) */
+		status = "okay";
+	};
+};
+
 
 &blsp1_uart2 {
 	status = "ok";
@@ -517,14 +549,6 @@
 	};
 };
 
-&pm8994_gpios {
-	gpio@c600 { /* GPIO 7 - APBA_1P1_EN */
-		qcom,mode = <1>;	/* Digital output */
-		qcom,pull = <5>;	/* No Pull */
-		qcom,vin-sel = <2>;	/* 1.8 */
-		qcom,src-sel = <0>;	/* GPIO */
-		qcom,master-en = <1>;	/* Enable GPIO */
-		qcom,invert = <1>;	/* Output high */
-		status = "okay";
-	};
+&pcie1 {
+	status = "disabled";
 };
