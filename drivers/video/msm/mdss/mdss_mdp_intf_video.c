@@ -335,7 +335,6 @@ static int mdss_mdp_video_intfs_stop(struct mdss_mdp_ctl *ctl,
 		return -EINVAL;
 	}
 
-	mutex_lock(&ctl->offlock);
 	if (ctx->timegen_en) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
 		if (rc == -EBUSY) {
@@ -381,7 +380,6 @@ static int mdss_mdp_video_intfs_stop(struct mdss_mdp_ctl *ctl,
 	ctx->ref_cnt--;
 
 	end:
-	mutex_unlock(&ctl->offlock);
 	return rc;
 }
 
