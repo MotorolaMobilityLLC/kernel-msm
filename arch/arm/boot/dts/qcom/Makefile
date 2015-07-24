@@ -92,6 +92,8 @@ dtb-$(CONFIG_ARCH_MSM8226) += msm8226-sim.dtb \
 	msm8926-v2-qrd.dtb \
 	msm8926-v2-qrd-skug.dtb \
 	msm8926-v2-qrd-skug-pvt.dtb \
+	msm8926-v1-320p-w-mtp.dtb \
+	msm8926-v1-320p-w-g.dtb \
 	msm8226-v1-qrd-skuf.dtb \
 	msm8226-v2-qrd-skuf.dtb \
 	apq8026-v1-xpm.dtb \
@@ -104,6 +106,7 @@ dtb-$(CONFIG_ARCH_MSM8226) += msm8226-sim.dtb \
 	apq8026-v2-1080p-cdp.dtb \
 	apq8026-v2-720p-mtp.dtb \
 	apq8026-v2-320p-w-mtp.dtb \
+	apq8026-v2-320p-w-g-mtp.dtb \
 	apq8026-v2-1080p-mtp.dtb
 dtb-$(CONFIG_ARCH_MSM8610) += msm8610-rumi.dtb \
 	msm8610-v1-cdp.dtb \
