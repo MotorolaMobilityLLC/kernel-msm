@@ -4743,6 +4743,16 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		dev_err(chip->dev, "Couldn't set chgr_cfg2 rc=%d\n", rc);
 		return rc;
 	}
+
+	rc = smbchg_read(chip, &reg, chip->bat_if_base + CMD_CHG_REG, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read cmd_chg rc=%d\n", rc);
+		return rc;
+	}
+	/* if charger is disabled, enable it */
+	if (reg & EN_BAT_CHG_BIT)
+		smbchg_charging_en(chip, true);
+
 	chip->battchg_disabled = 0;
 
 	/*
