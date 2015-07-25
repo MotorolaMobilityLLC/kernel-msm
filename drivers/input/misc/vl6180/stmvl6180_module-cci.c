@@ -211,13 +211,28 @@ static const struct v4l2_subdev_internal_ops msm_tof_internal_ops = {
 static long msm_tof_subdev_ioctl(struct v4l2_subdev *sd,
 			unsigned int cmd, void *arg)
 {
-	vl6180_dbgmsg("Subdev_ioctl not handled\n");
+	vl6180_dbgmsg("Subdev_ioctl not handled cmd: %u arg: %p\n",cmd,arg);
 	return 0;
 }
 
 static int32_t msm_tof_power(struct v4l2_subdev *sd, int on)
 {
-	vl6180_dbgmsg("TOF power called\n");
+	struct stmvl6180_data *stmdata = stmvl6180_getobject();
+
+	if(stmdata) {
+		mutex_lock(&stmdata->work_mutex);
+		if(on) {
+			if(stmdata->tof_start && stmdata->enable_ps_sensor == 0)
+				stmdata->tof_start(stmdata, 3, NORMAL_MODE);
+		} else {
+			if(stmdata->tof_stop && stmdata->enable_ps_sensor == 1) {
+				stmdata->enable_ps_sensor = 0;
+				stmdata->tof_stop(stmdata);
+			}
+		}
+		mutex_unlock(&stmdata->work_mutex);
+	}
+	vl6180_dbgmsg("TOF power called %d\n", on);
 	return 0;
 }
 

@@ -433,18 +433,13 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 		vl6180_errmsg("store unvalid value=%ld\n", val);
 		return count;
 	}
+	vl6180_dbgmsg("Enter, enable ps senosr ( %ld)\n", val);
 	mutex_lock(&data->work_mutex);
-	vl6180_dbgmsg("Enter, enable_ps_sensor flag:%d\n", data->enable_ps_sensor);
-	vl6180_dbgmsg("enable ps senosr ( %ld)\n", val);
-
+	vl6180_dbgmsg("enable_ps_sensor old flag:%d\n", data->enable_ps_sensor);
 	if (val == 1) {
 		/* turn on tof sensor */
-		if (data->enable_ps_sensor == 0) {
-			/* to start */
+		if (data->enable_ps_sensor == 0)
 			stmvl6180_start(data, 3, NORMAL_MODE);
-		} else {
-			vl6180_errmsg("Already enabled. Skip !");
-		}
 	} else {
 		/* turn off tof sensor */
 		if (data->enable_ps_sensor == 1) {
@@ -453,8 +448,8 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 			stmvl6180_stop(data);
 		}
 	}
-	vl6180_dbgmsg("End\n");
 	mutex_unlock(&data->work_mutex);
+	vl6180_dbgmsg("End\n");
 
 	return count;
 }
@@ -661,6 +656,38 @@ static long stmvl6180_ioctl(struct file *file,
 	mutex_unlock(&gp_vl6180_data->work_mutex);
 
 	return ret;
+}
+
+
+/* Input device hooks to power up/down the device */
+static int stmvl6180_data_dev_open(struct input_dev *input_dev_ps)
+{
+	struct stmvl6180_data *data = gp_vl6180_data;
+
+        mutex_lock(&data->work_mutex);
+        vl6180_dbgmsg("Enter %s current enable_ps_sensor flag:%d\n",
+					__func__,data->enable_ps_sensor);
+	/* turn on tof sensor */
+	if (data->enable_ps_sensor == 0)
+		stmvl6180_start(data, 3, NORMAL_MODE);
+	mutex_unlock(&data->work_mutex);
+	return 0;
+}
+
+static void stmvl6180_data_dev_close(struct input_dev *input_dev_ps)
+{
+	struct stmvl6180_data *data = gp_vl6180_data;
+
+        mutex_lock(&data->work_mutex);
+        vl6180_dbgmsg("Enter %s current enable_ps_sensor flag:%d\n",
+					__func__,data->enable_ps_sensor);
+	/* turn off tof sensor */
+	if (data->enable_ps_sensor == 1) {
+		data->enable_ps_sensor = 0;
+		/* to stop */
+		stmvl6180_stop(data);
+	}
+	mutex_unlock(&data->work_mutex);
 }
 
 /*
@@ -878,6 +905,10 @@ static int stmvl6180_setup(struct stmvl6180_data *data)
 	input_set_abs_params(data->input_dev_ps, ABS_HAT3Y, 0, 0xffffffff, 0, 0);
 	data->input_dev_ps->name = "STM VL6180 proximity sensor";
 
+	/* setup the open/close callbacks for the input_device */
+	data->input_dev_ps->open = stmvl6180_data_dev_open;
+	data->input_dev_ps->close = stmvl6180_data_dev_close;
+
 	rc = input_register_device(data->input_dev_ps);
 	if (rc) {
 		rc = -ENOMEM;
@@ -945,6 +976,8 @@ static int __init stmvl6180_init(void)
 	}
 	/* assign to global variable */
 	gp_vl6180_data = vl6180_data;
+	vl6180_data->tof_start = stmvl6180_start;
+	vl6180_data->tof_stop = stmvl6180_stop;
 	/* assign function table */
 	vl6180_data->pmodule_func_tbl = &stmvl6180_module_func_tbl;
 	/* client specific init function */

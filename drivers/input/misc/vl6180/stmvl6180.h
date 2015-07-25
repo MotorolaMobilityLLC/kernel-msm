@@ -130,6 +130,11 @@ struct stmvl6180_data {
 
 	/* Debug */
 	unsigned int enableDebug;
+
+	/* function to start/stop tof */
+	int (*tof_start)(struct stmvl6180_data *data,
+			uint8_t scaling, init_mode_e mode);
+	int (*tof_stop)(struct stmvl6180_data *data);
 };
 
 /*
