@@ -2872,27 +2872,6 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 {
 	int rc;
 	u8 chgr_sts, bat_if_sts;
-    /* when usb is present and bat is cool or warm,when charging done report not charging */
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-    if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
-        qpnp_chg_is_dc_chg_plugged_in(chip)) && chip->chg_done )
-    {
-        if((chip->bat_is_cool && chip->cool_bat_mv < chip->max_voltage_mv)
-            || (chip->bat_is_warm && (chip->warm_bat_mv < chip->max_voltage_mv)))
-        {
-            return POWER_SUPPLY_STATUS_NOT_CHARGING;
-        }
-        else
-        {
-            return POWER_SUPPLY_STATUS_FULL;
-        }
-    }
-#else
-    if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
-        qpnp_chg_is_dc_chg_plugged_in(chip)) && chip->chg_done) {
-        return POWER_SUPPLY_STATUS_FULL;
-    }
-#endif
 
 	rc = qpnp_chg_read(chip, &chgr_sts, INT_RT_STS(chip->chgr_base), 1);
 	if (rc) {
