@@ -2299,9 +2299,12 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                 if (pHddCtx->hdd_mcastbcast_filter_set == TRUE)
                 {
                     hdd_conf_mcastbcast_filter(pHddCtx, FALSE);
-                    pHddCtx->configuredMcastBcastFilter =
-                        pHddCtx->sus_res_mcastbcast_filter;
-                    pHddCtx->sus_res_mcastbcast_filter_valid = VOS_FALSE;
+
+                    if (VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid) {
+                        pHddCtx->configuredMcastBcastFilter =
+                            pHddCtx->sus_res_mcastbcast_filter;
+                        pHddCtx->sus_res_mcastbcast_filter_valid = VOS_FALSE;
+                    }
 
                     hddLog(VOS_TRACE_LEVEL_INFO,
                            "offload: disassociation happening, restoring configuredMcastBcastFilter");
