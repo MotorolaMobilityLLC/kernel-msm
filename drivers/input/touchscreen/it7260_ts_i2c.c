@@ -385,6 +385,7 @@ static bool chipFlashWriteAndVerify(unsigned int fwLength, const uint8_t *fwData
 			i2cWrite(BUF_COMMAND, cmdWrite, 2 + curWriteSz);
 
 			/* set offset and read the data back */
+			msleep(10);
 			chipSetStartOffset(writeStartOffset + curDataOfst);
 			i2cWrite(BUF_COMMAND, cmdRead, sizeof(cmdRead));
 			i2cRead(BUF_RESPONSE, bufRead, curWriteSz);
