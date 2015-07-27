@@ -768,6 +768,7 @@ static int fpc1020_probe(struct spi_device *spi)
 	if (of_property_read_bool(dev->of_node, "fpc,enable-wakeup")) {
 		irqf |= IRQF_NO_SUSPEND;
 		device_init_wakeup(dev, 1);
+		fpc1020->wakeup_enabled = true;
 	}
 	mutex_init(&fpc1020->lock);
 	rc = devm_request_threaded_irq(dev, gpio_to_irq(fpc1020->irq_gpio),
@@ -797,11 +798,6 @@ static int fpc1020_probe(struct spi_device *spi)
 	rc = spi_set_fabric(fpc1020, true);
 	if (rc) {
 		dev_err(dev, "could not enable spi fabric\n");
-		goto exit;
-	}
-	rc = set_clks(fpc1020, false);
-	if (rc) {
-		dev_err(dev, "could not disable spi clk\n");
 		goto exit;
 	}
 
