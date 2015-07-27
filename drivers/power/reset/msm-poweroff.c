@@ -32,8 +32,6 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
 
-#include <linux/huawei_reset_detect.h>
-
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -228,8 +226,9 @@ static void msm_restart_prepare(const char *cmd)
 	set_dload_mode(download_mode &&
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
-	if(!in_panic)
-		set_reset_magic(RESET_MAGIC_REBOOT);
+
+	qpnp_pon_set_restart_reason(
+			PON_RESTART_REASON_REBOOT);
 
 	need_warm_reset = (get_dload_mode() ||
 				(cmd != NULL && cmd[0] != '\0'));
@@ -249,6 +248,9 @@ static void msm_restart_prepare(const char *cmd)
 	if(in_panic) {
 		pr_notice("Warm reset for panic\n");
 		need_warm_reset = true;
+		qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_PANIC);
+
 	}
 
 	/*

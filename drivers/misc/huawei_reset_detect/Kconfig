@@ -1,5 +1,0 @@
-config HUAWEI_RESET_DETECT
-	tristate "detect abnormal reset"
-	default n
-	help
-	  Say Y here to report reboots/resets

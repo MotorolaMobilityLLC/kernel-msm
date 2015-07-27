@@ -47,7 +47,7 @@
 #include <linux/suspend.h>
 #include <soc/qcom/msm-core.h>
 #include <linux/cpumask.h>
-#include <linux/huawei_reset_detect.h>
+#include <linux/qpnp/power-on.h>
 
 #define CREATE_TRACE_POINTS
 #define TRACE_MSM_THERMAL
@@ -2293,7 +2293,7 @@ static void msm_thermal_bite(int tsens_id, long temp)
 	pr_err("TSENS:%d reached temperature:%ld. System reset\n",
 		tsens_id, temp);
 
-	set_reset_magic(RESET_MAGIC_THERMAL);
+	qpnp_pon_set_restart_reason(PON_RESTART_REASON_THERMAL);
 
 	if (!is_scm_armv8()) {
 		scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);
