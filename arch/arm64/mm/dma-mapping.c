@@ -297,7 +297,8 @@ static void *arm64_swiotlb_alloc_noncoherent(struct device *dev, size_t size,
 			__dma_flush_range(ptr, ptr + size);
 
 		map = kmalloc(sizeof(struct page *) << order,
-			      (flags & ~GFP_DMA) | __GFP_NOWARN);
+			      (flags & ~GFP_DMA) | __GFP_NORETRY
+			      | __GFP_NOWARN);
 		if (!map) {
 			map = vmalloc(sizeof(struct page *) << order);
 			if (!map)
