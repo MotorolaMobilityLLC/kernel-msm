@@ -1578,8 +1578,13 @@ out:
 
 #define BATT_TEMP_OFFSET	3
 #define BATT_TEMP_CNTRL_MASK	0x17
-#define BATT_TEMP_ON		0x16
-#define BATT_TEMP_OFF		0x01
+#define DISABLE_THERM_BIT	BIT(0)
+#define TEMP_SENSE_ALWAYS_BIT	BIT(1)
+#define TEMP_SENSE_CHARGE_BIT	BIT(2)
+#define FORCE_RBIAS_ON_BIT	BIT(4)
+#define BATT_TEMP_OFF		DISABLE_THERM_BIT
+#define BATT_TEMP_ON		(FORCE_RBIAS_ON_BIT | TEMP_SENSE_ALWAYS_BIT | \
+				TEMP_SENSE_CHARGE_BIT)
 #define TEMP_PERIOD_UPDATE_MS		10000
 #define TEMP_PERIOD_TIMEOUT_MS		3000
 static void update_temp_data(struct work_struct *work)
@@ -4796,7 +4801,6 @@ static int bcl_trim_workaround(struct fg_chip *chip)
 #define FG_ADC_CONFIG_REG		0x4B8
 #define FG_BCL_CONFIG_OFFSET		0x3
 #define BCL_FORCED_HPM_IN_CHARGE	BIT(2)
-#define BATT_TEMP_INIT		0x02
 static int fg_common_hw_init(struct fg_chip *chip)
 {
 	int rc;
@@ -4865,13 +4869,15 @@ static int fg_common_hw_init(struct fg_chip *chip)
 			THERMAL_COEFF_OFFSET, 0);
 	}
 
-	if(!chip->sw_rbias_ctrl) {
+	if (!chip->sw_rbias_ctrl) {
 		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
-			BATT_TEMP_CNTRL_MASK,
-			BATT_TEMP_INIT,
-			BATT_TEMP_OFFSET);
-		if (rc)
-			pr_err("failed to write BATT_TEMP_INIT rc=%d\n", rc);
+				BATT_TEMP_CNTRL_MASK,
+				TEMP_SENSE_ALWAYS_BIT,
+				BATT_TEMP_OFFSET);
+		if (rc) {
+			pr_err("failed to write BATT_TEMP_OFFSET rc=%d\n", rc);
+			return rc;
+		}
 	}
 
 	return 0;
