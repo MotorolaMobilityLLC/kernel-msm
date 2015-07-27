@@ -198,3 +198,7 @@
 	qcom,use-dynamic-ocv-setting;
 	qcom,ocv-rbatt-compensation;
 };
+
+&sdhc_2 {
+	status = "disabled";
+};

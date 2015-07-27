@@ -59,3 +59,7 @@
 &pm8x26_rtc {
 	qcom,qpnp-rtc-write = <1>;
 };
+
+&sdhc_2 {
+	status = "disabled";
+};
