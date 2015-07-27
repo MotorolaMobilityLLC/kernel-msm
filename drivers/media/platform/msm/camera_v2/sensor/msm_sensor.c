@@ -491,6 +491,11 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	for (retry = 0; retry < 3; retry++) {
 		rc = msm_camera_power_up(power_info, s_ctrl->sensor_device_type,
 			sensor_i2c_client);
+		/* debug camera SOF freeze */
+		if (rc < 0)
+			pr_err("SOF_DEBUG %s 1, sensor=%s, rc=%d\n",
+					__func__, sensor_name, rc);
+		/* end of debug */
 		if (rc < 0)
 			return rc;
 		rc = msm_sensor_check_id(s_ctrl);
@@ -513,6 +518,11 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			rc = msm_camera_power_up(power_info,
 					s_ctrl->sensor_device_type,
 					sensor_i2c_client);
+			/* debug camera SOF freeze */
+			if (rc < 0)
+				pr_err("SOF_DEBUG %s 2, sensor=%s, rc=%d\n",
+						__func__, sensor_name, rc);
+			/* end of debug */
 			if (rc < 0)
 				return rc;
 			rc = msm_sensor_check_id(s_ctrl);
@@ -528,6 +538,9 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
+	/* debug camera SOF freeze */
+	pr_err("SOF_DEBUG %s X, sensor=%s, rc=%d\n", __func__, sensor_name, rc);
+	/* end of debug */
 	return rc;
 }
 
