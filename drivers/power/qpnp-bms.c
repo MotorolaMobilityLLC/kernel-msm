@@ -3981,17 +3981,6 @@ static void battery_status_check(struct qpnp_bms_chip *chip)
 			disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 		}
 
-                /*add the charging_done flag here,to reset the cc.
-                  If the battery is full and charger is on,the cc will
-                  be not accurate.So when the charger is out,we need to
-                  reset the cc. */
-		if(status == POWER_SUPPLY_STATUS_DISCHARGING) {
-			if(chip->battery_status
-				== POWER_SUPPLY_STATUS_FULL) {
-				chip->done_charging = true;
-			}
-		}
-
 		chip->battery_status = status;
 		/* battery charge status has changed, so force a soc
 		 * recalculation to update the SoC */
