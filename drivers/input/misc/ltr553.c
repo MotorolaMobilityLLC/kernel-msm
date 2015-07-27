@@ -1041,12 +1041,14 @@ static void ltr553_report_work(struct work_struct *work)
 	int rc;
 	unsigned int status;
 	u8 buf[7];
+	int fake_interrupt = 0;
 
 	mutex_lock(&ltr->ops_lock);
 
 	/* avoid fake interrupt */
 	if (!ltr->power_enabled) {
 		dev_dbg(&ltr->i2c->dev, "fake interrupt triggered\n");
+		fake_interrupt = 1;
 		goto exit;
 	}
 
@@ -1084,9 +1086,11 @@ exit:
 	}
 
 	/* clear interrupt */
-	if (regmap_bulk_read(ltr->regmap, LTR553_REG_ALS_DATA_CH1_0,
-			buf, ARRAY_SIZE(buf)))
-		dev_err(&ltr->i2c->dev, "clear interrupt failed\n");
+	if (!fake_interrupt) {
+		if (regmap_bulk_read(ltr->regmap, LTR553_REG_ALS_DATA_CH1_0,
+					buf, ARRAY_SIZE(buf)))
+			dev_err(&ltr->i2c->dev, "clear interrupt failed\n");
+	}
 
 	mutex_unlock(&ltr->ops_lock);
 }
