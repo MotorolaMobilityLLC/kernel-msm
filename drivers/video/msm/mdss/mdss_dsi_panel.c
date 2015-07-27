@@ -557,6 +557,48 @@ end:
 	return 0;
 }
 
+static void idle_on_work(struct work_struct *work)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl =
+		container_of(work, struct mdss_dsi_ctrl_pdata, idle_on_work);
+	struct mdss_panel_info *pinfo;
+	struct dsi_panel_cmds single_cmd;
+	struct dsi_panel_cmds *idle_cmd;
+	int i = 0;
+	int delay;
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	idle_cmd = &ctrl->idle_on_cmds;
+
+	pr_debug("%s ++\n", __func__);
+	wake_lock(&ctrl->idle_on_wakelock);
+
+	if(ctrl->idle == false)
+		goto end;
+
+	if(pinfo->blank_state == MDSS_PANEL_BLANK_BLANK)
+		goto end;
+
+	do {
+		single_cmd.cmds = idle_cmd->cmds+i;
+		single_cmd.cmd_cnt = 1;
+		delay = (idle_cmd->cmds+i)->dchdr.wait;
+		(idle_cmd->cmds+i)->dchdr.wait = 0;
+		mdss_dsi_panel_cmds_send(ctrl, &single_cmd);
+
+		if (delay) {
+			usleep(delay*1000);
+			(idle_cmd->cmds+i)->dchdr.wait = delay;
+		}
+
+	} while (++i < idle_cmd->cmd_cnt);
+
+end:
+	wake_unlock(&ctrl->idle_on_wakelock);
+	pr_debug("%s --\n", __func__);
+
+	return;
+}
 
 static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	int enable)
@@ -589,12 +631,13 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	{
 		pinfo->blank_state = MDSS_PANEL_BLANK_LOW_POWER;
 		if (ctrl->idle_on_cmds.cmd_cnt)
-			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+			schedule_work(&ctrl->idle_on_work);
 	}
 	else
 	{
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 		if (ctrl->idle_off_cmds.cmd_cnt) {
+			cancel_work_sync(&ctrl->idle_on_work);
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_off_cmds);
 		}
 	}
@@ -1442,6 +1485,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 
 	ctrl_pdata->idle = 0;
+	INIT_WORK(&ctrl_pdata->idle_on_work, idle_on_work);
+	wake_lock_init(&ctrl_pdata->idle_on_wakelock, WAKE_LOCK_SUSPEND,
+                        "IDLE_ON_WAKELOCK");
 
 	return 0;
 }
