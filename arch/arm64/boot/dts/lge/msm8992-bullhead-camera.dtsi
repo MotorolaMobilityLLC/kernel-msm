@@ -18,9 +18,7 @@
 		qcom,flash-source = <&pmi8994_flash0 &pmi8994_flash1>;
 		qcom,torch-source = <&pmi8994_torch0 &pmi8994_torch1>;
 	};
-};
 
-&cci {
 	tof0: stmvl6180@0 {
 		cell-index = <0x0>;
 		reg = <0x0>;
@@ -38,7 +36,9 @@
 		stmvl6180,ldaf-int-gpio = <&msm_gpio 95 0>;
 		status = "ok";
 	};
+};
 
+&cci {
 	actuator0: qcom,actuator@0 {
 		cell-index = <0>;
 		reg = <0x0>;
@@ -88,7 +88,6 @@
 		qcom,eeprom-src = <&eeprom5>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
-		qcom,tof-src = <&tof0>;
 		cam_vdig-supply = <&pm8994_l3>;
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vana-supply = <&pm8994_l17>;
