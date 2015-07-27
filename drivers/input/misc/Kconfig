@@ -872,5 +872,10 @@ config LASER_STMVL6180
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called stmvl6180.
+
+config RF_DETECT
+	tristate "Adjusted RF by monitor the change of gpio"
+	help
+	 This option enables support for adjusting RF.
 endif
 
