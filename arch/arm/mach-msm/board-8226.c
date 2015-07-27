@@ -51,6 +51,7 @@
 #include "board-dt.h"
 #include "clock.h"
 #include "platsmp.h"
+#include "huawei_ramoops.h"
 
 #ifdef CONFIG_BCMDHD
 extern int brcm_wlan_init(void);
@@ -77,6 +78,7 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 static void __init msm8226_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+	huawei_reserve();
 }
 
 /*
@@ -100,6 +102,7 @@ void __init msm8226_add_drivers(void)
 	ncp6335d_regulator_init();
 	fan53555_regulator_init();
 	cpr_regulator_init();
+	huawei_add_persistent_device();
 }
 
 void __init msm8226_init(void)
