@@ -1935,3 +1935,7 @@
 		};
 	};
 };
+
+&wcd9xxx_intc {
+	status = "disabled";
+};
