@@ -3072,9 +3072,6 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #define ETHER_IPV6_SADDR (ETHER_ICMP6_HEADER + 2)
 #define ETHER_IPV6_DAADR (ETHER_IPV6_SADDR + IPV6_ADDR_LEN)
 #define ETHER_ICMPV6_TYPE (ETHER_IPV6_DAADR + IPV6_ADDR_LEN)
-#define ICMPV6_PKT_TYPE_RA	134
-#define ICMPV6_PKT_TYPE_NS	135
-#define ICMPV6_PKT_TYPE_NA	136
 				if (ntoh16(skb->protocol) == ETHER_TYPE_ARP) /* ARP */
 					wcp->rx_arp++;
 				if (dump_data[0] == 0xFF) { /* Broadcast */
@@ -3086,17 +3083,18 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 						if ((skb->len > ETHER_ICMP6_HEADER) &&
 						    (dump_data[ETHER_ICMP6_HEADER] == IPPROTO_ICMPV6)) {
 							wcp->rx_icmpv6++;
-
-							switch (dump_data[ETHER_ICMPV6_TYPE]) {
-							case ICMPV6_PKT_TYPE_RA:
-								wcp->rx_icmpv6_ra++;
-								break;
-							case ICMPV6_PKT_TYPE_NA:
-								wcp->rx_icmpv6_ra++;
-								break;
-							case ICMPV6_PKT_TYPE_NS:
-								wcp->rx_icmpv6_ns++;
-								break;
+							if (skb->len > ETHER_ICMPV6_TYPE) {
+								switch (dump_data[ETHER_ICMPV6_TYPE]) {
+								case NDISC_ROUTER_ADVERTISEMENT:
+									wcp->rx_icmpv6_ra++;
+									break;
+								case NDISC_NEIGHBOUR_ADVERTISEMENT:
+									wcp->rx_icmpv6_na++;
+									break;
+								case NDISC_NEIGHBOUR_SOLICITATION:
+									wcp->rx_icmpv6_ns++;
+									break;
+								}
 							}
 						}
 					} else if (dump_data[2] == 0x5E) {
@@ -3111,9 +3109,6 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan,
 #undef ETHER_IPV6_SADDR
 #undef ETHER_IPV6_DAADR
 #undef ETHER_ICMPV6_TYPE
-#undef ICMPV6_PKT_TYPE_RA
-#undef ICMPV6_PKT_TYPE_NS
-#undef ICMPV6_PKT_TYPE_NA
 #endif
 				pkt_wake = 0;
 			}
