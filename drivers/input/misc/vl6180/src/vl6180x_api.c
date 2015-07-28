@@ -1912,10 +1912,10 @@ static int32_t _filter_Start(VL6180xDev_t dev, uint16_t m_trueRange_mm,
 	uint32_t MaxVAVGDiff;
 
 	/* Filter Parameters */
-	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit = 60;
+	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit = 85;
 	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit_ROM = 800;	// Shall be adapted depending on crossTalk
-	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit2 = 165;
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit2_ROM = 180;	// Shall be adapted depending on crossTalk and device sensitivity
+	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit2 = 180;
+	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit2_ROM = 250;	// Shall be adapted depending on crossTalk and device sensitivity
 
 	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateFilterLimit_ROM = 850;	// Shall be adapted depending on crossTalk and device sensitivity
 	static const uint16_t ROMABLE_DATA WrapAroundHighRawRangeFilterLimit =
