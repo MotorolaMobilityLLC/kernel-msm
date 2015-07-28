@@ -1438,9 +1438,9 @@ int mdss_mdp_pipe_sspp_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 }
 
 static int pp_mixer_setup(u32 disp_num,
-		struct mdss_mdp_mixer *mixer)
+		struct mdss_mdp_mixer *mixer, u32 flags)
 {
-	u32 flags, mixer_num, opmode = 0, lm_bitmask = 0;
+	u32 mixer_num, opmode = 0, lm_bitmask = 0;
 	struct mdp_pgc_lut_data *pgc_config;
 	struct pp_sts_type *pp_sts;
 	struct mdss_mdp_ctl *ctl;
@@ -1468,7 +1468,6 @@ static int pp_mixer_setup(u32 disp_num,
 		return 0;
 	}
 
-	flags = mdss_pp_res->pp_disp_flags[disp_num];
 	pp_sts = &mdss_pp_res->pp_disp_sts[disp_num];
 	/* GC_LUT is in layer mixer */
 	if (flags & PP_FLAGS_DIRTY_ARGC) {
@@ -1689,9 +1688,9 @@ static void pp_dspp_opmode_config(struct mdss_mdp_ctl *ctl, u32 num,
 		*opmode |= MDSS_MDP_DSPP_OP_ARGC_LUT_EN;
 }
 
-static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer)
+static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer, u32 flags)
 {
-	u32 ad_flags, flags, dspp_num, opmode = 0, ad_bypass;
+	u32 ad_flags, dspp_num, opmode = 0, ad_bypass;
 	struct mdp_pgc_lut_data *pgc_config;
 	struct pp_sts_type *pp_sts;
 	char __iomem *base, *addr;
@@ -1720,11 +1719,6 @@ static int pp_dspp_setup(u32 disp_num, struct mdss_mdp_mixer *mixer)
 	ret = pp_hist_setup(&opmode, MDSS_PP_DSPP_CFG | dspp_num, mixer);
 	if (ret)
 		goto dspp_exit;
-
-	if (disp_num < MDSS_BLOCK_DISP_NUM)
-		flags = mdss_pp_res->pp_disp_flags[disp_num];
-	else
-		flags = 0;
 
 	mixer_cnt = mdss_mdp_get_ctl_mixers(disp_num, mixer_id);
 	if (dspp_num < mdata->nad_cfgs && disp_num < mdata->nad_cfgs &&
@@ -1846,6 +1840,27 @@ error:
 	return ret;
 }
 
+static bool is_full_screen_update(struct mdss_mdp_ctl *ctl)
+{
+	if (ctl->mfd->panel_info->type != MIPI_CMD_PANEL ||
+			!ctl->panel_data->panel_info.partial_update_enabled)
+		return true;
+
+	if (ctl->mixer_left && (ctl->mixer_left->roi.x != 0 ||
+			ctl->mixer_left->roi.y != 0 ||
+			ctl->mixer_left->roi.w < ctl->mixer_left->width ||
+			ctl->mixer_left->roi.h < ctl->mixer_left->height))
+		return false;
+
+	if (ctl->mixer_right && (ctl->mixer_right->roi.x != 0 ||
+			ctl->mixer_right->roi.y != 0 ||
+			ctl->mixer_right->roi.w < ctl->mixer_right->width ||
+			ctl->mixer_right->roi.h < ctl->mixer_right->height))
+		return false;
+
+	return true;
+}
+
 int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_data_type *mdata = ctl->mdata;
@@ -1903,7 +1918,11 @@ int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 
 	mutex_lock(&mdss_pp_mutex);
 
-	flags = mdss_pp_res->pp_disp_flags[disp_num];
+	if (is_full_screen_update(ctl))
+		flags = mdss_pp_res->pp_disp_flags[disp_num];
+	else
+		flags = 0;
+
 	if (!wb_mixer)
 		pa_v2_flags = mdss_pp_res->pa_v2_disp_cfg[disp_num].flags;
 	else
@@ -1925,16 +1944,17 @@ int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 	}
 
 	if (ctl->mixer_left) {
-		pp_mixer_setup(disp_num, ctl->mixer_left);
-		pp_dspp_setup(disp_num, ctl->mixer_left);
+		pp_mixer_setup(disp_num, ctl->mixer_left, flags);
+		pp_dspp_setup(disp_num, ctl->mixer_left, flags);
 	}
 	if (ctl->mixer_right) {
-		pp_mixer_setup(disp_num, ctl->mixer_right);
-		pp_dspp_setup(disp_num, ctl->mixer_right);
+		pp_mixer_setup(disp_num, ctl->mixer_right, flags);
+		pp_dspp_setup(disp_num, ctl->mixer_right, flags);
 	}
 	/* clear dirty flag */
 	if (disp_num < MDSS_MAX_MIXER_DISP_NUM) {
-		mdss_pp_res->pp_disp_flags[disp_num] = 0;
+		if (flags)
+			mdss_pp_res->pp_disp_flags[disp_num] = 0;
 		if (disp_num < mdata->nad_cfgs)
 			mdata->ad_cfgs[disp_num].reg_sts = 0;
 	}
