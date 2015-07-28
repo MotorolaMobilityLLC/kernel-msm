@@ -333,6 +333,7 @@ struct smb135x_chg {
 	bool				dc_present;
 	bool				usb_slave_present;
 	bool				dc_ov;
+	bool				usb_uv;
 
 	bool				bmd_algo_disabled;
 	bool				iterm_disabled;
@@ -2629,6 +2630,7 @@ static int usbin_uv_handler(struct smb135x_chg *chip, u8 rt_stat)
 	bool usb_present = !rt_stat;
 	union power_supply_propval prop = {0, };
 
+	chip->usb_uv = !!rt_stat;
 	pr_debug("chip->usb_present = %d usb_present = %d\n",
 			chip->usb_present, usb_present);
 	if (chip->usb_psy && !chip->usb_psy->get_property(chip->usb_psy,
@@ -2654,16 +2656,19 @@ static int usbin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 	bool usb_present = !rt_stat;
 	int health;
 
-	pr_debug("chip->usb_present = %d usb_present = %d\n",
-			chip->usb_present, usb_present);
+	pr_debug("OV status = %d\n", !!rt_stat);
 	if (chip->usb_present && !usb_present) {
 		/* USB removed */
 		chip->usb_present = usb_present;
 		handle_usb_removal(chip);
 	} else if (!chip->usb_present && usb_present) {
-		/* USB inserted */
-		chip->usb_present = usb_present;
-		handle_usb_insertion(chip);
+		if (!chip->usb_uv) {
+			/* USB inserted */
+			chip->usb_present = usb_present;
+			handle_usb_insertion(chip);
+		} else {
+			pr_debug("Charger unplugged from OV\n");
+		}
 	}
 
 	if (chip->usb_psy) {
@@ -3290,6 +3295,7 @@ static int determine_initial_status(struct smb135x_chg *chip)
 		dev_err(chip->dev, "Couldn't read irq E rc = %d\n", rc);
 		return rc;
 	}
+	chip->usb_uv = !!(reg & IRQ_E_USB_UV_BIT);
 	chip->usb_present = !(reg & IRQ_E_USB_OV_BIT)
 				&& !(reg & IRQ_E_USB_UV_BIT);
 	chip->dc_present = !(reg & IRQ_E_DC_OV_BIT) && !(reg & IRQ_E_DC_UV_BIT);
