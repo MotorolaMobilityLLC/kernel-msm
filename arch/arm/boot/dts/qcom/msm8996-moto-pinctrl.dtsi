@@ -64,14 +64,20 @@
 	 */
 	spi_0 {
 		spi_0_active: spi_0_active {
-			spi_0 {
-				pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			spi_0_cs0 {
+				pins = "gpio2";
+				function = "blsp_spi1";
+				drive-strength = <0x6>;
+				bias-disable;
 			};
 		};
 
 		spi_0_sleep: spi_0_sleep {
-			spi_0 {
-				pins = "gpio0", "gpio1", "gpio2", "gpio3";
+			spi_0_cs0 {
+				pins = "gpio2";
+				function = "blsp_spi1";
+				drive-strength = <0x6>;
+				bias-disable;
 			};
 		};
 	};
