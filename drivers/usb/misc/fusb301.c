@@ -1378,6 +1378,10 @@ static void fusb301_attach(struct fusb301_chip *chip)
 		fusb301_aud_acc_detected(chip);
 		chip->type = type;
 		break;
+	case FUSB301_TYPE_INVALID:
+		fusb301_detach(chip);
+		dev_err(cdev, "%s: Invaild type[0x%02x]\n", __func__, type);
+		break;
 	default:
 		rc = fusb301_set_chip_state(chip,
 				FUSB_STATE_ERROR_RECOVERY);
@@ -1386,7 +1390,7 @@ static void fusb301_attach(struct fusb301_chip *chip)
 					__func__);
 
 		fusb301_detach(chip);
-		dev_err(cdev, "%s: Invaild type[0x%02x]\n", __func__, type);
+		dev_err(cdev, "%s: Unknwon type[0x%02x]\n", __func__, type);
 		break;
 	}
 }
