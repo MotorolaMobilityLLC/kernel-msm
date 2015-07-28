@@ -231,6 +231,12 @@ struct msm_sensor_otp_cal_info_t {
 	uint16_t eeprom_mem_addr;
 };
 
+struct msm_sensor_actuator_info_t {
+	uint8_t enable;
+	uint16_t slave_addr;
+	uint16_t clk_reg_addr;
+};
+
 struct msm_sensor_init_params {
 	/* mask of modes supported: 2D, 3D */
 	int                 modes_supported;
@@ -239,6 +245,7 @@ struct msm_sensor_init_params {
 	/* sensor mount angle */
 	uint32_t            sensor_mount_angle;
 	struct msm_sensor_otp_cal_info_t sensor_otp;
+	struct msm_sensor_actuator_info_t actuator_info;
 };
 
 struct msm_sensor_id_info_t {
@@ -262,6 +269,7 @@ struct msm_camera_sensor_slave_info {
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
 	struct otp_info_t sensor_otp;
+	struct msm_sensor_actuator_info_t actuator_info;
 };
 
 struct msm_camera_i2c_reg_array {

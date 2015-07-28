@@ -1123,17 +1123,18 @@ int32_t msm_sensor_driver_probe(void *setting,
 		goto free_camera_info;
 	}
 
+	/* Save sensor info*/
+	s_ctrl->sensordata->cam_slave_info = slave_info;
+
 	/* Power up and probe sensor */
 	rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 	if (rc < 0) {
 		pr_err("%s power up failed", slave_info->sensor_name);
+		s_ctrl->sensordata->cam_slave_info = NULL;
 		goto free_camera_info;
 	}
 
 	pr_err("%s probe succeeded", slave_info->sensor_name);
-
-	/* Save sensor info*/
-	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	if (slave_info->sensor_init_params.sensor_otp.enable) {
 		/* Read OTP */
