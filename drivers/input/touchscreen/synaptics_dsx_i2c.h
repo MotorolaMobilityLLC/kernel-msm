@@ -23,6 +23,7 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION "DSX 1.1"
 
 #include <linux/version.h>
+#include <linux/semaphore.h>
 #if defined(USB_CHARGER_DETECTION)
 #include <linux/usb.h>
 #include <linux/power_supply.h>
@@ -217,6 +218,7 @@ struct synaptics_dsx_func_patch {
 struct synaptics_dsx_patch {
 	const char *name;
 	int	cfg_num;
+	struct semaphore list_sema;
 	struct list_head cfg_head;
 };
 
