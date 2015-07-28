@@ -3839,10 +3839,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	if (rmi4_data->stay_awake)
 		return 0;
 	if (rmi4_data->suspend)
-	{
-		pr_info("%s:already in suspend\n", __func__);
 		return 0;
-	}
 
 	if (rmi4_data->palm_down) {
 		rmi4_data->palm_down = false;
