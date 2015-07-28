@@ -1424,6 +1424,20 @@ static inline void wait_for_xmitr(struct uart_port *port)
 }
 
 #ifdef CONFIG_SERIAL_MSM_HSL_CONSOLE
+
+extern char *saved_command_line;
+static bool is_serial_log_enabled(void)
+{
+	if (strstr(saved_command_line, "console=ttyHSL0,115200,n8") != NULL) {
+		pr_info("serial log enable \n");
+		return true;
+	}
+
+	pr_info("serial log disable \n");
+
+	return false;
+}
+
 static void msm_hsl_console_putchar(struct uart_port *port, int ch)
 {
 	unsigned int vid = UART_TO_MSM(port)->ver_id;
@@ -1839,6 +1853,14 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	 */
 	if (msm_hsl_port->pclk)
 		clk_prepare_enable(msm_hsl_port->pclk);
+
+#ifdef CONFIG_SERIAL_MSM_HSL_CONSOLE
+	if (!is_serial_log_enabled()) {
+		pr_info("serial log disable, set cons NULL \n");
+		msm_hsl_uart_driver.cons = NULL;
+	}
+#endif
+
 	ret = uart_add_one_port(&msm_hsl_uart_driver, port);
 	if (msm_hsl_port->pclk)
 		clk_disable_unprepare(msm_hsl_port->pclk);
