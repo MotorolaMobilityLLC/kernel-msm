@@ -88,6 +88,8 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl);
 int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl);
 
 int msm_sensor_check_id(struct msm_sensor_ctrl_t *s_ctrl);
+int msm_actuator_check_reg_read(struct msm_sensor_ctrl_t *s_ctrl,
+	struct msm_sensor_actuator_info_t *actuator_info);
 
 int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl);
 

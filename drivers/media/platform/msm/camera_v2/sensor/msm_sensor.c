@@ -444,12 +444,14 @@ int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 
 int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	int rc;
+	int rc, act_status = 0;
 	struct msm_camera_power_ctrl_t *power_info;
 	struct msm_camera_i2c_client *sensor_i2c_client;
 	struct msm_camera_slave_info *slave_info;
 	const char *sensor_name;
 	uint32_t retry = 0;
+	struct msm_sensor_actuator_info_t *actuator_info;
+	struct msm_camera_sensor_slave_info *camera_info;
 
 	if (!s_ctrl) {
 		pr_err("%s:%d failed: %p\n",
@@ -473,7 +475,15 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	if (s_ctrl->set_mclk_23880000)
 		msm_sensor_adjust_mclk(power_info);
 
-	for (retry = 0; retry < 3; retry++) {
+	camera_info = s_ctrl->sensordata->cam_slave_info;
+	if (!camera_info)
+		pr_err("%s: camera slave info is null\n",
+			__func__);
+	else
+		actuator_info = &camera_info->sensor_init_params.
+				actuator_info;
+
+	for (retry = 0; retry < 7; retry++) {
 		rc = msm_camera_power_up(power_info, s_ctrl->sensor_device_type,
 			sensor_i2c_client);
 		if (rc < 0)
@@ -485,9 +495,74 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			msleep(20);
 			continue;
 		} else {
+			if (camera_info && actuator_info &&
+				actuator_info->enable) {
+				act_status =
+					msm_actuator_check_reg_read(s_ctrl,
+						actuator_info);
+				/* actuator retry should be n-1 to avoid
+				 * sensor power down on actuator failure
+				 * in n'th retry */
+				if (act_status < 0 && retry < 6) {
+					pr_err("%s: act_status: %d, retry: %d\n",
+						__func__, act_status, retry+1);
+					msm_camera_power_down(power_info,
+						s_ctrl->sensor_device_type,
+						sensor_i2c_client);
+					msleep(100);
+					continue;
+				}
+				break;
+			}
 			break;
 		}
 	}
+
+	return rc;
+}
+
+int msm_actuator_check_reg_read(struct msm_sensor_ctrl_t *s_ctrl,
+	struct msm_sensor_actuator_info_t *actuator_info)
+{
+	int32_t rc = 0;
+	uint16_t actuator_reg;
+	uint16_t actuator_slave_addr;
+	uint16_t cam_slave_addr =
+		s_ctrl->sensordata->slave_info->sensor_slave_addr;
+	int cam_addr_type = s_ctrl->sensor_i2c_client->addr_type;
+
+	pr_debug("%s Actuator Information:\n"
+		" - enable: 0x%x\n"
+		" - slave address: 0x%x\n"
+		" - mem address: 0x%x\n",
+		s_ctrl->sensordata->sensor_name,
+		actuator_info->enable,
+		actuator_info->slave_addr,
+		actuator_info->clk_reg_addr);
+
+	actuator_slave_addr = actuator_info->slave_addr;
+	s_ctrl->sensordata->slave_info->sensor_slave_addr =
+		actuator_slave_addr;
+	s_ctrl->sensor_i2c_client->cci_client->sid =
+		(actuator_slave_addr >> 1);
+
+	/* read actuator clk reg */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+		i2c_read(s_ctrl->sensor_i2c_client,
+			actuator_info->clk_reg_addr,
+			&actuator_reg,
+			MSM_CAMERA_I2C_BYTE_ADDR);
+	if (rc < 0) {
+		pr_err("%s: Unable to read actuator\n", __func__);
+		goto exit;
+	}
+exit:
+	/* Restore sensor defaults */
+	s_ctrl->sensordata->slave_info->sensor_slave_addr =
+		cam_slave_addr;
+	s_ctrl->sensor_i2c_client->cci_client->sid =
+		(cam_slave_addr >> 1);
+	s_ctrl->sensor_i2c_client->addr_type = cam_addr_type;
 
 	return rc;
 }
