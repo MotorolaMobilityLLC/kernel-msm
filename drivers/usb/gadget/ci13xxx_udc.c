@@ -68,6 +68,7 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/tracepoint.h>
 #include <linux/qcom/usb_trace.h>
+#include <linux/of.h>
 
 #include "ci13xxx_udc.h"
 
@@ -151,6 +152,9 @@ struct ci13xxx_ebi_err_data {
 };
 static struct ci13xxx_ebi_err_data *ebi_err_data;
 
+static bool force_usb_full_speed = false;
+#define USB_OTG_PROP "qcom,hsusb-otg"
+
 /******************************************************************************
  * HW block
  *****************************************************************************/
@@ -189,6 +193,8 @@ static struct {
 #define CAP_LAST            (hw_bank.lpm ? 0x12CUL : 0x0C0UL)
 
 #define REMOTE_WAKEUP_DELAY	msecs_to_jiffies(200)
+
+#define PORTSC_PFSC         (BIT(24))
 
 /* maximum number of enpoints: valid only after hw_device_reset() */
 static unsigned hw_ep_max;
@@ -374,6 +380,12 @@ static int hw_device_reset(struct ci13xxx *udc)
 		pr_err("lpm = %i", hw_bank.lpm);
 		return -ENODEV;
 	}
+
+	/*
+	 * force to set the usb speed as full speed
+	 */
+	if (force_usb_full_speed)
+		hw_cwrite(CAP_PORTSC, PORTSC_PFSC, PORTSC_PFSC);
 
 	return 0;
 }
@@ -3862,6 +3874,7 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 	struct ci13xxx *udc;
 	struct ci13xxx_platform_data *pdata;
 	int retval = 0, i, j;
+	struct device_node *np;
 
 	trace("%p, %p, %p", dev, regs, driver->name);
 
@@ -3872,6 +3885,13 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 	udc = kzalloc(sizeof(struct ci13xxx), GFP_KERNEL);
 	if (udc == NULL)
 		return -ENOMEM;
+
+	np = of_find_compatible_node(NULL, NULL, USB_OTG_PROP);
+	force_usb_full_speed = of_property_read_bool(np,
+			"qcom,force-usb-full-speed");
+	if (force_usb_full_speed)
+		pr_info("%s: Force to set the USB speed as FULL SPEED\n",
+				__func__);
 
 	udc->lock = &udc_lock;
 	udc->regs = regs;
