@@ -11,3 +11,7 @@
  */
 
 #include "msm8926-nemo.dtsi"
+
+&usb_otg {
+	qcom,force-usb-full-speed;
+};
