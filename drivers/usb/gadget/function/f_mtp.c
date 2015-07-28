@@ -408,11 +408,14 @@ static inline struct mtp_dev *func_to_mtp(struct usb_function *f)
 static struct usb_request *mtp_request_new(struct usb_ep *ep, int buffer_size)
 {
 	struct usb_request *req = usb_ep_alloc_request(ep, GFP_KERNEL);
+	gfp_t gfp_flags = GFP_KERNEL;
 	if (!req)
 		return NULL;
 
 	/* now allocate buffers for the requests */
-	req->buf = kmalloc(buffer_size, GFP_KERNEL);
+	if (buffer_size > (PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER))
+		gfp_flags |= __GFP_NOWARN;
+	req->buf = kmalloc(buffer_size, gfp_flags);
 	if (!req->buf) {
 		usb_ep_free_request(ep, req);
 		return NULL;
