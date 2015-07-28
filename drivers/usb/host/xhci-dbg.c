@@ -641,7 +641,7 @@ get_hex_data(char *dbuf, struct urb *urb, int event, int status, size_t max_len)
 
 	/*Only dump ep in completions and epout submissions*/
 	if (len && !status && ((usb_urb_dir_in(urb) && event) ||
-		(usb_urb_dir_in(urb) && !event))) {
+		(usb_urb_dir_out(urb) && !event))) {
 		if (len >= max_len)
 			len = max_len;
 		hex_dump_to_buffer(ubuf, len, 32, 4, dbuf, HEX_DUMP_LEN, 0);

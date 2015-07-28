@@ -28,9 +28,128 @@
 #include <linux/usb.h>
 #include <linux/usb/quirks.h>
 #include <linux/usb/hcd.h>
+#include <linux/debugfs.h>
 
 #include "usb.h"
 
+
+/* Maximum debug message length */
+#define DBG_MSG_LEN   128UL
+
+/* Maximum number of messages */
+#define DBG_MAX_MSG   4096UL
+#define TIME_BUF_LEN  20
+#define HEX_DUMP_LEN  72
+struct dbg_data {
+	char     (data_buf[DBG_MAX_MSG])[DBG_MSG_LEN];
+	unsigned data_idx;
+	rwlock_t data_lck;
+};
+
+static struct dbg_data dbg_hsic_pmdbg = {
+	.data_idx = 0,
+	.data_lck = __RW_LOCK_UNLOCKED(dlck),
+};
+
+static void dbg_inc(unsigned *idx)
+{
+	*idx = (*idx + 1) & (DBG_MAX_MSG-1);
+}
+
+/*get_timestamp - returns time of day in us */
+static char *get_timestamp(char *tbuf)
+{
+	unsigned long long t;
+	unsigned long nanosec_rem;
+
+	t = cpu_clock(smp_processor_id());
+	nanosec_rem = do_div(t, 1000000000)/1000;
+	scnprintf(tbuf, TIME_BUF_LEN, "[%5lu.%06lu] ", (unsigned long)t,
+		nanosec_rem);
+	return tbuf;
+}
+
+void
+dbg_log_event(struct dbg_data *d, struct usb_interface *iface,
+	char *event, unsigned status, int usage_cnt)
+{
+	unsigned long flags;
+	int num;
+	char tbuf[TIME_BUF_LEN];
+
+	/*only log for count 0/1 or negative*/
+	if (usage_cnt > 1)
+		return;
+
+	write_lock_irqsave(&d->data_lck, flags);
+	num = iface->cur_altsetting->desc.bInterfaceNumber;
+	scnprintf(d->data_buf[d->data_idx], DBG_MSG_LEN,
+		"%s: %d: %s : %d %d", get_timestamp(tbuf), num, event, status, usage_cnt);
+	dbg_inc(&d->data_idx);
+	write_unlock_irqrestore(&d->data_lck, flags);
+}
+
+static int usb_pm_events_show(struct seq_file *s, void *unused)
+{
+	unsigned long   flags;
+	unsigned        i;
+
+	read_lock_irqsave(&dbg_hsic_pmdbg.data_lck, flags);
+
+	i = dbg_hsic_pmdbg.data_idx;
+	for (dbg_inc(&i); i != dbg_hsic_pmdbg.data_idx ; dbg_inc(&i)) {
+		if (!strnlen(dbg_hsic_pmdbg.data_buf[i], DBG_MSG_LEN))
+			continue;
+		seq_printf(s, "%s\n", dbg_hsic_pmdbg.data_buf[i]);
+	}
+
+	read_unlock_irqrestore(&dbg_hsic_pmdbg.data_lck, flags);
+
+	return 0;
+}
+
+static int usb_pm_events_open(struct inode *inode, struct file *f)
+{
+	return single_open(f, usb_pm_events_show, inode->i_private);
+}
+
+const struct file_operations usb_pm_hsic_dbg_fops = {
+	.open = usb_pm_events_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static struct dentry *usb_pm_hsic_dbg_dent;
+static int usb_pm_hsic_debugfs_init(void)
+{
+	struct dentry *usb_pm_hsic_dentry;
+
+	if (usb_pm_hsic_dbg_dent)
+		return 0;
+
+	usb_pm_hsic_dbg_dent = debugfs_create_dir("usb_pm_hsic_dbg", NULL);
+
+	if (!usb_pm_hsic_dbg_dent || IS_ERR(usb_pm_hsic_dbg_dent))
+		return -ENODEV;
+
+	usb_pm_hsic_dentry = debugfs_create_file("show_usb_pm_events",
+						S_IRUGO,
+						usb_pm_hsic_dbg_dent, 0,
+						&usb_pm_hsic_dbg_fops);
+
+	if (!usb_pm_hsic_dentry) {
+		debugfs_remove_recursive(usb_pm_hsic_dbg_dent);
+		return -ENODEV;
+	}
+	return 0;
+}
+
+static void usb_pm_hsic_debugfs_cleanup(void)
+{
+	debugfs_remove_recursive(usb_pm_hsic_dbg_dent);
+	usb_pm_hsic_dbg_dent = NULL;
+}
 
 /*
  * Adds a new dynamic USBdevice ID to this driver,
@@ -229,6 +348,8 @@ static int usb_probe_device(struct device *dev)
 
 	if (!error)
 		error = udriver->probe(udev);
+	usb_pm_hsic_debugfs_init();
+
 	return error;
 }
 
@@ -867,6 +988,7 @@ void usb_deregister_device_driver(struct usb_device_driver *udriver)
 			usbcore_name, udriver->name);
 
 	driver_unregister(&udriver->drvwrap.driver);
+	usb_pm_hsic_debugfs_cleanup();
 }
 EXPORT_SYMBOL_GPL(usb_deregister_device_driver);
 
@@ -1620,6 +1742,8 @@ void usb_autopm_put_interface(struct usb_interface *intf)
 	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
+	dbg_log_event(&dbg_hsic_pmdbg, intf, "put", status,
+		atomic_read(&intf->dev.power.usage_count));
 }
 EXPORT_SYMBOL_GPL(usb_autopm_put_interface);
 
@@ -1649,6 +1773,8 @@ void usb_autopm_put_interface_async(struct usb_interface *intf)
 	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
+	dbg_log_event(&dbg_hsic_pmdbg, intf, "put_async", status,
+		atomic_read(&intf->dev.power.usage_count));
 }
 EXPORT_SYMBOL_GPL(usb_autopm_put_interface_async);
 
@@ -1700,6 +1826,8 @@ int usb_autopm_get_interface(struct usb_interface *intf)
 	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
+	dbg_log_event(&dbg_hsic_pmdbg, intf, "get", status,
+		atomic_read(&intf->dev.power.usage_count));
 	if (status > 0)
 		status = 0;
 	return status;
@@ -1733,6 +1861,9 @@ int usb_autopm_get_interface_async(struct usb_interface *intf)
 	dev_vdbg(&intf->dev, "%s: cnt %d -> %d\n",
 			__func__, atomic_read(&intf->dev.power.usage_count),
 			status);
+
+	dbg_log_event(&dbg_hsic_pmdbg, intf, "get_async", status,
+		atomic_read(&intf->dev.power.usage_count));
 	if (status > 0 || status == -EINPROGRESS)
 		status = 0;
 	return status;
