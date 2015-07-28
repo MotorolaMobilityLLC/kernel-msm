@@ -118,10 +118,10 @@
 			15 01 00 00 00 00 02 5C 80
 			15 01 00 00 00 00 02 5D 84
 			15 01 00 00 00 00 02 62 02
-			/* Program VGHO=9V */
-			15 01 00 00 00 00 02 0E B5
-			/* Program VGLO=-5.6V */
-			15 01 00 00 00 00 02 0F 96
+			/* Program VGHO= 8.7V */
+			15 01 00 00 00 00 02 0E B2
+			/* Program VGLO= -5.2V */
+			15 01 00 00 00 00 02 0F 92
 			/* Don't reload MTP after 0x11 cmd*/
 			15 01 00 00 00 00 02 FB 01
 			/* CMD1 is selected */
