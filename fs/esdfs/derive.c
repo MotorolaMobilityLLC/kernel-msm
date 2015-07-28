@@ -17,6 +17,7 @@
 #include <linux/syscalls.h>
 #include <linux/fcntl.h>
 #include <linux/ctype.h>
+#include <linux/vmalloc.h>
 #include <asm/uaccess.h>
 #include "../internal.h"
 #include "esdfs.h"
@@ -201,7 +202,7 @@ next:
 	num_packages = count;
 	kfree(package_list);
 	package_list = pl;
-	kfree(package_list_buffer);
+	kvfree(package_list_buffer);
 	package_list_buffer = buffer;
 	esdfs_package_list_version++;
 
@@ -215,20 +216,24 @@ static ssize_t proc_packages_write(struct file *file, const char __user *chunk,
 {
 	char *buffer;
 	int err;
+	size_t buf_size = count + raw_package_list_size;
 
-	buffer = kmalloc(count + raw_package_list_size, GFP_KERNEL);
+	if (buf_size > PAGE_SIZE)
+		buffer = vmalloc(buf_size);
+	else
+		buffer = kmalloc(buf_size, GFP_KERNEL);
 	if (!buffer)
 		return -ENOMEM;
 
 	if (raw_package_list) {
 		memcpy(buffer, raw_package_list, raw_package_list_size);
-		kfree(raw_package_list);
+		kvfree(raw_package_list);
 		raw_package_list_size = 0;
 		raw_package_list = NULL;
 	}
 
 	if (copy_from_user(buffer + raw_package_list_size, chunk, count)) {
-		kfree(buffer);
+		kvfree(buffer);
 		pr_err("esdfs: %s: :(\n", __func__);
 		return -EFAULT;
 	}
