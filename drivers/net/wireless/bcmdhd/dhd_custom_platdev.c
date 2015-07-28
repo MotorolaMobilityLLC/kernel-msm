@@ -57,6 +57,7 @@ static int brcm_wake_irq = -1;
 
 #if !defined(CONFIG_WIFI_CONTROL_FUNC)
 #define WLAN_PLAT_NODFS_FLAG	0x01
+#define WLAN_PLAT_AP_FLAG	0x02
 #endif
 
 #ifdef CONFIG_DHD_USE_STATIC_BUF
