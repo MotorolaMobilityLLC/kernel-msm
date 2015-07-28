@@ -70,6 +70,13 @@
 				drive-strength = <0x6>;
 				bias-disable;
 			};
+
+			spi_0_cs2b {
+				pins = "gpio28";
+				function = "blsp1_spi";
+				drive-strength = <6>;
+				bias-disable;
+			};
 		};
 
 		spi_0_sleep: spi_0_sleep {
@@ -77,6 +84,13 @@
 				pins = "gpio2";
 				function = "blsp_spi1";
 				drive-strength = <0x6>;
+				bias-disable;
+			};
+
+			spi_0_cs2b {
+				pins = "gpio28";
+				function = "blsp1_spi";
+				drive-strength = <6>;
 				bias-disable;
 			};
 		};
