@@ -185,13 +185,6 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 		bus = pch->bus;
 	}
 
-	if (!state)
-		if (bus && bus->dev && bus->dev->bus) {
-			ret = msm_pcie_pm_control(MSM_PCIE_RESUME, bus->dev->bus->number,
-				bus->dev, NULL, 0);
-		}
-
-
 	/* When firmware is not loaded do the PCI bus */
 	/* suspend/resume only */
 	if (bus && (bus->dhd->busstate == DHD_BUS_DOWN) &&
@@ -206,13 +199,6 @@ static int dhdpcie_set_suspend_resume(struct pci_dev *pdev, bool state)
 
 		ret = dhdpcie_bus_suspend(bus, state);
 	}
-
-	if (state)
-		if (bus && bus->dev && bus->dev->bus) {
-			ret = msm_pcie_pm_control(MSM_PCIE_SUSPEND, bus->dev->bus->number,
-				bus->dev, NULL, 0);
-		}
-
 
 	DHD_INFO(("%s Exit with state :%d\n", __FUNCTION__, ret));
 	return ret;
@@ -237,6 +223,7 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 {
 	int ret;
 	dhdpcie_info_t *pch = pci_get_drvdata(dev);
+	DHD_TRACE(("%s Enter\n", __FUNCTION__));
 	dhdpcie_pme_active(dev, TRUE);
 	pci_save_state(dev);
 	pch->state = pci_store_saved_state(dev);
@@ -247,6 +234,8 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 #ifdef CONFIG_PARTIALRESUME
 	wifi_process_partial_resume(pch->adapter, WIFI_PR_INIT);
 #endif
+	msm_pcie_pm_control(MSM_PCIE_SUSPEND, dev->bus->number, dev, NULL, 0);
+
 	return ret;
 }
 
@@ -279,6 +268,8 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 {
 	int err = 0;
 	dhdpcie_info_t *pch = pci_get_drvdata(dev);
+	DHD_TRACE(("%s Enter\n", __FUNCTION__));
+	msm_pcie_pm_control(MSM_PCIE_RESUME, dev->bus->number, dev, NULL, 0);
 
 #ifdef DHD_WAKE_STATUS
 	if (check_wakeup_reason(pch->wake_irq)) {
