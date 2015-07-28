@@ -369,6 +369,21 @@ struct snd_soc_dapm_context *snd_soc_dapm_kcontrol_dapm(
 EXPORT_SYMBOL_GPL(snd_soc_dapm_kcontrol_dapm);
 
 /**
+ * snd_soc_dapm_kcontrol_dapm() - Returns the widget list associated to a
+ *  kcontrol
+ * @kcontrol: The kcontrol
+ *
+ * Note: This function must only be used on kcontrols that are known to have
+ * been registered for a CODEC. Otherwise the behaviour is undefined.
+ */
+struct snd_soc_dapm_widget_list *snd_soc_dapm_kcontrol_widget_list(
+	struct snd_kcontrol *kcontrol)
+{
+	return dapm_kcontrol_get_wlist(kcontrol);
+}
+EXPORT_SYMBOL_GPL(snd_soc_dapm_kcontrol_widget_list);
+
+/**
  * snd_soc_dapm_kcontrol_codec() - Returns the codec associated to a kcontrol
  * @kcontrol: The kcontrol
  */
