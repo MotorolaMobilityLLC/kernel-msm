@@ -1,5 +1,4 @@
-/* Copyright (c) 2015, Huawei Technologies Co., Ltd. All rights reserved.
- *
+/*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -9,6 +8,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
+ * Copyright (c) 2013-2015, LGE Inc.
+ * Copyright (c) 2015, Huawei Technologies Co., Ltd. All rights reserved.
  */
 
 #include <linux/kernel.h>
