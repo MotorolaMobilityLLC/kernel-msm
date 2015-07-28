@@ -1820,8 +1820,6 @@ static int best_small_task_cpu(struct task_struct *p, int sync)
 		rq = cpu_rq(i);
 		prev_cpu = (i == task_cpu(p));
 
-		cpumask_clear_cpu(i, &search_cpu);
-
 		trace_sched_cpu_load(rq, idle_cpu(i),
 				     mostly_idle_cpu_sync(i,
 						  cpu_load_sync(i, sync), sync),
@@ -1841,6 +1839,8 @@ static int best_small_task_cpu(struct task_struct *p, int sync)
 			}
 			continue;
 		}
+
+		cpumask_clear_cpu(i, &search_cpu);
 
 		if (sched_cpu_high_irqload(i))
 			continue;
