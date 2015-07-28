@@ -737,10 +737,9 @@ int arizona_of_get_named_gpio(struct arizona *arizona, const char *prop,
 
 	gpio = of_get_named_gpio(arizona->dev->of_node, prop, 0);
 	if (gpio < 0) {
-		if (mandatory)
-			dev_err(arizona->dev,
-				"Mandatory DT gpio %s missing/malformed: %d\n",
-				prop, gpio);
+		dev_err(arizona->dev,
+			"%s DT gpio %s missing/malformed: %d\n",
+			mandatory?"mandatory":"optional", prop, gpio);
 
 		gpio = 0;
 	}
