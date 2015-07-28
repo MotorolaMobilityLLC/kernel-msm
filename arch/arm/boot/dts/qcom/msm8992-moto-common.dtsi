@@ -180,8 +180,9 @@
 		qcom,pin-func = <0>;
 		label = "florida_irq";
 		florida_irq_default: default {
-			bias-disable;
+			bias-pull-down; /* pull down */
 			drive-strength = <2>;
+			input-enable;
 		};
 	};
 
