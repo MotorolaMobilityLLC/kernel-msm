@@ -66,7 +66,7 @@ static void log_modem_sfr(void)
 	pr_err("modem subsystem failure reason: %s.\n", reason);
 
 #ifdef CONFIG_LGE_HANDLE_PANIC
-	lge_check_crash_skiped(reason);
+	lge_check_crash_skipped(reason);
 #endif
 
 	smem_reason[0] = '\0';

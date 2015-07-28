@@ -134,25 +134,25 @@ void lge_set_restart_reason(unsigned int reason)
 }
 EXPORT_SYMBOL(lge_set_restart_reason);
 
-static bool lge_crash_handler_skiped = false;
-void lge_check_crash_skiped(char *reason)
+static bool lge_crash_handler_skipped = false;
+void lge_check_crash_skipped(char *reason)
 {
 	char *p;
 
 	p = strstr(reason, "This crash is expected!!!");
 	if (p)
-		lge_crash_handler_skiped = true;
+		lge_crash_handler_skipped = true;
 }
-EXPORT_SYMBOL(lge_check_crash_skiped);
+EXPORT_SYMBOL(lge_check_crash_skipped);
 
 bool lge_is_crash_skipped(void)
 {
-	return lge_crash_handler_skiped;
+	return lge_crash_handler_skipped;
 }
 
 void lge_clear_crash_skipped(void)
 {
-	lge_crash_handler_skiped = false;
+	lge_crash_handler_skipped = false;
 }
 EXPORT_SYMBOL(lge_clear_crash_skipped);
 
