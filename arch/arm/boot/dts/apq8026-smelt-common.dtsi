@@ -423,6 +423,7 @@
 			 1 &intc 0 224 0>;
 	interrupt-names = "hc_irq", "pwr_irq";
 
+	qcom,clk-rates = <400000 20000000 25000000 26086956>;
 	qcom,nonremovable;
 	qcom,ignore_voltage_mismatch;
 	qcom,no-uhs;
