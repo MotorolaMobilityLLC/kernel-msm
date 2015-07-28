@@ -487,8 +487,8 @@ static irqreturn_t pad_det_handler(int irq, void *dev_id)
 	if (gpio_get_value(chip->pad_det_n_gpio))
 		power_supply_changed(&chip->wl_psy);
 	else
-		mmi_wls_chrg_write_reg(chip->client, MMI_WLS_FOD_REG,
-				       mmi_wls_find_fod_offset(chip));
+		schedule_delayed_work(&chip->mmi_wls_chrg_work,
+				      msecs_to_jiffies(0));
 
 	dev_dbg(chip->dev, "pad_det_handler pad_det_n =%x\n",
 			gpio_get_value(chip->pad_det_n_gpio));
