@@ -626,6 +626,13 @@ config UID_CPUTIME
 	help
 	  Per UID based cpu time statistics exported to /proc/uid_cputime
 
+config WIFI_SAR
+	tristate "HUAWEI WIFI SAR control driver"
+	default n
+	help
+	  Provides a interface to control wifi max TX power and notifies other
+	  kernel components when SAR cutback has to be applied.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
