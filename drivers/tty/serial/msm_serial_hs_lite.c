@@ -1743,6 +1743,14 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 
 	pr_info("detected port #%d (ttyHSL%d)\n", pdev->id, line);
 
+#ifdef CONFIG_SERIAL_MSM_HSL_CONSOLE
+	/* Port 0(uart 2) used for console. */
+	if (!is_serial_log_enabled() && 0 == pdev->id) {
+		pr_info("serial console disabled, do not register ttyHSL0.\n");
+		return -ENODEV;
+	}
+#endif
+
 	port = get_port_from_line(line);
 	port->dev = &pdev->dev;
 	port->uartclk = 7372800;
@@ -1853,14 +1861,6 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	 */
 	if (msm_hsl_port->pclk)
 		clk_prepare_enable(msm_hsl_port->pclk);
-
-#ifdef CONFIG_SERIAL_MSM_HSL_CONSOLE
-	if (!is_serial_log_enabled()) {
-		pr_info("serial log disable, set cons NULL \n");
-		msm_hsl_uart_driver.cons = NULL;
-	}
-#endif
-
 	ret = uart_add_one_port(&msm_hsl_uart_driver, port);
 	if (msm_hsl_port->pclk)
 		clk_disable_unprepare(msm_hsl_port->pclk);
