@@ -43,8 +43,9 @@
 
 #define I2C_RETRY_DELAY		5 /* ms */
 #define I2C_RETRIES		5
-#define PLL_SYNC_RETRIES		10
+#define PLL_SYNC_RETRIES	10
 #define MTPB_RETRIES		5
+#define AMP_MUTE_RETRIES	20
 
 #define TFA9890_RATES	SNDRV_PCM_RATE_8000_48000
 #define TFA9890_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE)
@@ -95,7 +96,9 @@ static int stereo_mode;
 static struct snd_soc_codec *left_codec;
 static struct snd_soc_codec *right_codec;
 
+static void tfa9890_mute_amp_and_wait(struct snd_soc_codec *codec);
 static void tfa9890_power(struct snd_soc_codec *codec, int on);
+static void tfa9890_set_mute(struct snd_soc_codec *codec, int mute_state);
 
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
@@ -863,6 +866,13 @@ static int tfa9890_i2s_playback_event(struct snd_soc_dapm_widget *w,
 		tfa9890_handle_playback_event(tfa9890, 1);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
+		/* ASoC calls tfa9890_mute only after doing the DAPM power-
+		 * down sequence, so it is important that we mute the output
+		 * here and ensure that the amplifier actually stops
+		 * switching before the amp is disabled by the call to
+		 * tfa9890_power.
+		 */
+		tfa9890_mute_amp_and_wait(codec);
 		tfa9890_handle_playback_event(tfa9890, 0);
 		tfa9890_power(codec, 0);
 		break;
@@ -1078,6 +1088,26 @@ static void tfa9890_power(struct snd_soc_codec *codec, int on)
 		val = val | (TFA9890_POWER_DOWN);
 
 	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
+}
+
+static void tfa9890_mute_amp_and_wait(struct snd_soc_codec *codec)
+{
+	u16 status;
+	u16 tries = 0;
+
+	/* When we mute the amplifier in this manner, the tfa9890 will
+	 * automatically do its own pop protection.  We need to give it
+	 * enough time for that to happen and check that it is completed by
+	 * checking that the amplifier has stopped switching. It typically
+	 * does not take more than 50 ms for the amp switching to stop.
+	 */
+	tfa9890_set_mute(codec, TFA9890_AMP_MUTE);
+	do {
+		status = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		if (!(status & TFA9890_STATUS_AMP_SWS))
+			break;
+		usleep_range(10000, 10001);
+	} while ((++tries < AMP_MUTE_RETRIES));
 }
 
 static void tfa9890_set_mute(struct snd_soc_codec *codec, int mute_state)
@@ -1745,8 +1775,6 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
-	u16 val;
-	u16 tries = 0;
 
 	if (mute) {
 		cancel_delayed_work_sync(&tfa9890->mode_work);
@@ -1754,21 +1782,9 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 	}
 
 	mutex_lock(&tfa9890->dsp_init_lock);
-	if (mute) {
-		tfa9890_set_mute(codec, TFA9890_AMP_MUTE);
-		do {
-			/* need to wait for amp to stop switching, to minimize
-			 * pop, else I2S clk is going away too soon interrupting
-			 * the dsp from smothering the amp pop while turning it
-			 * off, It shouldn't take more than 50 ms for the amp
-			 * switching to stop.
-			 */
-			val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
-			if (!(val & TFA9890_STATUS_AMP_SWS))
-				break;
-			usleep_range(10000, 10001);
-		} while ((++tries < 20));
-	} else {
+	if (mute)
+		tfa9890_mute_amp_and_wait(codec);
+	else {
 		tfa9890_set_mute(codec, TFA9890_MUTE_OFF);
 		/* start monitor thread to check IC status bit 5secs, and
 		 * re-init IC to recover.
@@ -1867,7 +1883,7 @@ int tfa9890_stereo_sync_set_mute(int mute)
 					!(right_val & TFA9890_STATUS_AMP_SWS))
 				break;
 			usleep_range(10000, 10001);
-		} while ((++tries < 20));
+		} while ((++tries < AMP_MUTE_RETRIES));
 	}
 	mutex_unlock(&lr_lock);
 	return 0;
