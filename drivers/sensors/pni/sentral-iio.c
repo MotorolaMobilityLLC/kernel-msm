@@ -802,11 +802,9 @@ static int sentral_fifo_watermark_autoset(struct sentral_device *sentral)
 static int sentral_handle_special_wakeup(struct sentral_device *sentral,
 		struct sentral_wake_src_count curr)
 {
-	struct sentral_wake_src_count prev = sentral->wake_src_count;
-	struct sentral_wake_src_count pending = sentral->wake_src_count_pending;
+	struct sentral_wake_src_count prev = sentral->wake_src_prev;
 	u32 ts = 0;
 	int rc;
-	int i;
 
 	// get current stime
 	rc = sentral_stime_current_get(sentral, &ts);
@@ -816,28 +814,16 @@ static int sentral_handle_special_wakeup(struct sentral_device *sentral,
 	sentral->ts_sensor_stime = ts;
 
 	// wrist tilt
-	LOGD(&sentral->client->dev,
-		"curr: %u, prev: %u, pending: %u\n",
-		curr.bits.wrist_tilt, prev.bits.wrist_tilt, pending.bits.wrist_tilt);
+	LOGD(&sentral->client->dev, "curr: %u, prev: %u\n", curr.bits.wrist_tilt,
+			prev.bits.wrist_tilt);
 
 	if (curr.bits.wrist_tilt != prev.bits.wrist_tilt) {
-		// check for wrap
-		if (curr.bits.wrist_tilt < prev.bits.wrist_tilt) {
-			pending.bits.wrist_tilt += ((curr.bits.wrist_tilt
-					+ SENTRAL_GESTURE_WRIST_TILT_WRAP) - prev.bits.wrist_tilt);
-		} else {
-			pending.bits.wrist_tilt += (curr.bits.wrist_tilt - prev.bits.wrist_tilt);
-		}
-		for (i = 0; i < pending.bits.wrist_tilt; i++) {
-			sentral->wake_src_count_pending.bits.wrist_tilt++;
-			rc = sentral_iio_buffer_push_wrist_tilt(sentral);
-			if (rc) {
-				LOGE(&sentral->client->dev,
-						"error (%d) sending wrist-tilt event\n", rc);
-			}
-		}
+		sentral->wake_src_prev.bits.wrist_tilt = curr.bits.wrist_tilt;
+		rc = sentral_iio_buffer_push_wrist_tilt(sentral);
+		if (rc)
+			return rc;
 	}
-	sentral->wake_src_count = curr;
+	sentral->wake_src_prev = curr;
 	return 0;
 }
 
@@ -1034,12 +1020,9 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 			break;
 
 		case SST_WRIST_TILT_GESTURE:
+			// wrist-tilts handled by register
 			data_size = 0;
-			if (sentral->wake_src_count_pending.bits.wrist_tilt) {
-				sentral->wake_src_count_pending.bits.wrist_tilt--;
-				continue;
-			}
-			break;
+			continue;
 
 		case SST_HEART_RATE:
 			data_size = 1;
@@ -2499,7 +2482,8 @@ static irqreturn_t sentral_irq_handler(int irq, void *dev_id)
 			LOGE(&sentral->client->dev, "error (%d) reading wake source\n", rc);
 
 		// handle wakeup source
-		if (wake_src_count.byte != sentral->wake_src_count.byte) {
+		if (wake_src_count.byte != sentral->wake_src_prev.byte) {
+			wake_lock_timeout(&sentral->w_lock, (2 * HZ));
 			rc = sentral_handle_special_wakeup(sentral, wake_src_count);
 			if (rc) {
 				LOGE(&sentral->client->dev, "error (%d) handling wake source\n",
@@ -2567,6 +2551,7 @@ static void sentral_do_work_reset(struct work_struct *work)
 	int rc = 0;
 
 	mutex_lock(&sentral->lock_reset);
+	wake_lock(&sentral->w_lock_reset);
 
 	// load firmware
 	rc = sentral_firmware_load(sentral, sentral->platform_data.firmware);
@@ -2591,6 +2576,7 @@ static void sentral_do_work_reset(struct work_struct *work)
 	// queue a FIFO read
 	queue_work(sentral->sentral_wq, &sentral->work_fifo_read);
 exit:
+	wake_unlock(&sentral->w_lock_reset);
 	mutex_unlock(&sentral->lock_reset);
 }
 
@@ -2684,18 +2670,6 @@ static int sentral_suspend_notifier(struct notifier_block *nb,
 		}
 
 		disable_irq(sentral->irq);
-
-		// flush fifo
-		rc = sentral_fifo_flush(sentral, SST_ALL);
-		if (rc) {
-			LOGE(&sentral->client->dev,
-					"error (%d) flushing FIFO, sensor: %d\n", rc, SST_ALL);
-		}
-
-		// empty fifo
-		rc = sentral_fifo_read(sentral, (void *)sentral->data_buffer);
-		if (rc)
-			LOGE(&sentral->client->dev, "error (%d) reading FIFO\n", rc);
 
 		break;
 
@@ -2877,10 +2851,10 @@ static int sentral_probe(struct i2c_client *client,
 	init_waitqueue_head(&sentral->wq_flush);
 
 	wake_lock_init(&sentral->w_lock, WAKE_LOCK_SUSPEND, dev_name(dev));
+	wake_lock_init(&sentral->w_lock_reset, WAKE_LOCK_SUSPEND, dev_name(dev));
 
 	// zero wake source counters
-	sentral->wake_src_count.byte = 0;
-	sentral->wake_src_count_pending.byte = 0;
+	sentral->wake_src_prev.byte = 0;
 
 	// setup irq handler
 	LOGI(&sentral->client->dev, "requesting IRQ: %d, GPIO: %u\n", sentral->irq,
