@@ -1700,6 +1700,7 @@ again:
     send_btc_nlink_msg(WLAN_MODULE_UP_IND, 0);
 #endif
 
+    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, FALSE);
     printk("%s: WLAN host driver reinitiation completed!\n", __func__);
     return 0;
 

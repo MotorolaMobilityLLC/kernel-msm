@@ -707,10 +707,21 @@ void wlan_hdd_roc_request_dequeue(struct work_struct *work)
 	hdd_context_t *hdd_ctx =
 			container_of(work, hdd_context_t, rocReqWork);
 
+        if (0 != (wlan_hdd_validate_context(hdd_ctx))) {
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                FL("hdd_ctx is NULL"));
+                return;
+        }
+
+
 	hddLog(LOG1, FL("RoC request timeout"));
 
-	if (list_empty(&hdd_ctx->hdd_roc_req_q.anchor))
+	spin_lock(&hdd_ctx->hdd_roc_req_q.lock);
+	if (list_empty(&hdd_ctx->hdd_roc_req_q.anchor)) {
+		spin_unlock(&hdd_ctx->hdd_roc_req_q.lock);
 		return;
+	}
+	spin_unlock(&hdd_ctx->hdd_roc_req_q.lock);
 
 	/* If driver is busy then we can't run RoC */
 	if (hdd_ctx->isLoadInProgress || hdd_ctx->isUnloadInProgress ||
@@ -725,9 +736,9 @@ void wlan_hdd_roc_request_dequeue(struct work_struct *work)
 		return;
 	}
 
+	spin_lock(&hdd_ctx->hdd_roc_req_q.lock);
 	while (!list_empty(&hdd_ctx->hdd_roc_req_q.anchor)) {
 		/* go to process this RoC request */
-		spin_lock(&hdd_ctx->hdd_roc_req_q.lock);
 		status = hdd_list_remove_front(&hdd_ctx->hdd_roc_req_q,
 					(hdd_list_node_t**) &hdd_roc_req);
 		spin_unlock(&hdd_ctx->hdd_roc_req_q.lock);
@@ -743,7 +754,9 @@ void wlan_hdd_roc_request_dequeue(struct work_struct *work)
 			}
 			vos_mem_free(hdd_roc_req);
 		}
+		spin_lock(&hdd_ctx->hdd_roc_req_q.lock);
 	}
+	spin_unlock(&hdd_ctx->hdd_roc_req_q.lock);
 }
 
 static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,

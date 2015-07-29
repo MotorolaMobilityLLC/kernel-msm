@@ -1723,6 +1723,7 @@ typedef struct sSirSmeDeauthInd
 
     tANI_U16            staId;
     tANI_U32            reasonCode;
+    tANI_S8             rssi;
 } tSirSmeDeauthInd, *tpSirSmeDeauthInd;
 
 /// Definition for Deauthentication confirm

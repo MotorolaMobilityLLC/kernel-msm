@@ -989,6 +989,11 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                 /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
                 if( eCSR_ROAM_LOSTLINK == roamStatus )
                 {
+                    if (pRoamInfo->reasonCode ==
+                               eSIR_MAC_PEER_STA_REQ_LEAVING_BSS_REASON)
+                       pr_info(
+                       "wlan: disconnected due to poor signal, rssi is %d dB\n",
+                       pRoamInfo->rxRssi);
                     cfg80211_disconnected(dev, pRoamInfo->reasonCode, NULL, 0, GFP_KERNEL);
                 }
                 else

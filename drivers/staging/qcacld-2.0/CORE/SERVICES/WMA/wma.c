@@ -104,6 +104,7 @@
 
 #include "dfs.h"
 #include "radar_filters.h"
+#include "regdomain_common.h"
 /* ################### defines ################### */
 /*
  * TODO: Following constant should be shared by firwmare in
@@ -1478,6 +1479,7 @@ static int wma_peer_sta_kickout_event_handler(void *handle, u8 *event, u32 len)
 	vos_mem_copy(del_sta_ctx->bssId, wma->interfaces[vdev_id].addr,
 		IEEE80211_ADDR_LEN);
 	del_sta_ctx->reasonCode = HAL_DEL_STA_REASON_CODE_KEEP_ALIVE;
+	del_sta_ctx->rssi = kickout_event->rssi + WMA_TGT_NOISE_FLOOR_DBM;
 	wma_send_msg(wma, SIR_LIM_DELETE_STA_CONTEXT_IND, (void *)del_sta_ctx, 0);
 
 exit_handler:
@@ -3583,7 +3585,7 @@ static int wma_unified_link_iface_stats_event_handler(void *handle,
 	link_stats  = param_tlvs->iface_link_stats;
 	ac_stats    = param_tlvs->ac;
 
-	if (!fixed_param || !link_stats || !ac_stats) {
+	if (!fixed_param || !link_stats || (link_stats->num_ac && !ac_stats)) {
 		WMA_LOGA("%s: Invalid param_tlvs for Iface Stats", __func__);
 		return -EINVAL;
 	}
@@ -3737,7 +3739,8 @@ static int wma_unified_link_peer_stats_event_handler(void *handle,
 	peer_stats  = param_tlvs->peer_stats;
 	rate_stats  = param_tlvs->peer_rate_stats;
 
-	if (!fixed_param || !peer_stats || !rate_stats) {
+	if (!fixed_param || !peer_stats ||
+	    (peer_stats->num_rates && !rate_stats)) {
 		WMA_LOGA("%s: Invalid param_tlvs for Peer Stats", __func__);
 		return -EINVAL;
 	}
@@ -3879,7 +3882,8 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 	radio_stats    = param_tlvs->radio_stats;
 	channel_stats  = param_tlvs->channel_stats;
 
-	if (!fixed_param || !radio_stats || !channel_stats) {
+	if (!fixed_param || !radio_stats ||
+	    (radio_stats->num_channels && !channel_stats)) {
 		WMA_LOGA("%s: Invalid param_tlvs for Radio Stats", __func__);
 		return -EINVAL;
 	}
@@ -12175,6 +12179,7 @@ static void wma_process_cli_set_cmd(tp_wma_handle wma,
 			wma_update_txrx_chainmask(wma->num_rf_chains,
 						&privcmd->param_value);
 		}
+
 		ret = wmi_unified_pdev_set_param(wma->wmi_handle,
 						privcmd->param_id,
 						privcmd->param_value);
@@ -12194,7 +12199,6 @@ static void wma_process_cli_set_cmd(tp_wma_handle wma,
 			WMA_LOGE("%s:Invalid vdev handle", __func__);
 			return;
                 }
-
 		WMA_LOGD("gen pid %d pval %d", privcmd->param_id,
 				privcmd->param_value);
 
@@ -12240,9 +12244,11 @@ static void wma_process_cli_set_cmd(tp_wma_handle wma,
 			break;
 #endif
 		case GEN_PARAM_MODULATED_DTIM:
-
 			wma_set_modulated_dtim(wma, privcmd);
+			break;
 
+		case GEN_PARAM_TX_CHAIN_MASK_CCK:
+			wma->tx_chain_mask_cck = privcmd->param_value;
 			break;
 		default:
 			WMA_LOGE("Invalid param id 0x%x", privcmd->param_id);
@@ -19656,11 +19662,19 @@ static void wma_process_update_opmode(tp_wma_handle wma_handle,
 static void wma_process_update_rx_nss(tp_wma_handle wma_handle,
                                 tUpdateRxNss *update_rx_nss)
 {
-        WMA_LOGD("%s: Rx Nss = %d", __func__, update_rx_nss->rxNss);
+	struct wma_txrx_node *intr =
+		&wma_handle->interfaces[update_rx_nss->smesessionId];
+	int rxNss = update_rx_nss->rxNss;
 
-        wma_set_peer_param(wma_handle, update_rx_nss->peer_mac,
-                           WMI_PEER_NSS, update_rx_nss->rxNss,
-                           update_rx_nss->smesessionId);
+	wma_update_txrx_chainmask(wma_handle->num_rf_chains, &rxNss);
+	intr->nss = (tANI_U8) rxNss;
+	update_rx_nss->rxNss = (tANI_U32) rxNss;
+
+	WMA_LOGD("%s: Rx Nss = %d", __func__, update_rx_nss->rxNss);
+
+	wma_set_peer_param(wma_handle, update_rx_nss->peer_mac,
+			WMI_PEER_NSS, update_rx_nss->rxNss,
+			update_rx_nss->smesessionId);
 }
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -21373,29 +21387,28 @@ VOS_STATUS wma_process_init_thermal_info(tp_wma_handle wma,
 }
 
 
-/* function   : wma_process_set_thermal_level
- * Description : This function set the new thermal throttle level in the
-                txrx module and sends down the corresponding temperature
-                thresholds to the firmware
- * Args       :
-                wma            : Pointer to WMA handle
- *              pThermalLevel  : Pointer to thermal level
- * Returns    :
- *              VOS_STATUS_SUCCESS for success otherwise failure
+/**
+ * wma_process_set_thermal_level() - Sets new thermal throttle level
+ * wma:			Pointer to wma handle
+ * thermal_level:	Thermal level to set
+ *
+ * This function sets new thermal throttle level in the txrx module and sends
+ * down the corresponding temperature thresholds to the firmware.
+ *
+ * Return: VOS_STATUS_SUCCESS for success otherwise failure.
+ *
  */
 VOS_STATUS wma_process_set_thermal_level(tp_wma_handle wma,
-					u_int8_t *pThermalLevel)
+					 uint8_t thermal_level)
 {
-	u_int8_t thermal_level;
 	ol_txrx_pdev_handle curr_pdev;
 
 
-        if (NULL == wma || NULL == pThermalLevel) {
-                WMA_LOGE("TM Invalid input");
-                return VOS_STATUS_E_FAILURE;
-        }
+	if (NULL == wma) {
+		WMA_LOGE("TM Invalid input");
+		return VOS_STATUS_E_FAILURE;
+	}
 
-	thermal_level = (*pThermalLevel);
 
 	curr_pdev = vos_get_context(VOS_MODULE_ID_TXRX, wma->vos_context);
 	if (NULL == curr_pdev) {
@@ -21407,7 +21420,7 @@ VOS_STATUS wma_process_set_thermal_level(tp_wma_handle wma,
 
 	/* Check if thermal mitigation is enabled */
 	if (!wma->thermal_mgmt_info.thermalMgmtEnabled) {
-		WMA_LOGE("Thermal mgmt is not enabled, ignoring set level command");
+		WMA_LOGE("Thermal mgmt is not enabled, ignoring set level cmd");
 		return VOS_STATUS_E_FAILURE;
 	}
 
@@ -21418,7 +21431,7 @@ VOS_STATUS wma_process_set_thermal_level(tp_wma_handle wma,
 
 	if (thermal_level == wma->thermal_mgmt_info.thermalCurrLevel) {
 		WMA_LOGD("Current level %d is same as the set level, ignoring",
-				  wma->thermal_mgmt_info.thermalCurrLevel);
+			 wma->thermal_mgmt_info.thermalCurrLevel);
 		return VOS_STATUS_SUCCESS;
 	}
 
@@ -24206,7 +24219,7 @@ VOS_STATUS wma_mc_process_msg(v_VOID_t *vos_context, vos_msg_t *msg)
 			break;
 
 		case WDA_SET_THERMAL_LEVEL:
-			wma_process_set_thermal_level(wma_handle, (u_int8_t *) msg->bodyptr);
+			wma_process_set_thermal_level(wma_handle, msg->bodyval);
 			break;
 
 		case WDA_SET_P2P_GO_NOA_REQ:
@@ -27725,6 +27738,8 @@ void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 	int32_t len = sizeof(*cmd);
 	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
 	tp_wma_handle wma = vos_get_context(VOS_MODULE_ID_WDA, vos_context);
+	bool cck_mask_val = false;
+	int ret = 0;
 
 	if (NULL == wma) {
 		WMA_LOGE("%s: wma context is NULL", __func__);
@@ -27753,6 +27768,19 @@ void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 				__func__);
 		adf_nbuf_free(buf);
 	}
+
+	if ((ctl2G == MKK) && (ctl5G == MKK) &&
+	    (true == wma->tx_chain_mask_cck))
+		cck_mask_val = true;
+
+	ret = wmi_unified_pdev_set_param(wma->wmi_handle,
+					 WMI_PDEV_PARAM_TX_CHAIN_MASK_CCK,
+					 cck_mask_val);
+	if (ret) {
+		WMA_LOGE("failed to set PDEV tx_chain_mask_cck %d",
+			 ret);
+	}
+
 	return;
 }
 

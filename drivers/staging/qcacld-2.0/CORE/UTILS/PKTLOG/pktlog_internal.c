@@ -105,7 +105,6 @@ pktlog_getbuf_intsafe(struct ath_pktlog_arg *plarg)
 
 	while ((cur_wr_offset <= log_buf->rd_offset)
 	       && (cur_wr_offset + log_size) > log_buf->rd_offset) {
-			printk("%s: Buffer overflow\n", __func__);
 			PKTLOG_MOV_RD_IDX(log_buf->rd_offset, log_buf,
 					  buf_size);
 	}

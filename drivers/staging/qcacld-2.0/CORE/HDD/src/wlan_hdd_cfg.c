@@ -4092,6 +4092,20 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_DROPPED_PKT_DISCONNECT_TH_DEFAULT,
                 CFG_DROPPED_PKT_DISCONNECT_TH_MIN,
                 CFG_DROPPED_PKT_DISCONNECT_TH_MAX),
+
+   REG_VARIABLE(CFG_TX_CHAIN_MASK_CCK, WLAN_PARAM_Integer,
+                hdd_config_t, tx_chain_mask_cck,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_TX_CHAIN_MASK_CCK_DEFAULT,
+                CFG_TX_CHAIN_MASK_CCK_MIN,
+                CFG_TX_CHAIN_MASK_CCK_MAX),
+
+   REG_VARIABLE(CFG_TX_CHAIN_MASK_1SS, WLAN_PARAM_Integer,
+                hdd_config_t, tx_chain_mask_1ss,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_TX_CHAIN_MASK_1SS_DEFAULT,
+                CFG_TX_CHAIN_MASK_1SS_MIN,
+                CFG_TX_CHAIN_MASK_1SS_MAX),
 };
 
 #ifdef WLAN_FEATURE_MBSSID

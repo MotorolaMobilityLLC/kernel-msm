@@ -640,6 +640,7 @@ typedef struct {
                        // HAL copies bssid from the sta table.
     tSirMacAddr addr2;        //
     tANI_U16    reasonCode;   // To unify the keepalive / unknown A2 / tim-based disa
+    tANI_S8     rssi;
 } tDeleteStaContext, * tpDeleteStaContext;
 
 

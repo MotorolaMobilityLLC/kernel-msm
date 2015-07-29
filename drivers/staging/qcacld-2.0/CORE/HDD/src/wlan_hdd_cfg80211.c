@@ -17986,6 +17986,8 @@ static int __wlan_hdd_cfg80211_testmode(struct wiphy *wiphy,
             buf = nla_data(tb[WLAN_HDD_TM_ATTR_DATA]);
             buf_len = nla_len(tb[WLAN_HDD_TM_ATTR_DATA]);
 
+            pr_info("****FTM Tx cmd len = %d*****\n", buf_len);
+
             status = wlan_hdd_ftm_testmode_cmd(buf, buf_len);
 
             if (status != VOS_STATUS_SUCCESS)
@@ -18058,6 +18060,8 @@ void wlan_hdd_testmode_rx_event(void *buf, size_t buf_len)
     if (nla_put_u32(skb, WLAN_HDD_TM_ATTR_CMD, WLAN_HDD_TM_CMD_WLAN_FTM) ||
         nla_put(skb, WLAN_HDD_TM_ATTR_DATA, buf_len, buf))
         goto nla_put_failure;
+
+    pr_info("****FTM Rx cmd len = %zu*****\n", buf_len);
 
     cfg80211_testmode_event(skb, GFP_KERNEL);
     return;

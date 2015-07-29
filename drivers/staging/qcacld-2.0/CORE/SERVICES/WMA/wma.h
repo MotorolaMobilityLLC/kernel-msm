@@ -749,6 +749,7 @@ typedef struct {
 	atomic_t in_d0wow;
 #endif
 	vos_timer_t log_completion_timer;
+	bool  tx_chain_mask_cck;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {

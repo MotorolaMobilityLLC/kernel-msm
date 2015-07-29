@@ -1306,7 +1306,7 @@ WMI_CHANNEL_CHANGE_CAUSE_CSA,
 #define WMI_DBS_HW_MODE_MAC0_TX_STREAMS_SET(hw_mode, value) \
     (hw_mode |= ((value << WMI_DBS_HW_MODE_MAC0_TX_STREAMS_BITPOS) & WMI_DBS_HW_MODE_MAC0_TX_STREAMS_MASK))
 #define WMI_DBS_HW_MODE_MAC0_RX_STREAMS_SET(hw_mode, value) \
-    (hw_mode != ((value << WMI_DBS_HW_MODE_MAC0_RX_STREAMS_BITPOS) & WMI_DBS_HW_MODE_MAC0_RX_STREAMS_MASK))
+    (hw_mode |= ((value << WMI_DBS_HW_MODE_MAC0_RX_STREAMS_BITPOS) & WMI_DBS_HW_MODE_MAC0_RX_STREAMS_MASK))
 #define WMI_DBS_HW_MODE_MAC1_TX_STREAMS_SET(hw_mode, value) \
     (hw_mode |= ((value << WMI_DBS_HW_MODE_MAC1_TX_STREAMS_BITPOS) & WMI_DBS_HW_MODE_MAC1_TX_STREAMS_MASK))
 #define WMI_DBS_HW_MODE_MAC1_RX_STREAMS_SET(hw_mode, value) \
@@ -1415,6 +1415,16 @@ typedef struct {
      * Number of Dual Band Simultaneous (DBS) hardware modes
      */
     A_UINT32 num_dbs_hw_modes;
+
+   /*
+     * txrx_chainmask
+     *    [7:0]   - 2G band tx chain mask
+     *    [15:8]  - 2G band rx chain mask
+     *    [23:16] - 5G band tx chain mask
+     *    [31:24] - 5G band rx chain mask
+     *
+     */
+    A_UINT32 txrx_chainmask;
 
     /* The TLVs for hal_reg_capabilities, wmi_service_bitmap and mem_reqs[] will follow this TLV.
          *     HAL_REG_CAPABILITIES   hal_reg_capabilities;
@@ -2468,6 +2478,8 @@ typedef struct {
     A_UINT32 tlv_header;   /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_pdev_set_ht_ie_cmd_fixed_param */
     A_UINT32 reserved0;    /** placeholder for pdev_id of future multiple MAC products. Init. to 0. */
     A_UINT32 ie_len;       /*length of the ht ie in the TLV ie_data[] */
+    A_UINT32 tx_streams; /* Tx streams supported for this HT IE */
+    A_UINT32 rx_streams; /* Rx streams supported for this HT IE */
     /** The TLV for the HT IE follows:
      *       A_UINT32 ie_data[];
      */
@@ -2478,6 +2490,8 @@ typedef struct {
     A_UINT32 tlv_header;   /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_pdev_set_vht_ie_cmd_fixed_param */
     A_UINT32 reserved0;    /** placeholder for pdev_id of future multiple MAC products. Init. to 0. */
     A_UINT32 ie_len;          /*length of the vht ie in the TLV ie_data[] */
+    A_UINT32 tx_streams; /* Tx streams supported for this HT IE */
+    A_UINT32 rx_streams; /* Rx streams supported for this HT IE */
     /** The TLV for the VHT IE follows:
      *       A_UINT32 ie_data[];
      */
@@ -2559,7 +2573,7 @@ typedef struct{
 typedef enum {
     /** TX chain mask */
     WMI_PDEV_PARAM_TX_CHAIN_MASK = 0x1,
-    /** RX chian mask */
+    /** RX chain mask */
     WMI_PDEV_PARAM_RX_CHAIN_MASK,
     /** TX power limit for 2G Radio */
     WMI_PDEV_PARAM_TXPOWER_LIMIT2G,
@@ -2701,6 +2715,18 @@ typedef enum {
     WMI_PDEV_PARAM_CE_BASED_ADAPTIVE_BTO_ENABLE,
     /** combo value of ce_id, ce_threshold, ce_time, refer to WMI_CE_BTO_CE_ID_MASK */
     WMI_PDEV_PARAM_CE_BTO_COMBO_CE_VALUE,
+    /** 2G TX chain mask */
+    WMI_PDEV_PARAM_TX_CHAIN_MASK_2G,
+    /** 2G RX chain mask */
+    WMI_PDEV_PARAM_RX_CHAIN_MASK_2G,
+    /** 5G TX chain mask */
+    WMI_PDEV_PARAM_TX_CHAIN_MASK_5G,
+    /** 5G RX chain mask */
+    WMI_PDEV_PARAM_RX_CHAIN_MASK_5G,
+    /* Set tx chain mask for CCK rates */
+    WMI_PDEV_PARAM_TX_CHAIN_MASK_CCK,
+    /* Set tx chain mask for 1SS stream */
+    WMI_PDEV_PARAM_TX_CHAIN_MASK_1SS,
 } WMI_PDEV_PARAM;
 
 typedef enum {
@@ -3190,18 +3216,6 @@ typedef enum {
     WMI_CHAN_WIDTH_10    = 6,
 } wmi_channel_width;
 
-/* wifi peer type */
-typedef enum {
-   WMI_PEER_STA,
-   WMI_PEER_AP,
-   WMI_PEER_P2P_GO,
-   WMI_PEER_P2P_CLIENT,
-   WMI_PEER_NAN,
-   WMI_PEER_TDLS,
-   WMI_PEER_OCB,
-   WMI_PEER_INVALID,
-} wmi_peer_type;
-
 /*Clear stats*/
 typedef struct {
     A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_clear_link_stats_cmd_fixed_param */
@@ -3617,7 +3631,22 @@ typedef struct {
     A_UINT32 vdev_subtype;
     /** VDEV MAC address */
     wmi_mac_addr vdev_macaddr;
+    /* Number of configured txrx streams */
+    A_UINT32 num_cfg_txrx_streams;
+/* This TLV is followed by another TLV of array of structures
+ *   wmi_vdev_txrx_streams cfg_txrx_streams[];
+ */
 } wmi_vdev_create_cmd_fixed_param;
+
+typedef struct {
+    A_UINT32 tlv_header; /** TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_vdev_txrx_streams */
+    /* band - Should take values from wmi_channel_band_mask */
+    A_UINT32 band;
+    /* max supported tx streams per given band for this vdev */
+    A_UINT32 supported_tx_streams;
+    /* max supported rx streams per given band for this vdev */
+    A_UINT32 supported_rx_streams;
+} wmi_vdev_txrx_streams;
 
 /* wmi_p2p_noa_descriptor structure can't be modified without breaking the compatibility for WMI_HOST_SWBA_EVENTID */
 typedef struct {
@@ -6034,6 +6063,8 @@ typedef struct {
     wmi_mac_addr peer_macaddr;
     /** Reason code, defined as above */
     A_UINT32 reason;
+    /** RSSI of the last bcn (averaged) in dB. 0 means Noise Floor value */
+    A_UINT32 rssi;
 } wmi_peer_sta_kickout_event_fixed_param;
 
 #define WMI_WLAN_PROFILE_MAX_HIST     3
@@ -6737,6 +6768,7 @@ typedef enum _WMI_NLO_SSID_BcastNwType
 #define WMI_NLO_CONFIG_SSID_HIDE_EN     (0x1 << 6)
 /* This bit is used to indicate if EPNO or supplicant PNO is enabled. Only one of them can be enabled at a given time */
 #define WMI_NLO_CONFIG_ENLO             (0x1 << 7)
+#define WMI_NLO_CONFIG_SCAN_PASSIVE     (0x1 << 8)
 
 /* Whether directed scan needs to be performed (for hidden SSIDs) */
 #define WMI_ENLO_FLAG_DIRECTED_SCAN      1

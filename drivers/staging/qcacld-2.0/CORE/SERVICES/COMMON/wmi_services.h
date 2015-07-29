@@ -118,6 +118,7 @@ typedef  enum  {
     WMI_SERVICE_DUAL_BAND_SIMULTANEOUS_SUPPORT, /* Dual Band Simultaneous support */
     WMI_SERVICE_OCB,                  /* OCB mode support */
     WMI_SERVICE_AP_ARPNS_OFFLOAD,     /* arp offload support for ap mode vdev */
+    WMI_SERVICE_PER_BAND_CHAINMASK_SUPPORT, /* Per band chainmask support */
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;
 

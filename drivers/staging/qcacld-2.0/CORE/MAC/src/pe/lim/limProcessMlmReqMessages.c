@@ -2092,8 +2092,8 @@ void lim_post_join_set_link_state_callback(tpAniSirGlobal mac,
 		limSetChannel(mac, chan_num, sec_chan_offset,
 				 session_entry->maxTxPower,
 				 session_entry->peSessionId);
-		return;
 	}
+	return;
 
 failure:
 	MTRACE(macTrace(mac, TRACE_CODE_MLM_STATE, session_entry->peSessionId,

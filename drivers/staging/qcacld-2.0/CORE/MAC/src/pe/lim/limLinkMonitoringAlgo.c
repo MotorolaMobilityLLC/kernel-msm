@@ -126,15 +126,17 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                      vos_mem_free(pMsg);
                      return;
                  }
+                 pStaDs->del_sta_ctx_rssi = pMsg->rssi;
                  limSendDeauthMgmtFrame(pMac,
                                    eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON,
                                    pMsg->addr2, psessionEntry, FALSE);
                  limTearDownLinkWithAp(pMac, psessionEntry->peSessionId,
-                                       eSIR_MAC_UNSPEC_FAILURE_REASON);
+                                 eSIR_MAC_PEER_STA_REQ_LEAVING_BSS_REASON);
                  /* only break for STA role (non TDLS) */
                  break;
              }
-             PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d"), pMsg->staId, pMsg->reasonCode);)
+             limLog(pMac, LOGE, FL("Deleting sta: staId %d, reasonCode %d"),
+                             pMsg->staId, pMsg->reasonCode);
              if (eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole)
                  return;
 

@@ -2171,8 +2171,6 @@ VOS_STATUS hdd_wlan_re_init(void *hif_sc)
       }
    }
 
-   pHddCtx->isLogpInProgress = FALSE;
-   vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    pHddCtx->hdd_mcastbcast_filter_set = FALSE;
    hdd_register_mcast_bcast_filter(pHddCtx);
    hdd_ssr_timer_del();
@@ -2254,5 +2252,6 @@ err_re_init:
 success:
    /* Trigger replay of BTC events */
    send_btc_nlink_msg(WLAN_MODULE_DOWN_IND, 0);
+   pHddCtx->isLogpInProgress = FALSE;
    return VOS_STATUS_SUCCESS;
 }

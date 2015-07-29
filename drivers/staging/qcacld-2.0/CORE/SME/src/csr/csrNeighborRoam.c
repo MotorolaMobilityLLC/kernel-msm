@@ -5431,23 +5431,26 @@ eHalStatus csrNeighborRoamInit(tpAniSirGlobal pMac, tANI_U8 sessionId)
     pNeighborRoamInfo->cfgParams.neighborScanPeriod = pMac->roam.configParam.neighborRoamConfig.nNeighborScanTimerPeriod;
     pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod = pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod;
     pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod = pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod;
-
     pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels   =
-                        pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels;
+                  pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels;
+    if (pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels != 0) {
 
-    pNeighborRoamInfo->cfgParams.channelInfo.ChannelList =
+        pNeighborRoamInfo->cfgParams.channelInfo.ChannelList =
                 vos_mem_malloc(pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels);
-
-    if (NULL == pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
-    {
-        smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
-        return eHAL_STATUS_RESOURCES;
+        if (NULL == pNeighborRoamInfo->cfgParams.channelInfo.ChannelList) {
+            smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
+            return eHAL_STATUS_RESOURCES;
+        }
+        /* Update the roam global structure from CFG */
+        vos_mem_copy(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList,
+                     pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.channelList,
+                     pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels);
     }
-
-    /* Update the roam global structure from CFG */
-    vos_mem_copy(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList,
-                        pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.channelList,
-                        pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels);
+    else {
+        pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
+        smsLog(pMac, LOGW, FL("invalid neighbor roam channel list: %u"),
+               pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels);
+    }
     pNeighborRoamInfo->cfgParams.hi_rssi_scan_max_count =
             pMac->roam.configParam.neighborRoamConfig.nhi_rssi_scan_max_count;
     pNeighborRoamInfo->cfgParams.hi_rssi_scan_rssi_delta =

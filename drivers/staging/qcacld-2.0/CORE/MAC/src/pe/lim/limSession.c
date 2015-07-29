@@ -152,7 +152,7 @@ void pe_reset_protection_callback(void *ptr)
                  sizeof(mac_ctx->lim.gLimOverlapNonGfParams));
 
     /* index 0, is self node, peers start from 1 */
-    for(i = 1 ; i < mac_ctx->lim.gLimAssocStaLimit ; i++)
+    for(i = 1 ; i <= mac_ctx->lim.gLimAssocStaLimit ; i++)
     {
         station_hash_node = dphGetHashEntry(mac_ctx, i,
                               &pe_session_entry->dph.dphHashTable);

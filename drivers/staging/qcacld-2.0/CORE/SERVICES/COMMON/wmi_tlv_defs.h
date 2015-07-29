@@ -572,6 +572,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_soc_set_hw_mode_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_soc_set_hw_mode_response_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_soc_hw_mode_transition_event_fixed_param,
+    WMITLV_TAG_STRUC_wmi_vdev_txrx_streams,
 } WMITLV_TAG_ID;
 
 /*
@@ -1717,7 +1718,8 @@ WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_CREATE_CMDID);
 
 /* Vdev delete Cmd */
 #define WMITLV_TABLE_WMI_VDEV_DELETE_CMDID(id,op,buf,len) \
-    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_delete_cmd_fixed_param, wmi_vdev_delete_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_vdev_delete_cmd_fixed_param, wmi_vdev_delete_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_vdev_txrx_streams, cfg_txrx_streams, WMITLV_SIZE_VAR)
 
 WMITLV_CREATE_PARAM_STRUC(WMI_VDEV_DELETE_CMDID);
 
