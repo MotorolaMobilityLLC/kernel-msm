@@ -45,6 +45,8 @@
 #define SMB_MASK(LEFT_BIT_POS, RIGHT_BIT_POS) \
 		_SMB_MASK((LEFT_BIT_POS) - (RIGHT_BIT_POS) + 1, \
 				(RIGHT_BIT_POS))
+#define STAGE_WORK_DELAY_MS	30000
+#define STAGE_COUNT_MAX		2
 /* Config registers */
 struct smbchg_regulator {
 	struct regulator_desc	rdesc;
@@ -110,6 +112,13 @@ struct smbchg_chip {
 	int				prechg_safety_time;
 	int				bmd_pin_src;
 	int				jeita_temp_hard_limit;
+	int				cfg_vfloat_mv;
+	int				current_stage_thr_mv;
+	int				current_stage_delta_mv;
+	int				current_stage_ma;
+	int				current_stage_count;
+	int				parallel_current_limited;
+	int				parallel_voltage_checked;
 	bool				use_vfloat_adjustments;
 	bool				iterm_disabled;
 	bool				bmd_algo_disabled;
@@ -220,6 +229,7 @@ struct smbchg_chip {
 	struct work_struct		usb_set_online_work;
 	struct delayed_work		vfloat_adjust_work;
 	struct delayed_work		hvdcp_det_work;
+	struct delayed_work		current_stage_work;
 	spinlock_t			sec_access_lock;
 	struct mutex			current_change_lock;
 	struct mutex			usb_set_online_lock;
@@ -248,8 +258,10 @@ enum wake_reason {
 	PM_PARALLEL_CHECK = BIT(0),
 	PM_REASON_VFLOAT_ADJUST = BIT(1),
 	PM_ESR_PULSE = BIT(2),
+	PM_CHARGING_CHECK = BIT(7),
 };
 
+static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv);
 static int smbchg_debug_mask;
 module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
@@ -1482,7 +1494,9 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 		return false;
 	}
 
-	if (get_prop_charge_type(chip) != POWER_SUPPLY_CHARGE_TYPE_FAST) {
+	/* Skip charge type check when vfloat_mv isn't set as cfg_vfloat_mv */
+	if ((get_prop_charge_type(chip) != POWER_SUPPLY_CHARGE_TYPE_FAST)
+			&& (chip->vfloat_mv == chip->cfg_vfloat_mv)) {
 		pr_smb(PR_STATUS, "Not in fast charge, skipping\n");
 		return false;
 	}
@@ -1790,6 +1804,8 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	union power_supply_propval pval = {0, };
 	int current_limit_ma, parallel_cl_ma, total_current_ma;
 	int new_parallel_cl_ma, min_current_thr_ma, rc;
+	int batt_voltage_mv;
+	u8 reg;
 
 	if (!parallel_psy || !chip->parallel_charger_detected)
 		return;
@@ -1853,6 +1869,42 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 		goto disable_parallel;
 	}
 	chip->target_fastchg_current_ma = chip->cfg_fastchg_current_ma / 2;
+	/*
+	 * When the batt voltage is above the current_stage_thr_mv,
+	 * limit parallel charge current to 0.7C, or set a lower
+	 * vfloat_mv and call the work to check charge current. It
+	 * will adjust the vfloat_mv back to the normal value with
+	 * the conditions satisfied.
+	 */
+	if (!chip->parallel_voltage_checked && chip->current_stage_thr_mv > 0) {
+		rc = smbchg_read(chip, &reg,
+			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't read hvdcp status rc = %d\n", rc);
+			goto disable_parallel;
+		}
+		if ((typec_current_mode_detect() == TYPEC_CURRENT_MODE_HIGH)
+			|| (reg & USBIN_HVDCP_SEL_BIT)) {
+			set_property_on_fg(chip,
+					POWER_SUPPLY_PROP_UPDATE_NOW, 1);
+			batt_voltage_mv =
+				get_prop_batt_voltage_now(chip) / 1000;
+
+			if (batt_voltage_mv > chip->current_stage_thr_mv
+					- chip->current_stage_delta_mv) {
+				chip->parallel_current_limited = 1;
+			} else {
+				smbchg_float_voltage_set(chip,
+					chip->current_stage_thr_mv);
+				schedule_delayed_work(&chip->current_stage_work,
+					msecs_to_jiffies(STAGE_WORK_DELAY_MS));
+			}
+		}
+		chip->parallel_voltage_checked = 1;
+	}
+	if (chip->parallel_current_limited)
+		chip->target_fastchg_current_ma = chip->current_stage_ma / 2;
+
 	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
 	pval.intval = chip->target_fastchg_current_ma * 1000;
 	parallel_psy->set_property(parallel_psy,
@@ -4009,6 +4061,50 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 	}
 }
 
+static void current_stage_work(struct work_struct *work)
+{
+	int batt_current_ma;
+	int batt_voltage_mv;
+	bool usb_present;
+	struct smbchg_chip *chip = container_of(work, struct smbchg_chip,
+					current_stage_work.work);
+
+	usb_present = is_usb_present(chip);
+	if (usb_present) {
+		set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
+		/*
+		 * Charging current is negative value, convert it to positive
+		 * for current comparing.
+		 */
+		batt_current_ma = -(get_prop_batt_current_now(chip) / 1000);
+		batt_voltage_mv = get_prop_batt_voltage_now(chip) / 1000;
+
+		/*
+		 * only adjust vfloat_mv and parallel charge current
+		 * when it satisfies the condition twice consecutively.
+		 */
+		if ((batt_voltage_mv >= chip->current_stage_thr_mv
+			- chip->current_stage_delta_mv)
+			&& (batt_current_ma <= chip->current_stage_ma)) {
+			chip->current_stage_count += 1;
+			if ((chip->current_stage_count >= STAGE_COUNT_MAX)
+					&& smbchg_is_parallel_usb_ok(chip)) {
+				smbchg_float_voltage_set(chip,
+						chip->cfg_vfloat_mv);
+				chip->current_stage_count = 0;
+				chip->parallel_current_limited = 1;
+				smbchg_parallel_usb_enable(chip);
+				taper_irq_en(chip, true);
+				return;
+			}
+		} else {
+			chip->current_stage_count = 0;
+		}
+		schedule_delayed_work(&chip->current_stage_work,
+				msecs_to_jiffies(STAGE_WORK_DELAY_MS));
+	}
+}
+
 static irqreturn_t chg_term_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
@@ -4021,6 +4117,8 @@ static irqreturn_t chg_term_handler(int irq, void *_chip)
 		power_supply_changed(&chip->batt_psy);
 	smbchg_charging_status_change(chip);
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_CHARGE_DONE, 1);
+	/* Clear the awake flag to get into sleep when charging done */
+	smbchg_relax(chip, PM_CHARGING_CHECK);
 	return IRQ_HANDLED;
 }
 
@@ -4032,6 +4130,12 @@ static irqreturn_t taper_handler(int irq, void *_chip)
 	taper_irq_en(chip, false);
 	smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	/*
+	 * If the vfloat_mv is set to current_stage_thr_mv before, then
+	 * return directly to avoid parallel current adjustment.
+	 */
+	if (chip->vfloat_mv == chip->current_stage_thr_mv)
+		return IRQ_HANDLED;
 	smbchg_parallel_usb_taper(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
@@ -4160,6 +4264,14 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	}
 	chip->parallel.enabled_once = false;
 	chip->vbat_above_headroom = false;
+	/* Reset the params related to stage current solution */
+	if (chip->vfloat_mv == chip->current_stage_thr_mv) {
+		cancel_delayed_work_sync(&chip->current_stage_work);
+		smbchg_float_voltage_set(chip, chip->cfg_vfloat_mv);
+	}
+	chip->current_stage_count = 0;
+	chip->parallel_current_limited = 0;
+	chip->parallel_voltage_checked = 0;
 }
 
 static bool is_src_detect_high(struct smbchg_chip *chip)
@@ -4412,8 +4524,12 @@ static irqreturn_t src_detect_handler(int irq, void *_chip)
 	 * when the battery voltage is high.
 	 */
 	if (src_detect) {
+		/* Stay awake during usb is inserted */
+		smbchg_stay_awake(chip, PM_CHARGING_CHECK);
 		update_usb_status(chip, usb_present, 0);
 	} else {
+		/* Clear the awake flag when usb is removed */
+		smbchg_relax(chip, PM_CHARGING_CHECK);
 		chip->very_weak_charger = false;
 		rc = smbchg_primary_usb_en(chip, true,
 				REASON_WEAK_CHARGER, &unused);
@@ -5256,6 +5372,13 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->target_fastchg_current_ma,
 			"fastchg-current-ma", rc, 1);
 	OF_PROP_READ(chip, chip->vfloat_mv, "float-voltage-mv", rc, 1);
+	if (chip->vfloat_mv > 0)
+		chip->cfg_vfloat_mv = chip->vfloat_mv;
+	OF_PROP_READ(chip, chip->current_stage_thr_mv,
+			"current-stage-threshold-mv", rc, 1);
+	OF_PROP_READ(chip, chip->current_stage_delta_mv,
+			"current-stage-delta-mv", rc, 1);
+	OF_PROP_READ(chip, chip->current_stage_ma, "current-stage-ma", rc, 1);
 	OF_PROP_READ(chip, chip->safety_time, "charging-timeout-mins", rc, 1);
 	OF_PROP_READ(chip, chip->vled_max_uv, "vled-max-uv", rc, 1);
 	if (chip->vled_max_uv < 0)
@@ -5723,6 +5846,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 			smbchg_parallel_usb_en_work);
 	INIT_DELAYED_WORK(&chip->vfloat_adjust_work, smbchg_vfloat_adjust_work);
 	INIT_DELAYED_WORK(&chip->hvdcp_det_work, smbchg_hvdcp_det_work);
+	INIT_DELAYED_WORK(&chip->current_stage_work, current_stage_work);
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
@@ -5731,6 +5855,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->usb_online = -EINVAL;
 	dev_set_drvdata(&spmi->dev, chip);
 
+	 /* The wakeup_source of the dev isn't initialized, so init it here */
+	if (chip->dev->power.wakeup == NULL) {
+		device_set_wakeup_capable(chip->dev, true);
+		device_set_wakeup_enable(chip->dev, true);
+	}
 	spin_lock_init(&chip->sec_access_lock);
 	mutex_init(&chip->fcc_lock);
 	mutex_init(&chip->current_change_lock);
