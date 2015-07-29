@@ -146,7 +146,7 @@ static int32_t qdsp_apr_callback(struct apr_client_data *data, void *priv)
 		wake_up(&prtd->response_wait);
 	} else {
 		spin_unlock_irqrestore(&prtd->response_lock, spin_flags);
-		pr_err("%s: Response dropped since the queue is full\n",
+		pr_debug("%s: Response dropped since the queue is full\n",
 		       __func__);
 	}
 
