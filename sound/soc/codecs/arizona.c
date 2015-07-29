@@ -10,6 +10,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/dropbox.h>
 #include <linux/delay.h>
 #include <linux/gcd.h>
 #include <linux/module.h>
@@ -1441,6 +1442,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 	unsigned int slim_status;
 	bool slim_enabled = false;
 	bool slim_rx_good = false;
+	char dropbox_entry[64];
 
 	/* BODGE: should do this per port */
 	switch (w->shift) {
@@ -1526,6 +1528,7 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 					ARIZONA_SLIMBUS_RX_PORT_STATUS);
 			slim_enabled = !!((slim_status) & (1 << w->shift));
 			if (!slim_enabled) {
+				j++;
 				msleep(100);
 				dev_err(arizona->dev,
 					"Re-enabling SLIMRX%d Try %d\n",
@@ -1580,9 +1583,15 @@ int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
 			}  else {
 				slim_rx_good = true;
 			}
-			j++;
 		}
 		mutex_unlock(&slim_rx_lock);
+		if (j > 0) {
+			snprintf(dropbox_entry, sizeof(dropbox_entry),
+				"SLIMRX%d failure%s recovered after %d trie(s)\n",
+				w->shift, slim_enabled ? "" : " NOT", j);
+			dropbox_queue_event_text("audio_issue",
+				dropbox_entry, strlen(dropbox_entry));
+		}
 		if (!slim_rx_good)
 			dev_err(arizona->dev,
 				"CANNOT Establish slim rx%d link.\n", w->shift);
