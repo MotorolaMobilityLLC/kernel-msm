@@ -89,6 +89,7 @@
 	qcom,charger = <&pmi8994_charger>;
 	qcom,fg-vbatt-low-threshold = <4200>;
 	qcom,resume-soc = <99>;
+	qcom,resume-soc-raw = <253>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
 	qcom,fg-cutoff-voltage-mv = <3400>;
