@@ -41,7 +41,6 @@
 /* mount options */
 #define ESDFS_MOUNT_DERIVE_LEGACY	0x00000001
 #define ESDFS_MOUNT_DERIVE_UNIFIED	0x00000002
-#define ESDFS_MOUNT_DERIVE_SPLIT	0x00000004
 
 #define clear_opt(sbi, option)	(sbi->options &= ~ESDFS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->options |= ESDFS_MOUNT_##option)
@@ -68,8 +67,6 @@ enum {
 	ESDFS_TREE_ROOT_LEGACY,		/* root for legacy emulated storage */
 	ESDFS_TREE_ROOT,		/* root for a user */
 	ESDFS_TREE_MEDIA,		/* per-user basic permissions */
-	ESDFS_TREE_MEDIA_PICS,		/* .../DCIM, Pictures */
-	ESDFS_TREE_MEDIA_AV,		/* .../Alarm, Movies, etc */
 	ESDFS_TREE_ANDROID,		/* .../Android */
 	ESDFS_TREE_ANDROID_DATA,	/* .../Android/data */
 	ESDFS_TREE_ANDROID_OBB,		/* .../Android/obb */
