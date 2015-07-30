@@ -24,6 +24,10 @@ enum {
 	Opt_derive_none,
 	Opt_derive_legacy,
 	Opt_derive_unified,
+	Opt_derive_multi,
+	Opt_derive_public,
+	Opt_confine,
+	Opt_noconfine,
 	Opt_err
 };
 
@@ -33,6 +37,10 @@ static match_table_t esdfs_tokens = {
 	{Opt_derive_none, "derive=none"},
 	{Opt_derive_legacy, "derive=legacy"},
 	{Opt_derive_unified, "derive=unified"},
+	{Opt_derive_multi, "derive=multi"},
+	{Opt_derive_public, "derive=public"},
+	{Opt_confine, "confine"},
+	{Opt_noconfine, "noconfine"},
 	{Opt_err, NULL},
 };
 
@@ -80,7 +88,7 @@ static int parse_perms(struct esdfs_perms *perms, char *args)
 	sepres = strsep(&sep, ":");
 	if (!sep)
 		return -EINVAL;
-	ret = kstrtou16(sepres, 0, &perms->fmask);
+	ret = kstrtou16(sepres, 8, &perms->fmask);
 	if (ret)
 		return ret;
 
@@ -142,14 +150,39 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_derive_none:
 			clear_opt(sbi, DERIVE_LEGACY);
 			clear_opt(sbi, DERIVE_UNIFIED);
+			clear_opt(sbi, DERIVE_MULTI);
+			clear_opt(sbi, DERIVE_PUBLIC);
 			break;
 		case Opt_derive_legacy:
 			set_opt(sbi, DERIVE_LEGACY);
 			clear_opt(sbi, DERIVE_UNIFIED);
+			clear_opt(sbi, DERIVE_MULTI);
+			clear_opt(sbi, DERIVE_PUBLIC);
 			break;
 		case Opt_derive_unified:
 			clear_opt(sbi, DERIVE_LEGACY);
 			set_opt(sbi, DERIVE_UNIFIED);
+			clear_opt(sbi, DERIVE_MULTI);
+			clear_opt(sbi, DERIVE_PUBLIC);
+			set_opt(sbi, DERIVE_CONFINE);	/* confine by default */
+			break;
+		case Opt_derive_multi:
+			set_opt(sbi, DERIVE_LEGACY);
+			clear_opt(sbi, DERIVE_UNIFIED);
+			set_opt(sbi, DERIVE_MULTI);
+			clear_opt(sbi, DERIVE_PUBLIC);
+			break;
+		case Opt_derive_public:
+			clear_opt(sbi, DERIVE_LEGACY);
+			set_opt(sbi, DERIVE_UNIFIED);
+			clear_opt(sbi, DERIVE_MULTI);
+			set_opt(sbi, DERIVE_PUBLIC);
+			break;
+		case Opt_confine:
+			set_opt(sbi, DERIVE_CONFINE);
+			break;
+		case Opt_noconfine:
+			clear_opt(sbi, DERIVE_CONFINE);
 			break;
 		default:
 			esdfs_msg(sb, KERN_ERR, "unrecognized mount option \"%s\" or missing value\n",
@@ -201,9 +234,14 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	memcpy(&sbi->lower_perms,
 	       &esdfs_perms_table[ESDFS_PERMS_LOWER_DEFAULT],
 	       sizeof(struct esdfs_perms));
-	memcpy(&sbi->upper_perms,
-	       &esdfs_perms_table[ESDFS_PERMS_UPPER_LEGACY],
-	       sizeof(struct esdfs_perms));
+	if (ESDFS_DERIVE_PERMS(sbi))
+		memcpy(&sbi->upper_perms,
+		       &esdfs_perms_table[ESDFS_PERMS_UPPER_DERIVED],
+		       sizeof(struct esdfs_perms));
+	else
+		memcpy(&sbi->upper_perms,
+		       &esdfs_perms_table[ESDFS_PERMS_UPPER_LEGACY],
+		       sizeof(struct esdfs_perms));
 	err = parse_options(sb, (char *)raw_data);
 	if (err)
 		goto out_free;
@@ -265,16 +303,12 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	if (!ESDFS_DERIVE_PERMS(sbi))
 		goto out;
 
-	/* let user know that we ignore this option in derived mode */
-	if (memcmp(&sbi->upper_perms,
-		   &esdfs_perms_table[ESDFS_PERMS_UPPER_LEGACY],
+	/* let user know that we ignore this option in older derived modes */
+	if (ESDFS_RESTRICT_PERMS(sbi) &&
+	    memcmp(&sbi->upper_perms,
+		   &esdfs_perms_table[ESDFS_PERMS_UPPER_DERIVED],
 		   sizeof(struct esdfs_perms)))
-		esdfs_msg(sb, KERN_WARNING, "'upper' mount option ignored in derived mode\n");
-
-	/* all derived modes start with the same, basic root */
-	memcpy(&sbi->upper_perms,
-	       &esdfs_perms_table[ESDFS_PERMS_UPPER_DERIVED],
-	       sizeof(struct esdfs_perms));
+		esdfs_msg(sb, KERN_WARNING, "'upper' mount option ignored in this derived mode\n");
 
 	/*
 	 * In Android 3.0 all user conent in the emulated storage tree was
