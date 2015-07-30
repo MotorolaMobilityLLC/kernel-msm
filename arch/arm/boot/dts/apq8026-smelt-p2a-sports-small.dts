@@ -19,6 +19,12 @@
 / {
 	qcom,msm-id =
 		<199 0x41 0x040A>; /* Sports Small P2A Portable */
+
+	m4sensor {
+		pressure {
+			compatible = "mot,m4pressure";
+		};
+	};
 };
 
 &i2c_5 {
