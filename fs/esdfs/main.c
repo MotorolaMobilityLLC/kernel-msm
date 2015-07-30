@@ -24,8 +24,6 @@ enum {
 	Opt_derive_none,
 	Opt_derive_legacy,
 	Opt_derive_unified,
-	Opt_split,
-	Opt_nosplit,
 	Opt_err
 };
 
@@ -35,8 +33,6 @@ static match_table_t esdfs_tokens = {
 	{Opt_derive_none, "derive=none"},
 	{Opt_derive_legacy, "derive=legacy"},
 	{Opt_derive_unified, "derive=unified"},
-	{Opt_split, "split"},
-	{Opt_nosplit, "nosplit"},
 	{Opt_err, NULL},
 };
 
@@ -154,12 +150,6 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_derive_unified:
 			clear_opt(sbi, DERIVE_LEGACY);
 			set_opt(sbi, DERIVE_UNIFIED);
-			break;
-		case Opt_split:
-			set_opt(sbi, DERIVE_SPLIT);
-			break;
-		case Opt_nosplit:
-			clear_opt(sbi, DERIVE_SPLIT);
 			break;
 		default:
 			esdfs_msg(sb, KERN_ERR, "unrecognized mount option \"%s\" or missing value\n",
