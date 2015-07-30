@@ -383,16 +383,6 @@ void esdfs_set_derived_perms(struct inode *inode)
 		inode->i_mode |= 0770;
 		break;
 
-	case ESDFS_TREE_MEDIA_PICS:
-		inode->i_gid = AID_SDCARD_PICS;
-		inode->i_mode |= 0770;
-		break;
-
-	case ESDFS_TREE_MEDIA_AV:
-		inode->i_gid = AID_SDCARD_AV;
-		inode->i_mode |= 0770;
-		break;
-
 	case ESDFS_TREE_ANDROID:
 	case ESDFS_TREE_ANDROID_DATA:
 	case ESDFS_TREE_ANDROID_OBB:
