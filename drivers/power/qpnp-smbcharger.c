@@ -1466,7 +1466,7 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip)
 	int min_current_thr_ma, rc, type;
 	ktime_t kt_since_last_disable;
 	u8 reg;
-	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+	enum typec_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
 
 	if (!smbchg_parallel_en || !chip->parallel_charger_detected) {
 		pr_smb(PR_STATUS, "Parallel charging not enabled\n");
@@ -2278,7 +2278,7 @@ static int smbchg_set_thermal_limited_dc_current_max(struct smbchg_chip *chip,
 static int get_typec_input_current(void)
 {
 	int typec_current = 0;
-	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+	enum typec_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
 
 	current_mode = typec_current_mode_detect();
 	switch (current_mode) {

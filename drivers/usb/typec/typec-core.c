@@ -29,7 +29,7 @@ static ssize_t current_detect_show(struct device *pdev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct typec_device_ops *typec_ops = dev_get_drvdata(pdev);
-	enum tyepc_current_mode current_mode = typec_ops->current_detect();
+	enum typec_current_mode current_mode = typec_ops->current_detect();
 	return snprintf(buf, PAGE_SIZE, "%d\n", current_mode);
 }
 
@@ -38,7 +38,7 @@ static ssize_t attached_state_show(struct device *pdev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct typec_device_ops *typec_ops = dev_get_drvdata(pdev);
-	enum tyepc_attached_state attached_state =
+	enum typec_attached_state attached_state =
 	    typec_ops->attached_state_detect();
 	return snprintf(buf, PAGE_SIZE, "%d\n", attached_state);
 }
@@ -48,7 +48,7 @@ static ssize_t current_advertise_show(struct device *pdev,
 				      struct device_attribute *attr, char *buf)
 {
 	struct typec_device_ops *typec_ops = dev_get_drvdata(pdev);
-	enum tyepc_current_mode current_mode =
+	enum typec_current_mode current_mode =
 	    typec_ops->current_advertise_get();
 	return snprintf(buf, PAGE_SIZE, "%d\n", current_mode);
 	return 0;
@@ -68,7 +68,7 @@ static ssize_t current_advertise_store(struct device *pdev,
 	if (current_mode >= TYPEC_CURRENT_MODE_UNSPPORTED)
 		return -EINVAL;
 
-	if (typec_ops->current_advertise_set((enum tyepc_current_mode)
+	if (typec_ops->current_advertise_set((enum typec_current_mode)
 					     current_mode))
 		return -1;
 
@@ -80,7 +80,7 @@ static ssize_t port_mode_ctrl_show(struct device *pdev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct typec_device_ops *typec_ops = dev_get_drvdata(pdev);
-	enum tyepc_port_mode port_mode = typec_ops->port_mode_get();
+	enum typec_port_mode port_mode = typec_ops->port_mode_get();
 	return snprintf(buf, PAGE_SIZE, "%d\n", port_mode);
 	return 0;
 }
@@ -99,7 +99,7 @@ static ssize_t port_mode_ctrl_store(struct device *pdev,
 	if (port_mode > TYPEC_DRP_MODE)
 		return -EINVAL;
 
-	if (typec_ops->port_mode_set((enum tyepc_port_mode)port_mode))
+	if (typec_ops->port_mode_set((enum typec_port_mode)port_mode))
 		return -1;
 
 	return size;
@@ -167,10 +167,10 @@ int add_typec_device(struct device *parent, struct typec_device_ops *typec_ops)
 }
 
 /* for charger to detect the typec current mode */
-enum tyepc_current_mode typec_current_mode_detect(void)
+enum typec_current_mode typec_current_mode_detect(void)
 {
 	struct typec_device_ops *typec_ops;
-	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+	enum typec_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
 
 	if (!typec_dev) {
 		pr_err("%s: no typec device registered\n", __func__);

@@ -42,12 +42,12 @@
 #include <linux/usb/typec.h>
 #include "tusb320.h"
 
-static enum tyepc_current_mode tusb320_current_mode_detect(void);
-static enum tyepc_current_mode tusb320_current_advertise_get(void);
-static int tusb320_current_advertise_set(enum tyepc_current_mode current_mode);
-static enum tyepc_attached_state tusb320_attatched_state_detect(void);
-static enum tyepc_port_mode tusb320_port_mode_get(void);
-static int tusb320_port_mode_set(enum tyepc_port_mode port_mode);
+static enum typec_current_mode tusb320_current_mode_detect(void);
+static enum typec_current_mode tusb320_current_advertise_get(void);
+static int tusb320_current_advertise_set(enum typec_current_mode current_mode);
+static enum typec_attached_state tusb320_attatched_state_detect(void);
+static enum typec_port_mode tusb320_port_mode_get(void);
+static int tusb320_port_mode_set(enum typec_port_mode port_mode);
 static ssize_t tusb320_dump_regs(char *buf);
 
 static struct tusb320_device_info *g_tusb320_dev;
@@ -157,11 +157,11 @@ static int tusb320_int_clear(void)
 	return ret;
 }
 
-static enum tyepc_current_mode tusb320_current_mode_detect(void)
+static enum typec_current_mode tusb320_current_mode_detect(void)
 {
 	u8 reg_val, mask_val;
 	int ret;
-	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+	enum typec_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
 
 	ret = tusb320_read_reg(TUSB320_REG_CURRENT_MODE, &reg_val);
 	if (ret < 0) {
@@ -191,11 +191,11 @@ static enum tyepc_current_mode tusb320_current_mode_detect(void)
 	return current_mode;
 }
 
-static enum tyepc_current_mode tusb320_current_advertise_get(void)
+static enum typec_current_mode tusb320_current_advertise_get(void)
 {
 	u8 reg_val, mask_val;
 	int ret;
-	enum tyepc_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
+	enum typec_current_mode current_mode = TYPEC_CURRENT_MODE_DEFAULT;
 
 	ret = tusb320_read_reg(TUSB320_REG_CURRENT_MODE, &reg_val);
 	if (ret < 0) {
@@ -225,7 +225,7 @@ static enum tyepc_current_mode tusb320_current_advertise_get(void)
 	return current_mode;
 }
 
-static int tusb320_current_advertise_set(enum tyepc_current_mode current_mode)
+static int tusb320_current_advertise_set(enum typec_current_mode current_mode)
 {
 	u8 reg_val, mask_val;
 	int ret;
@@ -267,11 +267,11 @@ static int tusb320_current_advertise_set(enum tyepc_current_mode current_mode)
 	return 0;
 }
 
-static enum tyepc_attached_state tusb320_attatched_state_detect(void)
+static enum typec_attached_state tusb320_attatched_state_detect(void)
 {
 	u8 reg_val, mask_val;
 	int ret;
-	enum tyepc_attached_state attached_state = TYPEC_NOT_ATTACHED;
+	enum typec_attached_state attached_state = TYPEC_NOT_ATTACHED;
 
 	ret = tusb320_read_reg(TUSB320_REG_ATTACH_STATUS, &reg_val);
 	if (ret < 0) {
@@ -301,11 +301,11 @@ static enum tyepc_attached_state tusb320_attatched_state_detect(void)
 	return attached_state;
 }
 
-static enum tyepc_port_mode tusb320_port_mode_get(void)
+static enum typec_port_mode tusb320_port_mode_get(void)
 {
 	u8 reg_val, mask_val;
 	int ret;
-	enum tyepc_port_mode port_mode = TYPEC_MODE_ACCORDING_TO_PROT;
+	enum typec_port_mode port_mode = TYPEC_MODE_ACCORDING_TO_PROT;
 
 	ret = tusb320_read_reg(TUSB320_REG_MODE_SET, &reg_val);
 	if (ret < 0) {
@@ -336,7 +336,7 @@ static enum tyepc_port_mode tusb320_port_mode_get(void)
 	return port_mode;
 }
 
-static int tusb320_port_mode_set(enum tyepc_port_mode port_mode)
+static int tusb320_port_mode_set(enum typec_port_mode port_mode)
 {
 	u8 reg_val, mask_val;
 	int ret;
@@ -397,8 +397,8 @@ static ssize_t tusb320_dump_regs(char *buf)
 static void tusb320_intb_work(struct work_struct *work)
 {
 	int ret;
-	enum tyepc_current_mode current_mode;
-	enum tyepc_attached_state attached_state;
+	enum typec_current_mode current_mode;
+	enum typec_attached_state attached_state;
 
 	current_mode = tusb320_current_mode_detect();
 	attached_state = tusb320_attatched_state_detect();

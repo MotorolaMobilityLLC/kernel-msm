@@ -22,21 +22,21 @@
 #include <linux/types.h>
 #include <linux/device.h>
 
-enum tyepc_current_mode {
+enum typec_current_mode {
 	TYPEC_CURRENT_MODE_DEFAULT = 0,
 	TYPEC_CURRENT_MODE_MID,
 	TYPEC_CURRENT_MODE_HIGH,
 	TYPEC_CURRENT_MODE_UNSPPORTED
 };
 
-enum tyepc_attached_state {
+enum typec_attached_state {
 	TYPEC_NOT_ATTACHED = 0,
 	TYPEC_ATTACHED_AS_UFP,
 	TYPEC_ATTACHED_AS_DFP,
 	TYPEC_ATTACHED_TO_ACCESSORY
 };
 
-enum tyepc_port_mode {
+enum typec_port_mode {
 	TYPEC_MODE_ACCORDING_TO_PROT = 0,
 	TYPEC_UFP_MODE,
 	TYPEC_DFP_MODE,
@@ -45,20 +45,20 @@ enum tyepc_port_mode {
 
 struct typec_device_ops {
 	/* to get the Type-C Current mode */
-	enum tyepc_current_mode (*current_detect) (void);
+	enum typec_current_mode (*current_detect) (void);
 
 	/* to get the attached state and determine what was attached */
-	enum tyepc_attached_state (*attached_state_detect) (void);
+	enum typec_attached_state (*attached_state_detect) (void);
 
 	/* to get the current advertisement in DFP or DRP modes */
-	enum tyepc_current_mode (*current_advertise_get) (void);
+	enum typec_current_mode (*current_advertise_get) (void);
 	/* to set the current advertisement in DFP or DRP modes */
-	int (*current_advertise_set) (enum tyepc_current_mode current_mode);
+	int (*current_advertise_set) (enum typec_current_mode current_mode);
 
 	/* to get the port mode (UFP, DFP or DRP) */
-	enum tyepc_port_mode (*port_mode_get) (void);
+	enum typec_port_mode (*port_mode_get) (void);
 	/* to set the port mode (UFP, DFP or DRP), the chip will operate according the mode */
-	int (*port_mode_set) (enum tyepc_port_mode port_mode);
+	int (*port_mode_set) (enum typec_port_mode port_mode);
 
 	/* to get all the register value */
 	 ssize_t(*dump_regs) (char *buf);
@@ -66,5 +66,5 @@ struct typec_device_ops {
 
 extern int add_typec_device(struct device *parent,
 			    struct typec_device_ops *typec_ops);
-extern enum tyepc_current_mode typec_current_mode_detect(void);
+extern enum typec_current_mode typec_current_mode_detect(void);
 #endif /* _TYPEC_H_ */
