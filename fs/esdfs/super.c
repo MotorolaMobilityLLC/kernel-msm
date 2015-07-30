@@ -197,11 +197,6 @@ static int esdfs_show_options(struct seq_file *seq, struct dentry *root)
 	else
 		seq_puts(seq, ",derive=none");
 
-	if (test_opt(sbi, DERIVE_SPLIT))
-		seq_puts(seq, ",split");
-	else
-		seq_puts(seq, ",nosplit");
-
 	return 0;
 }
 
