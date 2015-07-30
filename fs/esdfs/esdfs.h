@@ -41,13 +41,19 @@
 /* mount options */
 #define ESDFS_MOUNT_DERIVE_LEGACY	0x00000001
 #define ESDFS_MOUNT_DERIVE_UNIFIED	0x00000002
+#define ESDFS_MOUNT_DERIVE_MULTI	0x00000004
+#define ESDFS_MOUNT_DERIVE_PUBLIC	0x00000008
+#define ESDFS_MOUNT_DERIVE_CONFINE	0x00000010
 
 #define clear_opt(sbi, option)	(sbi->options &= ~ESDFS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->options |= ESDFS_MOUNT_##option)
 #define test_opt(sbi, option)	(sbi->options & ESDFS_MOUNT_##option)
 
 #define ESDFS_DERIVE_PERMS(sbi)	(test_opt(sbi, DERIVE_UNIFIED) || \
-					 test_opt(sbi, DERIVE_LEGACY))
+				 test_opt(sbi, DERIVE_LEGACY))
+#define ESDFS_RESTRICT_PERMS(sbi) (ESDFS_DERIVE_PERMS(sbi) && \
+				   !test_opt(sbi, DERIVE_PUBLIC) && \
+				   !test_opt(sbi, DERIVE_MULTI))
 
 /* from android_filesystem_config.h */
 #define AID_ROOT             0
