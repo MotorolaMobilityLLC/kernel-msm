@@ -81,19 +81,12 @@ static struct stmvl6180_module_fn_t stmvl6180_module_func_tbl = {
 #define VL6180_IOCTL_SETXTALK		_IOW('p', 0x06, unsigned int)
 #define VL6180_IOCTL_SETOFFSET		_IOW('p', 0x07, int8_t)
 #define VL6180_IOCTL_GETDATAS		_IOR('p', 0x0b, VL6180x_RangeData_t)
+#define VL6180_IOCTL_REGISTER		_IOWR('p', 0x0c, struct stmvl6180_register)
 
-#define MULTI_READ	     1
 #define CALIBRATION_FILE 1
 #ifdef CALIBRATION_FILE
 int8_t offset_calib;
 int16_t xtalk_calib;
-#endif
-
-#ifdef MULTI_READ
-static uint32_t get_unsigned_int_from_buffer(uint8_t *pdata, int8_t count);
-static uint16_t get_unsigned_short_from_buffer(uint8_t *pdata, int8_t count);
-static int stmvl6180_ps_read_result(void);
-static void stmvl6180_ps_parse_result(void);
 #endif
 
 static long stmvl6180_ioctl(struct file *file,
@@ -135,7 +128,6 @@ static void stmvl6180_read_calibration_file(void)
 		if (is_sign == 1)
 			offset_calib = -offset_calib;
 		vl6180_dbgmsg("offset_calib as %d\n", offset_calib);
-		//VL6180x_SetUserOffsetCalibration(vl6180x_dev, offset_calib);
 		VL6180x_SetOffsetCalibrationData(vl6180x_dev, offset_calib);
 		filp_close(f, NULL);
 	} else {
@@ -165,7 +157,15 @@ static void stmvl6180_read_calibration_file(void)
 		if (is_sign == 1)
 			xtalk_calib = -xtalk_calib;
 		vl6180_dbgmsg("xtalk_calib as %d\n", xtalk_calib);
-		//VL6180x_SetUserXTalkCompensationRate(vl6180x_dev, xtalk_calib);
+		/* set up threshold ignore */
+		if ((xtalk_calib+13) < 64 )
+			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); //0.5Mcps
+		else
+			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (xtalk_calib+13)); //+0.1Mcps
+		VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 255);
+		VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
+						~RANGE_CHECK_RANGE_ENABLE_MASK, RANGE_CHECK_RANGE_ENABLE_MASK);
+		/* setup xtalk compensation rate */
 		VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalk_calib);
 		filp_close(f, NULL);
 	} else {
@@ -188,7 +188,6 @@ static void stmvl6180_write_offset_calibration_file(void)
 		vl6180_dbgmsg("write offset as:%s, buf[0]:%c\n", buf, buf[0]);
 		f->f_op->write(f, buf, 8, &f->f_pos);
 		set_fs(fs);
-		//VL6180x_SetUserOffsetCalibration(vl6180x_dev, offset_calib);
 	}
 	filp_close(f, NULL);
 
@@ -209,7 +208,6 @@ static void stmvl6180_write_xtalk_calibration_file(void)
 		vl6180_dbgmsg("write xtalk as:%s, buf[0]:%c\n", buf, buf[0]);
 		f->f_op->write(f, buf, 8, &f->f_pos);
 		set_fs(fs);
-		//VL6180x_SetUserXTalkCompensationRate(vl6180x_dev, xtalk_calib);
 	}
 	filp_close(f, NULL);
 
@@ -217,68 +215,6 @@ static void stmvl6180_write_xtalk_calibration_file(void)
 }
 #endif
 
-#ifdef MULTI_READ
-static uint32_t get_unsigned_int_from_buffer(uint8_t *pdata, int8_t count)
-{
-	uint32_t value = 0;
-	while (count-- > 0)
-		value = (value << 8) | (uint32_t) *pdata++;
-
-	return value;
-}
-
-static uint16_t get_unsigned_short_from_buffer(uint8_t *pdata, int8_t count)
-{
-	uint16_t value = 0;
-	while (count-- > 0)
-		value = (value << 8) | (uint16_t) *pdata++;
-
-	return value;
-}
-
-static int stmvl6180_ps_read_result(void)
-{
-	struct stmvl6180_data *data = gp_vl6180_data;
-	int status = 0;
-	status = VL6180x_RdBuffer(vl6180x_dev,
-								RESULT_RANGE_STATUS,
-								data->ResultBuffer,
-								RESULT_REG_COUNT);
-	return status;
-}
-
-static void stmvl6180_ps_parse_result(void)
-{
-	struct stmvl6180_data *data = gp_vl6180_data;
-
-	/* RESULT_RANGE_STATUS:0x004D */
-	data->rangeResult.Result_range_status = data->ResultBuffer[0];
-	/* RESULT_INTERRUPT_STATUS:0x004F */
-	data->rangeResult.Result_interrupt_status = data->ResultBuffer[1];
-	/* RESULT_RANGE_VAL:0x0062 */
-	data->rangeResult.Result_range_val = data->ResultBuffer[(0x62 - 0x4d)];
-	/* RESULT_RANGE_RAW:0x0064 */
-	data->rangeResult.Result_range_raw = data->ResultBuffer[(0x64 - 0x4d)];
-	/* RESULT_RANGE_RETURN_RATE:0x0066 */
-	data->rangeResult.Result_range_return_rate = get_unsigned_short_from_buffer(data->ResultBuffer +  (0x66 - 0x4d), 2);
-	/* RESULT_RANGE_REFERENCE_RATE:0x0068 */
-	data->rangeResult.Result_range_reference_rate = get_unsigned_short_from_buffer(data->ResultBuffer +  (0x68 - 0x4d), 2);
-	/* RESULT_RANGE_RETURN_SIGNAL_COUNT:0x006c */
-	data->rangeResult.Result_range_return_signal_count = get_unsigned_int_from_buffer(data->ResultBuffer + (0x6c - 0x4d), 4);
-	/* RESULT_RANGE_REFERENCE_SIGNAL_COUNT:0x0070 */
-	data->rangeResult.Result_range_reference_signal_count =  get_unsigned_int_from_buffer(data->ResultBuffer + (0x70 - 0x4d), 4);
-	/* RESULT_RANGE_RETURN_AMB_COUNT:0x0074 */
-	data->rangeResult.Result_range_return_amb_count = get_unsigned_int_from_buffer(data->ResultBuffer + (0x74 - 0x4d), 4);
-	/* RESULT_RANGE_REFERENCE_AMB_COUNT:0x0078 */
-	data->rangeResult.Result_range_reference_amb_count =  get_unsigned_int_from_buffer(data->ResultBuffer + (0x78 - 0x4d), 4);
-	/* RESULT_RANGE_RETURN_CONV_TIME:0x007c */
-	data->rangeResult.Result_range_return_conv_time =  get_unsigned_int_from_buffer(data->ResultBuffer + (0x7c - 0x4d), 4);
-	/* RESULT_RANGE_REFERENCE_CONV_TIME:0x0080 */
-	data->rangeResult.Result_range_reference_conv_time =  get_unsigned_int_from_buffer(data->ResultBuffer + (0x80 - 0x4d), 4);
-
-	return;
-}
-#endif
 
 static void stmvl6180_ps_read_measurement(void)
 {
@@ -302,16 +238,15 @@ static void stmvl6180_ps_read_measurement(void)
 	input_report_abs(data->input_dev_ps, ABS_HAT3Y, data->rangeData.DMax);
 #endif
 	input_sync(data->input_dev_ps);
-#if 0
+
 	if (data->enableDebug)
-		pr_err("range:%d, signalrate_mcps:%d, error:0x%x,rtnsgnrate:%u, rtnambrate:%u,rtnconvtime:%u\n",
+		vl6180_errmsg("range:%d, signalrate_mcps:%d, error:0x%x,rtnsgnrate:%u, rtnambrate:%u,rtnconvtime:%u\n",
 			data->rangeData.range_mm,
 			data->rangeData.signalRate_mcps,
 			data->rangeData.errorStatus,
 			data->rangeData.rtnRate,
 			data->rangeData.rtnAmbRate,
 			data->rangeData.rtnConvTime);
-#endif
 
 }
 
@@ -356,37 +291,32 @@ static void stmvl6180_work_handler(struct work_struct *work)
 	struct stmvl6180_data *data = gp_vl6180_data;
 	int ret = 0;
 	uint8_t to_startPS = 0;
+	uint8_t range_status=0, range_start=0;
 
 	mutex_lock(&data->work_mutex);
 
 	if (data->enable_ps_sensor == 1) {
-		/* vl6180_dbgmsg("Enter\n"); */
-#ifdef MULTI_READ
-		ret = stmvl6180_ps_read_result();
-		if (ret) {
-			vl6180_errmsg("%d RangeERROR!!!\n", __LINE__);
-			data->rangeData.errorStatus = 19; /* RANGE ERROR */
-		} else if ((data->ResultBuffer[(0x4f-0x4d)] & 0x07) == RES_INT_STAT_GPIO_NEW_SAMPLE_READY) {
-			stmvl6180_ps_parse_result();
-			VL6180x_RangeGetMeasurement_ext(vl6180x_dev, &(data->rangeResult), &(data->rangeData));
-			if (data->ps_is_singleshot)
-				to_startPS = 1;
 
-		} else
-			data->rangeData.errorStatus = 18; /* NOT READY */
-#else
-		ret = VL6180x_RangeGetMeasurementIfReady(vl6180x_dev, &(data->rangeData));
-		if (ret == RANGE_ERROR) {
-			vl6180_errmsg("%d RangeERROR!!!\n", __LINE__);
-			data->rangeData.errorStatus = 19; /* RANGE ERROR */
-		} else if (ret == NOT_READY) {
-			data->rangeData.errorStatus = 18; /* NOT READY */
-		} else {
-			if (data->ps_is_singleshot)
-				to_startPS = 1;
+		/* vl6180_dbgmsg("Enter\n"); */
+		data->rangeData.errorStatus = 0xFF; /* to reset the data, should be set by API */
+		VL6180x_RdByte(vl6180x_dev, RESULT_RANGE_STATUS, &range_status);
+		VL6180x_RdByte(vl6180x_dev, SYSRANGE_START, &range_start);
+
+		if (data->enableDebug) {
+			vl6180_errmsg("RangeStatus as 0x%x,RangeStart: 0x%x\n",range_status,range_start);
 		}
-#endif
-		stmvl6180_ps_read_measurement(); /* to update data */
+		if (range_start == 0 && (range_status & 0x01) == 0x01) {
+			ret = VL6180x_RangeGetMeasurementIfReady(vl6180x_dev, &(data->rangeData));
+			if (!ret && data->rangeData.errorStatus !=DataNotReady ) {
+				if (data->ps_is_singleshot)
+					to_startPS = 1;
+				if (data->rangeData.errorStatus == 17)
+					data->rangeData.errorStatus = 16;
+				stmvl6180_ps_read_measurement(); /* to update data */
+			}
+		}
+		//if (!ret)
+		//	stmvl6180_ps_read_measurement(); /* to update data */
 		if (to_startPS)
 			VL6180x_RangeSetSystemMode(vl6180x_dev, MODE_START_STOP |  MODE_SINGLESHOT);
 
@@ -531,10 +461,10 @@ static int stmvl6180_ioctl_handler(struct file *file,
 				unsigned int cmd, unsigned long arg, void __user *p)
 {
 	int rc = 0;
-	//unsigned long distance = 0;
 	unsigned int xtalkint = 0;
 	int8_t offsetint = 0;
 	struct stmvl6180_data *data = gp_vl6180_data;
+	struct stmvl6180_register reg;
 
 	if (!data)
 		return -EINVAL;
@@ -616,6 +546,49 @@ static int stmvl6180_ioctl_handler(struct file *file,
 			return -EFAULT;
 		}
 		break;
+	case VL6180_IOCTL_REGISTER:
+		vl6180_dbgmsg("VL6180_IOCTL_REGISTER\n");
+		if (copy_from_user(&reg, (struct stmvl6180_register *)p,
+							sizeof(struct stmvl6180_register))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		reg.status = 0;
+		switch (reg.reg_bytes) {
+		case(4):
+			if (reg.is_read)
+				reg.status = VL6180x_RdDWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											&reg.reg_data);
+			else
+				reg.status = VL6180x_WrDWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											reg.reg_data);
+			break;
+		case(2):
+			if (reg.is_read)
+				reg.status = VL6180x_RdWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint16_t *)&reg.reg_data);
+			else
+				reg.status = VL6180x_WrWord(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint16_t)reg.reg_data);			
+			break;
+		case(1):
+			if (reg.is_read)
+				reg.status = VL6180x_RdByte(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint8_t *)&reg.reg_data);
+			else
+				reg.status = VL6180x_WrByte(vl6180x_dev, (uint16_t)reg.reg_index,
+											(uint8_t)reg.reg_data);						
+			break;
+		default:
+			reg.status = -1;
+
+		}
+		if (copy_to_user((struct stmvl6180_register *)p, &reg,
+							sizeof(struct stmvl6180_register))) {
+			vl6180_errmsg("%d, fail\n", __LINE__);
+			return -EFAULT;
+		}
+		break;
 	default:
 		rc = -EINVAL;
 		break;
@@ -630,10 +603,10 @@ static int stmvl6180_open(struct inode *inode, struct file *file)
 
 static int stmvl6180_flush(struct file *file, fl_owner_t id)
 {
+#if 0
 	struct stmvl6180_data *data = gp_vl6180_data;
 	(void) file;
 	(void) id;
-
 	if (data) {
 		if (data->enable_ps_sensor == 1) {
 			/* turn off tof sensor if it's enabled */
@@ -642,7 +615,7 @@ static int stmvl6180_flush(struct file *file, fl_owner_t id)
 			stmvl6180_stop(data);
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -733,10 +706,13 @@ static int stmvl6180_init_client(struct stmvl6180_data *data)
 
 
 	/* intialization */
-	if (data->reset)
-	{
-		//vl6180_dbgmsg("WaitDeviceBoot");
-		//VL6180x_WaitDeviceBooted(vl6180x_dev);
+	if (data->reset) {
+		/* no need
+		vl6180_dbgmsg("WaitDeviceBoot");
+		VL6180x_WaitDeviceBooted(vl6180x_dev);
+		*/
+
+		/* only called if device being reset, otherwise data being overwrite */
 		vl6180_dbgmsg("Init data!");
 		VL6180x_InitData(vl6180x_dev); /* only called if device being reset */
 		data->reset = 0;
@@ -762,7 +738,6 @@ static int stmvl6180_start(struct stmvl6180_data *data, uint8_t scaling, init_mo
 		vl6180_errmsg("%d,error rc %d\n", __LINE__, rc);
 		return rc;
 	}
-	mdelay(100);
 	/* init */
 	rc = stmvl6180_init_client(data);
 	if (rc) {
@@ -784,6 +759,7 @@ static int stmvl6180_start(struct stmvl6180_data *data, uint8_t scaling, init_mo
 	}
 	if (mode == OFFSETCALIB_MODE)
 		VL6180x_SetOffsetCalibrationData(vl6180x_dev, 0);
+
 
 	/* start - single shot mode */
 	VL6180x_RangeSetSystemMode(vl6180x_dev, MODE_START_STOP|MODE_SINGLESHOT);
@@ -952,7 +928,7 @@ static int stmvl6180_setup(struct stmvl6180_data *data)
 	/* init default value */
 	data->enable_ps_sensor = 0;
 	data->reset = 1;
-	data->delay_ms = 30; 	/* delay time to 30ms */
+	data->delay_ms = 30;	/* delay time to 30ms */
 	data->enableDebug = 0;
 	data->client_object.power_up = 0; /* for those one-the-fly power on/off flag */
 

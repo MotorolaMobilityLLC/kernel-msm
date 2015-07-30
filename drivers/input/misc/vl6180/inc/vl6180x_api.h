@@ -27,8 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 /*
  * @file VL6180x_api.h
- * $Date: 2015-06-10 12:59:27 +0200 (Wed, 10 Jun 2015) $
- * $Revision: 2393 $
+ * $Date: 2015-07-07 18:48:49 +0200 (Tue, 07 Jul 2015) $
+ * $Revision: 2448 $
  */
 
 
@@ -36,8 +36,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef VL6180x_API_H_
 #define VL6180x_API_H_
 
-#include "vl6180x_appcfg.h"
-#include "vl6180x_def.h"
 #include "vl6180x_platform.h"
 
 #ifdef __cplusplus
@@ -250,7 +248,7 @@ int VL6180x_RangePollMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDa
  *
  * @param dev  The device
  * @param pRangeData  Will be populated with the result ranging data if available
- * @return  0 when measure is ready pRange data is updated (untouched when not ready),  >0 for warning and @a #NOT_READY if measurement not yet ready, <0 for error @a #RANGE_ERROR if device report an error,
+ * @return  0 on success and <0 in case of error. Please check pRangeData.errorStatus to check is new measurement is ready or not.
  */
 int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData);
 
@@ -270,7 +268,7 @@ int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pR
  * @return            0 on success
  */
 int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData);
-int VL6180x_RangeGetMeasurement_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData);
+
 /**
  * @brief Get ranging result and only that
  *
@@ -286,7 +284,6 @@ int VL6180x_RangeGetMeasurement_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t 
  * @return           0 on success
  */
 int VL6180x_RangeGetResult(VL6180xDev_t dev, int32_t *pRange_mm);
-int VL6180x_RangeGetResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, int32_t *pRange_mm);
 
 /**
  * @brief Configure ranging interrupt reported to application
@@ -780,7 +777,7 @@ int VL6180x_SetGroupParamHold(VL6180xDev_t dev, int Hold);
  *
  * @sa AN4478: Using multiple VL6180X's in a single design
  * @param dev       The device
- * @param NewAddr   The new i2c address (7bit)
+ * @param NewAddr   The new i2c address (8 bits)
  * @return          0 on success
  */
 int VL6180x_SetI2CAddress(VL6180xDev_t dev, uint8_t NewAddr);
@@ -973,15 +970,17 @@ int VL6180x_RdWord(VL6180xDev_t dev, uint16_t index, uint16_t *data);
  */
 int VL6180x_RdDWord(VL6180xDev_t dev, uint16_t index, uint32_t *data);
 
+
 /**
- * Read VL6180x a sequnce of registers
+ * Read VL6180x multiple bytes
+ * @note required only if #VL6180x_HAVE_MULTI_READ is set
  * @param dev   The device
  * @param index The register index
- * @param pdata  pointer to buffer
- * @param count  number of registers to read
+ * @param data  pointer to 8 bit data
+ * @param nData number of data bytes to read
  * @return 0 on success
  */
-int VL6180x_RdBuffer(VL6180xDev_t dev, uint16_t index, uint8_t *pdata, uint8_t count);
+int VL6180x_RdMulti(VL6180xDev_t dev, uint16_t index, uint8_t *data, int nData);
 
 /** @}  */
 

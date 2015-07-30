@@ -27,8 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 
 /*
- * $Date: 2015-06-19 12:29:09 +0200 (Fri, 19 Jun 2015) $
- * $Revision: 2414 $
+ * $Date: 2015-07-09 10:01:10 +0200 (Thu, 09 Jul 2015) $
+ * $Revision: 2455 $
  */
 
 /**
@@ -45,9 +45,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /** API major version */
 #define VL6180x_API_REV_MAJOR   3
 /** API minor version */
-#define VL6180x_API_REV_MINOR   0
+#define VL6180x_API_REV_MINOR   1
 /** API sub version */
-#define VL6180x_API_REV_SUB     2
+#define VL6180x_API_REV_SUB     0
 
 #define VL6180X_STR_HELPER(x) #x
 #define VL6180X_STR(x) VL6180X_STR_HELPER(x)
@@ -93,6 +93,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 
+#ifndef VL6180x_HAVE_MULTI_READ
+#   define VL6180x_HAVE_MULTI_READ  0
+#endif
+
+/**
+ * Force VL6180x_CACHED_REG to default 0 when not defined
+ */
+#ifndef VL6180x_CACHED_REG
+#   define VL6180x_CACHED_REG  0
+#else
+#   define VL6180x_FIRST_CACHED_INDEX      0x04D
+#   define VL6180x_LAST_CACHED_INDEX       (VL6180x_FIRST_CACHED_INDEX+55)
+#   define VL6180x_CACHED_REG_CNT           (VL6180x_LAST_CACHED_INDEX-VL6180x_FIRST_CACHED_INDEX+1)
+#endif
 
 /****************************************
  * PRIVATE define do not edit
@@ -140,7 +154,6 @@ enum VL6180x_ErrCode_t {
 	CALIBRATION_WARNING = 1,  /*!< warning invalid calibration data may be in used \a  VL6180x_InitData() \a VL6180x_GetOffsetCalibrationData \a VL6180x_SetOffsetCalibrationData*/
 	MIN_CLIPED          = 2,  /*!< warning parameter passed was clipped to min before to be applied */
 	NOT_GUARANTEED      = 3,  /*!< Correct operation is not guaranteed typically using extended ranging on vl6180x */
-	NOT_READY           = 4,  /*!< the data is not ready retry */
 
 	API_ERROR      = -1,    /*!< Unqualified error */
 	INVALID_PARAMS = -2,    /*!< parameter passed is invalid or out of range */
@@ -155,6 +168,7 @@ enum VL6180x_ErrCode_t {
 typedef struct RangeFilterResult_tag {
 	uint16_t range_mm;      /*!< Filtered ranging value */
 	uint16_t rawRange_mm;   /*!< raw range value (scaled) */
+	uint32_t filterError;   /*!< current filter error code */
 } RangeFilterResult_t;
 
 /**
@@ -162,7 +176,7 @@ typedef struct RangeFilterResult_tag {
  *
  * if data space saving is not a concern it can be change to platform native unsigned int
  */
-typedef uint8_t  FilterType1_t;
+typedef uint32_t  FilterType1_t;
 
 /**
  * @def FILTER_NBOF_SAMPLES
@@ -174,6 +188,7 @@ typedef uint8_t  FilterType1_t;
  */
 struct FilterData_t {
 	uint32_t MeasurementIndex;                      /*!< current measurement index */
+	uint32_t MeasurementsSinceLastFlush;            /*!< Number of measurements done since last time buffer has been flushed */
 	uint16_t LastTrueRange[FILTER_NBOF_SAMPLES];    /*!< filtered/corrected  distance history */
 	uint32_t LastReturnRates[FILTER_NBOF_SAMPLES];  /*!< Return rate history */
 	uint16_t StdFilteredReads;                      /*!< internal use */
@@ -182,6 +197,7 @@ struct FilterData_t {
 	FilterType1_t NoDelay_ZeroVal;                  /*!< internal use */
 	FilterType1_t NoDelay_VAVGVal;                  /*!< internal use */
 	FilterType1_t Previous_VAVGDiff;                /*!< internal use */
+	uint32_t filterError;                           /*!< current filter error code */
 };
 
 #if  VL6180x_HAVE_DMAX_RANGING
@@ -231,19 +247,16 @@ struct VL6180xDevData_t {
 	struct FilterData_t FilterData; /*!< Filter internal data state history ... */
 #endif
 
+#if VL6180x_CACHED_REG
+	uint8_t CacheFilled;             /*!< Set if valid data got fetched use to control when to fill up register cache */
+	uint8_t CachedRegs[VL6180x_CACHED_REG_CNT];          /*!< Cache register storage */
+#endif
 #if VL6180x_HAVE_DMAX_RANGING
 	struct DMaxData_t DMaxData;
 	uint8_t DMaxEnable;
 #endif
 	int8_t  Part2PartOffsetNVM;     /*!< backed up NVM value */
 };
-
-#if VL6180x_SINGLE_DEVICE_DRIVER
-extern  struct VL6180xDevData_t SingleVL6180xDevData;
-#define VL6180xDevDataGet(dev, field) (SingleVL6180xDevData.field)
-/* is also used as direct accessor like VL6180xDevDataGet(dev, x)++*/
-#define VL6180xDevDataSet(dev, field, data) (SingleVL6180xDevData.field) = (data)
-#endif
 
 
 /**
@@ -273,26 +286,6 @@ typedef struct {
 #endif
 } VL6180x_RangeData_t;
 
-
-/**
- * @struct VL6180x_RangeResultData_t
- * @brief Range Result data from device.
-
- */
-typedef struct {
-	uint8_t Result_range_status;
-	uint8_t Result_interrupt_status;
-	uint8_t Result_range_val;
-	uint8_t Result_range_raw;
-	uint16_t Result_range_return_rate;
-	uint16_t Result_range_reference_rate;
-	uint32_t Result_range_return_signal_count;
-	uint32_t Result_range_reference_signal_count;
-	uint32_t Result_range_return_amb_count;
-	uint32_t Result_range_reference_amb_count;
-	uint32_t Result_range_return_conv_time;
-	uint32_t Result_range_reference_conv_time;
-} VL6180x_RangeResultData_t;
 
 /** use where fix point 9.7 bit values are expected
  *
@@ -338,6 +331,8 @@ typedef enum {
 
 	/* code below are addition for API/software side they are not hardware*/
 	RangingFiltered = 0x10,     /*!< 16 0b10000 filtered by post processing*/
+	RangingFilteringOnGoing = 0x11,  /*!< 17 0b10001 ranging filter on going (need few measurements)*/
+	DataNotReady = 0x12,             /*!< 18 0b10011 New data sample not ready */
 
 } RangeError_u;
 

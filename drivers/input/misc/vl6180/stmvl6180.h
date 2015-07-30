@@ -26,7 +26,7 @@
 #define STMVL6180_DRV_NAME	"stmvl6180"
 
 
-#define DRIVER_VERSION		"2.0"
+#define DRIVER_VERSION		"2.0.5"
 #define I2C_M_WR			0x00
 /* #define INT_POLLING_DELAY	20 */
 #define RESULT_REG_COUNT	56
@@ -38,6 +38,8 @@
 /* #define vl6180_errmsg(str, args...) pr_err("%s: " str, __func__, ##args) */
 #define vl6180_errmsg(str, args...) printk(KERN_ERR "%s: " str, __func__, ##args)
 
+#define VL6180_VDD_MIN      2600000
+#define VL6180_VDD_MAX      3000000
 
 /*
  * VL6180 register addresses
@@ -83,10 +85,21 @@
 #define VL6180_RESULT__RANGE_REFERENCE_CONV_TIME_REG_BYTES          4
 
 typedef enum {
-	NORMAL_MODE=0,
-	OFFSETCALIB_MODE=1,
-	XTALKCALIB_MODE=2,
+	NORMAL_MODE = 0,
+	OFFSETCALIB_MODE = 1,
+	XTALKCALIB_MODE = 2,
 } init_mode_e;
+
+/*
+ *  IOCTL register data structs
+ */
+struct stmvl6180_register {
+	uint32_t is_read; //1: read 0: write
+	uint32_t reg_index;
+	uint32_t reg_bytes;
+	uint32_t reg_data;
+	int32_t status;
+};
 
 /*
  *  driver data structs
@@ -120,7 +133,6 @@ struct stmvl6180_data {
 	VL6180x_RangeData_t rangeData;
 
 	/* Range Result Register Data */
-	VL6180x_RangeResultData_t rangeResult;
 	uint8_t  ResultBuffer[RESULT_REG_COUNT];
 
 	/* delay time in miniseconds*/

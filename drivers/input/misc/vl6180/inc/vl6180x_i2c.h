@@ -1,5 +1,5 @@
 /*
- * $Date: 2015-01-08 05:30:24 -0800 (Thu, 08 Jan 2015) $
+ * $Date: 2015-01-08 14:30:24 +0100 (Thu, 08 Jan 2015) $
  * $Revision: 2039 $
  */
 
@@ -128,7 +128,6 @@ void VL6180x_GetI2CAccess(VL6180xDev_t dev);
  * @ingroup cci_i2c
  */
 #define VL6180x_GetI2CAccess(dev) (void)0 /* TODO delete if function used */
-
 
 /**
  * @brief Release acquired lock or mutex for i2c access.\n

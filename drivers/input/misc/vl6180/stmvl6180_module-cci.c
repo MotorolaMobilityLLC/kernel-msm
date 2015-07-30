@@ -422,7 +422,7 @@ int stmvl6180_power_down_cci(void *cci_object)
 			}
 		}
 	}
-	//data->power_up = 0;
+	data->power_up = 0;
 	vl6180_dbgmsg("End\n");
 	return ret;
 }

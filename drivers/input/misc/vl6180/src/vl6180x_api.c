@@ -27,8 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ********************************************************************************/
 
 /*
- * $Date: 2015-06-10 12:59:27 +0200 (Wed, 10 Jun 2015) $
- * $Revision: 2393 $
+ * $Date: 2015-07-10 02:09:55 +0200 (Fri, 10 Jul 2015) $
+ * $Revision: 2459 $
  */
 #include "vl6180x_api.h"
 
@@ -58,17 +58,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define DEF_CROSS_TALK_VALID_HEIGHT_VALUE   20
 
-/* defined in vl6180x_def.h
+
 #if VL6180x_SINGLE_DEVICE_DRIVER
 extern  struct VL6180xDevData_t SingleVL6180xDevData;
 #define VL6180xDevDataGet(dev, field) (SingleVL6180xDevData.field)
-#define VL6180xDevDataSet(dev, field, data) SingleVL6180xDevData.field=(data)
+#define VL6180xDevDataSet(dev, field, data) SingleVL6180xDevData.field = (data)
 #endif
-*/
 
 #define LUXRES_FIX_PREC 8
 #define GAIN_FIX_PREC    8  /* ! if not sme as LUX_PREC then :( adjust GetLux */
-#define AN_GAIN_MULT    (1<<GAIN_FIX_PREC)
+#define AN_GAIN_MULT    (1 << GAIN_FIX_PREC)
 
 
 static int32_t _GetAveTotalTime(VL6180xDev_t dev);
@@ -77,15 +76,15 @@ static int VL6180x_RangeSetEarlyConvergenceEestimateThreshold(VL6180xDev_t dev);
 /**
  * ScalerLookUP scaling factor-1 to register #RANGE_SCALER lookup
  */
-static const uint16_t ScalerLookUP[] ROMABLE_DATA = {253, 127, 84}; /* lookup table for scaling->scalar 1x2x 3x */
+static const uint16_t ScalerLookUP[]      ROMABLE_DATA = {253, 127, 84}; /* lookup table for scaling->scalar 1x2x 3x */
 /**
  * scaling factor to Upper limit look up
  */
-static const uint16_t UpperLimitLookUP[] ROMABLE_DATA = {185, 370, 580}; /* lookup table for scaling->limit  1x2x3x */
+static const uint16_t UpperLimitLookUP[]  ROMABLE_DATA = {185, 370, 580}; /* lookup table for scaling->limit  1x2x3x */
 /**
  * Als Code gain to fix point gain lookup
  */
-static const uint16_t AlsGainLookUp[8] ROMABLE_DATA = {
+static const uint16_t AlsGainLookUp[8]    ROMABLE_DATA = {
 	(uint16_t)(20.0f * AN_GAIN_MULT),
 	(uint16_t)(10.0f * AN_GAIN_MULT),
 	(uint16_t)(5.0f  * AN_GAIN_MULT),
@@ -96,7 +95,6 @@ static const uint16_t AlsGainLookUp[8] ROMABLE_DATA = {
 	(uint16_t)(40.0f * AN_GAIN_MULT),
 };
 
-static uint8_t regBuffer[10];
 
 #if VL6180x_RANGE_STATUS_ERRSTRING
 const char *ROMABLE_DATA VL6180x_RangeStatusErrString[] = {
@@ -117,7 +115,9 @@ const char *ROMABLE_DATA VL6180x_RangeStatusErrString[] = {
 	"Ranging Algo Underflow",
 	"Ranging Algo Overflow",
 
-	"Filtered by post processing"
+	"Filtered by post processing (WAF)",
+	"Ranging filtering (WAF) on-going",
+	"Data not ready",
 };
 
 const char *VL6180x_RangeGetStatusErrString(uint8_t RangeErrCode)
@@ -129,21 +129,21 @@ const char *VL6180x_RangeGetStatusErrString(uint8_t RangeErrCode)
 #endif
 
 #if VL6180x_UPSCALE_SUPPORT == 1
-    #define _GetUpscale(dev, ...)  1
-    #define _SetUpscale(...) -1
-    #define DEF_UPSCALE 1
+	#define _GetUpscale(dev, ...)  1
+	#define _SetUpscale(...) -1
+	#define DEF_UPSCALE 1
 #elif VL6180x_UPSCALE_SUPPORT == 2
-    #define _GetUpscale(dev, ...)  2
-    #define _SetUpscale(...)
-    #define DEF_UPSCALE 2
+	#define _GetUpscale(dev, ...)  2
+	#define _SetUpscale(...)
+	#define DEF_UPSCALE 2
 #elif VL6180x_UPSCALE_SUPPORT == 3
-    #define _GetUpscale(dev, ...)  3
-    #define _SetUpscale(...)
-    #define DEF_UPSCALE 3
+	#define _GetUpscale(dev, ...)  3
+	#define _SetUpscale(...)
+	#define DEF_UPSCALE 3
 #else
-    #define DEF_UPSCALE (-(VL6180x_UPSCALE_SUPPORT))
-    #define _GetUpscale(dev, ...) VL6180xDevDataGet(dev, UpscaleFactor)
-    #define _SetUpscale(dev, Scaling) VL6180xDevDataSet(dev, UpscaleFactor, Scaling)
+	#define DEF_UPSCALE (-(VL6180x_UPSCALE_SUPPORT))
+	#define _GetUpscale(dev, ...) VL6180xDevDataGet(dev, UpscaleFactor)
+	#define _SetUpscale(dev, Scaling) VL6180xDevDataSet(dev, UpscaleFactor, Scaling)
 #endif
 
 
@@ -175,16 +175,14 @@ struct VL6180xDevData_t VL6180x_DEV_DATA_ATTR  SingleVL6180xDevData = {
 
 #if VL6180x_WRAP_AROUND_FILTER_SUPPORT || VL6180x_HAVE_DMAX_RANGING
 static int _GetRateResult(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData);
-static int _GetRateResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData);
 #endif
 
 #if VL6180x_WRAP_AROUND_FILTER_SUPPORT
 static int _filter_Init(VL6180xDev_t dev);
 static int _filter_GetResult(VL6180xDev_t dev, VL6180x_RangeData_t *pData);
-static int _filter_GetResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pData);
-    #define _IsWrapArroundActive(dev) VL6180xDevDataGet(dev, WrapAroundFilterActive)
+	#define _IsWrapArroundActive(dev) VL6180xDevDataGet(dev, WrapAroundFilterActive)
 #else
-    #define _IsWrapArroundActive(dev) 0
+	#define _IsWrapArroundActive(dev) 0
 #endif
 
 
@@ -225,11 +223,11 @@ int VL6180x_InitData(VL6180xDev_t dev)
 
 	LOG_FUNCTION_START("");
 
-	VL6180xDevDataSet(dev, EceFactorM , DEF_ECE_FACTOR_M);
-	VL6180xDevDataSet(dev, EceFactorD , DEF_ECE_FACTOR_D);
+	VL6180xDevDataSet(dev, EceFactorM, DEF_ECE_FACTOR_M);
+	VL6180xDevDataSet(dev, EceFactorD, DEF_ECE_FACTOR_D);
 
 #ifdef VL6180x_HAVE_UPSCALE_DATA
-	VL6180xDevDataSet(dev, UpscaleFactor ,  DEF_UPSCALE);
+	VL6180xDevDataSet(dev, UpscaleFactor,  DEF_UPSCALE);
 #endif
 
 #ifdef VL6180x_HAVE_ALS_DATA
@@ -259,12 +257,12 @@ int VL6180x_InitData(VL6180xDev_t dev)
 			VL6180x_ErrLog("Part2PartAmbNVM rd fail");
 			break;
 		}
-		if ((CalValue & 0xFFFF0000) == 0) {
+		if ((CalValue&0xFFFF0000) == 0) {
 			CalValue = 0x00CE03F8;
 		}
 		VL6180xDevDataSet(dev, Part2PartAmbNVM, CalValue);
 
-		status = VL6180x_RdWord(dev, SYSRANGE_CROSSTALK_COMPENSATION_RATE, &u16);
+		status = VL6180x_RdWord(dev, SYSRANGE_CROSSTALK_COMPENSATION_RATE , &u16);
 		if (status) {
 			VL6180x_ErrLog("SYSRANGE_CROSSTALK_COMPENSATION_RATE rd fail ");
 			break;
@@ -334,7 +332,7 @@ int VL6180x_SetI2CAddress(VL6180xDev_t dev, uint8_t NewAddress)
 	int status;
 	LOG_FUNCTION_START("");
 
-	status = VL6180x_WrByte(dev, I2C_SLAVE_DEVICE_ADDRESS, NewAddress/2);
+	status = VL6180x_WrByte(dev, I2C_SLAVE_DEVICE_ADDRESS, NewAddress / 2);
 	if (status) {
 		VL6180x_ErrLog("new i2c addr Wr fail");
 	}
@@ -379,9 +377,9 @@ int VL6180x_StaticInit(VL6180xDev_t dev)
 	}
 
 	#if REFRESH_CACHED_DATA_AFTER_INIT
+	#ifdef VL6180x_HAVE_ALS_DATA
 	/* update cached value after tuning applied */
 	do {
-	#ifdef VL6180x_HAVE_ALS_DATA
 		uint8_t data;
 		status =  VL6180x_RdByte(dev, FW_ALS_RESULT_SCALER, &data);
 		if (status)
@@ -392,8 +390,8 @@ int VL6180x_StaticInit(VL6180xDev_t dev)
 		if (status)
 			break;
 		VL6180x_AlsSetAnalogueGain(dev, data);
-	#endif
 	} while (0);
+	#endif
 	#endif /* REFRESH_CACHED_DATA_AFTER_INIT */
 	if (status < 0) {
 		VL6180x_ErrLog("StaticInit fail");
@@ -445,11 +443,11 @@ int VL6180x_Prepare(VL6180xDev_t dev)
 			VL6180x_ErrLog("VL6180x_RangeSetRawThresholds fail");
 			break;
 		}
-		#if VL6180x_ALS_SUPPORT
+	#if VL6180x_ALS_SUPPORT
 		status = VL6180x_AlsSetIntegrationPeriod(dev, 100);
 		if (status)
 			break;
-		status = VL6180x_AlsSetInterMeasurementPeriod(dev, 200);
+		status = VL6180x_AlsSetInterMeasurementPeriod(dev,  200);
 		if (status)
 			break;
 		status = VL6180x_AlsSetAnalogueGain(dev,  0);
@@ -464,10 +462,10 @@ int VL6180x_Prepare(VL6180xDev_t dev)
 			VL6180x_ErrLog("VL6180x_AlsConfigInterrupt fail");
 			break;
 		}
-		#endif
-		#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
+	#endif
+	#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
 		_filter_Init(dev);
-		#endif
+	#endif
 		/* make sure to reset any left previous condition that can hangs first poll */
 		status = VL6180x_ClearAllInterrupt(dev);
 	} while (0);
@@ -538,16 +536,16 @@ int VL6180x_AlsPollMeasurement(VL6180xDev_t dev, VL6180x_AlsData_t *pAlsData)
 	uint8_t IntStatus;
 
 	LOG_FUNCTION_START("%p", pAlsData);
-#if VL6180X_SAFE_POLLING_ENTER
+	#if VL6180X_SAFE_POLLING_ENTER
 	/* if device get stopped with left interrupt uncleared , it is required to clear them now or poll for new condition will never occur*/
 	status = VL6180x_AlsClearInterrupt(dev);
 	if (status) {
 		VL6180x_ErrLog("VL6180x_AlsClearInterrupt fail");
 		goto over;
 	}
-#endif
+	#endif
 
-	status = VL6180x_AlsSetSystemMode(dev, MODE_START_STOP|MODE_SINGLESHOT);
+	status = VL6180x_AlsSetSystemMode(dev, MODE_START_STOP | MODE_SINGLESHOT);
 	if (status) {
 		VL6180x_ErrLog("VL6180x_AlsSetSystemMode fail");
 		goto over;
@@ -574,7 +572,7 @@ int VL6180x_AlsPollMeasurement(VL6180xDev_t dev, VL6180x_AlsData_t *pAlsData)
 	if (ClrStatus) {
 		VL6180x_ErrLog("VL6180x_AlsClearInterrupt fail");
 		if (!status) {
-			status = ClrStatus; /* leave previous if already on error */
+		    status = ClrStatus; /* leave previous if already on error */
 		}
 	}
 over:
@@ -590,7 +588,7 @@ int VL6180x_AlsGetInterruptStatus(VL6180xDev_t dev, uint8_t *pIntStatus)
 	LOG_FUNCTION_START("%p", pIntStatus);
 
 	status = VL6180x_RdByte(dev, RESULT_INTERRUPT_STATUS_GPIO, &IntStatus);
-	*pIntStatus = (IntStatus>>3) & 0x07;
+	*pIntStatus = (IntStatus >> 3) & 0x07;
 
 	LOG_FUNCTION_END_FMT(status, "%d", (int)*pIntStatus);
 	return status;
@@ -605,7 +603,7 @@ int VL6180x_AlsWaitDeviceReady(VL6180xDev_t dev, int MaxLoop)
 	if (MaxLoop < 1) {
 		status = INVALID_PARAMS;
 	} else {
-		for (n = 0; n < MaxLoop ; n++) {
+		for (n = 0; n < MaxLoop; n++) {
 			status = VL6180x_RdByte(dev, RESULT_ALS_STATUS, &u8);
 			if (status)
 				break;
@@ -642,7 +640,7 @@ int VL6180x_AlsConfigInterrupt(VL6180xDev_t dev, uint8_t ConfigGpioInt)
 	int status;
 
 	if (ConfigGpioInt <= CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY) {
-		status = VL6180x_UpdateByte(dev, SYSTEM_INTERRUPT_CONFIG_GPIO, (uint8_t)(~CONFIG_GPIO_ALS_MASK), (ConfigGpioInt<<3));
+		status = VL6180x_UpdateByte(dev, SYSTEM_INTERRUPT_CONFIG_GPIO, (uint8_t)(~CONFIG_GPIO_ALS_MASK), (ConfigGpioInt << 3));
 	} else {
 		VL6180x_ErrLog("Invalid config mode param %d", (int)ConfigGpioInt);
 		status = INVALID_PARAMS;
@@ -679,10 +677,10 @@ int VL6180x_AlsSetAnalogueGain(VL6180xDev_t dev, uint8_t gain)
 	if (gain > 7) {
 		gain = 7;
 	}
-	GainTotal = gain|0x40;
+	GainTotal = gain | 0x40;
 
 	status = VL6180x_WrByte(dev, SYSALS_ANALOGUE_GAIN, GainTotal);
-	if	(!status) {
+	if (!status) {
 		VL6180xDevDataSet(dev, AlsGainCode, gain);
 	}
 
@@ -753,7 +751,7 @@ int VL6180x_RangePollMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDa
 	}
 	#endif
 	/* //![single_shot_snipet] */
-	status = VL6180x_RangeSetSystemMode(dev, MODE_START_STOP|MODE_SINGLESHOT);
+	status = VL6180x_RangeSetSystemMode(dev, MODE_START_STOP | MODE_SINGLESHOT);
 	if (status) {
 		VL6180x_ErrLog("VL6180x_RangeSetSystemMode fail");
 		goto done;
@@ -766,11 +764,7 @@ int VL6180x_RangePollMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDa
 		if (status) {
 			break;
 		}
-		if (IntStatus.status.Error != 0) {
-			VL6180x_ErrLog("GPIO int Error report %d", (int)IntStatus.val);
-			status = RANGE_ERROR;
-			break;
-		} else if (IntStatus.status.Range == RES_INT_STAT_GPIO_NEW_SAMPLE_READY) {
+		if (IntStatus.status.Range == RES_INT_STAT_GPIO_NEW_SAMPLE_READY || IntStatus.status.Error != 0) {
 			break;
 		}
 
@@ -797,6 +791,91 @@ done:
 }
 
 
+#if VL6180x_CACHED_REG
+
+int VL6180x_GetCachedDWord(VL6180xDev_t dev, uint16_t  index, uint32_t *pValue)
+{
+	int status;
+	uint32_t Value;
+	if (VL6180xDevDataGet(dev, CacheFilled) != 0 &&
+		index >= VL6180x_FIRST_CACHED_INDEX  &&
+		index <= (VL6180x_LAST_CACHED_INDEX - 3)) {
+		uint8_t *pBytes = &VL6180xDevDataGet(dev, CachedRegs[index - VL6180x_FIRST_CACHED_INDEX]);
+		Value = ((uint32_t)pBytes[0] << 24) |
+				((uint32_t)pBytes[1] << 16) |
+				((uint32_t)pBytes[2] << 8) |
+				(uint32_t)pBytes[3];
+		*pValue = Value;
+		status = 0;
+	} else {
+		status =  VL6180x_RdDWord(dev, index, pValue);
+	}
+	return status;
+}
+
+int VL6180x_GetCachedWord(VL6180xDev_t dev, uint16_t  index, uint16_t *pValue)
+{
+	int status;
+	uint32_t Value;
+	if (VL6180xDevDataGet(dev, CacheFilled) != 0 &&
+		index >= VL6180x_FIRST_CACHED_INDEX  &&
+		index <= (VL6180x_LAST_CACHED_INDEX - 1)) {
+		uint8_t *pBytes = &VL6180xDevDataGet(dev, CachedRegs[index - VL6180x_FIRST_CACHED_INDEX]);
+		Value = ((uint32_t)pBytes[0] << 8) | (uint32_t)pBytes[1];
+		*pValue = Value;
+		status = 0;
+	} else {
+		status =  VL6180x_RdWord(dev, index, pValue);
+	}
+	return status;
+}
+
+int VL6180x_GetCachedByte(VL6180xDev_t dev, uint16_t  index, uint8_t *pValue)
+{
+	int status;
+	uint8_t Value;
+	if (VL6180xDevDataGet(dev, CacheFilled) != 0 &&
+		index >= VL6180x_FIRST_CACHED_INDEX &&
+		index <= VL6180x_LAST_CACHED_INDEX) {
+		Value = VL6180xDevDataGet(dev, CachedRegs[index - VL6180x_FIRST_CACHED_INDEX]);
+		*pValue = Value;
+		status = 0;
+	} else {
+		status =  VL6180x_RdByte(dev, index, pValue);
+	}
+	return status;
+}
+
+
+int _CachedRegs_Fetch(VL6180xDev_t dev)
+{
+	int status;
+	uint8_t *Buffer;
+	if (VL6180xDevDataGet(dev, CacheFilled) == 0) {
+		VL6180xDevDataSet(dev, CacheFilled, 1);
+		Buffer = &VL6180xDevDataGet(dev, CachedRegs[0]);
+		status = VL6180x_RdMulti(dev, VL6180x_FIRST_CACHED_INDEX, Buffer, VL6180x_CACHED_REG_CNT);
+	} else {
+		status = 0 ;
+	}
+	return status;
+}
+
+void _CachedRegs_Flush(VL6180xDev_t dev)
+{
+	VL6180xDevDataSet(dev, CacheFilled, 0);
+}
+
+#else
+#   define _CachedRegs_Fetch(...) 0
+#   define _CachedRegs_Flush(...) (void)0
+#   define _Fetch_CachedRegs(...) 0
+#   define VL6180x_GetCachedByte(dev, index, pValue) VL6180x_RdByte(dev, index, pValue)
+#   define VL6180x_GetCachedWord(dev, index, pValue) VL6180x_RdWord(dev, index, pValue)
+#   define VL6180x_GetCachedDWord(dev, index, pValue) VL6180x_RdDWord(dev, index, pValue)
+#endif /* VL6180x_CACHED_REG */
+
+
 
 int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 {
@@ -806,12 +885,17 @@ int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDat
 
 	LOG_FUNCTION_START("");
 
+	status = _CachedRegs_Fetch(dev);
+	if (status) {
+		VL6180x_ErrLog("Cache register read fail");
+		goto error;
+	}
 	status = VL6180x_RangeGetResult(dev, &pRangeData->range_mm);
 	if (!status) {
-		status = VL6180x_RdWord(dev, RESULT_RANGE_SIGNAL_RATE, &RawRate);
+		status = VL6180x_GetCachedWord(dev, RESULT_RANGE_SIGNAL_RATE, &RawRate);
 		if (!status) {
 			pRangeData->signalRate_mcps = VL6180x_9to7Conv(RawRate);
-			status = VL6180x_RdByte(dev, RESULT_RANGE_STATUS, &RawStatus);
+			status = VL6180x_GetCachedByte(dev, RESULT_RANGE_STATUS, &RawStatus);
 			if (!status) {
 				pRangeData->errorStatus = RawStatus >> 4;
 			} else {
@@ -828,8 +912,8 @@ int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDat
 				status = _filter_GetResult(dev, pRangeData);
 				if (!status) {
 					/* patch the range status and measure if it is filtered */
-					if (pRangeData->range_mm != pRangeData->FilteredData.range_mm) {
-						pRangeData->errorStatus = RangingFiltered;
+					if(pRangeData->FilteredData.filterError != NoError) {
+						pRangeData->errorStatus = pRangeData->FilteredData.filterError;
 						pRangeData->range_mm = pRangeData->FilteredData.range_mm;
 					}
 				}
@@ -842,51 +926,17 @@ int VL6180x_RangeGetMeasurement(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeDat
 			}
 	#endif
 		} else {
-			VL6180x_ErrLog("Rd RESULT_RANGE_SIGNAL_RATE fail");
+		    VL6180x_ErrLog("Rd RESULT_RANGE_SIGNAL_RATE fail");
 		}
 	} else {
 		VL6180x_ErrLog("VL6180x_GetRangeResult fail");
 	}
 error:
-	LOG_FUNCTION_END_FMT(status, "%d %d %d", (int)pRangeData->range_mm, (int)pRangeData->signalRate_mcps, (int)pRangeData->errorStatus) ;
-	return status;
-}
-
-int VL6180x_RangeGetMeasurement_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData)
-{
-	int status = 0;
-	/* uint16_t RawRate; */
-	/* uint8_t RawStatus; */
-
-	LOG_FUNCTION_START("");
-
-	VL6180x_RangeGetResult_ext(dev, pResultData, &pRangeData->range_mm);
-	pRangeData->signalRate_mcps = VL6180x_9to7Conv(pResultData->Result_range_return_rate);
-	pRangeData->errorStatus = pResultData->Result_range_status >> 4;
-	#if VL6180x_WRAP_AROUND_FILTER_SUPPORT || VL6180x_HAVE_DMAX_RANGING
-	_GetRateResult_ext(dev, pResultData, pRangeData);
-	#endif
-	#if VL6180x_WRAP_AROUND_FILTER_SUPPORT
-	/* if enabled run filter */
-	if (_IsWrapArroundActive(dev)) {
-		status = _filter_GetResult_ext(dev, pResultData, pRangeData);
-		if (!status) {
-			/* patch the range status and measure if it is filtered */
-			if (pRangeData->range_mm != pRangeData->FilteredData.range_mm) {
-				pRangeData->errorStatus = RangingFiltered;
-				pRangeData->range_mm = pRangeData->FilteredData.range_mm;
-			}
-		}
-	}
-	#endif
-
-	#if VL6180x_HAVE_DMAX_RANGING
-	 _DMax_Compute(dev, pRangeData);
-	#endif
-
+	_CachedRegs_Flush(dev);
 	LOG_FUNCTION_END_FMT(status, "%d %d %d", (int)pRangeData->range_mm, (int)pRangeData->signalRate_mcps,  (int)pRangeData->errorStatus) ;
 	return status;
 }
+
 
 int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 {
@@ -894,13 +944,15 @@ int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pR
 	IntrStatus_t IntStatus;
 
 	LOG_FUNCTION_START();
-
+	status = _CachedRegs_Fetch(dev);
+	if (status) {
+		VL6180x_ErrLog("Cache register read fail");
+		goto error;
+	}
 	status = VL6180x_RangeGetInterruptStatus(dev, &IntStatus.val);
 	if (status == 0) {
-		if (IntStatus.status.Error != 0) {
-			VL6180x_ErrLog("GPIO int Error report %d", (int)IntStatus.val);
-			status = RANGE_ERROR;
-		} else if (IntStatus.status.Range == RES_INT_STAT_GPIO_NEW_SAMPLE_READY) {
+		if (IntStatus.status.Range == RES_INT_STAT_GPIO_NEW_SAMPLE_READY ||
+			IntStatus.status.Error != 0) {
 			status = VL6180x_RangeGetMeasurement(dev, pRangeData);
 			if (status == 0) {
 				/*  clear range interrupt source */
@@ -910,11 +962,13 @@ int VL6180x_RangeGetMeasurementIfReady(VL6180xDev_t dev, VL6180x_RangeData_t *pR
 				}
 			}
 		} else {
-			status = NOT_READY;
+			pRangeData->errorStatus = DataNotReady;
 		}
 	} else {
 		VL6180x_ErrLog("fail to get interrupt status");
 	}
+error:
+	_CachedRegs_Flush(dev);
 	LOG_FUNCTION_END(status) ;
 	return status;
 }
@@ -954,25 +1008,11 @@ int VL6180x_RangeGetResult(VL6180xDev_t dev, int32_t *pRange_mm)
 
 	LOG_FUNCTION_START("%p", pRange_mm);
 
-	status = VL6180x_RdByte(dev, RESULT_RANGE_VAL, &RawRange);
+	status = VL6180x_GetCachedByte(dev, RESULT_RANGE_VAL, &RawRange);
 	if (!status) {
 		Upscale = _GetUpscale(dev);
 		*pRange_mm = Upscale * (int32_t)RawRange;
 	}
-	LOG_FUNCTION_END_FMT(status, "%d", (int)*pRange_mm);
-	return status;
-}
-
-int VL6180x_RangeGetResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, int32_t *pRange_mm)
-{
-	int status = 0;
-	int32_t Upscale;
-
-	LOG_FUNCTION_START("%p", pRange_mm);
-
-	Upscale = _GetUpscale(dev);
-	*pRange_mm = Upscale * (int32_t)(pResultData->Result_range_val);
-
 	LOG_FUNCTION_END_FMT(status, "%d", (int)*pRange_mm);
 	return status;
 }
@@ -1005,18 +1045,18 @@ int VL6180x_RangeSetThresholds(VL6180xDev_t dev, uint16_t low, uint16_t high, in
 				status = VL6180x_SetGroupParamHold(dev, 1);
 				if (status)
 					break;
-			}
-			status = VL6180x_RangeSetRawThresholds(dev, (uint8_t)(low / scale), (uint8_t)(high / scale));
-			if (status) {
+		    }
+		    status = VL6180x_RangeSetRawThresholds(dev, (uint8_t)(low / scale), (uint8_t)(high / scale));
+		    if (status) {
 				VL6180x_ErrLog("VL6180x_RangeSetRawThresholds fail");
-			}
-			if (UseSafeParamHold) {
+		    }
+		    if (UseSafeParamHold) {
 				int HoldStatus;
 				/* tryt to unset param hold vene if previous fail */
 				HoldStatus = VL6180x_SetGroupParamHold(dev, 0);
 				if (!status)
 					status = HoldStatus;
-			}
+		    }
 		} while (0);
 	}
 
@@ -1027,7 +1067,7 @@ int VL6180x_RangeSetThresholds(VL6180xDev_t dev, uint16_t low, uint16_t high, in
 
 int VL6180x_RangeGetThresholds(VL6180xDev_t dev, uint16_t *low, uint16_t *high)
 {
-	int status;
+	int status = 0;
 	uint8_t RawLow, RawHigh;
 	int scale;
 
@@ -1044,15 +1084,15 @@ int VL6180x_RangeGetThresholds(VL6180xDev_t dev, uint16_t *low, uint16_t *high)
 			*high = (uint16_t)RawHigh * scale;
 		}
 		if (low != NULL) {
-			status = VL6180x_RdByte(dev, SYSRANGE_THRESH_LOW, &RawLow);
+		    status = VL6180x_RdByte(dev, SYSRANGE_THRESH_LOW, &RawLow);
 			if (status) {
 				VL6180x_ErrLog("rd SYSRANGE_THRESH_LOW fail");
 				break;
-			}
-			*low = (uint16_t)RawLow * scale;
+		    }
+		    *low = (uint16_t)RawLow * scale;
 		}
 	} while (0);
-	LOG_FUNCTION_END_FMT(status, "%d %d", (int)*low, (int)*high);
+	LOG_FUNCTION_END_FMT(status, "%d %d", (int)*low , (int)*high);
 	return status;
 }
 
@@ -1064,8 +1104,8 @@ int VL6180x_RangeGetInterruptStatus(VL6180xDev_t dev, uint8_t *pIntStatus)
 	LOG_FUNCTION_START("%p", pIntStatus);
 	/* FIXME we are grouping "error" with over status the user must check implicitly for it
 	 * not just new sample or over status , that will nevr show up in case of error*/
-	status = VL6180x_RdByte(dev, RESULT_INTERRUPT_STATUS_GPIO, &IntStatus);
-	*pIntStatus = IntStatus&0xC7;
+	status = VL6180x_GetCachedByte(dev, RESULT_INTERRUPT_STATUS_GPIO, &IntStatus);
+	*pIntStatus = IntStatus & 0xC7;
 
 	LOG_FUNCTION_END_FMT(status, "%d", (int)*pIntStatus);
 	return status;
@@ -1207,11 +1247,11 @@ int VL6180x_UpscaleRegInit(VL6180xDev_t dev)
 	VL6180x_WrByte(dev, 0x001b, 0x09);
 	VL6180x_WrByte(dev, 0x003e, 0x31);
 	VL6180x_WrByte(dev, 0x0014, 0x24);
-	#if VL6180x_EXTENDED_RANGE
+#if VL6180x_EXTENDED_RANGE
 	VL6180x_RangeSetMaxConvergenceTime(dev, 63);
-	#else
+#else
 	VL6180x_RangeSetMaxConvergenceTime(dev, 50);
-	#endif
+#endif
 	return 0;
 }
 #else
@@ -1224,20 +1264,20 @@ int VL6180x_UpscaleSetScaling(VL6180xDev_t dev, uint8_t scaling)
 	uint16_t Scaler;
 	int8_t  Offset;
 
-	LOG_FUNCTION_START("%d", (int) scaling);
+	LOG_FUNCTION_START("%d", (int)scaling);
 
-	#ifdef VL6180x_HAVE_UPSCALE_DATA
+#ifdef VL6180x_HAVE_UPSCALE_DATA
 	#define min_scaling 1
 	#define max_scaling (sizeof(ScalerLookUP) / sizeof(ScalerLookUP[0]))
-	#else
-	 /* we are in fixed config so only allow configured factor */
+#else
+	/* we are in fixed config so only allow configured factor */
 	#define min_scaling VL6180x_UPSCALE_SUPPORT
 	#define max_scaling VL6180x_UPSCALE_SUPPORT
-	#endif
+#endif
 
 	if (scaling >= min_scaling  && scaling <= max_scaling) {
 
-		Scaler = ScalerLookUP[scaling-1];
+		Scaler = ScalerLookUP[scaling - 1];
 		status = VL6180x_WrWord(dev, RANGE_SCALER, Scaler);
 		_SetUpscale(dev, scaling);
 
@@ -1247,22 +1287,23 @@ int VL6180x_UpscaleSetScaling(VL6180xDev_t dev, uint8_t scaling)
 
 		/* Apply scaling on CrossTalkValidHeight */
 		if (status == 0) {
-			status = VL6180x_WrByte(dev, SYSRANGE_CROSSTALK_VALID_HEIGHT, DEF_CROSS_TALK_VALID_HEIGHT_VALUE / scaling);
+			status = VL6180x_WrByte(dev, SYSRANGE_CROSSTALK_VALID_HEIGHT,
+									DEF_CROSS_TALK_VALID_HEIGHT_VALUE /  scaling);
 		}
 
-	#if !VL6180x_EXTENDED_RANGE
+#if !VL6180x_EXTENDED_RANGE
 		if (status == 0) {
 			status = VL6180x_RangeSetEceState(dev, scaling == 1); /* enable ece only at 1x scaling */
 		}
 		if (status == 0 && !VL6180x_EXTENDED_RANGE && scaling != 1) {
 			status = NOT_GUARANTEED ;
 		}
-	#endif
+#endif
 	} else {
 		status = INVALID_PARAMS;
 	}
-	#undef min_scaling
-	#undef max_scaling
+#undef min_scaling
+#undef max_scaling
 	LOG_FUNCTION_END(status);
 	return status;
 }
@@ -1291,13 +1332,13 @@ static int  VL6180x_UpscaleStaticInit(VL6180xDev_t dev)
 			VL6180x_ErrLog("regInit fail");
 			break;
 		}
-	#if VL6180x_EXTENDED_RANGE
+#if VL6180x_EXTENDED_RANGE
 		status = VL6180x_RangeSetEceState(dev, 0);
 		if (status) {
 			VL6180x_ErrLog("VL6180x_RangeSetEceState fail");
 			break;
 		}
-	#endif
+#endif
 	} while (0);
 	if (!status) {
 		/*  must write the scaler at least once to the device to ensure the scaler is in a known state. */
@@ -1312,7 +1353,7 @@ static int  VL6180x_UpscaleStaticInit(VL6180xDev_t dev)
 int VL6180x_SetGPIOxPolarity(VL6180xDev_t dev, int pin, int active_high)
 {
 	int status;
-	LOG_FUNCTION_START("%d %d", (int)pin, (int)active_high);
+	LOG_FUNCTION_START("%d %d", (int) pin, (int)active_high);
 
 	if (pin == 0  || pin == 1) {
 		uint16_t RegIndex;
@@ -1323,9 +1364,9 @@ int VL6180x_SetGPIOxPolarity(VL6180xDev_t dev, int pin, int active_high)
 			RegIndex = SYSTEM_MODE_GPIO1;
 
 		if (active_high)
-			DataSet = GPIOx_POLARITY_SELECT_MASK;
+		   DataSet = GPIOx_POLARITY_SELECT_MASK;
 		else
-			DataSet = 0;
+		   DataSet = 0;
 
 		status = VL6180x_UpdateByte(dev, RegIndex, (uint8_t)~GPIOx_POLARITY_SELECT_MASK, DataSet);
 	} else {
@@ -1342,22 +1383,23 @@ int VL6180x_SetGPIOxFunctionality(VL6180xDev_t dev, int pin, uint8_t functionali
 {
 	int status;
 
-	LOG_FUNCTION_START("%d %d", (int)pin, (int)functionality);
+	LOG_FUNCTION_START("%d %d", (int) pin, (int)functionality);
 
-	if (((pin == 0) || (pin == 1)) && IsValidGPIOFunction(functionality)) {
+	if (((pin == 0)  || (pin == 1))  && IsValidGPIOFunction(functionality)) {
 		uint16_t RegIndex;
 
 		if (pin == 0)
 			RegIndex = SYSTEM_MODE_GPIO0;
 		else
-		   RegIndex = SYSTEM_MODE_GPIO1;
+			RegIndex = SYSTEM_MODE_GPIO1;
 
-		status = VL6180x_UpdateByte(dev, RegIndex, (uint8_t)~GPIOx_FUNCTIONALITY_SELECT_MASK, functionality<<GPIOx_FUNCTIONALITY_SELECT_SHIFT);
+		status = VL6180x_UpdateByte(dev, RegIndex, (uint8_t)~GPIOx_FUNCTIONALITY_SELECT_MASK,
+									functionality << GPIOx_FUNCTIONALITY_SELECT_SHIFT);
 		if (status) {
 			VL6180x_ErrLog("Update SYSTEM_MODE_GPIO%d fail", (int)pin);
 		}
-	} else{
-		VL6180x_ErrLog("Invalid pin %d  or function %d", (int)pin, (int) functionality);
+	} else {
+		VL6180x_ErrLog("Invalid pin %d  or function %d", (int)pin, (int)functionality);
 		status = INVALID_PARAMS;
 	}
 
@@ -1370,27 +1412,27 @@ int VL6180x_SetupGPIOx(VL6180xDev_t dev, int pin,  uint8_t IntFunction, int  Act
 {
 	int status;
 
-	LOG_FUNCTION_START("%d %d", (int)pin, (int)IntFunction);
+	LOG_FUNCTION_START("%d %d", (int) pin, (int)IntFunction);
 
-	if (((pin == 0) || (pin == 1)) && IsValidGPIOFunction(IntFunction)) {
+	if (((pin == 0) || (pin == 1))  && IsValidGPIOFunction(IntFunction)) {
 		uint16_t RegIndex;
 		uint8_t value = 0;
 
 		if (pin == 0)
-			RegIndex = SYSTEM_MODE_GPIO0;
+		   RegIndex = SYSTEM_MODE_GPIO0;
 		else
-			RegIndex = SYSTEM_MODE_GPIO1;
+		   RegIndex = SYSTEM_MODE_GPIO1;
 
 		if (ActiveHigh)
-			value |= GPIOx_POLARITY_SELECT_MASK;
+		   value |= GPIOx_POLARITY_SELECT_MASK;
 
-		value |= IntFunction << GPIOx_FUNCTIONALITY_SELECT_SHIFT;
+		value |=  IntFunction << GPIOx_FUNCTIONALITY_SELECT_SHIFT;
 		status = VL6180x_WrByte(dev, RegIndex, value);
 		if (status) {
-			VL6180x_ErrLog("SYSTEM_MODE_GPIO%d wr fail", (int)pin-SYSTEM_MODE_GPIO0);
+		   VL6180x_ErrLog("SYSTEM_MODE_GPIO%d wr fail", (int)pin-SYSTEM_MODE_GPIO0);
 		}
 	} else {
-		VL6180x_ErrLog("Invalid pin %d or function %d", (int)pin, (int)IntFunction);
+		VL6180x_ErrLog("Invalid pin %d or function %d", (int)pin, (int) IntFunction);
 		status = INVALID_PARAMS;
 	}
 
@@ -1426,7 +1468,9 @@ int VL6180x_RangeConfigInterrupt(VL6180xDev_t dev, uint8_t ConfigGpioInt)
 	int status;
 
 	if (ConfigGpioInt <= CONFIG_GPIO_INTERRUPT_NEW_SAMPLE_READY) {
-		status = VL6180x_UpdateByte(dev, SYSTEM_INTERRUPT_CONFIG_GPIO, (uint8_t)(~CONFIG_GPIO_RANGE_MASK), ConfigGpioInt);
+		status = VL6180x_UpdateByte(dev, SYSTEM_INTERRUPT_CONFIG_GPIO,
+									(uint8_t)(~CONFIG_GPIO_RANGE_MASK),
+									ConfigGpioInt);
 	} else {
 		VL6180x_ErrLog("Invalid config mode param %d", (int)ConfigGpioInt);
 		status = INVALID_PARAMS;
@@ -1450,8 +1494,8 @@ int VL6180x_RangeSetEceFactor(VL6180xDev_t dev, uint16_t  FactorM, uint16_t Fact
 			/* read and re-apply max conv time to get new ece factor set */
 			status = VL6180x_RdByte(dev, SYSRANGE_MAX_CONVERGENCE_TIME, &u8);
 			if (status) {
-				VL6180x_ErrLog("SYSRANGE_MAX_CONVERGENCE_TIME rd fail ");
-				break;
+			   VL6180x_ErrLog("SYSRANGE_MAX_CONVERGENCE_TIME rd fail ");
+			   break;
 			}
 			status = VL6180x_RangeSetMaxConvergenceTime(dev, u8);
 			if (status < 0) {
@@ -1539,7 +1583,7 @@ int VL6180x_RangeGetDeviceReady(VL6180xDev_t dev, int *Ready)
 	LOG_FUNCTION_START("%p", (int)Ready);
 	status = VL6180x_RdByte(dev, RESULT_RANGE_STATUS, &u8);
 	if (!status)
-		*Ready = u8 & RANGE_DEVICE_READY_MASK;
+		*Ready = u8&RANGE_DEVICE_READY_MASK;
 	LOG_FUNCTION_END_FMT(status, "%d", *Ready);
 	return status;
 }
@@ -1547,14 +1591,14 @@ int VL6180x_RangeGetDeviceReady(VL6180xDev_t dev, int *Ready)
 
 int VL6180x_RangeWaitDeviceReady(VL6180xDev_t dev, int MaxLoop)
 {
-	int status; /* if user specify an invalid <=0 loop count we'll return error */
+	int status = 0; /* if user specify an invalid <=0 loop count we'll return error */
 	int  n;
 	uint8_t u8;
 	LOG_FUNCTION_START("%d", (int)MaxLoop);
 	if (MaxLoop < 1) {
 		status = INVALID_PARAMS;
 	} else {
-		for (n = 0; n < MaxLoop; n++) {
+		for (n = 0; n < MaxLoop ; n++) {
 			status = VL6180x_RdByte(dev, RESULT_RANGE_STATUS, &u8);
 			if (status)
 				break;
@@ -1582,7 +1626,7 @@ int VL6180x_RangeSetSystemMode(VL6180xDev_t dev, uint8_t  mode)
 	if (mode <= 3) {
 		status = VL6180x_WrByte(dev, SYSRANGE_START, mode);
 		if (status) {
-			VL6180x_ErrLog("SYSRANGE_START wr fail");
+		    VL6180x_ErrLog("SYSRANGE_START wr fail");
 		}
 	} else {
 		status = INVALID_PARAMS;
@@ -1605,7 +1649,7 @@ int VL6180x_RangeStartSingleShot(VL6180xDev_t dev)
 {
 	int status;
 	LOG_FUNCTION_START("");
-	status = VL6180x_RangeSetSystemMode(dev, MODE_START_STOP|MODE_SINGLESHOT);
+	status = VL6180x_RangeSetSystemMode(dev, MODE_START_STOP | MODE_SINGLESHOT);
 	LOG_FUNCTION_END(status);
 	return status;
 }
@@ -1704,9 +1748,14 @@ static int32_t _GetAveTotalTime(VL6180xDev_t dev)
 
 #if VL6180x_WRAP_AROUND_FILTER_SUPPORT
 
+#define PRESERVE_DEVICE_ERROR_CODE		/* If uncommented, device error code will be preserved on top of wraparound error code, but this may lead to some error code instability like overflow error <==> RangingFilteringOnGoing error oscillations */
+#define SENSITIVE_FILTERING_ON_GOING	/* If uncommented, filter will go back to RangingFilteringOnGoing if it must go through the std dev testing */
+
 #define FILTER_STDDEV_SAMPLES           6
 #define MIN_FILTER_STDDEV_SAMPLES       3
-#define MIN_FILTER_VALID_STDDEV_SAMPLES 3
+#define MIN_FILTER_STDDEV_SAMPLES_AFTER_FLUSH_OR_BYPASS 5
+#define STDDEV_BASE_VALUE               150
+
 #define FILTER_INVALID_DISTANCE     65535
 
 #define _FilterData(field) VL6180xDevDataGet(dev, FilterData.field)
@@ -1730,11 +1779,17 @@ int _filter_Init(VL6180xDev_t dev)
 		_FilterData(LastTrueRange)[i] = FILTER_INVALID_DISTANCE;
 		_FilterData(LastReturnRates)[i] = 0;
 	}
+	_FilterData(MeasurementsSinceLastFlush)=0;
 	return 0;
 }
 
 
-static uint32_t _filter_StdDevDamper(uint32_t AmbientRate, uint32_t SignalRate, const uint32_t StdDevLimitLowLight, const uint32_t StdDevLimitLowLightSNR, const uint32_t StdDevLimitHighLight, const uint32_t StdDevLimitHighLightSNR)
+static uint32_t _filter_StdDevDamper(uint32_t AmbientRate,
+									uint32_t SignalRate,
+									const uint32_t StdDevLimitLowLight,
+									const uint32_t StdDevLimitLowLightSNR,
+									const uint32_t StdDevLimitHighLight,
+									const uint32_t StdDevLimitHighLightSNR)
 {
 	uint32_t newStdDev;
 	uint16_t SNR;
@@ -1750,7 +1805,10 @@ static uint32_t _filter_StdDevDamper(uint32_t AmbientRate, uint32_t SignalRate, 
 		if (SNR <= StdDevLimitHighLightSNR)
 			newStdDev = StdDevLimitHighLight;
 		else {
-			newStdDev = (uint32_t) (StdDevLimitHighLight + (SNR - StdDevLimitHighLightSNR) * (int)(StdDevLimitLowLight - StdDevLimitHighLight) / (StdDevLimitLowLightSNR - StdDevLimitHighLightSNR));
+			newStdDev = (uint32_t)(StdDevLimitHighLight -
+									(SNR - StdDevLimitHighLightSNR) *
+									(StdDevLimitHighLight - StdDevLimitLowLight) /
+									(StdDevLimitLowLightSNR - StdDevLimitHighLightSNR));
 		}
 	}
 
@@ -1761,13 +1819,24 @@ static uint32_t _filter_StdDevDamper(uint32_t AmbientRate, uint32_t SignalRate, 
 /*
  * Return <0 on error
  */
-static int32_t _filter_Start(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint16_t m_rawRange_mm, uint32_t m_rtnSignalRate, uint32_t m_rtnAmbientRate, uint16_t errorCode)
+static int32_t _filter_Start(VL6180xDev_t dev,
+								uint16_t m_trueRange_mm,
+								uint16_t m_rawRange_mm,
+								uint32_t m_rtnSignalRate,
+								uint32_t m_rtnAmbientRate,
+								uint16_t errorCode)
 {
 	int status;
 	uint16_t m_newTrueRange_mm = 0;
-
-	uint16_t i;
+	#if VL6180x_HAVE_MULTI_READ
+	uint8_t MultiReadBuf[8];
+	#endif
+	uint16_t i, j;
 	uint16_t bypassFilter = 0;
+	uint16_t resetVAVGData = 1;
+
+	uint16_t filterErrorCode = NoError;
+	uint16_t filterErrorCodeOnRangingErrorCode = NoError;
 
 	uint16_t registerValue;
 
@@ -1782,7 +1851,9 @@ static int32_t _filter_Start(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint16_t
 
 	uint16_t FlushFilter = 0;
 	uint32_t RateChange = 0;
+	uint32_t TmpRateChange = 0;
 
+	uint16_t StdDevSamplesMinNeeded = 0;
 	uint16_t StdDevSamples = 0;
 	uint32_t StdDevDistanceSum = 0;
 	uint32_t StdDevDistanceMean = 0;
@@ -1798,422 +1869,47 @@ static int32_t _filter_Start(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint16_t
 	uint32_t MaxVAVGDiff;
 
 	/* Filter Parameters */
-	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit = 60;
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit_ROM = 800; /* Shall be adapted depending on crossTalk */
-	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit2 = 165;
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit2_ROM = 180; /* Shall be adapted depending on crossTalk and device sensitivity */
+	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit = 85;
+	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit_ROM = 800;
+	/* Shall be adapted depending on crossTalk */
+	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit2 = 180;
+	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit2_ROM = 250;
+	/* Shall be adapted depending on crossTalk and device sensitivity*/
 
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateFilterLimit_ROM = 850; /* Shall be adapted depending on crossTalk and device sensitivity */
+	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateFilterLimit_ROM = 850;
+	/* Shall be adapted depending on crossTalk and device sensitivity*/
 	static const uint16_t ROMABLE_DATA WrapAroundHighRawRangeFilterLimit = 350;
-	static const uint32_t ROMABLE_DATA WrapAroundHighReturnRateFilterLimit_ROM = 1400; /* Shall be adapted depending on crossTalk and device sensitivity */
+	static const uint32_t ROMABLE_DATA WrapAroundHighReturnRateFilterLimit_ROM = 1400;
+	/* Shall be adapted depending on crossTalk and device sensitivity*/
 
-	static const uint32_t ROMABLE_DATA WrapAroundMaximumAmbientRateFilterLimit = 7500;
+	static const uint32_t ROMABLE_DATA WrapAroundMaximumAmbientRateFilterLimit = 15000;
 
 	/*  Temporal filter data and flush values */
 	static const uint32_t ROMABLE_DATA MinReturnRateFilterFlush = 75;
 	static const uint32_t ROMABLE_DATA MaxReturnRateChangeFilterFlush = 50;
 
-	/* STDDEV values and damper values */
+	static const uint32_t ROMABLE_DATA MaxReturnRateChangeFilterDecisionThreshold = 25;
 
-	static const uint32_t ROMABLE_DATA StdDevLimitLowLight = 300;
+	/* STDDEV values and damper values */
+	static const uint32_t ROMABLE_DATA StdDevLimitLowLight = STDDEV_BASE_VALUE;
 	static const uint32_t ROMABLE_DATA StdDevLimitLowLightSNR = 30; /* 0.3 */
-	static const uint32_t ROMABLE_DATA StdDevLimitHighLight = 2500;
+	static const uint32_t ROMABLE_DATA StdDevLimitHighLight = STDDEV_BASE_VALUE*6;
 	static const uint32_t ROMABLE_DATA StdDevLimitHighLightSNR = 5; /* 0.05 */
 
 	static const uint32_t ROMABLE_DATA StdDevHighConfidenceSNRLimit = 8;
+	static const uint32_t ROMABLE_DATA StdDevNoWrapDetectedMultiplier = 4;
 
 	static const uint32_t ROMABLE_DATA StdDevMovingTargetStdDevLimit = 90000;
 
 	static const uint32_t ROMABLE_DATA StdDevMovingTargetReturnRateLimit = 3500;
-	static const uint32_t ROMABLE_DATA StdDevMovingTargetStdDevForReturnRateLimit = 5000;
+	static const uint32_t ROMABLE_DATA StdDevMovingTargetStdDevForReturnRateLimit = STDDEV_BASE_VALUE*25;
 
 	static const uint32_t ROMABLE_DATA MAX_VAVGDiff = 1800;
 
 	/* WrapAroundDetection variables */
 	static const uint16_t ROMABLE_DATA WrapAroundNoDelayCheckPeriod = 2;
 	static const uint16_t ROMABLE_DATA StdFilteredReadsIncrement = 2;
-	static const uint16_t ROMABLE_DATA StdMaxFilteredReads = 4;
-
-	uint32_t SignalRateDMax;
-	uint32_t WrapAroundLowReturnRateLimit;
-	uint32_t WrapAroundLowReturnRateLimit2;
-	uint32_t WrapAroundLowReturnRateFilterLimit;
-	uint32_t WrapAroundHighReturnRateFilterLimit;
-
-	uint8_t u8, u8_2;
-	uint32_t XTalkCompRate_KCps;
-	uint32_t StdDevLimit = 300;
-	uint32_t MaxOrInvalidDistance =   255 * _GetUpscale(dev);
-	/* #define MaxOrInvalidDistance  (uint16_t) (255 * 3) */
-
-	/* Check if distance is Valid or not */
-	switch (errorCode) {
-	case 0x0C:
-		m_trueRange_mm = MaxOrInvalidDistance;
-		ValidDistance = 0;
-		break;
-	case 0x0D:
-		m_trueRange_mm = MaxOrInvalidDistance;
-		ValidDistance = 1;
-		break;
-	case 0x0F:
-		m_trueRange_mm = MaxOrInvalidDistance;
-		ValidDistance = 1;
-		break;
-	default:
-		if (m_rawRange_mm >= MaxOrInvalidDistance) {
-			ValidDistance = 0;
-		} else {
-			ValidDistance = 1;
-		}
-		break;
-	}
-	m_newTrueRange_mm = m_trueRange_mm;
-
-	XTalkCompRate_KCps = VL6180xDevDataGet(dev, XTalkCompRate_KCps);
-
-
-	/* Update signal rate limits depending on crosstalk */
-	SignalRateDMax = (uint32_t)_GetDMaxDataRetSignalAt400mm(dev) + XTalkCompRate_KCps;
-	WrapAroundLowReturnRateLimit = WrapAroundLowReturnRateLimit_ROM  + XTalkCompRate_KCps;
-	WrapAroundLowReturnRateLimit2 = ((WrapAroundLowReturnRateLimit2_ROM * SignalRateDMax) / 312) + XTalkCompRate_KCps;
-	WrapAroundLowReturnRateFilterLimit = ((WrapAroundLowReturnRateFilterLimit_ROM * SignalRateDMax) / 312) + XTalkCompRate_KCps;
-	WrapAroundHighReturnRateFilterLimit = ((WrapAroundHighReturnRateFilterLimit_ROM * SignalRateDMax) / 312) + XTalkCompRate_KCps;
-
-
-	/* Checks on low range data */
-	if ((m_rawRange_mm < WrapAroundLowRawRangeLimit) && (m_rtnSignalRate < WrapAroundLowReturnRateLimit)) {
-		m_newTrueRange_mm = MaxOrInvalidDistance;
-		bypassFilter = 1;
-	}
-	if ((m_rawRange_mm < WrapAroundLowRawRangeLimit2) && (m_rtnSignalRate < WrapAroundLowReturnRateLimit2)) {
-		m_newTrueRange_mm = MaxOrInvalidDistance;
-		bypassFilter = 1;
-	}
-
-	/* Checks on Ambient rate level */
-	if (m_rtnAmbientRate > WrapAroundMaximumAmbientRateFilterLimit) {
-		/* Too high ambient rate */
-		FlushFilter = 1;
-		bypassFilter = 1;
-	}
-	/*  Checks on Filter flush */
-	if (m_rtnSignalRate < MinReturnRateFilterFlush) {
-		/* Completely lost target, so flush the filter */
-		FlushFilter = 1;
-		bypassFilter = 1;
-	}
-	if (_FilterData(LastReturnRates)[0] != 0) {
-		if (m_rtnSignalRate > _FilterData(LastReturnRates)[0])
-			RateChange = (100 * (m_rtnSignalRate - _FilterData(LastReturnRates)[0])) / _FilterData(LastReturnRates)[0];
-		else
-			RateChange = (100 * (_FilterData(LastReturnRates)[0] - m_rtnSignalRate)) / _FilterData(LastReturnRates)[0];
-	} else
-		RateChange = 0;
-	if (RateChange > MaxReturnRateChangeFilterFlush) {
-		FlushFilter = 1;
-	}
-	/* TODO optimize filter  using circular buffer */
-	if (FlushFilter == 1) {
-		_FilterData(MeasurementIndex) = 0;
-		for (i = 0; i < FILTER_NBOF_SAMPLES; i++) {
-			_FilterData(LastTrueRange)[i] = FILTER_INVALID_DISTANCE;
-			_FilterData(LastReturnRates)[i] = 0;
-		}
-	} else {
-		for (i = (uint16_t) (FILTER_NBOF_SAMPLES - 1); i > 0; i--) {
-			_FilterData(LastTrueRange)[i] = _FilterData(LastTrueRange)[i - 1];
-			_FilterData(LastReturnRates)[i] = _FilterData(LastReturnRates)[i - 1];
-		}
-	}
-	if (ValidDistance == 1)
-		_FilterData(LastTrueRange)[0] = m_trueRange_mm;
-	else
-		_FilterData(LastTrueRange)[0] = FILTER_INVALID_DISTANCE;
-	_FilterData(LastReturnRates)[0] = m_rtnSignalRate;
-
-	/* Check if we need to go through the filter or not */
-	if (!(((m_rawRange_mm < WrapAroundHighRawRangeFilterLimit) && (m_rtnSignalRate < WrapAroundLowReturnRateFilterLimit)) || ((m_rawRange_mm >= WrapAroundHighRawRangeFilterLimit) && (m_rtnSignalRate < WrapAroundHighReturnRateFilterLimit))))
-		bypassFilter = 1;
-
-	/* Check which kind of measurement has been made */
-	status = VL6180x_RdByte(dev, 0x01AC, &u8);
-	if (status) {
-		VL6180x_ErrLog("0x01AC rd fail");
-		goto done_err;
-	}
-	registerValue = u8;
-
-	/* Read data for filtering */
-	status = VL6180x_RdByte(dev, 0x10C, &u8); /* read only 8 lsb bits */
-	if (status) {
-		VL6180x_ErrLog("0x010C rd fail");
-		goto done_err;
-	}
-	register32BitsValue1 = u8;
-	status = VL6180x_RdByte(dev, 0x0110, &u8); /* read only 8 lsb bits */
-	if (status) {
-		VL6180x_ErrLog("0x0110 rd fail");
-		goto done_err;
-	}
-	register32BitsValue2 = u8;
-
-	if (registerValue == 0x3E) {
-		_FilterData(Default_ZeroVal) = register32BitsValue1;
-		_FilterData(Default_VAVGVal) = register32BitsValue2;
-	} else {
-		_FilterData(NoDelay_ZeroVal) = register32BitsValue1;
-		_FilterData(NoDelay_VAVGVal) = register32BitsValue2;
-	}
-
-	if (bypassFilter == 1) {
-		/* Do not go through the filter */
-		if (registerValue != 0x3E) {
-			status = VL6180x_WrByte(dev, 0x1AC, 0x3E);
-			if (status) {
-				VL6180x_ErrLog("0x01AC bypass wr fail");
-				goto done_err;
-			}
-			status = VL6180x_WrByte(dev, 0x0F2, 0x01);
-			if (status) {
-				VL6180x_ErrLog("0x0F2 bypass wr fail");
-				goto done_err;
-			}
-		}
-		/* Set both Default and NoDelay To same value */
-		_FilterData(Default_ZeroVal) = register32BitsValue1;
-		_FilterData(Default_VAVGVal) = register32BitsValue2;
-		_FilterData(NoDelay_ZeroVal) = register32BitsValue1;
-		_FilterData(NoDelay_VAVGVal) = register32BitsValue2;
-		_FilterData(MeasurementIndex) = 0;
-
-		return m_newTrueRange_mm;
-	}
-
-	if (_FilterData(MeasurementIndex) % WrapAroundNoDelayCheckPeriod == 0) {
-		u8 = 0x3C;
-		u8_2 = 0x05;
-	} else {
-		u8 = 0x3E;
-		u8_2 = 0x01;
-	}
-	status = VL6180x_WrByte(dev, 0x01AC, u8);
-	if (status) {
-		VL6180x_ErrLog("0x01AC wr fail");
-		goto done_err;
-	}
-	status = VL6180x_WrByte(dev, 0x0F2, u8_2);
-	if (status) {
-		VL6180x_ErrLog("0x0F2  wr fail");
-		goto done_err;
-	}
-
-
-	_FilterData(MeasurementIndex)++;
-
-	/* Computes current VAVGDiff */
-	if (_FilterData(Default_VAVGVal) > _FilterData(NoDelay_VAVGVal))
-		VAVGDiff = _FilterData(Default_VAVGVal) - _FilterData(NoDelay_VAVGVal);
-	else
-		VAVGDiff = 0;
-	_FilterData(Previous_VAVGDiff) = VAVGDiff;
-
-	/* Check the VAVGDiff */
-	if (_FilterData(Default_ZeroVal) > _FilterData(NoDelay_ZeroVal))
-		IdealVAVGDiff = _FilterData(Default_ZeroVal) - _FilterData(NoDelay_ZeroVal);
-	else
-		IdealVAVGDiff = _FilterData(NoDelay_ZeroVal) - _FilterData(Default_ZeroVal);
-	if (IdealVAVGDiff > MAX_VAVGDiff)
-		MinVAVGDiff = IdealVAVGDiff - MAX_VAVGDiff;
-	else
-		MinVAVGDiff = 0;
-	MaxVAVGDiff = IdealVAVGDiff + MAX_VAVGDiff;
-	if (VAVGDiff < MinVAVGDiff || VAVGDiff > MaxVAVGDiff) {
-		WrapAroundFlag = 1;
-	} else {
-		/* Go through filtering check */
-
-		/* StdDevLimit Damper on SNR */
-		StdDevLimit = _filter_StdDevDamper(m_rtnAmbientRate, m_rtnSignalRate, StdDevLimitLowLight, StdDevLimitLowLightSNR, StdDevLimitHighLight, StdDevLimitHighLightSNR);
-
-		/* Standard deviations computations */
-		StdDevSamples = 0;
-		StdDevDistanceSum = 0;
-		StdDevDistanceMean = 0;
-		StdDevDistance = 0;
-		StdDevRateSum = 0;
-		StdDevRateMean = 0;
-		StdDevRate = 0;
-		for (i = 0; (i < FILTER_NBOF_SAMPLES) && (StdDevSamples < FILTER_STDDEV_SAMPLES); i++) {
-			if (_FilterData(LastTrueRange)[i] != FILTER_INVALID_DISTANCE) {
-				StdDevSamples = (uint16_t) (StdDevSamples + 1);
-				StdDevDistanceSum = (uint32_t) (StdDevDistanceSum + _FilterData(LastTrueRange)[i]);
-				StdDevRateSum = (uint32_t) (StdDevRateSum + _FilterData(LastReturnRates)[i]);
-			}
-		}
-		if (StdDevSamples > 0) {
-			StdDevDistanceMean = (uint32_t) (StdDevDistanceSum / StdDevSamples);
-			StdDevRateMean = (uint32_t) (StdDevRateSum / StdDevSamples);
-		}
-		/* TODO optimize shorten Std dev in aisngle loop computation using sum of x2 - (sum of x)2 */
-		StdDevSamples = 0;
-		StdDevDistanceSum = 0;
-		StdDevRateSum = 0;
-		for (i = 0; (i < FILTER_NBOF_SAMPLES) && (StdDevSamples < FILTER_STDDEV_SAMPLES); i++) {
-			if (_FilterData(LastTrueRange)[i] != FILTER_INVALID_DISTANCE) {
-				StdDevSamples = (uint16_t) (StdDevSamples + 1);
-				StdDevDistanceSum = (uint32_t) (StdDevDistanceSum + (int) (_FilterData(LastTrueRange)[i] - StdDevDistanceMean) * (int) (_FilterData(LastTrueRange)[i] - StdDevDistanceMean));
-				StdDevRateSum = (uint32_t) (StdDevRateSum + (int) (_FilterData(LastReturnRates)[i] - StdDevRateMean) * (int) (_FilterData(LastReturnRates)[i] - StdDevRateMean));
-			}
-		}
-		if (StdDevSamples >= MIN_FILTER_STDDEV_SAMPLES) {
-			StdDevDistance = (uint16_t) (StdDevDistanceSum / StdDevSamples);
-			StdDevRate = (uint16_t) (StdDevRateSum / StdDevSamples);
-		} else {
-			StdDevDistance = 0;
-			StdDevRate = 0;
-		}
-
-		/* Check Return rate standard deviation */
-		if (StdDevRate < StdDevMovingTargetStdDevLimit) {
-			if (StdDevSamples < MIN_FILTER_VALID_STDDEV_SAMPLES) {
-				m_newTrueRange_mm = MaxOrInvalidDistance;
-			} else {
-				/* Check distance standard deviation */
-				if (StdDevRate < StdDevMovingTargetReturnRateLimit)
-					StdDevLimitWithTargetMove = StdDevLimit + (((StdDevMovingTargetStdDevForReturnRateLimit - StdDevLimit) * StdDevRate) / StdDevMovingTargetReturnRateLimit);
-				else
-					StdDevLimitWithTargetMove = StdDevMovingTargetStdDevForReturnRateLimit;
-
-				if ((StdDevDistance * StdDevHighConfidenceSNRLimit) < StdDevLimitWithTargetMove) {
-					NoWrapAroundHighConfidenceFlag = 1;
-				} else {
-					if (StdDevDistance < StdDevLimitWithTargetMove) {
-						if (StdDevSamples >= MIN_FILTER_VALID_STDDEV_SAMPLES) {
-							NoWrapAroundFlag = 1;
-						} else {
-							m_newTrueRange_mm = MaxOrInvalidDistance;
-						}
-					} else {
-						WrapAroundFlag = 1;
-					}
-				}
-			}
-		} else {
-			WrapAroundFlag = 1;
-		}
-	}
-
-	if (m_newTrueRange_mm == MaxOrInvalidDistance) {
-		if (_FilterData(StdFilteredReads) > 0)
-			_FilterData(StdFilteredReads) = (uint16_t)(_FilterData(StdFilteredReads) - 1);
-	} else {
-		if (WrapAroundFlag == 1) {
-			m_newTrueRange_mm = MaxOrInvalidDistance;
-			_FilterData(StdFilteredReads) = (uint16_t)(_FilterData(StdFilteredReads) + StdFilteredReadsIncrement);
-			if (_FilterData(StdFilteredReads) > StdMaxFilteredReads)
-				_FilterData(StdFilteredReads) = StdMaxFilteredReads;
-		} else {
-			if (NoWrapAroundFlag == 1) {
-				if (_FilterData(StdFilteredReads) > 0) {
-					m_newTrueRange_mm = MaxOrInvalidDistance;
-					if (_FilterData(StdFilteredReads) > StdFilteredReadsIncrement)
-						_FilterData(StdFilteredReads) = (uint16_t)(_FilterData(StdFilteredReads) - StdFilteredReadsIncrement);
-					else
-						_FilterData(StdFilteredReads) = 0;
-				}
-			} else {
-				if (NoWrapAroundHighConfidenceFlag == 1) {
-					_FilterData(StdFilteredReads) = 0;
-				}
-			}
-		}
-	}
-
-	return m_newTrueRange_mm;
-done_err:
-	return -1;
-
-	#undef MaxOrInvalidDistance
-}
-
-
-/*
-
- * Return <0 on error
-
- */
-static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint16_t m_rawRange_mm, uint32_t m_rtnSignalRate, uint32_t m_rtnAmbientRate, uint16_t errorCode)
-{
-	int status;
-	uint16_t m_newTrueRange_mm = 0;
-
-	uint16_t i;
-	uint16_t bypassFilter = 0;
-
-	uint16_t registerValue;
-
-	uint32_t register32BitsValue1;
-	uint32_t register32BitsValue2;
-
-	uint16_t ValidDistance = 0;
-
-	uint16_t WrapAroundFlag = 0;
-	uint16_t NoWrapAroundFlag = 0;
-	uint16_t NoWrapAroundHighConfidenceFlag = 0;
-
-	uint16_t FlushFilter = 0;
-	uint32_t RateChange = 0;
-
-	uint16_t StdDevSamples = 0;
-	uint32_t StdDevDistanceSum = 0;
-	uint32_t StdDevDistanceMean = 0;
-	uint32_t StdDevDistance = 0;
-	uint32_t StdDevRateSum = 0;
-	uint32_t StdDevRateMean = 0;
-	uint32_t StdDevRate = 0;
-	uint32_t StdDevLimitWithTargetMove = 0;
-
-	uint32_t VAVGDiff;
-	uint32_t IdealVAVGDiff;
-	uint32_t MinVAVGDiff;
-	uint32_t MaxVAVGDiff;
-
-	/* Filter Parameters */
-	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit = 60;
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit_ROM = 800; /* Shall be adapted depending on crossTalk */
-	static const uint16_t ROMABLE_DATA WrapAroundLowRawRangeLimit2 = 165;
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateLimit2_ROM = 180; /* Shall be adapted depending on crossTalk and device sensitivity */
-
-	static const uint32_t ROMABLE_DATA WrapAroundLowReturnRateFilterLimit_ROM = 850; /* Shall be adapted depending on crossTalk and device sensitivity */
-	static const uint16_t ROMABLE_DATA WrapAroundHighRawRangeFilterLimit = 350;
-	static const uint32_t ROMABLE_DATA WrapAroundHighReturnRateFilterLimit_ROM = 1400; /* Shall be adapted depending on crossTalk and device sensitivity */
-
-	static const uint32_t ROMABLE_DATA WrapAroundMaximumAmbientRateFilterLimit = 7500;
-
-	/*  Temporal filter data and flush values */
-	static const uint32_t ROMABLE_DATA MinReturnRateFilterFlush = 75;
-	static const uint32_t ROMABLE_DATA MaxReturnRateChangeFilterFlush = 50;
-
-	/* STDDEV values and damper values */
-
-	static const uint32_t ROMABLE_DATA StdDevLimitLowLight = 300;
-	static const uint32_t ROMABLE_DATA StdDevLimitLowLightSNR = 30; /* 0.3 */
-	static const uint32_t ROMABLE_DATA StdDevLimitHighLight = 2500;
-	static const uint32_t ROMABLE_DATA StdDevLimitHighLightSNR = 5; /* 0.05 */
-
-	static const uint32_t ROMABLE_DATA StdDevHighConfidenceSNRLimit = 8;
-
-	static const uint32_t ROMABLE_DATA StdDevMovingTargetStdDevLimit = 90000;
-
-	static const uint32_t ROMABLE_DATA StdDevMovingTargetReturnRateLimit = 3500;
-	static const uint32_t ROMABLE_DATA StdDevMovingTargetStdDevForReturnRateLimit = 5000;
-
-	static const uint32_t ROMABLE_DATA MAX_VAVGDiff = 1800;
-
-	/* WrapAroundDetection variables */
-	static const uint16_t ROMABLE_DATA WrapAroundNoDelayCheckPeriod = 2;
-	static const uint16_t ROMABLE_DATA StdFilteredReadsIncrement = 2;
+	static const uint16_t ROMABLE_DATA StdFilteredReadsDecrement = 1;
 	static const uint16_t ROMABLE_DATA StdMaxFilteredReads = 4;
 
 	uint32_t SignalRateDMax;
@@ -2230,21 +1926,21 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 
 	/* Check if distance is Valid or not */
 	switch (errorCode) {
-	case 0x0C:
-		m_trueRange_mm = MaxOrInvalidDistance;
+	case Raw_Ranging_Algo_Underflow:
+	case Ranging_Algo_Underflow:
+		filterErrorCodeOnRangingErrorCode = RangingFiltered; /* If we have to go through filter, mean we have here a wraparound case */
 		ValidDistance = 0;
 		break;
-	case 0x0D:
-		m_trueRange_mm = MaxOrInvalidDistance;
-		ValidDistance = 1;
-		break;
-	case 0x0F:
+	case Raw_Ranging_Algo_Overflow:
+	case Ranging_Algo_Overflow:
+		filterErrorCodeOnRangingErrorCode = RangingFiltered; /* If we have to go through filter, mean we have here a wraparound case */
 		m_trueRange_mm = MaxOrInvalidDistance;
 		ValidDistance = 1;
 		break;
 	default:
 		if (m_rawRange_mm >= MaxOrInvalidDistance) {
 			ValidDistance = 0;
+			bypassFilter = 1; /* Bypass the filter in this case as produced distance is not usable (and also the VAVGVal and ZeroVal values) */
 		} else {
 			ValidDistance = 1;
 		}
@@ -2254,22 +1950,25 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 
 	XTalkCompRate_KCps = VL6180xDevDataGet(dev, XTalkCompRate_KCps);
 
-
 	/* Update signal rate limits depending on crosstalk */
 	SignalRateDMax = (uint32_t)_GetDMaxDataRetSignalAt400mm(dev) + XTalkCompRate_KCps;
 	WrapAroundLowReturnRateLimit = WrapAroundLowReturnRateLimit_ROM  + XTalkCompRate_KCps;
-	WrapAroundLowReturnRateLimit2 = ((WrapAroundLowReturnRateLimit2_ROM * SignalRateDMax) / 312) + XTalkCompRate_KCps;
-	WrapAroundLowReturnRateFilterLimit = ((WrapAroundLowReturnRateFilterLimit_ROM * SignalRateDMax) / 312) + XTalkCompRate_KCps;
-	WrapAroundHighReturnRateFilterLimit = ((WrapAroundHighReturnRateFilterLimit_ROM * SignalRateDMax) / 312) + XTalkCompRate_KCps;
+	WrapAroundLowReturnRateLimit2 = ((WrapAroundLowReturnRateLimit2_ROM *
+									SignalRateDMax) / 312) +
+									XTalkCompRate_KCps;
+	WrapAroundLowReturnRateFilterLimit = ((WrapAroundLowReturnRateFilterLimit_ROM *
+									SignalRateDMax) / 312) + XTalkCompRate_KCps;
+	WrapAroundHighReturnRateFilterLimit = ((WrapAroundHighReturnRateFilterLimit_ROM *
+									SignalRateDMax) / 312) + XTalkCompRate_KCps;
 
 
 	/* Checks on low range data */
 	if ((m_rawRange_mm < WrapAroundLowRawRangeLimit) && (m_rtnSignalRate < WrapAroundLowReturnRateLimit)) {
-		m_newTrueRange_mm = MaxOrInvalidDistance;
+		filterErrorCode = RangingFiltered; /* On this condition, wraparound case is ensured */
 		bypassFilter = 1;
 	}
 	if ((m_rawRange_mm < WrapAroundLowRawRangeLimit2) && (m_rtnSignalRate < WrapAroundLowReturnRateLimit2)) {
-		m_newTrueRange_mm = MaxOrInvalidDistance;
+		filterErrorCode = RangingFiltered; /* On this condition, wraparound case is ensured */
 		bypassFilter = 1;
 	}
 
@@ -2287,9 +1986,13 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 	}
 	if (_FilterData(LastReturnRates)[0] != 0) {
 		if (m_rtnSignalRate > _FilterData(LastReturnRates)[0])
-			RateChange = (100 * (m_rtnSignalRate - _FilterData(LastReturnRates)[0])) / _FilterData(LastReturnRates)[0];
+			RateChange = (100 *
+						(m_rtnSignalRate - _FilterData(LastReturnRates)[0])) /
+						_FilterData(LastReturnRates)[0];
 		else
-			RateChange = (100 * (_FilterData(LastReturnRates)[0] - m_rtnSignalRate)) / _FilterData(LastReturnRates)[0];
+			RateChange = (100 *
+						(_FilterData(LastReturnRates)[0] - m_rtnSignalRate)) /
+						_FilterData(LastReturnRates)[0];
 	} else
 		RateChange = 0;
 	if (RateChange > MaxReturnRateChangeFilterFlush) {
@@ -2302,24 +2005,44 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 			_FilterData(LastTrueRange)[i] = FILTER_INVALID_DISTANCE;
 			_FilterData(LastReturnRates)[i] = 0;
 		}
+		_FilterData(MeasurementsSinceLastFlush)=0;
 	} else {
 		for (i = (uint16_t) (FILTER_NBOF_SAMPLES - 1); i > 0; i--) {
 			_FilterData(LastTrueRange)[i] = _FilterData(LastTrueRange)[i - 1];
 			_FilterData(LastReturnRates)[i] = _FilterData(LastReturnRates)[i - 1];
 		}
 	}
+
 	if (ValidDistance == 1)
 		_FilterData(LastTrueRange)[0] = m_trueRange_mm;
 	else
 		_FilterData(LastTrueRange)[0] = FILTER_INVALID_DISTANCE;
 	_FilterData(LastReturnRates)[0] = m_rtnSignalRate;
+	_FilterData(MeasurementsSinceLastFlush)++;
 
 	/* Check if we need to go through the filter or not */
-	if (!(((m_rawRange_mm < WrapAroundHighRawRangeFilterLimit) && (m_rtnSignalRate < WrapAroundLowReturnRateFilterLimit)) || ((m_rawRange_mm >= WrapAroundHighRawRangeFilterLimit) && (m_rtnSignalRate < WrapAroundHighReturnRateFilterLimit))))
+	if (!(((m_rawRange_mm < WrapAroundHighRawRangeFilterLimit) &&
+		(m_rtnSignalRate < WrapAroundLowReturnRateFilterLimit)) ||
+		((m_rawRange_mm >= WrapAroundHighRawRangeFilterLimit) &&
+		(m_rtnSignalRate < WrapAroundHighReturnRateFilterLimit))))
 		bypassFilter = 1;
+	else {
+		/* if some wraparound filtering due to some ranging error code has been detected, update the filter status and bypass the filter */
+		if(filterErrorCodeOnRangingErrorCode!=NoError){
+#ifndef PRESERVE_DEVICE_ERROR_CODE
+			filterErrorCode = filterErrorCodeOnRangingErrorCode;
+#else
+			if((errorCode==Raw_Ranging_Algo_Underflow) || (errorCode==Ranging_Algo_Underflow)) {
+				/* Preserves the error codes except for Raw_Ranging_Algo_Underflow and Ranging_Algo_Underflow */
+				filterErrorCode = filterErrorCodeOnRangingErrorCode;
+			}
+#endif
+			bypassFilter = 1;
+			resetVAVGData = 0;
+		}
+	}
 
 	/* Check which kind of measurement has been made */
-	#if 0
 	status = VL6180x_RdByte(dev, 0x01AC, &u8);
 	if (status) {
 		VL6180x_ErrLog("0x01AC rd fail");
@@ -2328,44 +2051,35 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 	registerValue = u8;
 
 	/* Read data for filtering */
-	status = VL6180x_RdByte(dev, 0x10C, &u8); /* read only 8 lsb bits */
+#if VL6180x_HAVE_MULTI_READ
+	status = VL6180x_RdMulti(dev, 0x10C, MultiReadBuf, 8); /* read only 8 lsb bits */
+	if (status) {
+		VL6180x_ErrLog("0x10C multi rd fail");
+		goto done_err;
+	}
+	register32BitsValue1 = ((uint32_t) MultiReadBuf[0] << 24)
+			+ ((uint32_t) MultiReadBuf[1] << 16)
+			+ ((uint32_t) MultiReadBuf[2] << 8)
+			+ ((uint32_t) MultiReadBuf[3] << 0);
+	register32BitsValue2 = ((uint32_t) MultiReadBuf[4] << 24)
+			+ ((uint32_t) MultiReadBuf[5] << 16)
+			+ ((uint32_t) MultiReadBuf[6] << 8)
+			+ ((uint32_t) MultiReadBuf[7] << 0);
+#else
+	status = VL6180x_RdDWord(dev, 0x10C, &register32BitsValue1); /* read 32 bits, lower 17 bits are the one useful */
 	if (status) {
 		VL6180x_ErrLog("0x010C rd fail");
 		goto done_err;
 	}
-	register32BitsValue1 = u8;
-	status = VL6180x_RdByte(dev, 0x0110, &u8); /* read only 8 lsb bits */
+	status = VL6180x_RdDWord(dev, 0x0110, &	register32BitsValue2); /* read 32 bits, lower 17 bits are the one useful */
 	if (status) {
 		VL6180x_ErrLog("0x0110 rd fail");
 		goto done_err;
 	}
-	register32BitsValue2 = u8;
-	#else
-	status = VL6180x_RdByte(dev, 0x01AC, &u8);
-	if (status) {
-		VL6180x_ErrLog("0x01AC rd fail");
-		goto done_err;
-	}
-	registerValue = u8;
+#endif
 
-	status = VL6180x_RdBuffer(dev, 0x10C , regBuffer, 5);
-	if (status) {
-		VL6180x_ErrLog("0x010c buffer rd fail");
-		goto done_err;
-	}
-	register32BitsValue1 = regBuffer[(0x10C-0x10C)];
-	register32BitsValue2 = regBuffer[(0x110-0x10C)];
-	#endif
-	if (registerValue == 0x3E) {
-		_FilterData(Default_ZeroVal) = register32BitsValue1;
-		_FilterData(Default_VAVGVal) = register32BitsValue2;
-	} else {
-		_FilterData(NoDelay_ZeroVal) = register32BitsValue1;
-		_FilterData(NoDelay_VAVGVal) = register32BitsValue2;
-	}
 
-	if (bypassFilter == 1) {
-		/* Do not go through the filter */
+	if ((FlushFilter == 1) || ((bypassFilter == 1) && (resetVAVGData == 1))) {
 		if (registerValue != 0x3E) {
 			status = VL6180x_WrByte(dev, 0x1AC, 0x3E);
 			if (status) {
@@ -2383,31 +2097,48 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 		_FilterData(Default_VAVGVal) = register32BitsValue2;
 		_FilterData(NoDelay_ZeroVal) = register32BitsValue1;
 		_FilterData(NoDelay_VAVGVal) = register32BitsValue2;
+
 		_FilterData(MeasurementIndex) = 0;
+	} else {
+		if (registerValue == 0x3E) {
+			_FilterData(Default_ZeroVal) = register32BitsValue1;
+			_FilterData(Default_VAVGVal) = register32BitsValue2;
+		} else {
+			_FilterData(NoDelay_ZeroVal) = register32BitsValue1;
+			_FilterData(NoDelay_VAVGVal) = register32BitsValue2;
+		}
+
+		if (_FilterData(MeasurementIndex) % WrapAroundNoDelayCheckPeriod == 0) {
+			u8 = 0x3C;
+			u8_2 = 0x05;
+		} else {
+			u8 = 0x3E;
+			u8_2 = 0x01;
+		}
+		status = VL6180x_WrByte(dev, 0x01AC, u8);
+		if (status) {
+			VL6180x_ErrLog("0x01AC wr fail");
+			goto done_err;
+		}
+		status = VL6180x_WrByte(dev, 0x0F2, u8_2);
+		if (status) {
+			VL6180x_ErrLog("0x0F2  wr fail");
+			goto done_err;
+		}
+		_FilterData(MeasurementIndex)++;
+	}
+
+	if (bypassFilter == 1) {
+		/* Do not go through the filter */
+		/* Update filter error code */
+		_FilterData(filterError) = filterErrorCode;
+
+		/* Update reported range */
+		if((filterErrorCode==RangingFilteringOnGoing) || (filterErrorCode==RangingFiltered))
+			m_newTrueRange_mm = MaxOrInvalidDistance; /* Set to invalid distance */
 
 		return m_newTrueRange_mm;
 	}
-
-	if (_FilterData(MeasurementIndex) % WrapAroundNoDelayCheckPeriod == 0) {
-		u8 = 0x3C;
-		u8_2 = 0x05;
-	} else {
-		u8 = 0x3E;
-		u8_2 = 0x01;
-	}
-	status = VL6180x_WrByte(dev, 0x01AC, u8);
-	if (status) {
-		VL6180x_ErrLog("0x01AC wr fail");
-		goto done_err;
-	}
-	status = VL6180x_WrByte(dev, 0x0F2, u8_2);
-	if (status) {
-		VL6180x_ErrLog("0x0F2  wr fail");
-		goto done_err;
-	}
-
-
-	_FilterData(MeasurementIndex)++;
 
 	/* Computes current VAVGDiff */
 	if (_FilterData(Default_VAVGVal) > _FilterData(NoDelay_VAVGVal))
@@ -2428,8 +2159,62 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 	MaxVAVGDiff = IdealVAVGDiff + MAX_VAVGDiff;
 	if (VAVGDiff < MinVAVGDiff || VAVGDiff > MaxVAVGDiff) {
 		WrapAroundFlag = 1;
+
+		switch (_FilterData(filterError)) {
+		case NoError:
+			/* First error detected, put on on-going, need to wait for confirmation */
+			filterErrorCode = RangingFilteringOnGoing;
+			break;
+		case RangingFilteringOnGoing:
+			/* In this case, if change on signal rate is high (To be characterized), then we should stay in RangingFilteringOnGoing case */
+			if(_FilterData(MeasurementsSinceLastFlush)<MIN_FILTER_STDDEV_SAMPLES){
+				/* Not enough samples taken, keep waiting before taking decision */
+				filterErrorCode = RangingFilteringOnGoing;
+			} else {
+				if(RateChange==0)
+					j = 0;
+				else
+					j = 1;
+				for(i=1; (i < FILTER_NBOF_SAMPLES) && (j < MIN_FILTER_STDDEV_SAMPLES); i++) {
+					if (_FilterData(LastReturnRates)[i] != 0) {
+						if (m_rtnSignalRate > _FilterData(LastReturnRates)[i])
+							TmpRateChange = (100 *
+										(m_rtnSignalRate - _FilterData(LastReturnRates)[i])) /
+										_FilterData(LastReturnRates)[i];
+						else
+							TmpRateChange = (100 *
+										(_FilterData(LastReturnRates)[i] - m_rtnSignalRate)) /
+										_FilterData(LastReturnRates)[i];
+						if (TmpRateChange>RateChange)
+							RateChange = TmpRateChange;
+						j++;
+					}
+				}
+				if (RateChange > MaxReturnRateChangeFilterDecisionThreshold) {
+					/* Detected lot of signal rate variation, do not take decision right now */
+					filterErrorCode = RangingFilteringOnGoing;
+				} else {
+					/* Detected signal rate stable, can take decision now */
+					filterErrorCode = RangingFiltered;
+				}
+			}
+			break;
+		case RangingFiltered:
+			/* Wraparound confirmed */
+			filterErrorCode = RangingFiltered;
+			break;
+		default:
+			/* Should never reach this */
+			filterErrorCode= RangingFiltered;
+		}
 	} else {
 		/* Go through filtering check */
+
+		if(_FilterData(MeasurementIndex)<=1)
+			/* On measurement after a bypass, uses an increase number of samples */
+			StdDevSamplesMinNeeded = MIN_FILTER_STDDEV_SAMPLES_AFTER_FLUSH_OR_BYPASS;
+		else
+			StdDevSamplesMinNeeded = MIN_FILTER_STDDEV_SAMPLES;
 
 		/* StdDevLimit Damper on SNR */
 		StdDevLimit = _filter_StdDevDamper(m_rtnAmbientRate, m_rtnSignalRate, StdDevLimitLowLight, StdDevLimitLowLightSNR, StdDevLimitHighLight, StdDevLimitHighLightSNR);
@@ -2460,11 +2245,19 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 		for (i = 0; (i < FILTER_NBOF_SAMPLES) && (StdDevSamples < FILTER_STDDEV_SAMPLES); i++) {
 			if (_FilterData(LastTrueRange)[i] != FILTER_INVALID_DISTANCE) {
 				StdDevSamples = (uint16_t) (StdDevSamples + 1);
-				StdDevDistanceSum = (uint32_t) (StdDevDistanceSum + (int) (_FilterData(LastTrueRange)[i] - StdDevDistanceMean) * (int) (_FilterData(LastTrueRange)[i] - StdDevDistanceMean));
-				StdDevRateSum = (uint32_t) (StdDevRateSum + (int) (_FilterData(LastReturnRates)[i] - StdDevRateMean) * (int) (_FilterData(LastReturnRates)[i] - StdDevRateMean));
+				StdDevDistanceSum = (uint32_t) (StdDevDistanceSum +
+									(int)(_FilterData(LastTrueRange)[i] -
+											StdDevDistanceMean) *
+											(int) (_FilterData(LastTrueRange)[i] -
+													StdDevDistanceMean));
+				StdDevRateSum = (uint32_t) (StdDevRateSum +
+									(int) (_FilterData(LastReturnRates)[i] -
+											StdDevRateMean) *
+											(int) (_FilterData(LastReturnRates)[i] -
+													StdDevRateMean));
 			}
 		}
-		if (StdDevSamples >= MIN_FILTER_STDDEV_SAMPLES) {
+		if (StdDevSamples >= StdDevSamplesMinNeeded) {
 			StdDevDistance = (uint16_t) (StdDevDistanceSum / StdDevSamples);
 			StdDevRate = (uint16_t) (StdDevRateSum / StdDevSamples);
 		} else {
@@ -2474,49 +2267,95 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 
 		/* Check Return rate standard deviation */
 		if (StdDevRate < StdDevMovingTargetStdDevLimit) {
-			if (StdDevSamples < MIN_FILTER_VALID_STDDEV_SAMPLES) {
-				m_newTrueRange_mm = MaxOrInvalidDistance;
+			if (StdDevSamples < StdDevSamplesMinNeeded) {
+				//m_newTrueRange_mm = MaxOrInvalidDistance;
+				filterErrorCode = RangingFilteringOnGoing; /* Not enough samples to determine wraparound properly */
 			} else {
 				/* Check distance standard deviation */
 				if (StdDevRate < StdDevMovingTargetReturnRateLimit)
-					StdDevLimitWithTargetMove = StdDevLimit + (((StdDevMovingTargetStdDevForReturnRateLimit - StdDevLimit) * StdDevRate) / StdDevMovingTargetReturnRateLimit);
+					StdDevLimitWithTargetMove = StdDevLimit +
+						(((StdDevMovingTargetStdDevForReturnRateLimit -
+							StdDevLimit) * StdDevRate) /
+							StdDevMovingTargetReturnRateLimit);
 				else
 					StdDevLimitWithTargetMove = StdDevMovingTargetStdDevForReturnRateLimit;
 
-				if ((StdDevDistance * StdDevHighConfidenceSNRLimit) < StdDevLimitWithTargetMove) {
+				if(_FilterData(filterError)==NoError){
+					/* No wrapAround detected yet, so relax constraints on the std dev */
+					StdDevLimitWithTargetMove = StdDevLimitWithTargetMove * StdDevNoWrapDetectedMultiplier;
+				}
+
+				if (((StdDevDistance * StdDevHighConfidenceSNRLimit) < StdDevLimit) && (StdDevSamples>=FILTER_STDDEV_SAMPLES)) {
 					NoWrapAroundHighConfidenceFlag = 1;
 				} else {
 					if (StdDevDistance < StdDevLimitWithTargetMove) {
-						if (StdDevSamples >= MIN_FILTER_VALID_STDDEV_SAMPLES) {
 							NoWrapAroundFlag = 1;
 						} else {
-							m_newTrueRange_mm = MaxOrInvalidDistance;
-						}
-					} else {
 						WrapAroundFlag = 1;
+#ifdef SENSITIVE_FILTERING_ON_GOING
+						/* As STD dev test is not strongly accurate test, this test cannot maintain the RangingFiltered status */
+						filterErrorCode = RangingFilteringOnGoing;
+#else
+						switch (_FilterData(filterError)) {
+						case NoError:
+						case RangingFilteringOnGoing:
+							if ((errorCode == Raw_Ranging_Algo_Overflow) || (errorCode == Ranging_Algo_Overflow)) {
+								/* We are at wraparound zone limit, so we can confirm wraparound here */
+								filterErrorCode = RangingFiltered;
+							} else {
+								/* STD dev test is not enough to determine for sure about wraparound, so keep in on going */
+								filterErrorCode = RangingFilteringOnGoing;
+							}
+							break;
+						case RangingFiltered:
+							/* Wraparound case was already confirmed, so stay in this case */
+							filterErrorCode = RangingFiltered;
+							break;
+						default:
+							/* Should never reach this */
+							filterErrorCode = RangingFiltered;
+						}
+#endif
 					}
 				}
 			}
 		} else {
+			/* Target moving too fast too determine anything */
 			WrapAroundFlag = 1;
+			filterErrorCode = RangingFilteringOnGoing;
 		}
 	}
 
-	if (m_newTrueRange_mm == MaxOrInvalidDistance) {
+	if (ValidDistance == 0) {
+		/* In case of invalid distance */
 		if (_FilterData(StdFilteredReads) > 0)
 			_FilterData(StdFilteredReads) = (uint16_t) (_FilterData(StdFilteredReads) - 1);
 	} else {
 		if (WrapAroundFlag == 1) {
-			m_newTrueRange_mm = MaxOrInvalidDistance;
-			_FilterData(StdFilteredReads) = (uint16_t) (_FilterData(StdFilteredReads) + StdFilteredReadsIncrement);
+			_FilterData(StdFilteredReads) = (uint16_t) (_FilterData(StdFilteredReads) +
+											StdFilteredReadsIncrement);
 			if (_FilterData(StdFilteredReads) > StdMaxFilteredReads)
 				_FilterData(StdFilteredReads) = StdMaxFilteredReads;
 		} else {
 			if (NoWrapAroundFlag == 1) {
 				if (_FilterData(StdFilteredReads) > 0) {
-					m_newTrueRange_mm = MaxOrInvalidDistance;
-					if (_FilterData(StdFilteredReads) > StdFilteredReadsIncrement)
-						_FilterData(StdFilteredReads) = (uint16_t) (_FilterData(StdFilteredReads) - StdFilteredReadsIncrement);
+					switch (_FilterData(filterError)) {
+					case NoError:
+					case RangingFilteringOnGoing:
+						/* Cannot confirm wraparound, remains in RangingFilteringOnGoing */
+						filterErrorCode = RangingFilteringOnGoing;
+						break;
+					case RangingFiltered:
+						/* wraparound already confirmed */
+						filterErrorCode = RangingFiltered;
+						break;
+					default:
+						/* Should never reach this */
+						filterErrorCode = RangingFiltered;
+					}
+					if (_FilterData(StdFilteredReads) > StdFilteredReadsDecrement)
+						_FilterData(StdFilteredReads) = (uint16_t) (_FilterData(StdFilteredReads) -
+														StdFilteredReadsDecrement);
 					else
 						_FilterData(StdFilteredReads) = 0;
 				}
@@ -2528,12 +2367,20 @@ static int32_t _filter_Start_ext(VL6180xDev_t dev, uint16_t m_trueRange_mm, uint
 		}
 	}
 
+	/* Update filter error code */
+	_FilterData(filterError) = filterErrorCode;
+
+	/* Update reported range */
+	if((filterErrorCode==RangingFilteringOnGoing) || (filterErrorCode==RangingFiltered))
+		m_newTrueRange_mm = MaxOrInvalidDistance; /* Set to invalid distance */
+
 	return m_newTrueRange_mm;
 done_err:
 	return -1;
 
-	#undef MaxOrInvalidDistance
+#undef MaxOrInvalidDistance
 }
+
 
 static int _filter_GetResult(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 {
@@ -2544,49 +2391,36 @@ static int _filter_GetResult(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 	int status;
 
 	do {
-		status = VL6180x_RdByte(dev, RESULT_RANGE_RAW, &u8);
+		status = VL6180x_GetCachedByte(dev, RESULT_RANGE_RAW, &u8);
 		if (status) {
-			VL6180x_ErrLog("RESULT_RANGE_RAW rd fail");
-			break;
+		    VL6180x_ErrLog("RESULT_RANGE_RAW rd fail");
+		    break;
 		}
 		m_rawRange_mm = u8;
 
 		FilteredRange = _filter_Start(dev, pRangeData->range_mm, (m_rawRange_mm * scaler), pRangeData->rtnRate, pRangeData->rtnAmbRate, pRangeData->errorStatus);
 		if (FilteredRange < 0) {
-			status = -1;
-			break;
+		    status = -1;
+		    break;
 		}
 		pRangeData->FilteredData.range_mm = FilteredRange;
 		pRangeData->FilteredData.rawRange_mm = m_rawRange_mm * scaler;
+		pRangeData->FilteredData.filterError= _FilterData(filterError);
 	} while (0);
 	return status;
 }
 
-static int _filter_GetResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData)
-{
-	uint32_t m_rawRange_mm = 0;
-	int32_t  FilteredRange;
-	const uint8_t scaler = _GetUpscale(dev);
-	/* uint8_t u8; */
-	int status = 0;
-
-	do {
-		m_rawRange_mm = pResultData->Result_range_raw;
-
-		FilteredRange = _filter_Start_ext(dev, pRangeData->range_mm, (m_rawRange_mm * scaler), pRangeData->rtnRate, pRangeData->rtnAmbRate, pRangeData->errorStatus);
-		if (FilteredRange < 0) {
-			status = -1;
-			break;
-		}
-		pRangeData->FilteredData.range_mm = FilteredRange;
-		pRangeData->FilteredData.rawRange_mm = m_rawRange_mm * scaler;
-	} while (0);
-	return status;
-}
 #undef _FilterData
+#ifdef PRESERVE_DEVICE_ERROR_CODE
+#undef PRESERVE_DEVICE_ERROR_CODE
+#endif
+#ifdef SENSITIVE_FILTERING_ON_GOING
+#undef SENSITIVE_FILTERING_ON_GOING
+#endif
 #undef FILTER_STDDEV_SAMPLES
 #undef MIN_FILTER_STDDEV_SAMPLES
-#undef MIN_FILTER_VALID_STDDEV_SAMPLES
+#undef MIN_FILTER_STDDEV_SAMPLES_AFTER_FLUSH_OR_BYPASS
+#undef STDDEV_BASE_VALUE
 #undef FILTER_INVALID_DISTANCE
 
 #endif /* VL6180x_WRAP_AROUND_FILTER_SUPPORT */
@@ -2608,8 +2442,7 @@ static int _GetRateResult(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 	int status;
 
 	do {
-
-		status = VL6180x_RdDWord(dev, RESULT_RANGE_RETURN_SIGNAL_COUNT, &m_rtnSignalCount);
+		status = VL6180x_GetCachedDWord(dev, RESULT_RANGE_RETURN_SIGNAL_COUNT, &m_rtnSignalCount);
 		if (status) {
 			VL6180x_ErrLog("RESULT_RANGE_RETURN_SIGNAL_COUNT rd fail");
 			break;
@@ -2618,20 +2451,20 @@ static int _GetRateResult(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 			m_rtnSignalCount = 0;
 		}
 
-		status = VL6180x_RdDWord(dev, RESULT_RANGE_RETURN_AMB_COUNT, &m_rtnAmbientCount);
+		status = VL6180x_GetCachedDWord(dev, RESULT_RANGE_RETURN_AMB_COUNT, &m_rtnAmbientCount);
 		if (status) {
 			VL6180x_ErrLog("RESULT_RANGE_RETURN_AMB_COUNTrd fail");
 			break;
 		}
 
 
-		status = VL6180x_RdDWord(dev, RESULT_RANGE_RETURN_CONV_TIME, &m_rtnConvTime);
+		status = VL6180x_GetCachedDWord(dev, RESULT_RANGE_RETURN_CONV_TIME, &m_rtnConvTime);
 		if (status) {
 			VL6180x_ErrLog("RESULT_RANGE_RETURN_CONV_TIME rd fail");
 			break;
 		}
 
-		status = VL6180x_RdDWord(dev, RESULT_RANGE_REFERENCE_CONV_TIME, &m_refConvTime);
+		status = VL6180x_GetCachedDWord(dev, RESULT_RANGE_REFERENCE_CONV_TIME, &m_refConvTime);
 		if (status) {
 			VL6180x_ErrLog("RESULT_RANGE_REFERENCE_CONV_TIME rd fail");
 			break;
@@ -2657,48 +2490,6 @@ static int _GetRateResult(VL6180xDev_t dev, VL6180x_RangeData_t *pRangeData)
 	} while (0);
 	return status;
 }
-
-static int _GetRateResult_ext(VL6180xDev_t dev, VL6180x_RangeResultData_t *pResultData, VL6180x_RangeData_t *pRangeData)
-{
-	uint32_t m_rtnConvTime = pResultData->Result_range_return_conv_time;
-	uint32_t m_rtnSignalRate = 0;
-	uint32_t m_rtnAmbientRate = 0;
-	uint32_t m_rtnSignalCount = pResultData->Result_range_return_signal_count;
-	uint32_t m_rtnAmbientCount = pResultData->Result_range_return_amb_count;
-	uint32_t m_refConvTime = pResultData->Result_range_reference_conv_time;
-	uint32_t cRtnSignalCountMax = 0x7FFFFFFF;
-	uint32_t cDllPeriods = 6;
-	uint32_t calcConvTime = 0;
-
-	int status = 0;
-
-	do {
-
-		if (m_rtnSignalCount > cRtnSignalCountMax) {
-			m_rtnSignalCount = 0;
-		}
-
-		pRangeData->rtnConvTime = m_rtnConvTime;
-		pRangeData->refConvTime = m_refConvTime;
-
-		calcConvTime = m_refConvTime;
-		if (m_rtnConvTime > m_refConvTime) {
-			calcConvTime = m_rtnConvTime;
-		}
-		if (calcConvTime == 0)
-			calcConvTime = 63000;
-
-		m_rtnSignalRate = (m_rtnSignalCount * 1000) / calcConvTime;
-		m_rtnAmbientRate = (m_rtnAmbientCount * cDllPeriods * 1000) / calcConvTime;
-
-		pRangeData->rtnRate = m_rtnSignalRate;
-		pRangeData->rtnAmbRate = m_rtnAmbientRate;
-
-
-	} while (0);
-	return status;
-}
-
 #endif /* VL6180x_HAVE_RATE_DATA */
 
 
@@ -2706,16 +2497,16 @@ int VL6180x_DMaxSetState(VL6180xDev_t dev, int state)
 {
 	int status;
 	LOG_FUNCTION_START("%d", state);
-	#if VL6180x_HAVE_DMAX_RANGING
+#if VL6180x_HAVE_DMAX_RANGING
 	VL6180xDevDataSet(dev, DMaxEnable, state);
 	if (state) {
 		status = _DMax_InitData(dev);
 	} else {
 		status = 0;
 	}
-	#else
+#else
 	status =  NOT_SUPPORTED;
-	#endif
+#endif
 	LOG_FUNCTION_END(status);
 	return status;
 }
@@ -2724,11 +2515,11 @@ int VL6180x_DMaxGetState(VL6180xDev_t dev)
 {
 	int status;
 	LOG_FUNCTION_START("");
-	#if VL6180x_HAVE_DMAX_RANGING
+#if VL6180x_HAVE_DMAX_RANGING
 	status = VL6180xDevDataGet(dev, DMaxEnable);
-	#else
+#else
 	status = 0;
-	#endif
+#endif
 	LOG_FUNCTION_END(status);
 	return status;
 }
@@ -2758,10 +2549,10 @@ uint32_t VL6180x_SqrtUint32(uint32_t num)
 
 	while (bit != 0) {
 		if (num >= res + bit) {
-			num -= res + bit;
-			res = (res >> 1) + bit;
+		    num -= res + bit;
+		    res = (res >> 1) + bit;
 		} else
-			res >>= 1;
+		    res >>= 1;
 		bit >>= 2;
 	}
 	return res;
@@ -2787,19 +2578,25 @@ static uint32_t _DMax_RawValueAtRateKCps(VL6180xDev_t dev, int32_t rate)
 
 	ambTuningWindowFactor_K = _DMaxData(ambTuningWindowFactor_K);
 	snrLimit_K              = _DMaxData(snrLimit_K);
-	retSignalAt400mm        = _DMaxData(retSignalAt400mm); /* 12 to 18 bits Kcps */
+	retSignalAt400mm        = _DMaxData(retSignalAt400mm);
+	/* 12 to 18 bits Kcps */
 	if (rate > 0) {
-		DMaxSq = 400 * 400 * 1000 / rate - (400 * 400 / 330); /* K of (1/RtnAmb -1/330 )=> 30bit- (12-18)bit  => 12-18 bits*/
+		DMaxSq = 400 * 400 * 1000 / rate - (400 * 400 / 330);
+		/* K of (1/RtnAmb -1/330 )=> 30bit- (12-18)bit  => 12-18 bits*/
 		if (DMaxSq <= 0) {
-			RawDMax = 0;
+		    RawDMax = 0;
 		} else {
-			/* value can be more 32 bit so base on raneg apply *retSignalAt400mm before or after division to presevr accuracy */
-			if (DMaxSq < (2<<12)) {
-				DMaxSq = DMaxSq * retSignalAt400mm / (snrLimit_K + ambTuningWindowFactor_K);       /* max 12 + 12 to 18 -10 => 12-26 bit */
-			} else {
-				DMaxSq = DMaxSq / (snrLimit_K + ambTuningWindowFactor_K) * retSignalAt400mm;       /* 12 to 18 -10 + 12 to 18 *=> 12-26 bit */
-			}
-			RawDMax = VL6180x_SqrtUint32(DMaxSq);
+		    /* value can be more 32 bit so base on raneg apply
+			 * retSignalAt400mm before or after division to presevr accuracy */
+		    if (DMaxSq < (2 << 12)) {
+				DMaxSq = DMaxSq * retSignalAt400mm /
+							(snrLimit_K + ambTuningWindowFactor_K);
+				/* max 12 + 12 to 18 -10 => 12-26 bit */
+		    } else {
+				DMaxSq = DMaxSq / (snrLimit_K + ambTuningWindowFactor_K) * retSignalAt400mm;
+				/* 12 to 18 -10 + 12 to 18 *=> 12-26 bit */
+		    }
+		    RawDMax = VL6180x_SqrtUint32(DMaxSq);
 		}
 	} else {
 		RawDMax = 0x7FFFFFFF; /* bigest possibmle 32bit signed value */
@@ -2834,74 +2631,77 @@ static int _DMax_InitData(VL6180xDev_t dev)
 	uint8_t SysRangeCheckEn;
 	uint8_t snrLimit;
 	static const int ROMABLE_DATA MaxConvTimeAdjust = -4;
-	warning = 0;
 
+	warning = 0;
 
 	LOG_FUNCTION_START("");
 	do {
 		status = VL6180x_RdByte(dev, 0x02A, &u8);
 		if (status) {
-			VL6180x_ErrLog("Reg 0x02A rd fail");
-			break;
+		    VL6180x_ErrLog("Reg 0x02A rd fail");
+		    break;
 		}
 
 		if (u8 == 0) {
-			warning = CALIBRATION_WARNING;
-			u8 = 40; /* use a default average value */
+		    warning = CALIBRATION_WARNING;
+		    u8 = 40; /* use a default average value */
 		}
 		Reg2A_KCps = Fix7_2_KCPs(u8); /* convert to KCPs */
 
 		status = VL6180x_RdByte(dev, SYSRANGE_RANGE_CHECK_ENABLES, &SysRangeCheckEn);
 		if (status) {
-			VL6180x_ErrLog("SYSRANGE_RANGE_CHECK_ENABLES rd fail ");
-			break;
+		    VL6180x_ErrLog("SYSRANGE_RANGE_CHECK_ENABLES rd fail ");
+		    break;
 		}
 
 		status = VL6180x_RdByte(dev, SYSRANGE_MAX_CONVERGENCE_TIME, &MaxConvTime);
 		if (status) {
-			VL6180x_ErrLog("SYSRANGE_MAX_CONVERGENCE_TIME rd fail ");
+		    VL6180x_ErrLog("SYSRANGE_MAX_CONVERGENCE_TIME rd fail ");
 			break;
 		}
 
 		status = VL6180x_RdDWord(dev, 0x0B8, &RegB8);
 		if (status) {
-			VL6180x_ErrLog("reg 0x0B8 rd fail ");
-			break;
+		    VL6180x_ErrLog("reg 0x0B8 rd fail ");
+		    break;
 		}
 
 		status = VL6180x_RdByte(dev, SYSRANGE_MAX_AMBIENT_LEVEL_MULT, &snrLimit);
 		if (status) {
-			VL6180x_ErrLog("SYSRANGE_MAX_AMBIENT_LEVEL_MULT rd fail ");
-			break;
+		    VL6180x_ErrLog("SYSRANGE_MAX_AMBIENT_LEVEL_MULT rd fail ");
+		    break;
 		}
 		_DMaxData(snrLimit_K) = (int32_t)16 * 1000 / snrLimit;
-		XTalkCompRate_KCps = VL6180xDevDataGet(dev, XTalkCompRate_KCps);
+		XTalkCompRate_KCps =   VL6180xDevDataGet(dev, XTalkCompRate_KCps);
 
 		if (Reg2A_KCps >= XTalkCompRate_KCps) {
-			_DMaxData(retSignalAt400mm) = (Reg2A_KCps - XTalkCompRate_KCps);
-		} else {
-			_DMaxData(retSignalAt400mm) = 0;             /* Reg2A_K - XTalkCompRate_KCp <0 is invalid */
+		    _DMaxData(retSignalAt400mm) = (Reg2A_KCps - XTalkCompRate_KCps);
+		} else{
+		    _DMaxData(retSignalAt400mm) = 0;
+			/* Reg2A_K - XTalkCompRate_KCp <0 is invalid */
 		}
 
 		/* if xtalk range check is off omit it in snr clipping */
 		if (SysRangeCheckEn&RANGE_CHECK_RANGE_ENABLE_MASK) {
-			status = VL6180x_RdWord(dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, &u16);
-			if (status) {
+		    status = VL6180x_RdWord(dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, &u16);
+		    if (status) {
 				VL6180x_ErrLog("SYSRANGE_RANGE_IGNORE_THRESHOLD rd fail ");
 				break;
-			}
-			RangeIgnoreThreshold = Fix7_2_KCPs(u16);
-		} else {
-			RangeIgnoreThreshold  = 0;
+		    }
+		    RangeIgnoreThreshold = Fix7_2_KCPs(u16);
+		} else{
+		    RangeIgnoreThreshold  = 0;
 		}
 
-		minSignalNeeded = (RegB8 * 256) / ((int32_t)MaxConvTime + (int32_t)MaxConvTimeAdjust); /* KCps 8+8 bit -(1 to 6 bit) => 15-10 bit */
+		minSignalNeeded = (RegB8 * 256) / ((int32_t)MaxConvTime + (int32_t)MaxConvTimeAdjust);
+		/* KCps 8+8 bit -(1 to 6 bit) => 15-10 bit */
 		/* minSignalNeeded = max ( minSignalNeeded,  RangeIgnoreThreshold - XTalkCompRate_KCps) */
-		if (minSignalNeeded <= RangeIgnoreThreshold - XTalkCompRate_KCps)
-			minSignalNeeded  =  RangeIgnoreThreshold - XTalkCompRate_KCps;
+		if (minSignalNeeded  <= RangeIgnoreThreshold - XTalkCompRate_KCps)
+		    minSignalNeeded  =  RangeIgnoreThreshold - XTalkCompRate_KCps;
 
-		u32 = (minSignalNeeded * (uint32_t)snrLimit) / 16;
-		_DMaxData(ClipSnrLimit) = _DMax_RawValueAtRateKCps(dev, u32); /* clip to dmax to min signal snr limit rate*/
+		u32 = (minSignalNeeded*(uint32_t)snrLimit) / 16;
+		_DMaxData(ClipSnrLimit) = _DMax_RawValueAtRateKCps(dev, u32);
+		/* clip to dmax to min signal snr limit rate*/
 	} while (0);
 	if (!status)
 		status = warning;
@@ -2918,16 +2718,16 @@ static int _DMax_Compute(VL6180xDev_t dev, VL6180x_RangeData_t *pRange)
 	static const int ROMABLE_DATA rtnAmbLowLimit_KCps = 330 * 1000;
 
 	rtnAmbRate = pRange->rtnAmbRate;
-	if (rtnAmbRate < rtnAmbLowLimit_KCps) {
+	if (rtnAmbRate  < rtnAmbLowLimit_KCps) {
 		DMax = _DMax_RawValueAtRateKCps(dev, rtnAmbRate);
 		scaling = _GetUpscale(dev);
 		HwLimitAtScale = UpperLimitLookUP[scaling - 1];
 
 		if (DMax > _DMaxData(ClipSnrLimit)) {
-			DMax = _DMaxData(ClipSnrLimit);
+		    DMax = _DMaxData(ClipSnrLimit);
 		}
 		if (DMax > HwLimitAtScale) {
-			DMax = HwLimitAtScale;
+		    DMax = HwLimitAtScale;
 		}
 		pRange->DMax = DMax;
 	} else {
