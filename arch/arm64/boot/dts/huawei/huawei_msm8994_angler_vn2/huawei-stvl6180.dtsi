@@ -1,0 +1,49 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	st_sensor_enable_active {
+		qcom,pins = <&gp 63>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "st_sensor_enable_active";
+		st_sensor_enable_active: st_sensor_enable_active {
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+
+	st_sensor_enable_suspend {
+		qcom,pins = <&gp 63>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "st_sensor_enable_suspend";
+		st_sensor_enable_suspend: st_sensor_enable_suspend {
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+	/* BLSP2 QUP1 */
+	i2c@f9963000 {
+		st@29 {
+			compatible = "st,stmvl6180";
+			reg = <0x29>;
+			vdd-supply = <&pm8994_l18>;
+			vcc-supply = <&pm8994_lvs2>;
+			st,vdd = "vdd";
+			st,vcc = "vcc";
+			st,cs_gpio = <&msm_gpio 63 0>;
+		};
+	};
+};
