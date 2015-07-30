@@ -190,12 +190,21 @@ static int esdfs_show_options(struct seq_file *seq, struct dentry *root)
 				sbi->upper_perms.fmask,
 				sbi->upper_perms.dmask);
 
-	if (test_opt(sbi, DERIVE_LEGACY))
-		seq_puts(seq, ",derive=legacy");
+	if (test_opt(sbi, DERIVE_PUBLIC))
+		seq_puts(seq, ",derive=public");
+	else if (test_opt(sbi, DERIVE_MULTI))
+		seq_puts(seq, ",derive=multi");
 	else if (test_opt(sbi, DERIVE_UNIFIED))
 		seq_puts(seq, ",derive=unified");
+	else if (test_opt(sbi, DERIVE_LEGACY))
+		seq_puts(seq, ",derive=legacy");
 	else
 		seq_puts(seq, ",derive=none");
+
+	if (test_opt(sbi, DERIVE_CONFINE))
+		seq_puts(seq, ",confine");
+	else
+		seq_puts(seq, ",noconfine");
 
 	return 0;
 }
