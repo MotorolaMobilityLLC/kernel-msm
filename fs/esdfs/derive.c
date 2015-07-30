@@ -325,8 +325,8 @@ void esdfs_derive_perms(struct dentry *dentry)
 					"media",
 					dentry->d_name.len))
 			inode_i->tree = ESDFS_TREE_ANDROID_MEDIA;
-		else if (test_opt(ESDFS_SB(dentry->d_sb), DERIVE_UNIFIED) &&
-			   !strncasecmp(dentry->d_name.name,
+		else if (ESDFS_RESTRICT_PERMS(ESDFS_SB(dentry->d_sb)) &&
+			 !strncasecmp(dentry->d_name.name,
 					"user",
 					dentry->d_name.len))
 			inode_i->tree = ESDFS_TREE_ANDROID_USER;
@@ -362,44 +362,70 @@ void esdfs_set_derived_perms(struct inode *inode)
 {
 	struct esdfs_sb_info *sbi = ESDFS_SB(inode->i_sb);
 	struct esdfs_inode_info *inode_i = ESDFS_I(inode);
+	gid_t gid = sbi->upper_perms.gid;
 
 	inode->i_uid = sbi->upper_perms.uid;
-	inode->i_gid = sbi->upper_perms.gid;
 	inode->i_mode &= S_IFMT;
+	if (ESDFS_RESTRICT_PERMS(sbi))
+		inode->i_gid = gid;
+	else {
+		if (gid == AID_SDCARD_RW)
+			inode->i_gid = AID_SDCARD_RW;
+		else
+			inode->i_gid = inode_i->userid * PKG_APPID_PER_USER +
+				       (gid % PKG_APPID_PER_USER);
+		inode->i_mode |= sbi->upper_perms.dmask;
+	}
 
 	switch (inode_i->tree) {
 	case ESDFS_TREE_ROOT_LEGACY:
-		inode->i_mode |= sbi->upper_perms.dmask;
+		if (ESDFS_RESTRICT_PERMS(sbi))
+			inode->i_mode |= sbi->upper_perms.dmask;
+		else if (test_opt(sbi, DERIVE_MULTI)) {
+			inode->i_mode &= S_IFMT;
+			inode->i_mode |= 0711;
+		}
 		break;
 
 	case ESDFS_TREE_NONE:
 	case ESDFS_TREE_ROOT:
-		inode->i_gid = AID_SDCARD_R;
-		inode->i_mode |= sbi->upper_perms.dmask;
+		if (ESDFS_RESTRICT_PERMS(sbi)) {
+			inode->i_gid = AID_SDCARD_R;
+			inode->i_mode |= sbi->upper_perms.dmask;
+		} else if (test_opt(sbi, DERIVE_PUBLIC)) {
+			inode->i_mode &= S_IFMT;
+			inode->i_mode |= 0771;
+		}
 		break;
 
 	case ESDFS_TREE_MEDIA:
-		inode->i_gid = AID_SDCARD_R;
-		inode->i_mode |= 0770;
+		if (ESDFS_RESTRICT_PERMS(sbi)) {
+			inode->i_gid = AID_SDCARD_R;
+			inode->i_mode |= 0770;
+		}
 		break;
 
 	case ESDFS_TREE_ANDROID:
 	case ESDFS_TREE_ANDROID_DATA:
 	case ESDFS_TREE_ANDROID_OBB:
 	case ESDFS_TREE_ANDROID_MEDIA:
-		inode->i_mode |= 0771;
+		if (ESDFS_RESTRICT_PERMS(sbi))
+			inode->i_mode |= 0771;
 		break;
 
 	case ESDFS_TREE_ANDROID_APP:
 		if (inode_i->appid)
 			inode->i_uid = inode_i->userid * PKG_APPID_PER_USER +
 				       (inode_i->appid % PKG_APPID_PER_USER);
-		inode->i_mode |= 0770;
+		if (ESDFS_RESTRICT_PERMS(sbi))
+			inode->i_mode |= 0770;
 		break;
 
 	case ESDFS_TREE_ANDROID_USER:
-		inode->i_gid = AID_SDCARD_ALL;
-		inode->i_mode |= 0770;
+		if (ESDFS_RESTRICT_PERMS(sbi)) {
+			inode->i_gid = AID_SDCARD_ALL;
+			inode->i_mode |= 0770;
+		}
 		break;
 	}
 
@@ -495,6 +521,19 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	uid_t appid;
 	unsigned access = 0;
 
+	/*
+	 * If we don't need to restrict access based on app GIDs or/and confine
+	 * writes to outside of the Android/... tree, we can skip some or all
+	 * of this complexity.
+	 */
+	if (!ESDFS_RESTRICT_PERMS(ESDFS_SB(inode->i_sb))) {
+		/* If we don't need to confine, we're done. */
+		if (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_CONFINE))
+			return 0;
+		/* If we do, we can still skip the hash lookup. */
+		access = HAS_SDCARD_RW;
+	}
+
 	cred = current_cred();
 	appid = cred->uid % PKG_APPID_PER_USER;
 
@@ -508,17 +547,20 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	 * know how to use extended attributes, we have to double-check write
 	 * requests against the list of apps that have been granted sdcard_rw.
 	 */
-	mutex_lock(&package_list_lock);
-	hash_for_each_possible(access_list_hash, package, tmp,
-			       access_node, appid) {
-		if (package->appid == appid) {
-			pr_debug("esdfs: %s: found appid %lu, access: %u\n",
-				__func__, package->appid, package->access);
-			access = package->access;
-			break;
+	if (!access) {
+		mutex_lock(&package_list_lock);
+		hash_for_each_possible(access_list_hash, package, tmp,
+				       access_node, appid) {
+			if (package->appid == appid) {
+				pr_debug("esdfs: %s: found appid %lu, access: %u\n",
+					__func__, package->appid,
+					package->access);
+				access = package->access;
+				break;
+			}
 		}
+		mutex_unlock(&package_list_lock);
 	}
-	mutex_unlock(&package_list_lock);
 
 	/*
 	 * Grant access to media_rw holders (they can access the source anyway).
