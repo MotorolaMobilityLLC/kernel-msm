@@ -100,6 +100,7 @@ struct pchg_current_map {
 struct smbchg_chip {
 	struct device			*dev;
 	struct spmi_device		*spmi;
+	int				schg_version;
 
 	/* peripheral register address bases */
 	u16				chgr_base;
@@ -150,6 +151,8 @@ struct smbchg_chip {
 	bool				low_volt_dcin;
 	bool				vbat_above_headroom;
 	bool				force_aicl_rerun;
+	bool				enable_hvdcp_9v;
+	u32				wa_flags;
 	u8				original_usbin_allowance;
 	struct parallel_usb_cfg		parallel;
 	struct delayed_work		parallel_en_work;
@@ -309,6 +312,30 @@ struct smbchg_chip {
 };
 
 static struct smbchg_chip *the_chip;
+
+enum qpnp_schg {
+	QPNP_SCHG,
+	QPNP_SCHG_LITE,
+};
+
+static char *version_str[] = {
+	[QPNP_SCHG]		= "SCHG",
+	[QPNP_SCHG_LITE]	= "SCHG_LITE",
+};
+
+enum pmic_subtype {
+	PMI8994		= 10,
+	PMI8950		= 17,
+	PMI8996		= 19,
+};
+
+enum smbchg_wa {
+	SMBCHG_AICL_DEGLITCH_WA = BIT(0),
+	SMBCHG_HVDCP_9V_EN_WA	= BIT(1),
+	SMBCHG_USB100_WA = BIT(2),
+	SMBCHG_BATT_OV_WA = BIT(3),
+	SMBCHG_CC_ESR_WA = BIT(4),
+};
 
 enum print_reason {
 	PR_REGISTER	= BIT(0),
@@ -3683,6 +3710,9 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 	u8 reg;
 	bool low_volt_chgr = true;
 
+	if (!(chip->wa_flags & SMBCHG_AICL_DEGLITCH_WA))
+		return;
+
 	if (!is_usb_present(chip) && !is_dc_present(chip)) {
 		pr_smb(PR_STATUS, "Charger removed\n");
 		smbchg_aicl_deglitch_wa_en(chip, false);
@@ -5332,6 +5362,11 @@ static inline int get_bpd(const char *name)
 #define USBIN_ALLOW_5V_UNREG		0x4
 #define USBIN_ALLOW_5V_9V_UNREG		0x5
 #define DCIN_ALLOW_5V_TO_9V		0x2
+#define HVDCP_ADAPTER_SEL_MASK		SMB_MASK(5, 4)
+#define HVDCP_ADAPTER_SEL_9V_BIT	BIT(4)
+#define HVDCP_AUTH_ALG_EN_BIT		BIT(6)
+#define CMD_APSD			0x41
+#define APSD_RERUN_BIT			BIT(0)
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -5387,6 +5422,33 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		return rc;
 	}
 
+	if (chip->enable_hvdcp_9v && (chip->wa_flags & SMBCHG_HVDCP_9V_EN_WA)) {
+		/* enable the 9V HVDCP configuration */
+		rc = smbchg_sec_masked_write(chip,
+			chip->usb_chgpth_base + TR_RID_REG,
+			HVDCP_AUTH_ALG_EN_BIT, HVDCP_AUTH_ALG_EN_BIT);
+		if (rc) {
+			dev_err(chip->dev, "Couldn't enable hvdcp_alg rc=%d\n",
+					rc);
+			return rc;
+		}
+
+		rc = smbchg_sec_masked_write(chip,
+			chip->usb_chgpth_base + CHGPTH_CFG,
+			HVDCP_ADAPTER_SEL_MASK, HVDCP_ADAPTER_SEL_9V_BIT);
+		if (rc) {
+			dev_err(chip->dev, "Couldn't set hvdcp config in chgpath_chg rc=%d\n",
+						rc);
+			return rc;
+		}
+		if (is_usb_present(chip)) {
+			rc = smbchg_masked_write(chip,
+				chip->usb_chgpth_base + CMD_APSD,
+				APSD_RERUN_BIT, APSD_RERUN_BIT);
+			if (rc)
+				pr_err("Unable to re-run APSD rc=%d\n", rc);
+		}
+	}
 	/*
 	 * set chg en by cmd register, set chg en by writing bit 1,
 	 * enable auto pre to fast, enable auto recharge by default.
@@ -6104,7 +6166,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		dev_info(chip->dev, "batt_therm workaround is enabled!\n");
 	chip->force_aicl_rerun = of_property_read_bool(node,
 					"qcom,force-aicl-rerun");
-
+	chip->enable_hvdcp_9v = of_property_read_bool(node,
+					"qcom,enable-hvdcp-9v");
 	/* parse the battery missing detection pin source */
 	rc = of_property_read_string(chip->spmi->dev.of_node,
 		"qcom,bmd-pin-src", &bpd);
@@ -8079,6 +8142,106 @@ static irqreturn_t warn_irq_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+static int smbchg_wa_config(struct smbchg_chip *chip)
+{
+	struct pmic_revid_data *pmic_rev_id;
+	struct device_node *revid_dev_node;
+	int rc;
+
+	revid_dev_node = of_parse_phandle(chip->spmi->dev.of_node,
+					"qcom,pmic-revid", 0);
+	if (!revid_dev_node) {
+		pr_err("Missing qcom,pmic-revid property - driver failed\n");
+		return -EINVAL;
+	}
+
+	pmic_rev_id = get_revid_data(revid_dev_node);
+	if (IS_ERR(pmic_rev_id)) {
+		rc = PTR_ERR(revid_dev_node);
+		if (rc != -EPROBE_DEFER)
+			pr_err("Unable to get pmic_revid rc=%d\n", rc);
+		return rc;
+	}
+
+	switch (pmic_rev_id->pmic_subtype) {
+	case PMI8994:
+		chip->wa_flags |= SMBCHG_AICL_DEGLITCH_WA;
+	case PMI8950:
+		if (pmic_rev_id->rev4 < 2) /* PMI8950 1.0 */
+			chip->wa_flags |= SMBCHG_AICL_DEGLITCH_WA;
+		else	/* rev > PMI8950 v1.0 */
+			chip->wa_flags |= SMBCHG_HVDCP_9V_EN_WA;
+		break;
+	default:
+		pr_err("PMIC subtype %d not supported, WA flags not set\n",
+				pmic_rev_id->pmic_subtype);
+	}
+
+	pr_debug("wa_flags=0x%x\n", chip->wa_flags);
+
+	return 0;
+}
+
+static int smbchg_check_chg_version(struct smbchg_chip *chip)
+{
+	struct pmic_revid_data *pmic_rev_id;
+	struct device_node *revid_dev_node;
+	int rc;
+
+	revid_dev_node = of_parse_phandle(chip->spmi->dev.of_node,
+					"qcom,pmic-revid", 0);
+	if (!revid_dev_node) {
+		pr_err("Missing qcom,pmic-revid property - driver failed\n");
+		return -EINVAL;
+	}
+
+	pmic_rev_id = get_revid_data(revid_dev_node);
+	if (IS_ERR(pmic_rev_id)) {
+		rc = PTR_ERR(revid_dev_node);
+		if (rc != -EPROBE_DEFER)
+			pr_err("Unable to get pmic_revid rc=%d\n", rc);
+		return rc;
+	}
+
+	switch (pmic_rev_id->pmic_subtype) {
+	case PMI8994:
+		chip->wa_flags |= SMBCHG_AICL_DEGLITCH_WA
+				| SMBCHG_BATT_OV_WA
+				| SMBCHG_CC_ESR_WA;
+		use_pmi8994_tables(chip);
+		chip->schg_version = QPNP_SCHG;
+		break;
+	case PMI8950:
+		chip->wa_flags |= SMBCHG_BATT_OV_WA;
+		if (pmic_rev_id->rev4 < 2) /* PMI8950 1.0 */ {
+			chip->wa_flags |= SMBCHG_AICL_DEGLITCH_WA;
+		} else	{ /* rev > PMI8950 v1.0 */
+			chip->wa_flags |= SMBCHG_HVDCP_9V_EN_WA
+					| SMBCHG_USB100_WA;
+		}
+		use_pmi8994_tables(chip);
+		chip->schg_version = QPNP_SCHG_LITE;
+		break;
+	case PMI8996:
+		chip->wa_flags |= SMBCHG_CC_ESR_WA;
+		use_pmi8996_tables(chip);
+		chip->schg_version = QPNP_SCHG;
+		break;
+	default:
+		pr_err("PMIC subtype %d not supported, WA flags not set\n",
+				pmic_rev_id->pmic_subtype);
+	}
+
+	pr_smb(PR_STATUS, "pmic=%s, wa_flags=0x%x\n",
+			pmic_rev_id->pmic_name, chip->wa_flags);
+
+	rc = smbchg_wa_config(chip);
+	if (rc != -EPROBE_DEFER)
+		pr_err("Charger WA flags not configured rc=%d\n", rc);
+
+	return 0;
+}
+
 #define DEFAULT_TEST_MODE_SOC  52
 #define DEFAULT_TEST_MODE_TEMP  225
 static int smbchg_probe(struct spmi_device *spmi)
@@ -8167,6 +8330,13 @@ static int smbchg_probe(struct spmi_device *spmi)
 		dev_err(chip->dev, "Error parsing DT peripherals: %d\n", rc);
 		return rc;
 	}
+
+	rc = smbchg_check_chg_version(chip);
+	if (rc) {
+		pr_err("Unable to check schg version rc=%d\n", rc);
+		return rc;
+	}
+
 	rc = smb_parse_dt(chip);
 	if (rc < 0) {
 		dev_err(&spmi->dev, "Unable to parse DT nodes: %d\n", rc);
@@ -8337,8 +8507,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(0));
-
-	dev_info(chip->dev, "SMBCHG successfully probed batt=%d dc = %d usb = %d\n",
+	dev_info(chip->dev,
+		"SMBCHG successfully probe Charger version=%s Revision DIG:%d.%d ANA:%d.%d batt=%d dc=%d usb=%d\n",
+			version_str[chip->schg_version],
+			chip->revision[DIG_MAJOR], chip->revision[DIG_MINOR],
+			chip->revision[ANA_MAJOR], chip->revision[ANA_MINOR],
 			get_prop_batt_present(chip),
 			chip->dc_present, chip->usb_present);
 	return 0;
