@@ -49,6 +49,8 @@ Optional Properties:
 				Supported values are "pwm" and "auto". PWM mode is more
 				robust, but draws more current than auto mode. If this propery
 				is not specified, then the regulator will be in the hardware default mode.
+- onnn,set-en-always:		When this option is present, EN bit is always set when writing to the
+				VSEL register.
 
 Example:
 	i2c_0 {
