@@ -64,6 +64,8 @@
 };
 
 &soc {
+	/delete-node/ regulator_spk;
+
 	ramoops {
 		compatible = "ramoops";
 		status = "ok";
@@ -1099,14 +1101,12 @@
 		};
 	};
 	qcom,pm8916@1 {
-		qcom,pm8916@1 {
-			qcom,vibrator@c000 {
-				status = "okay";
-				qcom,vib-timeout-ms = <30000>;
-				qcom,vib-vtg-level-mV = <2400>;
-				qcom,vib-vtg-level-mV-haptic = <2400>;
-				qcom,vib-boot-up-vibe-ms = <100>;
-			};
+		qcom,vibrator@c000 {
+			status = "okay";
+			qcom,vib-timeout-ms = <30000>;
+			qcom,vib-vtg-level-mV = <2400>;
+			qcom,vib-vtg-level-mV-haptic = <2400>;
+			qcom,vib-boot-up-vibe-ms = <100>;
 		};
 	};
 };
