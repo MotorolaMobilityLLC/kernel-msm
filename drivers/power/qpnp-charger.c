@@ -457,8 +457,6 @@ struct qpnp_chg_chip {
     struct work_struct      lower_power_usb_workaround;
     bool                    hw_low_power_usb_workaround_enable;
     struct wake_lock        led_wake_lock;
-    struct timer_list       charger_gone_soc_change_enable_timer;
-    bool                    charger_gone_soc_change_enable;
 #endif
 };
 
@@ -1977,16 +1975,6 @@ EXPORT_SYMBOL(hw_chg_usb_usbin_callbak);
 #define ENUM_T_STOP_BIT		BIT(0)
 #define USB_5V_UV	5000000
 #define USB_9V_UV	9000000
-
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-#define CHARGER_GONE_DISABLE_SOC_CHANGE_TIME 30000
-static void qpnp_charger_gone_soc_change_enable (unsigned long data)
-{
-    struct qpnp_chg_chip *chip = (struct qpnp_chg_chip *) data;
-    chip->charger_gone_soc_change_enable = true;
-}
-#endif
-
 static irqreturn_t
 qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 {
@@ -2004,19 +1992,11 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 		return IRQ_HANDLED;
 
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-    /*avoid the battery can not be charged when usb do not report any port*/
-    if(usb_present)
-    {
-        qpnp_chg_iusbmax_set(chip, USB_WALL_THRESHOLD_MA);
-        chip->charger_gone_soc_change_enable = true;
-        del_timer(&chip->charger_gone_soc_change_enable_timer);
-    }
-    else
-    {
-        /*when charger out, wait for a moment to enable soc change*/
-        chip->charger_gone_soc_change_enable = false;
-        mod_timer(&chip->charger_gone_soc_change_enable_timer, (jiffies + msecs_to_jiffies(CHARGER_GONE_DISABLE_SOC_CHANGE_TIME)));
-    }
+	/*avoid the battery can not be charged when usb do not report any port*/
+	if(usb_present)
+	{
+		qpnp_chg_iusbmax_set(chip, USB_WALL_THRESHOLD_MA);
+	}
 #endif
 	if (chip->usb_present ^ usb_present) {
 /* irq_handler do not allow call function who has use mutex ,it will cause crash*/
@@ -3154,11 +3134,6 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
         else if(charger_in && (last_soc > soc ) && (last_soc - soc < MAX_FAKE_REDUCE_VALUE) )
         {
             pr_debug("charger in,fake capacity from soc %d to last_soc %d \n",soc, last_soc);
-            soc = last_soc;
-        }
-        else if(!charger_in && (last_soc > soc) && !chip->charger_gone_soc_change_enable)
-        {
-            pr_debug("charger out,fake capacity from soc %d to last_soc %d \n",soc, last_soc);
             soc = last_soc;
         }
         else
@@ -6329,9 +6304,6 @@ qpnp_charger_probe(struct spmi_device *spmi)
     chip->running_test_settled_status = POWER_SUPPLY_STATUS_CHARGING;
     INIT_WORK(&chip->lower_power_usb_workaround,
             qpnp_chg_usb_low_power_work);
-    chip->charger_gone_soc_change_enable = true;
-    setup_timer(&chip->charger_gone_soc_change_enable_timer, qpnp_charger_gone_soc_change_enable,
-            (unsigned long) chip);
 #endif
 	mutex_init(&chip->jeita_configure_lock);
 	mutex_init(&chip->batfet_vreg_lock);
@@ -6744,8 +6716,6 @@ qpnp_charger_remove(struct spmi_device *spmi)
 
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
     cancel_work_sync(&chip->lower_power_usb_workaround);
-    chip->charger_gone_soc_change_enable = true;
-    del_timer(&chip->charger_gone_soc_change_enable_timer);
 #endif
 	mutex_destroy(&chip->batfet_vreg_lock);
 	mutex_destroy(&chip->jeita_configure_lock);
