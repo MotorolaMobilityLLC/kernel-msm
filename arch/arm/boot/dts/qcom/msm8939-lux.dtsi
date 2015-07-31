@@ -73,6 +73,7 @@
 		onnn,vsel-gpio = <&msm_gpio 111 1>;
 		onnn,discharge-enable;
 		onnn,restore-reg;
+		onnn,set-en-always;
 	};
 };
 
