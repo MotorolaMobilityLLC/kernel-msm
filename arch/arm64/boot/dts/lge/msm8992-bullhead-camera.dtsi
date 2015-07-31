@@ -21,7 +21,6 @@
 
 	tof0: stmvl6180@0 {
 		cell-index = <0x0>;
-		reg = <0x0>;
 		compatible = "st,stmvl6180";
 		qcom,cci-master = <0>;
 		cam_tof-supply = <&pm8994_l17>;
