@@ -76,3 +76,23 @@
 	qcom,current-stage-delta-mv = <50>;
 	qcom,current-stage-ma = <2400>;
 };
+
+&spmi_bus {
+	qcom,pm8994@0 {
+		qcom,power-on@800 {
+			qcom,s3-debounce = <16>;
+			qcom,s3-src = "kpdpwr";
+			qcom,pon_3 {
+				qcom,support-reset = <0>;
+			};
+		};
+	};
+
+	qcom,pmi8994@2 {
+		qcom,power-on@800 {
+			qcom,s3-debounce = <16>;
+			qcom,s3-src = "kpdpwr";
+		};
+	};
+};
+
