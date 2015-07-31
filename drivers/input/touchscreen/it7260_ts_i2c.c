@@ -464,6 +464,11 @@ static void chipLowPowerMode(bool low)
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
+			input_mt_slot(gl_ts->touch_dev,0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+			input_mt_slot(gl_ts->touch_dev,1);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+			input_sync(gl_ts->touch_dev);
 			if (allow_irq_wake){
 				smp_wmb();
 				enable_irq_wake(gl_ts->client->irq);
