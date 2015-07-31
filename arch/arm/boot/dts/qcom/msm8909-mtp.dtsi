@@ -404,15 +404,24 @@
 	};
 };
 
+#include "dsi-panel-auo-qvga-cmd.dtsi"
+#include "dsi-panel-hx8394d-480p-video.dtsi"
 #include "dsi-panel-hx8394d-720p-video.dtsi"
 #include "dsi-panel-hx8394d-qhd-video.dtsi"
-#include "dsi-panel-auo-qvga-cmd.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
 
 &dsi_auo_qvga_cmd {
+        qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+        qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
+        qcom,mdss-dsi-bl-pmic-bank-select = <0>;
+        qcom,mdss-dsi-pwm-gpio = <&pm8909_mpps 2 0>;
+        qcom,cont-splash-enabled;
+};
+
+&dsi_hx8394d_480_vid {
         qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
         qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
         qcom,mdss-dsi-bl-pmic-bank-select = <0>;
