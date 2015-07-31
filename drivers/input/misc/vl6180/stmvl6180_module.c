@@ -106,7 +106,7 @@ static void stmvl6180_read_calibration_file(void)
 	mm_segment_t fs;
 	int i, is_sign = 0;
 
-	f = filp_open("/data/calibration/offset", O_RDONLY, 0);
+	f = filp_open("/persist/calibration/offset", O_RDONLY, 0);
 	if (f != NULL && !IS_ERR(f) && f->f_dentry != NULL) {
 		fs = get_fs();
 		set_fs(get_ds());
@@ -135,7 +135,7 @@ static void stmvl6180_read_calibration_file(void)
 	}
 
 	is_sign = 0;
-	f = filp_open("/data/calibration/xtalk", O_RDONLY, 0);
+	f = filp_open("/persist/calibration/xtalk", O_RDONLY, 0);
 	if (f != NULL && !IS_ERR(f) && f->f_dentry != NULL) {
 		fs = get_fs();
 		set_fs(get_ds());
@@ -180,7 +180,7 @@ static void stmvl6180_write_offset_calibration_file(void)
 	char buf[8];
 	mm_segment_t fs;
 
-	f = filp_open("/data/calibration/offset", O_WRONLY|O_CREAT, 0644);
+	f = filp_open("/persist/calibration/offset", O_WRONLY|O_CREAT, 0644);
 	if (f != NULL) {
 		fs = get_fs();
 		set_fs(get_ds());
@@ -200,7 +200,7 @@ static void stmvl6180_write_xtalk_calibration_file(void)
 	char buf[8];
 	mm_segment_t fs;
 
-	f = filp_open("/data/calibration/xtalk", O_WRONLY|O_CREAT, 0644);
+	f = filp_open("/persist/calibration/xtalk", O_WRONLY|O_CREAT, 0644);
 	if (f != NULL) {
 		fs = get_fs();
 		set_fs(get_ds());
@@ -473,7 +473,7 @@ static int stmvl6180_ioctl_handler(struct file *file,
 	switch (cmd) {
 	/* enable */
 	case VL6180_IOCTL_INIT:
-		vl6180_dbgmsg("VL6180_IOCTL_INIT\n");
+		pr_err("%s: VL6180_IOCTL_INIT\n", __func__);
 		/* turn on tof sensor only if it's not enabled by other client */
 		if (data->enable_ps_sensor == 0) {
 			/* to start */
@@ -530,7 +530,7 @@ static int stmvl6180_ioctl_handler(struct file *file,
 		break;
 	/* disable */
 	case VL6180_IOCTL_STOP:
-		vl6180_dbgmsg("VL6180_IOCTL_STOP\n");
+		vl6180_errmsg("VL6180_IOCTL_STOP\n");
 		/* turn off tof sensor only if it's enabled by other client */
 		if (data->enable_ps_sensor == 1) {
 			data->enable_ps_sensor = 0;
