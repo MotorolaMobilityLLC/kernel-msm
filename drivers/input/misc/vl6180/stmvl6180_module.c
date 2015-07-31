@@ -166,7 +166,10 @@ static void stmvl6180_read_calibration_file(void)
 		if (is_sign == 1)
 			xtalk_calib = -xtalk_calib;
 		pr_info("xtalk_calib as %d\n", xtalk_calib);
-		VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (xtalk_calib+13)); //+0.1Mcps
+		if ((xtalk_calib+13) < 64 )
+			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); //0.5Mcps
+		else
+			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (xtalk_calib+13)); //+0.1Mcps
 		VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 255);
 		VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
 						~RANGE_CHECK_RANGE_ENABLE_MASK, RANGE_CHECK_RANGE_ENABLE_MASK);

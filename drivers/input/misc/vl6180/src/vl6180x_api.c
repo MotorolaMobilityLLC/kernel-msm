@@ -1287,7 +1287,7 @@ int VL6180x_UpscaleSetScaling(VL6180xDev_t dev, uint8_t scaling)
 
 #ifdef VL6180x_HAVE_UPSCALE_DATA
 #define min_scaling 1
-#define max_scaling sizeof(ScalerLookUP)/sizeof(ScalerLookUP[0])
+#define max_scaling (sizeof(ScalerLookUP)/sizeof(ScalerLookUP[0]))
 #else
 	/* we are in fixed config so only allow configured factor */
 #define min_scaling VL6180x_UPSCALE_SUPPORT
@@ -1849,11 +1849,11 @@ static uint32_t _filter_StdDevDamper(uint32_t AmbientRate, uint32_t SignalRate,
 			newStdDev = StdDevLimitHighLight;
 		else {
 			newStdDev =
-			    (uint32_t) (StdDevLimitHighLight +
+			    (uint32_t) (StdDevLimitHighLight -
 					(SNR -
 					 StdDevLimitHighLightSNR) *
-					(int)(StdDevLimitLowLight -
-					      StdDevLimitHighLight) /
+					(StdDevLimitHighLight -
+					      StdDevLimitLowLight) /
 					(StdDevLimitLowLightSNR -
 					 StdDevLimitHighLightSNR));
 		}

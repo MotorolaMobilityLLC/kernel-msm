@@ -26,7 +26,7 @@
 #define STMVL6180_DRV_NAME	"stmvl6180"
 
 
-#define DRIVER_VERSION		"2.0.3"
+#define DRIVER_VERSION		"2.0.5"
 #define I2C_M_WR			0x00
 //#define INT_POLLING_DELAY     20
 #define RESULT_REG_COUNT	56

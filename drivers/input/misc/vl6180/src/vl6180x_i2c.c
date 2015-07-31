@@ -108,7 +108,7 @@ int VL6180x_WrDWord(VL6180xDev_t dev, uint16_t index, uint32_t data)
 	buffer[1] = index & 0xFF;
 	buffer[2] = data >> 24;
 	buffer[3] = (data >> 16) & 0xFF;
-	buffer[4] = (data >> 8) & 0xFF;;
+	buffer[4] = (data >> 8) & 0xFF;
 	buffer[5] = data & 0xFF;
 	status = VL6180x_I2CWrite(dev, buffer, (uint8_t) 6);
 	VL6180x_DoneI2CAcces(dev);
