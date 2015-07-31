@@ -262,7 +262,7 @@
 #define BATTERY_TEMP_LO    -100 //battery low temp threshold
 #define WARM_VOL_BUFFER     100     //warm_bat_mv need have a 100mV buffer
 #define WARM_TEMP_THR       380 //battery warm temp threshold for running test
-#define HOT_MAX_TEMP_THR    60  //battery hot max temp threshold for running test 
+#define HOT_MAX_TEMP_THR    60  //battery hot max temp threshold for running test
 #define BATT_FULL           100 //battery full capactiy
 #define USB_CHG_VALID_MASK 0xC0
 #define USB_CHG_VALID_OVP_VALUE    0x40
@@ -457,6 +457,9 @@ struct qpnp_chg_chip {
     struct work_struct      lower_power_usb_workaround;
     bool                    hw_low_power_usb_workaround_enable;
     struct wake_lock        led_wake_lock;
+    struct timespec         charger_gone_begin_time;
+    struct timespec         charger_gone_current_time;
+    bool                    charger_gone_soc_change_enable;
 #endif
 };
 
@@ -986,7 +989,7 @@ qpnp_chg_check_usbin_health(struct qpnp_chg_chip *chip)
 /*check if usb or charger present*/
 int is_usb_chg_exist(void)
 {
-    if (!global_chip) 
+    if (!global_chip)
     {
         pr_err("called before init\n");
         return -EINVAL;
@@ -1002,7 +1005,7 @@ int is_otg_host_mode(void)
     if(!global_chip)
     {
         pr_err("called before init\n");
-        return -EINVAL;		
+        return -EINVAL;
     }
     return qpnp_chg_is_otg_en_set(global_chip);
 }
@@ -1198,7 +1201,7 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 /*==========================================
 FUNCTION: huawei_hot_design_iusb_set
 
-DESCRIPTION:	set hot_design_current  
+DESCRIPTION:	set hot_design_current
 				(1)the min current is allowed to set is 500mA
 				(2)only write current into the register when usb chg_type is dcp
 INPUT:	int mA (input current)
@@ -1923,9 +1926,9 @@ static void hw_bad_tm_check_correct(struct qpnp_chg_chip *chip)
     {
         return;
     }
-    
+
     temp = get_prop_batt_temp(chip);
-    if(temp > chip->cold_bat_decidegc + HW_HYSTERISIS_DECIDEGC 
+    if(temp > chip->cold_bat_decidegc + HW_HYSTERISIS_DECIDEGC
         && temp < chip->hot_bat_decidegc - HW_HYSTERISIS_DECIDEGC)
     {
         pr_info("bad_temp_flag is correct right \n ");
@@ -1992,16 +1995,25 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 		return IRQ_HANDLED;
 
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-	/*avoid the battery can not be charged when usb do not report any port*/
-	if(usb_present)
-	{
-		qpnp_chg_iusbmax_set(chip, USB_WALL_THRESHOLD_MA);
-	}
+    /*avoid the battery can not be charged when usb do not report any port*/
+    if(usb_present)
+    {
+        qpnp_chg_iusbmax_set(chip, USB_WALL_THRESHOLD_MA);
+        memset(&chip->charger_gone_begin_time, 0, sizeof(struct timespec));
+        memset(&chip->charger_gone_current_time, 0, sizeof(struct timespec));
+        chip->charger_gone_soc_change_enable = true;
+    }
+    else
+    {
+        /*when charger out, wait for a moment to enable soc change*/
+        get_monotonic_boottime(&chip->charger_gone_begin_time);
+        chip->charger_gone_soc_change_enable = false;
+    }
 #endif
 	if (chip->usb_present ^ usb_present) {
 /* irq_handler do not allow call function who has use mutex ,it will cause crash*/
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-        if(bad_temp_flag && usb_present)    
+        if(bad_temp_flag && usb_present)
         {
             check_temp_flag = true;
         }
@@ -2009,7 +2021,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
         {
             force_ps_but_not_chg = false;
             qpnp_chg_charge_en(chip, !force_ps_but_not_chg);
-            qpnp_chg_force_run_on_batt(chip, force_ps_but_not_chg);	
+            qpnp_chg_force_run_on_batt(chip, force_ps_but_not_chg);
             pr_info("force_ps_but_not_chg is changed to false\n");
         }
 #endif
@@ -3068,7 +3080,10 @@ get_prop_charge_full(struct qpnp_chg_chip *chip)
 	return 0;
 }
 
-#define MAX_FAKE_REDUCE_VALUE		6	
+#define MAX_FAKE_REDUCE_VALUE		6
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+#define CHARGER_GONE_DISABLE_SOC_CHANGE_TIME    10
+#endif
 static int
 get_prop_capacity(struct qpnp_chg_chip *chip)
 {
@@ -3077,7 +3092,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
     static int last_soc = -1;
     if(!get_prop_batt_present(chip))
-        return capacity_based_voltage(chip); 
+        return capacity_based_voltage(chip);
 #endif
 
 	if (chip->fake_battery_soc >= 0)
@@ -3124,7 +3139,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 				pr_warn_ratelimited("Battery 0, CHG absent\n");
 		}
             /* when usb charger in ,do not allow capacity decrease */
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING	
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
 
         if(last_soc < 0 || running_test_soc_enable || soc < DEFAULT_CAPACITY)
         {
@@ -3135,6 +3150,24 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
         {
             pr_debug("charger in,fake capacity from soc %d to last_soc %d \n",soc, last_soc);
             soc = last_soc;
+        }
+        else if(!charger_in &&  (last_soc > soc) && !chip->charger_gone_soc_change_enable)
+        {
+            get_monotonic_boottime(&chip->charger_gone_current_time);
+            pr_debug("charger_gone_current_time.tv_sec = %ld, charger_gone_begin_time.tv_sec = %ld\n",
+                (long)(chip->charger_gone_current_time.tv_sec),
+                (long)(chip->charger_gone_begin_time.tv_sec));
+            if((chip->charger_gone_current_time.tv_sec - chip->charger_gone_begin_time.tv_sec)
+                < CHARGER_GONE_DISABLE_SOC_CHANGE_TIME)
+            {
+                pr_debug("charger out,fake capacity from soc %d to last_soc %d \n",soc, last_soc);
+                soc = last_soc;
+            }
+            else
+            {
+                chip->charger_gone_soc_change_enable = true;
+                last_soc = soc;
+            }
         }
         else
         {
@@ -3272,7 +3305,7 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 					}
 			} else {
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
-                if(chip->hw_low_power_usb_workaround_enable 
+                if(chip->hw_low_power_usb_workaround_enable
                     && (ret.intval / 1000) == USB_WALL_THRESHOLD_MA)
                 {
                     schedule_work(&chip->lower_power_usb_workaround);
@@ -3317,7 +3350,7 @@ static void poweroff_delay(struct work_struct *work)
 static void poweroff_batt_level_check(struct qpnp_chg_chip *chip,union power_supply_propval *val)
 {
 
-    if((val->intval <= CUTOFF_BATTERY_LEVEL) 
+    if((val->intval <= CUTOFF_BATTERY_LEVEL)
         && (!qpnp_chg_is_usb_chg_plugged_in(chip))
         && (!qpnp_chg_is_dc_chg_plugged_in(chip))
         &&(get_prop_batt_present(chip))
@@ -3327,7 +3360,7 @@ static void poweroff_batt_level_check(struct qpnp_chg_chip *chip,union power_sup
         {
             pr_debug("start poweroff delay\n");
             wake_lock(&chip->poweroff_wake_lock);
-            schedule_delayed_work(&chip->poweroff_delay_work, 
+            schedule_delayed_work(&chip->poweroff_delay_work,
                 round_jiffies_relative(msecs_to_jiffies(POWEROFF_DELAY_MS)));
             chip->poweroff_delay_work_flag = true;
         }
@@ -3468,10 +3501,10 @@ static int get_running_test_result(struct qpnp_chg_chip *chip)
         return result;
     }else{
         pr_info("other else\n");
-        if((POWER_SUPPLY_STATUS_NOT_CHARGING == cur_status)  
-            && (HOT_MAX_TEMP_THR >= temp)){  
-            result |= CHARGE_STATUS_PASS;  
-            pr_info("cur_status = %d temp = %d\n", cur_status, temp);  
+        if((POWER_SUPPLY_STATUS_NOT_CHARGING == cur_status)
+            && (HOT_MAX_TEMP_THR >= temp)){
+            result |= CHARGE_STATUS_PASS;
+            pr_info("cur_status = %d temp = %d\n", cur_status, temp);
             return result;
         }
 
@@ -4658,8 +4691,8 @@ qpnp_chg_soc_check_work(struct work_struct *work)
 /*====================================================================================
 FUNCTION: hw_tm_warm_notification_zone
 
-DESCRIPTION:	when qpnp_tm_state is warm, call this function.to acquire the 
-				temperature zone type 
+DESCRIPTION:	when qpnp_tm_state is warm, call this function.to acquire the
+				temperature zone type
 
 INPUT:	temperature,struct qpnp_chg_chip *chip
 OUTPUT: NULL
@@ -4701,8 +4734,8 @@ static int hw_tm_warm_notification_zone(int temp,struct qpnp_chg_chip *chip)
 /*====================================================================================
 FUNCTION: hw_tm_cool_notification_zone
 
-DESCRIPTION:	when qpnp_tm_state is cool, call this function.to acquire the 
-				temperature zone type 
+DESCRIPTION:	when qpnp_tm_state is cool, call this function.to acquire the
+				temperature zone type
 
 INPUT:	temperature,struct qpnp_chg_chip *chip
 OUTPUT: NULL
@@ -4820,8 +4853,8 @@ static void hw_tm_set_configure(enum hw_high_low_temp_configure_type zone,struct
         pr_info("bad_temp_flag is %d,qpnp_chg_charge_en is %d\n",bad_temp_flag,!bad_temp_flag);
         qpnp_chg_charge_en(chip,!bad_temp_flag);
     }
-    
-    if (chip->bat_is_cool ^ bat_cool || chip->bat_is_warm ^ bat_warm) 
+
+    if (chip->bat_is_cool ^ bat_cool || chip->bat_is_warm ^ bat_warm)
     {
         chip->bat_is_cool = bat_cool;
         chip->bat_is_warm = bat_warm;
@@ -6304,6 +6337,9 @@ qpnp_charger_probe(struct spmi_device *spmi)
     chip->running_test_settled_status = POWER_SUPPLY_STATUS_CHARGING;
     INIT_WORK(&chip->lower_power_usb_workaround,
             qpnp_chg_usb_low_power_work);
+    memset(&chip->charger_gone_begin_time, 0, sizeof(struct timespec));
+    memset(&chip->charger_gone_current_time, 0, sizeof(struct timespec));
+    chip->charger_gone_soc_change_enable = true;
 #endif
 	mutex_init(&chip->jeita_configure_lock);
 	mutex_init(&chip->batfet_vreg_lock);
@@ -6716,7 +6752,10 @@ qpnp_charger_remove(struct spmi_device *spmi)
 
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
     cancel_work_sync(&chip->lower_power_usb_workaround);
-#endif
+    memset(&chip->charger_gone_begin_time, 0, sizeof(struct timespec));
+    memset(&chip->charger_gone_current_time, 0, sizeof(struct timespec));
+    chip->charger_gone_soc_change_enable = true;
+ #endif
 	mutex_destroy(&chip->batfet_vreg_lock);
 	mutex_destroy(&chip->jeita_configure_lock);
 
