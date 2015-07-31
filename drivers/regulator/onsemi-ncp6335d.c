@@ -71,6 +71,7 @@ struct ncp6335d_info {
 	unsigned int max_slew_ns;
 	unsigned int peek_poke_address;
 
+	bool set_en_always;
 	struct dentry *debug_root;
 };
 
@@ -232,8 +233,15 @@ static int ncp6335d_set_voltage(struct regulator_dev *rdev,
 		return -EINVAL;
 	}
 
-	rc = ncp6335x_update_bits(dd, dd->vsel_reg,
-		NCP6335D_VOUT_SEL_MASK, (set_val & NCP6335D_VOUT_SEL_MASK));
+	if (dd->set_en_always) {
+		rc = ncp6335x_write(dd, dd->vsel_reg,
+			NCP6335D_ENABLE | (set_val & NCP6335D_VOUT_SEL_MASK));
+	} else {
+		rc = ncp6335x_update_bits(dd, dd->vsel_reg,
+			NCP6335D_VOUT_SEL_MASK,
+			(set_val & NCP6335D_VOUT_SEL_MASK));
+	}
+
 	if (rc) {
 		dev_err(dd->dev, "Unable to set volatge (%d %d)\n",
 							min_uV, max_uV);
@@ -512,6 +520,9 @@ static int ncp6335d_parse_dt(struct i2c_client *client,
 		dev_err(&client->dev, "min set point missing: rc = %d.\n", rc);
 		return rc;
 	}
+
+	dd->set_en_always = of_property_read_bool(client->dev.of_node,
+				"onnn,set-en-always");
 
 	return rc;
 }
