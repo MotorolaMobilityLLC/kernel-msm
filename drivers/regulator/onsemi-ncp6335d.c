@@ -102,12 +102,21 @@ static int ncp6335x_write(struct ncp6335d_info *dd, unsigned int reg,
 						unsigned int val)
 {
 	int i = 0, rc = 0;
+	int read_val = 0;
 
 	rc = regmap_write(dd->regmap, reg, val);
-	for (i = 0; rc && i < ARRAY_SIZE(delay_array); i++) {
-		pr_debug("Failed writing reg=%u - retry(%d)\n", reg, i);
+
+	rc = regmap_read(dd->regmap, reg, &read_val);
+
+	pr_debug(" %s: reg=0x%x, val=0x%x, read_val=0x%x\n",
+		__func__, reg, val, read_val);
+
+	for (i = 0; rc && val != read_val && i < ARRAY_SIZE(delay_array); i++) {
+		pr_debug("Failed writing reg=%u val=%u read_val=%u - "
+			"retry(%d)\n", reg, val, read_val, i);
 		msleep(delay_array[i]);
 		rc = regmap_write(dd->regmap, reg, val);
+		rc = regmap_read(dd->regmap, reg, &read_val);
 	}
 
 	if (rc)
