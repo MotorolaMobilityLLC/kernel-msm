@@ -529,7 +529,7 @@ int fts_ctpm_fw_upgrade_with_sys_fs(unsigned char *fw, int len, bool change_iref
 		FileLength = fullFileLength;
 
 #ifdef HX_RST_PIN_FUNC
-			himax_HW_reset(false,false);
+		himax_HW_reset(false, true);
 #endif
 
 		if ( i2c_himax_write_command(private_ts->client, 0x81, DEFAULT_RETRY_CNT) < 0) {
@@ -1035,7 +1035,7 @@ static int i_update_FW(void)
 			else
 				I("%s: TP upgrade error\n", __func__);
 #ifdef HX_RST_PIN_FUNC
-			himax_HW_reset(false,false);
+			himax_HW_reset(false, true);
 #endif
 			return 1;
 		}
@@ -1513,8 +1513,10 @@ void himax_HW_reset(uint8_t loadconfig,uint8_t int_off)
 {
 	struct himax_ts_data *ts = private_ts;
 	int ret = 0;
+
+	HW_RESET_ACTIVATE = 1;
 	if (ts->rst_gpio) {
-		if(int_off) {
+		if(!int_off) {
 				if (ts->use_irq)
 					himax_int_enable(private_ts->client->irq,0);
 				else {
@@ -1533,7 +1535,7 @@ void himax_HW_reset(uint8_t loadconfig,uint8_t int_off)
 		if(loadconfig)
 			himax_loadSensorConfig(private_ts->client,private_ts->pdata);
 
-		if(int_off) {
+		if(!int_off) {
 				if (ts->use_irq)
 					himax_int_enable(private_ts->client->irq,1);
 				else
@@ -2063,13 +2065,13 @@ inline static void himax_ts_work(struct himax_ts_data *ts)
 #ifdef HX_TP_SYS_DIAG
 			diag_cmd = getDiagCommand();
 #ifdef HX_ESD_WORKAROUND
-			if (check_sum_cal != 0 && ESD_RESET_ACTIVATE == 0 && diag_cmd == 0)  //ESD Check
+			if (check_sum_cal != 0 && ESD_RESET_ACTIVATE == 0 && HW_RESET_ACTIVATE == 0 && diag_cmd == 0)
 #else
 			if (check_sum_cal != 0 && diag_cmd == 0)
 #endif
 #else
 #ifdef HX_ESD_WORKAROUND
-			if (check_sum_cal != 0 && ESD_RESET_ACTIVATE == 0 )  //ESD Check
+			if (check_sum_cal != 0 && ESD_RESET_ACTIVATE == 0 && HW_RESET_ACTIVATE == 0)
 #else
 			if (check_sum_cal !=0)
 #endif
@@ -2095,7 +2097,15 @@ inline static void himax_ts_work(struct himax_ts_data *ts)
 				I("[HIMAX TP MSG]:%s: Back from reset, ready to serve.\n", __func__);
 				return;
 			}
+			else if (HW_RESET_ACTIVATE)
+#else
+			 if (HW_RESET_ACTIVATE)
 #endif
+			{
+				HW_RESET_ACTIVATE = 0;/*drop 1st interrupts after chip reset*/
+				I("[HIMAX]:%s: HW_RST Back from reset, ready to serve.\n", __func__);
+				return;
+			}
 
 		for (loop_i = 0, check_sum_cal = 0; loop_i < hx_touch_info_size; loop_i++)
 			check_sum_cal += buf[loop_i];
@@ -4467,6 +4477,8 @@ static int himax852xes_probe(struct i2c_client *client,
 #ifdef HX_ESD_WORKAROUND
 	ESD_RESET_ACTIVATE = 0;
 #endif
+HW_RESET_ACTIVATE = 0;
+
 #if defined(HX_USB_DETECT)
 	if (ts->cable_config)
 		cable_detect_register_notifier(&himax_cable_status_handler);
