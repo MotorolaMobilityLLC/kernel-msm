@@ -1220,6 +1220,7 @@
 
 &pm8916_l6 {
 	regulator-boot-on;
+	regulator-always-on;
 };
 
 &pm8916_l16 {
