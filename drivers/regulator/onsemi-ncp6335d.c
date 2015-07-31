@@ -77,6 +77,10 @@ struct ncp6335d_info {
 
 static int delay_array[] = {10, 20, 30, 40, 50};
 
+static bool en_reg_dump;
+module_param_named(dump_registers,
+	en_reg_dump, bool, S_IRUGO | S_IWUSR | S_IWGRP);
+
 static int ncp6335x_read(struct ncp6335d_info *dd, unsigned int reg,
 						unsigned int *val)
 {
@@ -137,7 +141,7 @@ static void dump_registers(struct ncp6335d_info *dd,
 	unsigned int val = 0;
 
 	ncp6335x_read(dd, reg, &val);
-	dev_dbg(dd->dev, "%s: NCP6335D: Reg = %x, Val = %x\n", func, reg, val);
+	dev_info(dd->dev, "%s: NCP6335D: Reg = %x, Val = %x\n", func, reg, val);
 }
 
 static void ncp633d_slew_delay(struct ncp6335d_info *dd,
@@ -164,7 +168,8 @@ static int ncp6335d_enable(struct regulator_dev *rdev)
 	if (rc)
 		dev_err(dd->dev, "Unable to enable regualtor rc(%d)", rc);
 
-	dump_registers(dd, dd->vsel_reg, __func__);
+	if (en_reg_dump)
+		dump_registers(dd, dd->vsel_reg, __func__);
 
 	return rc;
 }
@@ -179,7 +184,8 @@ static int ncp6335d_disable(struct regulator_dev *rdev)
 	if (rc)
 		dev_err(dd->dev, "Unable to disable regualtor rc(%d)", rc);
 
-	dump_registers(dd, dd->vsel_reg, __func__);
+	if (en_reg_dump)
+		dump_registers(dd, dd->vsel_reg, __func__);
 
 	return rc;
 }
@@ -198,7 +204,8 @@ static int ncp6335d_get_voltage(struct regulator_dev *rdev)
 	dd->curr_voltage = ((val & NCP6335D_VOUT_SEL_MASK) * dd->step_size) +
 				dd->min_voltage;
 
-	dump_registers(dd, dd->vsel_reg, __func__);
+	if (en_reg_dump)
+		dump_registers(dd, dd->vsel_reg, __func__);
 
 	return dd->curr_voltage;
 }
@@ -234,7 +241,8 @@ static int ncp6335d_set_voltage(struct regulator_dev *rdev,
 		dd->curr_voltage = new_uV;
 	}
 
-	dump_registers(dd, dd->vsel_reg, __func__);
+	if (en_reg_dump)
+		dump_registers(dd, dd->vsel_reg, __func__);
 
 	return rc;
 }
@@ -276,7 +284,8 @@ static int ncp6335d_set_mode(struct regulator_dev *rdev,
 	if (rc)
 		dev_err(dd->dev, "Unable to set DVS trans. mode rc(%d)", rc);
 
-	dump_registers(dd, REG_NCP6335D_COMMAND, __func__);
+	if (en_reg_dump)
+		dump_registers(dd, REG_NCP6335D_COMMAND, __func__);
 
 	return rc;
 }
@@ -293,7 +302,8 @@ static unsigned int ncp6335d_get_mode(struct regulator_dev *rdev)
 		return rc;
 	}
 
-	dump_registers(dd, REG_NCP6335D_COMMAND, __func__);
+	if (en_reg_dump)
+		dump_registers(dd, REG_NCP6335D_COMMAND, __func__);
 
 	if (val & dd->mode_bit)
 		return REGULATOR_MODE_FAST;
@@ -454,10 +464,12 @@ static int ncp6335d_init(struct i2c_client *client, struct ncp6335d_info *dd,
 	if (rc)
 		dev_err(dd->dev, "Unable to set sleep mode (%d)\n", rc);
 
-	dump_registers(dd, REG_NCP6335D_COMMAND, __func__);
-	dump_registers(dd, REG_NCP6335D_PROGVSEL0, __func__);
-	dump_registers(dd, REG_NCP6335D_TIMING, __func__);
-	dump_registers(dd, REG_NCP6335D_PGOOD, __func__);
+	if (en_reg_dump) {
+		dump_registers(dd, REG_NCP6335D_COMMAND, __func__);
+		dump_registers(dd, REG_NCP6335D_PROGVSEL0, __func__);
+		dump_registers(dd, REG_NCP6335D_TIMING, __func__);
+		dump_registers(dd, REG_NCP6335D_PGOOD, __func__);
+	}
 
 	return rc;
 }
