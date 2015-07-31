@@ -105,6 +105,7 @@
 
 &sdhc_1 {
 	vdd-supply = <&pm8916_l8>;
+	qcom,vdd-always-on;
 	qcom,vdd-voltage-level = <2900000 2900000>;
 	qcom,vdd-current-level = <200 400000>;
 
