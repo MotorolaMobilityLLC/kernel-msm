@@ -2908,19 +2908,23 @@ static int wcd_cpe_lsm_control_lab(void *core_handle,
 		if (rc) {
 			pr_err("%s: LAB disable/ Enable failed rc %d\n",
 			       __func__, rc);
+			wcd_cpe_buf_dealloc(core_handle, session,
+					    bufsz, bufcnt);
 			return rc;
 		}
 		session->lab.core_handle = core_handle;
 		session->lab.lsm_s = session;
+		session->lab.is_lab_enabled = true;
 	} else {
 		rc = wcd_cpe_buf_dealloc(core_handle, session, bufsz, bufcnt);
 		/* do not return error for DMA dealloc put
 		 * session in detection mode
 		 */
-		if (rc) {
+		if (rc)
 			pr_err("%s: DMA buffer De-allocation failed, rc %d\n",
 			       __func__, rc);
-		}
+		else
+			session->lab.is_lab_enabled = false;
 
 		rc = wcd_cpe_lsm_lab_enable_disable(core, session, enable);
 		if (rc) {
@@ -2928,7 +2932,6 @@ static int wcd_cpe_lsm_control_lab(void *core_handle,
 			       __func__, rc);
 			return rc;
 		}
-		session->lab.lab_enable = false;
 	}
 	return rc;
 }
