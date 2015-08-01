@@ -1010,8 +1010,15 @@ static void msm_vfe47_cfg_camif(struct vfe_device *vfe_dev,
 	else
 		bus_sub_en = 0;
 
-	msm_camera_io_w(pix_cfg->input_mux << 5 | pix_cfg->pixel_pattern,
+	if(pix_cfg->camif_cfg.hbi_cnt > 0) {
+		val = pix_cfg->input_mux << 5 | pix_cfg->pixel_pattern;
+		val = val | (uint32_t)(1 << 22);
+		val = val | (uint32_t)(0x03fff00 & (pix_cfg->camif_cfg.hbi_cnt << 8));
+		msm_camera_io_w(val, vfe_dev->vfe_base + 0x50);
+	} else {
+		msm_camera_io_w(pix_cfg->input_mux << 5 | pix_cfg->pixel_pattern,
 		vfe_dev->vfe_base + 0x50);
+	}
 
 	first_pixel = camif_cfg->first_pixel;
 	last_pixel = camif_cfg->last_pixel;
