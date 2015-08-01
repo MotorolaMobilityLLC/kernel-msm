@@ -17,7 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_mot_nt35355_360p_cmd_small: qcom,mdss_dsi_mot_nt35355_360p_cmd_small {
-		qcom,mdss-dsi-panel-config-version = "1.04.01";
+		qcom,mdss-dsi-panel-config-version = "1.05.01";
 		qcom,mdss-dsi-panel-name = "mot nt35355 command mode dsi panel 2.0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -62,7 +62,11 @@
 		39 01 00 00 00 00 05 2B 00 00 01 67
 		15 01 00 00 00 00 02 C0 01
 		05 01 00 00 64 00 01 11
-		05 01 00 00 28 00 01 29];
+		05 01 00 00 28 00 01 29
+		15 01 00 00 00 00 02 FF 24
+		15 01 00 00 00 00 02 FB 01
+		15 01 00 00 00 00 02 C8 00
+		15 01 00 00 00 00 02 FF 10];
 		qcom,mdss-dsi-off-command = [05 01 00 00 00 00 01 28
 		05 01 00 00 55 00 01 10];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
