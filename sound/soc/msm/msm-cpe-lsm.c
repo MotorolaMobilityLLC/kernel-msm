@@ -831,11 +831,13 @@ static int msm_cpe_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		}
 
 		dev_dbg(rtd->dev,
-			"%s: %s, lab_enable = %d\n",
+			"%s: %s, lab_enable = %d, lab currently %s\n",
 			__func__, "SNDRV_LSM_LAB_CONTROL",
-			lab_sess->lab_enable);
+			lab_sess->lab_enable,
+			(lab_sess->is_lab_enabled) ? "enabled" : "disabled");
 
-		if (lab_sess->lab_enable) {
+		if (lab_sess->lab_enable &&
+		    !lab_sess->is_lab_enabled) {
 			rc = lsm_ops->lsm_lab_control(cpe->core_handle,
 					session,
 					lab_sess->hw_params.buf_sz,
@@ -864,7 +866,8 @@ static int msm_cpe_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			init_completion(&lab_sess->thread_complete);
 			snd_pcm_set_runtime_buffer(substream,
 						   &substream->dma_buffer);
-		} else {
+		} else if (!lab_sess->lab_enable &&
+			   lab_sess->is_lab_enabled){
 			/*
 			 * It is possible that lab is still enabled
 			 * when trying to de-allocate the lab buffer.
@@ -888,6 +891,7 @@ static int msm_cpe_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 				       __func__, rc);
 				return rc;
 			}
+
 		}
 	break;
 	case SNDRV_LSM_REG_SND_MODEL_V2:
@@ -982,13 +986,15 @@ static int msm_cpe_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 				return rc;
 			}
 
-			rc = lsm_ops->lsm_lab_control(cpe->core_handle,
+			if (lab_sess->is_lab_enabled) {
+				rc = lsm_ops->lsm_lab_control(cpe->core_handle,
 					session, lab_sess->hw_params.buf_sz,
 					lab_sess->hw_params.period_count,
 					false);
-			if (rc) {
-				pr_err("%s: Lab Disable Failed rc %d\n",
-				       __func__, rc);
+				if (rc) {
+					pr_err("%s: Lab Disable Failed rc %d\n",
+					       __func__, rc);
+				}
 			}
 		}
 
