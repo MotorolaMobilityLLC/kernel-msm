@@ -15,7 +15,8 @@
 		pmi8994_haptics: qcom,haptic@c000 {
 			qcom,wave-play-rate-us = <4255>;
 			qcom,wave-shape = "sine";
-			qcom,vmax-mv = <1800>;
+			qcom,vmax-mv = <1200>;
 		};
 	};
 };
+
