@@ -596,7 +596,6 @@ struct sentral_device {
 	struct mutex lock_reset;
 	struct mutex lock_ts;
 	struct wake_lock w_lock;
-	struct wake_lock w_lock_reset;
 	struct notifier_block nb;
 	wait_queue_head_t wq_flush;
 	bool flush_pending;
@@ -614,7 +613,8 @@ struct sentral_device {
 	unsigned long enabled_mask;
 	unsigned long ts_ref_reset_mask;
 	struct sentral_param_sensor_config sensor_config[SST_MAX];
-	struct sentral_wake_src_count wake_src_prev;
+	struct sentral_wake_src_count wake_src_count;
+	struct sentral_wake_src_count wake_src_count_pending;
 	unsigned long sensor_warmup_mask;
 	u32 fw_crc;
 	unsigned int crash_count;
