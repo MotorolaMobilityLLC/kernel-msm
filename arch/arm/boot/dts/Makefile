@@ -101,7 +101,8 @@ dtb-$(CONFIG_MACH_LENOK) += apq8026-lenok-rev-10.dtb \
 	apq8026-lenok-rev-evb1.dtb
 dtb-$(CONFIG_MACH_BASS) += apq8026-bass-rev-b.dtb \
 	apq8026-bass-rev-a.dtb
-dtb-$(CONFIG_MACH_NEMO) += msm8926-nemo-rev-b.dtb \
+dtb-$(CONFIG_MACH_NEMO) += msm8926-nemo-rev-10.dtb \
+	msm8926-nemo-rev-b.dtb \
 	msm8926-nemo-rev-a.dtb \
 	msm8926-nemo-rev-evb3.dtb \
 	msm8926-nemo-rev-evb2.dtb \
