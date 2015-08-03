@@ -71,3 +71,8 @@
 	};
 };
 
+&pmi8994_charger {
+	qcom,current-stage-threshold-mv = <4200>;
+	qcom,current-stage-delta-mv = <50>;
+	qcom,current-stage-ma = <2400>;
+};
