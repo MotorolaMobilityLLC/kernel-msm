@@ -534,6 +534,20 @@ static void msm_wdog_ctx_reset(struct msm_wdog_cpuctx *ctx, size_t ctx_size)
 	}
 }
 
+#if defined(CONFIG_ARM64)
+static inline int virt_is_valid(unsigned long addr)
+{
+	return virt_is_valid_lowmem(addr) ||
+		(config_enabled(CONFIG_ARCH_THREAD_INFO_ALLOCATOR) &&
+			is_vmalloc_addr((const void *)addr));
+}
+#else
+static inline int virt_is_valid(unsigned long addr)
+{
+	return virt_addr_valid(addr);
+}
+#endif
+
 static void msm_wdt_show_raw_mem(unsigned long addr, int nbytes,
 			unsigned long old_addr, const char *label)
 {
@@ -542,7 +556,7 @@ static void msm_wdt_show_raw_mem(unsigned long addr, int nbytes,
 	unsigned long *p;
 
 	MSMWDTD("%s: %#lx: ", label, old_addr);
-	if (!virt_addr_valid(old_addr)) {
+	if (!virt_is_valid(old_addr)) {
 		MSMWDTD("is not valid kernel address.\n");
 		return;
 	}
@@ -680,7 +694,7 @@ static void msm_wdt_unwind(struct task_struct *p,
 	int offset;
 	struct sysdbg_cpu64_ctxt_regs *regs = &sysdbg_ctx->cpu_regs.cpu64_ctxt;
 
-	if (!virt_addr_valid(addr)) {
+	if (!virt_is_valid(addr)) {
 		MSMWDTD("%016lx is not valid kernel address.\n", addr);
 		return;
 	}
@@ -753,7 +767,7 @@ static void msm_wdt_unwind(struct task_struct *p,
 	int offset;
 	struct sysdbg_cpu32_ctxt_regs *regs = &sysdbg_ctx->cpu_regs.cpu32_ctxt;
 
-	if (!virt_addr_valid(addr)) {
+	if (!virt_is_valid(addr)) {
 		MSMWDTD("%08lx is not valid kernel address.\n", addr);
 		return;
 	}
