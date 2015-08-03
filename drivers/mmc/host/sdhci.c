@@ -22,7 +22,7 @@
 #include <linux/scatterlist.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pm_runtime.h>
-
+#include <linux/ratelimit.h>
 #include <linux/leds.h>
 
 #include <linux/mmc/mmc.h>
@@ -2802,7 +2802,7 @@ static irqreturn_t sdhci_irq(int irq, void *dev_id)
 
 	if (host->runtime_suspended || !host->clock) {
 		spin_unlock(&host->lock);
-		pr_warning("%s: got irq while runtime suspended\n",
+		pr_warn_ratelimited("%s: got irq while runtime suspended\n",
 		       mmc_hostname(host->mmc));
 		return IRQ_HANDLED;
 	}
