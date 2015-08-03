@@ -293,6 +293,19 @@ static uint32 dhd_pktid_map_alloc(dhd_pktid_map_handle_t *map, void *pkt,
 static void *dhd_pktid_map_free(dhd_pktid_map_handle_t *map, uint32 id,
                                 dmaaddr_t *physaddr, uint32 *len, uint8 buf_type);
 
+#define USE_DHD_PKTID_LOCK	1
+#ifdef USE_DHD_PKTID_LOCK
+#define DHD_PKTID_LOCK_INIT(osh)		dhd_os_spin_lock_init(osh)
+#define DHD_PKTID_LOCK_DEINIT(osh, lock)	dhd_os_spin_lock_deinit(osh, lock)
+#define DHD_PKTID_LOCK(lock)			dhd_os_spin_lock(lock)
+#define DHD_PKTID_UNLOCK(lock, flags)		dhd_os_spin_unlock(lock, flags)
+#else
+#define DHD_PKTID_LOCK_INIT(osh)		(void *)(1)
+#define DHD_PKTID_LOCK_DEINIT(osh, lock)	do {  } while (0)
+#define DHD_PKTID_LOCK(lock)			0
+#define DHD_PKTID_UNLOCK(lock, flags)		do {  } while (0)
+#endif
+
 /* Packet metadata saved in packet id mapper */
 
 typedef enum pkt_buf_type {
@@ -334,6 +347,7 @@ typedef struct dhd_pktid_map {
     int         items;    /* total items in map */
     int         avail;    /* total available items */
     int         failures; /* lockers unavailable count */
+    void        *pktid_lock;
     uint32      keys[MAX_PKTID_ITEMS + 1]; /* stack of unique pkt ids */
     dhd_pktid_item_t lockers[0];           /* metadata storage */
 } dhd_pktid_map_t;
@@ -408,6 +422,12 @@ dhd_pktid_map_init(void *osh, uint32 num_items)
 	}
 	bzero(map, dhd_pktid_map_sz);
 
+	map->pktid_lock = DHD_PKTID_LOCK_INIT(osh);
+	if (map->pktid_lock == NULL) {
+		DHD_ERROR(("%s:%d: Lock init failed \r\n", __FUNCTION__, __LINE__));
+		goto error;
+	}
+
 	map->osh = osh;
 	map->items = num_items;
 	map->avail = num_items;
@@ -420,6 +440,15 @@ dhd_pktid_map_init(void *osh, uint32 num_items)
 	}
 
 	return (dhd_pktid_map_handle_t *)map; /* opaque handle */
+
+error:
+	if (map) {
+		if (map->pktid_lock) {
+				DHD_PKTID_LOCK_DEINIT(osh, map->pktid_lock);
+		}
+		MFREE(osh, map, dhd_pktid_map_sz);
+	}
+	return (dhd_pktid_map_handle_t *)NULL; /* opaque handle */
 }
 
 /*
@@ -435,11 +464,14 @@ dhd_pktid_map_fini(dhd_pktid_map_handle_t *handle)
 	dhd_pktid_map_t *map;
 	uint32 dhd_pktid_map_sz;
 	dhd_pktid_item_t *locker;
+	unsigned long flags;
 
 	if (handle == NULL)
 		return;
 
 	map = (dhd_pktid_map_t *)handle;
+	flags =  DHD_PKTID_LOCK(map->pktid_lock);
+
 	osh = map->osh;
 	dhd_pktid_map_sz = DHD_PKTID_MAP_SZ(map->items);
 
@@ -466,6 +498,9 @@ dhd_pktid_map_fini(dhd_pktid_map_handle_t *handle)
 		}
 	}
 
+	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
+	DHD_PKTID_LOCK_DEINIT(osh, map->pktid_lock);
+
 	MFREE(osh, handle, dhd_pktid_map_sz);
 }
 
@@ -476,6 +511,7 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 	int nkey;
 	dhd_pktid_map_t *map;
 	dhd_pktid_item_t *locker;
+	unsigned long flags;
 
 	DHD_TRACE(("%s\n",__FUNCTION__));
 
@@ -483,6 +519,8 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 		return;
 
 	map = (dhd_pktid_map_t *)handle;
+	flags  = DHD_PKTID_LOCK(map->pktid_lock);
+
 	osh = map->osh;
 	map->failures = 0;
 
@@ -508,6 +546,7 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 		}
 	}
 	map->avail = map->items;
+	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 }
 
 /* Get the pktid free count */
@@ -515,11 +554,17 @@ static INLINE uint32 BCMFASTPATH
 dhd_pktid_map_avail_cnt(dhd_pktid_map_handle_t *handle)
 {
 	dhd_pktid_map_t *map;
+	unsigned long flags;
+	uint32 avail;
 
 	ASSERT(handle != NULL);
 	map = (dhd_pktid_map_t *)handle;
 
-	return map->avail;
+	flags = DHD_PKTID_LOCK(map->pktid_lock);
+	avail = map->avail;
+	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
+
+	return avail;
 }
 
 /*
@@ -581,10 +626,20 @@ static uint32 BCMFASTPATH
 dhd_pktid_map_alloc(dhd_pktid_map_handle_t *handle, void *pkt,
                     dmaaddr_t physaddr, uint32 len, uint8 dma, uint8 buf_type)
 {
-	uint32 nkey = dhd_pktid_map_reserve(handle, pkt);
+	uint32 nkey;
+	unsigned long flags;
+	dhd_pktid_map_t *map;
+
+	ASSERT(handle != NULL);
+	map = (dhd_pktid_map_t *)handle;
+
+	flags = DHD_PKTID_LOCK(map->pktid_lock);
+
+	nkey = dhd_pktid_map_reserve(handle, pkt);
 	if (nkey != DHD_PKTID_INVALID) {
 		dhd_pktid_map_save(handle, pkt, nkey, physaddr, len, dma, buf_type);
 	}
+	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 	return nkey;
 }
 
@@ -601,10 +656,13 @@ dhd_pktid_map_free(dhd_pktid_map_handle_t *handle, uint32 nkey,
 	dhd_pktid_map_t *map;
 	dhd_pktid_item_t *locker;
 	void *pkt;
+	unsigned long flags;
 	ASSERT(handle != NULL);
 
 	map = (dhd_pktid_map_t *)handle;
 	ASSERT((nkey != DHD_PKTID_INVALID) && (nkey <= (uint32)map->items));
+
+	flags = DHD_PKTID_LOCK(map->pktid_lock);
 
 	locker = &map->lockers[nkey];
 
@@ -612,11 +670,15 @@ dhd_pktid_map_free(dhd_pktid_map_handle_t *handle, uint32 nkey,
 		DHD_ERROR(("%s:%d: Error! freeing invalid pktid<%u>\n",
 		           __FUNCTION__, __LINE__, nkey));
 		ASSERT(locker->inuse != FALSE);
+		DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 		return NULL;
 	}
 	if ((buf_type != BUFF_TYPE_NO_CHECK) && (locker->buf_type != buf_type)) {
 		DHD_ERROR(("%s:%d: Error! Invalid Buffer Free for pktid<%u> \n",
 		           __FUNCTION__, __LINE__, nkey));
+
+		ASSERT(locker->buf_type == buf_type);
+		DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 		return NULL;
 	}
 
@@ -631,6 +693,7 @@ dhd_pktid_map_free(dhd_pktid_map_handle_t *handle, uint32 nkey,
 	locker->pkt = NULL; /* Clear pkt */
 	locker->len = 0;
 
+	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 	return pkt;
 }
 
