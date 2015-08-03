@@ -69,7 +69,7 @@
 #define DATA_BUFFER_SIZE 16384
 #define SENTRAL_FIFO_BLOCK_SIZE 50
 #define SENTRAL_SENSOR_TIMESTAMP_SCALE_NS 31250
-#define SENTRAL_FIFO_WATERMARK_BUFFER 100
+#define SENTRAL_FIFO_WATERMARK_BUFFER 500
 
 #define FW_IMAGE_SIGNATURE 0x652A
 #define FW_CDS_SIGNATURE 0xC88B
@@ -80,7 +80,7 @@
 #define PARAM_MAX_RETRY 20
 #define PARAM_SENSORS_ACTUAL_OFFSET 31
 
-#define SENTRAL_WATCHDOG_WORK_MSECS 500
+#define SENTRAL_WATCHDOG_WORK_MSECS 2000
 #define SENTRAL_TS_REF_RESET_WORK_SECS 40
 
 #define SENTRAL_INACTIVITY_RATE_HZ 1
@@ -90,6 +90,8 @@
 
 #define SENTRAL_CAL_TS_COUNT 50
 #define SENTRAL_CAL_TS_SAMPLE_DELAY_MS 20
+
+#define SENTRAL_FIFO_OVERFLOW_THRD 3
 
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
@@ -136,6 +138,7 @@ enum sentral_error_value {
 	SEN_ERR_DATA_UNAVAIL =  0x24,
 	SEN_ERR_SLOW_RATE =     0x25,
 	SEN_ERR_DATA_OVERFLOW = 0x26,
+	SEN_ERR_STACK_OVERFLOW =0x27,
 	SEN_ERR_MATH =          0x30,
 	SEN_ERR_MEM =           0x40,
 	SEN_ERR_SWI3 =          0x41,
@@ -309,6 +312,7 @@ enum sentral_meta_event {
 	SEN_META_SELF_TEST_RESULTS,
 	SEN_META_INITIALIZED,
 	SEN_META_MAX,
+	SEN_META_FIRST = SEN_META_FLUSH_COMPLETE,
 };
 
 struct sentral_data_meta {
@@ -595,7 +599,7 @@ struct sentral_device {
 	struct mutex lock_flush;
 	struct mutex lock_reset;
 	struct mutex lock_ts;
-	struct wake_lock w_lock;
+	struct wakeup_source wlock_irq;
 	struct wake_lock w_lock_reset;
 	struct notifier_block nb;
 	wait_queue_head_t wq_flush;
@@ -618,6 +622,7 @@ struct sentral_device {
 	unsigned long sensor_warmup_mask;
 	u32 fw_crc;
 	unsigned int crash_count;
+	unsigned int overflow_count;
 	u8 latest_accel_buffer[24];
 };
 

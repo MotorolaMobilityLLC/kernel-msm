@@ -4045,6 +4045,21 @@ qpnp_eoc_work(struct work_struct *work)
 			}
 		}
 
+		if ((ASUS_hwID == WREN_EVB_SR) || (ASUS_hwID == WREN_ER) || (ASUS_hwID == WREN_PR)){
+			if (!chip->bat_is_warm && !chip->bat_is_cool) {
+				if (get_prop_battery_voltage_now(chip) > 4200000) {
+					printk("VBAT is larger than 4.2V, modify the charging current to 150 mA\n");
+					qpnp_chg_ibatmax_set(chip, 150);
+				} else if(get_prop_battery_voltage_now(chip) < 3200000 ) {
+					printk("VBAT is smaller than 3.2V, modify the charging current to 50 mA\n");
+					qpnp_chg_ibatmax_set(chip, 50);
+				} else {
+					printk("VBAT is between 3.2V and 4.2V, modify the charging current to 250 mA\n");
+					qpnp_chg_ibatmax_set(chip, 250);
+				}
+			}
+		}
+
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
 				(chip->max_voltage_mv - chip->resume_delta_mv
