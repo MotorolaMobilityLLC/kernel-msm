@@ -36,8 +36,6 @@
 #include <linux/firmware.h>
 #include <linux/m4sensorhub_notify.h>
 
-#define M4SENSORHUB_NUM_GPIOS       6
-
 /* --------------- Global Declarations -------------- */
 char m4sensorhub_debug;
 EXPORT_SYMBOL_GPL(m4sensorhub_debug);
@@ -80,7 +78,6 @@ EXPORT_SYMBOL_GPL(m4sensorhub_client_get_drvdata);
 
 
 /* -------------- Local Functions ----------------- */
-
 static ssize_t m4sensorhub_get_dbg(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
@@ -88,8 +85,6 @@ static ssize_t m4sensorhub_get_dbg(struct device *dev,
 }
 
 /* BEGIN BOARD FILE */
-/* TODO: replace with request array */
-
 int m4sensorhub_set_bootmode(struct m4sensorhub_data *m4sensorhub,
 			 enum m4sensorhub_bootmode bootmode)
 {
@@ -189,7 +184,7 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	m4sensorhub->filename = (char *)fp;
 
 	gpio = of_get_named_gpio_flags(node, "mot,wakeirq-gpio", 0, NULL);
-	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-wakeintr");
+	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-wkirq");
 	if (err) {
 		pr_err("Failed acquiring M4 Sensor Hub wake IRQ GPIO-%d (%d)\n",
 			gpio, err);
@@ -199,15 +194,15 @@ static int m4sensorhub_hw_init(struct m4sensorhub_data *m4sensorhub,
 	m4sensorhub->hwconfig.wakeirq_gpio = gpio;
 
 
-        gpio = of_get_named_gpio_flags(node, "mot,nowakeirq-gpio", 0, NULL);
-        err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-nowakeintr");
-        if (err) {
-                pr_err("Failed acquiring M4 Sensor Hub nowake IRQ GPIO-%d (%d)\n",
-                        gpio, err);
-                goto error_nowakeirq;
-        }
-        gpio_direction_input(gpio);
-        m4sensorhub->hwconfig.nowakeirq_gpio = gpio;
+	gpio = of_get_named_gpio_flags(node, "mot,nowakeirq-gpio", 0, NULL);
+	err = (gpio < 0) ? -ENODEV : gpio_request(gpio, "m4sensorhub-nwirq");
+	if (err) {
+		pr_err("Failed acquiring M4 Sensor Hub nowake IRQ GPIO-%d (%d)\n",
+			gpio, err);
+		goto error_nowakeirq;
+	}
+	gpio_direction_input(gpio);
+	m4sensorhub->hwconfig.nowakeirq_gpio = gpio;
 
 
 	gpio = of_get_named_gpio_flags(node, "mot,reset-gpio", 0, NULL);
@@ -243,8 +238,8 @@ error_reset:
 	gpio_free(m4sensorhub->hwconfig.nowakeirq_gpio);
 	m4sensorhub->hwconfig.nowakeirq_gpio = -1;
 error_nowakeirq:
-        gpio_free(m4sensorhub->hwconfig.wakeirq_gpio);
-        m4sensorhub->hwconfig.wakeirq_gpio = -1;
+	gpio_free(m4sensorhub->hwconfig.wakeirq_gpio);
+	m4sensorhub->hwconfig.wakeirq_gpio = -1;
 error:
 	m4sensorhub->filename = NULL;
 	return err;
@@ -264,10 +259,10 @@ static void m4sensorhub_hw_free(struct m4sensorhub_data *m4sensorhub)
 		m4sensorhub->hwconfig.nowakeirq_gpio = -1;
 	}
 
-        if (m4sensorhub->hwconfig.wakeirq_gpio >= 0) {
-                gpio_free(m4sensorhub->hwconfig.wakeirq_gpio);
-                m4sensorhub->hwconfig.wakeirq_gpio = -1;
-        }
+	if (m4sensorhub->hwconfig.wakeirq_gpio >= 0) {
+		gpio_free(m4sensorhub->hwconfig.wakeirq_gpio);
+		m4sensorhub->hwconfig.wakeirq_gpio = -1;
+	}
 
 	if (m4sensorhub->hwconfig.reset_gpio >= 0) {
 		gpio_free(m4sensorhub->hwconfig.reset_gpio);
@@ -510,7 +505,7 @@ int m4sensorhub_update_loglevels(char *tag, char *level,
 {
 	int32_t levelindex = -1, tagindex = -1, i;
 	uint32_t mask, array_index;
-	
+
 	for (i = 0; i < LOG_LEVELS_MAX; i++) {
 		if (strcmp(acLogLevels[i], level) == 0) {
 			levelindex = i;
@@ -530,12 +525,16 @@ int m4sensorhub_update_loglevels(char *tag, char *level,
 
 	array_index = (tagindex / LOG_TAGS_PER_ENABLE);
 
-	/*Clear the revelant bits*/
+	/* Clear the revelant bits */
 	mask = LOG_TAG_MASK;
-	*(log_levels + array_index) &= ~(mask << ((tagindex % LOG_TAGS_PER_ENABLE) * LOG_NO_OF_BITS_PER_TAG));
-	/*set debug level for the relevant bits*/
-	*(log_levels + array_index) |= (levelindex << ((tagindex % LOG_TAGS_PER_ENABLE) * 2));
-	KDEBUG(M4SH_INFO, "New M4 log levels = 0x%x 0x%x\n", *(log_levels), *(log_levels+1));
+	*(log_levels + array_index) &=
+		~(mask << ((tagindex % LOG_TAGS_PER_ENABLE) *
+		LOG_NO_OF_BITS_PER_TAG));
+	/* set debug level for the relevant bits */
+	*(log_levels + array_index) |=
+		(levelindex << ((tagindex % LOG_TAGS_PER_ENABLE) * 2));
+	KDEBUG(M4SH_INFO, "New M4 log levels = 0x%x 0x%x\n",
+		*(log_levels), *(log_levels+1));
 
 	return 1;
 }
@@ -545,13 +544,13 @@ int m4sensorhub_update_loglevels(char *tag, char *level,
 static ssize_t m4sensorhub_set_loglevel(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	uint32_t cur_loglevels[LOG_EN_SIZE] = {0};
+	uint32_t cur_levels[LOG_EN_SIZE] = {0};
 	char *tag, *level;
 	char **logbuf = (char **) &buf;
 	int exitcount =  20;
 
 	m4sensorhub_reg_read(&m4sensorhub_misc_data,
-		M4SH_REG_LOG_LOGENABLE, (char *)cur_loglevels);
+		M4SH_REG_LOG_LOGENABLE, (char *)cur_levels);
 
 	while (1) {
 		tag = strsep(logbuf, "=,\n ");
@@ -561,17 +560,16 @@ static ssize_t m4sensorhub_set_loglevel(struct device *dev,
 		if (level == NULL)
 			break;
 
-	
-		if (m4sensorhub_update_loglevels(tag, level, cur_loglevels) == 1) {
+		if (m4sensorhub_update_loglevels(tag, level, cur_levels) == 1)
 			break;
-		}
+
 		exitcount--;
 		if (exitcount == 0)
 			break;
 	}
 
 	m4sensorhub_reg_write(&m4sensorhub_misc_data,
-		M4SH_REG_LOG_LOGENABLE, (unsigned char *)cur_loglevels,
+		M4SH_REG_LOG_LOGENABLE, (unsigned char *)cur_levels,
 		m4sh_no_mask);
 
 	return count;
@@ -827,14 +825,14 @@ static int m4sensorhub_probe(struct i2c_client *client,
 		goto err_unregister_control_group;
 	}
 
-        if (m4sensorhub->hwconfig.nowakeirq_gpio >= 0)
-                 m4sensorhub->hwconfig.nowakeirq =
+	if (m4sensorhub->hwconfig.nowakeirq_gpio >= 0)
+		m4sensorhub->hwconfig.nowakeirq =
 			gpio_to_irq(m4sensorhub->hwconfig.nowakeirq_gpio);
-        else {
-                KDEBUG(M4SH_ERROR, "%s: No IRQ configured\n", __func__);
-                err = -ENODEV;
-                goto err_unregister_control_group;
-        }
+	else {
+		KDEBUG(M4SH_ERROR, "%s: No IRQ configured\n", __func__);
+		err = -ENODEV;
+		goto err_unregister_control_group;
+	}
 
 	err = m4sensorhub_panic_init(m4sensorhub);
 	if (err < 0) {
@@ -907,6 +905,7 @@ static int __exit m4sensorhub_remove(struct i2c_client *client)
 static int m4sensorhub_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	KDEBUG(M4SH_DEBUG, "%s\n", __func__);
+	disable_irq(m4sensorhub_misc_data.hwconfig.nowakeirq);
 	m4sensorhub_misc_data.irq_dbg.suspend = 1;
 	return 0;
 }
@@ -915,6 +914,12 @@ static int m4sensorhub_resume(struct i2c_client *client)
 {
 	KDEBUG(M4SH_DEBUG, "%s\n", __func__);
 	m4sensorhub_misc_data.irq_dbg.suspend = 0;
+	enable_irq(m4sensorhub_misc_data.hwconfig.nowakeirq);
+	if (m4sensorhub_misc_data.irq_dbg.pending_wakeirq) {
+		KDEBUG(M4SH_INFO, "%s: Enabling pending ISR...\n", __func__);
+		enable_irq(m4sensorhub_misc_data.hwconfig.wakeirq);
+		m4sensorhub_misc_data.irq_dbg.pending_wakeirq = false;
+	}
 	return 0;
 }
 #endif /* CONFIG_PM */
