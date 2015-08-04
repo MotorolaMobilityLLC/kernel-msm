@@ -563,3 +563,29 @@
 &pcie1 {
 	status = "disabled";
 };
+
+&i2c_8 {
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		gpios = <&tlmm 40 0>, /* IRQ */
+			<&tlmm 39 0>; /* RESET */
+		touch_vdd-supply = <&pm8994_l22>;
+		synaptics,gpio-config;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_active &touch_int_default>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		touchstate_modes {
+			touchmode-default = <&default_active &default_suspended>;
+		};
+		default_active: touchstate_default_active {
+			patch-data = "";
+		};
+		default_suspended: touchstate_aod_suspended {
+			patch-data = "F1@0=1&7";
+		};
+	};
+};
+
