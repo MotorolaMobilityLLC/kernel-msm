@@ -19,6 +19,9 @@
 #include <linux/atomic.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+#include <linux/dock_status_notify.h>
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 #include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -140,6 +143,10 @@ static irqreturn_t smelt_dock_irq_thread(int irq, void *devid)
 	mutex_lock(&chip->sdev_mutex);
 	switch_set_state(chip->sdev, state);
 	power_supply_changed(&chip->charger);
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+	dock_status_notify_subscriber(
+		(state ? DOCK_STATUS_EVENT_DOCKON : DOCK_STATUS_EVENT_DOCKOFF));
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 	mutex_unlock(&chip->sdev_mutex);
 
 	/* Delay suspend for user space to process dock/undock events */
@@ -359,6 +366,11 @@ static int smelt_dock_probe(struct platform_device *pdev)
 	/* Set initial switch state */
 	if (mutex_trylock(&chip->sdev_mutex)) {
 		switch_set_state(chip->sdev, dock_state(chip->dts));
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+		dock_status_notify_subscriber(
+			(dock_state(chip->dts) ?
+			DOCK_STATUS_EVENT_DOCKON : DOCK_STATUS_EVENT_DOCKOFF));
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 		mutex_unlock(&chip->sdev_mutex);
 	}
 
