@@ -45,8 +45,8 @@
 
 /* ------------ Local Function Prototypes ----------- */
 static unsigned short get_enable_reg(enum m4sensorhub_irqs event);
-static irqreturn_t wake_event_threaded(int irq, void *devid);
-static irqreturn_t nowake_event_threaded(int irq, void *devid);
+static irqreturn_t m4sensorhub_wake_event_threaded(int irq, void *devid);
+static irqreturn_t m4sensorhub_nowake_event_threaded(int irq, void *devid);
 #ifdef CONFIG_DEBUG_FS
 static int m4sensorhub_dbg_irq_open(struct inode *inode, struct file *file);
 #endif
@@ -198,7 +198,7 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 
 	/* request wake irq */
 	retval = request_threaded_irq(m4sensorhub->hwconfig.wakeirq,
-		wake_event_isr, wake_event_threaded,
+		wake_event_isr, m4sensorhub_wake_event_threaded,
 		IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
 		"m4sensorhub-wakeirq", data);
 	if (retval) {
@@ -214,7 +214,7 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 
 	/* request nowake irq */
 	retval = request_threaded_irq(m4sensorhub->hwconfig.nowakeirq,
-		nowake_event_isr, nowake_event_threaded,
+		nowake_event_isr, m4sensorhub_nowake_event_threaded,
 		IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
 		"m4sensorhub-nowakeirq", data);
 	if (retval) {
@@ -712,7 +712,7 @@ error:
 	return;
 }
 
-static irqreturn_t wake_event_threaded(int irq, void *devid)
+static irqreturn_t m4sensorhub_wake_event_threaded(int irq, void *devid)
 {
 	uint32_t en_ints = 0, value = 0, is_irq_set = 0;
 	int index;
@@ -722,6 +722,16 @@ static irqreturn_t wake_event_threaded(int irq, void *devid)
 
 	m4sensorhub = data->m4sensorhub;
 	i2c = m4sensorhub->i2c_client;
+
+	if (m4sensorhub->irq_dbg.suspend == 1) {
+		/* Delay IRQ until I2C bus is powered */
+		KDEBUG(M4SH_INFO, "%s: IRQ while suspended--%s\n", __func__,
+			"will re-enable on resume");
+		disable_irq_nosync(m4sensorhub->hwconfig.wakeirq);
+		m4sensorhub->irq_dbg.pending_wakeirq = true;
+		m4sensorhub->irq_dbg.print_wakeirq_flags = true;
+		goto error;
+	}
 
 	/* M4 is expected to clear these bits when read */
 	if (m4sensorhub_reg_read(m4sensorhub,
@@ -741,8 +751,10 @@ static irqreturn_t wake_event_threaded(int irq, void *devid)
 		goto error;
 	}
 
-	if (m4sensorhub->irq_dbg.suspend == 1)
+	if (m4sensorhub->irq_dbg.print_wakeirq_flags) {
 		m4sensorhub_print_irq_sources(en_ints, 0);
+		m4sensorhub->irq_dbg.print_wakeirq_flags = false;
+	}
 
 	while (en_ints > 0) {
 		struct m4sensorhub_event_handler *event_handler;
@@ -787,7 +799,7 @@ error:
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t nowake_event_threaded(int irq, void *devid)
+static irqreturn_t m4sensorhub_nowake_event_threaded(int irq, void *devid)
 {
 	uint32_t en_ints = 0, value = 0, is_irq_set = 0;
 	int index;

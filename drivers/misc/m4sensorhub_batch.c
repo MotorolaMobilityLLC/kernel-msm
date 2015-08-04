@@ -143,10 +143,14 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 		return;
 	}
 
-	if (dd->num_buffered_samples > MAX_NUM_BATCH_SAMPLES) {
-		pr_err("%s: err: OOM\n", __func__);
+	if ((dd->num_buffered_samples > MAX_NUM_BATCH_SAMPLES) ||
+		(dd->num_buffered_samples <= 0)) {
+		pr_err("%s: Invalid number of samples (num=%d, max=%d)\n",
+			__func__, dd->num_buffered_samples,
+			MAX_NUM_BATCH_SAMPLES);
 		return;
 	}
+
 	bytes_to_read = dd->num_buffered_samples *
 		sizeof(struct m4sensorhub_batch_sample);
 
@@ -156,8 +160,9 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 			M4SH_REG_GENERAL_READBATCHSAMPLES,
 			(u8 *)dd->data, bytes_to_read);
 
-	if (ret < 0 || ret != bytes_to_read) {
-		pr_err("%s: unable to read data (%d)\n", __func__, ret);
+	if ((ret < 0) || (ret != bytes_to_read)) {
+		pr_err("%s: Failed to read %d data bytes (ret=%d)\n",
+			__func__, bytes_to_read, ret);
 		return;
 	}
 
