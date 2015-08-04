@@ -2092,7 +2092,7 @@ wl_cfgp2p_set_p2p_noa(struct bcm_cfg80211 *cfg, struct net_device *ndev, char* b
 		}
 		else {
 			/* Continuous NoA interval. */
-			dongle_noa.action = WL_P2P_SCHED_ACTION_NONE;
+			dongle_noa.action = WL_P2P_SCHED_ACTION_DOZE;
 			dongle_noa.type = WL_P2P_SCHED_TYPE_ABS;
 			if ((cfg->p2p->noa.desc[0].interval == 102) ||
 				(cfg->p2p->noa.desc[0].interval == 100)) {
