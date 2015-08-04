@@ -38,10 +38,10 @@
 #define DLOAD_MODE_ADDR           0x0
 
 #define CRASH_HANDLER_MAGIC_NUM   0x4c474500
-#define CRASH_HANDLER_MAGIC_ADDR  0x28
-#define RAM_CONSOLE_ADDR_ADDR     0x2C
-#define RAM_CONSOLE_SIZE_ADDR     0x30
-#define FB_ADDR_ADDR              0x34
+#define CRASH_HANDLER_MAGIC_ADDR  0x34
+#define RAM_CONSOLE_ADDR_ADDR     0x38
+#define RAM_CONSOLE_SIZE_ADDR     0x3C
+#define FB_ADDR_ADDR              0x40
 
 #define RESTART_REASON      (msm_imem_base + RESTART_REASON_ADDR)
 #define CRASH_HANDLER_MAGIC (msm_imem_base + CRASH_HANDLER_MAGIC_ADDR)
