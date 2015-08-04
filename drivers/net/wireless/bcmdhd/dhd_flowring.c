@@ -56,7 +56,11 @@ int BCMFASTPATH dhd_flow_queue_overflow(flow_queue_t *queue, void *pkt);
 #define FLOW_QUEUE_PKT_NEXT(p)          PKTLINK(p)
 #define FLOW_QUEUE_PKT_SETNEXT(p, x)    PKTSETLINK((p), (x))
 
+#ifdef EAPOL_PKT_PRIO
+const uint8 prio2ac[8] = { 0, 1, 1, 0, 2, 2, 3, 7 };
+#else
 const uint8 prio2ac[8] = { 0, 1, 1, 0, 2, 2, 3, 3 };
+#endif /* EAPOL_PKT_PRIO  */
 const uint8 prio2tid[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
 int BCMFASTPATH
@@ -769,7 +773,7 @@ int dhd_update_flow_prio_map(dhd_pub_t *dhdp, uint8 map)
 	uint16 flowid;
 	flow_ring_node_t *flow_ring_node;
 
-	if (map > DHD_FLOW_PRIO_TID_MAP)
+	if (map > DHD_FLOW_PRIO_LLR_MAP)
 		return BCME_BADOPTION;
 
 	/* Check if we need to change prio map */

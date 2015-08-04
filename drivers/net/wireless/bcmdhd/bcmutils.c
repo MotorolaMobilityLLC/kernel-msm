@@ -798,6 +798,12 @@ pktsetprio(void *pkt, bool update_vtag)
 			evh->vlan_tag = hton16(vlan_tag);
 			rc |= PKTPRIO_UPD;
 		}
+
+#ifdef EAPOL_PKT_PRIO
+	} else if (eh->ether_type == hton16(ETHER_TYPE_802_1X)) {
+		priority = PRIO_8021D_NC;
+		rc = PKTPRIO_DSCP;
+#endif /* EAPOL_PKT_PRIO */
 	} else if ((eh->ether_type == hton16(ETHER_TYPE_IP)) ||
 		(eh->ether_type == hton16(ETHER_TYPE_IPV6))) {
 		uint8 *ip_body = pktdata + sizeof(struct ether_header);
