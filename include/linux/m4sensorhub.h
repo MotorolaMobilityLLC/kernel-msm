@@ -100,6 +100,8 @@ struct m4sensorhub_hwconfig {
 
 struct m4sensorhub_irq_dbg {
 	unsigned char suspend; /* 1 - Suspended, 0 - Normal */
+	bool pending_wakeirq;
+	bool print_wakeirq_flags;
 };
 
 struct m4sensorhub_data {
