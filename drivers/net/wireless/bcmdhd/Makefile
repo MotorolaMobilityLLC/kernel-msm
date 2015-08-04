@@ -258,6 +258,8 @@ endif
 
 # Print 802.1X packets
   DHDCFLAGS += -DDHD_8021X_DUMP
+# prioritize 802.1x packet
+  DHDCFLAGS += -DEAPOL_PKT_PRIO
 # Print DHCP packets
 #  DHDCFLAGS += -DDHD_DHCP_DUMP
 endif

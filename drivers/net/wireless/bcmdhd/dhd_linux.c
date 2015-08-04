@@ -5985,6 +5985,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif /* WL_CFG80211 */
 	setbit(eventmask, WLC_E_TRACE);
 
+#ifdef EAPOL_PKT_PRIO
+	dhd_update_flow_prio_map(dhd, DHD_FLOW_PRIO_LLR_MAP);
+#endif /* EAPOL_PKT_PRIO */
+
 	/* Write updated Event mask */
 	bcm_mkiovar("event_msgs", eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0) {
