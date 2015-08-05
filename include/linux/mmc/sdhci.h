@@ -182,6 +182,12 @@ struct sdhci_host {
 #define SDHCI_QUIRK2_ADMA_SKIP_DATA_ALIGNMENT             (1<<13)
 /* Use reset workaround in case sdhci reset timeouts */
 #define SDHCI_QUIRK2_USE_RESET_WORKAROUND (1 << 15)
+/*
+ * Shut the power off immediately upon card removal to prevent damage to the
+ * card or to other components and don't allow power to be enabled until the
+ * card is present.
+ */
+#define SDHCI_QUIRK2_POWER_OFF_ON_REMOVAL		(1<<12)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
@@ -226,6 +232,7 @@ struct sdhci_host {
 
 	unsigned int clock;	/* Current clock (MHz) */
 	u8 pwr;			/* Current voltage */
+	bool powered_off;	/* do not allow power to be enabled */
 
 	bool runtime_suspended;	/* Host is runtime suspended */
 
@@ -253,6 +260,10 @@ struct sdhci_host {
 
 	struct tasklet_struct card_tasklet;	/* Tasklet structures */
 	struct tasklet_struct finish_tasklet;
+
+	const char		*poweroff_wq_name;
+	struct workqueue_struct	*poweroff_wq;
+	struct work_struct	poweroff_work;
 
 	struct timer_list timer;	/* Timer for timeouts */
 	unsigned long timeout_jiffies;	/* Current timeout in jiffies */
