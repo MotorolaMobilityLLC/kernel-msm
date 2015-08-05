@@ -70,7 +70,7 @@
 
 &dsi_mot_nt35355_360p_cmd_small {
 	qcom,mdss-dsi-transflective-panel {
-		qcom,mdss-dsi-panel-tf-normal = "transmissive";
+		qcom,mdss-dsi-panel-tf-normal = "transflective";
 		qcom,mdss-dsi-panel-tf-lowpower = "reflective";
 		qcom,mdss-dsi-panel-tf-transmissive-command = [15 01 00 00 00 00 02 FF 28
 		15 01 00 00 00 00 02 37 01
