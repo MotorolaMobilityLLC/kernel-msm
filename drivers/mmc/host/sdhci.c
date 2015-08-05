@@ -1488,6 +1488,8 @@ static int sdhci_set_power(struct sdhci_host *host, unsigned short power)
 	u8 pwr = 0;
 
 	if (power != (unsigned short)-1) {
+		if (host->powered_off)
+			return -1;
 		switch (1 << power) {
 		case MMC_VDD_165_195:
 			pwr = SDHCI_POWER_180;
@@ -1769,6 +1771,13 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	u32 tuning_opcode;
 
 	host = mmc_priv(mmc);
+	if (host->powered_off) {
+		mrq->cmd->error = -ENOMEDIUM;
+		if (mrq->data)
+			mrq->data->error = -ENOMEDIUM;
+		mmc_request_done(host->mmc, mrq);
+		return;
+	}
 
 	sdhci_runtime_pm_get(host);
 	if (sdhci_check_state(host)) {
@@ -2667,6 +2676,13 @@ static void sdhci_card_event(struct mmc_host *mmc)
 
 	spin_lock_irqsave(&host->lock, flags);
 
+	if ((host->quirks2 & SDHCI_QUIRK2_POWER_OFF_ON_REMOVAL) &&
+	    host->ops->poweroff) {
+		if (mmc_gpio_get_cd(host->mmc) == 0)
+			queue_work(host->poweroff_wq, &host->poweroff_work);
+		else
+			host->powered_off = false;
+	}
 	/* Check host->mrq first in case we are runtime suspended */
 	if (host->mrq &&
 	    ((!(host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
@@ -2681,7 +2697,6 @@ static void sdhci_card_event(struct mmc_host *mmc)
 		host->mrq->cmd->error = -ENOMEDIUM;
 		tasklet_schedule(&host->finish_tasklet);
 	}
-
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
@@ -2843,6 +2858,20 @@ static void sdhci_tasklet_finish(unsigned long param)
 
 	mmc_request_done(host->mmc, mrq);
 	sdhci_runtime_pm_put(host);
+}
+
+static void sdhci_poweroff_work(struct work_struct *work)
+{
+	struct sdhci_host *host =
+		container_of(work, struct sdhci_host, poweroff_work);
+	unsigned long flags;
+
+	if (host->ops->poweroff) {
+		spin_lock_irqsave(&host->lock, flags);
+		host->powered_off = true;
+		spin_unlock_irqrestore(&host->lock, flags);
+		host->ops->poweroff(host);
+	}
 }
 
 static void sdhci_timeout_timer(unsigned long data)
@@ -3831,6 +3860,22 @@ int sdhci_add_host(struct sdhci_host *host)
 	    (mmc_gpio_get_cd(host->mmc) < 0) &&
 	    !(host->mmc->caps2 & MMC_CAP2_NONHOTPLUG))
 		mmc->caps |= MMC_CAP_NEEDS_POLL;
+
+	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
+	    (host->quirks2 & SDHCI_QUIRK2_POWER_OFF_ON_REMOVAL) &&
+	    !(host->mmc->caps & MMC_CAP_NONREMOVABLE)) {
+		host->poweroff_wq_name = kasprintf(GFP_KERNEL, "%s_sdhci",
+						 mmc_hostname(mmc));
+		host->poweroff_wq =
+			create_singlethread_workqueue(host->poweroff_wq_name);
+		if (!host->poweroff_wq) {
+			pr_err("%s: failed to allocate %s work queue\n",
+				mmc_hostname(mmc), host->poweroff_wq_name);
+			return -ENODEV;
+		}
+		INIT_WORK(&host->poweroff_work, sdhci_poweroff_work);
+	}
+
 	/* If vqmmc regulator and no 1.8V signalling, then there's no UHS */
 	host->vqmmc = regulator_get(mmc_dev(mmc), "vqmmc");
 	if (IS_ERR_OR_NULL(host->vqmmc)) {
@@ -4156,6 +4201,9 @@ reset:
 	free_irq(host->irq, host);
 #endif
 untasklet:
+	if (host->poweroff_wq)
+		destroy_workqueue(host->poweroff_wq);
+	kfree(host->poweroff_wq_name);
 	tasklet_kill(&host->card_tasklet);
 	tasklet_kill(&host->finish_tasklet);
 
@@ -4203,6 +4251,9 @@ void sdhci_remove_host(struct sdhci_host *host, int dead)
 
 	del_timer_sync(&host->timer);
 
+	if (host->poweroff_wq)
+		destroy_workqueue(host->poweroff_wq);
+	kfree(host->poweroff_wq_name);
 	tasklet_kill(&host->card_tasklet);
 	tasklet_kill(&host->finish_tasklet);
 
