@@ -55,7 +55,7 @@
 		15 01 00 00 00 00 02 DA 01
 		15 01 00 00 00 00 02 FF 28
 		15 01 00 00 00 00 02 FB 01
-		15 01 00 00 00 00 02 37 01
+		15 01 00 00 00 00 02 37 03
 		15 01 00 00 00 00 02 FF 10
 		15 01 00 00 00 00 02 FB 01
 		39 01 00 00 00 00 05 2A 00 00 01 67
@@ -89,7 +89,6 @@
 		qcom,mdss-pan-physical-height-dimension = <31>;
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 1>, <1 10>;
 		qcom,mdss-dsi-tx-eot-append;
-		qcom,cont-splash-enabled;
 		qcom,mdss-backlight-disabled;
 		qcom,mdss-dsi-dcs-idle-enable;
 		qcom,even-line-align;
