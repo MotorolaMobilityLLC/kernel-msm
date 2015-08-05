@@ -337,6 +337,7 @@ struct sdhci_msm_pltfm_data {
 	bool pin_cfg_sts;
 	bool is_emmc;
 	bool is_sd;
+	bool power_off_on_removal;
 	struct sdhci_msm_pin_data *pin_data;
 	struct sdhci_pinctrl_data *pctrl_data;
 	u32 *cpu_dma_latency_us;
@@ -1796,6 +1797,9 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	if (of_get_property(np, "qcom,sd", NULL))
 		pdata->is_sd = true;
 
+	if (of_get_property(np, "qcom,supply-off-on-removal", NULL))
+		pdata->power_off_on_removal = true;
+
 	return pdata;
 out:
 	return NULL;
@@ -3095,6 +3099,14 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 	if (!vreg_data || (card && !mmc_card_sd(card)))
 		return;
 
+	if (host->powered_off) {
+		if (mmc_gpio_get_cd(host->mmc) == 0) {
+			pr_err("%s: %s attempt to reset card while powered off (%d)\n",
+				mmc_hostname(host->mmc), __func__, rc);
+			return;
+		}
+	}
+
 	mutex_lock(&vreg_data->lock);
 
 	/* No way to reset if we are already off */
@@ -3138,7 +3150,6 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 
 	/* Let the rails settle. */
 	usleep_range(delay, delay + HW_RESET_DELAY_RANGE);
-
 out:
 	mutex_unlock(&vreg_data->lock);
 }
@@ -3296,6 +3307,22 @@ void sdhci_msm_reset_workaround(struct sdhci_host *host, u32 enable)
 	}
 }
 
+static int sdhci_msm_poweroff(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	int ret = 0;
+
+	if (msm_host->pdata->power_off_on_removal) {
+		pr_debug("%s: powering off\n", mmc_hostname(host->mmc));
+		ret = sdhci_msm_setup_vreg(msm_host->pdata, false, false);
+		if (ret)
+			pr_err("%s: failed to force power off: %d\n",
+				mmc_hostname(host->mmc), ret);
+	}
+	return ret;
+}
+
 #if defined(CONFIG_MMC_SDHCI_MSM_DEBUG)
 static int sdhci_msm_debugfs_drv_types_get(void *data, u64 *val)
 {
@@ -3367,6 +3394,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.config_auto_tuning_cmd = sdhci_msm_config_auto_tuning_cmd,
 	.enable_controller_clock = sdhci_msm_enable_controller_clock,
 	.reset_workaround = sdhci_msm_reset_workaround,
+	.poweroff = sdhci_msm_poweroff,
 };
 
 static int sdhci_msm_cfg_mpm_pin_wakeup(struct sdhci_host *host, unsigned mode)
@@ -3722,6 +3750,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	if (msm_host->pdata->no_1p8v)
 		host->quirks2 |= SDHCI_QUIRK2_NO_1_8_V;
+
+	if (msm_host->pdata->power_off_on_removal)
+		host->quirks2 |= SDHCI_QUIRK2_POWER_OFF_ON_REMOVAL;
 
 	/* Setup PWRCTL irq */
 	msm_host->pwr_irq = platform_get_irq_byname(pdev, "pwr_irq");
