@@ -132,10 +132,6 @@ static int g_phy_parameter_c = 0;
 static int g_phy_parameter_d = 0;
 //ASUS_BSP--- "[USB][NA][Spec] add dynamic setting support for phy parameters"
 
-//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-static int otg_pm_count = 0;
-//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-
 static bool aca_id_turned_on;
 static bool legacy_power_supply;
 static inline bool aca_enabled(void)
@@ -1747,10 +1743,6 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	if (!host) {
 		if (otg->phy->state == OTG_STATE_A_HOST) {
 			pm_runtime_get_sync(otg->phy->dev);
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			otg_pm_count+= 1;
-			printk("[OTG-PM][%s][1] get usage_count:%d, otg_pm_count:%d\n",__func__,atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 			usb_unregister_notify(&motg->usbdev_nb);
 			msm_otg_start_host(otg, 0);
 			msm_hsusb_vbus_power(motg, 0);
@@ -1781,10 +1773,6 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 	 */
 	if (motg->pdata->mode == USB_HOST || otg->gadget) {
 		pm_runtime_get_sync(otg->phy->dev);
-		//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-		otg_pm_count+= 1;
-		printk("[OTG-PM][%s][2] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-		//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 		queue_work(system_nrt_wq, &motg->sm_work);
 	}
 
@@ -1874,10 +1862,6 @@ static int msm_otg_set_peripheral(struct usb_otg *otg,
 	if (!gadget) {
 		if (otg->phy->state == OTG_STATE_B_PERIPHERAL) {
 			pm_runtime_get_sync(otg->phy->dev);
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			otg_pm_count+= 1;
-			printk("[OTG-PM][%s][1] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 			msm_otg_start_peripheral(otg, 0);
 			otg->gadget = NULL;
 			otg->phy->state = OTG_STATE_UNDEFINED;
@@ -1897,10 +1881,6 @@ static int msm_otg_set_peripheral(struct usb_otg *otg,
 	 */
 	if (motg->pdata->mode == USB_PERIPHERAL || otg->host) {
 		pm_runtime_get_sync(otg->phy->dev);
-		//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-		otg_pm_count+= 1;
-		printk("[OTG-PM][%s][2] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-		//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 		queue_work(system_nrt_wq, &motg->sm_work);
 	}
 
@@ -2761,10 +2741,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 	pm_runtime_resume(otg->phy->dev);
 	if (motg->pm_done) {
 		pm_runtime_get_sync(otg->phy->dev);
-		//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-		otg_pm_count+= 1;
-		printk("[OTG-PM][%s][0] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-		//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 		motg->pm_done = 0;
 	}
 	pr_debug("%s work\n", usb_otg_state_string(otg->phy->state));
@@ -2784,10 +2760,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 		if (!test_bit(B_SESS_VLD, &motg->inputs) &&
 				test_bit(ID, &motg->inputs)) {
 			pm_runtime_put_noidle(otg->phy->dev);
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			otg_pm_count-= 1;
-			printk("[OTG-PM][%s][1] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 			pm_runtime_suspend(otg->phy->dev);
 			break;
 		}
@@ -2796,10 +2768,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 		if (test_bit(MHL, &motg->inputs)) {
 			/* allow LPM */
 			pm_runtime_put_noidle(otg->phy->dev);
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			otg_pm_count-= 1;
-			printk("[OTG-PM][%s][2] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 			pm_runtime_suspend(otg->phy->dev);
 		} else if ((!test_bit(ID, &motg->inputs) ||
 				test_bit(ID_A, &motg->inputs)) && otg->host) {
@@ -2821,11 +2789,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 			pr_debug("b_sess_vld\n");
 			switch (motg->chg_state) {
 			case USB_CHG_STATE_UNDEFINED:
-				//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-				pm_runtime_get(otg->phy->dev);
-				otg_pm_count+= 1;
-				printk("[OTG-PM][USB_CHG_STATE_UNDEFINED] get usage_count:%d, otg_pm_count:%d\n", atomic_read(&motg->phy.dev->power.usage_count),otg_pm_count);
-				//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 				msm_chg_detect_work(&motg->chg_work.work);
 				break;
 			case USB_CHG_STATE_DETECTED:
@@ -2837,22 +2800,12 @@ static void msm_otg_sm_work(struct work_struct *w)
 				case USB_PROPRIETARY_CHARGER:
 					msm_otg_notify_charger(motg,
 							IDEV_CHG_MAX);
-					//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-					while(otg_pm_count>0){
-						pm_runtime_put_sync(otg->phy->dev);
-						otg_pm_count-= 1;
-						printk("[OTG-PM][%s][USB_PROPRIETARY_CHARGER] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-					}
-					//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
+					pm_runtime_put_sync(otg->phy->dev);
 					break;
 				case USB_FLOATED_CHARGER:
 					msm_otg_notify_charger(motg,
 							IDEV_CHG_MAX);
 					pm_runtime_put_noidle(otg->phy->dev);
-					//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-					otg_pm_count-= 1;
-					printk("[OTG-PM][%s][4] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-					//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 					pm_runtime_suspend(otg->phy->dev);
 					break;
 				case USB_ACA_B_CHARGER:
@@ -2923,21 +2876,13 @@ static void msm_otg_sm_work(struct work_struct *w)
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
 			motg->chg_type = USB_INVALID_CHARGER;
 			msm_otg_notify_charger(motg, 0);
-
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			if(otg_pm_count > 0) {
-			    if (dcp) {
-				     if (motg->ext_chg_active == DEFAULT)
-					     motg->ext_chg_active = INACTIVE;
-				     msm_otg_wait_for_ext_chg_done(motg);
-				     /* Turn off VDP_SRC */
-				     ulpi_write(otg->phy, 0x2, 0x86);
-			     }
-			} else {
-				printk("[OTG-PM][%s] chg_work has canceled before, put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
+			if (dcp) {
+				if (motg->ext_chg_active == DEFAULT)
+					motg->ext_chg_active = INACTIVE;
+				msm_otg_wait_for_ext_chg_done(motg);
+				/* Turn off VDP_SRC */
+				ulpi_write(otg->phy, 0x2, 0x86);
 			}
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-
 			msm_chg_block_off(motg);
 			msm_otg_reset(otg->phy);
 			/*
@@ -2953,14 +2898,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 				work = 1;
 				break;
 			}
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			while(otg_pm_count>0){
-				pm_runtime_put_noidle(otg->phy->dev);
-				otg_pm_count-= 1;
-				printk("[OTG-PM][%s][USB_UNPLUG] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-			}
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-
+			pm_runtime_put_noidle(otg->phy->dev);
 			/*
 			 * Only if autosuspend was enabled in probe, it will be
 			 * used here. Otherwise, no delay will be used.
@@ -3049,10 +2987,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 			pr_debug("a_bus_suspend && b_sess_vld\n");
 			if (motg->caps & ALLOW_LPM_ON_DEV_SUSPEND) {
 				pm_runtime_put_noidle(otg->phy->dev);
-				//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-				otg_pm_count-= 1;
-				printk("[OTG-PM][%s][6] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-				//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 				pm_runtime_suspend(otg->phy->dev);
 			}
 		} else if (test_bit(ID_C, &motg->inputs)) {
@@ -3246,15 +3180,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 			 * If TA_WAIT_BCON is infinite, we don;t
 			 * turn off VBUS. Enter low power mode.
 			 */
-			if (TA_WAIT_BCON < 0) {
-				//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-				while (otg_pm_count > 0) {
-					pm_runtime_put_sync(otg->phy->dev);
-					otg_pm_count-= 1;
-					printk("[OTG-PM][%s][OTG_STATE_A_WAIT_BCON] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-				}
-				//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			}
+			if (TA_WAIT_BCON < 0)
+				pm_runtime_put_sync(otg->phy->dev);
 		} else if (!test_bit(ID, &motg->inputs)) {
 			msm_hsusb_vbus_power(motg, 1);
 		}
@@ -3290,13 +3217,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 			if (otg->host->b_hnp_enable)
 				msm_otg_start_timer(motg, TA_AIDL_BDIS,
 						A_AIDL_BDIS);
-			else {
+			else
 				pm_runtime_put_sync(otg->phy->dev);
-				//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-				otg_pm_count-= 1;
-				printk("[OTG-PM][%s][8] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&otg->phy->dev->power.usage_count),otg_pm_count);
-				//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			}
 		} else if (!test_bit(B_CONN, &motg->inputs)) {
 			pr_debug("!b_conn\n");
 			msm_otg_del_timer(motg);
@@ -4645,13 +4567,8 @@ msm_otg_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				 */
 				if (pm_runtime_suspended(motg->phy.dev))
 					pm_runtime_resume(motg->phy.dev);
-				else {
+				else
 					pm_runtime_get_sync(motg->phy.dev);
-					//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-					otg_pm_count+= 1;
-					printk("[OTG-PM][%s] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&motg->phy.dev->power.usage_count),otg_pm_count);
-					//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-				}
 			} else {
 				motg->ext_chg_active = INACTIVE;
 				complete(&motg->ext_chg_wait);
@@ -4668,10 +4585,6 @@ msm_otg_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			 */
 			flush_work(&motg->sm_work);
 			pm_runtime_put_noidle(motg->phy.dev);
-			//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-			otg_pm_count-= 1;
-			printk("[OTG-PM][%s] put usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&motg->phy.dev->power.usage_count),otg_pm_count);
-			//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 			motg->pm_done = 1;
 			pm_runtime_suspend(motg->phy.dev);
 		}
@@ -5651,10 +5564,6 @@ static int msm_otg_runtime_resume(struct device *dev)
 
 	dev_dbg(dev, "OTG runtime resume\n");
 	pm_runtime_get_noresume(dev);
-	//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-	otg_pm_count+= 1;
-	printk("[OTG-PM][%s] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&dev->power.usage_count),otg_pm_count);
-	//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 	motg->pm_done = 0;
 	return msm_otg_resume(motg);
 }
@@ -5688,10 +5597,6 @@ static int msm_otg_pm_resume(struct device *dev)
 	if (motg->async_int || motg->sm_work_pending ||
 			!pm_runtime_suspended(dev)) {
 		pm_runtime_get_noresume(dev);
-		//ASUS_BSP+++ "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
-		otg_pm_count+= 1;
-		printk("[OTG-PM][%s] get usage_count:%d, otg_pm_count:%d\n",__func__, atomic_read(&dev->power.usage_count),otg_pm_count);
-		//ASUS_BSP--- "[USB][NA][Fix] Add PM usage count debug log and protection mechanism"
 		ret = msm_otg_resume(motg);
 
 		/* Update runtime PM status */
