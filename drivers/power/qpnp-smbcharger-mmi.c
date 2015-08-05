@@ -8261,46 +8261,6 @@ static irqreturn_t warn_irq_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
-static int smbchg_wa_config(struct smbchg_chip *chip)
-{
-	struct pmic_revid_data *pmic_rev_id;
-	struct device_node *revid_dev_node;
-	int rc;
-
-	revid_dev_node = of_parse_phandle(chip->spmi->dev.of_node,
-					"qcom,pmic-revid", 0);
-	if (!revid_dev_node) {
-		pr_err("Missing qcom,pmic-revid property - driver failed\n");
-		return -EINVAL;
-	}
-
-	pmic_rev_id = get_revid_data(revid_dev_node);
-	if (IS_ERR(pmic_rev_id)) {
-		rc = PTR_ERR(revid_dev_node);
-		if (rc != -EPROBE_DEFER)
-			pr_err("Unable to get pmic_revid rc=%d\n", rc);
-		return rc;
-	}
-
-	switch (pmic_rev_id->pmic_subtype) {
-	case PMI8994:
-		chip->wa_flags |= SMBCHG_AICL_DEGLITCH_WA;
-	case PMI8950:
-		if (pmic_rev_id->rev4 < 2) /* PMI8950 1.0 */
-			chip->wa_flags |= SMBCHG_AICL_DEGLITCH_WA;
-		else	/* rev > PMI8950 v1.0 */
-			chip->wa_flags |= SMBCHG_HVDCP_9V_EN_WA;
-		break;
-	default:
-		pr_err("PMIC subtype %d not supported, WA flags not set\n",
-				pmic_rev_id->pmic_subtype);
-	}
-
-	pr_debug("wa_flags=0x%x\n", chip->wa_flags);
-
-	return 0;
-}
-
 static int smbchg_check_chg_version(struct smbchg_chip *chip)
 {
 	struct pmic_revid_data *pmic_rev_id;
@@ -8353,10 +8313,6 @@ static int smbchg_check_chg_version(struct smbchg_chip *chip)
 
 	pr_smb(PR_STATUS, "pmic=%s, wa_flags=0x%x\n",
 			pmic_rev_id->pmic_name, chip->wa_flags);
-
-	rc = smbchg_wa_config(chip);
-	if (rc != -EPROBE_DEFER)
-		pr_err("Charger WA flags not configured rc=%d\n", rc);
 
 	return 0;
 }
