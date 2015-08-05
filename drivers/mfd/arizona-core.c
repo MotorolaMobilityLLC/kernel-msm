@@ -1611,7 +1611,6 @@ static const struct mfd_cell marley_devs[] = {
 	{ .name = "arizona-gpio" },
 	{ .name = "arizona-haptics" },
 	{ .name = "arizona-pwm" },
-	{ .name = "marley-codec" },
 	{
 		.name = "marley-codec",
 		.parent_supplies = marley_supplies,
@@ -2479,6 +2478,7 @@ int arizona_dev_init(struct arizona *arizona)
 	case CS47L35:
 		ret = mfd_add_devices(arizona->dev, -1, marley_devs,
 				      ARRAY_SIZE(marley_devs), NULL, 0, NULL);
+		break;
 	case CS47L90:
 	case CS47L91:
 		ret = mfd_add_devices(arizona->dev, -1, moon_devs,
