@@ -3098,6 +3098,7 @@ msleep(100);
 	INIT_KFIFO(st->timestamps);
 	spin_lock_init(&st->time_stamp_lock);
         wake_lock_init(&st->smd_wakelock, WAKE_LOCK_SUSPEND, SMD_LOCK_NAME);
+        wake_lock_init(&st->ped_wakelock, WAKE_LOCK_SUSPEND, PED_LOCK_NAME);
 	mutex_init(&st->suspend_resume_lock);
 	result = st->set_power_state(st, false);
 	if (result) {
@@ -3120,6 +3121,7 @@ msleep(100);
 	return 0;
 out_remove_wakelock:
         wake_lock_destroy(&st->smd_wakelock);
+        wake_lock_destroy(&st->ped_wakelock);
 out_unreg_iio:
 	iio_device_unregister(indio_dev);
 out_remove_trigger:
@@ -3171,6 +3173,7 @@ static int inv_mpu_remove(struct i2c_client *client)
 
 	kfifo_free(&st->timestamps);
         wake_lock_destroy(&st->smd_wakelock);
+        wake_lock_destroy(&st->ped_wakelock);
 	iio_device_unregister(indio_dev);
 	if (indio_dev->modes & INDIO_BUFFER_TRIGGERED)
 		inv_mpu_remove_trigger(indio_dev);
@@ -3228,6 +3231,7 @@ static int inv_mpu_resume(struct device *dev)
 	struct iio_dev *indio_dev = i2c_get_clientdata(to_i2c_client(dev));
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	int result;
+	bool has_data;
 
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
@@ -3245,9 +3249,13 @@ static int inv_mpu_resume(struct device *dev)
 		if (st->chip_config.display_orient_on)
 			result |= inv_set_display_orient_interrupt_dmp(st,
 								true);
+		result |= inv_flush_batch_data(indio_dev, &has_data);
+		wake_lock_timeout(&st->ped_wakelock, msecs_to_jiffies(PED_WAKELOCK_HOLD_MS));
 		result |= inv_setup_suspend_batchmode(indio_dev, false);
 	} else if (st->chip_config.enable) {
 		result = st->set_power_state(st, true);
+		wake_lock_timeout(&st->ped_wakelock, msecs_to_jiffies(PED_WAKELOCK_HOLD_MS));
+		result |= inv_flush_batch_data(indio_dev, &has_data);
 	}
 	mutex_unlock(&indio_dev->mlock);
 	/* add code according to different request End */

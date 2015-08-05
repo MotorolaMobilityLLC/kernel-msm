@@ -371,6 +371,9 @@
 #define SMD_WAKELOCK_HOLD_MS              (HZ/2)
 #define SMD_LOCK_NAME                     "SMD_Sensor"
 
+#define PED_WAKELOCK_HOLD_MS              700
+#define PED_LOCK_NAME                     "PED_Sensor"
+
 struct inv_mpu_state;
 
 /**
@@ -776,6 +779,7 @@ struct inv_mpu_state {
 	u8 name[20];
 	u8 secondary_name[20];
         struct wake_lock smd_wakelock;
+        struct wake_lock ped_wakelock;
 };
 
 /* produces an unique identifier for each device based on the
