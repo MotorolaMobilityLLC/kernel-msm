@@ -29,6 +29,7 @@
 	i2c@f9927000 { /* BLSP1 QUP5 */
 		synaptics@20 {
 			synaptics,display-coords = <0 0 319 239>;
+			synaptics,is_wake;
 		};
 	};
 };
