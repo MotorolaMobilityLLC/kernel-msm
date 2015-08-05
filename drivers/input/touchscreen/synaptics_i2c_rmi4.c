@@ -245,6 +245,11 @@ static ssize_t synaptics_secure_touch_show(struct device *dev,
 	    struct device_attribute *attr, char *buf);
 #endif
 
+static ssize_t synaptics_debug_enabled_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+static ssize_t synaptics_debug_enabled_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -543,11 +548,15 @@ static struct device_attribute attrs[] = {
 			synaptics_secure_touch_show,
 			NULL),
 #endif
+	__ATTR(debug_enabled, (S_IRUGO | S_IWUSR),
+			synaptics_debug_enabled_show,
+			synaptics_debug_enabled_store),
 };
 
 static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
+static int debug_enabled = 0;
 
 #if defined(CONFIG_SECURE_TOUCH)
 static void synaptics_secure_touch_init(struct synaptics_rmi4_data *data)
@@ -1097,6 +1106,23 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 	return count;
 }
 
+static ssize_t synaptics_debug_enabled_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", debug_enabled);
+}
+
+static ssize_t synaptics_debug_enabled_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (kstrtoint(buf, 10, &debug_enabled) != 0) {
+		dev_err(dev, "Invalid parameter\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
  /**
  * synaptics_rmi4_set_page()
  *
@@ -1441,9 +1467,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int z;
+	static int prev_x[MAX_NUMBER_OF_FINGERS];
+	static int prev_y[MAX_NUMBER_OF_FINGERS];
 	struct synaptics_rmi4_f12_extra_data *extra_data;
 	struct synaptics_rmi4_f12_finger_data *data;
 	struct synaptics_rmi4_f12_finger_data *finger_data;
+	int finger_state_changed = 0;
 
 	fingers_to_process = fhandler->num_of_data_points;
 	data_addr = fhandler->full_addr.data_base;
@@ -1482,6 +1511,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 		if (rmi4_data->palm_detected && !touch_detected) {
 			rmi4_data->palm_detected = false;
+			if (debug_enabled) {
+				for (finger = 0; finger < fingers_to_process; finger++)
+					rmi4_data->finger_state[finger] = FS_NO;
+				dev_info(&rmi4_data->i2c_client->dev, "Palm released.\n");
+			}
 			get_monotonic_boottime(&rmi4_data->palm_debounce);
 			timespec_add_ns(&rmi4_data->palm_debounce,
 					PALM_DEBOUNCE_MSEC * NSEC_PER_MSEC);
@@ -1500,11 +1534,13 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			 * in the idle mode (ambient mode). just ignore it
 			 */
 			if (rmi4_data->idle_mode) {
-				dev_dbg(&rmi4_data->i2c_client->dev,
+				dev_info(&rmi4_data->i2c_client->dev,
 					"palm detect in idle is ignored\n");
 				rmi4_data->palm_detected = true;
 				return 1;
 			}
+			dev_info(&rmi4_data->i2c_client->dev,
+					"Palm detected\n");
 
 			input_report_key(rmi4_data->input_dev,
 					 rmi4_data->board->palm_detect_keycode,
@@ -1531,6 +1567,20 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	for (finger = 0; finger < fingers_to_process; finger++) {
 		finger_data = data + finger;
 		finger_status = finger_data->object_type_and_status & MASK_2BIT;
+
+		if (debug_enabled) {
+			finger_state_changed = 0;
+			if (finger_status) {
+				if (rmi4_data->finger_state[finger] != FS_DOWN)
+					finger_state_changed = 1;
+				rmi4_data->finger_state[finger] = FS_DOWN;
+			} else {
+				if (rmi4_data->finger_state[finger] == FS_DOWN){
+					finger_state_changed = 1;
+					rmi4_data->finger_state[finger] = FS_UP;
+				}
+			}
+		}
 
 		/*
 		 * Each 2-bit finger status field represents the following:
@@ -1560,6 +1610,11 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->flip_y)
 				y = rmi4_data->sensor_max_y - y;
+			if (finger_state_changed)
+				dev_info(&rmi4_data->i2c_client->dev,
+					"Finger[%d] Pos(%d,%d) "
+					"Wxy(%d,%d) Pressed\n",
+					finger, x, y, wx, wy);
 
 			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Finger %d:\n"
@@ -1589,7 +1644,19 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #ifndef TYPE_B_PROTOCOL
 			input_mt_sync(rmi4_data->input_dev);
 #endif
+			if (debug_enabled) {
+				prev_x[finger] = x;
+				prev_y[finger] = y;
+			}
 			touch_count++;
+		} else {
+			if (finger_state_changed) {
+				dev_info(&rmi4_data->i2c_client->dev,
+					"Finger[%d] Pos(%d,%d) Released\n",
+					finger, prev_x[finger], prev_y[finger]);
+			}
+			if (debug_enabled)
+				rmi4_data->finger_state[finger] = FS_NO;
 		}
 	}
 

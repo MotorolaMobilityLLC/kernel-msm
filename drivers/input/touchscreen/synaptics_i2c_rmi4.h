@@ -243,6 +243,7 @@ struct synaptics_rmi4_data {
 	unsigned short f01_cmd_base_addr;
 	unsigned short f01_ctrl_base_addr;
 	unsigned short f01_data_base_addr;
+	unsigned char finger_state[MAX_NUMBER_OF_FINGERS];
 	int irq;
 	int sensor_max_x;
 	int sensor_max_y;
@@ -295,6 +296,12 @@ enum exp_fn {
 	RMI_F54,
 	RMI_FW_UPDATER,
 	RMI_LAST,
+};
+
+enum {
+	FS_NO = 0,
+	FS_DOWN,
+	FS_UP,
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
