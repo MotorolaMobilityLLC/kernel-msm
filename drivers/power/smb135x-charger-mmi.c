@@ -4115,7 +4115,7 @@ static int determine_initial_status(struct smb135x_chg *chip)
 		* For SDP connections at powerup force APSD
 		* instead of calling the handler here.
 		*/
-		if (reg & SDP_BIT) {
+		if (!chip->factory_mode && (reg & SDP_BIT)) {
 			chip->usb_present = 0;
 			smb135x_force_apsd(chip);
 		} else
