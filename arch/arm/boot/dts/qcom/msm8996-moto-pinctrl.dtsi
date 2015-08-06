@@ -96,6 +96,26 @@
 		};
 	};
 
+	spi_9 {
+		spi_9_active: spi_9_active {
+			spi_9 {
+				pins = "gpio49", "gpio50", "gpio51", "gpio52";
+				function = "blsp_spi9";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+
+		spi_9_sleep: spi_19_sleep {
+			spi_9 {
+				pins = "gpio49", "gpio50", "gpio51", "gpio52";
+				function = "blsp_spi9";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+	};
+
 	spi_12 {
 		spi_12_active: spi_12_active {
 			spi_12 {
@@ -246,6 +266,23 @@
 				drive-strength = <2>;
 				bias-pull-up; /* pull-up */
 			};
+		};
+	};
+
+	florida_irq_default: tmp108_irq_default {
+		config {
+			pins = "gpio54";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	florida_reset_default: florida_reset_default {
+		config {
+			pins = "gpio64";
+			output-high;
+			bias-pull-up;
+			drive-strength = <2>;
 		};
 	};
 };
