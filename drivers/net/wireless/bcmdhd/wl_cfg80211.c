@@ -8707,6 +8707,13 @@ wl_cfg80211_reg_notifier(
 		return -EINVAL;
 	}
 
+	/* ASUS_BSP_WIFI +++ Add null pointer check (buganizer:22949769) */
+	if (!cfg->wdev) {
+		WL_ERR(("Null pointer cfg->wdev\n"));
+		return -EINVAL;
+	}
+	/* ASUS_BSP_WIFI --- Add null pointer check (buganizer:22949769) */
+
 	WL_DBG(("ccode: %c%c Initiator: %d\n",
 		request->alpha2[0], request->alpha2[1], request->initiator));
 
