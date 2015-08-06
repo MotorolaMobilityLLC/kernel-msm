@@ -1018,7 +1018,7 @@ static void __exit config_exit(void)
 	remove_proc_entry("config", NULL);
 }
 
-module_init(config_init);
+late_initcall(config_init);
 module_exit(config_exit);
 
 MODULE_LICENSE("GPL");
