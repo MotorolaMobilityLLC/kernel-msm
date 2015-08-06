@@ -1,0 +1,60 @@
+* NXP NFC PN544, PN650 Controller
+
+The NXP NFC family of products are connected to the host processor via i2c for
+commands and have various GPIOs connected to control reset, irq, and firmware
+downloading.
+
+Required properties:
+ - compatible:
+        one of the following strings "nxp,pn544", or "nxp,pn65O"
+ - reg:
+        the i2c slave address of the IC
+ - interrupts:
+        there is one interrupt line connected to the main SoC
+ - interrupt-parent:
+        The parent interrupt controller
+ - gpios:
+        an array specifying the three required GPIOs for operation. They must
+        be specified in exact order:
+           - IRQ GPIO
+           - VEN GPIO - the enable/reset line to the IC
+           - Firmware GPIO - GPIO used to toggle the initiation of a firmware
+             download.
+
+Optional properties:
+ - nxp,pnxxx-discharge-delay:
+        the minimum time (in milliseconds) for which we need to hold the VEN
+        gpio in the reset/disabled state.  If this is not specified, the
+        default value of 10ms is used
+ - nxp,pnxxx-ven-inv-polarity:
+        this indicates that the VEN GPIO has an inverse polarity. If set to 0
+        or not defined, the chip will be enabled when VEN GPIO is logic level 1
+        and disabled when logic level 0.  If this is set to 1, it indicates an
+        active low configuration: VEN GPIO is enabled when logical level 0.
+             0 - active high for enable
+             1 - active low for enable
+ - vdd-supply:
+	this is for the power supply for nfc chip.
+Example:
+
+	i2c@1a200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+
+		pnxxx@28 {
+			compatible = "nxp,pn544";
+			reg = <0x28>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <106 0>;
+			gpios = <&msmgpio 106 0>,     /* IRQ */
+				<&pm8921_gpio 33 0>,  /* VEN */
+				<&pm8921_gpio 16 0>;  /* Firmware */
+
+			nxp,pnxxx-discharge-delay = <2000>;
+			nxp,pnxxx-ven-inv-polarity = <0>;
+			vdd-supply = <&pm8226_l22>;
+		};
+	};
+
