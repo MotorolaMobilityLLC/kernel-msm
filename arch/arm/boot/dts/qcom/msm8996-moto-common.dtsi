@@ -24,6 +24,7 @@
 		/delete-property/ i2c12;
 		i2c5 = &i2c_5;
 		i2c8 = &i2c_8;
+		spi9 = &spi_9;
 		spi12 = &spi_12;
 	};
 };
@@ -151,6 +152,12 @@
 		enable-active-high;
 	};
 
+	dummy_vreg: dummy_vreg {
+		compatible = "regulator-fixed";
+		status = "ok";
+		regulator-name = "dummy_vreg";
+		regulator-always-on;
+	};
 	/* BLSP12 not used for i2c */
 	/delete-node/ i2c@75ba000;
 
@@ -251,6 +258,34 @@
 		qcom,msm-bus,vectors-KBps =
 			    <84 512 0 0>,
 			    <84 512 500 800>;
+	};
+
+	spi_9: spi@75b7000 { /* BLSP2 QUP3 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x075b7000 0x600>,
+		      <0x07584000 0x2b000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 103 0>, <0 239 0>;
+		spi-max-frequency = <48000000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_9_active>;
+		pinctrl-1 = <&spi_9_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
 	};
 
 	spi_12: spi@75ba000 { /* BLSP2 QUP6 */
@@ -589,6 +624,69 @@
 		};
 		default_suspended: touchstate_aod_suspended {
 			patch-data = "F1@0=1&7";
+		};
+	};
+&spi_9 {
+	florida: florida@0 {
+		compatible = "wlf,wm5110";
+		spi-max-frequency = <26000000>;
+		reg = <0x0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <54 0>;
+		irq-base = <800>;
+		gpio-base = <200>;
+		wlf,reset = <&tlmm 64 0>;
+		wlf,irq = <&tlmm 54 0>;
+		wlf,out-mono = <0 1 0 0 0 0>;
+		wlf,micbias1 = <1800 1 1 0 0>;
+		wlf,micbias2 = <1800 1 1 0 0>;
+		wlf,micbias3 = <1800 1 1 0 0>;
+		wlf,vib_pwm_gpio_ctrl = <0xC02>;
+		vreg-arizona1p2-supply = <&vreg_wlf1p2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
+
+		AVDD-supply = <&pm8994_s4>;
+		DCVDD-supply = <&pm8994_s4>;
+		DBVDD1-supply = <&pm8994_s4>;
+		DBVDD2-supply = <&pm8994_s4>;
+		DBVDD3-supply = <&pm8994_s4>;
+		CPVDD-supply = <&pm8994_s4>;
+		SPKVDDL-supply = <&dummy_vreg>;
+		SPKVDDR-supply = <&dummy_vreg>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		wlf,gpio-defaults = <0x00002102
+				0xffffffff
+				0x00010000
+				0x00000004
+				0xffffffff>;
+
+		adsps {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			adsp@1200 {
+				reg = <0x1200>;
+				firmware {
+					frontend {
+						wlf,wmfw-file = "aov-frontend";
+						wlf,bin-file = "aov-vrgain";
+						wlf,compr-caps = <1 1 4 1 16000>;
+					};
+				};
+			};
+			adsp@1300 {
+				reg = <0x1300>;
+				firmware {
+					aov {
+						wlf,wmfw-file = "aov-control";
+						wlf,bin-file = "aov-model";
+						wlf,compr-caps = <1 1 4 1 16000>;
+					};
+				};
+			};
 		};
 	};
 };
