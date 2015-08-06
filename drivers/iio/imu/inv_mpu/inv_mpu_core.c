@@ -54,6 +54,7 @@
 struct iio_dev *g_indio_dev;
 struct inv_mpu_state *g_st;
 static int mpu_status=0;			//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
+u64 ped_ts;
 
 //ASUS_BSP +++ Maggie_Lee "fill platform data"
 #ifndef CONFIG_DTS_INV_MPU_IIO
@@ -3116,6 +3117,7 @@ msleep(100);
 	#endif
 
 	mpu_status = 1;					//ASUS_BSP +++ Maggie_Lee "Support ATD BMMI"
+	ped_ts = get_time_ns();
 	dev_info(&client->dev, "%s is ready to go!\n", indio_dev->name);
 
 	return 0;
@@ -3232,6 +3234,9 @@ static int inv_mpu_resume(struct device *dev)
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	int result;
 	bool has_data;
+	u64 ts_now = get_time_ns();
+
+	printk("[MPU9250] ts_prev=%lld ts_now=%lld time_elapsed=%lld\n", ped_ts, ts_now, (ped_ts-ts_now));
 
 	/* add code according to different request Start */
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
@@ -3249,13 +3254,19 @@ static int inv_mpu_resume(struct device *dev)
 		if (st->chip_config.display_orient_on)
 			result |= inv_set_display_orient_interrupt_dmp(st,
 								true);
-		result |= inv_flush_batch_data(indio_dev, &has_data);
-		wake_lock_timeout(&st->ped_wakelock, msecs_to_jiffies(PED_WAKELOCK_HOLD_MS));
+		if ((ts_now-ped_ts) > PED_AMBIENT_UPDATE_NS || (ts_now-ped_ts) < 0) {
+			wake_lock_timeout(&st->ped_wakelock, msecs_to_jiffies(PED_WAKELOCK_HOLD_MS));
+			result |= inv_flush_batch_data(indio_dev, &has_data);
+			ped_ts = get_time_ns();
+		}
 		result |= inv_setup_suspend_batchmode(indio_dev, false);
 	} else if (st->chip_config.enable) {
 		result = st->set_power_state(st, true);
-		wake_lock_timeout(&st->ped_wakelock, msecs_to_jiffies(PED_WAKELOCK_HOLD_MS));
-		result |= inv_flush_batch_data(indio_dev, &has_data);
+		if ((ts_now-ped_ts) > PED_AMBIENT_UPDATE_NS || (ts_now-ped_ts) < 0) {
+			wake_lock_timeout(&st->ped_wakelock, msecs_to_jiffies(PED_WAKELOCK_HOLD_MS));
+			result |= inv_flush_batch_data(indio_dev, &has_data);
+			ped_ts = get_time_ns();
+		}
 	}
 	mutex_unlock(&indio_dev->mlock);
 	/* add code according to different request End */

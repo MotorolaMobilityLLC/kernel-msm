@@ -373,6 +373,7 @@
 
 #define PED_WAKELOCK_HOLD_MS              700
 #define PED_LOCK_NAME                     "PED_Sensor"
+#define PED_AMBIENT_UPDATE_NS		  55000000000
 
 struct inv_mpu_state;
 
