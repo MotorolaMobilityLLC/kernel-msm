@@ -180,17 +180,19 @@ static void stmvl6180_write_offset_calibration_file(void)
 	char buf[8];
 	mm_segment_t fs;
 
-	f = filp_open("/persist/calibration/offset", O_WRONLY|O_CREAT, 0644);
-	if (f != NULL) {
-		fs = get_fs();
-		set_fs(get_ds());
-		sprintf(buf, "%d", offset_calib);
-		vl6180_dbgmsg("write offset as:%s, buf[0]:%c\n", buf, buf[0]);
-		f->f_op->write(f, buf, 8, &f->f_pos);
-		set_fs(fs);
+	f = filp_open("/persist/calibration/offset", O_RDWR|O_CREAT, 0644);
+	if (IS_ERR(f)) {
+		vl6180_errmsg("%ld\n", PTR_ERR(f));
+		return;
 	}
-	filp_close(f, NULL);
 
+	fs = get_fs();
+	set_fs(get_ds());
+	sprintf(buf, "%d", offset_calib);
+	vl6180_dbgmsg("write offset as:%s, buf[0]:%c\n", buf, buf[0]);
+	f->f_op->write(f, buf, 8, &f->f_pos);
+	set_fs(fs);
+	filp_close(f, NULL);
 	return;
 }
 
@@ -200,15 +202,18 @@ static void stmvl6180_write_xtalk_calibration_file(void)
 	char buf[8];
 	mm_segment_t fs;
 
-	f = filp_open("/persist/calibration/xtalk", O_WRONLY|O_CREAT, 0644);
-	if (f != NULL) {
-		fs = get_fs();
-		set_fs(get_ds());
-		sprintf(buf, "%d", xtalk_calib);
-		vl6180_dbgmsg("write xtalk as:%s, buf[0]:%c\n", buf, buf[0]);
-		f->f_op->write(f, buf, 8, &f->f_pos);
-		set_fs(fs);
+	f = filp_open("/persist/calibration/xtalk", O_RDWR|O_CREAT, 0644);
+	if (IS_ERR(f)) {
+		vl6180_errmsg("%ld\n", PTR_ERR(f));
+		return;
 	}
+
+	fs = get_fs();
+	set_fs(get_ds());
+	sprintf(buf, "%d", xtalk_calib);
+	vl6180_dbgmsg("write xtalk as:%s, buf[0]:%c\n", buf, buf[0]);
+	f->f_op->write(f, buf, 8, &f->f_pos);
+	set_fs(fs);
 	filp_close(f, NULL);
 
 	return;
