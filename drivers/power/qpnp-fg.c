@@ -3582,6 +3582,8 @@ wait:
 
 	if (rc)
 		pr_warn("couldn't find battery max voltage\n");
+	else
+		chip->cc_cv_threshold_mv = chip->batt_max_voltage_uv/1000 - 10;
 
 	data = of_get_property(profile_node, "qcom,fg-profile-data", &len);
 	if (!data) {
