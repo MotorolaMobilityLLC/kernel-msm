@@ -166,6 +166,23 @@
 	};
 
 
+	nfc_irq_default: nfc_irq_default {
+		config {
+			pins = "gpio9";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	nfc_firm_default: nfc_firm_default {
+		config {
+			pins = "gpio12";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
 	muc_attach: muc_attach@0 {
 		config {
 			pins = "gpio73";
