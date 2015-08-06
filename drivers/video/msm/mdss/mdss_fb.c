@@ -73,6 +73,7 @@
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 static bool fb_need_set_brightness = false;
+static bool charger_mode = false;
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -1515,7 +1516,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
-	pr_debug("%pS mode:%d\n", __builtin_return_address(0),
+	pr_info("%pS mode:%d\n", __builtin_return_address(0),
 		blank_mode);
 
 	snprintf(trace_buffer, sizeof(trace_buffer), "fb%d blank %d",
@@ -1549,13 +1550,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
 		ret = mdss_fb_blank_unblank(mfd);
-		/* set brightness on for lunch box */
-		if(fb_need_set_brightness) {
+		if(fb_need_set_brightness && charger_mode) {
 			pdata = dev_get_platdata(&mfd->pdev->dev);
 			if(NULL != pdata && NULL != pdata->set_backlight) {
 				mutex_lock(&mfd->bl_lock);
 				pr_info("set backlight on\n");
-				pdata->set_backlight(pdata, 2000);
+				pdata->set_backlight(pdata, 100);
 				mutex_unlock(&mfd->bl_lock);
 			}
 		}
@@ -1591,16 +1591,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case FB_BLANK_POWERDOWN:
 	default:
 		req_power_state = MDSS_PANEL_POWER_OFF;
-		/* set brightness off for lunch box */
-		if(fb_need_set_brightness) {
-			pdata = dev_get_platdata(&mfd->pdev->dev);
-			if(NULL != pdata && NULL != pdata->set_backlight) {
-				mutex_lock(&mfd->bl_lock);
-				pr_info("set backlight off\n");
-				pdata->set_backlight(pdata, 0);
-				mutex_unlock(&mfd->bl_lock);
-			}
-		}
 		pr_debug("blank powerdown called\n");
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
@@ -4063,3 +4053,22 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 	pr_err("Panel has gone bad, sending uevent - %s\n", envp[0]);
 	return;
 }
+
+static int __init early_parse_boot_mode(char *arg)
+{
+	int len = 0;
+
+	if (arg) {
+		len = strlen(arg);
+		if(!strcmp(arg,"charger")) {
+			charger_mode = true;
+			pr_debug("%s: charger mode\n", __func__);
+		} else {
+			charger_mode = false;
+			pr_debug("%s: not charger mode\n", __func__);
+		}
+	}
+	return 0;
+}
+early_param("androidboot.mode", early_parse_boot_mode);
+
