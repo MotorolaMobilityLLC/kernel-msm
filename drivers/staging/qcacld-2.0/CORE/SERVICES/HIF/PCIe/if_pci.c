@@ -2168,6 +2168,9 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
     if (vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL))
         return ret;
 
+    if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL))
+        return ret;
+
     if (HIFTargetSleepStateAdjust(targid, FALSE, TRUE) < 0)
         goto out;
 

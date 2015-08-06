@@ -665,8 +665,8 @@ typedef enum {
 
     /* FWTEST Commands */
     WMI_FWTEST_VDEV_MCC_SET_TBTT_MODE_CMDID=WMI_CMD_GRP_START_ID(WMI_GRP_FWTEST),
-	/** set NoA descs **/
-	WMI_FWTEST_P2P_SET_NOA_PARAM_CMDID,
+    /** set NoA descs **/
+    WMI_FWTEST_P2P_SET_NOA_PARAM_CMDID,
     /* UNIT Tests  */
     WMI_UNIT_TEST_CMDID,
 
@@ -796,7 +796,7 @@ typedef enum {
     /* System-On-Chip commands */
     WMI_SOC_SET_PCL_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_SOC),
     WMI_SOC_SET_HW_MODE_CMDID,
-
+    WMI_SOC_SET_DUAL_MAC_CONFIG_CMDID,
 } WMI_CMD_ID;
 
 typedef enum {
@@ -1089,6 +1089,7 @@ typedef enum {
     /* System-On-Chip events */
     WMI_SOC_SET_HW_MODE_RESP_EVENTID = WMI_EVT_GRP_START_ID(WMI_GRP_SOC),
     WMI_SOC_HW_MODE_TRANSITION_EVENTID,
+    WMI_SOC_SET_DUAL_MAC_CONFIG_RESP_EVENTID,
 } WMI_EVT_ID;
 
 /* defines for OEM message sub-types */
@@ -1337,6 +1338,44 @@ WMI_CHANNEL_CHANGE_CAUSE_CSA,
 #define WMI_DBS_HW_MODE_AGILE_DFS_GET(hw_mode)          \
     ((hw_mode & WMI_DBS_HW_MODE_AGILE_DFS_MODE_MASK) >> WMI_DBS_HW_MODE_AGILE_DFS_MODE_BITPOS)
 
+#define WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_BITPOS    (31)
+#define WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_BITPOS   (30)
+#define WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_BITPOS  (29)
+
+#define WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_MASK    (0x1 << WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_BITPOS)
+#define WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_MASK   (0x1 << WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_BITPOS)
+#define WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_MASK  (0x1 << WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_BITPOS)
+
+#define WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_SET(scan_cfg, value) \
+    (scan_cfg |= ((value << WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_BITPOS) & WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_MASK))
+#define WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_SET(scan_cfg, value) \
+    (scan_cfg |= ((value << WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_BITPOS) & WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_MASK))
+#define WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_SET(scan_cfg, value) \
+    (scan_cfg |= ((value << WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_BITPOS) & WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_MASK))
+
+#define WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_GET(scan_cfg)    \
+    ((scan_cfg & WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_MASK) >> WMI_DBS_CONC_SCAN_CFG_DBS_SCAN_BITPOS)
+#define WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_GET(scan_cfg)    \
+    ((scan_cfg & WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_MASK) >> WMI_DBS_CONC_SCAN_CFG_DBS_PLUS_AGILE_SCAN_BITPOS)
+#define WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_GET(scan_cfg)    \
+    ((scan_cfg & WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_MASK) >> WMI_DBS_CONC_SCAN_CFG_SINGLE_MAC_SCAN_WITH_DFS_BITPOS)
+
+#define WMI_DBS_FW_MODE_CFG_DBS_BITPOS          (31)
+#define WMI_DBS_FW_MODE_CFG_AGILE_DFS_BITPOS    (30)
+
+#define WMI_DBS_FW_MODE_CFG_DBS_MASK          (0x1 << WMI_DBS_FW_MODE_CFG_DBS_BITPOS)
+#define WMI_DBS_FW_MODE_CFG_AGILE_DFS_MASK    (0x1 << WMI_DBS_FW_MODE_CFG_AGILE_DFS_BITPOS)
+
+#define WMI_DBS_FW_MODE_CFG_DBS_SET(fw_mode, value) \
+    (fw_mode |= ((value << WMI_DBS_FW_MODE_CFG_DBS_BITPOS) & WMI_DBS_FW_MODE_CFG_DBS_MASK))
+#define WMI_DBS_FW_MODE_CFG_AGILE_DFS_SET(fw_mode, value) \
+    (fw_mode |= ((value << WMI_DBS_FW_MODE_CFG_AGILE_DFS_BITPOS) & WMI_DBS_FW_MODE_CFG_AGILE_DFS_MASK))
+
+#define WMI_DBS_FW_MODE_CFG_DBS_GET(fw_mode)    \
+    ((fw_mode & WMI_DBS_FW_MODE_CFG_DBS_MASK) >> WMI_DBS_FW_MODE_CFG_DBS_BITPOS)
+#define WMI_DBS_FW_MODE_CFG_AGILE_DFS_GET(fw_mode)    \
+    ((fw_mode & WMI_DBS_FW_MODE_CFG_AGILE_DFS_MAS) >> WMI_DBS_FW_MODE_CFG_AGILE_DFS_BITPOS)
+
 /** NOTE: This structure cannot be extended in the future without breaking WMI compatibility */
 typedef struct _wmi_abi_version {
     A_UINT32    abi_version_0;   /** WMI Major and Minor versions */
@@ -1425,6 +1464,11 @@ typedef struct {
      *
      */
     A_UINT32 txrx_chainmask;
+
+    /*
+     * default Dual Band Simultaneous (DBS) hardware mode
+     */
+    A_UINT32 default_dbs_hw_mode_index;
 
     /* The TLVs for hal_reg_capabilities, wmi_service_bitmap and mem_reqs[] will follow this TLV.
          *     HAL_REG_CAPABILITIES   hal_reg_capabilities;
@@ -4093,6 +4137,10 @@ typedef enum {
     /** disconnect threshold, once the consecutive error for specific peer
       * exceed this threhold, FW will send kickout event to host */
     WMI_VDEV_PARAM_DISCONNECT_TH,
+
+    /** The rate_code of RTS_CTS changed by host. Now FW can support
+     * more non-HT rates rather than 1Mbps or 6Mbps */
+    WMI_VDEV_PARAM_RTSCTS_RATE,
 
 } WMI_VDEV_PARAM;
 
@@ -10922,6 +10970,17 @@ typedef struct {
     A_UINT32 hw_mode_index;
 } wmi_soc_set_hw_mode_cmd_fixed_param;
 
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_soc_set_dual_mac_config_cmd_fixed_param */
+    /**  Set Dual MAC Firmware Configuration  **/
+
+    /* Concurrent scan configuration bits */
+    A_UINT32 concurrent_scan_config_bits;
+    /* Firmware mode configuration bits */
+    A_UINT32 fw_mode_config_bits;
+
+} wmi_soc_set_dual_mac_config_cmd_fixed_param;
+
 /** Data structure for information specific to a VDEV to MAC mapping. */
 typedef struct {
     /** TLV tag and len; tag equals
@@ -10977,6 +11036,23 @@ typedef struct {
  */
 } wmi_soc_hw_mode_transition_event_fixed_param;
 
+
+typedef struct {
+    A_UINT32 tlv_header; /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_soc_set_dual_mac_config_response_event_fixed_param */
+    /**  Set Dual MAC Config Response Event  **/
+
+    /* Status for set_dual_mac_config command */
+    /*
+     * Values for Status:
+     *  0 - OK; command successful
+     *  1 - EINVAL; Requested invalid hw_mode
+     *  3 - ENOTSUP; HW mode not supported
+     *  4 - EHARDWARE; HW mode change prevented by hardware
+     *  6 - ECOEX; HW mode change conflict with Coex
+     */
+    A_UINT32 status;
+
+} wmi_soc_set_dual_mac_config_response_event_fixed_param;
 
 /* ADD NEW DEFS HERE */
 

@@ -1117,6 +1117,12 @@ A_STATUS HTCSendPktsMultiple(HTC_HANDLE HTCHandle, HTC_PACKET_QUEUE *pPktQueue)
     AR_DEBUG_ASSERT(pPacket->Endpoint < ENDPOINT_MAX);
     pEndpoint = &target->EndPoint[pPacket->Endpoint];
 
+    if (!pEndpoint->ServiceID) {
+       AR_DEBUG_PRINTF(ATH_DEBUG_SEND, ("%s: ServiceID is invalid\n",
+                                                 __func__));
+       return A_EINVAL;
+    }
+
 #ifdef HTC_EP_STAT_PROFILING
     LOCK_HTC_TX(target);
     INC_HTC_EP_STAT(pEndpoint,TxPosted,HTC_PACKET_QUEUE_DEPTH(pPktQueue));

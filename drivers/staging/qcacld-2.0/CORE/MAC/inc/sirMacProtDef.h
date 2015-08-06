@@ -1002,7 +1002,7 @@ typedef __ani_attr_pre_packed struct sSirMacRateSet
 typedef __ani_attr_pre_packed struct sSirMacSSid
 {
     tANI_U8        length;
-    tANI_U8        ssId[32];
+    tANI_U8        ssId[SIR_MAC_MAX_SSID_LENGTH];
 } __ani_attr_packed tSirMacSSid;
 
 typedef __ani_attr_pre_packed struct sSirMacWpaInfo

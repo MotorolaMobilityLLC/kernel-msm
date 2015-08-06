@@ -108,7 +108,7 @@
 #ifdef CONFIG_SLUB_DEBUG_ON
 #define HDD_SSR_BRING_UP_TIME 20000
 #else
-#define HDD_SSR_BRING_UP_TIME 10000
+#define HDD_SSR_BRING_UP_TIME 15000
 #endif
 
 static eHalStatus g_full_pwr_status;

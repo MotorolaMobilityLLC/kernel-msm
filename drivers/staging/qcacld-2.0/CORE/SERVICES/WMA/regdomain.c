@@ -451,7 +451,7 @@ u_int32_t regdmn_getwmodesnreg(u_int32_t modesAvail,
 }
 
 void regdmn_get_ctl_info(struct regulatory *reg, u_int32_t modesAvail,
-     u_int32_t modeSelect)
+			 u_int32_t modeSelect, bool cck_chain_mask)
 {
 	const REG_DOMAIN *regdomain2G = NULL;
 	const REG_DOMAIN *regdomain5G = NULL;
@@ -542,10 +542,11 @@ void regdmn_get_ctl_info(struct regulatory *reg, u_int32_t modesAvail,
 			ctl_5g = ctl;
 	}
 	wma_send_regdomain_info(reg->reg_domain, regpair->regDmn2GHz,
-			regpair->regDmn5GHz, ctl_2g, ctl_5g);
+				regpair->regDmn5GHz, ctl_2g, ctl_5g,
+				cck_chain_mask);
 }
 
-void regdmn_set_regval(struct regulatory *reg)
+void regdmn_set_regval(struct regulatory *reg, bool cck_chain_mask)
 {
 	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
 	tp_wma_handle wma = vos_get_context(VOS_MODULE_ID_WDA, vos_context);
@@ -558,7 +559,8 @@ void regdmn_set_regval(struct regulatory *reg)
 
 	wma_get_modeselect(wma, &modeSelect);
 
-	regdmn_get_ctl_info(reg, wma->reg_cap.wireless_modes, modeSelect);
+	regdmn_get_ctl_info(reg, wma->reg_cap.wireless_modes, modeSelect,
+			    cck_chain_mask);
 	return;
 }
 

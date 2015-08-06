@@ -2924,7 +2924,29 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_TX_CHAIN_MASK_1SS       "gTxChainMask1ss"
 #define CFG_TX_CHAIN_MASK_1SS_MIN      (0)
 #define CFG_TX_CHAIN_MASK_1SS_MAX      (3)
-#define CFG_TX_CHAIN_MASK_1SS_DEFAULT  (0)
+#define CFG_TX_CHAIN_MASK_1SS_DEFAULT  (1)
+
+#ifdef FEATURE_WLAN_EXTSCAN
+#define CFG_EXTSCAN_PASSIVE_MAX_CHANNEL_TIME_NAME      "gExtScanPassiveMaxChannelTime"
+#define CFG_EXTSCAN_PASSIVE_MAX_CHANNEL_TIME_MIN       (110)
+#define CFG_EXTSCAN_PASSIVE_MAX_CHANNEL_TIME_MAX       (500)
+#define CFG_EXTSCAN_PASSIVE_MAX_CHANNEL_TIME_DEFAULT   (110)
+
+#define CFG_EXTSCAN_PASSIVE_MIN_CHANNEL_TIME_NAME      "gExtScanPassiveMinChannelTime"
+#define CFG_EXTSCAN_PASSIVE_MIN_CHANNEL_TIME_MIN       (60)
+#define CFG_EXTSCAN_PASSIVE_MIN_CHANNEL_TIME_MAX       (500)
+#define CFG_EXTSCAN_PASSIVE_MIN_CHANNEL_TIME_DEFAULT   (60)
+
+#define CFG_EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_NAME       "gExtScanActiveMaxChannelTime"
+#define CFG_EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_MIN        (40)
+#define CFG_EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_MAX        (110)
+#define CFG_EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT    (40)
+
+#define CFG_EXTSCAN_ACTIVE_MIN_CHANNEL_TIME_NAME       "gExtScanActiveMinChannelTime"
+#define CFG_EXTSCAN_ACTIVE_MIN_CHANNEL_TIME_MIN        (20)
+#define CFG_EXTSCAN_ACTIVE_MIN_CHANNEL_TIME_MAX        (110)
+#define CFG_EXTSCAN_ACTIVE_MIN_CHANNEL_TIME_DEFAULT    (20)
+#endif
 
 /*---------------------------------------------------------------------------
   Type declarations
@@ -3554,6 +3576,12 @@ typedef struct
    bool                        tx_chain_mask_cck;
    uint8_t                     tx_chain_mask_1ss;
 
+#ifdef FEATURE_WLAN_EXTSCAN
+   uint32_t                    extscan_passive_max_chn_time;
+   uint32_t                    extscan_passive_min_chn_time;
+   uint32_t                    extscan_active_max_chn_time;
+   uint32_t                    extscan_active_min_chn_time;
+#endif
 } hdd_config_t;
 
 #ifdef WLAN_FEATURE_MBSSID

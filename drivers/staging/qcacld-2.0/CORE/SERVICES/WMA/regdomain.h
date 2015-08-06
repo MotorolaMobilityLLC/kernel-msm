@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1090,6 +1090,7 @@ enum CountryCode {
     CTRY_BELGIUM2             = 5002     /* Belgium/Cisco implementation */
 };
 int32_t regdmn_get_country_alpha2(struct regulatory *reg);
-void regdmn_set_regval(struct regulatory *reg);
+void regdmn_set_regval(struct regulatory *reg,
+		       bool cck_chain_mask);
 int32_t regdmn_find_ctry_by_name(u_int8_t *alpha2);
 #endif /* REGULATORY_H */

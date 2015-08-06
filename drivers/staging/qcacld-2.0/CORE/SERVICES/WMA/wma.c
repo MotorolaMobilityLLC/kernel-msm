@@ -12247,9 +12247,6 @@ static void wma_process_cli_set_cmd(tp_wma_handle wma,
 			wma_set_modulated_dtim(wma, privcmd);
 			break;
 
-		case GEN_PARAM_TX_CHAIN_MASK_CCK:
-			wma->tx_chain_mask_cck = privcmd->param_value;
-			break;
 		default:
 			WMA_LOGE("Invalid param id 0x%x", privcmd->param_id);
 			break;
@@ -17760,6 +17757,108 @@ static int wma_flush_complete_evt_handler(void *handle,
 	return 0;
 }
 
+#ifdef FEATURE_WLAN_EXTSCAN
+/**
+ * wma_extscan_wow_event_callback() - extscan wow event callback
+ * @handle: WMA handle
+ * @event: event buffer
+ * @len: length of @event buffer
+ *
+ * In wow case, the wow event is followed by the payload of the event
+ * which generated the wow event.
+ * payload is 4 bytes of length followed by event buffer. the first 4 bytes
+ * of event buffer is common tlv header, which is a combination
+ * of tag (higher 2 bytes) and length (lower 2 bytes). The tag is used to
+ * identify the event which triggered wow event.
+ *
+ * @Return: none
+ */
+static void wma_extscan_wow_event_callback(void *handle, void *event,
+					  uint32_t len)
+{
+	uint32_t tag = WMITLV_GET_TLVTAG(WMITLV_GET_HDR(event));
+	WMA_LOGI("%s: Enter  Tag: %d", __func__, tag);
+
+	switch (tag) {
+	case WMITLV_TAG_STRUC_wmi_extscan_start_stop_event_fixed_param:
+		{
+			WMI_EXTSCAN_START_STOP_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_start_stop_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_operation_event_fixed_param:
+		{
+			WMI_EXTSCAN_OPERATION_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_operations_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_table_usage_event_fixed_param:
+		{
+			WMI_EXTSCAN_TABLE_USAGE_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_table_usage_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_cached_results_event_fixed_param:
+		{
+			WMI_EXTSCAN_CACHED_RESULTS_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_cached_results_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_wlan_change_results_event_fixed_param:
+		{
+			WMI_EXTSCAN_WLAN_CHANGE_RESULTS_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_change_results_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_hotlist_match_event_fixed_param:
+		{
+			WMI_EXTSCAN_HOTLIST_MATCH_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_hotlist_match_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_capabilities_event_fixed_param:
+		{
+			WMI_EXTSCAN_CAPABILITIES_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_capabilities_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	case WMITLV_TAG_STRUC_wmi_extscan_hotlist_ssid_match_event_fixed_param:
+		{
+			WMI_EXTSCAN_HOTLIST_SSID_MATCH_EVENTID_param_tlvs param;
+			param.fixed_param = event;
+			wma_extscan_hotlist_ssid_match_event_handler(handle,
+					(uint8_t *)&param, sizeof(param));
+			break;
+		}
+
+	default:
+		WMA_LOGE("%s: Unknown tag: %d", __func__, tag);
+		break;
+	}
+}
+#endif
+
 /*
  * Handler to catch wow wakeup host event. This event will have
  * reason why the firmware has woken the host.
@@ -17909,9 +18008,20 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	    }
 #ifdef FEATURE_WLAN_EXTSCAN
 	case WOW_REASON_EXTSCAN:
-		{
-			WMA_LOGD("Host woken up because of extscan reason");
-		}
+		WMA_LOGD("Host woken up because of extscan reason");
+		if (param_buf->wow_packet_buffer) {
+			wow_buf_pkt_len =
+				*(uint32_t *)param_buf->wow_packet_buffer;
+			WMA_LOGD("wow_packet_buffer dump");
+			vos_trace_hex_dump(VOS_MODULE_ID_WDA,
+				VOS_TRACE_LEVEL_DEBUG,
+				param_buf->wow_packet_buffer,
+				wow_buf_pkt_len);
+			wma_extscan_wow_event_callback(handle,
+				(u_int8_t *)(param_buf->wow_packet_buffer + 4),
+				wow_buf_pkt_len);
+		} else
+			WMA_LOGE("wow_packet_buffer is empty");
 		break;
 #endif
 	case WOW_REASON_RSSI_BREACH_EVENT:
@@ -27731,7 +27841,8 @@ tANI_U8 wma_getFwWlanFeatCaps(tANI_U8 featEnumValue)
 }
 
 void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
-		u_int16_t regdmn5G, int8_t ctl2G, int8_t ctl5G)
+			     u_int16_t regdmn5G, int8_t ctl2G, int8_t ctl5G,
+			     bool cck_chain_mask)
 {
 	wmi_buf_t buf;
 	wmi_pdev_set_regdomain_cmd_fixed_param *cmd;
@@ -27751,6 +27862,7 @@ void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 		WMA_LOGP("%s: wmi_buf_alloc failed", __func__);
 		return;
 	}
+
 	cmd = (wmi_pdev_set_regdomain_cmd_fixed_param *) wmi_buf_data(buf);
 	WMITLV_SET_HDR(&cmd->tlv_header,
 		WMITLV_TAG_STRUC_wmi_pdev_set_regdomain_cmd_fixed_param,
@@ -27769,8 +27881,9 @@ void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 		adf_nbuf_free(buf);
 	}
 
-	if ((ctl2G == MKK) && (ctl5G == MKK) &&
-	    (true == wma->tx_chain_mask_cck))
+	if ((((reg_dmn & ~COUNTRY_ERD_FLAG) == CTRY_JAPAN) ||
+	     ((reg_dmn & ~COUNTRY_ERD_FLAG) == CTRY_KOREA_ROC)) &&
+	    (true == cck_chain_mask))
 		cck_mask_val = true;
 
 	ret = wmi_unified_pdev_set_param(wma->wmi_handle,

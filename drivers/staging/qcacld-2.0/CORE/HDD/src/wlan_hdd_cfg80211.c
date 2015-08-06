@@ -200,9 +200,6 @@
  */
 
 #define EXTSCAN_EVENT_BUF_SIZE 4096
-#define EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT 30
-#define EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_MIN 30
-#define EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_MAX 110
 #endif
 
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
@@ -1477,7 +1474,6 @@ __wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
 	struct nlattr *tb2[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_MAX + 1];
 	int rem, i;
 	uint32_t buf_len = 0;
-	uint8_t *buf;
 	int ret;
 
 	ret = wlan_hdd_validate_context(pHddCtx);
@@ -1510,16 +1506,6 @@ __wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
 	hddLog(VOS_TRACE_LEVEL_DEBUG, FL("Cmd Type (%d)"), cmd_type);
 	switch(cmd_type) {
 	case QCA_WLAN_VENDOR_ATTR_ROAM_SUBCMD_SSID_WHITE_LIST:
-		/* Parse and fetch number of allowed ssid */
-		if (!tb[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_NUM_NETWORKS]) {
-			hddLog(LOGE, FL("attr num of allowed ssid failed"));
-			goto fail;
-		}
-		roam_params.num_ssid_allowed_list = nla_get_u32(
-			tb[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_NUM_NETWORKS]);
-		hddLog(VOS_TRACE_LEVEL_DEBUG,
-			FL("Num of Allowed SSID (%d)"),
-			roam_params.num_ssid_allowed_list);
 		i = 0;
 		nla_for_each_nested(curr_attr,
 			tb[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID_LIST],
@@ -1536,24 +1522,35 @@ __wlan_hdd_cfg80211_set_ext_roam_params(struct wiphy *wiphy,
 				hddLog(LOGE, FL("attr allowed ssid failed"));
 				goto fail;
 			}
-			buf = nla_data(tb2[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID]);
 			buf_len = nla_len(tb2[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID]);
-			if (buf_len) {
-				nla_strlcpy(roam_params.ssid_allowed_list[i].ssId,
+			/*
+			 * Upper Layers include a null termination character.
+			 * Check for the actual permissible length of SSID and
+			 * also ensure not to copy the NULL termination
+			 * character to the driver buffer.
+			 */
+			if (buf_len && (i < MAX_SSID_ALLOWED_LIST) &&
+				((buf_len - 1) <= SIR_MAC_MAX_SSID_LENGTH)) {
+				nla_memcpy(roam_params.ssid_allowed_list[i].ssId,
 					tb2[QCA_WLAN_VENDOR_ATTR_ROAMING_PARAM_WHITE_LIST_SSID],
-					buf_len);
+					buf_len - 1);
 				roam_params.ssid_allowed_list[i].length =
 					buf_len - 1;
 				hddLog(VOS_TRACE_LEVEL_DEBUG,
-					FL("SSID[%d]: %s,length = %d"), i,
+					FL("SSID[%d]: %.*s,length = %d"), i,
+					roam_params.ssid_allowed_list[i].length,
 					roam_params.ssid_allowed_list[i].ssId,
 					roam_params.ssid_allowed_list[i].length);
+				i++;
 			}
 			else {
-				hddLog(VOS_TRACE_LEVEL_ERROR, FL("Invalid buffer length"));
+				hddLog(LOGE, FL("Invalid SSID len %d,idx %d"),
+					buf_len, i);
 			}
-			i++;
 		}
+		roam_params.num_ssid_allowed_list = i;
+		hddLog(VOS_TRACE_LEVEL_DEBUG, FL("Num of Allowed SSID %d"),
+			roam_params.num_ssid_allowed_list);
 		sme_update_roam_params(pHddCtx->hHal, session_id,
 				roam_params, REASON_ROAM_SET_SSID_ALLOWED);
 		break;
@@ -3076,22 +3073,22 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 	uint32_t chanList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
 
 	uint32_t min_dwell_time_active_bucket =
-		EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT;
+		pHddCtx->cfg_ini->extscan_active_max_chn_time;
 	uint32_t max_dwell_time_active_bucket =
-		EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT;
+		pHddCtx->cfg_ini->extscan_active_max_chn_time;
 	uint32_t min_dwell_time_passive_bucket =
-		CFG_PASSIVE_MAX_CHANNEL_TIME_DEFAULT;
+		pHddCtx->cfg_ini->extscan_passive_max_chn_time;
 	uint32_t max_dwell_time_passive_bucket =
-		CFG_PASSIVE_MAX_CHANNEL_TIME_DEFAULT;
+		pHddCtx->cfg_ini->extscan_passive_max_chn_time;
 
 	bktIndex = 0;
 	pReqMsg->min_dwell_time_active =
 		pReqMsg->max_dwell_time_active =
-		EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT;
+			pHddCtx->cfg_ini->extscan_active_max_chn_time;
 
 	pReqMsg->min_dwell_time_passive =
 		pReqMsg->max_dwell_time_passive =
-		CFG_PASSIVE_MAX_CHANNEL_TIME_DEFAULT;
+			pHddCtx->cfg_ini->extscan_passive_max_chn_time;
 
 	nla_for_each_nested(buckets,
 			tb[QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC], rem1) {
@@ -3177,11 +3174,11 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 		/* start with known good values for bucket dwell times */
 		pReqMsg->buckets[bktIndex].min_dwell_time_active =
 		pReqMsg->buckets[bktIndex].max_dwell_time_active =
-			EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT;
+			pHddCtx->cfg_ini->extscan_active_max_chn_time;
 
 		pReqMsg->buckets[bktIndex].min_dwell_time_passive =
 		pReqMsg->buckets[bktIndex].max_dwell_time_passive =
-			CFG_PASSIVE_MAX_CHANNEL_TIME_DEFAULT;
+			pHddCtx->cfg_ini->extscan_passive_max_chn_time;
 
 		/* Framework shall pass the channel list if the input WiFi band is
 		 * WIFI_BAND_UNSPECIFIED.
@@ -3218,7 +3215,8 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 								passive = 1;
 					pReqMsg->buckets[bktIndex].channels[j].
 					dwellTimeMs =
-					CFG_PASSIVE_MAX_CHANNEL_TIME_DEFAULT;
+						pHddCtx->cfg_ini->
+						extscan_passive_max_chn_time;
 					/* reconfigure per-bucket dwell time */
 					if (min_dwell_time_passive_bucket >
 							pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs) {
@@ -3235,7 +3233,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 						passive = 0;
 					pReqMsg->buckets[bktIndex].channels[j].
 						dwellTimeMs =
-						EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT;
+						pHddCtx->cfg_ini->extscan_active_max_chn_time;
 					/* reconfigure per-bucket dwell times */
 					if (min_dwell_time_active_bucket >
 							pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs) {
@@ -3328,9 +3326,9 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 
 			/* Override dwell time if required */
 			if (pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs <
-				EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_MIN ||
+				pHddCtx->cfg_ini->extscan_active_min_chn_time ||
 				pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs >
-				EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_MAX) {
+				pHddCtx->cfg_ini->extscan_active_max_chn_time) {
 				hddLog(LOG1,
 					FL("WiFi band is unspecified, dwellTime:%d"),
 					pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs);
@@ -3339,10 +3337,10 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 					vos_freq_to_chan(
 						pReqMsg->buckets[bktIndex].channels[j].channel))) {
 					pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs =
-						CFG_PASSIVE_MAX_CHANNEL_TIME_DEFAULT;
+						pHddCtx->cfg_ini->extscan_passive_max_chn_time;
 				} else {
 					pReqMsg->buckets[bktIndex].channels[j].dwellTimeMs =
-						EXTSCAN_ACTIVE_MAX_CHANNEL_TIME_DEFAULT;
+						pHddCtx->cfg_ini->extscan_active_max_chn_time;
 				}
 			}
 
@@ -16456,43 +16454,30 @@ void hdd_cfg80211_sched_scan_done_callback(void *callbackContext,
             "%s: cfg80211 scan result database updated", __func__);
 }
 
-/*
- * FUNCTION: wlan_hdd_is_pno_allowed
- * Disallow pno if any session is active
+/**
+ * wlan_hdd_is_pno_allowed() -  Check if PNO is allowed
+ * @adapter: HDD Device Adapter
+ *
+ * The PNO Start request is coming from upper layers.
+ * It is to be allowed only for Infra STA device type
+ * and the link should be in a disconnected state.
+ *
+ * Return: Success if PNO is allowed, Failure otherwise.
  */
-static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
+static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *adapter)
 {
-   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
-   hdd_adapter_t *pTempAdapter = NULL;
-   hdd_station_ctx_t *pStaCtx;
-   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-   int status = 0;
+	hddLog(LOG1,
+		FL("dev_mode=%d, conn_state=%d, session ID=%d"),
+		adapter->device_mode,
+		adapter->sessionCtx.station.conn_info.connState,
+		adapter->sessionId);
+	if ((adapter->device_mode == WLAN_HDD_INFRA_STATION) &&
+		(eConnectionState_NotConnected ==
+			 adapter->sessionCtx.station.conn_info.connState))
+		return eHAL_STATUS_SUCCESS;
+	else
+		return eHAL_STATUS_FAILURE;
 
-   status = hdd_get_front_adapter(pHddCtx, &pAdapterNode);
-
- /* The current firmware design does not allow PNO during any
-  * active sessions. Hence, determine the active sessions
-  * and return a failure.
-  */
-
-   while ((NULL != pAdapterNode) && (VOS_STATUS_SUCCESS == status))
-   {
-        pTempAdapter = pAdapterNode->pAdapter;
-        pStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pTempAdapter);
-
-        if (((WLAN_HDD_INFRA_STATION == pTempAdapter->device_mode)
-          && (eConnectionState_NotConnected != pStaCtx->conn_info.connState))
-          || (WLAN_HDD_P2P_CLIENT == pTempAdapter->device_mode)
-          || (WLAN_HDD_P2P_GO == pTempAdapter->device_mode)
-          || (WLAN_HDD_SOFTAP == pTempAdapter->device_mode)
-         )
-        {
-            return eHAL_STATUS_FAILURE;
-        }
-        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
-        pAdapterNode = pNext;
-   }
-   return eHAL_STATUS_SUCCESS;
 }
 
 /*

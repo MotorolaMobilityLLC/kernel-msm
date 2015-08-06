@@ -202,6 +202,12 @@ v_BOOL_t hdd_connIsConnected( hdd_station_ctx_t *pHddStaCtx )
    return( hdd_connGetConnectionState( pHddStaCtx, NULL ) );
 }
 
+bool hdd_is_connecting(hdd_station_ctx_t *hdd_sta_ctx)
+{
+	return (hdd_sta_ctx->conn_info.connState ==
+		eConnectionState_Connecting);
+}
+
 eCsrBand hdd_connGetConnectedBand( hdd_station_ctx_t *pHddStaCtx )
 {
    v_U8_t staChannel = 0;

@@ -573,6 +573,9 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_soc_set_hw_mode_response_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_soc_hw_mode_transition_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_vdev_txrx_streams,
+    WMITLV_TAG_STRUC_wmi_soc_set_hw_mode_response_vdev_mac_entry,
+    WMITLV_TAG_STRUC_wmi_soc_set_dual_mac_config_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_soc_set_dual_mac_config_response_event_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -793,7 +796,8 @@ typedef enum {
     OP(WMI_VDEV_SET_IE_CMDID) \
     OP(WMI_RSSI_BREACH_MONITOR_CONFIG_CMDID) \
     OP(WMI_SOC_SET_PCL_CMDID) \
-    OP(WMI_SOC_SET_HW_MODE_CMDID)
+    OP(WMI_SOC_SET_HW_MODE_CMDID) \
+    OP(WMI_SOC_SET_DUAL_MAC_CONFIG_CMDID)
 
 /*
  * IMPORTANT: Please add _ALL_ WMI Events Here.
@@ -902,7 +906,8 @@ typedef enum {
     OP(WMI_RSSI_BREACH_EVENTID)\
     OP(WMI_WOW_INITIAL_WAKEUP_EVENTID) \
     OP(WMI_SOC_SET_HW_MODE_RESP_EVENTID) \
-    OP(WMI_SOC_HW_MODE_TRANSITION_EVENTID)
+    OP(WMI_SOC_HW_MODE_TRANSITION_EVENTID) \
+    OP(WMI_SOC_SET_DUAL_MAC_CONFIG_RESP_EVENTID)
 
 /* TLV definitions of WMI commands */
 
@@ -2235,6 +2240,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_SOC_SET_PCL_CMDID);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_soc_set_hw_mode_cmd_fixed_param, wmi_soc_set_hw_mode_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_SOC_SET_HW_MODE_CMDID);
 
+/* Set the SOC Dual MAC Config Cmd */
+#define WMITLV_TABLE_WMI_SOC_SET_DUAL_MAC_CONFIG_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_soc_set_dual_mac_config_cmd_fixed_param, wmi_soc_set_dual_mac_config_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_SOC_SET_DUAL_MAC_CONFIG_CMDID);
+
 /************************** TLV definitions of WMI events *******************************/
 
 /* Service Ready event */
@@ -2807,6 +2817,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_SOC_SET_HW_MODE_RESP_EVENTID);
 WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_soc_hw_mode_transition_event_fixed_param, wmi_soc_hw_mode_transition_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
 WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_ARRAY_STRUC, wmi_soc_set_hw_mode_response_vdev_mac_entry, wmi_soc_set_hw_mode_response_vdev_mac_mapping, WMITLV_SIZE_VAR)
 WMITLV_CREATE_PARAM_STRUC(WMI_SOC_HW_MODE_TRANSITION_EVENTID);
+
+/* SOC Set Dual MAC Config Response event */
+#define WMITLV_TABLE_WMI_SOC_SET_DUAL_MAC_CONFIG_RESP_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_soc_set_dual_mac_config_response_event_fixed_param, wmi_soc_set_dual_mac_config_response_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_SOC_SET_DUAL_MAC_CONFIG_RESP_EVENTID);
+
 #ifdef __cplusplus
 }
 #endif

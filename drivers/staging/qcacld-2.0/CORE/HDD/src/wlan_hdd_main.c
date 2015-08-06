@@ -8570,7 +8570,8 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
       case WLAN_HDD_INFRA_STATION:
       case WLAN_HDD_P2P_CLIENT:
       case WLAN_HDD_P2P_DEVICE:
-         if( hdd_connIsConnected( WLAN_HDD_GET_STATION_CTX_PTR( pAdapter )) )
+         if (hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)) ||
+            hdd_is_connecting(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)))
          {
             if (pWextState->roamProfile.BSSType == eCSR_BSS_TYPE_START_IBSS)
                 halStatus = sme_RoamDisconnect(pHddCtx->hHal,
@@ -11007,15 +11008,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       goto err_wiphy_unregister;
    }
 
-   ret = process_wma_set_command(0, GEN_PARAM_TX_CHAIN_MASK_CCK,
-                                 pHddCtx->cfg_ini->tx_chain_mask_cck,
-                                 GEN_CMD);
-   if (0 != ret) {
-       hddLog(VOS_TRACE_LEVEL_ERROR,
-              "%s: set GEN_PARAM_TX_CHAIN_MASK_CCK failed %d",
-              __func__, ret);
-   }
-
    ret = process_wma_set_command(0, WMI_PDEV_PARAM_TX_CHAIN_MASK_1SS,
                                  pHddCtx->cfg_ini->tx_chain_mask_1ss,
                                  PDEV_CMD);
@@ -12737,11 +12729,24 @@ void hdd_ch_avoid_cb
    }
 
 #ifdef CONFIG_CNSS
-   cnss_set_wlan_unsafe_channel(hdd_ctxt->unsafe_channel_list,
-                                hdd_ctxt->unsafe_channel_count);
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-             "%s : number of unsafe channels is %d ",
-             __func__,  hdd_ctxt->unsafe_channel_count);
+            "%s : number of unsafe channels is %d ",
+            __func__,  hdd_ctxt->unsafe_channel_count);
+
+   if (cnss_set_wlan_unsafe_channel(hdd_ctxt->unsafe_channel_list,
+                                hdd_ctxt->unsafe_channel_count)) {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: Failed to set unsafe channel",
+                __func__);
+
+       /* clear existing unsafe channel cache */
+       hdd_ctxt->unsafe_channel_count = 0;
+       vos_mem_zero(hdd_ctxt->unsafe_channel_list,
+           sizeof(v_U16_t) * NUM_20MHZ_RF_CHANNELS);
+
+       return;
+   }
+
    for (channel_loop = 0;
         channel_loop < hdd_ctxt->unsafe_channel_count;
         channel_loop++)
