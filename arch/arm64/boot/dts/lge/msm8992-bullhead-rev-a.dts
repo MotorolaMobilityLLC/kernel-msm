@@ -21,3 +21,9 @@
 	compatible = "qcom,msm8992";
 	qcom,board-id = <0x464 0>;
 };
+
+&bullhead_batterydata {
+	qcom,lge_blt19_tocad_2700mAh_2022227_PMI8994GUI2165 {
+		qcom,max-voltage-uv = <4320000>;
+	};
+};
