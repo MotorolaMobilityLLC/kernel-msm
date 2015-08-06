@@ -626,6 +626,8 @@
 			patch-data = "F1@0=1&7";
 		};
 	};
+};
+
 &spi_9 {
 	florida: florida@0 {
 		compatible = "wlf,wm5110";
@@ -642,7 +644,7 @@
 		wlf,micbias2 = <1800 1 1 0 0>;
 		wlf,micbias3 = <1800 1 1 0 0>;
 		wlf,vib_pwm_gpio_ctrl = <0xC02>;
-		vreg-arizona1p2-supply = <&vreg_wlf1p2>;
+		vreg-arizona1p2-supply = <&dummy_vreg>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&florida_irq_default &florida_reset_default>;
 
