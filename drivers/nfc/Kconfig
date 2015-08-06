@@ -82,3 +82,23 @@ config NFC_NQ
 	  This enables the NFC driver for NQx based devices.
 	  This is for i2c connected version. NCI protocol logic
 	  resides in the usermode and it has no other NFC dependencies.
+
+config PN544
+	bool "PN544 NFC driver"
+	depends on I2C
+	default n
+	help
+	  NXP NFC PN544 I2C driver.
+	  This enables driver for NXP PN544 Near Field Communication controller.
+	  This drivers use I2C to talk to the controller
+
+	  If unsure, say N.
+
+config PN544_CTRLDEV
+	bool "PN544 NFC driver creates control device"
+	depends on PN544
+	default n
+	help
+	  NXP PN544 NFC driver control device support.
+
+	  If unsure, say N.
