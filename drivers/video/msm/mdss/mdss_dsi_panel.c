@@ -718,8 +718,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (ctrl->panel_tfmode) {
+		int tfmode = ctrl->panel_tfmode->tfmode[TFMODE_STATE_NORMAL];
 		struct dsi_panel_cmds *cmds =
-			&(ctrl->panel_tfmode->cmds[TFMODE_STATE_NORMAL]);
+			&(ctrl->panel_tfmode->cmds[tfmode]);
 		mdss_dsi_panel_cmds_send(ctrl, cmds);
 	}
 
@@ -803,8 +804,9 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	if (ctrl->panel_tfmode) {
 		int state = enable ? TFMODE_STATE_LOWPOWER
 				   : TFMODE_STATE_NORMAL;
-		mdss_dsi_panel_cmds_send
-			(ctrl, &(ctrl->panel_tfmode->cmds[state]));
+		int tfmode = ctrl->panel_tfmode->tfmode[state];
+		mdss_dsi_panel_cmds_send(ctrl,
+					 &(ctrl->panel_tfmode->cmds[tfmode]));
 	}
 
 	pr_debug("%s:-\n", __func__);
