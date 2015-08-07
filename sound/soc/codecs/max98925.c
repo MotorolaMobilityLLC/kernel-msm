@@ -588,6 +588,61 @@ static int max98925_reg_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static const struct soc_enum max98925_imon_enum =
+	SOC_ENUM_SINGLE(MAX98925_R036_BLOCK_ENABLE, M98925_ADC_IMON_EN_SHIFT, 2,
+			max98925_amplifier_text);
+
+static int max98925_imon_en_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return max98925_reg_get(kcontrol, ucontrol, MAX98925_R036_BLOCK_ENABLE,
+			M98925_ADC_IMON_EN_MASK, M98925_ADC_IMON_EN_SHIFT);
+}
+
+static int max98925_imon_en_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return max98925_reg_put(kcontrol, ucontrol, MAX98925_R036_BLOCK_ENABLE,
+			M98925_ADC_IMON_EN_MASK, M98925_ADC_IMON_EN_SHIFT);
+}
+
+static const struct soc_enum max98925_vmon_enum =
+	SOC_ENUM_SINGLE(MAX98925_R036_BLOCK_ENABLE, M98925_ADC_VMON_EN_SHIFT, 2,
+			max98925_amplifier_text);
+
+
+static int max98925_vmon_en_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return max98925_reg_get(kcontrol, ucontrol, MAX98925_R036_BLOCK_ENABLE,
+			M98925_ADC_VMON_EN_MASK, M98925_ADC_VMON_EN_SHIFT);
+}
+
+static int max98925_vmon_en_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return max98925_reg_put(kcontrol, ucontrol, MAX98925_R036_BLOCK_ENABLE,
+			M98925_ADC_VMON_EN_MASK, M98925_ADC_VMON_EN_SHIFT);
+}
+
+static const struct soc_enum max98925_classd_only_enum =
+	SOC_ENUM_SINGLE(MAX98925_R02F_SPK_AMP, M98925_SPK_MODE_SHIFT, 2,
+			max98925_amplifier_text);
+
+static int max98925_classd_en_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return max98925_reg_get(kcontrol, ucontrol, MAX98925_R02F_SPK_AMP,
+			M98925_SPK_MODE_MASK, M98925_SPK_MODE_SHIFT);
+}
+
+static int max98925_classd_en_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return max98925_reg_put(kcontrol, ucontrol, MAX98925_R02F_SPK_AMP,
+			M98925_SPK_MODE_MASK, M98925_SPK_MODE_SHIFT);
+}
+
 static int max98925_spk_ramp_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -699,6 +754,15 @@ static const struct snd_kcontrol_new max98925_snd_controls[] = {
 
 	SOC_ENUM_EXT("Boost Output Voltage", max98925_boost_voltage_enum,
 		max98925_boost_voltage_get, max98925_boost_voltage_put),
+
+	SOC_ENUM_EXT("Imon Enable", max98925_imon_enum,
+		max98925_imon_en_get, max98925_imon_en_put),
+
+	SOC_ENUM_EXT("Vmon Enable", max98925_vmon_enum,
+		max98925_vmon_en_get, max98925_vmon_en_put),
+
+	SOC_ENUM_EXT("ClassD Only", max98925_classd_only_enum,
+		max98925_classd_en_get, max98925_classd_en_put),
 };
 
 static int max98925_add_widgets(struct snd_soc_codec *codec)
@@ -1052,17 +1116,6 @@ static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 		regmap_update_bits(max98925->regmapR, MAX98925_R02D_GAIN,
 			M98925_SPK_GAIN_MASK, max98925->right_gain);
 
-		regmap_update_bits(max98925->regmapL, MAX98925_R036_BLOCK_ENABLE,
-			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
-				M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK,
-			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
-				M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK);
-		regmap_update_bits(max98925->regmapR, MAX98925_R036_BLOCK_ENABLE,
-			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
-				M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK,
-			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
-				M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK);
-
 		regmap_write(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
 			max98925->left_en);
 		regmap_write(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
@@ -1243,10 +1296,27 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	regmap_write(max98925->regmapL, MAX98925_R02B_DOUT_DRV_STRENGTH, 0x00);
 	regmap_write(max98925->regmapR, MAX98925_R02B_DOUT_DRV_STRENGTH, 0x00);
 
+	regmap_write(max98925->regmapL, MAX98925_R035_BOOST_CONVERTER, 0x01);
+	regmap_write(max98925->regmapR, MAX98925_R035_BOOST_CONVERTER, 0x21);
+
+	regmap_write(max98925->regmapL, MAX98925_R02E_GAIN_RAMPING, 0x03);
+	regmap_write(max98925->regmapR, MAX98925_R02E_GAIN_RAMPING, 0x03);
+
 	regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
 			M98925_DAC_IN_SEL_MASK, M98925_DAC_IN_SEL_LEFT_DAI);
 	regmap_update_bits(max98925->regmapR, MAX98925_R02D_GAIN,
 			M98925_DAC_IN_SEL_MASK, M98925_DAC_IN_SEL_RIGHT_DAI);
+
+	regmap_update_bits(max98925->regmapL, MAX98925_R036_BLOCK_ENABLE,
+			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
+			M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK,
+			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
+			M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK);
+	regmap_update_bits(max98925->regmapR, MAX98925_R036_BLOCK_ENABLE,
+			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
+			M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK,
+			M98925_BST_EN_MASK | M98925_SPK_EN_MASK |
+			M98925_ADC_IMON_EN_MASK | M98925_ADC_VMON_EN_MASK);
 
 	max98925_handle_pdata(codec);
 	max98925_add_widgets(codec);
