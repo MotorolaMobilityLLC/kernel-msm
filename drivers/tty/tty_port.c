@@ -380,7 +380,7 @@ int tty_port_block_til_ready(struct tty_port *port,
 		port->flags |= ASYNC_NORMAL_ACTIVE;
 		return 0;
 	}
-	if (filp->f_flags & O_NONBLOCK) {
+	if (!filp || filp->f_flags & O_NONBLOCK) {
 		/* Indicate we are open */
 		if (tty->termios.c_cflag & CBAUD)
 			tty_port_raise_dtr_rts(port);
@@ -474,7 +474,7 @@ int tty_port_close_start(struct tty_port *port,
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->lock, flags);
-	if (tty_hung_up_p(filp)) {
+	if (filp && tty_hung_up_p(filp)) {
 		spin_unlock_irqrestore(&port->lock, flags);
 		return 0;
 	}
