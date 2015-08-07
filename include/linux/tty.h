@@ -533,6 +533,7 @@ extern void tty_free_file(struct file *file);
 extern struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx);
 extern int tty_release(struct inode *inode, struct file *filp);
 extern void tty_init_termios(struct tty_struct *tty);
+extern void release_tty(struct tty_struct *tty, int idx);
 extern int tty_standard_install(struct tty_driver *driver,
 		struct tty_struct *tty);
 
