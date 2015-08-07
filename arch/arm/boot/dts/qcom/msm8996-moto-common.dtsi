@@ -27,6 +27,7 @@
 		spi9 = &spi_9;
 		spi12 = &spi_12;
 		uart0 = &blsp1_uart2;
+		uart5 = &blsp2_uart5;
 	};
 };
 
@@ -245,7 +246,7 @@
 		compatible = "qcom,msm-hsuart-v14";
 		reg = <0x075b3000 0x1000>,
 		    <0x7584000 0x2b000>;
-		status = "disabled";
+		status = "ok";
 		reg-names = "core_mem", "bam_mem";
 		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
 		#address-cells = <0>;
@@ -427,6 +428,12 @@
 
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
+	};
+
+	mod_uart {
+		compatible = "mmi,mod-uart";
+		mmi,tty = "ttyHS5";
+		mmi,tty_speed = <115200>;
 	};
 };
 
