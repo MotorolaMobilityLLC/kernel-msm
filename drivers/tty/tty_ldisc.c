@@ -598,6 +598,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 	tty_unlock(tty);
 	return retval;
 }
+EXPORT_SYMBOL(tty_set_ldisc);
 
 /**
  *	tty_reset_termios	-	reset terminal state
