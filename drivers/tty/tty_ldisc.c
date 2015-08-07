@@ -564,6 +564,7 @@ err:
 	tty_unlock(tty);
 	return retval;
 }
+EXPORT_SYMBOL(tty_set_ldisc);
 
 /**
  *	tty_ldisc_kill	-	teardown ldisc
