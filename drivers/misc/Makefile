@@ -81,3 +81,4 @@ obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_HOB_SHARED_RAM) += hob_ram_mmap.o
 obj-$(CONFIG_MOT_UTAG) += utag/
+obj-$(CONFIG_SENSORS_MOTOSH) += moto-sensorhub/
