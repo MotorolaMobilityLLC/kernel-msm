@@ -49,18 +49,7 @@ enum utag_flag {
 #define UTAG_STATUS_RELOAD '1'
 #define UTAG_STATUS_NOT_READY '2'
 
-static uint32_t csum;
-static char reload_ctrl = UTAG_STATUS_NOT_READY;
 static char payload[MAX_UTAG_SIZE];
-static struct proc_dir_entry *dir_root;
-
-static char utags_blkdev[255];
-static char utags_backup[255];
-
-module_param_string(blkdev, utags_blkdev, sizeof(utags_blkdev), 0664);
-MODULE_PARM_DESC(blkdev, "Full path for utags partition");
-module_param_string(backup, utags_backup, sizeof(utags_backup), 0664);
-MODULE_PARM_DESC(blkdev, "Full path for utags backup partition");
 
 struct utag;
 
@@ -133,6 +122,26 @@ enum utag_error {
 	UTAG_ERR_INVALID_ARGS,
 	UTAG_ERR_PROTECTED,
 };
+
+struct blkdev {
+	char name[255];
+	struct file *filep;
+	size_t size;
+};
+
+static struct ctrl {
+	struct blkdev main;
+	struct blkdev backup;
+	struct platform_device *pdev;
+	struct proc_dir_entry *root;
+	char reload;
+	uint32_t csum;
+} ctrl;
+
+module_param_string(blkdev, ctrl.main.name, sizeof(ctrl.main.name), 0664);
+MODULE_PARM_DESC(blkdev, "Full path for utags partition");
+module_param_string(backup, ctrl.backup.name, sizeof(ctrl.backup.name), 0664);
+MODULE_PARM_DESC(backup, "Full path for utags backup partition");
 
 static void build_utags_directory(void);
 static void clear_utags_directory(void);
@@ -604,7 +613,7 @@ flash_partition(const char *partition_name, const struct utag *tags)
 	written = filep->f_op->write(filep, datap, tags_size, &filep->f_pos);
 	if (written < tags_size) {
 		pr_err("%s ERROR writing file (%s) ret %zu\n", __func__,
-		       utags_blkdev, written);
+		       ctrl.main.name, written);
 		status = UTAG_ERR_PARTITION_WRITE_ERR;
 	}
 	vfree(datap);
@@ -621,13 +630,13 @@ static enum utag_error store_utags(const struct utag *tags)
 {
 	enum utag_error status = UTAG_NO_ERROR;
 
-	status = flash_partition(utags_blkdev, tags);
+	status = flash_partition(ctrl.main.name, tags);
 	if (UTAG_NO_ERROR != status)
 		pr_err("%s flash partition failed status %d\n", __func__,
 		       status);
 
-	if (0 != utags_backup[0]) {
-		status = flash_partition(utags_backup, tags);
+	if (!ctrl.backup.name[0]) {
+		status = flash_partition(ctrl.backup.name, tags);
 		if (UTAG_NO_ERROR != status)
 			pr_err("%s flash backup partition failed status %d\n",
 			__func__, status);
@@ -644,7 +653,7 @@ static int read_tag(struct seq_file *file, void *v)
 	struct utag *tag = NULL;
 	struct proc_node *proc = (struct proc_node *)file->private;
 
-	tags = load_utags(utags_blkdev);
+	tags = load_utags(ctrl.main.name);
 	if (NULL == tags) {
 		pr_err("%s Load config failed\n", __func__);
 		return -EFAULT;
@@ -698,7 +707,7 @@ write_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
-	tags = load_utags(utags_blkdev);
+	tags = load_utags(ctrl.main.name);
 	if (NULL == tags) {
 		pr_err("%s load config error\n", __func__);
 		return count;
@@ -755,7 +764,7 @@ new_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
-	tags = load_utags(utags_blkdev);
+	tags = load_utags(ctrl.main.name);
 	if (NULL == tags) {
 		pr_err("%s load config error\n", __func__);
 		return count;
@@ -784,14 +793,14 @@ new_utag(struct file *file, const char __user *buffer,
 				goto out;
 			}
 		/* Add procfs elements for utag access */
-			dir = proc_mkdir(uname, dir_root);
+			dir = proc_mkdir(uname, ctrl.root);
 			if (!dir) {
 				pr_err("%s Failed to create dir\n", __func__);
 				goto out;
 			}
 			dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 			if (dnode) {
-				dnode->root = dir_root;
+				dnode->root = ctrl.root;
 				list_add(&dnode->entry, &dir_list);
 				strlcpy(dnode->name, uname, MAX_UTAG_NAME);
 			}
@@ -814,7 +823,7 @@ static int dump_all(struct seq_file *file, void *v)
 	struct utag *tags = NULL;
 	uint32_t loc_csum = 0;
 
-	tags = load_utags(utags_blkdev);
+	tags = load_utags(ctrl.main.name);
 	if (NULL == tags)
 		pr_err("%s Load config failed\n", __func__);
 	else
@@ -832,14 +841,14 @@ static int dump_all(struct seq_file *file, void *v)
 			tags = tags->next;
 		}
 
-	csum = loc_csum;
+	ctrl.csum = loc_csum;
 	free_tags(tags);
 	return 0;
 }
 
 static int reload_show(struct seq_file *file, void *v)
 {
-	seq_printf(file, "%c\n", reload_ctrl);
+	seq_printf(file, "%c\n", ctrl.reload);
 	return 0;
 }
 
@@ -850,12 +859,12 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 	if (1 > count)
 		goto out;
 
-	if (copy_from_user(&reload_ctrl, buffer, 1)) {
+	if (copy_from_user(&ctrl.reload, buffer, 1)) {
 		pr_err("%s user copy error\n", __func__);
 		return -EFAULT;
 	}
 
-	if (UTAG_STATUS_RELOAD == reload_ctrl) {
+	if (UTAG_STATUS_RELOAD == ctrl.reload) {
 		clear_utags_directory();
 		build_utags_directory();
 	}
@@ -923,7 +932,7 @@ static void build_utags_directory(void)
 	char utag_type[MAX_UTAG_NAME];
 
 	/* try to load utags from primary partition */
-	tags = load_utags(utags_blkdev);
+	tags = load_utags(ctrl.main.name);
 	if (NULL == tags) {
 		pr_warn("%s Can not open utags\n", __func__);
 		return;
@@ -935,14 +944,14 @@ static void build_utags_directory(void)
 		if (cur->next == NULL)
 			break;
 		split_name(cur->name, utag_name, utag_type);
-		dir = proc_mkdir(utag_name, dir_root);
+		dir = proc_mkdir(utag_name, ctrl.root);
 		if (!dir) {
 			pr_err("%s Failed to create dir\n", __func__);
 			break;
 		}
 		dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 		if (dnode) {
-			dnode->root = dir_root;
+			dnode->root = ctrl.root;
 			list_add(&dnode->entry, &dir_list);
 			strlcpy(dnode->name, utag_name, MAX_UTAG_NAME);
 		}
@@ -955,10 +964,10 @@ static void build_utags_directory(void)
 	}
 
 	/* add "all" directory for debug purposes */
-	dir = proc_mkdir("all", dir_root);
+	dir = proc_mkdir("all", ctrl.root);
 	dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 	if (dnode) {
-		dnode->root = dir_root;
+		dnode->root = ctrl.root;
 		list_add(&dnode->entry, &dir_list);
 		strlcpy(dnode->name, "all", MAX_UTAG_NAME);
 	}
@@ -967,7 +976,7 @@ static void build_utags_directory(void)
 	utag_file("all", "new", OUT_NEW, dir, &new_fops);
 
 	free_tags(tags);
-	reload_ctrl = UTAG_STATUS_LOADED;
+	ctrl.reload = UTAG_STATUS_LOADED;
 }
 
 static void clear_utags_directory(void)
@@ -981,7 +990,7 @@ static void clear_utags_directory(void)
 		kfree(node);
 	}
 	list_for_each_entry_safe(dir_node, c, &dir_list, entry) {
-		remove_proc_entry(dir_node->name, dir_root);
+		remove_proc_entry(dir_node->name, ctrl.root);
 		list_del(&dir_node->entry);
 		kfree(dir_node);
 	}
@@ -991,13 +1000,21 @@ static int __init config_init(void)
 {
 	struct proc_dir_entry *reload_pde;
 
-	dir_root = proc_mkdir("config", NULL);
-	if (!dir_root) {
+	if (!ctrl.main.name[0]) {
+		pr_err("%s storage path not provided\n", __func__);
+		return -EIO;
+	}
+
+	if (!ctrl.backup.name[0])
+		pr_err("%s backup storage path not provided\n", __func__);
+
+	ctrl.root = proc_mkdir("config", NULL);
+	if (!ctrl.root) {
 		pr_err("%s Failed to create dir entry\n", __func__);
 		return -EIO;
 	}
 
-	reload_pde = proc_create("reload", 0600, dir_root, &reload_fops);
+	reload_pde = proc_create("reload", 0600, ctrl.root, &reload_fops);
 	if (!reload_pde) {
 		pr_err("%s Failed to create reload entry\n", __func__);
 		remove_proc_entry("config", NULL);
@@ -1014,7 +1031,7 @@ static int __init config_init(void)
 static void __exit config_exit(void)
 {
 	clear_utags_directory();
-	remove_proc_entry("reload", dir_root);
+	remove_proc_entry("reload", ctrl.root);
 	remove_proc_entry("config", NULL);
 }
 
