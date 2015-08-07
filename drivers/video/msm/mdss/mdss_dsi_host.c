@@ -575,6 +575,7 @@ static int mdss_dsi_read_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	cmdreq.rlen = 1;
 	cmdreq.cb = NULL;
 	cmdreq.rbuf = ctrl->status_buf.data;
+	cmdreq.rbuf[0] = 0;
 
 	return mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
@@ -1386,7 +1387,7 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *req)
 {
 	struct dsi_buf *rp;
-	int len = 0, ret = 0;
+	int len = 0;
 
 	if (req->rbuf) {
 		rp = &ctrl->rx_buf;
@@ -1399,7 +1400,7 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	if (req->cb)
 		req->cb(len);
 
-	return ret;
+	return len > 0 ? 0 : -EINVAL;
 }
 
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
