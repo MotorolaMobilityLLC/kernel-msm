@@ -47,6 +47,9 @@
 				(RIGHT_BIT_POS))
 #define STAGE_WORK_DELAY_MS	30000
 #define STAGE_COUNT_MAX		2
+#define CHG_MONITOR_WORK_DELAY_MS		30000
+#define HIGH_CURRENT_COUNT_MAX		2
+#define DELTA_MV		100
 /* Config registers */
 struct smbchg_regulator {
 	struct regulator_desc	rdesc;
@@ -119,6 +122,14 @@ struct smbchg_chip {
 	int				current_stage_count;
 	int				parallel_current_limited;
 	int				parallel_voltage_checked;
+	int				warm_current_ma;
+	int				cool_current_ma;
+	int				soft_temp_comp;
+	int				warm_bat_decidegc;
+	int				high_current_thr_ma;
+	int				high_current_count;
+	int				max_input_current_ma;
+	int				float_voltage_comp_stage;
 	bool				use_vfloat_adjustments;
 	bool				iterm_disabled;
 	bool				bmd_algo_disabled;
@@ -131,6 +142,7 @@ struct smbchg_chip {
 	bool				low_volt_dcin;
 	bool				vbat_above_headroom;
 	bool				force_aicl_rerun;
+	bool				temp_comp_done;
 	u8				original_usbin_allowance;
 	struct parallel_usb_cfg		parallel;
 	struct delayed_work		parallel_en_work;
@@ -183,6 +195,7 @@ struct smbchg_chip {
 	bool				batt_cold;
 	bool				batt_warm;
 	bool				batt_cool;
+	bool				batt_ov;
 	unsigned int			thermal_levels;
 	unsigned int			therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
@@ -227,9 +240,11 @@ struct smbchg_chip {
 	struct smbchg_regulator		otg_vreg;
 	struct smbchg_regulator		ext_otg_vreg;
 	struct work_struct		usb_set_online_work;
+	struct work_struct		resume_to_normal_work;
 	struct delayed_work		vfloat_adjust_work;
 	struct delayed_work		hvdcp_det_work;
 	struct delayed_work		current_stage_work;
+	struct delayed_work		monitor_charging_work;
 	spinlock_t			sec_access_lock;
 	struct mutex			current_change_lock;
 	struct mutex			usb_set_online_lock;
@@ -258,6 +273,7 @@ enum wake_reason {
 	PM_PARALLEL_CHECK = BIT(0),
 	PM_REASON_VFLOAT_ADJUST = BIT(1),
 	PM_ESR_PULSE = BIT(2),
+	PM_PARALLEL_TAPER = BIT(3),
 	PM_CHARGING_CHECK = BIT(7),
 };
 
@@ -896,10 +912,7 @@ static int get_prop_batt_voltage_max_design(struct smbchg_chip *chip)
 
 static int get_prop_batt_health(struct smbchg_chip *chip)
 {
-	/* temporarily mask these code for 3A charging, as the heat */
-	/* is a little serious when 3A charging so far, need improve later*/
-	/* we will recover these code after heat loss is improved*/
-	/*if (chip->batt_hot)
+	if (chip->batt_hot)
 		return POWER_SUPPLY_HEALTH_OVERHEAT;
 	else if (chip->batt_cold)
 		return POWER_SUPPLY_HEALTH_COLD;
@@ -907,8 +920,8 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_WARM;
 	else if (chip->batt_cool)
 		return POWER_SUPPLY_HEALTH_COOL;
-	else*/
-	return POWER_SUPPLY_HEALTH_GOOD;
+	else
+		return POWER_SUPPLY_HEALTH_GOOD;
 }
 
 /* add for healthd, as healthd do not have warm/cool */
@@ -1206,7 +1219,9 @@ static int smbchg_battchg_en(struct smbchg_chip *chip, bool enable,
 		battchg_disabled = chip->battchg_disabled & (~reason);
 
 	/* avoid unnecessary spmi interactions if nothing changed */
-	if (!!battchg_disabled == !!chip->battchg_disabled) {
+	/* avoid goto skip when enable charge but chip->battchg_disabled is 0 */
+	if ((!!battchg_disabled == !!chip->battchg_disabled)
+		&& chip->battchg_disabled) {
 		*changed = false;
 		goto out;
 	}
@@ -1244,7 +1259,9 @@ static int smbchg_primary_usb_en(struct smbchg_chip *chip, bool enable,
 		suspended = chip->usb_suspended & (~reason);
 
 	/* avoid unnecessary spmi interactions if nothing changed */
-	if (!!suspended == !!chip->usb_suspended) {
+	/* avoid goto skip when usb enable but chip->usb_suspended is 0 */
+	if ((!!suspended == !!chip->usb_suspended)
+		&& chip->usb_suspended) {
 		*changed = false;
 		goto out;
 	}
@@ -1690,7 +1707,12 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 	power_supply_set_current_limit(parallel_psy,
 				SUSPEND_CURRENT_MA * 1000);
 	power_supply_set_present(parallel_psy, false);
-	chip->target_fastchg_current_ma = chip->cfg_fastchg_current_ma;
+	if (chip->batt_warm)
+		chip->target_fastchg_current_ma = chip->warm_current_ma;
+	else if (chip->batt_cool)
+		chip->target_fastchg_current_ma = chip->cool_current_ma;
+	else
+		chip->target_fastchg_current_ma = chip->cfg_fastchg_current_ma;
 	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
 	chip->usb_tl_current_ma =
 		calc_thermal_limited_current(chip, chip->usb_target_current_ma);
@@ -1713,6 +1735,7 @@ static void smbchg_parallel_usb_taper(struct smbchg_chip *chip)
 	if (!parallel_psy || !chip->parallel_charger_detected)
 		return;
 
+	smbchg_stay_awake(chip, PM_PARALLEL_TAPER);
 try_again:
 	mutex_lock(&chip->parallel.lock);
 	if (chip->parallel.current_max_ma == 0) {
@@ -1758,6 +1781,7 @@ try_again:
 	taper_irq_en(chip, true);
 done:
 	mutex_unlock(&chip->parallel.lock);
+	smbchg_relax(chip, PM_PARALLEL_TAPER);
 }
 
 static bool smbchg_is_aicl_complete(struct smbchg_chip *chip)
@@ -2374,6 +2398,29 @@ static int determine_target_input_current(int current_ma)
 	return target_current;
 }
 
+static void resume_to_normal_charge_work(struct work_struct *work)
+{
+	int rc, aicl_ma;
+	struct smbchg_chip *chip = container_of(work,
+				struct smbchg_chip,
+				resume_to_normal_work);
+
+	if (chip->max_input_current_ma <= CURRENT_500_MA)
+		return;
+
+	aicl_ma = smbchg_get_aicl_level_ma(chip);
+
+	rc = smbchg_set_usb_current_max(chip, chip->max_input_current_ma);
+	if (rc) {
+		pr_err("Failed to set usb current max: %d\n", rc);
+		return;
+	}
+
+	if (chip->usb_max_current_ma > aicl_ma && smbchg_is_aicl_complete(chip))
+		smbchg_rerun_aicl(chip);
+	smbchg_parallel_usb_check_ok(chip);
+}
+
 /*
  * set the usb charge path's maximum allowed current draw
  * that may be limited by the system's thermal level
@@ -2390,6 +2437,12 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 
 	chip->usb_tl_current_ma =
 		calc_thermal_limited_current(chip, target_ma);
+
+	/* save target input current to chip->max_input_current_ma,
+	 * when charging recover from warm/cool to normal,
+	 * use this input current to resume high current charging
+	 */
+	chip->max_input_current_ma = chip->usb_tl_current_ma;
 
 	rc = smbchg_set_usb_current_max(chip, chip->usb_tl_current_ma);
 	if (rc) {
@@ -2622,6 +2675,7 @@ static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 	int rc, delta;
 	u8 temp;
+	int float_voltage_comp;
 
 	if ((vfloat_mv < MIN_FLOAT_MV) || (vfloat_mv > MAX_FLOAT_MV)) {
 		dev_err(chip->dev, "bad float voltage mv =%d asked to set\n",
@@ -2664,6 +2718,33 @@ static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 		dev_err(chip->dev, "Couldn't set float voltage rc = %d\n", rc);
 	else
 		chip->vfloat_mv = vfloat_mv;
+
+	/* as stage charge vfloat have two value: 4.2V and 4.4V,
+	 * stage charge will limit vfloat to 4.2V for first stage,
+	 * then reset to 4.4V in second stage. when battery is warm,
+	 * we should compensate the vfloat to protect the battery,
+	 * and warm vfloat is 4.1V (according to battery datasheet),
+	 * so if vfloat is 4.4V, use chip->float_voltage_comp = 16,
+	 * if vfloat is 4.2V, use chip->float_voltage_comp_stage = 6.
+	 */
+	if (chip->vfloat_mv == chip->cfg_vfloat_mv) {
+		float_voltage_comp = chip->float_voltage_comp;
+	} else {
+		float_voltage_comp = chip->float_voltage_comp_stage;
+	}
+
+	/* set the float voltage compensation */
+	if (float_voltage_comp != -EINVAL) {
+		rc = smbchg_float_voltage_comp_set(chip,
+			float_voltage_comp);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set float voltage comp rc = %d\n",
+				rc);
+			return rc;
+		}
+		pr_smb(PR_STATUS, "set float voltage comp to %d\n",
+			float_voltage_comp);
+	}
 
 	return rc;
 }
@@ -3947,11 +4028,20 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	static bool prev_state = false;
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_warm = !!(reg & HOT_BAT_SOFT_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	if (!chip->batt_warm && prev_state) {
+		schedule_work(&chip->resume_to_normal_work);
+	}
 	smbchg_parallel_usb_check_ok(chip);
+	if (chip->batt_warm && !prev_state) {
+		smbchg_set_fastchg_current(chip,
+			chip->warm_current_ma);
+	}
+	prev_state = chip->batt_warm;
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_HEALTH,
@@ -3963,11 +4053,19 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	static bool prev_state = false;
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_cool = !!(reg & COLD_BAT_SOFT_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	if (!chip->batt_cool && prev_state) {
+		schedule_work(&chip->resume_to_normal_work);
+	}
 	smbchg_parallel_usb_check_ok(chip);
+	if (chip->batt_cool && !prev_state) {
+		smbchg_set_fastchg_current(chip, chip->cool_current_ma);
+	}
+	prev_state = chip->batt_cool;
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_HEALTH,
@@ -4102,6 +4200,81 @@ static void current_stage_work(struct work_struct *work)
 		}
 		schedule_delayed_work(&chip->current_stage_work,
 				msecs_to_jiffies(STAGE_WORK_DELAY_MS));
+	}
+}
+
+static void check_battery_ov_wa(struct smbchg_chip *chip)
+{
+	u8 reg = 0;
+	int vbat_mv =0;
+
+	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
+	chip->batt_ov = !!(reg & BAT_OV_BIT);
+	/* This is a workaround, when battery is ov, pmi8994 hardware disable
+	 * charging to protect the battery. But when battery voltage fall below
+	 * VFLOAT+0.1V, pmi8994 hardware never clear battery ov
+	 * and charge can't be enabled unless software disable
+	 * and enable charging or plug out charger and plug in again
+	 * to resume charging.
+	 */
+	if (chip->batt_ov) {
+		vbat_mv = get_prop_batt_voltage_now(chip) / 1000;
+		if (vbat_mv < (chip->vfloat_mv + DELTA_MV)) {
+			smbchg_charging_en(chip, false);
+			smbchg_charging_en(chip, true);
+		}
+	}
+}
+
+static void monitor_charging_work(struct work_struct *work)
+{
+	int batt_current_ma;
+	bool usb_present;
+	struct smbchg_chip *chip = container_of(work, struct smbchg_chip,
+					monitor_charging_work.work);
+
+	usb_present = is_usb_present(chip);
+	if (usb_present) {
+		set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
+		/*
+		 * Charging current is negative value, convert it to positive
+		 * for current comparing.
+		 */
+		batt_current_ma = -(get_prop_batt_current_now(chip) / 1000);
+
+		/*
+		 * As battery ntc resistor is too close to heat zone, when charging
+		 * with 5V 3A or HVDCP charger, the ntc temperature is higher than
+		 * the centre position of battery cell, about 7 to 8 degree when 3A.
+		 * Compensate the warm threshold of jeita when high current
+		 * charging(5V 3A charging or HVDCP charging), compensate
+		 * when it satisfies the condition 2 times consecutively.
+		 */
+		if (batt_current_ma >= chip->high_current_thr_ma) {
+			chip->high_current_count += 1;
+			if (chip->high_current_count >= HIGH_CURRENT_COUNT_MAX) {
+				if (!chip->temp_comp_done) {
+					set_property_on_fg(chip, POWER_SUPPLY_PROP_WARM_TEMP,
+							chip->warm_bat_decidegc + chip->soft_temp_comp);
+					chip->temp_comp_done = true;
+				}
+				chip->high_current_count = 0;
+			}
+		} else {
+			chip->high_current_count = 0;
+			if (chip->temp_comp_done) {
+				/* if charge current is reduced below threshold and has been
+				 * compensated before, restore the default warm
+				 * threshold when charge current is low.
+				 */
+				set_property_on_fg(chip, POWER_SUPPLY_PROP_WARM_TEMP,
+						chip->warm_bat_decidegc);
+				chip->temp_comp_done = false;
+			}
+		}
+		check_battery_ov_wa(chip);
+		schedule_delayed_work(&chip->monitor_charging_work,
+				msecs_to_jiffies(CHG_MONITOR_WORK_DELAY_MS));
 	}
 }
 
@@ -4272,6 +4445,14 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	chip->current_stage_count = 0;
 	chip->parallel_current_limited = 0;
 	chip->parallel_voltage_checked = 0;
+	if (chip->temp_comp_done) {
+		set_property_on_fg(chip, POWER_SUPPLY_PROP_WARM_TEMP,
+				chip->warm_bat_decidegc);
+	}
+	cancel_delayed_work_sync(&chip->monitor_charging_work);
+	chip->high_current_count = 0;
+	chip->max_input_current_ma = 0;
+	chip->temp_comp_done = false;
 }
 
 static bool is_src_detect_high(struct smbchg_chip *chip)
@@ -4362,6 +4543,9 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		rc = enable_irq_wake(chip->aicl_done_irq);
 		chip->enable_aicl_wake = true;
 	}
+
+	schedule_delayed_work(&chip->monitor_charging_work,
+			msecs_to_jiffies(CHG_MONITOR_WORK_DELAY_MS));
 }
 
 void update_usb_status(struct smbchg_chip *chip, bool usb_present, bool force)
@@ -4869,6 +5053,8 @@ static inline int get_bpd(const char *name)
 #define AICL_WL_SEL_45S		0
 #define CHGR_CCMP_CFG			0xFA
 #define JEITA_TEMP_HARD_LIMIT_BIT	BIT(5)
+#define JEITA_SL_COMP	SMB_MASK(3, 0)
+#define JEITA_SL_COMP_CFG		0x8
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -5097,6 +5283,22 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		if (rc < 0) {
 			dev_err(chip->dev,
 				"Couldn't set jeita temp hard limit rc = %d\n",
+				rc);
+			return rc;
+		}
+		/* disable hardware voltage and current compensation
+		 * when battery is cool, and disable hardware current
+		 * compensation when battery is warm, only use hardware
+		 * voltage compensation for battery warm scenario,
+		 * we use software solution for others scenarios.
+		 */
+		rc = smbchg_sec_masked_write(chip,
+			chip->chgr_base + CHGR_CCMP_CFG,
+			JEITA_SL_COMP,
+			JEITA_SL_COMP_CFG);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set jeita temp software limit comp rc = %d\n",
 				rc);
 			return rc;
 		}
@@ -5379,6 +5581,18 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->current_stage_delta_mv,
 			"current-stage-delta-mv", rc, 1);
 	OF_PROP_READ(chip, chip->current_stage_ma, "current-stage-ma", rc, 1);
+	OF_PROP_READ(chip, chip->warm_current_ma,
+			"warm-current-ma", rc, 1);
+	OF_PROP_READ(chip, chip->cool_current_ma,
+			"cool-current-ma", rc, 1);
+	OF_PROP_READ(chip, chip->soft_temp_comp,
+			"soft-temp-comp", rc, 1);
+	OF_PROP_READ(chip, chip->warm_bat_decidegc,
+			"warm-bat-decidegc", rc, 1);
+	OF_PROP_READ(chip, chip->high_current_thr_ma,
+			"high-current-thr", rc, 1);
+	OF_PROP_READ(chip, chip->float_voltage_comp_stage,
+			"float-voltage-comp-stage", rc, 1);
 	OF_PROP_READ(chip, chip->safety_time, "charging-timeout-mins", rc, 1);
 	OF_PROP_READ(chip, chip->vled_max_uv, "vled-max-uv", rc, 1);
 	if (chip->vled_max_uv < 0)
@@ -5847,6 +6061,9 @@ static int smbchg_probe(struct spmi_device *spmi)
 	INIT_DELAYED_WORK(&chip->vfloat_adjust_work, smbchg_vfloat_adjust_work);
 	INIT_DELAYED_WORK(&chip->hvdcp_det_work, smbchg_hvdcp_det_work);
 	INIT_DELAYED_WORK(&chip->current_stage_work, current_stage_work);
+	INIT_DELAYED_WORK(&chip->monitor_charging_work,
+			monitor_charging_work);
+	INIT_WORK(&chip->resume_to_normal_work, resume_to_normal_charge_work);
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
@@ -5872,6 +6089,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->pm_lock);
 	mutex_init(&chip->wipower_config);
 	mutex_init(&chip->usb_status_lock);
+	device_init_wakeup(chip->dev, true);
 
 	rc = smbchg_parse_peripherals(chip);
 	if (rc) {
