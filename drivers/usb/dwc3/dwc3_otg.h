@@ -18,6 +18,7 @@
 
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
+#include <linux/hrtimer.h>
 
 #include <linux/usb/otg.h>
 #include "power.h"
@@ -33,6 +34,10 @@
  * Declared in dwc3-msm module
  */
 extern int dcp_max_current;
+
+#define DWC_LS_DM	  0x1
+#define DWC_LS_DP	  0x2
+#define DWC3_LS		  0x3
 
 struct dwc3_charger;
 
@@ -60,6 +65,8 @@ struct dwc3_otg {
 	struct completion	dwc3_xcvr_vbus_init;
 	int			charger_retry_count;
 	int			vbus_retry_count;
+	int			false_sdp_retry_count;
+	struct timer_list	chg_check_timer;
 };
 
 /**
@@ -97,6 +104,8 @@ struct dwc3_charger {
 	/* to notify OTG about charger detection completion, provided by OTG */
 	void	(*notify_detection_complete)(struct usb_otg *otg,
 						struct dwc3_charger *charger);
+	/* get the charger linestate */
+	u32	(*get_linestate)(struct dwc3_charger *charger);
 };
 
 /* for external charger driver */

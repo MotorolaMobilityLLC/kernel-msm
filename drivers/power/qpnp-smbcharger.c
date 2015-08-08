@@ -4420,7 +4420,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		pr_smb(PR_MISC, "setting usb psy allow detection 0\n");
 		power_supply_set_allow_detection(chip->usb_psy, 0);
-		schedule_work(&chip->usb_set_online_work);
+		/* remove schedule_work(&chip->usb_set_online_work); */
 		rc = power_supply_set_health_state(chip->usb_psy,
 				POWER_SUPPLY_HEALTH_UNKNOWN);
 		if (rc)
@@ -4503,9 +4503,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
 				usb_supply_type);
-		/* for floated charger detection, need use dwc3_chg_det_work*/
-		if (POWER_SUPPLY_TYPE_USB != usb_supply_type)
-			power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
+		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
@@ -4525,7 +4523,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					"usb psy does not allow updating prop %d rc = %d\n",
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
-		schedule_work(&chip->usb_set_online_work);
+		/* remove schedule_work(&chip->usb_set_online_work); */
 	}
 
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
