@@ -59,6 +59,10 @@
 	qcom,ext-sense-type;
 	qcom,thermal-coefficients = [c2 86 bb 50 cf 37];
 	qcom,resume-soc-raw = <254>;
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,hot-bat-decidegc = <550>;
+	qcom,cold-bat-decidegc = <0>;
 };
 
 &i2c_5 {
@@ -75,6 +79,14 @@
 	qcom,current-stage-threshold-mv = <4200>;
 	qcom,current-stage-delta-mv = <50>;
 	qcom,current-stage-ma = <2400>;
+	qcom,warm-current-ma = <1200>;
+	qcom,cool-current-ma = <1000>;
+	qcom,jeita-temp-hard-limit = <1>;
+	qcom,warm-bat-decidegc = <450>;
+	qcom,soft-temp-comp = <50>;
+	qcom,high-current-thr = <2700>;
+	qcom,float-voltage-comp = <16>;
+	qcom,float-voltage-comp-stage = <6>;
 };
 
 &spmi_bus {
