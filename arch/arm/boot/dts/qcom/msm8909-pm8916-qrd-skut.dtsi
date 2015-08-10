@@ -266,6 +266,12 @@
 			};
 		};
 	};
+
+	qcom,pm8916@1 {
+		qcom,vibrator@c000 {
+			qcom,vib-vtg-level-mV = <2700>;
+		};
+	};
 };
 
 #include "dsi-panel-fl10802-fwvga-video.dtsi"
