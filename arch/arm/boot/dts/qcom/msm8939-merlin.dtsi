@@ -1141,15 +1141,7 @@
 		onnn,restore-reg;
 	};
 
-	ak09912: ak09912@0C {
-		compatible = "ak,ak09912";
-		reg = <0x0C>;
-		gpios = <&msm_gpio 90 0>, /* RESET */
-			<&msm_gpio 50 0>; /* IRQ */
-		pinctrl-names = "default";
-		pinctrl-0 = <&ak09912_reset_default &ak09912_irq_default>;
-		ak,layout = <5>;
-	};
+	/delete-node/ ak09912;
 };
 
 &spi_0 {
