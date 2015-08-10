@@ -321,6 +321,7 @@
 	};
 
 	/delete-node/ dsi_panel_pwr_supply;
+	/delete-node/ qcom,hdmi_tx@9a0000;
 
 	muc@0 {
 		compatible = "mmi,muc";
