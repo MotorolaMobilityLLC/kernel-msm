@@ -512,6 +512,13 @@ static const struct snd_kcontrol_new int_hfp_vol_mixer_controls[] = {
 	msm_qti_pp_set_hfp_vol_mixer, hfp_rx_vol_gain),
 };
 
+static const struct snd_kcontrol_new pri_auxpcm_lb_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("PRI AUXPCM LOOPBACK Volume",
+	AFE_PORT_ID_PRIMARY_PCM_TX, 0, INT_RX_VOL_GAIN, 0,
+	msm_qti_pp_get_auxpcm_lb_vol_mixer, msm_qti_pp_set_auxpcm_lb_vol_mixer,
+	auxpcm_lb_vol_gain),
+};
+
 static const struct snd_kcontrol_new sec_auxpcm_lb_vol_mixer_controls[] = {
 	SOC_SINGLE_EXT_TLV("SEC AUXPCM LOOPBACK Volume",
 	AFE_PORT_ID_SECONDARY_PCM_TX, 0, INT_RX_VOL_GAIN, 0,
@@ -679,6 +686,10 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, int_hfp_vol_mixer_controls,
 			ARRAY_SIZE(int_hfp_vol_mixer_controls));
+
+	snd_soc_add_platform_controls(platform,
+				pri_auxpcm_lb_vol_mixer_controls,
+			ARRAY_SIZE(pri_auxpcm_lb_vol_mixer_controls));
 
 	snd_soc_add_platform_controls(platform,
 				sec_auxpcm_lb_vol_mixer_controls,
