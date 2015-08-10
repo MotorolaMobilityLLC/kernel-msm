@@ -59,4 +59,10 @@
 		compatible = "charger-dock-detector";
 		status = "ok";
 	};
+
+	load-sw-control {
+		compatible = "lge,load-sw-control";
+		status = "okay";
+		load-sw-gpio = <&msmgpio 31 0>;
+	};
 };
