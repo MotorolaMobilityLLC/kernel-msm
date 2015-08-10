@@ -26,6 +26,7 @@
 		i2c8 = &i2c_8;
 		spi9 = &spi_9;
 		spi12 = &spi_12;
+		uart0 = &blsp1_uart2;
 	};
 };
 
