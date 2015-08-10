@@ -50,7 +50,7 @@
 			synaptics,wakeup;
 			synaptics,palm-detect-threshold = <0xd>;
 			synaptics,palm-detect-keycode = <0x8e>; /* KEY_SLEEP */
-			synaptics,doze-interval-active = <3>; /* 30ms */
+			synaptics,doze-interval-active = <1>; /* 10ms */
 			synaptics,doze-interval-sleep = <9>; /* 90ms */
 			synaptics,recalibration-interval-active = <0xe>;
 			synaptics,recalibration-interval-sleep = <0x1e>;
