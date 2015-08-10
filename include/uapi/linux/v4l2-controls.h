@@ -883,6 +883,14 @@ enum v4l2_mpeg_vidc_video_ltrmode {
 #define V4L2_CID_MPEG_VIDC_VIDEO_B_FRAME_QP \
 		(V4L2_CID_MPEG_MSM_VIDC_BASE + 56)
 
+#define V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY \
+		(V4L2_CID_MPEG_MSM_VIDC_BASE + 73)
+
+enum v4l2_mpeg_vidc_video_priority {
+	V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_ENABLE = 0,
+	V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_DISABLE = 1,
+};
+
 /*  Camera class control IDs */
 
 #define V4L2_CID_CAMERA_CLASS_BASE 	(V4L2_CTRL_CLASS_CAMERA | 0x900)
@@ -991,7 +999,6 @@ enum v4l2_auto_focus_range {
 	V4L2_AUTO_FOCUS_RANGE_MACRO		= 2,
 	V4L2_AUTO_FOCUS_RANGE_INFINITY		= 3,
 };
-
 
 /* FM Modulator class control IDs */
 
