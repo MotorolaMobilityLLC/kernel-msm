@@ -87,6 +87,7 @@
 	qcom,high-current-thr = <2700>;
 	qcom,float-voltage-comp = <16>;
 	qcom,float-voltage-comp-stage = <6>;
+	qcom,thermal-mitigation = <3000 2000 1500 1000 0>;
 };
 
 &spmi_bus {
