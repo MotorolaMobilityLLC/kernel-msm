@@ -168,6 +168,9 @@ atmxt_of_init(struct i2c_client *client)
 	pdata->gpio_interrupt = of_get_gpio(np, 0);
 	pdata->gpio_reset = of_get_gpio(np, 1);
 
+	pdata->disable_supp_on_aot =
+		of_property_read_bool(np, "disable-supp-on-aot");
+
 	return pdata;
 }
 #else
@@ -214,6 +217,16 @@ done:
 }
 #endif
 
+static void set_touch_supp_active_true(struct work_struct *work)
+{
+	struct delayed_work *dwork;
+	struct atmxt_driver_data *dd;
+	dwork = container_of(work, struct delayed_work, work);
+	dd = container_of(dwork, struct atmxt_driver_data, dwork);
+
+	dd->touch_supp_active = true;
+};
+
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -244,6 +257,7 @@ static int atmxt_probe(struct i2c_client *client,
 	dd->status = 0x0000;
 	dd->client = client;
 	dd->enable_at_boot = 1;
+	dd->touch_supp_active = true;
 #ifdef CONFIG_MFD_M4SENSORHUB
 	dd->m4_nb.notifier_call = atmxt_m4_notify;
 #endif
@@ -265,6 +279,9 @@ static int atmxt_probe(struct i2c_client *client,
 		err = -EINVAL;
 		goto atmxt_probe_fail;
 	}
+
+	if (dd->pdata->disable_supp_on_aot)
+		INIT_DELAYED_WORK(&dd->dwork, set_touch_supp_active_true);
 
 	i2c_set_clientdata(client, dd);
 	dd->in_dev = NULL;
@@ -2532,7 +2549,8 @@ static int atmxt_process_message(struct atmxt_driver_data *dd,
 			err = atmxt_message_handler9(dd, msg, size);
 			break;
 		case 42:
-			err = atmxt_message_handler42(dd, msg, size);
+			if (dd->touch_supp_active)
+				err = atmxt_message_handler42(dd, msg, size);
 			break;
 		default:
 			contents = atmxt_msg2str(msg, size);
@@ -3414,11 +3432,21 @@ static ssize_t atmxt_drv_interactivemode_store(struct device *dev,
 
 	switch (value) {
 	case 0:
+		if (dd->pdata->disable_supp_on_aot) {
+			cancel_delayed_work_sync(&dd->dwork);
+			dd->touch_supp_active = false;
+		}
 		err = atmxt_enter_aot(dd);
 		break;
 
 	case 1:
 		err = atmxt_exit_aot(dd);
+		if (dd->pdata->disable_supp_on_aot) {
+				atmxt_start_ic_calibration_fix(dd);
+				/* allow touch suppression after delay */
+				schedule_delayed_work(&dd->dwork,
+						      msecs_to_jiffies(200));
+		}
 		break;
 
 	default:
