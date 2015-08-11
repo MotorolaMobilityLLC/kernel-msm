@@ -691,6 +691,7 @@ typedef struct tagCsrConfig
 #endif
     tANI_BOOLEAN obssEnabled;
     struct roam_ext_params roam_params;
+    tANI_BOOLEAN ignorePeerErpInfo;
     v_U16_t pkt_err_disconn_th;
 }tCsrConfig;
 

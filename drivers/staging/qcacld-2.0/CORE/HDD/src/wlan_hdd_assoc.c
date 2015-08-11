@@ -1495,9 +1495,10 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
     /* HDD has initiated disconnect, do not send connect result indication
      * to kernel as it will be handled by __cfg80211_disconnect.
      */
-    if(( eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState) &&
-        (( eCSR_ROAM_RESULT_ASSOCIATED == roamResult) ||
-        ( eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus)) )
+    if(((eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState) ||
+         (eConnectionState_NotConnected == pHddStaCtx->conn_info.connState)) &&
+        ((eCSR_ROAM_RESULT_ASSOCIATED == roamResult) ||
+        (eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus)))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                 FL(" Disconnect from HDD in progress "));

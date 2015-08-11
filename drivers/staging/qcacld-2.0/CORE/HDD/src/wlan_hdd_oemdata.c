@@ -499,7 +499,7 @@ void send_oem_err_rsp_nlink_msg(v_SINT_t app_pid, tANI_U8 error_code)
    buf = (char *) ((char *) aniHdr + sizeof(tAniMsgHdr));
    *buf = error_code;
 
-   skb_put(skb, NLMSG_SPACE(sizeof(tAniMsgHdr)));
+   skb_put(skb, NLMSG_SPACE(sizeof(tAniMsgHdr) + aniHdr->length));
 
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
              "%s: sending oem error response to process pid (%d)",

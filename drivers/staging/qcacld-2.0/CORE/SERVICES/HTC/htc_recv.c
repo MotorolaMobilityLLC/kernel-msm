@@ -399,12 +399,16 @@ A_STATUS HTCRxCompletionHandler(
                      * on the endpoint 0 */
                     AR_DEBUG_PRINTF(ATH_DEBUG_ERR,("HTC Rx Ctrl still processing\n"));
                     status = A_ERROR;
+                    VOS_BUG(FALSE);
                     break;
                 }
 
                 LOCK_HTC_RX(target);
                 target->CtrlResponseLength = min((int)netlen,HTC_MAX_CONTROL_MESSAGE_LENGTH);
                 A_MEMCPY(target->CtrlResponseBuffer,netdata,target->CtrlResponseLength);
+
+                /* Requester will clear this flag */
+                target->CtrlResponseProcessing = TRUE;
                 UNLOCK_HTC_RX(target);
 
                 adf_os_mutex_release(target->osdev, &target->CtrlResponseValid);
@@ -567,37 +571,6 @@ A_STATUS HTCWaitRecvCtrlMessage(HTC_TARGET *target)
     /* Wait for BMI request/response transaction to complete */
     while (adf_os_mutex_acquire(target->osdev, &target->CtrlResponseValid)) {
     }
-
-    LOCK_HTC_RX(target);
-    /* caller will clear this flag */
-    target->CtrlResponseProcessing = TRUE;
-
-    UNLOCK_HTC_RX(target);
-
-#if 0
-    while (count > 0) {
-
-        LOCK_HTC_RX(target);
-
-        if (target->CtrlResponseValid) {
-            target->CtrlResponseValid = FALSE;
-                /* caller will clear this flag */
-            target->CtrlResponseProcessing = TRUE;
-            UNLOCK_HTC_RX(target);
-            break;
-        }
-
-        UNLOCK_HTC_RX(target);
-
-        count--;
-        A_MSLEEP(HTC_TARGET_RESPONSE_POLL_MS);
-    }
-
-    if (count <= 0) {
-        AR_DEBUG_PRINTF(ATH_DEBUG_ERR,("-HTCWaitCtrlMessageRecv: Timeout!\n"));
-        return A_ECOMM;
-    }
-#endif
 
     AR_DEBUG_PRINTF(ATH_DEBUG_TRC,("-HTCWaitCtrlMessageRecv success\n"));
     return A_OK;

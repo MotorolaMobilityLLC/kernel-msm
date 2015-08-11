@@ -664,7 +664,7 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
             }
 #ifdef WLAN_FEATURE_11AC
             if (pftSessionEntry->vhtCapability &&
-                pBeaconStruct->VHTCaps.present)
+                IS_BSS_VHT_CAPABLE(pBeaconStruct->VHTCaps))
             {
                 pAddBssParams->staContext.vhtCapable = 1;
                 if ((pBeaconStruct->VHTCaps.suBeamFormerCap ||
@@ -870,11 +870,11 @@ void limFillFTSession(tpAniSirGlobal pMac,
    pftSessionEntry->dot11mode = selfDot11Mode;
    pftSessionEntry->vhtCapability =
          (IS_DOT11_MODE_VHT(pftSessionEntry->dot11mode)
-         && pBeaconStruct->VHTCaps.present);
+         && IS_BSS_VHT_CAPABLE(pBeaconStruct->VHTCaps));
    pftSessionEntry->htCapability = (IS_DOT11_MODE_HT(pftSessionEntry->dot11mode)
          && pBeaconStruct->HTCaps.present);
 #ifdef WLAN_FEATURE_11AC
-   if (pBeaconStruct->VHTCaps.present && pBeaconStruct->VHTOperation.present)
+   if (IS_BSS_VHT_CAPABLE(pBeaconStruct->VHTCaps) && pBeaconStruct->VHTOperation.present)
    {
       pftSessionEntry->vhtCapabilityPresentInBeacon = 1;
       pftSessionEntry->apCenterChan =

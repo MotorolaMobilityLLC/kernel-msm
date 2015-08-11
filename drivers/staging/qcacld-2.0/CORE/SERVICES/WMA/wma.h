@@ -749,6 +749,8 @@ typedef struct {
 	atomic_t in_d0wow;
 #endif
 	vos_timer_t log_completion_timer;
+	uint16_t self_gen_frm_pwr;
+	bool tx_chain_mask_cck;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1101,8 +1103,7 @@ extern v_BOOL_t sys_validateStaConfig(void *pImage, unsigned long cbFile,
 extern void vos_WDAComplete_cback(v_PVOID_t pVosContext);
 extern void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 				    u_int16_t regdmn5G, int8_t ctl2G,
-				    int8_t ctl5G,
-				    bool cck_chain_mask);
+				    int8_t ctl5G);
 
 void wma_get_modeselect(tp_wma_handle wma, u_int32_t *modeSelect);
 
@@ -1124,7 +1125,7 @@ VOS_STATUS wma_update_vdev_tbl(tp_wma_handle wma_handle, u_int8_t vdev_id,
 
 int32_t regdmn_get_regdmn_for_country(u_int8_t *alpha2);
 void regdmn_get_ctl_info(struct regulatory *reg, u_int32_t modesAvail,
-			 u_int32_t modeSelect, bool cck_chain_mask);
+			 u_int32_t modeSelect);
 
 /*get the ctl from regdomain*/
 u_int8_t regdmn_get_ctl_for_regdmn(u_int32_t reg_dmn);

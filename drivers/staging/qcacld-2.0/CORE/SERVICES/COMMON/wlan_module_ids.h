@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -32,7 +32,7 @@
 /* Wlan module ids , global across all the modules */
 typedef enum {
   WLAN_MODULE_ID_MIN = 0,
-  WLAN_MODULE_INF = WLAN_MODULE_ID_MIN,
+  WLAN_MODULE_INF = WLAN_MODULE_ID_MIN, /* 0x00 */
   WLAN_MODULE_WMI,
   WLAN_MODULE_STA_PWRSAVE,
   WLAN_MODULE_WHAL,
@@ -48,7 +48,7 @@ typedef enum {
   WLAN_MODULE_MGMT_TXRX,
   WLAN_MODULE_DATA_TXRX,
   WLAN_MODULE_HTT,
-  WLAN_MODULE_HOST,
+  WLAN_MODULE_HOST, /* 0x10 */
   WLAN_MODULE_BEACON,
   WLAN_MODULE_OFFLOAD,
   WLAN_MODULE_WAL,
@@ -64,7 +64,7 @@ typedef enum {
   WLAN_MODULE_NLO,
   WLAN_MODULE_CHATTER,
   WLAN_MODULE_WOW,
-  WLAN_MODULE_WAL_VDEV,
+  WLAN_MODULE_WAL_VDEV, /* 0x20 */
   WLAN_MODULE_WAL_PDEV,
   WLAN_MODULE_TEST,
   WLAN_MODULE_STA_SMPS,
@@ -80,7 +80,7 @@ typedef enum {
   WLAN_MODULE_STATS,
   WLAN_MODULE_NAN,
   WLAN_MODULE_IBSS_PWRSAVE,
-  WLAN_MODULE_HIF_UART,
+  WLAN_MODULE_HIF_UART, /* 0x30 */
   WLAN_MODULE_LPI,
   WLAN_MODULE_EXTSCAN,
   WLAN_MODULE_UNIT_TEST,
@@ -88,6 +88,9 @@ typedef enum {
   WLAN_MODULE_SUPPL,
   WLAN_MODULE_ERE,
   WLAN_MODULE_OCB,
+  WLAN_MODULE_RSSI_MONITOR,
+  WLAN_MODULE_WPM,
+  WLAN_MODULE_CSS, /* 0x3a */
   WLAN_MODULE_ID_MAX,
   WLAN_MODULE_ID_INVALID = WLAN_MODULE_ID_MAX,
 } WLAN_MODULE_ID;

@@ -119,11 +119,13 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 
 #ifdef WLAN_FEATURE_11AC
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
-            "***beacon.VHTCaps.present*****=%d",pBeaconStruct->VHTCaps.present);
+            "***beacon.VHTCaps.present*****=%d BSS_VHT_CAPABLE:%d",
+            pBeaconStruct->VHTCaps.present,
+            IS_BSS_VHT_CAPABLE(pBeaconStruct->VHTCaps));
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
            "***beacon.SU Beamformer Capable*****=%d",pBeaconStruct->VHTCaps.suBeamFormerCap);
 
-        if ( pBeaconStruct->VHTCaps.present && pBeaconStruct->VHTOperation.present)
+        if (IS_BSS_VHT_CAPABLE(pBeaconStruct->VHTCaps) && pBeaconStruct->VHTOperation.present)
         {
             psessionEntry->vhtCapabilityPresentInBeacon = 1;
             psessionEntry->apCenterChan = pBeaconStruct->VHTOperation.chanCenterFreqSeg1;

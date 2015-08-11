@@ -1740,8 +1740,6 @@ bool drop_ip6_mcast(struct sk_buff *skb)
 #define drop_ip6_mcast(_a) 0
 #endif
 
-
-
 /**============================================================================
   @brief hdd_rx_packet_cbk() - Receive callback registered with TL.
   TL will call this to notify the HDD when one or more packets were
@@ -1831,11 +1829,12 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
 
       /* Check & drop mcast packets (for IPV6) as required */
       if (drop_ip6_mcast(skb)) {
-         print_hex_dump_bytes("MAC Header",
-            DUMP_PREFIX_NONE, skb_mac_header(skb), 16);
+         hddLog(VOS_TRACE_LEVEL_INFO, "MAC Header:");
+         VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+                            skb_mac_header(skb), 16);
          ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
-         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-               "%s: Dropping multicast to self NA", __func__);
+         VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+                   "%s: Dropping multicast to self NA", __func__);
          kfree_skb(skb);
 
          skb = skb_next;

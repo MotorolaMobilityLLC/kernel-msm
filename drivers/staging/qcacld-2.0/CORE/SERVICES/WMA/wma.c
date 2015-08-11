@@ -186,6 +186,14 @@
 
 #define WMA_LOG_COMPLETION_TIMER 10000 /* 10 seconds */
 
+static VOS_STATUS wma_add_wow_wakeup_event(tp_wma_handle wma,
+					   WOW_WAKE_EVENT_TYPE event,
+					   v_BOOL_t enable);
+#ifdef FEATURE_WLAN_SCAN_PNO
+static int wma_nlo_scan_cmp_evt_handler(void *handle, u_int8_t *event,
+					u_int32_t len);
+#endif
+
 #ifdef FEATURE_WLAN_EXTSCAN
 /**
  * enum extscan_report_events_type - extscan report events type
@@ -5105,7 +5113,6 @@ static int wma_unified_dfs_radar_rx_event_handler(void *handle,
 	}
 
 	dfs = (struct ath_dfs *)ic->ic_dfs;
-	chan = ic->ic_curchan;
 	param_tlvs = (WMI_DFS_RADAR_EVENTID_param_tlvs *) data;
 
 	if (NULL == dfs) {
@@ -5127,11 +5134,16 @@ static int wma_unified_dfs_radar_rx_event_handler(void *handle,
 
 	radar_event = param_tlvs->fixed_param;
 
+	vos_lock_acquire(&ic->chan_lock);
+	chan = ic->ic_curchan;
 	if (NV_CHANNEL_DFS != vos_nv_getChannelEnabledState(chan->ic_ieee)) {
 		WMA_LOGE("%s: Invalid DFS Phyerror event. Channel=%d is Non-DFS",
 			 __func__, chan->ic_ieee);
+		vos_lock_release(&ic->chan_lock);
 		return 0;
 	}
+
+	vos_lock_release(&ic->chan_lock);
 	dfs->ath_dfs_stats.total_phy_errors++;
 
 	if (dfs->dfs_caps.ath_chip_is_bb_tlv) {
@@ -5838,6 +5850,10 @@ VOS_STATUS WDA_open(v_VOID_t *vos_context, v_VOID_t *os_ctx,
 	olCfg.uc_rx_indication_ring_count = mac_params->ucRxIndRingCount;
 	olCfg.uc_tx_partition_base = mac_params->ucTxPartitionBase;
 #endif /* IPA_UC_OFFLOAD*/
+
+	wma_handle->tx_chain_mask_cck = mac_params->tx_chain_mask_cck;
+	wma_handle->self_gen_frm_pwr = mac_params->self_gen_frm_pwr;
+
 	/* Allocate cfg handle */
 
 	/* RX Full reorder should enable for PCIe, ROME3.X project only now
@@ -10420,6 +10436,7 @@ static VOS_STATUS wma_vdev_start(tp_wma_handle wma,
 				return VOS_STATUS_E_FAILURE;
 			}
 
+			vos_lock_acquire(&wma->dfs_ic->chan_lock);
 			if (wma->dfs_ic->ic_curchan)
 			{
 				OS_FREE(wma->dfs_ic->ic_curchan);
@@ -10429,6 +10446,7 @@ static VOS_STATUS wma_vdev_start(tp_wma_handle wma,
 			/* provide the current channel to DFS */
 			wma->dfs_ic->ic_curchan =
 				wma_dfs_configure_channel(wma->dfs_ic,chan,chanmode,req);
+			vos_lock_release(&wma->dfs_ic->chan_lock);
 
 			wma_unified_dfs_phyerr_filter_offload_enable(wma);
 		}
@@ -17599,6 +17617,9 @@ static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason)
 #endif
 	case WOW_REASON_RSSI_BREACH_EVENT:
 		return "WOW_REASON_RSSI_BREACH_EVENT";
+
+	case WOW_REASON_NLO_SCAN_COMPLETE:
+		return "WOW_REASON_NLO_SCAN_COMPLETE";
 	}
 	return "unknown";
 }
@@ -17931,8 +17952,35 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		wake_lock_duration = WMA_PNO_WAKE_LOCK_TIMEOUT;
 		node = &wma->interfaces[wake_info->vdev_id];
 		if (node) {
+			VOS_STATUS ret = VOS_STATUS_SUCCESS;
 			WMA_LOGD("NLO match happened");
 			node->nlo_match_evt_received = TRUE;
+
+			/* Configure pno scan complete wakeup */
+			ret = wma_add_wow_wakeup_event(wma,
+						WOW_NLO_SCAN_COMPLETE_EVENT,
+						true);
+			if (ret != VOS_STATUS_SUCCESS)
+				WMA_LOGE("Failed to configure pno scan complete wakeup");
+			else
+				WMA_LOGD("PNO scan complete wakeup is enabled in fw");
+		}
+		break;
+
+	case WOW_REASON_NLO_SCAN_COMPLETE:
+		{
+			WMI_NLO_SCAN_COMPLETE_EVENTID_param_tlvs param;
+
+			WMA_LOGD("Host woken up due to pno scan complete reason");
+			/* First 4-bytes of wow_packet_buffer is the length */
+			if (param_buf->wow_packet_buffer) {
+				param.fixed_param = (wmi_nlo_event *)
+					(param_buf->wow_packet_buffer + 4);
+				wma_nlo_scan_cmp_evt_handler(handle,
+						(u_int8_t *)&param,
+						sizeof(param));
+			} else
+				WMA_LOGD("No wow_packet_buffer present");
 		}
 		break;
 #endif
@@ -19043,6 +19091,7 @@ static VOS_STATUS wma_feed_wow_config_to_fw(tp_wma_handle wma,
 		WMA_LOGD("Assoc req based wakeup is %s in fw",
 			ap_vdev_available ? "enabled" : "disabled");
 
+#ifdef FEATURE_WLAN_SCAN_PNO
 	/* Configure pno based wakeup */
 	ret = wma_add_wow_wakeup_event(wma, WOW_NLO_DETECTED_EVENT,
 					pno_in_progress);
@@ -19052,6 +19101,7 @@ static VOS_STATUS wma_feed_wow_config_to_fw(tp_wma_handle wma,
 	} else
 		WMA_LOGD("PNO based wakeup is %s in fw",
 			pno_in_progress ? "enabled" : "disabled");
+#endif
 
 	/* Configure roaming scan better AP based wakeup */
 	ret = wma_add_wow_wakeup_event(wma, WOW_BETTER_AP_EVENT,
@@ -25097,7 +25147,7 @@ static int wma_nlo_scan_cmp_evt_handler(void *handle, u_int8_t *event,
 	/* Handle scan completion event only after NLO match event. */
 	if (!node || !node->nlo_match_evt_received) {
 
-		WMA_LOGD("NLO match not recieved skipping PNO complete ind for vdev %d",
+		WMA_LOGD("NLO match not received skipping PNO complete ind for vdev %d",
 		nlo_event->vdev_id);
 		goto skip_pno_cmp_ind;
 	}
@@ -25916,6 +25966,7 @@ static void wma_dfs_detach(struct ieee80211com *dfs_ic)
 {
 	dfs_detach(dfs_ic);
 
+        vos_lock_destroy(&dfs_ic->chan_lock);
 	if (NULL != dfs_ic->ic_curchan) {
 		OS_FREE(dfs_ic->ic_curchan);
 		dfs_ic->ic_curchan = NULL;
@@ -27841,15 +27892,14 @@ tANI_U8 wma_getFwWlanFeatCaps(tANI_U8 featEnumValue)
 }
 
 void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
-			     u_int16_t regdmn5G, int8_t ctl2G, int8_t ctl5G,
-			     bool cck_chain_mask)
+			     u_int16_t regdmn5G, int8_t ctl2G, int8_t ctl5G)
 {
 	wmi_buf_t buf;
 	wmi_pdev_set_regdomain_cmd_fixed_param *cmd;
 	int32_t len = sizeof(*cmd);
 	void *vos_context = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
 	tp_wma_handle wma = vos_get_context(VOS_MODULE_ID_WDA, vos_context);
-	bool cck_mask_val = false;
+	int32_t cck_mask_val = 0;
 	int ret = 0;
 
 	if (NULL == wma) {
@@ -27883,9 +27933,10 @@ void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 
 	if ((((reg_dmn & ~COUNTRY_ERD_FLAG) == CTRY_JAPAN) ||
 	     ((reg_dmn & ~COUNTRY_ERD_FLAG) == CTRY_KOREA_ROC)) &&
-	    (true == cck_chain_mask))
-		cck_mask_val = true;
+	    (true == wma->tx_chain_mask_cck))
+		cck_mask_val = 1;
 
+	cck_mask_val |= (wma->self_gen_frm_pwr << 16);
 	ret = wmi_unified_pdev_set_param(wma->wmi_handle,
 					 WMI_PDEV_PARAM_TX_CHAIN_MASK_CCK,
 					 cck_mask_val);
@@ -28472,7 +28523,7 @@ struct ieee80211com* wma_dfs_attach(struct ieee80211com *dfs_ic)
      * and shared DFS code
      */
     dfs_ic->ic_dfs_notify_radar = ieee80211_mark_dfs;
-
+    vos_lock_init(&dfs_ic->chan_lock);
     /* Initializes DFS Data Structures and queues*/
     dfs_attach(dfs_ic);
 

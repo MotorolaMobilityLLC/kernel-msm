@@ -681,9 +681,16 @@ tANI_BOOLEAN smeProcessScanQueue(tpAniSirGlobal pMac)
 {
     tListElem *pEntry;
     tSmeCmd *pCommand;
-    tListElem *pSmeEntry;
-    tSmeCmd *pSmeCommand;
+    tListElem *pSmeEntry = NULL;
+    tSmeCmd *pSmeCommand = NULL;
     tANI_BOOLEAN status = eANI_BOOLEAN_TRUE;
+
+    if ((!csrLLIsListEmpty(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK ))) {
+        pSmeEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList,
+                        LL_ACCESS_LOCK);
+        if (pSmeEntry)
+            pSmeCommand = GET_BASE_ADDR(pSmeEntry, tSmeCmd, Link) ;
+    }
 
     csrLLLock( &pMac->sme.smeScanCmdActiveList );
     if (csrLLIsListEmpty( &pMac->sme.smeScanCmdActiveList,
@@ -694,9 +701,25 @@ tANI_BOOLEAN smeProcessScanQueue(tpAniSirGlobal pMac)
         {
             pEntry = csrLLPeekHead( &pMac->sme.smeScanCmdPendingList,
                     LL_ACCESS_LOCK );
-            if (pEntry)
-            {
+            if (pEntry) {
                 pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+                if (pSmeCommand != NULL) {
+                    /*
+                    * if scan is running on one interface and SME receives
+                    * the next command on the same interface then
+                    * dont the allow the command to be queued to
+                    * smeCmdPendingList. If next scan is allowed on
+                    * the same interface the CSR state machine will
+                    * get screwed up.
+                    */
+                     if (pSmeCommand->sessionId == pCommand->sessionId) {
+                          smsLog(pMac, LOGE,
+                                "SME command is pending on session %d",
+                                pSmeCommand->sessionId);
+                            status = eANI_BOOLEAN_FALSE;
+                          goto end;
+                      }
+                }
                 //We cannot execute any command in wait-for-key state until setKey is through.
                 if (CSR_IS_WAIT_FOR_KEY( pMac, pCommand->sessionId))
                 {
@@ -707,30 +730,6 @@ tANI_BOOLEAN smeProcessScanQueue(tpAniSirGlobal pMac)
                                 pCommand->command);
                         status = eANI_BOOLEAN_FALSE;
                         goto end;
-                    }
-                }
-
-                if ((!csrLLIsListEmpty(&pMac->sme.smeCmdActiveList,
-                                       LL_ACCESS_LOCK )))
-                {
-                    pSmeEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList,
-                                              LL_ACCESS_LOCK);
-                    if (pEntry)
-                    {
-                       pSmeCommand = GET_BASE_ADDR(pEntry, tSmeCmd,
-                                                   Link) ;
-
-                       /* if scan is running on one interface and SME recei
-                          ves the next command on the same interface then
-                          dont the allow the command to be queued to
-                          smeCmdPendingList. If next scan is allowed on
-                          the same interface the CSR state machine will
-                          get screwed up. */
-                          if (pSmeCommand->sessionId == pCommand->sessionId)
-                          {
-                              status = eANI_BOOLEAN_FALSE;
-                              goto end;
-                          }
                     }
                 }
                 if ( csrLLRemoveEntry( &pMac->sme.smeScanCmdPendingList,

@@ -1158,18 +1158,23 @@ static eHalStatus limSendHalStartScanOffloadReq(tpAniSirGlobal pMac,
     pMac->lim.fOffloadScanPending = 0;
     pMac->lim.fOffloadScanP2PSearch = 0;
 
-    status = lim_strip_extcap_update_struct(pMac,
-                 (uint8_t *) pScanReq + pScanReq->uIEFieldOffset,
-                 &pScanReq->uIEFieldLen, &extracted_extcap);
+    if (pScanReq->uIEFieldLen) {
+        status = lim_strip_extcap_update_struct(pMac,
+                     (uint8_t *) pScanReq + pScanReq->uIEFieldOffset,
+                     &pScanReq->uIEFieldLen, &extracted_extcap);
 
-    if (eSIR_SUCCESS != status) {
-        extcap_present = false;
-        limLog(pMac, LOG1, FL("Unable to Stripoff ExtCap IE from Scan Req"));
-    }
+        if (eSIR_SUCCESS != status) {
+            extcap_present = false;
+            limLog(pMac, LOG1, FL("Unable to Strip ExtCap IE from Scan Req"));
+        }
 
-    if (extcap_present) {
-        limLog(pMac, LOG1, FL("Extcap was part of SCAN IE - Updating FW"));
-        lim_send_ext_cap_ie(pMac, pScanReq->sessionId, &extracted_extcap, true);
+        if (extcap_present) {
+            limLog(pMac, LOG1, FL("Extcap was part of SCAN IE - Updating FW"));
+            lim_send_ext_cap_ie(pMac, pScanReq->sessionId,
+                                &extracted_extcap, true);
+        }
+    } else {
+        limLog(pMac, LOG1, FL("No IEs in the scan request from supplicant"));
     }
 
     /* The tSirScanOffloadReq will reserve the space for first channel,

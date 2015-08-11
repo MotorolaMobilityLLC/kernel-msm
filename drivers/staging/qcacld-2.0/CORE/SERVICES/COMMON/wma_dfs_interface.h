@@ -27,7 +27,7 @@
 
 #include "ath_dfs_structs.h"
 #include "_ieee80211_common.h"
-
+#include <vos_lock.h>
 #define IEEE80211_CHAN_MAX      255
 
 /* channel attributes */
@@ -200,6 +200,7 @@ typedef struct ieee80211com
     u_int8_t vdev_id;
     u_int8_t last_radar_found_chan;
     int32_t dfs_pri_multiplier;
+    vos_lock_t chan_lock;
 } IEEE80211COM, *PIEEE80211COM;
 
 /*

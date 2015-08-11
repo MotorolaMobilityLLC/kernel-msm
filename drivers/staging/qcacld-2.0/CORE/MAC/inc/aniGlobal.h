@@ -1114,6 +1114,8 @@ typedef struct sMacOpenParameters
     tANI_U32 ucTxPartitionBase;
 #endif /* IPA_UC_OFFLOAD */
 
+    bool      tx_chain_mask_cck;
+    uint16_t  self_gen_frm_pwr;
 } tMacOpenParameters;
 
 typedef struct sHalMacStartParameters
