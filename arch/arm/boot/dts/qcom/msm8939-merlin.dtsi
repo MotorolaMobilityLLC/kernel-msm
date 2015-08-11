@@ -288,7 +288,7 @@
 				<1000>, <900>, <700>, <600>,
 				<500>, <400>, <300>;
 			qcom,bms-psy-name = "max170xx_battery";
-			qcom,max-batt-curr-ma = <1600>;
+			qcom,max-batt-curr-ma = <2500>;
 			qcom,ext-temp-volt-mv = <4200>;
 			qcom,low-voltage-uv = <3200000>;
 			qcom,max-voltage-uv = <4350000>;
