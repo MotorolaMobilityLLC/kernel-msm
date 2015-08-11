@@ -41,20 +41,34 @@ qcom,mdss-dsi-underflow-color = <0xff>;
 qcom,mdss-dsi-border-color = <0>;
 qcom,mdss-dsi-on-command = [
 	05 01 00 00 78 00 01 11
+	23 01 00 00 00 00 02 B0 00       /* MCS Protect */
+	29 01 00 00 00 00 02 FA 20       /* CABC RGB full PWM */
+	/* CABC PWM setting */
+	29 01 00 00 00 00 18 CE 5D 40 43 49 55 62 71 82 94 A8 B9 CB DB E9 FE FE FF 03 15 04 04 00 00
+	/* CABC UI mode setting */
+	29 01 00 00 00 00 07 B8 07 8B 19 08 0C 21
+	/* CABC Moving Image mode setting */
+	29 01 00 00 00 00 07 BA 07 7A 64 18 30 8D
+	/* Set Max Brightness */
 	15 01 00 00 00 00 02 51 CC
+	/* Set Minimum Brightness */
+	15 01 00 00 00 00 02 5E 00
+	/* BLU control */
 	15 01 00 00 00 00 02 53 2C
+	/* set defaut CABC to UI mode */
+	15 01 00 00 00 00 02 55 01
 	05 01 00 00 00 00 01 29];	/* display on */
 qcom,mdss-dsi-off-command = [
 	05 01 00 00 0a 00 01 28		/* display_off */
 	05 01 00 00 55 00 01 10];	/* enter sleep mode */
 
-/* TODO - Enable/verify CABC
+/*Dynamic cabc*/
 qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
 qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 qcom,mdss-dsi-cabc-dis-command = [15 01 00 00 00 00 02 55 00];
 qcom,mdss-dsi-hbm-on-command = [15 01 00 00 00 00 02 51 FF];
 qcom,mdss-dsi-hbm-off-command = [15 01 00 00 00 00 02 51 CC];
-*/
+
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
