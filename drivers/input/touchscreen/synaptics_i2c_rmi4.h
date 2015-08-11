@@ -290,6 +290,7 @@ struct synaptics_rmi4_data {
 	struct clk *core_clk;
 	struct clk *iface_clk;
 #endif
+	ktime_t timestamp;
 };
 
 enum exp_fn {
