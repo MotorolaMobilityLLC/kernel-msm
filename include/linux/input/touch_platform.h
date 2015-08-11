@@ -54,6 +54,7 @@ struct touch_platform_data {
 	int			gpio_reset;
 	int			gpio_interrupt;
 	char			*filename;
+	bool			disable_supp_on_aot;
 
 	int (*hw_reset)(void);
 	int (*hw_recov)(int);

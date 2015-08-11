@@ -200,7 +200,9 @@ struct atmxt_driver_data {
 #ifdef CONFIG_MFD_M4SENSORHUB
 	struct notifier_block m4_nb;
 #endif
+	struct delayed_work         dwork;
 	uint8_t                     enable_at_boot;
+	bool                        touch_supp_active;
 
 	uint16_t        status;
 	uint16_t        settings;
