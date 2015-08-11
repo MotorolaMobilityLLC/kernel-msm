@@ -1623,6 +1623,7 @@ static void smbchg_rerun_aicl(struct smbchg_chip *chip)
 	pr_smb(PR_STATUS, "Rerunning AICL...\n");
 	smbchg_sec_masked_write(chip, chip->usb_chgpth_base + USB_AICL_CFG,
 			AICL_EN_BIT, 0);
+	chip->aicl_irq_count = 0;
 	/* Add a delay so that AICL successfully clears */
 	msleep(50);
 	smbchg_sec_masked_write(chip, chip->usb_chgpth_base + USB_AICL_CFG,
@@ -2358,6 +2359,7 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 		chip->pmi_ibat_ma = chip->ibat_therm_tbl[lvl_sel].pmi;
 		chip->parallel_ibat_ma = chip->ibat_therm_tbl[lvl_sel].parallel;
 		chip->parallel.enabled_once = false;
+		chip->aicl_irq_count = 0;
 		smbchg_parallel_usb_check_ok(chip);
 	}
 
