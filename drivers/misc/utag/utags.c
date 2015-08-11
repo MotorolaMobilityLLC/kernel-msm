@@ -131,6 +131,46 @@ static void build_utags_directory(void);
 static void clear_utags_directory(void);
 
 /*
+ * Open and store file handle for a utag partition
+ *
+ * Not thread safe, call from a safe context only
+ */
+static int open_utags(struct blkdev *cb)
+{
+	struct inode *inode;
+
+	if (cb->filep)
+		return 0;
+
+	if (!cb->name) {
+		pr_err("%s utag partition not set\n", __func__);
+		return -EIO;
+	}
+
+	cb->filep = filp_open(cb->name, O_RDWR|O_SYNC, 0600);
+	if (IS_ERR_OR_NULL(cb->filep)) {
+		pr_err("%s opening (%s) errno=%ld\n", __func__,
+		       cb->name, -PTR_ERR(cb->filep));
+		cb->filep=NULL;
+		return -EIO;
+	}
+
+	if (cb->filep->f_path.dentry)
+		inode = cb->filep->f_path.dentry->d_inode;
+	if (!inode || !S_ISBLK(inode->i_mode)) {
+		pr_err("%s (%s) not a block device\n", __func__,
+		       cb->name);
+		filp_close(cb->filep, NULL);
+		cb->filep=NULL;
+		return -EIO;
+	}
+
+	cb->size = i_size_read(inode->i_bdev->bd_inode);
+	return 0;
+}
+
+
+/*
  * Free the memory associated with a list of tags.
  *
  */
@@ -450,55 +490,30 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
  *
  * Not thread safe, call from a safe context only
  */
-static struct utag *load_utags(const char *partition_name)
+static struct utag *load_utags(struct blkdev *cb)
 {
-	size_t block_size;
 	ssize_t bytes;
 	struct utag *head = NULL;
 	void *data;
-	struct file *filp = NULL;
-	struct inode *inode = NULL;
 
-	if (0 == partition_name[0]) {
-		pr_err("%s utag partition not set\n", __func__);
-		return NULL;
-	}
+	if (open_utags(cb))
+		goto out;
 
-	filp = filp_open(partition_name, O_RDONLY, 0600);
-	if (IS_ERR_OR_NULL(filp)) {
-		pr_err("%s ERROR opening file (%s) errno=%ld\n", __func__,
-		       partition_name, -PTR_ERR(filp));
-		return NULL;
-	}
-
-	if (filp->f_path.dentry)
-		inode = filp->f_path.dentry->d_inode;
-	if (!inode || !S_ISBLK(inode->i_mode)) {
-		pr_err("%s ERR (%s) not a block device\n", __func__,
-		       partition_name);
-		goto close_block;
-	}
-
-	block_size = i_size_read(inode->i_bdev->bd_inode);
-
-	data = vmalloc(block_size);
+	data = vmalloc(cb->size);
 	if (!data)
-		goto close_block;
+		goto out;
 
-	bytes = kernel_read(filp, filp->f_pos, data, block_size);
-	if ((ssize_t) block_size > bytes) {
-		pr_err("%s ERR file (%s) read failed\n", __func__,
-		       partition_name);
+	bytes = kernel_read(cb->filep, 0, data, cb->size);
+	if (cb->size > bytes) {
+		pr_err("%s ERR file (%s) read failed\n", __func__, cb->name);
 		goto free_data;
 	}
 
-	head = thaw_tags(block_size, data);
+	head = thaw_tags(cb->size, data);
 
  free_data:
 	vfree(data);
-
- close_block:
-	filp_close(filp, NULL);
+ out:
 	return head;
 }
 
@@ -531,50 +546,37 @@ static int replace_first_utag(struct utag *head, const char *name,
 	return 0;
 }
 
-static int flash_partition(const char *partition_name, const struct utag *tags)
+static int flash_partition(struct blkdev *cb, const struct utag *tags)
 {
-	size_t written = 0;
-	size_t block_size = 0, tags_size = 0;
+	size_t written;
+	size_t tags_size;
 	char *datap = NULL;
 	int rc = 0;
-	struct file *filep = NULL;
-	struct inode *inode = NULL;
 	mm_segment_t fs;
+	loff_t pos = 0;
 
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	filep = filp_open(partition_name, O_RDWR|O_SYNC, 0);
-	if (IS_ERR_OR_NULL(filep)) {
-		pr_err("%s opening file (%s) errno=%ld\n", __func__,
-		       partition_name, -PTR_ERR(filep));
+	if (open_utags(cb)) {
 		rc = -EIO;
 		goto out;
 	}
 
-	if (filep->f_path.dentry)
-		inode = filep->f_path.dentry->d_inode;
-	if (!inode || !S_ISBLK(inode->i_mode)) {
-		pr_err("%s not block device (%s)\n", __func__, partition_name);
+	datap = freeze_tags(cb->size, tags, &tags_size);
+	if (!datap) {
 		rc = -EIO;
-		goto close_block;
+		goto out;
 	}
 
-	block_size = i_size_read(inode->i_bdev->bd_inode);
-
-	datap = freeze_tags(block_size, tags, &tags_size);
-	if (!datap)
-		goto close_block;
-
-	written = filep->f_op->write(filep, datap, tags_size, &filep->f_pos);
-	if (written < tags_size)
-		pr_err("%s write file (%s) ret %zu\n", __func__,
-			ctrl.main.name, written);
-
+	written = cb->filep->f_op->write(cb->filep, datap, tags_size, &pos);
+	if (written < tags_size) {
+		pr_err("%s ERROR writing file (%s) ret %zu\n", __func__,
+		       cb->name, written);
+		rc = -EIO;
+	}
 	vfree(datap);
 
- close_block:
-	filp_close(filep, NULL);
  out:
 	set_fs(fs);
 	return rc;
@@ -584,12 +586,10 @@ static int store_utags(const struct utag *tags)
 {
 	int rc;
 
-	rc = flash_partition(ctrl.main.name, tags);
-	if (rc)
-		pr_err("%s flash partition failed\n", __func__);
+	rc = flash_partition(&ctrl.main, tags);
 
-	if (!ctrl.backup.name[0])
-		flash_partition(ctrl.backup.name, tags);
+	if (flash_partition(&ctrl.backup, tags))
+		pr_err("%s flash backup utags failed\n", __func__);
 
 	return rc;
 }
@@ -602,7 +602,7 @@ static int read_tag(struct seq_file *file, void *v)
 	struct utag *tag = NULL;
 	struct proc_node *proc = (struct proc_node *)file->private;
 
-	tags = load_utags(ctrl.main.name);
+	tags = load_utags(&ctrl.main);
 	if (NULL == tags) {
 		pr_err("%s Load config failed\n", __func__);
 		return -EFAULT;
@@ -655,7 +655,7 @@ write_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
-	tags = load_utags(ctrl.main.name);
+	tags = load_utags(&ctrl.main);
 	if (NULL == tags) {
 		pr_err("%s load config error\n", __func__);
 		return count;
@@ -703,7 +703,7 @@ new_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
-	tags = load_utags(ctrl.main.name);
+	tags = load_utags(&ctrl.main);
 	if (NULL == tags) {
 		pr_err("%s load config error\n", __func__);
 		return count;
@@ -760,7 +760,7 @@ static int dump_all(struct seq_file *file, void *v)
 	struct utag *tags = NULL;
 	uint32_t loc_csum = 0;
 
-	tags = load_utags(ctrl.main.name);
+	tags = load_utags(&ctrl.main);
 	if (NULL == tags)
 		pr_err("%s Load config failed\n", __func__);
 	else
@@ -869,7 +869,7 @@ static void build_utags_directory(void)
 	char utag_type[MAX_UTAG_NAME];
 
 	/* try to load utags from primary partition */
-	tags = load_utags(ctrl.main.name);
+	tags = load_utags(&ctrl.main);
 	if (NULL == tags) {
 		pr_warn("%s Can not open utags\n", __func__);
 		return;
