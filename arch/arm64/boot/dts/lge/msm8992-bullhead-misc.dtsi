@@ -43,6 +43,7 @@
 	qcom,vmax-mv = <2050>;
 	qcom,ilim-ma = <400>;
 	qcom,wave-play-rate-us = <4347>;
+	qcom,correct-lra-drive-freq;
 };
 
 &spi_fpc {
