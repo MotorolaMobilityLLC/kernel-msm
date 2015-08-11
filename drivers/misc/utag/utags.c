@@ -107,22 +107,6 @@ struct dir_node {
 
 LIST_HEAD(dir_list);
 
-enum utag_error {
-	UTAG_NO_ERROR = 0,
-	UTAG_ERR_NO_ROOM,
-	UTAG_ERR_OUT_OF_MEMORY,
-	UTAG_ERR_INVALID_HEAD,
-	UTAG_ERR_INVALID_TAIL,
-	UTAG_ERR_TAGS_TOO_BIG,
-	UTAG_ERR_PARTITION_OPEN_FAILED,
-	UTAG_ERR_PARTITION_NOT_BLKDEV,
-	UTAG_ERR_PARTITION_READ_ERR,
-	UTAG_ERR_PARTITION_WRITE_ERR,
-	UTAG_ERR_NOT_FOUND,
-	UTAG_ERR_INVALID_ARGS,
-	UTAG_ERR_PROTECTED,
-};
-
 struct blkdev {
 	char name[255];
 	struct file *filep;
@@ -291,20 +275,18 @@ utag_file(char *utag_name, char *utag_type,
  * Convert a block of tags, presumably loaded from seconday storage, into a
  * format that can be manipulated.
  */
-static struct utag *thaw_tags(size_t block_size, void *buf,
-			      enum utag_error *status)
+static struct utag *thaw_tags(size_t block_size, void *buf)
 {
 	struct utag *head = NULL, *cur = NULL;
 	uint8_t *ptr = buf;
-	enum utag_error err = UTAG_NO_ERROR;
 
 	/*
 	 * make sure the block is at least big enough to hold header
 	 * and footer
 	 */
 	if (UTAG_MIN_TAG_SIZE * 2 > block_size) {
-		err = UTAG_ERR_NO_ROOM;
-		goto out;
+		pr_err("%s invalid tags size\n", __func__);
+		return NULL;
 	}
 
 	while (1) {
@@ -316,10 +298,8 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
 		if (!head) {
 			/* calloc zeros allocated memory */
 			cur = kcalloc(1, sizeof(struct utag), GFP_KERNEL);
-			if (!cur) {
-				err = UTAG_ERR_OUT_OF_MEMORY;
-				goto out;
-			}
+			if (!cur)
+				return NULL;
 		}
 
 		strlcpy(cur->name, frozen->name, MAX_UTAG_NAME - 1);
@@ -331,7 +311,7 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
 
 			if (strcmp(head->name, UTAG_HEAD) ||
 				(0 != head->size)) {
-					err = UTAG_ERR_INVALID_HEAD;
+					pr_err("%s bad utags head\n", __func__);
 					goto err_free;
 			}
 		}
@@ -340,7 +320,7 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
 		if (!strcmp(cur->name, UTAG_TAIL)) {
 			/* footer payload size should be zero */
 			if (0 != cur->size) {
-				err = UTAG_ERR_INVALID_TAIL;
+				pr_err("%s invalid utags tail\n", __func__);
 				goto err_free;
 			}
 
@@ -356,16 +336,14 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
 		 */
 		if ((next_ptr - (uint8_t *) buf) + UTAG_MIN_TAG_SIZE >
 		    block_size) {
-			err = UTAG_ERR_TAGS_TOO_BIG;
+			pr_err("%s invalid tags size\n", __func__);
 			goto err_free;
 		}
 
 		if (cur->size != 0) {
 			cur->payload = kcalloc(1, cur->size, GFP_KERNEL);
-			if (!cur->payload) {
-				err = UTAG_ERR_OUT_OF_MEMORY;
+			if (!cur->payload)
 				goto err_free;
-			}
 			memcpy(cur->payload, frozen->payload, cur->size);
 		}
 
@@ -375,10 +353,8 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
 		/* get ready for the next tag, calloc() sets memory to zero */
 		cur->next = kcalloc(1, sizeof(struct utag), GFP_KERNEL);
 		cur = cur->next;
-		if (!cur) {
-			err = UTAG_ERR_OUT_OF_MEMORY;
+		if (!cur)
 			goto err_free;
-		}
 	}			/* while (1) */
 
 	goto out;
@@ -386,28 +362,23 @@ static struct utag *thaw_tags(size_t block_size, void *buf,
  err_free:
 	free_tags(head);
 	head = NULL;
-
  out:
-	if (status)
-		*status = err;
-
 	return head;
 }
 
 static void *freeze_tags(size_t block_size, const struct utag *tags,
-			 size_t *tags_size, enum utag_error *status)
+	size_t *tags_size)
 {
 	size_t frozen_size = 0;
 	char *buf = NULL, *ptr;
 	const struct utag *cur = tags;
-	enum utag_error err = UTAG_NO_ERROR;
 	size_t zeros;
 	struct frozen_utag frozen;
 
 	/* Make sure the tags start with the HEAD marker. */
 	if (!tags || strncmp(tags->name, UTAG_HEAD, MAX_UTAG_NAME)) {
-		err = UTAG_ERR_INVALID_HEAD;
-		goto out;
+		pr_err("%s invalid utags head\n", __func__);
+		return NULL;
 	}
 
 	/*
@@ -426,20 +397,18 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
 
 	/* do some more sanity checking */
 	if (!cur || cur->next) {
-		err = UTAG_ERR_INVALID_TAIL;
-		goto out;
+		pr_err("%s utags corrupted\n", __func__);
+		return NULL;
 	}
 
 	if (block_size < frozen_size) {
-		err = UTAG_ERR_TAGS_TOO_BIG;
-		goto out;
+		pr_err("%s utag size %zu too big\n", __func__, frozen_size);
+		return NULL;
 	}
 
 	ptr = buf = vmalloc(frozen_size);
-	if (!buf) {
-		err = UTAG_ERR_OUT_OF_MEMORY;
-		goto out;
-	}
+	if (!buf)
+		return NULL;
 
 	cur = tags;
 	while (1) {
@@ -473,10 +442,6 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
 	if (tags_size)
 		*tags_size = frozen_size;
 
- out:
-	if (status)
-		*status = err;
-
 	return buf;
 }
 
@@ -491,21 +456,19 @@ static struct utag *load_utags(const char *partition_name)
 	ssize_t bytes;
 	struct utag *head = NULL;
 	void *data;
-	int file_errno;
 	struct file *filp = NULL;
 	struct inode *inode = NULL;
 
 	if (0 == partition_name[0]) {
 		pr_err("%s utag partition not set\n", __func__);
-		goto out;
+		return NULL;
 	}
 
 	filp = filp_open(partition_name, O_RDONLY, 0600);
 	if (IS_ERR_OR_NULL(filp)) {
-		file_errno = -PTR_ERR(filp);
-		pr_err("%s ERR opening (%s) errno=%d\n", __func__,
-		       partition_name, file_errno);
-		goto out;
+		pr_err("%s ERROR opening file (%s) errno=%ld\n", __func__,
+		       partition_name, -PTR_ERR(filp));
+		return NULL;
 	}
 
 	if (filp->f_path.dentry)
@@ -519,11 +482,8 @@ static struct utag *load_utags(const char *partition_name)
 	block_size = i_size_read(inode->i_bdev->bd_inode);
 
 	data = vmalloc(block_size);
-	if (!data) {
-		pr_err("%s ERR file (%s) out of memory size %zu\n", __func__,
-		       partition_name, block_size);
+	if (!data)
 		goto close_block;
-	}
 
 	bytes = kernel_read(filp, filp->f_pos, data, block_size);
 	if ((ssize_t) block_size > bytes) {
@@ -532,22 +492,18 @@ static struct utag *load_utags(const char *partition_name)
 		goto free_data;
 	}
 
-	head = thaw_tags(block_size, data, NULL);
+	head = thaw_tags(block_size, data);
 
  free_data:
 	vfree(data);
 
  close_block:
 	filp_close(filp, NULL);
-
- out:
-
 	return head;
 }
 
-static enum utag_error
-replace_first_utag(struct utag *head, const char *name, void *payload,
-		   size_t size)
+static int replace_first_utag(struct utag *head, const char *name,
+		void *payload, size_t size)
 {
 	struct utag *utag;
 
@@ -555,32 +511,32 @@ replace_first_utag(struct utag *head, const char *name, void *payload,
 	utag = find_first_utag(head, name);
 	if (utag) {
 		void *oldpayload = utag->payload;
-		if (utag->flags & UTAG_FLAG_PROTECTED)
-			return UTAG_ERR_PROTECTED;
+		if (utag->flags & UTAG_FLAG_PROTECTED) {
+			pr_err("%s protected utag\n", __func__);
+			return -EIO;
+		}
 
 		utag->payload = kmalloc(size, GFP_KERNEL);
 		if (!utag->payload) {
 			utag->payload = oldpayload;
-			return UTAG_ERR_OUT_OF_MEMORY;
+			return -EIO;
 		}
 
 		memcpy(utag->payload, payload, size);
 		utag->size = size;
 		kfree(oldpayload);
-		return UTAG_NO_ERROR;
+		return 0;
 	}
 
-	return UTAG_NO_ERROR;
+	return 0;
 }
 
-static enum utag_error
-flash_partition(const char *partition_name, const struct utag *tags)
+static int flash_partition(const char *partition_name, const struct utag *tags)
 {
 	size_t written = 0;
 	size_t block_size = 0, tags_size = 0;
 	char *datap = NULL;
-	enum utag_error status = UTAG_NO_ERROR;
-	int file_errno;
+	int rc = 0;
 	struct file *filep = NULL;
 	struct inode *inode = NULL;
 	mm_segment_t fs;
@@ -590,59 +546,52 @@ flash_partition(const char *partition_name, const struct utag *tags)
 
 	filep = filp_open(partition_name, O_RDWR|O_SYNC, 0);
 	if (IS_ERR_OR_NULL(filep)) {
-		file_errno = -PTR_ERR(filep);
-		pr_err("%s ERROR opening file (%s) errno=%d\n", __func__,
-		       partition_name, file_errno);
-		status = UTAG_ERR_PARTITION_OPEN_FAILED;
+		pr_err("%s opening file (%s) errno=%ld\n", __func__,
+		       partition_name, -PTR_ERR(filep));
+		rc = -EIO;
 		goto out;
 	}
 
 	if (filep->f_path.dentry)
 		inode = filep->f_path.dentry->d_inode;
 	if (!inode || !S_ISBLK(inode->i_mode)) {
-		status = UTAG_ERR_PARTITION_NOT_BLKDEV;
+		pr_err("%s not block device (%s)\n", __func__, partition_name);
+		rc = -EIO;
 		goto close_block;
 	}
 
 	block_size = i_size_read(inode->i_bdev->bd_inode);
 
-	datap = freeze_tags(block_size, tags, &tags_size, &status);
+	datap = freeze_tags(block_size, tags, &tags_size);
 	if (!datap)
 		goto close_block;
 
 	written = filep->f_op->write(filep, datap, tags_size, &filep->f_pos);
-	if (written < tags_size) {
-		pr_err("%s ERROR writing file (%s) ret %zu\n", __func__,
-		       ctrl.main.name, written);
-		status = UTAG_ERR_PARTITION_WRITE_ERR;
-	}
+	if (written < tags_size)
+		pr_err("%s write file (%s) ret %zu\n", __func__,
+			ctrl.main.name, written);
+
 	vfree(datap);
 
  close_block:
 	filp_close(filep, NULL);
-
  out:
 	set_fs(fs);
-	return status;
+	return rc;
 }
 
-static enum utag_error store_utags(const struct utag *tags)
+static int store_utags(const struct utag *tags)
 {
-	enum utag_error status = UTAG_NO_ERROR;
+	int rc;
 
-	status = flash_partition(ctrl.main.name, tags);
-	if (UTAG_NO_ERROR != status)
-		pr_err("%s flash partition failed status %d\n", __func__,
-		       status);
+	rc = flash_partition(ctrl.main.name, tags);
+	if (rc)
+		pr_err("%s flash partition failed\n", __func__);
 
-	if (!ctrl.backup.name[0]) {
-		status = flash_partition(ctrl.backup.name, tags);
-		if (UTAG_NO_ERROR != status)
-			pr_err("%s flash backup partition failed status %d\n",
-			__func__, status);
-	}
+	if (!ctrl.backup.name[0])
+		flash_partition(ctrl.backup.name, tags);
 
-	return status;
+	return rc;
 }
 
 static int read_tag(struct seq_file *file, void *v)
@@ -689,7 +638,6 @@ write_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
 	struct utag *tags = NULL;
-	enum utag_error status;
 	struct inode *inode = file->f_dentry->d_inode;
 	struct proc_node *proc = PDE_DATA(inode);
 
@@ -712,18 +660,10 @@ write_utag(struct file *file, const char __user *buffer,
 		pr_err("%s load config error\n", __func__);
 		return count;
 	} else {
-		status =
-		    replace_first_utag(tags, proc->name, payload, (count - 1));
-		if (UTAG_NO_ERROR != status)
-			pr_err("%s error on update tag [%s] status %d\n",
-			       __func__, proc->name, status);
-		else {
-			status = store_utags(tags);
-			if (UTAG_NO_ERROR != status)
-				pr_err
-				    ("%s error on store tags [%s] status %d\n",
-				     __func__, proc->name, status);
-		}
+		if (replace_first_utag(tags, proc->name, payload, (count - 1)))
+			pr_err("%s error replace [%s]\n", __func__, proc->name);
+		else if (store_utags(tags))
+			pr_err("%s error store [%s]\n", __func__, proc->name);
 	}
 
 	free_tags(tags);
@@ -740,7 +680,6 @@ new_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
 	struct utag *tags, *cur;
-	enum utag_error status;
 	struct inode *inode = file->f_dentry->d_inode;
 	struct proc_node *proc = PDE_DATA(inode);
 	char uname[MAX_UTAG_NAME];
@@ -785,11 +724,9 @@ new_utag(struct file *file, const char __user *buffer,
 			cur->next = tags->next;
 			tags->next = cur;
 
-			status = store_utags(tags);
-			if (UTAG_NO_ERROR != status) {
-				pr_err
-				    ("%s error on store tags [%s] status %d\n",
-				     __func__, proc->name, status);
+			if (store_utags(tags)) {
+				pr_err("%s error tag [%s]\n",
+					__func__, proc->name);
 				goto out;
 			}
 		/* Add procfs elements for utag access */
