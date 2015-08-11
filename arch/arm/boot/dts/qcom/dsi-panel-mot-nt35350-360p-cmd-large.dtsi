@@ -17,7 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_mot_nt35350_360p_cmd_large: qcom,mdss_dsi_mot_nt35350_360p_cmd_large {
-		qcom,mdss-dsi-panel-config-version = "1.05.01";
+		qcom,mdss-dsi-panel-config-version = "1.06.01";
 		qcom,mdss-dsi-panel-name = "mot nt35350 command mode dsi panel 2.0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";

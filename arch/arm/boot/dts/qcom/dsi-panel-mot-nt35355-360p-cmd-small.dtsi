@@ -17,7 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_mot_nt35355_360p_cmd_small: qcom,mdss_dsi_mot_nt35355_360p_cmd_small {
-		qcom,mdss-dsi-panel-config-version = "1.05.01";
+		qcom,mdss-dsi-panel-config-version = "1.06.01";
 		qcom,mdss-dsi-panel-name = "mot nt35355 command mode dsi panel 2.0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -89,6 +89,7 @@
 		qcom,mdss-pan-physical-height-dimension = <31>;
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 1>, <1 10>;
 		qcom,mdss-dsi-tx-eot-append;
+		qcom,cont-splash-enabled;
 		qcom,mdss-backlight-disabled;
 		qcom,mdss-dsi-dcs-idle-enable;
 		qcom,even-line-align;
