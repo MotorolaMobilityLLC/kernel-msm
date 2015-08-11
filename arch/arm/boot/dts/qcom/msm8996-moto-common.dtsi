@@ -557,6 +557,7 @@
 };
 
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
@@ -576,6 +577,14 @@
 			23 1e 07 08 05 03 04 a0
 			23 1e 07 08 05 03 04 a0
 			23 18 07 08 05 03 04 a0];
+};
+
+&mot_dummy_vid_qhd {
+	qcom,mdss-dsi-panel-timings-8996 = [1E 1B 04 06 02 03 04 a0
+			1E 1B 04 06 02 03 04 a0
+			1E 1B 04 06 02 03 04 a0
+			1E 1B 04 06 02 03 04 a0
+			1E 0D 04 05 02 03 04 a0];
 };
 
 / {
