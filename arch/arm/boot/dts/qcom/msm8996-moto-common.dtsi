@@ -609,6 +609,8 @@
 	qcom,pmi8994@3 {
 		/* HACK, disable PMIC LED because it keeps detected short */
 		/delete-node/ qcom,leds@d800;
+		/* RGB LED because it is not there*/
+		/delete-node/ qcom,leds@d000;
 	};
 };
 
