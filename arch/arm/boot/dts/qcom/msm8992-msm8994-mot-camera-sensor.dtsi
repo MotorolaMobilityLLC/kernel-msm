@@ -275,9 +275,6 @@
 		qcom,cam-vreg-min-voltage = <2800000>;
 		qcom,cam-vreg-max-voltage = <2800000>;
 		qcom,cam-vreg-op-mode = <80000>;
-		qcom,actuator-recovery-en = <1>;
-		qcom,actuator-recovery-addr = <0x80>;
-		qcom,actuator-slave-addr = <0xe4>;
 	};
 
 	/* skywork81296 */
