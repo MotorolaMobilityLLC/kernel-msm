@@ -366,6 +366,7 @@ struct mdss_panel_info {
 	bool esd_check_enabled;
 	bool later_on_enabled;
 	bool turn_on_needed;
+	struct timespec turn_off_time;
 	char dfps_update;
 	int new_fps;
 	int panel_max_fps;
