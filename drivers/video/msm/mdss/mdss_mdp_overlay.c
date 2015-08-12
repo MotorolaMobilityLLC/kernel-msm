@@ -3088,6 +3088,7 @@ static ssize_t acl_store(struct device *dev,
 	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
 	int enable;
 	int r;
+	int old_state;
 
 	if (!ctl) {
 		pr_warning("%s: there is no ctl attached to fb\n", __func__);
@@ -3097,7 +3098,7 @@ static ssize_t acl_store(struct device *dev,
 
 	r = kstrtoint(buf, 0, &enable);
 	if ((r) || ((enable != 0) && (enable != 1))) {
-		pr_err("%s: invalid HBM value = %d\n", __func__, enable);
+		pr_err("%s: invalid ACL value = %d\n", __func__, enable);
 		r = -EINVAL;
 		goto end;
 	}
@@ -3109,13 +3110,15 @@ static ssize_t acl_store(struct device *dev,
 		goto unlock;
 	}
 
+	old_state = ctl->panel_data->panel_info.acl_state;
+
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_ACL,
 					(void *)(unsigned long)enable);
 	if (r) {
 		pr_err("%s: Failed sending ACL command, r = %d\n", __func__, r);
 		r = -EFAULT;
-	} else
+	} else if (old_state != enable)
 		pr_info("%s: ACL state changed by sysfs, state = %d\n",
 							__func__, enable);
 
