@@ -50,13 +50,19 @@
 #ifdef CONFIG_LM3535_ESD_RECOVERY
 #include <mot/esd_poll.h>
 #endif /* CONFIG_LM3535_ESD_RECOVERY */
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+#include <linux/notifier.h>
+#include <linux/dock_status_notify.h>
+#define DEFAULT_DOCK_DISP_VAL	25
+#elif defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
 #include <linux/notifier.h>
 #include <linux/wakeup_source_notify.h>
 #define MIN_DOCK_BVALUE		36
 #include <linux/m4sensorhub.h>
 #include <linux/m4sensorhub/MemMapUserSettings.h>
-#endif
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
+
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 #include <linux/display_state_notify.h>
 #endif
@@ -274,10 +280,15 @@ struct lm3535 {
     struct work_struct  work;
 	struct delayed_work als_delayed_work;
 	int prevent_als_read;	/* Whether to prevent als reads for a time */
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
 	atomic_t docked;
 	struct notifier_block dock_nb;
-#endif
+	atomic_t dock_disp_value;
+	atomic_t interactive;
+#elif defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
+	atomic_t docked;
+	struct notifier_block dock_nb;
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 	atomic_t off_at_lp;
 	atomic_t disp_in_lp;
@@ -440,7 +451,9 @@ static int lm3535_write_reg (unsigned reg, uint8_t value, const char *caller)
     return ret;
 }
 
-#if defined(CONFIG_WAKEUP_SOURCE_NOTIFY) || defined(CONFIG_HAS_AMBIENTMODE)
+#if (!defined(CONFIG_DOCK_STATUS_NOTIFY) && \
+	defined(CONFIG_WAKEUP_SOURCE_NOTIFY)) || \
+	defined(CONFIG_HAS_AMBIENTMODE)
 /* RAW ALS coefficients */
 static int raw_als_z0[] = {-44773, 6893285, 23168221};
 static int raw_als_z1[] = {-141, 358959, 274671182};
@@ -469,7 +482,9 @@ module_param(als_denom, ulong, 0644);
 static unsigned dim_values[] = {0x26, 0x30, 0x50, 0x50, 0x50};
 module_param_array(dim_values, uint, NULL, 0644);
 
-#if defined(CONFIG_WAKEUP_SOURCE_NOTIFY) || defined(CONFIG_HAS_AMBIENTMODE)
+#if (!defined(CONFIG_DOCK_STATUS_NOTIFY) && \
+	defined(CONFIG_WAKEUP_SOURCE_NOTIFY)) \
+	|| defined(CONFIG_HAS_AMBIENTMODE)
 static int abs_als_to_backlight(unsigned int als_value)
 {
 	int backlight;
@@ -517,7 +532,7 @@ static uint8_t lm3535_convert_value (unsigned value, unsigned zone)
 {
     uint8_t reg;
     uint32_t res;
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+#if !defined(CONFIG_DOCK_STATUS_NOTIFY) && defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
 	struct m4sensorhub_data *m4sensorhub;
 	int size;
 	static int ambient_als_backlight;
@@ -586,7 +601,7 @@ static uint8_t lm3535_convert_value (unsigned value, unsigned zone)
     else
         reg = res / als_denom;
 
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+#if !defined(CONFIG_DOCK_STATUS_NOTIFY) && defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
 	if (!lm3535_data.prevent_als_read) {
 		/* make sure this is atleast as high as corresponding ambient
 		 * mode value for current ALS condition */
@@ -627,7 +642,23 @@ static uint8_t lm3535_convert_value (unsigned value, unsigned zone)
     return reg;
 }
 
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+static int lm3535_dock_notifier(struct notifier_block *self,
+				unsigned long action, void *dev)
+{
+	switch (action) {
+	case DOCK_STATUS_EVENT_DOCKON:
+		atomic_set(&lm3535_data.docked, 1);
+		break;
+	case DOCK_STATUS_EVENT_DOCKOFF:
+		atomic_set(&lm3535_data.docked, 0);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+#elif defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
 static int lm3535_dock_notifier(struct notifier_block *self,
 				unsigned long action, void *dev)
 {
@@ -642,7 +673,7 @@ static int lm3535_dock_notifier(struct notifier_block *self,
 
 	return NOTIFY_OK;
 }
-#endif /* CONFIG_WAKEUP_SOURCE_NOTIFY */
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 static int lm3535_display_notify(struct notifier_block *self,
@@ -739,10 +770,14 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 
     /* Calculate brightness value for each zone relative to its cap */
     bvalue = lm3535_convert_value (value, bright_zone);
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	if (atomic_read(&lm3535_data.docked) &&
+	    !atomic_read(&lm3535_data.interactive))
+		bvalue = atomic_read(&lm3535_data.dock_disp_value);
+#elif defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
 	if (atomic_read(&lm3535_data.docked) && (bvalue < MIN_DOCK_BVALUE))
 		bvalue = MIN_DOCK_BVALUE; /* hard code for dock mode */
-#endif /* CONFIG_WAKEUP_SOURCE_NOTIFY */
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 
     /* Calculate number of steps for ramping */
     nsteps = bvalue - lm3535_data.bvalue;
@@ -954,6 +989,69 @@ static ssize_t lm3535_suspend_store (struct device *dev,
 }
 static DEVICE_ATTR(suspend, 0644, lm3535_suspend_show, lm3535_suspend_store);
 
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+static ssize_t lm3535_dockdispval_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	snprintf(buf, 16, "%d\n", atomic_read(&lm3535_data.dock_disp_value));
+	return strlen(buf)+1;
+}
+
+static ssize_t lm3535_dockdispval_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value = 0;
+	if (!buf || size == 0) {
+		pr_err("%s: invalid command\n", __func__);
+		return -EINVAL;
+	}
+
+	sscanf(buf, "%d", &value);
+	if (value < 0) {
+		pr_err("%s: invalid value: %d\n", __func__, value);
+		return -EINVAL;
+	}
+	atomic_set(&lm3535_data.dock_disp_value, value);
+	return size;
+}
+
+static DEVICE_ATTR(dockdispval, 0644, lm3535_dockdispval_show,
+		   lm3535_dockdispval_store);
+
+static ssize_t lm3535_interactive_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return sprintf(buf, "%d\n", atomic_read(&lm3535_data.interactive));
+}
+
+static ssize_t lm3535_interactive_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t size)
+{
+	unsigned value = 0;
+	if (!buf || size == 0) {
+		pr_err("%s: invalid command\n", __func__);
+		return -EINVAL;
+	}
+
+	sscanf(buf, "%d", &value);
+	if (value)
+		atomic_set(&lm3535_data.interactive, 1);
+	else
+		atomic_set(&lm3535_data.interactive, 0);
+
+	if (atomic_read(&lm3535_data.docked) &&
+	    !atomic_read(&lm3535_data.interactive))
+		lm3535_brightness_set(&lm3535_led, 5);
+
+	return size;
+}
+static DEVICE_ATTR(interactive, S_IRUGO | S_IWUSR,
+					lm3535_interactive_show,
+					lm3535_interactive_store);
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
+
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 static ssize_t lm3535_off_at_lp_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1096,11 +1194,39 @@ static int lm3535_probe (struct i2c_client *client,
 	/* lm3535_brightness_set (&lm3535_led_noramp, 255); */
 	lm3535_write_reg (LM3535_BRIGHTNESS_CTRL_REG_A, 87, __func__);
 	lm3535_data.initialized = 1;
-#ifdef CONFIG_WAKEUP_SOURCE_NOTIFY
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	atomic_set(&lm3535_data.docked, 0);
+	atomic_set(&lm3535_data.interactive, 1);
+	atomic_set(&lm3535_data.dock_disp_value, DEFAULT_DOCK_DISP_VAL);
+	lm3535_data.dock_nb.notifier_call = lm3535_dock_notifier;
+	dock_status_register_notify(&lm3535_data.dock_nb);
+	ret = device_create_file(lm3535_led.dev, &dev_attr_dockdispval);
+	if (ret) {
+		pr_err("%s: failed(%d) create dockdispval file for %s\n",
+		       __func__, ret, lm3535_led.name);
+		device_remove_file(lm3535_led.dev, &dev_attr_suspend);
+		led_classdev_unregister(&lm3535_led);
+		led_classdev_unregister(&lm3535_led_noramp);
+		misc_deregister(&als_miscdev);
+		return ret;
+	}
+
+	ret = device_create_file(lm3535_led.dev, &dev_attr_interactive);
+	if (ret) {
+		pr_err("%s: failed(%d) create interactive file for %s\n",
+		       __func__, ret, lm3535_led.name);
+		device_remove_file(lm3535_led.dev, &dev_attr_suspend);
+		device_remove_file(lm3535_led.dev, &dev_attr_dockdispval);
+		led_classdev_unregister(&lm3535_led);
+		led_classdev_unregister(&lm3535_led_noramp);
+		misc_deregister(&als_miscdev);
+		return ret;
+	}
+#elif defined(CONFIG_WAKEUP_SOURCE_NOTIFY)
 	atomic_set(&lm3535_data.docked, 0);
 	lm3535_data.dock_nb.notifier_call = lm3535_dock_notifier;
 	wakeup_source_register_notify(&lm3535_data.dock_nb);
-#endif /* CONFIG_WAKEUP_SOURCE_NOTIFY */
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 	atomic_set(&lm3535_data.off_at_lp,
 		   of_property_read_bool(client->dev.of_node,
@@ -1109,6 +1235,10 @@ static int lm3535_probe (struct i2c_client *client,
 	if (ret) {
 		pr_err("%s: failed(%d) create device file\n", __func__, ret);
 		device_remove_file(lm3535_led.dev, &dev_attr_suspend);
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+		device_remove_file(lm3535_led.dev, &dev_attr_dockdispval);
+		device_remove_file(lm3535_led.dev, &dev_attr_interactive);
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 		led_classdev_unregister(&lm3535_led);
 		led_classdev_unregister(&lm3535_led_noramp);
 		misc_deregister(&als_miscdev);
@@ -1603,6 +1733,11 @@ static int lm3535_remove (struct i2c_client *client)
 	device_remove_file(lm3535_led.dev, &dev_attr_off_at_lp);
 	display_state_unregister_notify(&lm3535_data.display_nb);
 #endif
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+	dock_status_unregister_notify(&lm3535_data.dock_nb);
+	device_remove_file(lm3535_led.dev, &dev_attr_dockdispval);
+	device_remove_file(lm3535_led.dev, &dev_attr_interactive);
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
     return 0;
 }
 
