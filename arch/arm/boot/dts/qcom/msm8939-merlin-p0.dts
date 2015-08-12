@@ -22,3 +22,7 @@
 &smb1357_otg_vreg {
 	qcom,max-batt-curr-ma = <1600>;
 };
+
+&stml0xx {
+	reset_hw_type = <0>;
+};
