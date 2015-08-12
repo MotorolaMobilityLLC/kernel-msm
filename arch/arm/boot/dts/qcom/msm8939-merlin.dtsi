@@ -1194,7 +1194,7 @@
 		headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
 		headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
 		cover_detect_polarity = <1>;
-		reset_hw_type = <0>;
+		reset_hw_type = <1>;
 		accel_orientation_1 = <5>;	/* Accel 1  Orientation value */
 		accel_orientation_2 = <5>;	/* Accel 2  Orientation value */
 		accel_swap = <1>; /* The accel parts are swapped left/right */
