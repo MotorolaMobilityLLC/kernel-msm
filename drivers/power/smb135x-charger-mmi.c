@@ -452,6 +452,8 @@ struct smb135x_chg {
 	int				stepchg_voltage_mv;
 	int				stepchg_taper_ma;
 	enum stepchg_state		stepchg_state;
+	bool				sw_kill;
+	bool				factory_cable;
 };
 
 static struct smb135x_chg *the_chip;
@@ -3179,6 +3181,8 @@ static int dcin_ov_handler(struct smb135x_chg *chip, u8 rt_stat)
 	return 0;
 }
 
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
 static int handle_usb_removal(struct smb135x_chg *chip)
 {
 	int rc;
@@ -3192,6 +3196,16 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 			power_supply_set_allow_detection(chip->usb_psy, 0);
 		}
 	}
+
+	if (chip->factory_mode && chip->sw_kill && chip->factory_cable) {
+		if (!factory_kill_disable) {
+			pr_err("SMB - Factory Cable removed, power-off\n");
+			kernel_power_off();
+		} else
+			pr_err("SMB - Factory cable removed - kill disabled\n");
+		chip->factory_cable = false;
+	}
+
 	chip->aicl_weak_detect = false;
 	chip->charger_rate = POWER_SUPPLY_CHARGE_RATE_NONE;
 
@@ -3293,6 +3307,11 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 			dev_err(chip->dev, "Couldn't set 15 us AICL glitch\n");
 	}
 
+	if (chip->factory_mode && chip->sw_kill &&
+			(reg & (SDP_BIT | CDP_BIT))) {
+		pr_err("SMB - Factory Kill Armed\n");
+		chip->factory_cable = true;
+	}
 	/*
 	 * Report the charger type as UNKNOWN if the
 	 * apsd-fail flag is set. This nofifies the USB driver
@@ -4789,6 +4808,7 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	chip->soft_vfloat_comp_disabled = of_property_read_bool(node,
 					"qcom,soft-vfloat-comp-disabled");
 
+	chip->sw_kill = of_property_read_bool(node, "qcom,no-factory-kill-ic");
 	if (of_find_property(node, "therm-bias-supply", NULL)) {
 		/* get the thermistor bias regulator */
 		chip->therm_bias_vreg = devm_regulator_get(chip->dev,
