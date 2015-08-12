@@ -105,11 +105,6 @@ struct msm_actuator_ctrl_t {
 	struct msm_actuator_vreg vreg_cfg;
 	struct park_lens_data_t park_lens;
 	uint32_t max_code_size;
-	uint8_t recovery_en;
-	uint16_t recovery_addr;
-	uint16_t slave_addr;
-	uint16_t power_off_setting_size;
-	struct reg_settings_t power_off_settings[MAX_ACTUATOR_REG_TBL_SIZE2];
 };
 
 #endif
