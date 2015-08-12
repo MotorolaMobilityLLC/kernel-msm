@@ -1121,7 +1121,9 @@ static void smbchg_usb_update_online_work(struct work_struct *work)
 	bool user_enabled = (chip->usb_suspended & REASON_USER) == 0;
 	int online;
 
-	online = user_enabled && chip->usb_present && !chip->very_weak_charger;
+	online = user_enabled && chip->usb_present
+			&& !chip->very_weak_charger
+			&& !chip->usb_ov_det;
 
 	mutex_lock(&chip->usb_set_online_lock);
 	if (chip->usb_online != online) {
@@ -4466,9 +4468,13 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 				pr_smb(PR_STATUS,
 					"usb psy does not allow updating prop %d rc = %d\n",
 					POWER_SUPPLY_HEALTH_OVERVOLTAGE, rc);
+			schedule_work(&chip->usb_set_online_work);
 		}
 	} else {
-		chip->usb_ov_det = false;
+		if (chip->usb_ov_det) {
+			chip->usb_ov_det = false;
+			schedule_work(&chip->usb_set_online_work);
+		}
 		/* If USB is present, then handle the USB insertion */
 		usb_present = is_usb_present(chip);
 		if (usb_present)
