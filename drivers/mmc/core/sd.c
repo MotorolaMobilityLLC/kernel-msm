@@ -26,7 +26,9 @@
 #include "sd.h"
 #include "sd_ops.h"
 
-#define PARANOID_SD_INIT_RETRIES 5
+#define PARANOID_SD_INIT_RETRIES	5
+#define PARANOID_SD_INIT_DELAY		50000
+#define PARANOID_SD_INIT_INCREMENT	100000
 
 #define UHS_SDR104_MIN_DTR	(100 * 1000 * 1000)
 #define UHS_DDR50_MIN_DTR	(50 * 1000 * 1000)
@@ -1302,7 +1304,7 @@ static int mmc_sd_resume(struct mmc_host *host)
 	int err;
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	int retries = PARANOID_SD_INIT_RETRIES;
-	unsigned long delay = 5000, settle = 0;
+	unsigned long delay = PARANOID_SD_INIT_DELAY, settle = 0;
 #endif
 
 	BUG_ON(!host);
@@ -1326,8 +1328,8 @@ static int mmc_sd_resume(struct mmc_host *host)
 			if (settle)
 				usleep_range(settle, settle + 500);
 			/* Increase settle times on each attempt */
-			delay += 10000;
-			settle += 10000;
+			delay += PARANOID_SD_INIT_INCREMENT;
+			settle += PARANOID_SD_INIT_INCREMENT;
 			continue;
 		}
 		break;
@@ -1407,7 +1409,7 @@ int mmc_attach_sd(struct mmc_host *host)
 	u32 ocr;
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	int retries = PARANOID_SD_INIT_RETRIES;
-	unsigned long delay = 5000, settle = 0;
+	unsigned long delay = PARANOID_SD_INIT_DELAY, settle = 0;
 #endif
 
 	BUG_ON(!host);
@@ -1485,8 +1487,8 @@ int mmc_attach_sd(struct mmc_host *host)
 			if (settle)
 				usleep_range(settle, settle + 500);
 			/* Increase settle times on each attempt */
-			delay += 10000;
-			settle += 10000;
+			delay += PARANOID_SD_INIT_INCREMENT;
+			settle += PARANOID_SD_INIT_INCREMENT;
 			continue;
 		}
 		break;
