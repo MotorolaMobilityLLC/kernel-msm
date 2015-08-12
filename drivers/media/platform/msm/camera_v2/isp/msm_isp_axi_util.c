@@ -1106,13 +1106,14 @@ void msm_isp_axi_cfg_update(struct vfe_device *vfe_dev,
 			&axi_data->axi_cfg_update[frame_src]);
 }
 
-static void msm_isp_get_done_buf(struct vfe_device *vfe_dev,
+static int msm_isp_get_done_buf(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, uint32_t pingpong_status,
 	struct msm_isp_buffer **done_buf)
 {
-	uint32_t pingpong_bit = 0, i;
-	struct msm_isp_event_data error_event;
-	struct msm_vfe_axi_halt_cmd halt_cmd;
+	uint32_t pingpong_bit = 0;
+	int rc = 0;
+	int i;
+
 	pingpong_bit = (~(pingpong_status >> stream_info->wm[0]) & 0x1);
 	for (i = 0; i < stream_info->num_planes; i++) {
 		if (pingpong_bit !=
@@ -1135,30 +1136,38 @@ static void msm_isp_get_done_buf(struct vfe_device *vfe_dev,
 				pr_err("%s:%d ping pong bit actual %d sw %d\n",
 					__func__, __LINE__, pingpong_bit,
 					stream_info->sw_ping_pong_bit);
-
-			memset(&halt_cmd, 0,
-				sizeof(struct msm_vfe_axi_halt_cmd));
-			halt_cmd.stop_camif = 1;
-			halt_cmd.overflow_detected = 0;
-			halt_cmd.blocking_halt = 0;
-
-			msm_isp_axi_halt(vfe_dev, &halt_cmd);
-
-			for (i = 0; i < MAX_NUM_STREAM; i++)
-				vfe_dev->axi_data.stream_info[i].state =
-					INACTIVE;
-
-				error_event.frame_id =
-					vfe_dev->axi_data.src_info[VFE_PIX_0].
-						frame_id;
-
-				msm_isp_send_event(vfe_dev,
-					ISP_EVENT_IOMMU_P_FAULT, &error_event);
-
+				rc = -EINVAL;
 			}
-		stream_info->sw_ping_pong_bit ^= 1;
+			stream_info->sw_ping_pong_bit ^= 1;
 		}
 	}
+	return rc;
+}
+
+static void msm_isp_halt_send_error(struct vfe_device *vfe_dev)
+{
+	uint32_t i = 0;
+	struct msm_isp_event_data error_event;
+	struct msm_vfe_axi_halt_cmd halt_cmd;
+
+	memset(&halt_cmd, 0, sizeof(struct msm_vfe_axi_halt_cmd));
+	memset(&error_event, 0, sizeof(struct msm_isp_event_data));
+	halt_cmd.stop_camif = 1;
+	halt_cmd.overflow_detected = 0;
+	halt_cmd.blocking_halt = 0;
+
+	pr_err("%s: vfe%d fatal error!\n", __func__, vfe_dev->pdev->id);
+
+	/*heavy spin lock in in axi halt, avoid spin lock outside.*/
+	msm_isp_axi_halt(vfe_dev, &halt_cmd);
+
+	for (i = 0; i < MAX_NUM_STREAM; i++)
+		vfe_dev->axi_data.stream_info[i].state =
+			INACTIVE;
+	error_event.frame_id =
+		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
+
+	msm_isp_send_event(vfe_dev, ISP_EVENT_IOMMU_P_FAULT, &error_event);
 }
 
 int msm_isp_print_ping_pong_address(struct vfe_device *vfe_dev)
@@ -1485,7 +1494,16 @@ int msm_isp_drop_frame(struct vfe_device *vfe_dev,
 		stream_info->runtime_num_burst_capture--;
 
 	spin_lock_irqsave(&stream_info->lock, flags);
-	msm_isp_get_done_buf(vfe_dev, stream_info, pingpong_status, &done_buf);
+	rc = msm_isp_get_done_buf(vfe_dev, stream_info, pingpong_status,
+				&done_buf);
+	if (rc < 0) {
+		pr_err_ratelimited("%s: VFE%d get buf error\n",
+			__func__, vfe_dev->pdev->id);
+		spin_unlock_irqrestore(&stream_info->lock, flags);
+		msm_isp_halt_send_error(vfe_dev);
+		return rc;
+	}
+
 	if (stream_info->stream_type == CONTINUOUS_STREAM ||
 		stream_info->runtime_num_burst_capture > 1)
 		msm_isp_cfg_ping_pong_address(vfe_dev, stream_info,
@@ -2631,8 +2649,16 @@ void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 				stream_info->runtime_num_burst_capture--;
 			}
 
-			msm_isp_get_done_buf(vfe_dev, stream_info,
+			rc = msm_isp_get_done_buf(vfe_dev, stream_info,
 				pingpong_status, &done_buf);
+			if (rc < 0) {
+				pr_err_ratelimited("%s: Mismatch Recovery in progress, drop frame!\n",
+					__func__);
+				spin_unlock_irqrestore(&stream_info->lock, flags);
+				msm_isp_halt_send_error(vfe_dev);
+				return;
+			}
+
 			if (stream_info->stream_type == CONTINUOUS_STREAM ||
 				stream_info->runtime_num_burst_capture > 1) {
 				valid_address = 1;
@@ -2680,8 +2706,16 @@ void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 				stream_info->runtime_num_burst_capture--;
 			}
 
-			msm_isp_get_done_buf(vfe_dev, stream_info,
+			rc = msm_isp_get_done_buf(vfe_dev, stream_info,
 						pingpong_status, &done_buf);
+			if (rc < 0) {
+				pr_err_ratelimited("%s: Mismatch Recovery in progress, drop frame!\n",
+					__func__);
+				spin_unlock_irqrestore(&stream_info->lock, flags);
+				msm_isp_halt_send_error(vfe_dev);
+				return;
+			}
+
 			if (stream_info->stream_type == CONTINUOUS_STREAM ||
 				stream_info->runtime_num_burst_capture > 1) {
 				valid_address = 1;
