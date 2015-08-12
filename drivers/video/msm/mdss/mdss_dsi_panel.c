@@ -799,6 +799,7 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	if (pinfo->later_on_enabled) {
 		int r = mdss_dsi_set_panel_on(ctrl, false);
 		WARN(r, "mdss_dsi_set_panel_on(0) return %d\n", r);
+		getnstimeofday(&pinfo->turn_off_time);
 		pinfo->turn_on_needed = true;
 	}
 
