@@ -112,7 +112,7 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
 #define bluesleep_tx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
 
 /* 5 second timeout */
-#define TX_TIMER_INTERVAL  5
+#define TX_TIMER_INTERVAL  5000
 
 /* state variable names and bit positions */
 #define BT_PROTO	0x01
@@ -214,7 +214,7 @@ void bluesleep_sleep_wakeup(void)
 			pr_info("waking up...\n");
 		wake_lock(&bsi->wake_lock);
 		/* Start the timer */
-		mod_timer(&tx_timer, jiffies + (bsi->tx_timer_interval * HZ));
+		mod_timer(&tx_timer, jiffies + (bsi->tx_timer_interval * HZ/1000));
 		if (debug_mask & DEBUG_BTWAKE)
 			pr_info("BT WAKE: set to wake\n");
 		if (bsi->has_ext_wake == 1)
@@ -253,13 +253,13 @@ static void bluesleep_sleep_work(struct work_struct *work)
 		} else {
 
 			mod_timer(&tx_timer, jiffies +
-					(bsi->tx_timer_interval * HZ));
+					(bsi->tx_timer_interval * HZ/1000));
 			return;
 		}
 	} else if (test_bit(BT_EXT_WAKE, &flags)
 			&& !test_bit(BT_ASLEEP, &flags)) {
 		mod_timer(&tx_timer, jiffies +
-				(bsi->tx_timer_interval * HZ));
+				(bsi->tx_timer_interval * HZ/1000));
 		if (debug_mask & DEBUG_BTWAKE)
 			pr_info("BT WAKE: set to wake\n");
 		if (bsi->has_ext_wake == 1)
@@ -277,16 +277,18 @@ static void bluesleep_sleep_work(struct work_struct *work)
  */
 static void bluesleep_hostwake_task(unsigned long data)
 {
-	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("hostwake line change\n");
-
+	int value;
 	spin_lock(&rw_lock);
-	if ((gpio_get_value(bsi->host_wake) == bsi->irq_polarity))
+	value = gpio_get_value(bsi->host_wake);
+	if (value == bsi->irq_polarity)
 		bluesleep_rx_busy();
 	else
 		bluesleep_rx_idle();
 
 	spin_unlock(&rw_lock);
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_info("hostwake line change busy %d\n",
+			(value == bsi->irq_polarity));
 }
 
 /**
@@ -384,7 +386,7 @@ static void bluesleep_tx_timer_expire(unsigned long data)
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("Tx data during last period\n");
 		mod_timer(&tx_timer, jiffies +
-				(bsi->tx_timer_interval * HZ));
+				(bsi->tx_timer_interval * HZ/1000));
 	}
 
 	/* clear the incoming data flag */
@@ -433,7 +435,7 @@ static int bluesleep_start(void)
 	/* start the timer */
 
 	mod_timer(&tx_timer, jiffies +
-			(bsi->tx_timer_interval * HZ));
+			(bsi->tx_timer_interval * HZ/1000));
 
 	/* assert BT_WAKE */
 	if (debug_mask & DEBUG_BTWAKE)
