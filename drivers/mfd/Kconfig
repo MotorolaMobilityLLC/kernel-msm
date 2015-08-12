@@ -1201,3 +1201,11 @@ config VEXPRESS_CONFIG
 	help
 	  Platform configuration infrastructure for the ARM Ltd.
 	  Versatile Express.
+
+config DOCK_STATUS_NOTIFY
+	tristate "Notifier of dock state"
+	depends on !WAKEUP_SOURCE_NOTIFY
+	help
+	  Enables Dock status notifications. The dock driver sends a notify
+	  when the dock status changes which is used by the lm3535 driver to
+	  adjust the led brightness accordingly.
