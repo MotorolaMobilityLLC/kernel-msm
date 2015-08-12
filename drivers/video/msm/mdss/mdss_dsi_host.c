@@ -983,12 +983,12 @@ void mdss_dsi_cmd_bta_sw_trigger(struct mdss_panel_data *pdata)
 	pr_debug("%s: BTA done, status = %d\n", __func__, status);
 }
 
-static int mdss_dsi_read_status(struct mdss_dsi_ctrl_pdata *ctrl)
+static int mdss_dsi_read_status(struct mdss_dsi_ctrl_pdata *ctrl, int index)
 {
 	struct dcs_cmd_req cmdreq;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = ctrl->status_cmds.cmds;
+	cmdreq.cmds = &(ctrl->status_cmds.cmds[index]);
 	cmdreq.cmds_cnt = ctrl->status_cmds.cmd_cnt;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_RX;
 	cmdreq.rlen = ctrl->status_cmds_rlen;
@@ -1017,6 +1017,7 @@ static int mdss_dsi_read_status(struct mdss_dsi_ctrl_pdata *ctrl)
 int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int ret = 0;
+	int i = 0;
 
 	if (ctrl_pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1027,19 +1028,39 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
 
-	ret = mdss_dsi_read_status(ctrl_pdata);
+	for(i = 0;i < ctrl_pdata->status_cmds.cmd_cnt;i++) {
+		ctrl_pdata->status_error_count = 0;
+		do{
+			ret = mdss_dsi_read_status(ctrl_pdata,i);
 
-	/*
-	 * mdss_dsi_read_status returns the number of bytes returned
-	 * by the panel. Success value is greater than zero and failure
-	 * case returns zero.
-	 */
-	if (ret > 0) {
-		ret = ctrl_pdata->check_read_status(ctrl_pdata);
-	} else {
-		pr_err("%s: Read status register returned error\n", __func__);
+			/*
+			 * mdss_dsi_read_status returns the number of bytes returned
+			 * by the panel. Success value is greater than zero and failure
+			 * case returns zero.
+			 */
+			if (ret > 0) {
+				if(*ctrl_pdata->status_buf.data != ctrl_pdata->status_value[i]){
+					ret = -EINVAL;
+					ctrl_pdata->status_error_count++;
+				}
+				else
+					ret = 1;
+			} else {
+				pr_err("%s: Read status register returned error\n", __func__);
+				ret = 1;
+				break;
+			}
+		} while((ctrl_pdata->status_error_count < ctrl_pdata->max_status_error_count)
+								&&(ret == -EINVAL));
+
+		if(ctrl_pdata->status_error_count >= ctrl_pdata->max_status_error_count || ret < 0) {
+			pr_err("%s:read 0x%x:=0x%x,expect=0x%x\n",__func__,
+						ctrl_pdata->status_cmds.cmds[i].payload[0],*ctrl_pdata->status_buf.data,
+						ctrl_pdata->status_value[i]);
+			ret = -EINVAL;
+			break;
+		}
 	}
-
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	pr_debug("%s: Read register done with ret: %d\n", __func__, ret);
 
