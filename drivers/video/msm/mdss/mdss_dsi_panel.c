@@ -796,6 +796,12 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
+	if (pinfo->later_on_enabled) {
+		int r = mdss_dsi_set_panel_on(ctrl, false);
+		WARN(r, "mdss_dsi_set_panel_on(0) return %d\n", r);
+		pinfo->turn_on_needed = true;
+	}
+
 	if (pinfo->mipi.idle_enable) {
 		int r = mdss_dsi_set_panel_idle(ctrl, enable);
 		WARN(r, "mdss_dsi_set_panel_idle(%d) return %d\n", enable, r);
@@ -1285,6 +1291,8 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
 	pinfo->esd_check_enabled = of_property_read_bool(np,
 		"qcom,esd-check-enabled");
+	pinfo->later_on_enabled =
+		of_property_read_bool(np, "qcom,later-on-enabled");
 
 	pinfo->mipi.dynamic_switch_enabled = of_property_read_bool(np,
 		"qcom,dynamic-mode-switch-enabled");
