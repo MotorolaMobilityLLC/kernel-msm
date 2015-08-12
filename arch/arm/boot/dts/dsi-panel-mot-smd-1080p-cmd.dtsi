@@ -36,6 +36,8 @@
 		qcom,mdss-pan-physical-width-dimension = <65>;
 		qcom,mdss-pan-physical-height-dimension = <115>;
 
+		qcom,panel-roi-alignment = <8 8 0 0 0 0>;
+
 		qcom,mdss-dsi-h-front-porch = <144>;
 		qcom,mdss-dsi-h-back-porch = <32>;
 		qcom,mdss-dsi-h-pulse-width = <12>;
@@ -159,6 +161,8 @@
 		qcom,mdss-dsi-panel-height = <1920>;
 		qcom,mdss-pan-physical-width-dimension = <65>;
 		qcom,mdss-pan-physical-height-dimension = <115>;
+
+		qcom,panel-roi-alignment = <8 8 0 0 0 0>;
 
 		qcom,mdss-dsi-h-front-porch = <144>;
 		qcom,mdss-dsi-h-back-porch = <32>;
