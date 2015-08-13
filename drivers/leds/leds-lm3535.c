@@ -748,6 +748,9 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 	if ((value == 1) && atomic_read(&lm3535_data.off_at_lp) &&
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	    !atomic_read(&lm3535_data.docked) &&
+#endif
 	    atomic_read(&lm3535_data.disp_in_lp))
 		value = 0;
 #endif
