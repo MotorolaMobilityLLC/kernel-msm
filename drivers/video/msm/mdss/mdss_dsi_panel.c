@@ -23,6 +23,11 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+#include <linux/notifier.h>
+#include <linux/dock_status_notify.h>
+#endif
+
 #include "mdss_dsi.h"
 
 #define DT_CMD_HDR 6
@@ -812,6 +817,10 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		int state = enable ? TFMODE_STATE_LOWPOWER
 				   : TFMODE_STATE_NORMAL;
 		int tfmode = ctrl->panel_tfmode->tfmode[state];
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+		if (pinfo->is_docked && (state == TFMODE_STATE_LOWPOWER))
+			tfmode = PANEL_TFMODE_TRANSFLECTIVE;
+#endif
 		mdss_dsi_panel_cmds_send(ctrl,
 					 &(ctrl->panel_tfmode->cmds[tfmode]));
 	}
@@ -1718,6 +1727,26 @@ error:
 	return -EINVAL;
 }
 
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+static int mdss_dsi_dock_notifier(struct notifier_block *self,
+					unsigned long action, void *dev)
+{
+	struct mdss_panel_info *pinfo =
+		container_of(self, struct mdss_panel_info, dock_nb);
+
+	switch (action) {
+	case DOCK_STATUS_EVENT_DOCKON:
+		pinfo->is_docked = true;
+		break;
+	case DOCK_STATUS_EVENT_DOCKOFF:
+		pinfo->is_docked = false;
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -1767,6 +1796,12 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	pinfo->is_docked = false;
+	pinfo->dock_nb.notifier_call = mdss_dsi_dock_notifier;
+	dock_status_register_notify(&pinfo->dock_nb);
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 
 	return 0;
 }
