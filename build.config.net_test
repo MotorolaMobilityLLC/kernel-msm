@@ -1,0 +1,11 @@
+ARCH=um
+SUBARCH=x86_64
+BRANCH=android-msm-shamu-3.10
+CROSS_COMPILE=
+DEFCONFIG=net_test_defconfig
+EXTRA_CMDS=''
+KERNEL_DIR=private/msm-moto
+LINUX_GCC_CROSS_COMPILE_PREBUILTS_BIN=
+FILES="
+linux
+"
