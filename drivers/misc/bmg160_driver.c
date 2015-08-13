@@ -713,6 +713,15 @@ static ssize_t bmg_store_delay(struct device *dev,
 
 	atomic_set(&client_data->delay, data);
 
+	if (data < 11)
+		BMG_CALL_API(set_bw)(C_BMG160_BW_47Hz_U8X);
+	else if (data < 16)
+		BMG_CALL_API(set_bw)(C_BMG160_BW_32Hz_U8X);
+	else if (data < 22)
+		BMG_CALL_API(set_bw)(C_BMG160_BW_23Hz_U8X);
+	else
+		BMG_CALL_API(set_bw)(C_BMG160_BW_12Hz_U8X);
+
 	return count;
 }
 
@@ -1395,6 +1404,11 @@ static int bmg_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	/* now it's power on which is considered as resuming from suspend */
 	err = BMG_CALL_API(set_mode)(
 			BMG_VAL_NAME(MODE_SUSPEND));
+
+	if (err < 0)
+		goto exit_err_sysfs;
+
+	err = BMG_CALL_API(set_bw)(C_BMG160_BW_47Hz_U8X);
 
 	if (err < 0)
 		goto exit_err_sysfs;
