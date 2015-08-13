@@ -84,6 +84,10 @@ struct smelt_dock {
 	struct debounce *debounce;
 };
 
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+static struct smelt_dock *smelt_dock_data;
+#endif
+
 static ssize_t smelt_dock_debounce_enable(struct device *dev,
 					  struct device_attribute *attr,
 					  const char *buf, size_t count)
@@ -366,13 +370,11 @@ static int smelt_dock_probe(struct platform_device *pdev)
 	/* Set initial switch state */
 	if (mutex_trylock(&chip->sdev_mutex)) {
 		switch_set_state(chip->sdev, dock_state(chip->dts));
-#ifdef CONFIG_DOCK_STATUS_NOTIFY
-		dock_status_notify_subscriber(
-			(dock_state(chip->dts) ?
-			DOCK_STATUS_EVENT_DOCKON : DOCK_STATUS_EVENT_DOCKOFF));
-#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 		mutex_unlock(&chip->sdev_mutex);
 	}
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+	smelt_dock_data = chip;
+#endif
 
 	return 0;
 
@@ -438,6 +440,21 @@ static struct platform_driver smelt_dock_driver = {
 	},
 };
 module_platform_driver(smelt_dock_driver);
+
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+static int __init smelt_dock_notify_complete(void)
+{
+	if (smelt_dock_data) {
+		mutex_lock(&smelt_dock_data->sdev_mutex);
+		dock_status_notify_subscriber(
+			(dock_state(smelt_dock_data->dts) ?
+			DOCK_STATUS_EVENT_DOCKON : DOCK_STATUS_EVENT_DOCKOFF));
+		mutex_unlock(&smelt_dock_data->sdev_mutex);
+	}
+	return 0;
+}
+late_initcall(smelt_dock_notify_complete);
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
 
 MODULE_ALIAS("platform:smelt-dock");
 MODULE_AUTHOR("Motorola Mobility LLC");

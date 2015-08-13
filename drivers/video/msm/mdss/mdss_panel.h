@@ -401,6 +401,10 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	bool is_docked;
+	struct notifier_block dock_nb;
+#endif
 };
 
 struct mdss_panel_data {
