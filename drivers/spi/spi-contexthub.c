@@ -420,7 +420,7 @@ static ssize_t spich_sync(struct spich_data *spich, struct spi_message *message)
 	/* Allow the context hub time to wake from stop mode. According to the
 	 * spec this can take up to 138us, we choose a slightly more
 	 * conservative delay. */
-	udelay(200);
+	udelay(250);
 
 	spin_lock_irq(&spich->spi_lock);
 	if (spich->spi == NULL) {
