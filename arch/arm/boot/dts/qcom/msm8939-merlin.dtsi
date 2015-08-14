@@ -773,6 +773,24 @@
 		qcom,pins = <&gp 25>;
 	};
 
+	pmx_sdc2_clk {
+		sdc2_clk_on: clk_on {
+			drive-strength = <16>; /* 16 MA */
+		};
+	};
+
+	pmx_sdc2_cmd {
+		sdc2_cmd_on: cmd_on {
+			drive-strength = <6>; /* 6 MA */
+		};
+	};
+
+	pmx_sdc2_data {
+		sdc2_data_on: data_on {
+			drive-strength = <6>; /* 6 MA */
+		};
+	};
+
 	pmx-uartconsole {
 		qcom,pins = <&gp 0>, <&gp 1>;
 	};
