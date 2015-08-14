@@ -1438,6 +1438,28 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->charger_detection = true;
 	}
 
+	if (of_property_read_bool(np, "synaptics,touch-clip-area")) {
+		struct synaptics_clip_area *clip_area;
+
+		clip_area = kzalloc(sizeof(*clip_area), GFP_KERNEL);
+		if (!clip_area) {
+			dev_err(&client->dev, "clip area allocation failure\n");
+			return NULL;
+		}
+
+		retval = of_property_read_u32_array(np,
+				"synaptics,touch-clip-area",
+				(unsigned *)clip_area, 4);
+		if (retval) {
+			dev_err(&client->dev, "clip area read failure\n");
+			kfree(clip_area);
+			goto exit_func;
+		}
+
+		rmi4_data->clipa = clip_area;
+		pr_notice("using touch clip area\n");
+	}
+exit_func:
 	return pdata;
 }
 #else
@@ -3448,6 +3470,25 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+
+			if (rmi4_data->clipping_on && rmi4_data->clipa) {
+				bool inside;
+
+				inside = (x >= rmi4_data->clipa->xul_clip) &&
+					(x <= rmi4_data->clipa->xbr_clip) &&
+					(y >= rmi4_data->clipa->yul_clip) &&
+					(y <= rmi4_data->clipa->ybr_clip);
+
+				if (!inside) {
+					dev_dbg(&rmi4_data->i2c_client->dev,
+						"%d,%d ouside clipping area\n",
+						x, y);
+					input_mt_report_slot_state(
+						rmi4_data->input_dev,
+						MT_TOOL_FINGER, 0);
+					continue;
+				}
+			}
 
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 			touchxp.touch_magic_dev = rmi4_data->input_dev;
@@ -6173,12 +6214,14 @@ static int folio_notifier_callback(struct notifier_block *self,
 			synaptics_dsx_state_name(state), state,
 			atomic_read(&rmi4_data->touch_stopped),
 			rmi4_data->in_bootloader);
-		if (folio_state)
-			/* close */
+		if (folio_state) {/* close */
+			rmi4_data->clipping_on = true;
 			synaptics_dsx_set_alternate_mode(rmi4_data,
 				rmi4_data->alternate_mode, false, true);
-		else	/* open */
+		} else {/* open */
+			rmi4_data->clipping_on = false;
 			synaptics_dsx_restore_default_mode(rmi4_data);
+		}
 
 		dev_info(&rmi4_data->i2c_client->dev, "folio: %s\n",
 			folio_state ? "CLOSED" : "OPENED");
