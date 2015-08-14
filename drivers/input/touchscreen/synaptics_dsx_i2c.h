@@ -381,6 +381,10 @@ struct synaptics_rmi4_func_packet_regs {
 	struct synaptics_rmi4_packet_reg *regs;
 };
 
+struct synaptics_clip_area {
+	unsigned xul_clip, yul_clip, xbr_clip, ybr_clip;
+};
+
 /*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
@@ -496,6 +500,8 @@ struct synaptics_rmi4_data {
 #if defined(USB_CHARGER_DETECTION)
 	struct power_supply psy;
 #endif
+	bool clipping_on;
+	struct synaptics_clip_area *clipa;
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
