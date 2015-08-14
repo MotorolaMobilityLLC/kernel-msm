@@ -1509,35 +1509,12 @@ static int find_pc_for_soc(struct qpnp_bms_chip *chip,
 
 static int get_current_time(unsigned long *now_tm_sec)
 {
-	struct rtc_time tm;
-	struct rtc_device *rtc;
-	int rc;
+	struct timespec tm;
 
-	rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
-	if (rtc == NULL) {
-		pr_err("%s: unable to open rtc device (%s)\n",
-			__FILE__, CONFIG_RTC_HCTOSYS_DEVICE);
-		return -EINVAL;
-	}
+	getrawmonotonic(&tm);
+	*now_tm_sec = (unsigned long)tm.tv_sec;
 
-	rc = rtc_read_time(rtc, &tm);
-	if (rc) {
-		pr_err("Error reading rtc device (%s) : %d\n",
-			CONFIG_RTC_HCTOSYS_DEVICE, rc);
-		goto close_time;
-	}
-
-	rc = rtc_valid_tm(&tm);
-	if (rc) {
-		pr_err("Invalid RTC time (%s): %d\n",
-			CONFIG_RTC_HCTOSYS_DEVICE, rc);
-		goto close_time;
-	}
-	rtc_tm_to_time(&tm, now_tm_sec);
-
-close_time:
-	rtc_class_close(rtc);
-	return rc;
+	return 0;
 }
 
 /* Returns estimated battery resistance */
