@@ -551,6 +551,10 @@
 	status = "ok";
 };
 
+&pm8994_lvs2 {
+	regulator-always-on;
+};
+
 &pm8994_l18 {
 	regulator-always-on;
 	regulator-min-microvolt = <3000000>;
