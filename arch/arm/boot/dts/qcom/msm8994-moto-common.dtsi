@@ -791,6 +791,7 @@
 			<&msm_gpio 39 0>; /* RESET */
 		touch_vdd-supply = <&pm8994_l22>;
 		synaptics,gpio-config;
+		synaptics,touch-clip-area = <79 0 1360 1362>;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
