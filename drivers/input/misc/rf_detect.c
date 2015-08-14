@@ -25,12 +25,16 @@
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <linux/pm.h>
-#include <linux/wakelock.h>
 #include <linux/delay.h>
-#include <linux/rf_detect.h>
 
 #define DRV_NAME "RF_DEVICE"
 #define TAG "RF_GPIO: "
+
+struct rf_platform_data {
+	unsigned int gpio_main;
+	unsigned int gpio_aux;
+	int debounce_interval;
+};
 
 struct rf_device {
 	struct device *dev;
@@ -39,7 +43,6 @@ struct rf_device {
 	const struct rf_platform_data *pdata;
 
 	struct delayed_work dwork;
-	struct wake_lock wakelock;
 
 	unsigned int irq_main;
 	unsigned int irq_aux;
@@ -88,13 +91,6 @@ static void rf_report_event(struct rf_device *rfdev)
 		/* save the current state */
 		rfdev->prev_state = rfdev->curr_state;
 	}
-
-	if (wake_lock_active(&rfdev->wakelock));
-		wake_unlock(&rfdev->wakelock);
-
-	/* enable irqs */
-	enable_irq(rfdev->irq_main);
-	enable_irq(rfdev->irq_aux);
 }
 
 static void rf_detect_work_func(struct work_struct *work)
@@ -109,12 +105,6 @@ static irqreturn_t rf_irq(int irq, void *dev_id)
 {
 	struct rf_device *rfdev = dev_id;
 	pr_info(TAG "%s: Interrupt occured\n", __func__);
-
-	/* disable irqs */
-	disable_irq_nosync(rfdev->irq_main);
-	disable_irq_nosync(rfdev->irq_aux);
-
-	wake_lock_timeout(&rfdev->wakelock, HZ / 2);
 
 	schedule_delayed_work(&rfdev->dwork,
 			msecs_to_jiffies(rfdev->pdata->debounce_interval));
@@ -186,12 +176,12 @@ static int config_gpio(struct rf_device *rfdev, int *irq, int gpio)
 
 	/* request irq */
 	*irq = gpio_to_irq(gpio);
-	err = request_any_context_irq(*irq,  &rf_irq,
-			  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	err = request_threaded_irq(*irq, NULL, &rf_irq,
+			  IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 			  DRV_NAME, rfdev);
 	if (err) {
 		gpio_free(gpio);
-		pr_err(TAG "Unable to request IRQ %d\n", *irq);
+		pr_err(TAG "Unable to request IRQ %d, err = %d\n", *irq, err);
 		return err;
 	}
 
@@ -234,6 +224,7 @@ static int rf_probe(struct platform_device *pdev)
 	rfdev = kzalloc(sizeof(struct rf_device), GFP_KERNEL);
 	if(!rfdev) {
 		pr_err(TAG "Request memory failed\n");
+		kfree(pdata);
 		return -EINVAL;
 	}
 
@@ -241,7 +232,6 @@ static int rf_probe(struct platform_device *pdev)
 
 	/* init delayed work */
 	INIT_DELAYED_WORK(&rfdev->dwork, rf_detect_work_func);
-	wake_lock_init(&rfdev->wakelock, WAKE_LOCK_SUSPEND, "RF_DETECT");
 
 	/* only config the available gpio */
 	rfdev->gpio_main_avail = gpio_is_valid(pdata->gpio_main);
@@ -309,8 +299,7 @@ exit_device_destroy:
 exit_class_destroy:
 	class_destroy(rfdev->class);
 exit_free_mem:
-	if (!dev_get_platdata(&pdev->dev))
-		kfree(pdata);
+	kfree(pdata);
 	kfree(rfdev);
 	pr_info(TAG "RF platform device probe failed\n");
 
@@ -321,6 +310,8 @@ static int rf_remove(struct platform_device *pdev)
 {
 	struct rf_device *rfdev = platform_get_drvdata(pdev);
 	const struct rf_platform_data *pdata = rfdev->pdata;
+
+	cancel_delayed_work_sync(&rfdev->dwork);
 
 	device_remove_file(rfdev->dev, &dev_attr_gpio_status);
 	device_destroy(rfdev->class, rfdev->devno);
@@ -336,12 +327,8 @@ static int rf_remove(struct platform_device *pdev)
 		gpio_free(pdata->gpio_aux);
 	}
 
-	wake_lock_destroy(&rfdev->wakelock);
-
+	kfree(pdata);
 	kfree(rfdev);
-
-	if (!dev_get_platdata(&pdev->dev))
-		kfree(pdata);
 
 	platform_set_drvdata(pdev, NULL);
 
@@ -353,8 +340,7 @@ static int rf_dev_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct rf_device *rfdev = platform_get_drvdata(pdev);
 
-	schedule_delayed_work(&rfdev->dwork,
-			msecs_to_jiffies(rfdev->pdata->debounce_interval));
+	rf_report_event(rfdev);
 
 	return 0;
 }
@@ -369,6 +355,8 @@ static int rf_dev_suspend(struct device *dev)
 	 * so we need to reset the varient "prev_state" to default 0.
 	 */
 	rfdev->prev_state = 0;
+	cancel_delayed_work_sync(&rfdev->dwork);
+
 	return 0;
 }
 
