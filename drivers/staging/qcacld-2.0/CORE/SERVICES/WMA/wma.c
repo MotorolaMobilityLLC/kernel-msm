@@ -18505,10 +18505,9 @@ int wma_enable_wow_in_fw(WMA_HANDLE handle, int runtime_pm)
 		host_credits, wmi_pending_cmds);
 
 	if (!runtime_pm && host_credits < WMI_WOW_REQUIRED_CREDITS) {
-		WMA_LOGE("%s: Host Doesn't have enough credits to Post WMI_WOW_ENABLE_CMDID! "
+		WMA_LOGE("%s: Not enough credits but trying to send WoW enable! "
 			"Credits:%d, pending_cmds:%d\n", __func__,
 				host_credits, wmi_pending_cmds);
-		goto error;
 	}
 
 	ret = wmi_unified_cmd_send(wma->wmi_handle, buf, len,
@@ -19468,7 +19467,7 @@ suspend_all_iface:
 	}
 
 enable_wow:
-	WMA_LOGD("WOW Suspend");
+	WMA_LOGD("%sWOW Suspend", info ? "" : "Runtime PM ");
 
 	/*
 	 * At this point, suspend indication is received on
