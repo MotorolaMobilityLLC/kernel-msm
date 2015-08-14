@@ -910,6 +910,7 @@
 			<&msm_gpio 39 0>; /* RESET */
 		touch_vdd-supply = <&pm8994_l22>;
 		synaptics,gpio-config;
+		synaptics,touch-clip-area = <79 0 1360 1362>;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
@@ -927,7 +928,7 @@
 			patch-data = "F54@2=6400;F54M@0=4";
 		};
 		alternate_suspended: touchstate_folio_suspended {
-			patch-data = "F1@0=1&7";
+			patch-data = "F54@2=9000;F54M@0=4;F1@0=1&7";
 		};
 	};
 };
