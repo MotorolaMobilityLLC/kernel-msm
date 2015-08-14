@@ -215,6 +215,7 @@ static const t_probeTime_dwellTime
 #define WMA_EXTSCAN_MAX_SCAN_TIME       50000
 #define WMA_EXTSCAN_REPEAT_PROBE        10
 #define WMA_EXTSCAN_BURST_DURATION      150
+#define WMA_EXTSCAN_CYCLE_WAKE_LOCK_DURATION	(5 * 1000) /* in msec */
 #endif
 
 typedef struct {
