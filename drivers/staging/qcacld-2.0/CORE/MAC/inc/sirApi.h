@@ -103,7 +103,7 @@ typedef tANI_U8 tSirVersionString[SIR_VERSION_STRING_LEN];
 
 #ifdef FEATURE_WLAN_EXTSCAN
 
-#define WLAN_EXTSCAN_MAX_CHANNELS                 40
+#define WLAN_EXTSCAN_MAX_CHANNELS                 36
 #define WLAN_EXTSCAN_MAX_BUCKETS                  16
 #define WLAN_EXTSCAN_MAX_HOTLIST_APS              128
 #define WLAN_EXTSCAN_MAX_SIGNIFICANT_CHANGE_APS   64

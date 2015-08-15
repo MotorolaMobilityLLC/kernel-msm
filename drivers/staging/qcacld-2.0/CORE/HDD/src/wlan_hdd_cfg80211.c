@@ -3056,6 +3056,18 @@ static void hdd_extscan_update_dwell_time_limits(
 	}
 }
 
+static bool hdd_extscan_channel_max_reached(tSirWifiScanCmdReqParams *req,
+					    uint8_t total_channels)
+{
+	if (total_channels == WLAN_EXTSCAN_MAX_CHANNELS) {
+		hddLog(LOGW,
+			FL("max #of channels %d reached, taking only first %d bucket(s)"),
+			total_channels, req->numBuckets);
+		return true;
+	}
+	return false;
+}
+
 static int hdd_extscan_start_fill_bucket_channel_spec(
 			hdd_context_t *pHddCtx,
 			tpSirWifiScanCmdReqParams pReqMsg,
@@ -3069,7 +3081,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 	struct nlattr *channels;
 	int rem1, rem2;
 	eHalStatus status;
-	uint8_t bktIndex, j, numChannels;
+	uint8_t bktIndex, j, numChannels, total_channels = 0;
 	uint32_t chanList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
 
 	uint32_t min_dwell_time_active_bucket =
@@ -3089,6 +3101,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 	pReqMsg->min_dwell_time_passive =
 		pReqMsg->max_dwell_time_passive =
 			pHddCtx->cfg_ini->extscan_passive_max_chn_time;
+	pReqMsg->numBuckets = 0;
 
 	nla_for_each_nested(buckets,
 			tb[QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC], rem1) {
@@ -3186,6 +3199,10 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 		 * WIFI_BAND_UNSPECIFIED) then driver populates the channel list
 		 */
 		if (pReqMsg->buckets[bktIndex].band != WIFI_BAND_UNSPECIFIED) {
+			if (hdd_extscan_channel_max_reached(pReqMsg,
+							    total_channels))
+				return 0;
+
 			numChannels = 0;
 			hddLog(LOG1, "WiFi band is specified, driver to fill channel list");
 			status = sme_GetValidChannelsByBand(pHddCtx->hHal,
@@ -3197,11 +3214,18 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				       status);
 				return -EINVAL;
 			}
+			hddLog(LOG1, FL("before trimming, num_channels: %d"),
+				numChannels);
 
 			pReqMsg->buckets[bktIndex].numChannels =
-				VOS_MIN(numChannels, WLAN_EXTSCAN_MAX_CHANNELS);
-			hddLog(LOG1, FL("Num channels %d"),
-					pReqMsg->buckets[bktIndex].numChannels);
+				VOS_MIN(numChannels,
+					(WLAN_EXTSCAN_MAX_CHANNELS - total_channels));
+			hddLog(LOG1,
+				FL("Adj Num channels/bucket: %d total_channels: %d"),
+				pReqMsg->buckets[bktIndex].numChannels,
+				total_channels);
+
+			total_channels += pReqMsg->buckets[bktIndex].numChannels;
 
 			for (j = 0; j < pReqMsg->buckets[bktIndex].numChannels;
 				j++) {
@@ -3270,6 +3294,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 					pReqMsg->buckets[bktIndex].max_dwell_time_passive);
 
 			bktIndex++;
+			pReqMsg->numBuckets++;
 			continue;
 		}
 
@@ -3283,8 +3308,17 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 		pReqMsg->buckets[bktIndex].numChannels =
 		nla_get_u32(bucket[
 		QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC_NUM_CHANNEL_SPECS]);
-		hddLog(LOG1, FL("num channels %d"),
+		hddLog(LOG1, FL("before trimming: num channels %d"),
 				pReqMsg->buckets[bktIndex].numChannels);
+		pReqMsg->buckets[bktIndex].numChannels =
+			VOS_MIN(pReqMsg->buckets[bktIndex].numChannels,
+				(WLAN_EXTSCAN_MAX_CHANNELS - total_channels));
+		hddLog(LOG1,
+			FL("Num channels/bucket: %d total_channels: %d"),
+			pReqMsg->buckets[bktIndex].numChannels,
+			total_channels);
+		if (hdd_extscan_channel_max_reached(pReqMsg, total_channels))
+			return 0;
 
 		if (!bucket[QCA_WLAN_VENDOR_ATTR_EXTSCAN_CHANNEL_SPEC]) {
 			hddLog(LOGE, FL("attr channel spec failed"));
@@ -3301,6 +3335,9 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				hddLog(LOGE, FL("nla_parse failed"));
 				return -EINVAL;
 			}
+			if (hdd_extscan_channel_max_reached(pReqMsg,
+							    total_channels))
+				break;
 
 			/* Parse and fetch channel */
 			if (!channel[
@@ -3396,6 +3433,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 			}
 
 			j++;
+			total_channels++;
 		}
 
 		hdd_extscan_update_dwell_time_limits(
@@ -3413,6 +3451,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				pReqMsg->buckets[bktIndex].max_dwell_time_passive);
 
 		bktIndex++;
+		pReqMsg->numBuckets++;
 	}
 
 	hddLog(LOG1, FL("Global: actv_min:%d actv_max:%d pass_min:%d pass_max:%d"),
@@ -3484,7 +3523,7 @@ static int __wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
 	hdd_context_t *pHddCtx            = wiphy_priv(wiphy);
 	struct nlattr *tb[PARAM_MAX + 1];
 	struct hdd_ext_scan_context *context;
-	uint32_t request_id;
+	uint32_t request_id, num_buckets;
 	eHalStatus status;
 	int retval;
 	unsigned long rc;
@@ -3561,13 +3600,13 @@ static int __wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
 		hddLog(LOGE, FL("attr number of buckets failed"));
 		goto fail;
 	}
-	pReqMsg->numBuckets = nla_get_u8(tb[PARAM_NUM_BUCKETS]);
-	if (pReqMsg->numBuckets > WLAN_EXTSCAN_MAX_BUCKETS) {
-		hddLog(LOGW, FL("Exceeded MAX number of buckets "
-			"Setting numBuckets to %u"), WLAN_EXTSCAN_MAX_BUCKETS);
-		pReqMsg->numBuckets = WLAN_EXTSCAN_MAX_BUCKETS;
+	num_buckets = nla_get_u8(tb[PARAM_NUM_BUCKETS]);
+	if (num_buckets > WLAN_EXTSCAN_MAX_BUCKETS) {
+		hddLog(LOGW,
+			FL("Exceeded MAX number of buckets: %d"),
+			WLAN_EXTSCAN_MAX_BUCKETS);
 	}
-	hddLog(LOG1, FL("Number of Buckets %d"), pReqMsg->numBuckets);
+	hddLog(LOG1, FL("Input: Number of Buckets %d"), num_buckets);
 
 	/* This is optional attribute, if not present set it to 0 */
 	if (!tb[PARAM_CONFIG_FLAGS])
