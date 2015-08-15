@@ -73,12 +73,6 @@
 
 #define FPC_TTW_HOLD_TIME 500
 
-#define FPC_TTW_STATE_IDLE 0
-#define FPC_TTW_STATE_SET 1
-#define FPC_TTW_STATE_READY 2
-
-#define FPC_TTW_WL_RETRY_MAX 5
-
 static const char * const pctl_names[] = {
 	"fpc1020_spi_active",
 	"fpc1020_reset_reset",
@@ -125,7 +119,7 @@ struct fpc1020_data {
 	bool prepared;
 	bool wakeup_enabled;
 	bool power_enabled;
-	int ready_for_ttw;
+
 };
 
 int fpc1020_io_regulator_release(struct fpc1020_data *fpc1020)
@@ -443,16 +437,6 @@ static ssize_t spi_owner_set(struct device *dev,
 }
 static DEVICE_ATTR(spi_owner, S_IWUSR, NULL, spi_owner_set);
 
-static ssize_t clk_enable_set(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t count)
-{
-	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-	int rc = set_clks(fpc1020, *buf == '1');
-	return rc ? rc : count;
-}
-static DEVICE_ATTR(clk_enable, S_IWUSR, NULL, clk_enable_set);
-
 static ssize_t pinctl_set(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -706,39 +690,8 @@ static ssize_t do_wakeup_set(struct device *dev,
 }
 static DEVICE_ATTR(do_wakeup, S_IWUSR, NULL, do_wakeup_set);
 
-/**
- * sysfs node for set ttw state
- */
-static ssize_t ttw_state_set(struct device *dev,
-				struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-	int ret, state;
-
-	ret = sscanf(buf, "%d", &state);
-
-	if (ret != 1)
-		return -EINVAL;
-
-	if (state >= FPC_TTW_STATE_IDLE && state <= FPC_TTW_STATE_READY)
-		fpc1020->ready_for_ttw = state;
-	else
-		return -EINVAL;
-
-	return count;
-}
-static ssize_t ttw_state_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct	fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n", fpc1020->ready_for_ttw);
-}
-static DEVICE_ATTR(ttw_state, S_IRUGO | S_IWUSR, ttw_state_show, ttw_state_set);
-
 static struct attribute *attributes[] = {
 	&dev_attr_pinctl_set.attr,
-	&dev_attr_clk_enable.attr,
 	&dev_attr_spi_owner.attr,
 	&dev_attr_spi_prepare.attr,
 	&dev_attr_fabric_vote.attr,
@@ -747,7 +700,6 @@ static struct attribute *attributes[] = {
 	&dev_attr_hw_reset.attr,
 	&dev_attr_wakeup_enable.attr,
 	&dev_attr_do_wakeup.attr,
-	&dev_attr_ttw_state.attr,
 	NULL
 };
 
@@ -767,9 +719,8 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	 */
 	smp_rmb();
 
-	if (fpc1020->wakeup_enabled && fpc1020->ready_for_ttw == FPC_TTW_STATE_READY) {
+	if (fpc1020->wakeup_enabled ) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
-		fpc1020->ready_for_ttw = FPC_TTW_STATE_IDLE;
 	}
 
 	/* Send irq event and possible wakeup key event */
@@ -813,7 +764,7 @@ static int fpc1020_probe(struct spi_device *spi)
 	int irqf = 0;
 	int rc = 0;
 	u32 val;
-
+	const char *idev_name;
 	fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020), GFP_KERNEL);
 	if (!fpc1020) {
 		dev_err(dev, "failed to allocate memory\n");
@@ -924,12 +875,14 @@ static int fpc1020_probe(struct spi_device *spi)
 
 	input_set_capability(fpc1020->idev, fpc1020->event_type,
 			fpc1020->event_code);
-	input_set_capability(fpc1020->idev, fpc1020->event_type,
-			MSC_RAW);
-	snprintf(fpc1020->idev_name, sizeof(fpc1020->idev_name), "fpc1020@%s",
-		dev_name(dev));
-	fpc1020->idev->name = fpc1020->idev_name;
 
+	if (!of_property_read_string(np, "input-device-name", &idev_name)) {
+		fpc1020->idev->name = idev_name;
+	} else {
+		snprintf(fpc1020->idev_name, sizeof(fpc1020->idev_name),
+			"fpc1020@%s", dev_name(dev));
+		fpc1020->idev->name = fpc1020->idev_name;
+	}
 	/* Also register the key for wake up */
 	set_bit(EV_KEY, fpc1020->idev->evbit);
 	set_bit(KEY_WAKEUP, fpc1020->idev->keybit);
@@ -962,7 +915,6 @@ static int fpc1020_probe(struct spi_device *spi)
 	enable_irq_wake( gpio_to_irq( fpc1020->irq_gpio ) );
 
 	wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
-	fpc1020->ready_for_ttw = FPC_TTW_STATE_IDLE;
 
 	rc = sysfs_create_group(&dev->kobj, &attribute_group);
 	if (rc) {
@@ -997,24 +949,14 @@ static int fpc1020_remove(struct spi_device *spi)
 static int fpc1020_suspend(struct spi_device * spi, pm_message_t mesg)
 {
 	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
-	static int retry_cnt = 0;
+	set_clks(fpc1020, false);
+	return 0;
+}
 
-	if (fpc1020->ready_for_ttw == FPC_TTW_STATE_SET &&
-		retry_cnt < FPC_TTW_WL_RETRY_MAX) {
-		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
-
-		if (retry_cnt++ == 0) {
-			input_event(fpc1020->idev, EV_MSC, MSC_RAW, 0);
-			input_sync(fpc1020->idev);
-		}
-	} else {
-		if (retry_cnt >= FPC_TTW_WL_RETRY_MAX) {
-			fpc1020->ready_for_ttw = FPC_TTW_STATE_IDLE;
-			pr_err("%s exceeds wakelock retry cnt : %d\n", __func__, retry_cnt);
-		}
-		retry_cnt = 0;
-	}
-
+static int fpc1020_resume(struct spi_device *spi)
+{
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
+	set_clks(fpc1020, true);
 	return 0;
 }
 
@@ -1030,9 +972,10 @@ static struct spi_driver fpc1020_driver = {
 		.owner	= THIS_MODULE,
 		.of_match_table	= fpc1020_of_match,
 	},
-	.probe	= fpc1020_probe,
-	.remove	= fpc1020_remove,
-	.suspend = fpc1020_suspend,
+	.probe		= fpc1020_probe,
+	.remove		= fpc1020_remove,
+	.suspend	= fpc1020_suspend,
+	.resume		= fpc1020_resume,
 };
 
 static int __init fpc1020_init(void)
