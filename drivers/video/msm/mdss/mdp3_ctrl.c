@@ -909,6 +909,7 @@ static int mdp3_ctrl_off(struct msm_fb_data_type *mfd)
 	atomic_set(&mdp3_session->dma_done_cnt, 0);
 	mdp3_session->clk_on = 0;
 	mdp3_session->in_splash_screen = 0;
+	mdp3_res->solid_fill_vote_en = false;
 off_error:
 	mdp3_session->status = 0;
 	mdp3_bufq_deinit(&mdp3_session->bufq_out);

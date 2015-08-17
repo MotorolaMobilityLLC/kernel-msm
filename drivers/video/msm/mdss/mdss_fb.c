@@ -1185,6 +1185,8 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 			if (mfd->mdp.ad_calc_bl)
 				(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
 								&bl_notify);
+			if (!IS_CALIB_MODE_BL(mfd))
+				mdss_fb_scale_bl(mfd, &temp);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level_old = mfd->unset_bl_level;
 			mfd->bl_updated = 1;
@@ -1978,6 +1980,14 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	var->right_margin = panel_info->lcdc.h_front_porch;
 	var->hsync_len = panel_info->lcdc.h_pulse_width;
 	var->pixclock = panel_info->clk_rate / 1000;
+
+	/*
+	 * Store the cont splash state in the var reserved[3] field.
+	 * The continuous splash is considered to be active if either
+	 * splash_enabled is set or if splash pipe has been allocated.
+	 */
+	var->reserved[3] = panel_info->cont_splash_enabled |
+				mfd->splash_info.splash_pipe_allocated;
 
 	/*
 	 * Populate smem length here for uspace to get the

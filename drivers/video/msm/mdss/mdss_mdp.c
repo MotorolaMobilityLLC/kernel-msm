@@ -670,7 +670,7 @@ int mdss_iommu_ctrl(int enable)
 
 	if (enable) {
 		if (mdata->iommu_ref_cnt == 0) {
-			mdss_bus_scale_set_quota(MDSS_HW_IOMMU, SZ_1M, SZ_1M);
+			mdss_bus_scale_set_quota(MDSS_IOMMU_RT, SZ_1M, SZ_1M);
 			rc = mdss_iommu_attach(mdata);
 		}
 		mdata->iommu_ref_cnt++;
@@ -679,7 +679,7 @@ int mdss_iommu_ctrl(int enable)
 			mdata->iommu_ref_cnt--;
 			if (mdata->iommu_ref_cnt == 0) {
 				rc = mdss_iommu_dettach(mdata);
-				mdss_bus_scale_set_quota(MDSS_HW_IOMMU, 0, 0);
+				mdss_bus_scale_set_quota(MDSS_IOMMU_RT, 0, 0);
 			}
 		} else {
 			pr_err("unbalanced iommu ref\n");
