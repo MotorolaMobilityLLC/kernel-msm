@@ -28,6 +28,38 @@
 	qcom,board-id= <1 0x103>;
 };
 
+&external_image_mem {
+	reg = <0x0 0x87a00000 0x0 0x0600000>;
+};
+
+&modem_adsp_mem {
+	reg = <0x0 0x88000000 0x0 0x05200000>;
+};
+
+&peripheral_mem {
+	reg = <0x0 0x8d200000 0x0 0x0500000>;
+};
+
+&venus_qseecom_mem {
+	status = "disabled";
+};
+
+&audio_mem {
+	status = "disabled";
+};
+
+&cont_splash_mem {
+	status = "disabled";
+};
+
+&qsecom_heap {
+	status = "disabled";
+};
+
+&audio_heap {
+	status = "disabled";
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_hx8394d_480_vid>;
 };
