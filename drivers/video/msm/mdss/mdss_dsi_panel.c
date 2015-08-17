@@ -728,6 +728,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			&(ctrl->panel_tfmode->cmds[tfmode]);
 		mdss_dsi_panel_cmds_send(ctrl, cmds);
 	}
+	if (pinfo->later_on_enabled) {
+		mutex_lock(&pinfo->later_on_mutex);
+		pinfo->later_on_state = LATER_ON_NONE;
+		mutex_unlock(&pinfo->later_on_mutex);
+	}
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
@@ -770,6 +775,11 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				msleep(pwr->post_off_sleep);
 		}
 	}
+	if (pinfo->later_on_enabled) {
+		mutex_lock(&pinfo->later_on_mutex);
+		pinfo->later_on_state = LATER_ON_NONE;
+		mutex_unlock(&pinfo->later_on_mutex);
+	}
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
@@ -802,10 +812,16 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
 	if (pinfo->later_on_enabled) {
-		int r = mdss_dsi_set_panel_on(ctrl, false);
-		WARN(r, "mdss_dsi_set_panel_on(0) return %d\n", r);
-		getnstimeofday(&pinfo->turn_off_time);
-		pinfo->turn_on_needed = true;
+		mutex_lock(&pinfo->later_on_mutex);
+		if (pinfo->later_on_state == LATER_ON_NONE) {
+			int r = mdss_dsi_set_panel_blank(ctrl, true);
+			WARN(r, "mdss_dsi_set_panel_on(1) return %d\n", r);
+		} else {
+			WARN(1, "later on is already activated! %d-%d\n",
+				pinfo->later_on_state, enable);
+		}
+		pinfo->later_on_state = enable ? LATER_ON_IDLE : LATER_ON_NORMAL;
+		mutex_unlock(&pinfo->later_on_mutex);
 	}
 
 	if (pinfo->mipi.idle_enable) {
@@ -1303,6 +1319,32 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		"qcom,esd-check-enabled");
 	pinfo->later_on_enabled =
 		of_property_read_bool(np, "qcom,later-on-enabled");
+	if (pinfo->later_on_enabled) {
+		u32 tmp;
+		int rc = of_property_read_u32(np,
+				"qcom,mdss-later-on-delay-ms", &tmp);
+		pinfo->later_on_delay = (!rc ? tmp : 250);
+		pinfo->later_on_after_update =
+			of_property_read_bool(np, "qcom,later-on-after-update");
+		mdss_dsi_parse_dcs_cmds(np, &ctrl->blank_cmd,
+			"qcom,mdss-dsi-panel-later-on-blank-command", NULL);
+
+		mdss_dsi_parse_dcs_cmds(np, &ctrl->unblank_cmd,
+			"qcom,mdss-dsi-panel-later-on-unblank-command", NULL);
+
+		if (!ctrl->blank_cmd.cmd_cnt || !ctrl->unblank_cmd.cmd_cnt) {
+			pr_warn("No commands specified for later_on_blank\n");
+			pinfo->later_on_enabled = false;
+		}
+		pinfo->later_on_state = LATER_ON_NONE;
+		mutex_init(&pinfo->later_on_mutex);
+	}
+	pr_info("%s: panel later on feature enabled: %d\n", __func__,
+		pinfo->later_on_enabled);
+	if (pinfo->later_on_enabled)
+		pr_info("%s: delay on after %d ms, update needed: %d\n",
+			__func__, pinfo->later_on_delay,
+			pinfo->later_on_after_update);
 
 	pinfo->mipi.dynamic_switch_enabled = of_property_read_bool(np,
 		"qcom,dynamic-mode-switch-enabled");

@@ -54,6 +54,8 @@
 
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
+#include "mdss_dsi.h"
+#include "mdss_mdp.h"
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -103,6 +105,7 @@ static int mdss_fb_alloc_fb_ion_memory(struct msm_fb_data_type *mfd,
 static void mdss_fb_release_fences(struct msm_fb_data_type *mfd);
 static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		unsigned long val, void *data);
+static void mdss_fb_later_on(struct work_struct *work);
 
 static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
@@ -1221,6 +1224,45 @@ static unsigned long mdss_fb_pwr_to_disp_state(int panel_power_state)
 }
 #endif /* CONFIG_DISPLAY_STATE_NOTIFY */
 
+static void mdss_fb_later_on(struct work_struct *work)
+{
+	struct msm_fb_data_type *mfd = container_of(to_delayed_work(work),
+				struct msm_fb_data_type, later_on_work);
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+	struct mdss_overlay_private *mdp5_data;
+	struct mdss_mdp_ctl *ctl;
+	int r;
+	mutex_lock(&pinfo->later_on_mutex);
+	if (pinfo->later_on_state != LATER_ON_NONE) {
+		wake_lock(&mfd->later_on_wakelock);
+		WARN(pinfo->later_on_after_update &&
+		     !atomic_read(&mfd->later_on_updates),
+		     "None updates after switch idle/normal mode\n");
+		mdp5_data = mfd_to_mdp5_data(mfd);
+		ctl = mfd_to_ctl(mfd);
+		pdata = container_of(pinfo, struct mdss_panel_data, panel_info);
+		ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+					  panel_data);
+		mutex_lock(&mdp5_data->ov_lock);
+		mutex_lock(&ctrl_pdata->mutex);
+		if (ctl->wait_pingpong)
+			ctl->wait_pingpong(ctl, NULL);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+		r = mdss_dsi_set_panel_blank(ctrl_pdata, false);
+		WARN(r, "mdss_dsi_set_panel_blank(0) return %d\n", r);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+		mutex_unlock(&ctrl_pdata->mutex);
+		mutex_unlock(&mdp5_data->ov_lock);
+		pinfo->later_on_state = LATER_ON_NONE;
+		wake_unlock(&mfd->later_on_wakelock);
+	}
+	mutex_unlock(&pinfo->later_on_mutex);
+}
+
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
@@ -1307,6 +1349,23 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (cur_display_state != mdss_fb_pwr_to_disp_state(cur_power_state))
 		display_state_notify_subscriber(cur_display_state);
 #endif
+	if (mfd->panel_info->later_on_enabled) {
+		struct mdss_panel_info *pinfo = mfd->panel_info;
+		mutex_lock(&pinfo->later_on_mutex);
+		if (mfd->later_on_state == pinfo->later_on_state)
+			goto _unlock_later_on_;
+		cancel_delayed_work_sync(&mfd->later_on_work);
+		if (pinfo->later_on_state != LATER_ON_NONE) {
+			atomic_set(&mfd->later_on_updates, 0);
+			schedule_delayed_work(&mfd->later_on_work,
+				msecs_to_jiffies(pinfo->later_on_delay));
+			wake_lock_timeout(&mfd->later_on_wakelock,
+				msecs_to_jiffies(pinfo->later_on_delay+33));
+		}
+		mfd->later_on_state = pinfo->later_on_state;
+_unlock_later_on_:
+		mutex_unlock(&pinfo->later_on_mutex);
+	}
 
 	return ret;
 }
@@ -1921,6 +1980,10 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	atomic_set(&mfd->commits_pending, 0);
 	atomic_set(&mfd->ioctl_ref_cnt, 0);
 	atomic_set(&mfd->kickoff_pending, 0);
+	atomic_set(&mfd->later_on_updates, 0);
+	INIT_DELAYED_WORK(&mfd->later_on_work, mdss_fb_later_on);
+	wake_lock_init(&mfd->later_on_wakelock, WAKE_LOCK_SUSPEND,
+		       "DSI_DELAYON_WAKELOCK");
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
@@ -2409,6 +2472,7 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 	case MDP_NOTIFY_FRAME_DONE:
 		pr_debug("%s: frame done\n", sync_pt_data->fence_name);
 		mdss_fb_signal_timeline(sync_pt_data);
+		atomic_inc(&mfd->later_on_updates);
 		break;
 	case MDP_NOTIFY_FRAME_START:
 		mdss_fb_release_kickoff(mfd);
@@ -2642,7 +2706,6 @@ static int __mdss_fb_display_thread(void *data)
 
 		if (kthread_should_stop())
 			break;
-
 		ret = __mdss_fb_perform_commit(mfd);
 		atomic_dec(&mfd->commits_pending);
 		wake_up_all(&mfd->idle_wait_q);
