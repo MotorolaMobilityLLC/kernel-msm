@@ -145,7 +145,10 @@ DHDCFLAGS += -DCONFIG_HAS_WAKELOCK
 endif
 
 # Set default country code
-DHDCFLAGS += -DSET_DEFAULT_COUNTRY_CODE
+#DHDCFLAGS += -DSET_DEFAULT_COUNTRY_CODE
+
+# Enable to initialize cached country code
+#DHDCFLAGS += -DENABLE_RESET_COUNTRY_CODE
 
 ##############################
 # Android Platform Definition
