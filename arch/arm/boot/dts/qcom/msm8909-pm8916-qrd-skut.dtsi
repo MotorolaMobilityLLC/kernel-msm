@@ -11,28 +11,88 @@
  */
 
 #include "msm8909-pm8916-qrd.dtsi"
-
+#include "msm8909-camera-sensor-skut.dtsi"
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909-PM8916 QRD SKUT";
 	compatible = "qcom,msm8909-qrd", "qcom,msm8909", "qcom,qrd";
+};
+
+&tlmm_pinmux {
+	akm_reset_pin {
+		qcom,pins = <&gp 36>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "akm_reset_pin";
+		akm_default: akm_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		akm_sleep: akm_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	ltr553_int_pin {
+		qcom,pins = <&gp 94>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "ltr553-irq";
+		ltr553_default: ltr553_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		ltr553_sleep: ltr553_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	bma2x2_int1_pin {
+		qcom,pins = <&gp 96>;
+		qcom,num-grp-pins = <1>;
+		label = "bma2x2_int1_pin";
+		bma2x2_int1_default: int1_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		bma2x2_int1_sleep: int1_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	bma2x2_int2_pin {
+		qcom,pins = <&gp 65>;
+		qcom,num-grp-pins = <1>;
+		label = "bma2x2_int2_pin";
+		bma2x2_int2_default: int2_default {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		bma2x2_int2_sleep: int2_sleep {
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
 };
 
 &soc {
 	i2c@78b9000 { /* BLSP1 QUP5 */
 		synaptics@20 {
 			compatible = "synaptics,rmi4";
-			reg = <0x20>;
+			reg = <0x22>;
 			interrupt-parent = <&msm_gpio>;
 			interrupts = <13 0x2008>;
 			vdd-supply = <&pm8916_l17>;
-			vcc_i2c-supply = <&pm8916_l16>;
+			vcc_i2c-supply = <&pm8916_l6>;
 			/* pins used by touchscreen */
 			pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
 			pinctrl-0 = <&ts_int_active &ts_reset_active>;
 			pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 			pinctrl-2 = <&ts_release>;
-			synaptics,display-coords = <0 0 480 854>;
-			synaptics,panel-coords = <0 0 480 950>;
+			synaptics,display-coords = <0 0 720 1280>;
+			synaptics,panel-coords = <0 0 720 1480>;
 			synaptics,irq-gpio = <&msm_gpio 13 0x2008>;
 			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
 			synaptics,i2c-pull-up;
@@ -69,12 +129,12 @@
 			"RX_BIAS", "MCLK",
 			"SPK_RX_BIAS", "MCLK",
 			"INT_LDO_H", "MCLK",
-			"MIC BIAS Internal1", "Handset Mic",
+			"MIC BIAS External", "Handset Mic",
 			"MIC BIAS Internal2", "Headset Mic",
-			"MIC BIAS Internal1", "Secondary Mic",
-			"AMIC1", "MIC BIAS Internal1",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
 			"AMIC2", "MIC BIAS Internal2",
-			"AMIC3", "MIC BIAS Internal1";
+			"AMIC3", "MIC BIAS External";
 		pinctrl-names = "cdc_lines_act",
 				"cdc_lines_sus";
 		pinctrl-0 = <&cdc_pdm_lines_act>;
@@ -112,6 +172,64 @@
 		asoc-codec = <&stub_codec>, <&pm8916_tombak_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
 	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		keypad-backlight {
+			gpios = <&msm_gpio 97 0>;
+			label = "button-backlight";
+			linux,default-trigger = "none";
+		};
+	};
+
+	i2c@78b5000 { /* BLSP1 QUP1 */
+		liteon@23 {
+			compatible = "liteon,ltr553";
+			reg = <0x23>;
+			vdd-supply = <&pm8916_l17>;
+			vio-supply = <&pm8916_l6>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <94 0x2002>;
+			pinctrl-names = "default","sleep";
+			pinctrl-0 = <&ltr553_default>;
+			pinctrl-1 = <&ltr553_sleep>;
+			liteon,irq-gpio = <&msm_gpio 94 0x2002>;
+			liteon,als-ps-persist = <0>;
+			liteon,ps-led = <0x7f>;
+			liteon,ps-pulses = <4>;
+			liteon,wakeup-threshold = <4>;
+			liteon,als-integration-time = <0>;
+		};
+
+		bosch@18 { /* Accelerometer sensor */
+			compatible = "bosch,bma2x2";
+			reg = <0x18>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&bma2x2_int1_default &bma2x2_int2_default>;
+			pinctrl-1 = <&bma2x2_int1_sleep &bma2x2_int2_sleep>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <96 0x2002>;
+			vdd-supply = <&pm8916_l17>;
+			vio-supply = <&pm8916_l6>;
+			bosch,init-interval = <200>;
+			bosch,place = <4>;
+			bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
+			bosch,gpio-int2 = <&msm_gpio 65 0x2002>;
+		};
+
+		akm@0c {
+			compatible = "ak,ak09911";
+			reg = <0x0c>;
+			pinctrl-names = "default","sleep";
+			pinctrl-0 = <&akm_default>;
+			pinctrl-1 = <&akm_sleep>;
+			vdd-supply = <&pm8916_l17>;
+			vio-supply = <&pm8916_l6>;
+			akm,layout = <0x3>;
+			akm,gpio_rstn = <&msm_gpio 36 0x0>;
+			akm,auto-report;
+		};
+	};
 };
 
 &spmi_bus {
@@ -146,6 +264,12 @@
 				qcom,source-sel = <1>;
 				qcom,mode-ctrl = <0x60>;
 			};
+		};
+	};
+
+	qcom,pm8916@1 {
+		qcom,vibrator@c000 {
+			qcom,vib-vtg-level-mV = <2700>;
 		};
 	};
 };
