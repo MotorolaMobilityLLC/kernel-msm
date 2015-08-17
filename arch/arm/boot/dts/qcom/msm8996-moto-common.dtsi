@@ -144,6 +144,13 @@
 
 &soc {
 	/delete-node/ qcom,wil6210;
+	/delete-node/ sound-9335;
+	/delete-node/ wcd9xxx-irq;
+
+	slim_msm: slim@91c0000 {
+		/delete-node/ tomtom_codec;
+		/delete-node/ tasha_codec;
+	};
 
 	qcom,cnss {
 		/delete-property/ wlan-bootstrap-gpio; /* Pulled high with S4 */
