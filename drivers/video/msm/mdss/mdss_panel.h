@@ -333,6 +333,12 @@ struct mdss_mdp_pp_tear_check {
 	u32 refx100;
 };
 
+enum later_on_states {
+	LATER_ON_NONE,		/* No later on needed */
+	LATER_ON_IDLE,		/* Later on for normal -> idle mode */
+	LATER_ON_NORMAL,	/* Later on for idle -> normal mode */
+};
+
 struct mdss_panel_info {
 	u32 xres;
 	u32 yres;
@@ -365,8 +371,10 @@ struct mdss_panel_info {
 	bool ulps_feature_enabled;
 	bool esd_check_enabled;
 	bool later_on_enabled;
-	bool turn_on_needed;
-	struct timespec turn_off_time;
+	bool later_on_after_update;
+	int later_on_delay;
+	struct mutex later_on_mutex;
+	enum later_on_states later_on_state;
 	char dfps_update;
 	int new_fps;
 	int panel_max_fps;

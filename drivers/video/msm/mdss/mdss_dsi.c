@@ -1162,22 +1162,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		mdss_dsi_clk_req(ctrl_pdata, (int) (unsigned long) arg);
 		break;
 	case MDSS_EVENT_DSI_CMDLIST_KOFF:
-		if (pdata->panel_info.turn_on_needed) {
-			int r, ms;
-			struct timespec ts, tss =
-				pdata->panel_info.turn_off_time;
-			getnstimeofday(&ts);
-			r = mdss_dsi_set_panel_on(ctrl_pdata, true);
-			WARN(r, "mdss_dsi_set_panel_on(1) return %d\n", r);
-			pdata->panel_info.turn_on_needed = false;
-			if (timespec_compare(&ts, &tss) >= 0) {
-				ts = timespec_sub(ts, tss);
-				ms = ts.tv_sec * MSEC_PER_SEC +
-					ts.tv_nsec / NSEC_PER_MSEC;
-				WARN(ms > 500, "panel turned off for long time,"
-				     " it turns on %d ms later.\n", ms);
-			}
-		}
 		mdss_dsi_cmdlist_commit(ctrl_pdata, 1);
 		break;
 	case MDSS_EVENT_PANEL_UPDATE_FPS:

@@ -130,7 +130,7 @@ int mdss_dsi_long_read_resp(struct dsi_buf *rp);
 void mdss_dsi_set_tear_on(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_set_tear_off(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_set_panel_idle(struct mdss_dsi_ctrl_pdata *ctrl, int idle);
-int mdss_dsi_set_panel_on(struct mdss_dsi_ctrl_pdata *ctrl, int on);
+int mdss_dsi_set_panel_blank(struct mdss_dsi_ctrl_pdata *ctrl, int blank);
 struct dcs_cmd_req *mdss_dsi_cmdlist_get(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_cmdlist_put(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *cmdreq);
