@@ -38,6 +38,8 @@
 #define UTAG_TAIL  "__UTAG_TAIL__"
 #define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
 #define TO_SECT_SIZE(n)     (((n) + 511) & ~511)
+#define UTAGS_MAX_DEFERRALS 5
+#define DRVNAME "utags"
 
 static const struct file_operations utag_fops;
 
@@ -142,24 +144,18 @@ static int open_utags(struct blkdev *cb)
 	if (cb->filep)
 		return 0;
 
-	if (!cb->name) {
-		pr_err("%s utag partition not set\n", __func__);
-		return -EIO;
-	}
-
 	cb->filep = filp_open(cb->name, O_RDWR|O_SYNC, 0600);
 	if (IS_ERR_OR_NULL(cb->filep)) {
-		pr_err("%s opening (%s) errno=%ld\n", __func__,
-		       cb->name, -PTR_ERR(cb->filep));
+		int rc = PTR_ERR(cb->filep);
+		pr_err("%s opening (%s) errno=%d\n", __func__, cb->name, rc);
 		cb->filep=NULL;
-		return -EIO;
+		return rc;
 	}
 
 	if (cb->filep->f_path.dentry)
 		inode = cb->filep->f_path.dentry->d_inode;
 	if (!inode || !S_ISBLK(inode->i_mode)) {
-		pr_err("%s (%s) not a block device\n", __func__,
-		       cb->name);
+		pr_err("%s (%s) not a block device\n", __func__, cb->name);
 		filp_close(cb->filep, NULL);
 		cb->filep=NULL;
 		return -EIO;
@@ -496,9 +492,6 @@ static struct utag *load_utags(struct blkdev *cb)
 	struct utag *head = NULL;
 	void *data;
 
-	if (open_utags(cb))
-		goto out;
-
 	data = vmalloc(cb->size);
 	if (!data)
 		goto out;
@@ -557,11 +550,6 @@ static int flash_partition(struct blkdev *cb, const struct utag *tags)
 
 	fs = get_fs();
 	set_fs(KERNEL_DS);
-
-	if (open_utags(cb)) {
-		rc = -EIO;
-		goto out;
-	}
 
 	datap = freeze_tags(cb->size, tags, &tags_size);
 	if (!datap) {
@@ -802,6 +790,9 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 	}
 
 	if (UTAG_STATUS_RELOAD == ctrl.reload) {
+		if(open_utags(&ctrl.main))
+			return count;
+		open_utags(&ctrl.backup);
 		clear_utags_directory();
 		build_utags_directory();
 	}
@@ -933,17 +924,26 @@ static void clear_utags_directory(void)
 	}
 }
 
-static int __init config_init(void)
+static int utags_probe(struct platform_device *pdev)
 {
-	struct proc_dir_entry *reload_pde;
+	int rc;
+	static int retry;
 
 	if (!ctrl.main.name[0]) {
 		pr_err("%s storage path not provided\n", __func__);
 		return -EIO;
 	}
 
+	rc = open_utags(&ctrl.main);
+	if ((rc == -ENOENT) && (++retry < UTAGS_MAX_DEFERRALS)) {
+		return -EPROBE_DEFER;
+	} else if (rc)
+		pr_err("%s failed to open, try reload later\n", __func__);
+
 	if (!ctrl.backup.name[0])
 		pr_err("%s backup storage path not provided\n", __func__);
+	else
+		open_utags(&ctrl.backup);
 
 	ctrl.root = proc_mkdir("config", NULL);
 	if (!ctrl.root) {
@@ -951,29 +951,52 @@ static int __init config_init(void)
 		return -EIO;
 	}
 
-	reload_pde = proc_create("reload", 0600, ctrl.root, &reload_fops);
-	if (!reload_pde) {
+	if (!proc_create("reload", 0600, ctrl.root, &reload_fops)) {
 		pr_err("%s Failed to create reload entry\n", __func__);
 		remove_proc_entry("config", NULL);
 		return -EIO;
 	}
 
-#ifdef MODULE
-	build_utags_directory();
-#endif
+	pr_info("%s Success\n", __func__);
 
 	return 0;
 }
 
-static void __exit config_exit(void)
+static int utags_remove(struct platform_device *pdev)
 {
 	clear_utags_directory();
 	remove_proc_entry("reload", ctrl.root);
 	remove_proc_entry("config", NULL);
+	return 0;
 }
 
-late_initcall(config_init);
-module_exit(config_exit);
+static struct platform_driver utags_driver = {
+	.probe = utags_probe,
+	.remove = utags_remove,
+	.driver = {
+		.name = DRVNAME,
+		.bus = &platform_bus_type
+	},
+};
+
+static int __init utags_init(void)
+{
+	ctrl.pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+	if (IS_ERR(ctrl.pdev)) {
+		int ret = PTR_ERR(ctrl.pdev);
+		pr_err("%s device register failed ret %d\n", __func__, ret);
+		return ret;
+	}
+	return platform_driver_register(&utags_driver);
+}
+
+static void __exit utags_exit(void)
+{
+	platform_driver_unregister(&utags_driver);
+}
+
+late_initcall(utags_init);
+module_exit(utags_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Motorola Mobility LLC");
