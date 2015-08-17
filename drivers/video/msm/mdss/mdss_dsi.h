@@ -355,6 +355,9 @@ struct mdss_dsi_ctrl_pdata {
 	u8 status_values[2];
 	struct dsi_panel_tfmode *panel_tfmode;
 
+	struct dsi_panel_cmds blank_cmd;
+	struct dsi_panel_cmds unblank_cmd;
+
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
 

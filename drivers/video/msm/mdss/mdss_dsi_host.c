@@ -616,7 +616,8 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		u8 value = ctrl_pdata->status_values[0];
 		struct mdss_panel_info *pinfo = &ctrl_pdata->panel_data.panel_info;
 		/* do not check status when panel is later on */
-		if (pinfo->turn_on_needed)
+		if (pinfo->later_on_enabled &&
+		    (pinfo->later_on_state != LATER_ON_NONE))
 			goto no_err;
 		if (pinfo->mipi.idle_enable &&
 		    (pinfo->blank_state == MDSS_PANEL_BLANK_LOW_POWER))

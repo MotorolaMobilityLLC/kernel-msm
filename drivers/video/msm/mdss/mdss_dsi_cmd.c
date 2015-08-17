@@ -646,17 +646,19 @@ int mdss_dsi_set_panel_idle(struct mdss_dsi_ctrl_pdata *ctrl, int idle)
 	return mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-static char disp_cmd;
-static struct dsi_cmd_desc dcs_disp_cmd = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(disp_cmd)}, (char *)&disp_cmd};
-int mdss_dsi_set_panel_on(struct mdss_dsi_ctrl_pdata *ctrl, int on)
+int mdss_dsi_set_panel_blank(struct mdss_dsi_ctrl_pdata *ctrl, int blank)
 {
+	struct dsi_panel_cmds *pcmds;
 	struct dcs_cmd_req cmdreq;
 
-	disp_cmd = on ? 0x29 : 0x28;
-	cmdreq.cmds = &dcs_disp_cmd;
-	cmdreq.cmds_cnt = 1;
+	pcmds = blank ? &ctrl->blank_cmd : &ctrl->unblank_cmd;
+	cmdreq.cmds = pcmds->cmds;
+	cmdreq.cmds_cnt = pcmds->cmd_cnt;
 	cmdreq.flags = CMD_REQ_COMMIT;
+
+	if (pcmds->link_state == DSI_LP_MODE)
+		cmdreq.flags  |= CMD_REQ_LP_MODE;
+
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
