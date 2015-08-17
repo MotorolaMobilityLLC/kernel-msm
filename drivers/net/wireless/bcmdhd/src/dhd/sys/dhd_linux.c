@@ -3375,13 +3375,14 @@ exit:
 
 	dhd->pub.hang_was_sent = 0;
 
+#ifdef ENABLE_RESET_COUNTRY_CODE
 	/* Clear country spec for for built-in type driver */
 	if (!dhd_download_fw_on_driverload) {
 		dhd->pub.dhd_cspec.country_abbrev[0] = 0x00;
 		dhd->pub.dhd_cspec.rev = 0;
 		dhd->pub.dhd_cspec.ccode[0] = 0x00;
 	}
-
+#endif
 	DHD_OS_WAKE_UNLOCK(&dhd->pub);
 	return 0;
 }
