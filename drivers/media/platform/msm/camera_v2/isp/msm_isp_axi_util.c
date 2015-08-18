@@ -661,7 +661,8 @@ void msm_isp_notify(struct vfe_device *vfe_dev, uint32_t event_type,
 					vfe_dev->axi_data.
 					src_info[VFE_PIX_0].frame_id;
 				msm_isp_send_event(vfe_dev,
-					ISP_EVENT_IOMMU_P_FAULT, &error_event);
+					ISP_EVENT_REG_UPDATE_MISSING,
+					&error_event);
 			}
 
 		} else
@@ -1167,7 +1168,7 @@ static void msm_isp_halt_send_error(struct vfe_device *vfe_dev)
 	error_event.frame_id =
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 
-	msm_isp_send_event(vfe_dev, ISP_EVENT_IOMMU_P_FAULT, &error_event);
+	msm_isp_send_event(vfe_dev, ISP_EVENT_PING_PONG_MISMATCH, &error_event);
 }
 
 int msm_isp_print_ping_pong_address(struct vfe_device *vfe_dev)
