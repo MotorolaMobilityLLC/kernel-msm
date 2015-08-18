@@ -62,8 +62,8 @@
 	qcom,float-voltage-mv = <4350>;
 	qcom,resume-delta-mv = <200>;
 	qcom,charging-timeout-mins = <768>;
-	qcom,parallel-usb-min-current-ma = <1000>;
-	qcom,parallel-allowed-lowering-ma = <1500>;
+	qcom,parallel-usb-min-current-ma = <700>;
+	qcom,parallel-allowed-lowering-ma = <3000>;
 	qcom,chg-vadc = <&pmi8994_vadc>;
 	/delete-property/ qcom,dc-psy-type;
 	qcom,usb-cc-controller;
@@ -71,7 +71,7 @@
 	qcom,disable-hvdcp;
 	qcom,customized-jeita;
 	/delete-property/ qcom,thermal-mitigation;
-	qcom,ibat-thermal-mitigation = <1400 1200 600 1200 300 1200 0 0>;
+	qcom,ibat-thermal-mitigation = <1400 1200 600 1200 300 1200 100 600 0 0>;
 	qcom,battery-data = <&bullhead_batterydata>;
 };
 
