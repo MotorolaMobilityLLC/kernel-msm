@@ -210,22 +210,19 @@
 		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
 		gpios = <&msm_gpio 15 0>,
 			<&msm_gpio 104 0>,
-			<&msm_gpio 105 0>,
-			<&msm_gpio 56 0>;
+			<&msm_gpio 105 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
-		qcom,gpio-custom1 = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 1>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
 					  "CAM_RESET2",
-					  "CAM_STANDBY2",
-					  "SCAM_ID";
+					  "CAM_STANDBY2";
 		qcom,cam-power-seq-type = "sensor_vreg", "sensor_vreg", "sensor_vreg",
-						"sensor_gpio", "sensor_gpio" , "sensor_clk";
+			"sensor_gpio", "sensor_gpio", "sensor_clk";
 		qcom,cam-power-seq-val = "cam_vdig", "cam_vana", "cam_vio",
-				"sensor_gpio_reset", "sensor_gpio_standby","sensor_cam_mclk";
-		qcom,cam-power-seq-cfg-val = <1 1 1 1 1 24000000>;
+			"sensor_gpio_reset", "sensor_gpio_reset", "sensor_cam_mclk";
+		qcom,cam-power-seq-cfg-val = <1 1 1 0 1 24000000>;
 		qcom,cam-power-seq-delay = <1 1 1 30 30 5>;
 		status = "ok";
 		clocks = <&clock_mmss clk_mclk2_clk_src>,
