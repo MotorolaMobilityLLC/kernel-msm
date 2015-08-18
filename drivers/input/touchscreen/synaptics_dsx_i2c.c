@@ -111,9 +111,6 @@ static void synaptics_dsx_resumeinfo_touch(
 		struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_dsx_free_patch(
 		struct synaptics_dsx_patch *patch);
-static void synaptics_dsx_modify_patch(
-		struct synaptics_dsx_patch *patch_set,
-		struct synaptics_dsx_func_patch *patch, bool remove);
 static struct synaptics_dsx_patch *
 		synaptics_dsx_init_patch(const char *name);
 static int synaptics_rmi4_set_page(
@@ -4738,20 +4735,6 @@ static void synaptics_dsx_free_patch(struct synaptics_dsx_patch *patch_set)
 	up(&patch_set->list_sema);
 }
 
-static void synaptics_dsx_modify_patch(struct synaptics_dsx_patch *patch_set,
-	struct synaptics_dsx_func_patch *patch, bool remove)
-{
-	down(&patch_set->list_sema);
-	if (!remove) {
-		list_add_tail(&patch->link, &patch_set->cfg_head);
-		patch_set->cfg_num++;
-	} else {
-		list_del(&patch->link);
-		patch_set->cfg_num--;
-	}
-	up(&patch_set->list_sema);
-}
-
 static struct synaptics_dsx_patch *synaptics_dsx_init_patch(const char *name)
 {
 	struct synaptics_dsx_patch *patch_set;
@@ -4867,6 +4850,20 @@ static int rmi_reboot(struct notifier_block *nb,
 }
 
 #if defined(USB_CHARGER_DETECTION)
+static void synaptics_dsx_modify_patch(struct synaptics_dsx_patch *patch_set,
+	struct synaptics_dsx_func_patch *patch, bool remove)
+{
+	down(&patch_set->list_sema);
+	if (!remove) {
+		list_add_tail(&patch->link, &patch_set->cfg_head);
+		patch_set->cfg_num++;
+	} else {
+		list_del(&patch->link);
+		patch_set->cfg_num--;
+	}
+	up(&patch_set->list_sema);
+}
+
 /***************************************************************/
 /* USB charging source info from power_supply driver directly  */
 /***************************************************************/
