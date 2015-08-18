@@ -11,6 +11,105 @@
  * GNU General Public License for more details.
  */
 
+&soc {
+	qcom,mpm@fc4281d0 {
+		qcom,gic-map = <2 216>, /* tsens_upper_lower_int */
+			<47 165>,   /* usb30_hs_phy_irq */
+			<52 212>,   /* lfps_rxterm_irq for pwr_event_irq */
+			<55 172>,   /* usb1_hs_async_wakeup_irq */
+			<62 222>,   /* ee0_krait_hlos_spmi_periph_irq */
+			<0xff 20>,  /* arch_timer */
+			<0xff 23>,  /* ARM64 Single-Bit Error PMU IRQ */
+			<0xff 33>,  /* APCC_qgicL2PerfMonIrptReq */
+			<0xff 34>,  /* APCC_qgicL2ErrorIrptReq */
+			<0xff 35>,  /* WDT_barkInt */
+			<0xff 40>,  /* qtimer_phy_irq */
+			<0xff 48>,  /* cpr */
+			<0xff 51>,  /* cpr*/
+			<0xff 54>,  /* CCI error IRQ */
+			<0xff 56>,  /* modem_watchdog */
+			<0xff 57>,  /* mss_to_apps_irq(0) */
+			<0xff 58>,  /* mss_to_apps_irq(1) */
+			<0xff 59>,  /* mss_to_apps_irq(2) */
+			<0xff 60>,  /* mss_to_apps_irq(3) */
+			<0xff 61>,  /* mss_a2_bam_irq */
+			<0xff 65>,  /* kgsl-3d0 */
+			<0xff 70>,  /* iommu_pmon_nonsecure_irq */
+			<0xff 74>,  /* osmmu_CIrpt[1] */
+			<0xff 75>,  /* osmmu_CIrpt[0] */
+			<0xff 77>,  /* osmmu_CIrpt[0] */
+			<0xff 78>,  /* osmmu_CIrpt[0] */
+			<0xff 79>,  /* osmmu_CIrpt[0] */
+			<0xff 94>,  /* osmmu_CIrpt[0] */
+			<0xff 97>,  /* iommu_nonsecure_irq */
+			<0xff 99>,  /* msm_iommu_pmon_nonsecure_irq */
+			<0xff 102>, /* osmmu_CIrpt[1] */
+			<0xff 105>, /* iommu_pmon_nonsecure_irq */
+			<0xff 109>, /* ocmem_dm_nonsec_irq */
+			<0xff 115>, /* MDSS */
+			<0xff 126>, /* bam_irq[0] */
+			<0xff 128>, /* i2c-msm-v2-irq */
+			<0xff 132>, /* i2c-msm-v2-irq */
+			<0xff 133>, /* f9963000.spi */
+			<0xff 137>, /* i2c-msm-v2-irq */
+			<0xff 140>, /* msm_serial_hsl0 */
+			<0xff 155>, /* sdcc_irq[0] */
+			<0xff 163>, /* usb30_ee1_irq */
+			<0xff 170>, /* sdcc_pwr_cmd_irq */
+			<0xff 173>, /* o_wcss_apss_smd_hi */
+			<0xff 174>, /* o_wcss_apss_smd_med */
+			<0xff 175>, /* o_wcss_apss_smd_low */
+			<0xff 176>, /* o_wcss_apss_smsm_irq */
+			<0xff 177>, /* o_wcss_apss_wlan_data_xfer_done */
+			<0xff 178>, /* o_wcss_apss_wlan_rx_data_avail */
+			<0xff 179>, /* o_wcss_apss_asic_intr */
+			<0xff 181>, /* wcnss watchdog */
+			<0xff 188>, /* lpass_irq_out_apcs(0) */
+			<0xff 189>, /* lpass_irq_out_apcs(1) */
+			<0xff 190>, /* lpass_irq_out_apcs(2) */
+			<0xff 191>, /* lpass_irq_out_apcs(3) */
+			<0xff 192>, /* lpass_irq_out_apcs(4) */
+			<0xff 193>, /* lpass_irq_out_apcs(5) */
+			<0xff 194>, /* lpass_irq_out_apcs(6) */
+			<0xff 195>, /* lpass_irq_out_apcs(7) */
+			<0xff 196>, /* lpass_irq_out_apcs(8) */
+			<0xff 197>, /* lpass_irq_out_apcs(9) */
+			<0xff 198>, /* coresight-tmc-etr interrupt */
+			<0xff 200>, /* rpm_ipc(4) */
+			<0xff 201>, /* rpm_ipc(5) */
+			<0xff 202>, /* rpm_ipc(6) */
+			<0xff 203>, /* rpm_ipc(7) */
+			<0xff 204>, /* rpm_ipc(24) */
+			<0xff 205>, /* rpm_ipc(25) */
+			<0xff 206>, /* rpm_ipc(26) */
+			<0xff 207>, /* rpm_ipc(27) */
+			<0xff 211>, /* usb_dwc3_otg */
+			<0xff 215>, /* fc388000.qcom,cpu-bwmon */
+			<0xff 224>, /* spdm_bw_hyp */
+			<0xff 240>, /* summary_irq_kpss */
+			<0xff 261>, /* msm_iommu_global_cfg_irq */
+			<0xff 263>, /* msm_iommu_global_client_irq */
+			<0xff 268>, /* bam_irq[1] */
+			<0xff 270>, /* bam_irq[0] */
+			<0xff 271>, /* bam_irq[0] */
+			<0xff 272>, /* msm_iommu_secure_irq */
+			<0xff 273>, /* msm_iommu_nonsecure_irq */
+			<0xff 275>, /* int_msi */
+			<0xff 283>, /* int_pls_err */
+			<0xff 284>, /* int_aer_legacy */
+			<0xff 286>, /* int_aer_legacy */
+			<0xff 298>, /* msm_iommu_nonsecure_irq */
+			<0xff 302>, /* coresight-tmc-etr */
+			<0xff 332>, /* sps */
+			<0xff 333>, /* ipa */
+			<0xff 360>, /* ARM64 primary DBE IRQ */
+			<0xff 361>, /* ARM64 secondary DBE IRQ */
+			<0xff 362>, /* ARM64 primary ext IRQ */
+			<0xff 363>, /* ARM64 secondary ext IRQ */
+			<0xff 364>; /* lmh_interrupt */
+	};
+};
+
 &spmi_bus {
 	qcom,pm8994@0 {
 		qcom,power-on@800 {
