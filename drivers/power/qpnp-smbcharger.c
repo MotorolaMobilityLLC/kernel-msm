@@ -1375,6 +1375,7 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_100MA);
 		chip->usb_max_current_ma = 100;
+		goto out;
 	}
 	/* specific current values */
 	if (current_ma == CURRENT_150_MA) {
@@ -1385,6 +1386,7 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_100MA);
 		chip->usb_max_current_ma = 150;
+		goto out;
 	}
 	if (current_ma == CURRENT_500_MA) {
 		rc = smbchg_sec_masked_write(chip,
@@ -1542,16 +1544,15 @@ static int smbchg_set_fastchg_current_raw(struct smbchg_chip *chip,
 	if (i < 0) {
 		dev_err(chip->dev,
 			"Cannot find %dma current_table using %d\n",
-			current_ma, CURRENT_500_MA);
+			current_ma, usb_current_table[0]);
 
 		rc = smbchg_sec_masked_write(chip, chip->chgr_base + FCC_CFG,
-					FCC_MASK,
-					FCC_500MA_VAL);
+					FCC_MASK, 0);
 		if (rc < 0)
 			dev_err(chip->dev, "Couldn't set %dmA rc=%d\n",
-					CURRENT_500_MA, rc);
+					usb_current_table[0], rc);
 		else
-			chip->fastchg_current_ma = 500;
+			chip->fastchg_current_ma = usb_current_table[0];
 		return rc;
 	}
 
@@ -1776,14 +1777,14 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 	union power_supply_propval pval = {0, };
 	int current_limit_ma, parallel_cl_ma, total_current_ma;
-	int new_main_cl_ma;
+	int new_main_cl_ma, ibat_sum;
 	int new_parallel_cl_ma, min_current_thr_ma, rc;
 
 	if (!parallel_psy || !chip->parallel_charger_detected)
 		return;
 
 	pr_smb(PR_STATUS, "Attempting to enable parallel charger\n");
-	/* Suspend the parallel charger if the charging current is < 1800 mA */
+	/* Suspend the parallel charger if the charging current is < 1000 mA */
 	if (chip->cfg_fastchg_current_ma < PARALLEL_CHG_THRESHOLD_CURRENT) {
 		pr_smb(PR_STATUS, "suspend parallel charger as FCC is %d\n",
 			chip->cfg_fastchg_current_ma);
@@ -1841,8 +1842,9 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 		goto disable_parallel;
 	}
 
-	if ((chip->cfg_fastchg_current_ma
-			< (chip->pmi_ibat_ma + chip->parallel_ibat_ma))
+	ibat_sum = chip->pmi_ibat_ma + chip->parallel_ibat_ma;
+	if (chip->cfg_fastchg_current_ma < ibat_sum
+			|| chip->usb_target_current_ma < ibat_sum
 			|| !chip->ibat_therm_tbl) {
 		chip->target_fastchg_current_ma =
 				chip->cfg_fastchg_current_ma / 2;
@@ -1852,11 +1854,13 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	} else {
 		chip->target_fastchg_current_ma = chip->pmi_ibat_ma;
 		pval.intval = chip->parallel_ibat_ma * 1000;
-		new_parallel_cl_ma = total_current_ma * chip->parallel_ibat_ma;
-		if (new_parallel_cl_ma)
-			new_parallel_cl_ma /=
-				(chip->pmi_ibat_ma + chip->parallel_ibat_ma);
-		new_main_cl_ma = total_current_ma - new_parallel_cl_ma;
+		/* set iusb as ibat for parallel charger */
+		new_parallel_cl_ma = chip->parallel_ibat_ma;
+		if (chip->pmi_ibat_ma < usb_current_table[0])
+			new_main_cl_ma = chip->pmi_ibat_ma;
+		else
+			new_main_cl_ma = chip->usb_target_current_ma
+							- new_parallel_cl_ma;
 	}
 
 	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
@@ -1865,7 +1869,8 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 
 	chip->parallel.enabled_once = true;
 
-	if (new_parallel_cl_ma == parallel_cl_ma) {
+	if (new_parallel_cl_ma == parallel_cl_ma
+			&& chip->usb_max_current_ma == new_main_cl_ma) {
 		pr_smb(PR_STATUS,
 			"AICL at %d, old ICL: %d new ICL: %d, skipping\n",
 			current_limit_ma, parallel_cl_ma, new_parallel_cl_ma);
@@ -2355,6 +2360,7 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	} else {
 		chip->pmi_ibat_ma = chip->ibat_therm_tbl[lvl_sel].pmi;
 		chip->parallel_ibat_ma = chip->ibat_therm_tbl[lvl_sel].parallel;
+		chip->parallel.enabled_once = false;
 		smbchg_parallel_usb_check_ok(chip);
 	}
 
@@ -3243,6 +3249,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		pr_smb(PR_STATUS, "changed current_limit = %d\n",
 				current_limit);
 		chip->usb_target_current_ma = current_limit;
+		chip->parallel.enabled_once = false;
 		rc = smbchg_set_thermal_limited_usb_current_max(chip,
 				current_limit);
 		if (rc < 0)
