@@ -11020,7 +11020,6 @@ static s32 wl_event_handler(void *data)
 void
 wl_cfg80211_event(struct net_device *ndev, const wl_event_msg_t * e, void *data)
 {
-	unsigned long flags;
 	u32 event_type = ntoh32(e->event_type);
 	struct bcm_cfg80211 *cfg = g_bcm_cfg;
 
@@ -11029,10 +11028,8 @@ wl_cfg80211_event(struct net_device *ndev, const wl_event_msg_t * e, void *data)
 	    wl_dbg_estr[event_type] : (s8 *) "Unknown";
 	WL_DBG(("event_type (%d):" "WLC_E_" "%s\n", event_type, estr));
 #endif /* (WL_DBG_LEVEL > 0) */
-	spin_lock_irqsave(&cfg->cfgp2p_lock,flags);
 	if (wl_get_p2p_status(cfg, IF_CHANGING) || wl_get_p2p_status(cfg, IF_ADDING)) {
 		WL_ERR(("during IF change, ignore event %d\n", event_type));
-		spin_unlock_irqrestore(&cfg->cfgp2p_lock,flags);
 		return;
 	}
 
@@ -11046,11 +11043,9 @@ wl_cfg80211_event(struct net_device *ndev, const wl_event_msg_t * e, void *data)
 #endif /* WL_ENABLE_P2P_IF */
 			TRUE) {
 			WL_ERR(("ignore event %d, not interested\n", event_type));
-			spin_unlock_irqrestore(&cfg->cfgp2p_lock,flags);
 			return;
 		}
 	}
-	spin_unlock_irqrestore(&cfg->cfgp2p_lock,flags);
 
 	if (event_type == WLC_E_PFN_NET_FOUND) {
 		WL_DBG((" PNOEVENT: PNO_NET_FOUND\n"));
