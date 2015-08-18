@@ -54,8 +54,6 @@ enum {
 	DBG_RING_ENTRY_FLAGS_HAS_TIMESTAMP = (1 << (1))
 };
 
-#define NO_AUTO_RECOVERY	/* NO AUTO RECOVERY for debugging */
-
 #define DBGRING_NAME_MAX		32
 /* firmware verbose ring, ring id 1 */
 #define FW_VERBOSE_RING_NAME		"fw_verbose"
