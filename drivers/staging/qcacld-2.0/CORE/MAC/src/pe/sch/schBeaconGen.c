@@ -691,6 +691,13 @@ void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal pMac,
                      sizeof(beacon2->WMMCaps));
     }
 
+    /* Extended Capability */
+    if (beacon2->ExtCap.present) {
+        SetProbeRspIeBitmap(DefProbeRspIeBitmap, DOT11F_EID_EXTCAP);
+        vos_mem_copy((void *)&prb_rsp->ExtCap, (void *)&beacon2->ExtCap,
+                     sizeof(beacon2->ExtCap));
+    }
+
 }
 
 void SetProbeRspIeBitmap(tANI_U32* IeBitmap,tANI_U32 pos)

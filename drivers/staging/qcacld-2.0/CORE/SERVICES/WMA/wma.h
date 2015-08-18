@@ -215,7 +215,6 @@ static const t_probeTime_dwellTime
 #define WMA_EXTSCAN_MAX_SCAN_TIME       50000
 #define WMA_EXTSCAN_REPEAT_PROBE        10
 #define WMA_EXTSCAN_BURST_DURATION      150
-#define WMA_EXTSCAN_CYCLE_WAKE_LOCK_DURATION	(5 * 1000) /* in msec */
 #endif
 
 typedef struct {
@@ -752,6 +751,9 @@ typedef struct {
 	vos_timer_t log_completion_timer;
 	uint16_t self_gen_frm_pwr;
 	bool tx_chain_mask_cck;
+
+	uint32_t num_of_diag_events_logs;
+	uint32_t *events_logs_list;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1573,7 +1575,7 @@ typedef struct wma_roam_invoke_cmd
 }t_wma_roam_invoke_cmd;
 
 #ifdef REMOVE_PKT_LOG
-static inline void wma_set_wifi_start_logger(void *wma_handle,
+static inline void wma_set_wifi_start_packet_stats(void *wma_handle,
 					struct sir_wifi_start_log *start_log)
 {
 	return;

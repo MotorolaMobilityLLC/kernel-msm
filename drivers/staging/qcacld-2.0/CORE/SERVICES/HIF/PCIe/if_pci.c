@@ -731,12 +731,17 @@ wlan_tasklet(unsigned long data)
         return;
     }
 irq_handled:
+    adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
     if (LEGACY_INTERRUPTS(sc) && (sc->ol_sc->target_status !=
                                   OL_TRGET_STATUS_RESET) &&
            (!adf_os_atomic_read(&sc->pci_link_suspended))) {
 
-        if (sc->hif_init_done == TRUE)
-            A_TARGET_ACCESS_BEGIN(hif_state->targid);
+        if (sc->hif_init_done == TRUE) {
+            if(HIFTargetSleepStateAdjust(hif_state->targid, FALSE, TRUE) < 0) {
+                adf_os_spin_unlock_irqrestore(&hif_state->suspend_lock);
+                return;
+            }
+        }
 
         /* Enable Legacy PCI line interrupts */
         A_PCI_WRITE32(sc->mem+(SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS),
@@ -744,9 +749,14 @@ irq_handled:
         /* IMPORTANT: this extra read transaction is required to flush the posted write buffer */
         tmp = A_PCI_READ32(sc->mem+(SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS));
 
-        if (sc->hif_init_done == TRUE)
-           A_TARGET_ACCESS_END(hif_state->targid);
+        if (sc->hif_init_done == TRUE) {
+             if(HIFTargetSleepStateAdjust(hif_state->targid, TRUE, FALSE) < 0) {
+                   adf_os_spin_unlock_irqrestore(&hif_state->suspend_lock);
+                   return;
+               }
+        }
     }
+    adf_os_spin_unlock_irqrestore(&hif_state->suspend_lock);
     adf_os_atomic_set(&sc->ce_suspend, 1);
 }
 
@@ -2200,14 +2210,12 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
     }
 
     if (wma_check_scan_in_progress(temp_module)) {
-        printk("%s: Scan in progress. Aborting suspend%s\n", __func__,
-                runtime_pm ? " for runtime pm" : "");
+        printk("%s: Scan in progress. Aborting suspend\n", __func__);
         goto out;
     }
 
-    printk("%s: %swow mode %d event %d\n", __func__,
-            runtime_pm ? "for runtime pm " : "",
-            wma_is_wow_mode_selected(temp_module), state.event);
+    printk("%s: wow mode %d event %d\n", __func__,
+       wma_is_wow_mode_selected(temp_module), state.event);
 
     if (wma_is_wow_mode_selected(temp_module)) {
           if(wma_enable_wow_in_fw(temp_module, runtime_pm))
@@ -2297,8 +2305,7 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
         pci_write_config_dword(pdev, OL_ATH_PCI_PM_CONTROL, (val & 0xffffff00) | 0x03);
     }
 
-    printk("%s: Suspend completes%s\n", __func__,
-            runtime_pm ? " for runtime pm" : "");
+    printk("%s: Suspend completes\n", __func__);
     ret = 0;
 
 out:
@@ -2378,7 +2385,7 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
     /* Set bus master bit in PCI_COMMAND to enable DMA */
     pci_set_master(pdev);
 
-    printk("%s: Rome PS: %d\n", __func__, val);
+    printk("\n%s: Rome PS: %d", __func__, val);
 
 #ifdef CONFIG_CNSS
     /* Keep PCIe bus driver's shadow memory intact */
@@ -2403,9 +2410,8 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
         goto out;
     }
 
-    printk("%s: %swow mode %d val %d\n", __func__,
-            runtime_pm ? "for runtime pm " : "",
-            wma_is_wow_mode_selected(temp_module), val);
+    printk("%s: wow mode %d val %d\n", __func__,
+       wma_is_wow_mode_selected(temp_module), val);
 
     adf_os_atomic_set(&sc->wow_done, 0);
 
@@ -2426,8 +2432,7 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
 #endif
 
 out:
-    printk("%s: Resume completes%s %d\n", __func__,
-            runtime_pm ? " for runtime pm" : "", err);
+    printk("%s: Resume completes %d\n", __func__, err);
 
     if (err)
         return (-1);

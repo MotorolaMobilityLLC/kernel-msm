@@ -3836,6 +3836,17 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
         }
     }
 
+    psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
+    psessionEntry->limMlmState = eLIM_MLM_WT_JOIN_BEACON_STATE;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE,
+        psessionEntry->peSessionId, psessionEntry->limMlmState));
+
+    limLog(pMac, LOG1,
+        FL("Sessionid %d prev lim state %d new lim state %d systemrole %d"),
+        psessionEntry->peSessionId,
+        psessionEntry->limPrevMlmState,
+        psessionEntry->limMlmState, GET_LIM_SYSTEM_ROLE(psessionEntry));
+
     /* Update the lim global gLimTriggerBackgroundScanDuringQuietBss */
     if(wlan_cfgGetInt(pMac, WNI_CFG_TRIG_STA_BK_SCAN, &val) != eSIR_SUCCESS)
         limLog(pMac, LOGP, FL("failed to get WNI_CFG_TRIG_STA_BK_SCAN cfg value!"));

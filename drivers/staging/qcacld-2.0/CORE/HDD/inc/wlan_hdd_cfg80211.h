@@ -123,6 +123,7 @@ typedef struct {
  */
 
 #define QCA_NL80211_VENDOR_ID                          0x001374
+#define MAX_REQUEST_ID         0xFFFFFFFF
 
 enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_UNSPEC = 0,

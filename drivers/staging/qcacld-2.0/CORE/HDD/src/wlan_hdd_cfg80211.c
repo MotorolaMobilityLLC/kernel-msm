@@ -2881,19 +2881,22 @@ static int wlan_hdd_cfg80211_extscan_set_significant_change(struct wiphy *wiphy,
 }
 
 static int __wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
-                                        struct wireless_dev *wdev,
-                                        const void *data,
-                                        int data_len)
+                                                     struct wireless_dev *wdev,
+                                                     const void *data,
+                                                     int data_len)
 {
-    hdd_context_t *pHddCtx                               = wiphy_priv(wiphy);
-    tANI_U32 ChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
-    tANI_U8 numChannels                                  = 0;
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    struct net_device *dev = wdev->netdev;
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    uint32_t chan_list[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
+    uint8_t num_channels  = 0;
+    uint8_t num_chan_new  = 0;
     struct nlattr *tb[QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX + 1];
     tANI_U32 requestId, maxChannels;
     tWifiBand wifiBand;
     eHalStatus status;
     struct sk_buff *reply_skb;
-    tANI_U8 i;
+    tANI_U8 i, j, k;
     int retval;
 
     ENTER();
@@ -2939,29 +2942,53 @@ static int __wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
     hddLog(LOG1, FL("Max channels %d"), maxChannels);
 
     status = sme_GetValidChannelsByBand((tHalHandle)(pHddCtx->hHal),
-                                        wifiBand, ChannelList,
-                                        &numChannels);
+                                        wifiBand, chan_list,
+                                        &num_channels);
     if (eHAL_STATUS_SUCCESS != status) {
         hddLog(LOGE,
            FL("sme_GetValidChannelsByBand failed (err=%d)"), status);
         return -EINVAL;
     }
 
-    numChannels = VOS_MIN(numChannels, maxChannels);
-    hddLog(LOG1, FL("Number of channels %d"), numChannels);
-    for (i = 0; i < numChannels; i++)
-        hddLog(LOG1, "Channel: %u ", ChannelList[i]);
+    num_channels = VOS_MIN(num_channels, maxChannels);
+
+    num_chan_new = num_channels;
+
+    /* remove the indoor only channels if iface is SAP */
+    if (WLAN_HDD_SOFTAP == pAdapter->device_mode) {
+        num_chan_new = 0;
+        for (i = 0; i < num_channels; i++)
+            for (j = 0; j < IEEE80211_NUM_BANDS; j++) {
+
+                if (wiphy->bands[j] == NULL)
+                    continue;
+
+                for (k = 0; k < wiphy->bands[j]->n_channels; k++) {
+                    if ((chan_list[i] ==
+                         wiphy->bands[j]->channels[k].center_freq) &&
+                        (!(wiphy->bands[j]->channels[k].flags &
+                           IEEE80211_CHAN_INDOOR_ONLY))) {
+                        chan_list[num_chan_new] = chan_list[i];
+                        num_chan_new++;
+                    }
+                }
+            }
+    }
+
+    hddLog(LOG1, FL("Number of channels %d"), num_chan_new);
+    for (i = 0; i < num_chan_new; i++)
+        hddLog(LOG1, "Channel: %u ", chan_list[i]);
 
     reply_skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, sizeof(u32) +
-                                                    sizeof(u32) * numChannels +
+                                                    sizeof(u32) * num_chan_new +
                                                     NLMSG_HDRLEN);
 
     if (reply_skb) {
         if (nla_put_u32(reply_skb,
                         QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_NUM_CHANNELS,
-                        numChannels) ||
+                        num_chan_new) ||
             nla_put(reply_skb, QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_CHANNELS,
-                    sizeof(u32) * numChannels, ChannelList)) {
+                    sizeof(u32) * num_chan_new, chan_list)) {
             hddLog(LOGE, FL("nla put fail"));
             kfree_skb(reply_skb);
             return -EINVAL;
@@ -3056,18 +3083,6 @@ static void hdd_extscan_update_dwell_time_limits(
 	}
 }
 
-static bool hdd_extscan_channel_max_reached(tSirWifiScanCmdReqParams *req,
-					    uint8_t total_channels)
-{
-	if (total_channels == WLAN_EXTSCAN_MAX_CHANNELS) {
-		hddLog(LOGW,
-			FL("max #of channels %d reached, taking only first %d bucket(s)"),
-			total_channels, req->numBuckets);
-		return true;
-	}
-	return false;
-}
-
 static int hdd_extscan_start_fill_bucket_channel_spec(
 			hdd_context_t *pHddCtx,
 			tpSirWifiScanCmdReqParams pReqMsg,
@@ -3081,7 +3096,7 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 	struct nlattr *channels;
 	int rem1, rem2;
 	eHalStatus status;
-	uint8_t bktIndex, j, numChannels, total_channels = 0;
+	uint8_t bktIndex, j, numChannels;
 	uint32_t chanList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
 
 	uint32_t min_dwell_time_active_bucket =
@@ -3101,7 +3116,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 	pReqMsg->min_dwell_time_passive =
 		pReqMsg->max_dwell_time_passive =
 			pHddCtx->cfg_ini->extscan_passive_max_chn_time;
-	pReqMsg->numBuckets = 0;
 
 	nla_for_each_nested(buckets,
 			tb[QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC], rem1) {
@@ -3199,10 +3213,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 		 * WIFI_BAND_UNSPECIFIED) then driver populates the channel list
 		 */
 		if (pReqMsg->buckets[bktIndex].band != WIFI_BAND_UNSPECIFIED) {
-			if (hdd_extscan_channel_max_reached(pReqMsg,
-							    total_channels))
-				return 0;
-
 			numChannels = 0;
 			hddLog(LOG1, "WiFi band is specified, driver to fill channel list");
 			status = sme_GetValidChannelsByBand(pHddCtx->hHal,
@@ -3214,18 +3224,11 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				       status);
 				return -EINVAL;
 			}
-			hddLog(LOG1, FL("before trimming, num_channels: %d"),
-				numChannels);
 
 			pReqMsg->buckets[bktIndex].numChannels =
-				VOS_MIN(numChannels,
-					(WLAN_EXTSCAN_MAX_CHANNELS - total_channels));
-			hddLog(LOG1,
-				FL("Adj Num channels/bucket: %d total_channels: %d"),
-				pReqMsg->buckets[bktIndex].numChannels,
-				total_channels);
-
-			total_channels += pReqMsg->buckets[bktIndex].numChannels;
+				VOS_MIN(numChannels, WLAN_EXTSCAN_MAX_CHANNELS);
+			hddLog(LOG1, FL("Num channels %d"),
+					pReqMsg->buckets[bktIndex].numChannels);
 
 			for (j = 0; j < pReqMsg->buckets[bktIndex].numChannels;
 				j++) {
@@ -3294,7 +3297,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 					pReqMsg->buckets[bktIndex].max_dwell_time_passive);
 
 			bktIndex++;
-			pReqMsg->numBuckets++;
 			continue;
 		}
 
@@ -3308,17 +3310,8 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 		pReqMsg->buckets[bktIndex].numChannels =
 		nla_get_u32(bucket[
 		QCA_WLAN_VENDOR_ATTR_EXTSCAN_BUCKET_SPEC_NUM_CHANNEL_SPECS]);
-		hddLog(LOG1, FL("before trimming: num channels %d"),
+		hddLog(LOG1, FL("num channels %d"),
 				pReqMsg->buckets[bktIndex].numChannels);
-		pReqMsg->buckets[bktIndex].numChannels =
-			VOS_MIN(pReqMsg->buckets[bktIndex].numChannels,
-				(WLAN_EXTSCAN_MAX_CHANNELS - total_channels));
-		hddLog(LOG1,
-			FL("Num channels/bucket: %d total_channels: %d"),
-			pReqMsg->buckets[bktIndex].numChannels,
-			total_channels);
-		if (hdd_extscan_channel_max_reached(pReqMsg, total_channels))
-			return 0;
 
 		if (!bucket[QCA_WLAN_VENDOR_ATTR_EXTSCAN_CHANNEL_SPEC]) {
 			hddLog(LOGE, FL("attr channel spec failed"));
@@ -3335,9 +3328,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				hddLog(LOGE, FL("nla_parse failed"));
 				return -EINVAL;
 			}
-			if (hdd_extscan_channel_max_reached(pReqMsg,
-							    total_channels))
-				break;
 
 			/* Parse and fetch channel */
 			if (!channel[
@@ -3433,7 +3423,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 			}
 
 			j++;
-			total_channels++;
 		}
 
 		hdd_extscan_update_dwell_time_limits(
@@ -3451,7 +3440,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				pReqMsg->buckets[bktIndex].max_dwell_time_passive);
 
 		bktIndex++;
-		pReqMsg->numBuckets++;
 	}
 
 	hddLog(LOG1, FL("Global: actv_min:%d actv_max:%d pass_min:%d pass_max:%d"),
@@ -3523,7 +3511,7 @@ static int __wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
 	hdd_context_t *pHddCtx            = wiphy_priv(wiphy);
 	struct nlattr *tb[PARAM_MAX + 1];
 	struct hdd_ext_scan_context *context;
-	uint32_t request_id, num_buckets;
+	uint32_t request_id;
 	eHalStatus status;
 	int retval;
 	unsigned long rc;
@@ -3600,13 +3588,13 @@ static int __wlan_hdd_cfg80211_extscan_start(struct wiphy *wiphy,
 		hddLog(LOGE, FL("attr number of buckets failed"));
 		goto fail;
 	}
-	num_buckets = nla_get_u8(tb[PARAM_NUM_BUCKETS]);
-	if (num_buckets > WLAN_EXTSCAN_MAX_BUCKETS) {
-		hddLog(LOGW,
-			FL("Exceeded MAX number of buckets: %d"),
-			WLAN_EXTSCAN_MAX_BUCKETS);
+	pReqMsg->numBuckets = nla_get_u8(tb[PARAM_NUM_BUCKETS]);
+	if (pReqMsg->numBuckets > WLAN_EXTSCAN_MAX_BUCKETS) {
+		hddLog(LOGW, FL("Exceeded MAX number of buckets "
+			"Setting numBuckets to %u"), WLAN_EXTSCAN_MAX_BUCKETS);
+		pReqMsg->numBuckets = WLAN_EXTSCAN_MAX_BUCKETS;
 	}
-	hddLog(LOG1, FL("Input: Number of Buckets %d"), num_buckets);
+	hddLog(LOG1, FL("Number of Buckets %d"), pReqMsg->numBuckets);
 
 	/* This is optional attribute, if not present set it to 0 */
 	if (!tb[PARAM_CONFIG_FLAGS])
@@ -7066,7 +7054,7 @@ static int hdd_map_req_id_to_pattern_id(hdd_context_t *hdd_ctx,
 
 	mutex_lock(&hdd_ctx->op_ctx.op_lock);
 	for (i = 0; i < MAXNUM_PERIODIC_TX_PTRNS; i++) {
-		if (hdd_ctx->op_ctx.op_table[i].request_id == 0) {
+		if (hdd_ctx->op_ctx.op_table[i].request_id == MAX_REQUEST_ID) {
 			hdd_ctx->op_ctx.op_table[i].request_id = request_id;
 			*pattern_id = hdd_ctx->op_ctx.op_table[i].pattern_id;
 			mutex_unlock(&hdd_ctx->op_ctx.op_lock);
@@ -7103,7 +7091,7 @@ static int hdd_unmap_req_id_to_pattern_id(hdd_context_t *hdd_ctx,
 	mutex_lock(&hdd_ctx->op_ctx.op_lock);
 	for (i = 0; i < MAXNUM_PERIODIC_TX_PTRNS; i++) {
 		if (hdd_ctx->op_ctx.op_table[i].request_id == request_id) {
-			hdd_ctx->op_ctx.op_table[i].request_id = 0;
+			hdd_ctx->op_ctx.op_table[i].request_id = MAX_REQUEST_ID;
 			*pattern_id = hdd_ctx->op_ctx.op_table[i].pattern_id;
 			mutex_unlock(&hdd_ctx->op_ctx.op_lock);
 			return 0;
@@ -7170,11 +7158,12 @@ wlan_hdd_add_tx_ptrn(hdd_adapter_t *adapter, hdd_context_t *hdd_ctx,
 	}
 
 	request_id = nla_get_u32(tb[PARAM_REQUEST_ID]);
-	hddLog(LOG1, FL("Request Id: %u"), request_id);
-	if (request_id == 0) {
-		hddLog(LOGE, FL("request_id cannot be zero"));
+	if (request_id == MAX_REQUEST_ID) {
+		hddLog(LOGE, FL("request_id cannot be MAX"));
 		return -EINVAL;
 	}
+
+	hddLog(LOG1, FL("Request Id: %u"), request_id);
 
 	if (!tb[PARAM_PERIOD]) {
 		hddLog(LOGE, FL("attr period failed"));
@@ -7293,9 +7282,10 @@ wlan_hdd_del_tx_ptrn(hdd_adapter_t *adapter, hdd_context_t *hdd_ctx,
 		hddLog(LOGE, FL("attr request id failed"));
 		return -EINVAL;
 	}
+
 	request_id = nla_get_u32(tb[PARAM_REQUEST_ID]);
-	if (request_id == 0) {
-		hddLog(LOGE, FL("request_id cannot be zero"));
+	if (request_id == MAX_REQUEST_ID) {
+		hddLog(LOGE, FL("request_id cannot be MAX"));
 		return -EINVAL;
 	}
 

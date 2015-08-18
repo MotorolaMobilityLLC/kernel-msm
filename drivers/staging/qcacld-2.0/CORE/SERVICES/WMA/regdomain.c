@@ -283,13 +283,13 @@ static const COUNTRY_CODE_TO_ENUM_RD *get_country_from_rd(u_int16_t regdmn)
  * Some users have reported their EEPROM programmed with
  * 0x8000 set, this is not a supported regulatory domain
  * but since we have more than one user with it we need
- * a solution for them. We default to 0x64
+ * a solution for them. We default to WOR0_WORLD
  */
 static void regd_sanitize(struct regulatory *reg)
 {
 	if (reg->reg_domain != COUNTRY_ERD_FLAG)
 		return;
-	reg->reg_domain = 0x64;
+	reg->reg_domain = WOR0_WORLD;
 }
 
 /*

@@ -5854,6 +5854,7 @@ eHalStatus sme_GenericChangeCountryCode( tHalHandle hHal,
         pMsg->msgType = pal_cpu_to_be16((tANI_U16)eWNI_SME_GENERIC_CHANGE_COUNTRY_CODE);
         pMsg->msgLen = (tANI_U16)sizeof(tAniGenericChangeCountryCodeReq);
         vos_mem_copy(pMsg->countryCode, pCountry, 2);
+        pMsg->countryCode[2] = ' '; /* For ASCII space */
         pMsg->domain_index = reg_domain;
 
         msg.type = eWNI_SME_GENERIC_CHANGE_COUNTRY_CODE;
@@ -15022,47 +15023,40 @@ eHalStatus sme_wifi_start_logger(tHalHandle hal,
 	struct sir_wifi_start_log *req_msg;
 	uint32_t len;
 
-	if (start_log.ring_id == RING_ID_PER_PACKET_STATS) {
-		len = sizeof(*req_msg);
-		req_msg = vos_mem_malloc(len);
-		if (!req_msg) {
-			smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
-			return eHAL_STATUS_FAILED_ALLOC;
-		}
+	len = sizeof(*req_msg);
+	req_msg = vos_mem_malloc(len);
+	if (!req_msg) {
+		smsLog(mac, LOGE, FL("vos_mem_malloc failed"));
+		return eHAL_STATUS_FAILED_ALLOC;
+	}
 
-		vos_mem_zero(req_msg, len);
+	vos_mem_zero(req_msg, len);
 
-		req_msg->verbose_level = start_log.verbose_level;
-		req_msg->flag = start_log.flag;
-		req_msg->ring_id = start_log.ring_id;
+	req_msg->verbose_level = start_log.verbose_level;
+	req_msg->flag = start_log.flag;
+	req_msg->ring_id = start_log.ring_id;
 
-		status = sme_AcquireGlobalLock(&mac->sme);
-		if (status != eHAL_STATUS_SUCCESS) {
-			smsLog(mac, LOGE,
+	status = sme_AcquireGlobalLock(&mac->sme);
+	if (status != eHAL_STATUS_SUCCESS) {
+		smsLog(mac, LOGE,
 				FL("sme_AcquireGlobalLock failed!(status=%d)"),
 				status);
-			vos_mem_free(req_msg);
-			return status;
-		}
+		vos_mem_free(req_msg);
+		return status;
+	}
 
-		/* Serialize the req through MC thread */
-		vos_message.bodyptr = req_msg;
-		vos_message.type    = SIR_HAL_START_STOP_PACKET_STATS;
-		vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
-		if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
-			smsLog(mac, LOGE,
+	/* Serialize the req through MC thread */
+	vos_message.bodyptr = req_msg;
+	vos_message.type    = SIR_HAL_START_STOP_LOGGING;
+	vos_status = vos_mq_post_message(VOS_MQ_ID_WDA, &vos_message);
+	if (!VOS_IS_STATUS_SUCCESS(vos_status)) {
+		smsLog(mac, LOGE,
 				FL("vos_mq_post_message failed!(err=%d)"),
 				vos_status);
-			vos_mem_free(req_msg);
-			status = eHAL_STATUS_FAILURE;
-		}
-		sme_ReleaseGlobalLock(&mac->sme);
-	} else if (start_log.ring_id == RING_ID_CONNECTIVITY) {
-		/* Start/stop connectivity events */
-		/* No handling for now */
-	} else {
-		smsLog(mac, LOGE, FL("Invalid parameter"));
+		vos_mem_free(req_msg);
+		status = eHAL_STATUS_FAILURE;
 	}
+	sme_ReleaseGlobalLock(&mac->sme);
 	return status;
 }
 

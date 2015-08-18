@@ -432,6 +432,8 @@ typedef struct _VosContextType
    uint32_t wakelock_log_level;
    uint32_t connectivity_log_level;
    uint32_t packet_stats_log_level;
+   uint32_t driver_debug_log_level;
+   uint32_t fw_debug_log_level;
 
    struct vos_log_complete log_complete;
    vos_spin_lock_t bug_report_lock;

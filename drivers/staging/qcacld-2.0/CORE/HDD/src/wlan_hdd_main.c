@@ -663,7 +663,7 @@ end:
 }
 #endif
 
-static int hdd_netdev_notifier_call(struct notifier_block * nb,
+static int __hdd_netdev_notifier_call(struct notifier_block * nb,
                                          unsigned long state,
                                          void *ndev)
 {
@@ -766,6 +766,27 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
    }
 
    return NOTIFY_DONE;
+}
+
+/**
+ * hdd_netdev_notifier_call() - netdev notifier callback function
+ * @nb: pointer to notifier block
+ * @state: state
+ * @ndev: ndev pointer
+ *
+ * Return: 0 on success, error number otherwise.
+ */
+static int hdd_netdev_notifier_call(struct notifier_block * nb,
+					unsigned long state,
+					void *ndev)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __hdd_netdev_notifier_call(nb, state, ndev);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 struct notifier_block hdd_netdev_notifier = {
@@ -8620,12 +8641,6 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 #endif
          }
 
-         if (pAdapter->ipv4_notifier_registered)
-         {
-             hddLog(LOG1, FL("Unregistered IPv4 notifier"));
-             unregister_inetaddr_notifier(&pAdapter->ipv4_notifier);
-             pAdapter->ipv4_notifier_registered = false;
-         }
 #ifdef WLAN_OPEN_SOURCE
          cancel_work_sync(&pAdapter->ipv4NotifierWorkQueue);
 #endif
@@ -8646,12 +8661,6 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 #ifdef WLAN_OPEN_SOURCE
          cancel_work_sync(&pAdapter->ipv6NotifierWorkQueue);
 #endif
-         if (pAdapter->ipv6_notifier_registered)
-         {
-            hddLog(LOG1, FL("Unregistered IPv6 notifier"));
-            unregister_inet6addr_notifier(&pAdapter->ipv6_notifier);
-            pAdapter->ipv6_notifier_registered = false;
-         }
 #endif
          /* It is possible that the caller of this function does not
           * wish to close the session
@@ -9787,6 +9796,60 @@ VOS_STATUS hdd_abort_mac_scan_all_adapters(hdd_context_t *pHddCtx)
     return VOS_STATUS_SUCCESS;
 }
 
+#ifdef WLAN_NS_OFFLOAD
+/**
+ * hdd_wlan_unregister_ip6_notifier() - unregister IP6 change notifier
+ * @hdd_ctx: Pointer to hdd context
+ *
+ * Return: None
+ */
+static void hdd_wlan_unregister_ip6_notifier(hdd_context_t *hdd_ctx)
+{
+	unregister_inet6addr_notifier(&hdd_ctx->ipv6_notifier);
+
+	return;
+}
+
+/**
+ * hdd_wlan_register_ip6_notifier() - register IP6 change notifier
+ * @hdd_ctx: Pointer to hdd context
+ *
+ * Return: None
+ */
+static void hdd_wlan_register_ip6_notifier(hdd_context_t *hdd_ctx)
+{
+	int ret;
+
+	hdd_ctx->ipv6_notifier.notifier_call = wlan_hdd_ipv6_changed;
+	ret = register_inet6addr_notifier(&hdd_ctx->ipv6_notifier);
+	if (ret)
+		hddLog(LOGE, FL("Failed to register IPv6 notifier"));
+	else
+		hddLog(LOGE, FL("Registered IPv6 notifier"));
+
+	return;
+}
+#else
+/**
+ * hdd_wlan_unregister_ip6_notifier() - unregister IP6 change notifier
+ * @hdd_ctx: Pointer to hdd context
+ *
+ * Return: None
+ */
+static void hdd_wlan_unregister_ip6_notifier(hdd_context_t *hdd_ctx)
+{
+}
+/**
+ * hdd_wlan_register_ip6_notifier() - register IP6 change notifier
+ * @hdd_ctx: Pointer to hdd context
+ *
+ * Return: None
+ */
+static void hdd_wlan_register_ip6_notifier(hdd_context_t *hdd_ctx)
+{
+}
+#endif
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_exit() - HDD WLAN exit function
@@ -9809,6 +9872,11 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    hdd_config_t *pConfig = pHddCtx->cfg_ini;
 
    ENTER();
+
+   hddLog(LOGE, FL("Unregister IPv6 notifier"));
+   hdd_wlan_unregister_ip6_notifier(pHddCtx);
+   hddLog(LOGE, FL("Unregister IPv4 notifier"));
+   unregister_inetaddr_notifier(&pHddCtx->ipv4_notifier);
 
    if (VOS_FTM_MODE != hdd_get_conparam())
    {
@@ -10682,7 +10750,7 @@ static void hdd_init_offloaded_packets_ctx(hdd_context_t *hdd_ctx)
 
 	mutex_init(&hdd_ctx->op_ctx.op_lock);
 	for (i = 0; i < MAXNUM_PERIODIC_TX_PTRNS; i++) {
-		hdd_ctx->op_ctx.op_table[i].request_id = 0;
+		hdd_ctx->op_ctx.op_table[i].request_id = MAX_REQUEST_ID;
 		hdd_ctx->op_ctx.op_table[i].pattern_id = i;
 	}
 }
@@ -11525,6 +11593,23 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
 #else
    INIT_WORK(&pHddCtx->rocReqWork, wlan_hdd_roc_request_dequeue);
 #endif
+
+   /*
+    * Register IPv6 notifier to notify if any change in IP
+    * So that we can reconfigure the offload parameters
+    */
+   hdd_wlan_register_ip6_notifier(pHddCtx);
+
+   /*
+    * Register IPv4 notifier to notify if any change in IP
+    * So that we can reconfigure the offload parameters
+    */
+   pHddCtx->ipv4_notifier.notifier_call = wlan_hdd_ipv4_changed;
+   ret = register_inetaddr_notifier(&pHddCtx->ipv4_notifier);
+   if (ret)
+      hddLog(LOGE, FL("Failed to register IPv4 notifier"));
+   else
+      hddLog(LOGE, FL("Registered IPv4 notifier"));
 
    complete(&wlan_start_comp);
    goto success;

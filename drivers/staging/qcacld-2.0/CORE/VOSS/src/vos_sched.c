@@ -1747,7 +1747,7 @@ static int VosTlshimRxThread(void *arg)
                              &pSchedContext->tlshimRxEvtFlg);
                    complete(&pSchedContext->SuspndTlshimRxEvent);
                }
-               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                          "%s: Shutting down tl shim Tlshim rx thread", __func__);
                shutdown = true;
                break;
@@ -1769,7 +1769,7 @@ static int VosTlshimRxThread(void *arg)
        }
    }
 
-   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
              "%s: Exiting VOSS Tlshim rx thread", __func__);
    complete_and_exit(&pSchedContext->TlshimRxShutdown, 0);
 }

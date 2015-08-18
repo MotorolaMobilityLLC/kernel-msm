@@ -2073,26 +2073,24 @@ void lim_post_join_set_link_state_callback(tpAniSirGlobal mac,
 		goto failure;
 	}
 
-	if (session_entry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE) {
-		chan_num = session_entry->currentOperChannel;
-		sec_chan_offset = session_entry->htSecondaryChannelOffset;
-		/*
-		 * store the channel switch sessionEntry in the lim
-		 * global variable
-		 */
-		session_entry->channelChangeReasonCode =
+	chan_num = session_entry->currentOperChannel;
+	sec_chan_offset = session_entry->htSecondaryChannelOffset;
+	/*
+	 * store the channel switch sessionEntry in the lim
+	 * global variable
+	 */
+	session_entry->channelChangeReasonCode =
 				 LIM_SWITCH_CHANNEL_JOIN;
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
-		session_entry->pLimMlmReassocRetryReq = NULL;
+	session_entry->pLimMlmReassocRetryReq = NULL;
 #endif
-		limLog(mac, LOG1, FL("[limProcessMlmJoinReq]: suspend link on sessionid: %d setting channel to: %d with secChanOffset:%d and maxtxPower: %d"),
-					session_entry->peSessionId, chan_num,
-					sec_chan_offset,
-					session_entry->maxTxPower);
-		limSetChannel(mac, chan_num, sec_chan_offset,
-				 session_entry->maxTxPower,
-				 session_entry->peSessionId);
-	}
+	limLog(mac, LOG1, FL("[limProcessMlmJoinReq]: suspend link on sessionid: %d setting channel to: %d with secChanOffset:%d and maxtxPower: %d"),
+				session_entry->peSessionId, chan_num,
+				sec_chan_offset,
+				session_entry->maxTxPower);
+	limSetChannel(mac, chan_num, sec_chan_offset,
+			 session_entry->maxTxPower,
+			 session_entry->peSessionId);
 	return;
 
 failure:
@@ -2140,6 +2138,7 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
        limLog(pMac, LOGE, FL("Sessionid %d Suspend link(NOTIFY_BSS) failed. "
        "still proceeding with join"),psessionEntry->peSessionId);
     }
+
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
     psessionEntry->limMlmState = eLIM_MLM_WT_JOIN_BEACON_STATE;
     MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));

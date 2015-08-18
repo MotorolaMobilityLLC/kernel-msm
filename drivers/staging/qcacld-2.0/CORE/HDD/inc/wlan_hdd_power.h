@@ -102,4 +102,11 @@ void hdd_conf_gtk_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable);
 #ifdef WLAN_NS_OFFLOAD
 void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable);
 #endif
+
+int wlan_hdd_ipv4_changed(struct notifier_block *nb,
+				unsigned long data, void *arg);
+
+int wlan_hdd_ipv6_changed(struct notifier_block *nb,
+				unsigned long data, void *arg);
+
 #endif // if !defined __WLAN_QCT_DRIVER_H
