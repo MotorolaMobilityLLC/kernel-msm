@@ -100,10 +100,19 @@
 };
 
 &spmi_bus {
+	qcom,pm8950@0 {
+		/delete-node/ qcom,leds@a300;
+	};
+
+	qcom,pmi8950@2 {
+		/delete-node/ qcom,leds@a100;
+	};
+
 	qcom,pmi8950@3 {
 		/* display boost and inverting boost regulators */
 		labibb: qpnp-labibb-regulator {
 			status = "ok";
+			qpnp,qpnp-labibb-mode = "lcd";
 		};
 		qcom,leds@d800 {
 			qcom,fs-curr-ua = <20000>;
