@@ -11,6 +11,63 @@
  * GNU General Public License for more details.
  */
 
+&tlmm_pinmux {
+	/delete-property/ cam_sensor_mclk0_active;
+	/delete-property/ cam_sensor_mclk0_suspend;
+	/delete-property/ cam_sensor_mclk2_active;
+	/delete-property/ cam_sensor_mclk2_suspend;
+
+	cam_sensor_mclk0_active {
+		/* MCLK0 */
+		qcom,pins = <&gp 13>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_sensor_mclk0_active";
+		/* active state */
+		cam_sensor_mclk0_active: cam_sensor_mclk0_active {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk0_suspend {
+		/* MCLK0 */
+		qcom,pins = <&gp 13>;
+		qcom,num-grp-pins = <1>;
+		label = "cam_sensor_mclk0_suspend";
+		/*suspended state */
+		cam_sensor_mclk0_suspend: cam_sensor_mclk0_suspend {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+
+	cam_sensor_mclk2_active {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_sensor_mclk2_active";
+		/* active state */
+		cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk2_suspend {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		label = "cam_sensor_mclk2_suspend";
+		/* suspend state */
+		cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+};
+
 &rpm_bus {
 	/delete-property/ rpm-regulator-ldoa17;
 	/delete-property/ rpm-regulator-ldoa27;

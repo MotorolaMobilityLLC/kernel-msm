@@ -11,6 +11,62 @@
  * GNU General Public License for more details.
  */
 
+&tlmm_pinmux {
+	/delete-property/ cam_sensor_mclk0_active;
+	/delete-property/ cam_sensor_mclk0_suspend;
+	/delete-property/ cam_sensor_mclk2_active;
+	/delete-property/ cam_sensor_mclk2_suspend;
+
+	cam_sensor_mclk0_active {
+		/* MCLK0 */
+		qcom,pins = <&gp 13>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_sensor_mclk0_active";
+		/* active state */
+		cam_sensor_mclk0_active: cam_sensor_mclk0_active {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk0_suspend {
+		/* MCLK0 */
+		qcom,pins = <&gp 13>;
+		qcom,num-grp-pins = <1>;
+		label = "cam_sensor_mclk0_suspend";
+		/*suspended state */
+		cam_sensor_mclk0_suspend: cam_sensor_mclk0_suspend {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+
+	cam_sensor_mclk2_active {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cam_sensor_mclk2_active";
+		/* active state */
+		cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+			drive-strength = <4>; /* 4 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+
+	cam_sensor_mclk2_suspend {
+		/* MCLK2 */
+		qcom,pins = <&gp 15>;
+		qcom,num-grp-pins = <1>;
+		label = "cam_sensor_mclk2_suspend";
+		/* suspend state */
+		cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+			drive-strength = <4>; /* 4 MA */
+			bias-pull-down; /* PULL DOWN */
+		};
+	};
+};
 &rpm_bus {
 	/delete-property/ rpm-regulator-ldoa17;
 	/delete-property/ rpm-regulator-ldoa25;
@@ -226,14 +282,17 @@
 		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
 		gpios = <&msm_gpio 15 0>,
 			<&msm_gpio 104 0>,
-			<&msm_gpio 105 0>;
+			<&msm_gpio 105 0>,
+			<&msm_gpio 56 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
-		qcom,gpio-req-tbl-num = <0 1 2>;
-		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-custom1 = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 1>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
 					  "CAM_RESET2",
-					  "CAM_STANDBY2";
+					  "CAM_STANDBY2",
+					  "SCAM_ID";
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <1>;
@@ -243,3 +302,4 @@
 		clock-names = "cam_src_clk", "cam_clk";
 	};
 };
+
