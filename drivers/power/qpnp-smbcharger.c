@@ -50,6 +50,12 @@
 #define CHG_MONITOR_WORK_DELAY_MS		30000
 #define HIGH_CURRENT_COUNT_MAX		2
 #define DELTA_MV		100
+/* Parameters for ibus compass compensation */
+#define POWER_CONSUMPTION	1093
+#define COMPENSATION_RATIO	96
+#define COMPENSATION_OFFSET	8373
+#define CHARGE_STAGE_DELTA_MV	50
+#define COMPENSATION_LEN	16
 /* Config registers */
 struct smbchg_regulator {
 	struct regulator_desc	rdesc;
@@ -257,6 +263,7 @@ struct smbchg_chip {
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
 	struct mutex			usb_status_lock;
+	char				compass_compensation[COMPENSATION_LEN];
 };
 
 enum print_reason {
@@ -688,6 +695,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
 	POWER_SUPPLY_PROP_FLASH_ACTIVE,
 	POWER_SUPPLY_PROP_PROFILE_STATUS,
+	POWER_SUPPLY_PROP_COMPASS_COMPENSATION,
 };
 
 #define CHGR_STS			0x0E
@@ -2961,6 +2969,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PROFILE_STATUS:
 		val->intval = get_prop_batt_profile(chip);
 		break;
+	case POWER_SUPPLY_PROP_COMPASS_COMPENSATION:
+		val->strval = chip->compass_compensation;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -4226,6 +4237,61 @@ static void check_battery_ov_wa(struct smbchg_chip *chip)
 	}
 }
 
+void update_compass_compensation(struct smbchg_chip *chip)
+{
+	int status, batt_current;
+	int usb_limit, ibus = 0;
+	int compensation = 0;
+	int batt_voltage;
+	int aicl_level;
+
+	aicl_level = smbchg_get_aicl_level_ma(chip);
+	status = get_prop_batt_status(chip);
+	batt_current = get_prop_batt_current_now(chip) / 1000;
+	batt_voltage = get_prop_batt_voltage_now(chip) / 1000;
+
+	if (status == POWER_SUPPLY_STATUS_CHARGING) {
+		/*
+		 * When parallel charging, the usb current limit is the sum
+		 * of two limits. When only the main PMI8994 charging, the
+		 * aicl is the real usb current limit.
+		 */
+		if (chip->parallel.current_max_ma != 0)
+			usb_limit = chip->parallel.current_max_ma * 2;
+		else
+			usb_limit = aicl_level;
+
+		/* Use the batt voltage for CC and CV stage distinguish */
+		if (batt_voltage < chip->vfloat_mv - CHARGE_STAGE_DELTA_MV) {
+			ibus = usb_limit;
+		} else {
+			if ((batt_current > 0) ||
+				(POWER_CONSUMPTION - batt_current > usb_limit))
+				ibus = usb_limit;
+			else
+				ibus = POWER_CONSUMPTION - batt_current;
+		}
+	} else if ((status == POWER_SUPPLY_STATUS_FULL)
+			|| (status == POWER_SUPPLY_STATUS_NOT_CHARGING)) {
+		if (POWER_CONSUMPTION > usb_limit)
+			ibus = usb_limit;
+		else
+			ibus = POWER_CONSUMPTION;
+	}
+
+	if (ibus != 0)
+		compensation = ibus * COMPENSATION_RATIO - COMPENSATION_OFFSET;
+
+	memset(chip->compass_compensation, 0, COMPENSATION_LEN);
+	snprintf(chip->compass_compensation, COMPENSATION_LEN - 1, "%d.%04d",
+			compensation / 10000, compensation % 10000);
+
+	pr_smb(PR_MISC, "chg_status:%d, batt_current:%d, batt_voltage:%d\n",
+		status, batt_current, batt_voltage);
+	pr_smb(PR_MISC, "aicl_level:%d, compensation current:%d value:%s\n",
+		aicl_level, ibus, chip->compass_compensation);
+}
+
 static void monitor_charging_work(struct work_struct *work)
 {
 	int batt_current_ma;
@@ -4273,6 +4339,7 @@ static void monitor_charging_work(struct work_struct *work)
 			}
 		}
 		check_battery_ov_wa(chip);
+		update_compass_compensation(chip);
 		schedule_delayed_work(&chip->monitor_charging_work,
 				msecs_to_jiffies(CHG_MONITOR_WORK_DELAY_MS));
 	}
@@ -4450,6 +4517,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 				chip->warm_bat_decidegc);
 	}
 	cancel_delayed_work_sync(&chip->monitor_charging_work);
+	update_compass_compensation(chip);
 	chip->high_current_count = 0;
 	chip->max_input_current_ma = 0;
 	chip->temp_comp_done = false;
