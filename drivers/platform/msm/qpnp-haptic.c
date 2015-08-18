@@ -72,6 +72,8 @@
 #define QPNP_HAP_VMAX_SHIFT		1
 #define QPNP_HAP_VMAX_MIN_MV		116
 #define QPNP_HAP_VMAX_MAX_MV		3596
+#define QPNP_HAP_VMAX_STRONG_MV		1800
+#define QPNP_HAP_VMAX_LIGHT_MV		1100
 #define QPNP_HAP_ILIM_MASK		0xFE
 #define QPNP_HAP_ILIM_MIN_MV		400
 #define QPNP_HAP_ILIM_MAX_MV		800
@@ -1578,6 +1580,10 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 		}
 		hap->state = 0;
 	} else {
+		if(value >= 500)
+			hap->vmax_mv = QPNP_HAP_VMAX_STRONG_MV;
+		else
+			hap->vmax_mv = QPNP_HAP_VMAX_LIGHT_MV;
 		value = (value > hap->timeout_ms ?
 				 hap->timeout_ms : value);
 		hap->state = 1;
