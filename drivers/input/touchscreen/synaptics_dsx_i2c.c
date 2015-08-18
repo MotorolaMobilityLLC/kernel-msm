@@ -6091,9 +6091,30 @@ static void ps_external_power_changed(struct power_supply *psy)
 		dev_info(dev, "power supply presence %d in state %d\n",
 			pval.intval, state);
 
-		if (state == STATE_ACTIVE)
-			synaptics_dsx_patch_func(rmi4_data,
-				SYNAPTICS_RMI4_F01, &ps_patch[index]);
+		if (state == STATE_ACTIVE) {
+			/* reset touch ic on charging source removal */
+			/* to kick it off FNM mode */
+			if (index == 0) {
+				int retval;
+				/* set unknown state to ensure IRQ gets */
+				/* enabled on state transition to active */
+				synaptics_dsx_sensor_state(
+						rmi4_data, STATE_UNKNOWN);
+				/* disable IRQ to handle reset */
+				synaptics_rmi4_irq_enable(rmi4_data, false);
+				/* perform SW reset to restore defaults */
+				retval = synaptics_dsx_ic_reset(
+						rmi4_data, RMI4_SW_RESET);
+				if (retval < 0)
+					dev_err(&rmi4_data->i2c_client->dev,
+						"folio: sw reset failed %d\n",
+						retval);
+				synaptics_dsx_sensor_ready_state(
+							rmi4_data, false);
+			} else /* on insertion only apply charging bit */
+				synaptics_dsx_patch_func(rmi4_data,
+					SYNAPTICS_RMI4_F01, &ps_patch[index]);
+		}
 	}
 	ps_usb_present = pval.intval == 1;
 }
