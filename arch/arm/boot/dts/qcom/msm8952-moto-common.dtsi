@@ -13,3 +13,16 @@
 
 #include "msm8952.dtsi"
 #include "msm8952-pinctrl.dtsi"
+
+/ {
+	aliases {
+		serial0 = &blsp1_uart2;
+	};
+};
+
+
+&blsp1_uart2 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_sleep>;
+};
