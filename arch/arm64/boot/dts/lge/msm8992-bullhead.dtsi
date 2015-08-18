@@ -65,13 +65,17 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		reg-names = "spi_physical";
-		reg = <0xf9963000 0x500>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9963000 0x1000>, <0xf9944000 0x19000>;
 
-		interrupt-names = "spi_irq";
-		interrupts = <0 101 0>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 101 0>, <0 239 0>;
 
 		spi-max-frequency = <25000000>;
+
+		qcom,use-bam;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
 
 		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi7_default &spi7_cs_active>;
@@ -81,6 +85,7 @@
 		clock-names = "iface_clk", "core_clk";
 
 		qcom,use-pinctrl;
+		qcom,infinite-mode = <0>;
 		qcom,ver-reg-exists;
 		qcom,master-id = <84>;
 	};
