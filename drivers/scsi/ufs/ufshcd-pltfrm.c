@@ -117,7 +117,7 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
 
 		clki->min_freq = clkfreq[i];
 		clki->max_freq = clkfreq[i+1];
-		clki->name = kstrdup(name, GFP_KERNEL);
+		clki->name = devm_kstrdup(dev, name, GFP_KERNEL);
 		dev_dbg(dev, "%s: min %u max %u name %s\n", "freq-table-hz",
 				clki->min_freq, clki->max_freq, clki->name);
 		list_add_tail(&clki->list, &hba->clk_list_head);
