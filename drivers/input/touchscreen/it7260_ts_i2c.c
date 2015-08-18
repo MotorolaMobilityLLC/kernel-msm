@@ -544,6 +544,7 @@ static void chipLowPowerMode(bool low)
 		LOGI("low power %s\n", low ? "enter" : "exit");
 
 		if (low) {
+			driverInLowPower = true;
 			input_mt_slot(gl_ts->touch_dev, 0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 			input_mt_slot(gl_ts->touch_dev, 1);
@@ -556,13 +557,14 @@ static void chipLowPowerMode(bool low)
 					LOGI("[%d] %s enable IRQ wake fail. ret = %d.\n", __LINE__, __func__, ret);
 				}
 			}
-			driverInLowPower = true;
 			isTouchLocked = true;
 			LOGI("[%d] %s set isTouchLocked = %d.\n", __LINE__, __func__, isTouchLocked);
 			wake_unlock(&touch_lock);
 			queue_delayed_work(IT7260_wq, &gl_ts->touchidle_on_work, 500);
 		} else {
+			driverInLowPower = false;
 			cancel_delayed_work(&gl_ts->touchidle_on_work);
+			cancel_delayed_work(&gl_ts->exit_idle_work);
 			LOGI("[%d] %s TP_DLMODE = %d, update_flag = %d.\n", __LINE__, __func__, TP_DLMODE, update_flag);
 			if (first_leavelowpower && !TP_DLMODE && !update_flag) {
 				//Touch Reset
@@ -588,7 +590,6 @@ static void chipLowPowerMode(bool low)
 					LOGI("[%d] %s disable IRQ wake fail. ret = %d.\n", __LINE__, __func__, ret);
 				}
 			}
-			driverInLowPower = false;
 			isTouchLocked = false;
 			LOGI("[%d] %s set isTouchLocked = %d. \n", __LINE__, __func__, isTouchLocked);
 			hadPalmDown = false;
@@ -1085,26 +1086,28 @@ static void touchIdleOnEvt(struct work_struct *work) {
 }
 
 static void exitIdleEvt(struct work_struct *work) {
-	AMB_TOUCH_HAD_SEND_FLAG = 1;
-	exit_idle_event_time = getMsTime();
-	if (exit_idle_event_time - last_time_send_palm > 800) {
-		isTouchLocked = true;
-		LOGI("[%d] %s Touch DOWN x = 1, y = 1.\n", __LINE__, __func__);
-		input_mt_slot(gl_ts->touch_dev,0);
-		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
-		input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 1);
-		input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 1);
-		input_sync(gl_ts->touch_dev);
-		input_mt_slot(gl_ts->touch_dev,0);
-		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
-		input_sync(gl_ts->touch_dev);
-		wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
-		wake_unlock(&touch_lock);
-		last_time_exit_low = jiffies;
-	} else {
-			LOGI("[%d] %s Wait palm to ambient, PALM_DELTA_TIME = %llu.\n", __LINE__, __func__, exit_idle_event_time - last_time_send_palm);
+	if (driverInLowPower) {
+		AMB_TOUCH_HAD_SEND_FLAG = 1;
+		exit_idle_event_time = getMsTime();
+		if (exit_idle_event_time - last_time_send_palm > 800) {
+			isTouchLocked = true;
+			LOGI("[%d] %s Touch DOWN x = 1, y = 1.\n", __LINE__, __func__);
+			input_mt_slot(gl_ts->touch_dev,0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 1);
+			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 1);
+			input_sync(gl_ts->touch_dev);
+			input_mt_slot(gl_ts->touch_dev,0);
+			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
+			input_sync(gl_ts->touch_dev);
+			wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
+			wake_unlock(&touch_lock);
+			last_time_exit_low = jiffies;
+		} else {
+				LOGI("[%d] %s Wait palm to ambient, PALM_DELTA_TIME = %llu.\n", __LINE__, __func__, exit_idle_event_time - last_time_send_palm);
+		}
+		AMB_TOUCH_HAD_SEND_FLAG = 0;
 	}
-	AMB_TOUCH_HAD_SEND_FLAG = 0;
 }
 
 static void sendPalmEvt(void)
