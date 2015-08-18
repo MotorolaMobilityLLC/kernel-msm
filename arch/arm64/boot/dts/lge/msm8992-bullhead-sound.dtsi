@@ -14,9 +14,9 @@
 &soc {
 	sound {
 		qcom,mbhc-btn-cal-low =
-			/bits/ 16 <(-50) 111 191 360 751 753 755 757>;
+			/bits/ 16 <(-50) 211 291 460 851 853 855 857>;
 		qcom,mbhc-btn-cal-high =
-			/bits/ 16 <110 190 359 750 752 754 756 758>;
+			/bits/ 16 <210 290 459 850 852 854 856 858>;
 		qcom,mbhc-micbias-enable-flags = <0x3>;
 	};
 };
