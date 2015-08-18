@@ -241,6 +241,8 @@
 		qcom,eeprom-src = <&eeprom5>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
+		qcom,vdd-cx-supply = <&pm8994_s4>;
+		qcom,vdd-cx-name = "qcom,vdd-cx";
 		cam_vdig-supply = <&pm8994_l3>;
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vana-supply = <&pm8994_l17>;
@@ -279,6 +281,8 @@
 		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <90>;
 		qcom,eeprom-src = <&eeprom1>;
+		qcom,vdd-cx-supply = <&pm8994_s4>;
+		qcom,vdd-cx-name = "qcom,vdd-cx";
 		cam_vdig-supply = <&pm8994_l25>;
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vana-supply = <&pm8994_l29>;
