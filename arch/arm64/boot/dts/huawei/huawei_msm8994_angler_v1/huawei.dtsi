@@ -52,4 +52,4 @@
 
 #include "huawei-nfc.dtsi"
 #include "huawei-usb.dtsi"
-#include "huawei-rf.dtsi"
+/*#include "huawei-rf.dtsi"*/
