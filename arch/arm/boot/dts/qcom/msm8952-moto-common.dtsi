@@ -23,6 +23,7 @@
 &tlmm_pinmux {
 	tlmm_gpio_key {
 			qcom,pins = <&gp 85>;
+			qcom,num-grp-pins = <1>;
 	};
 };
 
