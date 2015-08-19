@@ -14,6 +14,7 @@
 #include "msm8996-v2.dtsi"
 #include "msm8996-pinctrl.dtsi"
 #include "msm8996-moto-pinctrl.dtsi"
+#include "msm8996-camera-sensor-mot.dtsi"
 
 &sdcc1_ice {
         status = "ok";
@@ -426,6 +427,18 @@
 		mmi,tty = "ttyHS5";
 		mmi,tty_speed = <115200>;
 		mmi,intf-id = /bits/ 8 <5>;
+	};
+
+	cci: qcom,cci@a0c000 {
+		pinctrl-names = "cci_default", "cci_suspend";
+		pinctrl-0 = <&cci0_active>;
+		pinctrl-1 = <&cci0_suspend>;
+		gpios = <&tlmm 17 0>,
+			<&tlmm 18 0>;
+		qcom,gpio-tbl-num = <0 1>;
+		qcom,gpio-tbl-flags = <1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
+			"CCI_I2C_CLK0";
 	};
 };
 
