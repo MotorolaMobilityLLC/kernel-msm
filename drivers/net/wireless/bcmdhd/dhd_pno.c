@@ -102,7 +102,7 @@ is_dfs(uint16 channel)
 {
 	if (channel >= 52 && channel <= 64)			/* class 2 */
 		return TRUE;
-	else if (channel >= 100 && channel <= 140)	/* class 4 */
+	else if (channel >= 100 && channel <= 144)	/* class 4 */
 		return TRUE;
 	else
 		return FALSE;
