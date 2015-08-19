@@ -187,7 +187,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		input_report_switch(ps_stml0xx->input_dev, SW_LID, state);
 		input_sync(ps_stml0xx->input_dev);
 
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_info(&stml0xx_misc_data->spi->dev,
 			"Cover status: %d", state);
 	}
 	if (irq_status & M_HEADSET) {
@@ -348,8 +348,12 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			0,
 			stm_ws->ts_ns);
 
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Stowed status %d", buf[WAKE_IRQ_IDX_STOWED]);
+		dev_info(&stml0xx_misc_data->spi->dev,
+			"Sending Stowed status %d, als %d, prox %d",
+			buf[WAKE_IRQ_IDX_STOWED],
+			STM16_TO_HOST(ALS_VALUE,
+				&buf[WAKE_IRQ_IDX_STOWED_ALS]),
+			buf[WAKE_IRQ_IDX_PROX]);
 	}
 	if (irq_status & M_CAMERA_ACT) {
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CAMERA_ACT,
@@ -432,7 +436,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_ms_data_buffer_write(ps_stml0xx, DT_ALGO_EVT,
 						&buf[WAKE_IRQ_IDX_MODALITY], 8);
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending modality event");
+			"Sending algo modality event");
 	}
 	if (irq2_status & M_ALGO_ORIENTATION) {
 		buf[WAKE_IRQ_IDX_MODALITY_ORIENT + ALGO_TYPE] =
@@ -441,7 +445,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 				&buf[WAKE_IRQ_IDX_MODALITY_ORIENT],
 				8);
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending orientation event");
+			"Sending algo orientation event");
 	}
 	if (irq2_status & M_ALGO_STOWED) {
 		buf[WAKE_IRQ_IDX_MODALITY_STOWED + ALGO_TYPE] =
@@ -449,7 +453,12 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_ms_data_buffer_write(ps_stml0xx, DT_ALGO_EVT,
 				&buf[WAKE_IRQ_IDX_MODALITY_STOWED],
 				8);
-		dev_dbg(&stml0xx_misc_data->spi->dev, "Sending stowed event");
+		dev_info(&stml0xx_misc_data->spi->dev,
+			"Sending algo stowed event %d, als %d, prox %d",
+			buf[WAKE_IRQ_IDX_MODALITY_STOWED + 3],
+			STM16_TO_HOST(ALS_VALUE,
+				&buf[WAKE_IRQ_IDX_STOWED_ALS]),
+			buf[WAKE_IRQ_IDX_PROX]);
 	}
 	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
 		buf[WAKE_IRQ_IDX_MODALITY_ACCUM + ALGO_TYPE] =
@@ -473,7 +482,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	if (irq_status & M_LOG_MSG) {
 		memcpy(stat_string, &buf[WAKE_IRQ_IDX_LOG_MSG], LOG_MSG_SIZE);
 		stat_string[LOG_MSG_SIZE] = 0;
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_info(&stml0xx_misc_data->spi->dev,
 			"sensorhub : %s", stat_string);
 	}
 	if (irq_status & M_INIT_COMPLETE) {
@@ -484,7 +493,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 
 		queue_work(ps_stml0xx->irq_work_queue,
 			&ps_stml0xx->initialize_work);
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_info(&stml0xx_misc_data->spi->dev,
 			"Sensor Hub reports reset");
 		stml0xx_g_booted = 1;
 	}
@@ -496,7 +505,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 					     0, stm_ws->ts_ns);
 
 		stml0xx_reset(stml0xx_misc_data->pdata);
-		dev_err(&stml0xx_misc_data->spi->dev,
+		dev_info(&stml0xx_misc_data->spi->dev,
 			"STML0XX requested a reset");
 	}
 
