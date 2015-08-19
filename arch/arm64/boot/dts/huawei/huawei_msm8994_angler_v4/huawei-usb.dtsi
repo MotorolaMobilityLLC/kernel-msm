@@ -14,6 +14,12 @@
 	qcom,hsphy-init = <0x00D191A4>;
 };
 
+&usb3 {
+	dwc3@f9200000 {
+		maximum-speed = "high-speed";
+	};
+};
+
 &pm8994_mpps {
 	mpp@a700 { /* MPP 8 */
 		qcom,mode = <1>;		/* Digital output */

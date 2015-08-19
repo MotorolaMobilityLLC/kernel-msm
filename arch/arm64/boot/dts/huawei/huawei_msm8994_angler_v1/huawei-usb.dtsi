@@ -10,6 +10,12 @@
  * GNU General Public License for more details.
  */
 
+&usb3 {
+	dwc3@f9200000 {
+		maximum-speed = "high-speed";
+	};
+};
+
 &pm8994_gpios {
 	gpio@ca00 { /* GPIO 11 */
 		status = "ok";
