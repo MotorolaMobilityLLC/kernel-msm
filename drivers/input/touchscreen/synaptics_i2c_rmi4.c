@@ -1087,9 +1087,11 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 	if (idle_mode) {
 		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
 		synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_SLEEP);
+		synaptics_rmi4_regulator_lpm(rmi4_data, true);
 	} else {
 		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
 		synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_ACTIVE);
+		synaptics_rmi4_regulator_lpm(rmi4_data, false);
 	}
 
 	return count;
