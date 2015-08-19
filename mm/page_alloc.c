@@ -5312,7 +5312,11 @@ void __init mem_init_print_info(const char *str)
 	codesize = _etext - _stext;
 	datasize = _edata - _sdata;
 	rosize = __end_rodata - __start_rodata;
+#ifdef CONFIG_UML
+	bss_size = _end - __bss_start;
+#else
 	bss_size = __bss_stop - __bss_start;
+#endif
 	init_data_size = __init_end - __init_begin;
 	init_code_size = _einittext - _sinittext;
 
