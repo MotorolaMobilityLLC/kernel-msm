@@ -385,25 +385,68 @@ int of_machine_is_compatible(const char *compat)
 }
 EXPORT_SYMBOL(of_machine_is_compatible);
 
+static struct device_node *__of_find_node_by_path(const char *path)
+{
+	struct device_node *np = of_allnodes;
+
+	for (; np; np = np->allnext) {
+		if (np->full_name && (of_node_cmp(np->full_name, path) == 0)
+		    && of_node_get(np))
+			break;
+	}
+	return np;
+}
+
 /**
  *  __of_device_is_available - check if a device is available for use
  *
  *  @device: Node to check for availability, with locks already held
  *
- *  Returns 1 if the status property is absent or set to "okay" or "ok",
+ *  Returns 1 if the status property
+ *  -- is absent or set to "okay" or "ok",
+ *  -- refers to another property using string list as following
+ *     status = <path>, <okay property>, <value>;
+ *     and <value> matches value of /<path>/<okay property>
  *  0 otherwise
  */
 static int __of_device_is_available(const struct device_node *device)
 {
-	const char *status;
-	int statlen;
+	struct property *pp;
+	struct device_node *np;
+	const char *val, *status;
+	const char *okay_name, *okay_val;
+	int len;
 
-	status = __of_get_property(device, "status", &statlen);
-	if (status == NULL)
+	pp = __of_find_property(device, "status", &len);
+	if (pp == NULL)
 		return 1;
 
-	if (statlen > 0) {
+	status = pp->value;
+
+	if (len > 0) {
 		if (!strcmp(status, "okay") || !strcmp(status, "ok"))
+			return 1;
+
+		if (*status != '/')
+			return 0;
+
+		okay_name = of_prop_next_string(pp, status);
+		if (!okay_name)
+			return 0;
+
+		val = of_prop_next_string(pp, okay_name);
+		if (!val)
+			return 0;
+
+		np = __of_find_node_by_path(status);
+		if (!np)
+			return 0;
+
+		okay_val = __of_get_property(np, okay_name, &len);
+		if (okay_val == NULL || len <= 0)
+			return 0;
+
+		if (!strcmp(val, okay_val))
 			return 1;
 	}
 
@@ -565,15 +608,11 @@ EXPORT_SYMBOL(of_get_child_by_name);
  */
 struct device_node *of_find_node_by_path(const char *path)
 {
-	struct device_node *np = of_allnodes;
+	struct device_node *np;
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&devtree_lock, flags);
-	for (; np; np = np->allnext) {
-		if (np->full_name && (of_node_cmp(np->full_name, path) == 0)
-		    && of_node_get(np))
-			break;
-	}
+	np = __of_find_node_by_path(path);
 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
 	return np;
 }
