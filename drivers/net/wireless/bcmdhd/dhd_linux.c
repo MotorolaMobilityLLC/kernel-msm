@@ -4615,8 +4615,11 @@ dhd_init_logstrs_array(dhd_event_log_t *temp)
 		return BCME_OK;
 	}
 	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
-	set_fs(KERNEL_DS);
+
+	/* Save previous address limit first and then change to KERNEL_DS address limit */
 	fs = get_fs();
+	set_fs(KERNEL_DS);
+
 	filep = filp_open(logstrs_path, O_RDONLY, 0);
 	if (IS_ERR(filep)) {
 		DHD_ERROR(("Failed to open the file logstrs.bin in %s, %s\n",  __FUNCTION__, logstrs_path));
@@ -4730,7 +4733,10 @@ fail:
 	}
 	if (!IS_ERR(filep))
 		filp_close(filep, NULL);
+
+	/* Restore previous address limit */
 	set_fs(fs);
+
 	temp->fmts = NULL;
 	return -1;
 }
