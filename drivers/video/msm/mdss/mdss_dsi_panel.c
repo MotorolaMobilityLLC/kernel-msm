@@ -811,7 +811,11 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	if (pinfo->later_on_enabled && !pinfo->is_docked) {
+#else
 	if (pinfo->later_on_enabled) {
+#endif
 		mutex_lock(&pinfo->later_on_mutex);
 		if (pinfo->later_on_state == LATER_ON_NONE) {
 			int r = mdss_dsi_set_panel_blank(ctrl, true);
@@ -1323,7 +1327,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		u32 tmp;
 		int rc = of_property_read_u32(np,
 				"qcom,mdss-later-on-delay-ms", &tmp);
-		pinfo->later_on_delay = (!rc ? tmp : 250);
+		pinfo->later_on_delay = (!rc ? tmp : 100);
 		pinfo->later_on_after_update =
 			of_property_read_bool(np, "qcom,later-on-after-update");
 		mdss_dsi_parse_dcs_cmds(np, &ctrl->blank_cmd,
