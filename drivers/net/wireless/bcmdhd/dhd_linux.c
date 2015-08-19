@@ -9882,6 +9882,10 @@ int dhd_os_socram_dump(struct net_device *dev, uint32 *dump_size)
 	int ret = BCME_OK;
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 	dhd_pub_t *dhdp = &dhd->pub;
+
+	if (dhdp->busstate == DHD_BUS_DOWN) {
+		return BCME_ERROR;
+	}
 	ret = dhd_common_socram_dump(dhdp);
 	if (ret == BCME_OK) {
 		*dump_size = dhdp->soc_ram_length;
