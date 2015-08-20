@@ -12,6 +12,7 @@
 
 
 #include "msm8996-moto-common.dtsi"
+#include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 
 / {
 	model = "Princeton";
@@ -52,5 +53,11 @@
 
 
 &mot_tdi_546_1080p_cmd_v0 {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-panel-timings-8996 = [
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 18 07 08 05 03 04 a0
+	];
 };
