@@ -3381,8 +3381,7 @@ static int fg_do_restart(struct fg_chip *chip, bool write_profile)
 	int tries = 0;
 	u8 reg = 0;
 
-	if (fg_debug_mask & FG_STATUS)
-		pr_info("restarting fuel gauge...\n");
+	pr_info("restarting fuel gauge...\n");
 	/*
 	 * release the sram access and configure the correct settings
 	 * before re-requesting access.
@@ -3713,13 +3712,13 @@ wait:
 	}
 	if (fg_est_dump)
 		dump_sram(&chip->dump_sram);
-	if ((fg_debug_mask & FG_STATUS) && !vbat_in_range)
+	if (!vbat_in_range)
 		pr_info("Vbat out of range: v_current_pred: %d, v:%d\n",
 				fg_data[FG_DATA_CPRED_VOLTAGE].value,
 				fg_data[FG_DATA_VOLTAGE].value);
-	if ((fg_debug_mask & FG_STATUS) && fg_is_batt_empty(chip))
+	if (fg_is_batt_empty(chip))
 		pr_info("battery empty\n");
-	if ((fg_debug_mask & FG_STATUS) && !profiles_same)
+	if (!profiles_same)
 		pr_info("profiles differ\n");
 	if (fg_debug_mask & FG_STATUS) {
 		pr_info("Using new profile\n");
