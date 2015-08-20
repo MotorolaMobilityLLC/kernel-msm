@@ -25,6 +25,38 @@
 			qcom,pins = <&gp 85>;
 			qcom,num-grp-pins = <1>;
 	};
+
+	touch_reset_n {
+		qcom,pins = <&gp 64>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-reset";
+
+		touch_reset_default: default {
+			output-low;
+		};
+
+		touch_reset_active: active {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
+		};
+	};
+
+	touch_int_n {
+		qcom,pins = <&gp 65>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "touch-int";
+
+		touch_int_default: default {
+			bias-disable;
+		};
+
+		touch_int_active: active {
+			drive-strength = <2>;
+			bias-pull-up; /* pull-up */
+		};
+	};
 };
 
 &soc {
@@ -144,4 +176,32 @@
 
 	qcom,platform-reset-gpio = <&msm_gpio 0 0>;
 	qcom,platform-te-gpio = <&msm_gpio 24 0>;
+};
+
+&i2c_3 { /* BLSP1 QUP3 */
+	synaptics@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <65 0>;
+		gpios = <&msm_gpio 65 0>, /* IRQ */
+			<&msm_gpio 64 0>; /* RESET */
+		touch_vdd-supply = <&pm8950_l22>;
+		vdd_quirk-supply = <&pm8950_l6>;
+		/*vcc_i2c-supply = <&pm8950_l6>;*/
+		synaptics,gpio-config;
+		/* pins used by touchscreen */
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_reset_default &touch_int_default>;
+		pinctrl-1 = <&touch_reset_active &touch_int_active>;
+		touchstate_modes {
+			touchmode-default = <&default_active &default_suspended>;
+		};
+		default_active: touchstate_default_active {
+			patch-data = "";
+		};
+		default_suspended: touchstate_aod_suspended {
+			patch-data = "F1@0=1&7";
+		};
+	};
 };
