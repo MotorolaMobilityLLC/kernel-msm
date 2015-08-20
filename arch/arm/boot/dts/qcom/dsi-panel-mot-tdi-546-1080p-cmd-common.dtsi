@@ -69,10 +69,7 @@ qcom,mdss-dsi-off-command = [
 
 qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
-qcom,mdss-dsi-h-sync-pulse = <0>;
-qcom,mdss-dsi-traffic-mode = "burst_mode";
-qcom,mdss-dsi-bllp-eof-power-mode;
-qcom,mdss-dsi-bllp-power-mode;
+qcom,mdss-dsi-bllp-eof-power-mode; //todo: Check if this can be removed
 qcom,mdss-dsi-lane-0-state;
 qcom,mdss-dsi-lane-1-state;
 qcom,mdss-dsi-lane-2-state;
@@ -94,3 +91,47 @@ qcom,mdss-dsi-te-pin-select = <1>;
 qcom,mdss-dsi-te-dcs-command = <1>;
 qcom,mdss-dsi-te-check-enable;
 qcom,mdss-dsi-te-using-te-pin;
+
+qcom,panel-supply-entries {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	qcom,panel-supply-entry@0 {
+		reg = <0>;
+		qcom,supply-name = "vddio_disp";
+		qcom,supply-min-voltage = <1800000>;
+		qcom,supply-max-voltage = <1800000>;
+		qcom,supply-enable-load = <300000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <1>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+
+	qcom,panel-supply-entry@1 {
+		reg = <1>;
+		qcom,supply-name = "vsp_disp";
+		qcom,supply-min-voltage = <5500000>;
+		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <2>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <5>;
+	};
+
+	qcom,panel-supply-entry@2 {
+		reg = <2>;
+		qcom,supply-name = "vsn_disp";
+		qcom,supply-min-voltage = <5500000>;
+		qcom,supply-max-voltage = <5500000>;
+		qcom,supply-enable-load = <100000>;
+		qcom,supply-disable-load = <100>;
+		qcom,supply-pre-on-sleep = <0>;
+		qcom,supply-post-on-sleep = <2>;
+		qcom,supply-pre-off-sleep = <0>;
+		qcom,supply-post-off-sleep = <1>;
+	};
+};
