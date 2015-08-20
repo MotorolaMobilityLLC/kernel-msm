@@ -1462,6 +1462,7 @@ static void update_sram_data(struct fg_chip *chip, int *resched_ms)
 	u8 reg[4];
 	int64_t temp;
 	int battid_valid = fg_is_batt_id_valid(chip);
+	union power_supply_propval prop = {0, };
 
 	fg_stay_awake(&chip->update_sram_wakeup_source);
 	fg_mem_lock(chip);
@@ -1537,6 +1538,10 @@ static void update_sram_data(struct fg_chip *chip, int *resched_ms)
 	} else {
 		*resched_ms = SRAM_PERIOD_NO_ID_UPDATE_MS;
 	}
+	/* Update compass compensation when charge related parameters changes */
+	if (chip->batt_psy)
+		chip->batt_psy->set_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_COMPASS_COMPENSATION, &prop);
 	fg_relax(&chip->update_sram_wakeup_source);
 }
 
