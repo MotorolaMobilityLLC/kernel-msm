@@ -3710,10 +3710,46 @@ static void synaptics_rmi4_f12_wg(struct synaptics_rmi4_data *rmi4_data,
 static void synaptics_rmi4_wakeup_gesture(struct synaptics_rmi4_data *rmi4_data,
 		bool enable)
 {
+	int retval;
+	unsigned char device_ctrl;
+	unsigned char no_sleep_setting = rmi4_data->no_sleep_setting;
+
 	if (rmi4_data->f11_wakeup_gesture)
 		synaptics_rmi4_f11_wg(rmi4_data, enable);
 	else if (rmi4_data->f12_wakeup_gesture)
 		synaptics_rmi4_f12_wg(rmi4_data, enable);
+
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr,
+			&device_ctrl,
+			sizeof(device_ctrl));
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to read reg when wakeup gesture\n",
+				__func__);
+		return;
+	}
+
+	if (enable) {
+		device_ctrl = (device_ctrl & ~ MASK_3BIT);
+		device_ctrl = (device_ctrl | NO_SLEEP_OFF | NORMAL_OPERATION);
+		tp_log_debug("%s: wakeup gesture true(000)!device_ctrl = %x\n", __func__, device_ctrl);
+	} else {
+		device_ctrl = (device_ctrl & ~ MASK_3BIT);
+		device_ctrl = (device_ctrl | no_sleep_setting | NORMAL_OPERATION);
+		tp_log_debug("%s: wakeup gesture false(100)!device_ctrl = %x\n", __func__, device_ctrl);
+	}
+
+	retval = synaptics_rmi4_reg_write(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr,
+			&device_ctrl,
+			sizeof(device_ctrl));
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to write reg when wakeup gesture\n",
+				__func__);
+		return;
+	}
 
 	return;
 }
