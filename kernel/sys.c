@@ -126,6 +126,7 @@ int C_A_D = 1;
 struct pid *cad_pid;
 EXPORT_SYMBOL(cad_pid);
 
+atomic_t reboot_triggered;
 /*
  * If set, this is used for preparing the system to power off.
  */
@@ -461,6 +462,12 @@ void kernel_power_off(void)
 }
 EXPORT_SYMBOL_GPL(kernel_power_off);
 
+int reboot_in_progress(void)
+{
+	return atomic_read(&reboot_triggered);
+}
+EXPORT_SYMBOL_GPL(reboot_in_progress);
+
 static DEFINE_MUTEX(reboot_mutex);
 
 /*
@@ -499,6 +506,7 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	if (ret)
 		return ret;
 
+	atomic_set(&reboot_triggered, 1);
 	/* Instead of trying to make the power_off code look like
 	 * halt when pm_power_off is not set do it the easy way.
 	 */
