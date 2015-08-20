@@ -173,8 +173,12 @@ static void hsuart_power(int on)
 	if (test_bit(BT_SUSPEND, &flags))
 		return;
 	if (on) {
-		msm_hs_request_clock_on(bsi->uport);
-		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		// make sure port is active before enable it.
+		if(bsi->uport->state->port.count)
+		{
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		}
 	} else {
 		msm_hs_set_mctrl(bsi->uport, 0);
 		msm_hs_request_clock_off(bsi->uport);
