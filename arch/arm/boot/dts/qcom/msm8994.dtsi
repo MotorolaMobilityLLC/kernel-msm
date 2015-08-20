@@ -84,6 +84,19 @@
 			qcom,acc = <&acc0>;
 			qcom,ldo = <&ldo0>;
 			next-level-cache = <&L2_0>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 24140 //384000 kHZ
+			            27200 //460800 kHZ
+			            32300 //600000 kHZ
+			            36940 //672000 kHz
+			            41570 //768000 kHZ
+			            49870 //864000 kHZ
+			            57840 //960000 kHZ
+			            79800 //1248000 kHZ
+			            88810 //1344000 kHZ
+			            102400 //1478400 kHZ
+			            110900>; //1555200 kHZ
 			L2_0: l2-cache {
 			      compatible = "arm,arch-cache";
 			      cache-level = <2>;
@@ -111,6 +124,19 @@
 			qcom,acc = <&acc1>;
 			qcom,ldo = <&ldo1>;
 			next-level-cache = <&L2_0>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 9415 //384000 kHZ
+			            10608 //460800 kHZ
+			            12597 //600000 kHZ
+			            14407 //672000 kHz
+			            16212 //768000 kHZ
+			            19449 //864000 kHZ
+			            22558 //960000 kHZ
+			            31122 //1248000 kHZ
+			            34636 //1344000 kHZ
+			            39936 //1478400 kHZ
+			            43251>; //1555200 kHZ
 			L1_I_1: l1-icache {
 				compatible = "arm,arch-cache";
 				qcom,dump-size = <0x9040>;
@@ -129,6 +155,19 @@
 			qcom,acc = <&acc2>;
 			qcom,ldo = <&ldo2>;
 			next-level-cache = <&L2_0>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 9656 //384000 kHZ
+			            10880 //460800 kHZ
+			            12920 //600000 kHZ
+			            14776 //672000 kHz
+			            16628 //768000 kHZ
+			            19948 //864000 kHZ
+			            23136 //960000 kHZ
+			            31920 //1248000 kHZ
+			            35524 //1344000 kHZ
+			            40960 //1478400 kHZ
+			            44360>; //1555200 kHZ
 			L1_I_2: l1-icache {
 				compatible = "arm,arch-cache";
 				qcom,dump-size = <0x9040>;
@@ -147,6 +186,19 @@
 			qcom,acc = <&acc3>;
 			qcom,ldo = <&ldo3>;
 			next-level-cache = <&L2_0>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 10139 //384000 kHZ
+			            11424 //460800 kHZ
+			            13566 //600000 kHZ
+			            15515 //672000 kHz
+			            17459 //768000 kHZ
+			            20945 //864000 kHZ
+			            24293 //960000 kHZ
+			            33516 //1248000 kHZ
+			            37300 //1344000 kHZ
+			            43008 //1478400 kHZ
+			            46578>; //1555200 kHZ
 			L1_I_3: l1-icache {
 				compatible = "arm,arch-cache";
 				qcom,dump-size = <0x9040>;
@@ -157,7 +209,7 @@
 			};
 		};
 
-		CPU4: cpu@100 {
+		CPU4: cpu@4 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a57";
 			reg = <0x100>;
@@ -165,6 +217,22 @@
 			qcom,acc = <&acc4>;
 			qcom,ldo = <&ldo4>;
 			next-level-cache = <&L2_1>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 86830 //384000 kHZ
+			            103240 //480000 kHZ
+			            129380 //633600 kHZ
+			            155210 //768000 kHZ
+			            177990 //864000 kHZ
+			            195550 //960000 kHZ
+			            265090 //1248000 kHZ
+			            292770 //1344000 kHZ
+			            322130 //1440000 kHZ
+			            348190 //1536000 kHZ
+			            370180 //1632000 kHZ
+			            401551 //1728000 kHZ
+			            437840 //1824000 kHZ
+			            481070>; //1958400 kHZ
 			L2_1: l2-cache {
 			      compatible = "arm,arch-cache";
 			      cache-level = <2>;
@@ -190,7 +258,7 @@
 			};
 		};
 
-		CPU5: cpu@101 {
+		CPU5: cpu@5 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a57";
 			reg = <0x101>;
@@ -198,6 +266,22 @@
 			qcom,acc = <&acc5>;
 			qcom,ldo = <&ldo5>;
 			next-level-cache = <&L2_1>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 50361 //384000 kHZ
+			            59879 //480000 kHZ
+			            75040 //633600 kHZ
+			            90144 //768000 kHZ
+			            103234 //864000 kHZ
+			            113419 //960000 kHZ
+			            153752 //1248000 kHZ
+			            169807 //1344000 kHZ
+			            186835 //1440000 kHZ
+			            201950 //1536000 kHZ
+			            214704 //1632000 kHZ
+			            235196 //1728000 kHZ
+			            253947 //1824000 kHZ
+			            279021>; //1958400 kHZ
 			L1_itlb_101: l1-itlb {
 				qcom,dump-size = <0x400>;
 			};
@@ -214,7 +298,7 @@
 			};
 		};
 
-		CPU6: cpu@102 {
+		CPU6: cpu@6 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a57";
 			reg = <0x102>;
@@ -222,6 +306,22 @@
 			qcom,acc = <&acc6>;
 			qcom,ldo = <&ldo6>;
 			next-level-cache = <&L2_1>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 59913 //384000 kHZ
+			            71236 //480000 kHZ
+			            89272 //633600 kHZ
+			            107240 //768000 kHZ
+			            122813 //864000 kHZ
+			            134930 //960000 kHZ
+			            182912 //1248000 kHZ
+			            202011 //1344000 kHZ
+			            222270 //1440000 kHZ
+			            240251 //1536000 kHZ
+			            255424 //1632000 kHZ
+			            279802 //1728000 kHZ
+			            302110 //1824000 kHZ
+			            331938>; //1958400 kHZ
 			L1_itlb_102: l1-itlb {
 				qcom,dump-size = <0x400>;
 			};
@@ -238,7 +338,7 @@
 			};
 		};
 
-		CPU7: cpu@103 {
+		CPU7: cpu@7 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a57";
 			reg = <0x103>;
@@ -246,6 +346,22 @@
 			qcom,acc = <&acc7>;
 			qcom,ldo = <&ldo7>;
 			next-level-cache = <&L2_1>;
+			// The currents(uA) correspond to the frequencies in the
+			// frequency table.
+			current = < 62518 //384000 kHZ
+			            74333 //480000 kHZ
+			            93154 //633600 kHZ
+			            111902 //768000 kHZ
+			            128153 //864000 kHZ
+			            140796 //960000 kHZ
+			            190865 //1248000 kHZ
+			            210794 //1344000 kHZ
+			            231934 //1440000 kHZ
+			            250697 //1536000 kHZ
+			            266530 //1632000 kHZ
+			            291967 //1728000 kHZ
+			            315245 //1824000 kHZ
+			            346370>; //1958400 kHZ
 			L1_itlb_103: l1-itlb {
 				qcom,dump-size = <0x400>;
 			};
