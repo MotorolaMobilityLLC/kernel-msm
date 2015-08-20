@@ -846,7 +846,8 @@ static void fan5404x_external_power_changed(struct power_supply *psy)
 		chip->factory_present = true;
 
 	if (chip->factory_mode && chip->usb_psy && chip->factory_present
-						&& !factory_kill_disable) {
+						&& !factory_kill_disable
+						&& !reboot_in_progress()) {
 		rc = chip->usb_psy->get_property(chip->usb_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
 		if (!rc && (prop.intval == 0) && !chip->usb_present) {
