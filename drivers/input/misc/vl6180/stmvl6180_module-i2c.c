@@ -246,6 +246,8 @@ int stmvl6180_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 	/* actual power on */
 #ifndef STM_TEST
 	if (data != NULL) {
+		ret = regulator_set_optimum_mode(data->vdd, 100000);
+		pr_info("%s: stmvl6180 set L18 to mode %d\n", __func__,  ret);
 		ret = regulator_enable(data->vdd);
 		if (ret < 0) {
 			pr_err("%s: failed to enable st vdd\n", __func__);
