@@ -3198,7 +3198,7 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 	}
 
 	if (chip->factory_mode && chip->sw_kill && chip->factory_cable) {
-		if (!factory_kill_disable) {
+		if (!factory_kill_disable && !reboot_in_progress()) {
 			pr_err("SMB - Factory Cable removed, power-off\n");
 			kernel_power_off();
 		} else
