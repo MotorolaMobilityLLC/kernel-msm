@@ -258,7 +258,7 @@
 #define ST_THRESHOLD_MULTIPLIER  10
 #define ST_MAX_SAMPLES           500
 #define ST_MAX_THRESHOLD         100
-#define DMP_INTERVAL_INIT       (5 * NSEC_PER_MSEC)
+#define DMP_INTERVAL_INIT       (4950 * NSEC_PER_USEC)
 #define DMP_INTERVAL_MIN_ADJ    (50 * NSEC_PER_USEC)
 
 /*---- MPU6500 ----*/
@@ -705,6 +705,7 @@ struct inv_mpu_slave;
  *  @pedometer_step:    pedometer steps stored in driver.
  *  @pedometer_time:    pedometer time stored in driver.
  *  @last_run_time: last time the post ISR runs.
+ *  @engine_en_ts: timestamp when engines are enabled.
  *  @name: name for distiguish MPU6050 and MPU6500 in MPU6XXX.
  *  @secondary_name: name for the slave device in the secondary I2C.
  */
@@ -768,6 +769,7 @@ struct inv_mpu_state {
 	u64 step_detector_base_ts;
 	u64 prev_ts;
 	u64 last_run_time;
+	u64 engine_en_ts;
 	u8 name[20];
 	u8 secondary_name[20];
 	struct wake_lock smd_wakelock;

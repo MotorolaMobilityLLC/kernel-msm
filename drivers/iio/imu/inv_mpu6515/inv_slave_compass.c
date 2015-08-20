@@ -72,7 +72,7 @@
 #define DATA_AKM8963_SCALE_SHIFT      4
 #define DATA_AKM_99_BYTES_DMP  10
 #define DATA_AKM_89_BYTES_DMP  9
-#define DATA_AKM_MIN_READ_TIME            (9 * NSEC_PER_MSEC)
+#define DATA_AKM_MIN_READ_TIME            (8 * NSEC_PER_MSEC)
 
 /* AK09912C NSF */
 /* 0:disable, 1:Low, 2:Middle, 3:High */

@@ -125,7 +125,7 @@ static int inv_send_pressure_data(struct inv_mpu_state *st)
 		conf->normal_pressure_measure = 1;
 		return 0;
 	}
-	curr_ts = get_time_ns();
+	curr_ts = st->last_ts;
 	if (curr_ts - slave->prev_ts > slave->min_read_time) {
 		result = slave->read_data(st, sen);
 		if (!result)
@@ -155,7 +155,7 @@ static int inv_send_compass_data(struct inv_mpu_state *st)
 		conf->normal_compass_measure = 1;
 		return 0;
 	}
-	curr_ts = get_time_ns();
+	curr_ts = st->last_ts;
 	if (curr_ts - slave->prev_ts > slave->min_read_time) {
 		result = slave->read_data(st, sen);
 		if (result)
@@ -501,6 +501,7 @@ static int reset_fifo_itg(struct iio_dev *indio_dev)
 	int result, i;
 	u8 val, int_word;
 	struct inv_mpu_state  *st = iio_priv(indio_dev);
+	u64 ts;
 
 	reg = &st->reg;
 	if (st->chip_config.lpa_mode) {
@@ -584,7 +585,15 @@ static int reset_fifo_itg(struct iio_dev *indio_dev)
 		if (result)
 			goto reset_fifo_fail;
 	}
-	st->last_ts = get_time_ns();
+	ts = get_time_ns();
+	if (ts > st->engine_en_ts &&
+			((ts - st->engine_en_ts) < 500 * NSEC_PER_MSEC)) {
+		pr_debug("engien_en_ts = %llu now = %llu diff = %llu\n",
+				st->engine_en_ts, ts, ts - st->engine_en_ts);
+		st->last_ts = ts - (ts - st->engine_en_ts);
+	} else
+		st->last_ts = ts;
+
 	st->prev_ts = st->last_ts;
 	st->last_run_time = st->last_ts;
 	if (st->sensor[SENSOR_COMPASS].on)
@@ -970,6 +979,7 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 {
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 	struct inv_reg_map_s *reg;
+	u8 data[2];
 	int result;
 
 	reg = &st->reg;
@@ -993,6 +1003,7 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 				return result;
 		}
 
+		st->engine_en_ts = get_time_ns();
 		if (st->chip_config.gyro_enable) {
 			result = st->switch_gyro_engine(st, true);
 			if (result)
@@ -1032,8 +1043,17 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 			result = inv_read_time_and_ticks(st, false);
 			if (result)
 				return result;
+			result = inv_i2c_read(st, reg->fifo_count_h,
+						FIFO_COUNT_BYTE, data);
+			if (result)
+				return result;
+			st->fifo_count = be16_to_cpup((__be16 *)(data));
+			if (st->fifo_count) {
+				result = inv_process_batchmode(st);
+				if (result)
+					return result;
+			}
 		}
-		inv_push_marker_to_buffer(st, END_MARKER);
 		/* disable fifo reading */
 		if (INV_MPU3050 != st->chip_type) {
 			result = inv_i2c_single_write(st, reg->int_enable, 0);
@@ -1279,6 +1299,10 @@ static int inv_get_timestamp(struct inv_mpu_state *st, int count)
 	ts = *dur;
 	ts *= counter;
 	st->last_ts += ts;
+
+	/* not to set future timestamp */
+	if (st->last_ts > st->prev_ts)
+		st->last_ts = st->prev_ts;
 
 	return 0;
 }
@@ -1654,26 +1678,27 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 		goto end_session;
 	}
 
-	if (st->chip_config.dmp_on) {
+	result = inv_i2c_read(st, reg->fifo_count_h, FIFO_COUNT_BYTE,
+								data);
+	if (result)
+		goto end_session;
+
+	fifo_count = be16_to_cpup((__be16 *)(data));
+	if (st->chip_config.dmp_on && fifo_count) {
 		result = inv_read_time_and_ticks(st, false);
 		if (result)
 			goto end_session;
 	}
 	bpm = st->chip_config.bytes_per_datum;
-	fifo_count = 0;
 	if (bpm) {
-		result = inv_i2c_read(st, reg->fifo_count_h, FIFO_COUNT_BYTE,
-									data);
-		if (result)
-			goto end_session;
-		fifo_count = be16_to_cpup((__be16 *)(data));
 		/* fifo count can't be odd number */
 		if (fifo_count & 1)
 			goto flush_fifo;
 		if (fifo_count == 0)
 			goto end_session;
 		st->fifo_count = fifo_count;
-	}
+	} else
+		fifo_count = 0;
 
 	if (st->chip_config.dmp_on) {
 		result = inv_process_batchmode(st);
@@ -1693,14 +1718,16 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 				inv_report_gyro_accel(indio_dev, data,
 								st->last_ts);
 				fifo_count -= bpm;
+				inv_send_compass_data(st);
+				inv_send_pressure_data(st);
 			}
 		} else {
 			result = inv_get_timestamp(st, 1);
 			if (result)
 				goto flush_fifo;
+			inv_send_compass_data(st);
+			inv_send_pressure_data(st);
 		}
-		inv_send_compass_data(st);
-		inv_send_pressure_data(st);
 	}
 end_session:
 	mutex_unlock(&indio_dev->mlock);
