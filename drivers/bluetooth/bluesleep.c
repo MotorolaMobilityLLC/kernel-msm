@@ -689,11 +689,15 @@ static const struct file_operations bluesleep_proc_readwrite_fops = {
 	.open	= bluesleep_proc_open,
 	.read   = seq_read,
 	.write  = bluesleep_proc_write,
+	.release = single_release,
+
 };
 static const struct file_operations bluesleep_proc_read_fops = {
 	.owner	= THIS_MODULE,
 	.open	= bluesleep_proc_open,
 	.read   = seq_read,
+	.release = single_release,
+
 };
 
 /**
