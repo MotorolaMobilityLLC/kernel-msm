@@ -3526,6 +3526,26 @@ fail:
 	return -EINVAL;
 }
 
+static void fg_disable_charging(struct fg_chip *chip, bool disable)
+{
+	union power_supply_propval pval = {0, };
+
+	if (!chip->batt_psy && chip->batt_psy_name)
+		chip->batt_psy =
+			power_supply_get_by_name(chip->batt_psy_name);
+
+	if (!chip->batt_psy)
+		return;
+
+	pval.intval = !disable;
+
+	if (fg_debug_mask & FG_POWER_SUPPLY)
+		pr_info("%s charging\n", disable? "disable":"enable");
+
+	chip->batt_psy->set_property(chip->batt_psy,
+		POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED, &pval);
+}
+
 #define PROFILE_LOAD_TIMEOUT_MS		5000
 #define FG_PROFILE_LEN			128
 #define PROFILE_COMPARE_LEN		32
@@ -3730,8 +3750,9 @@ wait:
 	}
 	old_batt_type = chip->batt_type;
 	chip->batt_type = loading_batt_type;
-	if (chip->power_supply_registered)
-		power_supply_changed(&chip->bms_psy);
+
+	/* disable charging for first soc estimation */
+	fg_disable_charging(chip, true);
 
 	memcpy(chip->batt_profile, data, len);
 
@@ -3745,8 +3766,12 @@ wait:
 	rc = fg_do_restart(chip, true);
 	if (rc) {
 		pr_err("restart failed: %d\n", rc);
+		fg_disable_charging(chip, false);
 		goto fail;
 	}
+
+	/* re-enable charging */
+	fg_disable_charging(chip, false);
 
 done:
 	if (fg_batt_type)
