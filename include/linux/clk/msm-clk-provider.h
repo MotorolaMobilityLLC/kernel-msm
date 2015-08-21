@@ -156,6 +156,20 @@ struct clk_ops {
 				struct clk_register_data **regs, u32 *size);
 };
 
+struct clk_rate_stats_entry {
+	unsigned long rate;
+	unsigned long time;
+};
+
+#define CLOCK_RATE_STATE_SIZE_MAX 16
+
+struct clk_rate_stats {
+	spinlock_t lock;
+	struct timespec last_updated;
+	size_t size;
+	struct clk_rate_stats_entry entries[CLOCK_RATE_STATE_SIZE_MAX];
+};
+
 /**
  * struct clk
  * @prepare_count: prepare refcount
@@ -194,6 +208,7 @@ struct clk {
 	bool always_on;
 
 	struct dentry *clk_dir;
+	struct clk_rate_stats *rate_stats;
 };
 
 #define CLK_INIT(name) \
