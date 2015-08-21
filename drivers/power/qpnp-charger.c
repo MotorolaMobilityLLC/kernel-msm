@@ -4301,7 +4301,7 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 	temp = get_prop_batt_temp(chip);
 
 	pr_debug("temp = %d state = %s\n", temp,
-			state == ADC_TM_WARM_STATE ? "warm" : "cool");
+				state == ADC_TM_WARM_STATE ? "warm" : "cool");
 
 	if (state == ADC_TM_WARM_STATE) {
 		if (temp >= chip->warm_bat_decidegc) {
@@ -4379,7 +4379,6 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 			qpnp_chg_set_appropriate_battery_current(chip);
 		}
 	}
-
 	pr_debug("warm %d, cool %d, low = %d deciDegC, high = %d deciDegC\n",
 			chip->bat_is_warm, chip->bat_is_cool,
 			chip->adc_param.low_temp, chip->adc_param.high_temp);

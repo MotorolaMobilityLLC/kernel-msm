@@ -30,6 +30,15 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/platform_device.h>
 
+#ifdef ASUS_WREN_PROJECT
+#include "qpnp-adc-common-wren.h"
+#endif
+
+#ifdef ASUS_SPARROW_PROJECT
+#include "qpnp-adc-common-sparrow.h"
+#endif
+
+
 /* Min ADC code represets 0V */
 #define QPNP_VADC_MIN_ADC_CODE			0x6000
 /* Max ADC code represents full-scale range of 1.8V */
@@ -44,91 +53,6 @@
    and provided to the battery driver in the units desired for
    their framework which is 0.1DegC. True resolution of 0.1DegC
    will result in the below table size to increase by 10 times */
-static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
-	{-300,	1455},
-	{-200,	1406},
-	{-100,	1341},
-	{0,	1264},
-	{10,	1251},
-	{20,	1238},
-	{30,	1225},
-	{40,	1212},
-	{50,	1199},
-	{60,	1186},
-	{70,	1173},
-	{80,	1160},
-	{90,	1147},
-	{100,	1134},
-	{110,	1121},
-	{120,	1108},
-	{130,	1096},
-	{140,	1083},
-	{150,	1071},
-	{160,	1058},
-	{170,	1045},
-	{180,	1032},
-	{190,	1020},
-	{200,	1008},
-	{210,	995},
-	{220,	985},
-	{230,	974},
-	{240,	960},
-	{250,	950},
-	{260,	939},
-	{270,	929},
-	{280,	918},
-	{290,	909},
-	{300,	897},
-	{310,	887},
-	{320,	877},
-	{330,	866},
-	{340,	856},
-	{350,	846},
-	{360,	838},
-	{370,	828},
-	{380,	818},
-	{390,	812},
-	{400,	805},
-	{410,	798},
-	{420,	786},
-	{430,	779},
-	{440,	773},
-	{450,	764},
-	{460,	754},
-	{470,	747},
-	{480,	741},
-	{490,	735},
-	{500,	725},
-	{510,	719},
-	{520,	713},
-	{530,	707},
-	{540,	701},
-	{550,	695},
-	{560,	689},
-	{570,	683},
-	{580,	677},
-	{590,	671},
-	{600,	665},
-	{610,	659},
-	{620,	653},
-	{630,	647},
-	{640,	641},
-	{650,	635},
-	{660,	629},
-	{670,	623},
-	{680,	617},
-	{690,	611},
-	{700,	496},
-	{710,	490},
-	{720,	484},
-	{730,	478},
-	{740,	472},
-	{750,	466},
-	{760,	460},
-	{770,	454},
-	{780,	448},
-	{790,	442}
-};
 
 static const struct qpnp_vadc_map_pt adcmap_qrd_btm_threshold[] = {
 	{-200,	1540},
@@ -663,7 +587,6 @@ static int64_t qpnp_adc_scale_ratiometric_calib(int32_t adc_code,
 		chan_properties->adc_graph[CALIB_RATIOMETRIC].dy);
 	if (negative_offset)
 		adc_voltage = -adc_voltage;
-
 	return adc_voltage;
 }
 
@@ -1263,6 +1186,7 @@ int32_t qpnp_adc_btm_scaler(struct qpnp_vadc_chip *chip,
 	/* btm high temperature correspondes to low voltage threshold */
 	*high_threshold = low_output;
 
+	pr_debug("btm_param.dy=%lld,btm_param.adc_vref=%lld,btm_param.adc_gnd=%lld\n",btm_param.dy,btm_param.adc_vref,btm_param.adc_gnd);
 	pr_debug("high_volt:%d, low_volt:%d\n", *high_threshold,
 				*low_threshold);
 	return 0;

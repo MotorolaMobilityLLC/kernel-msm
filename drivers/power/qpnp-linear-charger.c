@@ -1186,8 +1186,7 @@ static int get_prop_batt_temp(struct qpnp_lbc_chip *chip)
 		pr_debug("Unable to read batt temperature rc=%d\n", rc);
 		return DEFAULT_TEMP;
 	}
-	pr_debug("get_bat_temp %d, %lld\n", results.adc_code,
-							results.physical);
+	pr_debug("get_bat_temp vadc=%d, voltage=%lld, temp=%lld\n", results.adc_code,result.measurement,result.physical);
 
 	return (int)results.physical;
 }
