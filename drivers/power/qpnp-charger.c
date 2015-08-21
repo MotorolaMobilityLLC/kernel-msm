@@ -4324,7 +4324,8 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 					ADC_TM_HIGH_LOW_THR_ENABLE;
 		}
 	} else {
-		if (temp <= chip->cool_bat_decidegc) {
+		if ((temp <= chip->cool_bat_decidegc) ||
+				(temp <= chip->cool_bat_decidegc + HYSTERISIS_DECIDEGC)) {
 			/* Normal to cool */
 			bat_warm = false;
 			bat_cool = true;
