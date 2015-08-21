@@ -1282,17 +1282,14 @@ VOS_STATUS wma_send_snr_request(tp_wma_handle wma_handle, void *pGetRssiReq,
 #define WMA_PNO_MATCH_WAKE_LOCK_TIMEOUT		(5 * 1000) /* in msec */
 #define WMA_PNO_SCAN_COMPLETE_WAKE_LOCK_TIMEOUT	(2 * 1000) /* in msec */
 #endif
-#define WMA_AUTH_REQ_RECV_WAKE_LOCK_TIMEOUT	(50 * 1000) /* in msec */
-#define WMA_ASSOC_REQ_RECV_WAKE_LOCK_DURATION	(30 * 1000) /* in msec */
-#define WMA_DEAUTH_RECV_WAKE_LOCK_DURATION	(30 * 1000) /* in msec */
-#define WMA_DISASSOC_RECV_WAKE_LOCK_DURATION	(30 * 1000) /* in msec */
+#define WMA_AUTH_REQ_RECV_WAKE_LOCK_TIMEOUT	(5 * 1000) /* in msec */
+#define WMA_ASSOC_REQ_RECV_WAKE_LOCK_DURATION	(5 * 1000) /* in msec */
+#define WMA_DEAUTH_RECV_WAKE_LOCK_DURATION	(5 * 1000) /* in msec */
+#define WMA_DISASSOC_RECV_WAKE_LOCK_DURATION	(5 * 1000) /* in msec */
 #ifdef FEATURE_WLAN_AUTO_SHUTDOWN
-#define WMA_AUTO_SHUTDOWN_WAKE_LOCK_DURATION    (30 * 1000) /* in msec */
+#define WMA_AUTO_SHUTDOWN_WAKE_LOCK_DURATION    (5 * 1000) /* in msec */
 #endif
-#ifdef FEATURE_WLAN_RA_FILTERING
-#define WMA_RA_MATCH_RECV_WAKE_LOCK_DURATION    (5 * 1000) /* in msec */
-#endif
-#define WMA_BMISS_EVENT_WAKE_LOCK_DURATION      (10 * 1000) /* in msec */
+#define WMA_BMISS_EVENT_WAKE_LOCK_DURATION      (4 * 1000) /* in msec */
 
 /* U-APSD maximum service period of peer station */
 enum uapsd_peer_param_max_sp {

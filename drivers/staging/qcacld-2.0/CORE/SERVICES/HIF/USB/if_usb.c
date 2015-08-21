@@ -601,4 +601,9 @@ int hif_pm_runtime_allow_suspend(void *ol_sc)
 	return 0;
 }
 
+int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
+{
+        return 0;
+}
+
 MODULE_LICENSE("Dual BSD/GPL");

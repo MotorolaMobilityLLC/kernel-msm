@@ -527,7 +527,6 @@ static int hdd_hostapd_ioctl(struct net_device *dev,
    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    ret = wlan_hdd_validate_context(pHddCtx);
    if (ret) {
-      hddLog(VOS_TRACE_LEVEL_ERROR, "%s: invalid context", __func__);
       ret = -EBUSY;
       goto exit;
    }

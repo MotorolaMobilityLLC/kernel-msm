@@ -1703,4 +1703,6 @@ void hdd_get_fw_version(hdd_context_t *hdd_ctx,
 
 bool hdd_is_memdump_supported(void);
 
+const char *hdd_get_fwpath(void);
+
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

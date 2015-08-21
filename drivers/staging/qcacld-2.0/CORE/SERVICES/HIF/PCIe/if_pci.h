@@ -56,6 +56,7 @@ typedef ath_dma_addr_t CE_addr_t;
 #ifdef FEATURE_RUNTIME_PM
 /* Driver States for Runtime Power Management */
 enum hif_pm_runtime_state {
+	HIF_PM_RUNTIME_STATE_NONE,
 	HIF_PM_RUNTIME_STATE_ON,
 	HIF_PM_RUNTIME_STATE_INPROGRESS,
 	HIF_PM_RUNTIME_STATE_SUSPENDED,
@@ -71,6 +72,8 @@ struct hif_pci_pm_stats {
 	u32 request_resume;
 	u32 allow_suspend;
 	u32 prevent_suspend;
+	u32 prevent_suspend_timeout;
+	u32 allow_suspend_timeout;
 	void *last_resume_caller;
 	unsigned long suspend_jiffies;
 };
@@ -116,6 +119,9 @@ struct hif_pci_softc {
     atomic_t pm_state;
     struct hif_pci_pm_stats pm_stats;
     struct work_struct pm_work;
+    struct spinlock runtime_lock;
+    struct timer_list runtime_timer;
+    unsigned long runtime_timer_expires;
 #ifdef WLAN_OPEN_SOURCE
     struct dentry *pm_dentry;
 #endif

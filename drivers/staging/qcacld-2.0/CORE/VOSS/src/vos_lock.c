@@ -549,6 +549,19 @@ VOS_STATUS vos_wake_lock_acquire(vos_wake_lock_t *pLock,
     vos_log_wlock_diag(reason, vos_wake_lock_name(pLock),
                        WIFI_POWER_EVENT_DEFAULT_WAKELOCK_TIMEOUT,
                        WIFI_POWER_EVENT_WAKELOCK_TAKEN);
+
+    /*
+     * Dont prevent Autosuspend for these reasons, either it is not required to
+     * do so or runtime functionality is not available at this time
+     */
+    switch(reason) {
+    case WIFI_POWER_EVENT_WAKELOCK_DRIVER_INIT:
+    case WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT:
+        break;
+    default:
+        vos_runtime_pm_prevent_suspend();
+        break;
+    }
 #if defined CONFIG_CNSS
     cnss_pm_wake_lock(pLock);
 #elif defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
@@ -579,6 +592,7 @@ VOS_STATUS vos_wake_lock_timeout_acquire(vos_wake_lock_t *pLock, v_U32_t msec,
                            WIFI_POWER_EVENT_WAKELOCK_TAKEN);
     }
 
+    vos_runtime_pm_prevent_suspend_timeout(msec);
 #if defined CONFIG_CNSS
     cnss_pm_wake_lock_timeout(pLock, msec);
 #elif defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
@@ -606,6 +620,19 @@ VOS_STATUS vos_wake_lock_release(vos_wake_lock_t *pLock, uint32_t reason)
 #elif defined(WLAN_OPEN_SOURCE) && defined(CONFIG_HAS_WAKELOCK)
     wake_unlock(pLock);
 #endif
+    /*
+     * Dont allow autosuspend for these reasons, these reasons doesn't prevent
+     * the autosuspend so no need to call allow.
+     */
+    switch(reason) {
+    case WIFI_POWER_EVENT_WAKELOCK_DRIVER_INIT:
+    case WIFI_POWER_EVENT_WAKELOCK_DRIVER_REINIT:
+        break;
+    default:
+        vos_runtime_pm_allow_suspend();
+        break;
+    }
+
     return VOS_STATUS_SUCCESS;
 }
 
@@ -666,6 +693,41 @@ VOS_STATUS vos_runtime_pm_allow_suspend(void)
 
 	ret = hif_pm_runtime_allow_suspend(ol_sc);
 
+	if (ret)
+		return VOS_STATUS_E_FAILURE;
+
+	return VOS_STATUS_SUCCESS;
+}
+
+/**
+ * vos_runtime_pm_prevent_suspend_timeout() - Prevent runtime suspend timeout
+ * msec:	Timeout in milliseconds
+ *
+ * Prevent runtime suspend with a timeout after which runtime suspend would be
+ * allowed. This API uses a single timer to allow the suspend and timer is
+ * modified if the timeout is changed before timer fires.
+ * If the timeout is less than autosuspend_delay then use mark_last_busy instead
+ * of starting the timer.
+ *
+ * It is wise to try not to use this API and correct the design if possible.
+ *
+ * Return: VOS_STATUS
+ */
+VOS_STATUS vos_runtime_pm_prevent_suspend_timeout(unsigned int msec)
+{
+	void *ol_sc;
+	int ret = 0;
+
+	ol_sc = vos_get_context(VOS_MODULE_ID_HIF,
+			vos_get_global_context(VOS_MODULE_ID_SYS, NULL));
+
+	if (ol_sc == NULL) {
+		VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+				"%s: HIF context is null!", __func__);
+		return VOS_STATUS_E_INVAL;
+	}
+
+        ret = hif_pm_runtime_prevent_suspend_timeout(ol_sc, msec);
 	if (ret)
 		return VOS_STATUS_E_FAILURE;
 

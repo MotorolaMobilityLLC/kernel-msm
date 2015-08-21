@@ -3003,7 +3003,9 @@ int hif_pm_runtime_get(HIF_DEVICE *hif_device)
 	struct hif_pci_softc *sc = hif_state->sc;
 	int ret = 0;
 
-	if (adf_os_atomic_read(&sc->pm_state) == HIF_PM_RUNTIME_STATE_ON) {
+	if (adf_os_atomic_read(&sc->pm_state) == HIF_PM_RUNTIME_STATE_ON ||
+			adf_os_atomic_read(&sc->pm_state) ==
+			HIF_PM_RUNTIME_STATE_NONE) {
 		sc->pm_stats.runtime_get++;
 		ret = __hif_pm_runtime_get(sc->dev);
 
@@ -3051,9 +3053,8 @@ int hif_pm_runtime_prevent_suspend(void *ol_sc)
 	ret = __hif_pm_runtime_get(hif_sc->dev);
 
 	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
-			"%s: request resume:%pS in pm_state:%d ret: %d\n",
-			__func__, (void *)_RET_IP_,
-			adf_os_atomic_read(&hif_sc->pm_state), ret);
+			"%s: request resume: in pm_state:%d ret: %d\n",
+			__func__, adf_os_atomic_read(&hif_sc->pm_state), ret);
 	return 0;
 
 }
@@ -3069,17 +3070,91 @@ int hif_pm_runtime_allow_suspend(void *ol_sc)
 	ret = hif_pm_runtime_put_auto(hif_sc->dev);
 
 	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
-			"%s: %pS in pm_state:%d ret: %d\n",
-			__func__, (void *)_RET_IP_,
-			adf_os_atomic_read(&hif_sc->pm_state), ret);
+			"%s: in pm_state:%d ret: %d\n",
+			__func__, adf_os_atomic_read(&hif_sc->pm_state), ret);
 	return 0;
+}
+
+/**
+ * hif_pm_runtime_prevent_suspend_timeout() - Prevent runtime suspend timeout
+ * @ol_sc:	HIF context
+ * delay:	Timeout in milliseconds
+ *
+ * Prevent runtime suspend with a timeout after which runtime suspend would be
+ * allowed. This API uses a single timer to allow the suspend and timer is
+ * modified if the timeout is changed before timer fires.
+ * If the timeout is less than autosuspend_delay then use mark_last_busy instead
+ * of starting the timer.
+ *
+ * It is wise to try not to use this API and correct the design if possible.
+ *
+ * Return: 0 on success and negative error code on failure
+ */
+int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
+{
+	struct ol_softc *sc = (struct ol_softc *)ol_sc;
+	struct hif_pci_softc *hif_sc = sc->hif_sc;
+	int ret = 0;
+	unsigned long expires;
+	unsigned long flags;
+
+	/*
+	 * Don't use internal timer if the timeout is less than auto suspend
+	 * delay.
+	 */
+	if (delay <= hif_sc->dev->power.autosuspend_delay) {
+		hif_pm_request_resume(hif_sc->dev);
+		hif_pm_runtime_mark_last_busy(hif_sc->dev);
+		return ret;
+	}
+
+	if (atomic_read(&hif_sc->pm_state) == HIF_PM_RUNTIME_STATE_NONE) {
+		pr_err("%s: Not supported before initialization\n", __func__);
+		return -EINVAL;
+	}
+
+	expires = jiffies + msecs_to_jiffies(delay);
+	expires += !expires;
+
+	spin_lock_irqsave(&hif_sc->runtime_lock, flags);
+
+	/* Runtime Get only if timer is not running */
+	if (hif_sc->runtime_timer_expires == 0) {
+		ret = __hif_pm_runtime_get(hif_sc->dev);
+		if (ret > 0)
+			ret = 0;
+		hif_sc->pm_stats.prevent_suspend_timeout++;
+	}
+
+	/* Modify the timer only if new timeout is after already configured
+	 * timeout
+	 */
+	if (time_after(expires, hif_sc->runtime_timer_expires)) {
+		mod_timer(&hif_sc->runtime_timer, expires);
+		hif_sc->runtime_timer_expires = expires;
+	}
+
+	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
+
+	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
+			"%s: pm_state:%d ret: %d\n", __func__,
+			adf_os_atomic_read(&hif_sc->pm_state), ret);
+
+	return ret;
+
 }
 #else
 int hif_pm_runtime_prevent_suspend(void *ol_sc)
 {
 	return 0;
 }
+
 int hif_pm_runtime_allow_suspend(void *ol_sc)
+{
+	return 0;
+}
+
+int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int msec)
 {
 	return 0;
 }

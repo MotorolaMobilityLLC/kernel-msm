@@ -829,6 +829,7 @@ static inline int hif_pm_runtime_put(HIF_DEVICE *device) { return 0; }
 #endif
 int hif_pm_runtime_prevent_suspend(void *ol_sc);
 int hif_pm_runtime_allow_suspend(void *ol_sc);
+int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay);
 #ifdef __cplusplus
 }
 #endif

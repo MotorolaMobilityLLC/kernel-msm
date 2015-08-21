@@ -859,21 +859,20 @@ static void hdd_vos_trace_enable(VOS_MODULE_ID moduleId, v_U32_t bitmask)
  */
 int wlan_hdd_validate_context(hdd_context_t *pHddCtx)
 {
-    ENTER();
 
     if (NULL == pHddCtx || NULL == pHddCtx->cfg_ini) {
-        hddLog(LOGE, FL("HDD context is Null"));
+        hddLog(LOG1, FL("HDD context is Null"));
         return -ENODEV;
     }
 
     if (pHddCtx->isLogpInProgress) {
-        hddLog(LOGE, FL("LOGP in Progress. Ignore!!!"));
+        hddLog(LOG1, FL("LOGP in Progress. Ignore!!!"));
         return -EAGAIN;
     }
 
     if ((pHddCtx->isLoadInProgress) ||
         (pHddCtx->isUnloadInProgress)) {
-        hddLog(LOGE, FL("Unloading/Loading in Progress. Ignore!!!"));
+        hddLog(LOG1, FL("Unloading/Loading in Progress. Ignore!!!"));
         return -EAGAIN;
     }
     return 0;
@@ -5108,8 +5107,6 @@ static int __hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    ret = wlan_hdd_validate_context(pHddCtx);
    if (ret) {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "%s: invalid context", __func__);
       ret = -EBUSY;
       goto exit;
    }
@@ -13450,6 +13447,19 @@ bool hdd_is_memdump_supported(void)
 	return true;
 #endif
 	return false;
+}
+
+/**
+ * hdd_get_fwpath() - get framework path
+ *
+ * This function is used to get the string written by
+ * userspace to start the wlan driver
+ *
+ * Return: string
+ */
+const char *hdd_get_fwpath(void)
+{
+	return fwpath.string;
 }
 
 //Register the module init/exit functions

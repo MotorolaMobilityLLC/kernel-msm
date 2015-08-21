@@ -329,6 +329,7 @@ int wlan_hdd_cfg80211_get_fw_mem_dump(struct wiphy *wiphy,
 
 #define PROCFS_MEMDUMP_DIR "debug"
 #define PROCFS_MEMDUMP_NAME "fwdump"
+#define PROCFS_MEMDUMP_PERM 0444
 
 static struct proc_dir_entry *proc_file, *proc_dir;
 
@@ -480,7 +481,7 @@ static int memdump_procfs_init(void *vos_ctx)
 	}
 
 	proc_file = proc_create_data(PROCFS_MEMDUMP_NAME,
-				     S_IRUSR | S_IWUSR, proc_dir,
+				     PROCFS_MEMDUMP_PERM, proc_dir,
 				     &memdump_fops, hdd_ctx);
 	if (proc_file == NULL) {
 		remove_proc_entry(PROCFS_MEMDUMP_NAME, proc_dir);

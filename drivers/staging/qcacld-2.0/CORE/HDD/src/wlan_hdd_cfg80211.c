@@ -2955,14 +2955,13 @@ static int __wlan_hdd_cfg80211_extscan_get_valid_channels(struct wiphy *wiphy,
     num_chan_new = num_channels;
 
     /* remove the indoor only channels if iface is SAP */
-    if (WLAN_HDD_SOFTAP == pAdapter->device_mode) {
+    if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
+        !strncmp(hdd_get_fwpath(), "ap", 2)) {
         num_chan_new = 0;
         for (i = 0; i < num_channels; i++)
             for (j = 0; j < IEEE80211_NUM_BANDS; j++) {
-
                 if (wiphy->bands[j] == NULL)
                     continue;
-
                 for (k = 0; k < wiphy->bands[j]->n_channels; k++) {
                     if ((chan_list[i] ==
                          wiphy->bands[j]->channels[k].center_freq) &&
