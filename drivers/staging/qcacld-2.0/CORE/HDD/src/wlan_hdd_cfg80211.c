@@ -13494,6 +13494,12 @@ void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel)
 }
 
 /*
+ * Time in msec
+ * Time for complete association including DHCP
+ */
+#define WLAN_HDD_CONNECTION_TIME (30 * 1000)
+
+/*
  * FUNCTION: wlan_hdd_cfg80211_connect_start
  * This function is used to start the association process
  */
@@ -13703,6 +13709,8 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             pRoamProfile->pAddIEScan = &pAdapter->scan_info.scanAddIE.addIEdata[0];
             pRoamProfile->nAddIEScanLength = pAdapter->scan_info.scanAddIE.length;
         }
+
+        vos_runtime_pm_prevent_suspend_timeout(WLAN_HDD_CONNECTION_TIME);
 
         status = sme_RoamConnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
                             pAdapter->sessionId, pRoamProfile, &roamId);
