@@ -147,7 +147,10 @@
 			<0xff 131>, /* f9927000.spi */
 			<0xff 132>, /* i2c-msm-v2-irq */
 			<0xff 133>, /* i2c-msm-v2-irq */
-			<0xff 137>; /* i2c-msm-v2-irq */
+			<0xff 137>, /* i2c-msm-v2-irq */
+			<0xff 140>, /* unknown */
+			<0xff 157>, /* mmc1 */
+			<0xff 253>; /* f98a4900.sdhci */
 	};
 };
 
