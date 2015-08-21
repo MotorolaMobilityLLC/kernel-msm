@@ -515,7 +515,9 @@ void msm_isp_notify(struct vfe_device *vfe_dev, uint32_t event_type,
 			frame_src,
 			vfe_dev->axi_data.src_info[frame_src].frame_id);
 		break;
-
+	case ISP_EVENT_REG_UPDATE:
+		vfe_dev->axi_data.src_info[frame_src].last_updt_frm_id = 0;
+		break;
 	default:
 		break;
 	}
