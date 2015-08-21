@@ -56,7 +56,6 @@ typedef ath_dma_addr_t CE_addr_t;
 #ifdef FEATURE_RUNTIME_PM
 /* Driver States for Runtime Power Management */
 enum hif_pm_runtime_state {
-	HIF_PM_RUNTIME_STATE_NONE,
 	HIF_PM_RUNTIME_STATE_ON,
 	HIF_PM_RUNTIME_STATE_INPROGRESS,
 	HIF_PM_RUNTIME_STATE_SUSPENDED,
@@ -117,6 +116,7 @@ struct hif_pci_softc {
     int htc_endpoint;
 #ifdef FEATURE_RUNTIME_PM
     atomic_t pm_state;
+    atomic_t prevent_suspend_cnt;
     struct hif_pci_pm_stats pm_stats;
     struct work_struct pm_work;
     struct spinlock runtime_lock;

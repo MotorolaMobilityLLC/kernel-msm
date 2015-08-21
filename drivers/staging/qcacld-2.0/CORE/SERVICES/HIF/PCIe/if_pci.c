@@ -793,7 +793,7 @@ static int hif_pci_autopm_debugfs_show(struct seq_file *s, void *data)
 #define HIF_PCI_AUTOPM_STATS(_s, _sc, _name) \
 	seq_printf(_s, "%30s: %u\n", #_name, _sc->pm_stats._name)
 	struct hif_pci_softc *sc = s->private;
-	char *autopm_state[] = {"NONE", "ON", "INPROGRESS", "SUSPENDED"};
+	char *autopm_state[] = {"ON", "INPROGRESS", "SUSPENDED"};
 	unsigned int msecs_age;
 	int pm_state = atomic_read(&sc->pm_state);
 	unsigned long timer_expires;
@@ -811,6 +811,9 @@ static int hif_pci_autopm_debugfs_show(struct seq_file *s, void *data)
 
 	seq_printf(s, "%30s: %d\n", "PM Usage count",
 			atomic_read(&sc->dev->power.usage_count));
+
+	seq_printf(s, "%30s: %d\n", "prevent_suspend_cnt",
+			atomic_read(&sc->prevent_suspend_cnt));
 
 	HIF_PCI_AUTOPM_STATS(s, sc, suspended);
 	HIF_PCI_AUTOPM_STATS(s, sc, suspend_err);
@@ -1037,37 +1040,13 @@ static inline void hif_pci_pm_debugfs(struct hif_pci_softc *sc, bool init)
 }
 #endif
 
-static void hif_pci_runtime_pm_timeout_fn(unsigned long data)
+static void hif_pci_pm_runtime_pre_init(struct hif_pci_softc *sc)
 {
-	struct hif_pci_softc *hif_sc = (struct hif_pci_softc *)data;
-	unsigned long flags;
-	unsigned long timer_expires;
+	spin_lock_init(&sc->runtime_lock);
+	setup_timer(&sc->runtime_timer, hif_pci_runtime_pm_timeout_fn,
+			(unsigned long)sc);
 
-	spin_lock_irqsave(&hif_sc->runtime_lock, flags);
-
-	timer_expires = hif_sc->runtime_timer_expires;
-
-	/* Make sure we are not called too early, this should take care of
-	 * following case
-	 *
-	 * CPU0                         CPU1 (timeout function)
-         * ----                         ----------------------
-	 * spin_lock_irq
-	 *                              timeout function called
-	 *
-	 * mod_timer()
-	 *
-	 * spin_unlock_irq
-	 *                              spin_lock_irq
-	 */
-	if (timer_expires > 0 && !time_after(timer_expires, jiffies)) {
-
-		hif_sc->runtime_timer_expires = 0;
-		hif_pm_runtime_put_auto(hif_sc->dev);
-		hif_sc->pm_stats.allow_suspend_timeout++;
-	}
-
-	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
+	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_ON);
 }
 
 static void hif_pci_pm_runtime_init(struct hif_pci_softc *sc)
@@ -1091,12 +1070,6 @@ static void hif_pci_pm_runtime_init(struct hif_pci_softc *sc)
 	pr_info("%s: Enabling RUNTIME PM, Delay: %d ms\n", __func__,
 			ol_sc->runtime_pm_delay);
 
-	spin_lock_init(&sc->runtime_lock);
-	setup_timer(&sc->runtime_timer, hif_pci_runtime_pm_timeout_fn,
-			(unsigned long)sc);
-
-	adf_os_atomic_init(&sc->pm_state);
-	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_ON);
 	cnss_init_work(&sc->pm_work, hif_pci_pm_work);
 	cnss_runtime_init(sc->dev, ol_sc->runtime_pm_delay);
 	hif_pci_pm_debugfs(sc, true);
@@ -1118,7 +1091,6 @@ static void hif_pci_pm_runtime_exit(struct hif_pci_softc *sc)
 	hif_pm_runtime_resume(sc->dev);
 	cnss_runtime_exit(sc->dev);
 	hif_pci_pm_debugfs(sc, false);
-	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_NONE);
 
 	del_timer_sync(&sc->runtime_timer);
 
@@ -1129,7 +1101,7 @@ static void hif_pci_pm_runtime_exit(struct hif_pci_softc *sc)
 }
 #else
 static inline void hif_pci_pm_runtime_init(struct hif_pci_softc *sc) { }
-
+static inline void hif_pci_pm_runtime_pre_init(struct hif_pci_softc *sc) { }
 static inline void hif_pci_pm_runtime_exit(struct hif_pci_softc *sc) { }
 #endif
 
@@ -1368,6 +1340,9 @@ again:
     ol_sc->hif_sc = (void *)sc;
     sc->ol_sc = ol_sc;
     ol_sc->target_type = target_type;
+
+    hif_pci_pm_runtime_pre_init(sc);
+
     if (hif_pci_configure(sc, &ol_sc->hif_hdl))
 	    goto err_config;
 
@@ -1710,6 +1685,8 @@ again:
     ol_sc->hif_sc = (void *)sc;
     sc->ol_sc = ol_sc;
     ol_sc->target_type = target_type;
+
+    hif_pci_pm_runtime_pre_init(sc);
 
     if (hif_pci_configure(sc, &ol_sc->hif_hdl))
         goto err_config;

@@ -154,6 +154,7 @@ void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device);
 
 #ifdef FEATURE_RUNTIME_PM
 #include <linux/pm_runtime.h>
+void hif_pci_runtime_pm_timeout_fn(unsigned long data);
 #ifdef WLAN_OPEN_SOURCE
 static inline int hif_pm_request_resume(struct device *dev)
 {
