@@ -414,6 +414,7 @@ struct smb135x_chg {
 	struct pinctrl			*smb_pinctrl;
 
 	bool				apsd_rerun;
+	bool				id_line_not_connected;
 };
 
 #define RETRY_COUNT 5
@@ -478,7 +479,9 @@ static int smb135x_read(struct smb135x_chg *chip, int reg,
 		return 0;
 	}
 	mutex_lock(&chip->read_write_lock);
+	pm_stay_awake(chip->dev);
 	rc = __smb135x_read(chip, reg, val);
+	pm_relax(chip->dev);
 	mutex_unlock(&chip->read_write_lock);
 
 	return rc;
@@ -493,7 +496,9 @@ static int smb135x_write(struct smb135x_chg *chip, int reg,
 		return 0;
 
 	mutex_lock(&chip->read_write_lock);
+	pm_stay_awake(chip->dev);
 	rc = __smb135x_write(chip, reg, val);
+	pm_relax(chip->dev);
 	mutex_unlock(&chip->read_write_lock);
 
 	return rc;
@@ -602,6 +607,9 @@ static bool is_usb_slave_present(struct smb135x_chg *chip)
 	bool usb_slave_present;
 	u8 reg;
 	int rc;
+
+	if (chip->id_line_not_connected)
+		return false;
 
 	rc = smb135x_read(chip, STATUS_6_REG, &reg);
 	if (rc < 0) {
@@ -3428,7 +3436,7 @@ static int determine_initial_status(struct smb135x_chg *chip)
 	}
 
 	chip->usb_slave_present = is_usb_slave_present(chip);
-	if (chip->usb_psy) {
+	if (chip->usb_psy && !chip->id_line_not_connected) {
 		pr_debug("setting usb psy usb_otg = %d\n",
 				chip->usb_slave_present);
 		power_supply_set_usb_otg(chip->usb_psy,
@@ -3966,6 +3974,8 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 
 	chip->pinctrl_state_name = of_get_property(node, "pinctrl-names", NULL);
 
+	chip->id_line_not_connected = of_property_read_bool(node,
+						"qcom,id-line-not-connected");
 	return 0;
 }
 
@@ -4119,6 +4129,7 @@ static int smb135x_main_charger_probe(struct i2c_client *client,
 	mutex_init(&chip->current_change_lock);
 	mutex_init(&chip->read_write_lock);
 	mutex_init(&chip->otg_oc_count_lock);
+	device_init_wakeup(chip->dev, true);
 	/* probe the device to check if its actually connected */
 	rc = smb135x_read(chip, CFG_4_REG, &reg);
 	if (rc) {
