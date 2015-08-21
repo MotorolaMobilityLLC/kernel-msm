@@ -41,12 +41,14 @@ extern struct list_head orphan_clk_list;
 #ifdef CONFIG_DEBUG_FS
 int clock_debug_register(struct clk *clk);
 void clock_debug_print_enabled(void);
+void clock_debug_update_rate_stats(struct clk *c);
 #else
 static inline int clock_debug_register(struct clk *unused)
 {
 	return 0;
 }
 static inline void clock_debug_print_enabled(void) { return; }
+static inline void clock_debug_update_rate_stats(struct clk *c) {}
 #endif
 
 #endif
