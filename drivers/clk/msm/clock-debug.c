@@ -522,6 +522,151 @@ static const struct file_operations clock_print_hw_fops = {
 };
 
 
+static struct clk_rate_stats_entry *rate_stats_entry_find(
+	struct clk_rate_stats *stats, unsigned long rate)
+{
+	struct clk_rate_stats_entry *entry_end = stats->entries + stats->size;
+	struct clk_rate_stats_entry *entry;
+
+	for (entry = stats->entries; entry < entry_end; entry++)
+		if (entry->rate >= rate)
+			break;
+
+	if (entry < entry_end && entry->rate == rate)
+		return entry;
+
+	if (stats->size >= CLOCK_RATE_STATE_SIZE_MAX)
+		return NULL;
+
+	/* Shift existing entries to maintain sort by clock rate */
+	while (entry_end > entry) {
+		struct clk_rate_stats_entry *prev = entry_end - 1;
+		*entry_end = *prev;
+		entry_end = prev;
+	}
+
+	entry->rate = rate;
+	entry->time = 0;
+	stats->size++;
+
+	return entry;
+}
+
+static void clock_debug_update_rate_stats_locked(struct clk *c)
+{
+	struct clk_rate_stats *rate_stats = c->rate_stats;
+	unsigned long rate = c->count ? clk_get_rate(c) : 0;
+	struct clk_rate_stats_entry *entry =
+		rate_stats_entry_find(rate_stats, rate);
+	struct timespec cur_time;
+
+	get_monotonic_boottime(&cur_time);
+	if (entry) {
+		struct timespec delta = timespec_sub(cur_time,
+			rate_stats->last_updated);
+		entry->time += delta.tv_sec * MSEC_PER_SEC +
+			       delta.tv_nsec / NSEC_PER_MSEC;
+	}
+	rate_stats->last_updated = cur_time;
+}
+
+void clock_debug_update_rate_stats(struct clk *c)
+{
+	struct clk_rate_stats *rate_stats = c->rate_stats;
+
+	if (unlikely(rate_stats)) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&rate_stats->lock, flags);
+		clock_debug_update_rate_stats_locked(c);
+		spin_unlock_irqrestore(&rate_stats->lock, flags);
+	}
+}
+
+static DEFINE_MUTEX(rate_stats_lock);
+
+static ssize_t rate_stats_write(struct file *file, const char __user *buf,
+			    size_t len, loff_t *offset)
+{
+	struct clk *c = ((struct seq_file *)file->private_data)->private;
+	struct clk_rate_stats *rate_stats = c->rate_stats;
+	int ret = len;
+
+	mutex_lock(&rate_stats_lock);
+
+	if (!rate_stats) {
+		rate_stats = kzalloc(sizeof(struct clk_rate_stats),
+					GFP_KERNEL);
+		if (rate_stats) {
+			spin_lock_init(&rate_stats->lock);
+			c->rate_stats = rate_stats;
+		} else {
+			pr_err("clock: %s: failed to allocate memory for rate stats",
+				c->dbg_name);
+			ret = -ENOMEM;
+		}
+	}
+
+	mutex_unlock(&rate_stats_lock);
+
+	if (rate_stats) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&rate_stats->lock, flags);
+		rate_stats->size = 0;
+		get_monotonic_boottime(&rate_stats->last_updated);
+		spin_unlock_irqrestore(&rate_stats->lock, flags);
+	}
+
+	return ret;
+}
+
+static const struct timespec TIMESPEC_NONE;
+
+static int rate_stats_show(struct seq_file *m, void *unused)
+{
+	struct clk *c = m->private;
+	struct clk_rate_stats *rate_stats_ptr = c->rate_stats;
+	struct clk_rate_stats rate_stats = {.last_updated = TIMESPEC_NONE};
+
+	if (rate_stats_ptr) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&rate_stats_ptr->lock, flags);
+		clock_debug_update_rate_stats_locked(c);
+		rate_stats = *rate_stats_ptr;
+		spin_unlock_irqrestore(&rate_stats_ptr->lock, flags);
+	}
+
+	if (!timespec_equal(&rate_stats.last_updated, &TIMESPEC_NONE)) {
+		struct clk_rate_stats_entry *entry, *entry_end;
+
+		seq_printf(m, "%10s %11s\n", "rate", "time(ms)");
+		entry_end = rate_stats.entries + rate_stats.size;
+		for (entry = rate_stats.entries; entry < entry_end; entry++)
+			seq_printf(m, "%10lu %11lu\n",
+				   entry->rate, entry->time);
+	} else {
+		seq_puts(m, "enable first by writing to rate_stats\n");
+	}
+
+	return 0;
+}
+
+static int rate_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, rate_stats_show, inode->i_private);
+}
+
+static const struct file_operations clock_rate_stats_fops = {
+	.open		= rate_stats_open,
+	.read		= seq_read,
+	.write		= rate_stats_write,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
+
+
 static void clock_measure_add(struct clk *clock)
 {
 	if (IS_ERR_OR_NULL(measure))
@@ -583,6 +728,10 @@ static int clock_debug_add(struct clk *clock)
 
 	if (!debugfs_create_file("print", S_IRUGO, clk_dir, clock,
 				&clock_print_hw_fops))
+			goto error;
+
+	if (!debugfs_create_file("rate_stats", S_IRUGO | S_IWUSR, clk_dir,
+				clock, &clock_rate_stats_fops))
 			goto error;
 
 	clock_measure_add(clock);
