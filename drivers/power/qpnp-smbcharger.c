@@ -1099,6 +1099,8 @@ enum battchg_enable_reason {
 	REASON_BATTCHG_USER		= BIT(0),
 	/* battery charging disabled while loading battery profiles */
 	REASON_BATTCHG_UNKNOWN_BATTERY	= BIT(1),
+	/* thermal interrupt has disabled battery charging */
+	REASON_BATTCHG_THERM		= BIT(2),
 };
 
 static struct power_supply *get_parallel_psy(struct smbchg_chip *chip)
@@ -4194,7 +4196,7 @@ static irqreturn_t batt_hot_handler(int irq, void *_chip)
 
 	/* keep to disable charging until warm threshold */
 	if (chip->customized_jeita && !new_state && chip->batt_hot)
-		smbchg_battchg_en(chip, 0, REASON_BATTCHG_USER, &unused);
+		smbchg_battchg_en(chip, 0, REASON_BATTCHG_THERM, &unused);
 
 	chip->batt_hot = new_state;
 	smbchg_parallel_usb_check_ok(chip);
@@ -4219,7 +4221,7 @@ static irqreturn_t batt_cold_handler(int irq, void *_chip)
 
 	/* keep to disable charging until cool threshold */
 	if (chip->customized_jeita && !new_state && chip->batt_cold)
-		smbchg_battchg_en(chip, 0, REASON_BATTCHG_USER, &unused);
+		smbchg_battchg_en(chip, 0, REASON_BATTCHG_THERM, &unused);
 
 	chip->batt_cold = new_state;
 	smbchg_parallel_usb_check_ok(chip);
@@ -4245,7 +4247,7 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 				chip->cfg_fastchg_current_ma);
 		if (!chip->batt_warm)
 			smbchg_battchg_en(chip, 1,
-				REASON_BATTCHG_USER, &unused);
+				REASON_BATTCHG_THERM, &unused);
 	}
 
 	smbchg_parallel_usb_check_ok(chip);
@@ -4267,7 +4269,7 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
 
 	if (chip->customized_jeita && !chip->batt_cool)
-		smbchg_battchg_en(chip, 1, REASON_BATTCHG_USER, &unused);
+		smbchg_battchg_en(chip, 1, REASON_BATTCHG_THERM, &unused);
 
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
