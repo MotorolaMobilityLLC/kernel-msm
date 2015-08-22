@@ -39,26 +39,6 @@
 		};
 	};
 
-	i2c_8 {
-		i2c_8_active: i2c_8_active {
-			i2c_8 {
-				pins = "gpio6", "gpio7";
-				function = "blsp_i2c8";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
-		i2c_8_sleep: i2c_8_sleep {
-			i2c_8 {
-				pins = "gpio6", "gpio7";
-				function = "blsp_i2c8";
-				drive-strength = <2>;
-				bias-pull-up;
-			};
-		};
-	};
-
 	/* These are defined in msm8996-pinctrl.dtsi but we need to add CS on
 	 * GPIO2 since our reference design includes it.
 	 */
