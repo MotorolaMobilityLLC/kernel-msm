@@ -106,6 +106,8 @@
 		qcom,mdss-pan-physical-width-dimension = <71>;
 		qcom,mdss-pan-physical-height-dimension = <126>;
 		qcom,mdss-dsi-reset-sequence = <0 1>, <1 10>;
-		qcom,panel-roi-alignment = <4 4 2 2 20 20>;
+		qcom,panel-roi-alignment = <8 8 1 1 1 1>;
+		qcom,partial-update-enabled;
+		qcom,partial-update-roi-merge;
 	};
 };
