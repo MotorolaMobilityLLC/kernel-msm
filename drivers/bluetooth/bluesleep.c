@@ -239,7 +239,8 @@ static void bluesleep_sleep_work(struct work_struct *work)
 		set_bit(BT_RXTIMER, &flags);
 		hsuart_power(HS_UART_ON);
 	} else {
-		pr_err("default branch, do nothing.");
+		if (debug_mask & DEBUG_SUSPEND)
+			pr_err("default branch, do nothing.\n");
 	}
 }
 
