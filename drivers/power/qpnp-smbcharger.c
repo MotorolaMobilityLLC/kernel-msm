@@ -4784,6 +4784,7 @@ static inline int get_bpd(const char *name)
 #define TERM_I_SRC_BIT			BIT(2)
 #define TERM_SRC_FG			BIT(2)
 #define CHGR_CFG2			0xFC
+#define BAT_OV_ECC			BIT(4)
 #define CHG_INHIB_CFG_REG		0xF7
 #define CHG_INHIBIT_50MV_VAL		0x00
 #define CHG_INHIBIT_100MV_VAL		0x01
@@ -5214,6 +5215,14 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 				rc);
 			return rc;
 		}
+	}
+
+	/* Disable charging stop by battery OV */
+	rc = smbchg_sec_masked_write(chip, chip->chgr_base + CHGR_CFG2,
+							BAT_OV_ECC, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't disable BAT_OV_ECC = %d\n", rc);
+		return rc;
 	}
 
 	if (chip->force_aicl_rerun)
