@@ -16,42 +16,42 @@ qcom,sunwoda_atl_3450mah {
 	qcom,batt-id-kohm = <22>;
 	qcom,battery-beta = <3435>;
 	qcom,battery-type = "sunwoda_atl_3450mah";
-	qcom,chg-rslow-comp-c1 = <3079513>;
-	qcom,chg-rslow-comp-c2 = <4067844>;
-	qcom,chg-rs-to-rslow = <816990>;
-	qcom,chg-rslow-comp-thr = <0x9F>;
-	qcom,checksum = <0xC130>;
-	qcom,gui-version = "PMI8994GUI - 2.1.6.5";
+	qcom,chg-rslow-comp-c1 = <2327362>;
+	qcom,chg-rslow-comp-c2 = <2499303>;
+	qcom,chg-rs-to-rslow = <813004>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0x3C6A>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.8";
 	qcom,fg-profile-data = [
-		 FE 83 FF 7D
-		 0D 82 89 7C
-		 5B 83 FE 66
-		 EA 82 6D 8D
-		 1D 82 C9 99
-		 8A BC D9 C8
-		 5C 0F 0F 88
-		 B2 7E 77 82
-		 E0 7C 40 83
-		 37 78 F5 7F
-		 12 7A 87 82
-		 06 93 C7 B4
-		 66 C0 5E 13
-		 6B 0E 0A 5A
+		 02 88 3D 7E
+		 45 82 C7 7C
+		 62 83 A2 6E
+		 56 88 9F 8E
+		 26 82 A0 99
+		 63 BC A1 C8
+		 5C 10 0D 88
+		 8A 7E 67 82
+		 DE 7C 58 83
+		 07 68 6C 7B
+		 01 8C 56 82
+		 69 99 A8 BC
+		 76 C9 5B 0E
+		 57 0E 34 5A
 		 14 70 35 FE
-		 F6 3D B4 46
-		 C6 42 00 00
-		 99 4D CA 3A
-		 5B 41 00 00
+		 5E 3D 3A 44
+		 07 39 00 00
+		 10 4C D1 38
+		 FE 12 00 00
 		 00 00 00 00
 		 00 00 00 00
-		 04 6B 93 69
-		 B5 52 BE 89
-		 E3 75 88 69
-		 3F 5D EE 7B
-		 22 74 1D 62
-		 38 60 FF B1
-		 17 9B 63 85
-		 66 A0 71 0C
+		 95 6B 45 6A
+		 FB 60 7F 88
+		 D6 74 6F 63
+		 11 62 2C 81
+		 AF 6F 9C 61
+		 44 7E 38 AA
+		 18 9E 62 DD
+		 65 A0 71 0C
 		 28 00 FF 36
 		 F0 11 30 03
 		 00 00 00 0C
