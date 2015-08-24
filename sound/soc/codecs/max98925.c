@@ -34,6 +34,8 @@
 
 #ifdef USE_DSM_MISC_DEV
 extern int afe_dsm_param_ctrl(uint32_t dir, uint32_t size, uint8_t *payload);
+static int param_array[384];
+static uint8_t *payload = (uint8_t *)&param_array[100];
 #endif
 
 #define DSM_MAX_SIZE_RW          (284 * sizeof(int))
@@ -105,6 +107,8 @@ static struct reg_default max98925_reg[] = {
 	{ 0xFF, 0x50 }, /* Revision ID */
 };
 
+static bool pa_enable = false;
+
 static bool max98925_volatile_register(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -154,18 +158,18 @@ static int max98925_regulator_config(struct i2c_client *i2c, bool pullup, bool o
 	#define VCC_I2C_MAX_UV	1800000
 	#define I2C_LOAD_UA		300000
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	vdd = regulator_get(&i2c->dev, "vdd");
 	if (IS_ERR(vdd)) {
-		pr_info("%s: regulator get failed rc=%d\n", __func__, rc);
+		pr_err("%s: regulator get failed rc=%d\n", __func__, rc);
 		return PTR_ERR(vdd);
 	}
 
 	if (regulator_count_voltages(vdd) > 0) {
 		rc = regulator_set_voltage(vdd, VCC_I2C_MIN_UV, VCC_I2C_MAX_UV);
 		if (rc) {
-			pr_info("%s: regulator set_vtg failed rc=%d\n", __func__, rc);
+			pr_err("%s: regulator set_vtg failed rc=%d\n", __func__, rc);
 			goto error_set_vtg_vdd;
 		}
 	}
@@ -174,14 +178,14 @@ static int max98925_regulator_config(struct i2c_client *i2c, bool pullup, bool o
 		vcc_i2c = regulator_get(&i2c->dev, "vcc_i2c");
 		if (IS_ERR(vcc_i2c)) {
 			rc = PTR_ERR(vcc_i2c);
-			pr_info("%s: regulator get failed rc=%d\n", __func__, rc);
+			pr_err("%s: regulator get failed rc=%d\n", __func__, rc);
 			goto error_get_vtg_i2c;
 		}
 
 		if (regulator_count_voltages(vcc_i2c) > 0) {
 			rc = regulator_set_voltage(vcc_i2c, VCC_I2C_MIN_UV, VCC_I2C_MAX_UV);
 			if (rc) {
-				pr_info("%s: regulator set_vtg failed rc=%d\n", __func__, rc);
+				pr_err("%s: regulator set_vtg failed rc=%d\n", __func__, rc);
 				goto error_set_vtg_i2c;
 			}
 		}
@@ -190,31 +194,30 @@ static int max98925_regulator_config(struct i2c_client *i2c, bool pullup, bool o
 	if (on) {
 		rc = reg_set_optimum_mode_check(vdd, I2C_LOAD_UA);
 		if (rc < 0) {
-			pr_info("%s: regulator vcc_i2c set_opt failed rc=%d\n", __func__, rc);
+			pr_err("%s: regulator vcc_i2c set_opt failed rc=%d\n", __func__, rc);
 			goto error_reg_opt_vdd;
 		}
 
 		rc = regulator_enable(vdd);
 		if (rc) {
-			pr_info("%s: regulator vcc_i2c enable failed rc=%d\n", __func__, rc);
+			pr_err("%s: regulator vcc_i2c enable failed rc=%d\n", __func__, rc);
 			goto error_reg_en_vdd;
 		}
 
 		if (vcc_i2c) {
 			rc = reg_set_optimum_mode_check(vcc_i2c, I2C_LOAD_UA);
 			if (rc < 0) {
-				pr_info("%s: regulator vcc_i2c set_opt failed rc=%d\n", __func__, rc);
+				pr_err("%s: regulator vcc_i2c set_opt failed rc=%d\n", __func__, rc);
 				goto error_reg_opt_i2c;
 			}
 
 			rc = regulator_enable(vcc_i2c);
 			if (rc) {
-				pr_info("%s: regulator vcc_i2c enable failed rc=%d\n", __func__, rc);
+				pr_err("%s: regulator vcc_i2c enable failed rc=%d\n", __func__, rc);
 				goto error_reg_en_vcc_i2c;
 			}
 		}
-	}
-	else {
+	} else {
 		if (vcc_i2c) {
 			reg_set_optimum_mode_check(vcc_i2c, 0);
 			regulator_disable(vcc_i2c);
@@ -229,11 +232,10 @@ static int max98925_regulator_config(struct i2c_client *i2c, bool pullup, bool o
 	error_set_vtg_i2c:
 		regulator_put(vcc_i2c);
 	error_get_vtg_i2c:
-	if (regulator_count_voltages(vcc_i2c) > 0)
-		regulator_set_voltage(vcc_i2c, 0, VCC_I2C_MAX_UV);
+		if (regulator_count_voltages(vcc_i2c) > 0)
+			regulator_set_voltage(vcc_i2c, 0, VCC_I2C_MAX_UV);
 	error_set_vtg_vdd:
 		regulator_put(vdd);
-
 	error_reg_en_vcc_i2c:
 		reg_set_optimum_mode_check(vcc_i2c, 0);
 	error_reg_opt_i2c:
@@ -269,7 +271,7 @@ void reg_dump(struct max98925_priv *max98925)
 			int addr = j + reg_table[i].start;
 			regmap_read(max98925->regmapL, addr, &val_l);
 			regmap_read(max98925->regmapR, addr, &val_r);
-			pr_info("%s: reg 0x%02X, val_l 0x%02X, val_r 0x%02X\n",
+			pr_debug("%s: reg 0x%02X, val_l 0x%02X, val_r 0x%02X\n",
 					__func__, addr, val_l, val_r);
 		}
 		i++;
@@ -277,10 +279,6 @@ void reg_dump(struct max98925_priv *max98925)
 }
 
 #ifdef USE_DSM_MISC_DEV
-
-static int param_array[384];
-static uint8_t *payload = (uint8_t *)&param_array[100];
-
 static int maxdsm_open(struct inode *inode, struct file *filep)
 {
 	return 0;
@@ -387,8 +385,8 @@ static int max98925_left_gain_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] =
 			(data & M98925_SPK_GAIN_MASK) >> M98925_SPK_GAIN_SHIFT;
 
-
-	pr_info("%s: left_gain setting returned %d\n", __func__, (int) ucontrol->value.integer.value[0]);
+	pr_debug("%s: left_gain setting returned %d\n", __func__,
+		(int) ucontrol->value.integer.value[0]);
 
 	return 0;
 }
@@ -406,11 +404,10 @@ static int max98925_left_gain_put(struct snd_kcontrol *kcontrol,
 
 		max98925->left_gain = sel;
 
-		pr_info("%s: left_gain set to %d\n", __func__, sel);
+		pr_debug("%s: left_gain set to %d\n", __func__, sel);
 	} else {
-		pr_info("%s: valid speaker gain settings: %d to %d\n", __func__,
-			0,
-			((1 << M98925_SPK_GAIN_WIDTH) - 1));
+		pr_debug("%s: valid speaker gain settings: %d to %d\n",
+			__func__, 0, ((1 << M98925_SPK_GAIN_WIDTH) - 1));
 	}
 
 	return 0;
@@ -427,8 +424,8 @@ static int max98925_right_gain_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] =
 			(data & M98925_SPK_GAIN_MASK) >> M98925_SPK_GAIN_SHIFT;
 
-
-	pr_info("%s: right_gain setting returned %d\n", __func__, (int) ucontrol->value.integer.value[0]);
+	pr_debug("%s: right_gain setting returned %d\n", __func__,
+		(int) ucontrol->value.integer.value[0]);
 
 	return 0;
 }
@@ -445,12 +442,10 @@ static int max98925_right_gain_put(struct snd_kcontrol *kcontrol,
 			M98925_SPK_GAIN_MASK, sel << M98925_SPK_GAIN_SHIFT);
 
 		max98925->right_gain = sel;
-
-		pr_info("%s: right_gain set to %d\n", __func__, sel);
+		pr_debug("%s: right_gain set to %d\n", __func__, sel);
 	} else {
-		pr_info("%s: valid speaker gain settings: %d to %d\n", __func__,
-			0,
-			((1 << M98925_SPK_GAIN_WIDTH) - 1));
+		pr_debug("%s: valid speaker gain settings: %d to %d\n",
+			__func__, 0, ((1 << M98925_SPK_GAIN_WIDTH) - 1));
 	}
 
 	return 0;
@@ -481,17 +476,19 @@ static int max98925_left_en_put(struct snd_kcontrol *kcontrol,
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	unsigned int sel = ucontrol->value.integer.value[0];
 
-	if( DEFAULT_SWITCH_NONEED != max98925->switch_en_gpio && sel){
-		int nret = gpio_direction_output(max98925->switch_en_gpio, GPIO_PULL_DOWN);
-		if( nret )
-			pr_err("%s: modify spk&recv to high failed nret = %d\n", __func__,nret);
-	}else{
-		pr_err("%s: spk&rcver switch gpio had pulled down",__func__);
+	if ( DEFAULT_SWITCH_NONEED != max98925->switch_en_gpio && sel) {
+		int nret = gpio_direction_output(max98925->switch_en_gpio,
+			GPIO_PULL_DOWN);
+		if ( nret )
+			pr_err("%s: modify spk&recv to high failed nret = %d\n",
+				__func__, nret);
+	} else {
+		pr_err("%s: spk&rcver switch gpio had pulled down", __func__);
 	}
 
-	max98925->left_en =  sel << M98925_EN_SHIFT;
+	max98925->left_en = sel << M98925_EN_SHIFT;
 
-	pr_info("%s: left speaker set to %d\n", __func__, sel);
+	pr_debug("%s: left speaker set to %d\n", __func__, sel);
 	return 0;
 }
 
@@ -514,9 +511,9 @@ static int max98925_right_en_put(struct snd_kcontrol *kcontrol,
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	unsigned int sel = ucontrol->value.integer.value[0];
 
-	max98925->right_en =  sel << M98925_EN_SHIFT;
+	max98925->right_en = sel << M98925_EN_SHIFT;
 
-	pr_info("%s: right speaker set to %d\n", __func__, sel);
+	pr_debug("%s: right speaker set to %d\n", __func__, sel);
 	return 0;
 }
 
@@ -544,9 +541,11 @@ static int max98925_receiver_en_put(struct snd_kcontrol *kcontrol,
 
 	/*TBD: Enable GPIO to receiver mode here*/
 	if( DEFAULT_SWITCH_NONEED != max98925->switch_en_gpio && sel){
-		int nret = gpio_direction_output(max98925->switch_en_gpio, GPIO_PULL_UP);
+		int nret = gpio_direction_output(max98925->switch_en_gpio,
+			GPIO_PULL_UP);
 		if( nret )
-			pr_err("%s: modify spk&recv to high failed nret = %d\n", __func__,nret);
+			pr_err("%s: modify spk&recv to high failed nret = %d\n",
+				__func__,nret);
 	}else{
 		pr_err("%s: spk&rcver switch gpio had pulled up",__func__);
 	}
@@ -566,8 +565,7 @@ static int max98925_reg_get(struct snd_kcontrol *kcontrol,
 
 	regmap_read(max98925->regmapL, reg, &data);
 
-	ucontrol->value.integer.value[0] =
-		(data & mask) >> shift;
+	ucontrol->value.integer.value[0] = (data & mask) >> shift;
 
 	return 0;
 }
@@ -583,7 +581,7 @@ static int max98925_reg_put(struct snd_kcontrol *kcontrol,
 	regmap_update_bits(max98925->regmapL, reg, mask, sel << shift);
 	regmap_update_bits(max98925->regmapR, reg, mask, sel << shift);
 
-	pr_info("%s: register 0x%02X, value 0x%02X\n", __func__, reg, sel);
+	pr_debug("%s: register 0x%02X, value 0x%02X\n", __func__, reg, sel);
 
 	return 0;
 }
@@ -767,13 +765,10 @@ static const struct snd_kcontrol_new max98925_snd_controls[] = {
 
 static int max98925_add_widgets(struct snd_soc_codec *codec)
 {
-//	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	int ret;
 
 	ret = snd_soc_add_codec_controls(codec, max98925_snd_controls,
 		ARRAY_SIZE(max98925_snd_controls));
-
-//	pr_info("%s: snd_soc_add_codec_controls returned %d\n", __func__, ret);
 
 #if 0
 	snd_soc_dapm_new_controls(dapm, max98925_dapm_widgets,
@@ -819,9 +814,8 @@ static inline int max98925_rate_value(int rate, int clock, u8 *value,
 		}
 	}
 
-
-	pr_info("%s: sample rate is %d, returning %d\n", __func__, rate_table[i].rate, *value);
-
+	pr_debug("%s: sample rate is %d, returning %d\n", __func__,
+		rate_table[i].rate, *value);
 
 	return ret;
 }
@@ -829,14 +823,14 @@ static inline int max98925_rate_value(int rate, int clock, u8 *value,
 static int max98925_set_tdm_slot(struct snd_soc_dai *codec_dai,
 		unsigned int tx_mask, unsigned int rx_mask, int slots, int slot_width)
 {
-	pr_info("%s: tx_mask 0x%X, rx_mask 0x%X, slots %d, slot width %d\n",
+	pr_debug("%s: tx_mask 0x%X, rx_mask 0x%X, slots %d, slot width %d\n",
 			__func__, tx_mask, rx_mask, slots, slot_width);
 	return 0;
 }
 
 static void max98925_set_slave(struct max98925_priv *max98925)
 {
-	pr_info("%s: ENTER\n", __func__);
+	pr_debug("%s: ENTER\n", __func__);
 
 	/*
 	 * 1. use BCLK instead of MCLK
@@ -885,7 +879,7 @@ static void max98925_set_slave(struct max98925_priv *max98925)
 
 static void max98925_set_master(struct max98925_priv *max98925)
 {
-	pr_info("%s: ENTER\n", __func__);
+	pr_debug("%s: ENTER\n", __func__);
 
 	/*
 	 * 1. use MCLK for Left channel, right channel always BCLK
@@ -911,7 +905,7 @@ static int max98925_dai_set_fmt(struct snd_soc_dai *codec_dai,
 	struct max98925_cdata *cdata;
 	unsigned int invert = 0;
 
-	pr_info("%s: fmt 0x%08X\n", __func__, fmt);
+	pr_debug("%s: fmt 0x%08X\n", __func__, fmt);
 
 	cdata = &max98925->dai[0];
 
@@ -933,13 +927,13 @@ static int max98925_dai_set_fmt(struct snd_soc_dai *codec_dai,
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
-		pr_info("%s: set SND_SOC_DAIFMT_I2S\n", __func__);
+		pr_debug("%s: set SND_SOC_DAIFMT_I2S\n", __func__);
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
-		pr_info("%s: set SND_SOC_DAIFMT_LEFT_J\n", __func__);
+		pr_debug("%s: set SND_SOC_DAIFMT_LEFT_J\n", __func__);
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
-		pr_info("%s: set SND_SOC_DAIFMT_DSP_A\n", __func__);
+		pr_debug("%s: set SND_SOC_DAIFMT_DSP_A\n", __func__);
 	default:
 		dev_err(codec->dev, "DAI format unsupported, fmt:0x%x", fmt);
 		return -EINVAL;
@@ -1003,7 +997,7 @@ static int max98925_set_clock(struct max98925_priv *max98925, unsigned int rate)
 		mdll  = M98925_MDLL_MULT_MCLKx8;
 		break;
 	default:
-		dev_info(max98925->codec->dev, "unsupported sysclk %d\n",
+		dev_err(max98925->codec->dev, "unsupported sysclk %d\n",
 					max98925->sysclk);
 		return -EINVAL;
 	}
@@ -1052,7 +1046,7 @@ static int max98925_dai_hw_params(struct snd_pcm_substream *substream,
 	struct max98925_cdata *cdata;
 	unsigned int rate;
 
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	cdata = &max98925->dai[0];
 
@@ -1060,7 +1054,7 @@ static int max98925_dai_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
-		pr_info("%s: set SNDRV_PCM_FORMAT_S16_LE\n", __func__);
+		pr_debug("%s: set SNDRV_PCM_FORMAT_S16_LE\n", __func__);
 		regmap_update_bits(max98925->regmapL, MAX98925_R020_FORMAT,
 				M98925_DAI_CHANSZ_MASK, M98925_DAI_CHANSZ_16);
 		regmap_update_bits(max98925->regmapR, MAX98925_R020_FORMAT,
@@ -1068,14 +1062,14 @@ static int max98925_dai_hw_params(struct snd_pcm_substream *substream,
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
 	case SNDRV_PCM_FORMAT_S32_LE:
-		pr_info("%s: set SNDRV_PCM_FORMAT_S32_LE\n", __func__);
+		pr_debug("%s: set SNDRV_PCM_FORMAT_S32_LE\n", __func__);
 		regmap_update_bits(max98925->regmapL, MAX98925_R020_FORMAT,
 				M98925_DAI_CHANSZ_MASK, M98925_DAI_CHANSZ_32);
 		regmap_update_bits(max98925->regmapR, MAX98925_R020_FORMAT,
 				M98925_DAI_CHANSZ_MASK, M98925_DAI_CHANSZ_32);
 		break;
 	default:
-		pr_info("%s: format unsupported %d", __func__, params_format(params));
+		pr_debug("%s: format unsupported %d", __func__, params_format(params));
 		return -EINVAL;
 	}
 
@@ -1088,29 +1082,42 @@ static int max98925_dai_set_sysclk(struct snd_soc_dai *dai,
 	struct snd_soc_codec *codec = dai->codec;
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 
-	pr_info("%s: clk_id %d, freq %d, dir %d\n", __func__, clk_id, freq, dir);
+	pr_debug("%s: clk_id %d, freq %d, dir %d\n", __func__, clk_id, freq, dir);
 
 	max98925->sysclk = freq;
 
 	return 0;
 }
+#define STEREO_CHANNEL_MODE         (0x3000000>>24)
+#define ALG_AUTO_MUTE               (0x68 | 0x3000000)
+#define ALG_ENABLE_CMD              (1)
 
 static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 {
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec_dai->codec);
 
-	pr_info("%s: mute %d\n", __func__, mute);
+	int* param = (int*) payload;
+
+	param[0] = STEREO_CHANNEL_MODE,
+	param[1] = 1,
+	param[2] = ALG_AUTO_MUTE;
+	param[3] = ALG_ENABLE_CMD;
 
 	if (mute) {
-		regmap_update_bits(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
-			M98925_EN_MASK, 0x0);
-		regmap_update_bits(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
-			M98925_EN_MASK, 0x0);
-		msleep(20);
+		if (pa_enable) {
+			afe_dsm_param_ctrl(1, 32,(uint8_t*)param);
+			msleep(35);
+			regmap_update_bits(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
+				M98925_EN_MASK, 0x0);
+			regmap_update_bits(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
+				M98925_EN_MASK, 0x0);
+			msleep(20);
+		}
+		pa_enable = false;
+
 		if (DEFAULT_SWITCH_NONEED != max98925->switch_en_gpio)
 			gpio_direction_output(max98925->switch_en_gpio, GPIO_PULL_DOWN);
-	}
-	else	{
+	} else {
 		regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
 			M98925_SPK_GAIN_MASK, max98925->left_gain);
 		regmap_update_bits(max98925->regmapR, MAX98925_R02D_GAIN,
@@ -1120,12 +1127,10 @@ static int max98925_dai_digital_mute(struct snd_soc_dai *codec_dai, int mute)
 			max98925->left_en);
 		regmap_write(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE,
 			max98925->right_en);
+		pa_enable = true;
 	}
 
-
-
-//	reg_dump(max98925);
-
+	pr_debug("%s: mute %d\n", __func__, mute);
 
 	return 0;
 }
@@ -1168,8 +1173,6 @@ static void max98925_handle_pdata(struct snd_soc_codec *codec)
 	struct max98925_priv *max98925 = snd_soc_codec_get_drvdata(codec);
 	struct max98925_pdata *pdata = max98925->pdata;
 
-//	pr_info("%s: enter\n", __func__);
-
 	if (!pdata) {
 		dev_dbg(codec->dev, "No platform data\n");
 		return;
@@ -1179,14 +1182,14 @@ static void max98925_handle_pdata(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int max98925_suspend(struct snd_soc_codec *codec)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	return 0;
 }
 
 static int max98925_resume(struct snd_soc_codec *codec)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	return 0;
 }
@@ -1202,10 +1205,9 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	int ret = 0;
 	int reg = 0;
 
-	dev_info(codec->dev, "STEREO - built on %s at %s\n",
-		__DATE__,
-		__TIME__);
-	dev_info(codec->dev, "build number %s\n", MAX98925_REVISION);
+	dev_dbg(codec->dev, "STEREO - built on %s at %s\n",
+		__DATE__, __TIME__);
+	dev_dbg(codec->dev, "build number %s\n", MAX98925_REVISION);
 
 	max98925->codec = codec;
 	codec->control_data = max98925->regmapL;
@@ -1218,7 +1220,6 @@ static int max98925_probe(struct snd_soc_codec *codec)
 
 	/* sysclk is hard-coded here but should be set by the machine driver */
 	max98925->sysclk = 12288000;
-//	max98925->sysclk = (unsigned)-1;
 	max98925->left_gain = 0x14;
 	max98925->right_gain = 0x14;
 
@@ -1229,10 +1230,8 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	reg = 0;
 	ret = regmap_read(max98925->regmapL, MAX98925_R0FF_VERSION, &reg);
 	if ((ret < 0) || ((reg < MAX98925_VERSION) && (reg < MAX98925_VERSION1))) {
-		dev_err(codec->dev,
-			"L device initialization error (%d 0x%02X)\n",
-			ret,
-			reg);
+		dev_err(codec->dev, "L device initialization error (%d 0x%02X)\n",
+			ret, reg);
 		goto err_access;
 	}
 	dev_info(codec->dev, "L device version 0x%02X\n", reg);
@@ -1242,9 +1241,7 @@ static int max98925_probe(struct snd_soc_codec *codec)
 		ret = regmap_read(max98925->regmapR, MAX98925_R0FF_VERSION, &reg);
 		if ((ret < 0) || ((reg < MAX98925_VERSION) && (reg < MAX98925_VERSION1))) {
 			dev_err(codec->dev,
-				"R device initialization error (%d 0x%02X)\n",
-				ret,
-				reg);
+				"R device initialization error (%d 0x%02X)\n", ret, reg);
 			goto err_access;
 		}
 		dev_info(codec->dev, "R device version 0x%02X\n", reg);
@@ -1260,6 +1257,7 @@ static int max98925_probe(struct snd_soc_codec *codec)
 
 	regmap_write(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE, 0x00);
 	regmap_write(max98925->regmapR, MAX98925_R038_GLOBAL_ENABLE, 0x00);
+	pa_enable = false;
 
 	/* It's not the default but we need to set DAI_DLY */
 	regmap_write(max98925->regmapL, MAX98925_R020_FORMAT, M98925_DAI_EXTBCLK_HIZ_MASK | M98925_DAI_DLY_MASK);
@@ -1280,8 +1278,6 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	regmap_write(max98925->regmapL, MAX98925_R02C_FILTERS, 0xD9);
 	regmap_write(max98925->regmapR, MAX98925_R02C_FILTERS, 0xD9);
 
-//	regmap_write(max98925->regmapL, MAX98925_R034_ALC_CONFIGURATION, 0xF8);
-//	regmap_write(max98925->regmapR, MAX98925_R034_ALC_CONFIGURATION, 0xF8);
 	regmap_write(max98925->regmapL, MAX98925_R034_ALC_CONFIGURATION, 0x12);
 	regmap_write(max98925->regmapR, MAX98925_R034_ALC_CONFIGURATION, 0x12);
 
@@ -1298,9 +1294,6 @@ static int max98925_probe(struct snd_soc_codec *codec)
 
 	regmap_write(max98925->regmapL, MAX98925_R035_BOOST_CONVERTER, 0x01);
 	regmap_write(max98925->regmapR, MAX98925_R035_BOOST_CONVERTER, 0x21);
-
-	regmap_write(max98925->regmapL, MAX98925_R02E_GAIN_RAMPING, 0x03);
-	regmap_write(max98925->regmapR, MAX98925_R02E_GAIN_RAMPING, 0x03);
 
 	regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
 			M98925_DAC_IN_SEL_MASK, M98925_DAC_IN_SEL_LEFT_DAI);
@@ -1322,15 +1315,14 @@ static int max98925_probe(struct snd_soc_codec *codec)
 	max98925_add_widgets(codec);
 
 err_access:
-
-	pr_info("%s: exit %d\n", __func__, ret);
+	pr_debug("%s: exit %d\n", __func__, ret);
 
 	return ret;
 }
 
 static int max98925_remove(struct snd_soc_codec *codec)
 {
-	pr_info("%s: enter\n", __func__);
+	pr_debug("%s: enter\n", __func__);
 
 	return 0;
 }
@@ -1370,10 +1362,10 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 	const __be32 *paddr;
 	int len;
 
-	pr_err("%s: enter, device '%s'\n", __func__, id->name);
+	pr_debug("%s: enter, device '%s'\n", __func__, id->name);
 
-	max98925_regulator_config(i2c_l, of_property_read_bool(i2c_l->dev.of_node,
-			"i2c-pull-up"), 1);
+	max98925_regulator_config(i2c_l,
+		of_property_read_bool(i2c_l->dev.of_node, "i2c-pull-up"), 1);
 
 	max98925 = kzalloc(sizeof(struct max98925_priv), GFP_KERNEL);
 	if (max98925 == NULL)
@@ -1385,7 +1377,7 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 	max98925->pdata = i2c_l->dev.platform_data;
 
 	max98925->regmapL = regmap_init_i2c(i2c_l, &max98925_regmap);
-	if (IS_ERR(max98925->regmapL)) {
+	if ( IS_ERR(max98925->regmapL) ) {
 		ret = PTR_ERR(max98925->regmapL);
 		dev_err(&i2c_l->dev, "Failed to allocate regmapL: %d\n", ret);
 		goto err_out;
@@ -1393,7 +1385,7 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 
 	/* Check for second MAX98925, we assume they are on the same bus*/
 	paddr = of_get_property(i2c_l->dev.of_node, "right-reg", &len);
-	if( paddr && (len >= sizeof(int)) ){
+	if (paddr && (len >= sizeof(int))) {
 		max98925_i2c_right->addr = be32_to_cpup(paddr);
 		pr_warn("right channel getted reg value 0x%x\n", max98925_i2c_right->addr);
 	}
@@ -1416,7 +1408,7 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 			max98925_dai, ARRAY_SIZE(max98925_dai));
 
 #ifdef USE_DSM_MISC_DEV
-	pr_info("%s: maxdsm_init() returned %d\n", __func__, maxdsm_init());
+	pr_debug("%s: maxdsm_init() returned %d\n", __func__, maxdsm_init());
 #endif
 
 	ret = of_get_named_gpio(i2c_l->dev.of_node, "speaker_receiver_switch", 0);
@@ -1437,7 +1429,7 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 		}
 	}
 
-	pr_info("%s: ret %d\n", __func__, ret);
+	pr_debug("%s: ret %d\n", __func__, ret);
 
 err_out:
 
@@ -1467,7 +1459,7 @@ static int max98925_i2c_remove(struct i2c_client *client)
 	maxdsm_deinit();
 #endif
 
-	pr_info("%s: exit\n", __func__);
+	pr_debug("%s: exit\n", __func__);
 
 	return 0;
 }
