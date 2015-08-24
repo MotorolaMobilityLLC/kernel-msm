@@ -381,6 +381,13 @@
 		pinctrl-0 = <&muc_attach>;
     };
 
+	muc_svc@0 {
+		compatible = "mmi,muc_svc";
+
+		mmi,use-authentication;
+		mmi,endo-mask = <0x4755>;
+	};
+
 	apba_ctrl {
 		compatible = "mmi,apba-ctrl";
 		reg = <0 0>;
