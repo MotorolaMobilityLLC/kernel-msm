@@ -1,0 +1,23 @@
+Motorola Mobility LLC MUC SVC Device
+
+Required Properties:
+- compatible: mmi,muc_svc
+- mmi,endo-mask: 16-bit value
+	Specifies the mask to pass to the greybus core when describing our
+	simulated software 'endo' which describes which interfaces are available
+	in the device.
+
+Optional Properties:
+- mmi,use-authentication: boolean
+	Specify this property to enable authentication of a module's manifest.
+	When enabled, the SVC Hotplug message will not be sent until user
+	space directs the module to do so via sysfs interface. If left out,
+	authentication is disabled by default.
+
+Example:
+	muc_svc@0 {
+		compatible = "mmi,muc_svc";
+
+		mmi,use-authentication;
+		mmi,endo-mask = <0x4755>;
+	};
