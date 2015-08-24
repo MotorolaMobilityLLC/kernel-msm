@@ -41,6 +41,7 @@
 	status = "okay";
 	qcom,actuator-type = "lra";
 	qcom,vmax-mv = <1160>;
+	qcom,vmax-mv-ind = <1972>;
 	qcom,ilim-ma = <400>;
 	qcom,wave-play-rate-us = <4347>;
 	qcom,correct-lra-drive-freq;
