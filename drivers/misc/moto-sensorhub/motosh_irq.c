@@ -114,7 +114,7 @@ void motosh_irq_work_func(struct work_struct *work)
 
 			/* temporarily print this log to help debug any
 			 * other display rotate issues */
-			dev_err(&ps_motosh->client->dev,
+			dev_info(&ps_motosh->client->dev,
 				"Sending disp_rotate(x)value: %d\n",
 				readbuff[0]);
 		} else {
