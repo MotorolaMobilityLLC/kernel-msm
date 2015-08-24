@@ -41,7 +41,7 @@
 
 #define CMD_GET_HDR_SZ 16
 
-#define ASUS_ADJUST_AFE_TX_MIC_GAIN
+bool ASUS_ADJUST_AFE_TX_MIC_GAIN;
 
 enum {
 	ADM_CUSTOM_TOP_CAL = 0,
@@ -1520,7 +1520,6 @@ static int get_cal_path(int path)
 }
 
 /* ASUS_BSP +++ Ken_Cheng "adjust TX MIC_GAIN" */
-#ifdef ASUS_ADJUST_AFE_TX_MIC_GAIN
 /* send_adm_cal_tx_gain from Qualcomm's patch for adjusting TX MIC_GAIN */
 static int send_adm_cal_tx_gain(int port_id, int copp_idx, int perf_mode)
 {
@@ -1612,7 +1611,6 @@ done:
 	kfree(adm_params);
 	return result;
 }
-#endif
 /* ASUS_BSP --- Ken_Cheng "adjust TX MIC_GAIN" */
 
 static void send_adm_cal(int port_id, int copp_idx, int path, int perf_mode,
@@ -1626,12 +1624,12 @@ static void send_adm_cal(int port_id, int copp_idx, int path, int perf_mode,
 			  app_type, acdb_id);
 
 /* ASUS_BSP +++ Ken_Cheng "adjust TX MIC_GAIN" */
-#ifdef ASUS_ADJUST_AFE_TX_MIC_GAIN
-	if (port_id & 1)  // to make sure apply calibration only the Tx path port(recording)
-	{
-		send_adm_cal_tx_gain(port_id, copp_idx, perf_mode);
+	if (ASUS_ADJUST_AFE_TX_MIC_GAIN) {
+		if (port_id & 1)  // to make sure apply calibration only the Tx path port(recording)
+		{
+			send_adm_cal_tx_gain(port_id, copp_idx, perf_mode);
+		}
 	}
-#endif
 /* ASUS_BSP --- Ken_Cheng "adjust TX MIC_GAIN" */
 
 	return;
@@ -1813,16 +1811,19 @@ int adm_open(int port_id, int path, int rate, int channel_mode,
 			open.endpoint_id_2 = this_adm.ec_ref_rx;
 			this_adm.ec_ref_rx = -1;
 		}
-
+		if (ASUS_ADJUST_AFE_TX_MIC_GAIN) {
 /***********************************************************************************/
 /***** Hack the topology for MONO MIC here which has HPF module in it. *************/
-		if (path == ADM_PATH_LIVE_REC) {
-			open.topology_id = ADM_CMD_COPP_OPENOPOLOGY_ID_MIC_MONO_AUDIO_COPP;
-			pr_debug("%s: Hacking topology ID in record path 0x%X\n", __func__, open.topology_id);
-		} else {
-			open.topology_id = topology;
-		}
+			if (path == ADM_PATH_LIVE_REC) {
+				open.topology_id = ADM_CMD_COPP_OPENOPOLOGY_ID_MIC_MONO_AUDIO_COPP;
+				pr_debug("%s: Hacking topology ID in record path 0x%X\n", __func__, open.topology_id);
+			} else {
+				open.topology_id = topology;
+			}
 /***********************************************************************************/
+		} else
+			open.topology_id = topology;
+
 		open.dev_num_channel = channel_mode & 0x00FF;
 		open.bit_width = bit_width;
 		WARN_ON((perf_mode == ULTRA_LOW_LATENCY_PCM_MODE) &&
@@ -2433,12 +2434,22 @@ err:
 static int __init adm_init(void)
 {
 	int i = 0, j;
+	enum DEVICE_HWID ASUS_hwID;
 	this_adm.apr = NULL;
 	this_adm.ec_ref_rx = -1;
 	atomic_set(&this_adm.matrix_map_stat, 0);
 	init_waitqueue_head(&this_adm.matrix_map_wait);
 	atomic_set(&this_adm.adm_stat, 0);
 	init_waitqueue_head(&this_adm.adm_wait);
+	ASUS_hwID = get_hardware_id();
+
+	if ((ASUS_hwID == SPARROW_ER) || (ASUS_hwID == WREN_EVB_SR)) {
+		ASUS_ADJUST_AFE_TX_MIC_GAIN = true;
+		pr_debug("%s: ASUS_ADJUST_AFE_TX_MIC_GAIN = true\n", __func__);
+	} else {
+		ASUS_ADJUST_AFE_TX_MIC_GAIN = false;
+		pr_debug("%s: ASUS_ADJUST_AFE_TX_MIC_GAIN = false\n", __func__);
+	}
 
 	for (i = 0; i < AFE_MAX_PORTS; i++) {
 		for (j = 0; j < MAX_COPPS_PER_PORT; j++) {

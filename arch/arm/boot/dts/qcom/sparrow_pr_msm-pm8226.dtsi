@@ -97,9 +97,9 @@
 			qcom,ibatmax-warm-ma = <150>;
 			qcom,warm-bat-decidegc = <450>;
 			qcom,warm-bat-mv = <4100>;
-			qcom,cool-bat-decidegc = <100>;
+			qcom,cool-bat-decidegc = <220>;
 			qcom,cool-bat-mv = <4400>;
-			qcom,ibatmax-cool-ma = <100>;
+			qcom,ibatmax-cool-ma = <150>;
 			qcom,use-external-rsense = <1>;
 
 			qcom,chgr@1000 {

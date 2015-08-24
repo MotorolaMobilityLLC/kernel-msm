@@ -169,7 +169,10 @@
 				qcom,supply-max-voltage = <1200000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
+				qcom,supply-pre-on-sleep = <0>;
 				qcom,supply-post-on-sleep = <20>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <0>;
 			};
 
 			qcom,ctrl-supply-entry@1 {
@@ -179,6 +182,10 @@
 				qcom,supply-max-voltage = <1800000>;
 				qcom,supply-enable-load = <50000>;
 				qcom,supply-disable-load = <100>;
+				qcom,supply-pre-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <0>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <0>;
 			};
 		};
 
@@ -193,6 +200,10 @@
 				qcom,supply-max-voltage = <2850000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
+				qcom,supply-pre-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <0>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <0>;
 			};
 
 			qcom,panel-supply-entry@1 {
@@ -202,6 +213,10 @@
 				qcom,supply-max-voltage = <1800000>;
 				qcom,supply-enable-load = <100000>;
 				qcom,supply-disable-load = <100>;
+				qcom,supply-pre-on-sleep = <0>;
+				qcom,supply-post-on-sleep = <0>;
+				qcom,supply-pre-off-sleep = <0>;
+				qcom,supply-post-off-sleep = <10>;
 			};
 		};
 	};

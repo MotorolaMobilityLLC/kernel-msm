@@ -29,6 +29,7 @@
 #include <linux/notifier.h>
 #include <linux/irq_work.h>
 #include <linux/iio/iio.h>
+#include <linux/wait.h>
 
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
@@ -49,6 +50,10 @@
 #define LOGI(dev, fmt, ...) printk(SENTRAL_LOG_PRINTK_I "%s(): " fmt, __func__, ##__VA_ARGS__)
 #endif /* SENTRAL_LOG_DYNDBG */
 
+#define I(fmt, ...) printk(KERN_INFO "[SNS_HUB] " fmt, ##__VA_ARGS__)
+
+#define SEN_DBG_PIO 1
+
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define ENSTR(b) (b ? "enable" : "disable")
@@ -64,6 +69,7 @@
 #define DATA_BUFFER_SIZE 16384
 #define SENTRAL_FIFO_BLOCK_SIZE 50
 #define SENTRAL_SENSOR_TIMESTAMP_SCALE_NS 31250
+#define SENTRAL_FIFO_WATERMARK_BUFFER 500
 
 #define FW_IMAGE_SIGNATURE 0x652A
 #define FW_CDS_SIGNATURE 0xC88B
@@ -71,12 +77,21 @@
 
 #define PARAM_READ_SIZE_MAX 16
 #define PARAM_WRITE_SIZE_MAX 8
-#define PARAM_MAX_RETRY 10
+#define PARAM_MAX_RETRY 20
 #define PARAM_SENSORS_ACTUAL_OFFSET 31
 
-#define SENTRAL_WATCHDOG_WORK_MSECS 500
+#define SENTRAL_WATCHDOG_WORK_MSECS 2000
+#define SENTRAL_TS_REF_RESET_WORK_SECS 40
+
+#define SENTRAL_INACTIVITY_RATE_HZ 1
+#define SENTRAL_COACH_RATE_HZ 30
 
 #define SENTRAL_GESTURE_WRIST_TILT_WRAP 4
+
+#define SENTRAL_CAL_TS_COUNT 50
+#define SENTRAL_CAL_TS_SAMPLE_DELAY_MS 20
+
+#define SENTRAL_FIFO_OVERFLOW_THRD 3
 
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
@@ -89,11 +104,12 @@ enum sentral_registers {
 	SR_PARAM_ACK =    0x3A,
 	SR_PARAM_SAVE =   0x3B,
 	SR_WAKE_SRC =     0x4D,
+	SR_ERROR =        0x50,
 	SR_PARAM_PAGE =   0x54,
 	SR_HOST_CONTROL = 0x55,
 	SR_PARAM_LOAD =   0x5C,
 	SR_PARAM_REQ =    0x64,
-	SR_COACH_SET =    0x65,
+	SR_FITNESS_ID =   0x65,
 	SR_ROM_VERSION =  0x70,
 	SR_PRODUCT_ID =   0x90,
 	SR_REV_ID =       0x91,
@@ -105,6 +121,42 @@ enum sentral_registers {
 	SR_PT_CONFIG =    0xA0,
 	SR_FIRST = SR_CHIP_CONTROL,
 	SR_MAX = SR_PT_CONFIG,
+};
+
+enum sentral_error_value {
+	SEN_ERR_SUCCESS =       0x00,
+	SEN_ERR_INIT_PASS =     0x01,
+	SEN_ERR_TEST_PASS =     0x02,
+	SEN_ERR_MAG_RESET =     0x11,
+	SEN_ERR_ACCEL_RESET =   0x12,
+	SEN_ERR_GYRO_RESET =    0x14,
+	SEN_ERR_RSVD_RESET =    0x18,
+	SEN_ERR_INIT_FAILED =   0x20,
+	SEN_ERR_UNEXP_DEV =     0x21,
+	SEN_ERR_NO_DEV =        0x22,
+	SEN_ERR_UNKNOWN =       0x23,
+	SEN_ERR_DATA_UNAVAIL =  0x24,
+	SEN_ERR_SLOW_RATE =     0x25,
+	SEN_ERR_DATA_OVERFLOW = 0x26,
+	SEN_ERR_STACK_OVERFLOW =0x27,
+	SEN_ERR_MATH =          0x30,
+	SEN_ERR_MEM =           0x40,
+	SEN_ERR_SWI3 =          0x41,
+	SEN_ERR_SWI4 =          0x42,
+	SEN_ERR_INST =          0x43,
+	SEN_ERR_ALGO =          0x50,
+	SEN_ERR_SELF_TEST =     0x60,
+	SEN_ERR_SELF_TEST_X =   0x61,
+	SEN_ERR_SELF_TEST_Y =   0x62,
+	SEN_ERR_SELF_TEST_Z =   0x63,
+	SEN_ERR_FIFO_DISCARD =  0x70,
+	SEN_ERR_FIFO_RETRIEVE = 0x71,
+	SEN_ERR_FIFO_INIT =     0x72,
+	SEN_ERR_RAM_ALLOC =     0x73,
+	SEN_ERR_RAM_ADJ =       0x74,
+	SEN_ERR_HOST_INT =      0x75,
+	SEN_ERR_RATE_INVALID =  0x80,
+	SEN_ERR_I2C_OVERFLOW =  0x90,
 };
 
 enum sentral_host_control_flags {
@@ -151,11 +203,13 @@ enum sentral_sensor_type {
 	SST_GLANCE_GESTURE =              24,
 	SST_PICK_UP_GESTURE =             25,
 	SST_WRIST_TILT_GESTURE =          26,
+	SST_ALGO_DATA =                   27,
 	SST_COACH =                       29,
 	SST_INACTIVITY_ALARM =            30,
 	SST_ACTIVITY =                    31,
 	SST_MAX,
 	SST_FIRST = SST_ACCELEROMETER,
+	SST_DEBUG =                     0xF5,
 	SST_TIMESTAMP_LSW =             0xFC,
 	SST_TIMESTAMP_MSW =             0xFD,
 	SST_META_EVENT =                0xFE,
@@ -195,21 +249,29 @@ static const char *sentral_sensor_type_strings[SST_MAX] = {
 	[SST_ACTIVITY] = "ACTIVITY",
 };
 
+static const u16 sentral_fitness_id_rates[] = {
+	0, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000,
+};
+
 enum sentral_param_page {
-	SPP_SYS =             0x01,
-	SPP_ALGO_WARM_START = 0x02,
-	SPP_SENSORS =         0x03,
-	SPP_ALGO_KNOBS =      13,
-	SPP_CUSTOM_PARAM =    14, //For ASUS ONLY
+	SPP_SYS =             1,
+	SPP_ALGO_WARM_START = 2,
+	SPP_SENSORS =         3,
+	SPP_ALGO_KNOBS =     13,
+	SPP_ASUS =           14,
 };
 
 enum sentral_param_system {
-	SP_SYS_META_EVENT_CONTROL = 01,
-	SP_SYS_FIFO_CONTROL =       02,
-	SP_SYS_SENSOR_STATUS_B0 =   03,
-	SP_SYS_SENSOR_STATUS_B1 =   04,
+	SP_SYS_META_EVENT_CONTROL =  1,
+	SP_SYS_FIFO_CONTROL =        2,
+	SP_SYS_SENSOR_STATUS_B0 =    3,
+	SP_SYS_SENSOR_STATUS_B1 =    4,
 	SP_SYS_HOST_IRQ_TS =        30,
 	SP_SYS_PHYS_SENSOR_STATUS = 31,
+};
+
+enum sentral_param_asus {
+	SP_ASUS_INACTIVITY_TIMEOUT = 1,
 };
 
 enum sentral_sensor_power_mode {
@@ -250,22 +312,7 @@ enum sentral_meta_event {
 	SEN_META_SELF_TEST_RESULTS,
 	SEN_META_INITIALIZED,
 	SEN_META_MAX,
-};
-
-enum sentral_coach_activity_ID {
-	SEN_COACH_ACTIVITY_0 = 0,
-	SEN_COACH_ACTIVITY_1 = 10,
-	SEN_COACH_ACTIVITY_2 = 20,
-	SEN_COACH_ACTIVITY_3 = 50,
-	SEN_COACH_ACTIVITY_4 = 100,
-	SEN_COACH_ACTIVITY_5 = 200,
-	SEN_COACH_ACTIVITY_6 = 500,
-	SEN_COACH_ACTIVITY_7 = 1000,
-	SEN_COACH_ACTIVITY_8 = 2000,
-	SEN_COACH_ACTIVITY_9 = 5000,
-	SEN_COACH_ACTIVITY_10 = 10000,
-	SEN_COACH_ACTIVITY_TEST1 = 66,
-	SEN_COACH_ACTIVITY_TEST2 = 33,
+	SEN_META_FIRST = SEN_META_FLUSH_COMPLETE,
 };
 
 struct sentral_data_meta {
@@ -291,6 +338,20 @@ static const char *sentral_meta_event_strings[SEN_META_MAX] = {
 	[SEN_META_FIFO_WATERMARK] = "FIFO Watermark",
 	[SEN_META_SELF_TEST_RESULTS] = "Self-Test Results",
 	[SEN_META_INITIALIZED] = "Initialized",
+};
+
+enum sentral_cal_status {
+	SEN_CAL_STATUS_UNCAL = 0,
+	SEN_CAL_STATUS_RUNNING,
+	SEN_CAL_STATUS_FAILED,
+	SEN_CAL_STATUS_CALIBRATED,
+};
+
+enum sentral_debug_type {
+	SEN_DEBUG_STRING = 0,
+	SEN_DEBUG_BINARY,
+	SEN_DEBUG_RESERVED1,
+	SEN_DEBUG_RESERVED2,
 };
 
 // PARAMETERS
@@ -368,14 +429,9 @@ struct sentral_param_phys_sensor_status {
 } __attribute__((__packed__));
 
 struct sentral_param_phys_sensor_status_page {
-	union {
-		u64 bytes;
-		struct {
-			struct sentral_param_sensor_status accel;
-			struct sentral_param_sensor_status gyro;
-			struct sentral_param_sensor_status mag;
-		} status;
-	};
+	struct sentral_param_phys_sensor_status accel;
+	struct sentral_param_phys_sensor_status gyro;
+	struct sentral_param_phys_sensor_status mag;
 } __attribute__((__packed__));
 
 // PARAM PAGE 3: SENSORS
@@ -502,6 +558,19 @@ struct sentral_wake_src_count {
 	};
 };
 
+struct sentral_data_debug {
+	struct {
+		u8 length:6;
+		u8 type:2;
+	} attr;
+	char value[12];
+};
+
+struct sentral_sensor_ref_time {
+	u64 system_ns;
+	u32 hub_stime;
+};
+
 struct sentral_platform_data {
 	unsigned int gpio_irq;
 	const char *firmware;
@@ -524,23 +593,36 @@ struct sentral_device {
 	struct work_struct work_reset;
 	struct work_struct work_fifo_read;
 	struct delayed_work work_watchdog;
+	struct delayed_work work_ts_ref_reset;
 	struct mutex lock;
-	struct mutex lock_reset;
+	struct mutex lock_special;
 	struct mutex lock_flush;
+	struct mutex lock_reset;
 	struct mutex lock_ts;
-	struct mutex lock_i2c;
-	struct wake_lock w_lock;
+	struct wakeup_source wlock_irq;
+	struct wake_lock w_lock_reset;
 	struct notifier_block nb;
+	wait_queue_head_t wq_flush;
+	bool flush_pending;
+	bool flush_complete;
 	u8 *data_buffer;
 	bool init_complete;
-	u64 ts_ref_ntime;
-	u32 ts_ref_stime;
-	u64 ts_sensor_ntime;
 	u32 ts_sensor_stime;
+	u16 ts_msw_last;
+	u16 ts_lsw_last;
+	u16 ts_msw_meta_rate_change[SST_MAX];
+	u16 ts_msw_offset[SST_MAX];
+	u8 ts_msw_offset_reset[SST_MAX];
+	struct sentral_sensor_ref_time ts_sensor_ref[SST_MAX];
+	unsigned int stime_scale;
 	unsigned long enabled_mask;
+	unsigned long ts_ref_reset_mask;
 	struct sentral_param_sensor_config sensor_config[SST_MAX];
-	struct sentral_wake_src_count wake_src_count;
-	struct sentral_wake_src_count wake_src_count_pending;
+	struct sentral_wake_src_count wake_src_prev;
+	unsigned long sensor_warmup_mask;
+	u32 fw_crc;
+	unsigned int crash_count;
+	unsigned int overflow_count;
 	u8 latest_accel_buffer[24];
 };
 

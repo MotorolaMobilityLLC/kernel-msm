@@ -199,6 +199,8 @@ struct qpnp_bms_chip {
 	struct mutex			soc_invalidation_mutex;
 	struct mutex			last_soc_mutex;
 	struct mutex			status_lock;
+	spinlock_t			irq_lock;
+	spinlock_t			pm_wake_lock;
 
 	bool				use_external_rsense;
 	bool				use_ocv_thresholds;
@@ -400,24 +402,35 @@ static int qpnp_masked_write(struct qpnp_bms_chip *chip, u16 addr,
 	return qpnp_masked_write_base(chip, chip->base + addr, mask, val);
 }
 
-static void bms_stay_awake(struct bms_wakeup_source *source)
+static void bms_stay_awake(struct qpnp_bms_chip *chip, struct bms_wakeup_source *source)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->pm_wake_lock, flags);
 	if (__test_and_clear_bit(0, &source->disabled)) {
 		__pm_stay_awake(&source->source);
 		pr_debug("enabled source %s\n", source->source.name);
 	}
+	spin_unlock_irqrestore(&chip->pm_wake_lock, flags);
 }
 
-static void bms_relax(struct bms_wakeup_source *source)
+static void bms_relax(struct qpnp_bms_chip *chip, struct bms_wakeup_source *source)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->pm_wake_lock, flags);
 	if (!__test_and_set_bit(0, &source->disabled)) {
 		__pm_relax(&source->source);
 		pr_debug("disabled source %s\n", source->source.name);
 	}
+	spin_unlock_irqrestore(&chip->pm_wake_lock, flags);
 }
 
-static void enable_bms_irq(struct bms_irq *irq)
+static void enable_bms_irq(struct qpnp_bms_chip *chip, struct bms_irq *irq)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->irq_lock, flags);
 	if (irq->ready && __test_and_clear_bit(0, &irq->disabled)) {
 		enable_irq(irq->irq);
 		pr_debug("enabled irq %d\n", irq->irq);
@@ -425,21 +438,14 @@ static void enable_bms_irq(struct bms_irq *irq)
 				!__test_and_set_bit(0, &irq->wake_enabled))
 			enable_irq_wake(irq->irq);
 	}
+	spin_unlock_irqrestore(&chip->irq_lock, flags);
 }
 
-static void disable_bms_irq(struct bms_irq *irq)
+static void disable_bms_irq(struct qpnp_bms_chip *chip, struct bms_irq *irq)
 {
-	if (irq->ready && !__test_and_set_bit(0, &irq->disabled)) {
-		disable_irq(irq->irq);
-		pr_debug("disabled irq %d\n", irq->irq);
-		if ((irq->is_wake) &&
-				__test_and_clear_bit(0, &irq->wake_enabled))
-			disable_irq_wake(irq->irq);
-	}
-}
+	unsigned long flags;
 
-static void disable_bms_irq_nosync(struct bms_irq *irq)
-{
+	spin_lock_irqsave(&chip->irq_lock, flags);
 	if (irq->ready && !__test_and_set_bit(0, &irq->disabled)) {
 		disable_irq_nosync(irq->irq);
 		pr_debug("disabled irq %d\n", irq->irq);
@@ -447,6 +453,7 @@ static void disable_bms_irq_nosync(struct bms_irq *irq)
 				__test_and_clear_bit(0, &irq->wake_enabled))
 			disable_irq_wake(irq->irq);
 	}
+	spin_unlock_irqrestore(&chip->irq_lock, flags);
 }
 
 #define HOLD_OREG_DATA		BIT(0)
@@ -1509,35 +1516,12 @@ static int find_pc_for_soc(struct qpnp_bms_chip *chip,
 
 static int get_current_time(unsigned long *now_tm_sec)
 {
-	struct rtc_time tm;
-	struct rtc_device *rtc;
-	int rc;
+	struct timespec tm;
 
-	rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
-	if (rtc == NULL) {
-		pr_err("%s: unable to open rtc device (%s)\n",
-			__FILE__, CONFIG_RTC_HCTOSYS_DEVICE);
-		return -EINVAL;
-	}
+	getrawmonotonic(&tm);
+	*now_tm_sec = (unsigned long)tm.tv_sec;
 
-	rc = rtc_read_time(rtc, &tm);
-	if (rc) {
-		pr_err("Error reading rtc device (%s) : %d\n",
-			CONFIG_RTC_HCTOSYS_DEVICE, rc);
-		goto close_time;
-	}
-
-	rc = rtc_valid_tm(&tm);
-	if (rc) {
-		pr_err("Invalid RTC time (%s): %d\n",
-			CONFIG_RTC_HCTOSYS_DEVICE, rc);
-		goto close_time;
-	}
-	rtc_tm_to_time(&tm, now_tm_sec);
-
-close_time:
-	rtc_class_close(rtc);
-	return rc;
+	return 0;
 }
 
 /* Returns estimated battery resistance */
@@ -1959,7 +1943,10 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	if (chip->last_soc != soc && !chip->last_soc_unbound)
 		chip->last_soc_change_sec = last_change_sec;
 
-	if (get_battery_status(chip) == POWER_SUPPLY_STATUS_FULL) soc = 100;
+	if (get_battery_status(chip) == POWER_SUPPLY_STATUS_FULL) {
+		soc = 100;
+		chip->calculated_soc = 100;
+	}
 
 	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
@@ -2377,8 +2364,8 @@ static void configure_soc_wakeup(struct qpnp_bms_chip *chip,
 	qpnp_write_wrapper(chip, (u8 *)&ocv_raw,
 			chip->base + BMS1_OCV_THR0, 2);
 
-	enable_bms_irq(&chip->ocv_thr_irq);
-	enable_bms_irq(&chip->sw_cc_thr_irq);
+	enable_bms_irq(chip, &chip->ocv_thr_irq);
+	enable_bms_irq(chip, &chip->sw_cc_thr_irq);
 	pr_debug("current sw_cc_raw = 0x%llx, current ocv = 0x%hx\n",
 			current_shdw_cc_raw, (uint16_t)current_ocv_raw);
 	pr_debug("target_cc_uah = %lld, raw64 = 0x%llx, raw 36 = 0x%llx, ocv_raw = 0x%hx\n",
@@ -2522,8 +2509,8 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 		configure_soc_wakeup(chip, &params,
 				batt_temp, bound_soc(new_calculated_soc - 1));
 	} else {
-		disable_bms_irq(&chip->ocv_thr_irq);
-		disable_bms_irq(&chip->sw_cc_thr_irq);
+		disable_bms_irq(chip, &chip->ocv_thr_irq);
+		disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 	}
 done_calculating:
 	mutex_lock(&chip->last_soc_mutex);
@@ -2607,7 +2594,7 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 	struct raw_soc_params raw;
 	struct soc_params params;
 
-	bms_stay_awake(&chip->soc_wake_source);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	if (chip->use_voltage_soc) {
 		soc = calculate_soc_from_voltage(chip);
 	} else {
@@ -2649,7 +2636,7 @@ done:
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
-	bms_relax(&chip->soc_wake_source);
+	bms_relax(chip, &chip->soc_wake_source);
 	return soc;
 }
 
@@ -2659,7 +2646,7 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 	struct qpnp_vadc_result result;
 	struct raw_soc_params raw;
 
-	bms_stay_awake(&chip->soc_wake_source);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	mutex_lock(&chip->vbat_monitor_mutex);
 	if (chip->vbat_monitor_params.state_request !=
 			ADC_TM_HIGH_LOW_THR_DISABLE)
@@ -2695,7 +2682,7 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
-	bms_relax(&chip->soc_wake_source);
+	bms_relax(chip, &chip->soc_wake_source);
 	return soc;
 }
 
@@ -3385,8 +3372,8 @@ static void battery_status_check(struct qpnp_bms_chip *chip)
 		} else if (chip->battery_status
 				== POWER_SUPPLY_STATUS_FULL) {
 			pr_debug("battery not full any more\n");
-			disable_bms_irq(&chip->ocv_thr_irq);
-			disable_bms_irq(&chip->sw_cc_thr_irq);
+			disable_bms_irq(chip, &chip->ocv_thr_irq);
+			disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 		}
 
 		chip->battery_status = status;
@@ -3674,7 +3661,7 @@ static irqreturn_t bms_ocv_thr_irq_handler(int irq, void *_chip)
 	struct qpnp_bms_chip *chip = _chip;
 
 	pr_debug("ocv_thr irq triggered\n");
-	bms_stay_awake(&chip->soc_wake_source);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	schedule_work(&chip->recalc_work);
 	return IRQ_HANDLED;
 }
@@ -3684,8 +3671,8 @@ static irqreturn_t bms_sw_cc_thr_irq_handler(int irq, void *_chip)
 	struct qpnp_bms_chip *chip = _chip;
 
 	pr_debug("sw_cc_thr irq triggered\n");
-	disable_bms_irq_nosync(&chip->sw_cc_thr_irq);
-	bms_stay_awake(&chip->soc_wake_source);
+	disable_bms_irq(chip, &chip->sw_cc_thr_irq);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	schedule_work(&chip->recalc_work);
 	return IRQ_HANDLED;
 }
@@ -4014,10 +4001,10 @@ static int bms_request_irqs(struct qpnp_bms_chip *chip)
 
 	SPMI_REQUEST_IRQ(chip, rc, sw_cc_thr);
 	chip->sw_cc_thr_irq.is_wake = true;
-	disable_bms_irq(&chip->sw_cc_thr_irq);
+	disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 	SPMI_REQUEST_IRQ(chip, rc, ocv_thr);
 	chip->ocv_thr_irq.is_wake = true;
-	disable_bms_irq(&chip->ocv_thr_irq);
+	disable_bms_irq(chip, &chip->ocv_thr_irq);
 	return 0;
 }
 
@@ -4532,6 +4519,8 @@ static int qpnp_bms_probe(struct spmi_device *spmi)
 	mutex_init(&chip->soc_invalidation_mutex);
 	mutex_init(&chip->last_soc_mutex);
 	mutex_init(&chip->status_lock);
+	spin_lock_init(&chip->irq_lock);
+	spin_lock_init(&chip->pm_wake_lock);
 	init_waitqueue_head(&chip->bms_wait_queue);
 
 	warm_reset = qpnp_pon_is_warm_reset();
@@ -4758,7 +4747,7 @@ static int bms_resume(struct device *dev)
 	}
 
 	if (time_until_next_recalc == 0)
-		bms_stay_awake(&chip->soc_wake_source);
+		bms_stay_awake(chip, &chip->soc_wake_source);
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
 		round_jiffies_relative(msecs_to_jiffies
 		(time_until_next_recalc)));

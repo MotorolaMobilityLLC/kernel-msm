@@ -28,8 +28,8 @@
 #include "mdss_asus_debug.h"
 #endif
 
-#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
 #include <linux/debugfs.h>
+#ifdef CONFIG_ASUS_BACKLIGHT_DEBUG
 #include <linux/uaccess.h>
 #endif
 /* ASUS support V2 panel low power mode */
@@ -1743,6 +1743,23 @@ static const struct file_operations brightness_lock_debug_fops = {
 };
 #endif
 
+static int ambient_status_dbgfs_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "%s: %d\n","success", panel_ambient_mode);
+	return 0;
+}
+
+static int ambient_status_dbgfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ambient_status_dbgfs_show, NULL);
+}
+
+static const struct file_operations ambient_status_debug_fops = {
+	.open = ambient_status_dbgfs_open,
+	.read = seq_read,
+	.write = NULL
+};
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -1791,6 +1808,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 				S_IRUGO | S_IWUSR | S_IWGRP,\
 				NULL, NULL, &brightness_lock_debug_fops);
 #endif
+	(void)debugfs_create_file("panel_ambient_mode",\
+				S_IRUGO | S_IWUSR | S_IWGRP,\
+				NULL, NULL, &ambient_status_debug_fops);
 #ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
 	notify_amdu_panel_on_cmds_start(ctrl_pdata);
 #endif
