@@ -59,11 +59,11 @@ static int process_log_message(
 	logmsg[log_msg_len] = '\0';
 
 	/* loop over the message buffer and print separate
-	 * dev_err logs for each \n found from the hub */
+	 * dev_info logs for each \n found from the hub */
 	do {
 		token = strsep(&logmsg, "\n\0");
 		if (token != NULL && strlen(token) > 0) {
-			dev_err(&ps_motosh->client->dev,
+			dev_info(&ps_motosh->client->dev,
 				"sensorhub %s\n", token);
 		}
 	} while (token != NULL);
@@ -179,7 +179,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 	/* Check if we are coming out of normal reset and/or
 	   the part has self-reset */
 	if (irq_status & M_INIT_COMPLETE) {
-		dev_err(&ps_motosh->client->dev,
+		dev_info(&ps_motosh->client->dev,
 			"sensorhub reports reset [%d]", spurious_det);
 		motosh_reset_and_init(COMPLETE_INIT);
 	}
@@ -319,13 +319,17 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			queue_index += 1;
 			break;
 		case STOWED_DATA:
+			/* Just pass the first byte for stowed status
+				Rest is for logging */
 			motosh_as_data_buffer_write(ps_motosh, DT_STOWED,
 				data, 1, 0, false);
 
-			dev_dbg(&ps_motosh->client->dev,
-				"Sending Stowed status %d\n",
-				data[STOWED_STATUS]);
-			queue_index += 1;
+			dev_info(&ps_motosh->client->dev,
+				"Sending Stowed status %d, als %d, prox %d\n",
+				data[STOWED_STATUS],
+				STM16_TO_HOST(&data[STOWED_ALS], ALS_VALUE),
+				data[STOWED_PROX]);
+			queue_index += 4;
 			break;
 		case CAMERA_GESTURE:
 			motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
@@ -543,7 +547,7 @@ PROCESS_RESET:
 					    1, 0, false);
 
 		motosh_reset_and_init(START_RESET);
-		dev_err(&ps_motosh->client->dev, "sensorhub requested a reset\n");
+		dev_info(&ps_motosh->client->dev, "sensorhub requested a reset\n");
 		goto EXIT;
 	}
 
