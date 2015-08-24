@@ -143,11 +143,6 @@
 	};
 
 	qcom,pmi8950@3 {
-		/* display boost and inverting boost regulators */
-		labibb: qpnp-labibb-regulator {
-			status = "ok";
-			qpnp,qpnp-labibb-mode = "lcd";
-		};
 		qcom,leds@d800 {
 			qcom,fs-curr-ua = <20000>;
 			/delete-property/ qcom,en-ext-pfet-sc-pro;
