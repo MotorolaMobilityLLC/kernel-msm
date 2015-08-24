@@ -189,6 +189,8 @@ enum vmm_ids {
 #define FLAT_UP		0
 #define FLAT_DOWN	0
 #define STOWED_STATUS	0
+#define STOWED_ALS		1
+#define STOWED_PROX		3
 #define NFC_VALUE	0
 #define ALGO_TYPE	7
 #define COMPASS_STATUS	12
