@@ -2574,6 +2574,8 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 {
 	int rc = 0;
 	int prev_therm_lvl;
+	int therm_ma, min_current_thr_ma;
+	struct power_supply *parallel_psy = get_parallel_psy(chip);
 
 	if (!chip->thermal_mitigation) {
 		dev_err(chip->dev, "Thermal mitigation not supported\n");
@@ -2615,6 +2617,32 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 			goto out;
 		}
 		goto out;
+	}
+
+	/*
+	 * If thermal-engine set therm_ma which is above min_current_thr_ma,
+	 * reset chip->parallel.initial_aicl_ma and chip->parallel.current_max_ma
+	 * to 0. if parallel charging is running, use new input
+	 * current to re-run aicl to enable new parallel charging.
+	 * if therm_ma is below min_current_thr_ma, disable parallel charging.
+	 */
+	therm_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
+	if (chip->parallel.current_max_ma !=0) {
+		min_current_thr_ma = smbchg_get_min_parallel_current_ma(chip);
+		if (min_current_thr_ma <= 0) {
+			pr_smb(PR_STATUS, "parallel charger unavailable for thr: %d\n",
+					min_current_thr_ma);
+			goto out;
+		}
+		if (therm_ma < min_current_thr_ma)
+			smbchg_parallel_usb_disable(chip);
+		else {
+			chip->parallel.initial_aicl_ma = 0;
+			chip->parallel.current_max_ma = 0;
+			if (!parallel_psy || !chip->parallel_charger_detected)
+				goto out;
+			power_supply_set_present(parallel_psy, false);
+		}
 	}
 
 	rc = smbchg_set_thermal_limited_usb_current_max(chip,
