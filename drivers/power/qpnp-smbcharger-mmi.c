@@ -7353,7 +7353,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 	chip->usb_online = -EINVAL;
 	chip->stepchg_state = STEP_NONE;
-	smbchg_parallel_en = 1;
+	smbchg_parallel_en = 0; /* Disable Parallel Charging Capabilities */
 	chip->charger_rate =  POWER_SUPPLY_CHARGE_RATE_NONE;
 	dev_set_drvdata(&spmi->dev, chip);
 
