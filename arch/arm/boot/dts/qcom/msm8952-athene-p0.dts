@@ -18,15 +18,3 @@
 / {
 	qcom,board-id = <0x41 0x8000>;
 };
-
-&pm8950_l6 {
-	regulator-always-on;
-};
-
-&lab_regulator {
-	regulator-always-on;
-};
-
-&ibb_regulator {
-	regulator-always-on;
-};
