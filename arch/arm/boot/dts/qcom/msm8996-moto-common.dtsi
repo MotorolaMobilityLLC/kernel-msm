@@ -421,6 +421,78 @@
 	};
 };
 
+&pmi8994_charger {
+	status = "okay";
+	/delete-property/ qcom,iterm-ma;
+	qcom,iterm-disabled;
+	/delete-property/ qcom,autoadjust-vfloat;
+	qcom,fastchg-current-ma = <2500>;
+	qcom,float-voltage-mv = <4400>;
+	qcom,resume-delta-mv = <200>;
+	qcom,chg-inhibit-fg;
+	qcom,dc-psy-type = "Wireless";
+	qcom,dc-psy-ma = <950>;
+	qcom,rparasitic-uohm = <100000>;
+	qcom,bms-psy-name = "bms";
+	qcom,charge-unknown-battery;
+	qcom,chg-thermal-mitigation = <2500>, <2000>, <1600>, <1200>, <1000>, <700>,
+				      <500>, <300>;
+	qcom,dc-thermal-mitigation = <950>, <700>, <600>, <500>, <400>, <300>;
+	qcom,parallel-charge-current-map = <2500 2500 0>,
+					   <2000 2000 0>,
+					   <1600 1600 0>,
+					   <1200 1200 0>,
+					   <1000 1000 0>,
+					   <700 700 0>,
+					   <500 500 0>,
+					   <300 300 0>;
+	qcom,stepchg-voltage-mv = <4200>;
+	qcom,stepchg-current-ma = <2500>;
+	qcom,stepchg-taper-ma = <2000>;
+	qcom,stepchg-iterm-ma = <200>;
+	qcom,hot-temp-c = <60>;
+	qcom,cold-temp-c = <(-20)>;
+	qcom,warm-temp-c = <45>;
+	qcom,cool-temp-c = <0>;
+	qcom,ext-temp-volt-mv = <4200>;
+	qcom,hotspot-thrs-c = <50>;
+	qcom,charging-timeout-mins = <0>;
+	qcom,precharging-timeout-mins = <0>;
+	qcom,bmd-algo-disabled;
+	qcom,bmd-pin-src = "bpd_none";
+	qcom,usbid-disabled;
+	qcom,force-aicl-rerun;
+};
+
+/{
+	mot_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-fb55-lg.dtsi"
+	};
+};
+
+&pmi8994_fg {
+	status = "okay";
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <0>;
+	qcom,hot-bat-decidegc = <600>;
+	qcom,cold-bat-decidegc = <(-200)>;
+	qcom,ext-sense-type; /* External Sense Resistor */
+	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
+	qcom,resume-soc = <99>;
+	qcom,bcl-lm-threshold-ma = <126>;
+	qcom,bcl-mh-threshold-ma = <400>;
+	qcom,fg-iterm-ma = <150>;
+	qcom,irq-volt-empty-mv = <2750>;
+	qcom,fg-cutoff-voltage-mv = <3000>;
+	qcom,fg-vbat-estimate-diff-mv = <1000>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-max-soc = <100>;
+	qcom,fg-min-soc = <0>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-data = <&mot_batterydata>;
+};
+
 &pm8994_gpios {
 	gpio@c000 { /* GPIO 1 - APBA_SFLASH_EN */
 		qcom,mode = <1>;	/* Digital output */
