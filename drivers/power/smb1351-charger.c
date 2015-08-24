@@ -171,6 +171,7 @@
 #define AFVC_IRQ_BIT				BIT(7)
 #define CHG_CONFIG_MASK				SMB1351_MASK(6, 4)
 #define LOW_BATT_VOLTAGE_DET_TH_MASK		SMB1351_MASK(3, 0)
+#define CHG_CONFIG				0
 
 #define VARIOUS_FUNC_3_REG			0x11
 #define SAFETY_TIMER_EN_MASK			SMB1351_MASK(7, 6)
@@ -1368,6 +1369,14 @@ static int smb1351_parallel_set_chg_present(struct smb1351_charger *chip,
 		rc = smb1351_enable_volatile_writes(chip);
 		if (rc) {
 			pr_err("Couldn't configure for volatile rc = %d\n", rc);
+			return rc;
+		}
+
+		/* set chg_config: 5-9V */
+		reg = CHG_CONFIG;
+		rc = smb1351_masked_write(chip, FLEXCHARGER_REG, CHG_CONFIG_MASK, reg);
+		if (rc) {
+			pr_err("Couldn't set FLEXCHARGER_REG rc=%d\n",	rc);
 			return rc;
 		}
 
