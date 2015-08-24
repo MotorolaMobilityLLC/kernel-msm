@@ -425,6 +425,7 @@
 		compatible = "mmi,mod-uart";
 		mmi,tty = "ttyHS5";
 		mmi,tty_speed = <115200>;
+		mmi,intf-id = /bits/ 8 <5>;
 	};
 };
 
@@ -700,6 +701,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&muc_spi_ctrl>;
+
+		mmi,intf-id = /bits/ 8 <3>;
 	};
 
 	apba_flash: m25p80@2 {
