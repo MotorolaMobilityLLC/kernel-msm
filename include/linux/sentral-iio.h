@@ -31,6 +31,12 @@
 #include <linux/iio/iio.h>
 #include <linux/wait.h>
 
+#define SEN_DRV_PROJECT_ID "1"
+#define SEN_DRV_SUBPROJECT_ID "2"
+#define SEN_DRV_VERSION "1.1.2"
+#define SEN_DRV_BUILD "13"
+#define SEN_DRV_DATE "Thu Aug 20 15:10:51 PDT 2015"
+
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
 
@@ -82,6 +88,8 @@
 
 #define SENTRAL_WATCHDOG_WORK_MSECS 2000
 #define SENTRAL_TS_REF_RESET_WORK_SECS 40
+#define SENTRAL_WQ_FIFO_TIMEOUT_MSECS 5000
+#define SENTRAL_WQ_FLUSH_TIMEOUT_MSECS 5000
 
 #define SENTRAL_INACTIVITY_RATE_HZ 1
 #define SENTRAL_COACH_RATE_HZ 30
@@ -91,7 +99,7 @@
 #define SENTRAL_CAL_TS_COUNT 50
 #define SENTRAL_CAL_TS_SAMPLE_DELAY_MS 20
 
-#define SENTRAL_FIFO_OVERFLOW_THRD 3
+#define SENTRAL_FIFO_OVERFLOW_THRD 5
 
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
@@ -553,7 +561,8 @@ struct sentral_wake_src_count {
 		u8 byte;
 		struct {
 			u8 wrist_tilt:2;
-			u8 reserved:6;
+			u8 sig_motion:2;
+			u8 reserved:4;
 		} bits;
 	};
 };
@@ -585,7 +594,7 @@ struct sentral_device {
 	struct i2c_client *client;
 	const struct i2c_device_id *device_id;
 	struct sentral_platform_data platform_data;
-	int irq;
+	unsigned int irq;
 	struct class *hub_class;
 	struct device *hub_device;
 	struct iio_dev *indio_dev;
@@ -623,6 +632,9 @@ struct sentral_device {
 	u32 fw_crc;
 	unsigned int crash_count;
 	unsigned int overflow_count;
+	u16 fifo_watermark;
+	wait_queue_head_t wq_fifo;
+	atomic_t fifo_pending;
 	u8 latest_accel_buffer[24];
 };
 
