@@ -38,3 +38,15 @@
 		};
 	};
 };
+
+&i2c_1 {
+	status = "disabled";
+};
+
+&spi_0 {
+	status = "disabled";
+};
+
+&i2c_3 {
+	status = "disabled";
+};
