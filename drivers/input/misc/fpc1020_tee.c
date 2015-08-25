@@ -119,7 +119,8 @@ struct fpc1020_data {
 	bool prepared;
 	bool wakeup_enabled;
 	bool power_enabled;
-
+	bool clocks_enabled;
+	bool clocks_suspended;
 };
 
 int fpc1020_io_regulator_release(struct fpc1020_data *fpc1020)
@@ -343,13 +344,18 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 {
 	int rc = 0;
 
+	mutex_lock(&fpc1020->lock);
+
+	if (enable == fpc1020->clocks_enabled)
+		goto out;
+
 	if (enable) {
 		rc = clk_prepare_enable(fpc1020->core_clk);
 		if (rc) {
 			dev_err(fpc1020->dev,
 					"%s: Error enabling core clk: %d\n",
 					__func__, rc);
-			return rc;
+			goto out;
 		}
 
 		rc = clk_prepare_enable(fpc1020->iface_clk);
@@ -358,17 +364,28 @@ static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 					"%s: Error enabling iface clk: %d\n",
 					__func__, rc);
 			clk_disable_unprepare(fpc1020->core_clk);
-			return rc;
+			goto out;
 		}
 		dev_dbg(fpc1020->dev, "%s ok. clk rate %u hz\n", __func__,
 				fpc1020->spi->max_speed_hz);
+		fpc1020->clocks_enabled = true;
 	} else {
 		clk_disable_unprepare(fpc1020->iface_clk);
 		clk_disable_unprepare(fpc1020->core_clk);
+		fpc1020->clocks_enabled = false;
 	}
-
+out:
+	mutex_unlock(&fpc1020->lock);
 	return rc;
 }
+
+static ssize_t clk_enable_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
+	return set_clks(fpc1020, (*buf == '1')) ? : count;
+}
+static DEVICE_ATTR(clk_enable, S_IWUSR, NULL, clk_enable_set);
 
 /**
  * Will try to select the set of pins (GPIOS) defined in a pin control node of
@@ -588,9 +605,6 @@ static int device_prepare(struct  fpc1020_data *fpc1020, bool enable)
 		rc = spi_set_fabric(fpc1020, true);
 		if (rc)
 			goto exit_3;
-		rc = set_clks(fpc1020, true);
-		if (rc)
-			goto exit_4;
 
 		usleep_range(100, 200);
 
@@ -604,8 +618,7 @@ static int device_prepare(struct  fpc1020_data *fpc1020, bool enable)
 		(void)set_pipe_ownership(fpc1020, false);
 exit_5:
 #endif
-		(void)set_clks(fpc1020, false);
-exit_4:
+
 		(void)spi_set_fabric(fpc1020, false);
 exit_3:
 		(void)select_pin_ctl(fpc1020, "fpc1020_cs_high");
@@ -700,6 +713,7 @@ static struct attribute *attributes[] = {
 	&dev_attr_hw_reset.attr,
 	&dev_attr_wakeup_enable.attr,
 	&dev_attr_do_wakeup.attr,
+	&dev_attr_clk_enable.attr,
 	NULL
 };
 
@@ -892,7 +906,8 @@ static int fpc1020_probe(struct spi_device *spi)
 		goto exit;
 	}
 	fpc1020->wakeup_enabled = false;
-
+	fpc1020->clocks_enabled = false;
+	fpc1020->clocks_suspended = false;
 	irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
 	if (of_property_read_bool(dev->of_node, "fpc,enable-wakeup")) {
 		irqf |= IRQF_NO_SUSPEND;
@@ -925,6 +940,7 @@ static int fpc1020_probe(struct spi_device *spi)
 	if (of_property_read_bool(dev->of_node, "fpc,enable-on-boot")) {
 		dev_info(dev, "enabling hardware\n");
 		(void)device_prepare(fpc1020, true);
+		(void)set_clks(fpc1020, false);
 	}
 
 	dev_info(dev, "%s: end\n", __func__);
@@ -949,6 +965,7 @@ static int fpc1020_remove(struct spi_device *spi)
 static int fpc1020_suspend(struct spi_device * spi, pm_message_t mesg)
 {
 	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
+	fpc1020->clocks_suspended = fpc1020->clocks_enabled;
 	set_clks(fpc1020, false);
 	return 0;
 }
@@ -956,7 +973,8 @@ static int fpc1020_suspend(struct spi_device * spi, pm_message_t mesg)
 static int fpc1020_resume(struct spi_device *spi)
 {
 	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
-	set_clks(fpc1020, true);
+	if (fpc1020->clocks_suspended)
+		set_clks(fpc1020, true);
 	return 0;
 }
 
