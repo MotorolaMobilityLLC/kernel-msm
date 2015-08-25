@@ -629,7 +629,7 @@
 				qcom,default-led-trigger =
 						"flash0_trigger";
 				qcom,id = <0>;
-				qcom,current = <625>;
+				qcom,current = <1000>;
 				qcom,max-current = <1000>;
 			};
 
@@ -639,7 +639,7 @@
 				qcom,default-led-trigger =
 						"flash1_trigger";
 				qcom,id = <1>;
-				qcom,current = <625>;
+				qcom,current = <1000>;
 				qcom,max-current = <1000>;
 			};
 
