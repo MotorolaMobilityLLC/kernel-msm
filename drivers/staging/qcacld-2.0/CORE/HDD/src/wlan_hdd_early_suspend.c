@@ -599,34 +599,39 @@ void hdd_conf_hostoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 }
 
 #ifdef WLAN_NS_OFFLOAD
+
 static int __wlan_hdd_ipv6_changed(struct notifier_block *nb,
-                                   unsigned long data, void *arg)
+				   unsigned long data, void *arg)
 {
-    struct inet6_ifaddr *ifa = (struct inet6_ifaddr *)arg;
-    struct net_device *ndev = ifa->idev->dev;
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(ndev);
-    hdd_context_t *pHddCtx;
-    int status;
+	struct inet6_ifaddr *ifa = (struct inet6_ifaddr *)arg;
+	struct net_device *ndev = ifa->idev->dev;
+	hdd_context_t *hdd_ctx;
+	hdd_adapter_t *adapter;
+	int status;
 
-    if (pAdapter && pAdapter->dev == ndev &&
-          (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ||
-           pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)) {
-        pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-        status = wlan_hdd_validate_context(pHddCtx);
-        if (0 != status) {
-            hddLog(LOGE, FL("HDD context is invalid"));
-            return NOTIFY_DONE;
-        }
+	hdd_ctx = container_of(nb, hdd_context_t, ipv6_notifier);
+	status = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != status) {
+		hddLog(LOGE, FL("HDD context is invalid"));
+		return NOTIFY_DONE;
+	}
 
-        if (pHddCtx->cfg_ini->nEnableSuspend ==
-                    WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER)
-             schedule_work(&pAdapter->ipv6NotifierWorkQueue);
-        else
-             hddLog(LOG1, FL("Not scheduling ipv6 wq nEnableSuspend = %d"),
-                              pHddCtx->cfg_ini->nEnableSuspend);
-    }
+	adapter = WLAN_HDD_GET_PRIV_PTR(ndev);
+	if (WLAN_HDD_ADAPTER_MAGIC != adapter->magic) return NOTIFY_DONE;
+	if (adapter->dev != ndev) return NOTIFY_DONE;
+	if (WLAN_HDD_GET_CTX(adapter) != hdd_ctx) return NOTIFY_DONE;
 
-    return NOTIFY_DONE;
+	if (adapter->device_mode == WLAN_HDD_INFRA_STATION ||
+		(adapter->device_mode == WLAN_HDD_P2P_CLIENT)) {
+		if (hdd_ctx->cfg_ini->nEnableSuspend ==
+			WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER)
+			schedule_work(&adapter->ipv6NotifierWorkQueue);
+		else
+			hddLog(LOG1, FL("Not scheduling ipv6 wq nEnableSuspend: %d"),
+				hdd_ctx->cfg_ini->nEnableSuspend);
+	}
+
+	return NOTIFY_DONE;
 }
 
 /**
@@ -935,56 +940,56 @@ void hdd_ipv4_notifier_work_queue(struct work_struct *work)
 }
 
 static int __wlan_hdd_ipv4_changed(struct notifier_block *nb,
-                                   unsigned long data, void *arg)
+				   unsigned long data, void *arg)
 {
-    struct in_ifaddr *ifa = (struct in_ifaddr *)arg;
-    struct in_ifaddr **ifap = NULL;
-    struct in_device *in_dev;
+	struct in_ifaddr *ifa = (struct in_ifaddr *)arg;
+	struct in_ifaddr **ifap = NULL;
+	struct in_device *in_dev;
+	struct net_device *ndev = ifa->ifa_dev->dev;
+	hdd_context_t *hdd_ctx;
+	hdd_adapter_t *adapter;
+	int status;
 
-    struct net_device *ndev = ifa->ifa_dev->dev;
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(ndev);
-    hdd_context_t *pHddCtx;
-    int status;
+	hdd_ctx = container_of(nb, hdd_context_t, ipv4_notifier);
+	status = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != status) {
+		hddLog(LOGE, FL("HDD context is invalid"));
+		return NOTIFY_DONE;
+	}
 
-    if (pAdapter && pAdapter->dev == ndev &&
-          (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ||
-           pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)) {
-       pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-       status = wlan_hdd_validate_context(pHddCtx);
-       if (0 != status)
-       {
-           hddLog(LOGE, FL("HDD context is invalid"));
-           return NOTIFY_DONE;
-       }
+	adapter = WLAN_HDD_GET_PRIV_PTR(ndev);
+	if (WLAN_HDD_ADAPTER_MAGIC != adapter->magic) return NOTIFY_DONE;
+	if (adapter->dev != ndev) return NOTIFY_DONE;
+	if (WLAN_HDD_GET_CTX(adapter) != hdd_ctx) return NOTIFY_DONE;
 
-       if ((pHddCtx->cfg_ini->nEnableSuspend !=
-             WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER) ||
-             (!pHddCtx->cfg_ini->fhostArpOffload)) {
-             hddLog(LOG1, FL("Offload not enabled MCBC=%d, ARPOffload=%d"),
-                            pHddCtx->cfg_ini->nEnableSuspend,
-                            pHddCtx->cfg_ini->fhostArpOffload);
+	if (adapter->device_mode == WLAN_HDD_INFRA_STATION ||
+		adapter->device_mode == WLAN_HDD_P2P_CLIENT) {
+		if ((hdd_ctx->cfg_ini->nEnableSuspend !=
+			WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER) ||
+			(!hdd_ctx->cfg_ini->fhostArpOffload)) {
+			hddLog(LOG1, FL("Offload not enabled MCBC=%d, ARPOffload=%d"),
+				hdd_ctx->cfg_ini->nEnableSuspend,
+				hdd_ctx->cfg_ini->fhostArpOffload);
 
-             return NOTIFY_DONE;
-       }
+			return NOTIFY_DONE;
+		}
+	}
 
-       if ((in_dev = __in_dev_get_rtnl(pAdapter->dev)) != NULL)
-       {
-           for (ifap = &in_dev->ifa_list; (ifa = *ifap) != NULL;
-                   ifap = &ifa->ifa_next)
-           {
-               if (!strcmp(pAdapter->dev->name, ifa->ifa_label))
-               {
-                   break; /* found */
-               }
-           }
-       }
-       if(ifa && ifa->ifa_local)
-       {
-           schedule_work(&pAdapter->ipv4NotifierWorkQueue);
-       }
-    }
+	in_dev = __in_dev_get_rtnl(adapter->dev);
+	if (in_dev != NULL) {
+		for (ifap = &in_dev->ifa_list;
+			(ifa = *ifap) != NULL;
+			ifap = &ifa->ifa_next) {
+			if (!strcmp(adapter->dev->name,
+				ifa->ifa_label))
+				break; /* found */
+		}
+	}
 
-    return NOTIFY_DONE;
+	if (ifa && ifa->ifa_local)
+		schedule_work(&adapter->ipv4NotifierWorkQueue);
+
+	return NOTIFY_DONE;
 }
 
 /**

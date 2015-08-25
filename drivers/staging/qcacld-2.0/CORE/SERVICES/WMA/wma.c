@@ -22475,10 +22475,10 @@ static VOS_STATUS wma_process_ll_stats_getReq
 	cmd->max_table_usage = pstart->report_threshold_percent;
 	cmd->report_threshold_num_scans = pstart->report_threshold_num_scans;
 
-	cmd->repeat_probe_time = WMA_EXTSCAN_REPEAT_PROBE;
+	cmd->repeat_probe_time = cmd->max_dwell_time_active /
+					WMA_SCAN_NPROBES_DEFAULT;
 	cmd->max_scan_time = WMA_EXTSCAN_MAX_SCAN_TIME;
 	cmd->probe_delay = 0;
-	cmd->repeat_probe_time = WMA_EXTSCAN_REPEAT_PROBE;
 	cmd->probe_spacing_time = 0;
 	cmd->idle_time = 0;
 	cmd->burst_duration = WMA_EXTSCAN_BURST_DURATION;
@@ -22490,7 +22490,8 @@ static VOS_STATUS wma_process_ll_stats_getReq
 	cmd->num_ssids = 0;
 	cmd->num_bssid = 0;
 	cmd->ie_len = 0;
-	cmd->n_probes = 1;
+	cmd->n_probes = (cmd->repeat_probe_time > 0) ?
+			cmd->max_dwell_time_active / cmd->repeat_probe_time : 0;
 
 	buf_ptr += sizeof(*cmd);
 	WMITLV_SET_HDR(buf_ptr,

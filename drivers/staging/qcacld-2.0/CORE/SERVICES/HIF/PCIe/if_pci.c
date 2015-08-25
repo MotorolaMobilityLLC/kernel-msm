@@ -857,8 +857,6 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 	ol_txrx_pdev_handle txrx_pdev;
 	int ret = -EBUSY, test = 0;
 
-	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_INPROGRESS);
-
 	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
 		pr_err("%s: Load/Unload in Progress\n", __func__);
 		goto out;
@@ -868,6 +866,8 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 		pr_err("%s: LOGP in progress\n", __func__);
 		goto out;
 	}
+
+	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_INPROGRESS);
 
 	txrx_pdev = vos_get_context(VOS_MODULE_ID_TXRX, vos_context);
 	if (!txrx_pdev) {
@@ -1098,6 +1098,8 @@ static void hif_pci_pm_runtime_exit(struct hif_pci_softc *sc)
 		hif_pm_runtime_put_auto(sc->dev);
 		sc->runtime_timer_expires = 0;
 	}
+
+	cnss_flush_work(&sc->pm_work);
 }
 #else
 static inline void hif_pci_pm_runtime_init(struct hif_pci_softc *sc) { }

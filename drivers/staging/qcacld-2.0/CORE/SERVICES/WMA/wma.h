@@ -213,7 +213,6 @@ static const t_probeTime_dwellTime
 #define WMA_MAX_EXTSCAN_MSG_SIZE        1536
 #define WMA_EXTSCAN_REST_TIME           100
 #define WMA_EXTSCAN_MAX_SCAN_TIME       50000
-#define WMA_EXTSCAN_REPEAT_PROBE        10
 #define WMA_EXTSCAN_BURST_DURATION      150
 #endif
 
