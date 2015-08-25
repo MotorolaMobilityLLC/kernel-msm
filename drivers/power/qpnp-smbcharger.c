@@ -52,11 +52,12 @@
 #define DELTA_MV		100
 #define DEFAULT_USB_MA		100
 /* Parameters for ibus compass compensation */
-#define POWER_CONSUMPTION	1093
+#define POWER_CONSUMPTION	500
 #define COMPENSATION_RATIO	96
-#define COMPENSATION_OFFSET	8373
 #define CHARGE_STAGE_DELTA_MV	50
 #define COMPENSATION_LEN	16
+#define COMPENSATION_DELAY_MS	5000
+#define TAPER_IRQ_LIMIT_SECONDS	5
 /* Config registers */
 struct smbchg_regulator {
 	struct regulator_desc	rdesc;
@@ -129,6 +130,7 @@ struct smbchg_chip {
 	int				current_stage_count;
 	int				parallel_current_limited;
 	int				parallel_voltage_checked;
+	unsigned long			charge_stage_convert_time;
 	int				warm_current_ma;
 	int				cool_current_ma;
 	int				soft_temp_comp;
@@ -287,6 +289,7 @@ enum wake_reason {
 
 static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv);
 static void update_compass_compensation(struct power_supply *psy);
+static int get_current_time(unsigned long *now_tm_sec);
 static int smbchg_debug_mask;
 module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
@@ -4270,8 +4273,9 @@ static void update_compass_compensation(struct power_supply *psy)
 			ibus = POWER_CONSUMPTION;
 	}
 
+	/* Adjust the compensation calculation */
 	if (ibus != 0)
-		compensation = ibus * COMPENSATION_RATIO - COMPENSATION_OFFSET;
+		compensation = ibus * COMPENSATION_RATIO;
 
 	if (compensation != last_compensation) {
 		memset(chip->compass_compensation, 0, COMPENSATION_LEN);
@@ -4447,8 +4451,12 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		chip->enable_aicl_wake = true;
 	}
 
+	/*
+	 * In order to update compass compensation in time, schedule monitor
+	 * work 5 seconds later.
+	 */
 	schedule_delayed_work(&chip->monitor_charging_work,
-			msecs_to_jiffies(CHG_MONITOR_WORK_DELAY_MS));
+			msecs_to_jiffies(COMPENSATION_DELAY_MS));
 }
 
 void update_usb_status(struct smbchg_chip *chip, bool usb_present, bool force)
@@ -4766,6 +4774,8 @@ static void current_stage_work(struct work_struct *work)
 				chip->current_stage_count = 0;
 				chip->parallel_current_limited = 1;
 				smbchg_parallel_usb_enable(chip);
+				get_current_time(
+					&chip->charge_stage_convert_time);
 				taper_irq_en(chip, true);
 				return;
 			}
@@ -4873,6 +4883,7 @@ static irqreturn_t taper_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+	unsigned long now;
 
 	taper_irq_en(chip, false);
 	smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
@@ -4883,6 +4894,21 @@ static irqreturn_t taper_handler(int irq, void *_chip)
 	 */
 	if (chip->vfloat_mv == chip->current_stage_thr_mv)
 		return IRQ_HANDLED;
+	/*
+	 * For the charge stage converting, if enabling taper irq,
+	 * the irq tiggers immediately, discarding it to avoid charge
+	 * current decrease for this trigger.
+	 */
+	if (chip->charge_stage_convert_time) {
+		get_current_time(&now);
+		if ((now - chip->charge_stage_convert_time)
+					< TAPER_IRQ_LIMIT_SECONDS) {
+			pr_smb(PR_MISC, "discard the immediate taper irq\n");
+			chip->charge_stage_convert_time = 0;
+			taper_irq_en(chip, true);
+			return IRQ_HANDLED;
+		}
+	}
 	smbchg_parallel_usb_taper(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
