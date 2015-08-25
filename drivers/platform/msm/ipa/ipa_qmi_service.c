@@ -731,7 +731,17 @@ static void ipa_q6_clnt_svc_arrive(struct work_struct *work)
 		return;
 	}
 	qmi_modem_init_fin = true;
-	ipa_proxy_clk_unvote();
+
+	/*
+	 * In case the uC is required to be loaded by the Modem,
+	 * the proxy vote will be removed only when uC loading is
+	 * complete and indication is received by the AP. After SSR,
+	 * uC is already loaded. Therefore, proxy vote can be removed
+	 * once Modem init is complete.
+	 */
+	if (!is_load_uc)
+		ipa_proxy_clk_unvote();
+
 	IPAWANDBG("complete, qmi_modem_init_fin : %d\n",
 		qmi_modem_init_fin);
 
