@@ -101,6 +101,12 @@ struct stmvl6180_register {
 	int32_t status;
 };
 
+/* calibration file type */
+struct stmvl6180_cal_file_t {
+	int16_t value;
+	unsigned int file_opened;
+};
+
 /*
  *  driver data structs
  */
@@ -147,6 +153,10 @@ struct stmvl6180_data {
 	int (*tof_start)(struct stmvl6180_data *data,
 			uint8_t scaling, init_mode_e mode);
 	int (*tof_stop)(struct stmvl6180_data *data);
+
+	/* calibration files*/
+	struct stmvl6180_cal_file_t offset_buf;
+	struct stmvl6180_cal_file_t xtalk_buf;
 };
 
 /*

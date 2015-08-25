@@ -106,70 +106,99 @@ static void stmvl6180_read_calibration_file(void)
 	mm_segment_t fs;
 	int i, is_sign = 0;
 
-	f = filp_open("/persist/calibration/offset", O_RDONLY, 0);
-	if (f != NULL && !IS_ERR(f) && f->f_dentry != NULL) {
-		fs = get_fs();
-		set_fs(get_ds());
-		/* init the buffer with 0 */
-		for (i = 0; i < 8; i++)
-			buf[i] = 0;
-		f->f_op->read(f, buf, 8, &f->f_pos);
-		set_fs(fs);
-		vl6180_dbgmsg("offset as:%s, buf[0]:%c\n", buf, buf[0]);
-		offset_calib = 0;
-		for (i = 0; i < 8; i++) {
-			if (i == 0 && buf[0] == '-')
-				is_sign = 1;
-			else if (buf[i] >= '0' && buf[i] <= '9')
-				offset_calib = offset_calib * 10 + (buf[i] - '0');
-			else
-				break;
-		}
-		if (is_sign == 1)
-			offset_calib = -offset_calib;
-		vl6180_dbgmsg("offset_calib as %d\n", offset_calib);
-		VL6180x_SetOffsetCalibrationData(vl6180x_dev, offset_calib);
-		filp_close(f, NULL);
+	if(gp_vl6180_data->offset_buf.file_opened == true) {
+		vl6180_dbgmsg("offset_calib as %d\n",
+				gp_vl6180_data->offset_buf.value);
+		VL6180x_SetOffsetCalibrationData(vl6180x_dev,
+				gp_vl6180_data->offset_buf.value);
 	} else {
-		vl6180_errmsg("no offset calibration file exist!\n");
-	}
-
-	is_sign = 0;
-	f = filp_open("/persist/calibration/xtalk", O_RDONLY, 0);
-	if (f != NULL && !IS_ERR(f) && f->f_dentry != NULL) {
-		fs = get_fs();
-		set_fs(get_ds());
-		/* init the buffer with 0 */
-		for (i = 0; i < 8; i++)
-			buf[i] = 0;
-		f->f_op->read(f, buf, 8, &f->f_pos);
-		set_fs(fs);
-		vl6180_dbgmsg("xtalk as:%s, buf[0]:%c\n", buf, buf[0]);
-		xtalk_calib = 0;
-		for (i = 0; i < 8; i++) {
-			if (i == 0 && buf[0] == '-')
-				is_sign = 1;
-			else if (buf[i] >= '0' && buf[i] <= '9')
-				xtalk_calib = xtalk_calib * 10 + (buf[i] - '0');
-			else
-				break;
+		f = filp_open("/persist/calibration/offset", O_RDONLY, 0);
+		if (f != NULL && !IS_ERR(f) && f->f_dentry != NULL) {
+			fs = get_fs();
+			set_fs(get_ds());
+			/* init the buffer with 0 */
+			for (i = 0; i < 8; i++)
+				buf[i] = 0;
+			f->f_op->read(f, buf, 8, &f->f_pos);
+			set_fs(fs);
+			vl6180_dbgmsg("offset as:%s, buf[0]:%c\n", buf, buf[0]);
+			offset_calib = 0;
+			for (i = 0; i < 8; i++) {
+				if (i == 0 && buf[0] == '-')
+					is_sign = 1;
+				else if (buf[i] >= '0' && buf[i] <= '9')
+					offset_calib = offset_calib * 10 + (buf[i] - '0');
+				else
+					break;
+			}
+			if (is_sign == 1)
+				offset_calib = -1 * offset_calib;
+			vl6180_dbgmsg("file open offset_calib as %d\n", offset_calib);
+			gp_vl6180_data->offset_buf.file_opened = true;
+			gp_vl6180_data->offset_buf.value = offset_calib;
+			VL6180x_SetOffsetCalibrationData(vl6180x_dev, offset_calib);
+			filp_close(f, NULL);
+		} else {
+			gp_vl6180_data->offset_buf.file_opened = true;
+			gp_vl6180_data->offset_buf.value = 0;
+			vl6180_errmsg("no offset calibration file exist!\n");
 		}
-		if (is_sign == 1)
-			xtalk_calib = -xtalk_calib;
-		vl6180_dbgmsg("xtalk_calib as %d\n", xtalk_calib);
+	}
+	is_sign = 0;
+	if(gp_vl6180_data->xtalk_buf.file_opened == true) {
+		vl6180_dbgmsg("xtalk_calib as %d\n",
+				gp_vl6180_data->xtalk_buf.value);
 		/* set up threshold ignore */
-		if ((xtalk_calib+13) < 64 )
-			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); //0.5Mcps
+		if ((gp_vl6180_data->xtalk_buf.value+13) < 64 )
+			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); /* 0.5Mcps */
 		else
-			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (xtalk_calib+13)); //+0.1Mcps
+			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (gp_vl6180_data->xtalk_buf.value+13)); /* +0.1Mcps */
 		VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 255);
 		VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
 						~RANGE_CHECK_RANGE_ENABLE_MASK, RANGE_CHECK_RANGE_ENABLE_MASK);
 		/* setup xtalk compensation rate */
-		VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalk_calib);
-		filp_close(f, NULL);
+		VL6180x_SetXTalkCompensationRate(vl6180x_dev, gp_vl6180_data->xtalk_buf.value);
 	} else {
-		vl6180_errmsg("no xtalk calibration file exist!\n");
+		f = filp_open("/persist/calibration/xtalk", O_RDONLY, 0);
+		if (f != NULL && !IS_ERR(f) && f->f_dentry != NULL) {
+			fs = get_fs();
+			set_fs(get_ds());
+			/* init the buffer with 0 */
+			for (i = 0; i < 8; i++)
+				buf[i] = 0;
+			f->f_op->read(f, buf, 8, &f->f_pos);
+			set_fs(fs);
+			vl6180_dbgmsg("xtalk as:%s, buf[0]:%c\n", buf, buf[0]);
+			xtalk_calib = 0;
+			for (i = 0; i < 8; i++) {
+				if (i == 0 && buf[0] == '-')
+					is_sign = 1;
+				else if (buf[i] >= '0' && buf[i] <= '9')
+					xtalk_calib = xtalk_calib * 10 + (buf[i] - '0');
+				else
+					break;
+			}
+			if (is_sign == 1)
+				xtalk_calib = -1 * xtalk_calib;
+			vl6180_dbgmsg("file open xtalk_calib as %d\n", xtalk_calib);
+			gp_vl6180_data->xtalk_buf.file_opened = true;
+			gp_vl6180_data->xtalk_buf.value = xtalk_calib;
+			/* set up threshold ignore */
+			if ((xtalk_calib+13) < 64 )
+				VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); /* 0.5Mcps */
+			else
+				VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (xtalk_calib+13)); /* +0.1Mcps */
+			VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 255);
+			VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
+							~RANGE_CHECK_RANGE_ENABLE_MASK, RANGE_CHECK_RANGE_ENABLE_MASK);
+			/* setup xtalk compensation rate */
+			VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalk_calib);
+			filp_close(f, NULL);
+		} else {
+			gp_vl6180_data->offset_buf.file_opened = true;
+			gp_vl6180_data->offset_buf.value = 0;
+			vl6180_errmsg("no xtalk calibration file exist!\n");
+		}
 	}
 	return;
 }
@@ -383,6 +412,7 @@ static ssize_t stmvl6180_store_enable_ps_sensor(struct device *dev,
 			stmvl6180_stop(data);
 		}
 	}
+
 	mutex_unlock(&data->work_mutex);
 	vl6180_dbgmsg("End\n");
 
@@ -635,7 +665,6 @@ static long stmvl6180_ioctl(struct file *file,
 
 	return ret;
 }
-
 
 /* Input device hooks to power up/down the device */
 static int stmvl6180_data_dev_open(struct input_dev *input_dev_ps)
