@@ -152,8 +152,6 @@
 
 &blsp1_uart2 {
 	status= "ok";
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart_enable>;
 };
 
 &spi_0 {
