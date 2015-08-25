@@ -218,3 +218,4 @@
 	};
 };
 
+#include "huawei-led.dtsi"
