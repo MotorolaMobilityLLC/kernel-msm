@@ -94,7 +94,12 @@ struct msm_hsl_port {
 	u32			bus_perf_client;
 	/* BLSP UART required BUS Scaling data */
 	struct msm_bus_scale_pdata *bus_scale_table;
+	bool			suspended;
+	struct delayed_work	enable_work;
+	struct mutex		enable_mutex;
 };
+
+static struct msm_hsl_port *msm_hsl_port_local;
 
 #define UARTDM_VERSION_11_13	0
 #define UARTDM_VERSION_14	1
@@ -161,6 +166,11 @@ static int get_console_state(struct uart_port *port);
 static inline int get_console_state(struct uart_port *port) { return -ENODEV; };
 #endif
 
+#ifdef CONFIG_PM
+static int msm_serial_hsl_suspend(struct device *dev);
+static int msm_serial_hsl_resume(struct device *dev);
+#endif
+
 static bool msm_console_disabled = true;
 
 static struct dentry *debug_base;
@@ -188,12 +198,38 @@ static unsigned int msm_serial_hsl_has_gsbi(struct uart_port *port)
 
 void msm_console_set_enable(bool enable)
 {
+	if (msm_console_disabled == !enable)
+		return;
+
 	msm_console_disabled = !enable;
+	pr_info("%s uart console\n", enable ? "enable" : "disable");
+
+	if (msm_hsl_port_local)
+		schedule_delayed_work(&msm_hsl_port_local->enable_work, 0);
 }
 
 static bool console_disabled(void)
 {
 	return msm_console_disabled;
+}
+
+static void console_enable_work(struct work_struct *work)
+{
+	struct msm_hsl_port *msm_hsl_port = container_of(work,
+				struct msm_hsl_port, enable_work.work);
+	struct uart_port *port = &(msm_hsl_port->uart);
+
+	if (console_disabled() == !get_console_state(port))
+		return;
+
+	if (console_disabled()) {
+		pm_runtime_put_sync(port->dev);
+		pm_runtime_disable(port->dev);
+		msm_serial_hsl_suspend(port->dev);
+	} else {
+		msm_serial_hsl_resume(port->dev);
+		pm_runtime_enable(port->dev);
+	}
 }
 
 /**
@@ -401,6 +437,9 @@ static int clk_en(struct uart_port *port, int enable)
 {
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
 	int ret = 0;
+
+	if (!msm_hsl_port->clk_enable_count && !enable)
+		return 0;
 
 	if (enable) {
 
@@ -1865,6 +1904,13 @@ static int msm_serial_hsl_probe(struct platform_device *pdev)
 	if (msm_hsl_port->pclk)
 		clk_disable_unprepare(msm_hsl_port->pclk);
 
+	mutex_init(&msm_hsl_port->enable_mutex);
+	INIT_DELAYED_WORK(&msm_hsl_port->enable_work, console_enable_work);
+
+	if (console_disabled() && get_console_state(port))
+		schedule_delayed_work(&msm_hsl_port->enable_work,
+					msecs_to_jiffies(10000));
+	msm_hsl_port_local = msm_hsl_port;
 err:
 	return ret;
 }
@@ -1877,6 +1923,8 @@ static int msm_serial_hsl_remove(struct platform_device *pdev)
 	struct uart_port *port;
 
 	port = get_port_from_line(get_line(pdev));
+
+	cancel_delayed_work_sync(&msm_hsl_port->enable_work);
 #ifdef CONFIG_SERIAL_MSM_HSL_CONSOLE
 	device_remove_file(&pdev->dev, &dev_attr_console);
 #endif
@@ -1889,6 +1937,7 @@ static int msm_serial_hsl_remove(struct platform_device *pdev)
 	device_set_wakeup_capable(&pdev->dev, 0);
 	platform_set_drvdata(pdev, NULL);
 	mutex_destroy(&msm_hsl_port->clk_mutex);
+	mutex_destroy(&msm_hsl_port->enable_mutex);
 	uart_remove_one_port(&msm_hsl_uart_driver, port);
 
 	clk_put(msm_hsl_port->pclk);
@@ -1902,18 +1951,20 @@ static int msm_serial_hsl_remove(struct platform_device *pdev)
 static int msm_serial_hsl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
+	struct msm_hsl_port *msm_hsl_port = platform_get_drvdata(pdev);
 	struct uart_port *port;
 	port = get_port_from_line(get_line(pdev));
 
-	if (port) {
-
+	mutex_lock(&msm_hsl_port->enable_mutex);
+	if (port && !msm_hsl_port->suspended) {
+		uart_suspend_port(&msm_hsl_uart_driver, port);
 		if (is_console(port))
 			msm_hsl_deinit_clock(port);
-
-		uart_suspend_port(&msm_hsl_uart_driver, port);
 		if (device_may_wakeup(dev))
 			enable_irq_wake(port->irq);
+		msm_hsl_port->suspended = true;
 	}
+	mutex_unlock(&msm_hsl_port->enable_mutex);
 
 	return 0;
 }
@@ -1921,18 +1972,20 @@ static int msm_serial_hsl_suspend(struct device *dev)
 static int msm_serial_hsl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
+	struct msm_hsl_port *msm_hsl_port = platform_get_drvdata(pdev);
 	struct uart_port *port;
 	port = get_port_from_line(get_line(pdev));
 
-	if (port) {
-
+	mutex_lock(&msm_hsl_port->enable_mutex);
+	if (port && msm_hsl_port->suspended && !console_disabled()) {
+		if (is_console(port))
+			msm_hsl_init_clock(port);
 		uart_resume_port(&msm_hsl_uart_driver, port);
 		if (device_may_wakeup(dev))
 			disable_irq_wake(port->irq);
-
-		if (is_console(port))
-			msm_hsl_init_clock(port);
+		msm_hsl_port->suspended = false;
 	}
+	mutex_unlock(&msm_hsl_port->enable_mutex);
 
 	return 0;
 }
