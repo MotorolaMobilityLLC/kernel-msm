@@ -130,9 +130,9 @@ struct msm_compr_audio {
 	uint32_t app_pointer;
 	uint32_t buffer_size;
 	uint32_t byte_offset;
-	uint64_t copied_total; /* bytes consumed by DSP */
-	uint64_t bytes_received; /* from userspace */
-	uint64_t bytes_sent; /* to DSP */
+	uint32_t copied_total; /* bytes consumed by DSP */
+	uint32_t bytes_received; /* from userspace */
+	uint32_t bytes_sent; /* to DSP */
 
 	int32_t first_buffer;
 	int32_t last_buffer;
@@ -289,7 +289,7 @@ static int msm_compr_send_ddp_cfg(struct audio_client *ac,
 static int msm_compr_send_buffer(struct msm_compr_audio *prtd)
 {
 	int buffer_length;
-	uint64_t bytes_available;
+	int bytes_available;
 	struct audio_aio_write_param param;
 
 	if (!atomic_read(&prtd->start)) {
@@ -303,7 +303,7 @@ static int msm_compr_send_buffer(struct msm_compr_audio *prtd)
 		return -EPERM;
 	}
 
-	pr_debug("%s: bytes_received = %llu copied_total = %llu\n",
+	pr_debug("%s: bytes_received = %d copied_total = %d\n",
 		__func__, prtd->bytes_received, prtd->copied_total);
 	if (prtd->first_buffer &&  prtd->gapless_state.use_dsp_gapless_mode &&
 		prtd->compr_passthr == LEGACY_PCM)
@@ -359,8 +359,7 @@ static void compr_event_handler(uint32_t opcode,
 	struct audio_client *ac;
 	uint32_t chan_mode = 0;
 	uint32_t sample_rate = 0;
-	uint64_t bytes_available;
-	int stream_id;
+	int bytes_available, stream_id;
 	uint32_t stream_index;
 	unsigned long flags;
 
@@ -377,10 +376,10 @@ static void compr_event_handler(uint32_t opcode,
 		spin_lock_irqsave(&prtd->lock, flags);
 
 		if (payload[3]) {
-			pr_err("%s WRITE FAILED w/ err 0x%x !, paddr 0x%x, byte_offset=%d,copied_total=%llu,token=%d\n",
-				__func__,
-				payload[3],
-				payload[0],
+			pr_err("WRITE FAILED w/ err 0x%x !, paddr 0x%x"
+				"byte_offset=%d, copied_total=%d, token=%d\n",
+			       payload[3],
+			       payload[0],
 				prtd->byte_offset, prtd->copied_total, token);
 			atomic_set(&prtd->start, 0);
 		} else {
@@ -1859,7 +1858,7 @@ static int msm_compr_copy(struct snd_compr_stream *cstream,
 	struct msm_compr_audio *prtd = runtime->private_data;
 	void *dstn;
 	size_t copy;
-	uint64_t bytes_available = 0;
+	size_t bytes_available = 0;
 	unsigned long flags;
 
 	pr_debug("%s: count = %zd\n", __func__, count);
@@ -1901,7 +1900,7 @@ static int msm_compr_copy(struct snd_compr_stream *cstream,
 			pr_debug("%s: in xrun, count = %zd\n", __func__, count);
 			bytes_available = prtd->bytes_received - prtd->copied_total;
 			if (bytes_available >= runtime->fragment_size) {
-				pr_debug("%s: handle xrun, bytes_to_write = %llu\n",
+				pr_debug("%s: handle xrun, bytes_to_write = %zd\n",
 					 __func__,
 					 bytes_available);
 				atomic_set(&prtd->xrun, 0);
