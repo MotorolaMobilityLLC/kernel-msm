@@ -257,6 +257,9 @@ int stmvl6180_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 			return ret;
 		}
 		gpio_set_value(data->cs_gpio_num, 1);
+
+		/* Delay 3 ms to wait for chip power up */
+		msleep(3);
 		data->power_up = 1;
 	}
 	*preset_flag = 1;

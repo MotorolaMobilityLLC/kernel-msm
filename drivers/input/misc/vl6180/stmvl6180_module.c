@@ -662,8 +662,8 @@ static int stmvl6180_init_client(struct stmvl6180_data *data)
 	if (id == 0xb4) {
 		pr_info("STM VL6180 Found\n");
 	} else if (id == 0) {
-		pr_info("Not found STM VL6180\n");
-		return -EIO;
+		/* Ignore model ID error, suggested by ST engineer */
+		pr_info("Not found STM VL6180, but ignored\n");
 	}
 	/* Read Model Version */
 	VL6180x_RdByte(vl6180x_dev, VL6180_MODEL_REV_MAJOR_REG, &model_major);
