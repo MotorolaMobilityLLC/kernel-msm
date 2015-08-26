@@ -393,6 +393,7 @@ int stmvl6180_power_up_cci(void *cci_object, unsigned int *preset_flag)
 		}
 		gpio_set_value(data->en_gpio,STMVL6180_GPIO_ENABLE);
 	}
+	msleep(3);
 	data->power_up = 1;
 	*preset_flag = 1;
 	vl6180_dbgmsg("End\n");

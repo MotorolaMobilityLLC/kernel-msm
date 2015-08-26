@@ -153,7 +153,7 @@ static void stmvl6180_read_calibration_file(void)
 			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); /* 0.5Mcps */
 		else
 			VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (gp_vl6180_data->xtalk_buf.value+13)); /* +0.1Mcps */
-		VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 255);
+		VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 100);
 		VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
 						~RANGE_CHECK_RANGE_ENABLE_MASK, RANGE_CHECK_RANGE_ENABLE_MASK);
 		/* setup xtalk compensation rate */
@@ -188,7 +188,7 @@ static void stmvl6180_read_calibration_file(void)
 				VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, 64); /* 0.5Mcps */
 			else
 				VL6180x_WrWord(vl6180x_dev, SYSRANGE_RANGE_IGNORE_THRESHOLD, (xtalk_calib+13)); /* +0.1Mcps */
-			VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 255);
+			VL6180x_WrByte(vl6180x_dev, SYSRANGE_RANGE_IGNORE_VALID_HEIGHT, 100);
 			VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
 							~RANGE_CHECK_RANGE_ENABLE_MASK, RANGE_CHECK_RANGE_ENABLE_MASK);
 			/* setup xtalk compensation rate */
@@ -695,7 +695,6 @@ static int stmvl6180_init_client(struct stmvl6180_data *data)
 		vl6180_errmsg("STM VL6180 Found\n");
 	} else if (id == 0) {
 		vl6180_errmsg("Not found STM VL6180\n");
-		return -EIO;
 	}
 
 	/* Read Model Version */
@@ -770,6 +769,9 @@ static int stmvl6180_start(struct stmvl6180_data *data, uint8_t scaling, init_mo
 		VL6180x_FilterSetState(vl6180x_dev, 0);
 #endif
 		VL6180x_SetXTalkCompensationRate(vl6180x_dev, 0);
+		VL6180x_UpdateByte(vl6180x_dev, SYSRANGE_RANGE_CHECK_ENABLES,
+						~RANGE_CHECK_RANGE_ENABLE_MASK, 0);
+
 	}
 	if (mode == OFFSETCALIB_MODE)
 		VL6180x_SetOffsetCalibrationData(vl6180x_dev, 0);
