@@ -29,6 +29,8 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
+#include <linux/usb/class-dual-role.h>
+
 #undef  __CONST_FFS
 #define __CONST_FFS(_x) \
         ((_x) & 0x0F ? ((_x) & 0x03 ? ((_x) & 0x01 ? 0 : 1) :\
@@ -174,6 +176,8 @@
 /* wake lock timeout in ms */
 #define FUSB301_WAKE_LOCK_TIMEOUT       1000
 
+#define ROLE_SWITCH_TIMEOUT		1500
+
 struct fusb301_data {
 	u8 int_gpio;
 	u8 init_mode;
@@ -204,18 +208,24 @@ struct fusb301_chip {
 	struct wake_lock wlock;
 	struct mutex mlock;
 	struct power_supply *usb_psy;
+	struct dual_role_phy_instance *dual_role;
+	bool role_switch;
+	struct dual_role_phy_desc *desc;
 };
 
 #define fusb_update_state(chip, st) \
 	if(chip && st < FUSB_STATE_TRY_SRC) { \
 		chip->state = st; \
 		dev_info(&chip->client->dev, "%s: %s\n", __func__, #st); \
+		wake_up_interruptible(&mode_switch); \
 	}
 
 #define STR(s)    #s
 #define STRV(s)   STR(s)
 
 static void fusb301_detach(struct fusb301_chip *chip);
+
+DECLARE_WAIT_QUEUE_HEAD(mode_switch);
 
 static int fusb301_write_masked_byte(struct i2c_client *client,
 					u8 addr, u8 mask, u8 val)
@@ -266,6 +276,7 @@ static int fusb301_update_status(struct fusb301_chip *chip)
 		dev_err(cdev, "%s: fail to read mode\n", __func__);
 		return rc;
 	}
+
 	chip->mode = rc & FUSB301_MODE_MASK;
 	control_now = (rc >> 8) & 0xFF;
 
@@ -1101,6 +1112,7 @@ static void fusb301_src_detected(struct fusb301_chip *chip)
 	if (chip->state == FUSB_STATE_TRY_SNK)
 		cancel_delayed_work(&chip->twork);
 	fusb_update_state(chip, FUSB_STATE_ATTACHED_SNK);
+	dual_role_instance_changed(chip->dual_role);
 	chip->type = FUSB301_TYPE_SRC;
 }
 
@@ -1141,6 +1153,7 @@ static void fusb301_snk_detected(struct fusb301_chip *chip)
 		if (chip->state == FUSB_STATE_TRYWAIT_SRC)
 			cancel_delayed_work(&chip->twork);
 		fusb_update_state(chip, FUSB_STATE_ATTACHED_SRC);
+		dual_role_instance_changed(chip->dual_role);
 		chip->type = FUSB301_TYPE_SNK;
 	}
 }
@@ -1231,7 +1244,9 @@ static void fusb301_detach(struct fusb301_chip *chip)
 		break;
 	}
 
-	if (chip->triedsnk && chip->pdata->try_snk_emulation) {
+	if ((chip->triedsnk && chip->pdata->try_snk_emulation)
+					|| chip->role_switch) {
+		chip->role_switch = false;
 		if (IS_ERR_VALUE(fusb301_set_mode(chip,
 						chip->pdata->init_mode)) ||
 			IS_ERR_VALUE(fusb301_set_chip_state(chip,
@@ -1247,6 +1262,7 @@ static void fusb301_detach(struct fusb301_chip *chip)
 	chip->triedsnk = !chip->pdata->try_snk_emulation;
 	chip->try_attcnt = 0;
 	fusb_update_state(chip, FUSB_STATE_ERROR_RECOVERY);
+	dual_role_instance_changed(chip->dual_role);
 }
 
 static bool fusb301_is_vbus_off(struct fusb301_chip *chip)
@@ -1584,12 +1600,202 @@ out:
 	return rc;
 }
 
+
+static enum dual_role_property fusb_drp_properties[] = {
+	DUAL_ROLE_PROP_MODE,
+	DUAL_ROLE_PROP_PR,
+	DUAL_ROLE_PROP_DR,
+};
+
+ /* Callback for "cat /sys/class/dual_role_usb/otg_default/<property>" */
+static int dual_role_get_local_prop(struct dual_role_phy_instance *dual_role,
+			enum dual_role_property prop,
+			unsigned int *val)
+{
+	struct fusb301_chip *chip;
+	struct i2c_client *client = dual_role_get_drvdata(dual_role);
+	int ret = 0;
+
+	if (!client)
+		return -EINVAL;
+
+	chip = i2c_get_clientdata(client);
+
+	mutex_lock(&chip->mlock);
+	if (chip->state == FUSB_STATE_ATTACHED_SRC) {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_DFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SRC;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_HOST;
+		else
+			ret = -EINVAL;
+	} else if (chip->state == FUSB_STATE_ATTACHED_SNK) {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_UFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SNK;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_DEVICE;
+		else
+			ret = -EINVAL;
+	} else {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_NONE;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_NONE;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_NONE;
+		else
+			ret = -EINVAL;
+	}
+	mutex_unlock(&chip->mlock);
+
+	return ret;
+}
+
+/* Decides whether userspace can change a specific property */
+static int dual_role_is_writeable(struct dual_role_phy_instance *drp,
+				enum dual_role_property prop) {
+
+	if (prop == DUAL_ROLE_PROP_MODE)
+		return 1;
+	else
+		return 0;
+}
+
+/* Callback for "echo <value> >
+ *                      /sys/class/dual_role_usb/<name>/<property>"
+ * Block until the entire final state is reached.
+ * Blocking is one of the better ways to signal when the operation
+ * is done.
+ * This function tries to switched to Attached.SRC or Attached.SNK
+ * by forcing the mode into SRC or SNK.
+ * On failure, we fall back to Try.SNK state machine.
+ */
+static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
+				enum dual_role_property prop,
+				const unsigned int *val) {
+	struct fusb301_chip *chip;
+	struct i2c_client *client = dual_role_get_drvdata(dual_role);
+	u8 mode, target_state, fallback_mode, fallback_state;
+	int rc;
+	bool try_snk_emulation;
+	struct device *cdev;
+	long timeout;
+
+	if (!client)
+		return -EIO;
+
+	chip = i2c_get_clientdata(client);
+	cdev = &client->dev;
+
+	if (prop == DUAL_ROLE_PROP_MODE) {
+		if (*val == DUAL_ROLE_PROP_MODE_DFP) {
+			dev_dbg(cdev, "%s: Setting SRC mode\n", __func__);
+			mode = FUSB301_SRC;
+			fallback_mode = FUSB301_SNK;
+			target_state = FUSB_STATE_ATTACHED_SRC;
+
+			fallback_state = FUSB_STATE_ATTACHED_SNK;
+		} else if (*val == DUAL_ROLE_PROP_MODE_UFP) {
+			dev_dbg(cdev, "%s: Setting SNK mode\n", __func__);
+			mode = FUSB301_SNK;
+			fallback_mode = FUSB301_SRC;
+			target_state = FUSB_STATE_ATTACHED_SNK;
+			fallback_state = FUSB_STATE_ATTACHED_SRC;
+		} else {
+			dev_err(cdev, "%s: Trying to set invalid mode\n",
+								__func__);
+			return -EINVAL;
+		}
+	} else {
+		dev_err(cdev, "%s: Property cannot be set\n", __func__);
+		return -EINVAL;
+	}
+
+	if (chip->state == target_state)
+		return 0;
+
+	mutex_lock(&chip->mlock);
+	try_snk_emulation = chip->pdata->try_snk_emulation;
+	/* role_switch is used a flag to force the chip back Try.SNK
+	 * state machine. */
+	chip->role_switch = false;
+	chip->pdata->try_snk_emulation = false;
+	chip->triedsnk = !chip->pdata->try_snk_emulation;
+	rc = fusb301_set_mode(chip, (u8)mode);
+	if (IS_ERR_VALUE(rc)) {
+		if (IS_ERR_VALUE(fusb301_reset_device(chip)))
+			dev_err(cdev, "%s: failed to reset\n", __func__);
+		mutex_unlock(&chip->mlock);
+		return rc;
+	}
+
+	rc = fusb301_set_chip_state(chip, FUSB_STATE_ERROR_RECOVERY);
+	if (IS_ERR_VALUE(rc)) {
+		if (IS_ERR_VALUE(fusb301_reset_device(chip)))
+			dev_err(cdev, "%s: failed to reset\n", __func__);
+		mutex_unlock(&chip->mlock);
+		return rc;
+	}
+
+	fusb301_detach(chip);
+	chip->pdata->try_snk_emulation = try_snk_emulation;
+	chip->triedsnk = !chip->pdata->try_snk_emulation;
+	chip->role_switch = true;
+	mutex_unlock(&chip->mlock);
+
+	timeout = wait_event_interruptible_timeout(mode_switch,
+			chip->state == target_state,
+			msecs_to_jiffies(ROLE_SWITCH_TIMEOUT));
+
+	if (timeout > 0)
+		return 0;
+
+	mutex_lock(&chip->mlock);
+	rc = fusb301_set_mode(chip, (u8)fallback_mode);
+	if (IS_ERR_VALUE(rc)) {
+		if (IS_ERR_VALUE(fusb301_reset_device(chip)))
+			dev_err(cdev, "%s: failed to set mode\n", __func__);
+		mutex_unlock(&chip->mlock);
+		return rc;
+	}
+	rc = fusb301_set_chip_state(chip,
+			fallback_mode == FUSB301_SRC ?
+			FUSB_STATE_UNATTACHED_SRC :
+			fallback_mode == FUSB301_SNK ?
+			FUSB_STATE_UNATTACHED_SNK :
+			FUSB_STATE_ERROR_RECOVERY);
+	if (IS_ERR_VALUE(rc)) {
+		if (IS_ERR_VALUE(fusb301_reset_device(chip)))
+			dev_err(cdev, "%s: failed to set state\n", __func__);
+		mutex_unlock(&chip->mlock);
+		return rc;
+	}
+	mutex_unlock(&chip->mlock);
+
+	timeout = wait_event_interruptible_timeout(mode_switch,
+			chip->state == fallback_state,
+			msecs_to_jiffies(ROLE_SWITCH_TIMEOUT));
+
+	mutex_lock(&chip->mlock);
+	if (IS_ERR_VALUE(fusb301_set_mode(chip,	chip->pdata->init_mode)))
+		dev_err(cdev, "%s: failed to set init mode\n", __func__);
+	mutex_unlock(&chip->mlock);
+
+	return -EIO;
+}
+
 static int fusb301_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct fusb301_chip *chip;
 	struct device *cdev = &client->dev;
 	struct power_supply *usb_psy;
+	struct dual_role_phy_desc *desc;
+	struct dual_role_phy_instance *dual_role;
 	int ret = 0;
 
 	usb_psy = power_supply_get_by_name("usb");
@@ -1688,16 +1894,40 @@ static int fusb301_probe(struct i2c_client *client,
 		goto err4;
 	}
 
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		desc = devm_kzalloc(cdev, sizeof(struct dual_role_phy_desc),
+					GFP_KERNEL);
+		if (!desc) {
+			dev_err(cdev, "unable to allocate dual role descriptor\n");
+			goto err4;
+		}
+
+		desc->name = "otg_default";
+		desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+		desc->get_property = dual_role_get_local_prop;
+		desc->set_property = dual_role_set_prop;
+		desc->properties = fusb_drp_properties;
+		desc->num_properties = ARRAY_SIZE(fusb_drp_properties);
+		desc->property_is_writeable = dual_role_is_writeable;
+		dual_role = devm_dual_role_instance_register(cdev, desc);
+		dual_role->drv_data = client;
+		chip->dual_role = dual_role;
+		chip->desc = desc;
+	}
+
 	ret = fusb301_reset_device(chip);
 	if (ret) {
 		dev_err(cdev, "failed to initialize\n");
-		goto err4;
+		goto err5;
 	}
 
 	enable_irq_wake(chip->irq_gpio);
 
 	return 0;
 
+err5:
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF))
+		devm_kfree(cdev, chip->desc);
 err4:
 	fusb301_destory_device(cdev);
 err3:
@@ -1727,6 +1957,11 @@ static int fusb301_remove(struct i2c_client *client)
 
 	if (chip->irq_gpio > 0)
 		devm_free_irq(cdev, chip->irq_gpio, chip);
+
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		devm_dual_role_instance_unregister(cdev, chip->dual_role);
+		devm_kfree(cdev, chip->desc);
+	}
 
 	fusb301_destory_device(cdev);
 	destroy_workqueue(chip->cc_wq);
