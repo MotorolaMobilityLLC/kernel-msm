@@ -669,32 +669,12 @@ static long stmvl6180_ioctl(struct file *file,
 /* Input device hooks to power up/down the device */
 static int stmvl6180_data_dev_open(struct input_dev *input_dev_ps)
 {
-	struct stmvl6180_data *data = gp_vl6180_data;
-
-        mutex_lock(&data->work_mutex);
-        vl6180_dbgmsg("Enter %s current enable_ps_sensor flag:%d\n",
-					__func__,data->enable_ps_sensor);
-	/* turn on tof sensor */
-	if (data->enable_ps_sensor == 0)
-		stmvl6180_start(data, 3, NORMAL_MODE);
-	mutex_unlock(&data->work_mutex);
 	return 0;
 }
 
 static void stmvl6180_data_dev_close(struct input_dev *input_dev_ps)
 {
-	struct stmvl6180_data *data = gp_vl6180_data;
-
-        mutex_lock(&data->work_mutex);
-        vl6180_dbgmsg("Enter %s current enable_ps_sensor flag:%d\n",
-					__func__,data->enable_ps_sensor);
-	/* turn off tof sensor */
-	if (data->enable_ps_sensor == 1) {
-		data->enable_ps_sensor = 0;
-		/* to stop */
-		stmvl6180_stop(data);
-	}
-	mutex_unlock(&data->work_mutex);
+	return;
 }
 
 /*
