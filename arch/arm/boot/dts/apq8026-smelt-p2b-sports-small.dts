@@ -34,3 +34,15 @@
 		atmel,atmxt-tdat-filename = "atmxt-r3_hybrid.tdat";
 	};
 };
+
+&pm8226_l27 {
+	regulator-always-on;
+};
+
+&spmi_bus {
+	qcom,pm8226@1 {
+		avdd_avee_vreg: avdd_avee_vreg {
+			/delete-property/ mot,pull-down-delay;
+		};
+	};
+};
