@@ -4291,7 +4291,7 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 {
 	struct qpnp_chg_chip *chip = ctx;
 	bool bat_warm = 0, bat_cool = 0;
-	int temp;
+	int temp, temp_offset = 0;
 
 	if (state >= ADC_TM_STATE_NUM) {
 		pr_err("invalid notification %d\n", state);
@@ -4300,8 +4300,16 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 
 	temp = get_prop_batt_temp(chip);
 
+	if ((temp > chip->cool_bat_decidegc) &&
+			(300 - temp >= 0)) {
+			if (temp - chip->cool_bat_decidegc >= 30)
+				temp_offset = temp - chip->cool_bat_decidegc;
+			else if (temp - chip->cool_bat_decidegc != 0)
+				temp_offset = 30;
+	}
+
 	pr_debug("temp = %d state = %s\n", temp,
-			state == ADC_TM_WARM_STATE ? "warm" : "cool");
+				state == ADC_TM_WARM_STATE ? "warm" : "cool");
 
 	if (state == ADC_TM_WARM_STATE) {
 		if (temp >= chip->warm_bat_decidegc) {
@@ -4324,12 +4332,17 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 					ADC_TM_HIGH_LOW_THR_ENABLE;
 		}
 	} else {
-		if (temp <= chip->cool_bat_decidegc) {
+		if ((temp <= chip->cool_bat_decidegc) ||
+				(temp <= chip->cool_bat_decidegc + temp_offset)) {
 			/* Normal to cool */
 			bat_warm = false;
 			bat_cool = true;
-			chip->adc_param.high_temp =
-				chip->cool_bat_decidegc + HYSTERISIS_DECIDEGC;
+			if (temp_offset == 0)
+				chip->adc_param.high_temp =
+						chip->cool_bat_decidegc + HYSTERISIS_DECIDEGC;
+			else
+				chip->adc_param.high_temp =
+						chip->cool_bat_decidegc + HYSTERISIS_DECIDEGC + temp_offset;
 			chip->adc_param.state_request =
 				ADC_TM_WARM_THR_ENABLE;
 			schedule_delayed_work(&chip->bat_is_cooler_check_work,
@@ -4379,7 +4392,6 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 			qpnp_chg_set_appropriate_battery_current(chip);
 		}
 	}
-
 	pr_debug("warm %d, cool %d, low = %d deciDegC, high = %d deciDegC\n",
 			chip->bat_is_warm, chip->bat_is_cool,
 			chip->adc_param.low_temp, chip->adc_param.high_temp);
