@@ -153,6 +153,8 @@
 int lra_play_rate_code[LRA_POS_FREQ_COUNT];
 
 #define CALL_ALARM_TIME_THRESHOLD   800
+#define AUTO_RES_REPORT_THRESHOLD   100
+#define FREQUENCY_CALC_CONST        200000
 
 /* haptic debug register set */
 static u8 qpnp_hap_dbg_regs[] = {
@@ -1391,9 +1393,11 @@ static int qpnp_hap_auto_res_enable(struct qpnp_hap *hap, int enable)
 	return 0;
 }
 
-static void update_lra_frequency(struct qpnp_hap *hap)
+static int update_lra_frequency(struct qpnp_hap *hap)
 {
 	u8 lra_auto_res_lo = 0, lra_auto_res_hi = 0;
+	unsigned int freq_cur;
+	unsigned int play_rate_code;
 
 	qpnp_hap_read_reg(hap, &lra_auto_res_lo,
 				QPNP_HAP_LRA_AUTO_RES_LO(hap->base));
@@ -1408,6 +1412,14 @@ static void update_lra_frequency(struct qpnp_hap *hap)
 		qpnp_hap_write_reg(hap, &lra_auto_res_hi,
 				QPNP_HAP_RATE_CFG2_REG(hap->base));
 	}
+
+	play_rate_code = (lra_auto_res_hi << 8) | (lra_auto_res_lo & 0xff);
+	freq_cur = FREQUENCY_CALC_CONST / play_rate_code;
+
+	if (freq_cur < AUTO_RES_REPORT_THRESHOLD)
+		return -EAGAIN;
+
+	return 0;
 }
 
 static enum hrtimer_restart detect_auto_res_error(struct hrtimer *timer)
@@ -1416,6 +1428,7 @@ static enum hrtimer_restart detect_auto_res_error(struct hrtimer *timer)
 					auto_res_err_poll_timer);
 	u8 val;
 	ktime_t currtime;
+	int ret;
 
 	qpnp_hap_read_reg(hap, &val, QPNP_HAP_STATUS(hap->base));
 
@@ -1423,7 +1436,13 @@ static enum hrtimer_restart detect_auto_res_error(struct hrtimer *timer)
 		schedule_work(&hap->auto_res_err_work);
 		return HRTIMER_NORESTART;
 	} else {
-		update_lra_frequency(hap);
+		ret = update_lra_frequency(hap);
+		if (ret < 0) {
+			dev_err(&hap->spmi->dev,
+				"Trigger auto resonance. Vib is running under 100Hz.\n");
+			schedule_work(&hap->auto_res_err_work);
+			return HRTIMER_NORESTART;
+		}
 	}
 
 	currtime  = ktime_get();
