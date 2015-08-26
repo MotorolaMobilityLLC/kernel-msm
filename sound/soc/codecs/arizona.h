@@ -77,6 +77,10 @@
 #define ARIZONA_MAX_DAI  11
 #define ARIZONA_MAX_ADSP 7
 
+#define ARIZONA_SLIM1 4
+#define ARIZONA_SLIM2 5
+#define ARIZONA_SLIM3 6
+
 struct arizona;
 struct wm_adsp;
 struct arizona_jd_state;
@@ -397,10 +401,19 @@ extern int arizona_restore_sources(struct arizona *arizona,
 				   unsigned int *cache,
 				   int lim);
 
+/* Slimbus */
+extern int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
+                             struct snd_kcontrol *kcontrol,
+                             int event);
+extern int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
+                             struct snd_kcontrol *kcontrol,
+                             int event);
+
 extern void clearwater_spin_sysclk(struct arizona *arizona);
 
 extern const struct snd_soc_dai_ops arizona_dai_ops;
 extern const struct snd_soc_dai_ops arizona_simple_dai_ops;
+extern const struct snd_soc_dai_ops arizona_slim_dai_ops;
 
 #define ARIZONA_FLL_NAME_LEN 20
 
