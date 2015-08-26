@@ -144,7 +144,7 @@ static ssize_t pn548_dev_read(struct file *filp, char __user *buf,
 	}
 
 	if (ret == -ERESTARTSYS)
-		return -0xFF;
+		return ret;
 
 	/* Read data */
 	mutex_lock(&pn548_dev->read_mutex);
