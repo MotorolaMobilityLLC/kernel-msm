@@ -71,7 +71,7 @@
 #define SUPPLY_IO_REQ_CURRENT   6000U
 #define SUPPLY_ANA_REQ_CURRENT  6000U
 
-#define FPC_TTW_HOLD_TIME 500
+#define FPC_TTW_HOLD_TIME 1000
 
 static const char * const pctl_names[] = {
 	"fpc1020_spi_active",
