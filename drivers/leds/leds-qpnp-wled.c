@@ -750,6 +750,12 @@ static void qpnp_wled_work(struct work_struct *work)
 	}
 
 	if (!!level != wled->prev_state) {
+
+        if (level == 0)
+            dev_info(&wled->spmi->dev, "backlight disabled\n");
+        else
+            dev_info(&wled->spmi->dev, "backlight enabled\n");
+
 		rc = qpnp_wled_module_en(wled, wled->ctrl_base, !!level);
 
 		if (rc) {
