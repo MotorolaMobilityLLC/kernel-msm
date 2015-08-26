@@ -673,5 +673,3 @@ void __exit dhd_wlan_exit(void)
 #endif /* CONFIG_BCMDHD_USE_STATIC_BUF */
 	return;
 }
-
-device_initcall(dhd_wlan_init);
