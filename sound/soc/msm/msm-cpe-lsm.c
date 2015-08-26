@@ -361,7 +361,7 @@ static int msm_cpe_lab_thread(void *data)
 		pr_err("%s: Handle to %s is invalid\n",
 			__func__,
 			(!core) ? "core" : "cpe");
-		rc = -EINVAL;
+		lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
 		goto done;
 	}
 
@@ -372,15 +372,15 @@ static int msm_cpe_lab_thread(void *data)
 	memset(lab->pcm_buf[0].mem, 0, lab->pcm_size);
 
 	if (lsm_ops->lsm_lab_data_channel_read == NULL ||
-		lsm_ops->lsm_lab_data_channel_read_status == NULL) {
-			pr_err("%s: slim ops not present\n", __func__);
-			rc = -EINVAL;
-			goto done;
+	    lsm_ops->lsm_lab_data_channel_read_status == NULL) {
+		pr_err("%s: slim ops not present\n", __func__);
+		lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
+		goto done;
 	}
 
 	if (!hw_params || !substream || !cpe) {
 		pr_err("%s: Lab thread pointers NULL\n", __func__);
-		rc = -EINVAL;
+		lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
 		goto done;
 	}
 
@@ -411,7 +411,8 @@ static int msm_cpe_lab_thread(void *data)
 		if (rc) {
 			pr_err("%s: AFE out port start failed, err = %d\n",
 				__func__, rc);
-			return rc;
+			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
+			goto done;
 		}
 
 	} else {
