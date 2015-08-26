@@ -172,6 +172,8 @@
 	qcom,cool-bat-decidegc = <100>;
 	qcom,hot-bat-decidegc = <550>;
 	qcom,cold-bat-decidegc = <0>;
+	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,irq-volt-empty-mv = <3200>;
 };
 
 &i2c_5 {
