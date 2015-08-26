@@ -267,5 +267,3 @@
 		qcom,mdss-fb-map = <&mdss_fb1>;
 	};
 };
-
-#include "msm8952-mdss-panels.dtsi"
