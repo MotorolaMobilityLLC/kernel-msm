@@ -27,6 +27,8 @@
 #include <linux/random.h>
 #include <linux/rndis_ipa.h>
 #include <linux/workqueue.h>
+#include <linux/notifier.h>
+#include <linux/cpufreq.h>
 
 #define DRV_NAME "RNDIS_IPA"
 #define DEBUGFS_DIR_NAME "rndis_ipa"
@@ -84,6 +86,10 @@
 #define RNDIS_IPA_LOG_ENTRY() RNDIS_IPA_DEBUG("begin\n")
 #define RNDIS_IPA_LOG_EXIT()  RNDIS_IPA_DEBUG("end\n")
 
+static unsigned int min_cpu_freq;
+module_param(min_cpu_freq, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(min_cpu_freq,
+		"to set minimum cpu frquency to when ipa rndis is active");
 
 /**
  * enum rndis_ipa_state - specify the current driver internal state
@@ -225,6 +231,8 @@ struct rndis_ipa_dev {
 	u8 device_ethaddr[ETH_ALEN];
 	void (*device_ready_notify)(void);
 	struct delayed_work xmit_error_delayed_work;
+
+	struct notifier_block cpufreq_notifier;
 };
 
 /**
@@ -500,6 +508,28 @@ struct rndis_pkt_hdr rndis_template_hdr = {
 	.zeroes = {0},
 };
 
+static int rndis_ipa_cpufreq_notifier_cb(struct notifier_block *nfb,
+					unsigned long event, void *data)
+{
+	struct cpufreq_policy *policy = data;
+	unsigned int cpu = policy->cpu;
+
+	if (!min_cpu_freq)
+		return NOTIFY_OK;
+
+	switch (event) {
+		case CPUFREQ_ADJUST:
+			pr_debug("%s: cpu:%u\n", __func__, cpu);
+
+			cpufreq_verify_within_limits(policy,
+					min_cpu_freq, UINT_MAX);
+
+			break;
+	}
+
+	return NOTIFY_OK;
+}
+
 /**
  * rndis_ipa_init() - create network device and initialize internal
  *  data structures
@@ -642,6 +672,12 @@ int rndis_ipa_init(struct ipa_usb_init_params *params)
 	params->skip_ep_cfg = false;
 	rndis_ipa_ctx->state = RNDIS_IPA_INITIALIZED;
 	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
+
+	rndis_ipa_ctx->cpufreq_notifier.notifier_call =
+				rndis_ipa_cpufreq_notifier_cb;
+	cpufreq_register_notifier(&rndis_ipa_ctx->cpufreq_notifier,
+			CPUFREQ_POLICY_NOTIFIER);
+
 	pr_info("RNDIS_IPA NetDev was initialized");
 
 	RNDIS_IPA_LOG_EXIT();
@@ -804,6 +840,7 @@ static int rndis_ipa_open(struct net_device *net)
 {
 	struct rndis_ipa_dev *rndis_ipa_ctx;
 	int next_state;
+	int i;
 
 	RNDIS_IPA_LOG_ENTRY();
 
@@ -816,6 +853,8 @@ static int rndis_ipa_open(struct net_device *net)
 	}
 
 	rndis_ipa_ctx->state = next_state;
+	for_each_online_cpu(i)
+		cpufreq_update_policy(i);
 	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
 
 
@@ -1142,6 +1181,7 @@ static int rndis_ipa_stop(struct net_device *net)
 {
 	struct rndis_ipa_dev *rndis_ipa_ctx = netdev_priv(net);
 	int next_state;
+	int i;
 
 	RNDIS_IPA_LOG_ENTRY();
 
@@ -1153,6 +1193,10 @@ static int rndis_ipa_stop(struct net_device *net)
 
 	netif_stop_queue(net);
 	pr_info("RNDIS_IPA NetDev queue is stopped\n");
+
+	if (rndis_ipa_ctx->state == RNDIS_IPA_CONNECTED_AND_UP)
+		for_each_online_cpu(i)
+			cpufreq_update_policy(i);
 
 	rndis_ipa_ctx->state = next_state;
 	RNDIS_IPA_STATE_DEBUG(rndis_ipa_ctx);
@@ -1183,6 +1227,7 @@ int rndis_ipa_pipe_disconnect_notify(void *private)
 	int next_state;
 	int outstanding_dropped_pkts;
 	int retval;
+	int i;
 
 	RNDIS_IPA_LOG_ENTRY();
 
@@ -1195,6 +1240,9 @@ int rndis_ipa_pipe_disconnect_notify(void *private)
 		RNDIS_IPA_ERROR("can't disconnect before connect\n");
 		return -EPERM;
 	}
+
+	for_each_online_cpu(i)
+		cpufreq_update_policy(i);
 
 	if (rndis_ipa_ctx->during_xmit_error) {
 		RNDIS_IPA_DEBUG("canceling xmit-error delayed work\n");
@@ -1261,6 +1309,7 @@ void rndis_ipa_cleanup(void *private)
 	struct rndis_ipa_dev *rndis_ipa_ctx = private;
 	int next_state;
 	int retval;
+	int i;
 
 	RNDIS_IPA_LOG_ENTRY();
 
@@ -1271,6 +1320,11 @@ void rndis_ipa_cleanup(void *private)
 		return;
 	}
 
+	for_each_online_cpu(i)
+		cpufreq_update_policy(i);
+
+	cpufreq_unregister_notifier(&rndis_ipa_ctx->cpufreq_notifier,
+				CPUFREQ_POLICY_NOTIFIER);
 	next_state = rndis_ipa_next_state(rndis_ipa_ctx->state,
 		RNDIS_IPA_CLEANUP);
 	if (next_state == RNDIS_IPA_INVALID) {
