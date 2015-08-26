@@ -3705,8 +3705,8 @@ irqreturn_t wcd9xxx_dce_handler(int irq, void *data)
 	mbhc->mbhc_state = MBHC_STATE_POTENTIAL;
 
 	if (!mbhc->polling_active) {
-		pr_warn("%s: mbhc polling is not active, skip button press\n",
-			__func__);
+		pr_debug("%s: mbhc polling is not active, skip button press\n",
+			 __func__);
 		goto done;
 	}
 
