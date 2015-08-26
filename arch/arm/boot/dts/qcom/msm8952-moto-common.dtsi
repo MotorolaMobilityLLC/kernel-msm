@@ -171,6 +171,11 @@
 
 	qcom,platform-reset-gpio = <&msm_gpio 0 0>;
 	qcom,platform-te-gpio = <&msm_gpio 24 0>;
+
+	/delete-property/ vdd-supply;
+	/delete-property/ vddio-supply;
+	/delete-property/ lab-supply;
+	/delete-property/ ibb-supply;
 };
 
 &i2c_3 { /* BLSP1 QUP3 */
