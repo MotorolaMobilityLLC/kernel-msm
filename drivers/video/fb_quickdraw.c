@@ -16,6 +16,7 @@
 #include <linux/fb_quickdraw.h>
 #include <linux/fb_quickdraw_ops.h>
 #include <linux/miscdevice.h>
+#include <linux/device.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/rwsem.h>
@@ -23,17 +24,243 @@
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
 #include <mach/iommu_domains.h>
+#include <linux/kernel.h>
+#include <linux/sysfs.h>
 
 static LIST_HEAD(fb_quickdraw_buffer_list_head);
 static DEFINE_MUTEX(list_lock);
 static struct fb_quickdraw_ops *fb_quickdraw_ops;
 static void delete_buffer(struct kobject *kobj);
+static unsigned long int buffer_count;
+static struct miscdevice fb_quickdraw_misc_device;
+static int fb_quickdraw_unlock_buffer_write(int buffer_id);
+static int fb_quickdraw_lock_buffer_write(int buffer_id);
+static struct fb_quickdraw_buffer *
+			fb_quickdraw_lookup_and_get_buffer(int buffer_id);
+
+static ssize_t fb_quickdraw_x_show(struct fb_quickdraw_buffer *buffer,
+					char *str)
+{
+	ssize_t size = 0;
+
+	fb_quickdraw_lock_buffer_read(buffer);
+	size = snprintf(str, PAGE_SIZE, "%d\n", buffer->data.rect.x);
+	fb_quickdraw_unlock_buffer_read(buffer);
+
+	return size;
+}
+
+static ssize_t fb_quickdraw_x_store(struct fb_quickdraw_buffer *buffer,
+					int tmp_x, size_t count)
+{
+	fb_quickdraw_lock_buffer_write(buffer->data.buffer_id);
+	buffer->data.rect.x = tmp_x;
+	fb_quickdraw_unlock_buffer_write(buffer->data.buffer_id);
+
+	return count;
+}
+
+static ssize_t fb_quickdraw_y_show(struct fb_quickdraw_buffer *buffer,
+					char *str)
+{
+	ssize_t size = 0;
+
+	fb_quickdraw_lock_buffer_read(buffer);
+	size = snprintf(str, PAGE_SIZE, "%d\n", buffer->data.rect.y);
+	fb_quickdraw_unlock_buffer_read(buffer);
+
+	return size;
+}
+
+static ssize_t fb_quickdraw_y_store(struct fb_quickdraw_buffer *buffer,
+					int tmp_y, size_t count)
+{
+	fb_quickdraw_lock_buffer_write(buffer->data.buffer_id);
+	buffer->data.rect.y = tmp_y;
+	fb_quickdraw_unlock_buffer_write(buffer->data.buffer_id);
+
+	return count;
+}
+
+static ssize_t fb_quickdraw_show_params(struct fb_quickdraw_buffer *buffer,
+					char *str)
+{
+	ssize_t size = 0;
+
+	fb_quickdraw_lock_buffer_read(buffer);
+	size = snprintf(str, PAGE_SIZE,
+		"buffer_id: %d\n user_fd: %d format: %d\n rect(x:%d, y:%d, w:%d, h:%d)\n",
+				buffer->data.buffer_id,
+				buffer->data.user_fd, buffer->data.format,
+				buffer->data.rect.x, buffer->data.rect.y,
+				buffer->data.rect.w, buffer->data.rect.h);
+
+	fb_quickdraw_unlock_buffer_read(buffer);
+
+	return size;
+}
+
+static ssize_t fb_quickdraw_show_lock(struct fb_quickdraw_buffer *buffer,
+					char *str)
+{
+	ssize_t size = 0;
+	int ret = -1;
+
+	ret = down_write_trylock(&buffer->rwsem);
+	size = snprintf(str, PAGE_SIZE, "%s\n", ret ? "unlocked" : "locked");
+	/* down_write_trylock returns 1 when successful and locks the buffer.
+	   So there was no contention on the lock in the first place and the
+	   original status of the lock was "unlocked". Now since it's return
+	   value was 1 we need to unlock (as done in the following statement)
+	   to go back to the original state. */
+	if (ret)
+		up_write(&buffer->rwsem);
+
+	return size;
+}
+
+/* Acceptable values for 'state' below to act on 'buffer' are as follows:
+   0 - To unlock the buffer
+   1 - To lock the buffer in a non-blocking manner.
+   2 - To lock the buffer and block on the call till it does get unlocked
+       elsewhere and then lock it here again before returning. */
+static ssize_t fb_quickdraw_store_lock(struct fb_quickdraw_buffer *buffer,
+					int state, size_t count)
+{
+	int ret;
+
+	switch (state) {
+	case 0:
+		ret = fb_quickdraw_unlock_buffer_write(buffer->data.buffer_id);
+		break;
+	case 1:
+		ret = down_write_trylock(&buffer->rwsem);
+		if (!ret)
+			pr_info("%s: Buffer %d already locked\n",
+				__func__,
+				buffer->data.buffer_id);
+		break;
+	case 2:
+		ret = fb_quickdraw_lock_buffer_write(buffer->data.buffer_id);
+		break;
+	default:
+		pr_err("%s: Invalid state passed[%d]. Valid values are 0 (unlock), 1 (lock non-blocking) and 2 (lock blocking)\n",
+		       __func__, state);
+	}
+
+	if (ret == -EINVAL) {
+		count = ret;
+		pr_err("%s: %s failed\n", __func__, state ? "lock" : "unlock");
+	}
+
+	return count;
+}
+
+static ssize_t fb_quickdraw_show_count(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%lu\n", buffer_count);
+}
+
+struct fb_quickdraw_attribute {
+	struct attribute attr;
+	ssize_t (*show)(struct fb_quickdraw_buffer *buffer, char *str);
+	ssize_t (*store)(struct fb_quickdraw_buffer *buffer, int tmp_store,
+				size_t count);
+};
+
+#define to_fb_quickdraw_attr(a) \
+	container_of(a, struct fb_quickdraw_attribute, attr)
+
+
+#define FB_QUICKDRAW_ATTR(_name, _mode, _show, _store)    \
+static struct fb_quickdraw_attribute attr_##_name =       \
+			__ATTR(_name, _mode, _show, _store);
+
+FB_QUICKDRAW_ATTR(x, 0660, fb_quickdraw_x_show, fb_quickdraw_x_store);
+FB_QUICKDRAW_ATTR(y, 0660, fb_quickdraw_y_show, fb_quickdraw_y_store);
+FB_QUICKDRAW_ATTR(params, 0440, fb_quickdraw_show_params, NULL);
+FB_QUICKDRAW_ATTR(lock, 0660, fb_quickdraw_show_lock,
+					fb_quickdraw_store_lock);
+
+static struct attribute *fb_quickdraw_attrs[] = {
+	&attr_x.attr,
+	&attr_y.attr,
+	&attr_lock.attr,
+	&attr_params.attr,
+	NULL,
+};
+
+static struct attribute_group fb_quickdraw_attr_group = {
+	.attrs = fb_quickdraw_attrs,
+};
+
+static ssize_t fb_quickdraw_sysfs_show(struct kobject *kobj,
+				struct attribute *attr, char *str)
+{
+	struct fb_quickdraw_attribute *pattr = to_fb_quickdraw_attr(attr);
+	ssize_t ret = -EIO;
+
+	if (kobj && pattr->show) {
+		struct fb_quickdraw_buffer *buffer = NULL;
+		pr_debug("%s: Calling show %s\n", __func__, pattr->attr.name);
+		buffer = container_of(kobj, struct fb_quickdraw_buffer,
+					kobject);
+		fb_quickdraw_get_buffer(buffer);
+		ret = pattr->show(buffer, str);
+		fb_quickdraw_put_buffer(buffer);
+		pr_debug("%s: Returned show %s - ret:%d\n", __func__,
+				pattr->attr.name, ret);
+	}
+
+	return ret;
+}
+
+static ssize_t fb_quickdraw_sysfs_store(struct kobject *kobj,
+				struct attribute *attr,
+				const char *str, size_t count)
+{
+	struct fb_quickdraw_attribute *pattr = to_fb_quickdraw_attr(attr);
+	ssize_t ret = -EIO;
+
+	if (kobj && pattr->store) {
+		struct fb_quickdraw_buffer *buffer = NULL;
+		int tmp_store;
+		pr_debug("%s: Calling store %s\n", __func__, pattr->attr.name);
+		if (!count)
+			return -EINVAL;
+
+		buffer = container_of(kobj, struct fb_quickdraw_buffer,
+								kobject);
+		ret = kstrtoint(str, 10, &tmp_store);
+		if (ret == 0) {
+			fb_quickdraw_get_buffer(buffer);
+			ret = pattr->store(buffer, tmp_store, count);
+			pr_debug("%s: Returned store %s - ret:%d\n",
+				__func__, pattr->attr.name, ret);
+			fb_quickdraw_put_buffer(buffer);
+		} else {
+			pr_err("%s: Invalid value (ret:%d) - %s not called\n",
+			       __func__, ret, pattr->attr.name);
+		}
+	}
+
+	return ret;
+}
+
+static const struct sysfs_ops fb_quickdraw_sysfs_ops = {
+	.show = fb_quickdraw_sysfs_show,
+	.store = fb_quickdraw_sysfs_store,
+};
 
 static struct kobj_type ktype_fb_quickdraw = {
-	.sysfs_ops = NULL,
+	.sysfs_ops = &fb_quickdraw_sysfs_ops,
 	.default_attrs = NULL,
 	.release = delete_buffer,
 };
+
+static DEVICE_ATTR(count, 0440, fb_quickdraw_show_count, NULL);
 
 /* Quickdraw Internal Helper Functions */
 
@@ -369,7 +596,18 @@ static int fb_quickdraw_add_buffer(struct fb_quickdraw_buffer_data *data)
 	}
 
 	list_add_tail(&buffer->list, &fb_quickdraw_buffer_list_head);
+	buffer_count++;
 
+	if (kobject_add(&buffer->kobject,
+			&fb_quickdraw_misc_device.this_device->kobj,
+			"%d", buffer->data.buffer_id)) {
+		pr_err("%s:kobject_init_and_add failed\n", __func__);
+		goto exit_mutex;
+	}
+
+	if (sysfs_create_group(&buffer->kobject, &fb_quickdraw_attr_group))
+		pr_err("%s:group creation for buf: %d failed\n", __func__,
+			buffer->data.buffer_id);
 exit_mutex:
 	mutex_unlock(&list_lock);
 
@@ -393,6 +631,7 @@ static int fb_quickdraw_remove_buffer(int buffer_id)
 	/* remove this buffer from the list */
 	mutex_lock(&list_lock);
 	list_del(&buffer->list);
+	buffer_count--;
 	mutex_unlock(&list_lock);
 
 	/* remove this function's reference acquired during lookup */
@@ -471,6 +710,7 @@ static int fb_quickdraw_init_buffers(void)
 		list_del(&buffer->list);
 		fb_quickdraw_put_buffer(buffer);
 	}
+	buffer_count = 0;
 
 	mutex_unlock(&list_lock);
 
@@ -631,19 +871,32 @@ static struct miscdevice fb_quickdraw_misc_device = {
 
 void fb_quickdraw_register_ops(struct fb_quickdraw_ops *ops)
 {
+	int ret = -EINVAL;
+	struct device *this_device;
 	pr_debug("%s+\n", __func__);
 
 	BUG_ON(fb_quickdraw_ops);
 
 	fb_quickdraw_ops = ops;
 
-	misc_register(&fb_quickdraw_misc_device);
+	ret = misc_register(&fb_quickdraw_misc_device);
+	this_device = fb_quickdraw_misc_device.this_device;
+
+	if (!ret)
+		if (sysfs_create_file(&this_device->kobj, &dev_attr_count.attr))
+			pr_err("%s: Failed to create 'count'\n", __func__);
 
 	pr_debug("%s-\n", __func__);
 }
 
 static void __exit fb_quickdraw_exit(void)
 {
+	struct device *this_device;
+	this_device = fb_quickdraw_misc_device.this_device;
+
+	if (this_device)
+		sysfs_remove_file(&this_device->kobj, &dev_attr_count.attr);
+
 	misc_deregister(&fb_quickdraw_misc_device);
 }
 
