@@ -47,7 +47,7 @@
 #define FPC1020_RESET_LOW_US 1000
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
-#define FPC_TTW_HOLD_TIME 500
+#define FPC_TTW_HOLD_TIME 1000
 
 static const char *const pctl_names[] = {
 	"fpc1020_reset_reset",
