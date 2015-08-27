@@ -158,6 +158,21 @@
 
 #define BEACON_TX_BUFFER_SIZE               (512)
 
+/* WMA_ETHER_TYPE_OFFSET = sa(6) + da(6) */
+#define WMA_ETHER_TYPE_OFFSET (6 + 6)
+/* WMA_ICMP_V6_HEADER_OFFSET = sa(6) + da(6) + eth_type(2) + icmp_v6_hdr(6)*/
+#define WMA_ICMP_V6_HEADER_OFFSET (6 + 6 + 2 + 6)
+/* WMA_ICMP_V6_TYPE_OFFSET = sa(6) + da(6) + eth_type(2) + 40 */
+#define WMA_ICMP_V6_TYPE_OFFSET (6 + 6 + 2 + 40)
+
+#define WMA_ICMP_V6_HEADER_TYPE (0x3A)
+#define WMA_ICMP_V6_RA_TYPE (0x86)
+#define WMA_ICMP_V6_NS_TYPE (0x87)
+#define WMA_ICMP_V6_NA_TYPE (0x88)
+#define WMA_BCAST_MAC_ADDR (0xFF)
+#define WMA_MCAST_IPV4_MAC_ADDR (0x01)
+#define WMA_MCAST_IPV6_MAC_ADDR (0x33)
+
 typedef struct probeTime_dwellTime {
 	u_int8_t dwell_time;
 	u_int8_t probe_time;
@@ -753,6 +768,15 @@ typedef struct {
 
 	uint32_t num_of_diag_events_logs;
 	uint32_t *events_logs_list;
+
+	uint32_t wow_ucast_wake_up_count;
+	uint32_t wow_bcast_wake_up_count;
+	uint32_t wow_ipv4_mcast_wake_up_count;
+	uint32_t wow_ipv6_mcast_wake_up_count;
+	uint32_t wow_ipv6_mcast_ra_stats;
+	uint32_t wow_ipv6_mcast_ns_stats;
+	uint32_t wow_ipv6_mcast_na_stats;
+
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {

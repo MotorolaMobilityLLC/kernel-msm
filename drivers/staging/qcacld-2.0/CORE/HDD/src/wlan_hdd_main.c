@@ -9550,10 +9550,15 @@ v_U8_t hdd_get_operating_channel( hdd_context_t *pHddCtx, device_mode_t mode )
   --------------------------------------------------------------------------*/
 static void hdd_set_multicast_list(struct net_device *dev)
 {
+   static const uint8_t ipv6_router_solicitation[] =
+                         {0x33, 0x33, 0x00, 0x00, 0x00, 0x02};
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    int mc_count;
    int i = 0;
    struct netdev_hw_addr *ha;
+
+   /* Delete already configured multicast address list */
+   wlan_hdd_set_mc_addr_list(pAdapter, false);
 
    if (dev->flags & IFF_ALLMULTI)
    {
@@ -9579,6 +9584,12 @@ static void hdd_set_multicast_list(struct net_device *dev)
       netdev_for_each_mc_addr(ha, dev) {
          if (i == mc_count)
             break;
+         /* Skip IPv6 router solicitation address */
+         if (!memcmp(ha->addr, ipv6_router_solicitation, ETH_ALEN)) {
+             hddLog(LOG1, FL("skip ipv6 router solicitation address"));
+             pAdapter->mc_addr_list.mc_cnt--;
+             continue;
+         }
          memset(&(pAdapter->mc_addr_list.addr[i][0]), 0, ETH_ALEN);
          memcpy(&(pAdapter->mc_addr_list.addr[i][0]), ha->addr, ETH_ALEN);
          hddLog(VOS_TRACE_LEVEL_INFO, "%s: mlist[%d] = "MAC_ADDRESS_STR,
@@ -9587,6 +9598,9 @@ static void hdd_set_multicast_list(struct net_device *dev)
          i++;
       }
    }
+
+   /* Configure the updated multicast address list */
+   wlan_hdd_set_mc_addr_list(pAdapter, true);
    return;
 }
 #endif

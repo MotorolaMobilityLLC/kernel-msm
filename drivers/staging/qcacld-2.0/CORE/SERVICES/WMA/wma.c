@@ -18052,6 +18052,94 @@ static void wma_extscan_wow_event_callback(void *handle, void *event,
 }
 #endif
 
+/**
+ * wma_wow_wake_up_stats_display() - display wow wake up stats
+ * @wma: Pointer to wma handle
+ *
+ * Return: none
+ */
+static void wma_wow_wake_up_stats_display(tp_wma_handle wma)
+{
+	WMA_LOGA("ucast %d bcast %d ipv4_mcast %d ipv6_mcast %d ipv6_mcast_ra %d ipv6_mcast_ns %d ipv6_mcast_na %d",
+		wma->wow_ucast_wake_up_count,
+		wma->wow_bcast_wake_up_count,
+		wma->wow_ipv4_mcast_wake_up_count,
+		wma->wow_ipv6_mcast_wake_up_count,
+		wma->wow_ipv6_mcast_ra_stats,
+		wma->wow_ipv6_mcast_ns_stats,
+		wma->wow_ipv6_mcast_na_stats);
+
+	return;
+}
+
+/**
+ * wma_wow_ipv6_mcast_stats() - ipv6 mcast wake up stats
+ * @wma: Pointer to wma handle
+ * @data: Pointer to pattern match data
+ *
+ * Return: none
+ */
+static void wma_wow_ipv6_mcast_stats(tp_wma_handle wma, uint8_t *data)
+{
+	static const uint8_t ipv6_mcast[] = {0x86, 0xDD};
+
+	if (!memcmp(ipv6_mcast, (data + WMA_ETHER_TYPE_OFFSET),
+						sizeof(ipv6_mcast))) {
+		if (WMA_ICMP_V6_HEADER_TYPE ==
+			*(data + WMA_ICMP_V6_HEADER_OFFSET)) {
+			if (WMA_ICMP_V6_RA_TYPE ==
+				*(data + WMA_ICMP_V6_TYPE_OFFSET))
+				wma->wow_ipv6_mcast_ra_stats++;
+			else if (WMA_ICMP_V6_NS_TYPE ==
+				*(data + WMA_ICMP_V6_TYPE_OFFSET))
+				wma->wow_ipv6_mcast_ns_stats++;
+			else if (WMA_ICMP_V6_NA_TYPE ==
+				*(data + WMA_ICMP_V6_TYPE_OFFSET))
+				wma->wow_ipv6_mcast_na_stats++;
+			else
+				WMA_LOGA("ICMP V6 type : 0x%x",
+					*(data + WMA_ICMP_V6_TYPE_OFFSET));
+		} else {
+			WMA_LOGA("ICMP_V6 header 0x%x",
+				*(data + WMA_ICMP_V6_HEADER_OFFSET));
+		}
+	} else {
+		WMA_LOGA("Ethertype x%x:0x%x",
+			*(data + WMA_ETHER_TYPE_OFFSET),
+			*(data + WMA_ETHER_TYPE_OFFSET + 1));
+	}
+
+	return;
+}
+
+/**
+ * wma_wow_wake_up_stats() - maintain wow pattern match wake up stats
+ * @wma: Pointer to wma handle
+ * @data: Pointer to pattern match data
+ * @len: Pattern match data length
+ *
+ * Return: none
+ */
+static void wma_wow_wake_up_stats(tp_wma_handle wma, uint8_t *data, int32_t len)
+{
+
+	if (WMA_BCAST_MAC_ADDR == *data) {
+		wma->wow_bcast_wake_up_count++;
+	} else if (WMA_MCAST_IPV4_MAC_ADDR == *data) {
+		wma->wow_ipv4_mcast_wake_up_count++;
+	} else if (WMA_MCAST_IPV6_MAC_ADDR == *data) {
+		wma->wow_ipv6_mcast_wake_up_count++;
+		if (len > WMA_ICMP_V6_TYPE_OFFSET)
+			wma_wow_ipv6_mcast_stats(wma, data);
+		else
+			WMA_LOGA("ICMP_V6 data len %d", len);
+	} else {
+		wma->wow_ucast_wake_up_count++;
+	}
+
+	return;
+}
+
 /*
  * Handler to catch wow wakeup host event. This event will have
  * reason why the firmware has woken the host.
@@ -18171,11 +18259,14 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	case WOW_REASON_HTT_EVENT:
 		break;
 	case WOW_REASON_PATTERN_MATCH_FOUND:
+		wma_wow_wake_up_stats_display(wma);
 		WMA_LOGD("Wake up for Rx packet, dump starting from ethernet hdr");
 		if (param_buf->wow_packet_buffer) {
 		    /* First 4-bytes of wow_packet_buffer is the length */
 		    vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
 			param_buf->wow_packet_buffer, 4);
+		    wma_wow_wake_up_stats(wma,
+			param_buf->wow_packet_buffer + 4, wow_buf_pkt_len);
 		    vos_trace_hex_dump(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_DEBUG,
 			param_buf->wow_packet_buffer + 4,
 			wow_buf_pkt_len);
