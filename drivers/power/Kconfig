@@ -560,6 +560,14 @@ config BATTERY_TEMP_MONITOR
 	  Say Y to enable battery temperature control for safety.
 	  It controls charging current depending on battery temperature.
 
+config REAR_TEMP_MONITOR
+	bool "Rear Temperature Monitoring driver"
+	depends on THERMAL_QPNP_ADC_TM
+	default n
+	help
+	  Say Y to enable rear temperature monitor for preventing
+	  low-temperature burn.
+
 config BATTERY_BQ27421
 	tristate "BQ27421 battery driver"
 	depends on I2C
