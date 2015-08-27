@@ -237,7 +237,7 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
 		cell-index = <0>;
-		reg = 	<0xfd998000 0x260>,
+		reg = 	<0xfd998000 0x470>,
 			<0xfd998500 0x280>,
 			<0xfd998780 0x30>,
 			<0xfd828000 0x108>;
@@ -353,7 +353,7 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->1";
 		cell-index = <1>;
-		reg = 	<0xfd9a0000 0x260>,
+		reg = 	<0xfd9a0000 0x470>,
 			<0xfd9a0500 0x280>,
 			<0xfd998780 0x30>,
 			<0xfd828000 0x108>;
