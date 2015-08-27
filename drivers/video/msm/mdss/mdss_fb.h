@@ -271,6 +271,11 @@ struct msm_fb_data_type {
 	struct wake_lock later_on_wakelock;
 	struct delayed_work panel_dead_work;
 	struct wake_lock status_wakelock;
+#ifdef CONFIG_LEDS_NOTIFY
+	struct work_struct brightness_work;
+	struct notifier_block brightness_nb;
+	int brightness_level;
+#endif
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)

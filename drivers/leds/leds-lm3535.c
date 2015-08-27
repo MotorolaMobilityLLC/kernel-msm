@@ -50,6 +50,9 @@
 #ifdef CONFIG_LM3535_ESD_RECOVERY
 #include <mot/esd_poll.h>
 #endif /* CONFIG_LM3535_ESD_RECOVERY */
+#ifdef CONFIG_LEDS_NOTIFY
+#include <linux/led-notify.h>
+#endif
 
 #if defined(CONFIG_DOCK_STATUS_NOTIFY)
 #include <linux/notifier.h>
@@ -293,6 +296,10 @@ struct lm3535 {
 	atomic_t off_at_lp;
 	atomic_t disp_in_lp;
 	struct notifier_block display_nb;
+#endif
+#ifdef CONFIG_LEDS_NOTIFY
+	atomic_t current_level;
+	struct delayed_work backlight_notify_work;
 #endif
 };
 static DEFINE_MUTEX(lm3535_mutex);
@@ -755,6 +762,18 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 		value = 0;
 #endif
 
+#ifdef CONFIG_LEDS_NOTIFY
+	if (value != atomic_read(&lm3535_data.current_level)) {
+		/* HAL may ramp to set brightness, it delayed 100 ms
+		 *  to get a 'debounce' of the level
+		 */
+		cancel_delayed_work_sync(&lm3535_data.backlight_notify_work);
+		atomic_set(&lm3535_data.current_level, value);
+		schedule_delayed_work(&lm3535_data.backlight_notify_work,
+				      msecs_to_jiffies(100));
+	}
+#endif
+
     if ((value == 0) && (!lm3535_data.enabled)) {
         /* If LED already disabled, we don't need to do anything */
         mutex_unlock(&lm3535_mutex);
@@ -1085,6 +1104,14 @@ static DEVICE_ATTR(off_at_lp, 0644, lm3535_off_at_lp_show,
 		   lm3535_off_at_lp_store);
 #endif /* CONFIG_DISPLAY_STATE_NOTIFY */
 
+#ifdef CONFIG_LEDS_NOTIFY
+static void lm3535_backlight_notify_work(struct work_struct *work)
+{
+	unsigned long level = atomic_read(&lm3535_data.current_level);
+	brightness_notify_subscriber(level);
+}
+#endif
+
 /* This function is called by i2c_probe */
 static int lm3535_probe (struct i2c_client *client,
     const struct i2c_device_id *id)
@@ -1254,6 +1281,12 @@ static int lm3535_probe (struct i2c_client *client,
 
 	INIT_DELAYED_WORK(&lm3535_data.als_delayed_work,
 			  lm3535_allow_als_work_func);
+#ifdef CONFIG_LEDS_NOTIFY
+	atomic_set(&lm3535_data.current_level, 0);
+	INIT_DELAYED_WORK(&lm3535_data.backlight_notify_work,
+			  lm3535_backlight_notify_work);
+#endif
+
 
     return 0;
 }
