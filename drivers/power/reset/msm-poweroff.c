@@ -205,6 +205,8 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665502, restart_reason);
 		} else if (!strcmp(cmd, "rtc")) {
 			__raw_writel(0x77665503, restart_reason);
+		} else if (!strncmp(cmd, "dm-verity device corrupted", 26)) {
+			__raw_writel(0x77665506, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			int ret;
 			unsigned long code;
