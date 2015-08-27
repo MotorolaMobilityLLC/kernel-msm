@@ -31,12 +31,8 @@
 /* #define INT_POLLING_DELAY	20 */
 #define RESULT_REG_COUNT	56
 
-/* if don't want to have output from vl6180_dbgmsg, comment out #DEBUG macro */
-#define DEBUG
-/* #define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args) */
-#define vl6180_dbgmsg(str, args...) printk(KERN_INFO "%s: " str, __func__, ##args)
-/* #define vl6180_errmsg(str, args...) pr_err("%s: " str, __func__, ##args) */
-#define vl6180_errmsg(str, args...) printk(KERN_ERR "%s: " str, __func__, ##args)
+#define vl6180_dbgmsg(str, args...) pr_debug("%s: " str, __func__, ##args)
+#define vl6180_errmsg(str, args...) pr_err("%s: " str, __func__, ##args)
 
 #define VL6180_VDD_MIN      2600000
 #define VL6180_VDD_MAX      3000000
