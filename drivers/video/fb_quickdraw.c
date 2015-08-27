@@ -27,7 +27,13 @@
 static LIST_HEAD(fb_quickdraw_buffer_list_head);
 static DEFINE_MUTEX(list_lock);
 static struct fb_quickdraw_ops *fb_quickdraw_ops;
+static void delete_buffer(struct kobject *kobj);
 
+static struct kobj_type ktype_fb_quickdraw = {
+	.sysfs_ops = NULL,
+	.default_attrs = NULL,
+	.release = delete_buffer,
+};
 
 /* Quickdraw Internal Helper Functions */
 
@@ -90,10 +96,10 @@ static void delete_buffer_fd(struct work_struct *work)
 	pr_debug("%s-: (buffer: %p)\n", __func__, buffer);
 }
 
-static void delete_buffer(struct kref *kref)
+static void delete_buffer(struct kobject *kobj)
 {
 	struct fb_quickdraw_buffer *buffer =
-		container_of(kref, struct fb_quickdraw_buffer, kref);
+		container_of(kobj, struct fb_quickdraw_buffer, kobject);
 
 	pr_debug("%s+: (buffer: %p)\n", __func__, buffer);
 
@@ -155,7 +161,7 @@ struct fb_quickdraw_buffer *fb_quickdraw_alloc_buffer(
 		buffer->mem_fd = -1;
 		init_rwsem(&buffer->rwsem);
 		INIT_WORK(&buffer->delete_work, delete_buffer_fd);
-		kref_init(&buffer->kref);
+		kobject_init(&buffer->kobject, &ktype_fb_quickdraw);
 	} else
 		pr_err("%s: vzalloc failed!\n", __func__);
 
@@ -175,7 +181,7 @@ int fb_quickdraw_get_buffer(struct fb_quickdraw_buffer *buffer)
 		goto exit;
 	}
 
-	kref_get(&buffer->kref);
+	kobject_get(&buffer->kobject);
 exit:
 	pr_debug("%s- (buffer: %p) (ret: %d)\n", __func__, buffer, ret);
 
@@ -184,14 +190,16 @@ exit:
 
 int fb_quickdraw_put_buffer(struct fb_quickdraw_buffer *buffer)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
 	pr_debug("%s+ (buffer: %p)\n", __func__, buffer);
 
-	if (!buffer)
+	if (!buffer) {
+		ret = -EINVAL;
 		goto exit;
+	}
 
-	ret = kref_put(&buffer->kref, delete_buffer);
+	kobject_put(&buffer->kobject);
 exit:
 	pr_debug("%s- (buffer: %p) (ret: %d)\n", __func__, buffer, ret);
 

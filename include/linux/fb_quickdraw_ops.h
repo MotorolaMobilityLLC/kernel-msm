@@ -14,11 +14,11 @@
 #define _FB_QUICKDRAW_OPS_H_
 
 #include <linux/file.h>
-#include <linux/kref.h>
 #include <linux/rwsem.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <linux/kobject.h>
 
 struct fb_quickdraw_buffer {
 	struct fb_quickdraw_buffer_data data;
@@ -26,8 +26,8 @@ struct fb_quickdraw_buffer {
 	int mem_fd;
 	struct rw_semaphore rwsem;
 	struct list_head list;
-	struct kref kref;
 	struct work_struct delete_work;
+	struct kobject kobject;
 };
 
 struct fb_quickdraw_ops {
