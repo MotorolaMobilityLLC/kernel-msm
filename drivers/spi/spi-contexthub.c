@@ -59,7 +59,6 @@ struct spich_data {
 	struct class *class;
 	struct device *device;
 	struct cdev cdev;
-	unsigned root_users;
 	unsigned users;
 	struct mutex buf_lock;
 	u8 *buffer;
@@ -356,26 +355,18 @@ static void spich_destroy_instance(struct spich_data *spich)
 static int spich_open(struct inode *inode, struct file *filp)
 {
 	struct spich_data *spich;
-	unsigned root_users;
 	unsigned users;
 	unsigned uid = current_uid();
 
 	spich = container_of(inode->i_cdev, struct spich_data, cdev);
 
 	spin_lock_irq(&spich->spi_lock);
-	if (uid == 0) {
-		root_users = spich->root_users++;
-	}
 	users = spich->users++;
 
-	/* A single process running as root (uid 0) can always open the device;
+	/* Processes running as root (uid 0) can always open the device;
 	 * otherwise, non-root processes must wait until all other processes
 	 * close the device */
-	if (((uid == 0) && (root_users != 0)) ||
-		((uid != 0) && (users != 0))) {
-		if (uid == 0) {
-			--spich->root_users;
-		}
+	if ((uid != 0) && (users != 0)) {
 		--spich->users;
 		spin_unlock_irq(&spich->spi_lock);
 		return -EBUSY;
@@ -392,15 +383,11 @@ static int spich_release(struct inode *inode, struct file *filp)
 {
 	struct spich_data *spich;
 	unsigned users;
-	unsigned uid = current_uid();
 
 	spich = filp->private_data;
 	filp->private_data = NULL;
 
 	spin_lock_irq(&spich->spi_lock);
-	if (uid == 0) {
-		--spich->root_users;
-	}
 	users = --spich->users;
 	spin_unlock_irq(&spich->spi_lock);
 
