@@ -35,6 +35,9 @@
 #define fh_to_private(__fh) \
 	container_of(__fh, struct camera_v4l2_private, fh)
 
+/* Temp fix for IKMMINTG-5666 */
+bool cameraopened_first = false;
+
 struct camera_v4l2_private {
 	struct v4l2_fh fh;
 	unsigned int stream_id;
@@ -587,7 +590,19 @@ static int camera_v4l2_open(struct file *filep)
 		}
 
 		camera_pack_event(filep, MSM_CAMERA_NEW_SESSION, 0, -1, &event);
-		rc = msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
+		/* TEMP fix until QC SR 02139287.  Force the timeout to be
+		* something really long the first time opens camera at powerup.
+		* On M, cameraflashlight attempts to open camera, but this fails
+		* due to wait for sensor, which started later on M.  However, QC
+		* has a bug which cause all following camera open to fail once we
+		* hit this timeout.  SR 02139287 tracks the QC fix.  Once we have
+		* fix from QC, we will revert this change (IKMMINTG-5891) */
+		if (!cameraopened_first) {
+			rc = msm_post_event(&event, 40000);
+			cameraopened_first = true;
+		} else
+			rc = msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
+
 		if (rc < 0) {
 			pr_err("%s : posting of NEW_SESSION event failed\n",
 					__func__);
