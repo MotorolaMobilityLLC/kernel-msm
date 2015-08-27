@@ -57,3 +57,22 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart_console_sleep>;
 };
+
+&audio_codec_mtp {
+	pinctrl-names = "cdc_lines_act",
+			"cdc_lines_sus",
+			"cross_conn_det_act",
+			"cross_conn_det_sus";
+	pinctrl-0 = <&cdc_pdm_lines_act>;
+	pinctrl-1 = <&cdc_pdm_lines_sus>;
+	pinctrl-2 = <&cross_conn_det_act>;
+	pinctrl-3 = <&cross_conn_det_sus>;
+};
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+		vdd_spkdrv {
+			status = "disabled";
+		};
+	};
+};
