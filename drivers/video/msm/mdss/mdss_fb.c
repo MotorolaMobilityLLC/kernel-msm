@@ -51,6 +51,7 @@
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <linux/display_state_notify.h>
+#include <linux/led-notify.h>
 
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
@@ -423,6 +424,57 @@ static void __mdss_fb_idle_notify_work(struct work_struct *work)
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "idle_notify");
 }
 
+#ifdef CONFIG_LEDS_NOTIFY
+static
+struct mdss_dsi_ctrl_pdata *mfd_to_ctrl_pdata(struct msm_fb_data_type *mfd)
+{
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+	struct mdss_panel_data *pdata =
+		container_of(pinfo, struct mdss_panel_data, panel_info);
+	return (struct mdss_dsi_ctrl_pdata *)
+		container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+}
+
+static int mdss_fb_brightness_notify(struct notifier_block *self,
+					unsigned long level, void *dev)
+{
+	struct msm_fb_data_type *mfd = container_of(self,
+						    struct msm_fb_data_type,
+						    brightness_nb);
+	mfd->brightness_level = (int)level;
+	schedule_work(&mfd->brightness_work);
+	return 0;
+}
+
+static void __mdss_fb_brightness_work(struct work_struct *work)
+{
+	struct msm_fb_data_type *mfd = container_of(work,
+						    struct msm_fb_data_type,
+						    brightness_work);
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = mfd_to_ctrl_pdata(mfd);
+	struct dsi_panel_tfmode *tf = ctrl_pdata->panel_tfmode;
+	int tfmode;
+	mutex_lock(&mdp5_data->ov_lock);
+	mutex_lock(&ctrl_pdata->mutex);
+	tfmode = tf->brightness_to_tfmode(ctrl_pdata, mfd->brightness_level);
+	pr_debug("%s: brightness = %d\n", __func__, mfd->brightness_level);
+	if ((tfmode >= 0) && (tfmode != tf->tfmode_current)) {
+		struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+		if (ctl->wait_pingpong)
+			ctl->wait_pingpong(ctl, NULL);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+		tf->set_panel_tfmode(ctrl_pdata, tfmode);
+		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+		pr_debug("%s: set tfmode = %d\n", __func__, tfmode);
+	}
+	mutex_unlock(&ctrl_pdata->mutex);
+	mutex_unlock(&mdp5_data->ov_lock);
+}
+#endif
+
 static ssize_t mdss_fb_get_idle_time(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -644,6 +696,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd = NULL;
 	struct mdss_panel_data *pdata;
+#ifdef CONFIG_LEDS_NOTIFY
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata;
+#endif
 	struct fb_info *fbi;
 	int rc;
 
@@ -743,6 +798,15 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		mfd->mdp.splash_init_fnc(mfd);
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
+#ifdef CONFIG_LEDS_NOTIFY
+	INIT_WORK(&mfd->brightness_work, __mdss_fb_brightness_work);
+	ctrl_pdata = mfd_to_ctrl_pdata(mfd);
+	if (ctrl_pdata->panel_tfmode &&
+	    ctrl_pdata->panel_tfmode->set_panel_tfmode) {
+		mfd->brightness_nb.notifier_call = mdss_fb_brightness_notify;
+		brightness_register_notify(&mfd->brightness_nb);
+	}
+#endif
 
 	return rc;
 }
