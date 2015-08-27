@@ -70,3 +70,7 @@
 					3F 3F 3F 07 34 /* PSM */
 					];
 };
+
+&rear_tm {
+	status = "disabled";
+};

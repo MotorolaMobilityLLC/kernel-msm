@@ -23,3 +23,7 @@
 				05 01 00 00 00 00 01 29 /* Display On */
 				];
 };
+
+&rear_tm {
+	status = "disabled";
+};

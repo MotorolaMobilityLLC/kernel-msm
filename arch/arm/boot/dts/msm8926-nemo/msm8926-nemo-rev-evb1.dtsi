@@ -28,3 +28,7 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_lgd_lg4237_cmd>;
 };
+
+&rear_tm {
+	status = "disabled";
+};

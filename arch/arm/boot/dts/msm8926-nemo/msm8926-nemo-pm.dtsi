@@ -141,6 +141,16 @@
                         qcom,vib-timeout-ms = <15000>;
                         qcom,vib-vtg-level-mV = <1500>;
 		};
+
+		rear_tm: rear_tm {
+			compatible = "rear_tm";
+			status = "okay";
+			qcom,rear-tm-adc_tm = <&pm8226_adc_tm>;
+			qcom,rear-vadc = <&pm8226_vadc>;
+			tm,warm-cfg = <
+				(49) (47) 0
+				(51) (48) 1>;
+		};
 	};
 };
 
@@ -351,6 +361,17 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <3>;
 		qcom,btm-channel-number = <0x88>;
+	};
+	chan@17 {
+		label = "pa_therm1";
+		qcom,calibration-type = "ratiometric";
+		qcom,decimation = <0>;
+		qcom,fast-avg-setup = <3>;
+		qcom,hw-settle-time = <2>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,scale-function = <7>;
+		reg = <0x17>;
+		/delete-property/ qcom,thermal-node;
 	};
 };
 
