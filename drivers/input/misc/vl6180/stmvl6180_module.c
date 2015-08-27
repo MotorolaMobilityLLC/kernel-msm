@@ -89,6 +89,8 @@ int8_t offset_calib;
 int16_t xtalk_calib;
 #endif
 
+#define XTALK_CALIBRATION_DEFAULT 0
+
 static long stmvl6180_ioctl(struct file *file,
 							unsigned int cmd,
 							unsigned long arg);
@@ -195,8 +197,8 @@ static void stmvl6180_read_calibration_file(void)
 			VL6180x_SetXTalkCompensationRate(vl6180x_dev, xtalk_calib);
 			filp_close(f, NULL);
 		} else {
-			gp_vl6180_data->offset_buf.file_opened = true;
-			gp_vl6180_data->offset_buf.value = 0;
+			gp_vl6180_data->xtalk_buf.file_opened = true;
+			gp_vl6180_data->xtalk_buf.value = XTALK_CALIBRATION_DEFAULT;
 			vl6180_errmsg("no xtalk calibration file exist!\n");
 		}
 	}
