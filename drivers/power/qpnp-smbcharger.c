@@ -4824,6 +4824,9 @@ static inline int get_bpd(const char *name)
 #define FG_INPUT_FET_DELAY_BIT		BIT(3)
 #define TRIM_OPTIONS_7_0		0xF6
 #define INPUT_MISSING_POLLER_EN_BIT	BIT(3)
+#define AICL_CFG2			0xF4
+#define AICL_THRESHOLD_5V		BIT(0)
+#define AICL_MIN_THR			4250
 #define AICL_WL_SEL_CFG			0xF5
 #define AICL_WL_SEL_MASK		SMB_MASK(1, 0)
 #define AICL_WL_SEL_45S		0
@@ -4894,6 +4897,15 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 			dev_err(chip->dev, "Couldn't disable HVDCP rc=%d\n", rc);
 			return rc;
 		}
+	}
+
+	/* set AICL threshold according to battery max voltage */
+	rc = smbchg_sec_masked_write(chip, chip->dc_chgpth_base + AICL_CFG2,
+				AICL_THRESHOLD_5V,
+				chip->vfloat_mv > AICL_MIN_THR ? 1 : 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set AICL threshold rc=%d\n", rc);
+		return rc;
 	}
 
 	/*
