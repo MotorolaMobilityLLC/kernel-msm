@@ -134,6 +134,9 @@ struct dma_buf *dma_buf_export_named(void *priv, const struct dma_buf_ops *ops,
 
 	file = anon_inode_getfile("dmabuf", &dma_buf_fops, dmabuf, flags);
 
+	if (IS_ERR(file))
+		goto err_out;
+
 	dmabuf->file = file;
 
 	mutex_init(&dmabuf->lock);
@@ -144,6 +147,9 @@ struct dma_buf *dma_buf_export_named(void *priv, const struct dma_buf_ops *ops,
 	mutex_unlock(&db_list.lock);
 
 	return dmabuf;
+err_out:
+	kfree(dmabuf);
+	return (struct dma_buf *)(file);
 }
 EXPORT_SYMBOL_GPL(dma_buf_export_named);
 
