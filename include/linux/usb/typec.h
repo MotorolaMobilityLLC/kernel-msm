@@ -43,6 +43,11 @@ enum typec_port_mode {
 	TYPEC_DRP_MODE
 };
 
+enum typec_event {
+	TYPEC_SINK_DETECTED = 0,
+	TYPEC_SINK_REMOVED
+};
+
 struct typec_device_ops {
 	/* to get the Type-C Current mode */
 	enum typec_current_mode (*current_detect) (void);
@@ -67,4 +72,6 @@ struct typec_device_ops {
 extern int add_typec_device(struct device *parent,
 			    struct typec_device_ops *typec_ops);
 extern enum typec_current_mode typec_current_mode_detect(void);
+extern int typec_sink_detected_handler(enum typec_event typec_event);
+
 #endif /* _TYPEC_H_ */

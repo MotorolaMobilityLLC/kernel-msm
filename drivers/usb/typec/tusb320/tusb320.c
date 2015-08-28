@@ -42,6 +42,11 @@
 #include <linux/usb/typec.h>
 #include "tusb320.h"
 
+#define TRYSNK_TIMEOUT_MS 600
+#define TUSB320_RESET_DURATION_MS 25
+#define TUSB320_IRQ_CLEAN_DELAY_MS  1000
+#define TUSB320_IRQ_CLEAN_MAX_RETRY  3
+
 static enum typec_current_mode tusb320_current_mode_detect(void);
 static enum typec_current_mode tusb320_current_advertise_get(void);
 static int tusb320_current_advertise_set(enum typec_current_mode current_mode);
@@ -62,64 +67,30 @@ struct typec_device_ops tusb320_ops = {
 	.dump_regs = tusb320_dump_regs
 };
 
-static int tusb320_i2c_read(struct tusb320_device_info *di,
-			    char *rxData, int length)
+static int tusb320_read_reg(u8 reg, u8 * val)
 {
-	int ret = 0;
-
+	struct tusb320_device_info *di = g_tusb320_dev;
 	struct i2c_msg msgs[] = {
 		{
 		 .addr = di->client->addr,
-		 .flags = I2C_M_RD,
-		 .len = length,
-		 .buf = rxData,
-		 },
-	};
-
-	ret = i2c_transfer(di->client->adapter, msgs, ARRAY_SIZE(msgs));
-	if (ret < 0)
-		pr_err("%s: transfer error %d\n", __func__, ret);
-
-	return ret;
-}
-
-static int tusb320_i2c_write(struct tusb320_device_info *di,
-			     char *txData, int length)
-{
-	int ret = 0;
-
-	struct i2c_msg msg[] = {
+		 .flags = 0,
+		 .buf = &reg,
+		 .len = sizeof(reg),
+		 }
+		,
 		{
 		 .addr = di->client->addr,
-		 .flags = 0,
-		 .len = length,
-		 .buf = txData,
-		 },
+		 .flags = I2C_M_RD,
+		 .buf = val,
+		 .len = sizeof(u8),
+		 }
+		,
 	};
-
-	ret = i2c_transfer(di->client->adapter, msg, ARRAY_SIZE(msg));
-	if (ret < 0)
-		pr_err("%s: transfer error %d\n", __func__, ret);
-
-	return ret;
-}
-
-static int tusb320_read_reg(u8 reg, u8 * val)
-{
 	int ret;
-	u8 buf[1];
-	struct tusb320_device_info *di = g_tusb320_dev;
 
-	buf[0] = reg;
-	ret = tusb320_i2c_write(di, buf, sizeof(buf));
+	ret = i2c_transfer(di->client->adapter, msgs, ARRAY_SIZE(msgs));
 	if (ret < 0) {
-		pr_err("%s: tusb320_i2c_write error %d\n", __func__, ret);
-		return ret;
-	}
-	ret = tusb320_i2c_read(di, val, 1);
-	if (ret < 0) {
-		pr_err("%s: tusb320_i2c_read error %d\n", __func__, ret);
-		return ret;
+		pr_err("%s: i2c_transfer error %d\n", __func__, ret);
 	}
 
 	return ret;
@@ -127,12 +98,24 @@ static int tusb320_read_reg(u8 reg, u8 * val)
 
 static int tusb320_write_reg(u8 reg, u8 val)
 {
-	u8 buf[2];
 	struct tusb320_device_info *di = g_tusb320_dev;
+	u8 buf[] = { reg, val };
+	struct i2c_msg msgs[] = {
+		{
+		 .addr = di->client->addr,
+		 .flags = 0,
+		 .buf = buf,
+		 .len = sizeof(buf),
+		 }
+		,
+	};
+	int ret;
 
-	buf[0] = reg;
-	buf[1] = val;
-	return tusb320_i2c_write(di, buf, sizeof(buf));
+	ret = i2c_transfer(di->client->adapter, msgs, ARRAY_SIZE(msgs));
+	if (ret < 0)
+		pr_err("%s: transfer error %d\n", __func__, ret);
+
+	return ret;
 }
 
 static int tusb320_int_clear(void)
@@ -289,7 +272,7 @@ static enum typec_attached_state tusb320_attatched_state_detect(void)
 	case TUSB320_REG_STATUS_AS_UFP:
 		attached_state = TYPEC_ATTACHED_AS_UFP;
 		break;
-	case TYPEC_ATTACHED_TO_ACCESSORY:
+	case TUSB320_REG_STATUS_TO_ACCESSORY:
 		attached_state = TYPEC_ATTACHED_TO_ACCESSORY;
 		break;
 	default:
@@ -364,11 +347,6 @@ static int tusb320_port_mode_set(enum typec_port_mode port_mode)
 		break;
 	}
 
-	if (mask_val == (reg_val & TUSB320_REG_SET_MODE)) {
-		pr_info("%s: port mode is %d already\n", __func__, port_mode);
-		return 0;
-	}
-
 	reg_val &= ~TUSB320_REG_SET_MODE;
 	reg_val |= mask_val;
 	ret = tusb320_write_reg(TUSB320_REG_MODE_SET, reg_val);
@@ -394,21 +372,180 @@ static ssize_t tusb320_dump_regs(char *buf)
 			 "0x%02X,0x%02X,0x%02X\n", reg[8], reg[9], reg[10]);
 }
 
+static void tusb320_soft_reset(void)
+{
+	u8 reg_val;
+	int ret;
+
+	pr_info("%s\n", __func__);
+
+	ret = tusb320_read_reg(TUSB320_REG_MODE_SET, &reg_val);
+	if (ret < 0) {
+		pr_err("%s: read REG_MODE_SET error\n", __func__);
+	}
+
+	reg_val |= TUSB320_REG_SET_SOFT_RESET;
+
+	ret = tusb320_write_reg(TUSB320_REG_MODE_SET, reg_val);
+	if (ret < 0) {
+		pr_err("%s: write REG_MODE_SET error\n", __func__);
+	}
+}
+
+static int tusb320_drp_duty_cycle_set(int duty_cycle)
+{
+	u8 reg_val, mask_val;
+	int ret;
+
+	pr_info("%s: set to %d\n", __func__, duty_cycle);
+
+	ret = tusb320_read_reg(TUSB320_REG_ATTACH_STATUS, &reg_val);
+	if (ret < 0) {
+		pr_err("%s: read REG_REG_ATTACH_STATUS error\n", __func__);
+		return -1;
+	}
+
+	mask_val = duty_cycle & TUSB320_REG_STATUS_DRP_DUTY_CYCLE;
+
+	if (mask_val == (reg_val & TUSB320_REG_STATUS_DRP_DUTY_CYCLE)) {
+		pr_info("%s: DRP duty cycle is already %d\n", __func__,
+			duty_cycle);
+		return 0;
+	}
+
+	reg_val &= ~TUSB320_REG_STATUS_DRP_DUTY_CYCLE;
+	reg_val |= mask_val;
+	ret = tusb320_write_reg(TUSB320_REG_ATTACH_STATUS, reg_val);
+	if (ret < 0) {
+		pr_err("%s: write REG_REG_ATTACH_STATUS error\n", __func__);
+		return -1;
+	}
+
+	return 0;
+}
+
+static void tusb320_wdog_work(struct work_struct *w)
+{
+	struct tusb320_device_info *di = g_tusb320_dev;
+	int ret = 0;
+	bool work = 0;
+
+	pr_err("%s: start\n", __func__);
+
+	mutex_lock(&di->mutex);
+	if (di->clean_failded) {
+		pr_err("%s: clean interrupt mask\n", __func__);
+		ret = tusb320_int_clear();
+		if (ret < 0
+		    && di->clean_retry_count < TUSB320_IRQ_CLEAN_MAX_RETRY) {
+			pr_err("%s: clean interrupt mask error\n", __func__);
+			work = 1;
+			di->clean_retry_count++;
+		}
+		di->clean_failded = 0;
+	}
+	di->trysnk_attempt = 0;
+	mutex_unlock(&di->mutex);
+
+	/* make sure set the DRP duty cycle back to default */
+	tusb320_drp_duty_cycle_set(TUSB320_REG_STATUS_DRP_DUTY_CYCLE_30);
+
+	if (work)
+		schedule_delayed_work(&di->g_wdog_work,
+				      msecs_to_jiffies
+				      (TUSB320_IRQ_CLEAN_DELAY_MS));
+
+	pr_err("%s: end\n", __func__);
+}
+
 static void tusb320_intb_work(struct work_struct *work)
 {
 	int ret;
+
+	struct tusb320_device_info *di =
+	    container_of(work, struct tusb320_device_info, g_intb_work);
 	enum typec_current_mode current_mode;
 	enum typec_attached_state attached_state;
+
+	pr_info("%s: start\n", __func__);
+
+	ret = tusb320_int_clear();
+	/* cancel watch dog work */
+	cancel_delayed_work(&di->g_wdog_work);
+	if (ret < 0) {
+		pr_err("%s: clean interrupt mask error\n", __func__);
+		mutex_lock(&di->mutex);
+		di->clean_failded = 1;
+		di->clean_retry_count = 0;
+		mutex_unlock(&di->mutex);
+		schedule_delayed_work(&di->g_wdog_work,
+				      msecs_to_jiffies
+				      (TUSB320_IRQ_CLEAN_DELAY_MS));
+	}
 
 	current_mode = tusb320_current_mode_detect();
 	attached_state = tusb320_attatched_state_detect();
 
-	ret = tusb320_int_clear();
-	if (ret < 0) {
-		pr_err("%s: clean interrupt mask error\n", __func__);
+	mutex_lock(&di->mutex);
+
+	if (TYPEC_ATTACHED_AS_DFP == attached_state) {
+		if (di->trysnk_attempt) {
+			pr_info("%s: TrySNK fail, Sink detected again\n",
+				__func__);
+
+			/* TryNK has been attempted, clear the flag */
+			di->trysnk_attempt = 0;
+			di->sink_attached = 1;
+
+			/* turn on VBUS */
+			typec_sink_detected_handler(TYPEC_SINK_DETECTED);
+
+			tusb320_drp_duty_cycle_set
+			    (TUSB320_REG_STATUS_DRP_DUTY_CYCLE_30);
+		} else {
+			pr_info
+			    ("%s: Sink detected, perform TrySNK\n", __func__);
+
+			di->trysnk_attempt = 1;
+
+			/* reset the chip and reset it again after 25ms */
+			tusb320_soft_reset();
+			mdelay(TUSB320_RESET_DURATION_MS);
+			tusb320_soft_reset();
+
+			pr_info("%s: schedule wdog work\n", __func__);
+			schedule_delayed_work(&di->g_wdog_work,
+					      msecs_to_jiffies
+					      (TRYSNK_TIMEOUT_MS));
+
+			/* Change DRP duty Cycle to 60% */
+			tusb320_drp_duty_cycle_set
+			    (TUSB320_REG_STATUS_DRP_DUTY_CYCLE_60);
+		}
+	} else if (TYPEC_ATTACHED_AS_UFP == attached_state) {
+
+		if (di->trysnk_attempt) {
+			pr_info
+			    ("%s: TrySNK success, Source and VBUS detected\n",
+			     __func__);
+
+			di->trysnk_attempt = 0;
+			tusb320_drp_duty_cycle_set
+			    (TUSB320_REG_STATUS_DRP_DUTY_CYCLE_30);
+		}
+
+	} else if (TYPEC_NOT_ATTACHED == attached_state) {
+		/* turn off VBUS when unattached */
+		if (di->sink_attached) {
+			pr_info("%s: Sink removed\n", __func__);
+			typec_sink_detected_handler(TYPEC_SINK_REMOVED);
+			di->sink_attached = 0;
+		}
 	}
 
-	pr_info("%s: ------end\n", __func__);
+	mutex_unlock(&di->mutex);
+
+	pr_info("%s: end\n", __func__);
 }
 
 static irqreturn_t tusb320_irq_handler(int irq, void *dev_id)
@@ -416,7 +553,7 @@ static irqreturn_t tusb320_irq_handler(int irq, void *dev_id)
 	int gpio_value_intb = 0;
 	struct tusb320_device_info *di = dev_id;
 
-	pr_info("%s: ------entry\n", __func__);
+	pr_info("%s: start\n", __func__);
 	gpio_value_intb = gpio_get_value(di->gpio_intb);
 	if (1 == gpio_value_intb) {
 		pr_err("%s: intb high when interrupt occured!\n", __func__);
@@ -445,7 +582,6 @@ static int tusb320_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	int ret = 0;
-	int gpio_value_intb;
 	struct tusb320_device_info *di = NULL;
 	struct device_node *node;
 
@@ -455,7 +591,7 @@ static int tusb320_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	pr_info("%s: ------entry\n", __func__);
+	pr_info("%s: start\n", __func__);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s: i2c_check_functionality error!\n", __func__);
 		ret = -ENODEV;
@@ -526,7 +662,9 @@ static int tusb320_probe(struct i2c_client *client,
 		goto err_gpio_intb_request_2;
 	}
 
+	mutex_init(&di->mutex);
 	INIT_WORK(&di->g_intb_work, tusb320_intb_work);
+	INIT_DELAYED_WORK(&di->g_wdog_work, tusb320_wdog_work);
 
 	ret = request_irq(di->irq_intb,
 			  tusb320_irq_handler,
@@ -538,26 +676,22 @@ static int tusb320_probe(struct i2c_client *client,
 		goto err_irq_request_3;
 	}
 
+	enable_irq_wake(di->irq_intb);
+
 	ret = tusb320_int_clear();
 	if (ret < 0) {
 		pr_err("%s: clean interrupt mask error %d\n", __func__, ret);
 	}
-
-	gpio_value_intb = gpio_get_value(di->gpio_intb);
-	if (0 == gpio_value_intb) {
-		pr_info("%s: gpio_intb is low\n", __func__);
-		schedule_work(&di->g_intb_work);
-	}
-
-	tusb320_attatched_state_detect();
-	tusb320_current_mode_detect();
 
 	ret = add_typec_device(di->dev, &tusb320_ops);
 	if (ret < 0) {
 		pr_err("%s: add_typec_device fail\n", __func__);
 	}
 
-	pr_info("%s: ------end\n", __func__);
+	pr_info("%s: schedule_work \n", __func__);
+	schedule_work(&di->g_intb_work);
+
+	pr_info("%s: end\n", __func__);
 	return ret;
 
 err_irq_request_3:
@@ -570,7 +704,7 @@ err_i2c_check_functionality_0:
 	devm_kfree(&client->dev, di);
 	g_tusb320_dev = NULL;
 
-	pr_err("%s: ------FAIL!!! end. ret = %d\n", __func__, ret);
+	pr_err("%s: FAIL, ret = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -612,14 +746,14 @@ static struct i2c_driver tusb320_i2c_driver = {
 static __init int tusb320_i2c_init(void)
 {
 	int ret = 0;
-	pr_info("%s: ------entry\n", __func__);
+	pr_info("%s: entry\n", __func__);
 
 	ret = i2c_add_driver(&tusb320_i2c_driver);
 	if (ret) {
 		pr_err("%s: i2c_add_driver error!!!\n", __func__);
 	}
 
-	pr_info("%s: ------end\n", __func__);
+	pr_info("%s: end\n", __func__);
 	return ret;
 }
 

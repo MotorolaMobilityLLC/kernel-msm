@@ -28,7 +28,13 @@ struct tusb320_device_info {
 	int irq_active;
 	struct i2c_client *client;
 	struct work_struct g_intb_work;
+	struct delayed_work g_wdog_work;
 	struct device *dev;
+	bool trysnk_attempt;
+	bool sink_attached;
+	bool clean_failded;
+	bool clean_retry_count;
+	struct mutex mutex;
 };
 
 #define REGISTER_NUM    12
@@ -57,6 +63,11 @@ struct tusb320_device_info {
 #define TUSB320_REG_STATUS_TO_ACCESSORY			(BIT(7) | BIT(6))
 #define TUSB320_REG_STATUS_CC					BIT(5)
 #define TUSB320_REG_STATUS_INT					BIT(4)
+#define TUSB320_REG_STATUS_DRP_DUTY_CYCLE		(BIT(2) | BIT(1))
+#define TUSB320_REG_STATUS_DRP_DUTY_CYCLE_30	0x00
+#define TUSB320_REG_STATUS_DRP_DUTY_CYCLE_40	BIT(1)
+#define TUSB320_REG_STATUS_DRP_DUTY_CYCLE_50	BIT(2)
+#define TUSB320_REG_STATUS_DRP_DUTY_CYCLE_60	(BIT(2) | BIT(1))
 
 /* Register REG_MODE_SET 0a */
 #define TUSB320_REG_SET_MODE					(BIT(5) | BIT(4))
@@ -64,5 +75,6 @@ struct tusb320_device_info {
 #define TUSB320_REG_SET_UFP						BIT(4)
 #define TUSB320_REG_SET_DFP						BIT(5)
 #define TUSB320_REG_SET_DRP						(BIT(5) | BIT(4))
+#define TUSB320_REG_SET_SOFT_RESET				BIT(3)
 
 #endif /*_TYPEC_TUSB320_H_*/

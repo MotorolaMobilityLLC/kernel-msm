@@ -20,9 +20,11 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/usb/typec.h>
+#include <linux/power_supply.h>
 
 static struct class *typec_class;
 static struct device *typec_dev;
+struct power_supply *usb_psy;
 
 /* to get the Type-C Current mode */
 static ssize_t current_detect_show(struct device *pdev,
@@ -163,6 +165,12 @@ int add_typec_device(struct device *parent, struct typec_device_ops *typec_ops)
 	}
 
 	typec_dev = dev;
+
+	usb_psy = power_supply_get_by_name("usb");
+	if (!usb_psy) {
+		pr_err("%s USB supply not found\n", __func__);
+	}
+
 	return 0;
 }
 
@@ -180,6 +188,18 @@ enum typec_current_mode typec_current_mode_detect(void)
 	typec_ops = dev_get_drvdata(typec_dev);
 	current_mode = typec_ops->current_detect();
 	return current_mode;
+}
+
+int typec_sink_detected_handler(enum typec_event typec_event)
+{
+	if (!usb_psy) {
+		pr_err("%s USB supply not found\n", __func__);
+		return -1;
+	}
+
+	power_supply_set_usb_otg(usb_psy,
+				 (typec_event == TYPEC_SINK_DETECTED) ? 1 : 0);
+	return 0;
 }
 
 static int __init typec_init(void)

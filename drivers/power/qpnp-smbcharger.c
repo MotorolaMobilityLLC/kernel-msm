@@ -547,6 +547,8 @@ static enum pwr_path_type smbchg_get_pwr_path(struct smbchg_chip *chip)
 #define USBIN_SRC_DET_BIT		BIT(2)
 #define FMB_STS_MASK			SMB_MASK(3, 0)
 #define USBID_GND_THRESHOLD		0x495
+
+#ifndef CONFIG_TYPEC
 static bool is_otg_present(struct smbchg_chip *chip)
 {
 	int rc;
@@ -594,6 +596,7 @@ static bool is_otg_present(struct smbchg_chip *chip)
 
 	return (reg & RID_MASK) == 0;
 }
+#endif
 
 #define USBIN_9V			BIT(5)
 #define USBIN_UNREG			BIT(4)
@@ -5274,6 +5277,7 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+#ifndef CONFIG_TYPEC
 /**
  * usbid_change_handler() - called when the usb RID changes.
  * This is used mostly for detecting OTG
@@ -5311,6 +5315,7 @@ static irqreturn_t usbid_change_handler(int irq, void *_chip)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static int determine_initial_status(struct smbchg_chip *chip)
 {
@@ -5327,7 +5332,9 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	batt_cool_handler(0, chip);
 	batt_cold_handler(0, chip);
 	chg_term_handler(0, chip);
+#ifndef CONFIG_TYPEC
 	usbid_change_handler(0, chip);
+#endif
 	src_detect_handler(0, chip);
 
 	chip->usb_present = is_usb_present(chip);
@@ -6252,10 +6259,12 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			REQUEST_IRQ(chip, spmi_resource, chip->aicl_done_irq,
 				"aicl-done",
 				aicl_done_handler, flags, rc);
+#ifndef CONFIG_TYPEC
 			REQUEST_IRQ(chip, spmi_resource,
 				chip->usbid_change_irq, "usbid-change",
 				usbid_change_handler,
 				(IRQF_TRIGGER_FALLING | IRQF_ONESHOT), rc);
+#endif
 			enable_irq_wake(chip->usbin_uv_irq);
 			enable_irq_wake(chip->usbin_ov_irq);
 			enable_irq_wake(chip->src_detect_irq);
