@@ -334,7 +334,7 @@
 					"gpio_muc_vbus_en";
 
 		mmi,muc-ctrl-det-hysteresis = <500>;
-		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 300>;
+		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 1000>;
 		mmi,muc-ctrl-dis-seq = <1 0 200>;
 
 		pinctrl-names = "default";
