@@ -115,17 +115,17 @@
 
 	/delete-property/ qcom,ois@0;
 
-	/delete-property/ com,eeprom@0;
-
-	/delete-property/ qcom,eeprom@1;
-
-	/delete-property/ qcom,eeprom@2;
-
 	/delete-property/ qcom,camera@0;
 
 	/delete-property/ qcom,camera@1;
 
 	/delete-property/ qcom,camera@2;
+
+	/delete-node/ qcom,eeprom@0;
+
+	/delete-node/ qcom,eeprom@2;
+
+	/delete-node/ qcom,eeprom@4;
 
 	eeprom1: qcom,eeprom@1 {
 		cell-index = <1>;
