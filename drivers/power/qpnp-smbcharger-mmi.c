@@ -4439,6 +4439,9 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		power_supply_set_supply_type(chip->usb_psy,
 				POWER_SUPPLY_TYPE_UNKNOWN);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
+		pr_smb(PR_MISC, "setting usb psy dp=r dm=r\n");
+		power_supply_set_dp_dm(chip->usb_psy,
+				POWER_SUPPLY_DP_DM_DPR_DMR);
 		schedule_work(&chip->usb_set_online_work);
 		rc = power_supply_set_health_state(chip->usb_psy,
 				POWER_SUPPLY_HEALTH_UNKNOWN);
@@ -4485,6 +4488,12 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	type = get_type(reg);
 	usb_type_name = get_usb_type_name(type);
 	usb_supply_type = get_usb_supply_type(type);
+
+	if (chip->usb_psy) {
+		pr_smb(PR_MISC, "setting usb psy dp=f dm=f\n");
+		power_supply_set_dp_dm(chip->usb_psy,
+				POWER_SUPPLY_DP_DM_DPF_DMF);
+	}
 
 	/* Rerun APSD 1 sec later */
 	if ((usb_supply_type == POWER_SUPPLY_TYPE_USB) &&
