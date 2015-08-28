@@ -3136,10 +3136,11 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 				msecs_to_jiffies(REBUILD_WORK_DELAY_MS));
 		return 0;
 	}
-
-	mutex_lock(&(rmi4_data->rmi4_reset_mutex));
+	tp_log_debug("%s: in! \n", __func__);
 
 	synaptics_rmi4_irq_enable(rmi4_data, false, false);
+
+	mutex_lock(&(rmi4_data->rmi4_reset_mutex));
 
 	retval = synaptics_rmi4_sw_reset(rmi4_data);
 	if (retval < 0) {
@@ -3172,9 +3173,10 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 	retval = 0;
 
 exit:
-	synaptics_rmi4_irq_enable(rmi4_data, true, false);
 
 	mutex_unlock(&(rmi4_data->rmi4_reset_mutex));
+
+	synaptics_rmi4_irq_enable(rmi4_data, true, false);
 
 	return retval;
 }
@@ -3298,7 +3300,7 @@ EXPORT_SYMBOL(synaptics_dsx_new_function);
 static int synaptics_rmi4_probe(struct platform_device *pdev)
 {
 	int retval;
-	unsigned char attr_count;
+	int attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	const struct synaptics_dsx_hw_interface *hw_if;
 	const struct synaptics_dsx_board_data *bdata;
@@ -3466,9 +3468,24 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	rmi4_data->rb_workqueue =
 			create_singlethread_workqueue("dsx_rebuild_workqueue");
+	if (!rmi4_data->rb_workqueue ){
+		dev_err(&pdev->dev,
+				"%s: Could not create work queue rb_workqueue: no memory\n",
+				__func__);
+		retval = -ENOMEM;
+		goto error_rb_wq_creat_failed;
+	}
 	INIT_DELAYED_WORK(&rmi4_data->rb_work, synaptics_rmi4_rebuild_work);
 
 	exp_data.workqueue = create_singlethread_workqueue("dsx_exp_workqueue");
+	if (!exp_data.workqueue){
+		dev_err(&pdev->dev,
+				"%s: Could not create work queue exp_data.workqueue: no memory\n",
+				__func__);
+		retval = -ENOMEM;
+		goto error_exp_data_wq_creat_failed;
+	}
+
 	INIT_DELAYED_WORK(&exp_data.work, synaptics_rmi4_exp_fn_work);
 	exp_data.rmi4_data = rmi4_data;
 	exp_data.queue_work = true;
@@ -3479,6 +3496,14 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 #ifdef FB_READY_RESET
 	rmi4_data->reset_workqueue =
 			create_singlethread_workqueue("dsx_reset_workqueue");
+	if (!rmi4_data->reset_workqueue){
+		dev_err(&pdev->dev,
+				"%s: Could not create work queue rmi4_data->reset_workqueue: no memory\n",
+				__func__);
+		retval = -ENOMEM;
+		goto error_rst_wq_creat_failed;
+	}
+
 	INIT_WORK(&rmi4_data->reset_work, synaptics_rmi4_reset_work);
 	queue_work(rmi4_data->reset_workqueue, &rmi4_data->reset_work);
 #endif
@@ -3486,6 +3511,15 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	tp_log_debug("%s: ok!\n",__func__);
 	return retval;
 
+#ifdef FB_READY_RESET
+error_rst_wq_creat_failed:
+	destroy_workqueue(exp_data.workqueue);
+#endif
+
+error_exp_data_wq_creat_failed:
+	destroy_workqueue(rmi4_data->rb_workqueue);
+
+error_rb_wq_creat_failed:
 err_sysfs:
 	for (attr_count--; attr_count >= 0; attr_count--) {
 		sysfs_remove_file(&rmi4_data->input_dev->dev.kobj,
@@ -3498,7 +3532,7 @@ err_virtual_buttons:
 				&virtual_key_map_attr.attr);
 		kobject_put(rmi4_data->board_prop_dir);
 	}
-
+	wake_lock_destroy(&rmi4_data->rmi4_wake_lock);
 	synaptics_rmi4_irq_enable(rmi4_data, false, false);
 
 err_enable_irq:
