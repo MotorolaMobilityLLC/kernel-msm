@@ -1615,6 +1615,14 @@ static void msm_serial_hs_rx_work(struct kthread_work *work)
 
 	spin_lock_irqsave(&uport->lock, flags);
 
+	/* Make sure the UART is ready when RX triggered. */
+	if (NULL == tty) {
+		MSM_HS_WARN("%s(): invalid tty", __func__);
+		spin_unlock_irqrestore(&uport->lock, flags);
+		msm_hs_resource_unvote(msm_uport);
+		return;
+	}
+
 	/*
 	 * Process all pending descs or if nothing is
 	 * queued - called from termios
