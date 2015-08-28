@@ -2572,8 +2572,10 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 		charger_in = qpnp_chg_is_usb_chg_plugged_in(chip) ||
 			qpnp_chg_is_dc_chg_plugged_in(chip);
 
-		if (ret.intval < chip->soc_resume_limit)
+		if (soc <= chip->soc_resume_limit) {
 			chip->maint_chrg = false;
+			chip->chg_done = false;
+		}
 
 		if (battery_status != POWER_SUPPLY_STATUS_CHARGING
 				&& bms_status != POWER_SUPPLY_STATUS_CHARGING
