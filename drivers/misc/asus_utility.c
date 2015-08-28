@@ -22,6 +22,7 @@
 #include <linux/workqueue.h>
 #include <linux/wakelock.h>
 #include <linux/asus_utility.h>
+#include <linux/asusdebug.h>
 
 #define MODE_PROC_MAX_BUFF_SIZE  256
 #define WAIT_FOR_AMBIENT_DRAW_MS                (HZ)
@@ -100,7 +101,7 @@ static int mode_write_proc_interactive (struct file *filp, const char __user *bu
 	if (len > MODE_PROC_MAX_BUFF_SIZE)
 		len = MODE_PROC_MAX_BUFF_SIZE;
 	
-	printk(KERN_DEBUG "[MODE] %s():\n", __func__);
+	ASUSEvtlog("[MODE] %s(): %s\n", __func__, buff);
 
 	if (copy_from_user(msg, buff, len))
 		return -EFAULT;
