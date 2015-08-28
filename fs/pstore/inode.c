@@ -61,6 +61,13 @@ struct pstore_ftrace_seq_data {
 };
 
 #define REC_SIZE sizeof(struct pstore_ftrace_record)
+static char bootreason[30];
+static int set_bootreason(char *str)
+{
+    strcpy(bootreason, str);
+	return 0;
+}
+__setup("androidboot.bootreason=", set_bootreason);
 
 static void *pstore_ftrace_seq_start(struct seq_file *s, loff_t *pos)
 {
@@ -283,6 +290,13 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
 	char			name[PSTORE_NAMELEN];
 	struct pstore_private	*private, *pos;
 	unsigned long		flags;
+	char reason[100];
+	int reason_size = 0;
+
+	if(type == PSTORE_TYPE_CONSOLE){
+		reason_size = snprintf(reason, 100, 
+			"\n\nNo errors detected\nBoot info:\nLast boot reason: %s\n", bootreason);
+	}
 
 	spin_lock_irqsave(&allpstore_lock, flags);
 	list_for_each_entry(pos, &allpstore, list) {
@@ -303,7 +317,7 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
 		goto fail;
 	inode->i_mode = S_IFREG | 0444;
 	inode->i_fop = &pstore_file_operations;
-	private = kmalloc(sizeof *private + size, GFP_KERNEL);
+	private = kmalloc(sizeof *private + size + reason_size, GFP_KERNEL);
 	if (!private)
 		goto fail_alloc;
 	private->type = type;
@@ -340,7 +354,10 @@ int pstore_mkfile(enum pstore_type_id type, char *psname, u64 id, int count,
 		goto fail_lockedalloc;
 
 	memcpy(private->data, data, size);
-	inode->i_size = private->size = size;
+	if(type == PSTORE_TYPE_CONSOLE){
+		memcpy(private->data + size, reason, reason_size);
+	}
+	inode->i_size = private->size = size + reason_size;
 
 	inode->i_private = private;
 

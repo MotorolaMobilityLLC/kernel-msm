@@ -23,7 +23,7 @@
 #include <linux/asusdebug.h>
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#define ASUS_LAST_KMSG	1
+#define ASUS_LAST_KMSG	0
 
 #if ASUS_LAST_KMSG
 #include <linux/init.h>     //For getting bootreason
@@ -62,6 +62,7 @@ extern int print_fork;
 #endif
 
 static void do_kernel_log_worker(struct work_struct *work){
+#if ASUS_LAST_KMSG
     char target_filename[256];
     int target_handle;
     int i = 1;
@@ -83,7 +84,7 @@ static void do_kernel_log_worker(struct work_struct *work){
     /* Clean the first logcat.txt but not deleting it */
 
     deinitKernelEnv();
-
+#endif
     /* Reboot device to apply change */
     //kernel_restart(NULL);
 }
@@ -1089,15 +1090,16 @@ void save_last_shutdown_log(char* filename)
 
 void get_last_shutdown_log(void)
 {
+#if ASUS_LAST_KMSG
     unsigned int *last_shutdown_log_addr;
 
     last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER +
         (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#if ASUS_LAST_KMSG
+
 	save_last_kmsg_buffer(NULL);
-#endif
+
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
     if( *last_shutdown_log_addr == (unsigned int)PRINTK_BUFFER_MAGIC)
@@ -1110,6 +1112,7 @@ void get_last_shutdown_log(void)
     is_lk_rebased = 1;
     
     *last_shutdown_log_addr = PRINTK_BUFFER_MAGIC;  //ASUS_BSP ++
+#endif
 }
 EXPORT_SYMBOL(get_last_shutdown_log);
 
@@ -1373,7 +1376,7 @@ static const struct file_operations proc_asusdebug_operations = {
 };
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
+#if ASUS_LAST_KMSG
 static const struct file_operations proc_asuslastkmsg_operations = {
     .read       = asuslastkmsg_read,
 	.write      = asuslastkmsg_write,

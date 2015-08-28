@@ -59,7 +59,7 @@ static char *g_printk_log_buf;
 int boot_after_60sec = 0;
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#define ASUS_LAST_KMSG  1
+#define ASUS_LAST_KMSG  0
 
 #if ASUS_LAST_KMSG
 static size_t asus_print_time(u64 ts, char *buf);
@@ -1723,6 +1723,12 @@ static void call_console_drivers(int level, const char *text, size_t len)
 	struct console *con;
 
 	trace_console(text, len);
+
+	for_each_console(con) {
+		if(!strcmp("pstore",con->name)){
+			con->write(con, text, len);	
+		}
+	}
 
 	if (level >= console_loglevel && !ignore_loglevel)
 		return;
