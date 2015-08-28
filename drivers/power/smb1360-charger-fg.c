@@ -2446,21 +2446,21 @@ static int smb1360_adjust_current_gain(struct smb1360_chip *chip,
 	pr_debug("current_gain_otp_reg = 0x%x\n", chip->current_gain_otp_reg);
 
 	if (gain_factor) {
-		rc = smb1360_fg_read(chip, CURRENT_GAIN_LSB_REG, &reg[0]);
+		rc = smb1360_fg_read(chip, CURRENT_GAIN_LSB_REG, &reg[1]);
 		if (rc) {
 			pr_err("Unable to set FG access I2C address rc=%d\n",
 									rc);
 			return rc;
 		}
 
-		rc = smb1360_fg_read(chip, CURRENT_GAIN_MSB_REG, &reg[1]);
+		rc = smb1360_fg_read(chip, CURRENT_GAIN_MSB_REG, &reg[3]);
 		if (rc) {
 			pr_err("Unable to set FG access I2C address rc=%d\n",
 									rc);
 			return rc;
 		}
 
-		reg_value1 = (reg[1] << 8) | reg[0];
+		reg_value1 = (reg[3] << 8) | reg[1];
 		current_gain = float_decode(reg_value1);
 		new_current_gain = MICRO_UNIT  + (gain_factor * current_gain);
 		reg_value2 = float_encode(new_current_gain);
