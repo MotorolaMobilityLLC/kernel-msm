@@ -3574,7 +3574,7 @@ static int tomtom_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		wcd9xxx_resmgr_cfilt_put(&tomtom->resmgr, cfilt_sel_val);
 		break;
 	}
-
+	msleep(1);
 	return 0;
 }
 
