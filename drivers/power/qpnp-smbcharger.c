@@ -4229,6 +4229,24 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 	}
 }
 
+static int smbchg_is_hvdcp(struct smbchg_chip *chip)
+{
+	int rc;
+	u8 reg;
+	int ret = 0;
+
+	rc = smbchg_read(chip, &reg,
+			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read hvdcp status rc = %d\n", rc);
+		return ret;
+	}
+	if ((reg & USBIN_HVDCP_SEL_BIT) && is_usb_present(chip))
+		ret = 1;
+
+	return ret;
+}
+
 static void update_compass_compensation(struct power_supply *psy)
 {
 	int status, batt_current;
@@ -4237,6 +4255,8 @@ static void update_compass_compensation(struct power_supply *psy)
 	static int last_compensation = -1;
 	int batt_voltage;
 	int aicl_level;
+	int is_hvdcp = 0;
+	union power_supply_propval prop = {0, };
 	struct smbchg_chip *chip = container_of(psy,
 					struct smbchg_chip, batt_psy);
 
@@ -4244,33 +4264,53 @@ static void update_compass_compensation(struct power_supply *psy)
 	status = get_prop_batt_status(chip);
 	batt_current = get_prop_batt_current_now(chip) / 1000;
 	batt_voltage = get_prop_batt_voltage_now(chip) / 1000;
+	is_hvdcp = smbchg_is_hvdcp(chip);
 	/*
 	 * When parallel charging, the usb current limit is the sum
 	 * of two limits. When only the main PMI8994 charging, the
 	 * aicl is the real usb current limit.
 	 */
-	if (chip->parallel.current_max_ma != 0)
-		usb_limit = chip->parallel.current_max_ma * 2;
-	else
+	if (chip->parallel.current_max_ma != 0) {
+		chip->parallel.psy->get_property(chip->parallel.psy,
+				POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+		usb_limit = aicl_level + prop.intval / 1000;
+	} else {
 		usb_limit = aicl_level;
+	}
 
 	if (status == POWER_SUPPLY_STATUS_CHARGING) {
 		/* Use the batt voltage for CC and CV stage distinguish */
 		if (batt_voltage < chip->vfloat_mv - CHARGE_STAGE_DELTA_MV) {
 			ibus = usb_limit;
 		} else {
-			if ((batt_current > 0) ||
-				(POWER_CONSUMPTION - batt_current > usb_limit))
+			if (batt_current > 0) {
 				ibus = usb_limit;
-			else
+			} else {
 				ibus = POWER_CONSUMPTION - batt_current;
+				/*
+				 * For hvdcp, ibus should multiply 0.6 to
+				 * convert to a 9V equivalent current value.
+				 */
+				if (is_hvdcp)
+					ibus = (ibus * 6) / 10;
+			}
+
+			if (ibus > usb_limit)
+				ibus = usb_limit;
 		}
 	} else if ((status == POWER_SUPPLY_STATUS_FULL)
 			|| (status == POWER_SUPPLY_STATUS_NOT_CHARGING)) {
-		if (POWER_CONSUMPTION > usb_limit)
+		if (POWER_CONSUMPTION > usb_limit) {
 			ibus = usb_limit;
-		else
+		} else {
 			ibus = POWER_CONSUMPTION;
+			/*
+			 * For hvdcp, ibus should multiply 0.6 to convert
+			 * to a 9V equivalent current value.
+			 */
+			if (is_hvdcp)
+				ibus = (ibus * 6) / 10;
+		}
 	}
 
 	/* Adjust the compensation calculation */
@@ -4279,8 +4319,9 @@ static void update_compass_compensation(struct power_supply *psy)
 
 	if (compensation != last_compensation) {
 		memset(chip->compass_compensation, 0, COMPENSATION_LEN);
+		/* Report a negative compensation to userspace */
 		snprintf(chip->compass_compensation, COMPENSATION_LEN - 1,
-			"%d.%04d", compensation / 10000, compensation % 10000);
+			"-%d.%04d", compensation / 10000, compensation % 10000);
 		last_compensation = compensation;
 		/* Notify userspace to get compensation */
 		if (chip->batt_psy.dev)

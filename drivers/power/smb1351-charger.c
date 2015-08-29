@@ -1214,6 +1214,8 @@ static int smb1351_set_usb_chg_current(struct smb1351_charger *chip,
 			pr_err("Couldn't set input mA rc=%d\n", rc);
 			return rc;
 		}
+		/* Record the real current set to register */
+		current_ma = usb_chg_current[i];
 	}
 	/* control input current mode by command */
 	reg |= CMD_INPUT_CURRENT_MODE_CMD;
@@ -1224,6 +1226,12 @@ static int smb1351_set_usb_chg_current(struct smb1351_charger *chip,
 		pr_err("Couldn't set charging mode rc = %d\n", rc);
 		return rc;
 	}
+
+	/*
+	 * Assign the usb_psy_ma as current_ma, then it can get the real current
+	 * set to register by getting property POWER_SUPPLY_PROP_CURRENT_MAX.
+	 */
+	chip->usb_psy_ma = current_ma;
 
 	/* unset the suspend bit here */
 	smb1351_usb_suspend(chip, CURRENT, false);
