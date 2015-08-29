@@ -509,7 +509,6 @@ struct rgb_config_data {
 	u8	enable;
 	u32	on_ms;
 	u32	off_ms;
-	u8	start;
 };
 
 /**
@@ -1776,6 +1775,9 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 		pwm_cfg->lut_params.flags |= PM_PWM_LUT_PAUSE_HI_EN |
 			PM_PWM_LUT_LOOP | PM_PWM_LUT_REVERSE;
 
+	pwm_disable(led->rgb_cfg->pwm_cfg->pwm_dev);
+	led->rgb_cfg->pwm_cfg->pwm_enabled = 0;
+
 	rc = pwm_lut_config(pwm_cfg->pwm_dev,
 				pwm_cfg->pwm_period_us,
 				pwm_cfg->duty_cycles->duty_pcts,
@@ -1794,7 +1796,7 @@ static int qpnp_rgb_set(struct qpnp_led_data *led)
 	int rc;
 	int duty_us, duty_ns, period_us;
 
-	if (led->cdev.brightness && led->rgb_cfg->start) {
+	if (led->cdev.brightness) {
 		if (!led->rgb_cfg->pwm_cfg->blinking)
 			led->rgb_cfg->pwm_cfg->mode =
 				led->rgb_cfg->pwm_cfg->default_mode;
@@ -2789,16 +2791,6 @@ static ssize_t rgb_on_off_ms_store(struct device *dev,
 	return size;
 }
 
-static ssize_t rgb_start_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct qpnp_led_data *led =
-		container_of(led_cdev, struct qpnp_led_data, cdev);
-
-	return sprintf(buf, "%d\n", led->rgb_cfg->start);
-}
-
 static ssize_t rgb_start_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -2818,8 +2810,9 @@ static ssize_t rgb_start_store(struct device *dev,
 	if (count != size)
 		return -EINVAL;
 
-	if (led->rgb_cfg->start == (u8)state)
+	if (state == 0) {
 		return count;
+	}
 
 	led_array = dev_get_drvdata(&led->spmi_dev->dev);
 
@@ -2828,17 +2821,15 @@ static ssize_t rgb_start_store(struct device *dev,
 		case QPNP_ID_RGB_RED:
 		case QPNP_ID_RGB_GREEN:
 		case QPNP_ID_RGB_BLUE:
-			if (led_array[i].rgb_cfg->start == (u8)state)
-				break;
-
-			led_array[i].rgb_cfg->start = (u8)state;
+			pr_info("qpnp_led.%s: b:%02x on:%d off:%d\n", 
+				led_array[i].cdev.name,
+				led_array[i].cdev.brightness,
+				led_array[i].rgb_cfg->on_ms,
+				led_array[i].rgb_cfg->off_ms);
 			ret = qpnp_rgb_set(&led_array[i]);
 			if (ret < 0)
 				dev_err(led_array[i].cdev.dev,
 					"RGB set rgb start failed (%d)\n", ret);
-			if (!(led_array[i].rgb_cfg->pwm_cfg->lut_params.flags &
-						PM_PWM_LUT_LOOP))
-				led_array[i].rgb_cfg->start = 0;
 			break;
 		default:
 			break;
@@ -2858,8 +2849,8 @@ static DEVICE_ATTR(ramp_step_ms, 0220, NULL, ramp_step_ms_store);
 static DEVICE_ATTR(lut_flags, 0220, NULL, lut_flags_store);
 static DEVICE_ATTR(duty_pcts, 0220, NULL, duty_pcts_store);
 static DEVICE_ATTR(blink, 0220, NULL, blink_store);
-static DEVICE_ATTR(on_off_ms, 0664, rgb_on_off_ms_show, rgb_on_off_ms_store);
-static DEVICE_ATTR(rgb_start, 0664, rgb_start_show, rgb_start_store);
+static DEVICE_ATTR(on_off_ms, 0660, rgb_on_off_ms_show, rgb_on_off_ms_store);
+static DEVICE_ATTR(rgb_start, 0220, NULL, rgb_start_store);
 
 static struct attribute *led_attrs[] = {
 	&dev_attr_led_mode.attr,
