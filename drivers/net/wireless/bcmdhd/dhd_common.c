@@ -1606,10 +1606,8 @@ int wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 				dhd_event_ifdel(dhd_pub->info, ifevent, event->ifname,
 					event->addr.octet);
 			} else if (ifevent->opcode == WLC_E_IF_CHANGE) {
-#ifdef WL_CFG80211
-				wl_cfg80211_notify_ifchange(ifevent->ifidx,
-					event->ifname, event->addr.octet, ifevent->bssidx);
-#endif /* WL_CFG80211 */
+				dhd_event_ifchange(dhd_pub->info, ifevent, event->ifname,
+					event->addr.octet);
 			}
 		} else {
 #if !defined(PROP_TXSTATUS) || !defined(PCIE_FULL_DONGLE)

@@ -37,8 +37,6 @@
 #include <dhd.h>
 #endif
 
-extern struct bcm_cfg80211 *g_bcm_cfg;
-
 #ifdef PKT_FILTER_SUPPORT
 extern uint dhd_pkt_filter_enable;
 extern uint dhd_master_mode;

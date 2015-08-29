@@ -2487,7 +2487,7 @@ static int wl_cfgp2p_if_open(struct net_device *net)
 {
 	struct wireless_dev *wdev = net->ieee80211_ptr;
 
-	if (!wdev || !wl_cfg80211_is_p2p_active())
+	if (!wdev || !wl_cfg80211_is_p2p_active(net))
 		return -EINVAL;
 	WL_TRACE(("Enter\n"));
 #if !defined(WL_IFACE_COMB_NUM_CHANNELS)
@@ -2508,11 +2508,12 @@ static int wl_cfgp2p_if_open(struct net_device *net)
 static int wl_cfgp2p_if_stop(struct net_device *net)
 {
 	struct wireless_dev *wdev = net->ieee80211_ptr;
+	struct bcm_cfg80211 *cfg = wl_get_cfg(net);
 
 	if (!wdev)
 		return -EINVAL;
 
-	wl_cfg80211_scan_stop(net);
+	wl_cfg80211_scan_stop(cfg, net);
 
 #if !defined(WL_IFACE_COMB_NUM_CHANNELS)
 	wdev->wiphy->interface_modes = (wdev->wiphy->interface_modes)
@@ -2611,7 +2612,7 @@ wl_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev)
 
 	WL_TRACE(("Enter\n"));
 
-	ret = wl_cfg80211_scan_stop(wdev);
+	ret = wl_cfg80211_scan_stop(cfg, wdev);
 	if (unlikely(ret < 0)) {
 		CFGP2P_ERR(("P2P scan stop failed, ret=%d\n", ret));
 	}
