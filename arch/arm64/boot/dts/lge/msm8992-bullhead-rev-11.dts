@@ -19,5 +19,5 @@
 / {
 	model = "LGE MSM8992 BULLHEAD rev-1.1";
 	compatible = "qcom,msm8992";
-	qcom,board-id = <0xc64 0>;
+	qcom,board-id = <0xd64 0>;
 };

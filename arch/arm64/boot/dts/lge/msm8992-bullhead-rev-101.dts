@@ -17,22 +17,7 @@
 #include "msm8992-bullhead.dtsi"
 
 / {
-	model = "LGE MSM8992 BULLHEAD rev-1.0";
+	model = "LGE MSM8992 BULLHEAD rev-1.01";
 	compatible = "qcom,msm8992";
-	qcom,board-id = <0xa64 0>;
-};
-
-&bullhead_batterydata {
-	qcom,lge_blt19_tocad_2700mAh_2022227_PMI8994GUI2165 {
-		qcom,max-voltage-uv = <4320000>;
-	};
-};
-
-&soc {
-	sound {
-		qcom,mbhc-btn-cal-low =
-			/bits/ 16 <(-50) 111 191 360 751 753 755 757>;
-		qcom,mbhc-btn-cal-high =
-			/bits/ 16 <110 190 359 750 752 754 756 758>;
-	};
+	qcom,board-id = <0xb64 0>;
 };
