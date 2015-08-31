@@ -3564,7 +3564,7 @@ exit_1:
 int synaptics_rmi4_scan_f54_ctrl_reg_info(
 	struct synaptics_rmi4_func_packet_regs *f54_ctrl_regs)
 {
-	int ii, error = f54_ctrl_regs->nr_regs;
+	int ii;
 	unsigned char *data;
 	struct synaptics_rmi4_packet_reg *reg;
 	struct synaptics_rmi4_subpkt *subpkt;
@@ -3585,7 +3585,7 @@ int synaptics_rmi4_scan_f54_ctrl_reg_info(
 			reg->data = data;
 			subpkt->present = true;
 			subpkt->offset = 0;
-			error--;
+			pr_debug("%s: F54 CTRL 2 found\n",__func__);
 		}
 		if (reg->r_number == 95 && f54->control.reg_95) {
 			int jj, num_of_subpkts;
@@ -3606,10 +3606,10 @@ int synaptics_rmi4_scan_f54_ctrl_reg_info(
 				subpkt->present = true;
 				subpkt->offset = jj * subpkt->size;
 			}
-			error--;
+			pr_debug("%s: F54 CTRL 95 found\n",__func__);
 		}
 	}
-	return error;
+	return 0;
 }
 
 /*
