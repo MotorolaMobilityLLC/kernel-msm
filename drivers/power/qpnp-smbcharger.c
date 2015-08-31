@@ -2334,6 +2334,9 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	mutex_lock(&chip->current_change_lock);
 	prev_therm_lvl = chip->therm_lvl_sel;
 	chip->therm_lvl_sel = lvl_sel;
+
+	pr_info("set lvl = %d\n", chip->therm_lvl_sel);
+
 	if (chip->therm_lvl_sel == (chip->thermal_levels - 1)) {
 		/*
 		 * Disable charging if highest value selected by
@@ -4193,6 +4196,8 @@ static irqreturn_t batt_hot_handler(int irq, void *_chip)
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	new_state = !!(reg & HOT_BAT_HARD_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	if (new_state)
+		pr_info("stop charging by hot temp\n");
 
 	/* keep to disable charging until warm threshold */
 	if (chip->customized_jeita && !new_state && chip->batt_hot)
@@ -4218,6 +4223,8 @@ static irqreturn_t batt_cold_handler(int irq, void *_chip)
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	new_state = !!(reg & COLD_BAT_HARD_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	if (new_state)
+		pr_info("stop charging by cold temp\n");
 
 	/* keep to disable charging until cool threshold */
 	if (chip->customized_jeita && !new_state && chip->batt_cold)
@@ -4241,6 +4248,8 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_warm = !!(reg & HOT_BAT_SOFT_BIT);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	if (chip->batt_warm)
+		pr_info("reduced ibat and vfloat\n");
 
 	if (chip->customized_jeita) {
 		smbchg_set_fastchg_current(chip,
@@ -4305,7 +4314,7 @@ static irqreturn_t chg_error_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 
-	pr_smb(PR_INTERRUPT, "chg-error triggered\n");
+	pr_info("chg-error triggered\n");
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
@@ -4340,7 +4349,7 @@ static irqreturn_t chg_term_handler(int irq, void *_chip)
 	u8 reg = 0;
 
 	smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
-	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+	pr_info("triggered: 0x%02x\n", reg);
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
