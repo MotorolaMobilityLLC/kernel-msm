@@ -415,11 +415,19 @@ A_STATUS HTCRxCompletionHandler(
                 break;
             case HTC_MSG_SEND_SUSPEND_COMPLETE:
                 wow_nack = 0;
+                LOCK_HTC_CREDIT(target);
+                htc_credit_record(HTC_SUSPEND_ACK, pEndpoint->TxCredits,
+                                  HTC_PACKET_QUEUE_DEPTH(&pEndpoint->TxQueue));
+                UNLOCK_HTC_CREDIT(target);
                 target->HTCInitInfo.TargetSendSuspendComplete((void *)&wow_nack);
                 HTCsuspendwow(target);
                 break;
             case HTC_MSG_NACK_SUSPEND:
                 wow_nack = 1;
+                LOCK_HTC_CREDIT(target);
+                htc_credit_record(HTC_SUSPEND_NACK, pEndpoint->TxCredits,
+                                  HTC_PACKET_QUEUE_DEPTH(&pEndpoint->TxQueue));
+                UNLOCK_HTC_CREDIT(target);
                 target->HTCInitInfo.TargetSendSuspendComplete((void *)&wow_nack);
                 break;
             }

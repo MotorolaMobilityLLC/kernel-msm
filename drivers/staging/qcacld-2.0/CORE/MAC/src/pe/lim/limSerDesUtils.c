@@ -252,9 +252,13 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-    /* 3 reserved bytes for padding */
-    pBuf += (3 * sizeof(tANI_U8));
-    len  -= 3;
+    /* Extract raw rssi value */
+    pBssDescription->rssi_raw = (tANI_S8) *pBuf++;
+    len--;
+
+    /* 2 reserved bytes for padding */
+    pBuf += (2 * sizeof(tANI_U8));
+    len  -= 2;
 
     pBssDescription->WscIeLen = limGetU32( pBuf );
     pBuf += sizeof(tANI_U32);

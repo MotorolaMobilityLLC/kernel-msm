@@ -2998,8 +2998,20 @@ tANI_BOOLEAN csrRemoveDupBssDescription( tpAniSirGlobal pMac, tSirBssDescription
         if ( csrIsDuplicateBssDescription( pMac, &pBssDesc->Result.BssDescriptor,
                                                         pSirBssDescr, pIes, fForced ) )
         {
-            pSirBssDescr->rssi = (tANI_S8)( (((tANI_S32)pSirBssDescr->rssi * CSR_SCAN_RESULT_RSSI_WEIGHT ) +
-                                             ((tANI_S32)pBssDesc->Result.BssDescriptor.rssi * (100 - CSR_SCAN_RESULT_RSSI_WEIGHT) )) / 100 );
+            int32_t rssi_new, rssi_old;
+
+            rssi_new = (int32_t) pSirBssDescr->rssi;
+            rssi_old = (int32_t) pBssDesc->Result.BssDescriptor.rssi;
+            rssi_new = ((rssi_new * CSR_SCAN_RESULT_RSSI_WEIGHT) +
+                         rssi_old * (100 - CSR_SCAN_RESULT_RSSI_WEIGHT)) / 100;
+            pSirBssDescr->rssi = (tANI_S8) rssi_new;
+
+            rssi_new = (int32_t) pSirBssDescr->rssi_raw;
+            rssi_old = (int32_t) pBssDesc->Result.BssDescriptor.rssi_raw;
+            rssi_new = ((rssi_new * CSR_SCAN_RESULT_RSSI_WEIGHT) +
+                         rssi_old * (100 - CSR_SCAN_RESULT_RSSI_WEIGHT)) / 100;
+            pSirBssDescr->rssi_raw = (tANI_S8) rssi_new;
+
             // Remove the 'old' entry from the list....
             if( csrLLRemoveEntry( &pMac->scan.scanResultList, pEntry, LL_ACCESS_LOCK ) )
             {

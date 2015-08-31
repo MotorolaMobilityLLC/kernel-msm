@@ -3173,6 +3173,12 @@ int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
 	unsigned long expires;
 	unsigned long flags;
 
+	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
+		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+			  "%s: Load/unload in progress, ignore!\n", __func__);
+		return -EINVAL;
+	}
+
 	if (!sc->enable_runtime_pm)
 		return 0;
 
@@ -3209,8 +3215,8 @@ int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
 	spin_unlock_irqrestore(&hif_sc->runtime_lock, flags);
 
 	VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_INFO,
-			"%s: pm_state:%d ret: %d\n", __func__,
-			adf_os_atomic_read(&hif_sc->pm_state), ret);
+		  "%s: pm_state: %d delay: %dms ret: %d\n", __func__,
+		  adf_os_atomic_read(&hif_sc->pm_state), delay, ret);
 
 	return ret;
 

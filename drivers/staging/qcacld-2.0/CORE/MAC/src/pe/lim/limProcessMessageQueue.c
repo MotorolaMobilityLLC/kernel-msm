@@ -202,7 +202,7 @@ __lim_pno_match_fwd_bcn_probepsp(tpAniSirGlobal pmac, uint8_t *rx_pkt_info,
 		result->ap[i].capability =
 			limGetU16((uint8_t *)&frame->capabilityInfo);
 		result->ap[i].channel = WDA_GET_RX_CH(rx_pkt_info);
-		result->ap[i].rssi = WDA_GET_RX_RSSI_DB(rx_pkt_info);
+		result->ap[i].rssi = WDA_GET_RX_RSSI_NORMALIZED(rx_pkt_info);
 		result->ap[i].rtt = 0;
 		result->ap[i].rtt_sd = 0;
 		result->ap[i].ieLength = ie_len;
@@ -250,7 +250,7 @@ __limExtScanForwardBcnProbeRsp(tpAniSirGlobal pmac, uint8_t *rx_pkt_info,
 	result->ap.beaconPeriod = frame->beaconInterval;
 	result->ap.capability = limGetU16((uint8_t *)&frame->capabilityInfo);
 	result->ap.channel = WDA_GET_RX_CH(rx_pkt_info);
-	result->ap.rssi = WDA_GET_RX_RSSI_DB(rx_pkt_info);
+	result->ap.rssi = WDA_GET_RX_RSSI_NORMALIZED(rx_pkt_info);
 	result->ap.rtt = 0;
 	result->ap.rtt_sd = 0;
 	result->ap.ieLength = ie_len;

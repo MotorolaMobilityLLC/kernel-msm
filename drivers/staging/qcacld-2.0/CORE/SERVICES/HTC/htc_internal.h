@@ -102,6 +102,8 @@ extern "C" {
 typedef enum {
     HTC_REQUEST_CREDIT,
     HTC_PROCESS_CREDIT_REPORT,
+    HTC_SUSPEND_ACK,
+    HTC_SUSPEND_NACK,
 } htc_credit_exchange_type;
 
 typedef struct {
@@ -263,6 +265,8 @@ void        HTCFwEventHandler(void *context, A_STATUS status);
 void        HTCSendCompleteCheckCleanup(void *context);
 void        HTCTxResumeAllHandler(void *context);
 
+void htc_credit_record(htc_credit_exchange_type type, A_UINT32 tx_credit,
+                       A_UINT32 htc_tx_queue_depth);
 
 static inline void HTCSendCompletePollTimerStop(HTC_ENDPOINT *pEndpoint)
 {

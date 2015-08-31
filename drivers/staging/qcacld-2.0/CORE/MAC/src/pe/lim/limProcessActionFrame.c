@@ -2429,7 +2429,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
             case SIR_MAC_WNM_NOTIF_RESPONSE:
             {
                tpSirMacMgmtHdr     pHdr;
-               tANI_S8 rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
+               tANI_S8 rssi = WDA_GET_RX_RSSI_NORMALIZED(pRxPacketInfo);
                pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
                /* Forward to the SME to HDD to wpa_supplicant */
                limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, (tANI_U8*)pHdr,
@@ -2572,7 +2572,8 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
 
                pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
                frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-               rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
+               rssi = WDA_GET_RX_RSSI_NORMALIZED(pRxPacketInfo);
+
                VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
                                     ("Public Action TDLS Discovery RSP ..")) ;
                limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType,
