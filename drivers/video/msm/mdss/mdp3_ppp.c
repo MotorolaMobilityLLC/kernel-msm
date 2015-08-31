@@ -446,6 +446,25 @@ bool mdp3_is_scale(struct mdp_blit_req *req)
 	return false;
 }
 
+static u64 mdp3_clk_round_off(u64 clk_rate)
+{
+	u64 clk_round_off;
+
+	if (clk_rate < MDP_CORE_CLK_RATE_WEARABLE_NOM)
+		clk_round_off = MDP_CORE_CLK_RATE_WEARABLE_NOM;
+	else if (clk_rate < MDP_CORE_CLK_RATE_WEARABLE_SVS)
+		clk_round_off = MDP_CORE_CLK_RATE_WEARABLE_SVS;
+	else if (clk_rate < MDP_CORE_CLK_RATE_WEARABLE_SUPER_SVS)
+		clk_round_off = MDP_CORE_CLK_RATE_WEARABLE_SUPER_SVS;
+	else if (clk_rate < MDP_CORE_CLK_RATE_SVS)
+		clk_round_off = MDP_CORE_CLK_RATE_SVS;
+	else if (clk_rate < MDP_CORE_CLK_RATE_SUPER_SVS)
+		clk_round_off = MDP_CORE_CLK_RATE_SUPER_SVS;
+	else
+		clk_round_off = MDP_CORE_CLK_RATE_MAX;
+	return clk_round_off;
+}
+
 u32 mdp3_clk_calc(struct msm_fb_data_type *mfd,
 				struct blit_req_list *lreq, u32 fps)
 {
@@ -493,13 +512,7 @@ u32 mdp3_clk_calc(struct msm_fb_data_type *mfd,
 	mdp_clk_rate += (ppp_res.solid_fill_pixel * fps);
 	mdp_clk_rate = fudge_factor(mdp_clk_rate, CLK_FUDGE_NUM, CLK_FUDGE_DEN);
 	pr_debug("mdp_clk_rate for ppp = %llu\n", mdp_clk_rate);
-
-	if (mdp_clk_rate < MDP_CORE_CLK_RATE_SVS)
-		mdp_clk_rate = MDP_CORE_CLK_RATE_SVS;
-	else if (mdp_clk_rate < MDP_CORE_CLK_RATE_SUPER_SVS)
-		mdp_clk_rate = MDP_CORE_CLK_RATE_SUPER_SVS;
-	else
-		mdp_clk_rate = MDP_CORE_CLK_RATE_MAX;
+	mdp_clk_rate = mdp3_clk_round_off(mdp_clk_rate);
 
 	return mdp_clk_rate;
 }
