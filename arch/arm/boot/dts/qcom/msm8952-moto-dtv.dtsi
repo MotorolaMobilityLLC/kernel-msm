@@ -1,0 +1,101 @@
+/* Copyright (c) 2015, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi5 = &spi_5;
+	};
+};
+
+&tlmm_pinmux {
+
+	spi5_active {
+		/* BLSP6 MOSI, MISO, CLK */
+		qcom,pins = <&gp 20>, <&gp 21>, <&gp 23>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <1>;
+		label = "spi5-active";
+		/* active state */
+		spi5_default: spi5_default {
+			drive-strength = <12>; /* 12 MA */
+			bias-disable = <0>; /* No PULL */
+		};
+	};
+
+	spi5_suspend {
+		/* BLSP6 MOSI, MISO, CLK */
+		qcom,pins = <&gp 20>, <&gp 21>, <&gp 23>;
+		qcom,num-grp-pins = <3>;
+		qcom,pin-func = <0>;
+		label = "spi5-suspend";
+		/* suspended state */
+		spi5_sleep: spi5_sleep {
+			drive-strength = <2>; /* 2 MA */
+			bias-pull-down; /* PULL Down */
+		};
+	};
+
+	spi5_cs0_active {
+		/* BLSP6 CS */
+		qcom,pins = <&gp 22>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "spi5-cs0-active";
+		spi5_cs0_active: cs0_active {
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
+
+	spi5_cs0_suspend {
+		/* BLSP6 CS */
+		qcom,pins = <&gp 22>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "spi5-cs0-suspend";
+		spi5_cs0_sleep: cs0_sleep {
+			drive-strength = <2>;
+			bias-disable = <0>;
+		};
+	};
+};
+
+&soc {
+	spi_5: spi@7af6000 { /* BLSP2 QUP2 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x7af6000 0x600>,
+		      <0x7ac4000 0x1f000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		/* IRQ 239 for BLSP2 */
+		interrupts = <0 300 0>, <0 239 0>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi5_default &spi5_cs0_active>;
+		pinctrl-1 = <&spi5_sleep &spi5_cs0_sleep>;
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup2_spi_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,use-pinctrl;
+		qcom,ver-reg-exists;
+		/* need to check pipe index setting*/
+		qcom,bam-consumer-pipe-index = <6>;
+		qcom,bam-producer-pipe-index = <7>;
+		/* master-id for BLSP2 is MSM_BUS_MASTER_BLSP_2 or 84 */
+		qcom,master-id = <84>;
+		status = "ok";
+	};
+};
