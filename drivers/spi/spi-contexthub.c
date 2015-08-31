@@ -164,7 +164,7 @@ static int spich_resume(struct spi_device *spi)
 	}
 
 	if (spich->hub_state == HUB_SUSPENDED) {
-		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(500));
 	}
 
 	return 0;
@@ -219,7 +219,7 @@ static void spich_hub_suspended(struct spich_data *spich, int suspended) {
 		dev_dbg(&spich->spi->dev, "hub is now suspended\n");
 		spich->hub_state = HUB_SUSPENDED;
 
-		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(2000));
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(500));
 	} else {
 		dev_dbg(&spich->spi->dev, "hub is now resumed\n");
 		spich->hub_state = HUB_ACTIVE;
