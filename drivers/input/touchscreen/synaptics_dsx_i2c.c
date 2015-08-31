@@ -167,6 +167,13 @@ static struct {
 } f12_c15_0;
 
 static struct {
+	unsigned char noise_floor;
+	unsigned char min_peak_amplitude;
+	unsigned char peak_merge_threshold_lsb;
+	unsigned char peak_merge_threshold_msb;
+} f12_c10_0;
+
+static struct {
 	unsigned char data[128];
 } dummy_subpkt;
 
@@ -196,7 +203,7 @@ static struct synaptics_rmi4_subpkt f12_c09[] = {
 };
 
 static struct synaptics_rmi4_subpkt f12_c10[] = {
-	RMI4_SUBPKT(dummy_subpkt),
+	RMI4_SUBPKT(f12_c10_0),
 };
 
 static struct synaptics_rmi4_subpkt f12_c11[] = {
@@ -929,6 +936,7 @@ static struct synaptics_rmi4_packet_reg *find_packet_reg(
 {
 	struct synaptics_rmi4_packet_reg *reg = NULL;
 	int r;
+
 	for (r = 0; r < regs->nr_regs; r++)
 		if (number == regs->regs[r].r_number) {
 			reg = &regs->regs[r];
@@ -5085,7 +5093,7 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 						"%s: No handler for F%x\n",
 						__func__, rmi_fd.fn_number);
 				}
-					break;
+				break;
 
 			case SYNAPTICS_RMI4_F34:
 				retval = synaptics_rmi4_i2c_read(rmi4_data,
@@ -5151,8 +5159,12 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 
 				retval = synaptics_rmi4_f11_init(rmi4_data,
 						fhandler, &rmi_fd, intr_count);
-				if (retval < 0)
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+						"%s: Failed to init F11\n",
+						__func__);
 					return retval;
+				}
 				break;
 
 			case SYNAPTICS_RMI4_F12:
@@ -5170,9 +5182,12 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 
 				retval = synaptics_rmi4_f12_init(rmi4_data,
 						fhandler, &rmi_fd, intr_count);
-				if (retval < 0)
+				if (retval < 0) {
+					dev_err(&rmi4_data->i2c_client->dev,
+						"%s: Failed to init F12\n",
+						__func__);
 					return retval;
-
+				}
 				break;
 
 			case SYNAPTICS_RMI4_F1A:
