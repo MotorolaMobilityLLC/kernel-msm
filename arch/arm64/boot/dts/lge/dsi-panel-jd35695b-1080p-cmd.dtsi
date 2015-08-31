@@ -459,7 +459,6 @@
 
 		qcom,bl-default-lvl = <1800>;
 
-		qcom,partial-update-enabled;
 		qcom,panel-roi-alignment = <0 0 16 16 1080 0>;
 
 		qcom,partial-update-tedelay-full = <1700>;
