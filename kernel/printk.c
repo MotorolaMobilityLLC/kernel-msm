@@ -1745,6 +1745,8 @@ static void call_console_drivers(int level, const char *text, size_t len)
 		if (!cpu_online(smp_processor_id()) &&
 		    !(con->flags & CON_ANYTIME))
 			continue;
+		if(!strcmp("pstore",con->name))
+			continue;
 		con->write(con, text, len);
 	}
 }
