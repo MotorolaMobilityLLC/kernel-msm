@@ -513,10 +513,10 @@ retry_tx_alloc:
 	for (i = 0; i < mtp_tx_reqs; i++) {
 		req = mtp_request_new(dev->ep_in, mtp_tx_req_len);
 		if (!req) {
-			if (mtp_tx_req_len <= MTP_BULK_BUFFER_SIZE)
-				goto fail;
 			while ((req = mtp_req_get(dev, &dev->tx_idle)))
 				mtp_request_free(req, dev->ep_in);
+			if (mtp_tx_req_len <= MTP_BULK_BUFFER_SIZE)
+				goto tx_fail;
 			mtp_tx_req_len = MTP_BULK_BUFFER_SIZE;
 			mtp_tx_reqs = MTP_TX_REQ_MAX;
 			goto retry_tx_alloc;
@@ -538,10 +538,10 @@ retry_rx_alloc:
 	for (i = 0; i < RX_REQ_MAX; i++) {
 		req = mtp_request_new(dev->ep_out, mtp_rx_req_len);
 		if (!req) {
-			if (mtp_rx_req_len <= MTP_BULK_BUFFER_SIZE)
-				goto fail;
 			for (--i; i >= 0; i--)
 				mtp_request_free(dev->rx_req[i], dev->ep_out);
+			if (mtp_rx_req_len <= MTP_BULK_BUFFER_SIZE)
+				goto rx_fail;
 			mtp_rx_req_len = MTP_BULK_BUFFER_SIZE;
 			goto retry_rx_alloc;
 		}
@@ -550,15 +550,24 @@ retry_rx_alloc:
 	}
 	for (i = 0; i < INTR_REQ_MAX; i++) {
 		req = mtp_request_new(dev->ep_intr, INTR_BUFFER_SIZE);
-		if (!req)
-			goto fail;
+		if (!req) {
+			while ((req = mtp_req_get(dev, &dev->intr_idle)))
+				mtp_request_free(req, dev->ep_intr);
+			goto intr_fail;
+		}
 		req->complete = mtp_complete_intr;
 		mtp_req_put(dev, &dev->intr_idle, req);
 	}
 
 	return 0;
 
-fail:
+intr_fail:
+	for (i = 0; i < RX_REQ_MAX; i++)
+		mtp_request_free(dev->rx_req[i], dev->ep_out);
+rx_fail:
+	while ((req = mtp_req_get(dev, &dev->tx_idle)))
+		mtp_request_free(req, dev->ep_in);
+tx_fail:
 	printk(KERN_ERR "mtp_bind() could not allocate requests\n");
 	return -1;
 }
