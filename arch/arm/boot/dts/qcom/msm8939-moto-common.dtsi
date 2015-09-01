@@ -757,6 +757,7 @@
 		gpios = <&msm_gpio 21 0>, /* IRQ */
 			<&msm_gpio 20 0>; /* RESET */
 		synaptics,gpio-config;
+		synaptics,touch-clip-area = <64 0 1015 1014>;
 		synaptics,charger-detection;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
@@ -772,7 +773,7 @@
 			patch-data = "F1@0=1&7";
 		};
 		alternate_active_tdi: touchstate_folio_active {
-			patch-data = "F54@2=7800;F54M@0=4";
+			patch-data = "F54@2=A000;F12@10=2123;F54M@0=4";
 		};
 		alternate_suspended_tdi: touchstate_folio_suspended {
 			patch-data = "F1@0=1&7";
