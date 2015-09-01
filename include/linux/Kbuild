@@ -1,2 +1,3 @@
+header-y += fb_quickdraw.h
 header-y += if_pppolac.h
 header-y += if_pppopns.h
