@@ -156,7 +156,7 @@ int pil_do_ramdump(struct pil_desc *desc, void *ramdump_dev)
 	list_for_each_entry(seg, &priv->segs, list)
 		count++;
 
-	ramdump_segs = kmalloc_array(count, sizeof(*ramdump_segs), GFP_KERNEL);
+	ramdump_segs = kcalloc(count, sizeof(*ramdump_segs), GFP_KERNEL);
 	if (!ramdump_segs)
 		return -ENOMEM;
 
