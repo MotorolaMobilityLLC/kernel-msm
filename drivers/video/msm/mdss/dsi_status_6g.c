@@ -46,6 +46,8 @@ static void mdss_report_panel_dead(struct dsi_status_data *pstatus_data)
 		KOBJ_CHANGE, envp);
 	pr_err("%s: Panel has gone bad, sending uevent - %s\n",
 		__func__, envp[0]);
+
+	panic("Panel is dead!\n");
 	return;
 }
 
