@@ -225,6 +225,46 @@
 		pinctrl-0 = <&i2c_5_active>;
 		pinctrl-1 = <&i2c_5_sleep>;
 		qcom,disable-dma;
+
+		motosh@43 {
+			compatible = "stm,motosh";
+			reg = <0x43>;
+			gpios = <&tlmm 96 0>,           /* IRQ     CCP_AP_INT2  */
+				<&pm8994_mpps 5 0>,     /* RESET   CCP_FAULT_N  */
+				<&tlmm 90 0>,           /* BSLEN   CCP_FLASH_EN */
+				<&tlmm 91 0>,           /* WakeIRQ CCP_AP_INT   */
+				<&tlmm 95 0>,           /* SH Wake AP_CCP_WAKE  */
+				<&tlmm 92 0>;           /* SH Wake Resp CCP_AP_WAKE */
+			motosh_fw_version = "stml47x";
+			lux_table = <7 60 120 1800 4245 11350>;
+			brightness_table = <5 15 23 48 70 102 168>;
+			qd_pm_qos_latency = <350>;
+			qd_pm_qos_timeout = <500000>;
+			bslen_pin_active_value = <1>;
+			ct406_detect_threshold = <0x006E>;
+			ct406_undetect_threshold = <0x0050>;
+			ct406_recalibrate_threshold = <0x0064>;
+			ct406_pulse_count = <0x02>;
+			ct406_prox_gain = <0x02>;
+			ct406_als_lux1_c0_mult = <0x46E>;
+			ct406_als_lux1_c1_mult = <0x85A>;
+			ct406_als_lux1_div = <0x80>;
+			ct406_als_lux2_c0_mult = <0x11F>;
+			ct406_als_lux2_c1_mult = <0x1DE>;
+			ct406_als_lux2_div = <0x80>;
+			sensor1-supply = <&pm8994_lvs2>;
+			sensor2-supply = <&pm8994_l17>;
+			accel_orient = <7>;     /* Accel Orientation value */
+			gyro_orient = <7>;      /* Gyro Orientation value */
+			mag_orient =  <5>;      /* Mag Orientation value */
+			panel_type = <1>;       /* Panel Type value */
+			IR_config = <1>;        /* IR Config value */
+			cover_detect_polarity = <2>; /*Default to MOTOSH_NORTH_DETECT*/
+			pinctrl-names = "default";
+			pinctrl-0 = <&pmx_motosh_out &pmx_motosh_in>;
+			antcap_cfg = [54 21 03 00 00 0a 52 00 00 0b e7 00 00 09 9f 00 00 12 74 13 88 00 00 00 00 80 00 14 1e 00 a4 13 ec 00 00 00 00 00 de ad be ef 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ];
+		};
+
 	};
 
 	blsp2_uart5: uart@075b3000 { /* BLSP2 UART5 */
@@ -580,6 +620,14 @@
 		qcom,master-en = <1>;	/* Enable GPIO */
 		qcom,invert = <1>;	/* Output high (disabled) */
 		status = "okay";
+	};
+
+	mpp@a400 { /* MPP 5 - CCP_FAULT_EN */
+		status = "okay";
+		qcom,mode = <1>;		/* Digital Output */
+		qcom,vin-sel = <2>;		/* S4 1.8V */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 };
 
