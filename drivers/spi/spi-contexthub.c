@@ -164,7 +164,7 @@ static int spich_resume(struct spi_device *spi)
 	}
 
 	if (spich->hub_state == HUB_SUSPENDED) {
-		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(500));
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(1000));
 	}
 
 	return 0;
@@ -219,7 +219,7 @@ static void spich_hub_suspended(struct spich_data *spich, int suspended) {
 		dev_dbg(&spich->spi->dev, "hub is now suspended\n");
 		spich->hub_state = HUB_SUSPENDED;
 
-		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(500));
+		mod_timer(&spich->resume_timer, jiffies + msecs_to_jiffies(1000));
 	} else {
 		dev_dbg(&spich->spi->dev, "hub is now resumed\n");
 		spich->hub_state = HUB_ACTIVE;
@@ -786,6 +786,16 @@ static long spich_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			    (spich->gpio_array[GPIO_IDX_SH2AP].gpio) == 1) {
 				wait_for_completion_interruptible
 				    (&spich->sh2ap_completion);
+			}
+
+			if (spich->hub_state == HUB_SUSPENDED) {
+			    /* If the userspace is sending some transaction,
+			     * then we can tell the hub that we are awake
+			     */
+			    wake_lock(&spich->sh2ap_wakelock);
+			    del_timer(&spich->resume_timer);
+			    spich->hub_state = HUB_WAKING;
+			    spich->force_read = 1;
 			}
 
 			err = spich_message(spich, &t, 1);
