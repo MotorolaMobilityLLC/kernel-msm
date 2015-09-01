@@ -185,7 +185,7 @@ static struct wake_lock touch_lock;
 static struct wake_lock touch_time_lock;
 static int lastTouch = TOUCH_UP;
 static unsigned long last_time_exit_low;
-static char fwVersion[20];
+static char fwVersion[30];
 
 #define I2C_RETRY_DELAY		15		/* Waiting for signals [ms] */
 #define I2C_RETRIES		2		/* Number of retries */
@@ -301,8 +301,7 @@ static uint8_t i2c_read_with_check(uint8_t bufferIndex, uint8_t *dataBuffer, uin
 	if (wait_device_ready(false, false)) {
 		i2c_read_data(bufferIndex, dataBuffer, dataLength);
 		return true;
-	}
-	else
+	} else
 		return false;
 }
 
@@ -311,8 +310,7 @@ static uint8_t i2c_write_with_check(uint8_t bufferIndex, const uint8_t *dataBuff
 	if (wait_device_ready(false, false)) {
 		i2c_write_data(bufferIndex, dataBuffer, dataLength);
 		return true;
-	}
-	else
+	} else
 		return false;
 }
 
@@ -479,9 +477,9 @@ static void chipLowPowerMode(bool low)
 	LOGI("%s: low power %s\n", __func__, low ? "enter" : "exit");
 
 	if (low) {
-		input_mt_slot(gl_ts->touch_dev,0);
+		input_mt_slot(gl_ts->touch_dev, 0);
 		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
-		input_mt_slot(gl_ts->touch_dev,1);
+		input_mt_slot(gl_ts->touch_dev, 1);
 		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		input_sync(gl_ts->touch_dev);
 		if (!(driverInLowPower)) {
@@ -522,6 +520,7 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	unsigned fwLen = 0, cfgLen = 0;
 	bool manualUpgrade, success;
 	int mode = 0;
+	bool autoUpgrade = false;
 
 	if (request_firmware(&fw, "it7260.fw", dev))
 		LOGE("failed to get firmware for it7260\n");
@@ -540,13 +539,16 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 		fwLen, cfgLen, manualUpgrade ? "manual" : "normal");
 
 	chipGetVersions(verFw, verCfg, true);
+	autoUpgrade = (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) ||
+			(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5]);
+	manualUpgrade &= !((verFw[5] == fw->data[8] && verFw[6] == fw->data[9] && verFw[7] == fw->data[10] && verFw[8] == fw->data[11]) &&
+			(verCfg[1] == cfg->data[cfgLen - 8] && verCfg[2] == cfg->data[cfgLen - 7] && verCfg[3] == cfg->data[cfgLen - 6] && verCfg[4] == cfg->data[cfgLen - 5]));
 
 	/* fix touch firmware/config update failed issue */
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
 	fwUploadResult = SYSFS_RESULT_NOT_DONE;
 	if (fwLen && cfgLen) {
-		if (manualUpgrade || (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) ||
-			(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5])) {
+		if (manualUpgrade || autoUpgrade) {
 			LOGI("firmware/config will be upgraded\n");
 			disable_irq(gl_ts->client->irq);
 			success = chipFirmwareUpload(fwLen, fw->data, cfgLen, cfg->data);
@@ -560,7 +562,7 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	}
 
 	chipGetVersions(verFw, verCfg, true);
-	snprintf(fwVersion, sizeof(fwVersion), "%x,%x,%x,%x # %x,%x,%x,%x", verFw[5], verFw[6],
+	snprintf(fwVersion, sizeof(fwVersion), "%d,%d,%d,%d # %d,%d,%d,%d", verFw[5], verFw[6],
 		verFw[7], verFw[8], verCfg[1], verCfg[2], verCfg[3], verCfg[4]);
 
 	if (fwLen)
@@ -801,7 +803,7 @@ static void exitIdleEvt(struct work_struct *work)
 	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 160);
 	input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 160);
 	input_sync(gl_ts->touch_dev);
-	input_mt_slot(gl_ts->touch_dev,0);
+	input_mt_slot(gl_ts->touch_dev, 0);
 	input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 	input_sync(gl_ts->touch_dev);
 	wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
@@ -890,9 +892,9 @@ static void readTouchDataPoint(void)
 	} else {
 		hadFingerDown = false;
 		hadPalmDown = false;
-		input_mt_slot(gl_ts->touch_dev,0);
+		input_mt_slot(gl_ts->touch_dev, 0);
 		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
-		input_mt_slot(gl_ts->touch_dev,1);
+		input_mt_slot(gl_ts->touch_dev, 1);
 		input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		input_sync(gl_ts->touch_dev);
 	}
@@ -968,7 +970,7 @@ static void readTouchDataPoint_Ambient(void)
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, 160);
 				input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_Y, 160);
 				input_sync(gl_ts->touch_dev);
-				input_mt_slot(gl_ts->touch_dev,0);
+				input_mt_slot(gl_ts->touch_dev, 0);
 				input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 				input_sync(gl_ts->touch_dev);
 				wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
