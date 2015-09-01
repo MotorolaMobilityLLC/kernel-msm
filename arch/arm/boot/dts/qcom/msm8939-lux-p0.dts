@@ -177,7 +177,8 @@
 };
 
 &i2c_4 {
-	/delete-node/ synaptics_dsx_i2c@20;
+	/delete-node/ synaptics_dsx_i2c_tdi@20;
+	/delete-node/ synaptics_dsx_i2c_lgd@20;
 };
 
 &i2c_0 {
