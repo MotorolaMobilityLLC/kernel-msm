@@ -2953,6 +2953,13 @@ vreg_set_voltage_fail:
  * held, MDSS GDSC can be turned off. However, any any panels are still
  * active (but likely in an idle state), the vote for the CX and the batfet
  * rails should not be released.
+ *
+ * ASUS_BSP Josh:
+ * msm: mdss: disable CX rail when entering idle power collapse
+ * MDP holds the vote on the CX rail whenever the panel is on to prevent
+ * the voltage on the CX rail from going down to the retention level.
+ * However, removing this vote could result in significant power savings.
+ * Implement this as part of the mdp idle power collapse sequence.
  */
 static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 {
@@ -2968,8 +2975,9 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 			ret = regulator_enable(mdata->fs);
 			if (ret)
 				pr_warn("Footswitch failed to enable\n");
+			mdss_mdp_cx_ctrl(mdata, true); //ASUS_BSP Josh: disable CX rail
 			if (!mdata->idle_pc) {
-				mdss_mdp_cx_ctrl(mdata, true);
+				//mdss_mdp_cx_ctrl(mdata, true); //ASUS_BSP Josh: disable CX rail
 				mdss_mdp_batfet_ctrl(mdata, true);
 			}
 		}
@@ -2987,9 +2995,10 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 				pr_debug("idle pc. active overlays=%d\n",
 					active_cnt);
 			} else {
-				mdss_mdp_cx_ctrl(mdata, false);
+				//mdss_mdp_cx_ctrl(mdata, false); //ASUS_BSP Josh: disable CX rail
 				mdss_mdp_batfet_ctrl(mdata, false);
 			}
+			mdss_mdp_cx_ctrl(mdata, false); //ASUS_BSP Josh: disable CX rail
 			regulator_disable(mdata->fs);
 		}
 		mdata->fs_ena = false;
