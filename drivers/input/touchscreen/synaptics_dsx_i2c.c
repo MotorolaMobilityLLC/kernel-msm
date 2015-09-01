@@ -6386,8 +6386,6 @@ err_free_gpio:
 	gpio_free(platform_data->reset_gpio);
 err_input_device:
 	synaptics_dsx_free_modes(rmi4_data);
-	if (rmi4_data->charger_detection)
-		ps_notifier_unregister(rmi4_data);
 	kfree(rmi4_data);
 
 	return retval;
