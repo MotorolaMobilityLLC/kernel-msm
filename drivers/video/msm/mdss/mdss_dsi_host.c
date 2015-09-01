@@ -613,28 +613,27 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		mdss_dsi_set_tx_power_mode(1, &ctrl_pdata->panel_data);
 
 	if (ret == 0) {
-		u8 value = ctrl_pdata->status_values[0];
+		u8 readed = ctrl_pdata->status_buf.data[0];
 		struct mdss_panel_info *pinfo = &ctrl_pdata->panel_data.panel_info;
+		ret = 1;
 		/* do not check status when panel is later on */
 		if (pinfo->later_on_enabled &&
 		    (pinfo->later_on_state != LATER_ON_NONE))
 			goto no_err;
+		/* check status if it's normal or idle */
+		if (readed == ctrl_pdata->status_values[0])
+			goto no_err;
 		if (pinfo->mipi.idle_enable &&
-		    (pinfo->blank_state == MDSS_PANEL_BLANK_LOW_POWER))
-			value = ctrl_pdata->status_values[1];
-		if (value != ctrl_pdata->status_buf.data[0]) {
-			pr_err("%s: Read back value from panel is incorrect"
-				"%02X <> %02X\n", __func__,
-				ctrl_pdata->status_buf.data[0], value);
-			ret = -EINVAL;
-		} else {
-no_err:
-			ret = 1;
-		}
+		    (readed == ctrl_pdata->status_values[1]))
+			goto no_err;
+		pr_err("%s: Read back value (0x%02X) from panel is incorrect!",
+			__func__, readed);
+		ret = -EINVAL;
 	} else {
 		pr_err("%s: Read status register returned error\n", __func__);
 	}
 
+no_err:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	pr_debug("%s: Read register done with ret: %d\n", __func__, ret);
 
