@@ -76,6 +76,33 @@
 		};
 	};
 
+	/* QC definition in msm8996-pinctrl.dtsi uses gpio90 which conflicts
+	 * with motosh bslen
+	 */
+	spi_0_cs {
+		spi_0_cs_active {
+			mux {
+				/delete-property/ pins;
+				pins = "gpio24";
+			};
+			config {
+				/delete-property/ pins;
+				pins = "gpio24";
+			};
+	       };
+
+	       spi_0_cs_sleep {
+			mux {
+				/delete-property/ pins;
+				pins = "gpio24";
+			};
+			config {
+				/delete-property/ pins;
+				pins = "gpio24";
+			};
+		};
+	};
+
 	spi_9 {
 		spi_9_active: spi_9_active {
 			spi_9 {
@@ -280,6 +307,25 @@
 			output-high;
 			bias-pull-up;
 			drive-strength = <2>;
+		};
+	};
+
+	pmx_motosh_out: default {
+		config {
+			pins ="gpio90", "gpio95";
+			function = "gpio";
+                        output-low;
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	pmx_motosh_in: default {
+		config {
+			pins = "gpio91", "gpio92", "gpio96";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
 		};
 	};
 };
