@@ -703,6 +703,19 @@ static int camera_v4l2_open(struct file *filep)
 	return rc;
 
 post_fail:
+	if (atomic_read(&pvdev->opened) == 0) {
+
+		camera_pack_event(filep, MSM_CAMERA_SET_PARM,
+				MSM_CAMERA_PRIV_DEL_STREAM, -1, &event);
+
+		/* Donot wait, imaging server may have crashed */
+		msm_post_event(&event, -1);
+
+		camera_pack_event(filep, MSM_CAMERA_DEL_SESSION, 0, -1, &event);
+
+		/* Donot wait, imaging server may have crashed */
+		msm_post_event(&event, -1);
+	}
 	msm_delete_command_ack_q(pvdev->vdev->num, 0);
 command_ack_q_fail:
 	msm_destroy_session(pvdev->vdev->num);
