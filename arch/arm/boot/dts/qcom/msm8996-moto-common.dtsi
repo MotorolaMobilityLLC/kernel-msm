@@ -369,6 +369,16 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&nfc_irq_default &nfc_firm_default>;
 	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		interrupt-parent = <&tlmm>;
+		gpios = <&tlmm 80 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&tmp108_irq_default>;
+	};
 };
 
 &soc {
