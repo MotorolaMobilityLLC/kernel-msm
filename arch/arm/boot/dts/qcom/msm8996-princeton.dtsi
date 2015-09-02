@@ -52,6 +52,25 @@
 	hw-config = "single_dsi";
 };
 
+&mdss_mdp {
+	mot_tdi_546_1080p_cmd_v0_secondary: qcom,mdss_dsi_mot_tdi_546_1080p_cmd_v0_secondary {
+		#include "dsi-panel-mot-tdi-546-1080p-cmd-common.dtsi"
+	};
+};
+
+&mot_tdi_546_1080p_cmd_v0_secondary {
+	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_tdi_1080p_546_v0_secondary";
+	qcom,mdss-tear-check-disable;
+	qcom,mdss-dsi-no-panel-read-support;
+	/delete-property/ qcom,mdss-dsi-on-command;
+	/delete-property/ qcom,mdss-dsi-off-command;
+	/delete-property/ qcom,mdss-dsi-te-pin-select;
+	/delete-property/ qcom,mdss-dsi-te-dcs-command;
+	/delete-property/ qcom,mdss-dsi-te-check-enable;
+	/delete-property/ qcom,mdss-dsi-te-using-te-pin;
+	/delete-node/ qcom,panel-supply-entries;
+};
+
 &isl98611a_pos {
 	regulator-always-on;
 	regulator-boot-on;
@@ -82,6 +101,10 @@
 	qcom,platform-bklight-en-gpio = <&tlmm 94 0>;
 };
 
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0_secondary>;
+};
+
 &mot_tdi_546_1080p_cmd_v0 {
 	qcom,cont-splash-enabled;
 	qcom,mdss-dsi-panel-timings-8996 = [
@@ -102,6 +125,17 @@
 			23 19 07 08 05 03 04 a0
 	];
 };
+
+&mot_tdi_546_1080p_cmd_v0_secondary {
+	qcom,mdss-dsi-panel-timings-8996 = [
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 1e 07 08 05 03 04 a0
+			23 18 07 08 05 03 04 a0
+	];
+};
+
 
 &mot_inx_570_QHD_cmd_v0 {
 	qcom,cont-splash-enabled;
