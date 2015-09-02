@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  *
  */
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 
 #include <linux/cdev.h>
 #include <linux/delay.h>
@@ -44,7 +45,6 @@
 #include <linux/usb.h>
 #include <linux/firmware.h>
 
-#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 
 static unsigned char motosh_antcap_i2c_rbuf[80];
 
