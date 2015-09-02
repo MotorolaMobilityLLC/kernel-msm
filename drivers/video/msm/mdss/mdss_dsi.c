@@ -1954,7 +1954,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	struct mipi_panel_info *mipi;
-	int rc, i, len;
+	int rc, i, len, reg;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
 	struct device_node *dsi_ctrl_np = NULL;
 	struct platform_device *ctrl_pdev = NULL;
@@ -2109,9 +2109,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		ctrl_pdata->mode_gpio = -EINVAL;
 	}
 
-	ctrl_pdata->timing_db_mode = of_property_read_bool(
-		ctrl_pdev->dev.of_node, "qcom,timing-db-mode");
-
 	if (mdss_dsi_clk_init(ctrl_pdev, ctrl_pdata)) {
 		pr_err("%s: unable to initialize Dsi ctrl clks\n", __func__);
 		return -EPERM;
@@ -2202,6 +2199,13 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+		mdss_dsi_get_hw_revision(ctrl_pdata);
+		if ((ctrl_pdata->hw_rev >= MDSS_DSI_HW_REV_103)
+			&& (pinfo->type == MIPI_CMD_PANEL)) {
+			reg = MIPI_INP(ctrl_pdata->ctrl_base + 0x1b8);
+			if (reg & BIT(16))
+				ctrl_pdata->burst_mode_enabled = true;
+		}
 		ctrl_pdata->ctrl_state |=
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {
