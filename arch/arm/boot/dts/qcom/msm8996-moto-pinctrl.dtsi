@@ -317,7 +317,7 @@
 		};
 	};
 
-	florida_irq_default: tmp108_irq_default {
+	florida_irq_default: florida_irq_default {
 		config {
 			pins = "gpio54";
 			drive-strength = <2>;
@@ -350,6 +350,16 @@
 			function = "gpio";
 			drive-strength = <2>;
 			bias-pull-down;
+		};
+	};
+
+	tmp108_irq {
+		tmp108_irq_default: default {
+			config {
+				pins = "gpio80";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
 		};
 	};
 };
