@@ -107,6 +107,26 @@
 		};
 	};
 
+	spi_3 {
+		spi_3_active: spi_3_active {
+			spi_3 {
+				pins = "gpio45", "gpio46", "gpio47", "gpio48";
+				function = "blsp_spi3";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+
+		spi_3_sleep: spi_3_sleep {
+			spi_3 {
+				pins = "gpio45", "gpio46", "gpio47", "gpio48";
+				function = "blsp_spi3";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+	};
+
 	spi_9 {
 		spi_9_active: spi_9_active {
 			spi_9 {
