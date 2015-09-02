@@ -13,7 +13,11 @@
 &tlmm {
 	cnss_pins {
 		cnss_default: cnss_default {
-			cnss_pins {
+			mux {
+				pins = "gpio121";
+			};
+
+			config {
 				pins = "gpio121";
 			};
 		};
@@ -205,7 +209,7 @@
 		};
 
 		apba_reset_n {
-			pins = "gpio131";
+			pins = "gpio36";
 			drive-strength = <2>;
 			bias-pull-down;
 		};
@@ -222,7 +226,7 @@
 		};
 
 		apba_int_n {
-			pins = "gpio132";
+			pins = "gpio37";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
