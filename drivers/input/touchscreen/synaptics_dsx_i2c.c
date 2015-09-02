@@ -7,7 +7,6 @@
  * Copyright (C) 2012 Scott Lin <scott.lin@tw.synaptics.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
@@ -169,7 +168,7 @@ static struct {
 
 static struct {
 	unsigned char data[128];
-} f12_ctrl_dummy;
+} dummy_subpkt;
 
 static struct synaptics_rmi4_subpkt f12_c15[] = {
 	RMI4_SUBPKT(f12_c15_0),
@@ -193,75 +192,75 @@ static struct synaptics_rmi4_subpkt f12_c28[] = {
 };
 
 static struct synaptics_rmi4_subpkt f12_c09[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c10[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c11[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c12[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c13[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c14[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c16[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c17[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c18[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c19[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c21[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c22[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c24[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c25[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c26[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c27[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c29[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_subpkt f12_c30[] = {
-	RMI4_SUBPKT(f12_ctrl_dummy),
+	RMI4_SUBPKT(dummy_subpkt),
 };
 
 static struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
@@ -1117,9 +1116,10 @@ int synaptics_rmi4_read_packet_reg(
 			continue;
 
 		if ((reg->size - offset) < subpkt->size) {
-			pr_err("subpkt size error: expected %d bytes,"
-				" only %d present\n", subpkt->size,
-				(reg->size - offset));
+			if (subpkt->data != &dummy_subpkt)
+				pr_err("subpkt size error: expected %d bytes,"
+					" only %d present\n", subpkt->size,
+					(reg->size - offset));
 			break;
 		}
 
@@ -1355,8 +1355,7 @@ static struct synaptics_dsx_platform_data *
 	struct synaptics_dsx_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
 	struct synaptics_dsx_cap_button_map *button_map = NULL;
-
-	pr_err("entered of_init function\n");
+	struct synaptics_clip_area clip_area;
 
 	rmi4_data->patching_enabled = 1;
 	retval = synaptics_dsx_dt_parse_mode(rmi4_data, "default",
@@ -1453,28 +1452,20 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->aod_mt = 1;
 	}
 
-	if (of_property_read_bool(np, "synaptics,touch-clip-area")) {
-		struct synaptics_clip_area *clip_area;
-
-		clip_area = kzalloc(sizeof(*clip_area), GFP_KERNEL);
-		if (!clip_area) {
+	retval = of_property_read_u32_array(np,
+			"synaptics,touch-clip-area",
+			(unsigned *)&clip_area, 4);
+	if (!retval) {
+		rmi4_data->clipa = kzalloc(sizeof(clip_area), GFP_KERNEL);
+		if (!rmi4_data->clipa) {
 			dev_err(&client->dev, "clip area allocation failure\n");
 			return NULL;
 		}
-
-		retval = of_property_read_u32_array(np,
-				"synaptics,touch-clip-area",
-				(unsigned *)clip_area, 4);
-		if (retval) {
-			dev_err(&client->dev, "clip area read failure\n");
-			kfree(clip_area);
-			goto exit_func;
-		}
-
-		rmi4_data->clipa = clip_area;
+		memcpy(rmi4_data->clipa, &clip_area, sizeof(clip_area));
 		pr_notice("using touch clip area\n");
-	}
-exit_func:
+	} else
+		dev_err(&client->dev, "clip area read failure\n");
+
 	return pdata;
 }
 #else
