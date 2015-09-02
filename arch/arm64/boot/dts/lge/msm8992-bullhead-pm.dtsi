@@ -51,6 +51,7 @@
 			<0xff 128>, /* i2c-msm-v2-irq */
 			<0xff 132>, /* i2c-msm-v2-irq */
 			<0xff 133>, /* f9963000.spi */
+			<0xff 135>, /* i2c-msm-v2-irq */
 			<0xff 137>, /* i2c-msm-v2-irq */
 			<0xff 140>, /* msm_serial_hsl0 */
 			<0xff 155>, /* sdcc_irq[0] */
@@ -95,6 +96,7 @@
 			<0xff 272>, /* msm_iommu_secure_irq */
 			<0xff 273>, /* msm_iommu_nonsecure_irq */
 			<0xff 275>, /* int_msi */
+			<0xff 276>, /* wlan_pci */
 			<0xff 283>, /* int_pls_err */
 			<0xff 284>, /* int_aer_legacy */
 			<0xff 286>, /* int_aer_legacy */
