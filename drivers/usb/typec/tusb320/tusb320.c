@@ -40,12 +40,14 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/usb/typec.h>
+#include <linux/usb/class-dual-role.h>
 #include "tusb320.h"
 
 #define TRYSNK_TIMEOUT_MS 600
 #define TUSB320_RESET_DURATION_MS 25
 #define TUSB320_IRQ_CLEAN_DELAY_MS  1000
 #define TUSB320_IRQ_CLEAN_MAX_RETRY  3
+#define DUAL_ROLE_SET_MODE_WAIT_MS 1500
 
 static enum typec_current_mode tusb320_current_mode_detect(void);
 static enum typec_current_mode tusb320_current_advertise_get(void);
@@ -424,6 +426,45 @@ static int tusb320_drp_duty_cycle_set(int duty_cycle)
 	return 0;
 }
 
+static void tusb320_rd_rp_disable(int set)
+{
+	u8 reg_val;
+	int ret;
+
+	ret = tusb320_read_reg(TUSB320_REG_DISABLE, &reg_val);
+	if (ret < 0) {
+		pr_err("%s: read REG_DISABLE error\n", __func__);
+	}
+
+	if (set == DISABLE_SET) {
+		pr_info("%s: set\n", __func__);
+		reg_val |= TUSB320_REG_SET_DISABLE_RD_RP;
+	} else {
+		pr_info("%s: clear\n", __func__);
+		reg_val &= ~((u8) TUSB320_REG_SET_DISABLE_RD_RP);
+	}
+
+	ret = tusb320_write_reg(TUSB320_REG_DISABLE, reg_val);
+	if (ret < 0) {
+		pr_err("%s: write REG_DISABLE error\n", __func__);
+	}
+}
+
+static void tusb320_disabled_state_start(void)
+{
+	tusb320_port_mode_set(TYPEC_UFP_MODE);
+	tusb320_rd_rp_disable(DISABLE_SET);
+	tusb320_soft_reset();
+	mdelay(TUSB320_RESET_DURATION_MS);
+}
+
+static void tusb320_disabled_state_exit(enum typec_port_mode port_mode)
+{
+	tusb320_port_mode_set(port_mode);
+
+	tusb320_rd_rp_disable(DISABLE_CLEAR);
+}
+
 static void tusb320_wdog_work(struct work_struct *w)
 {
 	struct tusb320_device_info *di = g_tusb320_dev;
@@ -454,6 +495,10 @@ static void tusb320_wdog_work(struct work_struct *w)
 		schedule_delayed_work(&di->g_wdog_work,
 				      msecs_to_jiffies
 				      (TUSB320_IRQ_CLEAN_DELAY_MS));
+
+	/* to notify userspace that the state might have changed */
+	if (di->dual_role)
+		dual_role_instance_changed(di->dual_role);
 
 	pr_err("%s: end\n", __func__);
 }
@@ -489,7 +534,18 @@ static void tusb320_intb_work(struct work_struct *work)
 	mutex_lock(&di->mutex);
 
 	if (TYPEC_ATTACHED_AS_DFP == attached_state) {
-		if (di->trysnk_attempt) {
+		if (REVERSE_ATTEMPT == di->reverse_state) {
+			pr_info("%s: reversed success, Sink detected\n",
+				__func__);
+
+			di->reverse_state = REVERSE_COMPLETE;
+			di->sink_attached = 1;
+
+			/* turn on VBUS */
+			typec_sink_detected_handler(TYPEC_SINK_DETECTED);
+
+			complete(&di->reverse_completion);
+		} else if (di->trysnk_attempt) {
 			pr_info("%s: TrySNK fail, Sink detected again\n",
 				__func__);
 
@@ -502,6 +558,9 @@ static void tusb320_intb_work(struct work_struct *work)
 
 			tusb320_drp_duty_cycle_set
 			    (TUSB320_REG_STATUS_DRP_DUTY_CYCLE_30);
+
+			/* notify the attached state */
+			complete(&di->reverse_completion);
 		} else {
 			pr_info
 			    ("%s: Sink detected, perform TrySNK\n", __func__);
@@ -524,6 +583,13 @@ static void tusb320_intb_work(struct work_struct *work)
 		}
 	} else if (TYPEC_ATTACHED_AS_UFP == attached_state) {
 
+		if (REVERSE_ATTEMPT == di->reverse_state) {
+			pr_info
+			    ("%s: reversed success, Source and VBUS detected\n",
+			     __func__);
+			di->reverse_state = REVERSE_COMPLETE;
+		}
+
 		if (di->trysnk_attempt) {
 			pr_info
 			    ("%s: TrySNK success, Source and VBUS detected\n",
@@ -534,6 +600,8 @@ static void tusb320_intb_work(struct work_struct *work)
 			    (TUSB320_REG_STATUS_DRP_DUTY_CYCLE_30);
 		}
 
+		/* notify the attached state */
+		complete(&di->reverse_completion);
 	} else if (TYPEC_NOT_ATTACHED == attached_state) {
 		/* turn off VBUS when unattached */
 		if (di->sink_attached) {
@@ -541,9 +609,21 @@ static void tusb320_intb_work(struct work_struct *work)
 			typec_sink_detected_handler(TYPEC_SINK_REMOVED);
 			di->sink_attached = 0;
 		}
+
+		/* make sure set the port mode back to default when unattached */
+		if (di->reverse_state == REVERSE_COMPLETE) {
+			pr_info("%s: unattached, set mode back to DRP\n",
+				__func__);
+			tusb320_port_mode_set(TYPEC_MODE_ACCORDING_TO_PROT);
+			di->reverse_state = 0;
+		}
 	}
 
 	mutex_unlock(&di->mutex);
+
+	/* to notify userspace that the state might have changed */
+	if (di->dual_role)
+		dual_role_instance_changed(di->dual_role);
 
 	pr_info("%s: end\n", __func__);
 }
@@ -578,12 +658,211 @@ static int tusb320_device_check(struct tusb320_device_info *di)
 	return 0;
 }
 
+static enum dual_role_property fusb_drp_properties[] = {
+	DUAL_ROLE_PROP_MODE,
+	DUAL_ROLE_PROP_PR,
+	DUAL_ROLE_PROP_DR,
+};
+
+ /* Callback for "cat /sys/class/dual_role_usb/otg_default/<property>" */
+static int dual_role_get_local_prop(struct dual_role_phy_instance *dual_role,
+				    enum dual_role_property prop,
+				    unsigned int *val)
+{
+	struct tusb320_device_info *di = dual_role_get_drvdata(dual_role);
+	enum typec_attached_state attached_state;
+
+	if (!di)
+		return -EINVAL;
+
+	attached_state = tusb320_attatched_state_detect();
+
+	if (attached_state == TYPEC_ATTACHED_AS_DFP) {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_DFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SRC;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_HOST;
+		else
+			return -EINVAL;
+	} else if (attached_state == TYPEC_ATTACHED_AS_UFP) {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_UFP;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_SNK;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_DEVICE;
+		else
+			return -EINVAL;
+	} else {
+		if (prop == DUAL_ROLE_PROP_MODE)
+			*val = DUAL_ROLE_PROP_MODE_NONE;
+		else if (prop == DUAL_ROLE_PROP_PR)
+			*val = DUAL_ROLE_PROP_PR_NONE;
+		else if (prop == DUAL_ROLE_PROP_DR)
+			*val = DUAL_ROLE_PROP_DR_NONE;
+		else
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* Decides whether userspace can change a specific property */
+static int dual_role_is_writeable(struct dual_role_phy_instance *drp,
+				  enum dual_role_property prop)
+{
+	if (prop == DUAL_ROLE_PROP_MODE)
+		return 1;
+	else
+		return 0;
+}
+
+/* 1. Check to see if current attached_state is same as requested state
+ * if yes, then, return.
+ * 2. Disonect current session
+ * 3. Set approrpriate mode (dfp or ufp)
+ * 4. wait for 1.5 secs to see if we get into the corresponding target state
+ * if yes, return
+ * 5. if not, fallback to Try.SNK
+ * 6. wait for 1.5 secs to see if we get into one of the attached states
+ * 7. return -EIO
+ * Also we have to fallback to Try.SNK state machine on cable disconnect
+ */
+static int dual_role_set_mode_prop(struct dual_role_phy_instance *dual_role,
+				   enum dual_role_property prop,
+				   const unsigned int *val)
+{
+	struct tusb320_device_info *di = dual_role_get_drvdata(dual_role);
+	enum typec_attached_state attached_state = TYPEC_NOT_ATTACHED;
+	int timeout = 0;
+	int ret = 0;
+
+	if (!di)
+		return -EINVAL;
+
+	if (*val != DUAL_ROLE_PROP_MODE_DFP && *val != DUAL_ROLE_PROP_MODE_UFP)
+		return -EINVAL;
+
+	attached_state = tusb320_attatched_state_detect();
+
+	if (attached_state != TYPEC_ATTACHED_AS_DFP
+	    && attached_state != TYPEC_ATTACHED_AS_UFP)
+		return 0;
+
+	if (attached_state == TYPEC_ATTACHED_AS_DFP
+	    && *val == DUAL_ROLE_PROP_MODE_DFP)
+		return 0;
+
+	if (attached_state == TYPEC_ATTACHED_AS_UFP
+	    && *val == DUAL_ROLE_PROP_MODE_UFP)
+		return 0;
+
+	pr_info("%s: start\n", __func__);
+
+	mutex_lock(&di->mutex);
+
+	/* AS DFP now, try reversing, form Source to Sink */
+	if (attached_state == TYPEC_ATTACHED_AS_DFP) {
+
+		pr_err("%s: try reversing, form Source to Sink\n", __func__);
+
+		disable_irq(di->irq_intb);
+
+		di->reverse_state = REVERSE_ATTEMPT;
+		di->sink_attached = 0;
+
+		/* turns off VBUS first */
+		typec_sink_detected_handler(TYPEC_SINK_REMOVED);
+
+		/* transition to Disabled state */
+		tusb320_disabled_state_start();
+
+		/* exit from Disabled state and set mode to UFP */
+		tusb320_disabled_state_exit(TYPEC_UFP_MODE);
+
+		enable_irq(di->irq_intb);
+	}
+	/* AS UFP now, try reversing, form Source to Sink */
+	else if (attached_state == TYPEC_ATTACHED_AS_UFP) {
+
+		pr_err("%s: try reversing, form Sink to Source\n", __func__);
+
+		/* reverse to DFP, from Sink to Source  */
+		disable_irq(di->irq_intb);
+
+		di->reverse_state = REVERSE_ATTEMPT;
+
+		/* transition to Disable State */
+		tusb320_disabled_state_start();
+
+		/* exiting from Disable State and set mode to DFP */
+		tusb320_disabled_state_exit(TYPEC_DFP_MODE);
+
+		enable_irq(di->irq_intb);
+	}
+	mutex_unlock(&di->mutex);
+
+	INIT_COMPLETION(di->reverse_completion);
+	timeout =
+	    wait_for_completion_timeout(&di->reverse_completion,
+					msecs_to_jiffies
+					(DUAL_ROLE_SET_MODE_WAIT_MS));
+	if (!timeout) {
+		pr_err("%s: reverse failed, set mode to DRP\n", __func__);
+		disable_irq(di->irq_intb);
+
+		/* transition to Disabled state */
+		tusb320_disabled_state_start();
+
+		/* exit from Disabled state and set mode to DRP */
+		tusb320_disabled_state_exit(TYPEC_MODE_ACCORDING_TO_PROT);
+		di->reverse_state = 0;
+
+		enable_irq(di->irq_intb);
+
+		pr_info("%s: wait for the attached state\n", __func__);
+		INIT_COMPLETION(di->reverse_completion);
+		wait_for_completion_timeout(&di->reverse_completion,
+					    msecs_to_jiffies
+					    (DUAL_ROLE_SET_MODE_WAIT_MS));
+
+		ret = -EIO;
+	}
+
+	pr_err("%s: end ret = %d\n", __func__, ret);
+
+	return ret;
+}
+
+/* Callback for "echo <value> >
+ *                      /sys/class/dual_role_usb/<name>/<property>"
+ * Block until the entire final state is reached.
+ * Blocking is one of the better ways to signal when the operation
+ * is done.
+ * This function tries to switch to Attached.SRC or Attached.SNK
+ * by forcing the mode into SRC or SNK.
+ * On failure, we fall back to Try.SNK state machine.
+ */
+static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
+			      enum dual_role_property prop,
+			      const unsigned int *val)
+{
+	if (prop == DUAL_ROLE_PROP_MODE)
+		return dual_role_set_mode_prop(dual_role, prop, val);
+	else
+		return -EINVAL;
+}
+
 static int tusb320_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	int ret = 0;
 	struct tusb320_device_info *di = NULL;
 	struct device_node *node;
+	struct dual_role_phy_desc *desc;
+	struct dual_role_phy_instance *dual_role;
 
 	di = devm_kzalloc(&client->dev, sizeof(*di), GFP_KERNEL);
 	if (!di) {
@@ -665,6 +944,7 @@ static int tusb320_probe(struct i2c_client *client,
 	mutex_init(&di->mutex);
 	INIT_WORK(&di->g_intb_work, tusb320_intb_work);
 	INIT_DELAYED_WORK(&di->g_wdog_work, tusb320_wdog_work);
+	init_completion(&di->reverse_completion);
 
 	ret = request_irq(di->irq_intb,
 			  tusb320_irq_handler,
@@ -674,6 +954,29 @@ static int tusb320_probe(struct i2c_client *client,
 		pr_err("%s: request_irq error, ret=%d\n", __func__, ret);
 		di->irq_intb = -1;
 		goto err_irq_request_3;
+	}
+
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		desc =
+		    devm_kzalloc(&client->dev,
+				 sizeof(struct dual_role_phy_desc), GFP_KERNEL);
+		if (!desc) {
+			pr_err("unable to allocate dual role descriptor\n");
+			goto err_irq_request_3;
+		}
+
+		desc->name = "otg_default";
+		desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+		desc->get_property = dual_role_get_local_prop;
+		desc->set_property = dual_role_set_prop;
+		desc->properties = fusb_drp_properties;
+		desc->num_properties = ARRAY_SIZE(fusb_drp_properties);
+		desc->property_is_writeable = dual_role_is_writeable;
+		dual_role =
+		    devm_dual_role_instance_register(&client->dev, desc);
+		dual_role->drv_data = di;
+		di->dual_role = dual_role;
+		di->desc = desc;
 	}
 
 	enable_irq_wake(di->irq_intb);
@@ -716,6 +1019,11 @@ static int tusb320_remove(struct i2c_client *client)
 	gpio_set_value(di->gpio_enb, 1);
 	gpio_free(di->gpio_enb);
 	gpio_free(di->gpio_intb);
+
+	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
+		devm_dual_role_instance_unregister(di->dev, di->dual_role);
+		devm_kfree(di->dev, di->desc);
+	}
 
 	return 0;
 }
