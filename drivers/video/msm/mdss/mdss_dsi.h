@@ -366,6 +366,9 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds idle_on_cmds;
 	struct dsi_panel_cmds idle_off_cmds;
 
+	/* ASUS_BSP Josh: add for query panel version */
+	struct delayed_work panel_version_work;
+
 };
 
 struct dsi_status_data {

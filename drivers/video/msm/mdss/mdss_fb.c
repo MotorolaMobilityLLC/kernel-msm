@@ -398,6 +398,43 @@ static ssize_t mdss_fb_set_thermal_level(struct device *dev,
 	return count;
 }
 
+// ASUS_BSP +++ Josh: Add for more debug info
+static ssize_t mdss_mdp_show_power_state(struct device *dev,
+               struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE,
+			"power state info:\npanel power state: %d\ncurrent blank state: %d\nrequest power state: %d\n",
+			mfd->panel_power_state, mfd->cur_blank_mode, mfd->last_req_power_state);
+
+	return ret;
+}
+
+extern char asus_panel_version;
+static ssize_t mdss_mdp_show_panel_version(struct device *dev,
+               struct device_attribute *attr, char *buf)
+{
+	int ret;
+	char panel_version_name;
+
+	if(asus_panel_version == 0xfe)
+		panel_version_name = '1';
+	else if(asus_panel_version == 0x01)
+		panel_version_name = '2';
+	else if(asus_panel_version == 0x02)
+		panel_version_name = '3';
+	else
+		panel_version_name = '?';
+
+	ret = scnprintf(buf, PAGE_SIZE, "panel version: V%c\n", panel_version_name);
+
+	return ret;
+}
+// ASUS_BSP --- Josh: Add for more debug info
+
 static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -599,6 +636,10 @@ static DEVICE_ATTR(msm_fb_src_split_info, S_IRUGO, mdss_fb_get_src_split_info,
 	NULL);
 static DEVICE_ATTR(msm_fb_thermal_level, S_IRUGO | S_IWUSR,
 	mdss_fb_get_thermal_level, mdss_fb_set_thermal_level);
+// ASUS_BSP +++ Josh: Add for more debug info
+static DEVICE_ATTR(show_power_state, S_IRUGO, mdss_mdp_show_power_state, NULL);
+static DEVICE_ATTR(show_panel_version, S_IRUGO, mdss_mdp_show_panel_version, NULL);
+// ASUS_BSP --- Josh: Add for more debug info
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -606,6 +647,10 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_show_blank_event.attr,
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
+// ASUS_BSP +++ Josh: Add for more debug info
+	&dev_attr_show_power_state.attr,
+	&dev_attr_show_panel_version.attr,
+// ASUS_BSP --- Josh: Add for more debug info
 	&dev_attr_msm_fb_panel_info.attr,
 	&dev_attr_msm_fb_src_split_info.attr,
 	&dev_attr_msm_fb_thermal_level.attr,
@@ -1278,6 +1323,8 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 	}
 
+	mfd->cur_blank_mode = blank_mode; //ASUS_BSP Josh ++
+
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
@@ -1323,8 +1370,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		break;
 	}
 
+	mfd->last_req_power_state = req_power_state; //ASUS_BSP Josh ++
+
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
+	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_power_state"); //ASUS_BSP Josh ++
+	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_panel_version"); //ASUS_BSP Josh ++
 
 	return ret;
 }

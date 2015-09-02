@@ -201,6 +201,8 @@ struct msm_fb_data_type {
 
 	u32 dst_format;
 	int panel_power_state;
+	int last_req_power_state;
+	int cur_blank_mode;
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;

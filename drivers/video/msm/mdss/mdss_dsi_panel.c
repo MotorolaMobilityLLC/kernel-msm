@@ -37,6 +37,11 @@ struct dsi_panel_cmds idle_off_cmds_V2;
 struct dsi_panel_cmds on_cmds_V2;
 struct dsi_panel_cmds on_cmds_V3;
 
+/* ASUS_BSP +++ Josh: add for panel version query */
+char asus_panel_version;
+#define GET_VERSION_DELAY 17000
+/* ASUS_BSP --- Josh: add for panel version query */
+
 /* Lock backlight of ambient mode to 28nits */
 #define AMBIENT_BL_LEVEL_V1	(86)
 #define AMBIENT_BL_LEVEL_V2	(95)
@@ -626,6 +631,14 @@ char mdss_panel_get_version(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 	
 	return id;
+}
+
+static void mdss_panel_get_version_work(struct work_struct *work)
+{
+	struct delayed_work *dw = to_delayed_work(work);
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = container_of(dw,
+		struct mdss_dsi_ctrl_pdata, panel_version_work);
+	asus_panel_version = mdss_panel_get_version(ctrl_pdata);
 }
 
 void mdss_panel_set_panel_on_command(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -1659,6 +1672,12 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+
+	/* ASUS_BSP +++ Josh: add for panel version query */
+	INIT_DELAYED_WORK(&ctrl_pdata->panel_version_work,
+		mdss_panel_get_version_work);
+	schedule_delayed_work(&ctrl_pdata->panel_version_work,
+		msecs_to_jiffies(GET_VERSION_DELAY));
 
 #ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
 	notify_amdu_panel_on_cmds_start(ctrl_pdata);
