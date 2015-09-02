@@ -76,7 +76,6 @@ obj-$(CONFIG_MEMORY_STATE_TIME) += memory_state_time.o
 obj-$(CONFIG_HAPTIC_DRV2605)	+= drv2605.o
 obj-$(CONFIG_APBA_CTRL) += apba.o
 obj-$(CONFIG_C55_CTRL) += c55_ctrl.o
-obj-$(CONFIG_SENSORS_STM401) += stm401/
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_HOB_SHARED_RAM) += hob_ram_mmap.o
