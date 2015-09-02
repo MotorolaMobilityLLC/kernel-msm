@@ -4354,7 +4354,10 @@ static irqreturn_t chg_term_handler(int irq, void *_chip)
 	if (chip->psy_registered)
 		power_supply_changed(&chip->batt_psy);
 	smbchg_charging_status_change(chip);
-	set_property_on_fg(chip, POWER_SUPPLY_PROP_CHARGE_DONE, 1);
+
+	if (irq || (reg & BAT_TCC_REACHED_BIT))
+		set_property_on_fg(chip, POWER_SUPPLY_PROP_CHARGE_DONE, 1);
+
 	return IRQ_HANDLED;
 }
 
