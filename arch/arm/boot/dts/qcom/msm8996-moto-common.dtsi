@@ -92,6 +92,18 @@
 	status = "ok";
 };
 
+&pcie0 {
+	status = "disabled";
+};
+
+&pcie1 {
+	status = "ok";
+};
+
+&pcie2 {
+	status = "disabled";
+};
+
 &pm8994_vadc {
 	chan@5 {
 		label = "vcoin";
@@ -362,6 +374,7 @@
 
 	qcom,cnss {
 		/delete-property/ wlan-bootstrap-gpio; /* Pulled high with S4 */
+		qcom,wlan-rc-num = <1>;
 		wlan-en-gpio = <&tlmm 121 0>;
 	};
 
@@ -605,25 +618,23 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&apba_default>;
 		gpios = <&pm8994_gpios 7 2>, /* APBA_1P1_EN, output-high */
-			<&pm8994_gpios 1 2>, /* APBA_SFLASH_EN, output-high */
 			<&tlmm 27 0>,        /* APBA_BOOTRET, output-low */
 			<&pm8994_mpps 2 0>,  /* MOD_MPHY_I2S_EN_N, output-low */
 			<&tlmm 81 0>,        /* MOD_MPHY_I2S_SEL, output-low */
-			<&tlmm 131 0>,       /* APBA_RESET_N, output-low */
-			<&tlmm 132 1>,       /* APBA_INT_N, in */
+			<&tlmm 36 0>,       /* APBA_RESET_N, output-low */
+			<&tlmm 37 1>,       /* APBA_INT_N, in */
 			<&tlmm 25 2>;        /* APBA_WAKE, output-high */
 		mmi,gpio-labels = "gpio_apba_1p1_en",
-				  "gpio_apba_sflash_en",
 				  "gpio_apba_bootret",
 				  "gpio_mphy_i2s_en_n",
 				  "gpio_mphy_i2s_sel",
 				  "gpio_apba_rst_n",
 				  "gpio_apba_int_n",
 				  "gpio_apba_wake";
-		mmi,int-index = <6>;
-		mmi,enable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 0 0>, <4 0 0>, <5 0 50>, <5 1 50>;
-		mmi,disable-seq = <0 1 0>, <1 1 0>, <2 0 0>, <3 0 0>, <4 1 0>, <5 0 50>;
-		mmi,wake-seq = <7 0 50>, <7 1 0>;
+		mmi,int-index = <5>;
+		mmi,enable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 0 0>, <4 0 50>, <4 1 50>;
+		mmi,disable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 1 0>, <4 0 50>;
+		mmi,wake-seq = <6 0 50>, <6 1 0>;
 	};
 
 	alsa_to_h2w {
@@ -723,13 +734,13 @@
 };
 
 &pm8994_gpios {
-	gpio@c000 { /* GPIO 1 - APBA_SFLASH_EN */
+	gpio@c000 { /* GPIO 1 - USB_SS_OE_EN */
 		qcom,mode = <1>;	/* Digital output */
 		qcom,pull = <5>;	/* No Pull */
 		qcom,vin-sel = <2>;	/* 1.8 */
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
-		qcom,invert = <1>;	/* Output high (enabled) */
+		qcom,invert = <1>;	/* Output high (disabled) */
 		status = "okay";
 	};
 
@@ -946,10 +957,6 @@
 			reg = <0x0 0x80000>;
 		};
 	};
-};
-
-&pcie1 {
-	status = "disabled";
 };
 
 &i2c_8 {
