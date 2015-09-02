@@ -197,6 +197,8 @@
 			liteon,ps-pulses = <4>;
 			liteon,wakeup-threshold = <4>;
 			liteon,als-integration-time = <0>;
+			liteon,ps-distance-table =
+				<1000 980 960 950 940 920 900>;
 		};
 
 		bosch@18 { /* Accelerometer sensor */
