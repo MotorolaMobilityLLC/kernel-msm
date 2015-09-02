@@ -507,7 +507,8 @@ int map_and_register_buf(struct msm_vidc_inst *inst, struct v4l2_buffer *b)
 		if (temp && !is_dynamic_output_buffer_mode(b, inst)) {
 			dprintk(VIDC_DBG,
 				"This memory region has already been prepared\n");
-			rc = -EINVAL;
+			rc = 0;
+			goto exit;
 		}
 
 		if (temp && is_dynamic_output_buffer_mode(b, inst) &&
@@ -923,16 +924,11 @@ int msm_vidc_qbuf(void *instance, struct v4l2_buffer *b)
 	if (!inst || !b || !valid_v4l2_buffer(b, inst))
 		return -EINVAL;
 
-	if (is_dynamic_output_buffer_mode(b, inst)) {
-		if (b->m.planes[0].reserved[0])
-			inst->map_output_buffer = true;
-
-		rc = map_and_register_buf(inst, b);
-		if (rc == -EEXIST)
-			return 0;
-		if (rc)
-			return rc;
-	}
+	rc = map_and_register_buf(inst, b);
+	if (rc == -EEXIST)
+		return 0;
+	if (rc)
+		return rc;
 
 	for (i = 0; i < b->length; ++i) {
 		if (!inst->map_output_buffer)
