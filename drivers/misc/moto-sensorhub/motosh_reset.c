@@ -21,7 +21,9 @@
 #include <linux/of_gpio.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 #include <linux/hssp_programmer.h>
+#endif
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/input-polldev.h>
@@ -80,10 +82,14 @@ void motosh_reset(struct motosh_platform_data *pdata, unsigned char *cmdbuff)
 	 * into a bad state. This should allow the sensorhub
 	 * to recover from the scenario where capsense is preventing
 	 * its initialization. */
+#ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 	if (cycapsense_reset() == -ENODEV)
 		msleep(MOTOSH_RESET_DELAY);
 	else
 		msleep(CAPSENSE_RESET_DELAY);
+#else
+	msleep(MOTOSH_RESET_DELAY);
+#endif
 
 	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(MOTOSH_RESET_DELAY);
