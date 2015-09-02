@@ -2713,7 +2713,8 @@ static int fg_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_DONE:
 		chip->charge_done = val->intval;
-		if (!chip->resume_soc_lowered) {
+		if (!chip->resume_soc_lowered ||
+				chip->health != POWER_SUPPLY_HEALTH_GOOD) {
 			fg_stay_awake(&chip->resume_soc_wakeup_source);
 			schedule_work(&chip->set_resume_soc_work);
 		}
@@ -3068,7 +3069,8 @@ static void set_resume_soc_work(struct work_struct *work)
 				set_resume_soc_work);
 	int rc, resume_soc_raw;
 
-	if (is_input_present(chip) && !chip->resume_soc_lowered) {
+	if (is_input_present(chip) && (!chip->resume_soc_lowered
+			|| chip->health != POWER_SUPPLY_HEALTH_GOOD)) {
 		if (!chip->charge_done)
 			goto done;
 		resume_soc_raw = get_monotonic_soc_raw(chip)
