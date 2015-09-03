@@ -493,6 +493,7 @@ struct bcm_cfg80211 {
 	struct completion iface_disable;
 	struct completion wait_next_af;
 	struct mutex usr_sync;	/* maily for up/down synchronization */
+	struct mutex scan_complete;	/* serialize scan_complete call */
 	struct wl_scan_results *bss_list;
 	struct wl_scan_results *scan_results;
 

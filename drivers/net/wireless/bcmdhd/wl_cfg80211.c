@@ -3882,7 +3882,9 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 				WL_ERR(("error (%d)\n", err));
 				return err;
 			}
-			wait_cnt = 500/10;
+
+			/* wait for disconnection termination, upto 200 ms */
+			wait_cnt = 200/10;
 			while (wl_get_drv_status(cfg, DISCONNECTING, dev) && wait_cnt) {
 				WL_DBG(("Waiting for disconnection terminated, wait_cnt: %d\n",
 					wait_cnt));
@@ -4157,26 +4159,37 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	act = *(bool *) wl_read_prof(cfg, dev, WL_PROF_ACT);
 	curbssid = wl_read_prof(cfg, dev, WL_PROF_BSSID);
 
-	if (act || wl_get_drv_status(cfg, CONNECTING, dev)) {
+#ifdef ESCAN_RESULT_PATCH
+	if (wl_get_drv_status(cfg, CONNECTING, dev) && curbssid &&
+			(memcmp(curbssid, connect_req_bssid, ETHER_ADDR_LEN) == 0)) {
+		WL_ERR(("Disconnecting from connecting device: " MACDBG "\n",
+			MAC2STRDBG(curbssid)));
+		act = true;
+	}
+#endif /* ESCAN_RESULT_PATCH */
+
+	if (act) {
 		/*
-		* Cancel ongoing scan to sync up with sme state machine of cfg80211.
-		*/
-		/* Let scan aborted by F/W */
+		 * Cancel ongoing scan to sync up with sme state machine of cfg80211.
+		 */
+		/* Let scan aborted by FW */
 		if (cfg->scan_request) {
 			wl_notify_escan_complete(cfg, dev, true, true);
 		}
+
 		wl_set_drv_status(cfg, DISCONNECTING, dev);
 		if (wl_get_drv_status(cfg, CONNECTING, dev)) {
 			/* in case of associating status, this will abort assoc procedure */
 			wl_notify_escan_complete(cfg, dev, false, true);
+
 			/* send pseudo connection failure event */
 			wl_send_event(dev, WLC_E_SET_SSID, WLC_E_STATUS_ABORT, 0);
-		} else {
+                } else {
 			scbval.val = reason_code;
 			memcpy(&scbval.ea, curbssid, ETHER_ADDR_LEN);
 			scbval.val = htod32(scbval.val);
 			err = wldev_ioctl(dev, WLC_DISASSOC, &scbval,
-				sizeof(scb_val_t), true);
+					sizeof(scb_val_t), true);
 			if (unlikely(err)) {
 				wl_clr_drv_status(cfg, DISCONNECTING, dev);
 				WL_ERR(("error (%d)\n", err));
@@ -9959,7 +9972,7 @@ static void wl_scan_timeout(unsigned long data)
 }
 
 static void wl_send_event(struct net_device *dev, uint32 event_type,
-				uint32 status, uint32 reason)
+			uint32 status, uint32 reason)
 {
 	wl_event_msg_t msg;
 	bzero(&msg, sizeof(wl_event_msg_t));
@@ -9968,6 +9981,7 @@ static void wl_send_event(struct net_device *dev, uint32 event_type,
 	msg.reason = hton32(reason);
 	wl_cfg80211_event(dev, &msg, NULL);
 }
+
 static s32
 wl_cfg80211_netdev_notifier_call(struct notifier_block * nb,
 	unsigned long state,
@@ -10076,16 +10090,19 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	struct net_device *dev;
 
 	WL_DBG(("Enter \n"));
+
+	mutex_lock(&cfg->scan_complete);
+
 	if (!ndev) {
 		WL_ERR(("ndev is null\n"));
 		err = BCME_ERROR;
-		return err;
+		goto out;
 	}
 
 	if (cfg->escan_info.ndev != ndev) {
 		WL_ERR(("ndev is different %p %p\n", cfg->escan_info.ndev, ndev));
 		err = BCME_ERROR;
-		return err;
+		goto out;
 	}
 
 	if (cfg->scan_request) {
@@ -10130,6 +10147,8 @@ static s32 wl_notify_escan_complete(struct bcm_cfg80211 *cfg,
 	wl_clr_drv_status(cfg, SCANNING, dev);
 	spin_unlock_irqrestore(&cfg->cfgdrv_lock, flags);
 
+out:
+	mutex_unlock(&cfg->scan_complete);
 	return err;
 }
 
@@ -10682,6 +10701,7 @@ static s32 wl_init_priv(struct bcm_cfg80211 *cfg)
 	wl_init_event_handler(cfg);
 	mutex_init(&cfg->usr_sync);
 	mutex_init(&cfg->event_sync);
+	mutex_init(&cfg->scan_complete);
 	err = wl_init_scan(cfg);
 	if (err)
 		return err;
@@ -11704,8 +11724,10 @@ s32 wl_cfg80211_up(struct net_device *net)
 	dhd = (dhd_pub_t *)(cfg->pub);
 	if (!(dhd->op_mode & DHD_FLAG_HOSTAP_MODE)) {
 		err = wl_cfg80211_attach_post(bcmcfg_to_prmry_ndev(cfg));
-		if (unlikely(err))
+		if (unlikely(err)) {
+			mutex_unlock(&cfg->usr_sync);
 			return err;
+		}
 	}
 	err = __wl_cfg80211_up(cfg);
 	if (unlikely(err))
