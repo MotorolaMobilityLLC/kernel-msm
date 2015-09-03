@@ -110,6 +110,58 @@
 			bias-disable = <0>;
 		};
 	};
+
+	/* IRQ, WakeIRQ, SPI Data Ack, SPI Ready for Receive */
+	stml0xx_inputs {
+		qcom,pins = <&gp 9>, <&gp 90>, <&gp 1>, <&gp 12>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-inputs";
+
+		stml0xx_inputs_default: stml0xx-inputs {
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+		};
+	};
+
+	stml0xx_wakeup {
+		qcom,pins = <&gp 128>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-wakeup";
+
+		stml0xx_wakeup_default: stml0xx-wakeup {
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_reset {
+		qcom,pins = <&gp 87>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-reset";
+
+		stml0xx_reset_default: stml0xx-reset {
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+			output-high;
+		};
+	};
+
+	stml0xx_flash_en {
+		qcom,pins = <&gp 8>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "stml0xx-flash-en";
+
+		stml0xx_flash_en_default: stml0xx-flash-en {
+			bias-disable;	 /* no pull */
+			drive-strength = <2>;
+			output-low;
+		};
+	};
 };
 
 &soc {
@@ -143,6 +195,62 @@
 		/* master-id for BLSP2 is MSM_BUS_MASTER_BLSP_2 or 84 */
 		qcom,master-id = <84>;
 		status = "ok";
+
+		stml0xx: stml0xx@0 {
+			compatible = "stm,stml0xx";
+			status = "ok";
+			reg = <0>;
+			spi-max-frequency = <8000000>;
+			gpios = <&msm_gpio 9 0>,       /* IRQ */
+				<&msm_gpio 87 0>,      /* RESET */
+				<&msm_gpio 8 0>,       /* BSLEN */
+				<&msm_gpio 90 0>,      /* WakeIRQ */
+				<&msm_gpio 12 0>,      /* SPI Ready for Receive */
+				<&msm_gpio 1 0>,       /* SPI Data Ack */
+				<&msm_gpio 128 0>;     /* Wake Up Sensor Hub */
+			lux_table = <5 50 100 1500 3000 8000>;
+			brightness_table = <9 14 18 46 67 93 140>;
+			bslen_pin_active_value = <1>;
+			ct406_detect_threshold = <0x0096>;
+			ct406_undetect_threshold = <0x0073>;
+			ct406_recalibrate_threshold = <0x0064>;
+			ct406_pulse_count = <0x03>;
+			ct406_prox_gain = <0x02>;
+			ct406_als_lux1_c0_mult = <0x294>;
+			ct406_als_lux1_c1_mult = <0x55A>;
+			ct406_als_lux1_div = <0x64>;
+			ct406_als_lux2_c0_mult = <0xDA>;
+			ct406_als_lux2_c1_mult = <0x186>;
+			ct406_als_lux2_div = <0x64>;
+			dsp_iface_enable = <0>;
+			headset_detect_enable = <1>;
+			headset_hw_version = <2>;
+			headset_insertion_debounce = <0x01F4>;
+			headset_removal_debounce = <0x0080>;
+			headset_button_down_debounce = <0x0032>;
+			headset_button_up_debounce = <0x0032>;
+			headset_button_0-1_threshold = <0x009D>;
+			headset_button_1-2_threshold = <0x0145>;
+			headset_button_2-3_threshold = <0x0201>;
+			headset_button_3-upper_threshold = <0x03B0>;
+			headset_button_1_keycode = <0xE2>;  /* KEY_MEDIA	*/
+			headset_button_2_keycode = <0x246>; /* KEY_VOICECOMMAND */
+			headset_button_3_keycode = <0x73>;  /* KEY_VOLUMEUP     */
+			headset_button_4_keycode = <0x72>;  /* KEY_VOLUMEDOWN   */
+			cover_detect_polarity = <1>;
+			reset_hw_type = <1>;
+			accel_orientation_1 = <5>;	/* Accel 1  Orientation value */
+			accel_orientation_2 = <5>;	/* Accel 2  Orientation value */
+			accel_swap = <1>;		/* The accel parts are swapped left/right */
+			sensor1-supply = <&pm8950_l6>;
+			sensor2-supply = <&pm8950_l17>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&stml0xx_inputs_default
+				     &stml0xx_wakeup_default
+				     &stml0xx_reset_default
+				     &stml0xx_flash_en_default>;
+		};
 	};
 
 	/delete-node/ eldo2;
