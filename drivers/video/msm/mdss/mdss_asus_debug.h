@@ -41,7 +41,6 @@
 #define DSI_CMD_INVON "invon"
 
 // exported functions
-int create_amdu_debugfs(struct dentry *parent);
 unsigned int set_amdu_logflag(unsigned int new_flag);
 unsigned int clr_amdu_logflag(unsigned int new_flag);
 unsigned int get_amdu_logflag(void);

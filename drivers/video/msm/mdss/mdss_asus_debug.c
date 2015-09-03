@@ -17,6 +17,7 @@
 #include <linux/fb.h>
 #include <linux/delay.h>
 #include <linux/power_supply.h>
+#include <linux/proc_fs.h>
 
 // include files for QCT
 #include "mdss_fb.h"
@@ -38,7 +39,6 @@ struct fb_status{
 // We would like to use static variable for it's stable then kalloc
 struct amdu_global_data
 {
-	struct dentry *ent_reg;
 	unsigned int debug_log_flag;
 	struct mdss_dsi_ctrl_pdata *ctrl;
 
@@ -94,50 +94,50 @@ static ssize_t mdss_debug_base_cmd_write(struct file *file,
 	if (!strncmp(DSI_CMD_NORON,cmd_buf,strlen(DSI_CMD_NORON))){
 
 		// 13 Normal Display mode on
-		printk("echo > 'write:05 01 00 00 00 00 01 13' > /d/mdp/amdu_cmd\n");
+		printk("echo > 'write:05 01 00 00 00 00 01 13' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 13");
 
 	}
 	else if (!strncmp(DSI_CMD_ALLPON,cmd_buf,strlen(DSI_CMD_ALLPON))){
 
 		// 23 all pixel on
-		printk("echo 'write:05 01 00 00 00 00 01 23' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 23' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 23");
 	}
 	else if (!strncmp(DSI_CMD_SLPIN,cmd_buf,strlen(DSI_CMD_SLPIN))){
 
 		// 10 sleep in
-		printk("echo 'write:05 01 00 00 00 00 01 10' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 10' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 10");
 	}
 	else if (!strncmp(DSI_CMD_SLPOUT,cmd_buf,strlen(DSI_CMD_SLPOUT))){
 
 		// 11 sleep out
-		printk("echo 'write:05 01 00 00 00 00 01 11' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 11' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 11");
 	}
 	else if (!strncmp(DSI_CMD_DISPOFF,cmd_buf,strlen(DSI_CMD_DISPOFF))){
 
 		// 28 display off
-		printk("echo 'write:05 01 00 00 00 00 01 28' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 28' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 28");
 	}
 	else if (!strncmp(DSI_CMD_DISPON,cmd_buf,strlen(DSI_CMD_DISPON))){
 
 		// 29 display on
-		printk("echo 'write:05 01 00 00 00 00 01 29' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 29' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 29");
 	}
 	else if (!strncmp(DSI_CMD_INVOFF,cmd_buf,strlen(DSI_CMD_INVOFF))){
 
 		// 20 invert off
-		printk("echo 'write:05 01 00 00 00 00 01 20' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 20' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 20");
 	}
 	else if (!strncmp(DSI_CMD_INVON,cmd_buf,strlen(DSI_CMD_INVON))){
 
 		// 21 invert on
-		printk("echo 'write:05 01 00 00 00 00 01 21' > /d/mdp/amdu_cmd\n");
+		printk("echo 'write:05 01 00 00 00 00 01 21' > /proc/amdu_cmd\n");
 		strcpy(cmd_buf,"write:05 01 00 00 00 00 01 21");
 	}
 	
@@ -283,20 +283,16 @@ static const struct file_operations mdss_cmd_fops = {
 ////////////////////////////////////////////////////////////////////////////////
 // INIT
 
-int create_amdu_debugfs(struct dentry *parent)
+static int __init create_amdu_debugfs(void)
 {
 //	amdu_data.debug_log_flag = 0xFF;
 	amdu_data.panel_status.ambient = 0;
 
-	amdu_data.ent_reg = debugfs_create_file("amdu_cmd", 0644, parent, 0/* we can transfer some data here*/, &mdss_cmd_fops);
-	if (IS_ERR_OR_NULL(amdu_data.ent_reg)) {
-		printk("[AMDU] debugfs_create_file: cmd fail !!\n");
-		return -EINVAL;
-	}
+	proc_create("amdu_cmd", S_IALLUGO, NULL, &mdss_cmd_fops);
 
 	return 0;
 }
-
+module_init(create_amdu_debugfs);
 
 
 ////////////////////////////////////////////////////////////////////////////////

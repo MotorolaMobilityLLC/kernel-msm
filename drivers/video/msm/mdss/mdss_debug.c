@@ -265,7 +265,7 @@ int mdss_debug_register_base(const char *name, void __iomem *base,
 		prefix_len = snprintf(dn, sizeof(dn), "%s_", name);
 #ifdef CONFIG_ASUS_MDSS_DEBUG_UTILITY
 	else
-		create_amdu_debugfs(mdd->root);
+		//create_amdu_debugfs(mdd->root);
 #endif
 
 	strlcpy(dn + prefix_len, "off", sizeof(dn) - prefix_len);
