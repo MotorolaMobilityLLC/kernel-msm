@@ -319,6 +319,7 @@ tpPESession peCreateSession(tpAniSirGlobal pMac,
                MAC_ADDRESS_STR " Max No. of STA %d",
                pMac->lim.gpSession[i].peSessionId,
                MAC_ADDR_ARRAY(bssid), numSta);
+            pMac->lim.gpSession[i].roaming_in_progress = false;
 
             /* Initialize PMM Ps Offload Module */
             if(pMac->psOffloadEnabled)

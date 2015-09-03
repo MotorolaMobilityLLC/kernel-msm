@@ -142,11 +142,16 @@ wmi_set_target_suspend(wmi_unified_t wmi_handle, A_BOOL val);
 #ifdef FEATURE_RUNTIME_PM
 void
 wmi_set_runtime_pm_inprogress(wmi_unified_t wmi_handle, A_BOOL val);
+bool wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle);
 #else
 static inline void
 wmi_set_runtime_pm_inprogress(wmi_unified_t wmi_handle, A_BOOL val)
 {
 	return;
+}
+static inline bool wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
+{
+	return false;
 }
 #endif
 

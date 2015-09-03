@@ -655,14 +655,9 @@ static void recovery_work_handler(struct work_struct *recovery)
 static DECLARE_WORK(recovery_work, recovery_work_handler);
 
 #ifdef FEATURE_RUNTIME_PM
-static inline int wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
+inline bool wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
 {
 	return adf_os_atomic_read(&wmi_handle->runtime_pm_inprogress);
-}
-#else
-static inline int wmi_get_runtime_pm_inprogress(wmi_unified_t wmi_handle)
-{
-	return 0;
 }
 #endif
 
@@ -906,7 +901,8 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 #ifndef QCA_CONFIG_SMP
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
 	/* TX_PAUSE EVENT should be handled with tasklet context */
-	if (WMI_TX_PAUSE_EVENTID == id) {
+	if ((WMI_TX_PAUSE_EVENTID == id) ||
+		(WMI_WOW_WAKEUP_HOST_EVENTID == id)) {
 		if (adf_nbuf_pull_head(evt_buf, sizeof(WMI_CMD_HDR)) == NULL)
 			return;
 

@@ -1616,6 +1616,29 @@ ol_txrx_peer_find_by_addr(struct ol_txrx_pdev_t *pdev, u_int8_t *peer_mac_addr)
     return peer;
 }
 
+/**
+ * ol_txrx_dump_tx_desc() - dump tx desc info
+ * @pdev_handle: Pointer to pdev handle
+ *
+ * Return: none
+ */
+void ol_txrx_dump_tx_desc(ol_txrx_pdev_handle pdev_handle)
+{
+	struct ol_txrx_pdev_t *pdev = pdev_handle;
+	int total;
+
+	if (ol_cfg_is_high_latency(pdev->ctrl_pdev))
+		total = adf_os_atomic_read(&pdev->orig_target_tx_credit);
+	else
+		total = ol_cfg_target_tx_credit(pdev->ctrl_pdev);
+
+	TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+		"Total tx credits %d free_credits %d",
+		total, pdev->tx_desc.num_free);
+
+	return;
+}
+
 int
 ol_txrx_get_tx_pending(ol_txrx_pdev_handle pdev_handle)
 {

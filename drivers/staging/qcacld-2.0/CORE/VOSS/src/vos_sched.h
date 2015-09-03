@@ -675,6 +675,7 @@ void vos_ssr_protect_init(void);
 void vos_ssr_protect(const char *caller_func);
 void vos_ssr_unprotect(const char *caller_func);
 bool vos_is_ssr_ready(const char *caller_func);
+int vos_get_gfp_flags(void);
 
 #define vos_wait_for_work_thread_completion(func) vos_is_ssr_ready(func)
 

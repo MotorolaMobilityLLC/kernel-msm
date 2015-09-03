@@ -850,7 +850,7 @@ static const struct file_operations hif_pci_autopm_fops = {
 
 static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 {
-	struct hif_pci_softc *sc = pci_get_drvdata(pdev);
+	struct hif_pci_softc *sc = NULL;
 	void *vos_context = vos_get_global_context(VOS_MODULE_ID_HIF, NULL);
 	pm_message_t state = { .event = PM_EVENT_SUSPEND };
 	v_VOID_t *temp_module;
@@ -859,12 +859,18 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 
 	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
 		pr_err("%s: Load/Unload in Progress\n", __func__);
-		goto out;
+		goto end;
 	}
 
 	if (vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL)) {
 		pr_err("%s: LOGP in progress\n", __func__);
-		goto out;
+		goto end;
+	}
+
+	sc = pci_get_drvdata(pdev);
+	if (!sc) {
+		pr_err("%s: sc is NULL!\n", __func__);
+		goto end;
 	}
 
 	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_INPROGRESS);
@@ -895,6 +901,15 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 		goto out;
 	}
 
+#ifdef FEATURE_WLAN_D0WOW
+	if (wma_get_client_count(temp_module)) {
+		pr_err("%s: Runtime PM not supported when clients are connected\n",
+				__func__);
+		ret = -EINVAL;
+		goto out;
+	}
+#endif
+
 	ret = wma_runtime_suspend_req(temp_module);
 	if (ret) {
 		pr_err("%s: Runtime Offloads configuration failed: %d\n",
@@ -907,15 +922,6 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 		pr_err("%s: pci_suspend failed: %d\n", __func__, ret);
 		goto suspend_fail;
 	}
-
-#ifdef FEATURE_WLAN_D0WOW
-	if (wma_get_client_count(temp_module)) {
-		pr_err("%s: Runtime PM not supported when clients are connected\n",
-				__func__);
-		ret = -EINVAL;
-		goto suspend_fail;
-	}
-#endif
 
 	ret = cnss_auto_suspend();
 
@@ -936,9 +942,8 @@ out:
 	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_ON);
 	sc->pm_stats.suspend_err++;
 	hif_pm_runtime_mark_last_busy(sc->dev);
-
+end:
 	ASSERT(ret == -EAGAIN || ret == -EBUSY);
-
 	return ret;
 }
 
@@ -2241,6 +2246,7 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
         msleep(OL_ATH_TX_DRAIN_WAIT_DELAY);
         if (++tx_drain_wait_cnt > OL_ATH_TX_DRAIN_WAIT_CNT) {
             printk("%s: tx frames are pending\n", __func__);
+            ol_txrx_dump_tx_desc(txrx_pdev);
             goto out;
         }
     }

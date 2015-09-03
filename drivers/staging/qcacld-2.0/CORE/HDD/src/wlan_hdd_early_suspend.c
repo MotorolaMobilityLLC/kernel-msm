@@ -958,21 +958,22 @@ static int __wlan_hdd_ipv4_changed(struct notifier_block *nb,
 	}
 
 	adapter = WLAN_HDD_GET_PRIV_PTR(ndev);
+	if (!adapter) return NOTIFY_DONE;
 	if (WLAN_HDD_ADAPTER_MAGIC != adapter->magic) return NOTIFY_DONE;
 	if (adapter->dev != ndev) return NOTIFY_DONE;
 	if (WLAN_HDD_GET_CTX(adapter) != hdd_ctx) return NOTIFY_DONE;
+        if (!(adapter->device_mode == WLAN_HDD_INFRA_STATION ||
+                adapter->device_mode == WLAN_HDD_P2P_CLIENT))
+		return NOTIFY_DONE;
 
-	if (adapter->device_mode == WLAN_HDD_INFRA_STATION ||
-		adapter->device_mode == WLAN_HDD_P2P_CLIENT) {
-		if ((hdd_ctx->cfg_ini->nEnableSuspend !=
-			WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER) ||
+	if ((hdd_ctx->cfg_ini->nEnableSuspend !=
+				WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER) ||
 			(!hdd_ctx->cfg_ini->fhostArpOffload)) {
-			hddLog(LOG1, FL("Offload not enabled MCBC=%d, ARPOffload=%d"),
+		hddLog(LOG1, FL("Offload not enabled MCBC=%d, ARPOffload=%d"),
 				hdd_ctx->cfg_ini->nEnableSuspend,
 				hdd_ctx->cfg_ini->fhostArpOffload);
 
-			return NOTIFY_DONE;
-		}
+		return NOTIFY_DONE;
 	}
 
 	in_dev = __in_dev_get_rtnl(adapter->dev);

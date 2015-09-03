@@ -118,6 +118,30 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     {
         case HAL_DEL_STA_REASON_CODE_KEEP_ALIVE:
              if (LIM_IS_STA_ROLE(psessionEntry) && !pMsg->is_tdls) {
+                 /*
+                  * If roaming is in progress, then ignore the STA kick out
+                  * and let the connection happen. The roaming_in_progress
+                  * flag is set whenever a candidate found indication is
+                  * received. It is enabled on the PE session for which
+                  * the indication is received. There is really no need to
+                  * re-set the flag, since the PE session on which it was
+                  * set will be deleted, even if roaming is success or failure.
+                  * When roaming is a success, the PE session for AP1 is
+                  * deleted. When we get a candidate indication, it would be
+                  * on the PE session of the AP1. AP2 to which we are about to
+                  * roam will have a new PE session ID.If roaming fails for
+                  * any reason, then it will anyways delete the PE session of
+                  * of the AP1.
+                  */
+                 if (psessionEntry->roaming_in_progress ||
+                      limIsReassocInProgress(pMac, psessionEntry)) {
+                     limLog(pMac, LOGE,
+                        FL("roam_progress=%d, reassoc=%d. Not disconnecting"),
+                           psessionEntry->roaming_in_progress,
+                           limIsReassocInProgress(pMac, psessionEntry));
+                     vos_mem_free(pMsg);
+                     return;
+                 }
                  pStaDs = dphGetHashEntry(pMac,
                                           DPH_STA_HASH_INDEX_PEER,
                                           &psessionEntry->dph.dphHashTable);

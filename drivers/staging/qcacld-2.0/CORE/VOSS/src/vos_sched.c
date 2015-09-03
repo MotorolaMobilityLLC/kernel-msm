@@ -2525,3 +2525,19 @@ bool vos_is_ssr_ready(const char *caller_func)
 
     return true;
 }
+
+/**
+ * vos_get_gfp_flags(): get GFP flags
+ *
+ * Based on the scheduled context, return GFP flags
+ * Return: gfp flags
+ */
+int vos_get_gfp_flags(void)
+{
+	int flags = GFP_KERNEL;
+
+	if (in_interrupt() || in_atomic() || irqs_disabled())
+		flags = GFP_ATOMIC;
+
+	return flags;
+}

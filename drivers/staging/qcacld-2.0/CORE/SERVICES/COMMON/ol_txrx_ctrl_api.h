@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -665,6 +665,8 @@ ol_txrx_set_curchan(
 int
 ol_txrx_get_tx_pending(
     ol_txrx_pdev_handle pdev);
+
+void ol_txrx_dump_tx_desc(ol_txrx_pdev_handle pdev);
 
 /**
  * @brief Discard all tx frames that are pending in txrx.

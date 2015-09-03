@@ -545,8 +545,8 @@ ol_tx_completion_handler(
         adf_os_spin_lock(&pdev->tx_mutex);
         tx_desc_last->next = pdev->tx_desc.freelist;
         pdev->tx_desc.freelist = lcl_freelist;
-        adf_os_spin_unlock(&pdev->tx_mutex);
         pdev->tx_desc.num_free += (u_int16_t) num_msdus;
+        adf_os_spin_unlock(&pdev->tx_mutex);
     } else {
         ol_tx_desc_frame_list_free(pdev, &tx_descs, status != htt_tx_status_ok);
     }

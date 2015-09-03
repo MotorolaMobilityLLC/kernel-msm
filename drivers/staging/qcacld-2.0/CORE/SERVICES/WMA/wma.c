@@ -8873,7 +8873,7 @@ VOS_STATUS wma_roam_scan_offload_chan_list(tp_wma_handle wma_handle,
     if (chan_count == 0)
     {
         WMA_LOGD("%s : invalid number of channels %d", __func__, chan_count);
-        return VOS_STATUS_E_INVAL;
+        return VOS_STATUS_E_EMPTY;
     }
     /* Channel list is a table of 2 TLV's */
     list_tlv_len = WMI_TLV_HDR_SIZE + chan_count * sizeof(A_UINT32);
@@ -9559,7 +9559,8 @@ VOS_STATUS wma_process_roam_scan_req(tp_wma_handle wma_handle,
                     &roam_req->ConnectedNetwork.ChannelCache[0],
                     roam_req->ChannelCacheType,
                     roam_req->sessionId);
-            if (vos_status != VOS_STATUS_SUCCESS) {
+            if ((vos_status != VOS_STATUS_SUCCESS) &&
+                (vos_status != VOS_STATUS_E_EMPTY)) {
                 break;
             }
 
@@ -9694,7 +9695,12 @@ VOS_STATUS wma_process_roam_scan_req(tp_wma_handle wma_handle,
                     &roam_req->ConnectedNetwork.ChannelCache[0],
                     roam_req->ChannelCacheType,
                     roam_req->sessionId);
-            if (vos_status != VOS_STATUS_SUCCESS) {
+            /*
+             * Even though the channel list is empty, we can
+             * still go ahead and start Roaming.
+             */
+            if ((vos_status != VOS_STATUS_SUCCESS) &&
+                (vos_status != VOS_STATUS_E_EMPTY)) {
                 break;
             }
 
@@ -17605,11 +17611,14 @@ static inline void wma_free_wow_ptrn(tp_wma_handle wma, u_int8_t ptrn_id)
 }
 
 /* Converts wow wakeup reason code to text format */
-static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason)
+static const u8 *wma_wow_wake_reason_str(A_INT32 wake_reason, tp_wma_handle wma)
 {
 	switch (wake_reason) {
 	case WOW_REASON_UNSPECIFIED:
-		return "UNSPECIFIED";
+		if (!wmi_get_runtime_pm_inprogress(wma->wmi_handle))
+			return "UNSPECIFIED";
+		else
+			return "RUNTIME PM resume";
 	case WOW_REASON_NLOD:
 		return "NLOD";
 	case WOW_REASON_AP_ASSOC_LOST:
@@ -18060,14 +18069,19 @@ static void wma_extscan_wow_event_callback(void *handle, void *event,
  */
 static void wma_wow_wake_up_stats_display(tp_wma_handle wma)
 {
-	WMA_LOGA("ucast %d bcast %d ipv4_mcast %d ipv6_mcast %d ipv6_mcast_ra %d ipv6_mcast_ns %d ipv6_mcast_na %d",
+	WMA_LOGA("uc %d bc %d v4_mc %d v6_mc %d ra %d ns %d na %d pno_match %d pno_complete %d gscan %d low_rssi %d rssi_breach %d",
 		wma->wow_ucast_wake_up_count,
 		wma->wow_bcast_wake_up_count,
 		wma->wow_ipv4_mcast_wake_up_count,
 		wma->wow_ipv6_mcast_wake_up_count,
 		wma->wow_ipv6_mcast_ra_stats,
 		wma->wow_ipv6_mcast_ns_stats,
-		wma->wow_ipv6_mcast_na_stats);
+		wma->wow_ipv6_mcast_na_stats,
+		wma->wow_pno_match_wake_up_count,
+		wma->wow_pno_complete_wake_up_count,
+		wma->wow_gscan_wake_up_count,
+		wma->wow_low_rssi_wake_up_count,
+		wma->wow_rssi_breach_wake_up_count);
 
 	return;
 }
@@ -18117,26 +18131,65 @@ static void wma_wow_ipv6_mcast_stats(tp_wma_handle wma, uint8_t *data)
  * @wma: Pointer to wma handle
  * @data: Pointer to pattern match data
  * @len: Pattern match data length
+ * @event: Wake up event
  *
  * Return: none
  */
-static void wma_wow_wake_up_stats(tp_wma_handle wma, uint8_t *data, int32_t len)
+static void wma_wow_wake_up_stats(tp_wma_handle wma, uint8_t *data,
+	int32_t len, WOW_WAKE_REASON_TYPE event)
 {
+	/* Do not increment debug stats if resume is for runtime pm */
+	if (wmi_get_runtime_pm_inprogress(wma->wmi_handle))
+		return;
 
-	if (WMA_BCAST_MAC_ADDR == *data) {
-		wma->wow_bcast_wake_up_count++;
-	} else if (WMA_MCAST_IPV4_MAC_ADDR == *data) {
-		wma->wow_ipv4_mcast_wake_up_count++;
-	} else if (WMA_MCAST_IPV6_MAC_ADDR == *data) {
-		wma->wow_ipv6_mcast_wake_up_count++;
-		if (len > WMA_ICMP_V6_TYPE_OFFSET)
-			wma_wow_ipv6_mcast_stats(wma, data);
-		else
-			WMA_LOGA("ICMP_V6 data len %d", len);
-	} else {
-		wma->wow_ucast_wake_up_count++;
+	switch(event) {
+
+	case WOW_REASON_PATTERN_MATCH_FOUND:
+		if (WMA_BCAST_MAC_ADDR == *data) {
+			wma->wow_bcast_wake_up_count++;
+		} else if (WMA_MCAST_IPV4_MAC_ADDR == *data) {
+			wma->wow_ipv4_mcast_wake_up_count++;
+		} else if (WMA_MCAST_IPV6_MAC_ADDR == *data) {
+			wma->wow_ipv6_mcast_wake_up_count++;
+			if (len > WMA_ICMP_V6_TYPE_OFFSET)
+				wma_wow_ipv6_mcast_stats(wma, data);
+			else
+				WMA_LOGA("ICMP_V6 data len %d", len);
+		} else {
+			wma->wow_ucast_wake_up_count++;
+		}
+		break;
+
+	case WOW_REASON_RA_MATCH:
+		wma->wow_ipv6_mcast_ra_stats++;
+		break;
+
+	case WOW_REASON_NLOD:
+		wma->wow_pno_match_wake_up_count++;
+		break;
+
+	case WOW_REASON_NLO_SCAN_COMPLETE:
+		wma->wow_pno_complete_wake_up_count++;
+		break;
+
+	case WOW_REASON_LOW_RSSI:
+		wma->wow_low_rssi_wake_up_count++;
+		break;
+
+	case WOW_REASON_EXTSCAN:
+		wma->wow_gscan_wake_up_count++;
+		break;
+
+	case WOW_REASON_RSSI_BREACH_EVENT:
+		wma->wow_rssi_breach_wake_up_count++;
+		break;
+
+	default:
+		WMA_LOGE("Unknown wake up reason");
+		break;
 	}
 
+	wma_wow_wake_up_stats_display(wma);
 	return;
 }
 
@@ -18165,7 +18218,7 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	wake_info = param_buf->fixed_param;
 
 	WMA_LOGA("WOW wakeup host event received (reason: %s(%d)) for vdev %d",
-		 wma_wow_wake_reason_str(wake_info->wake_reason),
+		 wma_wow_wake_reason_str(wake_info->wake_reason, wma),
 		 wake_info->wake_reason,
 		 wake_info->vdev_id);
 
@@ -18196,6 +18249,7 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		break;
 #ifdef FEATURE_WLAN_RA_FILTERING
 	case WOW_REASON_RA_MATCH:
+		wma_wow_wake_up_stats(wma, NULL, 0, WOW_REASON_RA_MATCH);
 		break;
 #endif
 #ifdef FEATURE_WLAN_AUTO_SHUTDOWN
@@ -18208,6 +18262,7 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 #endif
 #ifdef FEATURE_WLAN_SCAN_PNO
 	case WOW_REASON_NLOD:
+		wma_wow_wake_up_stats(wma, NULL, 0, WOW_REASON_NLOD);
 		node = &wma->interfaces[wake_info->vdev_id];
 		if (node) {
 			WMA_LOGD("NLO match happened");
@@ -18223,6 +18278,8 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		{
 			WMI_NLO_SCAN_COMPLETE_EVENTID_param_tlvs param;
 
+			wma_wow_wake_up_stats(wma, NULL, 0,
+					WOW_REASON_NLO_SCAN_COMPLETE);
 			WMA_LOGD("Host woken up due to pno scan complete reason");
 			/* First 4-bytes of wow_packet_buffer is the length */
 			if (param_buf->wow_packet_buffer) {
@@ -18259,14 +18316,14 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 	case WOW_REASON_HTT_EVENT:
 		break;
 	case WOW_REASON_PATTERN_MATCH_FOUND:
-		wma_wow_wake_up_stats_display(wma);
 		WMA_LOGD("Wake up for Rx packet, dump starting from ethernet hdr");
 		if (param_buf->wow_packet_buffer) {
 		    /* First 4-bytes of wow_packet_buffer is the length */
 		    vos_mem_copy((u_int8_t *) &wow_buf_pkt_len,
 			param_buf->wow_packet_buffer, 4);
 		    wma_wow_wake_up_stats(wma,
-			param_buf->wow_packet_buffer + 4, wow_buf_pkt_len);
+			param_buf->wow_packet_buffer + 4, wow_buf_pkt_len,
+			WOW_REASON_PATTERN_MATCH_FOUND);
 		    vos_trace_hex_dump(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_DEBUG,
 			param_buf->wow_packet_buffer + 4,
 			wow_buf_pkt_len);
@@ -18283,6 +18340,7 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		 * wma_roam_event_callback().
 		 */
 		WMI_ROAM_EVENTID_param_tlvs param;
+		wma_wow_wake_up_stats(wma, NULL, 0, WOW_REASON_LOW_RSSI);
 		if (param_buf->wow_packet_buffer) {
 		    /* Roam event is embedded in wow_packet_buffer */
 		    WMA_LOGD("Host woken up because of roam event");
@@ -18312,6 +18370,7 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 #ifdef FEATURE_WLAN_EXTSCAN
 	case WOW_REASON_EXTSCAN:
 		WMA_LOGD("Host woken up because of extscan reason");
+		wma_wow_wake_up_stats(wma, NULL, 0, WOW_REASON_EXTSCAN);
 		if (param_buf->wow_packet_buffer) {
 			wow_buf_pkt_len =
 				*(uint32_t *)param_buf->wow_packet_buffer;
@@ -18331,6 +18390,8 @@ static int wma_wow_wakeup_host_event(void *handle, u_int8_t *event,
 		{
 			WMI_RSSI_BREACH_EVENTID_param_tlvs param;
 
+			wma_wow_wake_up_stats(wma, NULL, 0,
+				WOW_REASON_RSSI_BREACH_EVENT);
 			WMA_LOGD("Host woken up because of rssi breach reason");
 			/* rssi breach event is embedded in wow_packet_buffer */
 			if (param_buf->wow_packet_buffer) {
@@ -19667,14 +19728,18 @@ suspend_all_iface:
 			break;
 		}
 #endif
+	}
+
 #ifdef FEATURE_WLAN_EXTSCAN
+	for (i = 0; i < wma->max_bssid; i++) {
 		if (wma->interfaces[i].extscan_in_progress) {
 			WMA_LOGD("Extscan is in progress, enabling wow");
 			extscan_in_progress = true;
 			break;
 		}
-#endif
 	}
+#endif
+
 	for (i = 0; i < wma->max_bssid; i++) {
 		wma->wow.gtk_pdev_enable |= wma->wow.gtk_err_enable[i];
 		WMA_LOGD("VDEV_ID:%d, gtk_err_enable[%d]:%d, gtk_pdev_enable:%d",
