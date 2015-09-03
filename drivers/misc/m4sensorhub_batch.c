@@ -38,6 +38,8 @@
 
 #define MAX_NUM_BATCH_SAMPLES 300
 
+#define MAX_BATCH_ERROR_COUNT 150
+
 struct m4sensorhub_batch_drvdata {
 	struct m4sensorhub_data *m4sensorhub;
 	struct platform_device  *pdev;
@@ -46,6 +48,7 @@ struct m4sensorhub_batch_drvdata {
 	uint32_t data_seq_num;
 	int num_buffered_samples;
 	uint8_t init_complete;
+	uint16_t error_count;
 };
 
 struct m4sensorhub_batch_data_callback {
@@ -148,8 +151,23 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 		pr_err("%s: Invalid number of samples (num=%d, max=%d)\n",
 			__func__, dd->num_buffered_samples,
 			MAX_NUM_BATCH_SAMPLES);
+		if (dd->num_buffered_samples == 0)
+			return;
+		/* Only count errors for nonzero values. The value returned
+		 * is zero sometimes but is not fatal */
+		dd->error_count++;
+		if (dd->error_count >= MAX_BATCH_ERROR_COUNT) {
+			pr_err("%s: Maximum number of errors %d "
+			       "reached. Force panic.\n",
+			       __func__, dd->error_count);
+			panic("%s: M4 batching has failed--forcing panic...\n",
+			      __func__);
+		}
 		return;
 	}
+
+	/* Reset error_count to zero since no errors */
+	dd->error_count = 0;
 
 	bytes_to_read = dd->num_buffered_samples *
 		sizeof(struct m4sensorhub_batch_sample);
@@ -230,6 +248,7 @@ static int m4sensorhub_batch_probe(struct platform_device *pdev)
 
 	mutex_lock(&(dd->mutex));
 	dd->num_buffered_samples = -1;
+	dd->error_count = 0;
 
 	platform_set_drvdata(pdev, dd);
 
