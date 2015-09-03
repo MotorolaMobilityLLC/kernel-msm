@@ -481,8 +481,7 @@
 
 				qcom,qpnp-lab-full-pull-down;
 				qcom,qpnp-lab-pull-down-enable;
-				qcom,qpnp-lab-switching-clock-frequency =
-									<1600>;
+				qcom,qpnp-lab-switching-clock-frequency = <1600>;
 				qcom,qpnp-lab-limit-maximum-current = <800>;
 				qcom,qpnp-lab-limit-max-current-enable;
 				qcom,qpnp-lab-ps-threshold = <40>;
