@@ -66,7 +66,8 @@
 #define IPA_IOCTL_DEL_HDR_PROC_CTX 41
 #define IPA_IOCTL_MDFY_RT_RULE 42
 #define IPA_IOCTL_NAT_MODIFY_PDN 43
-#define IPA_IOCTL_MAX 44
+#define IPA_IOCTL_GET_HW_VERSION 44
+#define IPA_IOCTL_MAX 45
 
 /**
  * max size of the header to be inserted
@@ -1527,6 +1528,10 @@ enum ipacm_client_enum {
 #define IPA_IOC_DEL_HDR_PROC_CTX _IOWR(IPA_IOC_MAGIC, \
 				IPA_IOCTL_DEL_HDR_PROC_CTX, \
 				struct ipa_ioc_del_hdr_proc_ctx *)
+
+#define IPA_IOC_GET_HW_VERSION _IOWR(IPA_IOC_MAGIC, \
+				IPA_IOCTL_GET_HW_VERSION, \
+				enum ipa_hw_type *)
 
 /*
  * unique magic number of the Tethering bridge ioctls
