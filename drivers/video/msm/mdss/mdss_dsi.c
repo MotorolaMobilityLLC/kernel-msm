@@ -773,10 +773,16 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
-
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi = &pdata->panel_info.mipi;
+
+	if (pdata->panel_info.panel_dead != PANEL_DEAD_NONE) {
+		pr_err("%s: Panel was dead, do nothing\n", __func__);
+		ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
+		pdata->panel_info.blank_state = MDSS_PANEL_BLANK_BLANK;
+		return ret;
+	}
 
 	pr_debug("%s+: ctrl=%p ndx=%d power_state=%d\n",
 		__func__, ctrl_pdata, ctrl_pdata->ndx, power_state);

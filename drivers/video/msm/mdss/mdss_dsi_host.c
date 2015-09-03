@@ -1340,7 +1340,8 @@ void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	MDSS_XLOG(ctrl->ndx, ctrl->mdp_busy, current->pid, XLOG_FUNC_ENTRY);
 	spin_lock_irqsave(&ctrl->mdp_lock, flags);
-	if (ctrl->mdp_busy == true)
+	if ((ctrl->mdp_busy == true) &&
+	    (ctrl->panel_data.panel_info.panel_dead < PANEL_DEAD_REPORT))
 		need_wait++;
 	spin_unlock_irqrestore(&ctrl->mdp_lock, flags);
 

@@ -1150,6 +1150,10 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 		mfd->panel_power_state = cur_power_state;
 	else
 		mdss_fb_release_fences(mfd);
+
+	if (mfd->panel_info->panel_dead == PANEL_DEAD_REPORT)
+		mfd->panel_info->panel_dead = PANEL_DEAD_BLANK;
+
 	mfd->op_enable = true;
 	complete(&mfd->power_off_comp);
 
@@ -1164,6 +1168,11 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 	if (!mfd)
 		return -EINVAL;
 
+	if (mfd->panel_info->panel_dead == PANEL_DEAD_REPORT) {
+		pr_err("Panel was dead, need blank it first!\n");
+		return -EINVAL;
+	}
+
 	cur_power_state = mfd->panel_power_state;
 	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
 		MDSS_PANEL_POWER_ON);
@@ -1175,11 +1184,17 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 
 	if (mfd->mdp.on_fnc) {
 		ret = mfd->mdp.on_fnc(mfd);
-		if (ret)
+		if (ret) {
+			if (mfd->panel_info->panel_dead == PANEL_DEAD_BLANK) {
+				/* it can not recovery panel via blank/unblank,
+				 * there is nothing else we could to do, just
+				 * panic devices ...
+				 */
+				panic("Can't recovery dead panel!\n");
+			}
 			goto error;
-
+		}
 		mfd->panel_power_state = MDSS_PANEL_POWER_ON;
-		mfd->panel_info->panel_dead = false;
 		mutex_lock(&mfd->update.lock);
 		mfd->update.type = NOTIFY_TYPE_UPDATE;
 		mfd->update.is_suspend = 0;
@@ -1263,11 +1278,36 @@ static void mdss_fb_later_on(struct work_struct *work)
 	mutex_unlock(&pinfo->later_on_mutex);
 }
 
+void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
+{
+	char *envp[2] = {"PANEL_ALIVE=0", NULL};
+	struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("Panel data not available\n");
+		return;
+	}
+
+	pdata->panel_info.panel_dead = PANEL_DEAD_REPORT;
+	pr_err("Panel has gone bad(%d), sending uevent - %s\n",
+		pdata->panel_info.panel_dead_count, envp[0]);
+	wake_lock_timeout(&mfd->status_wakelock, msecs_to_jiffies(1000));
+	kobject_uevent_env(&mfd->fbi->dev->kobj, KOBJ_CHANGE, envp);
+}
+
+static void mdss_fb_panel_dead_work(struct work_struct *work)
+{
+	struct msm_fb_data_type *mfd =
+		container_of(to_delayed_work(work),
+			     struct msm_fb_data_type, panel_dead_work);
+
+	mdss_fb_report_panel_dead(mfd);
+}
+
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	int ret = 0;
+	int later_on_enabled, ret = 0;
 	int cur_power_state, req_power_state = MDSS_PANEL_POWER_OFF;
 	unsigned long cur_display_state;
 
@@ -1318,6 +1358,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	case BLANK_FLAG_LP:
 		req_power_state = MDSS_PANEL_POWER_LP1;
 		pr_debug(" power mode requested\n");
+		later_on_enabled = mfd->panel_info->later_on_enabled;
 
 		/*
 		 * If low power mode is requested when panel is already off,
@@ -1328,9 +1369,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = mdss_fb_blank_unblank(mfd);
 			if (ret)
 				break;
+			/* for the off --> lp case, do not enable later on */
+			mfd->panel_info->later_on_enabled = false;
 		}
 
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
+		mfd->panel_info->later_on_enabled = later_on_enabled;
 		break;
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_POWERDOWN:
@@ -1984,6 +2028,9 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	INIT_DELAYED_WORK(&mfd->later_on_work, mdss_fb_later_on);
 	wake_lock_init(&mfd->later_on_wakelock, WAKE_LOCK_SUSPEND,
 		       "DSI_DELAYON_WAKELOCK");
+	INIT_DELAYED_WORK(&mfd->panel_dead_work, mdss_fb_panel_dead_work);
+	wake_lock_init(&mfd->status_wakelock, WAKE_LOCK_SUSPEND,
+		       "DSI_STATUS_WAKELOCK");
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
@@ -2468,6 +2515,14 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 	case MDP_NOTIFY_FRAME_TIMEOUT:
 		pr_err("%s: frame timeout\n", sync_pt_data->fence_name);
 		mdss_fb_signal_timeline(sync_pt_data);
+		if (mfd->panel_info->esd_check_enabled &&
+		    (mfd->panel_info->panel_dead == PANEL_DEAD_NONE)) {
+			struct fb_event fbent;
+			mfd->panel_info->panel_dead = PANEL_DEAD_CHECK;
+			fbent.info = mfd->fbi;
+			fb_notifier_call_chain(MDSS_FB_EVENT_CHECK_STATUS,
+					       &fbent);
+		}
 		break;
 	case MDP_NOTIFY_FRAME_DONE:
 		pr_debug("%s: frame done\n", sync_pt_data->fence_name);
@@ -2476,6 +2531,20 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		break;
 	case MDP_NOTIFY_FRAME_START:
 		mdss_fb_release_kickoff(mfd);
+		break;
+	case MDP_NOTIFY_PANEL_DEAD:
+		/* it can not recovery panel via blank/unblank,
+		 * there is nothing else we could to do, just
+		 * panic if it dead again ...
+		 */
+		if (mfd->panel_info->panel_dead_count >= MAX_PANEL_DEAD)
+			panic("Can't recovery dead panel!\n");
+		mfd->panel_info->panel_dead_count++;
+		wake_lock_timeout(&mfd->status_wakelock,
+				  msecs_to_jiffies(1200));
+		schedule_delayed_work(&mfd->panel_dead_work,
+				      msecs_to_jiffies(1000));
+		pr_err("Try recovery dead panel after 1 second!\n");
 		break;
 	}
 
