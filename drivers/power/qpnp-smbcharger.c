@@ -51,6 +51,7 @@
 #define HIGH_CURRENT_COUNT_MAX		2
 #define DELTA_MV		100
 #define DEFAULT_USB_MA		100
+#define HVDCP_MA	1800
 /* Parameters for ibus compass compensation */
 #define POWER_CONSUMPTION	500
 #define COMPENSATION_RATIO	96
@@ -208,6 +209,7 @@ struct smbchg_chip {
 	unsigned int			thermal_levels;
 	unsigned int			therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
+	unsigned int			*thermal_mitigation_hvdcp;
 
 	/* irqs */
 	int				batt_hot_irq;
@@ -290,6 +292,7 @@ enum wake_reason {
 static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv);
 static void update_compass_compensation(struct power_supply *psy);
 static int get_current_time(unsigned long *now_tm_sec);
+static int smbchg_is_hvdcp(struct smbchg_chip *chip);
 static int smbchg_debug_mask;
 module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
@@ -1060,7 +1063,10 @@ static int calc_thermal_limited_current(struct smbchg_chip *chip,
 		 * consider thermal limit only when it is active and not at
 		 * the highest level
 		 */
-		therm_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
+		if (smbchg_is_hvdcp(chip))
+			therm_ma = (int)chip->thermal_mitigation_hvdcp[chip->therm_lvl_sel];
+		else
+			therm_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
 		if (therm_ma < current_ma) {
 			pr_smb(PR_STATUS,
 				"Limiting current due to thermal: %d mA",
@@ -2585,6 +2591,11 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 		return -EINVAL;
 	}
 
+	if (!chip->thermal_mitigation_hvdcp) {
+		dev_err(chip->dev, "HVDCP Thermal mitigation not supported\n");
+		return -EINVAL;
+	}
+
 	if (lvl_sel < 0) {
 		dev_err(chip->dev, "Unsupported level selected %d\n", lvl_sel);
 		return -EINVAL;
@@ -2629,7 +2640,6 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 	 * current to re-run aicl to enable new parallel charging.
 	 * if therm_ma is below min_current_thr_ma, disable parallel charging.
 	 */
-	therm_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
 	if (chip->parallel.current_max_ma !=0) {
 		min_current_thr_ma = smbchg_get_min_parallel_current_ma(chip);
 		if (min_current_thr_ma <= 0) {
@@ -2637,6 +2647,10 @@ static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 					min_current_thr_ma);
 			goto out;
 		}
+		if (smbchg_is_hvdcp(chip))
+			therm_ma = (int)chip->thermal_mitigation_hvdcp[chip->therm_lvl_sel];
+		else
+			therm_ma = (int)chip->thermal_mitigation[chip->therm_lvl_sel];
 		if (therm_ma < min_current_thr_ma)
 			smbchg_parallel_usb_disable(chip);
 		else {
@@ -4223,6 +4237,8 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 				POWER_SUPPLY_TYPE_USB_HVDCP);
 		power_supply_set_supply_type(chip->usb_psy,
 				POWER_SUPPLY_TYPE_USB_HVDCP);
+		rc = smbchg_set_thermal_limited_usb_current_max(chip,
+				HVDCP_MA);
 		if (chip->psy_registered)
 			power_supply_changed(&chip->batt_psy);
 		smbchg_aicl_deglitch_wa_check(chip);
@@ -6098,6 +6114,28 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		rc = of_property_read_u32_array(node,
 				"qcom,thermal-mitigation",
 				chip->thermal_mitigation, chip->thermal_levels);
+		if (rc) {
+			dev_err(chip->dev,
+				"Couldn't read threm limits rc = %d\n", rc);
+			return rc;
+		}
+	}
+
+	if (of_find_property(node, "qcom,thermal-mitigation-hvdcp",
+					&chip->thermal_levels)) {
+		chip->thermal_mitigation_hvdcp = devm_kzalloc(chip->dev,
+			chip->thermal_levels,
+			GFP_KERNEL);
+
+		if (chip->thermal_mitigation_hvdcp == NULL) {
+			dev_err(chip->dev, "thermal mitigation kzalloc() failed.\n");
+			return -ENOMEM;
+		}
+
+		chip->thermal_levels /= sizeof(int);
+		rc = of_property_read_u32_array(node,
+				"qcom,thermal-mitigation-hvdcp",
+				chip->thermal_mitigation_hvdcp, chip->thermal_levels);
 		if (rc) {
 			dev_err(chip->dev,
 				"Couldn't read threm limits rc = %d\n", rc);
