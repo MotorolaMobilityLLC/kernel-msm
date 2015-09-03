@@ -1521,6 +1521,8 @@ static int smb135x_battery_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		smb135x_charging(chip, val->intval);
+		power_supply_set_online(chip->usb_psy,
+				val->intval && chip->usb_present);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		chip->fake_battery_soc = val->intval;
@@ -1981,21 +1983,14 @@ static void smb135x_external_power_changed(struct power_supply *psy)
 
 	rc = chip->usb_psy->get_property(chip->usb_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
-	if (rc < 0)
+	if (rc < 0) {
 		dev_err(chip->dev,
 			"could not read USB ONLINE property, rc=%d\n", rc);
-
-	/* update online property */
-	rc = 0;
-	if (chip->usb_present && chip->chg_enabled && chip->usb_psy_ma != 0) {
-		if (prop.intval == 0)
-			rc = power_supply_set_online(chip->usb_psy, true);
 	} else {
-		if (prop.intval == 1)
-			rc = power_supply_set_online(chip->usb_psy, false);
+		/* reset online property if charging is not enabled */
+		if (prop.intval && !chip->chg_enabled)
+			power_supply_set_online(chip->usb_psy, false);
 	}
-	if (rc < 0)
-		dev_err(chip->dev, "could not set usb online, rc=%d\n", rc);
 }
 
 static bool elapsed_msec_greater(struct timeval *start_time,
@@ -2624,6 +2619,10 @@ static int handle_usb_removal(struct smb135x_chg *chip)
 				POWER_SUPPLY_TYPE_UNKNOWN);
 		pr_debug("setting usb psy present = %d\n", chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
+		if (chip->chg_enabled) {
+			pr_debug("setting usb psy online to false\n");
+			power_supply_set_online(chip->usb_psy, false);
+		}
 	}
 	return 0;
 }
@@ -2665,6 +2664,10 @@ static int handle_usb_insertion(struct smb135x_chg *chip)
 		power_supply_set_supply_type(chip->usb_psy, usb_supply_type);
 		pr_debug("setting usb psy present = %d\n", chip->usb_present);
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
+		if (chip->chg_enabled) {
+			pr_debug("setting usb psy online to true\n");
+			power_supply_set_online(chip->usb_psy, true);
+		}
 	}
 	return 0;
 }
