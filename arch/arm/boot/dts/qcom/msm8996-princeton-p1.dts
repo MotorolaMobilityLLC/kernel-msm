@@ -60,3 +60,22 @@
 		mmi,wake-seq = <7 0 50>, <7 1 0>;
 	};
 };
+
+&spi_3 {
+	/delete-node/ m25p80@0;
+};
+
+&spi_0 {
+	apba_flash: m25p80@2 {
+		compatible = "w25q40bw";
+		reg = <2>; /* BLSP1_SPI_CS2B_N */
+		spi-max-frequency = <4800000>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@0 {
+			label = "apba";
+			reg = <0x0 0x80000>;
+		};
+	};
+};
