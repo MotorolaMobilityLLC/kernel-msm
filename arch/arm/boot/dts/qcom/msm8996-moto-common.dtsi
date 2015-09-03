@@ -720,6 +720,19 @@
 		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
 			"CCI_I2C_CLK0";
 	};
+
+	qcom,sensor-information {
+		sensor_information36: qcom,sensor-information-36 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "pchg_therm";
+		};
+		sensor_information37: qcom,sensor-information-37 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "battery";
+			qcom,alias-name  = "batt_therm";
+			qcom,scaling-factor = <1000>;
+		};
+	};
 };
 
 &pmi8994_charger {
