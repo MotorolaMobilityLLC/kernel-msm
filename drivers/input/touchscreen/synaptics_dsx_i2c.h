@@ -313,6 +313,7 @@ enum exp_fn {
 	RMI_F34,
 	RMI_F54,
 	RMI_FW_UPDATER,
+	RMI_CTRL_ACCESS_BLK,
 	RMI_LAST,
 };
 
