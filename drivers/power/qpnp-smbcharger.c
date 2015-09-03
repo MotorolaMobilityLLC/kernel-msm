@@ -243,6 +243,7 @@ struct smbchg_chip {
 	struct ibat_limit		*ibat_therm_tbl;
 	int				pmi_ibat_ma;
 	int				parallel_ibat_ma;
+	struct completion		aicl_rerun_done;
 };
 
 enum print_reason {
@@ -2300,9 +2301,7 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 
 	pr_smb(PR_STATUS, "AICL = %d, ICL = %d\n",
 			aicl_ma, chip->usb_max_current_ma);
-	if (chip->usb_max_current_ma > aicl_ma && smbchg_is_aicl_complete(chip))
-		smbchg_rerun_aicl(chip);
-	smbchg_parallel_usb_check_ok(chip);
+
 	return rc;
 }
 
@@ -3033,6 +3032,48 @@ static void check_battery_type(struct smbchg_chip *chip)
 	}
 }
 
+#define AICL_WAIT_TIME_OUT_MS  1000
+#define AICL_BATT_LEVEL 80
+#define DCP_MAX_INPUT_MA 3000
+static int smbchg_determine_dcp_input_max(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0,};
+	int rc;
+
+	if (get_prop_charge_type(chip) != POWER_SUPPLY_CHARGE_TYPE_FAST
+			|| get_prop_batt_capacity(chip) > AICL_BATT_LEVEL)
+		return 0;
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_TYPE, &prop);
+	if (rc || prop.intval != POWER_SUPPLY_TYPE_USB_DCP)
+		return rc;
+
+	/* set as maximum input current level for aicl rerun */
+	rc = smbchg_set_usb_current_max(chip, DCP_MAX_INPUT_MA);
+	if (rc) {
+		pr_err("Failed to set usb current max: %d\n", rc);
+		return rc;
+	}
+
+	INIT_COMPLETION(chip->aicl_rerun_done);
+	smbchg_rerun_aicl(chip);
+	rc = wait_for_completion_interruptible_timeout(
+			&chip->aicl_rerun_done,
+			msecs_to_jiffies(AICL_WAIT_TIME_OUT_MS));
+	if (rc > 0 && smbchg_is_aicl_complete(chip)) {
+		/* update current_max as AICL level*/
+		chip->usb_target_current_ma = smbchg_get_aicl_level_ma(chip);
+		pr_info("update iusb = %d\n", chip->usb_target_current_ma);
+		power_supply_set_current_limit(chip->usb_psy,
+					chip->usb_target_current_ma * 1000);
+	} else {
+		dev_err(chip->dev, "AICL wait timeout\n");
+	}
+
+	return 0;
+}
+
 static void smbchg_external_power_changed(struct power_supply *psy)
 {
 	struct smbchg_chip *chip = container_of(psy,
@@ -3082,6 +3123,9 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't set usb current rc = %d\n", rc);
+		if (current_limit > 0)
+			smbchg_determine_dcp_input_max(chip);
+		smbchg_parallel_usb_check_ok(chip);
 	}
 	mutex_unlock(&chip->current_change_lock);
 
@@ -4675,6 +4719,7 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 	pr_smb(PR_INTERRUPT, "triggered, aicl: %d\n", aicl_level);
 
 	increment_aicl_count(chip);
+	complete_all(&chip->aicl_rerun_done);
 
 	if (usb_present)
 		smbchg_parallel_usb_check_ok(chip);
@@ -5933,6 +5978,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->wipower_config);
 	mutex_init(&chip->usb_status_lock);
 	device_init_wakeup(chip->dev, true);
+	init_completion(&chip->aicl_rerun_done);
 
 	rc = smbchg_parse_peripherals(chip);
 	if (rc) {
