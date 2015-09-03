@@ -571,6 +571,54 @@ config TOUCHSCREEN_MIGOR
 	  To compile this driver as a module, choose M here: the
 	  module will be called migor_ts.
 
+config TOUCHSCREEN_SYNAPTICS_DSX_I2C
+	tristate "Synaptics DSX I2C touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have a Synaptics DSX I2C touchscreen
+	  connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called synaptics_dsx_i2c.
+
+config TOUCHSCREEN_SYNAPTICS_DSX_RMI_DEV
+	tristate "Synaptics DSX touchscreen char device"
+	depends on TOUCHSCREEN_SYNAPTICS_DSX_I2C
+	help
+	  This enables support for direct register access for Synaptics DSX
+	  touchscreens.
+
+config TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING
+	tristate "Synaptics DSX touchscreen test reporting"
+	depends on TOUCHSCREEN_SYNAPTICS_DSX_I2C
+	help
+	  This enables support for test reporting for Synaptics DSX
+	  touchscreens.
+
+config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_MMI
+	tristate "Synaptics DSX touchscreen firmware update (MMI)"
+	depends on TOUCHSCREEN_SYNAPTICS_DSX_I2C
+	help
+	  This enables support for firmware update for Synaptics DSX
+	  touchscreens via the MMI design.
+
+config TOUCHSCREEN_SYNAPTICS_DSX_CTRL_ACCESS_BLK
+	tristate "Synaptics I2C touchscreen control access block"
+	depends on TOUCHSCREEN_SYNAPTICS_DSX_I2C
+	help
+	  This enables export of Synaptics DSX I2C touchscreen control access
+          block.
+
+	  Say Y here if you intend to export Synaptics DSX I2C touchscreen
+	  control access block.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called synaptics_dsx_control_access_block.
+
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
