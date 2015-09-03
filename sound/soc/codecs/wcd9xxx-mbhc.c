@@ -962,7 +962,8 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 			wcd9xxx_detect_impedance(mbhc,
 					&mbhc->zl, &mbhc->zr);
 			if ((mbhc->zl > WCD9XXX_LINEIN_THRESHOLD) &&
-				(mbhc->zr > WCD9XXX_LINEIN_THRESHOLD)) {
+			    (mbhc->zr > WCD9XXX_LINEIN_THRESHOLD) &&
+			    (jack_type == SND_JACK_HEADPHONE)) {
 				jack_type = SND_JACK_LINEOUT;
 				mbhc->current_plug = PLUG_TYPE_HIGH_HPH;
 				mbhc->force_linein = true;
