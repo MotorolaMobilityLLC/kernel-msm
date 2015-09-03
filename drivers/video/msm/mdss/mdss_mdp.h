@@ -667,6 +667,11 @@ static inline bool mdss_mdp_ctl_is_power_on_lp(struct mdss_mdp_ctl *ctl)
 	return mdss_panel_is_power_on_lp(ctl->power_state);
 }
 
+static inline bool mdss_mdp_ctl_is_panel_dead(struct mdss_mdp_ctl *ctl)
+{
+	return ctl->panel_data->panel_info.panel_dead >= PANEL_DEAD_REPORT;
+}
+
 irqreturn_t mdss_mdp_isr(int irq, void *ptr);
 int mdss_iommu_attach(struct mdss_data_type *mdata);
 int mdss_iommu_dettach(struct mdss_data_type *mdata);

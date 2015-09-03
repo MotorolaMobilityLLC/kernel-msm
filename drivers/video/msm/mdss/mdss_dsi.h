@@ -399,7 +399,6 @@ struct dsi_status_data {
 	struct notifier_block fb_notifier;
 	struct delayed_work check_status;
 	struct msm_fb_data_type *mfd;
-	struct wake_lock status_wakelock;
 	struct timespec check_start_time;
 };
 

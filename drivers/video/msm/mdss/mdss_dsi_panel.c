@@ -678,6 +678,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
+	int ret = 0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -733,12 +734,18 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		pinfo->later_on_state = LATER_ON_NONE;
 		mutex_unlock(&pinfo->later_on_mutex);
 	}
-
+	if (pinfo->esd_check_enabled) {
+		ret = ctrl->check_status(ctrl) <= 0 ? -EFAULT : 0;
+		if (!ret) {
+			pinfo->panel_dead_count = 0;
+			pinfo->panel_dead = PANEL_DEAD_NONE;
+		}
+	}
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
 	pr_debug("%s:-\n", __func__);
-	return 0;
+	return ret;
 }
 
 static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)

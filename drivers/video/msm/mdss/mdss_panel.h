@@ -339,6 +339,13 @@ enum later_on_states {
 	LATER_ON_NORMAL,	/* Later on for idle -> normal mode */
 };
 
+enum panel_dead_states {
+	PANEL_DEAD_NONE,	/* Panel is good */
+	PANEL_DEAD_CHECK,	/* Frame timeout, need check status */
+	PANEL_DEAD_REPORT,	/* Panel is dead, reported to HAL */
+	PANEL_DEAD_BLANK,	/* Panel is dead, blanked */
+};
+
 struct mdss_panel_info {
 	u32 xres;
 	u32 yres;
@@ -396,7 +403,8 @@ struct mdss_panel_info {
 	int panel_power_state;
 	int blank_state;
 
-	uint32_t panel_dead;
+	enum panel_dead_states panel_dead;
+	u32 panel_dead_count;
 	u32 panel_orientation;
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;

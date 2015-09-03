@@ -71,7 +71,10 @@ enum mdp_notify_event {
 	MDP_NOTIFY_FRAME_DONE,
 	MDP_NOTIFY_FRAME_TIMEOUT,
 	MDP_NOTIFY_FRAME_START,
+	MDP_NOTIFY_PANEL_DEAD,
 };
+#define MDSS_FB_EVENT_CHECK_STATUS	0xdead
+#define MAX_PANEL_DEAD			3
 
 /**
  * enum mdp_split_mode - Lists the possible split modes in the device
@@ -266,6 +269,8 @@ struct msm_fb_data_type {
 	atomic_t later_on_updates;
 	struct delayed_work later_on_work;
 	struct wake_lock later_on_wakelock;
+	struct delayed_work panel_dead_work;
+	struct wake_lock status_wakelock;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
@@ -324,6 +329,7 @@ static inline bool mdss_fb_is_power_on_lp(struct msm_fb_data_type *mfd)
 	return mdss_panel_is_power_on_lp(mfd->panel_power_state);
 }
 
+void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd);
 int mdss_fb_get_phys_info(dma_addr_t *start, unsigned long *len, int fb_num);
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl);
 void mdss_fb_update_backlight(struct msm_fb_data_type *mfd);
