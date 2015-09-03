@@ -167,6 +167,8 @@
 #define TLMMV4_QDSD_CONFIG_WIDTH		0x5
 #define TLMMV4_QDSD_DRV_MASK			0x7
 
+extern int msm_show_resume_irq_mask;
+
 struct msm_sdc_regs {
 	unsigned long pull_mask;
 	unsigned long pull_shft;
@@ -949,12 +951,44 @@ static int msm_tlmm_gp_irq_suspend(void)
 	return 0;
 }
 
+void msm_tlmm_show_gp_irq_resume(void)
+{
+	unsigned long irq_flags;
+	int i, irq, intstat;
+	struct msm_tlmm_irq_chip *ic = &msm_tlmm_gp_irq;
+        int num_irqs = ic->num_irqs;
+
+	if (!msm_show_resume_irq_mask)
+		return;
+
+	spin_lock_irqsave(&ic->irq_lock, irq_flags);
+	for_each_set_bit(i, ic->wake_irqs, num_irqs) {
+		intstat = msm_tlmm_get_intr_status(ic, i);
+		if (intstat) {
+			struct irq_desc *desc;
+			const char *name = "null";
+
+			irq = irq_create_mapping(ic->domain, i);
+			desc = irq_to_desc(irq);
+			if (desc != NULL &&
+				desc->action && desc->action->name) {
+				name = desc->action->name;
+				pr_warning("%s: %d triggered %s\n",
+						__func__, irq, name);
+			}
+		}
+	}
+	spin_unlock_irqrestore(&ic->irq_lock, irq_flags);
+}
+
 static void msm_tlmm_gp_irq_resume(void)
 {
 	unsigned long irq_flags;
 	unsigned long i;
 	struct msm_tlmm_irq_chip *ic = &msm_tlmm_gp_irq;
 	int num_irqs = ic->num_irqs;
+
+	msm_tlmm_show_gp_irq_resume();
 
 	spin_lock_irqsave(&ic->irq_lock, irq_flags);
 	for_each_set_bit(i, ic->wake_irqs, num_irqs)
