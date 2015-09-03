@@ -39,6 +39,7 @@
 #undef USB_CHARGER_DETECTION
 
 #include "synaptics_dsx_i2c.h"
+#include "synaptics_dsx_control_access_block.h"
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 #include "touchx.h"
 #endif
@@ -120,6 +121,10 @@ static struct synaptics_dsx_patch *
 static int synaptics_rmi4_set_page(
 		struct synaptics_rmi4_data *rmi4_data,
 		unsigned int address);
+static int control_access_block_update_static(
+		struct synaptics_rmi4_data *rmi4_data);
+static int control_access_block_update_dynamic(
+		struct synaptics_rmi4_data *rmi4_data);
 
 /* F12 packet register description */
 static struct {
@@ -5390,12 +5395,127 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 				__func__);
 			return retval;
 		}
+
+		if (control_access_block_get()) {
+			control_access_block_update_static(rmi4_data);
+			control_access_block_update_dynamic(rmi4_data);
+		}
+
 		/* kick off detection work after touch ic changes its mode */
 		if (exp_fn_ctrl.det_workqueue)
 			queue_delayed_work(exp_fn_ctrl.det_workqueue,
 					&exp_fn_ctrl.det_work, 0);
 	}
 
+	return 0;
+}
+
+static int control_access_block_update_static(
+	struct synaptics_rmi4_data *rmi4_data)
+{
+	unsigned char one_data = 1;
+	unsigned char zero_data = 0;
+	unsigned char touch_data_size = 0;
+	struct synaptics_rmi4_fn *fhandler;
+	struct synaptics_rmi4_device_info *rmi;
+	struct touch_control_access_block *cab = control_access_block_get();
+
+	if (!cab)
+		return -ENODEV;
+
+	rmi = &(rmi4_data->rmi4_mod_info);
+
+	list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+		if (fhandler->fn_number == SYNAPTICS_RMI4_F11) {
+			touch_data_size = fhandler->size_of_data_register_block;
+		} else if (fhandler->fn_number == SYNAPTICS_RMI4_F12) {
+			touch_data_size = fhandler->size_of_data_register_block;
+		}
+	}
+
+	control_access_block_zap(SYN_DSX_WAKE);
+	control_access_block_update_wake(rmi4_data->f01_ctrl_base_addr,
+					1, &zero_data);
+
+	control_access_block_zap(SYN_DSX_SLEEP);
+	control_access_block_update_sleep(rmi4_data->f01_ctrl_base_addr,
+					1, &one_data);
+
+	control_access_block_zap(SYN_DSX_RESET);
+	control_access_block_update_reset(rmi4_data->f01_cmd_base_addr,
+					1, &one_data);
+
+	control_access_block_zap(SYN_DSX_STATUS);
+	control_access_block_update_status(rmi4_data->f01_data_base_addr + 1,
+					rmi4_data->num_of_intr_regs);
+
+	control_access_block_zap(SYN_DSX_MODE);
+	control_access_block_update_mode(rmi4_data->f01_data_base_addr, 1);
+
+	if (touch_data_size) {
+		control_access_block_zap(SYN_DSX_DATA);
+		control_access_block_update_data(rmi4_data->f01_data_base_addr +
+			rmi4_data->num_of_intr_regs + 1, touch_data_size);
+	}
+
+	cab->do_sync = true;
+	pr_debug("updated control access block\n");
+	return 0;
+}
+
+static int control_access_block_update_dynamic(
+	struct synaptics_rmi4_data *rmi4_data)
+{
+	int i;
+	struct touch_control_access_block *cab = control_access_block_get();
+	struct synaptics_dsx_patch *patch =
+			rmi4_data->current_mode->patch_data[SUSPEND_IDX];
+
+	if (!rmi4_data->patching_enabled || !cab || !patch || !patch->cfg_num) {
+		pr_debug("nothing to add to control access block\n");
+		return 0;
+	}
+
+	control_access_block_zap(SYN_DSX_CONFIG);
+
+	for (i = 0; i < ARRAY_SIZE(synaptics_cfg_regs); i++) {
+		int f_number = synaptics_cfg_regs[i].f_number;
+		struct synaptics_dsx_func_patch *fp;
+		struct synaptics_rmi4_func_packet_regs *regs =
+						find_function(f_number);
+
+		list_for_each_entry(fp, &patch->cfg_head, link) {
+			struct synaptics_rmi4_subpkt *subpkt;
+			struct synaptics_rmi4_packet_reg *reg;
+
+			if (fp->func != f_number)
+				continue;
+			reg = find_packet_reg(regs, fp->regstr);
+			if (!reg || reg->offset < 0)
+				continue;
+			if (fp->subpkt >= reg->nr_subpkts)
+				continue;
+			subpkt = reg->subpkt + fp->subpkt;
+
+			/* no need to check for misalignment here, since */
+			/* synaptics_copy_multiple_subpkts() takes care of it */
+			if (!subpkt->present || !subpkt->data)
+				continue;
+
+			/* exclude power control from patch set */
+			if (fp->func == SYNAPTICS_RMI4_F01 &&
+				fp->regstr == 0 && fp->subpkt == 0)
+				continue;
+
+			control_access_block_update_wo(SYN_DSX_CONFIG,
+				synaptics_cfg_regs[i].base_addr + reg->offset +
+				subpkt->offset,
+				fp->size, fp->bitmask, fp->data);
+		}
+	}
+
+	cab->do_sync = true;
+	pr_debug("filled in control access block\n");
 	return 0;
 }
 
@@ -5493,6 +5613,17 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 
 			if (!scan_failures)
 				statistics_init(rmi4_data);
+		}
+
+		if (exp_fhandler->fn_type == RMI_CTRL_ACCESS_BLK) {
+			error = control_access_block_update_static(rmi4_data);
+			/* FIXME: what if feature is disabled? */
+			/* invalidate insertion */
+			if (error) {
+				exp_fhandler->inserted = false;
+				pr_err("postpone CAB init\n");
+			} else
+				control_access_block_update_dynamic(rmi4_data);
 		}
 	}
 
@@ -6264,6 +6395,9 @@ static int folio_notifier_callback(struct notifier_block *self,
 			rmi4_data->clipping_on = false;
 			synaptics_dsx_restore_default_mode(rmi4_data);
 		}
+
+		if (control_access_block_get())
+			control_access_block_update_dynamic(rmi4_data);
 
 		dev_info(&rmi4_data->i2c_client->dev, "folio: %s\n",
 			folio_state ? "CLOSED" : "OPENED");
