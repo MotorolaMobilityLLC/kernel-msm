@@ -27830,11 +27830,23 @@ int wma_suspend_target(WMA_HANDLE handle, int disable_target_intr)
 	wmi_buf_t wmibuf;
 	u_int32_t len = sizeof(*cmd);
 	struct ol_softc *scn;
+#ifdef CONFIG_CNSS
+	tpAniSirGlobal pmac;
+#endif
 
 	if (!wma_handle || !wma_handle->wmi_handle) {
 		WMA_LOGE("WMA is closed. can not issue suspend cmd");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_CNSS
+	pmac = vos_get_context(VOS_MODULE_ID_PE, wma_handle->vos_context);
+	if (!pmac) {
+		WMA_LOGE("%s: Unable to get PE context!", __func__);
+		return -EINVAL;
+	}
+#endif
+
 	/*
 	 * send the comand to Target to ignore the
 	 * PCIE reset so as to ensure that Host and target
@@ -27871,6 +27883,13 @@ int wma_suspend_target(WMA_HANDLE handle, int disable_target_intr)
 				  != VOS_STATUS_SUCCESS) {
 		WMA_LOGE("Failed to get ACK from firmware for pdev suspend");
 		wmi_set_target_suspend(wma_handle->wmi_handle, FALSE);
+#ifdef CONFIG_CNSS
+		if (pmac->sme.enableSelfRecovery) {
+			vos_trigger_recovery();
+		} else {
+			VOS_BUG(0);
+		}
+#endif
 		return -1;
 	}
 
