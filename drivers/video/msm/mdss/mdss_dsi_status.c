@@ -155,6 +155,10 @@ static int fb_event_callback(struct notifier_block *self,
 		schedule_delayed_work(&pdata->check_status,
 					msecs_to_jiffies(delay_ms));
 		pr_debug("%s: ESD rescheduled for %d ms\n", __func__, delay_ms);
+	} else if (event == MDSS_FB_EVENT_CHECK_STATUS) {
+		cancel_delayed_work(&pdata->check_status);
+		schedule_delayed_work(&pdata->check_status, 0);
+		pr_debug("%s: ESD rescheduled without delay\n", __func__);
 	}
 	return 0;
 }
@@ -218,9 +222,6 @@ int __init mdss_dsi_status_init(void)
 
 	INIT_DELAYED_WORK(&pstatus_data->check_status, check_dsi_ctrl_status);
 
-	wake_lock_init(&pstatus_data->status_wakelock, WAKE_LOCK_SUSPEND,
-					"DSI_STATUS_WAKELOCK");
-
 	pr_debug("%s: DSI ctrl status work queue initialized\n", __func__);
 
 	return rc;
@@ -228,7 +229,6 @@ int __init mdss_dsi_status_init(void)
 
 void __exit mdss_dsi_status_exit(void)
 {
-	wake_lock_destroy(&pstatus_data->status_wakelock);
 	fb_unregister_client(&pstatus_data->fb_notifier);
 	cancel_delayed_work_sync(&pstatus_data->check_status);
 	kfree(pstatus_data);

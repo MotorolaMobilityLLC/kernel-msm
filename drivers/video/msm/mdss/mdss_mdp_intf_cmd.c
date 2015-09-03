@@ -534,7 +534,8 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	pdata = ctl->panel_data;
 
 	spin_lock_irqsave(&ctx->koff_lock, flags);
-	if (atomic_read(&ctx->koff_cnt) > 0)
+	if ((atomic_read(&ctx->koff_cnt) > 0)
+	    && !mdss_mdp_ctl_is_panel_dead(ctl))
 		need_wait = 1;
 	spin_unlock_irqrestore(&ctx->koff_lock, flags);
 
@@ -667,9 +668,13 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 	if (!__mdss_mdp_cmd_is_panel_power_on_interactive(ctx)) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
 		WARN(rc, "intf %d unblank error (%d)\n", ctl->intf_num, rc);
+		if (rc)
+			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_PANEL_DEAD);
 
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
+		if (rc)
+			mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_PANEL_DEAD);
 
 		ctx->panel_power_state = MDSS_PANEL_POWER_ON;
 		if (sctx)
@@ -786,7 +791,8 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 	MDSS_XLOG(ctl->num,  atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
 						ctx->rdptr_enabled);
 
-	if (ctl->panel_data->panel_info.dummy_panel_enabled) {
+	if (ctl->panel_data->panel_info.dummy_panel_enabled
+	    || mdss_mdp_ctl_is_panel_dead(ctl)) {
 		mdss_mdp_cmd_pingpong_done(ctl);
 		if (sctl)
 			mdss_mdp_cmd_pingpong_done(sctl);
@@ -853,10 +859,13 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (need_wait) {
+		if (mdss_mdp_ctl_is_panel_dead(ctl))
+			goto _reset_;
 		hz = mdss_panel_get_framerate(&ctl->panel_data->panel_info);
 		if (wait_for_completion_timeout(&ctx->stop_comp,
 			STOP_TIMEOUT(hz)) <= 0) {
 			WARN(1, "stop cmd time out\n");
+	_reset_:
 			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 				ctx->pp_num);
 			ctx->rdptr_enabled = 0;
@@ -971,24 +980,6 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 		}
 	}
 
-	if (!turn_off_clocks)
-		goto panel_events;
-
-	pr_debug("%s: turn off interface clocks\n", __func__);
-	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
-		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
-	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), ctx->clk_enabled,
-				ctx->rdptr_enabled, XLOG_FUNC_ENTRY);
-
-	/* Command mode is supported only starting at INTF1 */
-	session = ctl->intf_num - MDSS_MDP_INTF1;
-	ret = mdss_mdp_cmd_intfs_stop(ctl, session, panel_power_state);
-	if (IS_ERR_VALUE(ret)) {
-		pr_err("unable to stop cmd interface: %d\n", ret);
-		goto end;
-	}
-
-panel_events:
 	if ((ctl->num == 0) && send_panel_events) {
 		pr_debug("%s: send panel events\n", __func__);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK,
@@ -1000,6 +991,23 @@ panel_events:
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 	}
 
+	if (turn_off_clocks) {
+		pr_debug("%s: turn off interface clocks\n", __func__);
+		list_for_each_entry_safe(handle, tmp,
+					 &ctx->vsync_handlers, list)
+		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
+		MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt),
+			  ctx->clk_enabled, ctx->rdptr_enabled,
+			  XLOG_FUNC_ENTRY);
+
+		/* Command mode is supported only starting at INTF1 */
+		session = ctl->intf_num - MDSS_MDP_INTF1;
+		ret = mdss_mdp_cmd_intfs_stop(ctl, session, panel_power_state);
+		if (IS_ERR_VALUE(ret)) {
+			pr_err("unable to stop cmd interface: %d\n", ret);
+			goto end;
+		}
+	}
 
 	if (!panel_off) {
 		pr_debug("%s: cmd_stop with panel always on\n", __func__);
