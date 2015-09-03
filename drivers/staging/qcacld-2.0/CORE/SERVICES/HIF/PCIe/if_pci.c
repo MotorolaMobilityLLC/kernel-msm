@@ -2259,11 +2259,13 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
     }
 
     if (wma_check_scan_in_progress(temp_module)) {
-        printk("%s: Scan in progress. Aborting suspend\n", __func__);
+        printk("%s: Scan in progress. Aborting suspend%s\n", __func__,
+                runtime_pm ? " for runtime PM" : "");
         goto out;
     }
 
-    printk("%s: wow mode %d event %d\n", __func__,
+    printk("%s: %swow mode %d event %d\n", __func__,
+            runtime_pm ? "for runtime pm " : "",
        wma_is_wow_mode_selected(temp_module), state.event);
 
     if (wma_is_wow_mode_selected(temp_module)) {
@@ -2354,7 +2356,8 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
         pci_write_config_dword(pdev, OL_ATH_PCI_PM_CONTROL, (val & 0xffffff00) | 0x03);
     }
 
-    printk("%s: Suspend completes\n", __func__);
+    printk("%s: Suspend completes%s\n", __func__,
+            runtime_pm ? " for runtime pm" : "");
     ret = 0;
 
 out:
@@ -2434,7 +2437,7 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
     /* Set bus master bit in PCI_COMMAND to enable DMA */
     pci_set_master(pdev);
 
-    printk("\n%s: Rome PS: %d", __func__, val);
+    printk("%s: Rome PS: %d\n", __func__, val);
 
 #ifdef CONFIG_CNSS
     /* Keep PCIe bus driver's shadow memory intact */
@@ -2459,8 +2462,9 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
         goto out;
     }
 
-    printk("%s: wow mode %d val %d\n", __func__,
-       wma_is_wow_mode_selected(temp_module), val);
+    printk("%s: %swow mode %d val %d\n", __func__,
+            runtime_pm ? "for runtime pm " : "",
+            wma_is_wow_mode_selected(temp_module), val);
 
     adf_os_atomic_set(&sc->wow_done, 0);
 
@@ -2481,7 +2485,8 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
 #endif
 
 out:
-    printk("%s: Resume completes %d\n", __func__, err);
+    printk("%s: Resume completes%s %d\n", __func__,
+            runtime_pm ? " for runtime pm" : "", err);
 
     if (err)
         return (-1);

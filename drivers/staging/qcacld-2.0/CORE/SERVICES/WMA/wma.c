@@ -19204,7 +19204,22 @@ static VOS_STATUS wma_resume_req(tp_wma_handle wma, bool runtime_pm)
 	wma->no_of_resume_ind = 0;
 
 skip_vdev_suspend:
-	WMA_LOGD("Clearing already configured wow patterns in fw");
+	WMA_LOGD("Clearing already configured wow patterns in fw%s,"
+			" wow_enable: %d, wow_enable_cmd_sent: %d",
+			runtime_pm ? " for runtime PM" : "",
+			wma->wow.wow_enable, wma->wow.wow_enable_cmd_sent);
+
+	if (!wma->wow.wow_enable) {
+		WMA_LOGD("WoW pattern not configured in FW during suspend,"
+				" skip delete!");
+		goto end;
+	}
+
+	if (wma->wow.wow_enable_cmd_sent) {
+		WMA_LOGD("Firmware is still in WoW mode, don't delete WoW"
+				" patterns");
+		goto end;
+	}
 
 	/* Clear existing wow patterns in FW. */
 	for (ptrn_id = 0; ptrn_id < wma->wlan_resource_config.num_wow_filters;
@@ -19214,6 +19229,7 @@ skip_vdev_suspend:
 			goto end;
 	}
 
+	wma->wow.wow_enable = FALSE;
 end:
 	/* Reset the DTIM Parameters */
 	wma_set_resume_dtim(wma);
@@ -19241,6 +19257,12 @@ static VOS_STATUS wma_feed_wow_config_to_fw(tp_wma_handle wma,
 #ifdef QCA_IBSS_SUPPORT
 	v_BOOL_t ibss_vdev_available = FALSE;
 #endif
+
+	if (wma->wow.wow_enable) {
+		WMA_LOGD("WoW config%s already fed to FW! skip it",
+				runtime_pm ? " for runtime suspend" : " ");
+		return ret;
+	}
 
 	/* Gather list of free ptrn id. This is needed while configuring
 	* default wow patterns.
@@ -19754,7 +19776,7 @@ suspend_all_iface:
 	}
 
 enable_wow:
-	WMA_LOGD("WOW Suspend");
+	WMA_LOGD("%sWOW Suspend", info ? "" : "Runtime PM ");
 
 	/*
 	 * At this point, suspend indication is received on
@@ -19935,7 +19957,6 @@ VOS_STATUS wma_disable_d0wow_in_fw(tp_wma_handle wma)
 		VOS_BUG(0);
 	}
 
-	wma->wow.wow_enable = FALSE;
 	wma->wow.wow_enable_cmd_sent = FALSE;
 	wmi_set_d0wow_flag(wma->wmi_handle, FALSE);
 	WMA_LOGD("D0-WOW is disabled successfully in FW.");
@@ -19953,7 +19974,7 @@ int wma_disable_wow_in_fw(WMA_HANDLE handle, int runtime_pm)
 	tp_wma_handle wma = handle;
 	VOS_STATUS ret;
 
-	if(!wma->wow.wow_enable || !wma->wow.wow_enable_cmd_sent) {
+	if (!wma->wow.wow_enable_cmd_sent) {
 		return VOS_STATUS_SUCCESS;
 	}
 
@@ -19972,7 +19993,6 @@ int wma_disable_wow_in_fw(WMA_HANDLE handle, int runtime_pm)
 	if (ret != VOS_STATUS_SUCCESS)
 		return ret;
 
-	wma->wow.wow_enable = FALSE;
 	wma->wow.wow_enable_cmd_sent = FALSE;
 
 	/* To allow the tx pause/unpause events */
