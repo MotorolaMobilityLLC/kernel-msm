@@ -200,6 +200,7 @@
 	qcom,float-voltage-comp = <16>;
 	qcom,float-voltage-comp-stage = <6>;
 	qcom,thermal-mitigation = <3000 2000 1500 1000 0>;
+	qcom,thermal-mitigation-hvdcp = <1800 1200 700 550 0>;
 };
 
 &spmi_bus {
