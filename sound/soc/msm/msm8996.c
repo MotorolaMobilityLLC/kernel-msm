@@ -658,7 +658,9 @@ static const struct snd_soc_dapm_route florida_audio_routes[] = {
 	{"IN3R", NULL, "MICBIAS2"},
 
 	{"Headphone", NULL, "OUT1L"},
-	{"Headphone", NULL, "OUT1R"}
+	{"Headphone", NULL, "OUT1R"},
+
+	{"AMP Playback", NULL, "AIF1 Capture"},
 };
 #endif
 
@@ -2414,6 +2416,16 @@ static struct snd_soc_ops msm8996_mm5_ops = {
 	.prepare = msm8996_mm5_prepare,
 };
 
+#ifdef CONFIG_SND_SOC_FLORIDA
+static const struct snd_soc_pcm_stream cs35l34_params = {
+	.formats = SNDRV_PCM_FORMAT_S16_LE,
+	.rate_min = 48000,
+	.rate_max = 48000,
+	.channels_min = 1,
+	.channels_max = 2,
+};
+#endif
+
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8996_common_dai_links[] = {
 	/* FrontEnd DAI Links */
@@ -3149,6 +3161,19 @@ static struct snd_soc_dai_link msm8996_florida_fe_dai_links[] = {
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8996_slimbus_2_be_ops,
+	},
+	/* FLORIDA - cs35l34 codec-codec link */
+	{
+		.name = "FLA-AMP",
+		.stream_name = "FLA-AMP Playback",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "cs35l34.07-0040",
+		.codec_dai_name = "cs35l34",
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &cs35l34_params,
 	},
 };
 
