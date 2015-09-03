@@ -535,7 +535,7 @@
 		      <0x07544000 0x2b000>;
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 97 0>, <0 238 0>;
-		spi-max-frequency = <19200000>;
+		spi-max-frequency = <48000000>;
 
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
@@ -973,10 +973,12 @@
 
 		mmi,intf-id = /bits/ 8 <3>;
 	};
+};
 
-	apba_flash: m25p80@2 {
+&spi_3 {
+	apba_flash: m25p80@0 {
 		compatible = "w25q40bw";
-		reg = <2>; /* BLSP1_SPI_CS2B_N */
+		reg = <0>;
 		spi-max-frequency = <4800000>;
 
 		#address-cells = <1>;
