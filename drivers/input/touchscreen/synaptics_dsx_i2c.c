@@ -2195,12 +2195,34 @@ static int synaptics_dsx_alloc_input(struct synaptics_rmi4_data *rmi4_data)
 	return 0;
 }
 
+static void synaptics_copy_multiple_subpkts(
+	struct synaptics_rmi4_packet_reg *reg,
+	struct synaptics_dsx_func_patch *fp)
+{
+	int i, b2c, leftover = fp->size;
+	unsigned char *data_ptr = fp->data;
+	struct synaptics_rmi4_subpkt *subpkt;
+
+	for (i = fp->subpkt; i < reg->nr_subpkts; i++) {
+		subpkt = reg->subpkt + i;
+		if (!subpkt->present || !subpkt->data)
+			continue;
+		b2c = min(leftover, (int)subpkt->size);
+		memcpy(subpkt->data, data_ptr, b2c);
+		pr_debug("copied %d bytes to subpkt %d\n", b2c, i);
+		data_ptr += subpkt->size;
+		leftover -= subpkt->size;
+	}
+	pr_debug("%s misalignement detected\n", !leftover ? "no" : "");
+}
+
 static void synaptics_dsx_patch_func(
 		struct synaptics_rmi4_data *rmi4_data,
 		int f_number,
 		struct synaptics_dsx_patch *patch)
 {
 	int r, error, function;
+	unsigned char *destination;
 	unsigned char *value, rt_mod;
 	struct device *dev = &rmi4_data->i2c_client->dev;
 	struct synaptics_rmi4_subpkt *subpkt;
@@ -2250,11 +2272,32 @@ static void synaptics_dsx_patch_func(
 		}
 
 		subpkt = reg->subpkt + fp->subpkt;
+		destination = (unsigned char *)subpkt->data;
 		if (!subpkt->present || !subpkt->data ||
 			subpkt->size < fp->size) {
-			pr_debug("F%x%c@%d:%d improperly allocated\n",
-				function, rt_mod, fp->regstr, fp->subpkt);
-			continue;
+			pr_debug("F%x%c@%d:%d subpkt: size=%d, offset=%d; reg-size=%d; fp-size=%d\n",
+					function, rt_mod,
+					fp->regstr, fp->subpkt,
+					subpkt->size, subpkt->offset,
+					reg->size, fp->size);
+			/* If more than one consequitive subpacket within */
+			/* the same packet register needs to be updated, */
+			/* then patch might include data for all subpackets */
+			/* combined into a single array. Then its size will */
+			/* be more than individual subpacket size. It should */
+			/* not be a problem as packet register is updated */
+			/* all in once. And as long as size of data array */
+			/* fits the register, update should be allowed */
+			if (reg->size <= (subpkt->offset + fp->size)) {
+				pr_debug("F%x%c@%d:%d improperly allocated\n",
+					function, rt_mod,
+					fp->regstr, fp->subpkt);
+				continue;
+			} else {
+				synaptics_copy_multiple_subpkts(reg, fp);
+				/* whole patch has been applied already */
+				destination = NULL;
+			}
 		}
 		if (fp->bitmask && fp->size == 1) {
 			value = (unsigned char *)subpkt->data;
@@ -2263,8 +2306,12 @@ static void synaptics_dsx_patch_func(
 			pr_debug("patching by mask: clear-ed 0x%x\n", *value);
 			*value |= *fp->data;
 			pr_debug("patching by mask: result 0x%x\n", *value);
-		} else
-			memcpy(subpkt->data, fp->data, fp->size);
+			/* value has been modified already */
+			destination = NULL;
+		}
+
+		if (destination)
+			memcpy(destination, fp->data, fp->size);
 
 		/* value has been changed */
 		reg->modified = true;
@@ -4972,7 +5019,6 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	int retval;
 	unsigned char page_number;
 	unsigned char intr_count = 0;
-	unsigned char data_sources = 0;
 	unsigned char f01_query[F01_STD_QUERY_LEN] = {0};
 	unsigned short pdt_entry_addr;
 	struct synaptics_rmi4_fn_desc rmi_fd;
@@ -5229,14 +5275,10 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	 * Map out the interrupt bit masks for the interrupt sources
 	 * from the registered function handlers.
 	 */
-	list_for_each_entry(fhandler, &rmi->support_fn_list, link)
-		data_sources += fhandler->num_of_data_sources;
-	if (data_sources) {
-		list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
-			if (fhandler->num_of_data_sources) {
-				rmi4_data->intr_mask[fhandler->intr_reg_num] |=
-						fhandler->intr_mask;
-			}
+	list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+		if (fhandler->num_of_data_sources) {
+			rmi4_data->intr_mask[fhandler->intr_reg_num] |=
+					fhandler->intr_mask;
 		}
 	}
 
@@ -5371,7 +5413,7 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 {
 	struct synaptics_rmi4_exp_fn *exp_fhandler, *next_list_entry;
 	struct synaptics_rmi4_data *rmi4_data;
-	int state;
+	int state, error;
 
 	mutex_lock(&exp_fn_ctrl_mutex);
 	rmi4_data = exp_fn_ctrl.rmi4_data_ptr;
@@ -5413,7 +5455,7 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 		state = synaptics_dsx_get_state_safe(rmi4_data);
 		exp_fhandler->inserted = true;
 		if (exp_fhandler->fn_type == RMI_F54) {
-			int error, scan_failures = 0;
+			int scan_failures = 0;
 			struct synaptics_rmi4_func_packet_regs *regs;
 
 			regs = find_function(SYNAPTICS_RMI4_F54);
