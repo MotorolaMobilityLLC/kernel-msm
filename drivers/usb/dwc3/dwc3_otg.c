@@ -393,6 +393,9 @@ static void dwc3_otg_notify_host_mode(struct usb_otg *otg, int host_mode)
 		power_supply_set_scope(dotg->psy, POWER_SUPPLY_SCOPE_SYSTEM);
 	else
 		power_supply_set_scope(dotg->psy, POWER_SUPPLY_SCOPE_DEVICE);
+
+	/* set phy parameters */
+	usb_phy_set_params(dotg->dwc->usb2_phy);
 }
 
 static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
