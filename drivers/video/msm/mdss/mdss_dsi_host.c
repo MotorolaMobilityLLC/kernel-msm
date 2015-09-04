@@ -109,7 +109,6 @@ void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 	mutex_init(&ctrl->mutex);
 	mutex_init(&ctrl->cmd_mutex);
 	mutex_init(&ctrl->clk_lane_mutex);
-	mutex_init(&ctrl->cmdlist_mutex);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->tx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->rx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->status_buf, SZ_4K);
@@ -1073,7 +1072,7 @@ static void mdss_dsi_mode_setup(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo;
 	struct mipi_panel_info *mipi;
-	u32 clk_rate, data = 0;
+	u32 clk_rate;
 	u32 hbp, hfp, vbp, vfp, hspw, vspw, width, height;
 	u32 ystride, bpp, dst_bpp;
 	u32 stream_ctrl, stream_total;
@@ -1153,14 +1152,6 @@ static void mdss_dsi_mode_setup(struct mdss_panel_data *pdata)
 			stream_ctrl = (ystride << 16) | (mipi->vc << 8) |
 					DTYPE_DCS_LWRITE;
 			stream_total = height << 16 | width;
-		}
-
-		/* Enable frame transfer in burst mode */
-		if (ctrl_pdata->hw_rev >= MDSS_DSI_HW_REV_103) {
-			data = MIPI_INP(ctrl_pdata->ctrl_base + 0x1b8);
-			data = data | BIT(16);
-			MIPI_OUTP((ctrl_pdata->ctrl_base + 0x1b8), data);
-			ctrl_pdata->burst_mode_enabled = 1;
 		}
 
 		/* DSI_COMMAND_MODE_MDP_STREAM_CTRL */
@@ -2201,26 +2192,18 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	int ret = -EINVAL;
 	int rc = 0;
 	bool hs_req = false;
-	bool cmd_mutex_acquired = false;
 
 	if (mdss_get_sd_client_cnt())
 		return -EPERM;
 
 	if (from_mdp) {	/* from mdp kickoff */
-		if (!ctrl->burst_mode_enabled) {
-			mutex_lock(&ctrl->cmd_mutex);
-			cmd_mutex_acquired = true;
-		}
+		mutex_lock(&ctrl->cmd_mutex);
 		pinfo = &ctrl->panel_data.panel_info;
 		if (pinfo->partial_update_enabled)
 			roi = &pinfo->roi;
 	}
 
 	req = mdss_dsi_cmdlist_get(ctrl);
-	if (req && from_mdp && ctrl->burst_mode_enabled) {
-		mutex_lock(&ctrl->cmd_mutex);
-		cmd_mutex_acquired = true;
-	}
 
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
 
@@ -2230,11 +2213,9 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	if (req && (req->flags & CMD_REQ_HS_MODE))
 		hs_req = true;
 
-	if (!ctrl->burst_mode_enabled ||
-		(from_mdp && ctrl->cmd_clk_ln_recovery_en)) {
-		/* make sure dsi_cmd_mdp is idle */
-		mdss_dsi_cmd_mdp_busy(ctrl);
-	}
+	/* make sure dsi_cmd_mdp is idle */
+	mdss_dsi_cmd_mdp_busy(ctrl);
+
 	mdss_dsi_get_hw_revision(ctrl);
 
 	/* For DSI versions less than 1.3.0, CMD DMA TPG is not supported */
@@ -2325,8 +2306,8 @@ need_lock:
 		 */
 		if (!roi || (roi->w != 0 || roi->h != 0))
 			mdss_dsi_cmd_mdp_start(ctrl);
-		if (cmd_mutex_acquired)
-			mutex_unlock(&ctrl->cmd_mutex);
+
+		mutex_unlock(&ctrl->cmd_mutex);
 	} else {	/* from dcs send */
 		if (ctrl->cmd_clk_ln_recovery_en &&
 				ctrl->panel_mode == DSI_CMD_MODE && hs_req)
