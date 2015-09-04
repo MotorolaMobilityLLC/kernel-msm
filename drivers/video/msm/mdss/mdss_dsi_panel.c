@@ -347,29 +347,29 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	return rc;
 }
 
-static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata, u8 *pwr_mode,
-								int read_mode)
+static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata,
+			u8 *pwr_mode, bool hs_mode)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl;
-	int old_rd_mode;
+	struct dcs_cmd_req cmdreq;
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
-	if (ctrl->panel_config.bare_board == true) {
-		*pwr_mode = 0;
-		goto end;
-	}
+	dcs_cmd[0] = DCS_CMD_GET_POWER_MODE;
+	dcs_cmd[1] = 0x00;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+	cmdreq.rlen = 1;
+	cmdreq.rbuf = pwr_mode;
+	cmdreq.cb = NULL; /* call back */
 
-	old_rd_mode = mdss_dsi_get_tx_power_mode(pdata);
-	if (read_mode != old_rd_mode)
-		mdss_dsi_set_tx_power_mode(read_mode, pdata);
+	if (mdss_dsi_cmdlist_put(ctrl, &cmdreq) != 1)
+		pr_warn("%s: failed to read panel power mode\n", __func__);
 
-	mdss_dsi_panel_cmd_read(ctrl, DCS_CMD_GET_POWER_MODE, 0x00,
-							NULL, pwr_mode, 1);
-	if (read_mode != old_rd_mode)
-		mdss_dsi_set_tx_power_mode(old_rd_mode, pdata);
-
-end:
 	pr_debug("%s: panel power mode = 0x%x\n", __func__, *pwr_mode);
 
 	return 0;
@@ -753,7 +753,7 @@ static int mdss_dsi_quickdraw_check_panel_state(struct mdss_panel_data *pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	mdss_dsi_get_pwr_mode(pdata, pwr_mode, DSI_MODE_BIT_LP);
+	mdss_dsi_get_pwr_mode(pdata, pwr_mode, false);
 
 	mfd = pdata->mfd;
 	if (mfd->quickdraw_panel_state == DSI_DISP_INVALID_STATE) {
@@ -854,7 +854,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds);
 
-	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, DSI_MODE_BIT_LP);
+	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
 	if ((pwr_mode & 0x04) != 0x04) {
 		pr_err("%s: Display failure: DISON (0x04) bit not set\n",
 								__func__);
