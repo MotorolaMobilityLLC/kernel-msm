@@ -29,6 +29,7 @@
 #define BCL_PARAM_MAX_ATTR      3
 
 #define BCL_DEFINE_RO_PARAM(_attr, _name, _attr_gp, _index) \
+	sysfs_attr_init(&_attr.attr); \
 	_attr.attr.name = __stringify(_name); \
 	_attr.attr.mode = 0444; \
 	_attr.show = _name##_show; \
