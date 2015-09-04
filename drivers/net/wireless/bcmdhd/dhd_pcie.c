@@ -3015,12 +3015,16 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 
 	int timeleft;
 	bool pending;
+	unsigned long flags;
 	int rc = 0;
+	struct net_device *netdev = NULL;
+	dhd_pub_t *pub = (dhd_pub_t *)(bus->dhd);
 	int idle_retry = 0;
 	int active;
 
 	DHD_INFO(("%s Enter with state :%d\n", __FUNCTION__, state));
 
+	netdev = dhd_idx2net(pub, 0);
 	if (bus->dhd == NULL) {
 		DHD_ERROR(("bus not inited\n"));
 		return BCME_ERROR;
@@ -3076,10 +3080,34 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 				dhdpcie_bus_intr_disable(bus);
 				rc = dhdpcie_pci_suspend_resume(bus->dev, state);
 			}
+			bus->dhd->d3ackcnt_timeout = 0;
 		} else if (timeleft == 0) {
-			DHD_ERROR(("%s: resumed on timeout\n", __FUNCTION__));
+			bus->dhd->d3ackcnt_timeout++;
+			DHD_ERROR(("%s: resumed on timeout for D3 ACK d3ackcnt_timeout %d \n",
+				__FUNCTION__, bus->dhd->d3ackcnt_timeout));
+			bus->dev->current_state = PCI_D3hot;
+			pci_set_master(bus->dev);
+			rc = pci_set_power_state(bus->dev, PCI_D0);
+			if (rc) {
+				DHD_ERROR(("%s: pci_set_power_state failed:"
+					" current_state[%d], ret[%d]\n",
+					__FUNCTION__, bus->dev->current_state, rc));
+			}
 			bus->suspended = FALSE;
-			bus->dhd->busstate = DHD_BUS_DOWN;
+			DHD_GENERAL_LOCK(bus->dhd, flags);
+			bus->dhd->busstate = DHD_BUS_DATA;
+			DHD_INFO(("fail to suspend, start net device traffic\n"));
+			netif_start_queue(netdev);
+			DHD_GENERAL_UNLOCK(bus->dhd, flags);
+			if (bus->dhd->d3ackcnt_timeout >= MAX_CNTL_D3ACK_TIMEOUT) {
+				DHD_ERROR(("%s: Event HANG send up "
+					"due to PCIe linkdown\n", __FUNCTION__));
+#ifdef MSM_PCIE_LINKDOWN_RECOVERY
+				bus->islinkdown = TRUE;
+#endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+				bus->dhd->d3ackcnt_timeout = 0;
+				dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
+			}
 			rc = -ETIMEDOUT;
 		} else if (bus->wait_for_d3_ack == DHD_INVALID) {
 			DHD_ERROR(("PCIe link down during suspend"));

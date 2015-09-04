@@ -62,6 +62,9 @@
 #define CONSOLE_LINE_MAX	192
 #define CONSOLE_BUFFER_MAX	2024
 
+#ifndef MAX_CNTL_D3ACK_TIMEOUT
+#define MAX_CNTL_D3ACK_TIMEOUT 2
+#endif /* MAX_CNTL_D3ACK_TIMEOUT */
 
 typedef struct dhd_console {
 	 uint		count;	/* Poll interval msec counter */

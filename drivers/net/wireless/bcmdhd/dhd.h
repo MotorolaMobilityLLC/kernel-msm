@@ -360,6 +360,9 @@ typedef struct dhd_pub {
 	int   hang_was_sent;
 	int   rxcnt_timeout;		/* counter rxcnt timeout to send HANG */
 	int   txcnt_timeout;		/* counter txcnt timeout to send HANG */
+#ifdef BCMPCIE
+	int   d3ackcnt_timeout;
+#endif
 	bool hang_report;		/* enable hang report by default */
 #ifdef WLMEDIA_HTSF
 	uint8 htsfdlystat_sz; /* Size of delay stats, max 255B */
