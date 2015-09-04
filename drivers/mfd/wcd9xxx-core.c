@@ -793,6 +793,7 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx)
 
 	mutex_init(&wcd9xxx->io_lock);
 	mutex_init(&wcd9xxx->xfer_lock);
+	mutex_init(&wcd9xxx->rgltr_vote_lock);
 
 	dev_set_drvdata(wcd9xxx->dev, wcd9xxx);
 	wcd9xxx_bring_up(wcd9xxx);
@@ -863,6 +864,7 @@ static void wcd9xxx_device_exit(struct wcd9xxx *wcd9xxx)
 	wcd9xxx_core_res_deinit(&wcd9xxx->core_res);
 	mutex_destroy(&wcd9xxx->io_lock);
 	mutex_destroy(&wcd9xxx->xfer_lock);
+	mutex_destroy(&wcd9xxx->rgltr_vote_lock);
 	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_SLIMBUS)
 		slim_remove_device(wcd9xxx->slim_slave);
 	kfree(wcd9xxx);
@@ -1392,6 +1394,64 @@ static int wcd9xxx_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 
+void wcd9xxx_cdc_vote_regulator_mode(struct wcd9xxx *wcd9xxx,
+				     char *regulator_name, bool active_vote)
+{
+
+	int i, ret = 0;
+	struct wcd9xxx_pdata *pdata = wcd9xxx->dev->platform_data;
+
+	pr_debug("%s: active_vote = %d\n", __func__, active_vote);
+	mutex_lock(&wcd9xxx->rgltr_vote_lock);
+	for (i = 0; i < wcd9xxx->num_of_supplies; i++) {
+		if (regulator_count_voltages(
+			wcd9xxx->supplies[i].consumer) <= 0)
+			continue;
+		if (pdata->regulator[i].active_uA <= 0)
+			continue;
+		if (regulator_name != NULL &&
+			strcmp(regulator_name, wcd9xxx->supplies[i].supply))
+			continue;
+		if (active_vote) {
+			if (!pdata->regulator[i].vote_cnt) {
+				ret = regulator_set_optimum_mode(
+						wcd9xxx->supplies[i].consumer,
+						pdata->regulator[i].active_uA);
+				if (ret < 0)
+					dev_err(wcd9xxx->dev, "%s: failed to set active mode for regulator %s err = %d\n",
+						__func__,
+						wcd9xxx->supplies[i].supply,
+						ret);
+			} else {
+				dev_dbg(wcd9xxx->dev, "%s: active mode is already set for regulator %s, vote_count = %d\n",
+					__func__,
+					wcd9xxx->supplies[i].supply,
+					pdata->regulator[i].vote_cnt);
+			}
+			pdata->regulator[i].vote_cnt++;
+		} else {
+			pdata->regulator[i].vote_cnt--;
+			if (!pdata->regulator[i].vote_cnt) {
+				ret = regulator_set_optimum_mode(
+						wcd9xxx->supplies[i].consumer,
+						pdata->regulator[i].optimum_uA);
+				if (ret < 0)
+					dev_err(wcd9xxx->dev, "%s: failed to set sleep mode for regulator %s err = %d\n",
+						__func__,
+						wcd9xxx->supplies[i].supply,
+						ret);
+			} else {
+				dev_dbg(wcd9xxx->dev, "%s: sleep mode is not set for regulator %s, vote_count = %d\n",
+					__func__,
+					wcd9xxx->supplies[i].supply,
+					pdata->regulator[i].vote_cnt);
+			}
+		}
+	}
+	mutex_unlock(&wcd9xxx->rgltr_vote_lock);
+}
+EXPORT_SYMBOL_GPL(wcd9xxx_cdc_vote_regulator_mode);
+
 static int wcd9xxx_dt_parse_vreg_info(struct device *dev,
 				      struct wcd9xxx_regulator *vreg,
 				      const char *vreg_name,
@@ -1439,8 +1499,21 @@ static int wcd9xxx_dt_parse_vreg_info(struct device *dev,
 	}
 	vreg->optimum_uA = prop_val;
 
-	dev_info(dev, "%s: vol=[%d %d]uV, curr=[%d]uA, ond %d\n", vreg->name,
-		vreg->min_uV, vreg->max_uV, vreg->optimum_uA, vreg->ondemand);
+	/* optional property*/
+	snprintf(prop_name, CODEC_DT_MAX_PROP_SIZE,
+			"qcom,%s-active-current", vreg_name);
+
+	ret = of_property_read_u32(dev->of_node, prop_name, &prop_val);
+	if (IS_ERR_VALUE(ret)) {
+		prop_val = 0;
+		ret = 0;
+	}
+	vreg->active_uA = prop_val;
+
+	dev_info(dev, "%s: vol=[%d %d]uV, curr=[%d]uA, active_curr=[%d]uA, ond %d\n",
+			vreg->name, vreg->min_uV, vreg->max_uV,
+			vreg->optimum_uA, vreg->active_uA,  vreg->ondemand);
+
 	return 0;
 }
 

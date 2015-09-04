@@ -39,6 +39,7 @@ struct cal_block_data {
 	struct list_head	list;
 	struct cal_data		cal_data;
 	struct mem_map_data	map_data;
+	int32_t			buffer_number;
 };
 
 struct cal_util_callbacks {
@@ -85,9 +86,7 @@ void cal_utils_clear_cal_block_q6maps(int num_cal_types,
 
 
 /* common matching functions used to add blocks */
-bool cal_utils_match_ion_map(struct cal_block_data *cal_block,
-					void *user_data);
-bool cal_utils_match_only_block(struct cal_block_data *cal_block,
+bool cal_utils_match_buf_num(struct cal_block_data *cal_block,
 					void *user_data);
 
 /* common matching functions to find cal blocks */
@@ -98,4 +97,6 @@ struct cal_block_data *cal_utils_get_only_cal_block(
 size_t get_cal_info_size(int32_t cal_type);
 size_t get_user_cal_type_size(int32_t cal_type);
 
+/* Version of the cal type*/
+int32_t cal_utils_get_cal_type_version(void *cal_type_data);
 #endif

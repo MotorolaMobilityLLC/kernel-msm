@@ -24,7 +24,7 @@
 #include "sound/q6audio-v2.h"
 #include "sound/apr_audio-v2.h"
 #include "sound/q6afe-v2.h"
-#include "audio_cal_utils.h"
+#include <sound/audio_cal_utils.h>
 #include "q6voice.h"
 
 #define TIMEOUT_MS 300
@@ -2946,13 +2946,13 @@ static int voice_unmap_cal_memory(int32_t cal_type,
 				result = result2;
 			}
 
-			if (cal_type == CVP_VOCVOL_CAL_TYPE)
+			if (cal_type == CVP_VOCPROC_DYNAMIC_CAL_TYPE)
 				voice_send_cvp_deregister_vol_cal_cmd(v);
-			else if (cal_type == CVP_VOCPROC_CAL_TYPE)
+			else if (cal_type == CVP_VOCPROC_STATIC_CAL_TYPE)
 				voice_send_cvp_deregister_cal_cmd(v);
 			else if (cal_type == CVP_VOCDEV_CFG_CAL_TYPE)
 				voice_send_cvp_deregister_dev_cfg_cmd(v);
-			else if (cal_type == CVS_VOCSTRM_CAL_TYPE)
+			else if (cal_type == CVS_VOCSTRM_STATIC_CAL_TYPE)
 				voice_send_cvs_deregister_cal_cmd(v);
 			else
 				pr_err("%s: Invalid cal type %d!\n",
@@ -2982,8 +2982,8 @@ static int voice_unmap_cal_memory(int32_t cal_type,
 		}
 		mutex_unlock(&v->lock);
 	}
-done:
 	mutex_unlock(&common.common_lock);
+done:
 	return result;
 }
 
@@ -6525,25 +6525,25 @@ static int get_cal_type_index(int32_t cal_type)
 	case CVP_VOC_TX_TOPOLOGY_CAL_TYPE:
 		ret = CVP_VOC_TX_TOPOLOGY_CAL;
 		break;
-	case CVP_VOCPROC_CAL_TYPE:
+	case CVP_VOCPROC_STATIC_CAL_TYPE:
 		ret = CVP_VOCPROC_CAL;
 		break;
-	case CVP_VOCVOL_CAL_TYPE:
+	case CVP_VOCPROC_DYNAMIC_CAL_TYPE:
 		ret = CVP_VOCVOL_CAL;
 		break;
-	case CVS_VOCSTRM_CAL_TYPE:
+	case CVS_VOCSTRM_STATIC_CAL_TYPE:
 		ret = CVS_VOCSTRM_CAL;
 		break;
 	case CVP_VOCDEV_CFG_CAL_TYPE:
 		ret = CVP_VOCDEV_CFG_CAL;
 		break;
-	case CVP_VOCPROC_COL_CAL_TYPE:
+	case CVP_VOCPROC_STATIC_COL_CAL_TYPE:
 		ret = CVP_VOCPROC_COL_CAL;
 		break;
-	case CVP_VOCVOL_COL_CAL_TYPE:
+	case CVP_VOCPROC_DYNAMIC_COL_CAL_TYPE:
 		ret = CVP_VOCVOL_COL_CAL;
 		break;
-	case CVS_VOCSTRM_COL_CAL_TYPE:
+	case CVS_VOCSTRM_STATIC_COL_CAL_TYPE:
 		ret = CVS_VOCSTRM_COL_CAL;
 		break;
 	case VOICE_RTAC_INFO_CAL_TYPE:
@@ -6556,6 +6556,18 @@ static int get_cal_type_index(int32_t cal_type)
 		pr_err("%s: Invalid cal type %d!\n", __func__, cal_type);
 	}
 	return ret;
+}
+
+static int voice_prepare_volume_boost(int32_t cal_type,
+					size_t data_size, void *data)
+{
+	return voc_deregister_vocproc_vol_table();
+}
+
+static int voice_enable_volume_boost(int32_t cal_type,
+				size_t data_size, void *data)
+{
+	return voc_register_vocproc_vol_table();
 }
 
 static int voice_alloc_cal(int32_t cal_type,
@@ -6658,55 +6670,57 @@ static int voice_init_cal_data(void)
 	struct cal_type_info cal_type_info[] = {
 		{{CVP_VOC_RX_TOPOLOGY_CAL_TYPE,
 		{NULL, NULL, NULL, voice_set_cal, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 
 		{{CVP_VOC_TX_TOPOLOGY_CAL_TYPE,
 		{NULL, NULL, NULL, voice_set_cal, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 
-		{{CVP_VOCPROC_CAL_TYPE,
+		{{CVP_VOCPROC_STATIC_CAL_TYPE,
 		{voice_alloc_cal, voice_dealloc_cal, NULL,
 		voice_set_cal, NULL, NULL} },
 		{NULL, voice_unmap_cal_memory,
-		cal_utils_match_ion_map} },
+		cal_utils_match_buf_num} },
 
-		{{CVP_VOCVOL_CAL_TYPE,
-		{voice_alloc_cal, voice_dealloc_cal, NULL,
-		voice_set_cal, NULL, NULL} },
+		{{CVP_VOCPROC_DYNAMIC_CAL_TYPE,
+		{voice_alloc_cal, voice_dealloc_cal,
+		voice_prepare_volume_boost,
+		voice_set_cal, NULL,
+		voice_enable_volume_boost} },
 		{NULL, voice_unmap_cal_memory,
-		cal_utils_match_ion_map} },
+		cal_utils_match_buf_num} },
 
 		{{CVP_VOCDEV_CFG_CAL_TYPE,
 		{voice_alloc_cal, voice_dealloc_cal, NULL,
 		voice_set_cal, NULL, NULL} },
 		{NULL, voice_unmap_cal_memory,
-		cal_utils_match_ion_map} },
+		cal_utils_match_buf_num} },
 
-		{{CVP_VOCPROC_COL_CAL_TYPE,
+		{{CVP_VOCPROC_STATIC_COL_CAL_TYPE,
 		{NULL, NULL, NULL, voice_set_cal, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 
-		{{CVP_VOCVOL_COL_CAL_TYPE,
+		{{CVP_VOCPROC_DYNAMIC_COL_CAL_TYPE,
 		{NULL, NULL, NULL, voice_set_cal, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 
-		{{CVS_VOCSTRM_CAL_TYPE,
+		{{CVS_VOCSTRM_STATIC_CAL_TYPE,
 		{voice_alloc_cal, voice_dealloc_cal, NULL,
 		voice_set_cal, NULL, NULL} },
 		{NULL, voice_unmap_cal_memory,
-		cal_utils_match_ion_map} },
+		cal_utils_match_buf_num} },
 
-		{{CVS_VOCSTRM_COL_CAL_TYPE,
+		{{CVS_VOCSTRM_STATIC_COL_CAL_TYPE,
 		{NULL, NULL, NULL, voice_set_cal, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 
 		{{VOICE_RTAC_INFO_CAL_TYPE,
 		{NULL, NULL, NULL, NULL, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 
 		{{VOICE_RTAC_APR_CAL_TYPE,
 		{NULL, NULL, NULL, NULL, NULL, NULL} },
-		{NULL, NULL, cal_utils_match_only_block} },
+		{NULL, NULL, cal_utils_match_buf_num} },
 	};
 
 	ret = cal_utils_create_cal_types(MAX_VOICE_CAL_TYPES, common.cal_data,
