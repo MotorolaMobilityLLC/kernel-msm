@@ -3254,24 +3254,24 @@ dhd_watchdog_thread(void *data)
 
 			if (dhd->pub.dongle_reset == FALSE) {
 				DHD_TIMER(("%s:\n", __FUNCTION__));
-
-				/* Call the bus module watchdog */
-				dhd_bus_watchdog(&dhd->pub);
-
-
 				DHD_GENERAL_LOCK(&dhd->pub, flags);
+				/* Call the bus module watchdog only if pub.up is TRUE */
+				if (dhd->pub.up)
+					dhd_bus_watchdog(&dhd->pub);
+
 				/* Count the tick for reference */
 				dhd->pub.tickcnt++;
 				time_lapse = jiffies - jiffies_at_start;
 
 				/* Reschedule the watchdog */
-				if (dhd->wd_timer_valid)
+				if (dhd->wd_timer_valid) {
 					mod_timer(&dhd->timer,
 					    jiffies +
 					    msecs_to_jiffies(dhd_watchdog_ms) -
 					    min(msecs_to_jiffies(dhd_watchdog_ms), time_lapse));
-					DHD_GENERAL_UNLOCK(&dhd->pub, flags);
 				}
+				DHD_GENERAL_UNLOCK(&dhd->pub, flags);
+			}
 		} else {
 			break;
 	}
@@ -3292,11 +3292,11 @@ static void dhd_watchdog(ulong data)
 		up(&dhd->thr_wdt_ctl.sema);
 		return;
 	}
-
-	/* Call the bus module watchdog */
-	dhd_bus_watchdog(&dhd->pub);
-
 	DHD_GENERAL_LOCK(&dhd->pub, flags);
+	/* Call the bus module watchdog */
+	if (dhd->pub.up)	
+		dhd_bus_watchdog(&dhd->pub);
+
 	/* Count the tick for reference */
 	dhd->pub.tickcnt++;
 

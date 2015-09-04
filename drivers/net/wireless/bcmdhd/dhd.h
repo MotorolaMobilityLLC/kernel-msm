@@ -521,6 +521,7 @@ WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(dhd_workitem_context_t, dhd_get_dhd_workitem_
 #ifdef PNO_SUPPORT
 int dhd_pno_clean(dhd_pub_t *dhd);
 #endif /* PNO_SUPPORT */
+
 /*
  *  Wake locks are an Android power management concept. They are used by applications and services
  *  to request CPU resources.

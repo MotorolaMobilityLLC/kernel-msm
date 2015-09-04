@@ -2422,6 +2422,7 @@ int
 dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 {
 	dhd_bus_t *bus = dhdp->bus;
+	unsigned long flags;
 	int ret = 0;
 #ifdef CONFIG_ARCH_MSM
 	int retry = POWERUP_MAX_RETRY;
@@ -2433,7 +2434,12 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 		if (flag == TRUE) {
 			 /* Turn off WLAN */
 			DHD_ERROR(("%s: == Power OFF ==\n", __FUNCTION__));
+			/* Hold Mutex to avoid race condition between watchdog thread
+			 * and dhd_bus_devreset function
+			 */
+			DHD_GENERAL_LOCK(dhdp, flags);
 			bus->dhd->up = FALSE;
+			DHD_GENERAL_UNLOCK(dhdp, flags);
 			if (bus->dhd->busstate != DHD_BUS_DOWN) {
 				if (bus->intr) {
 					dhdpcie_bus_intr_disable(bus);
