@@ -2447,6 +2447,14 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				cpp_dev->state = CPP_STATE_ACTIVE;
 				msm_cpp_clear_timer(cpp_dev);
 				msm_cpp_clean_queue(cpp_dev);
+
+				disable_irq(cpp_dev->irq->start);
+				cpp_load_fw(cpp_dev, cpp_dev->fw_name_bin);
+				enable_irq(cpp_dev->irq->start);
+				msm_camera_io_w_mb(0x7C8, cpp_dev->base +
+					MSM_CPP_MICRO_IRQGEN_MASK);
+				msm_camera_io_w_mb(0xFFFF, cpp_dev->base +
+					MSM_CPP_MICRO_IRQGEN_CLR);
 			}
 			cpp_dev->stream_cnt++;
 			CPP_DBG("stream_cnt:%d\n", cpp_dev->stream_cnt);
