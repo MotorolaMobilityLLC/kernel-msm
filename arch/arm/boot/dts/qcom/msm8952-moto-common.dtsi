@@ -61,6 +61,19 @@
 		};
 	};
 
+	tfa9890_reset {
+		qcom,pins = <&gp 94>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "tfa9890-reset";
+
+		tfa9890_reset_default: default {
+			drive-strength = <2>;
+			bias-disable; /* no pull */
+			output-low;
+		};
+	};
+
 	spi4_active {
 		/* BLSP5 MOSI, MISO, CLK */
 		qcom,pins = <&gp 16>, <&gp 17>, <&gp 19>;
@@ -396,5 +409,19 @@
 		default_suspended: touchstate_aod_suspended {
 			patch-data = "F1@0=1&7";
 		};
+	};
+};
+
+&i2c_2 { /* BLSP1 QUP2 */
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&msm_gpio 94 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8950_l6>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+		nxp,tfa_pcm-start-delay = <100>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&tfa9890_reset_default>;
 	};
 };
