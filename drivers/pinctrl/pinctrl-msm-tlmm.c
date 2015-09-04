@@ -21,6 +21,7 @@
 #include <linux/pinctrl/pinconf-generic.h>
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
+#include <linux/wakeup_reason.h>
 #include "pinctrl-msm.h"
 
 /* config translations */
@@ -969,6 +970,9 @@ void msm_tlmm_show_gp_irq_resume(void)
 			const char *name = "null";
 
 			irq = irq_create_mapping(ic->domain, i);
+
+			log_base_wakeup_reason(irq);
+
 			desc = irq_to_desc(irq);
 			if (desc != NULL &&
 				desc->action && desc->action->name) {
