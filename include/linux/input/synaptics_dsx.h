@@ -89,6 +89,8 @@ struct synaptics_rmi4_platform_data {
 	unsigned doze_interval_sleep;
 	unsigned recalibration_interval_active;
 	unsigned recalibration_interval_sleep;
+	unsigned doze_burst_size_sleep;
+	unsigned doze_bw_sleep;
 	const char *fw_image_name;
 	unsigned int package_id;
 	int (*gpio_config)(unsigned gpio, bool configure);

@@ -135,6 +135,12 @@ enum DOZE_MODE {
 #define F12_MAX_X		65536
 #define F12_MAX_Y		65536
 
+#define DOZE_BURST_SIZE_ADDR	0x043F
+#define DOZE_BW_ADDR		0x0440
+
+#define DEF_DOZE_BURST_SIZE 40
+#define DEF_DOZE_BW 3
+
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
@@ -217,11 +223,9 @@ static ssize_t synaptics_rmi4_reg_control_store(struct device *dev,
 static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
-static int synaptics_rmi4_set_doze_interval(struct synaptics_rmi4_data
+static void synaptics_rmi4_set_idle_param(struct synaptics_rmi4_data
 						*rmi4_data, int active);
 
-static int synaptics_rmi4_set_recalibration_interval(struct synaptics_rmi4_data
-						*rmi4_data, int active);
 
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 
@@ -1094,12 +1098,10 @@ static ssize_t synaptics_rmi4_idle_mode_store(struct device *dev,
 	rmi4_data->idle_mode = idle_mode;
 
 	if (idle_mode) {
-		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_SLEEP);
-		synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_SLEEP);
+		synaptics_rmi4_set_idle_param(rmi4_data, DOZE_SLEEP);
 		synaptics_rmi4_regulator_lpm(rmi4_data, true);
 	} else {
-		synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
-		synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_ACTIVE);
+		synaptics_rmi4_set_idle_param(rmi4_data, DOZE_ACTIVE);
 		synaptics_rmi4_regulator_lpm(rmi4_data, false);
 	}
 
@@ -2185,6 +2187,18 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 	rc = of_property_read_u32(np, "synaptics,recalibration-interval-sleep", &temp_val);
 	if (!rc)
 		rmi4_pdata->recalibration_interval_sleep = temp_val;
+
+	rc = of_property_read_u32(np, "synaptics,doze-burst-size-sleep", &temp_val);
+	if (!rc)
+		rmi4_pdata->doze_burst_size_sleep = temp_val;
+	else
+		rmi4_pdata->doze_burst_size_sleep = DEF_DOZE_BURST_SIZE;
+
+	rc = of_property_read_u32(np, "synaptics,doze-bw-sleep", &temp_val);
+	if (!rc)
+		rmi4_pdata->doze_bw_sleep = temp_val;
+	else
+		rmi4_pdata->doze_bw_sleep = DEF_DOZE_BW;
 
 	rc = of_property_read_u32(np, "synaptics,palm-detect-threshold", &temp_val);
 	if (!rc)
@@ -3784,40 +3798,84 @@ static void synaptics_rmi4_init_work(struct work_struct *work)
 	rmi4_data->suspended = false;
 }
 
-static int synaptics_rmi4_set_doze_interval(struct synaptics_rmi4_data
+static void synaptics_rmi4_set_idle_param(struct synaptics_rmi4_data
 						*rmi4_data, int active)
 {
 	int retval = 0;
-	unsigned char interval;
+	unsigned char doze_interval;
+	unsigned char recalibration_interval;
+	unsigned char doze_burst_size;
+	unsigned char doze_bw;
+	static unsigned char doze_burst_size_active = 0;
+	static unsigned char doze_bw_active = 0;
 
-	interval = active ? rmi4_data->board->doze_interval_active :
+	doze_interval = active ? rmi4_data->board->doze_interval_active :
 				rmi4_data->board->doze_interval_sleep;
-
-	if (interval)
-		retval = synaptics_rmi4_i2c_write(rmi4_data,
-					rmi4_data->f01_ctrl_base_addr + 1 +
-					rmi4_data->num_of_intr_regs,
-					&interval, 1);
-
-	return retval;
-}
-
-static int synaptics_rmi4_set_recalibration_interval(struct synaptics_rmi4_data
-						*rmi4_data, int active)
-{
-	int retval = 0;
-	unsigned char interval;
-
-	interval = active ? rmi4_data->board->recalibration_interval_active :
+	recalibration_interval = active ? rmi4_data->board->recalibration_interval_active :
 				rmi4_data->board->recalibration_interval_sleep;
 
-	if (interval)
-		retval = synaptics_rmi4_i2c_write(rmi4_data,
-					rmi4_data->f01_ctrl_base_addr + 5 +
-					rmi4_data->num_of_intr_regs,
-					&interval, 1);
+	if (!doze_burst_size_active) {
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+					DOZE_BURST_SIZE_ADDR,
+					&doze_burst_size_active,
+					1);
+		if (retval < 0) {
+			dev_warn(&(rmi4_data->input_dev->dev),
+				"Failed to read doze burst size\n");
+		}
+	}
 
-	return retval;
+	if (!doze_bw_active) {
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+					DOZE_BW_ADDR,
+					&doze_bw_active,
+					1);
+		if (retval < 0) {
+			dev_warn(&(rmi4_data->input_dev->dev),
+				"Failed to read doze bw\n");
+		}
+	}
+
+	doze_burst_size = active ? doze_burst_size_active :
+				rmi4_data->board->doze_burst_size_sleep;
+	doze_bw = active ? doze_bw_active :
+				rmi4_data->board->doze_bw_sleep;
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+				rmi4_data->f01_ctrl_base_addr + 1 +
+				rmi4_data->num_of_intr_regs,
+				&doze_interval, 1);
+	if (retval < 0) {
+		dev_warn(&(rmi4_data->input_dev->dev),
+			"Failed to write doze interval\n");
+	}
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+				rmi4_data->f01_ctrl_base_addr + 5 +
+				rmi4_data->num_of_intr_regs,
+				&recalibration_interval, 1);
+	if (retval < 0) {
+		dev_warn(&(rmi4_data->input_dev->dev),
+			"Failed to write recalibration interval\n");
+	}
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+				DOZE_BURST_SIZE_ADDR,
+				&doze_burst_size,
+				1);
+	if (retval < 0) {
+		dev_warn(&(rmi4_data->input_dev->dev),
+			"Failed to write doze burst size\n");
+	}
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+				DOZE_BW_ADDR,
+				&doze_bw,
+				1);
+	if (retval < 0) {
+		dev_warn(&(rmi4_data->input_dev->dev),
+			"Failed to write doze bw\n");
+	}
 }
 
  /**
@@ -3980,8 +4038,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_free_gpios;
 	}
 
-	synaptics_rmi4_set_doze_interval(rmi4_data, DOZE_ACTIVE);
-	synaptics_rmi4_set_recalibration_interval(rmi4_data, DOZE_ACTIVE);
+	synaptics_rmi4_set_idle_param(rmi4_data, DOZE_ACTIVE);
 
 	if (platform_data->detect_device) {
 		retval = synaptics_rmi4_parse_dt_children(&client->dev,
