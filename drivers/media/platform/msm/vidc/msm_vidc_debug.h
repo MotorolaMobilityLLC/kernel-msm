@@ -42,7 +42,6 @@ enum vidc_msg_prio {
 
 enum vidc_msg_out {
 	VIDC_OUT_PRINTK = 0,
-	VIDC_OUT_FTRACE,
 };
 
 enum msm_vidc_debugfs_event {
@@ -104,10 +103,6 @@ extern int msm_vidc_thermal_mitigation_disabled;
 		if (msm_vidc_debug & __level) { \
 			if (msm_vidc_debug_out == VIDC_OUT_PRINTK) { \
 				pr_info(VIDC_DBG_TAG __fmt, \
-						VIDC_MSG_PRIO2STRING(__level), \
-						## arg); \
-			} else if (msm_vidc_debug_out == VIDC_OUT_FTRACE) { \
-				trace_printk(KERN_DEBUG VIDC_DBG_TAG __fmt, \
 						VIDC_MSG_PRIO2STRING(__level), \
 						## arg); \
 			} \
