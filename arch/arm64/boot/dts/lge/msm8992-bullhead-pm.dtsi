@@ -146,7 +146,7 @@
 
 	qcom,pmi8994@2 {
 		qcom,power-on@800 {
-			qcom,s3-debounce = <16>;
+			qcom,s3-debounce = <32>;
 			qcom,s3-src = "kpdpwr";
 		};
 	};
