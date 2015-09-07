@@ -153,8 +153,10 @@
 int lra_play_rate_code[LRA_POS_FREQ_COUNT];
 
 #define CALL_ALARM_TIME_THRESHOLD   800
-#define AUTO_RES_REPORT_THRESHOLD   100
 #define FREQUENCY_CALC_CONST        200000
+#define FREQEUNCY_NORMAL_MIN        220
+#define FREQUENCY_NORMAL_MAX        240
+#define FREQUENCY_CALC_MARGIN       3
 
 /* haptic debug register set */
 static u8 qpnp_hap_dbg_regs[] = {
@@ -1356,8 +1358,14 @@ static void calculate_lra_code(struct qpnp_hap *hap)
 
 	lra_init_freq = 200000 / play_rate_code;
 
+	if (lra_init_freq < FREQEUNCY_NORMAL_MIN+FREQUENCY_CALC_MARGIN
+			|| lra_init_freq > FREQUENCY_NORMAL_MAX-FREQUENCY_CALC_MARGIN) {
+		play_rate_code = hap->wave_play_rate_us / QPNP_HAP_RATE_CFG_STEP_US;
+		lra_init_freq = FREQUENCY_CALC_CONST / play_rate_code;
+	}
+
 	while (start_variation >= AUTO_RES_ERR_CAPTURE_RES) {
-		freq_variation = (lra_init_freq * start_variation) / 100;
+		freq_variation = (lra_init_freq * start_variation) / 1000;
 		lra_play_rate_code[neg_idx++] = 200000 / (lra_init_freq -
 					freq_variation);
 		lra_play_rate_code[pos_idx--] = 200000 / (lra_init_freq +
@@ -1416,7 +1424,8 @@ static int update_lra_frequency(struct qpnp_hap *hap)
 	play_rate_code = (lra_auto_res_hi << 8) | (lra_auto_res_lo & 0xff);
 	freq_cur = FREQUENCY_CALC_CONST / play_rate_code;
 
-	if (freq_cur < AUTO_RES_REPORT_THRESHOLD)
+	if (freq_cur < FREQEUNCY_NORMAL_MIN
+			|| freq_cur > FREQUENCY_NORMAL_MAX)
 		return -EAGAIN;
 
 	return 0;
