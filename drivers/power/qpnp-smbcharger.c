@@ -1514,25 +1514,16 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 			}
 			chip->usb_max_current_ma = 500;
 		}
-		if (current_ma == CURRENT_900_MA) {
-			rc = smbchg_sec_masked_write(chip,
-					chip->usb_chgpth_base + CHGPTH_CFG,
-					CFG_USB_2_3_SEL_BIT, CFG_USB_3);
-			if (rc < 0) {
-				pr_err("Couldn't set CHGPTH_CFG rc = %d\n", rc);
-				goto out;
-			}
-			rc = smbchg_masked_write(chip,
-					chip->usb_chgpth_base + CMD_IL,
-					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
-					USBIN_LIMITED_MODE | USB51_500MA);
-			if (rc < 0) {
-				pr_err("Couldn't set CMD_IL rc = %d\n", rc);
-				goto out;
-			}
-			chip->usb_max_current_ma = 900;
-		}
-		if (current_ma > CURRENT_900_MA) {
+		/*
+		 * Remove the code of 900ma, as angler do not support USB3.0.
+		 * MacBook which has typec port is detected as SDP, and it is
+		 * also a typec port using medium current mode (22k pull up resistance)
+		 * so set 1.5A input current according to typec protocol, 1.5A is
+		 * above parallel charging threshold, enable parallel charging, set
+		 * half of 1.5A (0.7A) for pmi8994 and smb1351, so if current_ma
+		 * is above 500ma, set HC(high current) mode for pmi8994.
+		 */
+		if (current_ma > CURRENT_500_MA) {
 			rc = smbchg_set_high_usb_chg_current(chip, current_ma);
 			if (rc < 0) {
 				pr_err("Couldn't set %dmA rc = %d\n", current_ma, rc);
@@ -3645,9 +3636,11 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	 * typec charger is detected as floated charger by BC1.2, so dwc3-msm driver
 	 * set 1A to smbcharger, we modify it to 1.5A here, as if parallel charging
 	 * cannot be allowed(such as jeita), we will use 1.5A as the input current
-	 * for pmi8994 smbcharger.
+	 * for pmi8994 smbcharger. If use apple MacBook which has typec port
+	 * (it is detected as SDP, and it supports 5V 1.5A charging), if parallel
+	 * charging is disabled, we should also use 1.5A as input current.
 	 */
-	if ((FLOAT_CURRENT == current_limit)
+	if (((FLOAT_CURRENT == current_limit) || (CURRENT_500_MA == current_limit))
 		&& (CURRENT_500_MA != get_typec_input_current()))
 		current_limit = MEDIUM_CURRENT;
 	mutex_lock(&chip->current_change_lock);
