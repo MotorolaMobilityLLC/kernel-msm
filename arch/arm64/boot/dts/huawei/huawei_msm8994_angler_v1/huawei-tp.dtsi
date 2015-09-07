@@ -60,7 +60,9 @@
 			synaptics,lcd-all = <1280>;*/
 
 			synaptics,product_name = "Nxx";
-
+			synaptics,max-x = <719>;
+			synaptics,max-y = <1279>;
+			synaptics,num-of-fingers = <10>;
 		};
 
 		synaptics@20 {

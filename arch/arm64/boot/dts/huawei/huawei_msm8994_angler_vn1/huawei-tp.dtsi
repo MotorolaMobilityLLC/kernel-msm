@@ -73,6 +73,9 @@
 			synaptics,x-flip = <1>;
 			synaptics,y-flip = <1>;
 			synaptics,product_name = "Nxx";
+			synaptics,max-x = <1439>;
+			synaptics,max-y = <2559>;
+			synaptics,num-of-fingers = <10>;
 		};
 
 		synaptics@20 {
