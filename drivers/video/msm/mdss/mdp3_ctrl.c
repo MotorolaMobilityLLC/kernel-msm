@@ -481,7 +481,7 @@ static int mdp3_ctrl_res_req_bus(struct msm_fb_data_type *mfd, int status)
 		vtotal = panel_info->yres + panel_info->lcdc.v_back_porch +
 			panel_info->lcdc.v_front_porch +
 			panel_info->lcdc.v_pulse_width;
-		ab = panel_info->xres * vtotal * 4;
+		ab = panel_info->xres * vtotal * ppp_bpp(mfd->fb_imgType);
 		ab *= panel_info->mipi.frame_rate;
 		/* ab and ib vote should be same for honest voting */
 		ib = ab;
