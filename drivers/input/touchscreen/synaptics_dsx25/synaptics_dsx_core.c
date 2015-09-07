@@ -2283,6 +2283,8 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn_desc rmi_fd;
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_device_info *rmi;
+	const struct synaptics_dsx_board_data *bdata =
+			rmi4_data->hw_if->board_data;
 
 	tp_log_debug("%s: in!\n",__func__);
 
@@ -2510,6 +2512,22 @@ flash_prog_mode:
 
 	tp_log_debug("%s: firmware_id=%d !\n",__func__,rmi4_data->firmware_id);
 	memset(rmi4_data->intr_mask, 0x00, sizeof(rmi4_data->intr_mask));
+
+	if (rmi4_data->sensor_max_x == 0) {
+		rmi4_data->sensor_max_x = bdata->sensor_max_x;
+	}
+
+	if (rmi4_data->sensor_max_y == 0) {
+		rmi4_data->sensor_max_y = bdata->sensor_max_y;
+	}
+
+	if (rmi4_data->num_of_fingers == 0) {
+		rmi4_data->num_of_fingers = bdata->num_of_fingers;
+	}
+
+	if (rmi4_data->max_touch_width == 0) {
+		rmi4_data->max_touch_width = MAX_F12_TOUCH_WIDTH;
+	}
 
 	/*
 	 * Map out the interrupt bit masks for the interrupt sources
@@ -3375,7 +3393,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		goto err_set_gpio;
 	}
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	if (hw_if->ui_hw_init) {
 		retval = hw_if->ui_hw_init(rmi4_data);
 		if (retval < 0) {
@@ -3386,7 +3403,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		}
 	}
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	retval = synaptics_rmi4_set_input_dev(rmi4_data);
 	if (retval < 0) {
 		dev_err(&pdev->dev,
@@ -3395,7 +3411,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		goto err_set_input_dev;
 	}
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 #ifdef CONFIG_FB
 	rmi4_data->fb_notifier.notifier_call = synaptics_rmi4_fb_notifier_cb;
 	retval = fb_register_client(&rmi4_data->fb_notifier);
@@ -3432,7 +3447,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	wake_lock_init(&rmi4_data->rmi4_wake_lock,
 			WAKE_LOCK_SUSPEND, "rmi4_wake_lock");
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	if (vir_button_map->nbuttons) {
 		rmi4_data->board_prop_dir = kobject_create_and_add(
 				"board_properties", NULL);
@@ -3453,7 +3467,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		}
 	}
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(&rmi4_data->input_dev->dev.kobj,
 				&attrs[attr_count].attr);
@@ -3465,7 +3478,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		}
 	}
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
 	rmi4_data->rb_workqueue =
 			create_singlethread_workqueue("dsx_rebuild_workqueue");
 	if (!rmi4_data->rb_workqueue ){

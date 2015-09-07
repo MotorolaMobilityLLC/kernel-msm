@@ -34,6 +34,11 @@
 
 #define XFER_MSGS_LIMIT 1
 
+#define SENSOR_MAX_X 1439
+
+#define SENSOR_MAX_Y 2559
+
+#define NUM_OF_FINGERS 10
 
 static struct synaptics_dsx_hw_interface hw_if;
 
@@ -68,12 +73,12 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 
 	retval = of_property_read_string(np, "synaptics,pwr-reg-name", &name);
 	if (retval == -EINVAL) {
-		tp_log_debug("%s: Fail to parse pwr-reg-name, retval(%d) !\n",
-				__func__,retval);
+		pr_err("%s: Fail to parse pwr-reg-name, retval(%d) ! \n",
+				__func__, retval);
 		bdata->pwr_reg_name = NULL;
 	} else if (retval < 0) {
-		tp_log_debug("%s: Fail to parse pwr-reg-name, retval(%d) !\n",
-				__func__,retval);
+		pr_err("%s: Fail to parse pwr-reg-name, retval(%d) ! \n",
+				__func__, retval);
 		return retval;
 	} else {
 		tp_log_debug("%s: pwr-reg-name, name(%s) !\n",
@@ -83,12 +88,12 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 
 	retval = of_property_read_string(np, "synaptics,bus-reg-name", &name);
 	if (retval == -EINVAL) {
-		tp_log_debug("%s: Fail to parse bus-reg-name, retval(%d) !\n",
-				__func__,retval);
+		pr_err("%s: Fail to parse bus-reg-name, retval(%d) ! \n",
+				__func__, retval);
 		bdata->bus_reg_name = NULL;
 	} else if (retval < 0) {
-		tp_log_debug("%s: Fail to parse bus-reg-name, retval(%d) !\n",
-				__func__,retval);
+		pr_err("%s: Fail to parse bus-reg-name, retval(%d) ! \n",
+				__func__, retval);
 		return retval;
 	} else {
 		tp_log_debug("%s: bus-reg-name, name(%s) !\n",
@@ -112,7 +117,6 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 				"synaptics,power-gpio", 0, NULL);
 		retval = of_property_read_u32(np, "synaptics,power-on-state",
 				&value);
-		tp_log_debug("%s: line(%d),ret=%d!\n",__func__,__LINE__,retval);
 		if (retval < 0)
 			return retval;
 		else
@@ -128,8 +132,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,power-delay-ms",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse power-delay-ms, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse power-delay-ms, retval(%d) ! \n",
+					__func__, retval);
 			return retval;
 		} else {
 			bdata->power_delay_ms = value;
@@ -151,8 +155,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,reset-on-state",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse reset-on-state, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse reset-on-state, retval(%d) ! \n",
+					__func__, retval);
 			return retval;
 		} else {
 			tp_log_debug("%s: reset-on-state,value(%d) !\n",
@@ -163,8 +167,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,reset-active-ms",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse reset-active-ms, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse reset-active-ms, retval(%d) ! \n",
+					__func__, retval);
 			return retval;
 		} else {
 			tp_log_debug("%s: reset-active-ms,value(%d) !\n",
@@ -175,8 +179,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,reset-delay-ms",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse reset_delay_ms, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse reset_delay_ms, retval(%d) ! \n",
+					__func__, retval);
 			bdata->reset_delay_ms = 0;
 			return retval;
 		} else {
@@ -189,13 +193,10 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		bdata->reset_gpio = -1;
 	}
 
-	tp_log_debug("%s: line(%d)!\n",__func__,__LINE__);
-
 	prop = of_find_property(np, "synaptics,max-y-for-2d", NULL);
 	if (prop && prop->length) {
 		retval = of_property_read_u32(np, "synaptics,max-y-for-2d",
 				&value);
-		tp_log_debug("%s: line(%d),ret=%d!\n",__func__,__LINE__,retval);
 		if (retval < 0)
 			return retval;
 		else
@@ -209,8 +210,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,swap-axes",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse swap_axes, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse swap_axes, retval(%d) ! \n",
+					__func__, retval);
  		} else {
 			bdata->swap_axes = value;
 			tp_log_debug("%s: swap_axes,value(%d) !\n",
@@ -225,8 +226,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,x-flip",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse x_flip, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse x_flip, retval(%d) ! \n",
+					__func__, retval);
  		} else {
 			bdata->x_flip = value;
 			tp_log_debug("%s: x_flip,value(%d) !\n",
@@ -241,8 +242,8 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		retval = of_property_read_u32(np, "synaptics,y-flip",
 				&value);
 		if (retval < 0) {
-			tp_log_debug("%s: Fail to parse y_flip, retval(%d) !\n",
-					__func__,retval);
+			pr_err("%s: Fail to parse y_flip, retval(%d) ! \n",
+					__func__, retval);
  		} else {
 			bdata->y_flip = value;
 			tp_log_debug("%s: y_flip,value(%d) !\n",
@@ -304,6 +305,60 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 	} else {
 		bdata->vir_button_map->nbuttons = 0;
 		bdata->vir_button_map->map = NULL;
+	}
+
+	prop = of_find_property(np, "synaptics,max-x", NULL);
+	if (prop && prop->length) {
+		retval = of_property_read_u32(np, "synaptics,max-x",
+				&value);
+		if (retval < 0) {
+			pr_err("%s: Fail to parse max-x, retval(%d) ! \n",
+					__func__, retval);
+			return retval;
+		} else {
+			bdata->sensor_max_x = value;
+			tp_log_debug("%s: max-x value(%d) ! \n",
+					__func__, value);
+		}
+	} else {
+		tp_log_debug("%s: max-x not defined! \n", __func__);
+		bdata->sensor_max_x = SENSOR_MAX_X;
+	}
+
+	prop = of_find_property(np, "synaptics,max-y", NULL);
+	if (prop && prop->length) {
+		retval = of_property_read_u32(np, "synaptics,max-y",
+				&value);
+		if (retval < 0) {
+			pr_err("%s: Fail to parse max-y, retval(%d) ! \n",
+					__func__, retval);
+			return retval;
+		} else {
+			bdata->sensor_max_y = value;
+			tp_log_debug("%s: max-y value(%d) ! \n",
+					__func__, value);
+		}
+	} else {
+		tp_log_debug("%s: max-y not defined! \n", __func__);
+		bdata->sensor_max_y = SENSOR_MAX_Y;
+	}
+
+	prop = of_find_property(np, "synaptics,num-of-fingers", NULL);
+	if (prop && prop->length) {
+		retval = of_property_read_u32(np, "synaptics,num-of-fingers",
+				&value);
+		if (retval < 0) {
+			pr_err("%s: Fail to parse num-of-fingers, retval(%d) ! \n",
+					__func__, retval);
+			return retval;
+		} else {
+			bdata->num_of_fingers = value;
+			tp_log_debug("%s:num-of-fingers value(%d) ! \n",
+					__func__, value);
+		}
+	} else {
+		tp_log_debug("%s: num-of-fingers not defined! \n", __func__);
+		bdata->num_of_fingers = NUM_OF_FINGERS;
 	}
 
 	return 0;

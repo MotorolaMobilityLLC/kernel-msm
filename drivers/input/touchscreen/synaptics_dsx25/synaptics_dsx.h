@@ -98,6 +98,9 @@ struct synaptics_dsx_board_data {
 	unsigned int reset_active_ms;
 	unsigned int byte_delay_us;
 	unsigned int block_delay_us;
+	unsigned int sensor_max_x;
+	unsigned int sensor_max_y;
+	unsigned int num_of_fingers;
 	const char *pwr_reg_name;
 	const char *bus_reg_name;
 	struct synaptics_dsx_button_map *cap_button_map;
