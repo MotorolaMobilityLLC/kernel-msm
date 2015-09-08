@@ -23,7 +23,8 @@
 	compatible = "qcom,msm8909-mtp", "qcom,msm8909", "qcom,mtp";
 	qcom,msm-id =   <245 0>,
 			<258 0>,
-			<275 0>;
+			<275 0>,
+			<300 0>;
 	qcom,board-id= <8 0x105>;
 };
 
