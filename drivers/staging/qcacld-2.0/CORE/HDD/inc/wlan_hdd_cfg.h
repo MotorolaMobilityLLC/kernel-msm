@@ -1228,8 +1228,8 @@ typedef enum
 
 #define CFG_DROPPED_PKT_DISCONNECT_TH_NAME      "gDroppedPktDisconnectTh"
 #define CFG_DROPPED_PKT_DISCONNECT_TH_MIN       (48)
-#define CFG_DROPPED_PKT_DISCONNECT_TH_MAX       (256)
-#define CFG_DROPPED_PKT_DISCONNECT_TH_DEFAULT   (96)
+#define CFG_DROPPED_PKT_DISCONNECT_TH_MAX       (1024)
+#define CFG_DROPPED_PKT_DISCONNECT_TH_DEFAULT   (512)
 
 /*
  * This parameter is the RSSI diff above neighbor lookup threshold, when

@@ -3088,17 +3088,6 @@ limSendSmeCandidateFoundInd(tpAniSirGlobal pMac, tANI_U8 sessionId)
     tSirSmeCandidateFoundInd *pSirSmeCandidateFoundInd;
     tpPESession pe_session;
 
-    pSirSmeCandidateFoundInd = vos_mem_malloc(sizeof(tSirSmeCandidateFoundInd));
-    if (NULL == pSirSmeCandidateFoundInd) {
-        limLog(pMac, LOGP,
-               FL("AllocateMemory failed for eWNI_SME_CANDIDATE_FOUND_IND"));
-        return;
-    }
-
-    pSirSmeCandidateFoundInd->messageType = eWNI_SME_CANDIDATE_FOUND_IND;
-    pSirSmeCandidateFoundInd->length = sizeof(tSirSmeCandidateFoundInd);
-    pSirSmeCandidateFoundInd->sessionId = sessionId;
-
     pe_session = pe_find_session_by_sme_session_id(pMac, sessionId);
     if (pe_session == NULL) {
         limLog(pMac, LOGE,FL("Session %d is invalid. Roaming will fail"),
@@ -3108,6 +3097,16 @@ limSendSmeCandidateFoundInd(tpAniSirGlobal pMac, tANI_U8 sessionId)
     limLog(pMac, LOGE,FL("Set roaming_in_progress for SME:%d, PE:%d session"),
            sessionId, pe_session->peSessionId);
     pe_session->roaming_in_progress = true;
+
+    pSirSmeCandidateFoundInd = vos_mem_malloc(sizeof(tSirSmeCandidateFoundInd));
+    if (NULL == pSirSmeCandidateFoundInd) {
+        limLog(pMac, LOGP,
+               FL("AllocateMemory failed for eWNI_SME_CANDIDATE_FOUND_IND"));
+        return;
+    }
+    pSirSmeCandidateFoundInd->messageType = eWNI_SME_CANDIDATE_FOUND_IND;
+    pSirSmeCandidateFoundInd->length = sizeof(tSirSmeCandidateFoundInd);
+    pSirSmeCandidateFoundInd->sessionId = sessionId;
 
     limLog( pMac, LOG1, FL("posting candidate ind to SME"));
     mmhMsg.type = eWNI_SME_CANDIDATE_FOUND_IND;

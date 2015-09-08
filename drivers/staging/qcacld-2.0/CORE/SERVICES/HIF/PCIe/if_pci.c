@@ -905,7 +905,6 @@ static int __hif_pci_runtime_suspend(struct pci_dev *pdev)
 	if (wma_get_client_count(temp_module)) {
 		pr_err("%s: Runtime PM not supported when clients are connected\n",
 				__func__);
-		ret = -EINVAL;
 		goto out;
 	}
 #endif
@@ -1051,6 +1050,7 @@ static void hif_pci_pm_runtime_pre_init(struct hif_pci_softc *sc)
 	setup_timer(&sc->runtime_timer, hif_pci_runtime_pm_timeout_fn,
 			(unsigned long)sc);
 
+	adf_os_atomic_init(&sc->pm_state);
 	adf_os_atomic_set(&sc->pm_state, HIF_PM_RUNTIME_STATE_ON);
 }
 

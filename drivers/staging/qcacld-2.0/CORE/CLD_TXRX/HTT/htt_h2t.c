@@ -61,6 +61,7 @@
                 (char *)(ptr) - (char *)(&((type *)0)->member) ) )
 #endif
 
+#ifdef FEATURE_RUNTIME_PM
 void
 htt_tx_resume_handler(void *context)
 {
@@ -68,6 +69,10 @@ htt_tx_resume_handler(void *context)
 
    htt_tx_sched(pdev);
 }
+#else
+void
+htt_tx_resume_handler(void *context) { }
+#endif
 
 static void
 htt_h2t_send_complete_free_netbuf(
