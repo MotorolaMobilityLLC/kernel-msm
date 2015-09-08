@@ -24,6 +24,13 @@ config DIAG_OVER_USB
 	  traffic over USB. This allows for host side tools to parse and display
 	  Diag traffic from the USB endpoint.
 
+config DIAG_OVER_TTY
+	bool "Enable DIAG traffic to go over a tty to userspace"
+	depends on ARCH_MSM && DIAG_OVER_USB
+	default n
+	help
+	 This feature helps segregate code required for DIAG traffic to go over a TTY to userspace.
+
 config DIAGFWD_BRIDGE_CODE
 	bool "Enable QSC/9K DIAG traffic over SMUX/HSIC"
 	depends on DIAG_CHAR
