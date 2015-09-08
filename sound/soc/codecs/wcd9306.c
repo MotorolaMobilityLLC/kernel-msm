@@ -66,6 +66,7 @@ static atomic_t kp_tapan_priv;
 static int spkr_drv_wrnd_param_set(const char *val,
 				   const struct kernel_param *kp);
 static int spkr_drv_wrnd = 1;
+static int tapan_hfp_tx_mute = 0;
 
 static struct kernel_param_ops spkr_drv_wrnd_param_ops = {
 	.set = spkr_drv_wrnd_param_set,
@@ -1046,6 +1047,38 @@ static int tapan_config_compander(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int tapan_hfp_tx_mute_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: HFP Tx Mute = %d", __func__, tapan_hfp_tx_mute);
+	ucontrol->value.integer.value[0] = tapan_hfp_tx_mute;
+	return 0;
+}
+
+static int tapan_hfp_tx_mute_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	u16 tx_vol_ctl_reg0 = TAPAN_A_CDC_TX1_VOL_CTL_CFG;
+	u16 tx_vol_ctl_reg1 = TAPAN_A_CDC_TX1_VOL_CTL_CFG + 8;
+	unsigned int mask = 0x01;
+	unsigned int value = ucontrol->value.integer.value[0] & mask;
+
+	if (value != ucontrol->value.integer.value[0]) {
+		pr_warn("%s: Invalid value (%ld)\n",
+				__func__, ucontrol->value.integer.value[0]);
+		return -EINVAL;
+	}
+
+	snd_soc_update_bits(codec, tx_vol_ctl_reg0, mask, value);
+	snd_soc_update_bits(codec, tx_vol_ctl_reg1, mask, value);
+
+	tapan_hfp_tx_mute = value;
+	pr_debug("%s: HFP Tx Mute = %d\n", __func__, tapan_hfp_tx_mute);
+
+	return 0;
+}
+
 static const char * const tapan_ear_pa_gain_text[] = {"POS_6_DB", "POS_4P5_DB",
 						      "POS_3_DB", "POS_1P5_DB",
 						      "POS_0_DB", "NEG_2P5_DB",
@@ -1118,6 +1151,9 @@ static int tapan_hph_impedance_get(struct snd_kcontrol *kcontrol,
 }
 
 static const struct snd_kcontrol_new tapan_common_snd_controls[] = {
+
+	SOC_SINGLE_MULTI_EXT("HFP Tx Mute", SND_SOC_NOPM, 0, 0xFFFFFFFF, 0, 3,
+		tapan_hfp_tx_mute_get, tapan_hfp_tx_mute_put),
 
 	SOC_ENUM_EXT("EAR PA Gain", tapan_ear_pa_gain_enum[0],
 		tapan_pa_gain_get, tapan_pa_gain_put),
