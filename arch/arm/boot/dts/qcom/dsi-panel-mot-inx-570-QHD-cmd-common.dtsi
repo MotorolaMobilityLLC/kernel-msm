@@ -119,11 +119,8 @@ qcom,mdss-dsi-on-command = [
 	15 01 00 00 0a 00 02 7a 02
 	15 01 00 00 0a 00 02 fb 01
 	15 01 00 00 0a 00 02 ff 10
-	39 01 00 00 0a 00 11 C1 09 20 00 10 02 00 02 68 01 BB 00 0A 06 67 04 C5
-	39 01 00 00 0a 00 03 c2 10 f0
 	15 01 00 00 0a 00 02 fb 01
 	15 01 00 00 0a 00 02 c0 03
-	15 01 00 00 0a 00 02 35 00
 	15 01 00 00 0a 00 02 bb 10
 	/* DSC configuration end */
 
@@ -173,17 +170,20 @@ qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 //qcom,mdss-dsi-cabc-mv-command = [15 01 00 00 00 00 02 55 03];
 
 /* DSC Host Configuration */
-qcom,mdss-dsi-compression = "dsc";
-qcom,mdss-dsc-slice-height = <16>;
-qcom,mdss-dsc-slice-width = <720>;
-qcom,mdss-dsc-slice-per-pkt = <2>;
-qcom,mdss-dsc-bit-per-component = <8>;
-qcom,mdss-dsc-bit-per-pixel = <8>;
-qcom,mdss-dsc-block-prediction-enable;
-qcom,mdss-dsc-ich-reset-value = <0>;
-qcom,mdss-dsc-ich-reset-override = <0>;
-qcom,mdss-dsc-data-path-mode = "1p1d";
-qcom,mdss-dsc-config-by-manufacture-cmd;
+qcom,compression-mode = "dsc";
+qcom,config-select = <&dsc_cmd_config0>;
+dsc_cmd_config0: config0 {
+	qcom,mdss-dsc-encoders = <1>;
+	qcom,mdss-dsc-slice-height = <16>;
+	qcom,mdss-dsc-slice-width = <720>;
+	qcom,mdss-dsc-slice-per-pkt = <2>;
+	qcom,mdss-dsc-bit-per-component = <8>;
+	qcom,mdss-dsc-bit-per-pixel = <8>;
+	qcom,mdss-dsc-block-prediction-enable;
+	qcom,mdss-dsc-ich-reset-value = <0>;
+	qcom,mdss-dsc-ich-reset-override = <0>;
+	qcom,mdss-dsc-config-by-manufacture-cmd;
+};
 
 qcom,panel-supply-entries {
 	#address-cells = <1>;
