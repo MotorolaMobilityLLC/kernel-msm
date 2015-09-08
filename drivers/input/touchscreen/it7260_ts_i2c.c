@@ -867,7 +867,7 @@ static void readTouchDataPoint(void)
 			hadFingerDown = true;
 
 		/* filter points when palming or touching screen edge */
-		if (!isTouchLocked && y1 > 13 && y1 < 311 && x1 > 4 && x1 < 316 && pointData.flags & 0x01) {
+		if (!isTouchLocked && pointData.flags & 0x01) {
 			input_mt_slot(gl_ts->touch_dev, 0);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x1);
@@ -877,7 +877,7 @@ static void readTouchDataPoint(void)
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, false);
 		}
 
-		if (!isTouchLocked && y2 > 13 && y2 < 311 && x2 > 4 && x2 < 316 && pointData.flags & 0x02) {
+		if (!isTouchLocked && pointData.flags & 0x02) {
 			input_mt_slot(gl_ts->touch_dev, 1);
 			input_mt_report_slot_state(gl_ts->touch_dev, MT_TOOL_FINGER, true);
 			input_report_abs(gl_ts->touch_dev, ABS_MT_POSITION_X, x2);
