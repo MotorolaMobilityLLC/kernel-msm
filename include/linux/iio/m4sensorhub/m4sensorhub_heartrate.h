@@ -31,11 +31,19 @@ enum m4sensorhub_heartrate_iio_type {
 struct m4sensorhub_heartrate_event_data {
 	uint16_t        heartrate;
 	uint8_t         confidence;
+	uint8_t         predictor;
+} __packed;
+
+struct m4sensorhub_heartrate_event_flush {
+	uint32_t        handle;
 } __packed;
 
 struct m4sensorhub_heartrate_iio_data {
 	uint8_t         type;
-	struct m4sensorhub_heartrate_event_data event_data;
+	union {
+		struct m4sensorhub_heartrate_event_data  event_data;
+		struct m4sensorhub_heartrate_event_flush event_flush;
+	};
 	long long       timestamp;
 } __packed;
 
