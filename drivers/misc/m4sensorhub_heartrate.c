@@ -89,6 +89,19 @@ static void m4hrt_isr(enum m4sensorhub_irqs int_event, void *handle)
 		goto m4hrt_isr_fail;
 	}
 
+	size = m4sensorhub_reg_getsize(dd->m4, M4SH_REG_HEARTRATE_PREDICTOR);
+	err = m4sensorhub_reg_read(dd->m4, M4SH_REG_HEARTRATE_PREDICTOR,
+		(char *)&(dd->iiodat.event_data.predictor));
+	if (err < 0) {
+		m4hrt_err("%s: Failed to read predictor data.\n", __func__);
+		goto m4hrt_isr_fail;
+	} else if (err != size) {
+		m4hrt_err("%s: Read %d bytes instead of %d for %s.\n",
+			  __func__, err, size, "predictor");
+		err = -EBADE;
+		goto m4hrt_isr_fail;
+	}
+
 	dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
 	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
 
@@ -156,12 +169,13 @@ m4hrt_set_samplerate_fail:
 	return err;
 }
 
-static int m4hrt_send_flush_locked(struct iio_dev *iio, int32_t rate)
+static int m4hrt_send_flush_locked(struct iio_dev *iio, int32_t handle)
 {
 	int err = 0;
 	struct m4hrt_driver_data *dd = iio_priv(iio);
 
 	dd->iiodat.type = HEARTRATE_TYPE_EVENT_FLUSH;
+	dd->iiodat.event_flush.handle = handle;
 	dd->iiodat.timestamp = ktime_to_ns(ktime_get_boottime());
 	iio_push_to_buffers(iio, (unsigned char *)&(dd->iiodat));
 
@@ -231,11 +245,20 @@ static ssize_t m4hrt_flush_store(struct device *dev,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct iio_dev *iio = platform_get_drvdata(pdev);
 	struct m4hrt_driver_data *dd = iio_priv(iio);
-	int value = 1;
+	int value = 0;
 
 	mutex_lock(&(dd->mutex));
 
+	err = kstrtoint(buf, 10, &value);
+	if (err < 0) {
+		m4hrt_err("%s: Failed to convert value.\n", __func__);
+		goto m4hrt_flush_store_exit;
+	}
+
+
 	err = m4hrt_send_flush_locked(iio, value);
+
+m4hrt_flush_store_exit:
 	if (err < 0) {
 		m4hrt_err("%s: Failed with error code %d.\n", __func__, err);
 		size = err;
