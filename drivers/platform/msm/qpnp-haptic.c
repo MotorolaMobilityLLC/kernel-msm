@@ -74,6 +74,7 @@
 #define QPNP_HAP_VMAX_MAX_MV		3596
 #define QPNP_HAP_VMAX_STRONG_MV		1800
 #define QPNP_HAP_VMAX_LIGHT_MV		1100
+#define QPNP_HAP_MIN_TIME_STRONG	500
 #define QPNP_HAP_ILIM_MASK		0xFE
 #define QPNP_HAP_ILIM_MIN_MV		400
 #define QPNP_HAP_ILIM_MAX_MV		800
@@ -253,6 +254,9 @@ struct qpnp_pwm_info {
  *  @ lra_high_z - high z option line
  *  @ timeout_ms - max timeout in ms
  *  @ vmax_mv - max voltage in mv
+ *  @ vmax_mv_strong - max voltage in mv for strong vibration
+ *  @ vmax_mv_light - max voltage in mv for light vibration
+ *  @ min_time_strong - minimum time in ms for a strong vibration
  *  @ ilim_ma - limiting current in ma
  *  @ sc_deb_cycles - short circuit debounce cycles
  *  @ int_pwm_freq_khz - internal pwm frequency in khz
@@ -302,6 +306,9 @@ struct qpnp_hap {
 	enum qpnp_hap_high_z lra_high_z;
 	u32 timeout_ms;
 	u32 vmax_mv;
+	u32 vmax_mv_strong;
+	u32 vmax_mv_light;
+	u32 min_time_strong;
 	u32 ilim_ma;
 	u32 sc_deb_cycles;
 	u32 int_pwm_freq_khz;
@@ -1008,6 +1015,108 @@ static ssize_t qpnp_hap_wf_s7_store(struct device *dev,
 	return qpnp_hap_wf_samp_store(dev, buf, count, 7);
 }
 
+/* sysfs show for vmax_mv_light update */
+static ssize_t qpnp_hap_vmax_mv_light_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hap->vmax_mv_light);
+}
+
+/* sysfs store for vmax_mv_light */
+static ssize_t qpnp_hap_vmax_mv_light_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	u32 val;
+	ssize_t ret;
+
+	ret = kstrtou32(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	if ((val < QPNP_HAP_VMAX_MIN_MV) || (val > QPNP_HAP_VMAX_MAX_MV))
+		return -EINVAL;
+
+	mutex_lock(&hap->wf_lock);
+	hap->vmax_mv_light = val;
+	mutex_unlock(&hap->wf_lock);
+
+	return count;
+}
+
+/* sysfs show for vmax_mv_strong update */
+static ssize_t qpnp_hap_vmax_mv_strong_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hap->vmax_mv_strong);
+}
+
+/* sysfs store for vmax_mv_strong */
+static ssize_t qpnp_hap_vmax_mv_strong_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	u32 val;
+	ssize_t ret;
+
+	ret = kstrtou32(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	if ((val < QPNP_HAP_VMAX_MIN_MV) || (val > QPNP_HAP_VMAX_MAX_MV))
+		return -EINVAL;
+
+	mutex_lock(&hap->wf_lock);
+	hap->vmax_mv_strong = val;
+	mutex_unlock(&hap->wf_lock);
+
+	return count;
+}
+
+/* sysfs show for min_time_strong update */
+static ssize_t qpnp_hap_min_time_strong_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hap->min_time_strong);
+}
+
+/* sysfs store for min_time_strong */
+static ssize_t qpnp_hap_min_time_strong_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	u32 val;
+	ssize_t ret;
+
+	ret = kstrtou32(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	mutex_lock(&hap->wf_lock);
+	hap->min_time_strong = val;
+	mutex_unlock(&hap->wf_lock);
+
+	return count;
+}
+
 /* sysfs show for wave form update */
 static ssize_t qpnp_hap_wf_update_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1358,6 +1467,15 @@ static struct device_attribute qpnp_hap_attrs[] = {
 	__ATTR(min_max_test, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_min_max_test_data_show,
 			qpnp_hap_min_max_test_data_store),
+	__ATTR(min_time_strong, (S_IRUGO | S_IWUSR | S_IWGRP),
+			qpnp_hap_min_time_strong_show,
+			qpnp_hap_min_time_strong_store),
+	__ATTR(vmax_mv_light, (S_IRUGO | S_IWUSR | S_IWGRP),
+			qpnp_hap_vmax_mv_light_show,
+			qpnp_hap_vmax_mv_light_store),
+	__ATTR(vmax_mv_strong, (S_IRUGO | S_IWUSR | S_IWGRP),
+			qpnp_hap_vmax_mv_strong_show,
+			qpnp_hap_vmax_mv_strong_store),
 };
 
 static void calculate_lra_code(struct qpnp_hap *hap)
@@ -1580,12 +1698,20 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 		}
 		hap->state = 0;
 	} else {
-		if(value >= 500)
-			hap->vmax_mv = QPNP_HAP_VMAX_STRONG_MV;
+		u32 new_vmax;
+		if(value >= hap->min_time_strong)
+			new_vmax = hap->vmax_mv_strong;
 		else
-			hap->vmax_mv = QPNP_HAP_VMAX_LIGHT_MV;
+			new_vmax = hap->vmax_mv_light;
+
+		if (new_vmax != hap->vmax_mv) {
+			hap->vmax_mv = new_vmax;
+			qpnp_hap_vmax_config(hap);
+		}
+
 		value = (value > hap->timeout_ms ?
 				 hap->timeout_ms : value);
+
 		hap->state = 1;
 		hrtimer_start(&hap->hap_timer,
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
@@ -2083,6 +2209,27 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 	} else if (rc != -EINVAL) {
 		dev_err(&spmi->dev, "Unable to read vmax\n");
 		return rc;
+	}
+
+	hap->vmax_mv_strong = QPNP_HAP_VMAX_STRONG_MV;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,vmax-mv-strong", &temp);
+	if (!rc) {
+		hap->vmax_mv_strong = temp;
+	}
+
+	hap->vmax_mv_light = QPNP_HAP_VMAX_LIGHT_MV;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,vmax-mv-light", &temp);
+	if (!rc) {
+		hap->vmax_mv_light = temp;
+	}
+
+	hap->min_time_strong = QPNP_HAP_MIN_TIME_STRONG;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,min-time-strong", &temp);
+	if (!rc) {
+		hap->min_time_strong = temp;
 	}
 
 	hap->ilim_ma = QPNP_HAP_ILIM_MIN_MV;
