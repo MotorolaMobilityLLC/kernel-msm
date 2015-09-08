@@ -4186,7 +4186,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	int i, sr_val, lim = 0;
 	const int *sources = NULL;
 	unsigned int cur, tar;
-	bool change_rate = true;
+	bool change_rate = true, slim_dai = false;
 
 	/*
 	 * We will need to be more flexible than this in future,
@@ -4262,17 +4262,23 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	ret = regmap_read(priv->arizona->regmap,
+	/* If a Slimbus DAI, then there is no need to AIF Rates */
+	if (strstr(dai->name, "-slim"))
+		slim_dai = true;
+
+	if (!slim_dai) {
+		ret = regmap_read(priv->arizona->regmap,
 			  base + ARIZONA_AIF_RATE_CTRL, &cur);
-	if (ret != 0) {
-		arizona_aif_err(dai, "Failed to check rate: %d\n", ret);
-		return ret;
+		if (ret != 0) {
+			arizona_aif_err(dai, "Failed to check rate: %d\n", ret);
+			return ret;
+		}
 	}
 
 	if ((cur & ARIZONA_AIF1_RATE_MASK) == (tar & ARIZONA_AIF1_RATE_MASK))
 		change_rate = false;
 
-	if (change_rate) {
+	if (change_rate && !slim_dai) {
 		ret = arizona_get_sources(priv->arizona,
 					  dai,
 					  &sources,
@@ -4295,7 +4301,9 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 				ret);
 			goto out;
 		}
+	}
 
+	if (change_rate) {
 		clearwater_spin_sysclk(priv->arizona);
 		udelay(300);
 	}
@@ -4306,7 +4314,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 
 		snd_soc_update_bits(codec, ARIZONA_SAMPLE_RATE_1,
 				    ARIZONA_SAMPLE_RATE_1_MASK, sr_val);
-		if (base)
+		if (base && !slim_dai)
 			snd_soc_update_bits(codec, base + ARIZONA_AIF_RATE_CTRL,
 					    ARIZONA_AIF1_RATE_MASK,
 					    0 << ARIZONA_AIF1_RATE_SHIFT);
@@ -4316,7 +4324,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 
 		snd_soc_update_bits(codec, ARIZONA_SAMPLE_RATE_2,
 				    ARIZONA_SAMPLE_RATE_2_MASK, sr_val);
-		if (base)
+		if (base && !slim_dai)
 			snd_soc_update_bits(codec, base + ARIZONA_AIF_RATE_CTRL,
 					    ARIZONA_AIF1_RATE_MASK,
 					    1 << ARIZONA_AIF1_RATE_SHIFT);
@@ -4326,7 +4334,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 
 		snd_soc_update_bits(codec, ARIZONA_SAMPLE_RATE_3,
 				    ARIZONA_SAMPLE_RATE_3_MASK, sr_val);
-		if (base)
+		if (base && !slim_dai)
 			snd_soc_update_bits(codec, base + ARIZONA_AIF_RATE_CTRL,
 					    ARIZONA_AIF1_RATE_MASK,
 					    2 << ARIZONA_AIF1_RATE_SHIFT);
@@ -4334,7 +4342,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	case ARIZONA_CLK_ASYNCCLK:
 		snd_soc_update_bits(codec, ARIZONA_ASYNC_SAMPLE_RATE_1,
 				    ARIZONA_ASYNC_SAMPLE_RATE_1_MASK, sr_val);
-		if (base)
+		if (base && !slim_dai)
 			snd_soc_update_bits(codec, base + ARIZONA_AIF_RATE_CTRL,
 					    ARIZONA_AIF1_RATE_MASK,
 					    8 << ARIZONA_AIF1_RATE_SHIFT);
@@ -4342,7 +4350,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	case ARIZONA_CLK_ASYNCCLK_2:
 		snd_soc_update_bits(codec, ARIZONA_ASYNC_SAMPLE_RATE_2,
 				    ARIZONA_ASYNC_SAMPLE_RATE_2_MASK, sr_val);
-		if (base)
+		if (base && !slim_dai)
 			snd_soc_update_bits(codec, base + ARIZONA_AIF_RATE_CTRL,
 					    ARIZONA_AIF1_RATE_MASK,
 					    9 << ARIZONA_AIF1_RATE_SHIFT);
@@ -4358,7 +4366,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	}
 
 out:
-	if (change_rate) {
+	if (change_rate && !slim_dai) {
 		err = arizona_restore_sources(priv->arizona, sources,
 					      arizona_aif_sources_cache, lim);
 		if (err != 0) {
