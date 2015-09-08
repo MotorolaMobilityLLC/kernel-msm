@@ -1288,6 +1288,12 @@ static int req_crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	 */
 	ti->num_flush_bios = 1;
 
+	/*
+	 * If underlying device supports flush, mapped target should
+	 * also allow it
+	 */
+	ti->num_flush_bios = 1;
+
 	err = 0;
 
 	DMINFO("%s: Mapping block_device %s to dm-req-crypt ok!\n",
