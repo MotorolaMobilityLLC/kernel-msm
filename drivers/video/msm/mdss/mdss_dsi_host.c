@@ -2205,6 +2205,8 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	req = mdss_dsi_cmdlist_get(ctrl);
 
+	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
+
 	MDSS_XLOG(ctrl->ndx, from_mdp, ctrl->mdp_busy, current->pid,
 							XLOG_FUNC_ENTRY);
 
@@ -2267,8 +2269,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 		}
 	}
 
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
-
 	if (req->flags & CMD_REQ_HS_MODE)
 		mdss_dsi_set_tx_power_mode(0, &ctrl->panel_data);
 
@@ -2290,7 +2290,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 			ctrl->mdss_util->bus_bandwidth_ctrl(0);
 	}
 
-	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
 need_lock:
 
 	MDSS_XLOG(ctrl->ndx, from_mdp, ctrl->mdp_busy, current->pid,
@@ -2315,6 +2314,7 @@ need_lock:
 			mdss_dsi_cmd_stop_hs_clk_lane(ctrl);
 	}
 
+	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
 	return ret;
 }
 
