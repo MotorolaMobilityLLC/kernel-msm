@@ -72,6 +72,8 @@ struct tfa9890_priv {
 	int speaker_imp;
 	int sysclk;
 	int rst_gpio;
+	int earpiece_gpio;
+	int earpiece_status;
 	int max_vol_steps;
 	int mode;
 	int mode_switched;
@@ -845,7 +847,8 @@ static void tfa9890_handle_playback_event(struct tfa9890_priv *tfa9890,
 				msecs_to_jiffies(tfa9890->pcm_start_delay));
 			}
 	} else {
-		cancel_delayed_work_sync(&tfa9890->delay_work);
+		if (delayed_work_pending(&tfa9890->delay_work))
+			cancel_delayed_work(&tfa9890->delay_work);
 		tfa9890->is_pcm_triggered = 0;
 	}
 }
@@ -1048,6 +1051,53 @@ static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
 	{"I2S0R", NULL, "NXP Echo Ref Right"},
 	{"I2S1R Capture", NULL, "I2S0R"},
 
+};
+
+static int tfa9890_earpiece_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tfa9890_priv *pdata = snd_soc_codec_get_drvdata(codec);
+
+	pr_debug("%s() curr state %d\n", __func__, pdata->earpiece_status);
+	ucontrol->value.integer.value[0] = pdata->earpiece_status;
+	return 0;
+}
+
+static int tfa9890_earpiece_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tfa9890_priv *pdata = snd_soc_codec_get_drvdata(codec);
+
+	pr_debug("%s() curr state %d\n", __func__, pdata->earpiece_status);
+	if (pdata->earpiece_status == ucontrol->value.integer.value[0])
+		return 1;
+
+	if (!gpio_is_valid(pdata->earpiece_gpio)) {
+		pr_err("%s: Invalid tfa9890 earpiece gpio\n", __func__);
+		return 0;
+	}
+
+	if (!ucontrol->value.integer.value[0])
+		gpio_set_value_cansleep(pdata->earpiece_gpio, 0);
+	else
+		gpio_set_value_cansleep(pdata->earpiece_gpio, 1);
+
+	pdata->earpiece_status = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+static const char *const tfa9890_earpiece[] = {"Off", "On"};
+static const struct soc_enum tfa9890_earpiece_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, tfa9890_earpiece),
+};
+
+static const struct snd_kcontrol_new tfa9890_earpiece_control[] = {
+	SOC_ENUM_EXT("TFA9890 earpiece mode", tfa9890_earpiece_enum[0],
+		tfa9890_earpiece_get,
+		tfa9890_earpiece_put),
 };
 
 /*
@@ -2274,6 +2324,16 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 	snd_soc_dapm_new_widgets(&codec->dapm);
 	snd_soc_dapm_sync(&codec->dapm);
 
+	/* Add earpiece/speaker toggle */
+	if (gpio_is_valid(tfa9890->earpiece_gpio)) {
+		val = snd_soc_add_codec_controls(codec,
+			tfa9890_earpiece_control,
+			ARRAY_SIZE(tfa9890_earpiece_control));
+		if (val != 0)
+			pr_err("%s, fail to add earpiece control",
+				 __func__);
+	};
+
 	/* load preset tables */
 	queue_work(tfa9890->tfa9890_wq, &tfa9890->load_preset);
 	pr_info("%s codec registered", codec->name);
@@ -2322,6 +2382,7 @@ tfa9890_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "nxp,tfa_max-vol-steps",
 				&pdata->max_vol_steps);
 	pdata->reset_gpio = of_get_gpio(np, 0);
+	pdata->earpiece_gpio = of_get_gpio(np, 1);
 
 	if (of_property_read_string(np, "nxp,tfa-dev", &pdata->tfa_dev))
 		pdata->tfa_dev = "left";
@@ -2361,6 +2422,15 @@ static int tfa9890_init_hw(struct tfa9890_priv *tfa9890)
 		gpio_direction_output(tfa9890->rst_gpio, 0);
 	}
 
+	if (gpio_is_valid(tfa9890->earpiece_gpio)) {
+		ret = gpio_request(tfa9890->earpiece_gpio, "earpiece gpio");
+		if (ret < 0) {
+			pr_err("%s: earpiece enable gpio_request failed: %d\n",
+				__func__, ret);
+		}
+		gpio_direction_output(tfa9890->earpiece_gpio, 0);
+	}
+
 	tfa9890->vdd = regulator_get(&tfa9890->control_data->dev, "tfa_vdd");
 	if (IS_ERR(tfa9890->vdd)) {
 		pr_err("%s: Error getting vdd regulator.\n", __func__);
@@ -2387,6 +2457,8 @@ static int tfa9890_init_hw(struct tfa9890_priv *tfa9890)
 reg_enable_fail:
 	regulator_put(tfa9890->vdd);
 reg_get_fail:
+	if (gpio_is_valid(tfa9890->earpiece_gpio))
+		gpio_free(tfa9890->earpiece_gpio);
 	if (gpio_is_valid(tfa9890->rst_gpio))
 		gpio_free(tfa9890->rst_gpio);
 gpio_fail:
@@ -2424,6 +2496,8 @@ static int tfa9890_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 
 	tfa9890->rst_gpio = pdata->reset_gpio;
+	tfa9890->earpiece_gpio = pdata->earpiece_gpio;
+	tfa9890->earpiece_status = 0;
 	tfa9890->max_vol_steps = pdata->max_vol_steps;
 	tfa9890->control_data = i2c;
 	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
@@ -2504,6 +2578,8 @@ codec_fail:
 wq_fail:
 	regulator_disable(tfa9890->vdd);
 	regulator_put(tfa9890->vdd);
+	if (gpio_is_valid(tfa9890->earpiece_gpio))
+		gpio_free(tfa9890->earpiece_gpio);
 	if (gpio_is_valid(tfa9890->rst_gpio))
 		gpio_free(tfa9890->rst_gpio);
 
@@ -2518,6 +2594,8 @@ static int tfa9890_i2c_remove(struct i2c_client *client)
 	regulator_disable(tfa9890->vdd);
 	if (gpio_is_valid(tfa9890->rst_gpio))
 		gpio_free(tfa9890->rst_gpio);
+	if (gpio_is_valid(tfa9890->earpiece_gpio))
+		gpio_free(tfa9890->earpiece_gpio);
 	regulator_put(tfa9890->vdd);
 	destroy_workqueue(tfa9890->tfa9890_wq);
 	return 0;
