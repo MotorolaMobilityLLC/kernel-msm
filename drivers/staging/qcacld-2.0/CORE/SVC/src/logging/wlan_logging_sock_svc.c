@@ -305,8 +305,10 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 		/* Check if we can accomodate more log into current
 		 * node/buffer
 		 */
-		if ((MAX_LOGMSG_LENGTH -
-		    (*pfilled_length + sizeof(tAniNlHdr))) < total_log_len) {
+		if ((MAX_LOGMSG_LENGTH <= (*pfilled_length +
+							sizeof(tAniNlHdr))) ||
+			((MAX_LOGMSG_LENGTH - (*pfilled_length +
+				sizeof(tAniNlHdr))) < total_log_len)) {
 			wake_up_thread = true;
 			wlan_queue_logmsg_for_app();
 			pfilled_length =
