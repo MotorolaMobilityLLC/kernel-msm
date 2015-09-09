@@ -196,7 +196,7 @@
 #define MPU3050_FOOTER_SIZE      2
 #define FIFO_COUNT_BYTE          2
 #define FIFO_THRESHOLD           800
-#define FIFO_SIZE                992
+#define FIFO_SIZE                800//992
 #define HARDWARE_FIFO_SIZE       1024
 #define MAX_READ_SIZE            64
 #define POWER_UP_TIME            100
@@ -477,6 +477,9 @@ struct inv_sensor {
 	u8 sample_size;
 	int (*send_data)(struct inv_mpu_state *st, bool on);
 	int (*set_rate)(struct inv_mpu_state *st);
+	int count;
+	int ts_idx;
+	int sen_cnt;
 };
 
 /**
@@ -781,6 +784,9 @@ struct inv_mpu_state {
 	u8 secondary_name[20];
         struct wake_lock smd_wakelock;
         struct wake_lock ped_wakelock;
+	u8 ts_reset;
+	u32 int_cnt;
+    u32 timestamp_cnt;
 };
 
 /* produces an unique identifier for each device based on the

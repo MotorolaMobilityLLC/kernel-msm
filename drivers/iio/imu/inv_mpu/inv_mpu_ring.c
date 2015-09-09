@@ -38,6 +38,61 @@
 static u8 fifo_data[HARDWARE_FIFO_SIZE + HEADERED_Q_BYTES];
 static int inv_process_batchmode(struct inv_mpu_state *st);
 
+#define CTS_VERIFY_PATCH 0
+#if CTS_VERIFY_PATCH == 1
+#define CTS_EventGapVerification_THRESHOLD (180) // cts define 1.8
+#define CTS_FrequencyVerificationn_LOWER_THRESHOLD (90) // cts define 0.9
+#define CTS_FrequencyVerificationn_UPPER_THRESHOLD (200)//(220) // cts define 2.2
+#define CTS_TOLERANCE_NS (10) // ns
+
+int CTSVerifyOutputControl(int first_data, s64 ts_duration_ns, s64 ts_current_ns, s64 ts_previous_ns, s64 ts_sys_current_ns, s64 *ts_report_ns)
+{
+	s64 ts_evgap_threshold_ns = 0;
+	s64 ts_freq_low_threshold_ns = 0;
+	s64 ts_freq_up_threshold_ns = 0;
+	s64 ts_diff_ns = 0;
+	s64 ts_new_ns = 0;
+	u64 numerator, denominator;
+	int update;
+
+	update = 0;
+	ts_new_ns = ts_current_ns;
+	if (ts_current_ns != 0) {
+		if (first_data == 0) {
+            numerator = ts_duration_ns * CTS_EventGapVerification_THRESHOLD;
+            denominator = 100;
+            do_div(numerator, denominator);
+            ts_evgap_threshold_ns = numerator - CTS_TOLERANCE_NS;
+            numerator = ts_duration_ns * 100;
+            denominator = CTS_FrequencyVerificationn_LOWER_THRESHOLD;
+            do_div(numerator, denominator);
+            ts_freq_low_threshold_ns = numerator - CTS_TOLERANCE_NS;
+			// for sensor data report rate Hz can be faster than requested
+			ts_freq_up_threshold_ns = CTS_TOLERANCE_NS;
+			ts_diff_ns = ts_current_ns - ts_previous_ns;
+	
+			if (ts_diff_ns < ts_freq_up_threshold_ns) {
+				update = 0;
+			} else {
+				update = 1;
+				if (ts_diff_ns > ts_evgap_threshold_ns) {
+					ts_new_ns = ts_previous_ns + ts_evgap_threshold_ns;
+				}
+			}			
+		} else {
+			update = 1;
+		}		
+	}
+
+    if (ts_new_ns > ts_sys_current_ns)
+        update = 0;
+	
+	*ts_report_ns = ts_new_ns;
+
+	return update;
+}
+#endif
+
 static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
@@ -580,6 +635,11 @@ static int reset_fifo_itg(struct iio_dev *indio_dev)
 	for (i = 0; i < SENSOR_NUM_MAX; i++)
 		st->sensor[i].ts = st->last_ts;
 
+    st->ts_reset = 1;
+    st->int_cnt = 0;
+	for (i = 0; i < SENSOR_NUM_MAX; i++)
+		st->sensor[i].sen_cnt = 0;
+
 	result = inv_lpa_mode(st, st->chip_config.lpa_mode);
 	if (result)
 		goto reset_fifo_fail;
@@ -1021,7 +1081,6 @@ int set_inv_enable(struct iio_dev *indio_dev, bool enable)
 					return result;
 			}
 		}
-		inv_push_marker_to_buffer(st, END_MARKER);
 		/* disable fifo reading */
 		if (INV_MPU3050 != st->chip_type) {
 			result = inv_i2c_single_write(st, reg->int_enable, 0);
@@ -1065,11 +1124,9 @@ static irqreturn_t inv_irq_handler(int irq, void *dev_id)
 	struct inv_mpu_state *st = (struct inv_mpu_state *)dev_id;
 	u64 ts;
 
-	if (!st->chip_config.dmp_on) {
-		ts = get_time_ns();
-		kfifo_in_spinlocked(&st->timestamps, &ts, 1,
-						&st->time_stamp_lock);
-	}
+	ts = get_time_ns();
+	kfifo_in_spinlocked(&st->timestamps, &ts, 1, &st->time_stamp_lock);
+    st->int_cnt++;
 
 	return IRQ_WAKE_THREAD;
 }
@@ -1232,43 +1289,26 @@ static void inv_process_motion(struct inv_mpu_state *st)
 
 static int inv_get_timestamp(struct inv_mpu_state *st, int count)
 {
-	u32 *dur;
-	u32 thresh;
-	s32 diff, result, counter;
+	s32 result;
 	u64 ts;
+	unsigned long flags;
 
 	/* goal of algorithm is to estimate the true frequency of the chip */
 	if (st->chip_config.dmp_on && st->chip_config.dmp_event_int_on)
 		return 0;
-	dur = &st->irq_dur_ns;
-	counter = 1;
-	thresh = min((u32)((*dur) >> 2), (u32)(10 * NSEC_PER_MSEC));
-	while (kfifo_len(&st->timestamps) >= count) {
+	spin_lock_irqsave(&st->time_stamp_lock, flags);
+    if (kfifo_len(&st->timestamps) >= count) {
 		result = kfifo_out(&st->timestamps, &ts, 1);
-		if (result != 1)
+		if (result != 1) {
+            spin_unlock_irqrestore(&st->time_stamp_lock, flags);
 			return -EINVAL;
-		/* first time since reset fifo, just take it */
-		if (!st->ts_counter) {
-			st->last_ts = ts;
-			st->prev_ts = ts;
-			st->ts_counter++;
-			return 0;
-		}
-		diff = (s32)(ts - st->prev_ts);
-		st->prev_ts = ts;
-		if (abs(diff - (*dur)) < thresh) {
-			st->diff_accumulater >>= 1;
-			if (*dur > diff)
-				st->diff_accumulater -= (((*dur) - diff) >> 7);
-			else
-				st->diff_accumulater += ((diff - (*dur)) >> 7);
-			*dur += st->diff_accumulater;
-		}
-	}
-	ts = *dur;
-	ts *= counter;
-	st->last_ts += ts;
-
+        }
+        if (time_after64(ts, st->last_ts))
+            st->last_ts = ts;
+    } else {
+        st->last_ts += st->irq_dur_ns;
+    }
+	spin_unlock_irqrestore(&st->time_stamp_lock, flags);
 	return 0;
 }
 
@@ -1405,6 +1445,47 @@ static int inv_parse_header(u16 hdr)
 		return SENSOR_INVALID;
 	}
 }
+
+static int inv_prescan_data(struct inv_mpu_state *st, u8 *dptr, int len)
+{
+	int i, target_bytes;
+	int sensor_ind;
+	u8 *d;
+	u16 hdr;
+	bool done_flag;
+
+	for (i = 0; i < SENSOR_NUM_MAX; i++) {
+		st->sensor[i].count = 0;
+		st->sensor[i].ts_idx = 0;
+    }
+
+	done_flag = false;
+    target_bytes = len;
+    d = dptr;
+	while ((dptr - d <= target_bytes - HEADERED_NORMAL_BYTES) &&
+							(!done_flag)) {
+		hdr = (u16)be16_to_cpup((__be16 *)(dptr));
+		hdr &= (~STEP_INDICATOR_MASK);
+		sensor_ind = inv_parse_header(hdr);
+		/* error packet */
+		if ((sensor_ind == SENSOR_INVALID) ||
+				(!st->sensor[sensor_ind].on)) {
+			dptr += HEADERED_NORMAL_BYTES;
+			continue;
+		}
+		/* incomplete packet */
+		if (target_bytes - (dptr - d) <
+					st->sensor[sensor_ind].sample_size) {
+			done_flag = true;
+			continue;
+		}
+        st->sensor[sensor_ind].count++;
+		dptr += st->sensor[sensor_ind].sample_size;
+	}
+
+    return 0;
+}
+
 #define FEATURE_IKR_PANIC 1
 
 static int inv_process_batchmode(struct inv_mpu_state *st)
@@ -1416,6 +1497,12 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 	s16 sen[3];
 	u64 t;
 	bool done_flag;
+    int interrupt_sync;
+	int first_cnt;
+	u64 *ts_buf;
+    u64 ts_buf_addr;
+    u8 *ts_buf_org = NULL;
+    u64 new_ts;
 
 #if FEATURE_IKR_PANIC
 	if (1024 <= st->fifo_count) {
@@ -1462,6 +1549,59 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 	done_flag = false;
 	target_bytes = st->fifo_count + st->left_over_size;
 	counter = 0;
+
+
+    inv_prescan_data(st, dptr, target_bytes);
+    if (st->batch.on == 1)
+        interrupt_sync = 0;
+    else
+    {
+        first_cnt = 0;
+        interrupt_sync = 1;
+        for (i=0; i<SENSOR_NUM_MAX; i++) {
+            if (st->sensor[i].on && st->sensor[i].count){
+                if (first_cnt == 0)
+                    first_cnt = st->sensor[i].count;
+                else
+                {
+                    if (st->sensor[i].count != first_cnt) {
+                        interrupt_sync = 0;
+                        break;
+                    }
+                }
+            }
+        }
+        if (st->timestamp_cnt < first_cnt) {
+            //interrupt lost
+            interrupt_sync = 0;
+        }
+        if (interrupt_sync == 1) {
+            ts_buf_org = kzalloc((first_cnt + 1) * sizeof(*ts_buf), GFP_KERNEL);
+    		if (ts_buf_org) {
+                ts_buf_addr = (u64)(uintptr_t)ts_buf_org;
+                ts_buf = (u64 *)(((uintptr_t)ts_buf_addr/sizeof(u64) + 1) * sizeof(u64));
+        		res = kfifo_out_spinlocked(&st->timestamps, ts_buf, first_cnt, &st->time_stamp_lock);
+        		if (res != first_cnt) {
+                    interrupt_sync = 0;
+                    kfree(ts_buf_org);
+                    ts_buf_org = NULL;
+                }
+            } else {
+                interrupt_sync = 0;
+            }
+        }
+
+        if (interrupt_sync == 0) {
+            //clear timestamp kfifo
+            for (i=0; i<st->timestamp_cnt; i++) {
+                u64 dummy;
+                res = kfifo_out_spinlocked(&st->timestamps, &dummy, 1, &st->time_stamp_lock);
+                //if (res != 1) {
+                //}
+            }
+        }
+    }
+
 	while ((dptr - d <= target_bytes - HEADERED_NORMAL_BYTES) &&
 							(!done_flag)) {
 		hdr = (u16)be16_to_cpup((__be16 *)(dptr));
@@ -1490,8 +1630,38 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 		}
 		if (steps > 1)
 			inv_push_step_indicator(st, sensor_ind, steps);
-		st->sensor[sensor_ind].ts += (u64)st->sensor[sensor_ind].dur;
-		t = st->sensor[sensor_ind].ts;
+
+        st->sensor[sensor_ind].sen_cnt++;
+        
+        if (interrupt_sync == 1) {
+            new_ts = ts_buf[st->sensor[sensor_ind].ts_idx];
+            st->sensor[sensor_ind].ts_idx++;
+        } else {
+		    new_ts = st->sensor[sensor_ind].ts + (u64)st->sensor[sensor_ind].dur;
+        }
+        t = new_ts;
+
+#if CTS_VERIFY_PATCH == 1
+        if (st->sensor[sensor_ind].sen_cnt == 1)
+            first_data = 1;
+        else
+            first_data = 0;
+
+        cur_sys_ts = get_time_ns();
+        update = CTSVerifyOutputControl(first_data, st->sensor[sensor_ind].dur, new_ts, st->sensor[sensor_ind].ts, cur_sys_ts, &t);
+//printk("33, update=%d, ts=%lld\n", update, t);
+        if (update == 0) {
+            if (sensor_ind == SENSOR_COMPASS)
+                dptr += HEADERED_NORMAL_BYTES;
+            else if (sensor_ind == SENSOR_PRESSURE)
+                dptr += HEADERED_NORMAL_BYTES;
+            else
+                dptr += st->sensor[sensor_ind].sample_size;
+            continue;
+        }
+#endif
+        st->sensor[sensor_ind].ts = t;
+
 		if (sensor_ind == SENSOR_COMPASS) {
 			if (!st->chip_config.normal_compass_measure) {
 				st->chip_config.normal_compass_measure = 1;
@@ -1548,6 +1718,9 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 		memcpy(st->left_over, dptr, st->left_over_size);
 	}
 
+    if (ts_buf_org != NULL)
+        kfree(ts_buf_org);
+    
 	return 0;
 }
 
@@ -1611,9 +1784,6 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 		if (result || st->chip_config.dmp_event_int_on)
 			goto end_session;
 		if (!st->chip_config.smd_triggered) {
-			if (pts1 - st->last_run_time < DMP_MIN_RUN_TIME)
-				goto end_session;
-			else
 				st->last_run_time = pts1;
 		} else {
 			st->chip_config.smd_triggered = false;
@@ -1662,9 +1832,17 @@ irqreturn_t inv_read_fifo(int irq, void *dev_id)
 		if (fifo_count == 0)
 			goto end_session;
 		st->fifo_count = fifo_count;
+        {
+        unsigned long flags;
+        spin_lock_irqsave(&st->time_stamp_lock, flags);
+        st->timestamp_cnt = kfifo_len(&st->timestamps);
+        spin_unlock_irqrestore(&st->time_stamp_lock, flags);
+        }
 	}
 
 	if (st->chip_config.dmp_on) {
+		if (fifo_count == HARDWARE_FIFO_SIZE)
+			goto flush_fifo;
 		result = inv_process_batchmode(st);
 	} else {
 		if (fifo_count >  FIFO_THRESHOLD)

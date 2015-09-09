@@ -2749,6 +2749,13 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	if (result)
 		return result;
 	msleep(POWER_UP_TIME);
+{
+	u8 d;
+	result = inv_i2c_read(st, REG_WHOAMI, 1, &d);
+	if (result)
+		return result;
+    printk("[INVN] mpu whoami=0x%x\n", d);
+}
 	/* toggle power state */
 	result = st->set_power_state(st, false);
 	if (result)
