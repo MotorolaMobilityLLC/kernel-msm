@@ -1027,3 +1027,11 @@ config MMI_UNIT_INFO
 	help
 	Provide mechanism to expose unit information to other cpu via smem.
 
+config BOOTINFO
+	bool "Boot Information Feature"
+	default n
+	help
+	  This feature provides access to certain boot information
+	  from both kernel context (via function call) and user
+	  context (via /proc/bootinfo).
+
