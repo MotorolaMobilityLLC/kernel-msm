@@ -472,7 +472,6 @@
 			 * control boost regulator request.
 			 */
 			regulator-name = "pmi8994_boost_5v";
-			parent-supply = <&pon_perph_reg>;
 			status = "okay";
 		};
 		pmi8994_boost_pin_ctrl: regulator-bst-pin-ctrl {
@@ -485,7 +484,6 @@
 			 */
 			compatible = "qcom,rpm-smd-regulator";
 			regulator-name = "pmi8994_boost_pin_ctrl";
-			parent-supply = <&pon_perph_reg>;
 			qcom,set = <3>;
 			qcom,enable-with-pin-ctrl = <0 1>;
 		};
