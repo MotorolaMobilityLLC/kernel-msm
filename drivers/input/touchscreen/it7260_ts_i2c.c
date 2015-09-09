@@ -540,8 +540,8 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 		fwLen, cfgLen, manualUpgrade ? "manual" : "normal");
 
 	chipGetVersions(verFw, verCfg, true);
-	autoUpgrade = (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) ||
-			(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5]);
+	autoUpgrade = (verFw[5] != fw->data[8] || verFw[6] != fw->data[9] || verFw[7] != fw->data[10] || verFw[8] != fw->data[11]) ||
+			(verCfg[1] != cfg->data[cfgLen - 8] || verCfg[2] != cfg->data[cfgLen - 7] || verCfg[3] != cfg->data[cfgLen - 6] || verCfg[4] != cfg->data[cfgLen - 5]);
 
 	/* fix touch firmware/config update failed issue */
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
