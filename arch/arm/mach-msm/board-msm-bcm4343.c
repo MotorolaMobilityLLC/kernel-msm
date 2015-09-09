@@ -244,7 +244,7 @@ static struct cntry_locales_custom brcm_wlan_translate_custom_table[] = {
 	{"IS", "IS", 0},
 	{"IT", "IT", 0},
 	{"ID", "ID", 0},
-	{"JP", "JP", 0},
+	{"JP", "JP", 72},
 	{"KR", "KR", 0},
 	{"KW", "KW", 0},
 	{"LI", "LI", 0},
