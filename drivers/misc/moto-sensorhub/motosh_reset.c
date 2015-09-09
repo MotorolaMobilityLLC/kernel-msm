@@ -371,6 +371,11 @@ int motosh_reset_and_init(enum reset_mode mode)
 		ret_err = err;
 #endif
 
+	/* Write the current touch configuration to
+	 * the sensorhub.  On reset force the update even
+	 * if the touch driver says nothing has changed. */
+	motosh_check_touch_config_locked(FORCE_UPDATE);
+
 	/* sending reset to slpc hal */
 	motosh_ms_data_buffer_write(motosh_misc_data, DT_RESET, NULL, 0, false);
 
