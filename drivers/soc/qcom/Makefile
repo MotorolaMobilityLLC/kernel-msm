@@ -115,3 +115,4 @@ obj-$(CONFIG_MMI_SOC_INFO) += mmi_soc_info.o
 obj-$(CONFIG_MMI_RAM_INFO) += mmi-ram-info.o
 obj-$(CONFIG_MMI_STORAGE_INFO) += mmi_storage_info.o
 obj-$(CONFIG_MMI_UNIT_INFO) += mmi-unit-info.o
+obj-$(CONFIG_BOOTINFO) += bootinfo.o
