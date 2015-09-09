@@ -86,6 +86,7 @@
 #define CMD_FW_WRITE			0x62 /* subcommand is number of bytes to write */
 #define CMD_FW_READ			0x63 /* subcommand is number of bytes to read */
 #define CMD_FIRMWARE_REINIT_6F		0x6F
+#define CMD_CHECKSUM			0x1A
 
 #define FW_WRITE_CHUNK_SIZE		128
 #define FW_WRITE_RETRY_COUNT		4
@@ -298,19 +299,19 @@ static bool wait_device_ready(bool endless, bool slow)
 
 static uint8_t i2c_read_with_check(uint8_t bufferIndex, uint8_t *dataBuffer, uint16_t dataLength)
 {
-	if (wait_device_ready(false, false)) {
-		i2c_read_data(bufferIndex, dataBuffer, dataLength);
+	wait_device_ready(false, false);
+	if (i2c_read_data(bufferIndex, dataBuffer, dataLength) == 0)
 		return true;
-	} else
+	else
 		return false;
 }
 
 static uint8_t i2c_write_with_check(uint8_t bufferIndex, const uint8_t *dataBuffer, uint16_t dataLength)
 {
-	if (wait_device_ready(false, false)) {
-		i2c_write_data(bufferIndex, dataBuffer, dataLength);
+	wait_device_ready(false, false);
+	if (i2c_write_data(bufferIndex, dataBuffer, dataLength) == 0)
 		return true;
-	} else
+	else
 		return false;
 }
 
@@ -541,8 +542,6 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	chipGetVersions(verFw, verCfg, true);
 	autoUpgrade = (verFw[5] < fw->data[8] || verFw[6] < fw->data[9] || verFw[7] < fw->data[10] || verFw[8] < fw->data[11]) ||
 			(verCfg[1] < cfg->data[cfgLen - 8] || verCfg[2] < cfg->data[cfgLen - 7] || verCfg[3] < cfg->data[cfgLen - 6] || verCfg[4] < cfg->data[cfgLen - 5]);
-	manualUpgrade &= !((verFw[5] == fw->data[8] && verFw[6] == fw->data[9] && verFw[7] == fw->data[10] && verFw[8] == fw->data[11]) &&
-			(verCfg[1] == cfg->data[cfgLen - 8] && verCfg[2] == cfg->data[cfgLen - 7] && verCfg[3] == cfg->data[cfgLen - 6] && verCfg[4] == cfg->data[cfgLen - 5]));
 
 	/* fix touch firmware/config update failed issue */
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
@@ -681,15 +680,37 @@ static ssize_t sysfsSleepStore(struct device *dev, struct device_attribute *attr
 		return -EINTR;
 }
 
+static ssize_t sysfsChecksumShow(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	uint8_t cmd[] = {CMD_CHECKSUM, 0x09, 0x03};
+	uint8_t rsp[2];
+	uint8_t ret = 0;
+
+	if (i2c_write_data(BUF_COMMAND, cmd, sizeof(cmd)) < 0)
+		return snprintf(buf, 3, "%d\n", ret);
+
+	wait_device_ready(ENDLESS, false);
+	if (i2c_read_data(BUF_RESPONSE, rsp, sizeof(rsp)) < 0)
+		return snprintf(buf, 3, "%d\n", ret);
+
+	if (rsp[0] || rsp[1])
+		ret = 0;
+	else
+		ret = 1;
+	LOGI("%s: rsp:%d, %d\n", __func__, rsp[0], rsp[1]);
+	return snprintf(buf, 3, "%d\n", ret ? 1 : 0);
+}
 
 static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IRGRP, sysfsStatusShow, NULL);
 static DEVICE_ATTR(version, S_IRUGO|S_IWUSR|S_IRGRP, sysfsVersionShow, NULL);
 static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR|S_IRGRP, sysfsSleepShow, sysfsSleepStore);
+static DEVICE_ATTR(checksum, S_IRUGO|S_IWUSR|S_IRGRP, sysfsChecksumShow, NULL);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
 	&dev_attr_version.attr,
 	&dev_attr_sleep.attr,
+	&dev_attr_checksum.attr,
 	NULL
 };
 
