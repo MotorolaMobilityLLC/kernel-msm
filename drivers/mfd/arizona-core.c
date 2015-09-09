@@ -2238,14 +2238,11 @@ int arizona_dev_init(struct arizona *arizona)
 		goto err_reset;
 	}
 
-#ifdef CONFIG_PM_RUNTIME
-	arizona_runtime_suspend(arizona->dev);
-#endif
-
 	pm_runtime_set_autosuspend_delay(arizona->dev, 100);
 	pm_runtime_use_autosuspend(arizona->dev);
 	pm_runtime_enable(arizona->dev);
 
+	pm_runtime_get(dev);
 	arizona_get_num_micbias(arizona, &max_micbias, &num_child_micbias);
 
 	for (i = 0; i < max_micbias; i++) {
