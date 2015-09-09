@@ -310,7 +310,11 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 					    state);
 			input_sync(ps_motosh->input_dev);
 
-			dev_err(&ps_motosh->client->dev, "Cover status: %d\n",
+			/* On folio changes touch configuration will
+			 * usually need to be changed */
+			motosh_check_touch_config_locked(NORMAL_CHECK);
+
+			dev_info(&ps_motosh->client->dev, "Cover status: %d\n",
 				state);
 			queue_index += 1;
 			break;
