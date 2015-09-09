@@ -15,10 +15,13 @@
 #ifndef __MOTOSH_H__
 #define __MOTOSH_H__
 
+#include <linux/cdev.h>
+#include <linux/wakelock.h>
+#include <linux/spinlock.h>
+#include <linux/switch.h>
+
 /* The user-space-visible definitions. */
 #include <uapi/linux/motosh.h>
-
-#include <linux/spinlock.h>
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 #include <linux/mmi_hall_notifier.h>
@@ -36,6 +39,8 @@
 #endif
 
 #define NAME			     "motosh"
+
+#define MOTOSH_REG_SIZE                 0x01
 
 /* MOTOSH memory map */
 #define ID                              0x00
@@ -92,7 +97,7 @@
 
 #define LUX_TABLE_VALUES                0x34
 #define BRIGHTNESS_TABLE_VALUES         0x35
-#define STEP_COUNTER_UPDATE_RATE        0x36
+#define TOUCH_CONFIGURATION             0x36
 
 #define GRAVITY_UPDATE_RATE             0x37
 #define FW_FLASH_CRC                    0x38
@@ -348,6 +353,11 @@
 #define MOTOSH_HALL_SOUTH_DETECT 1
 #define MOTOSH_HALL_NORTH_DETECT 2
 #define MOTOSH_HALL_NORTH_OR_SOUTH_DETECT 3
+
+enum check_touch_type {
+	NORMAL_CHECK,
+	FORCE_UPDATE
+};
 
 struct motosh_quickpeek_message {
 	u8 message;
@@ -617,6 +627,8 @@ int64_t motosh_time_recover(int32_t hubshort, int64_t cur_time);
 int motosh_time_drift_comp(int64_t rec_hub, int64_t cur_time);
 
 void motosh_time_compare(void);
+
+int motosh_check_touch_config_locked(enum check_touch_type);
 
 extern struct motosh_data *motosh_misc_data;
 
