@@ -158,12 +158,11 @@ qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 //	/* PWM set to 80% */
 //	15 01 00 00 00 00 02 51 cc];
 
-/* Disable ESD for now */
-//qcom,esd-check-enabled;
-//qcom,mdss-dsi-panel-status-check-mode = "reg_read";
-//qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
-//qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
-//qcom,mdss-dsi-panel-status-value = <0x9c>;
+qcom,esd-check-enabled;
+qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
+qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
+qcom,mdss-dsi-panel-status-value = <0x9c>;
 
 /* Disable Dynamic CABC for now */
 //qcom,mdss-dsi-cabc-ui-command = [15 01 00 00 00 00 02 55 01];
