@@ -142,7 +142,7 @@ static void load_sw_shutdown(struct platform_device *pdev)
 {
 	struct load_sw_device *lsw_dev = platform_get_drvdata(pdev);
 
-	if (lsw_dev->need_to_control) {
+	if (SYSTEM_RESTART != system_state && lsw_dev->need_to_control) {
 		gpio_set_value(lsw_dev->gpio, 1);
 		printk("Load switch will be opened after shutdown!!\n");
 	}
