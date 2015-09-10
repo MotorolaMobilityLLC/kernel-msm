@@ -2837,6 +2837,146 @@ static int drv_cmd_set_fcc_channel(hdd_context_t *hdd_ctx, uint8_t *cmd,
 	return ret;
 }
 
+/**
+ * hdd_set_rx_filter() - set RX filter
+ * @adapter: Pointer to adapter
+ * @action: Filter action
+ * @pattern: Address pattern
+ *
+ * Address pattern is most significant byte of address for example
+ * 0x01 for IPV4 multicast address
+ * 0x33 for IPV6 multicast address
+ * 0xFF for broadcast address
+ *
+ * Return: 0 for success, non-zero for failure
+ */
+static int hdd_set_rx_filter(hdd_adapter_t *adapter, bool action,
+			uint8_t pattern)
+{
+	int ret;
+	uint8_t i;
+	tHalHandle handle;
+	tSirRcvFltMcAddrList *filter;
+	hdd_context_t* hdd_ctx = WLAN_HDD_GET_CTX(adapter);
+
+	ret = wlan_hdd_validate_context(hdd_ctx);
+	if (0 != ret)
+		return ret;
+
+	handle = hdd_ctx->hHal;
+
+	if (NULL == handle) {
+		hddLog(LOGE, FL("HAL Handle is NULL"));
+		return -EINVAL;
+	}
+
+	/*
+	 * If action is false it means start dropping packets
+	 * Set addr_filter_pattern which will be used when sending
+	 * MC/BC address list to target
+	 */
+	if (!action)
+		adapter->addr_filter_pattern = pattern;
+	else
+		adapter->addr_filter_pattern = 0;
+
+	if (((adapter->device_mode == WLAN_HDD_INFRA_STATION) ||
+		(adapter->device_mode == WLAN_HDD_P2P_CLIENT)) &&
+		adapter->mc_addr_list.mc_cnt &&
+		hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(adapter))) {
+
+
+		filter = vos_mem_malloc(sizeof(*filter));
+		if (NULL == filter) {
+			hddLog(LOGE, FL("Could not allocate Memory"));
+			return -ENOMEM;
+		}
+		vos_mem_zero(filter, sizeof(*filter));
+		filter->action = action;
+		for (i = 0; i < adapter->mc_addr_list.mc_cnt; i++) {
+			if (!memcmp(adapter->mc_addr_list.addr[i],
+				&pattern, 1)) {
+				memcpy(filter->multicastAddr[i],
+					adapter->mc_addr_list.addr[i],
+					sizeof(adapter->mc_addr_list.addr[i]));
+				filter->ulMulticastAddrCnt++;
+				hddLog(LOGE, "%s RX filter : addr ="
+				    MAC_ADDRESS_STR,
+				    action ? "setting" : "clearing",
+				    MAC_ADDR_ARRAY(filter->multicastAddr[i]));
+			}
+		}
+		/* Set rx filter */
+		sme_8023MulticastList(handle, adapter->sessionId, filter);
+		vos_mem_free(filter);
+	} else {
+		hddLog(LOGE, FL("mode %d mc_cnt %d"),
+			adapter->device_mode, adapter->mc_addr_list.mc_cnt);
+	}
+
+	return 0;
+}
+
+/**
+ * hdd_driver_rxfilter_comand_handler() - RXFILTER driver command handler
+ * @command: Pointer to input string driver command
+ * @adapter: Pointer to adapter
+ * @action: Action to enable/disable filtering
+ *
+ * If action == false
+ * Start filtering out data packets based on type
+ * RXFILTER-REMOVE 0 -> Start filtering out unicast data packets
+ * RXFILTER-REMOVE 1 -> Start filtering out broadcast data packets
+ * RXFILTER-REMOVE 2 -> Start filtering out IPV4 mcast data packets
+ * RXFILTER-REMOVE 3 -> Start filtering out IPV6 mcast data packets
+ *
+ * if action == true
+ * Stop filtering data packets based on type
+ * RXFILTER-ADD 0 -> Stop filtering unicast data packets
+ * RXFILTER-ADD 1 -> Stop filtering broadcast data packets
+ * RXFILTER-ADD 2 -> Stop filtering IPV4 mcast data packets
+ * RXFILTER-ADD 3 -> Stop filtering IPV6 mcast data packets
+ *
+ * Current implementation only supports IPV4 address filtering by
+ * selectively allowing IPV4 multicast data packest based on
+ * address list received in .ndo_set_rx_mode
+ *
+ * Return: 0 for success, non-zero for failure
+ */
+static int hdd_driver_rxfilter_comand_handler(uint8_t *command,
+						hdd_adapter_t *adapter,
+						bool action)
+{
+	int ret = 0;
+	uint8_t *value;
+	uint8_t type;
+
+	value = command;
+	/* Skip space after RXFILTER-REMOVE OR RXFILTER-ADD based on action */
+	if (!action)
+		value = command + 16;
+	else
+		value = command + 13;
+	ret = kstrtou8(value, 10, &type);
+	if (ret < 0) {
+		hddLog(LOGE,
+			FL("kstrtou8 failed invalid input value %d"), type);
+		return -EINVAL;
+	}
+
+	switch (type) {
+	case 2:
+		/* Set rx filter for IPV4 multicast data packets */
+		ret = hdd_set_rx_filter(adapter, action, 0x01);
+		break;
+	default:
+		hddLog(LOG1, FL("Unsupported RXFILTER type %d"), type);
+		break;
+	}
+
+	return ret;
+}
+
 static int hdd_driver_command(hdd_adapter_t *pAdapter,
                               hdd_priv_data_t *ppriv_data)
 {
@@ -4996,7 +5136,10 @@ static int hdd_driver_command(hdd_adapter_t *pAdapter,
             */
 
            ret = drv_cmd_set_fcc_channel(pHddCtx, command, 15);
-
+       } else if (strncmp(command, "RXFILTER-REMOVE", 15) == 0) {
+           ret = hdd_driver_rxfilter_comand_handler(command, pAdapter, false);
+       } else if (strncmp(command, "RXFILTER-ADD", 12) == 0) {
+           ret = hdd_driver_rxfilter_comand_handler(command, pAdapter, true);
        } else {
            MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                             TRACE_CODE_HDD_UNSUPPORTED_IOCTL,
@@ -9592,9 +9735,17 @@ static void hdd_set_multicast_list(struct net_device *dev)
       netdev_for_each_mc_addr(ha, dev) {
          if (i == mc_count)
             break;
-         /* Skip IPv6 router solicitation address */
-         if (!memcmp(ha->addr, ipv6_router_solicitation, ETH_ALEN)) {
-             hddLog(LOG1, FL("skip ipv6 router solicitation address"));
+         /*
+          * Skip following addresses:
+          * 1)IPv6 router solicitation address
+          * 2)Any other address pattern if its set during RXFILTER REMOVE
+          *   driver command based on addr_filter_pattern
+          */
+         if ((!memcmp(ha->addr, ipv6_router_solicitation, ETH_ALEN)) ||
+             (pAdapter->addr_filter_pattern && (!memcmp(ha->addr,
+                                 &pAdapter->addr_filter_pattern, 1)))) {
+                hddLog(LOGE, FL("MC/BC filtering Skip addr ="MAC_ADDRESS_STR),
+                     MAC_ADDR_ARRAY(ha->addr));
              pAdapter->mc_addr_list.mc_cnt--;
              continue;
          }

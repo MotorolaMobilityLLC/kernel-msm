@@ -949,6 +949,7 @@ struct hdd_adapter_s
 #ifdef WLAN_FEATURE_PACKET_FILTERING
    t_multicast_add_list mc_addr_list;
 #endif
+   uint8_t addr_filter_pattern;
 
    //Magic cookie for adapter sanity verification
    v_U32_t magic;
