@@ -250,7 +250,7 @@ int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 			if (m4sensorhub_bl_wm(m4sensorhub, address_to_write,
 					      write_buf,
 						  MAX_TRANSFER_SIZE) != 0) {
-				KDEBUG(M4SH_ERROR, "write err addr %d at ",
+				KDEBUG(M4SH_ERROR, "write err addr 0x%08x at ",
 				       address_to_write);
 				KDEBUG(M4SH_ERROR, " %s : %d\n",
 				       __func__, __LINE__);
