@@ -1518,7 +1518,7 @@ static int get_current_time(unsigned long *now_tm_sec)
 {
 	struct timespec tm;
 
-	getrawmonotonic(&tm);
+	get_monotonic_boottime(&tm);
 	*now_tm_sec = (unsigned long)tm.tv_sec;
 
 	return 0;
