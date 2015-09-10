@@ -147,7 +147,9 @@ module_param(perdev_minors, int, 0444);
 MODULE_PARM_DESC(perdev_minors, "Minors numbers to allocate per device");
 
 static inline int mmc_blk_part_switch(struct mmc_card *card,
-				      struct mmc_blk_data *md);
+		      struct mmc_blk_data *md);
+static inline int __mmc_blk_part_switch(struct mmc_card *card,
+		      struct mmc_blk_data *md, unsigned int part_type);
 static int get_card_status(struct mmc_card *card, u32 *status, int retries);
 
 static inline void mmc_blk_clear_packed(struct mmc_queue_req *mqrq)
@@ -751,6 +753,74 @@ out:
 	return ERR_PTR(err);
 }
 
+/*
+ * Prepare Dummy mmc request.
+ */
+static void mmc_dummy_prepare_mrq(struct mmc_card *card,
+	struct mmc_request *mrq, struct scatterlist *sg, unsigned sg_len,
+	unsigned dev_addr, unsigned blocks, unsigned blksz, int write)
+{
+	BUG_ON(!mrq || !mrq->cmd || !mrq->data || !mrq->stop);
+	if (blocks > 1) {
+		mrq->cmd->opcode = write ?
+			MMC_WRITE_MULTIPLE_BLOCK : MMC_READ_MULTIPLE_BLOCK;
+	} else {
+		mrq->cmd->opcode = write ?
+			MMC_WRITE_BLOCK : MMC_READ_SINGLE_BLOCK;
+	}
+
+	mrq->cmd->arg = dev_addr;
+	if (!mmc_card_blockaddr(card))
+		mrq->cmd->arg <<= 9;
+
+	mrq->cmd->flags = MMC_RSP_R1 | MMC_CMD_ADTC;
+
+	if (blocks == 1)
+		mrq->stop = NULL;
+	else {
+		mrq->stop->opcode = MMC_STOP_TRANSMISSION;
+		mrq->stop->arg = 0;
+		mrq->stop->flags = MMC_RSP_R1B | MMC_CMD_AC;
+	}
+
+	mrq->data->blksz = blksz;
+	mrq->data->blocks = blocks;
+	mrq->data->flags = write ? MMC_DATA_WRITE : MMC_DATA_READ;
+	mrq->data->sg = sg;
+	mrq->data->sg_len = sg_len;
+
+	mmc_set_data_timeout(mrq->data, card);
+}
+
+/*
+ * Dummy Read Sequence
+ */
+static int mmc_dummy_read_sequence(struct mmc_card *card,
+		struct mmc_blk_data *md)
+{
+	struct mmc_request mrq = {0};
+	struct mmc_command cmd = {0};
+	struct mmc_command stop = {0};
+	struct mmc_data data = {0};
+	u8 buffer[512] = {0,};
+	int addr;
+	struct scatterlist sg;
+
+	for (addr = 0; addr <= 1; addr++) {
+		mrq.cmd = &cmd;
+		mrq.data = &data;
+		mrq.stop = &stop;
+		sg_init_one(&sg, buffer, 512);
+		mmc_dummy_prepare_mrq(card, &mrq, &sg, 1, addr*0x20, 1, 512, 0);
+		mmc_wait_for_req(card->host, &mrq);
+		if (cmd.error)
+			return cmd.error;
+		if (data.error)
+			return data.error;
+	}
+	return 0;
+}
+
 static int mmc_blk_ioctl_rpmb_cmd(struct block_device *bdev,
 	struct mmc_ioc_rpmb __user *ic_ptr)
 {
@@ -882,6 +952,22 @@ static int mmc_blk_ioctl_rpmb_cmd(struct block_device *bdev,
 					__func__, status, err);
 	}
 
+	/* Some eMMC cards requires workaround */
+	if (card->quirks & MMC_QUIRK_BLK_NEED_DUMMY_READ) {
+		/*
+		 * Switch Part to Main area
+		 */
+		err = __mmc_blk_part_switch(card, md, 0);
+		if (err)
+			goto cmd_rel_host;
+		/*
+		 * Dummy Read Sequence
+		 */
+		err = mmc_dummy_read_sequence(card, md);
+		if (err)
+			goto cmd_rel_host;
+	}
+
 cmd_rel_host:
 	mmc_release_host(card->host);
 	mmc_rpm_release(card->host, &card->dev);
@@ -929,21 +1015,21 @@ static const struct block_device_operations mmc_bdops = {
 #endif
 };
 
-static inline int mmc_blk_part_switch(struct mmc_card *card,
-				      struct mmc_blk_data *md)
+static inline int __mmc_blk_part_switch(struct mmc_card *card,
+			      struct mmc_blk_data *md, unsigned int part_type)
 {
 	int ret;
 	struct mmc_blk_data *main_md = mmc_get_drvdata(card);
 
-	if ((main_md->part_curr == md->part_type) &&
-	    (card->part_curr == md->part_type))
+	if ((main_md->part_curr == part_type) &&
+	    (card->part_curr == part_type))
 		return 0;
 
 	if (mmc_card_mmc(card)) {
 		u8 part_config = card->ext_csd.part_config;
 
 		part_config &= ~EXT_CSD_PART_CONFIG_ACC_MASK;
-		part_config |= md->part_type;
+		part_config |= part_type;
 
 		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_PART_CONFIG, part_config,
@@ -952,11 +1038,17 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 			return ret;
 
 		card->ext_csd.part_config = part_config;
-		card->part_curr = md->part_type;
+		card->part_curr = part_type;
 	}
 
 	main_md->part_curr = md->part_type;
 	return 0;
+}
+
+static inline int mmc_blk_part_switch(struct mmc_card *card,
+		struct mmc_blk_data *md)
+{
+	return __mmc_blk_part_switch(card, md, md->part_type);
 }
 
 static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
@@ -2668,10 +2760,24 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		if (card->host->areq)
 			mmc_blk_issue_rw_rq(mq, NULL);
 		if (req->cmd_flags & REQ_SECURE &&
-			!(card->quirks & MMC_QUIRK_SEC_ERASE_TRIM_BROKEN))
+			!(card->quirks & MMC_QUIRK_SEC_ERASE_TRIM_BROKEN)) {
 			ret = mmc_blk_issue_secdiscard_rq(mq, req);
-		else
+			if (card->quirks & MMC_QUIRK_BLK_NEED_DUMMY_READ) {
+				/*
+				 * Dummy Read Sequence
+				 */
+				int err;
+
+				err = mmc_dummy_read_sequence(card, md);
+				if (err) {
+					pr_warn("%s: failed in mmc_dummy_read_sequence "
+						"after mmc_blk_issue_secdiscard_rq %d\n",
+						md->disk->disk_name, err);
+				}
+			}
+		} else {
 			ret = mmc_blk_issue_discard_rq(mq, req);
+		}
 	} else if (req && req->cmd_flags & REQ_FLUSH) {
 		/* complete ongoing async transfer before issuing flush */
 		if (card->host->areq)
@@ -3039,6 +3145,7 @@ force_ro_fail:
 #define CID_MANFID_TOSHIBA	0x11
 #define CID_MANFID_MICRON	0x13
 #define CID_MANFID_SAMSUNG	0x15
+#define CID_MANFID_SANDISK_SEM	0x45
 
 static const struct mmc_fixup blk_fixups[] =
 {
@@ -3100,6 +3207,14 @@ static const struct mmc_fixup blk_fixups[] =
 		  MMC_QUIRK_SEC_ERASE_TRIM_BROKEN),
 	MMC_FIXUP("VZL00M", CID_MANFID_SAMSUNG, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_SEC_ERASE_TRIM_BROKEN),
+
+	/*
+	 * Some devices have issues that requires dummy read
+	 */
+	MMC_FIXUP("SEM16G", CID_MANFID_SANDISK_SEM, CID_OEMID_ANY, add_quirk_mmc,
+		  MMC_QUIRK_BLK_NEED_DUMMY_READ),
+	MMC_FIXUP("SEM32G", CID_MANFID_SANDISK_SEM, CID_OEMID_ANY, add_quirk_mmc,
+		  MMC_QUIRK_BLK_NEED_DUMMY_READ),
 
 	END_FIXUP
 };
