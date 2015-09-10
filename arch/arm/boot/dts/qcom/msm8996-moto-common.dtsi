@@ -30,6 +30,14 @@
 		uart0 = &blsp1_uart2;
 		uart5 = &blsp2_uart5;
 	};
+
+	reserved-memory {
+		ramoops_mem: ramoops_mem_region {
+			no-map;
+			reg = <0x0 0xaf000000 0x0 0x80000>;
+			label = "ramoops_mem";
+		};
+	};
 };
 
 &uartblsp2dm1 {
@@ -367,6 +375,20 @@
 	/delete-node/ qcom,wil6210;
 	/delete-node/ sound-9335;
 	/delete-node/ wcd9xxx-irq;
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		android,ramoops-buffer-start = <0xaf000000>;
+		android,ramoops-buffer-size = <0x80000>;
+		android,ramoops-console-size = <0x40000>;
+		android,ramoops-record-size = <0x3F800>;
+		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-dump-oops = <0x1>;
+
+		linux,contiguous-region = <&ramoops_mem>;
+	};
 
 	slim_msm: slim@91c0000 {
 		/delete-node/ tomtom_codec;
