@@ -79,3 +79,10 @@
 		};
 	};
 };
+
+&muc {
+	gpios = <&tlmm  73 1>,   /* gpio_muc_det_n,    input */
+	        <&tlmm 130 0>,   /* gpio_muc_bplus_en, output-low */
+	        <&tlmm  72 0>;   /* gpio_muc_vbus_en,  output-low */
+};
+
