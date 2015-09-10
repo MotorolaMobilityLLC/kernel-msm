@@ -38,61 +38,6 @@
 static u8 fifo_data[HARDWARE_FIFO_SIZE + HEADERED_Q_BYTES];
 static int inv_process_batchmode(struct inv_mpu_state *st);
 
-#define CTS_VERIFY_PATCH 0
-#if CTS_VERIFY_PATCH == 1
-#define CTS_EventGapVerification_THRESHOLD (180) // cts define 1.8
-#define CTS_FrequencyVerificationn_LOWER_THRESHOLD (90) // cts define 0.9
-#define CTS_FrequencyVerificationn_UPPER_THRESHOLD (200)//(220) // cts define 2.2
-#define CTS_TOLERANCE_NS (10) // ns
-
-int CTSVerifyOutputControl(int first_data, s64 ts_duration_ns, s64 ts_current_ns, s64 ts_previous_ns, s64 ts_sys_current_ns, s64 *ts_report_ns)
-{
-	s64 ts_evgap_threshold_ns = 0;
-	s64 ts_freq_low_threshold_ns = 0;
-	s64 ts_freq_up_threshold_ns = 0;
-	s64 ts_diff_ns = 0;
-	s64 ts_new_ns = 0;
-	u64 numerator, denominator;
-	int update;
-
-	update = 0;
-	ts_new_ns = ts_current_ns;
-	if (ts_current_ns != 0) {
-		if (first_data == 0) {
-            numerator = ts_duration_ns * CTS_EventGapVerification_THRESHOLD;
-            denominator = 100;
-            do_div(numerator, denominator);
-            ts_evgap_threshold_ns = numerator - CTS_TOLERANCE_NS;
-            numerator = ts_duration_ns * 100;
-            denominator = CTS_FrequencyVerificationn_LOWER_THRESHOLD;
-            do_div(numerator, denominator);
-            ts_freq_low_threshold_ns = numerator - CTS_TOLERANCE_NS;
-			// for sensor data report rate Hz can be faster than requested
-			ts_freq_up_threshold_ns = CTS_TOLERANCE_NS;
-			ts_diff_ns = ts_current_ns - ts_previous_ns;
-	
-			if (ts_diff_ns < ts_freq_up_threshold_ns) {
-				update = 0;
-			} else {
-				update = 1;
-				if (ts_diff_ns > ts_evgap_threshold_ns) {
-					ts_new_ns = ts_previous_ns + ts_evgap_threshold_ns;
-				}
-			}			
-		} else {
-			update = 1;
-		}		
-	}
-
-    if (ts_new_ns > ts_sys_current_ns)
-        update = 0;
-	
-	*ts_report_ns = ts_new_ns;
-
-	return update;
-}
-#endif
-
 static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 {
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
@@ -100,7 +45,6 @@ static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 
 	memcpy(buf, &hdr, sizeof(hdr));
 	iio_push_to_buffers(indio_dev, buf);
-
 	return 0;
 }
 
@@ -1640,26 +1584,6 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 		    new_ts = st->sensor[sensor_ind].ts + (u64)st->sensor[sensor_ind].dur;
         }
         t = new_ts;
-
-#if CTS_VERIFY_PATCH == 1
-        if (st->sensor[sensor_ind].sen_cnt == 1)
-            first_data = 1;
-        else
-            first_data = 0;
-
-        cur_sys_ts = get_time_ns();
-        update = CTSVerifyOutputControl(first_data, st->sensor[sensor_ind].dur, new_ts, st->sensor[sensor_ind].ts, cur_sys_ts, &t);
-//printk("33, update=%d, ts=%lld\n", update, t);
-        if (update == 0) {
-            if (sensor_ind == SENSOR_COMPASS)
-                dptr += HEADERED_NORMAL_BYTES;
-            else if (sensor_ind == SENSOR_PRESSURE)
-                dptr += HEADERED_NORMAL_BYTES;
-            else
-                dptr += st->sensor[sensor_ind].sample_size;
-            continue;
-        }
-#endif
         st->sensor[sensor_ind].ts = t;
 
 		if (sensor_ind == SENSOR_COMPASS) {
