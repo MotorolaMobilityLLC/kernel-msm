@@ -36,9 +36,6 @@
 #include <dhd_bus.h>
 #include <dhd_linux.h>
 #include <wl_android.h>
-#if defined(CONFIG_WIFI_CONTROL_FUNC)
-#include <linux/wlan_plat.h>
-#endif
 
 #if !defined(CONFIG_WIFI_CONTROL_FUNC)
 struct wifi_platform_data {
@@ -48,6 +45,14 @@ struct wifi_platform_data {
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
 	void *(*get_country_code)(char *ccode);
+#ifdef CONFIG_PARTIALRESUME
+#define WIFI_PR_INIT			0
+#define WIFI_PR_NOTIFY_RESUME		1
+#define WIFI_PR_VOTE_FOR_RESUME		2
+#define WIFI_PR_VOTE_FOR_SUSPEND	3
+#define WIFI_PR_WAIT_FOR_READY		4
+	bool (*partial_resume)(int action);
+#endif
 };
 #endif /* CONFIG_WIFI_CONTROL_FUNC */
 
@@ -225,6 +230,21 @@ void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode)
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)) */
 
 	return NULL;
+}
+
+bool wifi_process_partial_resume(wifi_adapter_info_t *adapter, int action)
+{
+#ifdef CONFIG_PARTIALRESUME
+	struct wifi_platform_data *plat_data;
+	if (!adapter || !adapter->wifi_plat_data)
+		return false;
+	plat_data = adapter->wifi_plat_data;
+	if (plat_data->partial_resume)
+		return plat_data->partial_resume(action);
+	return false;
+#else
+	return false;
+#endif
 }
 
 static int wifi_plat_dev_drv_probe(struct platform_device *pdev)

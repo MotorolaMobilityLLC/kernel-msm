@@ -34,6 +34,9 @@
 
 #include <linux/kernel.h>
 #include <linux/init.h>
+#if defined(CONFIG_WIFI_CONTROL_FUNC)
+#include <linux/wlan_plat.h>
+#endif
 #include <dngl_stats.h>
 #include <dhd.h>
 
@@ -67,6 +70,7 @@ int wifi_platform_get_mac_addr(wifi_adapter_info_t *adapter, unsigned char *buf)
 void *wifi_platform_get_country_code(wifi_adapter_info_t *adapter, char *ccode);
 void* wifi_platform_prealloc(wifi_adapter_info_t *adapter, int section, unsigned long size);
 void* wifi_platform_get_prealloc_func_ptr(wifi_adapter_info_t *adapter);
+bool wifi_process_partial_resume(wifi_adapter_info_t *adapter, int action);
 
 int dhd_get_fw_mode(struct dhd_info *dhdinfo);
 bool dhd_update_fw_nv_path(struct dhd_info *dhdinfo);

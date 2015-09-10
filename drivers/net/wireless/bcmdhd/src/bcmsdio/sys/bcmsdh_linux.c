@@ -34,6 +34,7 @@
 #include <linuxver.h>
 #include <linux/pci.h>
 #include <linux/completion.h>
+#include <linux/wakeup_reason.h>
 
 #include <osl.h>
 #include <pcicfg.h>
@@ -78,6 +79,7 @@ typedef struct bcmsdh_os_info {
 	void			*context;	/* context returned from upper layer */
 	void			*sdioh;		/* handle to lower layer (sdioh) */
 	void			*dev;		/* handle to the underlying device */
+	void			*adapter;	/* handle to adapter */
 	bool			dev_wake_enabled;
 } bcmsdh_os_info_t;
 
@@ -156,6 +158,7 @@ void* bcmsdh_probe(osl_t *osh, void *dev, void *sdioh, void *adapter_info, uint 
 	bcmsdh->os_cxt = bcmsdh_osinfo;
 	bcmsdh_osinfo->sdioh = sdioh;
 	bcmsdh_osinfo->dev = dev;
+	bcmsdh_osinfo->adapter = adapter_info;
 	osl_set_bus_handle(osh, bcmsdh);
 
 #if !defined(CONFIG_HAS_WAKELOCK) && (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 36))
@@ -218,6 +221,9 @@ int bcmsdh_suspend(bcmsdh_info_t *bcmsdh)
 
 	if (drvinfo.suspend && drvinfo.suspend(bcmsdh_osinfo->context))
 		return -EBUSY;
+#ifdef CONFIG_PARTIALRESUME
+	wifi_process_partial_resume(bcmsdh_osinfo->adapter, WIFI_PR_INIT);
+#endif
 	return 0;
 }
 
@@ -225,8 +231,16 @@ int bcmsdh_resume(bcmsdh_info_t *bcmsdh)
 {
 	bcmsdh_os_info_t *bcmsdh_osinfo = bcmsdh->os_cxt;
 
+#ifdef CONFIG_PARTIALRESUME
+	if (check_wakeup_reason(bcmsdh_osinfo->oob_irq_num)) {
+		wifi_process_partial_resume(bcmsdh_osinfo->adapter, WIFI_PR_NOTIFY_RESUME);
+	}
+#endif
+
+#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
 	if (drvinfo.resume)
 		return drvinfo.resume(bcmsdh_osinfo->context);
+#endif
 	return 0;
 }
 
