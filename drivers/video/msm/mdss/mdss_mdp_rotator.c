@@ -642,6 +642,8 @@ int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 		goto session_fail;
 	}
 
+	memset(&src_buf, 0, sizeof(struct mdss_mdp_data));
+
 	flgs = rot->flags & MDP_SECURE_OVERLAY_SESSION;
 
 	mdss_iommu_ctrl(1);
@@ -664,6 +666,7 @@ int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 		goto dst_buf_fail;
 	}
 	mdss_mdp_data_free(&rot->src_buf);
+	memcpy(&rot->src_buf, &src_buf, sizeof(struct mdss_mdp_data));
 
 	mdss_mdp_data_free(&rot->dst_buf);
 	ret = mdss_mdp_data_get(&rot->dst_buf, &req->dst_data, 1, flgs);
