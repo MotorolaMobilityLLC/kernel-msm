@@ -67,7 +67,7 @@
 #define STATIC_BUF_TOTAL_LEN	(STATIC_BUF_MAX_NUM * STATIC_BUF_SIZE)
 
 typedef struct bcm_static_buf {
-	struct semaphore static_sem;
+	spinlock_t static_lock;
 	unsigned char *buf_ptr;
 	unsigned char buf_use[STATIC_BUF_MAX_NUM];
 } bcm_static_buf_t;
@@ -328,13 +328,11 @@ int osl_static_mem_init(osl_t *osh, void *adapter)
 			bcm_static_skb = NULL;
 			ASSERT(osh->magic == OS_HANDLE_MAGIC);
 			return -ENOMEM;
-		}
-		else
+		} else {
 			printk("alloc static buf at %p!\n", bcm_static_buf);
+		}
 
-
-		sema_init(&bcm_static_buf->static_sem, 1);
-
+		spin_lock_init(&bcm_static_buf->static_lock);
 		bcm_static_buf->buf_ptr = (unsigned char *)bcm_static_buf + STATIC_BUF_SIZE;
 	}
 
@@ -1156,10 +1154,11 @@ osl_malloc(osl_t *osh, uint size)
 #ifdef CONFIG_DHD_USE_STATIC_BUF
 	if (bcm_static_buf)
 	{
+		unsigned long irq_flags;
 		int i = 0;
 		if ((size >= PAGE_SIZE)&&(size <= STATIC_BUF_SIZE))
 		{
-			down(&bcm_static_buf->static_sem);
+			spin_lock_irqsave(&bcm_static_buf->static_lock, irq_flags);
 
 			for (i = 0; i < STATIC_BUF_MAX_NUM; i++)
 			{
@@ -1169,13 +1168,13 @@ osl_malloc(osl_t *osh, uint size)
 
 			if (i == STATIC_BUF_MAX_NUM)
 			{
-				up(&bcm_static_buf->static_sem);
+				spin_unlock_irqrestore(&bcm_static_buf->static_lock, irq_flags);
 				printk("all static buff in use!\n");
 				goto original;
 			}
 
 			bcm_static_buf->buf_use[i] = 1;
-			up(&bcm_static_buf->static_sem);
+			spin_unlock_irqrestore(&bcm_static_buf->static_lock, irq_flags);
 
 			bzero(bcm_static_buf->buf_ptr+STATIC_BUF_SIZE*i, size);
 			if (osh)
@@ -1217,6 +1216,8 @@ void
 osl_mfree(osl_t *osh, void *addr, uint size)
 {
 #ifdef CONFIG_DHD_USE_STATIC_BUF
+	unsigned long flags;
+
 	if (bcm_static_buf)
 	{
 		if ((addr > (void *)bcm_static_buf) && ((unsigned char *)addr
@@ -1226,9 +1227,9 @@ osl_mfree(osl_t *osh, void *addr, uint size)
 
 			buf_idx = ((unsigned char *)addr - bcm_static_buf->buf_ptr)/STATIC_BUF_SIZE;
 
-			down(&bcm_static_buf->static_sem);
+			spin_lock_irqsave(&bcm_static_buf->static_lock, flags);
 			bcm_static_buf->buf_use[buf_idx] = 0;
-			up(&bcm_static_buf->static_sem);
+			spin_unlock_irqrestore(&bcm_static_buf->static_lock, flags);
 
 			if (osh && osh->cmn) {
 				ASSERT(osh->magic == OS_HANDLE_MAGIC);
