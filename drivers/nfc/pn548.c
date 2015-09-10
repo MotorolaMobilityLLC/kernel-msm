@@ -299,7 +299,8 @@ static ssize_t pn548_dev_read(struct file *filp, char __user *buf,
 
 fail:
 	mutex_unlock(&pn548_dev->read_mutex);
-	pr_err("%s : goto fail, and ret : %d \n", __func__,ret);
+	if (ret != -ERESTARTSYS)
+		pr_err("%s : goto fail, and ret : %d \n", __func__, ret);
 
 	return ret;
 }
