@@ -1,14 +1,9 @@
 /*
- * Synaptics DSX touchscreen driver extension
- *
- * Copyright (C) 2015 Motorola Mobility, Inc.
- *
- * Copyright (C) 2015 Konstantin Makariev <kmakariev@motorola.com>
+ * Copyright (C) 2010-2013 Motorola, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,55 +13,7 @@
 #ifndef _SYNAPTICS_DSX_CONTROL_ACCESS_BLOCK_H_
 #define _SYNAPTICS_DSX_CONTROL_ACCESS_BLOCK_H_
 
-#define MODE_WO	(1 << 7)
-#define	GROUP_MAX 7
-
-enum access_groups {
-	SYN_DSX_STATUS = 1,	/* RO:mandatory, read status to clear IRQ */
-	SYN_DSX_MODE,	/* RO:mandatory, read touch IC mode */
-	SYN_DSX_DATA,	/* RO:mandatory, read touch data */
-	SYN_DSX_WAKE = SYN_DSX_DATA + 1 + MODE_WO,
-			/* WO:mandatory, command(s) to wake up touch IC */
-	SYN_DSX_SLEEP,	/* WO:mandatory, command(s) to put touch IC to sleep */
-	SYN_DSX_RESET,	/* WO:optional,  command to reset touch IC */
-	SYN_DSX_CONFIG,	/* WO:optional,  command(s) to apply custom config */
-	SYN_DSX_VAL_MAX = 0xff
-};
-
-struct op_read {
-	struct {
-		unsigned short paddr;	/* (page << 8) + address */
-		unsigned char  blk_sz;	/* read block size */
-		unsigned char  blk_cnt;	/* read block count */
-	};
-};
-
-struct op_write {
-	struct {
-		unsigned short paddr;	/* (page << 8) + address */
-		unsigned char  blk_sz;	/* write block size */
-		unsigned char  blk_cnt;	/* write block count */
-	};
-	unsigned char mask;	/* mask to clear bit(s) before apply data */
-				/* only effective when blk_cnt and blk_sz */
-				/* both are 1s, otherwise mask is ignored */
-	unsigned char data[0];	/* blk_cnt of data chunks of blk_sz each */
-};
-
-struct grp_info {
-	unsigned char group;		/* access group; defines type of data */
-	unsigned char data_blk_cnt;	/* number of data blocks in the group */
-	union {
-		struct op_read **ro_data;
-		struct op_write **wo_data;
-	};
-};
-
-struct touch_control_access_block {
-	unsigned char do_sync;	/* flag to indicate data block was updated */
-	unsigned char grp_num;	/* number of groups in data block */
-	struct grp_info *grp_ptr[GROUP_MAX];
-};
+#include <uapi/linux/control_access_block.h>
 
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CTRL_ACCESS_BLK)
 struct touch_control_access_block *control_access_block_get(void);
