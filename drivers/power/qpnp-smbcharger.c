@@ -1525,13 +1525,15 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 		 * above parallel charging threshold, enable parallel charging, set
 		 * half of 1.5A (0.7A) for pmi8994 and smb1351, so if current_ma
 		 * is above 500ma, set HC(high current) mode for pmi8994.
+		 * Set HC mode also for SDP 500mA, if not set, AICL will not run, so
+		 * compass compensation is not accurate with SDP 500mA, it is because
+		 * we use AICL to calculate compass compensation, and AICL is 1.5A
+		 * in default.
 		 */
-		if (current_ma > CURRENT_500_MA) {
-			rc = smbchg_set_high_usb_chg_current(chip, current_ma);
-			if (rc < 0) {
-				pr_err("Couldn't set %dmA rc = %d\n", current_ma, rc);
-				goto out;
-			}
+		rc = smbchg_set_high_usb_chg_current(chip, current_ma);
+		if (rc < 0) {
+			pr_err("Couldn't set %dmA rc = %d\n", current_ma, rc);
+			goto out;
 		}
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
@@ -2535,11 +2537,11 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 	target_ma = determine_target_input_current(current_ma);
 
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
-	if ((target_ma >= FLOAT_CURRENT)
-		&& (usb_supply_type == POWER_SUPPLY_TYPE_USB)) {
+	if (usb_supply_type == POWER_SUPPLY_TYPE_USB) {
 		/*
 		 * set ICL_OVERRIDE_BIT when use typec charger (D+/- are floated)
 		 * or floated charger (floated charger is detected as SDP by pmi8994)
+		 * or SDP USB.
 		 */
 		rc = smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
 			ICL_OVERRIDE_BIT, ICL_OVERRIDE_BIT);
