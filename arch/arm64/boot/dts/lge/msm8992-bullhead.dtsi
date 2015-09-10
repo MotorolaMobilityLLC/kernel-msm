@@ -138,7 +138,6 @@
 };
 
 &cont_splash_mem {
-	linux,remove-completely;
 	reg = <0 0x03400000 0 0xc00000>;
 };
 
