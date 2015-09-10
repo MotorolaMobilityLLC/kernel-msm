@@ -613,12 +613,12 @@
 	/delete-node/ dsi_panel_pwr_supply;
 	/delete-node/ qcom,hdmi_tx@9a0000;
 
-	muc@0 {
+	muc: muc@0 {
 		compatible = "mmi,muc";
 		reg = <0x00>;
 
 		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
-		        <&tlmm 130 0>,  /* gpio_muc_bplus_en, output-low */
+		        <&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
 		        <&tlmm 72 0>;   /* gpio_muc_vbus_en,  output-low */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
 					"gpio_muc_bplus_en",
@@ -630,7 +630,7 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&muc_attach>;
-    };
+	};
 
 	muc_svc@0 {
 		compatible = "mmi,muc_svc";
