@@ -73,7 +73,7 @@
 #define QPNP_HAP_VMAX_MIN_MV		116
 #define QPNP_HAP_VMAX_MAX_MV		3596
 #define QPNP_HAP_VMAX_STRONG_MV		1800
-#define QPNP_HAP_VMAX_LIGHT_MV		1100
+#define QPNP_HAP_VMAX_LIGHT_MV		1800
 #define QPNP_HAP_MIN_TIME_STRONG	500
 #define QPNP_HAP_ILIM_MASK		0xFE
 #define QPNP_HAP_ILIM_MIN_MV		400
@@ -140,9 +140,6 @@
 #define QPNP_HAP_MAX_RETRIES		5
 #define QPNP_HAP_CYCLS			5
 #define QPNP_TEST_TIMER_MS		5
-
-#define QPNP_HAP_DISABLE_AUTO_RES	0x0
-#define QPNP_HAP_ENABLE_AUTO_RES	0x24
 
 #define AUTO_RES_ENABLE_TIMEOUT		20000
 #define AUTO_RES_ERR_CAPTURE_RES	5
@@ -447,27 +444,14 @@ static int qpnp_hap_mod_enable(struct qpnp_hap *hap, int on)
 	return 0;
 }
 
-/*  If you used QWD mode (0x3C04F = 0x24) then
- *  you need to DISABLE auto-res before enabling PLAY bit.
- *  After PLAY bit is high, delay 20ms, and then ENABLE auto-res.
- *  This is needed for QWD only.
- */
 static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 {
 	u8 val;
 	int rc;
-	u8 disable = QPNP_HAP_DISABLE_AUTO_RES;
-	u8 enable = QPNP_HAP_ENABLE_AUTO_RES;
 
 	val = hap->reg_play;
-	if (on) {
-		rc = qpnp_hap_write_reg(hap, &disable,
-				QPNP_HAP_LRA_AUTO_RES_REG(hap->base));
-		if (rc < 0)
-			return rc;
-
+	if (on)
 		val |= QPNP_HAP_PLAY_EN;
-	}
 	else
 		val &= ~QPNP_HAP_PLAY_EN;
 
@@ -475,14 +459,6 @@ static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 			QPNP_HAP_PLAY_REG(hap->base));
 	if (rc < 0)
 		return rc;
-
-	if (val & QPNP_HAP_PLAY_EN) {
-		msleep(20);
-		rc = qpnp_hap_write_reg(hap, &enable,
-				QPNP_HAP_LRA_AUTO_RES_REG(hap->base));
-		if (rc < 0)
-			return rc;
-	}
 
 	hap->reg_play = val;
 
