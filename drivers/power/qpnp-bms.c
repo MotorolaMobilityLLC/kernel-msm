@@ -1832,13 +1832,13 @@ static int report_voltage_based_soc(struct qpnp_bms_chip *chip)
 #define REPORT_SOC_WAIT_MS		10000
 static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 {
-	int soc, soc_change;
+	int soc, soc_change, soc_temp = 100;
 	int time_since_last_change_sec, charge_time_sec = 0;
 	unsigned long last_change_sec;
 	struct qpnp_vadc_result result;
 	int batt_temp;
 	int rc;
-	bool charging, charging_since_last_report;
+	bool charging, charging_since_last_report, charge_full;
 
 	rc = wait_event_interruptible_timeout(chip->bms_wait_queue,
 			chip->calculated_soc != -EINVAL,
@@ -1946,6 +1946,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	if (get_battery_status(chip) == POWER_SUPPLY_STATUS_FULL) {
 		soc = 100;
 		chip->calculated_soc = 100;
+		charge_full = true;
 	}
 
 	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
@@ -1955,8 +1956,12 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
 	pr_debug("Reported SOC = %d\n", chip->last_soc);
 	mutex_unlock(&chip->last_soc_mutex);
-
-	return soc;
+	if ((soc == 99) && (time_since_last_change_sec <= 60) && (charge_full == true))
+		return soc_temp;
+	else {
+		charge_full = false;
+		return soc;
+	}
 }
 
 static int report_state_of_charge(struct qpnp_bms_chip *chip)

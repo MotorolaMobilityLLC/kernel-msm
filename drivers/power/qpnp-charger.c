@@ -1903,7 +1903,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			if (rc) {
 				pr_err("failed to read chg_sts rc=%d\n", rc);
 			}
-			if( (chg_sts & VBAT_DET_LOW_IRQ) && !(chg_sts & FAST_CHG_ON_IRQ) ) {
+			if( (chg_sts & VBAT_DET_LOW_IRQ) || !(chg_sts & FAST_CHG_ON_IRQ) ) {
 				chip->resuming_charging = true;
 				qpnp_chg_set_appropriate_vbatdet(chip);
 			}
@@ -3966,7 +3966,7 @@ qpnp_chg_adjust_vddmax(struct qpnp_chg_chip *chip, int vbat_mv)
 	qpnp_chg_set_appropriate_vddmax(chip);
 }
 
-#define CONSECUTIVE_COUNT	3
+#define CONSECUTIVE_COUNT	5
 #define VBATDET_MAX_ERR_MV	50
 static void
 qpnp_eoc_work(struct work_struct *work)

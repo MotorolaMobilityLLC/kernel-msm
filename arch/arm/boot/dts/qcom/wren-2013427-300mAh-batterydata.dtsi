@@ -17,7 +17,7 @@ qcom,palladium-batterydata {
 	qcom,flat-ocv-threshold-uv = <3800000>;
 	qcom,max-voltage-uv = <4400000>;
 	qcom,v-cutoff-uv = <3400000>;
-	qcom,chg-term-ua = <35000>;
+	qcom,chg-term-ua = <20000>;
 	qcom,batt-id-kohm = <75>;
 	qcom,battery-type = "palladium_1500mah";
 
