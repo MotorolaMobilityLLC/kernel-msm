@@ -78,4 +78,6 @@ struct touch_control_access_block {
 	unsigned char grp_num;	/* number of groups in data block */
 	struct grp_info *grp_ptr[GROUP_MAX];
 };
+
+extern struct touch_control_access_block *control_access_block_get(void);
 #endif
