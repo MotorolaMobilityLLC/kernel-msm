@@ -244,6 +244,15 @@ typedef enum
 #endif
 }eHddDot11Mode;
 
+enum
+{
+	WLAN_HDD_RX_HANDLE_MIN       = 0,
+	WLAN_HDD_RX_HANDLE_IRQ       = WLAN_HDD_RX_HANDLE_MIN,
+	WLAN_HDD_RX_HANDLE_RX_THREAD = 1,
+	WLAN_HDD_RX_HANDLE_RPS       = 2,
+	WLAN_HDD_RX_HANDLE_MAX       = WLAN_HDD_RX_HANDLE_RPS
+};
+
 #define CFG_DOT11_MODE_NAME                    "gDot11Mode"
 #define CFG_DOT11_MODE_MIN                     eHDD_DOT11_MODE_AUTO
 #ifdef WLAN_FEATURE_11AC
@@ -2497,11 +2506,22 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE_MAX         (0xFF)
 #define CFG_ENABLE_DEBUG_CONNECT_ISSUE_DEFAULT     (0)
 
-/* This will be used only for debugging purpose, will be removed after sometime */
-#define CFG_ENABLE_RX_THREAD                       "gEnableRxThread"
-#define CFG_ENABLE_RX_THREAD_MIN                   (0)
-#define CFG_ENABLE_RX_THREAD_MAX                   (1)
-#define CFG_ENABLE_RX_THREAD_DEFAULT               (1)
+/*
+ * RX packet handling options
+ * 0: no rx thread, no RPS, for MDM
+ * 1: RX thread
+ * 2: RPS
+ * MSM default RX thread
+ * MDM default irq
+ */
+#define CFG_RX_HANDLE                              "rxhandle"
+#define CFG_RX_HANDLE_MIN                          (WLAN_HDD_RX_HANDLE_MIN)
+#define CFG_RX_HANDLE_MAX                          (WLAN_HDD_RX_HANDLE_MAX)
+#ifdef MDM_PLATFORM
+#define CFG_RX_HANDLE_DEFAULT                      (WLAN_HDD_RX_HANDLE_IRQ)
+#else
+#define CFG_RX_HANDLE_DEFAULT                      (WLAN_HDD_RX_HANDLE_RX_THREAD)
+#endif /* MDM_PLATFORM */
 
 /* SAR Thermal limit values for 2g and 5g */
 
@@ -3476,7 +3496,7 @@ typedef struct
    v_U32_t                     TxPower2g;
    v_U32_t                     TxPower5g;
    v_U32_t                     gEnableDebugLog;
-   v_U8_t                      enableRxThread;
+   v_U8_t                      rxhandle;
    v_BOOL_t                    fDfsPhyerrFilterOffload;
    v_U8_t                      gSapPreferredChanLocation;
    v_U8_t                      gDisableDfsJapanW53;

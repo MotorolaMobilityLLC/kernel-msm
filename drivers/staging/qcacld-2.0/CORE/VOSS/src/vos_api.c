@@ -2094,8 +2094,8 @@ vos_fetch_tl_cfg_parms
   pTLConfig->uDelayedTriggerFrmInt = pConfig->DelayedTriggerFrmInt;
   pTLConfig->uMinFramesProcThres = pConfig->MinFramesProcThres;
   pTLConfig->ip_checksum_offload = pConfig->enableIPChecksumOffload;
-  pTLConfig->enable_rxthread = pConfig->enableRxThread;
-
+  pTLConfig->enable_rxthread =
+    (WLAN_HDD_RX_HANDLE_RX_THREAD == pConfig->rxhandle) ? 1 : 0;
 }
 
 v_BOOL_t vos_is_apps_power_collapse_allowed(void* pHddCtx)

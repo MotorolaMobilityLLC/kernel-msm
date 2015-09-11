@@ -11756,6 +11756,9 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
                              pHddCtx->target_hw_name);
 #endif
 
+   if (WLAN_HDD_RX_HANDLE_RPS == pHddCtx->cfg_ini->rxhandle)
+      hdd_dp_util_send_rps_ind(pHddCtx);
+
    /* Initialize the RoC Request queue and work. */
    hdd_list_init((&pHddCtx->hdd_roc_req_q), MAX_ROC_REQ_QUEUE_ENTRY);
 #ifdef CONFIG_CNSS
@@ -13292,6 +13295,7 @@ void wlan_hdd_send_svc_nlink_msg(int type, void *data, int len)
     case WLAN_SVC_DFS_RADAR_DETECT_IND:
     case WLAN_SVC_DFS_ALL_CHANNEL_UNAVAIL_IND:
     case WLAN_SVC_WLAN_TP_IND:
+    case WLAN_SVC_RPS_ENABLE_IND:
         ani_hdr->length = len;
         nlh->nlmsg_len = NLMSG_LENGTH((sizeof(tAniMsgHdr) + len));
         nl_data = (char *)ani_hdr + sizeof(tAniMsgHdr);

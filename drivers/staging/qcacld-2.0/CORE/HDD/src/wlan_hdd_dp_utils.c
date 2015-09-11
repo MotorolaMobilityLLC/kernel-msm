@@ -39,6 +39,7 @@
   Include files
   ----------------------------------------------------------------------------*/
 #include <wlan_hdd_dp_utils.h>
+#include <wlan_hdd_main.h>
 
 /**-----------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -219,3 +220,34 @@ VOS_STATUS hdd_string_to_hex( char *pSrcMac, int length, char *pDescMac )
 
    return VOS_STATUS_SUCCESS;
 }
+
+#ifdef QCA_FEATURE_RPS
+/**
+ * hdd_dp_util_send_rps_ind() - send rps indication to daemon
+ * @hdd_ctxt: hdd context pointer
+ *
+ * If RPS feature enabled by INI, send RPS enable indication to daemon
+ * Indication contents is the name of interface to find correct sysfs node
+ * Should send all available interfaces
+ *
+ * Return: none
+ */
+void hdd_dp_util_send_rps_ind(hdd_context_t  *hdd_ctxt)
+{
+	hdd_adapter_t *adapter;
+	hdd_adapter_list_node_t *adapter_node, *next;
+	VOS_STATUS status = VOS_STATUS_SUCCESS;
+
+	status = hdd_get_front_adapter (hdd_ctxt, &adapter_node);
+	while (NULL != adapter_node && VOS_STATUS_SUCCESS == status) {
+		adapter = adapter_node->pAdapter;
+		if (NULL != adapter)
+			wlan_hdd_send_svc_nlink_msg(WLAN_SVC_RPS_ENABLE_IND,
+				(void *)adapter->dev->name,
+				strlen(adapter->dev->name));
+		status = hdd_get_next_adapter (hdd_ctxt, adapter_node, &next);
+		adapter_node = next;
+	}
+}
+#endif /* QCA_FEATURE_RPS */
+

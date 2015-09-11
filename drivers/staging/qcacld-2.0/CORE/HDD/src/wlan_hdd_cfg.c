@@ -3546,12 +3546,12 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_DEBUG_CONNECT_ISSUE_MIN ,
                  CFG_ENABLE_DEBUG_CONNECT_ISSUE_MAX),
 
-   REG_VARIABLE( CFG_ENABLE_RX_THREAD, WLAN_PARAM_Integer,
-                 hdd_config_t, enableRxThread,
+   REG_VARIABLE( CFG_RX_HANDLE, WLAN_PARAM_Integer,
+                 hdd_config_t, rxhandle,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 CFG_ENABLE_RX_THREAD_DEFAULT,
-                 CFG_ENABLE_RX_THREAD_MIN,
-                 CFG_ENABLE_RX_THREAD_MAX),
+                 CFG_RX_HANDLE_DEFAULT,
+                 CFG_RX_HANDLE_MIN,
+                 CFG_RX_HANDLE_MAX),
 
    REG_VARIABLE( CFG_ENABLE_DFS_PHYERR_FILTEROFFLOAD_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fDfsPhyerrFilterOffload,

@@ -1212,6 +1212,11 @@ ifeq ($(CONFIG_SMP),y)
 CDEFINES += -DQCA_CONFIG_SMP
 endif
 
+#rps feature
+ifeq ($(CONFIG_RPS),y)
+CDEFINES += -DQCA_FEATURE_RPS
+endif
+
 #features specific to mdm9630
 ifeq ($(CONFIG_ARCH_MDM9630), y)
 
