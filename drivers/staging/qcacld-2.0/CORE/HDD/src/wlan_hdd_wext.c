@@ -9153,63 +9153,6 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
     ptr += nOffset;
   }/*For ucNetworkCount*/
 
-  ucParams = sscanf(ptr,"%hhu %n",
-                    &(pnoRequest.scanTimers.ucScanTimersCount),
-                    &nOffset);
-
-  /*Read the scan timers*/
-  if (( 1 == ucParams ) && ( pnoRequest.scanTimers.ucScanTimersCount > 0 ))
-  {
-     ptr += nOffset;
-
-     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-        "Scan timer count %d offset %d",
-        pnoRequest.scanTimers.ucScanTimersCount,
-        nOffset );
-
-     if ( SIR_PNO_MAX_SCAN_TIMERS < pnoRequest.scanTimers.ucScanTimersCount )
-     {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "Incorrect cmd - too many scan timers");
-       return VOS_STATUS_E_FAILURE;
-     }
-
-     for ( i = 0; i < pnoRequest.scanTimers.ucScanTimersCount; i++ )
-     {
-        ucParams = sscanf(ptr,"%u %u %n",
-           &(pnoRequest.scanTimers.aTimerValues[i].uTimerValue),
-           &( pnoRequest.scanTimers.aTimerValues[i].uTimerRepeat),
-           &nOffset);
-
-        if (2 != ucParams)
-        {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "Incorrect cmd - diff params then expected %d", ucParams);
-            return VOS_STATUS_E_FAILURE;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-            "PNO Timer value %d Timer repeat %d offset %d",
-            pnoRequest.scanTimers.aTimerValues[i].uTimerValue,
-            pnoRequest.scanTimers.aTimerValues[i].uTimerRepeat,
-            nOffset );
-
-        ptr += nOffset;
-     }
-
-  }
-  else
-  {
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-       "No scan timers provided param count %d scan timers %d",
-        ucParams,  pnoRequest.scanTimers.ucScanTimersCount );
-
-    /*Scan timers defaults to 5 minutes*/
-    pnoRequest.scanTimers.ucScanTimersCount = 1;
-    pnoRequest.scanTimers.aTimerValues[0].uTimerValue  = 60;
-    pnoRequest.scanTimers.aTimerValues[0].uTimerRepeat = 0;
-  }
-
   ucParams = sscanf(ptr,"%hhu %n",&(ucMode), &nOffset);
 
   pnoRequest.modePNO = ucMode;

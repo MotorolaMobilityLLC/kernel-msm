@@ -3262,6 +3262,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_PNO_SCAN_TIMER_REPEAT_VALUE_DEFAULT,
                  CFG_PNO_SCAN_TIMER_REPEAT_VALUE_MIN,
                  CFG_PNO_SCAN_TIMER_REPEAT_VALUE_MAX),
+
+   REG_VARIABLE( CFG_PNO_SLOW_SCAN_MULTIPLIER, WLAN_PARAM_Integer,
+                 hdd_config_t, pno_slow_scan_multiplier,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_PNO_SLOW_SCAN_MULTIPLIER_DEFAULT,
+                 CFG_PNO_SLOW_SCAN_MULTIPLIER_MIN,
+                 CFG_PNO_SLOW_SCAN_MULTIPLIER_MAX),
 #endif
    REG_VARIABLE( CFG_AMSDU_SUPPORT_IN_AMPDU_NAME , WLAN_PARAM_Integer,
                  hdd_config_t, isAmsduSupportInAMPDU,
@@ -4510,6 +4517,7 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
 #ifdef FEATURE_WLAN_SCAN_PNO
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [configPNOScanSupport] Value = [%u] ",pHddCtx->cfg_ini->configPNOScanSupport);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [configPNOScanTimerRepeatValue] Value = [%u] ",pHddCtx->cfg_ini->configPNOScanTimerRepeatValue);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [pno_slow_scan_multiplier] Value = [%u] ",pHddCtx->cfg_ini->pno_slow_scan_multiplier);
 #endif
 #ifdef FEATURE_WLAN_TDLS
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [fEnableTDLSSupport] Value = [%u] ",pHddCtx->cfg_ini->fEnableTDLSSupport);

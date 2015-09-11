@@ -3668,7 +3668,6 @@ typedef struct sSirWlanSetRxpFilters
 #define SIR_PNO_MAX_NETW_CHANNELS  26
 #define SIR_PNO_MAX_NETW_CHANNELS_EX  60
 #define SIR_PNO_MAX_SUPP_NETWORKS  16
-#define SIR_PNO_MAX_SCAN_TIMERS    10
 
 /*size based of dot11 declaration without extra IEs as we will not carry those for PNO*/
 #define SIR_PNO_MAX_PB_REQ_SIZE    450
@@ -3695,31 +3694,35 @@ typedef struct
   tANI_S32    rssiThreshold;
 } tSirNetworkType;
 
-typedef struct
-{
-  tANI_U32    uTimerValue;
-  tANI_U32    uTimerRepeat;
-}tSirScanTimer;
-
-typedef struct
-{
-  tANI_U8        ucScanTimersCount;
-  tSirScanTimer  aTimerValues[SIR_PNO_MAX_SCAN_TIMERS];
-} tSirScanTimersType;
-
-typedef struct sSirPNOScanReq
-{
-  tANI_U8             enable;
+/**
+ * struct sSirPNOScanReq - PNO Scan request structure
+ * @enable: flag to enable or disable
+ * @modePNO: PNO Mode
+ * @ucNetworksCount: Number of networks
+ * @aNetworks: Preferred network list
+ * @sessionId: Session identifier
+ * @fast_scan_period: Fast Scan period
+ * @slow_scan_period: Slow scan period
+ * @fast_scan_max_cycles: Fast scan max cycles
+ * @us24GProbeTemplateLen: 2.4G probe template length
+ * @p24GProbeTemplate: 2.4G probe template
+ * @us5GProbeTemplateLen: 5G probe template length
+ * @p5GProbeTemplate: 5G probe template
+ */
+typedef struct sSirPNOScanReq {
+	uint8_t         enable;
   eSirPNOMode         modePNO;
-  tANI_U8             ucNetworksCount;
+	uint8_t         ucNetworksCount;
   tSirNetworkType     aNetworks[SIR_PNO_MAX_SUPP_NETWORKS];
-  tSirScanTimersType  scanTimers;
-  tANI_U8             sessionId;
+	uint8_t         sessionId;
+	uint32_t        fast_scan_period;
+	uint32_t        slow_scan_period;
+	uint8_t         fast_scan_max_cycles;
 
-  tANI_U16  us24GProbeTemplateLen;
-  tANI_U8   p24GProbeTemplate[SIR_PNO_MAX_PB_REQ_SIZE];
-  tANI_U16  us5GProbeTemplateLen;
-  tANI_U8   p5GProbeTemplate[SIR_PNO_MAX_PB_REQ_SIZE];
+	uint16_t        us24GProbeTemplateLen;
+	uint8_t         p24GProbeTemplate[SIR_PNO_MAX_PB_REQ_SIZE];
+	uint16_t        us5GProbeTemplateLen;
+	uint8_t         p5GProbeTemplate[SIR_PNO_MAX_PB_REQ_SIZE];
 } tSirPNOScanReq, *tpSirPNOScanReq;
 
 typedef struct sSirSetRSSIFilterReq

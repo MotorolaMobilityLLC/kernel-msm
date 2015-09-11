@@ -209,12 +209,6 @@
 #define GTK_OFFLOAD_DISABLE 1
 #endif
 
-#ifdef FEATURE_WLAN_SCAN_PNO
-#define HDD_PNO_SCAN_TIMERS_SET_ONE      1
-/* value should not be greater than PNO_MAX_SCAN_TIMERS */
-#define HDD_PNO_SCAN_TIMERS_SET_MULTIPLE 6
-#endif
-
 #define MAX_USER_COMMAND_SIZE 4096
 
 #define HDD_MAC_ADDR_LEN    6
