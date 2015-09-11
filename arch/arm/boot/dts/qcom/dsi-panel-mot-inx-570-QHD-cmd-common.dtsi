@@ -11,6 +11,7 @@
  */
 
 qcom,mdss-dsi-panel-name = "mipi_mot_cmd_inx_QHD_0_570_v0";
+qcom,mdss-dsi-panel-supplier = "inx";
 compatible = "qcom,mdss-dsi-panel";
 qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 qcom,mdss-dsi-panel-framerate = <60>;
