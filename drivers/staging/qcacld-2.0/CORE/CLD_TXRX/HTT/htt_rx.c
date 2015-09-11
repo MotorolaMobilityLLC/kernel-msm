@@ -1405,6 +1405,9 @@ htt_rx_amsdu_rx_in_order_pop_ll(
             }
         }
 
+	/* Update checksum result */
+	htt_set_checksum_result_ll(pdev, msdu, rx_desc);
+
         /* check if this is the last msdu */
         if (msdu_count) {
             msg_word += HTT_RX_IN_ORD_PADDR_IND_MSDU_DWORDS;
