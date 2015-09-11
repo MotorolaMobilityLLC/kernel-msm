@@ -8347,8 +8347,8 @@ dhd_dev_start_mkeep_alive(dhd_pub_t *dhd_pub, u8 mkeep_alive_id, u8 *ip_pkt, u16
 	int 			i;
 
 	/* ether frame to have both max IP pkt (256 bytes) and ether header */
-	char 			*pmac_frame;
-	char 			*pmac_frame_begin;
+	char 			*pmac_frame = NULL;
+	char 			*pmac_frame_begin = NULL;
 
 	/*
 	 * The mkeep_alive packet is for STA interface only; if the bss is configured as AP,
@@ -8466,7 +8466,7 @@ dhd_dev_start_mkeep_alive(dhd_pub_t *dhd_pub, u8 mkeep_alive_id, u8 *ip_pkt, u16
 
 	res = dhd_wl_ioctl_cmd(dhd_pub, WLC_SET_VAR, pbuf, buf_len, TRUE, 0);
 exit:
-	kfree(pmac_frame);
+	kfree(pmac_frame_begin);
 	kfree(pbuf);
 	return res;
 }
