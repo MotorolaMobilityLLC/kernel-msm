@@ -330,13 +330,12 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	dev_dbg(rtd->platform->dev, "%s: ASM loopback\n", __func__);
 
-	return snd_pcm_lib_alloc_vmalloc_buffer(substream,
-		params_buffer_bytes(params));
+	return 0;
 }
 
 static int msm_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	return snd_pcm_lib_free_vmalloc_buffer(substream);
+	return 0;
 }
 
 static struct snd_pcm_ops msm_pcm_ops = {
