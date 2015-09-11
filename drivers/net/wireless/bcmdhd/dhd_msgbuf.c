@@ -481,20 +481,21 @@ dhd_pktid_map_fini(dhd_pktid_map_handle_t *handle)
 	for (; nkey <= map->items; nkey++, locker++) {
 		if (locker->inuse == TRUE) { /* numbered key still in use */
 			locker->inuse = FALSE; /* force open the locker */
-
-			{   /* This could be a callback registered with dhd_pktid_map */
+			if (!PHYSADDRISZERO(locker->physaddr)) {
+			    /* This could be a callback registered with dhd_pktid_map */
 				DMA_UNMAP(osh, locker->physaddr, locker->len,
 				          locker->dma, 0, 0);
-#ifdef DHD_USE_STATIC_IOCTLBUF
-				if (locker->buf_type == BUFF_TYPE_IOCTL_RX)
-					PKTFREE_STATIC(osh, (ulong*)locker->pkt, FALSE);
-				else
-					PKTFREE(osh, (ulong*)locker->pkt, FALSE);
-#else
-				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
-#endif
-
+			} else {
+				DHD_ERROR(("%s: Invalid physaddr 0\n", __FUNCTION__));
 			}
+#ifdef DHD_USE_STATIC_IOCTLBUF
+			if (locker->buf_type == BUFF_TYPE_IOCTL_RX)
+				PKTFREE_STATIC(osh, (ulong*)locker->pkt, FALSE);
+			else
+				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+#else
+			PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+#endif
 		}
 	}
 
@@ -532,8 +533,12 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 		if (locker->inuse == TRUE) { /* numbered key still in use */
 			locker->inuse = FALSE; /* force open the locker */
 			DHD_TRACE(("%s free id%d\n",__FUNCTION__,nkey ));
-			DMA_UNMAP(osh, (uint32)locker->physaddr, locker->len,
+			if (!PHYSADDRISZERO(locker->physaddr)) {
+				DMA_UNMAP(osh, (uint32)locker->physaddr, locker->len,
 				          locker->dma, 0, 0);
+			} else {
+				DHD_ERROR(("%s: Invalid physaddr 0\n", __FUNCTION__));
+			}
 #ifdef DHD_USE_STATIC_IOCTLBUF
 			if (locker->buf_type == BUFF_TYPE_IOCTL_RX)
 				PKTFREE_STATIC(osh, (ulong*)locker->pkt, FALSE);
@@ -1239,7 +1244,11 @@ dhd_prot_packet_free(dhd_pub_t *dhd, uint32 pktid, uint8 buf_type)
 				pa_len, buf_type);
 
 	if (PKTBUF) {
-		DMA_UNMAP(dhd->osh, pa, (uint) pa_len, DMA_TX, 0, 0);
+		if (!PHYSADDRISZERO(pa)) {
+			DMA_UNMAP(dhd->osh, pa, (uint) pa_len, DMA_TX, 0, 0);
+		} else {
+			DHD_ERROR(("%s: Invalid physaddr 0\n", __FUNCTION__));
+		}
 #ifdef DHD_USE_STATIC_IOCTLBUF
 		if (buf_type == BUFF_TYPE_IOCTL_RX)
 			PKTFREE_STATIC(dhd->osh, PKTBUF, FALSE);
@@ -1352,7 +1361,6 @@ dhd_prot_rxbufpost(dhd_pub_t *dhd, uint16 count)
 			else
 				RING_WRITE_PTR(ring) -= alloced - i;
 			alloced = i;
-			DMA_UNMAP(dhd->osh, physaddr, pktlen, DMA_RX, 0, 0);
 			PKTFREE(dhd->osh, p, FALSE);
 			DHD_ERROR(("Invalid phyaddr 0\n"));
 			ASSERT(0);
