@@ -77,6 +77,7 @@
 		qcom,mdss-dsi-lane-map = "lane_map_0123";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-tx-eot-append;
 		qcom,ulps-enabled;
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-dsi-hor-line-idle = 	<0 40 256>,
