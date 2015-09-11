@@ -1157,6 +1157,12 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
                      (IEEE80211_CHAN_RADAR | IEEE80211_CHAN_PASSIVE_SCAN |
                       IEEE80211_CHAN_INDOOR_ONLY))
             {
+
+                if (wiphy->bands[i]->channels[j].flags &
+                    IEEE80211_CHAN_INDOOR_ONLY)
+                    wiphy->bands[i]->channels[j].flags |=
+                        IEEE80211_CHAN_PASSIVE_SCAN;
+
                 pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].enabled =
                     NV_CHANNEL_DFS;
 
