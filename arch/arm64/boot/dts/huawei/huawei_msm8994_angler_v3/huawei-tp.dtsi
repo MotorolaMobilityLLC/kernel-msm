@@ -10,14 +10,6 @@
  * GNU General Public License for more details.
  */
 
-&rpm_bus {
-	rpm-regulator-ldoa22 {
-		pm8994_l22: regulator-l22 {
-			regulator-min-microvolt = <3100000>;
-			regulator-max-microvolt = <3100000>;
-		};
-	};
-};
 &tlmm_pinmux {
 
 	synaptics_int_pin {

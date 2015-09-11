@@ -92,8 +92,8 @@
 #define F11_WAKEUP_GESTURE_MODE 0x04
 #define F12_CONTINUOUS_MODE 0x00
 #define F12_WAKEUP_GESTURE_MODE 0x02
-#define DSX_VDD_VTG_MIN 3100000
-#define DSX_VDD_VTG_MAX 3100000
+#define DSX_VDD_VTG_MIN 3000000
+#define DSX_VDD_VTG_MAX 3000000
 
 #define DSX_VBUS_VTG_MIN 1800000
 #define DSX_VBUS_VTG_MAX 1800000
@@ -4012,6 +4012,8 @@ static int synaptics_rmi4_resume(struct device *dev)
 {
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	unsigned char calibration_data;
+	int retval;
 
 	tp_log_debug("%s: in!\n",__func__);
 	if (rmi4_data->stay_awake)
@@ -4026,6 +4028,25 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
 	synaptics_rmi4_irq_enable(rmi4_data, true, false);
+
+	retval = synaptics_rmi4_reg_read(rmi4_data,
+		rmi4_data->f01_ctrl_base_addr + 0x131,
+		&calibration_data,
+		sizeof(calibration_data));
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+			"%s: Failed to read register status\n", __func__);
+	} else {
+		calibration_data |= 0x02;
+		retval = synaptics_rmi4_reg_write(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr + 0x131,
+			&calibration_data,
+			sizeof(calibration_data));
+		if (retval < 0) {
+			dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to write register status\n", __func__);
+		}
+	}
 
 	mutex_lock(&exp_data.mutex);
 	if (!list_empty(&exp_data.list)) {
