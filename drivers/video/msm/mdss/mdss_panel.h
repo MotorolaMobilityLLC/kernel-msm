@@ -544,6 +544,8 @@ struct mdss_panel_info {
 	bool is_dba_panel;
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
+
+	u32 disp_on_check_val;
 };
 
 struct mdss_panel_data {
