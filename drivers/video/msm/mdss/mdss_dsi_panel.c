@@ -36,6 +36,7 @@
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
+#define DCS_CMD_GET_POWER_MODE 0x0A
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
 
@@ -496,6 +497,34 @@ exit:
 	return rc;
 }
 
+static int mdss_dsi_get_pwr_mode(struct mdss_panel_data *pdata,
+			u8 *pwr_mode, bool hs_mode)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct dcs_cmd_req cmdreq;
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	dcs_cmd[0] = DCS_CMD_GET_POWER_MODE;
+	dcs_cmd[1] = 0x00;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	if (hs_mode)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+	cmdreq.rlen = 1;
+	cmdreq.rbuf = pwr_mode;
+	cmdreq.cb = NULL; /* call back */
+
+	if (mdss_dsi_cmdlist_put(ctrl, &cmdreq) != cmdreq.rlen)
+		pr_warn("%s: failed to read panel power mode\n", __func__);
+
+	pr_debug("%s: panel power mode = 0x%x\n", __func__, *pwr_mode);
+
+	return 0;
+}
+
 /**
  * mdss_dsi_roi_merge() -  merge two roi into single roi
  *
@@ -910,6 +939,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mdss_panel_info *pinfo;
 	struct dsi_panel_cmds *on_cmds;
 	int ret = 0;
+	u8 pwr_mode = 0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -925,6 +955,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
+	}
+
+	if (ctrl->panel_config.bare_board) {
+		pr_warn("%s: This is bare_board configuration\n", __func__);
+		goto end;
 	}
 
 	on_cmds = &ctrl->on_cmds;
@@ -945,10 +980,18 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_on_hdmi(ctrl, pinfo);
 
 	/* Ensure low persistence mode is set as before */
-	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);
-
+	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);	
+	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
+	if (pinfo->disp_on_check_val != pwr_mode)
+		pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
+			__func__, pwr_mode, pinfo->disp_on_check_val);
 end:
-	pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
+	if (!ctrl->ndx)
+		pr_info("%s[%d]-. Pwr_mode(0x0A) = 0x%x\n", __func__,
+			ctrl->ndx, pwr_mode);
+	else
+		pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
+
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -1967,6 +2010,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 {
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_config *pcfg;
+	int rc;
 
 	if (!np || !ctrl) {
 		pr_err("%s: Invalid arguments\n", __func__);
@@ -2021,6 +2065,18 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	if (pinfo->panel_ack_disabled && pinfo->esd_check_enabled) {
 		pr_warn("ESD should not be enabled if panel ACK is disabled\n");
 		pinfo->esd_check_enabled = false;
+	}
+
+	rc = of_property_read_u32(np,
+				"qcom,mdss-dsi-panel-on-check-value",
+				&pinfo->disp_on_check_val);
+	if (rc) {
+		if (ctrl->status_cmds_rlen == 1 &&
+			ctrl->status_value &&
+			ctrl->status_value[0] != 0)
+			pinfo->disp_on_check_val = ctrl->status_value[0];
+		else
+			pinfo->disp_on_check_val = 0x9c;
 	}
 
 	if (ctrl->disp_en_gpio <= 0) {
