@@ -28,7 +28,7 @@
 
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(2000))
 #define CHG_RECHECK_DELAY	(jiffies + msecs_to_jiffies(2000))
-#define MAX_INVALID_CHRGR_RETRY 5
+#define MAX_INVALID_CHRGR_RETRY 3
 static int max_chgr_retry_count = MAX_INVALID_CHRGR_RETRY;
 module_param(max_chgr_retry_count, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(max_chgr_retry_count, "Max invalid charger retry count");
