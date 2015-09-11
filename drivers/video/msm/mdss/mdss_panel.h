@@ -753,6 +753,8 @@ struct mdss_panel_info {
 
 	/* HDR properties of display panel*/
 	struct mdss_panel_hdr_properties hdr_properties;
+
+	u32 disp_on_check_val;
 };
 
 struct mdss_panel_timing {
