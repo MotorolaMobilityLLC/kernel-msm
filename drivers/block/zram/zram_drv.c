@@ -211,14 +211,14 @@ static inline int valid_io_request(struct zram *zram, struct bio *bio)
 	u64 start, end, bound;
 
 	/* unaligned request */
-	if (unlikely(bio->bi_iter.bi_sector &
+	if (unlikely(bio->bi_sector &
 		     (ZRAM_SECTOR_PER_LOGICAL_BLOCK - 1)))
 		return 0;
-	if (unlikely(bio->bi_iter.bi_size & (ZRAM_LOGICAL_BLOCK_SIZE - 1)))
+	if (unlikely(bio->bi_size & (ZRAM_LOGICAL_BLOCK_SIZE - 1)))
 		return 0;
 
-	start = bio->bi_iter.bi_sector;
-	end = start + (bio->bi_iter.bi_size >> SECTOR_SHIFT);
+	start = bio->bi_sector;
+	end = start + (bio->bi_size >> SECTOR_SHIFT);
 	bound = zram->disksize >> SECTOR_SHIFT;
 	/* out of range range */
 	if (unlikely(start >= bound || end > bound || start > end))
@@ -559,7 +559,7 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
 static void zram_bio_discard(struct zram *zram, u32 index,
 			     int offset, struct bio *bio)
 {
-	size_t n = bio->bi_iter.bi_size;
+	size_t n = bio->bi_size;
 
 	/*
 	 * zram manages data in physical block size units. Because logical block
@@ -718,13 +718,12 @@ out:
 
 static void __zram_make_request(struct zram *zram, struct bio *bio)
 {
-	int offset;
+	int offset, i;
 	u32 index;
-	struct bio_vec bvec;
-	struct bvec_iter iter;
+	struct bio_vec *bvec;
 
-	index = bio->bi_iter.bi_sector >> SECTORS_PER_PAGE_SHIFT;
-	offset = (bio->bi_iter.bi_sector &
+	index = bio->bi_sector >> SECTORS_PER_PAGE_SHIFT;
+	offset = (bio->bi_sector &
 		  (SECTORS_PER_PAGE - 1)) << SECTOR_SHIFT;
 
 	if (unlikely(bio->bi_rw & REQ_DISCARD)) {
@@ -733,32 +732,32 @@ static void __zram_make_request(struct zram *zram, struct bio *bio)
 		return;
 	}
 
-	bio_for_each_segment(bvec, bio, iter) {
+	bio_for_each_segment(bvec, bio, i) {
 		int max_transfer_size = PAGE_SIZE - offset;
 
-		if (bvec.bv_len > max_transfer_size) {
+		if (bvec->bv_len > max_transfer_size) {
 			/*
 			 * zram_bvec_rw() can only make operation on a single
 			 * zram page. Split the bio vector.
 			 */
 			struct bio_vec bv;
 
-			bv.bv_page = bvec.bv_page;
+			bv.bv_page = bvec->bv_page;
 			bv.bv_len = max_transfer_size;
-			bv.bv_offset = bvec.bv_offset;
+			bv.bv_offset = bvec->bv_offset;
 
 			if (zram_bvec_rw(zram, &bv, index, offset, bio) < 0)
 				goto out;
 
-			bv.bv_len = bvec.bv_len - max_transfer_size;
+			bv.bv_len = bvec->bv_len - max_transfer_size;
 			bv.bv_offset += max_transfer_size;
 			if (zram_bvec_rw(zram, &bv, index + 1, 0, bio) < 0)
 				goto out;
 		} else
-			if (zram_bvec_rw(zram, &bvec, index, offset, bio) < 0)
+			if (zram_bvec_rw(zram, bvec, index, offset, bio) < 0)
 				goto out;
 
-		update_position(&index, &offset, &bvec);
+		update_position(&index, &offset, bvec);
 	}
 
 	set_bit(BIO_UPTODATE, &bio->bi_flags);
