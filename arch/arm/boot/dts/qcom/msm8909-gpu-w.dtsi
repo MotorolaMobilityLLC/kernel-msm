@@ -22,6 +22,8 @@
 
 &msm_gpu {
 
+	/delete-property/qcom,gpu-speed-config;
+
 	/* Bus Scale Settings */
 	qcom,msm-bus,num-cases = <3>;
 	qcom,msm-bus,vectors-KBps =
@@ -56,4 +58,6 @@
 
 		/delete-node/qcom,gpu-pwrlevel@3;
 	};
+
+	/delete-node/qcom,gpu-speed-config@0;
 };
