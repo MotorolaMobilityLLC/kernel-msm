@@ -778,7 +778,7 @@ static void *bcm_wifi_get_country_code(char *ccode)
 }
 
 #ifdef CONFIG_PARTIALRESUME
-static bool smd_partial_resume(struct partial_resume *pr)
+static bool dummy_partial_resume(struct partial_resume *pr)
 {
 	return true;
 }
@@ -918,7 +918,17 @@ subsys_initcall(bcm_wifi_init);
 #ifdef CONFIG_PARTIALRESUME
 static struct partial_resume smd_pr = {
 	.irq = 200,
-	.partial_resume = smd_partial_resume,
+	.partial_resume = dummy_partial_resume,
+};
+
+static struct partial_resume mpm_pr = {
+	.irq = 203,
+	.partial_resume = dummy_partial_resume,
+};
+
+static struct partial_resume vsync_pr = {
+	.irq = 459,
+	.partial_resume = dummy_partial_resume,
 };
 
 static struct partial_resume wlan_pr = {
@@ -936,6 +946,8 @@ int __init wlan_partial_resume_init(void)
 	pr_debug("%s: after registering %pF: %d\n", __func__,
 		 wlan_pr.partial_resume, rc);
 	rc = register_partial_resume(&smd_pr);
+	rc = register_partial_resume(&mpm_pr);
+	rc = register_partial_resume(&vsync_pr);
 	pr_debug("%s: after registering %pF: %d\n", __func__,
 		 smd_pr.partial_resume, rc);
 	return rc;
