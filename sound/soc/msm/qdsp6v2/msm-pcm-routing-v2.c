@@ -1601,15 +1601,16 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		msm_route_ec_ref_rx = 7;
 		ec_ref_port_id = AFE_PORT_ID_SECONDARY_MI2S_RX;
 		break;
-	case 8:
-		msm_route_ec_ref_rx = 8;
-		ec_ref_port_id = SLIMBUS_5_RX;
 	case 9:
-		msm_route_ec_ref_rx = 11;
-		ec_ref_port_id = AFE_PORT_ID_TERTIARY_MI2S_RX;
+		msm_route_ec_ref_rx = 9;
+		ec_ref_port_id = SLIMBUS_5_RX;
 		break;
 	case 10:
-		msm_route_ec_ref_rx = 12;
+		msm_route_ec_ref_rx = 10;
+		ec_ref_port_id = AFE_PORT_ID_TERTIARY_MI2S_RX;
+		break;
+	case 11:
+		msm_route_ec_ref_rx = 11;
 		ec_ref_port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
 		break;
 	default:
