@@ -12,7 +12,7 @@
 
 
 #include "msm8952-moto-common.dtsi"
-#include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
+#include "dsi-panel-mot-lgd-546-1080p-cmd.dtsi"
 
 / {
 	model = "Athene";
@@ -21,7 +21,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_lgd_546_1080p_cmd_v0>;
 	vddio_disp-supply = <&pm8950_l6>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
