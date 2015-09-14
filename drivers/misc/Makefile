@@ -71,3 +71,4 @@ obj-$(CONFIG_HAPTIC_DRV2625)	+= drv2625.o
 obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_USB3813) += usb3813_hub.o
+obj-$(CONFIG_DROPBOX) += dropbox.o
