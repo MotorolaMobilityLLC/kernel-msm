@@ -77,11 +77,74 @@ static const struct reg_default wm5102_revb_patch[] = {
 	{ 0x80, 0x0000 },
 };
 
+static const struct reg_default wm5102t_pwr_1[] = {
+	{ 0x46C, 0xC01 },
+	{ 0x46E, 0xC01 },
+	{ 0x470, 0xC01 },
+};
+
+static const struct reg_default wm5102t_pwr_2[] = {
+	{ 0x462, 0xC00 },
+	{ 0x464, 0xC00 },
+	{ 0x466, 0xC00 },
+	{ 0x468, 0xC00 },
+	{ 0x46a, 0xC00 },
+	{ 0x46c, 0xC00 },
+	{ 0x46e, 0xC00 },
+	{ 0x470, 0xC00 },
+	{ 0x476, 0x806 },
+};
+
+static const struct reg_default wm5102t_pwr_3[] = {
+	{ 0x462, 0xC00 },
+	{ 0x464, 0xC00 },
+	{ 0x466, 0xC00 },
+	{ 0x468, 0xC00 },
+	{ 0x46a, 0xC00 },
+	{ 0x46c, 0xC00 },
+	{ 0x46e, 0xC00 },
+	{ 0x470, 0xC00 },
+	{ 0x472, 0xC00 },
+	{ 0x47c, 0x806 },
+	{ 0x47e, 0x80e },
+};
+
+static const struct reg_default wm5102t_pwr_4[] = {
+	{ 0x462, 0xC00 },
+	{ 0x464, 0xC00 },
+	{ 0x466, 0xC00 },
+	{ 0x468, 0xC00 },
+	{ 0x46a, 0xC00 },
+	{ 0x46c, 0xC00 },
+	{ 0x46e, 0xC00 },
+	{ 0x470, 0xC00 },
+	{ 0x472, 0xC00 },
+	{ 0x474, 0xC00 },
+	{ 0x476, 0xC00 },
+	{ 0x478, 0xC00 },
+	{ 0x47a, 0xC00 },
+	{ 0x47c, 0xC00 },
+	{ 0x47e, 0xC00 },
+};
+
+static const struct {
+	const struct reg_default *patch;
+	int size;
+} wm5102t_pwr[] = {
+	{ NULL, 0 },
+	{ wm5102t_pwr_1, ARRAY_SIZE(wm5102t_pwr_1) },
+	{ wm5102t_pwr_2, ARRAY_SIZE(wm5102t_pwr_2) },
+	{ wm5102t_pwr_3, ARRAY_SIZE(wm5102t_pwr_3) },
+	{ wm5102t_pwr_4, ARRAY_SIZE(wm5102t_pwr_4) },
+};
+
 /* We use a function so we can use ARRAY_SIZE() */
 int wm5102_patch(struct arizona *arizona)
 {
 	const struct reg_default *wm5102_patch;
+	int ret = 0;
 	int patch_size;
+	int pwr_index = arizona->pdata.wm5102t_output_pwr;
 
 	switch (arizona->rev) {
 	case 0:
@@ -91,11 +154,23 @@ int wm5102_patch(struct arizona *arizona)
 	default:
 		wm5102_patch = wm5102_revb_patch;
 		patch_size = ARRAY_SIZE(wm5102_revb_patch);
+		break;
 	}
 
-	return regmap_multi_reg_write_bypassed(arizona->regmap,
-					       wm5102_patch,
-					       patch_size);
+	ret = regmap_multi_reg_write_bypassed(arizona->regmap,
+					      wm5102_patch,
+					      patch_size);
+	if (ret != 0)
+		return ret;
+
+	if (pwr_index < ARRAY_SIZE(wm5102t_pwr))
+		ret = regmap_multi_reg_write_bypassed(arizona->regmap,
+			wm5102t_pwr[pwr_index].patch,
+			wm5102t_pwr[pwr_index].size);
+	else
+		dev_err(arizona->dev, "Invalid wm5102t output power\n");
+
+	return ret;
 }
 
 static const struct regmap_irq wm5102_aod_irqs[ARIZONA_NUM_IRQ] = {
@@ -336,8 +411,6 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000218, 0x01A6 },   /* R536   - Mic Bias Ctrl 1 */ 
 	{ 0x00000219, 0x01A6 },   /* R537   - Mic Bias Ctrl 2 */ 
 	{ 0x0000021A, 0x01A6 },   /* R538   - Mic Bias Ctrl 3 */ 
-	{ 0x00000225, 0x0400 },   /* R549   - HP Ctrl 1L */
-	{ 0x00000226, 0x0400 },   /* R550   - HP Ctrl 1R */
 	{ 0x00000293, 0x0000 },   /* R659   - Accessory Detect Mode 1 */ 
 	{ 0x0000029B, 0x0020 },   /* R667   - Headphone Detect 1 */ 
 	{ 0x0000029C, 0x0000 },   /* R668   - Headphone Detect 2 */
@@ -993,6 +1066,7 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000ECD, 0x0000 },   /* R3789  - HPLPF4_2 */ 
 	{ 0x00000EE0, 0x0000 },   /* R3808  - ASRC_ENABLE */ 
 	{ 0x00000EE2, 0x0000 },   /* R3810  - ASRC_RATE1 */ 
+	{ 0x00000EE3, 0x0400 },   /* R3811  - ASRC_RATE2 */
 	{ 0x00000EF0, 0x0000 },   /* R3824  - ISRC 1 CTRL 1 */ 
 	{ 0x00000EF1, 0x0000 },   /* R3825  - ISRC 1 CTRL 2 */ 
 	{ 0x00000EF2, 0x0000 },   /* R3826  - ISRC 1 CTRL 3 */ 
@@ -1112,6 +1186,8 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_MIC_BIAS_CTRL_1:
 	case ARIZONA_MIC_BIAS_CTRL_2:
 	case ARIZONA_MIC_BIAS_CTRL_3:
+	case ARIZONA_HP_CTRL_1L:
+	case ARIZONA_HP_CTRL_1R:
 	case ARIZONA_ACCESSORY_DETECT_MODE_1:
 	case ARIZONA_HEADPHONE_DETECT_1:
 	case ARIZONA_HEADPHONE_DETECT_2:
@@ -1172,9 +1248,6 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DAC_DIGITAL_VOLUME_3L:
 	case ARIZONA_DAC_VOLUME_LIMIT_3L:
 	case ARIZONA_NOISE_GATE_SELECT_3L:
-	case ARIZONA_OUTPUT_PATH_CONFIG_3R:
-	case ARIZONA_DAC_DIGITAL_VOLUME_3R:
-	case ARIZONA_DAC_VOLUME_LIMIT_3R:
 	case ARIZONA_OUTPUT_PATH_CONFIG_4L:
 	case ARIZONA_DAC_DIGITAL_VOLUME_4L:
 	case ARIZONA_OUT_VOLUME_4L:
@@ -1949,6 +2022,8 @@ static bool wm5102_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DSP1_SCRATCH_1:
 	case ARIZONA_DSP1_SCRATCH_2:
 	case ARIZONA_DSP1_SCRATCH_3:
+	case ARIZONA_HP_CTRL_1L:
+	case ARIZONA_HP_CTRL_1R:
 	case ARIZONA_HEADPHONE_DETECT_2:
 	case ARIZONA_HP_DACVAL:
 	case ARIZONA_MIC_DETECT_3:
