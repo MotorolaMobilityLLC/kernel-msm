@@ -1216,6 +1216,12 @@ config MFD_ARIZONA
 	select MFD_CORE
 	bool
 
+config MFD_ARIZONA_DEFERRED_RESUME
+	bool "Arizona Deferred Resume"
+	depends on MFD_ARIZONA
+	help
+	  Support for Arizona deferred resume
+
 config MFD_ARIZONA_I2C
 	tristate "Wolfson Microelectronics Arizona platform with I2C"
 	select MFD_ARIZONA
@@ -1242,6 +1248,19 @@ config MFD_WM5102
 	help
 	  Support for Wolfson Microelectronics WM5102 low power audio SoC
 
+config MFD_FLORIDA
+	bool "Wolfson Microelectronics Florida class codecs"
+	depends on MFD_ARIZONA
+	help
+	  Support for Wolfson Microelectronics Florida class low power audio SoC
+	  such as the WM8280
+
+config MFD_VEGAS
+	bool "Support Wolfson Microelectronics Vegas"
+	depends on MFD_ARIZONA
+	help
+	  Support for Wolfson Microelectronics Vegas low power audio SoC
+
 config MFD_WM5110
 	bool "Wolfson Microelectronics WM5110"
 	depends on MFD_ARIZONA
@@ -1253,6 +1272,33 @@ config MFD_WM8997
 	depends on MFD_ARIZONA
 	help
 	  Support for Wolfson Microelectronics WM8997 low power audio SoC
+
+config MFD_CLEARWATER
+	bool "Cirrus Logic ClearWater class codecs"
+	depends on MFD_ARIZONA
+	help
+	  Support for Cirrus Logic ClearWater class low power audio SoC
+
+config MFD_MOON
+	bool "Cirrus Logic Moon class codecs"
+	depends on MFD_ARIZONA
+	help
+	  Support for Cirrus Logic Moon class low power audio SoC
+	  such as the CS47L90. This driver provides common support
+	  for accessing the device, additional drivers must be
+	  enabled in order to use the functionality of the device.
+
+config MFD_LARGO
+	bool "Cirrus Logic Largo"
+	depends on MFD_ARIZONA
+	help
+	  Support for Cirrus Logic Largo low power audio SoC
+
+config MFD_MARLEY
+	bool "Cirrus Logic Marley"
+	depends on MFD_ARIZONA
+	help
+	  Support for Cirrus Logic Marley low power audio SoC
 
 config MFD_WM8400
 	bool "Wolfson Microelectronics WM8400"
