@@ -2360,7 +2360,7 @@ MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
  */
 void suspend_console(void)
 {
-	//ASUSEvtlog("[UTS] System Suspend");
+	ASUSEvtlog("[UTS] System Suspend");
 	suspend_in_progress = 1;
 	if (!console_suspend_enabled)
 		return;
@@ -2374,7 +2374,7 @@ void resume_console(void)
 {
 	int i;
 	suspend_in_progress = 0;
-	//ASUSEvtlog("[UTS] System Resume");
+	ASUSEvtlog("[UTS] System Resume");
 
 	if (pm_pwrcs_ret) {
 		ASUSEvtlog("[PM] Suspended for %d.%02d secs ", pwrcs_time/100,pwrcs_time % 100);
