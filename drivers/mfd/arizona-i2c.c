@@ -28,6 +28,7 @@ static int arizona_i2c_probe(struct i2c_client *i2c,
 {
 	struct arizona *arizona;
 	const struct regmap_config *regmap_config;
+	const struct regmap_config *regmap_32bit_config = NULL;
 	unsigned long type;
 	int ret;
 
@@ -42,14 +43,41 @@ static int arizona_i2c_probe(struct i2c_client *i2c,
 		regmap_config = &wm5102_i2c_regmap;
 		break;
 #endif
-#ifdef CONFIG_MFD_WM5110
+#ifdef CONFIG_MFD_FLORIDA
+	case WM8280:
 	case WM5110:
-		regmap_config = &wm5110_i2c_regmap;
+		regmap_config = &florida_i2c_regmap;
 		break;
 #endif
 #ifdef CONFIG_MFD_WM8997
 	case WM8997:
 		regmap_config = &wm8997_i2c_regmap;
+		break;
+#endif
+#ifdef CONFIG_MFD_VEGAS
+	case WM8998:
+	case WM1814:
+		regmap_config = &vegas_i2c_regmap;
+		break;
+#endif
+#ifdef CONFIG_MFD_CLEARWATER
+	case WM8285:
+	case WM1840:
+		regmap_config = &clearwater_16bit_i2c_regmap;
+		regmap_32bit_config = &clearwater_32bit_i2c_regmap;
+		break;
+#endif
+#ifdef CONFIG_MFD_MARLEY
+	case CS47L35:
+		regmap_config = &marley_16bit_i2c_regmap;
+		regmap_32bit_config = &marley_32bit_i2c_regmap;
+		break;
+#endif
+#ifdef CONFIG_MFD_MOON
+	case CS47L90:
+	case CS47L91:
+		regmap_config = &moon_16bit_i2c_regmap;
+		regmap_32bit_config = &moon_32bit_i2c_regmap;
 		break;
 #endif
 	default:
@@ -70,6 +98,18 @@ static int arizona_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
+	if (regmap_32bit_config) {
+		arizona->regmap_32bit = devm_regmap_init_i2c(i2c,
+							   regmap_32bit_config);
+		if (IS_ERR(arizona->regmap_32bit)) {
+			ret = PTR_ERR(arizona->regmap_32bit);
+			dev_err(&i2c->dev,
+				"Failed to allocate dsp register map: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
 	arizona->type = id->driver_data;
 	arizona->dev = &i2c->dev;
 	arizona->irq = i2c->irq;
@@ -86,8 +126,18 @@ static int arizona_i2c_remove(struct i2c_client *i2c)
 
 static const struct i2c_device_id arizona_i2c_id[] = {
 	{ "wm5102", WM5102 },
+	{ "wm8280", WM8280 },
+	{ "wm8281", WM8280 },
 	{ "wm5110", WM5110 },
 	{ "wm8997", WM8997 },
+	{ "wm8998", WM8998 },
+	{ "wm1814", WM1814 },
+	{ "wm8285", WM8285 },
+	{ "wm1840", WM1840 },
+	{ "cs47l35", CS47L35 },
+	{ "cs47l85", WM8285 },
+	{ "cs47l90", CS47L90 },
+	{ "cs47l91", CS47L91 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, arizona_i2c_id);
