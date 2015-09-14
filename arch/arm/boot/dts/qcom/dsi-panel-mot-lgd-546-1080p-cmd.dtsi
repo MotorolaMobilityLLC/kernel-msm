@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Motorola Mobility Inc. All rights reserved.
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,16 +10,8 @@
  * GNU General Public License for more details.
  */
 
-
-/dts-v1/;
-
-#include "msm8952-athene.dtsi"
-#include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
-
-/ {
-	qcom,board-id = <0x41 0x8000>;
-};
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
+&mdss_mdp {
+	mot_lgd_546_1080p_cmd_v0: qcom,mdss_dsi_mot_lgd_546_1080p_cmd_v0 {
+		#include "dsi-panel-mot-lgd-546-1080p-cmd-common.dtsi"
+	};
 };

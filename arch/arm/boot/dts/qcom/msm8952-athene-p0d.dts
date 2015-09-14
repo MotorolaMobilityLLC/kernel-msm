@@ -15,7 +15,12 @@
 
 #include "msm8952-athene.dtsi"
 #include "msm8952-moto-dtv.dtsi"
+#include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 
 / {
 	qcom,board-id = <0x41 0x800d>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
 };
