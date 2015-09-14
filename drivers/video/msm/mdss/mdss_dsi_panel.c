@@ -1401,6 +1401,23 @@ static int mdss_dsi_set_refresh_rate_range(struct device_node *pan_node,
 	return rc;
 }
 
+static void mdss_dsi_parse_dynamic_dsitiming_config(struct device_node *pan_node,
+	               struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int dynamic_dsitiming = 0;
+	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
+
+	dynamic_dsitiming = of_property_read_bool(pan_node,
+                "qcom,dynamic-dsi-timing-enable");
+
+	if (dynamic_dsitiming)
+		pinfo->dynamic_dsitiming = true;
+	else
+		pinfo->dynamic_dsitiming = false;
+
+	pr_info("%s:dynamic_dsitiming=%d\n", __func__, pinfo->dynamic_dsitiming);
+}
+
 static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -1781,6 +1798,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_panel_horizintal_line_idle(np, ctrl_pdata);
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
+
+	mdss_dsi_parse_dynamic_dsitiming_config(np, ctrl_pdata);
 
 	return 0;
 

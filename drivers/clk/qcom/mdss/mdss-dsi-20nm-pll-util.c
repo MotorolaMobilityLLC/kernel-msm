@@ -125,7 +125,7 @@
 #define MMSS_DSI_DYNAMIC_REFRESH_PLL_CTRL17		0x058
 
 #define DSI_PLL_POLL_MAX_READS			15
-#define DSI_PLL_POLL_TIMEOUT_US			1000
+#define DSI_PLL_POLL_TIMEOUT_US			2000
 
 int set_mdss_byte_mux_sel(struct mux_clk *clk, int sel)
 {

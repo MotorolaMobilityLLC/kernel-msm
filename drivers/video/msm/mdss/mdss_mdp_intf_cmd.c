@@ -1309,6 +1309,7 @@ panel_events:
 	ctl->ops.wait_pingpong = NULL;
 	ctl->ops.add_vsync_handler = NULL;
 	ctl->ops.remove_vsync_handler = NULL;
+	ctl->ops.config_dsitiming_fnc = NULL;
 
 end:
 	if (!IS_ERR_VALUE(ret))
@@ -1489,6 +1490,37 @@ void mdss_mdp_switch_to_vid_mode(struct mdss_mdp_ctl *ctl, int prep)
 			(void *) mode);
 }
 
+static int mdss_mdp_cmd_config_dsitiming(struct mdss_mdp_ctl *ctl,
+                            struct mdss_mdp_ctl *sctl, u32 bitrate)
+{
+	int rc = 0;
+	struct mdss_panel_data *pdata;
+
+	pdata = ctl->panel_data;
+	if (pdata == NULL) {
+		pr_err("%s: Invalid panel data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!pdata->panel_info.dynamic_dsitiming) {
+		pr_err("%s: Dynamic dsi timing not enabled for this panel\n", __func__);
+		return -EINVAL;
+	}
+
+	if (mdss_mdp_ctl_is_power_off(ctl)){
+		pr_err("%s:panel is off %d \n", __func__,ctl->power_state);
+		return 0;
+	}
+
+	rc = mdss_mdp_ctl_intf_event(ctl,
+			MDSS_EVENT_PANEL_UPDATE_DSI_TIMING,
+			(void *) (unsigned long) bitrate);
+	if(rc)
+		pr_err("%s:intf %d panel dsi timing update error (%d)\n", __func__, ctl->intf_num, rc);
+
+	return rc;
+}
+
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	int ret, session = 0;
@@ -1510,6 +1542,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->ops.remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->ops.read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->ops.restore_fnc = mdss_mdp_cmd_restore;
+	ctl->ops.config_dsitiming_fnc = mdss_mdp_cmd_config_dsitiming;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

@@ -2694,6 +2694,95 @@ static struct attribute_group dynamic_fps_fs_attrs_group = {
 	.attrs = dynamic_fps_fs_attrs,
 };
 
+static ssize_t dynamic_dsitiming_sysfs_rda(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret;
+	struct mdss_panel_data *pdata;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+
+	if (!mdp5_data->ctl || !mdss_mdp_ctl_is_power_on(mdp5_data->ctl))
+		return 0;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: no panel connected for fb%d\n", __func__, mfd->index);
+		return -ENODEV;
+	}
+
+	mutex_lock(&mdp5_data->dynamic_dsitiming_lock);
+	ret = snprintf(buf, PAGE_SIZE, "%d\n",
+			pdata->panel_info.cached_clk_rate);
+	pr_debug("%s: read dsi clk rate'%d'\n", __func__,
+			pdata->panel_info.cached_clk_rate);
+	mutex_unlock(&mdp5_data->dynamic_dsitiming_lock);
+	return ret;
+}
+
+static ssize_t dynamic_dsitiming_sysfs_wta(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	int bitclk, rc = 0;
+	struct mdss_panel_data *pdata;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+
+	rc = kstrtoint(buf, 10, &bitclk);
+	if (rc) {
+		pr_err("%s: kstrtoint failed. rc=%d\n", __func__, rc);
+		return rc;
+	}
+
+	if (!mdp5_data->ctl || !mdss_mdp_ctl_is_power_on(mdp5_data->ctl)) {
+		pr_err("%s: no ctl or ctl is off\n",__func__);
+		return -ENODEV;
+	}
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("%s: no panel connected for fb%d\n", __func__, mfd->index);
+		return -ENODEV;
+	}
+
+	if (bitclk == pdata->panel_info.clk_rate) {
+		pr_err("%s: dsi bit clk  is already %d\n",
+			__func__, bitclk);
+		return count;
+	}
+	pr_debug("%s: dsi timing info: bitclk=%d\n", __func__, bitclk);
+
+	mutex_lock(&mdp5_data->dynamic_dsitiming_lock);
+
+	pdata->panel_info.cached_clk_rate = pdata->panel_info.clk_rate;
+
+	rc = mdss_mdp_ctl_update_dsitiming(mdp5_data->ctl, bitclk);
+	if (!rc) {
+		pr_debug("%s: bit clk rate configured to '%d' \n", __func__, bitclk);
+	} else {
+		pr_err("%s: Failed to configure '%d' . rc = %d\n", __func__,
+			bitclk, rc);
+		mutex_unlock(&mdp5_data->dynamic_dsitiming_lock);
+		return rc;
+	}
+	mutex_unlock(&mdp5_data->dynamic_dsitiming_lock);
+
+	return count;
+}
+
+static DEVICE_ATTR(dynamic_dsitiming, S_IRUGO | S_IWUSR  | S_IWGRP, dynamic_dsitiming_sysfs_rda,
+	dynamic_dsitiming_sysfs_wta);
+
+static struct attribute *dynamic_dsitiming_fs_attrs[] = {
+	&dev_attr_dynamic_dsitiming.attr,
+	NULL,
+};
+static struct attribute_group dynamic_dsitiming_fs_attrs_group = {
+	.attrs = dynamic_dsitiming_fs_attrs,
+};
+
 static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -4880,6 +4969,7 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	mutex_init(&mdp5_data->list_lock);
 	mutex_init(&mdp5_data->ov_lock);
 	mutex_init(&mdp5_data->dfps_lock);
+	mutex_init(&mdp5_data->dynamic_dsitiming_lock);
 	mdp5_data->hw_refresh = true;
 	mdp5_data->overlay_play_enable = true;
 	mdp5_data->cursor_ndx[CURSOR_PIPE_LEFT] = MSMFB_NEW_REQUEST;
@@ -4937,6 +5027,15 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			&dynamic_fps_fs_attrs_group);
 		if (rc) {
 			pr_err("Error dfps sysfs creation ret=%d\n", rc);
+			goto init_fail;
+		}
+	}
+
+	if (mfd->panel_info->type == MIPI_CMD_PANEL) {
+		rc = sysfs_create_group(&dev->kobj,
+			&dynamic_dsitiming_fs_attrs_group);
+		if (rc) {
+			pr_err("Error dsi bit clk sysfs creation ret=%d\n", rc);
 			goto init_fail;
 		}
 	}

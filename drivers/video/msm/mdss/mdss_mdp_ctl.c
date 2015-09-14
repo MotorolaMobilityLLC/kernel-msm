@@ -3470,6 +3470,25 @@ int mdss_mdp_ctl_update_fps(struct mdss_mdp_ctl *ctl, int fps)
 	return ret;
 }
 
+int mdss_mdp_ctl_update_dsitiming(struct mdss_mdp_ctl *ctl, u32 bitrate)
+{
+	int ret = 0;
+	struct mdss_mdp_ctl *sctl = NULL;
+
+	pr_debug("%s: timing = %d \n", __func__, bitrate);
+	mutex_lock(&ctl->offlock);
+
+	sctl = mdss_mdp_get_split_ctl(ctl);
+	if (ctl->ops.config_dsitiming_fnc)
+		ret = ctl->ops.config_dsitiming_fnc(ctl, sctl, bitrate);
+
+	mutex_unlock(&ctl->offlock);
+
+	pr_debug("%s: timing = %d \n", __func__, bitrate);
+
+	return ret;
+}
+
 int mdss_mdp_display_wakeup_time(struct mdss_mdp_ctl *ctl,
 				 ktime_t *wakeup_time)
 {

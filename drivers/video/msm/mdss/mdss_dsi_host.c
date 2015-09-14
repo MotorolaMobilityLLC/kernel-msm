@@ -2183,6 +2183,41 @@ int mdss_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	return len;
 }
 
+static void mdss_dsi_clkrate_update(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int rc = 0;
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
+
+	if (atomic_read(&ctrl->clkrate_change_pending)){
+		if (pinfo->is_split_display) {
+			if (mdss_dsi_is_right_ctrl(ctrl)) {
+				pr_info("%s dsi dynamic timing already updated.\n", __func__);
+				return;
+			}
+			/* left ctrl to get right ctrl */
+			sctrl = mdss_dsi_get_other_ctrl(ctrl);
+		}
+
+		pr_debug("%s: forcing link clk stop and start to trigger clk refresh\n", __func__);
+		mdss_dsi_link_clk_stop(ctrl);
+		if (sctrl)
+			mdss_dsi_link_clk_stop(sctrl);
+
+		rc = mdss_dsi_link_clk_start(ctrl);
+
+		if (!rc && sctrl)
+			rc = mdss_dsi_link_clk_start(sctrl);
+
+		if (!rc) {
+			pinfo->cached_clk_rate = pinfo->clk_rate;
+			atomic_set(&ctrl->clkrate_change_pending, 0);
+			if (sctrl)
+				atomic_set(&sctrl->clkrate_change_pending, 0);
+		}
+	}
+}
+
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 {
 	struct dcs_cmd_req *req;
@@ -2215,6 +2250,9 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	/* make sure dsi_cmd_mdp is idle */
 	mdss_dsi_cmd_mdp_busy(ctrl);
+
+	if(from_mdp)
+		mdss_dsi_clkrate_update(ctrl);
 
 	mdss_dsi_get_hw_revision(ctrl);
 

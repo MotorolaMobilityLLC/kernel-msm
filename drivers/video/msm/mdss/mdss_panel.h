@@ -221,6 +221,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_DYNAMIC_SWITCH,
 	MDSS_EVENT_DSI_RECONFIG_CMD,
 	MDSS_EVENT_DSI_RESET_WRITE_PTR,
+	MDSS_EVENT_PANEL_UPDATE_DSI_TIMING,
 };
 
 struct lcd_panel_info {
@@ -408,6 +409,8 @@ struct mdss_panel_info {
 	int pwm_lpg_chan;
 	int pwm_period;
 	bool dynamic_fps;
+	bool dynamic_dsitiming;
+	u32  cached_clk_rate;
 	bool ulps_feature_enabled;
 	bool ulps_suspend_enabled;
 	bool panel_ack_disabled;

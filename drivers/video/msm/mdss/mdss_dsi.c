@@ -1112,6 +1112,26 @@ static void __mdss_dsi_calc_dfps_delay(struct mdss_panel_data *pdata)
 						pll_delay);
 }
 
+static int mdss_dsi_panel_update_clkrate(struct mdss_dsi_ctrl_pdata *ctrl,
+			u32 bitrate)
+{
+	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
+
+	pr_debug("%s: ndx=%d switching to clk_rate=%d\n", __func__,
+			ctrl->ndx, bitrate);
+
+	pinfo->clk_rate = bitrate;
+
+	if (bitrate == 0 )
+		ctrl->refresh_clk_rate = true;
+
+	mdss_dsi_clk_refresh(&ctrl->panel_data);
+
+	atomic_inc(&ctrl->clkrate_change_pending);
+
+	return 0;
+}
+
 static int __mdss_dsi_dfps_update_clks(struct mdss_panel_data *pdata,
 		int new_fps)
 {
@@ -1423,28 +1443,6 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
-static int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	int rc = 0;
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-							panel_data);
-	rc = mdss_dsi_clk_div_config(&pdata->panel_info,
-			pdata->panel_info.mipi.frame_rate);
-	if (rc) {
-		pr_err("%s: unable to initialize the clk dividers\n",
-								__func__);
-		return rc;
-	}
-	ctrl_pdata->refresh_clk_rate = false;
-	ctrl_pdata->pclk_rate = pdata->panel_info.mipi.dsi_pclk_rate;
-	ctrl_pdata->byte_clk_rate = pdata->panel_info.clk_rate / 8;
-	pr_debug("%s ctrl_pdata->byte_clk_rate=%d ctrl_pdata->pclk_rate=%d\n",
-		__func__, ctrl_pdata->byte_clk_rate, ctrl_pdata->pclk_rate);
-	return rc;
-}
-
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
 {
@@ -1554,6 +1552,11 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_DSI_PANEL_STATUS:
 		if (ctrl_pdata->check_status)
 			rc = ctrl_pdata->check_status(ctrl_pdata);
+		break;
+	case MDSS_EVENT_PANEL_UPDATE_DSI_TIMING:
+		rc = mdss_dsi_panel_update_clkrate(ctrl_pdata,
+                        (u32)(unsigned long)arg);
+		pr_debug("%s: update dsi timing to %d\n", __func__, (u32) (unsigned long) arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
@@ -1706,6 +1709,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	}
 	ctrl_pdata->mdss_util = util;
 	atomic_set(&ctrl_pdata->te_irq_ready, 0);
+	atomic_set(&ctrl_pdata->clkrate_change_pending, 0);
 
 	ctrl_name = of_get_property(pdev->dev.of_node, "label", NULL);
 	if (!ctrl_name)
