@@ -52,6 +52,8 @@
 #define ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_7 0x6C
 #define ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_8 0x6D
 #define ARIZONA_COMFORT_NOISE_GENERATOR          0x70
+#define ARIZONA_HP_DETECT_CALIBRATION_1          0x87
+#define ARIZONA_HP_DETECT_CALIBRATION_2          0x88
 #define ARIZONA_HAPTICS_CONTROL_1                0x90
 #define ARIZONA_HAPTICS_CONTROL_2                0x91
 #define ARIZONA_HAPTICS_PHASE_1_INTENSITY        0x92
@@ -61,6 +63,7 @@
 #define ARIZONA_HAPTICS_PHASE_3_INTENSITY        0x96
 #define ARIZONA_HAPTICS_PHASE_3_DURATION         0x97
 #define ARIZONA_HAPTICS_STATUS                   0x98
+#define CLEARWATER_COMFORT_NOISE_GENERATOR       0xA0
 #define ARIZONA_CLOCK_32K_1                      0x100
 #define ARIZONA_SYSTEM_CLOCK_1                   0x101
 #define ARIZONA_SAMPLE_RATE_1                    0x102
@@ -74,6 +77,8 @@
 #define ARIZONA_ASYNC_SAMPLE_RATE_2              0x114
 #define ARIZONA_ASYNC_SAMPLE_RATE_1_STATUS       0x11B
 #define ARIZONA_ASYNC_SAMPLE_RATE_2_STATUS       0x11C
+#define CLEARWATER_DSP_CLOCK_1                   0x120
+#define CLEARWATER_DSP_CLOCK_2                   0x122
 #define ARIZONA_OUTPUT_SYSTEM_CLOCK              0x149
 #define ARIZONA_OUTPUT_ASYNC_CLOCK               0x14A
 #define ARIZONA_RATE_ESTIMATOR_1                 0x152
@@ -100,6 +105,15 @@
 #define ARIZONA_FLL1_SYNCHRONISER_7              0x187
 #define ARIZONA_FLL1_SPREAD_SPECTRUM             0x189
 #define ARIZONA_FLL1_GPIO_CLOCK                  0x18A
+#define MARLEY_FLL1_SYNCHRONISER_1               0x17F
+#define MARLEY_FLL1_SYNCHRONISER_2               0x180
+#define MARLEY_FLL1_SYNCHRONISER_3               0x181
+#define MARLEY_FLL1_SYNCHRONISER_4               0x182
+#define MARLEY_FLL1_SYNCHRONISER_5               0x183
+#define MARLEY_FLL1_SYNCHRONISER_6               0x184
+#define MARLEY_FLL1_SYNCHRONISER_7               0x185
+#define MARLEY_FLL1_SPREAD_SPECTRUM              0x187
+#define MARLEY_FLL1_GPIO_CLOCK                   0x188
 #define ARIZONA_FLL2_CONTROL_1                   0x191
 #define ARIZONA_FLL2_CONTROL_2                   0x192
 #define ARIZONA_FLL2_CONTROL_3                   0x193
@@ -118,26 +132,82 @@
 #define ARIZONA_FLL2_SYNCHRONISER_7              0x1A7
 #define ARIZONA_FLL2_SPREAD_SPECTRUM             0x1A9
 #define ARIZONA_FLL2_GPIO_CLOCK                  0x1AA
+#define ARIZONA_FLL3_CONTROL_1                   0x1B1
+#define ARIZONA_FLL3_CONTROL_2                   0x1B2
+#define ARIZONA_FLL3_CONTROL_3                   0x1B3
+#define ARIZONA_FLL3_CONTROL_4                   0x1B4
+#define ARIZONA_FLL3_CONTROL_5                   0x1B5
+#define ARIZONA_FLL3_CONTROL_6                   0x1B6
+#define ARIZONA_FLL3_LOOP_FILTER_TEST_1          0x1B7
+#define ARIZONA_FLL3_NCO_TEST_0                  0x1B8
+#define ARIZONA_FLL3_CONTROL_7                   0x1B9
+#define ARIZONA_FLL3_SYNCHRONISER_1              0x1C1
+#define ARIZONA_FLL3_SYNCHRONISER_2              0x1C2
+#define ARIZONA_FLL3_SYNCHRONISER_3              0x1C3
+#define ARIZONA_FLL3_SYNCHRONISER_4              0x1C4
+#define ARIZONA_FLL3_SYNCHRONISER_5              0x1C5
+#define ARIZONA_FLL3_SYNCHRONISER_6              0x1C6
+#define ARIZONA_FLL3_SYNCHRONISER_7              0x1C7
+#define ARIZONA_FLL3_SPREAD_SPECTRUM             0x1C9
+#define ARIZONA_FLL3_GPIO_CLOCK                  0x1CA
+#define MOON_FLLAO_CONTROL_1                     0x1D1
+#define MOON_FLLAO_CONTROL_2                     0x1D2
+#define MOON_FLLAO_CONTROL_3                     0x1D3
+#define MOON_FLLAO_CONTROL_4                     0x1D4
+#define MOON_FLLAO_CONTROL_5                     0x1D5
+#define MOON_FLLAO_CONTROL_6                     0x1D6
+#define MOON_FLLAO_CONTROL_7                     0x1D8
+#define MOON_FLLAO_CONTROL_8                     0x1DA
+#define MOON_FLLAO_CONTROL_9                     0x1DB
+#define MOON_FLLAO_CONTROL_10                    0x1DC
+#define MOON_FLLAO_CONTROL_11                    0x1DD
 #define ARIZONA_MIC_CHARGE_PUMP_1                0x200
+#define CLEARWATER_CP_MODE                       0x20B
 #define ARIZONA_LDO1_CONTROL_1                   0x210
 #define ARIZONA_LDO1_CONTROL_2                   0x212
 #define ARIZONA_LDO2_CONTROL_1                   0x213
 #define ARIZONA_MIC_BIAS_CTRL_1                  0x218
 #define ARIZONA_MIC_BIAS_CTRL_2                  0x219
 #define ARIZONA_MIC_BIAS_CTRL_3                  0x21A
+#define ARIZONA_MIC_BIAS_CTRL_4                  0x21B
+#define ARIZONA_MIC_BIAS_CTRL_5                  0x21C
+#define ARIZONA_MIC_BIAS_CTRL_6                  0x21E
+#define ARIZONA_HP_CTRL_1L                       0x225
+#define ARIZONA_HP_CTRL_1R                       0x226
+#define ARIZONA_HP_CTRL_2L                       0x227
+#define ARIZONA_HP_CTRL_2R                       0x228
+#define ARIZONA_HP_CTRL_3L                       0x229
+#define ARIZONA_HP_CTRL_3R                       0x22A
+#define ARIZONA_DCS_HP1L_CONTROL                 0x232
+#define ARIZONA_DCS_HP1R_CONTROL                 0x238
+#define CLEARWATER_EDRE_HP_STEREO_CONTROL        0x27E
 #define ARIZONA_ACCESSORY_DETECT_MODE_1          0x293
+#define MOON_HEADPHONE_DETECT_0                  0x299
 #define ARIZONA_HEADPHONE_DETECT_1               0x29B
 #define ARIZONA_HEADPHONE_DETECT_2               0x29C
-#define ARIZONA_HP_DACVAL			 0x29F
+#define ARIZONA_HEADPHONE_DETECT_3               0x29D
+#define ARIZONA_HP_DACVAL                        0x29F
 #define ARIZONA_MICD_CLAMP_CONTROL               0x2A2
+#define MOON_MIC_DETECT_0                        0x2A2
 #define ARIZONA_MIC_DETECT_1                     0x2A3
 #define ARIZONA_MIC_DETECT_2                     0x2A4
 #define ARIZONA_MIC_DETECT_3                     0x2A5
-#define ARIZONA_MIC_DETECT_LEVEL_1		 0x2A6
-#define ARIZONA_MIC_DETECT_LEVEL_2		 0x2A7
-#define ARIZONA_MIC_DETECT_LEVEL_3		 0x2A8
-#define ARIZONA_MIC_DETECT_LEVEL_4		 0x2A9
+#define ARIZONA_MIC_DETECT_LEVEL_1               0x2A6
+#define ARIZONA_MIC_DETECT_LEVEL_2               0x2A7
+#define ARIZONA_MIC_DETECT_LEVEL_3               0x2A8
+#define ARIZONA_MIC_DETECT_LEVEL_4               0x2A9
+#define ARIZONA_MIC_DETECT_4                     0x2AB
+#define MOON_MICDET2_CONTROL_0                   0x2B2
+#define MOON_MICDET2_CONTROL_1                   0x2B3
+#define MOON_MICDET2_CONTROL_2                   0x2B4
+#define MOON_MICDET2_CONTROL_3                   0x2B5
+#define MOON_MICDET2_LEVEL_1                     0x2B6
+#define MOON_MICDET2_LEVEL_2                     0x2B7
+#define MOON_MICDET2_LEVEL_3                     0x2B8
+#define MOON_MICDET2_LEVEL_4                     0x2B9
+#define MOON_MICDET2_CONTROL_4                   0x2BB
 #define ARIZONA_MIC_NOISE_MIX_CONTROL_1          0x2C3
+#define CLEARWATER_MICD_CLAMP_CONTROL            0x2C6
 #define ARIZONA_ISOLATION_CONTROL                0x2CB
 #define ARIZONA_JACK_DETECT_ANALOGUE             0x2D3
 #define ARIZONA_INPUT_ENABLES                    0x300
@@ -148,35 +218,65 @@
 #define ARIZONA_IN1L_CONTROL                     0x310
 #define ARIZONA_ADC_DIGITAL_VOLUME_1L            0x311
 #define ARIZONA_DMIC1L_CONTROL                   0x312
+#define MOON_IN1L_RATE_CONTROL                   0x313
 #define ARIZONA_IN1R_CONTROL                     0x314
 #define ARIZONA_ADC_DIGITAL_VOLUME_1R            0x315
 #define ARIZONA_DMIC1R_CONTROL                   0x316
+#define MOON_IN1R_RATE_CONTROL                   0x317
 #define ARIZONA_IN2L_CONTROL                     0x318
 #define ARIZONA_ADC_DIGITAL_VOLUME_2L            0x319
 #define ARIZONA_DMIC2L_CONTROL                   0x31A
+#define MOON_IN2L_RATE_CONTROL                   0x31B
 #define ARIZONA_IN2R_CONTROL                     0x31C
 #define ARIZONA_ADC_DIGITAL_VOLUME_2R            0x31D
 #define ARIZONA_DMIC2R_CONTROL                   0x31E
+#define MOON_IN2R_RATE_CONTROL                   0x31F
 #define ARIZONA_IN3L_CONTROL                     0x320
 #define ARIZONA_ADC_DIGITAL_VOLUME_3L            0x321
 #define ARIZONA_DMIC3L_CONTROL                   0x322
+#define MOON_IN3L_RATE_CONTROL                   0x323
 #define ARIZONA_IN3R_CONTROL                     0x324
 #define ARIZONA_ADC_DIGITAL_VOLUME_3R            0x325
 #define ARIZONA_DMIC3R_CONTROL                   0x326
+#define MOON_IN3R_RATE_CONTROL                   0x327
 #define ARIZONA_IN4L_CONTROL                     0x328
 #define ARIZONA_ADC_DIGITAL_VOLUME_4L            0x329
 #define ARIZONA_DMIC4L_CONTROL                   0x32A
+#define MOON_IN4L_RATE_CONTROL                   0x32B
 #define ARIZONA_IN4R_CONTROL                     0x32C
 #define ARIZONA_ADC_DIGITAL_VOLUME_4R            0x32D
 #define ARIZONA_DMIC4R_CONTROL                   0x32E
+#define MOON_IN4R_RATE_CONTROL                   0x32F
+#define ARIZONA_IN5L_CONTROL                     0x330
+#define ARIZONA_ADC_DIGITAL_VOLUME_5L            0x331
+#define ARIZONA_DMIC5L_CONTROL                   0x332
+#define MOON_IN5L_RATE_CONTROL                   0x333
+#define ARIZONA_IN5R_CONTROL                     0x334
+#define ARIZONA_ADC_DIGITAL_VOLUME_5R            0x335
+#define ARIZONA_DMIC5R_CONTROL                   0x336
+#define MOON_IN5R_RATE_CONTROL                   0x337
+#define ARIZONA_IN6L_CONTROL                     0x338
+#define ARIZONA_ADC_DIGITAL_VOLUME_6L            0x339
+#define ARIZONA_DMIC6L_CONTROL                   0x33A
+#define ARIZONA_IN6R_CONTROL                     0x33C
+#define ARIZONA_ADC_DIGITAL_VOLUME_6R            0x33D
+#define ARIZONA_DMIC6R_CONTROL                   0x33E
+#define ARIZONA_ADC_VCO_CAL_4                    0x393
+#define ARIZONA_ADC_VCO_CAL_5                    0x394
+#define ARIZONA_ADC_VCO_CAL_6                    0x395
+#define ARIZONA_ADC_VCO_CAL_7                    0x396
+#define ARIZONA_ADC_VCO_CAL_8                    0x397
+#define ARIZONA_ADC_VCO_CAL_9                    0x398
 #define ARIZONA_OUTPUT_ENABLES_1                 0x400
 #define ARIZONA_OUTPUT_STATUS_1                  0x401
+#define ARIZONA_OUTPUT_STANDBY_1                 0x405
 #define ARIZONA_RAW_OUTPUT_STATUS_1              0x406
 #define ARIZONA_OUTPUT_RATE_1                    0x408
 #define ARIZONA_OUTPUT_VOLUME_RAMP               0x409
 #define ARIZONA_OUTPUT_PATH_CONFIG_1L            0x410
 #define ARIZONA_DAC_DIGITAL_VOLUME_1L            0x411
 #define ARIZONA_DAC_VOLUME_LIMIT_1L              0x412
+#define MOON_OUT1_CONFIG                         0x412
 #define ARIZONA_NOISE_GATE_SELECT_1L             0x413
 #define ARIZONA_OUTPUT_PATH_CONFIG_1R            0x414
 #define ARIZONA_DAC_DIGITAL_VOLUME_1R            0x415
@@ -185,6 +285,7 @@
 #define ARIZONA_OUTPUT_PATH_CONFIG_2L            0x418
 #define ARIZONA_DAC_DIGITAL_VOLUME_2L            0x419
 #define ARIZONA_DAC_VOLUME_LIMIT_2L              0x41A
+#define MOON_OUT2_CONFIG                         0x41A
 #define ARIZONA_NOISE_GATE_SELECT_2L             0x41B
 #define ARIZONA_OUTPUT_PATH_CONFIG_2R            0x41C
 #define ARIZONA_DAC_DIGITAL_VOLUME_2R            0x41D
@@ -223,17 +324,25 @@
 #define ARIZONA_DAC_VOLUME_LIMIT_6R              0x43E
 #define ARIZONA_NOISE_GATE_SELECT_6R             0x43F
 #define ARIZONA_DRE_ENABLE                       0x440
+#define ARIZONA_DRE_CONTROL_1                    0x441
 #define ARIZONA_DRE_CONTROL_2                    0x442
 #define ARIZONA_DRE_CONTROL_3                    0x443
+#define CLEARWATER_EDRE_ENABLE                   0x448
+#define CLEARWATER_EDRE_MANUAL                   0x44A
 #define ARIZONA_DAC_AEC_CONTROL_1                0x450
+#define ARIZONA_DAC_AEC_CONTROL_2                0x451
 #define ARIZONA_NOISE_GATE_CONTROL               0x458
 #define ARIZONA_PDM_SPK1_CTRL_1                  0x490
 #define ARIZONA_PDM_SPK1_CTRL_2                  0x491
 #define ARIZONA_PDM_SPK2_CTRL_1                  0x492
 #define ARIZONA_PDM_SPK2_CTRL_2                  0x493
+#define ARIZONA_HP_TEST_CTRL_13                  0x49A
 #define ARIZONA_HP1_SHORT_CIRCUIT_CTRL           0x4A0
 #define ARIZONA_HP2_SHORT_CIRCUIT_CTRL           0x4A1
 #define ARIZONA_HP3_SHORT_CIRCUIT_CTRL           0x4A2
+#define ARIZONA_HP_TEST_CTRL_1                   0x4A4
+#define ARIZONA_HP_TEST_CTRL_5                   0x4A8
+#define ARIZONA_HP_TEST_CTRL_6                   0x4A9
 #define ARIZONA_SPK_CTRL_2                       0x4B5
 #define ARIZONA_SPK_CTRL_3                       0x4B6
 #define ARIZONA_DAC_COMP_1                       0x4DC
@@ -279,8 +388,20 @@
 #define ARIZONA_AIF2_FRAME_CTRL_2                0x548
 #define ARIZONA_AIF2_FRAME_CTRL_3                0x549
 #define ARIZONA_AIF2_FRAME_CTRL_4                0x54A
+#define ARIZONA_AIF2_FRAME_CTRL_5                0x54B
+#define ARIZONA_AIF2_FRAME_CTRL_6                0x54C
+#define ARIZONA_AIF2_FRAME_CTRL_7                0x54D
+#define ARIZONA_AIF2_FRAME_CTRL_8                0x54E
+#define ARIZONA_AIF2_FRAME_CTRL_9                0x54F
+#define ARIZONA_AIF2_FRAME_CTRL_10               0x550
 #define ARIZONA_AIF2_FRAME_CTRL_11               0x551
 #define ARIZONA_AIF2_FRAME_CTRL_12               0x552
+#define ARIZONA_AIF2_FRAME_CTRL_13               0x553
+#define ARIZONA_AIF2_FRAME_CTRL_14               0x554
+#define ARIZONA_AIF2_FRAME_CTRL_15               0x555
+#define ARIZONA_AIF2_FRAME_CTRL_16               0x556
+#define ARIZONA_AIF2_FRAME_CTRL_17               0x557
+#define ARIZONA_AIF2_FRAME_CTRL_18               0x558
 #define ARIZONA_AIF2_TX_ENABLES                  0x559
 #define ARIZONA_AIF2_RX_ENABLES                  0x55A
 #define ARIZONA_AIF2_FORCE_WRITE                 0x55B
@@ -300,6 +421,26 @@
 #define ARIZONA_AIF3_TX_ENABLES                  0x599
 #define ARIZONA_AIF3_RX_ENABLES                  0x59A
 #define ARIZONA_AIF3_FORCE_WRITE                 0x59B
+#define ARIZONA_AIF4_BCLK_CTRL                   0x5A0
+#define ARIZONA_AIF4_TX_PIN_CTRL                 0x5A1
+#define ARIZONA_AIF4_RX_PIN_CTRL                 0x5A2
+#define ARIZONA_AIF4_RATE_CTRL                   0x5A3
+#define ARIZONA_AIF4_FORMAT                      0x5A4
+#define ARIZONA_AIF4_TX_BCLK_RATE                0x5A5
+#define ARIZONA_AIF4_RX_BCLK_RATE                0x5A6
+#define ARIZONA_AIF4_FRAME_CTRL_1                0x5A7
+#define ARIZONA_AIF4_FRAME_CTRL_2                0x5A8
+#define ARIZONA_AIF4_FRAME_CTRL_3                0x5A9
+#define ARIZONA_AIF4_FRAME_CTRL_4                0x5AA
+#define ARIZONA_AIF4_FRAME_CTRL_11               0x5B1
+#define ARIZONA_AIF4_FRAME_CTRL_12               0x5B2
+#define ARIZONA_AIF4_TX_ENABLES                  0x5B9
+#define ARIZONA_AIF4_RX_ENABLES                  0x5BA
+#define ARIZONA_AIF4_FORCE_WRITE                 0x5BB
+#define ARIZONA_SPD1_TX_CONTROL                  0x5C2
+#define ARIZONA_SPD1_TX_CHANNEL_STATUS_1         0x5C3
+#define ARIZONA_SPD1_TX_CHANNEL_STATUS_2         0x5C4
+#define ARIZONA_SPD1_TX_CHANNEL_STATUS_3         0x5C5
 #define ARIZONA_SLIMBUS_FRAMER_REF_GEAR          0x5E3
 #define ARIZONA_SLIMBUS_RATES_1                  0x5E5
 #define ARIZONA_SLIMBUS_RATES_2                  0x5E6
@@ -553,6 +694,22 @@
 #define ARIZONA_AIF2TX6MIX_INPUT_3_VOLUME        0x76D
 #define ARIZONA_AIF2TX6MIX_INPUT_4_SOURCE        0x76E
 #define ARIZONA_AIF2TX6MIX_INPUT_4_VOLUME        0x76F
+#define ARIZONA_AIF2TX7MIX_INPUT_1_SOURCE        0x770
+#define ARIZONA_AIF2TX7MIX_INPUT_1_VOLUME        0x771
+#define ARIZONA_AIF2TX7MIX_INPUT_2_SOURCE        0x772
+#define ARIZONA_AIF2TX7MIX_INPUT_2_VOLUME        0x773
+#define ARIZONA_AIF2TX7MIX_INPUT_3_SOURCE        0x774
+#define ARIZONA_AIF2TX7MIX_INPUT_3_VOLUME        0x775
+#define ARIZONA_AIF2TX7MIX_INPUT_4_SOURCE        0x776
+#define ARIZONA_AIF2TX7MIX_INPUT_4_VOLUME        0x777
+#define ARIZONA_AIF2TX8MIX_INPUT_1_SOURCE        0x778
+#define ARIZONA_AIF2TX8MIX_INPUT_1_VOLUME        0x779
+#define ARIZONA_AIF2TX8MIX_INPUT_2_SOURCE        0x77A
+#define ARIZONA_AIF2TX8MIX_INPUT_2_VOLUME        0x77B
+#define ARIZONA_AIF2TX8MIX_INPUT_3_SOURCE        0x77C
+#define ARIZONA_AIF2TX8MIX_INPUT_3_VOLUME        0x77D
+#define ARIZONA_AIF2TX8MIX_INPUT_4_SOURCE        0x77E
+#define ARIZONA_AIF2TX8MIX_INPUT_4_VOLUME        0x77F
 #define ARIZONA_AIF3TX1MIX_INPUT_1_SOURCE        0x780
 #define ARIZONA_AIF3TX1MIX_INPUT_1_VOLUME        0x781
 #define ARIZONA_AIF3TX1MIX_INPUT_2_SOURCE        0x782
@@ -569,6 +726,22 @@
 #define ARIZONA_AIF3TX2MIX_INPUT_3_VOLUME        0x78D
 #define ARIZONA_AIF3TX2MIX_INPUT_4_SOURCE        0x78E
 #define ARIZONA_AIF3TX2MIX_INPUT_4_VOLUME        0x78F
+#define ARIZONA_AIF4TX1MIX_INPUT_1_SOURCE        0x7A0
+#define ARIZONA_AIF4TX1MIX_INPUT_1_VOLUME        0x7A1
+#define ARIZONA_AIF4TX1MIX_INPUT_2_SOURCE        0x7A2
+#define ARIZONA_AIF4TX1MIX_INPUT_2_VOLUME        0x7A3
+#define ARIZONA_AIF4TX1MIX_INPUT_3_SOURCE        0x7A4
+#define ARIZONA_AIF4TX1MIX_INPUT_3_VOLUME        0x7A5
+#define ARIZONA_AIF4TX1MIX_INPUT_4_SOURCE        0x7A6
+#define ARIZONA_AIF4TX1MIX_INPUT_4_VOLUME        0x7A7
+#define ARIZONA_AIF4TX2MIX_INPUT_1_SOURCE        0x7A8
+#define ARIZONA_AIF4TX2MIX_INPUT_1_VOLUME        0x7A9
+#define ARIZONA_AIF4TX2MIX_INPUT_2_SOURCE        0x7AA
+#define ARIZONA_AIF4TX2MIX_INPUT_2_VOLUME        0x7AB
+#define ARIZONA_AIF4TX2MIX_INPUT_3_SOURCE        0x7AC
+#define ARIZONA_AIF4TX2MIX_INPUT_3_VOLUME        0x7AD
+#define ARIZONA_AIF4TX2MIX_INPUT_4_SOURCE        0x7AE
+#define ARIZONA_AIF4TX2MIX_INPUT_4_VOLUME        0x7AF
 #define ARIZONA_SLIMTX1MIX_INPUT_1_SOURCE        0x7C0
 #define ARIZONA_SLIMTX1MIX_INPUT_1_VOLUME        0x7C1
 #define ARIZONA_SLIMTX1MIX_INPUT_2_SOURCE        0x7C2
@@ -633,6 +806,10 @@
 #define ARIZONA_SLIMTX8MIX_INPUT_3_VOLUME        0x7FD
 #define ARIZONA_SLIMTX8MIX_INPUT_4_SOURCE        0x7FE
 #define ARIZONA_SLIMTX8MIX_INPUT_4_VOLUME        0x7FF
+#define ARIZONA_SPDIFTX1MIX_INPUT_1_SOURCE       0x800
+#define ARIZONA_SPDIFTX1MIX_INPUT_1_VOLUME       0x801
+#define ARIZONA_SPDIFTX2MIX_INPUT_1_SOURCE       0x808
+#define ARIZONA_SPDIFTX2MIX_INPUT_1_VOLUME       0x809
 #define ARIZONA_EQ1MIX_INPUT_1_SOURCE            0x880
 #define ARIZONA_EQ1MIX_INPUT_1_VOLUME            0x881
 #define ARIZONA_EQ1MIX_INPUT_2_SOURCE            0x882
@@ -817,10 +994,40 @@
 #define ARIZONA_DSP4AUX4MIX_INPUT_1_SOURCE       0xA28
 #define ARIZONA_DSP4AUX5MIX_INPUT_1_SOURCE       0xA30
 #define ARIZONA_DSP4AUX6MIX_INPUT_1_SOURCE       0xA38
+#define CLEARWATER_DSP5LMIX_INPUT_1_SOURCE       0xA40
+#define CLEARWATER_DSP5LMIX_INPUT_1_VOLUME       0xA41
+#define CLEARWATER_DSP5LMIX_INPUT_2_SOURCE       0xA42
+#define CLEARWATER_DSP5LMIX_INPUT_2_VOLUME       0xA43
+#define CLEARWATER_DSP5LMIX_INPUT_3_SOURCE       0xA44
+#define CLEARWATER_DSP5LMIX_INPUT_3_VOLUME       0xA45
+#define CLEARWATER_DSP5LMIX_INPUT_4_SOURCE       0xA46
+#define CLEARWATER_DSP5LMIX_INPUT_4_VOLUME       0xA47
+#define CLEARWATER_DSP5RMIX_INPUT_1_SOURCE       0xA48
+#define CLEARWATER_DSP5RMIX_INPUT_1_VOLUME       0xA49
+#define CLEARWATER_DSP5RMIX_INPUT_2_SOURCE       0xA4A
+#define CLEARWATER_DSP5RMIX_INPUT_2_VOLUME       0xA4B
+#define CLEARWATER_DSP5RMIX_INPUT_3_SOURCE       0xA4C
+#define CLEARWATER_DSP5RMIX_INPUT_3_VOLUME       0xA4D
+#define CLEARWATER_DSP5RMIX_INPUT_4_SOURCE       0xA4E
+#define CLEARWATER_DSP5RMIX_INPUT_4_VOLUME       0xA4F
+#define CLEARWATER_DSP5AUX1MIX_INPUT_1_SOURCE    0xA50
+#define CLEARWATER_DSP5AUX2MIX_INPUT_1_SOURCE    0xA58
+#define CLEARWATER_DSP5AUX3MIX_INPUT_1_SOURCE    0xA60
+#define CLEARWATER_DSP5AUX4MIX_INPUT_1_SOURCE    0xA68
+#define CLEARWATER_DSP5AUX5MIX_INPUT_1_SOURCE    0xA70
+#define CLEARWATER_DSP5AUX6MIX_INPUT_1_SOURCE    0xA78
 #define ARIZONA_ASRC1LMIX_INPUT_1_SOURCE         0xA80
 #define ARIZONA_ASRC1RMIX_INPUT_1_SOURCE         0xA88
 #define ARIZONA_ASRC2LMIX_INPUT_1_SOURCE         0xA90
 #define ARIZONA_ASRC2RMIX_INPUT_1_SOURCE         0xA98
+#define CLEARWATER_ASRC1_1LMIX_INPUT_1_SOURCE    0xA80
+#define CLEARWATER_ASRC1_1RMIX_INPUT_1_SOURCE    0xA88
+#define CLEARWATER_ASRC1_2LMIX_INPUT_1_SOURCE    0xA90
+#define CLEARWATER_ASRC1_2RMIX_INPUT_1_SOURCE    0xA98
+#define CLEARWATER_ASRC2_1LMIX_INPUT_1_SOURCE    0xAA0
+#define CLEARWATER_ASRC2_1RMIX_INPUT_1_SOURCE    0xAA8
+#define CLEARWATER_ASRC2_2LMIX_INPUT_1_SOURCE    0xAB0
+#define CLEARWATER_ASRC2_2RMIX_INPUT_1_SOURCE    0xAB8
 #define ARIZONA_ISRC1DEC1MIX_INPUT_1_SOURCE      0xB00
 #define ARIZONA_ISRC1DEC2MIX_INPUT_1_SOURCE      0xB08
 #define ARIZONA_ISRC1DEC3MIX_INPUT_1_SOURCE      0xB10
@@ -851,6 +1058,54 @@
 #define ARIZONA_ISRC3INT2MIX_INPUT_1_SOURCE      0xBA8
 #define ARIZONA_ISRC3INT3MIX_INPUT_1_SOURCE      0xBB0
 #define ARIZONA_ISRC3INT4MIX_INPUT_1_SOURCE      0xBB8
+#define ARIZONA_ISRC4DEC1MIX_INPUT_1_SOURCE      0xBC0
+#define ARIZONA_ISRC4DEC2MIX_INPUT_1_SOURCE      0xBC8
+#define ARIZONA_ISRC4INT1MIX_INPUT_1_SOURCE      0xBE0
+#define ARIZONA_ISRC4INT2MIX_INPUT_1_SOURCE      0xBE8
+#define CLEARWATER_DSP6LMIX_INPUT_1_SOURCE       0xC00
+#define CLEARWATER_DSP6LMIX_INPUT_1_VOLUME       0xC01
+#define CLEARWATER_DSP6LMIX_INPUT_2_SOURCE       0xC02
+#define CLEARWATER_DSP6LMIX_INPUT_2_VOLUME       0xC03
+#define CLEARWATER_DSP6LMIX_INPUT_3_SOURCE       0xC04
+#define CLEARWATER_DSP6LMIX_INPUT_3_VOLUME       0xC05
+#define CLEARWATER_DSP6LMIX_INPUT_4_SOURCE       0xC06
+#define CLEARWATER_DSP6LMIX_INPUT_4_VOLUME       0xC07
+#define CLEARWATER_DSP6RMIX_INPUT_1_SOURCE       0xC08
+#define CLEARWATER_DSP6RMIX_INPUT_1_VOLUME       0xC09
+#define CLEARWATER_DSP6RMIX_INPUT_2_SOURCE       0xC0A
+#define CLEARWATER_DSP6RMIX_INPUT_2_VOLUME       0xC0B
+#define CLEARWATER_DSP6RMIX_INPUT_3_SOURCE       0xC0C
+#define CLEARWATER_DSP6RMIX_INPUT_3_VOLUME       0xC0D
+#define CLEARWATER_DSP6RMIX_INPUT_4_SOURCE       0xC0E
+#define CLEARWATER_DSP6RMIX_INPUT_4_VOLUME       0xC0F
+#define CLEARWATER_DSP6AUX1MIX_INPUT_1_SOURCE    0xC10
+#define CLEARWATER_DSP6AUX2MIX_INPUT_1_SOURCE    0xC18
+#define CLEARWATER_DSP6AUX3MIX_INPUT_1_SOURCE    0xC20
+#define CLEARWATER_DSP6AUX4MIX_INPUT_1_SOURCE    0xC28
+#define CLEARWATER_DSP6AUX5MIX_INPUT_1_SOURCE    0xC30
+#define CLEARWATER_DSP6AUX6MIX_INPUT_1_SOURCE    0xC38
+#define CLEARWATER_DSP7LMIX_INPUT_1_SOURCE       0xC40
+#define CLEARWATER_DSP7LMIX_INPUT_1_VOLUME       0xC41
+#define CLEARWATER_DSP7LMIX_INPUT_2_SOURCE       0xC42
+#define CLEARWATER_DSP7LMIX_INPUT_2_VOLUME       0xC43
+#define CLEARWATER_DSP7LMIX_INPUT_3_SOURCE       0xC44
+#define CLEARWATER_DSP7LMIX_INPUT_3_VOLUME       0xC45
+#define CLEARWATER_DSP7LMIX_INPUT_4_SOURCE       0xC46
+#define CLEARWATER_DSP7LMIX_INPUT_4_VOLUME       0xC47
+#define CLEARWATER_DSP7RMIX_INPUT_1_SOURCE       0xC48
+#define CLEARWATER_DSP7RMIX_INPUT_1_VOLUME       0xC49
+#define CLEARWATER_DSP7RMIX_INPUT_2_SOURCE       0xC4A
+#define CLEARWATER_DSP7RMIX_INPUT_2_VOLUME       0xC4B
+#define CLEARWATER_DSP7RMIX_INPUT_3_SOURCE       0xC4C
+#define CLEARWATER_DSP7RMIX_INPUT_3_VOLUME       0xC4D
+#define CLEARWATER_DSP7RMIX_INPUT_4_SOURCE       0xC4E
+#define CLEARWATER_DSP7RMIX_INPUT_4_VOLUME       0xC4F
+#define CLEARWATER_DSP7AUX1MIX_INPUT_1_SOURCE    0xC50
+#define CLEARWATER_DSP7AUX2MIX_INPUT_1_SOURCE    0xC58
+#define CLEARWATER_DSP7AUX3MIX_INPUT_1_SOURCE    0xC60
+#define CLEARWATER_DSP7AUX4MIX_INPUT_1_SOURCE    0xC68
+#define CLEARWATER_DSP7AUX5MIX_INPUT_1_SOURCE    0xC70
+#define CLEARWATER_DSP7AUX6MIX_INPUT_1_SOURCE    0xC78
 #define ARIZONA_GPIO1_CTRL                       0xC00
 #define ARIZONA_GPIO2_CTRL                       0xC01
 #define ARIZONA_GPIO3_CTRL                       0xC02
@@ -858,6 +1113,8 @@
 #define ARIZONA_GPIO5_CTRL                       0xC04
 #define ARIZONA_IRQ_CTRL_1                       0xC0F
 #define ARIZONA_GPIO_DEBOUNCE_CONFIG             0xC10
+#define ARIZONA_GP_SWITCH_1                      0xC18
+#define CLEARWATER_GP_SWITCH_1                   0x2C8
 #define ARIZONA_MISC_PAD_CTRL_1                  0xC20
 #define ARIZONA_MISC_PAD_CTRL_2                  0xC21
 #define ARIZONA_MISC_PAD_CTRL_3                  0xC22
@@ -919,6 +1176,14 @@
 #define ARIZONA_AOD_IRQ_MASK_IRQ2                0xD54
 #define ARIZONA_AOD_IRQ_RAW_STATUS               0xD55
 #define ARIZONA_JACK_DETECT_DEBOUNCE             0xD56
+#define MOON_DFC1MIX_INPUT_1_SOURCE              0xDC0
+#define MOON_DFC2MIX_INPUT_1_SOURCE              0xDC8
+#define MOON_DFC3MIX_INPUT_1_SOURCE              0xDD0
+#define MOON_DFC4MIX_INPUT_1_SOURCE              0xDD8
+#define MOON_DFC5MIX_INPUT_1_SOURCE              0xDE0
+#define MOON_DFC6MIX_INPUT_1_SOURCE              0xDE8
+#define MOON_DFC7MIX_INPUT_1_SOURCE              0xDF0
+#define MOON_DFC8MIX_INPUT_1_SOURCE              0xDF8
 #define ARIZONA_FX_CTRL1                         0xE00
 #define ARIZONA_FX_CTRL2                         0xE01
 #define ARIZONA_EQ1_1                            0xE10
@@ -1015,6 +1280,11 @@
 #define ARIZONA_DRC2_CTRL3                       0xE8B
 #define ARIZONA_DRC2_CTRL4                       0xE8C
 #define ARIZONA_DRC2_CTRL5                       0xE8D
+#define CLEARWATER_DRC2_CTRL1                    0xE88
+#define CLEARWATER_DRC2_CTRL2                    0xE89
+#define CLEARWATER_DRC2_CTRL3                    0xE8A
+#define CLEARWATER_DRC2_CTRL4                    0xE8B
+#define CLEARWATER_DRC2_CTRL5                    0xE8C
 #define ARIZONA_HPLPF1_1                         0xEC0
 #define ARIZONA_HPLPF1_2                         0xEC1
 #define ARIZONA_HPLPF2_1                         0xEC4
@@ -1023,6 +1293,14 @@
 #define ARIZONA_HPLPF3_2                         0xEC9
 #define ARIZONA_HPLPF4_1                         0xECC
 #define ARIZONA_HPLPF4_2                         0xECD
+#define CLEARWATER_ASRC2_ENABLE                  0xED0
+#define CLEARWATER_ASRC2_STATUS                  0xED1
+#define CLEARWATER_ASRC2_RATE1                   0xED2
+#define CLEARWATER_ASRC2_RATE2                   0xED3
+#define CLEARWATER_ASRC1_ENABLE                  0xEE0
+#define CLEARWATER_ASRC1_STATUS                  0xEE1
+#define CLEARWATER_ASRC1_RATE1                   0xEE2
+#define CLEARWATER_ASRC1_RATE2                   0xEE3
 #define ARIZONA_ASRC_ENABLE                      0xEE0
 #define ARIZONA_ASRC_STATUS                      0xEE1
 #define ARIZONA_ASRC_RATE1                       0xEE2
@@ -1036,9 +1314,26 @@
 #define ARIZONA_ISRC_3_CTRL_1                    0xEF6
 #define ARIZONA_ISRC_3_CTRL_2                    0xEF7
 #define ARIZONA_ISRC_3_CTRL_3                    0xEF8
+#define ARIZONA_ISRC_4_CTRL_1                    0xEF9
+#define ARIZONA_ISRC_4_CTRL_2                    0xEFA
+#define ARIZONA_ISRC_4_CTRL_3                    0xEFB
 #define ARIZONA_CLOCK_CONTROL                    0xF00
 #define ARIZONA_ANC_SRC                          0xF01
 #define ARIZONA_DSP_STATUS                       0xF02
+#define ARIZONA_ANC_COEFF_START                  0xF08
+#define ARIZONA_ANC_COEFF_END                    0xF12
+#define ARIZONA_FCL_FILTER_CONTROL               0xF15
+#define ARIZONA_FCL_ADC_REFORMATTER_CONTROL      0xF17
+#define ARIZONA_FCL_COEFF_START                  0xF18
+#define ARIZONA_FCL_COEFF_END                    0xF69
+#define ARIZONA_FCR_FILTER_CONTROL               0xF70
+#define CLEARWATER_FCR_FILTER_CONTROL            0xF71
+#define ARIZONA_FCR_ADC_REFORMATTER_CONTROL      0xF72
+#define CLEARWATER_FCR_ADC_REFORMATTER_CONTROL   0xF73
+#define ARIZONA_FCR_COEFF_START                  0xF73
+#define ARIZONA_FCR_COEFF_END                    0xFC4
+#define CLEARWATER_FCR_COEFF_START               0xF74
+#define CLEARWATER_FCR_COEFF_END                 0xFC5
 #define ARIZONA_DSP1_CONTROL_1                   0x1100
 #define ARIZONA_DSP1_CLOCKING_1                  0x1101
 #define ARIZONA_DSP1_STATUS_1                    0x1104
@@ -1100,7 +1395,9 @@
 #define ARIZONA_DSP2_SCRATCH_2                   0x1242
 #define ARIZONA_DSP2_SCRATCH_3                   0x1243
 #define ARIZONA_DSP3_CONTROL_1                   0x1300
+#define CLEARWATER_DAC_COMP_1                    0x1300
 #define ARIZONA_DSP3_CLOCKING_1                  0x1301
+#define CLEARWATER_DAC_COMP_2                    0x1302
 #define ARIZONA_DSP3_STATUS_1                    0x1304
 #define ARIZONA_DSP3_STATUS_2                    0x1305
 #define ARIZONA_DSP3_STATUS_3                    0x1306
@@ -1129,6 +1426,66 @@
 #define ARIZONA_DSP3_SCRATCH_1                   0x1341
 #define ARIZONA_DSP3_SCRATCH_2                   0x1342
 #define ARIZONA_DSP3_SCRATCH_3                   0x1343
+#define CLEARWATER_FRF_COEFFICIENT_1L_1          0x1380
+#define CLEARWATER_FRF_COEFFICIENT_1L_2          0x1381
+#define CLEARWATER_FRF_COEFFICIENT_1L_3          0x1382
+#define CLEARWATER_FRF_COEFFICIENT_1L_4          0x1383
+#define CLEARWATER_FRF_COEFFICIENT_1R_1          0x1390
+#define CLEARWATER_FRF_COEFFICIENT_1R_2          0x1391
+#define CLEARWATER_FRF_COEFFICIENT_1R_3          0x1392
+#define CLEARWATER_FRF_COEFFICIENT_1R_4          0x1393
+#define CLEARWATER_FRF_COEFFICIENT_2L_1          0x13A0
+#define CLEARWATER_FRF_COEFFICIENT_2L_2          0x13A1
+#define CLEARWATER_FRF_COEFFICIENT_2L_3          0x13A2
+#define CLEARWATER_FRF_COEFFICIENT_2L_4          0x13A3
+#define CLEARWATER_FRF_COEFFICIENT_2R_1          0x13B0
+#define CLEARWATER_FRF_COEFFICIENT_2R_2          0x13B1
+#define CLEARWATER_FRF_COEFFICIENT_2R_3          0x13B2
+#define CLEARWATER_FRF_COEFFICIENT_2R_4          0x13B3
+#define CLEARWATER_FRF_COEFFICIENT_3L_1          0x13C0
+#define CLEARWATER_FRF_COEFFICIENT_3L_2          0x13C1
+#define CLEARWATER_FRF_COEFFICIENT_3L_3          0x13C2
+#define CLEARWATER_FRF_COEFFICIENT_3L_4          0x13C3
+#define CLEARWATER_FRF_COEFFICIENT_3R_1          0x13D0
+#define CLEARWATER_FRF_COEFFICIENT_3R_2          0x13D1
+#define CLEARWATER_FRF_COEFFICIENT_3R_3          0x13D2
+#define CLEARWATER_FRF_COEFFICIENT_3R_4          0x13D3
+#define CLEARWATER_FRF_COEFFICIENT_4L_1          0x13E0
+#define CLEARWATER_FRF_COEFFICIENT_4L_2          0x13E1
+#define CLEARWATER_FRF_COEFFICIENT_4L_3          0x13E2
+#define CLEARWATER_FRF_COEFFICIENT_4L_4          0x13E3
+#define CLEARWATER_FRF_COEFFICIENT_4R_1          0x13F0
+#define CLEARWATER_FRF_COEFFICIENT_4R_2          0x13F1
+#define CLEARWATER_FRF_COEFFICIENT_4R_3          0x13F2
+#define CLEARWATER_FRF_COEFFICIENT_4R_4          0x13F3
+#define CLEARWATER_FRF_COEFFICIENT_5L_1          0x1400
+#define CLEARWATER_FRF_COEFFICIENT_5L_2          0x1401
+#define CLEARWATER_FRF_COEFFICIENT_5L_3          0x1402
+#define CLEARWATER_FRF_COEFFICIENT_5L_4          0x1403
+#define CLEARWATER_FRF_COEFFICIENT_5R_1          0x1410
+#define CLEARWATER_FRF_COEFFICIENT_5R_2          0x1411
+#define CLEARWATER_FRF_COEFFICIENT_5R_3          0x1412
+#define CLEARWATER_FRF_COEFFICIENT_5R_4          0x1413
+#define CLEARWATER_FRF_COEFFICIENT_6L_1          0x1420
+#define CLEARWATER_FRF_COEFFICIENT_6L_2          0x1421
+#define CLEARWATER_FRF_COEFFICIENT_6L_3          0x1422
+#define CLEARWATER_FRF_COEFFICIENT_6L_4          0x1423
+#define CLEARWATER_FRF_COEFFICIENT_6R_1          0x1430
+#define CLEARWATER_FRF_COEFFICIENT_6R_2          0x1431
+#define CLEARWATER_FRF_COEFFICIENT_6R_3          0x1432
+#define CLEARWATER_FRF_COEFFICIENT_6R_4          0x1433
+#define MARLEY_FRF_COEFFICIENT_4L_1              0x13A0
+#define MARLEY_FRF_COEFFICIENT_4L_2              0x13A1
+#define MARLEY_FRF_COEFFICIENT_4L_3              0x13A2
+#define MARLEY_FRF_COEFFICIENT_4L_4              0x13A3
+#define MARLEY_FRF_COEFFICIENT_5L_1              0x13B0
+#define MARLEY_FRF_COEFFICIENT_5L_2              0x13B1
+#define MARLEY_FRF_COEFFICIENT_5L_3              0x13B2
+#define MARLEY_FRF_COEFFICIENT_5L_4              0x13B3
+#define MARLEY_FRF_COEFFICIENT_5R_1              0x13C0
+#define MARLEY_FRF_COEFFICIENT_5R_2              0x13C1
+#define MARLEY_FRF_COEFFICIENT_5R_3              0x13C2
+#define MARLEY_FRF_COEFFICIENT_5R_4              0x13C3
 #define ARIZONA_DSP4_CONTROL_1                   0x1400
 #define ARIZONA_DSP4_CLOCKING_1                  0x1401
 #define ARIZONA_DSP4_STATUS_1                    0x1404
@@ -1159,6 +1516,924 @@
 #define ARIZONA_DSP4_SCRATCH_1                   0x1441
 #define ARIZONA_DSP4_SCRATCH_2                   0x1442
 #define ARIZONA_DSP4_SCRATCH_3                   0x1443
+#define MOON_DFC1_CTRL                           0x1480
+#define MOON_DFC1_RX                             0x1482
+#define MOON_DFC1_TX                             0x1484
+#define MOON_DFC2_CTRL                           0x1486
+#define MOON_DFC2_RX                             0x1488
+#define MOON_DFC2_TX                             0x148A
+#define MOON_DFC3_CTRL                           0x148C
+#define MOON_DFC3_RX                             0x148E
+#define MOON_DFC3_TX                             0x1490
+#define MOON_DFC4_CTRL                           0x1492
+#define MOON_DFC4_RX                             0x1494
+#define MOON_DFC4_TX                             0x1496
+#define MOON_DFC5_CTRL                           0x1498
+#define MOON_DFC5_RX                             0x149A
+#define MOON_DFC5_TX                             0x149C
+#define MOON_DFC6_CTRL                           0x149E
+#define MOON_DFC6_RX                             0x14A0
+#define MOON_DFC6_TX                             0x14A2
+#define MOON_DFC7_CTRL                           0x14A4
+#define MOON_DFC7_RX                             0x14A6
+#define MOON_DFC7_TX                             0x14A8
+#define MOON_DFC8_CTRL                           0x14AA
+#define MOON_DFC8_RX                             0x14AC
+#define MOON_DFC8_TX                             0x14AE
+#define MOON_DFC_STATUS                          0x14B6
+#define ARIZONA_FRF_COEFF_1                      0x1700
+#define ARIZONA_FRF_COEFF_2                      0x1701
+#define ARIZONA_FRF_COEFF_3                      0x1702
+#define ARIZONA_FRF_COEFF_4                      0x1703
+#define ARIZONA_V2_DAC_COMP_1                    0x1704
+#define ARIZONA_V2_DAC_COMP_2                    0x1705
+#define CLEARWATER_ADSP2_IRQ0                    0x1600
+#define CLEARWATER_ADSP2_IRQ1                    0x1601
+#define CLEARWATER_ADSP2_IRQ2                    0x1602
+#define CLEARWATER_ADSP2_IRQ3                    0x1603
+#define CLEARWATER_ADSP2_IRQ4                    0x1604
+#define CLEARWATER_ADSP2_IRQ5                    0x1605
+#define CLEARWATER_ADSP2_IRQ6                    0x1606
+#define CLEARWATER_ADSP2_IRQ7                    0x1607
+#define CLEARWATER_GPIO1_CTRL_1                  0x1700
+#define CLEARWATER_GPIO1_CTRL_2                  0x1701
+#define CLEARWATER_GPIO2_CTRL_1                  0x1702
+#define CLEARWATER_GPIO2_CTRL_2                  0x1703
+#define CLEARWATER_GPIO3_CTRL_1                  0x1704
+#define CLEARWATER_GPIO3_CTRL_2                  0x1705
+#define CLEARWATER_GPIO4_CTRL_1                  0x1706
+#define CLEARWATER_GPIO4_CTRL_2                  0x1707
+#define CLEARWATER_GPIO5_CTRL_1                  0x1708
+#define CLEARWATER_GPIO5_CTRL_2                  0x1709
+#define CLEARWATER_GPIO6_CTRL_1                  0x170A
+#define CLEARWATER_GPIO6_CTRL_2                  0x170B
+#define CLEARWATER_GPIO7_CTRL_1                  0x170C
+#define CLEARWATER_GPIO7_CTRL_2                  0x170D
+#define CLEARWATER_GPIO8_CTRL_1                  0x170E
+#define CLEARWATER_GPIO8_CTRL_2                  0x170F
+#define CLEARWATER_GPIO9_CTRL_1                  0x1710
+#define CLEARWATER_GPIO9_CTRL_2                  0x1711
+#define CLEARWATER_GPIO10_CTRL_1                 0x1712
+#define CLEARWATER_GPIO10_CTRL_2                 0x1713
+#define CLEARWATER_GPIO11_CTRL_1                 0x1714
+#define CLEARWATER_GPIO11_CTRL_2                 0x1715
+#define CLEARWATER_GPIO12_CTRL_1                 0x1716
+#define CLEARWATER_GPIO12_CTRL_2                 0x1717
+#define CLEARWATER_GPIO13_CTRL_1                 0x1718
+#define CLEARWATER_GPIO13_CTRL_2                 0x1719
+#define CLEARWATER_GPIO14_CTRL_1                 0x171A
+#define CLEARWATER_GPIO14_CTRL_2                 0x171B
+#define CLEARWATER_GPIO15_CTRL_1                 0x171C
+#define CLEARWATER_GPIO15_CTRL_2                 0x171D
+#define CLEARWATER_GPIO16_CTRL_1                 0x171E
+#define CLEARWATER_GPIO16_CTRL_2                 0x171F
+#define CLEARWATER_GPIO17_CTRL_1                 0x1720
+#define CLEARWATER_GPIO17_CTRL_2                 0x1721
+#define CLEARWATER_GPIO18_CTRL_1                 0x1722
+#define CLEARWATER_GPIO18_CTRL_2                 0x1723
+#define CLEARWATER_GPIO19_CTRL_1                 0x1724
+#define CLEARWATER_GPIO19_CTRL_2                 0x1725
+#define CLEARWATER_GPIO20_CTRL_1                 0x1726
+#define CLEARWATER_GPIO20_CTRL_2                 0x1727
+#define CLEARWATER_GPIO21_CTRL_1                 0x1728
+#define CLEARWATER_GPIO21_CTRL_2                 0x1729
+#define CLEARWATER_GPIO22_CTRL_1                 0x172A
+#define CLEARWATER_GPIO22_CTRL_2                 0x172B
+#define CLEARWATER_GPIO23_CTRL_1                 0x172C
+#define CLEARWATER_GPIO23_CTRL_2                 0x172D
+#define CLEARWATER_GPIO24_CTRL_1                 0x172E
+#define CLEARWATER_GPIO24_CTRL_2                 0x172F
+#define CLEARWATER_GPIO25_CTRL_1                 0x1730
+#define CLEARWATER_GPIO25_CTRL_2                 0x1731
+#define CLEARWATER_GPIO26_CTRL_1                 0x1732
+#define CLEARWATER_GPIO26_CTRL_2                 0x1733
+#define CLEARWATER_GPIO27_CTRL_1                 0x1734
+#define CLEARWATER_GPIO27_CTRL_2                 0x1735
+#define CLEARWATER_GPIO28_CTRL_1                 0x1736
+#define CLEARWATER_GPIO28_CTRL_2                 0x1737
+#define CLEARWATER_GPIO29_CTRL_1                 0x1738
+#define CLEARWATER_GPIO29_CTRL_2                 0x1739
+#define CLEARWATER_GPIO30_CTRL_1                 0x173A
+#define CLEARWATER_GPIO30_CTRL_2                 0x173B
+#define CLEARWATER_GPIO31_CTRL_1                 0x173C
+#define CLEARWATER_GPIO31_CTRL_2                 0x173D
+#define CLEARWATER_GPIO32_CTRL_1                 0x173E
+#define CLEARWATER_GPIO32_CTRL_2                 0x173F
+#define CLEARWATER_GPIO33_CTRL_1                 0x1740
+#define CLEARWATER_GPIO33_CTRL_2                 0x1741
+#define CLEARWATER_GPIO34_CTRL_1                 0x1742
+#define CLEARWATER_GPIO34_CTRL_2                 0x1743
+#define CLEARWATER_GPIO35_CTRL_1                 0x1744
+#define CLEARWATER_GPIO35_CTRL_2                 0x1745
+#define CLEARWATER_GPIO36_CTRL_1                 0x1746
+#define CLEARWATER_GPIO36_CTRL_2                 0x1747
+#define CLEARWATER_GPIO37_CTRL_1                 0x1748
+#define CLEARWATER_GPIO37_CTRL_2                 0x1749
+#define CLEARWATER_GPIO38_CTRL_1                 0x174A
+#define CLEARWATER_GPIO38_CTRL_2                 0x174B
+#define CLEARWATER_GPIO39_CTRL_1                 0x174C
+#define CLEARWATER_GPIO39_CTRL_2                 0x174D
+#define CLEARWATER_GPIO40_CTRL_1                 0x174E
+#define CLEARWATER_GPIO40_CTRL_2                 0x174F
+#define CLEARWATER_IRQ1_STATUS_1                 0x1800
+#define CLEARWATER_IRQ1_STATUS_2                 0x1801
+#define CLEARWATER_IRQ1_STATUS_3                 0x1802
+#define CLEARWATER_IRQ1_STATUS_4                 0x1803
+#define CLEARWATER_IRQ1_STATUS_5                 0x1804
+#define CLEARWATER_IRQ1_STATUS_6                 0x1805
+#define CLEARWATER_IRQ1_STATUS_7                 0x1806
+#define CLEARWATER_IRQ1_STATUS_8                 0x1807
+#define CLEARWATER_IRQ1_STATUS_9                 0x1808
+#define CLEARWATER_IRQ1_STATUS_10                0x1809
+#define CLEARWATER_IRQ1_STATUS_11                0x180A
+#define CLEARWATER_IRQ1_STATUS_12                0x180B
+#define CLEARWATER_IRQ1_STATUS_13                0x180C
+#define CLEARWATER_IRQ1_STATUS_14                0x180D
+#define CLEARWATER_IRQ1_STATUS_15                0x180E
+#define CLEARWATER_IRQ1_STATUS_16                0x180F
+#define CLEARWATER_IRQ1_STATUS_17                0x1810
+#define CLEARWATER_IRQ1_STATUS_18                0x1811
+#define CLEARWATER_IRQ1_STATUS_19                0x1812
+#define CLEARWATER_IRQ1_STATUS_20                0x1813
+#define CLEARWATER_IRQ1_STATUS_21                0x1814
+#define CLEARWATER_IRQ1_STATUS_22                0x1815
+#define CLEARWATER_IRQ1_STATUS_23                0x1816
+#define CLEARWATER_IRQ1_STATUS_24                0x1817
+#define CLEARWATER_IRQ1_STATUS_25                0x1818
+#define CLEARWATER_IRQ1_STATUS_26                0x1819
+#define CLEARWATER_IRQ1_STATUS_27                0x181A
+#define CLEARWATER_IRQ1_STATUS_28                0x181B
+#define CLEARWATER_IRQ1_STATUS_29                0x181C
+#define CLEARWATER_IRQ1_STATUS_30                0x181D
+#define CLEARWATER_IRQ1_STATUS_31                0x181E
+#define CLEARWATER_IRQ1_STATUS_32                0x181F
+#define MOON_IRQ1_STATUS_33                      0x1820
+#define CLEARWATER_IRQ1_MASK_1                   0x1840
+#define CLEARWATER_IRQ1_MASK_2                   0x1841
+#define CLEARWATER_IRQ1_MASK_3                   0x1842
+#define CLEARWATER_IRQ1_MASK_4                   0x1843
+#define CLEARWATER_IRQ1_MASK_5                   0x1844
+#define CLEARWATER_IRQ1_MASK_6                   0x1845
+#define CLEARWATER_IRQ1_MASK_7                   0x1846
+#define CLEARWATER_IRQ1_MASK_8                   0x1847
+#define CLEARWATER_IRQ1_MASK_9                   0x1848
+#define CLEARWATER_IRQ1_MASK_10                  0x1849
+#define CLEARWATER_IRQ1_MASK_11                  0x184A
+#define CLEARWATER_IRQ1_MASK_12                  0x184B
+#define CLEARWATER_IRQ1_MASK_13                  0x184C
+#define CLEARWATER_IRQ1_MASK_14                  0x184D
+#define CLEARWATER_IRQ1_MASK_15                  0x184E
+#define MOON_IRQ1_MASK_16                        0x184F
+#define CLEARWATER_IRQ1_MASK_17                  0x1850
+#define CLEARWATER_IRQ1_MASK_18                  0x1851
+#define CLEARWATER_IRQ1_MASK_19                  0x1852
+#define MOON_IRQ1_MASK_20                        0x1853
+#define CLEARWATER_IRQ1_MASK_21                  0x1854
+#define CLEARWATER_IRQ1_MASK_22                  0x1855
+#define CLEARWATER_IRQ1_MASK_23                  0x1856
+#define CLEARWATER_IRQ1_MASK_24                  0x1857
+#define CLEARWATER_IRQ1_MASK_25                  0x1858
+#define MOON_IRQ1_MASK_26                        0x1859
+#define CLEARWATER_IRQ1_MASK_27                  0x185A
+#define CLEARWATER_IRQ1_MASK_28                  0x185B
+#define MOON_IRQ1_MASK_29                        0x185C
+#define CLEARWATER_IRQ1_MASK_30                  0x185D
+#define CLEARWATER_IRQ1_MASK_31                  0x185E
+#define CLEARWATER_IRQ1_MASK_32                  0x185F
+#define MOON_IRQ1_MASK_33                        0x1860
+#define CLEARWATER_IRQ1_RAW_STATUS_1             0x1880
+#define CLEARWATER_IRQ1_RAW_STATUS_2             0x1881
+#define CLEARWATER_IRQ1_RAW_STATUS_6             0x1885
+#define CLEARWATER_IRQ1_RAW_STATUS_7             0x1886
+#define CLEARWATER_IRQ1_RAW_STATUS_9             0x1888
+#define CLEARWATER_IRQ1_RAW_STATUS_10            0x1889
+#define CLEARWATER_IRQ1_RAW_STATUS_11            0x188A
+#define CLEARWATER_IRQ1_RAW_STATUS_12            0x188B
+#define CLEARWATER_IRQ1_RAW_STATUS_13            0x188C
+#define CLEARWATER_IRQ1_RAW_STATUS_14            0x188D
+#define CLEARWATER_IRQ1_RAW_STATUS_15            0x188E
+#define CLEARWATER_IRQ1_RAW_STATUS_17            0x1890
+#define CLEARWATER_IRQ1_RAW_STATUS_18            0x1891
+#define CLEARWATER_IRQ1_RAW_STATUS_19            0x1892
+#define CLEARWATER_IRQ1_RAW_STATUS_21            0x1894
+#define CLEARWATER_IRQ1_RAW_STATUS_22            0x1895
+#define CLEARWATER_IRQ1_RAW_STATUS_23            0x1896
+#define CLEARWATER_IRQ1_RAW_STATUS_24            0x1897
+#define CLEARWATER_IRQ1_RAW_STATUS_25            0x1898
+#define CLEARWATER_IRQ1_RAW_STATUS_30            0x189D
+#define CLEARWATER_IRQ1_RAW_STATUS_31            0x189E
+#define CLEARWATER_IRQ1_RAW_STATUS_32            0x189F
+#define CLEARWATER_IRQ2_STATUS_1                 0x1900
+#define CLEARWATER_IRQ2_STATUS_2                 0x1901
+#define CLEARWATER_IRQ2_STATUS_6                 0x1905
+#define CLEARWATER_IRQ2_STATUS_7                 0x1906
+#define CLEARWATER_IRQ2_STATUS_9                 0x1908
+#define CLEARWATER_IRQ2_STATUS_11                0x190A
+#define CLEARWATER_IRQ2_STATUS_12                0x190B
+#define CLEARWATER_IRQ2_STATUS_13                0x190C
+#define CLEARWATER_IRQ2_STATUS_14                0x190D
+#define CLEARWATER_IRQ2_STATUS_15                0x190E
+#define CLEARWATER_IRQ2_STATUS_17                0x1910
+#define CLEARWATER_IRQ2_STATUS_18                0x1911
+#define CLEARWATER_IRQ2_STATUS_19                0x1912
+#define CLEARWATER_IRQ2_STATUS_21                0x1914
+#define CLEARWATER_IRQ2_STATUS_22                0x1915
+#define CLEARWATER_IRQ2_STATUS_23                0x1916
+#define CLEARWATER_IRQ2_STATUS_24                0x1917
+#define CLEARWATER_IRQ2_STATUS_25                0x1918
+#define CLEARWATER_IRQ2_STATUS_27                0x191A
+#define CLEARWATER_IRQ2_STATUS_28                0x191B
+#define CLEARWATER_IRQ2_STATUS_30                0x191D
+#define CLEARWATER_IRQ2_STATUS_31                0x191E
+#define CLEARWATER_IRQ2_STATUS_32                0x191F
+#define CLEARWATER_IRQ2_MASK_1                   0x1940
+#define CLEARWATER_IRQ2_MASK_2                   0x1941
+#define CLEARWATER_IRQ2_MASK_6                   0x1945
+#define CLEARWATER_IRQ2_MASK_7                   0x1946
+#define CLEARWATER_IRQ2_MASK_9                   0x1948
+#define CLEARWATER_IRQ2_MASK_11                  0x194A
+#define CLEARWATER_IRQ2_MASK_12                  0x194B
+#define CLEARWATER_IRQ2_MASK_13                  0x194C
+#define CLEARWATER_IRQ2_MASK_14                  0x194D
+#define CLEARWATER_IRQ2_MASK_15                  0x194E
+#define CLEARWATER_IRQ2_MASK_17                  0x1950
+#define CLEARWATER_IRQ2_MASK_18                  0x1951
+#define CLEARWATER_IRQ2_MASK_19                  0x1952
+#define CLEARWATER_IRQ2_MASK_21                  0x1954
+#define CLEARWATER_IRQ2_MASK_22                  0x1955
+#define CLEARWATER_IRQ2_MASK_23                  0x1956
+#define CLEARWATER_IRQ2_MASK_24                  0x1957
+#define CLEARWATER_IRQ2_MASK_25                  0x1958
+#define CLEARWATER_IRQ2_MASK_27                  0x195A
+#define CLEARWATER_IRQ2_MASK_28                  0x195B
+#define CLEARWATER_IRQ2_MASK_30                  0x195D
+#define CLEARWATER_IRQ2_MASK_31                  0x195E
+#define CLEARWATER_IRQ2_MASK_32                  0x195F
+#define CLEARWATER_IRQ2_RAW_STATUS_1             0x1980
+#define CLEARWATER_IRQ2_RAW_STATUS_2             0x1981
+#define CLEARWATER_IRQ2_RAW_STATUS_6             0x1985
+#define CLEARWATER_IRQ2_RAW_STATUS_7             0x1986
+#define CLEARWATER_IRQ2_RAW_STATUS_9             0x1988
+#define CLEARWATER_IRQ2_RAW_STATUS_10            0x1989
+#define CLEARWATER_IRQ2_RAW_STATUS_11            0x198A
+#define CLEARWATER_IRQ2_RAW_STATUS_12            0x198B
+#define CLEARWATER_IRQ2_RAW_STATUS_13            0x198C
+#define CLEARWATER_IRQ2_RAW_STATUS_14            0x198D
+#define CLEARWATER_IRQ2_RAW_STATUS_15            0x198E
+#define CLEARWATER_IRQ2_RAW_STATUS_17            0x1990
+#define CLEARWATER_IRQ2_RAW_STATUS_18            0x1991
+#define CLEARWATER_IRQ2_RAW_STATUS_19            0x1992
+#define CLEARWATER_IRQ2_RAW_STATUS_21            0x1994
+#define CLEARWATER_IRQ2_RAW_STATUS_22            0x1995
+#define CLEARWATER_IRQ2_RAW_STATUS_23            0x1996
+#define CLEARWATER_IRQ2_RAW_STATUS_24            0x1997
+#define CLEARWATER_IRQ2_RAW_STATUS_25            0x1998
+#define CLEARWATER_IRQ2_RAW_STATUS_30            0x199D
+#define CLEARWATER_IRQ2_RAW_STATUS_31            0x199E
+#define CLEARWATER_IRQ2_RAW_STATUS_32            0x199F
+#define CLEARWATER_INTERRUPT_DEBOUNCE_7          0x1A06
+#define CLEARWATER_INTERRUPT_DEBOUNCE_15         0x1A0E
+#define CLEARWATER_IRQ1_CTRL                     0x1A80
+#define CLEARWATER_IRQ2_CTRL                     0x1A82
+#define CLEARWATER_INTERRUPT_RAW_STATUS_1        0x1AA0
+#define ARIZONA_WSEQ_SEQUENCE_1                  0x3000
+#define ARIZONA_WSEQ_SEQUENCE_2                  0x3002
+#define ARIZONA_WSEQ_SEQUENCE_3                  0x3004
+#define ARIZONA_WSEQ_SEQUENCE_4                  0x3006
+#define ARIZONA_WSEQ_SEQUENCE_5                  0x3008
+#define ARIZONA_WSEQ_SEQUENCE_6                  0x300A
+#define ARIZONA_WSEQ_SEQUENCE_7                  0x300C
+#define ARIZONA_WSEQ_SEQUENCE_8                  0x300E
+#define ARIZONA_WSEQ_SEQUENCE_9                  0x3010
+#define ARIZONA_WSEQ_SEQUENCE_10                 0x3012
+#define ARIZONA_WSEQ_SEQUENCE_11                 0x3014
+#define ARIZONA_WSEQ_SEQUENCE_12                 0x3016
+#define ARIZONA_WSEQ_SEQUENCE_13                 0x3018
+#define ARIZONA_WSEQ_SEQUENCE_14                 0x301A
+#define ARIZONA_WSEQ_SEQUENCE_15                 0x301C
+#define ARIZONA_WSEQ_SEQUENCE_16                 0x301E
+#define ARIZONA_WSEQ_SEQUENCE_17                 0x3020
+#define ARIZONA_WSEQ_SEQUENCE_18                 0x3022
+#define ARIZONA_WSEQ_SEQUENCE_19                 0x3024
+#define ARIZONA_WSEQ_SEQUENCE_20                 0x3026
+#define ARIZONA_WSEQ_SEQUENCE_21                 0x3028
+#define ARIZONA_WSEQ_SEQUENCE_22                 0x302A
+#define ARIZONA_WSEQ_SEQUENCE_23                 0x302C
+#define ARIZONA_WSEQ_SEQUENCE_24                 0x302E
+#define ARIZONA_WSEQ_SEQUENCE_25                 0x3030
+#define ARIZONA_WSEQ_SEQUENCE_26                 0x3032
+#define ARIZONA_WSEQ_SEQUENCE_27                 0x3034
+#define ARIZONA_WSEQ_SEQUENCE_28                 0x3036
+#define ARIZONA_WSEQ_SEQUENCE_29                 0x3038
+#define ARIZONA_WSEQ_SEQUENCE_30                 0x303A
+#define ARIZONA_WSEQ_SEQUENCE_31                 0x303C
+#define ARIZONA_WSEQ_SEQUENCE_32                 0x303E
+#define ARIZONA_WSEQ_SEQUENCE_33                 0x3040
+#define ARIZONA_WSEQ_SEQUENCE_34                 0x3042
+#define ARIZONA_WSEQ_SEQUENCE_35                 0x3044
+#define ARIZONA_WSEQ_SEQUENCE_36                 0x3046
+#define ARIZONA_WSEQ_SEQUENCE_37                 0x3048
+#define ARIZONA_WSEQ_SEQUENCE_38                 0x304A
+#define ARIZONA_WSEQ_SEQUENCE_39                 0x304C
+#define ARIZONA_WSEQ_SEQUENCE_40                 0x304E
+#define ARIZONA_WSEQ_SEQUENCE_41                 0x3050
+#define ARIZONA_WSEQ_SEQUENCE_42                 0x3052
+#define ARIZONA_WSEQ_SEQUENCE_43                 0x3054
+#define ARIZONA_WSEQ_SEQUENCE_44                 0x3056
+#define ARIZONA_WSEQ_SEQUENCE_45                 0x3058
+#define ARIZONA_WSEQ_SEQUENCE_46                 0x305A
+#define ARIZONA_WSEQ_SEQUENCE_47                 0x305C
+#define ARIZONA_WSEQ_SEQUENCE_48                 0x305E
+#define ARIZONA_WSEQ_SEQUENCE_49                 0x3060
+#define ARIZONA_WSEQ_SEQUENCE_50                 0x3062
+#define ARIZONA_WSEQ_SEQUENCE_51                 0x3064
+#define ARIZONA_WSEQ_SEQUENCE_52                 0x3066
+#define ARIZONA_WSEQ_SEQUENCE_53                 0x3068
+#define ARIZONA_WSEQ_SEQUENCE_54                 0x306A
+#define ARIZONA_WSEQ_SEQUENCE_55                 0x306C
+#define ARIZONA_WSEQ_SEQUENCE_56                 0x306E
+#define ARIZONA_WSEQ_SEQUENCE_57                 0x3070
+#define ARIZONA_WSEQ_SEQUENCE_58                 0x3072
+#define ARIZONA_WSEQ_SEQUENCE_59                 0x3074
+#define ARIZONA_WSEQ_SEQUENCE_60                 0x3076
+#define ARIZONA_WSEQ_SEQUENCE_61                 0x3078
+#define ARIZONA_WSEQ_SEQUENCE_62                 0x307A
+#define ARIZONA_WSEQ_SEQUENCE_63                 0x307C
+#define ARIZONA_WSEQ_SEQUENCE_64                 0x307E
+#define ARIZONA_WSEQ_SEQUENCE_65                 0x3080
+#define ARIZONA_WSEQ_SEQUENCE_66                 0x3082
+#define ARIZONA_WSEQ_SEQUENCE_67                 0x3084
+#define ARIZONA_WSEQ_SEQUENCE_68                 0x3086
+#define ARIZONA_WSEQ_SEQUENCE_69                 0x3088
+#define ARIZONA_WSEQ_SEQUENCE_70                 0x308A
+#define ARIZONA_WSEQ_SEQUENCE_71                 0x308C
+#define ARIZONA_WSEQ_SEQUENCE_72                 0x308E
+#define ARIZONA_WSEQ_SEQUENCE_73                 0x3090
+#define ARIZONA_WSEQ_SEQUENCE_74                 0x3092
+#define ARIZONA_WSEQ_SEQUENCE_75                 0x3094
+#define ARIZONA_WSEQ_SEQUENCE_76                 0x3096
+#define ARIZONA_WSEQ_SEQUENCE_77                 0x3098
+#define ARIZONA_WSEQ_SEQUENCE_78                 0x309A
+#define ARIZONA_WSEQ_SEQUENCE_79                 0x309C
+#define ARIZONA_WSEQ_SEQUENCE_80                 0x309E
+#define ARIZONA_WSEQ_SEQUENCE_81                 0x30A0
+#define ARIZONA_WSEQ_SEQUENCE_82                 0x30A2
+#define ARIZONA_WSEQ_SEQUENCE_83                 0x30A4
+#define ARIZONA_WSEQ_SEQUENCE_84                 0x30A6
+#define ARIZONA_WSEQ_SEQUENCE_85                 0x30A8
+#define ARIZONA_WSEQ_SEQUENCE_86                 0x30AA
+#define ARIZONA_WSEQ_SEQUENCE_87                 0x30AC
+#define ARIZONA_WSEQ_SEQUENCE_88                 0x30AE
+#define ARIZONA_WSEQ_SEQUENCE_89                 0x30B0
+#define ARIZONA_WSEQ_SEQUENCE_90                 0x30B2
+#define ARIZONA_WSEQ_SEQUENCE_91                 0x30B4
+#define ARIZONA_WSEQ_SEQUENCE_92                 0x30B6
+#define ARIZONA_WSEQ_SEQUENCE_93                 0x30B8
+#define ARIZONA_WSEQ_SEQUENCE_94                 0x30BA
+#define ARIZONA_WSEQ_SEQUENCE_95                 0x30BC
+#define ARIZONA_WSEQ_SEQUENCE_96                 0x30BE
+#define ARIZONA_WSEQ_SEQUENCE_97                 0x30C0
+#define ARIZONA_WSEQ_SEQUENCE_98                 0x30C2
+#define ARIZONA_WSEQ_SEQUENCE_99                 0x30C4
+#define ARIZONA_WSEQ_SEQUENCE_100                0x30C6
+#define ARIZONA_WSEQ_SEQUENCE_101                0x30C8
+#define ARIZONA_WSEQ_SEQUENCE_102                0x30CA
+#define ARIZONA_WSEQ_SEQUENCE_103                0x30CC
+#define ARIZONA_WSEQ_SEQUENCE_104                0x30CE
+#define ARIZONA_WSEQ_SEQUENCE_105                0x30D0
+#define ARIZONA_WSEQ_SEQUENCE_106                0x30D2
+#define ARIZONA_WSEQ_SEQUENCE_107                0x30D4
+#define ARIZONA_WSEQ_SEQUENCE_108                0x30D6
+#define ARIZONA_WSEQ_SEQUENCE_109                0x30D8
+#define ARIZONA_WSEQ_SEQUENCE_110                0x30DA
+#define ARIZONA_WSEQ_SEQUENCE_111                0x30DC
+#define ARIZONA_WSEQ_SEQUENCE_112                0x30DE
+#define ARIZONA_WSEQ_SEQUENCE_113                0x30E0
+#define ARIZONA_WSEQ_SEQUENCE_114                0x30E2
+#define ARIZONA_WSEQ_SEQUENCE_115                0x30E4
+#define ARIZONA_WSEQ_SEQUENCE_116                0x30E6
+#define ARIZONA_WSEQ_SEQUENCE_117                0x30E8
+#define ARIZONA_WSEQ_SEQUENCE_118                0x30EA
+#define ARIZONA_WSEQ_SEQUENCE_119                0x30EC
+#define ARIZONA_WSEQ_SEQUENCE_120                0x30EE
+#define ARIZONA_WSEQ_SEQUENCE_121                0x30F0
+#define ARIZONA_WSEQ_SEQUENCE_122                0x30F2
+#define ARIZONA_WSEQ_SEQUENCE_123                0x30F4
+#define ARIZONA_WSEQ_SEQUENCE_124                0x30F6
+#define ARIZONA_WSEQ_SEQUENCE_125                0x30F8
+#define ARIZONA_WSEQ_SEQUENCE_126                0x30FA
+#define ARIZONA_WSEQ_SEQUENCE_127                0x30FC
+#define ARIZONA_WSEQ_SEQUENCE_128                0x30FE
+#define ARIZONA_WSEQ_SEQUENCE_129                0x3100
+#define ARIZONA_WSEQ_SEQUENCE_130                0x3102
+#define ARIZONA_WSEQ_SEQUENCE_131                0x3104
+#define ARIZONA_WSEQ_SEQUENCE_132                0x3106
+#define ARIZONA_WSEQ_SEQUENCE_133                0x3108
+#define ARIZONA_WSEQ_SEQUENCE_134                0x310A
+#define ARIZONA_WSEQ_SEQUENCE_135                0x310C
+#define ARIZONA_WSEQ_SEQUENCE_136                0x310E
+#define ARIZONA_WSEQ_SEQUENCE_137                0x3110
+#define ARIZONA_WSEQ_SEQUENCE_138                0x3112
+#define ARIZONA_WSEQ_SEQUENCE_139                0x3114
+#define ARIZONA_WSEQ_SEQUENCE_140                0x3116
+#define ARIZONA_WSEQ_SEQUENCE_141                0x3118
+#define ARIZONA_WSEQ_SEQUENCE_142                0x311A
+#define ARIZONA_WSEQ_SEQUENCE_143                0x311C
+#define ARIZONA_WSEQ_SEQUENCE_144                0x311E
+#define ARIZONA_WSEQ_SEQUENCE_145                0x3120
+#define ARIZONA_WSEQ_SEQUENCE_146                0x3122
+#define ARIZONA_WSEQ_SEQUENCE_147                0x3124
+#define ARIZONA_WSEQ_SEQUENCE_148                0x3126
+#define ARIZONA_WSEQ_SEQUENCE_149                0x3128
+#define ARIZONA_WSEQ_SEQUENCE_150                0x312A
+#define ARIZONA_WSEQ_SEQUENCE_151                0x312C
+#define ARIZONA_WSEQ_SEQUENCE_152                0x312E
+#define ARIZONA_WSEQ_SEQUENCE_153                0x3130
+#define ARIZONA_WSEQ_SEQUENCE_154                0x3132
+#define ARIZONA_WSEQ_SEQUENCE_155                0x3134
+#define ARIZONA_WSEQ_SEQUENCE_156                0x3136
+#define ARIZONA_WSEQ_SEQUENCE_157                0x3138
+#define ARIZONA_WSEQ_SEQUENCE_158                0x313A
+#define ARIZONA_WSEQ_SEQUENCE_159                0x313C
+#define ARIZONA_WSEQ_SEQUENCE_160                0x313E
+#define ARIZONA_WSEQ_SEQUENCE_161                0x3140
+#define ARIZONA_WSEQ_SEQUENCE_162                0x3142
+#define ARIZONA_WSEQ_SEQUENCE_163                0x3144
+#define ARIZONA_WSEQ_SEQUENCE_164                0x3146
+#define ARIZONA_WSEQ_SEQUENCE_165                0x3148
+#define ARIZONA_WSEQ_SEQUENCE_166                0x314A
+#define ARIZONA_WSEQ_SEQUENCE_167                0x314C
+#define ARIZONA_WSEQ_SEQUENCE_168                0x314E
+#define ARIZONA_WSEQ_SEQUENCE_169                0x3150
+#define ARIZONA_WSEQ_SEQUENCE_170                0x3152
+#define ARIZONA_WSEQ_SEQUENCE_171                0x3154
+#define ARIZONA_WSEQ_SEQUENCE_172                0x3156
+#define ARIZONA_WSEQ_SEQUENCE_173                0x3158
+#define ARIZONA_WSEQ_SEQUENCE_174                0x315A
+#define ARIZONA_WSEQ_SEQUENCE_175                0x315C
+#define ARIZONA_WSEQ_SEQUENCE_176                0x315E
+#define ARIZONA_WSEQ_SEQUENCE_177                0x3160
+#define ARIZONA_WSEQ_SEQUENCE_178                0x3162
+#define ARIZONA_WSEQ_SEQUENCE_179                0x3164
+#define ARIZONA_WSEQ_SEQUENCE_180                0x3166
+#define ARIZONA_WSEQ_SEQUENCE_181                0x3168
+#define ARIZONA_WSEQ_SEQUENCE_182                0x316A
+#define ARIZONA_WSEQ_SEQUENCE_183                0x316C
+#define ARIZONA_WSEQ_SEQUENCE_184                0x316E
+#define ARIZONA_WSEQ_SEQUENCE_185                0x3170
+#define ARIZONA_WSEQ_SEQUENCE_186                0x3172
+#define ARIZONA_WSEQ_SEQUENCE_187                0x3174
+#define ARIZONA_WSEQ_SEQUENCE_188                0x3176
+#define ARIZONA_WSEQ_SEQUENCE_189                0x3178
+#define ARIZONA_WSEQ_SEQUENCE_190                0x317A
+#define ARIZONA_WSEQ_SEQUENCE_191                0x317C
+#define ARIZONA_WSEQ_SEQUENCE_192                0x317E
+#define ARIZONA_WSEQ_SEQUENCE_193                0x3180
+#define ARIZONA_WSEQ_SEQUENCE_194                0x3182
+#define ARIZONA_WSEQ_SEQUENCE_195                0x3184
+#define ARIZONA_WSEQ_SEQUENCE_196                0x3186
+#define ARIZONA_WSEQ_SEQUENCE_197                0x3188
+#define ARIZONA_WSEQ_SEQUENCE_198                0x318A
+#define ARIZONA_WSEQ_SEQUENCE_199                0x318C
+#define ARIZONA_WSEQ_SEQUENCE_200                0x318E
+#define ARIZONA_WSEQ_SEQUENCE_201                0x3190
+#define ARIZONA_WSEQ_SEQUENCE_202                0x3192
+#define ARIZONA_WSEQ_SEQUENCE_203                0x3194
+#define ARIZONA_WSEQ_SEQUENCE_204                0x3196
+#define ARIZONA_WSEQ_SEQUENCE_205                0x3198
+#define ARIZONA_WSEQ_SEQUENCE_206                0x319A
+#define ARIZONA_WSEQ_SEQUENCE_207                0x319C
+#define ARIZONA_WSEQ_SEQUENCE_208                0x319E
+#define ARIZONA_WSEQ_SEQUENCE_209                0x31A0
+#define ARIZONA_WSEQ_SEQUENCE_210                0x31A2
+#define ARIZONA_WSEQ_SEQUENCE_211                0x31A4
+#define ARIZONA_WSEQ_SEQUENCE_212                0x31A6
+#define ARIZONA_WSEQ_SEQUENCE_213                0x31A8
+#define ARIZONA_WSEQ_SEQUENCE_214                0x31AA
+#define ARIZONA_WSEQ_SEQUENCE_215                0x31AC
+#define ARIZONA_WSEQ_SEQUENCE_216                0x31AE
+#define ARIZONA_WSEQ_SEQUENCE_217                0x31B0
+#define ARIZONA_WSEQ_SEQUENCE_218                0x31B2
+#define ARIZONA_WSEQ_SEQUENCE_219                0x31B4
+#define ARIZONA_WSEQ_SEQUENCE_220                0x31B6
+#define ARIZONA_WSEQ_SEQUENCE_221                0x31B8
+#define ARIZONA_WSEQ_SEQUENCE_222                0x31BA
+#define ARIZONA_WSEQ_SEQUENCE_223                0x31BC
+#define ARIZONA_WSEQ_SEQUENCE_224                0x31BE
+#define ARIZONA_WSEQ_SEQUENCE_225                0x31C0
+#define ARIZONA_WSEQ_SEQUENCE_226                0x31C2
+#define ARIZONA_WSEQ_SEQUENCE_227                0x31C4
+#define ARIZONA_WSEQ_SEQUENCE_228                0x31C6
+#define ARIZONA_WSEQ_SEQUENCE_229                0x31C8
+#define ARIZONA_WSEQ_SEQUENCE_230                0x31CA
+#define ARIZONA_WSEQ_SEQUENCE_231                0x31CC
+#define ARIZONA_WSEQ_SEQUENCE_232                0x31CE
+#define ARIZONA_WSEQ_SEQUENCE_233                0x31D0
+#define ARIZONA_WSEQ_SEQUENCE_234                0x31D2
+#define ARIZONA_WSEQ_SEQUENCE_235                0x31D4
+#define ARIZONA_WSEQ_SEQUENCE_236                0x31D6
+#define ARIZONA_WSEQ_SEQUENCE_237                0x31D8
+#define ARIZONA_WSEQ_SEQUENCE_238                0x31DA
+#define ARIZONA_WSEQ_SEQUENCE_239                0x31DC
+#define ARIZONA_WSEQ_SEQUENCE_240                0x31DE
+#define ARIZONA_WSEQ_SEQUENCE_241                0x31E0
+#define ARIZONA_WSEQ_SEQUENCE_242                0x31E2
+#define ARIZONA_WSEQ_SEQUENCE_243                0x31E4
+#define ARIZONA_WSEQ_SEQUENCE_244                0x31E6
+#define ARIZONA_WSEQ_SEQUENCE_245                0x31E8
+#define ARIZONA_WSEQ_SEQUENCE_246                0x31EA
+#define ARIZONA_WSEQ_SEQUENCE_247                0x31EC
+#define ARIZONA_WSEQ_SEQUENCE_248                0x31EE
+#define ARIZONA_WSEQ_SEQUENCE_249                0x31F0
+#define ARIZONA_WSEQ_SEQUENCE_250                0x31F2
+#define ARIZONA_WSEQ_SEQUENCE_251                0x31F4
+#define ARIZONA_WSEQ_SEQUENCE_252                0x31F6
+#define ARIZONA_WSEQ_SEQUENCE_253                0x31F8
+#define ARIZONA_WSEQ_SEQUENCE_254                0x31FA
+#define ARIZONA_WSEQ_SEQUENCE_255                0x31FC
+#define ARIZONA_WSEQ_SEQUENCE_256                0x31FE
+#define ARIZONA_WSEQ_SEQUENCE_257                0x3200
+#define ARIZONA_WSEQ_SEQUENCE_258                0x3202
+#define ARIZONA_WSEQ_SEQUENCE_259                0x3204
+#define ARIZONA_WSEQ_SEQUENCE_260                0x3206
+#define ARIZONA_WSEQ_SEQUENCE_261                0x3208
+#define ARIZONA_WSEQ_SEQUENCE_262                0x320A
+#define ARIZONA_WSEQ_SEQUENCE_263                0x320C
+#define ARIZONA_WSEQ_SEQUENCE_264                0x320E
+#define ARIZONA_WSEQ_SEQUENCE_265                0x3210
+#define ARIZONA_WSEQ_SEQUENCE_266                0x3212
+#define ARIZONA_WSEQ_SEQUENCE_267                0x3214
+#define ARIZONA_WSEQ_SEQUENCE_268                0x3216
+#define ARIZONA_WSEQ_SEQUENCE_269                0x3218
+#define ARIZONA_WSEQ_SEQUENCE_270                0x321A
+#define ARIZONA_WSEQ_SEQUENCE_271                0x321C
+#define ARIZONA_WSEQ_SEQUENCE_272                0x321E
+#define ARIZONA_WSEQ_SEQUENCE_273                0x3220
+#define ARIZONA_WSEQ_SEQUENCE_274                0x3222
+#define ARIZONA_WSEQ_SEQUENCE_275                0x3224
+#define ARIZONA_WSEQ_SEQUENCE_276                0x3226
+#define ARIZONA_WSEQ_SEQUENCE_277                0x3228
+#define ARIZONA_WSEQ_SEQUENCE_278                0x322A
+#define ARIZONA_WSEQ_SEQUENCE_279                0x322C
+#define ARIZONA_WSEQ_SEQUENCE_280                0x322E
+#define ARIZONA_WSEQ_SEQUENCE_281                0x3230
+#define ARIZONA_WSEQ_SEQUENCE_282                0x3232
+#define ARIZONA_WSEQ_SEQUENCE_283                0x3234
+#define ARIZONA_WSEQ_SEQUENCE_284                0x3236
+#define ARIZONA_WSEQ_SEQUENCE_285                0x3238
+#define ARIZONA_WSEQ_SEQUENCE_286                0x323A
+#define ARIZONA_WSEQ_SEQUENCE_287                0x323C
+#define ARIZONA_WSEQ_SEQUENCE_288                0x323E
+#define ARIZONA_WSEQ_SEQUENCE_289                0x3240
+#define ARIZONA_WSEQ_SEQUENCE_290                0x3242
+#define ARIZONA_WSEQ_SEQUENCE_291                0x3244
+#define ARIZONA_WSEQ_SEQUENCE_292                0x3246
+#define ARIZONA_WSEQ_SEQUENCE_293                0x3248
+#define ARIZONA_WSEQ_SEQUENCE_294                0x324A
+#define ARIZONA_WSEQ_SEQUENCE_295                0x324C
+#define ARIZONA_WSEQ_SEQUENCE_296                0x324E
+#define ARIZONA_WSEQ_SEQUENCE_297                0x3250
+#define ARIZONA_WSEQ_SEQUENCE_298                0x3252
+#define ARIZONA_WSEQ_SEQUENCE_299                0x3254
+#define ARIZONA_WSEQ_SEQUENCE_300                0x3256
+#define ARIZONA_WSEQ_SEQUENCE_301                0x3258
+#define ARIZONA_WSEQ_SEQUENCE_302                0x325A
+#define ARIZONA_WSEQ_SEQUENCE_303                0x325C
+#define ARIZONA_WSEQ_SEQUENCE_304                0x325E
+#define ARIZONA_WSEQ_SEQUENCE_305                0x3260
+#define ARIZONA_WSEQ_SEQUENCE_306                0x3262
+#define ARIZONA_WSEQ_SEQUENCE_307                0x3264
+#define ARIZONA_WSEQ_SEQUENCE_308                0x3266
+#define ARIZONA_WSEQ_SEQUENCE_309                0x3268
+#define ARIZONA_WSEQ_SEQUENCE_310                0x326A
+#define ARIZONA_WSEQ_SEQUENCE_311                0x326C
+#define ARIZONA_WSEQ_SEQUENCE_312                0x326E
+#define ARIZONA_WSEQ_SEQUENCE_313                0x3270
+#define ARIZONA_WSEQ_SEQUENCE_314                0x3272
+#define ARIZONA_WSEQ_SEQUENCE_315                0x3274
+#define ARIZONA_WSEQ_SEQUENCE_316                0x3276
+#define ARIZONA_WSEQ_SEQUENCE_317                0x3278
+#define ARIZONA_WSEQ_SEQUENCE_318                0x327A
+#define ARIZONA_WSEQ_SEQUENCE_319                0x327C
+#define ARIZONA_WSEQ_SEQUENCE_320                0x327E
+#define ARIZONA_WSEQ_SEQUENCE_321                0x3280
+#define ARIZONA_WSEQ_SEQUENCE_322                0x3282
+#define ARIZONA_WSEQ_SEQUENCE_323                0x3284
+#define ARIZONA_WSEQ_SEQUENCE_324                0x3286
+#define ARIZONA_WSEQ_SEQUENCE_325                0x3288
+#define ARIZONA_WSEQ_SEQUENCE_326                0x328A
+#define ARIZONA_WSEQ_SEQUENCE_327                0x328C
+#define ARIZONA_WSEQ_SEQUENCE_328                0x328E
+#define ARIZONA_WSEQ_SEQUENCE_329                0x3290
+#define ARIZONA_WSEQ_SEQUENCE_330                0x3292
+#define ARIZONA_WSEQ_SEQUENCE_331                0x3294
+#define ARIZONA_WSEQ_SEQUENCE_332                0x3296
+#define ARIZONA_WSEQ_SEQUENCE_333                0x3298
+#define ARIZONA_WSEQ_SEQUENCE_334                0x329A
+#define ARIZONA_WSEQ_SEQUENCE_335                0x329C
+#define ARIZONA_WSEQ_SEQUENCE_336                0x329E
+#define ARIZONA_WSEQ_SEQUENCE_337                0x32A0
+#define ARIZONA_WSEQ_SEQUENCE_338                0x32A2
+#define ARIZONA_WSEQ_SEQUENCE_339                0x32A4
+#define ARIZONA_WSEQ_SEQUENCE_340                0x32A6
+#define ARIZONA_WSEQ_SEQUENCE_341                0x32A8
+#define ARIZONA_WSEQ_SEQUENCE_342                0x32AA
+#define ARIZONA_WSEQ_SEQUENCE_343                0x32AC
+#define ARIZONA_WSEQ_SEQUENCE_344                0x32AE
+#define ARIZONA_WSEQ_SEQUENCE_345                0x32B0
+#define ARIZONA_WSEQ_SEQUENCE_346                0x32B2
+#define ARIZONA_WSEQ_SEQUENCE_347                0x32B4
+#define ARIZONA_WSEQ_SEQUENCE_348                0x32B6
+#define ARIZONA_WSEQ_SEQUENCE_349                0x32B8
+#define ARIZONA_WSEQ_SEQUENCE_350                0x32BA
+#define ARIZONA_WSEQ_SEQUENCE_351                0x32BC
+#define ARIZONA_WSEQ_SEQUENCE_352                0x32BE
+#define ARIZONA_WSEQ_SEQUENCE_353                0x32C0
+#define ARIZONA_WSEQ_SEQUENCE_354                0x32C2
+#define ARIZONA_WSEQ_SEQUENCE_355                0x32C4
+#define ARIZONA_WSEQ_SEQUENCE_356                0x32C6
+#define ARIZONA_WSEQ_SEQUENCE_357                0x32C8
+#define ARIZONA_WSEQ_SEQUENCE_358                0x32CA
+#define ARIZONA_WSEQ_SEQUENCE_359                0x32CC
+#define ARIZONA_WSEQ_SEQUENCE_360                0x32CE
+#define ARIZONA_WSEQ_SEQUENCE_361                0x32D0
+#define ARIZONA_WSEQ_SEQUENCE_362                0x32D2
+#define ARIZONA_WSEQ_SEQUENCE_363                0x32D4
+#define ARIZONA_WSEQ_SEQUENCE_364                0x32D6
+#define ARIZONA_WSEQ_SEQUENCE_365                0x32D8
+#define ARIZONA_WSEQ_SEQUENCE_366                0x32DA
+#define ARIZONA_WSEQ_SEQUENCE_367                0x32DC
+#define ARIZONA_WSEQ_SEQUENCE_368                0x32DE
+#define ARIZONA_WSEQ_SEQUENCE_369                0x32E0
+#define ARIZONA_WSEQ_SEQUENCE_370                0x32E2
+#define ARIZONA_WSEQ_SEQUENCE_371                0x32E4
+#define ARIZONA_WSEQ_SEQUENCE_372                0x32E6
+#define ARIZONA_WSEQ_SEQUENCE_373                0x32E8
+#define ARIZONA_WSEQ_SEQUENCE_374                0x32EA
+#define ARIZONA_WSEQ_SEQUENCE_375                0x32EC
+#define ARIZONA_WSEQ_SEQUENCE_376                0x32EE
+#define ARIZONA_WSEQ_SEQUENCE_377                0x32F0
+#define ARIZONA_WSEQ_SEQUENCE_378                0x32F2
+#define ARIZONA_WSEQ_SEQUENCE_379                0x32F4
+#define ARIZONA_WSEQ_SEQUENCE_380                0x32F6
+#define ARIZONA_WSEQ_SEQUENCE_381                0x32F8
+#define ARIZONA_WSEQ_SEQUENCE_382                0x32FA
+#define ARIZONA_WSEQ_SEQUENCE_383                0x32FC
+#define ARIZONA_WSEQ_SEQUENCE_384                0x32FE
+#define ARIZONA_WSEQ_SEQUENCE_385                0x3300
+#define ARIZONA_WSEQ_SEQUENCE_386                0x3302
+#define ARIZONA_WSEQ_SEQUENCE_387                0x3304
+#define ARIZONA_WSEQ_SEQUENCE_388                0x3306
+#define ARIZONA_WSEQ_SEQUENCE_389                0x3308
+#define ARIZONA_WSEQ_SEQUENCE_390                0x330A
+#define ARIZONA_WSEQ_SEQUENCE_391                0x330C
+#define ARIZONA_WSEQ_SEQUENCE_392                0x330E
+#define ARIZONA_WSEQ_SEQUENCE_393                0x3310
+#define ARIZONA_WSEQ_SEQUENCE_394                0x3312
+#define ARIZONA_WSEQ_SEQUENCE_395                0x3314
+#define ARIZONA_WSEQ_SEQUENCE_396                0x3316
+#define ARIZONA_WSEQ_SEQUENCE_397                0x3318
+#define ARIZONA_WSEQ_SEQUENCE_398                0x331A
+#define ARIZONA_WSEQ_SEQUENCE_399                0x331C
+#define ARIZONA_WSEQ_SEQUENCE_400                0x331E
+#define ARIZONA_WSEQ_SEQUENCE_401                0x3320
+#define ARIZONA_WSEQ_SEQUENCE_402                0x3322
+#define ARIZONA_WSEQ_SEQUENCE_403                0x3324
+#define ARIZONA_WSEQ_SEQUENCE_404                0x3326
+#define ARIZONA_WSEQ_SEQUENCE_405                0x3328
+#define ARIZONA_WSEQ_SEQUENCE_406                0x332A
+#define ARIZONA_WSEQ_SEQUENCE_407                0x332C
+#define ARIZONA_WSEQ_SEQUENCE_408                0x332E
+#define ARIZONA_WSEQ_SEQUENCE_409                0x3330
+#define ARIZONA_WSEQ_SEQUENCE_410                0x3332
+#define ARIZONA_WSEQ_SEQUENCE_411                0x3334
+#define ARIZONA_WSEQ_SEQUENCE_412                0x3336
+#define ARIZONA_WSEQ_SEQUENCE_413                0x3338
+#define ARIZONA_WSEQ_SEQUENCE_414                0x333A
+#define ARIZONA_WSEQ_SEQUENCE_415                0x333C
+#define ARIZONA_WSEQ_SEQUENCE_416                0x333E
+#define ARIZONA_WSEQ_SEQUENCE_417                0x3340
+#define ARIZONA_WSEQ_SEQUENCE_418                0x3342
+#define ARIZONA_WSEQ_SEQUENCE_419                0x3344
+#define ARIZONA_WSEQ_SEQUENCE_420                0x3346
+#define ARIZONA_WSEQ_SEQUENCE_421                0x3348
+#define ARIZONA_WSEQ_SEQUENCE_422                0x334A
+#define ARIZONA_WSEQ_SEQUENCE_423                0x334C
+#define ARIZONA_WSEQ_SEQUENCE_424                0x334E
+#define ARIZONA_WSEQ_SEQUENCE_425                0x3350
+#define ARIZONA_WSEQ_SEQUENCE_426                0x3352
+#define ARIZONA_WSEQ_SEQUENCE_427                0x3354
+#define ARIZONA_WSEQ_SEQUENCE_428                0x3356
+#define ARIZONA_WSEQ_SEQUENCE_429                0x3358
+#define ARIZONA_WSEQ_SEQUENCE_430                0x335A
+#define ARIZONA_WSEQ_SEQUENCE_431                0x335C
+#define ARIZONA_WSEQ_SEQUENCE_432                0x335E
+#define ARIZONA_WSEQ_SEQUENCE_433                0x3360
+#define ARIZONA_WSEQ_SEQUENCE_434                0x3362
+#define ARIZONA_WSEQ_SEQUENCE_435                0x3364
+#define ARIZONA_WSEQ_SEQUENCE_436                0x3366
+#define ARIZONA_WSEQ_SEQUENCE_437                0x3368
+#define ARIZONA_WSEQ_SEQUENCE_438                0x336A
+#define ARIZONA_WSEQ_SEQUENCE_439                0x336C
+#define ARIZONA_WSEQ_SEQUENCE_440                0x336E
+#define ARIZONA_WSEQ_SEQUENCE_441                0x3370
+#define ARIZONA_WSEQ_SEQUENCE_442                0x3372
+#define ARIZONA_WSEQ_SEQUENCE_443                0x3374
+#define ARIZONA_WSEQ_SEQUENCE_444                0x3376
+#define ARIZONA_WSEQ_SEQUENCE_445                0x3378
+#define ARIZONA_WSEQ_SEQUENCE_446                0x337A
+#define ARIZONA_WSEQ_SEQUENCE_447                0x337C
+#define ARIZONA_WSEQ_SEQUENCE_448                0x337E
+#define ARIZONA_WSEQ_SEQUENCE_449                0x3380
+#define ARIZONA_WSEQ_SEQUENCE_450                0x3382
+#define ARIZONA_WSEQ_SEQUENCE_451                0x3384
+#define ARIZONA_WSEQ_SEQUENCE_452                0x3386
+#define ARIZONA_WSEQ_SEQUENCE_453                0x3388
+#define ARIZONA_WSEQ_SEQUENCE_454                0x338A
+#define ARIZONA_WSEQ_SEQUENCE_455                0x338C
+#define ARIZONA_WSEQ_SEQUENCE_456                0x338E
+#define ARIZONA_WSEQ_SEQUENCE_457                0x3390
+#define ARIZONA_WSEQ_SEQUENCE_458                0x3392
+#define ARIZONA_WSEQ_SEQUENCE_459                0x3394
+#define ARIZONA_WSEQ_SEQUENCE_460                0x3396
+#define ARIZONA_WSEQ_SEQUENCE_461                0x3398
+#define ARIZONA_WSEQ_SEQUENCE_462                0x339A
+#define ARIZONA_WSEQ_SEQUENCE_463                0x339C
+#define ARIZONA_WSEQ_SEQUENCE_464                0x339E
+#define ARIZONA_WSEQ_SEQUENCE_465                0x33A0
+#define ARIZONA_WSEQ_SEQUENCE_466                0x33A2
+#define ARIZONA_WSEQ_SEQUENCE_467                0x33A4
+#define ARIZONA_WSEQ_SEQUENCE_468                0x33A6
+#define ARIZONA_WSEQ_SEQUENCE_469                0x33A8
+#define ARIZONA_WSEQ_SEQUENCE_470                0x33AA
+#define ARIZONA_WSEQ_SEQUENCE_471                0x33AC
+#define ARIZONA_WSEQ_SEQUENCE_472                0x33AE
+#define ARIZONA_WSEQ_SEQUENCE_473                0x33B0
+#define ARIZONA_WSEQ_SEQUENCE_474                0x33B2
+#define ARIZONA_WSEQ_SEQUENCE_475                0x33B4
+#define ARIZONA_WSEQ_SEQUENCE_476                0x33B6
+#define ARIZONA_WSEQ_SEQUENCE_477                0x33B8
+#define ARIZONA_WSEQ_SEQUENCE_478                0x33BA
+#define ARIZONA_WSEQ_SEQUENCE_479                0x33BC
+#define ARIZONA_WSEQ_SEQUENCE_480                0x33BE
+#define ARIZONA_WSEQ_SEQUENCE_481                0x33C0
+#define ARIZONA_WSEQ_SEQUENCE_482                0x33C2
+#define ARIZONA_WSEQ_SEQUENCE_483                0x33C4
+#define ARIZONA_WSEQ_SEQUENCE_484                0x33C6
+#define ARIZONA_WSEQ_SEQUENCE_485                0x33C8
+#define ARIZONA_WSEQ_SEQUENCE_486                0x33CA
+#define ARIZONA_WSEQ_SEQUENCE_487                0x33CC
+#define ARIZONA_WSEQ_SEQUENCE_488                0x33CE
+#define ARIZONA_WSEQ_SEQUENCE_489                0x33D0
+#define ARIZONA_WSEQ_SEQUENCE_490                0x33D2
+#define ARIZONA_WSEQ_SEQUENCE_491                0x33D4
+#define ARIZONA_WSEQ_SEQUENCE_492                0x33D6
+#define ARIZONA_WSEQ_SEQUENCE_493                0x33D8
+#define ARIZONA_WSEQ_SEQUENCE_494                0x33DA
+#define ARIZONA_WSEQ_SEQUENCE_495                0x33DC
+#define ARIZONA_WSEQ_SEQUENCE_496                0x33DE
+#define ARIZONA_WSEQ_SEQUENCE_497                0x33E0
+#define ARIZONA_WSEQ_SEQUENCE_498                0x33E2
+#define ARIZONA_WSEQ_SEQUENCE_499                0x33E4
+#define ARIZONA_WSEQ_SEQUENCE_500                0x33E6
+#define ARIZONA_WSEQ_SEQUENCE_501                0x33E8
+#define ARIZONA_WSEQ_SEQUENCE_502                0x33EA
+#define ARIZONA_WSEQ_SEQUENCE_503                0x33EC
+#define ARIZONA_WSEQ_SEQUENCE_504                0x33EE
+#define ARIZONA_WSEQ_SEQUENCE_505                0x33F0
+#define ARIZONA_WSEQ_SEQUENCE_506                0x33F2
+#define ARIZONA_WSEQ_SEQUENCE_507                0x33F4
+#define ARIZONA_WSEQ_SEQUENCE_508                0x33F6
+#define MARLEY_OTP_HPDET_CALIB_1                 0x31F8
+#define MARLEY_OTP_HPDET_CALIB_2                 0x31FA
+#define CLEARWATER_OTP_HPDET_CALIB_1             0x33F8
+#define CLEARWATER_OTP_HPDET_CALIB_2             0x33FA
+#define CLEARWATER_DSP1_CONFIG                   0x0FFE00
+#define CLEARWATER_DSP1_STATUS_1                 0x0FFE04
+#define CLEARWATER_DSP1_STATUS_2                 0x0FFE06
+#define MOON_DSP1_WATCHDOG                       0x0FFE0A
+#define CLEARWATER_DSP1_WDMA_CONFIG_1            0x0FFE30
+#define CLEARWATER_DSP1_WDMA_CONFIG_2            0x0FFE32
+#define CLEARWATER_DSP1_RDMA_CONFIG_1            0x0FFE34
+#define CLEARWATER_DSP1_SCRATCH_0_1              0x0FFE40
+#define CLEARWATER_DSP1_SCRATCH_2_3              0x0FFE42
+#define MOON_DSP1_BUS_ERR_ADDR                   0x0FFE52
+#define MOON_DSP1_REGION_LOCK_STATUS             0x0FFE64
+#define MOON_DSP1_LOCK_REGION_1_LOCK_REGION_0    0x0FFE66
+#define MOON_DSP1_LOCK_REGION_3_LOCK_REGION_2    0x0FFE68
+#define MOON_DSP1_LOCK_REGION_5_LOCK_REGION_4    0x0FFE6A
+#define MOON_DSP1_LOCK_REGION_7_LOCK_REGION_6    0x0FFE6C
+#define MOON_DSP1_LOCK_REGION_9_LOCK_REGION_8    0x0FFE6E
+#define MOON_DSP1_LOCK_REGION_CTRL               0x0FFE7A
+#define MOON_DSP1_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x0FFE7C
+#define CLEARWATER_DSP2_CONFIG                   0x17FE00
+#define CLEARWATER_DSP2_STATUS_1                 0x17FE04
+#define CLEARWATER_DSP2_STATUS_2                 0x17FE06
+#define MOON_DSP2_WATCHDOG                       0x17FE0A
+#define CLEARWATER_DSP2_WDMA_CONFIG_1            0x17FE30
+#define CLEARWATER_DSP2_WDMA_CONFIG_2            0x17FE32
+#define CLEARWATER_DSP2_RDMA_CONFIG_1            0x17FE34
+#define CLEARWATER_DSP2_SCRATCH_0_1              0x17FE40
+#define CLEARWATER_DSP2_SCRATCH_2_3              0x17FE42
+#define MOON_DSP2_BUS_ERR_ADDR                   0x17FE52
+#define MOON_DSP2_REGION_LOCK_STATUS             0x17FE64
+#define MOON_DSP2_LOCK_REGION_1_LOCK_REGION_0    0x17FE66
+#define MOON_DSP2_LOCK_REGION_3_LOCK_REGION_2    0x17FE68
+#define MOON_DSP2_LOCK_REGION_5_LOCK_REGION_4    0x17FE6A
+#define MOON_DSP2_LOCK_REGION_7_LOCK_REGION_6    0x17FE6C
+#define MOON_DSP2_LOCK_REGION_9_LOCK_REGION_8    0x17FE6E
+#define MOON_DSP2_LOCK_REGION_CTRL               0x17FE7A
+#define MOON_DSP2_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x17FE7C
+#define CLEARWATER_DSP3_CONFIG                   0x1FFE00
+#define CLEARWATER_DSP3_STATUS_1                 0x1FFE04
+#define CLEARWATER_DSP3_STATUS_2                 0x1FFE06
+#define MOON_DSP3_WATCHDOG                       0x1FFE0A
+#define CLEARWATER_DSP3_WDMA_CONFIG_1            0x1FFE30
+#define CLEARWATER_DSP3_WDMA_CONFIG_2            0x1FFE32
+#define CLEARWATER_DSP3_RDMA_CONFIG_1            0x1FFE34
+#define CLEARWATER_DSP3_SCRATCH_0_1              0x1FFE40
+#define CLEARWATER_DSP3_SCRATCH_2_3              0x1FFE42
+#define MOON_DSP3_BUS_ERR_ADDR                   0x1FFE52
+#define MOON_DSP3_REGION_LOCK_STATUS             0x1FFE64
+#define MOON_DSP3_LOCK_REGION_1_LOCK_REGION_0    0x1FFE66
+#define MOON_DSP3_LOCK_REGION_3_LOCK_REGION_2    0x1FFE68
+#define MOON_DSP3_LOCK_REGION_5_LOCK_REGION_4    0x1FFE6A
+#define MOON_DSP3_LOCK_REGION_7_LOCK_REGION_6    0x1FFE6C
+#define MOON_DSP3_LOCK_REGION_9_LOCK_REGION_8    0x1FFE6E
+#define MOON_DSP3_LOCK_REGION_CTRL               0x1FFE7A
+#define MOON_DSP3_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x1FFE7C
+#define CLEARWATER_DSP4_CONFIG                   0x27FE00
+#define CLEARWATER_DSP4_STATUS_1                 0x27FE04
+#define CLEARWATER_DSP4_STATUS_2                 0x27FE06
+#define MOON_DSP4_WATCHDOG                       0x27FE0A
+#define CLEARWATER_DSP4_WDMA_CONFIG_1            0x27FE30
+#define CLEARWATER_DSP4_WDMA_CONFIG_2            0x27FE32
+#define CLEARWATER_DSP4_RDMA_CONFIG_1            0x27FE34
+#define CLEARWATER_DSP4_SCRATCH_0_1              0x27FE40
+#define CLEARWATER_DSP4_SCRATCH_2_3              0x27FE42
+#define MOON_DSP4_BUS_ERR_ADDR                   0x27FE52
+#define MOON_DSP4_REGION_LOCK_STATUS             0x27FE64
+#define MOON_DSP4_LOCK_REGION_1_LOCK_REGION_0    0x27FE66
+#define MOON_DSP4_LOCK_REGION_3_LOCK_REGION_2    0x27FE68
+#define MOON_DSP4_LOCK_REGION_5_LOCK_REGION_4    0x27FE6A
+#define MOON_DSP4_LOCK_REGION_7_LOCK_REGION_6    0x27FE6C
+#define MOON_DSP4_LOCK_REGION_9_LOCK_REGION_8    0x27FE6E
+#define MOON_DSP4_LOCK_REGION_CTRL               0x27FE7A
+#define MOON_DSP4_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x27FE7C
+#define CLEARWATER_DSP5_CONFIG                   0x2FFE00
+#define CLEARWATER_DSP5_STATUS_1                 0x2FFE04
+#define CLEARWATER_DSP5_STATUS_2                 0x2FFE06
+#define MOON_DSP5_WATCHDOG                       0x2FFE0A
+#define CLEARWATER_DSP5_WDMA_CONFIG_1            0x2FFE30
+#define CLEARWATER_DSP5_WDMA_CONFIG_2            0x2FFE32
+#define CLEARWATER_DSP5_RDMA_CONFIG_1            0x2FFE34
+#define CLEARWATER_DSP5_SCRATCH_0_1              0x2FFE40
+#define CLEARWATER_DSP5_SCRATCH_2_3              0x2FFE42
+#define MOON_DSP5_BUS_ERR_ADDR                   0x2FFE52
+#define MOON_DSP5_REGION_LOCK_STATUS             0x2FFE64
+#define MOON_DSP5_LOCK_REGION_1_LOCK_REGION_0    0x2FFE66
+#define MOON_DSP5_LOCK_REGION_3_LOCK_REGION_2    0x2FFE68
+#define MOON_DSP5_LOCK_REGION_5_LOCK_REGION_4    0x2FFE6A
+#define MOON_DSP5_LOCK_REGION_7_LOCK_REGION_6    0x2FFE6C
+#define MOON_DSP5_LOCK_REGION_9_LOCK_REGION_8    0x2FFE6E
+#define MOON_DSP5_LOCK_REGION_CTRL               0x2FFE7A
+#define MOON_DSP5_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x2FFE7C
+#define CLEARWATER_DSP6_CONFIG                   0x37FE00
+#define CLEARWATER_DSP6_STATUS_1                 0x37FE04
+#define CLEARWATER_DSP6_STATUS_2                 0x37FE06
+#define MOON_DSP6_WATCHDOG                       0x37FE0A
+#define CLEARWATER_DSP6_WDMA_CONFIG_1            0x37FE30
+#define CLEARWATER_DSP6_WDMA_CONFIG_2            0x37FE32
+#define CLEARWATER_DSP6_RDMA_CONFIG_1            0x37FE34
+#define CLEARWATER_DSP6_SCRATCH_0_1              0x37FE40
+#define CLEARWATER_DSP6_SCRATCH_2_3              0x37FE42
+#define MOON_DSP6_BUS_ERR_ADDR                   0x37FE52
+#define MOON_DSP6_REGION_LOCK_STATUS             0x37FE64
+#define MOON_DSP6_LOCK_REGION_1_LOCK_REGION_0    0x37FE66
+#define MOON_DSP6_LOCK_REGION_3_LOCK_REGION_2    0x37FE68
+#define MOON_DSP6_LOCK_REGION_5_LOCK_REGION_4    0x37FE6A
+#define MOON_DSP6_LOCK_REGION_7_LOCK_REGION_6    0x37FE6C
+#define MOON_DSP6_LOCK_REGION_9_LOCK_REGION_8    0x37FE6E
+#define MOON_DSP6_LOCK_REGION_CTRL               0x37FE7A
+#define MOON_DSP6_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x37FE7C
+#define CLEARWATER_DSP7_CONFIG                   0x3FFE00
+#define CLEARWATER_DSP7_STATUS_1                 0x3FFE04
+#define CLEARWATER_DSP7_STATUS_2                 0x3FFE06
+#define MOON_DSP7_WATCHDOG                       0x3FFE0A
+#define CLEARWATER_DSP7_WDMA_CONFIG_1            0x3FFE30
+#define CLEARWATER_DSP7_WDMA_CONFIG_2            0x3FFE32
+#define CLEARWATER_DSP7_RDMA_CONFIG_1            0x3FFE34
+#define CLEARWATER_DSP7_SCRATCH_0_1              0x3FFE40
+#define CLEARWATER_DSP7_SCRATCH_2_3              0x3FFE42
+#define MOON_DSP7_BUS_ERR_ADDR                   0x3FFE52
+#define MOON_DSP7_REGION_LOCK_STATUS             0x3FFE64
+#define MOON_DSP7_LOCK_REGION_1_LOCK_REGION_0    0x3FFE66
+#define MOON_DSP7_LOCK_REGION_3_LOCK_REGION_2    0x3FFE68
+#define MOON_DSP7_LOCK_REGION_5_LOCK_REGION_4    0x3FFE6A
+#define MOON_DSP7_LOCK_REGION_7_LOCK_REGION_6    0x3FFE6C
+#define MOON_DSP7_LOCK_REGION_9_LOCK_REGION_8    0x3FFE6E
+#define MOON_DSP7_LOCK_REGION_CTRL               0x3FFE7A
+#define MOON_DSP7_PMEM_ERR_ADDR_XMEM_ERR_ADDR    0x3FFE7C
 
 /*
  * Field Definitions.
@@ -1580,6 +2855,17 @@
 #define ARIZONA_ONESHOT_STS_WIDTH                     1  /* ONESHOT_STS */
 
 /*
+ * R160 (0xA0) - Clearwater Comfort Noise Generator
+ */
+#define CLEARWATER_NOISE_GEN_ENA                 0x0020  /* NOISE_GEN_ENA */
+#define CLEARWATER_NOISE_GEN_ENA_MASK            0x0020  /* NOISE_GEN_ENA */
+#define CLEARWATER_NOISE_GEN_ENA_SHIFT                5  /* NOISE_GEN_ENA */
+#define CLEARWATER_NOISE_GEN_ENA_WIDTH                1  /* NOISE_GEN_ENA */
+#define CLEARWATER_NOISE_GEN_GAIN_MASK           0x001F  /* NOISE_GEN_GAIN - [4:0] */
+#define CLEARWATER_NOISE_GEN_GAIN_SHIFT               0  /* NOISE_GEN_GAIN - [4:0] */
+#define CLEARWATER_NOISE_GEN_GAIN_WIDTH               5  /* NOISE_GEN_GAIN - [4:0] */
+
+/*
  * R256 (0x100) - Clock 32k 1
  */
 #define ARIZONA_CLK_32K_ENA                      0x0040  /* CLK_32K_ENA */
@@ -1691,6 +2977,29 @@
 #define ARIZONA_ASYNC_SAMPLE_RATE_2_STS_MASK     0x001F  /* ASYNC_SAMPLE_RATE_2_STS - [4:0] */
 #define ARIZONA_ASYNC_SAMPLE_RATE_2_STS_SHIFT         0  /* ASYNC_SAMPLE_RATE_2_STS - [4:0] */
 #define ARIZONA_ASYNC_SAMPLE_RATE_2_STS_WIDTH         5  /* ASYNC_SAMPLE_RATE_2_STS - [4:0] */
+
+/*
+ * R109 (0x120) - DSP_Clock_1
+ */
+#define CLEARWATER_DSP_CLK_FREQ_LEGACY           0x0700  /* DSP_CLK_FREQ_LEGACY - [10:8] */
+#define CLEARWATER_DSP_CLK_FREQ_LEGACY_MASK      0x0700  /* DSP_CLK_FREQ_LEGACY - [10:8] */
+#define CLEARWATER_DSP_CLK_FREQ_LEGACY_SHIFT          8  /* DSP_CLK_FREQ_LEGACY - [10:8] */
+#define CLEARWATER_DSP_CLK_FREQ_LEGACY_WIDTH          3  /* DSP_CLK_FREQ_LEGACY - [10:8] */
+#define CLEARWATER_DSP_CLK_ENA                   0x0040  /* DSP_CLK_ENA */
+#define CLEARWATER_DSP_CLK_ENA_MASK              0x0040  /* DSP_CLK_ENA */
+#define CLEARWATER_DSP_CLK_ENA_SHIFT                  6  /* DSP_CLK_ENA */
+#define CLEARWATER_DSP_CLK_ENA_WIDTH                  1  /* DSP_CLK_ENA */
+#define CLEARWATER_DSP_CLK_SRC                   0x000F  /* DSP_CLK_SRC - [3:0] */
+#define CLEARWATER_DSP_CLK_SRC_MASK              0x000F  /* DSP_CLK_SRC - [3:0] */
+#define CLEARWATER_DSP_CLK_SRC_SHIFT                  0  /* DSP_CLK_SRC - [3:0] */
+#define CLEARWATER_DSP_CLK_SRC_WIDTH                  4  /* DSP_CLK_SRC - [3:0] */
+
+/*
+ * R110 (0x122) - DSP_Clock_2
+ */
+#define CLEARWATER_DSP_CLK_FREQ_MASK             0x03FF  /* DSP_CLK_FREQ - [9:0] */
+#define CLEARWATER_DSP_CLK_FREQ_SHIFT                 0  /* DSP_CLK_FREQ - [9:0] */
+#define CLEARWATER_DSP_CLK_FREQ_WIDTH                10  /* DSP_CLK_FREQ - [9:0] */
 
 /*
  * R329 (0x149) - Output system clock
@@ -2083,6 +3392,317 @@
 #define ARIZONA_FLL2_GPDIV_ENA_WIDTH                  1  /* FLL2_GPDIV_ENA */
 
 /*
+ * R433 (0x1B1) - FLL3 Control 1
+ */
+#define ARIZONA_FLL3_FREERUN                     0x0002  /* FLL3_FREERUN */
+#define ARIZONA_FLL3_FREERUN_MASK                0x0002  /* FLL3_FREERUN */
+#define ARIZONA_FLL3_FREERUN_SHIFT                    1  /* FLL3_FREERUN */
+#define ARIZONA_FLL3_FREERUN_WIDTH                    1  /* FLL3_FREERUN */
+#define ARIZONA_FLL3_ENA                         0x0001  /* FLL3_ENA */
+#define ARIZONA_FLL3_ENA_MASK                    0x0001  /* FLL3_ENA */
+#define ARIZONA_FLL3_ENA_SHIFT                        0  /* FLL3_ENA */
+#define ARIZONA_FLL3_ENA_WIDTH                        1  /* FLL3_ENA */
+
+/*
+ * R434 (0x1B2) - FLL3 Control 2
+ */
+#define ARIZONA_FLL3_CTRL_UPD                    0x8000  /* FLL3_CTRL_UPD */
+#define ARIZONA_FLL3_CTRL_UPD_MASK               0x8000  /* FLL3_CTRL_UPD */
+#define ARIZONA_FLL3_CTRL_UPD_SHIFT                  15  /* FLL3_CTRL_UPD */
+#define ARIZONA_FLL3_CTRL_UPD_WIDTH                   1  /* FLL3_CTRL_UPD */
+#define ARIZONA_FLL3_N_MASK                      0x03FF  /* FLL3_N - [9:0] */
+#define ARIZONA_FLL3_N_SHIFT                          0  /* FLL3_N - [9:0] */
+#define ARIZONA_FLL3_N_WIDTH                         10  /* FLL3_N - [9:0] */
+
+/*
+ * R435 (0x1B3) - FLL3 Control 3
+ */
+#define ARIZONA_FLL3_THETA_MASK                  0xFFFF  /* FLL3_THETA - [15:0] */
+#define ARIZONA_FLL3_THETA_SHIFT                      0  /* FLL3_THETA - [15:0] */
+#define ARIZONA_FLL3_THETA_WIDTH                     16  /* FLL3_THETA - [15:0] */
+
+/*
+ * R436 (0x1B4) - FLL3 Control 4
+ */
+#define ARIZONA_FLL3_LAMBDA_MASK                 0xFFFF  /* FLL3_LAMBDA - [15:0] */
+#define ARIZONA_FLL3_LAMBDA_SHIFT                     0  /* FLL3_LAMBDA - [15:0] */
+#define ARIZONA_FLL3_LAMBDA_WIDTH                    16  /* FLL3_LAMBDA - [15:0] */
+
+/*
+ * R437 (0x1B5) - FLL3 Control 5
+ */
+#define ARIZONA_FLL3_FRATIO_MASK                 0x0700  /* FLL3_FRATIO - [10:8] */
+#define ARIZONA_FLL3_FRATIO_SHIFT                     8  /* FLL3_FRATIO - [10:8] */
+#define ARIZONA_FLL3_FRATIO_WIDTH                     3  /* FLL3_FRATIO - [10:8] */
+#define ARIZONA_FLL3_OUTDIV_MASK                 0x000E  /* FLL3_OUTDIV - [3:1] */
+#define ARIZONA_FLL3_OUTDIV_SHIFT                     1  /* FLL3_OUTDIV - [3:1] */
+#define ARIZONA_FLL3_OUTDIV_WIDTH                     3  /* FLL3_OUTDIV - [3:1] */
+
+/*
+ * R438 (0x1B6) - FLL3 Control 6
+ */
+#define ARIZONA_FLL3_CLK_REF_DIV_MASK            0x00C0  /* FLL3_CLK_REF_DIV - [7:6] */
+#define ARIZONA_FLL3_CLK_REF_DIV_SHIFT                6  /* FLL3_CLK_REF_DIV - [7:6] */
+#define ARIZONA_FLL3_CLK_REF_DIV_WIDTH                2  /* FLL3_CLK_REF_DIV - [7:6] */
+#define ARIZONA_FLL3_CLK_REF_SRC_MASK            0x000F  /* FLL3_CLK_REF_SRC - [3:0] */
+#define ARIZONA_FLL3_CLK_REF_SRC_SHIFT                0  /* FLL3_CLK_REF_SRC - [3:0] */
+#define ARIZONA_FLL3_CLK_REF_SRC_WIDTH                4  /* FLL3_CLK_REF_SRC - [3:0] */
+
+/*
+ * R439 (0x1B7) - FLL3 Loop Filter Test 1
+ */
+#define ARIZONA_FLL3_FRC_INTEG_UPD               0x8000  /* FLL3_FRC_INTEG_UPD */
+#define ARIZONA_FLL3_FRC_INTEG_UPD_MASK          0x8000  /* FLL3_FRC_INTEG_UPD */
+#define ARIZONA_FLL3_FRC_INTEG_UPD_SHIFT             15  /* FLL3_FRC_INTEG_UPD */
+#define ARIZONA_FLL3_FRC_INTEG_UPD_WIDTH              1  /* FLL3_FRC_INTEG_UPD */
+#define ARIZONA_FLL3_FRC_INTEG_VAL_MASK          0x0FFF  /* FLL3_FRC_INTEG_VAL - [11:0] */
+#define ARIZONA_FLL3_FRC_INTEG_VAL_SHIFT              0  /* FLL3_FRC_INTEG_VAL - [11:0] */
+#define ARIZONA_FLL3_FRC_INTEG_VAL_WIDTH             12  /* FLL3_FRC_INTEG_VAL - [11:0] */
+
+/*
+ * R441 (0x1B9) - FLL3 Control 7
+ */
+#define ARIZONA_FLL3_GAIN_MASK                   0x003c  /* FLL3_GAIN */
+#define ARIZONA_FLL3_GAIN_SHIFT                       2  /* FLL3_GAIN */
+#define ARIZONA_FLL3_GAIN_WIDTH                       4  /* FLL3_GAIN */
+
+/*
+ * R449 (0x1C1) - FLL3 Synchroniser 1
+ */
+#define ARIZONA_FLL3_SYNC_ENA                    0x0001  /* FLL3_SYNC_ENA */
+#define ARIZONA_FLL3_SYNC_ENA_MASK               0x0001  /* FLL3_SYNC_ENA */
+#define ARIZONA_FLL3_SYNC_ENA_SHIFT                   0  /* FLL3_SYNC_ENA */
+#define ARIZONA_FLL3_SYNC_ENA_WIDTH                   1  /* FLL3_SYNC_ENA */
+
+/*
+ * R450 (0x1C2) - FLL3 Synchroniser 2
+ */
+#define ARIZONA_FLL3_SYNC_N_MASK                 0x03FF  /* FLL3_SYNC_N - [9:0] */
+#define ARIZONA_FLL3_SYNC_N_SHIFT                     0  /* FLL3_SYNC_N - [9:0] */
+#define ARIZONA_FLL3_SYNC_N_WIDTH                    10  /* FLL3_SYNC_N - [9:0] */
+
+/*
+ * R451 (0x1C3) - FLL3 Synchroniser 3
+ */
+#define ARIZONA_FLL3_SYNC_THETA_MASK             0xFFFF  /* FLL3_SYNC_THETA - [15:0] */
+#define ARIZONA_FLL3_SYNC_THETA_SHIFT                 0  /* FLL3_SYNC_THETA - [15:0] */
+#define ARIZONA_FLL3_SYNC_THETA_WIDTH                16  /* FLL3_SYNC_THETA - [15:0] */
+
+/*
+ * R452 (0x1C4) - FLL3 Synchroniser 4
+ */
+#define ARIZONA_FLL3_SYNC_LAMBDA_MASK            0xFFFF  /* FLL3_SYNC_LAMBDA - [15:0] */
+#define ARIZONA_FLL3_SYNC_LAMBDA_SHIFT                0  /* FLL3_SYNC_LAMBDA - [15:0] */
+#define ARIZONA_FLL3_SYNC_LAMBDA_WIDTH               16  /* FLL3_SYNC_LAMBDA - [15:0] */
+
+/*
+ * R453 (0x1C5) - FLL3 Synchroniser 5
+ */
+#define ARIZONA_FLL3_SYNC_FRATIO_MASK            0x0700  /* FLL3_SYNC_FRATIO - [10:8] */
+#define ARIZONA_FLL3_SYNC_FRATIO_SHIFT                8  /* FLL3_SYNC_FRATIO - [10:8] */
+#define ARIZONA_FLL3_SYNC_FRATIO_WIDTH                3  /* FLL3_SYNC_FRATIO - [10:8] */
+
+/*
+ * R454 (0x1C6) - FLL3 Synchroniser 6
+ */
+#define ARIZONA_FLL3_CLK_SYNC_DIV_MASK           0x00C0  /* FLL3_CLK_SYNC_DIV - [7:6] */
+#define ARIZONA_FLL3_CLK_SYNC_DIV_SHIFT               6  /* FLL3_CLK_SYNC_DIV - [7:6] */
+#define ARIZONA_FLL3_CLK_SYNC_DIV_WIDTH               2  /* FLL3_CLK_SYNC_DIV - [7:6] */
+#define ARIZONA_FLL3_CLK_SYNC_SRC_MASK           0x000F  /* FLL3_CLK_SYNC_SRC - [3:0] */
+#define ARIZONA_FLL3_CLK_SYNC_SRC_SHIFT               0  /* FLL3_CLK_SYNC_SRC - [3:0] */
+#define ARIZONA_FLL3_CLK_SYNC_SRC_WIDTH               4  /* FLL3_CLK_SYNC_SRC - [3:0] */
+
+/*
+ * R455 (0x1C7) - FLL3 Synchroniser 7
+ */
+#define ARIZONA_FLL3_SYNC_GAIN_MASK              0x003c  /* FLL3_SYNC_GAIN */
+#define ARIZONA_FLL3_SYNC_GAIN_SHIFT                  2  /* FLL3_SYNC_GAIN */
+#define ARIZONA_FLL3_SYNC_GAIN_WIDTH                  4  /* FLL3_SYNC_GAIN */
+#define ARIZONA_FLL3_SYNC_BW                     0x0001  /* FLL3_SYNC_BW */
+#define ARIZONA_FLL3_SYNC_BW_MASK                0x0001  /* FLL3_SYNC_BW */
+#define ARIZONA_FLL3_SYNC_BW_SHIFT                    0  /* FLL3_SYNC_BW */
+#define ARIZONA_FLL3_SYNC_BW_WIDTH                    1  /* FLL3_SYNC_BW */
+
+/*
+ * R457 (0x1C9) - FLL3 Spread Spectrum
+ */
+#define ARIZONA_FLL3_SS_AMPL_MASK                0x0030  /* FLL3_SS_AMPL - [5:4] */
+#define ARIZONA_FLL3_SS_AMPL_SHIFT                    4  /* FLL3_SS_AMPL - [5:4] */
+#define ARIZONA_FLL3_SS_AMPL_WIDTH                    2  /* FLL3_SS_AMPL - [5:4] */
+#define ARIZONA_FLL3_SS_FREQ_MASK                0x000C  /* FLL3_SS_FREQ - [3:2] */
+#define ARIZONA_FLL3_SS_FREQ_SHIFT                    2  /* FLL3_SS_FREQ - [3:2] */
+#define ARIZONA_FLL3_SS_FREQ_WIDTH                    2  /* FLL3_SS_FREQ - [3:2] */
+#define ARIZONA_FLL3_SS_SEL_MASK                 0x0003  /* FLL3_SS_SEL - [1:0] */
+#define ARIZONA_FLL3_SS_SEL_SHIFT                     0  /* FLL3_SS_SEL - [1:0] */
+#define ARIZONA_FLL3_SS_SEL_WIDTH                     2  /* FLL3_SS_SEL - [1:0] */
+
+/*
+ * R458 (0x1CA) - FLL3 GPIO Clock
+ */
+#define ARIZONA_FLL3_GPDIV_MASK                  0x00FE  /* FLL3_GPDIV - [7:1] */
+#define ARIZONA_FLL3_GPDIV_SHIFT                      1  /* FLL3_GPDIV - [7:1] */
+#define ARIZONA_FLL3_GPDIV_WIDTH                      7  /* FLL3_GPDIV - [7:1] */
+#define ARIZONA_FLL3_GPDIV_ENA                   0x0001  /* FLL3_GPDIV_ENA */
+#define ARIZONA_FLL3_GPDIV_ENA_MASK              0x0001  /* FLL3_GPDIV_ENA */
+#define ARIZONA_FLL3_GPDIV_ENA_SHIFT                  0  /* FLL3_GPDIV_ENA */
+#define ARIZONA_FLL3_GPDIV_ENA_WIDTH                  1  /* FLL3_GPDIV_ENA */
+
+/*
+ * R465 (0x1D1) - MOON_FLLAO_CONTROL_1
+ */
+#define MOON_FLL_AO_HOLD                         0x0004  /* FLL_AO_HOLD */
+#define MOON_FLL_AO_HOLD_MASK                    0x0004  /* FLL_AO_HOLD */
+#define MOON_FLL_AO_HOLD_SHIFT                        2  /* FLL_AO_HOLD */
+#define MOON_FLL_AO_HOLD_WIDTH                        1  /* FLL_AO_HOLD */
+#define MOON_FLL_AO_FREERUN                      0x0002  /* FLL_AO_FREERUN */
+#define MOON_FLL_AO_FREERUN_MASK                 0x0002  /* FLL_AO_FREERUN */
+#define MOON_FLL_AO_FREERUN_SHIFT                     1  /* FLL_AO_FREERUN */
+#define MOON_FLL_AO_FREERUN_WIDTH                     1  /* FLL_AO_FREERUN */
+#define MOON_FLL_AO_ENA                          0x0001  /* FLL_AO_ENA */
+#define MOON_FLL_AO_ENA_MASK                     0x0001  /* FLL_AO_ENA */
+#define MOON_FLL_AO_ENA_SHIFT                         0  /* FLL_AO_ENA */
+#define MOON_FLL_AO_ENA_WIDTH                         1  /* FLL_AO_ENA */
+
+/*
+ * R466 (0x1D2) - MOON_FLLAO_CONTROL_2
+ */
+#define MOON_FLL_AO_CTRL_UPD                      0x8000  /* FLL_AO_CTRL_UPD */
+#define MOON_FLL_AO_CTRL_UPD_MASK                 0x8000  /* FLL_AO_CTRL_UPD */
+#define MOON_FLL_AO_CTRL_UPD_SHIFT                    15  /* FLL_AO_CTRL_UPD */
+#define MOON_FLL_AO_CTRL_UPD_WIDTH                     1  /* FLL_AO_CTRL_UPD */
+#define MOON_FLL_AO_N                             0x03FF  /* FLL_AO_N - [9:0] */
+#define MOON_FLL_AO_N_MASK                        0x03FF  /* FLL_AO_N - [9:0] */
+#define MOON_FLL_AO_N_SHIFT                            0  /* FLL_AO_N - [9:0] */
+#define MOON_FLL_AO_N_WIDTH                           10  /* FLL_AO_N - [9:0] */
+
+/*
+ * R467 (0x1D3) - MOON_FLLAO_CONTROL_3
+ */
+#define MOON_FLL_AO_THETA_MASK                    0x00FF  /* FLL_AO_THETA - [7:0] */
+#define MOON_FLL_AO_THETA_SHIFT                        0  /* FLL_AO_THETA - [7:0] */
+#define MOON_FLL_AO_THETA_WIDTH                        8  /* FLL_AO_THETA - [7:0] */
+
+/*
+ * R468 (0x1D4) - MOON_FLLAO_CONTROL_4
+ */
+#define MOON_FLL_AO_LAMBDA_MASK                   0x00FF  /* FLL_AO_LAMBDA - [7:0] */
+#define MOON_FLL_AO_LAMBDA_SHIFT                       0  /* FLL_AO_LAMBDA - [7:0] */
+#define MOON_FLL_AO_LAMBDA_WIDTH                       8  /* FLL_AO_LAMBDA - [7:0] */
+
+/*
+ * R469 (0x1D5) - MOON_FLLAO_CONTROL_5
+ */
+#define MOON_FLL_AO_FB_DIV_MASK                   0x00FF  /* FLL_AO_FB_DIV - [7:0] */
+#define MOON_FLL_AO_FB_DIV_SHIFT                       0  /* FLL_AO_FB_DIV - [7:0] */
+#define MOON_FLL_AO_FB_DIV_WIDTH                       8  /* FLL_AO_FB_DIV - [7:0] */
+
+/*
+ * R470 (0x1D6) - MOON_FLLAO_CONTROL_6
+ */
+#define MOON_FLL_AO_REFDET_ENA                    0x8000  /* FLL_AO_REFDET_ENA */
+#define MOON_FLL_AO_REFDET_ENA_MASK               0x8000  /* FLL_AO_REFDET_ENA */
+#define MOON_FLL_AO_REFDET_ENA_SHIFT                  15  /* FLL_AO_REFDET_ENA */
+#define MOON_FLL_AO_REFDET_ENA_WIDTH                   1  /* FLL_AO_REFDET_ENA */
+#define MOON_FLL_AO_REFCLK_DIV                    0x00C0  /* FLL_AO_REFCLK_DIV - [7:6] */
+#define MOON_FLL_AO_REFCLK_DIV_MASK               0x00C0  /* FLL_AO_REFCLK_DIV - [7:6] */
+#define MOON_FLL_AO_REFCLK_DIV_SHIFT                   6  /* FLL_AO_REFCLK_DIV - [7:6] */
+#define MOON_FLL_AO_REFCLK_DIV_WIDTH                   2  /* FLL_AO_REFCLK_DIV - [7:6] */
+#define MOON_FLL_AO_REFCLK_SRC                    0x000F  /* FLL_AO_REFCLK_SRC - [3:0] */
+#define MOON_FLL_AO_REFCLK_SRC_MASK               0x000F  /* FLL_AO_REFCLK_SRC - [3:0] */
+#define MOON_FLL_AO_REFCLK_SRC_SHIFT                   0  /* FLL_AO_REFCLK_SRC - [3:0] */
+#define MOON_FLL_AO_REFCLK_SRC_WIDTH                   4  /* FLL_AO_REFCLK_SRC - [3:0] */
+
+/*
+ * R472 (0x1D8) - MOON_FLLAO_CONTROL_7
+ */
+#define MOON_FLL_AO_GAIN_MASK                     0x000F  /* FLL_AO_GAIN - [3:0] */
+#define MOON_FLL_AO_GAIN_SHIFT                         0  /* FLL_AO_GAIN - [3:0] */
+#define MOON_FLL_AO_GAIN_WIDTH                         4  /* FLL_AO_GAIN - [3:0] */
+
+/*
+ * R474 (0x1DA) - MOON_FLLAO_CONTROL_8
+ */
+#define MOON_FLL_AO_HS_DITH_TUNE                  0xF000  /* FLL_AO_HS_DITH_TUNE - [15:12] */
+#define MOON_FLL_AO_HS_DITH_TUNE_MASK             0xF000  /* FLL_AO_HS_DITH_TUNE - [15:12] */
+#define MOON_FLL_AO_HS_DITH_TUNE_SHIFT                12  /* FLL_AO_HS_DITH_TUNE - [15:12] */
+#define MOON_FLL_AO_HS_DITH_TUNE_WIDTH                 4  /* FLL_AO_HS_DITH_TUNE - [15:12] */
+#define MOON_FLL_AO_LS_DITH_TUNE_SHAPED           0x00F0  /* FLL_AO_LS_DITH_TUNE_SHAPED - [7:4] */
+#define MOON_FLL_AO_LS_DITH_TUNE_SHAPED_MASK      0x00F0  /* FLL_AO_LS_DITH_TUNE_SHAPED - [7:4] */
+#define MOON_FLL_AO_LS_DITH_TUNE_SHAPED_SHIFT          4  /* FLL_AO_LS_DITH_TUNE_SHAPED - [7:4] */
+#define MOON_FLL_AO_LS_DITH_TUNE_SHAPED_WIDTH          4  /* FLL_AO_LS_DITH_TUNE_SHAPED - [7:4] */
+#define MOON_FLL_AO_LS_DITH_TUNE_NONSHAPED        0x000F  /* FLL_AO_LS_DITH_TUNE_NONSHAPED - [3:0] */
+#define MOON_FLL_AO_LS_DITH_TUNE_NONSHAPED_MASK   0x000F  /* FLL_AO_LS_DITH_TUNE_NONSHAPED - [3:0] */
+#define MOON_FLL_AO_LS_DITH_TUNE_NONSHAPED_SHIFT       0  /* FLL_AO_LS_DITH_TUNE_NONSHAPED - [3:0] */
+#define MOON_FLL_AO_LS_DITH_TUNE_NONSHAPED_WIDTH       4  /* FLL_AO_LS_DITH_TUNE_NONSHAPED - [3:0] */
+
+/*
+ * R475 (0x1DB) - MOON_FLLAO_CONTROL_9
+ */
+#define MOON_FLL_AO_TR_RATE_MASK                  0x000F  /* FLL_AO_TR_RATE - [3:0] */
+#define MOON_FLL_AO_TR_RATE_SHIFT                      0  /* FLL_AO_TR_RATE - [3:0] */
+#define MOON_FLL_AO_TR_RATE_WIDTH                      4  /* FLL_AO_TR_RATE - [3:0] */
+
+/*
+ * R476 (0x1DC) - MOON_FLLAO_CONTROL_10
+ */
+#define MOON_FLL_AO_PHASEDET_ENA                  0x1000  /* FLL_AO_PHASEDET_ENA */
+#define MOON_FLL_AO_PHASEDET_ENA_MASK             0x1000  /* FLL_AO_PHASEDET_ENA */
+#define MOON_FLL_AO_PHASEDET_ENA_SHIFT                12  /* FLL_AO_PHASEDET_ENA */
+#define MOON_FLL_AO_PHASEDET_ENA_WIDTH                 1  /* FLL_AO_PHASEDET_ENA */
+#define MOON_FLL_AO_WLR_SDM_FRC_ENA               0x0800  /* FLL_AO_WLR_SDM_FRC_ENA */
+#define MOON_FLL_AO_WLR_SDM_FRC_ENA_MASK          0x0800  /* FLL_AO_WLR_SDM_FRC_ENA */
+#define MOON_FLL_AO_WLR_SDM_FRC_ENA_SHIFT             11  /* FLL_AO_WLR_SDM_FRC_ENA */
+#define MOON_FLL_AO_WLR_SDM_FRC_ENA_WIDTH              1  /* FLL_AO_WLR_SDM_FRC_ENA */
+#define MOON_FLL_AO_WLR_SDM_ENA                   0x0400  /* FLL_AO_WLR_SDM_ENA */
+#define MOON_FLL_AO_WLR_SDM_ENA_MASK              0x0400  /* FLL_AO_WLR_SDM_ENA */
+#define MOON_FLL_AO_WLR_SDM_ENA_SHIFT                 10  /* FLL_AO_WLR_SDM_ENA */
+#define MOON_FLL_AO_WLR_SDM_ENA_WIDTH                  1  /* FLL_AO_WLR_SDM_ENA */
+#define MOON_FLL_AO_SYNC_EFS_ENA                  0x0200  /* FLL_AO_SYNC_EFS_ENA */
+#define MOON_FLL_AO_SYNC_EFS_ENA_MASK             0x0200  /* FLL_AO_SYNC_EFS_ENA */
+#define MOON_FLL_AO_SYNC_EFS_ENA_SHIFT                 9  /* FLL_AO_SYNC_EFS_ENA */
+#define MOON_FLL_AO_SYNC_EFS_ENA_WIDTH                 1  /* FLL_AO_SYNC_EFS_ENA */
+#define MOON_FLL_AO_LS_DITH_ENA                   0x0080  /* FLL_AO_LS_DITH_ENA */
+#define MOON_FLL_AO_LS_DITH_ENA_MASK              0x0080  /* FLL_AO_LS_DITH_ENA */
+#define MOON_FLL_AO_LS_DITH_ENA_SHIFT                  7  /* FLL_AO_LS_DITH_ENA */
+#define MOON_FLL_AO_LS_DITH_ENA_WIDTH                  1  /* FLL_AO_LS_DITH_ENA */
+#define MOON_FLL_AO_HS_DITH_ENA                   0x0040  /* FLL_AO_HS_DITH_ENA */
+#define MOON_FLL_AO_HS_DITH_ENA_MASK              0x0040  /* FLL_AO_HS_DITH_ENA */
+#define MOON_FLL_AO_HS_DITH_ENA_SHIFT                  6  /* FLL_AO_HS_DITH_ENA */
+#define MOON_FLL_AO_HS_DITH_ENA_WIDTH                  1  /* FLL_AO_HS_DITH_ENA */
+#define MOON_FLL_AO_OSF_FRC_ENA                   0x0010  /* FLL_AO_OSF_FRC_ENA */
+#define MOON_FLL_AO_OSF_FRC_ENA_MASK              0x0010  /* FLL_AO_OSF_FRC_ENA */
+#define MOON_FLL_AO_OSF_FRC_ENA_SHIFT                  4  /* FLL_AO_OSF_FRC_ENA */
+#define MOON_FLL_AO_OSF_FRC_ENA_WIDTH                  1  /* FLL_AO_OSF_FRC_ENA */
+#define MOON_FLL_AO_OSF_ENA                       0x0008  /* FLL_AO_OSF_ENA */
+#define MOON_FLL_AO_OSF_ENA_MASK                  0x0008  /* FLL_AO_OSF_ENA */
+#define MOON_FLL_AO_OSF_ENA_SHIFT                      3  /* FLL_AO_OSF_ENA */
+#define MOON_FLL_AO_OSF_ENA_WIDTH                      1  /* FLL_AO_OSF_ENA */
+#define MOON_FLL_AO_AUTO_DFSAT_ENA                0x0002  /* FLL_AO_AUTO_DFSAT_ENA */
+#define MOON_FLL_AO_AUTO_DFSAT_ENA_MASK           0x0002  /* FLL_AO_AUTO_DFSAT_ENA */
+#define MOON_FLL_AO_AUTO_DFSAT_ENA_SHIFT               1  /* FLL_AO_AUTO_DFSAT_ENA */
+#define MOON_FLL_AO_AUTO_DFSAT_ENA_WIDTH               1  /* FLL_AO_AUTO_DFSAT_ENA */
+#define MOON_FLL_AO_DFSAT_ENA                     0x0001  /* FLL_AO_DFSAT_ENA */
+#define MOON_FLL_AO_DFSAT_ENA_MASK                0x0001  /* FLL_AO_DFSAT_ENA */
+#define MOON_FLL_AO_DFSAT_ENA_SHIFT                    0  /* FLL_AO_DFSAT_ENA */
+#define MOON_FLL_AO_DFSAT_ENA_WIDTH                    1  /* FLL_AO_DFSAT_ENA */
+
+/*
+ * R477 (0x1DD) - MOON_FLLAO_CONTROL_11
+ */
+#define MOON_FLL_AO_LOCKDET_PHASE_MASK            0x0080  /* FLL_AO_LOCKDET_PHASE_MASK */
+#define MOON_FLL_AO_LOCKDET_PHASE_MASK_MASK       0x0080  /* FLL_AO_LOCKDET_PHASE_MASK */
+#define MOON_FLL_AO_LOCKDET_PHASE_MASK_SHIFT           7  /* FLL_AO_LOCKDET_PHASE_MASK */
+#define MOON_FLL_AO_LOCKDET_PHASE_MASK_WIDTH           1  /* FLL_AO_LOCKDET_PHASE_MASK */
+#define MOON_FLL_AO_LOCKDET_THR                   0x001E  /* FLL_AO_LOCKDET_THR - [4:1] */
+#define MOON_FLL_AO_LOCKDET_THR_MASK              0x001E  /* FLL_AO_LOCKDET_THR - [4:1] */
+#define MOON_FLL_AO_LOCKDET_THR_SHIFT                  1  /* FLL_AO_LOCKDET_THR - [4:1] */
+#define MOON_FLL_AO_LOCKDET_THR_WIDTH                  4  /* FLL_AO_LOCKDET_THR - [4:1] */
+#define MOON_FLL_AO_LOCKDET_ENA                   0x0001  /* FLL_AO_LOCKDET_ENA */
+#define MOON_FLL_AO_LOCKDET_ENA_MASK              0x0001  /* FLL_AO_LOCKDET_ENA */
+#define MOON_FLL_AO_LOCKDET_ENA_SHIFT                  0  /* FLL_AO_LOCKDET_ENA */
+#define MOON_FLL_AO_LOCKDET_ENA_WIDTH                  1  /* FLL_AO_LOCKDET_ENA */
+
+/*
  * R512 (0x200) - Mic Charge Pump 1
  */
 #define ARIZONA_CPMIC_DISCH                      0x0004  /* CPMIC_DISCH */
@@ -2245,19 +3865,246 @@
 #define ARIZONA_MICB3_ENA_WIDTH                       1  /* MICB3_ENA */
 
 /*
+ * R539 (0x21B) - Mic Bias Ctrl 4
+ */
+#define ARIZONA_MICB4_EXT_CAP                    0x8000  /* MICB4_EXT_CAP */
+#define ARIZONA_MICB4_EXT_CAP_MASK               0x8000  /* MICB4_EXT_CAP */
+#define ARIZONA_MICB4_EXT_CAP_SHIFT                  15  /* MICB4_EXT_CAP */
+#define ARIZONA_MICB4_EXT_CAP_WIDTH                   1  /* MICB4_EXT_CAP */
+#define ARIZONA_MICB4_LVL_MASK                   0x01E0  /* MICB4_LVL - [8:5] */
+#define ARIZONA_MICB4_LVL_SHIFT                       5  /* MICB4_LVL - [8:5] */
+#define ARIZONA_MICB4_LVL_WIDTH                       4  /* MICB4_LVL - [8:5] */
+#define ARIZONA_MICB4_FAST                       0x0010  /* MICB4_FAST */
+#define ARIZONA_MICB4_FAST_MASK                  0x0010  /* MICB4_FAST */
+#define ARIZONA_MICB4_FAST_SHIFT                      4  /* MICB4_FAST */
+#define ARIZONA_MICB4_FAST_WIDTH                      1  /* MICB4_FAST */
+#define ARIZONA_MICB4_RATE                       0x0008  /* MICB4_RATE */
+#define ARIZONA_MICB4_RATE_MASK                  0x0008  /* MICB4_RATE */
+#define ARIZONA_MICB4_RATE_SHIFT                      3  /* MICB4_RATE */
+#define ARIZONA_MICB4_RATE_WIDTH                      1  /* MICB4_RATE */
+#define ARIZONA_MICB4_DISCH                      0x0004  /* MICB4_DISCH */
+#define ARIZONA_MICB4_DISCH_MASK                 0x0004  /* MICB4_DISCH */
+#define ARIZONA_MICB4_DISCH_SHIFT                     2  /* MICB4_DISCH */
+#define ARIZONA_MICB4_DISCH_WIDTH                     1  /* MICB4_DISCH */
+#define ARIZONA_MICB4_BYPASS                     0x0002  /* MICB4_BYPASS */
+#define ARIZONA_MICB4_BYPASS_MASK                0x0002  /* MICB4_BYPASS */
+#define ARIZONA_MICB4_BYPASS_SHIFT                    1  /* MICB4_BYPASS */
+#define ARIZONA_MICB4_BYPASS_WIDTH                    1  /* MICB4_BYPASS */
+#define ARIZONA_MICB4_ENA                        0x0001  /* MICB4_ENA */
+#define ARIZONA_MICB4_ENA_MASK                   0x0001  /* MICB4_ENA */
+#define ARIZONA_MICB4_ENA_SHIFT                       0  /* MICB4_ENA */
+#define ARIZONA_MICB4_ENA_WIDTH                       1  /* MICB4_ENA */
+
+/*
+ * R540 (0x21C) - Mic Bias Ctrl 5
+ */
+#define ARIZONA_MICB1D_BYP                       0x4000  /* MICB1D_BYP */
+#define ARIZONA_MICB1D_BYP_MASK                  0x4000  /* MICB1D_BYP */
+#define ARIZONA_MICB1D_BYP_SHIFT                     14  /* MICB1D_BYP */
+#define ARIZONA_MICB1D_BYP_WIDTH                      1  /* MICB1D_BYP */
+#define ARIZONA_MICB1D_DISCH                     0x2000  /* MICB1D_DISCH */
+#define ARIZONA_MICB1D_DISCH_MASK                0x2000  /* MICB1D_DISCH */
+#define ARIZONA_MICB1D_DISCH_SHIFT                   13  /* MICB1D_DISCH */
+#define ARIZONA_MICB1D_DISCH_WIDTH                    1  /* MICB1D_DISCH */
+#define ARIZONA_MICB1D_ENA                       0x1000  /* MICB1D_ENA */
+#define ARIZONA_MICB1D_ENA_MASK                  0x1000  /* MICB1D_ENA */
+#define ARIZONA_MICB1D_ENA_SHIFT                     12  /* MICB1D_ENA */
+#define ARIZONA_MICB1D_ENA_WIDTH                      1  /* MICB1D_ENA */
+#define ARIZONA_MICB1C_BYP                       0x0400  /* MICB1C_BYP */
+#define ARIZONA_MICB1C_BYP_MASK                  0x0400  /* MICB1C_BYP */
+#define ARIZONA_MICB1C_BYP_SHIFT                     10  /* MICB1C_BYP */
+#define ARIZONA_MICB1C_BYP_WIDTH                      1  /* MICB1C_BYP */
+#define ARIZONA_MICB1C_DISCH                     0x0200  /* MICB1C_DISCH */
+#define ARIZONA_MICB1C_DISCH_MASK                0x0200  /* MICB1C_DISCH */
+#define ARIZONA_MICB1C_DISCH_SHIFT                    9  /* MICB1C_DISCH */
+#define ARIZONA_MICB1C_DISCH_WIDTH                    1  /* MICB1C_DISCH */
+#define ARIZONA_MICB1C_ENA                       0x0100  /* MICB1C_ENA */
+#define ARIZONA_MICB1C_ENA_MASK                  0x0100  /* MICB1C_ENA */
+#define ARIZONA_MICB1C_ENA_SHIFT                      8  /* MICB1C_ENA */
+#define ARIZONA_MICB1C_ENA_WIDTH                      1  /* MICB1C_ENA */
+#define ARIZONA_MICB1B_BYP                       0x0040  /* MICB1B_BYP */
+#define ARIZONA_MICB1B_BYP_MASK                  0x0040  /* MICB1B_BYP */
+#define ARIZONA_MICB1B_BYP_SHIFT                      6  /* MICB1B_BYP */
+#define ARIZONA_MICB1B_BYP_WIDTH                      1  /* MICB1B_BYP */
+#define ARIZONA_MICB1B_DISCH                     0x0020  /* MICB1B_DISCH */
+#define ARIZONA_MICB1B_DISCH_MASK                0x0020  /* MICB1B_DISCH */
+#define ARIZONA_MICB1B_DISCH_SHIFT                    5  /* MICB1B_DISCH */
+#define ARIZONA_MICB1B_DISCH_WIDTH                    1  /* MICB1B_DISCH */
+#define ARIZONA_MICB1B_ENA                       0x0010  /* MICB1B_ENA */
+#define ARIZONA_MICB1B_ENA_MASK                  0x0010  /* MICB1B_ENA */
+#define ARIZONA_MICB1B_ENA_SHIFT                      4  /* MICB1B_ENA */
+#define ARIZONA_MICB1B_ENA_WIDTH                      1  /* MICB1B_ENA */
+#define ARIZONA_MICB1A_BYP                       0x0004  /* MICB1A_BYP */
+#define ARIZONA_MICB1A_BYP_MASK                  0x0004  /* MICB1A_BYP */
+#define ARIZONA_MICB1A_BYP_SHIFT                      2  /* MICB1A_BYP */
+#define ARIZONA_MICB1A_BYP_WIDTH                      1  /* MICB1A_BYP */
+#define ARIZONA_MICB1A_DISCH                     0x0002  /* MICB1A_DISCH */
+#define ARIZONA_MICB1A_DISCH_MASK                0x0002  /* MICB1A_DISCH */
+#define ARIZONA_MICB1A_DISCH_SHIFT                    1  /* MICB1A_DISCH */
+#define ARIZONA_MICB1A_DISCH_WIDTH                    1  /* MICB1A_DISCH */
+#define ARIZONA_MICB1A_ENA                       0x0001  /* MICB1A_ENA */
+#define ARIZONA_MICB1A_ENA_MASK                  0x0001  /* MICB1A_ENA */
+#define ARIZONA_MICB1A_ENA_SHIFT                      0  /* MICB1A_ENA */
+#define ARIZONA_MICB1A_ENA_WIDTH                      1  /* MICB1A_ENA */
+
+/*
+ * R542 (0x21E) - Mic Bias Ctrl 6
+ */
+#define ARIZONA_MICB2D_BYP                       0x4000  /* MICB2D_BYP */
+#define ARIZONA_MICB2D_BYP_MASK                  0x4000  /* MICB2D_BYP */
+#define ARIZONA_MICB2D_BYP_SHIFT                     14  /* MICB2D_BYP */
+#define ARIZONA_MICB2D_BYP_WIDTH                      1  /* MICB2D_BYP */
+#define ARIZONA_MICB2D_DISCH                     0x2000  /* MICB2D_DISCH */
+#define ARIZONA_MICB2D_DISCH_MASK                0x2000  /* MICB2D_DISCH */
+#define ARIZONA_MICB2D_DISCH_SHIFT                   13  /* MICB2D_DISCH */
+#define ARIZONA_MICB2D_DISCH_WIDTH                    1  /* MICB2D_DISCH */
+#define ARIZONA_MICB2D_ENA                       0x1000  /* MICB2D_ENA */
+#define ARIZONA_MICB2D_ENA_MASK                  0x1000  /* MICB2D_ENA */
+#define ARIZONA_MICB2D_ENA_SHIFT                     12  /* MICB2D_ENA */
+#define ARIZONA_MICB2D_ENA_WIDTH                      1  /* MICB2D_ENA */
+#define ARIZONA_MICB2C_BYP                       0x0400  /* MICB2C_BYP */
+#define ARIZONA_MICB2C_BYP_MASK                  0x0400  /* MICB2C_BYP */
+#define ARIZONA_MICB2C_BYP_SHIFT                     10  /* MICB2C_BYP */
+#define ARIZONA_MICB2C_BYP_WIDTH                      1  /* MICB2C_BYP */
+#define ARIZONA_MICB2C_DISCH                     0x0200  /* MICB2C_DISCH */
+#define ARIZONA_MICB2C_DISCH_MASK                0x0200  /* MICB2C_DISCH */
+#define ARIZONA_MICB2C_DISCH_SHIFT                    9  /* MICB2C_DISCH */
+#define ARIZONA_MICB2C_DISCH_WIDTH                    1  /* MICB2C_DISCH */
+#define ARIZONA_MICB2C_ENA                       0x0100  /* MICB2C_ENA */
+#define ARIZONA_MICB2C_ENA_MASK                  0x0100  /* MICB2C_ENA */
+#define ARIZONA_MICB2C_ENA_SHIFT                      8  /* MICB2C_ENA */
+#define ARIZONA_MICB2C_ENA_WIDTH                      1  /* MICB2C_ENA */
+#define ARIZONA_MICB2B_BYP                       0x0040  /* MICB2B_BYP */
+#define ARIZONA_MICB2B_BYP_MASK                  0x0040  /* MICB2B_BYP */
+#define ARIZONA_MICB2B_BYP_SHIFT                      6  /* MICB2B_BYP */
+#define ARIZONA_MICB2B_BYP_WIDTH                      1  /* MICB2B_BYP */
+#define ARIZONA_MICB2B_DISCH                     0x0020  /* MICB2B_DISCH */
+#define ARIZONA_MICB2B_DISCH_MASK                0x0020  /* MICB2B_DISCH */
+#define ARIZONA_MICB2B_DISCH_SHIFT                    5  /* MICB2B_DISCH */
+#define ARIZONA_MICB2B_DISCH_WIDTH                    1  /* MICB2B_DISCH */
+#define ARIZONA_MICB2B_ENA                       0x0010  /* MICB2B_ENA */
+#define ARIZONA_MICB2B_ENA_MASK                  0x0010  /* MICB2B_ENA */
+#define ARIZONA_MICB2B_ENA_SHIFT                      4  /* MICB2B_ENA */
+#define ARIZONA_MICB2B_ENA_WIDTH                      1  /* MICB2B_ENA */
+#define ARIZONA_MICB2A_BYP                       0x0004  /* MICB2A_BYP */
+#define ARIZONA_MICB2A_BYP_MASK                  0x0004  /* MICB2A_BYP */
+#define ARIZONA_MICB2A_BYP_SHIFT                      2  /* MICB2A_BYP */
+#define ARIZONA_MICB2A_BYP_WIDTH                      1  /* MICB2A_BYP */
+#define ARIZONA_MICB2A_DISCH                     0x0002  /* MICB2A_DISCH */
+#define ARIZONA_MICB2A_DISCH_MASK                0x0002  /* MICB2A_DISCH */
+#define ARIZONA_MICB2A_DISCH_SHIFT                    1  /* MICB2A_DISCH */
+#define ARIZONA_MICB2A_DISCH_WIDTH                    1  /* MICB2A_DISCH */
+#define ARIZONA_MICB2A_ENA                       0x0001  /* MICB2A_ENA */
+#define ARIZONA_MICB2A_ENA_MASK                  0x0001  /* MICB2A_ENA */
+#define ARIZONA_MICB2A_ENA_SHIFT                      0  /* MICB2A_ENA */
+#define ARIZONA_MICB2A_ENA_WIDTH                      1  /* MICB2A_ENA */
+
+/*
+ * R549 (0x225) - HP Ctrl 1L
+ */
+#define ARIZONA_RMV_SHRT_HP1L                    0x4000  /* RMV_SHRT_HP1L */
+#define ARIZONA_RMV_SHRT_HP1L_MASK               0x4000  /* RMV_SHRT_HP1L */
+#define ARIZONA_RMV_SHRT_HP1L_SHIFT                  14  /* RMV_SHRT_HP1L */
+#define ARIZONA_RMV_SHRT_HP1L_WIDTH                   1  /* RMV_SHRT_HP1L */
+#define ARIZONA_HP1L_FLWR                        0x0004  /* HP1L_FLWR */
+#define ARIZONA_HP1L_FLWR_MASK                   0x0004  /* HP1L_FLWR */
+#define ARIZONA_HP1L_FLWR_SHIFT                       2  /* HP1L_FLWR */
+#define ARIZONA_HP1L_FLWR_WIDTH                       1  /* HP1L_FLWR */
+#define ARIZONA_HP1L_SHRTI                       0x0002  /* HP1L_SHRTI */
+#define ARIZONA_HP1L_SHRTI_MASK                  0x0002  /* HP1L_SHRTI */
+#define ARIZONA_HP1L_SHRTI_SHIFT                      1  /* HP1L_SHRTI */
+#define ARIZONA_HP1L_SHRTI_WIDTH                      1  /* HP1L_SHRTI */
+#define ARIZONA_HP1L_SHRTO                       0x0001  /* HP1L_SHRTO */
+#define ARIZONA_HP1L_SHRTO_MASK                  0x0001  /* HP1L_SHRTO */
+#define ARIZONA_HP1L_SHRTO_SHIFT                      0  /* HP1L_SHRTO */
+#define ARIZONA_HP1L_SHRTO_WIDTH                      1  /* HP1L_SHRTO */
+
+/*
+ * R550 (0x226) - HP Ctrl 1R
+ */
+#define ARIZONA_RMV_SHRT_HP1R                    0x4000  /* RMV_SHRT_HP1R */
+#define ARIZONA_RMV_SHRT_HP1R_MASK               0x4000  /* RMV_SHRT_HP1R */
+#define ARIZONA_RMV_SHRT_HP1R_SHIFT                  14  /* RMV_SHRT_HP1R */
+#define ARIZONA_RMV_SHRT_HP1R_WIDTH                   1  /* RMV_SHRT_HP1R */
+#define ARIZONA_HP1R_FLWR                        0x0004  /* HP1R_FLWR */
+#define ARIZONA_HP1R_FLWR_MASK                   0x0004  /* HP1R_FLWR */
+#define ARIZONA_HP1R_FLWR_SHIFT                       2  /* HP1R_FLWR */
+#define ARIZONA_HP1R_FLWR_WIDTH                       1  /* HP1R_FLWR */
+#define ARIZONA_HP1R_SHRTI                       0x0002  /* HP1R_SHRTI */
+#define ARIZONA_HP1R_SHRTI_MASK                  0x0002  /* HP1R_SHRTI */
+#define ARIZONA_HP1R_SHRTI_SHIFT                      1  /* HP1R_SHRTI */
+#define ARIZONA_HP1R_SHRTI_WIDTH                      1  /* HP1R_SHRTI */
+#define ARIZONA_HP1R_SHRTO                       0x0001  /* HP1R_SHRTO */
+#define ARIZONA_HP1R_SHRTO_MASK                  0x0001  /* HP1R_SHRTO */
+#define ARIZONA_HP1R_SHRTO_SHIFT                      0  /* HP1R_SHRTO */
+#define ARIZONA_HP1R_SHRTO_WIDTH                      1  /* HP1R_SHRTO */
+
+/*
+ * R638 (0x27E) - Clearwater EDRE HP stereo control
+ */
+#define ARIZONA_HP3_EDRE_STEREO                  0x0004  /* HP3_EDRE_STEREO */
+#define ARIZONA_HP3_EDRE_STEREO_MASK             0x0004  /* HP3_EDRE_STEREO */
+#define ARIZONA_HP3_EDRE_STEREO_SHIFT                 2  /* HP3_EDRE_STEREO */
+#define ARIZONA_HP3_EDRE_STEREO_WIDTH                 1  /* HP3_EDRE_STEREO */
+#define ARIZONA_HP2_EDRE_STEREO                  0x0002  /* HP2_EDRE_STEREO */
+#define ARIZONA_HP2_EDRE_STEREO_MASK             0x0002  /* HP2_EDRE_STEREO */
+#define ARIZONA_HP2_EDRE_STEREO_SHIFT                 1  /* HP2_EDRE_STEREO */
+#define ARIZONA_HP2_EDRE_STEREO_WIDTH                 1  /* HP2_EDRE_STEREO */
+#define ARIZONA_HP1_EDRE_STEREO                  0x0001  /* HP1_EDRE_STEREO */
+#define ARIZONA_HP1_EDRE_STEREO_MASK             0x0001  /* HP1_EDRE_STEREO */
+#define ARIZONA_HP1_EDRE_STEREO_SHIFT                 0  /* HP1_EDRE_STEREO */
+#define ARIZONA_HP1_EDRE_STEREO_WIDTH                 1  /* HP1_EDRE_STEREO */
+
+/*
  * R659 (0x293) - Accessory Detect Mode 1
  */
 #define ARIZONA_ACCDET_SRC                       0x2000  /* ACCDET_SRC */
 #define ARIZONA_ACCDET_SRC_MASK                  0x2000  /* ACCDET_SRC */
 #define ARIZONA_ACCDET_SRC_SHIFT                     13  /* ACCDET_SRC */
 #define ARIZONA_ACCDET_SRC_WIDTH                      1  /* ACCDET_SRC */
-#define ARIZONA_ACCDET_MODE_MASK                 0x0003  /* ACCDET_MODE - [1:0] */
-#define ARIZONA_ACCDET_MODE_SHIFT                     0  /* ACCDET_MODE - [1:0] */
-#define ARIZONA_ACCDET_MODE_WIDTH                     2  /* ACCDET_MODE - [1:0] */
+#define ARIZONA_ACCDET_POLARITY_INV_ENA          0x0080  /* ACCDET_POLARITY_INV_ENA */
+#define ARIZONA_ACCDET_POLARITY_INV_ENA_MASK     0x0080  /* ACCDET_POLARITY_INV_ENA */
+#define ARIZONA_ACCDET_POLARITY_INV_ENA_SHIFT         7  /* ACCDET_POLARITY_INV_ENA */
+#define ARIZONA_ACCDET_POLARITY_INV_ENA_WIDTH         1  /* ACCDET_POLARITY_INV_ENA */
+#define ARIZONA_ACCDET_MODE_MASK                 0x0007  /* ACCDET_MODE - [2:0] */
+#define ARIZONA_ACCDET_MODE_SHIFT                     0  /* ACCDET_MODE - [2:0] */
+#define ARIZONA_ACCDET_MODE_WIDTH                     3  /* ACCDET_MODE - [2:0] */
+
+/*
+ * R665 (0x299) - MOON_HEADPHONE_DETECT_0
+ */
+#define MOON_HPD_GND_SEL                         0x0007  /*HPD_GND_SEL[2:0]*/
+#define MOON_HPD_GND_SEL_MASK                    0x0007  /*HPD_GND_SEL[2:0]*/
+#define MOON_HPD_GND_SEL_SHIFT                        0  /*HPD_GND_SEL[2:0]*/
+#define MOON_HPD_GND_SEL_WIDTH                        3  /*HPD_GND_SEL[2:0]*/
+#define MOON_HPD_SENSE_SEL                       0x0070  /*HPD_SENSE_SEL[4:6]*/
+#define MOON_HPD_SENSE_SEL_MASK                  0x0070  /*HPD_SENSE_SEL[4:6]*/
+#define MOON_HPD_SENSE_SEL_SHIFT                      4  /*HPD_SENSE_SEL[4:6]*/
+#define MOON_HPD_SENSE_SEL_WIDTH                      3  /*HPD_SENSE_SEL[4:6]*/
+#define MOON_HPD_FRC_SEL                         0x0700  /*HPD_FRC_SEL[8:10]*/
+#define MOON_HPD_FRC_SEL_MASK                    0x0700  /*HPD_FRC_SEL[8:10]*/
+#define MOON_HPD_FRC_SEL_SHIFT                        8  /*HPD_FRC_SEL[8:10]*/
+#define MOON_HPD_FRC_SEL_WIDTH                        3  /*HPD_FRC_SEL[8:10]*/
+#define MOON_HPD_OUT_SEL                         0x7000  /*HPD_OUT_SEL[12:14]*/
+#define MOON_HPD_OUT_SEL_MASK                    0x7000  /*HPD_OUT_SEL[12:14]*/
+#define MOON_HPD_OUT_SEL_SHIFT                       12  /*HPD_OUT_SEL[12:14]*/
+#define MOON_HPD_OUT_SEL_WIDTH                        3  /*HPD_OUT_SEL[12:14]*/
+#define MOON_HPD_OVD_ENA_SEL                     0x8000  /*HPD_OVD_ENA[15]]*/
+#define MOON_HPD_OVD_ENA_SEL_MASK                0x8000  /*HPD_OVD_ENA[15]]*/
+#define MOON_HPD_OVD_ENA_SEL_SHIFT                   15  /*HPD_OVD_ENA[15]]*/
+#define MOON_HPD_OVD_ENA_SEL_WIDTH                    1  /*HPD_OVD_ENA[15]]*/
 
 /*
  * R667 (0x29B) - Headphone Detect 1
  */
+#define VEGAS_HP_FAST_MODE                       0x8000  /* HP_FAST_MODE [15] */
+#define VEGAS_HP_FAST_MODE_MASK                  0x8000  /* HP_FAST_MODE [15] */
+#define VEGAS_HP_FAST_MODE_SHIFT                     15  /* HP_FAST_MODE [15] */
+#define VEGAS_HP_FAST_MODE_WIDTH                      1  /* HP_FAST_MODE [15] */
+#define ARIZONA_HP_FAST_MODE                     0x0800  /* HP_FAST_MODE [11] */
+#define ARIZONA_HP_FAST_MODE_MASK                0x0800  /* HP_FAST_MODE [11] */
+#define ARIZONA_HP_FAST_MODE_SHIFT                   11  /* HP_FAST_MODE [11] */
+#define ARIZONA_HP_FAST_MODE_WIDTH                    1  /* HP_FAST_MODE [11] */
 #define ARIZONA_HP_IMPEDANCE_RANGE_MASK          0x0600  /* HP_IMPEDANCE_RANGE - [10:9] */
 #define ARIZONA_HP_IMPEDANCE_RANGE_SHIFT              9  /* HP_IMPEDANCE_RANGE - [10:9] */
 #define ARIZONA_HP_IMPEDANCE_RANGE_WIDTH              2  /* HP_IMPEDANCE_RANGE - [10:9] */
@@ -2275,6 +4122,12 @@
 #define ARIZONA_HP_IDAC_STEER_MASK               0x0004  /* HP_IDAC_STEER */
 #define ARIZONA_HP_IDAC_STEER_SHIFT                   2  /* HP_IDAC_STEER */
 #define ARIZONA_HP_IDAC_STEER_WIDTH                   1  /* HP_IDAC_STEER */
+#define CLEARWATER_HP_RATE_MASK                  0x0006  /* HP_RATE - [2:1] */
+#define CLEARWATER_HP_RATE_SHIFT                      1  /* HP_RATE - [2:1] */
+#define CLEARWATER_HP_RATE_WIDTH                      2  /* HP_RATE - [2:1] */
+#define VEGAS_HP_RATE_MASK                       0x0006  /* HP_RATE - [2:1] */
+#define VEGAS_HP_RATE_SHIFT                           1  /* HP_RATE - [2:1] */
+#define VEGAS_HP_RATE_WIDTH                           2  /* HP_RATE - [2:1] */
 #define ARIZONA_HP_RATE                          0x0002  /* HP_RATE */
 #define ARIZONA_HP_RATE_MASK                     0x0002  /* HP_RATE */
 #define ARIZONA_HP_RATE_SHIFT                         1  /* HP_RATE */
@@ -2294,7 +4147,6 @@
 #define ARIZONA_HP_LVL_MASK                      0x007F  /* HP_LVL - [6:0] */
 #define ARIZONA_HP_LVL_SHIFT                          0  /* HP_LVL - [6:0] */
 #define ARIZONA_HP_LVL_WIDTH                          7  /* HP_LVL - [6:0] */
-
 #define ARIZONA_HP_DONE_B                        0x8000  /* HP_DONE */
 #define ARIZONA_HP_DONE_B_MASK                   0x8000  /* HP_DONE */
 #define ARIZONA_HP_DONE_B_SHIFT                      15  /* HP_DONE */
@@ -2304,11 +4156,38 @@
 #define ARIZONA_HP_LVL_B_WIDTH                       15  /* HP_LVL - [14:0] */
 
 /*
+ * R669 (0x29D) - Headphone Detect 3
+ */
+#define ARIZONA_HP_DACVAL_MASK                   0x03FF  /* HP_DACVAL [9:0] */
+#define ARIZONA_HP_DACVAL_SHIFT                       0  /* HP_DACVAL [9:0] */
+#define ARIZONA_HP_DACVAL_WIDTH                      10  /* HP_DACVAL [9:0] */
+
+/*
+ * R669 (0x29F) - Headphone Detect 5
+ */
+#define ARIZONA_HP_DACVAL_DOWN_MASK              0x03FF  /* HP_DACVAL_DOWN [9:0] */
+#define ARIZONA_HP_DACVAL_DOWN_SHIFT                  0  /* HP_DACVAL_DOWN [9:0] */
+#define ARIZONA_HP_DACVAL_DOWN_WIDTH                 10  /* HP_DACVAL_DOWN [9:0] */
+
+/*
  * R674 (0x2A2) - MICD clamp control
  */
 #define ARIZONA_MICD_CLAMP_MODE_MASK             0x000F  /* MICD_CLAMP_MODE - [3:0] */
 #define ARIZONA_MICD_CLAMP_MODE_SHIFT                 0  /* MICD_CLAMP_MODE - [3:0] */
 #define ARIZONA_MICD_CLAMP_MODE_WIDTH                 4  /* MICD_CLAMP_MODE - [3:0] */
+
+/*
+ * R674 (0x2A2) - MOON_MIC_DETECT_0
+ */
+#define MOON_MICD1_GND_MASK                      0x0007  /* MICD1_GND_SEL - [2:0] */
+#define MOON_MICD1_GND_SHIFT                          0  /* MICD1_GND_SEL - [2:0] */
+#define MOON_MICD1_GND_WIDTH                          3  /* MICD1_GND_SEL - [2:0] */
+#define MOON_MICD1_SENSE_MASK                    0x0070  /* MICD1_SENSE_SEL - [2:0] */
+#define MOON_MICD1_SENSE_SHIFT                        4  /* MICD1_SENSE_SEL - [2:0] */
+#define MOON_MICD1_SENSE_WIDTH                        3  /* MICD1_SENSE_SEL - [2:0] */
+#define MOON_MICD1_ADC_MODE_MASK                 0x8000  /* MICD1_ADC_MODE - [2:0] */
+#define MOON_MICD1_ADC_MODE_SHIFT                    15  /* MICD1_ADC_MODE - [2:0] */
+#define MOON_MICD1_ADC_MODE_WIDTH                     1  /* MICD1_ADC_MODE - [2:0] */
 
 /*
  * R675 (0x2A3) - Mic Detect 1
@@ -2322,6 +4201,9 @@
 #define ARIZONA_MICD_BIAS_SRC_MASK               0x0030  /* MICD_BIAS_SRC - [5:4] */
 #define ARIZONA_MICD_BIAS_SRC_SHIFT                   4  /* MICD_BIAS_SRC - [5:4] */
 #define ARIZONA_MICD_BIAS_SRC_WIDTH                   2  /* MICD_BIAS_SRC - [5:4] */
+#define MOON_MICD_BIAS_SRC_MASK                  0x00F0  /* MICD_BIAS_SRC - [7:4] */
+#define MOON_MICD_BIAS_SRC_SHIFT                      4  /* MICD_BIAS_SRC - [7:4] */
+#define MOON_MICD_BIAS_SRC_WIDTH                      4  /* MICD_BIAS_SRC - [7:4] */
 #define ARIZONA_MICD_DBTIME                      0x0002  /* MICD_DBTIME */
 #define ARIZONA_MICD_DBTIME_MASK                 0x0002  /* MICD_DBTIME */
 #define ARIZONA_MICD_DBTIME_SHIFT                     1  /* MICD_DBTIME */
@@ -2363,6 +4245,91 @@
 #define ARIZONA_MICD_STS_WIDTH                        1  /* MICD_STS */
 
 /*
+ * R683 (0x2AB) - Mic Detect 4
+ */
+#define ARIZONA_MICDET_ADCVAL_DIFF_MASK          0xFF00  /* MICDET_ADCVAL_DIFF - [15:8] */
+#define ARIZONA_MICDET_ADCVAL_DIFF_SHIFT              8  /* MICDET_ADCVAL_DIFF - [15:8] */
+#define ARIZONA_MICDET_ADCVAL_DIFF_WIDTH              8  /* MICDET_ADCVAL_DIFF - [15:8] */
+#define ARIZONA_MICDET_ADCVAL_MASK               0x007F  /* MICDET_ADCVAL - [15:8] */
+#define ARIZONA_MICDET_ADCVAL_SHIFT                   0  /* MICDET_ADCVAL - [15:8] */
+#define ARIZONA_MICDET_ADCVAL_WIDTH                   7  /* MICDET_ADCVAL - [15:8] */
+
+/*
+ * R690 (0x2B2) - MICDET2_CONTROL_0
+ */
+#define MOON_MICD2_ADC_MODE                      0x8000  /* MICD2_ADC_MODE */
+#define MOON_MICD2_ADC_MODE_MASK                 0x8000  /* MICD2_ADC_MODE */
+#define MOON_MICD2_ADC_MODE_SHIFT                    15  /* MICD2_ADC_MODE */
+#define MOON_MICD2_ADC_MODE_WIDTH                     1  /* MICD2_ADC_MODE */
+#define MOON_MICD2_SENSE_SEL                     0x0070  /* MICD2_SENSE_SEL - [6:4] */
+#define MOON_MICD2_SENSE_SEL_MASK                0x0070  /* MICD2_SENSE_SEL - [6:4] */
+#define MOON_MICD2_SENSE_SEL_SHIFT                    4  /* MICD2_SENSE_SEL - [6:4] */
+#define MOON_MICD2_SENSE_SEL_WIDTH                    3  /* MICD2_SENSE_SEL - [6:4] */
+#define MOON_MICD2_GND_SEL                       0x0007  /* MICD2_GND_SEL - [2:0] */
+#define MOON_MICD2_GND_SEL_MASK                  0x0007  /* MICD2_GND_SEL - [2:0] */
+#define MOON_MICD2_GND_SEL_SHIFT                      0  /* MICD2_GND_SEL - [2:0] */
+#define MOON_MICD2_GND_SEL_WIDTH                      3  /* MICD2_GND_SEL - [2:0] */
+
+/*
+ * R691 (0x2B3) - MICDET2_CONTROL_1
+ */
+#define MOON_MICD2_BIAS_STARTTIME                0xF000  /* MICD2_BIAS_STARTTIME - [15:12] */
+#define MOON_MICD2_BIAS_STARTTIME_MASK           0xF000  /* MICD2_BIAS_STARTTIME - [15:12] */
+#define MOON_MICD2_BIAS_STARTTIME_SHIFT              12  /* MICD2_BIAS_STARTTIME - [15:12] */
+#define MOON_MICD2_BIAS_STARTTIME_WIDTH               4  /* MICD2_BIAS_STARTTIME - [15:12] */
+#define MOON_MICD2_RATE                          0x0F00  /* MICD2_RATE - [11:8] */
+#define MOON_MICD2_RATE_MASK                     0x0F00  /* MICD2_RATE - [11:8] */
+#define MOON_MICD2_RATE_SHIFT                         8  /* MICD2_RATE - [11:8] */
+#define MOON_MICD2_RATE_WIDTH                         4  /* MICD2_RATE - [11:8] */
+#define MOON_MICD2_BIAS_SRC                      0x00F0  /* MICD2_BIAS_SRC - [7:4] */
+#define MOON_MICD2_BIAS_SRC_MASK                 0x00F0  /* MICD2_BIAS_SRC - [7:4] */
+#define MOON_MICD2_BIAS_SRC_SHIFT                     4  /* MICD2_BIAS_SRC - [7:4] */
+#define MOON_MICD2_BIAS_SRC_WIDTH                     4  /* MICD2_BIAS_SRC - [7:4] */
+#define MOON_MICD2_DBTIME                        0x0002  /* MICD2_DBTIME */
+#define MOON_MICD2_DBTIME_MASK                   0x0002  /* MICD2_DBTIME */
+#define MOON_MICD2_DBTIME_SHIFT                       1  /* MICD2_DBTIME */
+#define MOON_MICD2_DBTIME_WIDTH                       1  /* MICD2_DBTIME */
+#define MOON_MICD2_ENA                           0x0001  /* MICD2_ENA */
+#define MOON_MICD2_ENA_MASK                      0x0001  /* MICD2_ENA */
+#define MOON_MICD2_ENA_SHIFT                          0  /* MICD2_ENA */
+#define MOON_MICD2_ENA_WIDTH                          1  /* MICD2_ENA */
+
+/*
+ * R692 (0x2B4) - MICDET2_CONTROL_2
+ */
+#define MOON_MICD2_LVL_SEL_MASK                  0x00FF  /* MICD2_LVL_SEL - [7:0] */
+#define MOON_MICD2_LVL_SEL_SHIFT                      0  /* MICD2_LVL_SEL - [7:0] */
+#define MOON_MICD2_LVL_SEL_WIDTH                      8  /* MICD2_LVL_SEL - [7:0] */
+
+/*
+ * R693 (0x2B5) - MICDET2_CONTROL_3
+ */
+#define MOON_MICD2_LVL                           0x07FC  /* MICD2_LVL - [10:2] */
+#define MOON_MICD2_LVL_MASK                      0x07FC  /* MICD2_LVL - [10:2] */
+#define MOON_MICD2_LVL_SHIFT                          2  /* MICD2_LVL - [10:2] */
+#define MOON_MICD2_LVL_WIDTH                          9  /* MICD2_LVL - [10:2] */
+#define MOON_MICD2_VALID                         0x0002  /* MICD2_VALID */
+#define MOON_MICD2_VALID_MASK                    0x0002  /* MICD2_VALID */
+#define MOON_MICD2_VALID_SHIFT                        1  /* MICD2_VALID */
+#define MOON_MICD2_VALID_WIDTH                        1  /* MICD2_VALID */
+#define MOON_MICD2_STS                           0x0001  /* MICD2_STS */
+#define MOON_MICD2_STS_MASK                      0x0001  /* MICD2_STS */
+#define MOON_MICD2_STS_SHIFT                          0  /* MICD2_STS */
+#define MOON_MICD2_STS_WIDTH                          1  /* MICD2_STS */
+
+/*
+ * R699 (0x2BB) - MICDET2_CONTROL_4
+ */
+#define MOON_MICD2_ADCVAL_DIFF                   0xFF00  /* MICD2_ADCVAL_DIFF - [15:8] */
+#define MOON_MICD2_ADCVAL_DIFF_MASK              0xFF00  /* MICD2_ADCVAL_DIFF - [15:8] */
+#define MOON_MICD2_ADCVAL_DIFF_SHIFT                  8  /* MICD2_ADCVAL_DIFF - [15:8] */
+#define MOON_MICD2_ADCVAL_DIFF_WIDTH                  8  /* MICD2_ADCVAL_DIFF - [15:8] */
+#define MOON_MICD2_ADCVAL                        0x007F  /* MICD2_ADCVAL - [6:0] */
+#define MOON_MICD2_ADCVAL_MASK                   0x007F  /* MICD2_ADCVAL - [6:0] */
+#define MOON_MICD2_ADCVAL_SHIFT                       0  /* MICD2_ADCVAL - [6:0] */
+#define MOON_MICD2_ADCVAL_WIDTH                       7  /* MICD2_ADCVAL - [6:0] */
+
+/*
  * R707 (0x2C3) - Mic noise mix control 1
  */
 #define ARIZONA_MICMUTE_RATE_MASK                0x7800  /* MICMUTE_RATE - [14:11] */
@@ -2372,6 +4339,14 @@
 #define ARIZONA_MICMUTE_MIX_ENA_MASK             0x0040  /* MICMUTE_MIX_ENA */
 #define ARIZONA_MICMUTE_MIX_ENA_SHIFT                 6  /* MICMUTE_MIX_ENA */
 #define ARIZONA_MICMUTE_MIX_ENA_WIDTH                 1  /* MICMUTE_MIX_ENA */
+
+/*
+ * R710 (0x2C6) - Micd Clamp control
+ */
+#define CLEARWATER_MICD_CLAMP_OVD_MASK           0x0010  /* MICD_CLAMP_OVD */
+#define CLEARWATER_MICD_CLAMP_OVD_SHIFT               4  /* MICD_CLAMP_OVD */
+#define CLEARWATER_MICD_CLAMP_OVD_WIDTH               1  /* MICD_CLAMP_OVD */
+#define CLEARWATER_MICD_CLAMP_OVD                0x0010  /* MICD_CLAMP_OVD */
 
 /*
  * R715 (0x2CB) - Isolation control
@@ -2396,6 +4371,22 @@
 /*
  * R768 (0x300) - Input Enables
  */
+#define ARIZONA_IN6L_ENA                         0x0800  /* IN6L_ENA */
+#define ARIZONA_IN6L_ENA_MASK                    0x0800  /* IN6L_ENA */
+#define ARIZONA_IN6L_ENA_SHIFT                       11  /* IN6L_ENA */
+#define ARIZONA_IN6L_ENA_WIDTH                        1  /* IN6L_ENA */
+#define ARIZONA_IN6R_ENA                         0x0400  /* IN6R_ENA */
+#define ARIZONA_IN6R_ENA_MASK                    0x0400  /* IN6R_ENA */
+#define ARIZONA_IN6R_ENA_SHIFT                       10  /* IN6R_ENA */
+#define ARIZONA_IN6R_ENA_WIDTH                        1  /* IN6R_ENA */
+#define ARIZONA_IN5L_ENA                         0x0200  /* IN5L_ENA */
+#define ARIZONA_IN5L_ENA_MASK                    0x0200  /* IN5L_ENA */
+#define ARIZONA_IN5L_ENA_SHIFT                        9  /* IN5L_ENA */
+#define ARIZONA_IN5L_ENA_WIDTH                        1  /* IN5L_ENA */
+#define ARIZONA_IN5R_ENA                         0x0100  /* IN5R_ENA */
+#define ARIZONA_IN5R_ENA_MASK                    0x0100  /* IN5R_ENA */
+#define ARIZONA_IN5R_ENA_SHIFT                        8  /* IN5R_ENA */
+#define ARIZONA_IN5R_ENA_WIDTH                        1  /* IN5R_ENA */
 #define ARIZONA_IN4L_ENA                         0x0080  /* IN4L_ENA */
 #define ARIZONA_IN4L_ENA_MASK                    0x0080  /* IN4L_ENA */
 #define ARIZONA_IN4L_ENA_SHIFT                        7  /* IN4L_ENA */
@@ -2435,6 +4426,9 @@
 #define ARIZONA_IN_RATE_MASK                     0x7800  /* IN_RATE - [14:11] */
 #define ARIZONA_IN_RATE_SHIFT                        11  /* IN_RATE - [14:11] */
 #define ARIZONA_IN_RATE_WIDTH                         4  /* IN_RATE - [14:11] */
+#define MOON_IN_MODE_MASK                        0x0400  /* IN_RATE_MODE */
+#define MOON_IN_MODE_SHIFT                           10  /* IN_RATE_MODE */
+#define MOON_IN_MODE_WIDTH                            1  /* IN_RATE_MODE */
 
 /*
  * R777 (0x309) - Input Volume Ramp
@@ -2465,9 +4459,12 @@
 #define ARIZONA_IN1_DMIC_SUP_MASK                0x1800  /* IN1_DMIC_SUP - [12:11] */
 #define ARIZONA_IN1_DMIC_SUP_SHIFT                   11  /* IN1_DMIC_SUP - [12:11] */
 #define ARIZONA_IN1_DMIC_SUP_WIDTH                    2  /* IN1_DMIC_SUP - [12:11] */
-#define ARIZONA_IN1_MODE_MASK                    0x0600  /* IN1_MODE - [10:9] */
-#define ARIZONA_IN1_MODE_SHIFT                        9  /* IN1_MODE - [10:9] */
-#define ARIZONA_IN1_MODE_WIDTH                        2  /* IN1_MODE - [10:9] */
+#define ARIZONA_IN1_MODE_MASK                    0x0400  /* IN1_MODE - [10] */
+#define ARIZONA_IN1_MODE_SHIFT                       10  /* IN1_MODE - [10] */
+#define ARIZONA_IN1_MODE_WIDTH                        1  /* IN1_MODE - [10] */
+#define ARIZONA_IN1_SINGLE_ENDED_MASK            0x0200  /* IN1_MODE - [9] */
+#define ARIZONA_IN1_SINGLE_ENDED_SHIFT                9  /* IN1_MODE - [9] */
+#define ARIZONA_IN1_SINGLE_ENDED_WIDTH                1  /* IN1_MODE - [9] */
 #define ARIZONA_IN1L_PGA_VOL_MASK                0x00FE  /* IN1L_PGA_VOL - [7:1] */
 #define ARIZONA_IN1L_PGA_VOL_SHIFT                    1  /* IN1L_PGA_VOL - [7:1] */
 #define ARIZONA_IN1L_PGA_VOL_WIDTH                    7  /* IN1L_PGA_VOL - [7:1] */
@@ -2475,6 +4472,16 @@
 /*
  * R785 (0x311) - ADC Digital Volume 1L
  */
+#define ARIZONA_IN1L_SRC_MASK                    0x4000  /* IN1L_SRC - [14] */
+#define ARIZONA_IN1L_SRC_SHIFT                       14  /* IN1L_SRC - [14] */
+#define ARIZONA_IN1L_SRC_WIDTH                        1  /* IN1L_SRC - [14] */
+#define ARIZONA_IN1L_SRC_SE_MASK                 0x2000  /* IN1L_SRC - [13] */
+#define ARIZONA_IN1L_SRC_SE_SHIFT                    13  /* IN1L_SRC - [13] */
+#define ARIZONA_IN1L_SRC_SE_WIDTH                     1  /* IN1L_SRC - [13] */
+#define MOON_IN1L_LP_MODE                        0x0800  /* LP_MODE - [9] */
+#define MOON_IN1L_LP_MODE_MASK                   0x0800  /* LP_MODE - [9] */
+#define MOON_IN1L_LP_MODE_SHIFT                      11  /* LP_MODE - [9] */
+#define MOON_IN1L_LP_MODE_WIDTH                       1  /* LP_MODE - [9] */
 #define ARIZONA_IN_VU                            0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
@@ -2493,6 +4500,16 @@
 #define ARIZONA_IN1_DMICL_DLY_MASK               0x003F  /* IN1_DMICL_DLY - [5:0] */
 #define ARIZONA_IN1_DMICL_DLY_SHIFT                   0  /* IN1_DMICL_DLY - [5:0] */
 #define ARIZONA_IN1_DMICL_DLY_WIDTH                   6  /* IN1_DMICL_DLY - [5:0] */
+#define CLEARWATER_IN1_OSR_MASK                  0x0700  /* IN1_OSR - [8:10] */
+#define CLEARWATER_IN1_OSR_SHIFT                      8  /* IN1_OSR - [8:10] */
+#define CLEARWATER_IN1_OSR_WIDTH                      3  /* IN1_OSR - [8:10] */
+
+/*
+* R787 (0x313) - IN1L Rate Control
+*/
+#define MOON_IN1L_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN1L_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN1L_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
 
 /*
  * R788 (0x314) - IN1R Control
@@ -2503,10 +4520,19 @@
 #define ARIZONA_IN1R_PGA_VOL_MASK                0x00FE  /* IN1R_PGA_VOL - [7:1] */
 #define ARIZONA_IN1R_PGA_VOL_SHIFT                    1  /* IN1R_PGA_VOL - [7:1] */
 #define ARIZONA_IN1R_PGA_VOL_WIDTH                    7  /* IN1R_PGA_VOL - [7:1] */
+#define MOON_IN1_DMICCLK_SRC_MASK                0x1800  /* DMICCLK_SRC[1:0] */
+#define MOON_IN1_DMICCLK_SRC_SHIFT                   11  /* DMICCLK_SRC[1:0] */
+#define MOON_IN1_DMICCLK_SRC_WIDTH                    2  /* DMICCLK_SRC[1:0] */
 
 /*
  * R789 (0x315) - ADC Digital Volume 1R
  */
+#define ARIZONA_IN1R_SRC_MASK                    0x4000  /* IN1R_SRC - [14] */
+#define ARIZONA_IN1R_SRC_SHIFT                       14  /* IN1R_SRC - [14] */
+#define ARIZONA_IN1R_SRC_WIDTH                        1  /* IN1R_SRC - [14] */
+#define ARIZONA_IN1R_SRC_SE_MASK                 0x2000  /* IN1R_SRC - [13] */
+#define ARIZONA_IN1R_SRC_SE_SHIFT                    13  /* IN1R_SRC - [13] */
+#define ARIZONA_IN1R_SRC_SE_WIDTH                     1  /* IN1R_SRC - [13] */
 #define ARIZONA_IN_VU                            0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
@@ -2527,6 +4553,13 @@
 #define ARIZONA_IN1_DMICR_DLY_WIDTH                   6  /* IN1_DMICR_DLY - [5:0] */
 
 /*
+* R791 (0x317) - IN1R Rate Control
+*/
+#define MOON_IN1R_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN1R_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN1R_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
+
+/*
  * R792 (0x318) - IN2L Control
  */
 #define ARIZONA_IN2L_HPF_MASK                    0x8000  /* IN2L_HPF - [15] */
@@ -2538,9 +4571,12 @@
 #define ARIZONA_IN2_DMIC_SUP_MASK                0x1800  /* IN2_DMIC_SUP - [12:11] */
 #define ARIZONA_IN2_DMIC_SUP_SHIFT                   11  /* IN2_DMIC_SUP - [12:11] */
 #define ARIZONA_IN2_DMIC_SUP_WIDTH                    2  /* IN2_DMIC_SUP - [12:11] */
-#define ARIZONA_IN2_MODE_MASK                    0x0600  /* IN2_MODE - [10:9] */
-#define ARIZONA_IN2_MODE_SHIFT                        9  /* IN2_MODE - [10:9] */
-#define ARIZONA_IN2_MODE_WIDTH                        2  /* IN2_MODE - [10:9] */
+#define ARIZONA_IN2_MODE_MASK                    0x0400  /* IN2_MODE - [10] */
+#define ARIZONA_IN2_MODE_SHIFT                       10  /* IN2_MODE - [10] */
+#define ARIZONA_IN2_MODE_WIDTH                        1  /* IN2_MODE - [10] */
+#define ARIZONA_IN2_SINGLE_ENDED_MASK            0x0200  /* IN2_MODE - [9] */
+#define ARIZONA_IN2_SINGLE_ENDED_SHIFT                9  /* IN2_MODE - [9] */
+#define ARIZONA_IN2_SINGLE_ENDED_WIDTH                1  /* IN2_MODE - [9] */
 #define ARIZONA_IN2L_PGA_VOL_MASK                0x00FE  /* IN2L_PGA_VOL - [7:1] */
 #define ARIZONA_IN2L_PGA_VOL_SHIFT                    1  /* IN2L_PGA_VOL - [7:1] */
 #define ARIZONA_IN2L_PGA_VOL_WIDTH                    7  /* IN2L_PGA_VOL - [7:1] */
@@ -2548,6 +4584,12 @@
 /*
  * R793 (0x319) - ADC Digital Volume 2L
  */
+#define ARIZONA_IN2L_SRC_MASK                    0x4000  /* IN2L_SRC - [14] */
+#define ARIZONA_IN2L_SRC_SHIFT                       14  /* IN2L_SRC - [14] */
+#define ARIZONA_IN2L_SRC_WIDTH                        1  /* IN2L_SRC - [14] */
+#define ARIZONA_IN2L_SRC_SE_MASK                 0x2000  /* IN2L_SRC - [13] */
+#define ARIZONA_IN2L_SRC_SE_SHIFT                    13  /* IN2L_SRC - [13] */
+#define ARIZONA_IN2L_SRC_SE_WIDTH                     1  /* IN2L_SRC - [13] */
 #define ARIZONA_IN_VU                            0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
@@ -2566,6 +4608,16 @@
 #define ARIZONA_IN2_DMICL_DLY_MASK               0x003F  /* IN2_DMICL_DLY - [5:0] */
 #define ARIZONA_IN2_DMICL_DLY_SHIFT                   0  /* IN2_DMICL_DLY - [5:0] */
 #define ARIZONA_IN2_DMICL_DLY_WIDTH                   6  /* IN2_DMICL_DLY - [5:0] */
+#define CLEARWATER_IN2_OSR_MASK                  0x0700  /* IN2_OSR - [8:10] */
+#define CLEARWATER_IN2_OSR_SHIFT                      8  /* IN2_OSR - [8:10] */
+#define CLEARWATER_IN2_OSR_WIDTH                      3  /* IN2_OSR - [8:10] */
+
+/*
+* R795 (0x31B) - IN2L Rate Control
+*/
+#define MOON_IN2L_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN2L_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN2L_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
 
 /*
  * R796 (0x31C) - IN2R Control
@@ -2576,10 +4628,19 @@
 #define ARIZONA_IN2R_PGA_VOL_MASK                0x00FE  /* IN2R_PGA_VOL - [7:1] */
 #define ARIZONA_IN2R_PGA_VOL_SHIFT                    1  /* IN2R_PGA_VOL - [7:1] */
 #define ARIZONA_IN2R_PGA_VOL_WIDTH                    7  /* IN2R_PGA_VOL - [7:1] */
+#define MOON_IN2_DMICCLK_SRC_MASK                0x1800  /* DMICCLK_SRC[1:0] */
+#define MOON_IN2_DMICCLK_SRC_SHIFT                   11  /* DMICCLK_SRC[1:0] */
+#define MOON_IN2_DMICCLK_SRC_WIDTH                    2  /* DMICCLK_SRC[1:0] */
 
 /*
  * R797 (0x31D) - ADC Digital Volume 2R
  */
+#define ARIZONA_IN2R_SRC_MASK                    0x4000  /* IN2R_SRC - [14] */
+#define ARIZONA_IN2R_SRC_SHIFT                       14  /* IN2R_SRC - [14] */
+#define ARIZONA_IN2R_SRC_WIDTH                        1  /* IN2R_SRC - [14] */
+#define ARIZONA_IN2R_SRC_SE_MASK                 0x2000  /* IN2R_SRC - [13] */
+#define ARIZONA_IN2R_SRC_SE_SHIFT                    13  /* IN2R_SRC - [13] */
+#define ARIZONA_IN2R_SRC_SE_WIDTH                     1  /* IN2R_SRC - [13] */
 #define ARIZONA_IN_VU                            0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
 #define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
@@ -2600,6 +4661,13 @@
 #define ARIZONA_IN2_DMICR_DLY_WIDTH                   6  /* IN2_DMICR_DLY - [5:0] */
 
 /*
+* R799 (0x31F) - IN2R Rate Control
+*/
+#define MOON_IN2R_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN2R_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN2R_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
+
+/*
  * R800 (0x320) - IN3L Control
  */
 #define ARIZONA_IN3L_HPF_MASK                    0x8000  /* IN3L_HPF - [15] */
@@ -2611,9 +4679,12 @@
 #define ARIZONA_IN3_DMIC_SUP_MASK                0x1800  /* IN3_DMIC_SUP - [12:11] */
 #define ARIZONA_IN3_DMIC_SUP_SHIFT                   11  /* IN3_DMIC_SUP - [12:11] */
 #define ARIZONA_IN3_DMIC_SUP_WIDTH                    2  /* IN3_DMIC_SUP - [12:11] */
-#define ARIZONA_IN3_MODE_MASK                    0x0600  /* IN3_MODE - [10:9] */
-#define ARIZONA_IN3_MODE_SHIFT                        9  /* IN3_MODE - [10:9] */
-#define ARIZONA_IN3_MODE_WIDTH                        2  /* IN3_MODE - [10:9] */
+#define ARIZONA_IN3_MODE_MASK                    0x0400  /* IN3_MODE - [10] */
+#define ARIZONA_IN3_MODE_SHIFT                       10  /* IN3_MODE - [10] */
+#define ARIZONA_IN3_MODE_WIDTH                        1  /* IN3_MODE - [10] */
+#define ARIZONA_IN3_SINGLE_ENDED_MASK            0x0200  /* IN3_MODE - [9] */
+#define ARIZONA_IN3_SINGLE_ENDED_SHIFT                9  /* IN3_MODE - [9] */
+#define ARIZONA_IN3_SINGLE_ENDED_WIDTH                1  /* IN3_MODE - [9] */
 #define ARIZONA_IN3L_PGA_VOL_MASK                0x00FE  /* IN3L_PGA_VOL - [7:1] */
 #define ARIZONA_IN3L_PGA_VOL_SHIFT                    1  /* IN3L_PGA_VOL - [7:1] */
 #define ARIZONA_IN3L_PGA_VOL_WIDTH                    7  /* IN3L_PGA_VOL - [7:1] */
@@ -2639,6 +4710,16 @@
 #define ARIZONA_IN3_DMICL_DLY_MASK               0x003F  /* IN3_DMICL_DLY - [5:0] */
 #define ARIZONA_IN3_DMICL_DLY_SHIFT                   0  /* IN3_DMICL_DLY - [5:0] */
 #define ARIZONA_IN3_DMICL_DLY_WIDTH                   6  /* IN3_DMICL_DLY - [5:0] */
+#define CLEARWATER_IN3_OSR_MASK                  0x0700  /* IN3_OSR - [8:10] */
+#define CLEARWATER_IN3_OSR_SHIFT                      8  /* IN3_OSR - [8:10] */
+#define CLEARWATER_IN3_OSR_WIDTH                      3  /* IN3_OSR - [8:10] */
+
+/*
+* R803 (0x323) - IN3L Rate Control
+*/
+#define MOON_IN3L_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN3L_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN3L_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
 
 /*
  * R804 (0x324) - IN3R Control
@@ -2649,6 +4730,9 @@
 #define ARIZONA_IN3R_PGA_VOL_MASK                0x00FE  /* IN3R_PGA_VOL - [7:1] */
 #define ARIZONA_IN3R_PGA_VOL_SHIFT                    1  /* IN3R_PGA_VOL - [7:1] */
 #define ARIZONA_IN3R_PGA_VOL_WIDTH                    7  /* IN3R_PGA_VOL - [7:1] */
+#define MOON_IN3_DMICCLK_SRC_MASK                0x1800  /* DMICCLK_SRC[1:0] */
+#define MOON_IN3_DMICCLK_SRC_SHIFT                   11  /* DMICCLK_SRC[1:0] */
+#define MOON_IN3_DMICCLK_SRC_WIDTH                    2  /* DMICCLK_SRC[1:0] */
 
 /*
  * R805 (0x325) - ADC Digital Volume 3R
@@ -2671,6 +4755,13 @@
 #define ARIZONA_IN3_DMICR_DLY_MASK               0x003F  /* IN3_DMICR_DLY - [5:0] */
 #define ARIZONA_IN3_DMICR_DLY_SHIFT                   0  /* IN3_DMICR_DLY - [5:0] */
 #define ARIZONA_IN3_DMICR_DLY_WIDTH                   6  /* IN3_DMICR_DLY - [5:0] */
+
+/*
+* R807 (0x327) - IN3R Rate Control
+*/
+#define MOON_IN3R_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN3R_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN3R_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
 
 /*
  * R808 (0x328) - IN4 Control
@@ -2706,6 +4797,16 @@
 #define ARIZONA_IN4L_DMIC_DLY_MASK               0x003F  /* IN4L_DMIC_DLY - [5:0] */
 #define ARIZONA_IN4L_DMIC_DLY_SHIFT                   0  /* IN4L_DMIC_DLY - [5:0] */
 #define ARIZONA_IN4L_DMIC_DLY_WIDTH                   6  /* IN4L_DMIC_DLY - [5:0] */
+#define CLEARWATER_IN4_OSR_MASK                  0x0700  /* IN4_OSR - [8:10] */
+#define CLEARWATER_IN4_OSR_SHIFT                      8  /* IN4_OSR - [8:10] */
+#define CLEARWATER_IN4_OSR_WIDTH                      3  /* IN4_OSR - [8:10] */
+
+/*
+* R811 (0x32B) - IN4L Rate Control
+*/
+#define MOON_IN4L_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN4L_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN4L_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
 
 /*
  * R812 (0x32C) - IN4R Control
@@ -2713,6 +4814,9 @@
 #define ARIZONA_IN4R_HPF_MASK                    0x8000  /* IN4R_HPF - [15] */
 #define ARIZONA_IN4R_HPF_SHIFT                       15  /* IN4R_HPF - [15] */
 #define ARIZONA_IN4R_HPF_WIDTH                        1  /* IN4R_HPF - [15] */
+#define MOON_IN4_DMICCLK_SRC_MASK                0x1800  /* DMICCLK_SRC[1:0] */
+#define MOON_IN4_DMICCLK_SRC_SHIFT                   11  /* DMICCLK_SRC[1:0] */
+#define MOON_IN4_DMICCLK_SRC_WIDTH                    2  /* DMICCLK_SRC[1:0] */
 
 /*
  * R813 (0x32D) - ADC Digital Volume 4R
@@ -2737,8 +4841,212 @@
 #define ARIZONA_IN4R_DMIC_DLY_WIDTH                   6  /* IN4R_DMIC_DLY - [5:0] */
 
 /*
+* R815 (0x32F) - IN4R Rate Control
+*/
+#define MOON_IN4R_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN4R_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN4R_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
+
+/*
+ * R816 (0x330) - IN5L Control
+ */
+#define ARIZONA_IN5L_HPF_MASK                    0x8000  /* IN5L_HPF - [15] */
+#define ARIZONA_IN5L_HPF_SHIFT                       15  /* IN5L_HPF - [15] */
+#define ARIZONA_IN5L_HPF_WIDTH                        1  /* IN5L_HPF - [15] */
+#define ARIZONA_IN5_OSR_MASK                     0x6000  /* IN5_OSR - [14:13] */
+#define ARIZONA_IN5_OSR_SHIFT                        13  /* IN5_OSR - [14:13] */
+#define ARIZONA_IN5_OSR_WIDTH                         2  /* IN5_OSR - [14:13] */
+#define ARIZONA_IN5_DMIC_SUP_MASK                0x1800  /* IN5_DMIC_SUP - [12:11] */
+#define ARIZONA_IN5_DMIC_SUP_SHIFT                   11  /* IN5_DMIC_SUP - [12:11] */
+#define ARIZONA_IN5_DMIC_SUP_WIDTH                    2  /* IN5_DMIC_SUP - [12:11] */
+
+/*
+ * R817 (0x331) - ADC Digital Volume 5L
+ */
+#define ARIZONA_IN_VU                            0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
+#define ARIZONA_IN_VU_WIDTH                           1  /* IN_VU */
+#define ARIZONA_IN5L_MUTE                        0x0100  /* IN5L_MUTE */
+#define ARIZONA_IN5L_MUTE_MASK                   0x0100  /* IN5L_MUTE */
+#define ARIZONA_IN5L_MUTE_SHIFT                       8  /* IN5L_MUTE */
+#define ARIZONA_IN5L_MUTE_WIDTH                       1  /* IN5L_MUTE */
+#define ARIZONA_IN5L_DIG_VOL_MASK                0x00FF  /* IN5L_DIG_VOL - [7:0] */
+#define ARIZONA_IN5L_DIG_VOL_SHIFT                    0  /* IN5L_DIG_VOL - [7:0] */
+#define ARIZONA_IN5L_DIG_VOL_WIDTH                    8  /* IN5L_DIG_VOL - [7:0] */
+
+/*
+ * R818 (0x332) - DMIC5L Control
+ */
+#define ARIZONA_IN5L_DMIC_DLY_MASK               0x003F  /* IN5L_DMIC_DLY - [5:0] */
+#define ARIZONA_IN5L_DMIC_DLY_SHIFT                   0  /* IN5L_DMIC_DLY - [5:0] */
+#define ARIZONA_IN5L_DMIC_DLY_WIDTH                   6  /* IN5L_DMIC_DLY - [5:0] */
+#define CLEARWATER_IN5_OSR_MASK                  0x0700  /* IN5_OSR - [8:10] */
+#define CLEARWATER_IN5_OSR_SHIFT                      8  /* IN5_OSR - [8:10] */
+#define CLEARWATER_IN5_OSR_WIDTH                      3  /* IN5_OSR - [8:10] */
+
+/*
+* R819 (0x333) - IN5L Rate Control
+*/
+#define MOON_IN5L_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN5L_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN5L_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
+
+/*
+ * R820 (0x334) - IN5R Control
+ */
+#define ARIZONA_IN5R_HPF_MASK                    0x8000  /* IN5R_HPF - [15] */
+#define ARIZONA_IN5R_HPF_SHIFT                       15  /* IN5R_HPF - [15] */
+#define ARIZONA_IN5R_HPF_WIDTH                        1  /* IN5R_HPF - [15] */
+#define MOON_IN5_DMICCLK_SRC_MASK                0x1800  /* DMICCLK_SRC[1:0] */
+#define MOON_IN5_DMICCLK_SRC_SHIFT                   11  /* DMICCLK_SRC[1:0] */
+#define MOON_IN5_DMICCLK_SRC_WIDTH                    2  /* DMICCLK_SRC[1:0] */
+
+/*
+ * R821 (0x335) - ADC Digital Volume 5R
+ */
+#define ARIZONA_IN_VU                            0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
+#define ARIZONA_IN_VU_WIDTH                           1  /* IN_VU */
+#define ARIZONA_IN5R_MUTE                        0x0100  /* IN5R_MUTE */
+#define ARIZONA_IN5R_MUTE_MASK                   0x0100  /* IN5R_MUTE */
+#define ARIZONA_IN5R_MUTE_SHIFT                       8  /* IN5R_MUTE */
+#define ARIZONA_IN5R_MUTE_WIDTH                       1  /* IN5R_MUTE */
+#define ARIZONA_IN5R_DIG_VOL_MASK                0x00FF  /* IN5R_DIG_VOL - [7:0] */
+#define ARIZONA_IN5R_DIG_VOL_SHIFT                    0  /* IN5R_DIG_VOL - [7:0] */
+#define ARIZONA_IN5R_DIG_VOL_WIDTH                    8  /* IN5R_DIG_VOL - [7:0] */
+
+/*
+ * R822 (0x336) - DMIC5R Control
+ */
+#define ARIZONA_IN5R_DMIC_DLY_MASK               0x003F  /* IN5R_DMIC_DLY - [5:0] */
+#define ARIZONA_IN5R_DMIC_DLY_SHIFT                   0  /* IN5R_DMIC_DLY - [5:0] */
+#define ARIZONA_IN5R_DMIC_DLY_WIDTH                   6  /* IN5R_DMIC_DLY - [5:0] */
+
+/*
+* R823 (0x337) - IN5R Rate Control
+*/
+#define MOON_IN5R_RATE_MASK                      0x7800  /* IN_RATE - [3:0] */
+#define MOON_IN5R_RATE_SHIFT                         11  /* IN_RATE - [3:0] */
+#define MOON_IN5R_RATE_WIDTH                          4  /* IN_RATE - [3:0] */
+
+/*
+ * R824 (0x338) - IN6L Control
+ */
+#define ARIZONA_IN6L_HPF_MASK                    0x8000  /* IN6L_HPF - [15] */
+#define ARIZONA_IN6L_HPF_SHIFT                       15  /* IN6L_HPF - [15] */
+#define ARIZONA_IN6L_HPF_WIDTH                        1  /* IN6L_HPF - [15] */
+#define ARIZONA_IN6_OSR_MASK                     0x6000  /* IN6_OSR - [14:13] */
+#define ARIZONA_IN6_OSR_SHIFT                        13  /* IN6_OSR - [14:13] */
+#define ARIZONA_IN6_OSR_WIDTH                         2  /* IN6_OSR - [14:13] */
+#define ARIZONA_IN6_DMIC_SUP_MASK                0x1800  /* IN6_DMIC_SUP - [12:11] */
+#define ARIZONA_IN6_DMIC_SUP_SHIFT                   11  /* IN6_DMIC_SUP - [12:11] */
+#define ARIZONA_IN6_DMIC_SUP_WIDTH                    2  /* IN6_DMIC_SUP - [12:11] */
+
+/*
+ * R825 (0x339) - ADC Digital Volume 6L
+ */
+#define ARIZONA_IN_VU                            0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
+#define ARIZONA_IN_VU_WIDTH                           1  /* IN_VU */
+#define ARIZONA_IN6L_MUTE                        0x0100  /* IN6L_MUTE */
+#define ARIZONA_IN6L_MUTE_MASK                   0x0100  /* IN6L_MUTE */
+#define ARIZONA_IN6L_MUTE_SHIFT                       8  /* IN6L_MUTE */
+#define ARIZONA_IN6L_MUTE_WIDTH                       1  /* IN6L_MUTE */
+#define ARIZONA_IN6L_DIG_VOL_MASK                0x00FF  /* IN6L_DIG_VOL - [7:0] */
+#define ARIZONA_IN6L_DIG_VOL_SHIFT                    0  /* IN6L_DIG_VOL - [7:0] */
+#define ARIZONA_IN6L_DIG_VOL_WIDTH                    8  /* IN6L_DIG_VOL - [7:0] */
+
+/*
+ * R826 (0x33A) - DMIC6L Control
+ */
+#define ARIZONA_IN6L_DMIC_DLY_MASK               0x003F  /* IN6L_DMIC_DLY - [5:0] */
+#define ARIZONA_IN6L_DMIC_DLY_SHIFT                   0  /* IN6L_DMIC_DLY - [5:0] */
+#define ARIZONA_IN6L_DMIC_DLY_WIDTH                   6  /* IN6L_DMIC_DLY - [5:0] */
+#define CLEARWATER_IN6_OSR_MASK                  0x0700  /* IN6_OSR - [8:10] */
+#define CLEARWATER_IN6_OSR_SHIFT                      8  /* IN6_OSR - [8:10] */
+#define CLEARWATER_IN6_OSR_WIDTH                      3  /* IN6_OSR - [8:10] */
+
+/*
+ * R828 (0x33C) - IN6R Control
+ */
+#define ARIZONA_IN6R_HPF_MASK                    0x8000  /* IN6R_HPF - [15] */
+#define ARIZONA_IN6R_HPF_SHIFT                       15  /* IN6R_HPF - [15] */
+#define ARIZONA_IN6R_HPF_WIDTH                        1  /* IN6R_HPF - [15] */
+
+/*
+ * R829 (0x33D) - ADC Digital Volume 6R
+ */
+#define ARIZONA_IN_VU                            0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_MASK                       0x0200  /* IN_VU */
+#define ARIZONA_IN_VU_SHIFT                           9  /* IN_VU */
+#define ARIZONA_IN_VU_WIDTH                           1  /* IN_VU */
+#define ARIZONA_IN6R_MUTE                        0x0100  /* IN6R_MUTE */
+#define ARIZONA_IN6R_MUTE_MASK                   0x0100  /* IN6R_MUTE */
+#define ARIZONA_IN6R_MUTE_SHIFT                       8  /* IN6R_MUTE */
+#define ARIZONA_IN6R_MUTE_WIDTH                       1  /* IN6R_MUTE */
+#define ARIZONA_IN6R_DIG_VOL_MASK                0x00FF  /* IN6R_DIG_VOL - [7:0] */
+#define ARIZONA_IN6R_DIG_VOL_SHIFT                    0  /* IN6R_DIG_VOL - [7:0] */
+#define ARIZONA_IN6R_DIG_VOL_WIDTH                    8  /* IN6R_DIG_VOL - [7:0] */
+
+/*
+ * R830 (0x33E) - DMIC6R Control
+ */
+#define ARIZONA_IN6R_DMIC_DLY_MASK               0x003F  /* IN6R_DMIC_DLY - [5:0] */
+#define ARIZONA_IN6R_DMIC_DLY_SHIFT                   0  /* IN6R_DMIC_DLY - [5:0] */
+#define ARIZONA_IN6R_DMIC_DLY_WIDTH                   6  /* IN6R_DMIC_DLY - [5:0] */
+
+/*
+ * R915 (0x393) -  ADC VCO Cal 4
+ */
+#define ARIZONA_ADC1L_COUNT_RD_MASK              0x1FC0  /* ADC1L_COUNT_RD - [12:6] */
+#define ARIZONA_ADC1L_COUNT_RD_SHIFT                  6  /* ADC1L_COUNT_RD - [12:6] */
+#define ARIZONA_ADC1L_COUNT_RD_WIDTH                  7  /* ADC1L_COUNT_RD - [12:6] */
+
+/*
+ * R916 (0x394) -  ADC VCO Cal 5
+ */
+#define ARIZONA_ADC1R_COUNT_RD_MASK              0x1FC0  /* ADC1R_COUNT_RD - [12:6] */
+#define ARIZONA_ADC1R_COUNT_RD_SHIFT                  6  /* ADC1R_COUNT_RD - [12:6] */
+#define ARIZONA_ADC1R_COUNT_RD_WIDTH                  7  /* ADC1R_COUNT_RD - [12:6] */
+
+/*
+ * R917 (0x395) -  ADC VCO Cal 6
+ */
+#define ARIZONA_ADC2L_COUNT_RD_MASK              0x1FC0  /* ADC2L_COUNT_RD - [12:6] */
+#define ARIZONA_ADC2L_COUNT_RD_SHIFT                  6  /* ADC2L_COUNT_RD - [12:6] */
+#define ARIZONA_ADC2L_COUNT_RD_WIDTH                  7  /* ADC2L_COUNT_RD - [12:6] */
+
+/*
+ * R918 (0x396) -  ADC VCO Cal 7
+ */
+#define ARIZONA_ADC2R_COUNT_RD_MASK              0x1FC0  /* ADC2R_COUNT_RD - [12:6] */
+#define ARIZONA_ADC2R_COUNT_RD_SHIFT                  6  /* ADC2R_COUNT_RD - [12:6] */
+#define ARIZONA_ADC2R_COUNT_RD_WIDTH                  7  /* ADC2R_COUNT_RD - [12:6] */
+
+/*
+ * R919 (0x397) -  ADC VCO Cal 8
+ */
+#define ARIZONA_ADC3L_COUNT_RD_MASK              0x1FC0  /* ADC3L_COUNT_RD - [12:6] */
+#define ARIZONA_ADC3L_COUNT_RD_SHIFT                  6  /* ADC3L_COUNT_RD - [12:6] */
+#define ARIZONA_ADC3L_COUNT_RD_WIDTH                  7  /* ADC3L_COUNT_RD - [12:6] */
+
+/*
+ * R920 (0x398) -  ADC VCO Cal 9
+ */
+#define ARIZONA_ADC3R_COUNT_RD_MASK              0x1FC0  /* ADC3R_COUNT_RD - [12:6] */
+#define ARIZONA_ADC3R_COUNT_RD_SHIFT                  6  /* ADC3R_COUNT_RD - [12:6] */
+#define ARIZONA_ADC3R_COUNT_RD_WIDTH                  7  /* ADC3R_COUNT_RD - [12:6] */
+
+/*
  * R1024 (0x400) - Output Enables 1
  */
+#define ARIZONA_EP_SEL                           0x8000  /* EP_SEL */
+#define ARIZONA_EP_SEL_MASK                      0x8000  /* EP_SEL */
+#define ARIZONA_EP_SEL_SHIFT                         15  /* EP_SEL */
+#define ARIZONA_EP_SEL_WIDTH                          1  /* EP_SEL */
 #define ARIZONA_OUT6L_ENA                        0x0800  /* OUT6L_ENA */
 #define ARIZONA_OUT6L_ENA_MASK                   0x0800  /* OUT6L_ENA */
 #define ARIZONA_OUT6L_ENA_SHIFT                      11  /* OUT6L_ENA */
@@ -2878,6 +5186,13 @@
 #define ARIZONA_OUT1L_VOL_LIM_WIDTH                   8  /* OUT1L_VOL_LIM - [7:0] */
 
 /*
+ * R1042 (0x412) - MOON_OUT1_CONFIG
+ */
+#define MOON_HP1_GND_SEL_MASK                    0x0007  /* HP1_GND_SEL[2:0] */
+#define MOON_HP1_GND_SEL_SHIFT                        0  /* HP1_GND_SEL[2:0] */
+#define MOON_HP1_GND_SEL_WIDTH                        3  /* HP1_GND_SEL[2:0] */
+
+/*
  * R1043 (0x413) - Noise Gate Select 1L
  */
 #define ARIZONA_OUT1L_NGATE_SRC_MASK             0x0FFF  /* OUT1L_NGATE_SRC - [11:0] */
@@ -2966,6 +5281,13 @@
 #define ARIZONA_OUT2L_VOL_LIM_MASK               0x00FF  /* OUT2L_VOL_LIM - [7:0] */
 #define ARIZONA_OUT2L_VOL_LIM_SHIFT                   0  /* OUT2L_VOL_LIM - [7:0] */
 #define ARIZONA_OUT2L_VOL_LIM_WIDTH                   8  /* OUT2L_VOL_LIM - [7:0] */
+
+/*
+ * R1050 (0x41A) - MOON_OUT2_CONFIG
+ */
+#define MOON_HP2_GND_SEL_MASK                    0x0007  /* HP2_GND_SEL[2:0] */
+#define MOON_HP2_GND_SEL_SHIFT                        0  /* HP2_GND_SEL[2:0] */
+#define MOON_HP2_GND_SEL_WIDTH                        3  /* HP2_GND_SEL[2:0] */
 
 /*
  * R1051 (0x41B) - Noise Gate Select 2L
@@ -3353,11 +5675,49 @@
 #define ARIZONA_DRE1L_ENA_WIDTH                       1  /* DRE1L_ENA */
 
 /*
+ * R1088 (0x440) - DRE Enable (Vegas)
+ */
+#define VEGAS_DRE3L_ENA                          0x0020  /* DRE3L_ENA */
+#define VEGAS_DRE3L_ENA_MASK                     0x0020  /* DRE3L_ENA */
+#define VEGAS_DRE3L_ENA_SHIFT                         5  /* DRE3L_ENA */
+#define VEGAS_DRE3L_ENA_WIDTH                         1  /* DRE3L_ENA */
+#define VEGAS_DRE3R_ENA                          0x0010  /* DRE3R_ENA */
+#define VEGAS_DRE3R_ENA_MASK                     0x0010  /* DRE3R_ENA */
+#define VEGAS_DRE3R_ENA_SHIFT                         4  /* DRE3R_ENA */
+#define VEGAS_DRE3R_ENA_WIDTH                         1  /* DRE3R_ENA */
+#define VEGAS_DRE2L_ENA                          0x0008  /* DRE2L_ENA */
+#define VEGAS_DRE2L_ENA_MASK                     0x0008  /* DRE2L_ENA */
+#define VEGAS_DRE2L_ENA_SHIFT                         3  /* DRE2L_ENA */
+#define VEGAS_DRE2L_ENA_WIDTH                         1  /* DRE2L_ENA */
+#define VEGAS_DRE2R_ENA                          0x0004  /* DRE2R_ENA */
+#define VEGAS_DRE2R_ENA_MASK                     0x0004  /* DRE2R_ENA */
+#define VEGAS_DRE2R_ENA_SHIFT                         2  /* DRE2R_ENA */
+#define VEGAS_DRE2R_ENA_WIDTH                         1  /* DRE2R_ENA */
+#define VEGAS_DRE1L_ENA                          0x0002  /* DRE1L_ENA */
+#define VEGAS_DRE1L_ENA_MASK                     0x0002  /* DRE1L_ENA */
+#define VEGAS_DRE1L_ENA_SHIFT                         1  /* DRE1L_ENA */
+#define VEGAS_DRE1L_ENA_WIDTH                         1  /* DRE1L_ENA */
+#define VEGAS_DRE1R_ENA                          0x0001  /* DRE1R_ENA */
+#define VEGAS_DRE1R_ENA_MASK                     0x0001  /* DRE1R_ENA */
+#define VEGAS_DRE1R_ENA_SHIFT                         0  /* DRE1R_ENA */
+#define VEGAS_DRE1R_ENA_WIDTH                         1  /* DRE1R_ENA */
+
+/*
+ * R1089 (0x441) - DRE Control 1
+ */
+#define ARIZONA_DRE_ENV_TC_FAST_MASK             0x0F00  /* DRE_ENV_TC_FAST - [11:8] */
+#define ARIZONA_DRE_ENV_TC_FAST_SHIFT                 8  /* DRE_ENV_TC_FAST - [11:8] */
+#define ARIZONA_DRE_ENV_TC_FAST_WIDTH                 4  /* DRE_ENV_TC_FAST - [11:8] */
+
+/*
  * R1090 (0x442) - DRE Control 2
  */
 #define ARIZONA_DRE_T_LOW_MASK                   0x3F00  /* DRE_T_LOW - [13:8] */
 #define ARIZONA_DRE_T_LOW_SHIFT                       8  /* DRE_T_LOW - [13:8] */
 #define ARIZONA_DRE_T_LOW_WIDTH                       6  /* DRE_T_LOW - [13:8] */
+#define ARIZONA_DRE_ALOG_VOL_DELAY_MASK          0x000F  /* DRE_ALOG_VOL_DELAY - [3:0] */
+#define ARIZONA_DRE_ALOG_VOL_DELAY_SHIFT              0  /* DRE_ALOG_VOL_DELAY - [3:0] */
+#define ARIZONA_DRE_ALOG_VOL_DELAY_WIDTH              4  /* DRE_ALOG_VOL_DELAY - [3:0] */
 
 /*
  * R1091 (0x443) - DRE Control 3
@@ -3368,6 +5728,57 @@
 #define ARIZONA_DRE_LOW_LEVEL_ABS_MASK           0x000F  /* LOW_LEVEL_ABS - [3:0] */
 #define ARIZONA_DRE_LOW_LEVEL_ABS_SHIFT               0  /* LOW_LEVEL_ABS - [3:0] */
 #define ARIZONA_DRE_LOW_LEVEL_ABS_WIDTH               4  /* LOW_LEVEL_ABS - [3:0] */
+
+/* R486 (0x448) - EDRE_Enable
+ */
+#define CLEARWATER_EDRE_OUT4L_THR3_ENA           0x0800  /* EDRE_OUT4L_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR3_ENA_MASK      0x0800  /* EDRE_OUT4L_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR3_ENA_SHIFT         11  /* EDRE_OUT4L_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR3_ENA_WIDTH          1  /* EDRE_OUT4L_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR3_ENA           0x0400  /* EDRE_OUT4R_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR3_ENA_MASK      0x0400  /* EDRE_OUT4R_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR3_ENA_SHIFT         10  /* EDRE_OUT4R_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR3_ENA_WIDTH          1  /* EDRE_OUT4R_THR3_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR2_ENA           0x0200  /* EDRE_OUT4L_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR2_ENA_MASK      0x0200  /* EDRE_OUT4L_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR2_ENA_SHIFT          9  /* EDRE_OUT4L_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR2_ENA_WIDTH          1  /* EDRE_OUT4L_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR2_ENA           0x0100  /* EDRE_OUT4R_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR2_ENA_MASK      0x0100  /* EDRE_OUT4R_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR2_ENA_SHIFT          8  /* EDRE_OUT4R_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR2_ENA_WIDTH          1  /* EDRE_OUT4R_THR2_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR1_ENA           0x0080  /* EDRE_OUT4L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR1_ENA_MASK      0x0080  /* EDRE_OUT4L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR1_ENA_SHIFT          7  /* EDRE_OUT4L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4L_THR1_ENA_WIDTH          1  /* EDRE_OUT4L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR1_ENA           0x0040  /* EDRE_OUT4R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR1_ENA_MASK      0x0040  /* EDRE_OUT4R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR1_ENA_SHIFT          6  /* EDRE_OUT4R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT4R_THR1_ENA_WIDTH          1  /* EDRE_OUT4R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3L_THR1_ENA           0x0020  /* EDRE_OUT3L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3L_THR1_ENA_MASK      0x0020  /* EDRE_OUT3L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3L_THR1_ENA_SHIFT          5  /* EDRE_OUT3L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3L_THR1_ENA_WIDTH          1  /* EDRE_OUT3L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3R_THR1_ENA           0x0010  /* EDRE_OUT3R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3R_THR1_ENA_MASK      0x0010  /* EDRE_OUT3R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3R_THR1_ENA_SHIFT          4  /* EDRE_OUT3R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT3R_THR1_ENA_WIDTH          1  /* EDRE_OUT3R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2L_THR1_ENA           0x0008  /* EDRE_OUT2L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2L_THR1_ENA_MASK      0x0008  /* EDRE_OUT2L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2L_THR1_ENA_SHIFT          3  /* EDRE_OUT2L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2L_THR1_ENA_WIDTH          1  /* EDRE_OUT2L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2R_THR1_ENA           0x0004  /* EDRE_OUT2R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2R_THR1_ENA_MASK      0x0004  /* EDRE_OUT2R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2R_THR1_ENA_SHIFT          2  /* EDRE_OUT2R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT2R_THR1_ENA_WIDTH          1  /* EDRE_OUT2R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1L_THR1_ENA           0x0002  /* EDRE_OUT1L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1L_THR1_ENA_MASK      0x0002  /* EDRE_OUT1L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1L_THR1_ENA_SHIFT          1  /* EDRE_OUT1L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1L_THR1_ENA_WIDTH          1  /* EDRE_OUT1L_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1R_THR1_ENA           0x0001  /* EDRE_OUT1R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1R_THR1_ENA_MASK      0x0001  /* EDRE_OUT1R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1R_THR1_ENA_SHIFT          0  /* EDRE_OUT1R_THR1_ENA */
+#define CLEARWATER_EDRE_OUT1R_THR1_ENA_WIDTH          1  /* EDRE_OUT1R_THR1_ENA */
 
 /*
  * R1104 (0x450) - DAC AEC Control 1
@@ -3475,6 +5886,101 @@
 #define ARIZONA_HP3_SC_ENA_MASK                  0x1000  /* HP3_SC_ENA */
 #define ARIZONA_HP3_SC_ENA_SHIFT                     12  /* HP3_SC_ENA */
 #define ARIZONA_HP3_SC_ENA_WIDTH                      1  /* HP3_SC_ENA */
+
+/*
+ * R1188 (0x4A4) HP Test Ctrl 1
+ */
+#define ARIZONA_HP1_TST_CAP_SEL_MASK             0x0003  /* HP1_TST_CAP_SEL - [1:0] */
+#define ARIZONA_HP1_TST_CAP_SEL_SHIFT                 0  /* HP1_TST_CAP_SEL - [1:0] */
+#define ARIZONA_HP1_TST_CAP_SEL_WIDTH                 2  /* HP1_TST_CAP_SEL - [1:0] */
+
+/*
+ * R539 (0x4A8) - HP_Test_Ctrl_5
+ */
+#define ARIZONA_HP1L_TST_CINT                    0x4000  /* HP1L_TST_CINT */
+#define ARIZONA_HP1L_TST_CINT_MASK               0x4000  /* HP1L_TST_CINT */
+#define ARIZONA_HP1L_TST_CINT_SHIFT                  14  /* HP1L_TST_CINT */
+#define ARIZONA_HP1L_TST_CINT_WIDTH                   1  /* HP1L_TST_CINT */
+#define ARIZONA_HP1L_TST_GBW                     0x3000  /* HP1L_TST_GBW - [13:12] */
+#define ARIZONA_HP1L_TST_GBW_MASK                0x3000  /* HP1L_TST_GBW - [13:12] */
+#define ARIZONA_HP1L_TST_GBW_SHIFT                   12  /* HP1L_TST_GBW - [13:12] */
+#define ARIZONA_HP1L_TST_GBW_WIDTH                    2  /* HP1L_TST_GBW - [13:12] */
+#define ARIZONA_HP1L_TST_PGAS                    0x0800  /* HP1L_TST_PGAS */
+#define ARIZONA_HP1L_TST_PGAS_MASK               0x0800  /* HP1L_TST_PGAS */
+#define ARIZONA_HP1L_TST_PGAS_SHIFT                  11  /* HP1L_TST_PGAS */
+#define ARIZONA_HP1L_TST_PGAS_WIDTH                   1  /* HP1L_TST_PGAS */
+#define ARIZONA_HP1L_TST_DUMP                    0x0400  /* HP1L_TST_DUMP */
+#define ARIZONA_HP1L_TST_DUMP_MASK               0x0400  /* HP1L_TST_DUMP */
+#define ARIZONA_HP1L_TST_DUMP_SHIFT                  10  /* HP1L_TST_DUMP */
+#define ARIZONA_HP1L_TST_DUMP_WIDTH                   1  /* HP1L_TST_DUMP */
+#define ARIZONA_HP1L_TST_RST                     0x0200  /* HP1L_TST_RST */
+#define ARIZONA_HP1L_TST_RST_MASK                0x0200  /* HP1L_TST_RST */
+#define ARIZONA_HP1L_TST_RST_SHIFT                    9  /* HP1L_TST_RST */
+#define ARIZONA_HP1L_TST_RST_WIDTH                    1  /* HP1L_TST_RST */
+#define ARIZONA_HP1L_ONEFLT                      0x0100  /* HP1L_ONEFLT */
+#define ARIZONA_HP1L_ONEFLT_MASK                 0x0100  /* HP1L_ONEFLT */
+#define ARIZONA_HP1L_ONEFLT_SHIFT                     8  /* HP1L_ONEFLT */
+#define ARIZONA_HP1L_ONEFLT_WIDTH                     1  /* HP1L_ONEFLT */
+#define ARIZONA_HP1L_TST_THDOFF                  0x00C0  /* HP1L_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1L_TST_THDOFF_MASK             0x00C0  /* HP1L_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1L_TST_THDOFF_SHIFT                 6  /* HP1L_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1L_TST_THDOFF_WIDTH                 2  /* HP1L_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1L_CTRL_IOUT                   0x0030  /* HP1L_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1L_CTRL_IOUT_MASK              0x0030  /* HP1L_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1L_CTRL_IOUT_SHIFT                  4  /* HP1L_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1L_CTRL_IOUT_WIDTH                  2  /* HP1L_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1L_TST_ILG                     0x0008  /* HP1L_TST_ILG */
+#define ARIZONA_HP1L_TST_ILG_MASK                0x0008  /* HP1L_TST_ILG */
+#define ARIZONA_HP1L_TST_ILG_SHIFT                    3  /* HP1L_TST_ILG */
+#define ARIZONA_HP1L_TST_ILG_WIDTH                    1  /* HP1L_TST_ILG */
+#define ARIZONA_HP1L_TST_IBIAS                   0x0003  /* HP1L_TST_IBIAS - [1:0] */
+#define ARIZONA_HP1L_TST_IBIAS_MASK              0x0003  /* HP1L_TST_IBIAS - [1:0] */
+#define ARIZONA_HP1L_TST_IBIAS_SHIFT                  0  /* HP1L_TST_IBIAS - [1:0] */
+#define ARIZONA_HP1L_TST_IBIAS_WIDTH                  2  /* HP1L_TST_IBIAS - [1:0] */
+
+/*
+ * R540 (0x4A9) - HP_Test_Ctrl_6
+ */
+#define ARIZONA_HP1R_TST_CINT                    0x4000  /* HP1R_TST_CINT */
+#define ARIZONA_HP1R_TST_CINT_MASK               0x4000  /* HP1R_TST_CINT */
+#define ARIZONA_HP1R_TST_CINT_SHIFT                  14  /* HP1R_TST_CINT */
+#define ARIZONA_HP1R_TST_CINT_WIDTH                   1  /* HP1R_TST_CINT */
+#define ARIZONA_HP1R_TST_GBW                     0x3000  /* HP1R_TST_GBW - [13:12] */
+#define ARIZONA_HP1R_TST_GBW_MASK                0x3000  /* HP1R_TST_GBW - [13:12] */
+#define ARIZONA_HP1R_TST_GBW_SHIFT                   12  /* HP1R_TST_GBW - [13:12] */
+#define ARIZONA_HP1R_TST_GBW_WIDTH                    2  /* HP1R_TST_GBW - [13:12] */
+#define ARIZONA_HP1R_TST_PGAS                    0x0800  /* HP1R_TST_PGAS */
+#define ARIZONA_HP1R_TST_PGAS_MASK               0x0800  /* HP1R_TST_PGAS */
+#define ARIZONA_HP1R_TST_PGAS_SHIFT                  11  /* HP1R_TST_PGAS */
+#define ARIZONA_HP1R_TST_PGAS_WIDTH                   1  /* HP1R_TST_PGAS */
+#define ARIZONA_HP1R_TST_DUMP                    0x0400  /* HP1R_TST_DUMP */
+#define ARIZONA_HP1R_TST_DUMP_MASK               0x0400  /* HP1R_TST_DUMP */
+#define ARIZONA_HP1R_TST_DUMP_SHIFT                  10  /* HP1R_TST_DUMP */
+#define ARIZONA_HP1R_TST_DUMP_WIDTH                   1  /* HP1R_TST_DUMP */
+#define ARIZONA_HP1R_TST_RST                     0x0200  /* HP1R_TST_RST */
+#define ARIZONA_HP1R_TST_RST_MASK                0x0200  /* HP1R_TST_RST */
+#define ARIZONA_HP1R_TST_RST_SHIFT                    9  /* HP1R_TST_RST */
+#define ARIZONA_HP1R_TST_RST_WIDTH                    1  /* HP1R_TST_RST */
+#define ARIZONA_HP1R_ONEFLT                      0x0100  /* HP1R_ONEFLT */
+#define ARIZONA_HP1R_ONEFLT_MASK                 0x0100  /* HP1R_ONEFLT */
+#define ARIZONA_HP1R_ONEFLT_SHIFT                     8  /* HP1R_ONEFLT */
+#define ARIZONA_HP1R_ONEFLT_WIDTH                     1  /* HP1R_ONEFLT */
+#define ARIZONA_HP1R_TST_THDOFF                  0x00C0  /* HP1R_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1R_TST_THDOFF_MASK             0x00C0  /* HP1R_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1R_TST_THDOFF_SHIFT                 6  /* HP1R_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1R_TST_THDOFF_WIDTH                 2  /* HP1R_TST_THDOFF - [7:6] */
+#define ARIZONA_HP1R_CTRL_IOUT                   0x0030  /* HP1R_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1R_CTRL_IOUT_MASK              0x0030  /* HP1R_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1R_CTRL_IOUT_SHIFT                  4  /* HP1R_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1R_CTRL_IOUT_WIDTH                  2  /* HP1R_CTRL_IOUT - [5:4] */
+#define ARIZONA_HP1R_TST_ILG                     0x0008  /* HP1R_TST_ILG */
+#define ARIZONA_HP1R_TST_ILG_MASK                0x0008  /* HP1R_TST_ILG */
+#define ARIZONA_HP1R_TST_ILG_SHIFT                    3  /* HP1R_TST_ILG */
+#define ARIZONA_HP1R_TST_ILG_WIDTH                    1  /* HP1R_TST_ILG */
+#define ARIZONA_HP1R_TST_IBIAS                   0x0003  /* HP1R_TST_IBIAS - [1:0] */
+#define ARIZONA_HP1R_TST_IBIAS_MASK              0x0003  /* HP1R_TST_IBIAS - [1:0] */
+#define ARIZONA_HP1R_TST_IBIAS_SHIFT                  0  /* HP1R_TST_IBIAS - [1:0] */
+#define ARIZONA_HP1R_TST_IBIAS_WIDTH                  2  /* HP1R_TST_IBIAS - [1:0] */
 
 /*
  * R1244 (0x4DC) - DAC comp 1
@@ -3972,6 +6478,19 @@
 #define ARIZONA_AIF2TX6_SLOT_WIDTH                    6  /* AIF2TX6_SLOT - [5:0] */
 
 /*
+ * R1359 (0x54F) - AIF2 Frame Ctrl 9
+ */
+#define ARIZONA_AIF2TX7_SLOT_MASK                0x003F  /* AIF2TX7_SLOT - [5:0] */
+#define ARIZONA_AIF2TX7_SLOT_SHIFT                    0  /* AIF2TX7_SLOT - [5:0] */
+#define ARIZONA_AIF2TX7_SLOT_WIDTH                    6  /* AIF2TX7_SLOT - [5:0] */
+/*
+ * R1360 (0x550) - AIF2 Frame Ctrl 10
+ */
+#define ARIZONA_AIF2TX8_SLOT_MASK                0x003F  /* AIF2TX8_SLOT - [5:0] */
+#define ARIZONA_AIF2TX8_SLOT_SHIFT                    0  /* AIF2TX8_SLOT - [5:0] */
+#define ARIZONA_AIF2TX8_SLOT_WIDTH                    6  /* AIF2TX8_SLOT - [5:0] */
+
+/*
  * R1361 (0x551) - AIF2 Frame Ctrl 11
  */
 #define ARIZONA_AIF2RX1_SLOT_MASK                0x003F  /* AIF2RX1_SLOT - [5:0] */
@@ -4014,8 +6533,30 @@
 #define ARIZONA_AIF2RX6_SLOT_WIDTH                    6  /* AIF2RX6_SLOT - [5:0] */
 
 /*
+ * R1367 (0x557) - AIF2 Frame Ctrl 17
+ */
+#define ARIZONA_AIF2RX7_SLOT_MASK                0x003F  /* AIF2RX7_SLOT - [5:0] */
+#define ARIZONA_AIF2RX7_SLOT_SHIFT                    0  /* AIF2RX7_SLOT - [5:0] */
+#define ARIZONA_AIF2RX7_SLOT_WIDTH                    6  /* AIF2RX7_SLOT - [5:0] */
+
+/*
+ * R1368 (0x558) - AIF2 Frame Ctrl 18
+ */
+#define ARIZONA_AIF2RX8_SLOT_MASK                0x003F  /* AIF2RX8_SLOT - [5:0] */
+#define ARIZONA_AIF2RX8_SLOT_SHIFT                    0  /* AIF2RX8_SLOT - [5:0] */
+#define ARIZONA_AIF2RX8_SLOT_WIDTH                    6  /* AIF2RX8_SLOT - [5:0] */
+
+/*
  * R1369 (0x559) - AIF2 Tx Enables
  */
+#define ARIZONA_AIF2TX8_ENA                      0x0080  /* AIF2TX8_ENA */
+#define ARIZONA_AIF2TX8_ENA_MASK                 0x0080  /* AIF2TX8_ENA */
+#define ARIZONA_AIF2TX8_ENA_SHIFT                     7  /* AIF2TX8_ENA */
+#define ARIZONA_AIF2TX8_ENA_WIDTH                     1  /* AIF2TX8_ENA */
+#define ARIZONA_AIF2TX7_ENA                      0x0040  /* AIF2TX7_ENA */
+#define ARIZONA_AIF2TX7_ENA_MASK                 0x0040  /* AIF2TX7_ENA */
+#define ARIZONA_AIF2TX7_ENA_SHIFT                     6  /* AIF2TX7_ENA */
+#define ARIZONA_AIF2TX7_ENA_WIDTH                     1  /* AIF2TX7_ENA */
 #define ARIZONA_AIF2TX6_ENA                      0x0020  /* AIF2TX6_ENA */
 #define ARIZONA_AIF2TX6_ENA_MASK                 0x0020  /* AIF2TX6_ENA */
 #define ARIZONA_AIF2TX6_ENA_SHIFT                     5  /* AIF2TX6_ENA */
@@ -4044,6 +6585,14 @@
 /*
  * R1370 (0x55A) - AIF2 Rx Enables
  */
+#define ARIZONA_AIF2RX8_ENA                      0x0080  /* AIF2RX8_ENA */
+#define ARIZONA_AIF2RX8_ENA_MASK                 0x0080  /* AIF2RX8_ENA */
+#define ARIZONA_AIF2RX8_ENA_SHIFT                     7  /* AIF2RX8_ENA */
+#define ARIZONA_AIF2RX8_ENA_WIDTH                     1  /* AIF2RX8_ENA */
+#define ARIZONA_AIF2RX7_ENA                      0x0040  /* AIF2RX7_ENA */
+#define ARIZONA_AIF2RX7_ENA_MASK                 0x0040  /* AIF2RX7_ENA */
+#define ARIZONA_AIF2RX7_ENA_SHIFT                     6  /* AIF2RX7_ENA */
+#define ARIZONA_AIF2RX7_ENA_WIDTH                     1  /* AIF2RX7_ENA */
 #define ARIZONA_AIF2RX6_ENA                      0x0020  /* AIF2RX6_ENA */
 #define ARIZONA_AIF2RX6_ENA_MASK                 0x0020  /* AIF2RX6_ENA */
 #define ARIZONA_AIF2RX6_ENA_SHIFT                     5  /* AIF2RX6_ENA */
@@ -4247,6 +6796,257 @@
 #define ARIZONA_AIF3_FRC_WR_MASK                 0x0001  /* AIF3_FRC_WR */
 #define ARIZONA_AIF3_FRC_WR_SHIFT                     0  /* AIF3_FRC_WR */
 #define ARIZONA_AIF3_FRC_WR_WIDTH                     1  /* AIF3_FRC_WR */
+
+/*
+ * R1440 (0x5A0) - AIF4 BCLK Ctrl
+ */
+#define ARIZONA_AIF4_BCLK_INV                    0x0080  /* AIF4_BCLK_INV */
+#define ARIZONA_AIF4_BCLK_INV_MASK               0x0080  /* AIF4_BCLK_INV */
+#define ARIZONA_AIF4_BCLK_INV_SHIFT                   7  /* AIF4_BCLK_INV */
+#define ARIZONA_AIF4_BCLK_INV_WIDTH                   1  /* AIF4_BCLK_INV */
+#define ARIZONA_AIF4_BCLK_FRC                    0x0040  /* AIF4_BCLK_FRC */
+#define ARIZONA_AIF4_BCLK_FRC_MASK               0x0040  /* AIF4_BCLK_FRC */
+#define ARIZONA_AIF4_BCLK_FRC_SHIFT                   6  /* AIF4_BCLK_FRC */
+#define ARIZONA_AIF4_BCLK_FRC_WIDTH                   1  /* AIF4_BCLK_FRC */
+#define ARIZONA_AIF4_BCLK_MSTR                   0x0020  /* AIF4_BCLK_MSTR */
+#define ARIZONA_AIF4_BCLK_MSTR_MASK              0x0020  /* AIF4_BCLK_MSTR */
+#define ARIZONA_AIF4_BCLK_MSTR_SHIFT                  5  /* AIF4_BCLK_MSTR */
+#define ARIZONA_AIF4_BCLK_MSTR_WIDTH                  1  /* AIF4_BCLK_MSTR */
+#define ARIZONA_AIF4_BCLK_FREQ_MASK              0x001F  /* AIF4_BCLK_FREQ - [4:0] */
+#define ARIZONA_AIF4_BCLK_FREQ_SHIFT                  0  /* AIF4_BCLK_FREQ - [4:0] */
+#define ARIZONA_AIF4_BCLK_FREQ_WIDTH                  5  /* AIF4_BCLK_FREQ - [4:0] */
+
+/*
+ * R1441 (0x5A1) - AIF4 Tx Pin Ctrl
+ */
+#define ARIZONA_AIF4TX_DAT_TRI                   0x0020  /* AIF4TX_DAT_TRI */
+#define ARIZONA_AIF4TX_DAT_TRI_MASK              0x0020  /* AIF4TX_DAT_TRI */
+#define ARIZONA_AIF4TX_DAT_TRI_SHIFT                  5  /* AIF4TX_DAT_TRI */
+#define ARIZONA_AIF4TX_DAT_TRI_WIDTH                  1  /* AIF4TX_DAT_TRI */
+#define ARIZONA_AIF4TX_LRCLK_SRC                 0x0008  /* AIF4TX_LRCLK_SRC */
+#define ARIZONA_AIF4TX_LRCLK_SRC_MASK            0x0008  /* AIF4TX_LRCLK_SRC */
+#define ARIZONA_AIF4TX_LRCLK_SRC_SHIFT                3  /* AIF4TX_LRCLK_SRC */
+#define ARIZONA_AIF4TX_LRCLK_SRC_WIDTH                1  /* AIF4TX_LRCLK_SRC */
+#define ARIZONA_AIF4TX_LRCLK_INV                 0x0004  /* AIF4TX_LRCLK_INV */
+#define ARIZONA_AIF4TX_LRCLK_INV_MASK            0x0004  /* AIF4TX_LRCLK_INV */
+#define ARIZONA_AIF4TX_LRCLK_INV_SHIFT                2  /* AIF4TX_LRCLK_INV */
+#define ARIZONA_AIF4TX_LRCLK_INV_WIDTH                1  /* AIF4TX_LRCLK_INV */
+#define ARIZONA_AIF4TX_LRCLK_FRC                 0x0002  /* AIF4TX_LRCLK_FRC */
+#define ARIZONA_AIF4TX_LRCLK_FRC_MASK            0x0002  /* AIF4TX_LRCLK_FRC */
+#define ARIZONA_AIF4TX_LRCLK_FRC_SHIFT                1  /* AIF4TX_LRCLK_FRC */
+#define ARIZONA_AIF4TX_LRCLK_FRC_WIDTH                1  /* AIF4TX_LRCLK_FRC */
+#define ARIZONA_AIF4TX_LRCLK_MSTR                0x0001  /* AIF4TX_LRCLK_MSTR */
+#define ARIZONA_AIF4TX_LRCLK_MSTR_MASK           0x0001  /* AIF4TX_LRCLK_MSTR */
+#define ARIZONA_AIF4TX_LRCLK_MSTR_SHIFT               0  /* AIF4TX_LRCLK_MSTR */
+#define ARIZONA_AIF4TX_LRCLK_MSTR_WIDTH               1  /* AIF4TX_LRCLK_MSTR */
+
+/*
+ * R1442 (0x5A2) - AIF4 Rx Pin Ctrl
+ */
+#define ARIZONA_AIF4RX_LRCLK_INV                 0x0004  /* AIF4RX_LRCLK_INV */
+#define ARIZONA_AIF4RX_LRCLK_INV_MASK            0x0004  /* AIF4RX_LRCLK_INV */
+#define ARIZONA_AIF4RX_LRCLK_INV_SHIFT                2  /* AIF4RX_LRCLK_INV */
+#define ARIZONA_AIF4RX_LRCLK_INV_WIDTH                1  /* AIF4RX_LRCLK_INV */
+#define ARIZONA_AIF4RX_LRCLK_FRC                 0x0002  /* AIF4RX_LRCLK_FRC */
+#define ARIZONA_AIF4RX_LRCLK_FRC_MASK            0x0002  /* AIF4RX_LRCLK_FRC */
+#define ARIZONA_AIF4RX_LRCLK_FRC_SHIFT                1  /* AIF4RX_LRCLK_FRC */
+#define ARIZONA_AIF4RX_LRCLK_FRC_WIDTH                1  /* AIF4RX_LRCLK_FRC */
+#define ARIZONA_AIF4RX_LRCLK_MSTR                0x0001  /* AIF4RX_LRCLK_MSTR */
+#define ARIZONA_AIF4RX_LRCLK_MSTR_MASK           0x0001  /* AIF4RX_LRCLK_MSTR */
+#define ARIZONA_AIF4RX_LRCLK_MSTR_SHIFT               0  /* AIF4RX_LRCLK_MSTR */
+#define ARIZONA_AIF4RX_LRCLK_MSTR_WIDTH               1  /* AIF4RX_LRCLK_MSTR */
+
+/*
+ * R1443 (0x5A3) - AIF4 Rate Ctrl
+ */
+#define ARIZONA_AIF4_RATE_MASK                   0x7800  /* AIF4_RATE - [14:11] */
+#define ARIZONA_AIF4_RATE_SHIFT                      11  /* AIF4_RATE - [14:11] */
+#define ARIZONA_AIF4_RATE_WIDTH                       4  /* AIF4_RATE - [14:11] */
+#define ARIZONA_AIF4_TRI                         0x0040  /* AIF4_TRI */
+#define ARIZONA_AIF4_TRI_MASK                    0x0040  /* AIF4_TRI */
+#define ARIZONA_AIF4_TRI_SHIFT                        6  /* AIF4_TRI */
+#define ARIZONA_AIF4_TRI_WIDTH                        1  /* AIF4_TRI */
+
+/*
+ * R1444 (0x5A4) - AIF4 Format
+ */
+#define ARIZONA_AIF4_FMT_MASK                    0x0007  /* AIF4_FMT - [2:0] */
+#define ARIZONA_AIF4_FMT_SHIFT                        0  /* AIF4_FMT - [2:0] */
+#define ARIZONA_AIF4_FMT_WIDTH                        3  /* AIF4_FMT - [2:0] */
+
+/*
+ * R1445 (0x5A5) - AIF4 Tx BCLK Rate
+ */
+#define ARIZONA_AIF4TX_BCPF_MASK                 0x1FFF  /* AIF4TX_BCPF - [12:0] */
+#define ARIZONA_AIF4TX_BCPF_SHIFT                     0  /* AIF4TX_BCPF - [12:0] */
+#define ARIZONA_AIF4TX_BCPF_WIDTH                    13  /* AIF4TX_BCPF - [12:0] */
+
+/*
+ * R1446 (0x5A6) - AIF4 Rx BCLK Rate
+ */
+#define ARIZONA_AIF4RX_BCPF_MASK                 0x1FFF  /* AIF4RX_BCPF - [12:0] */
+#define ARIZONA_AIF4RX_BCPF_SHIFT                     0  /* AIF4RX_BCPF - [12:0] */
+#define ARIZONA_AIF4RX_BCPF_WIDTH                    13  /* AIF4RX_BCPF - [12:0] */
+
+/*
+ * R1447 (0x5A7) - AIF4 Frame Ctrl 1
+ */
+#define ARIZONA_AIF4TX_WL_MASK                   0x3F00  /* AIF4TX_WL - [13:8] */
+#define ARIZONA_AIF4TX_WL_SHIFT                       8  /* AIF4TX_WL - [13:8] */
+#define ARIZONA_AIF4TX_WL_WIDTH                       6  /* AIF4TX_WL - [13:8] */
+#define ARIZONA_AIF4TX_SLOT_LEN_MASK             0x00FF  /* AIF4TX_SLOT_LEN - [7:0] */
+#define ARIZONA_AIF4TX_SLOT_LEN_SHIFT                 0  /* AIF4TX_SLOT_LEN - [7:0] */
+#define ARIZONA_AIF4TX_SLOT_LEN_WIDTH                 8  /* AIF4TX_SLOT_LEN - [7:0] */
+
+/*
+ * R1448 (0x5A8) - AIF4 Frame Ctrl 2
+ */
+#define ARIZONA_AIF4RX_WL_MASK                   0x3F00  /* AIF4RX_WL - [13:8] */
+#define ARIZONA_AIF4RX_WL_SHIFT                       8  /* AIF4RX_WL - [13:8] */
+#define ARIZONA_AIF4RX_WL_WIDTH                       6  /* AIF4RX_WL - [13:8] */
+#define ARIZONA_AIF4RX_SLOT_LEN_MASK             0x00FF  /* AIF4RX_SLOT_LEN - [7:0] */
+#define ARIZONA_AIF4RX_SLOT_LEN_SHIFT                 0  /* AIF4RX_SLOT_LEN - [7:0] */
+#define ARIZONA_AIF4RX_SLOT_LEN_WIDTH                 8  /* AIF4RX_SLOT_LEN - [7:0] */
+
+/*
+ * R1449 (0x5A9) - AIF4 Frame Ctrl 3
+ */
+#define ARIZONA_AIF4TX1_SLOT_MASK                0x003F  /* AIF4TX1_SLOT - [5:0] */
+#define ARIZONA_AIF4TX1_SLOT_SHIFT                    0  /* AIF4TX1_SLOT - [5:0] */
+#define ARIZONA_AIF4TX1_SLOT_WIDTH                    6  /* AIF4TX1_SLOT - [5:0] */
+
+/*
+ * R1450 (0x5AA) - AIF4 Frame Ctrl 4
+ */
+#define ARIZONA_AIF4TX2_SLOT_MASK                0x003F  /* AIF4TX2_SLOT - [5:0] */
+#define ARIZONA_AIF4TX2_SLOT_SHIFT                    0  /* AIF4TX2_SLOT - [5:0] */
+#define ARIZONA_AIF4TX2_SLOT_WIDTH                    6  /* AIF4TX2_SLOT - [5:0] */
+
+/*
+ * R1457 (0x5B1) - AIF4 Frame Ctrl 11
+ */
+#define ARIZONA_AIF4RX1_SLOT_MASK                0x003F  /* AIF4RX1_SLOT - [5:0] */
+#define ARIZONA_AIF4RX1_SLOT_SHIFT                    0  /* AIF4RX1_SLOT - [5:0] */
+#define ARIZONA_AIF4RX1_SLOT_WIDTH                    6  /* AIF4RX1_SLOT - [5:0] */
+
+/*
+ * R1458 (0x5B2) - AIF4 Frame Ctrl 12
+ */
+#define ARIZONA_AIF4RX2_SLOT_MASK                0x003F  /* AIF4RX2_SLOT - [5:0] */
+#define ARIZONA_AIF4RX2_SLOT_SHIFT                    0  /* AIF4RX2_SLOT - [5:0] */
+#define ARIZONA_AIF4RX2_SLOT_WIDTH                    6  /* AIF4RX2_SLOT - [5:0] */
+
+/*
+ * R1465 (0x5B9) - AIF4 Tx Enables
+ */
+#define ARIZONA_AIF4TX2_ENA                      0x0002  /* AIF4TX2_ENA */
+#define ARIZONA_AIF4TX2_ENA_MASK                 0x0002  /* AIF4TX2_ENA */
+#define ARIZONA_AIF4TX2_ENA_SHIFT                     1  /* AIF4TX2_ENA */
+#define ARIZONA_AIF4TX2_ENA_WIDTH                     1  /* AIF4TX2_ENA */
+#define ARIZONA_AIF4TX1_ENA                      0x0001  /* AIF4TX1_ENA */
+#define ARIZONA_AIF4TX1_ENA_MASK                 0x0001  /* AIF4TX1_ENA */
+#define ARIZONA_AIF4TX1_ENA_SHIFT                     0  /* AIF4TX1_ENA */
+#define ARIZONA_AIF4TX1_ENA_WIDTH                     1  /* AIF4TX1_ENA */
+
+/*
+ * R1466 (0x5BA) - AIF4 Rx Enables
+ */
+#define ARIZONA_AIF4RX2_ENA                      0x0002  /* AIF4RX2_ENA */
+#define ARIZONA_AIF4RX2_ENA_MASK                 0x0002  /* AIF4RX2_ENA */
+#define ARIZONA_AIF4RX2_ENA_SHIFT                     1  /* AIF4RX2_ENA */
+#define ARIZONA_AIF4RX2_ENA_WIDTH                     1  /* AIF4RX2_ENA */
+#define ARIZONA_AIF4RX1_ENA                      0x0001  /* AIF4RX1_ENA */
+#define ARIZONA_AIF4RX1_ENA_MASK                 0x0001  /* AIF4RX1_ENA */
+#define ARIZONA_AIF4RX1_ENA_SHIFT                     0  /* AIF4RX1_ENA */
+#define ARIZONA_AIF4RX1_ENA_WIDTH                     1  /* AIF4RX1_ENA */
+
+/*
+ * R1467 (0x5BB) - AIF4 Force Write
+ */
+#define ARIZONA_AIF4_FRC_WR                      0x0001  /* AIF4_FRC_WR */
+#define ARIZONA_AIF4_FRC_WR_MASK                 0x0001  /* AIF4_FRC_WR */
+#define ARIZONA_AIF4_FRC_WR_SHIFT                     0  /* AIF4_FRC_WR */
+#define ARIZONA_AIF4_FRC_WR_WIDTH                     1  /* AIF4_FRC_WR */
+
+/*
+ * R1474 (0x5C2) - SPD1 TX Control
+ */
+#define ARIZONA_SPD1_VAL2                        0x2000  /* SPD1_VAL2 */
+#define ARIZONA_SPD1_VAL2_MASK                   0x2000  /* SPD1_VAL2 */
+#define ARIZONA_SPD1_VAL2_SHIFT                      13  /* SPD1_VAL2 */
+#define ARIZONA_SPD1_VAL2_WIDTH                       1  /* SPD1_VAL2 */
+#define ARIZONA_SPD1_VAL1                        0x1000  /* SPD1_VAL1 */
+#define ARIZONA_SPD1_VAL1_MASK                   0x1000  /* SPD1_VAL1 */
+#define ARIZONA_SPD1_VAL1_SHIFT                      12  /* SPD1_VAL1 */
+#define ARIZONA_SPD1_VAL1_WIDTH                       1  /* SPD1_VAL1 */
+#define ARIZONA_SPD1_RATE_MASK                   0x00F0  /* SPD1_RATE */
+#define ARIZONA_SPD1_RATE_SHIFT                       4  /* SPD1_RATE */
+#define ARIZONA_SPD1_RATE_WIDTH                       4  /* SPD1_RATE */
+#define ARIZONA_SPD1_ENA                         0x0001  /* SPD1_ENA */
+#define ARIZONA_SPD1_ENA_MASK                    0x0001  /* SPD1_ENA */
+#define ARIZONA_SPD1_ENA_SHIFT                        0  /* SPD1_ENA */
+#define ARIZONA_SPD1_ENA_WIDTH                        1  /* SPD1_ENA */
+
+/*
+ * R1475 (0x5C3) - SPD1 TX Channel Status 1
+ */
+#define ARIZONA_SPD1_CATCODE_MASK                0xFF00  /* SPD1_CATCODE */
+#define ARIZONA_SPD1_CATCODE_SHIFT                    8  /* SPD1_CATCODE */
+#define ARIZONA_SPD1_CATCODE_WIDTH                    8  /* SPD1_CATCODE */
+#define ARIZONA_SPD1_CHSTMODE_MASK               0x00C0  /* SPD1_CHSTMODE */
+#define ARIZONA_SPD1_CHSTMODE_SHIFT                   6  /* SPD1_CHSTMODE */
+#define ARIZONA_SPD1_CHSTMODE_WIDTH                   2  /* SPD1_CHSTMODE */
+#define ARIZONA_SPD1_PREEMPH_MASK                0x0038  /* SPD1_PREEMPH */
+#define ARIZONA_SPD1_PREEMPH_SHIFT                    3  /* SPD1_PREEMPH */
+#define ARIZONA_SPD1_PREEMPH_WIDTH                    3  /* SPD1_PREEMPH */
+#define ARIZONA_SPD1_NOCOPY                      0x0004  /* SPD1_NOCOPY */
+#define ARIZONA_SPD1_NOCOPY_MASK                 0x0004  /* SPD1_NOCOPY */
+#define ARIZONA_SPD1_NOCOPY_SHIFT                     2  /* SPD1_NOCOPY */
+#define ARIZONA_SPD1_NOCOPY_WIDTH                     1  /* SPD1_NOCOPY */
+#define ARIZONA_SPD1_NOAUDIO                     0x0002  /* SPD1_NOAUDIO */
+#define ARIZONA_SPD1_NOAUDIO_MASK                0x0002  /* SPD1_NOAUDIO */
+#define ARIZONA_SPD1_NOAUDIO_SHIFT                    1  /* SPD1_NOAUDIO */
+#define ARIZONA_SPD1_NOAUDIO_WIDTH                    1  /* SPD1_NOAUDIO */
+#define ARIZONA_SPD1_PRO                         0x0001  /* SPD1_PRO */
+#define ARIZONA_SPD1_PRO_MASK                    0x0001  /* SPD1_PRO */
+#define ARIZONA_SPD1_PRO_SHIFT                        0  /* SPD1_PRO */
+#define ARIZONA_SPD1_PRO_WIDTH                        1  /* SPD1_PRO */
+
+/*
+ * R1475 (0x5C4) - SPD1 TX Channel Status 2
+ */
+#define ARIZONA_SPD1_FREQ_MASK                   0xF000  /* SPD1_FREQ */
+#define ARIZONA_SPD1_FREQ_SHIFT                      12  /* SPD1_FREQ */
+#define ARIZONA_SPD1_FREQ_WIDTH                       4  /* SPD1_FREQ */
+#define ARIZONA_SPD1_CHNUM2_MASK                 0x0F00  /* SPD1_CHNUM2 */
+#define ARIZONA_SPD1_CHNUM2_SHIFT                     8  /* SPD1_CHNUM2 */
+#define ARIZONA_SPD1_CHNUM2_WIDTH                     4  /* SPD1_CHNUM2 */
+#define ARIZONA_SPD1_CHNUM1_MASK                 0x00F0  /* SPD1_CHNUM1 */
+#define ARIZONA_SPD1_CHNUM1_SHIFT                     4  /* SPD1_CHNUM1 */
+#define ARIZONA_SPD1_CHNUM1_WIDTH                     4  /* SPD1_CHNUM1 */
+#define ARIZONA_SPD1_SRCNUM_MASK                 0x000F  /* SPD1_SRCNUM */
+#define ARIZONA_SPD1_SRCNUM_SHIFT                     0  /* SPD1_SRCNUM */
+#define ARIZONA_SPD1_SRCNUM_WIDTH                     4  /* SPD1_SRCNUM */
+
+/*
+ * R1475 (0x5C5) - SPD1 TX Channel Status 3
+ */
+#define ARIZONA_SPD1_ORGSAMP_MASK                0x0F00  /* SPD1_ORGSAMP */
+#define ARIZONA_SPD1_ORGSAMP_SHIFT                    8  /* SPD1_ORGSAMP */
+#define ARIZONA_SPD1_ORGSAMP_WIDTH                    4  /* SPD1_ORGSAMP */
+#define ARIZONA_SPD1_TXWL_MASK                   0x00E0  /* SPD1_TXWL */
+#define ARIZONA_SPD1_TXWL_SHIFT                       5  /* SPD1_TXWL */
+#define ARIZONA_SPD1_TXWL_WIDTH                       3  /* SPD1_TXWL */
+#define ARIZONA_SPD1_MAXWL                       0x0010  /* SPD1_MAXWL */
+#define ARIZONA_SPD1_MAXWL_MASK                  0x0010  /* SPD1_MAXWL */
+#define ARIZONA_SPD1_MAXWL_SHIFT                      4  /* SPD1_MAXWL */
+#define ARIZONA_SPD1_MAXWL_WIDTH                      1  /* SPD1_MAXWL */
+#define ARIZONA_SPD1_CS31_30_MASK                0x000C  /* SPD1_CS31_30 */
+#define ARIZONA_SPD1_CS31_30_SHIFT                    2  /* SPD1_CS31_30 */
+#define ARIZONA_SPD1_CS31_30_WIDTH                    2  /* SPD1_CS31_30 */
+#define ARIZONA_SPD1_CLKACU_MASK                 0x0003  /* SPD1_CLKACU */
+#define ARIZONA_SPD1_CLKACU_SHIFT                     2  /* SPD1_CLKACU */
+#define ARIZONA_SPD1_CLKACU_WIDTH                     0  /* SPD1_CLKACU */
 
 /*
  * R1507 (0x5E3) - SLIMbus Framer Ref Gear
@@ -4501,6 +7301,13 @@
 #define ARIZONA_GP_DBTIME_MASK                   0xF000  /* GP_DBTIME - [15:12] */
 #define ARIZONA_GP_DBTIME_SHIFT                      12  /* GP_DBTIME - [15:12] */
 #define ARIZONA_GP_DBTIME_WIDTH                       4  /* GP_DBTIME - [15:12] */
+
+/*
+ * R3096 (0xC18) - GP Switch 1
+ */
+#define ARIZONA_SW1_MODE_MASK                    0x0003  /* SW1_MODE - [1:0] */
+#define ARIZONA_SW1_MODE_SHIFT                        0  /* SW1_MODE - [1:0] */
+#define ARIZONA_SW1_MODE_WIDTH                        2  /* SW1_MODE - [1:0] */
 
 /*
  * R3104 (0xC20) - Misc Pad Ctrl 1
@@ -5095,70 +7902,70 @@
 /*
  * R3339 (0xD0B) - Interrupt Status 4 Mask
  */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT1            0x8000  /* IM_ASRC_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT1_MASK       0x8000  /* IM_ASRC_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT1_SHIFT          15  /* IM_ASRC_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT1_WIDTH           1  /* IM_ASRC_CFG_ERR_EINT1 */
-#define ARIZONA_IM_AIF3_ERR_EINT1                0x4000  /* IM_AIF3_ERR_EINT1 */
-#define ARIZONA_IM_AIF3_ERR_EINT1_MASK           0x4000  /* IM_AIF3_ERR_EINT1 */
-#define ARIZONA_IM_AIF3_ERR_EINT1_SHIFT              14  /* IM_AIF3_ERR_EINT1 */
-#define ARIZONA_IM_AIF3_ERR_EINT1_WIDTH               1  /* IM_AIF3_ERR_EINT1 */
-#define ARIZONA_IM_AIF2_ERR_EINT1                0x2000  /* IM_AIF2_ERR_EINT1 */
-#define ARIZONA_IM_AIF2_ERR_EINT1_MASK           0x2000  /* IM_AIF2_ERR_EINT1 */
-#define ARIZONA_IM_AIF2_ERR_EINT1_SHIFT              13  /* IM_AIF2_ERR_EINT1 */
-#define ARIZONA_IM_AIF2_ERR_EINT1_WIDTH               1  /* IM_AIF2_ERR_EINT1 */
-#define ARIZONA_IM_AIF1_ERR_EINT1                0x1000  /* IM_AIF1_ERR_EINT1 */
-#define ARIZONA_IM_AIF1_ERR_EINT1_MASK           0x1000  /* IM_AIF1_ERR_EINT1 */
-#define ARIZONA_IM_AIF1_ERR_EINT1_SHIFT              12  /* IM_AIF1_ERR_EINT1 */
-#define ARIZONA_IM_AIF1_ERR_EINT1_WIDTH               1  /* IM_AIF1_ERR_EINT1 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT1              0x0800  /* IM_CTRLIF_ERR_EINT1 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT1_MASK         0x0800  /* IM_CTRLIF_ERR_EINT1 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT1_SHIFT            11  /* IM_CTRLIF_ERR_EINT1 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT1_WIDTH             1  /* IM_CTRLIF_ERR_EINT1 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1    0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1_MASK 0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1_SHIFT     10  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1_WIDTH      1  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1       0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1_MASK  0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1_SHIFT      9  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1_WIDTH      1  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1          0x0100  /* IM_SYSCLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1_MASK     0x0100  /* IM_SYSCLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1_SHIFT         8  /* IM_SYSCLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1_WIDTH         1  /* IM_SYSCLK_ENA_LOW_EINT1 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1           0x0080  /* IM_ISRC1_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1_MASK      0x0080  /* IM_ISRC1_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1_SHIFT          7  /* IM_ISRC1_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1_WIDTH          1  /* IM_ISRC1_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1           0x0040  /* IM_ISRC2_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1_MASK      0x0040  /* IM_ISRC2_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1_SHIFT          6  /* IM_ISRC2_CFG_ERR_EINT1 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1_WIDTH          1  /* IM_ISRC2_CFG_ERR_EINT1 */
-#define ARIZONA_IM_HP3R_DONE_EINT1               0x0020  /* IM_HP3R_DONE_EINT1 */
-#define ARIZONA_IM_HP3R_DONE_EINT1_MASK          0x0020  /* IM_HP3R_DONE_EINT1 */
-#define ARIZONA_IM_HP3R_DONE_EINT1_SHIFT              5  /* IM_HP3R_DONE_EINT1 */
-#define ARIZONA_IM_HP3R_DONE_EINT1_WIDTH              1  /* IM_HP3R_DONE_EINT1 */
-#define ARIZONA_IM_HP3L_DONE_EINT1               0x0010  /* IM_HP3L_DONE_EINT1 */
-#define ARIZONA_IM_HP3L_DONE_EINT1_MASK          0x0010  /* IM_HP3L_DONE_EINT1 */
-#define ARIZONA_IM_HP3L_DONE_EINT1_SHIFT              4  /* IM_HP3L_DONE_EINT1 */
-#define ARIZONA_IM_HP3L_DONE_EINT1_WIDTH              1  /* IM_HP3L_DONE_EINT1 */
-#define ARIZONA_IM_HP2R_DONE_EINT1               0x0008  /* IM_HP2R_DONE_EINT1 */
-#define ARIZONA_IM_HP2R_DONE_EINT1_MASK          0x0008  /* IM_HP2R_DONE_EINT1 */
-#define ARIZONA_IM_HP2R_DONE_EINT1_SHIFT              3  /* IM_HP2R_DONE_EINT1 */
-#define ARIZONA_IM_HP2R_DONE_EINT1_WIDTH              1  /* IM_HP2R_DONE_EINT1 */
-#define ARIZONA_IM_HP2L_DONE_EINT1               0x0004  /* IM_HP2L_DONE_EINT1 */
-#define ARIZONA_IM_HP2L_DONE_EINT1_MASK          0x0004  /* IM_HP2L_DONE_EINT1 */
-#define ARIZONA_IM_HP2L_DONE_EINT1_SHIFT              2  /* IM_HP2L_DONE_EINT1 */
-#define ARIZONA_IM_HP2L_DONE_EINT1_WIDTH              1  /* IM_HP2L_DONE_EINT1 */
-#define ARIZONA_IM_HP1R_DONE_EINT1               0x0002  /* IM_HP1R_DONE_EINT1 */
-#define ARIZONA_IM_HP1R_DONE_EINT1_MASK          0x0002  /* IM_HP1R_DONE_EINT1 */
-#define ARIZONA_IM_HP1R_DONE_EINT1_SHIFT              1  /* IM_HP1R_DONE_EINT1 */
-#define ARIZONA_IM_HP1R_DONE_EINT1_WIDTH              1  /* IM_HP1R_DONE_EINT1 */
-#define ARIZONA_IM_HP1L_DONE_EINT1               0x0001  /* IM_HP1L_DONE_EINT1 */
-#define ARIZONA_IM_HP1L_DONE_EINT1_MASK          0x0001  /* IM_HP1L_DONE_EINT1 */
-#define ARIZONA_IM_HP1L_DONE_EINT1_SHIFT              0  /* IM_HP1L_DONE_EINT1 */
-#define ARIZONA_IM_HP1L_DONE_EINT1_WIDTH              1  /* IM_HP1L_DONE_EINT1 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT1                 0x8000  /* IM_ASRC_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT1_MASK            0x8000  /* IM_ASRC_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT1_SHIFT               15  /* IM_ASRC_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT1_WIDTH                1  /* IM_ASRC_CFG_ERR_EINT1 */
+#define ARIZONA_IM_AIF3_ERR_EINT1                     0x4000  /* IM_AIF3_ERR_EINT1 */
+#define ARIZONA_IM_AIF3_ERR_EINT1_MASK                0x4000  /* IM_AIF3_ERR_EINT1 */
+#define ARIZONA_IM_AIF3_ERR_EINT1_SHIFT                   14  /* IM_AIF3_ERR_EINT1 */
+#define ARIZONA_IM_AIF3_ERR_EINT1_WIDTH                    1  /* IM_AIF3_ERR_EINT1 */
+#define ARIZONA_IM_AIF2_ERR_EINT1                     0x2000  /* IM_AIF2_ERR_EINT1 */
+#define ARIZONA_IM_AIF2_ERR_EINT1_MASK                0x2000  /* IM_AIF2_ERR_EINT1 */
+#define ARIZONA_IM_AIF2_ERR_EINT1_SHIFT                   13  /* IM_AIF2_ERR_EINT1 */
+#define ARIZONA_IM_AIF2_ERR_EINT1_WIDTH                    1  /* IM_AIF2_ERR_EINT1 */
+#define ARIZONA_IM_AIF1_ERR_EINT1                     0x1000  /* IM_AIF1_ERR_EINT1 */
+#define ARIZONA_IM_AIF1_ERR_EINT1_MASK                0x1000  /* IM_AIF1_ERR_EINT1 */
+#define ARIZONA_IM_AIF1_ERR_EINT1_SHIFT                   12  /* IM_AIF1_ERR_EINT1 */
+#define ARIZONA_IM_AIF1_ERR_EINT1_WIDTH                    1  /* IM_AIF1_ERR_EINT1 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT1                   0x0800  /* IM_CTRLIF_ERR_EINT1 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT1_MASK              0x0800  /* IM_CTRLIF_ERR_EINT1 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT1_SHIFT                 11  /* IM_CTRLIF_ERR_EINT1 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT1_WIDTH                  1  /* IM_CTRLIF_ERR_EINT1 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1         0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1_MASK    0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1_SHIFT       10  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT1_WIDTH        1  /* IM_MIXER_DROPPED_SAMPLE_EINT1 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1            0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1_MASK       0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1_SHIFT           9  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT1_WIDTH           1  /* IM_ASYNC_CLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1               0x0100  /* IM_SYSCLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1_MASK          0x0100  /* IM_SYSCLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1_SHIFT              8  /* IM_SYSCLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT1_WIDTH              1  /* IM_SYSCLK_ENA_LOW_EINT1 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1                0x0080  /* IM_ISRC1_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1_MASK           0x0080  /* IM_ISRC1_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1_SHIFT               7  /* IM_ISRC1_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT1_WIDTH               1  /* IM_ISRC1_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1                0x0040  /* IM_ISRC2_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1_MASK           0x0040  /* IM_ISRC2_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1_SHIFT               6  /* IM_ISRC2_CFG_ERR_EINT1 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT1_WIDTH               1  /* IM_ISRC2_CFG_ERR_EINT1 */
+#define ARIZONA_IM_HP3R_DONE_EINT1                    0x0020  /* IM_HP3R_DONE_EINT1 */
+#define ARIZONA_IM_HP3R_DONE_EINT1_MASK               0x0020  /* IM_HP3R_DONE_EINT1 */
+#define ARIZONA_IM_HP3R_DONE_EINT1_SHIFT                   5  /* IM_HP3R_DONE_EINT1 */
+#define ARIZONA_IM_HP3R_DONE_EINT1_WIDTH                   1  /* IM_HP3R_DONE_EINT1 */
+#define ARIZONA_IM_HP3L_DONE_EINT1                    0x0010  /* IM_HP3L_DONE_EINT1 */
+#define ARIZONA_IM_HP3L_DONE_EINT1_MASK               0x0010  /* IM_HP3L_DONE_EINT1 */
+#define ARIZONA_IM_HP3L_DONE_EINT1_SHIFT                   4  /* IM_HP3L_DONE_EINT1 */
+#define ARIZONA_IM_HP3L_DONE_EINT1_WIDTH                   1  /* IM_HP3L_DONE_EINT1 */
+#define ARIZONA_IM_HP2R_DONE_EINT1                    0x0008  /* IM_HP2R_DONE_EINT1 */
+#define ARIZONA_IM_HP2R_DONE_EINT1_MASK               0x0008  /* IM_HP2R_DONE_EINT1 */
+#define ARIZONA_IM_HP2R_DONE_EINT1_SHIFT                   3  /* IM_HP2R_DONE_EINT1 */
+#define ARIZONA_IM_HP2R_DONE_EINT1_WIDTH                   1  /* IM_HP2R_DONE_EINT1 */
+#define ARIZONA_IM_HP2L_DONE_EINT1                    0x0004  /* IM_HP2L_DONE_EINT1 */
+#define ARIZONA_IM_HP2L_DONE_EINT1_MASK               0x0004  /* IM_HP2L_DONE_EINT1 */
+#define ARIZONA_IM_HP2L_DONE_EINT1_SHIFT                   2  /* IM_HP2L_DONE_EINT1 */
+#define ARIZONA_IM_HP2L_DONE_EINT1_WIDTH                   1  /* IM_HP2L_DONE_EINT1 */
+#define ARIZONA_IM_HP1R_DONE_EINT1                    0x0002  /* IM_HP1R_DONE_EINT1 */
+#define ARIZONA_IM_HP1R_DONE_EINT1_MASK               0x0002  /* IM_HP1R_DONE_EINT1 */
+#define ARIZONA_IM_HP1R_DONE_EINT1_SHIFT                   1  /* IM_HP1R_DONE_EINT1 */
+#define ARIZONA_IM_HP1R_DONE_EINT1_WIDTH                   1  /* IM_HP1R_DONE_EINT1 */
+#define ARIZONA_IM_HP1L_DONE_EINT1                    0x0001  /* IM_HP1L_DONE_EINT1 */
+#define ARIZONA_IM_HP1L_DONE_EINT1_MASK               0x0001  /* IM_HP1L_DONE_EINT1 */
+#define ARIZONA_IM_HP1L_DONE_EINT1_SHIFT                   0  /* IM_HP1L_DONE_EINT1 */
+#define ARIZONA_IM_HP1L_DONE_EINT1_WIDTH                   1  /* IM_HP1L_DONE_EINT1 */
 
 /*
  * R3339 (0xD0B) - Interrupt Status 4 Mask (Alternate layout)
@@ -5492,46 +8299,46 @@
  * Alternate layout used on later devices, note only fields that have moved
  * are specified
  */
-#define ARIZONA_V2_AIF3_ERR_EINT2                  0x8000  /* AIF3_ERR_EINT2 */
-#define ARIZONA_V2_AIF3_ERR_EINT2_MASK             0x8000  /* AIF3_ERR_EINT2 */
-#define ARIZONA_V2_AIF3_ERR_EINT2_SHIFT                15  /* AIF3_ERR_EINT2 */
-#define ARIZONA_V2_AIF3_ERR_EINT2_WIDTH                 1  /* AIF3_ERR_EINT2 */
-#define ARIZONA_V2_AIF2_ERR_EINT2                  0x4000  /* AIF2_ERR_EINT2 */
-#define ARIZONA_V2_AIF2_ERR_EINT2_MASK             0x4000  /* AIF2_ERR_EINT2 */
-#define ARIZONA_V2_AIF2_ERR_EINT2_SHIFT                14  /* AIF2_ERR_EINT2 */
-#define ARIZONA_V2_AIF2_ERR_EINT2_WIDTH                 1  /* AIF2_ERR_EINT2 */
-#define ARIZONA_V2_AIF1_ERR_EINT2                  0x2000  /* AIF1_ERR_EINT2 */
-#define ARIZONA_V2_AIF1_ERR_EINT2_MASK             0x2000  /* AIF1_ERR_EINT2 */
-#define ARIZONA_V2_AIF1_ERR_EINT2_SHIFT                13  /* AIF1_ERR_EINT2 */
-#define ARIZONA_V2_AIF1_ERR_EINT2_WIDTH                 1  /* AIF1_ERR_EINT2 */
-#define ARIZONA_V2_CTRLIF_ERR_EINT2                0x1000  /* CTRLIF_ERR_EINT2 */
-#define ARIZONA_V2_CTRLIF_ERR_EINT2_MASK           0x1000  /* CTRLIF_ERR_EINT2 */
-#define ARIZONA_V2_CTRLIF_ERR_EINT2_SHIFT              12  /* CTRLIF_ERR_EINT2 */
-#define ARIZONA_V2_CTRLIF_ERR_EINT2_WIDTH               1  /* CTRLIF_ERR_EINT2 */
-#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2      0x0800  /* MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2_MASK 0x0800  /* MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2_SHIFT    11  /* MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2_WIDTH     1  /* MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2         0x0400  /* ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2_MASK    0x0400  /* ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2_SHIFT       10  /* ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2_WIDTH        1  /* ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2            0x0200  /* SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2_MASK       0x0200  /* SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2_SHIFT           9  /* SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2_WIDTH           1  /* SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2             0x0100  /* ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2_MASK        0x0100  /* ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2_SHIFT            8  /* ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2_WIDTH            1  /* ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2             0x0080  /* ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2_MASK        0x0080  /* ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2_SHIFT            7  /* ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2_WIDTH            1  /* ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2             0x0040  /* ISRC3_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2_MASK        0x0040  /* ISRC3_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2_SHIFT            6  /* ISRC3_CFG_ERR_EINT2 */
-#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2_WIDTH            1  /* ISRC3_CFG_ERR_EINT2 */
+#define ARIZONA_V2_AIF3_ERR_EINT2                     0x8000  /* AIF3_ERR_EINT2 */
+#define ARIZONA_V2_AIF3_ERR_EINT2_MASK                0x8000  /* AIF3_ERR_EINT2 */
+#define ARIZONA_V2_AIF3_ERR_EINT2_SHIFT                   15  /* AIF3_ERR_EINT2 */
+#define ARIZONA_V2_AIF3_ERR_EINT2_WIDTH                    1  /* AIF3_ERR_EINT2 */
+#define ARIZONA_V2_AIF2_ERR_EINT2                     0x4000  /* AIF2_ERR_EINT2 */
+#define ARIZONA_V2_AIF2_ERR_EINT2_MASK                0x4000  /* AIF2_ERR_EINT2 */
+#define ARIZONA_V2_AIF2_ERR_EINT2_SHIFT                   14  /* AIF2_ERR_EINT2 */
+#define ARIZONA_V2_AIF2_ERR_EINT2_WIDTH                    1  /* AIF2_ERR_EINT2 */
+#define ARIZONA_V2_AIF1_ERR_EINT2                     0x2000  /* AIF1_ERR_EINT2 */
+#define ARIZONA_V2_AIF1_ERR_EINT2_MASK                0x2000  /* AIF1_ERR_EINT2 */
+#define ARIZONA_V2_AIF1_ERR_EINT2_SHIFT                   13  /* AIF1_ERR_EINT2 */
+#define ARIZONA_V2_AIF1_ERR_EINT2_WIDTH                    1  /* AIF1_ERR_EINT2 */
+#define ARIZONA_V2_CTRLIF_ERR_EINT2                   0x1000  /* CTRLIF_ERR_EINT2 */
+#define ARIZONA_V2_CTRLIF_ERR_EINT2_MASK              0x1000  /* CTRLIF_ERR_EINT2 */
+#define ARIZONA_V2_CTRLIF_ERR_EINT2_SHIFT                 12  /* CTRLIF_ERR_EINT2 */
+#define ARIZONA_V2_CTRLIF_ERR_EINT2_WIDTH                  1  /* CTRLIF_ERR_EINT2 */
+#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2         0x0800  /* MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2_MASK    0x0800  /* MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2_SHIFT       11  /* MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_V2_MIXER_DROPPED_SAMPLE_EINT2_WIDTH        1  /* MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2            0x0400  /* ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2_MASK       0x0400  /* ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2_SHIFT          10  /* ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_ASYNC_CLK_ENA_LOW_EINT2_WIDTH           1  /* ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2               0x0200  /* SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2_MASK          0x0200  /* SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2_SHIFT              9  /* SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_SYSCLK_ENA_LOW_EINT2_WIDTH              1  /* SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2                0x0100  /* ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2_MASK           0x0100  /* ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2_SHIFT               8  /* ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC1_CFG_ERR_EINT2_WIDTH               1  /* ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2                0x0080  /* ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2_MASK           0x0080  /* ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2_SHIFT               7  /* ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC2_CFG_ERR_EINT2_WIDTH               1  /* ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2                0x0040  /* ISRC3_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2_MASK           0x0040  /* ISRC3_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2_SHIFT               6  /* ISRC3_CFG_ERR_EINT2 */
+#define ARIZONA_V2_ISRC3_CFG_ERR_EINT2_WIDTH               1  /* ISRC3_CFG_ERR_EINT2 */
 
 /*
  * R3348 (0xD14) - IRQ2 Status 5
@@ -5739,70 +8546,70 @@
 /*
  * R3355 (0xD1B) - IRQ2 Status 4 Mask
  */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT2            0x8000  /* IM_ASRC_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT2_MASK       0x8000  /* IM_ASRC_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT2_SHIFT          15  /* IM_ASRC_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ASRC_CFG_ERR_EINT2_WIDTH           1  /* IM_ASRC_CFG_ERR_EINT2 */
-#define ARIZONA_IM_AIF3_ERR_EINT2                0x4000  /* IM_AIF3_ERR_EINT2 */
-#define ARIZONA_IM_AIF3_ERR_EINT2_MASK           0x4000  /* IM_AIF3_ERR_EINT2 */
-#define ARIZONA_IM_AIF3_ERR_EINT2_SHIFT              14  /* IM_AIF3_ERR_EINT2 */
-#define ARIZONA_IM_AIF3_ERR_EINT2_WIDTH               1  /* IM_AIF3_ERR_EINT2 */
-#define ARIZONA_IM_AIF2_ERR_EINT2                0x2000  /* IM_AIF2_ERR_EINT2 */
-#define ARIZONA_IM_AIF2_ERR_EINT2_MASK           0x2000  /* IM_AIF2_ERR_EINT2 */
-#define ARIZONA_IM_AIF2_ERR_EINT2_SHIFT              13  /* IM_AIF2_ERR_EINT2 */
-#define ARIZONA_IM_AIF2_ERR_EINT2_WIDTH               1  /* IM_AIF2_ERR_EINT2 */
-#define ARIZONA_IM_AIF1_ERR_EINT2                0x1000  /* IM_AIF1_ERR_EINT2 */
-#define ARIZONA_IM_AIF1_ERR_EINT2_MASK           0x1000  /* IM_AIF1_ERR_EINT2 */
-#define ARIZONA_IM_AIF1_ERR_EINT2_SHIFT              12  /* IM_AIF1_ERR_EINT2 */
-#define ARIZONA_IM_AIF1_ERR_EINT2_WIDTH               1  /* IM_AIF1_ERR_EINT2 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT2              0x0800  /* IM_CTRLIF_ERR_EINT2 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT2_MASK         0x0800  /* IM_CTRLIF_ERR_EINT2 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT2_SHIFT            11  /* IM_CTRLIF_ERR_EINT2 */
-#define ARIZONA_IM_CTRLIF_ERR_EINT2_WIDTH             1  /* IM_CTRLIF_ERR_EINT2 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2    0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2_MASK 0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2_SHIFT     10  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2_WIDTH      1  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2       0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2_MASK  0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2_SHIFT      9  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2_WIDTH      1  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2          0x0100  /* IM_SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2_MASK     0x0100  /* IM_SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2_SHIFT         8  /* IM_SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2_WIDTH         1  /* IM_SYSCLK_ENA_LOW_EINT2 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2           0x0080  /* IM_ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2_MASK      0x0080  /* IM_ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2_SHIFT          7  /* IM_ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2_WIDTH          1  /* IM_ISRC1_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2           0x0040  /* IM_ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2_MASK      0x0040  /* IM_ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2_SHIFT          6  /* IM_ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2_WIDTH          1  /* IM_ISRC2_CFG_ERR_EINT2 */
-#define ARIZONA_IM_HP3R_DONE_EINT2               0x0020  /* IM_HP3R_DONE_EINT2 */
-#define ARIZONA_IM_HP3R_DONE_EINT2_MASK          0x0020  /* IM_HP3R_DONE_EINT2 */
-#define ARIZONA_IM_HP3R_DONE_EINT2_SHIFT              5  /* IM_HP3R_DONE_EINT2 */
-#define ARIZONA_IM_HP3R_DONE_EINT2_WIDTH              1  /* IM_HP3R_DONE_EINT2 */
-#define ARIZONA_IM_HP3L_DONE_EINT2               0x0010  /* IM_HP3L_DONE_EINT2 */
-#define ARIZONA_IM_HP3L_DONE_EINT2_MASK          0x0010  /* IM_HP3L_DONE_EINT2 */
-#define ARIZONA_IM_HP3L_DONE_EINT2_SHIFT              4  /* IM_HP3L_DONE_EINT2 */
-#define ARIZONA_IM_HP3L_DONE_EINT2_WIDTH              1  /* IM_HP3L_DONE_EINT2 */
-#define ARIZONA_IM_HP2R_DONE_EINT2               0x0008  /* IM_HP2R_DONE_EINT2 */
-#define ARIZONA_IM_HP2R_DONE_EINT2_MASK          0x0008  /* IM_HP2R_DONE_EINT2 */
-#define ARIZONA_IM_HP2R_DONE_EINT2_SHIFT              3  /* IM_HP2R_DONE_EINT2 */
-#define ARIZONA_IM_HP2R_DONE_EINT2_WIDTH              1  /* IM_HP2R_DONE_EINT2 */
-#define ARIZONA_IM_HP2L_DONE_EINT2               0x0004  /* IM_HP2L_DONE_EINT2 */
-#define ARIZONA_IM_HP2L_DONE_EINT2_MASK          0x0004  /* IM_HP2L_DONE_EINT2 */
-#define ARIZONA_IM_HP2L_DONE_EINT2_SHIFT              2  /* IM_HP2L_DONE_EINT2 */
-#define ARIZONA_IM_HP2L_DONE_EINT2_WIDTH              1  /* IM_HP2L_DONE_EINT2 */
-#define ARIZONA_IM_HP1R_DONE_EINT2               0x0002  /* IM_HP1R_DONE_EINT2 */
-#define ARIZONA_IM_HP1R_DONE_EINT2_MASK          0x0002  /* IM_HP1R_DONE_EINT2 */
-#define ARIZONA_IM_HP1R_DONE_EINT2_SHIFT              1  /* IM_HP1R_DONE_EINT2 */
-#define ARIZONA_IM_HP1R_DONE_EINT2_WIDTH              1  /* IM_HP1R_DONE_EINT2 */
-#define ARIZONA_IM_HP1L_DONE_EINT2               0x0001  /* IM_HP1L_DONE_EINT2 */
-#define ARIZONA_IM_HP1L_DONE_EINT2_MASK          0x0001  /* IM_HP1L_DONE_EINT2 */
-#define ARIZONA_IM_HP1L_DONE_EINT2_SHIFT              0  /* IM_HP1L_DONE_EINT2 */
-#define ARIZONA_IM_HP1L_DONE_EINT2_WIDTH              1  /* IM_HP1L_DONE_EINT2 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT2                 0x8000  /* IM_ASRC_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT2_MASK            0x8000  /* IM_ASRC_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT2_SHIFT               15  /* IM_ASRC_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ASRC_CFG_ERR_EINT2_WIDTH                1  /* IM_ASRC_CFG_ERR_EINT2 */
+#define ARIZONA_IM_AIF3_ERR_EINT2                     0x4000  /* IM_AIF3_ERR_EINT2 */
+#define ARIZONA_IM_AIF3_ERR_EINT2_MASK                0x4000  /* IM_AIF3_ERR_EINT2 */
+#define ARIZONA_IM_AIF3_ERR_EINT2_SHIFT                   14  /* IM_AIF3_ERR_EINT2 */
+#define ARIZONA_IM_AIF3_ERR_EINT2_WIDTH                    1  /* IM_AIF3_ERR_EINT2 */
+#define ARIZONA_IM_AIF2_ERR_EINT2                     0x2000  /* IM_AIF2_ERR_EINT2 */
+#define ARIZONA_IM_AIF2_ERR_EINT2_MASK                0x2000  /* IM_AIF2_ERR_EINT2 */
+#define ARIZONA_IM_AIF2_ERR_EINT2_SHIFT                   13  /* IM_AIF2_ERR_EINT2 */
+#define ARIZONA_IM_AIF2_ERR_EINT2_WIDTH                    1  /* IM_AIF2_ERR_EINT2 */
+#define ARIZONA_IM_AIF1_ERR_EINT2                     0x1000  /* IM_AIF1_ERR_EINT2 */
+#define ARIZONA_IM_AIF1_ERR_EINT2_MASK                0x1000  /* IM_AIF1_ERR_EINT2 */
+#define ARIZONA_IM_AIF1_ERR_EINT2_SHIFT                   12  /* IM_AIF1_ERR_EINT2 */
+#define ARIZONA_IM_AIF1_ERR_EINT2_WIDTH                    1  /* IM_AIF1_ERR_EINT2 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT2                   0x0800  /* IM_CTRLIF_ERR_EINT2 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT2_MASK              0x0800  /* IM_CTRLIF_ERR_EINT2 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT2_SHIFT                 11  /* IM_CTRLIF_ERR_EINT2 */
+#define ARIZONA_IM_CTRLIF_ERR_EINT2_WIDTH                  1  /* IM_CTRLIF_ERR_EINT2 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2         0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2_MASK    0x0400  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2_SHIFT       10  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_IM_MIXER_DROPPED_SAMPLE_EINT2_WIDTH        1  /* IM_MIXER_DROPPED_SAMPLE_EINT2 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2            0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2_MASK       0x0200  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2_SHIFT           9  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_ASYNC_CLK_ENA_LOW_EINT2_WIDTH           1  /* IM_ASYNC_CLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2               0x0100  /* IM_SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2_MASK          0x0100  /* IM_SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2_SHIFT              8  /* IM_SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_SYSCLK_ENA_LOW_EINT2_WIDTH              1  /* IM_SYSCLK_ENA_LOW_EINT2 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2                0x0080  /* IM_ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2_MASK           0x0080  /* IM_ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2_SHIFT               7  /* IM_ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC1_CFG_ERR_EINT2_WIDTH               1  /* IM_ISRC1_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2                0x0040  /* IM_ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2_MASK           0x0040  /* IM_ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2_SHIFT               6  /* IM_ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_IM_ISRC2_CFG_ERR_EINT2_WIDTH               1  /* IM_ISRC2_CFG_ERR_EINT2 */
+#define ARIZONA_IM_HP3R_DONE_EINT2                    0x0020  /* IM_HP3R_DONE_EINT2 */
+#define ARIZONA_IM_HP3R_DONE_EINT2_MASK               0x0020  /* IM_HP3R_DONE_EINT2 */
+#define ARIZONA_IM_HP3R_DONE_EINT2_SHIFT                   5  /* IM_HP3R_DONE_EINT2 */
+#define ARIZONA_IM_HP3R_DONE_EINT2_WIDTH                   1  /* IM_HP3R_DONE_EINT2 */
+#define ARIZONA_IM_HP3L_DONE_EINT2                    0x0010  /* IM_HP3L_DONE_EINT2 */
+#define ARIZONA_IM_HP3L_DONE_EINT2_MASK               0x0010  /* IM_HP3L_DONE_EINT2 */
+#define ARIZONA_IM_HP3L_DONE_EINT2_SHIFT                   4  /* IM_HP3L_DONE_EINT2 */
+#define ARIZONA_IM_HP3L_DONE_EINT2_WIDTH                   1  /* IM_HP3L_DONE_EINT2 */
+#define ARIZONA_IM_HP2R_DONE_EINT2                    0x0008  /* IM_HP2R_DONE_EINT2 */
+#define ARIZONA_IM_HP2R_DONE_EINT2_MASK               0x0008  /* IM_HP2R_DONE_EINT2 */
+#define ARIZONA_IM_HP2R_DONE_EINT2_SHIFT                   3  /* IM_HP2R_DONE_EINT2 */
+#define ARIZONA_IM_HP2R_DONE_EINT2_WIDTH                   1  /* IM_HP2R_DONE_EINT2 */
+#define ARIZONA_IM_HP2L_DONE_EINT2                    0x0004  /* IM_HP2L_DONE_EINT2 */
+#define ARIZONA_IM_HP2L_DONE_EINT2_MASK               0x0004  /* IM_HP2L_DONE_EINT2 */
+#define ARIZONA_IM_HP2L_DONE_EINT2_SHIFT                   2  /* IM_HP2L_DONE_EINT2 */
+#define ARIZONA_IM_HP2L_DONE_EINT2_WIDTH                   1  /* IM_HP2L_DONE_EINT2 */
+#define ARIZONA_IM_HP1R_DONE_EINT2                    0x0002  /* IM_HP1R_DONE_EINT2 */
+#define ARIZONA_IM_HP1R_DONE_EINT2_MASK               0x0002  /* IM_HP1R_DONE_EINT2 */
+#define ARIZONA_IM_HP1R_DONE_EINT2_SHIFT                   1  /* IM_HP1R_DONE_EINT2 */
+#define ARIZONA_IM_HP1R_DONE_EINT2_WIDTH                   1  /* IM_HP1R_DONE_EINT2 */
+#define ARIZONA_IM_HP1L_DONE_EINT2                    0x0001  /* IM_HP1L_DONE_EINT2 */
+#define ARIZONA_IM_HP1L_DONE_EINT2_MASK               0x0001  /* IM_HP1L_DONE_EINT2 */
+#define ARIZONA_IM_HP1L_DONE_EINT2_SHIFT                   0  /* IM_HP1L_DONE_EINT2 */
+#define ARIZONA_IM_HP1L_DONE_EINT2_WIDTH                   1  /* IM_HP1L_DONE_EINT2 */
 
 /*
  * R3355 (0xD1B) - IRQ2 Status 4 Mask (Alternate layout)
@@ -6194,54 +9001,58 @@
 /*
  * R3365 (0xD25) - Interrupt Raw Status 7
  */
-#define ARIZONA_SLIMBUS_SUBSYS_OVERCLOCKED_STS   0x8000  /* SLIMBUS_SUBSYS_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_SUBSYS_OVERCLOCKED_STS_MASK 0x8000  /* SLIMBUS_SUBSYS_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_SUBSYS_OVERCLOCKED_STS       0x8000  /* SLIMBUS_SUBSYS_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_SUBSYS_OVERCLOCKED_STS_MASK  0x8000  /* SLIMBUS_SUBSYS_OVERCLOCKED_STS */
 #define ARIZONA_SLIMBUS_SUBSYS_OVERCLOCKED_STS_SHIFT     15  /* SLIMBUS_SUBSYS_OVERCLOCKED_STS */
 #define ARIZONA_SLIMBUS_SUBSYS_OVERCLOCKED_STS_WIDTH      1  /* SLIMBUS_SUBSYS_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS    0x4000  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS_MASK 0x4000  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS_SHIFT     14  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS_WIDTH      1  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS     0x2000  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS_MASK 0x2000  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS_SHIFT     13  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
-#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS_WIDTH      1  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_ASYNC_SYS_OVERCLOCKED_STS   0x1000  /* ASRC_ASYNC_SYS_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_ASYNC_SYS_OVERCLOCKED_STS_MASK 0x1000  /* ASRC_ASYNC_SYS_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS        0x4000  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS_MASK   0x4000  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS_SHIFT      14  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_ASYNC_OVERCLOCKED_STS_WIDTH       1  /* SLIMBUS_ASYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS         0x2000  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS_MASK    0x2000  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS_SHIFT       13  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
+#define ARIZONA_SLIMBUS_SYNC_OVERCLOCKED_STS_WIDTH        1  /* SLIMBUS_SYNC_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_ASYNC_SYS_OVERCLOCKED_STS       0x1000  /* ASRC_ASYNC_SYS_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_ASYNC_SYS_OVERCLOCKED_STS_MASK  0x1000  /* ASRC_ASYNC_SYS_OVERCLOCKED_STS */
 #define ARIZONA_ASRC_ASYNC_SYS_OVERCLOCKED_STS_SHIFT     12  /* ASRC_ASYNC_SYS_OVERCLOCKED_STS */
 #define ARIZONA_ASRC_ASYNC_SYS_OVERCLOCKED_STS_WIDTH      1  /* ASRC_ASYNC_SYS_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS  0x0800  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS      0x0800  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
 #define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS_MASK 0x0800  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS_SHIFT     11  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS_WIDTH      1  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS    0x0400  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS_MASK 0x0400  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS_SHIFT     10  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS_WIDTH      1  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_SYNC_WARP_OVERCLOCKED_STS   0x0200  /* ASRC_SYNC_WARP_OVERCLOCKED_STS */
-#define ARIZONA_ASRC_SYNC_WARP_OVERCLOCKED_STS_MASK 0x0200  /* ASRC_SYNC_WARP_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS_SHIFT    11  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_ASYNC_WARP_OVERCLOCKED_STS_WIDTH     1  /* ASRC_ASYNC_WARP_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS        0x0400  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS_MASK   0x0400  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS_SHIFT      10  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_SYNC_SYS_OVERCLOCKED_STS_WIDTH       1  /* ASRC_SYNC_SYS_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_SYNC_WARP_OVERCLOCKED_STS       0x0200  /* ASRC_SYNC_WARP_OVERCLOCKED_STS */
+#define ARIZONA_ASRC_SYNC_WARP_OVERCLOCKED_STS_MASK  0x0200  /* ASRC_SYNC_WARP_OVERCLOCKED_STS */
 #define ARIZONA_ASRC_SYNC_WARP_OVERCLOCKED_STS_SHIFT      9  /* ASRC_SYNC_WARP_OVERCLOCKED_STS */
 #define ARIZONA_ASRC_SYNC_WARP_OVERCLOCKED_STS_WIDTH      1  /* ASRC_SYNC_WARP_OVERCLOCKED_STS */
-#define ARIZONA_ADSP2_1_OVERCLOCKED_STS          0x0008  /* ADSP2_1_OVERCLOCKED_STS */
-#define ARIZONA_ADSP2_1_OVERCLOCKED_STS_MASK     0x0008  /* ADSP2_1_OVERCLOCKED_STS */
-#define ARIZONA_ADSP2_1_OVERCLOCKED_STS_SHIFT         3  /* ADSP2_1_OVERCLOCKED_STS */
-#define ARIZONA_ADSP2_1_OVERCLOCKED_STS_WIDTH         1  /* ADSP2_1_OVERCLOCKED_STS */
-#define ARIZONA_ISRC3_OVERCLOCKED_STS            0x0004  /* ISRC3_OVERCLOCKED_STS */
-#define ARIZONA_ISRC3_OVERCLOCKED_STS_MASK       0x0004  /* ISRC3_OVERCLOCKED_STS */
-#define ARIZONA_ISRC3_OVERCLOCKED_STS_SHIFT           2  /* ISRC3_OVERCLOCKED_STS */
-#define ARIZONA_ISRC3_OVERCLOCKED_STS_WIDTH           1  /* ISRC3_OVERCLOCKED_STS */
-#define ARIZONA_ISRC2_OVERCLOCKED_STS            0x0002  /* ISRC2_OVERCLOCKED_STS */
-#define ARIZONA_ISRC2_OVERCLOCKED_STS_MASK       0x0002  /* ISRC2_OVERCLOCKED_STS */
-#define ARIZONA_ISRC2_OVERCLOCKED_STS_SHIFT           1  /* ISRC2_OVERCLOCKED_STS */
-#define ARIZONA_ISRC2_OVERCLOCKED_STS_WIDTH           1  /* ISRC2_OVERCLOCKED_STS */
-#define ARIZONA_ISRC1_OVERCLOCKED_STS            0x0001  /* ISRC1_OVERCLOCKED_STS */
-#define ARIZONA_ISRC1_OVERCLOCKED_STS_MASK       0x0001  /* ISRC1_OVERCLOCKED_STS */
-#define ARIZONA_ISRC1_OVERCLOCKED_STS_SHIFT           0  /* ISRC1_OVERCLOCKED_STS */
-#define ARIZONA_ISRC1_OVERCLOCKED_STS_WIDTH           1  /* ISRC1_OVERCLOCKED_STS */
+#define ARIZONA_ADSP2_1_OVERCLOCKED_STS              0x0008  /* ADSP2_1_OVERCLOCKED_STS */
+#define ARIZONA_ADSP2_1_OVERCLOCKED_STS_MASK         0x0008  /* ADSP2_1_OVERCLOCKED_STS */
+#define ARIZONA_ADSP2_1_OVERCLOCKED_STS_SHIFT             3  /* ADSP2_1_OVERCLOCKED_STS */
+#define ARIZONA_ADSP2_1_OVERCLOCKED_STS_WIDTH             1  /* ADSP2_1_OVERCLOCKED_STS */
+#define ARIZONA_ISRC3_OVERCLOCKED_STS                0x0004  /* ISRC3_OVERCLOCKED_STS */
+#define ARIZONA_ISRC3_OVERCLOCKED_STS_MASK           0x0004  /* ISRC3_OVERCLOCKED_STS */
+#define ARIZONA_ISRC3_OVERCLOCKED_STS_SHIFT               2  /* ISRC3_OVERCLOCKED_STS */
+#define ARIZONA_ISRC3_OVERCLOCKED_STS_WIDTH               1  /* ISRC3_OVERCLOCKED_STS */
+#define ARIZONA_ISRC2_OVERCLOCKED_STS                0x0002  /* ISRC2_OVERCLOCKED_STS */
+#define ARIZONA_ISRC2_OVERCLOCKED_STS_MASK           0x0002  /* ISRC2_OVERCLOCKED_STS */
+#define ARIZONA_ISRC2_OVERCLOCKED_STS_SHIFT               1  /* ISRC2_OVERCLOCKED_STS */
+#define ARIZONA_ISRC2_OVERCLOCKED_STS_WIDTH               1  /* ISRC2_OVERCLOCKED_STS */
+#define ARIZONA_ISRC1_OVERCLOCKED_STS                0x0001  /* ISRC1_OVERCLOCKED_STS */
+#define ARIZONA_ISRC1_OVERCLOCKED_STS_MASK           0x0001  /* ISRC1_OVERCLOCKED_STS */
+#define ARIZONA_ISRC1_OVERCLOCKED_STS_SHIFT               0  /* ISRC1_OVERCLOCKED_STS */
+#define ARIZONA_ISRC1_OVERCLOCKED_STS_WIDTH               1  /* ISRC1_OVERCLOCKED_STS */
 
 /*
  * R3366 (0xD26) - Interrupt Raw Status 8
  */
+#define ARIZONA_SPDIF_OVERCLOCKED_STS            0x8000  /* SPDIF_OVERCLOCKED_STS */
+#define ARIZONA_SPDIF_OVERCLOCKED_STS_MASK       0x8000  /* SPDIF_OVERCLOCKED_STS */
+#define ARIZONA_SPDIF_OVERCLOCKED_STS_SHIFT          15  /* SPDIF_OVERCLOCKED_STS */
+#define ARIZONA_SPDIF_OVERCLOCKED_STS_WIDTH           1  /* SPDIF_OVERCLOCKED_STS */
 #define ARIZONA_AIF3_UNDERCLOCKED_STS            0x0400  /* AIF3_UNDERCLOCKED_STS */
 #define ARIZONA_AIF3_UNDERCLOCKED_STS_MASK       0x0400  /* AIF3_UNDERCLOCKED_STS */
 #define ARIZONA_AIF3_UNDERCLOCKED_STS_SHIFT          10  /* AIF3_UNDERCLOCKED_STS */
@@ -7522,6 +10333,74 @@
 #define ARIZONA_LHPF4_COEFF_WIDTH                    16  /* LHPF4_COEFF - [15:0] */
 
 /*
+ * R3808 (0xED0) - ASRC2_ENABLE
+ */
+#define CLEARWATER_ASRC2_IN2L_ENA                0x0008  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC2_IN2L_ENA_MASK           0x0008  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC2_IN2L_ENA_SHIFT               3  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC2_IN2L_ENA_WIDTH               1  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC2_IN2R_ENA                0x0004  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC2_IN2R_ENA_MASK           0x0004  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC2_IN2R_ENA_SHIFT               2  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC2_IN2R_ENA_WIDTH               1  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC2_IN1L_ENA                0x0002  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC2_IN1L_ENA_MASK           0x0002  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC2_IN1L_ENA_SHIFT               1  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC2_IN1L_ENA_WIDTH               1  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC2_IN1R_ENA                0x0001  /* ASRC1R_ENA */
+#define CLEARWATER_ASRC2_IN1R_ENA_MASK           0x0001  /* ASRC1R_ENA */
+#define CLEARWATER_ASRC2_IN1R_ENA_SHIFT               0  /* ASRC1R_ENA */
+#define CLEARWATER_ASRC2_IN1R_ENA_WIDTH               1  /* ASRC1R_ENA */
+
+/*
+ * R3810 (0xED2) - ASRC2_RATE1
+ */
+#define CLEARWATER_ASRC2_RATE1_MASK              0x7800  /* ASRC_RATE1 - [14:11] */
+#define CLEARWATER_ASRC2_RATE1_SHIFT                 11  /* ASRC_RATE1 - [14:11] */
+#define CLEARWATER_ASRC2_RATE1_WIDTH                  4  /* ASRC_RATE1 - [14:11] */
+
+/*
+ * R3811 (0xED3) - ASRC2_RATE2
+ */
+#define CLEARWATER_ASRC2_RATE2_MASK              0x7800  /* ASRC_RATE2 - [14:11] */
+#define CLEARWATER_ASRC2_RATE2_SHIFT                 11  /* ASRC_RATE2 - [14:11] */
+#define CLEARWATER_ASRC2_RATE2_WIDTH                  4  /* ASRC_RATE2 - [14:11] */
+
+/*
+ * R3808 (0xEE0) - ASRC1_ENABLE
+ */
+#define CLEARWATER_ASRC1_IN2L_ENA                0x0008  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC1_IN2L_ENA_MASK           0x0008  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC1_IN2L_ENA_SHIFT               3  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC1_IN2L_ENA_WIDTH               1  /* ASRC2L_ENA */
+#define CLEARWATER_ASRC1_IN2R_ENA                0x0004  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC1_IN2R_ENA_MASK           0x0004  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC1_IN2R_ENA_SHIFT               2  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC1_IN2R_ENA_WIDTH               1  /* ASRC2R_ENA */
+#define CLEARWATER_ASRC1_IN1L_ENA                0x0002  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC1_IN1L_ENA_MASK           0x0002  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC1_IN1L_ENA_SHIFT               1  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC1_IN1L_ENA_WIDTH               1  /* ASRC1L_ENA */
+#define CLEARWATER_ASRC1_IN1R_ENA                0x0001  /* ASRC1R_ENA */
+#define CLEARWATER_ASRC1_IN1R_ENA_MASK           0x0001  /* ASRC1R_ENA */
+#define CLEARWATER_ASRC1_IN1R_ENA_SHIFT               0  /* ASRC1R_ENA */
+#define CLEARWATER_ASRC1_IN1R_ENA_WIDTH               1  /* ASRC1R_ENA */
+
+/*
+ * R3810 (0xEE2) - ASRC1_RATE1
+ */
+#define CLEARWATER_ASRC1_RATE1_MASK              0x7800  /* ASRC_RATE1 - [14:11] */
+#define CLEARWATER_ASRC1_RATE1_SHIFT                 11  /* ASRC_RATE1 - [14:11] */
+#define CLEARWATER_ASRC1_RATE1_WIDTH                  4  /* ASRC_RATE1 - [14:11] */
+
+/*
+ * R3811 (0xEE3) - ASRC1_RATE2
+ */
+#define CLEARWATER_ASRC1_RATE2_MASK              0x7800  /* ASRC_RATE2 - [14:11] */
+#define CLEARWATER_ASRC1_RATE2_SHIFT                 11  /* ASRC_RATE2 - [14:11] */
+#define CLEARWATER_ASRC1_RATE2_WIDTH                  4  /* ASRC_RATE2 - [14:11] */
+
+/*
  * R3808 (0xEE0) - ASRC_ENABLE
  */
 #define ARIZONA_ASRC2L_ENA                       0x0008  /* ASRC2L_ENA */
@@ -7727,6 +10606,107 @@
 #define ARIZONA_ISRC3_NOTCH_ENA_WIDTH                 1  /* ISRC3_NOTCH_ENA */
 
 /*
+ * R3833 (0xEF9) - ISRC 4 CTRL 1
+ */
+#define ARIZONA_ISRC4_FSH_MASK                   0x7800  /* ISRC4_FSH - [14:11] */
+#define ARIZONA_ISRC4_FSH_SHIFT                      11  /* ISRC4_FSH - [14:11] */
+#define ARIZONA_ISRC4_FSH_WIDTH                       4  /* ISRC4_FSH - [14:11] */
+#define ARIZONA_ISRC4_CLK_SEL_MASK               0x0700  /* ISRC4_CLK_SEL - [10:8] */
+#define ARIZONA_ISRC4_CLK_SEL_SHIFT                   8  /* ISRC4_CLK_SEL - [10:8] */
+#define ARIZONA_ISRC4_CLK_SEL_WIDTH                   3  /* ISRC4_CLK_SEL - [10:8] */
+
+/*
+ * R3834 (0xEFA) - ISRC 4 CTRL 2
+ */
+#define ARIZONA_ISRC4_FSL_MASK                   0x7800  /* ISRC4_FSL - [14:11] */
+#define ARIZONA_ISRC4_FSL_SHIFT                      11  /* ISRC4_FSL - [14:11] */
+#define ARIZONA_ISRC4_FSL_WIDTH                       4  /* ISRC4_FSL - [14:11] */
+
+/*
+ * R3835 (0xEFB) - ISRC 4 CTRL 3
+ */
+#define ARIZONA_ISRC4_INT0_ENA                   0x8000  /* ISRC4_INT0_ENA */
+#define ARIZONA_ISRC4_INT0_ENA_MASK              0x8000  /* ISRC4_INT0_ENA */
+#define ARIZONA_ISRC4_INT0_ENA_SHIFT                 15  /* ISRC4_INT0_ENA */
+#define ARIZONA_ISRC4_INT0_ENA_WIDTH                  1  /* ISRC4_INT0_ENA */
+#define ARIZONA_ISRC4_INT1_ENA                   0x4000  /* ISRC4_INT1_ENA */
+#define ARIZONA_ISRC4_INT1_ENA_MASK              0x4000  /* ISRC4_INT1_ENA */
+#define ARIZONA_ISRC4_INT1_ENA_SHIFT                 14  /* ISRC4_INT1_ENA */
+#define ARIZONA_ISRC4_INT1_ENA_WIDTH                  1  /* ISRC4_INT1_ENA */
+#define ARIZONA_ISRC4_INT2_ENA                   0x2000  /* ISRC4_INT2_ENA */
+#define ARIZONA_ISRC4_INT2_ENA_MASK              0x2000  /* ISRC4_INT2_ENA */
+#define ARIZONA_ISRC4_INT2_ENA_SHIFT                 13  /* ISRC4_INT2_ENA */
+#define ARIZONA_ISRC4_INT2_ENA_WIDTH                  1  /* ISRC4_INT2_ENA */
+#define ARIZONA_ISRC4_INT3_ENA                   0x1000  /* ISRC4_INT3_ENA */
+#define ARIZONA_ISRC4_INT3_ENA_MASK              0x1000  /* ISRC4_INT3_ENA */
+#define ARIZONA_ISRC4_INT3_ENA_SHIFT                 12  /* ISRC4_INT3_ENA */
+#define ARIZONA_ISRC4_INT3_ENA_WIDTH                  1  /* ISRC4_INT3_ENA */
+#define ARIZONA_ISRC4_DEC0_ENA                   0x0200  /* ISRC4_DEC0_ENA */
+#define ARIZONA_ISRC4_DEC0_ENA_MASK              0x0200  /* ISRC4_DEC0_ENA */
+#define ARIZONA_ISRC4_DEC0_ENA_SHIFT                  9  /* ISRC4_DEC0_ENA */
+#define ARIZONA_ISRC4_DEC0_ENA_WIDTH                  1  /* ISRC4_DEC0_ENA */
+#define ARIZONA_ISRC4_DEC1_ENA                   0x0100  /* ISRC4_DEC1_ENA */
+#define ARIZONA_ISRC4_DEC1_ENA_MASK              0x0100  /* ISRC4_DEC1_ENA */
+#define ARIZONA_ISRC4_DEC1_ENA_SHIFT                  8  /* ISRC4_DEC1_ENA */
+#define ARIZONA_ISRC4_DEC1_ENA_WIDTH                  1  /* ISRC4_DEC1_ENA */
+#define ARIZONA_ISRC4_DEC2_ENA                   0x0080  /* ISRC4_DEC2_ENA */
+#define ARIZONA_ISRC4_DEC2_ENA_MASK              0x0080  /* ISRC4_DEC2_ENA */
+#define ARIZONA_ISRC4_DEC2_ENA_SHIFT                  7  /* ISRC4_DEC2_ENA */
+#define ARIZONA_ISRC4_DEC2_ENA_WIDTH                  1  /* ISRC4_DEC2_ENA */
+#define ARIZONA_ISRC4_DEC3_ENA                   0x0040  /* ISRC4_DEC3_ENA */
+#define ARIZONA_ISRC4_DEC3_ENA_MASK              0x0040  /* ISRC4_DEC3_ENA */
+#define ARIZONA_ISRC4_DEC3_ENA_SHIFT                  6  /* ISRC4_DEC3_ENA */
+#define ARIZONA_ISRC4_DEC3_ENA_WIDTH                  1  /* ISRC4_DEC3_ENA */
+#define ARIZONA_ISRC4_NOTCH_ENA                  0x0001  /* ISRC4_NOTCH_ENA */
+#define ARIZONA_ISRC4_NOTCH_ENA_MASK             0x0001  /* ISRC4_NOTCH_ENA */
+#define ARIZONA_ISRC4_NOTCH_ENA_SHIFT                 0  /* ISRC4_NOTCH_ENA */
+#define ARIZONA_ISRC4_NOTCH_ENA_WIDTH                 1  /* ISRC4_NOTCH_ENA */
+
+/*
+ * R3840 (0xF00) - Clock Control
+ */
+#define ARIZONA_CLK_R_ENA_CLR                    0x0020  /* CLK_R_ENA_CLR */
+#define ARIZONA_CLK_R_ENA_CLR_MASK               0x0020  /* CLK_R_ENA_CLR */
+#define ARIZONA_CLK_R_ENA_CLR_SHIFT                   5  /* CLK_R_ENA_CLR */
+#define ARIZONA_CLK_R_ENA_CLR_WIDTH                   1  /* CLK_R_ENA_CLR */
+#define ARIZONA_CLK_R_ENA_SET                    0x0010  /* CLK_R_ENA_SET */
+#define ARIZONA_CLK_R_ENA_SET_MASK               0x0010  /* CLK_R_ENA_SET */
+#define ARIZONA_CLK_R_ENA_SET_SHIFT                   4  /* CLK_R_ENA_SET */
+#define ARIZONA_CLK_R_ENA_SET_WIDTH                   1  /* CLK_R_ENA_SET */
+#define ARIZONA_CLK_L_ENA_CLR                    0x0002  /* CLK_L_ENA_CLR */
+#define ARIZONA_CLK_L_ENA_CLR_MASK               0x0002  /* CLK_L_ENA_CLR */
+#define ARIZONA_CLK_L_ENA_CLR_SHIFT                   1  /* CLK_L_ENA_CLR */
+#define ARIZONA_CLK_L_ENA_CLR_WIDTH                   1  /* CLK_L_ENA_CLR */
+#define ARIZONA_CLK_L_ENA_SET                    0x0001  /* CLK_L_ENA_SET */
+#define ARIZONA_CLK_L_ENA_SET_MASK               0x0001  /* CLK_L_ENA_SET */
+#define ARIZONA_CLK_L_ENA_SET_SHIFT                   0  /* CLK_L_ENA_SET */
+#define ARIZONA_CLK_L_ENA_SET_WIDTH                   1  /* CLK_L_ENA_SET */
+
+/*
+ * R3841 (0xF01) - ANC SRC
+ */
+#define ARIZONA_IN_RXANCR_SEL_MASK               0x0070  /* IN_RXANCR_SEL - [4:6] */
+#define ARIZONA_IN_RXANCR_SEL_SHIFT                   4  /* IN_RXANCR_SEL - [4:6] */
+#define ARIZONA_IN_RXANCR_SEL_WIDTH                   3  /* IN_RXANCR_SEL - [4:6] */
+#define ARIZONA_IN_RXANCL_SEL_MASK               0x0007  /* IN_RXANCL_SEL - [0:2] */
+#define ARIZONA_IN_RXANCL_SEL_SHIFT                   0  /* IN_RXANCL_SEL - [0:2] */
+#define ARIZONA_IN_RXANCL_SEL_WIDTH                   3  /* IN_RXANCL_SEL - [0:2] */
+
+/*
+ * R3863 (0xF17) - FCL ADC Reformatter Control
+ */
+#define ARIZONA_FCL_MIC_MODE_SEL                 0x000C  /* FCL_MIC_MODE_SEL - [2:3] */
+#define ARIZONA_FCL_MIC_MODE_SEL_SHIFT                2  /* FCL_MIC_MODE_SEL - [2:3] */
+#define ARIZONA_FCL_MIC_MODE_SEL_WIDTH                2  /* FCL_MIC_MODE_SEL - [2:3] */
+
+/*
+ * R3954 (0xF72) - FCR ADC Reformatter Control
+ */
+#define ARIZONA_FCR_MIC_MODE_SEL                 0x000C  /* FCR_MIC_MODE_SEL - [2:3] */
+#define ARIZONA_FCR_MIC_MODE_SEL_SHIFT                2  /* FCR_MIC_MODE_SEL - [2:3] */
+#define ARIZONA_FCR_MIC_MODE_SEL_WIDTH                2  /* FCR_MIC_MODE_SEL - [2:3] */
+
+/*
  * R4352 (0x1100) - DSP1 Control 1
  */
 #define ARIZONA_DSP1_RATE_MASK                   0x7800  /* DSP1_RATE - [14:11] */
@@ -7778,5 +10758,2294 @@
 #define ARIZONA_DSP1_WDMA_ACTIVE_CHANNELS_MASK   0x00FF  /* DSP1_WDMA_ACTIVE_CHANNELS - [7:0] */
 #define ARIZONA_DSP1_WDMA_ACTIVE_CHANNELS_SHIFT       0  /* DSP1_WDMA_ACTIVE_CHANNELS - [7:0] */
 #define ARIZONA_DSP1_WDMA_ACTIVE_CHANNELS_WIDTH       8  /* DSP1_WDMA_ACTIVE_CHANNELS - [7:0] */
+
+/*
+* R1718 (0x1380) - FRF_Coefficient_1L_1
+*/
+#define CLEARWATER_FRF_COEFF_1L_1_MASK           0xFFFF  /* FRF_COEFF_1L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_1_SHIFT               0  /* FRF_COEFF_1L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_1_WIDTH              16  /* FRF_COEFF_1L_1 - [15:0] */
+
+/*
+ * R1719 (0x1381) - FRF_Coefficient_1L_2
+ */
+#define CLEARWATER_FRF_COEFF_1L_2_MASK           0xFFFF  /* FRF_COEFF_1L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_2_SHIFT               0  /* FRF_COEFF_1L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_2_WIDTH              16  /* FRF_COEFF_1L_2 - [15:0] */
+
+/*
+ * R1720 (0x1382) - FRF_Coefficient_1L_3
+ */
+#define CLEARWATER_FRF_COEFF_1L_3_MASK           0xFFFF  /* FRF_COEFF_1L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_3_SHIFT               0  /* FRF_COEFF_1L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_3_WIDTH              16  /* FRF_COEFF_1L_3 - [15:0] */
+
+/*
+ * R1721 (0x1383) - FRF_Coefficient_1L_4
+ */
+#define CLEARWATER_FRF_COEFF_1L_4_MASK           0xFFFF  /* FRF_COEFF_1L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_4_SHIFT               0  /* FRF_COEFF_1L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1L_4_WIDTH              16  /* FRF_COEFF_1L_4 - [15:0] */
+
+/*
+ * R1722 (0x1390) - FRF_Coefficient_1R_1
+ */
+#define CLEARWATER_FRF_COEFF_1R_1_MASK           0xFFFF  /* FRF_COEFF_1R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_1_SHIFT               0  /* FRF_COEFF_1R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_1_WIDTH              16  /* FRF_COEFF_1R_1 - [15:0] */
+
+/*
+ * R1723 (0x1391) - FRF_Coefficient_1R_2
+ */
+#define CLEARWATER_FRF_COEFF_1R_2_MASK           0xFFFF  /* FRF_COEFF_1R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_2_SHIFT               0  /* FRF_COEFF_1R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_2_WIDTH              16  /* FRF_COEFF_1R_2 - [15:0] */
+
+/*
+ * R1724 (0x1392) - FRF_Coefficient_1R_3
+ */
+#define CLEARWATER_FRF_COEFF_1R_3_MASK           0xFFFF  /* FRF_COEFF_1R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_3_SHIFT               0  /* FRF_COEFF_1R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_3_WIDTH              16  /* FRF_COEFF_1R_3 - [15:0] */
+
+/*
+ * R1725 (0x1393) - FRF_Coefficient_1R_4
+ */
+#define CLEARWATER_FRF_COEFF_1R_4_MASK           0xFFFF  /* FRF_COEFF_1R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_4_SHIFT               0  /* FRF_COEFF_1R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_1R_4_WIDTH              16  /* FRF_COEFF_1R_4 - [15:0] */
+
+/*
+ * R1726 (0x13A0) - FRF_Coefficient_2L_1
+ */
+#define CLEARWATER_FRF_COEFF_2L_1_MASK           0xFFFF  /* FRF_COEFF_2L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_1_SHIFT               0  /* FRF_COEFF_2L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_1_WIDTH              16  /* FRF_COEFF_2L_1 - [15:0] */
+
+/*
+ * R1727 (0x13A1) - FRF_Coefficient_2L_2
+ */
+#define CLEARWATER_FRF_COEFF_2L_2_MASK           0xFFFF  /* FRF_COEFF_2L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_2_SHIFT               0  /* FRF_COEFF_2L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_2_WIDTH              16  /* FRF_COEFF_2L_2 - [15:0] */
+
+/*
+ * R1728 (0x13A2) - FRF_Coefficient_2L_3
+ */
+#define CLEARWATER_FRF_COEFF_2L_3_MASK           0xFFFF  /* FRF_COEFF_2L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_3_SHIFT               0  /* FRF_COEFF_2L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_3_WIDTH              16  /* FRF_COEFF_2L_3 - [15:0] */
+
+/*
+ * R1729 (0x13A3) - FRF_Coefficient_2L_4
+ */
+#define CLEARWATER_FRF_COEFF_2L_4_MASK           0xFFFF  /* FRF_COEFF_2L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_4_SHIFT               0  /* FRF_COEFF_2L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2L_4_WIDTH              16  /* FRF_COEFF_2L_4 - [15:0] */
+
+/*
+ * R1730 (0x13B0) - FRF_Coefficient_2R_1
+ */
+#define CLEARWATER_FRF_COEFF_2R_1_MASK           0xFFFF  /* FRF_COEFF_2R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_1_SHIFT               0  /* FRF_COEFF_2R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_1_WIDTH              16  /* FRF_COEFF_2R_1 - [15:0] */
+
+/*
+ * R1731 (0x13B1) - FRF_Coefficient_2R_2
+ */
+#define CLEARWATER_FRF_COEFF_2R_2_MASK           0xFFFF  /* FRF_COEFF_2R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_2_SHIFT               0  /* FRF_COEFF_2R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_2_WIDTH              16  /* FRF_COEFF_2R_2 - [15:0] */
+
+/*
+ * R1732 (0x13B2) - FRF_Coefficient_2R_3
+ */
+#define CLEARWATER_FRF_COEFF_2R_3_MASK           0xFFFF  /* FRF_COEFF_2R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_3_SHIFT               0  /* FRF_COEFF_2R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_3_WIDTH              16  /* FRF_COEFF_2R_3 - [15:0] */
+
+/*
+ * R1733 (0x13B3) - FRF_Coefficient_2R_4
+ */
+#define CLEARWATER_FRF_COEFF_2R_4_MASK           0xFFFF  /* FRF_COEFF_2R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_4_SHIFT               0  /* FRF_COEFF_2R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_2R_4_WIDTH              16  /* FRF_COEFF_2R_4 - [15:0] */
+
+/*
+ * R1734 (0x13C0) - FRF_Coefficient_3L_1
+ */
+#define CLEARWATER_FRF_COEFF_3L_1_MASK           0xFFFF  /* FRF_COEFF_3L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_1_SHIFT               0  /* FRF_COEFF_3L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_1_WIDTH              16  /* FRF_COEFF_3L_1 - [15:0] */
+
+/*
+ * R1735 (0x13C1) - FRF_Coefficient_3L_2
+ */
+#define CLEARWATER_FRF_COEFF_3L_2_MASK           0xFFFF  /* FRF_COEFF_3L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_2_SHIFT               0  /* FRF_COEFF_3L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_2_WIDTH              16  /* FRF_COEFF_3L_2 - [15:0] */
+
+/*
+ * R1736 (0x13C2) - FRF_Coefficient_3L_3
+ */
+#define CLEARWATER_FRF_COEFF_3L_3_MASK           0xFFFF  /* FRF_COEFF_3L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_3_SHIFT               0  /* FRF_COEFF_3L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_3_WIDTH              16  /* FRF_COEFF_3L_3 - [15:0] */
+
+/*
+ * R1737 (0x13C3) - FRF_Coefficient_3L_4
+ */
+#define CLEARWATER_FRF_COEFF_3L_4_MASK           0xFFFF  /* FRF_COEFF_3L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_4_SHIFT               0  /* FRF_COEFF_3L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3L_4_WIDTH              16  /* FRF_COEFF_3L_4 - [15:0] */
+
+/*
+ * R1738 (0x13D0) - FRF_Coefficient_3R_1
+ */
+#define CLEARWATER_FRF_COEFF_3R_1_MASK           0xFFFF  /* FRF_COEFF_3R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_1_SHIFT               0  /* FRF_COEFF_3R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_1_WIDTH              16  /* FRF_COEFF_3R_1 - [15:0] */
+
+/*
+ * R1739 (0x13D1) - FRF_Coefficient_3R_2
+ */
+#define CLEARWATER_FRF_COEFF_3R_2_MASK           0xFFFF  /* FRF_COEFF_3R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_2_SHIFT               0  /* FRF_COEFF_3R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_2_WIDTH              16  /* FRF_COEFF_3R_2 - [15:0] */
+
+/*
+ * R1740 (0x13D2) - FRF_Coefficient_3R_3
+ */
+#define CLEARWATER_FRF_COEFF_3R_3_MASK           0xFFFF  /* FRF_COEFF_3R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_3_SHIFT               0  /* FRF_COEFF_3R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_3_WIDTH              16  /* FRF_COEFF_3R_3 - [15:0] */
+
+/*
+ * R1741 (0x13D3) - FRF_Coefficient_3R_4
+ */
+#define CLEARWATER_FRF_COEFF_3R_4_MASK           0xFFFF  /* FRF_COEFF_3R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_4_SHIFT               0  /* FRF_COEFF_3R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_3R_4_WIDTH              16  /* FRF_COEFF_3R_4 - [15:0] */
+
+/*
+ * R1742 (0x13E0) - FRF_Coefficient_4L_1
+ */
+#define CLEARWATER_FRF_COEFF_4L_1_MASK           0xFFFF  /* FRF_COEFF_4L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_1_SHIFT               0  /* FRF_COEFF_4L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_1_WIDTH              16  /* FRF_COEFF_4L_1 - [15:0] */
+
+/*
+ * R1743 (0x13E1) - FRF_Coefficient_4L_2
+ */
+#define CLEARWATER_FRF_COEFF_4L_2_MASK           0xFFFF  /* FRF_COEFF_4L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_2_SHIFT               0  /* FRF_COEFF_4L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_2_WIDTH              16  /* FRF_COEFF_4L_2 - [15:0] */
+
+/*
+ * R1744 (0x13E2) - FRF_Coefficient_4L_3
+ */
+#define CLEARWATER_FRF_COEFF_4L_3_MASK           0xFFFF  /* FRF_COEFF_4L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_3_SHIFT               0  /* FRF_COEFF_4L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_3_WIDTH              16  /* FRF_COEFF_4L_3 - [15:0] */
+
+/*
+ * R1745 (0x13E3) - FRF_Coefficient_4L_4
+ */
+#define CLEARWATER_FRF_COEFF_4L_4_MASK           0xFFFF  /* FRF_COEFF_4L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_4_SHIFT               0  /* FRF_COEFF_4L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4L_4_WIDTH              16  /* FRF_COEFF_4L_4 - [15:0] */
+
+/*
+ * R1746 (0x13F0) - FRF_Coefficient_4R_1
+ */
+#define CLEARWATER_FRF_COEFF_4R_1_MASK           0xFFFF  /* FRF_COEFF_4R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_1_SHIFT               0  /* FRF_COEFF_4R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_1_WIDTH              16  /* FRF_COEFF_4R_1 - [15:0] */
+
+/*
+ * R1747 (0x13F1) - FRF_Coefficient_4R_2
+ */
+#define CLEARWATER_FRF_COEFF_4R_2_MASK           0xFFFF  /* FRF_COEFF_4R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_2_SHIFT               0  /* FRF_COEFF_4R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_2_WIDTH              16  /* FRF_COEFF_4R_2 - [15:0] */
+
+/*
+ * R1748 (0x13F2) - FRF_Coefficient_4R_3
+ */
+#define CLEARWATER_FRF_COEFF_4R_3_MASK           0xFFFF  /* FRF_COEFF_4R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_3_SHIFT               0  /* FRF_COEFF_4R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_3_WIDTH              16  /* FRF_COEFF_4R_3 - [15:0] */
+
+/*
+ * R1749 (0x13F3) - FRF_Coefficient_4R_4
+ */
+#define CLEARWATER_FRF_COEFF_4R_4_MASK           0xFFFF  /* FRF_COEFF_4R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_4_SHIFT               0  /* FRF_COEFF_4R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_4R_4_WIDTH              16  /* FRF_COEFF_4R_4 - [15:0] */
+
+/*
+ * R1750 (0x1400) - FRF_Coefficient_5L_1
+ */
+#define CLEARWATER_FRF_COEFF_5L_1_MASK           0xFFFF  /* FRF_COEFF_5L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_1_SHIFT               0  /* FRF_COEFF_5L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_1_WIDTH              16  /* FRF_COEFF_5L_1 - [15:0] */
+
+/*
+ * R1751 (0x1401) - FRF_Coefficient_5L_2
+ */
+#define CLEARWATER_FRF_COEFF_5L_2_MASK           0xFFFF  /* FRF_COEFF_5L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_2_SHIFT               0  /* FRF_COEFF_5L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_2_WIDTH              16  /* FRF_COEFF_5L_2 - [15:0] */
+
+/*
+ * R1752 (0x1402) - FRF_Coefficient_5L_3
+ */
+#define CLEARWATER_FRF_COEFF_5L_3_MASK           0xFFFF  /* FRF_COEFF_5L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_3_SHIFT               0  /* FRF_COEFF_5L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_3_WIDTH              16  /* FRF_COEFF_5L_3 - [15:0] */
+
+/*
+ * R1753 (0x1403) - FRF_Coefficient_5L_4
+ */
+#define CLEARWATER_FRF_COEFF_5L_4_MASK           0xFFFF  /* FRF_COEFF_5L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_4_SHIFT               0  /* FRF_COEFF_5L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5L_4_WIDTH              16  /* FRF_COEFF_5L_4 - [15:0] */
+
+/*
+ * R1754 (0x1410) - FRF_Coefficient_5R_1
+ */
+#define CLEARWATER_FRF_COEFF_5R_1_MASK           0xFFFF  /* FRF_COEFF_5R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_1_SHIFT               0  /* FRF_COEFF_5R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_1_WIDTH              16  /* FRF_COEFF_5R_1 - [15:0] */
+
+/*
+ * R1755 (0x1411) - FRF_Coefficient_5R_2
+ */
+#define CLEARWATER_FRF_COEFF_5R_2_MASK           0xFFFF  /* FRF_COEFF_5R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_2_SHIFT               0  /* FRF_COEFF_5R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_2_WIDTH              16  /* FRF_COEFF_5R_2 - [15:0] */
+
+/*
+ * R1756 (0x1412) - FRF_Coefficient_5R_3
+ */
+#define CLEARWATER_FRF_COEFF_5R_3_MASK           0xFFFF  /* FRF_COEFF_5R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_3_SHIFT               0  /* FRF_COEFF_5R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_3_WIDTH              16  /* FRF_COEFF_5R_3 - [15:0] */
+
+/*
+ * R1757 (0x1413) - FRF_Coefficient_5R_4
+ */
+#define CLEARWATER_FRF_COEFF_5R_4_MASK           0xFFFF  /* FRF_COEFF_5R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_4_SHIFT               0  /* FRF_COEFF_5R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_5R_4_WIDTH              16  /* FRF_COEFF_5R_4 - [15:0] */
+
+/*
+ * R1758 (0x1420) - FRF_Coefficient_6L_1
+ */
+#define CLEARWATER_FRF_COEFF_6L_1_MASK           0xFFFF  /* FRF_COEFF_6L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_1_SHIFT               0  /* FRF_COEFF_6L_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_1_WIDTH              16  /* FRF_COEFF_6L_1 - [15:0] */
+
+/*
+ * R1759 (0x1421) - FRF_Coefficient_6L_2
+ */
+#define CLEARWATER_FRF_COEFF_6L_2_MASK           0xFFFF  /* FRF_COEFF_6L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_2_SHIFT               0  /* FRF_COEFF_6L_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_2_WIDTH              16  /* FRF_COEFF_6L_2 - [15:0] */
+
+/*
+ * R1760 (0x1422) - FRF_Coefficient_6L_3
+ */
+#define CLEARWATER_FRF_COEFF_6L_3_MASK           0xFFFF  /* FRF_COEFF_6L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_3_SHIFT               0  /* FRF_COEFF_6L_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_3_WIDTH              16  /* FRF_COEFF_6L_3 - [15:0] */
+
+/*
+ * R1761 (0x1423) - FRF_Coefficient_6L_4
+ */
+#define CLEARWATER_FRF_COEFF_6L_4_MASK           0xFFFF  /* FRF_COEFF_6L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_4_SHIFT               0  /* FRF_COEFF_6L_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6L_4_WIDTH              16  /* FRF_COEFF_6L_4 - [15:0] */
+
+/*
+ * R1762 (0x1430) - FRF_Coefficient_6R_1
+ */
+#define CLEARWATER_FRF_COEFF_6R_1_MASK           0xFFFF  /* FRF_COEFF_6R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_1_SHIFT               0  /* FRF_COEFF_6R_1 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_1_WIDTH              16  /* FRF_COEFF_6R_1 - [15:0] */
+
+/*
+ * R1763 (0x1431) - FRF_Coefficient_6R_2
+ */
+#define CLEARWATER_FRF_COEFF_6R_2_MASK           0xFFFF  /* FRF_COEFF_6R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_2_SHIFT               0  /* FRF_COEFF_6R_2 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_2_WIDTH              16  /* FRF_COEFF_6R_2 - [15:0] */
+
+/*
+ * R1764 (0x1432) - FRF_Coefficient_6R_3
+ */
+#define CLEARWATER_FRF_COEFF_6R_3_MASK           0xFFFF  /* FRF_COEFF_6R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_3_SHIFT               0  /* FRF_COEFF_6R_3 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_3_WIDTH              16  /* FRF_COEFF_6R_3 - [15:0] */
+
+/*
+ * R1765 (0x1433) - FRF_Coefficient_6R_4
+ */
+#define CLEARWATER_FRF_COEFF_6R_4_MASK           0xFFFF  /* FRF_COEFF_6R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_4_SHIFT               0  /* FRF_COEFF_6R_4 - [15:0] */
+#define CLEARWATER_FRF_COEFF_6R_4_WIDTH              16  /* FRF_COEFF_6R_4 - [15:0] */
+
+/*
+ * R1675 (0x1480) - DFC1_CTRL
+ */
+#define MOON_DFC1_RATE                           0x003C  /* DFC1_RATE - [5:2] */
+#define MOON_DFC1_RATE_MASK                      0x003C  /* DFC1_RATE - [5:2] */
+#define MOON_DFC1_RATE_SHIFT                          2  /* DFC1_RATE - [5:2] */
+#define MOON_DFC1_RATE_WIDTH                          4  /* DFC1_RATE - [5:2] */
+#define MOON_DFC1_DITH_ENA                       0x0002  /* DFC1_DITH_ENA */
+#define MOON_DFC1_DITH_ENA_MASK                  0x0002  /* DFC1_DITH_ENA */
+#define MOON_DFC1_DITH_ENA_SHIFT                      1  /* DFC1_DITH_ENA */
+#define MOON_DFC1_DITH_ENA_WIDTH                      1  /* DFC1_DITH_ENA */
+#define MOON_DFC1_ENA                            0x0001  /* DFC1_ENA */
+#define MOON_DFC1_ENA_MASK                       0x0001  /* DFC1_ENA */
+#define MOON_DFC1_ENA_SHIFT                           0  /* DFC1_ENA */
+#define MOON_DFC1_ENA_WIDTH                           1  /* DFC1_ENA */
+
+/*
+ * R1677 (0x1482) - DFC1_RX
+ */
+#define MOON_DFC1_RX_DATA_WIDTH                  0x1F00  /* DFC1_RX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_RX_DATA_WIDTH_MASK             0x1F00  /* DFC1_RX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_RX_DATA_WIDTH_SHIFT                 8  /* DFC1_RX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_RX_DATA_WIDTH_WIDTH                 5  /* DFC1_RX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_RX_DATA_TYPE                   0x0007  /* DFC1_RX_DATA_TYPE - [2:0] */
+#define MOON_DFC1_RX_DATA_TYPE_MASK              0x0007  /* DFC1_RX_DATA_TYPE - [2:0] */
+#define MOON_DFC1_RX_DATA_TYPE_SHIFT                  0  /* DFC1_RX_DATA_TYPE - [2:0] */
+#define MOON_DFC1_RX_DATA_TYPE_WIDTH                  3  /* DFC1_RX_DATA_TYPE - [2:0] */
+
+/*
+ * R1679 (0x1484) - DFC1_TX
+ */
+#define MOON_DFC1_TX_DATA_WIDTH                  0x1F00  /* DFC1_TX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_TX_DATA_WIDTH_MASK             0x1F00  /* DFC1_TX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_TX_DATA_WIDTH_SHIFT                 8  /* DFC1_TX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_TX_DATA_WIDTH_WIDTH                 5  /* DFC1_TX_DATA_WIDTH - [12:8] */
+#define MOON_DFC1_TX_DATA_TYPE                   0x0007  /* DFC1_TX_DATA_TYPE - [2:0] */
+#define MOON_DFC1_TX_DATA_TYPE_MASK              0x0007  /* DFC1_TX_DATA_TYPE - [2:0] */
+#define MOON_DFC1_TX_DATA_TYPE_SHIFT                  0  /* DFC1_TX_DATA_TYPE - [2:0] */
+#define MOON_DFC1_TX_DATA_TYPE_WIDTH                  3  /* DFC1_TX_DATA_TYPE - [2:0] */
+
+/*
+ * R6144 (0x1800) - IRQ1 Status 1
+ */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT1      0x8000  /* DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT1_MASK 0x8000  /* DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT1_SHIFT    15  /* DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT1_WIDTH     1  /* DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_CTRLIF_ERR_EINT1              0x1000  /* CTRLIF_ERR_EINT1 */
+#define CLEARWATER_CTRLIF_ERR_EINT1_MASK         0x1000  /* CTRLIF_ERR_EINT1 */
+#define CLEARWATER_CTRLIF_ERR_EINT1_SHIFT            12  /* CTRLIF_ERR_EINT1 */
+#define CLEARWATER_CTRLIF_ERR_EINT1_WIDTH             1  /* CTRLIF_ERR_EINT1 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT1            0x0200  /* IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT1_MASK       0x0200  /* IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT1_SHIFT           9  /* IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT1_WIDTH           1  /* IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_CLOCK_DETECT_EINT1            0x0100  /* CLOCK_DETECT_EINT1 */
+#define CLEARWATER_CLOCK_DETECT_EINT1_MASK       0x0100  /* CLOCK_DETECT_EINT1 */
+#define CLEARWATER_CLOCK_DETECT_EINT1_SHIFT           8  /* CLOCK_DETECT_EINT1 */
+#define CLEARWATER_CLOCK_DETECT_EINT1_WIDTH           1  /* CLOCK_DETECT_EINT1 */
+#define CLEARWATER_BOOT_DONE_EINT1               0x0080  /* BOOT_DONE_EINT1 */
+#define CLEARWATER_BOOT_DONE_EINT1_MASK          0x0080  /* BOOT_DONE_EINT1 */
+#define CLEARWATER_BOOT_DONE_EINT1_SHIFT              7  /* BOOT_DONE_EINT1 */
+#define CLEARWATER_BOOT_DONE_EINT1_WIDTH              1  /* BOOT_DONE_EINT1 */
+
+/*
+ * R6145 (0x1801) - IRQ1 Status 2
+ */
+#define MOON_FLLAO_LOCK_EINT1                    0x0800  /* FLLAO_LOCK_EINT1 */
+#define MOON_FLLAO_LOCK_EINT1_MASK               0x0800  /* FLLAO_LOCK_EINT1 */
+#define MOON_FLLAO_LOCK_EINT1_SHIFT                  11  /* FLLAO_LOCK_EINT1 */
+#define MOON_FLLAO_LOCK_EINT1_WIDTH                   1  /* FLLAO_LOCK_EINT1 */
+#define CLEARWATER_FLL3_LOCK_EINT1               0x0400  /* FLL3_LOCK_EINT1 */
+#define CLEARWATER_FLL3_LOCK_EINT1_MASK          0x0400  /* FLL3_LOCK_EINT1 */
+#define CLEARWATER_FLL3_LOCK_EINT1_SHIFT             10  /* FLL3_LOCK_EINT1 */
+#define CLEARWATER_FLL3_LOCK_EINT1_WIDTH              1  /* FLL3_LOCK_EINT1 */
+#define CLEARWATER_FLL2_LOCK_EINT1               0x0200  /* FLL2_LOCK_EINT1 */
+#define CLEARWATER_FLL2_LOCK_EINT1_MASK          0x0200  /* FLL2_LOCK_EINT1 */
+#define CLEARWATER_FLL2_LOCK_EINT1_SHIFT              9  /* FLL2_LOCK_EINT1 */
+#define CLEARWATER_FLL2_LOCK_EINT1_WIDTH              1  /* FLL2_LOCK_EINT1 */
+#define CLEARWATER_FLL1_LOCK_EINT1               0x0100  /* FLL1_LOCK_EINT1 */
+#define CLEARWATER_FLL1_LOCK_EINT1_MASK          0x0100  /* FLL1_LOCK_EINT1 */
+#define CLEARWATER_FLL1_LOCK_EINT1_SHIFT              8  /* FLL1_LOCK_EINT1 */
+#define CLEARWATER_FLL1_LOCK_EINT1_WIDTH              1  /* FLL1_LOCK_EINT1 */
+
+/*
+ * R6149 (0x1805) - IRQ1 Status 6
+ */
+#define CLEARWATER_MICDET_EINT1                  0x0100  /* MICDET_EINT1 */
+#define CLEARWATER_MICDET_EINT1_MASK             0x0100  /* MICDET_EINT1 */
+#define CLEARWATER_MICDET_EINT1_SHIFT                 8  /* MICDET_EINT1 */
+#define CLEARWATER_MICDET_EINT1_WIDTH                 1  /* MICDET_EINT1 */
+#define MOON_MICDET2_EINT1                       0x0200  /* MICDET2_EINT1 */
+#define MOON_MICDET2_EINT1_MASK                  0x0200  /* MICDET2_EINT1 */
+#define MOON_MICDET2_EINT1_SHIFT                      9  /* MICDET2_EINT1 */
+#define MOON_MICDET2_EINT1_WIDTH                      1  /* MICDET2_EINT1 */
+#define CLEARWATER_HPDET_EINT1                   0x0001  /* HPDET_EINT1 */
+#define CLEARWATER_HPDET_EINT1_MASK              0x0001  /* HPDET_EINT1 */
+#define CLEARWATER_HPDET_EINT1_SHIFT                  0  /* HPDET_EINT1 */
+#define CLEARWATER_HPDET_EINT1_WIDTH                  1  /* HPDET_EINT1 */
+
+/*
+ * R6150 (0x1806) - IRQ1 Status 7
+ */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT1         0x0020  /* MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT1_MASK    0x0020  /* MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT1_SHIFT        5  /* MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT1_WIDTH        1  /* MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT1         0x0010  /* MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT1_MASK    0x0010  /* MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT1_SHIFT        4  /* MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT1_WIDTH        1  /* MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_JD2_FALL_EINT1                0x0008  /* JD2_FALL_EINT1 */
+#define CLEARWATER_JD2_FALL_EINT1_MASK           0x0008  /* JD2_FALL_EINT1 */
+#define CLEARWATER_JD2_FALL_EINT1_SHIFT               3  /* JD2_FALL_EINT1 */
+#define CLEARWATER_JD2_FALL_EINT1_WIDTH               1  /* JD2_FALL_EINT1 */
+#define CLEARWATER_JD2_RISE_EINT1                0x0004  /* JD2_RISE_EINT1 */
+#define CLEARWATER_JD2_RISE_EINT1_MASK           0x0004  /* JD2_RISE_EINT1 */
+#define CLEARWATER_JD2_RISE_EINT1_SHIFT               2  /* JD2_RISE_EINT1 */
+#define CLEARWATER_JD2_RISE_EINT1_WIDTH               1  /* JD2_RISE_EINT1 */
+#define CLEARWATER_JD1_FALL_EINT1                0x0002  /* JD1_FALL_EINT1 */
+#define CLEARWATER_JD1_FALL_EINT1_MASK           0x0002  /* JD1_FALL_EINT1 */
+#define CLEARWATER_JD1_FALL_EINT1_SHIFT               1  /* JD1_FALL_EINT1 */
+#define CLEARWATER_JD1_FALL_EINT1_WIDTH               1  /* JD1_FALL_EINT1 */
+#define CLEARWATER_JD1_RISE_EINT1                0x0001  /* JD1_RISE_EINT1 */
+#define CLEARWATER_JD1_RISE_EINT1_MASK           0x0001  /* JD1_RISE_EINT1 */
+#define CLEARWATER_JD1_RISE_EINT1_SHIFT               0  /* JD1_RISE_EINT1 */
+#define CLEARWATER_JD1_RISE_EINT1_WIDTH               1  /* JD1_RISE_EINT1 */
+
+/*
+ * R6152 (0x1808) - IRQ1 Status 9
+ */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT1          0x0800  /* ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT1_MASK     0x0800  /* ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT1_SHIFT        11  /* ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT1_WIDTH         1  /* ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT1          0x0400  /* ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT1_MASK     0x0400  /* ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT1_SHIFT        10  /* ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT1_WIDTH         1  /* ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT1          0x0200  /* ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT1_MASK     0x0200  /* ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT1_SHIFT         9  /* ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT1_WIDTH         1  /* ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT1          0x0100  /* ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT1_MASK     0x0100  /* ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT1_SHIFT         8  /* ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT1_WIDTH         1  /* ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_DRC2_SIG_DET_EINT1            0x0002  /* DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_DRC2_SIG_DET_EINT1_MASK       0x0002  /* DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_DRC2_SIG_DET_EINT1_SHIFT           1  /* DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_DRC2_SIG_DET_EINT1_WIDTH           1  /* DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_DRC1_SIG_DET_EINT1            0x0001  /* DRC1_SIG_DET_EINT1 */
+#define CLEARWATER_DRC1_SIG_DET_EINT1_MASK       0x0001  /* DRC1_SIG_DET_EINT1 */
+#define CLEARWATER_DRC1_SIG_DET_EINT1_SHIFT           0  /* DRC1_SIG_DET_EINT1 */
+#define CLEARWATER_DRC1_SIG_DET_EINT1_WIDTH           1  /* DRC1_SIG_DET_EINT1 */
+
+/*
+ * R6154 (0x180A) - IRQ1 Status 11
+ */
+#define CLEARWATER_DSP_IRQ16_EINT1               0x8000  /* DSP_IRQ16_EINT1 */
+#define CLEARWATER_DSP_IRQ16_EINT1_MASK          0x8000  /* DSP_IRQ16_EINT1 */
+#define CLEARWATER_DSP_IRQ16_EINT1_SHIFT             15  /* DSP_IRQ16_EINT1 */
+#define CLEARWATER_DSP_IRQ16_EINT1_WIDTH              1  /* DSP_IRQ16_EINT1 */
+#define CLEARWATER_DSP_IRQ15_EINT1               0x4000  /* DSP_IRQ15_EINT1 */
+#define CLEARWATER_DSP_IRQ15_EINT1_MASK          0x4000  /* DSP_IRQ15_EINT1 */
+#define CLEARWATER_DSP_IRQ15_EINT1_SHIFT             14  /* DSP_IRQ15_EINT1 */
+#define CLEARWATER_DSP_IRQ15_EINT1_WIDTH              1  /* DSP_IRQ15_EINT1 */
+#define CLEARWATER_DSP_IRQ14_EINT1               0x2000  /* DSP_IRQ14_EINT1 */
+#define CLEARWATER_DSP_IRQ14_EINT1_MASK          0x2000  /* DSP_IRQ14_EINT1 */
+#define CLEARWATER_DSP_IRQ14_EINT1_SHIFT             13  /* DSP_IRQ14_EINT1 */
+#define CLEARWATER_DSP_IRQ14_EINT1_WIDTH              1  /* DSP_IRQ14_EINT1 */
+#define CLEARWATER_DSP_IRQ13_EINT1               0x1000  /* DSP_IRQ13_EINT1 */
+#define CLEARWATER_DSP_IRQ13_EINT1_MASK          0x1000  /* DSP_IRQ13_EINT1 */
+#define CLEARWATER_DSP_IRQ13_EINT1_SHIFT             12  /* DSP_IRQ13_EINT1 */
+#define CLEARWATER_DSP_IRQ13_EINT1_WIDTH              1  /* DSP_IRQ13_EINT1 */
+#define CLEARWATER_DSP_IRQ12_EINT1               0x0800  /* DSP_IRQ12_EINT1 */
+#define CLEARWATER_DSP_IRQ12_EINT1_MASK          0x0800  /* DSP_IRQ12_EINT1 */
+#define CLEARWATER_DSP_IRQ12_EINT1_SHIFT             11  /* DSP_IRQ12_EINT1 */
+#define CLEARWATER_DSP_IRQ12_EINT1_WIDTH              1  /* DSP_IRQ12_EINT1 */
+#define CLEARWATER_DSP_IRQ11_EINT1               0x0400  /* DSP_IRQ11_EINT1 */
+#define CLEARWATER_DSP_IRQ11_EINT1_MASK          0x0400  /* DSP_IRQ11_EINT1 */
+#define CLEARWATER_DSP_IRQ11_EINT1_SHIFT             10  /* DSP_IRQ11_EINT1 */
+#define CLEARWATER_DSP_IRQ11_EINT1_WIDTH              1  /* DSP_IRQ11_EINT1 */
+#define CLEARWATER_DSP_IRQ10_EINT1               0x0200  /* DSP_IRQ10_EINT1 */
+#define CLEARWATER_DSP_IRQ10_EINT1_MASK          0x0200  /* DSP_IRQ10_EINT1 */
+#define CLEARWATER_DSP_IRQ10_EINT1_SHIFT              9  /* DSP_IRQ10_EINT1 */
+#define CLEARWATER_DSP_IRQ10_EINT1_WIDTH              1  /* DSP_IRQ10_EINT1 */
+#define CLEARWATER_DSP_IRQ9_EINT1                0x0100  /* DSP_IRQ9_EINT1 */
+#define CLEARWATER_DSP_IRQ9_EINT1_MASK           0x0100  /* DSP_IRQ9_EINT1 */
+#define CLEARWATER_DSP_IRQ9_EINT1_SHIFT               8  /* DSP_IRQ9_EINT1 */
+#define CLEARWATER_DSP_IRQ9_EINT1_WIDTH               1  /* DSP_IRQ9_EINT1 */
+#define CLEARWATER_DSP_IRQ8_EINT1                0x0080  /* DSP_IRQ8_EINT1 */
+#define CLEARWATER_DSP_IRQ8_EINT1_MASK           0x0080  /* DSP_IRQ8_EINT1 */
+#define CLEARWATER_DSP_IRQ8_EINT1_SHIFT               7  /* DSP_IRQ8_EINT1 */
+#define CLEARWATER_DSP_IRQ8_EINT1_WIDTH               1  /* DSP_IRQ8_EINT1 */
+#define CLEARWATER_DSP_IRQ7_EINT1                0x0040  /* DSP_IRQ7_EINT1 */
+#define CLEARWATER_DSP_IRQ7_EINT1_MASK           0x0040  /* DSP_IRQ7_EINT1 */
+#define CLEARWATER_DSP_IRQ7_EINT1_SHIFT               6  /* DSP_IRQ7_EINT1 */
+#define CLEARWATER_DSP_IRQ7_EINT1_WIDTH               1  /* DSP_IRQ7_EINT1 */
+#define CLEARWATER_DSP_IRQ6_EINT1                0x0020  /* DSP_IRQ6_EINT1 */
+#define CLEARWATER_DSP_IRQ6_EINT1_MASK           0x0020  /* DSP_IRQ6_EINT1 */
+#define CLEARWATER_DSP_IRQ6_EINT1_SHIFT               5  /* DSP_IRQ6_EINT1 */
+#define CLEARWATER_DSP_IRQ6_EINT1_WIDTH               1  /* DSP_IRQ6_EINT1 */
+#define CLEARWATER_DSP_IRQ5_EINT1                0x0010  /* DSP_IRQ5_EINT1 */
+#define CLEARWATER_DSP_IRQ5_EINT1_MASK           0x0010  /* DSP_IRQ5_EINT1 */
+#define CLEARWATER_DSP_IRQ5_EINT1_SHIFT               4  /* DSP_IRQ5_EINT1 */
+#define CLEARWATER_DSP_IRQ5_EINT1_WIDTH               1  /* DSP_IRQ5_EINT1 */
+#define CLEARWATER_DSP_IRQ4_EINT1                0x0008  /* DSP_IRQ4_EINT1 */
+#define CLEARWATER_DSP_IRQ4_EINT1_MASK           0x0008  /* DSP_IRQ4_EINT1 */
+#define CLEARWATER_DSP_IRQ4_EINT1_SHIFT               3  /* DSP_IRQ4_EINT1 */
+#define CLEARWATER_DSP_IRQ4_EINT1_WIDTH               1  /* DSP_IRQ4_EINT1 */
+#define CLEARWATER_DSP_IRQ3_EINT1                0x0004  /* DSP_IRQ3_EINT1 */
+#define CLEARWATER_DSP_IRQ3_EINT1_MASK           0x0004  /* DSP_IRQ3_EINT1 */
+#define CLEARWATER_DSP_IRQ3_EINT1_SHIFT               2  /* DSP_IRQ3_EINT1 */
+#define CLEARWATER_DSP_IRQ3_EINT1_WIDTH               1  /* DSP_IRQ3_EINT1 */
+#define CLEARWATER_DSP_IRQ2_EINT1                0x0002  /* DSP_IRQ2_EINT1 */
+#define CLEARWATER_DSP_IRQ2_EINT1_MASK           0x0002  /* DSP_IRQ2_EINT1 */
+#define CLEARWATER_DSP_IRQ2_EINT1_SHIFT               1  /* DSP_IRQ2_EINT1 */
+#define CLEARWATER_DSP_IRQ2_EINT1_WIDTH               1  /* DSP_IRQ2_EINT1 */
+#define CLEARWATER_DSP_IRQ1_EINT1                0x0001  /* DSP_IRQ1_EINT1 */
+#define CLEARWATER_DSP_IRQ1_EINT1_MASK           0x0001  /* DSP_IRQ1_EINT1 */
+#define CLEARWATER_DSP_IRQ1_EINT1_SHIFT               0  /* DSP_IRQ1_EINT1 */
+#define CLEARWATER_DSP_IRQ1_EINT1_WIDTH               1  /* DSP_IRQ1_EINT1 */
+
+/*
+ * R6155 (0x180B) - IRQ1 Status 12
+ */
+#define CLEARWATER_SPKOUTR_SC_EINT1              0x0080  /* SPKOUTR_SC_EINT1 */
+#define CLEARWATER_SPKOUTR_SC_EINT1_MASK         0x0080  /* SPKOUTR_SC_EINT1 */
+#define CLEARWATER_SPKOUTR_SC_EINT1_SHIFT             7  /* SPKOUTR_SC_EINT1 */
+#define CLEARWATER_SPKOUTR_SC_EINT1_WIDTH             1  /* SPKOUTR_SC_EINT1 */
+#define CLEARWATER_SPKOUTL_SC_EINT1              0x0040  /* SPKOUTL_SC_EINT1 */
+#define CLEARWATER_SPKOUTL_SC_EINT1_MASK         0x0040  /* SPKOUTL_SC_EINT1 */
+#define CLEARWATER_SPKOUTL_SC_EINT1_SHIFT             6  /* SPKOUTL_SC_EINT1 */
+#define CLEARWATER_SPKOUTL_SC_EINT1_WIDTH             1  /* SPKOUTL_SC_EINT1 */
+#define CLEARWATER_HP3R_SC_EINT1                 0x0020  /* HP3R_SC_EINT1 */
+#define CLEARWATER_HP3R_SC_EINT1_MASK            0x0020  /* HP3R_SC_EINT1 */
+#define CLEARWATER_HP3R_SC_EINT1_SHIFT                5  /* HP3R_SC_EINT1 */
+#define CLEARWATER_HP3R_SC_EINT1_WIDTH                1  /* HP3R_SC_EINT1 */
+#define CLEARWATER_HP3L_SC_EINT1                 0x0010  /* HP3L_SC_EINT1 */
+#define CLEARWATER_HP3L_SC_EINT1_MASK            0x0010  /* HP3L_SC_EINT1 */
+#define CLEARWATER_HP3L_SC_EINT1_SHIFT                4  /* HP3L_SC_EINT1 */
+#define CLEARWATER_HP3L_SC_EINT1_WIDTH                1  /* HP3L_SC_EINT1 */
+#define CLEARWATER_HP2R_SC_EINT1                 0x0008  /* HP2R_SC_EINT1 */
+#define CLEARWATER_HP2R_SC_EINT1_MASK            0x0008  /* HP2R_SC_EINT1 */
+#define CLEARWATER_HP2R_SC_EINT1_SHIFT                3  /* HP2R_SC_EINT1 */
+#define CLEARWATER_HP2R_SC_EINT1_WIDTH                1  /* HP2R_SC_EINT1 */
+#define CLEARWATER_HP2L_SC_EINT1                 0x0004  /* HP2L_SC_EINT1 */
+#define CLEARWATER_HP2L_SC_EINT1_MASK            0x0004  /* HP2L_SC_EINT1 */
+#define CLEARWATER_HP2L_SC_EINT1_SHIFT                2  /* HP2L_SC_EINT1 */
+#define CLEARWATER_HP2L_SC_EINT1_WIDTH                1  /* HP2L_SC_EINT1 */
+#define CLEARWATER_HP1R_SC_EINT1                 0x0002  /* HP1R_SC_EINT1 */
+#define CLEARWATER_HP1R_SC_EINT1_MASK            0x0002  /* HP1R_SC_EINT1 */
+#define CLEARWATER_HP1R_SC_EINT1_SHIFT                1  /* HP1R_SC_EINT1 */
+#define CLEARWATER_HP1R_SC_EINT1_WIDTH                1  /* HP1R_SC_EINT1 */
+#define CLEARWATER_HP1L_SC_EINT1                 0x0001  /* HP1L_SC_EINT1 */
+#define CLEARWATER_HP1L_SC_EINT1_MASK            0x0001  /* HP1L_SC_EINT1 */
+#define CLEARWATER_HP1L_SC_EINT1_SHIFT                0  /* HP1L_SC_EINT1 */
+#define CLEARWATER_HP1L_SC_EINT1_WIDTH                1  /* HP1L_SC_EINT1 */
+
+/*
+ * R6156 (0x180C) - IRQ1 Status 13
+ */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT1           0x0080  /* SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT1_MASK      0x0080  /* SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT1_SHIFT          7  /* SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT1_WIDTH          1  /* SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT1           0x0040  /* SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT1_MASK      0x0040  /* SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT1_SHIFT          6  /* SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT1_WIDTH          1  /* SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT1              0x0020  /* HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT1_MASK         0x0020  /* HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT1_SHIFT             5  /* HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT1_WIDTH             1  /* HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT1              0x0010  /* HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT1_MASK         0x0010  /* HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT1_SHIFT             4  /* HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT1_WIDTH             1  /* HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT1              0x0008  /* HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT1_MASK         0x0008  /* HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT1_SHIFT             3  /* HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT1_WIDTH             1  /* HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT1              0x0004  /* HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT1_MASK         0x0004  /* HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT1_SHIFT             2  /* HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT1_WIDTH             1  /* HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT1              0x0002  /* HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT1_MASK         0x0002  /* HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT1_SHIFT             1  /* HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT1_WIDTH             1  /* HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT1              0x0001  /* HP1L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT1_MASK         0x0001  /* HP1L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT1_SHIFT             0  /* HP1L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT1_WIDTH             1  /* HP1L_ENABLE_DONE_EINT1 */
+
+/*
+ * R6157 (0x180D) - IRQ1 Status 14
+ */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT1          0x0080  /* SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT1_MASK     0x0080  /* SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT1_SHIFT         7  /* SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT1_WIDTH         1  /* SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT1          0x0040  /* SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT1_MASK     0x0040  /* SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT1_SHIFT         6  /* SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT1_WIDTH         1  /* SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT1             0x0020  /* HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT1_MASK        0x0020  /* HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT1_SHIFT            5  /* HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT1_WIDTH            1  /* HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT1             0x0010  /* HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT1_MASK        0x0010  /* HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT1_SHIFT            4  /* HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT1_WIDTH            1  /* HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT1             0x0008  /* HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT1_MASK        0x0008  /* HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT1_SHIFT            3  /* HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT1_WIDTH            1  /* HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT1             0x0004  /* HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT1_MASK        0x0004  /* HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT1_SHIFT            2  /* HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT1_WIDTH            1  /* HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT1             0x0002  /* HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT1_MASK         0x0002  /* HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT1_SHIFT            1  /* HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT1_WIDTH            1  /* HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT1             0x0001  /* HP1L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT1_MASK        0x0001  /* HP1L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT1_SHIFT            0  /* HP1L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT1_WIDTH            1  /* HP1L_DISABLE_DONE_EINT1 */
+
+/*
+ * R6158 (0x180E) - IRQ1 Status 15
+ */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT1             0x0004  /* SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT1_MASK        0x0004  /* SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT1_SHIFT            2  /* SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT1_WIDTH            1  /* SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_EINT1                  0x0002  /* SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_EINT1_MASK             0x0002  /* SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_EINT1_SHIFT                 1  /* SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_SPK_OVERHEAT_EINT1_WIDTH                 1  /* SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT1                  0x0001  /* SPK_SHUTDOWN_EINT1 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT1_MASK             0x0001  /* SPK_SHUTDOWN_EINT1 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT1_SHIFT                 0  /* SPK_SHUTDOWN_EINT1 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT1_WIDTH                 1  /* SPK_SHUTDOWN_EINT1 */
+
+/*
+ * R6176 (0x1820) - IRQ1 Status 33
+ */
+#define MOON_ADSP_ERROR_STATUS_DSP7                    0x0040  /* IRQ_DSP7_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP7_MASK               0x0040  /* IRQ_DSP7_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP7_SHIFT                   6  /* IRQ_DSP7_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP7_WIDTH                   1  /* IRQ_DSP7_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP6                    0x0020  /* IRQ_DSP6_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP6_MASK               0x0020  /* IRQ_DSP6_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP6_SHIFT                   5  /* IRQ_DSP6_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP6_WIDTH                   1  /* IRQ_DSP6_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP5                    0x0010  /* IRQ_DSP5_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP5_MASK               0x0010  /* IRQ_DSP5_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP5_SHIFT                   4  /* IRQ_DSP5_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP5_WIDTH                   1  /* IRQ_DSP5_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP4                    0x0008  /* IRQ_DSP4_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP4_MASK               0x0008  /* IRQ_DSP4_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP4_SHIFT                   3  /* IRQ_DSP4_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP4_WIDTH                   1  /* IRQ_DSP4_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP3                    0x0004  /* IRQ_DSP3_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP3_MASK               0x0004  /* IRQ_DSP3_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP3_SHIFT                   2  /* IRQ_DSP3_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP3_WIDTH                   1  /* IRQ_DSP3_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP2                    0x0002  /* IRQ_DSP2_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP2_MASK               0x0002  /* IRQ_DSP2_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP2_SHIFT                   1  /* IRQ_DSP2_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP2_WIDTH                   1  /* IRQ_DSP2_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP1                    0x0001  /* IRQ_DSP1_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP1_MASK               0x0001  /* IRQ_DSP1_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP1_SHIFT                   0  /* IRQ_DSP1_BUS_ERR_EINT1 */
+#define MOON_ADSP_ERROR_STATUS_DSP1_WIDTH                   1  /* IRQ_DSP1_BUS_ERR_EINT1 */
+
+/*
+ * R6208 (0x1840) - IRQ1 Mask 1
+ */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT1         0x8000  /* IM_DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT1_MASK    0x8000  /* IM_DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT1_SHIFT       15  /* IM_DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT1_WIDTH        1  /* IM_DSP_SHARED_WR_COLL_EINT1 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT1                 0x1000  /* IM_CTRLIF_ERR_EINT1 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT1_MASK            0x1000  /* IM_CTRLIF_ERR_EINT1 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT1_SHIFT               12  /* IM_CTRLIF_ERR_EINT1 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT1_WIDTH                1  /* IM_CTRLIF_ERR_EINT1 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT1               0x0200  /* IM_IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT1_MASK          0x0200  /* IM_IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT1_SHIFT              9  /* IM_IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT1_WIDTH              1  /* IM_IRQ_NO_CLOCK_EINT1 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT1               0x0100  /* IM_CLOCK_DETECT_EINT1 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT1_MASK          0x0100  /* IM_CLOCK_DETECT_EINT1 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT1_SHIFT              8  /* IM_CLOCK_DETECT_EINT1 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT1_WIDTH              1  /* IM_CLOCK_DETECT_EINT1 */
+#define CLEARWATER_IM_BOOT_DONE_EINT1                  0x0080  /* IM_BOOT_DONE_EINT1 */
+#define CLEARWATER_IM_BOOT_DONE_EINT1_MASK             0x0080  /* IM_BOOT_DONE_EINT1 */
+#define CLEARWATER_IM_BOOT_DONE_EINT1_SHIFT                 7  /* IM_BOOT_DONE_EINT1 */
+#define CLEARWATER_IM_BOOT_DONE_EINT1_WIDTH                 1  /* IM_BOOT_DONE_EINT1 */
+
+/*
+ * R6209 (0x1841) - IRQ1 Mask 2
+ */
+#define CLEARWATER_IM_FLL3_LOCK_EINT1                  0x0400  /* IM_FLL3_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL3_LOCK_EINT1_MASK             0x0400  /* IM_FLL3_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL3_LOCK_EINT1_SHIFT                10  /* IM_FLL3_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL3_LOCK_EINT1_WIDTH                 1  /* IM_FLL3_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT1                  0x0200  /* IM_FLL2_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT1_MASK             0x0200  /* IM_FLL2_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT1_SHIFT                 9  /* IM_FLL2_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT1_WIDTH                 1  /* IM_FLL2_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT1                  0x0100  /* IM_FLL1_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT1_MASK             0x0100  /* IM_FLL1_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT1_SHIFT                 8  /* IM_FLL1_LOCK_EINT1 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT1_WIDTH                 1  /* IM_FLL1_LOCK_EINT1 */
+
+/*
+ * R6213 (0x1845) - IRQ1 Mask 6
+ */
+#define CLEARWATER_IM_MICDET_EINT1                     0x0100  /* IM_MICDET_EINT1 */
+#define CLEARWATER_IM_MICDET_EINT1_MASK                0x0100  /* IM_MICDET_EINT1 */
+#define CLEARWATER_IM_MICDET_EINT1_SHIFT                    8  /* IM_MICDET_EINT1 */
+#define CLEARWATER_IM_MICDET_EINT1_WIDTH                    1  /* IM_MICDET_EINT1 */
+#define CLEARWATER_IM_HPDET_EINT1                      0x0001  /* IM_HPDET_EINT1 */
+#define CLEARWATER_IM_HPDET_EINT1_MASK                 0x0001  /* IM_HPDET_EINT1 */
+#define CLEARWATER_IM_HPDET_EINT1_SHIFT                     0  /* IM_HPDET_EINT1 */
+#define CLEARWATER_IM_HPDET_EINT1_WIDTH                     1  /* IM_HPDET_EINT1 */
+
+/*
+ * R6214 (0x1846) - IRQ1 Mask 7
+ */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT1            0x0020  /* IM_MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT1_MASK       0x0020  /* IM_MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT1_SHIFT           5  /* IM_MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT1_WIDTH           1  /* IM_MICD_CLAMP_FALL_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT1            0x0010  /* IM_MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT1_MASK       0x0010  /* IM_MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT1_SHIFT           4  /* IM_MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT1_WIDTH           1  /* IM_MICD_CLAMP_RISE_EINT1 */
+#define CLEARWATER_IM_JD2_FALL_EINT1                   0x0008  /* IM_JD2_FALL_EINT1 */
+#define CLEARWATER_IM_JD2_FALL_EINT1_MASK              0x0008  /* IM_JD2_FALL_EINT1 */
+#define CLEARWATER_IM_JD2_FALL_EINT1_SHIFT                  3  /* IM_JD2_FALL_EINT1 */
+#define CLEARWATER_IM_JD2_FALL_EINT1_WIDTH                  1  /* IM_JD2_FALL_EINT1 */
+#define CLEARWATER_IM_JD2_RISE_EINT1                   0x0004  /* IM_JD2_RISE_EINT1 */
+#define CLEARWATER_IM_JD2_RISE_EINT1_MASK              0x0004  /* IM_JD2_RISE_EINT1 */
+#define CLEARWATER_IM_JD2_RISE_EINT1_SHIFT                  2  /* IM_JD2_RISE_EINT1 */
+#define CLEARWATER_IM_JD2_RISE_EINT1_WIDTH                  1  /* IM_JD2_RISE_EINT1 */
+#define CLEARWATER_IM_JD1_FALL_EINT1                   0x0002  /* IM_JD1_FALL_EINT1 */
+#define CLEARWATER_IM_JD1_FALL_EINT1_MASK              0x0002  /* IM_JD1_FALL_EINT1 */
+#define CLEARWATER_IM_JD1_FALL_EINT1_SHIFT                  1  /* IM_JD1_FALL_EINT1 */
+#define CLEARWATER_IM_JD1_FALL_EINT1_WIDTH                  1  /* IM_JD1_FALL_EINT1 */
+#define CLEARWATER_IM_JD1_RISE_EINT1                   0x0001  /* IM_JD1_RISE_EINT1 */
+#define CLEARWATER_IM_JD1_RISE_EINT1_MASK              0x0001  /* IM_JD1_RISE_EINT1 */
+#define CLEARWATER_IM_JD1_RISE_EINT1_SHIFT                  0  /* IM_JD1_RISE_EINT1 */
+#define CLEARWATER_IM_JD1_RISE_EINT1_WIDTH                  1  /* IM_JD1_RISE_EINT1 */
+
+/*
+ * R6216 (0x1848) - IRQ1 Mask 9
+ */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT1             0x0800  /* IM_ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT1_MASK        0x0800  /* IM_ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT1_SHIFT           11  /* IM_ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT1_WIDTH            1  /* IM_ASRC2_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT1             0x0400  /* IM_ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT1_MASK        0x0400  /* IM_ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT1_SHIFT           10  /* IM_ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT1_WIDTH            1  /* IM_ASRC2_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT1             0x0200  /* IM_ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT1_MASK        0x0200  /* IM_ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT1_SHIFT            9  /* IM_ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT1_WIDTH            1  /* IM_ASRC1_IN2_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT1             0x0100  /* IM_ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT1_MASK        0x0100  /* IM_ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT1_SHIFT            8  /* IM_ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT1_WIDTH            1  /* IM_ASRC1_IN1_LOCK_EINT1 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT1               0x0002  /* IM_DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT1_MASK          0x0002  /* IM_DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT1_SHIFT              1  /* IM_DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT1_WIDTH              1  /* IM_DRC2_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT1               0x0001  /* IM_DRC1_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT1_MASK          0x0001  /* IM_DRC1_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT1_SHIFT              0  /* IM_DRC1_SIG_DET_EINT1 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT1_WIDTH              1  /* IM_DRC1_SIG_DET_EINT1 */
+
+/*
+ * R6218 (0x184A) - IRQ1 Mask 11
+ */
+#define CLEARWATER_IM_DSP_IRQ16_EINT1                  0x8000  /* IM_DSP_IRQ16_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ16_EINT1_MASK             0x8000  /* IM_DSP_IRQ16_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ16_EINT1_SHIFT                15  /* IM_DSP_IRQ16_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ16_EINT1_WIDTH                 1  /* IM_DSP_IRQ16_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT1                  0x4000  /* IM_DSP_IRQ15_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT1_MASK             0x4000  /* IM_DSP_IRQ15_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT1_SHIFT                14  /* IM_DSP_IRQ15_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT1_WIDTH                 1  /* IM_DSP_IRQ15_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT1                  0x2000  /* IM_DSP_IRQ14_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT1_MASK             0x2000  /* IM_DSP_IRQ14_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT1_SHIFT                13  /* IM_DSP_IRQ14_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT1_WIDTH                 1  /* IM_DSP_IRQ14_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT1                  0x1000  /* IM_DSP_IRQ13_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT1_MASK             0x1000  /* IM_DSP_IRQ13_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT1_SHIFT                12  /* IM_DSP_IRQ13_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT1_WIDTH                 1  /* IM_DSP_IRQ13_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT1                  0x0800  /* IM_DSP_IRQ12_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT1_MASK             0x0800  /* IM_DSP_IRQ12_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT1_SHIFT                11  /* IM_DSP_IRQ12_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT1_WIDTH                 1  /* IM_DSP_IRQ12_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT1                  0x0400  /* IM_DSP_IRQ11_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT1_MASK             0x0400  /* IM_DSP_IRQ11_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT1_SHIFT                10  /* IM_DSP_IRQ11_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT1_WIDTH                 1  /* IM_DSP_IRQ11_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT1                  0x0200  /* IM_DSP_IRQ10_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT1_MASK             0x0200  /* IM_DSP_IRQ10_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT1_SHIFT                 9  /* IM_DSP_IRQ10_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT1_WIDTH                 1  /* IM_DSP_IRQ10_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT1                   0x0100  /* IM_DSP_IRQ9_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT1_MASK              0x0100  /* IM_DSP_IRQ9_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT1_SHIFT                  8  /* IM_DSP_IRQ9_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT1_WIDTH                  1  /* IM_DSP_IRQ9_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT1                   0x0080  /* IM_DSP_IRQ8_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT1_MASK              0x0080  /* IM_DSP_IRQ8_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT1_SHIFT                  7  /* IM_DSP_IRQ8_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT1_WIDTH                  1  /* IM_DSP_IRQ8_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT1                   0x0040  /* IM_DSP_IRQ7_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT1_MASK              0x0040  /* IM_DSP_IRQ7_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT1_SHIFT                  6  /* IM_DSP_IRQ7_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT1_WIDTH                  1  /* IM_DSP_IRQ7_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT1                   0x0020  /* IM_DSP_IRQ6_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT1_MASK              0x0020  /* IM_DSP_IRQ6_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT1_SHIFT                  5  /* IM_DSP_IRQ6_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT1_WIDTH                  1  /* IM_DSP_IRQ6_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT1                   0x0010  /* IM_DSP_IRQ5_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT1_MASK              0x0010  /* IM_DSP_IRQ5_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT1_SHIFT                  4  /* IM_DSP_IRQ5_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT1_WIDTH                  1  /* IM_DSP_IRQ5_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT1                   0x0008  /* IM_DSP_IRQ4_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT1_MASK              0x0008  /* IM_DSP_IRQ4_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT1_SHIFT                  3  /* IM_DSP_IRQ4_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT1_WIDTH                  1  /* IM_DSP_IRQ4_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT1                   0x0004  /* IM_DSP_IRQ3_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT1_MASK              0x0004  /* IM_DSP_IRQ3_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT1_SHIFT                  2  /* IM_DSP_IRQ3_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT1_WIDTH                  1  /* IM_DSP_IRQ3_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT1                   0x0002  /* IM_DSP_IRQ2_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT1_MASK              0x0002  /* IM_DSP_IRQ2_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT1_SHIFT                  1  /* IM_DSP_IRQ2_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT1_WIDTH                  1  /* IM_DSP_IRQ2_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT1                   0x0001  /* IM_DSP_IRQ1_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT1_MASK              0x0001  /* IM_DSP_IRQ1_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT1_SHIFT                  0  /* IM_DSP_IRQ1_EINT1 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT1_WIDTH                  1  /* IM_DSP_IRQ1_EINT1 */
+
+/*
+ * R6219 (0x184B) - IRQ1 Mask 12
+ */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT1                 0x0080  /* IM_SPKOUTR_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT1_MASK            0x0080  /* IM_SPKOUTR_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT1_SHIFT                7  /* IM_SPKOUTR_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT1_WIDTH                1  /* IM_SPKOUTR_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT1                 0x0040  /* IM_SPKOUTL_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT1_MASK            0x0040  /* IM_SPKOUTL_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT1_SHIFT                6  /* IM_SPKOUTL_SC_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT1_WIDTH                1  /* IM_SPKOUTL_SC_EINT1 */
+#define CLEARWATER_IM_HP3R_SC_EINT1                    0x0020  /* IM_HP3R_SC_EINT1 */
+#define CLEARWATER_IM_HP3R_SC_EINT1_MASK               0x0020  /* IM_HP3R_SC_EINT1 */
+#define CLEARWATER_IM_HP3R_SC_EINT1_SHIFT                   5  /* IM_HP3R_SC_EINT1 */
+#define CLEARWATER_IM_HP3R_SC_EINT1_WIDTH                   1  /* IM_HP3R_SC_EINT1 */
+#define CLEARWATER_IM_HP3L_SC_EINT1                    0x0010  /* IM_HP3L_SC_EINT1 */
+#define CLEARWATER_IM_HP3L_SC_EINT1_MASK               0x0010  /* IM_HP3L_SC_EINT1 */
+#define CLEARWATER_IM_HP3L_SC_EINT1_SHIFT                   4  /* IM_HP3L_SC_EINT1 */
+#define CLEARWATER_IM_HP3L_SC_EINT1_WIDTH                   1  /* IM_HP3L_SC_EINT1 */
+#define CLEARWATER_IM_HP2R_SC_EINT1                    0x0008  /* IM_HP2R_SC_EINT1 */
+#define CLEARWATER_IM_HP2R_SC_EINT1_MASK               0x0008  /* IM_HP2R_SC_EINT1 */
+#define CLEARWATER_IM_HP2R_SC_EINT1_SHIFT                   3  /* IM_HP2R_SC_EINT1 */
+#define CLEARWATER_IM_HP2R_SC_EINT1_WIDTH                   1  /* IM_HP2R_SC_EINT1 */
+#define CLEARWATER_IM_HP2L_SC_EINT1                    0x0004  /* IM_HP2L_SC_EINT1 */
+#define CLEARWATER_IM_HP2L_SC_EINT1_MASK               0x0004  /* IM_HP2L_SC_EINT1 */
+#define CLEARWATER_IM_HP2L_SC_EINT1_SHIFT                   2  /* IM_HP2L_SC_EINT1 */
+#define CLEARWATER_IM_HP2L_SC_EINT1_WIDTH                   1  /* IM_HP2L_SC_EINT1 */
+#define CLEARWATER_IM_HP1R_SC_EINT1                    0x0002  /* IM_HP1R_SC_EINT1 */
+#define CLEARWATER_IM_HP1R_SC_EINT1_MASK               0x0002  /* IM_HP1R_SC_EINT1 */
+#define CLEARWATER_IM_HP1R_SC_EINT1_SHIFT                   1  /* IM_HP1R_SC_EINT1 */
+#define CLEARWATER_IM_HP1R_SC_EINT1_WIDTH                   1  /* IM_HP1R_SC_EINT1 */
+#define CLEARWATER_IM_HP1L_SC_EINT1                    0x0001  /* IM_HP1L_SC_EINT1 */
+#define CLEARWATER_IM_HP1L_SC_EINT1_MASK               0x0001  /* IM_HP1L_SC_EINT1 */
+#define CLEARWATER_IM_HP1L_SC_EINT1_SHIFT                   0  /* IM_HP1L_SC_EINT1 */
+#define CLEARWATER_IM_HP1L_SC_EINT1_WIDTH                   1  /* IM_HP1L_SC_EINT1 */
+
+/*
+ * R6220 (0x184C) - IRQ1 Mask 13
+ */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT1        0x0080  /* IM_SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT1_MASK   0x0080  /* IM_SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT1_SHIFT       7  /* IM_SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT1_WIDTH       1  /* IM_SPKOUTR_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT1        0x0040  /* IM_SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT1_MASK   0x0040  /* IM_SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT1_SHIFT       6  /* IM_SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT1_WIDTH       1  /* IM_SPKOUTL_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT1           0x0020  /* IM_HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT1_MASK      0x0020  /* IM_HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT1_SHIFT          5  /* IM_HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT1_WIDTH          1  /* IM_HP3R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT1           0x0010  /* IM_HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT1_MASK      0x0010  /* IM_HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT1_SHIFT          4  /* IM_HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT1_WIDTH          1  /* IM_HP3L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT1           0x0008  /* IM_HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT1_MASK      0x0008  /* IM_HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT1_SHIFT          3  /* IM_HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT1_WIDTH          1  /* IM_HP2R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT1           0x0004  /* IM_HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT1_MASK      0x0004  /* IM_HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT1_SHIFT          2  /* IM_HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT1_WIDTH          1  /* IM_HP2L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT1           0x0002  /* IM_HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT1_MASK      0x0002  /* IM_HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT1_SHIFT          1  /* IM_HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT1_WIDTH          1  /* IM_HP1R_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT1           0x0001  /* IM_HP1L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT1_MASK      0x0001  /* IM_HP1L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT1_SHIFT          0  /* IM_HP1L_ENABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT1_WIDTH          1  /* IM_HP1L_ENABLE_DONE_EINT1 */
+
+/*
+ * R6221 (0x184D) - IRQ1 Mask 14
+ */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT1       0x0080  /* IM_SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT1_MASK  0x0080  /* IM_SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT1_SHIFT      7  /* IM_SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT1_WIDTH      1  /* IM_SPKOUTR_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT1       0x0040  /* IM_SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT1_MASK  0x0040  /* IM_SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT1_SHIFT      6  /* IM_SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT1_WIDTH      1  /* IM_SPKOUTL_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT1          0x0020  /* IM_HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT1_MASK     0x0020  /* IM_HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT1_SHIFT         5  /* IM_HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT1_WIDTH         1  /* IM_HP3R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT1          0x0010  /* IM_HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT1_MASK     0x0010  /* IM_HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT1_SHIFT         4  /* IM_HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT1_WIDTH         1  /* IM_HP3L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT1          0x0008  /* IM_HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT1_MASK     0x0008  /* IM_HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT1_SHIFT         3  /* IM_HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT1_WIDTH         1  /* IM_HP2R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT1          0x0004  /* IM_HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT1_MASK     0x0004  /* IM_HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT1_SHIFT         2  /* IM_HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT1_WIDTH         1  /* IM_HP2L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT1          0x0002  /* IM_HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT1_MASK     0x0002  /* IM_HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT1_SHIFT         1  /* IM_HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT1_WIDTH         1  /* IM_HP1R_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT1          0x0001  /* IM_HP1L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT1_MASK     0x0001  /* IM_HP1L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT1_SHIFT         0  /* IM_HP1L_DISABLE_DONE_EINT1 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT1_WIDTH         1  /* IM_HP1L_DISABLE_DONE_EINT1 */
+
+/*
+ * R6222 (0x184E) - IRQ1 Mask 15
+ */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT1          0x0004  /* IM_SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT1_MASK     0x0004  /* IM_SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT1_SHIFT         2  /* IM_SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT1_WIDTH         1  /* IM_SPK_OVERHEAT_WARN_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT1               0x0002  /* IM_SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT1_MASK          0x0002  /* IM_SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT1_SHIFT              1  /* IM_SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT1_WIDTH              1  /* IM_SPK_OVERHEAT_EINT1 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT1               0x0001  /* IM_SPK_SHUTDOWN_EINT1 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT1_MASK          0x0001  /* IM_SPK_SHUTDOWN_EINT1 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT1_SHIFT              0  /* IM_SPK_SHUTDOWN_EINT1 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT1_WIDTH              1  /* IM_SPK_SHUTDOWN_EINT1 */
+
+/*
+ * R6400 (0x1900) - IRQ2 Status 1
+ */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT2            0x8000  /* DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT2_MASK       0x8000  /* DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT2_SHIFT          15  /* DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_EINT2_WIDTH           1  /* DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_CTRLIF_ERR_EINT2                    0x1000  /* CTRLIF_ERR_EINT2 */
+#define CLEARWATER_CTRLIF_ERR_EINT2_MASK               0x1000  /* CTRLIF_ERR_EINT2 */
+#define CLEARWATER_CTRLIF_ERR_EINT2_SHIFT                  12  /* CTRLIF_ERR_EINT2 */
+#define CLEARWATER_CTRLIF_ERR_EINT2_WIDTH                   1  /* CTRLIF_ERR_EINT2 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT2                  0x0200  /* IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT2_MASK             0x0200  /* IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT2_SHIFT                 9  /* IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IRQ_NO_CLOCK_EINT2_WIDTH                 1  /* IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_CLOCK_DETECT_EINT2                  0x0100  /* CLOCK_DETECT_EINT2 */
+#define CLEARWATER_CLOCK_DETECT_EINT2_MASK             0x0100  /* CLOCK_DETECT_EINT2 */
+#define CLEARWATER_CLOCK_DETECT_EINT2_SHIFT                 8  /* CLOCK_DETECT_EINT2 */
+#define CLEARWATER_CLOCK_DETECT_EINT2_WIDTH                 1  /* CLOCK_DETECT_EINT2 */
+#define CLEARWATER_BOOT_DONE_EINT2                     0x0080  /* BOOT_DONE_EINT2 */
+#define CLEARWATER_BOOT_DONE_EINT2_MASK                0x0080  /* BOOT_DONE_EINT2 */
+#define CLEARWATER_BOOT_DONE_EINT2_SHIFT                    7  /* BOOT_DONE_EINT2 */
+#define CLEARWATER_BOOT_DONE_EINT2_WIDTH                    1  /* BOOT_DONE_EINT2 */
+
+/*
+ * R6401 (0x1901) - IRQ2 Status 2
+ */
+#define CLEARWATER_FLL3_LOCK_EINT2                     0x0400  /* FLL3_LOCK_EINT2 */
+#define CLEARWATER_FLL3_LOCK_EINT2_MASK                0x0400  /* FLL3_LOCK_EINT2 */
+#define CLEARWATER_FLL3_LOCK_EINT2_SHIFT                   10  /* FLL3_LOCK_EINT2 */
+#define CLEARWATER_FLL3_LOCK_EINT2_WIDTH                    1  /* FLL3_LOCK_EINT2 */
+#define CLEARWATER_FLL2_LOCK_EINT2                     0x0200  /* FLL2_LOCK_EINT2 */
+#define CLEARWATER_FLL2_LOCK_EINT2_MASK                0x0200  /* FLL2_LOCK_EINT2 */
+#define CLEARWATER_FLL2_LOCK_EINT2_SHIFT                    9  /* FLL2_LOCK_EINT2 */
+#define CLEARWATER_FLL2_LOCK_EINT2_WIDTH                    1  /* FLL2_LOCK_EINT2 */
+#define CLEARWATER_FLL1_LOCK_EINT2                     0x0100  /* FLL1_LOCK_EINT2 */
+#define CLEARWATER_FLL1_LOCK_EINT2_MASK                0x0100  /* FLL1_LOCK_EINT2 */
+#define CLEARWATER_FLL1_LOCK_EINT2_SHIFT                    8  /* FLL1_LOCK_EINT2 */
+#define CLEARWATER_FLL1_LOCK_EINT2_WIDTH                    1  /* FLL1_LOCK_EINT2 */
+
+/*
+ * R6405 (0x1905) - IRQ2 Status 6
+ */
+#define CLEARWATER_MICDET_EINT2                        0x0100  /* MICDET_EINT2 */
+#define CLEARWATER_MICDET_EINT2_MASK                   0x0100  /* MICDET_EINT2 */
+#define CLEARWATER_MICDET_EINT2_SHIFT                       8  /* MICDET_EINT2 */
+#define CLEARWATER_MICDET_EINT2_WIDTH                       1  /* MICDET_EINT2 */
+#define CLEARWATER_HPDET_EINT2                         0x0001  /* HPDET_EINT2 */
+#define CLEARWATER_HPDET_EINT2_MASK                    0x0001  /* HPDET_EINT2 */
+#define CLEARWATER_HPDET_EINT2_SHIFT                        0  /* HPDET_EINT2 */
+#define CLEARWATER_HPDET_EINT2_WIDTH                        1  /* HPDET_EINT2 */
+
+/*
+ * R6406 (0x1906) - IRQ2 Status 7
+ */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT2               0x0020  /* MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT2_MASK          0x0020  /* MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT2_SHIFT              5  /* MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_MICD_CLAMP_FALL_EINT2_WIDTH              1  /* MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT2               0x0010  /* MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT2_MASK          0x0010  /* MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT2_SHIFT              4  /* MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_MICD_CLAMP_RISE_EINT2_WIDTH              1  /* MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_JD2_FALL_EINT2                      0x0008  /* JD2_FALL_EINT2 */
+#define CLEARWATER_JD2_FALL_EINT2_MASK                 0x0008  /* JD2_FALL_EINT2 */
+#define CLEARWATER_JD2_FALL_EINT2_SHIFT                     3  /* JD2_FALL_EINT2 */
+#define CLEARWATER_JD2_FALL_EINT2_WIDTH                     1  /* JD2_FALL_EINT2 */
+#define CLEARWATER_JD2_RISE_EINT2                      0x0004  /* JD2_RISE_EINT2 */
+#define CLEARWATER_JD2_RISE_EINT2_MASK                 0x0004  /* JD2_RISE_EINT2 */
+#define CLEARWATER_JD2_RISE_EINT2_SHIFT                     2  /* JD2_RISE_EINT2 */
+#define CLEARWATER_JD2_RISE_EINT2_WIDTH                     1  /* JD2_RISE_EINT2 */
+#define CLEARWATER_JD1_FALL_EINT2                      0x0002  /* JD1_FALL_EINT2 */
+#define CLEARWATER_JD1_FALL_EINT2_MASK                 0x0002  /* JD1_FALL_EINT2 */
+#define CLEARWATER_JD1_FALL_EINT2_SHIFT                     1  /* JD1_FALL_EINT2 */
+#define CLEARWATER_JD1_FALL_EINT2_WIDTH                     1  /* JD1_FALL_EINT2 */
+#define CLEARWATER_JD1_RISE_EINT2                      0x0001  /* JD1_RISE_EINT2 */
+#define CLEARWATER_JD1_RISE_EINT2_MASK                 0x0001  /* JD1_RISE_EINT2 */
+#define CLEARWATER_JD1_RISE_EINT2_SHIFT                     0  /* JD1_RISE_EINT2 */
+#define CLEARWATER_JD1_RISE_EINT2_WIDTH                     1  /* JD1_RISE_EINT2 */
+
+/*
+ * R6408 (0x1908) - IRQ2 Status 9
+ */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT2                0x0800  /* ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT2_MASK           0x0800  /* ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT2_SHIFT              11  /* ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN2_LOCK_EINT2_WIDTH               1  /* ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT2                0x0400  /* ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT2_MASK           0x0400  /* ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT2_SHIFT              10  /* ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_EINT2_WIDTH               1  /* ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT2                0x0200  /* ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT2_MASK           0x0200  /* ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT2_SHIFT               9  /* ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_EINT2_WIDTH               1  /* ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT2                0x0100  /* ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT2_MASK           0x0100  /* ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT2_SHIFT               8  /* ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_EINT2_WIDTH               1  /* ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_DRC2_SIG_DET_EINT2                  0x0002  /* DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_DRC2_SIG_DET_EINT2_MASK             0x0002  /* DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_DRC2_SIG_DET_EINT2_SHIFT                 1  /* DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_DRC2_SIG_DET_EINT2_WIDTH                 1  /* DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_DRC1_SIG_DET_EINT2                  0x0001  /* DRC1_SIG_DET_EINT2 */
+#define CLEARWATER_DRC1_SIG_DET_EINT2_MASK             0x0001  /* DRC1_SIG_DET_EINT2 */
+#define CLEARWATER_DRC1_SIG_DET_EINT2_SHIFT                 0  /* DRC1_SIG_DET_EINT2 */
+#define CLEARWATER_DRC1_SIG_DET_EINT2_WIDTH                 1  /* DRC1_SIG_DET_EINT2 */
+
+/*
+ * R6410 (0x190A) - IRQ2 Status 11
+ */
+#define CLEARWATER_DSP_IRQ16_EINT2                     0x8000  /* DSP_IRQ16_EINT2 */
+#define CLEARWATER_DSP_IRQ16_EINT2_MASK                0x8000  /* DSP_IRQ16_EINT2 */
+#define CLEARWATER_DSP_IRQ16_EINT2_SHIFT                   15  /* DSP_IRQ16_EINT2 */
+#define CLEARWATER_DSP_IRQ16_EINT2_WIDTH                    1  /* DSP_IRQ16_EINT2 */
+#define CLEARWATER_DSP_IRQ15_EINT2                     0x4000  /* DSP_IRQ15_EINT2 */
+#define CLEARWATER_DSP_IRQ15_EINT2_MASK                0x4000  /* DSP_IRQ15_EINT2 */
+#define CLEARWATER_DSP_IRQ15_EINT2_SHIFT                   14  /* DSP_IRQ15_EINT2 */
+#define CLEARWATER_DSP_IRQ15_EINT2_WIDTH                    1  /* DSP_IRQ15_EINT2 */
+#define CLEARWATER_DSP_IRQ14_EINT2                     0x2000  /* DSP_IRQ14_EINT2 */
+#define CLEARWATER_DSP_IRQ14_EINT2_MASK                0x2000  /* DSP_IRQ14_EINT2 */
+#define CLEARWATER_DSP_IRQ14_EINT2_SHIFT                   13  /* DSP_IRQ14_EINT2 */
+#define CLEARWATER_DSP_IRQ14_EINT2_WIDTH                    1  /* DSP_IRQ14_EINT2 */
+#define CLEARWATER_DSP_IRQ13_EINT2                     0x1000  /* DSP_IRQ13_EINT2 */
+#define CLEARWATER_DSP_IRQ13_EINT2_MASK                0x1000  /* DSP_IRQ13_EINT2 */
+#define CLEARWATER_DSP_IRQ13_EINT2_SHIFT                   12  /* DSP_IRQ13_EINT2 */
+#define CLEARWATER_DSP_IRQ13_EINT2_WIDTH                    1  /* DSP_IRQ13_EINT2 */
+#define CLEARWATER_DSP_IRQ12_EINT2                     0x0800  /* DSP_IRQ12_EINT2 */
+#define CLEARWATER_DSP_IRQ12_EINT2_MASK                0x0800  /* DSP_IRQ12_EINT2 */
+#define CLEARWATER_DSP_IRQ12_EINT2_SHIFT                   11  /* DSP_IRQ12_EINT2 */
+#define CLEARWATER_DSP_IRQ12_EINT2_WIDTH                    1  /* DSP_IRQ12_EINT2 */
+#define CLEARWATER_DSP_IRQ11_EINT2                     0x0400  /* DSP_IRQ11_EINT2 */
+#define CLEARWATER_DSP_IRQ11_EINT2_MASK                0x0400  /* DSP_IRQ11_EINT2 */
+#define CLEARWATER_DSP_IRQ11_EINT2_SHIFT                   10  /* DSP_IRQ11_EINT2 */
+#define CLEARWATER_DSP_IRQ11_EINT2_WIDTH                    1  /* DSP_IRQ11_EINT2 */
+#define CLEARWATER_DSP_IRQ10_EINT2                     0x0200  /* DSP_IRQ10_EINT2 */
+#define CLEARWATER_DSP_IRQ10_EINT2_MASK                0x0200  /* DSP_IRQ10_EINT2 */
+#define CLEARWATER_DSP_IRQ10_EINT2_SHIFT                    9  /* DSP_IRQ10_EINT2 */
+#define CLEARWATER_DSP_IRQ10_EINT2_WIDTH                    1  /* DSP_IRQ10_EINT2 */
+#define CLEARWATER_DSP_IRQ9_EINT2                      0x0100  /* DSP_IRQ9_EINT2 */
+#define CLEARWATER_DSP_IRQ9_EINT2_MASK                 0x0100  /* DSP_IRQ9_EINT2 */
+#define CLEARWATER_DSP_IRQ9_EINT2_SHIFT                     8  /* DSP_IRQ9_EINT2 */
+#define CLEARWATER_DSP_IRQ9_EINT2_WIDTH                     1  /* DSP_IRQ9_EINT2 */
+#define CLEARWATER_DSP_IRQ8_EINT2                      0x0080  /* DSP_IRQ8_EINT2 */
+#define CLEARWATER_DSP_IRQ8_EINT2_MASK                 0x0080  /* DSP_IRQ8_EINT2 */
+#define CLEARWATER_DSP_IRQ8_EINT2_SHIFT                     7  /* DSP_IRQ8_EINT2 */
+#define CLEARWATER_DSP_IRQ8_EINT2_WIDTH                     1  /* DSP_IRQ8_EINT2 */
+#define CLEARWATER_DSP_IRQ7_EINT2                      0x0040  /* DSP_IRQ7_EINT2 */
+#define CLEARWATER_DSP_IRQ7_EINT2_MASK                 0x0040  /* DSP_IRQ7_EINT2 */
+#define CLEARWATER_DSP_IRQ7_EINT2_SHIFT                     6  /* DSP_IRQ7_EINT2 */
+#define CLEARWATER_DSP_IRQ7_EINT2_WIDTH                     1  /* DSP_IRQ7_EINT2 */
+#define CLEARWATER_DSP_IRQ6_EINT2                      0x0020  /* DSP_IRQ6_EINT2 */
+#define CLEARWATER_DSP_IRQ6_EINT2_MASK                 0x0020  /* DSP_IRQ6_EINT2 */
+#define CLEARWATER_DSP_IRQ6_EINT2_SHIFT                     5  /* DSP_IRQ6_EINT2 */
+#define CLEARWATER_DSP_IRQ6_EINT2_WIDTH                     1  /* DSP_IRQ6_EINT2 */
+#define CLEARWATER_DSP_IRQ5_EINT2                      0x0010  /* DSP_IRQ5_EINT2 */
+#define CLEARWATER_DSP_IRQ5_EINT2_MASK                 0x0010  /* DSP_IRQ5_EINT2 */
+#define CLEARWATER_DSP_IRQ5_EINT2_SHIFT                     4  /* DSP_IRQ5_EINT2 */
+#define CLEARWATER_DSP_IRQ5_EINT2_WIDTH                     1  /* DSP_IRQ5_EINT2 */
+#define CLEARWATER_DSP_IRQ4_EINT2                      0x0008  /* DSP_IRQ4_EINT2 */
+#define CLEARWATER_DSP_IRQ4_EINT2_MASK                 0x0008  /* DSP_IRQ4_EINT2 */
+#define CLEARWATER_DSP_IRQ4_EINT2_SHIFT                     3  /* DSP_IRQ4_EINT2 */
+#define CLEARWATER_DSP_IRQ4_EINT2_WIDTH                     1  /* DSP_IRQ4_EINT2 */
+#define CLEARWATER_DSP_IRQ3_EINT2                      0x0004  /* DSP_IRQ3_EINT2 */
+#define CLEARWATER_DSP_IRQ3_EINT2_MASK                 0x0004  /* DSP_IRQ3_EINT2 */
+#define CLEARWATER_DSP_IRQ3_EINT2_SHIFT                     2  /* DSP_IRQ3_EINT2 */
+#define CLEARWATER_DSP_IRQ3_EINT2_WIDTH                     1  /* DSP_IRQ3_EINT2 */
+#define CLEARWATER_DSP_IRQ2_EINT2                      0x0002  /* DSP_IRQ2_EINT2 */
+#define CLEARWATER_DSP_IRQ2_EINT2_MASK                 0x0002  /* DSP_IRQ2_EINT2 */
+#define CLEARWATER_DSP_IRQ2_EINT2_SHIFT                     1  /* DSP_IRQ2_EINT2 */
+#define CLEARWATER_DSP_IRQ2_EINT2_WIDTH                     1  /* DSP_IRQ2_EINT2 */
+#define CLEARWATER_DSP_IRQ1_EINT2                      0x0001  /* DSP_IRQ1_EINT2 */
+#define CLEARWATER_DSP_IRQ1_EINT2_MASK                 0x0001  /* DSP_IRQ1_EINT2 */
+#define CLEARWATER_DSP_IRQ1_EINT2_SHIFT                     0  /* DSP_IRQ1_EINT2 */
+#define CLEARWATER_DSP_IRQ1_EINT2_WIDTH                     1  /* DSP_IRQ1_EINT2 */
+
+/*
+ * R6411 (0x190B) - IRQ2 Status 12
+ */
+#define CLEARWATER_SPKOUTR_SC_EINT2                    0x0080  /* SPKOUTR_SC_EINT2 */
+#define CLEARWATER_SPKOUTR_SC_EINT2_MASK               0x0080  /* SPKOUTR_SC_EINT2 */
+#define CLEARWATER_SPKOUTR_SC_EINT2_SHIFT                   7  /* SPKOUTR_SC_EINT2 */
+#define CLEARWATER_SPKOUTR_SC_EINT2_WIDTH                   1  /* SPKOUTR_SC_EINT2 */
+#define CLEARWATER_SPKOUTL_SC_EINT2                    0x0040  /* SPKOUTL_SC_EINT2 */
+#define CLEARWATER_SPKOUTL_SC_EINT2_MASK               0x0040  /* SPKOUTL_SC_EINT2 */
+#define CLEARWATER_SPKOUTL_SC_EINT2_SHIFT                   6  /* SPKOUTL_SC_EINT2 */
+#define CLEARWATER_SPKOUTL_SC_EINT2_WIDTH                   1  /* SPKOUTL_SC_EINT2 */
+#define CLEARWATER_HP3R_SC_EINT2                       0x0020  /* HP3R_SC_EINT2 */
+#define CLEARWATER_HP3R_SC_EINT2_MASK                  0x0020  /* HP3R_SC_EINT2 */
+#define CLEARWATER_HP3R_SC_EINT2_SHIFT                      5  /* HP3R_SC_EINT2 */
+#define CLEARWATER_HP3R_SC_EINT2_WIDTH                      1  /* HP3R_SC_EINT2 */
+#define CLEARWATER_HP3L_SC_EINT2                       0x0010  /* HP3L_SC_EINT2 */
+#define CLEARWATER_HP3L_SC_EINT2_MASK                  0x0010  /* HP3L_SC_EINT2 */
+#define CLEARWATER_HP3L_SC_EINT2_SHIFT                      4  /* HP3L_SC_EINT2 */
+#define CLEARWATER_HP3L_SC_EINT2_WIDTH                      1  /* HP3L_SC_EINT2 */
+#define CLEARWATER_HP2R_SC_EINT2                       0x0008  /* HP2R_SC_EINT2 */
+#define CLEARWATER_HP2R_SC_EINT2_MASK                  0x0008  /* HP2R_SC_EINT2 */
+#define CLEARWATER_HP2R_SC_EINT2_SHIFT                      3  /* HP2R_SC_EINT2 */
+#define CLEARWATER_HP2R_SC_EINT2_WIDTH                      1  /* HP2R_SC_EINT2 */
+#define CLEARWATER_HP2L_SC_EINT2                       0x0004  /* HP2L_SC_EINT2 */
+#define CLEARWATER_HP2L_SC_EINT2_MASK                  0x0004  /* HP2L_SC_EINT2 */
+#define CLEARWATER_HP2L_SC_EINT2_SHIFT                      2  /* HP2L_SC_EINT2 */
+#define CLEARWATER_HP2L_SC_EINT2_WIDTH                      1  /* HP2L_SC_EINT2 */
+#define CLEARWATER_HP1R_SC_EINT2                       0x0002  /* HP1R_SC_EINT2 */
+#define CLEARWATER_HP1R_SC_EINT2_MASK                  0x0002  /* HP1R_SC_EINT2 */
+#define CLEARWATER_HP1R_SC_EINT2_SHIFT                      1  /* HP1R_SC_EINT2 */
+#define CLEARWATER_HP1R_SC_EINT2_WIDTH                      1  /* HP1R_SC_EINT2 */
+#define CLEARWATER_HP1L_SC_EINT2                       0x0001  /* HP1L_SC_EINT2 */
+#define CLEARWATER_HP1L_SC_EINT2_MASK                  0x0001  /* HP1L_SC_EINT2 */
+#define CLEARWATER_HP1L_SC_EINT2_SHIFT                      0  /* HP1L_SC_EINT2 */
+#define CLEARWATER_HP1L_SC_EINT2_WIDTH                      1  /* HP1L_SC_EINT2 */
+
+/*
+ * R6412 (0x190C) - IRQ2 Status 13
+ */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT2           0x0080  /* SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT2_MASK      0x0080  /* SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT2_SHIFT          7  /* SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_EINT2_WIDTH          1  /* SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT2           0x0040  /* SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT2_MASK      0x0040  /* SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT2_SHIFT          6  /* SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_EINT2_WIDTH          1  /* SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT2              0x0020  /* HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT2_MASK         0x0020  /* HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT2_SHIFT             5  /* HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_EINT2_WIDTH             1  /* HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT2              0x0010  /* HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT2_MASK         0x0010  /* HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT2_SHIFT             4  /* HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_EINT2_WIDTH             1  /* HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT2              0x0008  /* HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT2_MASK         0x0008  /* HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT2_SHIFT             3  /* HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_EINT2_WIDTH             1  /* HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT2              0x0004  /* HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT2_MASK         0x0004  /* HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT2_SHIFT             2  /* HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_EINT2_WIDTH             1  /* HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT2              0x0002  /* HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT2_MASK         0x0002  /* HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT2_SHIFT             1  /* HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_EINT2_WIDTH             1  /* HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT2              0x0001  /* HP1L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT2_MASK         0x0001  /* HP1L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT2_SHIFT             0  /* HP1L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_EINT2_WIDTH             1  /* HP1L_ENABLE_DONE_EINT2 */
+
+/*
+ * R6413 (0x190D) - IRQ2 Status 14
+ */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT2          0x0080  /* SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT2_MASK     0x0080  /* SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT2_SHIFT         7  /* SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_EINT2_WIDTH         1  /* SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT2          0x0040  /* SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT2_MASK     0x0040  /* SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT2_SHIFT         6  /* SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_EINT2_WIDTH         1  /* SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT2             0x0020  /* HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT2_MASK        0x0020  /* HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT2_SHIFT            5  /* HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_EINT2_WIDTH            1  /* HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT2             0x0010  /* HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT2_MASK        0x0010  /* HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT2_SHIFT            4  /* HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_EINT2_WIDTH            1  /* HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT2             0x0008  /* HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT2_MASK        0x0008  /* HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT2_SHIFT            3  /* HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_EINT2_WIDTH            1  /* HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT2             0x0004  /* HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT2_MASK        0x0004  /* HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT2_SHIFT            2  /* HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_EINT2_WIDTH            1  /* HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT2             0x0002  /* HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT2_MASK        0x0002  /* HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT2_SHIFT            1  /* HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_EINT2_WIDTH            1  /* HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT2             0x0001  /* HP1L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT2_MASK        0x0001  /* HP1L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT2_SHIFT            0  /* HP1L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_EINT2_WIDTH            1  /* HP1L_DISABLE_DONE_EINT2 */
+
+/*
+ * R6414 (0x190E) - IRQ2 Status 15
+ */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT2             0x0004  /* SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT2_MASK        0x0004  /* SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT2_SHIFT            2  /* SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_EINT2_WIDTH            1  /* SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_EINT2                  0x0002  /* SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_EINT2_MASK             0x0002  /* SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_EINT2_SHIFT                 1  /* SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_SPK_OVERHEAT_EINT2_WIDTH                 1  /* SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT2                  0x0001  /* SPK_SHUTDOWN_EINT2 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT2_MASK             0x0001  /* SPK_SHUTDOWN_EINT2 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT2_SHIFT                 0  /* SPK_SHUTDOWN_EINT2 */
+#define CLEARWATER_SPK_SHUTDOWN_EINT2_WIDTH                 1  /* SPK_SHUTDOWN_EINT2 */
+
+/*
+ * R6464 (0x1940) - IRQ2 Mask 1
+ */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT2         0x8000  /* IM_DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT2_MASK    0x8000  /* IM_DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT2_SHIFT       15  /* IM_DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_IM_DSP_SHARED_WR_COLL_EINT2_WIDTH        1  /* IM_DSP_SHARED_WR_COLL_EINT2 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT2                 0x1000  /* IM_CTRLIF_ERR_EINT2 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT2_MASK            0x1000  /* IM_CTRLIF_ERR_EINT2 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT2_SHIFT               12  /* IM_CTRLIF_ERR_EINT2 */
+#define CLEARWATER_IM_CTRLIF_ERR_EINT2_WIDTH                1  /* IM_CTRLIF_ERR_EINT2 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT2               0x0200  /* IM_IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT2_MASK          0x0200  /* IM_IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT2_SHIFT              9  /* IM_IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IM_IRQ_NO_CLOCK_EINT2_WIDTH              1  /* IM_IRQ_NO_CLOCK_EINT2 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT2               0x0100  /* IM_CLOCK_DETECT_EINT2 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT2_MASK          0x0100  /* IM_CLOCK_DETECT_EINT2 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT2_SHIFT              8  /* IM_CLOCK_DETECT_EINT2 */
+#define CLEARWATER_IM_CLOCK_DETECT_EINT2_WIDTH              1  /* IM_CLOCK_DETECT_EINT2 */
+#define CLEARWATER_IM_BOOT_DONE_EINT2                  0x0080  /* IM_BOOT_DONE_EINT2 */
+#define CLEARWATER_IM_BOOT_DONE_EINT2_MASK             0x0080  /* IM_BOOT_DONE_EINT2 */
+#define CLEARWATER_IM_BOOT_DONE_EINT2_SHIFT                 7  /* IM_BOOT_DONE_EINT2 */
+#define CLEARWATER_IM_BOOT_DONE_EINT2_WIDTH                 1  /* IM_BOOT_DONE_EINT2 */
+
+/*
+ * R6465 (0x1941) - IRQ2 Mask 2
+ */
+#define CLEARWATER_IM_FLL3_LOCK_EINT2                  0x0400  /* IM_FLL3_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL3_LOCK_EINT2_MASK             0x0400  /* IM_FLL3_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL3_LOCK_EINT2_SHIFT                10  /* IM_FLL3_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL3_LOCK_EINT2_WIDTH                 1  /* IM_FLL3_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT2                  0x0200  /* IM_FLL2_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT2_MASK             0x0200  /* IM_FLL2_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT2_SHIFT                 9  /* IM_FLL2_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL2_LOCK_EINT2_WIDTH                 1  /* IM_FLL2_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT2                  0x0100  /* IM_FLL1_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT2_MASK             0x0100  /* IM_FLL1_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT2_SHIFT                 8  /* IM_FLL1_LOCK_EINT2 */
+#define CLEARWATER_IM_FLL1_LOCK_EINT2_WIDTH                 1  /* IM_FLL1_LOCK_EINT2 */
+
+/*
+ * R6469 (0x1945) - IRQ2 Mask 6
+ */
+#define CLEARWATER_IM_MICDET_EINT2                     0x0100  /* IM_MICDET_EINT2 */
+#define CLEARWATER_IM_MICDET_EINT2_MASK                0x0100  /* IM_MICDET_EINT2 */
+#define CLEARWATER_IM_MICDET_EINT2_SHIFT                    8  /* IM_MICDET_EINT2 */
+#define CLEARWATER_IM_MICDET_EINT2_WIDTH                    1  /* IM_MICDET_EINT2 */
+#define CLEARWATER_IM_HPDET_EINT2                      0x0001  /* IM_HPDET_EINT2 */
+#define CLEARWATER_IM_HPDET_EINT2_MASK                 0x0001  /* IM_HPDET_EINT2 */
+#define CLEARWATER_IM_HPDET_EINT2_SHIFT                     0  /* IM_HPDET_EINT2 */
+#define CLEARWATER_IM_HPDET_EINT2_WIDTH                     1  /* IM_HPDET_EINT2 */
+
+/*
+ * R6470 (0x1946) - IRQ2 Mask 7
+ */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT2            0x0020  /* IM_MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT2_MASK       0x0020  /* IM_MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT2_SHIFT           5  /* IM_MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_FALL_EINT2_WIDTH           1  /* IM_MICD_CLAMP_FALL_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT2            0x0010  /* IM_MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT2_MASK       0x0010  /* IM_MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT2_SHIFT           4  /* IM_MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_IM_MICD_CLAMP_RISE_EINT2_WIDTH           1  /* IM_MICD_CLAMP_RISE_EINT2 */
+#define CLEARWATER_IM_JD2_FALL_EINT2                   0x0008  /* IM_JD2_FALL_EINT2 */
+#define CLEARWATER_IM_JD2_FALL_EINT2_MASK              0x0008  /* IM_JD2_FALL_EINT2 */
+#define CLEARWATER_IM_JD2_FALL_EINT2_SHIFT                  3  /* IM_JD2_FALL_EINT2 */
+#define CLEARWATER_IM_JD2_FALL_EINT2_WIDTH                  1  /* IM_JD2_FALL_EINT2 */
+#define CLEARWATER_IM_JD2_RISE_EINT2                   0x0004  /* IM_JD2_RISE_EINT2 */
+#define CLEARWATER_IM_JD2_RISE_EINT2_MASK              0x0004  /* IM_JD2_RISE_EINT2 */
+#define CLEARWATER_IM_JD2_RISE_EINT2_SHIFT                  2  /* IM_JD2_RISE_EINT2 */
+#define CLEARWATER_IM_JD2_RISE_EINT2_WIDTH                  1  /* IM_JD2_RISE_EINT2 */
+#define CLEARWATER_IM_JD1_FALL_EINT2                   0x0002  /* IM_JD1_FALL_EINT2 */
+#define CLEARWATER_IM_JD1_FALL_EINT2_MASK              0x0002  /* IM_JD1_FALL_EINT2 */
+#define CLEARWATER_IM_JD1_FALL_EINT2_SHIFT                  1  /* IM_JD1_FALL_EINT2 */
+#define CLEARWATER_IM_JD1_FALL_EINT2_WIDTH                  1  /* IM_JD1_FALL_EINT2 */
+#define CLEARWATER_IM_JD1_RISE_EINT2                   0x0001  /* IM_JD1_RISE_EINT2 */
+#define CLEARWATER_IM_JD1_RISE_EINT2_MASK              0x0001  /* IM_JD1_RISE_EINT2 */
+#define CLEARWATER_IM_JD1_RISE_EINT2_SHIFT                  0  /* IM_JD1_RISE_EINT2 */
+#define CLEARWATER_IM_JD1_RISE_EINT2_WIDTH                  1  /* IM_JD1_RISE_EINT2 */
+
+/*
+ * R6472 (0x1948) - IRQ2 Mask 9
+ */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT2             0x0800  /* IM_ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT2_MASK        0x0800  /* IM_ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT2_SHIFT           11  /* IM_ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN2_LOCK_EINT2_WIDTH            1  /* IM_ASRC2_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT2             0x0400  /* IM_ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT2_MASK        0x0400  /* IM_ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT2_SHIFT           10  /* IM_ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC2_IN1_LOCK_EINT2_WIDTH            1  /* IM_ASRC2_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT2             0x0200  /* IM_ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT2_MASK        0x0200  /* IM_ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT2_SHIFT            9  /* IM_ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN2_LOCK_EINT2_WIDTH            1  /* IM_ASRC1_IN2_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT2             0x0100  /* IM_ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT2_MASK        0x0100  /* IM_ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT2_SHIFT            8  /* IM_ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_ASRC1_IN1_LOCK_EINT2_WIDTH            1  /* IM_ASRC1_IN1_LOCK_EINT2 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT2               0x0002  /* IM_DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT2_MASK          0x0002  /* IM_DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT2_SHIFT              1  /* IM_DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC2_SIG_DET_EINT2_WIDTH              1  /* IM_DRC2_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT2               0x0001  /* IM_DRC1_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT2_MASK          0x0001  /* IM_DRC1_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT2_SHIFT              0  /* IM_DRC1_SIG_DET_EINT2 */
+#define CLEARWATER_IM_DRC1_SIG_DET_EINT2_WIDTH              1  /* IM_DRC1_SIG_DET_EINT2 */
+
+/*
+ * R6474 (0x194A) - IRQ2 Mask 11
+ */
+#define CLEARWATER_IM_DSP_IRQ16_EINT2                  0x8000  /* IM_DSP_IRQ16_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ16_EINT2_MASK             0x8000  /* IM_DSP_IRQ16_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ16_EINT2_SHIFT                15  /* IM_DSP_IRQ16_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ16_EINT2_WIDTH                 1  /* IM_DSP_IRQ16_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT2                  0x4000  /* IM_DSP_IRQ15_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT2_MASK             0x4000  /* IM_DSP_IRQ15_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT2_SHIFT                14  /* IM_DSP_IRQ15_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ15_EINT2_WIDTH                 1  /* IM_DSP_IRQ15_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT2                  0x2000  /* IM_DSP_IRQ14_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT2_MASK             0x2000  /* IM_DSP_IRQ14_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT2_SHIFT                13  /* IM_DSP_IRQ14_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ14_EINT2_WIDTH                 1  /* IM_DSP_IRQ14_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT2                  0x1000  /* IM_DSP_IRQ13_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT2_MASK             0x1000  /* IM_DSP_IRQ13_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT2_SHIFT                12  /* IM_DSP_IRQ13_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ13_EINT2_WIDTH                 1  /* IM_DSP_IRQ13_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT2                  0x0800  /* IM_DSP_IRQ12_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT2_MASK             0x0800  /* IM_DSP_IRQ12_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT2_SHIFT                11  /* IM_DSP_IRQ12_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ12_EINT2_WIDTH                 1  /* IM_DSP_IRQ12_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT2                  0x0400  /* IM_DSP_IRQ11_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT2_MASK             0x0400  /* IM_DSP_IRQ11_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT2_SHIFT                10  /* IM_DSP_IRQ11_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ11_EINT2_WIDTH                 1  /* IM_DSP_IRQ11_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT2                  0x0200  /* IM_DSP_IRQ10_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT2_MASK             0x0200  /* IM_DSP_IRQ10_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT2_SHIFT                 9  /* IM_DSP_IRQ10_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ10_EINT2_WIDTH                 1  /* IM_DSP_IRQ10_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT2                   0x0100  /* IM_DSP_IRQ9_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT2_MASK              0x0100  /* IM_DSP_IRQ9_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT2_SHIFT                  8  /* IM_DSP_IRQ9_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ9_EINT2_WIDTH                  1  /* IM_DSP_IRQ9_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT2                   0x0080  /* IM_DSP_IRQ8_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT2_MASK              0x0080  /* IM_DSP_IRQ8_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT2_SHIFT                  7  /* IM_DSP_IRQ8_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ8_EINT2_WIDTH                  1  /* IM_DSP_IRQ8_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT2                   0x0040  /* IM_DSP_IRQ7_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT2_MASK              0x0040  /* IM_DSP_IRQ7_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT2_SHIFT                  6  /* IM_DSP_IRQ7_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ7_EINT2_WIDTH                  1  /* IM_DSP_IRQ7_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT2                   0x0020  /* IM_DSP_IRQ6_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT2_MASK              0x0020  /* IM_DSP_IRQ6_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT2_SHIFT                  5  /* IM_DSP_IRQ6_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ6_EINT2_WIDTH                  1  /* IM_DSP_IRQ6_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT2                   0x0010  /* IM_DSP_IRQ5_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT2_MASK              0x0010  /* IM_DSP_IRQ5_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT2_SHIFT                  4  /* IM_DSP_IRQ5_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ5_EINT2_WIDTH                  1  /* IM_DSP_IRQ5_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT2                   0x0008  /* IM_DSP_IRQ4_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT2_MASK              0x0008  /* IM_DSP_IRQ4_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT2_SHIFT                  3  /* IM_DSP_IRQ4_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ4_EINT2_WIDTH                  1  /* IM_DSP_IRQ4_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT2                   0x0004  /* IM_DSP_IRQ3_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT2_MASK              0x0004  /* IM_DSP_IRQ3_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT2_SHIFT                  2  /* IM_DSP_IRQ3_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ3_EINT2_WIDTH                  1  /* IM_DSP_IRQ3_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT2                   0x0002  /* IM_DSP_IRQ2_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT2_MASK              0x0002  /* IM_DSP_IRQ2_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT2_SHIFT                  1  /* IM_DSP_IRQ2_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ2_EINT2_WIDTH                  1  /* IM_DSP_IRQ2_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT2                   0x0001  /* IM_DSP_IRQ1_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT2_MASK              0x0001  /* IM_DSP_IRQ1_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT2_SHIFT                  0  /* IM_DSP_IRQ1_EINT2 */
+#define CLEARWATER_IM_DSP_IRQ1_EINT2_WIDTH                  1  /* IM_DSP_IRQ1_EINT2 */
+
+/*
+ * R6272 (0x1880) - IRQ1 Raw Status 1
+ */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS1            0x8000  /* DSP_SHARED_WR_COLL_STS1 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS1_MASK       0x8000  /* DSP_SHARED_WR_COLL_STS1 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS1_SHIFT          15  /* DSP_SHARED_WR_COLL_STS1 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS1_WIDTH           1  /* DSP_SHARED_WR_COLL_STS1 */
+#define CLEARWATER_CTRLIF_ERR_STS1                    0x1000  /* CTRLIF_ERR_STS1 */
+#define CLEARWATER_CTRLIF_ERR_STS1_MASK               0x1000  /* CTRLIF_ERR_STS1 */
+#define CLEARWATER_CTRLIF_ERR_STS1_SHIFT                  12  /* CTRLIF_ERR_STS1 */
+#define CLEARWATER_CTRLIF_ERR_STS1_WIDTH                   1  /* CTRLIF_ERR_STS1 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS1                  0x0200  /* IRQ_NO_CLOCK_STS1 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS1_MASK             0x0200  /* IRQ_NO_CLOCK_STS1 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS1_SHIFT                 9  /* IRQ_NO_CLOCK_STS1 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS1_WIDTH                 1  /* IRQ_NO_CLOCK_STS1 */
+#define CLEARWATER_CLOCK_DETECT_STS1                  0x0100  /* CLOCK_DETECT_STS1 */
+#define CLEARWATER_CLOCK_DETECT_STS1_MASK             0x0100  /* CLOCK_DETECT_STS1 */
+#define CLEARWATER_CLOCK_DETECT_STS1_SHIFT                 8  /* CLOCK_DETECT_STS1 */
+#define CLEARWATER_CLOCK_DETECT_STS1_WIDTH                 1  /* CLOCK_DETECT_STS1 */
+#define CLEARWATER_BOOT_DONE_STS1                     0x0080  /* BOOT_DONE_STS1 */
+#define CLEARWATER_BOOT_DONE_STS1_MASK                0x0080  /* BOOT_DONE_STS1 */
+#define CLEARWATER_BOOT_DONE_STS1_SHIFT                    7  /* BOOT_DONE_STS1 */
+#define CLEARWATER_BOOT_DONE_STS1_WIDTH                    1  /* BOOT_DONE_STS1 */
+
+/*
+ * R6273 (0x1881) - IRQ1 Raw Status 2
+ */
+#define MOON_FLLAO_LOCK_STS1                          0x0800  /* FLLAO_LOCK_STS1 */
+#define MOON_FLLAO_LOCK_STS1_MASK                     0x0800  /* FLLAO_LOCK_STS1 */
+#define MOON_FLLAO_LOCK_STS1_SHIFT                        11  /* FLLAO_LOCK_STS1 */
+#define MOON_FLLAO_LOCK_STS1_WIDTH                         1  /* FLLAO_LOCK_STS1 */
+#define CLEARWATER_FLL3_LOCK_STS1                     0x0400  /* FLL3_LOCK_STS1 */
+#define CLEARWATER_FLL3_LOCK_STS1_MASK                0x0400  /* FLL3_LOCK_STS1 */
+#define CLEARWATER_FLL3_LOCK_STS1_SHIFT                   10  /* FLL3_LOCK_STS1 */
+#define CLEARWATER_FLL3_LOCK_STS1_WIDTH                    1  /* FLL3_LOCK_STS1 */
+#define CLEARWATER_FLL2_LOCK_STS1                     0x0200  /* FLL2_LOCK_STS1 */
+#define CLEARWATER_FLL2_LOCK_STS1_MASK                0x0200  /* FLL2_LOCK_STS1 */
+#define CLEARWATER_FLL2_LOCK_STS1_SHIFT                    9  /* FLL2_LOCK_STS1 */
+#define CLEARWATER_FLL2_LOCK_STS1_WIDTH                    1  /* FLL2_LOCK_STS1 */
+#define CLEARWATER_FLL1_LOCK_STS1                     0x0100  /* FLL1_LOCK_STS1 */
+#define CLEARWATER_FLL1_LOCK_STS1_MASK                0x0100  /* FLL1_LOCK_STS1 */
+#define CLEARWATER_FLL1_LOCK_STS1_SHIFT                    8  /* FLL1_LOCK_STS1 */
+#define CLEARWATER_FLL1_LOCK_STS1_WIDTH                    1  /* FLL1_LOCK_STS1 */
+
+/*
+ * R6277 (0x1885) - IRQ1 Raw Status 6
+ */
+#define CLEARWATER_MICDET_STS1                        0x0100  /* MICDET_STS1 */
+#define CLEARWATER_MICDET_STS1_MASK                   0x0100  /* MICDET_STS1 */
+#define CLEARWATER_MICDET_STS1_SHIFT                       8  /* MICDET_STS1 */
+#define CLEARWATER_MICDET_STS1_WIDTH                       1  /* MICDET_STS1 */
+#define CLEARWATER_HPDET_STS1                         0x0001  /* HPDET_STS1 */
+#define CLEARWATER_HPDET_STS1_MASK                    0x0001  /* HPDET_STS1 */
+#define CLEARWATER_HPDET_STS1_SHIFT                        0  /* HPDET_STS1 */
+#define CLEARWATER_HPDET_STS1_WIDTH                        1  /* HPDET_STS1 */
+
+/*
+ * R6278 (0x1886) - IRQ1 Raw Status 7
+ */
+#define CLEARWATER_MICD_CLAMP_FALL_STS1               0x0020  /* MICD_CLAMP_FALL_STS1 */
+#define CLEARWATER_MICD_CLAMP_FALL_STS1_MASK          0x0020  /* MICD_CLAMP_FALL_STS1 */
+#define CLEARWATER_MICD_CLAMP_FALL_STS1_SHIFT              5  /* MICD_CLAMP_FALL_STS1 */
+#define CLEARWATER_MICD_CLAMP_FALL_STS1_WIDTH              1  /* MICD_CLAMP_FALL_STS1 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS1               0x0010  /* MICD_CLAMP_RISE_STS1 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS1_MASK          0x0010  /* MICD_CLAMP_RISE_STS1 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS1_SHIFT              4  /* MICD_CLAMP_RISE_STS1 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS1_WIDTH              1  /* MICD_CLAMP_RISE_STS1 */
+#define CLEARWATER_JD2_FALL_STS1                      0x0008  /* JD2_FALL_STS1 */
+#define CLEARWATER_JD2_FALL_STS1_MASK                 0x0008  /* JD2_FALL_STS1 */
+#define CLEARWATER_JD2_FALL_STS1_SHIFT                     3  /* JD2_FALL_STS1 */
+#define CLEARWATER_JD2_FALL_STS1_WIDTH                     1  /* JD2_FALL_STS1 */
+#define CLEARWATER_JD2_RISE_STS1                      0x0004  /* JD2_RISE_STS1 */
+#define CLEARWATER_JD2_RISE_STS1_MASK                 0x0004  /* JD2_RISE_STS1 */
+#define CLEARWATER_JD2_RISE_STS1_SHIFT                     2  /* JD2_RISE_STS1 */
+#define CLEARWATER_JD2_RISE_STS1_WIDTH                     1  /* JD2_RISE_STS1 */
+#define CLEARWATER_JD1_FALL_STS1                      0x0002  /* JD1_FALL_STS1 */
+#define CLEARWATER_JD1_FALL_STS1_MASK                 0x0002  /* JD1_FALL_STS1 */
+#define CLEARWATER_JD1_FALL_STS1_SHIFT                     1  /* JD1_FALL_STS1 */
+#define CLEARWATER_JD1_FALL_STS1_WIDTH                     1  /* JD1_FALL_STS1 */
+#define CLEARWATER_JD1_RISE_STS1                      0x0001  /* JD1_RISE_STS1 */
+#define CLEARWATER_JD1_RISE_STS1_MASK                 0x0001  /* JD1_RISE_STS1 */
+#define CLEARWATER_JD1_RISE_STS1_SHIFT                     0  /* JD1_RISE_STS1 */
+#define CLEARWATER_JD1_RISE_STS1_WIDTH                     1  /* JD1_RISE_STS1 */
+
+/*
+ * R6280 (0x1888) - IRQ1 Raw Status 9
+ */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS1                0x0800  /* ASRC2_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS1_MASK           0x0800  /* ASRC2_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS1_SHIFT              11  /* ASRC2_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS1_WIDTH               1  /* ASRC2_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS1                0x0400  /* ASRC2_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS1_MASK           0x0400  /* ASRC2_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS1_SHIFT              10  /* ASRC2_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS1_WIDTH               1  /* ASRC2_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS1                0x0200  /* ASRC1_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS1_MASK           0x0200  /* ASRC1_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS1_SHIFT               9  /* ASRC1_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS1_WIDTH               1  /* ASRC1_IN2_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS1                0x0100  /* ASRC1_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS1_MASK           0x0100  /* ASRC1_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS1_SHIFT               8  /* ASRC1_IN1_LOCK_STS1 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS1_WIDTH               1  /* ASRC1_IN1_LOCK_STS1 */
+#define CLEARWATER_DRC2_SIG_DET_STS1                  0x0002  /* DRC2_SIG_DET_STS1 */
+#define CLEARWATER_DRC2_SIG_DET_STS1_MASK             0x0002  /* DRC2_SIG_DET_STS1 */
+#define CLEARWATER_DRC2_SIG_DET_STS1_SHIFT                 1  /* DRC2_SIG_DET_STS1 */
+#define CLEARWATER_DRC2_SIG_DET_STS1_WIDTH                 1  /* DRC2_SIG_DET_STS1 */
+#define CLEARWATER_DRC1_SIG_DET_STS1                  0x0001  /* DRC1_SIG_DET_STS1 */
+#define CLEARWATER_DRC1_SIG_DET_STS1_MASK             0x0001  /* DRC1_SIG_DET_STS1 */
+#define CLEARWATER_DRC1_SIG_DET_STS1_SHIFT                 0  /* DRC1_SIG_DET_STS1 */
+#define CLEARWATER_DRC1_SIG_DET_STS1_WIDTH                 1  /* DRC1_SIG_DET_STS1 */
+
+/*
+ * R6282 (0x188A) - IRQ1 Raw Status 11
+ */
+#define CLEARWATER_DSP_IRQ16_STS1                     0x8000  /* DSP_IRQ16_STS1 */
+#define CLEARWATER_DSP_IRQ16_STS1_MASK                0x8000  /* DSP_IRQ16_STS1 */
+#define CLEARWATER_DSP_IRQ16_STS1_SHIFT                   15  /* DSP_IRQ16_STS1 */
+#define CLEARWATER_DSP_IRQ16_STS1_WIDTH                    1  /* DSP_IRQ16_STS1 */
+#define CLEARWATER_DSP_IRQ15_STS1                     0x4000  /* DSP_IRQ15_STS1 */
+#define CLEARWATER_DSP_IRQ15_STS1_MASK                0x4000  /* DSP_IRQ15_STS1 */
+#define CLEARWATER_DSP_IRQ15_STS1_SHIFT                   14  /* DSP_IRQ15_STS1 */
+#define CLEARWATER_DSP_IRQ15_STS1_WIDTH                    1  /* DSP_IRQ15_STS1 */
+#define CLEARWATER_DSP_IRQ14_STS1                     0x2000  /* DSP_IRQ14_STS1 */
+#define CLEARWATER_DSP_IRQ14_STS1_MASK                0x2000  /* DSP_IRQ14_STS1 */
+#define CLEARWATER_DSP_IRQ14_STS1_SHIFT                   13  /* DSP_IRQ14_STS1 */
+#define CLEARWATER_DSP_IRQ14_STS1_WIDTH                    1  /* DSP_IRQ14_STS1 */
+#define CLEARWATER_DSP_IRQ13_STS1                     0x1000  /* DSP_IRQ13_STS1 */
+#define CLEARWATER_DSP_IRQ13_STS1_MASK                0x1000  /* DSP_IRQ13_STS1 */
+#define CLEARWATER_DSP_IRQ13_STS1_SHIFT                   12  /* DSP_IRQ13_STS1 */
+#define CLEARWATER_DSP_IRQ13_STS1_WIDTH                    1  /* DSP_IRQ13_STS1 */
+#define CLEARWATER_DSP_IRQ12_STS1                     0x0800  /* DSP_IRQ12_STS1 */
+#define CLEARWATER_DSP_IRQ12_STS1_MASK                0x0800  /* DSP_IRQ12_STS1 */
+#define CLEARWATER_DSP_IRQ12_STS1_SHIFT                   11  /* DSP_IRQ12_STS1 */
+#define CLEARWATER_DSP_IRQ12_STS1_WIDTH                    1  /* DSP_IRQ12_STS1 */
+#define CLEARWATER_DSP_IRQ11_STS1                     0x0400  /* DSP_IRQ11_STS1 */
+#define CLEARWATER_DSP_IRQ11_STS1_MASK                0x0400  /* DSP_IRQ11_STS1 */
+#define CLEARWATER_DSP_IRQ11_STS1_SHIFT                   10  /* DSP_IRQ11_STS1 */
+#define CLEARWATER_DSP_IRQ11_STS1_WIDTH                    1  /* DSP_IRQ11_STS1 */
+#define CLEARWATER_DSP_IRQ10_STS1                     0x0200  /* DSP_IRQ10_STS1 */
+#define CLEARWATER_DSP_IRQ10_STS1_MASK                0x0200  /* DSP_IRQ10_STS1 */
+#define CLEARWATER_DSP_IRQ10_STS1_SHIFT                    9  /* DSP_IRQ10_STS1 */
+#define CLEARWATER_DSP_IRQ10_STS1_WIDTH                    1  /* DSP_IRQ10_STS1 */
+#define CLEARWATER_DSP_IRQ9_STS1                      0x0100  /* DSP_IRQ9_STS1 */
+#define CLEARWATER_DSP_IRQ9_STS1_MASK                 0x0100  /* DSP_IRQ9_STS1 */
+#define CLEARWATER_DSP_IRQ9_STS1_SHIFT                     8  /* DSP_IRQ9_STS1 */
+#define CLEARWATER_DSP_IRQ9_STS1_WIDTH                     1  /* DSP_IRQ9_STS1 */
+#define CLEARWATER_DSP_IRQ8_STS1                      0x0080  /* DSP_IRQ8_STS1 */
+#define CLEARWATER_DSP_IRQ8_STS1_MASK                 0x0080  /* DSP_IRQ8_STS1 */
+#define CLEARWATER_DSP_IRQ8_STS1_SHIFT                     7  /* DSP_IRQ8_STS1 */
+#define CLEARWATER_DSP_IRQ8_STS1_WIDTH                     1  /* DSP_IRQ8_STS1 */
+#define CLEARWATER_DSP_IRQ7_STS1                      0x0040  /* DSP_IRQ7_STS1 */
+#define CLEARWATER_DSP_IRQ7_STS1_MASK                 0x0040  /* DSP_IRQ7_STS1 */
+#define CLEARWATER_DSP_IRQ7_STS1_SHIFT                     6  /* DSP_IRQ7_STS1 */
+#define CLEARWATER_DSP_IRQ7_STS1_WIDTH                     1  /* DSP_IRQ7_STS1 */
+#define CLEARWATER_DSP_IRQ6_STS1                      0x0020  /* DSP_IRQ6_STS1 */
+#define CLEARWATER_DSP_IRQ6_STS1_MASK                 0x0020  /* DSP_IRQ6_STS1 */
+#define CLEARWATER_DSP_IRQ6_STS1_SHIFT                     5  /* DSP_IRQ6_STS1 */
+#define CLEARWATER_DSP_IRQ6_STS1_WIDTH                     1  /* DSP_IRQ6_STS1 */
+#define CLEARWATER_DSP_IRQ5_STS1                      0x0010  /* DSP_IRQ5_STS1 */
+#define CLEARWATER_DSP_IRQ5_STS1_MASK                 0x0010  /* DSP_IRQ5_STS1 */
+#define CLEARWATER_DSP_IRQ5_STS1_SHIFT                     4  /* DSP_IRQ5_STS1 */
+#define CLEARWATER_DSP_IRQ5_STS1_WIDTH                     1  /* DSP_IRQ5_STS1 */
+#define CLEARWATER_DSP_IRQ4_STS1                      0x0008  /* DSP_IRQ4_STS1 */
+#define CLEARWATER_DSP_IRQ4_STS1_MASK                 0x0008  /* DSP_IRQ4_STS1 */
+#define CLEARWATER_DSP_IRQ4_STS1_SHIFT                     3  /* DSP_IRQ4_STS1 */
+#define CLEARWATER_DSP_IRQ4_STS1_WIDTH                     1  /* DSP_IRQ4_STS1 */
+#define CLEARWATER_DSP_IRQ3_STS1                      0x0004  /* DSP_IRQ3_STS1 */
+#define CLEARWATER_DSP_IRQ3_STS1_MASK                 0x0004  /* DSP_IRQ3_STS1 */
+#define CLEARWATER_DSP_IRQ3_STS1_SHIFT                     2  /* DSP_IRQ3_STS1 */
+#define CLEARWATER_DSP_IRQ3_STS1_WIDTH                     1  /* DSP_IRQ3_STS1 */
+#define CLEARWATER_DSP_IRQ2_STS1                      0x0002  /* DSP_IRQ2_STS1 */
+#define CLEARWATER_DSP_IRQ2_STS1_MASK                 0x0002  /* DSP_IRQ2_STS1 */
+#define CLEARWATER_DSP_IRQ2_STS1_SHIFT                     1  /* DSP_IRQ2_STS1 */
+#define CLEARWATER_DSP_IRQ2_STS1_WIDTH                     1  /* DSP_IRQ2_STS1 */
+#define CLEARWATER_DSP_IRQ1_STS1                      0x0001  /* DSP_IRQ1_STS1 */
+#define CLEARWATER_DSP_IRQ1_STS1_MASK                 0x0001  /* DSP_IRQ1_STS1 */
+#define CLEARWATER_DSP_IRQ1_STS1_SHIFT                     0  /* DSP_IRQ1_STS1 */
+#define CLEARWATER_DSP_IRQ1_STS1_WIDTH                     1  /* DSP_IRQ1_STS1 */
+
+
+/*
+ * R6283 (0x188B) - IRQ1 Raw Status 12
+ */
+#define CLEARWATER_SPKOUTR_SC_STS1                    0x0080  /* SPKOUTR_SC_STS1 */
+#define CLEARWATER_SPKOUTR_SC_STS1_MASK               0x0080  /* SPKOUTR_SC_STS1 */
+#define CLEARWATER_SPKOUTR_SC_STS1_SHIFT                   7  /* SPKOUTR_SC_STS1 */
+#define CLEARWATER_SPKOUTR_SC_STS1_WIDTH                   1  /* SPKOUTR_SC_STS1 */
+#define CLEARWATER_SPKOUTL_SC_STS1                    0x0040  /* SPKOUTL_SC_STS1 */
+#define CLEARWATER_SPKOUTL_SC_STS1_MASK               0x0040  /* SPKOUTL_SC_STS1 */
+#define CLEARWATER_SPKOUTL_SC_STS1_SHIFT                   6  /* SPKOUTL_SC_STS1 */
+#define CLEARWATER_SPKOUTL_SC_STS1_WIDTH                   1  /* SPKOUTL_SC_STS1 */
+#define CLEARWATER_HP3R_SC_STS1                       0x0020  /* HP3R_SC_STS1 */
+#define CLEARWATER_HP3R_SC_STS1_MASK                  0x0020  /* HP3R_SC_STS1 */
+#define CLEARWATER_HP3R_SC_STS1_SHIFT                      5  /* HP3R_SC_STS1 */
+#define CLEARWATER_HP3R_SC_STS1_WIDTH                      1  /* HP3R_SC_STS1 */
+#define CLEARWATER_HP3L_SC_STS1                       0x0010  /* HP3L_SC_STS1 */
+#define CLEARWATER_HP3L_SC_STS1_MASK                  0x0010  /* HP3L_SC_STS1 */
+#define CLEARWATER_HP3L_SC_STS1_SHIFT                      4  /* HP3L_SC_STS1 */
+#define CLEARWATER_HP3L_SC_STS1_WIDTH                      1  /* HP3L_SC_STS1 */
+#define CLEARWATER_HP2R_SC_STS1                       0x0008  /* HP2R_SC_STS1 */
+#define CLEARWATER_HP2R_SC_STS1_MASK                  0x0008  /* HP2R_SC_STS1 */
+#define CLEARWATER_HP2R_SC_STS1_SHIFT                      3  /* HP2R_SC_STS1 */
+#define CLEARWATER_HP2R_SC_STS1_WIDTH                      1  /* HP2R_SC_STS1 */
+#define CLEARWATER_HP2L_SC_STS1                       0x0004  /* HP2L_SC_STS1 */
+#define CLEARWATER_HP2L_SC_STS1_MASK                  0x0004  /* HP2L_SC_STS1 */
+#define CLEARWATER_HP2L_SC_STS1_SHIFT                      2  /* HP2L_SC_STS1 */
+#define CLEARWATER_HP2L_SC_STS1_WIDTH                      1  /* HP2L_SC_STS1 */
+#define CLEARWATER_HP1R_SC_STS1                       0x0002  /* HP1R_SC_STS1 */
+#define CLEARWATER_HP1R_SC_STS1_MASK                  0x0002  /* HP1R_SC_STS1 */
+#define CLEARWATER_HP1R_SC_STS1_SHIFT                      1  /* HP1R_SC_STS1 */
+#define CLEARWATER_HP1R_SC_STS1_WIDTH                      1  /* HP1R_SC_STS1 */
+#define CLEARWATER_HP1L_SC_STS1                       0x0001  /* HP1L_SC_STS1 */
+#define CLEARWATER_HP1L_SC_STS1_MASK                  0x0001  /* HP1L_SC_STS1 */
+#define CLEARWATER_HP1L_SC_STS1_SHIFT                      0  /* HP1L_SC_STS1 */
+#define CLEARWATER_HP1L_SC_STS1_WIDTH                      1  /* HP1L_SC_STS1 */
+
+/*
+ * R6284 (0x188C) - IRQ1 Raw Status 13
+ */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS1           0x0080  /* SPKOUTR_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS1_MASK      0x0080  /* SPKOUTR_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS1_SHIFT          7  /* SPKOUTR_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS1_WIDTH          1  /* SPKOUTR_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS1           0x0040  /* SPKOUTL_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS1_MASK      0x0040  /* SPKOUTL_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS1_SHIFT          6  /* SPKOUTL_ENABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS1_WIDTH          1  /* SPKOUTL_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS1              0x0020  /* HP3R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS1_MASK         0x0020  /* HP3R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS1_SHIFT             5  /* HP3R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS1_WIDTH             1  /* HP3R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS1              0x0010  /* HP3L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS1_MASK         0x0010  /* HP3L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS1_SHIFT             4  /* HP3L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS1_WIDTH             1  /* HP3L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS1              0x0008  /* HP2R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS1_MASK         0x0008  /* HP2R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS1_SHIFT             3  /* HP2R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS1_WIDTH             1  /* HP2R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS1              0x0004  /* HP2L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS1_MASK         0x0004  /* HP2L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS1_SHIFT             2  /* HP2L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS1_WIDTH             1  /* HP2L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS1              0x0002  /* HP1R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS1_MASK         0x0002  /* HP1R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS1_SHIFT             1  /* HP1R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS1_WIDTH             1  /* HP1R_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS1              0x0001  /* HP1L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS1_MASK         0x0001  /* HP1L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS1_SHIFT             0  /* HP1L_ENABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS1_WIDTH             1  /* HP1L_ENABLE_DONE_STS1 */
+
+/*
+ * R6285 (0x188D) - IRQ1 Raw Status 14
+ */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS1          0x0080  /* SPKOUTR_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS1_MASK     0x0080  /* SPKOUTR_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS1_SHIFT         7  /* SPKOUTR_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS1_WIDTH         1  /* SPKOUTR_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS1          0x0040  /* SPKOUTL_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS1_MASK     0x0040  /* SPKOUTL_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS1_SHIFT         6  /* SPKOUTL_DISABLE_DONE_STS1 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS1_WIDTH         1  /* SPKOUTL_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS1             0x0020  /* HP3R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS1_MASK        0x0020  /* HP3R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS1_SHIFT            5  /* HP3R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS1_WIDTH            1  /* HP3R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS1             0x0010  /* HP3L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS1_MASK        0x0010  /* HP3L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS1_SHIFT            4  /* HP3L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS1_WIDTH            1  /* HP3L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS1             0x0008  /* HP2R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS1_MASK        0x0008  /* HP2R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS1_SHIFT            3  /* HP2R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS1_WIDTH            1  /* HP2R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS1             0x0004  /* HP2L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS1_MASK        0x0004  /* HP2L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS1_SHIFT            2  /* HP2L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS1_WIDTH            1  /* HP2L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS1             0x0002  /* HP1R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS1_MASK        0x0002  /* HP1R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS1_SHIFT            1  /* HP1R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS1_WIDTH            1  /* HP1R_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS1             0x0001  /* HP1L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS1_MASK        0x0001  /* HP1L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS1_SHIFT            0  /* HP1L_DISABLE_DONE_STS1 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS1_WIDTH            1  /* HP1L_DISABLE_DONE_STS1 */
+
+/*
+ * R6286 (0x188E) - IRQ1 Raw Status 15
+ */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS1             0x0004  /* SPK_OVERHEAT_WARN_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS1_MASK        0x0004  /* SPK_OVERHEAT_WARN_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS1_SHIFT            2  /* SPK_OVERHEAT_WARN_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS1_WIDTH            1  /* SPK_OVERHEAT_WARN_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_STS1                  0x0002  /* SPK_OVERHEAT_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_STS1_MASK             0x0002  /* SPK_OVERHEAT_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_STS1_SHIFT                 1  /* SPK_OVERHEAT_STS1 */
+#define CLEARWATER_SPK_OVERHEAT_STS1_WIDTH                 1  /* SPK_OVERHEAT_STS1 */
+#define CLEARWATER_SPK_SHUTDOWN_STS1                  0x0001  /* SPK_SHUTDOWN_STS1 */
+#define CLEARWATER_SPK_SHUTDOWN_STS1_MASK             0x0001  /* SPK_SHUTDOWN_STS1 */
+#define CLEARWATER_SPK_SHUTDOWN_STS1_SHIFT                 0  /* SPK_SHUTDOWN_STS1 */
+#define CLEARWATER_SPK_SHUTDOWN_STS1_WIDTH                 1  /* SPK_SHUTDOWN_STS1 */
+
+/*
+ * R6475 (0x194B) - IRQ2 Mask 12
+ */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT2                 0x0080  /* IM_SPKOUTR_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT2_MASK            0x0080  /* IM_SPKOUTR_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT2_SHIFT                7  /* IM_SPKOUTR_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_SC_EINT2_WIDTH                1  /* IM_SPKOUTR_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT2                 0x0040  /* IM_SPKOUTL_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT2_MASK            0x0040  /* IM_SPKOUTL_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT2_SHIFT                6  /* IM_SPKOUTL_SC_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_SC_EINT2_WIDTH                1  /* IM_SPKOUTL_SC_EINT2 */
+#define CLEARWATER_IM_HP3R_SC_EINT2                    0x0020  /* IM_HP3R_SC_EINT2 */
+#define CLEARWATER_IM_HP3R_SC_EINT2_MASK               0x0020  /* IM_HP3R_SC_EINT2 */
+#define CLEARWATER_IM_HP3R_SC_EINT2_SHIFT                   5  /* IM_HP3R_SC_EINT2 */
+#define CLEARWATER_IM_HP3R_SC_EINT2_WIDTH                   1  /* IM_HP3R_SC_EINT2 */
+#define CLEARWATER_IM_HP3L_SC_EINT2                    0x0010  /* IM_HP3L_SC_EINT2 */
+#define CLEARWATER_IM_HP3L_SC_EINT2_MASK               0x0010  /* IM_HP3L_SC_EINT2 */
+#define CLEARWATER_IM_HP3L_SC_EINT2_SHIFT                   4  /* IM_HP3L_SC_EINT2 */
+#define CLEARWATER_IM_HP3L_SC_EINT2_WIDTH                   1  /* IM_HP3L_SC_EINT2 */
+#define CLEARWATER_IM_HP2R_SC_EINT2                    0x0008  /* IM_HP2R_SC_EINT2 */
+#define CLEARWATER_IM_HP2R_SC_EINT2_MASK               0x0008  /* IM_HP2R_SC_EINT2 */
+#define CLEARWATER_IM_HP2R_SC_EINT2_SHIFT                   3  /* IM_HP2R_SC_EINT2 */
+#define CLEARWATER_IM_HP2R_SC_EINT2_WIDTH                   1  /* IM_HP2R_SC_EINT2 */
+#define CLEARWATER_IM_HP2L_SC_EINT2                    0x0004  /* IM_HP2L_SC_EINT2 */
+#define CLEARWATER_IM_HP2L_SC_EINT2_MASK               0x0004  /* IM_HP2L_SC_EINT2 */
+#define CLEARWATER_IM_HP2L_SC_EINT2_SHIFT                   2  /* IM_HP2L_SC_EINT2 */
+#define CLEARWATER_IM_HP2L_SC_EINT2_WIDTH                   1  /* IM_HP2L_SC_EINT2 */
+#define CLEARWATER_IM_HP1R_SC_EINT2                    0x0002  /* IM_HP1R_SC_EINT2 */
+#define CLEARWATER_IM_HP1R_SC_EINT2_MASK               0x0002  /* IM_HP1R_SC_EINT2 */
+#define CLEARWATER_IM_HP1R_SC_EINT2_SHIFT                   1  /* IM_HP1R_SC_EINT2 */
+#define CLEARWATER_IM_HP1R_SC_EINT2_WIDTH                   1  /* IM_HP1R_SC_EINT2 */
+#define CLEARWATER_IM_HP1L_SC_EINT2                    0x0001  /* IM_HP1L_SC_EINT2 */
+#define CLEARWATER_IM_HP1L_SC_EINT2_MASK               0x0001  /* IM_HP1L_SC_EINT2 */
+#define CLEARWATER_IM_HP1L_SC_EINT2_SHIFT                   0  /* IM_HP1L_SC_EINT2 */
+#define CLEARWATER_IM_HP1L_SC_EINT2_WIDTH                   1  /* IM_HP1L_SC_EINT2 */
+
+/*
+ * R6476 (0x194C) - IRQ2 Mask 13
+ */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT2        0x0080  /* IM_SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT2_MASK   0x0080  /* IM_SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT2_SHIFT       7  /* IM_SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_ENABLE_DONE_EINT2_WIDTH       1  /* IM_SPKOUTR_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT2        0x0040  /* IM_SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT2_MASK   0x0040  /* IM_SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT2_SHIFT       6  /* IM_SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_ENABLE_DONE_EINT2_WIDTH       1  /* IM_SPKOUTL_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT2           0x0020  /* IM_HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT2_MASK      0x0020  /* IM_HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT2_SHIFT          5  /* IM_HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_ENABLE_DONE_EINT2_WIDTH          1  /* IM_HP3R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT2           0x0010  /* IM_HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT2_MASK      0x0010  /* IM_HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT2_SHIFT          4  /* IM_HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_ENABLE_DONE_EINT2_WIDTH          1  /* IM_HP3L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT2           0x0008  /* IM_HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT2_MASK      0x0008  /* IM_HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT2_SHIFT          3  /* IM_HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_ENABLE_DONE_EINT2_WIDTH          1  /* IM_HP2R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT2           0x0004  /* IM_HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT2_MASK      0x0004  /* IM_HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT2_SHIFT          2  /* IM_HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_ENABLE_DONE_EINT2_WIDTH          1  /* IM_HP2L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT2           0x0002  /* IM_HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT2_MASK      0x0002  /* IM_HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT2_SHIFT          1  /* IM_HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_ENABLE_DONE_EINT2_WIDTH          1  /* IM_HP1R_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT2           0x0001  /* IM_HP1L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT2_MASK      0x0001  /* IM_HP1L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT2_SHIFT          0  /* IM_HP1L_ENABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_ENABLE_DONE_EINT2_WIDTH          1  /* IM_HP1L_ENABLE_DONE_EINT2 */
+
+/*
+ * R6477 (0x194D) - IRQ2 Mask 14
+ */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT2       0x0080  /* IM_SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT2_MASK  0x0080  /* IM_SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT2_SHIFT      7  /* IM_SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTR_DISABLE_DONE_EINT2_WIDTH      1  /* IM_SPKOUTR_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT2       0x0040  /* IM_SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT2_MASK  0x0040  /* IM_SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT2_SHIFT      6  /* IM_SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_SPKOUTL_DISABLE_DONE_EINT2_WIDTH      1  /* IM_SPKOUTL_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT2          0x0020  /* IM_HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT2_MASK     0x0020  /* IM_HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT2_SHIFT         5  /* IM_HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3R_DISABLE_DONE_EINT2_WIDTH         1  /* IM_HP3R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT2          0x0010  /* IM_HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT2_MASK     0x0010  /* IM_HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT2_SHIFT         4  /* IM_HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP3L_DISABLE_DONE_EINT2_WIDTH         1  /* IM_HP3L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT2          0x0008  /* IM_HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT2_MASK     0x0008  /* IM_HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT2_SHIFT         3  /* IM_HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2R_DISABLE_DONE_EINT2_WIDTH         1  /* IM_HP2R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT2          0x0004  /* IM_HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT2_MASK     0x0004  /* IM_HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT2_SHIFT         2  /* IM_HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP2L_DISABLE_DONE_EINT2_WIDTH         1  /* IM_HP2L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT2          0x0002  /* IM_HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT2_MASK     0x0002  /* IM_HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT2_SHIFT         1  /* IM_HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1R_DISABLE_DONE_EINT2_WIDTH         1  /* IM_HP1R_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT2          0x0001  /* IM_HP1L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT2_MASK     0x0001  /* IM_HP1L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT2_SHIFT         0  /* IM_HP1L_DISABLE_DONE_EINT2 */
+#define CLEARWATER_IM_HP1L_DISABLE_DONE_EINT2_WIDTH         1  /* IM_HP1L_DISABLE_DONE_EINT2 */
+
+/*
+ * R6478 (0x194E) - IRQ2 Mask 15
+ */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT2          0x0004  /* IM_SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT2_MASK     0x0004  /* IM_SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT2_SHIFT         2  /* IM_SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_WARN_EINT2_WIDTH         1  /* IM_SPK_OVERHEAT_WARN_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT2               0x0002  /* IM_SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT2_MASK          0x0002  /* IM_SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT2_SHIFT              1  /* IM_SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_IM_SPK_OVERHEAT_EINT2_WIDTH              1  /* IM_SPK_OVERHEAT_EINT2 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT2               0x0001  /* IM_SPK_SHUTDOWN_EINT2 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT2_MASK          0x0001  /* IM_SPK_SHUTDOWN_EINT2 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT2_SHIFT              0  /* IM_SPK_SHUTDOWN_EINT2 */
+#define CLEARWATER_IM_SPK_SHUTDOWN_EINT2_WIDTH              1  /* IM_SPK_SHUTDOWN_EINT2 */
+
+/*
+ * R6528 (0x1980) - IRQ2 Raw Status 1
+ */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS2            0x8000  /* DSP_SHARED_WR_COLL_STS2 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS2_MASK       0x8000  /* DSP_SHARED_WR_COLL_STS2 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS2_SHIFT          15  /* DSP_SHARED_WR_COLL_STS2 */
+#define CLEARWATER_DSP_SHARED_WR_COLL_STS2_WIDTH           1  /* DSP_SHARED_WR_COLL_STS2 */
+#define CLEARWATER_CTRLIF_ERR_STS2                    0x1000  /* CTRLIF_ERR_STS2 */
+#define CLEARWATER_CTRLIF_ERR_STS2_MASK               0x1000  /* CTRLIF_ERR_STS2 */
+#define CLEARWATER_CTRLIF_ERR_STS2_SHIFT                  12  /* CTRLIF_ERR_STS2 */
+#define CLEARWATER_CTRLIF_ERR_STS2_WIDTH                   1  /* CTRLIF_ERR_STS2 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS2                  0x0200  /* IRQ_NO_CLOCK_STS2 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS2_MASK             0x0200  /* IRQ_NO_CLOCK_STS2 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS2_SHIFT                 9  /* IRQ_NO_CLOCK_STS2 */
+#define CLEARWATER_IRQ_NO_CLOCK_STS2_WIDTH                 1  /* IRQ_NO_CLOCK_STS2 */
+#define CLEARWATER_CLOCK_DETECT_STS2                  0x0100  /* CLOCK_DETECT_STS2 */
+#define CLEARWATER_CLOCK_DETECT_STS2_MASK             0x0100  /* CLOCK_DETECT_STS2 */
+#define CLEARWATER_CLOCK_DETECT_STS2_SHIFT                 8  /* CLOCK_DETECT_STS2 */
+#define CLEARWATER_CLOCK_DETECT_STS2_WIDTH                 1  /* CLOCK_DETECT_STS2 */
+#define CLEARWATER_BOOT_DONE_STS2                     0x0080  /* BOOT_DONE_STS2 */
+#define CLEARWATER_BOOT_DONE_STS2_MASK                0x0080  /* BOOT_DONE_STS2 */
+#define CLEARWATER_BOOT_DONE_STS2_SHIFT                    7  /* BOOT_DONE_STS2 */
+#define CLEARWATER_BOOT_DONE_STS2_WIDTH                    1  /* BOOT_DONE_STS2 */
+
+/*
+ * R6529 (0x1981) - IRQ2 Raw Status 2
+ */
+#define CLEARWATER_FLL3_LOCK_STS2                     0x0400  /* FLL3_LOCK_STS2 */
+#define CLEARWATER_FLL3_LOCK_STS2_MASK                0x0400  /* FLL3_LOCK_STS2 */
+#define CLEARWATER_FLL3_LOCK_STS2_SHIFT                   10  /* FLL3_LOCK_STS2 */
+#define CLEARWATER_FLL3_LOCK_STS2_WIDTH                    1  /* FLL3_LOCK_STS2 */
+#define CLEARWATER_FLL2_LOCK_STS2                     0x0200  /* FLL2_LOCK_STS2 */
+#define CLEARWATER_FLL2_LOCK_STS2_MASK                0x0200  /* FLL2_LOCK_STS2 */
+#define CLEARWATER_FLL2_LOCK_STS2_SHIFT                    9  /* FLL2_LOCK_STS2 */
+#define CLEARWATER_FLL2_LOCK_STS2_WIDTH                    1  /* FLL2_LOCK_STS2 */
+#define CLEARWATER_FLL1_LOCK_STS2                     0x0100  /* FLL1_LOCK_STS2 */
+#define CLEARWATER_FLL1_LOCK_STS2_MASK                0x0100  /* FLL1_LOCK_STS2 */
+#define CLEARWATER_FLL1_LOCK_STS2_SHIFT                    8  /* FLL1_LOCK_STS2 */
+#define CLEARWATER_FLL1_LOCK_STS2_WIDTH                    1  /* FLL1_LOCK_STS2 */
+
+/*
+ * R6533 (0x1985) - IRQ2 Raw Status 6
+ */
+#define CLEARWATER_MICDET_STS2                        0x0100  /* MICDET_STS2 */
+#define CLEARWATER_MICDET_STS2_MASK                   0x0100  /* MICDET_STS2 */
+#define CLEARWATER_MICDET_STS2_SHIFT                       8  /* MICDET_STS2 */
+#define CLEARWATER_MICDET_STS2_WIDTH                       1  /* MICDET_STS2 */
+#define CLEARWATER_HPDET_STS2                         0x0001  /* HPDET_STS2 */
+#define CLEARWATER_HPDET_STS2_MASK                    0x0001  /* HPDET_STS2 */
+#define CLEARWATER_HPDET_STS2_SHIFT                        0  /* HPDET_STS2 */
+#define CLEARWATER_HPDET_STS2_WIDTH                        1  /* HPDET_STS2 */
+
+/*
+ * R6534 (0x1986) - IRQ2 Raw Status 7
+ */
+#define CLEARWATER_MICD_CLAMP_FALL_STS2               0x0020  /* MICD_CLAMP_FALL_STS2 */
+#define CLEARWATER_MICD_CLAMP_FALL_STS2_MASK          0x0020  /* MICD_CLAMP_FALL_STS2 */
+#define CLEARWATER_MICD_CLAMP_FALL_STS2_SHIFT              5  /* MICD_CLAMP_FALL_STS2 */
+#define CLEARWATER_MICD_CLAMP_FALL_STS2_WIDTH              1  /* MICD_CLAMP_FALL_STS2 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS2               0x0010  /* MICD_CLAMP_RISE_STS2 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS2_MASK          0x0010  /* MICD_CLAMP_RISE_STS2 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS2_SHIFT              4  /* MICD_CLAMP_RISE_STS2 */
+#define CLEARWATER_MICD_CLAMP_RISE_STS2_WIDTH              1  /* MICD_CLAMP_RISE_STS2 */
+#define CLEARWATER_JD2_FALL_STS2                      0x0008  /* JD2_FALL_STS2 */
+#define CLEARWATER_JD2_FALL_STS2_MASK                 0x0008  /* JD2_FALL_STS2 */
+#define CLEARWATER_JD2_FALL_STS2_SHIFT                     3  /* JD2_FALL_STS2 */
+#define CLEARWATER_JD2_FALL_STS2_WIDTH                     1  /* JD2_FALL_STS2 */
+#define CLEARWATER_JD2_RISE_STS2                      0x0004  /* JD2_RISE_STS2 */
+#define CLEARWATER_JD2_RISE_STS2_MASK                 0x0004  /* JD2_RISE_STS2 */
+#define CLEARWATER_JD2_RISE_STS2_SHIFT                     2  /* JD2_RISE_STS2 */
+#define CLEARWATER_JD2_RISE_STS2_WIDTH                     1  /* JD2_RISE_STS2 */
+#define CLEARWATER_JD1_FALL_STS2                      0x0002  /* JD1_FALL_STS2 */
+#define CLEARWATER_JD1_FALL_STS2_MASK                 0x0002  /* JD1_FALL_STS2 */
+#define CLEARWATER_JD1_FALL_STS2_SHIFT                     1  /* JD1_FALL_STS2 */
+#define CLEARWATER_JD1_FALL_STS2_WIDTH                     1  /* JD1_FALL_STS2 */
+#define CLEARWATER_JD1_RISE_STS2                      0x0001  /* JD1_RISE_STS2 */
+#define CLEARWATER_JD1_RISE_STS2_MASK                 0x0001  /* JD1_RISE_STS2 */
+#define CLEARWATER_JD1_RISE_STS2_SHIFT                     0  /* JD1_RISE_STS2 */
+#define CLEARWATER_JD1_RISE_STS2_WIDTH                     1  /* JD1_RISE_STS2 */
+
+/*
+ * R6536 (0x1988) - IRQ2 Raw Status 9
+ */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS2                0x0800  /* ASRC2_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS2_MASK           0x0800  /* ASRC2_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS2_SHIFT              11  /* ASRC2_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN2_LOCK_STS2_WIDTH               1  /* ASRC2_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS2                0x0400  /* ASRC2_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS2_MASK           0x0400  /* ASRC2_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS2_SHIFT              10  /* ASRC2_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC2_IN1_LOCK_STS2_WIDTH               1  /* ASRC2_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS2                0x0200  /* ASRC1_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS2_MASK           0x0200  /* ASRC1_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS2_SHIFT               9  /* ASRC1_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN2_LOCK_STS2_WIDTH               1  /* ASRC1_IN2_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS2                0x0100  /* ASRC1_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS2_MASK           0x0100  /* ASRC1_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS2_SHIFT               8  /* ASRC1_IN1_LOCK_STS2 */
+#define CLEARWATER_ASRC1_IN1_LOCK_STS2_WIDTH               1  /* ASRC1_IN1_LOCK_STS2 */
+#define CLEARWATER_DRC2_SIG_DET_STS2                  0x0002  /* DRC2_SIG_DET_STS2 */
+#define CLEARWATER_DRC2_SIG_DET_STS2_MASK             0x0002  /* DRC2_SIG_DET_STS2 */
+#define CLEARWATER_DRC2_SIG_DET_STS2_SHIFT                 1  /* DRC2_SIG_DET_STS2 */
+#define CLEARWATER_DRC2_SIG_DET_STS2_WIDTH                 1  /* DRC2_SIG_DET_STS2 */
+#define CLEARWATER_DRC1_SIG_DET_STS2                  0x0001  /* DRC1_SIG_DET_STS2 */
+#define CLEARWATER_DRC1_SIG_DET_STS2_MASK             0x0001  /* DRC1_SIG_DET_STS2 */
+#define CLEARWATER_DRC1_SIG_DET_STS2_SHIFT                 0  /* DRC1_SIG_DET_STS2 */
+#define CLEARWATER_DRC1_SIG_DET_STS2_WIDTH                 1  /* DRC1_SIG_DET_STS2 */
+
+/*
+ * R6538 (0x198A) - IRQ2 Raw Status 11
+ */
+#define CLEARWATER_DSP_IRQ26_STS2                     0x8000  /* DSP_IRQ26_STS2 */
+#define CLEARWATER_DSP_IRQ26_STS2_MASK                0x8000  /* DSP_IRQ26_STS2 */
+#define CLEARWATER_DSP_IRQ26_STS2_SHIFT                   15  /* DSP_IRQ26_STS2 */
+#define CLEARWATER_DSP_IRQ26_STS2_WIDTH                    1  /* DSP_IRQ26_STS2 */
+#define CLEARWATER_DSP_IRQ25_STS2                     0x4000  /* DSP_IRQ25_STS2 */
+#define CLEARWATER_DSP_IRQ25_STS2_MASK                0x4000  /* DSP_IRQ25_STS2 */
+#define CLEARWATER_DSP_IRQ25_STS2_SHIFT                   14  /* DSP_IRQ25_STS2 */
+#define CLEARWATER_DSP_IRQ25_STS2_WIDTH                    1  /* DSP_IRQ25_STS2 */
+#define CLEARWATER_DSP_IRQ24_STS2                     0x2000  /* DSP_IRQ24_STS2 */
+#define CLEARWATER_DSP_IRQ24_STS2_MASK                0x2000  /* DSP_IRQ24_STS2 */
+#define CLEARWATER_DSP_IRQ24_STS2_SHIFT                   13  /* DSP_IRQ24_STS2 */
+#define CLEARWATER_DSP_IRQ24_STS2_WIDTH                    1  /* DSP_IRQ24_STS2 */
+#define CLEARWATER_DSP_IRQ23_STS2                     0x1000  /* DSP_IRQ23_STS2 */
+#define CLEARWATER_DSP_IRQ23_STS2_MASK                0x1000  /* DSP_IRQ23_STS2 */
+#define CLEARWATER_DSP_IRQ23_STS2_SHIFT                   12  /* DSP_IRQ23_STS2 */
+#define CLEARWATER_DSP_IRQ23_STS2_WIDTH                    1  /* DSP_IRQ23_STS2 */
+#define CLEARWATER_DSP_IRQ22_STS2                     0x0800  /* DSP_IRQ22_STS2 */
+#define CLEARWATER_DSP_IRQ22_STS2_MASK                0x0800  /* DSP_IRQ22_STS2 */
+#define CLEARWATER_DSP_IRQ22_STS2_SHIFT                   11  /* DSP_IRQ22_STS2 */
+#define CLEARWATER_DSP_IRQ22_STS2_WIDTH                    1  /* DSP_IRQ22_STS2 */
+#define CLEARWATER_DSP_IRQ21_STS2                     0x0400  /* DSP_IRQ21_STS2 */
+#define CLEARWATER_DSP_IRQ21_STS2_MASK                0x0400  /* DSP_IRQ21_STS2 */
+#define CLEARWATER_DSP_IRQ21_STS2_SHIFT                   10  /* DSP_IRQ21_STS2 */
+#define CLEARWATER_DSP_IRQ21_STS2_WIDTH                    1  /* DSP_IRQ21_STS2 */
+#define CLEARWATER_DSP_IRQ20_STS2                     0x0200  /* DSP_IRQ20_STS2 */
+#define CLEARWATER_DSP_IRQ20_STS2_MASK                0x0200  /* DSP_IRQ20_STS2 */
+#define CLEARWATER_DSP_IRQ20_STS2_SHIFT                    9  /* DSP_IRQ20_STS2 */
+#define CLEARWATER_DSP_IRQ20_STS2_WIDTH                    1  /* DSP_IRQ20_STS2 */
+#define CLEARWATER_DSP_IRQ9_STS2                      0x0100  /* DSP_IRQ9_STS2 */
+#define CLEARWATER_DSP_IRQ9_STS2_MASK                 0x0100  /* DSP_IRQ9_STS2 */
+#define CLEARWATER_DSP_IRQ9_STS2_SHIFT                     8  /* DSP_IRQ9_STS2 */
+#define CLEARWATER_DSP_IRQ9_STS2_WIDTH                     1  /* DSP_IRQ9_STS2 */
+#define CLEARWATER_DSP_IRQ8_STS2                      0x0080  /* DSP_IRQ8_STS2 */
+#define CLEARWATER_DSP_IRQ8_STS2_MASK                 0x0080  /* DSP_IRQ8_STS2 */
+#define CLEARWATER_DSP_IRQ8_STS2_SHIFT                     7  /* DSP_IRQ8_STS2 */
+#define CLEARWATER_DSP_IRQ8_STS2_WIDTH                     1  /* DSP_IRQ8_STS2 */
+#define CLEARWATER_DSP_IRQ7_STS2                      0x0040  /* DSP_IRQ7_STS2 */
+#define CLEARWATER_DSP_IRQ7_STS2_MASK                 0x0040  /* DSP_IRQ7_STS2 */
+#define CLEARWATER_DSP_IRQ7_STS2_SHIFT                     6  /* DSP_IRQ7_STS2 */
+#define CLEARWATER_DSP_IRQ7_STS2_WIDTH                     1  /* DSP_IRQ7_STS2 */
+#define CLEARWATER_DSP_IRQ6_STS2                      0x0020  /* DSP_IRQ6_STS2 */
+#define CLEARWATER_DSP_IRQ6_STS2_MASK                 0x0020  /* DSP_IRQ6_STS2 */
+#define CLEARWATER_DSP_IRQ6_STS2_SHIFT                     5  /* DSP_IRQ6_STS2 */
+#define CLEARWATER_DSP_IRQ6_STS2_WIDTH                     1  /* DSP_IRQ6_STS2 */
+#define CLEARWATER_DSP_IRQ5_STS2                      0x0010  /* DSP_IRQ5_STS2 */
+#define CLEARWATER_DSP_IRQ5_STS2_MASK                 0x0010  /* DSP_IRQ5_STS2 */
+#define CLEARWATER_DSP_IRQ5_STS2_SHIFT                     4  /* DSP_IRQ5_STS2 */
+#define CLEARWATER_DSP_IRQ5_STS2_WIDTH                     1  /* DSP_IRQ5_STS2 */
+#define CLEARWATER_DSP_IRQ4_STS2                      0x0008  /* DSP_IRQ4_STS2 */
+#define CLEARWATER_DSP_IRQ4_STS2_MASK                 0x0008  /* DSP_IRQ4_STS2 */
+#define CLEARWATER_DSP_IRQ4_STS2_SHIFT                     3  /* DSP_IRQ4_STS2 */
+#define CLEARWATER_DSP_IRQ4_STS2_WIDTH                     1  /* DSP_IRQ4_STS2 */
+#define CLEARWATER_DSP_IRQ3_STS2                      0x0004  /* DSP_IRQ3_STS2 */
+#define CLEARWATER_DSP_IRQ3_STS2_MASK                 0x0004  /* DSP_IRQ3_STS2 */
+#define CLEARWATER_DSP_IRQ3_STS2_SHIFT                     2  /* DSP_IRQ3_STS2 */
+#define CLEARWATER_DSP_IRQ3_STS2_WIDTH                     1  /* DSP_IRQ3_STS2 */
+#define CLEARWATER_DSP_IRQ2_STS2                      0x0002  /* DSP_IRQ2_STS2 */
+#define CLEARWATER_DSP_IRQ2_STS2_MASK                 0x0002  /* DSP_IRQ2_STS2 */
+#define CLEARWATER_DSP_IRQ2_STS2_SHIFT                     1  /* DSP_IRQ2_STS2 */
+#define CLEARWATER_DSP_IRQ2_STS2_WIDTH                     1  /* DSP_IRQ2_STS2 */
+#define CLEARWATER_DSP_IRQ1_STS2                      0x0001  /* DSP_IRQ1_STS2 */
+#define CLEARWATER_DSP_IRQ1_STS2_MASK                 0x0001  /* DSP_IRQ1_STS2 */
+#define CLEARWATER_DSP_IRQ1_STS2_SHIFT                     0  /* DSP_IRQ1_STS2 */
+#define CLEARWATER_DSP_IRQ1_STS2_WIDTH                     1  /* DSP_IRQ1_STS2 */
+
+
+/*
+ * R6539 (0x198B) - IRQ2 Raw Status 12
+ */
+#define CLEARWATER_SPKOUTR_SC_STS2                    0x0080  /* SPKOUTR_SC_STS2 */
+#define CLEARWATER_SPKOUTR_SC_STS2_MASK               0x0080  /* SPKOUTR_SC_STS2 */
+#define CLEARWATER_SPKOUTR_SC_STS2_SHIFT                   7  /* SPKOUTR_SC_STS2 */
+#define CLEARWATER_SPKOUTR_SC_STS2_WIDTH                   1  /* SPKOUTR_SC_STS2 */
+#define CLEARWATER_SPKOUTL_SC_STS2                    0x0040  /* SPKOUTL_SC_STS2 */
+#define CLEARWATER_SPKOUTL_SC_STS2_MASK               0x0040  /* SPKOUTL_SC_STS2 */
+#define CLEARWATER_SPKOUTL_SC_STS2_SHIFT                   6  /* SPKOUTL_SC_STS2 */
+#define CLEARWATER_SPKOUTL_SC_STS2_WIDTH                   1  /* SPKOUTL_SC_STS2 */
+#define CLEARWATER_HP3R_SC_STS2                       0x0020  /* HP3R_SC_STS2 */
+#define CLEARWATER_HP3R_SC_STS2_MASK                  0x0020  /* HP3R_SC_STS2 */
+#define CLEARWATER_HP3R_SC_STS2_SHIFT                      5  /* HP3R_SC_STS2 */
+#define CLEARWATER_HP3R_SC_STS2_WIDTH                      1  /* HP3R_SC_STS2 */
+#define CLEARWATER_HP3L_SC_STS2                       0x0010  /* HP3L_SC_STS2 */
+#define CLEARWATER_HP3L_SC_STS2_MASK                  0x0010  /* HP3L_SC_STS2 */
+#define CLEARWATER_HP3L_SC_STS2_SHIFT                      4  /* HP3L_SC_STS2 */
+#define CLEARWATER_HP3L_SC_STS2_WIDTH                      1  /* HP3L_SC_STS2 */
+#define CLEARWATER_HP2R_SC_STS2                       0x0008  /* HP2R_SC_STS2 */
+#define CLEARWATER_HP2R_SC_STS2_MASK                  0x0008  /* HP2R_SC_STS2 */
+#define CLEARWATER_HP2R_SC_STS2_SHIFT                      3  /* HP2R_SC_STS2 */
+#define CLEARWATER_HP2R_SC_STS2_WIDTH                      1  /* HP2R_SC_STS2 */
+#define CLEARWATER_HP2L_SC_STS2                       0x0004  /* HP2L_SC_STS2 */
+#define CLEARWATER_HP2L_SC_STS2_MASK                  0x0004  /* HP2L_SC_STS2 */
+#define CLEARWATER_HP2L_SC_STS2_SHIFT                      2  /* HP2L_SC_STS2 */
+#define CLEARWATER_HP2L_SC_STS2_WIDTH                      1  /* HP2L_SC_STS2 */
+#define CLEARWATER_HP1R_SC_STS2                       0x0002  /* HP1R_SC_STS2 */
+#define CLEARWATER_HP1R_SC_STS2_MASK                  0x0002  /* HP1R_SC_STS2 */
+#define CLEARWATER_HP1R_SC_STS2_SHIFT                      1  /* HP1R_SC_STS2 */
+#define CLEARWATER_HP1R_SC_STS2_WIDTH                      1  /* HP1R_SC_STS2 */
+#define CLEARWATER_HP1L_SC_STS2                       0x0001  /* HP1L_SC_STS2 */
+#define CLEARWATER_HP1L_SC_STS2_MASK                  0x0001  /* HP1L_SC_STS2 */
+#define CLEARWATER_HP1L_SC_STS2_SHIFT                      0  /* HP1L_SC_STS2 */
+#define CLEARWATER_HP1L_SC_STS2_WIDTH                      1  /* HP1L_SC_STS2 */
+
+/*
+ * R6540 (0x198C) - IRQ2 Raw Status 13
+ */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS2           0x0080  /* SPKOUTR_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS2_MASK      0x0080  /* SPKOUTR_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS2_SHIFT          7  /* SPKOUTR_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTR_ENABLE_DONE_STS2_WIDTH          1  /* SPKOUTR_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS2           0x0040  /* SPKOUTL_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS2_MASK      0x0040  /* SPKOUTL_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS2_SHIFT          6  /* SPKOUTL_ENABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_ENABLE_DONE_STS2_WIDTH          1  /* SPKOUTL_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS2              0x0020  /* HP3R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS2_MASK         0x0020  /* HP3R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS2_SHIFT             5  /* HP3R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_ENABLE_DONE_STS2_WIDTH             1  /* HP3R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS2              0x0010  /* HP3L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS2_MASK         0x0010  /* HP3L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS2_SHIFT             4  /* HP3L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_ENABLE_DONE_STS2_WIDTH             1  /* HP3L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS2              0x0008  /* HP2R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS2_MASK         0x0008  /* HP2R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS2_SHIFT             3  /* HP2R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_ENABLE_DONE_STS2_WIDTH             1  /* HP2R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS2              0x0004  /* HP2L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS2_MASK         0x0004  /* HP2L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS2_SHIFT             2  /* HP2L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_ENABLE_DONE_STS2_WIDTH             1  /* HP2L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS2              0x0002  /* HP1R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS2_MASK         0x0002  /* HP1R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS2_SHIFT             1  /* HP1R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_ENABLE_DONE_STS2_WIDTH             1  /* HP1R_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS2              0x0001  /* HP1L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS2_MASK         0x0001  /* HP1L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS2_SHIFT             0  /* HP1L_ENABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_ENABLE_DONE_STS2_WIDTH             1  /* HP1L_ENABLE_DONE_STS2 */
+
+/*
+ * R6541 (0x198D) - IRQ2 Raw Status 14
+ */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS2          0x0080  /* SPKOUTR_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS2_MASK     0x0080  /* SPKOUTR_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS2_SHIFT         7  /* SPKOUTR_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTR_DISABLE_DONE_STS2_WIDTH         1  /* SPKOUTR_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS2          0x0040  /* SPKOUTL_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS2_MASK     0x0040  /* SPKOUTL_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS2_SHIFT         6  /* SPKOUTL_DISABLE_DONE_STS2 */
+#define CLEARWATER_SPKOUTL_DISABLE_DONE_STS2_WIDTH         1  /* SPKOUTL_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS2             0x0020  /* HP3R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS2_MASK        0x0020  /* HP3R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS2_SHIFT            5  /* HP3R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3R_DISABLE_DONE_STS2_WIDTH            1  /* HP3R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS2             0x0010  /* HP3L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS2_MASK        0x0010  /* HP3L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS2_SHIFT            4  /* HP3L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP3L_DISABLE_DONE_STS2_WIDTH            1  /* HP3L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS2             0x0008  /* HP2R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS2_MASK        0x0008  /* HP2R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS2_SHIFT            3  /* HP2R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2R_DISABLE_DONE_STS2_WIDTH            1  /* HP2R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS2             0x0004  /* HP2L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS2_MASK        0x0004  /* HP2L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS2_SHIFT            2  /* HP2L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP2L_DISABLE_DONE_STS2_WIDTH            1  /* HP2L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS2             0x0002  /* HP1R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS2_MASK        0x0002  /* HP1R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS2_SHIFT            1  /* HP1R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1R_DISABLE_DONE_STS2_WIDTH            1  /* HP1R_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS2             0x0001  /* HP1L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS2_MASK        0x0001  /* HP1L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS2_SHIFT            0  /* HP1L_DISABLE_DONE_STS2 */
+#define CLEARWATER_HP1L_DISABLE_DONE_STS2_WIDTH            1  /* HP1L_DISABLE_DONE_STS2 */
+
+/*
+ * R6542 (0x198E) - IRQ2 Raw Status 15
+ */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS2        0x0004  /* SPK_OVERHEAT_WARN_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS2_MASK   0x0004  /* SPK_OVERHEAT_WARN_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS2_SHIFT       2  /* SPK_OVERHEAT_WARN_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_WARN_STS2_WIDTH       1  /* SPK_OVERHEAT_WARN_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_STS2             0x0002  /* SPK_OVERHEAT_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_STS2_MASK        0x0002  /* SPK_OVERHEAT_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_STS2_SHIFT            1  /* SPK_OVERHEAT_STS2 */
+#define CLEARWATER_SPK_OVERHEAT_STS2_WIDTH            1  /* SPK_OVERHEAT_STS2 */
+#define CLEARWATER_SPK_SHUTDOWN_STS2             0x0001  /* SPK_SHUTDOWN_STS2 */
+#define CLEARWATER_SPK_SHUTDOWN_STS2_MASK        0x0001  /* SPK_SHUTDOWN_STS2 */
+#define CLEARWATER_SPK_SHUTDOWN_STS2_SHIFT            0  /* SPK_SHUTDOWN_STS2 */
+#define CLEARWATER_SPK_SHUTDOWN_STS2_WIDTH            1  /* SPK_SHUTDOWN_STS2 */
+
+/*
+ * R6662 (0x1A06) - Interrupt Debounce 7
+ */
+#define CLEARWATER_MICD_CLAMP_DB                 0x0010  /* MICD_CLAMP_DB */
+#define CLEARWATER_MICD_CLAMP_DB_MASK            0x0010  /* MICD_CLAMP_DB */
+#define CLEARWATER_MICD_CLAMP_DB_SHIFT                4  /* MICD_CLAMP_DB */
+#define CLEARWATER_MICD_CLAMP_DB_WIDTH                1  /* MICD_CLAMP_DB */
+#define CLEARWATER_JD2_DB                        0x0004  /* JD2_DB */
+#define CLEARWATER_JD2_DB_MASK                   0x0004  /* JD2_DB */
+#define CLEARWATER_JD2_DB_SHIFT                       2  /* JD2_DB */
+#define CLEARWATER_JD2_DB_WIDTH                       1  /* JD2_DB */
+#define CLEARWATER_JD1_DB                        0x0001  /* JD1_DB */
+#define CLEARWATER_JD1_DB_MASK                   0x0001  /* JD1_DB */
+#define CLEARWATER_JD1_DB_SHIFT                       0  /* JD1_DB */
+#define CLEARWATER_JD1_DB_WIDTH                       1  /* JD1_DB */
+
+/*
+ * R6670 (0x1A0E) - Interrupt Debounce 15
+ */
+#define CLEARWATER_SPK_OVERHEAT_WARN_DB          0x0004  /* SPK_OVERHEAT_WARN_DB */
+#define CLEARWATER_SPK_OVERHEAT_WARN_DB_MASK     0x0004  /* SPK_OVERHEAT_WARN_DB */
+#define CLEARWATER_SPK_OVERHEAT_WARN_DB_SHIFT         2  /* SPK_OVERHEAT_WARN_DB */
+#define CLEARWATER_SPK_OVERHEAT_WARN_DB_WIDTH         1  /* SPK_OVERHEAT_WARN_DB */
+#define CLEARWATER_SPK_OVERHEAT_DB               0x0002  /* SPK_OVERHEAT_DB */
+#define CLEARWATER_SPK_OVERHEAT_DB_MASK          0x0002  /* SPK_OVERHEAT_DB */
+#define CLEARWATER_SPK_OVERHEAT_DB_SHIFT              1  /* SPK_OVERHEAT_DB */
+#define CLEARWATER_SPK_OVERHEAT_DB_WIDTH              1  /* SPK_OVERHEAT_DB */
+
+/*
+ * R6848 (0x1AC0) - GPIO Debounce Config
+ */
+#define CLEARWATER_GP_DBTIME_MASK                0x000F  /* GP_DBTIME - [3:0] */
+#define CLEARWATER_GP_DBTIME_SHIFT                    0  /* GP_DBTIME - [3:0] */
+#define CLEARWATER_GP_DBTIME_WIDTH                    4  /* GP_DBTIME - [3:0] */
+
+/*
+ * R13304 (0x33F8) - OTP HPDET Calibration 1
+ */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_11           0xFF000000  /* HP_OFFSET_11 - [31:24] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_11_MASK      0xFF000000  /* HP_OFFSET_11 - [31:24] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_11_SHIFT             24  /* HP_OFFSET_11 - [31:24] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_11_WIDTH              8  /* HP_OFFSET_11 - [31:24] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_10           0x00FF0000  /* HP_OFFSET_10 - [23:16] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_10_MASK      0x00FF0000  /* HP_OFFSET_10 - [23:16] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_10_SHIFT             16  /* HP_OFFSET_10 - [23:16] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_10_WIDTH              8  /* HP_OFFSET_10 - [23:16] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_01           0x0000FF00  /* HP_OFFSET_01 - [15:8] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_01_MASK      0x0000FF00  /* HP_OFFSET_01 - [15:8] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_01_SHIFT              8  /* HP_OFFSET_01 - [15:8] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_01_WIDTH              8  /* HP_OFFSET_01 - [15:8] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_00           0x000000FF  /* HP_OFFSET_10 - [7:0] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_00_MASK      0x000000FF  /* HP_OFFSET_10 - [7:0] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_00_SHIFT              0  /* HP_OFFSET_10 - [7:0] */
+#define CLEARWATER_OTP_HPDET_CALIB_OFFSET_00_WIDTH              8  /* HP_OFFSET_10 - [7:0] */
+
+/*
+ * R13306 (0x33FA) - OTP HPDET Calibration 2
+ */
+#define CLEARWATER_OTP_HPDET_GRADIENT_1X         0xFF00  /* HP_GRADIENT_1X - [15:8] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_1X_MASK    0xFF00  /* HP_GRADIENT_1X - [15:8] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_1X_SHIFT        8  /* HP_GRADIENT_1X - [15:8] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_1X_WIDTH        8  /* HP_GRADIENT_1X - [15:8] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_0X         0x00FF  /* HP_GRADIENT_0X - [7:0] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_0X_MASK    0x00FF  /* HP_GRADIENT_0X - [7:0] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_0X_SHIFT        0  /* HP_GRADIENT_0X - [7:0] */
+#define CLEARWATER_OTP_HPDET_GRADIENT_0X_WIDTH        8  /* HP_GRADIENT_0X - [7:0] */
 
 #endif
