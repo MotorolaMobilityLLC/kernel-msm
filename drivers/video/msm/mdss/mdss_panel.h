@@ -430,10 +430,6 @@ struct mdss_panel_info {
 	bool esd_rdy;
 	bool partial_update_supported; /* value from dts if pu is supported */
 	bool partial_update_enabled; /* is pu currently allowed */
-	u32 partial_update_tedelay_full;
-	u32 partial_update_tedelay_split_ypos;
-	u32 partial_update_tedelay_upper;
-	u32 partial_update_tedelay_lower;
 	u32 dcs_cmd_by_left;
 	u32 partial_update_roi_merge;
 	struct ion_handle *splash_ihdl;

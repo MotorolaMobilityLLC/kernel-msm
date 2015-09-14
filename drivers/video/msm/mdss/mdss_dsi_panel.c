@@ -402,7 +402,6 @@ static int mdss_dsi_roi_merge(struct mdss_dsi_ctrl_pdata *ctrl,
 	return ans;
 }
 
-static char teset[] = {0x44, 0x00, 0x00}; /* DTYPE_DCS_LWRITE */
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
 static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
 
@@ -412,64 +411,32 @@ static struct dsi_cmd_desc set_col_page_addr_cmd[] = {
 	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset)}, paset},
 };
 
-static struct dsi_cmd_desc set_col_page_addr_tedelay_cmd[] = {
-	{{DTYPE_DCS_LWRITE, 0, 0, 0, 0, sizeof(teset)}, teset},
-	{{DTYPE_DCS_LWRITE, 0, 0, 0, 0, sizeof(caset)}, caset},
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset)}, paset},
-};
-
-static int mdss_dsi_get_partial_upate_tedelay(struct mdss_dsi_ctrl_pdata *ctrl,
-				struct mdss_rect *roi, u32 *tedelay)
-{
-	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
-	if (pinfo->partial_update_tedelay_split_ypos == 0)
-		return 0;
-
-	if ((roi->h) == pinfo->yres)
-		*tedelay = pinfo->partial_update_tedelay_full;
-	else if ((roi->y) < pinfo->partial_update_tedelay_split_ypos)
-		*tedelay =  pinfo->partial_update_tedelay_upper;
-	else
-		*tedelay = pinfo->partial_update_tedelay_lower;
-	return 1;
-}
-
 static void mdss_dsi_send_col_page_addr(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct mdss_rect *roi, int unicast)
 {
 	struct dcs_cmd_req cmdreq;
-	int index = 0;
-	u32 tedelay = 0;
-	struct dsi_cmd_desc* pcmds = set_col_page_addr_cmd;
-
-	if (mdss_dsi_get_partial_upate_tedelay(ctrl, roi, &tedelay)) {
-		pcmds = set_col_page_addr_tedelay_cmd;
-		teset[1] = ((tedelay & 0xFF00) >> 8);
-		teset[2] = ((tedelay & 0xFF));
-		pcmds[index++].payload = teset;
-	}
 
 	caset[1] = (((roi->x) & 0xFF00) >> 8);
 	caset[2] = (((roi->x) & 0xFF));
 	caset[3] = (((roi->x - 1 + roi->w) & 0xFF00) >> 8);
 	caset[4] = (((roi->x - 1 + roi->w) & 0xFF));
-	pcmds[index++].payload = caset;
+	set_col_page_addr_cmd[0].payload = caset;
 
 	paset[1] = (((roi->y) & 0xFF00) >> 8);
 	paset[2] = (((roi->y) & 0xFF));
 	paset[3] = (((roi->y - 1 + roi->h) & 0xFF00) >> 8);
 	paset[4] = (((roi->y - 1 + roi->h) & 0xFF));
-	pcmds[index++].payload = paset;
+	set_col_page_addr_cmd[1].payload = paset;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds_cnt = index;
+	cmdreq.cmds_cnt = 2;
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	if (unicast)
 		cmdreq.flags |= CMD_REQ_UNICAST;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
-	cmdreq.cmds = pcmds;
+	cmdreq.cmds = set_col_page_addr_cmd;
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
@@ -1343,20 +1310,9 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 					pinfo->partial_update_enabled);
 		ctrl->set_col_page_addr = mdss_dsi_set_col_page_addr;
 		if (pinfo->partial_update_enabled) {
-			u32 tmp;
-			int rc;
 			pinfo->partial_update_roi_merge =
 					of_property_read_bool(np,
 					"qcom,partial-update-roi-merge");
-
-			rc = of_property_read_u32(np, "qcom,partial-update-tedelay-full", &tmp);
-			pinfo->partial_update_tedelay_full = (!rc ? tmp : ((pinfo->yres * 8) / 10));
-			rc = of_property_read_u32(np, "qcom,partial-update-tedelay-split-ypos", &tmp);
-			pinfo->partial_update_tedelay_split_ypos = (!rc ? tmp : (pinfo->yres >> 1));
-			rc = of_property_read_u32(np, "qcom,partial-update-tedelay-upper", &tmp);
-			pinfo->partial_update_tedelay_upper = (!rc ? tmp : ((pinfo->yres * 8) / 10));
-			rc = of_property_read_u32(np, "qcom,partial-update-tedelay-lower", &tmp);
-			pinfo->partial_update_tedelay_lower = (!rc ? tmp : ((pinfo->yres * 4) / 10));
 		}
 
 		pinfo->dcs_cmd_by_left = of_property_read_bool(np,
