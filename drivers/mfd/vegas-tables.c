@@ -1,9 +1,9 @@
 /*
- * wm8997-tables.c  --  WM8997 data tables
+ * vegas-tables.c  --  data tables for vegas-class codecs
  *
- * Copyright 2012 Wolfson Microelectronics plc
+ * Copyright 2014-2015 Cirrus Logic
  *
- * Author: Charles Keepax <ckeepax@opensource.wolfsonmicro.com>
+ * Author: Richard Fitzgerald <rf@opensource.wolfsonmicro.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,52 +14,68 @@
 
 #include <linux/mfd/arizona/core.h>
 #include <linux/mfd/arizona/registers.h>
+#include <linux/device.h>
 
 #include "arizona.h"
 
-static const struct reg_default wm8997_reva_patch[] = {
-	{ 0x80, 0x0003 },
-	{ 0x214, 0x0008 },
-	{ 0x458, 0x0000 },
-	{ 0x0081, 0xE022 },
-	{ 0x294, 0x0000 },
-	{ 0x80, 0x0000 },
-	{ 0x171, 0x0000 },
+#define VEGAS_NUM_AOD_ISR 2
+#define VEGAS_NUM_ISR 5
+
+static const struct reg_default vegas_rev_a_patch[] = {
+	{ 0x0212, 0x0000 },
+	{ 0x0211, 0x0014 },
+	{ 0x04E4, 0x0E0D },
+	{ 0x04E5, 0x0E0D },
+	{ 0x04E6, 0x0E0D },
+	{ 0x04EB, 0x060E },
+	{ 0x0441, 0xC759 },
+	{ 0x0442, 0x2A08 },
+	{ 0x0443, 0x5CFA },
+	{ 0x026E, 0x0064 },
+	{ 0x026F, 0x00EA },
+	{ 0x0270, 0x1F16 },
+	{ 0x0410, 0x2080 },
+	{ 0x0418, 0x2080 },
+	{ 0x0420, 0x2080 },
+	{ 0x04B8, 0x1120 },
+	{ 0x047E, 0x080E },
+	{ 0x0448, 0x03EF },
 };
 
 /* We use a function so we can use ARRAY_SIZE() */
-int wm8997_patch(struct arizona *arizona)
+int vegas_patch(struct arizona *arizona)
 {
-	switch (arizona->rev) {
-	case 0:
-		return regmap_register_patch(arizona->regmap,
-					     wm8997_reva_patch,
-					     ARRAY_SIZE(wm8997_reva_patch));
-	default:
-		return 0;
-	}
+	return regmap_register_patch(arizona->regmap,
+				     vegas_rev_a_patch,
+				     ARRAY_SIZE(vegas_rev_a_patch));
 }
-EXPORT_SYMBOL_GPL(wm8997_patch);
+EXPORT_SYMBOL_GPL(vegas_patch);
 
-static const struct regmap_irq wm8997_aod_irqs[ARIZONA_NUM_IRQ] = {
+static const struct regmap_irq vegas_aod_irqs[ARIZONA_NUM_IRQ] = {
+	[ARIZONA_IRQ_MICD_CLAMP_FALL] = {
+		.mask = ARIZONA_MICD_CLAMP_FALL_EINT1
+	},
+	[ARIZONA_IRQ_MICD_CLAMP_RISE] = {
+		.mask = ARIZONA_MICD_CLAMP_RISE_EINT1
+	},
 	[ARIZONA_IRQ_GP5_FALL] = { .mask = ARIZONA_GP5_FALL_EINT1 },
 	[ARIZONA_IRQ_GP5_RISE] = { .mask = ARIZONA_GP5_RISE_EINT1 },
 	[ARIZONA_IRQ_JD_FALL] = { .mask = ARIZONA_JD1_FALL_EINT1 },
 	[ARIZONA_IRQ_JD_RISE] = { .mask = ARIZONA_JD1_RISE_EINT1 },
 };
 
-const struct regmap_irq_chip wm8997_aod = {
-	.name = "wm8997 AOD",
+struct regmap_irq_chip vegas_aod = {
+	.name = "vegas AOD",
 	.status_base = ARIZONA_AOD_IRQ1,
 	.mask_base = ARIZONA_AOD_IRQ_MASK_IRQ1,
 	.ack_base = ARIZONA_AOD_IRQ1,
 	.num_regs = 1,
-	.irqs = wm8997_aod_irqs,
-	.num_irqs = ARRAY_SIZE(wm8997_aod_irqs),
+	.irqs = vegas_aod_irqs,
+	.num_irqs = ARRAY_SIZE(vegas_aod_irqs),
 };
-EXPORT_SYMBOL_GPL(wm8997_aod);
+EXPORT_SYMBOL_GPL(vegas_aod);
 
-static const struct regmap_irq wm8997_irqs[ARIZONA_NUM_IRQ] = {
+static const struct regmap_irq vegas_irqs[ARIZONA_NUM_IRQ] = {
 	[ARIZONA_IRQ_GP4] = { .reg_offset = 0, .mask = ARIZONA_GP4_EINT1 },
 	[ARIZONA_IRQ_GP3] = { .reg_offset = 0, .mask = ARIZONA_GP3_EINT1 },
 	[ARIZONA_IRQ_GP2] = { .reg_offset = 0, .mask = ARIZONA_GP2_EINT1 },
@@ -83,6 +99,12 @@ static const struct regmap_irq wm8997_irqs[ARIZONA_NUM_IRQ] = {
 	[ARIZONA_IRQ_DRC1_SIG_DET] = {
 		.reg_offset = 2, .mask = ARIZONA_DRC1_SIG_DET_EINT1
 	},
+	[ARIZONA_IRQ_ASRC2_LOCK] = {
+		.reg_offset = 2, .mask = ARIZONA_ASRC2_LOCK_EINT1
+	},
+	[ARIZONA_IRQ_ASRC1_LOCK] = {
+		.reg_offset = 2, .mask = ARIZONA_ASRC1_LOCK_EINT1
+	},
 	[ARIZONA_IRQ_UNDERCLOCKED] = {
 		.reg_offset = 2, .mask = ARIZONA_UNDERCLOCKED_EINT1
 	},
@@ -102,6 +124,12 @@ static const struct regmap_irq wm8997_irqs[ARIZONA_NUM_IRQ] = {
 		.reg_offset = 2, .mask = ARIZONA_CLKGEN_ERR_ASYNC_EINT1
 	},
 
+	[ARIZONA_IRQ_ASRC_CFG_ERR] = {
+		.reg_offset = 3, .mask = ARIZONA_ASRC_CFG_ERR_EINT1
+	},
+	[ARIZONA_IRQ_AIF3_ERR] = {
+		.reg_offset = 3, .mask = ARIZONA_AIF3_ERR_EINT1
+	},
 	[ARIZONA_IRQ_AIF2_ERR] = {
 		.reg_offset = 3, .mask = ARIZONA_AIF2_ERR_EINT1
 	},
@@ -130,12 +158,6 @@ static const struct regmap_irq wm8997_irqs[ARIZONA_NUM_IRQ] = {
 	[ARIZONA_IRQ_BOOT_DONE] = {
 		.reg_offset = 4, .mask = ARIZONA_BOOT_DONE_EINT1
 	},
-	[ARIZONA_IRQ_DCS_DAC_DONE] = {
-		.reg_offset = 4, .mask = ARIZONA_DCS_DAC_DONE_EINT1
-	},
-	[ARIZONA_IRQ_DCS_HP_DONE] = {
-		.reg_offset = 4, .mask = ARIZONA_DCS_HP_DONE_EINT1
-	},
 	[ARIZONA_IRQ_FLL2_CLOCK_OK] = {
 		.reg_offset = 4, .mask = ARIZONA_FLL2_CLOCK_OK_EINT1
 	},
@@ -144,19 +166,20 @@ static const struct regmap_irq wm8997_irqs[ARIZONA_NUM_IRQ] = {
 	},
 };
 
-const struct regmap_irq_chip wm8997_irq = {
-	.name = "wm8997 IRQ",
+struct regmap_irq_chip vegas_irq = {
+	.name = "vegas IRQ",
 	.status_base = ARIZONA_INTERRUPT_STATUS_1,
 	.mask_base = ARIZONA_INTERRUPT_STATUS_1_MASK,
 	.ack_base = ARIZONA_INTERRUPT_STATUS_1,
 	.num_regs = 5,
-	.irqs = wm8997_irqs,
-	.num_irqs = ARRAY_SIZE(wm8997_irqs),
+	.irqs = vegas_irqs,
+	.num_irqs = ARRAY_SIZE(vegas_irqs),
 };
-EXPORT_SYMBOL_GPL(wm8997_irq);
+EXPORT_SYMBOL_GPL(vegas_irq);
 
-static const struct reg_default wm8997_reg_default[] = {
+static const struct reg_default vegas_reg_default[] = {
 	{ 0x00000009, 0x0001 },    /* R9     - Ctrl IF I2C1 CFG 1 */
+	{ 0x0000000B, 0x001A },    /* R11    - Ctrl IF I2C1 CFG 2 */
 	{ 0x00000020, 0x0000 },    /* R32    - Tone Generator 1 */
 	{ 0x00000021, 0x1000 },    /* R33    - Tone Generator 2 */
 	{ 0x00000022, 0x0000 },    /* R34    - Tone Generator 3 */
@@ -171,11 +194,14 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000062, 0x01FF },    /* R98    - Sample Rate Sequence Select 2 */
 	{ 0x00000063, 0x01FF },    /* R99    - Sample Rate Sequence Select 3 */
 	{ 0x00000064, 0x01FF },    /* R100   - Sample Rate Sequence Select 4 */
-	{ 0x00000068, 0x01FF },    /* R104   - AlwaysOn Triggers Seq Select 3 */
-	{ 0x00000069, 0x01FF },    /* R105   - AlwaysOn Triggers Seq Select 4 */
-	{ 0x0000006A, 0x01FF },    /* R106   - AlwaysOn Triggers Seq Select 5 */
-	{ 0x0000006B, 0x01FF },    /* R107   - AlwaysOn Triggers Seq Select 6 */
-	{ 0x00000070, 0x0000 },    /* R112   - Comfort Noise Generator */
+	{ 0x00000066, 0x01FF },    /* R102   - Always On Triggers Sequence Select 1 */
+	{ 0x00000067, 0x01FF },    /* R103   - Always On Triggers Sequence Select 2 */
+	{ 0x00000068, 0x01FF },    /* R104   - Always On Triggers Sequence Select 3 */
+	{ 0x00000069, 0x01FF },    /* R105   - Always On Triggers Sequence Select 4 */
+	{ 0x0000006A, 0x01FF },    /* R106   - Always On Triggers Sequence Select 5 */
+	{ 0x0000006B, 0x01FF },    /* R107   - Always On Triggers Sequence Select 6 */
+	{ 0x0000006E, 0x01FF },    /* R110   - Trigger Sequence Select 32 */
+	{ 0x0000006F, 0x01FF },    /* R111   - Trigger Sequence Select 33 */
 	{ 0x00000090, 0x0000 },    /* R144   - Haptics Control 1 */
 	{ 0x00000091, 0x7FFF },    /* R145   - Haptics Control 2 */
 	{ 0x00000092, 0x0000 },    /* R146   - Haptics phase 1 intensity */
@@ -191,6 +217,7 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000104, 0x0011 },    /* R260   - Sample rate 3 */
 	{ 0x00000112, 0x0305 },    /* R274   - Async clock 1 */
 	{ 0x00000113, 0x0011 },    /* R275   - Async sample rate 1 */
+	{ 0x00000114, 0x0011 },    /* R276   - Async sample rate 2 */
 	{ 0x00000149, 0x0000 },    /* R329   - Output system clock */
 	{ 0x0000014A, 0x0000 },    /* R330   - Output async clock */
 	{ 0x00000152, 0x0000 },    /* R338   - Rate Estimator 1 */
@@ -199,19 +226,22 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000155, 0x0000 },    /* R341   - Rate Estimator 4 */
 	{ 0x00000156, 0x0000 },    /* R342   - Rate Estimator 5 */
 	{ 0x00000161, 0x0000 },    /* R353   - Dynamic Frequency Scaling 1 */
-	{ 0x00000171, 0x0000 },    /* R369   - FLL1 Control 1 */
+	{ 0x00000171, 0x0002 },    /* R369   - FLL1 Control 1 */
 	{ 0x00000172, 0x0008 },    /* R370   - FLL1 Control 2 */
 	{ 0x00000173, 0x0018 },    /* R371   - FLL1 Control 3 */
 	{ 0x00000174, 0x007D },    /* R372   - FLL1 Control 4 */
 	{ 0x00000175, 0x0004 },    /* R373   - FLL1 Control 5 */
 	{ 0x00000176, 0x0000 },    /* R374   - FLL1 Control 6 */
 	{ 0x00000177, 0x0181 },    /* R375   - FLL1 Loop Filter Test 1 */
+	{ 0x00000178, 0x0000 },    /* R376   - FLL1 NCO Test 0 */
+	{ 0x00000179, 0x0000 },    /* R377   - FLL1 Control 7 */
 	{ 0x00000181, 0x0000 },    /* R385   - FLL1 Synchroniser 1 */
 	{ 0x00000182, 0x0000 },    /* R386   - FLL1 Synchroniser 2 */
 	{ 0x00000183, 0x0000 },    /* R387   - FLL1 Synchroniser 3 */
 	{ 0x00000184, 0x0000 },    /* R388   - FLL1 Synchroniser 4 */
 	{ 0x00000185, 0x0000 },    /* R389   - FLL1 Synchroniser 5 */
 	{ 0x00000186, 0x0000 },    /* R390   - FLL1 Synchroniser 6 */
+	{ 0x00000187, 0x0001 },    /* R391   - FLL1 Synchroniser 7 */
 	{ 0x00000189, 0x0000 },    /* R393   - FLL1 Spread Spectrum */
 	{ 0x0000018A, 0x0004 },    /* R394   - FLL1 GPIO Clock */
 	{ 0x00000191, 0x0000 },    /* R401   - FLL2 Control 1 */
@@ -221,12 +251,15 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000195, 0x0004 },    /* R405   - FLL2 Control 5 */
 	{ 0x00000196, 0x0000 },    /* R406   - FLL2 Control 6 */
 	{ 0x00000197, 0x0000 },    /* R407   - FLL2 Loop Filter Test 1 */
+	{ 0x00000198, 0x0000 },    /* R408   - FLL2 NCO Test 0 */
+	{ 0x00000199, 0x0000 },    /* R409   - FLL2 Control 7 */
 	{ 0x000001A1, 0x0000 },    /* R417   - FLL2 Synchroniser 1 */
 	{ 0x000001A2, 0x0000 },    /* R418   - FLL2 Synchroniser 2 */
 	{ 0x000001A3, 0x0000 },    /* R419   - FLL2 Synchroniser 3 */
 	{ 0x000001A4, 0x0000 },    /* R420   - FLL2 Synchroniser 4 */
 	{ 0x000001A5, 0x0000 },    /* R421   - FLL2 Synchroniser 5 */
 	{ 0x000001A6, 0x0000 },    /* R422   - FLL2 Synchroniser 6 */
+	{ 0x000001A7, 0x0001 },    /* R423   - FLL2 Synchroniser 7 */
 	{ 0x000001A9, 0x0000 },    /* R425   - FLL2 Spread Spectrum */
 	{ 0x000001AA, 0x0004 },    /* R426   - FLL2 GPIO Clock */
 	{ 0x00000200, 0x0006 },    /* R512   - Mic Charge Pump 1 */
@@ -236,17 +269,24 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000218, 0x01A6 },    /* R536   - Mic Bias Ctrl 1 */
 	{ 0x00000219, 0x01A6 },    /* R537   - Mic Bias Ctrl 2 */
 	{ 0x0000021A, 0x01A6 },    /* R538   - Mic Bias Ctrl 3 */
-	{ 0x00000293, 0x0000 },    /* R659   - Accessory Detect Mode 1 */
-	{ 0x0000029B, 0x0020 },    /* R667   - Headphone Detect 1 */
+	{ 0x00000293, 0x0080 },    /* R659   - Accessory Detect Mode 1 */
+	{ 0x0000029B, 0x0000 },    /* R667   - Headphone Detect 1 */
+	{ 0x0000029C, 0x0000 },    /* R668   - Headphone Detect 2 */
+	{ 0x000002A2, 0x0000 },    /* R674   - Micd Clamp control */
 	{ 0x000002A3, 0x1102 },    /* R675   - Mic Detect 1 */
 	{ 0x000002A4, 0x009F },    /* R676   - Mic Detect 2 */
 	{ 0x000002A5, 0x0000 },    /* R677   - Mic Detect 3 */
-	{ 0x000002C3, 0x0000 },    /* R707   - Mic noise mix control 1 */
+	{ 0x000002A6, 0x3737 },    /* R678   - Mic Detect Level 1 */
+	{ 0x000002A7, 0x2C37 },    /* R679   - Mic Detect Level 2 */
+	{ 0x000002A8, 0x1422 },    /* R680   - Mic Detect Level 3 */
+	{ 0x000002A9, 0x030A },    /* R681   - Mic Detect Level 4 */
+	{ 0x000002AB, 0x0000 },    /* R683   - Mic Detect 4 */
 	{ 0x000002CB, 0x0000 },    /* R715   - Isolation control */
 	{ 0x000002D3, 0x0000 },    /* R723   - Jack detect analogue */
 	{ 0x00000300, 0x0000 },    /* R768   - Input Enables */
 	{ 0x00000308, 0x0000 },    /* R776   - Input Rate */
 	{ 0x00000309, 0x0022 },    /* R777   - Input Volume Ramp */
+	{ 0x0000030C, 0x0002 },    /* R780   - HPF Control */
 	{ 0x00000310, 0x2080 },    /* R784   - IN1L Control */
 	{ 0x00000311, 0x0180 },    /* R785   - ADC Digital Volume 1L */
 	{ 0x00000312, 0x0000 },    /* R786   - DMIC1L Control */
@@ -256,45 +296,52 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000318, 0x2080 },    /* R792   - IN2L Control */
 	{ 0x00000319, 0x0180 },    /* R793   - ADC Digital Volume 2L */
 	{ 0x0000031A, 0x0000 },    /* R794   - DMIC2L Control */
-	{ 0x0000031C, 0x0080 },    /* R796   - IN2R Control */
-	{ 0x0000031D, 0x0180 },    /* R797   - ADC Digital Volume 2R */
-	{ 0x0000031E, 0x0000 },    /* R798   - DMIC2R Control */
 	{ 0x00000400, 0x0000 },    /* R1024  - Output Enables 1 */
 	{ 0x00000408, 0x0000 },    /* R1032  - Output Rate 1 */
 	{ 0x00000409, 0x0022 },    /* R1033  - Output Volume Ramp */
-	{ 0x00000410, 0x0080 },    /* R1040  - Output Path Config 1L */
+	{ 0x00000410, 0x2080 },    /* R1040  - Output Path Config 1L */
 	{ 0x00000411, 0x0180 },    /* R1041  - DAC Digital Volume 1L */
-	{ 0x00000412, 0x0080 },    /* R1042  - DAC Volume Limit 1L */
 	{ 0x00000413, 0x0001 },    /* R1043  - Noise Gate Select 1L */
 	{ 0x00000414, 0x0080 },    /* R1044  - Output Path Config 1R */
 	{ 0x00000415, 0x0180 },    /* R1045  - DAC Digital Volume 1R */
-	{ 0x00000416, 0x0080 },    /* R1046  - DAC Volume Limit 1R */
 	{ 0x00000417, 0x0002 },    /* R1047  - Noise Gate Select 1R */
-	{ 0x00000420, 0x0080 },    /* R1056  - Output Path Config 3L */
+	{ 0x00000418, 0x2080 },    /* R1048  - Output Path Config 2L */
+	{ 0x00000419, 0x0180 },    /* R1049  - DAC Digital Volume 2L */
+	{ 0x0000041B, 0x0004 },    /* R1051  - Noise Gate Select 2L */
+	{ 0x0000041C, 0x0080 },    /* R1052  - Output Path Config 2R */
+	{ 0x0000041D, 0x0180 },    /* R1053  - DAC Digital Volume 2R */
+	{ 0x0000041F, 0x0008 },    /* R1055  - Noise Gate Select 2R */
+	{ 0x00000420, 0x2080 },    /* R1056  - Output Path Config 3L */
 	{ 0x00000421, 0x0180 },    /* R1057  - DAC Digital Volume 3L */
-	{ 0x00000422, 0x0080 },    /* R1058  - DAC Volume Limit 3L */
 	{ 0x00000423, 0x0010 },    /* R1059  - Noise Gate Select 3L */
 	{ 0x00000428, 0x0000 },    /* R1064  - Output Path Config 4L */
 	{ 0x00000429, 0x0180 },    /* R1065  - DAC Digital Volume 4L */
-	{ 0x0000042A, 0x0080 },    /* R1066  - Out Volume 4L */
 	{ 0x0000042B, 0x0040 },    /* R1067  - Noise Gate Select 4L */
+	{ 0x0000042C, 0x0000 },    /* R1068  - Output Path Config 4R */
+	{ 0x0000042D, 0x0180 },    /* R1069  - DAC Digital Volume 4R */
+	{ 0x0000042F, 0x0080 },    /* R1071  - Noise Gate Select 4R */
 	{ 0x00000430, 0x0000 },    /* R1072  - Output Path Config 5L */
 	{ 0x00000431, 0x0180 },    /* R1073  - DAC Digital Volume 5L */
-	{ 0x00000432, 0x0080 },    /* R1074  - DAC Volume Limit 5L */
 	{ 0x00000433, 0x0100 },    /* R1075  - Noise Gate Select 5L */
+	{ 0x00000434, 0x0000 },    /* R1076  - Output Path Config 5R */
 	{ 0x00000435, 0x0180 },    /* R1077  - DAC Digital Volume 5R */
-	{ 0x00000436, 0x0080 },    /* R1078  - DAC Volume Limit 5R */
 	{ 0x00000437, 0x0200 },    /* R1079  - Noise Gate Select 5R */
+	{ 0x00000440, 0x8FFF },    /* R1088  - DRE Enable */
+	{ 0x00000441, 0xC759 },    /* R1089  - DRE Control 1 */
+	{ 0x00000442, 0x2A08 },    /* R1089  - DRE Control 2 */
+	{ 0x00000443, 0x5CFA },    /* R1089  - DRE Control 3 */
+	{ 0x00000448, 0x03EF },    /* R1096  - EDRE Enable */
 	{ 0x00000450, 0x0000 },    /* R1104  - DAC AEC Control 1 */
+	{ 0x00000451, 0x0000 },    /* R1105  - DAC AEC Control 2 */
 	{ 0x00000458, 0x0000 },    /* R1112  - Noise Gate Control */
 	{ 0x00000490, 0x0069 },    /* R1168  - PDM SPK1 CTRL 1 */
 	{ 0x00000491, 0x0000 },    /* R1169  - PDM SPK1 CTRL 2 */
+	{ 0x0000049A, 0x0000 },    /* R1178  - HP_TEST_CTRL_13 */
 	{ 0x00000500, 0x000C },    /* R1280  - AIF1 BCLK Ctrl */
 	{ 0x00000501, 0x0008 },    /* R1281  - AIF1 Tx Pin Ctrl */
 	{ 0x00000502, 0x0000 },    /* R1282  - AIF1 Rx Pin Ctrl */
 	{ 0x00000503, 0x0000 },    /* R1283  - AIF1 Rate Ctrl */
 	{ 0x00000504, 0x0000 },    /* R1284  - AIF1 Format */
-	{ 0x00000505, 0x0040 },    /* R1285  - AIF1 Tx BCLK Rate */
 	{ 0x00000506, 0x0040 },    /* R1286  - AIF1 Rx BCLK Rate */
 	{ 0x00000507, 0x1818 },    /* R1287  - AIF1 Frame Ctrl 1 */
 	{ 0x00000508, 0x1818 },    /* R1288  - AIF1 Frame Ctrl 2 */
@@ -304,16 +351,12 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x0000050C, 0x0003 },    /* R1292  - AIF1 Frame Ctrl 6 */
 	{ 0x0000050D, 0x0004 },    /* R1293  - AIF1 Frame Ctrl 7 */
 	{ 0x0000050E, 0x0005 },    /* R1294  - AIF1 Frame Ctrl 8 */
-	{ 0x0000050F, 0x0006 },    /* R1295  - AIF1 Frame Ctrl 9 */
-	{ 0x00000510, 0x0007 },    /* R1296  - AIF1 Frame Ctrl 10 */
 	{ 0x00000511, 0x0000 },    /* R1297  - AIF1 Frame Ctrl 11 */
 	{ 0x00000512, 0x0001 },    /* R1298  - AIF1 Frame Ctrl 12 */
 	{ 0x00000513, 0x0002 },    /* R1299  - AIF1 Frame Ctrl 13 */
 	{ 0x00000514, 0x0003 },    /* R1300  - AIF1 Frame Ctrl 14 */
 	{ 0x00000515, 0x0004 },    /* R1301  - AIF1 Frame Ctrl 15 */
 	{ 0x00000516, 0x0005 },    /* R1302  - AIF1 Frame Ctrl 16 */
-	{ 0x00000517, 0x0006 },    /* R1303  - AIF1 Frame Ctrl 17 */
-	{ 0x00000518, 0x0007 },    /* R1304  - AIF1 Frame Ctrl 18 */
 	{ 0x00000519, 0x0000 },    /* R1305  - AIF1 Tx Enables */
 	{ 0x0000051A, 0x0000 },    /* R1306  - AIF1 Rx Enables */
 	{ 0x00000540, 0x000C },    /* R1344  - AIF2 BCLK Ctrl */
@@ -321,25 +364,47 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000542, 0x0000 },    /* R1346  - AIF2 Rx Pin Ctrl */
 	{ 0x00000543, 0x0000 },    /* R1347  - AIF2 Rate Ctrl */
 	{ 0x00000544, 0x0000 },    /* R1348  - AIF2 Format */
-	{ 0x00000545, 0x0040 },    /* R1349  - AIF2 Tx BCLK Rate */
 	{ 0x00000546, 0x0040 },    /* R1350  - AIF2 Rx BCLK Rate */
 	{ 0x00000547, 0x1818 },    /* R1351  - AIF2 Frame Ctrl 1 */
 	{ 0x00000548, 0x1818 },    /* R1352  - AIF2 Frame Ctrl 2 */
 	{ 0x00000549, 0x0000 },    /* R1353  - AIF2 Frame Ctrl 3 */
 	{ 0x0000054A, 0x0001 },    /* R1354  - AIF2 Frame Ctrl 4 */
+	{ 0x0000054B, 0x0002 },    /* R1355  - AIF2 Frame Ctrl 5 */
+	{ 0x0000054C, 0x0003 },    /* R1356  - AIF2 Frame Ctrl 6 */
+	{ 0x0000054D, 0x0004 },    /* R1357  - AIF2 Frame Ctrl 7 */
+	{ 0x0000054E, 0x0005 },    /* R1358  - AIF2 Frame Ctrl 8 */
 	{ 0x00000551, 0x0000 },    /* R1361  - AIF2 Frame Ctrl 11 */
 	{ 0x00000552, 0x0001 },    /* R1362  - AIF2 Frame Ctrl 12 */
+	{ 0x00000553, 0x0002 },    /* R1363  - AIF2 Frame Ctrl 13 */
+	{ 0x00000554, 0x0003 },    /* R1364  - AIF2 Frame Ctrl 14 */
+	{ 0x00000555, 0x0004 },    /* R1365  - AIF2 Frame Ctrl 15 */
+	{ 0x00000556, 0x0005 },    /* R1366  - AIF2 Frame Ctrl 16 */
 	{ 0x00000559, 0x0000 },    /* R1369  - AIF2 Tx Enables */
 	{ 0x0000055A, 0x0000 },    /* R1370  - AIF2 Rx Enables */
+	{ 0x00000580, 0x000C },    /* R1408  - AIF3 BCLK Ctrl */
+	{ 0x00000581, 0x0008 },    /* R1409  - AIF3 Tx Pin Ctrl */
+	{ 0x00000582, 0x0000 },    /* R1410  - AIF3 Rx Pin Ctrl */
+	{ 0x00000583, 0x0000 },    /* R1411  - AIF3 Rate Ctrl */
+	{ 0x00000584, 0x0000 },    /* R1412  - AIF3 Format */
+	{ 0x00000586, 0x0040 },    /* R1414  - AIF3 Rx BCLK Rate */
+	{ 0x00000587, 0x1818 },    /* R1415  - AIF3 Frame Ctrl 1 */
+	{ 0x00000588, 0x1818 },    /* R1416  - AIF3 Frame Ctrl 2 */
+	{ 0x00000589, 0x0000 },    /* R1417  - AIF3 Frame Ctrl 3 */
+	{ 0x0000058A, 0x0001 },    /* R1418  - AIF3 Frame Ctrl 4 */
+	{ 0x00000591, 0x0000 },    /* R1425  - AIF3 Frame Ctrl 11 */
+	{ 0x00000592, 0x0001 },    /* R1426  - AIF3 Frame Ctrl 12 */
+	{ 0x00000599, 0x0000 },    /* R1433  - AIF3 Tx Enables */
+	{ 0x0000059A, 0x0000 },    /* R1434  - AIF3 Rx Enables */
+	{ 0x000005C2, 0x0000 },    /* R1474  - SPD1 TX Control */
+	{ 0x000005C3, 0x0000 },    /* R1475  - SPD1 TX Channel Status 1 */
+	{ 0x000005C4, 0x0B01 },    /* R1476  - SPD1 TX Channel Status 2 */
+	{ 0x000005C5, 0x0000 },    /* R1477  - SPD1 TX Channel Status 3 */
 	{ 0x000005E3, 0x0004 },    /* R1507  - SLIMbus Framer Ref Gear */
 	{ 0x000005E5, 0x0000 },    /* R1509  - SLIMbus Rates 1 */
 	{ 0x000005E6, 0x0000 },    /* R1510  - SLIMbus Rates 2 */
-	{ 0x000005E7, 0x0000 },    /* R1511  - SLIMbus Rates 3 */
-	{ 0x000005E8, 0x0000 },    /* R1512  - SLIMbus Rates 4 */
 	{ 0x000005E9, 0x0000 },    /* R1513  - SLIMbus Rates 5 */
 	{ 0x000005EA, 0x0000 },    /* R1514  - SLIMbus Rates 6 */
 	{ 0x000005EB, 0x0000 },    /* R1515  - SLIMbus Rates 7 */
-	{ 0x000005EC, 0x0000 },    /* R1516  - SLIMbus Rates 8 */
 	{ 0x000005F5, 0x0000 },    /* R1525  - SLIMbus RX Channel Enable */
 	{ 0x000005F6, 0x0000 },    /* R1526  - SLIMbus TX Channel Enable */
 	{ 0x00000640, 0x0000 },    /* R1600  - PWM1MIX Input 1 Source */
@@ -358,22 +423,6 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x0000064D, 0x0080 },    /* R1613  - PWM2MIX Input 3 Volume */
 	{ 0x0000064E, 0x0000 },    /* R1614  - PWM2MIX Input 4 Source */
 	{ 0x0000064F, 0x0080 },    /* R1615  - PWM2MIX Input 4 Volume */
-	{ 0x00000660, 0x0000 },    /* R1632  - MICMIX Input 1 Source */
-	{ 0x00000661, 0x0080 },    /* R1633  - MICMIX Input 1 Volume */
-	{ 0x00000662, 0x0000 },    /* R1634  - MICMIX Input 2 Source */
-	{ 0x00000663, 0x0080 },    /* R1635  - MICMIX Input 2 Volume */
-	{ 0x00000664, 0x0000 },    /* R1636  - MICMIX Input 3 Source */
-	{ 0x00000665, 0x0080 },    /* R1637  - MICMIX Input 3 Volume */
-	{ 0x00000666, 0x0000 },    /* R1638  - MICMIX Input 4 Source */
-	{ 0x00000667, 0x0080 },    /* R1639  - MICMIX Input 4 Volume */
-	{ 0x00000668, 0x0000 },    /* R1640  - NOISEMIX Input 1 Source */
-	{ 0x00000669, 0x0080 },    /* R1641  - NOISEMIX Input 1 Volume */
-	{ 0x0000066A, 0x0000 },    /* R1642  - NOISEMIX Input 2 Source */
-	{ 0x0000066B, 0x0080 },    /* R1643  - NOISEMIX Input 2 Volume */
-	{ 0x0000066C, 0x0000 },    /* R1644  - NOISEMIX Input 3 Source */
-	{ 0x0000066D, 0x0080 },    /* R1645  - NOISEMIX Input 3 Volume */
-	{ 0x0000066E, 0x0000 },    /* R1646  - NOISEMIX Input 4 Source */
-	{ 0x0000066F, 0x0080 },    /* R1647  - NOISEMIX Input 4 Volume */
 	{ 0x00000680, 0x0000 },    /* R1664  - OUT1LMIX Input 1 Source */
 	{ 0x00000681, 0x0080 },    /* R1665  - OUT1LMIX Input 1 Volume */
 	{ 0x00000682, 0x0000 },    /* R1666  - OUT1LMIX Input 2 Source */
@@ -390,6 +439,22 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x0000068D, 0x0080 },    /* R1677  - OUT1RMIX Input 3 Volume */
 	{ 0x0000068E, 0x0000 },    /* R1678  - OUT1RMIX Input 4 Source */
 	{ 0x0000068F, 0x0080 },    /* R1679  - OUT1RMIX Input 4 Volume */
+	{ 0x00000690, 0x0000 },    /* R1680  - OUT2LMIX Input 1 Source */
+	{ 0x00000691, 0x0080 },    /* R1681  - OUT2LMIX Input 1 Volume */
+	{ 0x00000692, 0x0000 },    /* R1682  - OUT2LMIX Input 2 Source */
+	{ 0x00000693, 0x0080 },    /* R1683  - OUT2LMIX Input 2 Volume */
+	{ 0x00000694, 0x0000 },    /* R1684  - OUT2LMIX Input 3 Source */
+	{ 0x00000695, 0x0080 },    /* R1685  - OUT2LMIX Input 3 Volume */
+	{ 0x00000696, 0x0000 },    /* R1686  - OUT2LMIX Input 4 Source */
+	{ 0x00000697, 0x0080 },    /* R1687  - OUT2LMIX Input 4 Volume */
+	{ 0x00000698, 0x0000 },    /* R1688  - OUT2RMIX Input 1 Source */
+	{ 0x00000699, 0x0080 },    /* R1689  - OUT2RMIX Input 1 Volume */
+	{ 0x0000069A, 0x0000 },    /* R1690  - OUT2RMIX Input 2 Source */
+	{ 0x0000069B, 0x0080 },    /* R1691  - OUT2RMIX Input 2 Volume */
+	{ 0x0000069C, 0x0000 },    /* R1692  - OUT2RMIX Input 3 Source */
+	{ 0x0000069D, 0x0080 },    /* R1693  - OUT2RMIX Input 3 Volume */
+	{ 0x0000069E, 0x0000 },    /* R1694  - OUT2RMIX Input 4 Source */
+	{ 0x0000069F, 0x0080 },    /* R1695  - OUT2RMIX Input 4 Volume */
 	{ 0x000006A0, 0x0000 },    /* R1696  - OUT3LMIX Input 1 Source */
 	{ 0x000006A1, 0x0080 },    /* R1697  - OUT3LMIX Input 1 Volume */
 	{ 0x000006A2, 0x0000 },    /* R1698  - OUT3LMIX Input 2 Source */
@@ -406,6 +471,14 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x000006B5, 0x0080 },    /* R1717  - OUT4LMIX Input 3 Volume */
 	{ 0x000006B6, 0x0000 },    /* R1718  - OUT4LMIX Input 4 Source */
 	{ 0x000006B7, 0x0080 },    /* R1719  - OUT4LMIX Input 4 Volume */
+	{ 0x000006B8, 0x0000 },    /* R1720  - OUT4RMIX Input 1 Source */
+	{ 0x000006B9, 0x0080 },    /* R1721  - OUT4RMIX Input 1 Volume */
+	{ 0x000006BA, 0x0000 },    /* R1722  - OUT4RMIX Input 2 Source */
+	{ 0x000006BB, 0x0080 },    /* R1723  - OUT4RMIX Input 2 Volume */
+	{ 0x000006BC, 0x0000 },    /* R1724  - OUT4RMIX Input 3 Source */
+	{ 0x000006BD, 0x0080 },    /* R1725  - OUT4RMIX Input 3 Volume */
+	{ 0x000006BE, 0x0000 },    /* R1726  - OUT4RMIX Input 4 Source */
+	{ 0x000006BF, 0x0080 },    /* R1727  - OUT4RMIX Input 4 Volume */
 	{ 0x000006C0, 0x0000 },    /* R1728  - OUT5LMIX Input 1 Source */
 	{ 0x000006C1, 0x0080 },    /* R1729  - OUT5LMIX Input 1 Volume */
 	{ 0x000006C2, 0x0000 },    /* R1730  - OUT5LMIX Input 2 Source */
@@ -470,22 +543,6 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x0000072D, 0x0080 },    /* R1837  - AIF1TX6MIX Input 3 Volume */
 	{ 0x0000072E, 0x0000 },    /* R1838  - AIF1TX6MIX Input 4 Source */
 	{ 0x0000072F, 0x0080 },    /* R1839  - AIF1TX6MIX Input 4 Volume */
-	{ 0x00000730, 0x0000 },    /* R1840  - AIF1TX7MIX Input 1 Source */
-	{ 0x00000731, 0x0080 },    /* R1841  - AIF1TX7MIX Input 1 Volume */
-	{ 0x00000732, 0x0000 },    /* R1842  - AIF1TX7MIX Input 2 Source */
-	{ 0x00000733, 0x0080 },    /* R1843  - AIF1TX7MIX Input 2 Volume */
-	{ 0x00000734, 0x0000 },    /* R1844  - AIF1TX7MIX Input 3 Source */
-	{ 0x00000735, 0x0080 },    /* R1845  - AIF1TX7MIX Input 3 Volume */
-	{ 0x00000736, 0x0000 },    /* R1846  - AIF1TX7MIX Input 4 Source */
-	{ 0x00000737, 0x0080 },    /* R1847  - AIF1TX7MIX Input 4 Volume */
-	{ 0x00000738, 0x0000 },    /* R1848  - AIF1TX8MIX Input 1 Source */
-	{ 0x00000739, 0x0080 },    /* R1849  - AIF1TX8MIX Input 1 Volume */
-	{ 0x0000073A, 0x0000 },    /* R1850  - AIF1TX8MIX Input 2 Source */
-	{ 0x0000073B, 0x0080 },    /* R1851  - AIF1TX8MIX Input 2 Volume */
-	{ 0x0000073C, 0x0000 },    /* R1852  - AIF1TX8MIX Input 3 Source */
-	{ 0x0000073D, 0x0080 },    /* R1853  - AIF1TX8MIX Input 3 Volume */
-	{ 0x0000073E, 0x0000 },    /* R1854  - AIF1TX8MIX Input 4 Source */
-	{ 0x0000073F, 0x0080 },    /* R1855  - AIF1TX8MIX Input 4 Volume */
 	{ 0x00000740, 0x0000 },    /* R1856  - AIF2TX1MIX Input 1 Source */
 	{ 0x00000741, 0x0080 },    /* R1857  - AIF2TX1MIX Input 1 Volume */
 	{ 0x00000742, 0x0000 },    /* R1858  - AIF2TX1MIX Input 2 Source */
@@ -502,118 +559,82 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x0000074D, 0x0080 },    /* R1869  - AIF2TX2MIX Input 3 Volume */
 	{ 0x0000074E, 0x0000 },    /* R1870  - AIF2TX2MIX Input 4 Source */
 	{ 0x0000074F, 0x0080 },    /* R1871  - AIF2TX2MIX Input 4 Volume */
+	{ 0x00000750, 0x0000 },    /* R1872  - AIF2TX3MIX Input 1 Source */
+	{ 0x00000751, 0x0080 },    /* R1873  - AIF2TX3MIX Input 1 Volume */
+	{ 0x00000752, 0x0000 },    /* R1874  - AIF2TX3MIX Input 2 Source */
+	{ 0x00000753, 0x0080 },    /* R1875  - AIF2TX3MIX Input 2 Volume */
+	{ 0x00000754, 0x0000 },    /* R1876  - AIF2TX3MIX Input 3 Source */
+	{ 0x00000755, 0x0080 },    /* R1877  - AIF2TX3MIX Input 3 Volume */
+	{ 0x00000756, 0x0000 },    /* R1878  - AIF2TX3MIX Input 4 Source */
+	{ 0x00000757, 0x0080 },    /* R1879  - AIF2TX3MIX Input 4 Volume */
+	{ 0x00000758, 0x0000 },    /* R1880  - AIF2TX4MIX Input 1 Source */
+	{ 0x00000759, 0x0080 },    /* R1881  - AIF2TX4MIX Input 1 Volume */
+	{ 0x0000075A, 0x0000 },    /* R1882  - AIF2TX4MIX Input 2 Source */
+	{ 0x0000075B, 0x0080 },    /* R1883  - AIF2TX4MIX Input 2 Volume */
+	{ 0x0000075C, 0x0000 },    /* R1884  - AIF2TX4MIX Input 3 Source */
+	{ 0x0000075D, 0x0080 },    /* R1885  - AIF2TX4MIX Input 3 Volume */
+	{ 0x0000075E, 0x0000 },    /* R1886  - AIF2TX4MIX Input 4 Source */
+	{ 0x0000075F, 0x0080 },    /* R1887  - AIF2TX4MIX Input 4 Volume */
+	{ 0x00000760, 0x0000 },    /* R1888  - AIF2TX5MIX Input 1 Source */
+	{ 0x00000761, 0x0080 },    /* R1889  - AIF2TX5MIX Input 1 Volume */
+	{ 0x00000762, 0x0000 },    /* R1890  - AIF2TX5MIX Input 2 Source */
+	{ 0x00000763, 0x0080 },    /* R1891  - AIF2TX5MIX Input 2 Volume */
+	{ 0x00000764, 0x0000 },    /* R1892  - AIF2TX5MIX Input 3 Source */
+	{ 0x00000765, 0x0080 },    /* R1893  - AIF2TX5MIX Input 3 Volume */
+	{ 0x00000766, 0x0000 },    /* R1894  - AIF2TX5MIX Input 4 Source */
+	{ 0x00000767, 0x0080 },    /* R1895  - AIF2TX5MIX Input 4 Volume */
+	{ 0x00000768, 0x0000 },    /* R1896  - AIF2TX6MIX Input 1 Source */
+	{ 0x00000769, 0x0080 },    /* R1897  - AIF2TX6MIX Input 1 Volume */
+	{ 0x0000076A, 0x0000 },    /* R1898  - AIF2TX6MIX Input 2 Source */
+	{ 0x0000076B, 0x0080 },    /* R1899  - AIF2TX6MIX Input 2 Volume */
+	{ 0x0000076C, 0x0000 },    /* R1900  - AIF2TX6MIX Input 3 Source */
+	{ 0x0000076D, 0x0080 },    /* R1901  - AIF2TX6MIX Input 3 Volume */
+	{ 0x0000076E, 0x0000 },    /* R1902  - AIF2TX6MIX Input 4 Source */
+	{ 0x0000076F, 0x0080 },    /* R1903  - AIF2TX6MIX Input 4 Volume */
+	{ 0x00000780, 0x0000 },    /* R1920  - AIF3TX1MIX Input 1 Source */
+	{ 0x00000781, 0x0080 },    /* R1921  - AIF3TX1MIX Input 1 Volume */
+	{ 0x00000782, 0x0000 },    /* R1922  - AIF3TX1MIX Input 2 Source */
+	{ 0x00000783, 0x0080 },    /* R1923  - AIF3TX1MIX Input 2 Volume */
+	{ 0x00000784, 0x0000 },    /* R1924  - AIF3TX1MIX Input 3 Source */
+	{ 0x00000785, 0x0080 },    /* R1925  - AIF3TX1MIX Input 3 Volume */
+	{ 0x00000786, 0x0000 },    /* R1926  - AIF3TX1MIX Input 4 Source */
+	{ 0x00000787, 0x0080 },    /* R1927  - AIF3TX1MIX Input 4 Volume */
+	{ 0x00000788, 0x0000 },    /* R1928  - AIF3TX2MIX Input 1 Source */
+	{ 0x00000789, 0x0080 },    /* R1929  - AIF3TX2MIX Input 1 Volume */
+	{ 0x0000078A, 0x0000 },    /* R1930  - AIF3TX2MIX Input 2 Source */
+	{ 0x0000078B, 0x0080 },    /* R1931  - AIF3TX2MIX Input 2 Volume */
+	{ 0x0000078C, 0x0000 },    /* R1932  - AIF3TX2MIX Input 3 Source */
+	{ 0x0000078D, 0x0080 },    /* R1933  - AIF3TX2MIX Input 3 Volume */
+	{ 0x0000078E, 0x0000 },    /* R1934  - AIF3TX2MIX Input 4 Source */
+	{ 0x0000078F, 0x0080 },    /* R1935  - AIF3TX2MIX Input 4 Volume */
 	{ 0x000007C0, 0x0000 },    /* R1984  - SLIMTX1MIX Input 1 Source */
 	{ 0x000007C1, 0x0080 },    /* R1985  - SLIMTX1MIX Input 1 Volume */
-	{ 0x000007C2, 0x0000 },    /* R1986  - SLIMTX1MIX Input 2 Source */
-	{ 0x000007C3, 0x0080 },    /* R1987  - SLIMTX1MIX Input 2 Volume */
-	{ 0x000007C4, 0x0000 },    /* R1988  - SLIMTX1MIX Input 3 Source */
-	{ 0x000007C5, 0x0080 },    /* R1989  - SLIMTX1MIX Input 3 Volume */
-	{ 0x000007C6, 0x0000 },    /* R1990  - SLIMTX1MIX Input 4 Source */
-	{ 0x000007C7, 0x0080 },    /* R1991  - SLIMTX1MIX Input 4 Volume */
 	{ 0x000007C8, 0x0000 },    /* R1992  - SLIMTX2MIX Input 1 Source */
 	{ 0x000007C9, 0x0080 },    /* R1993  - SLIMTX2MIX Input 1 Volume */
-	{ 0x000007CA, 0x0000 },    /* R1994  - SLIMTX2MIX Input 2 Source */
-	{ 0x000007CB, 0x0080 },    /* R1995  - SLIMTX2MIX Input 2 Volume */
-	{ 0x000007CC, 0x0000 },    /* R1996  - SLIMTX2MIX Input 3 Source */
-	{ 0x000007CD, 0x0080 },    /* R1997  - SLIMTX2MIX Input 3 Volume */
-	{ 0x000007CE, 0x0000 },    /* R1998  - SLIMTX2MIX Input 4 Source */
-	{ 0x000007CF, 0x0080 },    /* R1999  - SLIMTX2MIX Input 4 Volume */
 	{ 0x000007D0, 0x0000 },    /* R2000  - SLIMTX3MIX Input 1 Source */
 	{ 0x000007D1, 0x0080 },    /* R2001  - SLIMTX3MIX Input 1 Volume */
-	{ 0x000007D2, 0x0000 },    /* R2002  - SLIMTX3MIX Input 2 Source */
-	{ 0x000007D3, 0x0080 },    /* R2003  - SLIMTX3MIX Input 2 Volume */
-	{ 0x000007D4, 0x0000 },    /* R2004  - SLIMTX3MIX Input 3 Source */
-	{ 0x000007D5, 0x0080 },    /* R2005  - SLIMTX3MIX Input 3 Volume */
-	{ 0x000007D6, 0x0000 },    /* R2006  - SLIMTX3MIX Input 4 Source */
-	{ 0x000007D7, 0x0080 },    /* R2007  - SLIMTX3MIX Input 4 Volume */
 	{ 0x000007D8, 0x0000 },    /* R2008  - SLIMTX4MIX Input 1 Source */
 	{ 0x000007D9, 0x0080 },    /* R2009  - SLIMTX4MIX Input 1 Volume */
-	{ 0x000007DA, 0x0000 },    /* R2010  - SLIMTX4MIX Input 2 Source */
-	{ 0x000007DB, 0x0080 },    /* R2011  - SLIMTX4MIX Input 2 Volume */
-	{ 0x000007DC, 0x0000 },    /* R2012  - SLIMTX4MIX Input 3 Source */
-	{ 0x000007DD, 0x0080 },    /* R2013  - SLIMTX4MIX Input 3 Volume */
-	{ 0x000007DE, 0x0000 },    /* R2014  - SLIMTX4MIX Input 4 Source */
-	{ 0x000007DF, 0x0080 },    /* R2015  - SLIMTX4MIX Input 4 Volume */
 	{ 0x000007E0, 0x0000 },    /* R2016  - SLIMTX5MIX Input 1 Source */
 	{ 0x000007E1, 0x0080 },    /* R2017  - SLIMTX5MIX Input 1 Volume */
-	{ 0x000007E2, 0x0000 },    /* R2018  - SLIMTX5MIX Input 2 Source */
-	{ 0x000007E3, 0x0080 },    /* R2019  - SLIMTX5MIX Input 2 Volume */
-	{ 0x000007E4, 0x0000 },    /* R2020  - SLIMTX5MIX Input 3 Source */
-	{ 0x000007E5, 0x0080 },    /* R2021  - SLIMTX5MIX Input 3 Volume */
-	{ 0x000007E6, 0x0000 },    /* R2022  - SLIMTX5MIX Input 4 Source */
-	{ 0x000007E7, 0x0080 },    /* R2023  - SLIMTX5MIX Input 4 Volume */
 	{ 0x000007E8, 0x0000 },    /* R2024  - SLIMTX6MIX Input 1 Source */
 	{ 0x000007E9, 0x0080 },    /* R2025  - SLIMTX6MIX Input 1 Volume */
-	{ 0x000007EA, 0x0000 },    /* R2026  - SLIMTX6MIX Input 2 Source */
-	{ 0x000007EB, 0x0080 },    /* R2027  - SLIMTX6MIX Input 2 Volume */
-	{ 0x000007EC, 0x0000 },    /* R2028  - SLIMTX6MIX Input 3 Source */
-	{ 0x000007ED, 0x0080 },    /* R2029  - SLIMTX6MIX Input 3 Volume */
-	{ 0x000007EE, 0x0000 },    /* R2030  - SLIMTX6MIX Input 4 Source */
-	{ 0x000007EF, 0x0080 },    /* R2031  - SLIMTX6MIX Input 4 Volume */
-	{ 0x000007F0, 0x0000 },    /* R2032  - SLIMTX7MIX Input 1 Source */
-	{ 0x000007F1, 0x0080 },    /* R2033  - SLIMTX7MIX Input 1 Volume */
-	{ 0x000007F2, 0x0000 },    /* R2034  - SLIMTX7MIX Input 2 Source */
-	{ 0x000007F3, 0x0080 },    /* R2035  - SLIMTX7MIX Input 2 Volume */
-	{ 0x000007F4, 0x0000 },    /* R2036  - SLIMTX7MIX Input 3 Source */
-	{ 0x000007F5, 0x0080 },    /* R2037  - SLIMTX7MIX Input 3 Volume */
-	{ 0x000007F6, 0x0000 },    /* R2038  - SLIMTX7MIX Input 4 Source */
-	{ 0x000007F7, 0x0080 },    /* R2039  - SLIMTX7MIX Input 4 Volume */
-	{ 0x000007F8, 0x0000 },    /* R2040  - SLIMTX8MIX Input 1 Source */
-	{ 0x000007F9, 0x0080 },    /* R2041  - SLIMTX8MIX Input 1 Volume */
-	{ 0x000007FA, 0x0000 },    /* R2042  - SLIMTX8MIX Input 2 Source */
-	{ 0x000007FB, 0x0080 },    /* R2043  - SLIMTX8MIX Input 2 Volume */
-	{ 0x000007FC, 0x0000 },    /* R2044  - SLIMTX8MIX Input 3 Source */
-	{ 0x000007FD, 0x0080 },    /* R2045  - SLIMTX8MIX Input 3 Volume */
-	{ 0x000007FE, 0x0000 },    /* R2046  - SLIMTX8MIX Input 4 Source */
-	{ 0x000007FF, 0x0080 },    /* R2047  - SLIMTX8MIX Input 4 Volume */
+	{ 0x00000800, 0x0000 },    /* R2048  - SPDIF1TX1MIX Input 1 Source */
+	{ 0x00000801, 0x0080 },    /* R2049  - SPDIF1TX1MIX Input 1 Volume */
+	{ 0x00000808, 0x0000 },    /* R2056  - SPDIF1TX2MIX Input 1 Source */
+	{ 0x00000809, 0x0080 },    /* R2057  - SPDIF1TX2MIX Input 1 Volume */
 	{ 0x00000880, 0x0000 },    /* R2176  - EQ1MIX Input 1 Source */
 	{ 0x00000881, 0x0080 },    /* R2177  - EQ1MIX Input 1 Volume */
-	{ 0x00000882, 0x0000 },    /* R2178  - EQ1MIX Input 2 Source */
-	{ 0x00000883, 0x0080 },    /* R2179  - EQ1MIX Input 2 Volume */
-	{ 0x00000884, 0x0000 },    /* R2180  - EQ1MIX Input 3 Source */
-	{ 0x00000885, 0x0080 },    /* R2181  - EQ1MIX Input 3 Volume */
-	{ 0x00000886, 0x0000 },    /* R2182  - EQ1MIX Input 4 Source */
-	{ 0x00000887, 0x0080 },    /* R2183  - EQ1MIX Input 4 Volume */
 	{ 0x00000888, 0x0000 },    /* R2184  - EQ2MIX Input 1 Source */
 	{ 0x00000889, 0x0080 },    /* R2185  - EQ2MIX Input 1 Volume */
-	{ 0x0000088A, 0x0000 },    /* R2186  - EQ2MIX Input 2 Source */
-	{ 0x0000088B, 0x0080 },    /* R2187  - EQ2MIX Input 2 Volume */
-	{ 0x0000088C, 0x0000 },    /* R2188  - EQ2MIX Input 3 Source */
-	{ 0x0000088D, 0x0080 },    /* R2189  - EQ2MIX Input 3 Volume */
-	{ 0x0000088E, 0x0000 },    /* R2190  - EQ2MIX Input 4 Source */
-	{ 0x0000088F, 0x0080 },    /* R2191  - EQ2MIX Input 4 Volume */
 	{ 0x00000890, 0x0000 },    /* R2192  - EQ3MIX Input 1 Source */
 	{ 0x00000891, 0x0080 },    /* R2193  - EQ3MIX Input 1 Volume */
-	{ 0x00000892, 0x0000 },    /* R2194  - EQ3MIX Input 2 Source */
-	{ 0x00000893, 0x0080 },    /* R2195  - EQ3MIX Input 2 Volume */
-	{ 0x00000894, 0x0000 },    /* R2196  - EQ3MIX Input 3 Source */
-	{ 0x00000895, 0x0080 },    /* R2197  - EQ3MIX Input 3 Volume */
-	{ 0x00000896, 0x0000 },    /* R2198  - EQ3MIX Input 4 Source */
-	{ 0x00000897, 0x0080 },    /* R2199  - EQ3MIX Input 4 Volume */
 	{ 0x00000898, 0x0000 },    /* R2200  - EQ4MIX Input 1 Source */
 	{ 0x00000899, 0x0080 },    /* R2201  - EQ4MIX Input 1 Volume */
-	{ 0x0000089A, 0x0000 },    /* R2202  - EQ4MIX Input 2 Source */
-	{ 0x0000089B, 0x0080 },    /* R2203  - EQ4MIX Input 2 Volume */
-	{ 0x0000089C, 0x0000 },    /* R2204  - EQ4MIX Input 3 Source */
-	{ 0x0000089D, 0x0080 },    /* R2205  - EQ4MIX Input 3 Volume */
-	{ 0x0000089E, 0x0000 },    /* R2206  - EQ4MIX Input 4 Source */
-	{ 0x0000089F, 0x0080 },    /* R2207  - EQ4MIX Input 4 Volume */
 	{ 0x000008C0, 0x0000 },    /* R2240  - DRC1LMIX Input 1 Source */
 	{ 0x000008C1, 0x0080 },    /* R2241  - DRC1LMIX Input 1 Volume */
-	{ 0x000008C2, 0x0000 },    /* R2242  - DRC1LMIX Input 2 Source */
-	{ 0x000008C3, 0x0080 },    /* R2243  - DRC1LMIX Input 2 Volume */
-	{ 0x000008C4, 0x0000 },    /* R2244  - DRC1LMIX Input 3 Source */
-	{ 0x000008C5, 0x0080 },    /* R2245  - DRC1LMIX Input 3 Volume */
-	{ 0x000008C6, 0x0000 },    /* R2246  - DRC1LMIX Input 4 Source */
-	{ 0x000008C7, 0x0080 },    /* R2247  - DRC1LMIX Input 4 Volume */
 	{ 0x000008C8, 0x0000 },    /* R2248  - DRC1RMIX Input 1 Source */
 	{ 0x000008C9, 0x0080 },    /* R2249  - DRC1RMIX Input 1 Volume */
-	{ 0x000008CA, 0x0000 },    /* R2250  - DRC1RMIX Input 2 Source */
-	{ 0x000008CB, 0x0080 },    /* R2251  - DRC1RMIX Input 2 Volume */
-	{ 0x000008CC, 0x0000 },    /* R2252  - DRC1RMIX Input 3 Source */
-	{ 0x000008CD, 0x0080 },    /* R2253  - DRC1RMIX Input 3 Volume */
-	{ 0x000008CE, 0x0000 },    /* R2254  - DRC1RMIX Input 4 Source */
-	{ 0x000008CF, 0x0080 },    /* R2255  - DRC1RMIX Input 4 Volume */
 	{ 0x00000900, 0x0000 },    /* R2304  - HPLP1MIX Input 1 Source */
 	{ 0x00000901, 0x0080 },    /* R2305  - HPLP1MIX Input 1 Volume */
 	{ 0x00000902, 0x0000 },    /* R2306  - HPLP1MIX Input 2 Source */
@@ -646,10 +667,18 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x0000091D, 0x0080 },    /* R2333  - HPLP4MIX Input 3 Volume */
 	{ 0x0000091E, 0x0000 },    /* R2334  - HPLP4MIX Input 4 Source */
 	{ 0x0000091F, 0x0080 },    /* R2335  - HPLP4MIX Input 4 Volume */
+	{ 0x00000A80, 0x0000 },    /* R2688  - ASRC1LMIX Input 1 Source */
+	{ 0x00000A88, 0x0000 },    /* R2696  - ASRC1RMIX Input 1 Source */
+	{ 0x00000A90, 0x0000 },    /* R2704  - ASRC2LMIX Input 1 Source */
+	{ 0x00000A98, 0x0000 },    /* R2712  - ASRC2RMIX Input 1 Source */
 	{ 0x00000B00, 0x0000 },    /* R2816  - ISRC1DEC1MIX Input 1 Source */
 	{ 0x00000B08, 0x0000 },    /* R2824  - ISRC1DEC2MIX Input 1 Source */
+	{ 0x00000B10, 0x0000 },    /* R2832  - ISRC1DEC3MIX Input 1 Source */
+	{ 0x00000B18, 0x0000 },    /* R2840  - ISRC1DEC4MIX Input 1 Source */
 	{ 0x00000B20, 0x0000 },    /* R2848  - ISRC1INT1MIX Input 1 Source */
 	{ 0x00000B28, 0x0000 },    /* R2856  - ISRC1INT2MIX Input 1 Source */
+	{ 0x00000B30, 0x0000 },    /* R2864  - ISRC1INT3MIX Input 1 Source */
+	{ 0x00000B38, 0x0000 },    /* R2872  - ISRC1INT4MIX Input 1 Source */
 	{ 0x00000B40, 0x0000 },    /* R2880  - ISRC2DEC1MIX Input 1 Source */
 	{ 0x00000B48, 0x0000 },    /* R2888  - ISRC2DEC2MIX Input 1 Source */
 	{ 0x00000B60, 0x0000 },    /* R2912  - ISRC2INT1MIX Input 1 Source */
@@ -661,20 +690,25 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000C04, 0xA101 },    /* R3076  - GPIO5 CTRL */
 	{ 0x00000C0F, 0x0400 },    /* R3087  - IRQ CTRL 1 */
 	{ 0x00000C10, 0x1000 },    /* R3088  - GPIO Debounce Config */
+	{ 0x00000C18, 0x0000 },    /* R3096  - GP Switch 1 */
 	{ 0x00000C20, 0x8002 },    /* R3104  - Misc Pad Ctrl 1 */
-	{ 0x00000C21, 0x0001 },    /* R3105  - Misc Pad Ctrl 2 */
+	{ 0x00000C21, 0x8001 },    /* R3105  - Misc Pad Ctrl 2 */
 	{ 0x00000C22, 0x0000 },    /* R3106  - Misc Pad Ctrl 3 */
 	{ 0x00000C23, 0x0000 },    /* R3107  - Misc Pad Ctrl 4 */
 	{ 0x00000C24, 0x0000 },    /* R3108  - Misc Pad Ctrl 5 */
+	{ 0x00000C25, 0x0000 },    /* R3109  - Misc Pad Ctrl 6 */
 	{ 0x00000D08, 0xFFFF },    /* R3336  - Interrupt Status 1 Mask */
+	{ 0x00000D09, 0xFFFF },    /* R3337  - Interrupt Status 2 Mask */
 	{ 0x00000D0A, 0xFFFF },    /* R3338  - Interrupt Status 3 Mask */
 	{ 0x00000D0B, 0xFFFF },    /* R3339  - Interrupt Status 4 Mask */
 	{ 0x00000D0C, 0xFEFF },    /* R3340  - Interrupt Status 5 Mask */
 	{ 0x00000D0F, 0x0000 },    /* R3343  - Interrupt Control */
 	{ 0x00000D18, 0xFFFF },    /* R3352  - IRQ2 Status 1 Mask */
+	{ 0x00000D19, 0xFFFF },    /* R3353  - IRQ2 Status 2 Mask */
 	{ 0x00000D1A, 0xFFFF },    /* R3354  - IRQ2 Status 3 Mask */
 	{ 0x00000D1B, 0xFFFF },    /* R3355  - IRQ2 Status 4 Mask */
-	{ 0x00000D1C, 0xFFFF },    /* R3356  - IRQ2 Status 5 Mask */
+	{ 0x00000D1C, 0xFEFF },    /* R3356  - IRQ2 Status 5 Mask */
+	{ 0x00000D1D, 0xFFFF },    /* R3357  - IRQ2 Status 6 Mask */
 	{ 0x00000D1F, 0x0000 },    /* R3359  - IRQ2 Control */
 	{ 0x00000D53, 0xFFFF },    /* R3411  - AOD IRQ Mask IRQ1 */
 	{ 0x00000D54, 0xFFFF },    /* R3412  - AOD IRQ Mask IRQ2 */
@@ -778,22 +812,31 @@ static const struct reg_default wm8997_reg_default[] = {
 	{ 0x00000EC9, 0x0000 },    /* R3785  - HPLPF3_2 */
 	{ 0x00000ECC, 0x0000 },    /* R3788  - HPLPF4_1 */
 	{ 0x00000ECD, 0x0000 },    /* R3789  - HPLPF4_2 */
+	{ 0x00000EE0, 0x0000 },    /* R3808  - ASRC_ENABLE */
+	{ 0x00000EE2, 0x0000 },    /* R3810  - ASRC_RATE1 */
+	{ 0x00000EE3, 0x4000 },    /* R3811  - ASRC_RATE2 */
 	{ 0x00000EF0, 0x0000 },    /* R3824  - ISRC 1 CTRL 1 */
-	{ 0x00000EF1, 0x0000 },    /* R3825  - ISRC 1 CTRL 2 */
+	{ 0x00000EF1, 0x0001 },    /* R3825  - ISRC 1 CTRL 2 */
 	{ 0x00000EF2, 0x0000 },    /* R3826  - ISRC 1 CTRL 3 */
 	{ 0x00000EF3, 0x0000 },    /* R3827  - ISRC 2 CTRL 1 */
-	{ 0x00000EF4, 0x0000 },    /* R3828  - ISRC 2 CTRL 2 */
+	{ 0x00000EF4, 0x0001 },    /* R3828  - ISRC 2 CTRL 2 */
 	{ 0x00000EF5, 0x0000 },    /* R3829  - ISRC 2 CTRL 3 */
-	{ 0x00001100, 0x0010 },    /* R4352  - DSP1 Control 1 */
-	{ 0x00001101, 0x0000 },    /* R4353  - DSP1 Clocking 1 */
+	{ 0x00001700, 0x0000 },    /* R5888  - FRF_COEFF_1 */
+	{ 0x00001701, 0x0000 },    /* R5889  - FRF_COEFF_2 */
+	{ 0x00001702, 0x0000 },    /* R5890  - FRF_COEFF_3 */
+	{ 0x00001703, 0x0000 },    /* R5891  - FRF_COEFF_4 */
+	{ 0x00001704, 0x0000 },    /* R5892  - DAC_COMP_1 */
+	{ 0x00001705, 0x0000 },    /* R5893  - DAC_COMP_2 */
 };
 
-static bool wm8997_readable_register(struct device *dev, unsigned int reg)
+static bool vegas_readable_register(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case ARIZONA_SOFTWARE_RESET:
 	case ARIZONA_DEVICE_REVISION:
+	case ARIZONA_CTRL_IF_SPI_CFG_1:
 	case ARIZONA_CTRL_IF_I2C1_CFG_1:
+	case ARIZONA_CTRL_IF_I2C1_CFG_2:
 	case ARIZONA_WRITE_SEQUENCER_CTRL_0:
 	case ARIZONA_WRITE_SEQUENCER_CTRL_1:
 	case ARIZONA_WRITE_SEQUENCER_CTRL_2:
@@ -811,11 +854,12 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_SAMPLE_RATE_SEQUENCE_SELECT_2:
 	case ARIZONA_SAMPLE_RATE_SEQUENCE_SELECT_3:
 	case ARIZONA_SAMPLE_RATE_SEQUENCE_SELECT_4:
+	case ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_1:
+	case ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_2:
 	case ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_3:
 	case ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_4:
 	case ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_5:
 	case ARIZONA_ALWAYS_ON_TRIGGERS_SEQUENCE_SELECT_6:
-	case ARIZONA_COMFORT_NOISE_GENERATOR:
 	case ARIZONA_HAPTICS_CONTROL_1:
 	case ARIZONA_HAPTICS_CONTROL_2:
 	case ARIZONA_HAPTICS_PHASE_1_INTENSITY:
@@ -836,6 +880,8 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_ASYNC_CLOCK_1:
 	case ARIZONA_ASYNC_SAMPLE_RATE_1:
 	case ARIZONA_ASYNC_SAMPLE_RATE_1_STATUS:
+	case ARIZONA_ASYNC_SAMPLE_RATE_2:
+	case ARIZONA_ASYNC_SAMPLE_RATE_2_STATUS:
 	case ARIZONA_OUTPUT_SYSTEM_CLOCK:
 	case ARIZONA_OUTPUT_ASYNC_CLOCK:
 	case ARIZONA_RATE_ESTIMATOR_1:
@@ -850,6 +896,7 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_FLL1_CONTROL_4:
 	case ARIZONA_FLL1_CONTROL_5:
 	case ARIZONA_FLL1_CONTROL_6:
+	case ARIZONA_FLL1_CONTROL_7:
 	case ARIZONA_FLL1_LOOP_FILTER_TEST_1:
 	case ARIZONA_FLL1_NCO_TEST_0:
 	case ARIZONA_FLL1_SYNCHRONISER_1:
@@ -858,6 +905,7 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_FLL1_SYNCHRONISER_4:
 	case ARIZONA_FLL1_SYNCHRONISER_5:
 	case ARIZONA_FLL1_SYNCHRONISER_6:
+	case ARIZONA_FLL1_SYNCHRONISER_7:
 	case ARIZONA_FLL1_SPREAD_SPECTRUM:
 	case ARIZONA_FLL1_GPIO_CLOCK:
 	case ARIZONA_FLL2_CONTROL_1:
@@ -866,6 +914,7 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_FLL2_CONTROL_4:
 	case ARIZONA_FLL2_CONTROL_5:
 	case ARIZONA_FLL2_CONTROL_6:
+	case ARIZONA_FLL2_CONTROL_7:
 	case ARIZONA_FLL2_LOOP_FILTER_TEST_1:
 	case ARIZONA_FLL2_NCO_TEST_0:
 	case ARIZONA_FLL2_SYNCHRONISER_1:
@@ -874,6 +923,7 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_FLL2_SYNCHRONISER_4:
 	case ARIZONA_FLL2_SYNCHRONISER_5:
 	case ARIZONA_FLL2_SYNCHRONISER_6:
+	case ARIZONA_FLL2_SYNCHRONISER_7:
 	case ARIZONA_FLL2_SPREAD_SPECTRUM:
 	case ARIZONA_FLL2_GPIO_CLOCK:
 	case ARIZONA_MIC_CHARGE_PUMP_1:
@@ -886,16 +936,22 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_ACCESSORY_DETECT_MODE_1:
 	case ARIZONA_HEADPHONE_DETECT_1:
 	case ARIZONA_HEADPHONE_DETECT_2:
+	case ARIZONA_MICD_CLAMP_CONTROL:
 	case ARIZONA_MIC_DETECT_1:
 	case ARIZONA_MIC_DETECT_2:
 	case ARIZONA_MIC_DETECT_3:
-	case ARIZONA_MIC_NOISE_MIX_CONTROL_1:
+	case ARIZONA_MIC_DETECT_4:
+	case ARIZONA_MIC_DETECT_LEVEL_1:
+	case ARIZONA_MIC_DETECT_LEVEL_2:
+	case ARIZONA_MIC_DETECT_LEVEL_3:
+	case ARIZONA_MIC_DETECT_LEVEL_4:
 	case ARIZONA_ISOLATION_CONTROL:
 	case ARIZONA_JACK_DETECT_ANALOGUE:
 	case ARIZONA_INPUT_ENABLES:
 	case ARIZONA_INPUT_ENABLES_STATUS:
 	case ARIZONA_INPUT_RATE:
 	case ARIZONA_INPUT_VOLUME_RAMP:
+	case ARIZONA_HPF_CONTROL:
 	case ARIZONA_IN1L_CONTROL:
 	case ARIZONA_ADC_DIGITAL_VOLUME_1L:
 	case ARIZONA_DMIC1L_CONTROL:
@@ -905,9 +961,6 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_IN2L_CONTROL:
 	case ARIZONA_ADC_DIGITAL_VOLUME_2L:
 	case ARIZONA_DMIC2L_CONTROL:
-	case ARIZONA_IN2R_CONTROL:
-	case ARIZONA_ADC_DIGITAL_VOLUME_2R:
-	case ARIZONA_DMIC2R_CONTROL:
 	case ARIZONA_OUTPUT_ENABLES_1:
 	case ARIZONA_OUTPUT_STATUS_1:
 	case ARIZONA_RAW_OUTPUT_STATUS_1:
@@ -915,37 +968,47 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_OUTPUT_VOLUME_RAMP:
 	case ARIZONA_OUTPUT_PATH_CONFIG_1L:
 	case ARIZONA_DAC_DIGITAL_VOLUME_1L:
-	case ARIZONA_DAC_VOLUME_LIMIT_1L:
 	case ARIZONA_NOISE_GATE_SELECT_1L:
 	case ARIZONA_OUTPUT_PATH_CONFIG_1R:
 	case ARIZONA_DAC_DIGITAL_VOLUME_1R:
-	case ARIZONA_DAC_VOLUME_LIMIT_1R:
 	case ARIZONA_NOISE_GATE_SELECT_1R:
+	case ARIZONA_OUTPUT_PATH_CONFIG_2L:
+	case ARIZONA_DAC_DIGITAL_VOLUME_2L:
+	case ARIZONA_NOISE_GATE_SELECT_2L:
+	case ARIZONA_OUTPUT_PATH_CONFIG_2R:
+	case ARIZONA_DAC_DIGITAL_VOLUME_2R:
+	case ARIZONA_NOISE_GATE_SELECT_2R:
 	case ARIZONA_OUTPUT_PATH_CONFIG_3L:
 	case ARIZONA_DAC_DIGITAL_VOLUME_3L:
-	case ARIZONA_DAC_VOLUME_LIMIT_3L:
 	case ARIZONA_NOISE_GATE_SELECT_3L:
 	case ARIZONA_OUTPUT_PATH_CONFIG_4L:
 	case ARIZONA_DAC_DIGITAL_VOLUME_4L:
-	case ARIZONA_OUT_VOLUME_4L:
 	case ARIZONA_NOISE_GATE_SELECT_4L:
+	case ARIZONA_OUTPUT_PATH_CONFIG_4R:
+	case ARIZONA_DAC_DIGITAL_VOLUME_4R:
+	case ARIZONA_NOISE_GATE_SELECT_4R:
 	case ARIZONA_OUTPUT_PATH_CONFIG_5L:
 	case ARIZONA_DAC_DIGITAL_VOLUME_5L:
-	case ARIZONA_DAC_VOLUME_LIMIT_5L:
 	case ARIZONA_NOISE_GATE_SELECT_5L:
+	case ARIZONA_OUTPUT_PATH_CONFIG_5R:
 	case ARIZONA_DAC_DIGITAL_VOLUME_5R:
-	case ARIZONA_DAC_VOLUME_LIMIT_5R:
 	case ARIZONA_NOISE_GATE_SELECT_5R:
+	case ARIZONA_DRE_ENABLE:
+	case ARIZONA_DRE_CONTROL_1:
+	case ARIZONA_DRE_CONTROL_2:
+	case ARIZONA_DRE_CONTROL_3:
+	case CLEARWATER_EDRE_ENABLE:
 	case ARIZONA_DAC_AEC_CONTROL_1:
+	case ARIZONA_DAC_AEC_CONTROL_2:
 	case ARIZONA_NOISE_GATE_CONTROL:
 	case ARIZONA_PDM_SPK1_CTRL_1:
 	case ARIZONA_PDM_SPK1_CTRL_2:
+	case ARIZONA_HP_TEST_CTRL_13:
 	case ARIZONA_AIF1_BCLK_CTRL:
 	case ARIZONA_AIF1_TX_PIN_CTRL:
 	case ARIZONA_AIF1_RX_PIN_CTRL:
 	case ARIZONA_AIF1_RATE_CTRL:
 	case ARIZONA_AIF1_FORMAT:
-	case ARIZONA_AIF1_TX_BCLK_RATE:
 	case ARIZONA_AIF1_RX_BCLK_RATE:
 	case ARIZONA_AIF1_FRAME_CTRL_1:
 	case ARIZONA_AIF1_FRAME_CTRL_2:
@@ -955,16 +1018,12 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AIF1_FRAME_CTRL_6:
 	case ARIZONA_AIF1_FRAME_CTRL_7:
 	case ARIZONA_AIF1_FRAME_CTRL_8:
-	case ARIZONA_AIF1_FRAME_CTRL_9:
-	case ARIZONA_AIF1_FRAME_CTRL_10:
 	case ARIZONA_AIF1_FRAME_CTRL_11:
 	case ARIZONA_AIF1_FRAME_CTRL_12:
 	case ARIZONA_AIF1_FRAME_CTRL_13:
 	case ARIZONA_AIF1_FRAME_CTRL_14:
 	case ARIZONA_AIF1_FRAME_CTRL_15:
 	case ARIZONA_AIF1_FRAME_CTRL_16:
-	case ARIZONA_AIF1_FRAME_CTRL_17:
-	case ARIZONA_AIF1_FRAME_CTRL_18:
 	case ARIZONA_AIF1_TX_ENABLES:
 	case ARIZONA_AIF1_RX_ENABLES:
 	case ARIZONA_AIF2_BCLK_CTRL:
@@ -972,25 +1031,47 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AIF2_RX_PIN_CTRL:
 	case ARIZONA_AIF2_RATE_CTRL:
 	case ARIZONA_AIF2_FORMAT:
-	case ARIZONA_AIF2_TX_BCLK_RATE:
 	case ARIZONA_AIF2_RX_BCLK_RATE:
 	case ARIZONA_AIF2_FRAME_CTRL_1:
 	case ARIZONA_AIF2_FRAME_CTRL_2:
 	case ARIZONA_AIF2_FRAME_CTRL_3:
 	case ARIZONA_AIF2_FRAME_CTRL_4:
+	case ARIZONA_AIF2_FRAME_CTRL_5:
+	case ARIZONA_AIF2_FRAME_CTRL_6:
+	case ARIZONA_AIF2_FRAME_CTRL_7:
+	case ARIZONA_AIF2_FRAME_CTRL_8:
 	case ARIZONA_AIF2_FRAME_CTRL_11:
 	case ARIZONA_AIF2_FRAME_CTRL_12:
+	case ARIZONA_AIF2_FRAME_CTRL_13:
+	case ARIZONA_AIF2_FRAME_CTRL_14:
+	case ARIZONA_AIF2_FRAME_CTRL_15:
+	case ARIZONA_AIF2_FRAME_CTRL_16:
 	case ARIZONA_AIF2_TX_ENABLES:
 	case ARIZONA_AIF2_RX_ENABLES:
+	case ARIZONA_AIF3_BCLK_CTRL:
+	case ARIZONA_AIF3_TX_PIN_CTRL:
+	case ARIZONA_AIF3_RX_PIN_CTRL:
+	case ARIZONA_AIF3_RATE_CTRL:
+	case ARIZONA_AIF3_FORMAT:
+	case ARIZONA_AIF3_RX_BCLK_RATE:
+	case ARIZONA_AIF3_FRAME_CTRL_1:
+	case ARIZONA_AIF3_FRAME_CTRL_2:
+	case ARIZONA_AIF3_FRAME_CTRL_3:
+	case ARIZONA_AIF3_FRAME_CTRL_4:
+	case ARIZONA_AIF3_FRAME_CTRL_11:
+	case ARIZONA_AIF3_FRAME_CTRL_12:
+	case ARIZONA_AIF3_TX_ENABLES:
+	case ARIZONA_AIF3_RX_ENABLES:
+	case ARIZONA_SPD1_TX_CONTROL:
+	case ARIZONA_SPD1_TX_CHANNEL_STATUS_1:
+	case ARIZONA_SPD1_TX_CHANNEL_STATUS_2:
+	case ARIZONA_SPD1_TX_CHANNEL_STATUS_3:
 	case ARIZONA_SLIMBUS_FRAMER_REF_GEAR:
 	case ARIZONA_SLIMBUS_RATES_1:
 	case ARIZONA_SLIMBUS_RATES_2:
-	case ARIZONA_SLIMBUS_RATES_3:
-	case ARIZONA_SLIMBUS_RATES_4:
 	case ARIZONA_SLIMBUS_RATES_5:
 	case ARIZONA_SLIMBUS_RATES_6:
 	case ARIZONA_SLIMBUS_RATES_7:
-	case ARIZONA_SLIMBUS_RATES_8:
 	case ARIZONA_SLIMBUS_RX_CHANNEL_ENABLE:
 	case ARIZONA_SLIMBUS_TX_CHANNEL_ENABLE:
 	case ARIZONA_SLIMBUS_RX_PORT_STATUS:
@@ -1011,22 +1092,6 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_PWM2MIX_INPUT_3_VOLUME:
 	case ARIZONA_PWM2MIX_INPUT_4_SOURCE:
 	case ARIZONA_PWM2MIX_INPUT_4_VOLUME:
-	case ARIZONA_MICMIX_INPUT_1_SOURCE:
-	case ARIZONA_MICMIX_INPUT_1_VOLUME:
-	case ARIZONA_MICMIX_INPUT_2_SOURCE:
-	case ARIZONA_MICMIX_INPUT_2_VOLUME:
-	case ARIZONA_MICMIX_INPUT_3_SOURCE:
-	case ARIZONA_MICMIX_INPUT_3_VOLUME:
-	case ARIZONA_MICMIX_INPUT_4_SOURCE:
-	case ARIZONA_MICMIX_INPUT_4_VOLUME:
-	case ARIZONA_NOISEMIX_INPUT_1_SOURCE:
-	case ARIZONA_NOISEMIX_INPUT_1_VOLUME:
-	case ARIZONA_NOISEMIX_INPUT_2_SOURCE:
-	case ARIZONA_NOISEMIX_INPUT_2_VOLUME:
-	case ARIZONA_NOISEMIX_INPUT_3_SOURCE:
-	case ARIZONA_NOISEMIX_INPUT_3_VOLUME:
-	case ARIZONA_NOISEMIX_INPUT_4_SOURCE:
-	case ARIZONA_NOISEMIX_INPUT_4_VOLUME:
 	case ARIZONA_OUT1LMIX_INPUT_1_SOURCE:
 	case ARIZONA_OUT1LMIX_INPUT_1_VOLUME:
 	case ARIZONA_OUT1LMIX_INPUT_2_SOURCE:
@@ -1043,6 +1108,22 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_OUT1RMIX_INPUT_3_VOLUME:
 	case ARIZONA_OUT1RMIX_INPUT_4_SOURCE:
 	case ARIZONA_OUT1RMIX_INPUT_4_VOLUME:
+	case ARIZONA_OUT2LMIX_INPUT_1_SOURCE:
+	case ARIZONA_OUT2LMIX_INPUT_1_VOLUME:
+	case ARIZONA_OUT2LMIX_INPUT_2_SOURCE:
+	case ARIZONA_OUT2LMIX_INPUT_2_VOLUME:
+	case ARIZONA_OUT2LMIX_INPUT_3_SOURCE:
+	case ARIZONA_OUT2LMIX_INPUT_3_VOLUME:
+	case ARIZONA_OUT2LMIX_INPUT_4_SOURCE:
+	case ARIZONA_OUT2LMIX_INPUT_4_VOLUME:
+	case ARIZONA_OUT2RMIX_INPUT_1_SOURCE:
+	case ARIZONA_OUT2RMIX_INPUT_1_VOLUME:
+	case ARIZONA_OUT2RMIX_INPUT_2_SOURCE:
+	case ARIZONA_OUT2RMIX_INPUT_2_VOLUME:
+	case ARIZONA_OUT2RMIX_INPUT_3_SOURCE:
+	case ARIZONA_OUT2RMIX_INPUT_3_VOLUME:
+	case ARIZONA_OUT2RMIX_INPUT_4_SOURCE:
+	case ARIZONA_OUT2RMIX_INPUT_4_VOLUME:
 	case ARIZONA_OUT3LMIX_INPUT_1_SOURCE:
 	case ARIZONA_OUT3LMIX_INPUT_1_VOLUME:
 	case ARIZONA_OUT3LMIX_INPUT_2_SOURCE:
@@ -1059,6 +1140,14 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_OUT4LMIX_INPUT_3_VOLUME:
 	case ARIZONA_OUT4LMIX_INPUT_4_SOURCE:
 	case ARIZONA_OUT4LMIX_INPUT_4_VOLUME:
+	case ARIZONA_OUT4RMIX_INPUT_1_SOURCE:
+	case ARIZONA_OUT4RMIX_INPUT_1_VOLUME:
+	case ARIZONA_OUT4RMIX_INPUT_2_SOURCE:
+	case ARIZONA_OUT4RMIX_INPUT_2_VOLUME:
+	case ARIZONA_OUT4RMIX_INPUT_3_SOURCE:
+	case ARIZONA_OUT4RMIX_INPUT_3_VOLUME:
+	case ARIZONA_OUT4RMIX_INPUT_4_SOURCE:
+	case ARIZONA_OUT4RMIX_INPUT_4_VOLUME:
 	case ARIZONA_OUT5LMIX_INPUT_1_SOURCE:
 	case ARIZONA_OUT5LMIX_INPUT_1_VOLUME:
 	case ARIZONA_OUT5LMIX_INPUT_2_SOURCE:
@@ -1123,22 +1212,6 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AIF1TX6MIX_INPUT_3_VOLUME:
 	case ARIZONA_AIF1TX6MIX_INPUT_4_SOURCE:
 	case ARIZONA_AIF1TX6MIX_INPUT_4_VOLUME:
-	case ARIZONA_AIF1TX7MIX_INPUT_1_SOURCE:
-	case ARIZONA_AIF1TX7MIX_INPUT_1_VOLUME:
-	case ARIZONA_AIF1TX7MIX_INPUT_2_SOURCE:
-	case ARIZONA_AIF1TX7MIX_INPUT_2_VOLUME:
-	case ARIZONA_AIF1TX7MIX_INPUT_3_SOURCE:
-	case ARIZONA_AIF1TX7MIX_INPUT_3_VOLUME:
-	case ARIZONA_AIF1TX7MIX_INPUT_4_SOURCE:
-	case ARIZONA_AIF1TX7MIX_INPUT_4_VOLUME:
-	case ARIZONA_AIF1TX8MIX_INPUT_1_SOURCE:
-	case ARIZONA_AIF1TX8MIX_INPUT_1_VOLUME:
-	case ARIZONA_AIF1TX8MIX_INPUT_2_SOURCE:
-	case ARIZONA_AIF1TX8MIX_INPUT_2_VOLUME:
-	case ARIZONA_AIF1TX8MIX_INPUT_3_SOURCE:
-	case ARIZONA_AIF1TX8MIX_INPUT_3_VOLUME:
-	case ARIZONA_AIF1TX8MIX_INPUT_4_SOURCE:
-	case ARIZONA_AIF1TX8MIX_INPUT_4_VOLUME:
 	case ARIZONA_AIF2TX1MIX_INPUT_1_SOURCE:
 	case ARIZONA_AIF2TX1MIX_INPUT_1_VOLUME:
 	case ARIZONA_AIF2TX1MIX_INPUT_2_SOURCE:
@@ -1155,118 +1228,82 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AIF2TX2MIX_INPUT_3_VOLUME:
 	case ARIZONA_AIF2TX2MIX_INPUT_4_SOURCE:
 	case ARIZONA_AIF2TX2MIX_INPUT_4_VOLUME:
+	case ARIZONA_AIF2TX3MIX_INPUT_1_SOURCE:
+	case ARIZONA_AIF2TX3MIX_INPUT_1_VOLUME:
+	case ARIZONA_AIF2TX3MIX_INPUT_2_SOURCE:
+	case ARIZONA_AIF2TX3MIX_INPUT_2_VOLUME:
+	case ARIZONA_AIF2TX3MIX_INPUT_3_SOURCE:
+	case ARIZONA_AIF2TX3MIX_INPUT_3_VOLUME:
+	case ARIZONA_AIF2TX3MIX_INPUT_4_SOURCE:
+	case ARIZONA_AIF2TX3MIX_INPUT_4_VOLUME:
+	case ARIZONA_AIF2TX4MIX_INPUT_1_SOURCE:
+	case ARIZONA_AIF2TX4MIX_INPUT_1_VOLUME:
+	case ARIZONA_AIF2TX4MIX_INPUT_2_SOURCE:
+	case ARIZONA_AIF2TX4MIX_INPUT_2_VOLUME:
+	case ARIZONA_AIF2TX4MIX_INPUT_3_SOURCE:
+	case ARIZONA_AIF2TX4MIX_INPUT_3_VOLUME:
+	case ARIZONA_AIF2TX4MIX_INPUT_4_SOURCE:
+	case ARIZONA_AIF2TX4MIX_INPUT_4_VOLUME:
+	case ARIZONA_AIF2TX5MIX_INPUT_1_SOURCE:
+	case ARIZONA_AIF2TX5MIX_INPUT_1_VOLUME:
+	case ARIZONA_AIF2TX5MIX_INPUT_2_SOURCE:
+	case ARIZONA_AIF2TX5MIX_INPUT_2_VOLUME:
+	case ARIZONA_AIF2TX5MIX_INPUT_3_SOURCE:
+	case ARIZONA_AIF2TX5MIX_INPUT_3_VOLUME:
+	case ARIZONA_AIF2TX5MIX_INPUT_4_SOURCE:
+	case ARIZONA_AIF2TX5MIX_INPUT_4_VOLUME:
+	case ARIZONA_AIF2TX6MIX_INPUT_1_SOURCE:
+	case ARIZONA_AIF2TX6MIX_INPUT_1_VOLUME:
+	case ARIZONA_AIF2TX6MIX_INPUT_2_SOURCE:
+	case ARIZONA_AIF2TX6MIX_INPUT_2_VOLUME:
+	case ARIZONA_AIF2TX6MIX_INPUT_3_SOURCE:
+	case ARIZONA_AIF2TX6MIX_INPUT_3_VOLUME:
+	case ARIZONA_AIF2TX6MIX_INPUT_4_SOURCE:
+	case ARIZONA_AIF2TX6MIX_INPUT_4_VOLUME:
+	case ARIZONA_AIF3TX1MIX_INPUT_1_SOURCE:
+	case ARIZONA_AIF3TX1MIX_INPUT_1_VOLUME:
+	case ARIZONA_AIF3TX1MIX_INPUT_2_SOURCE:
+	case ARIZONA_AIF3TX1MIX_INPUT_2_VOLUME:
+	case ARIZONA_AIF3TX1MIX_INPUT_3_SOURCE:
+	case ARIZONA_AIF3TX1MIX_INPUT_3_VOLUME:
+	case ARIZONA_AIF3TX1MIX_INPUT_4_SOURCE:
+	case ARIZONA_AIF3TX1MIX_INPUT_4_VOLUME:
+	case ARIZONA_AIF3TX2MIX_INPUT_1_SOURCE:
+	case ARIZONA_AIF3TX2MIX_INPUT_1_VOLUME:
+	case ARIZONA_AIF3TX2MIX_INPUT_2_SOURCE:
+	case ARIZONA_AIF3TX2MIX_INPUT_2_VOLUME:
+	case ARIZONA_AIF3TX2MIX_INPUT_3_SOURCE:
+	case ARIZONA_AIF3TX2MIX_INPUT_3_VOLUME:
+	case ARIZONA_AIF3TX2MIX_INPUT_4_SOURCE:
+	case ARIZONA_AIF3TX2MIX_INPUT_4_VOLUME:
 	case ARIZONA_SLIMTX1MIX_INPUT_1_SOURCE:
 	case ARIZONA_SLIMTX1MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX1MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX1MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX1MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX1MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX1MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX1MIX_INPUT_4_VOLUME:
 	case ARIZONA_SLIMTX2MIX_INPUT_1_SOURCE:
 	case ARIZONA_SLIMTX2MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX2MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX2MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX2MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX2MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX2MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX2MIX_INPUT_4_VOLUME:
 	case ARIZONA_SLIMTX3MIX_INPUT_1_SOURCE:
 	case ARIZONA_SLIMTX3MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX3MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX3MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX3MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX3MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX3MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX3MIX_INPUT_4_VOLUME:
 	case ARIZONA_SLIMTX4MIX_INPUT_1_SOURCE:
 	case ARIZONA_SLIMTX4MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX4MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX4MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX4MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX4MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX4MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX4MIX_INPUT_4_VOLUME:
 	case ARIZONA_SLIMTX5MIX_INPUT_1_SOURCE:
 	case ARIZONA_SLIMTX5MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX5MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX5MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX5MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX5MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX5MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX5MIX_INPUT_4_VOLUME:
 	case ARIZONA_SLIMTX6MIX_INPUT_1_SOURCE:
 	case ARIZONA_SLIMTX6MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX6MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX6MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX6MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX6MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX6MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX6MIX_INPUT_4_VOLUME:
-	case ARIZONA_SLIMTX7MIX_INPUT_1_SOURCE:
-	case ARIZONA_SLIMTX7MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX7MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX7MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX7MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX7MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX7MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX7MIX_INPUT_4_VOLUME:
-	case ARIZONA_SLIMTX8MIX_INPUT_1_SOURCE:
-	case ARIZONA_SLIMTX8MIX_INPUT_1_VOLUME:
-	case ARIZONA_SLIMTX8MIX_INPUT_2_SOURCE:
-	case ARIZONA_SLIMTX8MIX_INPUT_2_VOLUME:
-	case ARIZONA_SLIMTX8MIX_INPUT_3_SOURCE:
-	case ARIZONA_SLIMTX8MIX_INPUT_3_VOLUME:
-	case ARIZONA_SLIMTX8MIX_INPUT_4_SOURCE:
-	case ARIZONA_SLIMTX8MIX_INPUT_4_VOLUME:
+	case ARIZONA_SPDIFTX1MIX_INPUT_1_SOURCE:
+	case ARIZONA_SPDIFTX1MIX_INPUT_1_VOLUME:
+	case ARIZONA_SPDIFTX2MIX_INPUT_1_SOURCE:
+	case ARIZONA_SPDIFTX2MIX_INPUT_1_VOLUME:
 	case ARIZONA_EQ1MIX_INPUT_1_SOURCE:
 	case ARIZONA_EQ1MIX_INPUT_1_VOLUME:
-	case ARIZONA_EQ1MIX_INPUT_2_SOURCE:
-	case ARIZONA_EQ1MIX_INPUT_2_VOLUME:
-	case ARIZONA_EQ1MIX_INPUT_3_SOURCE:
-	case ARIZONA_EQ1MIX_INPUT_3_VOLUME:
-	case ARIZONA_EQ1MIX_INPUT_4_SOURCE:
-	case ARIZONA_EQ1MIX_INPUT_4_VOLUME:
 	case ARIZONA_EQ2MIX_INPUT_1_SOURCE:
 	case ARIZONA_EQ2MIX_INPUT_1_VOLUME:
-	case ARIZONA_EQ2MIX_INPUT_2_SOURCE:
-	case ARIZONA_EQ2MIX_INPUT_2_VOLUME:
-	case ARIZONA_EQ2MIX_INPUT_3_SOURCE:
-	case ARIZONA_EQ2MIX_INPUT_3_VOLUME:
-	case ARIZONA_EQ2MIX_INPUT_4_SOURCE:
-	case ARIZONA_EQ2MIX_INPUT_4_VOLUME:
 	case ARIZONA_EQ3MIX_INPUT_1_SOURCE:
 	case ARIZONA_EQ3MIX_INPUT_1_VOLUME:
-	case ARIZONA_EQ3MIX_INPUT_2_SOURCE:
-	case ARIZONA_EQ3MIX_INPUT_2_VOLUME:
-	case ARIZONA_EQ3MIX_INPUT_3_SOURCE:
-	case ARIZONA_EQ3MIX_INPUT_3_VOLUME:
-	case ARIZONA_EQ3MIX_INPUT_4_SOURCE:
-	case ARIZONA_EQ3MIX_INPUT_4_VOLUME:
 	case ARIZONA_EQ4MIX_INPUT_1_SOURCE:
 	case ARIZONA_EQ4MIX_INPUT_1_VOLUME:
-	case ARIZONA_EQ4MIX_INPUT_2_SOURCE:
-	case ARIZONA_EQ4MIX_INPUT_2_VOLUME:
-	case ARIZONA_EQ4MIX_INPUT_3_SOURCE:
-	case ARIZONA_EQ4MIX_INPUT_3_VOLUME:
-	case ARIZONA_EQ4MIX_INPUT_4_SOURCE:
-	case ARIZONA_EQ4MIX_INPUT_4_VOLUME:
 	case ARIZONA_DRC1LMIX_INPUT_1_SOURCE:
 	case ARIZONA_DRC1LMIX_INPUT_1_VOLUME:
-	case ARIZONA_DRC1LMIX_INPUT_2_SOURCE:
-	case ARIZONA_DRC1LMIX_INPUT_2_VOLUME:
-	case ARIZONA_DRC1LMIX_INPUT_3_SOURCE:
-	case ARIZONA_DRC1LMIX_INPUT_3_VOLUME:
-	case ARIZONA_DRC1LMIX_INPUT_4_SOURCE:
-	case ARIZONA_DRC1LMIX_INPUT_4_VOLUME:
 	case ARIZONA_DRC1RMIX_INPUT_1_SOURCE:
 	case ARIZONA_DRC1RMIX_INPUT_1_VOLUME:
-	case ARIZONA_DRC1RMIX_INPUT_2_SOURCE:
-	case ARIZONA_DRC1RMIX_INPUT_2_VOLUME:
-	case ARIZONA_DRC1RMIX_INPUT_3_SOURCE:
-	case ARIZONA_DRC1RMIX_INPUT_3_VOLUME:
-	case ARIZONA_DRC1RMIX_INPUT_4_SOURCE:
-	case ARIZONA_DRC1RMIX_INPUT_4_VOLUME:
 	case ARIZONA_HPLP1MIX_INPUT_1_SOURCE:
 	case ARIZONA_HPLP1MIX_INPUT_1_VOLUME:
 	case ARIZONA_HPLP1MIX_INPUT_2_SOURCE:
@@ -1299,10 +1336,18 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_HPLP4MIX_INPUT_3_VOLUME:
 	case ARIZONA_HPLP4MIX_INPUT_4_SOURCE:
 	case ARIZONA_HPLP4MIX_INPUT_4_VOLUME:
+	case ARIZONA_ASRC1LMIX_INPUT_1_SOURCE:
+	case ARIZONA_ASRC1RMIX_INPUT_1_SOURCE:
+	case ARIZONA_ASRC2LMIX_INPUT_1_SOURCE:
+	case ARIZONA_ASRC2RMIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC1DEC1MIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC1DEC2MIX_INPUT_1_SOURCE:
+	case ARIZONA_ISRC1DEC3MIX_INPUT_1_SOURCE:
+	case ARIZONA_ISRC1DEC4MIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC1INT1MIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC1INT2MIX_INPUT_1_SOURCE:
+	case ARIZONA_ISRC1INT3MIX_INPUT_1_SOURCE:
+	case ARIZONA_ISRC1INT4MIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC2DEC1MIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC2DEC2MIX_INPUT_1_SOURCE:
 	case ARIZONA_ISRC2INT1MIX_INPUT_1_SOURCE:
@@ -1314,30 +1359,36 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_GPIO5_CTRL:
 	case ARIZONA_IRQ_CTRL_1:
 	case ARIZONA_GPIO_DEBOUNCE_CONFIG:
+	case ARIZONA_GP_SWITCH_1:
 	case ARIZONA_MISC_PAD_CTRL_1:
 	case ARIZONA_MISC_PAD_CTRL_2:
 	case ARIZONA_MISC_PAD_CTRL_3:
 	case ARIZONA_MISC_PAD_CTRL_4:
 	case ARIZONA_MISC_PAD_CTRL_5:
+	case ARIZONA_MISC_PAD_CTRL_6:
 	case ARIZONA_INTERRUPT_STATUS_1:
 	case ARIZONA_INTERRUPT_STATUS_2:
 	case ARIZONA_INTERRUPT_STATUS_3:
 	case ARIZONA_INTERRUPT_STATUS_4:
 	case ARIZONA_INTERRUPT_STATUS_5:
 	case ARIZONA_INTERRUPT_STATUS_1_MASK:
+	case ARIZONA_INTERRUPT_STATUS_2_MASK:
 	case ARIZONA_INTERRUPT_STATUS_3_MASK:
 	case ARIZONA_INTERRUPT_STATUS_4_MASK:
 	case ARIZONA_INTERRUPT_STATUS_5_MASK:
 	case ARIZONA_INTERRUPT_CONTROL:
 	case ARIZONA_IRQ2_STATUS_1:
+	case ARIZONA_IRQ2_STATUS_2:
 	case ARIZONA_IRQ2_STATUS_3:
 	case ARIZONA_IRQ2_STATUS_4:
 	case ARIZONA_IRQ2_STATUS_5:
 	case ARIZONA_IRQ2_STATUS_1_MASK:
+	case ARIZONA_IRQ2_STATUS_2_MASK:
 	case ARIZONA_IRQ2_STATUS_3_MASK:
 	case ARIZONA_IRQ2_STATUS_4_MASK:
 	case ARIZONA_IRQ2_STATUS_5_MASK:
 	case ARIZONA_IRQ2_CONTROL:
+	case ARIZONA_INTERRUPT_RAW_STATUS_2:
 	case ARIZONA_INTERRUPT_RAW_STATUS_3:
 	case ARIZONA_INTERRUPT_RAW_STATUS_4:
 	case ARIZONA_INTERRUPT_RAW_STATUS_5:
@@ -1451,19 +1502,29 @@ static bool wm8997_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_HPLPF3_2:
 	case ARIZONA_HPLPF4_1:
 	case ARIZONA_HPLPF4_2:
+	case ARIZONA_ASRC_ENABLE:
+	case ARIZONA_ASRC_STATUS:
+	case ARIZONA_ASRC_RATE1:
+	case ARIZONA_ASRC_RATE2:
 	case ARIZONA_ISRC_1_CTRL_1:
 	case ARIZONA_ISRC_1_CTRL_2:
 	case ARIZONA_ISRC_1_CTRL_3:
 	case ARIZONA_ISRC_2_CTRL_1:
 	case ARIZONA_ISRC_2_CTRL_2:
 	case ARIZONA_ISRC_2_CTRL_3:
+	case ARIZONA_FRF_COEFF_1:
+	case ARIZONA_FRF_COEFF_2:
+	case ARIZONA_FRF_COEFF_3:
+	case ARIZONA_FRF_COEFF_4:
+	case ARIZONA_V2_DAC_COMP_1:
+	case ARIZONA_V2_DAC_COMP_2:
 		return true;
 	default:
 		return false;
 	}
 }
 
-static bool wm8997_volatile_register(struct device *dev, unsigned int reg)
+static bool vegas_volatile_register(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case ARIZONA_SOFTWARE_RESET:
@@ -1476,7 +1537,9 @@ static bool wm8997_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_SAMPLE_RATE_2_STATUS:
 	case ARIZONA_SAMPLE_RATE_3_STATUS:
 	case ARIZONA_ASYNC_SAMPLE_RATE_1_STATUS:
+	case ARIZONA_ASYNC_SAMPLE_RATE_2_STATUS:
 	case ARIZONA_MIC_DETECT_3:
+	case ARIZONA_MIC_DETECT_4:
 	case ARIZONA_HEADPHONE_DETECT_2:
 	case ARIZONA_INPUT_ENABLES_STATUS:
 	case ARIZONA_OUTPUT_STATUS_1:
@@ -1489,9 +1552,11 @@ static bool wm8997_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_INTERRUPT_STATUS_4:
 	case ARIZONA_INTERRUPT_STATUS_5:
 	case ARIZONA_IRQ2_STATUS_1:
+	case ARIZONA_IRQ2_STATUS_2:
 	case ARIZONA_IRQ2_STATUS_3:
 	case ARIZONA_IRQ2_STATUS_4:
 	case ARIZONA_IRQ2_STATUS_5:
+	case ARIZONA_INTERRUPT_RAW_STATUS_2:
 	case ARIZONA_INTERRUPT_RAW_STATUS_3:
 	case ARIZONA_INTERRUPT_RAW_STATUS_4:
 	case ARIZONA_INTERRUPT_RAW_STATUS_5:
@@ -1504,24 +1569,25 @@ static bool wm8997_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AOD_IRQ2:
 	case ARIZONA_AOD_IRQ_RAW_STATUS:
 	case ARIZONA_FX_CTRL2:
+	case ARIZONA_ASRC_STATUS:
 		return true;
 	default:
 		return false;
 	}
 }
 
-#define WM8997_MAX_REGISTER 0x31ff
+#define VEGAS_MAX_REGISTER 0x31ff
 
-const struct regmap_config wm8997_i2c_regmap = {
+const struct regmap_config vegas_i2c_regmap = {
 	.reg_bits = 32,
 	.val_bits = 16,
 
-	.max_register = WM8997_MAX_REGISTER,
-	.readable_reg = wm8997_readable_register,
-	.volatile_reg = wm8997_volatile_register,
+	.max_register = VEGAS_MAX_REGISTER,
+	.readable_reg = vegas_readable_register,
+	.volatile_reg = vegas_volatile_register,
 
 	.cache_type = REGCACHE_RBTREE,
-	.reg_defaults = wm8997_reg_default,
-	.num_reg_defaults = ARRAY_SIZE(wm8997_reg_default),
+	.reg_defaults = vegas_reg_default,
+	.num_reg_defaults = ARRAY_SIZE(vegas_reg_default),
 };
-EXPORT_SYMBOL_GPL(wm8997_i2c_regmap);
+EXPORT_SYMBOL_GPL(vegas_i2c_regmap);
