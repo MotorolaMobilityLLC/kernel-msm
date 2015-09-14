@@ -648,6 +648,16 @@ config ALSA_TO_H2W
 	  /sys/class/switch/h2w/state used by Android headset observer.
 	default n
 
+config DROPBOX
+	tristate "Dropbox sysfs support"
+	default y
+	help
+	  This option enables a sysfs interface for drivers to send text or
+	  binary events to the Android dropbox. A lightweight userspace daemon
+	  polls the sysfs files and copies the data into dropbox using the built
+	  in dropbox manager service.  This enables fast and simple logging of
+	  various critical events from kernel drivers.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
