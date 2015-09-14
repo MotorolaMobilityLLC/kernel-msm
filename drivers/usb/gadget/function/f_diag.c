@@ -482,7 +482,15 @@ EXPORT_SYMBOL(usb_diag_alloc_req);
 int usb_diag_request_size(struct usb_diag_ch *ch)
 {
 	struct diag_context *ctxt = ch->priv_usb;
-	struct usb_composite_dev *cdev = ctxt->cdev;
+	struct usb_composite_dev *cdev = NULL;
+
+	/* MOT: qcom code need to check if the pointer is null
+	anyway, we use the default size for tty mode
+	*/
+	if (ctxt != NULL && ctxt->cdev != NULL)
+		cdev = ctxt->cdev;
+	else
+		return CI_MAX_REQUEST_SIZE;
 
 	if (gadget_is_dwc3(cdev->gadget))
 		return DWC3_MAX_REQUEST_SIZE;
