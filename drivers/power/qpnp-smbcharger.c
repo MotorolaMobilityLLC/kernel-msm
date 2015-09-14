@@ -244,6 +244,7 @@ struct smbchg_chip {
 	int				pmi_ibat_ma;
 	int				parallel_ibat_ma;
 	struct completion		aicl_rerun_done;
+	bool				disable_parallel_check;
 };
 
 enum print_reason {
@@ -1737,20 +1738,6 @@ done:
 	smbchg_relax(chip, PM_PARALLEL_TAPER);
 }
 
-static bool smbchg_is_aicl_complete(struct smbchg_chip *chip)
-{
-	int rc;
-	u8 reg;
-
-	rc = smbchg_read(chip, &reg,
-			chip->usb_chgpth_base + ICL_STS_1_REG, 1);
-	if (rc) {
-		dev_err(chip->dev, "Could not read usb icl sts 1: %d\n", rc);
-		return true;
-	}
-	return (reg & AICL_STS_BIT) != 0;
-}
-
 static int smbchg_get_aicl_level_ma(struct smbchg_chip *chip)
 {
 	int rc;
@@ -1783,7 +1770,8 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 	int new_main_cl_ma, ibat_sum;
 	int new_parallel_cl_ma, min_current_thr_ma, rc;
 
-	if (!parallel_psy || !chip->parallel_charger_detected)
+	if (!parallel_psy || !chip->parallel_charger_detected
+				|| chip->disable_parallel_check)
 		return;
 
 	pr_smb(PR_STATUS, "Attempting to enable parallel charger\n");
@@ -1920,6 +1908,8 @@ static void smbchg_parallel_usb_en_work(struct work_struct *work)
 				parallel_en_work.work);
 
 	smbchg_relax(chip, PM_PARALLEL_CHECK);
+	if (chip->disable_parallel_check)
+		return;
 	mutex_lock(&chip->parallel.lock);
 	if (smbchg_is_parallel_usb_ok(chip)) {
 		smbchg_parallel_usb_enable(chip);
@@ -1935,7 +1925,8 @@ static void smbchg_parallel_usb_check_ok(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 
-	if (!parallel_psy || !chip->parallel_charger_detected)
+	if (!parallel_psy || !chip->parallel_charger_detected
+				|| chip->disable_parallel_check)
 		return;
 	mutex_lock(&chip->parallel.lock);
 	if (smbchg_is_parallel_usb_ok(chip)) {
@@ -3032,44 +3023,108 @@ static void check_battery_type(struct smbchg_chip *chip)
 	}
 }
 
-#define AICL_WAIT_TIME_OUT_MS  1000
 #define AICL_BATT_LEVEL 80
+#define AICL_DIFF_LIMIT 1000 /* 1A */
+#define SDP_MAX_INPUT_MA 500
+#define CDP_MAX_INPUT_MA 1500
 #define DCP_MAX_INPUT_MA 3000
-static int smbchg_determine_dcp_input_max(struct smbchg_chip *chip)
+static int smbchg_update_input_max(struct smbchg_chip *chip)
 {
 	union power_supply_propval prop = {0,};
 	int rc;
+	int aicl_level = smbchg_get_aicl_level_ma(chip);
 
-	if (get_prop_charge_type(chip) != POWER_SUPPLY_CHARGE_TYPE_FAST
-			|| get_prop_batt_capacity(chip) > AICL_BATT_LEVEL)
+	if (!is_usb_present(chip) || !chip->aicl_complete)
 		return 0;
 
 	rc = chip->usb_psy->get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_TYPE, &prop);
-	if (rc || prop.intval != POWER_SUPPLY_TYPE_USB_DCP)
+	if (rc)
 		return rc;
 
-	/* set as maximum input current level for aicl rerun */
-	rc = smbchg_set_usb_current_max(chip, DCP_MAX_INPUT_MA);
+	/* update current_max as AICL level*/
+	switch (prop.intval) {
+	case POWER_SUPPLY_TYPE_USB:
+		/*
+		 * If AICL result is too lower than target input current,
+		 * it might be caused by invalid cable. Use default input
+		 * current rather than AICL result in this case.
+		 */
+		if (chip->usb_target_current_ma - aicl_level > AICL_DIFF_LIMIT)
+			chip->usb_target_current_ma = SDP_MAX_INPUT_MA;
+		else if (chip->usb_target_current_ma > aicl_level)
+			chip->usb_target_current_ma = aicl_level;
+		else
+			return 0;
+		break;
+	case POWER_SUPPLY_TYPE_USB_CDP:
+		if (chip->usb_target_current_ma - aicl_level > AICL_DIFF_LIMIT)
+			chip->usb_target_current_ma = CDP_MAX_INPUT_MA;
+		else if (chip->usb_target_current_ma > aicl_level)
+			chip->usb_target_current_ma = aicl_level;
+		else
+			return 0;
+		break;
+	case POWER_SUPPLY_TYPE_USB_DCP:
+		/* Don't use AICL level when battery level is high */
+		if (chip->usb_target_current_ma < aicl_level &&
+				get_prop_batt_capacity(chip) > AICL_BATT_LEVEL)
+			return 0;
+		chip->usb_target_current_ma = aicl_level;
+	default:
+		break;
+	}
+
+	if (chip->usb_max_current_ma == chip->usb_target_current_ma)
+		return 0;
+
+	/* set as proper input current level by aicl result */
+	rc = smbchg_set_usb_current_max(chip, chip->usb_target_current_ma);
 	if (rc) {
 		pr_err("Failed to set usb current max: %d\n", rc);
+		chip->disable_parallel_check = false;
+		return rc;
+	}
+	pr_info("update iusb = %d\n", chip->usb_target_current_ma);
+	power_supply_set_current_limit(chip->usb_psy,
+				chip->usb_target_current_ma * 1000);
+
+	return 0;
+}
+
+#define AICL_WAIT_TIME_OUT_MS  2000
+static int smbchg_wait_first_aicl_done(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0,};
+	int current_max, rc;
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_TYPE, &prop);
+	if (rc)
+		return rc;
+
+	current_max = chip->usb_target_current_ma;
+	if (prop.intval == POWER_SUPPLY_TYPE_USB_DCP)
+		current_max = DCP_MAX_INPUT_MA;
+
+	chip->disable_parallel_check = true;
+
+	INIT_COMPLETION(chip->aicl_rerun_done);
+	/* set as maximum input current level for aicl */
+	rc = smbchg_set_usb_current_max(chip, current_max);
+	if (rc) {
+		pr_err("Failed to set usb current max: %d\n", rc);
+		chip->disable_parallel_check = false;
 		return rc;
 	}
 
-	INIT_COMPLETION(chip->aicl_rerun_done);
-	smbchg_rerun_aicl(chip);
 	rc = wait_for_completion_interruptible_timeout(
 			&chip->aicl_rerun_done,
 			msecs_to_jiffies(AICL_WAIT_TIME_OUT_MS));
-	if (rc > 0 && smbchg_is_aicl_complete(chip)) {
-		/* update current_max as AICL level*/
-		chip->usb_target_current_ma = smbchg_get_aicl_level_ma(chip);
-		pr_info("update iusb = %d\n", chip->usb_target_current_ma);
-		power_supply_set_current_limit(chip->usb_psy,
-					chip->usb_target_current_ma * 1000);
-	} else {
+	if (rc <= 0)
 		dev_err(chip->dev, "AICL wait timeout\n");
-	}
+
+	chip->disable_parallel_check = false;
 
 	return 0;
 }
@@ -3123,8 +3178,8 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't set usb current rc = %d\n", rc);
-		if (current_limit > 0)
-			smbchg_determine_dcp_input_max(chip);
+		if (chip->usb_cc_controller && current_limit > 0)
+			smbchg_wait_first_aicl_done(chip);
 		smbchg_parallel_usb_check_ok(chip);
 	}
 	mutex_unlock(&chip->current_change_lock);
@@ -4719,7 +4774,11 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 	pr_smb(PR_INTERRUPT, "triggered, aicl: %d\n", aicl_level);
 
 	increment_aicl_count(chip);
-	complete_all(&chip->aicl_rerun_done);
+	if (chip->aicl_complete)
+		complete_all(&chip->aicl_rerun_done);
+
+	if (chip->usb_cc_controller && !chip->parallel.initial_aicl_ma)
+		smbchg_update_input_max(chip);
 
 	if (usb_present)
 		smbchg_parallel_usb_check_ok(chip);
