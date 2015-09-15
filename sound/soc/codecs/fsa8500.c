@@ -488,7 +488,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 		cancel_delayed_work_sync(&fsa8500->work_disconnect);
 		fsa8500->inserted = 1;
 		fsa8500->hs_acc_type = fsa8500_get_hs_acc_type(fsa8500);
-		pr_debug("%s:report HS insert,type %d\n", __func__,
+		pr_info("%s:report HS insert,type %d\n", __func__,
 					fsa8500->hs_acc_type);
 		snd_soc_jack_report(fsa8500->hs_jack,
 					fsa8500->hs_acc_type,
@@ -498,7 +498,7 @@ static int fsa8500_report_hs(struct fsa8500_data *fsa8500)
 
 	/* Disconnect or UART */
 	if ((fsa8500->irq_status[0] & 0x18) && fsa8500->inserted) {
-		pr_debug("%s:Got HS removal,type %d\n", __func__,
+		pr_info("%s:Got HS removal,type %d\n", __func__,
 					fsa8500->hs_acc_type);
 
 		/* Schedule Disconnect report */
@@ -693,7 +693,6 @@ skip_report:
 	mutex_unlock(&irq_data->lock);
 }
 
-static int lint_counter;
 static void fsa8500_restore_thread(struct work_struct *work)
 {
 	struct fsa8500_data *irq_data =
