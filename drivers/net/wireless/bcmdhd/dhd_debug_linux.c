@@ -305,11 +305,13 @@ dhd_os_push_push_ring_data(dhd_pub_t *dhdp, int ring_id, void *data, int32 data_
 
 	if (!VALID_RING(ring_id))
 		return BCME_UNSUPPORTED;
-	os_priv = dhd_dbg_get_priv(dhdp);
 
-	if (os_priv) {
-		ring_info = &os_priv[ring_id];
-	}
+	os_priv = dhd_dbg_get_priv(dhdp);
+	if (!os_priv)
+		return BCME_UNSUPPORTED;
+
+	ring_info = &os_priv[ring_id];
+
 	memset(&msg_hdr, 0, sizeof(dhd_dbg_ring_entry_t));
 
 	if (ring_id == DHD_EVENT_RING_ID) {
