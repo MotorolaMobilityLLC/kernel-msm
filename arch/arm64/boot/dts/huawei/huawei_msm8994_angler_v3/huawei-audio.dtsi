@@ -63,6 +63,42 @@
 		/delete-property/ qcom,ext-ult-spk-amp-gpio;
 		asoc-codec = <&stub_codec>;
 		asoc-codec-names = "msm-stub-codec.1";
+		pinctrl-0 = <&pri_mi2s_sleep>, <&pri_mi2s_sd0_sleep>,
+				<&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>,
+				<&tert_mi2s_sleep>, <&tert_mi2s_mclk_sleep>,
+				<&tert_mi2s_sd0_sleep>, <&quat_mi2s_sleep>,
+				<&quat_mi2s_mclk_sleep>, <&quat_mi2s_sd0_sleep>,
+				<&quat_mi2s_sd1_sleep>;
+		pinctrl-1 = <&pri_mi2s_sleep>, <&pri_mi2s_sd0_sleep>,
+				<&tert_mi2s_sleep>, <&tert_mi2s_mclk_sleep>,
+				<&tert_mi2s_sd0_sleep>, <&quat_mi2s_sleep>,
+				<&quat_mi2s_mclk_sleep>, <&quat_mi2s_sd0_sleep>,
+				<&quat_mi2s_sd1_sleep>, <&sec_aux_pcm_active>,
+				<&sec_aux_pcm_din_active>;
+		pinctrl-2 = <&pri_mi2s_active>, <&pri_mi2s_sd0_active>,
+				<&tert_mi2s_sleep>, <&tert_mi2s_mclk_sleep>,
+				<&tert_mi2s_sd0_sleep>, <&quat_mi2s_sleep>,
+				<&quat_mi2s_mclk_sleep>, <&quat_mi2s_sd0_sleep>,
+				<&quat_mi2s_sd1_sleep>, <&sec_aux_pcm_sleep>,
+				<&sec_aux_pcm_din_sleep>;
+		pinctrl-3 = <&pri_mi2s_sleep>, <&pri_mi2s_sd0_sleep>,
+				<&tert_mi2s_active>, <&tert_mi2s_mclk_active>,
+				<&tert_mi2s_sd0_active>, <&quat_mi2s_sleep>,
+				<&quat_mi2s_mclk_sleep>, <&quat_mi2s_sd0_sleep>,
+				<&quat_mi2s_sd1_sleep>, <&sec_aux_pcm_sleep>,
+				<&sec_aux_pcm_din_sleep>;
+		pinctrl-4 = <&pri_mi2s_sleep>, <&pri_mi2s_sd0_sleep>,
+				<&tert_mi2s_sleep>, <&tert_mi2s_mclk_sleep>,
+				<&tert_mi2s_sd0_sleep>, <&quat_mi2s_active>,
+				<&quat_mi2s_mclk_active>, <&quat_mi2s_sd0_active>,
+				<&quat_mi2s_sd1_active>, <&sec_aux_pcm_sleep>,
+				<&sec_aux_pcm_din_sleep>;
+		pinctrl-5 = <&pri_mi2s_active>, <&pri_mi2s_sd0_active>,
+				<&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>,
+				<&tert_mi2s_active>, <&tert_mi2s_mclk_active>,
+				<&tert_mi2s_sd0_active>, <&quat_mi2s_active>,
+				<&quat_mi2s_mclk_active>, <&quat_mi2s_sd0_active>,
+				<&quat_mi2s_sd1_active>;
 		headset_mic_switch = <&pm8994_gpios 2 0>;
 	};
 };
