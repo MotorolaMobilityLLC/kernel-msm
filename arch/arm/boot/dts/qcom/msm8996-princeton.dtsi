@@ -82,3 +82,9 @@
 		vdd_quirk-supply = <&vreg_5p0>;
 	};
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,config-info = "princeton";
+	};
+};
