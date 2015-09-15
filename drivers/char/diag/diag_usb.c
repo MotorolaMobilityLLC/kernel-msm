@@ -295,7 +295,9 @@ static void diag_usb_write_done(struct diag_usb_info *ch,
 	int len = 0;
 	struct diag_usb_buf_tbl_t *entry = NULL;
 	unsigned char *buf = NULL;
+       /* MOT: comment out
 	unsigned long flags;
+       */
 
 	if (!ch || !req)
 		return;
@@ -316,9 +318,16 @@ static void diag_usb_write_done(struct diag_usb_info *ch,
 	} else {
 		DIAG_LOG(DIAG_DEBUG_MUX, "full write_done, ctxt: %d\n",
 			 ctxt);
-		spin_lock_irqsave(&ch->write_lock, flags);
+		/* MOT: diag_usb_write uses write_lock as well,
+		   tty_diag_channel_writedirectly send USB_DIAG_WRITE_DONE,
+		   this can cause a deadlock here.Actually,
+		   diag_ws_on_copy_complete has its own lock, we don't need lock
+		   here spin_lock_irqsave(&ch->write_lock, flags);
+		*/
 		list_del(&entry->track);
-		spin_unlock_irqrestore(&ch->write_lock, flags);
+		/* MOT: comment out
+		   spin_unlock_irqrestore(&ch->write_lock, flags);
+		*/
 	}
 	ctxt = entry->ctxt;
 	buf = entry->buf;
