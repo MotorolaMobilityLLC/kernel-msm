@@ -241,7 +241,7 @@ static int input_handle_abs_event(struct input_dev *dev,
 	if (pold) {
 		*pval = input_defuzz_abs_event(*pval, *pold,
 						dev->absinfo[code].fuzz);
-		if (*pold == *pval && strcmp(dev->name, "ASUS ECG"))
+		if (*pold == *pval && strcmp(dev->name, "ASUS ECG HR") && strcmp(dev->name, "ASUS ECG MOOD"))
 			return INPUT_IGNORE_EVENT;
 
 		*pold = *pval;
