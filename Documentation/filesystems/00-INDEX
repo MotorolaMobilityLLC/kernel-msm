@@ -148,10 +148,13 @@ vfat.txt
 	- info on using the VFAT filesystem used in Windows NT and Windows 95.
 vfs.txt
 	- overview of the Virtual File System.
+wrapfs.txt
+	- info and mount options for the stackable wrapper file system
 xfs-delayed-logging-design.txt
 	- info on the XFS Delayed Logging Design.
 xfs-self-describing-metadata.txt
 	- info on XFS Self Describing Metadata.
+	- overview of the Virtual File System
 xfs.txt
 	- info and mount options for the XFS filesystem.
 xip.txt

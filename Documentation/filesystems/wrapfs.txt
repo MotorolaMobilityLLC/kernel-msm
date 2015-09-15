@@ -1,0 +1,172 @@
+Wrapfs: a null-layer (aka wrapper) stackable file system
+
+Maintainer: Erez Zadok <ezk AT cs DOT stonybrook DOT edu>
+Web Site: <http://wrapfs.filesystems.org/>
+
+------------------------------------------------------------------------------
+MOTIVATION:
+
+Wrapfs is a small null-layer stackable file system, similar to BSD's Nullfs.
+Wrapfs is small, under 1,800 lines of code.  Compare that to, say, eCryptfs
+(in mainline since 2.6.19) and Unionfs, each of which are over 10,000 LoC.
+As such, Wrapfs is simple, easy to read and understand, and very easy to
+code-review.  Wrapfs is useful for several reasons:
+
+1. Many people like to experiment with in-kernel file system ideas.  Wrapfs
+   is an ideal small template that one can modify to incrementally create
+   new file system functionalities.
+
+2. As a platform to test and debug generic stacking problems in other Linux
+   stackable file systems (e.g., eCryptfs) more easily.
+
+3. As a way to test VFS enhancements to better support stacking in Linux.
+
+4. Wrapfs is also a very useful instructional tool, often used as a starting
+   point for course assignments, for people who want a small example of how
+   the Linux VFS works, or for those who want to learn how to write new
+   Linux file systems.
+
+5. As an alternative to bind mounts.  Wrapfs acts similarly to BSD's
+   loopback mount file system (lofs).
+
+Various versions of Wrapfs appeared as part of the "fistgen" package since
+1994, and have been used by numerous users world-wide.  This latest version
+was rewritten entirely from scratch in 2010 and had supported every kernel
+as of 2.6.32.  All versions of wrapfs have been thoroughly tested using LTP,
+FSX, racer, and other test-suites.  Wrapfs code uses the latest VFS API
+changes of the corresponding kernel.  For a more detailed history of Wrapfs,
+and list of most of its known users, see the section marked "HISTORY" below.
+
+------------------------------------------------------------------------------
+OPERATION:
+
+This is a brief description of how Wrapfs operates.  For more information,
+see the full paper published in Linux Expo 1999, titled "A Stackable File
+System Interface For Linux":
+
+	<http://www.fsl.cs.sunysb.edu/docs/linux-stacking/linux.pdf>
+
+The basic function of a stackable file system is to pass an operation and
+its arguments to the lower-level file system.  For every VFS object (inode,
+dentry, file, superblock, etc.), Wrapfs keeps a one-to-one mapping of a
+Wrapfs-level object to the lower one.  We call the Wrapfs object the "upper"
+one, and the one below we call the "lower" one.  Wrapfs stores these
+mappings as simple pointers inside the private field of the existing VFS
+objects (e.g., dentry->d_fsdata, sb->s_fs_info, and a container for inodes).
+
+There are two kinds of stackable operations: those that create new VFS
+objects and those that don't.
+
+The following distilled code snippet shows a method which doesn't create a
+new object.  The method just has to pass it to the lower layer and propagate
+any errors back up the VFS:
+
+int wrapfs_unlink(struct inode *dir, struct dentry *dentry)
+{
+	int err;
+	struct inode *lower_dir;
+	struct dentry *lower_dentry;
+	lower_dir = get_lower_inode(dir);
+	lower_dentry = get_lower_dentry(dentry);
+	err = lower_dir->i_op->unlink(lower_dir, lower_dentry);
+	return err;
+}
+
+The following code snippet shows a method which creates a new object.  After
+a lower object gets created, Wrapfs has to also create its own object, and
+make the pointer connections between the upper and lower objects (the latter
+is done via a helper routine called "interpose"):
+
+int wrapfs_create(struct inode *dir, struct dentry *dentry, int mode)
+{
+	int err;
+	struct dentry *lower_dentry;
+	struct inode *lower_dir;
+	lower_dir = wrapfs_lower_inode(dir);
+	lower_dentry = wrapfs_lower_dentry(dentry);
+	err = vfs_create(lower_dir, lower_dentry, mode);
+	if (!err)
+		err = wrapfs_interpose(dentry, dir->i_sb);
+	return err;
+}
+
+The wrapfs_unlink code snippet above can be easily modified to change the
+behavior of unlink(2).  For example, if an ->unlink operation is changed to
+->rename, this could become the basis for an "undo" file system; or if the
+lower_dentry's name gets encrypted before calling the lower ->unlink, this
+could be part of an encryption file system.
+
+------------------------------------------------------------------------------
+USAGE:
+
+First, you have to have some pre-existing directory already mounted from any
+other file system, say /some/lower/path.  Then, to mount wrapfs in
+/mnt/wrapfs, on that lower directory, issue this command:
+
+# mount -t wrapfs /some/lower/path /mnt/wrapfs
+
+To access the files via Wrapfs, use the mount point /mnt/wrapfs.
+
+------------------------------------------------------------------------------
+CAVEATS:
+
+Stacking on NFS.  Wrapfs has been tested with LTP, racer, fsx, parallel
+compile, and more.  It's been tested on top of ext2, ext3, xfs, reiserfs,
+and tmpfs -- and passed all tests.  However, on top of nfs3, wrapfs has to
+treat silly-deleted files as if they don't exist: in ->unlink, if we try to
+vfs_unlink an NFS silly-deleted file, NFS returns EBUSY; so we simply ignore
+it and return 0 (success) to the VFS.  NFS will delete this file later on
+anyway.  As the VFS also has special handling for silly-deleted files, this
+isn't unusual.  A cleaner way to handle this in the future is if the VFS
+were to handle silly-deleted (aka "delayed-delete") files entirely at the
+VFS.
+
+------------------------------------------------------------------------------
+HISTORY:
+
+Wrapfs was developed initially in 1994 for Linux 2.1, as part of Erez
+Zadok's graduate work at Columbia University.  It was designed to be a
+flexible null-layer, pass-through, stackable file system, from which other
+file systems would be developed and even instantiated automatically using a
+high-level language.  One of the first file systems developed from Wrapfs
+was a simple encryption file system called Cryptfs (eCryptfs is based on
+Cryptfs).  Other examples include Gzipfs, a stackable compression file
+system, and Unionfs, a stackable unification file system.  Wrapfs was
+integrated into a larger package called fistgen (see www.filesystems.org),
+and ported to FreeBSD and Solaris.  Wrapfs and fistgen continued to be
+maintained for newer versions of kernels, but remained largely standalone
+until recently: this release of Wrapfs for Linux represents a clean version
+written from scratch.
+
+Over the past 15+ years, versions of Wrapfs had been used by many users and
+companies.  At one point or another, the following groups have used stacking
+code based on Wrapfs.
+
+1. PROJECTS: eCryptfs, Unionfs, mini_fo, Aufs, FindFS, StoreCompress,
+   TestFS, ToPAS, and MFS.
+
+2. COMPANIES AND RESEARCH LABS: Bell Labs's Plan 9 group, EMC,
+   Hewlett-Packard, IBM Research Almaden, IBM Research Austin, Red Hat,
+   SuSE, Sun Microsystems, Veritas, Booyaka, CalSoft (India), Computer Farm,
+   Deutsche Bank (Germany), DreamWorks LLC, Eli Lilly and Company, FAME
+   Information Services, GMX AG (Germany), IBM global services (India), IDA
+   Center for Communications Research, Indra Networks, Inc., Kavi
+   Corporation, Mendepie, Mitsubishi Electric (Japan), Mobile-Mind, Monster
+   Labs, Morning Network (Russia), NeST Technologies, Packet General
+   Networks, Inc., Outstep Technologies, Reflective Systems Group, River
+   Styx Internet, SARAI Net, Saint-Petersburg Official Web Site (Russia),
+   Shadow Island Games, TISCover (Germany), Trymedia Systems, Uber Admin,
+   Videsh Sanchar Nigam Limited (India), Wanadoo (France), and iNsu
+   Innovations.
+
+3. UNIVERSITIES: Georgia Institute of Technology, Stanford University, UC
+   Berkeley, UCLA, University of Maryland, College Park, University of
+   Michigan, Ben Gurion University (Israel), Clarkson University, Clemson
+   University, Deutsches Elektronen Synchrotron (Germany), Electronics and
+   Telecommunications Research Institute (South Korea), Indian Institute of
+   Technology (India), National Taiwan University, Pune University (India),
+   The College of William \& Mary, Trinity College (Ireland), Universitaet
+   Frankfurt am Main (Germany), University Hospital Olomouc (Czech
+   Republic), and University of Salermo (Italy).
+
+------------------------------------------------------------------------------
