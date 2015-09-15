@@ -4445,6 +4445,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	pr_smb(PR_STATUS,
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
 
+	smbchg_hw_aicl_rerun_en(chip, true);
+
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
@@ -5145,9 +5147,12 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 				pr_err("could not disable charger: %d", rc);
 		} else if ((chip->aicl_deglitch_short || chip->force_aicl_rerun)
 			&& aicl_level == usb_current_table[0]) {
-			rc = smbchg_hw_aicl_rerun_en(chip, false);
+			pr_info("deglitch_short: %d, force_aicl_rerun: %d, aicl_level: %d\n",
+				chip->aicl_deglitch_short, chip->force_aicl_rerun, aicl_level);
+			/* Charge with 150mA with a weak charger */
+			rc = smbchg_set_usb_current_max(chip, CURRENT_150_MA);
 			if (rc)
-				pr_err("could not enable aicl reruns: %d", rc);
+				pr_err("could not set current 150mA : %d", rc);
 		}
 		pr_smb(PR_MISC, "setting usb psy health UNSPEC_FAILURE\n");
 		rc = power_supply_set_health_state(chip->usb_psy,
