@@ -37,6 +37,9 @@
 #include "../codecs/wcd9330.h"
 #include "../codecs/wcd9335.h"
 #include "../codecs/wsa881x.h"
+#ifdef CONFIG_SND_SOC_FLORIDA
+#include "../codecs/florida.h"
+#endif
 
 #define DRV_NAME "msm8996-asoc-snd"
 
@@ -59,6 +62,8 @@
 
 #define WSA8810_NAME_1 "wsa881x.20170211"
 #define WSA8810_NAME_2 "wsa881x.20170212"
+
+#define FLORIDA_SYSCLK_RATE (48000 * 1024 * 3)
 
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -138,8 +143,10 @@ struct msm8996_wsa881x_dev_info {
 	u32 index;
 };
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 static struct snd_soc_aux_dev *msm8996_aux_dev;
 static struct snd_soc_codec_conf *msm8996_codec_conf;
+#endif
 
 struct msm8996_asoc_mach_data {
 	u32 mclk_freq;
@@ -168,9 +175,11 @@ static struct msm8996_liquid_dock_dev *msm8996_liquid_dock_dev;
 
 static void *adsp_state_notifier;
 static void *def_tasha_mbhc_cal(void);
+#ifndef CONFIG_SND_SOC_FLORIDA
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 					int enable, bool dapm);
 static int msm8996_wsa881x_init(struct snd_soc_component *component);
+#endif
 
 /*
  * Need to report LINEIN
@@ -431,6 +440,7 @@ static int msm8996_ext_us_amp_init(void)
 	return ret;
 }
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 static void msm8996_ext_us_amp_enable(u32 on)
 {
 	if (on)
@@ -475,17 +485,50 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 		return -EINVAL;
 	}
 }
+#endif
 
 static int msm8996_mclk_event(struct snd_soc_dapm_widget *w,
 				 struct snd_kcontrol *kcontrol, int event)
 {
-	pr_debug("%s: event = %d\n", __func__, event);
+#ifdef CONFIG_SND_SOC_FLORIDA
+	int ret = 0;
+#endif
 
+	pr_debug("%s: event = %d\n", __func__, event);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+#ifdef CONFIG_SND_SOC_FLORIDA
+		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+		if (ret != 0)
+			dev_err(w->codec->dev, "set PLL refclk failed\n");
+
+		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+		if (ret != 0)
+			dev_err(w->codec->dev, "set PLL clk failed\n");
+
+		break;
+#else
 		return msm_snd_enable_codec_ext_clk(w->codec, 1, true);
+#endif
 	case SND_SOC_DAPM_POST_PMD:
+#ifdef CONFIG_SND_SOC_FLORIDA
+		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1_REFCLK,
+			ARIZONA_FLL_SRC_NONE, 0, 0);
+		if (ret != 0)
+			dev_err(w->codec->dev, "set PLL refclk failed\n");
+
+		ret = snd_soc_codec_set_pll(w->codec, FLORIDA_FLL1,
+			ARIZONA_FLL_SRC_NONE, 0, 0);
+		if (ret != 0)
+			dev_err(w->codec->dev, "set PLL clk failed\n");
+
+
+		break;
+#else
 		return msm_snd_enable_codec_ext_clk(w->codec, 0, true);
+#endif
 	}
 	return 0;
 }
@@ -569,7 +612,11 @@ static const struct snd_soc_dapm_widget msm8996_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Lineout_3 amp", NULL),
 	SND_SOC_DAPM_SPK("Lineout_2 amp", NULL),
 	SND_SOC_DAPM_SPK("Lineout_4 amp", NULL),
+#ifdef CONFIG_SND_SOC_FLORIDA
+	SND_SOC_DAPM_SPK("ultrasound amp", NULL),
+#else
 	SND_SOC_DAPM_SPK("ultrasound amp", msm_ext_ultrasound_event),
+#endif
 	SND_SOC_DAPM_SPK("hifi amp", msm_hifi_ctrl_event),
 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
@@ -595,6 +642,25 @@ static struct snd_soc_dapm_route wcd9335_audio_paths[] = {
 	{"MIC BIAS3", NULL, "MCLK TX"},
 	{"MIC BIAS4", NULL, "MCLK TX"},
 };
+
+#ifdef CONFIG_SND_SOC_FLORIDA
+static const struct snd_soc_dapm_route florida_audio_routes[] = {
+
+
+	{"Slim1 Playback", NULL, "MCLK"},
+	{"Slim1 Capture", NULL, "MCLK"},
+	{"Slim2 Playback", NULL, "MCLK"},
+	{"Slim2 Capture", NULL, "MCLK"},
+	{"IN1L", NULL, "MICBIAS3"},
+	{"IN2L", NULL, "MICBIAS3"},
+	{"IN2R", NULL, "MICBIAS3"},
+	{"IN3L", NULL, "MICBIAS1"},
+	{"IN3R", NULL, "MICBIAS2"},
+
+	{"Headphone", NULL, "OUT1L"},
+	{"Headphone", NULL, "OUT1R"}
+};
+#endif
 
 static int slim5_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -1634,6 +1700,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
 };
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 static bool msm8996_swap_gnd_mic(struct snd_soc_codec *codec)
 {
 	struct snd_soc_card *card = codec->component.card;
@@ -1645,6 +1712,7 @@ static bool msm8996_swap_gnd_mic(struct snd_soc_codec *codec)
 	gpio_set_value_cansleep(pdata->us_euro_gpio, !value);
 	return true;
 }
+#endif
 
 static int msm_afe_set_config(struct snd_soc_codec *codec)
 {
@@ -2006,6 +2074,88 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 out:
 	return err;
 }
+
+#ifdef CONFIG_SND_SOC_FLORIDA
+#define MSM8996_AIF1_CHANNELS 2
+#define MSM8996_AIF1_SAMPLE_DEPTH 16
+#define MSM8996_AIF1_BCLK_RATE (SAMPLE_RATE_48KHZ * \
+					MSM8996_AIF1_SAMPLE_DEPTH * \
+					MSM8996_AIF1_CHANNELS)
+static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	dev_crit(codec->dev, "florida_dai_init first BE dai initing ...\n");
+
+	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
+					ARIZONA_FLL_SRC_NONE,
+					0, 0);
+
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to set FLL1REFCLK\n");
+
+	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
+		ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+	if (ret != 0)
+		dev_err(codec->dev, "set PLL refclk failed\n");
+
+	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1,
+		ARIZONA_FLL_SRC_MCLK2, 32768, FLORIDA_SYSCLK_RATE);
+	if (ret != 0)
+		dev_err(codec->dev, "set PLL clk failed\n");
+
+	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_SYSCLK,
+				ARIZONA_CLK_SRC_FLL1, FLORIDA_SYSCLK_RATE,
+				SND_SOC_CLOCK_IN);
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to set SYSCLK: %d\n", ret);
+
+	ret = snd_soc_dapm_new_controls(dapm, msm8996_dapm_widgets,
+				ARRAY_SIZE(msm8996_dapm_widgets));
+
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to add msm8996_dapm_widgets\n");
+
+	ret = snd_soc_dapm_add_routes(dapm, florida_audio_routes,
+				ARRAY_SIZE(florida_audio_routes));
+
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS1");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS2");
+	snd_soc_dapm_ignore_suspend(dapm, "MICBIAS3");
+	snd_soc_dapm_ignore_suspend(dapm, "MICSUPP");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1L");
+	snd_soc_dapm_ignore_suspend(dapm, "IN1R");
+	snd_soc_dapm_ignore_suspend(dapm, "IN2L");
+	snd_soc_dapm_ignore_suspend(dapm, "IN2R");
+	snd_soc_dapm_ignore_suspend(dapm, "IN3R");
+	snd_soc_dapm_ignore_suspend(dapm, "IN3L");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1TX2");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX1");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF1RX2");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1L");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT1R");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT2L");
+	snd_soc_dapm_ignore_suspend(dapm, "HPOUT2R");
+	snd_soc_dapm_ignore_suspend(dapm, "SLIMTX5");
+	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
+
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to add florida_audio_routes\n");
+
+	ret = snd_soc_add_codec_controls(codec, msm_snd_controls,
+					 ARRAY_SIZE(msm_snd_controls));
+	if (ret != 0)
+		dev_err(rtd->platform->dev, "Failed to add msm_snd_controls\n");
+
+	/* Cargo-culted from QC */
+	snd_soc_dapm_sync(dapm);
+
+	return 0;
+}
+#endif
 
 static void *def_tasha_mbhc_cal(void)
 {
@@ -2963,6 +3113,170 @@ static struct snd_soc_dai_link msm8996_common_dai_links[] = {
 	},
 };
 
+#ifdef CONFIG_SND_SOC_FLORIDA
+static struct snd_soc_dai_link msm8996_florida_fe_dai_links[] = {
+	{
+		.name = LPASS_BE_SLIMBUS_4_TX,
+		.stream_name = "Slimbus4 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16393",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
+		.be_hw_params_fixup = msm_slim_4_tx_be_hw_params_fixup,
+		.ops = &msm8996_be_ops,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = "SLIMBUS_2 Hostless Playback",
+		.stream_name = "SLIMBUS_2 Hostless Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16388",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.ignore_suspend = 1,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ops = &msm8996_slimbus_2_be_ops,
+	},
+	{
+		.name = "SLIMBUS_2 Hostless Capture",
+		.stream_name = "SLIMBUS_2 Hostless Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16389",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.ignore_suspend = 1,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ops = &msm8996_slimbus_2_be_ops,
+	},
+};
+
+static struct snd_soc_dai_link msm8996_florida_be_dai_links[] = {
+	{
+		.name = LPASS_BE_SLIMBUS_0_RX,
+		.stream_name = "Slimbus Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16384",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name = "florida-slim1",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
+		.init = &florida_dai_init,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+		.ops = &msm8996_be_ops,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_0_TX,
+		.stream_name = "Slimbus Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16385",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ignore_suspend = 1,
+		.ops = &msm8996_be_ops,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_1_RX,
+		.stream_name = "Slimbus1 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16386",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim2",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_RX,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8996_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_1_TX,
+		.stream_name = "Slimbus1 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16387",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim2",
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ops = &msm8996_be_ops,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_3_RX,
+		.stream_name = "Slimbus3 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16390",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_RX,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8996_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_3_TX,
+		.stream_name = "Slimbus3 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16391",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ops = &msm8996_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_4_RX,
+		.stream_name = "Slimbus4 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16392",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_RX,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8996_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	/* MAD BE */
+	{
+		.name = LPASS_BE_SLIMBUS_5_TX,
+		.stream_name = "Slimbus5 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16395",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "florida-codec",
+		.codec_dai_name	= "florida-slim1",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_5_TX,
+		.be_hw_params_fixup = msm_slim_5_tx_be_hw_params_fixup,
+		.ignore_suspend = 1,
+		.ops = &msm8996_be_ops,
+	},
+};
+#endif
+
 static struct snd_soc_dai_link msm8996_tasha_fe_dai_links[] = {
 	{
 		.name = LPASS_BE_SLIMBUS_4_TX,
@@ -3356,6 +3670,14 @@ static struct snd_soc_dai_link msm8996_hdmi_dai_link[] = {
 	},
 };
 
+#ifdef CONFIG_SND_SOC_FLORIDA
+static struct snd_soc_dai_link msm8996_florida_dai_links[
+			 ARRAY_SIZE(msm8996_common_dai_links) +
+			 ARRAY_SIZE(msm8996_florida_fe_dai_links) +
+			 ARRAY_SIZE(msm8996_common_be_dai_links) +
+			 ARRAY_SIZE(msm8996_florida_be_dai_links) +
+			 ARRAY_SIZE(msm8996_hdmi_dai_link)];
+#endif
 static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_fe_dai_links) +
@@ -3363,6 +3685,7 @@ static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_tasha_be_dai_links) +
 			 ARRAY_SIZE(msm8996_hdmi_dai_link)];
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 static int msm8996_wsa881x_init(struct snd_soc_component *component)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -3412,10 +3735,17 @@ static int msm8996_wsa881x_init(struct snd_soc_component *component)
 
 	return 0;
 }
+#endif
 
 struct snd_soc_card snd_soc_card_tasha_msm8996 = {
 	.name		= "msm8996-tasha-snd-card",
 };
+
+#ifdef CONFIG_SND_SOC_FLORIDA
+struct snd_soc_card snd_soc_card_florida_msm8996 = {
+	.name		= "msm8996-florida-snd-card",
+};
+#endif
 
 static int msm8996_populate_dai_link_component_of_node(
 					struct snd_soc_card *card)
@@ -3503,6 +3833,7 @@ err:
 	return ret;
 }
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 static int msm8996_prepare_us_euro(struct snd_soc_card *card)
 {
 	struct msm8996_asoc_mach_data *pdata =
@@ -3553,10 +3884,13 @@ static int msm8996_prepare_hifi(struct snd_soc_card *card)
 	}
 	return 0;
 }
+#endif
 
 static const struct of_device_id msm8996_asoc_machine_of_match[]  = {
 	{ .compatible = "qcom,msm8996-asoc-snd-tasha",
 	  .data = "tasha_codec"},
+	{ .compatible = "qcom,msm8996-asoc-snd-florida",
+	  .data = "florida-codec"},
 	{},
 };
 
@@ -3595,6 +3929,31 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 
 		dailink = msm8996_tasha_dai_links;
 		len_4 = len_3 + ARRAY_SIZE(msm8996_tasha_be_dai_links);
+#ifdef CONFIG_SND_SOC_FLORIDA
+	} else  if (!strcmp(match->data, "florida-codec")){
+		/* Florida links */
+		card = &snd_soc_card_florida_msm8996;
+		len_1 = ARRAY_SIZE(msm8996_common_dai_links);
+		len_2 = len_1 + ARRAY_SIZE(msm8996_florida_fe_dai_links);
+		len_3 = len_2 + ARRAY_SIZE(msm8996_common_be_dai_links);
+
+		memcpy(msm8996_florida_dai_links,
+			msm8996_common_dai_links,
+		       sizeof(msm8996_common_dai_links));
+		memcpy(msm8996_florida_dai_links + len_1,
+		       msm8996_florida_fe_dai_links,
+		       sizeof(msm8996_florida_fe_dai_links));
+		memcpy(msm8996_florida_dai_links + len_2,
+		       msm8996_common_be_dai_links,
+		       sizeof(msm8996_common_be_dai_links));
+		memcpy(msm8996_florida_dai_links + len_3,
+		       msm8996_florida_be_dai_links,
+		       sizeof(msm8996_florida_be_dai_links));
+
+		/* TODO: Will add cs35l34 links later */
+		dailink = msm8996_florida_dai_links;
+		len_4 = len_3 + ARRAY_SIZE(msm8996_florida_be_dai_links);
+#endif
 	}
 
 	if (of_property_read_bool(dev->of_node, "qcom,hdmi-audio-rx")) {
@@ -3615,6 +3974,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	return card;
 }
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 static int msm8996_init_wsa_dev(struct platform_device *pdev,
 				struct snd_soc_card *card)
 {
@@ -3776,12 +4136,15 @@ static int msm8996_init_wsa_dev(struct platform_device *pdev,
 
 	return 0;
 }
+#endif
 
 static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card;
 	struct msm8996_asoc_mach_data *pdata;
+#ifndef CONFIG_SND_SOC_FLORIDA
 	const char *mbhc_audio_jack_type = NULL;
+#endif
 	char *mclk_freq_prop_name;
 	const struct of_device_id *match;
 	int ret;
@@ -3815,12 +4178,14 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
 	if (ret) {
 		dev_err(&pdev->dev, "parse audio routing failed, err:%d\n",
 			ret);
 		goto err;
 	}
+#endif
 
 	match = of_match_node(msm8996_asoc_machine_of_match,
 			pdev->dev.of_node);
@@ -3830,7 +4195,10 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	mclk_freq_prop_name = "qcom,tasha-mclk-clk-freq";
+	if (!strcmp(match->data, "florida-codec"))
+		mclk_freq_prop_name = "qcom,florida-mclk-clk-freq";
+	else
+		mclk_freq_prop_name = "qcom,tasha-mclk-clk-freq";
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 			mclk_freq_prop_name, &pdata->mclk_freq);
@@ -3857,9 +4225,11 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 	ret = msm8996_init_wsa_dev(pdev, card);
 	if (ret)
 		goto err;
+#endif
 
 	pdata->hph_en1_gpio = of_get_named_gpio(pdev->dev.of_node,
 						"qcom,hph-en1-gpio", 0);
@@ -3874,10 +4244,12 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "%s: %s property not found %d\n",
 			__func__, "qcom,hph-en0-gpio", pdata->hph_en0_gpio);
 	}
+#ifndef CONFIG_SND_SOC_FLORIDA
 	ret = msm8996_prepare_hifi(card);
 	if (ret)
 		dev_dbg(&pdev->dev, "msm8996_prepare_hifi failed (%d)\n",
 			ret);
+#endif
 
 	ret = snd_soc_register_card(card);
 	if (ret == -EPROBE_DEFER) {
@@ -3891,6 +4263,7 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 	}
 	dev_info(&pdev->dev, "Sound card %s registered\n", card->name);
 
+#ifndef CONFIG_SND_SOC_FLORIDA
 	ret = of_property_read_string(pdev->dev.of_node,
 		"qcom,mbhc-audio-jack-type", &mbhc_audio_jack_type);
 	if (ret) {
@@ -3930,6 +4303,7 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		dev_info(&pdev->dev, "msm8996_prepare_us_euro failed (%d)\n",
 			ret);
+#endif
 	return 0;
 err:
 	if (pdata->us_euro_gpio > 0) {
