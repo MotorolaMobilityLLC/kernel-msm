@@ -10301,6 +10301,15 @@ F:	include/linux/workqueue.h
 F:	kernel/workqueue.c
 F:	Documentation/workqueue.txt
 
+WRAP FILE SYSTEM
+M:	Erez Zadok <ezk@cs.sunysb.edu>
+L:	wrapfs@filesystems.org
+W:	http://wrapfs.filesystems.org/
+T:	git git://git.fsl.cs.sunysb.edu/wrapfs-latest.git
+S:	Maintained
+F:	Documentation/filesystems/wrapfs.txt
+F:	fs/wrapfs/
+
 X.25 NETWORK LAYER
 M:	Andrew Hendry <andrew.hendry@gmail.com>
 L:	linux-x25@vger.kernel.org
