@@ -1845,51 +1845,37 @@ int mdss_dsi_panel_set_acl(struct mdss_dsi_ctrl_pdata *ctrl, int state)
 
 int mdss_dsi_panel_set_cabc(struct mdss_dsi_ctrl_pdata *ctrl, int mode)
 {
-	int rc = -EINVAL;
-	const char *name;
-	struct mdss_panel_info *pinfo;
-	struct dsi_panel_cmds *cmds = NULL;
+	struct mdss_panel_info *pinfo = &ctrl->panel_data.panel_info;
+	struct dsi_panel_cmds *cmds;
 
-	if (!ctrl) {
-		pr_err("%s: Invalid ctrl pointer.\n", __func__);
-		goto end;
-	}
-
-	pinfo = &ctrl->panel_data.panel_info;
-	name = mdss_panel_map_cabc_name(mode);
-	if (!name) {
-		pr_err("%s: Invalid mode: %d\n", __func__, mode);
-		goto end;
+	if (!pinfo->dynamic_cabc_enabled) {
+		pr_debug("%s: Dynamic CABC is disabled, ignore request\n",
+			__func__);
+		return 0;
 	}
 
 	if (pinfo->cabc_mode == mode) {
-		pr_warn("%s: Already in requested mode: %s\n", __func__, name);
-		rc = 0;
-		goto end;
+		pr_warn("%s: Already in requested mode: %d\n", __func__, mode);
+		return 0;
 	}
 
-	if (mode == CABC_MV_MODE && ctrl->cabc_mv_cmds.cmd_cnt)
+	if (mode == CABC_MV_MODE)
 		cmds = &ctrl->cabc_mv_cmds;
-	else if (mode == CABC_UI_MODE && ctrl->cabc_ui_cmds.cmd_cnt)
+	else if (mode == CABC_UI_MODE)
 		cmds = &ctrl->cabc_ui_cmds;
-
-	if (!cmds) {
-		pr_warn("%s: %s mode not supported.\n", __func__, name);
-		goto end;
+	else {
+		pr_warn("%s: mode %d not supported.\n", __func__, mode);
+		return -EINVAL;
 	}
 
-	if (mdss_panel_is_power_off(pinfo->panel_power_state)) {
-		pr_err("%s: Panel is off\n", __func__);
-		rc = -EPERM;
-		goto end;
+	if (!cmds->cmd_cnt) {
+		pr_err("%s: cmds of mode %d not configured.\n", __func__, mode);
+		return -EFAULT;
 	}
+
 	mdss_dsi_panel_cmds_send(ctrl, cmds);
-
-	pr_info("%s: Done setting %s mode\n", __func__, name);
 	pinfo->cabc_mode = mode;
-	rc = 0;
-end:
-	return rc;
+	return 0;
 }
 
 static int mdss_panel_parse_optional_prop(struct device_node *np,
