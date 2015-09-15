@@ -4227,6 +4227,7 @@ static bool is_battery_replaced_in_offmode(struct qpnp_bms_chip *chip)
 static void load_shutdown_data(struct qpnp_bms_chip *chip)
 {
 	int calculated_soc, shutdown_soc;
+	u8 c_batt_removed_offmode;
 	bool invalid_stored_soc;
 	bool offmode_battery_replaced;
 	bool shutdown_soc_out_of_limit;
@@ -4273,6 +4274,13 @@ static void load_shutdown_data(struct qpnp_bms_chip *chip)
 		pr_debug("Ignoring shutdown SoC: invalid = %d, offmode = %d, out_of_limit = %d\n",
 				invalid_stored_soc, offmode_battery_replaced,
 				shutdown_soc_out_of_limit);
+		/*Clear battery removed flag*/
+		if(offmode_battery_replaced)
+		{
+			pr_debug("clear battery removed flag\n");
+			c_batt_removed_offmode = 0x40;
+			qpnp_write_wrapper(chip, (u8 *)&c_batt_removed_offmode, 0x124f, 1);
+		}
 	} else {
 		chip->shutdown_iavg_ma = read_shutdown_iavg_ma(chip);
 		chip->shutdown_soc = shutdown_soc;
