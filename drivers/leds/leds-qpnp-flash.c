@@ -678,11 +678,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 		led->gpio_enabled = true;
 	}
 
-	if (((led->flash_node[2].flash_on ||
-		led->flash_node[3].flash_on) &&
-		!led->flash_node[0].flash_on &&
-		!led->flash_node[1].flash_on) ||
-		flash_node->type == TORCH) {
+	if (flash_node->type == TORCH) {
 		rc = qpnp_led_masked_write(led->spmi_dev,
 			FLASH_LED_UNLOCK_SECURE(led->base),
 			FLASH_SECURE_MASK, FLASH_UNLOCK_SECURE);
@@ -702,10 +698,6 @@ static void qpnp_flash_led_work(struct work_struct *work)
 		}
 		if (led->flash_node[led->num_leds - 1].id ==
 							FLASH_LED_SWITCH) {
-			flash_node->trigger = 0;
-			if (led->flash_node[2].flash_on)
-				flash_node->trigger |= FLASH_LED0_TRIGGER;
-
 			val = (u8)(led->flash_node[2].prgm_current *
 						FLASH_TORCH_MAX_LEVEL
 					/ led->flash_node[2].max_current);
@@ -717,9 +709,6 @@ static void qpnp_flash_led_work(struct work_struct *work)
 					"Torch reg write failed\n");
 				goto exit_flash_led_work;
 			}
-
-			if (led->flash_node[3].flash_on)
-				flash_node->trigger |= FLASH_LED1_TRIGGER;
 
 			val = (u8)(led->flash_node[3].prgm_current *
 						FLASH_TORCH_MAX_LEVEL
@@ -832,11 +821,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 				"Strobe ctrl reg write failed\n");
 			goto exit_flash_led_work;
 		}
-	} else if (((led->flash_node[0].flash_on ||
-			led->flash_node[1].flash_on) &&
-			!led->flash_node[2].flash_on &&
-			!led->flash_node[3].flash_on) ||
-			flash_node->type == FLASH) {
+	} else if (flash_node->type == FLASH) {
 		if (led->flash_node[0].flash_on)
 			max_curr_avail_ma += led->flash_node[0].max_current;
 		if (led->flash_node[1].flash_on)
@@ -886,7 +871,6 @@ static void qpnp_flash_led_work(struct work_struct *work)
 
 		if (led->flash_node[led->num_leds - 1].id ==
 							FLASH_LED_SWITCH) {
-			flash_node->trigger = 0;
 			if (led->flash_node[0].flash_on &&
 					led->flash_node[1].flash_on) {
 				if (max_curr_avail_ma <
@@ -900,22 +884,13 @@ static void qpnp_flash_led_work(struct work_struct *work)
 							* max_curr_avail_ma /
 						flash_node->prgm_current;
 				}
-				flash_node->trigger = FLASH_LED0_TRIGGER |
-							FLASH_LED1_TRIGGER;
 			} else {
-				if (led->flash_node[0].flash_on)
-					flash_node->trigger |=
-							FLASH_LED0_TRIGGER;
-
 				led->flash_node[0].prgm_current
 					= (max_curr_avail_ma <
 					led->flash_node[0].prgm_current)
 					? max_curr_avail_ma :
 					led->flash_node[0].prgm_current;
 
-				if (led->flash_node[1].flash_on)
-					flash_node->trigger |=
-							FLASH_LED1_TRIGGER;
 				led->flash_node[1].prgm_current
 					= (max_curr_avail_ma <
 					led->flash_node[1].prgm_current)
@@ -1135,12 +1110,22 @@ static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 	flash_node->cdev.brightness = value;
 	if (led->flash_node[led->num_leds - 1].id ==
 						FLASH_LED_SWITCH) {
+		if (flash_node->type == TORCH)
+			led->flash_node[led->num_leds - 1].type = TORCH;
+		else if (flash_node->type == FLASH)
+			led->flash_node[led->num_leds - 1].type = FLASH;
+
 		if (flash_node->id == FLASH_LED_0 ||
 					 flash_node->id == FLASH_LED_1) {
 			if (value < FLASH_LED_MIN_CURRENT_MA && value != 0)
 				value = FLASH_LED_MIN_CURRENT_MA;
 			flash_node->prgm_current = value;
 			flash_node->flash_on = value ? true : false;
+			if (value)
+				led->flash_node[led->num_leds - 1].trigger |=
+						0x80 >> flash_node->id;
+			else
+				led->flash_node[led->num_leds - 1].trigger = 0;
 			return;
 		} else if (flash_node->id == FLASH_LED_SWITCH) {
 			if (led->flash_node[0].flash_on ||
