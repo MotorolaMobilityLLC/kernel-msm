@@ -300,6 +300,7 @@ void esdfs_derive_perms(struct dentry *dentry)
 	switch (inode_i->tree) {
 	case ESDFS_TREE_ROOT_LEGACY:
 		inode_i->tree = ESDFS_TREE_ROOT;
+		ret = kstrtou32(dentry->d_name.name, 0, &inode_i->userid);
 		if (!strncasecmp(dentry->d_name.name,
 					"obb",
 					dentry->d_name.len))
@@ -308,7 +309,6 @@ void esdfs_derive_perms(struct dentry *dentry)
 
 	case ESDFS_TREE_ROOT:
 		inode_i->tree = ESDFS_TREE_MEDIA;
-		ret = kstrtou32(dentry->d_name.name, 0, &inode_i->userid);
 		if (!strncasecmp(dentry->d_name.name,
 				 "Android",
 				 dentry->d_name.len))
