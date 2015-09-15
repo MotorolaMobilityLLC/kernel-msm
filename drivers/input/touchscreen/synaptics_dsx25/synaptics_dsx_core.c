@@ -92,8 +92,8 @@
 #define F11_WAKEUP_GESTURE_MODE 0x04
 #define F12_CONTINUOUS_MODE 0x00
 #define F12_WAKEUP_GESTURE_MODE 0x02
-#define DSX_VDD_VTG_MIN 3000000
-#define DSX_VDD_VTG_MAX 3000000
+#define DSX_VDD_VTG_MIN 3100000
+#define DSX_VDD_VTG_MAX 3100000
 
 #define DSX_VBUS_VTG_MIN 1800000
 #define DSX_VBUS_VTG_MAX 1800000
@@ -2723,6 +2723,56 @@ err_input_device:
 	return retval;
 }
 
+static int synaptics_rmi4_pinctrl_init(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval = 0;
+	struct i2c_client *client = to_i2c_client(rmi4_data->pdev->dev.parent);
+
+	rmi4_data->pinctrl = devm_pinctrl_get(&client->dev);
+	if (IS_ERR_OR_NULL(rmi4_data->pinctrl)) {
+		dev_err(&client->dev, "Failed to get pinctrl \n");
+		retval = -1;
+		goto exit;
+	}
+
+	rmi4_data->pin_default = pinctrl_lookup_state(rmi4_data->pinctrl, "int_default");
+	if (IS_ERR_OR_NULL(rmi4_data->pin_default)) {
+		dev_err(&client->dev, "Failed to look up default state \n");
+		retval = -1;
+	}
+
+	rmi4_data->pin_sleep = pinctrl_lookup_state(rmi4_data->pinctrl, "int_sleep");
+	if (IS_ERR_OR_NULL(rmi4_data->pin_sleep)) {
+		dev_err(&client->dev, "Failed to look up sleep state \n");
+		retval = -1;
+	}
+
+exit:
+	return retval;
+}
+
+static int synaptics_rmi4_pinctrl_select_state(struct synaptics_rmi4_data *rmi4_data,bool state)
+{
+	int retval = -1;
+	struct i2c_client *client = to_i2c_client(rmi4_data->pdev->dev.parent);
+
+	pr_info("%s: in! state=%d! \n", __func__, state);
+
+	if (state == true) {
+		retval = pinctrl_select_state(rmi4_data->pinctrl, rmi4_data->pin_default);
+		if (retval != 0) {
+			dev_err(&client->dev, "Can't select pinctrl default state \n");
+		}
+	} else {
+		retval = pinctrl_select_state(rmi4_data->pinctrl, rmi4_data->pin_sleep);
+		if (retval != 0) {
+			dev_err(&client->dev, "Can't select pinctrl sleep state \n");
+		}
+	}
+
+	return retval;
+}
+
 static int synaptics_rmi4_set_gpio(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
@@ -3369,6 +3419,22 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 
 	vir_button_map = bdata->vir_button_map;
 
+	retval = synaptics_rmi4_pinctrl_init(rmi4_data);
+	if (retval < 0) {
+		dev_err(&pdev->dev,
+				"%s: Failed to init pinctrl \n",
+				__func__);
+		goto err_get_reg;
+	}
+
+	retval = synaptics_rmi4_pinctrl_select_state(rmi4_data, true);
+	if (retval != 0) {
+		dev_err(&pdev->dev,
+				"%s: Failed to select state \n",
+				__func__);
+		goto err_get_reg;
+	}
+
 	retval = synaptics_rmi4_get_reg(rmi4_data, true);
 	if (retval < 0) {
 		dev_err(&pdev->dev,
@@ -4012,8 +4078,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 {
 	struct synaptics_rmi4_exp_fhandler *exp_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	unsigned char calibration_data;
-	int retval;
 
 	tp_log_debug("%s: in!\n",__func__);
 	if (rmi4_data->stay_awake)
@@ -4028,25 +4092,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
 	synaptics_rmi4_irq_enable(rmi4_data, true, false);
-
-	retval = synaptics_rmi4_reg_read(rmi4_data,
-		rmi4_data->f01_ctrl_base_addr + 0x131,
-		&calibration_data,
-		sizeof(calibration_data));
-	if (retval < 0) {
-		dev_err(rmi4_data->pdev->dev.parent,
-			"%s: Failed to read register status\n", __func__);
-	} else {
-		calibration_data |= 0x02;
-		retval = synaptics_rmi4_reg_write(rmi4_data,
-			rmi4_data->f01_ctrl_base_addr + 0x131,
-			&calibration_data,
-			sizeof(calibration_data));
-		if (retval < 0) {
-			dev_err(rmi4_data->pdev->dev.parent,
-				"%s: Failed to write register status\n", __func__);
-		}
-	}
 
 	mutex_lock(&exp_data.mutex);
 	if (!list_empty(&exp_data.list)) {
