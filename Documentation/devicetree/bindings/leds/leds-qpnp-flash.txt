@@ -75,9 +75,15 @@ operational simplification. For backward compatibility purpose, swicth node can 
 Optional properties inside child node:
 - qcom,current		: default current intensity for LED. Accepted values should be
 			  integer from 0 t 1000 inclusive, indicating 0 to 1000 mA.
-- boost-supply		: flash LED boost power source for flash LED
-- boost-voltage-max	: maximum voltage for flash LED boost regulator in uV. This attribute is
-			: required if boost-supply is defined.
+- qcom,duration	: Duration for flash LED. When duration time expires, hardware will turn off
+		flash LED. Values should be from 10 ms to 1280 ms with 10 ms incremental
+		step. Not applicable to torch. It is required for LED:SWITCH node to handle
+		LED used as flash.
+- reg<n>	: reg<n> (<n> represents number. eg 0,1,2,..) property is to add support for
+		multiple power sources. It includes property regulator-name, which is used
+		for flash LED power source name, and property max-voltage, which provides
+		maximum voltage needed for flash LED. max-voltage property is optional and
+		value is in uV.
 
 Example:
 	qcom,leds@d300 {
@@ -121,6 +127,11 @@ Example:
 			qcom,id = <0>;
 			qcom,current = <120>;
 			qcom,max-current = <200>;
+			reg0 {
+				regulator-name =
+					 "pm8226_chg_boost";
+				max-voltage = <3600000>;
+			};
 		};
 
 		pm8226_switch: qcom,switch {
@@ -128,11 +139,14 @@ Example:
 			qcom,led-name = "led:switch";
 			qcom,default-led-trigger =
 					"switch_trigger";
-			boost-supply = <&pm8226_chg_boost>;
 			qcom,id = <2>;
 			qcom,current = <625>;
 			qcom,max-current = <1000>;
-			boost-voltage-max = <3600000>;
+			reg0 {
+				regulator-name =
+					"pm8226_chg_boost";
+				max-voltage = <3600000>;
+			};
 		};
 	};
 
