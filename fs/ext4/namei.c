@@ -34,6 +34,7 @@
 #include <linux/quotaops.h>
 #include <linux/buffer_head.h>
 #include <linux/bio.h>
+#include <linux/namei.h>
 #include "ext4.h"
 #include "ext4_jbd2.h"
 
@@ -269,7 +270,8 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
 				 __u32 *start_hash);
 static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
 		struct ext4_filename *fname,
-		struct ext4_dir_entry_2 **res_dir);
+		struct ext4_dir_entry_2 **res_dir,
+		int flags);
 static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
 			     struct dentry *dentry, struct inode *inode);
 
@@ -1135,10 +1137,11 @@ static inline int search_dirblock(struct buffer_head *bh,
 				  struct ext4_filename *fname,
 				  const struct qstr *d_name,
 				  unsigned int offset,
-				  struct ext4_dir_entry_2 **res_dir)
+				  struct ext4_dir_entry_2 **res_dir,
+				  int flags)
 {
 	return ext4_search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
-			       fname, d_name, offset, res_dir);
+			       fname, d_name, offset, res_dir, flags);
 }
 
 /*
@@ -1221,7 +1224,7 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
  * `de != NULL' is guaranteed by caller.
  */
 static inline int ext4_match(struct ext4_filename *fname,
-			     struct ext4_dir_entry_2 *de)
+			     struct ext4_dir_entry_2 *de, int flags)
 {
 	const void *name = fname_name(fname);
 	u32 len = fname_len(fname);
@@ -1245,6 +1248,8 @@ static inline int ext4_match(struct ext4_filename *fname,
 #endif
 	if (de->name_len != len)
 		return 0;
+	if (unlikely(flags & LOOKUP_NOCASE))
+		return !strncasecmp(name, de->name, len);
 	return (memcmp(de->name, name, len) == 0) ? 1 : 0;
 }
 
@@ -1254,7 +1259,8 @@ static inline int ext4_match(struct ext4_filename *fname,
 int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
 		    struct inode *dir, struct ext4_filename *fname,
 		    const struct qstr *d_name,
-		    unsigned int offset, struct ext4_dir_entry_2 **res_dir)
+		    unsigned int offset, struct ext4_dir_entry_2 **res_dir,
+		    int flags)
 {
 	struct ext4_dir_entry_2 * de;
 	char * dlimit;
@@ -1267,7 +1273,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
 		/* this code is executed quadratically often */
 		/* do minimal checking `by hand' */
 		if ((char *) de + de->name_len <= dlimit) {
-			res = ext4_match(fname, de);
+			res = ext4_match(fname, de, flags);
 			if (res < 0) {
 				res = -1;
 				goto return_result;
@@ -1333,7 +1339,8 @@ static int is_dx_internal_node(struct inode *dir, ext4_lblk_t block,
 static struct buffer_head * ext4_find_entry (struct inode *dir,
 					const struct qstr *d_name,
 					struct ext4_dir_entry_2 **res_dir,
-					int *inlined)
+					int *inlined,
+					int flags)
 {
 	struct super_block *sb;
 	struct buffer_head *bh_use[NAMEI_RA_SIZE];
@@ -1362,7 +1369,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
 	if (ext4_has_inline_data(dir)) {
 		int has_inline_data = 1;
 		ret = ext4_find_inline_entry(dir, &fname, d_name, res_dir,
-					     &has_inline_data);
+					     &has_inline_data, flags);
 		if (has_inline_data) {
 			if (inlined)
 				*inlined = 1;
@@ -1381,7 +1388,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
 		goto restart;
 	}
 	if (is_dx(dir)) {
-		ret = ext4_dx_find_entry(dir, &fname, res_dir);
+		ret = ext4_dx_find_entry(dir, &fname, res_dir, flags);
 		/*
 		 * On success, or if the error was file not found,
 		 * return.  Otherwise, fall back to doing a search the
@@ -1453,7 +1460,7 @@ restart:
 		}
 		set_buffer_verified(bh);
 		i = search_dirblock(bh, dir, &fname, d_name,
-			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
+			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir, flags);
 		if (i == 1) {
 			EXT4_I(dir)->i_dir_start_lookup = block;
 			ret = bh;
@@ -1489,7 +1496,7 @@ cleanup_and_exit:
 
 static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
 			struct ext4_filename *fname,
-			struct ext4_dir_entry_2 **res_dir)
+			struct ext4_dir_entry_2 **res_dir, int flags)
 {
 	struct super_block * sb = dir->i_sb;
 	struct dx_frame frames[2], *frame;
@@ -1512,7 +1519,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
 
 		retval = search_dirblock(bh, dir, fname, d_name,
 					 block << EXT4_BLOCK_SIZE_BITS(sb),
-					 res_dir);
+					 res_dir, flags);
 		if (retval == 1)
 			goto success;
 		brelse(bh);
@@ -1541,7 +1548,8 @@ success:
 	return bh;
 }
 
-static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry,
+				  unsigned int flags)
 {
 	struct inode *inode;
 	struct ext4_dir_entry_2 *de;
@@ -1568,7 +1576,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
 	if (dentry->d_name.len > EXT4_NAME_LEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
-	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL, flags);
 	if (IS_ERR(bh))
 		return (struct dentry *) bh;
 	inode = NULL;
@@ -1615,7 +1623,7 @@ struct dentry *ext4_get_parent(struct dentry *child)
 	struct ext4_dir_entry_2 * de;
 	struct buffer_head *bh;
 
-	bh = ext4_find_entry(child->d_inode, &dotdot, &de, NULL);
+	bh = ext4_find_entry(child->d_inode, &dotdot, &de, NULL, 0);
 	if (IS_ERR(bh))
 		return (struct dentry *) bh;
 	if (!bh)
@@ -1818,7 +1826,7 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
 			goto return_result;
 		}
 		/* Provide crypto context and crypto buffer to ext4 match */
-		res = ext4_match(fname, de);
+		res = ext4_match(fname, de, false);
 		if (res < 0)
 			goto return_result;
 		if (res > 0) {
@@ -2925,7 +2933,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
 	dquot_initialize(dentry->d_inode);
 
 	retval = -ENOENT;
-	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL, 0);
 	if (IS_ERR(bh))
 		return PTR_ERR(bh);
 	if (!bh)
@@ -2994,7 +3002,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
 	dquot_initialize(dentry->d_inode);
 
 	retval = -ENOENT;
-	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL, 0);
 	if (IS_ERR(bh))
 		return PTR_ERR(bh);
 	if (!bh)
@@ -3370,7 +3378,7 @@ static int ext4_find_delete_entry(handle_t *handle, struct inode *dir,
 	struct buffer_head *bh;
 	struct ext4_dir_entry_2 *de;
 
-	bh = ext4_find_entry(dir, d_name, &de, NULL);
+	bh = ext4_find_entry(dir, d_name, &de, NULL, 0);
 	if (IS_ERR(bh))
 		return PTR_ERR(bh);
 	if (bh) {
@@ -3493,7 +3501,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 	if (new.inode)
 		dquot_initialize(new.inode);
 
-	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de, NULL);
+	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de,
+				 NULL, 0);
 	if (IS_ERR(old.bh))
 		return PTR_ERR(old.bh);
 	/*
@@ -3515,7 +3524,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 	}
 
 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
-				 &new.de, &new.inlined);
+				 &new.de, &new.inlined, 0);
 	if (IS_ERR(new.bh)) {
 		retval = PTR_ERR(new.bh);
 		new.bh = NULL;
@@ -3691,7 +3700,7 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
 	dquot_initialize(new.dir);
 
 	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name,
-				 &old.de, &old.inlined);
+				 &old.de, &old.inlined, 0);
 	if (IS_ERR(old.bh))
 		return PTR_ERR(old.bh);
 	/*
@@ -3705,7 +3714,7 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
 		goto end_rename;
 
 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
-				 &new.de, &new.inlined);
+				 &new.de, &new.inlined, 0);
 	if (IS_ERR(new.bh)) {
 		retval = PTR_ERR(new.bh);
 		new.bh = NULL;
