@@ -1609,7 +1609,8 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
 					struct ext4_filename *fname,
 					const struct qstr *d_name,
 					struct ext4_dir_entry_2 **res_dir,
-					int *has_inline_data)
+					int *has_inline_data,
+					int flags)
 {
 	int ret;
 	struct ext4_iloc iloc;
@@ -1629,7 +1630,7 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
 						EXT4_INLINE_DOTDOT_SIZE;
 	inline_size = EXT4_MIN_INLINE_DATA_SIZE - EXT4_INLINE_DOTDOT_SIZE;
 	ret = ext4_search_dir(iloc.bh, inline_start, inline_size,
-			      dir, fname, d_name, 0, res_dir);
+			      dir, fname, d_name, 0, res_dir, flags);
 	if (ret == 1)
 		goto out_find;
 	if (ret < 0)
@@ -1642,7 +1643,7 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
 	inline_size = ext4_get_inline_size(dir) - EXT4_MIN_INLINE_DATA_SIZE;
 
 	ret = ext4_search_dir(iloc.bh, inline_start, inline_size,
-			      dir, fname, d_name, 0, res_dir);
+			      dir, fname, d_name, 0, res_dir, flags);
 	if (ret == 1)
 		goto out_find;
 
