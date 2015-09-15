@@ -596,38 +596,18 @@ static int cpufreq_stat_notifier_policy(struct notifier_block *nb,
 		count++;
 	}
 
+	if (!per_cpu(all_cpufreq_stats, cpu))
+		cpufreq_allstats_create(cpu, table, count);
+
+	for_each_possible_cpu(cpu_num) {
+		if (!per_cpu(cpufreq_power_stats, cpu_num))
+			cpufreq_powerstats_create(cpu_num, table, count);
+	}
+
 	if (val == CPUFREQ_CREATE_POLICY)
 		ret = __cpufreq_stats_create_table(policy, table, count);
 	else if (val == CPUFREQ_REMOVE_POLICY)
 		__cpufreq_stats_free_table(policy);
-
-	for_each_possible_cpu(cpu_num) {
-		if (per_cpu(all_cpufreq_stats, cpu_num)
-			&& per_cpu(cpufreq_power_stats, cpu_num))
-			continue;
-
-		policy = cpufreq_cpu_get(cpu_num);
-		if (!policy)
-			continue;
-		table = cpufreq_frequency_get_table(policy->cpu);
-		if (!table)
-			return 0;
-
-		count = 0;
-		for (i = 0; table[i].frequency != CPUFREQ_TABLE_END; i++) {
-			unsigned int freq = table[i].frequency;
-
-			if (freq == CPUFREQ_ENTRY_INVALID)
-				continue;
-			count++;
-		}
-		if (!per_cpu(all_cpufreq_stats, cpu_num))
-			cpufreq_allstats_create(cpu_num, table, count);
-		if (!per_cpu(cpufreq_power_stats, cpu_num)) {
-			cpufreq_powerstats_create(cpu_num, table, count);
-		}
-		cpufreq_cpu_put(policy);
-	}
 
 	return ret;
 }
@@ -721,7 +701,6 @@ static int __init cpufreq_stats_init(void)
 	if (ret)
 		return ret;
 
-	create_all_freq_table();
 	for_each_online_cpu(cpu)
 		cpufreq_stats_create_table(cpu);
 
@@ -735,6 +714,7 @@ static int __init cpufreq_stats_init(void)
 		return ret;
 	}
 
+	create_all_freq_table();
 	ret = cpufreq_sysfs_create_file(&_attr_all_time_in_state.attr);
 	if (ret)
 		pr_warn("Cannot create sysfs file for cpufreq stats\n");
