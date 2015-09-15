@@ -874,7 +874,7 @@ static ssize_t spich_sync_read(struct spich_data *spich, size_t len)
 	memset(spich->buffer, 0, len);
 	spich->buffer[0] = 0x55;
 
-	do_posix_clock_monotonic_gettime(&ts);
+	get_monotonic_boottime(&ts);
 	now_us = ts.tv_sec * 1000000ull + (ts.tv_nsec + 500ull) / 1000ull;
 	SET_U64(&spich->buffer[1], now_us);
 
