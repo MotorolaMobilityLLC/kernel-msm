@@ -2767,10 +2767,22 @@ static ssize_t cabc_mode_store(struct device *dev,
 	}
 
 	mutex_lock(&ctl->offlock);
+	if (mdss_fb_is_power_off(mfd)) {
+		pr_warn("panel is not powered\n");
+		ret = -EPERM;
+		goto unlock;
+	}
+
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_SET_CABC,
 					(void *)(unsigned long)mode);
+	if (ret)
+		pr_err("Failed setting mode %s\n", name);
+	else
+		pr_info("CABC mode changed by sysfs, mode = %s\n", name);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+unlock:
 	mutex_unlock(&ctl->offlock);
 end:
 	return ret ? ret : count;
