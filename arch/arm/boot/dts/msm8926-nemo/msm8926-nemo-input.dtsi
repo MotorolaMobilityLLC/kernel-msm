@@ -48,7 +48,7 @@
 			synaptics,fw-image-name = "synaptics_fw.bin";
 			synaptics,check-build;
 			synaptics,wakeup;
-			synaptics,palm-detect-threshold = <0xd>;
+			synaptics,palm-detect-threshold = <0x1a>;
 			synaptics,palm-detect-keycode = <0x8e>; /* KEY_SLEEP */
 			synaptics,doze-interval-active = <1>; /* 10ms */
 			synaptics,doze-interval-sleep = <9>; /* 90ms */
