@@ -139,6 +139,7 @@
 #define STML0XX_TOUCH_REG_SIZE  8
 #define STML0XX_POWER_REG_SIZE  3
 #define STML0XX_MAG_CAL_SIZE 26
+#define MOTOSH_GYRO_CAL_SIZE 198 /* 33 entries - 6 bytes each */
 #define STML0XX_AS_DATA_BUFF_SIZE 20
 #define STML0XX_MS_DATA_BUFF_SIZE 20
 #define STML0XX_ALGO_SIZE	2
@@ -148,50 +149,50 @@
 /* Mask values */
 
 /* Non wakable sensors */
-#define M_ACCEL			0x000001
-#define M_GYRO			0x000002
-#define M_PRESSURE		0x000004
-#define M_ECOMPASS		0x000008
-#define M_TEMPERATURE	0x000010
-#define M_ALS			0x000020
+#define M_ACCEL                 0x000001
+#define M_GYRO                  0x000002
+#define M_PRESSURE              0x000004
+#define M_ECOMPASS              0x000008
+#define M_TEMPERATURE           0x000010
+#define M_ALS                   0x000020
 
-#define M_LIN_ACCEL		0x000100
-#define M_QUATERNION	0x000200
-#define M_GRAVITY		0x000400
-#define M_DISP_ROTATE		0x000800
-#define M_DISP_BRIGHTNESS	0x001000
+#define M_LIN_ACCEL             0x000100
+#define M_QUATERNION            0x000200
+#define M_GRAVITY               0x000400
+#define M_DISP_ROTATE           0x000800
+#define M_DISP_BRIGHTNESS       0x001000
+#define M_UNCALIB_GYRO          0x008000
 
-#define M_UNCALIB_GYRO		0x008000
-#define M_UNCALIB_MAG		0x010000
-#define M_ACCEL2		0x020000
+#define M_UNCALIB_MAG           0x010000
+#define M_ACCEL2                0x020000
 
 /* wake sensor status */
-#define M_DOCK			0x000001
-#define M_PROXIMITY		0x000002
-#define M_TOUCH			0x000004
-#define M_COVER			0x000008
+#define M_DOCK                  0x000001
+#define M_PROXIMITY             0x000002
+#define M_TOUCH                 0x000004
+#define M_COVER                 0x000008
 #define M_HEADSET               0x000020
 #define M_INIT_COMPLETE         0x000040
-#define M_HUB_RESET		0x000080
+#define M_HUB_RESET             0x000080
 
 
-#define M_FLATUP		0x000100
-#define M_FLATDOWN		0x000200
-#define M_STOWED		0x000400
-#define M_CAMERA_ACT		0x000800
-#define M_NFC			0x001000
-#define M_SIM			0x002000
-#define M_LIFT			0x004000
-#define M_LOG_MSG		0x008000
+#define M_FLATUP                0x000100
+#define M_FLATDOWN              0x000200
+#define M_STOWED                0x000400
+#define M_CAMERA_ACT            0x000800
+#define M_NFC                   0x001000
+#define M_SIM                   0x002000
+#define M_LIFT                  0x004000
+#define M_LOG_MSG               0x008000
 
-#define M_CHOPCHOP		0x010000
-/*#define M_UNUSED		0x020000*/
-/*#define M_UNUSED		0x040000*/
-/*#define M_UNUSED		0x080000*/
-/*#define M_UNUSED		0x100000*/
-/*#define M_UNUSED		0x200000*/
-/*#define M_UNUSED		0x400000*/
-/*#define M_UNUSED		0x800000*/
+#define M_CHOPCHOP              0x010000
+/*#define M_UNUSED              0x020000*/
+/*#define M_UNUSED              0x040000*/
+/*#define M_UNUSED              0x080000*/
+/*#define M_UNUSED              0x100000*/
+/*#define M_UNUSED              0x200000*/
+/*#define M_UNUSED              0x400000*/
+/*#define M_UNUSED              0x800000*/
 
 /* algo config mask */
 #define M_MMOVEME               0x0001
