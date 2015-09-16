@@ -1360,11 +1360,10 @@ static struct synaptics_dsx_platform_data *
 				struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
-	unsigned key_codes[SYN_MAX_BUTTONS];
+	unsigned int u32_data, key_codes[SYN_MAX_BUTTONS];
 	struct synaptics_dsx_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
 	struct synaptics_dsx_cap_button_map *button_map = NULL;
-	struct synaptics_clip_area clip_area;
 
 	rmi4_data->patching_enabled = 1;
 	retval = synaptics_dsx_dt_parse_mode(rmi4_data, "default",
@@ -1451,12 +1450,21 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->charger_detection = true;
 	}
 
-	retval = of_property_read_u32_array(np,
-			"synaptics,touch-clip-area",
-			(unsigned *)&clip_area, 4);
+	retval = of_property_read_u32(np,
+				"synaptics,aod-multi-touch", &u32_data);
 	if (!retval) {
-		rmi4_data->clipa = kzalloc(sizeof(clip_area), GFP_KERNEL);
-		if (!rmi4_data->clipa) {
+		pr_notice("using multi touch in aod\n");
+		rmi4_data->aod_mt = (unsigned char)u32_data;
+	} else {
+		pr_notice("using single touch in aod\n");
+		rmi4_data->aod_mt = 1;
+	}
+
+	if (of_property_read_bool(np, "synaptics,touch-clip-area")) {
+		struct synaptics_clip_area *clip_area;
+
+		clip_area = kzalloc(sizeof(*clip_area), GFP_KERNEL);
+		if (!clip_area) {
 			dev_err(&client->dev, "clip area allocation failure\n");
 			return NULL;
 		}
@@ -5607,8 +5615,11 @@ static int control_access_block_update_static(
 
 	if (touch_data_size) {
 		control_access_block_zap(SYN_DSX_DATA);
-		control_access_block_update_data(rmi4_data->f01_data_base_addr +
-			rmi4_data->num_of_intr_regs + 1, touch_data_size);
+		control_access_block_update_data_mt(
+			rmi4_data->f01_data_base_addr +
+			rmi4_data->num_of_intr_regs + 1,
+			touch_data_size,
+			rmi4_data->aod_mt);
 	}
 
 	cab->do_sync = true;
