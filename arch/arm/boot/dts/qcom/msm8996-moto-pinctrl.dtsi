@@ -120,9 +120,8 @@
 		spi_3_sleep: spi_3_sleep {
 			spi_3 {
 				pins = "gpio45", "gpio46", "gpio47", "gpio48";
-				function = "blsp_spi3";
-				drive-strength = <6>;
-				bias-pull-up;
+				function = "gpio";
+				bias-disable;
 			};
 		};
 	};
