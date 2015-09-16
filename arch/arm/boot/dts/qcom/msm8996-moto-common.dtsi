@@ -96,7 +96,7 @@
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
 
-	cd-gpios = <&tlmm 95 0x1>;
+	cd-gpios = <&pm8994_gpios 22 0x1>;
 
 	status = "ok";
 };
@@ -904,6 +904,16 @@
 		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "okay";
 	};
+	gpio@d500 { /* GPIO 22  SDC_DET_N */
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull  */
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+
 };
 
 &pm8994_mpps {
