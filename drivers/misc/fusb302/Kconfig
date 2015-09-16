@@ -1,0 +1,8 @@
+config FUSB302
+	bool "Fairchild FUSB302 Type C Controller support"
+	depends on I2C=y
+	default y
+        help
+          Say y here to enable support for FUSB302 type C Controller.
+		FUSB302 is a programmable USB Type-C Controller with
+		support for USB Power Delivery.
