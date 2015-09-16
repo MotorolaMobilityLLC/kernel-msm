@@ -3048,6 +3048,10 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		bus->wait_for_d3_ack = 0;
 		bus->suspended = TRUE;
 		bus->dhd->busstate = DHD_BUS_SUSPEND;
+
+		/* stop all interface network queue. */
+		dhd_bus_stop_queue(bus);
+
 		DHD_OS_WAKE_LOCK_WAIVE(bus->dhd);
 		dhd_os_set_ioctl_resp_timeout(DEFAULT_IOCTL_RESP_TIMEOUT);
 		dhdpcie_send_mb_data(bus, H2D_HOST_D3_INFORM);
@@ -3058,6 +3062,7 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		if (bus->wait_for_d3_ack == 1) {
 			/* Got D3 Ack. Suspend the bus */
 			/* To allow threads that got pre-empted to complete. */
+
 			while ((active = dhd_os_check_wakelock_all(bus->dhd)) &&
 				(idle_retry < MAX_WKLK_IDLE_CHECK)) {
 				msleep(1);
@@ -3075,6 +3080,10 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 				}
 				bus->suspended = FALSE;
 				bus->dhd->busstate = DHD_BUS_DATA;
+
+				/* resume all interface network queue. */
+				dhd_bus_start_queue(bus);
+
 				rc = BCME_ERROR;
 			} else {
 				dhdpcie_bus_intr_disable(bus);
@@ -3097,7 +3106,10 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 			DHD_GENERAL_LOCK(bus->dhd, flags);
 			bus->dhd->busstate = DHD_BUS_DATA;
 			DHD_INFO(("fail to suspend, start net device traffic\n"));
-			netif_start_queue(netdev);
+
+			/* resume all interface network queue. */
+			dhd_bus_start_queue(bus);
+
 			DHD_GENERAL_UNLOCK(bus->dhd, flags);
 			if (bus->dhd->d3ackcnt_timeout >= MAX_CNTL_D3ACK_TIMEOUT) {
 				DHD_ERROR(("%s: Event HANG send up "
@@ -3130,6 +3142,9 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 		} else {
 			bus->dhd->busstate = DHD_BUS_DATA;
 			dhdpcie_bus_intr_enable(bus);
+
+			/* resume all interface network queue. */
+			dhd_bus_start_queue(bus);
 		}
 	}
 	return rc;

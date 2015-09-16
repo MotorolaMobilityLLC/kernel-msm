@@ -2518,16 +2518,6 @@ dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 #endif /* DHD_WMF */
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
-#ifdef PCIE_FULL_DONGLE
-	if (dhd->pub.busstate == DHD_BUS_SUSPEND) {
-		DHD_ERROR(("%s : pcie is still in suspend state!!\n", __FUNCTION__));
-		dev_kfree_skb_any(skb);
-		ifp = DHD_DEV_IFP(net);
-		ifp->stats.tx_dropped++;
-		dhd->pub.tx_dropped++;
-		return NETDEV_TX_OK;
-	}
-#endif
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_PERIM_LOCK_TRY(DHD_FWDER_UNIT(dhd), TRUE);
 
