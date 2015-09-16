@@ -13,6 +13,7 @@
 
 #include "msm8952.dtsi"
 #include "msm8952-pinctrl.dtsi"
+#include "msm8952-camera-sensor-moto.dtsi"
 
 / {
 	aliases {
@@ -410,6 +411,18 @@
 			qcom,msm-mi2s-rx-lines = <2>;
 			qcom,msm-mi2s-tx-lines = <1>;
 		};
+	};
+
+	cci: qcom,cci@1b0c000 {
+		pinctrl-names = "cci_default", "cci_suspend";
+			pinctrl-0 = <&cci0_active>;
+			pinctrl-1 = <&cci0_suspend>;
+		gpios = <&msm_gpio 29 0>,
+			<&msm_gpio 30 0>;
+		qcom,gpio-tbl-num = <0 1 >;
+		qcom,gpio-tbl-flags = <1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
+				"CCI_I2C_CLK0";
 	};
 };
 
