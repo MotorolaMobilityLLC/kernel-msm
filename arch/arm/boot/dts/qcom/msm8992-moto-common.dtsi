@@ -1146,6 +1146,7 @@
 				<&msm_gpio 110 0>; /* RESET */
 			touch_vdd-supply = <&pm8994_l22>;
 			synaptics,gpio-config;
+			synaptics,aod-multi-touch = <4>;
 			pinctrl-names = "default", "active";
 			pinctrl-0 = <&touch_reset_active &touch_int_default>;
 			pinctrl-1 = <&touch_reset_active &touch_int_active>;
@@ -1156,7 +1157,7 @@
 				patch-data = "F51@0=7";
 			};
 			default_suspended: touchstate_aod_suspended {
-				patch-data = "F12@20=3838,23=0101;F1@0=1&7";
+				patch-data = "F12@20=3838,23=0104;F1@0=1&7";
 			};
 		};
 	};
