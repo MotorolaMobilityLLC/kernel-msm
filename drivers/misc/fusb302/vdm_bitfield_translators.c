@@ -5,21 +5,16 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <mach/mt_pm_ldo.h>
 #include <linux/interrupt.h>
 #include <linux/time.h>
-#include <cust_eint.h>
-#include <mach/eint.h>
-#include <cust_eint.h>
 #include <linux/kthread.h>
-#include <mach/mt_gpio.h>
 
 #include "vdm_types.h"
 #include "vdm_bitfield_translators.h"
 
 // determines, based on the 32-bit header, whether a VDM is structured or unstructured.
 VdmType getVdmTypeOf(u32 in) {
-	VdmType ret;
+	//VdmType ret;
 	
 	UnstructuredVdmHeader vdm_header = getUnstructuredVdmHeader(in);
 	return vdm_header.vdm_type;
