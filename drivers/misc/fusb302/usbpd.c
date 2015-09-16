@@ -26,14 +26,9 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <mach/mt_pm_ldo.h>
 #include <linux/interrupt.h>
 #include <linux/time.h>
-#include <cust_eint.h>
-#include <mach/eint.h>
-#include <cust_eint.h>
 #include <linux/kthread.h>
-#include <mach/mt_gpio.h>
 
 //#include "callback_defs.h"
 //#include "vdm_manager.h"
@@ -125,7 +120,7 @@ static u16                   ProtocolTimer;                                  // 
 static u8                    ProtocolCRC[4];
 
 // VDM Manager object
-//VdmManager                      vdmm;
+VdmManager                      vdmm;
 
 #define FUSB_MS_TO_NS(x) (x * 1000 * 1000)
 #define Delay10us(x) udelay(x*10);
@@ -935,7 +930,7 @@ void PolicySourceReady(void)
                 case DMTVenderDefined:
                     // not worrying about transitioning states right now - TODO
                     set_policy_subindex(0); // Do I need this here? - Gabe
-                   // doVdmCommand();
+                    doVdmCommand();
                     break;
                 default:
                     break;
@@ -1834,7 +1829,7 @@ void PolicySinkReady(void)
                 case DMTVenderDefined:
                     // not worrying about transitioning states right now - TODO
                     set_policy_subindex(0); // Do I need this here? - Gabe
-                    //doVdmCommand();
+                    doVdmCommand();
                     break;
                 default:
                     break;
@@ -3123,7 +3118,6 @@ void SendUSBPDHardReset(void)
     set_pdtx_state(txIdle);                                                        // Reset the transmitter status
     //mPORTASetBits(BIT_0|BIT_1);   
 }
-#if 0
 void InitializeVdmManager() {
 	initialize(&vdmm);
 #if 0
@@ -3179,8 +3173,8 @@ void sendVdmMessage(VdmManager* vdmm, SopType sop, u32* arr, unsigned int length
 
 void doVdmCommand() {
     u32 svdm_header_bits;
-    StructuredVdmHeader svdm_header;
-    unsigned int i;
+   // StructuredVdmHeader svdm_header;
+   // unsigned int i;
     unsigned int command;
     unsigned int svid;
 
@@ -3206,5 +3200,4 @@ void doVdmCommand() {
     }
 
 }
-#endif
 
