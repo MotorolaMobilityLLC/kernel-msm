@@ -151,6 +151,7 @@ static int32_t msm_flash_i2c_write_table(
 	conf_array.delay = settings->delay;
 	conf_array.reg_setting = settings->reg_setting_a;
 	conf_array.size = settings->size;
+	flash_ctrl->flash_i2c_client.addr_type = conf_array.addr_type;
 
 	/* Validate the settings size */
 	if ((!conf_array.size) || (conf_array.size > MAX_I2C_REG_SET)) {
@@ -378,6 +379,7 @@ static int32_t msm_flash_i2c_release(
 			__func__, __LINE__);
 		return -EINVAL;
 	}
+	flash_ctrl->flash_state = MSM_CAMERA_FLASH_RELEASE;
 	return 0;
 }
 
@@ -785,11 +787,13 @@ static int32_t msm_flash_config(struct msm_flash_ctrl_t *flash_ctrl,
 
 	mutex_unlock(flash_ctrl->flash_mutex);
 
-	rc = msm_flash_prepare(flash_ctrl);
-	if (rc < 0) {
-		pr_err("%s:%d Enable/Disable Regulator failed ret = %d",
-			__func__, __LINE__, rc);
-		return rc;
+	if (flash_ctrl->flash_driver_type == FLASH_DRIVER_PMIC) {
+		rc = msm_flash_prepare(flash_ctrl);
+		if (rc < 0) {
+			pr_err("%s:%d Enable/Disable Regulator failed ret = %d",
+					__func__, __LINE__, rc);
+			return rc;
+		}
 	}
 
 	CDBG("Exit %s type %d\n", __func__, flash_data->cfg_type);
