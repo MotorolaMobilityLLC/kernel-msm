@@ -33,7 +33,6 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -99,23 +98,18 @@ static const struct vreg_config const vreg_conf[] = {
 struct fpc1020_data {
 	struct device *dev;
 	struct spi_device *spi;
-	struct input_dev *idev;
 	struct pinctrl *fingerprint_pinctrl;
 	struct pinctrl_state *pinctrl_state[ARRAY_SIZE(pctl_names)];
 	struct clk *iface_clk;
 	struct clk *core_clk;
 	struct regulator *vreg[ARRAY_SIZE(vreg_conf)];
 	struct regulator *vdd_io;
-	struct mutex lock;
 	struct wake_lock ttw_wl;
 	int irq_gpio;
 	int cs0_gpio;
 	int rst_gpio;
-	int irq_num;
 	int qup_id;
-	int event_type;
-	int event_code;
-	char idev_name[32];
+	struct mutex lock;
 	bool prepared;
 	bool wakeup_enabled;
 	bool power_enabled;
@@ -676,32 +670,35 @@ static ssize_t wakeup_enable_set(struct device *dev,
 }
 static DEVICE_ATTR(wakeup_enable, S_IWUSR, NULL, wakeup_enable_set);
 
+
 /**
- * sysfs node for sending event to make the system interactive,
- * i.e. waking up
+ * sysf node to check the interrupt status of the sensor, the interrupt
+ * handler should perform sysf_notify to allow userland to poll the node.
  */
-static ssize_t do_wakeup_set(struct device *dev,
-				struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t irq_get(struct device* device,
+			     struct device_attribute* attribute,
+			     char* buffer)
 {
-	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
+	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	int irq = gpio_get_value(fpc1020->irq_gpio);
+	return scnprintf(buffer, PAGE_SIZE, "%i\n", irq);
+}
 
-	if (count > 0)
-	{
-		/* Sending power key event creates a toggling
-		   effect that may be desired. It could be
-		   replaced by another event such as KEY_WAKEUP.*/
-		input_report_key(fpc1020->idev, KEY_POWER, 1);
-		input_report_key(fpc1020->idev, KEY_POWER, 0);
-		input_sync(fpc1020->idev);
-	}
-	else
-	{
-		return -EINVAL;
-	}
 
+/**
+ * writing to the irq node will just drop a printk message
+ * and return success, used for latency measurement.
+ */
+static ssize_t irq_ack(struct device* device,
+			     struct device_attribute* attribute,
+			     const char* buffer, size_t count)
+{
+	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	dev_dbg(fpc1020->dev, "%s\n", __func__);
 	return count;
 }
-static DEVICE_ATTR(do_wakeup, S_IWUSR, NULL, do_wakeup_set);
+
+static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_ack);
 
 static struct attribute *attributes[] = {
 	&dev_attr_pinctl_set.attr,
@@ -712,8 +709,8 @@ static struct attribute *attributes[] = {
 	&dev_attr_bus_lock.attr,
 	&dev_attr_hw_reset.attr,
 	&dev_attr_wakeup_enable.attr,
-	&dev_attr_do_wakeup.attr,
 	&dev_attr_clk_enable.attr,
+	&dev_attr_irq.attr,
 	NULL
 };
 
@@ -724,23 +721,18 @@ static const struct attribute_group attribute_group = {
 static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
 	struct fpc1020_data *fpc1020 = handle;
+	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
-	input_event(fpc1020->idev, EV_MSC, MSC_SCAN, ++fpc1020->irq_num);
-
-	/*
-	 * Make sure 'wakeup_enabled' is updated before using it
-	 * since this is interrupt context (other thread...)
-	 */
+	/* Make sure 'wakeup_enabled' is updated before using it
+	** since this is interrupt context (other thread...) */
 	smp_rmb();
 
 	if (fpc1020->wakeup_enabled ) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
 
-	/* Send irq event and possible wakeup key event */
-	input_sync(fpc1020->idev);
+	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
-	dev_dbg(fpc1020->dev, "%s %d\n", __func__, fpc1020->irq_num);
 	return IRQ_HANDLED;
 }
 
@@ -778,7 +770,6 @@ static int fpc1020_probe(struct spi_device *spi)
 	int irqf = 0;
 	int rc = 0;
 	u32 val;
-	const char *idev_name;
 	fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020), GFP_KERNEL);
 	if (!fpc1020) {
 		dev_err(dev, "failed to allocate memory\n");
@@ -874,37 +865,6 @@ static int fpc1020_probe(struct spi_device *spi)
 	if (rc)
 		goto exit;
 
-	rc = of_property_read_u32(np, "fpc,event-type", &val);
-	fpc1020->event_type = rc < 0 ? EV_MSC : val;
-
-	rc = of_property_read_u32(np, "fpc,event-code", &val);
-	fpc1020->event_code = rc < 0 ? MSC_SCAN : val;
-
-	fpc1020->idev = devm_input_allocate_device(dev);
-	if (!fpc1020->idev) {
-		dev_err(dev, "failed to allocate input device\n");
-		rc = -ENOMEM;
-		goto exit;
-	}
-
-	input_set_capability(fpc1020->idev, fpc1020->event_type,
-			fpc1020->event_code);
-
-	if (!of_property_read_string(np, "input-device-name", &idev_name)) {
-		fpc1020->idev->name = idev_name;
-	} else {
-		snprintf(fpc1020->idev_name, sizeof(fpc1020->idev_name),
-			"fpc1020@%s", dev_name(dev));
-		fpc1020->idev->name = fpc1020->idev_name;
-	}
-	/* Also register the key for wake up */
-	set_bit(EV_KEY, fpc1020->idev->evbit);
-	set_bit(KEY_WAKEUP, fpc1020->idev->keybit);
-	rc = input_register_device(fpc1020->idev);
-	if (rc) {
-		dev_err(dev, "failed to register input device\n");
-		goto exit;
-	}
 	fpc1020->wakeup_enabled = false;
 	fpc1020->clocks_enabled = false;
 	fpc1020->clocks_suspended = false;
