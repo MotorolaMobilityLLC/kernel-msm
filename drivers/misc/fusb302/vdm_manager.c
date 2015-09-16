@@ -5,14 +5,9 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <mach/mt_pm_ldo.h>
 #include <linux/interrupt.h>
 #include <linux/time.h>
-#include <cust_eint.h>
-#include <mach/eint.h>
-#include <cust_eint.h>
 #include <linux/kthread.h>
-#include <mach/mt_gpio.h>
 
 #include "vdm_types.h"
 #include "vdm_manager.h"
@@ -192,7 +187,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 	VdmType 		vdm_type_in;
 	
 	StructuredVdmHeader 	svdmh_out;
-	UnstructuredVdmHeader 	uvdmh_out;
+//	UnstructuredVdmHeader 	uvdmh_out;
 	IdHeader		idh_out;
 	CertStatVdo		csvdo_out;
 	u32 			arr_out[7];
@@ -273,6 +268,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 					case DISCOVER_SVIDS:
                                         {
 						unsigned int i;
+						SvidInfo my_svids_info;
 						svdmh_out.svid 			= PD_SID;					// always use PS_SID for Discover SVIDs, even on response
 						svdmh_out.vdm_type 		= STRUCTURED_VDM;			// Discovery SVIDs is Structured
 						svdmh_out.svdm_version	= STRUCTURED_VDM_VERSION;	// stick the vdm version in
@@ -287,7 +283,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						// WARNING WARNING
 						// if 12+ SVIDs, this code currently assumes that req_svid_info will return the same values
 						// in subsequent calls. TODO FIXME
-						SvidInfo my_svids_info = (*vdmm).req_svid_info();
+						my_svids_info = (*vdmm).req_svid_info();
 						
 						// loop through SVIDs and create the bit fields for transmission
 						// more than 12 SVIDs requires splitting into multiple PD messages
@@ -347,7 +343,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 					break;
 					case DISCOVER_MODES:
                                         {
-						int index_svid = -1;
+						//int index_svid = -1;
 						int j;
 						ModesInfo my_modes_info;
 
@@ -392,7 +388,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						return 0;
                                         }
 					break;
-					case ENTER_MODE			: ;
+					case ENTER_MODE			:{
 						bool mode_entered;
 						mode_entered = (*vdmm).req_mode_entry(svdmh_in.svid, svdmh_in.obj_pos);
 						
@@ -416,8 +412,9 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						sendVdmMessage(vdmm, sop, arr_out, length_out);
 						
 						return 0;
+					}
 					break;
-					case EXIT_MODE			: ;
+					case EXIT_MODE			: {
 						bool mode_exited;
 						mode_exited = (*vdmm).req_mode_exit(svdmh_in.svid, svdmh_in.obj_pos);
 						
@@ -441,7 +438,8 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						sendVdmMessage(vdmm, sop, arr_out, length_out);
 						
 						return 0;
-						return 1;
+					}
+					//	return 1;
 					break;
 					case ATTENTION			:
 						// TODO
@@ -449,7 +447,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 					break;
 					default					:
 						// TODO: SVID-Specific commands could go here?
-						
+						{
 						// in this case the command is unrecognized. Reply with a NAK.
 						svdmh_out.svid 			= svdmh_in.svid;			// reply with SVID we received
 						svdmh_out.vdm_type 		= STRUCTURED_VDM;			// All are structured in this switch-case
@@ -463,6 +461,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						
 						sendVdmMessage(vdmm, sop, arr_out, length_out);
 						return 0;
+						}
 					break;
 				}
 			break;
@@ -473,6 +472,8 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 					case DISCOVER_IDENTITY	:
 						// TODO: What to do here for a NAK/Busy Discover Identity response?
 						// Try again? Delay, THEN try again? Simply report a failure?
+						{
+						Identity new_identity;
 						if (svdmh_in.cmd_type != RESPONDER_ACK) break;
 						
 						// Discover Identity responses should have at least VDM Header, ID Header, and Cert Stat VDO
@@ -480,7 +481,6 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 							return 1; 
 						}
 						
-						Identity new_identity;
 						new_identity.id_header = 		getIdHeader(arr_in[1]);
 						new_identity.cert_stat_vdo =	getCertStatVdo(arr_in[2]);
 						
@@ -525,18 +525,20 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						}
 						(*vdmm).inform_id(true, sop, new_identity);
 						return 0;
+						}
 					break;
-					case DISCOVER_SVIDS		:
+					case DISCOVER_SVIDS		: {
+
+						u16 top16;
+						u16 bottom16;
+						unsigned int* num_sopstar_svids;
+						u16* svid_arr;
+						int i;
+						bool found_end = false;
 						// TODO: What to do here for a NAK/Busy Discover SVIDs response?
 						// Try again? Delay, THEN try again? Simply report a failure?
 						if (svdmh_in.cmd_type != RESPONDER_ACK) break;
-					
-					
-						u16 top16;
-						u16 bottom16;
-						
-						unsigned int* num_sopstar_svids; 
-						u16* svid_arr;
+
 						// determine which count to increase based on SOP*
 						if (sop == SOP) {
 							num_sopstar_svids = &( (*vdmm).num_sop_svids);
@@ -549,8 +551,6 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 							svid_arr =			(*vdmm).sop2_svids;
 						}
 						
-						int i;
-						bool found_end = false;
 						for (i = 1; i < length_in; i++) { 
 							top16 = 	(arr_in[i] >> 16) & 0x0000FFFF;
 							bottom16 =	(arr_in[i] >>  0) & 0x0000FFFF;
@@ -594,23 +594,24 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						}
 						
 						return 0;
+					}
 					break;
 					case DISCOVER_MODES		: 
 						// TODO: What to do here for a NAK/Busy Discover Modes response?
 						// Try again? Delay, THEN try again? Simply report a failure?
-						if (svdmh_in.cmd_type != RESPONDER_ACK) break;
-						
-						unsigned int* my_num_svids;
-						u16* my_svids;
-						u32 (*my_modes)[MAX_MODES_PER_SVID];
+						{
+
+						//unsigned int* my_num_svids;
+						//u16* my_svids;
+						//u32 (*my_modes)[MAX_MODES_PER_SVID];
 						u16 svid_in = svdmh_in.svid;		// grab the SVID
-						unsigned int svid_index;
-						unsigned int* my_modes_per_svid;
-						
+						//unsigned int svid_index;
+						//unsigned int* my_modes_per_svid;
+						int i;
 						ModesInfo my_modes_info;
 						my_modes_info.svid 		= svid_in;
 						my_modes_info.num_modes = length_in - 1;
-						
+						if (svdmh_in.cmd_type != RESPONDER_ACK) break;
 						for (i = 1; i < length_in; i++) {
 							my_modes_info.modes[i - 1] = arr_in[i];
 						}
@@ -661,6 +662,7 @@ int processVdmMessage	(VdmManager* vdmm, SopType sop, u32* arr_in, unsigned int 
 						}*/
 						
 						return 0;
+						}
 					break;
 					case ENTER_MODE			:
 						// this does not distinguish between NAKs and BUSYs.
