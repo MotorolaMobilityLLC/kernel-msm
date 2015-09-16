@@ -2870,19 +2870,20 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
         psessionEntry->assocReq = NULL;
     }
 
-    psessionEntry->assocReq = vos_mem_malloc(ft_ies_length);
-    if ( NULL == psessionEntry->assocReq )
-    {
-        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
-        psessionEntry->assocReqLen = 0;
-    }
-    else
-    {
-       //Store the Assoc request. This is sent to csr/hdd in join cnf response.
-       vos_mem_copy( psessionEntry->assocReq,
-                     pMac->roam.roamSession[smeSessionId].ftSmeContext.reassoc_ft_ies,
-                    (ft_ies_length));
-       psessionEntry->assocReqLen = (ft_ies_length);
+    if (ft_ies_length) {
+          psessionEntry->assocReq = vos_mem_malloc(ft_ies_length);
+          if (NULL == psessionEntry->assocReq) {
+              limLog(pMac, LOGE, FL("Unable to alloc mem for FT IEs"));
+              psessionEntry->assocReqLen = 0;
+          } else {
+            /* Store the FT IEs. This is sent to csr/hdd in join cnf response */
+            vos_mem_copy( psessionEntry->assocReq,
+               pMac->roam.roamSession[smeSessionId].ftSmeContext.reassoc_ft_ies,
+               ft_ies_length);
+            psessionEntry->assocReqLen = ft_ies_length;
+          }
+    } else {
+         limLog(pMac, LOG1, FL("FT IEs not present"));
     }
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
@@ -3246,7 +3247,7 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
     psessionEntry->assocReq = vos_mem_malloc(nPayload);
     if ( NULL == psessionEntry->assocReq )
     {
-        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
+        limLog(pMac, LOGE, FL("Unable to alloc mem to store assoc request"));
     }
     else
     {
