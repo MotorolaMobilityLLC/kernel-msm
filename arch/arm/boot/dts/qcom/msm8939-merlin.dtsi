@@ -638,6 +638,10 @@
 	qcom,platform-reset-gpio = <&msm_gpio 78 0>;
 };
 
+&mdss_dsi1 {
+    status = "disabled";
+};
+
 &pmx_mdss {
 	qcom,num-grp-pins = <1>;
 	qcom,pins = <&gp 78>;
