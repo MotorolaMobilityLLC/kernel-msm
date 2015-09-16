@@ -418,10 +418,8 @@ static int apba_gpio_setup(struct apba_ctrl *ctrl,
 				i, &label);
 
 		gpio_request_one(gpio, flags, label);
-#ifdef DEBUG
 		gpio_export(gpio, true);
 		gpio_export_link(dev, label, gpio);
-#endif
 
 		dev_dbg(dev, "%s: gpio=%d, flags=0x%x, label=%s\n",
 			__func__, gpio, flags, label);
