@@ -349,6 +349,33 @@ static int sentral_stime_current_get(struct sentral_device *sentral, u32 *ts)
 	return 0;
 }
 
+static int sentral_step_count_init_get(struct sentral_device *sentral,
+		u16 *step)
+{
+	return sentral_parameter_read(sentral, SPP_ASUS, SP_ASUS_STEP_COUNT_INIT,
+			(void *)step, sizeof(*step));
+}
+
+static int sentral_step_count_init_set(struct sentral_device *sentral,
+		u16 step)
+{
+	LOGI(&sentral->client->dev, "setting step count init to: %u steps\n",
+			step);
+
+	return sentral_parameter_write(sentral, SPP_ASUS,
+			SP_ASUS_STEP_COUNT_INIT, (void *)&step, sizeof(step));
+}
+
+static int sentral_step_count_set(struct sentral_device *sentral, u64 step)
+{
+	sentral->step_count.curr = (step & 0xFFFF);
+	sentral->step_count.prev = (step & 0xFFFF);
+	sentral->step_count.base = (step & 0xFFFFFFFFFFFF0000);
+	sentral->step_count.total = step;
+
+	return sentral_step_count_init_set(sentral, step);
+}
+
 // Sensors
 
 static int sentral_sensor_config_read(struct sentral_device *sentral, u8 id,
@@ -420,6 +447,12 @@ static int sentral_sensor_config_restore(struct sentral_device *sentral)
 		}
 	}
 
+	rc = sentral_step_count_init_set(sentral, sentral->step_count.curr);
+	if (rc) {
+		LOGE(&sentral->client->dev, "error (%d) restoring step count\n", rc);
+		return rc;
+	}
+
 	return 0;
 }
 
@@ -487,7 +520,7 @@ static int sentral_inactivity_timeout_get(struct sentral_device *sentral,
 static int sentral_inactivity_timeout_set(struct sentral_device *sentral,
 		u16 timeout_s)
 {
-	LOGI(&sentral->client->dev, "setting intactivity timeout to: %u seconds\n",
+	LOGI(&sentral->client->dev, "setting inactivity timeout to: %u seconds\n",
 			timeout_s);
 
 	return sentral_parameter_write(sentral, SPP_ASUS,
@@ -528,6 +561,13 @@ static int sentral_coach_fitness_id_set(struct sentral_device *sentral,
 	return sentral_write_byte(sentral, SR_FITNESS_ID, fitness_id);
 }
 
+static int sentral_step_report_delay_get(struct sentral_device *sentral,
+		u16 *report_delay_ms)
+{
+	return sentral_read_block(sentral, SR_STEP_REPORT, (void *)report_delay_ms,
+			sizeof(*report_delay_ms));
+}
+
 static int sentral_error_get(struct sentral_device *sentral)
 {
 	return sentral_read_byte(sentral, SR_ERROR);
@@ -536,6 +576,12 @@ static int sentral_error_get(struct sentral_device *sentral)
 static int sentral_crc_get(struct sentral_device *sentral, u32 *crc)
 {
 	return sentral_read_block(sentral, SR_CRC_HOST, (void *)crc, sizeof(*crc));
+}
+
+static int sentral_vibrator_enable(struct sentral_device *sentral,
+		u8 enable)
+{
+	return sentral_write_byte(sentral, SR_VIBRATOR_EN, !!enable);
 }
 
 static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
@@ -660,6 +706,9 @@ static void sentral_crash_reset(struct sentral_device *sentral)
 {
 	LOGI(&sentral->client->dev, "[CRASH] Probable crash %u detected, restarting device ...\n",
 			++sentral->crash_count);
+
+	// turn on warm restart flag
+	sentral->warm_reset = true;
 
 	// queue reset
 	queue_work(sentral->sentral_wq, &sentral->work_reset);
@@ -1005,6 +1054,33 @@ static int sentral_handle_debug_data(struct sentral_device *sentral,
 	return sizeof(*data);
 }
 
+static size_t sentral_handle_step_count(struct sentral_device *sentral,
+		void *buffer)
+{
+	u16 *value = (u16 *)buffer;
+
+	sentral->step_count.curr = *value;
+
+	if (sentral->step_count.prev > sentral->step_count.curr)
+		sentral->step_count.base += (1 << 16);
+
+	sentral->step_count.total = sentral->step_count.base
+			| sentral->step_count.curr;
+
+	LOGI(&sentral->client->dev,
+			"[SNS] Step Count { current: %u, previous: %u, base: %llu, total: %llu }\n",
+			sentral->step_count.curr, sentral->step_count.prev,
+			sentral->step_count.base, sentral->step_count.total);
+
+	sentral->step_count.prev = sentral->step_count.curr;
+
+	(void)sentral_iio_buffer_push_std(sentral, SST_STEP_COUNTER,
+			(void *)&sentral->step_count.total, sentral->ts_sensor_stime,
+			sizeof(sentral->step_count.total));
+
+	return sizeof(*value);
+}
+
 static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
 {
 	bool prev_flush_pending;
@@ -1101,18 +1177,24 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 			continue;
 
 		case SST_HEART_RATE:
+		case SST_SLEEP:
 			data_size = 1;
 			break;
 
 		case SST_LIGHT:
 		case SST_PROXIMITY:
 		case SST_RELATIVE_HUMIDITY:
-		case SST_STEP_COUNTER:
 		case SST_TEMPERATURE:
 		case SST_AMBIENT_TEMPERATURE:
 		case SST_ACTIVITY:
 			data_size = 2;
 			break;
+
+		case SST_STEP_COUNTER:
+			data_size = sentral_handle_step_count(sentral, buffer);
+			buffer += data_size;
+			bytes -= data_size;
+			continue;
 
 		case SST_PRESSURE:
 		case SST_COACH:
@@ -1132,10 +1214,6 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_GAME_ROTATION_VECTOR:
 		case SST_GEOMAGNETIC_ROTATION_VECTOR:
 			data_size = 10;
-			break;
-
-		case SST_ALGO_DATA:
-			data_size = 17;
 			break;
 
 		case SST_MAGNETIC_FIELD_UNCALIBRATED:
@@ -1771,6 +1849,9 @@ static ssize_t sentral_sysfs_reset(struct device *dev,
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
 
+	// turn on warm restart flag for testing
+	sentral->warm_reset = true;
+
 	queue_work(sentral->sentral_wq, &sentral->work_reset);
 
 	return count;
@@ -1818,6 +1899,44 @@ static DEVICE_ATTR(inactivity_timeout, S_IRUGO | S_IWUGO,
 		sentral_sysfs_inactivity_timeout_show,
 		sentral_sysfs_inactivity_timeout_store);
 
+// step counter init setting
+static ssize_t sentral_sysfs_step_count_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u16 step = 0;
+	int rc;
+
+	rc = sentral_step_count_init_get(sentral, &step);
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", step);
+}
+
+static ssize_t sentral_sysfs_step_count_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u64 step = 0;
+	int rc;
+
+	rc = kstrtou64(buf, 10, &step);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] step count { total step count: %llu }\n", step);
+
+	rc = sentral_step_count_set(sentral, step);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static DEVICE_ATTR(step_count, S_IRUGO | S_IWUGO, sentral_sysfs_step_count_show,
+		sentral_sysfs_step_count_store);
+
 // coach fitness id
 
 static ssize_t sentral_sysfs_coach_fitness_id_show(struct device *dev,
@@ -1857,6 +1976,23 @@ static ssize_t sentral_sysfs_coach_fitness_id_store(struct device *dev,
 static DEVICE_ATTR(coach_fitness_id, S_IRUGO | S_IWUGO,
 		sentral_sysfs_coach_fitness_id_show,
 		sentral_sysfs_coach_fitness_id_store);
+
+static ssize_t sentral_sysfs_step_report_delay_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u16 report_delay_ms = 0;
+	int rc;
+
+	rc = sentral_step_report_delay_get(sentral, &report_delay_ms);
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", report_delay_ms);
+}
+
+static DEVICE_ATTR(step_report_delay, S_IRUGO,
+		sentral_sysfs_step_report_delay_show, NULL);
 
 static ssize_t sentral_sysfs_ts_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1902,6 +2038,41 @@ static ssize_t sentral_sysfs_cal_ts_data_store(struct device *dev,
 
 static DEVICE_ATTR(cal_ts_data, S_IRUGO | S_IWUGO, sentral_sysfs_cal_ts_data_show,
 		sentral_sysfs_cal_ts_data_store);
+
+static ssize_t sentral_sysfs_vibrator_en_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	int rc = sentral_read_byte(sentral, SR_VIBRATOR_EN);
+
+	if (rc < 0)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", !!rc);
+}
+
+static ssize_t sentral_sysfs_vibrator_en_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	unsigned int value = 0;
+	int rc;
+
+	rc = kstrtouint(buf, 10, &value);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] vibrator_en { value: %u }\n", value);
+
+	rc = sentral_vibrator_enable(sentral, !!value);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static DEVICE_ATTR(vibrator_en, S_IRUGO | S_IWUGO,
+		sentral_sysfs_vibrator_en_show, sentral_sysfs_vibrator_en_store);
 
 // ANDROID sensor_poll_device_t method support
 
@@ -1973,6 +2144,10 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 	case SST_COACH:
 		sample_rate = delay_ms / 10000;
 		break;
+	case SST_STEP_COUNTER:
+	case SST_SLEEP:
+		sample_rate = (u16)delay_ms;
+		break;
 
 	// convert millis to Hz
 	default:
@@ -2023,6 +2198,10 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 		break;
 	case SST_COACH:
 		sample_rate = delay_ms / 10000;
+		break;
+	case SST_STEP_COUNTER:
+	case SST_SLEEP:
+		sample_rate = (u16)delay_ms;
 		break;
 
 	// convert millis to Hz
@@ -2477,6 +2656,7 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_reset.attr,
 	&dev_attr_inactivity_timeout.attr,
 	&dev_attr_coach_fitness_id.attr,
+	&dev_attr_step_report_delay.attr,
 	&dev_attr_ts.attr,
 	&dev_attr_sensor_info.attr,
 	&dev_attr_sensor_config.attr,
@@ -2491,6 +2671,8 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_cal_ts_data.attr,
 	&dev_attr_dbg.attr,
 	&dev_attr_version.attr,
+	&dev_attr_vibrator_en.attr,
+	&dev_attr_step_count.attr,
 	&dev_attr_bmmi_chip_status.attr,
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,
@@ -3019,6 +3201,9 @@ static int sentral_probe(struct i2c_client *client,
 	sentral->fifo_watermark = 0;
 	sentral->wake_src_prev.byte = 0;
 
+	// zero step count values
+	memset(&sentral->step_count, 0, sizeof(sentral->step_count));
+
 	// setup irq handler
 	LOGI(&sentral->client->dev, "requesting IRQ: %d, GPIO: %u\n", sentral->irq,
 			sentral->platform_data.gpio_irq);
@@ -3058,6 +3243,9 @@ static int sentral_probe(struct i2c_client *client,
 		LOGE(&sentral->client->dev, "error (%d) creating sysfs objects\n", rc);
 		goto error_sysfs;
 	}
+
+	// mark as cold start
+	sentral->warm_reset = false;
 
 	// startup
 	schedule_work(&sentral->work_reset);

@@ -33,9 +33,9 @@
 
 #define SEN_DRV_PROJECT_ID "1"
 #define SEN_DRV_SUBPROJECT_ID "2"
-#define SEN_DRV_VERSION "1.1.2"
-#define SEN_DRV_BUILD "13"
-#define SEN_DRV_DATE "Thu Aug 20 15:10:51 PDT 2015"
+#define SEN_DRV_VERSION "1.2.6"
+#define SEN_DRV_BUILD "7"
+#define SEN_DRV_DATE "Thu Oct  8 15:25:02 PDT 2015"
 
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
@@ -112,12 +112,14 @@ enum sentral_registers {
 	SR_PARAM_ACK =    0x3A,
 	SR_PARAM_SAVE =   0x3B,
 	SR_WAKE_SRC =     0x4D,
+	SR_STEP_REPORT =  0x4E,
 	SR_ERROR =        0x50,
 	SR_PARAM_PAGE =   0x54,
 	SR_HOST_CONTROL = 0x55,
 	SR_PARAM_LOAD =   0x5C,
 	SR_PARAM_REQ =    0x64,
 	SR_FITNESS_ID =   0x65,
+	SR_VIBRATOR_EN =  0x66,
 	SR_ROM_VERSION =  0x70,
 	SR_PRODUCT_ID =   0x90,
 	SR_REV_ID =       0x91,
@@ -211,7 +213,7 @@ enum sentral_sensor_type {
 	SST_GLANCE_GESTURE =              24,
 	SST_PICK_UP_GESTURE =             25,
 	SST_WRIST_TILT_GESTURE =          26,
-	SST_ALGO_DATA =                   27,
+	SST_SLEEP =                       28,
 	SST_COACH =                       29,
 	SST_INACTIVITY_ALARM =            30,
 	SST_ACTIVITY =                    31,
@@ -252,8 +254,9 @@ static const char *sentral_sensor_type_strings[SST_MAX] = {
 	[SST_GLANCE_GESTURE] = "GLANCE_GESTURE",
 	[SST_PICK_UP_GESTURE] = "PICK_UP_GESTURE",
 	[SST_WRIST_TILT_GESTURE] = "WRIST_TILT_GESTURE",
-	[SST_INACTIVITY_ALARM] = "INACTIVITY_ALARM",
+	[SST_SLEEP] = "SLEEP",
 	[SST_COACH] = "COACH",
+	[SST_INACTIVITY_ALARM] = "INACTIVITY_ALARM",
 	[SST_ACTIVITY] = "ACTIVITY",
 };
 
@@ -280,6 +283,7 @@ enum sentral_param_system {
 
 enum sentral_param_asus {
 	SP_ASUS_INACTIVITY_TIMEOUT = 1,
+	SP_ASUS_STEP_COUNT_INIT = 2,
 };
 
 enum sentral_sensor_power_mode {
@@ -580,6 +584,13 @@ struct sentral_sensor_ref_time {
 	u32 hub_stime;
 };
 
+struct sentral_step_count {
+	u16 curr;
+	u16 prev;
+	u64 base;
+	u64 total;
+};
+
 struct sentral_platform_data {
 	unsigned int gpio_irq;
 	const char *firmware;
@@ -630,6 +641,8 @@ struct sentral_device {
 	struct sentral_wake_src_count wake_src_prev;
 	unsigned long sensor_warmup_mask;
 	u32 fw_crc;
+	bool warm_reset;
+	struct sentral_step_count step_count;
 	unsigned int crash_count;
 	unsigned int overflow_count;
 	u16 fifo_watermark;
