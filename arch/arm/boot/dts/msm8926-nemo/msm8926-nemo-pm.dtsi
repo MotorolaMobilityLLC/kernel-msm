@@ -480,7 +480,7 @@
 		pm8226_l15: regulator-l15 {
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3300000>;
-			qcom,init-voltage = <3000000>;
+			qcom,init-voltage = <3300000>;
 			status = "okay";
 		};
 	};
