@@ -546,6 +546,7 @@
 		clock-names = "core_clk", "iface_clk";
 		clocks = <&clock_gcc clk_gcc_blsp2_uart5_apps_clk>,
 		    <&clock_gcc clk_gcc_blsp2_ahb_clk>;
+		qcom,shared;
 		pinctrl-names = "sleep", "default";
 		pinctrl-0 = <&blsp2_uart5_sleep>;
 		pinctrl-1 = <&blsp2_uart5_active>;
