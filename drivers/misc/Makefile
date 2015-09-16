@@ -83,3 +83,4 @@ obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_SENSORS_MOTOSH) += moto-sensorhub/
 obj-$(CONFIG_DROPBOX) += dropbox.o
+obj-$(CONFIG_FUSB302) += fusb302/
