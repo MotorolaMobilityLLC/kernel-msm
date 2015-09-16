@@ -5,16 +5,12 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <mach/mt_pm_ldo.h>
 #include <linux/interrupt.h>
 #include <linux/time.h>
-#include "cust_eint.h"
-#include "cust_gpio_usage.h"
-#include <mach/eint.h>
 #include <linux/kthread.h>
-#include <linux/rtpm_prio.h>
-#include <mach/mt_gpio.h>
 #include <linux/sched.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include "fusb302.h"
 
 #define PD_SUPPORT
@@ -45,8 +41,8 @@ int VBUS_12V_EN;
 #define CC_RA           0
 
 /* Configure Definition */
-#define FUSB302_I2C_NUM     1
-#define FUSB302_PORT_TYPE   USBTypeC_Source
+#define FUSB302_I2C_NUM     7
+#define FUSB302_PORT_TYPE   USBTypeC_Sink
 #define FUSB302_HOST_CUR    HOST_CUR_USB
 //#define FUSB302_PORT_TYPE USBTypeC_DRP
 //#define FUDB302_PORT_TYPE USBTypeC_Sink
@@ -67,7 +63,8 @@ struct fusb302_i2c_data {
     struct i2c_client       *client;
     struct work_struct      eint_work;
     struct task_struct      *thread;
-
+	int irq_gpio;
+	int irq;
     spinlock_t      lock;
 
     #if defined(CONFIG_HAS_EARLYSUSPEND) && defined(USE_EARLY_SUSPEND)
@@ -160,8 +157,8 @@ void UpdateSourcePowerMode(void);
 
 static int FUSB300Int_PIN_LVL(void)
 {
-    int ret = mt_get_gpio_in(GPIO_CC_DECODER_PIN);
-    //FUSB_LOG("gpio 99 = %d\n", ret);
+    int ret = gpio_get_value(fusb_i2c_data->irq_gpio);
+    FUSB_LOG("gpio irq_gpio value = %d\n", ret);
     return ret;
 }
 /*
@@ -243,7 +240,7 @@ void InitializeFUSB300Variables(void)
     blnAccSupport = false;              // Disable accessory support by default
     blnSrcPreferred = false;            // Clear the source preferred flag by default
     PortType = USBTypeC_DRP;            // Initialize to a dual-role port by default
-//    PortType = USBTypeC_Sink;            // Initialize to a dual-role port by default
+  //  PortType = USBTypeC_Sink;            // Initialize to a Sink port by default
     ConnState = Disabled;               // Initialize to the disabled state?
     blnINTActive = false;               // Clear the handle interrupt flag
     blnCCPinIsCC1 = false;              // Clear the flag to indicate CC1 is CC
@@ -356,8 +353,31 @@ void StateMachineFUSB300(void)
     //    return;
     if (!FUSB300Int_PIN_LVL())
     {
-        FUSB300Read(regStatus0a, 7, &Registers.Status.byte[0]);     // Read the interrupta, interruptb, status0, status1 and interrupt registers
-        dump_reg();
+		// Read and store regStatus0a, regStatus1a, regInterrupta,
+        //regInterruptb, regStatus0, regStatus1, regInterrupt
+		int reg_addr[] = {regDeviceID, regSwitches0, regSwitches1, regMeasure, regSlice,
+						  regControl0, regControl1, regControl2, regControl3, regMask, regPower, regReset,
+						  regOCPreg, regMaska, regMaskb, regControl4};
+
+		char buf[1024];
+		int i, len = 0;
+		u8 byte = 0;
+		for (i=0; i< sizeof(reg_addr)/sizeof(reg_addr[0]); i++)
+		{
+			FUSB300Read(reg_addr[i], 1, &byte);
+			len += sprintf(buf+len, "%02xH:%02x ", reg_addr[i], byte);
+			if (((i+1)%6)==0)
+				len += sprintf(buf+len, "\n");
+		}
+		FUSB_LOG("%s\n", buf);
+        FUSB300Read(regStatus0a, 1, &Registers.Status.byte[0]);
+		FUSB300Read(regStatus1a, 1, &Registers.Status.byte[1]);
+		FUSB300Read(regInterrupta, 1, &Registers.Status.byte[2]);
+		FUSB300Read(regInterruptb, 1, &Registers.Status.byte[3]);
+		FUSB300Read(regStatus0, 1, &Registers.Status.byte[4]);
+		FUSB300Read(regStatus1, 1, &Registers.Status.byte[5]);
+		FUSB300Read(regInterrupt, 1, &Registers.Status.byte[6]);
+        dump_reg(); // Read the interrupta, interruptb, status0, status1 and interrupt registers
     }
 #ifdef PD_SUPPORT
     if (USBPDActive)                                                // Only call the USB PD routines if we have enabled the block
@@ -696,7 +716,10 @@ void StateMachineAttachWaitAcc(void)
 void StateMachineAttachedSink(void)
 {
     CCTermType CCValue = DecodeCCTermination();                                 // Grab the latest CC termination value
-    //FUSB_LOG("vbus=%d, prswaptimer=%d\n", Registers.Status.VBUSOK, PRSwapTimer);
+    FUSB_LOG("vbus=%d, prswaptimer=%d, CCValue=%d, MEAS_CC1 =%d, MEAS_CC2 =%d\n",
+			 Registers.Status.VBUSOK, PRSwapTimer, CCValue,
+			 Registers.Switches.MEAS_CC1, Registers.Switches.MEAS_CC2
+			);
     if ((Registers.Status.VBUSOK == false) && (!PRSwapTimer))                   // If VBUS is removed and we are not in the middle of a power role swap...
         SetStateDelayUnattached();                                              // Go to the unattached state
     else
@@ -1072,6 +1095,10 @@ void SetStateUnattached(void)
     FUSB_LOG("enter:%s\n", __func__);	
     VBUS_5V_EN = 0;                                                 // Disable the 5V output...
     VBUS_12V_EN = 0;                                                // Disable the 12V output
+	Registers.Mask.byte = 0xFF;										// Disable all Mask Interrupts
+	FUSB300Write(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.byte[0] = ~0x40;								// Enable only Toggle Interrupt
+	FUSB300Write(regMaska, 1, &Registers.MaskAdv.byte[0]);
     Registers.Control.HOST_CUR = 0x01;                              // Enable the defauult host current for the pull-ups (regardless of mode)
     Registers.Control.TOGGLE = 1;                                   // Enable the toggle
     if ((PortType == USBTypeC_DRP) || (blnAccSupport))              // If we are a DRP or supporting accessories
@@ -1110,6 +1137,10 @@ void SetStateAttachWaitSnk(void)
     FUSB_LOG("enter:%s\n", __func__);	
     VBUS_5V_EN = 0;                                                 // Disable the 5V output...
     VBUS_12V_EN = 0;                                                // Disable the 12V output
+	Registers.Mask.byte = 0x44;										// Disable Activity and Wake Interrupts
+	FUSB300Write(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.byte[0] = 0x00;								// Enable all Interrupts
+	FUSB300Write(regMaska, 1, &Registers.MaskAdv.byte[0]);
     Registers.Power.PWR = 0x07;                                     // Enable everything except internal oscillator
     Registers.Switches.word = 0x0003;                               // Enable the pull-downs on the CC pins
     if (blnCCPinIsCC1)
@@ -1153,6 +1184,10 @@ void SetStateAttachWaitSrc(void)
     FUSB_LOG("enter:%s\n", __func__);	
     VBUS_5V_EN = 0;                                                 // Disable the 5V output...
     VBUS_12V_EN = 0;                                                // Disable the 12V output
+	Registers.Mask.byte = 0x44;										// Disable Activity and Wake Interrupts
+	FUSB300Write(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.byte[0] = 0x00;								// Enable all Interrupts
+	FUSB300Write(regMaska, 1, &Registers.MaskAdv.byte[0]);
     Registers.Power.PWR = 0x07;                                     // Enable everything except internal oscillator
     Registers.Switches.word = 0x0000;                               // Clear the register for the case below
     if (blnCCPinIsCC1)                                              // If we detected CC1 as an Rd
@@ -1196,6 +1231,10 @@ void SetStateAttachWaitAcc(void)
     FUSB_LOG("enter:%s\n", __func__);	
     VBUS_5V_EN = 0;                                                 // Disable the 5V output...
     VBUS_12V_EN = 0;                                                // Disable the 12V output
+	Registers.Mask.byte = 0x44;										// Disable Activity and Wake Interrupts
+	FUSB300Write(regMask, 1, &Registers.Mask.byte);
+	Registers.MaskAdv.byte[0] = 0x00;								// Enable all Interrupts
+	FUSB300Write(regMaska, 1, &Registers.MaskAdv.byte[0]);
     Registers.Power.PWR = 0x07;                                     // Enable everything except internal oscillator
     Registers.Switches.word = 0x0044;                               // Enable CC1 pull-up and measure
     UpdateSourcePowerMode();
@@ -1573,6 +1612,7 @@ void UpdateSourcePowerMode(void)
 
 void ToggleMeasureCC1(void)
 {
+	FUSB_LOG("%s\n", __func__);
     Registers.Switches.PU_EN1 = Registers.Switches.PU_EN2;                  // If the pull-up was enabled on CC2, enable it for CC1
     Registers.Switches.PU_EN2 = 0;                                          // Disable the pull-up on CC2 regardless, since we aren't measuring CC2 (prevent short)
     Registers.Switches.MEAS_CC1 = 1;                                        // Set CC1 to measure
@@ -1584,6 +1624,7 @@ void ToggleMeasureCC1(void)
 
 void ToggleMeasureCC2(void)
 {
+	FUSB_LOG("%s\n", __func__);
     Registers.Switches.PU_EN2 = Registers.Switches.PU_EN1;                  // If the pull-up was enabled on CC1, enable it for CC2
     Registers.Switches.PU_EN1 = 0;                                          // Disable the pull-up on CC1 regardless, since we aren't measuring CC1 (prevent short)
     Registers.Switches.MEAS_CC1 = 0;                                        // Clear CC1 from measuring
@@ -1752,25 +1793,22 @@ unsigned char GetCCTermination(void)
 //        status |= 0x80;
     return status;
 }
-
-static void cc_eint_interrupt_handler(void)
+static irqreturn_t cc_eint_interrupt_handler(int irq, void *data)
 {
-    //schedule_work(&fusb_i2c_data->eint_work);
-    FUSB_LOG("%s\n", __func__);
+	FUSB_LOG("%s\n", __func__);
     wake_up_statemachine();
-    mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
+	return IRQ_HANDLED;
 }
 
 static void fusb_eint_work(struct work_struct *work)
 {
         FUSB_LOG("%s\n", __func__);
         wake_up_statemachine();
-        mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
 }
 
 int fusb302_state_kthread(void *x)
 {
-    struct sched_param param = { .sched_priority = RTPM_PRIO_CPU_CALLBACK };
+    struct sched_param param = { .sched_priority = 98 };
     FUSB_LOG("***********enter fusb302 state thread!!1 ********************\n");
     sched_setscheduler(current, SCHED_RR, &param);
 
@@ -1778,7 +1816,7 @@ int fusb302_state_kthread(void *x)
     {
         if (FUSB300Int_PIN_LVL())
         {
-            set_current_state(TASK_INTERRUPTIBLE);
+			set_current_state(TASK_INTERRUPTIBLE);
             wait_event_interruptible(fusb_thread_wq, state_changed==true);
             state_changed = false;
             set_current_state(TASK_RUNNING);
@@ -1817,7 +1855,7 @@ static ssize_t fusb302_reg_set(struct device *dev,struct device_attribute *attr,
 {
     return size;
 }
-static DEVICE_ATTR(reg_dump, 0666, fusb302_reg_dump, fusb302_reg_set);
+static DEVICE_ATTR(reg_dump, 0660, fusb302_reg_dump, fusb302_reg_set);
 
 
 static ssize_t fusb302_state(struct device *dev, struct device_attribute *attr, char *buf)
@@ -1827,21 +1865,91 @@ static ssize_t fusb302_state(struct device *dev, struct device_attribute *attr, 
      return sprintf(buf, "SMC=%2x, connState=%2d, cc=%2x, current=%d\n", data[0], data[1], data[2], data[3]);
 }
 
- static DEVICE_ATTR(state, 0444, fusb302_state, NULL);
+static DEVICE_ATTR(state, 0440, fusb302_state, NULL);
 
+#define IRQ_GPIO_NAME "fusb_irq"
+#ifdef CONFIG_OF
+static int fusb_gpio_config(
+		struct fusb302_i2c_data *pdata, bool enable)
+{
+	int retval = 0;
+
+	if (enable) {
+		if (!gpio_is_valid(pdata->irq_gpio)) {
+			pr_err("invalid %s\n", IRQ_GPIO_NAME);
+			retval = -EINVAL;
+		}
+		retval = gpio_request(pdata->irq_gpio, IRQ_GPIO_NAME);
+		if (retval) {
+			pr_err("unable to request %s [%d]: rc=%d\n",
+				IRQ_GPIO_NAME, pdata->irq_gpio, retval);
+			goto err_gpio;
+		}
+		retval = gpio_direction_input(pdata->irq_gpio);
+		if (retval) {
+			pr_err("unable to set %s [%d] dir: rc=%d\n",
+				IRQ_GPIO_NAME, pdata->irq_gpio, retval);
+			goto err_gpio;
+		}
+		//gpio_export(pdata->irq_gpio, 0);
+		pdata->irq = gpio_to_irq(pdata->irq_gpio);
+	} else {
+		gpio_free(pdata->irq_gpio);
+	}
+
+err_gpio:
+	return retval;
+}
+static int fusb302_parse_dt(struct device *dev,
+				struct fusb302_i2c_data *fusb)
+{
+	struct device_node *np = dev->of_node;
+	fusb->irq_gpio = of_get_gpio(np, 0);
+	FUSB_LOG("irq_gpio number is %d\n", fusb->irq_gpio);
+	return 0;
+}
+#else
+static inline int fusb302_parse_dt(struct device *dev,
+				struct fusb302_i2c_data *fusb)
+{
+	return 0;
+}
+#endif
 static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
     struct fusb302_i2c_data *fusb;
     int ret_device_file = 0;
     unsigned char data;
-
+	int retval = 0;
     FUSB_LOG("enter probe\n");
+	if (!i2c_check_functionality(i2c->adapter,
+			I2C_FUNC_SMBUS_BYTE_DATA)) {
+		dev_err(&i2c->dev,
+				"%s: SMBus byte data commands not supported by host\n",
+				__func__);
+		return -EIO;
+	}
+	if (i2c->dev.of_node) {
+		fusb = devm_kzalloc(&i2c->dev,
+			sizeof(struct fusb302_i2c_data),
+			GFP_KERNEL);
+		if (!fusb) {
+			dev_err(&i2c->dev, "Failed to allocate memory\n");
+			return -ENOMEM;
+		}
+		retval = fusb302_parse_dt(&i2c->dev, fusb);
+		if (retval)
+			return retval;
+	} else {
+		fusb = i2c->dev.platform_data;
+	}
 
+	/*
     fusb = kzalloc(sizeof(struct fusb302_i2c_data), GFP_KERNEL);
     if (!fusb) {
         dev_err(&i2c->dev, "private data alloc fail\n");
         goto exit;
-    }
+    }*/
 
     InitializeFUSB300Variables();
 #ifdef PD_SUPPORT
@@ -1872,7 +1980,19 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
     #endif
 
     INIT_WORK(&fusb_i2c_data->eint_work, fusb_eint_work);
-    
+	fusb_gpio_config(fusb, true);
+	retval = request_threaded_irq(fusb->irq, NULL,
+				cc_eint_interrupt_handler, IRQF_TRIGGER_FALLING| IRQF_ONESHOT,
+				FUSB302_I2C_NAME, fusb);
+	if (retval < 0) {
+		dev_err(&i2c->dev,
+				"%s: Failed to create irq thread\n",
+				__func__);
+		return retval;
+	}
+	enable_irq_wake(fusb->irq);
+	enable_irq(fusb->irq);
+#if 0
     mt_set_gpio_mode(GPIO_CC_DECODER_PIN, GPIO_CC_DECODER_PIN_M_EINT);
     mt_set_gpio_dir(GPIO_CC_DECODER_PIN, GPIO_DIR_IN);
     mt_set_gpio_pull_enable(GPIO_CC_DECODER_PIN, true);
@@ -1880,12 +2000,9 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 
     mt_eint_registration(CUST_EINT_CC_DECODER_NUM, CUST_EINTF_TRIGGER_FALLING, cc_eint_interrupt_handler, 0);// disable auto-unmask
     mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
-
+#endif
     FUSB_LOG("probe successfully!\n");
     return 0;
-
-exit:
-    return -1;
 }
 
 static int fusb302_remove(struct i2c_client *i2c)
@@ -1914,25 +2031,35 @@ static void fusb302_early_suspend(struct early_suspend *h)
 static void fusb302_late_resume(struct early_suspend *h)
 {
         //wait to do something
-    mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
+ //  mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
 }
 #endif
 
 static const struct i2c_device_id fusb302_id[] = {
         { FUSB302_I2C_NAME, 0 },
         { }
-};
 
+};
+/*
 static struct i2c_board_info __initdata fusb302_i2c_boardinfo[] = {
         {
                 I2C_BOARD_INFO(FUSB302_I2C_NAME, (0x22)),
         },
-};
+};*/
 
+#ifdef CONFIG_OF
+static struct of_device_id fusb302_match_table[] = {
+	{ .compatible = "fairchild,fusb302",},
+	{ },
+};
+#else
+#define fusb302_match_table NULL
+#endif
 static struct i2c_driver fusb302_i2c_driver = {
         .driver = {
                 .name = FUSB302_I2C_NAME,
                 .owner = THIS_MODULE,
+				.of_match_table = fusb302_match_table,
         },
         .probe          = fusb302_probe,
         .remove         = fusb302_remove,
@@ -1946,8 +2073,8 @@ static struct i2c_driver fusb302_i2c_driver = {
 static int __init fusb302_i2c_init(void)
 {
     printk("FUSB302:%s\n", __func__);
-    i2c_register_board_info(FUSB302_I2C_NUM, fusb302_i2c_boardinfo, 
-        ARRAY_SIZE(fusb302_i2c_boardinfo)); 
+    /*i2c_register_board_info(FUSB302_I2C_NUM, fusb302_i2c_boardinfo,
+        ARRAY_SIZE(fusb302_i2c_boardinfo)); */
 
     return i2c_add_driver(&fusb302_i2c_driver);
 }
