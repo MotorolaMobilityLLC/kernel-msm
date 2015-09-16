@@ -1380,7 +1380,7 @@ static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
         int ret =0;
         if (atomic_dec_return(&pri_mi2s_clk.mi2s_rsc_ref) == 0) {
-                pr_debug("%s: free mi2s resources\n", __func__);
+                pr_info("%s: free mi2s resources\n", __func__);
 
                 ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX, &lpass_mi2s_disable);
                 if (ret < 0) {
@@ -1436,7 +1436,7 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream)
         struct snd_soc_pcm_runtime *rtd = substream->private_data;
         struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
-        pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+        pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
 
 //ASUS BSP Jessy +++ : config DMIC 1p8
         ret = regulator_enable(dmic_1p8);
@@ -1483,7 +1483,7 @@ static void msm8226_tert_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
 	int ret =0;
 	if (atomic_dec_return(&tert_mi2s_clk.mi2s_rsc_ref) == 0) {
-		pr_debug("%s: free mi2s resources\n", __func__);
+		pr_info("%s: free mi2s resources\n", __func__);
 
 		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_disable);
 		if (ret < 0) {
@@ -1528,7 +1528,7 @@ static int msm8226_tert_mi2s_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 
-	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+	pr_info("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
 
 #ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 	ret = regulator_enable(spk_1p8);
@@ -2289,18 +2289,19 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 #endif
 //ASUS_BSP Ken_Cheng ---
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC +++
-        {
-                .name = LPASS_BE_PRI_MI2S_TX,
-                .stream_name = "Primary MI2S Capture",
-                .cpu_dai_name = "msm-dai-q6-mi2s.0",
-                .platform_name = "msm-pcm-routing",
-                .codec_name     = "msm-stub-codec.1",
-                .codec_dai_name = "msm-stub-tx",
-                .no_pcm = 1,
-                .be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
-                .be_hw_params_fixup = msm_be_hw_params_fixup,
-                .ops = &msm8226_mi2s_be_ops,
-        },
+	{
+		.name = LPASS_BE_PRI_MI2S_TX,
+		.stream_name = "Primary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8226_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
 #ifdef CONFIG_SND_SOC_MSM8226_I2S_SPKR_AMP
 	{
 		.name = LPASS_BE_TERT_MI2S_RX,
@@ -2313,6 +2314,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm8226_tert_mi2s_be_ops,
+		.ignore_suspend = 1,
 	},
 #endif
 //ASUS_BSP Ken_Cheng MI2S for Digital MIC ---

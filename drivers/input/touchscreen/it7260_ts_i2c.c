@@ -462,13 +462,42 @@ static bool chipFlashWriteAndVerify(unsigned int fwLength, const uint8_t *fwData
 	return true;
 }
 
-static bool chipFirmwareUpload(uint32_t fwLen, const uint8_t *fwData, uint32_t cfgLen, const uint8_t *cfgData)
+static bool VerifyChecksum(struct device *dev, uint32_t fwLen, const uint8_t *fwData, uint32_t cfgLen, const uint8_t *cfgData)
+{
+	uint8_t pucCommandBuffer[3], resp[2];
+
+	pucCommandBuffer[0] = 0x1A;
+	pucCommandBuffer[1] = 0x09;
+	pucCommandBuffer[2] = 0x03;
+
+	waitDeviceReady(false, true, true);
+
+	if (i2cWriteNoReadyCheck(BUF_COMMAND, pucCommandBuffer, sizeof(pucCommandBuffer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		return false;
+	}
+
+	waitDeviceReady(false, true, true);
+
+	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		return false;
+	}
+
+	LOGI("CRC resp[1] = %02X, resp[0] = %02X.\n", resp[1], resp[0]);
+
+	return !resp[1] && !resp[0];
+}
+
+static bool chipFirmwareUpload(struct device *dev, uint32_t fwLen, const uint8_t *fwData, uint32_t cfgLen, const uint8_t *cfgData)
 {
 	bool success = false;
 
 	/* enter fw upload mode */
-	if (!chipFirmwareUpgradeModeEnterExit(true))
+	if (!chipFirmwareUpgradeModeEnterExit(true)) {
+		LOGE("Enter fw upload mode fail.\n");
 		return false;
+	}
 
 	/* flash the firmware if requested */
 	if (fw_upgrade_flag) {
@@ -607,6 +636,7 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	unsigned fwLen = 0, cfgLen = 0;
 	bool manualUpgrade, success;
 	int mode = 0;
+	ret = -1;
 
 	if (request_firmware(&fw, "it7260.fw", dev))
 		LOGE("failed to get firmware for it7260\n");
@@ -626,9 +656,11 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 
 	chipGetVersions(verFw, verCfg, true);
 
-	LOGI("upgrading versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n",
+	if (fwLen && cfgLen) {
+		LOGI("upgrading versions: fw@{%X,%X,%X,%X}, cfg@{%X,%X,%X,%X}\n",
 		fw->data[8], fw->data[9], fw->data[10], fw->data[11],
 		cfg->data[cfgLen - 8], cfg->data[cfgLen - 7], cfg->data[cfgLen - 6], cfg->data[cfgLen - 5]);
+	}
 
 	/* fix touch firmware/config update failed issue */
 	/* this code to check versions is reproduced as was written, but it does not quite make sense. Something here *IS* wrong */
@@ -656,6 +688,10 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 						LOGI("ic's cfg is old, force to upgrade.\n");
 						config_upgrade_flag = 1;
 					}
+					if (verFw[7] == fw->data[10] && verFw[8] == fw->data[11] && verCfg[3] == cfg->data[cfgLen - 6] &&
+						verCfg[4] == cfg->data[cfgLen - 5]) {
+						LOGI("same version, check CRC.\n");
+					}
 				}
 			} else {
 				LOGI("fw/cfg file is wrong. Do not need to upgrade.\n");
@@ -665,14 +701,55 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 			config_upgrade_flag = 1;
 		}
 
+		/*check CRC*/
+		if (!fw_upgrade_flag || !config_upgrade_flag) {
+			disable_irq(gl_ts->client->irq);
+			if(!VerifyChecksum(dev, fwLen, fw->data, cfgLen, cfg->data)) {
+				LOGI("checksum fail, force to upgrade.\n");
+				fw_upgrade_flag = 1;
+				config_upgrade_flag = 1;
+			} else {
+				LOGI("checksum pass.\n");
+			}
+			enable_irq(gl_ts->client->irq);
+		}
+
 		if (fw_upgrade_flag || config_upgrade_flag) {
 			LOGI("firmware/config will be upgraded\n");
 			disable_irq(gl_ts->client->irq);
-			success = chipFirmwareUpload(fwLen, fw->data, cfgLen, cfg->data);
+			success = chipFirmwareUpload(dev, fwLen, fw->data, cfgLen, cfg->data);
+			LOGI("upload %s\n", success ? "success" : "failed");
+			if(!success && !TP_DLMODE) {
+				LOGI("enter tp download mode to force updating fw and config.\n");
+				ret = gpio_request(RESET_GPIO, "CTP_RST_N");
+				if (ret < 0) {
+					LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+					gpio_free(RESET_GPIO);
+				} else {
+					ret = gpio_request(TP_DLMODE_GPIO, "CTP_DLM_N");
+					if (ret < 0) {
+						LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, TP_DLMODE_GPIO, ret);
+						gpio_free(TP_DLMODE_GPIO);
+					} else {
+						gpio_direction_output(TP_DLMODE_GPIO, 1);
+						mdelay(10);
+						gpio_direction_output(RESET_GPIO,0);
+						mdelay(60);
+						gpio_free(RESET_GPIO);
+						mdelay(100);
+						gpio_set_value(TP_DLMODE_GPIO, 0);
+						mdelay(200);
+						TP_DLMODE = true;
+					}
+				}
+				fw_upgrade_flag = 1;
+				config_upgrade_flag = 1;
+				success = chipFirmwareUpload(dev, fwLen, fw->data, cfgLen, cfg->data);
+				LOGI("upload %s\n", success ? "success" : "failed");
+			}
 			enable_irq(gl_ts->client->irq);
 
 			fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
-			LOGI("upload %s\n", success ? "success" : "failed");
 			if (success && TP_DLMODE) {
 				TP_DLMODE = false;
 				LOGI("leave tp download mode.\n");
@@ -769,6 +846,44 @@ static ssize_t sysfsStatusStore(struct device *dev, struct device_attribute *att
 	 * Technically the write was passed through scanf, looking for an integer, but the value was discarded.
 	 * Keeping this functionality in case something relied on it.
 	 */
+	return count;
+}
+
+static ssize_t sysfsChecksumShow(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	uint8_t pucCommandBuffer[3], resp[2];
+	ssize_t ret;
+
+	disable_irq(gl_ts->client->irq);
+	pucCommandBuffer[0] = 0x1A;
+	pucCommandBuffer[1] = 0x09;
+	pucCommandBuffer[2] = 0x03;
+
+	waitDeviceReady(false, true, true);
+
+	if (i2cWriteNoReadyCheck(BUF_COMMAND, pucCommandBuffer, sizeof(pucCommandBuffer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "%s\n", "i2c write failed.");
+	}
+
+	waitDeviceReady(false, true, true);
+
+	if (i2cReadNoReadyCheck(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		enable_irq(gl_ts->client->irq);
+		return sprintf(buf, "%s\n", "i2c read failed.");
+	}
+
+	LOGI("[%d] %s CRC resp[1] = %02X, resp[0] = %02X.\n", __LINE__, __func__, resp[1], resp[0]);
+	ret = sprintf(buf, "%02X%02X\n", resp[1], resp[0]);
+	enable_irq(gl_ts->client->irq);
+
+	return ret;
+}
+
+static ssize_t sysfsChecksumStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
 	return count;
 }
 
@@ -925,6 +1040,7 @@ static DEVICE_ATTR(status, S_IRUGO|S_IWUSR, sysfsStatusShow, sysfsStatusStore);
 static DEVICE_ATTR(version, S_IRUGO|S_IWUSR, sysfsVersionShow, sysfsVersionStore);
 static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR, sysfsSleepShow, sysfsSleepStore);
 static DEVICE_ATTR(reset, S_IRUGO|S_IWUSR, sysfsResetShow, sysfsResetStore);
+static DEVICE_ATTR(checksum, S_IRUGO|S_IWUSR, sysfsChecksumShow, sysfsChecksumStore);
 static DEVICE_ATTR(pointlog, S_IRUGO|S_IWUSR, sysfsPointLogShow, sysfsPointLogStore);
 
 static struct attribute *it7260_attrstatus[] = {
@@ -932,6 +1048,7 @@ static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_version.attr,
 	&dev_attr_sleep.attr,
 	&dev_attr_reset.attr,
+	&dev_attr_checksum.attr,
 	&dev_attr_pointlog.attr,
 	NULL
 };

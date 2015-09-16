@@ -118,6 +118,25 @@ Parent node optional properties:
 - qcom,bms-adc_tm: Corresponding ADC_TM device's phandle to set recurring
 			measurements and receive notifications for
 			die_temperature and vbatt.
+- qcom,s1-vsense-thr-uv: An integer to specify the vsense threshold for BMS
+			S1 (low load) state. It is used to compare with the
+			average Vsense voltage to trigger the high or low
+			counter in BMS hardware. Allowed value is in the range
+			from 0 to 2767 uV with a step size of 10.85 uV. The
+			intermediate steps with float value should be rounded
+			up to an integer value.
+- qcom,s2-vsense-thr-uv: An integer to specify the vsense threshold for BMS
+			S2 (high load) state. It is used to compare with the
+			average Vsense voltage to trigger the high or low
+			counter in BMS hardware. Allowed value is in the range
+			from 0 to 2767 uV with a step size of 10.85 uV. The
+			intermediate steps with float value should be rounded
+			up to an integer value.
+- qcom,use-dynamic-ocv-setting: A boolean to indicate if the OCV settings
+			(S3_VSENSE_THRESHOLD, OCV_TOL) will be changed
+			dynamically according to device running state.
+- qcom,ocv-rbatt-compensation: A boolean to indicate if the battery IR drop
+			will be added to the OCV data.
 
 qcom,batt-pres-status node required properties:
 - reg : offset and length of the PMIC SMBB battery interface BATT_PRES_STATUS
@@ -177,6 +196,10 @@ pm8941_bms: qcom,bms {
 	qcom,bms-vadc = <&pm8941_vadc>;
 	qcom,bms-iadc = <&pm8941_iadc>;
 	qcom,bms-adc_tm = <&pm8941_adc_tm>;
+	qcom,s1-vsense-thr-uv = <195>;
+	qcom,s2-vsense-thr-uv = <152>;
+	qcom,use-dynamic-ocv-setting;
+	qcom,ocv-rbatt-compensation;
 
 	qcom,batt-pres-status@1208 {
 		reg = <0x1208 0x1>;

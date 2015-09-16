@@ -1,7 +1,7 @@
 /*
  * MDSS MDP Interface (used by framebuffer core)
  *
- * Copyright (c) 2007-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2007-2015, The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  *
  * This software is licensed under the terms of the GNU General Public
@@ -2908,7 +2908,7 @@ static int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 	if (!mdata->vdd_cx)
 		return rc;
 
-	if (enable) {
+	if (enable && !mdata->vdd_cx_en) {
 		rc = regulator_set_voltage(
 				mdata->vdd_cx,
 				RPM_REGULATOR_CORNER_SVS_SOC,
@@ -2916,13 +2916,12 @@ static int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 		if (rc < 0)
 			goto vreg_set_voltage_fail;
 
-		pr_debug("Enabling CX power rail\n");
 		rc = regulator_enable(mdata->vdd_cx);
 		if (rc) {
 			pr_err("Failed to enable regulator.\n");
 			return rc;
 		}
-	} else {
+	} else if (!enable && mdata->vdd_cx_en) {
 		pr_debug("Disabling CX power rail\n");
 		rc = regulator_disable(mdata->vdd_cx);
 		if (rc) {
@@ -2935,8 +2934,14 @@ static int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 				RPM_REGULATOR_CORNER_SUPER_TURBO);
 		if (rc < 0)
 			goto vreg_set_voltage_fail;
+	} else {
+		pr_debug("No change requested: %s --> %s",
+			mdata->vdd_cx_en ? "enable" : "disable",
+			enable ? "enable" : "disable");
 	}
 
+	pr_debug("CX power rail %s\n", enable ? "enabled" : "disabled");
+	mdata->vdd_cx_en = enable;
 	return rc;
 
 vreg_set_voltage_fail:
@@ -2958,6 +2963,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 {
 	int ret;
 	int active_cnt = 0;
+	bool disable_cx = false;
 
 	if (!mdata->fs)
 		return;
@@ -2968,10 +2974,9 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 			ret = regulator_enable(mdata->fs);
 			if (ret)
 				pr_warn("Footswitch failed to enable\n");
-			if (!mdata->idle_pc) {
-				mdss_mdp_cx_ctrl(mdata, true);
+			mdss_mdp_cx_ctrl(mdata, true);
+			if (!mdata->idle_pc)
 				mdss_mdp_batfet_ctrl(mdata, true);
-			}
 		}
 		mdata->fs_ena = true;
 	} else {
@@ -2986,10 +2991,16 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 				mdata->idle_pc = true;
 				pr_debug("idle pc. active overlays=%d\n",
 					active_cnt);
+				if (mdata->allow_cx_vddmin) {
+					pr_err("disable cx during idle_pc\n");
+					disable_cx = true;
+				}
 			} else {
-				mdss_mdp_cx_ctrl(mdata, false);
 				mdss_mdp_batfet_ctrl(mdata, false);
+				disable_cx = true;
 			}
+			if (disable_cx)
+				mdss_mdp_cx_ctrl(mdata, false);
 			regulator_disable(mdata->fs);
 		}
 		mdata->fs_ena = false;

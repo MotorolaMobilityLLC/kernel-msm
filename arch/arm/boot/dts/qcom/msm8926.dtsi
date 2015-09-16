@@ -17,38 +17,15 @@
  */
 
 #include "msm8226.dtsi"
-#include "msm8226-memory.dtsi"
-#include "msm8226-qseecom.dtsi"
-#include "msm8226-sharedmem.dtsi"
 #include "msm8226-v2-pm.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8926";
 	compatible = "qcom,msm8926";
 
-	memory {
-		alt_peripheral_mem: peripheral_region@8000000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x08000000 0x5c00000>;
-			label = "peripheral_mem";
-		};
-	};
 
 };
 
-&modem_mem {
-	status = "disabled";
-};
-
-&peripheral_mem {
-	status = "disabled";
-};
-
-&qsecom_mem {
-	linux,memory-limit = <0x0>;
-};
 
 &clock_gcc {
 	compatible = "qcom,gcc-8226-v2";
@@ -168,21 +145,6 @@
 			<55  113>;
 	};
 
-	qcom,lpass@fe200000 {
-		linux,contiguous-region = <&adsp_venus_mem>;
-	};
-
-	qcom,mss@fc880000 {
-		linux,contiguous-region = <&modem_mem>;
-	};
-
-	qcom,venus@fdce0000 {
-		linux,contiguous-region = <&adsp_venus_mem>;
-	};
-
-	qcom,pronto@fb21b000 {
-		linux,contiguous-region = <&alt_peripheral_mem>;
-	};
 };
 
 &tlmm_pinmux {

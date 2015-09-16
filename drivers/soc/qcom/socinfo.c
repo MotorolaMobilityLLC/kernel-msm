@@ -101,7 +101,7 @@ const char *qrd_hw_platform_subtype[] = {
 	[PLATFORM_SUBTYPE_SKUAA] = "SKUAA",
 	[PLATFORM_SUBTYPE_SKUF] = "SKUF",
 	[PLATFORM_SUBTYPE_SKUAB] = "SKUAB",
-	[PLATFORM_SUBTYPE_QRD_QVGA ] = "QVGA",
+	[PLATFORM_SUBTYPE_QRD_QVGA] = "QVGA",
 	[PLATFORM_SUBTYPE_SKUG] = "SKUG",
 	[PLATFORM_SUBTYPE_QRD_INVALID] = "INVALID",
 };
@@ -112,6 +112,7 @@ enum {
 	PLATFORM_SUBTYPE_STRANGE = 0x2,
 	PLATFORM_SUBTYPE_STRANGE_2A = 0x3,
 	PLATFORM_SUBTYPE_ANTHIAS = 0x4,
+	PLATFORM_SUBTYPE_G_QVGA = 0x5,
 	PLATFORM_SUBTYPE_INVALID,
 };
 
@@ -121,6 +122,7 @@ const char *hw_platform_subtype[] = {
 	[PLATFORM_SUBTYPE_STRANGE] = "strange",
 	[PLATFORM_SUBTYPE_STRANGE_2A] = "strange_2a",
 	[PLATFORM_SUBTYPE_ANTHIAS] = "anthias",
+	[PLATFORM_SUBTYPE_G_QVGA] = "qvga_g",
 };
 
 /* Used to parse shared memory.  Must match the modem. */

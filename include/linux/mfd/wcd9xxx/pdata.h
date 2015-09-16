@@ -165,6 +165,8 @@ struct wcd9xxx_regulator {
 	int min_uV;
 	int max_uV;
 	int optimum_uA;
+	int active_uA;
+	int vote_cnt;
 	bool ondemand;
 	struct regulator *regulator;
 };
