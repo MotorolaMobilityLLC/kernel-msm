@@ -641,13 +641,130 @@ static struct cntry_locales_custom bcm4356_pcie_translate_ap_table[] = {
 	{"JP", "JP", 991},
 };
 
+static struct cntry_locales_custom bcm4358_pcie_translate_sta_dfs_table[] = {
+	/* Table should be filled out based on custom platform regulatory requirement */
+	{"",   "XT", 49},  /* Universal if Country code is unknown or empty */
+	{"US", "US", 176},
+	{"AE", "AE", 1},
+	{"AR", "AR", 21},
+	{"AT", "AT", 4},
+	{"AU", "AU", 40},
+	{"BE", "BE", 4},
+	{"BG", "BG", 4},
+	{"BN", "BN", 4},
+	{"BR", "BR", 4},
+	{"CA", "US", 176},   /* Previousely was CA/31 */
+	{"CH", "CH", 4},
+	{"CN", "CN", 24},
+	{"CY", "CY", 4},
+	{"CZ", "CZ", 4},
+	{"DE", "DE", 7},
+	{"DK", "DK", 4},
+	{"EE", "EE", 4},
+	{"ES", "ES", 4},
+	{"FI", "FI", 4},
+	{"FR", "FR", 5},
+	{"GB", "GB", 6},
+	{"GR", "GR", 4},
+	{"HK", "HK", 2},
+	{"HR", "HR", 4},
+	{"HU", "HU", 4},
+	{"IE", "IE", 5},
+	{"IN", "IN", 28},
+	{"IS", "IS", 4},
+	{"IT", "IT", 4},
+	{"ID", "ID", 5},
+	{"JP", "JP", 86},
+	{"KR", "KR", 57},
+	{"KW", "KW", 5},
+	{"LI", "LI", 4},
+	{"LT", "LT", 4},
+	{"LU", "LU", 3},
+	{"LV", "LV", 4},
+	{"MA", "MA", 2},
+	{"MT", "MT", 4},
+	{"MX", "MX", 20},
+	{"MY", "MY", 16},
+	{"NL", "NL", 4},
+	{"NO", "NO", 4},
+	{"NZ", "NZ", 4},
+	{"PL", "PL", 4},
+	{"PT", "PT", 4},
+	{"PY", "PY", 2},
+	{"RO", "RO", 4},
+	{"RU", "RU", 13},
+	{"SE", "SE", 4},
+	{"SG", "SG", 19},
+	{"SI", "SI", 4},
+	{"SK", "SK", 4},
+	{"TH", "TH", 5},
+	{"TR", "TR", 7},
+	{"TW", "TW", 1},
+	{"VN", "VN", 4},
+};
+
+static struct cntry_locales_custom bcm4358_pcie_translate_sta_nodfs_table[] = {
+	{"",   "XT", 50},  /* Universal if Country code is unknown or empty */
+	{"US", "US", 177},
+	{"AU", "AU", 41},
+	{"BR", "BR", 18},
+	{"CA", "US", 177},
+	{"CH", "E0", 33},
+	{"CY", "E0", 33},
+	{"CZ", "E0", 33},
+	{"DE", "E0", 33},
+	{"DK", "E0", 33},
+	{"EE", "E0", 33},
+	{"ES", "E0", 33},
+	{"EU", "E0", 33},
+	{"FI", "E0", 33},
+	{"FR", "E0", 33},
+	{"GB", "E0", 33},
+	{"GR", "E0", 33},
+	{"HK", "SG", 20},
+	{"HR", "E0", 33},
+	{"HU", "E0", 33},
+	{"IE", "E0", 33},
+	{"IN", "IN", 29},
+	{"ID", "ID", 5},
+	{"IS", "E0", 33},
+	{"IT", "E0", 33},
+	{"JP", "JP", 87},
+	{"KR", "KR", 79},
+	{"KW", "KW", 5},
+	{"LI", "E0", 33},
+	{"LT", "E0", 33},
+	{"LU", "E0", 33},
+	{"LV", "LV", 4},
+	{"MA", "MA", 2},
+	{"MT", "E0", 33},
+	{"MY", "MY", 17},
+	{"MX", "US", 177},
+	{"NL", "E0", 33},
+	{"NO", "E0", 33},
+	{"PL", "E0", 33},
+	{"PT", "E0", 33},
+	{"RO", "E0", 33},
+	{"SE", "E0", 33},
+	{"SG", "SG", 20},
+	{"SI", "E0", 33},
+	{"SK", "E0", 33},
+	{"SZ", "E0", 33},
+	{"TH", "TH", 9},
+	{"TW", "TW", 60},
+};
+
+static struct cntry_locales_custom bcm4358_pcie_translate_ap_table[] = {
+	{"JP", "JP", 991},
+};
+
 static struct country_tables dhd_country_tables = {
-	.sta_dfs_table = bcm4356_pcie_translate_sta_dfs_table,
-	.sta_dfs_size = ARRAY_SIZE(bcm4356_pcie_translate_sta_dfs_table),
-	.sta_nodfs_table = bcm4356_pcie_translate_sta_nodfs_table,
-	.sta_nodfs_size = ARRAY_SIZE(bcm4356_pcie_translate_sta_nodfs_table),
-	.ap_table = bcm4356_pcie_translate_ap_table,
-	.ap_size = ARRAY_SIZE(bcm4356_pcie_translate_ap_table),
+	.sta_dfs_table = bcm4358_pcie_translate_sta_dfs_table,
+	.sta_dfs_size = ARRAY_SIZE(bcm4358_pcie_translate_sta_dfs_table),
+	.sta_nodfs_table = bcm4358_pcie_translate_sta_nodfs_table,
+	.sta_nodfs_size = ARRAY_SIZE(bcm4358_pcie_translate_sta_nodfs_table),
+	.ap_table = bcm4358_pcie_translate_ap_table,
+	.ap_size = ARRAY_SIZE(bcm4358_pcie_translate_ap_table),
 };
 
 static void *dhd_wlan_get_country_code(char *ccode, u32 flags)
@@ -706,6 +823,19 @@ static int dhd_wifi_init_country(void)
 			ARRAY_SIZE(bcm4354_sdio_translate_sta_nodfs_table);
 		dhd_country_tables.ap_table = NULL;
 		dhd_country_tables.ap_size = 0;
+	} else if (strcmp(chip_name, "bcm4356_pcie") == 0) {
+		dhd_country_tables.sta_dfs_table =
+			bcm4356_pcie_translate_sta_dfs_table;
+		dhd_country_tables.sta_dfs_size =
+			ARRAY_SIZE(bcm4356_pcie_translate_sta_dfs_table);
+		dhd_country_tables.sta_nodfs_table =
+			bcm4356_pcie_translate_sta_nodfs_table;
+		dhd_country_tables.sta_nodfs_size =
+			ARRAY_SIZE(bcm4356_pcie_translate_sta_nodfs_table);
+		dhd_country_tables.ap_table =
+			bcm4356_pcie_translate_ap_table;
+		dhd_country_tables.ap_size =
+			ARRAY_SIZE(bcm4356_pcie_translate_ap_table);
 	}
 	return 0;
 }
