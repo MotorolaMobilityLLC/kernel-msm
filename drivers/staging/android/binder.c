@@ -430,25 +430,18 @@ static inline void binder_unlock(const char *tag)
 	mutex_unlock(&binder_main_lock);
 }
 
-static void __set_user_nice_no_resched(long nice)
-{
-	preempt_disable();
-	set_user_nice(current, nice);
-	sched_preempt_enable_no_resched();
-}
-
 static void binder_set_nice(long nice)
 {
 	long min_nice;
 	if (can_nice(current, nice)) {
-		__set_user_nice_no_resched(nice);
+		set_user_nice(current, nice);
 		return;
 	}
 	min_nice = 20 - current->signal->rlim[RLIMIT_NICE].rlim_cur;
 	binder_debug(BINDER_DEBUG_PRIORITY_CAP,
 		     "%d: nice value %ld not allowed use %ld instead\n",
 		      current->pid, nice, min_nice);
-	__set_user_nice_no_resched(min_nice);
+	set_user_nice(current, min_nice);
 	if (min_nice < 20)
 		return;
 	binder_user_error("%d RLIMIT_NICE not set\n", current->pid);
