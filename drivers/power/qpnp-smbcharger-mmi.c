@@ -380,6 +380,7 @@ struct smbchg_chip {
 	bool				bsw_ramping;
 	bool				usbc_bswchg_pres;
 	bool				fake_factory_type;
+	bool				fg_ready;
 };
 
 static struct smbchg_chip *the_chip;
@@ -1191,6 +1192,48 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 
 	*val = ret.intval;
 	return rc;
+}
+
+static bool smbchg_fg_ready(struct smbchg_chip *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	bool fg_ready = true;
+
+	if (chip->fg_ready)
+		return fg_ready;
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+	if (!chip->bms_psy) {
+		dev_warn(chip->dev, "no bms psy found\n");
+		return fg_ready;
+	}
+
+	rc = chip->bms_psy->get_property(chip->bms_psy,
+					 POWER_SUPPLY_PROP_BATTERY_TYPE, &ret);
+	if (rc) {
+		dev_warn(chip->dev,
+			 "bms psy doesn't support reading type rc = %d\n",
+			 rc);
+		return fg_ready;
+	}
+
+	dev_warn(chip->dev, "SMBCHG: FG Status: %s\n", ret.strval);
+
+	if (!strncmp(ret.strval, "Loading", 7) ||
+	    !strncmp(ret.strval, "Unknown", 7)) {
+		dev_warn(chip->dev, "SMBCHG: FG Status: Not Ready!\n");
+		fg_ready = false;
+	}
+
+	chip->fg_ready = fg_ready;
+
+	if (chip->fg_ready)
+		dev_warn(chip->dev, "SMBCHG: FG Status: Lets Charge!\n");
+
+	return fg_ready;
 }
 
 #define DEFAULT_BATT_CAPACITY	50
@@ -8878,6 +8921,7 @@ module_param_cb(eb_low_stop_soc, &eb_ops, &eb_low_stop_soc, 0644);
 
 #define HEARTBEAT_DELAY_MS 60000
 #define HEARTBEAT_HOLDOFF_MS 10000
+#define HEARTBEAT_FG_WAIT_MS 1000
 #define STEPCHG_MAX_FV_COMP 60
 #define STEPCHG_ONE_FV_COMP 40
 #define STEPCHG_FULL_FV_COMP 100
@@ -8912,7 +8956,8 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	bool bsw_chrg_alarm;
 
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
-	if (smbchg_check_and_kick_aicl(chip) || chip->bsw_ramping)
+	if (smbchg_check_and_kick_aicl(chip) || chip->bsw_ramping ||
+	    !smbchg_fg_ready(chip))
 		goto end_hb;
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
@@ -9273,6 +9318,9 @@ end_hb:
 	else
 		chip->update_eb_params = 0;
 
+	if (!chip->fg_ready)
+		hb_resch_time = HEARTBEAT_FG_WAIT_MS;
+
 	schedule_delayed_work(&chip->heartbeat_work,
 			      msecs_to_jiffies(hb_resch_time));
 
@@ -9544,6 +9592,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->demo_mode = false;
 	chip->hvdcp_det_done = false;
 	chip->usbc_disabled = false;
+	chip->fg_ready = false;
 	chip->test_mode_soc = DEFAULT_TEST_MODE_SOC;
 	chip->test_mode_temp = DEFAULT_TEST_MODE_TEMP;
 	chip->test_mode = qpnp_smbcharger_test_mode();
