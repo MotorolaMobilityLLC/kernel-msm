@@ -255,7 +255,7 @@ static inline void split_name(char *full, char *name, char *type)
 	}
 	memcpy(name, full, pos);
 	type_length = strnlen(full, MAX_UTAG_NAME) - 1 - pos;
-	if (0 < type_length)
+	if (MAX_UTAG_NAME > type_length)
 		memcpy(type, (full + pos + 1), type_length);
 }
 
@@ -781,8 +781,11 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
 
-	if (1 > count)
+	/* only single character input plus new line */
+	if (2 < count) {
+		pr_err("%s invalid command length\n", __func__);
 		goto out;
+	}
 
 	if (copy_from_user(&ctrl.reload, buffer, 1)) {
 		pr_err("%s user copy error\n", __func__);
