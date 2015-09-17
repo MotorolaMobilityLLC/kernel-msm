@@ -29,10 +29,10 @@
  * modify it under the terms of the GNU General Public License Version 2
  * as published by the Free Software Foundation.
  */
+
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -77,15 +77,12 @@ struct fpc1020_data {
 	int irq_gpio;
 	int rst_gpio;
 	int mid_gpio;
-	struct input_dev *idev;
-	int irq_num;
-	char idev_name[32];
-	int event_type;
-	int event_code;
 	struct mutex lock;
 	bool prepared;
 	bool wakeup_enabled;
 	u32 max_speed_hz;
+	bool clocks_enabled;
+	bool clocks_suspended;
 };
 
 static int vreg_setup(struct fpc1020_data *fpc1020, const char *name,
@@ -148,41 +145,52 @@ found:
 
 static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 {
-	int rc;
+	int rc = 0;
+	mutex_lock(&fpc1020->lock);
+
+	if (enable == fpc1020->clocks_enabled)
+		goto out;
 
 	if (enable) {
-		rc = clk_set_rate(fpc1020->core_clk,
-				  fpc1020->max_speed_hz);
-		if (rc) {
-			dev_err(fpc1020->dev,
-				"%s: Error setting clk_rate: %u, %d\n",
-				__func__, fpc1020->max_speed_hz, rc);
-			return rc;
-		}
 		rc = clk_prepare_enable(fpc1020->core_clk);
 		if (rc) {
 			dev_err(fpc1020->dev,
-				"%s: Error enabling core clk: %d\n",
-				__func__, rc);
-			return rc;
+					"%s: Error enabling core clk: %d\n",
+					__func__, rc);
+			goto out;
 		}
+
 		rc = clk_prepare_enable(fpc1020->iface_clk);
 		if (rc) {
 			dev_err(fpc1020->dev,
 				"%s: Error enabling iface clk: %d\n",
 				__func__, rc);
 			clk_disable_unprepare(fpc1020->core_clk);
-			return rc;
+			goto out;
 		}
 		dev_dbg(fpc1020->dev, "%s ok. clk rate %u hz\n", __func__,
 			fpc1020->max_speed_hz);
+		fpc1020->clocks_enabled = true;
 	} else {
 		clk_disable_unprepare(fpc1020->iface_clk);
 		clk_disable_unprepare(fpc1020->core_clk);
-		rc = 0;
+		fpc1020->clocks_enabled = false;
 	}
+
+out:
+	mutex_unlock(&fpc1020->lock);
 	return rc;
 }
+
+
+static ssize_t clk_enable_set(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
+	return set_clks(fpc1020, (*buf == '1')) ? : count;
+}
+
+static DEVICE_ATTR(clk_enable, S_IWUSR, NULL, clk_enable_set);
 
 /**
  * Will try to select the set of pins (GPIOS) defined in a pin control node of
@@ -218,17 +226,6 @@ static int select_pin_ctl(struct fpc1020_data *fpc1020, const char *name)
 exit:
 	return rc;
 }
-
-static ssize_t clk_enable_set(struct device *dev,
-			      struct device_attribute *attr, const char *buf,
-			      size_t count)
-{
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-	int rc = set_clks(fpc1020, *buf == '1');
-	return rc ? rc : count;
-}
-
-static DEVICE_ATTR(clk_enable, S_IWUSR, NULL, clk_enable_set);
 
 static ssize_t pinctl_set(struct device *dev,
 			  struct device_attribute *attr, const char *buf,
@@ -385,39 +382,42 @@ static ssize_t wakeup_enable_set(struct device *dev,
 static DEVICE_ATTR(wakeup_enable, S_IWUSR, NULL, wakeup_enable_set);
 
 /**
- * sysfs node for sending event to make the system interactive,
- * i.e. waking up
+ * sysf node to check the interrupt status of the sensor, the interrupt
+ * handler should perform sysf_notify to allow userland to poll the node.
  */
-static ssize_t do_wakeup_set(struct device *dev,
-			     struct device_attribute *attr, const char *buf,
-			     size_t count)
+static ssize_t irq_get(struct device* device,
+			     struct device_attribute* attribute,
+			     char* buffer)
 {
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
+	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	int irq = gpio_get_value(fpc1020->irq_gpio);
+	return scnprintf(buffer, PAGE_SIZE, "%i\n", irq);
+}
 
-	if (count > 0) {
-		/* Sending power key event creates a toggling
-		   effect that may be desired. It could be
-		   replaced by another event such as KEY_WAKEUP. */
-		input_report_key(fpc1020->idev, KEY_WAKEUP, 1);
-		input_report_key(fpc1020->idev, KEY_WAKEUP, 0);
-		input_sync(fpc1020->idev);
-	} else {
-		return -EINVAL;
-	}
 
+/**
+ * writing to the irq node will just drop a printk message
+ * and return success, used for latency measurement.
+ */
+static ssize_t irq_ack(struct device* device,
+			     struct device_attribute* attribute,
+			     const char* buffer, size_t count)
+{
+	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
+	dev_dbg(fpc1020->dev, "%s\n", __func__);
 	return count;
 }
 
-static DEVICE_ATTR(do_wakeup, S_IWUSR, NULL, do_wakeup_set);
+static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_ack);
 
 static struct attribute *attributes[] = {
 	&dev_attr_pinctl_set.attr,
-	&dev_attr_clk_enable.attr,
 	&dev_attr_spi_prepare.attr,
 	&dev_attr_regulator_enable.attr,
 	&dev_attr_hw_reset.attr,
 	&dev_attr_wakeup_enable.attr,
-	&dev_attr_do_wakeup.attr,
+	&dev_attr_clk_enable.attr,
+	&dev_attr_irq.attr,
 	NULL
 };
 
@@ -428,8 +428,7 @@ static const struct attribute_group attribute_group = {
 static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
 	struct fpc1020_data *fpc1020 = handle;
-	input_event(fpc1020->idev, EV_MSC, MSC_SCAN, ++fpc1020->irq_num);
-	input_sync(fpc1020->idev);
+	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
 	/* Make sure 'wakeup_enabled' is updated before using it
 	 ** since this is interrupt context (other thread...) */
@@ -438,7 +437,9 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	if (fpc1020->wakeup_enabled) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
-	dev_dbg(fpc1020->dev, "%s %d\n", __func__, fpc1020->irq_num);
+
+	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
+
 	return IRQ_HANDLED;
 }
 
@@ -470,7 +471,7 @@ static int fpc1020_probe(struct platform_device* pdev)
 	int irqf;
 	struct device_node *np = dev->of_node;
 	u32 val;
-	const char *idev_name;
+
 	struct fpc1020_data *fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
 						    GFP_KERNEL);
 	if (!fpc1020) {
@@ -560,45 +561,17 @@ static int fpc1020_probe(struct platform_device* pdev)
 	if (rc)
 		goto exit;
 	dev_info(dev,"module id:%d\n", gpio_get_value(fpc1020->mid_gpio));
-	rc = of_property_read_u32(np, "fpc,event-type", &val);
-	fpc1020->event_type = rc < 0 ? EV_MSC : val;
-
-	rc = of_property_read_u32(np, "fpc,event-code", &val);
-	fpc1020->event_code = rc < 0 ? MSC_SCAN : val;
 	rc = of_property_read_u32(np, "spi-max-frequency", &val);
 	fpc1020->max_speed_hz= rc < 0 ? 4800000 : val;
 
-	fpc1020->idev = devm_input_allocate_device(dev);
-	if (!fpc1020->idev) {
-		dev_err(dev, "failed to allocate input device\n");
-		rc = -ENOMEM;
-		goto exit;
-	}
-	input_set_capability(fpc1020->idev, fpc1020->event_type,
-			     fpc1020->event_code);
-
-	if (!of_property_read_string(np, "input-device-name", &idev_name)) {
-		fpc1020->idev->name = idev_name;
-	} else {
-		snprintf(fpc1020->idev_name, sizeof(fpc1020->idev_name),
-			 "fpc1020@%s", dev_name(dev));
-		fpc1020->idev->name = fpc1020->idev_name;
-	}
-	/* Also register the key for wake up */
-	set_bit(EV_KEY, fpc1020->idev->evbit);
-	set_bit(KEY_WAKEUP, fpc1020->idev->keybit);
-	rc = input_register_device(fpc1020->idev);
 	fpc1020->wakeup_enabled = false;
-	if (rc) {
-		dev_err(dev, "failed to register input device\n");
-		goto exit;
-	}
-
+	fpc1020->clocks_enabled = false;
+	fpc1020->clocks_suspended = false;
+	fpc1020->prepared = false;
 	irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
 	if (of_property_read_bool(dev->of_node, "fpc,enable-wakeup")) {
 		irqf |= IRQF_NO_SUSPEND;
 		device_init_wakeup(dev, 1);
-		fpc1020->wakeup_enabled = true;
 	}
 	mutex_init(&fpc1020->lock);
 	rc = devm_request_threaded_irq(dev, gpio_to_irq(fpc1020->irq_gpio),
@@ -620,11 +593,20 @@ static int fpc1020_probe(struct platform_device* pdev)
 		dev_err(dev, "could not create sysfs\n");
 		goto exit;
 	}
-	fpc1020->prepared = false;
+
 	if (of_property_read_bool(dev->of_node, "fpc,enable-on-boot")) {
 		dev_info(dev, "Enabling hardware\n");
 		(void)device_prepare(fpc1020, true);
 	}
+	rc = clk_set_rate(fpc1020->core_clk,
+			  fpc1020->max_speed_hz);
+	if (rc) {
+		dev_err(fpc1020->dev,
+			"%s: Error setting clk_rate: %u, %d\n",
+			__func__, fpc1020->max_speed_hz, rc);
+		goto exit;
+	}
+
 	dev_info(dev, "%s: ok\n", __func__);
 exit:
 	return rc;
@@ -642,6 +624,24 @@ static int fpc1020_remove(struct platform_device* pdev)
 	return 0;
 }
 
+static int fpc1020_suspend(struct platform_device* pdev, pm_message_t mesg)
+{
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(&pdev->dev);
+
+	fpc1020->clocks_suspended = fpc1020->clocks_enabled;
+	set_clks(fpc1020, false);
+	return 0;
+}
+
+static int fpc1020_resume(struct platform_device* pdev)
+{
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(&pdev->dev);
+
+	if (fpc1020->clocks_suspended)
+		set_clks(fpc1020, true);
+
+	return 0;
+}
 static struct of_device_id fpc1020_of_match[] = {
 	{.compatible = "fpc,fpc1020",},
 	{}
@@ -656,7 +656,9 @@ static struct platform_driver fpc1020_driver = {
 		   .of_match_table = fpc1020_of_match,
 		   },
 	.probe = fpc1020_probe,
-	.remove = fpc1020_remove
+	.remove = fpc1020_remove,
+	.suspend = fpc1020_suspend,
+	.resume = fpc1020_resume,
 };
 
 static int __init fpc1020_init(void)
