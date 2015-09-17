@@ -2157,6 +2157,26 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
+
+static int florida_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
+	struct snd_soc_dai *cs35l34_left = rtd->codec_dai;
+
+	ret = snd_soc_dai_set_sysclk(aif1_dai, ARIZONA_CLK_SYSCLK, 0, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set SYSCLK %d\n", ret);
+		return ret;
+	}
+	ret = snd_soc_dai_set_sysclk(cs35l34_left, 0, 6144000, 0);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
+		return ret;
+	}
+	return 0;
+}
 #endif
 
 static void *def_tasha_mbhc_cal(void)
@@ -3168,8 +3188,11 @@ static struct snd_soc_dai_link msm8996_florida_fe_dai_links[] = {
 		.stream_name = "FLA-AMP Playback",
 		.cpu_name = "florida-codec",
 		.cpu_dai_name = "florida-aif1",
-		.codec_name = "cs35l34.07-0040",
+		.codec_name = "cs35l34.7-0040",
 		.codec_dai_name = "cs35l34",
+		.init = florida_cs35l34_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
