@@ -16,6 +16,10 @@
 			qcom,wave-play-rate-us = <4255>;
 			qcom,wave-shape = "sine";
 			qcom,vmax-mv = <1200>;
+			qcom,vmax-mv-strong = <1800>;
+			qcom,vmax-mv-light = <1500>;
+			qcom,center-time-light = <365>;
+			qcom,region-time-light = <35>;
 		};
 	};
 };

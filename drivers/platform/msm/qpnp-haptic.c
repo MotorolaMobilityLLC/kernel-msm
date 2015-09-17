@@ -73,8 +73,9 @@
 #define QPNP_HAP_VMAX_MIN_MV		116
 #define QPNP_HAP_VMAX_MAX_MV		3596
 #define QPNP_HAP_VMAX_STRONG_MV		1800
-#define QPNP_HAP_VMAX_LIGHT_MV		1800
-#define QPNP_HAP_MIN_TIME_STRONG	500
+#define QPNP_HAP_VMAX_LIGHT_MV		1500
+#define QPNP_HAP_CENTER_TIME_LIGHT	365
+#define QPNP_HAP_REGION_TIME_LIGHT 	35
 #define QPNP_HAP_ILIM_MASK		0xFE
 #define QPNP_HAP_ILIM_MIN_MV		400
 #define QPNP_HAP_ILIM_MAX_MV		800
@@ -253,7 +254,8 @@ struct qpnp_pwm_info {
  *  @ vmax_mv - max voltage in mv
  *  @ vmax_mv_strong - max voltage in mv for strong vibration
  *  @ vmax_mv_light - max voltage in mv for light vibration
- *  @ min_time_strong - minimum time in ms for a strong vibration
+ *  @ center_time_light - minimum time in ms for a light vibration
+ *  @ region_time_light - region time in ms for a light vibration
  *  @ ilim_ma - limiting current in ma
  *  @ sc_deb_cycles - short circuit debounce cycles
  *  @ int_pwm_freq_khz - internal pwm frequency in khz
@@ -305,7 +307,8 @@ struct qpnp_hap {
 	u32 vmax_mv;
 	u32 vmax_mv_strong;
 	u32 vmax_mv_light;
-	u32 min_time_strong;
+	u32 center_time_light;
+	u32 region_time_light;
 	u32 ilim_ma;
 	u32 sc_deb_cycles;
 	u32 int_pwm_freq_khz;
@@ -1061,19 +1064,19 @@ static ssize_t qpnp_hap_vmax_mv_strong_store(struct device *dev,
 	return count;
 }
 
-/* sysfs show for min_time_strong update */
-static ssize_t qpnp_hap_min_time_strong_show(struct device *dev,
+/* sysfs show for center_time_light update */
+static ssize_t qpnp_hap_center_time_light_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
 	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
 					 timed_dev);
 
-	return snprintf(buf, PAGE_SIZE, "%d\n", hap->min_time_strong);
+	return snprintf(buf, PAGE_SIZE, "%d\n", hap->center_time_light);
 }
 
-/* sysfs store for min_time_strong */
-static ssize_t qpnp_hap_min_time_strong_store(struct device *dev,
+/* sysfs store for center_time_light */
+static ssize_t qpnp_hap_center_time_light_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
@@ -1087,7 +1090,39 @@ static ssize_t qpnp_hap_min_time_strong_store(struct device *dev,
 		return ret;
 
 	mutex_lock(&hap->wf_lock);
-	hap->min_time_strong = val;
+	hap->center_time_light = val;
+	mutex_unlock(&hap->wf_lock);
+
+	return count;
+}
+
+/* sysfs show for region_time_light update */
+static ssize_t qpnp_hap_region_time_light_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hap->region_time_light);
+}
+
+/* sysfs store for region_time_light */
+static ssize_t qpnp_hap_region_time_light_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	u32 val;
+	ssize_t ret;
+
+	ret = kstrtou32(buf, 10, &val);
+	if (ret)
+		return ret;
+
+	mutex_lock(&hap->wf_lock);
+	hap->region_time_light = val;
 	mutex_unlock(&hap->wf_lock);
 
 	return count;
@@ -1443,9 +1478,12 @@ static struct device_attribute qpnp_hap_attrs[] = {
 	__ATTR(min_max_test, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_min_max_test_data_show,
 			qpnp_hap_min_max_test_data_store),
-	__ATTR(min_time_strong, (S_IRUGO | S_IWUSR | S_IWGRP),
-			qpnp_hap_min_time_strong_show,
-			qpnp_hap_min_time_strong_store),
+	__ATTR(center_time_light, (S_IRUGO | S_IWUSR | S_IWGRP),
+			qpnp_hap_center_time_light_show,
+			qpnp_hap_center_time_light_store),
+	__ATTR(region_time_light, (S_IRUGO | S_IWUSR | S_IWGRP),
+			qpnp_hap_region_time_light_show,
+			qpnp_hap_region_time_light_store),
 	__ATTR(vmax_mv_light, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_vmax_mv_light_show,
 			qpnp_hap_vmax_mv_light_store),
@@ -1675,10 +1713,11 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 		hap->state = 0;
 	} else {
 		u32 new_vmax;
-		if(value >= hap->min_time_strong)
-			new_vmax = hap->vmax_mv_strong;
-		else
+		if(value > (hap->center_time_light - hap->region_time_light) &&
+				value < (hap->center_time_light + hap->region_time_light))
 			new_vmax = hap->vmax_mv_light;
+		else
+			new_vmax = hap->vmax_mv_strong;
 
 		if (new_vmax != hap->vmax_mv) {
 			hap->vmax_mv = new_vmax;
@@ -2201,11 +2240,18 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 		hap->vmax_mv_light = temp;
 	}
 
-	hap->min_time_strong = QPNP_HAP_MIN_TIME_STRONG;
+	hap->center_time_light = QPNP_HAP_CENTER_TIME_LIGHT;
 	rc = of_property_read_u32(spmi->dev.of_node,
-			"qcom,min-time-strong", &temp);
+			"qcom,center-time-light", &temp);
 	if (!rc) {
-		hap->min_time_strong = temp;
+		hap->center_time_light = temp;
+	}
+
+	hap->region_time_light = QPNP_HAP_REGION_TIME_LIGHT;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,region-time-light", &temp);
+	if (!rc) {
+		hap->region_time_light = temp;
 	}
 
 	hap->ilim_ma = QPNP_HAP_ILIM_MIN_MV;
