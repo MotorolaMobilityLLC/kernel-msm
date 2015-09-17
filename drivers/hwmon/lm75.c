@@ -74,10 +74,10 @@ static const u8 LM75_REG_TEMP[3] = {
 	0x02,		/* hyst */
 };
 
-#define TMP108_MODE_MASK 0x3
-#define TMP108_SHUTDOWN  0
-#define TMP108_ONESHOT   1
-#define TMP108_CONT      2
+#define TMP108_MODE_MASK 0x0300
+#define TMP108_SHUTDOWN  (0 << 8)
+#define TMP108_ONESHOT   (1 << 8)
+#define TMP108_CONT      (2 << 8)
 
 /* Each client has this additional data */
 struct lm75_data {
@@ -87,7 +87,7 @@ struct lm75_data {
 	struct device		*hwmon_dev;
 	struct thermal_zone_device	*tz;
 	struct mutex		update_lock;
-	u8			orig_conf;
+	u16			orig_conf;
 	u8			resolution;	/* In bits, between 9 and 12 */
 	u8			resolution_limits;
 	char			valid;		/* !=0 if registers are valid */
@@ -241,7 +241,7 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct device *dev = &client->dev;
 	struct lm75_data *data;
 	int status;
-	u8 set_mask, clr_mask;
+	u16 set_mask, clr_mask;
 	int new;
 	enum lm75_type kind = id->driver_data;
 
@@ -330,8 +330,9 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		data->sample_time = HZ / 2;
 		break;
 	case tmp108:
+		/* The tmp108 config register is word-sized */
 		set_mask = 0;
-		clr_mask = (1 << 2);		/* comparator mode */
+		clr_mask = 1 << 10;		/* comparator mode */
 		data->resolution = 12;
 		data->sample_time = HZ;
 		break;
@@ -567,11 +568,14 @@ static struct i2c_driver lm75_driver = {
 /*
  * All registers are word-sized, except for the configuration register.
  * LM75 uses a high-byte first convention, which is exactly opposite to
- * the SMBus standard.
+ * the SMBus standard. On tmp108, the configuratoin register is also
+ * word-sized.
  */
 static int lm75_read_value(struct i2c_client *client, u8 reg)
 {
-	if (reg == LM75_REG_CONF)
+	struct lm75_data *data = i2c_get_clientdata(client);
+
+	if ((reg == LM75_REG_CONF) && (!data->sensor == tmp108))
 		return i2c_smbus_read_byte_data(client, reg);
 	else
 		return i2c_smbus_read_word_swapped(client, reg);
@@ -579,7 +583,9 @@ static int lm75_read_value(struct i2c_client *client, u8 reg)
 
 static int lm75_write_value(struct i2c_client *client, u8 reg, u16 value)
 {
-	if (reg == LM75_REG_CONF)
+	struct lm75_data *data = i2c_get_clientdata(client);
+
+	if ((reg == LM75_REG_CONF) && (!data->sensor == tmp108))
 		return i2c_smbus_write_byte_data(client, reg, value);
 	else
 		return i2c_smbus_write_word_swapped(client, reg, value);
