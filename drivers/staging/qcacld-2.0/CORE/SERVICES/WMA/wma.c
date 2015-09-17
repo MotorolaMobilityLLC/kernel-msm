@@ -3222,7 +3222,13 @@ static int wma_group_num_bss_to_scan_id(const u_int8_t *cmd_param_info,
 			ap->beaconPeriod = src_hotlist->beacon_interval;
 			ap->capability = src_hotlist->capabilities;
 			ap->ieLength = src_hotlist->ie_length;
-			ap->rssi = src_rssi->rssi;
+
+			/* Firmware already applied noise floor adjustment and
+			 * due to WMI interface "UINT32 rssi", host driver
+			 * receives a positive value, hence convert to
+			 * signed char to get the absolute rssi.
+			 */
+			ap->rssi = (signed char) src_rssi->rssi;
 			WMI_MAC_ADDR_TO_CHAR_ARRAY(&src_hotlist->bssid,
 						ap->bssid);
 
