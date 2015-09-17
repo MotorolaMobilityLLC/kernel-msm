@@ -204,6 +204,7 @@
 #define SDP_LOW_BATT_FORCE_USB5_OVER_USB1_BIT	BIT(4)
 #define OTG_HICCUP_MODE_BIT			BIT(2)
 #define INPUT_CURRENT_LIMIT_MASK		SMB1351_MASK(1, 0)
+#define ADAPTER_CONFIG		0
 
 #define CHARGER_I2C_CTRL_REG			0x15
 #define FULLON_MODE_EN_BIT			BIT(7)
@@ -1380,11 +1381,26 @@ static int smb1351_parallel_set_chg_present(struct smb1351_charger *chip,
 			return rc;
 		}
 
-		/* set chg_config: 5-9V */
+		/* set chg_config: 5V only and disable HVDCP */
 		reg = CHG_CONFIG;
 		rc = smb1351_masked_write(chip, FLEXCHARGER_REG, CHG_CONFIG_MASK, reg);
 		if (rc) {
-			pr_err("Couldn't set FLEXCHARGER_REG rc=%d\n",	rc);
+			pr_err("Couldn't set FLEXCHARGER_REG rc=%d\n",  rc);
+			return rc;
+		}
+
+		reg = ADAPTER_CONFIG;
+		rc = smb1351_masked_write(chip, OTG_MODE_POWER_OPTIONS_REG,
+				ADAPTER_CONFIG_MASK, reg);
+		if (rc) {
+			pr_err("Couldn't set OTG_MODE_POWER_OPTIONS_REG rc=%d\n", rc);
+			return rc;
+		}
+
+		rc = smb1351_masked_write(chip, HVDCP_BATT_MISSING_CTRL_REG,
+				HVDCP_EN_BIT, 0);
+		if (rc) {
+			pr_err("Couldn't set HVDCP_BATT_MISSING_CTRL_REG rc=%d\n", rc);
 			return rc;
 		}
 

@@ -5486,6 +5486,7 @@ static inline int get_bpd(const char *name)
 #define JEITA_TEMP_HARD_LIMIT_BIT	BIT(5)
 #define JEITA_SL_COMP	SMB_MASK(3, 0)
 #define JEITA_SL_COMP_CFG		0x8
+#define USBIN_ADAPTER_5V		0
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -5524,6 +5525,22 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't disable input missing poller rc=%d\n",
 				rc);
+		return rc;
+	}
+
+	rc = smbchg_sec_masked_write(chip,
+		chip->usb_chgpth_base + CHGPTH_CFG,
+		HVDCP_EN_BIT, 0);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't enable HVDCP rc=%d\n", rc);
+		return rc;
+	}
+
+	rc = smbchg_sec_masked_write(chip,
+				chip->usb_chgpth_base + USBIN_CHGR_CFG,
+				0xFF, USBIN_ADAPTER_5V);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't write usb allowance rc=%d\n", rc);
 		return rc;
 	}
 
