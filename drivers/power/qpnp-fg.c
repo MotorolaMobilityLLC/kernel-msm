@@ -1599,6 +1599,42 @@ static int __fg_interleaved_mem_write(struct fg_chip *chip, u8 *val,
 	return rc;
 }
 
+static int get_prop_capacity_raw(struct fg_chip *chip)
+{
+	u8 cap[2];
+	int rc, capacity = 0, tries = 0;
+
+	if (chip->soc_empty) {
+		if (fg_debug_mask & FG_POWER_SUPPLY)
+			pr_info_ratelimited("capacity: EMPTY\n");
+		return 0;
+	}
+	while (tries < MAX_TRIES_SOC) {
+		rc = fg_read(chip, cap,
+				chip->soc_base + SOC_MONOTONIC_SOC, 2);
+		if (rc) {
+			pr_err("spmi read failed: addr=%03x, rc=%d\n",
+				chip->soc_base + SOC_MONOTONIC_SOC, rc);
+			return 0;
+		}
+
+		if (cap[0] == cap[1])
+			break;
+
+		tries++;
+	}
+
+	if (tries == MAX_TRIES_SOC) {
+		pr_err("shadow registers do not match\n");
+		return 0;
+	}
+
+	if (cap[0] > 0)
+		capacity = (cap[0] * 100 / FULL_PERCENT);
+
+	return capacity;
+}
+
 static int __fg_interleaved_mem_read(struct fg_chip *chip, u8 *val, u16 address,
 						int offset, int len)
 {
@@ -2201,6 +2237,9 @@ static bool fg_is_batt_empty(struct fg_chip *chip)
 
 		return vbatt_low_sts;
 	}
+
+	if (get_prop_capacity_raw(chip) <= 2)
+		return true;
 
 	rc = fg_read(chip, &fg_soc_sts, INT_RT_STS(chip->soc_base), 1);
 	if (rc) {
