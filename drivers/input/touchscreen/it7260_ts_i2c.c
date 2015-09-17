@@ -469,6 +469,8 @@ static bool VerifyChecksum(struct device *dev, uint32_t fwLen, const uint8_t *fw
 	pucCommandBuffer[0] = 0x1A;
 	pucCommandBuffer[1] = 0x09;
 	pucCommandBuffer[2] = 0x03;
+	resp[0] = 0xFF;
+	resp[1] = 0xFF;
 
 	waitDeviceReady(false, true, true);
 
@@ -485,6 +487,31 @@ static bool VerifyChecksum(struct device *dev, uint32_t fwLen, const uint8_t *fw
 	}
 
 	LOGI("CRC resp[1] = %02X, resp[0] = %02X.\n", resp[1], resp[0]);
+
+	return !resp[1] && !resp[0];
+}
+
+static bool ChangePalmThreshold(uint8_t threshold_H, uint8_t threshold_L) {
+	uint8_t pucCommandBuffer[4], resp[2];
+
+	pucCommandBuffer[0] = 0x21;
+	pucCommandBuffer[1] = 0x00;
+	pucCommandBuffer[2] = threshold_L;
+	pucCommandBuffer[3] = threshold_H;
+	resp[0] = 0xFF;
+	resp[1] = 0xFF;
+
+	if (i2cWrite(BUF_COMMAND, pucCommandBuffer, sizeof(pucCommandBuffer)) != 1) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		return false;
+	}
+
+	if (i2cRead(BUF_RESPONSE, resp, sizeof(resp)) != 2) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		return false;
+	}
+
+	LOGI("Palm threshold = 0x%02X%02X,  resp= 0x%02X%02X.\n", threshold_H, threshold_L, resp[1], resp[0]);
 
 	return !resp[1] && !resp[0];
 }
@@ -858,6 +885,8 @@ static ssize_t sysfsChecksumShow(struct device *dev, struct device_attribute *at
 	pucCommandBuffer[0] = 0x1A;
 	pucCommandBuffer[1] = 0x09;
 	pucCommandBuffer[2] = 0x03;
+	resp[0] = 0xFF;
+	resp[1] = 0xFF;
 
 	waitDeviceReady(false, true, true);
 
@@ -1192,6 +1221,9 @@ static void touchIdleOnEvt(struct work_struct *work) {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	LOGI("[%d] %s chipInLowPower = %d, TP_DLMODE = %d. \n", __LINE__, __func__, chipInLowPower, TP_DLMODE);
 	if (!chipInLowPower && !TP_DLMODE) {
+		if (!ChangePalmThreshold(0x70,0x00)) {
+			LOGI("[%d] %s change palm threshold fail.\n", __LINE__, __func__);
+		}
 		if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
 			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 			chipInLowPower = false;
@@ -1220,6 +1252,9 @@ static void exitIdleEvt(struct work_struct *work) {
 			wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 			wake_unlock(&touch_lock);
 			last_time_exit_low = jiffies;
+			if (!ChangePalmThreshold(0xA0,0x00)) {
+				LOGI("[%d] %s change palm threshold fail.\n", __LINE__, __func__);
+			}
 		} else {
 				LOGI("[%d] %s Wait palm to ambient, PALM_DELTA_TIME = %llu.\n", __LINE__, __func__, exit_idle_event_time - last_time_send_palm);
 		}
@@ -1278,6 +1313,11 @@ static void readTouchDataPoint(void)
 	}
 	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
 		LOGE(" %s dropping non-point data of type 0x%02X\n", __func__, pointData.flags);
+		if (pointData.flags == 0x10) {
+			if (!ChangePalmThreshold(0xA0,0x00)) {
+				LOGI("[%d] %s change palm threshold fail.\n", __LINE__, __func__);
+			}
+		}
 		return;
 	}
 
@@ -1449,7 +1489,7 @@ static void readTouchDataPoint_Ambient(void)
 				lastTouch = TOUCH_UP;
 				touchMissed = false;
 			}
-			if ((touchMissed || (suspend_touch_up - suspend_touch_down < 1000)) && (suspend_touch_up - last_time_send_palm > 800)) {
+			if ((touchMissed || (suspend_touch_up - suspend_touch_down < 140)) && (suspend_touch_up - last_time_send_palm > 800)) {
 				if (touchMissed)
 					LOGI("[%d] %s touch down missed.\n", __LINE__, __func__);
 
@@ -1469,12 +1509,15 @@ static void readTouchDataPoint_Ambient(void)
 					input_sync(gl_ts->touch_dev);
 					wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 					last_time_exit_low = jiffies;
+					if (!ChangePalmThreshold(0xA0,0x00)) {
+						LOGI("[%d] %s change palm threshold fail.\n", __LINE__, __func__);
+					}
 				} else {
 					AMB_TOUCH_HAD_SEND_FLAG = 0;
 				}
 			} else if (suspend_touch_up - last_time_send_palm <= 800) {
 				LOGI("[%d] %s Wait palm to ambient, PALM_DELTA_TIME = %llu.\n", __LINE__, __func__, suspend_touch_up - last_time_send_palm);
-			} else if (suspend_touch_up - suspend_touch_down >= 1000) {
+			} else if (suspend_touch_up - suspend_touch_down >= 140) {
 				LOGI("[%d] %s Move action do not wake up, DOWN_DELTA_TIME = %llu.\n", __LINE__, __func__, suspend_touch_up - suspend_touch_down);
 			}
 			if (driverInLowPower) {
@@ -1937,6 +1980,9 @@ static int IT7260_ts_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 
 	LOGI("[%d] %s chipInLowPower = %d, TP_DLMODE = %d. \n", __LINE__, __func__, chipInLowPower, TP_DLMODE);
 	if (!chipInLowPower && !TP_DLMODE) {
+		if (!ChangePalmThreshold(0x70,0x00)) {
+			LOGI("[%d] %s change palm threshold fail.\n", __LINE__, __func__);
+		}
 		if (i2cWriteNoReadyCheck(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) != 1) {
 			LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
 			chipInLowPower = false;
