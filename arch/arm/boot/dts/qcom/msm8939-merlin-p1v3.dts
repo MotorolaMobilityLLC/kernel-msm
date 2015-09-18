@@ -15,5 +15,6 @@
 #include "msm8939-merlin-v3.dtsi"
 
 / {
-	qcom,board-id = <0x4B 0x8130>;
+	qcom,board-id = <0x4B 0x8130>,
+			<0x4B 0x8230>;
 };
