@@ -593,6 +593,13 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	const char *pname;
 	u32 panel_ver;
 
+	/*
+	 * Currently, the LK only detects the panel_name and panel_ver from
+	 * the primary display/master display only
+	 */
+	if (ctrl_pdata->panel_data.panel_info.pdest == DISPLAY_2)
+		return 0;
+
 	np = of_find_node_by_path("/chosen");
 	ctrl_pdata->panel_config.esd_enable =
 				!of_property_read_bool(np, "mmi,esd");
@@ -631,8 +638,10 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		(panel_ver & 0xff0000) >> 16,
 		ctrl_pdata->panel_config.panel_ver);
 
-	panelinfo.panel_name = (char *) &ctrl_pdata->panel_config.panel_name;
-	panelinfo.panel_ver = &ctrl_pdata->panel_config.panel_ver;
+	ctrl_pdata->panel_data.panel_info.panel_ver = panel_ver;
+	strlcpy(ctrl_pdata->panel_data.panel_info.panel_family_name,
+		ctrl_pdata->panel_config.panel_name,
+		sizeof(ctrl_pdata->panel_data.panel_info.panel_family_name));
 
 	of_node_put(np);
 
@@ -2146,12 +2155,14 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		
 	data = of_get_property(np, "qcom,mdss-dsi-panel-supplier", NULL);
 	if (!data)
-		memset(pinfo->supplier, '\0', sizeof(pinfo->supplier));
-	else if (strlcpy(pinfo->supplier, data, sizeof(pinfo->supplier)) >=
-		sizeof(pinfo->supplier)) {
+		memset(pinfo->panel_supplier, '\0',
+				sizeof(pinfo->panel_supplier));
+	else if (strlcpy(pinfo->panel_supplier, data,
+			sizeof(pinfo->panel_supplier)) >=
+				sizeof(pinfo->panel_supplier)) {
 		pr_err("%s: Panel supplier name too large\n", __func__);
 	}
-	panelinfo.panel_supplier = pinfo->supplier;
+
 	return 0;
 }
 
