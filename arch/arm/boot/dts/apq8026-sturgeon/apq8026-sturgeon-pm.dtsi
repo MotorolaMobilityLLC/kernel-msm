@@ -66,8 +66,13 @@
 
 &spmi_bus {
 	qcom,pm8226@0 {
-	    /*10s key-press to reset the device*/
 		qcom,power-on@800 {
+			compatible = "qcom,qpnp-power-on";
+			qcom,s3-debounce = <16>;
+			/*set s3 source type to kpdpwr */
+			qcom,s3-src = "kpdpwr";
+
+			/*10s key-press to reset the device*/
 			qcom,pon_1 {
 				qcom,support-reset = <1>;
 				qcom,s1-timer = <10256>;
