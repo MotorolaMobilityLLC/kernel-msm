@@ -64,6 +64,9 @@
 #define GPIO_QUAT_MI2S_DATA0  48
 #define GPIO_QUAT_NUM 3
 
+#define GPIO_SDA4_AP_PA       10
+#define GPIO_SCL4_AP_PA       11
+
 struct request_gpio {
 	unsigned gpio_no;
 	char *gpio_name;
@@ -976,6 +979,35 @@ static struct afe_clk_cfg lpass_mi2s_disable = {
         0,
 };
 
+static int msm8226_tfa98xx_i2c_gpio_request(void)
+{
+	int rtn = 0;
+	pr_info("%s: request i2c gpios\n", __func__);
+
+	rtn = gpio_request(GPIO_SDA4_AP_PA,"SPK_I2C_SDA");
+	if (rtn)
+	{
+		pr_err("%s: Failed to request GPIO_SDA4_AP_PA\n", __func__);
+		return rtn;
+	}
+
+	rtn = gpio_request(GPIO_SCL4_AP_PA,"SPK_I2C_SCL");
+	if (rtn)
+	{
+		pr_err("%s: Failed to request GPIO_SCL4_AP_PA\n", __func__);
+		gpio_free(GPIO_SDA4_AP_PA);
+		return rtn;
+	}
+	return rtn;
+}
+
+static int msm8226_tfa98xx_i2c_gpio_free(void)
+{
+	pr_info("%s: free i2c gpios\n", __func__);
+	gpio_free(GPIO_SDA4_AP_PA);
+	gpio_free(GPIO_SCL4_AP_PA);
+	return 0;
+}
 static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream,int id,struct mi2s_clk *mi2s_clk,struct request_gpio *mi2s_gpio,int size)
 {
 	int ret =0;
@@ -989,6 +1021,10 @@ static void msm8226_mi2s_shutdown(struct snd_pcm_substream *substream,int id,str
        	
       		}	
 		msm8226_mi2s_free_gpios(mi2s_gpio,size);
+		if(AFE_PORT_ID_TERTIARY_MI2S_RX == id)
+		{
+			msm8226_tfa98xx_i2c_gpio_free();
+		}
 	}
 }
 
@@ -1017,6 +1053,103 @@ static int msm8226_configure_mi2s_gpio(struct request_gpio *mi2s_gpio,int size)
 
 	return rtn;
 }
+int msm_q6_enable_mi2s_clocks(bool enable)
+{
+	union afe_port_config port_config;
+	int rc = 0;
+
+	pr_info("msm_q6_enable_mi2s_clocks enter\n");
+	if(enable)
+	{
+		port_config.i2s.channel_mode = AFE_PORT_I2S_SD0;
+		port_config.i2s.mono_stereo = MSM_AFE_CH_STEREO;
+		port_config.i2s.data_format= 0;
+		port_config.i2s.bit_width = 16;
+		port_config.i2s.reserved = 0;
+		port_config.i2s.i2s_cfg_minor_version = AFE_API_VERSION_I2S_CONFIG;
+		port_config.i2s.sample_rate = 48000;
+		port_config.i2s.ws_src = 1;
+
+		rc = afe_port_start(AFE_PORT_ID_TERTIARY_MI2S_RX, &port_config, 48000);
+		pr_debug("afe_port_start ret: %d\n",rc);
+		if(IS_ERR_VALUE(rc))
+		{
+			pr_err("%s:fail to open AFE port\n",__func__);
+			return -EINVAL;
+		}
+
+		pr_debug("<%s> <%d>: Config AFE_PORT_ID_TERTIARY_MI2S_RX success.\n", __func__, __LINE__);
+		pr_debug("<%s> <%d>: port_config.i2s.sample_rate =%d.\n", __func__, __LINE__,port_config.i2s.sample_rate);
+	}
+	else
+	{
+		pr_info("%s:afe_port_stop_nowait\n",__func__);
+		rc = afe_port_stop_nowait(AFE_PORT_ID_TERTIARY_MI2S_RX);
+		if (IS_ERR_VALUE(rc))
+		{
+			pr_err(KERN_ERR"fail to stop AFE port\n");
+			return -EINVAL;
+		}
+
+		pr_debug("<%s> <%d>: Stop AFE_PORT_ID_TERTIARY_MI2S_RX success.\n", __func__, __LINE__);
+	}
+	return rc;
+}
+
+static int msm_tert_mi2s_clk = 0;
+
+int msm_external_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_tert_mi2s_clk = %d\n", __func__, msm_tert_mi2s_clk);
+	ucontrol->value.integer.value[0] = msm_tert_mi2s_clk;
+	return 0;
+}
+
+int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = -EINVAL;
+	msm_tert_mi2s_clk = ucontrol->value.integer.value[0];
+
+	pr_debug("%s:msm_tert_mi2s_clk : %d\n",__func__, msm_tert_mi2s_clk);
+	if(msm_tert_mi2s_clk)
+	{
+		msm8226_tfa98xx_i2c_gpio_request();
+		msm8226_configure_mi2s_gpio(tert_mi2s_gpio,GPIO_TERT_NUM);
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_enable);
+		if (ret < 0)
+		{
+			pr_err("%s: enable afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+
+		ret = msm_q6_enable_mi2s_clocks(1);
+		if (ret < 0)
+		{
+			pr_err("%s: enable_mi2s_clocks failed\n", __func__);
+			return ret;
+		}
+	}
+	else
+	{
+		ret = msm_q6_enable_mi2s_clocks(0);
+		if (ret < 0)
+		{
+			pr_err("%s: disable_mi2s_clocks failed\n", __func__);
+			return ret;
+		}
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_disable);
+		if (ret < 0)
+		{
+			pr_err("%s: disable afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+
+		msm8226_mi2s_free_gpios(tert_mi2s_gpio,GPIO_TERT_NUM);
+		msm8226_tfa98xx_i2c_gpio_free();
+	}
+	return ret;
+}
 static int msm8226_mi2s_startup(struct snd_pcm_substream *substream,int id,struct mi2s_clk *mi2s_clk,struct request_gpio *mi2s_gpio,int size)
 {
 	int ret = 0;
@@ -1028,6 +1161,10 @@ static int msm8226_mi2s_startup(struct snd_pcm_substream *substream,int id,struc
 
 	if (atomic_inc_return(&(mi2s_clk->mi2s_rsc_ref)) == 1) {
 		pr_info("%s: acquire mi2s resources\n", __func__);
+		if(AFE_PORT_ID_TERTIARY_MI2S_RX == id)
+		{
+			msm8226_tfa98xx_i2c_gpio_request();
+		}
 		msm8226_configure_mi2s_gpio(mi2s_gpio,size);	
        		ret = afe_set_lpass_clock(id, &lpass_mi2s_enable);	
        		if (ret < 0) {	
