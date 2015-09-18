@@ -771,6 +771,7 @@ static struct cntry_locales_custom bcm4358_pcie_translate_sta_nodfs_table[] = {
 };
 
 static struct cntry_locales_custom bcm4358_pcie_translate_ap_table[] = {
+	{"", "XT", 993},
 	{"JP", "JP", 988},
 };
 
