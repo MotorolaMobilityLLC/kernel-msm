@@ -86,6 +86,12 @@ static const char * const mad_audio_mux_text[] = {
 };
 
 
+extern int msm_external_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);
+extern int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);
+static const char *const external_pa_text[] = {"disable", "enable"};
+static const struct soc_enum msm_external_pa_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, external_pa_text),
+};
 static void msm_pcm_routing_cfg_pp(int port_id, int copp_idx, int topology,
 				   int channels)
 {
@@ -3395,6 +3401,8 @@ static const struct snd_kcontrol_new lsm_function[] = {
 		     msm_routing_lsm_func_get, msm_routing_lsm_func_put),
 	SOC_ENUM_EXT(TERT_MI2S_TX_TEXT" "LSM_FUNCTION_TEXT, lsm_func_enum,
 		    msm_routing_lsm_func_get, msm_routing_lsm_func_put),
+	SOC_ENUM_EXT("Initial external PA", msm_external_pa_enum[0],
+			msm_external_pa_get, msm_external_pa_put),
 };
 
 static const char * const aanc_slim_0_rx_text[] = {
