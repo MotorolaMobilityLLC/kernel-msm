@@ -27983,7 +27983,7 @@ int wma_resume_target(WMA_HANDLE handle, int runtime_pm)
 
 	wmi_pending_cmds = wmi_get_pending_cmds(wma_handle->wmi_handle);
 	while (wmi_pending_cmds && timeout++ < WMA_MAX_RESUME_RETRY) {
-		msleep(1);
+		msleep(10);
 		wmi_pending_cmds = wmi_get_pending_cmds(wma_handle->wmi_handle);
 	}
 

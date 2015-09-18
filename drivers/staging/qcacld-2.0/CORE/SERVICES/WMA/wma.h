@@ -79,7 +79,7 @@
 #define WMA_READY_EVENTID_TIMEOUT          2000
 #define WMA_TGT_SUSPEND_COMPLETE_TIMEOUT   3000
 #define WMA_WAKE_LOCK_TIMEOUT              1000
-#define WMA_MAX_RESUME_RETRY               1000
+#define WMA_MAX_RESUME_RETRY               100
 #define WMA_RESUME_TIMEOUT                 3000
 #define WMA_TGT_WOW_TX_COMPLETE_TIMEOUT    2000
 #define MAX_MEM_CHUNKS                     32
