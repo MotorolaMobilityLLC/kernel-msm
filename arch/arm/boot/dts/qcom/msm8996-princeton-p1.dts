@@ -66,6 +66,9 @@
 };
 
 &spi_0 {
+	pinctrl-0 = <&spi_0_active &princeton_p1_spi_0_cs2_active>;
+	pinctrl-1 = <&spi_0_sleep &princeton_p1_spi_0_cs2_sleep>;
+
 	apba_flash: m25p80@2 {
 		compatible = "w25q40bw";
 		reg = <2>; /* BLSP1_SPI_CS2B_N */
