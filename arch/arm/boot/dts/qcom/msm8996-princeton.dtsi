@@ -136,6 +136,39 @@
 		intersil,init-level = <255>;
 		intersil,no-reset;
 	};
+
+	atmel_mxt_ts@4a {
+		compatible = "atmel,atmel_mxt_ts";
+		reg = <0x4a>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <40 0>;
+		gpios = <&tlmm 40 0>,        /* IRQ */
+			<&tlmm 39 0>;        /* RESET */
+		touch_vdd-supply = <&pm8994_l22>;
+		touch_avdd-supply = <&pm8994_s4>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&touch_int_default &touch_reset_active>;
+		pinctrl-1 = <&touch_int_active &touch_reset_active>;
+
+		atmel,cfg {
+			atmel,family-id = <0xa4>;
+			atmel,variant-id = <0x7>;
+			atmel,version = <0x5>;
+			atmel,build = <0x11>;
+			atmel,revision-id = <0x32>;
+		};
+
+		touchstate_modes {
+			touchmode-default = <&default_active_atmel &default_suspended_atmel>;
+		};
+		default_active_atmel: touchstate_default_active {
+			patch-data = "";
+		};
+		default_suspended_atmel: touchstate_aod_suspended {
+			patch-data = "T100@3=0,6=1,47=32,49=32;T7@0=0,1=0,2=0;";
+		};
+	};
+
 };
 
 &soc {
