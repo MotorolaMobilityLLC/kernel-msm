@@ -529,7 +529,6 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mipi_panel_info *mipi;
 	struct dsi_panel_cmds *pcmds;
-	u32 flags = 0;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -560,13 +559,12 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 
 		pr_debug("%s: sending switch commands\n", __func__);
 		pcmds = &pt->switch_cmds;
-		flags |= CMD_REQ_DMA_TPG;
 	} else {
 		pr_warn("%s: Invalid mode switch attempted\n", __func__);
 		return;
 	}
 
-	mdss_dsi_panel_cmds_send(ctrl_pdata, pcmds, flags);
+	mdss_dsi_panel_cmds_send(ctrl_pdata, pcmds, 0);
 }
 
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
@@ -990,9 +988,9 @@ static int mdss_dsi_parse_fbc_params(struct device_node *np,
 }
 
 static void mdss_panel_parse_te_params(struct device_node *np,
-				       struct mdss_panel_timing *timing)
+				       struct mdss_panel_info *panel_info)
 {
-	struct mdss_mdp_pp_tear_check *te = &timing->te;
+
 	u32 tmp;
 	int rc = 0;
 	/*
@@ -1001,27 +999,27 @@ static void mdss_panel_parse_te_params(struct device_node *np,
 	 * vclk_line base on 60 fps; write is faster than read;
 	 * init == start == rdptr;
 	 */
-	te->tear_check_en =
+	panel_info->te.tear_check_en =
 		!of_property_read_bool(np, "qcom,mdss-tear-check-disable");
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-cfg-height", &tmp);
-	te->sync_cfg_height = (!rc ? tmp : 0xfff0);
+	panel_info->te.sync_cfg_height = (!rc ? tmp : 0xfff0);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-init-val", &tmp);
-	te->vsync_init_val = (!rc ? tmp : timing->yres);
+	panel_info->te.vsync_init_val = (!rc ? tmp : panel_info->yres);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-threshold-start", &tmp);
-	te->sync_threshold_start = (!rc ? tmp : 4);
+	panel_info->te.sync_threshold_start = (!rc ? tmp : 4);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-threshold-continue", &tmp);
-	te->sync_threshold_continue = (!rc ? tmp : 4);
+	panel_info->te.sync_threshold_continue = (!rc ? tmp : 4);
 	rc = of_property_read_u32(np, "qcom,mdss-tear-check-start-pos", &tmp);
-	te->start_pos = (!rc ? tmp : te->vsync_init_val);
+	panel_info->te.start_pos = (!rc ? tmp : panel_info->yres);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-rd-ptr-trigger-intr", &tmp);
-	te->rd_ptr_irq = (!rc ? tmp : te->vsync_init_val + 1);
+	panel_info->te.rd_ptr_irq = (!rc ? tmp : panel_info->yres + 1);
 	rc = of_property_read_u32(np, "qcom,mdss-tear-check-frame-rate", &tmp);
-	te->refx100 = (!rc ? tmp : 6000);
+	panel_info->te.refx100 = (!rc ? tmp : 6000);
 }
 
 
@@ -1510,7 +1508,7 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 	return 0;
 }
 
-static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
+static int __mdss_dsi_timing_from_dt(struct device_node *np,
 	struct dsi_panel_timing *pt)
 {
 	u32 tmp;
@@ -1576,6 +1574,14 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-t-clk-post", &tmp);
 	pt->t_clk_post = (!rc ? tmp : 0x03);
 
+	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+		"qcom,mdss-dsi-on-command", "qcom,mdss-dsi-on-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &pt->switch_cmds,
+		"qcom,mdss-dsi-timing-switch-command",
+		"qcom,mdss-dsi-timing-switch-command-state");
+
+	mdss_dsi_parse_fbc_params(np, &pt->timing.fbc);
 	if (np->name) {
 		pt->timing.name = kstrdup(np->name, GFP_KERNEL);
 		pr_info("%s: found new timing \"%s\" (%pK)\n", __func__,
@@ -1585,20 +1591,7 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 	return 0;
 }
 
-static void  mdss_dsi_panel_config_res_properties(struct device_node *np,
-		struct dsi_panel_timing *pt)
-{
-	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
-			"qcom,mdss-dsi-on-command",
-			"qcom,mdss-dsi-on-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &pt->switch_cmds,
-			"qcom,mdss-dsi-timing-switch-command",
-			"qcom,mdss-dsi-timing-switch-command-state");
-	mdss_dsi_parse_fbc_params(np, &pt->timing.fbc);
-	mdss_panel_parse_te_params(np, &pt->timing);
-}
-
-static int mdss_dsi_panel_parse_display_timings(struct device_node *np,
+static int __mdss_panel_parse_display_timings(struct device_node *np,
 		struct mdss_panel_data *panel_data)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl;
@@ -1622,11 +1615,10 @@ static int mdss_dsi_panel_parse_display_timings(struct device_node *np,
 		 * timings directly from root node instead
 		 */
 		pr_debug("reading display-timings from panel node\n");
-		rc = mdss_dsi_panel_timing_from_dt(np, &pt);
-		if (!rc) {
-			mdss_dsi_panel_config_res_properties(np, &pt);
+		rc = __mdss_dsi_timing_from_dt(np, &pt);
+		if (!rc)
 			rc = mdss_dsi_panel_timing_switch(ctrl, &pt.timing);
-		}
+
 		return rc;
 	}
 
@@ -1645,14 +1637,11 @@ static int mdss_dsi_panel_parse_display_timings(struct device_node *np,
 	}
 
 	for_each_child_of_node(timings_np, entry) {
-		rc = mdss_dsi_panel_timing_from_dt(entry, modedb + i);
+		rc = __mdss_dsi_timing_from_dt(entry, modedb + i);
 		if (rc) {
 			kfree(modedb);
 			goto exit;
 		}
-
-		mdss_dsi_panel_config_res_properties(entry, (modedb + i));
-
 		/* if default is set, use it otherwise use first as default */
 		if (of_property_read_bool(entry,
 				"qcom,mdss-dsi-timing-default"))
@@ -1683,8 +1672,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	static const char *pdest;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
 
-	rc = mdss_dsi_panel_parse_display_timings(np,
-					&ctrl_pdata->panel_data);
+	rc = __mdss_panel_parse_display_timings(np, &ctrl_pdata->panel_data);
 	if (rc)
 		return rc;
 	rc = of_property_read_u32(np,
@@ -1926,6 +1914,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-dma-trigger");
 
 	mdss_dsi_parse_lane_swap(np, &(pinfo->mipi.dlane_swap));
+
+	mdss_panel_parse_te_params(np, pinfo);
 
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
