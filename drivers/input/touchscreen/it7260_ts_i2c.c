@@ -153,6 +153,8 @@ struct IT7260_ts_data {
 	struct delayed_work touchidle_on_work;
 	struct delayed_work exit_idle_work;
 	uint8_t reset_gpio;
+	struct sensors_classdev cdev;
+	bool palm_en;
 };
 
 struct ite7260_perfile_data {
@@ -734,6 +736,20 @@ static const struct attribute_group it7260_attr_group = {
 	.attrs = it7260_attributes,
 };
 
+static int palm_enable_set(struct sensors_classdev *sensors_cdev, unsigned int enable)
+{
+	gl_ts->palm_en = enable;
+		return 0;
+}
+
+static struct sensors_classdev palm_cdev = {
+	.name = "palm",
+	.vendor = "ITE",
+	.version = 1,
+	.enabled = 0,
+	.sensors_enable = NULL,
+};
+
 static int mode_notify_sys(struct notifier_block *notif, unsigned long code, void *data)
 {
 	LOGI("[PF]%s +\n", __func__);
@@ -838,6 +854,13 @@ static void sendPalmEvt(void)
 	input_sync(gl_ts->touch_dev);
 	input_report_key(gl_ts->touch_dev, KEY_SLEEP, 0);
 	input_sync(gl_ts->touch_dev);
+
+	if (gl_ts->palm_en) {
+		input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 1);
+		input_sync(gl_ts->palm_dev);
+		input_report_abs(gl_ts->palm_dev, ABS_DISTANCE, 0);
+		input_sync(gl_ts->palm_dev);
+	}
 }
 
 /* contrary to the name this code does not just read data - lots of processing happens */
@@ -1167,6 +1190,15 @@ static int IT7260_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	if (input_register_device(gl_ts->palm_dev)) {
 		LOGE("failed to register input device\n");
 		goto err_input_register;
+	}
+
+	gl_ts->palm_en = 0;
+	gl_ts->cdev = palm_cdev;
+	gl_ts->cdev.enabled = 0;
+	gl_ts->cdev.sensors_enable = palm_enable_set;
+	if (sensors_classdev_register(&client->dev, &gl_ts->cdev)) {
+		LOGE("[IT7260] %s: class device create failed\n", __func__);
+		goto err_out;
 	}
 
 	touchMissed = false;
