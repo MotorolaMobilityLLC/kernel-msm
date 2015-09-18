@@ -1113,12 +1113,12 @@
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
 		touchstate_modes {
-			touchmode-default = <&default_active &default_suspended>;
+			touchmode-default = <&default_active_syna &default_suspended_syna>;
 		};
-		default_active: touchstate_default_active {
+		default_active_syna: touchstate_default_active {
 			patch-data = "";
 		};
-		default_suspended: touchstate_aod_suspended {
+		default_suspended_syna: touchstate_aod_suspended {
 			patch-data = "F1@0=1&7";
 		};
 	};
