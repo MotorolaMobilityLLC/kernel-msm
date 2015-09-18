@@ -84,7 +84,6 @@
 
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
-struct sys_panelinfo panelinfo = {NULL, NULL, NULL};
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -924,47 +923,64 @@ static struct attribute_group mdss_fb_attr_group = {
 	.attrs = mdss_fb_attrs,
 };
 
+static struct mdss_panel_info *get_panel_info(struct device *dev)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	struct mdss_panel_info *pinfo = mfd->panel_info;
+
+	return pinfo;
+}
+
 static ssize_t panel_name_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%s\n", panelinfo.panel_name);
+	struct mdss_panel_info *pinfo = get_panel_info(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", pinfo->panel_family_name);
 }
 
 static ssize_t panel_ver_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "0x%016llx\n", *panelinfo.panel_ver);
+	struct mdss_panel_info *pinfo = get_panel_info(dev);
+
+	return snprintf(buf, PAGE_SIZE, "0x%08x\n", pinfo->panel_ver);
 }
 
 static ssize_t panel_supplier_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%s\n", panelinfo.panel_supplier);
+	struct mdss_panel_info *pinfo = get_panel_info(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", pinfo->panel_supplier);
 }
 
 static ssize_t panel_man_id_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	u32 panel_ver = (u32)(*panelinfo.panel_ver);
+	struct mdss_panel_info *pinfo = get_panel_info(dev);
 
-	return snprintf(buf, PAGE_SIZE, "0x%02x\n", panel_ver & 0xff);
+	return snprintf(buf, PAGE_SIZE, "0x%02x\n",
+		pinfo->panel_ver & 0xff);
 }
 
 static ssize_t panel_controller_ver_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	u32 panel_ver = (u32)(*panelinfo.panel_ver);
+	struct mdss_panel_info *pinfo = get_panel_info(dev);
 
-	return snprintf(buf, PAGE_SIZE, "0x%02x\n", (panel_ver & 0xff00) >> 8);
+	return snprintf(buf, PAGE_SIZE, "0x%02x\n",
+		(pinfo->panel_ver & 0xff00) >> 8);
 }
 
 static ssize_t panel_controller_drv_ver_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	u32 panel_ver = (u32)(*panelinfo.panel_ver);
+	struct mdss_panel_info *pinfo = get_panel_info(dev);
 
 	return snprintf(buf, PAGE_SIZE, "0x%02x\n",
-				(panel_ver & 0xff0000) >> 16);
+		(pinfo->panel_ver & 0xff0000) >> 16);
 }
 static DEVICE_ATTR(panel_name, S_IRUGO, panel_name_show, NULL);
 static DEVICE_ATTR(panel_ver, S_IRUGO, panel_ver_show, NULL);
