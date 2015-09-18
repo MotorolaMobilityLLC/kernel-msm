@@ -869,6 +869,11 @@ si_findcoreidx(si_t *sih, uint coreid, uint coreunit)
 	uint found;
 	uint i;
 
+	if(!sii)
+	{
+		printk("[wlan]: si_findcoreidx: sii is a null pointer\n");
+		return (BADIDX);
+	}
 
 	found = 0;
 
