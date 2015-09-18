@@ -21,6 +21,7 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/dma-buf.h>
+#include <linux/pm_runtime.h>
 
 #include "mdp3_ctrl.h"
 #include "mdp3.h"
@@ -760,12 +761,12 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 		goto on_error;
 	}
 
-	mdp3_enable_regulator(true);
-	rc = mdp3_footswitch_ctrl(1);
-	if (rc) {
-		pr_err("fail to enable mdp footswitch ctrl\n");
-		goto on_error;
-	}
+	/*
+	 * Keep a reference to the runtime pm till device is turned
+	 * off, where this reference will be released.
+	 */
+	pm_runtime_get_sync(&mdp3_res->pdev->dev);
+
 	mdp3_ctrl_notifier_register(mdp3_session,
 		&mdp3_session->mfd->mdp_sync_pt_data.notifier);
 
@@ -830,6 +831,7 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 	mdp3_ctrl_pp_resume(mfd);
 on_error:
 	mutex_unlock(&mdp3_session->lock);
+
 	return rc;
 }
 
@@ -902,8 +904,10 @@ static int mdp3_ctrl_off(struct msm_fb_data_type *mfd)
 
 	mdp3_ctrl_notifier_unregister(mdp3_session,
 		&mdp3_session->mfd->mdp_sync_pt_data.notifier);
-	mdp3_enable_regulator(false);
-	mdp3_footswitch_ctrl(0);
+
+	/* Release the pm runtime reference */
+	pm_runtime_put_sync_suspend(&mdp3_res->pdev->dev);
+
 	mdp3_session->vsync_enabled = 0;
 	atomic_set(&mdp3_session->vsync_countdown, 0);
 	atomic_set(&mdp3_session->dma_done_cnt, 0);
@@ -918,6 +922,7 @@ off_error:
 		mdp3_bufq_deinit(&mdp3_session->bufq_in);
 	}
 	mutex_unlock(&mdp3_session->lock);
+
 	return 0;
 }
 
@@ -2566,6 +2571,10 @@ int mdp3_ctrl_init(struct msm_fb_data_type *mfd)
 	rc = mdp3_create_sysfs_link(dev);
 	if (rc)
 		pr_warn("problem creating link to mdp sysfs\n");
+
+	/* Enable PM runtime */
+	pm_runtime_set_suspended(&mdp3_res->pdev->dev);
+	pm_runtime_enable(&mdp3_res->pdev->dev);
 
 	kobject_uevent(&dev->kobj, KOBJ_ADD);
 	pr_debug("vsync kobject_uevent(KOBJ_ADD)\n");
