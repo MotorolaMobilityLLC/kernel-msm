@@ -14,11 +14,22 @@
 #include "msm8996-moto-common.dtsi"
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 #include "dsi-panel-mot-inx-570-QHD-cmd.dtsi"
+#include "dsi-panel-mot-smd-520-QHD-cmd.dtsi"
 
 / {
 	model = "Princeton";
 	compatible = "qcom,msm8996-princeton", "qcom,msm8996-moto",
 			"qcom,msm8996";
+};
+
+&soc {
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
 };
 
 &mdss_dsi {
@@ -50,6 +61,8 @@
 	vddio_disp-supply = <&pm8994_l14>;
 	vsp_disp-supply = <&isl98611a_pos>;
 	vsn_disp-supply = <&isl98611a_neg>;
+	vci_disp-supply = <&pm8994_l18>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
 	qcom,platform-bklight-en-gpio = <&tlmm 94 0>;
 };
 
@@ -64,6 +77,16 @@
 			23 1e 07 08 05 03 04 a0
 			23 1e 07 08 05 03 04 a0
 			23 18 07 08 05 03 04 a0
+	];
+};
+
+&mot_smd_520_QHD_cmd_v0 {
+	qcom,mdss-dsi-panel-timings-8996 = [
+			23 1e 07 09 05 03 04 a0
+			23 1e 07 09 05 03 04 a0
+			23 1e 07 09 05 03 04 a0
+			23 1e 07 09 05 03 04 a0
+			23 19 07 08 05 03 04 a0
 	];
 };
 
