@@ -43,66 +43,22 @@
 		};
 	};
 
-	/* These are defined in msm8996-pinctrl.dtsi but we need to add CS on
-	 * GPIO2 since our reference design includes it.
-	 */
-	spi_0 {
-		spi_0_active: spi_0_active {
-			spi_0_cs0 {
-				pins = "gpio2";
-				function = "blsp_spi1";
-				drive-strength = <0x6>;
-				bias-disable;
-			};
-
-			spi_0_cs2b {
+	/* Princeton uses CS2 on GPIO28 to talk to SPI Flash */
+	princeton_p1_spi_0_cs2 {
+		princeton_p1_spi_0_cs2_active: active {
+			mux {
 				pins = "gpio28";
 				function = "blsp1_spi";
-				drive-strength = <6>;
+				drive-strength = <0x6>;
 				bias-disable;
 			};
 		};
 
-		spi_0_sleep: spi_0_sleep {
-			spi_0_cs0 {
-				pins = "gpio2";
-				function = "blsp_spi1";
-				drive-strength = <0x6>;
-				bias-disable;
-			};
-
-			spi_0_cs2b {
+		princeton_p1_spi_0_cs2_sleep: sleep {
+			mux {
 				pins = "gpio28";
-				function = "blsp1_spi";
-				drive-strength = <6>;
+				function = "gpio";
 				bias-disable;
-			};
-		};
-	};
-
-	/* QC definition in msm8996-pinctrl.dtsi uses gpio90 which conflicts
-	 * with motosh bslen
-	 */
-	spi_0_cs {
-		spi_0_cs_active {
-			mux {
-				/delete-property/ pins;
-				pins = "gpio24";
-			};
-			config {
-				/delete-property/ pins;
-				pins = "gpio24";
-			};
-	       };
-
-	       spi_0_cs_sleep {
-			mux {
-				/delete-property/ pins;
-				pins = "gpio24";
-			};
-			config {
-				/delete-property/ pins;
-				pins = "gpio24";
 			};
 		};
 	};
