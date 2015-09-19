@@ -1675,7 +1675,8 @@ void msm_isp_process_iommu_page_fault(struct vfe_device *vfe_dev)
 
 	error_event.frame_id =
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
-	vfe_dev->buf_mgr->ops->buf_mgr_debug(vfe_dev->buf_mgr);
+	vfe_dev->buf_mgr->ops->buf_mgr_debug(vfe_dev->buf_mgr,
+			vfe_dev->page_fault_addr);
 	msm_isp_print_ping_pong_address(vfe_dev);
 	vfe_dev->hw_info->vfe_ops.axi_ops.read_wm_ping_pong_addr(vfe_dev);
 
@@ -1931,6 +1932,7 @@ static int msm_vfe_iommu_fault_handler(struct iommu_domain *domain,
 
 	if (token) {
 		vfe_dev = (struct vfe_device *)token;
+		vfe_dev->page_fault_addr = iova;
 		if (!vfe_dev->buf_mgr || !vfe_dev->buf_mgr->ops ||
 			!vfe_dev->axi_data.num_active_stream) {
 			pr_err("%s:%d] buf_mgr %p active strms %d\n", __func__,

@@ -1181,7 +1181,7 @@ int msm_isp_print_ping_pong_address(struct vfe_device *vfe_dev)
 
 	for (j = 0; j < MAX_NUM_STREAM; j++) {
 		stream_info = &vfe_dev->axi_data.stream_info[j];
-		if (stream_info->state != ACTIVE)
+		if (stream_info->state == AVALIABLE)
 			continue;
 
 		for (pingpong_bit = 0; pingpong_bit < 2; pingpong_bit++) {
