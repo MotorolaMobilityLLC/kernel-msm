@@ -154,7 +154,7 @@ static enum typec_current_mode tusb320_current_mode_detect(void)
 		return current_mode;
 	}
 
-	pr_info("%s: REG_CURRENT_MODE 08H is 0x%x\n", __func__, reg_val);
+	pr_debug("%s: REG_CURRENT_MODE 08H is 0x%x\n", __func__, reg_val);
 
 	mask_val = reg_val & TUSB320_REG_CUR_MODE_DETECT_MASK;
 	switch (mask_val) {
@@ -171,7 +171,7 @@ static enum typec_current_mode tusb320_current_mode_detect(void)
 		current_mode = TYPEC_CURRENT_MODE_UNSPPORTED;
 	}
 
-	pr_info("%s: current mode is %d\n", __func__, current_mode);
+	pr_debug("%s: current mode is %d\n", __func__, current_mode);
 
 	return current_mode;
 }

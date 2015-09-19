@@ -46,6 +46,7 @@
 #include <linux/msm-bus.h>
 #include <linux/irq.h>
 #include <soc/qcom/scm.h>
+#include <linux/usb/typec.h>
 
 #include "dwc3_otg.h"
 #include "core.h"
@@ -2271,6 +2272,8 @@ get_prop_usbin_voltage_now(struct dwc3_msm *mdwc)
 	}
 }
 
+#define HIGH_CURRENT_UA		1800000
+#define MEDIUM_CURRENT_UA	1500000
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -2285,7 +2288,12 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 		val->intval = mdwc->voltage_max;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = mdwc->current_max;
+		if (typec_current_mode_detect() == TYPEC_CURRENT_MODE_HIGH)
+			val->intval = HIGH_CURRENT_UA;
+		else if (typec_current_mode_detect() == TYPEC_CURRENT_MODE_MID)
+			val->intval = MEDIUM_CURRENT_UA;
+		else
+			val->intval = mdwc->current_max;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = mdwc->vbus_active;
