@@ -582,6 +582,16 @@ static void tusb320_intb_work(struct work_struct *work)
 			    (TUSB320_REG_STATUS_DRP_DUTY_CYCLE_60);
 		}
 	} else if (TYPEC_ATTACHED_AS_UFP == attached_state) {
+		/*
+		 * exception handling:
+		 * if CC pin is not stable, the state transition may from
+		 * AS DFP to AS UFP direct, VBUS should be turned off first
+		 */
+		if (di->sink_attached) {
+			pr_info("%s: UFP state, remove Sink first\n", __func__);
+			typec_sink_detected_handler(TYPEC_SINK_REMOVED);
+			di->sink_attached = 0;
+		}
 
 		if (REVERSE_ATTEMPT == di->reverse_state) {
 			pr_info
