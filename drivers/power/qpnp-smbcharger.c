@@ -265,6 +265,7 @@ struct smbchg_chip {
 	struct mutex			dc_en_lock;
 	struct mutex			fcc_lock;
 	struct mutex			pm_lock;
+	struct mutex			otg_lock;
 	/* aicl deglitch workaround */
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
@@ -3707,10 +3708,12 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 	int rc = 0;
 	struct smbchg_chip *chip = rdev_get_drvdata(rdev);
 
+	mutex_lock(&chip->otg_lock);
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN_BIT, 0);
 	if (rc < 0)
 		dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n", rc);
+	mutex_unlock(&chip->otg_lock);
 	smbchg_otg_pulse_skip_disable(chip, REASON_OTG_ENABLED, false);
 	pr_smb(PR_STATUS, "Disabling OTG Boost\n");
 	return rc;
@@ -5245,6 +5248,8 @@ static irqreturn_t otg_oc_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	s64 elapsed_us = ktime_us_delta(ktime_get(), chip->otg_enable_time);
+	int rc = 0;
+	u8 reg = 0;
 
 	if (elapsed_us > OTG_OC_RETRY_DELAY_US)
 		chip->otg_retries = 0;
@@ -5263,11 +5268,26 @@ static irqreturn_t otg_oc_handler(int irq, void *_chip)
 		pr_smb(PR_STATUS,
 			"Retrying OTG enable. Try #%d, elapsed_us %lld\n",
 						chip->otg_retries, elapsed_us);
-		smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
-							OTG_EN_BIT, 0);
-		msleep(20);
-		smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
-							OTG_EN_BIT, OTG_EN_BIT);
+		mutex_lock(&chip->otg_lock);
+		rc = smbchg_read(chip, &reg, chip->bat_if_base + CMD_CHG_REG, 1);
+
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't read OTG enable bit rc=%d\n", rc);
+			mutex_unlock(&chip->otg_lock);
+			return IRQ_HANDLED;
+		}
+
+		if(reg & OTG_EN_BIT) {
+			smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
+					    OTG_EN_BIT, 0);
+			msleep(20);
+			smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
+					    OTG_EN_BIT, OTG_EN_BIT);
+		} else {
+			pr_smb(PR_STATUS, "oc trigger enable after disable called \n");
+		}
+
+		mutex_unlock(&chip->otg_lock);
 		chip->otg_enable_time = ktime_get();
 	}
 	return IRQ_HANDLED;
@@ -6526,6 +6546,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->pm_lock);
 	mutex_init(&chip->wipower_config);
 	mutex_init(&chip->usb_status_lock);
+	mutex_init(&chip->otg_lock);
 	device_init_wakeup(chip->dev, true);
 
 	rc = smbchg_parse_peripherals(chip);
