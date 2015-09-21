@@ -65,6 +65,10 @@
 			ite,cfg-name = "it7260_cfg.bin";
 		};
 	};
+
+	qcom,msm-ssc-sensors {
+		compatible = "qcom,msm-ssc-sensors";
+	};
 };
 
 &i2c_1 {
