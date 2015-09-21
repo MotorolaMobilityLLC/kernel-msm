@@ -88,6 +88,20 @@ enum m4sensorhub_panichdl_index {
 	PANICHDL_MAX = PANICHDL_IRQ_RESTORE+1
 };
 
+/* This enum specifies the bit number in the 64 bit
+ * features supported value written to the M4 flash
+ * 64 bit 0xFF means invalid config
+ */
+enum m4sensorhub_host_config {
+	M4SH_DIFFUSER = 0,
+	M4SH_PRESSURE = 1,
+	/*
+	 * All new enum values should be above M4SH_MAX
+	 * and value should be less than M4SH_MAX
+	 */
+	M4SH_MAX = 63
+};
+
 struct m4sensorhub_hwconfig {
 	int wakeirq_gpio;
 	int nowakeirq_gpio;
@@ -113,6 +127,7 @@ struct m4sensorhub_data {
 	struct m4sensorhub_irq_dbg irq_dbg;
 	char *filename;
 	u16 fw_version;
+	u64 host_config; /* 8 bytes to be sent to m4 */
 };
 
 struct init_calldata {
