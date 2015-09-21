@@ -29,6 +29,13 @@
 	};
 };
 
+&i2c_2 {
+	m4sensorhub@43 {
+		mot,pressure_enabled;
+		/delete-property/ mot,diffuser_enabled;
+	};
+};
+
 &i2c_5 {
 	atmxt@4a {
 		atmel,atmxt-tdat-filename = "atmxt-r3_hybrid.tdat";
