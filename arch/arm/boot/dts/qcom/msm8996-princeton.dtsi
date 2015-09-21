@@ -23,6 +23,22 @@
 };
 
 &soc {
+	isl98611a_pos: isl98611a_pos {
+		compatible = "regulator-fixed";
+		regulator-name = "isl98611a_pos";
+		gpio = <&tlmm 69 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	isl98611a_neg: isl98611a_neg {
+		compatible = "regulator-fixed";
+		regulator-name = "isl98611a_neg";
+		gpio = <&pm8994_gpios 5 0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
 	vbat_disp_vreg: vbat_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vbat_disp";
