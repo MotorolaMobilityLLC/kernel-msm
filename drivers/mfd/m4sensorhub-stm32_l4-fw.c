@@ -32,12 +32,22 @@
 #define VERSION_OFFSET  0x200
 #define VERSION_ADDRESS (USER_FLASH_FIRST_PAGE_ADDRESS + VERSION_OFFSET)
 
+
 #define FLASH_SIZE (1024*1024) /* 1 MB */
 #define FLASH_SIZE_FOR_SW (FLASH_SIZE / 2)
 #define BARKER_SIZE 8
 /* Sector 255 ends at 0x0807FFFF, and we put BARKER_SIZE number of bytes as barker */
 
 #define BARKER_ADDRESS (USER_FLASH_FIRST_PAGE_ADDRESS + FLASH_SIZE_FOR_SW - BARKER_SIZE)
+
+#define USER_FLASH_BANK2_ADDRESS	0x08080000
+#define USER_FLASH_BANK2_LAST_SECTOR    255
+#define SECTOR_SIZE  0x800
+#define HOST_CONFIG_SIZE 8
+#define HOST_CONFIG_ADDRESS \
+	(USER_FLASH_BANK2_ADDRESS + \
+	(USER_FLASH_BANK2_LAST_SECTOR * SECTOR_SIZE))
+#define HOST_CONFIG_SECTOR	511
 
 /* The MAX_FILE_SIZE is the size of sectors 0 to 255 where the firmware code
  * will reside (minus the barker size). */
@@ -48,7 +58,46 @@
 #define MAX_TRANSFER_SIZE	256 /* bytes */
 
 u8 barker_buffer[BARKER_SIZE] = {0xDE, 0xC0, 0xCE, 0x0A, 0x00, 0x00, 0x00, 0x00};
+
 /* -------------- Local Functions ------------- */
+static int m4sensorhub_update_host_config(struct m4sensorhub_data *m4sensorhub)
+{
+	int ret = -1;
+	int host_config_sector = HOST_CONFIG_SECTOR;
+	int num_of_sectors_host_config = 1;
+	u64 host_config_from_device;
+	if (m4sensorhub_bl_rm(m4sensorhub, HOST_CONFIG_ADDRESS,
+			      (u8 *)&host_config_from_device,
+				HOST_CONFIG_SIZE) != 0) {
+		KDEBUG(M4SH_ERROR, "%s : %d : error reading host_config\n",
+		       __func__, __LINE__);
+		return -EIO;
+	}
+
+	if (host_config_from_device == m4sensorhub->host_config) {
+		KDEBUG(M4SH_NOTICE, "%s: host_config match\n", __func__);
+		return 0;
+	}
+
+	KDEBUG(M4SH_NOTICE, "host config differ\n");
+	if (m4sensorhub_bl_erase_sectors(
+			m4sensorhub, &host_config_sector,
+			num_of_sectors_host_config) != 0) {
+			KDEBUG(M4SH_ERROR, "%s : %d : error erasing sectors\n",
+			       __func__, __LINE__);
+	}
+
+	if (m4sensorhub_bl_wm(m4sensorhub,
+			      HOST_CONFIG_ADDRESS,
+					(u8 *)&(m4sensorhub->host_config),
+					HOST_CONFIG_SIZE) != 0) {
+		KDEBUG(M4SH_ERROR,
+		       "%s : %d: error writing host_config\n",
+				__func__, __LINE__);
+	}
+
+	return ret;
+}
 
 static int m4sensorhub_bl_jump_to_user(struct m4sensorhub_data *m4sensorhub)
 {
@@ -65,6 +114,10 @@ static int m4sensorhub_bl_jump_to_user(struct m4sensorhub_data *m4sensorhub)
 	}
 
 	if (memcmp(barker_read_from_device, barker_buffer, BARKER_SIZE) == 0) {
+		/* check if host_config is properly written
+		 * before letting M4 run */
+		/* deliberately ignoring return value from this function */
+		m4sensorhub_update_host_config(m4sensorhub);
 		m4sensorhub_bl_go(m4sensorhub, USER_FLASH_FIRST_PAGE_ADDRESS);
 		KDEBUG(M4SH_NOTICE, "Waiting for M4 setup\n");
 		/* M4 takes about 1.47s to boot up with our binary running,
@@ -274,7 +327,6 @@ int m4sensorhub_l4_load_firmware(struct m4sensorhub_data *m4sensorhub,
 			       __func__, __LINE__);
 			continue;
 		}
-
 
 		KDEBUG(M4SH_NOTICE, "%s: %d bytes written successfully\n",
 		       __func__, (int)firmware->size);
