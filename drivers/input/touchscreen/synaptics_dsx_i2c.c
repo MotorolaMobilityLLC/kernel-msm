@@ -5954,6 +5954,102 @@ static int ps_notifier_register(struct synaptics_rmi4_data *rmi4_data)
 #define ps_notifier_unregister(r)
 #endif
 
+#include <linux/major.h>
+#include <linux/kdev_t.h>
+
+/* Attribute: path (RO) */
+static ssize_t path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	ssize_t blen;
+	const char *path;
+
+	if (!rmi4_data) {
+		pr_err("cannot get rmi4_data pointer\n");
+		return (ssize_t)0;
+	}
+	path = kobject_get_path(&rmi4_data->i2c_client->dev.kobj, GFP_KERNEL);
+	blen = scnprintf(buf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+	return blen;
+}
+
+static struct device_attribute touchscreen_attributes[] = {
+	__ATTR_RO(path),
+	__ATTR_NULL
+};
+
+#define TSDEV_MINOR_BASE 128
+#define TSDEV_MINOR_MAX 32
+
+static int synaptics_dsx_sysfs_touchscreen(
+	struct synaptics_rmi4_data *rmi4_data, bool create)
+{
+	struct synaptics_rmi4_device_info *rmi = &(rmi4_data->rmi4_mod_info);
+	struct device_attribute *attrs = touchscreen_attributes;
+	int i, error;
+	static struct class *touchscreen_class;
+	static struct device *ts_class_dev;
+
+	if (create) {
+		int minor = input_get_new_minor(rmi4_data->i2c_client->addr,
+						1, false);
+		if (minor < 0) {
+			pr_warn("assigning dynamic minor\n");
+			minor = input_get_new_minor(TSDEV_MINOR_BASE,
+					TSDEV_MINOR_MAX, true);
+		}
+
+		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
+		if (IS_ERR(touchscreen_class)) {
+			error = PTR_ERR(touchscreen_class);
+			touchscreen_class = NULL;
+			return error;
+		}
+
+		ts_class_dev = device_create(touchscreen_class, NULL,
+				MKDEV(INPUT_MAJOR, minor),
+				rmi4_data, rmi->product_id_string);
+		if (IS_ERR(ts_class_dev)) {
+			error = PTR_ERR(ts_class_dev);
+			ts_class_dev = NULL;
+			return error;
+		}
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			error = device_create_file(ts_class_dev, &attrs[i]);
+			if (error)
+				break;
+		}
+
+		if (error)
+			goto device_destroy;
+	} else {
+		if (!touchscreen_class || !ts_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(ts_class_dev, &attrs[i]);
+
+		device_unregister(ts_class_dev);
+		class_unregister(touchscreen_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(ts_class_dev, &attrs[i]);
+	device_destroy(touchscreen_class,
+			MKDEV(INPUT_MAJOR, rmi4_data->i2c_client->addr));
+	ts_class_dev = NULL;
+	class_unregister(touchscreen_class);
+	pr_err("error creating touchscreen class\n");
+
+	return -ENODEV;
+}
+
  /**
  * synaptics_rmi4_probe()
  *
@@ -6238,6 +6334,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 #endif
 
+	synaptics_dsx_sysfs_touchscreen(rmi4_data, true);
+
 	if (rmi4_data->charger_detection)
 		ps_notifier_register(rmi4_data);
 
@@ -6343,6 +6441,8 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 #elif defined(CONFIG_FB)
 	fb_unregister_client(&rmi4_data->panel_nb);
 #endif
+
+	synaptics_dsx_sysfs_touchscreen(rmi4_data, false);
 	synaptics_rmi4_cleanup(rmi4_data);
 	synaptics_dsx_free_modes(rmi4_data);
 	if (rmi4_data->charger_detection)
