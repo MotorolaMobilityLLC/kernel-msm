@@ -437,6 +437,7 @@
 		mot,reset-gpio  = <&msmgpio 62 0x00>;
 		mot,boot0-gpio  = <&msmgpio 109 0x00>;
 		mot,fw-filename = "m4sensorhub-p0_dali.bin";
+		mot,diffuser_enabled;
 	};
 };
 
