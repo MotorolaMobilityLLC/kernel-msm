@@ -4030,6 +4030,7 @@ static int determine_initial_status(struct smb135x_chg *chip)
 {
 	int rc;
 	u8 reg;
+	union power_supply_propval ret = {0, };
 
 	/*
 	 * It is okay to read the interrupt status here since
@@ -4069,6 +4070,16 @@ static int determine_initial_status(struct smb135x_chg *chip)
 		chip->batt_warm = true;
 	if (reg & IRQ_A_COLD_SOFT_BIT)
 		chip->batt_cool = true;
+
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	if (chip->bms_psy) {
+		rc = chip->bms_psy->get_property(chip->bms_psy,
+				POWER_SUPPLY_PROP_HEALTH, &ret);
+		smb135x_set_prop_batt_health(chip, ret.intval);
+	}
 
 	rc = smb135x_read(chip, IRQ_C_REG, &reg);
 	if (rc < 0) {
@@ -5765,7 +5776,7 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		pr_err("failed to set up voltage notifications: %d\n", rc);
 
 	schedule_delayed_work(&chip->heartbeat_work,
-			      msecs_to_jiffies(60000));
+			      msecs_to_jiffies(0));
 
 	dev_info(chip->dev, "SMB135X version = %s revision = %s successfully probed batt=%d dc = %d usb = %d\n",
 			version_str[chip->version],
