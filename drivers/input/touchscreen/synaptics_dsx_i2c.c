@@ -5278,6 +5278,9 @@ static struct device_attribute touchscreen_attributes[] = {
 	__ATTR_NULL
 };
 
+#define TSDEV_MINOR_BASE 128
+#define TSDEV_MINOR_MAX 32
+
 static int synaptics_dsx_sysfs_touchscreen(
 	struct synaptics_rmi4_data *rmi4_data, bool create)
 {
@@ -5288,6 +5291,14 @@ static int synaptics_dsx_sysfs_touchscreen(
 	static struct device *ts_class_dev;
 
 	if (create) {
+		int minor = input_get_new_minor(rmi4_data->i2c_client->addr,
+						1, false);
+		if (minor < 0) {
+			pr_warn("assigning dynamic minor\n");
+			minor = input_get_new_minor(TSDEV_MINOR_BASE,
+					TSDEV_MINOR_MAX, true);
+		}
+
 		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
 		if (IS_ERR(touchscreen_class)) {
 			error = PTR_ERR(touchscreen_class);
@@ -5296,7 +5307,7 @@ static int synaptics_dsx_sysfs_touchscreen(
 		}
 
 		ts_class_dev = device_create(touchscreen_class, NULL,
-				MKDEV(INPUT_MAJOR, rmi4_data->i2c_client->addr),
+				MKDEV(INPUT_MAJOR, minor),
 				rmi4_data, rmi->product_id_string);
 		if (IS_ERR(ts_class_dev)) {
 			error = PTR_ERR(ts_class_dev);
