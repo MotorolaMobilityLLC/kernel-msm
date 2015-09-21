@@ -840,6 +840,23 @@ static int m4sensorhub_probe(struct i2c_client *client,
 		goto err_reg_shutdown;
 	}
 
+	m4sensorhub->host_config = 0;
+
+	/* Read the device tree for supported features */
+	if (of_property_read_bool(node, "mot,diffuser_enabled")) {
+		KDEBUG(M4SH_INFO, "%s: Diffuser enabled\n", __func__);
+		m4sensorhub->host_config |=
+			(0x0000000000000001 << M4SH_DIFFUSER);
+	} else {
+		KDEBUG(M4SH_INFO, "%s: Diffuser disabled\n", __func__);
+	}
+
+	if (of_property_read_bool(node, "mot,pressure_enabled")) {
+		KDEBUG(M4SH_INFO, "%s: Pressure sensor supported\n", __func__);
+		m4sensorhub->host_config |=
+			(0x0000000000000001 << M4SH_PRESSURE);
+	}
+
 	KDEBUG(M4SH_INFO, "%s: disabling peripherals\n", __func__);
 	m4sensorhub_notify_subscriber(DISABLE_PERIPHERAL);
 	err = request_firmware_nowait(THIS_MODULE,
