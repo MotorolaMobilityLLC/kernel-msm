@@ -1917,34 +1917,28 @@ dhd_rtt_capability(dhd_pub_t *dhd, rtt_capabilities_t *capa)
 {
 	rtt_status_info_t *rtt_status;
 	int err = BCME_OK;
+
 	NULL_CHECK(dhd, "dhd is NULL", err);
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
 	NULL_CHECK(capa, "capa is NULL", err);
 	bzero(capa, sizeof(rtt_capabilities_t));
-	switch (rtt_status->rtt_capa.proto) {
-	case RTT_CAP_ONE_WAY:
-		capa->rtt_one_sided_supported = 1;
-		break;
-	case RTT_CAP_FTM_WAY:
-		capa->rtt_ftm_supported = 1;
-		break;
-	}
 
-	switch (rtt_status->rtt_capa.feature) {
-	case RTT_FEATURE_LCI:
+	/* set rtt capabilities */
+	if (rtt_status->rtt_capa.proto & RTT_CAP_ONE_WAY)
+		capa->rtt_one_sided_supported = 1;
+	if (rtt_status->rtt_capa.proto & RTT_CAP_FTM_WAY)
+		capa->rtt_ftm_supported = 1;
+
+	if (rtt_status->rtt_capa.feature & RTT_FEATURE_LCI)
 		capa->lci_support = 1;
-		break;
-	case RTT_FEATURE_LCR:
+	if (rtt_status->rtt_capa.feature & RTT_FEATURE_LCR)
 		capa->lcr_support = 1;
-		break;
-	case RTT_FEATURE_PREAMBLE:
+	if (rtt_status->rtt_capa.feature & RTT_FEATURE_PREAMBLE)
 		capa->preamble_support = 1;
-		break;
-	case RTT_FEATURE_BW:
+	if (rtt_status->rtt_capa.feature & RTT_FEATURE_BW)
 		capa->bw_support = 1;
-		break;
-	}
+
 	/* bit mask */
 	capa->preamble_support = rtt_status->rtt_capa.preamble;
 	capa->bw_support = rtt_status->rtt_capa.bw;
@@ -1991,6 +1985,8 @@ dhd_rtt_init(dhd_pub_t *dhd)
 		rtt_status->rtt_capa.proto |= RTT_CAP_FTM_WAY;
 
 		/* indicate to set tx rate */
+		rtt_status->rtt_capa.feature |= RTT_FEATURE_LCI;
+		rtt_status->rtt_capa.feature |= RTT_FEATURE_LCR;
 		rtt_status->rtt_capa.feature |= RTT_FEATURE_PREAMBLE;
 		rtt_status->rtt_capa.preamble |= RTT_PREAMBLE_VHT;
 		rtt_status->rtt_capa.preamble |= RTT_PREAMBLE_HT;
