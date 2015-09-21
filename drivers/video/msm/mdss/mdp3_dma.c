@@ -330,7 +330,10 @@ static int mdp3_dmap_config(struct mdp3_dma *dma,
 
 	dma->source_config = *source_config;
 	dma->output_config = *output_config;
-	mdp3_irq_enable(MDP3_INTR_LCDC_UNDERFLOW);
+
+	if (dma->output_config.out_sel != MDP3_DMA_OUTPUT_SEL_DSI_CMD)
+		mdp3_irq_enable(MDP3_INTR_LCDC_UNDERFLOW);
+
 	mdp3_dma_callback_setup(dma);
 	return 0;
 }
