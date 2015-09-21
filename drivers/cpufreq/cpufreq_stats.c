@@ -262,19 +262,19 @@ static void cpufreq_stats_free_table(unsigned int cpu)
 
 static void cpufreq_allstats_free(void)
 {
-	int cpu;
+	int i;
 	struct all_cpufreq_stats *all_stat;
 
 	sysfs_remove_file(cpufreq_global_kobject,
 						&_attr_all_time_in_state.attr);
 
-	for_each_possible_cpu(cpu) {
-		all_stat = per_cpu(all_cpufreq_stats, cpu);
+	for (i = 0; i < total_cpus; i++) {
+		all_stat = per_cpu(all_cpufreq_stats, i);
 		if (!all_stat)
 			continue;
 		kfree(all_stat->time_in_state);
 		kfree(all_stat);
-		per_cpu(all_cpufreq_stats, cpu) = NULL;
+		per_cpu(all_cpufreq_stats, i) = NULL;
 	}
 	if (all_freq_table) {
 		kfree(all_freq_table->freq_table);
