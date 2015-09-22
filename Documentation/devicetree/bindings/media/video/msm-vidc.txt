@@ -112,6 +112,8 @@ Optional properties:
 - qcom,fw-bias = The address at which venus fw is loaded (manually).
 - qcom,enable-idle-indicator = A bool to enable video hardware to generate
   idle message when it is in idle state.
+- qcom,pm-qos-latency-us = The latency used to vote for QOS power manager. This
+value is typically max(latencies of every cluster at all power levels) + 1
 
 Example:
 
