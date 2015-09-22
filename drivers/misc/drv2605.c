@@ -256,7 +256,6 @@ static unsigned char reinit_sequence[] = {
 	LIBRARY_SELECTION_REG, 0,
 };
 
-#if SKIP_LRA_AUTOCAL == 1
 static unsigned char LRA_init_sequence[] = {
 	MODE_REG, MODE_INTERNAL_TRIGGER,
 	REAL_TIME_PLAYBACK_REG, REAL_TIME_PLAYBACK_STRENGTH,
@@ -295,7 +294,6 @@ static unsigned char LRA_init_sequence[] = {
 	Control3_REG, NG_Thresh_2 | INPUT_ANALOG,
 	AUTOCAL_MEM_INTERFACE_REG, AUTOCAL_TIME_500MS,
 };
-#endif
 
 #ifdef CONFIG_OF
 static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
