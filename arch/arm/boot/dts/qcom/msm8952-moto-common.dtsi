@@ -566,3 +566,12 @@
 		pinctrl-0 = <&tfa9890_reset_default &tfa9890_earpiece_default>;
 	};
 };
+
+&other_ext_mem {
+	reg = <0x0 0x84f00000 0x0 0x1900000>;
+};
+
+&qcom_seecom {
+	reg = <0x84f00000 0x1400000>;
+	/delete-property/ qcom,appsbl-qseecom-support;
+};
