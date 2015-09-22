@@ -343,6 +343,8 @@ static int esdfs_read_super(struct super_block *sb, const char *dev_name,
 	esdfs_derive_perms(sb->s_root);
 	esdfs_set_perms(inode);
 
+	esdfs_add_super(sbi, sb);
+
 	goto out;
 
 out_freeroot:
