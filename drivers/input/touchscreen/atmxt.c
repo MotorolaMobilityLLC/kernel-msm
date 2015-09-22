@@ -90,17 +90,9 @@ static int atmxt_i2c_read(struct atmxt_driver_data *dd, uint8_t *buf, int size);
 static int atmxt_save_internal_data(struct atmxt_driver_data *dd);
 static int atmxt_save_data5(struct atmxt_driver_data *dd, uint8_t *entry);
 static int atmxt_save_data6(struct atmxt_driver_data *dd, uint8_t *entry);
-static int atmxt_save_data7(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg);
 static int atmxt_save_data8(struct atmxt_driver_data *dd,
 		uint8_t *entry, uint8_t *reg);
 static int atmxt_save_data9(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg);
-static int atmxt_save_data42(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg);
-static int atmxt_save_data46(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg);
-static int atmxt_save_data62(struct atmxt_driver_data *dd,
 		uint8_t *entry, uint8_t *reg);
 static void atmxt_compute_checksum(struct atmxt_driver_data *dd);
 static void atmxt_compute_partial_checksum(uint8_t *byte1, uint8_t *byte2,
@@ -482,15 +474,66 @@ atmxt_resume_no_dd_fail:
 	return (err < 0) ? err : 0;
 }
 
+static int atmxt_write_aot(struct atmxt_driver_data *dd, uint8_t *aot,
+	uint32_t aot_size)
+{
+	int i, err = 0;
+	uint8_t addr[2];
+
+	/* data is formatted in "object, offset, value" format */
+	for (i = 0; i < aot_size; i += 3) {
+		switch (aot[i]) {
+		case 7:
+			addr[0] = dd->addr->data7[0];
+			addr[1] = dd->addr->data7[1];
+			break;
+		case 9:
+			addr[0] = dd->addr->data9[0];
+			addr[1] = dd->addr->data9[1];
+			break;
+		case 40:
+			addr[0] = dd->addr->data40[0];
+			addr[1] = dd->addr->data40[1];
+			break;
+		case 42:
+			addr[0] = dd->addr->data42[0];
+			addr[1] = dd->addr->data42[1];
+			break;
+		case 46:
+			addr[0] = dd->addr->data46[0];
+			addr[1] = dd->addr->data46[1];
+			break;
+		case 62:
+			addr[0] = dd->addr->data62[0];
+			addr[1] = dd->addr->data62[1];
+			break;
+		default:
+			pr_err("%s: unknown object number %d for aot.\n",
+			       __func__, aot[i]);
+			continue;
+		}
+
+		/* Check address overflow */
+		if ((addr[0] + aot[i+1]) < addr[0])
+			addr[1]++;
+		/* Increment address by offset */
+		addr[0] += aot[i+1];
+
+		err = atmxt_i2c_write(dd, addr[0], addr[1], &(aot[i+2]), 1);
+		if (err < 0) {
+			pr_err("%s: Error sending to object number %d.\n",
+			       __func__, aot[i]);
+			break;
+		}
+	}
+	return err;
+}
+
 static int atmxt_enter_aot(struct atmxt_driver_data *dd)
 {
 	int err = 0;
 	int drv_state = 0;
 	int ic_state = 0;
-	uint8_t sleep_cmd[4] = {0x64, 0x64, 0x19, 0x00};
-	uint8_t adx_cmd[2] = {0x08, 0x08};
-	uint8_t mxd_cmd = 0x08;
-	uint8_t sup_cmd[5] = {0x41, 0x28, 0x14, 0x14, 0x40};
 
 	atmxt_dbg(dd, ATMXT_DBG3, "%s: Entering AOT...\n", __func__);
 
@@ -502,39 +545,11 @@ static int atmxt_enter_aot(struct atmxt_driver_data *dd)
 	case ATMXT_DRV_IDLE:
 		switch (ic_state) {
 		case ATMXT_IC_ACTIVE:
-			err = atmxt_i2c_write(dd,
-				dd->addr->pwr[0], dd->addr->pwr[1],
-				&(sleep_cmd[0]), 4);
+			err = atmxt_write_aot(dd, dd->util->enter_aot,
+				dd->util->enter_aot_size);
 			if (err < 0) {
-				pr_err("%s: Failed to reduce power.\n",
-					__func__);
-				goto atmxt_enter_aot_fail;
-			}
-
-			err = atmxt_i2c_write(dd,
-				dd->addr->adx[0], dd->addr->adx[1],
-				&(adx_cmd[0]), 2);
-			if (err < 0) {
-				pr_err("%s: Failed to reduce adx.\n",
-					__func__);
-				goto atmxt_enter_aot_fail;
-			}
-
-			err = atmxt_i2c_write(dd,
-				dd->addr->mxd[0], dd->addr->mxd[1],
-				&mxd_cmd, 1);
-			if (err < 0) {
-				pr_err("%s: Failed to reduce mxd.\n",
-					__func__);
-				goto atmxt_enter_aot_fail;
-			}
-
-			err = atmxt_i2c_write(dd,
-				dd->addr->sup[0], dd->addr->sup[1],
-				&(sup_cmd[0]), 5);
-			if (err < 0) {
-				pr_err("%s: Failed to change sup.\n",
-					__func__);
+				pr_err("%s: Failed to send enter aot commands.\n",
+				       __func__);
 				goto atmxt_enter_aot_fail;
 			}
 
@@ -583,38 +598,11 @@ static int atmxt_exit_aot(struct atmxt_driver_data *dd)
 			break;
 
 		case ATMXT_IC_AOT:
-			err = atmxt_i2c_write(dd,
-				dd->addr->pwr[0], dd->addr->pwr[1],
-				&(dd->data->pwr[0]), 4);
+			err = atmxt_write_aot(dd, dd->util->exit_aot,
+				dd->util->exit_aot_size);
 			if (err < 0) {
-				pr_err("%s: Failed to wake IC.\n", __func__);
-				goto atmxt_exit_aot_fail;
-			}
-
-			err = atmxt_i2c_write(dd,
-				dd->addr->adx[0], dd->addr->adx[1],
-				&(dd->data->adx[0]), 2);
-			if (err < 0) {
-				pr_err("%s: Failed to restore adx.\n",
-					__func__);
-				goto atmxt_exit_aot_fail;
-			}
-
-			err = atmxt_i2c_write(dd,
-				dd->addr->mxd[0], dd->addr->mxd[1],
-				&(dd->data->mxd), 1);
-			if (err < 0) {
-				pr_err("%s: Failed to restore mxd.\n",
-					__func__);
-				goto atmxt_exit_aot_fail;
-			}
-
-			err = atmxt_i2c_write(dd,
-				dd->addr->sup[0], dd->addr->sup[1],
-				&(dd->data->sup[0]), 5);
-			if (err < 0) {
-				pr_err("%s: Failed to restore sup.\n",
-					__func__);
+				pr_err("%s: Failed to send exit aot commands.\n",
+				       __func__);
 				goto atmxt_exit_aot_fail;
 			}
 
@@ -948,6 +936,16 @@ static void atmxt_tdat_callback(const struct firmware *tdat, void *context)
 			dd->util->addr[0] = cur_data[2];
 			dd->util->addr[1] = cur_data[3];
 			dd->client->addr = dd->util->addr[0];
+			break;
+
+		case 0x05:
+			dd->util->enter_aot = cur_data;
+			dd->util->enter_aot_size = cur_size;
+			break;
+
+		case 0x06:
+			dd->util->exit_aot = cur_data;
+			dd->util->exit_aot_size = cur_size;
 			break;
 
 		default:
@@ -2086,6 +2084,7 @@ static int atmxt_save_internal_data(struct atmxt_driver_data *dd)
 	bool chk_7 = false;
 	bool chk_8 = false;
 	bool chk_9 = false;
+	bool chk_40 = false;
 	bool chk_42 = false;
 	bool chk_46 = false;
 	bool chk_62 = false;
@@ -2108,10 +2107,8 @@ static int atmxt_save_internal_data(struct atmxt_driver_data *dd)
 
 		case 7:
 			chk_7 = true;
-			err = atmxt_save_data7(dd, &(dd->info_blk->data[i+0]),
-				&(dd->nvm->data[nvm_iter]));
-			if (err < 0)
-				goto atmxt_save_internal_data_fail;
+			dd->addr->data7[0] = dd->info_blk->data[i+1];
+			dd->addr->data7[1] = dd->info_blk->data[i+2];
 			break;
 
 		case 8:
@@ -2124,6 +2121,8 @@ static int atmxt_save_internal_data(struct atmxt_driver_data *dd)
 
 		case 9:
 			chk_9 = true;
+			dd->addr->data9[0] = dd->info_blk->data[i+1];
+			dd->addr->data9[1] = dd->info_blk->data[i+2];
 			err = atmxt_save_data9(dd, &(dd->info_blk->data[i+0]),
 				&(dd->nvm->data[nvm_iter]));
 			if (err < 0)
@@ -2134,28 +2133,28 @@ static int atmxt_save_internal_data(struct atmxt_driver_data *dd)
 			usr_start_seen = true;
 			break;
 
+		case 40:
+			chk_40 = true;
+			dd->addr->data40[0] = dd->info_blk->data[i+1];
+			dd->addr->data40[1] = dd->info_blk->data[i+2];
+			break;
+
 		case 42:
 			chk_42 = true;
-			err = atmxt_save_data42(dd, &(dd->info_blk->data[i+0]),
-				&(dd->nvm->data[nvm_iter]));
-			if (err < 0)
-				goto atmxt_save_internal_data_fail;
+			dd->addr->data42[0] = dd->info_blk->data[i+1];
+			dd->addr->data42[1] = dd->info_blk->data[i+2];
 			break;
 
 		case 46:
 			chk_46 = true;
-			err = atmxt_save_data46(dd, &(dd->info_blk->data[i+0]),
-				&(dd->nvm->data[nvm_iter]));
-			if (err < 0)
-				goto atmxt_save_internal_data_fail;
+			dd->addr->data46[0] = dd->info_blk->data[i+1];
+			dd->addr->data46[1] = dd->info_blk->data[i+2];
 			break;
 
 		case 62:
 			chk_62 = true;
-			err = atmxt_save_data62(dd, &(dd->info_blk->data[i+0]),
-				&(dd->nvm->data[nvm_iter]));
-			if (err < 0)
-				goto atmxt_save_internal_data_fail;
+			dd->addr->data62[0] = dd->info_blk->data[i+1];
+			dd->addr->data62[1] = dd->info_blk->data[i+2];
 			break;
 
 		default:
@@ -2190,6 +2189,11 @@ static int atmxt_save_internal_data(struct atmxt_driver_data *dd)
 
 	if (!chk_9) {
 		printk(KERN_ERR "%s: Object 9 is missing.\n", __func__);
+		err = -ENODATA;
+	}
+
+	if (!chk_40) {
+		pr_err("%s: Object 40 is missing.\n", __func__);
 		err = -ENODATA;
 	}
 
@@ -2247,28 +2251,6 @@ static int atmxt_save_data6(struct atmxt_driver_data *dd, uint8_t *entry)
 		dd->addr->cal[1]++;
 
 atmxt_save_data6_fail:
-	return err;
-}
-
-static int atmxt_save_data7(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg)
-{
-	int err = 0;
-
-	if (entry[3] < 3) {
-		printk(KERN_ERR "%s: Power object is too small.\n", __func__);
-		err = -ENODATA;
-		goto atmxt_save_data7_fail;
-	}
-
-	dd->addr->pwr[0] = entry[1];
-	dd->addr->pwr[1] = entry[2];
-	dd->data->pwr[0] = reg[0];
-	dd->data->pwr[1] = reg[1];
-	dd->data->pwr[2] = reg[2];
-	dd->data->pwr[3] = reg[3];
-
-atmxt_save_data7_fail:
 	return err;
 }
 
@@ -2336,75 +2318,6 @@ static int atmxt_save_data9(struct atmxt_driver_data *dd,
 	}
 
 atmxt_save_data9_fail:
-	return err;
-}
-
-static int atmxt_save_data42(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg)
-{
-	int err = 0;
-
-	if (entry[3] < 4) {
-		printk(KERN_ERR "%s: Suppression object is too small.\n",
-			__func__);
-		err = -ENODATA;
-		goto atmxt_save_data42_fail;
-	}
-
-	dd->addr->sup[0] = entry[1];
-	dd->addr->sup[1] = entry[2];
-	dd->data->sup[0] = reg[0];
-	dd->data->sup[1] = reg[1];
-	dd->data->sup[2] = reg[2];
-	dd->data->sup[3] = reg[3];
-	dd->data->sup[4] = reg[4];
-
-atmxt_save_data42_fail:
-	return err;
-}
-
-static int atmxt_save_data46(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg)
-{
-	int err = 0;
-
-	if (entry[3] < 3) {
-		pr_err("%s: CTE object is too small.\n", __func__);
-		err = -ENODATA;
-		goto atmxt_save_data46_fail;
-	}
-
-	dd->addr->adx[0] = entry[1] + 2;
-	dd->addr->adx[1] = entry[2];
-	if (dd->addr->adx[0] < entry[1]) /* Check for 16-bit addr overflow */
-		dd->addr->adx[1]++;
-
-	dd->data->adx[0] = reg[2];
-	dd->data->adx[1] = reg[3];
-
-atmxt_save_data46_fail:
-	return err;
-}
-
-static int atmxt_save_data62(struct atmxt_driver_data *dd,
-		uint8_t *entry, uint8_t *reg)
-{
-	int err = 0;
-
-	if (entry[3] < 25) {
-		pr_err("%s: Noise object is too small.\n", __func__);
-		err = -ENODATA;
-		goto atmxt_save_data62_fail;
-	}
-
-	dd->addr->mxd[0] = entry[1] + 24;
-	dd->addr->mxd[1] = entry[2];
-	if (dd->addr->mxd[0] < entry[1]) /* Check for 16-bit addr overflow */
-		dd->addr->mxd[1]++;
-
-	dd->data->mxd = reg[24];
-
-atmxt_save_data62_fail:
 	return err;
 }
 
