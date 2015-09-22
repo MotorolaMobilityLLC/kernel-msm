@@ -138,7 +138,6 @@
 #define LRA_RTP_STRENGTH                0x7F
 #endif
 
-#define SKIP_LRA_AUTOCAL        1
 #define GO_BIT_POLL_INTERVAL    15
 #define STANDBY_WAKE_DELAY      1
 
@@ -181,6 +180,8 @@ static struct drv260x {
 	struct regulator *vibrator_vdd;
 	int use_default_calibration;
 	unsigned char default_calibration[5];
+	bool skip_lra_autocal;
+	bool lra_drive;
 } *drv260x;
 
 static struct vibrator {
@@ -339,6 +340,8 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 		for (i = 0; i < regs_len; i++)
 			pdata->calibration_data[i] = be32_to_cpu(regs_arr[i]);
 	}
+	pdata->skip_lra_autocal = of_property_read_bool(np, "skip_lra_autocal");
+	pdata->lra_drive = of_property_read_bool(np, "lra_drive");
 
 	return pdata;
 }
@@ -848,6 +851,8 @@ static int drv260x_probe(struct i2c_client *client,
 			pdata->calibration_data,
 			sizeof(drv260x->default_calibration));
 	}
+	drv260x->lra_drive = pdata->lra_drive;
+	drv260x->skip_lra_autocal = pdata->skip_lra_autocal;
 
 	INIT_WORK(&vibdata.work_probe, probe_work);
 	schedule_work(&vibdata.work_probe);
@@ -859,36 +864,37 @@ static void probe_work(struct work_struct *work)
 	int status;
 	struct i2c_client *client = drv260x->client;
 
-	drv260x_update_init_sequence(ERM_autocal_sequence,
-					sizeof(ERM_autocal_sequence),
-					RATED_VOLTAGE_REG,
-					drv260x->rated_voltage);
-	drv260x_update_init_sequence(LRA_autocal_sequence,
-					sizeof(LRA_autocal_sequence),
-					RATED_VOLTAGE_REG,
-					drv260x->rated_voltage);
-	drv260x_update_init_sequence(LRA_init_sequence,
-					sizeof(LRA_init_sequence),
-					RATED_VOLTAGE_REG,
-					drv260x->rated_voltage);
-
-	drv260x_update_init_sequence(ERM_autocal_sequence,
-					sizeof(ERM_autocal_sequence),
-					OVERDRIVE_CLAMP_VOLTAGE_REG,
-					drv260x->overdrive_voltage);
-	drv260x_update_init_sequence(LRA_autocal_sequence,
-					sizeof(LRA_autocal_sequence),
-					OVERDRIVE_CLAMP_VOLTAGE_REG,
-					drv260x->overdrive_voltage);
-	drv260x_update_init_sequence(LRA_init_sequence,
-					sizeof(LRA_init_sequence),
-					OVERDRIVE_CLAMP_VOLTAGE_REG,
-					drv260x->overdrive_voltage);
-
-	drv260x_update_init_sequence(ERM_autocal_sequence,
-					sizeof(ERM_autocal_sequence),
-					LIBRARY_SELECTION_REG,
-					g_effect_bank);
+	if (drv260x->lra_drive) {
+		drv260x_update_init_sequence(LRA_autocal_sequence,
+			sizeof(LRA_autocal_sequence),
+			RATED_VOLTAGE_REG,
+			drv260x->rated_voltage);
+		drv260x_update_init_sequence(LRA_init_sequence,
+			sizeof(LRA_init_sequence),
+			RATED_VOLTAGE_REG,
+			drv260x->rated_voltage);
+		drv260x_update_init_sequence(LRA_autocal_sequence,
+			sizeof(LRA_autocal_sequence),
+			OVERDRIVE_CLAMP_VOLTAGE_REG,
+			drv260x->overdrive_voltage);
+		drv260x_update_init_sequence(LRA_init_sequence,
+			sizeof(LRA_init_sequence),
+			OVERDRIVE_CLAMP_VOLTAGE_REG,
+			drv260x->overdrive_voltage);
+	} else {
+		drv260x_update_init_sequence(ERM_autocal_sequence,
+			sizeof(ERM_autocal_sequence),
+			RATED_VOLTAGE_REG,
+			drv260x->rated_voltage);
+		drv260x_update_init_sequence(ERM_autocal_sequence,
+			sizeof(ERM_autocal_sequence),
+			OVERDRIVE_CLAMP_VOLTAGE_REG,
+			drv260x->overdrive_voltage);
+		drv260x_update_init_sequence(ERM_autocal_sequence,
+			sizeof(ERM_autocal_sequence),
+			LIBRARY_SELECTION_REG,
+			g_effect_bank);
+	}
 
 	/* check if boot-up calibration is needed */
 	if (drv260x->disable_calibration) {
@@ -912,23 +918,18 @@ static void probe_work(struct work_struct *work)
 	/* Wait 30 us */
 	udelay(30);
 
-#if SKIP_LRA_AUTOCAL == 1
-	/* Run auto-calibration */
-	if (g_effect_bank != LIBRARY_F)
-		drv260x_write_reg_val(ERM_autocal_sequence,
-				      sizeof(ERM_autocal_sequence));
-	else
-		drv260x_write_reg_val(LRA_init_sequence,
+	if (drv260x->lra_drive) {
+		if (drv260x->skip_lra_autocal)
+			drv260x_write_reg_val(LRA_init_sequence,
 				      sizeof(LRA_init_sequence));
-#else
-	/* Run auto-calibration */
-	if (g_effect_bank == LIBRARY_F)
-		drv260x_write_reg_val(LRA_autocal_sequence,
+		else
+			drv260x_write_reg_val(LRA_autocal_sequence,
 				      sizeof(LRA_autocal_sequence));
-	else
+	} else {
+		/* ERM MODE always does autocal */
 		drv260x_write_reg_val(ERM_autocal_sequence,
 				      sizeof(ERM_autocal_sequence));
-#endif
+	}
 
 	/* Wait until the procedure is done */
 	drv2605_poll_go_bit();
@@ -936,24 +937,25 @@ static void probe_work(struct work_struct *work)
 	/* Read status */
 	status = drv260x_read_reg(STATUS_REG);
 
-#if SKIP_LRA_AUTOCAL == 0
-	/* Check result */
-	if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-		dev_err(&client->dev, "auto-cal failed.\n");
-		if (g_effect_bank == LIBRARY_F)
-			drv260x_write_reg_val(LRA_autocal_sequence,
-					      sizeof(LRA_autocal_sequence));
-		else
-			drv260x_write_reg_val(ERM_autocal_sequence,
-					      sizeof(ERM_autocal_sequence));
-		drv2605_poll_go_bit();
-		status = drv260x_read_reg(STATUS_REG);
+	if (!drv260x->skip_lra_autocal) {
+		/* Check result */
 		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-			dev_err(&client->dev, "auto-cal retry failed.\n");
-			// return -ENODEV;
-		}
+			dev_err(&client->dev, "auto-cal failed. Retry\n");
+			if (drv260x->lra_drive)
+				drv260x_write_reg_val(LRA_autocal_sequence,
+						      sizeof(LRA_autocal_sequence));
+			else
+				drv260x_write_reg_val(ERM_autocal_sequence,
+						      sizeof(ERM_autocal_sequence));
+			drv2605_poll_go_bit();
+			status = drv260x_read_reg(STATUS_REG);
+			if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
+				dev_err(&client->dev, "auto-cal retry failed.\n");
+				// return -ENODEV;
+			}
+		} else
+			dev_info(&client->dev, "auto-calibration success\n");
 	}
-#endif
 
 	/* Choose default effect library */
 	drv2605_select_library(g_effect_bank);
