@@ -107,6 +107,10 @@ struct atmxt_util_data {
 	uint32_t        tsett_size;
 	uint8_t         *fw;
 	uint32_t        fw_size;
+	uint8_t         *enter_aot;
+	uint32_t        enter_aot_size;
+	uint8_t         *exit_aot;
+	uint32_t        exit_aot_size;
 	uint8_t         addr[2];
 } __packed;
 
@@ -127,27 +131,25 @@ struct atmxt_info_block {
 
 struct atmxt_addr {
 	uint8_t         msg[2];
-	uint8_t         pwr[2];
 	uint8_t         rst[2];
 	uint8_t         nvm[2];
 	uint8_t         cal[2];
 	uint8_t         acq[2];
-	uint8_t         adx[2];
 	uint8_t         gse[2];
 	uint8_t         tse[2];
-	uint8_t         mxd[2];
-	uint8_t         sup[2];
+	uint8_t         data7[2];
+	uint8_t         data9[2];
+	uint8_t         data40[2];
+	uint8_t         data42[2];
+	uint8_t         data46[2];
+	uint8_t         data62[2];
 } __packed;
 
 struct atmxt_data {
-	uint8_t         pwr[4];
 	uint8_t         max_msg_size;
 	uint8_t         touch_id_offset;
 	bool            res[2];
 	uint8_t         acq[6];
-	uint8_t         adx[2];
-	uint8_t         mxd;
-	uint8_t         sup[5];
 	unsigned long   timer;
 	uint8_t         last_stat;
 } __packed;
