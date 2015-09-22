@@ -745,6 +745,10 @@ int read_platform_resources_from_dt(
 		dprintk(VIDC_DBG,
 				"Using fw-bias : %pa", &res->firmware_base);
 	}
+
+	of_property_read_u32(pdev->dev.of_node,
+			"qcom,pm-qos-latency-us", &res->pm_qos_latency_us);
+
 	return rc;
 err_load_max_hw_load:
 	msm_vidc_free_clock_table(res);
