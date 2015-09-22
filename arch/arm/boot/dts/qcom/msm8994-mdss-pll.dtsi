@@ -25,8 +25,6 @@
 			"pll_1_base";
 
 		gdsc-supply = <&gdsc_mdss>;
-		vddio-supply = <&pm8994_l12>;
-		vcca-supply = <&pm8994_l28>;
 		qcom,mdss-en-pll-90-phase;
 		clocks = <&clock_mmss clk_mdss_ahb_clk>;
 		clock-names = "iface_clk";
@@ -47,24 +45,6 @@
 				qcom,supply-enable-load = <0>;
 				qcom,supply-disable-load = <0>;
 			};
-
-			qcom,platform-supply-entry@1 {
-				reg = <1>;
-				qcom,supply-name = "vddio";
-				qcom,supply-min-voltage = <1800000>;
-				qcom,supply-max-voltage = <1800000>;
-				qcom,supply-enable-load = <100000>;
-				qcom,supply-disable-load = <100>;
-			};
-
-			qcom,platform-supply-entry@2 {
-				reg = <2>;
-				qcom,supply-name = "vcca";
-				qcom,supply-min-voltage = <1000000>;
-				qcom,supply-max-voltage = <1000000>;
-				qcom,supply-enable-load = <10000>;
-				qcom,supply-disable-load = <100>;
-			};
 		};
 	};
 	mdss_dsi1_pll: qcom,mdss_dsi_pll@fd9a0300 {
@@ -78,9 +58,6 @@
 		reg-names = "pll_base", "gdsc_base";
 
 		gdsc-supply = <&gdsc_mdss>;
-		vddio-supply = <&pm8994_l12>;
-		vcca-supply = <&pm8994_l28>;
-
 		clocks = <&clock_mmss clk_mdss_ahb_clk>;
 		clock-names = "iface_clk";
 		clock-rate = <0>;
@@ -96,24 +73,6 @@
 				qcom,supply-max-voltage = <0>;
 				qcom,supply-enable-load = <0>;
 				qcom,supply-disable-load = <0>;
-			};
-
-			qcom,platform-supply-entry@1 {
-				reg = <1>;
-				qcom,supply-name = "vddio";
-				qcom,supply-min-voltage = <1800000>;
-				qcom,supply-max-voltage = <1800000>;
-				qcom,supply-enable-load = <100000>;
-				qcom,supply-disable-load = <100>;
-			};
-
-			qcom,platform-supply-entry@2 {
-				reg = <2>;
-				qcom,supply-name = "vcca";
-				qcom,supply-min-voltage = <1000000>;
-				qcom,supply-max-voltage = <1000000>;
-				qcom,supply-enable-load = <10000>;
-				qcom,supply-disable-load = <100>;
 			};
 		};
 	};
