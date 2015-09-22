@@ -1770,7 +1770,13 @@ dhd_process_msgtype(dhd_pub_t *dhd, msgbuf_ring_t *ring, uint8* buf, uint16 len)
 			DHD_ERROR((" MSG_TYPE_LOOPBACK, len %d\n", msglen));
 		}
 
-		ASSERT(msgtype < DHD_PROT_FUNCS);
+		if (msgtype >= DHD_PROT_FUNCS) {
+			DHD_ERROR(("%s: msgtype %d, msglen is %d, pktlen is %d \n",
+				 __FUNCTION__, msgtype, msglen, pktlen));
+			ret = BCME_ERROR;
+			goto done;
+		}
+
 		if (table_lookup[msgtype]) {
 			table_lookup[msgtype](dhd, buf, msglen);
 		}
