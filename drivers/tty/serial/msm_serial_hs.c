@@ -296,14 +296,14 @@ static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 
 	switch (cmd) {
 	case MSM_ENABLE_UART_CLOCK: {
-		MSM_HS_INFO("%s():ENABLE UART CLOCK: cmd=%d, ioc %d\n",
+		MSM_HS_DBG("%s():ENABLE UART CLOCK: cmd=%d, ioc %d\n",
 			__func__, cmd, ioctl_count);
 		atomic_inc(&msm_uport->ioctl_count);
 		msm_hs_request_clock_on(&msm_uport->uport);
 		break;
 	}
 	case MSM_DISABLE_UART_CLOCK: {
-		MSM_HS_INFO("%s():DISABLE UART CLOCK: cmd=%d ioc %d\n",
+		MSM_HS_DBG("%s():DISABLE UART CLOCK: cmd=%d ioc %d\n",
 			__func__, cmd, ioctl_count);
 		if (ioctl_count <= 0) {
 			MSM_HS_WARN("%s():ioctl count -ve, client check voting",
@@ -321,7 +321,7 @@ static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 		if (msm_uport->pm_state != MSM_HS_PM_ACTIVE)
 			state = 0;
 		ret = state;
-		MSM_HS_INFO("%s():GET UART CLOCK STATUS: cmd=%d state=%d\n",
+		MSM_HS_DBG("%s():GET UART CLOCK STATUS: cmd=%d state=%d\n",
 			__func__, cmd, state);
 		break;
 	}
@@ -2485,7 +2485,11 @@ static int msm_hs_startup(struct uart_port *uport)
 		}
 	}
 
-	wakeup_source_init(&msm_uport->ws, tty->name);
+	if (!tty->name)
+		wakeup_source_init(&msm_uport->ws, "msm-bt-uart");
+	else
+		wakeup_source_init(&msm_uport->ws, tty->name);
+
 	ret = msm_hs_config_uart_gpios(uport);
 	if (ret) {
 		MSM_HS_ERR("Uart GPIO request failed\n");
