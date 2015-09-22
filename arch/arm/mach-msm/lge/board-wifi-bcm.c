@@ -750,7 +750,7 @@ static struct cntry_locales_custom wifi_translate_custom_table[] = {
 	{"ZA", "ZA", 6},
 	{"ZM", "LA", 2},
 	{"ZW", "ZW", 0},
-	{"DC", "XZ", 999},
+	{"00", "XZ", 999},
 };
 
 static void *bcm_wifi_get_country_code(char *ccode)
