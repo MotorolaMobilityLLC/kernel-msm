@@ -157,6 +157,8 @@ struct esdfs_dentry_info {
 /* esdfs super-block data in memory */
 struct esdfs_sb_info {
 	struct super_block *lower_sb;
+	struct super_block *s_sb;
+	struct list_head s_list;
 	u32 lower_secid;
 	struct esdfs_perms lower_perms;
 	struct esdfs_perms upper_perms;	/* root in derived mode */
@@ -166,6 +168,10 @@ struct esdfs_sb_info {
 
 extern struct esdfs_perms esdfs_perms_table[ESDFS_PERMS_TABLE_SIZE];
 extern unsigned esdfs_package_list_version;
+
+void esdfs_drop_shared_icache(struct super_block *, struct inode *);
+void esdfs_drop_sb_icache(struct super_block *, unsigned long);
+void esdfs_add_super(struct esdfs_sb_info *, struct super_block *);
 
 #define ESDFS_INODE_IS_STALE(i) ((i)->version != esdfs_package_list_version)
 #define ESDFS_INODE_CAN_LINK(i) (test_opt(ESDFS_SB((i)->i_sb), \
