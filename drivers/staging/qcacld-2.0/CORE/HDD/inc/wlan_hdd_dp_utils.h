@@ -50,8 +50,6 @@
 #include <vos_trace.h>
 #include <vos_list.h>
 
-#include <wlan_hdd_assoc.h>
-
 /**-----------------------------------------------------------------------------
   Preprocessor definitions and constants
  ----------------------------------------------------------------------------*/
@@ -117,10 +115,11 @@ VOS_STATUS hdd_list_peek_front( hdd_list_t *pList, hdd_list_node_t **ppNode );
 VOS_STATUS hdd_list_peek_next( hdd_list_t *pList, hdd_list_node_t *pNode,
                                hdd_list_node_t **ppNode );
 VOS_STATUS hdd_string_to_hex( char *pSrcMac, int length, char *pDescMac );
+struct hdd_context_s;
 #ifdef QCA_FEATURE_RPS
-void hdd_dp_util_send_rps_ind(hdd_context_t  *hdd_ctxt);
+void hdd_dp_util_send_rps_ind(struct hdd_context_s *hdd_ctx);
 #else
-static inline void hdd_dp_util_send_rps_ind(hdd_context_t  *hdd_ctxt)
+static inline void hdd_dp_util_send_rps_ind(struct hdd_context_s *hdd_ctx)
 {
 	return;
 }
