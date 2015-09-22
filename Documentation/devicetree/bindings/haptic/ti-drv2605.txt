@@ -31,6 +31,10 @@ Optional:
 		Default calibration data.
 	- rtp_overdrive_voltage:
 		overdrive voltage for RTP closed loop mode
+	- lra_drive:
+		boolean, set if LRA motor is used
+	- skip_lra_autocal:
+		boolean, set to skip LRA autocalibration
 Example:
 
 	i2c@1a200000 {
