@@ -343,6 +343,8 @@ struct drv260x_platform_data {
 	int rtp_overdrive_voltage;
 	int effects_library;
 	int disable_calibration;
+	bool skip_lra_autocal;
+	bool lra_drive;
 	struct regulator *vibrator_vdd;
 	struct regulator *static_vdd;
 	unsigned char *calibration_data;
