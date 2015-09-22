@@ -879,18 +879,10 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 {
 	struct wmi_unified *wmi_handle = (struct wmi_unified *)ctx;
 	wmi_buf_t evt_buf;
-
-#ifndef QCA_CONFIG_SMP
-	/* MDM is single core apps processor
-	 * As a result, PAUSE event cannot be processed fast enough
-	 * if RX process reserve CPU
-	 * To ensure PAUSE event processed fast enough
-	 * only PAUSE event should not be scheduled on worker thread */
 	u_int32_t len;
 	void *wmi_cmd_struct_ptr = NULL;
 	u_int32_t idx = 0;
 	int tlv_ok_status = 0;
-#endif /* QCA_CONFIG_SMP */
 
 #if  defined(WMI_INTERFACE_EVENT_LOGGING) || !defined(QCA_CONFIG_SMP)
 	u_int32_t id;
@@ -898,7 +890,6 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 #endif
 
 	evt_buf = (wmi_buf_t) htc_packet->pPktContext;
-#ifndef QCA_CONFIG_SMP
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
 	/* TX_PAUSE EVENT should be handled with tasklet context */
 	if ((WMI_TX_PAUSE_EVENTID == id) ||
@@ -933,7 +924,6 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 		adf_nbuf_free(evt_buf);
 		return;
 	}
-#endif /* QCA_CONFIG_SMP */
 
 #ifdef WMI_INTERFACE_EVENT_LOGGING
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
