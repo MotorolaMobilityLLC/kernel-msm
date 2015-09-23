@@ -480,7 +480,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		/* set the init complete register, */
 		/* to let the hub know it was received */
 		buf[0] = 0x01;
-		err = stml0xx_spi_send_write_reg(INIT_COMPLETE_REG, buf, 1);
+		err = stml0xx_spi_send_write_reg(INIT_COMPLETE, buf, 1);
 
 		queue_work(ps_stml0xx->irq_work_queue,
 			&ps_stml0xx->initialize_work);
