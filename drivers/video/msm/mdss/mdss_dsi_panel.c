@@ -482,15 +482,8 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	} else
 		pconf->esd_enable = true;
 
-	/*
-	 * Enable bare board only if the prop "mmi,bare_board" exists and is
-	 * equal to 1.
-	 */
-	if (!of_property_read_u32(np, "mmi,bare_board", &tmp) && tmp == 1) {
-		pconf->bare_board = true;
-		pr_warn("%s: bare board is enabled by UTAGS\n", __func__);
-	} else
-		pconf->bare_board = false;
+	/* Enable bare board only if the prop "mmi,bare_board" exists */
+	pconf->bare_board = of_property_read_bool(np, "mmi,bare_board");
 
 	pconf->panel_ver = MDSS_PANEL_DEFAULT_VER;
 	of_property_read_u64(np, "mmi,panel_ver", &pconf->panel_ver);
