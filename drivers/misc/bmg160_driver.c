@@ -1408,12 +1408,6 @@ static int bmg_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (err < 0)
 		goto exit_err_sysfs;
 
-	err = BMG_CALL_API(set_bw)(C_BMG160_BW_47Hz_U8X);
-
-	if (err < 0)
-		goto exit_err_sysfs;
-
-
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	client_data->early_suspend_handler.suspend = bmg_early_suspend;
 	client_data->early_suspend_handler.resume = bmg_late_resume;
