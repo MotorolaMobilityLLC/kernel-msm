@@ -192,7 +192,7 @@ static struct vibrator {
 	struct work_struct work;
 	struct work_struct work_play_eff;
 	struct work_struct work_probe;
-	unsigned char sequence[8];
+	unsigned char sequence[WAVEFORM_SEQUENCER_MAX];
 	volatile int should_stop;
 } vibdata;
 
@@ -1054,6 +1054,12 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 	case HAPTIC_CMDID_PLAY_SINGLE_EFFECT:
 	case HAPTIC_CMDID_PLAY_EFFECT_SEQUENCE:
 		{
+			/* MAX seqeunce size is 8 not counting the command byte */
+			if ((len - 1) > WAVEFORM_SEQUENCER_MAX) {
+				pr_err("%s error too long sequence size=%zu\n",
+					__func__, len);
+				break;
+			}
 			memset(&vibdata.sequence, 0, sizeof(vibdata.sequence));
 			if (!copy_from_user
 			    (&vibdata.sequence, &buff[1], len - 1)) {
