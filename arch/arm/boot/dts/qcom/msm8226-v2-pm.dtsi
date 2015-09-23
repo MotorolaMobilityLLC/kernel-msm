@@ -244,6 +244,7 @@
 			<0xff 141>, /* blsp1_uart_3_irq */
 			<0xff 155>, /* sdc1_irq(0) */
 			<0xff 157>, /* sdc2_irq(0) */
+			<0xff 159>, /* mmc1 */
 			<0xff 161>, /* lpass_irq_out_spare[4] */
 			<0xff 162>, /* lpass_irq_out_spare[5]*/
 			<0xff 166>, /* usb_hs_irq */
@@ -279,6 +280,7 @@
 			<0xff 235>, /* lpass_irq_out_spare[7]*/
 			<0xff 240>, /* summary_irq_kpss */
 			<0xff 253>, /* sdc2_pwr_cmd_irq */
+			<0xff 256>, /* msm_sdcc.3 */
 			<0xff 258>, /* rpm_ipc(28) */
 			<0xff 259>, /* rpm_ipc(29) */
 			<0xff 261>, /* msm_iommu_global_cfg_irq */
@@ -329,7 +331,9 @@
 			<40  110>,
 			<41  115>,
 			<54  111>,
-			<55  113>;
+			<55  113>,
+			<0xff 2>,   /* UART1_CTS */
+			<0xff 112>; /* GPIO-112 */
 	};
 
 	qcom,pm@fe805664 {
