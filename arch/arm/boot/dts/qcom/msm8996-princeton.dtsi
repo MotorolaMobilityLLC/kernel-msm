@@ -82,10 +82,6 @@
 	qcom,platform-bklight-en-gpio = <&tlmm 94 0>;
 };
 
-&mdss_dsi1 {
-	status = "disabled";
-};
-
 &mot_tdi_546_1080p_cmd_v0 {
 	qcom,cont-splash-enabled;
 	qcom,mdss-dsi-panel-timings-8996 = [
