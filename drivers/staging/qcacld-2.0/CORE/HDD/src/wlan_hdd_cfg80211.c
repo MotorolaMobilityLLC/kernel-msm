@@ -19074,12 +19074,13 @@ wlan_hdd_cfg80211_extscan_hotlist_match_ind(void *ctx,
 		hddLog(LOGE, FL("cfg80211_vendor_event_alloc failed"));
 		return;
 	}
-	hddLog(LOG1, "Req Id  %u Num results %u",
-			data->requestId, data->numOfAps);
-	hddLog(LOG1, "More Data %u ap_found %u",
-			data->moreData, data->ap_found);
+	hddLog(LOG1, "Req Id: %u Num_APs: %u MoreData: %u ap_found: %u",
+			data->requestId, data->numOfAps, data->moreData,
+			data->ap_found);
 
 	for (i = 0; i < data->numOfAps; i++) {
+		data->ap[i].ts = vos_get_monotonic_boottime();
+
 		hddLog(LOG1, "[i=%d] Timestamp %llu "
 				"Ssid: %s "
 				"Bssid (" MAC_ADDRESS_STR ") "

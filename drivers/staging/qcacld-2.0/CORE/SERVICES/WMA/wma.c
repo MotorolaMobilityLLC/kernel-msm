@@ -3050,6 +3050,7 @@ static int wma_extscan_hotlist_match_event_handler(void *handle,
 	 * of both hotlist ap found and lost.
 	 */
 	for (j = 0; j < numap; j++) {
+		dest_ap->rssi = 0;
 		dest_ap->channel = src_hotlist->channel;
 		dest_ap->ts = src_hotlist->tstamp;
 		ap_found = src_hotlist->flags & WMI_HOTLIST_FLAG_PRESENCE;
