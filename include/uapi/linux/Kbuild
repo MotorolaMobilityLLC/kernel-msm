@@ -421,6 +421,7 @@ header-y += soundcard.h
 header-y += stat.h
 header-y += stddef.h
 header-y += stml0xx.h
+header-y += motosh_vmm.h
 header-y += string.h
 header-y += suspend_ioctls.h
 header-y += swab.h

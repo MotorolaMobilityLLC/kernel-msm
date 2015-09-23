@@ -56,7 +56,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	unsigned int data_size = 0;
 	unsigned char buf[MAX_LOCAL_BUF_SIZE];
 	unsigned char len;
-	unsigned long current_posix_time;
 	unsigned int handle;
 	struct timespec current_time;
 	bool cmd_handled;
@@ -191,23 +190,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 							buf, 1);
 		}
 		break;
-	case STML0XX_IOCTL_SET_MAG_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_MAG_DELAY");
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy mag delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_mag_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
 	case STML0XX_IOCTL_SET_GYRO_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_GYRO_DELAY");
@@ -222,23 +204,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (stml0xx_g_booted) {
 			buf[0] = delay;
 			err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
-	case STML0XX_IOCTL_SET_PRES_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_PRES_DELAY");
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy pres delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_baro_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(PRESSURE_UPDATE_RATE,
 							buf, 1);
 		}
 		break;
@@ -350,24 +315,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (copy_to_user(argp, buf, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
-	case STML0XX_IOCTL_GET_MAG_CAL:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_GET_MAG_CAL");
-		if (stml0xx_g_booted) {
-			err = stml0xx_spi_send_read_reg(MAG_CAL, buf,
-					      STML0XX_MAG_CAL_SIZE);
-			if (err < 0) {
-				dev_err(&stml0xx_misc_data->spi->dev,
-					"Reading get mag cal failed");
-				break;
-			}
-		} else {
-			memcpy(buf, stml0xx_g_mag_cal,
-				STML0XX_MAG_CAL_SIZE);
-		}
-		if (copy_to_user(argp, buf, STML0XX_MAG_CAL_SIZE))
-			err = -EFAULT;
-		break;
 	case STML0XX_IOCTL_SET_ALS_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_ALS_DELAY");
@@ -384,20 +331,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = stml0xx_spi_send_write_reg(ALS_UPDATE_RATE,
 							buf, 2);
 		}
-		break;
-	case STML0XX_IOCTL_SET_MAG_CAL:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_MAG_CAL");
-		if (copy_from_user(buf, argp, STML0XX_MAG_CAL_SIZE)) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Copy set mag cal returned error");
-			err = -EFAULT;
-			break;
-		}
-		memcpy(stml0xx_g_mag_cal, buf, STML0XX_MAG_CAL_SIZE);
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(MAG_CAL, buf,
-					       STML0XX_MAG_CAL_SIZE);
 		break;
 	case STML0XX_IOCTL_SET_MOTION_DUR:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
@@ -426,14 +359,14 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		buf[0] = duration & 0xFF;
 		stml0xx_g_zmotion_dur = buf[0];
 		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(ZRMOTION_DUR,
+			err = stml0xx_spi_send_write_reg(ZMOTION_DUR,
 							 buf, 1);
 		break;
 	case STML0XX_IOCTL_GET_DOCK_STATUS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_DOCK_STATUS");
 		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_read_reg(DOCK_DATA,
+			err = stml0xx_spi_send_read_reg(DOCKED_DATA,
 							buf, 1);
 		else
 			buf[0] = 0;
@@ -465,29 +398,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		err = stml0xx_spi_write(buf, 1);
-		break;
-	case STML0XX_IOCTL_SET_POSIX_TIME:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_POSIX_TIME");
-		if (!stml0xx_g_booted) {
-			err = -EBUSY;
-			break;
-		}
-		if (copy_from_user(&current_posix_time, argp,
-				   sizeof(current_posix_time))) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Copy from user returned error");
-			err = -EFAULT;
-			break;
-		}
-		getnstimeofday(&current_time);
-		stml0xx_time_delta = current_posix_time - current_time.tv_sec;
-		buf[0] = (unsigned char)(current_posix_time >> 24);
-		buf[1] = (unsigned char)((current_posix_time >> 16) & 0xff);
-		buf[2] = (unsigned char)((current_posix_time >> 8) & 0xff);
-		buf[3] = (unsigned char)((current_posix_time) & 0xff);
-		err = stml0xx_spi_send_write_reg(AP_POSIX_TIME,
-				buf, 4);
 		break;
 	case STML0XX_IOCTL_SET_ALGO_REQ:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
