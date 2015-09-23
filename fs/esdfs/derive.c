@@ -530,8 +530,6 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 		/* If we don't need to confine, we're done. */
 		if (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_CONFINE))
 			return 0;
-		/* If we do, we can still skip the hash lookup. */
-		access = HAS_SDCARD_RW;
 	}
 
 	cred = current_cred();
