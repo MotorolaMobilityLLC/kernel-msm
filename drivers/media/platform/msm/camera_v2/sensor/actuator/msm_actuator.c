@@ -647,6 +647,11 @@ static int32_t msm_actuator_bivcm_move_focus(
 	int dir = move_params->dir;
 	int32_t num_steps = move_params->num_steps;
 
+        if (a_ctrl->step_position_table == NULL) {
+                pr_err("Step Position Table is NULL");
+                return -EFAULT;
+        }
+
 	if (copy_from_user(&ringing_params_kernel,
 		&(move_params->ringing_params[a_ctrl->curr_region_index]),
 		sizeof(struct damping_params_t))) {
