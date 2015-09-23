@@ -156,7 +156,8 @@ int lra_play_rate_code[LRA_POS_FREQ_COUNT];
 #define FREQUENCY_CALC_CONST        200000
 #define FREQEUNCY_NORMAL_MIN        220
 #define FREQUENCY_NORMAL_MAX        240
-#define FREQUENCY_CALC_MARGIN       3
+#define FREQUENCY_CALC_MARGIN       8
+#define FREQUENCY_UPDATE_MARGIN     20
 
 /* haptic debug register set */
 static u8 qpnp_hap_dbg_regs[] = {
@@ -1424,8 +1425,8 @@ static int update_lra_frequency(struct qpnp_hap *hap)
 	play_rate_code = (lra_auto_res_hi << 8) | (lra_auto_res_lo & 0xff);
 	freq_cur = FREQUENCY_CALC_CONST / play_rate_code;
 
-	if (freq_cur < FREQEUNCY_NORMAL_MIN
-			|| freq_cur > FREQUENCY_NORMAL_MAX)
+	if (freq_cur < FREQEUNCY_NORMAL_MIN - FREQUENCY_UPDATE_MARGIN
+			|| freq_cur > FREQUENCY_NORMAL_MAX + FREQUENCY_UPDATE_MARGIN)
 		return -EAGAIN;
 
 	return 0;
