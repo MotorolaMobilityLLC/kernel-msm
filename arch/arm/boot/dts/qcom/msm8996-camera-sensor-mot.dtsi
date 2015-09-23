@@ -120,6 +120,7 @@
 		cell-index = <2>;
 		compatible = "qcom,camera";
 		reg = <0x02>;
+		qcom,led-flash-src = <&led_flash0>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
