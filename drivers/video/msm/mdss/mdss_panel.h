@@ -719,6 +719,7 @@ struct mdss_panel_info {
 	struct mdss_panel_debugfs_info *debugfs_info;
 
 	u32 disp_on_check_val;
+	bool no_panel_read_support;
 };
 
 struct mdss_panel_timing {
