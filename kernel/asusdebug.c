@@ -23,7 +23,7 @@
 #include <linux/asusdebug.h>
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#define ASUS_LAST_KMSG	1
+#define ASUS_LAST_KMSG	0
 
 #if ASUS_LAST_KMSG
 #include <linux/init.h>     //For getting bootreason
@@ -62,6 +62,7 @@ extern int print_fork;
 #endif
 
 static void do_kernel_log_worker(struct work_struct *work){
+#if ASUS_LAST_KMSG
     char target_filename[256];
     int target_handle;
     int i = 1;
@@ -83,7 +84,7 @@ static void do_kernel_log_worker(struct work_struct *work){
     /* Clean the first logcat.txt but not deleting it */
 
     deinitKernelEnv();
-
+#endif
     /* Reboot device to apply change */
     //kernel_restart(NULL);
 }
@@ -921,7 +922,7 @@ static void save_last_kmsg_buffer(char* filename){
     if(filename)
         sprintf(lk_filename, filename);
     else
-	    sprintf(lk_filename, "/asdf/last_kmsg.txt");
+	    sprintf(lk_filename, ASUS_EVTLOG_PATH"last_kmsg.txt");
 
     initKernelEnv();
 
@@ -1022,7 +1023,7 @@ void save_phone_hang_log(void)
         printk("[adbg] save_phone_hang_log-1\n");
         initKernelEnv();
         memset(messages, 0, sizeof(messages));
-        strcpy(messages, "/asdf/");
+        strcpy(messages, ASUS_EVTLOG_PATH);
         strncat(messages, g_phonehang_log, 29);
         file_handle = sys_open(messages, O_CREAT|O_WRONLY|O_SYNC, 0);
         printk("[adbg] save_phone_hang_log-2 file_handle %d, name=%s\n", file_handle, messages);
@@ -1031,7 +1032,7 @@ void save_phone_hang_log(void)
             ret = sys_write(file_handle, (unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
             sys_close(file_handle);
         }else {
-            printk("[adbg] /asdf is not mounted yet, print to console.\n");
+            printk("[adbg] %s is not mounted yet, print to console.\n",ASUS_EVTLOG_PATH);
             print_log_to_console((unsigned char*)g_phonehang_log, strlen(g_phonehang_log));
         }
         deinitKernelEnv();
@@ -1062,9 +1063,9 @@ void save_last_shutdown_log(char* filename)
     last_shutdown_log_unparsed = (char*)PRINTK_BUFFER;
 
     // File name setting
-	sprintf(messages_unparsed, "/asdf/LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
+	sprintf(messages_unparsed, ASUS_EVTLOG_PATH"LastShutdown_%lu.%06lu_unparsed.txt", (unsigned long) t, nanosec_rem / 1000);
 
-    sprintf(messages, "/asdf/LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
+    sprintf(messages, ASUS_EVTLOG_PATH"LastShutdown_%lu.%06lu.txt", (unsigned long) t, nanosec_rem / 1000);
 
 #if ASUS_LAST_KMSG
 	save_last_kmsg_buffer(messages);
@@ -1089,15 +1090,16 @@ void save_last_shutdown_log(char* filename)
 
 void get_last_shutdown_log(void)
 {
+#if ASUS_LAST_KMSG
     unsigned int *last_shutdown_log_addr;
 
     last_shutdown_log_addr = (unsigned int *)((unsigned int)PRINTK_BUFFER +
         (unsigned int)PRINTK_BUFFER_SLOT_SIZE);
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#if ASUS_LAST_KMSG
+
 	save_last_kmsg_buffer(NULL);
-#endif
+
 //ASUS_BSP --- Josh_Hsu "Enable last kmsg feature for Google"
 
     if( *last_shutdown_log_addr == (unsigned int)PRINTK_BUFFER_MAGIC)
@@ -1110,6 +1112,7 @@ void get_last_shutdown_log(void)
     is_lk_rebased = 1;
     
     *last_shutdown_log_addr = PRINTK_BUFFER_MAGIC;  //ASUS_BSP ++
+#endif
 }
 EXPORT_SYMBOL(get_last_shutdown_log);
 
@@ -1209,21 +1212,21 @@ static void do_write_event_worker(struct work_struct *work)
     {
         long size;
         {
-            g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH".txt", O_CREAT|O_RDWR|O_SYNC, 0666);
+            g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", O_CREAT|O_RDWR|O_SYNC, 0666);
             if (g_hfileEvtlog < 0)
-                printk("[adbg] 1. open %s failed, err:%d\n", ASUS_EVTLOG_PATH".txt", g_hfileEvtlog);
+                printk("[adbg] 1. open %s failed, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
 
-            sys_chown(ASUS_EVTLOG_PATH".txt", AID_SDCARD_RW, AID_SDCARD_RW);
+            sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
             
             size = sys_lseek(g_hfileEvtlog, 0, SEEK_END);
             if(size >= SZ_2M)
             {        
                 sys_close(g_hfileEvtlog); 
-                sys_rmdir(ASUS_EVTLOG_PATH"_old.txt");
-                sys_rename(ASUS_EVTLOG_PATH".txt", ASUS_EVTLOG_PATH"_old.txt");
-                g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH".txt", O_CREAT|O_RDWR|O_SYNC, 0666);
+                sys_rmdir(ASUS_EVTLOG_PATH"ASUSEvtlog_old.txt");
+                sys_rename(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", ASUS_EVTLOG_PATH"ASUSEvtlog_old.txt");
+                g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", O_CREAT|O_RDWR|O_SYNC, 0666);
                 if (g_hfileEvtlog < 0)
-                    printk("[adbg] 1. open %s failed during renaming old one, err:%d\n", ASUS_EVTLOG_PATH".txt", g_hfileEvtlog);
+                    printk("[adbg] 1. open %s failed during renaming old one, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
             }    
             sprintf(buffer, "\n\n---------------System Boot----%s---------\n", ASUS_SW_VER);
 
@@ -1237,20 +1240,20 @@ static void do_write_event_worker(struct work_struct *work)
         char* pchar;
         long size;
 
-        g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH".txt", O_CREAT|O_RDWR|O_SYNC, 0666);
+        g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", O_CREAT|O_RDWR|O_SYNC, 0666);
         if (g_hfileEvtlog < 0)
-            printk("[adbg] 2. open %s failed, err:%d\n", ASUS_EVTLOG_PATH".txt", g_hfileEvtlog);
-        sys_chown(ASUS_EVTLOG_PATH".txt", AID_SDCARD_RW, AID_SDCARD_RW);
+            printk("[adbg] 2. open %s failed, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
+        sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
 
         size = sys_lseek(g_hfileEvtlog, 0, SEEK_END);
         if(size >= SZ_2M)
         {		 
             sys_close(g_hfileEvtlog); 
-            sys_rmdir(ASUS_EVTLOG_PATH"_old.txt");
-            sys_rename(ASUS_EVTLOG_PATH".txt", ASUS_EVTLOG_PATH"_old.txt");
-            g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH".txt", O_CREAT|O_RDWR|O_SYNC, 0666);
+            sys_rmdir(ASUS_EVTLOG_PATH"ASUSEvtlog_old.txt");
+            sys_rename(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", ASUS_EVTLOG_PATH"ASUSEvtlog_old.txt");
+            g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", O_CREAT|O_RDWR|O_SYNC, 0666);
             if (g_hfileEvtlog < 0)
-                printk("[adbg] 2. open %s failed during renaming old one, err:%d\n", ASUS_EVTLOG_PATH".txt", g_hfileEvtlog);
+                printk("[adbg] 2. open %s failed during renaming old one, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
         }
 
         while(g_Asus_Eventlog_read != g_Asus_Eventlog_write)
@@ -1373,7 +1376,7 @@ static const struct file_operations proc_asusdebug_operations = {
 };
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#ifdef ASUS_LAST_KMSG
+#if ASUS_LAST_KMSG
 static const struct file_operations proc_asuslastkmsg_operations = {
     .read       = asuslastkmsg_read,
 	.write      = asuslastkmsg_write,

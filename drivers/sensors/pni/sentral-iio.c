@@ -487,7 +487,7 @@ static int sentral_inactivity_timeout_get(struct sentral_device *sentral,
 static int sentral_inactivity_timeout_set(struct sentral_device *sentral,
 		u16 timeout_s)
 {
-	LOGI(&sentral->client->dev, "setting intactivity timeout to: %u seconds\n",
+	LOGI(&sentral->client->dev, "setting inactivity timeout to: %u seconds\n",
 			timeout_s);
 
 	return sentral_parameter_write(sentral, SPP_ASUS,
@@ -526,6 +526,13 @@ static int sentral_coach_fitness_id_set(struct sentral_device *sentral,
 			fitness_id);
 
 	return sentral_write_byte(sentral, SR_FITNESS_ID, fitness_id);
+}
+
+static int sentral_step_report_delay_get(struct sentral_device *sentral,
+		u16 *report_delay_ms)
+{
+	return sentral_read_block(sentral, SR_STEP_REPORT, (void *)report_delay_ms,
+			sizeof(*report_delay_ms));
 }
 
 static int sentral_error_get(struct sentral_device *sentral)
@@ -1101,6 +1108,7 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 			continue;
 
 		case SST_HEART_RATE:
+		case SST_SLEEP:
 			data_size = 1;
 			break;
 
@@ -1132,10 +1140,6 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_GAME_ROTATION_VECTOR:
 		case SST_GEOMAGNETIC_ROTATION_VECTOR:
 			data_size = 10;
-			break;
-
-		case SST_ALGO_DATA:
-			data_size = 17;
 			break;
 
 		case SST_MAGNETIC_FIELD_UNCALIBRATED:
@@ -1858,6 +1862,23 @@ static DEVICE_ATTR(coach_fitness_id, S_IRUGO | S_IWUGO,
 		sentral_sysfs_coach_fitness_id_show,
 		sentral_sysfs_coach_fitness_id_store);
 
+static ssize_t sentral_sysfs_step_report_delay_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u16 report_delay_ms = 0;
+	int rc;
+
+	rc = sentral_step_report_delay_get(sentral, &report_delay_ms);
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", report_delay_ms);
+}
+
+static DEVICE_ATTR(step_report_delay, S_IRUGO,
+		sentral_sysfs_step_report_delay_show, NULL);
+
 static ssize_t sentral_sysfs_ts_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1973,6 +1994,10 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 	case SST_COACH:
 		sample_rate = delay_ms / 10000;
 		break;
+	case SST_STEP_COUNTER:
+	case SST_SLEEP:
+		sample_rate = (u16)delay_ms;
+		break;
 
 	// convert millis to Hz
 	default:
@@ -2023,6 +2048,10 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 		break;
 	case SST_COACH:
 		sample_rate = delay_ms / 10000;
+		break;
+	case SST_STEP_COUNTER:
+	case SST_SLEEP:
+		sample_rate = (u16)delay_ms;
 		break;
 
 	// convert millis to Hz
@@ -2477,6 +2506,7 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_reset.attr,
 	&dev_attr_inactivity_timeout.attr,
 	&dev_attr_coach_fitness_id.attr,
+	&dev_attr_step_report_delay.attr,
 	&dev_attr_ts.attr,
 	&dev_attr_sensor_info.attr,
 	&dev_attr_sensor_config.attr,

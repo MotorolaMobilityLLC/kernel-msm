@@ -33,9 +33,9 @@
 
 #define SEN_DRV_PROJECT_ID "1"
 #define SEN_DRV_SUBPROJECT_ID "2"
-#define SEN_DRV_VERSION "1.1.2"
-#define SEN_DRV_BUILD "13"
-#define SEN_DRV_DATE "Thu Aug 20 15:10:51 PDT 2015"
+#define SEN_DRV_VERSION "1.2.3"
+#define SEN_DRV_BUILD "1"
+#define SEN_DRV_DATE "Thu Sep 17 16:03:42 PDT 2015"
 
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
@@ -112,6 +112,7 @@ enum sentral_registers {
 	SR_PARAM_ACK =    0x3A,
 	SR_PARAM_SAVE =   0x3B,
 	SR_WAKE_SRC =     0x4D,
+	SR_STEP_REPORT =  0x4E,
 	SR_ERROR =        0x50,
 	SR_PARAM_PAGE =   0x54,
 	SR_HOST_CONTROL = 0x55,
@@ -211,7 +212,7 @@ enum sentral_sensor_type {
 	SST_GLANCE_GESTURE =              24,
 	SST_PICK_UP_GESTURE =             25,
 	SST_WRIST_TILT_GESTURE =          26,
-	SST_ALGO_DATA =                   27,
+	SST_SLEEP =                       28,
 	SST_COACH =                       29,
 	SST_INACTIVITY_ALARM =            30,
 	SST_ACTIVITY =                    31,
@@ -252,8 +253,9 @@ static const char *sentral_sensor_type_strings[SST_MAX] = {
 	[SST_GLANCE_GESTURE] = "GLANCE_GESTURE",
 	[SST_PICK_UP_GESTURE] = "PICK_UP_GESTURE",
 	[SST_WRIST_TILT_GESTURE] = "WRIST_TILT_GESTURE",
-	[SST_INACTIVITY_ALARM] = "INACTIVITY_ALARM",
+	[SST_SLEEP] = "SLEEP",
 	[SST_COACH] = "COACH",
+	[SST_INACTIVITY_ALARM] = "INACTIVITY_ALARM",
 	[SST_ACTIVITY] = "ACTIVITY",
 };
 
