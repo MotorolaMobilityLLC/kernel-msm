@@ -1600,7 +1600,7 @@ static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 		rc = qpnp_adc_tm_enable_if_channel_meas(chip);
 		if (rc < 0) {
 			pr_err("re-enabling measurement failed\n");
-			return rc;
+			goto fail;
 		}
 	} else
 		pr_debug("No threshold status enable %d for high/low??\n",
@@ -1609,11 +1609,12 @@ static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 fail:
 	mutex_unlock(&chip->adc->adc_lock);
 
-	if (adc_tm_high_enable || adc_tm_low_enable)
+	if (adc_tm_high_enable || adc_tm_low_enable) {
 		queue_work(chip->sensor[sensor_num].req_wq,
 				&chip->sensor[sensor_num].work);
-	if (rc < 0)
+	} else if (rc < 0) {
 		atomic_dec(&chip->wq_cnt);
+	}
 
 	return rc;
 }
