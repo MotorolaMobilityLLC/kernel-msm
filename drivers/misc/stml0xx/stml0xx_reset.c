@@ -158,7 +158,7 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		ret_err = err;
 
 	buf[0] = stml0xx_g_zmotion_dur;
-	err = stml0xx_spi_send_write_reg_reset(ZRMOTION_DUR, buf,
+	err = stml0xx_spi_send_write_reg_reset(ZMOTION_DUR, buf,
 			1, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
@@ -200,7 +200,7 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	buf[17] = pdata->ct406_als_lux2_c1_mult & 0xff;
 	buf[18] = (pdata->ct406_als_lux2_div >> 8) & 0xff;
 	buf[19] = pdata->ct406_als_lux2_div & 0xff;
-	err = stml0xx_spi_send_write_reg_reset(PROX_SETTINGS, buf,
+	err = stml0xx_spi_send_write_reg_reset(PROX_ALS_SETTINGS, buf,
 			20, RESET_NOT_ALLOWED);
 	if (err < 0) {
 		dev_err(&ps_stml0xx->spi->dev,
@@ -262,7 +262,7 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 
 #ifdef CONFIG_SENSORHUB_DEBUG_LOGGING
 	buf[0] = SH_LOG_DEBUG;
-	err = stml0xx_spi_send_write_reg_reset(SH_LOG_LEVEL_REG, buf,
+	err = stml0xx_spi_send_write_reg_reset(SH_LOG_LEVEL, buf,
 		1, RESET_NOT_ALLOWED);
 	if (err < 0) {
 		dev_err(&ps_stml0xx->spi->dev,
