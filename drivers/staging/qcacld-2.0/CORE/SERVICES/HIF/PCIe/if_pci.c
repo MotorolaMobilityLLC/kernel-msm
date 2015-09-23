@@ -2349,6 +2349,9 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
     cnss_pcie_shadow_control(pdev, FALSE);
 #endif
 
+    if (runtime_pm)
+	    goto skip;
+
     pci_read_config_dword(pdev, OL_ATH_PCI_PM_CONTROL, &val);
     if ((val & 0x000000ff) != 0x3) {
         pci_save_state(pdev);
@@ -2356,6 +2359,7 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
         pci_write_config_dword(pdev, OL_ATH_PCI_PM_CONTROL, (val & 0xffffff00) | 0x03);
     }
 
+skip:
     printk("%s: Suspend completes%s\n", __func__,
             runtime_pm ? " for runtime pm" : "");
     ret = 0;
@@ -2408,6 +2412,8 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
     if (HIFTargetSleepStateAdjust(targid, TRUE, FALSE) < 0)
         goto out;
 
+    if (runtime_pm)
+	    goto skip;
 
     err = pci_enable_device(pdev);
     if (err)
@@ -2439,6 +2445,7 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
 
     printk("%s: Rome PS: %d\n", __func__, val);
 
+skip:
 #ifdef CONFIG_CNSS
     /* Keep PCIe bus driver's shadow memory intact */
     cnss_pcie_shadow_control(pdev, TRUE);
