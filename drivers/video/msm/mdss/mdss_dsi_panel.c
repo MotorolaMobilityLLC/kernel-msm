@@ -28,6 +28,8 @@
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
 
+#define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
+#define MDSS_PANEL_UNKNOWN_NAME "unknown"
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 48
 #define DEFAULT_MDP_TRANSFER_TIME 14000
@@ -434,6 +436,63 @@ static int mdss_dsi_roi_merge(struct mdss_dsi_ctrl_pdata *ctrl,
 	}
 
 	return ans;
+}
+
+int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	struct device_node *np;
+	const char *pname;
+	u32 panel_ver, tmp;
+	struct mdss_panel_config *pconf = &ctrl_pdata->panel_config;
+
+	np = of_find_node_by_path("/chosen");
+	/* Disable ESD only if the prop "mmi,esd" exists and is equal to 0 */
+	if (!of_property_read_u32(np, "mmi,esd", &tmp) && tmp == 0) {
+		pconf->esd_enable = false;
+		pr_warn("%s: ESD detection is disabled by UTAGS\n", __func__);
+	} else
+		pconf->esd_enable = true;
+
+	/*
+	 * Enable bare board only if the prop "mmi,bare_board" exists and is
+	 * equal to 1.
+	 */
+	if (!of_property_read_u32(np, "mmi,bare_board", &tmp) && tmp == 1) {
+		pconf->bare_board = true;
+		pr_warn("%s: bare board is enabled by UTAGS\n", __func__);
+	} else
+		pconf->bare_board = false;
+
+	pconf->panel_ver = MDSS_PANEL_DEFAULT_VER;
+	of_property_read_u64(np, "mmi,panel_ver", &pconf->panel_ver);
+
+	pname = of_get_property(np, "mmi,panel_name", NULL);
+	if (!pname || strlen(pname) == 0) {
+		pr_warn("Failed to get mmi,panel_name\n");
+		strlcpy(pconf->panel_name, MDSS_PANEL_UNKNOWN_NAME,
+				sizeof(pconf->panel_name));
+	} else
+		strlcpy(pconf->panel_name, pname, sizeof(pconf->panel_name));
+
+	pr_debug("%s: esd_enable=%d bare_board_bl=%d panel_name=%s\n",
+		__func__,
+		pconf->esd_enable,
+		pconf->bare_board,
+		pconf->panel_name);
+
+	panel_ver = (u32)pconf->panel_ver;
+	pr_info("%s: BL: panel=%s, manufacture_id(0xDA)= 0x%02X "
+		"controller_ver(0xDB)= 0x%02X controller_drv_ver(0XDC)= 0x%02X, "
+		"full=0x%016llX\n",
+		__func__,
+		pconf->panel_name,
+		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
+		(panel_ver & 0xff0000) >> 16,
+		pconf->panel_ver);
+
+	of_node_put(np);
+
+	return 0;
 }
 
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
