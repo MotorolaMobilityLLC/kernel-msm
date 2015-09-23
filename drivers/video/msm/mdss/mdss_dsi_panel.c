@@ -154,6 +154,11 @@ int mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 			return -EINVAL;
 	}
 
+	if (pinfo->no_panel_read_support) {
+		pr_warn("%s: This panel doesn't support read data\n", __func__);
+		return -EINVAL;
+	}
+
 	dcs_cmd[0] = cmd0;
 	dcs_cmd[1] = cmd1;
 	memset(&cmdreq, 0, sizeof(cmdreq));
@@ -998,26 +1003,27 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_on_hdmi(ctrl, pinfo);
 
 	/* Ensure low persistence mode is set as before */
-	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);	
-	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
-	if (pinfo->disp_on_check_val != pwr_mode) {
-		pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
-			__func__, pwr_mode, pinfo->disp_on_check_val);
-		dropbox_issue = MDSS_DROPBOX_MSG_PWR_MODE_BLACK;
+	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);
+	if (pinfo->no_panel_read_support == false) {
+		mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
+		if (pinfo->disp_on_check_val != pwr_mode) {
+			pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
+				__func__, pwr_mode, pinfo->disp_on_check_val);
+			dropbox_issue = MDSS_DROPBOX_MSG_PWR_MODE_BLACK;
 
-		if (pdata->panel_info.panel_dead)
-			pr_err("%s: Panel recovery FAILED!!\n", __func__);
+			if (pdata->panel_info.panel_dead)
+				pr_err("%s: Panel recovery FAILED!!\n", __func__);
 
-		pdata->panel_info.panel_dead = true;
+			pdata->panel_info.panel_dead = true;
 
-		if (panel_recovery_retry++ > 5) {
-			pr_err("%s: panel recovery failed for all retries",
-				__func__);
-			BUG();
-		}
-	} else
-		panel_recovery_retry = 0;
-
+			if (panel_recovery_retry++ > 5) {
+				pr_err("%s: panel recovery failed for all retries",
+					__func__);
+				BUG();
+			}
+		} else
+			panel_recovery_retry = 0;
+	}
 end:
 	if (dropbox_issue != NULL) {
 		dropbox_count++;
@@ -2119,6 +2125,9 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 			pinfo->disp_on_check_val = 0x9c;
 	}
 
+	pinfo->no_panel_read_support = of_property_read_bool(np,
+					"qcom,mdss-dsi-no-panel-read-support");
+
 	if (ctrl->disp_en_gpio <= 0) {
 		ctrl->disp_en_gpio = of_get_named_gpio(
 			np,
@@ -2903,6 +2912,7 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	int ret;
 	struct dcs_cmd_req cmdreq;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	struct mdss_panel_info *pinfo;
 	struct dsi_cmd_desc reg_read_cmd = {
 		.dchdr.dtype = DTYPE_DCS_READ,
 		.dchdr.last = 1,
@@ -2926,6 +2936,15 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 	pr_debug("%s: Reading %zu bytes from 0x%02x\n", __func__, size, reg);
+
+	if (ctrl) {
+		pinfo = &ctrl->panel_data.panel_info;
+		if (pinfo->no_panel_read_support) {
+			pr_warn("%s: This panel doesn't support read data\n",
+							__func__);
+			return -EINVAL;
+		}
+	}
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_read_cmd;

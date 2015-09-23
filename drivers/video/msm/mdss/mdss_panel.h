@@ -757,6 +757,7 @@ struct mdss_panel_info {
 	struct mdss_panel_hdr_properties hdr_properties;
 
 	u32 disp_on_check_val;
+	bool no_panel_read_support;
 };
 
 struct mdss_panel_timing {
