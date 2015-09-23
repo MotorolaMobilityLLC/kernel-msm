@@ -486,8 +486,10 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		(panel_ver & 0xff0000) >> 16,
 		ctrl_pdata->panel_config.panel_ver);
 
-	panelinfo.panel_name = (char *) &ctrl_pdata->panel_config.panel_name;
-	panelinfo.panel_ver = &ctrl_pdata->panel_config.panel_ver;
+	ctrl_pdata->panel_data.panel_info.panel_ver = panel_ver;
+	strlcpy(ctrl_pdata->panel_data.panel_info.panel_family_name,
+		ctrl_pdata->panel_config.panel_name,
+		sizeof(ctrl_pdata->panel_data.panel_info.panel_family_name));
 
 	of_node_put(np);
 
@@ -2011,12 +2013,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	data = of_get_property(np, "qcom,mdss-dsi-panel-supplier", NULL);
 	if (!data)
-		memset(pinfo->supplier, '\0', sizeof(pinfo->supplier));
-	else if (strlcpy(pinfo->supplier, data, sizeof(pinfo->supplier)) >=
-		sizeof(pinfo->supplier)) {
+		memset(pinfo->panel_supplier, '\0',
+			sizeof(pinfo->panel_supplier));
+	else if (strlcpy(pinfo->panel_supplier, data,
+		sizeof(pinfo->panel_supplier)) >=
+		sizeof(pinfo->panel_supplier)) {
 		pr_err("%s: Panel supplier name too large\n", __func__);
 	}
-	panelinfo.panel_supplier = pinfo->supplier;
 
 	if (mdss_panel_parse_optional_prop(np, pinfo, ctrl_pdata))
 		pr_err("Error parsing optional properties\n");
