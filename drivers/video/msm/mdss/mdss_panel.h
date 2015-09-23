@@ -424,7 +424,6 @@ struct mdss_panel_info {
 	bool dynamic_switch_pending;
 	bool is_lpm_mode;
 	bool is_split_display;
-	char supplier[8];
 	u32 bl_shutdown_delay;
 	u32 bl_on_defer_delay;
 	struct hrtimer bl_on_defer_hrtimer;
@@ -432,6 +431,9 @@ struct mdss_panel_info {
 	bool is_prim_panel;
 
 	char panel_name[MDSS_MAX_PANEL_LEN];
+	char panel_family_name[MDSS_MAX_PANEL_LEN];
+	u32 panel_ver;
+	char panel_supplier[8];
 	struct mdss_mdp_pp_tear_check te;
 
 	struct lcd_panel_info lcdc;
