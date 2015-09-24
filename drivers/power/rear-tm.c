@@ -35,7 +35,7 @@ struct rear_tm_data {
 	struct tm_ctrl_data *warm_cfg;
 	unsigned int warm_cfg_size;
 	struct wakeup_source ws;
-	int callstate;
+	int thermalstate;
 	struct switch_dev sdev;
 	int enabled;
 };
@@ -73,17 +73,17 @@ static struct rear_tm_data *get_rear_tm(struct device *dev)
 	return rear_tm;
 }
 
-static ssize_t rear_sysfs_callstate_show(struct device *dev,
+static ssize_t rear_sysfs_thermalstate_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct rear_tm_data *rear_tm = get_rear_tm(dev);
 
 	return snprintf(buf, PAGE_SIZE, "%s(%d)\n",
-			rear_action_str[rear_tm->callstate],
-			rear_tm->callstate);
+			rear_action_str[rear_tm->thermalstate],
+			rear_tm->thermalstate);
 }
 
-static ssize_t rear_sysfs_callstate_store(struct device *dev,
+static ssize_t rear_sysfs_thermalstate_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int val;
@@ -94,11 +94,9 @@ static ssize_t rear_sysfs_callstate_store(struct device *dev,
 
 	switch (val) {
 	case REAR_NORMAL:
-		rear_tm->callstate = val;
-		break;
 	case REAR_CALL_ALERT:
 	case REAR_CALL_DROPPED:
-		rear_tm->callstate = val;
+		rear_tm->thermalstate = val;
 		switch_set_state(&rear_tm->sdev, val);
 		break;
 	default:
@@ -160,14 +158,14 @@ static ssize_t rear_sysfs_enable_show(struct device *dev,
 			rear_tm->enabled);
 }
 
-static DEVICE_ATTR(callstate, S_IRUGO | S_IWUSR,
-		rear_sysfs_callstate_show, rear_sysfs_callstate_store);
+static DEVICE_ATTR(thermalstate, S_IRUGO | S_IWUSR,
+		rear_sysfs_thermalstate_show, rear_sysfs_thermalstate_store);
 static DEVICE_ATTR(temp, S_IRUGO | S_IWUSR, rear_sysfs_temp_show, NULL);
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR,
 		rear_sysfs_enable_show, rear_sysfs_enable_store);
 
 static struct attribute *rear_tm_attributes[] = {
-	&dev_attr_callstate.attr,
+	&dev_attr_thermalstate.attr,
 	&dev_attr_temp.attr,
 	&dev_attr_enable.attr,
 	NULL
@@ -261,21 +259,22 @@ static void rear_tm_action(struct rear_tm_data *rear_tm, int lvl)
 
 	switch (tm_action) {
 	case REAR_NORMAL:
-		rear_tm->callstate = tm_action;
+		rear_tm->thermalstate = tm_action;
+		switch_set_state(&rear_tm->sdev, REAR_NORMAL);
 		break;
 	case REAR_CALL_ALERT:
 		pr_info("CALL ALERT!\n");
-		rear_tm->callstate = tm_action;
+		rear_tm->thermalstate = tm_action;
 		switch_set_state(&rear_tm->sdev, REAR_CALL_ALERT);
 		break;
 	case REAR_CALL_DROPPED:
 		pr_info("CALL DROPPED!\n");
-		rear_tm->callstate = tm_action;
+		rear_tm->thermalstate = tm_action;
 		switch_set_state(&rear_tm->sdev, REAR_CALL_DROPPED);
 		break;
 	case REAR_POWEROFF:
 		pr_info("TOO HOT POWEROFF!\n");
-		rear_tm->callstate = tm_action;
+		rear_tm->thermalstate = tm_action;
 		/* TODO: power off */
 		break;
 	default:
@@ -451,7 +450,7 @@ static int rear_tm_probe(struct spmi_device *spmi)
 	rear_tm->dev = &spmi->dev;
 	rear_tm->spmi = spmi;
 	rear_tm->enabled = 1;
-	rear_tm->callstate = REAR_NORMAL;
+	rear_tm->thermalstate = REAR_NORMAL;
 	dev_set_drvdata(&spmi->dev, rear_tm);
 
 	if (dev_node) {
@@ -474,12 +473,15 @@ static int rear_tm_probe(struct spmi_device *spmi)
 
 	wakeup_source_init(&rear_tm->ws, "rear_tm_ws");
 
-	rear_tm->sdev.name = "callstate";
+	rear_tm->sdev.name = "thermalstate";
 	ret = switch_dev_register(&rear_tm->sdev);
 	if (ret < 0) {
 		pr_err("%s: failed to register switch device\n", __func__);
 		goto err_switch_dev_register;
 	}
+
+	/* We want the initial state to be normal */
+	switch_set_state(&rear_tm->sdev, REAR_NORMAL);
 
 	ret = rear_tm_notification_init(rear_tm);
 	if (ret) {
@@ -489,7 +491,7 @@ static int rear_tm_probe(struct spmi_device *spmi)
 
 	ret = sysfs_create_group(&rear_tm->sdev.dev->kobj, &rear_tm_attr_group);
 	if (ret < 0) {
-		pr_err("failed to create sysfs callstate attribute\n");
+		pr_err("failed to create sysfs thermalstate attribute\n");
 		goto err_sysfs_create_group_1;
 	}
 
