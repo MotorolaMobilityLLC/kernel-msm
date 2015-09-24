@@ -22,6 +22,16 @@
 		/delete-property/ i2c5;
 		/delete-property/ spi0;
 	};
+
+	memory {
+		ramoops_mem: ramoops_mem_region {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			/*linux,remove-completely;*/
+			reg = <0x0 0xae000000 0x0 0x80000>;
+			label = "ramoops_mem";
+		};
+	};
 };
 
 &tlmm_pinmux {
@@ -220,6 +230,20 @@
 &soc {
 	/delete-node/ spi@78B5000;
 	/delete-node/ i2c@7af5000;
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		android,ramoops-buffer-start = <0xae000000>;
+		android,ramoops-buffer-size = <0x80000>;
+		android,ramoops-console-size = <0x40000>;
+		android,ramoops-record-size = <0x3F800>;
+		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-dump-oops = <0x1>;
+
+		linux,contiguous-region = <&ramoops_mem>;
+	};
 
 	spi_4: spi@7af5000 { /* BLSP2 QUP1 */
 		compatible = "qcom,spi-qup-v2";
