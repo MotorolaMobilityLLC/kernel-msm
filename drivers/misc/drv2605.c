@@ -161,6 +161,8 @@
 
 #define I2C_RETRY_DELAY		20 /* ms */
 #define I2C_RETRIES		5
+#define DEFAULT_AUTO_CAL_TIME	AUTOCAL_TIME_500MS
+#define AUTO_CAL_TIME_MASK	0x30
 
 static struct drv260x {
 	struct class *class;
@@ -182,6 +184,7 @@ static struct drv260x {
 	unsigned char default_calibration[5];
 	bool skip_lra_autocal;
 	bool lra_drive;
+	int  auto_cal_time;
 } *drv260x;
 
 static struct vibrator {
@@ -233,7 +236,7 @@ static unsigned char ERM_autocal_sequence[] = {
 	BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_SHORT |
 	    IDISS_TIME_SHORT,
 	Control3_REG, ERM_OpenLoop_Enabled | NG_Thresh_2,
-	AUTOCAL_MEM_INTERFACE_REG, AUTOCAL_TIME_500MS,
+	AUTOCAL_MEM_INTERFACE_REG, DEFAULT_AUTO_CAL_TIME,
 	GO_REG, GO,
 };
 
@@ -244,6 +247,7 @@ static unsigned char LRA_autocal_sequence[] = {
 	FEEDBACK_CONTROL_REG,
 	FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_4X | LOOP_RESPONSE_FAST,
 	Control3_REG, NG_Thresh_2,
+	AUTOCAL_MEM_INTERFACE_REG, DEFAULT_AUTO_CAL_TIME,
 	GO_REG, GO,
 };
 
@@ -342,6 +346,10 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 	}
 	pdata->skip_lra_autocal = of_property_read_bool(np, "skip_lra_autocal");
 	pdata->lra_drive = of_property_read_bool(np, "lra_drive");
+	pdata->auto_cal_time = DEFAULT_AUTO_CAL_TIME;
+	of_property_read_u32(np, "auto_cal_time", &pdata->auto_cal_time);
+	/* make sure we only touch the two bits we are interested in */
+	pdata->auto_cal_time &= AUTO_CAL_TIME_MASK;
 
 	return pdata;
 }
@@ -853,6 +861,7 @@ static int drv260x_probe(struct i2c_client *client,
 	}
 	drv260x->lra_drive = pdata->lra_drive;
 	drv260x->skip_lra_autocal = pdata->skip_lra_autocal;
+	drv260x->auto_cal_time = pdata->auto_cal_time;
 
 	INIT_WORK(&vibdata.work_probe, probe_work);
 	schedule_work(&vibdata.work_probe);
@@ -865,6 +874,10 @@ static void probe_work(struct work_struct *work)
 	struct i2c_client *client = drv260x->client;
 
 	if (drv260x->lra_drive) {
+		drv260x_update_init_sequence(LRA_autocal_sequence,
+			sizeof(LRA_autocal_sequence),
+			AUTOCAL_MEM_INTERFACE_REG,
+			drv260x->auto_cal_time);
 		drv260x_update_init_sequence(LRA_autocal_sequence,
 			sizeof(LRA_autocal_sequence),
 			RATED_VOLTAGE_REG,
@@ -882,6 +895,10 @@ static void probe_work(struct work_struct *work)
 			OVERDRIVE_CLAMP_VOLTAGE_REG,
 			drv260x->overdrive_voltage);
 	} else {
+		drv260x_update_init_sequence(ERM_autocal_sequence,
+			sizeof(ERM_autocal_sequence),
+			AUTOCAL_MEM_INTERFACE_REG,
+			drv260x->auto_cal_time);
 		drv260x_update_init_sequence(ERM_autocal_sequence,
 			sizeof(ERM_autocal_sequence),
 			RATED_VOLTAGE_REG,
