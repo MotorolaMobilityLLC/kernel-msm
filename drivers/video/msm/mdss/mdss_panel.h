@@ -396,6 +396,7 @@ struct mdss_panel_info {
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
 	const char *panel_name;
+	bool is_delta_pixel;
 };
 
 struct mdss_panel_data {
