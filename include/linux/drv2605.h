@@ -345,6 +345,7 @@ struct drv260x_platform_data {
 	int disable_calibration;
 	bool skip_lra_autocal;
 	bool lra_drive;
+	int  auto_cal_time;
 	struct regulator *vibrator_vdd;
 	struct regulator *static_vdd;
 	unsigned char *calibration_data;
