@@ -5998,7 +5998,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		setbit(eventmask, WLC_E_P2P_DISC_LISTEN_COMPLETE);
 	}
 #endif /* WL_CFG80211 */
-	setbit(eventmask, WLC_E_TRACE);
+	clrbit(eventmask, WLC_E_TRACE);
 
 #ifdef EAPOL_PKT_PRIO
 #ifdef CONFIG_BCMDHD_PCIE
