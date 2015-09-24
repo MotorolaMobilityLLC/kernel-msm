@@ -213,5 +213,6 @@
 		qcom,mdss-dsi-reset-sequence = <0 5>, <1 10>;
 		qcom,mdss-pan-physical-width-dimension = <36>;
 		qcom,mdss-pan-physical-height-dimension = <36>;
+		qcom,delta-pixel;
 	};
 };
