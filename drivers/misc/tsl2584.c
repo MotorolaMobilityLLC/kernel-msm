@@ -296,6 +296,7 @@ static void tsl2584_als_mode_low_lux(struct tsl2584_data *tsl)
 			error);
 		return;
 	}
+	tsl->als_mode = TSL2584_ALS_MODE_LOW_LUX;
 
 	/* write ALS integration time = ~49 ms */
 	reg_data[0] = TSL2584_ITIME;
@@ -306,7 +307,6 @@ static void tsl2584_als_mode_low_lux(struct tsl2584_data *tsl)
 		return;
 	}
 
-	tsl->als_mode = TSL2584_ALS_MODE_LOW_LUX;
 	tsl->als_low_threshold = TSL2584_C0DATA_MAX - 1;
 	tsl->als_high_threshold = TSL2584_C0DATA_MAX;
 	tsl2584_write_als_thresholds(tsl);
@@ -326,6 +326,7 @@ static void tsl2584_als_mode_high_lux(struct tsl2584_data *tsl)
 			"error writing ALS gain: %d\n", error);
 		return;
 	}
+	tsl->als_mode = TSL2584_ALS_MODE_HIGH_LUX;
 
 	/* write ALS integration time = ~49 ms */
 	reg_data[0] = TSL2584_ITIME;
@@ -336,7 +337,6 @@ static void tsl2584_als_mode_high_lux(struct tsl2584_data *tsl)
 		return;
 	}
 
-	tsl->als_mode = TSL2584_ALS_MODE_HIGH_LUX;
 	tsl->als_low_threshold = TSL2584_C0DATA_MAX - 1;
 	tsl->als_high_threshold = TSL2584_C0DATA_MAX;
 	tsl2584_write_als_thresholds(tsl);
@@ -369,8 +369,7 @@ static int tsl2584_device_init(struct tsl2584_data *tsl)
 		return error;
 	}
 
-	tsl->als_mode = TSL2584_ALS_MODE_LOW_LUX;
-	tsl2584_als_mode_low_lux(tsl);
+	tsl2584_als_mode_high_lux(tsl);
 
 	return 0;
 }
@@ -575,33 +574,36 @@ static void tsl2584_report_als(struct tsl2584_data *ct)
 			lux1 = ((lux1ch0_coeff * c0data)
 				- (lux1ch1_coeff * c1data))
 				/ TSL2584_ALS_LOW_LUX_DEN;
-			if (lux1 < 0)
-				lux1 = 0;
 			lux2 = ((lux2ch0_coeff * c0data)
 				- (lux2ch1_coeff * c1data))
 				/ TSL2584_ALS_LOW_LUX_DEN;
-			if (lux2 < 0)
-				lux2 = 0;
-			if (lux1 < lux2)
-				lux1 = lux2;
 			break;
 		case TSL2584_ALS_MODE_HIGH_LUX:
 			lux1 = ((lux1ch0_coeff * c0data)
 				- (lux1ch1_coeff * c1data))
 				/ TSL2584_ALS_HIGH_LUX_DEN;
-			if (lux1 < 0)
-				lux1 = 0;
 			lux2 = ((lux2ch0_coeff * c0data)
 				- (lux2ch1_coeff * c1data))
 				/ TSL2584_ALS_HIGH_LUX_DEN;
-			if (lux2 < 0)
-				lux2 = 0;
-			if (lux1 < lux2)
-				lux1 = lux2;
 			break;
 		default:
 			dev_err(&ct->client->dev, "ALS mode is %d!\n",
 				ct->als_mode);
+			return;
+		}
+		if (lux1 < lux2)
+			lux1 = lux2;
+		if (lux1 < 0) {
+			dev_err(&ct->client->dev,
+				"ALS: mode=%d, c0=%d c1=%d\n, lux1=%d, lux2=%d",
+				ct->als_mode, c0data, c1data, lux1, lux2);
+			/* try recovery very brightness case for low lux mode */
+			if ((ct->als_mode == TSL2584_ALS_MODE_LOW_LUX) &&
+			    (c0data > TSL2584_ALS_LOW_TO_HIGH_THRESHOLD)) {
+				tsl2584_als_mode_high_lux(ct);
+				return;
+			}
+			lux1 = 0;
 		}
 	}
 
