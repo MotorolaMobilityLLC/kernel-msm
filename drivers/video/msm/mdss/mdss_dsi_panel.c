@@ -1055,6 +1055,11 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	pr_info("%s: dynamic switch feature enabled: %d\n", __func__,
 		pinfo->mipi.dynamic_switch_enabled);
 
+	pinfo->is_delta_pixel = of_property_read_bool(np,
+		"qcom,delta-pixel");
+	pr_info("%s: delta pixel %s\n", __func__,
+		(pinfo->is_delta_pixel ? "yes" : "no"));
+
 	return 0;
 }
 
