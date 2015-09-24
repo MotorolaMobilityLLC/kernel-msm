@@ -27,6 +27,7 @@
 #include "apq8026-sturgeon/apq8026-sturgeon-sound.dtsi"
 #include "apq8026-sturgeon/apq8026-sturgeon-memory.dtsi"
 #include "apq8026-sturgeon/apq8026-sturgeon-common.dtsi"
+#include "apq8026-sturgeon/msm8226-sturgeon.dtsi"
 
 / {
 	model = "HUAWEI Technologies, Inc. Sturgeon_APQ8026 MTP";
