@@ -14,6 +14,14 @@
 #include <linux/export.h>
 #include <linux/mmc/card.h>
 
+#ifndef SDIO_VENDOR_ID_BROADCOM
+#define SDIO_VENDOR_ID_BROADCOM		0x02d0
+#endif
+
+#ifndef SDIO_DEVICE_ID_BROADCOM_4343
+#define SDIO_DEVICE_ID_BROADCOM_4343	43430
+#endif
+
 #ifndef SDIO_VENDOR_ID_TI
 #define SDIO_VENDOR_ID_TI		0x0097
 #endif
@@ -73,6 +81,9 @@ static const struct mmc_fixup mmc_fixup_methods[] = {
 	SDIO_FIXUP(SDIO_ANY_ID, SDIO_ANY_ID,
 		   add_quirk_for_sdio_devices,
 		   MMC_QUIRK_BROKEN_CLK_GATING),
+
+	SDIO_FIXUP(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4343,
+		   remove_quirk, MMC_QUIRK_BROKEN_CLK_GATING),
 
 	SDIO_FIXUP(SDIO_VENDOR_ID_TI, SDIO_DEVICE_ID_TI_WL1271,
 		   remove_quirk, MMC_QUIRK_BROKEN_CLK_GATING),
