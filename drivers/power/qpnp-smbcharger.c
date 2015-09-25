@@ -245,6 +245,7 @@ struct smbchg_chip {
 	int				parallel_ibat_ma;
 	struct completion		aicl_rerun_done;
 	bool				disable_parallel_check;
+	bool				iusb_update_done;
 };
 
 enum print_reason {
@@ -1663,6 +1664,7 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 	taper_irq_en(chip, false);
 	chip->parallel.initial_aicl_ma = 0;
 	chip->parallel.current_max_ma = 0;
+	chip->iusb_update_done = true;
 	power_supply_set_current_limit(parallel_psy,
 				SUSPEND_CURRENT_MA * 1000);
 	power_supply_set_present(parallel_psy, false);
@@ -1917,6 +1919,7 @@ static void smbchg_parallel_usb_en_work(struct work_struct *work)
 		pr_smb(PR_STATUS, "parallel charging unavailable\n");
 		smbchg_parallel_usb_disable(chip);
 	}
+	chip->iusb_update_done = true;
 	mutex_unlock(&chip->parallel.lock);
 }
 
@@ -1937,6 +1940,8 @@ static void smbchg_parallel_usb_check_ok(struct smbchg_chip *chip)
 	} else if (chip->parallel.current_max_ma != 0) {
 		pr_smb(PR_STATUS, "parallel charging unavailable\n");
 		smbchg_parallel_usb_disable(chip);
+	} else {
+		chip->iusb_update_done = true;
 	}
 	mutex_unlock(&chip->parallel.lock);
 }
@@ -3178,8 +3183,10 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		if (rc < 0)
 			dev_err(chip->dev,
 				"Couldn't set usb current rc = %d\n", rc);
-		if (chip->usb_cc_controller && current_limit > 0)
+		if (chip->usb_cc_controller && current_limit > 0) {
+			chip->iusb_update_done = false;
 			smbchg_wait_first_aicl_done(chip);
+		}
 		smbchg_parallel_usb_check_ok(chip);
 	}
 	mutex_unlock(&chip->current_change_lock);
@@ -4787,7 +4794,8 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 	if (chip->aicl_complete)
 		complete_all(&chip->aicl_rerun_done);
 
-	if (chip->usb_cc_controller && !chip->parallel.initial_aicl_ma)
+	if (chip->usb_cc_controller && !chip->parallel.initial_aicl_ma
+					&& !chip->iusb_update_done)
 		smbchg_update_input_max(chip);
 
 	if (usb_present)
