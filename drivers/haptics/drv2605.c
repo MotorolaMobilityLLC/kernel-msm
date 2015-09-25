@@ -832,6 +832,7 @@ static int drv2605_probe(struct i2c_client* client, const struct i2c_device_id* 
 	
 	int err = 0;
 	int status = 0;
+	int emfstatus = 0;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
 	{
@@ -911,13 +912,24 @@ static int drv2605_probe(struct i2c_client* client, const struct i2c_device_id* 
 	}
 
 	drv2605_change_mode(pDrv2605data, WORK_IDLE, DEV_READY);
+	/*check if FEEDBACK in LRA mode, change it to default ERM mode*/
+	status = drv2605_reg_read(pDrv2605data, FEEDBACK_CONTROL_REG);
+	emfstatus = drv2605_reg_read(pDrv2605data, AUTO_CALI_BACK_EMF_RESULT_REG);
+	if ((FEEDBACK_CONTROL_DEVICE_TYPE_MASK & status) ||
+		(0xFF == emfstatus))
+	{
+		drv2605_reg_write(pDrv2605data, FEEDBACK_CONTROL_REG, 0x36);
+		drv2605_reg_write(pDrv2605data, AUTO_CALI_BACK_EMF_RESULT_REG, 0x6D);
+		printk("%s, FEEDBACK_CONTROL_REG 0x36\n", __FUNCTION__);
+	}
 	schedule_timeout_interruptible(msecs_to_jiffies(STANDBY_WAKE_DELAY));
 	
-	pDrv2605data->OTP = drv2605_reg_read(pDrv2605data, AUTOCAL_MEM_INTERFACE_REG) & AUTOCAL_MEM_INTERFACE_REG_OTP_MASK;
+	pDrv2605data->OTP = 0;
 	
 	dev_init_platform_data(pDrv2605data);
 	
-	if(pDrv2605data->OTP == 0){
+	if (pDrv2605data->OTP == 0)
+	{
 		err = dev_auto_calibrate(pDrv2605data);
 		if(err < 0){
 			printk("%s, ERROR, calibration fail\n",	__FUNCTION__);
