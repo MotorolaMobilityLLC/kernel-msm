@@ -245,6 +245,10 @@
 		linux,contiguous-region = <&ramoops_mem>;
 	};
 
+        qcom,wdt@b017000 {
+                qcom,bark-time = <22000>;
+        };
+
 	spi_4: spi@7af5000 { /* BLSP2 QUP1 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
