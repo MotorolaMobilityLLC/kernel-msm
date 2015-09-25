@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Motorola, Inc. All Rights Reserved.
+ * Copyright (c) 2012-2015, Motorola, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -45,6 +45,8 @@ enum m4sensorhub_irqs {
 	M4SH_NOWAKEIRQ_ACTIVITY_CHANGE,
 
 	M4SH_NOWAKEIRQ_BATCH,
+
+	M4SH_NOWAKEIRQ_SIMPLEFS,
 
 	M4SH_NOWAKEIRQ__MAX,
 
