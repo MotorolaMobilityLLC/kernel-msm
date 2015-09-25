@@ -341,6 +341,14 @@
 		pinctrl-0 = <&fsa8500_hs_det_default>;
 	};
 
+	cs35l34@40 {
+		compatible = "cirrus,cs35l34";
+		reg = <0x40>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cs35l34_reset_default>;
+	};
+
 	drv2605: drv2605@5a {
 		compatible = "ti,drv2605";
 		reg = <0x5a>;
