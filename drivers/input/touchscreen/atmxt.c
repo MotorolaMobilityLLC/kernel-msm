@@ -2861,14 +2861,10 @@ static int atmxt_message_handler42(struct atmxt_driver_data *dd,
 	}
 
 	if (msg[1] & 0x01) {
-		atmxt_dbg(dd, ATMXT_DBG3,
-			 "%s: Touch suppression is active.\n",
-			__func__);
+		dev_info(&dd->client->dev, "Touch suppression is active.\n");
 		input_report_key(dd->in_dev, KEY_SLEEP, 1);
 	} else {
-		atmxt_dbg(dd, ATMXT_DBG3,
-			 "%s: Touch suppression is disabled.\n",
-			__func__);
+		dev_info(&dd->client->dev, "Touch suppression is disabled.\n");
 		input_report_key(dd->in_dev, KEY_SLEEP, 0);
 	}
 
