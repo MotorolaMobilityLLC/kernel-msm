@@ -643,11 +643,9 @@
 		reg = <0x00>;
 
 		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
-		        <&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
-		        <&tlmm 72 0>;   /* gpio_muc_vbus_en,  output-low */
+			<&tlmm 35 0>;   /* gpio_muc_bplus_en, output-low */
 		mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
-					"gpio_muc_bplus_en",
-					"gpio_muc_vbus_en";
+					"gpio_muc_bplus_en";
 
 		mmi,muc-ctrl-det-hysteresis = <500>;
 		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 1000>;
