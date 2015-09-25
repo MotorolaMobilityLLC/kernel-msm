@@ -2992,7 +2992,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 				pr_debug("idle pc. active overlays=%d\n",
 					active_cnt);
 				if (mdata->allow_cx_vddmin) {
-					pr_err("disable cx during idle_pc\n");
+					pr_debug("disable cx during idle_pc\n");
 					disable_cx = true;
 				}
 			} else {
