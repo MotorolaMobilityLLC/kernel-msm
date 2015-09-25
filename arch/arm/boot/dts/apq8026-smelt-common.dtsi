@@ -103,6 +103,9 @@
 		significantmotion {
 			compatible = "mot,m4significantmotion";
 		};
+		simplefs {
+			compatible = "mot,m4simplefs";
+		};
 	};
 
 	dock {
