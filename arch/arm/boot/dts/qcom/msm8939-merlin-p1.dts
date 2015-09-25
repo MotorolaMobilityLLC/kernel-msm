@@ -18,3 +18,7 @@
 	qcom,board-id = <0x4B 0x8100>,
 			<0x4B 0x8200>;
 };
+
+&ncp6335d {
+	onnn,volt-increment = <40000>;
+};
