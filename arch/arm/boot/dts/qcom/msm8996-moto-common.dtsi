@@ -425,6 +425,10 @@
 		linux,contiguous-region = <&ramoops_mem>;
 	};
 
+	wdog: qcom,wdt@9830000 {
+		qcom,bark-time = <22000>;
+	};
+
 	slim_msm: slim@91c0000 {
 		/delete-node/ tomtom_codec;
 		/delete-node/ tasha_codec;
