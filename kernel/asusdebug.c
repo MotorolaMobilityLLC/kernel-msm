@@ -1286,42 +1286,25 @@ static void do_write_event_worker(struct work_struct *work)
 void ASUSEvtlog(const char *fmt, ...)
 {
     va_list args;
+
     char* buffer;
-    
-    if(g_bEventlogEnable == 0)
-        return;
-
-    if (!in_interrupt() && !in_atomic() && !irqs_disabled())
-        mutex_lock(&mA);//spin_lock(&spinlock_eventlog);
-    
-    buffer = g_Asus_Eventlog[g_Asus_Eventlog_write];
-
-    g_Asus_Eventlog_write ++;
-    g_Asus_Eventlog_write %= ASUS_EVTLOG_MAX_ITEM;
-        
-    if (!in_interrupt() && !in_atomic() && !irqs_disabled())
-        mutex_unlock(&mA);//spin_unlock(&spinlock_eventlog);
-
+    buffer = kmalloc(ASUS_EVTLOG_STR_MAXLEN , GFP_KERNEL);
     memset(buffer, 0, ASUS_EVTLOG_STR_MAXLEN);
-    if(buffer)
-    {
+    if(buffer){
         struct rtc_time tm;
         struct timespec ts;
-        
         getnstimeofday(&ts);
         ts.tv_sec -= sys_tz.tz_minuteswest * 60; // to get correct timezone information
         rtc_time_to_tm(ts.tv_sec, &tm);
         getrawmonotonic(&ts);
-        sprintf(buffer, "(%ld)%04d-%02d-%02d %02d:%02d:%02d :",ts.tv_sec,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    
-        va_start(args, fmt);
-        vscnprintf(buffer + strlen(buffer), ASUS_EVTLOG_STR_MAXLEN - strlen(buffer), fmt, args);
-        va_end(args);
-
-        queue_work(ASUSEvtlog_workQueue, &eventLog_Work);
+        sprintf(buffer, "[ASUSEvtlog](%ld)%04d-%02d-%02d %02d:%02d:%02d :",ts.tv_sec,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	printk(buffer);
+	kfree(buffer);
     }
-    else
-        printk("[adbg] ASUSEvtlog buffer cannot be allocated");
+
+    va_start(args, fmt);
+    vprintk_emit(0, -1, NULL, 0, fmt, args);
+    va_end(args);
 
 }
 EXPORT_SYMBOL(ASUSEvtlog);
