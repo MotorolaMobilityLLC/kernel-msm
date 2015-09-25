@@ -220,6 +220,10 @@ void kernel_restart(char *cmd)
 		pr_emerg("Restarting system\n");
 	else
 		pr_emerg("Restarting system with command '%s'\n", cmd);
+	printk(KERN_EMERG "Current task:%s(%d) Parent task:%s(%d)\n",
+		current->comm, current->pid,
+		current->real_parent->comm,
+		current->real_parent->pid);
 	kmsg_dump(KMSG_DUMP_RESTART);
 	machine_restart(cmd);
 }
@@ -262,6 +266,10 @@ void kernel_power_off(void)
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
 	pr_emerg("Power down\n");
+	printk(KERN_EMERG "Current task:%s(%d) Parent task:%s(%d)\n",
+		current->comm, current->pid,
+		current->real_parent->comm,
+		current->real_parent->pid);
 	kmsg_dump(KMSG_DUMP_POWEROFF);
 	machine_power_off();
 }
