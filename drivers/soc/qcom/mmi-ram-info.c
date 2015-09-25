@@ -13,6 +13,7 @@
 
 #include <linux/module.h>
 #include <soc/qcom/smsm.h>
+#include <linux/pstore.h>
 
 static struct {
 	unsigned mr5;
@@ -138,6 +139,8 @@ static int __init init_mmi_ram_info(void)
 			SMEM_ANY_HOST_FLAG);
 
 	if (smem_ddr_info != NULL) {
+		char apanic_annotation[128];
+
 		/* identify vendor */
 		vid = smem_ddr_info->mr5 & 0xFF;
 		if (vid < (sizeof(vendors)/sizeof(vendors[0])))
@@ -160,6 +163,14 @@ static int __init init_mmi_ram_info(void)
 
 		/* extract size */
 		sysfsram_ramsize = smem_ddr_info->ramsize;
+
+		snprintf(apanic_annotation, sizeof(apanic_annotation),
+			"RAM: %s, %s, %u MB, MR5:0x%02X, MR6:0x%02X, "
+			"MR7:0x%02X, MR8:0x%02X\n",
+			vname, tname, smem_ddr_info->ramsize,
+			smem_ddr_info->mr5, smem_ddr_info->mr6,
+			smem_ddr_info->mr7, smem_ddr_info->mr8);
+		pstore_annotate(apanic_annotation);
 	}
 	else {
 		/* complain, but do not fail if SMEM was not allocated */
