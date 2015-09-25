@@ -523,6 +523,11 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		(panel_ver & 0xff0000) >> 16,
 		pconf->panel_ver);
 
+	ctrl_pdata->panel_data.panel_info.panel_ver = panel_ver;
+	strlcpy(ctrl_pdata->panel_data.panel_info.panel_family_name,
+		pconf->panel_name,
+		sizeof(ctrl_pdata->panel_data.panel_info.panel_family_name));
+
 	of_node_put(np);
 
 	return 0;
@@ -1741,6 +1746,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 {
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_config *pcfg;
+	const char *data;
 	int rc;
 
 	if (!np || !ctrl) {
@@ -1815,6 +1821,16 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		if (!gpio_is_valid(ctrl->disp_en_gpio))
 			pr_err("%s:%d, Disp_en gpio not specified\n",
 					__func__, __LINE__);
+	}
+
+	data = of_get_property(np, "qcom,mdss-dsi-panel-supplier", NULL);
+	if (!data)
+		memset(pinfo->panel_supplier, '\0',
+			sizeof(pinfo->panel_supplier));
+	else if (strlcpy(pinfo->panel_supplier, data,
+			sizeof(pinfo->panel_supplier)) >=
+			sizeof(pinfo->panel_supplier)) {
+		pr_err("%s: Panel supplier name too large\n", __func__);
 	}
 
 	return 0;
