@@ -163,6 +163,17 @@
 #define I2C_RETRIES		5
 #define DEFAULT_AUTO_CAL_TIME	AUTOCAL_TIME_500MS
 #define AUTO_CAL_TIME_MASK	0x30
+#define OC_DETECT_MASK		0x01
+#define OVER_TEMP_MASK		0x02
+#define DRV260x_LOG_STATUS(mydev, status) \
+	if (status & OC_DETECT_MASK)\
+		dev_err(mydev, "Status: Overcurrent event is detected\n");\
+	if (status & OVER_TEMP_MASK)\
+		dev_err(mydev, "Status: Is overheated\n");\
+	if (status & DIAG_RESULT_MASK)\
+		dev_err(mydev, "Status: Autocalibration failed\n");\
+	else\
+		dev_err(mydev, "Status: Autocalibration success\n");
 
 static struct drv260x {
 	struct class *class;
@@ -953,11 +964,11 @@ static void probe_work(struct work_struct *work)
 
 	/* Read status */
 	status = drv260x_read_reg(STATUS_REG);
+	DRV260x_LOG_STATUS(&client->dev, status);
 
 	if (!drv260x->skip_lra_autocal) {
 		/* Check result */
 		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-			dev_err(&client->dev, "auto-cal failed. Retry\n");
 			if (drv260x->lra_drive)
 				drv260x_write_reg_val(LRA_autocal_sequence,
 						      sizeof(LRA_autocal_sequence));
@@ -966,12 +977,8 @@ static void probe_work(struct work_struct *work)
 						      sizeof(ERM_autocal_sequence));
 			drv2605_poll_go_bit();
 			status = drv260x_read_reg(STATUS_REG);
-			if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-				dev_err(&client->dev, "auto-cal retry failed.\n");
-				// return -ENODEV;
-			}
-		} else
-			dev_info(&client->dev, "auto-calibration success\n");
+			DRV260x_LOG_STATUS(&client->dev, status);
+		}
 	}
 
 	/* Choose default effect library */
