@@ -47,18 +47,18 @@ struct tm_ctrl_data {
 };
 
 enum {
-	REAR_CALL_ALERT = 0,
+	REAR_NORMAL = 0,
+	REAR_CALL_ALERT,
 	REAR_CALL_DROPPED,
 	REAR_POWEROFF,
-	REAR_NORMAL,
 	REAR_ACTION_MAX
 };
 
 static char *rear_action_str[REAR_ACTION_MAX] = {
+	"normal",
 	"call_alert",
 	"call_dropped",
 	"poweroff",
-	"normal",
 };
 
 static int rear_tm_notification_init(struct rear_tm_data *rear_tm);
@@ -251,35 +251,19 @@ static struct attribute_group rear_tm_param_group = {
 	.attrs = rear_tm_param_attributes,
 };
 
-static void rear_tm_action(struct rear_tm_data *rear_tm, int lvl)
+static void rear_tm_action(struct rear_tm_data *rear_tm, int action)
 {
-	unsigned int tm_action = rear_tm->warm_cfg[lvl].action;
-
-	pr_debug("lvl: %d, action: %d\n", lvl, tm_action);
-
-	switch (tm_action) {
-	case REAR_NORMAL:
-		rear_tm->thermalstate = tm_action;
-		switch_set_state(&rear_tm->sdev, REAR_NORMAL);
-		break;
-	case REAR_CALL_ALERT:
-		pr_info("CALL ALERT!\n");
-		rear_tm->thermalstate = tm_action;
-		switch_set_state(&rear_tm->sdev, REAR_CALL_ALERT);
-		break;
-	case REAR_CALL_DROPPED:
-		pr_info("CALL DROPPED!\n");
-		rear_tm->thermalstate = tm_action;
-		switch_set_state(&rear_tm->sdev, REAR_CALL_DROPPED);
-		break;
-	case REAR_POWEROFF:
-		pr_info("TOO HOT POWEROFF!\n");
-		rear_tm->thermalstate = tm_action;
-		/* TODO: power off */
-		break;
-	default:
-		break;
+	if (action < 0 || action >= REAR_ACTION_MAX) {
+		pr_warn("unknown action(%d)\n", action);
+		return;
 	}
+
+	pr_debug("action: %s(%d)\n", rear_action_str[action], action);
+
+	rear_tm->thermalstate = action;
+
+	if (action < REAR_POWEROFF)
+		switch_set_state(&rear_tm->sdev, action);
 }
 
 static int rear_tm_get_level(struct rear_tm_data *rear_tm,
@@ -321,11 +305,10 @@ static void rear_tm_notification(enum qpnp_tm_state state, void *ctx)
 		cur_temp = rear_tm->adc_param.low_temp;
 
 	ret = qpnp_vadc_read(rear_tm->vadc_dev, P_MUX8_1_1, &results);
-	if (!ret) {
+	if (!ret)
 		cur_temp = (int)results.physical;
-	} else {
+	else
 		pr_warn("Unable to read vbat ret=%d\n", ret);
-	}
 
 	pr_info("state: %s, temp: %d\n",
 			state == ADC_TM_WARM_STATE ? "warm" : "cool",
@@ -334,7 +317,7 @@ static void rear_tm_notification(enum qpnp_tm_state state, void *ctx)
 	i = rear_tm_get_level(rear_tm, state);
 	if (state == ADC_TM_WARM_STATE) {
 		next = min(i+1, max_size);
-		rear_tm_action(rear_tm, i); // set state
+		rear_tm_action(rear_tm, rear_tm->warm_cfg[i].action);
 	} else {
 		next = max(i-1, 0);
 		rear_tm_action(rear_tm, REAR_NORMAL); // clear state
