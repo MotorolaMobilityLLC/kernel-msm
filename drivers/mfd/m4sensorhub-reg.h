@@ -188,6 +188,9 @@ static const struct {
 	[M4SH_REG_ADSFEATURE_APSAMPLERATE]   = {M4SH_TYPE_ADSFEATURE, 0x4, 4},
 	[M4SH_REG_ADSFEATURE_HEARTRATE]      = {M4SH_TYPE_ADSFEATURE, 0x8, 2},
 	[M4SH_REG_ADSFEATURE_CONFIDENCE]     = {M4SH_TYPE_ADSFEATURE, 0xa, 1},
+	[M4SH_REG_SIMPLEFS_RESPONSE]         = {M4SH_TYPE_SIMPLEFS, 0x0, 4},
+	[M4SH_REG_SIMPLEFS_COMMAND]          = {M4SH_TYPE_SIMPLEFS, 0x4, 20},
+	[M4SH_REG_SIMPLEFS_PACKET]           = {M4SH_TYPE_SIMPLEFS, 0x18, 228},
 };
 
 static const unsigned int bank_size_tbl[M4SH_TYPE__NUM] = {
@@ -213,5 +216,6 @@ static const unsigned int bank_size_tbl[M4SH_TYPE__NUM] = {
 	[M4SH_TYPE_DEBUG]                    = 1,
 	[M4SH_TYPE_ADSSENSOR]                = 14,
 	[M4SH_TYPE_ADSFEATURE]               = 11,
+	[M4SH_TYPE_SIMPLEFS]                 = 252,
 };
 #endif /*__M4SENSORHUB_MEM_INTERNAL_H__ */
