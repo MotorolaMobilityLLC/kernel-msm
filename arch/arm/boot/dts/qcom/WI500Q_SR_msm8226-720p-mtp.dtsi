@@ -277,7 +277,7 @@
 		qcom,vibrator@c000 {
 			status = "okay";
 			qcom,vib-timeout-ms = <15000>;
-			qcom,vib-vtg-level-mV = <2000>;    //ASUS_BSP +++ Maggie_Lee "Reduce vibration strength"
+			qcom,vib-vtg-level-mV = <3100>;
 		};
 	};
 };
