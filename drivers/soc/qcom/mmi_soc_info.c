@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <soc/qcom/socinfo.h>
+#include <linux/pstore.h>
 
 struct mmi_msm_bin {
 	int	set;
@@ -30,14 +31,49 @@ static DEFINE_SPINLOCK(mmi_msm_bin_lock);
 
 static inline void mmi_panic_annotate(const char *str)
 {
+	pstore_annotate(str);
+}
+
+static void __init mmi_msm_annotate_socinfo(void)
+{
+	char socinfo[32];
+
+	snprintf(socinfo, sizeof(socinfo), "socinfo: id=%u, ",
+			socinfo_get_id());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "ver=%u.%u, ",
+			SOCINFO_VERSION_MAJOR(socinfo_get_version()),
+			SOCINFO_VERSION_MINOR(socinfo_get_version()));
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "raw_id=%u, ",
+			socinfo_get_raw_id());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "raw_ver=%u, ",
+			socinfo_get_raw_version());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat=%u, ",
+			socinfo_get_platform_type());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat_ver=%u, ",
+			socinfo_get_platform_version());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat_subtype=%u\n",
+			socinfo_get_platform_subtype());
+	mmi_panic_annotate(socinfo);
 }
 
 static ssize_t mmi_acpu_proc_read(struct file *file, char __user *buf,
 				size_t count, loff_t *ppos)
 {
-	int data = (int)PDE_DATA(file_inode(file));
+	void *data = PDE_DATA(file_inode(file));
 	char local_buf[8];
-	int len = snprintf(local_buf, 2, "%1x", data);
+	int len = snprintf(local_buf, 2, "%1p", data);
 
 	return simple_read_from_buffer(buf, count, ppos, local_buf, len);
 }
@@ -86,7 +122,7 @@ static void __init mmi_msm_acpu_bin_export(void)
 	if (mmi_msm_bin_info.pvs != MMI_MSM_BIN_INVAL) {
 		proc = proc_create_data("cpu/msm_acpu_pvs",
 			(S_IFREG | S_IRUGO), NULL,
-			&mmi_acpu_proc_fops, (void *)mmi_msm_bin_info.pvs);
+			&mmi_acpu_proc_fops, (void *)(uintptr_t)mmi_msm_bin_info.pvs);
 		if (!proc)
 			pr_err("Failed to create /proc/cpu/msm_acpu_pvs.\n");
 		else
@@ -105,6 +141,7 @@ static void __init mmi_msm_acpu_bin_export(void)
 
 static int __init init_mmi_soc_info(void)
 {
+	mmi_msm_annotate_socinfo();
 	mmi_msm_acpu_bin_export();
 	return 0;
 }
