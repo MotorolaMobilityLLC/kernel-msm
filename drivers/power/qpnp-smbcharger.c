@@ -4399,7 +4399,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		pr_smb(PR_MISC, "setting usb psy allow detection 0\n");
 		power_supply_set_allow_detection(chip->usb_psy, 0);
-		/* remove schedule_work(&chip->usb_set_online_work); */
+		schedule_work(&chip->usb_set_online_work);
 		pr_smb(PR_MISC, "setting usb psy health UNKNOWN\n");
 		rc = power_supply_set_health_state(chip->usb_psy,
 				POWER_SUPPLY_HEALTH_UNKNOWN);
@@ -4499,7 +4499,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 					"usb psy does not allow updating prop %d rc = %d\n",
 					POWER_SUPPLY_HEALTH_GOOD, rc);
 		}
-		/* remove schedule_work(&chip->usb_set_online_work); */
+		schedule_work(&chip->usb_set_online_work);
 	}
 
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
@@ -5178,13 +5178,13 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 			rc = smbchg_set_usb_current_max(chip, CURRENT_150_MA);
 			if (rc)
 				pr_err("could not set current 150mA : %d", rc);
+			schedule_work(&chip->usb_set_online_work);
 		}
 		pr_smb(PR_MISC, "setting usb psy health UNSPEC_FAILURE\n");
 		rc = power_supply_set_health_state(chip->usb_psy,
 				POWER_SUPPLY_HEALTH_UNSPEC_FAILURE);
 		if (rc)
 			pr_err("Couldn't set health on usb psy rc:%d\n", rc);
-		schedule_work(&chip->usb_set_online_work);
 	}
 
 	smbchg_wipower_check(chip);
