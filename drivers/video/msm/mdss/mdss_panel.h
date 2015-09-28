@@ -599,6 +599,7 @@ struct mdss_panel_info {
 	struct mdss_panel_debugfs_info *debugfs_info;
 
 	u32 disp_on_check_val;
+	bool blank_progress_notify_enabled;
 };
 
 struct mdss_panel_timing {
@@ -658,6 +659,7 @@ struct mdss_panel_data {
 	bool active;
 
 	struct mdss_panel_data *next;
+	struct msm_fb_data_type *mfd;
 };
 
 struct mdss_panel_debugfs_info {
