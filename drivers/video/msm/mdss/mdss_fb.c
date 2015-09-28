@@ -837,6 +837,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	}
 
 	mfd = (struct msm_fb_data_type *)fbi->par;
+	pdata->mfd = mfd;
 	mfd->key = MFD_KEY;
 	mfd->fbi = fbi;
 	mfd->panel_info = &pdata->panel_info;
