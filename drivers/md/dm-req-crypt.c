@@ -262,7 +262,7 @@ static void req_cryptd_crypt_read_convert(struct req_dm_crypt_io *io)
 		goto submit_request;
 	}
 
-	req = ablkcipher_request_alloc(tfm, GFP_KERNEL);
+	req = ablkcipher_request_alloc(tfm, GFP_NOIO);
 	if (!req) {
 		DMERR("%s ablkcipher request allocation failed\n", __func__);
 		err = DM_REQ_CRYPT_ERROR;
@@ -315,7 +315,7 @@ static void req_cryptd_crypt_read_convert(struct req_dm_crypt_io *io)
 	crypto_ablkcipher_setkey(tfm, NULL, KEY_SIZE_XTS);
 
 	req_sg_read = (struct scatterlist *)mempool_alloc(req_scatterlist_pool,
-								GFP_KERNEL);
+								GFP_NOIO);
 	if (!req_sg_read) {
 		DMERR("%s req_sg_read allocation failed\n",
 						__func__);
@@ -447,7 +447,7 @@ static void req_cryptd_crypt_write_convert(struct req_dm_crypt_io *io)
 
 	req_crypt_inc_pending(io);
 
-	req = ablkcipher_request_alloc(tfm, GFP_KERNEL);
+	req = ablkcipher_request_alloc(tfm, GFP_NOIO);
 	if (!req) {
 		DMERR("%s ablkcipher request allocation failed\n",
 					__func__);
@@ -501,7 +501,7 @@ static void req_cryptd_crypt_write_convert(struct req_dm_crypt_io *io)
 	crypto_ablkcipher_setkey(tfm, NULL, KEY_SIZE_XTS);
 
 	req_sg_in = (struct scatterlist *)mempool_alloc(req_scatterlist_pool,
-								GFP_KERNEL);
+								GFP_NOIO);
 	if (!req_sg_in) {
 		DMERR("%s req_sg_in allocation failed\n",
 					__func__);
@@ -511,7 +511,7 @@ static void req_cryptd_crypt_write_convert(struct req_dm_crypt_io *io)
 	memset(req_sg_in, 0, sizeof(struct scatterlist) * MAX_SG_LIST);
 
 	req_sg_out = (struct scatterlist *)mempool_alloc(req_scatterlist_pool,
-								GFP_KERNEL);
+								GFP_NOIO);
 	if (!req_sg_out) {
 		DMERR("%s req_sg_out allocation failed\n",
 					__func__);
