@@ -5072,8 +5072,10 @@ static irqreturn_t usbid_change_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 	bool otg_present;
 
-	if (chip->usbid_disabled)
+	if (chip->usbid_disabled) {
+		power_supply_set_usb_otg(chip->usb_psy, 0);
 		return IRQ_HANDLED;
+	}
 
 	pr_smb(PR_INTERRUPT, "triggered\n");
 
