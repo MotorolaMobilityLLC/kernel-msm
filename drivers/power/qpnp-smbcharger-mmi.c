@@ -261,6 +261,7 @@ struct smbchg_chip {
 	unsigned long			first_aicl_seconds;
 	int				aicl_irq_count;
 	bool				factory_mode;
+	bool				factory_cable;
 	struct delayed_work		heartbeat_work;
 	struct mutex			check_temp_lock;
 	int				temp_state;
@@ -4614,6 +4615,8 @@ static void usb_insertion_work(struct work_struct *work)
 	smbchg_relax(chip, PM_CHARGER);
 }
 
+static int factory_kill_disable;
+module_param(factory_kill_disable, int, 0644);
 static void handle_usb_removal(struct smbchg_chip *chip)
 {
 	int rc;
@@ -4621,6 +4624,15 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	cancel_delayed_work(&chip->usb_insertion_work);
 	chip->apsd_rerun_cnt = 0;
 	chip->hvdcp_det_done = false;
+
+	if (chip->factory_cable) {
+		if (!factory_kill_disable && !reboot_in_progress()) {
+			pr_err("SMB - Factory Cable removed, power-off\n");
+			kernel_power_off();
+		} else
+			pr_err("SMB - Factory cable removed - kill disabled\n");
+		chip->factory_cable = false;
+	}
 
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->force_aicl_rerun) {
@@ -4709,6 +4721,12 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	}
 
 	chip->apsd_rerun_cnt = 0;
+
+	if (chip->factory_mode && (usb_supply_type == POWER_SUPPLY_TYPE_USB ||
+				usb_supply_type == POWER_SUPPLY_TYPE_USB_CDP)) {
+		pr_err("SMB - Factory Kill Armed\n");
+		chip->factory_cable = true;
+	}
 
 	pr_smb(PR_STATUS, "inserted %s, usb psy type = %d stat_5 = 0x%02x\n",
 			usb_type_name, usb_supply_type, reg);
