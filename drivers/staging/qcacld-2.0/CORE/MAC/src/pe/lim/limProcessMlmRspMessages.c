@@ -542,6 +542,12 @@ limSendMlmAssocReq( tpAniSirGlobal pMac,
     PELOG1(limLog(pMac, LOG1, FL("SessionId:%d Authenticated with BSS"),
            psessionEntry->peSessionId);)
 
+    if (NULL == psessionEntry->pLimJoinReq) {
+        limLog(pMac, LOGE, FL("Join Request is NULL."));
+        /* No need to Assert. JOIN timeout will handle this error */
+        return;
+    }
+
     pMlmAssocReq = vos_mem_malloc(sizeof(tLimMlmAssocReq));
     if ( NULL == pMlmAssocReq ) {
         limLog(pMac, LOGP, FL("call to AllocateMemory failed for mlmAssocReq"));
