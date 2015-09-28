@@ -531,6 +531,7 @@ struct synaptics_rmi4_data {
 	struct mutex rmi4_exp_init_mutex;
 	bool clipping_on;
 	struct synaptics_clip_area *clipa;
+	unsigned long event_blank;
 };
 
 struct synaptics_rmi4_exp_fn_ptr {
