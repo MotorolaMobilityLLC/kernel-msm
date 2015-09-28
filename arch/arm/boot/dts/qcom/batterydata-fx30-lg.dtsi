@@ -14,7 +14,7 @@ qcom,fx30-lg {
 	/* #1928848_Moto_FX30_3000mAh_averaged_MasterSlave_Apr30th2015*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3000>;
-	qcom,batt-id-kohm = <100>;
+	qcom,batt-id-kohm = <250>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "FX30-LG-3000mah-v2";
 	qcom,chg-rslow-comp-c1 = <3039290>;
