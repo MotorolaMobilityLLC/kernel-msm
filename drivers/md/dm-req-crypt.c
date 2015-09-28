@@ -314,7 +314,7 @@ static void req_cryptd_crypt_read_convert(struct req_dm_crypt_io *io)
 	mutex_unlock(&engine_list_mutex);
 
 	req_sg_read = (struct scatterlist *)mempool_alloc(req_scatterlist_pool,
-								GFP_KERNEL);
+								GFP_NOIO);
 	if (!req_sg_read) {
 		DMERR("%s req_sg_read allocation failed\n",
 						__func__);
@@ -346,7 +346,7 @@ static void req_cryptd_crypt_read_convert(struct req_dm_crypt_io *io)
 
 	if (split_transfers) {
 		split_io = kzalloc(sizeof(struct req_dm_split_req_io)
-				* engine_list_total, GFP_KERNEL);
+				* engine_list_total, GFP_NOIO);
 		if (!split_io) {
 			DMERR("%s split_io allocation failed\n", __func__);
 			error = DM_REQ_CRYPT_ERROR;
@@ -381,7 +381,7 @@ static void req_cryptd_crypt_read_convert(struct req_dm_crypt_io *io)
 		}
 	} else {
 		split_io = kzalloc(sizeof(struct req_dm_split_req_io),
-				GFP_KERNEL);
+				GFP_NOIO);
 		if (!split_io) {
 			DMERR("%s split_io allocation failed\n", __func__);
 			error = DM_REQ_CRYPT_ERROR;
@@ -493,7 +493,7 @@ static void req_cryptd_crypt_write_convert(struct req_dm_crypt_io *io)
 
 	req_crypt_inc_pending(io);
 
-	req = ablkcipher_request_alloc(tfm, GFP_KERNEL);
+	req = ablkcipher_request_alloc(tfm, GFP_NOIO);
 	if (!req) {
 		DMERR("%s ablkcipher request allocation failed\n",
 					__func__);
@@ -547,7 +547,7 @@ static void req_cryptd_crypt_write_convert(struct req_dm_crypt_io *io)
 	crypto_ablkcipher_setkey(tfm, NULL, KEY_SIZE_XTS);
 
 	req_sg_in = (struct scatterlist *)mempool_alloc(req_scatterlist_pool,
-								GFP_KERNEL);
+								GFP_NOIO);
 	if (!req_sg_in) {
 		DMERR("%s req_sg_in allocation failed\n",
 					__func__);
@@ -557,7 +557,7 @@ static void req_cryptd_crypt_write_convert(struct req_dm_crypt_io *io)
 	memset(req_sg_in, 0, sizeof(struct scatterlist) * MAX_SG_LIST);
 
 	req_sg_out = (struct scatterlist *)mempool_alloc(req_scatterlist_pool,
-								GFP_KERNEL);
+								GFP_NOIO);
 	if (!req_sg_out) {
 		DMERR("%s req_sg_out allocation failed\n",
 					__func__);
@@ -737,7 +737,7 @@ static void req_cryptd_split_req_queue_cb(struct work_struct *work)
 		/* If io is not populated this should not be called */
 		BUG();
 	}
-	req = ablkcipher_request_alloc(tfm, GFP_KERNEL);
+	req = ablkcipher_request_alloc(tfm, GFP_NOIO);
 	if (!req) {
 		DMERR("%s ablkcipher request allocation failed\n", __func__);
 		err = DM_REQ_CRYPT_ERROR;
@@ -913,7 +913,7 @@ static int req_crypt_map(struct dm_target *ti, struct request *clone,
 	struct req_dm_crypt_io *req_io = NULL;
 	int error = DM_REQ_CRYPT_ERROR, copy_bio_sector_to_req = 0;
 	struct bio *bio_src = NULL;
-	gfp_t gfp_flag = GFP_KERNEL;
+	gfp_t gfp_flag = GFP_NOIO;
 
 	if (in_interrupt() || irqs_disabled())
 		gfp_flag = GFP_NOWAIT;
@@ -1264,7 +1264,7 @@ static int req_crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	if (encryption_mode == DM_REQ_CRYPT_ENCRYPTION_MODE_TRANSPARENT) {
 		/* configure ICE settings */
 		ice_settings =
-			kzalloc(sizeof(struct ice_crypto_setting), GFP_KERNEL);
+			kzalloc(sizeof(struct ice_crypto_setting), GFP_NOIO);
 		if (!ice_settings) {
 			err = -ENOMEM;
 			goto ctr_exit;
