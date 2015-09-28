@@ -2114,6 +2114,12 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to set SYSCLK: %d\n", ret);
 
+	ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_OPCLK,
+				0, FLORIDA_SYSCLK_RATE,
+				SND_SOC_CLOCK_OUT);
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to set OPCLK: %d\n", ret);
+
 	ret = snd_soc_dapm_new_controls(dapm, msm8996_dapm_widgets,
 				ARRAY_SIZE(msm8996_dapm_widgets));
 
@@ -2162,6 +2168,7 @@ static int florida_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *aif1_dai = rtd->cpu_dai;
 	struct snd_soc_dai *cs35l34_left = rtd->codec_dai;
 
@@ -2175,6 +2182,8 @@ static int florida_cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 		dev_err(codec->dev, "Failed to set MCLK %d\n", ret);
 		return ret;
 	}
+	snd_soc_dapm_ignore_suspend(dapm, "AMP Playback");
+	snd_soc_dapm_sync(dapm);
 	return 0;
 }
 #endif
