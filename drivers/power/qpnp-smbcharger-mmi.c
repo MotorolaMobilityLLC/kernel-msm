@@ -35,6 +35,7 @@
 #include <linux/rtc.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/batterydata-lib.h>
+#include <linux/pinctrl/consumer.h>
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -76,8 +77,16 @@ enum stepchg_state {
 	STEP_MAX,
 	STEP_ONE,
 	STEP_TAPER,
+	STEP_EB,
 	STEP_FULL,
 	STEP_NONE = 0xFF,
+};
+
+enum ebchg_state {
+	EB_DISCONN,
+	EB_SINK,
+	EB_SRC,
+	EB_OFF,
 };
 
 struct pchg_current_map {
@@ -231,9 +240,12 @@ struct smbchg_chip {
 	struct power_supply		*usb_psy;
 	struct power_supply		batt_psy;
 	struct power_supply		dc_psy;
+	struct power_supply		wls_psy;
 	struct power_supply		*bms_psy;
 	int				dc_psy_type;
 	const char			*bms_psy_name;
+	const char			*eb_batt_psy_name;
+	const char			*eb_pwr_psy_name;
 	const char			*battery_psy_name;
 	bool				psy_registered;
 
@@ -285,6 +297,9 @@ struct smbchg_chip {
 	struct notifier_block		smb_reboot;
 	int				aicl_wait_retries;
 	bool				hvdcp_det_done;
+	enum ebchg_state		ebchg_state;
+	struct gpio			ebchg_gpio;
+	struct pinctrl			*smb_pinctrl;
 };
 
 static struct smbchg_chip *the_chip;
@@ -664,6 +679,25 @@ static bool is_otg_present(struct smbchg_chip *chip)
 	return (reg & RID_MASK) == 0;
 }
 
+static bool is_wls_present(struct smbchg_chip *chip)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+
+	if (!chip->wls_psy.get_property)
+		return false;
+
+	rc = chip->wls_psy.get_property(&chip->wls_psy,
+					 POWER_SUPPLY_PROP_PRESENT,
+					 &ret);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't get wls status\n");
+		return false;
+	}
+
+	return (ret.intval ? true : false);
+}
+
 #define USBIN_9V			BIT(5)
 #define USBIN_UNREG			BIT(4)
 #define USBIN_LV			BIT(3)
@@ -772,6 +806,45 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_AGE,
 };
 
+static int get_eb_prop(struct smbchg_chip *chip,
+		       enum power_supply_property prop)
+{
+	union power_supply_propval ret = {0, };
+	int eb_prop;
+	int rc;
+	struct power_supply *eb_batt_psy =
+		power_supply_get_by_name((char *)chip->eb_batt_psy_name);
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+
+	if (!eb_batt_psy || !eb_pwr_psy)
+		return -EINVAL;
+
+	rc = eb_batt_psy->get_property(eb_batt_psy, prop, &ret);
+	if (rc) {
+		dev_dbg(chip->dev,
+			"eb batt error reading Prop %d rc = %d\n",
+			prop, rc);
+		ret.intval = -EINVAL;
+	}
+	eb_prop = ret.intval;
+
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
+				      &ret);
+	if (rc) {
+		dev_dbg(chip->dev,
+			"Could not read Send Params rc = %d\n", rc);
+		eb_prop = -EINVAL;
+	} else if (ret.intval !=
+		   POWER_SUPPLY_PTP_INT_SND_SUPPLEMENTAL) {
+		eb_prop = -EINVAL;
+	}
+
+
+	return eb_prop;
+}
+
 #define CHGR_STS			0x0E
 #define BATT_LESS_THAN_2V		BIT(4)
 #define CHG_HOLD_OFF_BIT		BIT(3)
@@ -789,9 +862,10 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	int rc, status = POWER_SUPPLY_STATUS_DISCHARGING;
 	u8 reg = 0, chg_type;
 	bool charger_present, chg_inhibit;
-	int batt_soc;
+	int batt_soc, eb_soc;
 
 	batt_soc = get_prop_batt_capacity(chip);
+	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
 
 	rc = smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
 	if (rc < 0) {
@@ -800,14 +874,16 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 	}
 
 	if ((reg & BAT_TCC_REACHED_BIT) && !chip->demo_mode &&
-	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
+	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD) &&
+	    (eb_soc == -EINVAL))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
-	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD))
+	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)
+	    && ((eb_soc == -EINVAL) || (eb_soc >= 100)))
 		return POWER_SUPPLY_STATUS_FULL;
 
-	charger_present = is_usb_present(chip) | is_dc_present(chip);
+	charger_present = is_usb_present(chip) | is_wls_present(chip);
 	if (!charger_present)
 		return POWER_SUPPLY_STATUS_DISCHARGING;
 
@@ -1043,6 +1119,20 @@ static int get_prop_charge_full(struct smbchg_chip *chip)
 	return uah;
 }
 
+static int smbchg_calc_batt_cap_full(struct smbchg_chip *chip)
+{
+	int batt_size;
+	int eb_size;
+
+	batt_size = get_prop_charge_full(chip);
+
+	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
+	if (eb_size != -EINVAL)
+	    batt_size += eb_size;
+
+	return batt_size;
+}
+
 #define DEFAULT_CHARGE_FULL_DESIGN	3000000
 static int get_prop_charge_full_design(struct smbchg_chip *chip)
 {
@@ -1055,6 +1145,20 @@ static int get_prop_charge_full_design(struct smbchg_chip *chip)
 		uah = DEFAULT_CHARGE_FULL_DESIGN;
 	}
 	return uah;
+}
+
+static int smbchg_calc_batt_cap_full_design(struct smbchg_chip *chip)
+{
+	int batt_size;
+	int eb_size;
+
+	batt_size = get_prop_charge_full_design(chip);
+
+	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
+	if (eb_size != -EINVAL)
+	    batt_size += eb_size;
+
+	return batt_size;
 }
 
 #define DEFAULT_CYCLE_COUNT	0
@@ -1083,6 +1187,38 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_COOL;
 	else
 		return POWER_SUPPLY_HEALTH_GOOD;
+}
+
+static int smbchg_calc_batt_capacity(struct smbchg_chip *chip)
+{
+	int batt_cap, batt_size, batt_uah;
+	int eb_cap, eb_size, eb_uah, total_uah, total_size;
+
+	batt_cap = get_prop_batt_capacity(chip);
+	eb_cap = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
+	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
+
+	if ((eb_cap == -EINVAL) || (eb_size == -EINVAL) || (eb_size == 0))
+		return batt_cap;
+
+	eb_uah = (eb_cap * eb_size) / 100;
+	dev_dbg(chip->dev, "EB RemCap = %d, FullCap = %d\n",
+		 eb_cap, eb_size);
+
+	batt_size = get_prop_charge_full_design(chip);
+	batt_uah = (batt_cap * batt_size) / 100;
+	dev_dbg(chip->dev, "BATT RemCap = %d, FullCap = %d\n",
+		 batt_cap, batt_size);
+
+	total_uah = batt_uah + eb_uah;
+	total_size = batt_size + eb_size;
+	dev_dbg(chip->dev, "EB+BATT RemCap = %d, FullCap = %d\n",
+		 total_uah, total_size);
+
+	batt_cap = (100 * total_uah) / total_size;
+	dev_dbg(chip->dev, "EB+BATT Capacity = %d\n", batt_cap);
+
+	return batt_cap;
 }
 
 static const int usb_current_table[] = {
@@ -1301,6 +1437,10 @@ enum enable_reason {
 	 * The Store DEMO App is running, ensure proper USB Suspend.
 	 */
 	REASON_DEMO = BIT(6),
+	/*
+	 * The External Battery is being Charged, ensure proper USB Suspend.
+	 */
+	REASON_EB = BIT(7),
 };
 
 enum battchg_enable_reason {
@@ -1465,7 +1605,7 @@ static int smbchg_dc_en(struct smbchg_chip *chip, bool enable,
 		goto out;
 	}
 
-	if (chip->psy_registered)
+	if ((chip->dc_psy_type != -EINVAL)  && chip->psy_registered)
 		power_supply_changed(&chip->dc_psy);
 	pr_smb(PR_STATUS, "dc charging %s, suspended = %02x\n",
 			suspended == 0 ? "enabled"
@@ -2670,8 +2810,9 @@ static int smbchg_dc_system_temp_level_set(struct smbchg_chip *chip,
 		goto out;
 	}
 
-	rc = smbchg_set_thermal_limited_dc_current_max(chip,
-					chip->dc_target_current_ma);
+	if (chip->dc_target_current_ma != -EINVAL)
+		rc = smbchg_set_thermal_limited_dc_current_max(chip,
+						   chip->dc_target_current_ma);
 
 	if (prev_therm_lvl == chip->dc_thermal_levels - 1) {
 		/*
@@ -3039,7 +3180,7 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	/* properties from fg */
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = get_prop_batt_capacity(chip);
+		val->intval = smbchg_calc_batt_capacity(chip);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_batt_current_now(chip);
@@ -3067,10 +3208,10 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = get_prop_cycle_count(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-		val->intval = get_prop_charge_full(chip);
+		val->intval = smbchg_calc_batt_cap_full(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = get_prop_charge_full_design(chip);
+		val->intval = smbchg_calc_batt_cap_full_design(chip);
 		break;
 	case POWER_SUPPLY_PROP_AGE:
 		val->intval = ((get_prop_charge_full(chip) / 10) /
@@ -3176,6 +3317,159 @@ static int smbchg_dc_is_writeable(struct power_supply *psy,
 		break;
 	}
 	return rc;
+}
+
+static enum power_supply_property smbchg_wls_properties[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+};
+
+static int smbchg_wls_get_property(struct power_supply *psy,
+				       enum power_supply_property prop,
+				       union power_supply_propval *val)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct smbchg_chip *chip = container_of(psy,
+						struct smbchg_chip, wls_psy);
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+
+	if (!eb_pwr_psy) {
+		val->intval = 0;
+		return 0;
+	}
+	rc = eb_pwr_psy->get_property(eb_pwr_psy,
+				      POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+				      &ret);
+	if (rc) {
+		val->intval = 0;
+		return 0;
+	}
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = ret.intval;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+#define HVDCP_EN_BIT			BIT(3)
+static void smbchg_set_extbat_state(struct smbchg_chip *chip,
+				   enum ebchg_state state)
+{
+	int rc;
+	union power_supply_propval ret = {0, };
+	struct power_supply *eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+
+	chip->smb_pinctrl = pinctrl_get_select(chip->dev, "eb_active");
+	if (!chip->smb_pinctrl)
+		dev_err(chip->dev, "Could not get/set pinctrl state\n");
+	chip->smb_pinctrl = pinctrl_get_select_default(chip->dev);
+	if (!chip->smb_pinctrl)
+		dev_err(chip->dev, "Could not get/set pinctrl state\n");
+
+	if (state == chip->ebchg_state)
+		return;
+
+	if (!eb_pwr_psy) {
+		smbchg_usb_en(chip, true, REASON_EB);
+		smbchg_dc_en(chip, false, REASON_EB);
+		gpio_set_value(chip->ebchg_gpio.gpio, 0);
+		rc = smbchg_sec_masked_write(chip,
+					    chip->usb_chgpth_base + CHGPTH_CFG,
+					    HVDCP_EN_BIT, HVDCP_EN_BIT);
+		if (rc < 0)
+			dev_err(chip->dev,
+				"Couldn't enable HVDCP rc=%d\n", rc);
+
+		chip->ebchg_state = EB_DISCONN;
+		return;
+	} else {
+		rc = eb_pwr_psy->get_property(eb_pwr_psy,
+					  POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
+					  &ret);
+		if (rc)
+			dev_err(chip->dev,
+				"Could not read Send Params rc = %d\n", rc);
+		else if (ret.intval != POWER_SUPPLY_PTP_INT_SND_SUPPLEMENTAL) {
+			if (chip->ebchg_state == EB_DISCONN)
+				dev_err(chip->dev,
+					"No Supplemental Battery Ignore!\n");
+			return;
+		}
+	}
+
+	dev_err(chip->dev, "EB State is %d setting %d\n",
+		chip->ebchg_state, state);
+
+	switch (state) {
+	case EB_SINK:
+		rc = smbchg_sec_masked_write(chip,
+					    chip->usb_chgpth_base + CHGPTH_CFG,
+					    HVDCP_EN_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't disable HVDCP rc=%d\n", rc);
+			return;
+		}
+		ret.intval = POWER_SUPPLY_PTP_CURRENT_FROM_PHONE;
+		rc = eb_pwr_psy->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					    &ret);
+		if (!rc) {
+			chip->ebchg_state = state;
+			smbchg_usb_en(chip, false, REASON_EB);
+			smbchg_dc_en(chip, false, REASON_EB);
+			gpio_set_value(chip->ebchg_gpio.gpio, 1);
+		}
+		break;
+	case EB_SRC:
+		ret.intval = POWER_SUPPLY_PTP_CURRENT_TO_PHONE;
+		rc = eb_pwr_psy->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					    &ret);
+		if (!rc) {
+			chip->ebchg_state = state;
+			smbchg_usb_en(chip, false, REASON_EB);
+			smbchg_dc_en(chip, true, REASON_EB);
+			gpio_set_value(chip->ebchg_gpio.gpio, 0);
+			rc = smbchg_sec_masked_write(chip,
+					    chip->usb_chgpth_base + CHGPTH_CFG,
+					    HVDCP_EN_BIT, HVDCP_EN_BIT);
+			if (rc < 0)
+				dev_err(chip->dev,
+					"Couldn't enable HVDCP rc=%d\n", rc);
+		}
+		break;
+	case EB_OFF:
+		ret.intval = POWER_SUPPLY_PTP_CURRENT_OFF;
+		rc = eb_pwr_psy->set_property(eb_pwr_psy,
+					    POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+					    &ret);
+		if (!rc) {
+			chip->ebchg_state = state;
+			gpio_set_value(chip->ebchg_gpio.gpio, 0);
+			smbchg_usb_en(chip, true, REASON_EB);
+			smbchg_dc_en(chip, false, REASON_EB);
+			rc = smbchg_sec_masked_write(chip,
+					    chip->usb_chgpth_base + CHGPTH_CFG,
+					    HVDCP_EN_BIT, HVDCP_EN_BIT);
+			if (rc < 0)
+				dev_err(chip->dev,
+					"Couldn't enable HVDCP rc=%d\n", rc);
+		}
+
+		break;
+	default:
+		break;
+	}
 }
 
 #define USBIN_SUSPEND_SRC_BIT		BIT(6)
@@ -3629,7 +3923,6 @@ struct regulator_ops smbchg_otg_reg_ops = {
 
 #define USBIN_CHGR_CFG			0xF1
 #define USBIN_ADAPTER_9V		0x3
-#define HVDCP_EN_BIT			BIT(3)
 static int smbchg_external_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	bool changed;
@@ -4408,6 +4701,11 @@ static irqreturn_t dcin_uv_handler(int irq, void *_chip)
 		chip->dc_present = dc_present;
 		handle_dc_removal(chip);
 	}
+
+	smbchg_stay_awake(chip, PM_HEARTBEAT);
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(0));
 	mutex_unlock(&chip->dc_set_present_lock);
 
 	return IRQ_HANDLED;
@@ -5343,13 +5641,14 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 				"Couldn't set DCIN CHGR CONFIG rc = %d\n", rc);
 			return rc;
 		}
+	}
 
+	if (chip->dc_target_current_ma != -EINVAL)
 		rc = smbchg_set_thermal_limited_dc_current_max(chip,
-						chip->dc_target_current_ma);
-		if (rc < 0) {
-			dev_err(chip->dev, "can't set dc current: %d\n", rc);
-			return rc;
-		}
+						   chip->dc_target_current_ma);
+	if (rc < 0) {
+		dev_err(chip->dev, "can't set dc current: %d\n", rc);
+		return rc;
 	}
 
 
@@ -5578,6 +5877,50 @@ static int parse_dt_pchg_current_map(const u32 *arr,
 	return len;
 }
 
+static void parse_dt_gpio(struct smbchg_chip *chip)
+{
+	struct device_node *node = chip->dev->of_node;
+	enum of_gpio_flags flags;
+	int rc;
+
+	if (!node) {
+		dev_err(chip->dev, "gpio dtree info. missing\n");
+		return;
+	}
+
+
+	if (!of_gpio_count(node)) {
+		dev_err(chip->dev, "No GPIOS defined.\n");
+		return;
+	}
+
+	chip->ebchg_gpio.gpio = of_get_gpio_flags(node, 0, &flags);
+	chip->ebchg_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 0,
+				      &chip->ebchg_gpio.label);
+
+	rc = gpio_request_one(chip->ebchg_gpio.gpio,
+			      chip->ebchg_gpio.flags,
+			      chip->ebchg_gpio.label);
+	if (rc) {
+		dev_err(chip->dev, "failed to request GPIO\n");
+		return;
+	}
+
+	rc = gpio_export(chip->ebchg_gpio.gpio, 1);
+	if (rc) {
+		dev_err(chip->dev, "Failed to export GPIO %s: %d\n",
+			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chip->dev, chip->ebchg_gpio.label,
+			      chip->ebchg_gpio.gpio);
+	if (rc)
+		dev_err(chip->dev, "Failed to link GPIO %s: %d\n",
+			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
+}
+
 static int smb_parse_dt(struct smbchg_chip *chip)
 {
 	int rc = 0;
@@ -5740,17 +6083,16 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		else if (strcmp(dc_psy_type, "Wipower") == 0)
 			chip->dc_psy_type = POWER_SUPPLY_TYPE_WIPOWER;
 	}
-	if (chip->dc_psy_type != -EINVAL) {
-		OF_PROP_READ(chip, chip->dc_target_current_ma,
-				"dc-psy-ma", rc, 0);
-		if (rc)
-			return rc;
-		if (chip->dc_target_current_ma < DC_MA_MIN
-				|| chip->dc_target_current_ma > DC_MA_MAX) {
-			dev_err(chip->dev, "Bad dc mA %d\n",
-					chip->dc_target_current_ma);
-			return -EINVAL;
-		}
+
+	OF_PROP_READ(chip, chip->dc_target_current_ma,
+		     "dc-psy-ma", rc, 1);
+	if (rc)
+		return rc;
+	if (chip->dc_target_current_ma < DC_MA_MIN
+	    || chip->dc_target_current_ma > DC_MA_MAX) {
+		dev_err(chip->dev, "Bad dc mA %d\n",
+			chip->dc_target_current_ma);
+		return -EINVAL;
 	}
 
 	if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIPOWER)
@@ -5767,6 +6109,18 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 						&chip->battery_psy_name);
 	if (rc)
 		chip->battery_psy_name = "battery";
+
+	/* read the external battery power supply name */
+	rc = of_property_read_string(node, "qcom,eb-batt-psy-name",
+						&chip->eb_batt_psy_name);
+	if (rc)
+		chip->eb_batt_psy_name = "gb_battery";
+
+	/* read the external power control power supply name */
+	rc = of_property_read_string(node, "qcom,eb-pwr-psy-name",
+						&chip->eb_pwr_psy_name);
+	if (rc)
+		chip->eb_pwr_psy_name = "gb_ptp";
 
 	current_map = of_get_property(node, "qcom,parallel-charge-current-map",
 				      &chip->pchg_current_map_len);
@@ -5875,6 +6229,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 		}
 	} else
 		chip->dc_thermal_levels = 0;
+
+	parse_dt_gpio(chip);
 
 	return 0;
 }
@@ -6211,6 +6567,259 @@ static const struct file_operations cnfg_debugfs_ops = {
 	.release	= single_release,
 };
 
+static struct power_supply		smbchg_gb_psy;
+static int smbchg_gb_psy_present;
+static int smbchg_gb_psy_online;
+static int smbchg_gb_psy_capacity;
+static int smbchg_gb_psy_charge_full;
+static struct power_supply		smbchg_pwr_psy;
+static int smbchg_pwr_psy_present;
+static int smbchg_pwr_psy_isend;
+static int smbchg_pwr_psy_ireceive;
+static int smbchg_pwr_psy_external;
+static int smbchg_pwr_psy_flow;
+static int smbchg_gb_batt_avail;
+
+static enum power_supply_property smbchg_gb_props[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+};
+
+static int smbchg_gb_set_property(struct power_supply *psy,
+			      enum power_supply_property prop,
+			      const union power_supply_propval *val)
+{
+	int rc = 0;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+		smbchg_gb_psy_present = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		smbchg_gb_psy_online = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY:
+		smbchg_gb_psy_capacity = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		smbchg_gb_psy_charge_full = val->intval;
+		break;
+	default:
+		break;
+	}
+	power_supply_changed(psy);
+
+	return rc;
+}
+
+static int smbchg_gb_get_property(struct power_supply *psy,
+			   enum power_supply_property prop,
+			   union power_supply_propval *val)
+{
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = smbchg_gb_psy_present;
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = smbchg_gb_psy_online;
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = smbchg_gb_psy_charge_full;
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY:
+		val->intval = smbchg_gb_psy_capacity;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int smbchg_gb_is_writeable(struct power_supply *psy,
+				       enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+	case POWER_SUPPLY_PROP_CAPACITY:
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+static void smbchg_gb_power_changed(struct power_supply *psy)
+{
+	pr_err("gb_psy changed!\n");
+}
+
+static enum power_supply_property smbchg_pwr_props[] = {
+	POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
+	POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE,
+	POWER_SUPPLY_PROP_PTP_EXTERNAL,
+	POWER_SUPPLY_PROP_PTP_CURRENT_FLOW,
+	POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT,
+};
+
+static int smbchg_pwr_set_property(struct power_supply *psy,
+			    enum power_supply_property prop,
+			    const union power_supply_propval *val)
+{
+	int rc = 0;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PTP_INTERNAL_SEND:
+		smbchg_pwr_psy_isend = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE:
+		smbchg_pwr_psy_ireceive = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_PTP_EXTERNAL:
+		smbchg_pwr_psy_external = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_PTP_CURRENT_FLOW:
+		smbchg_pwr_psy_flow = val->intval;
+		break;
+	case POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT:
+		smbchg_pwr_psy_present = val->intval;
+		break;
+	default:
+		break;
+	}
+	power_supply_changed(psy);
+
+	return rc;
+}
+
+static int smbchg_pwr_get_property(struct power_supply *psy,
+			    enum power_supply_property prop,
+			    union power_supply_propval *val)
+{
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PTP_INTERNAL_SEND:
+		val->intval = smbchg_pwr_psy_isend;
+		break;
+	case POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE:
+		val->intval = smbchg_pwr_psy_ireceive;
+		break;
+	case POWER_SUPPLY_PROP_PTP_EXTERNAL:
+		val->intval = smbchg_pwr_psy_external;
+		break;
+	case POWER_SUPPLY_PROP_PTP_CURRENT_FLOW:
+		val->intval = smbchg_pwr_psy_flow;
+		break;
+	case POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT:
+		val->intval = smbchg_pwr_psy_present;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int smbchg_pwr_is_writeable(struct power_supply *psy,
+			    enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_PTP_INTERNAL_SEND:
+	case POWER_SUPPLY_PROP_PTP_INTERNAL_RECEIVE:
+	case POWER_SUPPLY_PROP_PTP_EXTERNAL:
+	case POWER_SUPPLY_PROP_PTP_CURRENT_FLOW:
+	case POWER_SUPPLY_PROP_PTP_EXTERNAL_PRESENT:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static void smbchg_pwr_power_changed(struct power_supply *psy)
+{
+	pr_err("pwr_psy changed!\n");
+}
+
+
+static int eb_dbfs_read(void *data, u64 *val)
+{
+	*val = smbchg_gb_batt_avail;
+
+	return 0;
+}
+
+static int eb_dbfs_write(void *data, u64 val)
+{
+	int rc;
+	struct smbchg_chip *chip = data;
+
+	if (!chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+	if (val) {
+		smbchg_gb_psy_present = 1;
+		smbchg_gb_psy_online = 1;
+		smbchg_gb_psy_capacity = 60;
+		smbchg_gb_psy_charge_full = 2000000;
+
+		smbchg_pwr_psy_present = POWER_SUPPLY_PTP_EXT_NOT_PRESENT;
+		smbchg_pwr_psy_isend = POWER_SUPPLY_PTP_INT_SND_SUPPLEMENTAL;
+		smbchg_pwr_psy_ireceive = POWER_SUPPLY_PTP_INT_RCV_PARALLEL;
+		smbchg_pwr_psy_external = POWER_SUPPLY_PTP_EXT_SUPPORTED;
+		smbchg_pwr_psy_flow = POWER_SUPPLY_PTP_CURRENT_OFF;
+
+		smbchg_gb_psy.name		= chip->eb_batt_psy_name;
+		smbchg_gb_psy.type		= POWER_SUPPLY_TYPE_BATTERY;
+		smbchg_gb_psy.get_property	= smbchg_gb_get_property;
+		smbchg_gb_psy.set_property	= smbchg_gb_set_property;
+		smbchg_gb_psy.properties	= smbchg_gb_props;
+		smbchg_gb_psy.num_properties = ARRAY_SIZE(smbchg_gb_props);
+		smbchg_gb_psy.external_power_changed = smbchg_gb_power_changed;
+		smbchg_gb_psy.property_is_writeable = smbchg_gb_is_writeable;
+
+		rc = power_supply_register(chip->dev, &smbchg_gb_psy);
+		if (rc < 0)
+			pr_err("Unable to register gb_psy rc = %d\n", rc);
+
+
+		smbchg_pwr_psy.name		= chip->eb_pwr_psy_name;
+		smbchg_pwr_psy.type		= POWER_SUPPLY_TYPE_PTP;
+		smbchg_pwr_psy.get_property	= smbchg_pwr_get_property;
+		smbchg_pwr_psy.set_property	= smbchg_pwr_set_property;
+		smbchg_pwr_psy.properties	= smbchg_pwr_props;
+		smbchg_pwr_psy.num_properties = ARRAY_SIZE(smbchg_pwr_props);
+		smbchg_pwr_psy.external_power_changed = smbchg_pwr_power_changed;
+		smbchg_pwr_psy.property_is_writeable = smbchg_pwr_is_writeable;
+
+		rc = power_supply_register(chip->dev, &smbchg_pwr_psy);
+		if (rc < 0)
+			pr_err("Unable to register pwr_psy rc = %d\n", rc);
+
+		smbchg_gb_batt_avail = 1;
+	} else {
+		power_supply_unregister(&smbchg_gb_psy);
+		power_supply_unregister(&smbchg_pwr_psy);
+		smbchg_gb_batt_avail = 0;
+	}
+
+
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(eb_dbfs_ops, eb_dbfs_read,
+			eb_dbfs_write, "%llu\n");
+
 static int create_debugfs_entries(struct smbchg_chip *chip)
 {
 	struct dentry *ent;
@@ -6240,6 +6849,17 @@ static int create_debugfs_entries(struct smbchg_chip *chip)
 			"Couldn't create force dump file\n");
 		return -EINVAL;
 	}
+
+	ent = debugfs_create_file("eb_attach",
+				  S_IFREG | S_IWUSR | S_IRUGO,
+				  chip->debug_root, chip,
+				  &eb_dbfs_ops);
+	if (!ent) {
+		dev_err(chip->dev,
+			"Couldn't create eb attach file\n");
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -6968,7 +7588,8 @@ static void smbchg_set_temp_chgpath(struct smbchg_chip *chip, int prev_temp)
 	if (chip->ext_high_temp ||
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_COLD) ||
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_OVERHEAT) ||
-	    (chip->stepchg_state == STEP_FULL))
+	    (chip->stepchg_state == STEP_FULL) ||
+	    (chip->stepchg_state == STEP_EB))
 		smbchg_charging_en(chip, 0);
 	else {
 		if (((prev_temp == POWER_SUPPLY_HEALTH_COOL) ||
@@ -7079,6 +7700,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	int batt_mv;
 	int batt_ma;
 	int batt_soc;
+	int eb_soc;
 	int batt_temp;
 	int prev_batt_health;
 	int prev_ext_lvl;
@@ -7089,6 +7711,14 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	smbchg_stay_awake(chip, PM_HEARTBEAT);
 	if (smbchg_check_and_kick_aicl(chip))
 		goto end_hb;
+
+	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
+
+	if (eb_soc == -EINVAL)
+		smbchg_set_extbat_state(chip, EB_DISCONN);
+	else if (chip->ebchg_state == EB_DISCONN)
+		smbchg_set_extbat_state(chip, EB_OFF);
+
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_UPDATE_NOW, 1);
 	batt_mv = get_prop_batt_voltage_now(chip) / 1000;
 	batt_ma = get_prop_batt_current_now(chip) / 1000;
@@ -7119,12 +7749,12 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			chip->stepchg_state = STEP_ONE;
 		else
 			chip->stepchg_state = STEP_MAX;
+		smbchg_set_extbat_state(chip, EB_OFF);
 		chip->stepchg_state_holdoff = 0;
 	} else if ((chip->stepchg_state == STEP_MAX) &&
 		   (batt_ma < 0) && (chip->usb_present) &&
 		   ((batt_mv + HYST_STEP_MV) >= chip->stepchg_voltage_mv)) {
 		batt_ma *= -1;
-
 		index = smbchg_get_pchg_current_map_index(chip);
 		if (chip->pchg_current_map_data[index].primary ==
 		    chip->stepchg_current_ma)
@@ -7149,15 +7779,31 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		    (chip->allowed_fastchg_current_ma >=
 		     chip->stepchg_taper_ma))
 			if (chip->stepchg_state_holdoff >= 2) {
-				chip->stepchg_state = STEP_TAPER;
+				if ((chip->ebchg_state != EB_DISCONN) &&
+				    (eb_soc < 100)) {
+					smbchg_set_extbat_state(chip, EB_SINK);
+					chip->stepchg_state = STEP_EB;
+				} else
+					chip->stepchg_state = STEP_TAPER;
+
 				chip->stepchg_state_holdoff = 0;
 			} else
 				chip->stepchg_state_holdoff++;
 		else
 			chip->stepchg_state_holdoff = 0;
+	} else if ((chip->stepchg_state == STEP_EB) &&
+		   (chip->usb_present)) {
+		if (chip->ebchg_state == EB_DISCONN)
+			chip->stepchg_state = STEP_ONE;
+		else if ((chip->ebchg_state == EB_SINK) &&
+		    (eb_soc >= 100)) {
+			smbchg_set_extbat_state(chip, EB_OFF);
+			chip->stepchg_state = STEP_ONE;
+		}
 	} else if ((chip->stepchg_state == STEP_TAPER) &&
 		   (batt_ma < 0) && (chip->usb_present)) {
 		batt_ma *= -1;
+
 		if ((batt_soc >= 100) &&
 		    (batt_ma <= chip->stepchg_iterm_ma) &&
 		    (chip->allowed_fastchg_current_ma >=
@@ -7169,16 +7815,23 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 				chip->stepchg_state_holdoff++;
 		else
 			chip->stepchg_state_holdoff = 0;
-	}  else if ((chip->stepchg_state == STEP_FULL) &&
+	} else if ((chip->stepchg_state == STEP_FULL) &&
 		    (chip->usb_present) && (batt_soc < 100)) {
 		chip->stepchg_state = STEP_TAPER;
 	} else if (!chip->usb_present) {
 		chip->stepchg_state = STEP_NONE;
+		if ((chip->ebchg_state != EB_DISCONN)) {
+			if (eb_soc > 0)
+				smbchg_set_extbat_state(chip, EB_SRC);
+			else
+				smbchg_set_extbat_state(chip, EB_OFF);
+		}
 		chip->stepchg_state_holdoff = 0;
 	} else
 		chip->stepchg_state_holdoff = 0;
 
 	switch (chip->stepchg_state) {
+	case STEP_EB:
 	case STEP_FULL:
 	case STEP_TAPER:
 		if (smbchg_hvdcp_det_check(chip) &&
@@ -7210,7 +7863,7 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 		break;
 	}
 
-	dev_dbg(chip->dev, "Step State = %d\n",
+	dev_warn(chip->dev, "Step State = %d\n",
 		(int)chip->stepchg_state);
 
 	prev_batt_health = chip->temp_state;
@@ -7445,6 +8098,20 @@ static int smbchg_probe(struct spmi_device *spmi)
 		goto free_regulator;
 	}
 
+	chip->wls_psy.name		= "wireless";
+	chip->wls_psy.type		= POWER_SUPPLY_TYPE_WIRELESS;
+	chip->wls_psy.get_property	= smbchg_wls_get_property;
+	chip->wls_psy.set_property	= NULL;
+	chip->wls_psy.property_is_writeable = NULL;
+	chip->wls_psy.properties		= smbchg_wls_properties;
+	chip->wls_psy.num_properties = ARRAY_SIZE(smbchg_wls_properties);
+	rc = power_supply_register(chip->dev, &chip->wls_psy);
+	if (rc < 0) {
+		dev_err(&spmi->dev,
+			"Unable to register wls_psy rc = %d\n", rc);
+		goto unregister_batt_psy;
+	}
+
 	if (chip->dc_psy_type != -EINVAL) {
 		chip->dc_psy.name		= "dc";
 		chip->dc_psy.type		= chip->dc_psy_type;
@@ -7457,9 +8124,10 @@ static int smbchg_probe(struct spmi_device *spmi)
 		if (rc < 0) {
 			dev_err(&spmi->dev,
 				"Unable to register dc_psy rc = %d\n", rc);
-			goto unregister_batt_psy;
+			goto unregister_wls_psy;
 		}
 	}
+
 	chip->psy_registered = true;
 
 	rc = smbchg_request_irqs(chip);
@@ -7551,6 +8219,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 unregister_dc_psy:
 	power_supply_unregister(&chip->dc_psy);
+unregister_wls_psy:
+	power_supply_unregister(&chip->wls_psy);
 unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 free_regulator:
@@ -7594,6 +8264,7 @@ static int smbchg_remove(struct spmi_device *spmi)
 	}
 
 	power_supply_unregister(&chip->batt_psy);
+	power_supply_unregister(&chip->wls_psy);
 	smbchg_regulator_deinit(chip);
 	wakeup_source_trash(&chip->smbchg_wake_source);
 
