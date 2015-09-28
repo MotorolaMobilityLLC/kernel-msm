@@ -122,6 +122,24 @@
 	synaptics_dsx_i2c@20 {
 		vdd_quirk-supply = <&vreg_5p0>;
 	};
+
+	isl98611: isl98611@29 {
+		compatible = "intersil,isl98611";
+		reg = <0x29>;
+		status = "okay";
+		linux,name = "wled:backlight";
+		linux,default-trigger = "bkl-trigger";
+		intersil,default-on;
+		intersil,vn = <20>;
+		intersil,vp = <20>;
+		intersil,panel-tune;
+		intersil,pfm-value = <0x86>;
+		intersil,dimm-threshold = <0x02>;
+		intersil,current-scale = <63>;
+		intersil,led-current = <0xC0>;
+		intersil,init-level = <255>;
+		intersil,no-reset;
+	};
 };
 
 &soc {
