@@ -14,7 +14,7 @@ qcom,fb55-lg {
 	/* #1921003_Moto_FB55_3760mAh_averaged_MasterSlave_May5th2015*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3760>;
-	qcom,batt-id-kohm = <100>;
+	qcom,batt-id-kohm = <250>;
 	qcom,battery-beta = <3900>;
 	qcom,battery-type = "FB55-LG-3760mah";
 	qcom,chg-rslow-comp-c1 = <3503636>;
