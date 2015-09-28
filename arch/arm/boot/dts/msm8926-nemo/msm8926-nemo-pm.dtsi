@@ -370,6 +370,7 @@
 		qcom,hw-settle-time = <2>;
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,scale-function = <7>;
+		qcom,meas-interval-timer-idx = <0>;
 		reg = <0x17>;
 		/delete-property/ qcom,thermal-node;
 	};
