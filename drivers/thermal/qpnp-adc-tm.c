@@ -1772,6 +1772,12 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 				chip->adc->amux_prop->chan_prop);
 	chip->adc->amux_prop->chan_prop->tm_channel_select =
 				chip->sensor[dt_index].btm_channel_num;
+
+	if (chip->sensor[dt_index].timer_select == ADC_MEAS_TIMER_SELECT1 &&
+			param->timer_interval >= ADC_MEAS1_INTERVAL_0MS &&
+			param->timer_interval <= ADC_MEAS1_INTERVAL_16S)
+		chip->sensor[dt_index].meas_interval = param->timer_interval;
+
 	chip->adc->amux_prop->chan_prop->state_request =
 					param->state_request;
 	rc = qpnp_adc_tm_configure(chip, chip->adc->amux_prop);
