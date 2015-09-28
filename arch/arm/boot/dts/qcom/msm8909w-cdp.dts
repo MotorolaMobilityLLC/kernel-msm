@@ -15,8 +15,8 @@
 
 #include "msm8909-cdp.dtsi"
 #include "msm8909w-gpu.dtsi"
-#include "msm8909w.dtsi"
 #include "msm8909-pm8916-cdp.dtsi"
+#include "msm8909w.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909W-PM8916 CDP";
