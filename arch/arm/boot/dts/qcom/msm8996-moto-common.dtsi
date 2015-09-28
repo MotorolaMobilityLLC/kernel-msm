@@ -728,6 +728,11 @@
 
 &pmi8994_charger {
 	status = "okay";
+	gpios = <&tlmm 72 0x0>; /* GPIOF_OUT_INIT_LOW */
+	gpio-names = "eb_vbus_en";
+	pinctrl-names = "default", "eb_active";
+	pinctrl-0 = <&eb_vbus_conf>;
+	pinctrl-1 = <&eb_vbus_active>;
 	/delete-property/ qcom,iterm-ma;
 	qcom,iterm-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
@@ -735,10 +740,12 @@
 	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
-	qcom,dc-psy-type = "Wireless";
+	/delete-property/ qcom,dc-psy-type;
 	qcom,dc-psy-ma = <950>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
+	qcom,eb-batt-psy-name = "gb_battery";
+	qcom,eb-pwr-psy-name = "gb_ptp";
 	qcom,charge-unknown-battery;
 	qcom,chg-thermal-mitigation = <2500>, <2000>, <1600>, <1200>, <1000>, <700>,
 				      <500>, <300>;
