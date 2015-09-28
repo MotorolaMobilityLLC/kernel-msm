@@ -298,6 +298,26 @@
 		};
 	};
 
+	eb_chrg_conf {
+		eb_vbus_conf: default {
+			config {
+				pins = "gpio72";
+				function = "gpio";
+				output-low;
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+		eb_vbus_active: active {
+			config {
+				pins = "gpio72";
+				function = "gpio";
+				output-low;
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
 	pmx_motosh_out: default {
 		config {
 			pins ="gpio90", "gpio95";
