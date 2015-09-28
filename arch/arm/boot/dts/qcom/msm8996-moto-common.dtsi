@@ -1097,7 +1097,7 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-		wlf,gpio-defaults = <0x00002102
+		wlf,gpio-defaults = <0x00000004
 				0xffffffff
 				0x00010000
 				0x00000004
