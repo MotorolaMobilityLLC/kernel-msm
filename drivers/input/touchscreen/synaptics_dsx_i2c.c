@@ -1294,6 +1294,11 @@ static struct synaptics_dsx_platform_data *
 	} else
 		dev_err(&client->dev, "clip area read failure\n");
 
+	if (of_property_read_bool(np, "synaptics,use-in-progress-event-blank")) {
+		pr_notice("using in progress event blank\n");
+		rmi4_data->event_blank = FB_IN_PROGRESS_EVENT_BLANK;
+	}
+
 	return pdata;
 }
 #else
@@ -5128,6 +5133,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		return retval;
 	}
 
+	rmi4_data->event_blank = FB_EARLY_EVENT_BLANK;
+
 	if (client->dev.of_node)
 		platform_data = synaptics_dsx_of_init(client, rmi4_data);
 	else
@@ -5477,15 +5484,15 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
-	if ((event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK) &&
+	if ((event == rmi4_data->event_blank || event == FB_EVENT_BLANK) &&
 			evdata && evdata->info && evdata->info->node == 0 &&
 			evdata->data && rmi4_data) {
 		int *blank = evdata->data;
 		pr_debug("fb notification: event = %lu blank = %d\n", event, *blank);
-		/* entering suspend upon early blank event */
+		/* entering suspend upon early blank or in-progress blank event*/
 		/* to ensure shared power supply is still on */
 		/* for in-cell design touch solutions */
-		if (event == FB_EARLY_EVENT_BLANK) {
+		if (event == rmi4_data->event_blank) {
 			if (*blank != FB_BLANK_POWERDOWN)
 				return 0;
 			synaptics_dsx_display_off(&rmi4_data->i2c_client->dev);
