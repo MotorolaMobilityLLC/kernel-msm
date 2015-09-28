@@ -448,6 +448,7 @@ struct mdss_panel_info {
 
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
+	bool blank_progress_notify_enabled;
 };
 
 struct mdss_panel_data {
@@ -470,6 +471,7 @@ struct mdss_panel_data {
 	int (*event_handler) (struct mdss_panel_data *pdata, int e, void *arg);
 
 	struct mdss_panel_data *next;
+	struct msm_fb_data_type *mfd;
 };
 
 struct mdss_panel_debugfs_info {
