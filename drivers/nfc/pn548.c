@@ -59,6 +59,7 @@
 struct pn548_dev {
 	wait_queue_head_t	read_wq;
 	struct mutex		read_mutex;
+	struct mutex		irq_wake_mutex;
 	struct device		*dev;
 	struct i2c_client	*client;
 	struct miscdevice	pn548_device;
@@ -68,11 +69,56 @@ struct pn548_dev {
 	unsigned int		irq_gpio;
 	unsigned int		clk_req_gpio;
 	bool			irq_enabled;
+	bool			irq_wake_enabled;
 	spinlock_t		irq_enabled_lock;
 	bool			do_reading;
 	struct wake_lock	wl;
 	bool cancel_read;
 };
+/*
+ *FUNCTION: pn548_disable_irq_wake
+ *DESCRIPTION: disable irq wakeup function
+ *Parameters
+ * struct  pn548_dev *: device structure
+ *RETURN VALUE
+ * none
+ */
+static void pn548_disable_irq_wake(struct pn548_dev *pn548_dev)
+{
+	int ret = 0;
+
+	mutex_lock(&pn548_dev->irq_wake_mutex);
+	if (pn548_dev->irq_wake_enabled) {
+		pn548_dev->irq_wake_enabled = false;
+		ret = irq_set_irq_wake(pn548_dev->client->irq,0);
+		if (ret) {
+			pr_err("%s failed: ret=%d\n", __func__, ret);
+		}
+	}
+	mutex_unlock(&pn548_dev->irq_wake_mutex);
+}
+/*
+ *FUNCTION: pn548_enable_irq_wake
+ *DESCRIPTION: enable irq wakeup function
+ *Parameters
+ * struct  pn548_dev *: device structure
+ *RETURN VALUE
+ * none
+ */
+static void pn548_enable_irq_wake(struct pn548_dev *pn548_dev)
+{
+	int ret = 0;
+
+	mutex_lock(&pn548_dev->irq_wake_mutex);
+	if (!pn548_dev->irq_wake_enabled) {
+		pn548_dev->irq_wake_enabled = true;
+		ret = irq_set_irq_wake(pn548_dev->client->irq,1);
+		if (ret) {
+			pr_err("%s failed: ret=%d\n", __func__, ret);
+		}
+	}
+	mutex_unlock(&pn548_dev->irq_wake_mutex);
+}
 
 /*
  *FUNCTION: pn548_disable_irq
@@ -505,13 +551,13 @@ static long pn548_dev_ioctl(struct file *filp,
 			/* power on */
 			pr_err("%s power on\n", __func__);
 			pn548_enable(pn548_dev, MODE_RUN);
-			irq_set_irq_wake(pn548_dev->client->irq,1);
+			pn548_enable_irq_wake(pn548_dev);
 			msleep(20);
 		} else  if (0 == arg) {
 			/* power off */
 			pr_err("%s power off\n", __func__);
 			pn548_disable(pn548_dev);
-			irq_set_irq_wake(pn548_dev->client->irq,0);
+			pn548_disable_irq_wake(pn548_dev);
 			msleep(60);
 		} else if (3 == arg) {
 			pr_info("%s Read Cancel\n", __func__);
@@ -772,6 +818,7 @@ static int pn548_probe(struct i2c_client *client,
 	pn548_dev->dev = &client->dev;
 	pn548_dev->do_reading = 0;
 	pn548_dev->nfc_clk = nfc_clk;
+	pn548_dev->irq_wake_enabled = false;
 
 	/*check if nfc chip is ok*/
 	ret = check_pn548(client, pn548_dev);
@@ -786,6 +833,7 @@ static int pn548_probe(struct i2c_client *client,
 	/* Initialise mutex and work queue */
 	init_waitqueue_head(&pn548_dev->read_wq);
 	mutex_init(&pn548_dev->read_mutex);
+	mutex_init(&pn548_dev->irq_wake_mutex);
 	spin_lock_init(&pn548_dev->irq_enabled_lock);
 	wake_lock_init(&pn548_dev->wl,WAKE_LOCK_SUSPEND,"nfc_locker");
 
@@ -823,6 +871,7 @@ err_request_irq_failed:
 	misc_deregister(&pn548_dev->pn548_device);
 err_misc_register:
 	mutex_destroy(&pn548_dev->read_mutex);
+	mutex_destroy(&pn548_dev->irq_wake_mutex);
 	wake_lock_destroy(&pn548_dev->wl);
 	kfree(pn548_dev);
 err_exit:
@@ -857,6 +906,7 @@ static int pn548_remove(struct i2c_client *client)
 	free_irq(client->irq, pn548_dev);
 	misc_deregister(&pn548_dev->pn548_device);
 	mutex_destroy(&pn548_dev->read_mutex);
+	mutex_destroy(&pn548_dev->irq_wake_mutex);
 	wake_lock_destroy(&pn548_dev->wl);
 	if (pn548_dev->nfc_clk) {
 		clk_put(pn548_dev->nfc_clk);
