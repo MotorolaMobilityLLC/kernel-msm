@@ -35,7 +35,6 @@ struct mdss_mdp_cmd_ctx {
 	u32 pp_num;
 	u8 ref_cnt;
 	struct completion pp_comp;
-	struct completion stop_comp;
 	struct list_head vsync_handlers;
 	int panel_power_state;
 	atomic_t koff_cnt;
@@ -311,7 +310,6 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	if (ctx->rdptr_enabled == 0) {
 		mdss_mdp_irq_disable_nosync
 			(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num);
-		complete(&ctx->stop_comp);
 		schedule_work(&ctx->clk_work);
 	}
 
@@ -818,9 +816,8 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	struct mdss_mdp_cmd_ctx *sctx = NULL;
 	struct mdss_mdp_cmd_ctx *ctx;
 	unsigned long flags;
-	int need_wait = 0;
+	int need_reset = 0;
 	int ret = 0;
-	int hz;
 
 	if (session >= MAX_SESSIONS)
 		return 0;
@@ -846,8 +843,7 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	/* intf stopped,  no more kickoff */
 	atomic_set(&ctx->intf_stopped, 1);
 	if (ctx->rdptr_enabled) {
-		INIT_COMPLETION(ctx->stop_comp);
-		need_wait = 1;
+		need_reset = 1;
 		/*
 		 * clk off at next vsync after pp_done  OR
 		 * next vsync if there has no kickoff pending
@@ -858,19 +854,15 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if (need_wait) {
-		if (mdss_mdp_ctl_is_panel_dead(ctl))
-			goto _reset_;
-		hz = mdss_panel_get_framerate(&ctl->panel_data->panel_info);
-		if (wait_for_completion_timeout(&ctx->stop_comp,
-			STOP_TIMEOUT(hz)) <= 0) {
-			WARN(1, "stop cmd time out\n");
-	_reset_:
-			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
-				ctx->pp_num);
-			ctx->rdptr_enabled = 0;
-			atomic_set(&ctx->koff_cnt, 0);
-		}
+	if (need_reset) {
+		if (!mdss_mdp_ctl_is_panel_dead(ctl))
+			WARN(atomic_read(&ctx->koff_cnt),
+			     "stop cmd with kickoff left %d\n",
+			     atomic_read(&ctx->koff_cnt));
+		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+				     ctx->pp_num);
+		ctx->rdptr_enabled = 0;
+		atomic_set(&ctx->koff_cnt, 0);
 	}
 
 	if (cancel_work_sync(&ctx->clk_work))
@@ -1088,7 +1080,6 @@ static int mdss_mdp_cmd_intfs_setup(struct mdss_mdp_ctl *ctl,
 	ctx->ctl = ctl;
 	ctx->pp_num = (is_split_dst(ctl->mfd) ? session : mixer->num);
 	init_completion(&ctx->pp_comp);
-	init_completion(&ctx->stop_comp);
 	spin_lock_init(&ctx->clk_lock);
 	spin_lock_init(&ctx->koff_lock);
 	mutex_init(&ctx->clk_mtx);
