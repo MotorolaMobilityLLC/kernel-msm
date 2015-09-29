@@ -4263,7 +4263,7 @@ static int arizona_hw_params_rate(struct snd_pcm_substream *substream,
 	}
 
 	/* If a Slimbus DAI, then there is no need to AIF Rates */
-	if (strstr(dai->name, "-slim"))
+	if (strnstr(dai->name, "-slim", strlen(dai->name)))
 		slim_dai = true;
 
 	if (!slim_dai) {
