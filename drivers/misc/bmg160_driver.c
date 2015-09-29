@@ -666,9 +666,8 @@ static ssize_t bmg_store_enable(struct device *dev,
 	if (data != client_data->enable) {
 		if (data) {
 			queue_delayed_work(client_data->work_queue,
-					&client_data->work,
-					msecs_to_jiffies(atomic_read(
-							&client_data->delay)));
+				&client_data->work,
+				msecs_to_jiffies(BMG160_HW_STARTUP_DELAY));
 		} else {
 			cancel_delayed_work_sync(&client_data->work);
 		}

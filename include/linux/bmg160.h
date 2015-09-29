@@ -117,6 +117,10 @@ register_addr, register_data, rd_len)
 #define	BMG160_I2C_ADDR2				0x69
 
 
+/**\brief hardware start up time
+ * wait this long before reading data (time in ms)
+ */
+#define BMG160_HW_STARTUP_DELAY 100
 
 /*Define of registers*/
 
