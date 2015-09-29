@@ -1015,14 +1015,6 @@
 	qcom,platform-reset-gpio = <&tlmm 8 0>;
 };
 
-&mot_dummy_vid_qhd {
-	qcom,mdss-dsi-panel-timings-8996 = [1E 1B 04 06 02 03 04 a0
-			1E 1B 04 06 02 03 04 a0
-			1E 1B 04 06 02 03 04 a0
-			1E 1B 04 06 02 03 04 a0
-			1E 0D 04 05 02 03 04 a0];
-};
-
 / {
 	bluetooth: bt_qca6174 {
 		compatible = "qca,qca6174";
