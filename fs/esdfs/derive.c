@@ -534,17 +534,12 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	unsigned access = 0;
 
 	/*
-	 * If we don't need to restrict access based on app GIDs or/and confine
-	 * writes to outside of the Android/... tree, we can skip some or all
-	 * of this complexity.
+	 * If we don't need to restrict access based on app GIDs and confine
+	 * writes to outside of the Android/... tree, we can skip all of this.
 	 */
-	if (!ESDFS_RESTRICT_PERMS(ESDFS_SB(inode->i_sb))) {
-		/* If we don't need to confine, we're done. */
-		if (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_CONFINE))
+	if (!ESDFS_RESTRICT_PERMS(ESDFS_SB(inode->i_sb)) &&
+	    !test_opt(ESDFS_SB(inode->i_sb), DERIVE_CONFINE))
 			return 0;
-		/* If we do, we can still skip the hash lookup. */
-		access = HAS_SDCARD_RW;
-	}
 
 	cred = current_cred();
 	uid = from_kuid(&init_user_ns, cred->uid);
@@ -560,20 +555,27 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	 * know how to use extended attributes, we have to double-check write
 	 * requests against the list of apps that have been granted sdcard_rw.
 	 */
-	if (!access) {
-		mutex_lock(&package_list_lock);
-		hash_for_each_possible(access_list_hash, package,
-				       access_node, appid) {
-			if (package->appid == appid) {
-				pr_debug("esdfs: %s: found appid %u, access: %u\n",
-					__func__, package->appid,
-					package->access);
-				access = package->access;
-				break;
-			}
+	mutex_lock(&package_list_lock);
+	hash_for_each_possible(access_list_hash, package,
+			       access_node, appid) {
+		if (package->appid == appid) {
+			pr_debug("esdfs: %s: found appid %u, access: %u\n",
+				__func__, package->appid,
+				package->access);
+			access = package->access;
+			break;
 		}
-		mutex_unlock(&package_list_lock);
 	}
+	mutex_unlock(&package_list_lock);
+
+	/*
+	 * If we aren't restricting based on GID, always grant what was formerly
+	 * "sdcard_rw".  The storage view containment has already effectively
+	 * done the check for read-only SD card access, so we know that this app
+	 * has write access.
+	 */
+	if (!ESDFS_RESTRICT_PERMS(ESDFS_SB(inode->i_sb)))
+		access |= HAS_SDCARD_RW;
 
 	/*
 	 * Grant access to media_rw holders (they can access the source anyway).
@@ -584,7 +586,7 @@ int esdfs_check_derived_permission(struct inode *inode, int mask)
 	/*
 	 * Grant access to sdcard_rw holders, unless we are in unified mode
 	 * and we are trying to write to the protected /Android tree or to
-	 * create files in the root.
+	 * create files in the root (aka, "confined" access).
 	 */
 	if ((access & HAS_SDCARD_RW) &&
 	    (!test_opt(ESDFS_SB(inode->i_sb), DERIVE_UNIFIED) ||
