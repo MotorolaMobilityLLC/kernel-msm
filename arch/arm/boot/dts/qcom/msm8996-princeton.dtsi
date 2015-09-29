@@ -108,45 +108,10 @@
 
 &mot_tdi_546_1080p_cmd_v0 {
 	qcom,cont-splash-enabled;
-	qcom,mdss-dsi-panel-timings-8996 = [
-			23 1e 07 08 05 03 04 a0
-			23 1e 07 08 05 03 04 a0
-			23 1e 07 08 05 03 04 a0
-			23 1e 07 08 05 03 04 a0
-			23 18 07 08 05 03 04 a0
-	];
 };
-
-&mot_smd_520_QHD_cmd_v0 {
-	qcom,mdss-dsi-panel-timings-8996 = [
-			23 1e 07 09 05 03 04 a0
-			23 1e 07 09 05 03 04 a0
-			23 1e 07 09 05 03 04 a0
-			23 1e 07 09 05 03 04 a0
-			23 19 07 08 05 03 04 a0
-	];
-};
-
-&mot_tdi_546_1080p_cmd_v0_secondary {
-	qcom,mdss-dsi-panel-timings-8996 = [
-			23 1e 07 08 05 03 04 a0
-			23 1e 07 08 05 03 04 a0
-			23 1e 07 08 05 03 04 a0
-			23 1e 07 08 05 03 04 a0
-			23 18 07 08 05 03 04 a0
-	];
-};
-
 
 &mot_inx_570_QHD_cmd_v0 {
 	qcom,cont-splash-enabled;
-	qcom,mdss-dsi-panel-timings-8996 = [
-			24 1f 08 09 05 03 04 a0
-			24 1f 08 09 05 03 04 a0
-			24 1f 08 09 05 03 04 a0
-			24 1f 08 09 05 03 04 a0
-			24 1b 08 09 05 03 04 a0
-	];
 };
 
 &i2c_8 {
