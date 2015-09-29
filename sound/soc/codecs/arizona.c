@@ -4436,6 +4436,13 @@ static int arizona_hw_params(struct snd_pcm_substream *substream,
 		tdm_width = wl;
 	}
 
+	/* Force width to be 16 bit if params pass 8 bit */
+	if (wl == 8) {
+		wl *= 2;
+		bclk_target *= 2;
+		tdm_width = wl;
+	}
+
 	if (chan_limit && chan_limit < channels) {
 		arizona_aif_dbg(dai, "Limiting to %d channels\n", chan_limit);
 		bclk_target /= channels;
