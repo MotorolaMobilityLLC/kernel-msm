@@ -98,6 +98,14 @@ qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0A];
 qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 qcom,mdss-dsi-panel-status-value = <0x9c>;
 
+qcom,mdss-dsi-panel-timings-8996 = [
+	23 1e 07 08 05 03 04 a0
+	23 1e 07 08 05 03 04 a0
+	23 1e 07 08 05 03 04 a0
+	23 1e 07 08 05 03 04 a0
+	23 18 07 08 05 03 04 a0
+];
+
 qcom,panel-supply-entries {
 	#address-cells = <1>;
 	#size-cells = <0>;
