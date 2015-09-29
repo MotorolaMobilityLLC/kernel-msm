@@ -3979,7 +3979,7 @@ static struct ahash_alg _qcrypto_ahash_algos[] = {
 			.base		= {
 				.cra_name	 = "sha256",
 				.cra_driver_name = "qcrypto-sha256",
-				.cra_priority	 = 300,
+				.cra_priority	 = 110,
 				.cra_flags	 = CRYPTO_ALG_TYPE_AHASH |
 							CRYPTO_ALG_ASYNC,
 				.cra_blocksize	 = SHA256_BLOCK_SIZE,
