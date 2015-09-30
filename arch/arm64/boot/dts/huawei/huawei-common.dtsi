@@ -160,6 +160,7 @@
 		qcom,batt-id-range-pct = <15>;
 		#include "batterydata-itech-3000mah.dtsi"
 		#include "Sunwoda_ATL_3450mAh_battery_profile.dtsi"
+		#include "SCUD_SONY_3450mAh_battery_profile.dtsi"
 	};
 };
 
