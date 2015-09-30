@@ -41,6 +41,8 @@ static const char *of_stdout_options;
 
 struct kset *of_kset;
 
+static struct device_node *__of_find_node_by_path(const char *path, const char **opts);
+
 /*
  * Used to protect the of_aliases, to hold off addition of nodes to sysfs.
  * This mutex must be held whenever modifications are being made to the
@@ -529,24 +531,51 @@ EXPORT_SYMBOL(of_machine_is_compatible);
  *
  *  @device: Node to check for availability, with locks already held
  *
- *  Returns true if the status property is absent or set to "okay" or "ok",
+ *  Returns true if the status property
+ *  -- is absent or set to "okay" or "ok",
+ *  -- refers to another property using string list as following
+ *     status = <path>, <okay property>, <value1>[, <value2>...];
+ *     and at least one <value> in the list of values matches
+ *     value of /<path>/<okay property>.
  *  false otherwise
  */
 static bool __of_device_is_available(const struct device_node *device)
 {
-	const char *status;
-	int statlen;
+	struct property *pp;
+	struct device_node *np;
+	const char *val, *status;
+	const char *okay_prop_name, *okay_val;
+	int len;
 
 	if (!device)
 		return false;
 
-	status = __of_get_property(device, "status", &statlen);
-	if (status == NULL)
+	pp = __of_find_property(device, "status", &len);
+	if (pp == NULL)
 		return true;
 
-	if (statlen > 0) {
+	status = pp->value;
+
+	if (len > 0) {
 		if (!strcmp(status, "okay") || !strcmp(status, "ok"))
 			return true;
+
+		okay_prop_name = of_prop_next_string(pp, status);
+		if (!okay_prop_name)
+			return false;
+
+		np = __of_find_node_by_path(status, NULL);
+		if (!np)
+			return false;
+
+		okay_val = __of_get_property(np, okay_prop_name, &len);
+		if (okay_val == NULL || len <= 0)
+			return false;
+
+		val = okay_prop_name;
+		while ((val = of_prop_next_string(pp, val)))
+			if (!strcmp(val, okay_val))
+				return true;
 	}
 
 	return false;
