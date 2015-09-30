@@ -1540,4 +1540,5 @@ int ipa_uc_mhi_print_stats(char *dbg_buff, int size);
 int ipa_uc_memcpy(phys_addr_t dest, phys_addr_t src, int len);
 void ipa_inc_acquire_wakelock(void);
 void ipa_dec_release_wakelock(void);
+void ipa_sps_irq_rx_notify_all(void);
 #endif /* _IPA_I_H_ */
