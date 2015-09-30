@@ -338,9 +338,9 @@ struct qpnp_bms_chip {
 	int				ocv_tol_uv;
 	int				cc_uah_before_suspend;
 	int				avg_ibat_ua_in_sleep;
-	unsigned long long		last_ocv_setting_changed_sec;
-	unsigned long long		last_ocv_in_discharge_sec;
-	unsigned long long		suspend_sec;
+	unsigned long			last_ocv_setting_changed_sec;
+	unsigned long 			last_ocv_in_discharge_sec;
+	unsigned long			suspend_sec;
 	uint16_t			ocv_raw_before_suspend;
 #ifdef CONFIG_HUAWEI_BATTERY_SETTING
     int             fake_soc_count;
@@ -380,9 +380,7 @@ static enum power_supply_property msm_bms_power_props[] = {
 
 static int discard_backup_fcc_data(struct qpnp_bms_chip *chip);
 static void backup_charge_cycle(struct qpnp_bms_chip *chip);
-#ifndef CONFIG_HUAWEI_BATTERY_SETTING
 static int get_current_time(unsigned long *now_tm_sec);
-#endif
 static int get_rbatt(struct qpnp_bms_chip *chip,
 		int soc_rbatt_mohm, int batt_temp);
 
@@ -1284,15 +1282,9 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 	if (chip->prev_last_good_ocv_raw == OCV_RAW_UNINITIALIZED) {
 		if (chip->use_dynamic_ocv_setting) {
 			chip->ocv_setting_adjusted = false;
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-			chip->last_ocv_in_discharge_sec = div_u64(get_jiffies_64(),HZ);
-			pr_wear("init ocv update: %llu\n",
-					chip->last_ocv_in_discharge_sec);
-#else
 			get_current_time(&chip->last_ocv_in_discharge_sec);
 			pr_wear("init ocv update: %lu\n",
 					chip->last_ocv_in_discharge_sec);
-#endif
 		}
 		convert_and_store_ocv(chip, raw, batt_temp, true);
 		pr_debug("PON_OCV_UV = %d, cc = %llx\n",
@@ -1346,15 +1338,9 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 	} else if (chip->prev_last_good_ocv_raw != raw->last_good_ocv_raw) {
 		if (chip->use_dynamic_ocv_setting) {
 			chip->ocv_setting_adjusted = false;
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-			chip->last_ocv_in_discharge_sec = div_u64(get_jiffies_64(),HZ);
-			pr_wear("ocv updated: %llu\n",
-					chip->last_ocv_in_discharge_sec);
-#else
 			get_current_time(&chip->last_ocv_in_discharge_sec);
 			pr_wear("ocv updated: %lu\n",
 					chip->last_ocv_in_discharge_sec);
-#endif
 		}
 		convert_and_store_ocv(chip, raw, batt_temp, false);
 		/* forget the old cc value upon ocv */
@@ -1705,6 +1691,13 @@ static int find_pc_for_soc(struct qpnp_bms_chip *chip,
 
 static int get_current_time(unsigned long *now_tm_sec)
 {
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	struct timespec time_sec;
+	memset(&time_sec, 0, sizeof(struct timespec));
+	get_monotonic_boottime(&time_sec);
+	*now_tm_sec = time_sec.tv_sec;
+	return 0;
+#else
 	struct rtc_time tm;
 	struct rtc_device *rtc;
 	int rc;
@@ -1734,6 +1727,7 @@ static int get_current_time(unsigned long *now_tm_sec)
 close_time:
 	rtc_class_close(rtc);
 	return rc;
+#endif
 }
 
 /* Returns estimated battery resistance */
@@ -1819,7 +1813,14 @@ static int calculate_delta_time(unsigned long *time_stamp, int *delta_time_s)
 	*delta_time_s = (now_tm_sec - *time_stamp);
 
 	/* remember this time */
-	*time_stamp = now_tm_sec;
+	if(*delta_time_s >= 0) {
+		*time_stamp = now_tm_sec;
+	}
+	else {
+		pr_err("time read failed,delta_time_s=%d\n",*delta_time_s);
+		/*delta_time_s can not less 0*/
+		*delta_time_s = 0;
+	}
 	return 0;
 }
 
@@ -3883,15 +3884,10 @@ static void charging_ended(struct qpnp_bms_chip *chip)
 
 	chip->end_soc = report_state_of_charge(chip);
 	if (chip->use_dynamic_ocv_setting) {
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-		chip->last_ocv_in_discharge_sec = div_u64(get_jiffies_64(),HZ);
-		pr_wear("charging ended: %llu\n",
-				chip->last_ocv_in_discharge_sec);
-#else
 		get_current_time(&chip->last_ocv_in_discharge_sec);
 		pr_wear("charging ended: %lu\n",
 				chip->last_ocv_in_discharge_sec);
-#endif
+
 	}
 
 	mutex_lock(&chip->last_ocv_uv_mutex);
@@ -4950,22 +4946,13 @@ static int qpnp_bms_config_vsense_threshold(struct qpnp_bms_chip *chip)
 
 	if (chip->use_dynamic_ocv_setting) {
 		if (!is_battery_charging(chip)) {
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-			chip->last_ocv_in_discharge_sec = div_u64(get_jiffies_64(),HZ);
-			pr_wear("init discharge sec: %llu\n",
-				chip->last_ocv_in_discharge_sec);
-#else
 			get_current_time(
 				&chip->last_ocv_in_discharge_sec);
 			pr_wear("init discharge sec: %lu\n",
 				chip->last_ocv_in_discharge_sec);
-#endif
+
 		}
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-		chip->last_ocv_setting_changed_sec = div_u64(get_jiffies_64(),HZ);
-#else
 		get_current_time(&chip->last_ocv_setting_changed_sec);
-#endif
 		rc = qpnp_read_wrapper(chip, (u8 *)&value,
 				chip->base + BMS1_S2_VSENSE_THR_CTL, 1);
 		if (rc) {
@@ -5009,7 +4996,7 @@ static int qpnp_bms_config_vsense_threshold(struct qpnp_bms_chip *chip)
 static int qpnp_bms_update_ocv_setting(struct qpnp_bms_chip *chip)
 {
 	int rc, current_ua, new_vsense_ua;
-	unsigned long long now_tm_sec;
+	unsigned long now_tm_sec;
 	int duration_since_last_ocv_in_discharge = 0;
 	int duration_since_last_ocv_setting = 0;
 	int s3_vsense_thr_current_ua, value;
@@ -5018,11 +5005,7 @@ static int qpnp_bms_update_ocv_setting(struct qpnp_bms_chip *chip)
 		return 0;
 
 	current_ua = chip->avg_ibat_ua_in_sleep;
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-	now_tm_sec = div_u64(get_jiffies_64(),HZ);
-#else
 	rc = get_current_time(&now_tm_sec);
-#endif
 	if (rc) {
 		pr_err("get current time failed, rc = %d\n", rc);
 		return rc;
@@ -5350,26 +5333,16 @@ static int bms_suspend(struct device *dev)
 	if (chip->use_dynamic_ocv_setting && !is_battery_charging(chip)) {
 		chip->cc_uah_before_suspend =
 			get_prop_bms_charge_counter_shadow(chip);
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-		chip->suspend_sec = div_u64(get_jiffies_64(),HZ);
-#else
 		get_current_time(&chip->suspend_sec);
-#endif
 		rc = read_ocv_raw(chip, &chip->ocv_raw_before_suspend);
 		if (rc) {
 			pr_err("read ocv raw before suspend failed, rc = %d\n",
 							rc);
 			return rc;
 		}
-#ifdef CONFIG_HUAWEI_BATTERY_SETTING
-		pr_wear("suspend_sec = %llu, uah = %d, ocv_raw = %d\n",
-				chip->suspend_sec, chip->cc_uah_before_suspend,
-				chip->ocv_raw_before_suspend);
-#else
 		pr_wear("suspend_sec = %lu, uah = %d, ocv_raw = %d\n",
 				chip->suspend_sec, chip->cc_uah_before_suspend,
 				chip->ocv_raw_before_suspend);
-#endif
 	}
 
 	cancel_delayed_work_sync(&chip->calculate_soc_delayed_work);
