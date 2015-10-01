@@ -39,6 +39,7 @@
 &i2c_5 {
 	atmxt@4a {
 		atmel,atmxt-tdat-filename = "atmxt-r3_hybrid.tdat";
+		disable-supp-on-aot;
 	};
 };
 
