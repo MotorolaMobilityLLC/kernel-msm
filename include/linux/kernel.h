@@ -212,6 +212,7 @@ void might_fault(void);
 static inline void might_fault(void) { }
 #endif
 
+extern struct atomic_notifier_head panic_early_notifier_list;
 extern struct atomic_notifier_head panic_notifier_list;
 extern long (*panic_blink)(int state);
 __printf(1, 2)
