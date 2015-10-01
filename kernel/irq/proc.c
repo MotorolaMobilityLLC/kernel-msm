@@ -462,6 +462,11 @@ int show_interrupts(struct seq_file *p, void *v)
 	int i = *(loff_t *) v, j;
 	struct irqaction *action;
 	struct irq_desc *desc;
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	struct stat_irq_time *t;
+	int cpu;
+	u64 w, max =  0;
+#endif
 
 	if (i > ACTUAL_NR_IRQS)
 		return 0;
@@ -495,6 +500,18 @@ int show_interrupts(struct seq_file *p, void *v)
 	for_each_online_cpu(j)
 		seq_printf(p, "%10u ", kstat_irqs_cpu(i, j));
 
+#ifdef CONFIG_DEBUG_IRQ_TIME
+
+	for_each_possible_cpu(j) {
+		t = per_cpu_ptr(desc->stat_irq, j);
+		if (t->max >= max) {
+			cpu = j;
+			max = t->max;
+			w = t->when;
+		}
+	}
+#endif
+
 #ifdef CONFIG_GENERIC_IRQ_SHOW_WAKEUP_COUNT
 	seq_printf(p, "%10u ", desc->wakeup_irqs);
 	seq_printf(p, "%-4s", irqd_is_wakeup_set(&desc->irq_data) ? "w" : "");
@@ -520,6 +537,9 @@ int show_interrupts(struct seq_file *p, void *v)
 		while ((action = action->next) != NULL)
 			seq_printf(p, ", %s", action->name);
 	}
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	seq_printf(p, " (cpu%d max: %llu at: %llu)", cpu, max, w);
+#endif
 
 	seq_putc(p, '\n');
 out:
