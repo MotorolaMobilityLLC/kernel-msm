@@ -44,11 +44,11 @@
 #include <linux/stm401.h>
 
 
-int stm401_load_brightness_table(struct stm401_data *ps_stm401,
-		unsigned char *cmdbuff)
+int stm401_load_brightness_table(struct stm401_data *ps_stm401)
 {
 	int err = -ENOTTY;
 	int index = 0;
+	unsigned char cmdbuff[(2 * LIGHTING_TABLE_SIZE) + 1];
 	cmdbuff[0] = LUX_TABLE_VALUES;
 	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
 		cmdbuff[(2 * index) + 1]
@@ -250,7 +250,7 @@ int stm401_reset_and_init(void)
 		ret_err = err;
 	}
 
-	err = stm401_load_brightness_table(stm401_misc_data, rst_cmdbuff);
+	err = stm401_load_brightness_table(stm401_misc_data);
 	if (err < 0)
 		ret_err = err;
 

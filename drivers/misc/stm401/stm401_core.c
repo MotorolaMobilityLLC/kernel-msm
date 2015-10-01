@@ -1122,6 +1122,17 @@ static int stm401_probe(struct i2c_client *client,
 		dev_err(&client->dev, "cannot create work queue: %d\n", err);
 		goto err1;
 	}
+	ps_stm401->ioctl_work_queue =
+		create_singlethread_workqueue("stm401_ioctl_wq");
+	if (!ps_stm401->ioctl_work_queue) {
+		err = -ENOMEM;
+		dev_err(
+			&client->dev,
+			"cannot create ioctl work queue: %d\n",
+			err
+		);
+		goto err2;
+	}
 	ps_stm401->pdata = pdata;
 	i2c_set_clientdata(client, ps_stm401);
 	ps_stm401->client->flags &= 0x00;
@@ -1130,7 +1141,7 @@ static int stm401_probe(struct i2c_client *client,
 		err = ps_stm401->pdata->init();
 		if (err < 0) {
 			dev_err(&client->dev, "init failed: %d\n", err);
-			goto err2;
+			goto err_pdata_init;
 		}
 	}
 
@@ -1320,6 +1331,8 @@ err6:
 err4:
 	if (ps_stm401->pdata->exit)
 		ps_stm401->pdata->exit();
+err_pdata_init:
+	destroy_workqueue(ps_stm401->ioctl_work_queue);
 err2:
 	destroy_workqueue(ps_stm401->irq_work_queue);
 err1:
@@ -1358,6 +1371,7 @@ static int stm401_remove(struct i2c_client *client)
 		ps_stm401->pdata->exit();
 	stm401_gpio_free(ps_stm401->pdata);
 	destroy_workqueue(ps_stm401->irq_work_queue);
+	destroy_workqueue(ps_stm401->ioctl_work_queue);
 	mutex_destroy(&ps_stm401->lock);
 	wake_unlock(&ps_stm401->wakelock);
 	wake_lock_destroy(&ps_stm401->wakelock);

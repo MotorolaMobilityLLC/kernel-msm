@@ -545,6 +545,25 @@ struct stm_response {
 #define STM16_TO_HOST(x, buf) ((int16_t) be16_to_cpu(*((u16 *) (buf+(x)))))
 #define STM32_TO_HOST(x, buf) ((int32_t) be32_to_cpu(*((u32 *) (buf+(x)))))
 
+/**
+ * struct stm401_ioctl_work_struct - struct for deferred ioctl data
+ * @ws base struct
+ * @cmd ioctl number
+ * @data ioctl data
+ * @data_len length of @data
+ * @algo_req_ndx index into @stm401_g_algo_requst
+ */
+struct stm401_ioctl_work_struct {
+	struct work_struct ws;
+	unsigned int cmd;
+	union {
+		unsigned char bytes[32];
+		unsigned short delay;
+	} data;
+	unsigned char data_len;
+	size_t algo_req_ndx;
+};
+
 struct stm401_quickpeek_message {
 	u8 message;
 	u8 panel_state;
@@ -592,6 +611,7 @@ struct stm401_data {
 	struct work_struct irq_wake_work;
 	struct work_struct clear_interrupt_status_work;
 	struct workqueue_struct *irq_work_queue;
+	struct workqueue_struct *ioctl_work_queue;
 	struct wake_lock wakelock;
 	struct wake_lock reset_wakelock;
 	struct input_dev *input_dev;
@@ -727,8 +747,7 @@ void stm401_wake(struct stm401_data *ps_stm401);
 void stm401_sleep(struct stm401_data *ps_stm401);
 void stm401_detect_lowpower_mode(unsigned char *cmdbuff);
 
-int stm401_load_brightness_table(struct stm401_data *ps_stm401,
-	unsigned char *cmdbuff);
+int stm401_load_brightness_table(struct stm401_data *ps_stm401);
 
 int stm401_irq_wake_work_func_display_locked(struct stm401_data *ps_stm401,
 	unsigned short irq_status);
