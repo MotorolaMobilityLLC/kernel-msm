@@ -376,4 +376,63 @@
 			};
 		};
 	};
+
+	fusb302_aud_sw_sel{
+
+		fusb302_aud_sw_sel_default: default {
+			mux {
+				pins = "gpio135";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio135";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+				output-low;
+			};
+		};
+
+		fusb302_aud_sw_sel_active: active {
+			mux {
+				pins = "gpio135";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio135";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
+	fusb302_ss_sw_sel{
+
+		fusb302_ss_sw_sel_default: default {
+			mux {
+				pins = "gpio120";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio120";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+				output-low;
+			};
+		};
+
+		fusb302_ss_sw_sel_active: active {
+			mux {
+				pins = "gpio120";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio120";
+				drive-strength = <2>;
+				bias-pull-up; /* pull-up */
+			};
+		};
+	};
 };
