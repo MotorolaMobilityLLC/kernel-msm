@@ -314,7 +314,7 @@ static int msm_rtb_probe(struct platform_device *pdev)
 	msm_rtb.step_size = 1;
 #endif
 
-	atomic_notifier_chain_register(&panic_notifier_list,
+	atomic_notifier_chain_register(&panic_early_notifier_list,
 						&msm_rtb_panic_blk);
 	msm_rtb.initialized = 1;
 	return 0;
