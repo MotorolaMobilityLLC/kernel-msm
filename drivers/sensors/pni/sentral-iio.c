@@ -545,6 +545,12 @@ static int sentral_crc_get(struct sentral_device *sentral, u32 *crc)
 	return sentral_read_block(sentral, SR_CRC_HOST, (void *)crc, sizeof(*crc));
 }
 
+static int sentral_vibrator_enable(struct sentral_device *sentral,
+		u8 enable)
+{
+	return sentral_write_byte(sentral, SR_VIBRATOR_EN, !!enable);
+}
+
 static int sentral_sensor_batch_set(struct sentral_device *sentral, u8 id,
 		u16 rate, u16 timeout_ms)
 {
@@ -1924,6 +1930,41 @@ static ssize_t sentral_sysfs_cal_ts_data_store(struct device *dev,
 static DEVICE_ATTR(cal_ts_data, S_IRUGO | S_IWUGO, sentral_sysfs_cal_ts_data_show,
 		sentral_sysfs_cal_ts_data_store);
 
+static ssize_t sentral_sysfs_vibrator_en_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	int rc = sentral_read_byte(sentral, SR_VIBRATOR_EN);
+
+	if (rc < 0)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", !!rc);
+}
+
+static ssize_t sentral_sysfs_vibrator_en_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	unsigned int value = 0;
+	int rc;
+
+	rc = kstrtouint(buf, 10, &value);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] vibrator_en { value: %u }\n", value);
+
+	rc = sentral_vibrator_enable(sentral, !!value);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static DEVICE_ATTR(vibrator_en, S_IRUGO | S_IWUGO,
+		sentral_sysfs_vibrator_en_show, sentral_sysfs_vibrator_en_store);
+
 // ANDROID sensor_poll_device_t method support
 
 // activate
@@ -2521,6 +2562,7 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_cal_ts_data.attr,
 	&dev_attr_dbg.attr,
 	&dev_attr_version.attr,
+	&dev_attr_vibrator_en.attr,
 	&dev_attr_bmmi_chip_status.attr,
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,

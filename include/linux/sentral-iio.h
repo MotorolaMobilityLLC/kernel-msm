@@ -33,9 +33,9 @@
 
 #define SEN_DRV_PROJECT_ID "1"
 #define SEN_DRV_SUBPROJECT_ID "2"
-#define SEN_DRV_VERSION "1.2.3"
+#define SEN_DRV_VERSION "1.2.4"
 #define SEN_DRV_BUILD "1"
-#define SEN_DRV_DATE "Thu Sep 17 16:03:42 PDT 2015"
+#define SEN_DRV_DATE "Fri Sep 25 12:37:11 PDT 2015"
 
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
@@ -119,6 +119,7 @@ enum sentral_registers {
 	SR_PARAM_LOAD =   0x5C,
 	SR_PARAM_REQ =    0x64,
 	SR_FITNESS_ID =   0x65,
+	SR_VIBRATOR_EN =  0x66,
 	SR_ROM_VERSION =  0x70,
 	SR_PRODUCT_ID =   0x90,
 	SR_REV_ID =       0x91,
