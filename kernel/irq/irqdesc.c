@@ -74,6 +74,9 @@ static void desc_set_defaults(unsigned int irq, struct irq_desc *desc, int node,
 		struct module *owner)
 {
 	int cpu;
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	struct stat_irq_time *p;
+#endif
 
 	desc->irq_data.irq = irq;
 	desc->irq_data.chip = &no_irq_chip;
@@ -90,6 +93,16 @@ static void desc_set_defaults(unsigned int irq, struct irq_desc *desc, int node,
 	desc->owner = owner;
 	for_each_possible_cpu(cpu)
 		*per_cpu_ptr(desc->kstat_irqs, cpu) = 0;
+
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	for_each_possible_cpu(cpu) {
+		p = per_cpu_ptr(desc->stat_irq, cpu);
+		p->when = 0;
+		p->max = 0;
+		p->now = 0;
+	}
+#endif
+
 	desc_smp_init(desc, node);
 #ifdef CONFIG_SMP
 	INIT_LIST_HEAD(&desc->affinity_notify);
@@ -151,6 +164,12 @@ static struct irq_desc *alloc_desc(int irq, int node, struct module *owner)
 	if (alloc_masks(desc, gfp, node))
 		goto err_kstat;
 
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	desc->stat_irq = alloc_percpu(struct stat_irq_time);
+	if (!desc->stat_irq)
+		goto err_mask;
+#endif
+
 	raw_spin_lock_init(&desc->lock);
 	lockdep_set_class(&desc->lock, &irq_desc_lock_class);
 
@@ -158,6 +177,10 @@ static struct irq_desc *alloc_desc(int irq, int node, struct module *owner)
 
 	return desc;
 
+#ifdef CONFIG_DEBUG_IRQ_TIME
+err_mask:
+	free_masks(desc);
+#endif
 err_kstat:
 	free_percpu(desc->kstat_irqs);
 err_desc:
@@ -177,6 +200,9 @@ static void free_desc(unsigned int irq)
 
 	free_masks(desc);
 	free_percpu(desc->kstat_irqs);
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	free_percpu(desc->stat_irq);
+#endif
 	kfree(desc);
 }
 
@@ -266,6 +292,9 @@ int __init early_irq_init(void)
 
 	for (i = 0; i < count; i++) {
 		desc[i].kstat_irqs = alloc_percpu(unsigned int);
+#ifdef CONFIG_DEBUG_IRQ_TIME
+		desc[i].stat_irq = alloc_percpu(struct stat_irq_time);
+#endif
 		alloc_masks(&desc[i], GFP_KERNEL, node);
 		raw_spin_lock_init(&desc[i].lock);
 		lockdep_set_class(&desc[i].lock, &irq_desc_lock_class);
