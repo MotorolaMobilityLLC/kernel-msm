@@ -325,10 +325,19 @@
 	fusb302@22 {
 		compatible = "fairchild,fusb302";
 		reg = <0x22>;
-		gpios = <&tlmm 38 0>;
+		gpios = <&tlmm 38 1>, /* FUSB302_INT_N, in */
+			<&tlmm 120 0>, /* USB_SS_SW_SEL, output-low */
+			<&tlmm 135 0>, /* USB_AUD_SW_SEL, output-low */
+			<&pm8994_gpios 1 2>, /* USB_SS_OE_EN, output-high */
+			<&pm8994_mpps 4 2>; /* USB_AUD_DET_N, output-high */
+		fusb,gpio-labels = "gpio_fusb_int_n",
+				   "gpio_usb_ss_sw_sel",
+				   "gpio_usb_aud_sw_sel",
+				   "gpio_usb_ss_oe_en",
+				   "gpio_usb_aud_det_n";
 		pinctrl-names = "default", "active";
-		pinctrl-0 = <&fusb302_int_default>;
-		pinctrl-1 = <&fusb302_int_active>;
+		pinctrl-0 = <&fusb302_int_default &fusb302_aud_sw_sel_default &fusb302_ss_sw_sel_default>;
+		pinctrl-1 = <&fusb302_int_active &fusb302_aud_sw_sel_active &fusb302_ss_sw_sel_active>;
 	};
 	fsa8500@23 {
 		compatible = "fairchild,fsa8500";
@@ -928,6 +937,15 @@
 		qcom,src-sel = <0>;	/* GPIO */
 		qcom,master-en = <1>;	/* Enable GPIO */
 		qcom,invert = <1>;	/* Output high (disabled) */
+		status = "okay";
+	};
+
+	mpp@a300 { /* MPP 4 - USB_AUD_DET_N */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,invert = <1>;	/* Output high disabled */
+		qcom,master-en = <1>;
 		status = "okay";
 	};
 
