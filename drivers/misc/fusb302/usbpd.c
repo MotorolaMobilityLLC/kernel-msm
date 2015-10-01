@@ -40,7 +40,7 @@
 #define FUSB302_DEBUG
 
 #ifdef FUSB302_DEBUG
-#define FUSB_LOG(fmt, args...)  printk("[fusbpd]" fmt, ##args)
+#define FUSB_LOG(fmt, args...)  pr_debug("[fusbpd]" fmt, ##args)
 #else
 #define FUSB_LOG(fmt, args...)
 #endif
