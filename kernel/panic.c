@@ -48,6 +48,10 @@ ATOMIC_NOTIFIER_HEAD(panic_notifier_list);
 
 EXPORT_SYMBOL(panic_notifier_list);
 
+ATOMIC_NOTIFIER_HEAD(panic_early_notifier_list);
+
+EXPORT_SYMBOL(panic_early_notifier_list);
+
 static long no_blink(int state)
 {
 	return 0;
@@ -131,6 +135,8 @@ void panic(const char *fmt, ...)
 	 * situation.
 	 */
 	smp_send_stop();
+
+	atomic_notifier_call_chain(&panic_early_notifier_list, 0, buf);
 
 	kmsg_dump(KMSG_DUMP_PANIC);
 
