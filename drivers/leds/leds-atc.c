@@ -28,11 +28,17 @@
  * @led_classdev - led class device
  * @spmi_device - spmi class device
  * @addr - spmi address for control register
+ * @on_data - ctrl reg pattern to turn on the LED
+ * @off_data - ctrl reg patterm to turn off the LED
  */
 struct atc_led_data {
 	struct led_classdev	cdev;
 	struct spmi_device	*spmi_dev;
 	u32			addr;
+	u8			on_data;
+	u8			off_data;
+	u8			mask;
+	u8			save;
 };
 
 static int
@@ -66,9 +72,12 @@ static void atc_led_set(struct led_classdev *led_cdev,
 	struct atc_led_data *led;
 
 	led = container_of(led_cdev, struct atc_led_data, cdev);
-	val = (led->cdev.brightness) ? 1 : 0;
-	spmi_masked_write(led, led->addr, FORCE_ON_MASK, val);
+	val = (led->cdev.brightness) ? led->on_data : led->off_data;
+	spmi_masked_write(led, led->addr, led->mask, val);
 	led->cdev.brightness = value;
+	/* If we just turned off, restore the saved configuration) */
+	if (!val)
+		spmi_masked_write(led, led->addr, led->mask, led->save);
 }
 
 static enum led_brightness atc_led_get(struct led_classdev *led_cdev)
@@ -109,12 +118,41 @@ static int atc_leds_probe(struct spmi_device *spmi)
 		return -ENODEV;
 	}
 
+	rc = of_property_read_u8(node, "qcom,on-data", &led->on_data);
+	if (rc < 0) {
+		dev_err(&spmi->dev,
+			"Failure reading ctrl on_data, rc = %d\n", rc);
+		return -ENODEV;
+	}
+
+	rc = of_property_read_u8(node, "qcom,off-data", &led->off_data);
+	if (rc < 0) {
+		dev_err(&spmi->dev,
+			"Failure reading ctrl off_data, rc = %d\n", rc);
+		return -ENODEV;
+	}
+
+	rc = of_property_read_u8(node, "qcom,mask", &led->mask);
+	if (rc < 0) {
+		dev_err(&spmi->dev,
+			"Failure reading ctrl mask, rc = %d\n", rc);
+		return -ENODEV;
+	}
+
 	led->addr = led_resource->start + offset;
 
 	rc = of_property_read_string(node, "linux,name", &led->cdev.name);
 	if (rc < 0) {
 		dev_err(&spmi->dev,
 			"Failure reading led name, rc = %d\n", rc);
+		return -ENODEV;
+	}
+
+	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, led->spmi_dev->sid,
+		led->addr, &led->save, 1);
+	if (rc) {
+		dev_err(&led->spmi_dev->dev,
+			"Unable to read from addr=%#x, rc(%d)\n", led->addr, rc);
 		return -ENODEV;
 	}
 
@@ -129,6 +167,7 @@ static int atc_leds_probe(struct spmi_device *spmi)
 	}
 
 	dev_set_drvdata(&spmi->dev, led);
+	dev_info(&spmi->dev, "Probe success\n");
 	return 0;
 }
 

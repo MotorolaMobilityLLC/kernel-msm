@@ -3,12 +3,18 @@ Driver leds-atc is used to control ATC charging led on a Qualcomm PMIC.
 Required properties
 - compatible		: string should be "qcom,leds-atc"
 - linux,name		: name of the led that is used in led framework
-- qcom,ctrl-reg		: ATC LED register address. Check PMIC specification
+- qcom,ctrl-reg		: ATC LED register address. Check your PMIC specification
+- qcom,on-data		: ATC LED register pattern to turn on the led. Check your PMIC spec.
+- qcom,on-data		: ATC LED register pattern to turn off the led. Check your PMIC spec.
+- qcom,mask		: ATC LED register access mask. Check your PMIC spec.
 
 Example:
 
-qcom,leds@104d {
+qcom,leds@1243 {
 	compatible = "qcom,leds-atc";
 	linux,name = "charging";
-	qcom,ctrl-reg = <0x104D>;
+	qcom,ctrl-reg = <0x1243>;
+	qcom,on-data = <0x07>;
+	qcom,off-data = <0x06>;
+	qcom,mask = <0x07>;
 };
