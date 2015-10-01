@@ -49,21 +49,31 @@ int VBUS_12V_EN;
 
 #define FUSB_MS_TO_NS(x) (x * 1000 * 1000)
 #define Delay10us(x) udelay(x*10);
+#define FUSB_NUM_GPIOS (5)
+#define FUSB_INT_INDEX 0
+#define FUSB_SS_SW_SEL_INDEX 1
+#define FUSB_AUD_SW_SEL_INDEX 2
+#define FUSB_SS_OE_EN_INDEX 3
+#define FUSB_AUD_DET_INDEX 4
 
 
 #define FUSB302_DEBUG
 
 #ifdef FUSB302_DEBUG
-#define FUSB_LOG(fmt, args...)  printk("[fusb302]" fmt, ##args)
+#define FUSB_LOG(fmt, args...)  pr_debug("[fusb302]" fmt, ##args)
 #else
 #define FUSB_LOG(fmt, args...)
 #endif
+
+static int disable_ss_switch;
+module_param(disable_ss_switch, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
 
 struct fusb302_i2c_data {
     struct i2c_client       *client;
     struct work_struct      eint_work;
     struct task_struct      *thread;
-	int irq_gpio;
+	int gpios[FUSB_NUM_GPIOS];
 	int irq;
     spinlock_t      lock;
 
@@ -157,10 +167,74 @@ void UpdateSourcePowerMode(void);
 
 static int FUSB300Int_PIN_LVL(void)
 {
-    int ret = gpio_get_value(fusb_i2c_data->irq_gpio);
+    int ret = gpio_get_value(fusb_i2c_data->gpios[FUSB_INT_INDEX]);
     FUSB_LOG("gpio irq_gpio value = %d\n", ret);
     return ret;
 }
+
+static int FUSB302_toggleAudioSwitch(bool enable)
+{
+	int aud_det_gpio = fusb_i2c_data->gpios[FUSB_AUD_DET_INDEX];
+	int aud_sw_sel_gpio = fusb_i2c_data->gpios[FUSB_AUD_SW_SEL_INDEX];
+
+	if (!(gpio_is_valid(aud_det_gpio) &&
+				gpio_is_valid(aud_sw_sel_gpio)))
+		return -ENODEV;
+
+	FUSB_LOG("%sabling, Audio Switch\n", enable ? "En" : "Dis");
+
+	if (enable) {
+		gpio_set_value(aud_sw_sel_gpio, 1);
+		gpio_set_value(aud_det_gpio, 0);
+	} else {
+		gpio_set_value(aud_sw_sel_gpio, 0);
+		gpio_set_value(aud_det_gpio, 1);
+	}
+
+	return 0;
+}
+
+static int FUSB302_enableSuperspeedUSB(int CC1, int CC2)
+{
+	int ss_output_en_gpio = fusb_i2c_data->gpios[FUSB_SS_OE_EN_INDEX];
+	int ss_sw_sel_gpio = fusb_i2c_data->gpios[FUSB_SS_SW_SEL_INDEX];
+	int sw_val  = 0;
+
+	if (disable_ss_switch)
+		return 0;
+
+	if (!(gpio_is_valid(ss_output_en_gpio) &&
+				gpio_is_valid(ss_sw_sel_gpio)))
+		return -ENODEV;
+
+	/* Default switch position to 0 for all other values of CC */
+	if ( CC2 && !CC1)
+		sw_val = 1;
+
+	FUSB_LOG("Setting SS_SW_SEL to %d\n", sw_val);
+	gpio_set_value(ss_sw_sel_gpio, sw_val);
+
+	FUSB_LOG("Setting SS_OE_EN to enabled\n");
+	gpio_set_value(ss_output_en_gpio, 0);
+
+	return 0;
+}
+
+static int FUSB302_disableSuperspeedUSB(void)
+{
+	int ss_output_en_gpio = fusb_i2c_data->gpios[FUSB_SS_OE_EN_INDEX];
+
+	if (disable_ss_switch)
+		return 0;
+
+	if (gpio_is_valid(ss_output_en_gpio)) {
+		FUSB_LOG("Setting SS OE EN Switch to disabled\n");
+		gpio_set_value(ss_output_en_gpio, 1);
+		return 0;
+	}
+	return -ENODEV;
+}
+
 /*
 static void SourceOutput(int vol, int current)
 {
@@ -1073,6 +1147,10 @@ void SetStateDelayUnattached(void)
 #ifdef PD_SUPPORT
     USBPDDisable(false);                                            // Disable the USB PD state machine (no need to write FUSB300 again since we are doing it here)
 #endif
+    /* Default Switches to OFF state */
+    FUSB302_disableSuperspeedUSB();
+    if (ConnState == AudioAccessory)
+	FUSB302_toggleAudioSwitch(false);
     CC1TermDeb = CCTypeNone;                                        // Clear the debounced CC1 state
     CC2TermDeb = CCTypeNone;                                        // Clear the debounced CC2 state
     CC1TermAct = CC1TermDeb;                                        // Clear the active CC1 state
@@ -1281,6 +1359,9 @@ void SetStateAttachedSrc(void)
     FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);          // Read the current state of the BC_LVL and COMP
     // Maintain the existing CC term values from the wait state
     ConnState = AttachedSource;                                     // Set the state machine variable to Attached.Src
+    /* Enable SSUSB Switch and set orientation */
+    FUSB302_enableSuperspeedUSB(Registers.Switches.MEAS_CC1,
+					Registers.Switches.MEAS_CC2);
     SinkCurrent = utccNone;                                         // Set the Sink current to none (not used in source)
     StateTimer = USHRT_MAX;                                         // Disable the state timer, not used in this state
     DebounceTimer1 = tPDDebounceMin;                                // Set the debounce timer to tPDDebounceMin for detecting a detach
@@ -1315,6 +1396,9 @@ void SetStateAttachedSink(void)
     FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);          // Read the current state of the BC_LVL and COMP
     ConnState = AttachedSink;                                       // Set the state machine variable to Attached.Sink
     SinkCurrent = utccDefault;                                      // Set the current advertisment variable to the default until we detect something different
+    /* Enable SSUSB Switch and set orientation */
+    FUSB302_enableSuperspeedUSB(Registers.Switches.MEAS_CC1,
+					Registers.Switches.MEAS_CC2);
     // Maintain the existing CC term values from the wait state
     StateTimer = USHRT_MAX;                                         // Disable the state timer, not used in this state
     DebounceTimer1 = tPDDebounceMin;                                // Set the debounce timer to tPDDebounceMin for detecting changes in advertised current
@@ -1528,6 +1612,8 @@ void SetStateAudioAccessory(void)
     FUSB302_start_timer(&debounce_hrtimer1,DebounceTimer1);
     DebounceTimer2 = USHRT_MAX;                                     // Disable the 2nd level debouncing initially to force completion of a 1st level debouncing
     ToggleTimer = USHRT_MAX;                                        // Once we are in the audio.accessory state, we are going to stop toggling and only monitor CC1
+    /* Turn on Audio Switch and notify headset detection */
+    FUSB302_toggleAudioSwitch(true);
     wake_up_statemachine();
 }
 
@@ -1869,43 +1955,55 @@ static DEVICE_ATTR(state, 0440, fusb302_state, NULL);
 
 #define IRQ_GPIO_NAME "fusb_irq"
 #ifdef CONFIG_OF
-static int fusb_gpio_config(
-		struct fusb302_i2c_data *pdata, bool enable)
-{
-	int retval = 0;
-
-	if (enable) {
-		if (!gpio_is_valid(pdata->irq_gpio)) {
-			pr_err("invalid %s\n", IRQ_GPIO_NAME);
-			retval = -EINVAL;
-		}
-		retval = gpio_request(pdata->irq_gpio, IRQ_GPIO_NAME);
-		if (retval) {
-			pr_err("unable to request %s [%d]: rc=%d\n",
-				IRQ_GPIO_NAME, pdata->irq_gpio, retval);
-			goto err_gpio;
-		}
-		retval = gpio_direction_input(pdata->irq_gpio);
-		if (retval) {
-			pr_err("unable to set %s [%d] dir: rc=%d\n",
-				IRQ_GPIO_NAME, pdata->irq_gpio, retval);
-			goto err_gpio;
-		}
-		//gpio_export(pdata->irq_gpio, 0);
-		pdata->irq = gpio_to_irq(pdata->irq_gpio);
-	} else {
-		gpio_free(pdata->irq_gpio);
-	}
-
-err_gpio:
-	return retval;
-}
 static int fusb302_parse_dt(struct device *dev,
 				struct fusb302_i2c_data *fusb)
 {
-	struct device_node *np = dev->of_node;
-	fusb->irq_gpio = of_get_gpio(np, 0);
-	FUSB_LOG("irq_gpio number is %d\n", fusb->irq_gpio);
+	int i;
+	int gpio_cnt = of_gpio_count(dev->of_node);
+	const char *label_prop = "fusb,gpio-labels";
+	int label_cnt = of_property_count_strings(dev->of_node, label_prop);
+
+	if (gpio_cnt > ARRAY_SIZE(fusb->gpios)) {
+		dev_err(dev, "%s:%d gpio count is greater than %zu.\n",
+			__func__, __LINE__, ARRAY_SIZE(fusb->gpios));
+		return -EINVAL;
+	}
+
+	if (label_cnt != gpio_cnt) {
+		dev_err(dev, "%s:%d label count does not match gpio count.\n",
+			__func__, __LINE__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < gpio_cnt; i++) {
+		enum of_gpio_flags flags = 0;
+		int gpio;
+		const char *label = NULL;
+
+		gpio = of_get_gpio_flags(dev->of_node, i, &flags);
+		if (gpio < 0) {
+			dev_err(dev, "%s:%d of_get_gpio failed: %d\n",
+				__func__, __LINE__, gpio);
+			return gpio;
+		}
+
+		if (i < label_cnt)
+		of_property_read_string_index(dev->of_node, label_prop,
+					i, &label);
+
+		gpio_request_one(gpio, flags, label);
+		gpio_export(gpio, true);
+		gpio_export_link(dev, label, gpio);
+
+		dev_dbg(dev, "%s: gpio=%d, flags=0x%x, label=%s\n",
+			__func__, gpio, flags, label);
+
+		fusb->gpios[i] = gpio;
+	}
+
+	fusb->irq = gpio_to_irq(fusb->gpios[FUSB_INT_INDEX]);
+	FUSB_LOG("irq_gpio number is %d, irq = %d\n",
+			fusb->gpios[FUSB_INT_INDEX], fusb->irq);
 	return 0;
 }
 #else
@@ -1980,7 +2078,6 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
     #endif
 
     INIT_WORK(&fusb_i2c_data->eint_work, fusb_eint_work);
-	fusb_gpio_config(fusb, true);
 	retval = request_threaded_irq(fusb->irq, NULL,
 				cc_eint_interrupt_handler, IRQF_TRIGGER_FALLING| IRQF_ONESHOT,
 				FUSB302_I2C_NAME, fusb);
