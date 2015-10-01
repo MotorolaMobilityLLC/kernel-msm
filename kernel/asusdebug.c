@@ -1287,20 +1287,13 @@ void ASUSEvtlog(const char *fmt, ...)
 {
     va_list args;
 
-    char* buffer;
-    buffer = kmalloc(ASUS_EVTLOG_STR_MAXLEN , GFP_KERNEL);
-    memset(buffer, 0, ASUS_EVTLOG_STR_MAXLEN);
-    if(buffer){
-        struct rtc_time tm;
-        struct timespec ts;
-        getnstimeofday(&ts);
-        ts.tv_sec -= sys_tz.tz_minuteswest * 60; // to get correct timezone information
-        rtc_time_to_tm(ts.tv_sec, &tm);
-        getrawmonotonic(&ts);
-        sprintf(buffer, "[ASUSEvtlog](%ld)%04d-%02d-%02d %02d:%02d:%02d :",ts.tv_sec,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-	printk(buffer);
-	kfree(buffer);
-    }
+    struct rtc_time tm;
+    struct timespec ts;
+    getnstimeofday(&ts);
+    ts.tv_sec -= sys_tz.tz_minuteswest * 60; // to get correct timezone information
+    rtc_time_to_tm(ts.tv_sec, &tm);
+    getrawmonotonic(&ts);
+    printk("[ASUSEvtlog](%ld)%04d-%02d-%02d %02d:%02d:%02d :",ts.tv_sec,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
     va_start(args, fmt);
     vprintk_emit(0, -1, NULL, 0, fmt, args);
