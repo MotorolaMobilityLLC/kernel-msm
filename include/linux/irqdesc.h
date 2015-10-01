@@ -13,6 +13,13 @@ struct proc_dir_entry;
 struct module;
 struct irq_desc;
 
+#ifdef CONFIG_DEBUG_IRQ_TIME
+struct stat_irq_time {
+	u64 now;
+	u64 when;
+	u64 max;
+};
+#endif
 /**
  * struct irq_desc - interrupt descriptor
  * @irq_data:		per irq and chip data passed down to chip functions
@@ -44,6 +51,9 @@ struct irq_desc;
 struct irq_desc {
 	struct irq_data		irq_data;
 	unsigned int __percpu	*kstat_irqs;
+#ifdef CONFIG_DEBUG_IRQ_TIME
+	struct stat_irq_time __percpu *stat_irq;
+#endif
 	unsigned int		wakeup_irqs;
 	irq_flow_handler_t	handle_irq;
 #ifdef CONFIG_IRQ_PREFLOW_FASTEOI
@@ -84,6 +94,13 @@ struct irq_desc {
 extern struct irq_desc irq_desc[NR_IRQS];
 #endif
 
+#ifdef CONFIG_DEBUG_IRQ_TIME
+extern void stat_irq_start(struct irq_desc *desc);
+extern void stat_irq_end(struct irq_desc *desc);
+#else
+static inline void stat_irq_start(struct irq_desc *desc) { }
+static inline void stat_irq_end(struct irq_desc *desc) { }
+#endif
 static inline struct irq_data *irq_desc_get_irq_data(struct irq_desc *desc)
 {
 	return &desc->irq_data;

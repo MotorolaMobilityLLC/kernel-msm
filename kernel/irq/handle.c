@@ -129,6 +129,39 @@ static void irq_wake_thread(struct irq_desc *desc, struct irqaction *action)
 	wake_up_process(action->thread);
 }
 
+#ifdef CONFIG_DEBUG_IRQ_TIME
+void stat_irq_start(struct irq_desc *desc)
+{
+	struct stat_irq_time *p;
+
+	if (!desc || !desc->stat_irq)
+		return;
+
+	p =  this_cpu_ptr(desc->stat_irq);
+
+	p->now = sched_clock();
+}
+void stat_irq_end(struct irq_desc *desc)
+{
+	u64 delta;
+	struct stat_irq_time *p;
+	u64 now;
+
+	if (!desc || !desc->stat_irq)
+		return;
+
+	p =  this_cpu_ptr(desc->stat_irq);
+	now = sched_clock();
+
+	delta = now  - p->now;
+
+	if (delta >= p->max) {
+
+		p->when = now;
+		p->max = delta;
+	}
+}
+#endif
 irqreturn_t
 handle_irq_event_percpu(struct irq_desc *desc, struct irqaction *action)
 {
@@ -139,7 +172,9 @@ handle_irq_event_percpu(struct irq_desc *desc, struct irqaction *action)
 		irqreturn_t res;
 
 		trace_irq_handler_entry(irq, action);
+		stat_irq_start(desc);
 		res = action->handler(irq, action->dev_id);
+		stat_irq_end(desc);
 		trace_irq_handler_exit(irq, action, res);
 
 		if (WARN_ONCE(!irqs_disabled(),"irq %u handler %pF enabled interrupts\n",
