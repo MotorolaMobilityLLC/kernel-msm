@@ -37,6 +37,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/qpnp/pin.h>
+#include "rear-tm.h"
 
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
@@ -2871,7 +2872,11 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		val->intval = chip->insertion_ocv_uv;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = get_prop_batt_temp(chip);
+		/* rear thermistor */
+		if (rear_tm_is_poweroff())
+			val->intval = REAR_TM_POWEROFF_TEMP * 10;
+		else
+			val->intval = get_prop_batt_temp(chip);
 		break;
 	case POWER_SUPPLY_PROP_COOL_TEMP:
 		val->intval = chip->cool_bat_decidegc;

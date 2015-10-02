@@ -25,6 +25,8 @@
 #include <linux/suspend.h>
 #include <linux/reboot.h>
 #include <linux/switch.h>
+#include <linux/power_supply.h>
+#include "rear-tm.h"
 
 struct rear_tm_data {
 	struct device *dev;
@@ -33,6 +35,7 @@ struct rear_tm_data {
 	struct qpnp_vadc_chip *vadc_dev;
 	struct qpnp_adc_tm_btm_param adc_param;
 	struct tm_ctrl_data *warm_cfg;
+	struct power_supply *batt_psy;
 	unsigned int warm_cfg_size;
 	struct wakeup_source ws;
 	int thermalstate;
@@ -61,8 +64,32 @@ static char *rear_action_str[REAR_ACTION_MAX] = {
 	"poweroff",
 };
 
+static bool rear_tm_poweroff = false;
+
 static int rear_tm_notification_init(struct rear_tm_data *rear_tm);
 static void rear_tm_notification(enum qpnp_tm_state state, void *ctx);
+
+static void rear_tm_set_poweroff(struct rear_tm_data *rear_tm)
+{
+	if (!rear_tm->enabled) {
+		pr_warn("Ignored poweroff due to rear tm disabled\n");
+		return;
+	}
+
+	pr_info("Shutdown\n");
+
+	rear_tm_poweroff = true;
+	rear_tm->thermalstate = REAR_POWEROFF;
+
+	power_supply_set_health_state(rear_tm->batt_psy,
+			POWER_SUPPLY_HEALTH_OVERHEAT);
+	power_supply_changed(rear_tm->batt_psy);
+}
+
+bool rear_tm_is_poweroff(void)
+{
+	return rear_tm_poweroff;
+}
 
 static struct rear_tm_data *get_rear_tm(struct device *dev)
 {
@@ -98,6 +125,9 @@ static ssize_t rear_sysfs_thermalstate_store(struct device *dev,
 	case REAR_CALL_DROPPED:
 		rear_tm->thermalstate = val;
 		switch_set_state(&rear_tm->sdev, val);
+		break;
+	case REAR_POWEROFF:
+		rear_tm_set_poweroff(rear_tm);
 		break;
 	default:
 		pr_err("val(%u) does not allowed.\n", val);
@@ -340,6 +370,11 @@ static void rear_tm_notification(enum qpnp_tm_state state, void *ctx)
 			state == ADC_TM_WARM_STATE ? "warm" : "cool",
 			cur_temp);
 
+	if (state == ADC_TM_WARM_STATE && cur_temp >= REAR_TM_POWEROFF_TEMP) {
+		rear_tm_set_poweroff(rear_tm);
+		return;
+	}
+
 	i = rear_tm_get_level(rear_tm, state);
 	if (state == ADC_TM_WARM_STATE) {
 		next = min(i+1, max_size);
@@ -485,12 +520,19 @@ static int rear_tm_probe(struct spmi_device *spmi)
 	rear_tm->sdev.name = "thermalstate";
 	ret = switch_dev_register(&rear_tm->sdev);
 	if (ret < 0) {
-		pr_err("%s: failed to register switch device\n", __func__);
+		pr_err("failed to register switch device\n");
 		goto err_switch_dev_register;
 	}
 
 	/* We want the initial state to be normal */
 	switch_set_state(&rear_tm->sdev, REAR_NORMAL);
+
+	rear_tm->batt_psy = power_supply_get_by_name("battery");
+	if (!rear_tm->batt_psy) {
+		pr_err("battery supply not found\n");
+		ret = -EPROBE_DEFER;
+		goto err_rear_tm_notification_init;
+	}
 
 	ret = rear_tm_notification_init(rear_tm);
 	if (ret) {
