@@ -148,8 +148,9 @@
 			qcom,rear-tm-adc_tm = <&pm8226_adc_tm>;
 			qcom,rear-vadc = <&pm8226_vadc>;
 			tm,warm-cfg = <
-				(49) (47) 1
-				(51) (48) 2>;
+				(42) (40) 1
+				(44) (41) 2>;
+			tm,compensated-temp = <3>; /* 3degC */
 		};
 	};
 };
