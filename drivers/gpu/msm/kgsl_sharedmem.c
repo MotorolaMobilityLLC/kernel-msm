@@ -324,6 +324,7 @@ kgsl_sharedmem_init_sysfs(void)
 		drv_attr_list);
 }
 
+#ifndef CONFIG_ALLOC_BUFFERS_IN_4K_CHUNKS
 static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 				struct vm_area_struct *vma,
 				struct vm_fault *vmf)
@@ -365,6 +366,29 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 
 	return VM_FAULT_SIGBUS;
 }
+#else
+static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
+				struct vm_area_struct *vma,
+				struct vm_fault *vmf)
+{
+	int pgoff;
+	struct scatterlist *s = memdesc->sg;
+	unsigned int offset;
+	struct page *page;
+
+	offset = ((unsigned long) vmf->virtual_address - vma->vm_start);
+
+	if (offset >= memdesc->size)
+		return VM_FAULT_SIGBUS;
+
+	pgoff = offset >> PAGE_SHIFT;
+	page = sg_page(&s[pgoff]);
+	get_page(page);
+	vmf->page = page;
+
+	return 0;
+}
+#endif
 
 /*
  * kgsl_page_alloc_unmap_kernel() - Unmap the memory in memdesc
