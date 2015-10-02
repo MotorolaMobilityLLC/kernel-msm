@@ -1726,6 +1726,13 @@ static int smb135x_parallel_set_chg_present(struct smb135x_chg *chip,
 	}
 
 	if (present) {
+		/* Check if SMB135x is present */
+		rc = smb135x_read(chip, VERSION1_REG, &val);
+		if (rc) {
+			pr_debug("Failed to detect smb135x-parallel charger may be absent\n");
+			return -ENODEV;
+		}
+
 		rc = smb135x_enable_volatile_writes(chip);
 		if (rc < 0) {
 			dev_err(chip->dev,
