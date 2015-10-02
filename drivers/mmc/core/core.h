@@ -26,7 +26,6 @@ struct mmc_bus_ops {
 	int (*power_restore)(struct mmc_host *);
 	int (*alive)(struct mmc_host *);
 	int (*change_bus_speed)(struct mmc_host *, unsigned long *);
-	int (*shutdown)(struct mmc_host *);
 	int (*throttle_back)(struct mmc_host *);
 };
 
