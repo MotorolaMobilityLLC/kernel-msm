@@ -31,7 +31,7 @@
 
 #define DUMP_MAGIC_NUMBER	0x42445953
 
-#define CPU_FORMAT_VERSION3	0x13
+#define CPU_FORMAT_VERSION3	0x11
 
 struct sysdbg_cpu64_ctxt_regs {
 	uint64_t x0;
