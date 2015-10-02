@@ -1,0 +1,31 @@
+FPC fingerprint sensor driver.
+
+Required properties:
+
+ - compatible		: Should be "fpc,fpc1020".
+ - reg			: spi slave address of the device.
+ - pinctrl-names	: Pinctrl configuration names of this sensor driver.
+				Should be "default".
+ - pinctrl-0		: The pinctrl node corresponding to "default",
+				Should be <&fpc1020_default>.
+ - interrupt-parent	: Parent of interrupt.
+ - interrupts		: Accelerometer interrupt to indicate new data ready or events.
+ - vdd_io-supply	: Digital IO power supply needed for sensor.
+
+Example:
+&spi_7 { /* BLSP2 QUP4 */
+	fpc_fpc1020@0{
+		compatible = "fpc,fpc1020";
+		reg = <0>;
+		interrupts = <42 0x0>;
+		fpc,gpio_irq = <42>;
+		fpc,gpio_reset = <47>;
+		fpc,gpio_cs0 = <98>;
+		pinctrl-names = "default", "active";
+		pinctrl-0 = <&fps_rst_default &fps_int_default>;
+		pinctrl-1 = <&fps_rst_active &fps_int_active>;
+		fpc,enable-on-boot;
+		fpc,txout_boost_enable;
+		vdd_io-supply  = <&pm8950_l6>;
+	};
+};
