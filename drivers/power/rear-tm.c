@@ -175,10 +175,22 @@ static const struct attribute_group rear_tm_attr_group = {
 	.attrs = rear_tm_attributes,
 };
 
+static int rear_param_get_index(struct rear_tm_data *rear_tm, int action)
+{
+	int i;
+
+	for (i = 0; i < rear_tm->warm_cfg_size; i++) {
+		if (rear_tm->warm_cfg[i].action == action)
+			return i;
+	}
+
+	return -EINVAL;
+}
+
 static ssize_t rear_param_attr_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	int i;
+	int i, ret;
 	struct rear_tm_data *rear_tm = get_rear_tm(dev);
 
 
@@ -192,6 +204,13 @@ static ssize_t rear_param_attr_show(struct device *dev,
 		return -EINVAL;
 	}
 
+	ret = rear_param_get_index(rear_tm, i);
+	if (ret < 0) {
+		pr_err("no parameter for action %d\n", i);
+		return -EINVAL;
+	}
+	i = ret;
+
 	return snprintf(buf, PAGE_SIZE, "%d,%d\n",
 			rear_tm->warm_cfg[i].thresh,
 			rear_tm->warm_cfg[i].thresh_clr);
@@ -200,7 +219,7 @@ static ssize_t rear_param_attr_show(struct device *dev,
 static ssize_t rear_param_attr_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	int i;
+	int i, ret;
 	int thresh, thresh_clr;
 	struct rear_tm_data *rear_tm = get_rear_tm(dev);
 
@@ -221,6 +240,13 @@ static ssize_t rear_param_attr_store(struct device *dev,
 		pr_err("thresh_clr should be less than thresh\n");
 		return -EINVAL;
 	}
+
+	ret = rear_param_get_index(rear_tm, i);
+	if (ret < 0) {
+		pr_err("no parameter for action %d\n", i);
+		return -EINVAL;
+	}
+	i = ret;
 
 	rear_tm->warm_cfg[i].thresh = thresh;
 	rear_tm->warm_cfg[i].thresh_clr = thresh_clr;
