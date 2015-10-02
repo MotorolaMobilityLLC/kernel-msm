@@ -136,6 +136,9 @@ Optional Properties:
 				defined when qcom,config-otp-hard-jeita exist.
 - qcom,otp-cold-bat-decidegc	Cold battery temperature in decidegC. This property could only be
 				defined when qcom,config-otp-hard-jeita exist.
+- qcom,otp-hard-jeita-hysteresis This property contains two intergers to define the temperature
+				hysteresis (in decidegC unit) for hard cold and hard hot.
+				This property could only be defined when qcom,config-otp-hard-jeita exist.
 - qcom,soft-jeita-supported	This property indicates whether soft jeita supported.
 - qcom,warm-bat-decidegc	Warm battery temperature in decidegC. After hitting this threshold,
 				"qcom,warm-bat-ma" defines maximum charging current and
@@ -228,6 +231,7 @@ Example:
 			qcom,otp-hard-jeita-config;
 			qcom,otp-hot-bat-decidegc = <550>;
 			qcom,otp-cold-bat-decidegc = <0>;
+			qcom,otp-hard-jeita-hysteresis = <0, 50>;
 			qcom,warm-bat-mv = <4100>;
 			qcom,cool-bat-mv = <4100>;
 			qcom,warm-bat-ma = <750>;

@@ -312,6 +312,7 @@ enum wakeup_src {
 	WAKEUP_SRC_PARALLEL,
 	WAKEUP_SRC_MIN_SOC,
 	WAKEUP_SRC_EMPTY_SOC,
+	WAKEUP_SRC_JEITA_HYSTERSIS,
 	WAKEUP_SRC_MAX,
 };
 #define WAKEUP_SRC_MASK (~(~0 << WAKEUP_SRC_MAX))
@@ -450,6 +451,9 @@ struct smb1360_chip {
 	int				otp_cold_bat_decidegc;
 	int				otp_hot_bat_decidegc;
 	u8				hard_jeita_otp_reg;
+	struct work_struct		jeita_hysteresis_work;
+	int				cold_hysteresis;
+	int				hot_hysteresis;
 };
 
 static int chg_time[] = {
@@ -2039,6 +2043,11 @@ static int hot_hard_handler(struct smb1360_chip *chip, u8 rt_stat)
 		smb1360_parallel_charger_enable(chip,
 				PARALLEL_JEITA_HARD, !chip->batt_hot);
 	}
+	if (chip->hot_hysteresis) {
+		smb1360_stay_awake(&chip->smb1360_ws,
+			WAKEUP_SRC_JEITA_HYSTERSIS);
+		schedule_work(&chip->jeita_hysteresis_work);
+	}
 
 	return 0;
 }
@@ -2054,8 +2063,50 @@ static int cold_hard_handler(struct smb1360_chip *chip, u8 rt_stat)
 		smb1360_parallel_charger_enable(chip,
 				PARALLEL_JEITA_HARD, !chip->batt_cold);
 	}
+	if (chip->cold_hysteresis) {
+		smb1360_stay_awake(&chip->smb1360_ws,
+			WAKEUP_SRC_JEITA_HYSTERSIS);
+		schedule_work(&chip->jeita_hysteresis_work);
+	}
 
 	return 0;
+}
+
+static void smb1360_jeita_hysteresis_work(struct work_struct *work)
+{
+	int rc = 0;
+	int hard_hot, hard_cold;
+	struct smb1360_chip *chip = container_of(work,
+			struct smb1360_chip, jeita_hysteresis_work);
+
+	/* disable hard JEITA IRQ first */
+	rc = smb1360_masked_write(chip, IRQ_CFG_REG,
+			IRQ_BAT_HOT_COLD_HARD_BIT, 0);
+	if (rc) {
+		pr_err("disable hard JEITA IRQ failed, rc = %d\n", rc);
+		goto exit_worker;
+	}
+	hard_hot = chip->otp_hot_bat_decidegc;
+	hard_cold = chip->otp_cold_bat_decidegc;
+	if (chip->batt_hot)
+		hard_hot -= chip->hot_hysteresis;
+	else if (chip->batt_cold)
+		hard_cold += chip->cold_hysteresis;
+
+	rc = smb1360_set_otp_hard_jeita_threshold(chip, hard_cold, hard_hot);
+	if (rc) {
+		pr_err("set hard JEITA threshold failed\n");
+		goto exit_worker;
+	}
+	pr_debug("hard cold: %d, hard hot: %d reprogramed\n",
+					hard_cold, hard_hot);
+	/* enable hard JEITA IRQ at the end */
+	rc = smb1360_masked_write(chip, IRQ_CFG_REG,
+		IRQ_BAT_HOT_COLD_HARD_BIT, IRQ_BAT_HOT_COLD_HARD_BIT);
+	if (rc)
+		pr_err("enable hard JEITA IRQ failed\n");
+exit_worker:
+	smb1360_relax(&chip->smb1360_ws, WAKEUP_SRC_JEITA_HYSTERSIS);
 }
 
 /*
@@ -2384,21 +2435,21 @@ static int smb1360_adjust_current_gain(struct smb1360_chip *chip,
 	pr_debug("current_gain_otp_reg = 0x%x\n", chip->current_gain_otp_reg);
 
 	if (gain_factor) {
-		rc = smb1360_fg_read(chip, CURRENT_GAIN_LSB_REG, &reg[0]);
+		rc = smb1360_fg_read(chip, CURRENT_GAIN_LSB_REG, &reg[1]);
 		if (rc) {
 			pr_err("Unable to set FG access I2C address rc=%d\n",
 									rc);
 			return rc;
 		}
 
-		rc = smb1360_fg_read(chip, CURRENT_GAIN_MSB_REG, &reg[1]);
+		rc = smb1360_fg_read(chip, CURRENT_GAIN_MSB_REG, &reg[3]);
 		if (rc) {
 			pr_err("Unable to set FG access I2C address rc=%d\n",
 									rc);
 			return rc;
 		}
 
-		reg_value1 = (reg[1] << 8) | reg[0];
+		reg_value1 = (reg[3] << 8) | reg[1];
 		current_gain = float_decode(reg_value1);
 		new_current_gain = MICRO_UNIT  + (gain_factor * current_gain);
 		reg_value2 = float_encode(new_current_gain);
@@ -4456,6 +4507,7 @@ static int smb1360_parse_jeita_params(struct smb1360_chip *chip)
 {
 	int rc = 0;
 	struct device_node *node = chip->dev->of_node;
+	int temp[2];
 
 	if (of_property_read_bool(node, "qcom,config-hard-thresholds")) {
 		rc = of_property_read_u32(node,
@@ -4497,10 +4549,26 @@ static int smb1360_parse_jeita_params(struct smb1360_chip *chip)
 		}
 
 		chip->otp_hard_jeita_config = true;
-		pr_debug("otp_hard_jeita_config = %d, otp_cold_bat_decidegc = %d, otp_hot_bat_decidegc = %d\n",
-					chip->otp_hard_jeita_config,
-					chip->otp_cold_bat_decidegc,
-					chip->otp_hot_bat_decidegc);
+		rc = of_property_read_u32_array(node,
+				"qcom,otp-hard-jeita-hysteresis", temp, 2);
+		if (rc) {
+			if (rc != -EINVAL) {
+				pr_err("read otp-hard-jeita-hysteresis failed, rc = %d\n",
+					rc);
+				return rc;
+			}
+		} else {
+			chip->cold_hysteresis = temp[0];
+			chip->hot_hysteresis = temp[1];
+		}
+
+		pr_debug("otp_hard_jeita_config = %d, otp_cold_bat_decidegc = %d\n"
+			"otp_hot_bat_decidegc = %d, cold_hysteresis = %d\n"
+			"hot_hysteresis = %d\n",
+			chip->otp_hard_jeita_config,
+			chip->otp_cold_bat_decidegc,
+			chip->otp_hot_bat_decidegc, chip->cold_hysteresis,
+			chip->hot_hysteresis);
 	}
 
 	if (of_property_read_bool(node, "qcom,soft-jeita-supported")) {
@@ -4873,6 +4941,9 @@ static int smb1360_probe(struct i2c_client *client,
 	mutex_init(&chip->current_change_lock);
 	chip->default_i2c_addr = client->addr;
 	INIT_WORK(&chip->parallel_work, smb1360_parallel_work);
+	if (chip->cold_hysteresis || chip->hot_hysteresis)
+		INIT_WORK(&chip->jeita_hysteresis_work,
+				smb1360_jeita_hysteresis_work);
 
 	pr_debug("default_i2c_addr=%x\n", chip->default_i2c_addr);
 	smb1360_otp_backup_pool_init(chip);
