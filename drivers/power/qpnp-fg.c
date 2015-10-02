@@ -1607,11 +1607,6 @@ static int get_prop_capacity_raw(struct fg_chip *chip)
 	u8 cap[2];
 	int rc, capacity = 0, tries = 0;
 
-	if (chip->soc_empty) {
-		if (fg_debug_mask & FG_POWER_SUPPLY)
-			pr_info_ratelimited("capacity: EMPTY\n");
-		return 0;
-	}
 	while (tries < MAX_TRIES_SOC) {
 		rc = fg_read(chip, cap,
 				chip->soc_base + SOC_MONOTONIC_SOC, 2);
@@ -6861,12 +6856,19 @@ static void check_empty_work(struct work_struct *work)
 			enable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = true;
 		}
-	} else if (fg_is_batt_empty(chip)) {
+	} else if (fg_is_batt_empty(chip) 
+		   && (get_prop_capacity_raw(chip) <= 0)) {
 		if (fg_debug_mask & FG_STATUS)
 			pr_info("EMPTY SOC high\n");
 		chip->soc_empty = true;
 		if (chip->power_supply_registered)
 			power_supply_changed(&chip->bms_psy);
+		cancel_delayed_work(&chip->check_empty_work);
+		schedule_delayed_work(&chip->check_empty_work,
+			msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
+	} else {
+		chip->soc_empty = false;
+		fg_relax(&chip->empty_check_wakeup_source);
 	}
 
 out:
