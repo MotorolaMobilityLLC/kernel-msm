@@ -22,6 +22,7 @@
 		serial0 = &blsp1_uart2;
 		spi4 = &spi_4;
 		/delete-property/ i2c5;
+		/delete-property/ i2c8;
 		/delete-property/ spi0;
 	};
 
@@ -359,7 +360,7 @@
 &soc {
 	/delete-node/ spi@78B5000;
 	/delete-node/ i2c@7af5000;
-
+	/delete-node/ i2c@7af8000;
 	ramoops {
 		compatible = "ramoops";
 		status = "ok";
