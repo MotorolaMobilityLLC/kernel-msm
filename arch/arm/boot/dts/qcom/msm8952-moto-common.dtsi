@@ -569,6 +569,10 @@
 			qcom,scaling-factor = <1000>;
 		};
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "athene";
+	};
 };
 
 &sdhc_1 {
