@@ -15,7 +15,7 @@
 
 #include "msm8952-athene.dtsi"
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
-
+#include "msm8952-moto-fps.dtsi"
 / {
 	qcom,board-id = <0x41 0x8000>, <0x41 0x800d>;
 };
