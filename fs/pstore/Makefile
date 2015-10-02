@@ -9,4 +9,3 @@ obj-$(CONFIG_PSTORE_FTRACE)	+= ftrace.o
 
 ramoops-objs += ram.o ram_core.o
 obj-$(CONFIG_PSTORE_RAM)	+= ramoops.o
-obj-$(CONFIG_PSTORE_RAM)	+= ram_dev.o
