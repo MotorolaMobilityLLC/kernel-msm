@@ -37,11 +37,11 @@ Optional:
 		boolean, set to skip LRA autocalibration
 	- auto_cal_time:
 		integer, pick autocalibration duration according to the spec:
-		0: 150 ms (minimum), 350 ms (maximum)
-		1: 250 ms (minimum), 450 ms (maximum)
-		2: 500 ms (minimum), 700 ms (maximum)
-		3: 1000 ms (minimum), 1200 ms (maximum)
-		default: - '2'
+		0x00: 150 ms (minimum), 350 ms (maximum)
+		0x10: 250 ms (minimum), 450 ms (maximum)
+		0x20: 500 ms (minimum), 700 ms (maximum)
+		0x30: 1000 ms (minimum), 1200 ms (maximum)
+		default: - '0x20'
 Example:
 
 	i2c@1a200000 {
