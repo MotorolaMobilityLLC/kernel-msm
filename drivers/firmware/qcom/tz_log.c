@@ -95,6 +95,15 @@ struct tzdbg_reset_info_t {
 	uint32_t reset_type;	/* Reset Reason */
 	uint32_t reset_cnt;	/* Number of resets occured/CPU */
 };
+
+/* warm boot reason for cores */
+struct tzbsp_diag_wakeup_info_t {
+	/* Wake source info : APCS_GICC_HPPIR */
+	uint32_t HPPIR;
+	/* Wake source info : APCS_GICC_AHPPIR */
+	uint32_t AHPPIR;
+};
+
 /*
  * Interrupt Info Table
  */
@@ -149,7 +158,10 @@ struct tzdbg_log_t {
  * copied into buffer from i/o memory.
  */
 struct tzdbg_t {
+	/* Magic Number */
 	uint32_t magic_num;
+
+	/* Major.Minor version */
 	uint32_t version;
 	/*
 	 * Number of CPU's
@@ -179,6 +191,10 @@ struct tzdbg_t {
 	 * Ring Buffer Length
 	 */
 	uint32_t ring_len;
+
+	/* Offset for Wakeup info */
+	uint32_t wakeup_info_off;
+
 	/*
 	 * VMID to EE Mapping
 	 */
@@ -193,6 +209,10 @@ struct tzdbg_t {
 	struct tzdbg_reset_info_t reset_info[TZBSP_MAX_CPU_COUNT];
 	uint32_t num_interrupts;
 	struct tzdbg_int_t  int_info[TZBSP_DIAG_INT_NUM];
+
+	/* Wake up info */
+	struct tzbsp_diag_wakeup_info_t  wakeup_info[TZBSP_MAX_CPU_COUNT];
+
 	/*
 	 * We need at least 2K for the ring buffer
 	 */
