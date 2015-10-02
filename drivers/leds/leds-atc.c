@@ -34,11 +34,10 @@
 struct atc_led_data {
 	struct led_classdev	cdev;
 	struct spmi_device	*spmi_dev;
-	u32			addr;
+	u16			addr;
 	u8			on_data;
 	u8			off_data;
 	u8			mask;
-	u8			save;
 };
 
 static int
@@ -74,10 +73,6 @@ static void atc_led_set(struct led_classdev *led_cdev,
 	led = container_of(led_cdev, struct atc_led_data, cdev);
 	val = (led->cdev.brightness) ? led->on_data : led->off_data;
 	spmi_masked_write(led, led->addr, led->mask, val);
-	led->cdev.brightness = value;
-	/* If we just turned off, restore the saved configuration) */
-	if (!val)
-		spmi_masked_write(led, led->addr, led->mask, led->save);
 }
 
 static enum led_brightness atc_led_get(struct led_classdev *led_cdev)
@@ -88,10 +83,9 @@ static enum led_brightness atc_led_get(struct led_classdev *led_cdev)
 static int atc_leds_probe(struct spmi_device *spmi)
 {
 	struct atc_led_data *led;
-	struct resource *led_resource;
 	struct device_node *node;
-	u32 offset;
 	int rc;
+	u8 save;
 
 	node = spmi->dev.of_node;
 	if (node == NULL)
@@ -105,13 +99,7 @@ static int atc_leds_probe(struct spmi_device *spmi)
 
 	led->spmi_dev = spmi;
 
-	led_resource = spmi_get_resource(spmi, NULL, IORESOURCE_MEM, 0);
-	if (!led_resource) {
-		dev_err(&spmi->dev, "Unable to get LED base address\n");
-		return -ENXIO;
-	}
-
-	rc = of_property_read_u32(node, "qcom,ctrl-reg", &offset);
+	rc = of_property_read_u16(node, "qcom,ctrl-reg", &led->addr);
 	if (rc < 0) {
 		dev_err(&spmi->dev,
 			"Failure reading ctrl offset, rc = %d\n", rc);
@@ -139,8 +127,6 @@ static int atc_leds_probe(struct spmi_device *spmi)
 		return -ENODEV;
 	}
 
-	led->addr = led_resource->start + offset;
-
 	rc = of_property_read_string(node, "linux,name", &led->cdev.name);
 	if (rc < 0) {
 		dev_err(&spmi->dev,
@@ -149,7 +135,7 @@ static int atc_leds_probe(struct spmi_device *spmi)
 	}
 
 	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, led->spmi_dev->sid,
-		led->addr, &led->save, 1);
+		led->addr, &save, 1);
 	if (rc) {
 		dev_err(&led->spmi_dev->dev,
 			"Unable to read from addr=%#x, rc(%d)\n", led->addr, rc);
@@ -167,7 +153,7 @@ static int atc_leds_probe(struct spmi_device *spmi)
 	}
 
 	dev_set_drvdata(&spmi->dev, led);
-	dev_info(&spmi->dev, "Probe success\n");
+	dev_info(&spmi->dev, "Probe success register value %#x\n", save);
 	return 0;
 }
 
