@@ -62,6 +62,7 @@
 #define CHG_EN_BY_PIN_BIT		BIT(7)
 #define CHG_EN_ACTIVE_LOW_BIT		BIT(6)
 #define PRE_TO_FAST_REQ_CMD_BIT		BIT(5)
+#define CFG_BAT_OV_ENDS_CHG_CYC		BIT(4)
 #define CHG_CURR_TERM_DIS_BIT		BIT(3)
 #define CFG_AUTO_RECHG_DIS_BIT		BIT(2)
 #define CFG_CHG_INHIBIT_EN_BIT		BIT(0)
@@ -347,6 +348,7 @@ struct smb1360_chip {
 	bool				shdn_after_pwroff;
 	bool				config_hard_thresholds;
 	bool				soft_jeita_supported;
+	bool				ov_ends_chg_cycle_disabled;
 	int				iterm_ma;
 	int				vfloat_mv;
 	int				safety_time;
@@ -412,6 +414,7 @@ struct smb1360_chip {
 	bool				batt_full;
 	bool				resume_completed;
 	bool				irq_waiting;
+	bool				irq_disabled;
 	bool				empty_soc;
 	bool				awake_min_soc;
 	int				workaround_flags;
@@ -1164,20 +1167,6 @@ static int smb1360_get_prop_batt_status(struct smb1360_chip *chip)
 		return POWER_SUPPLY_STATUS_DISCHARGING;
 	else
 		return POWER_SUPPLY_STATUS_CHARGING;
-}
-
-static int smb1360_get_prop_charging_status(struct smb1360_chip *chip)
-{
-	int rc;
-	u8 reg = 0;
-
-	rc = smb1360_read(chip, STATUS_3_REG, &reg);
-	if (rc) {
-		pr_err("Couldn't read STATUS_3_REG rc=%d\n", rc);
-		return 0;
-	}
-
-	return (reg & CHG_EN_BIT) ? 1 : 0;
 }
 
 static int smb1360_get_prop_charge_type(struct smb1360_chip *chip)
@@ -1962,7 +1951,7 @@ static int smb1360_battery_get_property(struct power_supply *psy,
 		val->intval = smb1360_get_prop_batt_status(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-		val->intval = smb1360_get_prop_charging_status(chip);
+		val->intval = !chip->charging_disabled_status;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		val->intval = smb1360_get_prop_charge_type(chip);
@@ -2736,7 +2725,10 @@ static irqreturn_t smb1360_stat_handler(int irq, void *dev_id)
 	chip->irq_waiting = true;
 	if (!chip->resume_completed) {
 		dev_dbg(chip->dev, "IRQ triggered before device-resume\n");
-		disable_irq_nosync(irq);
+		if (!chip->irq_disabled) {
+			disable_irq_nosync(irq);
+			chip->irq_disabled = true;
+		}
 		mutex_unlock(&chip->irq_complete);
 		return IRQ_HANDLED;
 	}
@@ -4174,6 +4166,16 @@ static int smb1360_hw_init(struct smb1360_chip *chip)
 		return rc;
 	}
 
+	rc = smb1360_masked_write(chip, CFG_CHG_MISC_REG,
+					CFG_BAT_OV_ENDS_CHG_CYC,
+					chip->ov_ends_chg_cycle_disabled ?
+					0 : CFG_BAT_OV_ENDS_CHG_CYC);
+	if (rc) {
+		dev_err(chip->dev, "Couldn't set bat_ov_ends_charge rc = %d\n"
+									, rc);
+		return rc;
+	}
+
 	/* battery missing detection */
 	rc = smb1360_masked_write(chip, CFG_BATT_MISSING_REG,
 				BATT_MISSING_SRC_THERM_BIT,
@@ -4689,6 +4691,9 @@ static int smb_parse_dt(struct smb1360_chip *chip)
 	chip->min_icl_usb100 = of_property_read_bool(node,
 						"qcom,min-icl-100ma");
 
+	chip->ov_ends_chg_cycle_disabled = of_property_read_bool(node,
+					"qcom,disable-ov-ends-chg-cycle");
+
 	rc = smb1360_parse_parallel_charging_params(chip);
 	if (rc) {
 		pr_err("Couldn't parse parallel charginng params rc=%d\n", rc);
@@ -5140,9 +5145,10 @@ static int smb1360_resume(struct device *dev)
 	mutex_lock(&chip->irq_complete);
 	chip->resume_completed = true;
 	if (chip->irq_waiting) {
+		chip->irq_disabled = false;
+		enable_irq(client->irq);
 		mutex_unlock(&chip->irq_complete);
 		smb1360_stat_handler(client->irq, chip);
-		enable_irq(client->irq);
 	} else {
 		mutex_unlock(&chip->irq_complete);
 	}
