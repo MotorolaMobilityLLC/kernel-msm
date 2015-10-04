@@ -1454,10 +1454,10 @@ static struct task_struct *_pick_next_task_rt(struct rq *rq)
 	 * put_prev_task. A stale value can cause us to over-charge execution
 	 * time to real-time task, that could trigger throttling unnecessarily
 	 */
-	if (rq->skip_clock_update > 0) {
+	if (rq->skip_clock_update > 0)
 		rq->skip_clock_update = 0;
-		update_rq_clock(rq);
-	}
+
+	update_rq_clock(rq);
 	p = rt_task_of(rt_se);
 	p->se.exec_start = rq->clock_task;
 
