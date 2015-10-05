@@ -74,6 +74,7 @@
 		onnn,discharge-enable;
 		onnn,restore-reg;
 		onnn,set-en-always;
+		onnn,volt-increment = <40000>;
 	};
 };
 
