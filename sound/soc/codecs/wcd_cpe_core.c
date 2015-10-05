@@ -2845,6 +2845,22 @@ static int wcd_cpe_buf_dealloc(void *core_handle,
 	return rc;
 }
 
+static int wcd_cpe_buf_control(void *core_handle,
+			       struct cpe_lsm_session *session,
+			       bool alloc,
+			       u32 bufsz, u32 bufcnt)
+{
+	int rc;
+
+	if (alloc)
+		rc = wcd_cpe_buf_alloc(core_handle, session,
+					bufsz, bufcnt);
+	else
+		rc = wcd_cpe_buf_dealloc(core_handle, session,
+					 bufsz, bufcnt);
+
+	return rc;
+}
 /*
  * wcd_cpe_lsm_lab_enable_disable: enable/disable lab
  * @core: handle to wcd_cpe_core
@@ -2898,33 +2914,17 @@ static int wcd_cpe_lsm_control_lab(void *core_handle,
 	struct wcd_cpe_core *core = (struct wcd_cpe_core *)core_handle;
 
 	if (enable) {
-		rc = wcd_cpe_buf_alloc(core_handle, session, bufsz, bufcnt);
-		if (rc) {
-			pr_err("%s: DMA buffer allocation failed rc %d\n",
-			       __func__, rc);
-			return rc;
-		}
 		rc = wcd_cpe_lsm_lab_enable_disable(core, session, enable);
 		if (rc) {
 			pr_err("%s: LAB disable/ Enable failed rc %d\n",
 			       __func__, rc);
-			wcd_cpe_buf_dealloc(core_handle, session,
-					    bufsz, bufcnt);
 			return rc;
 		}
 		session->lab.core_handle = core_handle;
 		session->lab.lsm_s = session;
 		session->lab.is_lab_enabled = true;
 	} else {
-		rc = wcd_cpe_buf_dealloc(core_handle, session, bufsz, bufcnt);
-		/* do not return error for DMA dealloc put
-		 * session in detection mode
-		 */
-		if (rc)
-			pr_err("%s: DMA buffer De-allocation failed, rc %d\n",
-			       __func__, rc);
-		else
-			session->lab.is_lab_enabled = false;
+		session->lab.is_lab_enabled = false;
 
 		rc = wcd_cpe_lsm_lab_enable_disable(core, session, enable);
 		if (rc) {
@@ -3239,6 +3239,7 @@ int wcd_cpe_get_lsm_ops(struct wcd_cpe_lsm_ops *lsm_ops)
 	lsm_ops->lsm_set_data = wcd_cpe_lsm_set_data;
 	lsm_ops->lsm_set_fmt_cfg = wcd_cpe_lsm_set_fmt_cfg;
 	lsm_ops->lsm_cdc_start_lab = wcd_cpe_cdc_lab_enable;
+	lsm_ops->lsm_lab_buf_cntl =  wcd_cpe_buf_control;
 	return 0;
 }
 EXPORT_SYMBOL(wcd_cpe_get_lsm_ops);
