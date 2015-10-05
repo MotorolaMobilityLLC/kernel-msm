@@ -356,7 +356,7 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 
 	motosh_wake(ps_motosh);
 
-	cmdbuff[0] = FW_VERSION_LEN_REG;
+	cmdbuff[0] = FW_VERSION_LEN;
 	err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff, readbuff,
 		1, 1);
 	if (err >= 0) {
@@ -368,7 +368,7 @@ int motosh_get_version_str(struct motosh_data *ps_motosh)
 
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH version len %03d", len);
-		cmdbuff[0] = FW_VERSION_STR_REG;
+		cmdbuff[0] = FW_VERSION_STR;
 		err = motosh_i2c_write_read_no_reset(ps_motosh, cmdbuff,
 			readbuff, 1, len);
 		if (err >= 0) {
