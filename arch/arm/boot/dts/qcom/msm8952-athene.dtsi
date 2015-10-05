@@ -22,9 +22,20 @@
 			"qcom,msm8952";
 };
 
+&soc {
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		vin-supply = <&pm8950_l6>;
+		startup-delay-us = <300>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_lgd_546_1080p_cmd_v0>;
-	vddio_disp-supply = <&pm8950_l6>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
 	vsp_disp-supply = <&lab_regulator>;
 	vsn_disp-supply = <&ibb_regulator>;
 };
