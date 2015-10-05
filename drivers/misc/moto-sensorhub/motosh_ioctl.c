@@ -119,6 +119,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		else
 			err = 0;
 		break;
+
 	case MOTOSH_IOCTL_GET_VERSION_STR:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_VERSION_STR");
 		if (ps_motosh->mode > BOOTMODE) {
@@ -144,7 +145,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		cmdbuff[0] = FW_FLASH_CRC;
+		cmdbuff[0] = FW_CRC;
 		err = motosh_i2c_write_read_no_reset(ps_motosh,
 				cmdbuff, readbuff, 1, 4);
 		if (err >= 0) {
@@ -396,7 +397,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		memcpy(motosh_g_mag_cal, &cmdbuff[1],
 			MOTOSH_MAG_CAL_SIZE);
-		cmdbuff[0] = MAG_CAL;
+		cmdbuff[0] = MAG_CALIBRATION;
 		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, cmdbuff,
 				(MOTOSH_MAG_CAL_SIZE + 1));
@@ -404,7 +405,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_GET_MAG_CAL:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_MAG_CAL");
 		if (ps_motosh->mode > BOOTMODE) {
-			cmdbuff[0] = MAG_CAL;
+			cmdbuff[0] = MAG_CALIBRATION;
 			err = motosh_i2c_write_read(ps_motosh, cmdbuff,
 				readbuff, 1, MOTOSH_MAG_CAL_SIZE);
 			if (err < 0) {
@@ -444,7 +445,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
-		cmdbuff[0] = ZRMOTION_DUR;
+		cmdbuff[0] = ZMOTION_DUR;
 		cmdbuff[1] = addr & 0xFF;
 		motosh_g_zmotion_dur =  cmdbuff[1];
 		if (ps_motosh->mode > BOOTMODE)
@@ -454,7 +455,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_GET_DOCK_STATUS");
 		if (ps_motosh->mode > BOOTMODE) {
-			cmdbuff[0] = DOCK_DATA;
+			cmdbuff[0] = DOCKED_DATA;
 			err = motosh_i2c_write_read(ps_motosh, cmdbuff,
 				readbuff, 1, 1);
 			byte = readbuff[0];
@@ -498,7 +499,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		getnstimeofday(&current_time);
 		motosh_time_delta = current_posix_time - current_time.tv_sec;
-		cmdbuff[0] = AP_POSIX_TIME;
+		cmdbuff[0] = POSIX_TIME;
 		cmdbuff[1] = (unsigned char)(current_posix_time >> 24);
 		cmdbuff[2] = (unsigned char)((current_posix_time >> 16)
 				& 0xff);
@@ -849,7 +850,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	case MOTOSH_IOCTL_GET_GYRO_CAL:
 		dev_dbg(&ps_motosh->client->dev, "MOTOSH_IOCTL_GET_GYRO_CAL");
 		if (ps_motosh->mode > BOOTMODE) {
-			cmdbuff[0] = GYRO_CAL_TABLE;
+			cmdbuff[0] = GYRO_CAL;
 			err = motosh_i2c_write_read(ps_motosh, cmdbuff,
 				readbuff, 1, MOTOSH_GYRO_CAL_SIZE);
 			if (err < 0) {
@@ -876,7 +877,7 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		memcpy(motosh_g_gyro_cal, &cmdbuff[1],
 			MOTOSH_GYRO_CAL_SIZE);
-		cmdbuff[0] = GYRO_CAL_TABLE;
+		cmdbuff[0] = GYRO_CAL;
 		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, cmdbuff,
 				(MOTOSH_GYRO_CAL_SIZE + 1));
