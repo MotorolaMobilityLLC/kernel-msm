@@ -37,6 +37,7 @@
 #include "../codecs/wcd9330.h"
 #include "../codecs/wcd9335.h"
 #include "../codecs/wsa881x.h"
+#include "../codecs/fsa8500-core.h"
 #ifdef CONFIG_SND_SOC_FLORIDA
 #include "../codecs/florida.h"
 #endif
@@ -2162,6 +2163,10 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	/* Cargo-culted from QC */
 	snd_soc_dapm_sync(dapm);
 
+	/* Start FSA8500 headset detection */
+	ret = fsa8500_hs_detect(codec);
+	if (ret)
+		dev_err(codec->dev, "fsa8500 hs det load error %d", ret);
 	return 0;
 }
 
