@@ -155,6 +155,7 @@ void hif_dump_pipe_debug_count(HIF_DEVICE *hif_device);
 #ifdef FEATURE_RUNTIME_PM
 #include <linux/pm_runtime.h>
 void hif_pci_runtime_pm_timeout_fn(unsigned long data);
+void hif_pci_runtime_pm_warn(struct hif_pci_softc *, const char *);
 #ifdef WLAN_OPEN_SOURCE
 static inline int hif_pm_request_resume(struct device *dev)
 {
@@ -205,7 +206,10 @@ static inline int hif_pm_runtime_resume(struct device *dev)
 }
 #endif /* WLAN_OPEN_SOURCE */
 #else /* FEATURE_RUNTIME_PM */
-static inline void hif_pm_runtime_mark_last_busy(struct device *dev) { }
+static inline void
+hif_pm_runtime_mark_last_busy(struct device *dev) { }
+static inline void
+hif_pci_runtime_pm_warn(struct hif_pci_softc *sc, const char *name) { }
 #endif
 
 #define CE_HTT_T2H_MSG 1
