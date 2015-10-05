@@ -31,7 +31,7 @@
 #define LSM_VOICE_WAKEUP_APP_V2 2
 #define AFE_OUT_PORT_2 2
 #define LISTEN_MIN_NUM_PERIODS     2
-#define LISTEN_MAX_NUM_PERIODS     12
+#define LISTEN_MAX_NUM_PERIODS     32
 #define LISTEN_MAX_PERIOD_SIZE     4096
 #define LISTEN_MIN_PERIOD_SIZE     320
 #define LISTEN_MAX_STATUS_PAYLOAD_SIZE 256
@@ -653,6 +653,12 @@ static int msm_cpe_lsm_close(struct snd_pcm_substream *substream)
 			__func__, rc);
 		return rc;
 	}
+
+	if (lsm_d->cpe_prepared)
+		lsm_ops->lsm_lab_buf_cntl(cpe->core_handle,
+				lsm_d->lsm_session, false,
+				lab_sess->hw_params.buf_sz,
+				lab_sess->hw_params.period_count);
 
 	rc = msm_cpe_afe_port_cntl(substream,
 				   cpe->core_handle,
@@ -1733,6 +1739,7 @@ static int msm_cpe_lsm_prepare(struct snd_pcm_substream *substream)
 	struct cpe_lsm_data *lsm_d = cpe_get_lsm_data(substream);
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct wcd_cpe_afe_ops *afe_ops;
+	struct wcd_cpe_lsm_ops *lsm_ops;
 	struct wcd_cpe_afe_port_cfg *afe_cfg;
 	struct cpe_lsm_session *lsm_session;
 	struct wcd_cpe_lsm_lab *lab_s = NULL;
@@ -1767,6 +1774,17 @@ static int msm_cpe_lsm_prepare(struct snd_pcm_substream *substream)
 		return 0;
 	}
 
+	lsm_ops = &cpe->lsm_ops;
+	rc = lsm_ops->lsm_lab_buf_cntl(cpe->core_handle,
+			lsm_d->lsm_session, true,
+			lab_s->hw_params.buf_sz,
+			lab_s->hw_params.period_count);
+	if (rc) {
+		dev_err(rtd->dev, "%s: dma alloc fail, err = %d\n",
+			__func__, rc);
+		return rc;
+	}
+
 	afe_ops = &cpe->afe_ops;
 	afe_cfg = &(lsm_d->lsm_session->afe_port_cfg);
 
@@ -1781,20 +1799,28 @@ static int msm_cpe_lsm_prepare(struct snd_pcm_substream *substream)
 		dev_err(rtd->dev,
 			"%s: cpe afe params failed, err = %d\n",
 			 __func__, rc);
-		return rc;
+		goto buf_dealloc;
 	}
 
 	rc = msm_cpe_afe_port_cntl(substream,
 				   cpe->core_handle,
 				   afe_ops, afe_cfg,
 				   AFE_CMD_PORT_START);
-	if (rc)
+	if (rc) {
 		dev_err(rtd->dev,
 			"%s: cpe_afe_port start failed, err = %d\n",
 			__func__, rc);
-	else
+		goto buf_dealloc;
+	} else
 		lsm_d->cpe_prepared = true;
 
+	return rc;
+
+buf_dealloc:
+	lsm_ops->lsm_lab_buf_cntl(cpe->core_handle,
+			lsm_d->lsm_session, false,
+			lab_s->hw_params.buf_sz,
+			lab_s->hw_params.period_count);
 	return rc;
 }
 

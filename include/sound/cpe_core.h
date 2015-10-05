@@ -189,6 +189,9 @@ struct wcd_cpe_lsm_ops {
 	int (*lsm_set_fmt_cfg)(void *core_handle,
 			struct cpe_lsm_session *session);
 	int (*lsm_cdc_start_lab)(void *core_handle);
+	int (*lsm_lab_buf_cntl)(void *core_handle,
+			struct cpe_lsm_session *session,
+			bool alloc, u32 bufsz, u32 bufcnt);
 };
 
 int wcd_cpe_get_lsm_ops(struct wcd_cpe_lsm_ops *);
