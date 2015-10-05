@@ -133,7 +133,7 @@ qcom,panel-supply-entries {
 		qcom,supply-post-off-sleep = <0>;
 	};
 	qcom,panel-supply-entry@1 {
-		qcom,supply-name = "vddio_disp";
+		qcom,supply-name = "vddio_disp_tdi";
 		qcom,supply-min-voltage = <1800000>;
 		qcom,supply-max-voltage = <1800000>;
 		qcom,supply-enable-load = <300000>;
