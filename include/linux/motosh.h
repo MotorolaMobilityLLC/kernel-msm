@@ -37,140 +37,75 @@
 
 #define NAME			     "motosh"
 
-/* MOTOSH memory map */
-#define ID                              0x00
-#define REV_ID                          0x01
-#define LOWPOWER_REG                    0x03
-#define MOTOSH_ELAPSED_RT               0x06
-#define RESET_REQUEST                   0x07
-#define MOTOSH_PEEKDATA_REG             0x09
-#define MOTOSH_PEEKSTATUS_REG           0x0A
-#define MOTOSH_STATUS_REG               0x0B
-#define MOTOSH_TOUCH_REG                0x0C
-#define MOTOSH_CONTROL_REG              0x0D
-#define STM_AOD_INSTRUMENTATION_REG     0x0E
+/* MOTOSH memory map.
+ * We want to expand all entries, so we define all pre-processor guards if not
+ * already defined, and at the end we undefine them if needed. */
 
-#define AP_POSIX_TIME                   0x10
+#ifndef PDISPLAY
+#define PDISPLAY
+#define UNDEF_PDISPLAY
+#endif
 
-#define ACCEL_UPDATE_RATE               0x16
-#define MAG_UPDATE_RATE                 0x17
-#define PRESSURE_UPDATE_RATE            0x18
-#define GYRO_UPDATE_RATE                0x19
+#ifndef IRGESTURE
+#define IRGESTURE
+#define UNDEF_IRGESTURE
+#endif
 
-#define NONWAKESENSOR_CONFIG            0x1A
-#define WAKESENSOR_CONFIG               0x1B
+#ifndef DSP
+#define DSP
+#define UNDEF_DSP
+#endif
 
-#define IR_STATUS                       0x11
-#define IR_GESTURE_RATE                 0x12
-#define IR_RAW_RATE                     0x13
-#define LINEAR_ACCEL_UPDATE_RATE        0x15
-#define IR_GESTURE                      0x1C
-#define IR_RAW                          0x1D
-#define IR_CONFIG                       0x1E
-#define IR_STATE                        0x1F
+#ifndef GYRO_CALIBRATION
+#define GYRO_CALIBRATION
+#define UNDEF_GYRO_CALIBRATION
+#endif
 
-#define MOTION_DUR                      0x20
-#define QUAT_6AXIS_UPDATE_RATE          0x21
-#define ZRMOTION_DUR                    0x22
-#define QUAT_9AXIS_UPDATE_RATE          0x23
+#ifndef CAPSENSE
+#define CAPSENSE
+#define UNDEF_CAPSENSE
+#endif
 
-#define BYPASS_MODE                     0x24
-#define SLAVE_ADDRESS                   0x25
+#ifndef ALS_TEST
+#define ALS_TEST
+#define UNDEF_ALS_TEST
+#endif
 
-#define ALGO_CONFIG                     0x26
-#define ALGO_INT_STATUS                 0x27
-#define GENERIC_INT_STATUS              0x28
+#define VMM_ENTRY(reg, id, writable, addr, size) id,
+enum vmm_ids {
+#include <linux/motosh_vmm.h>
+};
+#undef VMM_ENTRY
 
-#define SENSOR_ORIENTATIONS             0x2A
-
-#define FW_VERSION_LEN_REG              0x2B
-#define FW_VERSION_STR_REG              0x2C
-
-#define MOTION_DATA                     0x2D
-
-#define PROX_SETTINGS                   0x33
-
-#define LUX_TABLE_VALUES                0x34
-#define BRIGHTNESS_TABLE_VALUES         0x35
+/* To be replaced by enums once defined in SensorHub FW */
 #define STEP_COUNTER_UPDATE_RATE        0x36
+#define STEP_COUNTER			0x3E
+#define STEP_DETECTOR			0x47
 
-#define GRAVITY_UPDATE_RATE             0x37
-#define FW_FLASH_CRC                    0x38
-#define WAKESENSOR_STATUS               0x39
+#ifdef UNDEF_ALS_TEST
+#undef ALS_TEST
+#endif
 
-#define ACCEL_X                         0x3B
-#define LIN_ACCEL_X                     0x3C
-#define GRAVITY_X                       0x3D
-#define STEP_COUNTER			0X3E
+#ifdef UNDEF_CAPSENSE
+#undef CAPSENSE
+#endif
 
-#define DOCK_DATA                       0x3F
+#ifdef UNDEF_GYRO_CALIBRATION
+#undef GYRO_CALIBRATION
+#endif
 
-#define COVER_DATA                      0x40
+#ifdef UNDEF_DSP
+#undef DSP
+#endif
 
-#define TEMPERATURE_DATA                0x41
+#ifdef UNDEF_IRGESTURE
+#undef IRGESTURE
+#endif
 
-#define GYRO_CAL_TABLE                  0x42
-#define GYRO_X                          0x43
-#define UNCALIB_GYRO_X			0x45
-#define UNCALIB_MAG_X			0x46
+#ifdef UNDEF_PDISPLAY
+#undef PDISPLAY
+#endif
 
-#define STEP_DETECTOR			0X47
-
-#define MAG_CAL                         0x48
-#define MAG_HX                          0x49
-
-#define DISP_ROTATE_DATA                0x4A
-#define FLAT_DATA                       0x4B
-#define CAMERA                          0x4C
-#define NFC                             0x4D
-#define SIM                             0x4E
-#define CHOPCHOP                        0x4F
-#define LIFT                            0x51
-
-#define WAKE_MSG_QUEUE                  0x52
-#define NWAKE_STATUS                    0x53
-#define NWAKE_MSG_QUEUE                 0x54
-#define WAKE_MSG_QUEUE_LEN              0x57
-
-#define ANTCAP_CTRL                     0x58
-#define ANTCAP_INDEX                    0x59
-#define ANTCAP_CONFIG                   0x5A
-#define ANTCAP_DEBUG                    0x5B
-
-#define ALGO_CFG_ACCUM_MODALITY         0x5D
-#define ALGO_REQ_ACCUM_MODALITY         0x60
-
-#define LOG_MSG_LEN                     0x61
-#define LOG_MSG                         0x62
-
-#define ALGO_EVT_ACCUM_MODALITY         0x63
-
-#define QUATERNION_6AXIS                0x64
-#define QUATERNION_9AXIS                0x65
-
-#define CURRENT_PRESSURE                0x66
-
-#define ALS_LUX                         0x6A
-
-#define DISPLAY_BRIGHTNESS              0x6B
-
-#define PROXIMITY                       0x6C
-
-#define STOWED                          0x6D
-
-#define ALS_UPDATE_RATE                 0x6F
-
-#define ALGO_REQ_MODALITY               0x72
-#define ALGO_REQ_ORIENTATION            0x73
-#define ALGO_REQ_STOWED                 0x74
-#define ALGO_REQ_ACCUM_MVMT             0x75
-
-#define ALGO_EVT_MODALITY               0x76
-#define ALGO_EVT_ORIENTATION            0x77
-#define ALGO_EVT_STOWED                 0x78
-#define ALGO_EVT_ACCUM_MVMT             0x79
-
-#define RESET                           0x7F
 /* MOTOSH memory map end */
 
 /* nwake interrupt mask */
@@ -293,7 +228,7 @@
 #define STEP64_DATA	6
 #define SIM_DATA	0
 #define STEP_DETECT	0
-#define CHOPCHOP_DATA   0
+#define CHOPCHOP_DATA_OFFSET   0
 #define LIFT_DISTANCE	0
 #define LIFT_ROTATION	4
 #define LIFT_GRAV_DIFF	8
