@@ -50,7 +50,7 @@ void motosh_time_sync(void)
 	get_monotonic_boottime(&ts);
 	ap_time1 = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
-	cmdbuff[0] = MOTOSH_ELAPSED_RT;
+	cmdbuff[0] = ELAPSED_RT;
 	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
 	if (err < 0) {
 		dev_err(&motosh_misc_data->client->dev,
@@ -184,7 +184,7 @@ void motosh_time_compare(void)
 	get_monotonic_boottime(&ts);
 	ap_time1 = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
-	cmdbuff[0] = MOTOSH_ELAPSED_RT;
+	cmdbuff[0] = ELAPSED_RT;
 	err = motosh_i2c_write_read(motosh_misc_data, cmdbuff, readbuff, 1, 8);
 
 	get_monotonic_boottime(&ts);

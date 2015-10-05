@@ -103,8 +103,8 @@ void motosh_irq_work_func(struct work_struct *work)
 
 	/* process the irq status */
 	if (irq_status & N_DISP_ROTATE) {
-		/* read DISP_ROTATE_DATA */
-		cmdbuff[0] = DISP_ROTATE_DATA;
+		/* read DROTATE */
+		cmdbuff[0] = DROTATE;
 		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 1);
 
@@ -119,7 +119,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				readbuff[0]);
 		} else {
 			dev_err(&ps_motosh->client->dev,
-				"Reading DISP_ROTATE_DATA failed [err: %d]\n",
+				"Reading DROTATE failed [err: %d]\n",
 				err);
 		}
 	}
@@ -143,7 +143,7 @@ void motosh_irq_work_func(struct work_struct *work)
 	}
 	if (irq_status & N_DISP_BRIGHTNESS) {
 		/* read DISPLAY_BRIGHTNESS */
-		cmdbuff[0] = DISPLAY_BRIGHTNESS;
+		cmdbuff[0] = DISP_BRIGHTNESS_DATA;
 		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 1);
 
@@ -194,7 +194,7 @@ void motosh_irq_work_func(struct work_struct *work)
 		queue_index += MOTOSH_EVENT_QUEUE_MSG_ID_LEN;
 		data = &readbuff[queue_index];
 		switch (message_id) {
-		case ACCEL_X:
+		case ACCEL_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_ACCEL,
 				data, 6, 0, true);
 			dev_dbg(&ps_motosh->client->dev,
@@ -204,7 +204,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, ACCEL_RD_Z));
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
-		case LIN_ACCEL_X:
+		case LINEAR_ACCEL:
 			motosh_as_data_buffer_write(ps_motosh, DT_LIN_ACCEL,
 						data, 6, 0, true);
 
@@ -215,7 +215,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, ACCEL_RD_Z));
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
-		case MAG_HX:
+		case MAG_DATA:
 		{
 			unsigned char status;
 			u8 mag_orient_data[6 + MOTOSH_EVENT_TIMESTAMP_LEN];
@@ -246,7 +246,7 @@ void motosh_irq_work_func(struct work_struct *work)
 			queue_index += 13 + MOTOSH_EVENT_TIMESTAMP_LEN;
 		}
 			break;
-		case GYRO_X:
+		case GYRO_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_GYRO,
 				data, 6, 0, true);
 
@@ -257,7 +257,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, GYRO_RD_Z));
 			queue_index += 6 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
-		case UNCALIB_GYRO_X:
+		case UNCALIB_GYRO_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_UNCALIB_GYRO,
 				data, 12, 0, true);
 
@@ -271,7 +271,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, GYRO_UNCALIB_Z));
 			queue_index += 12 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
-		case UNCALIB_MAG_X:
+		case UNCALIB_MAG_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_UNCALIB_MAG,
 				data, 12, 0, true);
 
@@ -358,7 +358,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, TEMP_VALUE));
 			queue_index += 2;
 			break;
-		case CURRENT_PRESSURE:
+		case PRESSURE_DATA:
 			dev_err(&ps_motosh->client->dev, "Invalid CURRENT_PRESSURE event\n");
 
 			motosh_as_data_buffer_write(ps_motosh, DT_PRESSURE,
@@ -368,7 +368,7 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM32_TO_HOST(data, PRESSURE_VALUE));
 			queue_index += 4;
 			break;
-		case GRAVITY_X:
+		case GRAVITY:
 			motosh_as_data_buffer_write(ps_motosh, DT_GRAVITY,
 				data, 6, 0, true);
 
