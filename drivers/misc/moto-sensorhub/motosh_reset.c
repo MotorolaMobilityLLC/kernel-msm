@@ -50,7 +50,7 @@ int motosh_load_brightness_table(struct motosh_data *ps_motosh,
 {
 	int err = -ENOTTY;
 	int index = 0;
-	cmdbuff[0] = LUX_TABLE_VALUES;
+	cmdbuff[0] = LUX_TABLE;
 	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
 		cmdbuff[(2 * index) + 1]
 			= ps_motosh->pdata->lux_table[index] >> 8;
@@ -62,7 +62,7 @@ int motosh_load_brightness_table(struct motosh_data *ps_motosh,
 	if (err)
 		return err;
 
-	cmdbuff[0] = BRIGHTNESS_TABLE_VALUES;
+	cmdbuff[0] = BRIGHTNESS_TABLE;
 	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
 		cmdbuff[index + 1]
 				= ps_motosh->pdata->brightness_table[index];
@@ -225,7 +225,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
-	rst_cmdbuff[0] = ZRMOTION_DUR;
+	rst_cmdbuff[0] = ZMOTION_DUR;
 	rst_cmdbuff[1] = motosh_g_zmotion_dur;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
 					rst_cmdbuff, 2);
@@ -249,7 +249,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 		}
 	}
 
-	rst_cmdbuff[0] = PROX_SETTINGS;
+	rst_cmdbuff[0] = PROX_ALS_SETTINGS;
 	rst_cmdbuff[1]
 		= (pdata->ct406_detect_threshold >> 8) & 0xff;
 	rst_cmdbuff[2]
@@ -289,7 +289,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 	getnstimeofday(&current_time);
 	current_time.tv_sec += motosh_time_delta;
 
-	rst_cmdbuff[0] = AP_POSIX_TIME;
+	rst_cmdbuff[0] = POSIX_TIME;
 	rst_cmdbuff[1] = (unsigned char)(current_time.tv_sec >> 24);
 	rst_cmdbuff[2] = (unsigned char)((current_time.tv_sec >> 16)
 					& 0xff);
@@ -302,7 +302,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
-	rst_cmdbuff[0] = MAG_CAL;
+	rst_cmdbuff[0] = MAG_CALIBRATION;
 	memcpy(&rst_cmdbuff[1], motosh_g_mag_cal,
 		MOTOSH_MAG_CAL_SIZE);
 	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
@@ -310,7 +310,7 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
-	rst_cmdbuff[0] = GYRO_CAL_TABLE;
+	rst_cmdbuff[0] = GYRO_CAL;
 	memcpy(&rst_cmdbuff[1], motosh_g_gyro_cal,
 		MOTOSH_GYRO_CAL_SIZE);
 	err = motosh_i2c_write_no_reset(motosh_misc_data, rst_cmdbuff,
