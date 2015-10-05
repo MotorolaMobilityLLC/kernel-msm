@@ -88,3 +88,37 @@
 	        <&tlmm 130 0>;   /* gpio_muc_bplus_en, output-low */
 };
 
+&spmi_bus {
+	qcom,pm8994@0 {
+		/delete-node/ qcom,leds@a500;
+		qcom,leds@a600 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa600 0x100>;
+			status = "okay";
+			label = "mpp";
+			qcom,led_mpp_7 {
+				label = "mpp";
+				linux,name = "charging";
+				linux-default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <10>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,mode = "manual";
+			};
+		};
+	};
+};
+
+&pm8994_mpps {
+	mpp@a500 { /* MPP 6 Not used */
+		status = "disabled";
+	};
+
+	mpp@a600 { /* MPP 7 - SOL or CHARGING LED */
+		status = "okay";
+		qcom,mode = <6>;	/* QPNP_PIN_MODE_SINK */
+	};
+};
