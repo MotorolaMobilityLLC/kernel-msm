@@ -263,12 +263,12 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				queue_index += 1;
 			}
 			break;
-		case RESET_REQUEST:
+		case RESET_REASON:
 			pending_reset = true;
 			pending_reset_reason = data[0];
 			queue_index += 1;
 			break;
-		case DOCK_DATA:
+		case DOCKED_DATA:
 			dev_err(&ps_motosh->client->dev,
 				"Invalid DOCK_DATA event [0x%02X]\n",
 				data[0]);
@@ -285,7 +285,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				state);
 			queue_index += 1;
 			break;
-		case PROXIMITY:
+		case PROXIMITY_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_PROX,
 				data, 1, 0, false);
 
@@ -314,15 +314,16 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				state);
 			queue_index += 1;
 			break;
-		case STOWED:
+		case STOWED_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_STOWED,
 				data, 1, 0, false);
 
 			dev_dbg(&ps_motosh->client->dev,
-				"Sending Stowed status %d\n",  data[STOWED]);
+				"Sending Stowed status %d\n",
+				data[STOWED_STATUS]);
 			queue_index += 1;
 			break;
-		case CAMERA:
+		case CAMERA_GESTURE:
 			motosh_as_data_buffer_write(ps_motosh, DT_CAMERA_ACT,
 				data, 2, 0, false);
 
@@ -337,7 +338,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				"Report camkey toggle\n");
 			queue_index += 2;
 			break;
-		case NFC:
+		case NFC_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_NFC,
 					data, 1, 0, false);
 
@@ -345,7 +346,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				"Sending NFC value: %d\n", data[0]);
 			queue_index += 1;
 			break;
-		case SIM:
+		case SIM_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_SIM,
 					data, 2, 0, false);
 
@@ -356,15 +357,16 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 						STM16_TO_HOST(data, SIM_DATA));
 			queue_index += 2;
 			break;
-		case CHOPCHOP:
+		case CHOPCHOP_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_CHOPCHOP,
 							data, 2, 0, false);
 
 			dev_dbg(&ps_motosh->client->dev, "ChopChop triggered. Gyro aborts=%d\n",
-					STM16_TO_HOST(data, CHOPCHOP_DATA));
+					STM16_TO_HOST(data,
+						CHOPCHOP_DATA_OFFSET));
 			queue_index += 2;
 			break;
-		case LIFT:
+		case LIFT_DATA:
 			motosh_as_data_buffer_write(ps_motosh, DT_LIFT,
 							data, 12, 0, false);
 
@@ -399,7 +401,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			queue_index += 7;
 		}
 			break;
-		case ALGO_EVT_ORIENTATION:
+		case ALGO_EVT_ORIENT:
 		{
 			u8 algo_transition[8];
 			memcpy(algo_transition, data, 7);
@@ -448,7 +450,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			queue_index += motosh_process_ir_gesture(ps_motosh,
 								 data);
 			break;
-		case GENERIC_INT_STATUS:
+		case GENERIC_INT:
 			motosh_ms_data_buffer_write(ps_motosh, DT_GENERIC_INT,
 				data, 1, false);
 			dev_dbg(&ps_motosh->client->dev,
@@ -456,7 +458,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 				data[0]);
 			queue_index += 1;
 			break;
-		case GYRO_CAL_TABLE:
+		case GYRO_CAL:
 			dev_dbg(&ps_motosh->client->dev,
 				"Store gyro calibration\n");
 			motosh_as_data_buffer_write(ps_motosh, DT_GYRO_CAL,
