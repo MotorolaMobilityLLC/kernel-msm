@@ -226,7 +226,7 @@ static int motosh_quickpeek_status_ack(struct motosh_data *ps_motosh,
 
 	req_bit = atomic_read(&ps_motosh->qp_enabled) & 0x01;
 
-	cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+	cmdbuff[0] = PD_PEEK_RESPONSE;
 	cmdbuff[1] = req_bit;
 	cmdbuff[2] = qp_message ? qp_message->message : 0x00;
 	cmdbuff[3] = payload;
@@ -287,7 +287,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 		ps_motosh->pdata->qd_pm_qos_latency,
 		ps_motosh->pdata->qd_pm_qos_timeout);
 
-	cmdbuff[0] = MOTOSH_STATUS_REG;
+	cmdbuff[0] = P_DISPLAY_STATUS;
 	if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff, 1, 2)
 		< 0) {
 		dev_err(&ps_motosh->client->dev,
@@ -318,7 +318,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			"Received peek prepare command\n");
 		break;
 	case AOD_WAKEUP_REASON_QP_COMPLETE:
-		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		cmdbuff[0] = PD_QUICK_PEEK;
 		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 1) < 0) {
 			dev_err(&ps_motosh->client->dev,
@@ -332,7 +332,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			qp_message->commit);
 		break;
 	case AOD_WAKEUP_REASON_QP_DRAW:
-		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		cmdbuff[0] = PD_QUICK_PEEK;
 		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 5) < 0) {
 			dev_err(&ps_motosh->client->dev,
@@ -351,7 +351,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 			qp_message->x1, qp_message->y1);
 		break;
 	case AOD_WAKEUP_REASON_QP_ERASE:
-		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		cmdbuff[0] = PD_QUICK_PEEK;
 		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 9) < 0) {
 			dev_err(&ps_motosh->client->dev,
@@ -373,7 +373,7 @@ int motosh_display_handle_quickpeek_locked(struct motosh_data *ps_motosh)
 	case AOD_WAKEUP_REASON_QP_DUMP_TRACE:
 		{
 		u32 timestamp;
-		cmdbuff[0] = MOTOSH_PEEKDATA_REG;
+		cmdbuff[0] = PD_QUICK_PEEK;
 		if (motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
 			1, 5) < 0) {
 			dev_err(&ps_motosh->client->dev,
@@ -673,7 +673,7 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 	if (ps_motosh->mode == NORMALMODE) {
 		motosh_quickpeek_reset_locked(ps_motosh);
 
-		cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+		cmdbuff[0] = PD_PEEK_RESPONSE;
 		cmdbuff[1] = 0x00;
 		if (motosh_i2c_write(ps_motosh, cmdbuff, 2) < 0) {
 			dev_err(&ps_motosh->client->dev,
@@ -687,7 +687,7 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 				dev_err(&ps_motosh->client->dev,
 					"Write peek status reg retry\n");
 
-				cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+				cmdbuff[0] = PD_PEEK_RESPONSE;
 				cmdbuff[1] = 0x00;
 				if (motosh_i2c_write(ps_motosh,
 						     cmdbuff, 2) < 0) {
@@ -696,7 +696,7 @@ static int motosh_takeback_locked(struct motosh_data *ps_motosh)
 					goto EXIT;
 				}
 			}
-			cmdbuff[0] = MOTOSH_STATUS_REG;
+			cmdbuff[0] = P_DISPLAY_STATUS;
 			if (motosh_i2c_write_read(ps_motosh,
 					cmdbuff, readbuff, 1, 1) < 0) {
 				dev_err(&ps_motosh->client->dev,
@@ -743,7 +743,7 @@ static int motosh_handover_locked(struct motosh_data *ps_motosh)
 	motosh_wake(ps_motosh);
 
 	if (ps_motosh->mode == NORMALMODE) {
-		cmdbuff[0] = MOTOSH_PEEKSTATUS_REG;
+		cmdbuff[0] = PD_PEEK_RESPONSE;
 		cmdbuff[1] = 0x01;
 		if (motosh_i2c_write(ps_motosh, cmdbuff, 2) < 0) {
 			dev_err(&ps_motosh->client->dev,
