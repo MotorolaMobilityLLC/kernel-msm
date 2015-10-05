@@ -2920,17 +2920,27 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
 #ifdef FEATURE_WLAN_EXTSCAN
           case eWNI_SME_EXTSCAN_FULL_SCAN_RESULT_IND:
           {
-                pMac->sme.pExtScanIndCb(pMac->hHdd,
-                                        eSIR_EXTSCAN_FULL_SCAN_RESULT_IND,
-                                        pMsg->bodyptr);
+                if (pMac->sme.pExtScanIndCb) {
+                    pMac->sme.pExtScanIndCb(pMac->hHdd,
+                                            eSIR_EXTSCAN_FULL_SCAN_RESULT_IND,
+                                            pMsg->bodyptr);
+                } else {
+                    smsLog(pMac, LOGE,
+                           FL("callback not registered to process eWNI_SME_EXTSCAN_FULL_SCAN_RESULT_IND"));
+                }
                 vos_mem_free(pMsg->bodyptr);
                 break;
           }
           case eWNI_SME_EPNO_NETWORK_FOUND_IND:
           {
-                pMac->sme.pExtScanIndCb(pMac->hHdd,
-                                        eSIR_EPNO_NETWORK_FOUND_IND,
-                                        pMsg->bodyptr);
+                if (pMac->sme.pExtScanIndCb) {
+                    pMac->sme.pExtScanIndCb(pMac->hHdd,
+                                            eSIR_EPNO_NETWORK_FOUND_IND,
+                                            pMsg->bodyptr);
+                } else {
+                    smsLog(pMac, LOGE,
+                           FL("callback not registered to process eWNI_SME_EPNO_NETWORK_FOUND_IND"));
+                }
                 vos_mem_free(pMsg->bodyptr);
                 break;
           }
