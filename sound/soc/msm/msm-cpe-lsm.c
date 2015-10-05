@@ -290,6 +290,16 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 				__func__);
 			rc = kthread_stop(session->lsm_lab_thread);
 
+			/*
+			 * kthread_stop returns EINTR if the thread_fn
+			 * was not scheduled before calling kthread_stop.
+			 * In this case, we dont need to wait for lab
+			 * thread to complete as lab thread will not be
+			 * scheduled at all.
+			 */
+			if (rc == -EINTR)
+				goto done;
+
 			/* Wait for the lab thread to exit */
 			rc = wait_for_completion_timeout(
 					&lab_sess->thread_complete,
@@ -302,7 +312,6 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 			}
 		}
 
-		lab_sess->thread_status = MSM_LSM_LAB_THREAD_STOP;
 		rc = lsm_ops->lsm_lab_stop(cpe->core_handle, session, false);
 		if (rc)
 			dev_err(rtd->dev,
@@ -326,6 +335,8 @@ static int msm_cpe_lsm_lab_stop(struct snd_pcm_substream *substream)
 				__func__, rc);
 	}
 
+done:
+	lab_sess->thread_status = MSM_LSM_LAB_THREAD_STOP;
 	return 0;
 }
 
