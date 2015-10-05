@@ -956,6 +956,11 @@
 		qcom,src-sel = <0>;		/* Constant */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
+	mpp@a500 { /* MPP 6 - SOL or CHARGING LED */
+		status = "okay";
+		qcom,mode = <6>;	/* QPNP_PIN_MODE_SINK */
+	};
+
 };
 
 &pmi8994_mpps {
@@ -1029,6 +1034,28 @@
 };
 
 &spmi_bus {
+	qcom,pm8994@0 {
+		qcom,leds@a500 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa500 0x100>;
+			status = "okay";
+			label = "mpp";
+			qcom,led_mpp_6 {
+				label = "mpp";
+				linux,name = "charging";
+				linux-default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <10>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,mode = "manual";
+			};
+		};
+
+	};
+
 	qcom,pmi8994@3 {
 		/* HACK, disable PMIC LED because it keeps detected short */
 		/delete-node/ qcom,leds@d800;
