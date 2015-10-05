@@ -52,7 +52,6 @@
 #define DELTA_MV		100
 #define DEFAULT_USB_MA		100
 #define HVDCP_MA	1800
-#define DEFAULT_DCP_MA	1800
 /* Parameters for ibus compass compensation */
 #define POWER_CONSUMPTION	500
 #define COMPENSATION_RATIO	96
@@ -271,7 +270,6 @@ struct smbchg_chip {
 	int				aicl_irq_count;
 	struct mutex			usb_status_lock;
 	char				compass_compensation[COMPENSATION_LEN];
-	bool				hvdcp_det_done;
 };
 
 enum print_reason {
@@ -2536,24 +2534,10 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 	char *usb_type_name = "null";
 
 	aicl_ma = smbchg_get_aicl_level_ma(chip);
+	/* determine the input current by typec protocol and BC1.2 */
+	target_ma = determine_target_input_current(current_ma);
 
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
-
-	if ((chip->hvdcp_det_done && (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP))
-		|| (usb_supply_type == POWER_SUPPLY_TYPE_USB)) {
-		/*
-		 * if HVDCP is detected, set 1.8A, ignore typec C to A with mistaken pull-up
-		 * resistance 10k ohm cable to prevent 9V 3A charging(do not support 9V 3A).
-		 */
-		if (smbchg_is_hvdcp(chip))
-			target_ma = current_ma;
-		else
-			/* determine the input current by typec protocol and BC1.2 */
-			target_ma = determine_target_input_current(current_ma);
-	} else {
-		target_ma = current_ma;
-        }
-
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB) {
 		/*
 		 * set ICL_OVERRIDE_BIT when use typec charger (D+/- are floated)
@@ -4237,8 +4221,6 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 	int rc;
 	u8 reg;
 
-	chip->hvdcp_det_done = true;
-
 	rc = smbchg_read(chip, &reg,
 			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
 	if (rc < 0) {
@@ -4261,10 +4243,7 @@ static void smbchg_hvdcp_det_work(struct work_struct *work)
 		if (chip->psy_registered)
 			power_supply_changed(&chip->batt_psy);
 		smbchg_aicl_deglitch_wa_check(chip);
-	} else if (is_usb_present(chip)) {
-		rc = smbchg_set_thermal_limited_usb_current_max(chip,
-				DEFAULT_DCP_MA);
-        }
+	}
 }
 
 static int smbchg_is_hvdcp(struct smbchg_chip *chip)
@@ -4437,7 +4416,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	chip->high_current_count = 0;
 	chip->max_input_current_ma = 0;
 	chip->temp_comp_done = false;
-	chip->hvdcp_det_done = false;
 }
 
 static bool is_src_detect_high(struct smbchg_chip *chip)
