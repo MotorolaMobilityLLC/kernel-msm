@@ -22,14 +22,27 @@
 };
 
 &soc {
-	vddio_disp_vreg: vddio_disp_vreg {
+	vddio_disp_vreg_tdi: vddio_disp_vreg_tdi {
+		status = "/chosen", "mmi,panel_name", "mipi_mot_cmd_tdi_1080p_546";
 		compatible = "regulator-fixed";
-		regulator-name = "vddio_disp";
+		regulator-name = "vddio_disp_tdi";
 		gpio = <&msm_gpio 36 0>;
 		vin-supply = <&pm8916_l6>;
 		startup-delay-us = <300>;
 		enable-active-high;
 		regulator-boot-on;
+	};
+
+	vddio_disp_vreg_lgd: vddio_disp_vreg_lgd {
+		status = "/chosen", "mmi,panel_name", "mipi_mot_cmd_lgd_1080p_546";
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp_lgd";
+		gpio = <&msm_gpio 36 0>;
+		vin-supply = <&pm8916_l6>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+		regulator-always-on;
 	};
 
 	isl98611a_pos: isl98611a_pos {
@@ -112,7 +125,8 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v1>;
 	tp_vci-supply = <&pm8916_l16>;
-	vddio_disp-supply = <&vddio_disp_vreg>;
+	vddio_disp_tdi-supply = <&vddio_disp_vreg_tdi>;
+	vddio_disp_lgd-supply = <&vddio_disp_vreg_lgd>;
 	vsp_disp-supply = <&isl98611a_pos>;
 	vsn_disp-supply = <&isl98611a_neg>;
 
