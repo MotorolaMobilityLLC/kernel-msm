@@ -130,6 +130,17 @@ static struct f12_c20_0_type {
 	unsigned char y_suppression;
 } f12_c20_0;
 
+static struct f12_c20_1_type {
+	union {
+		struct {
+			unsigned char reserved:1;
+			unsigned char report_lpwg_only:1;
+			unsigned char reserved2:6;
+		} __packed;
+		unsigned char data[1];
+	};
+} f12_c20_1;
+
 static struct f12_c23_0_type {
 	union {
 		struct {
@@ -179,6 +190,7 @@ static struct synaptics_rmi4_subpkt f12_c08[] = {
 
 static struct synaptics_rmi4_subpkt f12_c20[] = {
 	RMI4_SUBPKT(f12_c20_0),
+	RMI4_SUBPKT(f12_c20_1),
 };
 
 static struct synaptics_rmi4_subpkt f12_c23[] = {
