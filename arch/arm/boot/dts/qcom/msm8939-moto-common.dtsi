@@ -728,6 +728,7 @@
 			<&msm_gpio 20 0>; /* RESET */
 		synaptics,gpio-config;
 		synaptics,touch-clip-area = <64 0 1015 1014>;
+		synaptics,use-in-progress-event-blank;
 		pinctrl-names = "default", "active";
 		pinctrl-0 = <&touch_reset_active &touch_int_default>;
 		pinctrl-1 = <&touch_reset_active &touch_int_active>;
@@ -739,13 +740,13 @@
 			patch-data = "";
 		};
 		default_suspended_lgd: touchstate_aod_suspended {
-			patch-data = "F1@0=1&7";
+			patch-data = "F12@20:1=2;F1@0=1&7";
 		};
 		alternate_active_lgd: touchstate_folio_active {
 			patch-data = "F54@2=B400;F12@10=1E1F;F54M@0=4";
 		};
 		alternate_suspended_lgd: touchstate_folio_suspended {
-			patch-data = "F1@0=1&7";
+			patch-data = "F12@20:1=2;F1@0=1&7";
 		};
 	};
 	synaptics_dsx_i2c_tdi@20 {
