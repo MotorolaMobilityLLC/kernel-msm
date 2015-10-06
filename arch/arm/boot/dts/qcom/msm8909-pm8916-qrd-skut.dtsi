@@ -215,6 +215,7 @@
 			bosch,place = <5>;
 			bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
 			bosch,gpio-int2 = <&msm_gpio 65 0x2002>;
+			bosch,use-hrtimer;
 		};
 
 		akm@0c {
@@ -228,6 +229,7 @@
 			akm,layout = <0x3>;
 			akm,gpio_rstn = <&msm_gpio 36 0x0>;
 			akm,auto-report;
+			akm,use-hrtimer;
 		};
 	};
 };
