@@ -6495,6 +6495,8 @@ fail:
 	return -EINVAL;
 }
 
+#define ESR_MAX				300000
+#define ESR_MIN				5000
 #define FG_PROFILE_LEN			128
 #define PROFILE_COMPARE_LEN		32
 #define THERMAL_COEFF_ADDR		0x444
@@ -6508,6 +6510,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	struct device_node *batt_node, *profile_node;
 	const char *data, *batt_type_str;
 	bool tried_again = false, vbat_in_range, profiles_same;
+	bool esr_in_range;
 	u8 reg = 0;
 
 wait:
@@ -6658,13 +6661,17 @@ wait:
 	}
 
 
+	esr_in_range = ((fg_data[FG_DATA_BATT_ESR].value < ESR_MAX) &&
+			(fg_data[FG_DATA_BATT_ESR].value > ESR_MIN));
+
 	vbat_in_range = get_vbat_est_diff(chip)
 			< settings[FG_MEM_VBAT_EST_DIFF].value * 1000;
 	profiles_same = memcmp(chip->batt_profile, data,
 					PROFILE_COMPARE_LEN) == 0;
 	if (reg & PROFILE_INTEGRITY_BIT) {
 		fg_cap_learning_load_data(chip);
-		if (vbat_in_range && !fg_is_batt_empty(chip) && profiles_same) {
+		if (vbat_in_range && !fg_is_batt_empty(chip) && profiles_same &&
+		    esr_in_range){
 			if (fg_debug_mask & FG_STATUS)
 				pr_info("Battery profiles same, using default\n");
 			if (fg_est_dump)
@@ -6686,6 +6693,9 @@ wait:
 	if (fg_est_dump)
 		dump_sram(&chip->dump_sram);
 
+	if (!esr_in_range)
+		pr_info("ESR out of range: ESR %d mohm\n",
+			fg_data[FG_DATA_BATT_ESR].value);
 	if ((fg_debug_mask & FG_STATUS) && !vbat_in_range)
 		pr_info("Vbat out of range: v_current_pred: %d, v:%d thres:%d\n",
 				fg_data[FG_DATA_CPRED_VOLTAGE].value,
