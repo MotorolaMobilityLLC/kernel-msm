@@ -576,6 +576,12 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 
 	DBG(cdev, "mtp_read(%zu)\n", count);
 
+	if (!dev->ep_out) {
+		DBG(cdev,"Out EP not created yet\n");
+		r = -EAGAIN;
+		goto done;
+	}
+
 	len = ALIGN(count, dev->ep_out->maxpacket);
 
 	if (len > mtp_rx_req_len)
