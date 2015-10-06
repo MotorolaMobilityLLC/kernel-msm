@@ -1275,7 +1275,7 @@ void ASUSEvtlog(const char *fmt, ...)
     rtc_time_to_tm(ts.tv_sec, &tm);
     getrawmonotonic(&ts);
     printk("[ASUSEvtlog](%ld)%04d-%02d-%02d %02d:%02d:%02d :",ts.tv_sec,tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
+    queue_work(ASUSEvtlog_workQueue, &eventLog_Work);
     va_start(args, fmt);
     vprintk_emit(0, -1, NULL, 0, fmt, args);
     va_end(args);
@@ -1363,6 +1363,7 @@ static int __init proc_asusdebug_init(void)
 
     ASUSEvtlog_workQueue  = create_singlethread_workqueue("ASUSEVTLOG_WORKQUEUE");
     Kernellog_workQueue  = create_singlethread_workqueue("KERNELLOG_WORKQUEUE");
+    printk("\n\n[ASUSEvtlog]---------------System Boot----%s---------\n", ASUS_SW_VER);
 
     return 0;
 }
