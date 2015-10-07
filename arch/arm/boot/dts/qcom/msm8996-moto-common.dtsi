@@ -749,11 +749,13 @@
 
 &pmi8994_charger {
 	status = "okay";
-	gpios = <&tlmm 72 0x0>; /* GPIOF_OUT_INIT_LOW */
-	gpio-names = "eb_vbus_en";
+	gpios = <&tlmm 72 0x0>, /* GPIOF_OUT_INIT_LOW */
+		<&tlmm 62 0x1>; /* GPIOF_IN */
+	gpio-names = "eb_vbus_en",
+		     "factory_warn";
 	pinctrl-names = "default", "eb_active";
-	pinctrl-0 = <&eb_vbus_conf>;
-	pinctrl-1 = <&eb_vbus_active>;
+	pinctrl-0 = <&eb_vbus_conf &kungpow_default>;
+	pinctrl-1 = <&eb_vbus_active &kungpow_default>;
 	/delete-property/ qcom,iterm-ma;
 	qcom,iterm-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
