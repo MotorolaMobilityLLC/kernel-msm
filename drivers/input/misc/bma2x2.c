@@ -32,6 +32,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/of_gpio.h>
 #include <linux/sensors.h>
+#include <linux/kthread.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -1393,6 +1394,8 @@ static const struct interrupt_map_t int_map[] = {
 #define POLL_INTERVAL_MAX_MS	4000
 #define POLL_DEFAULT_INTERVAL_MS 200
 
+#define POLL_MS_100HZ 10
+
 /* Interrupt delay in msecs */
 #define BMA_INT_MAX_DELAY	64
 
@@ -1472,6 +1475,7 @@ struct bma2x2_platform_data {
 	s8 place;
 	bool int_en;
 	bool use_int2; /* Use interrupt pin2 */
+	bool use_hrtimer;
 };
 
 struct bma2x2_suspend_state {
@@ -1506,9 +1510,15 @@ struct bma2x2_data {
 	struct mutex value_mutex;
 	struct mutex enable_mutex;
 	struct mutex mode_mutex;
+	struct mutex op_lock;
 	struct workqueue_struct *data_wq;
 	struct delayed_work work;
 	struct work_struct irq_work;
+	struct hrtimer accel_timer;
+	int accel_wkp_flag;
+	struct task_struct *accel_task;
+	bool accel_delay_change;
+	wait_queue_head_t accel_wq;
 	struct regulator *vdd;
 	struct regulator *vio;
 	bool power_enabled;
@@ -5049,6 +5059,51 @@ static void bma2x2_work_func(struct work_struct *work)
 	queue_delayed_work(bma2x2->data_wq, &bma2x2->work, delay);
 }
 
+static enum hrtimer_restart accel_timer_handle(struct hrtimer *hrtimer)
+{
+	struct bma2x2_data *bma2x2;
+	ktime_t ktime;
+
+	bma2x2 = container_of(hrtimer, struct bma2x2_data, accel_timer);
+	ktime = ktime_set(0, atomic_read(&bma2x2->delay) * NSEC_PER_MSEC);
+	hrtimer_forward_now(&bma2x2->accel_timer, ktime);
+	bma2x2->accel_wkp_flag = 1;
+	wake_up_interruptible(&bma2x2->accel_wq);
+	return HRTIMER_RESTART;
+}
+
+static int accel_poll_thread(void *data)
+{
+	struct bma2x2_data *bma2x2 = data;
+	struct bma2x2acc value;
+
+	while (1) {
+		wait_event_interruptible(bma2x2->accel_wq,
+			((bma2x2->accel_wkp_flag != 0) ||
+				kthread_should_stop()));
+		bma2x2->accel_wkp_flag = 0;
+		if (kthread_should_stop())
+			break;
+
+		mutex_lock(&bma2x2->op_lock);
+		if (bma2x2->accel_delay_change) {
+			if (atomic_read(&bma2x2->delay) <= POLL_MS_100HZ)
+				set_wake_up_idle(true);
+			else
+				set_wake_up_idle(false);
+			bma2x2->accel_delay_change = false;
+		}
+		mutex_unlock(&bma2x2->op_lock);
+
+		bma2x2_report_axis_data(bma2x2, &value);
+		mutex_lock(&bma2x2->value_mutex);
+		bma2x2->value = value;
+		mutex_unlock(&bma2x2->value_mutex);
+	}
+
+	return 0;
+}
+
 static ssize_t bma2x2_register_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -5347,6 +5402,8 @@ static void bma2x2_set_enable(struct device *dev, int enable)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct bma2x2_data *bma2x2 = i2c_get_clientdata(client);
 	int pre_enable = atomic_read(&bma2x2->enable);
+	ktime_t ktime;
+	int delay_ms;
 
 	if (atomic_read(&bma2x2->cal_status)) {
 		dev_err(dev, "can not enable or disable when calibration\n");
@@ -5381,10 +5438,18 @@ static void bma2x2_set_enable(struct device *dev, int enable)
 				bma2x2_pinctrl_state(bma2x2, true);
 				enable_irq(bma2x2->IRQ);
 			} else {
-				queue_delayed_work(bma2x2->data_wq,
-					&bma2x2->work,
-					msecs_to_jiffies
-					(atomic_read(&bma2x2->delay)));
+				if (!bma2x2->pdata->use_hrtimer) {
+					delay_ms = atomic_read(&bma2x2->delay);
+					queue_delayed_work(bma2x2->data_wq,
+						&bma2x2->work,
+						msecs_to_jiffies(delay_ms));
+				} else {
+					ktime = ktime_set(0,
+						atomic_read(&bma2x2->delay)
+						* NSEC_PER_MSEC);
+					hrtimer_start(&bma2x2->accel_timer,
+						ktime, HRTIMER_MODE_REL);
+				}
 			}
 			atomic_set(&bma2x2->enable, 1);
 		}
@@ -5415,7 +5480,10 @@ static void bma2x2_set_enable(struct device *dev, int enable)
 					goto mutex_exit;
 				}
 			} else {
+			if (!bma2x2->pdata->use_hrtimer)
 				cancel_delayed_work_sync(&bma2x2->work);
+			else
+				hrtimer_cancel(&bma2x2->accel_timer);
 			}
 
 			atomic_set(&bma2x2->enable, 0);
@@ -7382,6 +7450,8 @@ static int bma2x2_parse_dt(struct device *dev,
 
 	pdata->use_int2 = of_property_read_bool(np, "bosch,use-int2");
 
+	pdata->use_hrtimer = of_property_read_bool(np, "bosch,use-hrtimer");
+
 	pdata->gpio_int1 = of_get_named_gpio_flags(dev->of_node,
 				"bosch,gpio-int1", 0, &pdata->int1_flag);
 
@@ -7637,6 +7707,7 @@ static int bma2x2_probe(struct i2c_client *client,
 	mutex_init(&data->value_mutex);
 	mutex_init(&data->mode_mutex);
 	mutex_init(&data->enable_mutex);
+	mutex_init(&data->op_lock);
 	data->bandwidth = BMA2X2_BW_SET;
 	data->range = BMA2X2_RANGE_SET;
 	data->sensitivity = bosch_sensor_range_map[0];
@@ -7701,7 +7772,18 @@ static int bma2x2_probe(struct i2c_client *client,
 		disable_irq(data->IRQ);
 		INIT_WORK(&data->irq_work, bma2x2_irq_work_func);
 	} else {
-		INIT_DELAYED_WORK(&data->work, bma2x2_work_func);
+		if (!pdata->use_hrtimer) {
+			INIT_DELAYED_WORK(&data->work, bma2x2_work_func);
+		} else {
+			hrtimer_init(&data->accel_timer,
+					CLOCK_BOOTTIME, HRTIMER_MODE_REL);
+			data->accel_timer.function = accel_timer_handle;
+
+			init_waitqueue_head(&data->accel_wq);
+			data->accel_wkp_flag = 0;
+			data->accel_task = kthread_run(accel_poll_thread, data,
+					"bma_accel");
+		}
 	}
 
 	data->data_wq = create_freezable_workqueue("bma2x2_data_work");
@@ -7952,7 +8034,12 @@ destroy_g_sensor_class_exit:
 #endif
 
 destroy_workqueue_exit:
-	destroy_workqueue(data->data_wq);
+	if (!pdata->use_hrtimer) {
+		destroy_workqueue(data->data_wq);
+	} else {
+		hrtimer_cancel(&data->accel_timer);
+		kthread_stop(data->accel_task);
+	}
 free_irq_exit:
 free_interrupt_gpio:
 	if (pdata->int_en) {
@@ -7989,8 +8076,12 @@ static void bma2x2_early_suspend(struct early_suspend *h)
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
 		bma2x2_set_mode(data->bma2x2_client, BMA2X2_MODE_SUSPEND);
-		if (!data->pdata->int_en)
-			cancel_delayed_work_sync(&data->work);
+		if (!data->pdata->int_en) {
+			if (!data->pdata->use_hrtimer)
+				cancel_delayed_work_sync(&data->work);
+			else
+				hrtimer_cancel(&data->accel_timer);
+		}
 	}
 	mutex_unlock(&data->enable_mutex);
 }
@@ -8003,10 +8094,18 @@ static void bma2x2_late_resume(struct early_suspend *h)
 	mutex_lock(&data->enable_mutex);
 	if (atomic_read(&data->enable) == 1) {
 		bma2x2_set_mode(data->bma2x2_client, BMA2X2_MODE_NORMAL);
-		if (!data->pdata->int_en)
-			queue_delayed_work(data->data_wq,
+		if (!data->pdata->int_en) {
+			if (!data->pdata->use_hrtimer) {
+				queue_delayed_work(data->data_wq,
 				&data->work,
 				msecs_to_jiffies(atomic_read(&data->delay)));
+			} else {
+				ktime = ktime_set(0,
+				atomic_read(&data->delay) * NSEC_PER_MSEC);
+				hrtimer_start(&data->accle_timer,
+						ktime, HRTIMER_MODE_REL);
+			}
+		}
 	}
 	mutex_unlock(&data->enable_mutex);
 }
@@ -8034,8 +8133,13 @@ static int bma2x2_remove(struct i2c_client *client)
 		sysfs_remove_group(&data->input->dev.kobj,
 				&bma2x2_attribute_group);
 
-	destroy_workqueue(data->data_wq);
 	bma2x2_set_enable(&client->dev, 0);
+	if (!data->pdata->use_hrtimer) {
+		destroy_workqueue(data->data_wq);
+	} else {
+		hrtimer_cancel(&data->accel_timer);
+		kthread_stop(data->accel_task);
+	}
 	bma2x2_power_deinit(data);
 	i2c_set_clientdata(client, NULL);
 	if (data->pdata && (client->dev.of_node))
