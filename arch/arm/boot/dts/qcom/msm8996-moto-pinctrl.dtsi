@@ -435,4 +435,17 @@
 			};
 		};
 	};
+
+	kungpow_default: kungpow_default {
+		mux {
+			pins = "gpio62";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio62";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
 };
