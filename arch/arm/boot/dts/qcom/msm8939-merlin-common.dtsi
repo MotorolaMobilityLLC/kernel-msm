@@ -1121,6 +1121,8 @@
 
 &i2c_6 {
 
+	qcom,clk-freq-out = <100000>;
+
 	ncp6335d: ncp6335d-regulator@1c {
 		compatible = "onnn,ncp6335d-regulator";
 		reg = <0x1c>;
