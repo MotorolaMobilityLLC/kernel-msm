@@ -65,7 +65,7 @@
 
 #define EXP_FN_DET_INTERVAL 1000 /* ms */
 #define POLLING_PERIOD 1 /* ms */
-#define SYN_I2C_RETRY_TIMES 10
+#define SYN_I2C_RETRY_TIMES 3
 #define MAX_ABS_MT_TOUCH_MAJOR 15
 
 #define F01_STD_QUERY_LEN 21
