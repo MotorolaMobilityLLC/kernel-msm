@@ -6690,9 +6690,11 @@ typedef struct {
     A_UINT32                tlv_header;      /** TLV tag and len; tag equals WMITLV_TAG_STRUC_WMI_SET_ARP_NS_OFFLOAD_CMD_fixed_param */
     A_UINT32                flags;
     A_UINT32                vdev_id;
+    A_UINT32                num_ns_ext_tuples;
     /* Following this structure are the TLVs:
          *     WMI_NS_OFFLOAD_TUPLE    ns_tuples[WMI_MAX_NS_OFFLOADS];
          *     WMI_ARP_OFFLOAD_TUPLE   arp_tuples[WMI_MAX_ARP_OFFLOADS];
+	 *     WMI_NS_OFFLOAD_TUPLE  ns_ext_tuples[];
          */
 } WMI_SET_ARP_NS_OFFLOAD_CMD_fixed_param;
 
