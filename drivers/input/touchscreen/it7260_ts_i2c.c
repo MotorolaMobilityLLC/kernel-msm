@@ -445,6 +445,31 @@ out:
 	return ret;
 }
 
+static bool ChangePalmThreshold(uint8_t threshold_H, uint8_t threshold_L)
+{
+	uint8_t puc_cmd_buf[4], resp[2];
+
+	puc_cmd_buf[0] = 0x21;
+	puc_cmd_buf[1] = 0x00;
+	puc_cmd_buf[2] = threshold_L;
+	puc_cmd_buf[3] = threshold_H;
+	resp[0] = 0xFF;
+	resp[1] = 0xFF;
+
+	if (i2c_write_with_check(BUF_COMMAND, puc_cmd_buf, sizeof(puc_cmd_buf)) != true) {
+		LOGE("[%d] %s i2c write fail.\n", __LINE__, __func__);
+		return false;
+	}
+
+	if (i2c_read_with_check(BUF_RESPONSE, resp, sizeof(resp)) != true) {
+		LOGE("[%d] %s i2c read fail.\n", __LINE__, __func__);
+		return false;
+	}
+
+	LOGI("Palm threshold = 0x%02X%02X,  resp= 0x%02X%02X.\n", threshold_H, threshold_L, resp[1], resp[0]);
+	return !resp[1] && !resp[0];
+}
+
 /* both buffers should be VERSION_LENGTH in size,
  * but only a part of them is significant */
 static bool chipGetVersions(uint8_t *verFw, uint8_t *verCfg, bool logIt)
@@ -703,16 +728,45 @@ static ssize_t sysfsChecksumShow(struct device *dev, struct device_attribute *at
 	return snprintf(buf, 3, "%d\n", ret ? 1 : 0);
 }
 
+static int atoi(const char *in)
+{
+	int ret = 0;
+	if ('0' <= *in && *in <= '9')
+		ret = *in - '0';
+	if ('a' <= *in && *in <= 'f')
+		ret = *in - 'a' + 10;
+	if ('A' <= *in && *in <= 'F')
+		ret = *in - 'A' + 10;
+
+	return ret;
+}
+
+static ssize_t sysfsPalmStore(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	uint8_t threshold_H, threshold_L;
+	char str[4];
+
+	strlcpy(str, buf, sizeof(str));
+	threshold_H = atoi(&str[0])*16 + atoi(&str[1]);
+	threshold_L = atoi(&str[2])*16 + atoi(&str[3]);
+	LOGI("%s: get threshold %s", __func__, str);
+	LOGI("%s: get threshold %d %d", __func__, threshold_H, threshold_L);
+	ChangePalmThreshold(threshold_H, threshold_L);
+	return count;
+}
+
 static DEVICE_ATTR(status, S_IRUGO|S_IWUSR|S_IRGRP, sysfsStatusShow, NULL);
 static DEVICE_ATTR(version, S_IRUGO|S_IWUSR|S_IRGRP, sysfsVersionShow, NULL);
 static DEVICE_ATTR(sleep, S_IRUGO|S_IWUSR|S_IRGRP, sysfsSleepShow, sysfsSleepStore);
 static DEVICE_ATTR(checksum, S_IRUGO|S_IWUSR|S_IRGRP, sysfsChecksumShow, NULL);
+static DEVICE_ATTR(palm, S_IWGRP|S_IWUSR, NULL, sysfsPalmStore);
 
 static struct attribute *it7260_attrstatus[] = {
 	&dev_attr_status.attr,
 	&dev_attr_version.attr,
 	&dev_attr_sleep.attr,
 	&dev_attr_checksum.attr,
+	&dev_attr_palm.attr,
 	NULL
 };
 
@@ -827,6 +881,8 @@ static void touchIdleOnEvt(struct work_struct *work)
 {
 	static const uint8_t cmdLowPower[] = { CMD_PWR_CTL, 0x00, PWR_CTL_LOW_POWER_MODE};
 	chipInLowPower = true;
+	if (!ChangePalmThreshold(0x70, 0x00))
+		LOGE("%s: change palm threshold fail.\n", __func__);
 	if (i2c_write_data(BUF_COMMAND, cmdLowPower, sizeof(cmdLowPower)) < 0)
 		LOGE("%s: fail to enter low power mode\n", __func__);
 }
@@ -846,6 +902,8 @@ static void exitIdleEvt(struct work_struct *work)
 	wake_lock_timeout(&touch_time_lock, WAKELOCK_HOLD_MS);
 	wake_unlock(&touch_lock);
 	last_time_exit_low = jiffies;
+	if (!ChangePalmThreshold(0xA0, 0x00))
+		LOGE("%s: change palm threshold fail.\n", __func__);
 }
 
 static void sendPalmEvt(void)
@@ -886,6 +944,8 @@ static void readTouchDataPoint(void)
 	/* check point data is position data type */
 	if ((pointData.flags & PD_FLAGS_DATA_TYPE_BITS) != PD_FLAGS_DATA_TYPE_TOUCH) {
 		LOGE("%s: dropping non-point data of type 0x%02X\n", __func__, pointData.flags);
+		if (!ChangePalmThreshold(0xA0, 0x00))
+			LOGE("%s: change palm threshold fail.\n", __func__);
 		return;
 	}
 	/* palm detection */
