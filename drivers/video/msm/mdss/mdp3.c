@@ -960,9 +960,50 @@ int mdp3_dynamic_clock_gating_ctrl(int enable)
 	return rc;
 }
 
+/**
+ * mdp3_get_panic_lut_cfg() - calculate panic and robust lut mask
+ * @panel_width: Panel width
+ *
+ * DMA buffer has 16 fill levels. Which needs to configured as safe
+ * and panic levels based on panel resolutions.
+ * No. of fill levels used = ((panel active width * 8) / 512).
+ * Roundoff the fill levels if needed.
+ * half of the total fill levels used will be treated as panic levels.
+ * Roundoff panic levels if total used fill levels are odd.
+ *
+ * Sample calculation for 720p display:
+ * Fill levels used = (720 * 8) / 512 = 12.5 after round off 13.
+ * panic levels = 13 / 2 = 6.5 after roundoff 7.
+ * Panic mask = 0x3FFF (2 bits per level)
+ * Robust mask = 0xFF80 (1 bit per level)
+ */
+u64 mdp3_get_panic_lut_cfg(u32 panel_width)
+{
+	u32 fill_levels = (((panel_width * 8) / 512) + 1);
+	u32 panic_mask = 0;
+	u32 robust_mask = 0;
+	u32 i = 0;
+	u64 panic_config = 0;
+	u32 panic_levels = 0;
+
+	panic_levels = fill_levels / 2;
+	if (fill_levels % 2)
+		panic_levels++;
+
+	for (i = 0; i < panic_levels; i++) {
+		panic_mask |= (BIT((i * 2) + 1) | BIT(i * 2));
+		robust_mask |= BIT(i);
+	}
+	panic_config = ~robust_mask;
+	panic_config = panic_config << 32;
+	panic_config |= panic_mask;
+	return panic_config;
+}
+
 int mdp3_qos_remapper_setup(struct mdss_panel_data *panel)
 {
 	int rc = 0;
+	u64 panic_config = mdp3_get_panic_lut_cfg(panel->panel_info.xres);
 
 	rc = mdp3_clk_update(MDP3_CLK_AHB, 1);
 	rc |= mdp3_clk_update(MDP3_CLK_AXI, 1);
@@ -980,12 +1021,15 @@ int mdp3_qos_remapper_setup(struct mdss_panel_data *panel)
 	MDP3_REG_WRITE(MDP3_DMA_P_WATERMARK_1, 0x0);
 	MDP3_REG_WRITE(MDP3_DMA_P_WATERMARK_2, 0x0);
 	/* PANIC setting depends on panel width*/
-	if (panel->panel_info.xres >= 720)
-		MDP3_REG_WRITE(MDP3_PANIC_LUT0, 0xFFFF);
-	else
-		MDP3_REG_WRITE(MDP3_PANIC_LUT0, 0x00FF);
+	MDP3_REG_WRITE(MDP3_PANIC_LUT0,	(panic_config & 0xFFFF));
+	MDP3_REG_WRITE(MDP3_PANIC_LUT1, ((panic_config >> 16) & 0xFFFF));
+	MDP3_REG_WRITE(MDP3_ROBUST_LUT, ((panic_config >> 32) & 0xFFFF));
 	MDP3_REG_WRITE(MDP3_PANIC_ROBUST_CTRL, 0x1);
-	MDP3_REG_WRITE(MDP3_ROBUST_LUT, 0xFF00);
+	pr_debug("Panel width %d Panic Lut0 %x Lut1 %x Robust %x\n",
+		panel->panel_info.xres,
+		MDP3_REG_READ(MDP3_PANIC_LUT0),
+		MDP3_REG_READ(MDP3_PANIC_LUT1),
+		MDP3_REG_READ(MDP3_ROBUST_LUT));
 
 	rc = mdp3_clk_update(MDP3_CLK_AHB, 0);
 	rc |= mdp3_clk_update(MDP3_CLK_AXI, 0);
@@ -1692,6 +1736,9 @@ int mdp3_put_img(struct mdp3_img_data *data, int client)
 		if (client == MDP3_CLIENT_DMA_P) {
 			dom = (mdp3_res->domains + MDP3_IOMMU_DOMAIN_UNSECURE)->domain_idx;
 			ion_unmap_iommu(iclient, data->srcp_ihdl, dom, 0);
+			pr_debug("%s DMA_P unmap Addr Start %llx End %llx\n",
+				__func__, (u64)data->addr,
+				(u64)(data->addr + data->len));
 		} else {
 			mdp3_unmap_iommu(iclient, data->srcp_ihdl);
 		}
@@ -1757,6 +1804,9 @@ int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data, int client)
 			dom = (mdp3_res->domains + MDP3_IOMMU_DOMAIN_UNSECURE)->domain_idx;
 			ret = ion_map_iommu(iclient, data->srcp_ihdl, dom,
 					0, SZ_4K, 0, start, len, 0, 0);
+			pr_debug("%s DMA_P map Addr Start %llx End %llx\n",
+				__func__, (u64)data->addr,
+				(u64)(data->addr + data->len));
 		} else {
 			ret = mdp3_self_map_iommu(iclient, data->srcp_ihdl,
 				SZ_4K, data->padding, start, len, 0, 0);
