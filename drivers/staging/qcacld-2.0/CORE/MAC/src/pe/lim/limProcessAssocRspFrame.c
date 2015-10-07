@@ -635,7 +635,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
 
     if (pAssocRsp->statusCode != eSIR_MAC_SUCCESS_STATUS
 #ifdef WLAN_FEATURE_11W
-      && pAssocRsp->statusCode != eSIR_MAC_TRY_AGAIN_LATER
+      && (!psessionEntry->limRmfEnabled ||
+	      pAssocRsp->statusCode != eSIR_MAC_TRY_AGAIN_LATER)
 #endif /* WLAN_FEATURE_11W */
       )
     {
@@ -688,7 +689,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
      */
 
 #ifdef WLAN_FEATURE_11W
-    if (pAssocRsp->statusCode == eSIR_MAC_TRY_AGAIN_LATER) {
+    if (psessionEntry->limRmfEnabled &&
+		pAssocRsp->statusCode == eSIR_MAC_TRY_AGAIN_LATER) {
         /* fetch timer value from IE */
         if (pAssocRsp->TimeoutInterval.present &&
             (pAssocRsp->TimeoutInterval.timeoutType ==
