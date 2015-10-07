@@ -380,8 +380,7 @@ struct mdss_panel_info {
 	bool later_on_enabled;
 	bool later_on_after_update;
 	int later_on_delay;
-	struct mutex later_on_mutex;
-	enum later_on_states later_on_state;
+	atomic_t later_on_state;
 	char dfps_update;
 	int new_fps;
 	int panel_max_fps;
