@@ -2298,8 +2298,6 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 				intr_status,
 				rmi4_data->num_of_intr_regs);
 		kfree(intr_status);
-		if (retval < 0)
-			return retval;
 
 		enable_irq(rmi4_data->irq);
 
