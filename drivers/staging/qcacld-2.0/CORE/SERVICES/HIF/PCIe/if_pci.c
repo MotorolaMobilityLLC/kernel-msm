@@ -2119,6 +2119,11 @@ void hif_pci_shutdown(struct pci_dev *pdev)
     /* this is for cases, where shutdown invoked from CNSS */
     vos_set_logp_in_progress(VOS_MODULE_ID_HIF, TRUE);
 
+    if (!vos_is_ssr_ready(__func__))
+        pr_info("Host driver is not ready for SSR, attempting anyway\n");
+
+    hif_pci_device_reset(sc);
+
     scn = sc->ol_sc;
 
 #ifndef REMOVE_PKT_LOG
@@ -2128,9 +2133,6 @@ void hif_pci_shutdown(struct pci_dev *pdev)
 #endif
 
     hif_pci_pm_runtime_exit(sc);
-
-    if (!vos_is_ssr_ready(__func__))
-        printk("Host driver is not ready for SSR, attempting anyway\n");
 
     hif_dump_pipe_debug_count(sc->hif_device);
 
