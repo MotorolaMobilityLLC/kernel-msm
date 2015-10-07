@@ -72,6 +72,7 @@
 #define MDP3_DMA_P_WATERMARK_2				0x9009C
 #define MDP3_PANIC_ROBUST_CTRL				0x900A0
 #define MDP3_PANIC_LUT0					0x900A4
+#define MDP3_PANIC_LUT1					0x900A8
 #define MDP3_ROBUST_LUT					0x900AC
 
 /*danger safe*/
