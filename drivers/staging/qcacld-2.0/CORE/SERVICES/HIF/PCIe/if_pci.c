@@ -82,6 +82,7 @@
 
 #define PCIE_WAKE_TIMEOUT 1000 /* Maximum ms timeout for host to wake up target */
 #define RAMDUMP_EVENT_TIMEOUT 2500
+#define MAX_REG_READ_RETRIES 10
 
 unsigned int msienable = 0;
 module_param(msienable, int, 0644);
@@ -90,6 +91,44 @@ int hif_pci_configure(struct hif_pci_softc *sc, hif_handle_t *hif_hdl);
 void hif_nointrs(struct hif_pci_softc *sc);
 static int __hif_pci_suspend(struct pci_dev *, pm_message_t, bool);
 static int __hif_pci_resume(struct pci_dev *, bool);
+
+static void print_config_soc_reg(struct hif_pci_softc *sc)
+{
+	A_UINT16 val;
+	A_UINT32 bar0;
+
+	pci_read_config_word(sc->pdev, PCI_VENDOR_ID, &val);
+	pr_err("%s: PCI Vendor ID = 0x%04x\n", __func__, val);
+
+	pci_read_config_word(sc->pdev, PCI_DEVICE_ID, &val);
+	pr_err("%s: PCI Device ID = 0x%04x\n", __func__, val);
+
+	pci_read_config_word(sc->pdev, PCI_COMMAND, &val);
+	pr_err("%s: PCI Command = 0x%04x\n", __func__, val);
+
+	pci_read_config_word(sc->pdev, PCI_STATUS, &val);
+	pr_err("%s: PCI Status = 0x%04x\n", __func__, val);
+
+	pci_read_config_dword(sc->pdev, PCI_BASE_ADDRESS_0, &bar0);
+	pr_err("%s: PCI BAR0 = 0x%08x\n", __func__, bar0);
+
+	pr_err("%s: RTC_STATE_ADDRESS = 0x%08x, "
+		"PCIE_SOC_WAKE_ADDRESS = 0x%08x\n", __func__,
+		A_PCI_READ32(sc->mem + PCIE_LOCAL_BASE_ADDRESS
+			+ RTC_STATE_ADDRESS),
+		A_PCI_READ32(sc->mem + PCIE_LOCAL_BASE_ADDRESS
+			+ PCIE_SOC_WAKE_ADDRESS));
+
+	pr_err("%s: 0x80008 = 0x%08x, 0x8000c = 0x%08x, "
+		"0x80010 = 0x%08x,\n0x80014 = 0x%08x, 0x80018 = 0x%08x, "
+		"0x8001c = 0x%08x\n", __func__,
+		A_PCI_READ32(sc->mem + 0x80008),
+		A_PCI_READ32(sc->mem + 0x8000c),
+		A_PCI_READ32(sc->mem + 0x80010),
+		A_PCI_READ32(sc->mem + 0x80014),
+		A_PCI_READ32(sc->mem + 0x80018),
+		A_PCI_READ32(sc->mem + 0x8001c));
+};
 
 static struct pci_device_id hif_pci_id_table[] = {
 	{ 0x168c, 0x003c, PCI_ANY_ID, PCI_ANY_ID },
@@ -118,8 +157,6 @@ hif_pci_interrupt_handler(int irq, void *arg)
     struct hif_pci_softc *sc = (struct hif_pci_softc *) arg;
     struct HIF_CE_state *hif_state = (struct HIF_CE_state *)sc->hif_device;
     volatile int tmp;
-    A_UINT16 val;
-    A_UINT32 bar0;
 
     if (sc->hif_init_done == TRUE) {
         adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
@@ -143,40 +180,8 @@ hif_pci_interrupt_handler(int irq, void *arg)
         tmp = A_PCI_READ32(sc->mem+(SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS));
 
         if (tmp == 0xdeadbeef) {
-            printk(KERN_ERR "BUG(%s): SoC returns 0xdeadbeef!!\n", __func__);
-
-            pci_read_config_word(sc->pdev, PCI_VENDOR_ID, &val);
-            printk(KERN_ERR "%s: PCI Vendor ID = 0x%04x\n", __func__, val);
-
-            pci_read_config_word(sc->pdev, PCI_DEVICE_ID, &val);
-            printk(KERN_ERR "%s: PCI Device ID = 0x%04x\n", __func__, val);
-
-            pci_read_config_word(sc->pdev, PCI_COMMAND, &val);
-            printk(KERN_ERR "%s: PCI Command = 0x%04x\n", __func__, val);
-
-            pci_read_config_word(sc->pdev, PCI_STATUS, &val);
-            printk(KERN_ERR "%s: PCI Status = 0x%04x\n", __func__, val);
-
-            pci_read_config_dword(sc->pdev, PCI_BASE_ADDRESS_0, &bar0);
-            printk(KERN_ERR "%s: PCI BAR0 = 0x%08x\n", __func__, bar0);
-
-            printk(KERN_ERR "%s: RTC_STATE_ADDRESS = 0x%08x, "
-                "PCIE_SOC_WAKE_ADDRESS = 0x%08x\n", __func__,
-                A_PCI_READ32(sc->mem + PCIE_LOCAL_BASE_ADDRESS
-                    + RTC_STATE_ADDRESS),
-                A_PCI_READ32(sc->mem + PCIE_LOCAL_BASE_ADDRESS
-                    + PCIE_SOC_WAKE_ADDRESS));
-
-            pr_err("%s: 0x80008 = 0x%08x, 0x8000c = 0x%08x, "
-                "0x80010 = 0x%08x,\n0x80014 = 0x%08x, 0x80018 = 0x%08x, "
-                "0x8001c = 0x%08x\n", __func__,
-                A_PCI_READ32(sc->mem + 0x80008),
-                A_PCI_READ32(sc->mem + 0x8000c),
-                A_PCI_READ32(sc->mem + 0x80010),
-                A_PCI_READ32(sc->mem + 0x80014),
-                A_PCI_READ32(sc->mem + 0x80018),
-                A_PCI_READ32(sc->mem + 0x8001c));
-
+            pr_err("BUG(%s): SoC returns 0xdeadbeef!!\n", __func__);
+            print_config_soc_reg(sc);
             VOS_BUG(0);
         }
 
@@ -2392,6 +2397,7 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
     int err = 0;
     v_VOID_t * temp_module;
     u32 tmp;
+    int retry = 0;
 
     if (vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL))
         return err;
@@ -2401,13 +2407,30 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
     /* Enable Legacy PCI line interrupts */
     if (HIFTargetSleepStateAdjust(targid, FALSE, TRUE) < 0)
         goto out;
-    A_PCI_WRITE32(sc->mem+(SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS),
-                              PCIE_INTR_FIRMWARE_MASK | PCIE_INTR_CE_MASK_ALL);
-    /* IMPORTANT: this extra read transaction is required to flush the posted write buffer */
-    tmp = A_PCI_READ32(sc->mem+(SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS));
-    if (tmp == 0xffffffff) {
-        printk(KERN_ERR "%s: PCIe link is down\n", __func__);
-        VOS_ASSERT(0);
+    for (;;) {
+        A_PCI_WRITE32(sc->mem +
+                     (SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS),
+                      PCIE_INTR_FIRMWARE_MASK | PCIE_INTR_CE_MASK_ALL);
+        /*
+         * IMPORTANT: this extra read transaction is required to
+         * flush the posted write buffer
+         */
+
+        tmp = A_PCI_READ32(sc->mem +
+                          (SOC_CORE_BASE_ADDRESS | PCIE_INTR_ENABLE_ADDRESS));
+
+        if (tmp != 0xffffffff)
+            break;
+
+        if (retry > MAX_REG_READ_RETRIES) {
+            pr_err("%s: PCIe link is possible down!\n", __func__);
+            print_config_soc_reg(sc);
+            VOS_ASSERT(0);
+            break;
+        }
+
+        A_MDELAY(1);
+        retry++;
     }
     if (HIFTargetSleepStateAdjust(targid, TRUE, FALSE) < 0)
         goto out;
