@@ -3175,7 +3175,14 @@ int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, unsigned int delay)
 
 	if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HIF, NULL)) {
 		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
-			  "%s: Load/unload in progress, ignore!\n", __func__);
+				"%s: Load/unload in progress, ignore!",
+				__func__);
+		return -EINVAL;
+	}
+
+	if (vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL)) {
+		VOS_TRACE(VOS_MODULE_ID_HIF, VOS_TRACE_LEVEL_ERROR,
+				"%s: LOGP in progress, ignore!", __func__);
 		return -EINVAL;
 	}
 
