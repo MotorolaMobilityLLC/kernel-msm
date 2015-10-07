@@ -1313,33 +1313,36 @@ static void mdss_fb_later_on(struct work_struct *work)
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl;
 	int r;
-	mutex_lock(&pinfo->later_on_mutex);
-	if (pinfo->later_on_state != LATER_ON_NONE) {
-		wake_lock(&mfd->later_on_wakelock);
-		WARN(pinfo->later_on_after_update &&
-		     !atomic_read(&mfd->later_on_updates),
-		     "None updates after switch idle/normal mode\n");
-		mdp5_data = mfd_to_mdp5_data(mfd);
-		ctl = mfd_to_ctl(mfd);
-		pdata = container_of(pinfo, struct mdss_panel_data, panel_info);
-		ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-					  panel_data);
-		mutex_lock(&mdp5_data->ov_lock);
-		mutex_lock(&ctrl_pdata->mutex);
-		if (ctl->wait_pingpong)
-			ctl->wait_pingpong(ctl, NULL);
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-		r = mdss_dsi_set_panel_blank(ctrl_pdata, false);
-		WARN(r, "mdss_dsi_set_panel_blank(0) return %d\n", r);
-		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-		mutex_unlock(&ctrl_pdata->mutex);
-		mutex_unlock(&mdp5_data->ov_lock);
-		pinfo->later_on_state = LATER_ON_NONE;
-		wake_unlock(&mfd->later_on_wakelock);
-	}
-	mutex_unlock(&pinfo->later_on_mutex);
+
+	if (atomic_read(&pinfo->later_on_state) == LATER_ON_NONE)
+		return;
+
+	wake_lock(&mfd->later_on_wakelock);
+	WARN(pinfo->later_on_after_update &&
+	     !atomic_read(&mfd->later_on_updates),
+	     "None updates after switch idle/normal mode\n");
+	mdp5_data = mfd_to_mdp5_data(mfd);
+	ctl = mfd_to_ctl(mfd);
+	pdata = container_of(pinfo, struct mdss_panel_data, panel_info);
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				  panel_data);
+	mutex_lock(&mdp5_data->ov_lock);
+	mutex_lock(&ctrl_pdata->mutex);
+
+	if (ctl->wait_pingpong)
+		ctl->wait_pingpong(ctl, NULL);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
+	r = mdss_dsi_set_panel_idle(ctrl_pdata, true);
+	WARN(r, "mdss_dsi_set_panel_idle(true) return %d\n", r);
+	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+
+	atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
+
+	mutex_unlock(&ctrl_pdata->mutex);
+	mutex_unlock(&mdp5_data->ov_lock);
+	wake_unlock(&mfd->later_on_wakelock);
 }
 
 void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
@@ -1459,20 +1462,18 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 #endif
 	if (mfd->panel_info->later_on_enabled) {
 		struct mdss_panel_info *pinfo = mfd->panel_info;
-		mutex_lock(&pinfo->later_on_mutex);
-		if (mfd->later_on_state == pinfo->later_on_state)
-			goto _unlock_later_on_;
-		cancel_delayed_work_sync(&mfd->later_on_work);
-		if (pinfo->later_on_state != LATER_ON_NONE) {
-			atomic_set(&mfd->later_on_updates, 0);
-			schedule_delayed_work(&mfd->later_on_work,
-				msecs_to_jiffies(pinfo->later_on_delay));
-			wake_lock_timeout(&mfd->later_on_wakelock,
-				msecs_to_jiffies(pinfo->later_on_delay+33));
+		int later_on_state = atomic_read(&pinfo->later_on_state);
+		if (later_on_state != mfd->later_on_state) {
+			cancel_delayed_work_sync(&mfd->later_on_work);
+			if (later_on_state != LATER_ON_NONE) {
+				atomic_set(&mfd->later_on_updates, 0);
+				schedule_delayed_work(&mfd->later_on_work,
+					msecs_to_jiffies(pinfo->later_on_delay));
+				wake_lock_timeout(&mfd->later_on_wakelock,
+					msecs_to_jiffies(pinfo->later_on_delay+33));
+			}
+			mfd->later_on_state = later_on_state;
 		}
-		mfd->later_on_state = pinfo->later_on_state;
-_unlock_later_on_:
-		mutex_unlock(&pinfo->later_on_mutex);
 	}
 
 	return ret;
