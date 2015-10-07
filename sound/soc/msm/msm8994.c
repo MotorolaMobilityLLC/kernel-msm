@@ -3215,7 +3215,6 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.codec_dai_name = "tomtom_mad1",
 		.codec_name = "tomtom_codec",
 	},
-#endif
 	{
 		.name = "MultiMedia3 Record",
 		.stream_name = "MultiMedia3 Capture",
@@ -3230,6 +3229,7 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
+#endif
 #ifdef CONFIG_SND_SOC_FLORIDA
 	{
 		.name = "CPU-DSP Voice Control",
