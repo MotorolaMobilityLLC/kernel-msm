@@ -350,6 +350,16 @@ config CNSS_MAC_BUG
 	 from 0 to 4K. So fill it with zero's; to an address for which PCIe root
 	 complex would honor the read without any errors.
 
+config CLD_HL_SDIO_CORE
+	tristate "Qualcomm CORE driver for QCA6174 with SDIO interface"
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	select WEXT_CORE
+	select WEXT_SPY
+	select NL80211_TESTMODE
+	depends on ARCH_MSM
+	depends on MMC
+
 config CLD_LL_CORE
 	tristate "Qualcomm CORE driver for QCA6174"
 	select WIRELESS_EXT
