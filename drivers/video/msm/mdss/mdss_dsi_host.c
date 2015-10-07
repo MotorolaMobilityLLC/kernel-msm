@@ -618,7 +618,7 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		ret = 1;
 		/* do not check status when panel is later on */
 		if (pinfo->later_on_enabled &&
-		    (pinfo->later_on_state != LATER_ON_NONE))
+		    (atomic_read(&pinfo->later_on_state) != LATER_ON_NONE))
 			goto no_err;
 		/* check status if it's normal or idle */
 		if (readed == ctrl_pdata->status_values[0])

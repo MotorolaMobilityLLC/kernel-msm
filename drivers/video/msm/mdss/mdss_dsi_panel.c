@@ -732,11 +732,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		tf->tfmode_current = tfmode;
 #endif
 	}
-	if (pinfo->later_on_enabled) {
-		mutex_lock(&pinfo->later_on_mutex);
-		pinfo->later_on_state = LATER_ON_NONE;
-		mutex_unlock(&pinfo->later_on_mutex);
-	}
+	if (pinfo->later_on_enabled)
+		atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
 	if (pinfo->esd_check_enabled) {
 		ret = ctrl->check_status(ctrl) <= 0 ? -EFAULT : 0;
 		if (!ret) {
@@ -785,11 +782,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				msleep(pwr->post_off_sleep);
 		}
 	}
-	if (pinfo->later_on_enabled) {
-		mutex_lock(&pinfo->later_on_mutex);
-		pinfo->later_on_state = LATER_ON_NONE;
-		mutex_unlock(&pinfo->later_on_mutex);
-	}
+	if (pinfo->later_on_enabled)
+		atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
@@ -849,26 +843,21 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	else
 		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 
-#if defined(CONFIG_DOCK_STATUS_NOTIFY)
-	if (pinfo->later_on_enabled && !pinfo->is_docked) {
-#else
-	if (pinfo->later_on_enabled) {
-#endif
-		mutex_lock(&pinfo->later_on_mutex);
-		if (pinfo->later_on_state == LATER_ON_NONE) {
-			int r = mdss_dsi_set_panel_blank(ctrl, true);
-			WARN(r, "mdss_dsi_set_panel_on(1) return %d\n", r);
-		} else {
-			WARN(1, "later on is already activated! %d-%d\n",
-				pinfo->later_on_state, enable);
-		}
-		pinfo->later_on_state = enable ? LATER_ON_IDLE : LATER_ON_NORMAL;
-		mutex_unlock(&pinfo->later_on_mutex);
-	}
-
 	if (pinfo->mipi.idle_enable) {
-		int r = mdss_dsi_set_panel_idle(ctrl, enable);
-		WARN(r, "mdss_dsi_set_panel_idle(%d) return %d\n", enable, r);
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+		if (enable && pinfo->later_on_enabled && !pinfo->is_docked) {
+#else
+		if (enable && pinfo->later_on_enabled) {
+#endif
+			int state = atomic_read(&pinfo->later_on_state);
+			WARN(state != LATER_ON_NONE,
+			     "later on is already activated! %d\n", state);
+			atomic_set(&pinfo->later_on_state, LATER_ON_IDLE);
+		} else {
+			int r = mdss_dsi_set_panel_idle(ctrl, enable);
+			WARN(r, "mdss_dsi_set_panel_idle(%d) return %d\n",
+			     enable, r);
+		}
 	}
 
 	if (ctrl->panel_tfmode) {
@@ -1398,8 +1387,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 			pr_warn("No commands specified for later_on_blank\n");
 			pinfo->later_on_enabled = false;
 		}
-		pinfo->later_on_state = LATER_ON_NONE;
-		mutex_init(&pinfo->later_on_mutex);
+		atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
 	}
 	pr_info("%s: panel later on feature enabled: %d\n", __func__,
 		pinfo->later_on_enabled);
