@@ -62,6 +62,7 @@
 	qcom,mdss-dsi-panel-name = "mipi_mot_cmd_tdi_1080p_546_v0_secondary";
 	qcom,mdss-tear-check-disable;
 	qcom,mdss-dsi-no-panel-read-support;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_mot";
 	/delete-property/ qcom,mdss-dsi-on-command;
 	/delete-property/ qcom,mdss-dsi-off-command;
 	/delete-property/ qcom,mdss-dsi-te-pin-select;
