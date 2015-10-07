@@ -685,6 +685,7 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
 
     int i =0;
     eHalStatus returnStatus;
+    uint32_t count = 0, scope;
 
     ENTER();
     hddLog(LOG1, FL(" fenable = %d"), fenable);
@@ -694,133 +695,116 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
     if (fenable)
     {
         in6_dev = __in6_dev_get(pAdapter->dev);
-        if (NULL != in6_dev)
-        {
-            //read_lock_bh(&in6_dev->lock);
-            list_for_each(p, &in6_dev->addr_list)
-            {
+        if (NULL != in6_dev) {
+            list_for_each(p, &in6_dev->addr_list) {
+                if (count >= SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA) {
+                     hddLog(LOG1, FL("Reached max supported NS Offload addresses"));
+                     break;
+                }
                 ifp = list_entry(p, struct inet6_ifaddr, if_list);
-                switch(ipv6_addr_src_scope(&ifp->addr))
-                {
-                    case IPV6_ADDR_SCOPE_LINKLOCAL:
-                        vos_mem_copy(&selfIPv6Addr[0], &ifp->addr.s6_addr,
-                                sizeof(ifp->addr.s6_addr));
-                        selfIPv6AddrValid[0] = SIR_IPV6_ADDR_VALID;
-                        hddLog (VOS_TRACE_LEVEL_INFO,
-                               "Found IPV6_ADDR_SCOPE_LINKLOCAL Address : %pI6",
-                               selfIPv6Addr[0]);
-                        break;
-                    case IPV6_ADDR_SCOPE_GLOBAL:
-                        vos_mem_copy(&selfIPv6Addr[1], &ifp->addr.s6_addr,
-                                sizeof(ifp->addr.s6_addr));
-                        selfIPv6AddrValid[1] = SIR_IPV6_ADDR_VALID;
-                        hddLog (VOS_TRACE_LEVEL_INFO,
-                               "Found IPV6_ADDR_SCOPE_GLOBAL Address : %pI6",
-                               selfIPv6Addr[1]);
-                        break;
-                    default:
-                        hddLog(LOGE, "The Scope %d is not supported",
-                                ipv6_addr_src_scope(&ifp->addr));
+                scope = ipv6_addr_src_scope(&ifp->addr);
+                switch (scope) {
+                case IPV6_ADDR_SCOPE_GLOBAL:
+                case IPV6_ADDR_SCOPE_LINKLOCAL:
+                     vos_mem_copy(&selfIPv6Addr[count], &ifp->addr.s6_addr,
+                            sizeof(ifp->addr.s6_addr));
+                     selfIPv6AddrValid[count] = SIR_IPV6_ADDR_VALID;
+                     hddLog (LOG1,
+                        FL("Index %d scope = %s Address : %pI6"),
+                        count, (scope == IPV6_ADDR_SCOPE_LINKLOCAL) ?
+                        "LINK LOCAL": "GLOBAL", selfIPv6Addr[count]);
+                     count += 1;
+                     break;
+                default:
+                     hddLog(LOGE, "The Scope %d is not supported",
+                          ipv6_addr_src_scope(&ifp->addr));
                 }
 
             }
-            //read_unlock_bh(&in6_dev->lock);
             vos_mem_zero(&offLoadRequest, sizeof(offLoadRequest));
-            for (i =0; i<SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA; i++)
-            {
-                if (selfIPv6AddrValid[i])
-                {
-                    //Filling up the request structure
-                    /* Filling the selfIPv6Addr with solicited address
-                     * A Solicited-Node multicast address is created by
-                     * taking the last 24 bits of a unicast or anycast
-                     * address and appending them to the prefix
-                     *
-                     * FF02:0000:0000:0000:0000:0001:FFXX:XX
-                     *
-                     * here XX is the unicast/anycast bits
-                     */
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[0] = 0xFF;
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[1] = 0x02;
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[11] = 0x01;
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[12] = 0xFF;
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[13] = selfIPv6Addr[i][13];
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[14] = selfIPv6Addr[i][14];
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[15] = selfIPv6Addr[i][15];
-                    offLoadRequest.nsOffloadInfo.slotIdx = i;
+            for (i = 0; i < count; i++) {
+                /* Filling up the request structure
+                 * Filling the selfIPv6Addr with solicited address
+                 * A Solicited-Node multicast address is created by
+                 * taking the last 24 bits of a unicast or anycast
+                 * address and appending them to the prefix
+                 *
+                 * FF02:0000:0000:0000:0000:0001:FFXX:XXXX
+                 *
+                 * here XX is the unicast/anycast bits
+                 */
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][0] = 0xFF;
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][1] = 0x02;
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][11] = 0x01;
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][12] = 0xFF;
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][13] =
+                                                  selfIPv6Addr[i][13];
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][14] =
+                                                   selfIPv6Addr[i][14];
+                offLoadRequest.nsOffloadInfo.selfIPv6Addr[i][15] =
+                                                    selfIPv6Addr[i][15];
+                offLoadRequest.nsOffloadInfo.slotIdx = i;
 
-                    vos_mem_copy(&offLoadRequest.nsOffloadInfo.targetIPv6Addr[0],
-                                &selfIPv6Addr[i][0], sizeof(tANI_U8)*SIR_MAC_IPV6_ADDR_LEN);
-                    vos_mem_copy(&offLoadRequest.nsOffloadInfo.selfMacAddr,
-                                &pAdapter->macAddressCurrent.bytes,
-                                sizeof(tANI_U8)*SIR_MAC_ADDR_LEN);
+                vos_mem_copy(&offLoadRequest.nsOffloadInfo.targetIPv6Addr[i],
+                   &selfIPv6Addr[i][0], SIR_MAC_IPV6_ADDR_LEN);
 
-                    offLoadRequest.nsOffloadInfo.targetIPv6AddrValid[0] = SIR_IPV6_ADDR_VALID;
-                    offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
-                    offLoadRequest.enableOrDisable = SIR_OFFLOAD_ENABLE;
+                offLoadRequest.nsOffloadInfo.targetIPv6AddrValid[i] =
+                                                    SIR_IPV6_ADDR_VALID;
 
-                    hddLog (VOS_TRACE_LEVEL_INFO,
-                    "configuredMcastBcastFilter: %d",pHddCtx->configuredMcastBcastFilter);
+                hddLog (LOG1,
+                    FL("configuredMcastBcastFilter: %d"),
+                    pHddCtx->configuredMcastBcastFilter);
 
-                    if ((VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid)
-                       && ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
-                          pHddCtx->sus_res_mcastbcast_filter) ||
-                          (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-                          pHddCtx->sus_res_mcastbcast_filter)))
-                    {
-                        hddLog (VOS_TRACE_LEVEL_INFO,
-                        "Set offLoadRequest with SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE");
+                if ((VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid)
+                   && ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
+                     pHddCtx->sus_res_mcastbcast_filter) ||
+                     (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                     pHddCtx->sus_res_mcastbcast_filter))) {
+                        hddLog(LOG1,
+                            FL("Set offLoadRequest with SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE"));
                         offLoadRequest.enableOrDisable =
-                         SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
-                    }
+                            SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
+                }
 
-                    vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
-                                &offLoadRequest.nsOffloadInfo.targetIPv6Addr[0],
-                                sizeof(tANI_U8)*SIR_MAC_IPV6_ADDR_LEN);
+                vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
+                   &offLoadRequest.nsOffloadInfo.targetIPv6Addr[i],
+                   sizeof(tANI_U8)*SIR_MAC_IPV6_ADDR_LEN);
 
-                    hddLog (VOS_TRACE_LEVEL_INFO,
-                    "Setting NSOffload with solicitedIp: %pI6, targetIp: %pI6",
-                    offLoadRequest.nsOffloadInfo.selfIPv6Addr,
-                    offLoadRequest.nsOffloadInfo.targetIPv6Addr[0]);
-
-                    //Configure the Firmware with this
-                    returnStatus = sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
-                                    pAdapter->sessionId, &offLoadRequest);
-                    if(eHAL_STATUS_SUCCESS != returnStatus)
-                    {
-                        hddLog(VOS_TRACE_LEVEL_ERROR,
+                hddLog (LOG1,
+                   FL("Setting NSOffload with solicitedIp: %pI6, targetIp: %pI6, Index %d"),
+                   &offLoadRequest.nsOffloadInfo.selfIPv6Addr[i],
+                   &offLoadRequest.nsOffloadInfo.targetIPv6Addr[i], i);
+            }
+            offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
+            offLoadRequest.enableOrDisable = SIR_OFFLOAD_ENABLE;
+            vos_mem_copy(&offLoadRequest.nsOffloadInfo.selfMacAddr,
+               &pAdapter->macAddressCurrent.bytes, SIR_MAC_ADDR_LEN);
+            /* set number of ns offload address count */
+            offLoadRequest.num_ns_offload_count = count;
+            /* Configure the Firmware with this */
+            returnStatus = sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                               pAdapter->sessionId, &offLoadRequest);
+            if (eHAL_STATUS_SUCCESS != returnStatus) {
+                 hddLog(LOGE,
                         FL("Failed to enable HostOffload feature with status: %d"),
                         returnStatus);
-                    }
-                    vos_mem_zero(&offLoadRequest, sizeof(offLoadRequest));
-                }
             }
         }
-        else
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR,
+        else {
+            hddLog(LOGE,
                     FL("IPv6 dev does not exist. Failed to request NSOffload"));
             return;
         }
-    }
-    else
-    {
-        //Disable NSOffload
+    } else {
+        /* Disable NSOffload */
         vos_mem_zero((void *)&offLoadRequest, sizeof(tSirHostOffloadReq));
         offLoadRequest.enableOrDisable = SIR_OFFLOAD_DISABLE;
         offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
 
-        //Disable NSOffload on all slots
-        for (i = 0; i < SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA; i++)
-        {
-            offLoadRequest.nsOffloadInfo.slotIdx = i;
-            if (eHAL_STATUS_SUCCESS !=
-                sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
-                pAdapter->sessionId, &offLoadRequest))
-            {
-                 hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failed to disable NSOflload"
-                        " on slot %d"), i);
-            }
+        if (eHAL_STATUS_SUCCESS !=
+             sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                 pAdapter->sessionId, &offLoadRequest)) {
+             hddLog(LOGE, FL("Failed to disable NS Offload"));
         }
     }
     return;

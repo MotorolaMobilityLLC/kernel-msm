@@ -3448,9 +3448,8 @@ typedef struct sSirUpdateAPWPARSNIEsReq
 typedef struct sSirNsOffloadReq
 {
     tANI_U8 srcIPv6Addr[16];
-    tANI_U8 selfIPv6Addr[16];
-    //Only support 2 possible Network Advertisement IPv6 address
-    tANI_U8 targetIPv6Addr[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA][16];
+    tANI_U8 selfIPv6Addr[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA][SIR_MAC_IPV6_ADDR_LEN];
+    tANI_U8 targetIPv6Addr[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA][SIR_MAC_IPV6_ADDR_LEN];
     tANI_U8 selfMacAddr[6];
     tANI_U8 srcIPv6AddrValid;
     tANI_U8 targetIPv6AddrValid[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA];
@@ -3462,6 +3461,7 @@ typedef struct sSirHostOffloadReq
 {
     tANI_U8 offloadType;
     tANI_U8 enableOrDisable;
+    uint32_t num_ns_offload_count;
     union
     {
         tANI_U8 hostIpv4Addr [4];
