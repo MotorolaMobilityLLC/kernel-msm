@@ -218,12 +218,6 @@
 	};
 };
 
-&soc {
-	alsa_to_h2w {
-		compatible = "mmi,alsa-to-h2w";
-	};
-};
-
 &sdhc_1 {
 	vdd-supply = <&pm8916_l8>;
 	qcom,vdd-always-on;
