@@ -45,6 +45,7 @@
 	qcom,ilim-ma = <400>;
 	qcom,wave-play-rate-us = <4347>;
 	qcom,correct-lra-drive-freq;
+	qcom,en-brake;
 	qcom,brake-pattern = [03 03 03 03];
 };
 
