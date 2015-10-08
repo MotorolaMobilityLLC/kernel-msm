@@ -31,6 +31,218 @@
 		qcom,cci-master = <0>;
 	};
 
+	/* OV5693 OTP */
+	eeprom2: qcom,eeprom@2 {
+		cell-index = <2>;
+		reg = <0x02>;
+		qcom,eeprom-name = "ov5693";
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0x6c>;
+		qcom,cci-master = <0>;
+		qcom,num-blocks = <33>;
+
+		/* Stream ON */
+		qcom,page0 = <1 0x0100 2 0x01 1 10>;
+		qcom,poll0 = <1 0x0 2 0 1 1>;
+		qcom,mem0 = <0 0x0 2 0 1 0>;
+
+		/* Now read otp */
+		qcom,page1 = <1 0x3d84 2 0xc0 1 5>;
+		qcom,pageen1 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll1 = <0 0x0 2 0 1 1>;
+		qcom,mem1 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page2 = <1 0x3d84 2 0xc1 1 5>;
+		qcom,pageen2 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll2 = <0 0x0 2 0 1 1>;
+		qcom,mem2 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page3 = <1 0x3d84 2 0xc2 1 5>;
+		qcom,pageen3 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll3 = <0 0x0 2 0 1 1>;
+		qcom,mem3 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page4 = <1 0x3d84 2 0xc3 1 5>;
+		qcom,pageen4 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll4 = <0 0x0 2 0 1 1>;
+		qcom,mem4 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page5 = <1 0x3d84 2 0xc4 1 5>;
+		qcom,pageen5 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll5 = <0 0x0 2 0 1 1>;
+		qcom,mem5 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page6 = <1 0x3d84 2 0xc5 1 5>;
+		qcom,pageen6 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll6 = <0 0x0 2 0 1 1>;
+		qcom,mem6 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page7 = <1 0x3d84 2 0xc6 1 5>;
+		qcom,pageen7 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll7 = <0 0x0 2 0 1 1>;
+		qcom,mem7 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page8 = <1 0x3d84 2 0xc7 1 5>;
+		qcom,pageen8 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll8 = <0 0x0 2 0 1 1>;
+		qcom,mem8 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page9 = <1 0x3d84 2 0xc8 1 5>;
+		qcom,pageen9 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll9 = <0 0x0 2 0 1 1>;
+		qcom,mem9 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page10 = <1 0x3d84 2 0xc9 1 5>;
+		qcom,pageen10 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll10 = <0 0x0 2 0 1 1>;
+		qcom,mem10 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page11 = <1 0x3d84 2 0xca 1 5>;
+		qcom,pageen11 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll11 = <0 0x0 2 0 1 1>;
+		qcom,mem11 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page12 = <1 0x3d84 2 0xcb 1 5>;
+		qcom,pageen12 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll12 = <0 0x0 2 0 1 1>;
+		qcom,mem12 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page13 = <1 0x3d84 2 0xcc 1 5>;
+		qcom,pageen13 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll13 = <0 0x0 2 0 1 1>;
+		qcom,mem13 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page14 = <1 0x3d84 2 0xcd 1 5>;
+		qcom,pageen14 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll14 = <0 0x0 2 0 1 1>;
+		qcom,mem14 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page15 = <1 0x3d84 2 0xce 1 5>;
+		qcom,pageen15 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll15 = <0 0x0 2 0 1 1>;
+		qcom,mem15 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page16 = <1 0x3d84 2 0xcf 1 5>;
+		qcom,pageen16 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll16 = <0 0x0 2 0 1 1>;
+		qcom,mem16 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page17 = <1 0x3d84 2 0xd0 1 5>;
+		qcom,pageen17 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll17 = <0 0x0 2 0 1 1>;
+		qcom,mem17 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page18 = <1 0x3d84 2 0xd1 1 5>;
+		qcom,pageen18 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll18 = <0 0x0 2 0 1 1>;
+		qcom,mem18 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page19 = <1 0x3d84 2 0xd2 1 5>;
+		qcom,pageen19 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll19 = <0 0x0 2 0 1 1>;
+		qcom,mem19 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page20 = <1 0x3d84 2 0xd3 1 5>;
+		qcom,pageen20 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll20 = <0 0x0 2 0 1 1>;
+		qcom,mem20 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page21 = <1 0x3d84 2 0xd4 1 5>;
+		qcom,pageen21 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll21 = <0 0x0 2 0 1 1>;
+		qcom,mem21 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page22 = <1 0x3d84 2 0xd5 1 5>;
+		qcom,pageen22 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll22 = <0 0x0 2 0 1 1>;
+		qcom,mem22 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page23 = <1 0x3d84 2 0xd6 1 5>;
+		qcom,pageen23 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll23 = <0 0x0 2 0 1 1>;
+		qcom,mem23 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page24 = <1 0x3d84 2 0xd7 1 5>;
+		qcom,pageen24 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll24 = <0 0x0 2 0 1 1>;
+		qcom,mem24 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page25 = <1 0x3d84 2 0xd8 1 5>;
+		qcom,pageen25 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll25 = <0 0x0 2 0 1 1>;
+		qcom,mem25 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page26 = <1 0x3d84 2 0xd9 1 5>;
+		qcom,pageen26 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll26 = <0 0x0 2 0 1 1>;
+		qcom,mem26 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page27 = <1 0x3d84 2 0xda 1 5>;
+		qcom,pageen27 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll27 = <0 0x0 2 0 1 1>;
+		qcom,mem27 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page28 = <1 0x3d84 2 0xdb 1 5>;
+		qcom,pageen28 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll28 = <0 0x0 2 0 1 1>;
+		qcom,mem28 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page29 = <1 0x3d84 2 0xdc 1 5>;
+		qcom,pageen29 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll29 = <0 0x0 2 0 1 1>;
+		qcom,mem29 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page30 = <1 0x3d84 2 0xdd 1 5>;
+		qcom,pageen30 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll30 = <0 0x0 2 0 1 1>;
+		qcom,mem30 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page31 = <1 0x3d84 2 0xde 1 5>;
+		qcom,pageen31 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll31 = <0 0x0 2 0 1 1>;
+		qcom,mem31 = <16 0x3d00 2 0 1 0>;
+
+		qcom,page32 = <1 0x3d84 2 0xdf 1 5>;
+		qcom,pageen32 = <1 0x3d81 2 0x01 1 10>;
+		qcom,poll32 = <0 0x0 2 0 1 1>;
+		qcom,mem32 = <16 0x3d00 2 0 1 0>;
+
+		cam_vdig-supply = <&pm8994_l27>;
+		cam_vio-supply = <&pm8994_lvs1>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
+		qcom,cam-vreg-min-voltage = <1275000 0>;
+		qcom,cam-vreg-max-voltage = <1275000 0>;
+		qcom,cam-vreg-op-mode = <1275000 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend>;
+		gpios = <&tlmm 15 0>,
+			<&tlmm 16 0>,
+			<&tlmm 20 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-vana = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					  "CAM_RESET2",
+					  "CAM_VANA";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+			<&clock_mmss clk_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+
+		qcom,cam-power-seq-type = "sensor_gpio", "sensor_gpio",
+			"sensor_vreg", "sensor_vreg", "sensor_gpio", "sensor_gpio",
+			"sensor_gpio", "sensor_clk";
+		qcom,cam-power-seq-val = "sensor_gpio_vana", "sensor_gpio_reset",
+			"cam_vio", "cam_vdig", "sensor_gpio_vana", "sensor_gpio_standby",
+			"sensor_gpio_reset", "sensor_cam_mclk";
+		qcom,cam-power-seq-cfg-val = <0 0 0 0 1 1 1 24000000>;
+		qcom,cam-power-seq-delay = <1 1 1 1 1 1 30 20>;
+
+		status = "ok";
+	};
+
 	/* IMX230/IMX338 */
 	qcom,camera@0 {
 		cell-index = <0>;
@@ -121,6 +333,7 @@
 		compatible = "qcom,camera";
 		reg = <0x02>;
 		qcom,led-flash-src = <&led_flash0>;
+		qcom,eeprom-src = <&eeprom2>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
