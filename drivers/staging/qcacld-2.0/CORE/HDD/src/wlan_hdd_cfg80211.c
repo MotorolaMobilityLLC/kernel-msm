@@ -3810,10 +3810,6 @@ static int __wlan_hdd_cfg80211_extscan_stop(struct wiphy *wiphy,
 		goto fail;
 	}
 
-	pHddCtx->ext_scan_start_since_boot = vos_get_monotonic_boottime();
-	hddLog(LOG1, FL("Timestamp since boot: %llu"),
-			pHddCtx->ext_scan_start_since_boot);
-
 	/* request was sent -- wait for the response */
 	rc = wait_for_completion_timeout(&context->response_event,
 				msecs_to_jiffies(WLAN_WAIT_TIME_EXTSCAN));
@@ -18917,13 +18913,13 @@ wlan_hdd_cfg80211_extscan_cached_results_ind(void *ctx,
 		ap = &result->ap[0];
 		for (j = 0; j < result->num_results; j++) {
 			/*
-			 * Firmware returns timestamp from ext scan start till
-			 * BSSID was cached (in micro seconds). Add this with
-			 * time gap between system boot up to ext scan start
+			 * Firmware returns timestamp from WiFi turn ON till
+			 * BSSID was cached (in seconds). Add this with
+			 * time gap between system boot up to WiFi turn ON
 			 * to derive the time since boot when the
 			 * BSSID was cached.
 			 */
-			ap->ts += pHddCtx->ext_scan_start_since_boot;
+			ap->ts += pHddCtx->wifi_turn_on_time_since_boot;
 			hddLog(LOG1, "Timestamp %llu "
 				"Ssid: %s "
 				"Bssid (" MAC_ADDRESS_STR ") "
