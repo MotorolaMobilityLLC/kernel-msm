@@ -59,7 +59,7 @@ static ssize_t esdfs_write(struct file *file, const char __user *buf,
 	return err;
 }
 
-static int esdfs_readdir(struct file *file, struct dir_context *ctx)
+static int esdfs_readdir(struct file *file, void *dirent, filldir_t filldir)
 {
 	int err = 0;
 	struct file *lower_file = NULL;
@@ -70,7 +70,7 @@ static int esdfs_readdir(struct file *file, struct dir_context *ctx)
 		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
-	err = iterate_dir(lower_file, ctx);
+	err = vfs_readdir(lower_file, filldir, dirent);
 	file->f_pos = lower_file->f_pos;
 	if (err >= 0)		/* copy the atime */
 		fsstack_copy_attr_atime(dentry->d_inode,
@@ -390,7 +390,7 @@ const struct file_operations esdfs_main_fops = {
 const struct file_operations esdfs_dir_fops = {
 	.llseek		= esdfs_file_llseek,
 	.read		= generic_read_dir,
-	.iterate	= esdfs_readdir,
+	.readdir	= esdfs_readdir,
 	.unlocked_ioctl	= esdfs_unlocked_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= esdfs_compat_ioctl,
