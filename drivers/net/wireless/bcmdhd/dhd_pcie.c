@@ -1699,6 +1699,7 @@ dhd_bus_txdata(struct dhd_bus *bus, void *txp, uint8 ifidx)
 {
 	unsigned long flags;
 	int ret = BCME_OK;
+	uint8 status;
 	void *txp_pend = NULL;
 	if (!bus->txmode_push) {
 		uint16 flowid;
@@ -1733,10 +1734,10 @@ dhd_bus_txdata(struct dhd_bus *bus, void *txp, uint8 ifidx)
 
 		if ((ret = dhd_flow_queue_enqueue(bus->dhd, queue, txp)) != BCME_OK)
 			txp_pend = txp;
-
+		status = flow_ring_node->status;
 		DHD_FLOWRING_UNLOCK(flow_ring_node->lock, flags);
 
-		if (flow_ring_node->status) {
+		if (status != FLOW_RING_STATUS_OPEN) {
 			DHD_INFO(("%s: Enq pkt flowid %d, status %d active %d\n",
 			    __FUNCTION__, flowid, flow_ring_node->status,
 			    flow_ring_node->active));
@@ -4347,7 +4348,7 @@ dhd_bus_flow_ring_delete_request(dhd_bus_t *bus, void *arg)
 	flow_ring_node = (flow_ring_node_t *)arg;
 
 	DHD_FLOWRING_LOCK(flow_ring_node->lock, flags);
-	if (flow_ring_node->status & FLOW_RING_STATUS_DELETE_PENDING) {
+	if (flow_ring_node->status == FLOW_RING_STATUS_DELETE_PENDING) {
 		DHD_FLOWRING_UNLOCK(flow_ring_node->lock, flags);
 		DHD_ERROR(("%s :Delete Pending\n", __FUNCTION__));
 		return BCME_ERROR;
