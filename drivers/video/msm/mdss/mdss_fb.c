@@ -66,8 +66,8 @@
 
 #define MAX_FBI_LIST 32
 
-#define BLANK_FLAG_LP	FB_BLANK_NORMAL
-#define BLANK_FLAG_ULP	FB_BLANK_VSYNC_SUSPEND
+#define BLANK_FLAG_LP	FB_BLANK_VSYNC_SUSPEND
+#define BLANK_FLAG_ULP	FB_BLANK_NORMAL
 
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
@@ -1451,7 +1451,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		break;
 	case BLANK_FLAG_LP:
 		req_power_state = MDSS_PANEL_POWER_LP1;
-		pr_debug(" power mode requested\n");
+		pr_debug(" low power mode requested\n");
 
 		/*
 		 * If low power mode is requested when panel is already off,
