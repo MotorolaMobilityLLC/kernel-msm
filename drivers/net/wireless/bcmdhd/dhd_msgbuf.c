@@ -559,15 +559,10 @@ static INLINE uint32 BCMFASTPATH
 dhd_pktid_map_avail_cnt(dhd_pktid_map_handle_t *handle)
 {
 	dhd_pktid_map_t *map;
-	unsigned long flags;
 	uint32 avail;
 
-	ASSERT(handle != NULL);
 	map = (dhd_pktid_map_t *)handle;
-
-	flags = DHD_PKTID_LOCK(map->pktid_lock);
 	avail = map->avail;
-	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 
 	return avail;
 }
@@ -585,7 +580,6 @@ dhd_pktid_map_reserve(dhd_pktid_map_handle_t *handle, void *pkt)
 	dhd_pktid_map_t *map;
 	dhd_pktid_item_t *locker;
 
-	ASSERT(handle != NULL);
 	map = (dhd_pktid_map_t *)handle;
 
 	if (map->avail <= 0) { /* no more pktids to allocate */
@@ -613,14 +607,15 @@ dhd_pktid_map_save(dhd_pktid_map_handle_t *handle, void *pkt, uint32 nkey,
 	dhd_pktid_map_t *map;
 	dhd_pktid_item_t *locker;
 
-	ASSERT(handle != NULL);
 	map = (dhd_pktid_map_t *)handle;
 
-	ASSERT((nkey != DHD_PKTID_INVALID) && (nkey <= (uint32)map->items));
+	if ((nkey == DHD_PKTID_INVALID) || (nkey > (uint32)map->items)) {
+		DHD_ERROR(("%s: PKTID %d is invalid (PKTIDMAP_ITEMS=%d)\n",
+			__FUNCTION__, nkey, (uint32)map->items));
+		return;
+	}
 
 	locker = &map->lockers[nkey];
-	ASSERT(locker->pkt == pkt);
-
 	locker->dma = dma; /* store contents in locker */
 	locker->physaddr = physaddr;
 	locker->len = (uint16)len; /* 16bit len */
@@ -635,11 +630,9 @@ dhd_pktid_map_alloc(dhd_pktid_map_handle_t *handle, void *pkt,
 	unsigned long flags;
 	dhd_pktid_map_t *map;
 
-	ASSERT(handle != NULL);
 	map = (dhd_pktid_map_t *)handle;
 
 	flags = DHD_PKTID_LOCK(map->pktid_lock);
-
 	nkey = dhd_pktid_map_reserve(handle, pkt);
 	if (nkey != DHD_PKTID_INVALID) {
 		dhd_pktid_map_save(handle, pkt, nkey, physaddr, len, dma, buf_type);
@@ -662,10 +655,14 @@ dhd_pktid_map_free(dhd_pktid_map_handle_t *handle, uint32 nkey,
 	dhd_pktid_item_t *locker;
 	void *pkt;
 	unsigned long flags;
-	ASSERT(handle != NULL);
 
 	map = (dhd_pktid_map_t *)handle;
-	ASSERT((nkey != DHD_PKTID_INVALID) && (nkey <= (uint32)map->items));
+
+	if ((nkey == DHD_PKTID_INVALID) || (nkey > (uint32)map->items)) {
+		DHD_ERROR(("%s: PKTID %d is invalid (PKTIDMAP_ITEMS=%d)\n",
+			__FUNCTION__, nkey, (uint32)map->items));
+		return NULL;
+	}
 
 	flags = DHD_PKTID_LOCK(map->pktid_lock);
 
@@ -674,15 +671,12 @@ dhd_pktid_map_free(dhd_pktid_map_handle_t *handle, uint32 nkey,
 	if (locker->inuse == FALSE) { /* Debug check for cloned numbered key */
 		DHD_ERROR(("%s:%d: Error! freeing invalid pktid<%u>\n",
 		           __FUNCTION__, __LINE__, nkey));
-		ASSERT(locker->inuse != FALSE);
 		DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 		return NULL;
 	}
 	if ((buf_type != BUFF_TYPE_NO_CHECK) && (locker->buf_type != buf_type)) {
 		DHD_ERROR(("%s:%d: Error! Invalid Buffer Free for pktid<%u> \n",
 		           __FUNCTION__, __LINE__, nkey));
-
-		ASSERT(locker->buf_type == buf_type);
 		DHD_PKTID_UNLOCK(map->pktid_lock, flags);
 		return NULL;
 	}
