@@ -167,8 +167,8 @@ enum msm_pcm_routing_event {
 #define INVALID_SESSION -1
 #define SESSION_TYPE_RX 0
 #define SESSION_TYPE_TX 1
-#define INT_RX_VOL_MAX_STEPS 0x2000
-#define INT_RX_VOL_GAIN 0x2000
+#define INT_RX_VOL_MAX_STEPS 0x2c00
+#define INT_RX_VOL_GAIN 0x2c00
 
 #define RELEASE_LOCK	0
 #define ACQUIRE_LOCK	1

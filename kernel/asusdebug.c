@@ -23,7 +23,7 @@
 #include <linux/asusdebug.h>
 
 //ASUS_BSP +++ Josh_Hsu "Enable last kmsg feature for Google"
-#define ASUS_LAST_KMSG	0
+#define ASUS_LAST_KMSG	1
 
 #if ASUS_LAST_KMSG
 #include <linux/init.h>     //For getting bootreason
@@ -931,7 +931,7 @@ static void save_last_kmsg_buffer(char* filename){
 
 	if(!IS_ERR((const void *)lk_file_handle))
     {
-        sys_chown(lk_filename, 1000, 1000);
+        //sys_chown(lk_filename, 1000, 1000);
         sys_write(lk_file_handle, (unsigned char*)last_kmsg_buffer, PRINTK_PARSE_SIZE);
         sys_close(lk_file_handle);
     } else {
@@ -1078,7 +1078,7 @@ void save_last_shutdown_log(char* filename)
 
 	if(!IS_ERR((const void *)file_handle_unparsed))
     {
-        sys_chown(messages_unparsed, 1000, 1000);
+        //sys_chown(messages_unparsed, 1000, 1000);
         sys_write(file_handle_unparsed, (unsigned char*)last_shutdown_log_unparsed, PRINTK_BUFFER_SLOT_SIZE);
         sys_close(file_handle_unparsed);
     } else {
@@ -1213,10 +1213,12 @@ static void do_write_event_worker(struct work_struct *work)
         long size;
         {
             g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", O_CREAT|O_RDWR|O_SYNC, 0666);
-            if (g_hfileEvtlog < 0)
+            if (g_hfileEvtlog < 0) {
                 printk("[adbg] 1. open %s failed, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
+                return;
+            }
 
-            sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
+            //sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
             
             size = sys_lseek(g_hfileEvtlog, 0, SEEK_END);
             if(size >= SZ_2M)
@@ -1241,8 +1243,10 @@ static void do_write_event_worker(struct work_struct *work)
         long size;
 
         g_hfileEvtlog = sys_open(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", O_CREAT|O_RDWR|O_SYNC, 0666);
-        if (g_hfileEvtlog < 0)
+        if (g_hfileEvtlog < 0) {
             printk("[adbg] 2. open %s failed, err:%d\n", ASUS_EVTLOG_PATH"ASUSEvtlog.txt", g_hfileEvtlog);
+            return;
+        }
         sys_chown(ASUS_EVTLOG_PATH"ASUSEvtlog.txt", AID_SDCARD_RW, AID_SDCARD_RW);
 
         size = sys_lseek(g_hfileEvtlog, 0, SEEK_END);
