@@ -198,9 +198,6 @@
 		};
 	};
 
-	alsa_to_h2w {
-		compatible = "mmi,alsa-to-h2w";
-	};
 
 	dummy_vreg: dummy_vreg {
 		compatible = "regulator-fixed";
