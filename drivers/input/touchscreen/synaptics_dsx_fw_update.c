@@ -3356,17 +3356,11 @@ static int fwu_start_reflash(void)
 	const struct firmware *fw_entry = NULL;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
+	wake_lock(&fwu->flash_wake_lock);
 	mutex_lock(&rmi4_data->rmi4_exp_init_mutex);
 	pr_notice("%s: Start of reflash process\n", __func__);
 
-	wake_lock(&fwu->flash_wake_lock);
-
-	retval = rmi4_data->irq_enable(rmi4_data, false);
-	if (retval < 0)
-		return retval;
-
-	msleep(INT_DISABLE_WAIT_MS);
-
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_INIT);
 	fwu_irq_enable(true);
 
 	if (fwu->image == NULL) {
@@ -3488,9 +3482,7 @@ exit:
 	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_UNKNOWN);
 	fwu_reset_device();
 	fwu_irq_enable(false);
-	wake_unlock(&fwu->flash_wake_lock);
 	pr_notice("%s: End of reflash process\n", __func__);
-	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
 
 	/* Rescan PDT after flashing and before register access */
 	retval = fwu_scan_pdt();
@@ -3508,6 +3500,9 @@ exit:
 		V5V6_CONFIG_ID_SIZE);
 
 	fwu->rmi4_data->ready_state(fwu->rmi4_data, false);
+
+	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
+	wake_unlock(&fwu->flash_wake_lock);
 
 	return retval;
 }
