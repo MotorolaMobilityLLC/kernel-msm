@@ -2719,23 +2719,9 @@ static ssize_t synaptics_rmi4_irqtimes_show(struct device *dev,
 static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	int retval;
-	struct synaptics_rmi4_f01_device_status device_status;
 	struct synaptics_rmi4_data *rmi4_data =
 					i2c_get_clientdata(to_i2c_client(dev));
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-			rmi4_data->f01_data_base_addr,
-			device_status.data,
-			sizeof(device_status.data));
-	if (retval < 0) {
-		dev_err(dev,
-				"%s: Failed to read device status, error = %d\n",
-				__func__, retval);
-		return retval;
-	}
-
-	return scnprintf(buf, PAGE_SIZE, "%u\n",
-			device_status.flash_prog);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->in_bootloader);
 }
 
 static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
