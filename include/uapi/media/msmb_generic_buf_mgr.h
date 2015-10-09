@@ -19,6 +19,7 @@ struct msm_buf_mngr_info {
 	uint32_t session_id;
 	uint32_t stream_id;
 	uint32_t frame_id;
+	uint32_t flags;
 	struct timeval timestamp;
 	uint32_t index;
 	uint32_t reserved;
@@ -60,6 +61,7 @@ struct msm_buf_mngr_info32_t {
 	uint32_t session_id;
 	uint32_t stream_id;
 	uint32_t frame_id;
+	uint32_t flags;
 	struct compat_timeval timestamp;
 	uint32_t index;
 	uint32_t reserved;
