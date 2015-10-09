@@ -309,7 +309,7 @@ static int get_clock_index(const char *clk_name)
 
 
 static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
-	uint8_t put_buf);
+	uint8_t put_buf, uint32_t flags);
 static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin);
 static void cpp_timer_callback(unsigned long data);
 
@@ -829,13 +829,14 @@ void msm_cpp_do_tasklet(unsigned long data)
 					/* delete CPP timer */
 					CPP_DBG("delete timer.\n");
 					msm_cpp_timer_queue_update(cpp_dev);
-					msm_cpp_notify_frame_done(cpp_dev, 0);
+					msm_cpp_notify_frame_done(cpp_dev, 0, 0);
 				} else if (msg_id ==
 					MSM_CPP_MSG_ID_FRAME_NACK) {
 					pr_err("NACK error from hw!!\n");
 					CPP_DBG("delete timer.\n");
 					msm_cpp_timer_queue_update(cpp_dev);
-					msm_cpp_notify_frame_done(cpp_dev, 0);
+					msm_cpp_notify_frame_done(cpp_dev, 0,
+						V4L2_QCOM_BUF_DATA_CORRUPT);
 				}
 				i += cmd_len + 2;
 			}
@@ -1409,7 +1410,7 @@ static int msm_cpp_buffer_ops(struct cpp_device *cpp_dev,
 }
 
 static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
-	uint8_t put_buf)
+	uint8_t put_buf, uint32_t flags)
 {
 	struct v4l2_event v4l2_evt;
 	struct msm_queue_cmd *frame_qcmd = NULL;
@@ -1448,6 +1449,7 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.stream_id =
 				(processed_frame->identity & 0xFFFF);
 			buff_mgr_info.frame_id = processed_frame->frame_id;
+			buff_mgr_info.flags |= flags;
 			buff_mgr_info.timestamp = processed_frame->timestamp;
 			/*
 			 * Update the reserved field (cds information) to buffer
@@ -1606,7 +1608,7 @@ static void msm_cpp_do_timeout_work(struct work_struct *work)
 		cpp_dev->max_timeout_trial_cnt) {
 		pr_info("Max trial reached\n");
 		while (queue_len) {
-			msm_cpp_notify_frame_done(cpp_dev, 1);
+			msm_cpp_notify_frame_done(cpp_dev, 0, V4L2_QCOM_BUF_DATA_CORRUPT);
 			queue_len--;
 		}
 		atomic_set(&cpp_timer.used, 0);
