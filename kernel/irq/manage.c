@@ -1360,6 +1360,7 @@ static struct irqaction *__free_irq(unsigned int irq, void *dev_id)
 
 	/* If this was the last handler, shut down the IRQ line: */
 	if (!desc->action) {
+		irq_settings_clr_disable_unlazy(desc);
 		irq_shutdown(desc);
 		irq_release_resources(desc);
 	}
