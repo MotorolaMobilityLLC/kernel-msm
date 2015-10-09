@@ -103,6 +103,7 @@ static int32_t msm_buf_mngr_buf_done(struct msm_buf_mngr_device *buf_mngr_dev,
 			(bufs->stream_id == buf_info->stream_id) &&
 			(bufs->vb2_buf->v4l2_buf.index == buf_info->index)) {
 			bufs->vb2_buf->v4l2_buf.sequence  = buf_info->frame_id;
+			bufs->vb2_buf->v4l2_buf.flags |= buf_info->flags;
 			bufs->vb2_buf->v4l2_buf.timestamp = buf_info->timestamp;
 			bufs->vb2_buf->v4l2_buf.reserved = buf_info->reserved;
 			ret = buf_mngr_dev->vb2_ops.buf_done
