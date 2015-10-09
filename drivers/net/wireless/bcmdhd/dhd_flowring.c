@@ -492,44 +492,43 @@ dhd_flowid_lookup(dhd_pub_t *dhdp, uint8 ifindex,
 	flow_ring_node_t *flow_ring_node;
 	flow_ring_table_t *flow_ring_table;
 	unsigned long flags;
+	if_flow_lkup_t *if_flow_lkup;
 
 	DHD_INFO(("%s\n", __FUNCTION__));
+	*flowid = FLOWID_INVALID;
 
-	if (!dhdp->flow_ring_table)
+	if (!dhdp->flow_ring_table) {
 		return BCME_ERROR;
-
+	}
 	flow_ring_table = (flow_ring_table_t *)dhdp->flow_ring_table;
 
 	id = dhd_flowid_find(dhdp, ifindex, prio, sa, da);
 
-	if (id == FLOWID_INVALID) {
-
-		if_flow_lkup_t *if_flow_lkup;
-		if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
-
-		if (!if_flow_lkup[ifindex].status)
-			return BCME_ERROR;
-
-		id = dhd_flowid_alloc(dhdp, ifindex, prio, sa, da);
-		if (id == FLOWID_INVALID) {
-			DHD_ERROR(("%s: alloc flowid ifindex %u status %u\n",
-			           __FUNCTION__, ifindex, if_flow_lkup[ifindex].status));
-			return BCME_ERROR;
-		}
-
-		/* register this flowid in dhd_pub */
-		dhd_add_flowid(dhdp, ifindex, prio, da, id);
-	}
-
-	ASSERT(id < dhdp->num_flow_rings);
-
-	flow_ring_node = (flow_ring_node_t *) &flow_ring_table[id];
-	DHD_FLOWRING_LOCK(flow_ring_node->lock, flags);
-	if (flow_ring_node->active) {
-		DHD_FLOWRING_UNLOCK(flow_ring_node->lock, flags);
+	if (id != FLOWID_INVALID) {
 		*flowid = id;
 		return BCME_OK;
 	}
+
+	/* if flowID not found, allocate new one */
+	if_flow_lkup = (if_flow_lkup_t *)dhdp->if_flow_lkup;
+
+	if (!if_flow_lkup[ifindex].status) {
+		return BCME_ERROR;
+	}
+
+	id = dhd_flowid_alloc(dhdp, ifindex, prio, sa, da);
+	if (id == FLOWID_INVALID) {
+		DHD_ERROR(("%s: alloc flowid ifindex %u status %u\n",
+		           __FUNCTION__, ifindex, if_flow_lkup[ifindex].status));
+		return BCME_ERROR;
+	}
+
+	/* register this flowid in dhd_pub */
+	dhd_add_flowid(dhdp, ifindex, prio, da, id);
+
+	flow_ring_node = (flow_ring_node_t *) &flow_ring_table[id];
+
+	DHD_FLOWRING_LOCK(flow_ring_node->lock, flags);
 
 	/* Init Flow info */
 	memcpy(flow_ring_node->flow_info.sa, sa, sizeof(flow_ring_node->flow_info.sa));

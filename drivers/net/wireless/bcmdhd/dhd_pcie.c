@@ -1720,7 +1720,7 @@ dhd_bus_txdata(struct dhd_bus *bus, void *txp, uint8 ifidx)
 
 		if ((flowid >= bus->dhd->num_flow_rings) ||
 			(!flow_ring_node->active) ||
-			(flow_ring_node->status == FLOW_RING_STATUS_DELETE_PENDING)) {
+			(flow_ring_node->status != FLOW_RING_STATUS_OPEN)) {
 			DHD_INFO(("%s: Dropping pkt flowid %d, status %d active %d\n",
 				__FUNCTION__, flowid, flow_ring_node->status,
 				flow_ring_node->active));
