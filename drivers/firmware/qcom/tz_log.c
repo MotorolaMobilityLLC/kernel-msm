@@ -47,7 +47,7 @@
 /*
  * Preprocessor Definitions and Constants
  */
-#define TZBSP_MAX_CPU_COUNT 0x08
+#define TZBSP_MAX_CPU_COUNT 0x04
 /*
  * Number of VMID Tables
  */
@@ -59,7 +59,7 @@
 /*
  * Number of Interrupts
  */
-#define TZBSP_DIAG_INT_NUM  32
+#define TZBSP_DIAG_INT_NUM  64
 /*
  * Length of descriptive name associated with Interrupt
  */
@@ -84,6 +84,8 @@ struct tzdbg_boot_info_t {
 	uint32_t wb_exit_cnt;	/* Warmboot exit CPU Counter */
 	uint32_t pc_entry_cnt;	/* Power Collapse entry CPU Counter */
 	uint32_t pc_exit_cnt;	/* Power Collapse exit CPU counter */
+	uint32_t psci_entry_cnt;  /* PSCI entry CPU Counter */
+	uint32_t psci_exit_cnt;   /* PSCI exit CPU counter */
 	uint32_t warm_jmp_addr;	/* Last Warmboot Jump Address */
 	uint32_t spare;	/* Reserved for future use. */
 };
@@ -92,8 +94,10 @@ struct tzdbg_boot_info2_t {
 	uint32_t wb_exit_cnt;   /* Warmboot exit CPU Counter */
 	uint32_t pc_entry_cnt;  /* Power Collapse entry CPU Counter */
 	uint32_t pc_exit_cnt;   /* Power Collapse exit CPU counter */
+	uint32_t psci_entry_cnt;  /* PSCI entry CPU Counter */
+	uint32_t psci_exit_cnt;   /* PSCI exit CPU counter */
 	uint64_t warm_jmp_addr; /* Last Warmboot Jump Address */
-	uint32_t warm_jmp_instr;/* Last Warmboot Jump Address Instruction */
+	uint64_t warm_jmp_instr;/* Last Warmboot Jump Address Instruction */
 };
 
 /*
@@ -103,6 +107,7 @@ struct tzdbg_reset_info_t {
 	uint32_t reset_type;	/* Reset Reason */
 	uint32_t reset_cnt;	/* Number of resets occured/CPU */
 };
+
 /*
  * Interrupt Info Table
  */
@@ -165,7 +170,10 @@ struct tzdbg_log_t {
  * copied into buffer from i/o memory.
  */
 struct tzdbg_t {
+	/* Magic Number */
 	uint32_t magic_num;
+
+	/* Major.Minor version */
 	uint32_t version;
 	/*
 	 * Number of CPU's
@@ -1005,8 +1013,8 @@ static void tzlog_bck_show_boot_info(struct tzdbg_t *diag_buf)
 			diag_buf->boot_info_off);
 	ptr2 = (struct tzdbg_boot_info2_t *)ptr;
 	MSMWDTD("\n--- TZ Power Collapse Counters\n");
-	MSMWDTD("     | WarmEntry : WarmExit :  PCEntry :");
-	MSMWDTD("   PCExit : JumpAddr |\n");
+	MSMWDTD("     | WarmEntry : WarmExit : TermEntry :");
+	MSMWDTD(" TermExit : PsciEntry : PsciExit : JumpAddr |\n");
 	for (cpu = 0; cpu < tzdbg.diag_buf->cpu_count; cpu++) {
 		int power_collapsed;
 		if (v2)
@@ -1017,12 +1025,15 @@ static void tzlog_bck_show_boot_info(struct tzdbg_t *diag_buf)
 				ptr->pc_exit_cnt - ptr->pc_entry_cnt;
 		if (cpu)
 			power_collapsed--;
-		MSMWDTD("CPU%d |  %8x : %8x : %8x : %8x : %8lx | %sPC\n",
+		MSMWDTD("CPU%d |  %8x : %8x : %8x : %8x : %8x : %8x :      "
+			"%llx | %sPC\n",
 			cpu, (v2 ? ptr2->wb_entry_cnt : ptr->wb_entry_cnt),
 			(v2 ? ptr2->wb_exit_cnt : ptr->wb_exit_cnt),
 			(v2 ? ptr2->pc_entry_cnt : ptr->pc_entry_cnt),
 			(v2 ? ptr2->pc_exit_cnt : ptr->pc_exit_cnt),
-			(unsigned long)(v2 ? ptr2->warm_jmp_addr :
+			(v2 ? ptr2->psci_entry_cnt : ptr->psci_entry_cnt),
+			(v2 ? ptr2->psci_exit_cnt : ptr->psci_exit_cnt),
+			(unsigned long long)(v2 ? ptr2->warm_jmp_addr :
 					ptr->warm_jmp_addr),
 			power_collapsed ? "IN-" : "NOT-");
 		ptr++;
@@ -1085,6 +1096,9 @@ static void tzlog_bck_check(struct platform_device *pdev)
 	struct tzdbg_t *diag_bck_vaddr;
 	phys_addr_t diag_bck_paddr;
 	size_t diag_bck_size;
+	const __be32 *basep;
+	u64 size;
+	u64 base;
 
 	pnode = of_parse_phandle(pdev->dev.of_node,
 			"linux,contiguous-region", 0);
@@ -1092,15 +1106,19 @@ static void tzlog_bck_check(struct platform_device *pdev)
 		MSMWDT_ERR("Unable to find contiguous-region\n");
 		goto no_reservation;
 	}
-	if (!of_get_address(pnode, 0, NULL, NULL)) {
+	basep = of_get_address(pnode, 0, &size, NULL);
+	if (!basep) {
 		of_node_put(pnode);
 		MSMWDT_ERR("Addr not found for contiguous-region\n");
 		goto no_reservation;
+	} else {
+		base = of_translate_address(pnode, basep);
 	}
+
 	of_node_put(pnode);
 
-	diag_bck_paddr = cma_get_base(dev_get_cma_area(&pdev->dev));
-	diag_bck_size = cma_get_size(dev_get_cma_area(&pdev->dev));
+	diag_bck_paddr = (phys_addr_t)base;
+	diag_bck_size = size;
 
 	if (diag_bck_size < debug_rw_buf_size) {
 		MSMWDT_ERR("Mem reserve too small %zx/%xu\n",
