@@ -862,6 +862,9 @@ config SENSORS_ISL29044A
 	depends on I2C
 	help
 	 This option enables support for the INTERSIL ISL29044A P/L sensor.
-
+config STMVL53L0
+	tristate "STMVL53L0 support"
+	help
+	laser sensor driver.
 endif
 
