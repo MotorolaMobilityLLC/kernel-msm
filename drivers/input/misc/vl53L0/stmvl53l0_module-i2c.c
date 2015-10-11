@@ -1,23 +1,22 @@
 /*
- *  stmvl53l0_module-i2c.c - Linux kernel modules for STM VL53L0 FlightSense TOF
- *							sensor
- *
- *  Copyright (C) 2015 STMicroelectronics Imaging Division.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- */
+*  stmvl53l0_module-i2c.c - Linux kernel modules for STM VL53L0 FlightSense TOF
+*							sensor
+*
+*  Copyright (C) 2015 STMicroelectronics Imaging Division.
+*
+*  This program is free software; you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation; either version 2 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program;
+*/
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -51,7 +50,10 @@
 #include "stmvl53l0-i2c.h"
 #include "stmvl53l0-cci.h"
 #include "stmvl53l0.h"
-#ifndef CAMERA_CCI
+
+#define LASER_SENSOR_PINCTRL_STATE_SLEEP "laser_suspend"
+#define LASER_SENSOR_PINCTRL_STATE_DEFAULT "laser_default"
+
 
 /*
  * Global data
@@ -69,7 +71,8 @@ static int stmvl53l0_parse_vdd(struct device *dev, struct i2c_data *data)
 	if (dev->of_node) {
 		data->vana = regulator_get(dev, "vdd");
 		if (IS_ERR(data->vana)) {
-			vl53l0_errmsg("vdd supply is not provided\n");
+			vl53l0_errmsg("%d,vdd supply is not provided\n",
+				__LINE__);
 			ret = -1;
 		}
 	}
@@ -78,12 +81,117 @@ static int stmvl53l0_parse_vdd(struct device *dev, struct i2c_data *data)
 	return ret;
 }
 
+int get_dt_threshold_data(struct device_node *of_node, int *lowv, int *highv)
+{
+	int rc = 0;
+	uint32_t count = 0;
+	uint32_t v_array[2];
+
+	count = of_property_count_strings(of_node, "st,sensorthreshold");
+
+	if (!count)
+		return 0;
+
+	rc = of_property_read_u32_array(of_node, "st,sensorthreshold",
+		v_array, 2);
+
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s failed %d\n", __func__, __LINE__);
+		} else {
+			*lowv = v_array[0];
+			*highv = v_array[1];
+		}
+	} else {
+		rc = 0;
+	}
+
+	return rc;
+}
+
+static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
+{
+	int rc = 0;
+	struct msm_camera_gpio_conf *gconf = NULL;
+	uint16_t *gpio_array = NULL;
+	uint16_t gpio_array_size = 0;
+	int i;
+	struct msm_pinctrl_info *sensor_pctrl = NULL;
+
+	vl53l0_dbgmsg("Enter\n");
+
+	sensor_pctrl = &data->pinctrl_info;
+	sensor_pctrl->pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR_OR_NULL(sensor_pctrl->pinctrl)) {
+		pr_err("%s:%d Getting pinctrl handle failed\n",
+			__func__, __LINE__);
+		return -EINVAL;
+	}
+	sensor_pctrl->gpio_state_active =
+		pinctrl_lookup_state(sensor_pctrl->pinctrl,
+		LASER_SENSOR_PINCTRL_STATE_DEFAULT);
+
+	sensor_pctrl->gpio_state_suspend
+		= pinctrl_lookup_state(sensor_pctrl->pinctrl,
+		LASER_SENSOR_PINCTRL_STATE_SLEEP);
+
+	if (dev->of_node) {
+		struct device_node *of_node = dev->of_node;
+
+		if (!of_node) {
+			vl53l0_errmsg("failed %d\n", __LINE__);
+			return -EINVAL;
+		}
+
+		gpio_array_size = of_gpio_count(of_node);
+		gconf = &data->gconf;
+
+		if (gpio_array_size) {
+			gpio_array = kcalloc(gpio_array_size, sizeof(uint16_t),
+				GFP_KERNEL);
+
+			for (i = 0; i < gpio_array_size; i++) {
+				gpio_array[i] = of_get_gpio(of_node, i);
+				pr_err("%s gpio_array[%d] = %d\n", __func__, i,
+					gpio_array[i]);
+			}
+
+			rc = msm_camera_get_dt_gpio_req_tbl(of_node, gconf,
+				gpio_array, gpio_array_size);
+			if (rc < 0) {
+				pr_err("%s failed %d\n", __func__, __LINE__);
+				return rc;
+			}
+
+			rc = msm_camera_get_dt_gpio_set_tbl(of_node, gconf,
+				gpio_array, gpio_array_size);
+			if (rc < 0) {
+				pr_err("%s failed %d\n", __func__, __LINE__);
+				return rc;
+			}
+
+			rc = msm_camera_init_gpio_pin_tbl(of_node, gconf,
+				gpio_array, gpio_array_size);
+			if (rc < 0) {
+				pr_err("%s failed %d\n", __func__, __LINE__);
+				return rc;
+			}
+		}
+		rc = get_dt_threshold_data(of_node,
+			&(data->lowv), &(data->highv));
+	}
+	vl53l0_dbgmsg("End rc =%d\n", rc);
+
+	return rc;
+}
+
 static int stmvl53l0_probe(struct i2c_client *client,
 				   const struct i2c_device_id *id)
 {
 	int rc = 0;
 	struct stmvl53l0_data *vl53l0_data = NULL;
 	struct i2c_data *i2c_object = NULL;
+	int present;
 
 	vl53l0_dbgmsg("Enter\n");
 
@@ -92,13 +200,14 @@ static int stmvl53l0_probe(struct i2c_client *client,
 		return rc;
 	}
 
-	vl53l0_data = kzalloc(sizeof(struct stmvl53l0_data), GFP_KERNEL);
+	vl53l0_data = stmvl53l0_getobject();
 	if (!vl53l0_data) {
-		rc = -ENOMEM;
-		return rc;
+		vl53l0_errmsg("%d,data NULL\n", __LINE__);
+		return -EINVAL;
 	}
+
 	if (vl53l0_data)
-		i2c_object = &(vl53l0_data->client_object);
+		i2c_object = &(vl53l0_data->i2c_client_object);
 	i2c_object->client = client;
 
 	/* setup regulator */
@@ -113,9 +222,21 @@ static int stmvl53l0_probe(struct i2c_client *client,
 	/* setup client data */
 	i2c_set_clientdata(client, vl53l0_data);
 
+	stmvl53l0_get_dt_data(&client->dev, i2c_object);
+	rc = stmvl53l0_power_up_i2c(i2c_object, &present);
+	if (rc) {
+		vl53l0_errmsg("%d,error rc %d\n", __LINE__, rc);
+		return rc;
+	}
+	rc = stmvl53l0_checkmoduleid(vl53l0_data, i2c_object->client, I2C_BUS);
+	if (rc != 0) {
+		vl53l0_errmsg("%d,error rc %d\n", __LINE__, rc);
+		stmvl53l0_power_down_i2c(i2c_object);
+		return rc;
+	}
+	stmvl53l0_power_down_i2c(i2c_object);
 
-	/* setup other stuff */
-	rc = stmvl53l0_setup(vl53l0_data);
+	rc = stmvl53l0_setup(vl53l0_data, I2C_BUS);
 
 	vl53l0_dbgmsg("End\n");
 	return rc;
@@ -123,12 +244,12 @@ static int stmvl53l0_probe(struct i2c_client *client,
 
 static int stmvl53l0_remove(struct i2c_client *client)
 {
-	struct stmvl53l0_data *data = i2c_get_clientdata(client);
+	struct stmvl53l0_data *data = stmvl53l0_getobject();
 
 	vl53l0_dbgmsg("Enter\n");
 
 	/* Power down the device */
-	stmvl53l0_power_down_i2c((void *)&data->client_object);
+	stmvl53l0_power_down_i2c((void *)data->client_object);
 
 	vl53l0_dbgmsg("End\n");
 	return 0;
@@ -160,27 +281,19 @@ static struct i2c_driver stmvl6180_driver = {
 int stmvl53l0_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 {
 	int ret = 0;
-#ifndef STM_TEST
-	struct i2c_data *data = (struct i2c_data *)i2c_object;
-#endif
-	vl53l0_dbgmsg("Enter\n");
 
-	/* actual power on */
-#ifndef STM_TEST
-	ret = regulator_set_voltage(data->vana,	VL53L0_VDD_MIN, VL53L0_VDD_MAX);
-	if (ret < 0) {
-		vl53l0_errmsg("set_vol(%p) fail %d\n", data->vana , ret);
-		return ret;
-	}
-	ret = regulator_enable(data->vana);
-	msleep(3);
-	if (ret < 0) {
-		vl53l0_errmsg("reg enable(%p) failed.rc=%d\n", data->vana, ret);
-		return ret;
-	}
+	struct i2c_data *data = (struct i2c_data *)i2c_object;
+
+	vl53l0_dbgmsg("Enter i2c powerup\n");
+
+	msm_camera_request_gpio_table(
+		data->gconf.cam_gpio_req_tbl,
+		data->gconf.cam_gpio_req_tbl_size, 1);
+
+	gpio_set_value_cansleep(data->gconf.cam_gpio_req_tbl[0].gpio, 1);
+
 	data->power_up = 1;
 	*preset_flag = 1;
-#endif
 
 	vl53l0_dbgmsg("End\n");
 	return ret;
@@ -189,20 +302,23 @@ int stmvl53l0_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 int stmvl53l0_power_down_i2c(void *i2c_object)
 {
 	int ret = 0;
-#ifndef STM_TEST
+
 	struct i2c_data *data = (struct i2c_data *)i2c_object;
-#endif
+
 
 	vl53l0_dbgmsg("Enter\n");
-#ifndef STM_TEST
-	msleep(3);
-	ret = regulator_disable(data->vana);
-	if (ret < 0)
-		vl53l0_errmsg("reg disable(%p) failed.rc=%d\n",
-			data->vana, ret);
+	if (data->power_up) {
+		pinctrl_select_state(data->pinctrl_info.pinctrl,
+			data->pinctrl_info.gpio_state_suspend);
 
-	data->power_up = 0;
-#endif
+		msm_camera_request_gpio_table(
+			data->gconf.cam_gpio_req_tbl,
+			data->gconf.cam_gpio_req_tbl_size, 0);
+
+		gpio_set_value_cansleep(
+			data->gconf.cam_gpio_req_tbl[0].gpio, 0);
+	}
+
 
 	vl53l0_dbgmsg("End\n");
 	return ret;
@@ -212,33 +328,12 @@ int stmvl53l0_init_i2c(void)
 {
 	int ret = 0;
 
-#ifdef STM_TEST
-	struct i2c_client *client = NULL;
-	struct i2c_adapter *adapter;
-	struct i2c_board_info info = {
-		.type = "stmvl53l0",
-		.addr = STMVL53L0_SLAVE_ADDR,
-	};
-#endif
-
 	vl53l0_dbgmsg("Enter\n");
 
 	/* register as a i2c client device */
 	ret = i2c_add_driver(&stmvl6180_driver);
 	if (ret)
 		vl53l0_errmsg("%d erro ret:%d\n", __LINE__, ret);
-
-#ifdef STM_TEST
-	if (!ret) {
-		adapter = i2c_get_adapter(4);
-		if (!adapter)
-			ret = -EINVAL;
-		else
-			client = i2c_new_device(adapter, &info);
-		if (!client)
-			ret = -EINVAL;
-	}
-#endif
 
 	vl53l0_dbgmsg("End with rc:%d\n", ret);
 
@@ -253,4 +348,3 @@ void stmvl53l0_exit_i2c(void *i2c_object)
 	vl53l0_dbgmsg("End\n");
 }
 
-#endif /* end of NOT CAMERA_CCI */
