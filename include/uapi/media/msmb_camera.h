@@ -50,7 +50,8 @@
 #define MSM_CAMERA_SUBDEV_FLASH        16
 #define MSM_CAMERA_SUBDEV_IR_LED       17
 #define MSM_CAMERA_SUBDEV_IR_CUT       18
-#define MSM_CAMERA_SUBDEV_EXT          19
+#define MSM_CAMERA_SUBDEV_TOF          19
+#define MSM_CAMERA_SUBDEV_EXT          20
 
 #define MSM_CAMERA_SUBDEV_CCI_INTF     20
 
