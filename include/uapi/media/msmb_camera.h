@@ -48,7 +48,8 @@
 #define MSM_CAMERA_SUBDEV_SENSOR_INIT  14
 #define MSM_CAMERA_SUBDEV_OIS          15
 #define MSM_CAMERA_SUBDEV_FLASH        16
-#define MSM_CAMERA_SUBDEV_EXT          17
+#define MSM_CAMERA_SUBDEV_TOF          17
+#define MSM_CAMERA_SUBDEV_EXT          18
 
 #define MSM_CAMERA_SUBDEV_CCI_INTF     20
 
