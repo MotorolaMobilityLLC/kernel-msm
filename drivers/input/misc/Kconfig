@@ -756,4 +756,8 @@ config INPUT_DRV2667_HAPTICS
 	  To compile this driver as a module, choose M here: the
 	  module will be called drv260x-haptics.
 
+config STMVL53L0
+	tristate "STMVL53L0 support"
+	help
+	laser sensor driver.
 endif
