@@ -46,18 +46,35 @@
 
 #define VL53L0_VDD_MIN      2600000
 #define VL53L0_VDD_MAX      3000000
+/*driver working mode*/
+#define	OFF_MODE  0
+#define	CAM_MODE  1
+#define	SAR_MODE  2
+#define	SUPER_MODE  3
+#define	XTALKCAL_MODE  4
+#define	OFFSETCAL_MODE  5
+/*user actions*/
+#define	CAM_ON  0
+#define	CAM_OFF 1
+#define	SAR_ON  2
+#define	SAR_OFF 3
+#define	XTALKCAL_ON 4
+#define	OFFSETCAL_ON 5
+#define	CAL_OFF 6
+/*parameter types*/
+#define	OFFSET_PAR 0
+#define	XTALKRATE_PAR 1
+#define	XTALKENABLE_PAR 2
+#define	SNRVAL_PRA 3
+#define	SNRCTL_PRA 4
+#define	WRAPAROUNDCTL_PRA 5
+#define	INTERMEASUREMENTPERIOD_PAR 6
+#define	MEASUREMENTTIMINGBUDGET_PAR 7
 
-typedef enum {
-	NORMAL_MODE = 0,
-	OFFSETCALIB_MODE = 1,
-	XTALKCALIB_MODE = 2,
-} init_mode_e;
 
-typedef enum {
-	OFFSET_PAR = 0,
-	XTALKRATE_PAR = 1,
-	XTALKENABLE_PAR = 2,
-} parameter_name_e;
+#define	CCI_BUS  0
+#define	I2C_BUS  1
+
 
 /*
  *  IOCTL register data structs
@@ -75,7 +92,7 @@ struct stmvl53l0_register {
  */
 struct stmvl53l0_parameter {
 	uint32_t is_read; /*1: Get 0: Set*/
-	parameter_name_e name;
+	uint32_t name;
 	int32_t value;
 	int32_t status;
 };
@@ -84,27 +101,22 @@ struct stmvl53l0_parameter {
  *  driver data structs
  */
 struct stmvl53l0_data {
+	/* embed ST VL53L0 Dev data as "dev_data" */
+	VL53L0_DevData_t Data;
+	/* i2c device address user specific field */
+	uint8_t   I2cDevAddr;
+	uint8_t   comms_type;
+	uint16_t  comms_speed_khz;
 
-	VL53L0_DevData_t Data;	/* !<embed ST VL53L0 Dev data as
-								"dev_data" */
-	uint8_t   I2cDevAddr;	/*!< i2c device address user specific field
-							*/
-	uint8_t   comms_type;	/*!< Type of comms : VL53L0_COMMS_I2C
-							or VL53L0_COMMS_SPI */
-	uint16_t  comms_speed_khz;	/*!< Comms speed [kHz] :
-						typically 400kHz for I2C */
-#ifdef CAMERA_CCI
-	struct cci_data client_object;
-#else
-	struct i2c_data client_object;
-#endif
+	struct cci_data cci_client_object;
+	struct i2c_data i2c_client_object;
+	void *client_object;
 	struct mutex update_lock;
 	struct delayed_work	dwork;		/* for PS  work handler */
 	struct input_dev *input_dev_ps;
 	struct kobject *range_kobj;
 
 	const char *dev_name;
-	/* function pointer */
 
 	/* misc device */
 	struct miscdevice miscdev;
@@ -125,13 +137,18 @@ struct stmvl53l0_data {
 
 
 	/* delay time in miniseconds*/
-	uint8_t delay_ms;
+	unsigned int delay_ms;
 
 	struct mutex work_mutex;
 
 	/* Debug */
 	unsigned int enableDebug;
 	uint8_t interrupt_received;
+	int d_mode;
+	uint8_t w_mode;
+	/*for SAR mode indicate low range interrupt*/
+	uint8_t lowint;
+	uint8_t bus_type;
 };
 
 /*
@@ -144,6 +161,10 @@ struct stmvl53l0_module_fn_t {
 	int (*power_down)(void *);
 };
 
-int stmvl53l0_setup(struct stmvl53l0_data *data);
+struct stmvl53l0_data *stmvl53l0_getobject(void);
+int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type);
+int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
+	void *client, uint8_t type);
+void i2c_setclient(void *client, uint8_t type);
 
 #endif /* STMVL53L0_H */
