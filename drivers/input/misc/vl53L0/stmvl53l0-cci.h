@@ -24,7 +24,6 @@
 #define STMVL53L0_CCI_H
 #include <linux/types.h>
 
-#ifdef CAMERA_CCI
 #include <soc/qcom/camera2.h>
 #include "msm_camera_i2c.h"
 #include "msm_camera_dt_util.h"
@@ -52,10 +51,12 @@ struct cci_data {
 	char subdev_initialized;
 	uint32_t subdev_id;
 	uint8_t power_up;
+	struct msm_camera_gpio_conf gconf;
+	struct msm_pinctrl_info pinctrl_info;
 };
 int stmvl53l0_init_cci(void);
 void stmvl53l0_exit_cci(void *);
 int stmvl53l0_power_down_cci(void *);
 int stmvl53l0_power_up_cci(void *, unsigned int *);
-#endif /* CAMERA_CCI */
+
 #endif /* STMVL53L0_CCI_H */
