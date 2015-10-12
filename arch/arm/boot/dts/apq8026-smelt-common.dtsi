@@ -275,7 +275,6 @@
 		qcom,infinite-mode = <0>;
 		qcom,ver-reg-exists;
 		qcom,master-id = <86>;
-		qcom,shared;
 	};
 
 	/* BLSP6: [uart] BT */
