@@ -1155,8 +1155,10 @@ void ol_target_failure(void *instance, A_STATUS status)
 #ifdef CONFIG_CNSS
 	ret = hif_pci_check_fw_reg(scn->hif_sc);
 	if (0 == ret) {
-		ol_schedule_fw_indication_work(scn);
-		return;
+		if (scn->enable_self_recovery) {
+			ol_schedule_fw_indication_work(scn);
+			return;
+		}
 	} else if (-1 == ret) {
 		return;
 	}

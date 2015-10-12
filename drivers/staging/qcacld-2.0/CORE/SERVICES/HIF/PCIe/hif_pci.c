@@ -2759,6 +2759,8 @@ HIFTargetSleepStateAdjust(A_target_id_t targid,
                                         + RTC_STATE_ADDRESS));
 
                     printk("%s:error, can't wakeup target\n", __func__);
+                    if (!sc->ol_sc->enable_self_recovery)
+                            VOS_BUG(0);
                     sc->recovery = true;
                     vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
 #ifdef CONFIG_CNSS

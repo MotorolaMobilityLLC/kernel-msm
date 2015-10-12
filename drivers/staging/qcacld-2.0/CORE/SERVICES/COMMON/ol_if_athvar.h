@@ -278,7 +278,7 @@ struct ol_softc {
     unsigned long ramdump_address;
     unsigned long ramdump_size;
 #endif
-
+    bool enable_self_recovery;
 #ifdef WLAN_FEATURE_LPSS
     bool                    enablelpasssupport;
 #endif
