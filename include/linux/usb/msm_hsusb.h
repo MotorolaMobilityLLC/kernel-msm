@@ -278,6 +278,7 @@ enum usb_ctrl {
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
+	int *phy_host_init_seq;
 	int (*vbus_power)(bool on);
 	unsigned power_budget;
 	enum usb_mode_type mode;
