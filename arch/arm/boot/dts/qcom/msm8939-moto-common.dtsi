@@ -157,6 +157,8 @@
 		linux,contiguous-region = <&wdog_cpuctx_mem>;
 	};
 
+	/delete-node/ qcom,ehci-host@79c0000;
+
 	/delete-node/ serial@78af000;
 	blsp1_ls_uart1: serial@78af000 {
 		compatible = "qcom,msm-lsuart-v14";
