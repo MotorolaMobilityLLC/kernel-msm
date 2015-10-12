@@ -36,6 +36,8 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/batterydata-lib.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/qpnp/power-on.h>
+#include <soc/qcom/watchdog.h>
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -299,6 +301,9 @@ struct smbchg_chip {
 	bool				hvdcp_det_done;
 	enum ebchg_state		ebchg_state;
 	struct gpio			ebchg_gpio;
+	struct gpio			warn_gpio;
+	struct delayed_work		warn_irq_work;
+	int				warn_irq;
 	struct pinctrl			*smb_pinctrl;
 	bool				factory_cable;
 };
@@ -5937,6 +5942,34 @@ static void parse_dt_gpio(struct smbchg_chip *chip)
 	if (rc)
 		dev_err(chip->dev, "Failed to link GPIO %s: %d\n",
 			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
+
+	chip->warn_gpio.gpio = of_get_gpio_flags(node, 1, &flags);
+	chip->warn_gpio.flags = flags;
+	of_property_read_string_index(node, "gpio-names", 1,
+				      &chip->warn_gpio.label);
+
+	rc = gpio_request_one(chip->warn_gpio.gpio,
+			      chip->warn_gpio.flags,
+			      chip->warn_gpio.label);
+	if (rc) {
+		dev_err(chip->dev, "failed to request GPIO\n");
+		return;
+	}
+
+	rc = gpio_export(chip->warn_gpio.gpio, 1);
+	if (rc) {
+		dev_err(chip->dev, "Failed to export GPIO %s: %d\n",
+			chip->ebchg_gpio.label, chip->ebchg_gpio.gpio);
+		return;
+	}
+
+	rc = gpio_export_link(chip->dev, chip->warn_gpio.label,
+			      chip->warn_gpio.gpio);
+	if (rc)
+		dev_err(chip->dev, "Failed to link GPIO %s: %d\n",
+			chip->warn_gpio.label, chip->warn_gpio.gpio);
+	else
+		chip->warn_irq = gpio_to_irq(chip->warn_gpio.gpio);
 }
 
 static int smb_parse_dt(struct smbchg_chip *chip)
@@ -7987,6 +8020,59 @@ static int smbchg_reboot(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+static int usr_rst_sw_disable;
+module_param(usr_rst_sw_disable, int, 0644);
+static void warn_irq_w(struct work_struct *work)
+{
+	struct smbchg_chip *chip = container_of(work,
+				struct smbchg_chip,
+				warn_irq_work.work);
+	int warn_line = gpio_get_value(chip->warn_gpio.gpio);
+
+	if (!warn_line) {
+		pr_info("HW User Reset!\n");
+		pr_info("2 sec to Reset.\n");
+
+		/* trigger wdog if resin key pressed */
+		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT) {
+			pr_info("%s: User triggered watchdog reset\n",
+								__func__);
+			msm_trigger_wdog_bite();
+			return;
+		}
+
+		if (usr_rst_sw_disable <= 0) {
+			/* Configure hardware reset before halt
+			 * The new KUNGKOW circuit will not disconnect the
+			 * battery if usb/dc is connected. But because the
+			 * kernel is halted, a watchdog reset will be reported
+			 * instead of hardware reset. In this case, we need to
+			 * clear the KUNPOW reset bit to let BL detect it as a
+			 * hardware reset.
+			 * A pmic hard reset is necessary to report the powerup
+			 * reason to BL correctly.
+			*/
+			qpnp_pon_store_extra_reset_info(RESET_EXTRA_RESET_KUNPOW_REASON, 0);
+			qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+			kernel_halt();
+		} else
+		pr_info("SW HALT Disabled!\n");
+		return;
+	}
+}
+
+#define WARN_IRQ_DELAY  5 /* 5msec */
+static irqreturn_t warn_irq_handler(int irq, void *_chip)
+{
+	struct smbchg_chip *chip = _chip;
+
+	/*schedule delayed work for 5msec for line state to settle*/
+	schedule_delayed_work(&chip->warn_irq_work,
+				msecs_to_jiffies(WARN_IRQ_DELAY));
+
+	return IRQ_HANDLED;
+}
+
 #define DEFAULT_TEST_MODE_SOC  52
 #define DEFAULT_TEST_MODE_TEMP  225
 static int smbchg_probe(struct spmi_device *spmi)
@@ -8036,6 +8122,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 			  smbchg_heartbeat_work);
 	INIT_DELAYED_WORK(&chip->usb_insertion_work,
 			  usb_insertion_work);
+	INIT_DELAYED_WORK(&chip->warn_irq_work, warn_irq_w);
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
 	chip->dev = &spmi->dev;
@@ -8155,6 +8242,19 @@ static int smbchg_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev, "Unable to request irqs rc = %d\n", rc);
 		goto unregister_dc_psy;
 	}
+
+	if (chip->warn_irq) {
+		rc = request_irq(chip->warn_irq,
+			warn_irq_handler,
+			IRQF_TRIGGER_FALLING,
+			"mmi_factory_warn", chip);
+		if (rc) {
+			dev_err(&spmi->dev,
+				"request irq failed for Warn\n");
+			goto unregister_dc_psy;
+		}
+	} else
+		dev_err(&spmi->dev, "IRQ for Warn doesn't exist\n");
 
 	power_supply_set_present(chip->usb_psy, chip->usb_present);
 
