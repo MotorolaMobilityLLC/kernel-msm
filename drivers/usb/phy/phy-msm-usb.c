@@ -452,7 +452,7 @@ static struct usb_phy_io_ops msm_otg_io_ops = {
 	.write = ulpi_write,
 };
 
-static void ulpi_init(struct msm_otg *motg)
+static void ulpi_init(struct msm_otg *motg, bool host)
 {
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	int aseq[10];
@@ -463,9 +463,11 @@ static void ulpi_init(struct msm_otg *motg)
 				override_phy_init);
 		get_options(override_phy_init, ARRAY_SIZE(aseq), aseq);
 		seq = &aseq[1];
-	} else {
+	} else if (host)
+		seq = pdata->phy_host_init_seq;
+	else
 		seq = pdata->phy_init_seq;
-	}
+
 
 	if (!seq)
 		return;
@@ -737,7 +739,7 @@ static int msm_otg_reset(struct usb_phy *phy)
 	msm_usb_phy_reset(motg);
 
 	/* Program USB PHY Override registers. */
-	ulpi_init(motg);
+	ulpi_init(motg, false);
 
 	/*
 	 * It is required to reset USB PHY after programming
@@ -2033,6 +2035,11 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 		msm_otg_dbg_log_event(&motg->phy, "HOST ON",
 				motg->inputs, otg->phy->state);
 
+		if (pdata->phy_host_init_seq) {
+			ulpi_init(motg, true);
+			msm_otg_phy_reset(motg);
+		}
+
 		if (pdata->otg_control == OTG_PHY_CONTROL)
 			ulpi_write(otg->phy, OTG_COMP_DISABLE,
 				ULPI_SET(ULPI_PWR_CLK_MNG_REG));
@@ -2051,6 +2058,9 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 		if (pdata->otg_control == OTG_PHY_CONTROL)
 			ulpi_write(otg->phy, OTG_COMP_DISABLE,
 				ULPI_CLR(ULPI_PWR_CLK_MNG_REG));
+
+		/* Clear the reset counter for reverting to default tuning */
+		motg->reset_counter = 0;
 	}
 }
 
@@ -5511,6 +5521,20 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 				pdata->phy_init_seq,
 				len/sizeof(*pdata->phy_init_seq));
 	}
+
+	len = 0;
+	of_get_property(node, "qcom,hsusb-otg-host-phy-init-seq", &len);
+	if (len) {
+		pdata->phy_host_init_seq = devm_kzalloc(&pdev->dev, len,
+								GFP_KERNEL);
+		if (!pdata->phy_host_init_seq)
+			return NULL;
+		of_property_read_u32_array(node,
+				"qcom,hsusb-otg-host-phy-init-seq",
+				pdata->phy_host_init_seq,
+				len/sizeof(*pdata->phy_host_init_seq));
+	}
+
 	of_property_read_u32(node, "qcom,hsusb-otg-power-budget",
 				&pdata->power_budget);
 	of_property_read_u32(node, "qcom,hsusb-otg-mode",
