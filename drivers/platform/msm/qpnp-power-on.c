@@ -224,6 +224,8 @@ struct qpnp_pon {
 	bool			store_hard_reset_reason;
 };
 
+int qpnp_pon_key_status = 0;
+
 static struct qpnp_pon *sys_reset_dev;
 static DEFINE_SPINLOCK(spon_list_slock);
 static LIST_HEAD(spon_dev_list);
@@ -812,6 +814,8 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		dev_err(&pon->spmi->dev, "Unable to read PON RT status\n");
 		return rc;
 	}
+
+	qpnp_pon_key_status = pon_rt_sts;
 
 	switch (cfg->pon_type) {
 	case PON_KPDPWR:
