@@ -8007,6 +8007,12 @@ static int smbchg_reboot(struct notifier_block *nb,
 			smbchg_usb_suspend(chip, true);
 			smbchg_dc_suspend(chip, true);
 
+			if (chip->usb_psy && chip->usb_present) {
+				pr_smb(PR_MISC, "setting usb psy dp=r dm=r\n");
+				power_supply_set_dp_dm(chip->usb_psy,
+						POWER_SUPPLY_DP_DM_DPR_DMR);
+			}
+
 			while (is_usb_present(chip))
 				msleep(100);
 			dev_warn(chip->dev, "VBUS UV wait 1 sec!\n");
