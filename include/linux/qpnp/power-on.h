@@ -60,12 +60,17 @@ enum pon_restart_reason {
 	PON_RESTART_REASON_KEYS_CLEAR		= 0x06,
 };
 
+#define RESET_EXTRA_RESET_KUNPOW_REASON        BIT(9)
 #define RESET_EXTRA_POST_PANIC_REASON  (BIT(4) | BIT(5))
 #define RESET_EXTRA_POST_PMICWDT_REASON        BIT(5)
 #define RESET_EXTRA_POST_WDT_REASON    BIT(4)
 #define RESET_EXTRA_POST_REBOOT_MASK   (BIT(4) | BIT(5) | BIT(6))
 #define RESET_EXTRA_PANIC_REASON	BIT(3)
 #define RESET_EXTRA_REBOOT_BL_REASON	BIT(2)
+#define RESET_EXTRA_HW_RESET_REASON    BIT(1)
+
+#define QPNP_PON_KEY_RESIN_BIT         BIT(1)
+extern int qpnp_pon_key_status;
 
 #ifdef CONFIG_QPNP_POWER_ON
 int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
