@@ -3553,127 +3553,50 @@ extern int g_gauge_df_version;
 #define NO_RESERVE_DF_MAP_NUM	100
 //check df version do Cap remapping---
 
+extern int read_backup_bat_cap(void);
+extern int write_backup_bat_cap(int bat_cap);
+
 static void write_battery_capacity(int cap)
 {
-	struct file *cfile;
-	mm_segment_t orgfs;
-	char bat_cap_str[14];
-	struct timespec mtNow;
-
-	mtNow = current_kernel_time();
-
-	orgfs = get_fs();
-	set_fs(KERNEL_DS);
-
-	cfile = filp_open("/data/data/bat_cap", O_CREAT | O_RDWR | O_SYNC, 0666);
-	if (!IS_ERR(cfile)){	
-		sprintf(bat_cap_str, "%3d%10ld", cap, mtNow.tv_sec);
-		pr_debug("[BAT][Ser]save bat_cap: %s\n", bat_cap_str);
-		cfile->f_op->write(cfile, bat_cap_str, 13, &cfile->f_pos);
-		
-		if(filp_close(cfile, NULL)){
-			pr_err("[BAT][Ser] fail to close bat_cap cali file in %s()\n", __func__);	
-		}
-	}
-
-	set_fs (orgfs);
+	write_backup_bat_cap((u8)cap);
 	return;
 }
 
 static int init_battery_capacity(void)
 {
-	struct file *fd;
-	mm_segment_t mmseg_fs;
-	int FileLength = 0;
-	char bat_cap_str[14];
-	int bat_cap_int = -1;
-	unsigned long bat_cap_save_time = 0;
-	struct timespec mtNow;
-
-	mmseg_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	fd = filp_open("/data/data/bat_cap", O_RDONLY,0);
-	if (IS_ERR(fd))
-	{
-		pr_err( "[BAT][Ser] can not open battery capacity file\n");
-		set_fs(mmseg_fs);
-		return -1;
-	}
-
-#if defined(ASUS_CHARGING_MODE) && !defined(ASUS_FACTORY_BUILD)
-	if(g_asus_CHG_mode){
-		printk("[BAT][Ser] g_asus_CHG_mode = 1, don't read bat_cap\n");
-
-		if (filp_close(fd, NULL)){
-			pr_err("[BAT][Ser]fail to close battery capacity file in %s\n", __func__);
-		}
+	int backup_bat_cap = -1;
 	
+	backup_bat_cap = read_backup_bat_cap();
+	if(backup_bat_cap < 0 || backup_bat_cap > 100){
+		printk("[BAT][ser] init_battery_capacity: backup_bat_cap < 0 or > 100 \n");
 		write_battery_capacity(balance_this->A66_capacity);
-
-		set_fs(mmseg_fs);
 		g_already_read_bat_cap = true;
 		return 0;
 	}
-#endif
+	else if(backup_bat_cap <= 2){
+		backup_bat_cap = 3;
+	}
 	
-	FileLength = fd->f_op->read(fd, bat_cap_str, 13, &fd->f_pos);
-	if (13 == FileLength) {
-		if(bat_cap_str[1] == 0x20){
-			char bat_cap_int_temp = bat_cap_str[2];
-			bat_cap_int = (int)simple_strtol(&bat_cap_int_temp, NULL, 10);
-		}
-		else if(bat_cap_str[0] == 0x20){
-			char bat_cap_int_temp[2];
-			memcpy(bat_cap_int_temp, bat_cap_str+1, 2);
-			bat_cap_int = (int)simple_strtol(bat_cap_int_temp, NULL, 10);
-		}
-		else{
-			bat_cap_int = 100;
-		}
-
-		bat_cap_save_time = simple_strtoul(bat_cap_str+3, NULL, 10);
-		mtNow = current_kernel_time();
-		
-		printk("[BAT][ser] init_battery_capacity bat_cap_int = %d\n", bat_cap_int);
-		printk("[BAT][ser] init_battery_capacity bat_cap_save_time = %ld\n", bat_cap_save_time);
-		
-		if(bat_cap_int <= 2){
-			bat_cap_int = 3;
-		}
-
-		if(mtNow.tv_sec - bat_cap_save_time < 259200){
-			if( (bat_cap_int-30 > balance_this->A66_capacity)
-				|| (bat_cap_int+30 < balance_this->A66_capacity))
-			{
-				printk("[BAT][ser] the difference is more than 30, don't apply bat_cap\n");
-			}
-			else if(bat_cap_int-10 > balance_this->A66_capacity){
-				balance_this->A66_capacity = bat_cap_int - 10;
-			}
-			else if(bat_cap_int+10 < balance_this->A66_capacity){
-				balance_this->A66_capacity = bat_cap_int + 10;
-			}
-			else{
-				balance_this->A66_capacity = bat_cap_int;
-			}
+	if( (backup_bat_cap-30 > balance_this->A66_capacity)
+		|| (backup_bat_cap+30 < balance_this->A66_capacity))
+	{
+		printk("[BAT][ser] the difference is more than 30, don't apply backup_bat_cap\n");
+	}
+	else if(backup_bat_cap-10 > balance_this->A66_capacity){
+		balance_this->A66_capacity = backup_bat_cap - 10;
+	}
+	else if(backup_bat_cap+10 < balance_this->A66_capacity){
+		balance_this->A66_capacity = backup_bat_cap + 10;
+	}
+	else{
+		balance_this->A66_capacity = backup_bat_cap;
+	}
 			
-			g_SWgauge_lastCapacity = balance_this->A66_capacity;
-			printk("[BAT][ser] init_battery_capacity set battery capacity to %d\n", balance_this->A66_capacity);
-		}
-	}
-	else {
-		printk("[BAT][Ser] error init_battery_capacity, FileLength = %d\n", FileLength);
-	}
-
-	if (filp_close(fd, NULL)){
-		pr_err("[BAT][Ser]fail to close battery capacity file in %s\n", __func__);
-	}
+	g_SWgauge_lastCapacity = balance_this->A66_capacity;
+	printk("[BAT][ser] init_battery_capacity set battery capacity to %d\n", balance_this->A66_capacity);
 	
-	set_fs(mmseg_fs);
-	
-	g_already_read_bat_cap = true;
 	write_battery_capacity(balance_this->A66_capacity);
+	g_already_read_bat_cap = true;
   	return 0;
 }
 

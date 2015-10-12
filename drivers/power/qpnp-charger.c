@@ -2822,6 +2822,31 @@ int get_BMS_capacity(void)
 }
 //Eason: choose Capacity type SWGauge/BMS ---
 
+//ASUS_BSP +++
+int read_backup_bat_cap(void)
+{
+	int rc;
+	u8 bat_cap = -1;
+	
+	rc = qpnp_chg_read(g_qpnp_chg_chip, &bat_cap, 0x40B2, 1);
+	if (rc)
+		pr_err("failed to read 0x40B2 rc=%d\n", rc);
+
+	return (int)bat_cap;
+}
+
+void write_backup_bat_cap(u8 bat_cap)
+{
+	int rc;
+	
+	rc = qpnp_chg_write(g_qpnp_chg_chip, &bat_cap, 0x40B2, 1);
+	if (rc)
+		pr_err("failed to write 0x40B2 rc=%d\n", rc);
+
+	return;
+}
+//ASUS_BSP ---
+
 #define DEFAULT_TEMP		250
 #define MAX_TOLERABLE_BATT_TEMP_DDC	680
 static int
