@@ -62,6 +62,7 @@ static int psci_cpu_disable(unsigned int cpu)
 	/* Fail early if we don't have CPU_OFF support */
 	if (!psci_ops.cpu_off)
 		return -EOPNOTSUPP;
+
 	return 0;
 }
 
