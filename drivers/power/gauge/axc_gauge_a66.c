@@ -977,8 +977,8 @@ static void AXC_Gauge_A66_ReadVoltCurrWithoutCali(
 				*curr = -110;
 			}
 			else{
-				printk("[BAT][Gau] set current to 540\n");
-				*curr = 540;
+				printk("[BAT][Gau] set current to 100\n");
+				*curr = 100;
 			}
 		}
 	}
