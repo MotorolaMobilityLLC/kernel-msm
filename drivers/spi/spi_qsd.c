@@ -45,6 +45,8 @@
 #include <linux/msm-bus-board.h>
 #include "spi_qsd.h"
 
+#define MSM_SPI_RUNTIME_TIMEOUT 10  /* ms */
+
 static int msm_spi_pm_resume_runtime(struct device *device);
 static int msm_spi_pm_suspend_runtime(struct device *device);
 static inline void msm_spi_dma_unmap_buffers(struct msm_spi *dd);
@@ -2752,7 +2754,7 @@ skip_dma_resources:
 		goto err_probe_reqmem;
 	}
 
-	pm_runtime_set_autosuspend_delay(&pdev->dev, MSEC_PER_SEC);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, MSM_SPI_RUNTIME_TIMEOUT);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
