@@ -59,6 +59,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	unsigned int handle;
 	struct timespec current_time;
 	bool cmd_handled;
+	unsigned int read_write;
+	unsigned int loop_count;
 
 	if (!stml0xx_misc_data)
 		stml0xx_misc_data = file->private_data;
@@ -217,7 +219,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		stml0xx_g_nonwake_sensor_state = (buf[2] << 16)
-		    | (buf[1] << 8) | buf[0];
+			| (buf[1] << 8) | buf[0];
 		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG,
 							 buf, 3);
@@ -571,6 +573,104 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
+		break;
+	case STML0XX_IOCTL_PASSTHROUGH:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"STML0XX_IOCTL_PASSTHROUGH");
+		if (!stml0xx_g_booted) {
+			err = -EFAULT;
+			break;
+		}
+
+		memset(buf, 0, STML0XX_PASSTHROUGH_SIZE);
+		/* copy bus, addr, reg, R/W and size */
+		if (copy_from_user(buf, argp, 6)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Passthrough, copy info error");
+			err = -EFAULT;
+			break;
+		}
+		read_write = buf[4];
+		data_size = buf[5];
+
+		if (read_write == 0) { /* Read operation */
+			if (data_size > (STML0XX_PASSTHROUGH_SIZE - 1)) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Passthrough, data size too large %d",
+					data_size);
+				err = -EFAULT;
+				break;
+			}
+		} else if (read_write == 1) { /* Write operation */
+			if (data_size > (STML0XX_PASSTHROUGH_SIZE - 6)) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Passthrough, data size too large %d",
+					data_size);
+				err = -EFAULT;
+				break;
+			}
+
+			/* copy in the data to write */
+			if (copy_from_user(&buf[6], argp + 6, data_size)) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Passthrough, copy data error");
+				err = -EFAULT;
+				break;
+			}
+		} else {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Passthrough, invalid r/w %d", read_write);
+			err = -EFAULT;
+			break;
+		}
+
+		/* Write the command to the sensor hub */
+		err = stml0xx_spi_send_write_reg(I2C_PASSTHROUGH_COMMAND, buf,
+			STML0XX_PASSTHROUGH_SIZE);
+		if (err < 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Passthrough, write error %d",
+				err);
+			err = -EFAULT;
+			break;
+		}
+
+		/* Read the response from  the sensor hub */
+		loop_count = 0;
+		buf[0] = 0;
+		do {
+			err = stml0xx_spi_send_read_reg(
+				I2C_PASSTHROUGH_RESPONSE,
+				buf, STML0XX_PASSTHROUGH_SIZE);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Passthrough, read error %d",
+					err);
+				err = -EFAULT;
+				break;
+			}
+			loop_count++;
+			if (loop_count == 10)
+				break;
+		} while (buf[0] == 0);
+		if (buf[0] != 1) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Passthrough, read failed %d", buf[0]);
+			err = -EFAULT;
+			break;
+		}
+		err = 0;
+
+		if (read_write == 0) {
+			/* Return the hub register data read */
+			if (copy_to_user(argp, &buf[1], data_size)) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Passthrough, copy back error");
+				err = -EFAULT;
+				break;
+			}
+		}
+
 		break;
 	case STML0XX_IOCTL_SET_LOWPOWER_MODE:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
