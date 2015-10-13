@@ -230,6 +230,9 @@ extern bool bcmsdh_dev_pm_enabled(bcmsdh_info_t *sdh);
 
 int bcmsdh_suspend(bcmsdh_info_t *bcmsdh);
 int bcmsdh_resume(bcmsdh_info_t *bcmsdh);
+#ifdef CONFIG_PARTIALRESUME
+void bcmsdh_partial_resume(bcmsdh_info_t *bcmsdh);
+#endif
 
 /* Function to pass device-status bits to DHD. */
 extern uint32 bcmsdh_get_dstatus(void *sdh);
