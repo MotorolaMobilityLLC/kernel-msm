@@ -3711,9 +3711,9 @@ typedef struct
  */
 typedef struct sSirPNOScanReq {
 	uint8_t         enable;
-  eSirPNOMode         modePNO;
+	eSirPNOMode     modePNO;
 	uint8_t         ucNetworksCount;
-  tSirNetworkType     aNetworks[SIR_PNO_MAX_SUPP_NETWORKS];
+	tSirNetworkType aNetworks[SIR_PNO_MAX_SUPP_NETWORKS];
 	uint8_t         sessionId;
 	uint32_t        fast_scan_period;
 	uint32_t        slow_scan_period;

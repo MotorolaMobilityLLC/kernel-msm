@@ -1433,6 +1433,17 @@ extern "C" {
 #define NLO_DBGID_SSID_TO_BE_SCANNED_LIST 0
 #define NLO_DBGID_SSID_TO_BE_SKIPPED_LIST 1
 
+/* Channel prediction/reduction DBGIDs */
+#define SCAN_CH_PREDICT_DBGID_DEFINITION_START          0
+#define SCAN_CH_PREDICT_CALCULATE                       1
+#define SCAN_CH_PREDICT_CALCULATE_SAMPLE                2
+#define SCAN_CH_PREDICT_CALCULATE_RESULT                3
+#define SCAN_CH_PREDICT_FOUND_BSS                       4
+#define SCAN_CH_PREDICT_SCAN_START                      5
+#define SCAN_CH_PREDICT_START                           6
+#define SCAN_CH_PREDICT_STOP                            7
+#define SCAN_CH_PREDICT_DBGID_DEFINITION_END            8
+
 #ifdef __cplusplus
 }
 #endif

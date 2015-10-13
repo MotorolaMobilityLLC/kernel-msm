@@ -93,6 +93,7 @@ PREPACK struct host_app_area_s {
 
 #define WMI_EP_APASS           0x0
 #define WMI_EP_LPASS           0x1
+#define WMI_EP_SENSOR          0x2
 
 /*
  * Control Path

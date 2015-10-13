@@ -739,6 +739,7 @@ struct wlan_dbg_tx_selfgen_stats {
     A_UINT32 mu_bar_2;
     A_UINT32 cts_burst;
     A_UINT32 su_ndp_err;
+    A_UINT32 su_ndpa_err;
     A_UINT32 mu_ndp_err;
     A_UINT32 mu_brp1_err;
     A_UINT32 mu_brp2_err;
