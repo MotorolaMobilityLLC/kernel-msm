@@ -66,6 +66,14 @@ $(info Using appended DTB)
 TARGET_PREBUILT_INT_KERNEL := $(TARGET_PREBUILT_INT_KERNEL)-dtb
 endif
 
+# Add 4.8 arm-eabi to PATH if gcc can't be found
+GCC_FOUND := $(shell (which $(KERNEL_CROSS_COMPILE)gcc)2>&1 ; echo $$?)
+ifneq ($(strip $(GCC_FOUND)),0)
+ifneq ($(HOST_OS),)
+PATH := $(PATH):$(ANDROID_BUILD_TOP)/prebuilts/gcc/$(HOST_OS)-x86/arm/arm-eabi-4.8/bin/
+endif
+endif
+
 KERNEL_HEADERS_INSTALL := $(KERNEL_OUT)/usr
 KERNEL_MODULES_INSTALL := system
 KERNEL_MODULES_OUT := $(TARGET_OUT)/lib/modules
