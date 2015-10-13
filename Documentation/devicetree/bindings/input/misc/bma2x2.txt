@@ -37,6 +37,13 @@ Optional properties:
 				If this property is defined, data ready, fifo full and
 				other event will trigger level change on interrupt pin2
 				instead of interrupt pin1.
+<<<<<<< HEAD
+=======
+ - bosch,use-smd	: enable signification motion detection(SMD). Enable this
+				will create a new sensor which triggers an event each time
+				significant motion is detected.
+ - bosch,use-hrtimer	: Use hrtimer to report data. Hrtimer can report data more timely.
+>>>>>>> d19f89f... input: sensors: add bma2x2 support schedule data poll on idle CPU
 
 Example:
 &i2c_0 { /* BLSP1 QUP2 */
