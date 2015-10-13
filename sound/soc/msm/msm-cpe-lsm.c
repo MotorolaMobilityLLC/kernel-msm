@@ -396,6 +396,8 @@ static int msm_cpe_lab_thread(void *data)
 	}
 
 	if (!kthread_should_stop()) {
+		lsm_ops->lsm_lab_data_channel_open(cpe->core_handle, session);
+
 		rc = lsm_ops->lsm_lab_data_channel_read(core, lab->lsm_s,
 					lab->pcm_buf[0].phys,
 					lab->pcm_buf[0].mem,
@@ -1320,8 +1322,6 @@ static int msm_cpe_lsm_lab_start(struct snd_pcm_substream *substream,
 		atomic_set(&lab_sess->abort_read, 0);
 		pr_debug("%s: KW detected,\n"
 		"scheduling LAB thread\n", __func__);
-		lsm_ops->lsm_lab_data_channel_open(
-			cpe->core_handle, session);
 
 		/*
 		 * Even though thread might be only scheduled and
