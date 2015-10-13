@@ -231,18 +231,20 @@ int bcmsdh_resume(bcmsdh_info_t *bcmsdh)
 {
 	bcmsdh_os_info_t *bcmsdh_osinfo = bcmsdh->os_cxt;
 
+	if (drvinfo.resume)
+		return drvinfo.resume(bcmsdh_osinfo->context);
+	return 0;
+}
+
 #ifdef CONFIG_PARTIALRESUME
+void bcmsdh_partial_resume(bcmsdh_info_t *bcmsdh) {
+	bcmsdh_os_info_t *bcmsdh_osinfo = bcmsdh->os_cxt;
+
 	if (check_wakeup_reason(bcmsdh_osinfo->oob_irq_num)) {
 		wifi_process_partial_resume(bcmsdh_osinfo->adapter, WIFI_PR_NOTIFY_RESUME);
 	}
-#endif
-
-#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
-	if (drvinfo.resume)
-		return drvinfo.resume(bcmsdh_osinfo->context);
-#endif
-	return 0;
 }
+#endif
 
 extern int bcmsdh_register_client_driver(void);
 extern void bcmsdh_unregister_client_driver(void);

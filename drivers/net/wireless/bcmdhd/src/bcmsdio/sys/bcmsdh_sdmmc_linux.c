@@ -265,7 +265,12 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 
 	sdioh = sdio_get_drvdata(func);
 	dhd_mmc_suspend = FALSE;
+#ifdef CONFIG_PARTIALRESUME
+	bcmsdh_partial_resume(sdioh->bcmsdh);
+#endif
+#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
 	bcmsdh_resume(sdioh->bcmsdh);
+#endif /* OOB_INTR_ONLY && !CUSTOMER_HW4 */
 
 	smp_mb();
 	return 0;
