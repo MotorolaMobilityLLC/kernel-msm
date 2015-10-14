@@ -3502,11 +3502,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	finger_data = (struct f12_d1_type *)reg_data_1->data;
 	for (finger = 0; finger < fingers_to_process; finger++, finger_data++) {
 		finger_status = finger_data->type_and_stylus;
-#ifdef TYPE_B_PROTOCOL
-		input_mt_slot(rmi4_data->input_dev, finger);
-		input_mt_report_slot_state(rmi4_data->input_dev,
-					MT_TOOL_FINGER, finger_status);
-#endif
 		if (finger_status) {
 			x = finger_data->x_lsb | (finger_data->x_msb << 8);
 			y = finger_data->y_lsb | (finger_data->y_msb << 8);
@@ -3530,12 +3525,15 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					dev_dbg(&rmi4_data->i2c_client->dev,
 						"%d,%d ouside clipping area\n",
 						x, y);
-					input_mt_report_slot_state(
-						rmi4_data->input_dev,
-						MT_TOOL_FINGER, 0);
 					continue;
 				}
 			}
+
+#ifdef TYPE_B_PROTOCOL
+			input_mt_slot(rmi4_data->input_dev, finger);
+			input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, finger_status);
+#endif
 
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 			touchxp.touch_magic_dev = rmi4_data->input_dev;
@@ -3568,6 +3566,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			active_touch_max_idx = finger + 1;
 #ifdef TYPE_B_PROTOCOL
 		} else {
+			input_mt_slot(rmi4_data->input_dev, finger);
 			/* Touch no longer active, close out slot */
 			input_mt_report_slot_state(rmi4_data->input_dev,
 					MT_TOOL_FINGER, 0);
@@ -3681,13 +3680,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			number_of_fingers_actually_touching++;
 	}
 #endif
-
 	for (finger = 0; finger < fingers_supported; finger++) {
 		reg_index = finger / 4;
 		finger_shift = (finger % 4) * 2;
 		finger_status = (finger_status_reg[reg_index] >> finger_shift)
 				& MASK_2BIT;
-
 		/*
 		 * Each 2-bit finger status field represents the following:
 		 * 00 = finger not present
@@ -3695,11 +3692,6 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		 * 10 = finger present but data may be inaccurate
 		 * 11 = reserved
 		 */
-#ifdef TYPE_B_PROTOCOL
-		input_mt_slot(rmi4_data->input_dev, finger);
-		input_mt_report_slot_state(rmi4_data->input_dev,
-					MT_TOOL_FINGER, finger_status);
-#endif
 		if (finger_status) {
 			data_offset = data_addr +
 					num_of_finger_status_regs +
@@ -3721,6 +3713,12 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 				x = rmi4_data->sensor_max_x - x;
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
+
+#ifdef TYPE_B_PROTOCOL
+			input_mt_slot(rmi4_data->input_dev, finger);
+			input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, finger_status);
+#endif
 
 #ifdef CONFIG_TOUCHSCREEN_TOUCHX_BASE
 			touchxp.touch_magic_dev = rmi4_data->input_dev;
@@ -3758,6 +3756,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			touch_count++;
 #ifdef TYPE_B_PROTOCOL
 		} else {
+			input_mt_slot(rmi4_data->input_dev, finger);
 			/* Touch no longer active, close out slot */
 			input_mt_report_slot_state(rmi4_data->input_dev,
 					MT_TOOL_FINGER, 0);
