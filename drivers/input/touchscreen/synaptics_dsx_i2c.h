@@ -205,6 +205,20 @@ struct synaptics_rmi4_device_info {
 	struct list_head support_fn_list;
 };
 
+struct touch_up_down {
+	int mismatch;
+	unsigned char up_down;
+	unsigned int counter;
+};
+
+struct touch_area_stats {
+	struct touch_up_down *ud;
+	ssize_t ud_len;
+	ssize_t ud_id;
+	ssize_t unknown_counter;
+	const char *name;
+};
+
 struct synaptics_dsx_func_patch {
 	unsigned short func;
 	unsigned char regstr;
