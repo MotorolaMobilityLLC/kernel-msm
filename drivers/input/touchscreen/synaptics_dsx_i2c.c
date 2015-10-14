@@ -3528,7 +3528,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					continue;
 				}
 			}
-
 #ifdef TYPE_B_PROTOCOL
 			input_mt_slot(rmi4_data->input_dev, finger);
 			input_mt_report_slot_state(rmi4_data->input_dev,
@@ -3714,6 +3713,21 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			if (rmi4_data->board->y_flip)
 				y = rmi4_data->sensor_max_y - y;
 
+			if (rmi4_data->clipping_on && rmi4_data->clipa) {
+				bool inside;
+
+				inside = (x >= rmi4_data->clipa->xul_clip) &&
+					(x <= rmi4_data->clipa->xbr_clip) &&
+					(y >= rmi4_data->clipa->yul_clip) &&
+					(y <= rmi4_data->clipa->ybr_clip);
+
+				if (!inside) {
+					dev_dbg(&rmi4_data->i2c_client->dev,
+						"%d,%d ouside clipping area\n",
+						x, y);
+					continue;
+				}
+			}
 #ifdef TYPE_B_PROTOCOL
 			input_mt_slot(rmi4_data->input_dev, finger);
 			input_mt_report_slot_state(rmi4_data->input_dev,
