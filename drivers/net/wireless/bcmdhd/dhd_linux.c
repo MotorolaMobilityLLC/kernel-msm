@@ -8848,8 +8848,6 @@ write_to_file(dhd_pub_t *dhd, uint8 *buf, int size)
 	fp->f_op->write(fp, buf, size, &pos);
 
 exit:
-	/* free buf before return */
-	MFREE(dhd->osh, buf, size);
 	/* close file before return */
 	if (fp)
 		filp_close(fp, current->files);
