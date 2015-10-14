@@ -1828,6 +1828,9 @@ static int synaptics_rmi4_suspend(struct device *dev);
 
 static int synaptics_rmi4_resume(struct device *dev);
 
+static ssize_t synaptics_rmi4_ud_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
@@ -2052,6 +2055,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(patch, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			synaptics_rmi4_patch_store),
+	__ATTR(tsi, S_IRUSR | S_IRGRP,
+			synaptics_rmi4_ud_show,
+			synaptics_rmi4_store_error),
 };
 
 struct synaptics_exp_fn_ctrl {
@@ -2590,6 +2596,129 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			synaptics_dsx_state_name(state));
 
 	synaptics_dsx_set_state_safe(rmi4_data, state);
+}
+
+static struct touch_up_down display_ud[20];
+static struct touch_area_stats display_ud_stats = {
+	.ud = display_ud,
+	.ud_len = ARRAY_SIZE(display_ud),
+	.name = "ts"
+};
+
+static struct touch_up_down button_ud[10];
+static struct touch_area_stats button_ud_stats = {
+	.ud = button_ud,
+	.ud_len = ARRAY_SIZE(button_ud),
+	.name = "btn"
+};
+
+static void ud_set_id(struct touch_area_stats *tas, int id)
+{
+	tas->ud_id = id;
+}
+
+static void ud_log_status(struct touch_area_stats *tas, bool down)
+{
+	struct touch_up_down *ud = tas->ud;
+	ssize_t id = tas->ud_id;
+
+	if (id >= tas->ud_len)
+		tas->unknown_counter++;
+
+	if (!down) { /* up */
+		if (ud[id].up_down == 0x10) {
+			pr_debug("%s UP[%zu]\n", tas->name, id);
+			ud[id].up_down |= 1;
+			ud[id].mismatch--;
+		}
+	} else if (down) { /* down */
+		if (ud[id].up_down == 0) {
+			ud[id].up_down |= (1 << 4);
+			pr_debug("%s DOWN[%zu]\n", tas->name, id);
+			ud[id].mismatch++;
+		} else if (ud[id].up_down == 0x10)
+			return;
+	}
+
+	if (ud[id].up_down == 0x11) {
+		pr_debug("%s CLEAR[%zu]\n", tas->name, id);
+		ud[id].up_down = 0;
+		ud[id].counter++;
+	}
+}
+
+static void TSI_state(struct input_dev *dev, unsigned int tool, bool status)
+{
+	ud_log_status(&display_ud_stats, status);
+	input_mt_report_slot_state(dev, tool, status);
+}
+
+static void TSI_id(struct input_dev *dev, int id)
+{
+	ud_set_id(&display_ud_stats, id);
+	input_mt_slot(dev, id);
+}
+
+#define input_mt_report_slot_state TSI_state
+#define input_mt_slot TSI_id
+
+static ssize_t synaptics_rmi4_ud_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int i;
+	ssize_t total = 0;
+	struct synaptics_rmi4_data *rmi4_data =
+					i2c_get_clientdata(to_i2c_client(dev));
+	total += scnprintf(buf + total, PAGE_SIZE - total, "display:\n");
+	for (i = 0; i < display_ud_stats.ud_len; i++)
+		total += scnprintf(buf + total, PAGE_SIZE - total,
+				"[%d]: full cycles-%u, mismatch-%d\n", i,
+				display_ud[i].counter,
+				display_ud[i].mismatch);
+
+	if (rmi4_data->button_0d_enabled) {
+		total += scnprintf(buf + total, PAGE_SIZE - total,
+			"buttons:\n");
+		for (i = 0; i < button_ud_stats.ud_len; i++)
+			total += scnprintf(buf + total, PAGE_SIZE - total,
+				"[%d]: full cycles-%u, mismatch-%d\n", i,
+				button_ud[i].counter, button_ud[i].mismatch);
+	}
+	return total;
+}
+
+static ssize_t synaptics_dsx_ud_stat(struct synaptics_rmi4_data *rmi4_data,
+		char *buf, ssize_t size)
+{
+	int i;
+	ssize_t total = 0;
+
+	total += scnprintf(buf + total, size - total, "screen: ");
+	for (i = 0; i < display_ud_stats.ud_len; i++)
+		if (display_ud[i].mismatch)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u,%d ", i,
+				display_ud[i].counter,
+				display_ud[i].mismatch);
+		else if (display_ud[i].counter)
+			total += scnprintf(buf + total, size - total,
+				"%d)%u ", i,
+				display_ud[i].counter);
+
+	if (rmi4_data->button_0d_enabled) {
+		total += scnprintf(buf + total, size - total, "buttons: ");
+		for (i = 0; i < button_ud_stats.ud_len; i++)
+			if (button_ud[i].mismatch)
+				total += scnprintf(buf + total, size - total,
+					"%d)%u,%d ", i,
+					button_ud[i].counter,
+					button_ud[i].mismatch);
+			else if (button_ud[i].counter)
+				total += scnprintf(buf + total, size - total,
+					"%d)%u ", i,
+					button_ud[i].counter);
+	}
+	return total;
 }
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
@@ -3856,6 +3985,8 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 		else
 			current_status[button] = status;
 
+		ud_set_id(&button_ud_stats, button);
+
 		dev_dbg(&rmi4_data->i2c_client->dev,
 				"%s: Button %d (code %d) ->%d\n",
 				__func__, button,
@@ -3876,12 +4007,14 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 			input_report_key(rmi4_data->input_dev,
 					f1a->button_map[button],
 					status);
+			ud_log_status(&button_ud_stats, status == 1);
 		} else {
 			if (before_2d_status[button] == 1) {
 				before_2d_status[button] = 0;
 				input_report_key(rmi4_data->input_dev,
 						f1a->button_map[button],
 						status);
+				ud_log_status(&button_ud_stats, status == 1);
 			} else {
 				if (status == 1)
 					while_2d_status[button] = 1;
@@ -3893,6 +4026,7 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 		input_report_key(rmi4_data->input_dev,
 				f1a->button_map[button],
 				status);
+		ud_log_status(&button_ud_stats, status == 1);
 #endif
 		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
@@ -6651,6 +6785,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 					i2c_get_clientdata(to_i2c_client(dev));
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
+	static char ud_stats[PAGE_SIZE];
 
 	if (atomic_cmpxchg(&rmi4_data->touch_stopped, 0, 1) == 1)
 		return 0;
@@ -6661,6 +6796,9 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	if (gStat.enabled)
 		statistics_stop_timekeeping();
+
+	synaptics_dsx_ud_stat(rmi4_data, ud_stats, sizeof(ud_stats));
+	pr_info("%s\n", ud_stats);
 
 	if (rmi4_data->purge_enabled) {
 		int value = 1; /* set flag */
