@@ -221,7 +221,7 @@ static int tusb320_current_advertise_set(enum typec_current_mode current_mode)
 		return -1;
 	}
 
-	pr_info("%s: REG_CURRENT_MODE 08H is 0x%x\n", __func__, reg_val);
+	pr_debug("%s: REG_CURRENT_MODE 08H is 0x%x\n", __func__, reg_val);
 
 	switch (current_mode) {
 	case TYPEC_CURRENT_MODE_MID:
@@ -567,6 +567,9 @@ static void tusb320_intb_work(struct work_struct *work)
 
 			di->trysnk_attempt = 1;
 
+			/* set current advertisement to default */
+			tusb320_current_advertise_set(TYPEC_CURRENT_MODE_DEFAULT);
+
 			/* reset the chip and reset it again after 25ms */
 			tusb320_soft_reset();
 			mdelay(TUSB320_RESET_DURATION_MS);
@@ -613,6 +616,10 @@ static void tusb320_intb_work(struct work_struct *work)
 		/* notify the attached state */
 		complete(&di->reverse_completion);
 	} else if (TYPEC_NOT_ATTACHED == attached_state) {
+
+		/* set current advertisement to high */
+		tusb320_current_advertise_set(TYPEC_CURRENT_MODE_HIGH);
+
 		/* turn off VBUS when unattached */
 		if (di->sink_attached) {
 			pr_info("%s: Sink removed\n", __func__);
@@ -794,7 +801,7 @@ static int dual_role_set_mode_prop(struct dual_role_phy_instance *dual_role,
 
 		enable_irq(di->irq_intb);
 	}
-	/* AS UFP now, try reversing, form Source to Sink */
+	/* AS UFP now, try reversing, form Sink to Source */
 	else if (attached_state == TYPEC_ATTACHED_AS_UFP) {
 
 		pr_err("%s: try reversing, form Sink to Source\n", __func__);
@@ -803,6 +810,9 @@ static int dual_role_set_mode_prop(struct dual_role_phy_instance *dual_role,
 		disable_irq(di->irq_intb);
 
 		di->reverse_state = REVERSE_ATTEMPT;
+
+		/* set current advertisement to default */
+		tusb320_current_advertise_set(TYPEC_CURRENT_MODE_DEFAULT);
 
 		/* transition to Disable State */
 		tusb320_disabled_state_start();
@@ -1000,6 +1010,9 @@ static int tusb320_probe(struct i2c_client *client,
 	if (ret < 0) {
 		pr_err("%s: add_typec_device fail\n", __func__);
 	}
+
+	/* set current advertisement to high */
+	tusb320_current_advertise_set(TYPEC_CURRENT_MODE_HIGH);
 
 	pr_info("%s: schedule_work \n", __func__);
 	schedule_work(&di->g_intb_work);
