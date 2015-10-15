@@ -45,21 +45,219 @@
 
 #define MAX_LOCAL_BUF_SIZE  64
 
+/**
+ * stml0xx_ioctl_work_func() - process ioctl requests asynchronously
+ * @ws MUST be an stml0xx_ioctl_work_struct
+ *
+ * List of processed IOCTLs:
+ * - STML0XX_IOCTL_SET_SENSORS
+ * - STML0XX_IOCTL_SET_ACC_DELAY
+ * - STML0XX_IOCTL_SET_ACC2_DELAY
+ * - STML0XX_IOCTL_SET_MAG_DELAY
+ * - STML0XX_IOCTL_SET_GYRO_DELAY
+ * - STML0XX_IOCTL_SET_PRES_DELAY
+ * - STML0XX_IOCTL_SET_ALS_DELAY
+ * - STML0XX_IOCTL_SET_WAKESENSORS
+ * - STML0XX_IOCTL_SET_ALGOS
+ * - STML0XX_IOCTL_SET_MAG_CAL
+ * - STML0XX_IOCTL_SET_MOTION_DUR
+ * - STML0XX_IOCTL_SET_ZRMOTION_DUR
+ * - STML0XX_IOCTL_SET_POSIX_TIME
+ * - STML0XX_IOCTL_SET_ALGO_REQ
+ */
+void stml0xx_ioctl_work_func(struct work_struct *ws)
+{
+	struct stml0xx_ioctl_work_struct *ioctl_ws =
+		(struct stml0xx_ioctl_work_struct *)ws;
+	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
+	int err;
+	unsigned char buf[4];
+	size_t ndx;
+
+	if (!ioctl_ws)
+		return;
+
+	stml0xx_wake(ps_stml0xx);
+
+	switch (ioctl_ws->cmd) {
+	case STML0XX_IOCTL_SET_SENSORS:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_SENSORS");
+		/* Prepare data */
+		buf[0] = ioctl_ws->data.bytes[0];
+		buf[1] = ioctl_ws->data.bytes[1];
+		buf[2] = ioctl_ws->data.bytes[2];
+		stml0xx_g_nonwake_sensor_state =
+			(buf[2] << 16) |
+			(buf[1] << 8) |
+			buf[0];
+		/* Send sensor state */
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG,
+							buf, 3);
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Sensor enable = 0x%lx\n",
+			stml0xx_g_nonwake_sensor_state);
+		break;
+	case STML0XX_IOCTL_SET_ACC_DELAY:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ACC_DELAY"
+		);
+		buf[0] = ioctl_ws->data.delay;
+		stml0xx_g_acc_delay =  ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay;
+			err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE,
+							buf, 1);
+		}
+		break;
+	case STML0XX_IOCTL_SET_ACC2_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ACC2_DELAY");
+		buf[0] = ioctl_ws->data.delay;
+		stml0xx_g_acc2_delay =  ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay;
+			err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE,
+							buf, 1);
+		}
+		break;
+	case STML0XX_IOCTL_SET_MAG_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_MAG_DELAY");
+		stml0xx_g_mag_delay = ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay;
+			err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE,
+							buf, 1);
+		}
+		break;
+	case STML0XX_IOCTL_SET_GYRO_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_GYRO_DELAY");
+		stml0xx_g_gyro_delay = ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay;
+			err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE,
+							buf, 1);
+		}
+		break;
+	case STML0XX_IOCTL_SET_PRES_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_PRES_DELAY");
+		stml0xx_g_baro_delay = ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay;
+			err = stml0xx_spi_send_write_reg(PRESSURE_UPDATE_RATE,
+							buf, 1);
+		}
+		break;
+	case STML0XX_IOCTL_SET_ALS_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ALS_DELAY");
+		stml0xx_g_als_delay = ioctl_ws->data.delay;
+		if (stml0xx_g_booted) {
+			buf[0] = ioctl_ws->data.delay >> 8;
+			buf[1] = ioctl_ws->data.delay & 0xFF;
+			err = stml0xx_spi_send_write_reg(ALS_UPDATE_RATE,
+							buf, 2);
+		}
+		break;
+	case STML0XX_IOCTL_SET_WAKESENSORS:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_WAKESENSORS");
+		buf[0] = ioctl_ws->data.bytes[0];
+		buf[1] = ioctl_ws->data.bytes[1];
+		buf[2] = ioctl_ws->data.bytes[2];
+		stml0xx_g_wake_sensor_state = (buf[2] << 16)
+			|(buf[1] << 8) | buf[0];
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG,
+							 buf, 3);
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Sensor enable = 0x%02X\n",
+			(unsigned int)stml0xx_g_wake_sensor_state);
+		break;
+	case STML0XX_IOCTL_SET_ALGOS:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ALGOS");
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Set algos config: 0x%x",
+			(ioctl_ws->data.bytes[1] << 8) | ioctl_ws->data.bytes[0]
+		);
+		buf[0] = ioctl_ws->data.bytes[0];
+		buf[1] = ioctl_ws->data.bytes[1];
+		stml0xx_g_algo_state = (buf[1] << 8) | buf[0];
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(ALGO_CONFIG,
+							buf, 2);
+
+		break;
+	case STML0XX_IOCTL_SET_MAG_CAL:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_MAG_CAL");
+		memcpy(stml0xx_g_mag_cal,
+			&(ioctl_ws->data.bytes[0]),
+			STML0XX_MAG_CAL_SIZE);
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(MAG_CAL, buf,
+					       STML0XX_MAG_CAL_SIZE);
+		break;
+	case STML0XX_IOCTL_SET_MOTION_DUR:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_MOTION_DUR");
+		stml0xx_g_motion_dur = ioctl_ws->data.bytes[0];
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(MOTION_DUR,
+						ioctl_ws->data.bytes, 1);
+		break;
+	case STML0XX_IOCTL_SET_ZRMOTION_DUR:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ZRMOTION_DUR");
+		stml0xx_g_zmotion_dur =  ioctl_ws->data.bytes[0];
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(ZRMOTION_DUR,
+						ioctl_ws->data.bytes, 1);
+		break;
+	case STML0XX_IOCTL_SET_POSIX_TIME:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_POSIX_TIME");
+		err = stml0xx_spi_send_write_reg(AP_POSIX_TIME,
+				ioctl_ws->data.bytes, 4);
+		break;
+	case STML0XX_IOCTL_SET_ALGO_REQ:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_ALGO_REQ");
+		ndx = ioctl_ws->algo_req_ndx;
+		stml0xx_g_algo_requst[ndx].size = ioctl_ws->data_len;
+		memcpy(stml0xx_g_algo_requst[ndx].data,
+			ioctl_ws->data.bytes, ioctl_ws->data_len);
+		if (stml0xx_g_booted)
+			err = stml0xx_spi_send_write_reg(stml0xx_algo_info
+					[ioctl_ws->algo_req_ndx].req_register,
+					ioctl_ws->data.bytes,
+					ioctl_ws->data_len);
+		break;
+	}
+
+	stml0xx_sleep(ps_stml0xx);
+	kfree(ioctl_ws);
+}
+
 long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	static int lowpower_mode = 1;
 	int err = 0;
 	struct stml0xx_data *ps_stml0xx = stml0xx_misc_data;
-	unsigned int addr, duration, algo_idx;
-	unsigned short delay;
+	unsigned int addr, algo_idx;
 	unsigned int data_size = 0;
 	unsigned char buf[MAX_LOCAL_BUF_SIZE];
-	unsigned char len;
+	unsigned char bytes[3];
 	unsigned long current_posix_time;
 	unsigned int handle;
 	struct timespec current_time;
 	bool cmd_handled;
+	struct stml0xx_ioctl_work_struct *ioctl_ws;
 
 	if (!stml0xx_misc_data)
 		stml0xx_misc_data = file->private_data;
@@ -101,6 +299,383 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	if (cmd_handled)
 		goto EXIT;
+
+	/* This macro saves some copy/paste evil */
+#define INIT_IOCTL_WS \
+	do { \
+		ioctl_ws = kmalloc( \
+			sizeof(struct stml0xx_ioctl_work_struct), \
+			GFP_KERNEL \
+		); \
+		if (!ioctl_ws) { \
+			dev_err( \
+				&stml0xx_misc_data->spi->dev, \
+				"stml0xx_ioctl: unable to alloc work struct" \
+			); \
+			return -ENOMEM; \
+		} \
+		INIT_WORK( \
+			(struct work_struct *)ioctl_ws, \
+			stml0xx_ioctl_work_func \
+		); \
+	} while (0);
+
+	/* Defer some ioctls so as not to block the caller */
+	switch (cmd) {
+	case STML0XX_IOCTL_SET_SENSORS:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_SENSORS"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				ioctl_ws->data.bytes,
+				argp,
+				3 * sizeof(unsigned char))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy set sensors returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_ACC_DELAY:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_ACC_DELAY"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.delay),
+				argp,
+				sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy acc delay returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_ACC2_DELAY:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_ACC2_DELAY"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.delay),
+				argp,
+				sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy acc delay returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_MAG_DELAY:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_MAG_DELAY"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.delay),
+				argp,
+				sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy mag delay returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_GYRO_DELAY:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_GYRO_DELAY"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.delay),
+				argp,
+				sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy gyro delay returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_PRES_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_PRES_DELAY");
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (copy_from_user(
+				&(ioctl_ws->data.delay),
+				argp,
+				sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy pres delay returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_ALS_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_ALS_DELAY");
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (copy_from_user(&(ioctl_ws->data.delay),
+			 argp, sizeof(ioctl_ws->data.delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy als delay returned error");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_WAKESENSORS:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_WAKESENSORS"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.bytes),
+				argp,
+				2 * sizeof(unsigned char))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy set sensors returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_ALGOS:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_ALGOS"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.bytes),
+				argp,
+				2 * sizeof(unsigned char))) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Copy set algos returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_MAG_CAL:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_MAG_CAL"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (
+			copy_from_user(
+				&(ioctl_ws->data.bytes[1]),
+				argp,
+				STML0XX_MAG_CAL_SIZE)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Copy set mag cal returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_MOTION_DUR:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_MOTION_DUR"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (copy_from_user(&addr, argp, sizeof(addr))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy set motion dur returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		ioctl_ws->data.bytes[1] = addr & 0xFF;
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_ZRMOTION_DUR:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_ZRMOTION_DUR"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (copy_from_user(&addr, argp, sizeof(addr))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy zmotion dur returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		ioctl_ws->data.bytes[1] = addr & 0xFF;
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_POSIX_TIME:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_POSIX_TIME"
+		);
+		if (ps_stml0xx->mode == BOOTMODE)
+			return 0;
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		if (copy_from_user(&current_posix_time, argp,
+			 sizeof(current_posix_time))) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Copy from user returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		getnstimeofday(&current_time);
+		stml0xx_time_delta = current_posix_time - current_time.tv_sec;
+		ioctl_ws->data.bytes[0] = AP_POSIX_TIME;
+		ioctl_ws->data.bytes[1] =
+			(unsigned char)(current_posix_time >> 24);
+		ioctl_ws->data.bytes[2] =
+			(unsigned char)((current_posix_time >> 16) & 0xff);
+		ioctl_ws->data.bytes[3] =
+			(unsigned char)((current_posix_time >> 8) & 0xff);
+		ioctl_ws->data.bytes[4] =
+			(unsigned char)((current_posix_time) & 0xff);
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	case STML0XX_IOCTL_SET_ALGO_REQ:
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"deferring STML0XX_IOCTL_SET_ALGO_REQ"
+		);
+		INIT_IOCTL_WS
+		ioctl_ws->cmd = cmd;
+		/* copy algo into bytes[2] */
+		if (
+			copy_from_user(
+				&bytes,
+				argp,
+				2 * sizeof(unsigned char)
+			)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Set algo req copy bytes returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		addr = (bytes[1] << 8) | bytes[0];
+		ioctl_ws->algo_req_ndx = addr;
+		/* copy len */
+		if (
+			copy_from_user(
+				&(ioctl_ws->data_len),
+				argp + 2 * sizeof(unsigned char),
+				sizeof(ioctl_ws->data_len)
+			)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Set algo req copy byte returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		/* algo req register */
+		dev_dbg(
+			&stml0xx_misc_data->spi->dev,
+			"Set algo req, algo idx: %d, len: %u\n",
+			addr,
+			ioctl_ws->data_len
+		);
+		if (addr < STML0XX_NUM_ALGOS) {
+			ioctl_ws->data.bytes[0] =
+				stml0xx_algo_info[addr].req_register;
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Register: 0x%x", ioctl_ws->data.bytes[0]);
+		} else {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Set algo req invalid arg\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		if (ioctl_ws->data_len > ALGO_RQST_DATA_SIZE) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Set algo req invalid size arg\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		if (copy_from_user(&(ioctl_ws->data.bytes[1]),
+			argp + 2 * sizeof(unsigned char)
+			+ sizeof(ioctl_ws->data_len), ioctl_ws->data_len)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Set algo req copy req info returned error\n");
+			kfree(ioctl_ws);
+			return -EFAULT;
+		}
+		queue_work(
+			ps_stml0xx->irq_work_queue,
+			(struct work_struct *)ioctl_ws
+		);
+		return 0;
+	}
+#undef INIT_IOCTL_WS
 
 	/* Wait for mutex lock */
 	wake_lock(&ps_stml0xx->wakelock);
@@ -159,106 +734,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		else
 			err = -EBUSY;
 		break;
-	case STML0XX_IOCTL_SET_ACC_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_ACC_DELAY");
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy acc delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_acc_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(ACCEL_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
-	case STML0XX_IOCTL_SET_ACC2_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_ACC2_DELAY");
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy acc2 delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_acc2_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(ACCEL2_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
-	case STML0XX_IOCTL_SET_MAG_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_MAG_DELAY");
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy mag delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_mag_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(MAG_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
-	case STML0XX_IOCTL_SET_GYRO_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_GYRO_DELAY");
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy gyro delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_gyro_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(GYRO_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
-	case STML0XX_IOCTL_SET_PRES_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_PRES_DELAY");
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy pres delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_baro_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay;
-			err = stml0xx_spi_send_write_reg(PRESSURE_UPDATE_RATE,
-							buf, 1);
-		}
-		break;
-	case STML0XX_IOCTL_SET_SENSORS:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_SENSORS");
-		if (copy_from_user(buf, argp, 3 * sizeof(unsigned char))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy set sensors returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_nonwake_sensor_state = (buf[2] << 16)
-		    | (buf[1] << 8) | buf[0];
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(NONWAKESENSOR_CONFIG,
-							 buf, 3);
-		dev_dbg(&stml0xx_misc_data->spi->dev, "Sensor enable = 0x%lx",
-			stml0xx_g_nonwake_sensor_state);
-		break;
+
 	case STML0XX_IOCTL_GET_SENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_SENSORS");
@@ -278,23 +754,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (copy_to_user(argp, buf, 3 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
-	case STML0XX_IOCTL_SET_WAKESENSORS:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_WAKESENSORS");
-		if (copy_from_user(buf, argp, 3 * sizeof(unsigned char))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy set sensors returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_wake_sensor_state = (buf[2] << 16)
-			|(buf[1] << 8) | buf[0];
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(WAKESENSOR_CONFIG,
-							 buf, 3);
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sensor enable = 0x%06lX", stml0xx_g_wake_sensor_state);
-		break;
+
 	case STML0XX_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_WAKESENSORS");
@@ -314,22 +774,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (copy_to_user(argp, buf, 3 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
-	case STML0XX_IOCTL_SET_ALGOS:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_ALGOS");
-		if (copy_from_user(buf, argp, 2 * sizeof(unsigned char))) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Copy set algos returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_algo_state = (buf[1] << 8) | buf[0];
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Set algos config: 0x%x", stml0xx_g_algo_state);
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(ALGO_CONFIG,
-							buf, 2);
-		break;
+
 	case STML0XX_IOCTL_GET_ALGOS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_ALGOS");
@@ -368,67 +813,6 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (copy_to_user(argp, buf, STML0XX_MAG_CAL_SIZE))
 			err = -EFAULT;
 		break;
-	case STML0XX_IOCTL_SET_ALS_DELAY:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_ALS_DELAY");
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy als delay returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_als_delay = delay;
-		if (stml0xx_g_booted) {
-			buf[0] = delay >> 8;
-			buf[1] = delay & 0xFF;
-			err = stml0xx_spi_send_write_reg(ALS_UPDATE_RATE,
-							buf, 2);
-		}
-		break;
-	case STML0XX_IOCTL_SET_MAG_CAL:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_MAG_CAL");
-		if (copy_from_user(buf, argp, STML0XX_MAG_CAL_SIZE)) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Copy set mag cal returned error");
-			err = -EFAULT;
-			break;
-		}
-		memcpy(stml0xx_g_mag_cal, buf, STML0XX_MAG_CAL_SIZE);
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(MAG_CAL, buf,
-					       STML0XX_MAG_CAL_SIZE);
-		break;
-	case STML0XX_IOCTL_SET_MOTION_DUR:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_MOTION_DUR");
-		if (copy_from_user(&duration, argp, sizeof(duration))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy set motion dur returned error");
-			err = -EFAULT;
-			break;
-		}
-		buf[0] = duration & 0xFF;
-		stml0xx_g_motion_dur = buf[0];
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(MOTION_DUR,
-							buf, 1);
-		break;
-	case STML0XX_IOCTL_SET_ZRMOTION_DUR:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_ZRMOTION_DUR");
-		if (copy_from_user(&duration, argp, sizeof(duration))) {
-			dev_dbg(&stml0xx_misc_data->spi->dev,
-				"Copy zmotion dur returned error");
-			err = -EFAULT;
-			break;
-		}
-		buf[0] = duration & 0xFF;
-		stml0xx_g_zmotion_dur = buf[0];
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(ZRMOTION_DUR,
-							 buf, 1);
-		break;
 	case STML0XX_IOCTL_GET_DOCK_STATUS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_DOCK_STATUS");
@@ -466,81 +850,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		err = stml0xx_spi_write(buf, 1);
 		break;
-	case STML0XX_IOCTL_SET_POSIX_TIME:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_POSIX_TIME");
-		if (!stml0xx_g_booted) {
-			err = -EBUSY;
-			break;
-		}
-		if (copy_from_user(&current_posix_time, argp,
-				   sizeof(current_posix_time))) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Copy from user returned error");
-			err = -EFAULT;
-			break;
-		}
-		getnstimeofday(&current_time);
-		stml0xx_time_delta = current_posix_time - current_time.tv_sec;
-		buf[0] = (unsigned char)(current_posix_time >> 24);
-		buf[1] = (unsigned char)((current_posix_time >> 16) & 0xff);
-		buf[2] = (unsigned char)((current_posix_time >> 8) & 0xff);
-		buf[3] = (unsigned char)((current_posix_time) & 0xff);
-		err = stml0xx_spi_send_write_reg(AP_POSIX_TIME,
-				buf, 4);
-		break;
-	case STML0XX_IOCTL_SET_ALGO_REQ:
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"STML0XX_IOCTL_SET_ALGO_REQ");
-		/* copy algo index */
-		if (copy_from_user(buf, argp, 2 * sizeof(unsigned char))) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Set algo req copy bytes returned error");
-			err = -EFAULT;
-			break;
-		}
-		algo_idx = (buf[1] << 8) | buf[0];
-		/* copy length */
-		if (copy_from_user(&len, argp + 2 * sizeof(unsigned char),
-				   sizeof(unsigned char))) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Set algo req copy byte returned error");
-			err = -EFAULT;
-			break;
-		}
-		/* algo req register */
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Set algo req, algo idx: %d, len: %u", algo_idx, len);
-		if (algo_idx < STML0XX_NUM_ALGOS) {
-			buf[0] = stml0xx_algo_info[algo_idx].req_register;
-			dev_dbg(&stml0xx_misc_data->spi->dev, "Register: 0x%x",
-				stml0xx_algo_info[algo_idx].req_register);
-		} else {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Set algo req invalid arg");
-			err = -EFAULT;
-			break;
-		}
-		if (len > ALGO_RQST_DATA_SIZE) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Set algo req invalid size arg");
-			err = -EFAULT;
-			break;
-		}
-		if (copy_from_user(buf, argp + 2 * sizeof(unsigned char)
-				   + sizeof(len), len)) {
-			dev_err(&stml0xx_misc_data->spi->dev,
-				"Set algo req copy req info returned error");
-			err = -EFAULT;
-			break;
-		}
-		stml0xx_g_algo_requst[algo_idx].size = len;
-		memcpy(stml0xx_g_algo_requst[algo_idx].data, buf, len);
-		if (stml0xx_g_booted)
-			err = stml0xx_spi_send_write_reg(stml0xx_algo_info
-					       [algo_idx].req_register, buf,
-					       len);
-		break;
+
+
 	case STML0XX_IOCTL_GET_ALGO_EVT:
 		dev_dbg(&stml0xx_misc_data->spi->dev, "STML0XX_IOCTL_GET_ALGO_EVT");
 		if (!stml0xx_g_booted) {
