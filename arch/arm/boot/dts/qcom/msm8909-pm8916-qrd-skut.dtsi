@@ -123,8 +123,6 @@
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "internal";
-		qcom,msm-micbias1-ext-cap;
-		qcom,msm-micbias2-ext-cap;
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
 			"SPK_RX_BIAS", "MCLK",
@@ -199,6 +197,8 @@
 			liteon,ps-pulses = <4>;
 			liteon,wakeup-threshold = <4>;
 			liteon,als-integration-time = <0>;
+			liteon,ps-distance-table =
+				<1000 980 960 950 940 920 900>;
 		};
 
 		bosch@18 { /* Accelerometer sensor */
@@ -212,9 +212,10 @@
 			vdd-supply = <&pm8916_l17>;
 			vio-supply = <&pm8916_l6>;
 			bosch,init-interval = <200>;
-			bosch,place = <4>;
+			bosch,place = <5>;
 			bosch,gpio-int1 = <&msm_gpio 96 0x2002>;
 			bosch,gpio-int2 = <&msm_gpio 65 0x2002>;
+			bosch,use-hrtimer;
 		};
 
 		akm@0c {
@@ -228,6 +229,7 @@
 			akm,layout = <0x3>;
 			akm,gpio_rstn = <&msm_gpio 36 0x0>;
 			akm,auto-report;
+			akm,use-hrtimer;
 		};
 	};
 };
