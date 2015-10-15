@@ -1790,6 +1790,20 @@ static struct snd_soc_ops msm_pri_auxpcm_be_ops = {
 	.shutdown = msm_prim_auxpcm_shutdown,
 };
 
+#ifdef CONFIG_SND_SOC_CS35L34
+static int cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_dai *cs35l34_dai = rtd->codec_dai;
+
+	ret = snd_soc_dai_set_sysclk(cs35l34_dai, 0, 12288000, 0);
+	if (ret != 0)
+		dev_err(cs35l34_dai->dev, "Cannot set cs35l34 MCLK %d\n", ret);
+
+	return ret;
+}
+#endif
+
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8952_dai[] = {
 	/* FrontEnd DAI Links */
@@ -2563,14 +2577,17 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.ignore_suspend = 1,
 	},
 
-#ifdef CONFIG_SND_SOC_TFA9890
+#ifdef CONFIG_SND_SOC_CS35L34
 	{
 		.name = LPASS_BE_QUIN_MI2S_RX,
 		.stream_name = "Quinary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.5",
 		.platform_name = "msm-pcm-routing",
-		.codec_name =  "tfa9890.2-0034",
-		.codec_dai_name = "tfa9890_codec_left",
+		.codec_name =  "cs35l34.2-0040",
+		.codec_dai_name = "cs35l34",
+		.init = cs35l34_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -2583,8 +2600,10 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.stream_name = "Quinary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.5",
 		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "tfa9890_codec_left",
-		.codec_name = "tfa9890.2-0034",
+		.codec_dai_name = "cs35l34",
+		.codec_name = "cs35l34.2-0040",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
