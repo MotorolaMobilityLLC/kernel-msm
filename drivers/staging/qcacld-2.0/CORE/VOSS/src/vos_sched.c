@@ -1840,7 +1840,7 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     set_bit(RX_SHUTDOWN_EVENT_MASK, &gpVosSchedContext->tlshimRxEvtFlg);
     set_bit(RX_POST_EVENT_MASK, &gpVosSchedContext->tlshimRxEvtFlg);
     wake_up_interruptible(&gpVosSchedContext->tlshimRxWaitQueue);
-    wait_for_completion_interruptible(&gpVosSchedContext->TlshimRxShutdown);
+    wait_for_completion(&gpVosSchedContext->TlshimRxShutdown);
     gpVosSchedContext->TlshimRxThread = NULL;
     vos_drop_rxpkt_by_staid(gpVosSchedContext, WLAN_MAX_STA_COUNT);
     vos_free_tlshim_pkt_freeq(gpVosSchedContext);
