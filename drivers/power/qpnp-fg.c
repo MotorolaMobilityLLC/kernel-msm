@@ -80,6 +80,9 @@
 	_adc_val = (u8)((_current) * 100 / 976);	\
 }
 
+#define ESR_MAX				300000
+#define ESR_MIN				5000
+
 /* Debug Flag Definitions */
 enum {
 	FG_SPMI_DEBUG_WRITES		= BIT(0), /* Show SPMI writes */
@@ -4706,6 +4709,8 @@ static int fg_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_RESISTANCE:
 		val->intval = get_sram_prop_now(chip, FG_DATA_BATT_ESR);
+		if (!((val->intval < ESR_MAX) && (val->intval > ESR_MIN)))
+			pr_err("ESR Bad: %d mOhm\n", val->intval);
 		break;
 	case POWER_SUPPLY_PROP_ESR_COUNT:
 		val->intval = get_sram_prop_now(chip, FG_DATA_BATT_ESR_COUNT);
@@ -6257,8 +6262,7 @@ static int fg_do_restart(struct fg_chip *chip, bool write_profile)
 	u8 buf[2];
 	bool tried_once = false;
 
-	if (fg_debug_mask & FG_STATUS)
-		pr_info("restarting fuel gauge...\n");
+	pr_info("restarting fuel gauge...\n");
 
 try_again:
 	if (write_profile && !chip->ima_error_handling) {
@@ -6480,8 +6484,7 @@ try_again:
 
 	chip->fg_restarting = false;
 
-	if (fg_debug_mask & FG_STATUS)
-		pr_info("done!\n");
+	pr_info("done!\n");
 	return 0;
 
 unlock_and_fail:
@@ -6495,8 +6498,6 @@ fail:
 	return -EINVAL;
 }
 
-#define ESR_MAX				300000
-#define ESR_MIN				5000
 #define FG_PROFILE_LEN			128
 #define PROFILE_COMPARE_LEN		32
 #define THERMAL_COEFF_ADDR		0x444
@@ -8911,6 +8912,10 @@ static int fg_reboot_handler(struct notifier_block *nb,
 		return NOTIFY_DONE;
 	}
 
+	if (get_prop_capacity_raw(chip) <= 5) {
+		dev_warn(chip->dev, "FG Reboot: SOC Low Skip SRAM Hold!\n");
+		return NOTIFY_DONE;
+	}
 
 	switch (event) {
 	case SYS_POWER_OFF:
