@@ -498,7 +498,7 @@ static ssize_t m4sensorhub_get_loglevel(struct device *dev,
 	m4sensorhub_reg_read(&m4sensorhub_misc_data,
 		M4SH_REG_LOG_LOGENABLE, (char *)&loglevel);
 	KDEBUG(M4SH_INFO, "M4 loglevel = %llx", loglevel);
-	return sprintf(buf, "%llu\n", loglevel);
+	return snprintf(buf, 20, "0x%llx\n", loglevel);
 }
 int m4sensorhub_update_loglevels(char *tag, char *level,
 			uint32_t *log_levels)
