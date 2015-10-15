@@ -100,27 +100,16 @@
 		};
 	};
 
-	tfa9890_reset {
+	cs35l34_reset {
 		qcom,pins = <&gp 94>;
 		qcom,num-grp-pins = <1>;
 		qcom,pin-func = <0>;
-		label = "tfa9890-reset";
+		label = "cs35l34-reset";
 
-		tfa9890_reset_default: default {
+		cs35l34_reset_default: default {
 			drive-strength = <2>;
 			bias-disable; /* no pull */
 			output-low;
-		};
-	};
-
-	tfa9890_earpiece_en {
-		qcom,pins = <&gp 68 0>;
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <0>;
-		label = "tfa9890_earpiece";
-		tfa9890_earpiece_default: default {
-			bias-disable;
-			drive-strength = <2>;
 		};
 	};
 
@@ -484,7 +473,7 @@
 
 	sound {
 		compatible = "qcom,msm8952-audio-codec";
-		qcom,model = "msm8952-tfa9890-snd-card";
+		qcom,model = "msm8952-cs35l34-snd-card";
 		reg =   <0xc051000 0x4>,
 			<0xc051004 0x4>,
 			<0xc055000 0x4>,
@@ -748,17 +737,12 @@
 };
 
 &i2c_2 { /* BLSP1 QUP2 */
-	tfa9890@34 {
-		compatible = "nxp,tfa9890";
-		reg = <0x34>;
-		gpios = <&msm_gpio 94 0>,     /* RESET */
-			<&msm_gpio 68 0>;     /* Earpiece Enable */
-		tfa_vdd-supply = <&pm8950_l6>;
-		nxp,tfa_max-vol-steps = <15>;
-		nxp,tfa-dev = "left";
-		nxp,tfa_pcm-start-delay = <100>;
+	cs35l34@40 {
+		compatible = "cirrus,cs35l34";
+		reg = <0x40>;
+		cirrus,reset = <&msm_gpio 94 0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&tfa9890_reset_default &tfa9890_earpiece_default>;
+		pinctrl-0 = <&cs35l34_reset_default>;
 	};
 	stmvl53l0@29 {
 		compatible = "st,stmvl53l0_i2c";
