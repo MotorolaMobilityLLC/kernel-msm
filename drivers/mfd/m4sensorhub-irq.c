@@ -99,6 +99,7 @@ struct m4sensorhub_irqdata {
 	struct m4sensorhub_event_handler event_handler[M4SH_IRQ__NUM];
 	struct m4sensorhub_irq_info irq_info[M4SH_IRQ__NUM];
 	struct wake_lock wake_lock;
+	struct wake_lock no_wake_wake_lock;
 	struct wake_lock tm_wake_lock; /* timeout wakelock */
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs;
@@ -135,6 +136,15 @@ static irqreturn_t wake_event_isr(int irq, void *data)
 
 static irqreturn_t nowake_event_isr(int irq, void *data)
 {
+	struct m4sensorhub_irqdata *irq_data = data;
+
+	/*
+	 * This wakelock is held to prevent the kernel from going
+	 * to sleep before the event_thread for this irq gets to run
+	 * and so this is released when the event_thread finishes execution
+	 */
+	wake_lock(&irq_data->no_wake_wake_lock);
+
 	return IRQ_WAKE_THREAD;
 }
 
@@ -194,6 +204,8 @@ int m4sensorhub_irq_init(struct m4sensorhub_data *m4sensorhub)
 	}
 
 	wake_lock_init(&data->wake_lock, WAKE_LOCK_SUSPEND, "m4sensorhub-irq");
+	wake_lock_init(&data->no_wake_wake_lock, WAKE_LOCK_SUSPEND,
+		       "m4sensorhub-irq no wake");
 	wake_lock_init(&data->tm_wake_lock, WAKE_LOCK_SUSPEND,
 		       "m4sensorhub-timed-irq");
 
@@ -250,6 +262,7 @@ err_free_wakeirq:
 	free_irq(i2c->irq, data);
 err_destroy_wq:
 	wake_lock_destroy(&data->wake_lock);
+	wake_lock_destroy(&data->no_wake_wake_lock);
 	wake_lock_destroy(&data->tm_wake_lock);
 err_free:
 	mutex_destroy(&data->lock);
@@ -305,6 +318,10 @@ void m4sensorhub_irq_shutdown(struct m4sensorhub_data *m4sensorhub)
 	if (wake_lock_active(&data->wake_lock))
 		wake_unlock(&data->wake_lock);
 	wake_lock_destroy(&data->wake_lock);
+
+	if (wake_lock_active(&data->no_wake_wake_lock))
+		wake_unlock(&data->no_wake_wake_lock);
+	wake_lock_destroy(&data->no_wake_wake_lock);
 
 	if (wake_lock_active(&data->tm_wake_lock))
 		wake_unlock(&data->tm_wake_lock);
@@ -857,6 +874,8 @@ static irqreturn_t m4sensorhub_nowake_event_threaded(int irq, void *devid)
 		}
 	}
 error:
+	wake_unlock(&data->no_wake_wake_lock);
+
 	return IRQ_HANDLED;
 }
 
