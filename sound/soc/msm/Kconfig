@@ -189,6 +189,7 @@ config SND_SOC_MSM8X16
 	select SND_SOC_MSM_HDMI_DBA_CODEC_RX
 	select SND_HWDEP
         select DTS_EAGLE
+	select SND_SOC_CS35L34
 	help
 	 To add support for SoC audio on MSM8996.
 	 This will enable sound soc drivers which
