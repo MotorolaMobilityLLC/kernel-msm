@@ -2446,6 +2446,7 @@ __hif_pci_resume(struct pci_dev *pdev, bool runtime_pm)
         return err;
 
     adf_os_atomic_set(&sc->pci_link_suspended, 0);
+    adf_os_atomic_set(&sc->wow_done, 0);
 
     /* Enable Legacy PCI line interrupts */
     if (HIFTargetSleepStateAdjust(targid, FALSE, TRUE) < 0)
@@ -2532,8 +2533,6 @@ skip:
         printk("%s: WDA module is NULL\n", __func__);
         goto out;
     }
-
-    adf_os_atomic_set(&sc->wow_done, 0);
 
     if (!wma_is_wow_mode_selected(temp_module) &&
         (val == PM_EVENT_HIBERNATE || val == PM_EVENT_SUSPEND))
