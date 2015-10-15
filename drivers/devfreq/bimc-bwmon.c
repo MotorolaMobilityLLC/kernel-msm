@@ -73,6 +73,11 @@ static void mon_enable(struct bwmon *m)
 static void mon_disable(struct bwmon *m)
 {
 	writel_relaxed(0x0, MON_EN(m));
+	/*
+	 * mon_disable() and mon_irq_clear(),
+	 * If latter goes first and count happen to trigger irq, we would
+	 * have the irq line high but no one handling it.
+	 */
 	mb();
 }
 
@@ -94,6 +99,10 @@ static void mon_irq_enable(struct bwmon *m)
 	val = readl_relaxed(MON_INT_EN(m));
 	val |= 0x1;
 	writel_relaxed(val, MON_INT_EN(m));
+	/*
+	 * make Sure irq enable complete for local and global
+	 * to avoid race with other monitor calls
+	 */
 	mb();
 }
 
@@ -110,6 +119,10 @@ static void mon_irq_disable(struct bwmon *m)
 	val = readl_relaxed(MON_INT_EN(m));
 	val &= ~0x1;
 	writel_relaxed(val, MON_INT_EN(m));
+	/*
+	 * make Sure irq disable complete for local and global
+	 * to avoid race with other monitor calls
+	 */
 	mb();
 }
 
