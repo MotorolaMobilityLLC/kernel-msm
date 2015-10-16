@@ -5254,7 +5254,7 @@ static int synaptics_dsx_sysfs_touchscreen(
 {
 	struct synaptics_rmi4_device_info *rmi = &(rmi4_data->rmi4_mod_info);
 	struct device_attribute *attrs = touchscreen_attributes;
-	int i, error;
+	int i, error = 0;
 	static struct class *touchscreen_class;
 	static struct device *ts_class_dev;
 
