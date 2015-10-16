@@ -1066,6 +1066,8 @@
 	pinctrl-0 = <&spi_0_active>;
 	pinctrl-1 = <&spi_0_sleep>;
 
+	qcom,rt-priority;
+
 	muc_spi@0 {
 		compatible = "moto,muc_spi";
 		reg = <0>;
