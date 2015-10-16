@@ -363,7 +363,7 @@ static const struct file_operations bootinfo_proc_fops = {
 	.open           = bootinfo_proc_open,
 	.read           = seq_read,
 	.llseek         = seq_lseek,
-	.release        = seq_release,
+	.release        = single_release,
 };
 
 int __init bootinfo_init_module(void)
