@@ -105,6 +105,7 @@ enum vmm_ids {
 #define IRQ_IDX_STATUS_HI         2
 #define IRQ_IDX_ACCEL1            3
 #define IRQ_IDX_ACCEL2           36
+#define IRQ_IDX_GYRO             36
 #define IRQ_IDX_ALS              42
 #define IRQ_IDX_DISP_ROTATE      44
 #define IRQ_IDX_DISP_BRIGHTNESS  45
