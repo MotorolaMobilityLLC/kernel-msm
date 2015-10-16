@@ -155,6 +155,20 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			STM16_TO_HOST(ACCEL_RD_Y, &buf[IRQ_IDX_ACCEL2]),
 			STM16_TO_HOST(ACCEL_RD_Z, &buf[IRQ_IDX_ACCEL2]));
 	}
+	if (irq_status & M_GYRO) {
+		stml0xx_as_data_buffer_write(ps_stml0xx,
+			DT_GYRO,
+			&buf[IRQ_IDX_GYRO],
+			6,
+			0,
+			stm_ws->ts_ns);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d",
+			STM16_TO_HOST(ACCEL_RD_X, &buf[IRQ_IDX_ACCEL2]),
+			STM16_TO_HOST(ACCEL_RD_Y, &buf[IRQ_IDX_ACCEL2]),
+			STM16_TO_HOST(ACCEL_RD_Z, &buf[IRQ_IDX_ACCEL2]));
+	}
 	if (irq_status & M_ALS) {
 		stml0xx_as_data_buffer_write(
 			ps_stml0xx,
