@@ -854,7 +854,10 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 			     "later on is already activated! %d\n", state);
 			atomic_set(&pinfo->later_on_state, LATER_ON_IDLE);
 		} else {
-			int r = mdss_dsi_set_panel_idle(ctrl, enable);
+			int r;
+			/* reset later on state */
+			atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
+			r = mdss_dsi_set_panel_idle(ctrl, enable);
 			WARN(r, "mdss_dsi_set_panel_idle(%d) return %d\n",
 			     enable, r);
 		}

@@ -1333,12 +1333,16 @@ static void mdss_fb_later_on(struct work_struct *work)
 		ctl->wait_pingpong(ctl, NULL);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 1);
-	r = mdss_dsi_set_panel_idle(ctrl_pdata, true);
-	WARN(r, "mdss_dsi_set_panel_idle(true) return %d\n", r);
+	if (atomic_read(&pinfo->later_on_state) != LATER_ON_NONE) {
+		r = mdss_dsi_set_panel_idle(ctrl_pdata, true);
+		WARN(r, "mdss_dsi_set_panel_idle(true) return %d\n", r);
+		/* exit idle mode if it needed */
+		if (LATER_ON_NONE ==
+		    atomic_xchg(&pinfo->later_on_state, LATER_ON_NONE))
+			mdss_dsi_set_panel_idle(ctrl_pdata, false);
+	}
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-
-	atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
 
 	mutex_unlock(&ctrl_pdata->mutex);
 	mutex_unlock(&mdp5_data->ov_lock);
