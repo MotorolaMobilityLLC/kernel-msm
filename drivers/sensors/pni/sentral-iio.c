@@ -349,6 +349,33 @@ static int sentral_stime_current_get(struct sentral_device *sentral, u32 *ts)
 	return 0;
 }
 
+static int sentral_step_count_init_get(struct sentral_device *sentral,
+		u16 *step)
+{
+	return sentral_parameter_read(sentral, SPP_ASUS, SP_ASUS_STEP_COUNT_INIT,
+			(void *)step, sizeof(*step));
+}
+
+static int sentral_step_count_init_set(struct sentral_device *sentral,
+		u16 step)
+{
+	LOGI(&sentral->client->dev, "setting step count init to: %u steps\n",
+			step);
+
+	return sentral_parameter_write(sentral, SPP_ASUS,
+			SP_ASUS_STEP_COUNT_INIT, (void *)&step, sizeof(step));
+}
+
+static int sentral_step_count_set(struct sentral_device *sentral, u64 step)
+{
+	sentral->step_count.curr = (step & 0xFFFF);
+	sentral->step_count.prev = (step & 0xFFFF);
+	sentral->step_count.base = (step & 0xFFFFFFFFFFFF0000);
+	sentral->step_count.total = step;
+
+	return sentral_step_count_init_set(sentral, step);
+}
+
 // Sensors
 
 static int sentral_sensor_config_read(struct sentral_device *sentral, u8 id,
@@ -418,6 +445,12 @@ static int sentral_sensor_config_restore(struct sentral_device *sentral)
 				return rc;
 			}
 		}
+	}
+
+	rc = sentral_step_count_init_set(sentral, sentral->step_count.curr);
+	if (rc) {
+		LOGE(&sentral->client->dev, "error (%d) restoring step count\n", rc);
+		return rc;
 	}
 
 	return 0;
@@ -673,6 +706,9 @@ static void sentral_crash_reset(struct sentral_device *sentral)
 {
 	LOGI(&sentral->client->dev, "[CRASH] Probable crash %u detected, restarting device ...\n",
 			++sentral->crash_count);
+
+	// turn on warm restart flag
+	sentral->warm_reset = true;
 
 	// queue reset
 	queue_work(sentral->sentral_wq, &sentral->work_reset);
@@ -1018,6 +1054,33 @@ static int sentral_handle_debug_data(struct sentral_device *sentral,
 	return sizeof(*data);
 }
 
+static size_t sentral_handle_step_count(struct sentral_device *sentral,
+		void *buffer)
+{
+	u16 *value = (u16 *)buffer;
+
+	sentral->step_count.curr = *value;
+
+	if (sentral->step_count.prev > sentral->step_count.curr)
+		sentral->step_count.base += (1 << 16);
+
+	sentral->step_count.total = sentral->step_count.base
+			| sentral->step_count.curr;
+
+	LOGI(&sentral->client->dev,
+			"[SNS] Step Count { current: %u, previous: %u, base: %llu, total: %llu }\n",
+			sentral->step_count.curr, sentral->step_count.prev,
+			sentral->step_count.base, sentral->step_count.total);
+
+	sentral->step_count.prev = sentral->step_count.curr;
+
+	(void)sentral_iio_buffer_push_std(sentral, SST_STEP_COUNTER,
+			(void *)&sentral->step_count.total, sentral->ts_sensor_stime,
+			sizeof(sentral->step_count.total));
+
+	return sizeof(*value);
+}
+
 static int sentral_fifo_flush(struct sentral_device *sentral, u8 sensor_id)
 {
 	bool prev_flush_pending;
@@ -1121,12 +1184,17 @@ static int sentral_fifo_parse(struct sentral_device *sentral, u8 *buffer,
 		case SST_LIGHT:
 		case SST_PROXIMITY:
 		case SST_RELATIVE_HUMIDITY:
-		case SST_STEP_COUNTER:
 		case SST_TEMPERATURE:
 		case SST_AMBIENT_TEMPERATURE:
 		case SST_ACTIVITY:
 			data_size = 2;
 			break;
+
+		case SST_STEP_COUNTER:
+			data_size = sentral_handle_step_count(sentral, buffer);
+			buffer += data_size;
+			bytes -= data_size;
+			continue;
 
 		case SST_PRESSURE:
 		case SST_COACH:
@@ -1781,6 +1849,9 @@ static ssize_t sentral_sysfs_reset(struct device *dev,
 {
 	struct sentral_device *sentral = dev_get_drvdata(dev);
 
+	// turn on warm restart flag for testing
+	sentral->warm_reset = true;
+
 	queue_work(sentral->sentral_wq, &sentral->work_reset);
 
 	return count;
@@ -1827,6 +1898,44 @@ static ssize_t sentral_sysfs_inactivity_timeout_store(struct device *dev,
 static DEVICE_ATTR(inactivity_timeout, S_IRUGO | S_IWUGO,
 		sentral_sysfs_inactivity_timeout_show,
 		sentral_sysfs_inactivity_timeout_store);
+
+// step counter init setting
+static ssize_t sentral_sysfs_step_count_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u16 step = 0;
+	int rc;
+
+	rc = sentral_step_count_init_get(sentral, &step);
+	if (rc)
+		return rc;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", step);
+}
+
+static ssize_t sentral_sysfs_step_count_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct sentral_device *sentral = dev_get_drvdata(dev);
+	u64 step = 0;
+	int rc;
+
+	rc = kstrtou64(buf, 10, &step);
+	if (rc)
+		return rc;
+
+	I("[SYSFS] step count { total step count: %llu }\n", step);
+
+	rc = sentral_step_count_set(sentral, step);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static DEVICE_ATTR(step_count, S_IRUGO | S_IWUGO, sentral_sysfs_step_count_show,
+		sentral_sysfs_step_count_store);
 
 // coach fitness id
 
@@ -2052,7 +2161,7 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 	if (rc)
 		return rc;
 
-	return rc;
+	return count;
 }
 
 static DEVICE_ATTR(delay_ms, S_IWUGO, NULL, sentral_sysfs_delay_ms_store);
@@ -2563,6 +2672,7 @@ static struct attribute *sentral_attributes[] = {
 	&dev_attr_dbg.attr,
 	&dev_attr_version.attr,
 	&dev_attr_vibrator_en.attr,
+	&dev_attr_step_count.attr,
 	&dev_attr_bmmi_chip_status.attr,
 	&dev_attr_bmmi_acc_status.attr,
 	&dev_attr_bmmi_gyr_status.attr,
@@ -3091,6 +3201,9 @@ static int sentral_probe(struct i2c_client *client,
 	sentral->fifo_watermark = 0;
 	sentral->wake_src_prev.byte = 0;
 
+	// zero step count values
+	memset(&sentral->step_count, 0, sizeof(sentral->step_count));
+
 	// setup irq handler
 	LOGI(&sentral->client->dev, "requesting IRQ: %d, GPIO: %u\n", sentral->irq,
 			sentral->platform_data.gpio_irq);
@@ -3130,6 +3243,9 @@ static int sentral_probe(struct i2c_client *client,
 		LOGE(&sentral->client->dev, "error (%d) creating sysfs objects\n", rc);
 		goto error_sysfs;
 	}
+
+	// mark as cold start
+	sentral->warm_reset = false;
 
 	// startup
 	schedule_work(&sentral->work_reset);

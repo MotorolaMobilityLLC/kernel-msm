@@ -33,9 +33,9 @@
 
 #define SEN_DRV_PROJECT_ID "1"
 #define SEN_DRV_SUBPROJECT_ID "2"
-#define SEN_DRV_VERSION "1.2.4"
-#define SEN_DRV_BUILD "1"
-#define SEN_DRV_DATE "Fri Sep 25 12:37:11 PDT 2015"
+#define SEN_DRV_VERSION "1.2.6"
+#define SEN_DRV_BUILD "7"
+#define SEN_DRV_DATE "Thu Oct  8 15:25:02 PDT 2015"
 
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
@@ -283,6 +283,7 @@ enum sentral_param_system {
 
 enum sentral_param_asus {
 	SP_ASUS_INACTIVITY_TIMEOUT = 1,
+	SP_ASUS_STEP_COUNT_INIT = 2,
 };
 
 enum sentral_sensor_power_mode {
@@ -583,6 +584,13 @@ struct sentral_sensor_ref_time {
 	u32 hub_stime;
 };
 
+struct sentral_step_count {
+	u16 curr;
+	u16 prev;
+	u64 base;
+	u64 total;
+};
+
 struct sentral_platform_data {
 	unsigned int gpio_irq;
 	const char *firmware;
@@ -633,6 +641,8 @@ struct sentral_device {
 	struct sentral_wake_src_count wake_src_prev;
 	unsigned long sensor_warmup_mask;
 	u32 fw_crc;
+	bool warm_reset;
+	struct sentral_step_count step_count;
 	unsigned int crash_count;
 	unsigned int overflow_count;
 	u16 fifo_watermark;
