@@ -32,6 +32,9 @@
 
 &soc {
 	i2c@78b9000 { /* BLSP1 QUP5 */
+
+		/delete-node/ atmel_mxt_ts@4a;
+
 		synaptics@20 {
 			/delete-property/ synaptics,power-down;
 			/delete-property/ synaptics,disable-gpios;
