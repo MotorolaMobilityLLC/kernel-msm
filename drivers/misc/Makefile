@@ -75,3 +75,4 @@ obj-$(CONFIG_USB3813) += usb3813_hub.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_MODS_MODBUS_EXT) += modbus_ext.o
 obj-$(CONFIG_TPS61280) += tps61280.o
+obj-$(CONFIG_MODS_CODEC_BUS) += mods_codec_bus.o
