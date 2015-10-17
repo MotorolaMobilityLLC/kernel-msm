@@ -729,6 +729,10 @@
 		mmi,wake-seq = <6 0 50>, <6 1 0>;
 	};
 
+	mods_codec_shim {
+		compatible = "mmi,mods-codec-shim";
+	};
+
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};
