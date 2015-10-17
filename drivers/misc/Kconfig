@@ -649,6 +649,13 @@ config DROPBOX
 	  in dropbox manager service.  This enables fast and simple logging of
 	  various critical events from kernel drivers.
 
+config MODS_CODEC_BUS
+	tristate "mods codec bus interface support"
+	default n
+	help
+	  This enables bus interface for mods shim sound codec to talk to
+	  greybus sound codec module.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
