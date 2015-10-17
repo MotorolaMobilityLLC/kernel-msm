@@ -1878,6 +1878,7 @@ static int msm_lsm_pcm_copy(struct snd_pcm_substream *substream, int ch,
 				__func__, fbytes);
 			return -EINVAL;
 		}
+		memset(pcm_buf, 0, fbytes);
 	} else {
 		dev_err(rtd->dev,
 			"%s: Invalid pcm buffer\n", __func__);
