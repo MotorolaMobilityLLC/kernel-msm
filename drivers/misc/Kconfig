@@ -657,6 +657,13 @@ config TPS61280
 	  driver is meant for basic configuration only and does not provide
 	  any pm/regulator/thermal framework registration.
 
+config MODS_CODEC_BUS
+	tristate "mods codec bus interface support"
+	default n
+	help
+	  This enables bus interface for mods shim sound codec to talk to
+	  greybus sound codec module.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
