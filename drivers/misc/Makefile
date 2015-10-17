@@ -83,3 +83,4 @@ obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_SENSORS_MOTOSH) += moto-sensorhub/
 obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_FUSB302) += fusb302/
+obj-$(CONFIG_MODS_CODEC_BUS) += mods_codec_bus.o
