@@ -130,7 +130,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		);
 		cmdbuff[0] = MAG_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
-		stm401_g_acc_delay =  ioctl_ws->data.delay;
+		stm401_g_mag_delay =  ioctl_ws->data.delay;
 		if (ps_stm401->mode != BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
@@ -141,7 +141,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		);
 		cmdbuff[0] = GYRO_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
-		stm401_g_acc_delay =  ioctl_ws->data.delay;
+		stm401_g_gyro_delay =  ioctl_ws->data.delay;
 		if (ps_stm401->mode != BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
@@ -152,7 +152,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		);
 		cmdbuff[0] = STEP_COUNTER_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
-		stm401_g_acc_delay =  ioctl_ws->data.delay;
+		stm401_g_step_counter_delay =  ioctl_ws->data.delay;
 		if (ps_stm401->mode != BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
@@ -163,7 +163,7 @@ void stm401_ioctl_work_func(struct work_struct *ws)
 		);
 		cmdbuff[0] = PRESSURE_UPDATE_RATE;
 		cmdbuff[1] = ioctl_ws->data.delay;
-		stm401_g_acc_delay =  ioctl_ws->data.delay;
+		stm401_g_baro_delay =  ioctl_ws->data.delay;
 		if (ps_stm401->mode != BOOTMODE)
 			err = stm401_i2c_write(ps_stm401, cmdbuff, 2);
 		break;
