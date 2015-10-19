@@ -1488,6 +1488,7 @@ static int exfat_get_block(struct inode *inode, sector_t iblock,
 		map_bh(bh_result, sb, phys);
 	}
 
+	bh_result->b_private = sb;
 	bh_result->b_size = max_blocks << sb->s_blocksize_bits;
 	__unlock_super(sb);
 
