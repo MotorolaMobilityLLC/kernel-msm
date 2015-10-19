@@ -12,6 +12,7 @@
 
 
 #include "msm8952-moto-common.dtsi"
+#include "msm8952-moto-dtv.dtsi"
 #include "dsi-panel-mot-lgd-546-1080p-cmd.dtsi"
 
 / {
