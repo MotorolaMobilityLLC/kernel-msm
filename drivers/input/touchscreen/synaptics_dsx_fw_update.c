@@ -621,25 +621,25 @@ static struct bin_attribute dev_attr_data = {
 };
 
 static struct device_attribute attrs[] = {
-	__ATTR(dorecovery, S_IWUGO,
+	__ATTR(dorecovery, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_do_recovery_store),
-	__ATTR(doreflash, S_IWUGO,
+	__ATTR(doreflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_do_reflash_store),
-	__ATTR(writeconfig, S_IWUGO,
+	__ATTR(writeconfig, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_config_store),
-	__ATTR(readconfig, S_IWUGO,
+	__ATTR(readconfig, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_read_config_store),
-	__ATTR(configarea, S_IWUGO,
+	__ATTR(configarea, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_config_area_store),
-	__ATTR(imagename, S_IWUGO,
+	__ATTR(imagename, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_image_name_store),
-	__ATTR(imagesize, S_IWUGO,
+	__ATTR(imagesize, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_image_size_store),
 	__ATTR(blocksize, S_IRUGO,
@@ -663,10 +663,10 @@ static struct device_attribute attrs[] = {
 	__ATTR(guestcodeblockcount, S_IRUGO,
 			fwu_sysfs_guest_code_block_count_show,
 			synaptics_rmi4_store_error),
-	__ATTR(writeguestcode, S_IWUGO,
+	__ATTR(writeguestcode, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_write_guest_code_store),
-	__ATTR(forcereflash, S_IWUGO,
+	__ATTR(forcereflash, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			fwu_sysfs_force_reflash_store),
 };
@@ -3224,11 +3224,11 @@ static bool fwu_tdat_image_format(const unsigned char *fw_image)
 	return fw_image[0] == 0x31;
 }
 
-static void fwu_tdat_config_set(const unsigned char *data, size_t size,
-		const unsigned char **image, size_t *image_size)
+static void fwu_tdat_config_set(const unsigned char *data, unsigned int size,
+		const unsigned char **image, unsigned int *image_size)
 {
 	unsigned short id;
-	size_t length, offset;
+	unsigned int length, offset;
 
 	for (offset = 0; offset < size; offset += length+5) {
 		id = (data[offset+1] << 8) | data[offset];
@@ -3241,9 +3241,9 @@ static void fwu_tdat_config_set(const unsigned char *data, size_t size,
 }
 
 static void fwu_tdat_section_offset(
-		const unsigned char **image, size_t *image_size)
+		const unsigned char **image, unsigned int *image_size)
 {
-	size_t offset;
+	unsigned int offset;
 	offset = (*image)[0] + 1;
 	*image_size -= offset;
 	*image = &(*image)[offset];
@@ -3253,7 +3253,7 @@ static int fwu_parse_tdat_image(void)
 {
 	int ii;
 	unsigned int id;
-	size_t length, offset;
+	unsigned int length, offset;
 	struct image_metadata *img = &fwu->img;
 	const unsigned char *section, *data = fwu->image;
 	unsigned int fw_size = fwu->image_size;
@@ -3272,12 +3272,12 @@ static int fwu_parse_tdat_image(void)
 			 (data[offset+2] << 8) | data[offset+1];
 
 		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"Record[%d]: length %zu, offset %zu\n",
+				"Record[%d]: length %u, offset %u\n",
 				ii++, length, offset);
 
 		if ((offset+length+4) > fw_size) {
 			dev_err(&fwu->rmi4_data->i2c_client->dev,
-					"Data overflow at offset %zu (%u)\n",
+					"Data overflow at offset %u (%u)\n",
 					offset, data[offset]);
 			return -EINVAL;
 		}
@@ -3298,7 +3298,7 @@ static int fwu_parse_tdat_image(void)
 		switch (id) {
 		case 1: /* config */
 			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Config record %d, size %zu\n",
+				"%s: Config record %d, size %u\n",
 				__func__, id, length);
 
 			fwu_tdat_config_set(section, length,
@@ -3310,7 +3310,7 @@ static int fwu_parse_tdat_image(void)
 
 		case 2: /* firmware */
 			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Firmware record %d, size %zu\n",
+				"%s: Firmware record %d, size %u\n",
 				__func__,
 				id,
 				length);
@@ -3340,7 +3340,7 @@ static int fwu_parse_tdat_image(void)
 	}
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-		"%s: Firwmare size %zu, config size %zu\n",
+		"%s: Firwmare size %u, config size %u\n",
 		__func__,
 		img->ui_firmware.size,
 		img->ui_config.size);
