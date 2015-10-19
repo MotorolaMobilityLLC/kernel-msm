@@ -2498,6 +2498,8 @@ void vos_trigger_recovery(void)
 		return;
 	}
 
+	vos_runtime_pm_prevent_suspend();
+
 	wma_crash_inject(wma_handle, RECOVERY_SIM_SELF_RECOVERY, 0);
 
 	status = vos_wait_single_event(&wma_handle->recovery_event,
@@ -2510,14 +2512,15 @@ void vos_trigger_recovery(void)
 		if (vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
 			VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
 				"LOGP is in progress, ignore!");
-			return;
+			goto out;
 		}
 		vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
 		cnss_schedule_recovery_work();
 #endif
-
-		return;
 	}
+
+out:
+	vos_runtime_pm_allow_suspend();
 }
 
 v_U64_t vos_get_monotonic_boottime(void)
