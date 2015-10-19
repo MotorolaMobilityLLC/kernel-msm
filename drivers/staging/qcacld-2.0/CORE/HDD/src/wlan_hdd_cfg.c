@@ -4238,6 +4238,14 @@ REG_TABLE_ENTRY mbssid_sap_dyn_ini_reg_table[] =
                 CFG_P2P_LISTEN_DEFER_INTERVAL_DEFAULT,
                 CFG_P2P_LISTEN_DEFER_INTERVAL_MIN,
                 CFG_P2P_LISTEN_DEFER_INTERVAL_MAX),
+
+   REG_VARIABLE(CFG_FIRST_SCAN_BUCKET_THRESHOLD_NAME, WLAN_PARAM_SignedInteger,
+                hdd_config_t, first_scan_bucket_threshold,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_FIRST_SCAN_BUCKET_THRESHOLD_DEFAULT,
+                CFG_FIRST_SCAN_BUCKET_THRESHOLD_MIN,
+                CFG_FIRST_SCAN_BUCKET_THRESHOLD_MAX),
+
 };
 #endif
 
@@ -4816,6 +4824,9 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
                    pHddCtx->cfg_ini->fine_time_meas_cap);
   hddLog(LOG2, "Name = [gP2PListenDeferInterval] Value = [%u]",
                    pHddCtx->cfg_ini->p2p_listen_defer_interval);
+  hddLog(LOG2, "Name = [%s] Value = [%d]",
+                 CFG_FIRST_SCAN_BUCKET_THRESHOLD_NAME,
+                 pHddCtx->cfg_ini->first_scan_bucket_threshold);
 }
 
 #define CFG_VALUE_MAX_LEN 256
@@ -6616,6 +6627,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.isRoamOffloadEnabled =
                         pHddCtx->cfg_ini->isRoamOffloadEnabled;
 #endif
+   smeConfig->csrConfig.first_scan_bucket_threshold =
+                       pHddCtx->cfg_ini->first_scan_bucket_threshold;
 
    vos_set_multicast_logging(pHddCtx->cfg_ini->multicast_host_fw_msgs);
    hdd_set_fine_time_meas_cap(pHddCtx, smeConfig);

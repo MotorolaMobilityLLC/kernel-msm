@@ -119,6 +119,7 @@ typedef struct _smeConfigParams
     tANI_BOOLEAN  enable5gEBT;
     tANI_BOOLEAN  enableSelfRecovery;
     uint32_t      fine_time_meas_cap;
+    int8_t       first_scan_bucket_threshold;
 } tSmeConfigParams, *tpSmeConfigParams;
 
 typedef enum

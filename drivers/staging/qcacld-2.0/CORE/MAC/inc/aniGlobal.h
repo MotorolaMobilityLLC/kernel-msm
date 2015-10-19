@@ -1210,6 +1210,7 @@ typedef struct sAniSirGlobal
     void *readyToExtWoWContext;
 #endif
     uint32_t fine_time_meas_cap;
+    int8_t first_scan_bucket_threshold;
 } tAniSirGlobal;
 
 typedef enum
