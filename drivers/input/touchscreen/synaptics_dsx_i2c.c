@@ -7,6 +7,7 @@
  * Copyright (C) 2012 Scott Lin <scott.lin@tw.synaptics.com>
  *
  * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
@@ -33,9 +34,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reboot.h>
 #include <linux/input/synaptics_rmi_dsx.h>
-
-/* define to enable USB charger detection */
-#undef USB_CHARGER_DETECTION
 
 #include "synaptics_dsx_i2c.h"
 #include "synaptics_dsx_control_access_block.h"
@@ -95,7 +93,7 @@
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
 #define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
 
-#define tk_debug(fmt, args...) pr_err(fmt, ##args)
+#define tk_debug(fmt, args...)
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 static int folio_notifier_callback(struct notifier_block *self,
@@ -1296,7 +1294,7 @@ int synaptics_dsx_dt_parse_mode(struct synaptics_rmi4_data *data,
 	struct device *dev = &data->i2c_client->dev;
 	struct device_node *np = dev->of_node;
 	struct device_node *np_modes;
-	int ret;
+	int ret = 0;
 	char *propname;
 	struct property *prop;
 	const __be32 *list;
@@ -2876,13 +2874,15 @@ static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 		blen += scnprintf(buf + blen, PAGE_SIZE - blen, fmt, ##args);\
 	}
 
+#include <asm/div64.h>
+
 static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	int ii, gear, state, percentage;
 	bool count_time_since;
 	ssize_t blen = 0;
-	unsigned long long gear_time, check_point;
+	unsigned long long gear_time, check_point, perc_u64;
 	unsigned long long total = gStat.uptime_dur;
 	unsigned long long duration = (unsigned long long)0;
 	struct statistics *stats;
@@ -2917,8 +2917,11 @@ static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		gear_time = stats->keeper[ii].duration;
 		if (ii == gear)
 			gear_time += duration;
-		percentage = 100000*gear_time/total;
-		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr, ii, percentage/1000);
+		perc_u64 = 100000*gear_time;
+		do_div(perc_u64, total);
+		percentage = (int)perc_u64;
+		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr, ii,
+				percentage/1000);
 		check_point += gear_time;
 		tk_debug("%c%d: %d%% %llu/%llu\n", stats->abbr,
 				(stats->flags & ONE_BASED_INDEX) ? ii+1 : ii,
@@ -2939,7 +2942,9 @@ static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		gear_time = stats->keeper[ii].duration;
 		if (ii == state)
 			gear_time += duration;
-		percentage = 100000*gear_time/total;
+		perc_u64 = 100000*gear_time;
+		do_div(perc_u64, total);
+		percentage = (int)perc_u64;
 		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr,
 				(stats->flags & ONE_BASED_INDEX) ? ii+1 : ii,
 				percentage/1000);
@@ -2962,7 +2967,9 @@ static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		gear_time = stats->keeper[ii].duration;
 		if (ii == state)
 			gear_time += duration;
-		percentage = 100000*gear_time/total;
+		perc_u64 = 100000*gear_time;
+		do_div(perc_u64, total);
+		percentage = (int)perc_u64;
 		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr,
 				(stats->flags & ONE_BASED_INDEX) ? ii+1 : ii,
 				percentage/1000);
@@ -6210,7 +6217,7 @@ static int synaptics_dsx_sysfs_touchscreen(
 {
 	struct synaptics_rmi4_device_info *rmi = &(rmi4_data->rmi4_mod_info);
 	struct device_attribute *attrs = touchscreen_attributes;
-	int i, error;
+	int i, error = 0;
 	static struct class *touchscreen_class;
 	static struct device *ts_class_dev;
 
