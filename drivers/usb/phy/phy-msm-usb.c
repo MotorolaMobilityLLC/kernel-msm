@@ -360,6 +360,10 @@ static int ulpi_read(struct usb_phy *phy, u32 reg)
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
 	int cnt = 0;
 
+	if (motg->lpm_flags) {
+		dev_err(phy->dev, "ulpi_read: phy in lpm\n");
+		return -ENODEV;
+	}
 	/* initiate read operation */
 	writel(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg),
 	       USB_ULPI_VIEWPORT);
@@ -387,6 +391,10 @@ static int ulpi_write(struct usb_phy *phy, u32 val, u32 reg)
 	struct msm_otg *motg = container_of(phy, struct msm_otg, phy);
 	int cnt = 0;
 
+	if (motg->lpm_flags) {
+		dev_err(phy->dev, "ulpi_write: phy in lpm\n");
+		return -ENODEV;
+	}
 	/* initiate write operation */
 	writel(ULPI_RUN | ULPI_WRITE |
 	       ULPI_ADDR(reg) | ULPI_DATA(val),
