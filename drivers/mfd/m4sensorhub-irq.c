@@ -741,6 +741,12 @@ static irqreturn_t m4sensorhub_wake_event_threaded(int irq, void *devid)
 	m4sensorhub = data->m4sensorhub;
 	i2c = m4sensorhub->i2c_client;
 
+	/* There is an issue where nowake irq seems to run constantly without
+	 * allowing wake irq to run when both are set. We want to disable
+	 * nowakeirq while processing wake irq since wake irq should have
+	 * priority. */
+	disable_irq(m4sensorhub->hwconfig.nowakeirq);
+
 	if (m4sensorhub->irq_dbg.suspend == 1) {
 		/* Delay IRQ until I2C bus is powered */
 		KDEBUG(M4SH_INFO, "%s: IRQ while suspended--%s\n", __func__,
@@ -812,6 +818,7 @@ static irqreturn_t m4sensorhub_wake_event_threaded(int irq, void *devid)
 		}
 	}
 error:
+	enable_irq(m4sensorhub->hwconfig.nowakeirq);
 	wake_unlock(&data->wake_lock);
 
 	return IRQ_HANDLED;
@@ -840,8 +847,8 @@ static irqreturn_t m4sensorhub_nowake_event_threaded(int irq, void *devid)
 	is_irq_set |= value;
 
 	if (!is_irq_set) {
-		KDEBUG(M4SH_ERROR, "%s: Got nowake int with no bits set",
-			__func__);
+		KDEBUG(M4SH_ERROR, "%s: Got nowake int with no bits set\n",
+		       __func__);
 		goto error;
 	}
 
