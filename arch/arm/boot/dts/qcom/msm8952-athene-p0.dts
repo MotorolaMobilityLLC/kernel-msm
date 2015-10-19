@@ -17,7 +17,7 @@
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 
 / {
-	qcom,board-id = <0x41 0x8000>;
+	qcom,board-id = <0x41 0x8000>, <0x41 0x800d>;
 };
 
 &mdss_dsi0 {
