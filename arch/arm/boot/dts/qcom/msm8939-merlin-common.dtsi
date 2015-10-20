@@ -501,6 +501,10 @@
 		startup-delay-us = <300>;
 		enable-active-high;
 	};
+
+	android_usb: android_usb@086000c8 {
+		mmi,pm-qos-latency-factory = <2 2 2>;
+        };
 };
 
 &sdhc_1 {
