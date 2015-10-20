@@ -122,3 +122,7 @@
 		qcom,mode = <6>;	/* QPNP_PIN_MODE_SINK */
 	};
 };
+
+&i2c_7 {
+	/delete-node/ fusb302@22;
+};
