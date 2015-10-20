@@ -108,7 +108,7 @@
  * Invalid voltage range for the detection
  * of plug type with current source
  */
-#define WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV 160
+#define WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV 230
 #define WCD9XXX_CS_MEAS_INVALD_RANGE_HIGH_MV 265
 
 /*
