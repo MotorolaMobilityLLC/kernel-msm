@@ -14,6 +14,7 @@
 #include "msm8952.dtsi"
 #include "msm8952-pinctrl.dtsi"
 #include "msm8952-camera-sensor-moto.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include <moto-mem-reserve.h>
 
 / {
@@ -682,6 +683,10 @@
 	/delete-property/ vddio-supply;
 	/delete-property/ lab-supply;
 	/delete-property/ ibb-supply;
+};
+
+&mdss_fb0 {
+	/delete-property/ qcom,mdss-fb-splash-logo-enabled;
 };
 
 &i2c_3 { /* BLSP1 QUP3 */
