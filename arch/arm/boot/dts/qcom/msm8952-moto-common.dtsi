@@ -738,7 +738,6 @@
 
 &qcom_seecom {
 	reg = <0x84f00000 0x1400000>;
-	/delete-property/ qcom,appsbl-qseecom-support;
 };
 
 &pm8950_vadc {
