@@ -540,7 +540,8 @@ int m4sensorhub_update_loglevels(char *tag, char *level,
 }
 
 /* Usage: adb shell into the directory of sysinterface log_level and
-   echo LOG_ACCEL=LOG_DEGUB > log_level */
+   echo LOG_ACCEL=LOG_DEGUB > log_level or
+   echo 0xaaaaaaaaaaaaaaaa > log_level */
 static ssize_t m4sensorhub_set_loglevel(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -548,24 +549,40 @@ static ssize_t m4sensorhub_set_loglevel(struct device *dev,
 	char *tag, *level;
 	char **logbuf = (char **) &buf;
 	int exitcount =  20;
+	uint64_t level64;
+	int err;
 
-	m4sensorhub_reg_read(&m4sensorhub_misc_data,
-		M4SH_REG_LOG_LOGENABLE, (char *)cur_levels);
+	if (strncmp("0x", buf, 2) == 0) {
+		err = kstrtou64(buf, 0, &level64);
+		if (err)
+			return -EINVAL;
 
-	while (1) {
-		tag = strsep(logbuf, "=,\n ");
-		if (tag == NULL)
-			break;
-		level = strsep(logbuf, "=,\n ");
-		if (level == NULL)
-			break;
+		cur_levels[0] = (uint32_t) (level64 >> 32);
+		cur_levels[1] = level64 & 0xffffffff;
+		KDEBUG(M4SH_INFO, "New M4 log levels = 0x%x 0x%x\n",
+		       cur_levels[0], cur_levels[1]);
+	} else {
 
-		if (m4sensorhub_update_loglevels(tag, level, cur_levels) == 1)
-			break;
+		m4sensorhub_reg_read(&m4sensorhub_misc_data,
+				     M4SH_REG_LOG_LOGENABLE,
+				     (char *)cur_levels);
 
-		exitcount--;
-		if (exitcount == 0)
-			break;
+		while (1) {
+			tag = strsep(logbuf, "=,\n ");
+			if (tag == NULL)
+				break;
+			level = strsep(logbuf, "=,\n ");
+			if (level == NULL)
+				break;
+
+			if (m4sensorhub_update_loglevels(tag, level, cur_levels)
+				  == 1)
+				break;
+
+			exitcount--;
+			if (exitcount == 0)
+				break;
+		}
 	}
 
 	m4sensorhub_reg_write(&m4sensorhub_misc_data,
