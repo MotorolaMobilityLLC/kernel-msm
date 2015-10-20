@@ -43,6 +43,14 @@
 		};
 	};
 
+	spi_0 {
+		spi_0_active: spi_0_active {
+			config {
+				drive-strength = <16>;
+			};
+		};
+	};
+
 	/* Princeton uses CS2 on GPIO28 to talk to SPI Flash */
 	princeton_p1_spi_0_cs2 {
 		princeton_p1_spi_0_cs2_active: active {
