@@ -1327,9 +1327,10 @@ dhd_prot_rxbufpost(dhd_pub_t *dhd, uint16 count)
 	uint32 pktlen;
 	dhd_prot_t *prot = dhd->prot;
 	msgbuf_ring_t * ring = prot->h2dring_rxp_subn;
-	uint8 i = 0;
+	uint16 i = 0;
 	uint16 alloced = 0;
 	unsigned long flags;
+	uint32 pktid;
 
 	DHD_GENERAL_LOCK(dhd, flags);
 	/* Claim space for 'count' no of messages */
@@ -1337,66 +1338,56 @@ dhd_prot_rxbufpost(dhd_pub_t *dhd, uint16 count)
 	DHD_GENERAL_UNLOCK(dhd, flags);
 
 	if (msg_start == NULL) {
-		DHD_INFO(("%s:%d: Rxbufpost Msgbuf Not available\n", __FUNCTION__, __LINE__));
+		DHD_ERROR(("%s:%d: Rxbufpost Msgbuf not available\n", __FUNCTION__, __LINE__));
 		return -1;
 	}
-	/* if msg_start !=  NULL, we should have alloced space for atleast 1 item */
-	ASSERT(alloced > 0);
+
+	if (alloced < 1) {
+		DHD_ERROR(("%s:%d: Must have alloced space at least 1 item\n",
+			__FUNCTION__, __LINE__));
+		return -1;
+	}
 
 	rxbuf_post_tmp = (uint8*)msg_start;
 
-	/* loop through each message */
+	/* loop through each allocated message in the host ring */
 	for (i = 0; i < alloced; i++) {
 		rxbuf_post = (host_rxbuf_post_t *)rxbuf_post_tmp;
+
 		/* Create a rx buffer */
 		if ((p = PKTGET(dhd->osh, pktsz, FALSE)) == NULL) {
 			DHD_ERROR(("%s:%d: PKTGET for rxbuf failed\n", __FUNCTION__, __LINE__));
-			return -1;
+			break;
 		}
 
 		pktlen = PKTLEN(dhd->osh, p);
 		physaddr = DMA_MAP(dhd->osh, PKTDATA(dhd->osh, p), pktlen, DMA_RX, p, 0);
 		if (PHYSADDRISZERO(physaddr)) {
-			if (RING_WRITE_PTR(ring) < alloced - i)
-				RING_WRITE_PTR(ring) = RING_MAX_ITEM(ring) - alloced + i;
-			else
-				RING_WRITE_PTR(ring) -= alloced - i;
-			alloced = i;
+			DMA_UNMAP(dhd->osh, physaddr, pktlen, DMA_RX, 0, 0);
 			PKTFREE(dhd->osh, p, FALSE);
-			DHD_ERROR(("Invalid phyaddr 0\n"));
-			ASSERT(0);
+			DHD_ERROR(("%s:%d: Invalid phyaddr 0\n", __FUNCTION__, __LINE__));
 			break;
 		}
 
 		PKTPULL(dhd->osh, p, prot->rx_metadata_offset);
 		pktlen = PKTLEN(dhd->osh, p);
 
-		/* CMN msg header */
-		rxbuf_post->cmn_hdr.msg_type = MSG_TYPE_RXBUF_POST;
-		rxbuf_post->cmn_hdr.if_id = 0;
-
-		/* get the lock before calling NATIVE_TO_PKTID */
+		/* Get the lock before calling NATIVE_TO_PKTID */
 		DHD_GENERAL_LOCK(dhd, flags);
-
-		rxbuf_post->cmn_hdr.request_id =
-			htol32(NATIVE_TO_PKTID(dhd->prot->pktid_map_handle, p, physaddr,
+		pktid = htol32(NATIVE_TO_PKTID(dhd->prot->pktid_map_handle, p, physaddr,
 			pktlen, DMA_RX, BUFF_TYPE_DATA_RX));
-
-		/* free lock */
 		DHD_GENERAL_UNLOCK(dhd, flags);
 
-		if (rxbuf_post->cmn_hdr.request_id == DHD_PKTID_INVALID) {
-			if (RING_WRITE_PTR(ring) < alloced - i)
-				RING_WRITE_PTR(ring) = RING_MAX_ITEM(ring) - alloced + i;
-			else
-				RING_WRITE_PTR(ring) -= alloced - i;
-			alloced = i;
+		if (pktid == DHD_PKTID_INVALID) {
 			DMA_UNMAP(dhd->osh, physaddr, pktlen, DMA_RX, 0, 0);
 			PKTFREE(dhd->osh, p, FALSE);
-			DHD_ERROR(("Pktid pool depleted.\n"));
+			DHD_ERROR(("%s:%d: Pktid pool depleted.\n", __FUNCTION__, __LINE__));
 			break;
 		}
 
+		/* Common msg header */
+		rxbuf_post->cmn_hdr.msg_type = MSG_TYPE_RXBUF_POST;
+		rxbuf_post->cmn_hdr.if_id = 0;
 		rxbuf_post->data_buf_len = htol16((uint16)pktlen);
 		rxbuf_post->data_buf_addr.high_addr = htol32(PHYSADDRHI(physaddr));
 		rxbuf_post->data_buf_addr.low_addr =
@@ -1412,12 +1403,26 @@ dhd_prot_rxbufpost(dhd_pub_t *dhd, uint16 count)
 			rxbuf_post->metadata_buf_addr.low_addr  = 0;
 		}
 
+		rxbuf_post->cmn_hdr.request_id = htol32(pktid);
+
 		/* Move rxbuf_post_tmp to next item */
 		rxbuf_post_tmp = rxbuf_post_tmp + RING_LEN_ITEMS(ring);
 	}
+
+	if (i < alloced) {
+		if (RING_WRITE_PTR(ring) < (alloced - i))
+			RING_WRITE_PTR(ring) = RING_MAX_ITEM(ring) - (alloced - i);
+		else
+			RING_WRITE_PTR(ring) -= (alloced - i);
+
+		alloced = i;
+	}
+
 	/* Update the write pointer in TCM & ring bell */
-	if (alloced > 0)
+	if (alloced > 0) {
+		DHD_INFO(("Allocated %d buffers for info ring\n", alloced));
 		prot_ring_write_complete(dhd, prot->h2dring_rxp_subn, msg_start, alloced);
+	}
 
 	return alloced;
 }
