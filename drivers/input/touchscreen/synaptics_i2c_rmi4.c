@@ -137,6 +137,7 @@ enum DOZE_MODE {
 
 #define DOZE_BURST_SIZE_ADDR	0x043F
 #define DOZE_BW_ADDR		0x0440
+#define PALM_FILTER_ADDR	0X001D
 
 #define DEF_DOZE_BURST_SIZE 40
 #define DEF_DOZE_BW 3
@@ -3806,6 +3807,7 @@ static void synaptics_rmi4_set_idle_param(struct synaptics_rmi4_data
 	unsigned char doze_bw;
 	static unsigned char doze_burst_size_active = 0;
 	static unsigned char doze_bw_active = 0;
+	unsigned char palm_filter;
 
 	doze_interval = active ? rmi4_data->board->doze_interval_active :
 				rmi4_data->board->doze_interval_sleep;
@@ -3838,6 +3840,7 @@ static void synaptics_rmi4_set_idle_param(struct synaptics_rmi4_data
 				rmi4_data->board->doze_burst_size_sleep;
 	doze_bw = active ? doze_bw_active :
 				rmi4_data->board->doze_bw_sleep;
+	palm_filter = active ? 0 : 1;
 
 	retval = synaptics_rmi4_i2c_write(rmi4_data,
 				rmi4_data->f01_ctrl_base_addr + 1 +
@@ -3869,6 +3872,15 @@ static void synaptics_rmi4_set_idle_param(struct synaptics_rmi4_data
 	retval = synaptics_rmi4_i2c_write(rmi4_data,
 				DOZE_BW_ADDR,
 				&doze_bw,
+				1);
+	if (retval < 0) {
+		dev_warn(&(rmi4_data->input_dev->dev),
+			"Failed to write doze bw\n");
+	}
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+				PALM_FILTER_ADDR,
+				&palm_filter,
 				1);
 	if (retval < 0) {
 		dev_warn(&(rmi4_data->input_dev->dev),
