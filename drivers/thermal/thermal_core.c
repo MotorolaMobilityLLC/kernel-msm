@@ -382,11 +382,16 @@ static __ref int sensor_sysfs_notify(void *data)
 	struct sensor_info *sensor = (struct sensor_info *)data;
 
 	while (!kthread_should_stop()) {
-		if (wait_for_completion_interruptible(
-			&sensor->sysfs_notify_complete) != 0)
+		if (wait_event_interruptible(
+		   sensor->sysfs_notify_complete.wait,
+		   sensor->sysfs_notify_complete.done || kthread_should_stop()))
 			continue;
 		if (sensor->deregister_active)
 			return ret;
+
+		if (kthread_should_stop())
+			break;
+
 		reinit_completion(&sensor->sysfs_notify_complete);
 		sysfs_notify(&sensor->tz->device.kobj, NULL,
 					THERMAL_UEVENT_DATA);
