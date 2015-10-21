@@ -769,7 +769,7 @@ static void dwc3_otg_chg_check_timer_func(unsigned long data)
 	if (!dotg->charger || !dotg->charger->get_linestate)
 		return;
 
-	if (dotg->charger->get_linestate(dotg->charger) == DWC3_LS) {
+	if (dotg->charger->get_linestate(dotg->charger) & DWC3_LS) {
 		dev_info(phy->dev, "DCP is detected as SDP\n");
 		set_bit(B_FALSE_SDP, &dotg->inputs);
 		queue_delayed_work(system_nrt_wq, &dotg->sm_work, 0);
