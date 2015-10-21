@@ -70,3 +70,11 @@
 		};
 	};
 };
+
+&pmi8950_charger {
+	qcom,float-voltage-mv = <4350>;
+};
+
+&pmi8950_fg {
+	qcom,fg-cc-cv-threshold-mv = <4340>;
+};
