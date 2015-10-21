@@ -26,6 +26,7 @@
 
 #define NUM_FL_PTE      4096
 #define NUM_SL_PTE      256
+#define NUM_SL_PTE_MASK 0x1FF
 #define GUARD_PTE       2
 #define NUM_TEX_CLASS   8
 
@@ -146,10 +147,10 @@ void msm_iommu_pagetable_free_tables(struct msm_iommu_pt *pt, unsigned long va,
 
 	for (i = 0; i < n_entries && fl_offset < NUM_FL_PTE; ++i) {
 		u32 *fl_pte_shadow = pt->fl_table_shadow + fl_offset;
-		void *sl_table_va = __va(((*fl_pte_shadow) & ~0x1FF));
+		void *sl_table_va = __va(((*fl_pte_shadow) & ~NUM_SL_PTE_MASK));
 		u32 sl_table = *fl_pte_shadow;
 
-		if (sl_table && !(sl_table & 0x1FF)) {
+		if (sl_table && !(sl_table & NUM_SL_PTE_MASK)) {
 			free_pages((unsigned long) sl_table_va,
 				   get_order(SZ_4K));
 			*fl_pte_shadow = 0;
@@ -218,7 +219,7 @@ static u32 *make_second_level(struct msm_iommu_pt *pt, u32 *fl_pte,
 
 	*fl_pte = ((((int)__pa(sl)) & FL_BASE_MASK) | \
 			FL_TYPE_TABLE);
-	*fl_pte_shadow = *fl_pte & ~0x1FF;
+	*fl_pte_shadow = *fl_pte & ~NUM_SL_PTE_MASK;
 
 	clean_pte(fl_pte, fl_pte + 1, pt->redirect);
 fail:
@@ -477,6 +478,7 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 				/* Increment map count */
 				*fl_pte_shadow += 16;
 			}
+			BUG_ON((*fl_pte_shadow & NUM_SL_PTE_MASK) > NUM_SL_PTE);
 
 			offset += chunk_size;
 			chunk_offset += chunk_size;
@@ -545,11 +547,11 @@ void msm_iommu_pagetable_unmap_range(struct msm_iommu_pt *pt, unsigned int va,
 			offset += n_entries * SZ_4K;
 			va += n_entries * SZ_4K;
 
-			BUG_ON((*fl_pte_shadow & 0x1FF) < n_entries);
+			BUG_ON((*fl_pte_shadow & NUM_SL_PTE_MASK) < n_entries);
 
 			/* Decrement map count */
 			*fl_pte_shadow -= n_entries;
-			used = *fl_pte_shadow & 0x1FF;
+			used = *fl_pte_shadow & NUM_SL_PTE_MASK;
 
 			if (!used) {
 				*fl_pte = 0;
