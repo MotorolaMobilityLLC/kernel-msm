@@ -646,6 +646,7 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 	int cb_type = MDP3_DMA_CALLBACK_TYPE_VSYNC;
 	struct mdss_panel_data *panel;
 	int rc = 0;
+	int rerty_count = 2;
 
 	ATRACE_BEGIN(__func__);
 	pr_debug("mdp3_dmap_update\n");
@@ -654,13 +655,20 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 		cb_type = MDP3_DMA_CALLBACK_TYPE_DMA_DONE;
 		if (intf->active) {
 			ATRACE_BEGIN("mdp3_wait_for_dma_comp");
+retry_dma_done:
 			rc = wait_for_completion_timeout(&dma->dma_comp,
 				KOFF_TIMEOUT);
-			if (rc <= 0) {
-				WARN(1, "cmd kickoff timed out (%d)\n", rc);
+			if (rc <= 0 && --rerty_count) {
+				int  vsync_status = MDP3_REG_READ(MDP3_REG_INTR_STATUS) &
+							(1 << MDP3_INTR_DMA_P_DONE);
+				if (!vsync_status) {
+					pr_err("%s cmd time out retry count = %d\n",
+						__func__, rerty_count);
+					goto retry_dma_done;
+				}
 				rc = -1;
+				ATRACE_END("mdp3_wait_for_dma_comp");
 			}
-			ATRACE_END("mdp3_wait_for_dma_comp");
 		}
 	}
 	if (dma->update_src_cfg) {
@@ -707,10 +715,20 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 	pr_debug("mdp3_dmap_update wait for vsync_comp in\n");
 	if (dma->output_config.out_sel == MDP3_DMA_OUTPUT_SEL_DSI_VIDEO) {
 		ATRACE_BEGIN("mdp3_wait_for_vsync_comp");
+retry_vsync:
 		rc = wait_for_completion_timeout(&dma->vsync_comp,
 			KOFF_TIMEOUT);
-		if (rc <= 0)
-			rc = -1;
+		if (rc <= 0 && --rerty_count) {
+		    int  vsync_status = MDP3_REG_READ(MDP3_REG_INTR_STATUS) &
+					(1 << MDP3_INTR_LCDC_START_OF_FRAME);
+		    if (!vsync_status) {
+			pr_err("mdp3_dmap_update trying again count = %d\n",
+			       rerty_count);
+			goto retry_vsync;
+		    }
+		    rc = -1;
+
+		}
 		ATRACE_END("mdp3_wait_for_vsync_comp");
 	}
 	pr_debug("mdp3_dmap_update wait for vsync_comp out\n");
