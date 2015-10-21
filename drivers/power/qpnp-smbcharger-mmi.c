@@ -5264,10 +5264,25 @@ static inline int get_bpd(const char *name)
 #define USBIN_ALLOW_5V_UNREG		0x4
 #define USBIN_ALLOW_5V_9V_UNREG		0x5
 #define DCIN_ALLOW_5V_TO_9V		0x2
+#define CMD_CHG_LED_REG			0x43
+#define CMD_CHG_LED_BLINK_MASK		SMB_MASK(2, 1)
+#define CMD_CHG_LED_CTRL_BIT		BIT(0)
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
 	u8 reg, mask;
+
+	/* Disable Charge LED on PMI8950 Only */
+	if (chip->schg_version == QPNP_SCHG_LITE) {
+		rc = smbchg_masked_write(chip,
+					 chip->bat_if_base + CMD_CHG_LED_REG,
+					 CMD_CHG_LED_BLINK_MASK |
+					 CMD_CHG_LED_CTRL_BIT,
+					 CMD_CHG_LED_CTRL_BIT);
+		if (rc < 0)
+			dev_err(chip->dev, "Couldn't disable LED rc=%d\n",
+				rc);
+	}
 
 	rc = smbchg_read(chip, chip->revision,
 			chip->misc_base + REVISION1_REG, 4);
