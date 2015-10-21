@@ -4161,7 +4161,7 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 {
 	union power_supply_propval prop = {0,};
 	int rc;
-	u8 reg;
+	u8 reg, hvdcp_sel;
 	bool low_volt_chgr = true;
 
 	if (!(chip->wa_flags & SMBCHG_AICL_DEGLITCH_WA))
@@ -4176,6 +4176,11 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 	if (!chip->bms_psy)
 		return;
 
+	if (chip->schg_version == QPNP_SCHG_LITE)
+		hvdcp_sel = SCHG_LITE_USBIN_HVDCP_SEL_BIT;
+	else
+		hvdcp_sel = USBIN_HVDCP_SEL_BIT;
+
 	if (is_usb_present(chip)) {
 		rc = smbchg_read(chip, &reg,
 				chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
@@ -4184,7 +4189,7 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 							rc);
 			return;
 		}
-		if (reg & USBIN_HVDCP_SEL_BIT)
+		if (reg & hvdcp_sel)
 			low_volt_chgr = false;
 	} else if (is_dc_present(chip)) {
 		if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIPOWER)
@@ -4223,7 +4228,7 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 static bool smbchg_hvdcp_det_check(struct smbchg_chip *chip)
 {
 	int rc;
-	u8 reg;
+	u8 reg, hvdcp_sel;
 
 	rc = smbchg_read(chip, &reg,
 			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
@@ -4232,11 +4237,16 @@ static bool smbchg_hvdcp_det_check(struct smbchg_chip *chip)
 		return false;
 	}
 
+	if (chip->schg_version == QPNP_SCHG_LITE)
+		hvdcp_sel = SCHG_LITE_USBIN_HVDCP_SEL_BIT;
+	else
+		hvdcp_sel = USBIN_HVDCP_SEL_BIT;
+
 	/*
 	 * If a valid HVDCP is detected, notify true only
 	 * if USB is still present.
 	 */
-	if ((reg & USBIN_HVDCP_SEL_BIT) && is_usb_present(chip))
+	if ((reg & hvdcp_sel) && is_usb_present(chip))
 		return true;
 
 	return false;
