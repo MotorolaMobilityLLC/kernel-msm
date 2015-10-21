@@ -265,8 +265,6 @@
 	qcom,float-voltage-mv = <4400>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
-	qcom,dc-psy-type = "Wireless";
-	qcom,dc-psy-ma = <950>;
 	qcom,rparasitic-uohm = <100000>;
 	qcom,bms-psy-name = "bms";
 	qcom,charge-unknown-battery;
@@ -312,14 +310,14 @@
 	qcom,cool-bat-decidegc = <0>;
 	qcom,hot-bat-decidegc = <600>;
 	qcom,cold-bat-decidegc = <(-200)>;
-	qcom,ext-sense-type; /* External Sense Resistor */
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 	qcom,thermal-coefficients =  /bits/ 16 <0x6986 0x5D4B 0x6235>;
 	qcom,resume-soc = <99>;
 	qcom,bcl-lm-threshold-ma = <126>;
 	qcom,bcl-mh-threshold-ma = <400>;
 	qcom,fg-iterm-ma = <150>;
-	qcom,irq-volt-empty-mv = <2750>;
-	qcom,fg-cutoff-voltage-mv = <3000>;
+	qcom,irq-volt-empty-mv = <3000>;
+	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,fg-vbat-estimate-diff-mv = <1000>;
 	qcom,fg-delta-soc = <1>;
 	qcom,fg-max-soc = <100>;
