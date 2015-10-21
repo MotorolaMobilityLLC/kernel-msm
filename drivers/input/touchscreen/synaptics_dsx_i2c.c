@@ -93,7 +93,7 @@
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
 #define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
 
-#define tk_debug(fmt, args...) pr_err(fmt, ##args)
+#define tk_debug(fmt, args...)
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 static int folio_notifier_callback(struct notifier_block *self,
@@ -1294,7 +1294,7 @@ int synaptics_dsx_dt_parse_mode(struct synaptics_rmi4_data *data,
 	struct device *dev = &data->i2c_client->dev;
 	struct device_node *np = dev->of_node;
 	struct device_node *np_modes;
-	int ret;
+	int ret = 0;
 	char *propname;
 	struct property *prop;
 	const __be32 *list;
@@ -1361,6 +1361,7 @@ static struct synaptics_dsx_platform_data *
 	struct synaptics_dsx_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
 	struct synaptics_dsx_cap_button_map *button_map = NULL;
+	struct synaptics_clip_area clip_area;
 
 	rmi4_data->patching_enabled = 1;
 	retval = synaptics_dsx_dt_parse_mode(rmi4_data, "default",
@@ -1457,11 +1458,12 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->aod_mt = 1;
 	}
 
-	if (of_property_read_bool(np, "synaptics,touch-clip-area")) {
-		struct synaptics_clip_area *clip_area;
-
-		clip_area = kzalloc(sizeof(*clip_area), GFP_KERNEL);
-		if (!clip_area) {
+	retval = of_property_read_u32_array(np,
+			"synaptics,touch-clip-area",
+			(unsigned *)&clip_area, 4);
+	if (!retval) {
+		rmi4_data->clipa = kzalloc(sizeof(clip_area), GFP_KERNEL);
+		if (!rmi4_data->clipa) {
 			dev_err(&client->dev, "clip area allocation failure\n");
 			return NULL;
 		}
@@ -2848,7 +2850,7 @@ static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct synaptics_rmi4_data *rmi4_data =
-                                        i2c_get_clientdata(to_i2c_client(dev));
+					i2c_get_clientdata(to_i2c_client(dev));
 	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->in_bootloader);
 }
 
@@ -6215,7 +6217,7 @@ static int synaptics_dsx_sysfs_touchscreen(
 {
 	struct synaptics_rmi4_device_info *rmi = &(rmi4_data->rmi4_mod_info);
 	struct device_attribute *attrs = touchscreen_attributes;
-	int i, error;
+	int i, error = 0;
 	static struct class *touchscreen_class;
 	static struct device *ts_class_dev;
 
