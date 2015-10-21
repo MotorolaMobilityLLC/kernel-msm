@@ -31,6 +31,7 @@
 #include <linux/unistd.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/of.h>
 
 #define MAX_UTAG_SIZE 1024
 #define MAX_UTAG_NAME 32
@@ -110,7 +111,7 @@ struct dir_node {
 LIST_HEAD(dir_list);
 
 struct blkdev {
-	char name[255];
+	const char *name;
 	struct file *filep;
 	size_t size;
 };
@@ -123,11 +124,6 @@ static struct ctrl {
 	char reload;
 	uint32_t csum;
 } ctrl;
-
-module_param_string(blkdev, ctrl.main.name, sizeof(ctrl.main.name), 0664);
-MODULE_PARM_DESC(blkdev, "Full path for utags partition");
-module_param_string(backup, ctrl.backup.name, sizeof(ctrl.backup.name), 0664);
-MODULE_PARM_DESC(backup, "Full path for utags backup partition");
 
 static void build_utags_directory(void);
 static void clear_utags_directory(void);
@@ -910,6 +906,30 @@ static void build_utags_directory(void)
 	ctrl.reload = UTAG_STATUS_LOADED;
 }
 
+#ifdef CONFIG_OF
+static int utags_dt_init(struct platform_device *pdev)
+{
+	int rc;
+	struct device_node *node = pdev->dev.of_node;
+
+	rc = of_property_read_string(node, "mmi,main-utags",
+		&ctrl.main.name);
+	if (rc) {
+		pr_err("%s storage path not provided\n", __func__);
+		return -EIO;
+	}
+
+	rc = of_property_read_string(node, "mmi,backup-utags",
+		&ctrl.backup.name);
+	if (rc)
+		pr_err("%s backup storage path not provided\n", __func__);
+
+	return rc;
+}
+#else
+static int utags_dt_init(struct platform_device *pdev) { return -EINVAL; }
+#endif
+
 static void clear_utags_directory(void)
 {
 	struct proc_node *node, *s = NULL;
@@ -932,10 +952,11 @@ static int utags_probe(struct platform_device *pdev)
 	int rc;
 	static int retry;
 
-	if (!ctrl.main.name[0]) {
-		pr_err("%s storage path not provided\n", __func__);
+	ctrl.pdev = pdev;
+
+	rc = utags_dt_init(pdev);
+	if (rc)
 		return -EIO;
-	}
 
 	rc = open_utags(&ctrl.main);
 	if ((rc == -ENOENT) && (++retry < UTAGS_MAX_DEFERRALS)) {
@@ -943,7 +964,7 @@ static int utags_probe(struct platform_device *pdev)
 	} else if (rc)
 		pr_err("%s failed to open, try reload later\n", __func__);
 
-	if (!ctrl.backup.name[0])
+	if (!ctrl.backup.name)
 		pr_err("%s backup storage path not provided\n", __func__);
 	else
 		open_utags(&ctrl.backup);
@@ -973,23 +994,27 @@ static int utags_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id utags_match_table[] = {
+	{	.compatible = "mmi,utags",
+	},
+	{}
+};
+#endif
+
 static struct platform_driver utags_driver = {
 	.probe = utags_probe,
 	.remove = utags_remove,
 	.driver = {
 		.name = DRVNAME,
-		.bus = &platform_bus_type
+		.bus = &platform_bus_type,
+		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(utags_match_table),
 	},
 };
 
 static int __init utags_init(void)
 {
-	ctrl.pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-	if (IS_ERR(ctrl.pdev)) {
-		int ret = PTR_ERR(ctrl.pdev);
-		pr_err("%s device register failed ret %d\n", __func__, ret);
-		return ret;
-	}
 	return platform_driver_register(&utags_driver);
 }
 
