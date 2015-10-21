@@ -693,7 +693,7 @@
 		gpios = <&pm8994_gpios 7 2>, /* APBA_1P1_EN, output-high */
 			<&tlmm 27 0>,        /* APBA_BOOTRET, output-low */
 			<&pm8994_mpps 2 0>,  /* MOD_MPHY_I2S_EN_N, output-low */
-			<&tlmm 81 0>,        /* MOD_MPHY_I2S_SEL, output-low */
+			<&tlmm 81 2>,        /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 36 0>,       /* APBA_RESET_N, output-low */
 			<&tlmm 37 1>,       /* APBA_INT_N, in */
 			<&tlmm 25 2>;        /* APBA_WAKE, output-high */
