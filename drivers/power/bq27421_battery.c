@@ -26,6 +26,7 @@
 #include <linux/of.h>
 #include <linux/mod_devicetable.h>
 #include <linux/power/bq27421_battery.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 #define RETRY_CNT_EXIT_CFGUPDATE 100
 #define RETRY_CNT_ENTER_CFGUPDATE 10
@@ -45,6 +46,8 @@ struct bq27421_chip {
 	int soc;
 	int current_now;
 	int temperature;
+	struct qpnp_vadc_chip *vadc_dev;
+	bool is_fuelerr;
 };
 
 static int bq27421_read_byte(struct i2c_client *client, u8 reg)
@@ -320,7 +323,14 @@ static int bq27421_get_property(struct power_supply *psy,
 		val->intval = chip->vcell * 1000;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = chip->soc;
+		if (chip->is_fuelerr && chip->soc > 0) {
+			pr_err("%s: clear fuelerr\n", __func__);
+			chip->is_fuelerr = false;
+		}
+		if (chip->is_fuelerr)
+			val->intval = chip->pdata->soc_fake_fuelerr;
+		else
+			val->intval = chip->soc;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		/* Convert 0.1 Kelvin unit to 0.1 Celsius */
@@ -351,6 +361,7 @@ static struct bq27421_platform_data *bq27421_get_pdata(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
 	struct bq27421_platform_data *pdata;
+	int ret;
 
 	if (!np)
 		return dev->platform_data;
@@ -362,7 +373,65 @@ static struct bq27421_platform_data *bq27421_get_pdata(struct device *dev)
 	pdata->ext_batt_psy =
 			of_property_read_bool(np, "ti,ext_batt_psy");
 
+	ret = of_property_read_u32(np, "ti,check-vbat-fuelerr",
+			&pdata->check_vbat_fuelerr);
+	if (ret) {
+		pr_err("%s:failed to read ti,check-vbat-fuelerr\n", __func__);
+		goto err_getpdata;
+	}
+	/* covert from mv to uv */
+	pdata->check_vbat_fuelerr *= 1000;
+
+	ret = of_property_read_u32(np, "ti,soc-fake-fuelerr",
+			&pdata->soc_fake_fuelerr);
+	if (ret) {
+		pr_err("%s:failed to read ti,soc-fake-fuelerr\n", __func__);
+		goto err_getpdata;
+	}
+
+	pr_err("%s:check param vbatcheck(%d) fakesoc(%d)\n", __func__,
+			pdata->check_vbat_fuelerr,
+			pdata->soc_fake_fuelerr);
+
 	return pdata;
+
+err_getpdata:
+	devm_kfree(dev, pdata);
+	return NULL;
+}
+
+static int bq27421_is_lowbatt(struct bq27421_chip *chip)
+{
+	struct qpnp_vadc_result results;
+	int ret;
+
+	ret = qpnp_vadc_read(chip->vadc_dev, VBAT_SNS, &results);
+	if (ret) {
+		pr_err("%s:Unable to read vbat rc=%d\n", __func__, ret);
+		return 0;
+	}
+	pr_info("%s:batt voltage %lld uV\n", __func__, results.physical);
+
+	if (results.physical > chip->pdata->check_vbat_fuelerr)
+		return 0;
+	else
+		return 1;
+}
+
+static int bq27421_get_vadc(struct bq27421_chip *chip)
+{
+	int ret;
+
+	chip->vadc_dev = qpnp_get_vadc(&chip->client->dev, "batt");
+	if (IS_ERR(chip->vadc_dev)) {
+		ret = PTR_ERR(chip->vadc_dev);
+		if (ret != -EPROBE_DEFER)
+			pr_err("failed to get vadc_dev, missing vadc prop in dtsi\n");
+
+		return ret;
+	}
+
+	return 0;
 }
 
 static int bq27421_probe(struct i2c_client *client,
@@ -382,6 +451,13 @@ static int bq27421_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	chip->client = client;
+
+	/* return value is -EPROBE_DEFER, -ENODEV or 0.
+	 * In case of -ENODEV, you should check vadc prop in dtsi. */
+	ret = bq27421_get_vadc(chip);
+	if (ret)
+		return ret;
+
 	chip->pdata = bq27421_get_pdata(&client->dev);
 	if (!chip->pdata) {
 		pr_err("%s: no platform data provided\n", __func__);
@@ -391,6 +467,14 @@ static int bq27421_probe(struct i2c_client *client,
 
 	mutex_init(&chip->mutex);
 	i2c_set_clientdata(client, chip);
+
+	/* check fuelerr */
+	bq27421_update(chip);
+	if (chip->soc == 0 && !bq27421_is_lowbatt(chip)) {
+		pr_err("%s: detect fuelerr, report %d\n",
+				__func__, chip->pdata->soc_fake_fuelerr);
+		chip->is_fuelerr = true;
+	}
 
 	/*
 	 * If ext_batt_psy is true, then an external device publishes

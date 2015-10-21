@@ -30,6 +30,8 @@ struct bq27421_dataram {
 
 struct bq27421_platform_data {
 	bool ext_batt_psy;
+	int check_vbat_fuelerr;
+	int soc_fake_fuelerr;
 };
 
 /* Standard data commands */
