@@ -137,6 +137,8 @@ endif # CONFIG_MMI_DEVICE_DTBS
 # Motorola Device Trees
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-princeton-p1.dtb
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-princeton-p2.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996-sheridan-p1a.dtb
+dtb-$(CONFIG_ARCH_MSM8996) += msm8996-griffin-p1a.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
