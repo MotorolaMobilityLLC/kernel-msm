@@ -404,6 +404,9 @@
 			interrupt-parent = <&msmgpio>;
 			interrupts = <31 2>;
 			ti,ext_batt_psy;
+			qcom,batt-vadc = <&pm8226_vadc>;
+			ti,check-vbat-fuelerr = <3700>;
+			ti,soc-fake-fuelerr = <50>;
 			status = "okay";
 		};
 	};
