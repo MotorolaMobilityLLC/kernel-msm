@@ -395,42 +395,35 @@ static int msm_cpe_lab_thread(void *data)
 		goto done;
 	}
 
-	if (!kthread_should_stop()) {
-		lsm_ops->lsm_lab_data_channel_open(cpe->core_handle, session);
+	lsm_ops->lsm_lab_data_channel_open(cpe->core_handle, session);
 
-		rc = lsm_ops->lsm_lab_data_channel_read(core, lab->lsm_s,
+	rc = lsm_ops->lsm_lab_data_channel_read(core, lab->lsm_s,
 					lab->pcm_buf[0].phys,
 					lab->pcm_buf[0].mem,
 					hw_params->buf_sz);
-		if (rc) {
-			pr_err("%s:Slim read error %d\n", __func__, rc);
-			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
-			goto done;
-		}
+	if (rc) {
+		pr_err("%s:Slim read error %d\n", __func__, rc);
+		lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
+		goto done;
+	}
 
-		cur_buf = &lab->pcm_buf[0];
-		next_buf = &lab->pcm_buf[1];
+	cur_buf = &lab->pcm_buf[0];
+	next_buf = &lab->pcm_buf[1];
 
-		/* Start lab on CPE after first buffer is queued */
-		rc = lsm_ops->lsm_cdc_start_lab(core);
-		if (rc) {
-			pr_err("%s: start lab failed\n", __func__);
-			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
-			goto done;
-		}
+	/* Start lab on CPE after first buffer is queued */
+	rc = lsm_ops->lsm_cdc_start_lab(core);
+	if (rc) {
+		pr_err("%s: start lab failed\n", __func__);
+		lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
+		goto done;
+	}
 
-		rc = afe_ops->afe_port_start(cpe->core_handle,
-					     &session->afe_out_port_cfg);
-		if (rc) {
-			pr_err("%s: AFE out port start failed, err = %d\n",
-				__func__, rc);
-			lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
-			goto done;
-		}
-
-	} else {
-		pr_debug("%s: LAB stopped before starting read\n",
-			 __func__);
+	rc = afe_ops->afe_port_start(cpe->core_handle,
+				     &session->afe_out_port_cfg);
+	if (rc) {
+		pr_err("%s: AFE out port start failed, err = %d\n",
+			__func__, rc);
+		lab->thread_status = MSM_LSM_LAB_THREAD_ERROR;
 		goto done;
 	}
 
