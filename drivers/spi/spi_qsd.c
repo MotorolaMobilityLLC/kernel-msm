@@ -2358,8 +2358,10 @@ static int init_resources(struct platform_device *pdev)
 		goto err_pclk_get;
 	}
 
-	if (dd->pdata && dd->pdata->max_clock_speed)
+	if (dd->pdata && dd->pdata->max_clock_speed) {
 		msm_spi_clock_set(dd, dd->pdata->max_clock_speed);
+		master->max_speed_hz = dd->pdata->max_clock_speed;
+	}
 
 	rc = clk_prepare_enable(dd->clk);
 	if (rc) {
