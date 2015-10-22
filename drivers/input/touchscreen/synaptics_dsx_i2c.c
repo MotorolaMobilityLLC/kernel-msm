@@ -2917,7 +2917,7 @@ static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		gear_time = stats->keeper[ii].duration;
 		if (ii == gear)
 			gear_time += duration;
-		perc_u64 = 10000*gear_time;
+		perc_u64 = 100000*gear_time;
 		do_div(perc_u64, total);
 		percentage = (int)perc_u64;
 		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr, ii,
@@ -2942,7 +2942,7 @@ static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		gear_time = stats->keeper[ii].duration;
 		if (ii == state)
 			gear_time += duration;
-		perc_u64 = 10000*gear_time;
+		perc_u64 = 100000*gear_time;
 		do_div(perc_u64, total);
 		percentage = (int)perc_u64;
 		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr,
@@ -2967,7 +2967,7 @@ static ssize_t synaptics_rmi4_stats_show(struct device *dev,
 		gear_time = stats->keeper[ii].duration;
 		if (ii == state)
 			gear_time += duration;
-		perc_u64 = 10000*gear_time;
+		perc_u64 = 100000*gear_time;
 		do_div(perc_u64, total);
 		percentage = (int)perc_u64;
 		SPRINTF_PAGE("%c%d: %d%%\n", stats->abbr,
