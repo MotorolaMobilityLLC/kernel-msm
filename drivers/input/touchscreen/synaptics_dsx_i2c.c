@@ -6204,8 +6204,16 @@ static ssize_t path_show(struct device *dev,
 	return blen;
 }
 
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "synaptics");
+}
+
 static struct device_attribute touchscreen_attributes[] = {
 	__ATTR_RO(path),
+	__ATTR_RO(vendor),
 	__ATTR_NULL
 };
 
@@ -6220,15 +6228,15 @@ static int synaptics_dsx_sysfs_touchscreen(
 	int i, error = 0;
 	static struct class *touchscreen_class;
 	static struct device *ts_class_dev;
+	static int minor;
 
 	if (create) {
-		int minor = input_get_new_minor(rmi4_data->i2c_client->addr,
+		minor = input_get_new_minor(rmi4_data->i2c_client->addr,
 						1, false);
-		if (minor < 0) {
-			pr_warn("assigning dynamic minor\n");
+		if (minor < 0)
 			minor = input_get_new_minor(TSDEV_MINOR_BASE,
 					TSDEV_MINOR_MAX, true);
-		}
+		pr_info("assigned minor %d\n", minor);
 
 		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
 		if (IS_ERR(touchscreen_class)) {
@@ -6270,8 +6278,7 @@ static int synaptics_dsx_sysfs_touchscreen(
 device_destroy:
 	for (--i; i >= 0; --i)
 		device_remove_file(ts_class_dev, &attrs[i]);
-	device_destroy(touchscreen_class,
-			MKDEV(INPUT_MAJOR, rmi4_data->i2c_client->addr));
+	device_destroy(touchscreen_class, MKDEV(INPUT_MAJOR, minor));
 	ts_class_dev = NULL;
 	class_unregister(touchscreen_class);
 	pr_err("error creating touchscreen class\n");
