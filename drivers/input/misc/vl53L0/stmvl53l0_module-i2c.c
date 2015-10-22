@@ -54,7 +54,6 @@
 #define LASER_SENSOR_PINCTRL_STATE_SLEEP "laser_suspend"
 #define LASER_SENSOR_PINCTRL_STATE_DEFAULT "laser_default"
 
-
 /*
  * Global data
  */
@@ -262,7 +261,7 @@ static const struct i2c_device_id stmvl53l0_id[] = {
 MODULE_DEVICE_TABLE(i2c, stmvl53l0_id);
 
 static const struct of_device_id st_stmvl53l0_dt_match[] = {
-	{ .compatible = "st,stmvl53l0", },
+	{ .compatible = "st,stmvl53l0_i2c", },
 	{ },
 };
 
@@ -286,6 +285,18 @@ int stmvl53l0_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 
 	vl53l0_dbgmsg("Enter i2c powerup\n");
 
+	ret = regulator_set_voltage(data->vana, VL53L0_VDD_MIN, VL53L0_VDD_MAX);
+	if (ret < 0) {
+		vl53l0_errmsg("set_vol(%p) fail %d\n", data->vana, ret);
+		return ret;
+	}
+	ret = regulator_enable(data->vana);
+	msleep(20);
+	if (ret < 0) {
+		vl53l0_errmsg("reg enable(%p) failed.rc=%d\n", data->vana, ret);
+		return ret;
+	}
+
 	msm_camera_request_gpio_table(
 		data->gconf.cam_gpio_req_tbl,
 		data->gconf.cam_gpio_req_tbl_size, 1);
@@ -305,7 +316,6 @@ int stmvl53l0_power_down_i2c(void *i2c_object)
 
 	struct i2c_data *data = (struct i2c_data *)i2c_object;
 
-
 	vl53l0_dbgmsg("Enter\n");
 	if (data->power_up) {
 		pinctrl_select_state(data->pinctrl_info.pinctrl,
@@ -317,6 +327,13 @@ int stmvl53l0_power_down_i2c(void *i2c_object)
 
 		gpio_set_value_cansleep(
 			data->gconf.cam_gpio_req_tbl[0].gpio, 0);
+
+		ret = regulator_disable(data->vana);
+		if (ret < 0)
+			vl53l0_errmsg("reg disable(%p) failed.rc=%d\n",
+			data->vana, ret);
+
+		data->power_up = 0;
 	}
 
 
