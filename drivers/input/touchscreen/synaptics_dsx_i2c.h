@@ -23,7 +23,7 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION "DSX 1.1"
 
 /* define to enable USB charger detection */
-#define USB_CHARGER_DETECTION
+#undef USB_CHARGER_DETECTION
 
 #include <linux/version.h>
 #include <linux/ktime.h>
