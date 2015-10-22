@@ -323,6 +323,8 @@ module_param_named(
 	int, S_IRUSR | S_IWUSR
 );
 
+static bool off_charge_flag;
+
 #define pr_smb(reason, fmt, ...)				\
 	do {							\
 		if (smbchg_debug_mask & (reason))		\
@@ -878,6 +880,26 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 	return rc;
 }
 
+static void check_usb_status(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0,};
+
+	if (chip->usb_psy) {
+		chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_ONLINE, &prop);
+		/*
+		 * if battery soc is 0% and usb_psy property online is true in
+		 * normal mode(not power-off charging mode), set online to
+		 * false to notify system to power off.
+		*/
+		if ((prop.intval == 1) && (!off_charge_flag) &&  chip->usb_present) {
+			power_supply_set_present(chip->usb_psy, false);
+			power_supply_set_online(chip->usb_psy, false);
+			chip->usb_present = false;
+		}
+	}
+}
+
 #define DEFAULT_BATT_CAPACITY	50
 static int get_prop_batt_capacity(struct smbchg_chip *chip)
 {
@@ -891,8 +913,24 @@ static int get_prop_batt_capacity(struct smbchg_chip *chip)
 		pr_smb(PR_STATUS, "Couldn't get capacity rc = %d\n", rc);
 		capacity = DEFAULT_BATT_CAPACITY;
 	}
+
+	if (capacity == 0) {
+		check_usb_status(chip);
+	}
+
 	return capacity;
 }
+
+/* parse the androidboot.mode, check whether it is power-off charging */
+static int __init early_parse_off_charge_flag(char *p)
+{
+	if (p) {
+		if (!strcmp(p, "charger"))
+			off_charge_flag = true;
+	}
+	return 0;
+}
+early_param("androidboot.mode", early_parse_off_charge_flag);
 
 #define DEFAULT_BATT_TEMP		200
 static int get_prop_batt_temp(struct smbchg_chip *chip)
