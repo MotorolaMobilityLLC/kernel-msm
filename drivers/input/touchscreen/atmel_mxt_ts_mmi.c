@@ -4876,6 +4876,109 @@ static int mxt_init_mode(struct mxt_data *data, struct mxt_patchset **pmode)
 	return 0;
 }
 
+#include <linux/major.h>
+#include <linux/kdev_t.h>
+
+/* Attribute: path (RO) */
+static ssize_t path_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	ssize_t blen;
+	const char *path;
+
+	if (!data) {
+		pr_err("cannot get mxt_data pointer\n");
+		return (ssize_t)0;
+	}
+	path = kobject_get_path(&data->client->dev.kobj, GFP_KERNEL);
+	blen = scnprintf(buf, PAGE_SIZE, "%s", path ? path : "na");
+	kfree(path);
+	return blen;
+}
+
+/* Attribute: vendor (RO) */
+static ssize_t vendor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "atmel");
+}
+
+static struct device_attribute touchscreen_attributes[] = {
+	__ATTR_RO(path),
+	__ATTR_RO(vendor),
+	__ATTR_NULL
+};
+
+#define TSDEV_MINOR_BASE 128
+#define TSDEV_MINOR_MAX 32
+
+static int mxt_sysfs_touchscreen(struct mxt_data *data, bool create)
+{
+	struct mxt_info *info = data->info ? data->info : &data->pdata->dt_info;
+	struct device_attribute *attrs = touchscreen_attributes;
+	int i, error = 0;
+	static struct class *touchscreen_class;
+	static struct device *ts_class_dev;
+	static int minor;
+	static char ts_devname[6];
+
+	if (create) {
+		minor = input_get_new_minor(data->client->addr, 1, false);
+		if (minor < 0)
+			minor = input_get_new_minor(TSDEV_MINOR_BASE,
+					TSDEV_MINOR_MAX, true);
+		pr_info("assigned minor %d\n", minor);
+
+		touchscreen_class = class_create(THIS_MODULE, "touchscreen");
+		if (IS_ERR(touchscreen_class)) {
+			error = PTR_ERR(touchscreen_class);
+			touchscreen_class = NULL;
+			return error;
+		}
+
+		scnprintf(ts_devname, 5, "%02x%02x",
+				info->family_id, data->revision_id);
+		ts_class_dev = device_create(touchscreen_class, NULL,
+				MKDEV(INPUT_MAJOR, minor), data, ts_devname);
+		if (IS_ERR(ts_class_dev)) {
+			error = PTR_ERR(ts_class_dev);
+			ts_class_dev = NULL;
+			return error;
+		}
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i) {
+			error = device_create_file(ts_class_dev, &attrs[i]);
+			if (error)
+				break;
+		}
+
+		if (error)
+			goto device_destroy;
+	} else {
+		if (!touchscreen_class || !ts_class_dev)
+			return -ENODEV;
+
+		for (i = 0; attrs[i].attr.name != NULL; ++i)
+			device_remove_file(ts_class_dev, &attrs[i]);
+
+		device_unregister(ts_class_dev);
+		class_unregister(touchscreen_class);
+	}
+
+	return 0;
+
+device_destroy:
+	for (--i; i >= 0; --i)
+		device_remove_file(ts_class_dev, &attrs[i]);
+	device_destroy(touchscreen_class, MKDEV(INPUT_MAJOR, minor));
+	ts_class_dev = NULL;
+	class_unregister(touchscreen_class);
+	pr_err("error creating touchscreen class\n");
+
+	return -ENODEV;
+}
+
 static int mxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -4973,6 +5076,7 @@ static int mxt_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Error registering folio_notifier: %d\n",
 			error);
 #endif
+	mxt_sysfs_touchscreen(data, true);
 	return 0;
 
 err_remove_sysfs_group:
@@ -4999,7 +5103,7 @@ static int mxt_remove(struct i2c_client *client)
 	if (data->mem_access_created)
 		sysfs_remove_bin_file(&client->dev.kobj,
 				      &data->mem_access_attr);
-
+	mxt_sysfs_touchscreen(data, false);
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 	free_irq(data->irq, data);
 	regulator_put(data->reg_avdd);
