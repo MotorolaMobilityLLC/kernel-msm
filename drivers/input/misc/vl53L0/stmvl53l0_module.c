@@ -200,7 +200,8 @@ static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 	VL53L0_SetGpioConfig(data, 0, 0,
 		VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
 		VL53L0_INTERRUPTPOLARITY_LOW);
-	VL53L0_SetInterruptThresholds(data, 0, 30 << 16, 40 << 16);
+	VL53L0_SetInterruptThresholds(data,
+		0, data->lowv << 16, data->highv << 16);
 	VL53L0_SetDeviceMode(data,
 		VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 	data->lowint = 1;
@@ -408,7 +409,7 @@ memcpy(&(data->rangeData), &RMData,
 		VL53L0_StartMeasurement(data);
 	} else if (SAR_MODE == data->w_mode) {
 		vl53l0_dbgmsg("SAR_MODE\n");
-		if (RMData.RangeMilliMeter < SAR_LOW) {
+		if (RMData.RangeMilliMeter < data->lowv) {
 			vl53l0_dbgmsg("SAR enter LOW\n");
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			VL53L0_SetGpioConfig(data, 0, 0,
@@ -418,7 +419,7 @@ memcpy(&(data->rangeData), &RMData,
 				data, data->delay_ms);
 
 			VL53L0_SetInterruptThresholds(
-			data, 0, SAR_LOW << 16, SAR_HIGH << 16);
+			data, 0, data->lowv << 16, data->highv << 16);
 			VL53L0_SetDeviceMode(data,
 				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 			data->lowint = 0;
@@ -426,7 +427,7 @@ memcpy(&(data->rangeData), &RMData,
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
 				KOBJ_CHANGE, envplow);
 			vl53l0_dbgmsg("SAR enter LOW sent uevent\n");
-		} else if (RMData.RangeMilliMeter > SAR_HIGH) {
+		} else if (RMData.RangeMilliMeter > data->highv) {
 			vl53l0_dbgmsg("SAR enter HIGH\n");
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			VL53L0_SetGpioConfig(data, 0, 0,
@@ -436,7 +437,7 @@ memcpy(&(data->rangeData), &RMData,
 				data, data->delay_ms);
 
 			VL53L0_SetInterruptThresholds(
-				data, 0, SAR_LOW << 16, SAR_HIGH << 16);
+				data, 0, data->lowv << 16, data->highv << 16);
 			VL53L0_SetDeviceMode(data,
 				VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
 			data->lowint = 1;
@@ -446,12 +447,13 @@ memcpy(&(data->rangeData), &RMData,
 		}
 	} else if (SUPER_MODE == data->w_mode) {
 		vl53l0_dbgmsg("SUPER_MODE\n");
-		if (RMData.RangeMilliMeter < SAR_LOW) {
+		if (RMData.RangeMilliMeter < data->lowv
+				&& RMData.RangeMilliMeter != 0) {
 			vl53l0_dbgmsg("SAR enter LOW\n");
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
 				KOBJ_CHANGE, envplow);
-		} else if (RMData.RangeMilliMeter > SAR_HIGH) {
+		} else if (RMData.RangeMilliMeter > data->highv) {
 			vl53l0_dbgmsg("SAR enter HIGH\n");
 			stmvl53l0_ps_read_measurement(vl53l0_dev);
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
@@ -948,6 +950,48 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				VL53L0_SetXTalkCompensationEnable(
 				vl53l0_dev, (uint8_t)parameter.value);
 			break;
+		case (SIGMAVAL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+				VL53L0_GetSigmaLimitValue(vl53l0_dev,
+				0, (FixPoint1616_t *)&parameter.value);
+			else
+				parameter.status =
+				VL53L0_SetSigmaLimitValue(
+				vl53l0_dev, 0, (FixPoint1616_t)parameter.value);
+			break;
+
+		case (SIGMACTL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+				VL53L0_GetSigmaLimitCheckEnable(vl53l0_dev,
+				0, (uint8_t *)&parameter.value);
+			else
+				parameter.status =
+				VL53L0_SetSigmaLimitCheckEnable(
+				vl53l0_dev, 0, (uint8_t)parameter.value);
+			break;
+		case (SGLVAL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+				VL53L0_GetSigmaLimitValue(vl53l0_dev,
+				0, (FixPoint1616_t *)&parameter.value);
+			else
+				parameter.status =
+				VL53L0_SetSigmaLimitValue(
+				vl53l0_dev, 0, (FixPoint1616_t)parameter.value);
+			break;
+
+		case (SGLCTL_PRA):
+			if (parameter.is_read)
+				parameter.status =
+				VL53L0_GetSignalLimitValue(vl53l0_dev,
+				0, (FixPoint1616_t *)&parameter.value);
+			else
+				parameter.status =
+				VL53L0_SetSignalLimitValue(
+				vl53l0_dev, 0, (FixPoint1616_t)parameter.value);
+			break;
 
 		case (WRAPAROUNDCTL_PRA):
 			if (parameter.is_read)
@@ -1248,6 +1292,8 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	int gpio;
 
 	vl53l0_dbgmsg("Enter\n");
+	data->lowv = 40;
+	data->highv = 45;
 	if (type == CCI_BUS) {
 		data->bus_type = CCI_BUS;
 		data->client_object = &(data->cci_client_object);
@@ -1259,6 +1305,8 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 		data->client_object = &(data->i2c_client_object);
 		pmodule_func_tbl = &stmvl53l0_module_func_tbl_i2c;
 		gpio = data->i2c_client_object.gconf.cam_gpio_req_tbl[1].gpio;
+		data->lowv = data->i2c_client_object.lowv;
+		data->highv = data->i2c_client_object.highv;
 	}
 
 	/* init interrupt */
