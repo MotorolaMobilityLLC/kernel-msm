@@ -44,8 +44,8 @@
 #define vl53l0_errmsg(str, args...) \
 	printk(KERN_ERR "%s: " str, __func__, ##args)
 
-#define VL53L0_VDD_MIN      2600000
-#define VL53L0_VDD_MAX      3000000
+#define VL53L0_VDD_MIN      2800000
+#define VL53L0_VDD_MAX      2800000
 /*driver working mode*/
 #define	OFF_MODE  0
 #define	CAM_MODE  1
@@ -65,11 +65,13 @@
 #define	OFFSET_PAR 0
 #define	XTALKRATE_PAR 1
 #define	XTALKENABLE_PAR 2
-#define	SNRVAL_PRA 3
-#define	SNRCTL_PRA 4
+#define	SIGMAVAL_PRA 3
+#define	SIGMACTL_PRA 4
 #define	WRAPAROUNDCTL_PRA 5
 #define	INTERMEASUREMENTPERIOD_PAR 6
 #define	MEASUREMENTTIMINGBUDGET_PAR 7
+#define	SGLVAL_PRA 8
+#define	SGLCTL_PRA 9
 
 
 #define	CCI_BUS  0
@@ -149,6 +151,8 @@ struct stmvl53l0_data {
 	/*for SAR mode indicate low range interrupt*/
 	uint8_t lowint;
 	uint8_t bus_type;
+	uint32_t lowv;
+	uint32_t highv;
 };
 
 /*
