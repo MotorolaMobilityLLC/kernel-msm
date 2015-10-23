@@ -29,6 +29,8 @@
 
 extern char m4sensorhub_debug;
 
+extern uint m4_panic_on_fail;
+
 #define M4SENSORHUB_DRIVER_NAME     "m4sensorhub"
 
 #define KDEBUG(i, format, s...)                         \

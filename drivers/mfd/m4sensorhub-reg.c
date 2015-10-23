@@ -32,6 +32,10 @@
 #define DEBUG_LINE_LENGTH           80
 #define MAX_BYTES_PER_TRANS         256
 
+#define I2C_FAILURES_BEFORE_RESET   5
+/* I2C calls are nested so sometimes cannot recover cleanly from i2c failure */
+#define I2C_FAILURES_BEFORE_BUG     10
+
 /* --------------- Global Declarations -------------- */
 
 /* ------------ Local Function Prototypes ----------- */
@@ -423,9 +427,10 @@ EXPORT_SYMBOL_GPL(m4sensorhub_reg_access_unlock);
 int m4sensorhub_i2c_write_read(struct m4sensorhub_data *m4sensorhub,
 				      u8 *buf, int writelen, int readlen)
 {
-	int i, msglen, msgstart, err, tries = 0;
+	int i, msglen, msgstart, err, tries = 0, ret;
 	char buffer[DEBUG_LINE_LENGTH];
 	struct i2c_msg msgs[2];
+	static u8 i2c_failures;
 
 	if (m4sensorhub == NULL) {
 		KDEBUG(M4SH_ERROR, "%s: M4 data is NULL\n", __func__);
@@ -497,6 +502,32 @@ int m4sensorhub_i2c_write_read(struct m4sensorhub_data *m4sensorhub,
 					buf[i]);
 			}
 			KDEBUG(M4SH_VERBOSE_DEBUG, "%s\n", buffer);
+		}
+	}
+
+	if (err >= 0)
+		i2c_failures = 0;
+	else if (++i2c_failures >= I2C_FAILURES_BEFORE_RESET) {
+		if (m4_panic_on_fail || i2c_failures >=
+			  I2C_FAILURES_BEFORE_BUG) {
+			KDEBUG(M4SH_ERROR,
+			       "%s: Too many I2C failures, panic!\n",
+			       __func__);
+			BUG();
+		} else{
+			KDEBUG(M4SH_ERROR,
+			       "%s: Too many I2C failures, reset M4!\n",
+			       __func__);
+			/* Passing "true" will reset M4 before trying to
+			 * communicate */
+			ret = m4sensorhub_test_m4_reboot(m4sensorhub, true);
+			if (ret < 0) {
+				KDEBUG(M4SH_ERROR,
+				       "%s: Failed to restart M4, ret = %d\n",
+				       __func__, ret);
+				BUG();
+			}
+			i2c_failures = 0;
 		}
 	}
 
