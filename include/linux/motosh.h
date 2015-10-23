@@ -84,11 +84,6 @@ enum vmm_ids {
 };
 #undef VMM_ENTRY
 
-/* To be replaced by enums once defined in SensorHub FW */
-#define STEP_COUNTER_UPDATE_RATE        0x36
-#define STEP_COUNTER			0x3E
-#define STEP_DETECTOR			0x47
-
 #ifdef UNDEF_ALS_TEST
 #undef ALS_TEST
 #endif
