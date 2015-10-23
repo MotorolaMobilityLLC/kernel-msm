@@ -535,14 +535,15 @@ static int stml0xx_gpio_init(struct stml0xx_platform_data *pdata,
 			"stml0xx reset gpio_request failed: %d", err);
 		goto free_int;
 	}
+	gpio_direction_output(pdata->gpio_reset, 1);
 	if (pdata->reset_hw_type == 0) {
-		gpio_direction_output(pdata->gpio_reset, 1);
-		gpio_set_value(pdata->gpio_reset, 1);
 		err = gpio_export(pdata->gpio_reset, 0);
 	} else {
-		gpio_direction_input(pdata->gpio_reset);
 		err = gpio_export(pdata->gpio_reset, 1);
 	}
+	/* Keep the part in reset until the flasher uses NORMALMODE to tell us
+	 * we're good to go. */
+	gpio_set_value(pdata->gpio_reset, 0);
 	if (err) {
 		dev_err(&stml0xx_misc_data->spi->dev,
 			"reset gpio_export failed: %d", err);
@@ -992,7 +993,14 @@ static int stml0xx_probe(struct spi_device *spi)
 
 	ps_stml0xx->is_suspended = false;
 
-	switch_stml0xx_mode(NORMALMODE);
+	/* We could call switch_stml0xx_mode(NORMALMODE) at this point, but
+	 * instead we will hold the part in reset and only go to NORMALMODE on a
+	 * request to do so from the flasher.  The flasher must be present, and
+	 * it must verify the firmware file is available before switching to
+	 * NORMALMODE. This is to prevent a build that is missing firmware or
+	 * flasher from behaving as a normal build (with factory firmware in the
+	 * part).
+	 */
 
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	ps_stml0xx->hall_data = mmi_hall_init();
