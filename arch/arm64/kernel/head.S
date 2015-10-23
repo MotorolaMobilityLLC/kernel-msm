@@ -428,6 +428,11 @@ __create_page_tables:
 	sub	x6, x6, #1			// inclusive range
 	create_block_map x0, x7, x3, x5, x6
 1:
+
+	ldr	x5, =FIXADDR_TOP		// fix top address
+	add	x0, x26, #2 * PAGE_SIZE		// section table address
+	create_pgd_entry x0, x5, x6, x7
+
 	/*
 	 * Since the page tables have been populated with non-cacheable
 	 * accesses (MMU disabled), invalidate the idmap and swapper page
