@@ -219,6 +219,21 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 		if (ps_motosh->mode > BOOTMODE)
 			err = motosh_i2c_write(ps_motosh, cmdbuff, 2);
 		break;
+	case MOTOSH_IOCTL_SET_STEP_COUNTER_DELAY:
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&ps_motosh->client->dev,
+				"Copy step counter delay returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		cmdbuff[0] = STEP_COUNTER_INFO;
+		cmdbuff[1] = (delay>>8);
+		cmdbuff[2] = delay & 0xFF;
+		motosh_g_step_counter_delay = delay;
+		if (ps_motosh->mode > BOOTMODE)
+			err = motosh_i2c_write(ps_motosh, cmdbuff, 3);
+		break;
 	case MOTOSH_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&ps_motosh->client->dev,
 			"MOTOSH_IOCTL_SET_PRES_DELAY");
