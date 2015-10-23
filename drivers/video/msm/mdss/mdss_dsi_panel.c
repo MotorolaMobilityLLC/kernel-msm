@@ -674,6 +674,19 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+static const char *tfmode_2_str(int tfmode);
+static int mdss_panel_set_tfmode(struct mdss_dsi_ctrl_pdata *ctrl, int tfmode)
+{
+	struct dsi_panel_tfmode *tf = ctrl->panel_tfmode;
+	mdss_dsi_panel_cmds_send(ctrl, &(tf->cmds[tfmode]));
+#ifdef CONFIG_LEDS_NOTIFY
+	tf->tfmode_current = tfmode;
+#endif
+	pr_info("%s: tfmode = %d(%s)\n", __func__,
+		tfmode, tfmode_2_str(tfmode));
+	return 0;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -724,13 +737,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (ctrl->panel_tfmode) {
-		struct dsi_panel_tfmode *tf = ctrl->panel_tfmode;
-		int tfmode = tf->tfmode[TFMODE_STATE_NORMAL];
-		struct dsi_panel_cmds *cmds = &(tf->cmds[tfmode]);
-		mdss_dsi_panel_cmds_send(ctrl, cmds);
-#ifdef CONFIG_LEDS_NOTIFY
-		tf->tfmode_current = tfmode;
-#endif
+		int tfmode = ctrl->panel_tfmode->tfmode[TFMODE_STATE_NORMAL];
+		mdss_panel_set_tfmode(ctrl, tfmode);
 	}
 	if (pinfo->later_on_enabled)
 		atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
@@ -809,15 +817,6 @@ static int mdss_panel_brightness_to_tfmode(
 
 	return ret;
 }
-
-static int mdss_panel_set_panel_tfmode(
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata, int tfmode)
-{
-	struct dsi_panel_tfmode *tf = ctrl_pdata->panel_tfmode;
-	mdss_dsi_panel_cmds_send(ctrl_pdata, &(tf->cmds[tfmode]));
-	tf->tfmode_current = tfmode;
-	return 0;
-}
 #endif
 
 static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
@@ -867,18 +866,24 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		int tfmode;
 		struct dsi_panel_tfmode *tf = ctrl->panel_tfmode;
 		if (enable) {
+#ifdef CONFIG_LEDS_NOTIFY
+			/* store last tfmode set */
+			tf->tfmode_saved = tf->tfmode_current;
+#endif
 			tfmode = tf->tfmode[TFMODE_STATE_LOWPOWER];
 #if defined(CONFIG_DOCK_STATUS_NOTIFY)
 			if (pinfo->is_docked)
 				tfmode = PANEL_TFMODE_TRANSFLECTIVE;
 #endif
-		} else
+		} else {
 #ifdef CONFIG_LEDS_NOTIFY
-			tfmode = tf->tfmode_current;
+			tfmode = tf->tfmode_saved;
 #else
 			tfmode = tf->tfmode[TFMODE_STATE_NORMAL];
 #endif
-		mdss_dsi_panel_cmds_send(ctrl, &(tf->cmds[tfmode]));
+		}
+		if (tf->tfmode_current != tfmode)
+			mdss_panel_set_tfmode(ctrl, tfmode);
 	}
 
 	pr_debug("%s:-\n", __func__);
@@ -1320,7 +1325,7 @@ static int mdss_dsi_parse_panel_tfmode(struct device_node *np,
 			panel_tfmode->brightness_to_tfmode =
 				mdss_panel_brightness_to_tfmode;
 			panel_tfmode->set_panel_tfmode =
-				mdss_panel_set_panel_tfmode;
+				mdss_panel_set_tfmode;
 			pr_info("%s: tf_panel brightness gate level is %d\n",
 				__func__, panel_tfmode->tf_level);
 		}
@@ -1937,8 +1942,7 @@ static ssize_t mdss_dsi_store_panel_tfmode(struct device *dev,
 			continue;
 		ctrl->panel_tfmode->tfmode[i] = tfmode;
 		if (i == cur)
-			mdss_dsi_panel_cmds_send
-				(ctrl, &(ctrl->panel_tfmode->cmds[tfmode]));
+			mdss_panel_set_tfmode(ctrl, tfmode);
 	}
 	mutex_unlock(&ctrl->mutex);
 

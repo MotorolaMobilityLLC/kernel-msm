@@ -686,10 +686,21 @@ static int lm3535_dock_notifier(struct notifier_block *self,
 static int lm3535_display_notify(struct notifier_block *self,
 			unsigned long action, void *dev)
 {
-	atomic_set(&lm3535_data.disp_in_lp, action == DISPLAY_STATE_LP);
-	/* adjust brightness when off_at_lp enabled */
-	if (atomic_read(&lm3535_data.off_at_lp))
-		lm3535_brightness_set(&lm3535_led, lm3535_led.brightness);
+	int disp_in_lp = 0;
+
+	/* to disable back light when panel is in reflective mode */
+	switch (action) {
+	case _DISPLAY_EVENT_(ON, REFLT):
+	case _DISPLAY_EVENT_(LP, REFLT):
+		disp_in_lp = 1;
+		break;
+	}
+	if (atomic_xchg(&lm3535_data.disp_in_lp, disp_in_lp) != disp_in_lp) {
+		/* adjust brightness when off_at_lp enabled */
+		if (atomic_read(&lm3535_data.off_at_lp))
+			lm3535_brightness_set(&lm3535_led, lm3535_led.brightness);
+	}
+
 	return NOTIFY_OK;
 }
 #endif
@@ -753,16 +764,8 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
     else if ((value >= 5) && (value < 10))
         value = 1; /* Special case for dim */
 
-#ifdef CONFIG_DISPLAY_STATE_NOTIFY
-	if ((value == 1) && atomic_read(&lm3535_data.off_at_lp) &&
-#if defined(CONFIG_DOCK_STATUS_NOTIFY)
-	    !atomic_read(&lm3535_data.docked) &&
-#endif
-	    atomic_read(&lm3535_data.disp_in_lp))
-		value = 0;
-#endif
-
 #ifdef CONFIG_LEDS_NOTIFY
+	/* notify the brightness changes from frameworks */
 	if (value != atomic_read(&lm3535_data.current_level)) {
 		/* HAL may ramp to set brightness, it delayed 100 ms
 		 *  to get a 'debounce' of the level
@@ -772,6 +775,15 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 		schedule_delayed_work(&lm3535_data.backlight_notify_work,
 				      msecs_to_jiffies(100));
 	}
+#endif
+
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	if ((value == 1) && atomic_read(&lm3535_data.off_at_lp) &&
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	    !atomic_read(&lm3535_data.docked) &&
+#endif
+	    atomic_read(&lm3535_data.disp_in_lp))
+		value = 0;
 #endif
 
     if ((value == 0) && (!lm3535_data.enabled)) {
@@ -801,6 +813,9 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 		bvalue = MIN_DOCK_BVALUE; /* hard code for dock mode */
 #endif /* CONFIG_DOCK_STATUS_NOTIFY */
 
+    if (bvalue == lm3535_data.bvalue)
+	goto _skip_set_;
+
     /* Calculate number of steps for ramping */
     nsteps = bvalue - lm3535_data.bvalue;
     if (nsteps < 0)
@@ -818,6 +833,7 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
     ret = lm3535_write_reg (breg, bvalue, __FUNCTION__);
     lm3535_data.bvalue = bvalue;
 
+_skip_set_:
     if (value == 0) {
         /* Disable everything */
         if (do_ramp) {
@@ -1108,6 +1124,7 @@ static DEVICE_ATTR(off_at_lp, 0644, lm3535_off_at_lp_show,
 static void lm3535_backlight_notify_work(struct work_struct *work)
 {
 	unsigned long level = atomic_read(&lm3535_data.current_level);
+	pr_info("%s: set brightness to %lu\n", __func__, level);
 	brightness_notify_subscriber(level);
 }
 #endif
