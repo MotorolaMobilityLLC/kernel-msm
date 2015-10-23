@@ -286,9 +286,9 @@ VMM_ENTRY(0x3C, LINEAR_ACCEL,						FALSE,
 VMM_ENTRY(0x3D, GRAVITY,						FALSE,
 		vmm_gravity,
 		sizeof(vmm_gravity))
-VMM_ENTRY(0x3E, UNUSED_3E,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x3E, STEP_COUNTER_INFO,					TRUE,
+		vmm_step_counter_info,
+		sizeof(vmm_step_counter_info))
 VMM_ENTRY(0x3F, DOCKED_DATA,						FALSE,
 		&vmm_docked_data,
 		sizeof(vmm_docked_data))
@@ -526,6 +526,13 @@ VMM_ENTRY(0x7F, PORT_A,							TRUE,
 		0x48000000,
 		0x25)
 
+/* Event only "registers", beyond 0x7F with no data associated, these may
+   overlap into the passthrough address range since there is no physical
+   address for data
+*/
+VMM_ENTRY(0x80, STEP_DETECTOR,						FALSE,
+		0,
+		0)
 
 /* Here are a few example expansions:
 
