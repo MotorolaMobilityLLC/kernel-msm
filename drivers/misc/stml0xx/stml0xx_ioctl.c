@@ -43,8 +43,6 @@
 
 #include <linux/stml0xx.h>
 
-#define MAX_LOCAL_BUF_SIZE  64
-
 long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
@@ -54,7 +52,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	unsigned int addr, duration, algo_idx;
 	unsigned short delay;
 	unsigned int data_size = 0;
-	unsigned char buf[MAX_LOCAL_BUF_SIZE];
+	unsigned char buf[SPI_RX_PAYLOAD_LEN];
 	unsigned char len;
 	unsigned int handle;
 	struct timespec current_time;
@@ -511,11 +509,12 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		data_size = (buf[2] << 8) | buf[3];
 
 		/* fail if the write size is too large */
-		if (data_size > MAX_LOCAL_BUF_SIZE - 1) {
+		if (data_size > SPI_TX_PAYLOAD_LEN) {
 			err = -EFAULT;
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"Write Reg, data_size > %d",
-				MAX_LOCAL_BUF_SIZE - 1);
+				"Write Reg, data_size %d > %d",
+				data_size,
+				SPI_TX_PAYLOAD_LEN);
 			break;
 		}
 
@@ -551,9 +550,11 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		addr = (buf[0] << 8) | buf[1];
 		data_size = (buf[2] << 8) | buf[3];
 
-		if (data_size > MAX_LOCAL_BUF_SIZE) {
+		if (data_size > SPI_RX_PAYLOAD_LEN) {
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"Read Reg error, size too large");
+				"Read Reg, data_size %d > %d",
+				data_size,
+				SPI_RX_PAYLOAD_LEN);
 			err = -EFAULT;
 			break;
 		}
