@@ -323,17 +323,15 @@ void motosh_irq_work_func(struct work_struct *work)
 			);
 			queue_index += 8 + MOTOSH_EVENT_TIMESTAMP_LEN;
 			break;
-		case STEP_COUNTER:
+		case STEP_COUNTER_INFO:
 			motosh_as_data_buffer_write(ps_motosh, DT_STEP_COUNTER,
-				data, 8, 0, false);
+				data, 4, 0, false);
 
 			dev_dbg(&ps_motosh->client->dev,
 				"Sending step counter %X %X %X %X\n",
-				STM16_TO_HOST(data, STEP64_DATA),
-				STM16_TO_HOST(data, STEP32_DATA),
-				STM16_TO_HOST(data, STEP16_DATA),
-				STM16_TO_HOST(data, STEP8_DATA));
-			queue_index += 8;
+				data[0], data[1], data[2], data[3]);
+
+			queue_index += 4;
 			break;
 		case STEP_DETECTOR:
 		{
@@ -344,7 +342,7 @@ void motosh_irq_work_func(struct work_struct *work)
 					DT_STEP_DETECTOR, data, 1, 0, false);
 
 				dev_dbg(&ps_motosh->client->dev,
-					"Sending step detector\n");
+					"Sending step detector, %d\n", data[0]);
 			}
 			queue_index += 1;
 		}
