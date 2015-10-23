@@ -17,3 +17,11 @@
 	compatible = "qcom,msm8996-griffin", "qcom,msm8996-moto",
 			"qcom,msm8996";
 };
+
+&drv2605 {
+	effects_library = <6>;
+	rated_voltage = <0x51>;
+	overdrive_voltage = <0xa4>;
+	rtp_overdrive_voltage = <0xa4>;
+	lra_drive;
+};
