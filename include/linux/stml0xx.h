@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Motorola, Inc.
+ * Copyright (C) 2010-2015 Motorola, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -45,17 +45,6 @@
 #define SPI_SENSORHUB_TIMEOUT   5000
 #define SPI_BARKER_1            0xF9
 #define SPI_BARKER_2            0xAE
-#define SPI_HEADER_SIZE         6
-#define SPI_CRC_SIZE            2
-#define SPI_WRITE_REG_HDR_SIZE      6
-#define SPI_READ_REG_HDR_SIZE       6
-#define SPI_CRC_LEN                 2
-#define SPI_READ_SENSORS_HDR_SIZE   3
-#define SPI_TX_PAYLOAD_LEN         88
-#define SPI_MSG_SIZE	\
-	(SPI_HEADER_SIZE+SPI_TX_PAYLOAD_LEN+SPI_CRC_SIZE)
-#define SPI_RX_PAYLOAD_LEN	\
-	(SPI_MSG_SIZE - SPI_CRC_SIZE)
 
 enum sh_spi_msg {
 	SPI_MSG_TYPE_READ_REG = 1,
@@ -82,35 +71,43 @@ enum vmm_ids {
 #define STML0XX_MS_DATA_QUEUE_SIZE       0x08
 #define STML0XX_MS_DATA_QUEUE_MASK       0x07
 
-#define STML0XX_CLIENT_MASK		0xF0
+#define STML0XX_CLIENT_MASK              0xF0
 
-#define STML0XX_BUSY_STATUS_MASK	0x80
-#define STML0XX_BUSY_SLEEP_USEC	10000
-#define STML0XX_BUSY_RESUME_COUNT	14
-#define STML0XX_BUSY_SUSPEND_COUNT	6
+#define STML0XX_BUSY_STATUS_MASK         0x80
+#define STML0XX_BUSY_SLEEP_USEC          10000
+#define STML0XX_BUSY_RESUME_COUNT        14
+#define STML0XX_BUSY_SUSPEND_COUNT       6
 
-#define STML0XX_MAX_REG_LEN         255
+#define STML0XX_RESET_DELAY              50
 
-#define LOG_MSG_SIZE			24
+#define LOG_MSG_SIZE                     40
 
-#define STML0XX_RESET_DELAY		50
+#define I2C_RESPONSE_LENGTH              8
 
-#define I2C_RESPONSE_LENGTH		8
+/* Streaming sensors queue constants */
+#define STREAM_SENSOR_TYPE_ACCEL1        1
+#define STREAM_SENSOR_TYPE_ACCEL2        2
+#define STREAM_SENSOR_TYPE_UNCAL_GYRO    3
+#define STREAM_SENSOR_QUEUE_DEPTH        10
+#define STREAM_SENSOR_QUEUE_ENTRY_SIZE   9
+#define STREAM_SENSOR_QUEUE_INSERT_IDX \
+	(STREAM_SENSOR_QUEUE_DEPTH * STREAM_SENSOR_QUEUE_ENTRY_SIZE)
+#define STREAM_SENSOR_QUEUE_REMOVE_IDX \
+	(STREAM_SENSOR_QUEUE_DEPTH * STREAM_SENSOR_QUEUE_ENTRY_SIZE + 4)
 
-#define STML0XX_MAXDATA_LENGTH		256
+/* stml0xx non-wake IRQ SPI buffer indexes */
+#define IRQ_IDX_STATUS_LO            0
+#define IRQ_IDX_STATUS_MED           1
+#define IRQ_IDX_STATUS_HI            2
+#define IRQ_IDX_STREAM_SENSOR_QUEUE  3
+#define IRQ_IDX_GYRO_CAL_X           98
+#define IRQ_IDX_GYRO_CAL_Y           100
+#define IRQ_IDX_GYRO_CAL_Z           102
+#define IRQ_IDX_ALS                  104
+#define IRQ_IDX_DISP_ROTATE          106
+#define IRQ_IDX_DISP_BRIGHTNESS      107
 
-/* stml0xx IRQ SPI buffer indexes */
-#define IRQ_IDX_STATUS_LO         0
-#define IRQ_IDX_STATUS_MED        1
-#define IRQ_IDX_STATUS_HI         2
-#define IRQ_IDX_ACCEL1            3
-#define IRQ_IDX_ACCEL2           36
-#define IRQ_IDX_GYRO             36
-#define IRQ_IDX_ALS              42
-#define IRQ_IDX_DISP_ROTATE      44
-#define IRQ_IDX_DISP_BRIGHTNESS  45
-
-/* stml0xx WAKE IRQ SPI buffer indexes */
+/* stml0xx wake IRQ SPI buffer indexes */
 #define WAKE_IRQ_IDX_STATUS_LO              0
 #define WAKE_IRQ_IDX_STATUS_MED             1
 #define WAKE_IRQ_IDX_STATUS_HI              2
@@ -143,6 +140,16 @@ enum vmm_ids {
 #define IRQ_NOWAKE_MED  1
 #define IRQ_NOWAKE_HI   2
 
+/* stream sensor data offsets */
+#define SENSOR_TYPE_IDX    0
+#define DELTA_TICKS_IDX    1
+#define SENSOR_X_IDX  3
+#define SENSOR_Y_IDX  5
+#define SENSOR_Z_IDX  7
+
+#define SENSOR_DATA_SIZE       6
+#define UNCALIB_GYRO_DATA_SIZE 12
+
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0
 #define COVER_STATE	0
@@ -155,33 +162,8 @@ enum vmm_ids {
 #define ALGO_TYPE	7
 #define COMPASS_STATUS	12
 #define DISP_VALUE	0
-#define ACCEL_RD_X	0
-#define ACCEL_RD_Y	2
-#define ACCEL_RD_Z	4
-#define MAG_X		0
-#define MAG_Y		2
-#define MAG_Z		4
-#define MAG_UNCALIB_X   6
-#define MAG_UNCALIB_Y   8
-#define MAG_UNCALIB_Z   10
-#define ORIENT_X	6
-#define ORIENT_Y	8
-#define ORIENT_Z	10
-#define GYRO_RD_X	0
-#define GYRO_RD_Y	2
-#define GYRO_RD_Z	4
-#define GYRO_UNCALIB_X	6
-#define GYRO_UNCALIB_Y	8
-#define GYRO_UNCALIB_Z	10
-#define ALS_VALUE	0
 #define TEMP_VALUE	0
 #define PRESSURE_VALUE	0
-#define GRAV_X		0
-#define GRAV_Y		2
-#define GRAV_Z		4
-#define CAMERA_VALUE	0
-#define CHOP_VALUE	0
-#define SIM_DATA	0
 #define LIFT_DISTANCE	0
 #define LIFT_ROTATION	4
 #define LIFT_GRAV_DIFF	8
@@ -191,12 +173,11 @@ enum vmm_ids {
 #define STML0XX_LED_HALF_BRIGHTNESS 0x007F7F7F
 #define STML0XX_LED_OFF 0x00000000
 
-/* The following macros are intended to be called with the stm IRQ handlers */
-/* only and refer to local variables in those functions. */
-#define STM16_TO_HOST(x, buf) ((short) be16_to_cpu( \
-		*((u16 *) (buf+(x)))))
-#define STM32_TO_HOST(x, buf) ((short) be32_to_cpu( \
-		*((u32 *) (buf+(x)))))
+/* The following macros are intended to be called with the sensorhub IRQ
+   handlers only and refer to local variables in those functions. */
+#define SH_TO_H16(buf) (int16_t)(*(buf) << 8 | *((buf)+1))
+#define SH_TO_H32(buf) (int32_t)(*(buf) << 24 | *((buf)+1) << 16 \
+				| *((buf)+2) << 8 | *((buf)+3))
 
 #define STML0XX_HALL_SOUTH 1
 #define STML0XX_HALL_NORTH 2

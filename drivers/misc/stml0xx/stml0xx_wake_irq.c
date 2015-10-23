@@ -64,13 +64,14 @@ enum headset_state_t Headset_State = SH_HEADSET_REMOVED;
 
 irqreturn_t stml0xx_wake_isr(int irq, void *dev)
 {
-	static struct timespec ts;
-	static struct stml0xx_delayed_work_struct *stm_ws;
+	struct timespec ts;
+	struct stml0xx_delayed_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = dev;
-	get_monotonic_boottime(&ts);
 
 	if (stml0xx_irq_disable)
 		return IRQ_HANDLED;
+
+	get_monotonic_boottime(&ts);
 
 	wake_lock_timeout(&ps_stml0xx->wake_sensor_wakelock, HZ);
 	stm_ws = kmalloc(
@@ -351,18 +352,17 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		dev_info(&stml0xx_misc_data->spi->dev,
 			"Sending Stowed status %d, als %d, prox %d",
 			buf[WAKE_IRQ_IDX_STOWED],
-			STM16_TO_HOST(ALS_VALUE,
-				&buf[WAKE_IRQ_IDX_STOWED_ALS]),
+			SH_TO_H16(buf + WAKE_IRQ_IDX_STOWED_ALS),
 			buf[WAKE_IRQ_IDX_PROX]);
 	}
-	if (irq_status & M_CAMERA_ACT) {
+	if (irq_status & M_CAMERA_GESTURE) {
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CAMERA_ACT,
 						&buf[WAKE_IRQ_IDX_CAMERA],
 						2, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Camera: %d", STM16_TO_HOST(CAMERA_VALUE,
-					&buf[WAKE_IRQ_IDX_CAMERA]));
+			"Sending Camera: %d",
+			SH_TO_H16(buf + WAKE_IRQ_IDX_CAMERA));
 
 		input_report_key(ps_stml0xx->input_dev, KEY_CAMERA, 1);
 		input_report_key(ps_stml0xx->input_dev, KEY_CAMERA, 0);
@@ -374,9 +374,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 						0,
 						0, 0, stm_ws->ts_ns);
 
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Chopchop: %d", STM16_TO_HOST(CHOP_VALUE,
-				0));
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Sending Chopchop");
 	}
 	if (irq_status & M_SIM) {
 		stml0xx_as_data_buffer_write(
@@ -391,8 +389,8 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_g_wake_sensor_state &= (~M_SIM);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending SIM Value=%d", STM16_TO_HOST(SIM_DATA,
-					&buf[WAKE_IRQ_IDX_SIM]));
+			"Sending SIM Value=%d",
+			SH_TO_H16(buf + WAKE_IRQ_IDX_SIM));
 	}
 	if (irq_status & M_LIFT) {
 		stml0xx_as_data_buffer_write(
@@ -405,9 +403,9 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Lift triggered. Dist=%d. ZRot=%d. GravDiff=%d.\n",
-			STM32_TO_HOST(LIFT_DISTANCE, &buf[WAKE_IRQ_IDX_LIFT]),
-			STM32_TO_HOST(LIFT_ROTATION, &buf[WAKE_IRQ_IDX_LIFT]),
-			STM32_TO_HOST(LIFT_GRAV_DIFF, &buf[WAKE_IRQ_IDX_LIFT]));
+			SH_TO_H32(buf + WAKE_IRQ_IDX_LIFT + LIFT_DISTANCE),
+			SH_TO_H32(buf + WAKE_IRQ_IDX_LIFT + LIFT_ROTATION),
+			SH_TO_H32(buf + WAKE_IRQ_IDX_LIFT + LIFT_GRAV_DIFF));
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
@@ -456,8 +454,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		dev_info(&stml0xx_misc_data->spi->dev,
 			"Sending algo stowed event %d, als %d, prox %d",
 			buf[WAKE_IRQ_IDX_MODALITY_STOWED + 3],
-			STM16_TO_HOST(ALS_VALUE,
-				&buf[WAKE_IRQ_IDX_STOWED_ALS]),
+			SH_TO_H16(buf + WAKE_IRQ_IDX_STOWED_ALS),
 			buf[WAKE_IRQ_IDX_PROX]);
 	}
 	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
