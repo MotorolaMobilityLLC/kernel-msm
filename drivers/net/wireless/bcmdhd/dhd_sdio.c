@@ -2374,6 +2374,7 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 {
 	int timeleft;
 	uint rxlen = 0;
+	bool pending;
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -2381,7 +2382,7 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 		return -EIO;
 
 	/* Wait until control frame is available */
-	timeleft = dhd_os_ioctl_resp_wait(bus->dhd, &bus->rxlen);
+	timeleft = dhd_os_ioctl_resp_wait(bus->dhd, &bus->rxlen, &pending);
 
 	dhd_os_sdlock(bus->dhd);
 	rxlen = bus->rxlen;
@@ -2406,6 +2407,11 @@ dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 			dhdsdio_checkdied(bus, NULL, 0);
 			dhd_os_sdunlock(bus->dhd);
 #endif /* DHD_DEBUG */
+	} else if (pending == TRUE) {
+		/* signal pending */
+		DHD_ERROR(("%s: signal pending\n", __FUNCTION__));
+		return -EINTR;
+
 	} else {
 		DHD_CTL(("%s: resumed for unknown reason?\n", __FUNCTION__));
 #ifdef DHD_DEBUG
