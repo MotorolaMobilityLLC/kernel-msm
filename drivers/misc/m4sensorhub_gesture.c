@@ -401,22 +401,17 @@ static int display_notify(struct notifier_block *self,
 		container_of(self, struct m4ges_driver_data, display_nb);
 
 	mutex_lock(&(dd->mutex));
-	switch (action) {
-	case DISPLAY_STATE_OFF:
-	case DISPLAY_STATE_LP:
-		/* If gesture is enabled by app, enable interrupt*/
-		if ((dd->status & (1 << M4GES_IRQ_ENABLED_BIT))) {
+	/* check if gesture is enabled by app */
+	if ((dd->status & (1 << M4GES_IRQ_ENABLED_BIT))) {
+		/* enable interrupt only when display is not fully on */
+		int state = DISP_EVENT_STATE(action);
+		int enable = (state != DISPLAY_STATE_ON);
+		if (enable)
 			m4sensorhub_irq_enable(dd->m4, M4SH_WAKEIRQ_GESTURE);
-			pr_info("%s: enabling INT (%lu)\n", __func__, action);
-		}
-		break;
-	case DISPLAY_STATE_ON:
-		/* If gesture is enabled by app, disable interrupt*/
-		if ((dd->status & (1 << M4GES_IRQ_ENABLED_BIT))) {
+		else
 			m4sensorhub_irq_disable(dd->m4, M4SH_WAKEIRQ_GESTURE);
-			pr_info("%s: disabling INT (%lu)\n", __func__, action);
-		}
-		break;
+		pr_info("%s(%d): gesture irq is %s\n", __func__, state,
+			enable ? "enabled" : "disabled");
 	}
 	mutex_unlock(&(dd->mutex));
 

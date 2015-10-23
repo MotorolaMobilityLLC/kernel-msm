@@ -47,10 +47,10 @@
 #include <linux/sw_sync.h>
 #include <linux/file.h>
 #include <linux/kthread.h>
+#include <linux/rtc.h>
 
 #include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
-#include <linux/display_state_notify.h>
 #include <linux/led-notify.h>
 
 #include "mdss_fb.h"
@@ -106,6 +106,9 @@ static int mdss_fb_alloc_fb_ion_memory(struct msm_fb_data_type *mfd,
 static void mdss_fb_release_fences(struct msm_fb_data_type *mfd);
 static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		unsigned long val, void *data);
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static void mdss_fb_notify_display_state(struct msm_fb_data_type *mfd);
+#endif
 static void mdss_fb_later_on(struct work_struct *work);
 
 static int __mdss_fb_display_thread(void *data);
@@ -454,9 +457,11 @@ static void __mdss_fb_brightness_work(struct work_struct *work)
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = mfd_to_ctrl_pdata(mfd);
 	struct dsi_panel_tfmode *tf = ctrl_pdata->panel_tfmode;
-	int tfmode;
+	int tfmode, need_notify = 0;
+
 	mutex_lock(&mdp5_data->ov_lock);
 	mutex_lock(&ctrl_pdata->mutex);
+
 	tfmode = tf->brightness_to_tfmode(ctrl_pdata, mfd->brightness_level);
 	pr_debug("%s: brightness = %d\n", __func__, mfd->brightness_level);
 	if ((tfmode >= 0) && (tfmode != tf->tfmode_current)) {
@@ -469,9 +474,14 @@ static void __mdss_fb_brightness_work(struct work_struct *work)
 		mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 		pr_debug("%s: set tfmode = %d\n", __func__, tfmode);
+		need_notify = 1;
 	}
+
 	mutex_unlock(&ctrl_pdata->mutex);
 	mutex_unlock(&mdp5_data->ov_lock);
+
+	if (need_notify)
+		mdss_fb_notify_display_state(mfd);
 }
 #endif
 
@@ -638,6 +648,123 @@ static ssize_t mdss_fb_get_src_split_info(struct device *dev,
 	return ret;
 }
 
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static void mdss_fb_update_display_timing(struct msm_fb_data_type *mfd,
+			struct timespec ts_now,  union display_state_event event)
+{
+	struct timespec ts_elapse, *pts;
+	const char *str_event;
+
+	/* update last state keeping times */
+	switch (event.event) {
+	case _DISPLAY_EVENT_(OFF, TRANS):
+		pts = &mfd->ts_off;
+		str_event = "off-off";
+		break;
+	case _DISPLAY_EVENT_(ON, TRANS):
+		pts = &mfd->ts_on_trans;
+		str_event = "on-transmissive";
+		break;
+	case _DISPLAY_EVENT_(LP, TRANS):
+		pts = &mfd->ts_lp_trans;
+		str_event = "lp-transmissive";
+		break;
+#ifdef CONFIG_LEDS_NOTIFY
+	case _DISPLAY_EVENT_(ON, REFLT):
+		pts = &mfd->ts_on_reflt;
+		str_event = "on-reflective";
+		break;
+	case _DISPLAY_EVENT_(ON, TRFLT):
+		pts = &mfd->ts_on_trflt;
+		str_event = "on-transflective";
+		break;
+	case _DISPLAY_EVENT_(LP, REFLT):
+		pts = &mfd->ts_lp_reflt;
+		str_event = "lp-reflective";
+		break;
+	case _DISPLAY_EVENT_(LP, TRFLT):
+		pts = &mfd->ts_lp_trflt;
+		str_event = "lp-transflective";
+		break;
+#endif
+	default:
+		WARN(1, "%s: invalid display state %d-%d",
+		     __func__, event.disp.state, event.disp.mode);
+		return;
+	}
+	/* calculate the elapse times since last update */
+	ts_elapse = timespec_sub(ts_now, mfd->ts_last);
+	/* reset the last update time */
+	mfd->ts_last = ts_now;
+	/* update total times of current display state */
+	*pts = timespec_add(*pts, ts_elapse);
+
+	pr_info("stayed on %d-%d (%s) for %ld.%06ld(%ld.%06ld)\n",
+		event.disp.state, event.disp.mode, str_event,
+		ts_elapse.tv_sec, ts_elapse.tv_nsec/NSEC_PER_USEC,
+		pts->tv_sec, pts->tv_nsec/NSEC_PER_USEC);
+
+}
+
+static ssize_t mdss_fb_show_disp_timing(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	ssize_t len = 0;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct timespec ts;
+
+	/* update timing till now */
+	get_monotonic_boottime(&ts);
+	mdss_fb_update_display_timing(mfd, ts, mfd->display_state);
+	len += snprintf(buf+len, PAGE_SIZE, "kernel on        % 6ld.%06ld\n",
+			ts.tv_sec, ts.tv_nsec/NSEC_PER_USEC);
+
+	len += snprintf(buf+len, PAGE_SIZE, "panel off        % 6ld.%06ld\n",
+			mfd->ts_off.tv_sec,
+			mfd->ts_off.tv_nsec/NSEC_PER_USEC);
+#ifndef CONFIG_LEDS_NOTIFY
+	len += snprintf(buf+len, PAGE_SIZE, "panel on fully   % 6ld.%06ld\n",
+			mfd->ts_on_trans.tv_sec,
+			mfd->ts_on_trans.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, "panel low power  % 6ld.%06ld\n",
+			mfd->ts_lp_trans.tv_sec,
+			mfd->ts_lp_trans.tv_nsec/NSEC_PER_USEC);
+#else
+	ts = mfd->ts_on_trans;
+	ts = timespec_add(ts, mfd->ts_on_reflt);
+	ts = timespec_add(ts, mfd->ts_on_trflt);
+	len += snprintf(buf+len, PAGE_SIZE, "panel on fully   % 6ld.%06ld\n",
+			ts.tv_sec, ts.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, "  transmissive: % 6ld.%06ld\n",
+			mfd->ts_on_trans.tv_sec,
+			mfd->ts_on_trans.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, "    reflective: % 6ld.%06ld\n",
+			mfd->ts_on_reflt.tv_sec,
+			mfd->ts_on_reflt.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, " transflective: % 6ld.%06ld\n",
+			mfd->ts_on_trflt.tv_sec,
+			mfd->ts_on_trflt.tv_nsec/NSEC_PER_USEC);
+	ts = mfd->ts_lp_trans;
+	ts = timespec_add(ts, mfd->ts_lp_reflt);
+	ts = timespec_add(ts, mfd->ts_lp_trflt);
+	len += snprintf(buf+len, PAGE_SIZE, "panel low power  % 6ld.%06ld\n",
+			ts.tv_sec, ts.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, "  transmissive: % 6ld.%06ld\n",
+			mfd->ts_lp_trans.tv_sec,
+			mfd->ts_lp_trans.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, "    reflective: % 6ld.%06ld\n",
+			mfd->ts_lp_reflt.tv_sec,
+			mfd->ts_lp_reflt.tv_nsec/NSEC_PER_USEC);
+	len += snprintf(buf+len, PAGE_SIZE, " transflective: % 6ld.%06ld\n",
+			mfd->ts_lp_trflt.tv_sec,
+			mfd->ts_lp_trflt.tv_nsec/NSEC_PER_USEC);
+#endif /* CONFIG_LEDS_NOTIFY */
+
+	return len;
+}
+#endif /* CONFIG_DISPLAY_STATE_NOTIFY */
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO | S_IWUSR, mdss_fb_show_split,
 					mdss_fb_store_split);
@@ -650,6 +777,9 @@ static DEVICE_ATTR(msm_fb_src_split_info, S_IRUGO, mdss_fb_get_src_split_info,
 	NULL);
 static DEVICE_ATTR(msm_fb_thermal_level, S_IRUGO | S_IWUSR,
 	mdss_fb_get_thermal_level, mdss_fb_set_thermal_level);
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+static DEVICE_ATTR(disp_timing, S_IRUGO, mdss_fb_show_disp_timing, NULL);
+#endif
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -660,6 +790,9 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_panel_info.attr,
 	&dev_attr_msm_fb_src_split_info.attr,
 	&dev_attr_msm_fb_thermal_level.attr,
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	&dev_attr_disp_timing.attr,
+#endif
 	NULL,
 };
 
@@ -798,6 +931,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		mfd->mdp.splash_init_fnc(mfd);
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	mfd->display_state.event = INVALID_DISPLAY_EVENT;
+#endif
 #ifdef CONFIG_LEDS_NOTIFY
 	INIT_WORK(&mfd->brightness_work, __mdss_fb_brightness_work);
 	ctrl_pdata = mfd_to_ctrl_pdata(mfd);
@@ -1285,21 +1421,67 @@ error:
 }
 
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
-static unsigned long mdss_fb_pwr_to_disp_state(int panel_power_state)
+static void mdss_fb_notify_display_state(struct msm_fb_data_type *mfd)
 {
-	unsigned long display_state;
-	switch (panel_power_state) {
-	case MDSS_PANEL_POWER_OFF:
-		display_state = DISPLAY_STATE_OFF;
-		break;
-	case MDSS_PANEL_POWER_ON:
-		display_state = DISPLAY_STATE_ON;
-		break;
-	default:
-		display_state = DISPLAY_STATE_LP;
-		break;
+	union display_state_event display_state;
+	const char *str_state, *str_mode;
+#ifdef CONFIG_LEDS_NOTIFY
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = mfd_to_ctrl_pdata(mfd);
+#endif
+
+	/* set default display mode to transmissive */
+	display_state.disp.mode = DISPLAY_MODE_TRANS;
+	str_mode = "transmissive";
+	if (mfd->panel_power_state == MDSS_PANEL_POWER_OFF) {
+		display_state.disp.state = DISPLAY_STATE_OFF;
+		str_state = "off";
+		str_mode = str_state;
+	} else {
+		if (mfd->panel_power_state == MDSS_PANEL_POWER_ON) {
+			display_state.disp.state = DISPLAY_STATE_ON;
+			str_state = "on";
+		} else {
+			display_state.disp.state = DISPLAY_STATE_LP;
+			str_state = "lp";
+		}
+#ifdef CONFIG_LEDS_NOTIFY
+		if (ctrl_pdata->panel_tfmode) {
+			switch (ctrl_pdata->panel_tfmode->tfmode_current) {
+			case PANEL_TFMODE_REFLECTIVE:
+				display_state.disp.mode = DISPLAY_MODE_REFLT;
+				str_mode = "reflective";
+				break;
+			case PANEL_TFMODE_TRANSFLECTIVE:
+				display_state.disp.mode = DISPLAY_MODE_TRFLT;
+				str_mode = "transflective";
+				break;
+			}
+		}
+#endif
 	}
-	return display_state;
+
+	/* Only notify when actual display state is changed */
+	if (display_state.event != mfd->display_state.event) {
+		struct timespec ts;
+		struct rtc_time tm;
+		union display_state_event event = mfd->display_state;
+		/* roughly assume that display boot with first state */
+		if (event.event == INVALID_DISPLAY_EVENT)
+			event = display_state;
+		get_monotonic_boottime(&ts);
+		mdss_fb_update_display_timing(mfd, ts, event);
+
+		mfd->display_state = display_state;
+		getnstimeofday(&ts);
+		rtc_time_to_tm(ts.tv_sec, &tm);
+		pr_info("new state %d-%d (%s-%s) at %d-%02d-%02d "
+			"%02d:%02d:%02d.%09lu UTC\n", display_state.disp.state,
+			display_state.disp.mode, str_state, str_mode,
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
+
+		display_state_notify_subscriber(display_state);
+	}
 }
 #endif /* CONFIG_DISPLAY_STATE_NOTIFY */
 
@@ -1380,7 +1562,6 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int later_on_enabled, ret = 0;
 	int cur_power_state, req_power_state = MDSS_PANEL_POWER_OFF;
-	unsigned long cur_display_state;
 
 	if (!mfd || !op_enable)
 		return -EPERM;
@@ -1459,10 +1640,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
-	/* Only notify when actual display state is changed */
-	cur_display_state = mdss_fb_pwr_to_disp_state(mfd->panel_power_state);
-	if (cur_display_state != mdss_fb_pwr_to_disp_state(cur_power_state))
-		display_state_notify_subscriber(cur_display_state);
+	mdss_fb_notify_display_state(mfd);
 #endif
 	if (mfd->panel_info->later_on_enabled) {
 		struct mdss_panel_info *pinfo = mfd->panel_info;

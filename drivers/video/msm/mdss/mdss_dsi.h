@@ -273,6 +273,7 @@ struct dsi_panel_tfmode {
 	int (*brightness_to_tfmode) (struct mdss_dsi_ctrl_pdata *ctrl_pdata, int level);
 	int (*set_panel_tfmode) (struct mdss_dsi_ctrl_pdata *ctrl_pdata, int tfmode);
 	int tfmode_current;
+	int tfmode_saved;
 	int tf_level;
 #endif
 	int tfmode[TFMODE_STATE_MAX];
