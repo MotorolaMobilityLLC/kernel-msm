@@ -134,63 +134,73 @@
 #define STML0XX_IOCTL_SET_FLUSH \
 		_IOW(STML0XX_IOCTL_BASE, 56, int)
 
+/* SPI contants */
+#define SPI_MSG_SIZE        128
+#define SPI_TX_HDR_SIZE     6
+#define SPI_CRC_SIZE        2
+#define SPI_TX_PAYLOAD_LEN  (SPI_MSG_SIZE - SPI_TX_HDR_SIZE - SPI_CRC_SIZE)
+#define SPI_RX_PAYLOAD_LEN  (SPI_MSG_SIZE - SPI_CRC_SIZE)
 
-#define FW_VERSION_SIZE 12
-#define FW_VERSION_STR_MAX_LEN 256u
-#define STML0XX_CONTROL_REG_SIZE 200
-#define STML0XX_STATUS_REG_SIZE 8
-#define STML0XX_TOUCH_REG_SIZE  8
-#define STML0XX_POWER_REG_SIZE  3
-#define STML0XX_MAG_CAL_SIZE 26
-#define MOTOSH_GYRO_CAL_SIZE 198 /* 33 entries - 6 bytes each */
-#define STML0XX_AS_DATA_BUFF_SIZE 20
-#define STML0XX_MS_DATA_BUFF_SIZE 20
-#define STML0XX_ALGO_SIZE	2
-#define STML0XX_PASSTHROUGH_SIZE 16
+#define FW_VERSION_SIZE                  12
+#define FW_VERSION_STR_MAX_LEN           256u
+#define STML0XX_CONTROL_REG_SIZE         200
+#define STML0XX_STATUS_REG_SIZE          8
+#define STML0XX_TOUCH_REG_SIZE           8
+#define STML0XX_POWER_REG_SIZE           3
+#define STML0XX_MAG_CAL_SIZE             26
+#define MOTOSH_GYRO_CAL_SIZE             198 /* 33 entries - 6 bytes each */
+#define STML0XX_AS_DATA_BUFF_SIZE        20
+#define STML0XX_MS_DATA_BUFF_SIZE        20
+#define STML0XX_ALGO_SIZE                2
+#define STML0XX_PASSTHROUGH_SIZE         16
+#define STML0XX_MAX_WRITE_REG_LEN        255
+#define STML0XX_MAX_READ_REG_LEN         SPI_RX_PAYLOAD_LEN
+#define STML0XX_MAX_FLASH_PACKET_LENGTH  256
 
 #define STML0XX_CAMERA_DATA 0x01
 
 /* Mask values */
 
-/* Non wakable sensors */
+/* Non-wakeable sensors */
 #define M_ACCEL                 0x000001
 #define M_GYRO                  0x000002
 #define M_PRESSURE              0x000004
 #define M_ECOMPASS              0x000008
 #define M_TEMPERATURE           0x000010
 #define M_ALS                   0x000020
-
+#define M_STEP_DETECTOR         0x000040
+#define M_STEP_COUNTER          0x000080
 #define M_LIN_ACCEL             0x000100
-#define M_QUATERNION            0x000200
+#define M_QUAT_6AXIS            0x000200
 #define M_GRAVITY               0x000400
 #define M_DISP_ROTATE           0x000800
 #define M_DISP_BRIGHTNESS       0x001000
+#define M_ALGO_IR_GESTURE       0x002000
+#define M_ALGO_IR_RAW           0x004000
 #define M_UNCALIB_GYRO          0x008000
-
 #define M_UNCALIB_MAG           0x010000
 #define M_ACCEL2                0x020000
+#define M_QUAT_9AXIS            0x040000
 
 /* wake sensor status */
 #define M_DOCK                  0x000001
 #define M_PROXIMITY             0x000002
-#define M_TOUCH                 0x000004
+#define M_DISPLAY_TOUCH         0x000004
 #define M_COVER                 0x000008
+#define M_DISPLAY_PEEK          0x000010
 #define M_HEADSET               0x000020
 #define M_INIT_COMPLETE         0x000040
 #define M_HUB_RESET             0x000080
-
-
 #define M_FLATUP                0x000100
 #define M_FLATDOWN              0x000200
 #define M_STOWED                0x000400
-#define M_CAMERA_ACT            0x000800
+#define M_CAMERA_GESTURE        0x000800
 #define M_NFC                   0x001000
 #define M_SIM                   0x002000
 #define M_LIFT                  0x004000
 #define M_LOG_MSG               0x008000
-
 #define M_CHOPCHOP              0x010000
-/*#define M_UNUSED              0x020000*/
+#define M_UPDATE_GYRO_CAL       0x020000
 /*#define M_UNUSED              0x040000*/
 /*#define M_UNUSED              0x080000*/
 /*#define M_UNUSED              0x100000*/

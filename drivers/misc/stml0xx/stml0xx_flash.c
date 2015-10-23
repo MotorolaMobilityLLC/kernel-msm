@@ -392,12 +392,6 @@ ssize_t stml0xx_misc_write(struct file *file, const char __user *buff,
 	int bad_byte_cnt = 0;
 	int fillers = 0;
 
-	if (count > STML0XX_MAXDATA_LENGTH || count == 0) {
-		dev_err(&stml0xx_misc_data->spi->dev,
-			"Invalid packet size %zu", count);
-		return -EINVAL;
-	}
-
 	mutex_lock(&stml0xx_misc_data->lock);
 
 	if (stml0xx_bootloader_ver == 0) {
@@ -409,6 +403,12 @@ ssize_t stml0xx_misc_write(struct file *file, const char __user *buff,
 
 	if (stml0xx_misc_data->mode == BOOTMODE) {
 		/* For boot mode */
+		if (count > STML0XX_MAX_FLASH_PACKET_LENGTH || count == 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Invalid packet size %zu", count);
+			return -EINVAL;
+		}
+
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Starting flash write, %zu bytes to address 0x%08x",
 			count, stml0xx_misc_data->current_addr);
@@ -571,6 +571,12 @@ RETRY_READ:
 		stml0xx_misc_data->current_addr += count;
 	} else {
 		/* For normal mode */
+		if (count > SPI_TX_PAYLOAD_LEN || count == 0) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+				"Invalid packet size %zu", count);
+			return -EINVAL;
+		}
+
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Normal mode write started");
 		if (copy_from_user(stml0xx_boot_cmdbuff, buff, count)) {
