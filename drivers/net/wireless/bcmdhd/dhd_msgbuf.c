@@ -488,15 +488,20 @@ dhd_pktid_map_fini(dhd_pktid_map_handle_t *handle)
 			} else {
 				DHD_ERROR(("%s: Invalid physaddr 0\n", __FUNCTION__));
 			}
-#ifdef DHD_USE_STATIC_IOCTLBUF
-			if (locker->buf_type == BUFF_TYPE_IOCTL_RX)
+			if (locker->buf_type == BUFF_TYPE_IOCTL_RX ||
+				locker->buf_type == BUFF_TYPE_EVENT_RX) {
+#ifdef DHD_USE_STATIC_CTRLBUF
 				PKTFREE_STATIC(osh, (ulong*)locker->pkt, FALSE);
-			else
-				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
 #else
-			PKTFREE(osh, (ulong*)locker->pkt, FALSE);
-#endif
+				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+#endif /* DHD_USE_STATIC_CTRLBUF */
+			} else {
+				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+			}
 		}
+
+		locker->pkt = NULL; /* clear saved pkt */
+		locker->len = 0;
 	}
 
 	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
@@ -539,16 +544,20 @@ dhd_pktid_map_clear(dhd_pktid_map_handle_t *handle)
 			} else {
 				DHD_ERROR(("%s: Invalid physaddr 0\n", __FUNCTION__));
 			}
-#ifdef DHD_USE_STATIC_IOCTLBUF
-			if (locker->buf_type == BUFF_TYPE_IOCTL_RX)
+			if (locker->buf_type == BUFF_TYPE_IOCTL_RX ||
+				locker->buf_type == BUFF_TYPE_EVENT_RX) {
+#ifdef DHD_USE_STATIC_CTRLBUF
 				PKTFREE_STATIC(osh, (ulong*)locker->pkt, FALSE);
-			else
-				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
 #else
-			PKTFREE(osh, (ulong*)locker->pkt, FALSE);
-#endif
-
+				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+#endif /* DHD_USE_STATIC_CTRLBUF */
+			} else {
+				PKTFREE(osh, (ulong*)locker->pkt, FALSE);
+			}
 		}
+
+		locker->pkt = NULL; /* clear saved pkt */
+		locker->len = 0;
 	}
 	map->avail = map->items;
 	DHD_PKTID_UNLOCK(map->pktid_lock, flags);
@@ -1239,16 +1248,18 @@ dhd_prot_packet_free(dhd_pub_t *dhd, uint32 pktid, uint8 buf_type)
 		} else {
 			DHD_ERROR(("%s: Invalid physaddr 0\n", __FUNCTION__));
 		}
-#ifdef DHD_USE_STATIC_IOCTLBUF
-		if (buf_type == BUFF_TYPE_IOCTL_RX)
+
+		if (buf_type == BUFF_TYPE_IOCTL_RX ||
+			buf_type == BUFF_TYPE_EVENT_RX) {
+#ifdef DHD_USE_STATIC_CTRLBUF
 			PKTFREE_STATIC(dhd->osh, PKTBUF, FALSE);
-		else
-			PKTFREE(dhd->osh, PKTBUF, FALSE);
 #else
-		PKTFREE(dhd->osh, PKTBUF, FALSE);
-#endif
+			PKTFREE(dhd->osh, PKTBUF, FALSE);
+#endif /* DHD_USE_STATIC_CTRLBUF */
+		} else {
+			PKTFREE(dhd->osh, PKTBUF, FALSE);
+		}
 	}
-	return;
 }
 
 static INLINE void * BCMFASTPATH
@@ -1444,14 +1455,11 @@ dhd_prot_rxbufpost_ctrl(dhd_pub_t *dhd, bool event_buf)
 		buf_type = BUFF_TYPE_IOCTL_RX;
 	}
 
-#ifdef DHD_USE_STATIC_IOCTLBUF
-	if (!event_buf)
-		p = PKTGET_STATIC(dhd->osh, pktsz, FALSE);
-	else
-		p = PKTGET(dhd->osh, pktsz, FALSE);
+#ifdef DHD_USE_STATIC_CTRLBUF
+	p = PKTGET_STATIC(dhd->osh, pktsz, FALSE);
 #else
 	p = PKTGET(dhd->osh, pktsz, FALSE);
-#endif
+#endif /* DHD_USE_STATIC_CTRLBUF */
 
 	if (p == NULL) {
 		DHD_ERROR(("%s:%d: PKTGET for %s rxbuf failed\n",
@@ -1515,14 +1523,11 @@ dhd_prot_rxbufpost_ctrl(dhd_pub_t *dhd, bool event_buf)
 	return 1;
 
 free_pkt_return:
-#ifdef DHD_USE_STATIC_IOCTLBUF
-	if (buf_type == BUFF_TYPE_IOCTL_RX)
-		PKTFREE_STATIC(dhd->osh, p, FALSE);
-	else
-		PKTFREE(dhd->osh, p, FALSE);
+#ifdef DHD_USE_STATIC_CTRLBUF
+	PKTFREE_STATIC(dhd->osh, p, FALSE);
 #else
 	PKTFREE(dhd->osh, p, FALSE);
-#endif
+#endif /* DHD_USE_STATIC_CTRLBUF */
 
 	return -1;
 }
@@ -2646,12 +2651,11 @@ dhdmsgbuf_cmplt(dhd_pub_t *dhd, uint32 id, uint32 len, void* buf, void* retbuf)
 			bcopy(PKTDATA(dhd->osh, pkt), buf, len);
 		}
 		if (pkt) {
-#ifdef DHD_USE_STATIC_IOCTLBUF
+#ifdef DHD_USE_STATIC_CTRLBUF
 			PKTFREE_STATIC(dhd->osh, pkt, FALSE);
 #else
 			PKTFREE(dhd->osh, pkt, FALSE);
-#endif /* DHD_USE_STATIC_IOCTLBUF */
-
+#endif /* DHD_USE_STATIC_CTRLBUF */
 		}
 	} else {
 		DHD_GENERAL_LOCK(dhd, flags);

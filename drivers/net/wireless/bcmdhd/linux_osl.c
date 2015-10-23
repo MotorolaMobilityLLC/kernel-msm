@@ -87,7 +87,7 @@ static bcm_static_buf_t *bcm_static_buf = 0;
 
 #ifdef BCMPCIE
 #define STATIC_PKT_1PAGE_NUM	0
-#define STATIC_PKT_2PAGE_NUM	16
+#define STATIC_PKT_2PAGE_NUM	64
 #else
 #define STATIC_PKT_1PAGE_NUM	8
 #define STATIC_PKT_2PAGE_NUM	8
@@ -99,15 +99,16 @@ static bcm_static_buf_t *bcm_static_buf = 0;
 	((STATIC_PKT_1_2PAGE_NUM) + (STATIC_PKT_4PAGE_NUM))
 
 typedef struct bcm_static_pkt {
-	struct sk_buff *skb_4k[STATIC_PKT_1PAGE_NUM+1];
+#if defined(BCMPCIE)
 	struct sk_buff *skb_8k[STATIC_PKT_2PAGE_NUM];
-#if !defined(BCMPCIE)
+	spinlock_t osl_pkt_lock;
+#else
+	struct sk_buff *skb_4k[STATIC_PKT_1PAGE_NUM];
+	struct sk_buff *skb_8k[STATIC_PKT_2PAGE_NUM];
 #ifdef ENHANCED_STATIC_BUF
 	struct sk_buff *skb_16k;
 #endif /* ENHANCED_STATIC_BUF */
 	struct semaphore osl_pkt_sem;
-#else
-	spinlock_t osl_pkt_lock;
 #endif /* !BCMPCIE */
 	unsigned char pkt_use[STATIC_PKT_MAX_NUM];
 } bcm_static_pkt_t;
@@ -840,67 +841,59 @@ osl_pktget_static(osl_t *osh, uint len)
 	spin_lock_irqsave(&bcm_static_skb->osl_pkt_lock, flags);
 #else
 	down(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 
 	if (len <= DHD_SKB_1PAGE_BUFSIZE) {
-		for (i = 0; i < STATIC_PKT_1PAGE_NUM; i++)
-		{
-			if (bcm_static_skb->pkt_use[i] == 0) {
+		for (i = 0; i < STATIC_PKT_1PAGE_NUM; i++) {
+			if (bcm_static_skb->skb_4k[i] &&
+				bcm_static_skb->pkt_use[i] == 0) {
 				break;
 			}
 		}
 
-		if (i != STATIC_PKT_1PAGE_NUM)
-		{
+		if (i != STATIC_PKT_1PAGE_NUM) {
 			bcm_static_skb->pkt_use[i] = 1;
 
 			skb = bcm_static_skb->skb_4k[i];
 			skb->len = len;
 
-#if defined(BCMPCIE)
-#if defined(__ARM_ARCH_7A__)
-			skb->data = skb->head + NET_SKB_PAD;
-			skb->tail = skb->head + NET_SKB_PAD;
-#else
-			skb->data = skb->head + NET_SKB_PAD;
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
 			skb_set_tail_pointer(skb, len);
 #else
 			skb->tail = skb->data + len;
-#endif
-
-#endif /* __ARM_ARCH_7A__ */
-			skb->cloned = 0;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14)
-			skb->list = NULL;
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 14) */
-			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
-#else
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-			skb_set_tail_pointer(skb, len);
-#else
-			skb->tail = skb->data + len;
-#endif
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
 			up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 			return skb;
 		}
 	}
+#endif /* BCMPCIE */
 
 	if (len <= DHD_SKB_2PAGE_BUFSIZE) {
 		for (i = STATIC_PKT_1PAGE_NUM; i < STATIC_PKT_1_2PAGE_NUM; i++) {
-			if (bcm_static_skb->pkt_use[i] == 0)
+			if (bcm_static_skb->skb_8k[i - STATIC_PKT_1PAGE_NUM] &&
+				bcm_static_skb->pkt_use[i] == 0) {
 				break;
+			}
 		}
 
 		if ((i >= STATIC_PKT_1PAGE_NUM) && (i < STATIC_PKT_1_2PAGE_NUM)) {
 			bcm_static_skb->pkt_use[i] = 1;
 			skb = bcm_static_skb->skb_8k[i - STATIC_PKT_1PAGE_NUM];
+#if defined(BCMPCIE)
+			skb->data = skb->head;
+#ifdef NET_SKBUFF_DATA_USES_OFFSET
+			skb_set_tail_pointer(skb, NET_SKB_PAD);
+#else
+			skb->tail = skb->data + NET_SKB_PAD;
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
+			skb->data += NET_SKB_PAD;
+			skb->cloned = 0;
+			skb->priority = 0;
+#endif /* BCMPCIE */
 #ifdef NET_SKBUFF_DATA_USES_OFFSET
 			skb_set_tail_pointer(skb, len);
 #else
 			skb->tail = skb->data + len;
-#endif
+#endif /* NET_SKBUFF_DATA_USES_OFFSET */
 			skb->len = len;
 #if defined(BCMPCIE)
 			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
@@ -913,7 +906,8 @@ osl_pktget_static(osl_t *osh, uint len)
 
 #if !defined(BCMPCIE)
 #if defined(ENHANCED_STATIC_BUF)
-	if (bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] == 0) {
+	if (bcm_static_skb->skb_16k &&
+		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] == 0) {
 		bcm_static_skb->pkt_use[STATIC_PKT_MAX_NUM - 1] = 1;
 
 		skb = bcm_static_skb->skb_16k;
@@ -947,6 +941,10 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 	unsigned long flags;
 #endif /* BCMPCIE */
 
+	if (!p) {
+		return;
+	}
+
 	if (!bcm_static_skb) {
 		osl_pktfree(osh, p, send);
 		return;
@@ -956,22 +954,22 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 	spin_lock_irqsave(&bcm_static_skb->osl_pkt_lock, flags);
 #else
 	down(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
 
 	for (i = 0; i < STATIC_PKT_1PAGE_NUM; i++) {
 		if (p == bcm_static_skb->skb_4k[i]) {
 			bcm_static_skb->pkt_use[i] = 0;
-#if defined(BCMPCIE)
-			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
-#else
 			up(&bcm_static_skb->osl_pkt_sem);
-#endif /* BCMPCIE */
+
 			return;
 		}
 	}
+#endif /* BCMPCIE */
 
 	for (i = STATIC_PKT_1PAGE_NUM; i < STATIC_PKT_1_2PAGE_NUM; i++) {
 		if (p == bcm_static_skb->skb_8k[i - STATIC_PKT_1PAGE_NUM]) {
+			if (bcm_static_skb->pkt_use[i] == 0)
+				printk("%s: double free! pkt idx %d(%p)\n", __FUNCTION__, i, p);
+
 			bcm_static_skb->pkt_use[i] = 0;
 #if defined(BCMPCIE)
 			spin_unlock_irqrestore(&bcm_static_skb->osl_pkt_lock, flags);
