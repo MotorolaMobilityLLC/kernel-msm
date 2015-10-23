@@ -1399,8 +1399,14 @@ static int motosh_probe(struct i2c_client *client,
 	pm_qos_add_request(&ps_motosh->pm_qos_req_dma,
 			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
 
-	/* try to go to normal mode, switch to UNINITIALIZED on failure */
-	switch_motosh_mode(NORMALMODE);
+	/* We could call switch_motosh_mode(NORMALMODE) at this point, but
+	 * instead we will hold the part in reset and only go to NORMALMODE on a
+	 * request to do so from the flasher.  The flasher must be present, and
+	 * it must verify the firmware file is available before switching to
+	 * NORMALMODE. This is to prevent a build that is missing firmware or
+	 * flasher from behaving as a normal build (with factory firmware in the
+	 * part).
+	 */
 
 	mutex_unlock(&ps_motosh->lock);
 
