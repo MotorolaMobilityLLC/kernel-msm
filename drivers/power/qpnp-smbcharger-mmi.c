@@ -8477,7 +8477,8 @@ static bool smbchg_check_and_kick_aicl(struct smbchg_chip *chip)
 		}
 	}
 
-	if (!is_usb_present(chip) || smbchg_is_aicl_complete(chip)) {
+	if (!is_usb_present(chip) || smbchg_is_aicl_complete(chip) ||
+	    (smbchg_get_aicl_level_ma(chip) > 300)) {
 		chip->aicl_wait_retries = 0;
 		return false;
 	}
