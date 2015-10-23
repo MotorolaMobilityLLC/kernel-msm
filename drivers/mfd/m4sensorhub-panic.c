@@ -300,12 +300,27 @@ void m4sensorhub_panic_process(struct m4sensorhub_data *m4sensorhub)
 		return;
 	}
 
+	if (m4_panic_on_fail) {
+		KDEBUG(M4SH_ERROR, "%s: Detected M4 panic.\n", __func__);
+		KDEBUG(M4SH_ERROR, "%s: Sleeping 13 seconds.\n", __func__);
+		KDEBUG(M4SH_ERROR, "%s: Then panic.\n", __func__);
+		/* Sleep 13 seconds to allow aplogd to write the panic
+		 * information to file. The timeout is 10 seconds */
+		msleep(13000);
+		BUG();
+	}
+
 	KDEBUG(M4SH_ERROR, "%s: Detected M4 panic, reset M4!\n", __func__);
 	/* Passing "true" will reset M4 before trying to communicate */
 	ret = m4sensorhub_test_m4_reboot(m4sensorhub, true);
 	if (ret < 0) {
 		KDEBUG(M4SH_ERROR, "%s: Failed to restart M4, ret = %d\n",
 			__func__, ret);
+		KDEBUG(M4SH_ERROR, "%s: Sleeping 13 seconds.\n", __func__);
+		KDEBUG(M4SH_ERROR, "%s: Then panic.\n", __func__);
+		/* Sleep 13 seconds to allow aplogd to write the panic
+		 * information to file. The timeout is 10 seconds */
+		msleep(13000);
 		BUG();
 	}
 	m4sensorhub_reg_access_unlock();

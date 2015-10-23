@@ -40,6 +40,11 @@
 char m4sensorhub_debug;
 EXPORT_SYMBOL_GPL(m4sensorhub_debug);
 
+/* Passed on kernel commandline. Indicates whether to panic when I2C fails */
+uint m4_panic_on_fail;
+EXPORT_SYMBOL_GPL(m4_panic_on_fail);
+module_param_named(panic_on_fail, m4_panic_on_fail, uint, 0644);
+
 /* ------------ Local Function Prototypes ----------- */
 
 /* -------------- Local Data Structures ------------- */
