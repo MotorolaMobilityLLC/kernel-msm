@@ -645,7 +645,6 @@ VL53L0_API VL53L0_Error VL53L0_GetXTalkCompensationRateMegaCps(
  *
  * @note This function doesn't Access to the device
  *
- * @param   Dev                           Device Handle
  * @param   pNumberOfLimitCheck           Pointer to the number of check limit.
  * @return  VL53L0_ERROR_NONE             Success
  * @return  "Other error code"            See ::VL53L0_Error
@@ -775,96 +774,32 @@ VL53L0_API VL53L0_Error VL53L0_GetLimitCheckValue(VL53L0_DEV Dev,
 
 
 /**
- * @brief  Enable/disable Snr check for a given Device
+ * @brief  Get the current value of the signal used for the limit check
  *
  * @par Function Description
- * This function set the Snr check Enable for a given position and for a given
- * device
+ * This function get a the current value of the signal used for the limit check.
+ * To obtain the latest value you should run a ranging before.
+ * The value reported is linked to the limit check identified with the
+ * LimitCheckId.
  *
  * @note This function Access to the device
  *
- * @param   Dev                   Device Handle
- * @param   Position              Indicate the position of the check in the
- * sequence, it could be for example EARLY or FINAL.
- * @param   SnrLimitCheckEnable   if 1 = SnrLimit Check is Enabled ; 0 =
- * SnrLimit Check is disabled
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"    See ::VL53L0_Error
+ * @param   Dev                           Device Handle
+ * @param   LimitCheckId                  Limit Check ID  (0<= LimitCheckId <
+ * VL53L0_GetNumberOfLimitCheck() ).
+ * @param   pLimitCheckCurrent            Pointer to current Value for a
+ * given LimitCheckId.
+ * @return  VL53L0_ERROR_NONE             Success
+ * @return  VL53L0_ERROR_INVALID_PARAMS   This error is returned when
+ * LimitCheckId value is out of range.
+ * @return  "Other error code"            See ::VL53L0_Error
  */
-VL53L0_API VL53L0_Error VL53L0_SetSnrLimitCheckEnable(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position,
-			uint8_t SnrLimitCheckEnable);
+VL53L0_API VL53L0_Error VL53L0_GetLimitCheckCurrent(VL53L0_DEV Dev,
+		uint16_t LimitCheckId, FixPoint1616_t *pLimitCheckCurrent);
 
 
-/**
- * @brief  Get Snr Limit check enable value for a given position and for a
- * given Device
- *
- * @par Function Description
- * This function get the Snr Limit check Enable for a given position and for a
- * given device
- *
- * @note This function Access to the device
- *
- * @param   Dev                   Device Handle
- * @param   Position              Indicate the position of the check in the
- * sequence, it could be for example EARLY or FINAL.
- * @param   pSnrLimitCheckEnable  Pointer to programmed SnrLimit Check Enable
- * value.
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"    See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_GetSnrLimitCheckEnable(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position,
-			uint8_t *pSnrLimitCheckEnable);
-
-/**
- * @brief Set SNR limit value for a given position and for a given Device
- *
- * @par Function Description
- * Set SNR limit value for a given position and for a given device.
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle.
- * @param   Position             Indicate the position of the check in the
- * sequence, it could be for example EARLY or FINAL.
- * @param   SnrLimitValue        SNR limit value to validate the measurement
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"   See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_SetSnrLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position,
-			FixPoint1616_t SnrLimitValue);
 
 
-/**
- * @brief Get SNR limit value
- *
- * @par Function Description
- * Get SNR limit value for a given position and for a given device.
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle.
- * @param   Position             Indicate the position of the check in the
- * sequence, it could be for example EARLY or FINAL.
- * @param   pSnrLimitValue       Pointer to current SNR limit value to validate
- * the measurement
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"   See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_GetSnrLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position,
-			FixPoint1616_t *pSnrLimitValue);
 
 /**
  * @brief  Enable/disable Signal check for a given Device
@@ -932,8 +867,8 @@ VL53L0_API VL53L0_Error VL53L0_GetSignalLimitCheckEnable(VL53L0_DEV Dev,
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetSignalLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, FixPoint1616_t
-SignalLimitValue);
+			VL53L0_CheckPosition Position,
+			FixPoint1616_t SignalLimitValue);
 
 
 /**
@@ -955,8 +890,8 @@ SignalLimitValue);
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetSignalLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, FixPoint1616_t
-*pSignalLimitValue);
+			VL53L0_CheckPosition Position,
+			FixPoint1616_t *pSignalLimitValue);
 
 
 /**
@@ -979,8 +914,8 @@ VL53L0_API VL53L0_Error VL53L0_GetSignalLimitValue(VL53L0_DEV Dev,
  * @return  "Other error code"      See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetSigmaLimitCheckEnable(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, uint8_t
-SigmaLimitCheckEnable);
+			VL53L0_CheckPosition Position,
+			uint8_t SigmaLimitCheckEnable);
 
 
 /**
@@ -1004,8 +939,8 @@ SigmaLimitCheckEnable);
  * @return  "Other error code"      See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetSigmaLimitCheckEnable(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, uint8_t
-*pSigmaLimitCheckEnable);
+			VL53L0_CheckPosition Position,
+			uint8_t *pSigmaLimitCheckEnable);
 
 /**
  * @brief Set Sigma limit value for a given position and for a given Device
@@ -1025,8 +960,8 @@ VL53L0_API VL53L0_Error VL53L0_GetSigmaLimitCheckEnable(VL53L0_DEV Dev,
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_SetSigmaLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, FixPoint1616_t
-SigmaLimitValue);
+			VL53L0_CheckPosition Position,
+			FixPoint1616_t SigmaLimitValue);
 
 
 /**
@@ -1048,99 +983,9 @@ SigmaLimitValue);
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L0_API VL53L0_Error VL53L0_GetSigmaLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, FixPoint1616_t
-*pSigmaLimitValue);
-
-/**
- * @brief  Set Enable/disable Rate check Limit for a given position and for a
- * given device
- *
- * @par Function Description
- * This function set the Rate Limit check Enable for a given position and for a
- * given device
- *
- * @note This function Access to the device
- *
- * @param   Dev                   Device Handle
- * @param   Position              Indicate the position in the sequence it
- * could be for example EARLY or FINAL.
- * @param   RateLimitCheckEnable  if 1 = Rate Limit Check is Enabled ; 0 = Rate
- * Limit Check is disabled
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"    See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_SetRateLimitCheckEnable(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, uint8_t
-RateLimitCheckEnable);
-
-
-/**
- * @brief  Get Rate Limit check Enable for a given position and for a given
- * device
- *
- * @par Function Description
- * This function get the Rate Limit check Enable for a given position and for a
- * given device
- *
- * @note This function Access to the device
- *
- * @param   Dev                     Device Handle
- * @param   Position                Indicate the position in the sequence it
- * could be for example EARLY or FINAL.
- * @param   pRateLimitCheckEnable   Pointer to programmed Rate Limit Check
- * Enable value.
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"      See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_GetRateLimitCheckEnable(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position, uint8_t
-*pRateLimitCheckEnable);
-
-/**
- * @brief Set Rate limit value for a given position and for a given device
- *
- * @par Function Description
- * Set Rate limit value for a given position and for a given device.
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle.
- * @param   Position             Indicate the position in the sequence it could
- * be for example EARLY or FINAL.
- * @param   RateLimitValue       Rate limit value
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"   See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_SetRateLimitValue(VL53L0_DEV Dev,
 			VL53L0_CheckPosition Position,
-			FixPoint1616_t RateLimitValue);
+			FixPoint1616_t *pSigmaLimitValue);
 
-/**
- * @brief Get Rate limit value for a given position and for a given device
- *
- * @par Function Description
- * Get Rate limit value for a given position and for a given device.
- *
- * @note This function Access to the device
- *
- * @param   Dev                  Device Handle.
- * @param   Position             Indicate the position in the sequence it could
- * be for example EARLY or FINAL.
- * @param   pRateLimitValue      Pointer to current Rate limit value
- * @return  VL53L0_ERROR_NONE               Success
- * @return  VL53L0_ERROR_INVALID_PARAMS     This error is returned when
- * Position value is out of range.
- * @return  "Other error code"   See ::VL53L0_Error
- */
-VL53L0_API VL53L0_Error VL53L0_GetRateLimitValue(VL53L0_DEV Dev,
-			VL53L0_CheckPosition Position,
-			FixPoint1616_t *pRateLimitValue);
 
 /**
  * @brief  Enable (or disable) Wrap around Check
@@ -1384,7 +1229,7 @@ VL53L0_API VL53L0_Error VL53L0_GetHistogramMeasurementData(VL53L0_DEV Dev,
  * @note This function change the device mode to
  * VL53L0_DEVICEMODE_SINGLE_RANGING
  *
- * @param	Dev							Device Handle
+ * @param   Dev							Device Handle
  * @param   pRangingMeasurementData		Pointer to the data structure to fill up.
  * @return  VL53L0_ERROR_NONE			Success
  * @return  "Other error code"			See ::VL53L0_Error
@@ -1404,7 +1249,7 @@ VL53L0_API VL53L0_Error VL53L0_PerformSingleRangingMeasurement(VL53L0_DEV Dev,
  *
  * @note This function is not Implemented
  *
- * @param	Dev							Device Handle
+ * @param   Dev							Device Handle
  * @param   pHistogramMeasurementData	Pointer to the data structure to fill
  * up.
  * @return  VL53L0_ERROR_NOT_IMPLEMENTED   Not implemented
@@ -1424,7 +1269,7 @@ VL53L0_API VL53L0_Error VL53L0_PerformSingleHistogramMeasurement(
  * with  @a VL53L0_GetMaxNumberOfROIZones().
  * This version of API manage only one zone.
  *
- * @param	Dev							Device Handle
+ * @param   Dev							Device Handle
  * @param   NumberOfROIZones            Number of ROI Zones to be used for a
  * specific Device.
  * @return  VL53L0_ERROR_NONE             Success
@@ -1446,7 +1291,7 @@ VL53L0_API VL53L0_Error VL53L0_SetNumberOfROIZones(VL53L0_DEV Dev,
  *
  * @note This function doesn't Access to the device
  *
- * @param	Dev							Device Handle
+ * @param   Dev							Device Handle
  * @param   pNumberOfROIZones           Pointer to the Number of ROI Zones
  * value.
  * @return  VL53L0_ERROR_NONE           Success
@@ -1462,7 +1307,7 @@ VL53L0_API VL53L0_Error VL53L0_GetNumberOfROIZones(VL53L0_DEV Dev,
  *
  * @note This function doesn't Access to the device
  *
- * @param	Dev							Device Handle
+ * @param   Dev							Device Handle
  * @param   pMaxNumberOfROIZones        Pointer to the Maximum Number of ROI
  * Zones value.
  * @return  VL53L0_ERROR_NONE           Success
@@ -1496,11 +1341,10 @@ VL53L0_API VL53L0_Error VL53L0_GetMaxNumberOfROIZones(VL53L0_DEV Dev,
  * accepted.
  * @return  VL53L0_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED    This error occurs
  * when Functionality programmed is not in the supported list:
- *                                                           Supported value
+ * Supported value
  * are:
  *
  * VL53L0_GPIOFUNCTIONALITY_OFF, VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
- *
  * VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH,
  * VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT,
  *
@@ -1525,8 +1369,8 @@ VL53L0_API VL53L0_Error VL53L0_SetGpioConfig(VL53L0_DEV Dev, uint8_t Pin,
  * Refer to ::VL53L0_GpioFunctionality
  * @param   pPolarity             Pointer to interrupt polarity. Active high or
  * active low see ::VL53L0_InterruptPolarity
- * @return	VL53L0_ERROR_NONE		Success
- * @return  VL53L0_ERROR_GPIO_NOT_EXISTING  Only Pin=0 is accepted.
+ * @return  VL53L0_ERROR_NONE                            Success
+ * @return  VL53L0_ERROR_GPIO_NOT_EXISTING               Only Pin=0 is accepted.
  * @return  VL53L0_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED    This error occurs
  * when Functionality programmed is not in the supported list:
  * Supported value are:
@@ -1633,7 +1477,7 @@ VL53L0_API VL53L0_Error VL53L0_GetInterruptMaskStatus(VL53L0_DEV Dev,
  *
  * @note This function is not Implemented
  *
- * @param	Dev					Device Handle
+ * @param   Dev					Device Handle
  * @param	InterruptMask		Mask of interrupt to Enable/disable
  * (0:interrupt disabled or 1: interrupt enabled)
  * @return  VL53L0_ERROR_NOT_IMPLEMENTED   Not implemented
