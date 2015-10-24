@@ -62,9 +62,9 @@ extern "C" {
 /** VL53L0 PAL IMPLEMENTATION minor version */
 #define VL53L0_IMPLEMENTATION_VER_MINOR   0
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L0_IMPLEMENTATION_VER_SUB     5
+#define VL53L0_IMPLEMENTATION_VER_SUB     6
 /** VL53L0 PAL IMPLEMENTATION sub version */
-#define VL53L0_IMPLEMENTATION_VER_REVISION    2698
+#define VL53L0_IMPLEMENTATION_VER_REVISION    2915
 
 #define VL53L0_DEFAULT_MAX_LOOP 100
 #define VL53L0_MAX_STRING_LENGTH 32
@@ -95,16 +95,16 @@ typedef struct {
 /** @brief Defines the parameters of the Get Device Info Functions
  */
 typedef struct {
-	/*!< Name of the Device e.g. Left_Distance */
 	char Name[VL53L0_MAX_STRING_LENGTH];
-	/*!< Type of the Device e.g VL53L0 */
+	/*!< Name of the Device e.g. Left_Distance */
 	char Type[VL53L0_MAX_STRING_LENGTH];
-	/*!< Product Type, VL53L0 = 1, VL53L1 = 2 */
+	/*!< Type of the Device e.g VL53L0 */
 	uint8_t ProductType;
-	/*!< Product revision major */
+	/*!< Product Type, VL53L0 = 1, VL53L1 = 2 */
 	uint8_t ProductRevisionMajor;
-	/*!< Product revision minor */
+	/*!< Product revision major */
 	uint8_t ProductRevisionMinor;
+	/*!< Product revision minor */
 } VL53L0_DeviceInfo_t ;
 
 
@@ -117,38 +117,41 @@ typedef struct {
 typedef int8_t VL53L0_Error;
 
 #define VL53L0_ERROR_NONE                              ((VL53L0_Error)  0)
-/*!< Warning invalid calibration data may be in used
-	\a  VL53L0_InitData()
-	\a VL53L0_GetOffsetCalibrationData
-	\a VL53L0_SetOffsetCalibrationData */
+/*!< No Error found */
 #define VL53L0_ERROR_CALIBRATION_WARNING               ((VL53L0_Error) - 1)
-/*!< Warning parameter passed was clipped to min before to be applied */
+/*!< Warning invalid calibration data may be in used
+\a  VL53L0_InitData()
+\a VL53L0_GetOffsetCalibrationData
+\a VL53L0_SetOffsetCalibrationData */
 #define VL53L0_ERROR_MIN_CLIPPED                       ((VL53L0_Error) - 2)
-/*!< Unqualified error */
+/*!< Warning parameter passed was clipped to min before to be applied */
 #define VL53L0_ERROR_UNDEFINED                         ((VL53L0_Error) - 3)
-/*!< Parameter passed is invalid or out of range */
+/*!< Unqualified error */
 #define VL53L0_ERROR_INVALID_PARAMS                    ((VL53L0_Error) - 4)
-/*!< Function is not supported in current mode or configuration */
+/*!< Parameter passed is invalid or out of range */
 #define VL53L0_ERROR_NOT_SUPPORTED                     ((VL53L0_Error) - 5)
-/*!< Device report a ranging error interrupt status */
+/*!< Function is not supported in current mode or configuration */
 #define VL53L0_ERROR_RANGE_ERROR                       ((VL53L0_Error) - 6)
-/*!< Aborted due to time out */
+/*!< Device report a ranging error interrupt status */
 #define VL53L0_ERROR_TIME_OUT                          ((VL53L0_Error) - 7)
-/*!< Asked mode is not supported by the device */
+/*!< Aborted due to time out */
 #define VL53L0_ERROR_MODE_NOT_SUPPORTED                ((VL53L0_Error) - 8)
-/*!< ... */
+/*!< Asked mode is not supported by the device */
 #define VL53L0_ERROR_BUFFER_TOO_SMALL                  ((VL53L0_Error) - 9)
-/*!< User tried to setup a non-existing GPIO pin */
+/*!< Buffer is too small */
 #define VL53L0_ERROR_GPIO_NOT_EXISTING                 ((VL53L0_Error) - 10)
-/*!< unsupported GPIO functionality */
+/*!< User tried to setup a non-existing GPIO pin */
 #define VL53L0_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED  ((VL53L0_Error) - 11)
-/*!< error reported from IO functions */
+/*!< unsupported GPIO functionality */
 #define VL53L0_ERROR_CONTROL_INTERFACE                 ((VL53L0_Error) - 20)
-/*!< The command is not allowed in the current device state (power down) */
+/*!< error reported from IO functions */
 #define VL53L0_ERROR_INVALID_COMMAND                   ((VL53L0_Error) - 30)
+/*!< The command is not allowed in the current device state (power down) */
+#define VL53L0_ERROR_DIVISION_BY_ZERO                  ((VL53L0_Error) - 40)
+/*!< In the function a division by zero occurs */
+#define VL53L0_ERROR_NOT_IMPLEMENTED                   ((VL53L0_Error) - 99)
 /*!< Tells requested functionality has not been implemented yet or not
 	compatible with the device */
-#define VL53L0_ERROR_NOT_IMPLEMENTED                   ((VL53L0_Error) - 99)
 /** @} */ /* end of VL53L0_define_Error_group */
 
 
@@ -164,6 +167,8 @@ typedef uint8_t VL53L0_DeviceModes;
 #define VL53L0_DEVICEMODE_SINGLE_HISTOGRAM         ((VL53L0_DeviceModes)  2)
 #define VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING ((VL53L0_DeviceModes)  3)
 #define VL53L0_DEVICEMODE_SINGLE_ALS               ((VL53L0_DeviceModes) 10)
+#define VL53L0_DEVICEMODE_GPIO_DRIVE               ((VL53L0_DeviceModes) 20)
+#define VL53L0_DEVICEMODE_GPIO_OSC                 ((VL53L0_DeviceModes) 21)
 /* ... Modes to be added depending on device */
 /** @} */ /* end of VL53L0_define_DeviceModes_group */
 
@@ -176,15 +181,15 @@ typedef uint8_t VL53L0_DeviceModes;
  */
 typedef uint8_t VL53L0_HistogramModes;
 
-/*!< Histogram Disabled */
 #define VL53L0_HISTOGRAMMODE_DISABLED        ((VL53L0_HistogramModes) 0)
-/*!< Histogram Reference array only */
+/*!< Histogram Disabled */
 #define VL53L0_HISTOGRAMMODE_REFERENCE_ONLY  ((VL53L0_HistogramModes) 1)
-/*!< Histogram Return array only */
+/*!< Histogram Reference array only */
 #define VL53L0_HISTOGRAMMODE_RETURN_ONLY     ((VL53L0_HistogramModes) 2)
-/*!< Histogram both Reference and Return Arrays */
+/*!< Histogram Return array only */
 #define VL53L0_HISTOGRAMMODE_BOTH            ((VL53L0_HistogramModes) 3)
-/* ... Modes to be added depending on device */
+/*!< Histogram both Reference and Return Arrays */
+
 /** @} */ /* end of VL53L0_define_HistogramModes_group */
 
 
@@ -195,14 +200,14 @@ typedef uint8_t VL53L0_HistogramModes;
 
 typedef uint8_t VL53L0_PowerModes;
 
-/*!< Standby level 1 */
 #define VL53L0_POWERMODE_STANDBY_LEVEL1 ((VL53L0_PowerModes) 0)
-/*!< Standby level 2 */
+/*!< Standby level 1 */
 #define VL53L0_POWERMODE_STANDBY_LEVEL2 ((VL53L0_PowerModes) 1)
-/*!< Idle level 1 */
+/*!< Standby level 2 */
 #define VL53L0_POWERMODE_IDLE_LEVEL1    ((VL53L0_PowerModes) 2)
-/*!< Idle level 2 */
+/*!< Idle level 1 */
 #define VL53L0_POWERMODE_IDLE_LEVEL2    ((VL53L0_PowerModes) 3)
+/*!< Idle level 2 */
 
 /** @} */ /* end of VL53L0_define_PowerModes_group */
 
@@ -249,18 +254,11 @@ typedef struct {
 	uint8_t SnrLimitCheckEnable[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
 	/*!< Tells if SNR limit Check shall be enable or not for each
 		position. */
-	FixPoint1616_t SnrLimitValue[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
-	/*!< SNR limit value for each position */
 	uint8_t SignalLimitCheckEnable[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
 	/*!< Tells if Signal limit Check shall be enable or not for each
 		position.*/
 	FixPoint1616_t SignalLimitValue[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
 	/*!< Signal limit value for each position */
-	uint8_t RateLimitCheckEnable[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
-	/*!< Tells if Rate limit Check shall be enable or not for each
-		position. */
-	FixPoint1616_t RateLimitValue[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
-	/*!< Rate limit value for each position */
 	uint8_t SigmaLimitCheckEnable[VL53L0_CHECKPOSITION_NO_OF_CHECKS];
 	/*!< Tells if Sigma limit Check shall be enable or not for each
 		position. */
@@ -363,7 +361,7 @@ typedef struct {
 	/*!< Number of bins filled by the histogram measurement */
 	VL53L0_DeviceError ErrorStatus;
 	/*!< Error status of the current measurement.\n
-		see @a ::VL53L0_DeviceError @a VL53L0_GetStatusErrorString() */
+	see @a ::VL53L0_DeviceError @a VL53L0_GetStatusErrorString() */
 } VL53L0_HistogramMeasurementData_t;
 
 
