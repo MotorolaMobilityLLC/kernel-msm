@@ -121,8 +121,6 @@
 			(uint16_t)((((uint16_t)msb) << 8) + (uint16_t)lsb)
 
 /* Internal functions declaration */
-static VL53L0_Error VL53L0_set_vcsel_pulse_period(VL53L0_DEV Dev,
-				uint8_t VCSELPulsePeriod);
 static VL53L0_Error VL53L0_get_vcsel_pulse_period(VL53L0_DEV Dev,
 				uint8_t *pVCSELPulsePeriod, uint8_t RangeIndex);
 static uint8_t VL53L0_encode_vcsel_period(uint8_t vcsel_period_pclks);
@@ -2764,25 +2762,6 @@ static uint32_t VL53L0_calc_macro_period_ps(VL53L0_DEV Dev,
 		uint8_t vcsel_period);
 static uint16_t VL53L0_encode_timeout(uint32_t timeout_mclks);
 static uint32_t VL53L0_decode_timeout(uint16_t encoded_timeout);
-
-
-static
-VL53L0_Error VL53L0_set_vcsel_pulse_period(VL53L0_DEV Dev,
-		uint8_t VCSELPulsePeriod)
-{
-	VL53L0_Error Status = VL53L0_ERROR_NONE;
-	uint8_t vcsel_period_reg;
-
-	LOG_FUNCTION_START("");
-
-	vcsel_period_reg = VL53L0_encode_vcsel_period((uint8_t)
-		VCSELPulsePeriod);
-	Status = VL53L0_WrByte(Dev, VL53L0_REG_RNGA_CONFIG_VCSEL_PERIOD,
-		vcsel_period_reg);
-
-	LOG_FUNCTION_END(Status);
-	return Status;
-}
 
 static VL53L0_Error VL53L0_get_vcsel_pulse_period(VL53L0_DEV Dev, uint8_t
 	*pVCSELPulsePeriod, uint8_t RangeIndex)
