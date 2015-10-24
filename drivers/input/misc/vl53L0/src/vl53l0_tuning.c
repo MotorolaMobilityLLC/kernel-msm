@@ -49,6 +49,7 @@
 VL53L0_Error VL53L0_load_tuning_settings(VL53L0_DEV Dev)
 {
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
+
 	LOG_FUNCTION_START("");
 
 	/* update 17_06_15_v10 */
