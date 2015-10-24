@@ -152,14 +152,15 @@ int32_t VL53L0_write_multi(VL53L0_DEV dev, uint8_t index, uint8_t *pdata,
 	pvalue_as_str =  value_as_str;
 
 	for (i = 0 ; i < count ; i++) {
-		sprintf(pvalue_as_str, "%02X", *(pdata + i));
+		snprintf(pvalue_as_str, sizeof(pvalue_as_str),
+			"%02X", *(pdata + i));
 
 		pvalue_as_str += 2;
 	}
 	trace_i2c("Write reg : 0x%04X, Val : 0x%s\n", index, value_as_str);
 #endif
 	if ((count + 1) > VL53L0_MAX_I2C_XFER_SIZE)
-		return -1;
+		return STATUS_FAIL;
 	buffer =  VL53L0_GetLocalBuffer(dev, (count+1));
 	buffer[0] = index;
 	memcpy(&buffer[1], pdata, count);
@@ -181,13 +182,13 @@ int32_t VL53L0_read_multi(VL53L0_DEV dev, uint8_t index, uint8_t *pdata,
 #endif
 
 	if ((count + 1) > VL53L0_MAX_I2C_XFER_SIZE)
-		return -1;
+		return STATUS_FAIL;
 
 	buffer =  VL53L0_GetLocalBuffer(dev, 1);
 	buffer[0] = index;
 	status = VL53L0_I2CWrite(dev, (uint8_t *)buffer, (uint8_t)1);
 	if (!status) {
-		pdata[0] = index ;
+		pdata[0] = index;
 		status = VL53L0_I2CRead(dev, pdata, count);
 	}
 
@@ -195,7 +196,8 @@ int32_t VL53L0_read_multi(VL53L0_DEV dev, uint8_t index, uint8_t *pdata,
 	pvalue_as_str =  value_as_str;
 
 	for (i = 0 ; i < count ; i++) {
-		sprintf(pvalue_as_str, "%02X", *(pdata+i));
+		snprintf(pvalue_as_str, sizeof(value_as_str),
+			"%02X", *(pdata+i));
 		pvalue_as_str += 2;
 	}
 

@@ -47,38 +47,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 typedef uint8_t VL53L0_DeviceError;
 
-#define VL53L0_DEVICEERROR_NONE \
-	((VL53L0_DeviceError)   0) /*!< 0  0b0000 NoError  */
-#define VL53L0_DEVICEERROR_VCSELCONTINUITYTESTFAILURE \
-	((VL53L0_DeviceError)   1) /*!< 1  0b0001  */
-#define VL53L0_DEVICEERROR_VCSELWATCHDOGTESTFAILURE \
-	((VL53L0_DeviceError)   2) /*!< 2  0b0010  */
-#define VL53L0_DEVICEERROR_NOVHVVALUEFOUND \
-	((VL53L0_DeviceError)   3) /*!< 3  0b0011  */
-#define VL53L0_DEVICEERROR_MSRCNOTARGET \
-	((VL53L0_DeviceError)   4) /*!< 4  0b0100  */
-#define VL53L0_DEVICEERROR_MSRCMINIMUMSNR \
-	((VL53L0_DeviceError)   5) /*!< 5  0b0101  */
-#define VL53L0_DEVICEERROR_MSRCWRAPAROUND \
-	((VL53L0_DeviceError)   6) /*!< 6  0b0110  */
-#define VL53L0_DEVICEERROR_TCC \
-	((VL53L0_DeviceError)   7) /*!< 7  0b0111  */
-#define VL53L0_DEVICEERROR_RANGEAWRAPAROUND \
-	((VL53L0_DeviceError)   8) /*!< 8  0b1000  */
-#define VL53L0_DEVICEERROR_RANGEBWRAPAROUND \
-	((VL53L0_DeviceError)   9) /*!< 9  0b1001  */
-#define VL53L0_DEVICEERROR_MINCLIP \
-	((VL53L0_DeviceError)   10) /*!< 10 0b1010  */
-#define VL53L0_DEVICEERROR_RANGECOMPLETE \
-	((VL53L0_DeviceError)   11) /*!< 11 0b1011  */
-#define VL53L0_DEVICEERROR_ALGOUNDERFLOW \
-	((VL53L0_DeviceError)   12) /*!< 12 0b1100  */
-#define VL53L0_DEVICEERROR_ALGOOVERFLOW \
-	((VL53L0_DeviceError)   13) /*!< 13 0b1101  */
-#define VL53L0_DEVICEERROR_FINALSNRLIMIT \
-	((VL53L0_DeviceError)   14) /*!< 14 0b1110  */
-#define VL53L0_DEVICEERROR_NOTARGETIGNORE \
-	((VL53L0_DeviceError)   15) /*!< 15 0b1111  */
+#define VL53L0_DEVICEERROR_NONE ((VL53L0_DeviceError)   0)
+#define VL53L0_DEVICEERROR_VCSELCONTINUITYTESTFAILURE ((VL53L0_DeviceError) 1)
+#define VL53L0_DEVICEERROR_VCSELWATCHDOGTESTFAILURE ((VL53L0_DeviceError)   2)
+#define VL53L0_DEVICEERROR_NOVHVVALUEFOUND ((VL53L0_DeviceError)   3)
+#define VL53L0_DEVICEERROR_MSRCNOTARGET ((VL53L0_DeviceError)   4)
+#define VL53L0_DEVICEERROR_MSRCMINIMUMSNR  ((VL53L0_DeviceError)   5)
+#define VL53L0_DEVICEERROR_MSRCWRAPAROUND ((VL53L0_DeviceError)   6)
+#define VL53L0_DEVICEERROR_TCC ((VL53L0_DeviceError)   7)
+#define VL53L0_DEVICEERROR_RANGEAWRAPAROUND ((VL53L0_DeviceError)   8)
+#define VL53L0_DEVICEERROR_RANGEBWRAPAROUND ((VL53L0_DeviceError)   9)
+#define VL53L0_DEVICEERROR_MINCLIP ((VL53L0_DeviceError)   10)
+#define VL53L0_DEVICEERROR_RANGECOMPLETE ((VL53L0_DeviceError)   11)
+#define VL53L0_DEVICEERROR_ALGOUNDERFLOW ((VL53L0_DeviceError)   12)
+#define VL53L0_DEVICEERROR_ALGOOVERFLOW ((VL53L0_DeviceError)   13)
+#define VL53L0_DEVICEERROR_FINALSNRLIMIT ((VL53L0_DeviceError)   14)
+#define VL53L0_DEVICEERROR_NOTARGETIGNORE ((VL53L0_DeviceError)   15)
 
 /** @} */ /* end of VL53L0_DeviceError_group */
 
@@ -91,12 +75,10 @@ typedef uint8_t VL53L0_DeviceError;
  *  @{
  */
 
-#define VL53L0_CHECKENABLE_SNR                    0
-#define VL53L0_CHECKENABLE_SIGMA                  1
-#define VL53L0_CHECKENABLE_RANGE                  2
-#define VL53L0_CHECKENABLE_SIGNAL_RATE            3
+#define VL53L0_CHECKENABLE_SIGMA                  0
+#define VL53L0_CHECKENABLE_SIGNAL_RATE            1
 
-#define VL53L0_CHECKENABLE_NUMBER_OF_CHECKS       4
+#define VL53L0_CHECKENABLE_NUMBER_OF_CHECKS       2
 
 /** @} */ /* end of VL53L0_CheckEnable_group */
 
@@ -109,27 +91,25 @@ typedef uint8_t VL53L0_DeviceError;
 typedef uint8_t VL53L0_GpioFunctionality;
 
 #define VL53L0_GPIOFUNCTIONALITY_OFF \
-	((VL53L0_GpioFunctionality)  0) /*!< NO Interrupt  */
+	((VL53L0_GpioFunctionality)  0) /*!< NO Interrupt */
 #define VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW \
-	((VL53L0_GpioFunctionality)  1) /*!< Level Low (value < thresh_low)  */
+	((VL53L0_GpioFunctionality)  1) /*!< Level Low (value < thresh_low) */
 #define VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_HIGH \
-	((VL53L0_GpioFunctionality)  2) /*!< Level High (value > thresh_high) */
+	((VL53L0_GpioFunctionality)  2) /*!< Level High
+							(value > thresh_high) */
 #define VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT \
-	((VL53L0_GpioFunctionality)  3) /*!< Out Of Window (value < thresh_low
-						OR value > thresh_high) */
+	((VL53L0_GpioFunctionality)  3) /*!< Out Of Window
+			(value < thresh_low OR value > thresh_high) */
 #define VL53L0_GPIOFUNCTIONALITY_NEW_MEASURE_READY \
-	((VL53L0_GpioFunctionality)  4) /*!< New Sample Ready  */
+	((VL53L0_GpioFunctionality)  4) /*!< New Sample Ready */
 
 /** @} */ /* end of VL53L0_GpioFunctionality_group */
 
 
 typedef struct {
 	FixPoint1616_t OscFrequencyMHz;
-
 	uint16_t LastEncodedTimeout;
-
 	VL53L0_GpioFunctionality Pin0GpioFunctionality;
-
 } VL53L0_DeviceSpecificParameters_t;
 
 
@@ -140,7 +120,7 @@ typedef struct {
  *  @ingroup regdef
  *  @{
  */
-#define VL53L0_REG_SYSRANGE_START                  0x000
+#define VL53L0_REG_SYSRANGE_START                        0x000
     /** mask existing bit in #VL53L0_REG_SYSRANGE_START*/
     #define VL53L0_REG_SYSRANGE_MODE_MASK          0x0F
     /** bit 0 in #VL53L0_REG_SYSRANGE_START write 1 toggle state in
@@ -232,7 +212,6 @@ typedef struct {
 
 #define VL53L0_REG_SOFT_RESET_GO2_SOFT_RESET_N	  0x00bf
 #define VL53L0_REG_IDENTIFICATION_MODEL_ID        0x00c0
-#define VL53L0_REG_IDENTIFICATION_MODEL_TYPE      0x00c1
 #define VL53L0_REG_IDENTIFICATION_REVISION_ID     0x00c2
 #define VL53L0_REG_IDENTIFICATION_MODULE_ID       0x00c3
 
