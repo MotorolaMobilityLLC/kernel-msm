@@ -83,7 +83,7 @@ void trace_print_module_function(uint32_t module, uint32_t level,
 
 
 #define LOG_GET_TIME() (int)0
-
+/*
 #define _LOG_FUNCTION_START(module, fmt, ...) \
 		printk(KERN_INFO"beg %s start @%d\t" fmt "\n", \
 		__func__, LOG_GET_TIME(), ##__VA_ARGS__)
@@ -95,6 +95,19 @@ void trace_print_module_function(uint32_t module, uint32_t level,
 #define _LOG_FUNCTION_END_FMT(module, status, fmt, ...)\
 		printk(KERN_INFO"End %s @%d %d\t"fmt"\n" , \
 		__func__, LOG_GET_TIME(), (int)status, ##__VA_ARGS__)
+*/
+#define _LOG_FUNCTION_START(module, fmt, ...) \
+		pr_err("beg %s start @%d\t" fmt "\n", \
+		__func__, LOG_GET_TIME(), ##__VA_ARGS__)
+
+#define _LOG_FUNCTION_END(module, status, ...)\
+		pr_err("end %s start @%d\t" fmt "\n", \
+		 __func__, LOG_GET_TIME(), (int)status)
+
+#define _LOG_FUNCTION_END_FMT(module, status, fmt, ...)\
+		pr_err("End %s @%d %d\t"fmt"\n" , \
+		__func__, LOG_GET_TIME(), (int)status, ##__VA_ARGS__)
+
 
 #else /* VL53L0_LOG_ENABLE no logging */
 	#define VL53L0_ErrLog(...) (void)0
@@ -103,7 +116,7 @@ void trace_print_module_function(uint32_t module, uint32_t level,
 	#define _LOG_FUNCTION_END_FMT(module, status, fmt, ...) (void)0
 #endif /* else */
 
-#define VL53L0_COPYSTRING(str, ...) strcpy(str, ##__VA_ARGS__)
+#define VL53L0_COPYSTRING(str, ...) strlcpy(str, ##__VA_ARGS__, sizeof(str))
 
 
 #endif  /* _VL53L0_PLATFORM_LOG_H_ */
