@@ -32,7 +32,7 @@ int VL53L0_I2CWrite(VL53L0_DEV dev, uint8_t *buff, uint8_t len)
 #ifdef CAMERA_CCI
 		uint16_t index;
 		struct cci_data *cci_client_obj =
-			(struct cci_data *)dev->client_obj;
+			(struct cci_data *)dev->client_object;
 		struct msm_camera_i2c_client *client = cci_client_obj->client;
 
 		index = buff[0];
