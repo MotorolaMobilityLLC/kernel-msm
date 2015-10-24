@@ -43,8 +43,8 @@ typedef unsigned int FixPoint1616_t;
 #if !defined(STDINT_H) &&  !defined(_GCC_STDINT_H) \
 	&& !defined(_STDINT_H) && !defined(_LINUX_TYPES_H)
 
-#pragma message("Please review type definition of STDINT define for \
-	 your platform and add to list above ")
+#pragma message("Please review type definition of STDINT define for your \
+platform and add to list above ")
 
 /*
 *  target platform do not provide stdint or use a different #define than above
