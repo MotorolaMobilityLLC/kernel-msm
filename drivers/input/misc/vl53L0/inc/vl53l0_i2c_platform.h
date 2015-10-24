@@ -29,13 +29,13 @@
 
 /**
  *  @brief Typedef defining .\n
- * The developer shoud modify this to suit the platform being deployed.
+ * The developer should modify this to suit the platform being deployed.
  *
  */
 
 /**
  * @brief Typedef defining 8 bit unsigned char type.\n
- * The developer shoud modify this to suit the platform being deployed.
+ * The developer should modify this to suit the platform being deployed.
  *
  */
 
