@@ -76,7 +76,7 @@ typedef struct stmvl53l0_data *VL53L0_DEV;
  * @param field     ST structure field na*me
  * @param data      Data to be set
  */
-#define PALDevDataSet(Dev, field, data) (Dev->Data.field) = (data)
+#define PALDevDataSet(Dev, field, data) ((Dev->Data.field) = (data))
 
 
 /**
