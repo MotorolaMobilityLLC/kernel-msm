@@ -200,20 +200,6 @@ static void stmvl53l0_enter_sar(struct stmvl53l0_data *data, uint8_t from)
 	VL53L0_SetGpioConfig(data, 0, 0,
 		VL53L0_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_LOW,
 		VL53L0_INTERRUPTPOLARITY_LOW);
-	VL53L0_SetSnrLimitValue(
-		data, 0, 1500);
-	VL53L0_SetSigmaLimitValue(data, 0, 10);
-	VL53L0_SetRateLimitValue(data, 0, 0xffffff);
-	VL53L0_SetSnrLimitValue(
-		data, 1, 3000);
-	VL53L0_SetSigmaLimitValue(data, 1, 10);
-	VL53L0_SetRateLimitValue(data, 1, 0xffffff);
-	VL53L0_SetSigmaLimitCheckEnable(data, 0, 1);
-	VL53L0_SetSnrLimitCheckEnable(data, 0, 1);
-	VL53L0_SetRateLimitCheckEnable(data, 0, 1);
-	VL53L0_SetSigmaLimitCheckEnable(data, 1, 1);
-	VL53L0_SetSnrLimitCheckEnable(data, 1, 1);
-	VL53L0_SetRateLimitCheckEnable(data, 1, 1);
 	VL53L0_SetInterruptThresholds(data, 0, 30 << 16, 40 << 16);
 	VL53L0_SetDeviceMode(data,
 		VL53L0_DEVICEMODE_CONTINUOUS_TIMED_RANGING);
@@ -410,6 +396,7 @@ char *envphigh[2] = { "SAR HIGH=1", NULL };
 VL53L0_GetRangingMeasurementData(vl53l0_dev, &RMData);
 
 vl53l0_dbgmsg("which MODE =%d\n", data->w_mode);
+VL53L0_ClearInterruptMask(vl53l0_dev, 0);
 memcpy(&(data->rangeData), &RMData,
 	sizeof(VL53L0_RangingMeasurementData_t));
 	if (CAM_MODE == data->w_mode) {
@@ -418,6 +405,7 @@ memcpy(&(data->rangeData), &RMData,
 			pr_err("range:%d, signalRateRtnMegaCps:%d",
 			RMData.RangeMilliMeter,
 			RMData.SignalRateRtnMegaCps);
+		VL53L0_StartMeasurement(data);
 	} else if (SAR_MODE == data->w_mode) {
 		vl53l0_dbgmsg("SAR_MODE\n");
 		if (RMData.RangeMilliMeter < SAR_LOW) {
@@ -469,8 +457,9 @@ memcpy(&(data->rangeData), &RMData,
 			kobject_uevent_env(&(data->miscdev.this_device->kobj),
 				KOBJ_CHANGE, envphigh);
 		}
+		VL53L0_StartMeasurement(data);
 	}
-	VL53L0_ClearInterruptMask(vl53l0_dev, 0);
+
 }
 /* interrupt work handler */
 static void stmvl53l0_work_handler(struct work_struct *work)
@@ -960,28 +949,6 @@ static int stmvl53l0_ioctl_handler(struct file *file,
 				vl53l0_dev, (uint8_t)parameter.value);
 			break;
 
-		case (SNRVAL_PRA):
-			if (parameter.is_read)
-				parameter.status =
-				VL53L0_GetSnrLimitValue(vl53l0_dev,
-				0, (FixPoint1616_t *)&parameter.value);
-			else
-				parameter.status =
-				VL53L0_SetSnrLimitValue(
-				vl53l0_dev, 0, (FixPoint1616_t)parameter.value);
-			break;
-
-		case (SNRCTL_PRA):
-			if (parameter.is_read)
-				parameter.status =
-				VL53L0_GetSnrLimitCheckEnable(vl53l0_dev,
-				0, (uint8_t *)&parameter.value);
-			else
-				parameter.status =
-				VL53L0_SetSnrLimitCheckEnable(
-				vl53l0_dev, 0, (uint8_t)parameter.value);
-			break;
-
 		case (WRAPAROUNDCTL_PRA):
 			if (parameter.is_read)
 				parameter.status =
@@ -1124,7 +1091,7 @@ int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
  */
 static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 {
-	uint8_t id = 0, type = 0;
+	uint8_t id = 0;
 	uint8_t revision = 0, module_id = 0;
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 	VL53L0_DeviceInfo_t DeviceInfo;
@@ -1143,8 +1110,6 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 
 	/* Read Model Version */
 
-	VL53L0_RdByte(vl53l0_dev,
-		VL53L0_REG_IDENTIFICATION_MODEL_TYPE, &type);
 	VL53L0_RdByte(vl53l0_dev,
 		VL53L0_REG_IDENTIFICATION_REVISION_ID, &revision);
 	VL53L0_RdByte(vl53l0_dev,
