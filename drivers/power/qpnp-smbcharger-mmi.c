@@ -4615,12 +4615,24 @@ static irqreturn_t usbin_ov_handler(int irq, void *_chip)
 		}
 	} else {
 		chip->usb_ov_det = false;
+#ifdef QCOM_BASE
 		/* If USB is present, then handle the USB insertion */
 		if (is_usb_present(chip)) {
 			mutex_lock(&chip->usb_set_present_lock);
 			handle_usb_insertion(chip);
 			mutex_unlock(&chip->usb_set_present_lock);
 		}
+#else
+		if (chip->usb_psy && is_usb_present(chip)) {
+			rc = power_supply_set_health_state(chip->usb_psy,
+					POWER_SUPPLY_HEALTH_GOOD);
+			if (rc)
+				pr_smb(PR_STATUS,
+					"usb psy does not allow updating prop" \
+					" %d  rc = %d\n",
+					POWER_SUPPLY_HEALTH_GOOD, rc);
+		}
+#endif
 	}
 out:
 	return IRQ_HANDLED;
