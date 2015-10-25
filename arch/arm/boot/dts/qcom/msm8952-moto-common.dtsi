@@ -253,6 +253,31 @@
 				bias-disable;
 			};
 		};
+
+	laser_active {
+		/* reset, interrupt */
+		qcom,pins = <&gp 86>,<&gp 43>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <0>;
+		label = "laser-active";
+		/* active state */
+		laser_active: laser_active {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
+	laser_suspend {
+		/* reset,interrupt  */
+		qcom,pins = <&gp 86>,<&gp 43> ;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <1>;
+		label = "laser-suspend";
+		/*suspended state */
+		laser_suspend: laser_suspend {
+			drive-strength = <2>; /* 2 MA */
+			bias-disable; /* No PULL */
+		};
+	};
 };
 
 &pmi8950_charger {
@@ -734,6 +759,20 @@
 		nxp,tfa_pcm-start-delay = <100>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&tfa9890_reset_default &tfa9890_earpiece_default>;
+	};
+	stmvl53l0@29 {
+		compatible = "st,stmvl53l0_i2c";
+		reg = <0x29>;
+		vdd-supply = <&pm8950_l22>;
+		gpios = <&msm_gpio 86 0>, <&msm_gpio 43 0>;
+		qcom,gpio-reset = <0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 1>;
+		qcom,gpio-req-tbl-label ="TOF_XSHUTDOWN","TOF_INT";
+		pinctrl-names = "laser_default", "laser_suspend";
+		pinctrl-0 = <&laser_active >;
+		pinctrl-1 = <&laser_suspend >;
+		st,sensorthreshold = <40 45>;
 	};
 };
 
