@@ -23,7 +23,7 @@
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_flash_active>;
 		pinctrl-1 = <&cam_sensor_flash_suspend>;
-		gpios = <&tlmm 134 0>;
+		gpios = <&tlmm 126 0>;
 		qcom,gpio-flash-en = <0>;
 		qcom,gpio-req-tbl-num = <0>;
 		qcom,gpio-req-tbl-flags = <1>;
@@ -248,8 +248,8 @@
 		cell-index = <0>;
 		compatible = "qcom,camera";
 		reg = <0x0>;
-		qcom,csiphy-sd-index = <0>;
-		qcom,csid-sd-index = <0>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		/* qcom,actuator-src = <&actuator0>; */
 		qcom,led-flash-src = <&led_flash0>;
@@ -290,8 +290,8 @@
 		cell-index = <1>;
 		compatible = "qcom,camera";
 		reg = <0x1>;
-		qcom,csiphy-sd-index = <0>;
-		qcom,csid-sd-index = <0>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		/* qcom,actuator-src = <&actuator0>; */
 		qcom,led-flash-src = <&led_flash0>;
@@ -334,8 +334,8 @@
 		reg = <0x02>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,eeprom-src = <&eeprom2>;
-		qcom,csiphy-sd-index = <1>;
-		qcom,csid-sd-index = <1>;
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index = <2>;
 		qcom,mount-angle = <270>;
 		cam_vdig-supply = <&pm8994_l27>;
 		cam_vio-supply = <&pm8994_lvs1>;
