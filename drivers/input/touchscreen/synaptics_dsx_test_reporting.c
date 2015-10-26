@@ -77,7 +77,7 @@ struct device_attribute dev_attr_##propname =\
 		synaptics_rmi4_store_error);
 
 #define show_prototype(propname)\
-	show_prototype_ext(propname, S_IRUSR | S_IRGRP)
+	show_prototype_ext(propname, S_IRUSR | S_IRGRP | S_IROTH)
 
 #define store_prototype(propname)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
@@ -108,7 +108,7 @@ struct device_attribute dev_attr_##propname =\
 
 #define show_store_prototype(propname)\
 	show_store_prototype_ext(propname, \
-		S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP)
+		S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP)
 
 #define simple_show_func(rtype, propname, fmt)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
