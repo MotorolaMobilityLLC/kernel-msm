@@ -176,3 +176,28 @@
 		qcom,config-info = "princeton";
 	};
 };
+
+&cci {
+	/* Skyworks 81298 */
+	qcom,camera-flash@c6 {
+		gpios = <&tlmm 134 0>;
+	};
+
+	/* IMX230/IMX338 */
+	qcom,camera@0 {
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+	};
+
+	/* IMX214 */
+	qcom,camera@1 {
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+	};
+
+	/* OV5693 */
+	qcom,camera@2 {
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+	};
+};
