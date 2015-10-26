@@ -58,7 +58,7 @@
 #include "mdss_mdp_trace.h"
 
 #define AXI_HALT_TIMEOUT_US	0x4000
-#define AUTOSUSPEND_TIMEOUT_MS	200
+#define AUTOSUSPEND_TIMEOUT_MS	50
 
 struct mdss_data_type *mdss_res;
 
