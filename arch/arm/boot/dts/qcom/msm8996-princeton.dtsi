@@ -15,6 +15,7 @@
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 #include "dsi-panel-mot-inx-570-QHD-cmd.dtsi"
 #include "dsi-panel-mot-smd-520-QHD-cmd.dtsi"
+#include "dsi-panel-mot-smd-546-QHD-g-cmd.dtsi"
 
 / {
 	model = "Princeton";
@@ -45,6 +46,7 @@
 		gpio = <&tlmm 69 0>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 };
 
@@ -99,6 +101,7 @@
 	vsn_disp-supply = <&isl98611a_neg>;
 	vci_disp-supply = <&pm8994_l18>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd3_disp-supply = <&isl98611a_neg>;
 	qcom,platform-bklight-en-gpio = <&tlmm 94 0>;
 };
 
@@ -112,6 +115,17 @@
 
 &mot_inx_570_QHD_cmd_v0 {
 	qcom,cont-splash-enabled;
+};
+
+&mot_smd_546_QHD_g_cmd_v0 {
+	qcom,cont-splash-enabled;
+	/* Use 3.0v for VCI on Princeton due to other users of that regulator */
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@1 {
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+		};
+	};
 };
 
 &i2c_8 {
