@@ -234,6 +234,10 @@
 	qcom,msm-thermal {
 		qcom,config-info = "princeton";
 	};
+
+	qcom,sensor-information {
+		/delete-node/ qcom,sensor-information-38;
+	};
 };
 
 &cci {
@@ -273,5 +277,22 @@
 		qcom,src-sel = <0>;		/* GPIO */
 		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "okay";
+	};
+};
+
+&pm8994_vadc {
+	/delete-node/ chan@26;
+};
+
+&pm8994_adc_tm {
+	/delete-node/ chan@26;
+};
+
+&pm8994_mpps {
+	/delete-node/ mpp@a600;
+	mpp@a600 {
+		reg = <0xa600 0x100>;
+		qcom,pin-num = <7>;
+		status = "disabled";
 	};
 };
