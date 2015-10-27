@@ -1657,8 +1657,10 @@ struct f55_control_0 {
 			unsigned char f55_c0_guard_disable:1;
 			unsigned char f55_c0_b5_b7:3;
 		} __packed;
-		unsigned char data[1];
-		unsigned short address;
+		struct {
+			unsigned char data[1];
+			unsigned short address;
+		} __packed;
 	};
 };
 
@@ -1667,8 +1669,10 @@ struct f55_control_8 {
 		struct {
 			unsigned char f55_c8_pattern_type;
 		} __packed;
-		unsigned char data[1];
-		unsigned short address;
+		struct {
+			unsigned char data[1];
+			unsigned short address;
+		} __packed;
 	};
 };
 
