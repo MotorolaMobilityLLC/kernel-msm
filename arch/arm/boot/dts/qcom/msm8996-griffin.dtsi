@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#include "msm8996-v3.dtsi"
 #include "msm8996-moto-common.dtsi"
 
 / {
