@@ -69,6 +69,7 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 
 	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_work_func);
 	stm_ws->ts_ns = ts_to_ns(ts);
+	stm_ws->flags = IRQ_WORK_FLAG_NONE;
 
 	if (last_ts_ns > stm_ws->ts_ns)
 		dev_dbg(&ps_stml0xx->spi->dev,
@@ -282,7 +283,8 @@ void stml0xx_irq_work_func(struct work_struct *work)
 	    (buf[IRQ_IDX_STATUS_MED] << 8) | buf[IRQ_IDX_STATUS_LO];
 
 	/* Check for streaming sensors */
-	if (irq_status & (M_ACCEL | M_ACCEL2 | M_GYRO | M_GYRO)) {
+	if (((stm_ws->flags & IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE) == 0) &&
+	     (irq_status & (M_ACCEL | M_ACCEL2 | M_GYRO | M_UNCALIB_GYRO))) {
 		stml0xx_process_stream_sensor_queue(buf, stm_ws->ts_ns);
 	}
 	if (irq_status & M_ALS) {
