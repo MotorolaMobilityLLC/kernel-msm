@@ -126,13 +126,6 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	if (ps_stml0xx->mode == BOOTMODE)
 		goto EXIT_NO_WAKE;
 
-	if (ps_stml0xx->is_suspended) {
-		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"setting pending_wake_work [true]");
-		ps_stml0xx->pending_wake_work = true;
-		goto EXIT_NO_WAKE;
-	}
-
 	stml0xx_wake(ps_stml0xx);
 
 	err = stml0xx_spi_read_msg_data(SPI_MSG_TYPE_READ_WAKE_IRQ_DATA,

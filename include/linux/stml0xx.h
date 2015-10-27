@@ -131,6 +131,10 @@ enum vmm_ids {
 #define WAKE_IRQ_IDX_LOG_MSG               56
 #define WAKE_IRQ_IDX_STOWED_ALS		(WAKE_IRQ_IDX_LOG_MSG + LOG_MSG_SIZE)
 
+/* Non-wake IRQ work function flags */
+#define IRQ_WORK_FLAG_NONE                   0x00
+#define IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE   0x01
+
 /* stml0xx_readbuff offsets. */
 #define IRQ_WAKE_LO  0
 #define IRQ_WAKE_MED 1
@@ -234,7 +238,6 @@ struct stml0xx_platform_data {
 struct stml0xx_data {
 	struct stml0xx_platform_data *pdata;
 	struct mutex lock;
-	struct work_struct clear_interrupt_status_work;
 	struct work_struct initialize_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
@@ -287,7 +290,6 @@ struct stml0xx_data {
 	struct regulator *regulator_3;
 
 	bool is_suspended;
-	bool pending_wake_work;
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	struct mmi_hall_data *hall_data;
 #endif
@@ -301,6 +303,7 @@ struct stml0xx_work_struct {
 	struct work_struct ws;
 	/* Timestamp in nanoseconds */
 	uint64_t ts_ns;
+	uint8_t flags;
 };
 
 struct stml0xx_delayed_work_struct {
