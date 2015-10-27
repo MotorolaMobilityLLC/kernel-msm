@@ -18447,6 +18447,9 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
          pSession->ftSmeContext.reassoc_ft_ies = NULL;
       }
 
+      if (!ft_ies_length)
+         return;
+
       pSession->ftSmeContext.reassoc_ft_ies = vos_mem_malloc(ft_ies_length);
       if ( NULL == pSession->ftSmeContext.reassoc_ft_ies )
       {
