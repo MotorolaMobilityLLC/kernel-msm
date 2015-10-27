@@ -141,7 +141,16 @@
 		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
 	};
-
+	chan@26 {
+		label = "pcm_therm";
+		reg = <0x26>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
 	chan@73 {
 		label = "msm_therm";
 		reg = <0x73>;
@@ -210,6 +219,19 @@
 };
 
 &pm8994_adc_tm {
+	chan@26 {
+		label = "pcm_therm";
+		reg = <0x26>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x90>;
+		qcom,thermal-node;
+	};
+
 	chan@73 {
 		label = "msm_therm";
 		reg = <0x73>;
@@ -315,7 +337,7 @@
 	};
 
 	chan@10 {
-		label = "pchg_therm";
+		label = "chg_therm";
 		reg = <0x10>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
@@ -759,13 +781,17 @@
 	qcom,sensor-information {
 		sensor_information36: qcom,sensor-information-36 {
 			qcom,sensor-type = "adc";
-			qcom,sensor-name = "pchg_therm";
+			qcom,sensor-name = "chg_therm";
 		};
 		sensor_information37: qcom,sensor-information-37 {
 			qcom,sensor-type = "adc";
 			qcom,sensor-name = "battery";
 			qcom,alias-name  = "batt_therm";
 			qcom,scaling-factor = <1000>;
+		};
+		sensor_information38: qcom,sensor-information-38 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "pcm_therm";
 		};
 	};
 };
@@ -991,10 +1017,17 @@
 		qcom,mode = <6>;	/* QPNP_PIN_MODE_SINK */
 	};
 
+	mpp@a600 { /* MPP 7 - PCM_THERM */
+		status = "okay";
+		qcom,mode = <4>; /* AIN input */
+		qcom,ain-route = <2>; /* AMUX 5 */
+		qcom,master-en = <1>; /* Enable MPP */
+	};
+
 };
 
 &pmi8994_mpps {
-	mpp@a000 { /* MPP 1 */
+	mpp@a000 { /* MPP 1 - CHG_THERM */
 		status = "okay";
 		qcom,mode = <4>; /* AIN input */
 		qcom,ain-route = <0>; /* AMUX 5 */
