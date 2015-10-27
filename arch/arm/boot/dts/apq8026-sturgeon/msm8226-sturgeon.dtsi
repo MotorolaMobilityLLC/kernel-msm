@@ -11,9 +11,7 @@
  */
 
 &soc {
-	slim_msm: slim@fe12f000 {
-		/delete-node/ tapan_codec;
-	};
+	/delete-node/ slim@fe12f000;
 
 	sound {
 		/delete-property/ qcom,cdc-us-euro-gpios;
@@ -24,6 +22,3 @@
 	};
 };
 
-&slim_msm {
-	/delete-node/ tapan_codec;
-};
