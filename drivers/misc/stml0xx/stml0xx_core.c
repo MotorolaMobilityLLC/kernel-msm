@@ -691,33 +691,6 @@ static void stml0xx_gpio_free(struct stml0xx_platform_data *pdata)
 		gpio_free(pdata->gpio_sh_wake);
 }
 
-void clear_interrupt_status_work_func(struct work_struct *work)
-{
-	struct stml0xx_data *ps_stml0xx = container_of(work,
-						struct stml0xx_data,
-						clear_interrupt_status_work);
-	uint8_t buf[3];
-
-	dev_dbg(&ps_stml0xx->spi->dev, "clear_interrupt_status_work_func");
-	mutex_lock(&ps_stml0xx->lock);
-
-	if (ps_stml0xx->mode == BOOTMODE)
-		goto EXIT;
-
-	if (ps_stml0xx->is_suspended)
-		goto EXIT;
-
-	stml0xx_wake(ps_stml0xx);
-
-	/* read interrupt mask register to clear
-	   any interrupt during suspend state */
-	stml0xx_spi_send_read_reg(INTERRUPT_STATUS, buf, 3);
-
-	stml0xx_sleep(ps_stml0xx);
-EXIT:
-	mutex_unlock(&ps_stml0xx->lock);
-}
-
 static int stml0xx_probe(struct spi_device *spi)
 {
 	struct stml0xx_platform_data *pdata;
@@ -845,8 +818,6 @@ static int stml0xx_probe(struct spi_device *spi)
 	/* clear the interrupt mask */
 	ps_stml0xx->intp_mask = 0x00;
 
-	INIT_WORK(&ps_stml0xx->clear_interrupt_status_work,
-		  clear_interrupt_status_work_func);
 	INIT_WORK(&ps_stml0xx->initialize_work, stml0xx_initialize_work_func);
 
 	ps_stml0xx->irq_work_queue =
@@ -1095,7 +1066,7 @@ static int stml0xx_remove(struct spi_device *spi)
 static int stml0xx_resume(struct device *dev)
 {
 	static struct timespec ts;
-	static struct stml0xx_delayed_work_struct *stm_ws;
+	static struct stml0xx_work_struct *stm_ws;
 	struct stml0xx_data *ps_stml0xx = spi_get_drvdata(to_spi_device(dev));
 
 	get_monotonic_boottime(&ts);
@@ -1105,25 +1076,22 @@ static int stml0xx_resume(struct device *dev)
 	ps_stml0xx->is_suspended = false;
 	enable_irq(ps_stml0xx->irq);
 
-	if (ps_stml0xx->pending_wake_work) {
-		stm_ws = kmalloc(
-			sizeof(struct stml0xx_delayed_work_struct),
-			GFP_ATOMIC);
-		if (!stm_ws) {
-			dev_err(dev, "stml0xx_resume: unable to allocate work struct");
-			return 0;
-		}
-		INIT_DELAYED_WORK((struct delayed_work *)stm_ws,
-			stml0xx_irq_wake_work_func);
-		stm_ws->ts_ns = ts_to_ns(ts);
-		queue_delayed_work(ps_stml0xx->irq_work_queue,
-			(struct delayed_work *)stm_ws, 0);
-		ps_stml0xx->pending_wake_work = false;
+	stm_ws = kmalloc(
+		sizeof(struct stml0xx_work_struct),
+		GFP_ATOMIC);
+	if (!stm_ws) {
+		dev_err(&ps_stml0xx->spi->dev,
+			"stml0xx_resume: unable to allocate work struct");
+		return 0;
 	}
 
-	if (stml0xx_irq_disable == 0)
-		queue_work(ps_stml0xx->irq_work_queue,
-			   &ps_stml0xx->clear_interrupt_status_work);
+	/* Discard any streaming sensor data that was queued at the sensorhub
+	   during suspend. Process other non-wake sensor data that may have
+	   updated. */
+	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_work_func);
+	stm_ws->ts_ns = ts_to_ns(ts);
+	stm_ws->flags = IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE;
+	queue_work(ps_stml0xx->irq_work_queue, (struct work_struct *)stm_ws);
 
 	mutex_unlock(&ps_stml0xx->lock);
 
