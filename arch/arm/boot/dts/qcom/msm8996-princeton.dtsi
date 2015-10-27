@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-
+#include "msm8996-v2.dtsi"
 #include "msm8996-moto-common.dtsi"
 #include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 #include "dsi-panel-mot-inx-570-QHD-cmd.dtsi"
