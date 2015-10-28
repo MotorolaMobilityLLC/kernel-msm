@@ -164,7 +164,6 @@ struct flash_node_data {
 	struct flash_regulator_data	*reg_data;
 	u16				max_current;
 	u16				prgm_current;
-	u16				prgm_current2;
 	u16				duration;
 	u8				id;
 	u8				type;
@@ -545,32 +544,26 @@ static int qpnp_flash_led_module_disable(struct qpnp_flash_led *led,
 	}
 
 	if (led->pdata->hdrm_sns_ch0_en) {
-		if (flash_node->id == FLASH_LED_0 ||
-				flash_node->id == FLASH_LED_SWITCH) {
-			rc = qpnp_led_masked_write(led->spmi_dev,
+		rc = qpnp_led_masked_write(led->spmi_dev,
 				FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
 				FLASH_LED_HDRM_SNS_ENABLE_MASK,
 				FLASH_LED_HDRM_SNS_DISABLE);
-			if (rc) {
-				dev_err(&led->spmi_dev->dev,
-					"Headroom sense disable failed\n");
-				return rc;
-			}
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Headroom sense disable failed\n");
+			return rc;
 		}
 	}
 
 	if (led->pdata->hdrm_sns_ch1_en) {
-		if (flash_node->id == FLASH_LED_1 ||
-				flash_node->id == FLASH_LED_SWITCH) {
-			rc = qpnp_led_masked_write(led->spmi_dev,
+		rc = qpnp_led_masked_write(led->spmi_dev,
 				FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
 				FLASH_LED_HDRM_SNS_ENABLE_MASK,
 				FLASH_LED_HDRM_SNS_DISABLE);
-			if (rc) {
-				dev_err(&led->spmi_dev->dev,
-					"Headroom sense disable failed\n");
-				return rc;
-			}
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Headroom sense disable failed\n");
+			return rc;
 		}
 	}
 
@@ -606,10 +599,8 @@ static int qpnp_flash_led_module_disable(struct qpnp_flash_led *led,
 		}
 	}
 
-	if (flash_node->id == FLASH_LED_SWITCH)
-		flash_node->trigger = 0;
-
-	if (!(flash_node->trigger & FLASH_LED0_TRIGGER)) {
+	if (!led->flash_node[0].flash_on &&
+		!led->flash_node[2].flash_on) {
 		rc = qpnp_led_masked_write(led->spmi_dev,
 				led->current_addr,
 				FLASH_CURRENT_MASK, 0x00);
@@ -620,7 +611,8 @@ static int qpnp_flash_led_module_disable(struct qpnp_flash_led *led,
 		}
 	}
 
-	if (!(flash_node->trigger & FLASH_LED1_TRIGGER)) {
+	if (!led->flash_node[1].flash_on &&
+		!led->flash_node[3].flash_on) {
 		rc = qpnp_led_masked_write(led->spmi_dev,
 				led->current2_addr,
 				FLASH_CURRENT_MASK, 0x00);
@@ -773,7 +765,6 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	union power_supply_propval psy_prop;
 	int rc, brightness = flash_node->cdev.brightness;
 	int max_curr_avail_ma = 0;
-	int total_curr_ma = 0;
 	int i;
 	u8 val;
 
@@ -819,23 +810,23 @@ static void qpnp_flash_led_work(struct work_struct *work)
 				"Torch reg write failed\n");
 			goto exit_flash_led_work;
 		}
-
-		if (flash_node->id == FLASH_LED_SWITCH) {
-			val = (u8)(flash_node->prgm_current *
+		if (led->flash_node[led->num_leds - 1].id ==
+							FLASH_LED_SWITCH) {
+			val = (u8)(led->flash_node[2].prgm_current *
 						FLASH_TORCH_MAX_LEVEL
-						/ flash_node->max_current);
+					/ led->flash_node[2].max_current);
 			rc = qpnp_led_masked_write(led->spmi_dev,
-						led->current_addr,
-						FLASH_CURRENT_MASK, val);
+					led->current_addr,
+					FLASH_CURRENT_MASK, val);
 			if (rc) {
 				dev_err(&led->spmi_dev->dev,
 					"Torch reg write failed\n");
 				goto exit_flash_led_work;
 			}
 
-			val = (u8)(flash_node->prgm_current2 *
+			val = (u8)(led->flash_node[3].prgm_current *
 						FLASH_TORCH_MAX_LEVEL
-						/ flash_node->max_current);
+					/ led->flash_node[3].max_current);
 			rc = qpnp_led_masked_write(led->spmi_dev,
 					led->current2_addr,
 					FLASH_CURRENT_MASK, val);
@@ -887,49 +878,46 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			goto exit_flash_led_work;
 		}
 
-		if (led->pdata->hdrm_sns_ch0_en ||
-						led->pdata->hdrm_sns_ch1_en) {
-			if (flash_node->id == FLASH_LED_SWITCH) {
-				rc = qpnp_led_masked_write(led->spmi_dev,
-					FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
-					FLASH_LED_HDRM_SNS_ENABLE_MASK,
-					flash_node->trigger &
-					FLASH_LED0_TRIGGER ?
-					FLASH_LED_HDRM_SNS_ENABLE :
-					FLASH_LED_HDRM_SNS_DISABLE);
-				if (rc) {
-					dev_err(&led->spmi_dev->dev,
-					"Headroom sense enable failed\n");
-					goto exit_flash_led_work;
-				}
-
-				rc = qpnp_led_masked_write(led->spmi_dev,
-					FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
-					FLASH_LED_HDRM_SNS_ENABLE_MASK,
-					flash_node->trigger &
-					FLASH_LED1_TRIGGER ?
-					FLASH_LED_HDRM_SNS_ENABLE :
-					FLASH_LED_HDRM_SNS_DISABLE);
-				if (rc) {
-					dev_err(&led->spmi_dev->dev,
-					"Headroom sense enable failed\n");
-					goto exit_flash_led_work;
-				}
-			} else if (flash_node->id == FLASH_LED_0) {
+		if (led->pdata->hdrm_sns_ch0_en) {
+			if (led->flash_node[2].flash_on) {
 				rc = qpnp_led_masked_write(led->spmi_dev,
 					FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
 					FLASH_LED_HDRM_SNS_ENABLE_MASK,
 					FLASH_LED_HDRM_SNS_ENABLE);
+				if (rc) {
+					dev_err(&led->spmi_dev->dev,
+					"Headroom sense enable failed\n");
+					goto exit_flash_led_work;
+				}
+			} else {
+				rc = qpnp_led_masked_write(led->spmi_dev,
+					FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
+					FLASH_LED_HDRM_SNS_ENABLE_MASK,
+					FLASH_LED_HDRM_SNS_DISABLE);
 				if (rc) {
 					dev_err(&led->spmi_dev->dev,
 					"Headroom sense disable failed\n");
 					goto exit_flash_led_work;
 				}
-			} else if (flash_node->id == FLASH_LED_1) {
+			}
+		}
+
+		if (led->pdata->hdrm_sns_ch1_en) {
+			if (led->flash_node[3].flash_on) {
 				rc = qpnp_led_masked_write(led->spmi_dev,
 					FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
 					FLASH_LED_HDRM_SNS_ENABLE_MASK,
 					FLASH_LED_HDRM_SNS_ENABLE);
+				if (rc) {
+					dev_err(&led->spmi_dev->dev,
+					"Headroom sense enable failed\n");
+					goto exit_flash_led_work;
+				}
+			} else {
+				rc = qpnp_led_masked_write(led->spmi_dev,
+					FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
+					FLASH_LED_HDRM_SNS_ENABLE_MASK,
+					FLASH_LED_HDRM_SNS_DISABLE);
 				if (rc) {
 					dev_err(&led->spmi_dev->dev,
 					"Headroom sense diable failed\n");
@@ -940,19 +928,18 @@ static void qpnp_flash_led_work(struct work_struct *work)
 
 		rc = qpnp_led_masked_write(led->spmi_dev,
 			FLASH_LED_STROBE_CTRL(led->base),
-			(flash_node->id == FLASH_LED_SWITCH ? FLASH_STROBE_MASK
-							: flash_node->trigger),
-							flash_node->trigger);
+			FLASH_STROBE_MASK,
+			flash_node->trigger);
 		if (rc) {
 			dev_err(&led->spmi_dev->dev,
-				"Strobe reg write failed\n");
+				"Strobe ctrl reg write failed\n");
 			goto exit_flash_led_work;
 		}
 	} else if (flash_node->type == FLASH) {
-		if (flash_node->trigger & FLASH_LED0_TRIGGER)
-			max_curr_avail_ma += flash_node->max_current;
-		if (flash_node->trigger & FLASH_LED1_TRIGGER)
-			max_curr_avail_ma += flash_node->max_current;
+		if (led->flash_node[0].flash_on)
+			max_curr_avail_ma += led->flash_node[0].max_current;
+		if (led->flash_node[1].flash_on)
+			max_curr_avail_ma += led->flash_node[1].max_current;
 
 		psy_prop.intval = true;
 		if (led->battery_psy) {
@@ -996,33 +983,53 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			}
 		}
 
-		if (flash_node->id == FLASH_LED_SWITCH) {
-			if (flash_node->trigger & FLASH_LED0_TRIGGER)
-				total_curr_ma += flash_node->prgm_current;
-			else if (flash_node->trigger & FLASH_LED1_TRIGGER)
-				total_curr_ma += flash_node->prgm_current2;
+		if (led->flash_node[led->num_leds - 1].id ==
+							FLASH_LED_SWITCH) {
+			if (led->flash_node[0].flash_on &&
+					led->flash_node[1].flash_on) {
+				if (max_curr_avail_ma <
+					flash_node->prgm_current) {
+					led->flash_node[0].prgm_current =
+						led->flash_node[0].prgm_current
+						* max_curr_avail_ma /
+						flash_node->prgm_current;
+					led->flash_node[1].prgm_current =
+						led->flash_node[1].prgm_current
+							* max_curr_avail_ma /
+						flash_node->prgm_current;
+				}
+			} else {
+				led->flash_node[0].prgm_current
+					= (max_curr_avail_ma <
+					led->flash_node[0].prgm_current)
+					? max_curr_avail_ma :
+					led->flash_node[0].prgm_current;
 
-			if (max_curr_avail_ma < total_curr_ma) {
-				flash_node->prgm_current *=
-					max_curr_avail_ma / total_curr_ma;
-				flash_node->prgm_current2 *=
-					max_curr_avail_ma / total_curr_ma;
+				led->flash_node[1].prgm_current
+					= (max_curr_avail_ma <
+					led->flash_node[1].prgm_current)
+					? max_curr_avail_ma :
+					led->flash_node[1].prgm_current;
 			}
 
-			val = (u8)(flash_node->prgm_current *
-				FLASH_MAX_LEVEL / flash_node->max_current);
+			val = (u8)(led->flash_node[0].prgm_current *
+						FLASH_MAX_LEVEL /
+					led->flash_node[0].max_current);
 			rc = qpnp_led_masked_write(led->spmi_dev,
-				led->current_addr, FLASH_CURRENT_MASK, val);
+						led->current_addr,
+						FLASH_CURRENT_MASK, val);
 			if (rc) {
 				dev_err(&led->spmi_dev->dev,
 					"Current register write failed\n");
 				goto exit_flash_led_work;
 			}
 
-			val = (u8)(flash_node->prgm_current2 *
-				FLASH_MAX_LEVEL / flash_node->max_current);
+			val = (u8)(led->flash_node[1].prgm_current *
+						FLASH_MAX_LEVEL /
+					led->flash_node[1].max_current);
 			rc = qpnp_led_masked_write(led->spmi_dev,
-				led->current2_addr, FLASH_CURRENT_MASK, val);
+						led->current2_addr,
+						FLASH_CURRENT_MASK, val);
 			if (rc) {
 				dev_err(&led->spmi_dev->dev,
 					"Current register write failed\n");
@@ -1097,49 +1104,46 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			usleep(FLASH_RAMP_UP_DELAY_US);
 		}
 
-		if (led->pdata->hdrm_sns_ch0_en ||
-					led->pdata->hdrm_sns_ch1_en) {
-			if (flash_node->id == FLASH_LED_SWITCH) {
-				rc = qpnp_led_masked_write(led->spmi_dev,
-					FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
-					FLASH_LED_HDRM_SNS_ENABLE_MASK,
-					(flash_node->trigger &
-					FLASH_LED0_TRIGGER ?
-					FLASH_LED_HDRM_SNS_ENABLE :
-					FLASH_LED_HDRM_SNS_DISABLE));
-				if (rc) {
-					dev_err(&led->spmi_dev->dev,
-					"Headroom sense enable failed\n");
-					goto exit_flash_led_work;
-				}
-
-				rc = qpnp_led_masked_write(led->spmi_dev,
-					FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
-					FLASH_LED_HDRM_SNS_ENABLE_MASK,
-					(flash_node->trigger &
-					FLASH_LED1_TRIGGER ?
-					FLASH_LED_HDRM_SNS_ENABLE :
-					FLASH_LED_HDRM_SNS_DISABLE));
-				if (rc) {
-					dev_err(&led->spmi_dev->dev,
-					"Headroom sense enable failed\n");
-					goto exit_flash_led_work;
-				}
-			} else if (flash_node->id == FLASH_LED_0) {
+		if (led->pdata->hdrm_sns_ch0_en) {
+			if (led->flash_node[0].flash_on) {
 				rc = qpnp_led_masked_write(led->spmi_dev,
 					FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
 					FLASH_LED_HDRM_SNS_ENABLE_MASK,
 					FLASH_LED_HDRM_SNS_ENABLE);
+				if (rc) {
+					dev_err(&led->spmi_dev->dev,
+					"Headroom sense enable failed\n");
+					goto exit_flash_led_work;
+				}
+			} else {
+				rc = qpnp_led_masked_write(led->spmi_dev,
+					FLASH_HDRM_SNS_ENABLE_CTRL0(led->base),
+					FLASH_LED_HDRM_SNS_ENABLE_MASK,
+					FLASH_LED_HDRM_SNS_DISABLE);
 				if (rc) {
 					dev_err(&led->spmi_dev->dev,
 					"Headroom sense disable failed\n");
 					goto exit_flash_led_work;
 				}
-			} else if (flash_node->id == FLASH_LED_1) {
+			}
+		}
+
+		if (led->pdata->hdrm_sns_ch1_en) {
+			if (led->flash_node[1].flash_on) {
 				rc = qpnp_led_masked_write(led->spmi_dev,
 					FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
 					FLASH_LED_HDRM_SNS_ENABLE_MASK,
 					FLASH_LED_HDRM_SNS_ENABLE);
+				if (rc) {
+					dev_err(&led->spmi_dev->dev,
+					"Headroom sense enable failed\n");
+					goto exit_flash_led_work;
+				}
+			} else {
+				rc = qpnp_led_masked_write(led->spmi_dev,
+					FLASH_HDRM_SNS_ENABLE_CTRL1(led->base),
+					FLASH_LED_HDRM_SNS_ENABLE_MASK,
+					FLASH_LED_HDRM_SNS_DISABLE);
 				if (rc) {
 					dev_err(&led->spmi_dev->dev,
 					"Headroom sense disable failed\n");
@@ -1150,9 +1154,8 @@ static void qpnp_flash_led_work(struct work_struct *work)
 
 		rc = qpnp_led_masked_write(led->spmi_dev,
 			FLASH_LED_STROBE_CTRL(led->base),
-			(flash_node->id == FLASH_LED_SWITCH ? FLASH_STROBE_MASK
-							: flash_node->trigger),
-							flash_node->trigger);
+			FLASH_STROBE_MASK,
+			flash_node->trigger);
 		if (rc) {
 			dev_err(&led->spmi_dev->dev,
 				"Strobe reg write failed\n");
@@ -1221,37 +1224,24 @@ static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 		else if (flash_node->type == FLASH)
 			led->flash_node[led->num_leds - 1].type = FLASH;
 
-		led->flash_node[led->num_leds - 1].max_current
-						= flash_node->max_current;
-
 		if (flash_node->id == FLASH_LED_0 ||
 					 flash_node->id == FLASH_LED_1) {
 			if (value < FLASH_LED_MIN_CURRENT_MA && value != 0)
 				value = FLASH_LED_MIN_CURRENT_MA;
-
 			flash_node->prgm_current = value;
 			flash_node->flash_on = value ? true : false;
-			if (value) {
+			if (value)
 				led->flash_node[led->num_leds - 1].trigger |=
-						(0x80 >> flash_node->id);
-				if (flash_node->id == FLASH_LED_0)
-					led->flash_node[led->num_leds - 1].
-					prgm_current = flash_node->prgm_current;
-				else if (flash_node->id == FLASH_LED_1)
-					led->flash_node[led->num_leds - 1].
-					prgm_current2 =
-					flash_node->prgm_current;
-			} else {
-				led->flash_node[led->num_leds - 1].trigger &=
-						~(0x80 >> flash_node->id);
-			}
-
+						0x80 >> flash_node->id;
+			else
+				led->flash_node[led->num_leds - 1].trigger = 0;
 			return;
 		} else if (flash_node->id == FLASH_LED_SWITCH) {
-			if (!value) {
-				flash_node->prgm_current = 0;
-				flash_node->prgm_current2 = 0;
-			}
+			if (led->flash_node[0].flash_on ||
+					led->flash_node[1].flash_on)
+				flash_node->prgm_current =
+					led->flash_node[0].prgm_current +
+					led->flash_node[1].prgm_current;
 		}
 	} else {
 		if (value < FLASH_LED_MIN_CURRENT_MA && value != 0)
