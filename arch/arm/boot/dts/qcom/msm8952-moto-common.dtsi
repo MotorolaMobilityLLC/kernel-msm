@@ -215,33 +215,49 @@
 		};
 	};
 
-		mi2s-5-tlmm-lines-0 {
-			qcom,pins = <&gp 88>, <&gp 91>;
-			qcom,num-grp-pins = <2>;
-			qcom,pin-func = <1>;
-			label = "mi2s-5-lines-0";
-			mi2s_5_tlmm_lines0_act: mi2s_5_tlmm_lines0_on {
-				drive-strength = <8>;
-			};
-			mi2s_5_tlmm_lines0_sus: mi2s_5_tlmm_lines0_off {
-				drive-strength = <2>;
-				bias-disable;
-			};
+	cs35l34_clk {
+		qcom,pins = <&gp 66>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <1>;
+		label = "cs35l34_clk";
+		cs35l34_clk_on: cs35l34_on {
+			drive-strength = <8>;
+			output-high;
 		};
+		cs35l34_clk_off: cs35l34_off {
+			drive-strength = <2>;
+			output-low;
+			bias-pull-down;
+		};
+	};
 
-		mi2s-5-tlmm-lines-1 {
-			qcom,pins = <&gp 92>, <&gp 93>;
-			qcom,num-grp-pins = <2>;
-			qcom,pin-func = <3>;
-			label = "mi2s-5-lines-1";
-			mi2s_5_tlmm_lines1_act: mi2s_5_tlmm_lines1_on {
-				drive-strength = <8>;
-			};
-			mi2s_5_tlmm_lines1_sus: mi2s_5_tlmm_lines1_off {
-				drive-strength = <2>;
-				bias-disable;
-			};
+	mi2s-5-tlmm-lines-0 {
+		qcom,pins = <&gp 88>, <&gp 91>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <1>;
+		label = "mi2s-5-lines-0";
+		mi2s_5_tlmm_lines0_act: mi2s_5_tlmm_lines0_on {
+			drive-strength = <8>;
 		};
+		mi2s_5_tlmm_lines0_sus: mi2s_5_tlmm_lines0_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	mi2s-5-tlmm-lines-1 {
+		qcom,pins = <&gp 92>, <&gp 93>;
+		qcom,num-grp-pins = <2>;
+		qcom,pin-func = <3>;
+		label = "mi2s-5-lines-1";
+		mi2s_5_tlmm_lines1_act: mi2s_5_tlmm_lines1_on {
+			drive-strength = <8>;
+		};
+		mi2s_5_tlmm_lines1_sus: mi2s_5_tlmm_lines1_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 
 	laser_active {
 		/* reset, interrupt */
@@ -482,8 +498,8 @@
 			"csr_gp_io_mux_spkr_ctl",
 			"csr_gp_io_lpaif_pri_pcm_pri_mode_muxsel",
 			"csr_gp_io_mux_quin_ctl";
-		qcom,msm-ext-pa = "primary";
-		qcom,msm-mclk-freq = <9600000>;
+		qcom,msm-ext-pa = "quinary";
+		qcom,msm-mclk-freq = <12288000>;
 		qcom,msm-mbhc-hphl-swh = <0>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-hs-micbias-type = "external";
@@ -500,22 +516,35 @@
 			"AMIC2", "MIC BIAS External2",
 			"AMIC3", "MIC BIAS External";
 		qcom,msm-gpios =
+			"cs35l34_clk",
 			"pri_i2s",
 			"quin_i2s";
 		qcom,pinctrl-names =
 			"all_off",
-			"pri_i2s_act",
-			"quin_i2s_act",
-			"quin_pri_i2s_act";
+			"cs35l34_clk",
+			"pri_i2s",
+			"cs35l34_clk_pri_i2s",
+			"quin_i2s",
+			"cs35l34_clk_quin_i2s",
+			"pri_quin_i2s",
+			"cs35l34_clk_pri_quin_i2s";
 		pinctrl-names =
 			"all_off",
-			"pri_i2s_act",
-			"quin_i2s_act",
-			"quin_pri_i2s_act";
-		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus &mi2s_5_tlmm_lines0_sus &mi2s_5_tlmm_lines1_sus>;
-		pinctrl-1 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus &mi2s_5_tlmm_lines0_sus &mi2s_5_tlmm_lines1_sus>;
-		pinctrl-2 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus &mi2s_5_tlmm_lines0_act &mi2s_5_tlmm_lines1_act>;
-		pinctrl-3 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus &mi2s_5_tlmm_lines0_act &mi2s_5_tlmm_lines1_act>;
+			"cs35l34_clk",
+			"pri_i2s",
+			"cs35l34_clk_pri_i2s",
+			"quin_i2s",
+			"cs35l34_clk_quin_i2s",
+			"pri_quin_i2s",
+			"cs35l34_clk_pri_quin_i2s";
+		pinctrl-0 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus &cs35l34_clk_off &mi2s_5_tlmm_lines0_sus &mi2s_5_tlmm_lines1_sus>;
+		pinctrl-1 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus &cs35l34_clk_on &mi2s_5_tlmm_lines0_sus &mi2s_5_tlmm_lines1_sus>;
+		pinctrl-2 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus &cs35l34_clk_off &mi2s_5_tlmm_lines0_sus &mi2s_5_tlmm_lines1_sus>;
+		pinctrl-3 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus &cs35l34_clk_on &mi2s_5_tlmm_lines0_sus &mi2s_5_tlmm_lines1_sus>;
+		pinctrl-4 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus &cs35l34_clk_off &mi2s_5_tlmm_lines0_act &mi2s_5_tlmm_lines1_act>;
+		pinctrl-5 = <&cdc_pdm_lines_sus &cdc_pdm_lines_2_sus &cross_conn_det_sus &cs35l34_clk_on &mi2s_5_tlmm_lines0_act &mi2s_5_tlmm_lines1_act>;
+		pinctrl-6 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus &cs35l34_clk_off &mi2s_5_tlmm_lines0_act &mi2s_5_tlmm_lines1_act>;
+		pinctrl-7 = <&cdc_pdm_lines_act &cdc_pdm_lines_2_act &cross_conn_det_sus &cs35l34_clk_on &mi2s_5_tlmm_lines0_act &mi2s_5_tlmm_lines1_act>;
 		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
 				<&afe>, <&lsm>, <&routing>, <&lpa>,
