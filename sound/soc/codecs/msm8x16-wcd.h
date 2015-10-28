@@ -225,8 +225,10 @@ struct msm8916_asoc_mach_data {
 	atomic_t mclk_rsc_ref;
 	atomic_t mclk_enabled;
 	atomic_t wsa_mclk_rsc_ref;
+	atomic_t l34_mclk_rsc_ref;
 	struct mutex cdc_mclk_mutex;
 	struct mutex wsa_mclk_mutex;
+	struct mutex l34_mclk_mutex;
 	struct delayed_work disable_mclk_work;
 	struct afe_digital_clk_cfg digital_cdc_clk;
 	struct afe_clk_set digital_cdc_core_clk;
