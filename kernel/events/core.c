@@ -1408,6 +1408,7 @@ static int __perf_remove_from_context(void *info)
 	return 0;
 }
 
+#if 0
 #ifdef CONFIG_SMP
 static void perf_retry_remove(struct remove_event *rep)
 {
@@ -1430,6 +1431,7 @@ static void perf_retry_remove(struct remove_event *rep)
 {
 }
 #endif
+#endif
 
 /*
  * Remove the event from a task's (or a CPU's) list of events.
@@ -1448,7 +1450,6 @@ static void __ref perf_remove_from_context(struct perf_event *event, bool detach
 {
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
-	int ret;
 	struct remove_event re = {
 		.event = event,
 		.detach_group = detach_group,
@@ -1458,12 +1459,13 @@ static void __ref perf_remove_from_context(struct perf_event *event, bool detach
 
 	if (!task) {
 		/*
-		 * Per cpu events are removed via an smp call
+		 * Per cpu events are removed via an smp call. The removal can
+		 * fail if the CPU is currently offline, but in that case we
+		 * already called __perf_remove_from_context from
+		 * perf_event_exit_cpu.
 		 */
-		ret = cpu_function_call(event->cpu, __perf_remove_from_context,
+		cpu_function_call(event->cpu, __perf_remove_from_context,
 					&re);
-		if (ret == -ENXIO)
-			perf_retry_remove(&re);
 		return;
 	}
 
@@ -5760,7 +5762,7 @@ static struct pmu perf_swevent = {
 	.read		= perf_swevent_read,
 
 	.event_idx	= perf_swevent_event_idx,
-	.events_across_hotplug = 1,
+	.events_across_hotplug = 0,
 };
 
 #ifdef CONFIG_EVENT_TRACING
@@ -5880,7 +5882,7 @@ static struct pmu perf_tracepoint = {
 	.read		= perf_swevent_read,
 
 	.event_idx	= perf_swevent_event_idx,
-	.events_across_hotplug = 1,
+	.events_across_hotplug = 0,
 };
 
 static inline void perf_tp_register(void)
@@ -6108,7 +6110,7 @@ static struct pmu perf_cpu_clock = {
 	.read		= cpu_clock_event_read,
 
 	.event_idx	= perf_swevent_event_idx,
-	.events_across_hotplug = 1,
+	.events_across_hotplug = 0,
 };
 
 /*
@@ -6189,7 +6191,7 @@ static struct pmu perf_task_clock = {
 	.read		= task_clock_event_read,
 
 	.event_idx	= perf_swevent_event_idx,
-	.events_across_hotplug = 1,
+	.events_across_hotplug = 0,
 };
 
 static void perf_pmu_nop_void(struct pmu *pmu)
@@ -7707,7 +7709,7 @@ static void perf_pmu_rotate_stop(struct pmu *pmu)
 
 static void __perf_event_exit_context(void *__info)
 {
-	struct remove_event re = { .detach_group = false };
+	struct remove_event re = { .detach_group = true };
 	struct perf_event_context *ctx = __info;
 
 	perf_pmu_rotate_stop(ctx->pmu);
