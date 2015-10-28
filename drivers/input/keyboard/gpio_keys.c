@@ -33,6 +33,7 @@
 #include <linux/spinlock.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/syscore_ops.h>
+#include <linux/printk.h>
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -347,6 +348,9 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	} else {
 		input_event(input, type, button->code, !!state);
 	}
+	dev_info_ratelimited(&input->dev,
+		"gpio-keys report %s [%#x] type %#x state %s\n",
+		button->desc, button->code, type, state ? "On" : "Off");
 	input_sync(input);
 }
 
