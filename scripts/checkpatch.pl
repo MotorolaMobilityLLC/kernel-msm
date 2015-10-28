@@ -629,34 +629,6 @@ sub seed_camelcase_includes {
 	}
 }
 
-sub git_commit_info {
-	my ($commit, $id, $desc) = @_;
-
-	return ($id, $desc) if ((which("git") eq "") || !(-e ".git"));
-
-	my $output = `git log --no-color --format='%H %s' -1 $commit 2>&1`;
-	$output =~ s/^\s*//gm;
-	my @lines = split("\n", $output);
-
-	if ($lines[0] =~ /^error: short SHA1 $commit is ambiguous\./) {
-# Maybe one day convert this block of bash into something that returns
-# all matching commit ids, but it's very slow...
-#
-#		echo "checking commits $1..."
-#		git rev-list --remotes | grep -i "^$1" |
-#		while read line ; do
-#		    git log --format='%H %s' -1 $line |
-#		    echo "commit $(cut -c 1-12,41-)"
-#		done
-	} elsif ($lines[0] =~ /^fatal: ambiguous argument '$commit': unknown revision or path not in the working tree\./) {
-	} else {
-		$id = substr($lines[0], 0, 12);
-		$desc = substr($lines[0], 41);
-	}
-
-	return ($id, $desc);
-}
-
 $chk_signoff = 0 if ($file);
 
 my @rawlines = ();
@@ -786,18 +758,6 @@ sub format_email {
 	}
 
 	return $formatted_email;
-}
-
-sub which {
-	my ($bin) = @_;
-
-	foreach my $path (split(/:/, $ENV{PATH})) {
-		if (-e "$path/$bin") {
-			return "$path/$bin";
-		}
-	}
-
-	return "";
 }
 
 sub which_conf {
@@ -2302,24 +2262,6 @@ sub process {
 		if ($line =~ /^\s*cc:\s*.*<?\bstable\@kernel\.org\b>?.*$/i) {
 			ERROR("STABLE_ADDRESS",
 			      "The 'stable' address should be 'stable\@vger.kernel.org'\n" . $herecurr);
-		}
-
-# Check for improperly formed commit descriptions
-		if ($in_commit_log &&
-		    $line !~ /^This reverts commit [0-9a-f]{7,40}/ &&
-		    $line =~ /\bcommit\s+[0-9a-f]{5,}/i &&
-		    !($line =~ /\b[Cc]ommit [0-9a-f]{12,40} \("/ ||
-		      ($line =~ /\b[Cc]ommit [0-9a-f]{12,40}\s*$/ &&
-		       defined $rawlines[$linenr] &&
-		       $rawlines[$linenr] =~ /^\s*\("/))) {
-			$line =~ /\b(c)ommit\s+([0-9a-f]{5,})/i;
-			my $init_char = $1;
-			my $orig_commit = lc($2);
-			my $id = '01234567890ab';
-			my $desc = 'commit description';
-		        ($id, $desc) = git_commit_info($orig_commit, $id, $desc);
-			ERROR("GIT_COMMIT_ID",
-			      "Please use 12 or more chars for the git commit ID and enclose the descritpion in parenthesis like: '${init_char}ommit $id (\"$desc\")'\n" . $herecurr);
 		}
 
 #check the patch for invalid author credentials
