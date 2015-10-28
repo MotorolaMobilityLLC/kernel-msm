@@ -268,7 +268,7 @@ qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
  * It checks here to see if the restart reason register has been specified.
  * If it hasn't, this function should immediately return 0
  */
-int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
+int qpnp_pon_set_restart_reason(uint8_t reason)
 {
 	int rc = 0;
 	struct qpnp_pon *pon = sys_reset_dev;
@@ -279,8 +279,13 @@ int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
 	if (!pon->store_hard_reset_reason)
 		return 0;
 
+	// swap the 0/1/2 with 4/5/6 bits
+	// and 3/4/5/6 with 0/1/2/3 for backward compatibility
+	reason &= 0x7F;
+	reason = ((0x7&reason)<<4)|((0x78&reason)>>3);
+
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_SOFT_RB_SPARE(pon->base),
-					PON_MASK(7, 5), (reason << 5));
+					PON_MASK(7, 1), (reason << 1));
 	if (rc)
 		dev_err(&pon->spmi->dev,
 				"Unable to write to addr=%x, rc(%d)\n",

@@ -48,8 +48,10 @@ enum pon_power_off_type {
 };
 
 /* only 3bits used in the SOFT_RB_SPARE reg
+   in old implementation while 7 bits in new.
    default reg value is 0x0, which should
    correspond to unknown/invalid
+	--NOT USED--
 */
 enum pon_restart_reason {
 	PON_RESTART_REASON_UNKNOWN	= 0x00,
@@ -65,7 +67,7 @@ int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
 int qpnp_pon_is_warm_reset(void);
 int qpnp_pon_trigger_config(enum pon_trigger_source pon_src, bool enable);
 int qpnp_pon_wd_config(bool enable);
-int qpnp_pon_set_restart_reason(enum pon_restart_reason reason);
+int qpnp_pon_set_restart_reason(uint8_t reason);
 bool qpnp_pon_check_hard_reset_stored(void);
 
 #else
@@ -83,7 +85,7 @@ int qpnp_pon_wd_config(bool enable)
 {
 	return -ENODEV;
 }
-static inline int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
+static inline int qpnp_pon_set_restart_reason(uint8_t reason)
 {
 	return -ENODEV;
 }
