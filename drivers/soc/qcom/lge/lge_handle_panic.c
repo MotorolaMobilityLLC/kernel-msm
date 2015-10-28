@@ -25,6 +25,7 @@
 #include <linux/of_address.h>
 #include <linux/cpu.h>
 #include <linux/delay.h>
+#include <linux/qpnp/power-on.h>
 #include <asm/setup.h>
 #include <soc/qcom/scm.h>
 #include <soc/qcom/subsystem_restart.h>
@@ -32,30 +33,209 @@
 #include <soc/qcom/lge/lge_handle_panic.h>
 #include <soc/qcom/lge/board_lge.h>
 
-#define PANIC_HANDLER_NAME        "panic-handler"
+#define	PANIC_HANDLER_NAME		"panic-handler"
 
-#define RESTART_REASON_ADDR       0x65C
-#define DLOAD_MODE_ADDR           0x0
+#define	RESTART_REASON_ADDR		0x65C
+#define	DLOAD_MODE_ADDR			0x0
 
-#define CRASH_HANDLER_MAGIC_NUM   0x4c474500
-#define CRASH_HANDLER_MAGIC_ADDR  0x34
-#define RAM_CONSOLE_ADDR_ADDR     0x38
-#define RAM_CONSOLE_SIZE_ADDR     0x3C
-#define FB_ADDR_ADDR              0x40
+#define	MAGIC_RESET_TYPE_SOFT		0x534F4654
+#define	MAGIC_RESET_TYPE_HARD		0x48415244
 
-#define RESTART_REASON      (msm_imem_base + RESTART_REASON_ADDR)
-#define CRASH_HANDLER_MAGIC (msm_imem_base + CRASH_HANDLER_MAGIC_ADDR)
-#define RAM_CONSOLE_ADDR    (msm_imem_base + RAM_CONSOLE_ADDR_ADDR)
-#define RAM_CONSOLE_SIZE    (msm_imem_base + RAM_CONSOLE_SIZE_ADDR)
-#define FB_ADDR             (msm_imem_base + FB_ADDR_ADDR)
+#define	CRASH_HANDLER_MAGIC_NUM		0x4c474500
+#define	CRASH_HANDLER_MAGIC_ADDR	0x34
+#define	RAM_CONSOLE_ADDR_ADDR		0x38
+#define	RAM_CONSOLE_SIZE_ADDR		0x3C
+#define	FB_ADDR_ADDR			0x40
+#define	MAGIC_RESET_TYPE_OFFSET		0x48
+
+#define	RESTART_REASON		(msm_imem_base + RESTART_REASON_ADDR)
+#define	CRASH_HANDLER_MAGIC	(msm_imem_base + CRASH_HANDLER_MAGIC_ADDR)
+#define	RAM_CONSOLE_ADDR	(msm_imem_base + RAM_CONSOLE_ADDR_ADDR)
+#define	RAM_CONSOLE_SIZE	(msm_imem_base + RAM_CONSOLE_SIZE_ADDR)
+#define	FB_ADDR			(msm_imem_base + FB_ADDR_ADDR)
+#define	MAGIC_RESET_TYPE_ADDR	(msm_imem_base + MAGIC_RESET_TYPE_OFFSET)
 
 static void *msm_imem_base;
+
 static int dummy_arg;
 
 static int subsys_crash_magic = 0x0;
 static int gen_modem_panic_type;
 
 static struct panic_handler_data *panic_handler;
+
+int use_hardreset = 0;
+static int hardreset_set(const char *val, struct kernel_param *kp);
+
+module_param_call(use_hardreset, hardreset_set, param_get_int,
+			&use_hardreset, 0644);
+
+
+// Map pmic soft rb based 7 bit reboot reasons to 4byte imem reboot reasons
+// If all subsystems can use a single code, can do away with the mapping
+static const uint32_t rb_reasons_map[] = {
+	0x00000000,	//BOOT_UNKNOWN
+	0x77665502,	//RECOVERY_MODE
+	0x77665500,	//FASTBOOT_MODE
+	0x77665503,	//ALARM_BOOT
+	0x77665506,	//VERITY_BOOT
+	0x77665501,	//BOOT_OTHER
+	0x77665510,	//REBOOT_BATTERY
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,	//0xF
+	0x77665560,	//FOTA_REBOOT_REASON_LCD_OFF
+	0x77665561,	//FOTA_REBOOT_REASON_LCD_OUT_OFF
+	0x77665562,	//REBOOT_REASON_LCD_OFF
+	0x77665566,	//FOTA_REBOOT
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,	//LAF_DOWNLOAD_MODE
+	0x6D630500,	//LAF_CRASH_IN_LAF-0x1F
+	0x6D630000,	//UNDEFINED_CRITICAL_ERROR Also 0x6D630700
+	0x6D630100,	//KERNEL_PANIC
+	0x6D630101,	//KERNEL_UNDEFINED_ERROR
+	0x6D630200,	//RPM_CRASH
+	0x6D630201,	//RPM_WATCHDOG_BITE
+	0x6D630202,	//RPM_RESET
+	0x6D630203,	//RPM_UNDEFINED_ERROR
+	0x6D630300,	//TZ_UNKNOWN_RESET
+	0x6D630301,	//TZ_WATCHDOG_APPS_BITE
+	0x6D630302,	//TZ_CRASH
+	0x6D630303,	//TZ_WATCHDOG_APPS_BARK
+	0x6D630304,	//TZ_AHB_TIMEOUT
+	0x6D630305,	//TZ_OCMEM_NOC_ERROR
+	0x6D630306,	//TZ_MM_NOC_ERROR
+	0x6D630307,	//TZ_PERIPHERAL_NOC_ERROR
+	0x6D630308,	//TZ_SYS_NOC_ERROR
+	0x6D630309,	//TZ_CONF_NOC_ERROR
+	0x6D63030A,	//TZ_XPU_ERROR
+	0x6D63030B,	//TZ_THERMAL_BITE_RESET
+	0x6D63030C,	//TZ_UNDEFINED_ERROR
+	0x6D630400,	//SDI_WATCHDOG_SDI_APPS_RESET
+	0x6D630401,	//SDI_FATAL_ERROR
+	0x6D630402,	//SDI_UNDEFINED_ERROR
+	0x6D630600,	//LK_CRASH_IN_LK -0x37
+	0x6D630000,	//UNUSED - APPS_UNDEFINED_ERROR - 0x38
+	0x6D630001,	//UNUSED - APPS_FAILED_SHUTDOWN
+	0x6D630002,	//UNUSED - APPS_RESETTING_SOC
+	0x6D630003,	//UNUSED - APPS_UNKNOWN_RESTART_LEVEL
+	0x6D630004,	//UNUSED - APPS_FAILED_POWERUP
+	0x6D630005,	//UNUSED - APPS_WAIT_TIMEOUT
+	0x6D630006,	//UNUSED - APPS_SSR_CRASH
+	0x6D630007,	//UNUSED - APPS_LIMIT_OVERFLOW_CRASH
+	0x6D631000,	//ADSP_UNDEFINED_ERROR - 0x40
+	0x6D631001,	//ADSP_FAILED_SHUTDOWN
+	0x6D631002,	//ADSP_RESETTING_SOC
+	0x6D631003,	//ADSP_UNKNOWN_RESTART_LEVEL
+	0x6D631004,	//ADSP_FAILED_POWERUP
+	0x6D631005,	//ADSP_WAIT_TIMEOUT
+	0x6D631006,	//ADSP_SSR_CRASH
+	0x6D631007,	//ADSP_LIMIT_OVERFLOW_CRASH
+	0x6D632000,	//MBA_UNDEFINED_ERROR - 0x48
+	0x6D632001,	//MBA_FAILED_SHUTDOWN
+	0x6D632002,	//MBA_RESETTING_SOC
+	0x6D632003,	//MBA_UNKNOWN_RESTART_LEVEL
+	0x6D632004,	//MBA_FAILED_POWERUP
+	0x6D632005,	//MBA_WAIT_TIMEOUT
+	0x6D632006,	//MBA_SSR_CRASH
+	0x6D632007,	//MBA_LIMIT_OVERFLOW_CRASH
+	0x6D633000,	//MODEM_UNDEFINED_ERROR 0x50
+	0x6D633001,	//MODEM_FAILED_SHUTDOWN
+	0x6D633002,	//MODEM_RESETTING_SOC
+	0x6D633003,	//MODEM_UNKNOWN_RESTART_LEVEL
+	0x6D633004,	//MODEM_FAILED_POWERUP
+	0x6D633005,	//MODEM_WAIT_TIMEOUT
+	0x6D633006,	//MODEM_SSR_CRASH
+	0x6D633007,	//MODEM_LIMIT_OVERFLOW_CRASH
+	0x6D634000,	//WCNSS_UNDEFINED_ERROR - 0x58
+	0x6D634001,	//WCNSS_FAILED_SHUTDOWN
+	0x6D634002,	//WCNSS_RESETTING_SOC
+	0x6D634003,	//WCNSS_UNKNOWN_RESTART_LEVEL
+	0x6D634004,	//WCNSS_FAILED_POWERUP
+	0x6D634005,	//WCNSS_WAIT_TIMEOUT
+	0x6D634006,	//WCNSS_SSR_CRASH
+	0x6D634007,	//WCNSS_LIMIT_OVERFLOW_CRASH
+	0x6D635000,	//VENUS_UNDEFINED_ERROR - 0x60
+	0x6D635001,	//VENUS_FAILED_SHUTDOWN
+	0x6D635002,	//VENUS_RESETTING_SOC
+	0x6D635003,	//VENUS_UNKNOWN_RESTART_LEVEL
+	0x6D635004,	//VENUS_FAILED_POWERUP
+	0x6D635005,	//VENUS_WAIT_TIMEOUT
+	0x6D635006,	//VENUS_SSR_CRASH
+	0x6D635007,	//VENUS_LIMIT_OVERFLOW_CRASH
+	0x6D636000,	//AR6320_UNDEFINED_ERROR - 0x68
+	0x6D636001,	//AR6320_FAILED_SHUTDOWN
+	0x6D636002,	//AR6320_RESETTING_SOC
+	0x6D636003,	//AR6320_UNKNOWN_RESTART_LEVEL
+	0x6D636004,	//AR6320_FAILED_POWERUP
+	0x6D636005,	//AR6320_WAIT_TIMEOUT
+	0x6D636006,	//AR6320_SSR_CRASH
+	0x6D636007,	//AR6320_LIMIT_OVERFLOW_CRASH
+	0x00000000,	// 0x70
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,	// 0x78
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000	// 0x7F
+
+};
+
+static uint8_t map_imem_reboot_to_pmic(uint32_t imem_rb) {
+	uint8_t index = 0;
+	uint8_t max = sizeof(rb_reasons_map)/sizeof(uint32_t);
+	for(;index<max;index++)
+		if(rb_reasons_map[index] == imem_rb)
+			break;
+
+	return index&REBOOT_REASONS_MASK;
+}
+
+static int hardreset_set(const char *val, struct kernel_param *kp)
+{
+	int ret;
+	int old_val = use_hardreset;
+
+	ret = param_set_int(val, kp);
+	if (ret)
+		return ret;
+
+	/* If use_hardreset is not zero or one, ignore. */
+	if (use_hardreset >> 1) {
+		use_hardreset = old_val;
+		return -EINVAL;
+	}
+
+	if (msm_imem_base)
+		writel_relaxed(use_hardreset?MAGIC_RESET_TYPE_HARD:MAGIC_RESET_TYPE_SOFT,
+					MAGIC_RESET_TYPE_ADDR);
+
+	return ret;
+}
 
 void lge_set_subsys_crash_reason(const char *name, int type)
 {
@@ -89,14 +269,21 @@ void lge_set_fb_addr(unsigned int addr)
 void lge_set_restart_reason(unsigned int reason)
 {
 	writel_relaxed(reason, RESTART_REASON);
+	if(use_hardreset) {
+		qpnp_pon_set_restart_reason(map_imem_reboot_to_pmic(reason));
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+	}
 }
 
-void lge_set_panic_reason(void)
+bool lge_set_panic_reason(void)
 {
 	if (subsys_crash_magic == 0)
 		lge_set_restart_reason(LGE_RB_MAGIC | LGE_ERR_KERN);
 	else
 		lge_set_restart_reason(subsys_crash_magic);
+
+	// return hard reset for caller to override any warm resets
+	return use_hardreset;
 }
 
 static bool lge_crash_handler_skiped = false;
@@ -447,6 +634,7 @@ static int __init lge_panic_handler_early_init(void)
 	uint32_t crash_handler_magic = 0;
 	unsigned long ramoops_addr = 0;
 	unsigned long ramoops_size = 0;
+	int ret = 0;
 
 	panic_handler = kzalloc(sizeof(*panic_handler), GFP_KERNEL);
 	if (!panic_handler) {
@@ -456,20 +644,24 @@ static int __init lge_panic_handler_early_init(void)
 
 	np = of_find_compatible_node(NULL, NULL, "qcom,msm-imem");
 	if (!np) {
-		pr_err("unable to find DT imem node\n");
+		pr_err("unable to find DT imem base  node\n");
 		return -ENODEV;
 	}
-
 	msm_imem_base = of_iomap(np, 0);
 	if (!msm_imem_base) {
 		pr_err("unable to map imem\n");
 		return -ENODEV;
+	} else {
+		/*msm_imem_base is valid,update imem magic for reset type */
+		writel_relaxed(use_hardreset?MAGIC_RESET_TYPE_HARD:MAGIC_RESET_TYPE_SOFT,
+						MAGIC_RESET_TYPE_ADDR);
 	}
 
 	np = of_find_compatible_node(NULL, NULL, "ramoops");
 	if (!np) {
 		pr_err("unable to find ramoops node\n");
-		return -ENODEV;
+		ret =  -ENODEV;
+		goto err_ramoops;
 	}
 
 	of_property_read_u32(np, "android,ramoops-buffer-start", (u32*)&ramoops_addr);
@@ -489,6 +681,10 @@ static int __init lge_panic_handler_early_init(void)
 	lge_set_restart_reason(LGE_RB_MAGIC | LGE_ERR_TZ);
 
 	return 0;
+
+err_ramoops:
+	iounmap(msm_imem_base);
+	return ret;
 }
 
 early_initcall(lge_panic_handler_early_init);
