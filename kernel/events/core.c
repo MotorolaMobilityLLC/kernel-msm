@@ -1428,7 +1428,6 @@ static void __ref perf_remove_from_context(struct perf_event *event, bool detach
 {
 	struct perf_event_context *ctx = event->ctx;
 	struct task_struct *task = ctx->task;
-	int ret;
 	struct remove_event re = {
 		.event = event,
 		.detach_group = detach_group,
@@ -1438,9 +1437,12 @@ static void __ref perf_remove_from_context(struct perf_event *event, bool detach
 
 	if (!task) {
 		/*
-		 * Per cpu events are removed via an smp call
+		 * Per cpu events are removed via an smp call. The removal can
+		 * fail if the CPU is currently offline, but in that case we
+		 * already called __perf_remove_from_context from
+		 * perf_event_exit_cpu.
 		 */
-		ret = cpu_function_call(event->cpu, __perf_remove_from_context,
+		cpu_function_call(event->cpu, __perf_remove_from_context,
 					&re);
 		return;
 	}
@@ -7687,7 +7689,7 @@ static void perf_pmu_rotate_stop(struct pmu *pmu)
 
 static void __perf_event_exit_context(void *__info)
 {
-	struct remove_event re = { .detach_group = false };
+	struct remove_event re = { .detach_group = true };
 	struct perf_event_context *ctx = __info;
 
 	perf_pmu_rotate_stop(ctx->pmu);
