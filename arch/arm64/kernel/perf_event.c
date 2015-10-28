@@ -609,7 +609,7 @@ static void __init armpmu_init(struct arm_pmu *armpmu)
 		.start		= armpmu_start,
 		.stop		= armpmu_stop,
 		.read		= armpmu_read,
-		.events_across_hotplug = 1,
+		.events_across_hotplug = 0,
 	};
 }
 
