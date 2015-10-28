@@ -43,6 +43,7 @@
 #define DRVNAME "utags"
 
 static const struct file_operations utag_fops;
+struct ctrl;
 
 enum utag_flag {
 	UTAG_FLAG_PROTECTED = 1 << 0,
@@ -53,8 +54,6 @@ enum utag_flag {
 #define UTAG_STATUS_NOT_READY '2'
 
 static char payload[MAX_UTAG_SIZE];
-
-struct utag;
 
 struct utag {
 	char name[MAX_UTAG_NAME];
@@ -98,6 +97,7 @@ struct proc_node {
 	struct proc_dir_entry *file;
 	struct proc_dir_entry *dir;
 	uint32_t mode;
+	struct ctrl *ctrl;
 };
 
 LIST_HEAD(node_list);
@@ -106,6 +106,8 @@ struct dir_node {
 	struct list_head entry;
 	struct proc_dir_entry *root;
 	char name[MAX_UTAG_NAME];
+	struct ctrl *ctrl;
+	struct proc_dir_entry *dir;
 };
 
 LIST_HEAD(dir_list);
@@ -282,7 +284,7 @@ static struct utag *find_first_utag(const struct utag *head, const char *name)
 
 static int
 utag_file(char *utag_name, char *utag_type,
-	  enum utag_output mode, struct proc_dir_entry *dir,
+	  enum utag_output mode, struct dir_node *dnode,
 	  const struct file_operations *fops)
 {
 	struct proc_node *node;
@@ -297,8 +299,10 @@ utag_file(char *utag_name, char *utag_type,
 		strlcpy(node->name, utag_name, MAX_UTAG_NAME);
 		strlcpy(node->type, utag_type, MAX_UTAG_NAME);
 		node->mode = mode;
-		node->dir = dir;
-		node->file = proc_create_data(node->file_name, 0, dir, fops, node);
+		node->dir = dnode->dir;
+		node->ctrl = dnode->ctrl;
+		node->file = proc_create_data(node->file_name, 0,
+			dnode->dir, fops, node);
 	}
 
 	return 0;
@@ -723,13 +727,15 @@ new_utag(struct file *file, const char __user *buffer,
 			dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 			if (dnode) {
 				dnode->root = ctrl.root;
+				dnode->ctrl = &ctrl;
+				dnode->dir = dir;
 				list_add(&dnode->entry, &dir_list);
 				strlcpy(dnode->name, uname, MAX_UTAG_NAME);
 			}
 
-			utag_file(uname, utype, OUT_ASCII, dir, &utag_fops);
-			utag_file(uname, utype, OUT_RAW, dir, &utag_fops);
-			utag_file(uname, utype, OUT_TYPE, dir, &utag_fops);
+			utag_file(uname, utype, OUT_ASCII, dnode, &utag_fops);
+			utag_file(uname, utype, OUT_RAW, dnode, &utag_fops);
+			utag_file(uname, utype, OUT_TYPE, dnode, &utag_fops);
 		}
 	}
 
@@ -880,13 +886,15 @@ static void build_utags_directory(void)
 		dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 		if (dnode) {
 			dnode->root = ctrl.root;
+			dnode->ctrl = &ctrl;
+			dnode->dir = dir;
 			list_add(&dnode->entry, &dir_list);
 			strlcpy(dnode->name, utag_name, MAX_UTAG_NAME);
 		}
 
-		utag_file(utag_name, utag_type, OUT_ASCII, dir, &utag_fops);
-		utag_file(utag_name, utag_type, OUT_RAW, dir, &utag_fops);
-		utag_file(utag_name, utag_type, OUT_TYPE, dir, &utag_fops);
+		utag_file(utag_name, utag_type, OUT_ASCII, dnode, &utag_fops);
+		utag_file(utag_name, utag_type, OUT_RAW, dnode, &utag_fops);
+		utag_file(utag_name, utag_type, OUT_TYPE, dnode, &utag_fops);
 
 		cur = cur->next;
 	}
@@ -896,12 +904,14 @@ static void build_utags_directory(void)
 	dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 	if (dnode) {
 		dnode->root = ctrl.root;
+		dnode->ctrl = &ctrl;
+		dnode->dir = dir;
 		list_add(&dnode->entry, &dir_list);
 		strlcpy(dnode->name, "all", MAX_UTAG_NAME);
 	}
 
-	utag_file("all", "raw", OUT_RAW, dir, &dump_fops);
-	utag_file("all", "new", OUT_NEW, dir, &new_fops);
+	utag_file("all", "raw", OUT_RAW, dnode, &dump_fops);
+	utag_file("all", "new", OUT_NEW, dnode, &new_fops);
 
 	free_tags(tags);
 	ctrl.reload = UTAG_STATUS_LOADED;
