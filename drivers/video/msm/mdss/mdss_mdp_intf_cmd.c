@@ -13,13 +13,15 @@
 
 #include <linux/kernel.h>
 #include <linux/pm_runtime.h>
+#include <linux/delay.h>
 
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
 
-#define VSYNC_EXPIRE_TICK 6
+#define VSYNC_EXPIRE_ACTIVE_TICK	4
+#define VSYNC_EXPIRE_LOWPOWER_TICK	2
 
 #define MAX_SESSIONS 2
 
@@ -27,7 +29,6 @@
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
 #define KOFF_TIMEOUT msecs_to_jiffies(84)
 
-#define STOP_TIMEOUT(hz) msecs_to_jiffies((1000 / hz) * (VSYNC_EXPIRE_TICK + 2))
 #define POWER_COLLAPSE_TIME msecs_to_jiffies(100)
 
 struct mdss_mdp_cmd_ctx {
@@ -239,8 +240,11 @@ static inline void mdss_mdp_cmd_clk_on(struct mdss_mdp_cmd_ctx *ctx)
 		mdss_mdp_hist_intr_setup(&mdata->hist_intr, MDSS_IRQ_RESUME);
 	}
 	spin_lock_irqsave(&ctx->clk_lock, flags);
-	irq_en =  !ctx->rdptr_enabled;
-	ctx->rdptr_enabled = VSYNC_EXPIRE_TICK;
+	irq_en = !ctx->rdptr_enabled;
+	if (mdss_mdp_ctl_is_power_on_lp(ctx->ctl))
+		ctx->rdptr_enabled = VSYNC_EXPIRE_LOWPOWER_TICK;
+	else
+		ctx->rdptr_enabled = VSYNC_EXPIRE_ACTIVE_TICK;
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (irq_en)
@@ -855,10 +859,16 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (need_reset) {
-		if (!mdss_mdp_ctl_is_panel_dead(ctl))
-			WARN(atomic_read(&ctx->koff_cnt),
-			     "stop cmd with kickoff left %d\n",
-			     atomic_read(&ctx->koff_cnt));
+		if (!mdss_mdp_ctl_is_panel_dead(ctl) &&
+		    atomic_read(&ctx->koff_cnt)) {
+			ret = wait_for_completion_timeout
+					(&ctx->pp_comp, KOFF_TIMEOUT);
+			if (ret <= 0)
+				WARN(1, "stop cmd with kickoff left %d\n",
+				     atomic_read(&ctx->koff_cnt));
+			else /* sleep for waiting frame done */
+				msleep_interruptible(33);
+		}
 		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 				     ctx->pp_num);
 		ctx->rdptr_enabled = 0;
