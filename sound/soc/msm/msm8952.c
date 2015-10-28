@@ -158,6 +158,18 @@ static struct afe_clk_set wsa_ana_clk = {
 	0,
 };
 
+#ifdef CONFIG_SND_SOC_CS35L34
+static struct afe_clk_cfg l34_ana_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	0,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK2_VALID,
+	0,
+};
+#endif
+
 static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE", "S24_3LE"};
 static const char *const ter_mi2s_tx_ch_text[] = {"One", "Two"};
 static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
@@ -1191,6 +1203,52 @@ static int msm8952_ext_audio_switch_event(struct snd_soc_dapm_widget *w,
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_CS35L34
+static int msm8952_enable_cs35l34_mclk(struct snd_soc_card *card, bool enable)
+{
+	int ret = 0;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	mutex_lock(&pdata->l34_mclk_mutex);
+	if (enable) {
+		if (!atomic_read(&pdata->l34_mclk_rsc_ref)) {
+			pr_debug("%s: going to enable afe clock for cs35l34\n", __func__);
+			l34_ana_clk.clk_val2 =
+					Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_SECONDARY_MI2S_RX,
+					&l34_ana_clk);
+			if (ret < 0) {
+				pr_err("%s: failed to enable mclk %d\n",
+					__func__, ret);
+				goto done;
+			}
+		}
+		atomic_inc(&pdata->l34_mclk_rsc_ref);
+	} else {
+		if (!atomic_read(&pdata->l34_mclk_rsc_ref))
+			goto done;
+		if (!atomic_dec_return(&pdata->l34_mclk_rsc_ref)) {
+			pr_debug("%s: going to disable afe clock for cs35l34\n", __func__);
+			l34_ana_clk.clk_val2 =
+					Q6AFE_LPASS_OSR_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_SECONDARY_MI2S_RX,
+					&l34_ana_clk);
+			if (ret < 0) {
+				pr_err("%s: failed to disable mclk %d\n",
+					__func__, ret);
+				goto done;
+			}
+		}
+	}
+
+done:
+	mutex_unlock(&pdata->l34_mclk_mutex);
+	return ret;
+}
+#endif
+
 static int msm8952_enable_wsa_mclk(struct snd_soc_card *card, bool enable)
 {
 	int ret = 0;
@@ -1621,6 +1679,23 @@ static int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		pr_err("failed to enable sclk\n");
 		return ret;
 	}
+#ifdef CONFIG_SND_SOC_CS35L34
+	pr_debug("%s, going to activate cs35l34_clk\n", __func__);
+	ret = msm_gpioset_activate(CLIENT_WCD_INT, "cs35l34_clk");
+	if (ret < 0) {
+		pr_err("failed to enable codec gpios, cs35l34_clk\n");
+		goto err;
+	}
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		pr_debug("%s, going to enable cs35l34_mclk\n", __func__);
+		ret = msm8952_enable_cs35l34_mclk(card, true);
+		if (ret < 0) {
+			pr_err("%s: failed to enable mclk for cs35l34 %d\n",
+				__func__, ret);
+			return ret;
+		}
+	}
+#endif
 	ret = msm_gpioset_activate(CLIENT_WCD_INT, "quin_i2s");
 	if (ret < 0) {
 		pr_err("failed to enable codec gpios\n");
@@ -1660,6 +1735,24 @@ static void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 						__func__, "quin_i2s");
 			return;
 		}
+#ifdef CONFIG_SND_SOC_CS35L34
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			pr_debug("%s, going to disable cs35l34 mclk\n", __func__);
+			ret = msm8952_enable_cs35l34_mclk(card, false);
+			if (ret < 0) {
+				pr_err("%s: failed to disable mclk for l34 %d\n",
+					__func__, ret);
+				return;
+			}
+		}
+		pr_debug("%s, going to de-activate cs35l34_clk\n", __func__);
+		ret = msm_gpioset_suspend(CLIENT_WCD_INT, "cs35l34_clk");
+		if (ret < 0) {
+			pr_err("%s: gpio set cannot be de-activated %s",
+						__func__, "cs35l34_clk");
+			return;
+		}
+#endif
 	}
 }
 
@@ -3218,6 +3311,8 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 		mutex_init(&pdata->wsa_mclk_mutex);
 		atomic_set(&pdata->wsa_mclk_rsc_ref, 0);
 	}
+	mutex_init(&pdata->l34_mclk_mutex);
+	atomic_set(&pdata->l34_mclk_rsc_ref, 0);
 	atomic_set(&pdata->mclk_enabled, false);
 	atomic_set(&quat_mi2s_clk_ref, 0);
 	atomic_set(&quin_mi2s_clk_ref, 0);
@@ -3284,6 +3379,7 @@ static int msm8952_asoc_machine_remove(struct platform_device *pdev)
 		}
 		mutex_destroy(&pdata->wsa_mclk_mutex);
 	}
+	mutex_destroy(&pdata->l34_mclk_mutex);
 	snd_soc_unregister_card(card);
 	mutex_destroy(&pdata->cdc_mclk_mutex);
 	return 0;
