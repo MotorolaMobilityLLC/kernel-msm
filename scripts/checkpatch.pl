@@ -702,36 +702,6 @@ sub seed_camelcase_includes {
 	}
 }
 
-sub git_commit_info {
-	my ($commit, $id, $desc) = @_;
-
-	return ($id, $desc) if ((which("git") eq "") || !(-e ".git"));
-
-	my $output = `git log --no-color --format='%H %s' -1 $commit 2>&1`;
-	$output =~ s/^\s*//gm;
-	my @lines = split("\n", $output);
-
-	return ($id, $desc) if ($#lines < 0);
-
-	if ($lines[0] =~ /^error: short SHA1 $commit is ambiguous\./) {
-# Maybe one day convert this block of bash into something that returns
-# all matching commit ids, but it's very slow...
-#
-#		echo "checking commits $1..."
-#		git rev-list --remotes | grep -i "^$1" |
-#		while read line ; do
-#		    git log --format='%H %s' -1 $line |
-#		    echo "commit $(cut -c 1-12,41-)"
-#		done
-	} elsif ($lines[0] =~ /^fatal: ambiguous argument '$commit': unknown revision or path not in the working tree\./) {
-	} else {
-		$id = substr($lines[0], 0, 12);
-		$desc = substr($lines[0], 41);
-	}
-
-	return ($id, $desc);
-}
-
 $chk_signoff = 0 if ($file);
 
 my @rawlines = ();
@@ -891,18 +861,6 @@ sub format_email {
 	}
 
 	return $formatted_email;
-}
-
-sub which {
-	my ($bin) = @_;
-
-	foreach my $path (split(/:/, $ENV{PATH})) {
-		if (-e "$path/$bin") {
-			return "$path/$bin";
-		}
-	}
-
-	return "";
 }
 
 sub which_conf {
@@ -2496,63 +2454,6 @@ sub process {
 		if ($in_commit_log && $commit_log_possible_stack_dump &&
 		    $line =~ /^\s*$/) {
 			$commit_log_possible_stack_dump = 0;
-		}
-
-# Check for git id commit length and improperly formed commit descriptions
-		if ($in_commit_log && !$commit_log_possible_stack_dump &&
-		    $line !~ /^This reverts commit [0-9a-f]{7,40}/ &&
-		    ($line =~ /\bcommit\s+[0-9a-f]{5,}\b/i ||
-		     ($line =~ /\b[0-9a-f]{12,40}\b/i &&
-		      $line !~ /[\<\[][0-9a-f]{12,40}[\>\]]/i &&
-		      $line !~ /\bfixes:\s*[0-9a-f]{12,40}/i))) {
-			my $init_char = "c";
-			my $orig_commit = "";
-			my $short = 1;
-			my $long = 0;
-			my $case = 1;
-			my $space = 1;
-			my $hasdesc = 0;
-			my $hasparens = 0;
-			my $id = '0123456789ab';
-			my $orig_desc = "commit description";
-			my $description = "";
-
-			if ($line =~ /\b(c)ommit\s+([0-9a-f]{5,})\b/i) {
-				$init_char = $1;
-				$orig_commit = lc($2);
-			} elsif ($line =~ /\b([0-9a-f]{12,40})\b/i) {
-				$orig_commit = lc($1);
-			}
-
-			$short = 0 if ($line =~ /\bcommit\s+[0-9a-f]{12,40}/i);
-			$long = 1 if ($line =~ /\bcommit\s+[0-9a-f]{41,}/i);
-			$space = 0 if ($line =~ /\bcommit [0-9a-f]/i);
-			$case = 0 if ($line =~ /\b[Cc]ommit\s+[0-9a-f]{5,40}[^A-F]/);
-			if ($line =~ /\bcommit\s+[0-9a-f]{5,}\s+\("([^"]+)"\)/i) {
-				$orig_desc = $1;
-				$hasparens = 1;
-			} elsif ($line =~ /\bcommit\s+[0-9a-f]{5,}\s*$/i &&
-				 defined $rawlines[$linenr] &&
-				 $rawlines[$linenr] =~ /^\s*\("([^"]+)"\)/) {
-				$orig_desc = $1;
-				$hasparens = 1;
-			} elsif ($line =~ /\bcommit\s+[0-9a-f]{5,}\s+\("[^"]+$/i &&
-				 defined $rawlines[$linenr] &&
-				 $rawlines[$linenr] =~ /^\s*[^"]+"\)/) {
-				$line =~ /\bcommit\s+[0-9a-f]{5,}\s+\("([^"]+)$/i;
-				$orig_desc = $1;
-				$rawlines[$linenr] =~ /^\s*([^"]+)"\)/;
-				$orig_desc .= " " . $1;
-				$hasparens = 1;
-			}
-
-			($id, $description) = git_commit_info($orig_commit,
-							      $id, $orig_desc);
-
-			if ($short || $long || $space || $case || ($orig_desc ne $description) || !$hasparens) {
-				ERROR("GIT_COMMIT_ID",
-				      "Please use git commit description style 'commit <12+ chars of sha1> (\"<title line>\")' - ie: '${init_char}ommit $id (\"$description\")'\n" . $herecurr);
-			}
 		}
 
 # Check for added, moved or deleted files
