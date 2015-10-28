@@ -439,7 +439,7 @@ static int msm_qti_pp_get_hfp_vol_mixer(struct snd_kcontrol *kcontrol,
 static int msm_qti_pp_set_hfp_vol_mixer(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
-	afe_loopback_gain(INT_BT_SCO_TX , ucontrol->value.integer.value[0]);
+	afe_loopback_gain(AFE_PORT_ID_SECONDARY_MI2S_TX , ucontrol->value.integer.value[0]);
 
 	msm_route_hfp_vol_control = ucontrol->value.integer.value[0];
 
