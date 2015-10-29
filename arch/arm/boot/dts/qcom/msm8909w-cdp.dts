@@ -40,14 +40,6 @@
 	reg = <0x0 0x8d200000 0x0 0x0500000>;
 };
 
-&venus_qseecom_mem {
-	status = "disabled";
-};
-
-&qsecom_heap {
-	status = "disabled";
-};
-
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_hx8394d_480_vid>;
 };
