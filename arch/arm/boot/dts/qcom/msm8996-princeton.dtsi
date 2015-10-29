@@ -215,3 +215,7 @@
 		qcom,csid-sd-index = <1>;
 	};
 };
+
+&muc_spi {
+	mmi,delay-after-wake;
+};

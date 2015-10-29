@@ -1092,7 +1092,7 @@
 
 	qcom,rt-priority;
 
-	muc_spi@0 {
+	muc_spi: muc_spi@0 {
 		compatible = "moto,muc_spi";
 		reg = <0>;
 		interrupt-parent = <&tlmm>;
