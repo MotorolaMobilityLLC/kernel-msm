@@ -756,14 +756,6 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
         do_ramp = 0;
 
     bright_zone = atomic_read (&lm3535_data.bright_zone);
-    mutex_lock (&lm3535_mutex);
-    if (value == -1)
-        value = led_cdev->brightness; /* Special case for ALS adjustment */
-    else if ((value > 0) && (value < 5))
-        value = 0; /* Special case for turn off */
-    else if ((value >= 5) && (value < 10))
-        value = 1; /* Special case for dim */
-
 #ifdef CONFIG_LEDS_NOTIFY
 	/* notify the brightness changes from frameworks */
 	if (value != atomic_read(&lm3535_data.current_level)) {
@@ -776,6 +768,14 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 				      msecs_to_jiffies(100));
 	}
 #endif
+
+    mutex_lock (&lm3535_mutex);
+    if (value == -1)
+        value = led_cdev->brightness; /* Special case for ALS adjustment */
+    else if ((value > 0) && (value < 5))
+        value = 0; /* Special case for turn off */
+    else if ((value >= 5) && (value < 10))
+        value = 1; /* Special case for dim */
 
 #ifdef CONFIG_DISPLAY_STATE_NOTIFY
 	if ((value == 1) && atomic_read(&lm3535_data.off_at_lp) &&

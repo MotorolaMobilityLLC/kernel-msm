@@ -274,7 +274,8 @@ struct dsi_panel_tfmode {
 	int (*set_panel_tfmode) (struct mdss_dsi_ctrl_pdata *ctrl_pdata, int tfmode);
 	int tfmode_current;
 	int tfmode_saved;
-	int tf_level;
+	int tf_level_current;
+	int tf_level[TFMODE_STATE_MAX];
 #endif
 	int tfmode[TFMODE_STATE_MAX];
 	struct dsi_panel_cmds cmds[PANEL_TFMODE_MAX];
