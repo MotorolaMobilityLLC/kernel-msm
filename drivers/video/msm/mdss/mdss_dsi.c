@@ -793,6 +793,10 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata, int power_state)
 		pr_debug("%s: low power state requested\n", __func__);
 		if (ctrl_pdata->low_power_config)
 			ret = ctrl_pdata->low_power_config(pdata, true);
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+	/* do not set idle mode when it is on dock */
+	if (!pdata->panel_info.is_docked)
+#endif
 		msm_dss_set_vreg_idle(
 			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
 			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, true);
