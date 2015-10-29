@@ -866,7 +866,12 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 			WARN(state != LATER_ON_NONE,
 			     "later on is already activated! %d\n", state);
 			atomic_set(&pinfo->later_on_state, LATER_ON_IDLE);
+#if defined(CONFIG_DOCK_STATUS_NOTIFY)
+		/* do not set idle mode when it is on dock */
+		} else if (!(enable && pinfo->is_docked)) {
+#else
 		} else {
+#endif
 			int r;
 			/* reset later on state */
 			atomic_set(&pinfo->later_on_state, LATER_ON_NONE);
@@ -1674,6 +1679,21 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-te-using-te-pin");
 	pinfo->mipi.idle_enable = of_property_read_bool(np,
 		"qcom,mdss-dsi-dcs-idle-enable");
+	if (pinfo->mipi.idle_enable) {
+		mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_on_cmds,
+			"qcom,mdss-dsi-panel-idle-on-command",
+			"qcom,mdss-dsi-panel-idle-on-command-state");
+		mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->idle_off_cmds,
+			"qcom,mdss-dsi-panel-idle-off-command",
+			"qcom,mdss-dsi-panel-idle-off-command-state");
+		rc = !!ctrl_pdata->idle_on_cmds.cmd_cnt ^
+			!!ctrl_pdata->idle_off_cmds.cmd_cnt;
+		if (rc) {
+			pr_err("%s:%d, Error:Idle on/off cmd mismatched\n",
+				__func__, __LINE__);
+			return -EINVAL;
+		}
+	}
 
 	rc = of_property_read_u32(np,
 		"qcom,mdss-dsi-h-sync-pulse", &tmp);
