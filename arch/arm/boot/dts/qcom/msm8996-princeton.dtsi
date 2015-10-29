@@ -74,6 +74,13 @@
 	/delete-node/ qcom,panel-supply-entries;
 };
 
+&pm8994_l18 {
+	regulator-always-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
+
 &isl98611a_pos {
 	regulator-always-on;
 	regulator-boot-on;
