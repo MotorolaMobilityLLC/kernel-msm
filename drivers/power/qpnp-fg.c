@@ -3683,6 +3683,8 @@ static int fg_do_restart(struct fg_chip *chip, bool write_profile)
 		goto fail;
 	}
 
+	msleep(2000);
+
 	/* wait for the first estimate to complete */
 	rc = wait_for_completion_interruptible_timeout(&chip->first_soc_done,
 			msecs_to_jiffies(PROFILE_LOAD_TIMEOUT_MS));
