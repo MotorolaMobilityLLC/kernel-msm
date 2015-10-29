@@ -43,9 +43,9 @@ void display_state_unregister_notify(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(display_state_unregister_notify);
 
-void display_state_notify_subscriber(unsigned long event)
+void display_state_notify_subscriber(union display_state_event disp_state)
 {
-	blocking_notifier_call_chain(&display_state_notifier_list, event, NULL);
+	blocking_notifier_call_chain(&display_state_notifier_list, disp_state.event, NULL);
 }
 EXPORT_SYMBOL_GPL(display_state_notify_subscriber);
 
