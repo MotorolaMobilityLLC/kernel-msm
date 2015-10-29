@@ -1112,6 +1112,62 @@ static void lm3535_backlight_notify_work(struct work_struct *work)
 }
 #endif
 
+static ssize_t lm3535_dim_value_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	snprintf(buf, 16, "%d\n", dim_values[0]);
+	return strlen(buf)+1;
+}
+
+static ssize_t lm3535_dim_value_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned value = 0;
+
+	if (!buf || size == 0) {
+		pr_err("%s: invalid command\n", __func__);
+		return -EINVAL;
+	}
+
+	sscanf(buf, "%d", &value);
+	if ((value < 1) || (value > 127)) {
+		pr_err("%s: invalid value %d, must be 1 - 127\n",
+		       __func__, value);
+		return -EINVAL;
+	}
+
+	if (dim_values[0] != value) {
+		dim_values[0] = value;
+		if ((lm3535_led.brightness >= 5) && (lm3535_led.brightness < 10))
+			lm3535_brightness_set(&lm3535_led, lm3535_led.brightness);
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(dim_value, 0644, lm3535_dim_value_show,
+		   lm3535_dim_value_store);
+
+static void lm3535_parse_dim_values(const struct device_node *np)
+{
+	const char *name = "lm3535,dim_values";
+	const int dimc = sizeof(dim_values) / sizeof(dim_values[0]);
+	u32 tmp[dimc];
+	int num = 0, i;
+
+	if (!of_find_property(np, name, &num))
+		return;
+	num /= sizeof(u32);
+	if (!num || (num > dimc)) {
+		pr_err("%s: error reading %s, length found = %d\n",
+		       __func__, name, num);
+		return;
+	}
+	of_property_read_u32_array(np, name, tmp, num);
+	for (i = 0; i < num; i++)
+		dim_values[i] = tmp[i];
+}
+
 /* This function is called by i2c_probe */
 static int lm3535_probe (struct i2c_client *client,
     const struct i2c_device_id *id)
@@ -1278,6 +1334,23 @@ static int lm3535_probe (struct i2c_client *client,
 	lm3535_data.display_nb.notifier_call = lm3535_display_notify;
 	display_state_register_notify(&lm3535_data.display_nb);
 #endif
+	lm3535_parse_dim_values(client->dev.of_node);
+	ret = device_create_file(lm3535_led.dev, &dev_attr_dim_value);
+	if (ret) {
+		pr_err("%s: failed(%d) create device file\n", __func__, ret);
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+		device_remove_file(lm3535_led.dev, &dev_attr_off_at_lp);
+#endif
+		device_remove_file(lm3535_led.dev, &dev_attr_suspend);
+#ifdef CONFIG_DOCK_STATUS_NOTIFY
+		device_remove_file(lm3535_led.dev, &dev_attr_dockdispval);
+		device_remove_file(lm3535_led.dev, &dev_attr_interactive);
+#endif /* CONFIG_DOCK_STATUS_NOTIFY */
+		led_classdev_unregister(&lm3535_led);
+		led_classdev_unregister(&lm3535_led_noramp);
+		misc_deregister(&als_miscdev);
+		return ret;
+	}
 
 	INIT_DELAYED_WORK(&lm3535_data.als_delayed_work,
 			  lm3535_allow_als_work_func);
