@@ -83,16 +83,25 @@
 		qcom,cont-splash-enabled;
 		qcom,mdss-backlight-disabled;
 		qcom,mdss-dsi-dcs-idle-enable;
+		qcom,mdss-dsi-panel-idle-on-command = [15 01 00 00 00 00 02 FF 24
+		15 01 00 00 00 00 02 D2 CE
+		15 01 00 00 00 00 02 D3 CE
+		15 01 00 00 00 00 02 D5 03
+		15 01 00 00 00 00 02 D8 C3
+		15 01 00 00 00 00 02 FF 10];
+		qcom,mdss-dsi-panel-idle-on-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-panel-idle-off-command = [15 01 00 00 00 00 02 FF 24
+		15 01 00 00 00 00 02 D2 E6
+		15 01 00 00 00 00 02 D3 E6
+		15 01 00 00 00 00 02 D5 01
+		15 01 00 00 00 00 02 D8 43
+		15 01 00 00 00 00 02 FF 10];
+		qcom,mdss-dsi-panel-idle-off-command-state = "dsi_hs_mode";
 		qcom,even-line-align;
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-command = [14 01 00 01 01 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-panel-status-check-mode = "reg_read";
 		qcom,mdss-dsi-panel-status-values = [9C DC];
-		qcom,later-on-enabled;
-		qcom,mdss-dsi-panel-later-on-blank-command = [05 01 00 00 00 00 01 22];
-		qcom,mdss-dsi-panel-later-on-blank-command-state = "dsi_hs_mode";
-		qcom,mdss-dsi-panel-later-on-unblank-command = [05 01 00 00 00 00 01 13];
-		qcom,mdss-dsi-panel-later-on-unblank-command-state = "dsi_hs_mode";
 	};
 };
