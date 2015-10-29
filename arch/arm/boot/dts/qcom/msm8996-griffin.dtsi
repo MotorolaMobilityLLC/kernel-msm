@@ -27,6 +27,13 @@
 	lra_drive;
 };
 
+&pm8994_l17 {
+	regulator-always-on;
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	qcom,init-voltage = <3000000>;
+};
+
 &i2c_7 {
 	max17050: max17050-battery@36 {
 		compatible = "maxim,max17050";
