@@ -11280,8 +11280,8 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
 
    if ( VOS_STATUS_SUCCESS != hdd_update_mac_config( pHddCtx ) )
    {
-      hddLog(VOS_TRACE_LEVEL_WARN,
-             "%s: can't update mac config, using MAC from ini file",
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: can't update mac config, using MAC from bin file",
              __func__);
    }
 
