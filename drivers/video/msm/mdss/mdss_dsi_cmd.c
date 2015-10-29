@@ -641,11 +641,21 @@ int mdss_dsi_set_panel_idle(struct mdss_dsi_ctrl_pdata *ctrl, int idle)
 {
 	struct dcs_cmd_req cmdreq;
 
-	cmdreq.cmds = idle ? &dcs_idle_on_cmd : &dcs_idle_off_cmd;
-	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
+
+	if (ctrl->idle_on_cmds.cmd_cnt) {
+		struct dsi_panel_cmds *pcmds;
+		pcmds = idle ? &ctrl->idle_on_cmds : &ctrl->idle_off_cmds;
+		cmdreq.cmds = pcmds->cmds;
+		cmdreq.cmds_cnt = pcmds->cmd_cnt;
+		if (pcmds->link_state == DSI_LP_MODE)
+			cmdreq.flags |= CMD_REQ_LP_MODE;
+	} else {
+		cmdreq.cmds = idle ? &dcs_idle_on_cmd : &dcs_idle_off_cmd;
+		cmdreq.cmds_cnt = 1;
+	}
 
 	return mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
