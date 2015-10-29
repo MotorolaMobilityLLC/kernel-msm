@@ -20,6 +20,9 @@
 #include <linux/types.h>
 #include <linux/notifier.h>
 #include <linux/wakelock.h>
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+#include <linux/display_state_notify.h>
+#endif
 
 #include "mdss_panel.h"
 #include "mdss_mdp_splash_logo.h"
@@ -271,6 +274,19 @@ struct msm_fb_data_type {
 	struct wake_lock later_on_wakelock;
 	struct delayed_work panel_dead_work;
 	struct wake_lock status_wakelock;
+#ifdef CONFIG_DISPLAY_STATE_NOTIFY
+	union display_state_event display_state;
+	struct timespec ts_last;
+	struct timespec ts_off;
+	struct timespec ts_on_trans;
+	struct timespec ts_lp_trans;
+#ifdef CONFIG_LEDS_NOTIFY
+	struct timespec ts_on_reflt;
+	struct timespec ts_on_trflt;
+	struct timespec ts_lp_reflt;
+	struct timespec ts_lp_trflt;
+#endif /* CONFIG_LEDS_NOTIFY */
+#endif /* CONFIG_DISPLAY_STATE_NOTIFY */
 #ifdef CONFIG_LEDS_NOTIFY
 	struct work_struct brightness_work;
 	struct notifier_block brightness_nb;
