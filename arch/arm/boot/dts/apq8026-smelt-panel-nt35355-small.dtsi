@@ -81,12 +81,13 @@
 		qcom,mdss-dsi-panel-tf-transflective-command = [15 01 00 00 00 00 02 FF 28
 		15 01 00 00 00 00 02 37 03
 		15 01 00 00 00 00 02 FF 10];
-		qcom,mdss-dsi-panel-tf-level = <170>;
+		qcom,mdss-dsi-panel-tf-level = <170 50>;
 	};
 };
 
 &i2c_3 {
 	lm3535@0x38 {
+		lm3535,dim_values = <1>;
 		lm3535,turn_off_when_disp_in_lp;
 	};
 };
