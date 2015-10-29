@@ -806,11 +806,25 @@ static int mdss_panel_brightness_to_tfmode(
 {
 	int ret = -EINVAL;
 	struct mdss_panel_info *pinfo = &ctrl_pdata->panel_data.panel_info;
+
+	/* do not process when current brightness level < 7
+	 * it has special meaning
+	 * 0-4: turn off back light
+	 *   5: doze back light, used for ambient mode
+	 *   6: dim back light, used for idle screen
+	 * 7-9: lowest back light, used for auto brightness in darkness
+	 */
+	if (level < 7)
+		return ret;
+
+	/* save current brightness for ambient mode use later */
+	ctrl_pdata->panel_tfmode->tf_level_current = level;
+
 	/* it can only adjust tfmode by brightness when display is active */
 	if (pinfo->blank_state != MDSS_PANEL_BLANK_UNBLANK)
 		return ret;
 
-	if (level < ctrl_pdata->panel_tfmode->tf_level)
+	if (level < ctrl_pdata->panel_tfmode->tf_level[TFMODE_STATE_NORMAL])
 		ret = PANEL_TFMODE_TRANSMISSIVE;
 	else
 		ret = PANEL_TFMODE_TRANSFLECTIVE;
@@ -867,10 +881,15 @@ static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 		struct dsi_panel_tfmode *tf = ctrl->panel_tfmode;
 		if (enable) {
 #ifdef CONFIG_LEDS_NOTIFY
+			int threshold = tf->tf_level[TFMODE_STATE_LOWPOWER];
+			tfmode = tf->tf_level_current < threshold
+					? PANEL_TFMODE_TRANSFLECTIVE
+					: PANEL_TFMODE_REFLECTIVE;
 			/* store last tfmode set */
 			tf->tfmode_saved = tf->tfmode_current;
-#endif
+#else
 			tfmode = tf->tfmode[TFMODE_STATE_LOWPOWER];
+#endif
 #if defined(CONFIG_DOCK_STATUS_NOTIFY)
 			if (pinfo->is_docked)
 				tfmode = PANEL_TFMODE_TRANSFLECTIVE;
@@ -1318,18 +1337,26 @@ static int mdss_dsi_parse_panel_tfmode(struct device_node *np,
 	}
 	ctrl->panel_tfmode = panel_tfmode;
 #ifdef CONFIG_LEDS_NOTIFY
-	if (panel_tfmode) {
-		if (!of_property_read_u32(np, "qcom,mdss-dsi-panel-tf-level", &i))
-			panel_tfmode->tf_level = i;
-		if (panel_tfmode->tf_level) {
-			panel_tfmode->brightness_to_tfmode =
-				mdss_panel_brightness_to_tfmode;
-			panel_tfmode->set_panel_tfmode =
-				mdss_panel_set_tfmode;
-			pr_info("%s: tf_panel brightness gate level is %d\n",
-				__func__, panel_tfmode->tf_level);
+	if (panel_tfmode) do {
+		const char *name = "qcom,mdss-dsi-panel-tf-level";
+		if (!of_find_property(np, name, &i))
+			break;
+		if (i != sizeof(panel_tfmode->tf_level)) {
+			pr_debug("%s:%d, error %s length found = %d\n",
+				 __func__, __LINE__, name, i);
+			break;
 		}
-	}
+		of_property_read_u32_array(np, name, panel_tfmode->tf_level,
+					   TFMODE_STATE_MAX);
+		panel_tfmode->brightness_to_tfmode =
+			mdss_panel_brightness_to_tfmode;
+		panel_tfmode->set_panel_tfmode =
+			mdss_panel_set_tfmode;
+		pr_info("%s: tf_panel brightness threshold level"
+			" normal(%d), lowpower(%d)\n", __func__,
+			panel_tfmode->tf_level[TFMODE_STATE_NORMAL],
+			panel_tfmode->tf_level[TFMODE_STATE_LOWPOWER]);
+	} while (0);
 #endif
 	return rc;
 };
