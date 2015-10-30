@@ -371,6 +371,15 @@ config CHARGER_BQ24190
 	help
 	  Say Y to enable support for the TI BQ24190 battery charger.
 
+config CHARGER_FAN54100
+	tristate "Fairchild 54100 charger switch support"
+	depends on I2C && GPIOLIB
+	help
+	  Say Y to enable support for the Fairchild 54100 charger switch.
+	  The driver supports charging control via its internal switch.
+	  The switch will have no current control and just connect Charger
+	  to battery.
+
 config CHARGER_BQ24735
 	tristate "TI BQ24735 battery charger support"
 	depends on I2C && GPIOLIB
