@@ -7184,6 +7184,44 @@ out:
 	return err;
 }
 
+
+int ufshcd_get_serialnumber(struct ufs_hba *hba, char *serialnumber)
+{
+	int err;
+	u8 sn_index;
+	u8 *desc_buf;
+
+	desc_buf = kzalloc(QUERY_DESC_STRING_MAX_SIZE, GFP_KERNEL);
+	if (!desc_buf) {
+		err =  -ENOMEM;
+		return err;
+	}
+
+	err = ufshcd_read_device_desc(hba, desc_buf,
+				QUERY_DESC_DEVICE_MAX_SIZE);
+	if (err) {
+		dev_err(hba->dev, "%s: Read device desc failed\n", __func__);
+		goto out;
+	}
+
+	sn_index = desc_buf[DEVICE_DESC_PARAM_SN];
+	memset(desc_buf, 0, QUERY_DESC_STRING_MAX_SIZE);
+	err = ufshcd_read_string_desc(hba, sn_index, desc_buf,
+					QUERY_DESC_STRING_MAX_SIZE, ASCII_STD);
+	if (err) {
+		dev_err(hba->dev, "%s: Read SN string failed\n", __func__);
+		goto out;
+	}
+
+	strlcpy(serialnumber, (desc_buf + QUERY_DESC_HDR_SIZE),
+		min_t(u8, desc_buf[QUERY_DESC_LENGTH_OFFSET] -2,
+		      QUERY_DESC_STRING_MAX_SIZE));
+out:
+	kfree(desc_buf);
+	return err;
+}
+
+
 /**
  * ufshcd_ioctl - ufs ioctl callback registered in scsi_host
  * @dev: scsi device required for per LUN queries
@@ -7197,6 +7235,7 @@ static int ufshcd_ioctl(struct scsi_device *dev, int cmd, void __user *buffer)
 {
 	struct ufs_hba *hba = shost_priv(dev->host);
 	int err = 0;
+	char *buf;
 
 	BUG_ON(!hba);
 	if (!buffer) {
@@ -7211,6 +7250,26 @@ static int ufshcd_ioctl(struct scsi_device *dev, int cmd, void __user *buffer)
 				buffer);
 		pm_runtime_put_sync(hba->dev);
 		break;
+	case UFS_IOCTL_GETSN:
+
+		buf = kzalloc(QUERY_DESC_STRING_MAX_SIZE, GFP_KERNEL);
+		pm_runtime_get_sync(hba->dev);
+		err = ufshcd_get_serialnumber(hba, buf);
+		pm_runtime_put_sync(hba->dev);
+
+		if (err) {
+			dev_err(hba->dev, "%s: Failed get serial number.\n", __func__);
+			kfree(buf);
+			return err;
+		}
+
+		err = copy_to_user(buffer, buf, strlen(buf));
+		if(err)
+			dev_err(hba->dev, "%s: Failed copying back to user.\n",
+				__func__);
+		kfree(buf);
+		break;
+
 	default:
 		err = -ENOIOCTLCMD;
 		dev_dbg(hba->dev, "%s: Unsupported ioctl cmd %d\n", __func__,
