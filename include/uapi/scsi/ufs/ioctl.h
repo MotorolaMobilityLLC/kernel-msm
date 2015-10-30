@@ -8,6 +8,7 @@
  *  SCSI_IOCTL_GET_PCI
  */
 #define UFS_IOCTL_QUERY			0x5388
+#define UFS_IOCTL_GETSN			0x5389
 
 /**
  * struct ufs_ioctl_query_data - used to transfer data to and from user via ioctl
