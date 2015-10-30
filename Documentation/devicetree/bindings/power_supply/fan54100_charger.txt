@@ -1,0 +1,30 @@
+fan54100_charger
+~~~~~~~~~~~~~~~~
+
+Required properties :
+ - compatible : "fairchild,fan54100"
+
+Optional properties :
+ - fairchild,sotp-limit-c: Slow Temperature Limit in Celsius
+
+ - fairchild,fovp-limit-mv: Fast Overvoltage Limit in millivolts
+
+ - fairchild,ocp-limit-ma: Fast Overcurrent Limit in milliamps
+
+
+Example:
+
+	fan54100: fan54100-charger@30 {
+		compatible = "fairchild,fan54100";
+		reg = <0x30>;
+
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <2 0xc6 6>;
+		gpios = <&pmi8994_gpios 7 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "fan-int-n";
+		supply-names = "battery";
+
+		fairchild,sotp-limit-c = <150>;
+		fairchild,fovp-limit-mv = <4700>;
+		fairchild,ocp-limit-ma = <6200>;
+	};
