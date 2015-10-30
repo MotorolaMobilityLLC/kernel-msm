@@ -3345,6 +3345,7 @@ prot_get_src_addr(dhd_pub_t *dhd, msgbuf_ring_t * ring, uint16* available_len)
 	uint16 w_ptr;
 	uint16 r_ptr;
 	uint16 depth;
+	uint16 items;
 	void* ret_addr = NULL;
 	uint16 d2h_w_index = 0;
 
@@ -3366,25 +3367,36 @@ prot_get_src_addr(dhd_pub_t *dhd, msgbuf_ring_t * ring, uint16* available_len)
 	depth = ring->ringmem->max_item;
 
 	/* check for avail space */
-	*available_len = READ_AVAIL_SPACE(w_ptr, r_ptr, depth);
-	if (*available_len == 0)
+	items = READ_AVAIL_SPACE(w_ptr, r_ptr, depth);
+	if (items == 0) {
+		*available_len = 0;
 		return NULL;
+	}
 
-	ASSERT(*available_len <= ring->ringmem->max_item);
+	ASSERT(items <= ring->ringmem->max_item);
+	if (items > ring->ringmem->max_item) {
+		DHD_ERROR(("%s: ring:%p, ring->name:%s, items:%d\n", __FUNCTION__,
+			ring, ring->name, items));
+		DHD_INFO(("%s: w_offset:%d, r_offset:%d, max_item:%d\n", __FUNCTION__,
+			ring->ringstate->w_offset, ring->ringstate->r_offset, ring->ringmem->max_item));
+		DHD_INFO(("%s: dhd->busstate:%d, bus->suspended:%d, bus->wait_for_d3_ack:%d\n",
+			__FUNCTION__, dhd->busstate, dhd->bus->suspended, dhd->bus->wait_for_d3_ack));
+
+		*available_len = 0;
+		return NULL;
+	}
 
 	/* if space available, calculate address to be read */
 	ret_addr = (char*)ring->ring_base.va + (r_ptr * ring->ringmem->len_items);
 
 	/* update read pointer */
-	if ((ring->ringstate->r_offset + *available_len) >= ring->ringmem->max_item)
+	if ((ring->ringstate->r_offset + items) >= ring->ringmem->max_item)
 		ring->ringstate->r_offset = 0;
 	else
-		ring->ringstate->r_offset += *available_len;
-
-	ASSERT(ring->ringstate->r_offset < ring->ringmem->max_item);
+		ring->ringstate->r_offset += items;
 
 	/* convert index to bytes */
-	*available_len = *available_len * ring->ringmem->len_items;
+	*available_len = items * ring->ringmem->len_items;
 
 	/* return read address */
 	return ret_addr;
