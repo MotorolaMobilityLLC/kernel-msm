@@ -71,4 +71,30 @@
 			>;
 		};
 	};
+
+	fan54100: fan54100-charger@30 {
+		compatible = "fairchild,fan54100";
+		reg = <0x30>;
+
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <2 0xc6 6>;
+		gpios = <&pmi8994_gpios 7 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "fan-int-n";
+		supply-names = "battery";
+
+		fairchild,sotp-limit-c = <150>;
+		fairchild,fovp-limit-mv = <4700>;
+		fairchild,ocp-limit-ma = <6200>;
+	};
+};
+
+&pmi8994_gpios {
+	gpio@c600 { /* GPIO 7 - FAN54100_INT_N */
+		qcom,mode = <0>;		/* Digital Input */
+		qcom,pull = <5>;		/* No pull */
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
 };
