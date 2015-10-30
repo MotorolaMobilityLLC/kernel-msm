@@ -340,6 +340,7 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_UFP,		/* Type-C UFP */
 	POWER_SUPPLY_TYPE_DFP,		/* TYpe-C DFP */
 	POWER_SUPPLY_TYPE_PTP,		/* Greybus power transfer protocol */
+	POWER_SUPPLY_TYPE_SWITCH,	/* Charge Path Switch */
 };
 
 /* Indicates USB Type-C CC connection status */
