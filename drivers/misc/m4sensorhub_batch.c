@@ -20,6 +20,7 @@
  *
  */
 
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -39,6 +40,8 @@
 #define MAX_NUM_BATCH_SAMPLES 300
 
 #define MAX_BATCH_ERROR_COUNT 150
+
+#define MAX_BATCH_RETRY_COUNT 30
 
 struct m4sensorhub_batch_drvdata {
 	struct m4sensorhub_data *m4sensorhub;
@@ -134,38 +137,41 @@ static void m4_read_batch_data_locked(struct m4sensorhub_batch_drvdata *dd)
 	int ret, i;
 	int bytes_to_read;
 	int64_t monobase;
+	int retry_count = 0;
 
-	/* read the amount of data M4 expects to push.
-	 * This keeps changing at runtime */
-	ret = m4sensorhub_reg_read(dd->m4sensorhub,
+	do {
+		/* read the amount of data M4 expects to push.
+		 * This keeps changing at runtime */
+		ret = m4sensorhub_reg_read(
+				dd->m4sensorhub,
 				M4SH_REG_GENERAL_NUMBATCHSAMPLES,
 				(char *)&(dd->num_buffered_samples));
-	if (ret < 0) {
-		pr_err("%s: err:buffered data length(%d)\n", __func__, ret);
-		dd->num_buffered_samples = -1;
-		return;
-	}
+		if (ret < 0) {
+			pr_err("%s: err:buffered data length(%d)\n",
+			       __func__, ret);
+			dd->num_buffered_samples = -1;
+			return;
+		}
+		retry_count++;
+
+	} while (retry_count < MAX_BATCH_RETRY_COUNT &&
+		 dd->num_buffered_samples == 0);
 
 	if ((dd->num_buffered_samples > MAX_NUM_BATCH_SAMPLES) ||
 		(dd->num_buffered_samples <= 0)) {
-		pr_err("%s: Invalid number of samples (num=%d, max=%d)\n",
-			__func__, dd->num_buffered_samples,
-			MAX_NUM_BATCH_SAMPLES);
-		if (dd->num_buffered_samples == 0)
-			return;
-		/* Only count errors for nonzero values. The value returned
-		 * is zero sometimes but is not fatal */
+		pr_err("%s: Invalid number of samples (num=%d, max=%d retry_cnt=%d)\n",
+		       __func__, dd->num_buffered_samples,
+		       MAX_NUM_BATCH_SAMPLES, retry_count);
 		dd->error_count++;
 		if (dd->error_count >= MAX_BATCH_ERROR_COUNT) {
 			pr_err("%s: Maximum number of errors %d "
 			       "reached. Force panic.\n",
 			       __func__, dd->error_count);
-			panic("%s: M4 batching has failed--forcing panic...\n",
+			panic("%s: M4 batching has failed, panic...\n",
 			      __func__);
 		}
 		return;
 	}
-
 	/* Reset error_count to zero since no errors */
 	dd->error_count = 0;
 
