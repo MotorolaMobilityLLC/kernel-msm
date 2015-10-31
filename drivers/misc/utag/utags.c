@@ -537,7 +537,7 @@ static int replace_first_utag(struct utag *head, const char *name,
 	return 0;
 }
 
-static int flash_partition(struct blkdev *cb, const struct utag *tags)
+static int store_utags(struct ctrl *ctrl, const struct utag *tags)
 {
 	size_t written;
 	size_t tags_size;
@@ -545,6 +545,8 @@ static int flash_partition(struct blkdev *cb, const struct utag *tags)
 	int rc = 0;
 	mm_segment_t fs;
 	loff_t pos = 0;
+	struct file *fp = ctrl->main.filep;
+	struct blkdev *cb = &ctrl->main;
 
 	fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -555,28 +557,29 @@ static int flash_partition(struct blkdev *cb, const struct utag *tags)
 		goto out;
 	}
 
-	written = cb->filep->f_op->write(cb->filep, datap, tags_size, &pos);
+	written = fp->f_op->write(fp, datap, tags_size, &pos);
 	if (written < tags_size) {
-		pr_err("%s ERROR writing file (%s) ret %zu\n", __func__,
-		       cb->name, written);
+		pr_err("%s ERR writing file (%s) ret %zu\n", __func__,
+			cb->name, written);
 		rc = -EIO;
+	}
+
+	fp = ctrl->backup.filep;
+	cb = &ctrl->backup;
+	pos = 0;
+
+	if (fp) {
+		written = fp->f_op->write(fp, datap, tags_size, &pos);
+		if (written < tags_size) {
+			pr_err("%s ERR writing file (%s) ret %zu\n", __func__,
+				cb->name, written);
+			rc = -EIO;
+		}
 	}
 	vfree(datap);
 
  out:
 	set_fs(fs);
-	return rc;
-}
-
-static int store_utags(struct ctrl *ctrl, const struct utag *tags)
-{
-	int rc;
-
-	rc = flash_partition(&ctrl->main, tags);
-
-	if (flash_partition(&ctrl->backup, tags))
-		pr_err("%s flash backup utags failed\n", __func__);
-
 	return rc;
 }
 
