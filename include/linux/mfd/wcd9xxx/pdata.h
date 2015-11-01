@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -116,6 +116,10 @@ struct wcd9xxx_micbias_setting {
 	u32 cfilt1_mv; /* in mv */
 	u32 cfilt2_mv; /* in mv */
 	u32 cfilt3_mv; /* in mv */
+	u32 micb1_mv;
+	u32 micb2_mv;
+	u32 micb3_mv;
+	u32 micb4_mv;
 	/* Different WCD9xxx series codecs may not
 	 * have 4 mic biases. If a codec has fewer
 	 * mic biases, some of these properties will
@@ -130,11 +134,6 @@ struct wcd9xxx_micbias_setting {
 	u8 bias3_cap_mode;
 	u8 bias4_cap_mode;
 	bool bias2_is_headset_only;
-};
-
-enum codec_variant {
-	WCD9XXX,
-	WCD9330,
 };
 
 struct wcd9xxx_ocp_setting {

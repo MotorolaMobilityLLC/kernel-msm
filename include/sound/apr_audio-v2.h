@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -7208,6 +7208,8 @@ struct asm_dts_eagle_param_get {
 #define LSM_PARAM_ID_OPERATION_MODE			(0x00012C02)
 #define LSM_PARAM_ID_GAIN				(0x00012C03)
 #define LSM_PARAM_ID_CONNECT_TO_PORT			(0x00012C04)
+#define LSM_PARAM_ID_KEYWORD_DETECT_SENSITIVITY		(0x00012C05)
+#define LSM_PARAM_ID_USER_DETECT_SENSITIVITY		(0x00012C06)
 #define LSM_PARAM_ID_FEATURE_COMPENSATION_DATA		(0x00012C07)
 #define LSM_PARAM_ID_MIN_CONFIDENCE_LEVELS		(0x00012C07)
 #define LSM_MODULE_ID_LAB				(0x00012C08)
@@ -7232,6 +7234,7 @@ struct asm_dts_eagle_param_get {
 #define AFE_PARAM_ID_CDC_SLIMBUS_SLAVE_CFG		(0x00010235)
 #define AFE_PARAM_ID_CDC_REG_CFG			(0x00010236)
 #define AFE_PARAM_ID_CDC_REG_CFG_INIT			(0x00010237)
+#define AFE_PARAM_ID_CDC_REG_PAGE_CFG                   (0x00010296)
 
 #define AFE_MAX_CDC_REGISTERS_TO_CONFIG			(20)
 
@@ -7354,6 +7357,7 @@ struct afe_param_id_clip_bank_sel {
 
 /* Supported OSR clock values */
 #define Q6AFE_LPASS_OSR_CLK_12_P288_MHZ		0xBB8000
+#define Q6AFE_LPASS_OSR_CLK_9_P600_MHZ		0x927C00
 #define Q6AFE_LPASS_OSR_CLK_8_P192_MHZ		0x7D0000
 #define Q6AFE_LPASS_OSR_CLK_6_P144_MHZ		0x5DC000
 #define Q6AFE_LPASS_OSR_CLK_4_P096_MHZ		0x3E8000
@@ -7537,6 +7541,7 @@ enum afe_config_type {
 	AFE_AANC_VERSION,
 	AFE_CDC_CLIP_REGISTERS_CONFIG,
 	AFE_CLIP_BANK_SEL,
+	AFE_CDC_REGISTER_PAGE_CONFIG,
 	AFE_MAX_CONFIG_TYPES,
 };
 
@@ -7566,6 +7571,21 @@ struct afe_param_cdc_reg_cfg {
 	uint32_t reg_field_bit_mask;
 	uint16_t reg_bit_width;
 	uint16_t reg_offset_scale;
+} __packed;
+
+#define AFE_API_VERSION_CDC_REG_PAGE_CFG   1
+
+enum {
+	AFE_CDC_REG_PAGE_ASSIGN_PROC_ID_0 = 0,
+	AFE_CDC_REG_PAGE_ASSIGN_PROC_ID_1,
+	AFE_CDC_REG_PAGE_ASSIGN_PROC_ID_2,
+	AFE_CDC_REG_PAGE_ASSIGN_PROC_ID_3,
+};
+
+struct afe_param_cdc_reg_page_cfg {
+	uint32_t minor_version;
+	uint32_t enable;
+	uint32_t proc_id;
 } __packed;
 
 struct afe_param_cdc_reg_cfg_data {

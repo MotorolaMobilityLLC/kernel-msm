@@ -822,7 +822,6 @@ fail_cmd:
 	pr_debug("%s: port_id 0x%x rate %u delay_usec %d status %d\n",
 	__func__, port_id, rate, delay_entry.delay_usec, ret);
 	return ret;
-
 }
 
 static void remap_cal_data(struct cal_block_data *cal_block, int cal_index)

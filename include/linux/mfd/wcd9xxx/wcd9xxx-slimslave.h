@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,6 +38,8 @@
 #define TAIKO_SB_PGD_MAX_NUMBER_OF_RX_SLAVE_DEV_PORTS 13
 
 #define SLIM_MAX_RX_PORTS TAIKO_SB_PGD_MAX_NUMBER_OF_RX_SLAVE_DEV_PORTS
+
+#define SLIM_MAX_REG_ADDR (0x180 + 4 * (SLIM_MAX_RX_PORTS))
 
 #define TABLA_SB_PGD_RX_PORT_MULTI_CHANNEL_0_START_PORT_ID \
 	TABLA_SB_PGD_OFFSET_OF_RX_SLAVE_DEV_PORTS
@@ -114,14 +116,4 @@ int wcd9xxx_rx_vport_validation(u32 port_id,
 int wcd9xxx_tx_vport_validation(u32 vtable, u32 port_id,
 				struct wcd9xxx_codec_dai_data *codec_dai,
 				u32 num_codec_dais);
-int wcd9xxx_slim_ch_master_open(struct wcd9xxx *wcd9xxx,
-		u16 rate, u16 bit_sz, void **handle, u16 slim_channel);
-int wcd9xxx_slim_ch_master_close(struct wcd9xxx *wcd9xxx, void **handle);
-int wcd9xxx_slim_ch_master_status(struct wcd9xxx *wcd9xxx, void *handle,
-				  phys_addr_t phys, u32 *len);
-int wcd9xxx_slim_ch_master_enable_read(struct wcd9xxx *wcd9xxx, void *handle);
-int wcd9xxx_slim_ch_master_read(struct wcd9xxx *wcd9xxx, void *handle,
-				 phys_addr_t phys, u8 *mem, u32 read_len);
-
-
 #endif /* __WCD9310_SLIMSLAVE_H_ */
