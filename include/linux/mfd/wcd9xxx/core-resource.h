@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,15 @@ enum wcd9xxx_pm_state {
 	WCD9XXX_PM_ASLEEP,
 };
 
+enum {
+	WCD9XXX_INTR_STATUS_BASE = 0,
+	WCD9XXX_INTR_CLEAR_BASE,
+	WCD9XXX_INTR_MASK_BASE,
+	WCD9XXX_INTR_LEVEL_BASE,
+	WCD9XXX_INTR_CLR_COMMIT,
+	WCD9XXX_INTR_REG_MAX,
+};
+
 enum wcd9xxx_intf_status {
 	WCD9XXX_INTERFACE_TYPE_PROBING,
 	WCD9XXX_INTERFACE_TYPE_SLIMBUS,
@@ -59,6 +68,7 @@ struct wcd9xxx_core_resource {
 	bool irq_level_high[WCD9XXX_MAX_NUM_IRQS];
 	int num_irqs;
 	int num_irq_regs;
+	u16 intr_reg[WCD9XXX_INTR_REG_MAX];
 
 	/* Callback functions to read/write codec registers */
 	int (*codec_reg_read) (struct wcd9xxx_core_resource *,
@@ -131,6 +141,8 @@ int wcd9xxx_bulk_read(struct wcd9xxx_core_resource *,
 					unsigned short, int, u8 *);
 int wcd9xxx_bulk_write(struct wcd9xxx_core_resource*,
 					 unsigned short, int, u8*);
+int wcd9xxx_reg_update_bits(struct wcd9xxx_core_resource *core_res,
+			    unsigned short reg, u8 mask, u8 val);
 int wcd9xxx_irq_init(struct wcd9xxx_core_resource *);
 void wcd9xxx_irq_exit(struct wcd9xxx_core_resource *);
 int wcd9xxx_core_res_resume(

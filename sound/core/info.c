@@ -674,12 +674,42 @@ int snd_info_card_free(struct snd_card *card)
 	return 0;
 }
 
+/*
+ * snd_register_module_info - create and register module
+ * @module: the module pointer
+ * @name: the module name
+ * @parent: the parent directory
+ *
+ * Creates and registers new module entry.
+ *
+ * Return: The pointer of the new instance, or NULL on failure.
+ */
+struct snd_info_entry *snd_register_module_info(struct module *module,
+						const char *name,
+						struct snd_info_entry *parent)
+{
+	struct snd_info_entry *entry;
+
+	entry = snd_info_create_module_entry(module, name, parent);
+	if (!entry)
+		return NULL;
+
+	entry->mode = S_IFDIR | S_IRUGO | S_IXUGO;
+
+	if (snd_info_register(entry) < 0) {
+		snd_info_free_entry(entry);
+		return NULL;
+	}
+
+	return entry;
+}
+EXPORT_SYMBOL(snd_register_module_info);
 
 /**
  * snd_info_get_line - read one line from the procfs buffer
  * @buffer: the procfs buffer
  * @line: the buffer to store
- * @len: the max. buffer size - 1
+ * @len: the max. buffer size
  *
  * Reads one line from the buffer and stores the string.
  *
@@ -699,7 +729,7 @@ int snd_info_get_line(struct snd_info_buffer *buffer, char *line, int len)
 			buffer->stop = 1;
 		if (c == '\n')
 			break;
-		if (len) {
+		if (len > 1) {
 			len--;
 			*line++ = c;
 		}

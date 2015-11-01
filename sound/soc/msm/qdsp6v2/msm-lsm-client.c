@@ -117,7 +117,7 @@ static int msm_lsm_queue_lab_buffer(struct lsm_priv *prtd, int i)
 	cmd_read.buf_addr_lsw =
 		lower_32_bits(prtd->lsm_client->lab_buffer[i].phys);
 	cmd_read.buf_addr_msw =
-		upper_32_bits(prtd->lsm_client->lab_buffer[i].phys);
+		populate_upper_32_bits(prtd->lsm_client->lab_buffer[i].phys);
 	cmd_read.buf_size = prtd->lsm_client->lab_buffer[i].size;
 	cmd_read.mem_map_handle =
 		prtd->lsm_client->lab_buffer[i].mem_map_handle;
@@ -158,7 +158,8 @@ static int lsm_lab_buffer_sanity(struct lsm_priv *prtd,
 	for (i = 0; i < prtd->lsm_client->hw_params.period_count; i++) {
 		if ((lower_32_bits(prtd->lsm_client->lab_buffer[i].phys) ==
 			read_done->buf_addr_lsw) &&
-			(upper_32_bits(prtd->lsm_client->lab_buffer[i].phys) ==
+			(populate_upper_32_bits
+				(prtd->lsm_client->lab_buffer[i].phys) ==
 			read_done->buf_addr_msw) &&
 			(prtd->lsm_client->lab_buffer[i].mem_map_handle ==
 			read_done->mem_map_handle)) {
@@ -215,11 +216,6 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 				token, read_done);
 			return;
 		}
-		if (atomic_read(&prtd->read_abort)) {
-			dev_dbg(rtd->dev,
-				"%s: read abort set skip data\n", __func__);
-			return;
-		}
 		if (!lsm_lab_buffer_sanity(prtd, read_done, &buf_index)) {
 			dev_dbg(rtd->dev,
 				"%s: process read done index %d\n",
@@ -232,10 +228,16 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 				prtd->lsm_client->hw_params.period_count);
 				return;
 			}
-			prtd->dma_write += read_done->total_size;
+			prtd->dma_write += snd_pcm_lib_period_bytes(substream);
 			atomic_inc(&prtd->buf_count);
 			snd_pcm_period_elapsed(substream);
 			wake_up(&prtd->period_wait);
+			if (atomic_read(&prtd->read_abort)) {
+				dev_dbg(rtd->dev,
+					"%s: read abort set, skip queueing buffer\n",
+					__func__);
+				return;
+			}
 			/* queue the next period buffer */
 			buf_index = (buf_index + 1) %
 			prtd->lsm_client->hw_params.period_count;
@@ -277,6 +279,12 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 		prtd->event_status = krealloc(prtd->event_status,
 					sizeof(struct snd_lsm_event_status) +
 					payload_size, GFP_ATOMIC);
+		if (!prtd->event_status) {
+			dev_err(rtd->dev, "%s: no memory for event status\n",
+				__func__);
+			return;
+		}
+
 		prtd->event_status->status = status;
 		prtd->event_status->payload_size = payload_size;
 		if (likely(prtd->event_status)) {
@@ -898,7 +906,7 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			} else {
 				memcpy(user, prtd->event_status, size);
 				if (prtd->lsm_client->lab_enable
-					&& atomic_read(&prtd->read_abort)
+					&& !prtd->lsm_client->lab_started
 					&& prtd->event_status->status ==
 					LSM_VOICE_WAKEUP_STATUS_DETECTED) {
 					atomic_set(&prtd->read_abort, 0);
@@ -933,19 +941,6 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 		dev_dbg(rtd->dev, "%s: Starting LSM client session\n",
 			__func__);
 		if (!prtd->lsm_client->started) {
-			if (prtd->lsm_client->lab_enable &&
-				!prtd->lsm_client->lab_started) {
-				atomic_set(&prtd->read_abort, 0);
-				/* Push the first period buffer */
-				ret = msm_lsm_queue_lab_buffer(prtd, 0);
-				if (ret) {
-					dev_err(rtd->dev,
-						"%s: failed to queue buffers for LAB read %d\n",
-						__func__, ret);
-					break;
-				}
-				prtd->lsm_client->lab_started = true;
-			}
 			ret = q6lsm_start(prtd->lsm_client, true);
 			if (!ret) {
 				prtd->lsm_client->started = true;
@@ -1041,7 +1036,13 @@ static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 					prtd->lsm_client->session, rc);
 			prtd->lsm_client->lab_started = false;
 		}
-	break;
+		break;
+
+	case SNDRV_LSM_SET_PORT:
+		dev_dbg(rtd->dev, "%s: set LSM port\n", __func__);
+		rc = q6lsm_set_port_connected(prtd->lsm_client);
+		break;
+
 	default:
 		dev_dbg(rtd->dev,
 			"%s: Falling into default snd_lib_ioctl cmd 0x%x\n",
@@ -1882,7 +1883,7 @@ static int msm_lsm_pcm_copy(struct snd_pcm_substream *substream, int ch,
 	if (atomic_read(&prtd->read_abort)) {
 		dev_err(rtd->dev,
 			"%s: Read abort recieved\n", __func__);
-		return -EIO;
+		return 0;
 	}
 	prtd->appl_cnt = prtd->appl_cnt %
 		prtd->lsm_client->hw_params.period_count;

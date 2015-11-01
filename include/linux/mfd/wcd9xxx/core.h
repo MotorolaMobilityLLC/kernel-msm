@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -52,9 +52,26 @@
 #define TOMBAK_IS_1_0(ver) \
 	((ver == TOMBAK_VERSION_1_0) ? 1 : 0)
 
+#define TASHA_VERSION_1_0     0
+#define TASHA_VERSION_1_1     1
+#define TASHA_VERSION_2_0     2
+#define TASHA_IS_1_0(ver) \
+	((ver == TASHA_VERSION_1_0) ? 1 : 0)
+#define TASHA_IS_1_1(ver) \
+	((ver == TASHA_VERSION_1_1) ? 1 : 0)
+#define TASHA_IS_2_0(ver) \
+	((ver == TASHA_VERSION_2_0) ? 1 : 0)
+
 enum wcd9xxx_slim_slave_addr_type {
 	WCD9XXX_SLIM_SLAVE_ADDR_TYPE_TABLA,
 	WCD9XXX_SLIM_SLAVE_ADDR_TYPE_TAIKO,
+};
+
+enum codec_variant {
+	WCD9XXX,
+	WCD9330,
+	WCD9335,
+	WCD9326,
 };
 
 enum {
@@ -115,11 +132,50 @@ enum {
 };
 
 enum {
+	/* INTR_REG 0 */
+	WCD9335_IRQ_FLL_LOCK_LOSS = 1,
+	WCD9335_IRQ_HPH_PA_OCPL_FAULT,
+	WCD9335_IRQ_HPH_PA_OCPR_FAULT,
+	WCD9335_IRQ_EAR_PA_OCP_FAULT,
+	WCD9335_IRQ_HPH_PA_CNPL_COMPLETE,
+	WCD9335_IRQ_HPH_PA_CNPR_COMPLETE,
+	WCD9335_IRQ_EAR_PA_CNP_COMPLETE,
+	/* INTR_REG 1 */
+	WCD9335_IRQ_MBHC_SW_DET,
+	WCD9335_IRQ_MBHC_ELECT_INS_REM_DET,
+	WCD9335_IRQ_MBHC_BUTTON_PRESS_DET,
+	WCD9335_IRQ_MBHC_BUTTON_RELEASE_DET,
+	WCD9335_IRQ_MBHC_ELECT_INS_REM_LEG_DET,
+	WCD9335_IRQ_RESERVED_0,
+	WCD9335_IRQ_RESERVED_1,
+	WCD9335_IRQ_RESERVED_2,
+	/* INTR_REG 2 */
+	WCD9335_IRQ_LINE_PA1_CNP_COMPLETE,
+	WCD9335_IRQ_LINE_PA2_CNP_COMPLETE,
+	WCD9335_IRQ_LINE_PA3_CNP_COMPLETE,
+	WCD9335_IRQ_LINE_PA4_CNP_COMPLETE,
+	WCD9335_IRQ_SOUNDWIRE,
+	WCD9335_IRQ_VDD_DIG_RAMP_COMPLETE,
+	WCD9335_IRQ_RCO_ERROR,
+	WCD9335_IRQ_SVA_ERROR,
+	/* INTR_REG 3 */
+	WCD9335_IRQ_MAD_AUDIO,
+	WCD9335_IRQ_MAD_BEACON,
+	WCD9335_IRQ_MAD_ULTRASOUND,
+	WCD9335_IRQ_VBAT_ATTACK,
+	WCD9335_IRQ_VBAT_RESTORE,
+	WCD9335_IRQ_SVA_OUTBOX1,
+	WCD9335_IRQ_SVA_OUTBOX2,
+	WCD9335_NUM_IRQS,
+};
+
+enum {
 	TABLA_NUM_IRQS = WCD9310_NUM_IRQS,
 	SITAR_NUM_IRQS = WCD9310_NUM_IRQS,
 	TAIKO_NUM_IRQS = WCD9XXX_NUM_IRQS,
 	TAPAN_NUM_IRQS = WCD9306_NUM_IRQS,
 	TOMTOM_NUM_IRQS = WCD9330_NUM_IRQS,
+	TASHA_NUM_IRQS = WCD9335_NUM_IRQS,
 };
 
 /*
@@ -167,6 +223,19 @@ enum wcd9xxx_chipid_major {
 	TAIKO_MAJOR = cpu_to_le16(0x102),
 	TAPAN_MAJOR = cpu_to_le16(0x103),
 	TOMTOM_MAJOR = cpu_to_le16(0x105),
+	TASHA_MAJOR = cpu_to_le16(0x0),
+	TASHA2P0_MAJOR = cpu_to_le16(0x107),
+};
+
+enum codec_power_states {
+	WCD_REGION_POWER_COLLAPSE_REMOVE,
+	WCD_REGION_POWER_COLLAPSE_BEGIN,
+	WCD_REGION_POWER_DOWN,
+};
+
+enum wcd_power_regions {
+	WCD9XXX_DIG_CORE_REGION_1,
+	WCD9XXX_MAX_PWR_REGIONS,
 };
 
 struct wcd9xxx_codec_type {
@@ -178,6 +247,12 @@ struct wcd9xxx_codec_type {
 	int version; /* -1 to retrive version from chip version register */
 	enum wcd9xxx_slim_slave_addr_type slim_slave_type;
 	u16 i2c_chip_status;
+};
+
+struct wcd9xxx_power_region {
+	enum codec_power_states power_state;
+	u16 pwr_collapse_reg_min;
+	u16 pwr_collapse_reg_max;
 };
 
 struct wcd9xxx {
@@ -214,8 +289,20 @@ struct wcd9xxx {
 	struct wcd9xxx_ch *rx_chs;
 	struct wcd9xxx_ch *tx_chs;
 	u32 mclk_rate;
+	enum codec_variant type;
+	bool using_regmap;
+	struct regmap *regmap;
 
 	const struct wcd9xxx_codec_type *codec_type;
+	bool prev_pg_valid;
+	u8 prev_pg;
+	struct wcd9xxx_power_region *wcd9xxx_pwr[WCD9XXX_MAX_PWR_REGIONS];
+};
+
+struct wcd9xxx_reg_val {
+	unsigned short reg; /* register address */
+	u8 *buf;            /* buffer to be written to reg. addr */
+	int bytes;          /* number of bytes to be written */
 };
 
 int wcd9xxx_interface_reg_read(struct wcd9xxx *wcd9xxx, unsigned short reg);
@@ -226,12 +313,30 @@ int wcd9xxx_slim_write_repeat(struct wcd9xxx *wcd9xxx, unsigned short reg,
 			     int bytes, void *src);
 int wcd9xxx_slim_reserve_bw(struct wcd9xxx *wcd9xxx,
 			    u32 bw_ops, bool commit);
+int wcd9xxx_set_power_state(struct wcd9xxx *, enum codec_power_states,
+			    enum wcd_power_regions);
+int wcd9xxx_get_current_power_state(struct wcd9xxx *,
+				    enum wcd_power_regions);
+
+int wcd9xxx_slim_bulk_write(struct wcd9xxx *wcd9xxx,
+			    struct wcd9xxx_reg_val *bulk_reg,
+			    unsigned int size, bool interface);
+
+void wcd9xxx_disable_supplies(struct wcd9xxx *wcd9xxx,
+				     void *pdata);
+
+int wcd9xxx_disable_static_supplies_to_optimum(struct wcd9xxx *wcd9xxx,
+						void *data);
+int wcd9xxx_enable_static_supplies_to_optimum(
+			struct wcd9xxx *wcd9xxx,
+			void *pdata);
 
 #if defined(CONFIG_WCD9310_CODEC) || \
 	defined(CONFIG_WCD9304_CODEC) || \
 	defined(CONFIG_WCD9320_CODEC) || \
 	defined(CONFIG_WCD9330_CODEC) || \
 	defined(CONFIG_WCD9306_CODEC) || \
+	defined(CONFIG_WCD9335_CODEC) || \
 	defined(CONFIG_SND_SOC_MSM8X16_WCD)
 int __init wcd9xxx_irq_of_init(struct device_node *node,
 			       struct device_node *parent);

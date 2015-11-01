@@ -15,6 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/export.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/qdsp6v2/apr.h>
@@ -25,12 +26,15 @@
 #include <linux/iommu.h>
 #include <linux/msm_iommu_domains.h>
 
+#define MSM_AUDIO_SMMU_SID_OFFSET 32
+
 struct msm_audio_ion_private {
 	bool smmu_enabled;
 	bool audioheap_enabled;
 	struct iommu_group *group;
 	int32_t domain_id;
 	struct iommu_domain *domain;
+	u64 smmu_sid_bits;
 };
 
 static struct msm_audio_ion_private msm_audio_ion_data = {0,};
@@ -118,6 +122,7 @@ err_ion_client:
 err:
 	return rc;
 }
+EXPORT_SYMBOL(msm_audio_ion_alloc);
 
 int msm_audio_ion_import(const char *name, struct ion_client **client,
 			struct ion_handle **handle, int fd,
@@ -216,6 +221,7 @@ int msm_audio_ion_free(struct ion_client *client, struct ion_handle *handle)
 	msm_audio_ion_client_destroy(client);
 	return 0;
 }
+EXPORT_SYMBOL(msm_audio_ion_free);
 
 int msm_audio_ion_mmap(struct audio_buffer *ab,
 		       struct vm_area_struct *vma)
@@ -464,6 +470,8 @@ static int msm_audio_ion_get_phys(struct ion_client *client,
 		pr_debug("client=%p, domain=%p, domain_id=%d, group=%p",
 			client, msm_audio_ion_data.domain,
 			msm_audio_ion_data.domain_id, msm_audio_ion_data.group);
+		/* Append the SMMU SID information to the address */
+		*addr |= msm_audio_ion_data.smmu_sid_bits;
 	} else {
 		/* SMMU is disabled*/
 		rc = ion_phys(client, handle, addr, len);
@@ -472,12 +480,31 @@ static int msm_audio_ion_get_phys(struct ion_client *client,
 	return rc;
 }
 
+
+u32 msm_audio_ion_get_smmu_sid_mode32(void)
+{
+	if (msm_audio_ion_data.smmu_enabled)
+		return upper_32_bits(msm_audio_ion_data.smmu_sid_bits);
+	else
+		return 0;
+}
+
+u32 populate_upper_32_bits(ion_phys_addr_t pa)
+{
+	if (sizeof(ion_phys_addr_t) == sizeof(u32))
+		return msm_audio_ion_get_smmu_sid_mode32();
+	else
+		return upper_32_bits(pa);
+}
+
 static int msm_audio_ion_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	const char *msm_audio_ion_dt = "qcom,smmu-enabled";
+	const char *smmu_sid_dt = "qcom,smmu-sid";
 	bool smmu_enabled;
 	enum apr_subsys_state q6_state;
+	u32 smmu_sid = 0;
 
 	if (pdev->dev.of_node == NULL) {
 		pr_err("%s: device tree is not found\n", __func__);
@@ -497,6 +524,13 @@ static int msm_audio_ion_probe(struct platform_device *pdev)
 			return -EPROBE_DEFER;
 		} else
 			pr_debug("%s: adsp is ready\n", __func__);
+
+		rc = of_property_read_u32(pdev->dev.of_node,
+				smmu_sid_dt, &smmu_sid);
+		if (rc)
+			pr_debug("could not get smmu id\n");
+		msm_audio_ion_data.smmu_sid_bits =
+			(u64)smmu_sid << MSM_AUDIO_SMMU_SID_OFFSET;
 
 		msm_audio_ion_data.group = iommu_group_find("lpass_audio");
 		if (!msm_audio_ion_data.group) {
