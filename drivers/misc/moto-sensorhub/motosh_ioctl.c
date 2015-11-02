@@ -863,11 +863,10 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 					"Reading get gyro cal failed\n");
 				break;
 			}
-		} else {
-			memcpy(&readbuff[0], motosh_g_gyro_cal,
+			memcpy(motosh_g_gyro_cal, &readbuff[0],
 				MOTOSH_GYRO_CAL_SIZE);
 		}
-		if (copy_to_user(argp, &readbuff[0],
+		if (copy_to_user(argp, motosh_g_gyro_cal,
 				MOTOSH_GYRO_CAL_SIZE))
 			err = -EFAULT;
 		break;
