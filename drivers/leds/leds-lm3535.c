@@ -72,6 +72,15 @@
 
 #define MODULE_NAME "leds_lm3535"
 
+/* DIM Value 5 - 9
+ * 5: Doze brightness
+ * 6: Dim brightness
+ * 7-9: Auto brightness for darkness
+ */
+#define AUTO_DARK_VALUE_MIN	7
+#define AUTO_DARK_VALUE_MAX	9
+const unsigned AUTO_DARK_BVALUE[] = {36, 42, 52};
+
 /******************************************************************************
  *  LM3535 registers
  ******************************************************************************/
@@ -812,6 +821,18 @@ static void lm3535_brightness_set (struct led_classdev *led_cdev,
 	if (atomic_read(&lm3535_data.docked) && (bvalue < MIN_DOCK_BVALUE))
 		bvalue = MIN_DOCK_BVALUE; /* hard code for dock mode */
 #endif /* CONFIG_DOCK_STATUS_NOTIFY */
+
+	/* convert bvalue for auto brightness in darkness environment */
+	if ((led_cdev->brightness >= AUTO_DARK_VALUE_MIN) &&
+	    (led_cdev->brightness <= AUTO_DARK_VALUE_MAX)) {
+		unsigned index = led_cdev->brightness - AUTO_DARK_VALUE_MIN;
+		unsigned autob = AUTO_DARK_BVALUE[index];
+		/* only take the new settings when the dim value
+		 * is less than auto brightness
+		 */
+		if (bvalue < autob)
+			bvalue = autob;
+	}
 
     if (bvalue == lm3535_data.bvalue)
 	goto _skip_set_;
