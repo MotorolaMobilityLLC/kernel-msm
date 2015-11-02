@@ -128,5 +128,8 @@ void platform_enable_timer(BOOL enable);
  * Description:     Perform a blocking software delay in intervals of 10us
  ******************************************************************************/
 void platform_delay_10us(UINT32 delayCount);
+void platform_disableSuperspeedUSB(void);
+void platform_enableSuperspeedUSB(int CC1, int CC2);
+void platform_toggleAudioSwitch(bool enable);
 
 #endif // _FSC_PLATFORM_H_
