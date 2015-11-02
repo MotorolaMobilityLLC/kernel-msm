@@ -35,7 +35,7 @@ void SetStateAlternateDRP(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -260,7 +260,7 @@ void SetStateAlternateUnattachedSink(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// run continuously
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -298,7 +298,7 @@ void SetStateAlternateAudioAccessory(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
