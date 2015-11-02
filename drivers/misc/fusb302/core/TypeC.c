@@ -30,6 +30,8 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  *****************************************************************************/
+#include <linux/printk.h>
+#include <linux/kernel.h>
 #include "TypeC.h"
 #include "Log.h"
 #include "fusb30X.h"
@@ -165,8 +167,8 @@ void InitializeTypeCVariables(void)
 	Registers.Control.TOG_RD_ONLY = 1;
 	DeviceWrite(regControl2, 1, &Registers.Control.byte[2]);
 
-	blnSMEnabled = FALSE;	// Enable the TypeC state machine by default
-	blnAccSupport = FALSE;	// Disable accessory support by default
+	blnSMEnabled = FALSE;	/* Disable the TypeC state machine by default*/
+	blnAccSupport = TRUE;	/* Enable accessory support by default*/
 	blnSrcPreferred = FALSE;	// Clear the source preferred flag by default
 	blnSnkPreferred = FALSE;
 	g_Idle = FALSE;
@@ -186,7 +188,7 @@ void InitializeTypeCVariables(void)
 		PortType = USBTypeC_DRP;
 		break;
 	}
-
+	PortType = USBTypeC_DRP;
 	//Disabled??
 	//This gets changed anyway in init to delayUnattached
 	ConnState = Disabled;	// Initialize to the disabled state?
@@ -234,6 +236,30 @@ void EnableTypeCStateMachine(void)
 	Timer_tms = 0;
 	Timer_S = 0;
 }
+void dump_registers(u8 *reg_status)
+{
+	char log[512];
+	int i, len = 0;
+	u8 byte = 0;
+	int reg_addr[] = {regDeviceID, regSwitches0, regSwitches1,
+				regMeasure, regSlice, regControl0,
+				regControl1, regControl2, regControl3,
+				regMask, regPower, regReset,
+				regOCPreg, regMaska, regMaskb,
+				regControl4};
+	for (i = 0; i < sizeof(reg_addr)/sizeof(reg_addr[0]); i++) {
+		DeviceRead(reg_addr[i], 1, &byte);
+		len += snprintf(log+len, 512, "%02xH:%02x ", reg_addr[i], byte);
+	}
+	if (NULL != reg_status) {
+		for (i = 0; i < 7; i++) {
+			len += snprintf(log+len, 512,
+					"%02xH:%02x ", i+regStatus0a,
+					reg_status[i]);
+		}
+	}
+	pr_debug("%s\n", log);
+}
 /*******************************************************************************
  * Function:        StateMachineTypeC
  * Input:           None
@@ -254,6 +280,7 @@ void StateMachineTypeC(void)
 
 		if (platform_get_device_irq_state()) {
 			DeviceRead(regStatus0a, 7, &Registers.Status.byte[0]);	// Read the interrupta, interruptb, status0, status1 and interrupt registers
+			dump_registers(&Registers.Status.byte[0]);
 		}
 
 		if (USBPDActive)	// Only call the USB PD routines if we have enabled the block
@@ -261,7 +288,8 @@ void StateMachineTypeC(void)
 			USBPDProtocol();	// Call the protocol state machine to handle any timing critical operations
 			USBPDPolicyEngine();	// Once we have handled any Type-C and protocol events, call the USB PD Policy Engine
 		}
-
+		pr_debug("ConnState is %d USBPDActive is %d\n",
+				 ConnState, USBPDActive);
 		switch (ConnState) {
 		case Disabled:
 			StateMachineDisabled();
@@ -637,7 +665,7 @@ void StateMachineAudioAccessory(void)
 	{
 		g_Idle = TRUE;	// Idle until COMP because CC timer has reset to Ra
 		Registers.Mask.byte = 0xFF;
-		Registers.Mask.M_COMP_CHNG = 0;
+		Registers.Mask.M_BC_LVL = 0;
 		DeviceWrite(regMask, 1, &Registers.Mask.byte);
 		Registers.MaskAdv.byte[0] = 0xFF;
 		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -831,6 +859,9 @@ void SetStateErrorRecovery(void)
 
 void SetStateDelayUnattached(void)
 {
+	platform_disableSuperspeedUSB();
+	if (AudioAccessory == ConnState)
+		platform_toggleAudioSwitch(false);
 #ifndef FPGA_BOARD
 	SetStateUnattached();
 	return;
@@ -1096,7 +1127,7 @@ void SetStateAttachedSource(void)
 		setDebounceVariablesCC2(CCTypeUndefined);
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
-
+	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	USBPDEnable(TRUE, TRUE);	// Enable the USB PD state machine if applicable (no need to write to Device again), set as DFP
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
@@ -1143,6 +1174,7 @@ void SetStateAttachedSink(void)
 		Registers.Switches.byte[0] = 0x0B;
 	}
 	DeviceWrite(regSwitches0, 1, &Registers.Switches.byte[0]);	// Commit the switch state
+	platform_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	USBPDEnable(TRUE, FALSE);	// Enable the USB PD state machine (no need to write Device again since we are doing it here)
 	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	StateTimer = T_TIMER_DISABLE;	// Disable the state timer, not used in this state
@@ -1451,6 +1483,7 @@ void SetStateAudioAccessory(void)
 	PDDebounce = tCCDebounce;	// Once in this state, we are waiting for the lines to be stable for tCCDebounce before changing states
 	CCDebounce = T_TIMER_DISABLE;	// Disable the 2nd level debouncing initially to force completion of a 1st level debouncing
 	ToggleTimer = T_TIMER_DISABLE;	// Once we are in the audio.accessory state, we are going to stop toggling and only monitor CC1
+	platform_toggleAudioSwitch(true);
 	WriteStateLog(&TypeCStateLog, ConnState, Timer_tms, Timer_S);
 }
 
