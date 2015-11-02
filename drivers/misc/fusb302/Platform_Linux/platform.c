@@ -49,7 +49,34 @@ BOOL platform_get_device_irq_state(void)
 {
 	return fusb_GPIO_Get_IntN()? TRUE : FALSE;
 }
+/*dump usbpd fifo log*/
+#define regFIFO 0x43
+void dump_usbpdlog(unsigned long RegisterAddress,
+					unsigned char DataLength,
+					unsigned char *Data,
+					BOOL b_read
+					)
+{
+	char log[256];
+	char pd_read_mark[] = "\n[fusbpd]<<<<<";
+	char pd_write_mark[] = "\n[fusbpd]>>>>>";
+	int i, s_ret = 0;
 
+	if (DataLength > ((sizeof(log) - sizeof(pd_read_mark))/3))
+		return;
+	if (regFIFO == RegisterAddress) {
+		if (b_read)
+			s_ret = snprintf(log , sizeof(log),
+							 "%s", pd_read_mark);
+		else
+			s_ret = snprintf(log , sizeof(log),
+							 "%s", pd_write_mark);
+		for (i = 0; i < DataLength; i++)
+			s_ret += snprintf(log+s_ret, sizeof(log) - s_ret,
+							  " %2x", Data[i]);
+		pr_debug("%s\n", log);
+	}
+}
 /*******************************************************************************
 * Function:        platform_i2c_write
 * Input:           SlaveAddress - Slave device bus address
@@ -77,6 +104,7 @@ BOOL platform_i2c_write(unsigned char SlaveAddress,
 	} else
 	    if (fusb_I2C_WriteData
 		((unsigned char)RegisterAddress, DataLength, Data)) {
+		dump_usbpdlog(RegisterAddress, DataLength, Data, FALSE);
 		ret = TRUE;
 	} else			// I2C Write failure
 	{
@@ -130,6 +158,8 @@ BOOL platform_i2c_read(unsigned char SlaveAddress,
 			ret = FALSE;
 		} else {
 			ret = TRUE;
+			dump_usbpdlog(RegisterAddress, DataLength,
+						  Data, TRUE);
 		}
 	} else {
 		for (i = 0; i < DataLength; i++) {
@@ -137,6 +167,8 @@ BOOL platform_i2c_read(unsigned char SlaveAddress,
 			    ((UINT8) RegisterAddress + i, &temp)) {
 				Data[i] = temp;
 				ret = TRUE;
+				dump_usbpdlog(RegisterAddress, DataLength,
+							  Data, TRUE);
 			} else {
 				printk(KERN_ERR
 				       "%s - I2C read failed! RegisterAddress: 0x%02x\n",
