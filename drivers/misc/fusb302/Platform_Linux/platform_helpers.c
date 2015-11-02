@@ -69,7 +69,7 @@ int fusb_InitializeGPIO(void)
 	gpio_export(chip->gpio_IntN, false);
 	gpio_export_link(&chip->client->dev, FUSB_DT_GPIO_INTN,
 			 chip->gpio_IntN);
-
+#ifdef FPGA_BOARD
 	// VBus 5V
 	chip->gpio_VBus5V = of_get_named_gpio(node, FUSB_DT_GPIO_VBUS_5V, 0);
 	if (!gpio_is_valid(chip->gpio_VBus5V)) {
@@ -116,7 +116,7 @@ int fusb_InitializeGPIO(void)
 			return ret;
 		}
 	}
-
+#endif
 #ifdef DEBUG
 	// State Machine Debug Notification
 	// Optional GPIO - toggles each time the state machine is called
@@ -150,6 +150,7 @@ int fusb_InitializeGPIO(void)
 
 void fusb_GPIO_Set_VBus5v(bool set)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		printk(KERN_ALERT "FUSB  %s - Error: Chip structure is NULL!\n",
@@ -161,10 +162,12 @@ void fusb_GPIO_Set_VBus5v(bool set)
 
 	printk(KERN_DEBUG "FUSB  %s - VBus 5V set to: %d\n", __func__,
 	       chip->gpio_VBus5V_value ? 1 : 0);
+#endif
 }
 
 void fusb_GPIO_Set_VBusOther(bool set)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		printk(KERN_ALERT "FUSB  %s - Error: Chip structure is NULL!\n",
@@ -175,10 +178,12 @@ void fusb_GPIO_Set_VBusOther(bool set)
 		gpio_set_value(chip->gpio_VBusOther, set ? 1 : 0);
 	}
 	chip->gpio_VBusOther_value = set;
+#endif
 }
 
 bool fusb_GPIO_Get_VBus5v(void)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		printk(KERN_ALERT "FUSB  %s - Error: Chip structure is NULL!\n",
@@ -193,10 +198,13 @@ bool fusb_GPIO_Get_VBus5v(void)
 	}
 
 	return chip->gpio_VBus5V_value;
+#endif
+	return true;
 }
 
 bool fusb_GPIO_Get_VBusOther(void)
 {
+#ifdef FPGA_BOARD
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
 		printk(KERN_ALERT "FUSB  %s - Error: Chip structure is NULL!\n",
@@ -211,6 +219,8 @@ bool fusb_GPIO_Get_VBusOther(void)
 	}
 
 	return chip->gpio_VBusOther_value;
+#endif
+	return true;
 }
 
 bool fusb_GPIO_Get_IntN(void)
@@ -525,8 +535,10 @@ void fusb_StartTimers(void)
 		       __func__);
 		return;
 	}
+	mutex_lock(&chip->lock);
 	ktime = ktime_set(0, g_fusb_timer_tick_period_ns);	// Convert our timer period (in ns) to ktime
 	hrtimer_start(&chip->timer_state_machine, ktime, HRTIMER_MODE_REL);	// Start the timer
+	mutex_unlock(&chip->lock);
 }
 
 void fusb_StopTimers(void)
@@ -2243,7 +2255,9 @@ int fusb_EnableInterrupts(void)
 		fusb_GPIO_Cleanup();
 		return ret;
 	}
-
+	device_init_wakeup(&chip->client->dev, true);
+	enable_irq_wake(chip->gpio_IntN_irq);
+	enable_irq(chip->gpio_IntN_irq);
 	return 0;
 }
 
@@ -2270,9 +2284,9 @@ static irqreturn_t _fusb_isr_intn(int irq, void *dev_id)
 		chip->dbgSMRollovers++;	// Record a moderate amount of rollovers
 	}
 #endif // DEBUG
-
+	pm_stay_awake(&chip->client->dev);
 	core_state_machine();	// Run the state machine
-
+	pm_relax(&chip->client->dev);
 	return IRQ_HANDLED;
 }
 
