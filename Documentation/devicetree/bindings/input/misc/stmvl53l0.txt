@@ -1,0 +1,29 @@
+st stmvl53l0 laser  driver
+
+Required properties:
+
+ - compatible		: Should be "st,stmvl53l0" .
+
+Optional properites:
+
+
+ Example:
+	st,stmvl53l0 {
+		cell-index = <1>;
+		compatible = "st,stmvl53l0";
+		qcom,cci-master = <0>;
+		cam_vio-supply = <&pm8994_lvs1>;
+		qcom,cam-vreg-name = "cam_vio";
+		qcom,cam-vreg-min-voltage = <0>;
+		qcom,cam-vreg-max-voltage = <0>;
+		qcom,cam-vreg-op-mode = <0>;
+		gpios =<&pm8994_gpios 10 0>,
+			  <&tlmm 119 0>;
+		qcom,gpio-reset = <0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 1>;
+		qcom,gpio-req-tbl-label = "TOF_XSHUTDOWN","TOF_INT";
+		pinctrl-names = "laser_default", "laser_suspend";
+		pinctrl-0 = <&laser_active>;
+		pinctrl-1 = <&laser_suspend>;
+	};
