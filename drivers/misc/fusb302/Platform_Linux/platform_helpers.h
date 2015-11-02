@@ -224,5 +224,6 @@ void fusb_StopThreads(void);
 void fusb_ScheduleWork(void);
 
 #endif // FSC_INTERRUPT_TRIGGERED, else
+extern int disable_ss_switch;
 
 #endif // __FUSB_PLATFORM_HELPERS_H_
