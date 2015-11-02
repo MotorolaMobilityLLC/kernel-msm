@@ -22,6 +22,9 @@
 #include "../core/core.h"	// GetDeviceTypeCStatus
 #include "fusb30x_driver.h"
 
+int disable_ss_switch;
+module_param(disable_ss_switch, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
 /******************************************************************************
 * Driver functions
 ******************************************************************************/
