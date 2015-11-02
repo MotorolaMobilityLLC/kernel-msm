@@ -364,7 +364,7 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq_status & M_CHOPCHOP) {
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_CHOPCHOP,
-						0,
+						NULL,
 						0, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev, "Sending Chopchop");
@@ -399,6 +399,11 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			SH_TO_H32(buf + WAKE_IRQ_IDX_LIFT + LIFT_DISTANCE),
 			SH_TO_H32(buf + WAKE_IRQ_IDX_LIFT + LIFT_ROTATION),
 			SH_TO_H32(buf + WAKE_IRQ_IDX_LIFT + LIFT_GRAV_DIFF));
+	}
+	if (irq_status & M_UPDATE_GYRO_CAL) {
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Save Gyro Cal Table");
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_GYRO_CAL,
+				NULL, 0, 0, stm_ws->ts_ns);
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
