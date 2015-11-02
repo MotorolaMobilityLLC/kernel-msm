@@ -36,9 +36,95 @@ const char *FUSB_DT_INTERRUPT_INTN = "fsc_interrupt_int_n";	// Name of the INT_N
 static irqreturn_t _fusb_isr_intn(int irq, void *dev_id);
 #endif // FSC_INTERRUPT_TRIGGERED
 
+static int fusb_toggleAudioSwitch(bool enable)
+{
+	int aud_det_gpio, aud_sw_sel_gpio;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+				 __func__);
+		return -ENOMEM;
+	}
+	aud_det_gpio = chip->gpios[FUSB_AUD_DET_INDEX];
+	aud_sw_sel_gpio = chip->gpios[FUSB_AUD_SW_SEL_INDEX];
+	if (!(gpio_is_valid(aud_det_gpio) &&
+		gpio_is_valid(aud_sw_sel_gpio)))
+		return -ENODEV;
+	pr_debug("%sabling, Audio Switch\n", enable ? "En" : "Dis");
+	if (enable) {
+		gpio_set_value(aud_sw_sel_gpio, 1);
+		gpio_set_value(aud_det_gpio, 0);
+	} else {
+		gpio_set_value(aud_sw_sel_gpio, 0);
+		gpio_set_value(aud_det_gpio, 1);
+	}
+	return 0;
+}
+
+static int fusb_enableSuperspeedUSB(int CC1, int CC2)
+{
+	int ss_output_en_gpio, ss_sw_sel_gpio;
+	int sw_val  = 0;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+				 __func__);
+		return -ENOMEM;
+	}
+	ss_output_en_gpio = chip->gpios[FUSB_SS_OE_EN_INDEX];
+	ss_sw_sel_gpio = chip->gpios[FUSB_SS_SW_SEL_INDEX];
+	if (disable_ss_switch)
+		return 0;
+	if (!(gpio_is_valid(ss_output_en_gpio) &&
+		gpio_is_valid(ss_sw_sel_gpio)))
+		return -ENODEV;
+	/* Default switch position to 0 for all other values of CC */
+	if (CC2 && !CC1)
+		sw_val = 1;
+	pr_debug("Setting SS_SW_SEL to %d\n", sw_val);
+	gpio_set_value(ss_sw_sel_gpio, sw_val);
+	pr_debug("Setting SS_OE_EN to enabled\n");
+	gpio_set_value(ss_output_en_gpio, 0);
+	return 0;
+}
+static int fusb_disableSuperspeedUSB(void)
+{
+	int ss_output_en_gpio;
+	struct fusb30x_chip *chip = fusb30x_GetChip();
+
+	if (!chip) {
+		pr_alert("FUSB  %s - Error: Chip structure is NULL!\n",
+			   __func__);
+		return -ENOMEM;
+	}
+	ss_output_en_gpio = chip->gpios[FUSB_SS_OE_EN_INDEX];
+	if (disable_ss_switch)
+		return 0;
+	if (gpio_is_valid(ss_output_en_gpio)) {
+		pr_debug("Setting SS OE EN Switch to disabled\n");
+		gpio_set_value(ss_output_en_gpio, 1);
+		return 0;
+	}
+	return -ENODEV;
+}
+void platform_disableSuperspeedUSB(void)
+{
+	fusb_disableSuperspeedUSB();
+}
+void platform_enableSuperspeedUSB(int CC1, int CC2)
+{
+	fusb_enableSuperspeedUSB(CC1, CC2);
+}
+void platform_toggleAudioSwitch(bool enable)
+{
+	fusb_toggleAudioSwitch(enable);
+}
 int fusb_InitializeGPIO(void)
 {
-	int ret = 0;
+	int i, gpio_cnt, label_cnt;
+	const char *label_prop = "fusb,gpio-labels";
 	struct device_node *node;
 	struct fusb30x_chip *chip = fusb30x_GetChip();
 	if (!chip) {
@@ -48,7 +134,43 @@ int fusb_InitializeGPIO(void)
 	}
 	/* Get our device tree node */
 	node = chip->client->dev.of_node;
+	gpio_cnt = of_gpio_count(node);
+	label_cnt = of_property_count_strings(node, label_prop);
+	if (gpio_cnt > ARRAY_SIZE(chip->gpios)) {
+		dev_err(&chip->client->dev, "%s:%d gpio count is greater than %zu.\n",
+			__func__, __LINE__, ARRAY_SIZE(chip->gpios));
+		return -EINVAL;
+	}
+	if (label_cnt != gpio_cnt) {
+		dev_err(&chip->client->dev, "%s:%d label count does not match gpio count.\n",
+		__func__, __LINE__);
+		return -EINVAL;
+	}
+	for (i = 0; i < gpio_cnt; i++) {
+		enum of_gpio_flags flags = 0;
+		int gpio;
+		const char *label = NULL;
 
+		gpio = of_get_gpio_flags(node, i, &flags);
+		if (gpio < 0) {
+			dev_err(&chip->client->dev, "%s:%d of_get_gpio failed: %d\n",
+				__func__, __LINE__, gpio);
+			return gpio;
+		}
+		if (i < label_cnt)
+			of_property_read_string_index(node, label_prop,
+			i, &label);
+		gpio_request_one(gpio, flags, label);
+		gpio_export(gpio, true);
+		gpio_export_link(&chip->client->dev, label, gpio);
+		dev_dbg(&chip->client->dev, "%s: gpio=%d, flags=0x%x, label=%s\n",
+		__func__, gpio, flags, label);
+		chip->gpios[i] = gpio;
+	}
+	chip->gpio_IntN  = chip->gpios[FUSB_INT_INDEX];
+	pr_debug("irq_gpio number is %d\n",
+		chip->gpios[FUSB_INT_INDEX]);
+#ifdef FPGA_BOARD
 	/* Get our GPIO pins from the device tree, and then set their direction (input/output) */
 	chip->gpio_IntN = of_get_named_gpio(node, FUSB_DT_GPIO_INTN, 0);
 	if (!gpio_is_valid(chip->gpio_IntN)) {
@@ -69,7 +191,6 @@ int fusb_InitializeGPIO(void)
 	gpio_export(chip->gpio_IntN, false);
 	gpio_export_link(&chip->client->dev, FUSB_DT_GPIO_INTN,
 			 chip->gpio_IntN);
-#ifdef FPGA_BOARD
 	// VBus 5V
 	chip->gpio_VBus5V = of_get_named_gpio(node, FUSB_DT_GPIO_VBUS_5V, 0);
 	if (!gpio_is_valid(chip->gpio_VBus5V)) {
