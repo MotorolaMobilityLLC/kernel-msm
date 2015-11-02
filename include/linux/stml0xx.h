@@ -56,12 +56,14 @@ enum sh_spi_msg {
 #include <linux/spi/spi.h>
 
 /* STML0XX memory map */
+#define GYRO_CALIBRATION
 #define VMM_ENTRY(reg, id, writable, addr, size) id,
 #define DSP
 enum vmm_ids {
 #include <linux/motosh_vmm.h>
 };
 #undef VMM_ENTRY
+#undef GYRO_CALIBRATION
 /* STML0XX memory map end */
 
 #define LIGHTING_TABLE_SIZE 32
@@ -425,6 +427,7 @@ extern unsigned char stml0xx_g_motion_dur;
 extern unsigned char stml0xx_g_zmotion_dur;
 extern unsigned char stml0xx_g_control_reg[STML0XX_CONTROL_REG_SIZE];
 extern unsigned char stml0xx_g_mag_cal[STML0XX_MAG_CAL_SIZE];
+extern unsigned char stml0xx_g_gyro_cal[STML0XX_GYRO_CAL_SIZE];
 extern unsigned short stml0xx_g_control_reg_restore;
 extern bool stml0xx_g_booted;
 
