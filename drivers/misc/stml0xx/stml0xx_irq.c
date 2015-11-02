@@ -39,13 +39,11 @@
 #include <linux/time.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
+#include <asm/div64.h>
 
 #include <linux/stml0xx.h>
 
-#define SH_LPTIM_TICKS_TO_NS(ticks)  ((7813335 * (uint64_t)ticks) >> 8)
-
-/* Timestamp of the last sample in the streaming sensor queue */
-static uint64_t last_ts_ns;
+#define SH_LPTIM_TICKS_TO_NS(ticks)  div64_u64(305208 * (uint64_t)ticks, 10)
 
 irqreturn_t stml0xx_isr(int irq, void *dev)
 {
@@ -70,10 +68,6 @@ irqreturn_t stml0xx_isr(int irq, void *dev)
 	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_work_func);
 	stm_ws->ts_ns = ts_to_ns(ts);
 	stm_ws->flags = IRQ_WORK_FLAG_NONE;
-
-	if (last_ts_ns > stm_ws->ts_ns)
-		dev_dbg(&ps_stml0xx->spi->dev,
-			"warning: timestamp out of order");
 
 	queue_work(ps_stml0xx->irq_work_queue, (struct work_struct *)stm_ws);
 	return IRQ_HANDLED;
@@ -113,7 +107,6 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 	int i = 0;
 	int insert_idx = 0;
 	int remove_idx = 0;
-	int first_sample = 1;
 	unsigned char *sample_buf;
 	uint16_t delta_ticks = 0;
 	uint8_t sensor_type = 0;
@@ -122,6 +115,7 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 	uint32_t irq_status = (buf[IRQ_IDX_STATUS_HI] << 16) |
 		(buf[IRQ_IDX_STATUS_MED] << 8) | buf[IRQ_IDX_STATUS_LO];
 	unsigned char *queue_buf = &buf[IRQ_IDX_STREAM_SENSOR_QUEUE];
+	static uint64_t last_ts_ns;
 
 	insert_idx = queue_buf[STREAM_SENSOR_QUEUE_INSERT_IDX];
 	remove_idx = queue_buf[STREAM_SENSOR_QUEUE_REMOVE_IDX];
@@ -132,11 +126,10 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 		num_samples = insert_idx + STREAM_SENSOR_QUEUE_DEPTH
 				- remove_idx;
 
-	if (num_samples >= 2)
-		dev_dbg(&stml0xx_misc_data->spi->dev, "Samples in Queue: %d",
+#if ENABLE_VERBOSE_LOGGING
+	dev_dbg(&stml0xx_misc_data->spi->dev, "Samples in Queue: %d",
 			num_samples);
 
-#if ENABLE_VERBOSE_LOGGING
 	for (i = 0; i < STREAM_SENSOR_QUEUE_DEPTH *
 			STREAM_SENSOR_QUEUE_ENTRY_SIZE; i++) {
 		if (i % STREAM_SENSOR_QUEUE_ENTRY_SIZE == 0) {
@@ -152,20 +145,28 @@ void stml0xx_process_stream_sensor_queue(char *buf, uint64_t ts_ns)
 	dev_dbg(&stml0xx_misc_data->spi->dev,
 		"Insert [%d], Remove [%d]", insert_idx, remove_idx);
 #else
-	uninitialized_var(i);
+	uninitialized_var(num_samples);
 #endif /* ENABLE_VERBOSE_LOGGING */
 
+	i = 0;
 	while (remove_idx != insert_idx) {
 		sample_buf = queue_buf +
 			(STREAM_SENSOR_QUEUE_ENTRY_SIZE * remove_idx);
 		sensor_type = sample_buf[SENSOR_TYPE_IDX];
 		delta_ticks = SH_TO_H16(sample_buf + DELTA_TICKS_IDX);
-		if (first_sample)
-			first_sample = 0;
-		else
-			ts_ns += SH_LPTIM_TICKS_TO_NS(delta_ticks);
 
+		ts_ns += SH_LPTIM_TICKS_TO_NS(delta_ticks);
+
+		if (last_ts_ns > ts_ns)
+			dev_dbg(&ps_stml0xx->spi->dev,
+				"warning: timestamp out of order");
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Sample [%d]: sensor type [%d], ts delta ms: %d, ts_ns: %llu",
+			i, sensor_type,
+			(int)div64_s64(ts_ns - last_ts_ns, 1000000), ts_ns);
 		last_ts_ns = ts_ns;
+		i++;
 
 		switch (sensor_type) {
 		case STREAM_SENSOR_TYPE_ACCEL1:
