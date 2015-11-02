@@ -473,6 +473,34 @@
 					drive-strength = <2>; /* 2 MA */
 			};
 		};
+
+		laser_active: laser_active {
+				/* TOF_INT */
+				mux {
+					pins = "gpio119";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio119";
+					bias-pull-up; /* PULL Up */
+					drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		laser_suspend: laser_suspend {
+				/* TOF_INT */
+				mux {
+					pins = "gpio119";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio119";
+					bias-pull-down; /* PULL Down */
+					drive-strength = <2>; /* 2 MA */
+			};
+		};
 	};
 };
 
@@ -495,5 +523,17 @@
 			qcom,init-voltage = <1800000>;
 			status = "okay";
 		};
+	};
+};
+
+&pm8994_gpios {
+	gpio@c900 { /* GPIO 10 - TOF_XSHUTDOWN */
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>; /* 1.8 */
+		qcom,src-sel = <0>; /* GPIO */
+		qcom,master-en = <1>;   /* Enable GPIO */
+		qcom,invert = <0>;  /* Output low (disabled) */
+		status = "okay";
 	};
 };
