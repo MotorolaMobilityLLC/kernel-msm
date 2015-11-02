@@ -625,7 +625,7 @@ void StateMachineAudioAccessory(void)
 	if (((CC1TermPrevious == CCTypeOpen) || (CC2TermPrevious == CCTypeOpen))
 	    && (g_Idle == TRUE)) {
 		g_Idle = FALSE;	// Run continuously (unmask all) to debounce CC as Open
-		Registers.Mask.byte = 0x00;
+		Registers.Mask.byte = 0x20;
 		DeviceWrite(regMask, 1, &Registers.Mask.byte);
 		Registers.MaskAdv.byte[0] = 0x00;
 		DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -764,7 +764,7 @@ void SetStateDisabled(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Unmask all
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -798,7 +798,7 @@ void SetStateErrorRecovery(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Unmask all
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -837,7 +837,7 @@ void SetStateDelayUnattached(void)
 #else
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Unmask all
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -931,7 +931,7 @@ void SetStateAttachWaitSink(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -964,7 +964,7 @@ void SetStateAttachWaitSource(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1011,7 +1011,7 @@ void SetStateAttachWaitAccessory(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1214,7 +1214,7 @@ void SetStateTryWaitSink(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1245,7 +1245,7 @@ void SetStateTrySource(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1289,7 +1289,7 @@ void SetStateTrySink(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1320,7 +1320,7 @@ void SetStateTryWaitSource(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1410,7 +1410,7 @@ void SetStateAudioAccessory(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED	// TODO: Add logic to be able to set to idle state
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1458,7 +1458,7 @@ void SetStatePoweredAccessory(void)
 {
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
@@ -1563,7 +1563,7 @@ void SetStateUnattachedSource(void)	// Currently only implemented for transition
 	}
 #ifdef FSC_INTERRUPT_TRIGGERED
 	g_Idle = FALSE;		// Run continuously (unmask all)
-	Registers.Mask.byte = 0x00;
+	Registers.Mask.byte = 0x20;
 	DeviceWrite(regMask, 1, &Registers.Mask.byte);
 	Registers.MaskAdv.byte[0] = 0x00;
 	DeviceWrite(regMaska, 1, &Registers.MaskAdv.byte[0]);
