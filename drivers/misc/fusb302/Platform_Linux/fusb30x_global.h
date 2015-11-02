@@ -13,6 +13,12 @@
 #include <linux/hrtimer.h>	// hrtimer
 #include "GenericTypeDefs.h"	// FUSB30x custom types
 
+#define FUSB_NUM_GPIOS (5)
+#define FUSB_INT_INDEX 0
+#define FUSB_SS_SW_SEL_INDEX 1
+#define FUSB_AUD_SW_SEL_INDEX 2
+#define FUSB_SS_OE_EN_INDEX 3
+#define FUSB_AUD_DET_INDEX 4
 struct fusb30x_chip		// Contains data required by this driver
 {
 	struct mutex lock;	// Synchronization lock
@@ -54,6 +60,7 @@ struct fusb30x_chip		// Contains data required by this driver
 
 	/* Timers */
 	struct hrtimer timer_state_machine;	// High-resolution timer for the state machine
+	int gpios[FUSB_NUM_GPIOS];
 };
 
 extern struct fusb30x_chip *g_chip;
