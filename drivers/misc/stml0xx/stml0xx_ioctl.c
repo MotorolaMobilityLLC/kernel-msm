@@ -59,6 +59,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	bool cmd_handled;
 	unsigned int read_write;
 	unsigned int loop_count;
+	unsigned char gyro_buf[STML0XX_GYRO_CAL_SIZE];
 
 	if (!stml0xx_misc_data)
 		stml0xx_misc_data = file->private_data;
@@ -705,7 +706,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case STML0XX_IOCTL_SET_FLUSH:
-		dev_dbg(&stml0xx_misc_data->spi->dev, "STML0XX_IOCTL_SET_FLUSH");
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"STML0XX_IOCTL_SET_FLUSH");
 		if (!stml0xx_g_booted)
 			break;
 		if (copy_from_user(&handle, argp, sizeof(unsigned int))) {
@@ -719,6 +721,60 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_FLUSH,
 				(char *)&handle, 4, 0,
 				ts_to_ns(current_time));
+		break;
+	case STML0XX_IOCTL_GET_GYRO_CAL:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"STML0XX_IOCTL_GET_GYRO_CAL");
+		if (stml0xx_g_booted) {
+			err = stml0xx_spi_send_read_reg(GYRO_CAL,
+					gyro_buf, STML0XX_GYRO_CAL_FIRST);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get gyro cal failed\n");
+				break;
+			}
+			err = stml0xx_spi_send_read_reg(GYRO_CAL_2,
+					gyro_buf + STML0XX_GYRO_CAL_FIRST,
+					STML0XX_GYRO_CAL_SECOND);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Reading get gyro cal failed\n");
+				break;
+			}
+			memcpy(stml0xx_g_gyro_cal, gyro_buf,
+					STML0XX_GYRO_CAL_SIZE);
+		}
+		if (copy_to_user(argp, stml0xx_g_gyro_cal,
+					STML0XX_GYRO_CAL_SIZE))
+			err = -EFAULT;
+		break;
+	case STML0XX_IOCTL_SET_GYRO_CAL:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"STML0XX_IOCTL_SET_GYRO_CAL");
+		if (copy_from_user(gyro_buf, argp, STML0XX_GYRO_CAL_SIZE)) {
+			dev_err(&stml0xx_misc_data->spi->dev,
+					"Copy set gyro cal returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		memcpy(stml0xx_g_gyro_cal, gyro_buf,
+				STML0XX_GYRO_CAL_SIZE);
+		if (stml0xx_g_booted) {
+			err = stml0xx_spi_send_write_reg(GYRO_CAL,
+					gyro_buf, STML0XX_GYRO_CAL_FIRST);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Writing set gyro cal failed\n");
+				break;
+			}
+			err = stml0xx_spi_send_write_reg(GYRO_CAL_2,
+					gyro_buf + STML0XX_GYRO_CAL_FIRST,
+					STML0XX_GYRO_CAL_SECOND);
+			if (err < 0) {
+				dev_err(&stml0xx_misc_data->spi->dev,
+					"Writing set gyro cal failed\n");
+			}
+		}
 		break;
 	default:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
