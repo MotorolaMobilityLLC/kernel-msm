@@ -1622,8 +1622,11 @@ static int exfat_readpages(struct file *file, struct address_space *mapping,
 
 static int exfat_writepage(struct page *page, struct writeback_control *wbc)
 {
-	if (exfat_readonly(page->mapping->host->i_sb))
-		return -EROFS;
+	if (exfat_readonly(page->mapping->host->i_sb)) {
+		unlock_page(page);
+		SetPageError(page);
+		return 0;
+	}
 	return block_write_full_page(page, exfat_get_block, wbc);
 }
 
