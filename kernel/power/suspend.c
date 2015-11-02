@@ -33,6 +33,11 @@
 
 #include "power.h"
 
+/* How long partial resume will wait for getting wakeup reasons.
+ * This value needs to tune when applying partial resume to more drivers.
+ */
+#define WAKEUP_REASON_TIMEOUT 0
+
 const char *const pm_states[PM_SUSPEND_MAX] = {
 	[PM_SUSPEND_FREEZE]	= "freeze",
 	[PM_SUSPEND_STANDBY]	= "standby",
@@ -294,7 +299,7 @@ static bool suspend_again(bool *drivers_resumed)
 	 * callbacks.  Don't bother thawing the kernel threads if a match is
 	 * not found.
          */
-	irqs = get_wakeup_reasons(0, &unfinished);
+	irqs = get_wakeup_reasons(WAKEUP_REASON_TIMEOUT, &unfinished);
 	if (!suspend_again_match(irqs, &unfinished))
 		return false;
 
