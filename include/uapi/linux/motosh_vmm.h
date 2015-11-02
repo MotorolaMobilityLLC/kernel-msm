@@ -223,12 +223,21 @@ VMM_ENTRY(0x3F, DOCKED_DATA,						FALSE,
 VMM_ENTRY(0x40, COVER_DATA,						FALSE,
 		&vmm_cover_data,
 		sizeof(vmm_cover_data))
-VMM_ENTRY(0x41, UNUSED_41,						FALSE,
-		0,
-		0)
-VMM_ENTRY(0x42, GYRO_CAL,						TRUE,
+#ifdef GYRO_CALIBRATION
+VMM_ENTRY(0x41, GYRO_CAL,						TRUE,
 		vmm_gyro_cal,
-		sizeof(vmm_gyro_cal))
+		GYRO_CAL_ARRAY_FIRST * sizeof(cal_value_t))
+VMM_ENTRY(0x42, GYRO_CAL_2,						TRUE,
+		&vmm_gyro_cal[GYRO_CAL_ARRAY_FIRST],
+		GYRO_CAL_ARRAY_SECOND * sizeof(cal_value_t))
+#else
+		VMM_ENTRY(0x41, UNUSED_41,				FALSE,
+				0,
+				0)
+		VMM_ENTRY(0x42, UNUSED_42,				FALSE,
+				0,
+				0)
+#endif
 VMM_ENTRY(0x43, GYRO_DATA,						FALSE,
 		vmm_gyro_data,
 		sizeof(vmm_gyro_data))

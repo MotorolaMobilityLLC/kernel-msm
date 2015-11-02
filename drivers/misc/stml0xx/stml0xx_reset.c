@@ -128,22 +128,6 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	if (err < 0)
 		ret_err = err;
 
-	buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
-	buf[1] = (stml0xx_g_nonwake_sensor_state >> 8) & 0xFF;
-	buf[2] = stml0xx_g_nonwake_sensor_state >> 16;
-	err = stml0xx_spi_send_write_reg_reset(NONWAKESENSOR_CONFIG, buf,
-			3, RESET_NOT_ALLOWED);
-	if (err < 0)
-		ret_err = err;
-
-	buf[0] = stml0xx_g_wake_sensor_state & 0xFF;
-	buf[1] = (stml0xx_g_wake_sensor_state >> 8) & 0xFF;
-	buf[2] = (stml0xx_g_wake_sensor_state >> 16) & 0xFF;
-	err = stml0xx_spi_send_write_reg_reset(WAKESENSOR_CONFIG, buf,
-			3, RESET_NOT_ALLOWED);
-	if (err < 0)
-		ret_err = err;
-
 	buf[0] = stml0xx_g_algo_state & 0xFF;
 	buf[1] = stml0xx_g_algo_state >> 8;
 	err = stml0xx_spi_send_write_reg_reset(ALGO_CONFIG, buf, 2,
@@ -259,7 +243,25 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 			ret_err = err;
 		}
 	}
-
+	if (err >= 0) {
+		memcpy(buf, stml0xx_g_gyro_cal, STML0XX_GYRO_CAL_FIRST);
+		err = stml0xx_spi_send_write_reg_reset(GYRO_CAL, buf,
+				STML0XX_GYRO_CAL_FIRST, RESET_NOT_ALLOWED);
+		if (err < 0) {
+			dev_err(&ps_stml0xx->spi->dev,
+					"Unable to write gyro calibration");
+			ret_err = err;
+		}
+		memcpy(buf, stml0xx_g_gyro_cal + STML0XX_GYRO_CAL_FIRST,
+				STML0XX_GYRO_CAL_SECOND);
+		err = stml0xx_spi_send_write_reg_reset(GYRO_CAL_2, buf,
+				STML0XX_GYRO_CAL_SECOND, RESET_NOT_ALLOWED);
+		if (err < 0) {
+			dev_err(&ps_stml0xx->spi->dev,
+					"Unable to write gyro calibration");
+			ret_err = err;
+		}
+	}
 #ifdef CONFIG_SENSORHUB_DEBUG_LOGGING
 	buf[0] = SH_LOG_DEBUG;
 	err = stml0xx_spi_send_write_reg_reset(SH_LOG_LEVEL, buf,
@@ -271,6 +273,23 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	}
 #endif
 
+	/* Enable sensors last after other initialization is done */
+	buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
+	buf[1] = (stml0xx_g_nonwake_sensor_state >> 8) & 0xFF;
+	buf[2] = stml0xx_g_nonwake_sensor_state >> 16;
+	err = stml0xx_spi_send_write_reg_reset(NONWAKESENSOR_CONFIG, buf,
+			3, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
+	buf[0] = stml0xx_g_wake_sensor_state & 0xFF;
+	buf[1] = (stml0xx_g_wake_sensor_state >> 8) & 0xFF;
+	buf[2] = (stml0xx_g_wake_sensor_state >> 16) & 0xFF;
+	err = stml0xx_spi_send_write_reg_reset(WAKESENSOR_CONFIG, buf,
+			3, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
 	/* sending reset to slpc hal */
 	stml0xx_ms_data_buffer_write(ps_stml0xx, DT_RESET, NULL, 0);
 
@@ -278,8 +297,10 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	wake_unlock(&ps_stml0xx->reset_wakelock);
 
 	if (ret_err >= 0)
-		dev_err(&ps_stml0xx->spi->dev, "Sensor Hub initialization successful");
+		dev_err(&ps_stml0xx->spi->dev,
+				"Sensor Hub initialization successful");
 	else
-		dev_err(&ps_stml0xx->spi->dev, "Sensor Hub initialization failed");
+		dev_err(&ps_stml0xx->spi->dev,
+				"Sensor Hub initialization failed");
 
 }

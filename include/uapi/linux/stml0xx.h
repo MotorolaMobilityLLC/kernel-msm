@@ -111,7 +111,11 @@
 		_IOW(STML0XX_IOCTL_BASE, 38, char[FW_VERSION_SIZE])
 #define STML0XX_IOCTL_SET_POSIX_TIME	\
 		_IOW(STML0XX_IOCTL_BASE, 39, unsigned long)
-/* 40-42 unused */
+#define STML0XX_IOCTL_GET_GYRO_CAL \
+		_IOR(STML0XX_IOCTL_BASE, 40, char[STML0XX_GYRO_CAL_SIZE])
+#define STML0XX_IOCTL_SET_GYRO_CAL \
+		_IOR(STML0XX_IOCTL_BASE, 41, char[STML0XX_GYRO_CAL_SIZE])
+/* 42 unused */
 #define STML0XX_IOCTL_SET_ALGO_REQ \
 		_IOR(STML0XX_IOCTL_BASE, 43, char[1])
 #define STML0XX_IOCTL_GET_ALGO_EVT \
@@ -148,7 +152,9 @@
 #define STML0XX_TOUCH_REG_SIZE           8
 #define STML0XX_POWER_REG_SIZE           3
 #define STML0XX_MAG_CAL_SIZE             26
-#define MOTOSH_GYRO_CAL_SIZE             198 /* 33 entries - 6 bytes each */
+#define STML0XX_GYRO_CAL_FIRST           102 /* 17 entries - 6 bytes each */
+#define STML0XX_GYRO_CAL_SECOND          96  /* 16 entries - 6 bytes each */
+#define STML0XX_GYRO_CAL_SIZE            198 /* 33 entries - 6 bytes each */
 #define STML0XX_AS_DATA_BUFF_SIZE        20
 #define STML0XX_MS_DATA_BUFF_SIZE        20
 #define STML0XX_ALGO_SIZE                2
@@ -290,6 +296,7 @@ enum STML0XX_data_types {
 	DT_FLUSH,
 	DT_LIFT,
 	DT_CHOPCHOP,
+	DT_GYRO_CAL,
 };
 
 enum {
