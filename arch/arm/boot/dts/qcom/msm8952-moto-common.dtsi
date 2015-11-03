@@ -767,6 +767,7 @@
 
 &i2c_2 { /* BLSP1 QUP2 */
 	cs35l34@40 {
+		status = "disabled";
 		compatible = "cirrus,cs35l34";
 		reg = <0x40>;
 		cirrus,reset = <&msm_gpio 94 0>;
