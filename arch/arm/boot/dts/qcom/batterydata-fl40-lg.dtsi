@@ -1,0 +1,51 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+maxim,fl40-lg-batterydata {
+	/* Required properties */
+	serialnum	= "SNN5963";
+
+	/* Table from Maxim for FL40 LG 3591 mAhr Battery */
+	config		= /bits/ 16 <0x0154>;
+	full_soc_thresh	= /bits/ 16 <0x5F00>;	/* app note constant */
+	design_cap	= /bits/ 16 <7182>;	/* mAh times 2 */
+	ichgt_term	= /bits/ 16 <0x0489>;	/* battery attribute */
+	learn_cfg	= /bits/ 16 <0x2607>;	/* app note constant */
+	filter_cfg	= /bits/ 16 <0x87A4>;	/* app note constant */
+	relax_cfg	= /bits/ 16 <0x203B>;
+	fullcap		= /bits/ 16 <7182>;	/* mAh times 2 */
+	fullcapnom	= /bits/ 16 <7182>;	/* mAh times 2 */
+	lavg_empty      = /bits/ 16 <0x1672>;   /* (3591mA/4/0.15625mA) */
+	qrtbl00		= /bits/ 16 <0x2081>;	/* battery attribute */
+	qrtbl10		= /bits/ 16 <0x1181>;	/* battery attribute */
+	qrtbl20		= /bits/ 16 <0x0A81>;	/* battery attribute */
+	qrtbl30		= /bits/ 16 <0x0901>;	/* battery attribute */
+	rcomp0 		= /bits/ 16 <0x006A>;	/* battery attribute */
+	tcompc0		= /bits/ 16 <0x193D>;	/* battery attribute */
+	vempty		= /bits/ 16 <0xA05F>;   /* battery attribute */
+	maxim,cell-char-tbl = /bits/ 16 <	/* battery attribute */
+		0x91c0 0xb4c0 0xb800 0xb950 0xbb40 0xbca0
+		0xbd00 0xbe60 0xc080 0xc1b0 0xc430 0xc7e0
+		0xcb50 0xcde0 0xd360 0xd960 0x0080 0x0420
+		0x1d50 0x0670 0x1320 0x2c40 0x1ba0 0x0fd0
+		0x0f80 0x0950 0x0940 0x0650 0x0840 0x0790
+		0x0680 0x0680 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+		0x0100 0x0100 0x0100 0x0100 0x0100 0x0100
+	>;
+	/* Optional properties */
+	tgain		= /bits/ 16 <0xE71C>;	/* thermistor attribute */
+	toff		= /bits/ 16 <0x251A>;	/* thermistor attribute */
+	cgain		= /bits/ 16 <0x4000>;	/* current sense attribute */
+	misc_cfg	= /bits/ 16 <0x0170>;
+	rev		= /bits/ 16 <0x0004>;
+};
