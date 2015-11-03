@@ -78,3 +78,9 @@
 &pmi8950_fg {
 	qcom,fg-cc-cv-threshold-mv = <4340>;
 };
+
+&i2c_2 {
+	cs35l34@40 {
+		status = "disabled";
+	};
+};
