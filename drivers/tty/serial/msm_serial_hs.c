@@ -2256,7 +2256,7 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 	struct uart_port *uport = &msm_uport->uport;
 	struct tty_struct *tty = NULL;
 
-	msm_hs_resource_vote(msm_uport);
+	__pm_stay_awake(&msm_uport->ws);
 	spin_lock_irqsave(&uport->lock, flags);
 
 	MSM_HS_DBG("%s(): ignore %d\n", __func__,
@@ -2282,7 +2282,7 @@ static irqreturn_t msm_hs_wakeup_isr(int irq, void *dev)
 	}
 
 	spin_unlock_irqrestore(&uport->lock, flags);
-	msm_hs_resource_unvote(msm_uport);
+	__pm_relax(&msm_uport->ws);
 
 	if (wakeup && msm_uport->wakeup.inject_rx)
 		tty_flip_buffer_push(tty->port);
