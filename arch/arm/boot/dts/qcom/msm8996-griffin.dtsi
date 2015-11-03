@@ -26,3 +26,49 @@
 	rtp_overdrive_voltage = <0xa4>;
 	lra_drive;
 };
+
+&i2c_7 {
+	max17050: max17050-battery@36 {
+		compatible = "maxim,max17050";
+		reg = <0x36>;
+		maxim,rsns-microohm = <10000>;
+
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0 0xc5 5>;
+		gpios = <&pm8994_gpios 6 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpio-names = "cc-alert";
+
+		maxim,enable_por_init;
+		maxim,batt_undervoltage_zero_soc;
+		maxim,batt-psy-name = "battery";
+		maxim,warm-temp-c = <45>;
+		maxim,hot-temp-c = <60>;
+		maxim,cool-temp-c = <0>;
+		maxim,cold-temp-c = <(-20)>;
+
+		maxim,valrt-threshold = <0xffa0>; /* Vmin 3.2V */
+		maxim,df-read-battsn;
+
+		maxim,configuration {
+			df-serialnum    = "SNN5963";
+
+			/include/ "batterydata-fl40-lg.dtsi"
+		};
+
+		maxim,temp-conv {
+			start   = /bits/ 16 <(-20)>;    /* in degrees C */
+			result  = /bits/ 16 <
+				/* 1/10th C "real" temps corresponding start, start + 1, etc. fuel gauge temps in C */
+				(-302) (-271) (-246) (-222) (-202) (-180) (-162) (-147) (-129) (-114)   /* -20 C ... -11 C */
+				(-101) (-86)  (-72)  (-59)  (-48)  (-35)  (-23)  (-12)  (-2)   10       /* -10 C ... -1  C */
+				22     32     42     51     62     72     82     91     99     110      /*  0  C ...  9  C */
+				120    129    138    146    156    165    175    184    192    200      /*  10 C ...  19 C */
+				210    220    230    238    247    256    266    275    285    294      /*  20 C ...  29 C */
+				303    313    324    333    343    353    364    375    385    395      /*  30 C ...  39 C */
+				407    419    430    441    453    466    479    492    505    520      /*  40 C ...  49 C */
+				534    548    565    581    597    616    635    654    676    697      /*  50 C ...  59 C */
+				721    747    775    800                                                /*  60 C ...  63 C */
+			>;
+		};
+	};
+};
