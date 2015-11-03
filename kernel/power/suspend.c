@@ -301,8 +301,14 @@ static bool suspend_again(bool *drivers_resumed)
 	if (suspend_again_consensus() &&
 		       !freeze_kernel_threads()) {
 		clear_wakeup_reasons();
-		dpm_suspend_start(PMSG_SUSPEND);
 		*drivers_resumed = false;
+		if (dpm_suspend_start(PMSG_SUSPEND)) {
+			printk(KERN_ERR "PM: Some devices failed to suspend\n");
+			log_suspend_abort_reason("Some devices failed to suspend");
+			if (suspend_ops->recover)
+				suspend_ops->recover();
+			return false;
+		}
 		return true;
 	}
 
