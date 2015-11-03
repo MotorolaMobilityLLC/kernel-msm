@@ -60,6 +60,7 @@ struct utag {
 	uint32_t crc32;		/* reserved for futher implementation */
 	void *payload;
 	struct utag *next;
+	struct utag *prev;
 };
 
 struct frozen_utag {
@@ -289,7 +290,7 @@ utag_file(char *utag_name, char *utag_type,
 	if (sizeof(files) < mode)
 		return -EINVAL;
 
-	node = kmalloc(sizeof(struct proc_node), GFP_KERNEL);
+	node = kzalloc(sizeof(struct proc_node), GFP_KERNEL);
 	if (node) {
 		list_add(&node->entry, &ctrl->node_list);
 		strlcpy(node->file_name, files[mode], MAX_UTAG_NAME);
@@ -330,8 +331,8 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 		frozen = (struct frozen_utag *)ptr;
 
 		if (!head) {
-			/* calloc zeros allocated memory */
-			cur = kcalloc(1, sizeof(struct utag), GFP_KERNEL);
+			/* This is allocation of the head */
+			cur = kzalloc(sizeof(struct utag), GFP_KERNEL);
 			if (!cur)
 				return NULL;
 		}
@@ -375,7 +376,7 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 		}
 
 		if (cur->size != 0) {
-			cur->payload = kcalloc(1, cur->size, GFP_KERNEL);
+			cur->payload = kzalloc(cur->size, GFP_KERNEL);
 			if (!cur->payload)
 				goto err_free;
 			memcpy(cur->payload, frozen->payload, cur->size);
@@ -384,8 +385,9 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 		/* advance to beginning of next tag */
 		ptr = next_ptr;
 
-		/* get ready for the next tag, calloc() sets memory to zero */
-		cur->next = kcalloc(1, sizeof(struct utag), GFP_KERNEL);
+		/* get ready for the next tag */
+		cur->next = kzalloc(sizeof(struct utag), GFP_KERNEL);
+		cur->next->prev = cur;
 		cur = cur->next;
 		if (!cur)
 			goto err_free;
@@ -522,7 +524,7 @@ static int replace_first_utag(struct utag *head, const char *name,
 			return -EIO;
 		}
 
-		utag->payload = kmalloc(size, GFP_KERNEL);
+		utag->payload = kzalloc(size, GFP_KERNEL);
 		if (!utag->payload) {
 			utag->payload = oldpayload;
 			return -EIO;
@@ -642,7 +644,7 @@ write_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
-	tmp = kmalloc(count, GFP_KERNEL);
+	tmp = kzalloc(count, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
 
@@ -670,6 +672,69 @@ write_utag(struct file *file, const char __user *buffer,
 }
 
 /*
+ * Process delete file request. Check for exiisting utag,
+ * delete it, save utags, update proc fs
+*/
+
+static ssize_t
+delete_utag(struct file *file, const char __user *buffer,
+	   size_t count, loff_t *pos)
+{
+	struct utag *tags, *cur;
+	struct inode *inode = file->f_dentry->d_inode;
+	struct ctrl *ctrl = PDE_DATA(inode);
+	char *tmp;
+
+	if ((MAX_UTAG_NAME < count) || (0 == count)) {
+		pr_err("%s invalid utag name %zu\n", __func__, count);
+		return count;
+	}
+
+	tmp = kzalloc(count, GFP_KERNEL);
+	if (!tmp)
+		return -ENOMEM;
+
+	if (copy_from_user(tmp, buffer, count)) {
+		pr_err("%s user copy error\n", __func__);
+		goto out_noload;
+	}
+
+	/* payload has input string plus \n. Replace \n with 00 */
+	tmp[count-1] = 0;
+	if (!validate_name(tmp, (count-1))) {
+		pr_err("%s invalid format %s\n", __func__, tmp);
+		goto out_noload;
+	}
+
+	tags = load_utags(&ctrl->main);
+	if (NULL == tags) {
+		pr_err("%s load config error\n", __func__);
+		goto out_noload;
+	} else {
+		/* Ignore request if utag name already in use */
+		cur = find_first_utag(tags, tmp);
+		if (NULL != cur) {
+			/* update pointers */
+			cur->prev->next = cur->next;
+			cur->next->prev = cur->prev;
+			store_utags(ctrl, tags);
+			clear_utags_directory(ctrl);
+			build_utags_directory(ctrl);
+			kfree(cur);
+			goto out;
+		} else {
+			pr_err("%s error can not find %s", __func__, tmp);
+			goto out;
+		}
+	}
+
+out:	free_tags(tags);
+out_noload:
+	kfree(tmp);
+	return count;
+}
+
+/*
  * Process new file request. Check for exiisting utag,
  * add empty new utag, save utags and add file interface
 */
@@ -693,7 +758,7 @@ new_utag(struct file *file, const char __user *buffer,
 		return count;
 	}
 
-	tmp = kmalloc(count, GFP_KERNEL);
+	tmp = kzalloc(count, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
 
@@ -721,13 +786,15 @@ new_utag(struct file *file, const char __user *buffer,
 			goto out;
 		} else {
 		/* Add new utag after head, store changed partition */
-			cur = kcalloc(1, sizeof(struct utag), GFP_KERNEL);
+			cur = kzalloc(sizeof(struct utag), GFP_KERNEL);
 			if (!cur)
 				goto out;
 			strlcpy(cur->name, tmp, MAX_UTAG_NAME);
 			split_name(tmp, uname, utype);
 			cur->next = tags->next;
+			tags->next->prev = cur;
 			tags->next = cur;
+			cur->prev = tags;
 
 			if (store_utags(ctrl, tags)) {
 				pr_err("%s error tag [%s]\n",
@@ -740,7 +807,7 @@ new_utag(struct file *file, const char __user *buffer,
 				pr_err("%s Failed to create dir\n", __func__);
 				goto out;
 			}
-			dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
+			dnode = kzalloc(sizeof(struct dir_node), GFP_KERNEL);
 			if (dnode) {
 				dnode->root = ctrl->root;
 				dnode->ctrl = ctrl;
@@ -872,6 +939,11 @@ static const struct file_operations new_fops = {
 	.write = new_utag,
 };
 
+static const struct file_operations del_fops = {
+	.read = NULL,
+	.write = delete_utag,
+};
+
 static const struct file_operations reload_fops = {
 	.owner = THIS_MODULE,
 	.open = reload_open,
@@ -907,7 +979,7 @@ static void build_utags_directory(struct ctrl *ctrl)
 			pr_err("%s Failed to create dir\n", __func__);
 			break;
 		}
-		dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
+		dnode = kzalloc(sizeof(struct dir_node), GFP_KERNEL);
 		if (dnode) {
 			dnode->root = ctrl->root;
 			dnode->ctrl = ctrl;
@@ -925,7 +997,7 @@ static void build_utags_directory(struct ctrl *ctrl)
 
 	/* add "all" directory for debug purposes */
 	dir = proc_mkdir("all", ctrl->root);
-	dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
+	dnode = kzalloc(sizeof(struct dir_node), GFP_KERNEL);
 	if (dnode) {
 		dnode->root = ctrl->root;
 		dnode->ctrl = ctrl;
@@ -1027,6 +1099,13 @@ static int utags_probe(struct platform_device *pdev)
 		return -EIO;
 	}
 
+	if (!proc_create_data("delete", 0600, ctrl->root, &del_fops, ctrl)) {
+		pr_err("%s Failed to create reload entry\n", __func__);
+		remove_proc_entry("reload", ctrl->root);
+		remove_proc_entry("config", NULL);
+		return -EIO;
+	}
+
 	pr_info("%s Success\n", __func__);
 
 	return 0;
@@ -1039,6 +1118,7 @@ static int utags_remove(struct platform_device *pdev)
 	ctrl = dev_get_drvdata(&pdev->dev);
 	clear_utags_directory(ctrl);
 	remove_proc_entry("reload", ctrl->root);
+	remove_proc_entry("delete", ctrl->root);
 	remove_proc_entry("config", NULL);
 	return 0;
 }
