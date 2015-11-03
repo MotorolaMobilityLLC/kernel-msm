@@ -246,11 +246,13 @@ static int max17042_find_temp_threshold(struct max17042_temp_conv *conv,
 	return conv->start + i;
 }
 
-int max17042_read_charge_counter(struct i2c_client *client, int ql)
+int max17042_read_charge_counter(struct max17042_chip *chip, int ql)
 {
 	int uah = 0, uah_old = 0, uahl = 0;
 	int i;
 	int ret;
+	struct regmap *map = chip->regmap;
+
 	ret = regmap_read(map, MAX17042_QH, &uah);
 	if (ret < 0)
 		return ret;
@@ -281,6 +283,7 @@ int max17042_read_temp(struct max17042_chip *chip, int *temp_dc)
 {
 	int ret;
 	int intval;
+	struct regmap *map = chip->regmap;
 
 	ret = regmap_read(map, MAX17042_TEMP, &intval);
 	if (ret < 0)
@@ -365,7 +368,7 @@ static int max17042_get_property(struct power_supply *psy,
 			val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
-		ret = max17042_read_reg(chip->client, MAX17042_FullCAP, &data);
+		ret = regmap_read(map, MAX17042_FullCAP, &data);
 		if (ret < 0)
 			return ret;
 		if (!chip->charge_full_des)
@@ -476,8 +479,8 @@ static int max17042_get_property(struct power_supply *psy,
 			dev_warn(&chip->client->dev,
 				 "FullCap %d mAhr\n",
 				  val->intval * 2);
-			max17042_write_reg(chip->client, MAX17042_VFSOC0Enable,
-					   MAX17050_FORCE_POR);
+			regmap_write(map, MAX17042_VFSOC0Enable,
+				     MAX17050_FORCE_POR);
 			msleep(MAX17050_POR_WAIT_MS);
 			schedule_delayed_work(&chip->thread_work,
 				msecs_to_jiffies(0));
@@ -485,7 +488,7 @@ static int max17042_get_property(struct power_supply *psy,
 
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-		ret = max17042_read_charge_counter(chip->client, 1);
+		ret = max17042_read_charge_counter(chip, 1);
 		if (ret < 0)
 			return ret;
 
@@ -547,6 +550,7 @@ static int max17042_get_property(struct power_supply *psy,
 	return 0;
 }
 
+#define USLEEP_RANGE 50
 static int max17042_write_verify_reg(struct regmap *map, u8 reg, u32 value)
 {
 	int ret;
@@ -557,9 +561,10 @@ static int max17042_write_verify_reg(struct regmap *map, u8 reg, u32 value)
 		ret = regmap_write(map, reg, value);
 		if (ret < 0) {
 			/* sleep for few micro sec before retrying */
-			usleep(retry_sleep_us[i]);
+			usleep_range(retry_sleep_us[i],
+				     retry_sleep_us[i] + USLEEP_RANGE);
 		} else {
-			max17042_read_reg(client, reg, &read_value);
+			regmap_read(map, reg, &read_value);
 			if (read_value != value) {
 				ret = -EIO;
 			}
@@ -751,12 +756,10 @@ static void max17042_reset_vfsoc0_qh0_regs(struct max17042_chip *chip)
 
 static void max17042_load_new_capacity_params(struct max17042_chip *chip)
 {
-	u16 rep_cap, dq_acc, vfSoc;
-	u32 rem_cap;
+	u32 rem_cap, vfSoc, rep_cap, dq_acc;
 
 	struct max17042_config_data *config = chip->pdata->config_data;
 	struct regmap *map = chip->regmap;
-
 
 	regmap_read(map, MAX17042_VFSOC, &vfSoc);
 
@@ -766,7 +769,7 @@ static void max17042_load_new_capacity_params(struct max17042_chip *chip)
 	 */
 
 	rem_cap = ((vfSoc >> 8) * config->fullcapnom) / 100;
-	max17042_write_verify_reg(chip->client, MAX17042_RemCap, (u16)rem_cap);
+	max17042_write_verify_reg(map, MAX17042_RemCap, rem_cap);
 
 	rep_cap = rem_cap;
 	max17042_write_verify_reg(map, MAX17042_RepCap, rep_cap);
@@ -907,10 +910,10 @@ static int max17042_init_chip(struct max17042_chip *chip)
 	max17042_load_new_capacity_params(chip);
 
 	/* Set Config Revision bits */
-	val = max17042_read_reg(chip->client, MAX17050_CFG_REV_REG);
+	regmap_read(map, MAX17050_CFG_REV_REG, &val);
 	val &= (~MAX17050_CFG_REV_MASK);
 	val |= config->revision;
-	max17042_write_reg(chip->client, MAX17050_CFG_REV_REG, val);
+	regmap_write(map, MAX17050_CFG_REV_REG, val);
 
 	/* Init complete, Clear the POR bit */
 	regmap_read(map, MAX17042_STATUS, &val);
@@ -925,6 +928,7 @@ static void max17042_set_temp_threshold(struct max17042_chip *chip,
 	u16 temp_tr;
 	s8 max;
 	s8 min;
+	struct regmap *map = chip->regmap;
 
 	max = (s8)max17042_find_temp_threshold(chip->pdata->tcnv, max_c,
 					       false);
@@ -939,7 +943,7 @@ static void max17042_set_temp_threshold(struct max17042_chip *chip,
 
 	pr_debug("Program Temp Thresholds = 0x%X\n", temp_tr);
 
-	max17042_write_reg(chip->client, MAX17042_TALRT_Th, temp_tr);
+	regmap_write(map, MAX17042_TALRT_Th, temp_tr);
 }
 
 #define HYSTERISIS_DEGC 2
@@ -1101,12 +1105,13 @@ static irqreturn_t max17042_thread_handler(int id, void *dev)
 
 static void max17042_thread_worker(struct work_struct *work)
 {
-	u16 val;
+	u32 val;
 	union power_supply_propval ret = {0, };
 	const char *batt_psy_name;
 	struct max17042_chip *chip =
 		container_of(work, struct max17042_chip,
 				thread_work.work);
+	struct regmap *map = chip->regmap;
 
 	if (!chip->batt_psy && chip->pdata->batt_psy_name) {
 		batt_psy_name = chip->pdata->batt_psy_name;
@@ -1134,7 +1139,7 @@ static void max17042_thread_worker(struct work_struct *work)
 	} else if (val & STATUS_INTR_VMAX_BIT) {
 		dev_info(&chip->client->dev, "Battery overvoltage INTR\n");
 		if (!chip->factory_mode)
-			max17042_write_reg(chip->client, MAX17042_VALRT_Th,
+			regmap_write(map, MAX17042_VALRT_Th,
 				   chip->pdata->config_data->valrt_thresh);
 	}
 
@@ -1636,8 +1641,6 @@ max17042_get_pdata(struct device *dev)
 	pdata->init_data = max17042_get_init_data(dev, &pdata->num_init_data);
 	pdata->gpio_list = max17042_get_gpio_list(dev, &pdata->num_gpio_list);
 
-	pdata->init_data = max17042_get_init_data(dev, &pdata->num_init_data);
-
 	/*
 	 * Require current sense resistor value to be specified for
 	 * current-sense functionality to be enabled at all.
@@ -1718,19 +1721,20 @@ DEFINE_SIMPLE_ATTRIBUTE(addr_fops, max17042_debugfs_read_addr,
 static int max17042_debugfs_read_data(void *data, u64 *val)
 {
 	struct max17042_chip *chip = (struct max17042_chip *)data;
-	int ret = max17042_read_reg(chip->client, chip->debugfs_addr);
+	struct regmap *map = chip->regmap;
+	int ret = regmap_read(map, chip->debugfs_addr, val);
 
 	if (ret < 0)
 		return ret;
 
-	*val = ret;
 	return 0;
 }
 
 static int max17042_debugfs_write_data(void *data, u64 val)
 {
 	struct max17042_chip *chip = (struct max17042_chip *)data;
-	return max17042_write_reg(chip->client, chip->debugfs_addr, val);
+	struct regmap *map = chip->regmap;
+	return regmap_write(map, chip->debugfs_addr, val);
 }
 DEFINE_SIMPLE_ATTRIBUTE(data_fops, max17042_debugfs_read_data,
 			max17042_debugfs_write_data, "0x%02llx\n");
@@ -1770,22 +1774,24 @@ static void iterm_work(struct work_struct *work)
 	int curr_avg, curr_inst, iterm_max, iterm_min;
 	int resch_time = 60000;
 	int cfd_max;
+	int val;
 	int taper_hit = 0;
 	struct max17042_chip *chip =
 		container_of(work, struct max17042_chip,
 				iterm_work.work);
+	struct regmap *map = chip->regmap;
 
 	max17042_stay_awake(&chip->max17042_wake_source);
 	if (!chip->init_complete)
 		goto iterm_fail;
 
 	/* check to see if Already Full */
-	ret = max17042_read_reg(chip->client, MAX17042_RepSOC);
+	ret = regmap_read(map, MAX17042_RepSOC, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	repsoc = (ret >> 8) & 0xFF;
-	if ((ret & 0xFF) != 0)
+	repsoc = (val >> 8) & 0xFF;
+	if ((val & 0xFF) != 0)
 		repsoc++; /* Round up */
 
 	dev_dbg(&chip->client->dev, "ITERM RepSOC %d!\n", repsoc);
@@ -1794,11 +1800,11 @@ static void iterm_work(struct work_struct *work)
 		(chip->charge_full_des + ((chip->charge_full_des * 3) / 100));
 
 	if (repsoc >= 100) {
-		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+		ret = regmap_read(map, MAX17042_FullCAP, &val);
 		if (ret < 0)
 			goto iterm_fail;
 
-		fullcap = ret & 0xFFFF;
+		fullcap = val & 0xFFFF;
 
 		/* Check that FullCap */
 		/* is not less then half of Design Capacity */
@@ -1808,8 +1814,8 @@ static void iterm_work(struct work_struct *work)
 			dev_warn(&chip->client->dev,
 				 "FullCap %d mAhr\n",
 				 fullcap / 2);
-			max17042_write_reg(chip->client, MAX17042_VFSOC0Enable,
-					   MAX17050_FORCE_POR);
+			regmap_write(map, MAX17042_VFSOC0Enable,
+				     MAX17050_FORCE_POR);
 			msleep(MAX17050_POR_WAIT_MS);
 			schedule_delayed_work(&chip->thread_work,
 				msecs_to_jiffies(0));
@@ -1822,25 +1828,25 @@ static void iterm_work(struct work_struct *work)
 				 "Error fullcap too big! %d mAhr\n",
 				 fullcap / 2);
 			fullcap = (cfd_max * 2) / 1000;
-			ret = max17042_write_reg(chip->client,
-						 MAX17042_RepCap, fullcap);
+			ret = regmap_write(map,
+					   MAX17042_RepCap, fullcap);
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Rep Cap!\n");
-			ret = max17042_write_reg(chip->client,
-						 MAX17042_FullCAP, fullcap);
+			ret = regmap_write(map,
+					   MAX17042_FullCAP, fullcap);
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Full Cap!\n");
 		}
 	}
 
-	ret = max17042_read_reg(chip->client, MAX17042_Current);
+	ret = regmap_read(map, MAX17042_Current, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
 	/* check for discharging */
-	if (ret & 0x8000) {
+	if (val & 0x8000) {
 		dev_dbg(&chip->client->dev, "ITERM Curr Inst Discharge!\n");
 		goto iterm_fail;
 	}
@@ -1854,12 +1860,12 @@ static void iterm_work(struct work_struct *work)
 	dev_dbg(&chip->client->dev, "ITERM Curr Inst %d uA!\n",
 		 (curr_inst * 1562500) / chip->pdata->r_sns);
 
-	ret = max17042_read_reg(chip->client, MAX17042_AvgCurrent);
+	ret = regmap_read(map, MAX17042_AvgCurrent, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
 	/* check for discharging */
-	if (ret & 0x8000) {
+	if (val & 0x8000) {
 		dev_dbg(&chip->client->dev, "ITERM Curr Avg Discharge!\n");
 		goto iterm_fail;
 	}
@@ -1871,11 +1877,11 @@ static void iterm_work(struct work_struct *work)
 	dev_dbg(&chip->client->dev, "ITERM Curr Avg %d uA!\n",
 		 (curr_inst * 1562500) / chip->pdata->r_sns);
 
-	ret = max17042_read_reg(chip->client, MAX17042_ICHGTerm);
+	ret = regmap_read(map, MAX17042_ICHGTerm, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	iterm_min = ret & 0xFFFF;
+	iterm_min = val & 0xFFFF;
 	iterm_min = (iterm_min >> 2) & 0xFFFF;
 
 	iterm_max = (ret & 0xFFFF) + iterm_min;
@@ -1886,19 +1892,19 @@ static void iterm_work(struct work_struct *work)
 	    (curr_avg <= iterm_min) || (curr_avg >= iterm_max))
 		goto iterm_fail;
 
-	ret = max17042_read_reg(chip->client, MAX17042_RepCap);
+	ret = regmap_read(map, MAX17042_RepCap, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	repcap = ret & 0xFFFF;
+	repcap = val & 0xFFFF;
 	dev_dbg(&chip->client->dev, "ITERM RepCap %d uAhr!\n",
 		 (repcap * 1000) / 2);
 
-	ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+	ret = regmap_read(map, MAX17042_FullCAP, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	fullcap = ret & 0xFFFF;
+	fullcap = val & 0xFFFF;
 	dev_dbg(&chip->client->dev, "ITERM FullCap %d uAhr!\n",
 		 (fullcap * 1000) / 2);
 
@@ -1907,17 +1913,17 @@ static void iterm_work(struct work_struct *work)
 		goto iterm_fail;
 	}
 
-	ret = max17042_read_reg(chip->client, MAX17042_VFSOC);
+	ret = regmap_read(map, MAX17042_VFSOC, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	socvf = (ret >> 8) & 0xFF;
+	socvf = (val >> 8) & 0xFF;
 
-	ret = max17042_read_reg(chip->client, MAX17047_FullSOCThr);
+	ret = regmap_read(map, MAX17047_FullSOCThr, &val);
 	if (ret < 0)
 		goto iterm_fail;
 
-	fullsocthr = (ret >> 8) & 0xFF;
+	fullsocthr = (val >> 8) & 0xFF;
 
 	dev_dbg(&chip->client->dev, "ITERM VFSOC %d!\n", socvf);
 	dev_dbg(&chip->client->dev, "ITERM FullSOCThr %d!\n", fullsocthr);
@@ -1965,22 +1971,22 @@ static void iterm_work(struct work_struct *work)
 	repcap_p = repcap;
 	taper_hit = 1;
 
-	ret = max17042_write_reg(chip->client, MAX17042_FullCAP, repcap);
+	ret = regmap_write(map, MAX17042_FullCAP, repcap);
 	if (ret < 0)
 		dev_err(&chip->client->dev, "Can't update Full Cap!\n");
 
 	for (i = 0; i < MAX_TAPER_RETRY; i++) {
-		ret = max17042_read_reg(chip->client, MAX17042_RepCap);
+		ret = regmap_read(map, MAX17042_RepCap, &val);
 		if (ret < 0)
 			goto iterm_fail;
 
-		repcap = ret & 0xFFFF;
+		repcap = val & 0xFFFF;
 
-		ret = max17042_read_reg(chip->client, MAX17042_FullCAP);
+		ret = regmap_read(map, MAX17042_FullCAP, &val);
 		if (ret < 0)
 			goto iterm_fail;
 
-		fullcap = ret & 0xFFFF;
+		fullcap = val & 0xFFFF;
 		dev_warn(&chip->client->dev,
 			 "Checking RepCap %d mAhr FullCap %d mAhr\n",
 			 repcap / 2, fullcap / 2);
@@ -1991,13 +1997,13 @@ static void iterm_work(struct work_struct *work)
 			dev_warn(&chip->client->dev,
 				 "RepCap %d mAhr FullCap %d mAhr\n",
 				 repcap / 2, fullcap / 2);
-			ret = max17042_write_reg(chip->client,
-						 MAX17042_FullCAP, repcap_p);
+			ret = regmap_write(map,
+					   MAX17042_FullCAP, repcap_p);
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Full Cap!\n");
-			ret = max17042_write_reg(chip->client,
-						 MAX17042_RepCap, repcap_p);
+			ret = regmap_write(map,
+					   MAX17042_RepCap, repcap_p);
 			if (ret < 0)
 				dev_err(&chip->client->dev,
 					"Can't update Rep Cap!\n");
@@ -2019,14 +2025,13 @@ iterm_fail:
 static bool max17042_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
-	bool factory = false;
+	u32 fact_cable = 0;
 
 	if (np)
-		factory = of_property_read_bool(np, "mmi,factory-cable");
+		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
 
 	of_node_put(np);
-
-	return factory;
+	return !!fact_cable ? true : false;
 }
 
 static struct regmap_config max17042_regmap_config = {
@@ -2151,7 +2156,7 @@ static int max17042_probe(struct i2c_client *client,
 	}
 
 	/* Override Voltage Alert Threshold */
-	max17042_override_por(chip->client, MAX17042_VALRT_Th,
+	max17042_override_por(chip->regmap, MAX17042_VALRT_Th,
 				chip->pdata->config_data->valrt_thresh);
 
 	if (client->irq) {
