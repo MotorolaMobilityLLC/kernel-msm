@@ -818,13 +818,13 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 		dev_err(&i2c_client->dev,
 			"CS35l34 Device ID (%X). Expected ID %X\n",
 			devid, CS35L34_CHIP_ID);
-		goto err_regmap;
+		return -EINVAL;
 	}
 
 	ret = regmap_read(cs35l34->regmap, CS35L34_REV_ID, &reg);
 	if (ret < 0) {
 		dev_err(&i2c_client->dev, "Get Revision ID failed\n");
-		goto err_regmap;
+		return -EINVAL;
 	}
 
 	dev_info(&i2c_client->dev,
@@ -982,14 +982,10 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 	if (ret < 0) {
 		dev_err(&i2c_client->dev,
 			"%s: Register codec failed\n", __func__);
-		goto err_regmap;
+		return -EINVAL;
 	}
 
 	return 0;
-
-err_regmap:
-	if (cs35l34->regmap > 0)
-		regmap_exit(cs35l34->regmap);
 
 err:
 	return ret;
