@@ -51,11 +51,11 @@
 			label = "adsp_pil_mem";
 		};
 
-		peripheral_mem: peripheral_region@7b00000 {
+		peripheral_mem: peripheral_region@1900000 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
 			linux,remove-completely;
-			reg = <0x07b00000 0x600000>;
+			reg = <0x01900000 0x500000>;
 			label = "peripheral_mem";
 		};
 
