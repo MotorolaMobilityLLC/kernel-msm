@@ -216,9 +216,9 @@
 	};
 
 	cs35l34_clk {
-		qcom,pins = <&gp 66>;
+		qcom,pins = <&gp 25>;
 		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <1>;
+		qcom,pin-func = <3>;
 		label = "cs35l34_clk";
 		cs35l34_clk_on: cs35l34_on {
 			drive-strength = <8>;
