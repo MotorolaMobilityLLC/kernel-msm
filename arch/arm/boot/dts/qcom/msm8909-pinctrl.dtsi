@@ -1301,5 +1301,85 @@
 				bias-pull-up;		/* PULL UP*/
 			};
 		};
+
+		pmx_i2s_mclk {
+			qcom,pins = <&gp 59>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <2>;
+			label = "i2s_mclk";
+			i2s_mclk_active: i2s_mclk_active {
+				drive-strength = <8>;   /* 8 MA */
+				bias-disable;           /* No PULL */
+				output-high;
+			};
+			i2s_mclk_sleep: i2s_mclk_sleep {
+				drive-strength = <2>;   /* 2 MA */
+				bias-pull-down;	        /* PULL DOWN */
+			};
+		};
+
+		pmx_pri_mi2s {
+			qcom,pins = <&gp 60>, <&gp 61>, <&gp 62>, <&gp 63>;
+			qcom,num-grp-pins = <4>;
+			qcom,pin-func = <2>;
+			label = "pri_mi2s";
+			pri_mi2s_active: pri_mi2s_active {
+				drive-strength = <8>;   /* 8 MA */
+				bias-disable;           /* No PULL */
+				output-high;
+			};
+			pri_mi2s_sleep: pri_mi2s_sleep {
+				drive-strength = <2>;   /* 2 MA */
+				bias-pull-down;	        /* PULL DOWN */
+			};
+		};
+
+		pmx_quat_mi2s {
+			qcom,pins = <&gp 0>, <&gp 1>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "quat_mi2s";
+			quat_mi2s_active: quat_mi2s_active {
+				drive-strength = <8>;   /* 8 MA */
+				bias-disable;           /* No PULL */
+				output-high;
+			};
+			quat_mi2s_sleep: quat_mi2s_sleep {
+				drive-strength = <2>;   /* 2 MA */
+				bias-pull-down;	        /* PULL DOWN */
+			};
+		};
+
+		pmx_quat_mi2s_din {
+			qcom,pins = <&gp 2>, <&gp 3>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <2>;
+			label = "quat_mi2s_din";
+			quat_mi2s_din_active: quat_mi2s_din_active {
+				drive-strength = <8>;   /* 8 MA */
+				bias-disable;	        /* No PULL */
+			};
+			quat_mi2s_din_sleep: quat_mi2s_din_sleep {
+				drive-strength = <2>;   /* 2 MA */
+				bias-pull-down;	        /* PULL DOWN */
+			};
+		};
+
+		wsa-spkr-sd {
+			qcom,pins = <&gp 72>, <&gp 73>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "wsa-spkr-sd";
+			wsa_spkr_sd_act: lines_on {
+					 drive-strength = <8>;
+					 output-high;
+					 bias-pull-down;
+			};
+			wsa_spkr_sd_sus: lines_off {
+					 drive-strength = <2>;
+					 output-low;
+					 bias-disable;
+			};
+		};
 	};
 };
