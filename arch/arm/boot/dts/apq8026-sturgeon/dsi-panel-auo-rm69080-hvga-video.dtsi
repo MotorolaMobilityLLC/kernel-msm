@@ -43,6 +43,8 @@
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-panel-orientation = "vflip";
 		qcom,mdss-dsi-on-command = [15 01 00 00 01 00 02 00 00
+			15 01 00 00 00 00 02 FE 01
+			15 01 00 00 00 00 02 18 66
 			15 01 00 00 00 00 02 FE 07
 			15 01 00 00 00 00 02 07 4F
 			15 01 00 00 00 00 02 FE 00
