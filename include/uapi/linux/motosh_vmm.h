@@ -76,9 +76,9 @@ VMM_ENTRY(0x0E, UNUSED_0E,						FALSE,
 VMM_ENTRY(0x0F, UNUSED_0F,						FALSE,
 		0, /* vmm_p_display_color */
 		0)
-VMM_ENTRY(0x10, UNUSED_10,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x10, QUEUE_TEST_LIMIT,					TRUE,
+		&vmm_queue_test_limit,
+		sizeof(vmm_queue_test_limit))
 VMM_ENTRY(0x11, LED_NOTIF_DATA,						TRUE,
 		vmm_led_notif_data,
 		sizeof(vmm_led_notif_data))
