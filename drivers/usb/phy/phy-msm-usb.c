@@ -1393,8 +1393,20 @@ static int msm_otg_notify_chg_type(struct msm_otg *motg)
 		motg->chg_type == USB_ACA_C_CHARGER))
 		charger_type = POWER_SUPPLY_TYPE_USB_ACA;
 	else
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	/*The usb probe interface sets charger type to USB and healthd will detects the charger type.
+	 *If the type is unkown, healthd indicates that there is no charger driver registered and display
+	 *battery parameters wrongly, for example, battery level is always 100 percent.
+	 *The issue happens as follows:
+	 *1), when usb is connected, the watch is booting and the type is USB.
+	 *2), before the starting of healthd, disconnect the usb and the type is unkown.
+	 *So set charger type to USB when usb is disconnected.
+	 */
+		charger_type = POWER_SUPPLY_TYPE_USB;
+#else
 		charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
+#endif
 	if (!psy) {
 		pr_err("No USB power supply registered!\n");
 		return -EINVAL;
