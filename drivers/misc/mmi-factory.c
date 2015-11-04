@@ -66,6 +66,15 @@ static bool mmi_factory_cable_present(void)
 	return true;
 }
 
+static int is_secure;
+int __init secure_hardware_init(char *s)
+{
+	is_secure = !strncmp(s, "1", 1);
+
+	return 1;
+}
+__setup("androidboot.secure_hardware=", secure_hardware_init);
+
 static void warn_irq_w(struct work_struct *w)
 {
 	struct mmi_factory_info *info = container_of(w,
@@ -77,8 +86,8 @@ static void warn_irq_w(struct work_struct *w)
 		pr_info("HW User Reset!\n");
 		pr_info("2 sec to Reset.\n");
 		/* trigger wdog if resin key pressed */
-		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT) {
-			pr_info("User triggered watchdog reset (Pwr+VolDn)\n");
+		if (qpnp_pon_key_status & QPNP_PON_KEY_RESIN_BIT && !is_secure) {
+			pr_info("%s: User triggered watchdog reset\n", __func__);
 			trigger_watchdog_reset();
 		} else
 			kernel_halt();
