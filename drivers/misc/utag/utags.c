@@ -41,6 +41,7 @@
 #define TO_SECT_SIZE(n)     (((n) + 511) & ~511)
 #define UTAGS_MAX_DEFERRALS 5
 #define DRVNAME "utags"
+#define DEFAULT_ROOT "config"
 
 static const struct file_operations utag_fops;
 struct ctrl;
@@ -122,6 +123,7 @@ struct ctrl {
 	uint32_t csum;
 	struct list_head dir_list;
 	struct list_head node_list;
+	const char *dir_name;
 };
 
 static void build_utags_directory(struct ctrl *ctrl);
@@ -138,6 +140,9 @@ static int open_utags(struct blkdev *cb)
 
 	if (cb->filep)
 		return 0;
+
+	if (!cb->name)
+		return -EIO;
 
 	cb->filep = filp_open(cb->name, O_RDWR|O_SYNC, 0600);
 	if (IS_ERR_OR_NULL(cb->filep)) {
@@ -1033,7 +1038,12 @@ static int utags_dt_init(struct platform_device *pdev)
 	if (rc)
 		pr_err("%s backup storage path not provided\n", __func__);
 
-	return rc;
+	ctrl->dir_name = DEFAULT_ROOT;
+	rc = of_property_read_string(node, "mmi,dir-name", &ctrl->dir_name);
+	if (!rc)
+		pr_info("%s utag dir override %s\n", __func__, ctrl->dir_name);
+
+	return 0;
 }
 #else
 static int utags_dt_init(struct platform_device *pdev) { return -EINVAL; }
@@ -1087,7 +1097,7 @@ static int utags_probe(struct platform_device *pdev)
 	else
 		open_utags(&ctrl->backup);
 
-	ctrl->root = proc_mkdir("config", NULL);
+	ctrl->root = proc_mkdir(ctrl->dir_name, NULL);
 	if (!ctrl->root) {
 		pr_err("%s Failed to create dir entry\n", __func__);
 		return -EIO;
@@ -1095,14 +1105,14 @@ static int utags_probe(struct platform_device *pdev)
 
 	if (!proc_create_data("reload", 0600, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("%s Failed to create reload entry\n", __func__);
-		remove_proc_entry("config", NULL);
+		remove_proc_entry(ctrl->dir_name, NULL);
 		return -EIO;
 	}
 
 	if (!proc_create_data("delete", 0600, ctrl->root, &del_fops, ctrl)) {
 		pr_err("%s Failed to create reload entry\n", __func__);
 		remove_proc_entry("reload", ctrl->root);
-		remove_proc_entry("config", NULL);
+		remove_proc_entry(ctrl->dir_name, NULL);
 		return -EIO;
 	}
 
@@ -1119,7 +1129,7 @@ static int utags_remove(struct platform_device *pdev)
 	clear_utags_directory(ctrl);
 	remove_proc_entry("reload", ctrl->root);
 	remove_proc_entry("delete", ctrl->root);
-	remove_proc_entry("config", NULL);
+	remove_proc_entry(ctrl->dir_name, NULL);
 	return 0;
 }
 
