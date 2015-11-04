@@ -27,7 +27,7 @@
 
 &soc {
 	i2c@f9927000 { /* BLSP1 QUP5 */
-		IT7260@46 {
+		it7260@46 {
 			compatible = "ite,it7260_ts";
 			reg = <0x46>;
 			interrupt-parent = <&msmgpio>;
@@ -39,7 +39,7 @@
 			ite,panel-coords = <0 0 320 320>;
 			ite,display-coords = <0 0 320 320>;
 			ite,reset-delay = <20>;
-			ite,num-fingers = <1>;
+			ite,num-fingers = <2>;
 			ite,wakeup;
 			ite,palm-detect-en;
 			ite,palm-detect-keycode = <142>;
@@ -182,4 +182,19 @@
 	mpp@a500 {
 		status = "disabled";
 	};
+};
+
+&mtp_batterydata {
+	#include "batterydata-springpower-cv90-450mAh.dtsi"
+};
+
+&pm8226_chg {
+	/delete-property/ qcom,charging-disabled;
+};
+
+&pm8226_bms {
+	qcom,s1-vsense-thr-uv = <195>;
+	qcom,s2-vsense-thr-uv = <152>;
+	qcom,use-dynamic-ocv-setting;
+	qcom,ocv-rbatt-compensation;
 };

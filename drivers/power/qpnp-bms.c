@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,6 +29,19 @@
 #include <linux/of_batterydata.h>
 #include <linux/wakelock.h>
 
+static int bms_wear_debug_mask;
+module_param_named(
+	debug_mask, bms_wear_debug_mask, int, S_IRUSR | S_IWUSR
+);
+
+#define pr_wear(message, ...)						\
+	do {								\
+		if (bms_wear_debug_mask)				\
+			pr_info("wearable:" message, ##__VA_ARGS__);	\
+		else							\
+			pr_debug(message, ##__VA_ARGS__);		\
+	} while (0)
+
 /* BMS Register Offsets */
 #define REVISION1			0x0
 #define REVISION2			0x1
@@ -50,6 +63,9 @@
 /* OCV interrupt threshold */
 #define BMS1_OCV_THR0			0x50
 #define BMS1_S2_SAMP_AVG_CTL		0x61
+#define BMS1_S1_VSENSE_THR_CTL		0x73
+#define BMS1_S2_VSENSE_THR_CTL		0x75
+#define BMS1_S3_VSENSE_THR_CTL		0x77
 /* SW CC interrupt threshold */
 #define BMS1_SW_CC_THR0			0xA0
 /* OCV for r registers */
@@ -131,7 +147,9 @@ struct fcc_sample {
 struct bms_irq {
 	int		irq;
 	unsigned long	disabled;
+	unsigned long	wake_enabled;
 	bool		ready;
+	bool		is_wake;
 };
 
 struct bms_wakeup_source {
@@ -192,6 +210,8 @@ struct qpnp_bms_chip {
 	struct mutex			soc_invalidation_mutex;
 	struct mutex			last_soc_mutex;
 	struct mutex			status_lock;
+	spinlock_t			irq_lock;
+	spinlock_t			pm_wake_lock;
 
 	bool				use_external_rsense;
 	bool				use_ocv_thresholds;
@@ -288,6 +308,23 @@ struct qpnp_bms_chip {
 	struct qpnp_vadc_chip		*vadc_dev;
 	struct qpnp_iadc_chip		*iadc_dev;
 	struct qpnp_adc_tm_chip		*adc_tm_dev;
+
+	int				s1_vsense_thr_uv;
+	int				s2_vsense_thr_uv;
+	bool				use_dynamic_ocv_setting;
+	bool				ocv_rbatt_compensation;
+
+	bool				ocv_setting_adjusted;
+	int				s2_vsense_thr_current_ua;
+	int				s3_vsense_thr_current_ua;
+	int				lowest_sleep_current_ua_since_last_ocv;
+	int				ocv_tol_uv;
+	int				cc_uah_before_suspend;
+	int				avg_ibat_ua_in_sleep;
+	unsigned long			last_ocv_setting_changed_sec;
+	unsigned long			last_ocv_in_discharge_sec;
+	unsigned long			suspend_sec;
+	uint16_t			ocv_raw_before_suspend;
 };
 
 static struct of_device_id qpnp_bms_match_table[] = {
@@ -313,6 +350,9 @@ static enum power_supply_property msm_bms_power_props[] = {
 
 static int discard_backup_fcc_data(struct qpnp_bms_chip *chip);
 static void backup_charge_cycle(struct qpnp_bms_chip *chip);
+static int get_current_time(unsigned long *now_tm_sec);
+static int get_rbatt(struct qpnp_bms_chip *chip,
+		int soc_rbatt_mohm, int batt_temp);
 
 static bool bms_reset;
 
@@ -378,44 +418,60 @@ static int qpnp_masked_write(struct qpnp_bms_chip *chip, u16 addr,
 	return qpnp_masked_write_base(chip, chip->base + addr, mask, val);
 }
 
-static void bms_stay_awake(struct bms_wakeup_source *source)
+static void bms_stay_awake(struct qpnp_bms_chip *chip,
+			struct bms_wakeup_source *source)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->pm_wake_lock, flags);
 	if (__test_and_clear_bit(0, &source->disabled)) {
 		__pm_stay_awake(&source->source);
 		pr_debug("enabled source %s\n", source->source.name);
 	}
+	spin_unlock_irqrestore(&chip->pm_wake_lock, flags);
 }
 
-static void bms_relax(struct bms_wakeup_source *source)
+static void bms_relax(struct qpnp_bms_chip *chip,
+			struct bms_wakeup_source *source)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->pm_wake_lock, flags);
 	if (!__test_and_set_bit(0, &source->disabled)) {
 		__pm_relax(&source->source);
 		pr_debug("disabled source %s\n", source->source.name);
 	}
+	spin_unlock_irqrestore(&chip->pm_wake_lock, flags);
 }
 
-static void enable_bms_irq(struct bms_irq *irq)
+static void enable_bms_irq(struct qpnp_bms_chip *chip, struct bms_irq *irq)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->irq_lock, flags);
 	if (irq->ready && __test_and_clear_bit(0, &irq->disabled)) {
 		enable_irq(irq->irq);
 		pr_debug("enabled irq %d\n", irq->irq);
+		if ((irq->is_wake) &&
+				!__test_and_set_bit(0, &irq->wake_enabled))
+			enable_irq_wake(irq->irq);
 	}
+	spin_unlock_irqrestore(&chip->irq_lock, flags);
 }
 
-static void disable_bms_irq(struct bms_irq *irq)
+static void disable_bms_irq(struct qpnp_bms_chip *chip, struct bms_irq *irq)
 {
-	if (irq->ready && !__test_and_set_bit(0, &irq->disabled)) {
-		disable_irq(irq->irq);
-		pr_debug("disabled irq %d\n", irq->irq);
-	}
-}
+	unsigned long flags;
 
-static void disable_bms_irq_nosync(struct bms_irq *irq)
-{
+	spin_lock_irqsave(&chip->irq_lock, flags);
 	if (irq->ready && !__test_and_set_bit(0, &irq->disabled)) {
 		disable_irq_nosync(irq->irq);
 		pr_debug("disabled irq %d\n", irq->irq);
+		if ((irq->is_wake) &&
+				__test_and_clear_bit(0, &irq->wake_enabled))
+			disable_irq_wake(irq->irq);
 	}
+	spin_unlock_irqrestore(&chip->irq_lock, flags);
 }
 
 #define HOLD_OREG_DATA		BIT(0)
@@ -587,6 +643,30 @@ static int read_vsense_avg(struct qpnp_bms_chip *chip, int *result_uv)
 	return 0;
 }
 
+static int read_vsense_pon(struct qpnp_bms_chip *chip, int *result_uv)
+{
+	int rc;
+	int16_t reading;
+
+	mutex_lock(&chip->bms_output_lock);
+	lock_output_data(chip);
+	rc = qpnp_read_wrapper(chip, (u8 *)&reading,
+			chip->base + BMS1_VSENSE_PON_DATA0, 2);
+
+	if (rc) {
+		pr_err("fail to read VSENSE_PON, rc = %d\n", rc);
+		goto failed;
+	}
+
+	*result_uv = convert_vsense_to_uv(chip, reading);
+
+failed:
+	unlock_output_data(chip);
+	mutex_unlock(&chip->bms_output_lock);
+
+	return rc;
+}
+
 static int get_battery_current(struct qpnp_bms_chip *chip, int *result_ua)
 {
 	int rc, vsense_uv = 0;
@@ -699,6 +779,46 @@ static int calib_vadc(struct qpnp_bms_chip *chip)
 	return 0;
 }
 
+static int read_ocv_raw(struct qpnp_bms_chip *chip, uint16_t *ocv_raw)
+{
+	int rc;
+
+	mutex_lock(&chip->bms_output_lock);
+	lock_output_data(chip);
+	rc = qpnp_read_wrapper(chip, (u8 *)ocv_raw,
+			chip->base + BMS1_OCV_FOR_SOC_DATA0, 2);
+	if (rc)
+		pr_err("read OCV raw data failed, rc = %d\n", rc);
+	unlock_output_data(chip);
+	mutex_unlock(&chip->bms_output_lock);
+
+	return rc;
+}
+
+static int ocv_adjust_with_rbatt_drop(struct qpnp_bms_chip *chip)
+{
+	int rc, vsense_uv, ibatt_ua_in_ocv;
+	int ocv_uv = chip->last_ocv_uv;
+	int batt_temp = chip->last_ocv_temp;
+	int rbatt_mohm = get_rbatt(chip, chip->last_soc, batt_temp);
+
+	rc = read_vsense_pon(chip, &vsense_uv);
+	if (rc) {
+		pr_err("read pon vsense failed, rc = %d\n", rc);
+		return rc;
+	}
+	pr_wear("pre_ocv_uv = %d, rbatt_mohm = %d, vsense_uv = %d\n",
+			ocv_uv, rbatt_mohm, vsense_uv);
+	ibatt_ua_in_ocv = div_s64(vsense_uv * 1000000LL, chip->r_sense_uohm);
+
+	chip->last_ocv_uv = ocv_uv + (ibatt_ua_in_ocv * rbatt_mohm) / 1000;
+
+	pr_wear("ibatt_ua_in_ocv = %d, last_ocv_uv = %d\n",
+			ibatt_ua_in_ocv, chip->last_ocv_uv);
+
+	return rc;
+}
+
 static void convert_and_store_ocv(struct qpnp_bms_chip *chip,
 				struct raw_soc_params *raw,
 				int batt_temp, bool is_pon_ocv)
@@ -717,7 +837,14 @@ static void convert_and_store_ocv(struct qpnp_bms_chip *chip,
 	chip->last_ocv_uv = raw->last_good_ocv_uv;
 	chip->last_ocv_temp = batt_temp;
 	chip->software_cc_uah = 0;
-	pr_debug("last_good_ocv_uv = %d\n", raw->last_good_ocv_uv);
+	if (chip->ocv_rbatt_compensation) {
+		rc = ocv_adjust_with_rbatt_drop(chip);
+		if (rc) {
+			pr_err("ocv rbatt compensation failed, rc = %d\n", rc);
+			return;
+		}
+	}
+	pr_debug("last_ocv_uv = %d\n", chip->last_ocv_uv);
 }
 
 #define CLEAR_CC			BIT(7)
@@ -1089,6 +1216,12 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 	mutex_unlock(&chip->bms_output_lock);
 
 	if (chip->prev_last_good_ocv_raw == OCV_RAW_UNINITIALIZED) {
+		if (chip->use_dynamic_ocv_setting) {
+			chip->ocv_setting_adjusted = false;
+			get_current_time(&chip->last_ocv_in_discharge_sec);
+			pr_wear("init ocv update: %lu\n",
+					chip->last_ocv_in_discharge_sec);
+		}
 		convert_and_store_ocv(chip, raw, batt_temp, true);
 		pr_debug("PON_OCV_UV = %d, cc = %llx\n",
 				chip->last_ocv_uv, raw->cc);
@@ -1124,6 +1257,12 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 		pr_debug("EOC Battery full ocv_reading = 0x%x\n",
 				chip->ocv_reading_at_100);
 	} else if (chip->prev_last_good_ocv_raw != raw->last_good_ocv_raw) {
+		if (chip->use_dynamic_ocv_setting) {
+			chip->ocv_setting_adjusted = false;
+			get_current_time(&chip->last_ocv_in_discharge_sec);
+			pr_wear("ocv updated: %lu\n",
+					chip->last_ocv_in_discharge_sec);
+		}
 		convert_and_store_ocv(chip, raw, batt_temp, false);
 		/* forget the old cc value upon ocv */
 		chip->last_cc_uah = INT_MIN;
@@ -2268,15 +2407,10 @@ static void configure_soc_wakeup(struct qpnp_bms_chip *chip,
 	int64_t target_cc_uah, cc_raw_64, current_shdw_cc_raw_64;
 	int64_t current_shdw_cc_uah, iadc_comp_factor;
 	uint64_t cc_raw, current_shdw_cc_raw;
-	int16_t ocv_raw, current_ocv_raw;
+	uint16_t ocv_raw, current_ocv_raw;
 
 	current_shdw_cc_raw = 0;
-	mutex_lock(&chip->bms_output_lock);
-	lock_output_data(chip);
-	qpnp_read_wrapper(chip, (u8 *)&current_ocv_raw,
-			chip->base + BMS1_OCV_FOR_SOC_DATA0, 2);
-	unlock_output_data(chip);
-	mutex_unlock(&chip->bms_output_lock);
+	read_ocv_raw(chip, &current_ocv_raw);
 	current_shdw_cc_uah = get_prop_bms_charge_counter_shadow(chip);
 	current_shdw_cc_raw_64 = convert_cc_uah_to_raw(chip,
 			current_shdw_cc_uah);
@@ -2325,8 +2459,8 @@ static void configure_soc_wakeup(struct qpnp_bms_chip *chip,
 	qpnp_write_wrapper(chip, (u8 *)&ocv_raw,
 			chip->base + BMS1_OCV_THR0, 2);
 
-	enable_bms_irq(&chip->ocv_thr_irq);
-	enable_bms_irq(&chip->sw_cc_thr_irq);
+	enable_bms_irq(chip, &chip->ocv_thr_irq);
+	enable_bms_irq(chip, &chip->sw_cc_thr_irq);
 	pr_debug("current sw_cc_raw = 0x%llx, current ocv = 0x%hx\n",
 			current_shdw_cc_raw, (uint16_t)current_ocv_raw);
 	pr_debug("target_cc_uah = %lld, raw64 = 0x%llx, raw 36 = 0x%llx, ocv_raw = 0x%hx\n",
@@ -2469,8 +2603,8 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 		configure_soc_wakeup(chip, &params,
 				batt_temp, bound_soc(new_calculated_soc - 1));
 	} else {
-		disable_bms_irq(&chip->ocv_thr_irq);
-		disable_bms_irq(&chip->sw_cc_thr_irq);
+		disable_bms_irq(chip, &chip->ocv_thr_irq);
+		disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 	}
 done_calculating:
 	mutex_lock(&chip->last_soc_mutex);
@@ -2552,7 +2686,7 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 	struct raw_soc_params raw;
 	struct soc_params params;
 
-	bms_stay_awake(&chip->soc_wake_source);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	if (chip->use_voltage_soc) {
 		soc = calculate_soc_from_voltage(chip);
 	} else {
@@ -2588,7 +2722,7 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
-	bms_relax(&chip->soc_wake_source);
+	bms_relax(chip, &chip->soc_wake_source);
 	return soc;
 }
 
@@ -2598,7 +2732,7 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 	struct qpnp_vadc_result result;
 	struct raw_soc_params raw;
 
-	bms_stay_awake(&chip->soc_wake_source);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	mutex_lock(&chip->vbat_monitor_mutex);
 	if (chip->vbat_monitor_params.state_request !=
 			ADC_TM_HIGH_LOW_THR_DISABLE)
@@ -2628,7 +2762,7 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
-	bms_relax(&chip->soc_wake_source);
+	bms_relax(chip, &chip->soc_wake_source);
 	return soc;
 }
 
@@ -3260,6 +3394,11 @@ static void charging_ended(struct qpnp_bms_chip *chip)
 	mutex_unlock(&chip->last_soc_mutex);
 
 	chip->end_soc = report_state_of_charge(chip);
+	if (chip->use_dynamic_ocv_setting) {
+		get_current_time(&chip->last_ocv_in_discharge_sec);
+		pr_wear("charging ended: %lu\n",
+				chip->last_ocv_in_discharge_sec);
+	}
 
 	mutex_lock(&chip->last_ocv_uv_mutex);
 	chip->soc_at_cv = -EINVAL;
@@ -3318,8 +3457,8 @@ static void battery_status_check(struct qpnp_bms_chip *chip)
 		} else if (chip->battery_status
 				== POWER_SUPPLY_STATUS_FULL) {
 			pr_debug("battery not full any more\n");
-			disable_bms_irq(&chip->ocv_thr_irq);
-			disable_bms_irq(&chip->sw_cc_thr_irq);
+			disable_bms_irq(chip, &chip->ocv_thr_irq);
+			disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 		}
 
 		chip->battery_status = status;
@@ -3607,7 +3746,7 @@ static irqreturn_t bms_ocv_thr_irq_handler(int irq, void *_chip)
 	struct qpnp_bms_chip *chip = _chip;
 
 	pr_debug("ocv_thr irq triggered\n");
-	bms_stay_awake(&chip->soc_wake_source);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	schedule_work(&chip->recalc_work);
 	return IRQ_HANDLED;
 }
@@ -3617,8 +3756,8 @@ static irqreturn_t bms_sw_cc_thr_irq_handler(int irq, void *_chip)
 	struct qpnp_bms_chip *chip = _chip;
 
 	pr_debug("sw_cc_thr irq triggered\n");
-	disable_bms_irq_nosync(&chip->sw_cc_thr_irq);
-	bms_stay_awake(&chip->soc_wake_source);
+	disable_bms_irq(chip, &chip->sw_cc_thr_irq);
+	bms_stay_awake(chip, &chip->soc_wake_source);
 	schedule_work(&chip->recalc_work);
 	return IRQ_HANDLED;
 }
@@ -3785,10 +3924,23 @@ do {									\
 	retval = of_property_read_u32(chip->spmi->dev.of_node,		\
 				"qcom," qpnp_spmi_property,		\
 					&chip->chip_prop);		\
-	if (retval) {							\
+	if (retval)							\
 		pr_err("Error reading " #qpnp_spmi_property		\
-						" property %d\n", rc);	\
-	}								\
+						" property %d\n",	\
+			retval);					\
+} while (0)
+
+#define SPMI_PROP_READ_OPTIONAL(chip_prop, qpnp_spmi_property, retval)	\
+do {									\
+	if (retval)							\
+		break;							\
+	retval = of_property_read_u32(chip->spmi->dev.of_node,		\
+				"qcom," qpnp_spmi_property,		\
+					&chip->chip_prop);		\
+	if (retval && retval != -EINVAL)				\
+		pr_err("Error reading " #qpnp_spmi_property		\
+						" property %d\n",	\
+			retval);					\
 } while (0)
 
 #define SPMI_PROP_READ_BOOL(chip_prop, qpnp_spmi_property)		\
@@ -3873,6 +4025,11 @@ static inline int bms_read_properties(struct qpnp_bms_chip *chip)
 		return rc;
 	}
 
+	SPMI_PROP_READ_OPTIONAL(s1_vsense_thr_uv, "s1-vsense-thr-uv", rc);
+	SPMI_PROP_READ_OPTIONAL(s2_vsense_thr_uv, "s2-vsense-thr-uv", rc);
+	SPMI_PROP_READ_BOOL(use_dynamic_ocv_setting, "use-dynamic-ocv-setting");
+	SPMI_PROP_READ_BOOL(ocv_rbatt_compensation, "ocv-rbatt-compensation");
+
 	pr_debug("dts data: r_sense_uohm:%d, v_cutoff_uv:%d, max_v:%d\n",
 			chip->r_sense_uohm, chip->v_cutoff_uv,
 			chip->max_voltage_uv);
@@ -3885,6 +4042,11 @@ static inline int bms_read_properties(struct qpnp_bms_chip *chip)
 	pr_debug("ignore_shutdown_soc:%d, use_voltage_soc:%d\n",
 			chip->ignore_shutdown_soc, chip->use_voltage_soc);
 	pr_debug("use external rsense: %d\n", chip->use_external_rsense);
+	pr_debug("s1 vsense: %d, s2 vsense: %d\n", chip->s1_vsense_thr_uv,
+						chip->s2_vsense_thr_uv);
+	pr_debug("dynamic ocv setting: %d, ocv rbatt compensation: %d\n",
+					chip->use_dynamic_ocv_setting,
+					chip->ocv_rbatt_compensation);
 	return 0;
 }
 
@@ -3939,11 +4101,11 @@ static int bms_request_irqs(struct qpnp_bms_chip *chip)
 	int rc;
 
 	SPMI_REQUEST_IRQ(chip, rc, sw_cc_thr);
-	disable_bms_irq(&chip->sw_cc_thr_irq);
-	enable_irq_wake(chip->sw_cc_thr_irq.irq);
+	chip->sw_cc_thr_irq.is_wake = true;
+	disable_bms_irq(chip, &chip->sw_cc_thr_irq);
 	SPMI_REQUEST_IRQ(chip, rc, ocv_thr);
-	disable_bms_irq(&chip->ocv_thr_irq);
-	enable_irq_wake(chip->ocv_thr_irq.irq);
+	chip->ocv_thr_irq.is_wake = true;
+	disable_bms_irq(chip, &chip->ocv_thr_irq);
 	return 0;
 }
 
@@ -4208,6 +4370,191 @@ static int setup_die_temp_monitoring(struct qpnp_bms_chip *chip)
 	return 0;
 }
 
+#define VSENSE_THRESHOLD_MAX_NV		2767000
+#define VSENSE_THRESHOLD_LSB_NV		10850
+#define OCV_TOL_LSB_UV		400
+#define OCV_TOL_MAX_UV		6000
+#define OCV_TOL_SHIFT		0x04
+static int qpnp_bms_config_vsense_threshold(struct qpnp_bms_chip *chip)
+{
+	int value, rc;
+
+	if (chip->s1_vsense_thr_uv &&
+		(chip->s1_vsense_thr_uv * 1000 <=
+			VSENSE_THRESHOLD_MAX_NV)) {
+		value = DIV_ROUND_UP(chip->s1_vsense_thr_uv * 1000,
+						VSENSE_THRESHOLD_LSB_NV);
+
+		rc = qpnp_masked_write(chip, BMS1_S1_VSENSE_THR_CTL,
+						0xff, value);
+		if (rc) {
+			pr_err("write S1_VSENSE_THR failed, rc = %d\n", rc);
+			return rc;
+		}
+	}
+
+	if (chip->s2_vsense_thr_uv &&
+		chip->s2_vsense_thr_uv * 1000 <=
+			VSENSE_THRESHOLD_MAX_NV) {
+		value = DIV_ROUND_UP(chip->s2_vsense_thr_uv * 1000,
+						VSENSE_THRESHOLD_LSB_NV);
+
+		rc = qpnp_masked_write(chip, BMS1_S2_VSENSE_THR_CTL,
+					0xff, value);
+		if (rc) {
+			pr_err("write S2_VSENSE_THR failed, rc = %d\n", rc);
+			return rc;
+		}
+	}
+
+	if (chip->use_dynamic_ocv_setting) {
+		if (!is_battery_charging(chip)) {
+			get_current_time(
+				&chip->last_ocv_in_discharge_sec);
+			pr_wear("init discharge sec: %lu\n",
+				chip->last_ocv_in_discharge_sec);
+		}
+		get_current_time(&chip->last_ocv_setting_changed_sec);
+		rc = qpnp_read_wrapper(chip, (u8 *)&value,
+				chip->base + BMS1_S2_VSENSE_THR_CTL, 1);
+		if (rc) {
+			pr_err("read S2_VSENSE_THR failed, rc = %d\n", rc);
+			return rc;
+		}
+		chip->s2_vsense_thr_current_ua =
+			div_s64((value * VSENSE_THRESHOLD_LSB_NV) * 1000LL,
+						chip->r_sense_uohm);
+		chip->lowest_sleep_current_ua_since_last_ocv =
+			chip->s2_vsense_thr_current_ua;
+
+		rc = qpnp_read_wrapper(chip, (u8 *)&value,
+				chip->base + BMS1_S3_VSENSE_THR_CTL, 1);
+		if (rc) {
+			pr_err("read S3_VSENSE_THR failed, rc = %d\n", rc);
+			return rc;
+		}
+		chip->s3_vsense_thr_current_ua =
+			div_s64((value * VSENSE_THRESHOLD_LSB_NV) * 1000LL,
+						chip->r_sense_uohm);
+		rc = qpnp_read_wrapper(chip, (u8 *)&value,
+				chip->base + BMS1_TOL_CTL, 1);
+		if (rc) {
+			pr_err("read TOL_CTL failed, rc = %d\n", rc);
+			return rc;
+		}
+		chip->ocv_tol_uv = ((value & OCV_TOL_MASK) >> OCV_TOL_SHIFT)
+						* OCV_TOL_LSB_UV;
+		pr_wear("s2_vsens = %d, lowest_current = %d, s3_vsense = %d, ocv_tol = %d\n",
+				chip->s2_vsense_thr_current_ua,
+				chip->lowest_sleep_current_ua_since_last_ocv,
+				chip->s3_vsense_thr_current_ua,
+				chip->ocv_tol_uv);
+	}
+	return 0;
+}
+
+#define SECONDS_PER_MINUTE	60
+#define S3_VSENSE_THR_BUMPUP_STEP_UA	3000
+static int qpnp_bms_update_ocv_setting(struct qpnp_bms_chip *chip)
+{
+	int rc, current_ua, new_vsense_ua;
+	unsigned long now_tm_sec;
+	int duration_since_last_ocv_in_discharge = 0;
+	int duration_since_last_ocv_setting = 0;
+	int s3_vsense_thr_current_ua, value;
+
+	if (is_battery_charging(chip))
+		return 0;
+
+	current_ua = chip->avg_ibat_ua_in_sleep;
+	rc = get_current_time(&now_tm_sec);
+	if (rc) {
+		pr_err("get current time failed, rc = %d\n", rc);
+		return rc;
+	}
+	if (chip->last_ocv_setting_changed_sec)
+		duration_since_last_ocv_setting = now_tm_sec -
+			chip->last_ocv_setting_changed_sec;
+	if (chip->last_ocv_in_discharge_sec)
+		duration_since_last_ocv_in_discharge = now_tm_sec -
+			chip->last_ocv_in_discharge_sec;
+
+	if (current_ua < chip->lowest_sleep_current_ua_since_last_ocv &&
+		current_ua < chip->s2_vsense_thr_current_ua)
+		chip->lowest_sleep_current_ua_since_last_ocv = current_ua;
+
+	pr_wear("ocv_setting_last = %d, ocv_last = %d, lowest_sleep_current = %d, s2_vsense = %d, s3_vsense = %d, ocv_tol = %d\n",
+			duration_since_last_ocv_setting,
+			duration_since_last_ocv_in_discharge,
+			chip->lowest_sleep_current_ua_since_last_ocv,
+			chip->s2_vsense_thr_current_ua,
+			chip->s3_vsense_thr_current_ua,
+			chip->ocv_tol_uv);
+
+	if ((duration_since_last_ocv_in_discharge > SECONDS_PER_HOUR) ||
+			(chip->lowest_sleep_current_ua_since_last_ocv <
+			 chip->s3_vsense_thr_current_ua)) {
+		new_vsense_ua = chip->lowest_sleep_current_ua_since_last_ocv +
+					S3_VSENSE_THR_BUMPUP_STEP_UA;
+		if (new_vsense_ua < chip->s2_vsense_thr_current_ua) {
+			s3_vsense_thr_current_ua = new_vsense_ua;
+			value = DIV_ROUND_UP(s3_vsense_thr_current_ua *
+					chip->r_sense_uohm,
+					VSENSE_THRESHOLD_LSB_NV * 1000);
+			pr_wear("new s3_vsense_thr = %d\n", new_vsense_ua);
+			if (value > 255)
+				value = 255;
+			rc = qpnp_masked_write(chip, BMS1_S3_VSENSE_THR_CTL,
+						0xff, (u8)value);
+			if (rc) {
+				pr_err("write S3_VSENSE_THR failed, rc = %d\n",
+								rc);
+				return rc;
+			}
+			chip->s3_vsense_thr_current_ua =
+				chip->lowest_sleep_current_ua_since_last_ocv;
+			chip->lowest_sleep_current_ua_since_last_ocv =
+				chip->s2_vsense_thr_current_ua;
+			duration_since_last_ocv_setting = 0;
+			chip->last_ocv_setting_changed_sec = now_tm_sec;
+			chip->last_ocv_in_discharge_sec = now_tm_sec;
+			chip->ocv_setting_adjusted = true;
+			pr_wear("ocv_setting adjusted, lowest_sleeping_current = %d, s3_vsense = %d\n",
+					chip->lowest_sleep_current_ua_since_last_ocv,
+					chip->s3_vsense_thr_current_ua);
+		} else {
+			pr_err("se_vsense_thr reach to the highest value: %d\n",
+							new_vsense_ua);
+		}
+	}
+
+	if ((duration_since_last_ocv_in_discharge > 10 * SECONDS_PER_MINUTE)
+			&& duration_since_last_ocv_setting
+			&& (current_ua < chip->s2_vsense_thr_current_ua) &&
+			chip->ocv_setting_adjusted) {
+		if (chip->ocv_tol_uv <= OCV_TOL_MAX_UV - OCV_TOL_LSB_UV) {
+			chip->ocv_tol_uv =
+				min(chip->ocv_tol_uv + OCV_TOL_LSB_UV,
+						OCV_TOL_MAX_UV);
+			value = DIV_ROUND_UP(chip->ocv_tol_uv, OCV_TOL_LSB_UV);
+			pr_wear("new ocv_tol_uv: %d\n", chip->ocv_tol_uv);
+			if (value > 15)
+				value = 15;
+			rc = qpnp_masked_write(chip, BMS1_TOL_CTL, OCV_TOL_MASK,
+						(u8)value << OCV_TOL_SHIFT);
+			if (rc) {
+				pr_err("write TOL_CTL failed, rc = %d\n", rc);
+				return rc;
+			}
+		}
+		duration_since_last_ocv_setting = 0;
+		chip->last_ocv_setting_changed_sec = now_tm_sec;
+	}
+
+	return 0;
+}
+
+
 static int qpnp_bms_probe(struct spmi_device *spmi)
 {
 	struct qpnp_bms_chip *chip;
@@ -4232,6 +4579,8 @@ static int qpnp_bms_probe(struct spmi_device *spmi)
 	mutex_init(&chip->soc_invalidation_mutex);
 	mutex_init(&chip->last_soc_mutex);
 	mutex_init(&chip->status_lock);
+	spin_lock_init(&chip->irq_lock);
+	spin_lock_init(&chip->pm_wake_lock);
 	init_waitqueue_head(&chip->bms_wait_queue);
 
 	warm_reset = qpnp_pon_is_warm_reset();
@@ -4282,6 +4631,11 @@ static int qpnp_bms_probe(struct spmi_device *spmi)
 		goto error_read;
 	}
 
+	rc = qpnp_bms_config_vsense_threshold(chip);
+	if (rc) {
+		pr_err("config vsense threshold failed, rc = %d\n", rc);
+		return rc;
+	}
 	rc = read_iadc_channel_select(chip);
 	if (rc) {
 		pr_err("Unable to get iadc selected channel = %d\n", rc);
@@ -4418,6 +4772,22 @@ static int qpnp_bms_remove(struct spmi_device *spmi)
 static int bms_suspend(struct device *dev)
 {
 	struct qpnp_bms_chip *chip = dev_get_drvdata(dev);
+	int rc;
+
+	if (chip->use_dynamic_ocv_setting && !is_battery_charging(chip)) {
+		chip->cc_uah_before_suspend =
+			get_prop_bms_charge_counter_shadow(chip);
+		get_current_time(&chip->suspend_sec);
+		rc = read_ocv_raw(chip, &chip->ocv_raw_before_suspend);
+		if (rc) {
+			pr_err("read ocv raw before suspend failed, rc = %d\n",
+							rc);
+			return rc;
+		}
+		pr_wear("suspend_sec = %lu, uah = %d, ocv_raw = %d\n",
+				chip->suspend_sec, chip->cc_uah_before_suspend,
+				chip->ocv_raw_before_suspend);
+	}
 
 	cancel_delayed_work_sync(&chip->calculate_soc_delayed_work);
 	chip->was_charging_at_sleep = is_battery_charging(chip);
@@ -4432,10 +4802,14 @@ static int bms_resume(struct device *dev)
 	unsigned long time_since_last_recalc;
 	unsigned long tm_now_sec;
 	struct qpnp_bms_chip *chip = dev_get_drvdata(dev);
+	int cc_uah_in_sleep;
+	int sleep_duration;
+	uint16_t ocv_raw;
 
 	rc = get_current_time(&tm_now_sec);
 	if (rc) {
 		pr_err("Could not read current time: %d\n", rc);
+		tm_now_sec = 0;
 	} else {
 		soc_calc_period = get_calculation_delay_ms(chip);
 		time_since_last_recalc = tm_now_sec - chip->last_recalc_time;
@@ -4444,9 +4818,49 @@ static int bms_resume(struct device *dev)
 		time_until_next_recalc = max(0, soc_calc_period
 				- (int)(time_since_last_recalc * 1000));
 	}
-
+	if (chip->use_dynamic_ocv_setting && !is_battery_charging(chip)
+					&& tm_now_sec != 0) {
+		cc_uah_in_sleep = get_prop_bms_charge_counter_shadow(chip);
+		pr_wear("cc_uah before sleep = %d\n",
+				chip->cc_uah_before_suspend);
+		pr_wear("cc_uah after sleep = %d\n", cc_uah_in_sleep);
+		cc_uah_in_sleep -= chip->cc_uah_before_suspend;
+		rc = read_ocv_raw(chip, &ocv_raw);
+		if (rc) {
+			pr_err("read ocv raw after resume failed, rc = %d\n",
+							rc);
+			return rc;
+		} else {
+			if (ocv_raw != chip->ocv_raw_before_suspend) {
+				pr_wear("ocv changed in sleep, before = %d, after = %d\n",
+						chip->ocv_raw_before_suspend,
+						ocv_raw);
+				chip->last_ocv_in_discharge_sec = tm_now_sec;
+				chip->ocv_setting_adjusted = false;
+			} else {
+				pr_wear("ocv not changed in sleep, before = %d, after = %d\n",
+						chip->ocv_raw_before_suspend,
+						ocv_raw);
+			}
+		}
+		sleep_duration = tm_now_sec - chip->suspend_sec;
+		pr_wear("sleep_duration = %d\n", sleep_duration);
+		if (sleep_duration > 0 && cc_uah_in_sleep > 0) {
+			chip->avg_ibat_ua_in_sleep =
+				div_s64(cc_uah_in_sleep * SECONDS_PER_HOUR,
+							sleep_duration);
+			pr_wear("avg_ibat_ua_in_sleep = %d\n",
+					chip->avg_ibat_ua_in_sleep);
+			if (chip->avg_ibat_ua_in_sleep > 0) {
+				rc = qpnp_bms_update_ocv_setting(chip);
+				if (rc)
+					pr_err("update OCV setting failed, rc = %d\n",
+									rc);
+			}
+		}
+	}
 	if (time_until_next_recalc == 0)
-		bms_stay_awake(&chip->soc_wake_source);
+		bms_stay_awake(chip, &chip->soc_wake_source);
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
 		round_jiffies_relative(msecs_to_jiffies
 		(time_until_next_recalc)));

@@ -219,7 +219,7 @@ static int msm_cpe_lab_thread(void *data)
 	struct wcd_cpe_lab_hw_params *hw_params = &lab->hw_params;
 	struct wcd_cpe_core *core = (struct wcd_cpe_core *)lab->core_handle;
 	struct snd_pcm_substream *substream = lab->substream;
-	struct cpe_priv *cpe = cpe_get_private_data(substream);
+	struct cpe_priv *cpe;
 	struct wcd_cpe_lsm_ops *lsm_ops;
 	struct wcd_cpe_data_pcm_buf *cur_buf, *next_buf;
 	int rc = 0;
@@ -236,6 +236,18 @@ static int msm_cpe_lab_thread(void *data)
 			__func__);
 		return 0;
 	}
+	if (substream == NULL) {
+		pr_err("%s: Invalid substream\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	cpe = cpe_get_private_data(substream);
+
+	if (!hw_params || !cpe) {
+		pr_err("%s: Lab thread pointers NULL\n", __func__);
+		return -EINVAL;
+	}
 
 	lsm_ops = &cpe->lsm_ops;
 	memset(lab->pcm_buf[0].mem, 0, lab->pcm_size);
@@ -244,11 +256,6 @@ static int msm_cpe_lab_thread(void *data)
 		lsm_ops->lsm_lab_data_channel_read_status == NULL) {
 			pr_err("%s: slim ops not present\n", __func__);
 			return -EINVAL;
-	}
-
-	if (!hw_params || !substream || !cpe) {
-		pr_err("%s: Lab thread pointers NULL\n", __func__);
-		return -EINVAL;
 	}
 
 	rc = lsm_ops->lsm_lab_data_channel_read(core, lab->lsm_s,
