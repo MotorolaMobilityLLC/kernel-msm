@@ -41,15 +41,11 @@
 #define CS35L34_BST_CONV_COEF_2		0x22	/* Boost Conv Coefficients 2 */
 #define CS35L34_BST_CONV_SLOPE_COMP	0x23	/* Boost Conv Slope Comp */
 #define CS35L34_BST_CONV_SW_FREQ	0x24	/* Boost Conv L BST SW Freq */
-#define CS35L34_BST_CONV_DCR		0x25	/* Boost Conv L BST DCR */
 #define CS35L34_CLASS_H_CTL		0x30	/* CLS H Control */
 #define CS35L34_CLASS_H_HEADRM_CTL	0x31	/* CLS H Headroom Ctl */
 #define CS35L34_CLASS_H_RELEASE_RATE	0x32	/* CLS H Release Rate */
 #define CS35L34_CLASS_H_FET_DRIVE_CTL	0x33	/* CLS H Weak FET Drive Ctl */
 #define CS35L34_CLASS_H_VP_CH_CTL	0x34	/* CLS H VP CH Control */
-#define CS35L34_CLASS_H_PATH_DELAY_CTL	0x35	/* CLS H Path Delay Control */
-#define CS35L34_CLASS_H_WEAK_FET_DELAY	0x36	/* CLS H Weak FET Delay Ctl */
-#define CS35L34_CLASS_H_WEAK_FET_CNTR	0x37	/* CLS H Weak FET Cntr Ctl */
 #define CS35L34_CLASS_H_STATUS		0x38	/* CLS H Status */
 #define CS35L34_VPBR_CTL		0x3A	/* VPBR Ctl */
 #define CS35L34_VPBR_VOL_CTL		0x3B	/* VPBR Volume Ctl */
@@ -74,11 +70,15 @@
 #define CS35L34_TDM_TX_CTL_6_FLAG2	0x57	/* TDM TX Ctl 6 (FLAG2) */
 #define CS35L34_TDM_TX_CTL_7_LBST	0x58	/* TDM TX Ctl 7 (LBST) */
 #define CS35L34_TDM_TX_CTL_8_NSNS	0x59	/* TDM TX Ctl 8 (NSNS) */
-#define CS35L34_TDM_TX_SLOT_EN		0x5D	/* TDM TX Slot Enable */
+#define CS35L34_TDM_TX_SLOT_EN_1	0x5A	/* TDM TX Slot Enable */
+#define CS35L34_TDM_TX_SLOT_EN_2	0x5B	/* TDM TX Slot Enable */
+#define CS35L34_TDM_TX_SLOT_EN_3	0x5C	/* TDM TX Slot Enable */
+#define CS35L34_TDM_TX_SLOT_EN_4	0x5D	/* TDM TX Slot Enable */
 #define CS35L34_TDM_RX_CTL_1_AUDIN	0x5E	/* TDM RX Ctl 1 */
 #define CS35L34_TDM_RX_CTL_2_SPLY	0x5F	/* TDM RX Ctl 2 (SPLY) */
 #define CS35L34_TDM_RX_CTL_3_ALIVE	0x60	/* TDM RX Ctl 3 (ALIVE) */
-#define CS35L34_MULT_DEV_SYNCH		0x63	/* Multidevice Synch */
+#define CS35L34_MULT_DEV_SYNCH1		0x62	/* Multidevice Synch */
+#define CS35L34_MULT_DEV_SYNCH2		0x63	/* Multidevice Synch 2 */
 #define CS35L34_PROT_RELEASE_CTL	0x64	/* Protection Release Ctl */
 #define CS35L34_DIAG_MODE_REG_LOCK	0x68	/* Diagnostic Mode Reg Lock */
 #define CS35L34_DIAG_MODE_CTL_1		0x69	/* Diagnostic Mode Ctl 1 */
