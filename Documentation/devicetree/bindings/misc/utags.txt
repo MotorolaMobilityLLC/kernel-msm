@@ -5,12 +5,14 @@ Required properties:
 - mmi,utoags-main	: string, path to the utags main partition
 Optional properties:
 - mmi,utags-backup	: string, path to the utags backup partition
+- mmi,dir-name		: string, override for directory in procfs root to be used
 
 Example:
 
 utags@1 {
 	compatible = "mmi,utags";
 	status = "okay";
+	mmi,dir-name = "hwid";
 	mmi,utags-main = "/dev/block/bootdevice/by-name/utags";
 	mmi,utags-backup = "/dev/block/bootdevice/by-name/utagsBackup";
 };
