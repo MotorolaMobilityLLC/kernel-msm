@@ -37,16 +37,9 @@
 
 #include "cs35l34.h"
 
-#define CS35L34_NUM_SUPPLIES 2
-static const char *const cs35l34_supply_names[CS35L34_NUM_SUPPLIES] = {
-	"VA",
-	"VP",
-};
-
 struct  cs35l34_private {
 	struct snd_soc_codec *codec;
 	struct cs35l34_platform_data pdata;
-	struct regulator_bulk_data supplies[CS35L34_NUM_SUPPLIES];
 	struct regmap *regmap;
 	void *control_data;
 	int mclk_int;
@@ -55,75 +48,77 @@ struct  cs35l34_private {
 };
 
 static const struct reg_default cs35l34_reg[] = {
-	{0x06, 0x01},	/* PWR CTL 1 */
-	{0x07, 0x19},	/* PWR CTL 2 */
-	{0x08, 0x01},	/* PWR CTL 3 */
-	{0x0A, 0x08},	/* ADSP SCLOCK CTL */
-	{0x0B, 0x01},	/* MCLK CTL */
-	{0x14, 0x01},	/* AMP INP DRIVE CTL */
-	{0x15, 0x12},	/* DIG VOL CTL */
-	{0x16, 0x00},	/* DAC VOL */
-	{0x17, 0x09},	/* AMP GAIN CTL */
-	{0x18, 0x06},	/* PROTECTION CTL */
-	{0x1A, 0x04},	/* KEEP ALIVE CTL */
-	{0x1D, 0x30},	/* BOOST CNVR VOLT CTL */
-	{0x1E, 0x10},	/* BST PEAK CURRENT */
-	{0x1F, 0x00},	/* BST CONV LBST LIMIT */
-	{0x20, 0x06},	/* BST CONV SOFT RAMP CTL */
-	{0x21, 0x0F},	/* BST CONV COEFF 1 */
-	{0x22, 0x0C},	/* BST CONV COEFF 2 */
-	{0x23, 0x4E},	/* BST CONV SLOPE COMP */
-	{0x24, 0x40},	/* BST CONV LBST VAL SW FREQ */
-	{0x30, 0x0B},	/* CLASS H CTL */
-	{0x31, 0x0B},	/* CLASS H HEADROOM */
-	{0x32, 0x08},	/* CLASS H RELEASE RATE */
-	{0x33, 0x41},	/* CLASS H WEAK FET */
-	{0x34, 0xC5},	/* CLASS H VPCH CTL */
-	{0x38, 0x05},	/* CLASS H STATUS */
-	{0x3A, 0x0A},	/* VPBR CTL */
-	{0x3B, 0x91},	/* VPBR VOL CTL*/
-	{0x3C, 0x6A},	/* VPBR TIMING CTL */
-	{0x40, 0x96},	/* PRED MAX ATT SPK LOAD */
-	{0x41, 0x1C},	/* PRED BRWNOUT THRESHLD */
-	{0x42, 0x00},	/* PRED BRWNOUT VOL */
-	{0x43, 0x10},	/* PRED BRWNOUT RATE */
-	{0x44, 0x10},	/* PRED WAIT */
-	{0x46, 0x08},	/* PRED ZVP INIT IMPED */
-	{0x47, 0x80},	/* PRED MAN SAFE VPI */
-	{0x4B, 0x00},	/* VPBR ATTEN STATUS */
-	{0x4C, 0x00},	/* PRED BRWNOUT ATTEN STATUS */
-	{0x4E, 0xC6},	/* SPK MON CTL */
-	{0x50, 0x00},	/* ADSP I2S CTL */
-	{0x52, 0x00},	/* TDM TX CTL 1 VMON */
-	{0x53, 0x04},	/* TDM TX CTL 2 IMON */
-	{0x54, 0x03},	/* TDM TX CTL 3 VPMON */
-	{0x55, 0x07},	/* TDM TX CTL 4 VBSTMON */
-	{0x56, 0x08},	/* TDM TX CTL 5 FLAG1 */
-	{0x57, 0x09},	/* TDM TX CTL 6 FLAG2 */
-	{0x58, 0x0A},	/* TDM TX CTL 7 LBST */
-	{0x59, 0x0B},	/* TDM TX CTL 8 NSNS */
-	{0x5A, 0x00},	/* TDM TX SLOT ENABLE [31:24] */
-	{0x5B, 0x00},	/* TDM TX SLOT ENABLE [23:16] */
-	{0x5C, 0x00},	/* TDM TX SLOT ENABLE [15:8] */
-	{0x5D, 0x00},	/* TDM TX SLOT ENABLE [7:0] */
-	{0x5E, 0x40},	/* TDM RX CTL 1 AUD_IN */
-	{0x5F, 0x03},	/* TDM RX CTL 2 SPLY */
-	{0x60, 0x04},	/* TDM RX CTL 3 ALIVE */
-	{0x63, 0x80},	/* MULT DEV SYNC */
-	{0x64, 0x00},	/* PROTECTION REL CTL */
-	{0x68, 0x00},	/* DIAG MODE REG LOCK */
-	{0x69, 0x00},	/* DIAG MODE CTL 1 */
-	{0x6A, 0x00},	/* DIAG MODE CTL 2 */
-	{0x70, 0xFF},	/* INT MASK 1 */
-	{0x71, 0xFF},	/* INT MASK 2 */
-	{0x72, 0xFF},	/* INT MASK 3 */
-	{0x73, 0xFF},	/* INT MASK 4 */
-	{0x74, 0x30},	/* INT STATUS 1 */
-	{0x75, 0x05},	/* INT STATUS 2 */
-	{0x76, 0x00},	/* INT STATUS 3 */
-	{0x77, 0x00},	/* INT STATUS 4 */
-	{0x7E, 0x00},	/* OTP TRIM STATUS */
-	{0x7F, 0x00},	/* PAGE UNLOCK */
+	{CS35L34_PWRCTL1, 0x01},
+	{CS35L34_PWRCTL2, 0x19},
+	{CS35L34_PWRCTL3, 0x01},
+	{CS35L34_ADSP_CLK_CTL, 0x08},
+	{CS35L34_MCLK_CTL, 0x01},
+	{CS35L34_AMP_INP_DRV_CTL, 0x01},
+	{CS35L34_AMP_DIG_VOL_CTL, 0x12},
+	{CS35L34_AMP_DIG_VOL, 0x00},
+	{CS35L34_AMP_ANLG_GAIN_CTL, 0x09},
+	{CS35L34_PROTECT_CTL, 0x06},
+	{CS35L34_AMP_KEEP_ALIVE_CTL, 0x04},
+	{CS35L34_BST_CVTR_V_CTL, 0x00},
+	{CS35L34_BST_PEAK_I, 0x10},
+	{CS35L34_BST_LIMITING, 0x00},
+	{CS35L34_BST_RAMP_CTL, 0x06},
+	{CS35L34_BST_CONV_COEF_1, 0x0F},
+	{CS35L34_BST_CONV_COEF_2, 0x0C},
+	{CS35L34_BST_CONV_SLOPE_COMP, 0x4E},
+	{CS35L34_BST_CONV_SW_FREQ, 0x40},
+	{CS35L34_CLASS_H_CTL, 0x0B},
+	{CS35L34_CLASS_H_HEADRM_CTL, 0x0B},
+	{CS35L34_CLASS_H_RELEASE_RATE, 0x08},
+	{CS35L34_CLASS_H_FET_DRIVE_CTL, 0x41},
+	{CS35L34_CLASS_H_VP_CH_CTL, 0xC5},
+	{CS35L34_CLASS_H_STATUS, 0x05},
+	{CS35L34_VPBR_CTL, 0x0A},
+	{CS35L34_VPBR_VOL_CTL, 0x91},
+	{CS35L34_VPBR_TIMING_CTL, 0x6A},
+	{CS35L34_PRED_MAX_ATTEN_SPK_LOAD, 0x96},
+	{CS35L34_PRED_BROWNOUT_THRESH, 0x1C},
+	{CS35L34_PRED_BROWNOUT_VOL_CTL, 0x00},
+	{CS35L34_PRED_BROWNOUT_RATE_CTL, 0x10},
+	{CS35L34_PRED_WAIT_CTL, 0x10},
+	{CS35L34_PRED_ZVP_INIT_IMP_CTL, 0x08},
+	{CS35L34_PRED_MAN_SAFE_VPI_CTL, 0x80},
+	{CS35L34_VPBR_ATTEN_STATUS, 0x00},
+	{CS35L34_PRED_BRWNOUT_ATT_STATUS, 0x00},
+	{CS35L34_SPKR_MON_CTL, 0xC6},
+	{CS35L34_ADSP_I2S_CTL, 0x00},
+	{CS35L34_ADSP_TDM_CTL, 0x00},
+	{CS35L34_TDM_TX_CTL_1_VMON, 0x00},
+	{CS35L34_TDM_TX_CTL_2_IMON, 0x04},
+	{CS35L34_TDM_TX_CTL_3_VPMON, 0x03},
+	{CS35L34_TDM_TX_CTL_4_VBSTMON, 0x07},
+	{CS35L34_TDM_TX_CTL_5_FLAG1, 0x08},
+	{CS35L34_TDM_TX_CTL_6_FLAG2, 0x09},
+	{CS35L34_TDM_TX_CTL_7_LBST, 0x0A},
+	{CS35L34_TDM_TX_CTL_8_NSNS, 0x0B},
+	{CS35L34_TDM_TX_SLOT_EN_1, 0x00},
+	{CS35L34_TDM_TX_SLOT_EN_2, 0x00},
+	{CS35L34_TDM_TX_SLOT_EN_3, 0x00},
+	{CS35L34_TDM_TX_SLOT_EN_4, 0x00},
+	{CS35L34_TDM_RX_CTL_1_AUDIN, 0x40},
+	{CS35L34_TDM_RX_CTL_2_SPLY, 0x03},
+	{CS35L34_TDM_RX_CTL_3_ALIVE, 0x04},
+	{CS35L34_MULT_DEV_SYNCH1, 0x00},
+	{CS35L34_MULT_DEV_SYNCH2, 0x80},
+	{CS35L34_PROT_RELEASE_CTL, 0x00},
+	{CS35L34_DIAG_MODE_REG_LOCK, 0x00},
+	{CS35L34_DIAG_MODE_CTL_1, 0x00},
+	{CS35L34_DIAG_MODE_CTL_2, 0x00},
+	{CS35L34_INT_MASK_1, 0xFF},
+	{CS35L34_INT_MASK_2, 0xFF},
+	{CS35L34_INT_MASK_3, 0xFF},
+	{CS35L34_INT_MASK_4, 0xFF},
+	{CS35L34_INT_STATUS_1, 0x30},
+	{CS35L34_INT_STATUS_2, 0x05},
+	{CS35L34_INT_STATUS_3, 0x00},
+	{CS35L34_INT_STATUS_4, 0x00},
+	{CS35L34_OTP_TRIM_STATUS, 0x00},
+	{CS35L34_PAGE_UNLOCK, 0x00},
 };
 
 static bool cs35l34_volatile_register(struct device *dev, unsigned int reg)
@@ -172,15 +167,11 @@ static bool cs35l34_readable_register(struct device *dev, unsigned int reg)
 	case	CS35L34_BST_CONV_COEF_2:
 	case	CS35L34_BST_CONV_SLOPE_COMP:
 	case	CS35L34_BST_CONV_SW_FREQ:
-	case	CS35L34_BST_CONV_DCR:
 	case	CS35L34_CLASS_H_CTL:
 	case	CS35L34_CLASS_H_HEADRM_CTL:
 	case	CS35L34_CLASS_H_RELEASE_RATE:
 	case	CS35L34_CLASS_H_FET_DRIVE_CTL:
 	case	CS35L34_CLASS_H_VP_CH_CTL:
-	case	CS35L34_CLASS_H_PATH_DELAY_CTL:
-	case	CS35L34_CLASS_H_WEAK_FET_DELAY:
-	case	CS35L34_CLASS_H_WEAK_FET_CNTR:
 	case	CS35L34_CLASS_H_STATUS:
 	case	CS35L34_VPBR_CTL:
 	case	CS35L34_VPBR_VOL_CTL:
@@ -205,11 +196,15 @@ static bool cs35l34_readable_register(struct device *dev, unsigned int reg)
 	case	CS35L34_TDM_TX_CTL_6_FLAG2:
 	case	CS35L34_TDM_TX_CTL_7_LBST:
 	case	CS35L34_TDM_TX_CTL_8_NSNS:
-	case	CS35L34_TDM_TX_SLOT_EN:
+	case	CS35L34_TDM_TX_SLOT_EN_1:
+	case	CS35L34_TDM_TX_SLOT_EN_2:
+	case	CS35L34_TDM_TX_SLOT_EN_3:
+	case	CS35L34_TDM_TX_SLOT_EN_4:
 	case	CS35L34_TDM_RX_CTL_1_AUDIN:
 	case	CS35L34_TDM_RX_CTL_2_SPLY:
 	case	CS35L34_TDM_RX_CTL_3_ALIVE:
-	case	CS35L34_MULT_DEV_SYNCH:
+	case	CS35L34_MULT_DEV_SYNCH1:
+	case	CS35L34_MULT_DEV_SYNCH2:
 	case	CS35L34_PROT_RELEASE_CTL:
 	case	CS35L34_DIAG_MODE_REG_LOCK:
 	case	CS35L34_DIAG_MODE_CTL_1:
@@ -248,27 +243,49 @@ static bool cs35l34_precious_register(struct device *dev, unsigned int reg)
 static int cs35l34_sdin_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(codec);
 	int ret;
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		/* Enable MCLK to allow the registers to take effect */
-		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL3,
-			 MCLK_DIS, 0);
 		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL1,
-			 1, 0);
+			 PDN_ALL, 0);
 		if (ret < 0) {
 			dev_err(codec->dev, "Cannot set Power bits %d\n", ret);
 			return ret;
 		}
-		msleep(5);
+		usleep_range(5000, 5000);
 	break;
 	case SND_SOC_DAPM_POST_PMD:
 		ret = regmap_update_bits(priv->regmap, CS35L34_PWRCTL1,
 			 PDN_ALL, PDN_ALL);
 	break;
+	default:
+		pr_err("Invalid event = 0x%x\n", event);
+	}
+	return 0;
+}
+
+static int cs35l34_main_amp_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct cs35l34_private *priv = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
+			CS35L34_BST_CTL_MASK,
+			0x30);
+		usleep_range(5000, 5000);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		regmap_update_bits(priv->regmap, CS35L34_BST_CVTR_V_CTL,
+			CS35L34_BST_CTL_MASK,
+			0x00);
+		usleep_range(5000, 5000);
+		break;
 	default:
 		pr_err("Invalid event = 0x%x\n", event);
 	}
@@ -285,7 +302,6 @@ static const struct snd_kcontrol_new cs35l34_snd_controls[] = {
 	SOC_SINGLE_SX_TLV("Digital Volume", CS35L34_AMP_DIG_VOL,
 		      0, 0x34, 0xFF, dig_vol_tlv),
 	SOC_ENUM("AMP Gain", amp_gain),
-	SOC_SINGLE("CLASS D Amp", CS35L34_PWRCTL2, 0, 1, 1),
 	SOC_SINGLE("Mute Switch", CS35L34_AMP_ANLG_GAIN_CTL, 5, 1, 0),
 };
 
@@ -295,7 +311,6 @@ static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
 					SND_SOC_DAPM_PRE_PMU |
 					SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_AIF_OUT("SDOUT", NULL, 0, CS35L34_PWRCTL3, 2, 1),
-	SND_SOC_DAPM_OUT_DRV("SPKDRV", CS35L34_PWRCTL2, 0, 1, NULL, 0),
 
 	SND_SOC_DAPM_OUTPUT("SPK"),
 
@@ -308,25 +323,23 @@ static const struct snd_soc_dapm_widget cs35l34_dapm_widgets[] = {
 	SND_SOC_DAPM_ADC("IMON ADC", NULL, CS35L34_PWRCTL2, 6, 1),
 	SND_SOC_DAPM_ADC("VPMON ADC", NULL, CS35L34_PWRCTL3, 3, 1),
 	SND_SOC_DAPM_ADC("VBSTMON ADC", NULL, CS35L34_PWRCTL3, 4, 1),
-	SND_SOC_DAPM_PGA("CLASS H", CS35L34_PWRCTL2, 5, 1, NULL, 0),
-	SND_SOC_DAPM_PGA("Reactive VP BO", CS35L34_PWRCTL2, 4, 1, NULL, 0),
-	SND_SOC_DAPM_PGA("Predictive VP BO", CS35L34_PWRCTL2, 3, 1, NULL, 0),
-	SND_SOC_DAPM_PGA("BOOST", CS35L34_PWRCTL2, 2, 1, NULL, 0),
+	SND_SOC_DAPM_ADC("CLASS H", NULL, CS35L34_PWRCTL2, 5, 1),
+	SND_SOC_DAPM_ADC("BOOST", NULL, CS35L34_PWRCTL2, 2, 1),
+
+	SND_SOC_DAPM_OUT_DRV_E("Main AMP", CS35L34_PWRCTL2, 0, 1, NULL, 0,
+		cs35l34_main_amp_event, SND_SOC_DAPM_POST_PMU |
+			SND_SOC_DAPM_POST_PMD),
 };
 
 static const struct snd_soc_dapm_route cs35l34_audio_map[] = {
 	{"SDIN", NULL, "AMP Playback"},
 	{"BOOST", NULL, "SDIN"},
 	{"CLASS H", NULL, "BOOST"},
-	{"Reactive VP BO", NULL, "CLASS H"},
-	{"Predictive VP BO", NULL, "CLASS H"},
+	{"Main AMP", NULL, "CLASS H"},
+	{"SPK", NULL, "Main AMP"},
+
 	{"VPMON ADC", NULL, "CLASS H"},
 	{"VBSTMON ADC", NULL, "CLASS H"},
-
-	{"SPKDRV", NULL, "BOOST"},
-	{"SPK", NULL, "SPKDRV"},
-	{"SPK", NULL, "Reactive VP BO"},
-	{"SPK", NULL, "Predictive VP BO"},
 	{"SPK", NULL, "VPMON ADC"},
 	{"SPK", NULL, "VBSTMON ADC"},
 
@@ -783,28 +796,6 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 	if (gpio_is_valid(cs35l34->pdata.gpio_nreset))
 		gpio_set_value_cansleep(cs35l34->pdata.gpio_nreset, 1);
 
-#if 0
-	for (i = 0; i < ARRAY_SIZE(cs35l34->supplies); i++)
-		cs35l34->supplies[i].supply = cs35l34_supply_names[i];
-
-	ret = devm_regulator_bulk_get(&i2c_client->dev,
-				      ARRAY_SIZE(cs35l34->supplies),
-				      cs35l34->supplies);
-	if (ret != 0) {
-		dev_err(&i2c_client->dev,
-			"Failed to request supplies: %d\n", ret);
-		return ret;
-	}
-
-	ret = regulator_bulk_enable(ARRAY_SIZE(cs35l34->supplies),
-				    cs35l34->supplies);
-	if (ret != 0) {
-		dev_err(&i2c_client->dev,
-			"Failed to enable supplies: %d\n", ret);
-		return ret;
-	}
-#endif
-
 	/* initialize codec */
 	ret = regmap_read(cs35l34->regmap, CS35L34_DEVID_AB, &reg);
 
@@ -818,17 +809,19 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 		dev_err(&i2c_client->dev,
 			"CS35l34 Device ID (%X). Expected ID %X\n",
 			devid, CS35L34_CHIP_ID);
-		goto err_regmap;
+		ret = -ENODEV;
+		goto err;
 	}
 
 	ret = regmap_read(cs35l34->regmap, CS35L34_REV_ID, &reg);
 	if (ret < 0) {
 		dev_err(&i2c_client->dev, "Get Revision ID failed\n");
-		goto err_regmap;
+		goto err;
 	}
 
 	dev_info(&i2c_client->dev,
-		 "Cirrus Logic CS35l34, Revision: %02X\n", ret & 0xFF);
+		"Cirrus Logic CS35l34 (%x), Revision: %02X\n",
+			devid, ret & 0xFF);
 
 	/* Predictive and reactive brownout flags,inverted 0 is on 1 is off */
 	if (cs35l34->pdata.pred_brownout > 0) {
@@ -950,10 +943,10 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 	/* Multi device synchronization flags */
 	if (cs35l34->pdata.sdout_share > 0 &&
 				cs35l34->pdata.sdout_share <= 0x0F) {
-		regmap_update_bits(cs35l34->regmap, CS35L34_MULT_DEV_SYNCH,
+		regmap_update_bits(cs35l34->regmap, CS35L34_MULT_DEV_SYNCH1,
 				0x0F, cs35l34->pdata.sdout_share);
 	} else {
-		regmap_update_bits(cs35l34->regmap, CS35L34_MULT_DEV_SYNCH,
+		regmap_update_bits(cs35l34->regmap, CS35L34_MULT_DEV_SYNCH1,
 				0x0F, 0x80);
 	}
 	if (cs35l34->pdata.boost_peak > 0
@@ -982,14 +975,10 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 	if (ret < 0) {
 		dev_err(&i2c_client->dev,
 			"%s: Register codec failed\n", __func__);
-		goto err_regmap;
+		goto err;
 	}
 
 	return 0;
-
-err_regmap:
-	if (cs35l34->regmap > 0)
-		regmap_exit(cs35l34->regmap);
 
 err:
 	return ret;
