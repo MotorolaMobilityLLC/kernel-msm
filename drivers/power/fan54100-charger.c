@@ -110,6 +110,7 @@ struct fan54100_chrg_chip {
 	int ocp_limit_ma;
 	int sotp_limit_c;
 	int health;
+	bool factory_mode;
 };
 
 static int fan54100_chrg_write_reg(struct i2c_client *client, u8 reg, u8 value)
@@ -468,6 +469,18 @@ static struct fan54100_irq_info handlers[] = {
 	},
 };
 
+static bool fan54100_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	u32 fact_cable = 0;
+
+	if (np)
+		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
+
+	of_node_put(np);
+	return !!fact_cable ? true : false;
+}
+
 static irqreturn_t fan54100_int_n_handler(int irq, void *dev_id)
 {
 	u8 int_mask;
@@ -479,6 +492,9 @@ static irqreturn_t fan54100_int_n_handler(int irq, void *dev_id)
 	int int_lvl;
 	struct fan54100_chrg_chip *chip = dev_id;
 	struct i2c_client *client = chip->client;
+
+	if (chip->factory_mode)
+		return IRQ_HANDLED;
 
 fan54100_irq_retry:
 	int_lvl = gpio_get_value(chip->fan54100_int_n.gpio);
@@ -546,6 +562,10 @@ static int fan54100_chrg_probe(struct i2c_client *client,
 		dev_info(&client->dev, "fan54100_charger absent\n");
 		return -ENODEV;
 	}
+
+	chip->factory_mode = fan54100_mmi_factory();
+	if (chip->factory_mode)
+		dev_info(&client->dev, "fan54100: Factory Mode\n");
 
 	chip->health = POWER_SUPPLY_HEALTH_GOOD;
 
