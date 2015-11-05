@@ -155,6 +155,8 @@
 		_IOW(MOTOSH_IOCTL_BASE, 60, unsigned char)
 #define MOTOSH_IOCTL_SET_AIRPLANE_MODE \
 		_IOW(MOTOSH_IOCTL_BASE, 61, unsigned char)
+#define MOTOSH_IOCTL_PASSTHROUGH \
+		_IOR(MOTOSH_IOCTL_BASE, 62, char[1])
 
 
 /* Used in HAL */
@@ -179,6 +181,8 @@
 #define MOTOSH_CAMERA_DATA 0x01
 /* Used only for ioctl def */
 #define MOTOSH_ALGO_SIZE         2
+/* Used in kernel and HAL */
+#define MOTOSH_PASSTHROUGH_SIZE 16
 
 #define MOTOSH_ANTCAP_CAL_BUFF_SIZE  64
 #define MOTOSH_ANTCAP_CFG_BUFF_SIZE  64
