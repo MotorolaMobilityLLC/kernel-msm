@@ -91,9 +91,9 @@ VMM_ENTRY(0x13, ACCEL2_UPDATE_RATE,					TRUE,
 VMM_ENTRY(0x14, DISP_ROTATE_UPDATE_RATE,				TRUE,
 		&vmm_disp_rotate_update_rate,
 		sizeof(vmm_disp_rotate_update_rate))
-VMM_ENTRY(0x15, UNUSED_15,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x15, STEP_COUNTER_INFO,					TRUE,
+		vmm_step_counter_info,
+		sizeof(vmm_step_counter_info))
 VMM_ENTRY(0x16, ACCEL_UPDATE_RATE,					TRUE,
 		&vmm_accel_update_rate,
 		sizeof(vmm_accel_update_rate))
