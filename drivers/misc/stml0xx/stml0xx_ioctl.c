@@ -208,6 +208,24 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 							buf, 1);
 		}
 		break;
+	case STML0XX_IOCTL_SET_STEP_COUNTER_DELAY:
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"STML0XX_IOCTL_SET_STEP_COUNTER_DELAY");
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&stml0xx_misc_data->spi->dev,
+				"Copy step counter delay returned error");
+			err = -EFAULT;
+			break;
+		}
+		stml0xx_g_step_counter_delay = delay;
+		if (stml0xx_g_booted) {
+			buf[0] = delay >> 8;
+			buf[1] = delay & 0xFF;
+			err = stml0xx_spi_send_write_reg(STEP_COUNTER_INFO,
+							buf, 2);
+		}
+		break;
 	case STML0XX_IOCTL_SET_SENSORS:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_SENSORS");

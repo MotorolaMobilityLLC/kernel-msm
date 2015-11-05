@@ -107,7 +107,7 @@ enum vmm_ids {
 #define IRQ_IDX_GYRO_CAL_Z           102
 #define IRQ_IDX_ALS                  104
 #define IRQ_IDX_DISP_ROTATE          106
-#define IRQ_IDX_DISP_BRIGHTNESS      107
+#define IRQ_IDX_STEP_COUNTER         107
 
 /* stml0xx wake IRQ SPI buffer indexes */
 #define WAKE_IRQ_IDX_STATUS_LO              0
@@ -421,6 +421,7 @@ extern unsigned short stml0xx_g_mag_delay;
 extern unsigned short stml0xx_g_gyro_delay;
 extern unsigned short stml0xx_g_baro_delay;
 extern unsigned short stml0xx_g_als_delay;
+extern unsigned short stml0xx_g_step_counter_delay;
 extern unsigned long stml0xx_g_nonwake_sensor_state;
 extern unsigned short stml0xx_g_algo_state;
 extern unsigned char stml0xx_g_motion_dur;
