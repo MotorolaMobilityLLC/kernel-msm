@@ -3092,6 +3092,21 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 			bus->dhd->d3ackcnt_timeout++;
 			DHD_ERROR(("%s: resumed on timeout for D3 ACK d3ackcnt_timeout %d \n",
 				__FUNCTION__, bus->dhd->d3ackcnt_timeout));
+
+			if (bus->dhd->d3ackcnt_timeout >= MAX_CNTL_D3ACK_TIMEOUT) {
+				DHD_ERROR(("%s: Event HANG send up "
+					"due to PCIe linkdown\n", __FUNCTION__));
+				DHD_GENERAL_LOCK(bus->dhd, flags);
+#ifdef MSM_PCIE_LINKDOWN_RECOVERY
+				bus->islinkdown = TRUE;
+#endif /* MSM_PCIE_LINKDOWN_RECOVERY */
+				bus->dhd->busstate = DHD_BUS_DOWN;
+				bus->dhd->d3ackcnt_timeout = 0;
+				DHD_GENERAL_UNLOCK(bus->dhd, flags);
+				dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
+				return BCME_ERROR;
+			}
+
 			bus->dev->current_state = PCI_D3hot;
 			pci_set_master(bus->dev);
 			rc = pci_set_power_state(bus->dev, PCI_D0);
@@ -3109,15 +3124,6 @@ dhdpcie_bus_suspend(struct  dhd_bus *bus, bool state)
 			dhd_bus_start_queue(bus);
 
 			DHD_GENERAL_UNLOCK(bus->dhd, flags);
-			if (bus->dhd->d3ackcnt_timeout >= MAX_CNTL_D3ACK_TIMEOUT) {
-				DHD_ERROR(("%s: Event HANG send up "
-					"due to PCIe linkdown\n", __FUNCTION__));
-#ifdef MSM_PCIE_LINKDOWN_RECOVERY
-				bus->islinkdown = TRUE;
-#endif /* MSM_PCIE_LINKDOWN_RECOVERY */
-				bus->dhd->d3ackcnt_timeout = 0;
-				dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
-			}
 			rc = -ETIMEDOUT;
 		} else if (bus->wait_for_d3_ack == DHD_INVALID) {
 			DHD_ERROR(("PCIe link down during suspend"));
