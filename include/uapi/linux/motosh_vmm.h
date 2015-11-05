@@ -312,18 +312,18 @@ VMM_ENTRY(0x41, TEMPERATURE_DATA,					FALSE,
 VMM_ENTRY(0x43, GYRO_DATA,						FALSE,
 		vmm_gyro_data,
 		sizeof(vmm_gyro_data))
-VMM_ENTRY(0x44, UNUSED_44,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x44, I2C_PASSTHROUGH_COMMAND,				TRUE,
+		vmm_i2c_passthrough_command,
+		sizeof(vmm_i2c_passthrough_command))
 VMM_ENTRY(0x45, UNCALIB_GYRO_DATA,					FALSE,
 		vmm_uncalib_gyro_data,
 		sizeof(vmm_uncalib_gyro_data))
 VMM_ENTRY(0x46, UNCALIB_MAG_DATA,					FALSE,
 		vmm_uncalib_mag_data,
 		sizeof(vmm_uncalib_mag_data))
-VMM_ENTRY(0x47, UNUSED_47,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x47, I2C_PASSTHROUGH_RESPONSE,				FALSE,
+		vmm_i2c_passthrough_response,
+		sizeof(vmm_i2c_passthrough_response))
 VMM_ENTRY(0x48, MAG_CALIBRATION,					TRUE,
 		vmm_mag_calibration,
 		sizeof(vmm_mag_calibration))
