@@ -114,6 +114,7 @@ enum vmm_ids {
 #define N_DISP_ROTATE           0x01
 #define N_ALS                   0x02
 #define N_DISP_BRIGHTNESS       0x04
+#define N_STEP_COUNTER          0x80
 
 #define MOTOSH_MAX_EVENT_QUEUE_SIZE   248
 #define MOTOSH_EVENT_QUEUE_MSG_ID_LEN 1
