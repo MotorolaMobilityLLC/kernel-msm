@@ -14,13 +14,9 @@
 /dts-v1/;
 
 #include "msm8952-athene.dtsi"
-#include "dsi-panel-mot-tdi-546-1080p-cmd.dtsi"
 
 / {
 	model = "Athene_16MP";
 	qcom,board-id = <0x41 0x81a0>, <0x41 0x81ad>;
 };
 
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
-};
