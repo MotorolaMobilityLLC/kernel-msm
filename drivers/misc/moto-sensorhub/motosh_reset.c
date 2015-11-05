@@ -181,6 +181,14 @@ int motosh_reset_and_init(enum reset_mode mode)
 	if (err < 0)
 		ret_err = err;
 
+	rst_cmdbuff[0] = STEP_COUNTER_INFO;
+	rst_cmdbuff[1] = (motosh_g_step_counter_delay >> 8);
+	rst_cmdbuff[2] = (motosh_g_step_counter_delay & 0xFF);
+	err = motosh_i2c_write_no_reset(motosh_misc_data,
+					rst_cmdbuff, 3);
+	if (err < 0)
+		ret_err = err;
+
 	rst_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 	rst_cmdbuff[1] = motosh_g_baro_delay;
 	err = motosh_i2c_write_no_reset(motosh_misc_data,
