@@ -62,6 +62,8 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 	struct timespec current_time;
 	unsigned char cmdbuff[MOTOSH_MAXDATA_LENGTH];
 	unsigned char readbuff[MOTOSH_MAXDATA_LENGTH];
+	unsigned int read_write;
+	unsigned int loop_count;
 
 #ifdef CONFIG_CYPRESS_CAPSENSE_HSSP
 	int chk;
@@ -1074,6 +1076,106 @@ long motosh_misc_ioctl(struct file *file, unsigned int cmd,
 
 		break;
 #endif /* CONFIG_CYPRESS_CAPSENSE_HSSP */
+
+	case MOTOSH_IOCTL_PASSTHROUGH:
+		dev_dbg(&ps_motosh->client->dev,
+				"MOTOSH_IOCTL_PASSTHROUGH");
+		if (ps_motosh->mode <= BOOTMODE) {
+			err = -EFAULT;
+			break;
+		}
+
+		memset(cmdbuff, 0, MOTOSH_PASSTHROUGH_SIZE + 1);
+		/* copy bus, addr, reg, R/W and size */
+		if (copy_from_user(&cmdbuff[1], argp, 6)) {
+			dev_err(&ps_motosh->client->dev,
+					"Passthrough, copy info error");
+			err = -EFAULT;
+			break;
+		}
+		read_write = cmdbuff[5];
+		data_size = cmdbuff[6];
+
+		if (read_write == 0) { /* Read operation */
+			if (data_size > (MOTOSH_PASSTHROUGH_SIZE - 1)) {
+				dev_err(&ps_motosh->client->dev,
+					"Passthrough, data size too large %d",
+					data_size);
+				err = -EFAULT;
+				break;
+			}
+		} else if (read_write == 1) { /* Write operation */
+			if (data_size > (MOTOSH_PASSTHROUGH_SIZE - 6)) {
+				dev_err(&ps_motosh->client->dev,
+					"Passthrough, data size too large %d",
+					data_size);
+				err = -EFAULT;
+				break;
+			}
+
+			/* copy in the data to write */
+			if (copy_from_user(&cmdbuff[7], argp + 6, data_size)) {
+				dev_err(&ps_motosh->client->dev,
+						"Passthrough, copy data error");
+				err = -EFAULT;
+				break;
+			}
+		} else {
+			dev_err(&ps_motosh->client->dev,
+					"Passthrough, invalid r/w %d",
+					read_write);
+			err = -EFAULT;
+			break;
+		}
+
+		/* Write the command to the sensor hub */
+		cmdbuff[0] = I2C_PASSTHROUGH_COMMAND;
+		err = motosh_i2c_write(ps_motosh, cmdbuff,
+				MOTOSH_PASSTHROUGH_SIZE + 1);
+		if (err < 0) {
+			dev_err(&ps_motosh->client->dev,
+					"Passthrough, write error %d",
+					err);
+			err = -EFAULT;
+			break;
+		}
+
+		/* Read the response from  the sensor hub */
+		loop_count = 0;
+		readbuff[0] = 0;
+		do {
+			cmdbuff[0] = I2C_PASSTHROUGH_RESPONSE;
+			err = motosh_i2c_write_read(ps_motosh, cmdbuff,
+					readbuff, 1, MOTOSH_PASSTHROUGH_SIZE);
+			if (err < 0) {
+				dev_err(&ps_motosh->client->dev,
+						"Passthrough, read error %d",
+						err);
+				err = -EFAULT;
+				break;
+			}
+			loop_count++;
+			if (loop_count == 10)
+				break;
+		} while (readbuff[0] == 0);
+		if (readbuff[0] != 1) {
+			dev_err(&ps_motosh->client->dev,
+					"Passthrough, read failed %d",
+					readbuff[0]);
+			err = -EFAULT;
+			break;
+		}
+		err = 0;
+
+		if (read_write == 0) {
+			/* Return the hub register data read */
+			if (copy_to_user(argp, &readbuff[1], data_size)) {
+				dev_err(&ps_motosh->client->dev,
+						"Passthrough, copy back error");
+				err = -EFAULT;
+				break;
+			}
+		}
 	}
 
 	motosh_sleep(ps_motosh);
