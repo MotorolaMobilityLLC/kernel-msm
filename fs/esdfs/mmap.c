@@ -18,6 +18,10 @@ static int esdfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	struct file *file, *lower_file;
 	const struct vm_operations_struct *lower_vm_ops;
 	struct vm_area_struct lower_vma;
+	struct esdfs_sb_info *sbi = ESDFS_SB(vma->vm_file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	memcpy(&lower_vma, vma, sizeof(struct vm_area_struct));
 	file = lower_vma.vm_file;
@@ -37,6 +41,8 @@ static int esdfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	 */
 	lower_vma.vm_file = lower_file;
 	err = lower_vm_ops->fault(&lower_vma, vmf);
+
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -47,6 +53,10 @@ static int esdfs_page_mkwrite(struct vm_area_struct *vma,
 	struct file *file, *lower_file;
 	const struct vm_operations_struct *lower_vm_ops;
 	struct vm_area_struct lower_vma;
+	struct esdfs_sb_info *sbi = ESDFS_SB(vma->vm_file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	memcpy(&lower_vma, vma, sizeof(struct vm_area_struct));
 	file = lower_vma.vm_file;
@@ -70,6 +80,7 @@ static int esdfs_page_mkwrite(struct vm_area_struct *vma,
 	lower_vma.vm_file = lower_file;
 	err = lower_vm_ops->page_mkwrite(&lower_vma, vmf);
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
