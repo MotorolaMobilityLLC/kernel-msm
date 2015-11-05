@@ -309,14 +309,27 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			"Sending disp_rotate(x)value: %d",
 			buf[IRQ_IDX_DISP_ROTATE]);
 	}
-	if (irq_status & M_DISP_BRIGHTNESS) {
-		stml0xx_as_data_buffer_write(ps_stml0xx, DT_DISP_BRIGHT,
-						&buf[IRQ_IDX_DISP_BRIGHTNESS],
-						 1, 0, stm_ws->ts_ns);
+	if (irq_status & M_STEP_COUNTER) {
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_STEP_COUNTER,
+					&buf[IRQ_IDX_STEP_COUNTER],
+					4, 0, stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending Display Brightness %d",
-			buf[IRQ_IDX_DISP_BRIGHTNESS]);
+			"Sending step count: %d %d %d %d",
+			buf[IRQ_IDX_STEP_COUNTER],
+			buf[IRQ_IDX_STEP_COUNTER + 1],
+			buf[IRQ_IDX_STEP_COUNTER + 2],
+			buf[IRQ_IDX_STEP_COUNTER + 3]);
+	}
+	if (irq_status & M_STEP_DETECTOR) {
+		uint8_t step = 1;
+
+		stml0xx_as_data_buffer_write(ps_stml0xx, DT_STEP_DETECTOR,
+					&step,
+					1, 0, stm_ws->ts_ns);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Sending step detect");
 	}
 EXIT:
 	kfree((void *)stm_ws);
