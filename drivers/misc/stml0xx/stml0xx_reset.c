@@ -128,6 +128,13 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	if (err < 0)
 		ret_err = err;
 
+	buf[0] = stml0xx_g_step_counter_delay >> 8;
+	buf[1] = stml0xx_g_step_counter_delay & 0xFF;
+	err = stml0xx_spi_send_write_reg_reset(STEP_COUNTER_INFO, buf,
+			2, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
 	buf[0] = stml0xx_g_algo_state & 0xFF;
 	buf[1] = stml0xx_g_algo_state >> 8;
 	err = stml0xx_spi_send_write_reg_reset(ALGO_CONFIG, buf, 2,

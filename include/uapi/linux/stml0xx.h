@@ -100,7 +100,8 @@
 		_IOW(STML0XX_IOCTL_BASE, 32,  unsigned short)
 #define STML0XX_IOCTL_SET_MOTION_DUR	\
 		_IOW(STML0XX_IOCTL_BASE, 33, unsigned int)
-/* 34 unused */
+#define STML0XX_IOCTL_SET_STEP_COUNTER_DELAY	\
+		_IOW(STML0XX_IOCTL_BASE, 34, unsigned short)
 #define STML0XX_IOCTL_SET_ZRMOTION_DUR	\
 		_IOW(STML0XX_IOCTL_BASE, 35, unsigned int)
 #define STML0XX_IOCTL_GET_WAKESENSORS	\
@@ -297,6 +298,8 @@ enum STML0XX_data_types {
 	DT_LIFT,
 	DT_CHOPCHOP,
 	DT_GYRO_CAL,
+	DT_STEP_COUNTER,
+	DT_STEP_DETECTOR
 };
 
 enum {
