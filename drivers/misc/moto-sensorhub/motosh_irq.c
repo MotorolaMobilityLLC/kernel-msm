@@ -160,6 +160,22 @@ void motosh_irq_work_func(struct work_struct *work)
 				err);
 		}
 	}
+	if (irq_status & N_STEP_COUNTER) {
+
+		/* read STEP_COUNTER_INFO, last 4 bytes contain counter */
+		cmdbuff[0] = STEP_COUNTER_INFO;
+		err = motosh_i2c_write_read(ps_motosh, cmdbuff, readbuff,
+					    1, 6);
+		if (err >= 0) {
+			motosh_as_data_buffer_write(ps_motosh, DT_STEP_COUNTER,
+						    &readbuff[2], 4, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev,
+				"Sending step count %X %X %X %X\n",
+				readbuff[2], readbuff[3],
+				readbuff[4], readbuff[5]);
+		}
+	}
 
 	/* process the nwake queue */
 	dev_dbg(&ps_motosh->client->dev,
@@ -322,16 +338,6 @@ void motosh_irq_work_func(struct work_struct *work)
 				STM16_TO_HOST(data, QUAT_9AXIS_W)
 			);
 			queue_index += 8 + MOTOSH_EVENT_TIMESTAMP_LEN;
-			break;
-		case STEP_COUNTER_INFO:
-			motosh_as_data_buffer_write(ps_motosh, DT_STEP_COUNTER,
-				data, 4, 0, false);
-
-			dev_dbg(&ps_motosh->client->dev,
-				"Sending step counter %X %X %X %X\n",
-				data[0], data[1], data[2], data[3]);
-
-			queue_index += 4;
 			break;
 		case STEP_DETECTOR:
 		{
