@@ -26,3 +26,7 @@
 	rtp_overdrive_voltage = <0x89>; /* 3v */
 	lra_drive;
 };
+
+&pmi8994_fg {
+	/delete-node/ qcom,ext-sense-type; /* External Sense Resistor */
+};
