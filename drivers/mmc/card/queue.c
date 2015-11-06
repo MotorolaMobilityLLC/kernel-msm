@@ -16,6 +16,7 @@
 #include <linux/kthread.h>
 #include <linux/scatterlist.h>
 #include <linux/bitops.h>
+#include <linux/delay.h>
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
@@ -502,6 +503,7 @@ int mmc_queue_suspend(struct mmc_queue *mq, int wait)
 	struct request_queue *q = mq->queue;
 	unsigned long flags;
 	int rc = 0;
+	int retry_count = 0;
 
 	if (!(test_and_set_bit(MMC_QUEUE_SUSPENDED, &mq->flags))) {
 		spin_lock_irqsave(q->queue_lock, flags);
@@ -509,6 +511,12 @@ int mmc_queue_suspend(struct mmc_queue *mq, int wait)
 		spin_unlock_irqrestore(q->queue_lock, flags);
 
 		rc = down_trylock(&mq->thread_sem);
+		while ((rc && !wait) && (retry_count < 5)) {
+			retry_count++;
+			msleep(10);
+			rc = down_trylock(&mq->thread_sem);
+		}
+
 		if (rc && !wait) {
 			/*
 			 * Failed to take the lock so better to abort the

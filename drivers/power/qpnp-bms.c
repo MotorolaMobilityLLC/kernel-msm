@@ -28,6 +28,9 @@
 #include <linux/qpnp/power-on.h>
 #include <linux/of_batterydata.h>
 #include <linux/wakelock.h>
+#if ASUS_DEBUG==2
+#include <linux/asusdebug.h>
+#endif
 
 //ASUS_BSP lenter +++
 #include <linux/proc_fs.h>
@@ -375,6 +378,9 @@ static int g_bms_cc;
 //Eason don't calculate BMS actively, only read---
 #endif
 //ASUS_BSP lenter ---
+#if ASUS_DEBUG==2
+extern unsigned int cpu_max_loading;
+#endif
 
 static int qpnp_read_wrapper(struct qpnp_bms_chip *chip, u8 *val,
 			u16 base, int count)
@@ -2831,8 +2837,15 @@ static void calculate_soc_work(struct work_struct *work)
 	struct qpnp_bms_chip *chip = container_of(work,
 				struct qpnp_bms_chip,
 				calculate_soc_delayed_work.work);
-
+#if ASUS_DEBUG==2
+	int soc;
+	soc = recalculate_soc(chip);
+	if (chip->low_soc_calc_threshold && chip->low_soc_calc_threshold < soc)
+		ASUSEvtlog("[CPU] report cpu loading: %lu", cpu_max_loading);
+#else
 	recalculate_soc(chip);
+#endif
+
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
 		round_jiffies_relative(msecs_to_jiffies
 		(get_calculation_delay_ms(chip))));
