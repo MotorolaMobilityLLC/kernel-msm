@@ -484,7 +484,7 @@ static inline bool mdss_dsi_poll_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	if (readl_poll_timeout(((ctrl->ctrl_base) + 0x00a8),
 				clk,
 				(clk & 0x0010),
-				10, 1000)) {
+				100, 20000)) {
 		pr_err("%s: ndx=%d clk lane NOT stopped, clk=%x\n",
 					__func__, ctrl->ndx, clk);
 
@@ -505,7 +505,8 @@ static void mdss_dsi_wait_clk_lane_to_stop(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	if (mdss_dsi_poll_clk_lane(ctrl) == false)
 		pr_err("%s: clk lane recovery failed\n", __func__);
-
+	else
+		ctrl->clk_lane_cnt = 0;
 	/* clear clk lane tx stop -- bit 20 */
 	mdss_dsi_cfg_lane_ctrl(ctrl, BIT(20), 0);
 }
@@ -519,11 +520,12 @@ static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl);
  */
 static void mdss_dsi_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 {
-
 	/* make sure clk lane is stopped */
 	mdss_dsi_stop_hs_clk_lane(ctrl);
 
 	mutex_lock(&ctrl->clk_lane_mutex);
+	MDSS_XLOG(ctrl->ndx, ctrl->clk_lane_cnt, current->pid,
+			XLOG_FUNC_ENTRY);
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
 	if (ctrl->clk_lane_cnt) {
 		pr_err("%s: ndx=%d do-wait, cnt=%d\n",
@@ -537,6 +539,8 @@ static void mdss_dsi_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	pr_debug("%s: ndx=%d, set_hs, cnt=%d\n", __func__,
 				ctrl->ndx, ctrl->clk_lane_cnt);
 	mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
+	MDSS_XLOG(ctrl->ndx, ctrl->clk_lane_cnt,
+			current->pid, XLOG_FUNC_EXIT);
 	mutex_unlock(&ctrl->clk_lane_mutex);
 }
 
@@ -544,6 +548,10 @@ static void mdss_dsi_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
  * mdss_dsi_stop_hs_clk_lane:
  * this function is work around solution for 8994 dsi clk lane
  * may stuck at HS problem
+ * since this function is called by event_thread, it may wakeup
+ * after next kickoff had been lunched and start_hs_clk_lane
+ * had been started. Therefore more than 1 vsync polling time is needed.
+ * Use 50ms timeout to cover 30 FPS case.
  */
 static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -551,6 +559,8 @@ static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	u32 lane = 0;
 
 	mutex_lock(&ctrl->clk_lane_mutex);
+	MDSS_XLOG(ctrl->ndx, ctrl->clk_lane_cnt, current->pid,
+			XLOG_FUNC_ENTRY);
 	if (ctrl->clk_lane_cnt == 0)	/* stopped already */
 		goto release;
 
@@ -559,7 +569,7 @@ static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	if (readl_poll_timeout(((ctrl->ctrl_base) + 0x000c),
 			   fifo,
 			   ((fifo & 0x11110000) == 0x11110000),
-			       10, 1000)) {
+			       100, 50000)) {
 		pr_err("%s: fifo NOT empty, fifo=%x\n",
 					__func__, fifo);
 		goto end;
@@ -569,7 +579,7 @@ static void mdss_dsi_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	if (readl_poll_timeout(((ctrl->ctrl_base) + 0x00a8),
 			   lane,
 			   ((lane & 0x000f) == 0x000f),
-			       100, 2000)) {
+			       100, 20000)) {
 		pr_err("%s: datalane NOT stopped, lane=%x\n",
 					__func__, lane);
 	}
@@ -585,6 +595,8 @@ release:
 	pr_debug("%s: ndx=%d, cnt=%d\n", __func__,
 			ctrl->ndx, ctrl->clk_lane_cnt);
 
+	MDSS_XLOG(ctrl->ndx, ctrl->clk_lane_cnt,
+			current->pid, XLOG_FUNC_EXIT);
 	mutex_unlock(&ctrl->clk_lane_mutex);
 }
 
@@ -1649,6 +1661,25 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	ret = wait_for_completion_timeout(&ctrl->dma_comp,
 				msecs_to_jiffies(DMA_TX_TIMEOUT));
+
+	if (ret <= 0) {
+		u32 reg_val, status, mask;
+
+		reg_val = MIPI_INP(ctrl->ctrl_base + 0x0110);/* DSI_INTR_CTRL */
+		mask = reg_val & DSI_INTR_CMD_DMA_DONE_MASK;
+		status = mask & reg_val;
+		if (status) {
+			pr_warn("dma tx done but irq not triggered\n");
+			reg_val &= DSI_INTR_MASK_ALL;
+			/* clear CMD DMA isr only */
+			reg_val |= DSI_INTR_CMD_DMA_DONE;
+			MIPI_OUTP(ctrl->ctrl_base + 0x0110, reg_val);
+			mdss_dsi_disable_irq_nosync(ctrl, DSI_MDP_TERM);
+			complete(&ctrl->dma_comp);
+			ret = 1;
+		}
+	}
+
 	if (ret == 0)
 		ret = -ETIMEDOUT;
 	else
