@@ -38,8 +38,8 @@
 		qcom,cci-master = <0>;
 		cam_vaf-supply = <&pm8994_l23>;
 		qcom,cam-vreg-name = "cam_vaf";
-		qcom,cam-vreg-min-voltage = <2800000>;
-		qcom,cam-vreg-max-voltage = <2800000>;
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
 		qcom,cam-vreg-op-mode = <100000>;
 	};
 
@@ -221,10 +221,11 @@
 
 		cam_vdig-supply = <&pm8994_l27>;
 		cam_vio-supply = <&pm8994_lvs1>;
-		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
-		qcom,cam-vreg-min-voltage = <1275000 0>;
-		qcom,cam-vreg-max-voltage = <1275000 0>;
-		qcom,cam-vreg-op-mode = <1275000 0>;
+		cam_vaf-supply = <&pm8994_l23>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vaf";
+		qcom,cam-vreg-min-voltage = <1275000 0 1800000>;
+		qcom,cam-vreg-max-voltage = <1275000 0 1800000>;
+		qcom,cam-vreg-op-mode = <1275000 0 100000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk2_active>;
@@ -269,8 +270,8 @@
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vaf-supply = <&pm8994_l23>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
-		qcom,cam-vreg-min-voltage = <0 2800000>;
-		qcom,cam-vreg-max-voltage = <0 2800000>;
+		qcom,cam-vreg-min-voltage = <0 1800000>;
+		qcom,cam-vreg-max-voltage = <0 1800000>;
 		qcom,cam-vreg-op-mode = <0 100000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -312,8 +313,8 @@
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vaf-supply = <&pm8994_l23>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vaf";
-		qcom,cam-vreg-min-voltage = <0 2800000>;
-		qcom,cam-vreg-max-voltage = <0 2800000>;
+		qcom,cam-vreg-min-voltage = <0 1800000>;
+		qcom,cam-vreg-max-voltage = <0 1800000>;
 		qcom,cam-vreg-op-mode = <0 100000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -355,8 +356,8 @@
 		cam_vio-supply = <&pm8994_lvs1>;
 		cam_vaf-supply = <&pm8994_l23>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vaf";
-		qcom,cam-vreg-min-voltage = <1275000 0 2800000>;
-		qcom,cam-vreg-max-voltage = <1275000 0 2800000>;
+		qcom,cam-vreg-min-voltage = <1275000 0 1800000>;
+		qcom,cam-vreg-max-voltage = <1275000 0 1800000>;
 		qcom,cam-vreg-op-mode = <1275000 0 100000>;
 		qcom,gpio-no-mux = <0>;
 		pinctrl-names = "cam_default", "cam_suspend";
@@ -482,6 +483,16 @@
 			regulator-min-microvolt = <1275000>;
 			regulator-max-microvolt = <1275000>;
 			qcom,init-voltage = <1275000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa23 {
+		status = "okay";
+		pm8994_l23: regulator-l23 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage = <1800000>;
 			status = "okay";
 		};
 	};
