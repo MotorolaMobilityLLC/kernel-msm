@@ -165,16 +165,16 @@
 			reg = <0 0x85800000 0 0x3000000>;
 		};
 
-		removed_regions2: removed_regions2@21600000 {
+		removed_regions2: removed_regions2@21400000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0 0x21400000 0 0x1000>;
+		};
+
+		removed_regions3: removed_regions3@21600000 {
 			compatible = "removed-dma-pool";
 			no-map;
 			reg = <0 0x21600000 0 0x1000>;
-		};
-
-		removed_regions3: removed_regions3@21800000 {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0 0x21800000 0 0x1000>;
 		};
 
 		peripheral_mem: peripheral_region@8ea00000 {
