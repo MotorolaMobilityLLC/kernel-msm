@@ -502,5 +502,6 @@ void diag_ws_on_copy_fail(int type);
 void diag_ws_on_copy_complete(int type);
 void diag_ws_reset(int type);
 void diag_ws_release(void);
+void chk_logging_wakeup(void);
 
 #endif
