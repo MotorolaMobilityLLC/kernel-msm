@@ -325,7 +325,7 @@ struct stml0xx_algo_info_t {
 };
 
 #define ALGO_RQST_DATA_SIZE 28
-struct stml0xx_algo_requst_t {
+struct stml0xx_algo_request_t {
 	char size;
 	char data[ALGO_RQST_DATA_SIZE];
 };
@@ -440,7 +440,7 @@ extern unsigned short stml0xx_spi_retry_delay;
 
 extern const struct stml0xx_algo_info_t stml0xx_algo_info[];
 
-extern struct stml0xx_algo_requst_t stml0xx_g_algo_requst[];
+extern struct stml0xx_algo_request_t stml0xx_g_algo_request[];
 
 extern long stml0xx_time_delta;
 
