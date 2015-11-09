@@ -576,7 +576,14 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 
 	DBG(cdev, "mtp_read(%zu)\n", count);
 
-	len = ALIGN(count, dev->ep_out->maxpacket);
+//ASUS_BSP+++ "[USB][NA][Fix] Fix null point issue when mtp read"
+	if(dev->ep_out != NULL){
+		len = ALIGN(count, dev->ep_out->maxpacket);
+	}else{
+		r = -EIO;
+		goto done;
+	}
+//ASUS_BSP--- "[USB][NA][Fix] Fix null point issue when mtp read"
 
 	if (len > mtp_rx_req_len)
 		return -EINVAL;
