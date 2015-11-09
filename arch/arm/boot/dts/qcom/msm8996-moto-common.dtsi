@@ -390,7 +390,7 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <9 0>;
 		gpios = <&tlmm 9 0>,     /* IRQ */
-		    <&pm8994_gpios 9 0>,  /* VEN */
+		    <&tlmm 28 0>,  /* VEN */
 		    <&tlmm 12 0>;  /* Firmware */
 
 		nxp,pnxxx-discharge-delay = <2000>;
@@ -398,7 +398,7 @@
 
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&nfc_irq_default &nfc_firm_default>;
+		pinctrl-0 = <&nfc_irq_default &nfc_en_default &nfc_firm_default>;
 	};
 
 	tmp108@48 {
@@ -1015,7 +1015,7 @@
 
 /* 3.3V QCA Supply */
 &rome_vreg {
-	gpio = <&pm8994_gpios 11 0>;
+	gpio = <&pm8994_gpios 9 0>;
 };
 
 
