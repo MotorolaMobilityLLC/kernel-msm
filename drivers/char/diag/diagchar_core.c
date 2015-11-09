@@ -328,18 +328,22 @@ fail:
 	return -ENOMEM;
 }
 
-static int diagchar_close(struct inode *inode, struct file *file)
+
+static int diag_remove_client_entry(struct file *file)
 {
 	int i = -1;
-	struct diagchar_priv *diagpriv_data = file->private_data;
+	struct diagchar_priv *diagpriv_data = NULL;
 	struct diag_dci_client_tbl *dci_entry = NULL;
 	unsigned long flags;
 
-	pr_debug("diag: process exit %s\n", current->comm);
-	if (!(file->private_data)) {
-		pr_alert("diag: Invalid file pointer");
-		return -ENOMEM;
+	if (!file) {
+		return -ENOENT;
 	}
+	if (!(file->private_data)) {
+		return -EINVAL;
+	}
+
+	diagpriv_data = file->private_data;
 
 	if (!driver)
 		return -ENOMEM;
@@ -409,6 +413,11 @@ static int diagchar_close(struct inode *inode, struct file *file)
 	}
 	mutex_unlock(&driver->diagchar_mutex);
 	return 0;
+}
+
+static int diagchar_close(struct inode *inode, struct file *file)
+{
+	return diag_remove_client_entry(file);
 }
 
 int diag_find_polling_reg(int i)
@@ -1461,7 +1470,9 @@ static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 		data_type = driver->data_ready[index] & DEINIT_TYPE;
 		COPY_USER_SPACE_OR_EXIT(buf, data_type, 4);
 		driver->data_ready[index] ^= DEINIT_TYPE;
-		goto exit;
+		mutex_unlock(&driver->diagchar_mutex);
+		diag_remove_client_entry(file);
+		return ret;
 	}
 
 	if (driver->data_ready[index] & MSG_MASKS_TYPE) {
