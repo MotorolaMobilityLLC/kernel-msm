@@ -593,8 +593,6 @@
 			    1 &intc 0 239 0
 			    2 &tlmm 59 0>;
 
-		qcom,inject-rx-on-wakeup;
-		qcom,rx-char-to-inject = <0xFD>;
 
 		qcom,bam-tx-ep-pipe-index = <8>;
 		qcom,bam-rx-ep-pipe-index = <9>;
