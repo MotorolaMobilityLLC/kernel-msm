@@ -168,6 +168,15 @@
 		};
 	};
 
+	nfc_en_default: nfc_en_default {
+		config {
+			pins = "gpio28";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+
 	nfc_firm_default: nfc_firm_default {
 		config {
 			pins = "gpio12";
