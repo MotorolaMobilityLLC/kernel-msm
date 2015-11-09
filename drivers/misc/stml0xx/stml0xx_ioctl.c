@@ -463,8 +463,8 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			err = -EFAULT;
 			break;
 		}
-		stml0xx_g_algo_requst[algo_idx].size = len;
-		memcpy(stml0xx_g_algo_requst[algo_idx].data, buf, len);
+		stml0xx_g_algo_request[algo_idx].size = len;
+		memcpy(stml0xx_g_algo_request[algo_idx].data, buf, len);
 		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(stml0xx_algo_info
 					       [algo_idx].req_register, buf,

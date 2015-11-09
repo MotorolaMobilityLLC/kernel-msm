@@ -80,7 +80,7 @@ bool stml0xx_g_booted;
 /* Store log message */
 unsigned char stat_string[LOG_MSG_SIZE + 1];
 
-struct stml0xx_algo_requst_t stml0xx_g_algo_requst[STML0XX_NUM_ALGOS];
+struct stml0xx_algo_request_t stml0xx_g_algo_request[STML0XX_NUM_ALGOS];
 
 unsigned char *stml0xx_boot_cmdbuff;
 unsigned char *stml0xx_boot_readbuff;
