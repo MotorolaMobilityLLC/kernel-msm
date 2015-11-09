@@ -119,6 +119,12 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 	if (err < 0)
 		ret_err = err;
 
+	buf[0] = stml0xx_g_gyro_delay;
+	err = stml0xx_spi_send_write_reg_reset(GYRO_UPDATE_RATE, buf,
+			1, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
 	stml0xx_spi_retry_delay = 10;
 
 	buf[0] = stml0xx_g_als_delay >> 8;
@@ -134,42 +140,6 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 			2, RESET_NOT_ALLOWED);
 	if (err < 0)
 		ret_err = err;
-
-	buf[0] = stml0xx_g_algo_state & 0xFF;
-	buf[1] = stml0xx_g_algo_state >> 8;
-	err = stml0xx_spi_send_write_reg_reset(ALGO_CONFIG, buf, 2,
-			RESET_NOT_ALLOWED);
-	if (err < 0)
-		ret_err = err;
-
-	buf[0] = stml0xx_g_motion_dur;
-	err = stml0xx_spi_send_write_reg_reset(MOTION_DUR, buf,
-			1, RESET_NOT_ALLOWED);
-	if (err < 0)
-		ret_err = err;
-
-	buf[0] = stml0xx_g_zmotion_dur;
-	err = stml0xx_spi_send_write_reg_reset(ZMOTION_DUR, buf,
-			1, RESET_NOT_ALLOWED);
-	if (err < 0)
-		ret_err = err;
-
-	for (i = 0; i < STML0XX_NUM_ALGOS; i++) {
-		if (stml0xx_g_algo_requst[i].size > 0) {
-			memcpy(buf,
-			       stml0xx_g_algo_requst[i].data,
-			       stml0xx_g_algo_requst[i].size);
-			err =
-			    stml0xx_spi_send_write_reg_reset(
-						       stml0xx_algo_info
-						       [i].req_register, buf,
-						       stml0xx_g_algo_requst
-						       [i].size,
-						       RESET_NOT_ALLOWED);
-			if (err < 0)
-				ret_err = err;
-		}
-	}
 
 	buf[0] = (pdata->ct406_detect_threshold >> 8) & 0xff;
 	buf[1] = pdata->ct406_detect_threshold & 0xff;
@@ -279,6 +249,43 @@ void stml0xx_initialize_work_func(struct work_struct *work)
 		ret_err = err;
 	}
 #endif
+	/* Enable of algos and sensors should be the last things written */
+
+	buf[0] = stml0xx_g_motion_dur;
+	err = stml0xx_spi_send_write_reg_reset(MOTION_DUR, buf,
+			1, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
+	buf[0] = stml0xx_g_zmotion_dur;
+	err = stml0xx_spi_send_write_reg_reset(ZMOTION_DUR, buf,
+			1, RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
+	buf[0] = stml0xx_g_algo_state & 0xFF;
+	buf[1] = stml0xx_g_algo_state >> 8;
+	err = stml0xx_spi_send_write_reg_reset(ALGO_CONFIG, buf, 2,
+			RESET_NOT_ALLOWED);
+	if (err < 0)
+		ret_err = err;
+
+	for (i = 0; i < STML0XX_NUM_ALGOS; i++) {
+		if (stml0xx_g_algo_request[i].size > 0) {
+			memcpy(buf,
+			       stml0xx_g_algo_request[i].data,
+			       stml0xx_g_algo_request[i].size);
+			err =
+			    stml0xx_spi_send_write_reg_reset(
+						       stml0xx_algo_info
+						       [i].req_register, buf,
+						       stml0xx_g_algo_request
+						       [i].size,
+						       RESET_NOT_ALLOWED);
+			if (err < 0)
+				ret_err = err;
+		}
+	}
 
 	/* Enable sensors last after other initialization is done */
 	buf[0] = stml0xx_g_nonwake_sensor_state & 0xFF;
