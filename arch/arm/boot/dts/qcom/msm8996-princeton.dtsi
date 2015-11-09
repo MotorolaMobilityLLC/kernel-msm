@@ -135,7 +135,20 @@
 	};
 };
 
+/* 3.3V QCA Supply */
+&rome_vreg {
+	gpio = <&pm8994_gpios 9 0>;
+};
+
 &i2c_7 {
+	pnxxx: pnxxx@28 {
+		gpios = <&tlmm 9 0>,     /* IRQ */
+		    <&pm8994_gpios 9 0>,  /* VEN */
+		    <&tlmm 12 0>;  /* Firmware */
+
+		pinctrl-0 = <&nfc_irq_default &nfc_firm_default>;
+	};
+
 	fan54100: fan54100-charger@30 {
 		compatible = "fairchild,fan54100";
 		reg = <0x30>;
