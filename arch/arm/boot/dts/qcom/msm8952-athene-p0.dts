@@ -29,6 +29,22 @@
 };
 
 &cci {
+	qcom,camera@0 {
+		cam_vdig-supply = <&pm8950_l23>;
+		qcom,cam-vreg-min-voltage = <1200000 1800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000>;
+		qcom,cam-vreg-op-mode = <1200000 1800000>;
+		/delete-property/ gpios;
+		gpios = <&msm_gpio 26 0>,
+			<&msm_gpio 36 0>;
+		/delete-property/ qcom,gpio-vdig;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		/delete-property/ qcom,gpio-req-tbl-label;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					  "CAM_RESET0";
+	};
+
 	st,stmvl53l0
 	{
 		cell-index = <1>;
