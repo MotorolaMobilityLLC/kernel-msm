@@ -293,7 +293,7 @@
 	qcom,usbid-disabled;
 	/delete-property/ qcom,autoadjust-vfloat;
 	qcom,fastchg-current-ma = <2500>;
-	qcom,float-voltage-mv = <4400>;
+	qcom,float-voltage-mv = <4350>;
 	qcom,resume-delta-mv = <200>;
 	qcom,chg-inhibit-fg;
 	qcom,rparasitic-uohm = <100000>;
@@ -335,6 +335,12 @@
 	};
 };
 
+&mot_batterydata {
+	qcom,fx30-lg {
+		qcom,max-voltage-uv = <435000>;
+	};
+};
+
 &pmi8950_fg {
 	status = "okay";
 	qcom,warm-bat-decidegc = <450>;
@@ -353,7 +359,7 @@
 	qcom,fg-delta-soc = <1>;
 	qcom,fg-max-soc = <100>;
 	qcom,fg-min-soc = <0>;
-	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,fg-cc-cv-threshold-mv = <4340>;
 	qcom,battery-data = <&mot_batterydata>;
 };
 
