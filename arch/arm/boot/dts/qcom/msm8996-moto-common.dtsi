@@ -881,10 +881,11 @@
 	};
 
 	gpio@c400 { /* GPIO 5  - DISP_V2_EN */
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <2>;
-		qcom,src-sel = <0>;
+		qcom,mode = <1>;	/* Digital output */
+		qcom,pull = <5>;	/* No Pull */
+		qcom,vin-sel = <2>;	/* 1.8 */
+		qcom,src-sel = <0>;	/* GPIO */
+		qcom,master-en = <1>;	/* Enable GPIO */
 		status = "okay";
 	};
 
