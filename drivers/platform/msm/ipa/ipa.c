@@ -2567,15 +2567,15 @@ void ipa_dec_client_disable_clks(void)
 * Return codes:
 * None
 */
-void ipa_inc_acquire_wakelock(void)
+void ipa_inc_acquire_wakelock(enum ipa_wakelock_ref_client ref_client)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&ipa_ctx->wakelock_ref_cnt.spinlock, flags);
-	ipa_ctx->wakelock_ref_cnt.cnt++;
-	if (ipa_ctx->wakelock_ref_cnt.cnt == 1)
+	ipa_ctx->wakelock_ref_cnt.cnt |= (1 << ref_client);
+	if (ipa_ctx->wakelock_ref_cnt.cnt)
 		__pm_stay_awake(&ipa_ctx->w_lock);
-	IPADBG("active wakelock ref cnt = %d\n", ipa_ctx->wakelock_ref_cnt.cnt);
+	IPAERR("active wakelock ref cnt = %d client enum %d\n", ipa_ctx->wakelock_ref_cnt.cnt, ref_client);
 	spin_unlock_irqrestore(&ipa_ctx->wakelock_ref_cnt.spinlock, flags);
 }
 
@@ -2587,13 +2587,13 @@ void ipa_inc_acquire_wakelock(void)
  * Return codes:
  * None
  */
-void ipa_dec_release_wakelock(void)
+void ipa_dec_release_wakelock(enum ipa_wakelock_ref_client ref_client)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&ipa_ctx->wakelock_ref_cnt.spinlock, flags);
-	ipa_ctx->wakelock_ref_cnt.cnt--;
-	IPADBG("active wakelock ref cnt = %d\n", ipa_ctx->wakelock_ref_cnt.cnt);
+	ipa_ctx->wakelock_ref_cnt.cnt &= ~(1 << ref_client);
+	IPAERR("active wakelock ref cnt = %d client enum %d \n", ipa_ctx->wakelock_ref_cnt.cnt, ref_client);
 	if (ipa_ctx->wakelock_ref_cnt.cnt == 0)
 		__pm_relax(&ipa_ctx->w_lock);
 	spin_unlock_irqrestore(&ipa_ctx->wakelock_ref_cnt.spinlock, flags);
@@ -2829,7 +2829,7 @@ static void ipa_sps_process_irq(struct work_struct *work)
 
 	/* release IPA clocks */
 	ipa_sps_process_irq_schedule_rel();
-	ipa_dec_release_wakelock();
+	ipa_dec_release_wakelock(IPA_WAKELOCK_REF_CLIENT_SPS);
 	spin_unlock_irqrestore(&ipa_ctx->sps_pm.lock, flags);
 }
 
@@ -2922,7 +2922,7 @@ static void sps_event_cb(enum sps_callback_case event, void *param)
 				ipa_ctx->sps_pm.res_granted = true;
 				*ready = true;
 			} else {
-				ipa_inc_acquire_wakelock();
+				ipa_inc_acquire_wakelock(IPA_WAKELOCK_REF_CLIENT_SPS);
 				queue_work(ipa_ctx->sps_power_mgmt_wq,
 					   &ipa_sps_process_irq_work);
 				*ready = false;

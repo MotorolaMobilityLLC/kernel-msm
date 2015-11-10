@@ -222,7 +222,6 @@ static void ipa_tx_switch_to_intr_mode(struct ipa_sys_context *sys)
 	}
 	atomic_set(&sys->curr_polling_state, 0);
 	ipa_handle_tx_core(sys, true, false);
-	ipa_dec_release_wakelock();
 	return;
 
 fail:
@@ -650,7 +649,6 @@ static void ipa_sps_irq_tx_notify(struct sps_event_notify *notify)
 				IPAERR("sps_set_config() failed %d\n", ret);
 				break;
 			}
-			ipa_inc_acquire_wakelock();
 			atomic_set(&sys->curr_polling_state, 1);
 			queue_work(sys->wq, &sys->work);
 		}
@@ -764,7 +762,12 @@ static void ipa_rx_switch_to_intr_mode(struct ipa_sys_context *sys)
 	}
 	atomic_set(&sys->curr_polling_state, 0);
 	ipa_handle_rx_core(sys, true, false);
-	ipa_dec_release_wakelock();
+	if(sys->ep->client == IPA_CLIENT_APPS_LAN_CONS)
+		ipa_dec_release_wakelock(IPA_WAKELOCK_REF_CLIENT_LAN_RX);
+	else if (sys->ep->client == IPA_CLIENT_APPS_WAN_CONS)
+		ipa_dec_release_wakelock(IPA_WAKELOCK_REF_CLIENT_WAN_RX);
+	else
+		IPAERR("ipa_dec_release_wakelock failed, client enum %d\n", sys->ep->client);
 	return;
 
 fail:
@@ -809,7 +812,12 @@ static void ipa_sps_irq_rx_notify(struct sps_event_notify *notify)
 				IPAERR("sps_set_config() failed %d\n", ret);
 				break;
 			}
-			ipa_inc_acquire_wakelock();
+			if(sys->ep->client == IPA_CLIENT_APPS_LAN_CONS)
+				ipa_inc_acquire_wakelock(IPA_WAKELOCK_REF_CLIENT_LAN_RX);
+			else if (sys->ep->client == IPA_CLIENT_APPS_WAN_CONS)
+				ipa_inc_acquire_wakelock(IPA_WAKELOCK_REF_CLIENT_WAN_RX);
+			else
+				IPAERR("ipa_inc_acquire_wakelock failed, client enum %d\n", sys->ep->client);
 			atomic_set(&sys->curr_polling_state, 1);
 			queue_work(sys->wq, &sys->work);
 		}
