@@ -995,9 +995,13 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl, int panel_power_state)
 
 	if (turn_off_clocks) {
 		pr_debug("%s: turn off interface clocks\n", __func__);
-		list_for_each_entry_safe(handle, tmp,
-					 &ctx->vsync_handlers, list)
-		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
+		/* disable vsync only when panel is off */
+		if (panel_off) {
+			list_for_each_entry_safe(handle, tmp,
+						 &ctx->vsync_handlers, list) {
+				mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
+			}
+		}
 		MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt),
 			  ctx->clk_enabled, ctx->rdptr_enabled,
 			  XLOG_FUNC_ENTRY);
