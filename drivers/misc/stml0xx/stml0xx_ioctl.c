@@ -230,12 +230,12 @@ void stml0xx_ioctl_work_func(struct work_struct *ws)
 		ndx = ioctl_ws->algo_req_ndx;
 		stml0xx_g_algo_requst[ndx].size = ioctl_ws->data_len;
 		memcpy(stml0xx_g_algo_requst[ndx].data,
-			ioctl_ws->data.bytes, ioctl_ws->data_len);
+			&ioctl_ws->data.bytes[1], ioctl_ws->data_len);
 		if (stml0xx_g_booted)
 			err = stml0xx_spi_send_write_reg(stml0xx_algo_info
 					[ioctl_ws->algo_req_ndx].req_register,
-					ioctl_ws->data.bytes,
-					ioctl_ws->data_len);
+					stml0xx_g_algo_requst[ndx].data,
+					stml0xx_g_algo_requst[ndx].size);
 		break;
 	}
 
