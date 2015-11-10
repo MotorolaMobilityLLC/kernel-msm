@@ -3139,7 +3139,6 @@ static int msm_hs_probe(struct platform_device *pdev)
 	int core_irqres, bam_irqres, wakeup_irqres;
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 	unsigned long data;
-	struct tty_struct *tty;
 
 	if (pdev->dev.of_node) {
 		dev_dbg(&pdev->dev, "device tree enabled\n");
@@ -3345,8 +3344,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 		uport->line = pdata->userid;
 	ret = uart_add_one_port(&msm_hs_driver, uport);
 	if (!ret) {
-		tty = msm_uport->uport.state->port.tty;
-		wakeup_source_init(&msm_uport->ws, tty->name);
+		wakeup_source_init(&msm_uport->ws, dev_name(&pdev->dev));
 		msm_hs_clk_bus_unvote(msm_uport);
 		msm_serial_hs_rt_init(uport);
 		return ret;
