@@ -286,6 +286,10 @@
 	};
 };
 
+&usb_otg {
+	qcom,usbin-vadc = <&pmi8950_vadc>;
+};
+
 &pmi8950_charger {
 	status = "okay";
 	/delete-property/ qcom,iterm-ma;
