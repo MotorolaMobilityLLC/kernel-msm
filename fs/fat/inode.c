@@ -555,7 +555,6 @@ static void fat_evict_inode(struct inode *inode)
 	truncate_inode_pages_final(&inode->i_data);
 	if (!inode->i_nlink) {
 		inode->i_size = 0;
-		fat_truncate_blocks(inode, 0);
 	}
 	invalidate_inode_buffers(inode);
 	clear_inode(inode);
