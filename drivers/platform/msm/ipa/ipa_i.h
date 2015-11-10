@@ -748,9 +748,17 @@ struct ipa_active_clients {
 	int cnt;
 };
 
+enum ipa_wakelock_ref_client {
+	IPA_WAKELOCK_REF_CLIENT_TX  = 0,
+	IPA_WAKELOCK_REF_CLIENT_LAN_RX = 1,
+	IPA_WAKELOCK_REF_CLIENT_WAN_RX = 2,
+	IPA_WAKELOCK_REF_CLIENT_SPS = 3,
+	IPA_WAKELOCK_REF_CLIENT_MAX
+};
+
 struct ipa_wakelock_ref_cnt {
 	spinlock_t spinlock;
-	int cnt;
+	u32 cnt;
 };
 
 struct ipa_tag_completion {
@@ -1538,7 +1546,7 @@ int ipa_uc_mhi_resume_channel(int channelHandle, bool LPTransitionRejected);
 int ipa_uc_mhi_stop_event_update_channel(int channelHandle);
 int ipa_uc_mhi_print_stats(char *dbg_buff, int size);
 int ipa_uc_memcpy(phys_addr_t dest, phys_addr_t src, int len);
-void ipa_inc_acquire_wakelock(void);
-void ipa_dec_release_wakelock(void);
+void ipa_inc_acquire_wakelock(enum ipa_wakelock_ref_client ref_client);
+void ipa_dec_release_wakelock(enum ipa_wakelock_ref_client ref_client);
 void ipa_sps_irq_rx_notify_all(void);
 #endif /* _IPA_I_H_ */
