@@ -24,6 +24,10 @@
 	qcom,dsi-pref-prim-pan = <&mot_tdi_546_1080p_cmd_v0>;
 };
 
+&mdss_mdp {
+	/delete-property/ mot_boe_546_1080p_cmd_v0;
+};
+
 &cci {
 	st,stmvl53l0
 	{
