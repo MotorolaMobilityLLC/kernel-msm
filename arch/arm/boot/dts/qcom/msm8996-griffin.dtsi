@@ -107,5 +107,5 @@
 };
 
 &pmi8994_fg {
-	/delete-node/ qcom,ext-sense-type; /* External Sense Resistor */
+	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 };
