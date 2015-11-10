@@ -1085,6 +1085,7 @@
 	spi-max-frequency = <50000000>;
 
 	qcom,rt-priority;
+	qcom,active-only;
 
 	muc_spi: muc_spi@0 {
 		compatible = "moto,muc_spi";
