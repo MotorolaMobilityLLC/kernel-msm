@@ -43,23 +43,28 @@
 		qcom,mount-angle = <90>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,actuator-src = <&actuator0>;
-		cam_vdig-supply = <&pm8950_l23>;
+		cam_vdig-supply = <&pm8950_s4>;
 		cam_vio-supply = <&pm8950_l10>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
-		qcom,cam-vreg-min-voltage = <1200000 1800000> ;
-		qcom,cam-vreg-max-voltage = <1200000 1800000>;
-		qcom,cam-vreg-op-mode = <1200000 1800000>;
+		/* camera needs s4 regulator min 1.85v but audio
+		 * 8952_wcd_codec uses same regulator at min 2.05v */
+		qcom,cam-vreg-min-voltage = <2050000 1800000> ;
+		qcom,cam-vreg-max-voltage = <2050000 1800000>;
+		qcom,cam-vreg-op-mode = <2050000 1800000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
 			     &cam_sensor_rear_default>;
 		pinctrl-1 = <&cam_sensor_mclk0_sleep &cam_sensor_rear_sleep>;
 		gpios = <&msm_gpio 26 0>,
-			<&msm_gpio 36 0>;
+			<&msm_gpio 36 0>,
+			<&msm_gpio 113 0>;
 		qcom,gpio-reset = <1>;
-		qcom,gpio-req-tbl-num = <0 1>;
-		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-vdig = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-					  "CAM_RESET0";
+					  "CAM_RESET0",
+					  "CAM_VDIG0";
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
@@ -67,7 +72,7 @@
 		clocks = <&clock_gcc clk_mclk0_clk_src>,
 			 <&clock_gcc clk_gcc_camss_mclk0_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
-};
+	};
 
 	qcom,camera@1 {
 		cell-index = <1>;
