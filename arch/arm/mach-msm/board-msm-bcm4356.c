@@ -553,9 +553,9 @@ int __init brcm_wlan_init(void)
 subsys_initcall(brcm_wlan_init);
 
 #ifdef CONFIG_PARTIALRESUME
-static bool smd_partial_resume(struct partial_resume *pr)
+static int smd_partial_resume(struct partial_resume *pr)
 {
-	return true;
+	return 0;
 }
 
 #define PR_INIT_STATE          0
@@ -625,13 +625,13 @@ bool wlan_vote_for_suspend(void)
 }
 EXPORT_SYMBOL(wlan_vote_for_suspend);
 
-static bool bcm_wifi_partial_resume(struct partial_resume *pr)
+static int bcm_wifi_partial_resume(struct partial_resume *pr)
 {
 	bool suspend;
 
 	suspend = bcm_wifi_process_partial_resume(WIFI_PR_WAIT_FOR_READY);
 	pr_info("%s: vote %d\n", __func__, suspend);
-	return suspend;
+	return suspend ? 1 : -1;
 }
 
 static struct partial_resume smd_pr = {
