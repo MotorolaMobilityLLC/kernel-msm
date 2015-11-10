@@ -1,33 +1,3 @@
-/****************************************************************************
- * Company:         Fairchild Semiconductor
- *
- * Author           Date          Comment
- *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * G. Noblesmith
- *
- *
- *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
- * Software License Agreement:
- *
- * The software supplied herewith by Fairchild Semiconductor (the “Company”)
- * is supplied to you, the Company's customer, for exclusive use with its
- * USB Type C / USB PD products.  The software is owned by the Company and/or
- * its supplier, and is protected under applicable copyright laws.
- * All rights are reserved. Any use in violation of the foregoing restrictions
- * may subject the user to criminal sanctions under applicable laws, as well
- * as to civil liability for the breach of the terms and conditions of this
- * license.
- *
- * THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- * PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- * IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
- *
- *****************************************************************************/
-
 /*
  * This file contains various object definitions for VDM.
  */
@@ -35,18 +5,16 @@
 #ifndef __VDM_TYPES_H__
 #define __VDM_TYPES_H__
  
-#include "../platform.h" 
-
 #define STRUCTURED_VDM_VERSION 0
-#define MAX_NUM_SVIDS 11
+#define MAX_NUM_SVIDS 20
 #define MAX_MODES_PER_SVID 6
 
 // enumeration of SVIDs
 typedef enum {
 	VID_UNASSIGNED	=	0x0000,
-	PD_SID			=	0xFF00,
-    DP_SID          =   0xFF01
-	/* Define Standard/Vendor IDs Here... */
+	PD_SID		=	0xFF00,
+
+	/* Define Vendor IDs Here... */
 } Svid;
 
 // All VDMs are either structured or unstructured -
@@ -98,14 +66,14 @@ typedef enum {
 typedef struct {
 	Svid   		svid 		: 16;
 	VdmType  	vdm_type 	: 1;
-	UINT16		info		: 15;
+	u16		info		: 15;
 } UnstructuredVdmHeader;
 
 // internal form factor of a Structured VDM Header
 typedef struct {
 	Svid   		svid 			: 16;
 	VdmType  	vdm_type 		: 1;
-	SvdmVersion svdm_version 	: 2;
+	SvdmVersion 	svdm_version 	: 2;
 	ObjPos		obj_pos			: 3;
 	CmdType		cmd_type		: 2;
 	Command		command			: 5;
@@ -123,22 +91,22 @@ typedef enum {
 
 // internal form factor of an ID Header
 typedef struct {
-	BOOL		usb_host_data_capable	: 1;
-	BOOL		usb_device_data_capable	: 1;
+	bool		usb_host_data_capable	: 1;
+	bool		usb_device_data_capable	: 1;
 	ProductType	product_type			: 3;
-	BOOL		modal_op_supported		: 1;
-	UINT16		usb_vid					: 16;
+	bool		modal_op_supported		: 1;
+	u16		usb_vid					: 16;
 } IdHeader;
 
 // internal form factor for Cert Stat VDO
 typedef struct {
-	UINT32	test_id	: 20;
+	u32	test_id	: 20;
 } CertStatVdo;
 
 // internal form factor for Product VDO
 typedef struct {
-	UINT16	usb_product_id	: 16;
-	UINT16 	bcd_device		: 16;
+	u16	usb_product_id	: 16;
+	u16 	bcd_device		: 16;
 } ProductVdo;
 
 // enumeration of what I'm calling 'Cable To Letter Type'
@@ -212,8 +180,8 @@ typedef enum {
 
 // internal form factor for Cable VDO
 typedef struct {
-	UINT8							cable_hw_version			: 4;
-	UINT8							cable_fw_version			: 4;
+	u8							cable_hw_version			: 4;
+	u8							cable_fw_version			: 4;
 	CableToType 					cable_to_type				: 2;
 	CableToPr						cable_to_pr					: 1;
 	CableLatency 					cable_latency				: 4;
@@ -262,8 +230,8 @@ typedef enum {
 
 // internal form factor for Alternate Mode Adapter VDO
 typedef struct {
-	UINT8							cable_hw_version	: 4;
-	UINT8							cable_fw_version	: 4;
+	u8							cable_hw_version	: 4;
+	u8							cable_fw_version	: 4;
 	SsDirectionality				sstx1_dir_supp		: 1;
 	SsDirectionality				sstx2_dir_supp		: 1;
 	SsDirectionality				ssrx1_dir_supp		: 1;
@@ -276,44 +244,115 @@ typedef struct {
 
 // internal form factor for an SVID VDO 
 typedef struct {
-	UINT16	SVID0	: 16;
-	UINT16	SVID1	: 16;
+	u16	SVID0	: 16;
+	u16	SVID1	: 16;
 } SvidVdo;
 
 // 'Identity' Object - this is how we'll store data received from Discover Identity messages
 typedef struct {
-	BOOL 		nack; 	// set to true to nack a Discover Identity
-						// TODO: also put BUSY answer in here
-
 	IdHeader 	id_header;
 	CertStatVdo	cert_stat_vdo;
 	
-	BOOL 		has_product_vdo;
+	bool 		has_product_vdo;
 	ProductVdo	product_vdo;
 	
-	BOOL		has_cable_vdo;
+	bool		has_cable_vdo;
 	CableVdo	cable_vdo;
 	
-	BOOL		has_ama_vdo;
+	bool		has_ama_vdo;
 	AmaVdo		ama_vdo;
 } Identity;
 
 // SVID Info object - give the system an easy struct to pass info to us through a callback
 typedef struct {
-	BOOL		 nack;	// set to true to NACK the Discover SVIDs
-						// TODO: incorporate BUSY
-	UINT32       num_svids;
-	UINT16		 svids[MAX_NUM_SVIDS];
+	unsigned int num_svids;
+	u16		 svids[MAX_NUM_SVIDS];
 } SvidInfo;
 
 // Modes Info object  give the system an easy struct to pass info to us through a callback
 typedef struct {
-	BOOL		 	nack;	// set to true to NACK the Discover SVIDs
-							// TODO: incorporate BUSY
-	UINT16 			svid;
-	UINT32          num_modes;
-	UINT32		 	modes[MAX_MODES_PER_SVID];
+	u16 			svid;
+	unsigned int 	num_modes;
+	u32		 	modes[MAX_MODES_PER_SVID];
 } ModesInfo;
 
+// UFP VDM States
+typedef enum {
+	PE_UFP_VDM_Get_Identity,
+	PE_UFP_VDM_Send_Identity,
+	
+	PE_UFP_VDM_Get_SVIDs,
+	PE_UFP_VDM_Send_SVIDs,
+	
+	PE_UFP_VDM_Get_Modes,
+	PE_UFP_VDM_Send_Modes,
+	
+	PE_UFP_VDM_Evaluate_Mode_Entry,
+	PE_UFP_VDM_Mode_Entry_ACK,
+	PE_UFP_VDM_Mode_Entry_NAK,
+	
+	PE_UFP_VDM_Mode_Exit,
+	PE_UFP_VDM_Mode_Exit_ACK,
+} UfpVdmState;
+
+// UFP VDM Attention States
+typedef enum {
+	PE_UFP_VDM_Attention_Request,
+} UfpVdmAttentionState;
+
+// DFP VDM Discover Identity States
+typedef enum {
+	PE_DFP_VDM_Identity_Request,
+	PE_DFP_VDM_Identity_ACKed,
+	PE_DFP_VDM_Identity_NAKed,
+} DfpVdmDiscoverIdentityState;
+
+// DFP VDM Discover SVIDs States
+typedef enum {
+	PE_DFP_VDM_SVIDs_Request,
+	PE_DFP_VDM_SVIDs_ACKed,
+	PE_DFP_VDM_SVIDs_NAKed,
+} DfpVdmDiscoverSvidsState;
+
+// DFP VDM Discover Modes States
+typedef enum {
+	PE_DFP_VDM_Modes_Request,
+	PE_DFP_VDM_Modes_ACKed,
+	PE_DFP_VDM_Modes_NAKed,
+} DfpVdmDiscoverModesState;
+
+// DFP VDM Mode Entry States
+typedef enum {
+	PE_DFP_VDM_Mode_Entry_Request,
+	PE_DFP_VDM_Mode_Entry_ACKed,
+	PE_DFP_VDM_Mode_Entry_NAKed,
+} DfpVdmModeEntryState;
+
+// DFP VDM Mode Exit States
+typedef enum {
+	PE_DFP_VDM_Mode_Exit_Request,
+	PE_DFP_VDM_Exit_Mode_ACKed,
+} DfpVdmModeExitState;
+
+// Source Startup VDM Discover Identity Diagram
+typedef enum {
+	PE_SRC_VDM_Identity_Request,
+	PE_SRC_VDM_Identity_ACKed,
+	PE_SRC_VDM_Identity_NAKed,
+} SourceStartupVdmDiscoverIdentityState;
+
+// DFP VDM Attention State Diagram
+typedef enum {
+	PE_DFP_VDM_Attention_Request,
+} DfpVdmAttentionState;
+
+// TODO FIXME - this SopType is not really a VDM specific definition - should merge with top-level definition
+typedef enum {
+	SOP,
+	SOP1,
+	SOP2,
+	SOP1_DEBUG,
+	SOP2_DEBUG,
+} SopType;	
 
 #endif // header guard	
