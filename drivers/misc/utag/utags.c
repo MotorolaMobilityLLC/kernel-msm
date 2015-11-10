@@ -124,6 +124,7 @@ struct ctrl {
 	struct list_head dir_list;
 	struct list_head node_list;
 	const char *dir_name;
+	uint32_t lock;
 };
 
 static void build_utags_directory(struct ctrl *ctrl);
@@ -681,39 +682,36 @@ write_utag(struct file *file, const char __user *buffer,
  * delete it, save utags, update proc fs
 */
 
-static ssize_t
-delete_utag(struct file *file, const char __user *buffer,
-	   size_t count, loff_t *pos)
+static ssize_t delete_store(struct device *dev, struct device_attribute *attr,
+	const char *buffer, size_t count)
 {
 	struct utag *tags, *cur;
-	struct inode *inode = file->f_dentry->d_inode;
-	struct ctrl *ctrl = PDE_DATA(inode);
+	struct ctrl *ctrl = dev_get_drvdata(dev);
 	char *tmp;
 
 	if ((MAX_UTAG_NAME < count) || (0 == count)) {
 		pr_err("%s invalid utag name %zu\n", __func__, count);
-		return count;
+		return -EIO;
 	}
 
 	tmp = kzalloc(count, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
 
-	if (copy_from_user(tmp, buffer, count)) {
-		pr_err("%s user copy error\n", __func__);
-		goto out_noload;
-	}
+	memcpy(tmp, buffer, count);
 
 	/* payload has input string plus \n. Replace \n with 00 */
 	tmp[count-1] = 0;
 	if (!validate_name(tmp, (count-1))) {
 		pr_err("%s invalid format %s\n", __func__, tmp);
+		count = -1;
 		goto out_noload;
 	}
 
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("%s load config error\n", __func__);
+		count = -1;
 		goto out_noload;
 	} else {
 		/* Ignore request if utag name already in use */
@@ -738,6 +736,7 @@ out_noload:
 	kfree(tmp);
 	return count;
 }
+DEVICE_ATTR(delete, S_IWUSR, NULL, delete_store);
 
 /*
  * Process new file request. Check for exiisting utag,
@@ -833,38 +832,46 @@ out_noload:
 	return count;
 }
 
-
-static int dump_all(struct seq_file *file, void *v)
+static ssize_t lock_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
 {
-	int i;
-	char *data = NULL;
-	struct utag *tags = NULL;
-	uint32_t loc_csum = 0;
-	struct proc_node *proc = (struct proc_node *)file->private;
-	struct ctrl *ctrl = proc->ctrl;
+	struct ctrl *ctrl = dev_get_drvdata(dev);
+	size_t max = PAGE_SIZE;
 
-	tags = load_utags(&ctrl->main);
-	if (NULL == tags)
-		pr_err("%s Load config failed\n", __func__);
-	else
-		while (tags != NULL) {
-			seq_printf(file,
-				   "Tag: Name [%s] Size: [%d]\nData:\n\t",
-				   tags->name, tags->size);
-			for (i = 0, data = tags->payload; i < tags->size; i++) {
-				loc_csum += data[i];
-				seq_printf(file, "[0x%02X] ", data[i]);
-				if ((i + 1) % 10 == 0)
-					seq_printf(file, "\n\t");
-			}
-			seq_printf(file, "\n\n");
-			tags = tags->next;
-		}
+	if (!ctrl) {
+		dev_err(dev, "%s device data not set\n", __func__);
+		return 0;
+	}
 
-	ctrl->csum = loc_csum;
-	free_tags(tags);
-	return 0;
+	dev_info(dev, "%s lock is %d\n", ctrl->main.name, ctrl->lock);
+	return snprintf(buf, max, "%d\n", ctrl->lock);
 }
+
+static ssize_t lock_store(struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	struct ctrl *ctrl = dev_get_drvdata(dev);
+
+	if (!ctrl) {
+		dev_err(dev, "%s device data not set\n", __func__);
+		return 0;
+	}
+
+	if (!strncasecmp(buf, "lock", 4)) {
+		ctrl->lock = 1;
+		goto lock_done;
+	}
+
+	if (!strncasecmp(buf, "unlock", 6)) {
+		ctrl->lock = 0;
+		goto lock_done;
+	}
+
+lock_done:
+	dev_info(dev, "lock %s lock %d\n", ctrl->main.name, ctrl->lock);
+	return count;
+}
+DEVICE_ATTR(lock, (S_IWUSR | S_IRUGO), lock_show, lock_store);
 
 static int reload_show(struct seq_file *file, void *v)
 {
@@ -908,11 +915,6 @@ static int config_read(struct inode *inode, struct file *file)
 	return single_open(file, read_tag, PDE_DATA(inode));
 }
 
-static int config_dump(struct inode *inode, struct file *file)
-{
-	return single_open(file, dump_all, PDE_DATA(inode));
-}
-
 static int reload_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, reload_show, PDE_DATA(inode));
@@ -927,26 +929,9 @@ static const struct file_operations utag_fops = {
 	.write = write_utag,
 };
 
-static const struct file_operations dump_fops = {
-	.owner = THIS_MODULE,
-	.open = config_dump,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
 static const struct file_operations new_fops = {
-	.owner = THIS_MODULE,
-	.open = config_dump,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-	.write = new_utag,
-};
-
-static const struct file_operations del_fops = {
 	.read = NULL,
-	.write = delete_utag,
+	.write = new_utag,
 };
 
 static const struct file_operations reload_fops = {
@@ -1011,7 +996,6 @@ static void build_utags_directory(struct ctrl *ctrl)
 		strlcpy(dnode->name, "all", MAX_UTAG_NAME);
 	}
 
-	utag_file("all", "raw", OUT_RAW, dnode, &dump_fops);
 	utag_file("all", "new", OUT_NEW, dnode, &new_fops);
 
 	free_tags(tags);
@@ -1066,6 +1050,16 @@ static void clear_utags_directory(struct ctrl *ctrl)
 	}
 }
 
+static struct attribute *utag_device_attrs[] = {
+	&dev_attr_lock.attr,
+	&dev_attr_delete.attr,
+	NULL,
+};
+
+static const struct attribute_group utag_device_group = {
+	.attrs = utag_device_attrs,
+};
+
 static int utags_probe(struct platform_device *pdev)
 {
 	int rc;
@@ -1109,8 +1103,9 @@ static int utags_probe(struct platform_device *pdev)
 		return -EIO;
 	}
 
-	if (!proc_create_data("delete", 0600, ctrl->root, &del_fops, ctrl)) {
-		pr_err("%s Failed to create reload entry\n", __func__);
+	rc = sysfs_create_group(&pdev->dev.kobj, &utag_device_group);
+	if (rc) {
+		pr_err("%s sysfs create group %d\n", __func__, rc);
 		remove_proc_entry("reload", ctrl->root);
 		remove_proc_entry(ctrl->dir_name, NULL);
 		return -EIO;
@@ -1128,7 +1123,7 @@ static int utags_remove(struct platform_device *pdev)
 	ctrl = dev_get_drvdata(&pdev->dev);
 	clear_utags_directory(ctrl);
 	remove_proc_entry("reload", ctrl->root);
-	remove_proc_entry("delete", ctrl->root);
+	sysfs_remove_group(&pdev->dev.kobj, &utag_device_group);
 	remove_proc_entry(ctrl->dir_name, NULL);
 	return 0;
 }
