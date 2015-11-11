@@ -26,6 +26,7 @@
 #include <linux/irq.h>
 #include <linux/leds.h>
 #include <linux/module.h>
+#include <linux/spinlock.h>
 #include <linux/switch.h>
 #include <linux/wakelock.h>
 
@@ -68,8 +69,6 @@ enum vmm_ids {
 
 #define LIGHTING_TABLE_SIZE 32
 
-#define STML0XX_AS_DATA_QUEUE_SIZE       0x20
-#define STML0XX_AS_DATA_QUEUE_MASK       0x1F
 #define STML0XX_MS_DATA_QUEUE_SIZE       0x08
 #define STML0XX_MS_DATA_QUEUE_MASK       0x07
 
@@ -237,6 +236,18 @@ struct stml0xx_platform_data {
 	int cover_detect_polarity;
 };
 
+/**
+ * as_node - Android sensor event node type
+ * @list: underlying linux list_head structure
+ * @data: data from the sensor event
+ *
+ * The as event queue is a list of these nodes
+ */
+struct as_node {
+	struct list_head list;
+	struct stml0xx_android_sensor_data data;
+};
+
 struct stml0xx_data {
 	struct stml0xx_platform_data *pdata;
 	struct mutex lock;
@@ -275,10 +286,11 @@ struct stml0xx_data {
 	struct switch_dev dsdev;	/* Standard Dock switch */
 	struct switch_dev edsdev;	/* Motorola Dock switch */
 
-	struct stml0xx_android_sensor_data
-	 stml0xx_as_data_buffer[STML0XX_AS_DATA_QUEUE_SIZE];
-	int stml0xx_as_data_buffer_head;
-	int stml0xx_as_data_buffer_tail;
+	/* Android sensor event queue */
+	struct as_node as_queue;
+	/* Lock for modifying as_queue */
+	spinlock_t as_queue_lock;
+
 	wait_queue_head_t stml0xx_as_data_wq;
 
 	struct stml0xx_moto_sensor_data
