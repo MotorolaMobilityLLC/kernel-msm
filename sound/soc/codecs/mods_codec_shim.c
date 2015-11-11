@@ -123,12 +123,29 @@ static int mods_codec_shim_set_dai_sysclk(struct snd_soc_dai *dai,
 	return ret;
 }
 
+static const struct snd_soc_dapm_widget mods_dai_dapm_widgets[] = {
+	SND_SOC_DAPM_AIF_IN("MODS_DAI_RX", "Mods Dai Playback", 0, 0, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("MODS_DAI_TX", "Mods Dai Capture", 0, 0, 0, 0),
+	SND_SOC_DAPM_OUTPUT("MODS_DAI_RX Playback"),
+	SND_SOC_DAPM_INPUT("MODS_DAI_TX Capture"),
+};
+
+static const struct snd_soc_dapm_route mods_codec_dapm_routes[] = {
+	{"MODS_DAI_RX", NULL, "Mods Dai Playback"},
+	{"Mods Dai Capture", NULL, "MODS_DAI_TX"},
+};
+
 static int mods_codec_shim_probe(struct snd_soc_codec *codec)
 {
 	int ret;
 
 	mutex_lock(&mods_shim_lock);
 	priv_codec = codec;
+	snd_soc_dapm_new_controls(&codec->dapm, mods_dai_dapm_widgets,
+			ARRAY_SIZE(mods_dai_dapm_widgets));
+	snd_soc_dapm_add_routes(&codec->dapm, mods_codec_dapm_routes,
+			ARRAY_SIZE(mods_codec_dapm_routes));
+	snd_soc_dapm_sync(&codec->dapm);
 	if (mods_codec_dev) {
 		snd_soc_codec_set_drvdata(priv_codec,
 					mods_codec_dev->priv_data);
