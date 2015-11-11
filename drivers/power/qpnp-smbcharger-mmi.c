@@ -317,6 +317,7 @@ struct smbchg_chip {
 	bool				hvdcp_det_done;
 	enum ebchg_state		ebchg_state;
 	struct gpio			ebchg_gpio;
+	bool				force_eb_chrg;
 	struct gpio			warn_gpio;
 	struct delayed_work		warn_irq_work;
 	int				warn_irq;
@@ -3559,7 +3560,7 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 
 		chip->ebchg_state = EB_DISCONN;
 		return;
-	} else {
+	} else if (!chip->force_eb_chrg) {
 		rc = eb_pwr_psy->get_property(eb_pwr_psy,
 					  POWER_SUPPLY_PROP_PTP_INTERNAL_SEND,
 					  &ret);
@@ -7058,6 +7059,42 @@ static int eb_dbfs_write(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(eb_dbfs_ops, eb_dbfs_read,
 			eb_dbfs_write, "%llu\n");
 
+static int eb_force_dbfs_read(void *data, u64 *val)
+{
+	struct smbchg_chip *chip = data;
+	if (!chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+	*val = (u64)chip->force_eb_chrg;
+
+	return 0;
+}
+
+static int eb_force_dbfs_write(void *data, u64 val)
+{
+	struct smbchg_chip *chip = data;
+
+	if (!chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+	if (val)
+		chip->force_eb_chrg = true;
+	else {
+		chip->force_eb_chrg = false;
+		chip->stepchg_state = STEP_NONE;
+	}
+
+	smbchg_stay_awake(chip, PM_HEARTBEAT);
+	cancel_delayed_work(&chip->heartbeat_work);
+	schedule_delayed_work(&chip->heartbeat_work,
+			      msecs_to_jiffies(0));
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(eb_force_dbfs_ops, eb_force_dbfs_read,
+			eb_force_dbfs_write, "%llu\n");
+
 static int create_debugfs_entries(struct smbchg_chip *chip)
 {
 	struct dentry *ent;
@@ -7095,6 +7132,16 @@ static int create_debugfs_entries(struct smbchg_chip *chip)
 	if (!ent) {
 		dev_err(chip->dev,
 			"Couldn't create eb attach file\n");
+		return -EINVAL;
+	}
+
+	ent = debugfs_create_file("eb_force_chrg",
+				  S_IFREG | S_IWUSR | S_IRUGO,
+				  chip->debug_root, chip,
+				  &eb_force_dbfs_ops);
+	if (!ent) {
+		dev_err(chip->dev,
+			"Couldn't create eb force file\n");
 		return -EINVAL;
 	}
 
@@ -7977,6 +8024,11 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 			smbchg_usb_en(chip, true, REASON_DEMO);
 			smbchg_dc_en(chip, true, REASON_DEMO);
 		}
+	} else if (chip->force_eb_chrg &&
+		   (chip->ebchg_state != EB_DISCONN) &&
+		   chip->usb_present) {
+		smbchg_set_extbat_state(chip, EB_SINK);
+		chip->stepchg_state = STEP_EB;
 	} else if ((chip->stepchg_state == STEP_NONE) && (chip->usb_present)) {
 		if (batt_mv >= chip->stepchg_voltage_mv)
 			chip->stepchg_state = STEP_ONE;
