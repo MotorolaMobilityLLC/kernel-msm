@@ -119,6 +119,8 @@ Optional Properties:
 				range 3600mV to 4500mV
 - qcom,float-voltage-comp	Specifies the JEITA float voltage compensation.
 				Value ranges from 0 to 63.
+- qcom,auto-voltage-comp-mv	Specifies the Automatic float voltage compensation.
+				Value ranges from 25 mV to 175 mV
 - qcom,fastchg-current-ma	Specifies the fast charge current in mA. Supported
 				range is from 300mA to 3000mA.
 - qcom,fastchg-current-comp	Specifies the fast charge current compensation in
