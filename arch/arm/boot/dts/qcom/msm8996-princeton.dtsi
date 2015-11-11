@@ -48,6 +48,12 @@
 		enable-active-high;
 		regulator-boot-on;
 	};
+
+	spi@75b7000 {
+		/* Need to disable bam because TZ permission issues exist
+			on v2 8996 chipset. */
+		/delete-property/ qcom,use-bam;
+	};
 };
 
 &mdss_dsi {
