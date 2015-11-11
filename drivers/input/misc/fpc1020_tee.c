@@ -173,7 +173,7 @@ static ssize_t clk_enable_set(struct device *dev,
 	return set_clks(fpc1020, (*buf == '1')) ? : count;
 }
 
-static DEVICE_ATTR(clk_enable, S_IWUSR, NULL, clk_enable_set);
+static DEVICE_ATTR(clk_enable, S_IWUSR | S_IWGRP, NULL, clk_enable_set);
 
 static ssize_t irq_get(struct device *device,
 		       struct device_attribute *attribute,
@@ -184,7 +184,7 @@ static ssize_t irq_get(struct device *device,
 
 	return scnprintf(buffer, PAGE_SIZE, "%i\n", irq);
 }
-static DEVICE_ATTR(irq, S_IRUSR, irq_get, NULL);
+static DEVICE_ATTR(irq, S_IRUSR | S_IRGRP, irq_get, NULL);
 
 static struct attribute *attributes[] = {
 	&dev_attr_clk_enable.attr,
