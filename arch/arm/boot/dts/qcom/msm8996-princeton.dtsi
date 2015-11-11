@@ -147,6 +147,7 @@
 };
 
 &i2c_7 {
+	qcom,disable-dma;
 	pnxxx: pnxxx@28 {
 		gpios = <&tlmm 9 0>,     /* IRQ */
 		    <&pm8994_gpios 9 0>,  /* VEN */
@@ -172,6 +173,7 @@
 };
 
 &i2c_8 {
+	qcom,disable-dma;
 	synaptics_dsx_i2c@20 {
 		vdd_quirk-supply = <&vreg_5p0>;
 	};
