@@ -30,11 +30,13 @@
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/spinlock.h>
 #include <linux/switch.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
@@ -43,27 +45,69 @@
 
 #include <linux/stml0xx.h>
 
+static int maxBufFill = -1;
+static long long int as_queue_numremoved;
+static long long int as_queue_numadded;
+#define AS_QUEUE_SIZE_ESTIMATE (as_queue_numadded - as_queue_numremoved)
+#define AS_QUEUE_MAX_SIZE (1024)
+
+/**
+ * stml0xx_as_data_buffer_write() - put a sensor event on the as queue
+ *
+ * @ps_stml0xx: the global stml0xx data struct
+ * @type:      the data type (DT_*)
+ * @data:      raw sensor data
+ * @size:      the size in bytes of the data
+ * @status:    the status of the sensor event
+ *
+ * NOTE: this function must be reentrant since kmalloc with
+ *       GFP_KERNEL flags can block.
+ *
+ * Return: 1 on success, 0 on dropped event
+ */
 int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 				 unsigned char type, unsigned char *data,
 				 int size, unsigned char status,
 				 uint64_t timestamp_ns)
 {
-	int new_head;
-	struct stml0xx_android_sensor_data *buffer;
-	static bool error_reported;
+	static bool full_reported;
 
-	new_head = (ps_stml0xx->stml0xx_as_data_buffer_head + 1)
-	    & STML0XX_AS_DATA_QUEUE_MASK;
-	if (new_head == ps_stml0xx->stml0xx_as_data_buffer_tail) {
-		if (!error_reported) {
+	long long int queue_size;
+	struct as_node *new_tail;
+	struct stml0xx_android_sensor_data *buffer;
+
+	/* Get current queue size */
+	queue_size = AS_QUEUE_SIZE_ESTIMATE;
+
+	if (queue_size > maxBufFill) {
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+				"maxBufFill = %d",
+				maxBufFill);
+		maxBufFill = queue_size;
+	}
+
+	/* Check for queue full */
+	if (queue_size >= AS_QUEUE_MAX_SIZE) {
+		if (!full_reported) {
 			dev_err(&stml0xx_misc_data->spi->dev,
-				"as data buffer full");
-			error_reported = true;
+					"as data buffer full\n");
+			full_reported = true;
 		}
 		wake_up(&ps_stml0xx->stml0xx_as_data_wq);
 		return 0;
+	} /* END: queue full */
+
+	/* Make a new node */
+	new_tail = kmalloc(sizeof(struct as_node), GFP_KERNEL);
+	if (!new_tail) {
+		wake_up(&ps_stml0xx->stml0xx_as_data_wq);
+		dev_err(&stml0xx_misc_data->spi->dev,
+				"as queue kmalloc error");
+		return 0;
 	}
-	buffer = &(ps_stml0xx->stml0xx_as_data_buffer[new_head]);
+
+	/* Populate node data */
+	buffer = &(new_tail->data);
 	buffer->type = type;
 	buffer->status = status;
 	if (data != NULL && size > 0) {
@@ -75,30 +119,56 @@ int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 		memcpy(buffer->data, data, size);
 	}
 	buffer->size = size;
-	buffer->timestamp = timestamp_ns;
 
-	ps_stml0xx->stml0xx_as_data_buffer_head = new_head;
+	/* Add new_tail to end of queue */
+	spin_lock(&(ps_stml0xx->as_queue_lock));
+		/* Have to timestamp after lock to avoid
+		 * out-of-order events
+		 */
+		buffer->timestamp = timestamp_ns;
+		list_add_tail(&(new_tail->list), &(ps_stml0xx->as_queue.list));
+		++as_queue_numadded;
+	spin_unlock(&(ps_stml0xx->as_queue_lock));
+
 	wake_up(&ps_stml0xx->stml0xx_as_data_wq);
 
-	error_reported = false;
+	/* If we got here, the queue is not full */
+	if (full_reported)
+		dev_err(&stml0xx_misc_data->spi->dev,
+				"as data buffer not full\n");
+	full_reported = false;
 	return 1;
 }
 
+/**
+ * stml0xx_as_data_buffer_read() - read/remove an item from the as queue
+ * @ps_stml0xx: the global stml0xx data struct
+ * @buff:      the output data item
+ *
+ * NOTE: this function is not reentrant, due to the fact that there is
+ *       only one single-threaded reader
+ * Return: 1 on success, 0 on empty queue
+ */
 int stml0xx_as_data_buffer_read(struct stml0xx_data *ps_stml0xx,
 				struct stml0xx_android_sensor_data *buff)
 {
-	int new_tail;
+	struct as_node *first;
 
-	if (ps_stml0xx->stml0xx_as_data_buffer_tail
-	    == ps_stml0xx->stml0xx_as_data_buffer_head)
+	/* Get first item in queue */
+	first = list_first_entry_or_null(&(ps_stml0xx->as_queue.list),
+			struct as_node, list);
+	if (first == NULL)
 		return 0;
 
-	new_tail = (ps_stml0xx->stml0xx_as_data_buffer_tail + 1)
-	    & STML0XX_AS_DATA_QUEUE_MASK;
+	/* Copy out the data */
+	*buff = first->data;
 
-	*buff = ps_stml0xx->stml0xx_as_data_buffer[new_tail];
-
-	ps_stml0xx->stml0xx_as_data_buffer_tail = new_tail;
+	/* Delete the item */
+	spin_lock(&(ps_stml0xx->as_queue_lock));
+		list_del(&(first->list));
+		++as_queue_numremoved;
+	spin_unlock(&(ps_stml0xx->as_queue_lock));
+	kfree(first);
 
 	return 1;
 }
@@ -188,6 +258,7 @@ static ssize_t stml0xx_as_read(struct file *file, char __user *buffer,
 	ret = stml0xx_as_data_buffer_read(ps_stml0xx, &tmp_buff);
 	if (ret == 0)
 		return 0;
+
 	ret = copy_to_user(buffer, &tmp_buff,
 			   sizeof(struct stml0xx_android_sensor_data));
 	if (ret != 0) {
@@ -205,8 +276,7 @@ static unsigned int stml0xx_as_poll(struct file *file,
 	struct stml0xx_data *ps_stml0xx = file->private_data;
 
 	poll_wait(file, &ps_stml0xx->stml0xx_as_data_wq, wait);
-	if (ps_stml0xx->stml0xx_as_data_buffer_head
-	    != ps_stml0xx->stml0xx_as_data_buffer_tail)
+	if (!list_empty(&(ps_stml0xx->as_queue.list)))
 		mask = POLLIN | POLLRDNORM;
 
 	return mask;

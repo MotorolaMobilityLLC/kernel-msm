@@ -29,6 +29,7 @@
 #include <linux/input-polldev.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/poll.h>
@@ -710,6 +711,9 @@ static int stml0xx_probe(struct spi_device *spi)
 	ps_stml0xx->spi = spi;
 	if (!stml0xx_misc_data)
 		stml0xx_misc_data = ps_stml0xx;
+
+	INIT_LIST_HEAD(&(ps_stml0xx->as_queue.list));
+	spin_lock_init(&(ps_stml0xx->as_queue_lock));
 
 	/* SPI setup */
 
