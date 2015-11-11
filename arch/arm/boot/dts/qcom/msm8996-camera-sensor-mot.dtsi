@@ -43,6 +43,18 @@
 		qcom,cam-vreg-op-mode = <100000>;
 	};
 
+	ois0: qcom,ois@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		compatible = "qcom,ois";
+		qcom,cci-master = <0>;
+		cam_vaf-supply = <&pm8994_l23>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-min-voltage = <1800000>;
+		qcom,cam-vreg-max-voltage = <1800000>;
+		qcom,cam-vreg-op-mode = <100000>;
+	};
+
 	/* OV5693 OTP */
 	eeprom2: qcom,eeprom@2 {
 		cell-index = <2>;
@@ -268,6 +280,7 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator0>;
+		qcom,ois-src = <&ois0>;
 		qcom,led-flash-src = <&led_flash0>;
 		/* qcom,eeprom-src = <&eeprom0>; */
 		cam_vio-supply = <&pm8994_lvs1>;
@@ -311,6 +324,7 @@
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		qcom,actuator-src = <&actuator0>;
+		qcom,ois-src = <&ois0>;
 		qcom,led-flash-src = <&led_flash0>;
 		/* qcom,eeprom-src = <&eeprom0>; */
 		cam_vio-supply = <&pm8994_lvs1>;
