@@ -291,6 +291,7 @@ struct smbchg_chip {
 	struct notifier_block		smb_reboot;
 	int				aicl_wait_retries;
 	bool				hvdcp_det_done;
+	int				afvc_mv;
 };
 
 static struct smbchg_chip *the_chip;
@@ -5247,6 +5248,14 @@ static inline int get_bpd(const char *name)
 #define RCHG_LVL_BIT			BIT(0)
 #define CFG_AFVC			0xF6
 #define VFLOAT_COMP_ENABLE_MASK		SMB_MASK(2, 0)
+#define VFLOAT_DIS_VAL			0x00
+#define VFLOAT_25MV_VAL			0x01
+#define VFLOAT_50MV_VAL			0x02
+#define VFLOAT_75MV_VAL			0x03
+#define VFLOAT_100MV_VAL		0x04
+#define VFLOAT_125MV_VAL		0x05
+#define VFLOAT_150MV_VAL		0x06
+#define VFLOAT_175MV_VAL		0x07
 #define TR_RID_REG			0xFA
 #define FG_INPUT_FET_DELAY_BIT		BIT(3)
 #define TRIM_OPTIONS_7_0		0xF6
@@ -5628,7 +5637,31 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		}
 	}
 
-
+	if (chip->afvc_mv != -EINVAL) {
+		if (chip->afvc_mv < 25)
+			reg = VFLOAT_DIS_VAL;
+		else if (chip->afvc_mv < 50)
+			reg = VFLOAT_25MV_VAL;
+		else if (chip->afvc_mv < 75)
+			reg = VFLOAT_50MV_VAL;
+		else if (chip->afvc_mv < 100)
+			reg = VFLOAT_75MV_VAL;
+		else if (chip->afvc_mv < 125)
+			reg = VFLOAT_100MV_VAL;
+		else if (chip->afvc_mv < 150)
+			reg = VFLOAT_125MV_VAL;
+		else if (chip->afvc_mv < 175)
+			reg = VFLOAT_150MV_VAL;
+		else
+			reg = VFLOAT_175MV_VAL;
+		rc = smbchg_sec_masked_write(chip, chip->chgr_base + CFG_AFVC,
+				VFLOAT_COMP_ENABLE_MASK, reg);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set vfloat rc = %d\n",
+					rc);
+			return rc;
+		}
+	} else if (chip->soft_vfloat_comp_disabled) {
 	/*
 	 * on some devices the battery is powered via external sources which
 	 * could raise its voltage above the float voltage. smbchargers go
@@ -5636,7 +5669,6 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 	 * disable float voltage compensation (note that the battery will appear
 	 * hot/cold when powered via external source).
 	 */
-	if (chip->soft_vfloat_comp_disabled) {
 		rc = smbchg_sec_masked_write(chip, chip->chgr_base + CFG_AFVC,
 				VFLOAT_COMP_ENABLE_MASK, 0);
 		if (rc < 0) {
@@ -5897,6 +5929,8 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	OF_PROP_READ(chip, chip->fastchg_current_comp, "fastchg-current-comp",
 			rc, 1);
 	OF_PROP_READ(chip, chip->float_voltage_comp, "float-voltage-comp",
+			rc, 1);
+	OF_PROP_READ(chip, chip->afvc_mv, "auto-voltage-comp-mv",
 			rc, 1);
 	if (chip->safety_time != -EINVAL &&
 		(chip->safety_time > chg_time[ARRAY_SIZE(chg_time) - 1])) {
@@ -7608,13 +7642,13 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 	case STEP_ONE:
 	case STEP_NONE:
 		chip->vfloat_mv =
-			chip->stepchg_max_voltage_mv + STEPCHG_ONE_FV_COMP;
+			chip->stepchg_max_voltage_mv;
 		chip->vfloat_parallel_mv = chip->stepchg_max_voltage_mv;
 		set_max_allowed_current_ma(chip, chip->stepchg_current_ma);
 		break;
 	case STEP_MAX:
 		chip->vfloat_mv =
-			chip->stepchg_max_voltage_mv + STEPCHG_MAX_FV_COMP;
+			chip->stepchg_max_voltage_mv;
 		chip->vfloat_parallel_mv =
 			chip->stepchg_voltage_mv + STEPCHG_MAX_FV_COMP;
 		set_max_allowed_current_ma(chip, chip->stepchg_max_current_ma);
