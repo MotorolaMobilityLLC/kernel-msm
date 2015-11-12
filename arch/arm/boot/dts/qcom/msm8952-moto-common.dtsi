@@ -470,7 +470,7 @@
 			accel_orientation_2 = <1>; /* Not used */
 			accel_swap = <0>;          /* Not used */
 			sensor1-supply = <&pm8950_l6>;
-			sensor2-supply = <&pm8950_l17>;
+			sensor2-supply = <&pm8950_l22>;
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&stml0xx_inputs_default
