@@ -1475,7 +1475,7 @@ static int msm_spi_process_transfer(struct msm_spi *dd)
 	msm_spi_udelay(dd->xfrs_delay_usec);
 
 transfer_end:
-	if ((dd->tx_mode == SPI_BAM_MODE) && status)
+	if ((dd->tx_mode == SPI_BAM_MODE) && (!dd->pdata->rt_priority || status))
 		msm_spi_bam_flush(dd);
 	msm_spi_dma_unmap_buffers(dd);
 	dd->tx_mode = SPI_MODE_NONE;
