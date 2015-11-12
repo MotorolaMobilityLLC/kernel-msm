@@ -498,8 +498,8 @@
 		reg = <0x7579000 0x1000>;
 		interrupt-names = "qup_irq";
 		interrupts = <0 99 0>;
-		dmas = <&dma_blsp2 20 32 0x20000020 0x20>,
-			<&dma_blsp2 21 32 0x20000020 0x20>;
+		dmas = <&dma_blsp1 20 32 0x20000020 0x20>,
+			<&dma_blsp1 21 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
 		qcom,master-id = <86>;
 		qcom,clk-freq-out = <400000>;
@@ -510,7 +510,7 @@
 		pinctrl-names = "i2c_active", "i2c_sleep";
 		pinctrl-0 = <&i2c_5_active>;
 		pinctrl-1 = <&i2c_5_sleep>;
-		qcom,disable-dma;
+		qcom,enable-dma;
 
 		motosh@43 {
 			compatible = "stm,motosh";
