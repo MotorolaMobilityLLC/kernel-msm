@@ -30,7 +30,7 @@
  *		Look at size_class->huge.
  *	page->lru: links together first pages of various zspages.
  *		Basically forming list of zspages in a fullness group.
- *	page->mapping: override by struct zs_meta
+ *	page->freelist: override by struct zs_meta
  *
  * Usage of struct page flags:
  *	PG_private: identifies the first component page
@@ -261,7 +261,7 @@ struct zs_pool {
 
 /*
  * In this implementation, a free_idx, zspage's class index, fullness group,
- * inuse object count are encoded in its (first)page->mapping
+ * inuse object count are encoded in its (first)page->freelist
  * sizeof(struct zs_meta) should be equal to sizeof(unsigned long).
  */
 struct zs_meta {
@@ -416,7 +416,7 @@ static int get_inuse_obj(struct page *page)
 
 	BUG_ON(!is_first_page(page));
 
-	m = (struct zs_meta *)&page->mapping;
+	m = (struct zs_meta *)&page->freelist;
 
 	return m->inuse;
 }
@@ -427,36 +427,36 @@ static void set_inuse_obj(struct page *page, int inc)
 
 	BUG_ON(!is_first_page(page));
 
-	m = (struct zs_meta *)&page->mapping;
+	m = (struct zs_meta *)&page->freelist;
 	m->inuse += inc;
 }
 
 static void set_free_obj_idx(struct page *first_page, int idx)
 {
-	struct zs_meta *m = (struct zs_meta *)&first_page->mapping;
+	struct zs_meta *m = (struct zs_meta *)&first_page->freelist;
 
 	m->free_idx = idx;
 }
 
 static unsigned long get_free_obj_idx(struct page *first_page)
 {
-	struct zs_meta *m = (struct zs_meta *)&first_page->mapping;
+	struct zs_meta *m = (struct zs_meta *)&first_page->freelist;
 
 	return m->free_idx;
 }
 
-static void get_zspage_mapping(struct page *page, unsigned int *class_idx,
+static void get_zspage_meta(struct page *page, unsigned int *class_idx,
 				enum fullness_group *fullness)
 {
 	struct zs_meta *m;
 	BUG_ON(!is_first_page(page));
 
-	m = (struct zs_meta *)&page->mapping;
+	m = (struct zs_meta *)&page->freelist;
 	*fullness = m->fullness;
 	*class_idx = m->class_idx;
 }
 
-static void set_zspage_mapping(struct page *page, unsigned int class_idx,
+static void set_zspage_meta(struct page *page, unsigned int class_idx,
 				enum fullness_group fullness)
 {
 	struct zs_meta *m;
@@ -466,7 +466,7 @@ static void set_zspage_mapping(struct page *page, unsigned int class_idx,
 	BUG_ON(class_idx >= (1 << CLASS_IDX_BITS));
 	BUG_ON(fullness >= (1 << FULLNESS_BITS));
 
-	m = (struct zs_meta *)&page->mapping;
+	m = (struct zs_meta *)&page->freelist;
 	m->fullness = fullness;
 	m->class_idx = class_idx;
 }
@@ -751,14 +751,14 @@ static enum fullness_group fix_fullness_group(struct size_class *class,
 
 	BUG_ON(!is_first_page(page));
 
-	get_zspage_mapping(page, &class_idx, &currfg);
+	get_zspage_meta(page, &class_idx, &currfg);
 	newfg = get_fullness_group(class, page);
 	if (newfg == currfg)
 		goto out;
 
 	remove_zspage(page, class, currfg);
 	insert_zspage(page, class, newfg);
-	set_zspage_mapping(page, class_idx, newfg);
+	set_zspage_meta(page, class_idx, newfg);
 
 out:
 	return newfg;
@@ -913,7 +913,7 @@ static void reset_page(struct page *page)
 	clear_bit(PG_private, &page->flags);
 	clear_bit(PG_private_2, &page->flags);
 	set_page_private(page, 0);
-	page->mapping = NULL;
+	page->freelist = NULL;
 	page_mapcount_reset(page);
 }
 
@@ -1320,7 +1320,7 @@ void *zs_map_object(struct zs_pool *pool, unsigned long handle,
 	obj_to_obj_idx(obj, &obj_page, &obj_idx);
 
 	first_page = get_first_page(obj_page);
-	get_zspage_mapping(first_page, &class_idx, &fg);
+	get_zspage_meta(first_page, &class_idx, &fg);
 
 	class = pool->size_class[class_idx];
 	obj_ofs = (class->size * obj_idx) % PAGE_SIZE;
@@ -1364,7 +1364,7 @@ void zs_unmap_object(struct zs_pool *pool, unsigned long handle)
 
 	obj_to_obj_idx(obj, &obj_page, &obj_idx);
 	first_page = get_first_page(obj_page);
-	get_zspage_mapping(first_page, &class_idx, &fg);
+	get_zspage_meta(first_page, &class_idx, &fg);
 	class = pool->size_class[class_idx];
 	obj_ofs = (class->size * obj_idx) % PAGE_SIZE;
 
@@ -1455,7 +1455,7 @@ unsigned long zs_malloc(struct zs_pool *pool, size_t size)
 			return 0;
 		}
 
-		set_zspage_mapping(first_page, class->index, ZS_EMPTY);
+		set_zspage_meta(first_page, class->index, ZS_EMPTY);
 		atomic_long_add(class->pages_per_zspage,
 					&pool->pages_allocated);
 
@@ -1518,7 +1518,7 @@ void zs_free(struct zs_pool *pool, unsigned long handle)
 
 	obj_to_obj_idx(obj, &obj_page, &obj_idx);
 	first_page = get_first_page(obj_page);
-	get_zspage_mapping(first_page, &class_idx, &fullness);
+	get_zspage_meta(first_page, &class_idx, &fullness);
 	class = pool->size_class[class_idx];
 
 	spin_lock(&class->lock);
@@ -1724,7 +1724,7 @@ static enum fullness_group putback_zspage(struct zs_pool *pool,
 
 	fullness = get_fullness_group(class, first_page);
 	insert_zspage(first_page, class, fullness);
-	set_zspage_mapping(first_page, class->index, fullness);
+	set_zspage_meta(first_page, class->index, fullness);
 
 	if (fullness == ZS_EMPTY) {
 		zs_stat_dec(class, OBJ_ALLOCATED, get_maxobj_per_zspage(
