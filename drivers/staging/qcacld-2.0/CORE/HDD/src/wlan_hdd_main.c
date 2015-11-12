@@ -10753,14 +10753,15 @@ static VOS_STATUS wlan_hdd_reg_init(hdd_context_t *hdd_ctx)
 
 #ifdef MSM_PLATFORM
 void hdd_cnss_request_bus_bandwidth(hdd_context_t *pHddCtx,
-        uint64_t tx_packets, uint64_t rx_packets)
+        const uint64_t tx_packets, const uint64_t rx_packets)
 {
 #ifdef CONFIG_CNSS
     uint64_t total = tx_packets + rx_packets;
+    uint64_t temp_rx = 0;
+    uint64_t temp_tx = 0;
     enum cnss_bus_width_type next_vote_level = CNSS_BUS_WIDTH_NONE;
-
-    uint64_t temp_rx = (rx_packets + pHddCtx->prev_rx)/2;
-    enum cnss_bus_width_type next_rx_level = CNSS_BUS_WIDTH_NONE;
+    enum wlan_tp_level next_rx_level = WLAN_SVC_TP_NONE;
+    enum wlan_tp_level next_tx_level = WLAN_SVC_TP_NONE;
 
 
     if (total > pHddCtx->cfg_ini->busBandwidthHighThreshold)
@@ -10786,11 +10787,13 @@ void hdd_cnss_request_bus_bandwidth(hdd_context_t *pHddCtx,
         }
     }
 
+    /* fine-tuning parameters for RX Flows */
+    temp_rx = (rx_packets + pHddCtx->prev_rx) / 2;
     pHddCtx->prev_rx = rx_packets;
     if (temp_rx > pHddCtx->cfg_ini->tcpDelackThresholdHigh)
-        next_rx_level = CNSS_BUS_WIDTH_HIGH;
+        next_rx_level = WLAN_SVC_TP_HIGH;
     else
-        next_rx_level = CNSS_BUS_WIDTH_LOW;
+        next_rx_level = WLAN_SVC_TP_LOW;
 
     if (pHddCtx->cur_rx_level != next_rx_level) {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_DEBUG,
@@ -10800,6 +10803,24 @@ void hdd_cnss_request_bus_bandwidth(hdd_context_t *pHddCtx,
         wlan_hdd_send_svc_nlink_msg(WLAN_SVC_WLAN_TP_IND,
                                     &next_rx_level,
                                     sizeof(next_rx_level));
+    }
+
+    /* fine-tuning parameters for TX Flows */
+    temp_tx = (tx_packets + pHddCtx->prev_tx) / 2;
+    pHddCtx->prev_tx = tx_packets;
+    if (temp_tx > pHddCtx->cfg_ini->tcp_tx_high_tput_thres)
+        next_tx_level = WLAN_SVC_TP_HIGH;
+    else
+        next_tx_level = WLAN_SVC_TP_LOW;
+
+    if (pHddCtx->cur_tx_level != next_tx_level) {
+        hddLog(VOS_TRACE_LEVEL_DEBUG,
+               "%s: change TCP TX trigger level %d, average_tx: %llu ",
+               __func__, next_tx_level, temp_tx);
+        pHddCtx->cur_tx_level = next_tx_level;
+        wlan_hdd_send_svc_nlink_msg(WLAN_SVC_WLAN_TP_TX_IND,
+                                    &next_tx_level,
+                                    sizeof(next_tx_level));
     }
 #endif
 }
@@ -13296,6 +13317,7 @@ void wlan_hdd_send_svc_nlink_msg(int type, void *data, int len)
     case WLAN_SVC_DFS_RADAR_DETECT_IND:
     case WLAN_SVC_DFS_ALL_CHANNEL_UNAVAIL_IND:
     case WLAN_SVC_WLAN_TP_IND:
+    case WLAN_SVC_WLAN_TP_TX_IND:
     case WLAN_SVC_RPS_ENABLE_IND:
         ani_hdr->length = len;
         nlh->nlmsg_len = NLMSG_LENGTH((sizeof(tAniMsgHdr) + len));
