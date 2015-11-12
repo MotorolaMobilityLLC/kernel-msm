@@ -374,3 +374,7 @@
 		status = "disabled";
 	};
 };
+
+&muc {
+	mmi,muc-ctrl-det-hysteresis = <3000>;
+};
