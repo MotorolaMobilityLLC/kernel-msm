@@ -15,6 +15,7 @@
 #include <linux/err.h>
 #include <linux/interrupt.h>
 #include <linux/irqchip/chained_irq.h>
+#include <linux/irqchip/qpnp-int.h>
 #include <linux/irqdomain.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -949,6 +950,43 @@ static int msm_tlmm_gp_irq_suspend(void)
 	return 0;
 }
 
+/* Show gpio's irq when resume */
+void msm_gpio_show_resume_irq(void)
+{
+	unsigned long irq_flags;
+	unsigned long i;
+	unsigned int irq = 0;
+	int intstat;
+	struct msm_tlmm_irq_chip *ic = &msm_tlmm_gp_irq;
+
+	if (!qpnpint_show_resume_irq())
+		return;
+
+	spin_lock_irqsave(&ic->irq_lock, irq_flags);
+	for_each_set_bit(i, ic->wake_irqs, ic->num_irqs) {
+		intstat = msm_tlmm_get_intr_status(ic, i);
+		if (intstat) {
+			struct irq_desc *desc;
+			const char *name = "null";
+			struct msm_pintype_info *pinfo = ic_to_pintype(ic);
+			struct gpio_chip *gc = pintype_get_gc(pinfo);
+
+			irq = msm_tlmm_gp_to_irq(gc, i);
+			if (!irq)
+				break;
+			desc = irq_to_desc(irq);
+			if (desc == NULL)
+				name = "stray irq";
+			else if (desc->action && desc->action->name)
+				name = desc->action->name;
+
+			pr_warn("%s: %d(gpio=%ld) triggered %s\n",
+					__func__, irq, i, name);
+		}
+	}
+	spin_unlock_irqrestore(&ic->irq_lock, irq_flags);
+}
+
 static void msm_tlmm_gp_irq_resume(void)
 {
 	unsigned long irq_flags;
@@ -956,6 +994,8 @@ static void msm_tlmm_gp_irq_resume(void)
 	struct msm_tlmm_irq_chip *ic = &msm_tlmm_gp_irq;
 	int num_irqs = ic->num_irqs;
 
+	/* Show gpio's irq when resume */
+	msm_gpio_show_resume_irq();
 	spin_lock_irqsave(&ic->irq_lock, irq_flags);
 	for_each_set_bit(i, ic->wake_irqs, num_irqs)
 		msm_tlmm_set_intr_cfg_enable(ic, i, 0);
