@@ -96,3 +96,7 @@
 		status = "disabled";
 	};
 };
+
+&stml0xx{
+	sensor2-supply = <&pm8950_l17>;
+};
