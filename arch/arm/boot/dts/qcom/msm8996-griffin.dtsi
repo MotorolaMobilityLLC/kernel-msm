@@ -47,6 +47,10 @@
 		enable-active-high;
 		regulator-boot-on;
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "griffin";
+	};
 };
 
 &pm8994_l17 {
