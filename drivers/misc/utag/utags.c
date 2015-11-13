@@ -58,7 +58,7 @@ struct utag {
 	char name[MAX_UTAG_NAME];
 	uint32_t size;
 	uint32_t flags;
-	uint32_t crc32;		/* reserved for futher implementation */
+	uint32_t util;
 	void *payload;
 	struct utag *next;
 	struct utag *prev;
@@ -68,7 +68,7 @@ struct frozen_utag {
 	char name[MAX_UTAG_NAME];
 	uint32_t size;
 	uint32_t flags;
-	uint32_t crc32;
+	uint32_t util;
 	uint8_t payload[];
 };
 
@@ -129,6 +129,30 @@ struct ctrl {
 
 static void build_utags_directory(struct ctrl *ctrl);
 static void clear_utags_directory(struct ctrl *ctrl);
+
+/*
+ * Check util field of head utag for actual data size
+ *
+ */
+static ssize_t data_size(struct blkdev *cb)
+{
+	ssize_t bytes, rsize;
+	struct frozen_utag buf;
+
+	bytes = kernel_read(cb->filep, 0, (void *) &buf, UTAG_MIN_TAG_SIZE);
+	if (UTAG_MIN_TAG_SIZE > bytes) {
+		pr_err("%s ERR file (%s) read failed\n", __func__, cb->name);
+		return 0;
+	}
+
+	rsize = ntohl(buf.util);
+	pr_debug("%s file (%s) head->size %zd\n", __func__, cb->name, rsize);
+
+	if (!rsize || rsize > cb->size)
+		rsize = cb->size;
+
+	return rsize;
+}
 
 /*
  * Open and store file handle for a utag partition
@@ -408,7 +432,7 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 	return head;
 }
 
-static void *freeze_tags(size_t block_size, const struct utag *tags,
+static void *freeze_tags(size_t block_size, struct utag *tags,
 	size_t *tags_size)
 {
 	size_t frozen_size = 0;
@@ -436,6 +460,9 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
 
 	/* round up frozen_size to eMMC sector size */
 	frozen_size = TO_SECT_SIZE(frozen_size);
+	/* root utag stores size of entire image */
+	tags->util = frozen_size;
+	pr_debug("%s frozen size %zu\n", __func__, frozen_size);
 
 	/* do some more sanity checking */
 	if (!cur || cur->next) {
@@ -498,21 +525,20 @@ static struct utag *load_utags(struct blkdev *cb)
 	struct utag *head = NULL;
 	void *data;
 
-	data = vmalloc(cb->size);
+	bytes = data_size(cb);
+	data = vmalloc(bytes);
 	if (!data)
-		goto out;
+		return NULL;
 
-	bytes = kernel_read(cb->filep, 0, data, cb->size);
-	if (cb->size > bytes) {
+	if (bytes != kernel_read(cb->filep, 0, data, bytes)) {
 		pr_err("%s ERR file (%s) read failed\n", __func__, cb->name);
 		goto free_data;
 	}
 
-	head = thaw_tags(cb->size, data);
+	head = thaw_tags(bytes, data);
 
  free_data:
 	vfree(data);
- out:
 	return head;
 }
 
@@ -545,7 +571,7 @@ static int replace_first_utag(struct utag *head, const char *name,
 	return 0;
 }
 
-static int store_utags(struct ctrl *ctrl, const struct utag *tags)
+static int store_utags(struct ctrl *ctrl, struct utag *tags)
 {
 	size_t written;
 	size_t tags_size;
