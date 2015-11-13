@@ -541,7 +541,7 @@ static ssize_t stmvl53l0_store_enable_ps_sensor(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(enable_ps_sensor, S_IWUGO | S_IRUGO,
+static DEVICE_ATTR(enable_ps_sensor, S_IWUSR | S_IWGRP | S_IRUGO,
 	stmvl53l0_show_enable_ps_sensor, stmvl53l0_store_enable_ps_sensor);
 static ssize_t stmvl53l0_show_set_mode(struct device *dev,
 struct device_attribute *attr, char *buf)
@@ -728,7 +728,7 @@ static ssize_t stmvl53l0_store_set_delay_ms(struct device *dev,
 }
 
 /* DEVICE_ATTR(name,mode,show,store) */
-static DEVICE_ATTR(set_delay_ms, S_IWUGO | S_IRUGO,
+static DEVICE_ATTR(set_delay_ms, S_IWUSR | S_IWGRP | S_IRUGO,
 	stmvl53l0_show_set_delay_ms, stmvl53l0_store_set_delay_ms);
 
 static ssize_t stmvl53l0_show_near(struct device *dev,
