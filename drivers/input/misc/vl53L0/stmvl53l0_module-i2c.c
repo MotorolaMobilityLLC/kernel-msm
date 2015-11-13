@@ -162,13 +162,6 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 				return rc;
 			}
 
-			rc = msm_camera_get_dt_gpio_set_tbl(of_node, gconf,
-				gpio_array, gpio_array_size);
-			if (rc < 0) {
-				pr_err("%s failed %d\n", __func__, __LINE__);
-				return rc;
-			}
-
 			rc = msm_camera_init_gpio_pin_tbl(of_node, gconf,
 				gpio_array, gpio_array_size);
 			if (rc < 0) {
