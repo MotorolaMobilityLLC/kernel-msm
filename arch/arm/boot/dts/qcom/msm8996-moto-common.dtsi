@@ -337,7 +337,7 @@
 	};
 
 	chan@10 {
-		label = "chg_therm";
+		label = "pchg_therm";
 		reg = <0x10>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
@@ -781,7 +781,7 @@
 	qcom,sensor-information {
 		sensor_information36: qcom,sensor-information-36 {
 			qcom,sensor-type = "adc";
-			qcom,sensor-name = "chg_therm";
+			qcom,sensor-name = "pchg_therm";
 		};
 		sensor_information37: qcom,sensor-information-37 {
 			qcom,sensor-type = "adc";
@@ -1027,7 +1027,7 @@
 };
 
 &pmi8994_mpps {
-	mpp@a000 { /* MPP 1 - CHG_THERM */
+	mpp@a000 { /* MPP 1 - PCHG_THERM */
 		status = "okay";
 		qcom,mode = <4>; /* AIN input */
 		qcom,ain-route = <0>; /* AMUX 5 */
