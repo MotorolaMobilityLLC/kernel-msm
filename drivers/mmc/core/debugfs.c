@@ -453,31 +453,18 @@ static const struct file_operations mmc_dbg_ext_csd_fops = {
 	.llseek		= default_llseek,
 };
 
-static int mmc_wr_pack_stats_open(struct inode *inode, struct file *filp)
-{
-	struct mmc_card *card = inode->i_private;
 
-	filp->private_data = card;
-	card->wr_pack_stats.print_in_read = 1;
-	return 0;
-}
-
-#define TEMP_BUF_SIZE 256
-static ssize_t mmc_wr_pack_stats_read(struct file *filp, char __user *ubuf,
-				size_t cnt, loff_t *ppos)
+static int mmc_wr_pack_stats_show(struct seq_file *s, void *v)
 {
-	struct mmc_card *card = filp->private_data;
+	struct mmc_card *card = (struct mmc_card *)s->private;
 	struct mmc_wr_pack_stats *pack_stats;
 	int i, ret = 0;
 	int max_num_of_packed_reqs = 0;
-	char *temp_buf, *temp_ubuf;
+	char *temp_ubuf;
 	size_t tubuf_cnt = 0;
 
 	if (!card)
-		return cnt;
-
-	if (!access_ok(VERIFY_WRITE, ubuf, cnt))
-		return cnt;
+		return 0;
 
 	if (!card->wr_pack_stats.print_in_read)
 		return 0;
@@ -500,107 +487,73 @@ static ssize_t mmc_wr_pack_stats_read(struct file *filp, char __user *ubuf,
 	if (cnt <= (strlen_user(ubuf) + 1))
 		goto exit;
 
-	temp_buf = kzalloc(TEMP_BUF_SIZE, GFP_KERNEL);
-	if (!temp_buf)
-		goto exit;
-
 	tubuf_cnt = cnt - strlen_user(ubuf) - 1;
-
-	temp_ubuf = kzalloc(tubuf_cnt, GFP_KERNEL);
-	if (!temp_ubuf)
-		goto cleanup;
 
 	spin_lock(&pack_stats->lock);
 
-	snprintf(temp_buf, TEMP_BUF_SIZE, "%s: write packing statistics:\n",
-		mmc_hostname(card->host));
-	strlcat(temp_ubuf, temp_buf, tubuf_cnt);
+	seq_printf(s, "%s: write packing statistics:\n", mmc_hostname(card->host));
 
 	for (i = 1 ; i <= max_num_of_packed_reqs ; ++i) {
 		if (pack_stats->packing_events[i]) {
-			snprintf(temp_buf, TEMP_BUF_SIZE,
-				 "%s: Packed %d reqs - %d times\n",
+			seq_printf(s, "%s: Packed %d reqs - %d times\n",
 				mmc_hostname(card->host), i,
 				pack_stats->packing_events[i]);
-			strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 		}
 	}
 
-	snprintf(temp_buf, TEMP_BUF_SIZE,
-		 "%s: stopped packing due to the following reasons:\n",
+	seq_printf(s, "%s: stopped packing due to the following reasons:\n",
 		 mmc_hostname(card->host));
-	strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 
 	if (pack_stats->pack_stop_reason[EXCEEDS_SEGMENTS]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: exceed max num of segments\n",
+		seq_printf(s, "%s: %d times: exceed max num of segments\n",
 			 mmc_hostname(card->host),
 			 pack_stats->pack_stop_reason[EXCEEDS_SEGMENTS]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[EXCEEDS_SECTORS]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: exceed max num of sectors\n",
+		seq_printf(s, "%s: %d times: exceed max num of sectors\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[EXCEEDS_SECTORS]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[WRONG_DATA_DIR]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: wrong data direction\n",
+		seq_printf(s, "%s: %d times: wrong data direction\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[WRONG_DATA_DIR]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[FLUSH_OR_DISCARD]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: flush or discard\n",
+		seq_printf(s, "%s: %d times: flush or discard\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[FLUSH_OR_DISCARD]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[EMPTY_QUEUE]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: empty queue\n",
+		seq_printf(s, "%s: %d times: empty queue\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[EMPTY_QUEUE]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[REL_WRITE]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: rel write\n",
+		seq_printf(s, "%s: %d times: rel write\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[REL_WRITE]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[THRESHOLD]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: Threshold\n",
+		seq_printf(s, "%s: %d times: Threshold\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[THRESHOLD]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 
 	if (pack_stats->pack_stop_reason[LARGE_SEC_ALIGN]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: Large sector alignment\n",
+		seq_printf(s, "%s: %d times: Large sector alignment\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[LARGE_SEC_ALIGN]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[RANDOM]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: random request\n",
+		seq_printf(s, "%s: %d times: random request\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[RANDOM]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (pack_stats->pack_stop_reason[FUA]) {
-		snprintf(temp_buf, TEMP_BUF_SIZE,
-			 "%s: %d times: fua request\n",
+		seq_printf(s, "%s: %d times: fua request\n",
 			mmc_hostname(card->host),
 			pack_stats->pack_stop_reason[FUA]);
-		strlcat(temp_ubuf, temp_buf, tubuf_cnt);
 	}
 	if (strlen_user(ubuf) < cnt - strlen(temp_ubuf))
 		ret = copy_to_user((ubuf + strlen_user(ubuf)),
@@ -613,36 +566,35 @@ static ssize_t mmc_wr_pack_stats_read(struct file *filp, char __user *ubuf,
 
 	spin_unlock(&pack_stats->lock);
 
-	kfree(temp_ubuf);
-
-cleanup:
-	kfree(temp_buf);
-
-	pr_info("%s", ubuf);
-
 exit:
-	if (card->wr_pack_stats.print_in_read == 1) {
+	if (card->wr_pack_stats.print_in_read == 1)
 		card->wr_pack_stats.print_in_read = 0;
-		return strnlen(ubuf, cnt);
-	}
 
 	return 0;
+}
+
+static int mmc_wr_pack_stats_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+
+	card->wr_pack_stats.print_in_read = 1;
+	return single_open(filp, mmc_wr_pack_stats_show, inode->i_private);;
 }
 
 static ssize_t mmc_wr_pack_stats_write(struct file *filp,
 				       const char __user *ubuf, size_t cnt,
 				       loff_t *ppos)
 {
-	struct mmc_card *card = filp->private_data;
+	struct inode *in = filp->f_inode;
+	struct mmc_card *card = (struct mmc_card *)(in->i_private);
 	int value;
 
 	if (!card)
 		return cnt;
 
-	if (!access_ok(VERIFY_READ, ubuf, cnt))
-		return cnt;
+	if (copy_from_user(&value, ubuf, sizeof(int)))
+		return -EFAULT;
 
-	sscanf(ubuf, "%d", &value);
 	if (value) {
 		mmc_blk_init_packed_statistics(card);
 	} else {
@@ -656,8 +608,10 @@ static ssize_t mmc_wr_pack_stats_write(struct file *filp,
 
 static const struct file_operations mmc_dbg_wr_pack_stats_fops = {
 	.open		= mmc_wr_pack_stats_open,
-	.read		= mmc_wr_pack_stats_read,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
 	.write		= mmc_wr_pack_stats_write,
+	.release	= single_release,
 };
 
 
@@ -788,7 +742,7 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 
 	if (mmc_card_mmc(card) && (card->ext_csd.rev >= 6) &&
 	    (card->host->caps2 & MMC_CAP2_PACKED_WR))
-		if (!debugfs_create_file("wr_pack_stats", S_IRUSR, root, card,
+		if (!debugfs_create_file("wr_pack_stats", S_IRUSR | S_IWUSR, root, card,
 					 &mmc_dbg_wr_pack_stats_fops))
 			goto err;
 
