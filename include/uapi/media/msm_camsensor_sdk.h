@@ -284,6 +284,7 @@ struct msm_sensor_init_params {
 struct msm_sensor_id_info_t {
 	unsigned short sensor_id_reg_addr;
 	unsigned short sensor_id;
+	unsigned short sensor_id2;
 	unsigned short sensor_id_mask;
 };
 
