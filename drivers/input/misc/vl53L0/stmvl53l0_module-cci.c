@@ -82,6 +82,7 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct cci_data *data)
 	uint16_t gpio_array_size = 0;
 	int i;
 	struct msm_pinctrl_info *sensor_pctrl = NULL;
+	struct msm_tof_vreg *vreg_cfg = NULL;
 
 	vl53l0_dbgmsg("Enter\n");
 
@@ -125,6 +126,19 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct cci_data *data)
 		}
 		vl53l0_dbgmsg("cci_master: %d\n", data->cci_master);
 
+		if (of_find_property(of_node,
+					"qcom,cam-vreg-name", NULL)) {
+			vl53l0_dbgmsg("vreg setting is found");
+			vreg_cfg = &data->vreg_cfg;
+			rc = msm_camera_get_dt_vreg_data(of_node,
+				 &vreg_cfg->cam_vreg, &vreg_cfg->num_vreg);
+			if (rc < 0) {
+				vl53l0_errmsg("failed %d\n", __LINE__);
+				rc = 0;
+			}
+		}
+		vl53l0_dbgmsg("vreg num: %d\n", vreg_cfg->num_vreg);
+
 		gpio_array_size = of_gpio_count(of_node);
 		gconf = &data->gconf;
 
@@ -145,13 +159,6 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct cci_data *data)
 				return rc;
 			}
 
-			rc = msm_camera_get_dt_gpio_set_tbl(of_node, gconf,
-				gpio_array, gpio_array_size);
-			if (rc < 0) {
-				pr_err("%s failed %d\n", __func__, __LINE__);
-				return rc;
-			}
-
 			rc = msm_camera_init_gpio_pin_tbl(of_node, gconf,
 				gpio_array, gpio_array_size);
 			if (rc < 0) {
@@ -162,6 +169,36 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct cci_data *data)
 	}
 	vl53l0_dbgmsg("End rc =%d\n", rc);
 
+	return rc;
+}
+
+static int32_t stmvl53l0_vreg_control(struct cci_data *data, int config)
+{
+	int rc = 0, i, cnt;
+	struct msm_tof_vreg *vreg_cfg;
+
+	vl53l0_dbgmsg("Enter with config %d\n", config);
+
+	vreg_cfg = &data->vreg_cfg;
+	cnt = vreg_cfg->num_vreg;
+	if (!cnt) {
+		vl53l0_errmsg("failed %d\n", __LINE__);
+		return 0;
+	}
+
+	if (cnt >= MSM_TOF_MAX_VREGS) {
+		vl53l0_errmsg("failed %d cnt %d\n", __LINE__, cnt);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < cnt; i++) {
+		rc = msm_camera_config_single_vreg(&(data->pdev->dev),
+				&vreg_cfg->cam_vreg[i],
+				(struct regulator **)&vreg_cfg->data[i],
+				config);
+	}
+
+	vl53l0_dbgmsg("EXIT rc =%d\n", rc);
 	return rc;
 }
 
@@ -237,6 +274,7 @@ static int stmvl53l0_cci_init(struct cci_data *data)
 	cci_client->retries = 3;
 	cci_client->id_map = 0;
 	cci_client->cci_i2c_master = data->cci_master;
+	cci_client->i2c_freq_mode = I2C_FAST_MODE;
 	rc = data->client->i2c_func_tbl->i2c_util(data->client, MSM_CCI_INIT);
 	if (rc < 0) {
 		vl53l0_errmsg("%d: CCI Init failed\n", __LINE__);
@@ -336,6 +374,8 @@ int stmvl53l0_power_up_cci(void *cci_object, unsigned int *preset_flag)
 		return ret;
 	}
 
+	stmvl53l0_vreg_control(data, 1);
+
 	msm_camera_request_gpio_table(
 		data->gconf.cam_gpio_req_tbl,
 		data->gconf.cam_gpio_req_tbl_size, 1);
@@ -370,6 +410,8 @@ int stmvl53l0_power_down_cci(void *cci_object)
 
 		gpio_set_value_cansleep(
 			data->gconf.cam_gpio_req_tbl[0].gpio, 0);
+
+		stmvl53l0_vreg_control(data, 0);
 	}
 	data->power_up = 0;
 	vl53l0_dbgmsg("End\n");
