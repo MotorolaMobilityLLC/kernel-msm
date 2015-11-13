@@ -85,6 +85,10 @@ static long esdfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 {
 	long err = -ENOTTY;
 	struct file *lower_file;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 
@@ -99,6 +103,7 @@ static long esdfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 		esdfs_copy_attr(file->f_path.dentry->d_inode,
 				file_inode(lower_file));
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -108,6 +113,10 @@ static long esdfs_compat_ioctl(struct file *file, unsigned int cmd,
 {
 	long err = -ENOTTY;
 	struct file *lower_file;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 
@@ -118,6 +127,7 @@ static long esdfs_compat_ioctl(struct file *file, unsigned int cmd,
 		err = lower_file->f_op->compat_ioctl(lower_file, cmd, arg);
 
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 #endif
@@ -128,6 +138,10 @@ static int esdfs_mmap(struct file *file, struct vm_area_struct *vma)
 	bool willwrite;
 	struct file *lower_file;
 	const struct vm_operations_struct *saved_vm_ops = NULL;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	/* this might be deferred to mmap's writepage */
 	willwrite = ((vma->vm_flags | VM_SHARED | VM_WRITE) == vma->vm_flags);
@@ -177,6 +191,7 @@ static int esdfs_mmap(struct file *file, struct vm_area_struct *vma)
 		ESDFS_F(file)->lower_vm_ops = saved_vm_ops;
 
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -231,6 +246,10 @@ static int esdfs_flush(struct file *file, fl_owner_t id)
 {
 	int err = 0;
 	struct file *lower_file = NULL;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 	if (lower_file && lower_file->f_op && lower_file->f_op->flush) {
@@ -238,6 +257,7 @@ static int esdfs_flush(struct file *file, fl_owner_t id)
 		err = lower_file->f_op->flush(lower_file, id);
 	}
 
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -284,11 +304,16 @@ static int esdfs_fasync(int fd, struct file *file, int flag)
 {
 	int err = 0;
 	struct file *lower_file = NULL;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_file = esdfs_lower_file(file);
 	if (lower_file->f_op && lower_file->f_op->fasync)
 		err = lower_file->f_op->fasync(fd, lower_file, flag);
 
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -296,9 +321,13 @@ static ssize_t esdfs_aio_read(struct kiocb *iocb, const struct iovec *iov,
 			       unsigned long nr_segs, loff_t pos)
 {
 	int err = -EINVAL;
-	struct file *file, *lower_file;
+	struct file *file = iocb->ki_filp;
+	struct file *lower_file;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
-	file = iocb->ki_filp;
 	lower_file = esdfs_lower_file(file);
 	if (!lower_file->f_op->aio_read)
 		goto out;
@@ -316,6 +345,7 @@ static ssize_t esdfs_aio_read(struct kiocb *iocb, const struct iovec *iov,
 		fsstack_copy_attr_atime(file->f_path.dentry->d_inode,
 					file_inode(lower_file));
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -323,9 +353,13 @@ static ssize_t esdfs_aio_write(struct kiocb *iocb, const struct iovec *iov,
 				unsigned long nr_segs, loff_t pos)
 {
 	int err = -EINVAL;
-	struct file *file, *lower_file;
+	struct file *file = iocb->ki_filp;
+	struct file *lower_file;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
-	file = iocb->ki_filp;
 	lower_file = esdfs_lower_file(file);
 	if (!lower_file->f_op->aio_write)
 		goto out;
@@ -346,6 +380,7 @@ static ssize_t esdfs_aio_write(struct kiocb *iocb, const struct iovec *iov,
 					file_inode(lower_file));
 	}
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -359,6 +394,10 @@ static loff_t esdfs_file_llseek(struct file *file, loff_t offset, int whence)
 {
 	int err;
 	struct file *lower_file;
+	struct esdfs_sb_info *sbi = ESDFS_SB(file->f_path.dentry->d_sb);
+	const struct cred *creds = esdfs_override_creds(sbi, NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	err = generic_file_llseek(file, offset, whence);
 	if (err < 0)
@@ -368,6 +407,7 @@ static loff_t esdfs_file_llseek(struct file *file, loff_t offset, int whence)
 	err = generic_file_llseek(lower_file, offset, whence);
 
 out:
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
