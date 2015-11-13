@@ -51,6 +51,10 @@
 		enable-active-high;
 		regulator-boot-on;
 	};
+
+	qcom,msm-thermal {
+		qcom,config-info = "sheridan";
+	};
 };
 
 &pm8994_l17 {
