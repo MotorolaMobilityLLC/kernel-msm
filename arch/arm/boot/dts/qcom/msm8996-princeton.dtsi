@@ -238,6 +238,36 @@
 	qcom,sensor-information {
 		/delete-node/ qcom,sensor-information-38;
 	};
+
+	tlmm: pinctrl@01010000 {
+		cam_sensor_flash_active: cam_sensor_flash_active {
+			/* Flash-En */
+			mux {
+				pins = "gpio134";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio134";
+				bias-pull-up; /* PULL Up */
+				drive-strength = <8>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_flash_suspend: cam_sensor_flash_suspend {
+				/* RESET, STANDBY */
+				mux {
+					pins = "gpio134";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio134";
+					bias-disable; /* No PULL */
+					drive-strength = <2>; /* 2 MA */
+			};
+		};
+	};
 };
 
 &cci {
