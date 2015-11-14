@@ -563,8 +563,8 @@
 			ct406_als_lux2_div = <0x80>;
 			sensor1-supply = <&pm8994_lvs2>;
 			sensor2-supply = <&pm8994_l17>;
-			accel_orient = <7>;     /* Accel Orientation value */
-			gyro_orient = <7>;      /* Gyro Orientation value */
+			accel_orient = <1>;     /* Accel Orientation value */
+			gyro_orient = <1>;      /* Gyro Orientation value */
 			mag_orient =  <5>;      /* Mag Orientation value */
 			panel_type = <1>;       /* Panel Type value */
 			IR_config = <1>;        /* IR Config value */
