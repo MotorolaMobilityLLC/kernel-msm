@@ -52,6 +52,7 @@
 		qcom,slave-addr = <0x6c>;
 		qcom,cci-master = <0>;
 		qcom,num-blocks = <33>;
+		qcom,i2c-freq-mode = <1>;
 
 		/* Stream ON */
 		qcom,page0 = <1 0x0100 2 0x01 1 10>;
@@ -245,13 +246,15 @@
 		clock-names = "cam_src_clk", "cam_clk";
 
 		qcom,cam-power-seq-type = "sensor_gpio", "sensor_gpio",
-			"sensor_vreg", "sensor_vreg", "sensor_gpio", "sensor_gpio",
-			"sensor_gpio", "sensor_clk";
+			"sensor_vreg", "sensor_vreg", "sensor_vreg",
+			"sensor_gpio", "sensor_gpio", "sensor_gpio",
+			"sensor_clk";
 		qcom,cam-power-seq-val = "sensor_gpio_vana", "sensor_gpio_reset",
-			"cam_vio", "cam_vdig", "sensor_gpio_vana", "sensor_gpio_standby",
-			"sensor_gpio_reset", "sensor_cam_mclk";
-		qcom,cam-power-seq-cfg-val = <0 0 0 0 1 1 1 24000000>;
-		qcom,cam-power-seq-delay = <1 1 1 1 1 1 30 20>;
+			"cam_vio", "cam_vdig", "cam_vaf", "sensor_gpio_vana",
+			"sensor_gpio_standby", "sensor_gpio_reset",
+			"sensor_cam_mclk";
+		qcom,cam-power-seq-cfg-val = <0 0 0 0 0 1 1 1 24000000>;
+		qcom,cam-power-seq-delay = <1 1 1 1 1 1 1 30 20>;
 
 		status = "ok";
 	};
