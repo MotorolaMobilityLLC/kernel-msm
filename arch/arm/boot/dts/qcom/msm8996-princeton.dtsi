@@ -54,6 +54,15 @@
 			on v2 8996 chipset. */
 		/delete-property/ qcom,use-bam;
 	};
+
+	/* SensorHub Bus */
+	i2c@7579000 {
+		motosh@43 {
+			accel_orient = <3>;     /* Accel Orientation value */
+			gyro_orient = <3>;      /* Gyro Orientation value */
+		};
+	};
+
 };
 
 &mdss_dsi {
