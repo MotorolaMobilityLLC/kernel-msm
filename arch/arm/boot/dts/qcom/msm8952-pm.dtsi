@@ -349,6 +349,7 @@
 			<0xff 262>, /* ipa_bam_irq[2] */
 			<0xff 269>, /* rpm_wdog_expired_irq */
 			<0xff 270>, /* blsp1_bam_irq[0] */
+			<0xff 271>, /* blsp2_bam_irq */
 			<0xff 272>, /* smmu_intr_bus[17] */
 			<0xff 273>, /* smmu_bus_intr[18] */
 			<0xff 274>, /* smmu_bus_intr[19] */
@@ -358,7 +359,8 @@
 			<0xff 321>, /* q6ss_irq_out(4) */
 			<0xff 322>, /* q6ss_irq_out(5) */
 			<0xff 323>, /* q6ss_irq_out(6) */
-			<0xff 325>; /* q6ss_wdog_exp_irq */
+			<0xff 325>, /* q6ss_wdog_exp_irq */
+			<0xff 331>; /* blsp2_qup1 */
 
 		qcom,gpio-parent = <&msm_gpio>;
 		qcom,gpio-map = <3  38 >,
