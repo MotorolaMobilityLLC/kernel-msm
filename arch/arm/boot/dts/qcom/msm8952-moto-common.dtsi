@@ -284,10 +284,25 @@
 			bias-disable; /* No PULL */
 		};
 	};
+	usb_id_pin {
+		qcom,pins = <&gp 62>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "usb-id-pin";
+		usbid_default: default {
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
 };
 
 &usb_otg {
 	qcom,usbin-vadc = <&pmi8950_vadc>;
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbid-gpio = <&msm_gpio 62 0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&usbid_default>;
+	vbus_otg-supply = <&smbcharger_charger_otg>;
 };
 
 &pmi8950_charger {
