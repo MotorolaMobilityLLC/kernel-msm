@@ -3101,7 +3101,7 @@ unreg_chrdev:
 
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
-	struct device_node *node = pdev->dev.of_node, *dwc3_node;
+	struct device_node *node = pdev->dev.of_node, *dwc3_node, *chosen_node;
 	struct device	*dev = &pdev->dev;
 	struct dwc3_msm *mdwc;
 	struct dwc3	*dwc;
@@ -3263,6 +3263,13 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "setting lpm_to_suspend_delay to zero.\n");
 		mdwc->lpm_to_suspend_delay = 0;
 	}
+
+	chosen_node = of_find_node_by_path("/chosen");
+	if (chosen_node) {
+		mdwc->charger.factory_mode = of_property_read_bool(chosen_node,
+						"mmi,factory-cable");
+	}
+	of_node_put(chosen_node);
 
 	if (mdwc->power_collapse) {
 		/*
