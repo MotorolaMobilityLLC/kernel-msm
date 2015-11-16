@@ -20,9 +20,9 @@ typedef struct page *new_page_t(struct page *, unsigned long private, int **);
  * migration's unmap_and_move() wrap-up steps.
  */
 #define MIGRATEPAGE_SUCCESS		0
-#define MIGRATEPAGE_BALLOON_SUCCESS	1 /* special ret code for balloon page
-					   * sucessful migration case.
-					   */
+#define MIGRATEPAGE_BALLOON_SUCCESS	1 /* special ret codes for balloon */
+#define MIGRATEPAGE_MOBILE_SUCCESS	2 /* and mobile page migration */
+
 enum migrate_reason {
 	MR_COMPACTION,
 	MR_MEMORY_FAILURE,
