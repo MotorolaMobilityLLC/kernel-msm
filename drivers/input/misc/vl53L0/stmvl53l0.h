@@ -31,7 +31,7 @@
 #define STMVL53L0_DRV_NAME	"stmvl53l0"
 #define STMVL53L0_SLAVE_ADDR	(0x52>>1)
 
-#define DRIVER_VERSION		"0.0.3"
+#define DRIVER_VERSION		"1.0.8"
 #define I2C_M_WR			0x00
 /* #define INT_POLLING_DELAY	20 */
 
@@ -44,8 +44,8 @@
 #define vl53l0_errmsg(str, args...) \
 	printk(KERN_ERR "%s: " str, __func__, ##args)
 
-#define VL53L0_VDD_MIN      2800000
-#define VL53L0_VDD_MAX      2800000
+#define VL53L0_VDD_MIN      2850000
+#define VL53L0_VDD_MAX      2850000
 /*driver working mode*/
 #define	OFF_MODE  0
 #define	CAM_MODE  1
