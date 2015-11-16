@@ -100,3 +100,9 @@
 &stml0xx{
 	sensor2-supply = <&pm8950_l17>;
 };
+
+&i2c_3 { /* BLSP1 QUP3 */
+	synaptics@20 {
+		touch_vdd-supply = <&pm8950_l22>;
+	};
+};
