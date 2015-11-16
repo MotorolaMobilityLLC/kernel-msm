@@ -110,6 +110,9 @@ enum pageflags {
 	PG_compound_lock,
 #endif
 	PG_readahead,		/* page in a readahead window */
+
+	PG_mobile,		/* mobile driver pages */
+
 	__NR_PAGEFLAGS,
 
 	/* Filesystems */
@@ -232,6 +235,8 @@ PAGEFLAG(MappedToDisk, mappedtodisk)
 /* PG_readahead is only used for file reads; PG_reclaim is only for writes */
 PAGEFLAG(Reclaim, reclaim) TESTCLEARFLAG(Reclaim, reclaim)
 PAGEFLAG(Readahead, reclaim)		/* Reminder to do async read-ahead */
+
+PAGEFLAG(Mobile, mobile)
 
 #ifdef CONFIG_HIGHMEM
 /*
@@ -503,7 +508,7 @@ static inline void ClearPageSlabPfmemalloc(struct page *page)
 	 1 << PG_writeback | 1 << PG_reserved | \
 	 1 << PG_slab	 | 1 << PG_swapcache | 1 << PG_active | \
 	 1 << PG_unevictable | __PG_MLOCKED | __PG_HWPOISON | \
-	 __PG_COMPOUND_LOCK)
+	 1 << PG_mobile | __PG_COMPOUND_LOCK)
 
 /*
  * Flags checked when a page is prepped for return by the page allocator.
