@@ -122,3 +122,7 @@
 		touch_vdd-supply = <&pm8950_l22>;
 	};
 };
+
+&i2c_4 {
+	status = "disabled";
+};
