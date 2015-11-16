@@ -192,6 +192,13 @@
 	};
 };
 
+&i2c_7 {
+	analogix_anx78e6@72 {
+		status = "disabled";
+	};
+};
+
+
 /* 3.3V QCA Supply */
 &rome_vreg {
 	gpio = <&pm8994_gpios 11 0>;
