@@ -850,7 +850,7 @@
 
 /{
 	mot_batterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <15>;
+		qcom,batt-id-range-pct = <100>;
 		#include "batterydata-fb55-lg.dtsi"
 	};
 };
