@@ -116,6 +116,10 @@
 		reg = <0x40>;
 	};
 
+	analogix_anx78e6@72 {
+		status = "disabled";
+	};
+
 	/delete-node/ stmvl53l0@29;
 	/delete-node/ usb3813@2D;
 };
