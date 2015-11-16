@@ -595,8 +595,12 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 									1);
 					phy->state = OTG_STATE_B_PERIPHERAL;
 					dotg->falsesdp_retry_count = 0;
-					mod_timer(&dotg->chg_check_timer,
-						CHG_RECHECK_DELAY);
+					if (dotg->charger &&
+						!dotg->charger->factory_mode) {
+						mod_timer(
+							&dotg->chg_check_timer,
+							CHG_RECHECK_DELAY);
+					}
 					work = 1;
 					break;
 				case DWC3_FLOATED_CHARGER:
