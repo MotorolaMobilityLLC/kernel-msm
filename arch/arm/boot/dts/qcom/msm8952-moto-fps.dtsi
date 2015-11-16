@@ -127,7 +127,6 @@
 			pinctrl-names = "default", "active";
 			pinctrl-0 = <&fps_rst_default &fps_int_default>;
 			pinctrl-1 = <&fps_rst_active &fps_int_active>;
-			fpc,enable-on-boot;
 			fpc,txout_boost_enable;
 			vcc_spi-supply = <&pm8950_l6>;
 			vcc_ana-supply = <&pm8950_l6>;
