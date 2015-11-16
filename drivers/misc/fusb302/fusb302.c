@@ -1953,6 +1953,55 @@ static ssize_t fusb302_state(struct device *dev, struct device_attribute *attr, 
 
 static DEVICE_ATTR(state, 0440, fusb302_state, NULL);
 
+static ssize_t fusb302_CC_state(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	char data[5] = "";
+
+	if (blnCCPinIsCC1)
+		strlcpy(data, "CC1", sizeof(data));
+	else if (blnCCPinIsCC2)
+		strlcpy(data, "CC2", sizeof(data));
+	return snprintf(buf, PAGE_SIZE-2, "%s\n", data);
+}
+static DEVICE_ATTR(CC_state, S_IRUGO, fusb302_CC_state, NULL);
+
+static ssize_t fusb302_enable_vconn(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf,
+			size_t count)
+{
+	bool enable = false;
+
+	if (!blnCCPinIsCC1  && !blnCCPinIsCC2) {
+		pr_err("Trying to enable VCONN when CC is indeterminate\n");
+		return -EINVAL;
+	}
+
+	if (!strnicmp(buf, "1", 1))
+		enable = true;
+
+	if (blnCCPinIsCC1 && !blnCCPinIsCC2) {
+		Registers.Switches.VCONN_CC1 = 0;
+		Registers.Switches.VCONN_CC2 = enable;
+	} else if (!blnCCPinIsCC1 && blnCCPinIsCC2) {
+		Registers.Switches.VCONN_CC1 = enable;
+		Registers.Switches.VCONN_CC2 = 0;
+	} else {
+		pr_err("Invalid CC\n");
+		return -EINVAL;
+	}
+
+	pr_err("Trying to %sable, VCONN on %s\n",
+		enable ? "en" : "dis",
+		blnCCPinIsCC1 ? "CC2" : "CC1");
+	/* Commit the Switch State */
+	FUSB300Write(regSwitches0, 2, &Registers.Switches.byte[0]);
+	return count;
+}
+static DEVICE_ATTR(enable_vconn, S_IWUSR | S_IWGRP, NULL, fusb302_enable_vconn);
+
 #define IRQ_GPIO_NAME "fusb_irq"
 #ifdef CONFIG_OF
 static int fusb302_parse_dt(struct device *dev,
@@ -2060,6 +2109,9 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 
     ret_device_file = device_create_file(&(i2c->dev), &dev_attr_reg_dump);
     ret_device_file = device_create_file(&(i2c->dev), &dev_attr_state);
+	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_CC_state);
+	ret_device_file = device_create_file(&(i2c->dev),
+					&dev_attr_enable_vconn);
 
     fusb302_device_check();
     //Initialize FUSB302 
