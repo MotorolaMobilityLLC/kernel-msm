@@ -1159,7 +1159,14 @@ wl_validate_wps_ie(char *wps_ie, s32 wps_ie_len, bool *pbc)
 		subelt_len = HTON16(val);
 
 		len -= 4;			/* for the attr id, attr len fields */
+
+		if (len < subelt_len) {
+			WL_ERR(("not enough data, len %d, subelt_len %d\n", len,
+				subelt_len));
+			break;
+		}
 		len -= subelt_len;	/* for the remaining fields in this attribute */
+
 		WL_DBG((" subel=%p, subelt_id=0x%x subelt_len=%u\n",
 			subel, subelt_id, subelt_len));
 
