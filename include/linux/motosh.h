@@ -158,7 +158,6 @@ enum vmm_ids {
 
 #define I2C_RESPONSE_LENGTH		8
 
-#define MOTOSH_MAXDATA_LENGTH		256
 #define MOTOSH_HEADER_LENGTH        1
 #define MOTOSH_FOOTER_LENGTH        1
 #define MOTOSH_MAX_PACKET_LENGTH    \
