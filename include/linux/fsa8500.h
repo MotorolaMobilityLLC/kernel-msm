@@ -34,6 +34,7 @@ struct fsa8500_platform_data {
 	struct fsa8500_regs *init_regs;
 	int num_keys;
 	struct fsa8500_keymap *keymap;
+	bool lint_disabled;
 };
 
 #endif  /* __FSA8500_H__ */
