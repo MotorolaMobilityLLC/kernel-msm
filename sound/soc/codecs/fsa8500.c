@@ -85,6 +85,7 @@ struct fsa8500_data {
 	struct delayed_work work_restore;
 	struct delayed_work work_disconnect;
 	struct workqueue_struct *wq;
+	bool lint_disabled;
 };
 
 /* I2C Read/Write Functions */
@@ -226,6 +227,13 @@ static int fsa8500_initialize(struct fsa8500_platform_data *pdata,
 				__func__);
 		fsa8500_reg_write(fsa8500_client, FSA8500_CONTROL2,
 					FSA8500_UART_OFF, FSA8500_UART_OFF);
+	}
+
+	if (fsa8500->lint_disabled) {
+		pr_debug("%s: Disable LINT detection.\n",
+				__func__);
+		fsa8500_reg_write(fsa8500_client, FSA8500_CONTROL2,
+					FSA8500_LINT_OFF, FSA8500_LINT_OFF);
 	}
 
 	pr_info("fsa8500_initialize success\n");
@@ -659,7 +667,8 @@ static void fsa8500_det_thread(struct work_struct *work)
 		queue_delayed_work(irq_data->wq, &irq_data->work_det,
 					msecs_to_jiffies(2000));
 		goto skip_report;
-	} else if ((irq_data->irq_status[0] & 0x20) &&
+	} else if (!irq_data->lint_disabled &&
+			(irq_data->irq_status[0] & 0x20) &&
 			(irq_data->irq_status[0] & 0x7)) {
 		/* LINT detected, delay for 200ms*/
 		memcpy(tmp_status, irq_data->irq_status, sizeof(tmp_status));
@@ -678,7 +687,7 @@ static void fsa8500_det_thread(struct work_struct *work)
 	fsa8500_report_hs(irq_data);
 
 skip_report:
-	if (lint_counter == 5) {
+	if (lint_counter == 5 && !irq_data->lint_disabled) {
 		/* Disable LINT detect to avoid false detection */
 		pr_info("%s:Too many LINT irq.Disable LINT detection\n",
 								__func__);
@@ -797,6 +806,8 @@ fsa8500_of_init(struct i2c_client *client)
 
 	of_property_read_u32(np, "fsa8500-always-on-micbias",
 				&pdata->alwayson_micbias);
+	pdata->lint_disabled = of_property_read_bool(np,
+				"fsa8500-lint-disabled");
 	pdata->irq_gpio = of_get_gpio(np, 0);
 
 	regs_arr = of_get_property(np, "fsa8500-init-regs",
@@ -925,6 +936,7 @@ static int fsa8500_probe(struct i2c_client *client,
 	 * operations and noise estimate.
 	 */
 	fsa8500->alwayson_micb = fsa8500_pdata->alwayson_micbias;
+	fsa8500->lint_disabled = fsa8500_pdata->lint_disabled;
 
 
 	wake_lock_init(&fsa8500->wake_lock, WAKE_LOCK_SUSPEND, "hs_det");
