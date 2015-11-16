@@ -162,6 +162,14 @@
 /* Used in HAL */
 #define FW_VERSION_SIZE 12
 #define FW_VERSION_STR_MAX_LEN 256
+
+#define MOTOSH_MAXDATA_LENGTH		256
+/* The SH register number/ID size. */
+#define MOTOSH_REGISTER_LEN		1
+/* Used in libsensorhub. Maximum that can be RX/TX with READ/WRITE_REG IOCTL */
+#define MOTOSH_TX_PAYLOAD_LEN	(MOTOSH_MAXDATA_LENGTH - MOTOSH_REGISTER_LEN)
+#define MOTOSH_RX_PAYLOAD_LEN	(MOTOSH_MAXDATA_LENGTH)
+
 /* Not used in user space */
 #define MOTOSH_CONTROL_REG_SIZE 200
 /* Not used in user space */
