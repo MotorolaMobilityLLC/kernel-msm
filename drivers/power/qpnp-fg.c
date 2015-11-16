@@ -397,13 +397,11 @@ struct fg_chip {
 	struct fg_wakeup_source	empty_check_wakeup_source;
 	struct fg_wakeup_source	resume_soc_wakeup_source;
 	bool			first_profile_loaded;
-	struct fg_wakeup_source	update_temp_wakeup_source;
 	struct fg_wakeup_source	update_sram_wakeup_source;
 	bool			profile_loaded;
 	bool			use_otp_profile;
 	bool			battery_missing;
 	bool			power_supply_registered;
-	bool			sw_rbias_ctrl;
 	bool			use_thermal_coefficients;
 	bool			esr_strict_filter;
 	bool			soc_empty;
@@ -414,7 +412,6 @@ struct fg_chip {
 	bool			hold_soc_while_full;
 	struct delayed_work	update_jeita_setting;
 	struct delayed_work	update_sram_data;
-	struct delayed_work	update_temp_work;
 	struct delayed_work	check_empty_work;
 	char			*batt_profile;
 	u8			thermal_coefficients[THERMAL_COEFF_N_BYTES];
@@ -1304,6 +1301,9 @@ static int set_prop_jeita_temp(struct fg_chip *chip,
 
 #define EXTERNAL_SENSE_SELECT		0x4AC
 #define EXTERNAL_SENSE_OFFSET		0x2
+#define BATT_TEMP_OFFSET		3
+#define BATT_TEMP_CNTRL_MASK		0x17
+#define TEMP_SENSE_ALWAYS_BIT		BIT(1)
 #define EXTERNAL_SENSE_BIT		BIT(2)
 static int set_prop_sense_type(struct fg_chip *chip, int ext_sense_type)
 {
@@ -1469,7 +1469,7 @@ static void update_sram_data(struct fg_chip *chip, int *resched_ms)
 
 	fg_stay_awake(&chip->update_sram_wakeup_source);
 	fg_mem_lock(chip);
-	for (i = 1; i < FG_DATA_MAX; i++) {
+	for (i = 0; i < FG_DATA_MAX; i++) {
 		if (chip->profile_loaded && i >= FG_DATA_BATT_ID)
 			continue;
 		rc = fg_mem_read(chip, reg, fg_data[i].address,
@@ -1484,6 +1484,10 @@ static void update_sram_data(struct fg_chip *chip, int *resched_ms)
 			temp |= reg[j] << (8 * j);
 
 		switch (i) {
+		case FG_DATA_BATT_TEMP:
+			fg_data[0].value = (temp * TEMP_LSB_16B / 1000)
+						- DECIKELVIN;
+			break;
 		case FG_DATA_OCV:
 		case FG_DATA_VOLTAGE:
 		case FG_DATA_CPRED_VOLTAGE:
@@ -1576,87 +1580,6 @@ out:
 		msecs_to_jiffies(resched_ms));
 }
 
-#define BATT_TEMP_OFFSET	3
-#define BATT_TEMP_CNTRL_MASK	0x17
-#define DISABLE_THERM_BIT	BIT(0)
-#define TEMP_SENSE_ALWAYS_BIT	BIT(1)
-#define TEMP_SENSE_CHARGE_BIT	BIT(2)
-#define FORCE_RBIAS_ON_BIT	BIT(4)
-#define BATT_TEMP_OFF		DISABLE_THERM_BIT
-#define BATT_TEMP_ON		(FORCE_RBIAS_ON_BIT | TEMP_SENSE_ALWAYS_BIT | \
-				TEMP_SENSE_CHARGE_BIT)
-#define TEMP_PERIOD_UPDATE_MS		10000
-#define TEMP_PERIOD_TIMEOUT_MS		3000
-static void update_temp_data(struct work_struct *work)
-{
-	s16 temp;
-	u8 reg[2];
-	bool tried_again = false;
-	int rc, ret, timeout = TEMP_PERIOD_TIMEOUT_MS;
-	struct fg_chip *chip = container_of(work,
-				struct fg_chip,
-				update_temp_work.work);
-
-	fg_stay_awake(&chip->update_temp_wakeup_source);
-	if (chip->sw_rbias_ctrl) {
-		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
-				BATT_TEMP_CNTRL_MASK,
-				BATT_TEMP_ON,
-				BATT_TEMP_OFFSET);
-		if (rc) {
-			pr_err("failed to write BATT_TEMP_ON rc=%d\n", rc);
-			goto out;
-		}
-
-wait:
-		/* Wait for MEMIF access revoked */
-		ret = wait_for_completion_interruptible_timeout(
-				&chip->sram_access_revoked,
-				msecs_to_jiffies(timeout));
-
-		/* If we were interrupted wait again one more time. */
-		if (ret == -ERESTARTSYS && !tried_again) {
-			tried_again = true;
-			goto wait;
-		} else if (ret <= 0) {
-			rc = -ETIMEDOUT;
-			pr_err("transaction timed out ret=%d\n", ret);
-			goto out;
-		}
-	}
-
-	/* Read FG_DATA_BATT_TEMP now */
-	rc = fg_mem_read(chip, reg, fg_data[0].address,
-		fg_data[0].len, fg_data[0].offset,
-		chip->sw_rbias_ctrl ? 1 : 0);
-	if (rc) {
-		pr_err("Failed to update temp data\n");
-		goto out;
-	}
-
-	temp = reg[0] | (reg[1] << 8);
-	fg_data[0].value = (temp * TEMP_LSB_16B / 1000)
-		- DECIKELVIN;
-
-	if (fg_debug_mask & FG_MEM_DEBUG_READS)
-		pr_info("BATT_TEMP %d %d\n", temp, fg_data[0].value);
-
-	get_current_time(&chip->last_temp_update_time);
-
-out:
-	if (chip->sw_rbias_ctrl) {
-		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
-				BATT_TEMP_CNTRL_MASK,
-				BATT_TEMP_OFF,
-				BATT_TEMP_OFFSET);
-		if (rc)
-			pr_err("failed to write BATT_TEMP_OFF rc=%d\n", rc);
-	}
-	schedule_delayed_work(
-		&chip->update_temp_work,
-		msecs_to_jiffies(TEMP_PERIOD_UPDATE_MS));
-	fg_relax(&chip->update_temp_wakeup_source);
-}
 
 static void update_jeita_setting(struct work_struct *work)
 {
@@ -4122,9 +4045,6 @@ static int fg_of_init(struct fg_chip *chip)
 		rc = 0;
 	}
 
-	chip->sw_rbias_ctrl = of_property_read_bool(node,
-				"qcom,sw-rbias-control");
-
 	chip->cyc_ctr.en = of_property_read_bool(node,
 				"qcom,cycle-counter-en");
 	if (chip->cyc_ctr.en)
@@ -4328,7 +4248,6 @@ static int fg_init_irqs(struct fg_chip *chip)
 static void fg_cleanup(struct fg_chip *chip)
 {
 	cancel_delayed_work_sync(&chip->update_sram_data);
-	cancel_delayed_work_sync(&chip->update_temp_work);
 	cancel_delayed_work_sync(&chip->update_jeita_setting);
 	cancel_delayed_work_sync(&chip->check_empty_work);
 	alarm_try_to_cancel(&chip->fg_cap_learning_alarm);
@@ -4353,7 +4272,6 @@ static void fg_cleanup(struct fg_chip *chip)
 	wakeup_source_trash(&chip->empty_check_wakeup_source.source);
 	wakeup_source_trash(&chip->memif_wakeup_source.source);
 	wakeup_source_trash(&chip->profile_wakeup_source.source);
-	wakeup_source_trash(&chip->update_temp_wakeup_source.source);
 	wakeup_source_trash(&chip->update_sram_wakeup_source.source);
 }
 
@@ -4897,15 +4815,14 @@ static int fg_common_hw_init(struct fg_chip *chip)
 			THERMAL_COEFF_OFFSET, 0);
 	}
 
-	if (!chip->sw_rbias_ctrl) {
-		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
-				BATT_TEMP_CNTRL_MASK,
-				TEMP_SENSE_ALWAYS_BIT,
-				BATT_TEMP_OFFSET);
-		if (rc) {
-			pr_err("failed to write BATT_TEMP_OFFSET rc=%d\n", rc);
-			return rc;
-		}
+	/* No SW Rbias control */
+	rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
+			BATT_TEMP_CNTRL_MASK,
+			TEMP_SENSE_ALWAYS_BIT,
+			BATT_TEMP_OFFSET);
+	if (rc) {
+		pr_err("failed to write BATT_TEMP_OFFSET rc=%d\n", rc);
+		return rc;
 	}
 
 	return 0;
@@ -5104,9 +5021,6 @@ static void delayed_init_work(struct work_struct *work)
 	if (chip->last_sram_update_time == 0)
 		update_sram_data_work(&chip->update_sram_data.work);
 
-	if (chip->last_temp_update_time == 0)
-		update_temp_data(&chip->update_temp_work.work);
-
 	if (!chip->use_otp_profile)
 		schedule_work(&chip->batt_profile_init);
 
@@ -5147,8 +5061,6 @@ static int fg_probe(struct spmi_device *spmi)
 			"qpnp_fg_memaccess");
 	wakeup_source_init(&chip->profile_wakeup_source.source,
 			"qpnp_fg_profile");
-	wakeup_source_init(&chip->update_temp_wakeup_source.source,
-			"qpnp_fg_update_temp");
 	wakeup_source_init(&chip->update_sram_wakeup_source.source,
 			"qpnp_fg_update_sram");
 	wakeup_source_init(&chip->resume_soc_wakeup_source.source,
@@ -5160,7 +5072,6 @@ static int fg_probe(struct spmi_device *spmi)
 	mutex_init(&chip->sysfs_restart_lock);
 	INIT_DELAYED_WORK(&chip->update_jeita_setting, update_jeita_setting);
 	INIT_DELAYED_WORK(&chip->update_sram_data, update_sram_data_work);
-	INIT_DELAYED_WORK(&chip->update_temp_work, update_temp_data);
 	INIT_DELAYED_WORK(&chip->check_empty_work, check_empty_work);
 	INIT_WORK(&chip->rslow_comp_work, rslow_comp_work);
 	INIT_WORK(&chip->fg_cap_learning_work, fg_cap_learning_work);
@@ -5313,7 +5224,6 @@ power_supply_unregister:
 cancel_work:
 	cancel_delayed_work_sync(&chip->update_jeita_setting);
 	cancel_delayed_work_sync(&chip->update_sram_data);
-	cancel_delayed_work_sync(&chip->update_temp_work);
 	cancel_delayed_work_sync(&chip->check_empty_work);
 	alarm_try_to_cancel(&chip->fg_cap_learning_alarm);
 	cancel_work_sync(&chip->set_resume_soc_work);
@@ -5337,68 +5247,9 @@ of_init_fail:
 	wakeup_source_trash(&chip->empty_check_wakeup_source.source);
 	wakeup_source_trash(&chip->memif_wakeup_source.source);
 	wakeup_source_trash(&chip->profile_wakeup_source.source);
-	wakeup_source_trash(&chip->update_temp_wakeup_source.source);
 	wakeup_source_trash(&chip->update_sram_wakeup_source.source);
 	return rc;
 }
-
-static void check_and_update_sram_data(struct fg_chip *chip)
-{
-	unsigned long current_time = 0, next_update_time, time_left;
-
-	get_current_time(&current_time);
-
-	next_update_time = chip->last_temp_update_time
-		+ (TEMP_PERIOD_UPDATE_MS / 1000);
-
-	if (next_update_time > current_time)
-		time_left = next_update_time - current_time;
-	else
-		time_left = 0;
-
-	schedule_delayed_work(
-		&chip->update_temp_work, msecs_to_jiffies(time_left * 1000));
-
-	next_update_time = chip->last_sram_update_time
-		+ (fg_sram_update_period_ms / 1000);
-
-	if (next_update_time > current_time)
-		time_left = next_update_time - current_time;
-	else
-		time_left = 0;
-
-	schedule_delayed_work(
-		&chip->update_sram_data, msecs_to_jiffies(time_left * 1000));
-}
-
-static int fg_suspend(struct device *dev)
-{
-	struct fg_chip *chip = dev_get_drvdata(dev);
-
-	if (!chip->sw_rbias_ctrl)
-		return 0;
-
-	cancel_delayed_work(&chip->update_temp_work);
-	cancel_delayed_work(&chip->update_sram_data);
-
-	return 0;
-}
-
-static int fg_resume(struct device *dev)
-{
-	struct fg_chip *chip = dev_get_drvdata(dev);
-
-	if (!chip->sw_rbias_ctrl)
-		return 0;
-
-	check_and_update_sram_data(chip);
-	return 0;
-}
-
-static const struct dev_pm_ops qpnp_fg_pm_ops = {
-	.suspend	= fg_suspend,
-	.resume		= fg_resume,
-};
 
 static int fg_sense_type_set(const char *val, const struct kernel_param *kp)
 {
@@ -5478,7 +5329,6 @@ static struct spmi_driver fg_driver = {
 	.driver		= {
 		.name	= QPNP_FG_DEV_NAME,
 		.of_match_table	= fg_match_table,
-		.pm	= &qpnp_fg_pm_ops,
 	},
 	.probe		= fg_probe,
 	.remove		= fg_remove,

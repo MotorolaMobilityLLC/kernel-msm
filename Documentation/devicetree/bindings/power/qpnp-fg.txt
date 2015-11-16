@@ -58,10 +58,6 @@ Parent node optional properties:
 					in milliAmpere.
 - qcom,use-otp-profile:			Specify this flag to avoid RAM loading
 					any battery profile.
-- qcom,sw-rbias-control:		Boolean property which defines whether
-					the Rbias needs to be controlled by
-					software. If this is not set, it will
-					be controlled by hardware (default).
 - qcom,fg-iterm-ma:			Battery current at which the fuel gauge
 					will try to scale 100% towards. When
 					the charge current goes above this, the
