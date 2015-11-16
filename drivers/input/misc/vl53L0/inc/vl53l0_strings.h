@@ -25,7 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
-
 /*
  * @file vl53l0_string.h
  * $Date: 2014-12-04 16:15:06 +0100 (Thu, 04 Dec 2014) $
@@ -62,38 +61,33 @@ extern "C" {
 #define  VL53L0_STRING_ERROR_BUFFER_TOO_SMALL   "Buffer too small"
 
 #define  VL53L0_STRING_ERROR_GPIO_NOT_EXISTING  "GPIO not existing"
-#define  VL53L0_STRING_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED \
-			"GPIO functionality not supported"
-#define  VL53L0_STRING_ERROR_CONTROL_INTERFACE  "Control Interface Error"
+    #define  VL53L0_STRING_ERROR_GPIO_FUNCTIONALITY_NOT_SUPPORTED           "GPIO functionality not supported"
+    #define  VL53L0_STRING_ERROR_CONTROL_INTERFACE                          "Control Interface Error"
+    #define  VL53L0_STRING_ERROR_DIVISION_BY_ZERO                           "Division by zero Error"
 
 
 /* Device Specific */
-#define  VL53L0_STRING_DEVICEERROR_NONE         "No Update"
-#define  VL53L0_STRING_DEVICEERROR_VCSELCONTINUITYTESTFAILURE \
-			"VCSEL Continuity Test Failure"
-#define  VL53L0_STRING_DEVICEERROR_VCSELWATCHDOGTESTFAILURE \
-			"VCSEL Watchdog Test Failure"
-#define  VL53L0_STRING_DEVICEERROR_NOVHVVALUEFOUND	"No VHV Value found"
-#define  VL53L0_STRING_DEVICEERROR_MSRCNOTARGET		"MSRC No Target Error"
-#define  VL53L0_STRING_DEVICEERROR_MSRCMINIMUMSNR   "MSRC Minimum SNR Error"
-#define  VL53L0_STRING_DEVICEERROR_MSRCWRAPAROUND   "MSRC Wraparound Error"
-#define  VL53L0_STRING_DEVICEERROR_TCC              "TCC Error"
-#define  VL53L0_STRING_DEVICEERROR_RANGEAWRAPAROUND "Range A Wraparound Error"
-#define  VL53L0_STRING_DEVICEERROR_RANGEBWRAPAROUND "Range B Wraparound Error"
-#define  VL53L0_STRING_DEVICEERROR_MINCLIP          "Min Clip Error"
+    #define  VL53L0_STRING_DEVICEERROR_NONE                                 "No Update"
+    #define  VL53L0_STRING_DEVICEERROR_VCSELCONTINUITYTESTFAILURE           "VCSEL Continuity Test Failure"
+    #define  VL53L0_STRING_DEVICEERROR_VCSELWATCHDOGTESTFAILURE             "VCSEL Watchdog Test Failure"
+    #define  VL53L0_STRING_DEVICEERROR_NOVHVVALUEFOUND                      "No VHV Value found"
+    #define  VL53L0_STRING_DEVICEERROR_MSRCNOTARGET                         "MSRC No Target Error"
+    #define  VL53L0_STRING_DEVICEERROR_SNRCHECK                             "SNR Check Exit"
+    #define  VL53L0_STRING_DEVICEERROR_RANGEPHASECHECK                      "Range Phase Check Error"
+    #define  VL53L0_STRING_DEVICEERROR_SIGMATHRESHOLDCHECK                  "Sigma Threshold Check Error"
+    #define  VL53L0_STRING_DEVICEERROR_TCC                                  "TCC Error"
+    #define  VL53L0_STRING_DEVICEERROR_PHASECONSISTENCY                     "Phase Consistency Error"
+    #define  VL53L0_STRING_DEVICEERROR_MINCLIP                              "Min Clip Error"
 #define  VL53L0_STRING_DEVICEERROR_RANGECOMPLETE    "Range Complete"
 #define  VL53L0_STRING_DEVICEERROR_ALGOUNDERFLOW    "Range Algo Underflow Error"
 #define  VL53L0_STRING_DEVICEERROR_ALGOOVERFLOW     "Range Algo Overlow Error"
-#define  VL53L0_STRING_DEVICEERROR_FINALSNRLIMIT    "Final Minimum SNR Error"
-#define  VL53L0_STRING_DEVICEERROR_NOTARGETIGNORE   "No Target Ignore Error"
-#define  VL53L0_STRING_DEVICEERROR_UNKNOWN          "Unknown error code"
-
+    #define  VL53L0_STRING_DEVICEERROR_RANGEIGNORETHRESHOLD                 "Range Ignore Threshold Error"
+    #define  VL53L0_STRING_DEVICEERROR_UNKNOWN                              "Unknown error code"
 
 /* Check Enable */
-#define  VL53L0_STRING_CHECKENABLE_SNR              "SNR"
-#define  VL53L0_STRING_CHECKENABLE_SIGMA            "SIGMA"
-#define  VL53L0_STRING_CHECKENABLE_RANGE            "RANGE"
-#define  VL53L0_STRING_CHECKENABLE_SIGNAL_RATE      "SIGNAL RATE"
+    #define  VL53L0_STRING_CHECKENABLE_SIGMA_FINAL_RANGE                    "SIGMA FINAL RANGE"
+	#define  VL53L0_STRING_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE              "SIGNAL RATE FINAL RANGE"
+	#define  VL53L0_STRING_CHECKENABLE_SIGNAL_REF_CLIP                      "SIGNAL REF CLIP"
 
 
 

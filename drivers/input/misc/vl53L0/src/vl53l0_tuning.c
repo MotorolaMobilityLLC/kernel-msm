@@ -26,7 +26,6 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
-#include "vl53l0_tuning.h"
 
 #define LOG_FUNCTION_START(fmt, ...) \
 	_LOG_FUNCTION_START(TRACE_MODULE_API, fmt, ##__VA_ARGS__)
@@ -46,13 +45,12 @@
 ////       DEFAULT TUNING SETTINGS                ////
 //////////////////////////////////////////////////////
 */
-VL53L0_Error VL53L0_load_tuning_settings(VL53L0_DEV Dev)
+/*VL53L0_Error VL53L0_load_tuning_settings(VL53L0_DEV Dev)
 {
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 
 	LOG_FUNCTION_START("");
 
-	/* update 17_06_15_v10 */
 	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
 	Status |= VL53L0_WrByte(Dev, 0x00, 0x00);
 	Status |= VL53L0_WrByte(Dev, 0x91, 0x3C);
@@ -136,4 +134,4 @@ VL53L0_Error VL53L0_load_tuning_settings(VL53L0_DEV Dev)
 	LOG_FUNCTION_END(Status);
 	return Status;
 }
-
+*/
