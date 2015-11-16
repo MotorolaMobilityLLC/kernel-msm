@@ -384,6 +384,7 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&fsa8500_hs_det_default>;
+		fsa8500-lint-disabled;
 	};
 
 	cs35l34@40 {
