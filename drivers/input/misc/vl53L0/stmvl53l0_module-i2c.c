@@ -205,7 +205,7 @@ static int stmvl53l0_get_dt_data(struct device *dev, struct i2c_data *data)
 static int stmvl53l0_probe(struct i2c_client *client,
 				   const struct i2c_device_id *id)
 {
-	int rc = 0;
+	int rc = 0, i = 0;
 	struct stmvl53l0_data *vl53l0_data = NULL;
 	struct i2c_data *i2c_object = NULL;
 	int present;
@@ -245,7 +245,13 @@ static int stmvl53l0_probe(struct i2c_client *client,
 		vl53l0_errmsg("%d,error rc %d\n", __LINE__, rc);
 		return rc;
 	}
-	rc = stmvl53l0_checkmoduleid(vl53l0_data, i2c_object->client, I2C_BUS);
+	for (i = 0; i < 5; i++) {
+		rc = stmvl53l0_checkmoduleid
+			(vl53l0_data, i2c_object->client, I2C_BUS);
+		if (!rc)
+			break;
+		msleep(20);
+	}
 	if (rc != 0) {
 		vl53l0_errmsg("%d,error rc %d\n", __LINE__, rc);
 		stmvl53l0_power_down_i2c(i2c_object);
@@ -326,7 +332,7 @@ int stmvl53l0_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 		data->gconf.cam_gpio_req_tbl_size, 1);
 
 	gpio_set_value_cansleep(data->gconf.cam_gpio_req_tbl[0].gpio, 1);
-	msleep(200);
+
 	data->power_up = 1;
 	*preset_flag = 1;
 
