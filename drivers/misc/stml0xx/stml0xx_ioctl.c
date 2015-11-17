@@ -103,7 +103,6 @@ void stml0xx_ioctl_work_func(struct work_struct *ws)
 			&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_ACC_DELAY"
 		);
-		buf[0] = ioctl_ws->data.delay;
 		stml0xx_g_acc_delay =  ioctl_ws->data.delay;
 		if (stml0xx_g_booted) {
 			buf[0] = ioctl_ws->data.delay;
@@ -114,7 +113,6 @@ void stml0xx_ioctl_work_func(struct work_struct *ws)
 	case STML0XX_IOCTL_SET_ACC2_DELAY:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_SET_ACC2_DELAY");
-		buf[0] = ioctl_ws->data.delay;
 		stml0xx_g_acc2_delay =  ioctl_ws->data.delay;
 		if (stml0xx_g_booted) {
 			buf[0] = ioctl_ws->data.delay;
@@ -277,7 +275,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case STML0XX_IOCTL_GET_VERNAME:
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"STML0XX_IOCTL_GET_VERNAME");
-		if (copy_to_user(argp, &(ps_stml0xx->pdata->fw_version),
+		if (copy_to_user(argp, ps_stml0xx->pdata->fw_version,
 				 FW_VERSION_SIZE))
 			err = -EFAULT;
 		else
@@ -477,9 +475,9 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ioctl_ws->cmd = cmd;
 		if (
 			copy_from_user(
-				&(ioctl_ws->data.bytes),
+				ioctl_ws->data.bytes,
 				argp,
-				2 * sizeof(unsigned char))) {
+				3 * sizeof(unsigned char))) {
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Copy set sensors returned error\n");
 			kfree(ioctl_ws);
@@ -499,7 +497,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ioctl_ws->cmd = cmd;
 		if (
 			copy_from_user(
-				&(ioctl_ws->data.bytes),
+				ioctl_ws->data.bytes,
 				argp,
 				2 * sizeof(unsigned char))) {
 			dev_err(&stml0xx_misc_data->spi->dev,
@@ -614,7 +612,7 @@ long stml0xx_misc_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		/* copy algo into bytes[2] */
 		if (
 			copy_from_user(
-				&bytes,
+				bytes,
 				argp,
 				2 * sizeof(unsigned char)
 			)) {
