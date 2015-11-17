@@ -152,7 +152,7 @@
 
 /* 3.3V QCA Supply */
 &rome_vreg {
-	gpio = <&pm8994_gpios 9 0>;
+	gpio = <&pm8994_gpios 11 0>;
 };
 
 &i2c_7 {
