@@ -70,8 +70,6 @@ qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 qcom,mdss-dsi-on-command = [
 	39 01 00 00 00 00 03 F0 5A 5A
 	39 01 00 00 00 00 03 FC 5A 5A
-	/* Stub out SDC PPS for now */
-//	39 01 00 00 00 00 5A 9E 11 00 00 89 30 80 0A 00 05 A0 00 40 01 68 01 68 02 00 01 B4 00 20 04 F2 00 05 00 0C 01 87 02 63 18 00 10 F0 03 0C 20 00 06 0B 0B 33 0E 1C 2A 38 46 54 62 69 70 77 79 7B 7D 7E 01 02 01 00 09 40 09 BE 19 FC 19 FA 19 F8 1A 38 1A 78 1A B6 2A F6 2B 34 2B 74 3B 74 6B F4 00
 	07 01 00 00 00 00 01 01
 	05 01 00 00 78 00 01 11
 	15 01 00 00 00 00 02 E6 01
@@ -107,21 +105,7 @@ qcom,mdss-dsi-panel-status-value = <0x9c>;
 
 /* DSC Host Configuration */
 qcom,compression-mode = "dsc";
-/* Use work-around config for now */
-qcom,config-select = <&dsc_cfg_mot_smd_546_QHD_p_cmd_wa>;
-dsc_cfg_mot_smd_546_QHD_p_cmd_wa: config_wa {
-	qcom,mdss-dsc-slice-height = <32>;
-	qcom,mdss-dsc-slice-width = <720>;
-	qcom,mdss-dsc-slice-per-pkt = <1>;
-	qcom,mdss-dsc-bit-per-component = <8>;
-	qcom,mdss-dsc-bit-per-pixel = <8>;
-	qcom,mdss-dsc-block-prediction-enable;
-	qcom,mdss-dsc-ich-reset-value = <0>;
-	qcom,mdss-dsc-ich-reset-override = <0>;
-	qcom,mdss-dsc-config-by-manufacture-cmd;
-};
-
-/* This is the desired config, but it doesn't work for LK yet */
+qcom,config-select = <&dsc_cfg_mot_smd_546_QHD_p_cmd>;
 dsc_cfg_mot_smd_546_QHD_p_cmd: config0 {
 	qcom,lm-split = <720 720>;
 	qcom,mdss-dsc-encoders = <2>;
@@ -131,9 +115,6 @@ dsc_cfg_mot_smd_546_QHD_p_cmd: config0 {
 	qcom,mdss-dsc-bit-per-component = <8>;
 	qcom,mdss-dsc-bit-per-pixel = <8>;
 	qcom,mdss-dsc-block-prediction-enable;
-	qcom,mdss-dsc-ich-reset-value = <0>;
-	qcom,mdss-dsc-ich-reset-override = <0>;
-	qcom,mdss-dsc-config-by-manufacture-cmd;
 };
 
 qcom,panel-supply-entries {
