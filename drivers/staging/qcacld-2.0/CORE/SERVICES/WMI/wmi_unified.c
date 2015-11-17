@@ -893,7 +893,8 @@ void wmi_control_rx(void *ctx, HTC_PACKET *htc_packet)
 	id = WMI_GET_FIELD(adf_nbuf_data(evt_buf), WMI_CMD_HDR, COMMANDID);
 	/* TX_PAUSE EVENT should be handled with tasklet context */
 	if ((WMI_TX_PAUSE_EVENTID == id) ||
-		(WMI_WOW_WAKEUP_HOST_EVENTID == id)) {
+		(WMI_WOW_WAKEUP_HOST_EVENTID == id) ||
+		(WMI_D0_WOW_DISABLE_ACK_EVENTID == id)) {
 		if (adf_nbuf_pull_head(evt_buf, sizeof(WMI_CMD_HDR)) == NULL)
 			return;
 
