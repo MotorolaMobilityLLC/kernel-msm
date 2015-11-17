@@ -239,9 +239,10 @@
 		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
 	};
-	chan@26 {
+
+	chan@16 {
 		label = "pcm_therm";
-		reg = <0x26>;
+		reg = <0x16>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";
@@ -249,6 +250,7 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
+
 	chan@73 {
 		label = "msm_therm";
 		reg = <0x73>;
@@ -317,9 +319,9 @@
 };
 
 &pm8994_adc_tm {
-	chan@26 {
+	chan@16 {
 		label = "pcm_therm";
-		reg = <0x26>;
+		reg = <0x16>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";
@@ -1151,7 +1153,7 @@
 	mpp@a600 { /* MPP 7 - PCM_THERM */
 		status = "okay";
 		qcom,mode = <4>; /* AIN input */
-		qcom,ain-route = <2>; /* AMUX 5 */
+		qcom,ain-route = <2>; /* AMUX 7 */
 		qcom,master-en = <1>; /* Enable MPP */
 	};
 
