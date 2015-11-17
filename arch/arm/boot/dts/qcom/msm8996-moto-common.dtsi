@@ -350,6 +350,7 @@
 };
 
 &i2c_7 {
+	qcom,disable-dma;
 	fusb302@22 {
 		compatible = "fairchild,fusb302";
 		reg = <0x22>;
@@ -1153,6 +1154,7 @@
 };
 
 &i2c_8 {
+	qcom,disable-dma;
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
