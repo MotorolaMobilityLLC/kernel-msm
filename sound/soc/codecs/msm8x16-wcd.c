@@ -185,6 +185,7 @@ struct msm8x16_wcd_spmi {
 	int base;
 };
 
+#ifndef CONFIG_SND_SOC_FSA8500
 static const struct wcd_mbhc_intr intr_ids = {
 	.mbhc_sw_intr =  MSM8X16_WCD_IRQ_MBHC_HS_DET,
 	.mbhc_btn_press_intr = MSM8X16_WCD_IRQ_MBHC_PRESS,
@@ -194,19 +195,15 @@ static const struct wcd_mbhc_intr intr_ids = {
 	.hph_left_ocp = MSM8X16_WCD_IRQ_HPHL_OCP,
 	.hph_right_ocp = MSM8X16_WCD_IRQ_HPHR_OCP,
 };
+#endif
 
 static int msm8x16_wcd_dt_parse_vreg_info(struct device *dev,
 	struct msm8x16_wcd_regulator *vreg,
 	const char *vreg_name, bool ondemand);
 static struct msm8x16_wcd_pdata *msm8x16_wcd_populate_dt_pdata(
 	struct device *dev);
-static int msm8x16_wcd_enable_ext_mb_source(struct snd_soc_codec *codec,
-					    bool turn_on);
-static void msm8x16_trim_btn_reg(struct snd_soc_codec *codec);
 static void msm8x16_wcd_set_micb_v(struct snd_soc_codec *codec);
 static void msm8x16_wcd_set_boost_v(struct snd_soc_codec *codec);
-static void msm8x16_wcd_set_auto_zeroing(struct snd_soc_codec *codec,
-		bool enable);
 static void msm8x16_wcd_configure_cap(struct snd_soc_codec *codec,
 		bool micbias1, bool micbias2);
 
@@ -216,6 +213,12 @@ static void *modem_state_notifier;
 
 static struct snd_soc_codec *registered_codec;
 
+#ifndef CONFIG_SND_SOC_FSA8500
+static int msm8x16_wcd_enable_ext_mb_source(struct snd_soc_codec *codec,
+					    bool turn_on);
+static void msm8x16_trim_btn_reg(struct snd_soc_codec *codec);
+static void msm8x16_wcd_set_auto_zeroing(struct snd_soc_codec *codec,
+		bool enable);
 static void msm8x16_wcd_compute_impedance(s16 l, s16 r, uint32_t *zl,
 				uint32_t *zr, bool high)
 {
@@ -267,6 +270,7 @@ static const struct wcd_mbhc_cb mbhc_cb = {
 	.get_hwdep_fw_cal = msm8x16_wcd_get_hwdep_fw_cal,
 	.set_cap_mode = msm8x16_wcd_configure_cap,
 };
+#endif
 
 static const uint32_t wcd_imped_val[] = {4, 8, 12, 16,
 					20, 24, 28, 32,
@@ -2395,6 +2399,7 @@ static int msm8x16_wcd_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 }
 
 
+#ifndef CONFIG_SND_SOC_FSA8500
 static void msm8x16_wcd_set_auto_zeroing(struct snd_soc_codec *codec,
 					bool enable)
 {
@@ -2440,6 +2445,7 @@ static void msm8x16_trim_btn_reg(struct snd_soc_codec *codec)
 		pr_debug("%s: This device is trimmed at ATE\n", __func__);
 	}
 }
+
 static int msm8x16_wcd_enable_ext_mb_source(struct snd_soc_codec *codec,
 					    bool turn_on)
 {
@@ -2474,6 +2480,7 @@ static int msm8x16_wcd_enable_ext_mb_source(struct snd_soc_codec *codec,
 
 	return ret;
 }
+#endif
 
 static int msm8x16_wcd_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
@@ -2850,6 +2857,7 @@ static int msm8x16_wcd_codec_enable_rx_bias(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#ifndef CONFIG_SND_SOC_FSA8500
 static uint32_t wcd_get_impedance_value(uint32_t imped)
 {
 	int i;
@@ -2912,18 +2920,21 @@ void wcd_imped_config(struct snd_soc_codec *codec,
 
 	pr_debug("%s: Exit\n", __func__);
 }
+#endif
 
 static int msm8x16_wcd_hphl_dac_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	uint32_t impedl, impedr;
 	struct snd_soc_codec *codec = w->codec;
+#ifndef CONFIG_SND_SOC_FSA8500
+	uint32_t impedl, impedr;
 	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
 	int ret;
 
-	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
 	ret = wcd_mbhc_get_impedance(&msm8x16_wcd->mbhc,
 			&impedl, &impedr);
+#endif
+	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -2933,18 +2944,22 @@ static int msm8x16_wcd_hphl_dac_event(struct snd_soc_dapm_widget *w,
 			MSM8X16_WCD_A_DIGITAL_CDC_DIG_CLK_CTL, 0x01, 0x01);
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_DIGITAL_CDC_ANA_CLK_CTL, 0x02, 0x02);
+#ifndef CONFIG_SND_SOC_FSA8500
 		if (!ret)
 			wcd_imped_config(codec, impedl, true);
 		else
 			dev_err(codec->dev, "Failed to get mbhc impedance %d\n",
 				ret);
+#endif
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_ANALOG_RX_HPH_L_PA_DAC_CTL, 0x02, 0x00);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+#ifndef CONFIG_SND_SOC_FSA8500
 		wcd_imped_config(codec, impedl, false);
+#endif
 		snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_DIGITAL_CDC_ANA_CLK_CTL, 0x02, 0x00);
 		snd_soc_update_bits(codec,
