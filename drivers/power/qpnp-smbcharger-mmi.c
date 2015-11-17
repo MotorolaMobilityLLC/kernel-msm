@@ -35,7 +35,6 @@
 #include <linux/rtc.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/batterydata-lib.h>
-#include <linux/pinctrl/consumer.h>
 #include <linux/qpnp/power-on.h>
 #include <soc/qcom/watchdog.h>
 
@@ -321,7 +320,6 @@ struct smbchg_chip {
 	struct gpio			warn_gpio;
 	struct delayed_work		warn_irq_work;
 	int				warn_irq;
-	struct pinctrl			*smb_pinctrl;
 	bool				factory_cable;
 };
 
@@ -3536,13 +3534,6 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 	union power_supply_propval ret = {0, };
 	struct power_supply *eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
-
-	chip->smb_pinctrl = pinctrl_get_select(chip->dev, "eb_active");
-	if (!chip->smb_pinctrl)
-		dev_err(chip->dev, "Could not get/set pinctrl state\n");
-	chip->smb_pinctrl = pinctrl_get_select_default(chip->dev);
-	if (!chip->smb_pinctrl)
-		dev_err(chip->dev, "Could not get/set pinctrl state\n");
 
 	if (state == chip->ebchg_state)
 		return;
