@@ -237,3 +237,17 @@ void __msm_gpio_install_direct_irq(unsigned gpio, unsigned irq,
 		cfg |= DC_POLARITY_HI;
 	__raw_writel_no_log(cfg, GPIO_DIR_CONN_INTR(irq));
 }
+
+/* Add sysfs for gpio's debug */
+int tlmm_get_config(unsigned gpio, unsigned *cfg)
+{
+	unsigned flags;
+
+	BUG_ON(gpio >= TLMM_NUM_GPIO);
+
+	flags = __raw_readl(GPIO_CONFIG(gpio));
+	*cfg = GPIO_CFG(gpio, (flags >> 2) & 0xf, (flags >> 9) & 0x1,
+		flags & 0x3, (flags >> 6) & 0x7);
+
+	return 0;
+}
