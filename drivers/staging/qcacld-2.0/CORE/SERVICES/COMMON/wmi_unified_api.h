@@ -58,6 +58,9 @@ wmi_unified_attach(void *scn_handle, void (*func) (void*));
 void
 wmi_unified_detach(struct wmi_unified* wmi_handle);
 
+void
+wmi_unified_remove_work(struct wmi_unified* wmi_handle);
+
 /**
  * generic function to allocate WMI buffer
  *
