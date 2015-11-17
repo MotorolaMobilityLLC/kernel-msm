@@ -6689,6 +6689,13 @@ static void wma_set_sta_keep_alive(tp_wma_handle wma, u_int8_t vdev_id,
 	int len;
 
 	WMA_LOGD("%s: Enter", __func__);
+
+	if (timeperiod > WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD_STAMAX) {
+		WMA_LOGE("Invalid period %d Max limit %d", timeperiod,
+				 WNI_CFG_INFRA_STA_KEEP_ALIVE_PERIOD_STAMAX);
+		return;
+	}
+
 	len = sizeof(*cmd) + sizeof(*arp_rsp);
 	buf = wmi_buf_alloc(wma->wmi_handle, len);
 	if (!buf) {
