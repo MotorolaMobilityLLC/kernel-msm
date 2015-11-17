@@ -285,6 +285,7 @@ void mdp3_irq_suspend(void)
 	}
 	if (mdp3_res->irq_ref_cnt == 0 && irq_enabled) {
 		MDP3_REG_WRITE(MDP3_REG_INTR_ENABLE, 0);
+		mdp3_res->irq_mask = 0;
 		mdp3_res->mdss_util->disable_irq_nosync(&mdp3_res->mdp3_hw);
 	}
 	spin_unlock_irqrestore(&mdp3_res->irq_lock, flag);
