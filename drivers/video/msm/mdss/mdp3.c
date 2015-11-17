@@ -280,6 +280,7 @@ void mdp3_irq_suspend(void)
 	mdp3_res->irq_ref_cnt--;
 	if (mdp3_res->irq_ref_cnt < 0) {
 		irq_enabled = false;
+		mdp3_res->irq_mask = 0;
 		mdp3_res->irq_ref_cnt = 0;
 	}
 	if (mdp3_res->irq_ref_cnt == 0 && irq_enabled) {
