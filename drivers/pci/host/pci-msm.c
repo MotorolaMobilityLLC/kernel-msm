@@ -654,6 +654,11 @@ static const struct msm_pcie_irq_info_t msm_pcie_irq_info[MSM_PCIE_MAX_IRQ] = {
 	{"int_bridge_flush_n",	0}
 };
 
+#ifdef CONFIG_BCM4358
+static void msm_pcie_notify_client(struct msm_pcie_dev_t *dev,
+	enum msm_pcie_event event);
+#endif /* CONFIG_BCM4358 */
+
 static inline void msm_pcie_write_reg(void *base, u32 offset, u32 value)
 {
 	writel_relaxed(value, base + offset);
@@ -1082,6 +1087,9 @@ static inline int msm_pcie_check_align(struct msm_pcie_dev_t *dev,
 		PCIE_ERR(dev,
 			"PCIe: RC%d: offset 0x%x is not correctly aligned\n",
 			dev->rc_idx, offset);
+#ifdef CONFIG_BCM4358
+		msm_pcie_notify_client(dev, MSM_PCIE_EVENT_LINKDOWN);
+#endif /* CONFIG_BCM4358 */
 		return MSM_PCIE_ERROR;
 	}
 
