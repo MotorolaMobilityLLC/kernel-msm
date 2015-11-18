@@ -1821,6 +1821,12 @@ dhd_prot_ringstatus_process(dhd_pub_t *dhd, void * buf, uint16 msglen)
 		ring_status->cmn_hdr.request_id, ring_status->compl_hdr.status,
 		ring_status->compl_hdr.flow_ring_id, ring_status->write_idx));
 	/* How do we track this to pair it with ??? */
+	if (ring_status->compl_hdr.status == BCMPCIE_BADOPTION) {
+		DHD_ERROR(("%s: send HANG to recover.", __FUNCTION__));
+		dhd->bus->islinkdown = TRUE;
+		dhd->busstate = DHD_BUS_DOWN;
+		dhd_os_check_hang(dhd, 0, -ETIMEDOUT);
+	}
 	return;
 }
 

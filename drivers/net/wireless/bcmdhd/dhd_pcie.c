@@ -1215,7 +1215,8 @@ int dhd_bus_rxctl(struct dhd_bus *bus, uchar *msg, uint msglen)
 	if (bus->dhd->rxcnt_timeout >= MAX_CNTL_TX_TIMEOUT) {
 #ifdef MSM_PCIE_LINKDOWN_RECOVERY
 		bus->islinkdown = TRUE;
-		DHD_ERROR(("PCIe link down\n"));
+		bus->dhd->busstate = DHD_BUS_DOWN;
+		DHD_ERROR(("%s: PCIe link down\n",__FUNCTION__));
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 		return -ETIMEDOUT;
 	}
@@ -3669,8 +3670,11 @@ dhdpcie_handle_mb_data(dhd_bus_t *bus)
 	dhd_bus_cmn_writeshared(bus, &zero, sizeof(uint32), DTOH_MB_DATA, 0);
 	if (d2h_mb_data == PCIE_LINK_DOWN) {
 		DHD_ERROR(("%s pcie linkdown, 0x%08x\n", __FUNCTION__, d2h_mb_data));
-		bus->wait_for_d3_ack = DHD_INVALID;
-		dhd_os_d3ack_wake(bus->dhd);
+#ifdef MSM_PCIE_LINKDOWN_RECOVERY
+		bus->islinkdown = TRUE;
+		bus->dhd->busstate = DHD_BUS_DOWN;
+		dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
+#endif /* MSM_PCIE_LINKDOWN_RECOVERY */
 	}
 	DHD_INFO(("D2H_MB_DATA: 0x%04x\n", d2h_mb_data));
 	if (d2h_mb_data & D2H_DEV_DS_ENTER_REQ)  {
