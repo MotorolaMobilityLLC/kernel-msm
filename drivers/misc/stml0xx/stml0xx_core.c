@@ -855,17 +855,6 @@ static int stml0xx_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "cannot create work queue: %d", err);
 		goto err1;
 	}
-	ps_stml0xx->ioctl_work_queue =
-		create_singlethread_workqueue("stml0xx_ioctl_wq");
-	if (!ps_stml0xx->ioctl_work_queue) {
-		err = -ENOMEM;
-		dev_err(
-			&spi->dev,
-			"cannot create ioctl work queue: %d\n",
-			err
-		);
-		goto err2;
-	}
 	ps_stml0xx->pdata = pdata;
 	spi_set_drvdata(spi, ps_stml0xx);
 
@@ -873,7 +862,7 @@ static int stml0xx_probe(struct spi_device *spi)
 		err = ps_stml0xx->pdata->init();
 		if (err < 0) {
 			dev_err(&spi->dev, "init failed: %d", err);
-			goto err_pdata_init;
+			goto err2;
 		}
 	}
 
@@ -1025,8 +1014,6 @@ err6:
 err4:
 	if (ps_stml0xx->pdata->exit)
 		ps_stml0xx->pdata->exit();
-err_pdata_init:
-	destroy_workqueue(ps_stml0xx->ioctl_work_queue);
 err2:
 	destroy_workqueue(ps_stml0xx->irq_work_queue);
 err1:
@@ -1076,7 +1063,6 @@ static int stml0xx_remove(struct spi_device *spi)
 
 	stml0xx_gpio_free(ps_stml0xx->pdata);
 	destroy_workqueue(ps_stml0xx->irq_work_queue);
-	destroy_workqueue(ps_stml0xx->ioctl_work_queue);
 	mutex_destroy(&ps_stml0xx->lock);
 	wake_unlock(&ps_stml0xx->wakelock);
 	wake_lock_destroy(&ps_stml0xx->wakelock);
