@@ -87,6 +87,9 @@ static ssize_t power_supply_show_property(struct device *dev,
 	static char *charge_rate[] = {
 		"None", "Normal", "Weak", "Turbo"
 	};
+	static char *extern_state[] = {
+		"Disconnected", "Sink", "Source", "Off"
+	};
 	ssize_t ret = 0;
 	struct power_supply *psy = dev_get_drvdata(dev);
 	const ptrdiff_t off = attr - power_supply_attrs;
@@ -140,6 +143,12 @@ static ssize_t power_supply_show_property(struct device *dev,
 					"%s\n", health_text[value.intval]);
 	else if (off >= POWER_SUPPLY_PROP_MODEL_NAME)
 		return sprintf(buf, "%s\n", value.strval);
+	else if (off == POWER_SUPPLY_PROP_MAIN_STATUS)
+		return snprintf(buf, strlen(status_text[value.intval]) + 2,
+				"%s\n", status_text[value.intval]);
+	else if (off == POWER_SUPPLY_PROP_EXTERN_STATE)
+		return snprintf(buf, strlen(extern_state[value.intval]) + 2,
+				"%s\n", extern_state[value.intval]);
 
 	if (off == POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT)
 		return sprintf(buf, "%lld\n", value.int64val);
@@ -327,6 +336,8 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(max_input_current),
 	POWER_SUPPLY_ATTR(external_present),
 	POWER_SUPPLY_ATTR(power_required),
+	POWER_SUPPLY_ATTR(main_status),
+	POWER_SUPPLY_ATTR(extern_state),
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */
