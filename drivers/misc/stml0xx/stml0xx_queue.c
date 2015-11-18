@@ -43,6 +43,8 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
+#include <linux/dropbox.h>
+#include <linux/string.h>
 #include <linux/stml0xx.h>
 
 static int maxBufFill = -1;
@@ -51,6 +53,7 @@ static long long int as_queue_numadded;
 #define AS_QUEUE_SIZE_ESTIMATE (as_queue_numadded - as_queue_numremoved)
 #define AS_QUEUE_MAX_SIZE (1024)
 
+#define DROPBOX_QUEDROP_ISSUE "queuedrop_issue"
 /**
  * stml0xx_as_data_buffer_write() - put a sensor event on the as queue
  *
@@ -75,6 +78,7 @@ int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 	long long int queue_size;
 	struct as_node *new_tail;
 	struct stml0xx_android_sensor_data *buffer;
+	char dropbox_entry[256];
 
 	/* Get current queue size */
 	queue_size = AS_QUEUE_SIZE_ESTIMATE;
@@ -92,6 +96,15 @@ int stml0xx_as_data_buffer_write(struct stml0xx_data *ps_stml0xx,
 			dev_err(&stml0xx_misc_data->spi->dev,
 					"as data buffer full\n");
 			full_reported = true;
+			/*
+			* Send buffer queue full dropbox,
+			* avoid to send many bug2go event
+			*/
+			memset(dropbox_entry, 0, sizeof(dropbox_entry));
+			snprintf(dropbox_entry, sizeof(dropbox_entry),
+				"DT QUEUE drop for %d", type);
+			dropbox_queue_event_text(DROPBOX_QUEDROP_ISSUE,
+				dropbox_entry, strlen(dropbox_entry));
 		}
 		wake_up(&ps_stml0xx->stml0xx_as_data_wq);
 		return 0;
