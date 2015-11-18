@@ -61,6 +61,7 @@ static remote_spinlock_t scm_handoff_lock;
 enum {
 	MSM_LPM_LVL_DBG_SUSPEND_LIMITS = BIT(0),
 	MSM_LPM_LVL_DBG_IDLE_LIMITS = BIT(1),
+	MSM_LPM_LVL_DBG_IDLE_CLK = BIT(2),
 };
 
 enum debug_event {
@@ -125,6 +126,10 @@ module_param_named(
 static bool sleep_disabled;
 module_param_named(sleep_disabled,
 	sleep_disabled, bool, S_IRUGO | S_IWUSR | S_IWGRP);
+
+static int lpm_level_debug_mask;
+module_param_named(
+	debug_mask, lpm_level_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 s32 msm_cpuidle_get_deep_idle_latency(void)
 {
@@ -1025,6 +1030,7 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 	int64_t start_time = ktime_to_ns(ktime_get()), end_time;
 	struct power_params *pwr_params;
 	struct clk *cpu_clk = per_cpu(cpu_clocks, dev->cpu);
+	struct lpm_cluster_level *level;
 
 	if (idx < 0)
 		return -EINVAL;
@@ -1045,6 +1051,11 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 
 	if (need_resched())
 		goto exit;
+
+	level = &cluster->parent->levels[cluster->parent->last_level];
+	if ((lpm_level_debug_mask & MSM_LPM_LVL_DBG_IDLE_CLK) &&
+	    !strcmp(level->level_name, "system-cci-pc"))
+		clock_debug_print_enabled();
 
 	if (!use_psci) {
 		if (idx > 0)
