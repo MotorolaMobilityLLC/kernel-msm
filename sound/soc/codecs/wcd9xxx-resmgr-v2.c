@@ -430,7 +430,7 @@ int wcd_resmgr_disable_clk_block(struct wcd9xxx_resmgr_v2 *resmgr,
  */
 struct wcd9xxx_resmgr_v2 *wcd_resmgr_init(
 		struct wcd9xxx_core_resource *core_res,
-		struct snd_soc_codec *codec)
+		struct snd_soc_codec *codec, u8 intf_type)
 {
 	struct wcd9xxx_resmgr_v2 *resmgr;
 
@@ -449,6 +449,7 @@ struct wcd9xxx_resmgr_v2 *wcd_resmgr_init(
 	resmgr->codec = codec;
 	resmgr->core_res = core_res;
 	resmgr->sido_input_src = SIDO_SOURCE_INTERNAL;
+	resmgr->intf_type = intf_type;
 
 	return resmgr;
 }
