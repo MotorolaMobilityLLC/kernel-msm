@@ -1195,6 +1195,16 @@ static long stmvl53l0_ioctl(struct file *file,
 	return ret;
 }
 
+#ifdef CONFIG_COMPAT
+static long stmvl53l0_compat_ioctl(struct file *file,
+					unsigned int cmd, unsigned long arg)
+{
+	int ret;
+
+	ret = stmvl53l0_ioctl_handler(file, cmd, arg, compat_ptr(arg));
+	return ret;
+}
+#endif
 
 int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
 	void *client, uint8_t type)
@@ -1440,6 +1450,9 @@ static int stmvl53l0_stop(struct stmvl53l0_data *data)
 static const struct file_operations stmvl53l0_ranging_fops = {
 	.owner =			THIS_MODULE,
 	.unlocked_ioctl =	stmvl53l0_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl	= stmvl53l0_compat_ioctl,
+#endif
 	.open =				stmvl53l0_open,
 	.flush =			stmvl53l0_flush,
 	.release =			stmvl53l0_close,
