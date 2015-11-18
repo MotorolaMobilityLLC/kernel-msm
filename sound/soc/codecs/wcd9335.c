@@ -451,6 +451,12 @@ static const u32 vport_check_table[NUM_CODEC_DAIS] = {
 	0,					/* AIF_MIX1_PB */
 };
 
+static const u32 vport_i2s_check_table[NUM_CODEC_DAIS] = {
+	0,      /* AIF1_PB */
+	0,      /* AIF1_CAP */
+	0,      /* AIF2_PB */
+	0,      /* AIF2_CAP */
+};
 
 /* Codec supports 2 IIR filters */
 enum {
@@ -2120,7 +2126,8 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	vtable = vport_check_table[dai_id];
-	if (tasha_p->intf_type != WCD9XXX_INTERFACE_TYPE_SLIMBUS) {
+	if (tasha_p->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
+		vtable = vport_i2s_check_table[dai_id];
 		if (dai_id != AIF1_CAP) {
 			dev_err(codec->dev, "%s: invalid AIF for I2C mode\n",
 				__func__);
@@ -3754,6 +3761,13 @@ static int tasha_codec_lineout_dac_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static const struct snd_soc_dapm_widget tasha_dapm_i2s_widgets[] = {
+	SND_SOC_DAPM_SUPPLY("RX_I2S_CLK", WCD9335_DATA_HUB_DATA_HUB_RX_I2S_CTL,
+	0, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("TX_I2S_CLK", WCD9335_DATA_HUB_DATA_HUB_TX_I2S_CTL,
+	0, 0, NULL, 0),
+};
+
 static int tasha_codec_ear_dac_event(struct snd_soc_dapm_widget *w,
 				     struct snd_kcontrol *kcontrol,
 				     int event)
@@ -4840,6 +4854,18 @@ static const struct soc_enum cf_int7_1_enum =
 
 static const struct soc_enum cf_int8_1_enum =
 	SOC_ENUM_SINGLE(WCD9335_CDC_RX8_RX_PATH_CFG2, 0, 4, rx_cf_text);
+
+static const struct snd_soc_dapm_route audio_i2s_map[] = {
+	{"SLIM RX0", NULL, "RX_I2S_CLK"},
+	{"SLIM RX1", NULL, "RX_I2S_CLK"},
+	{"SLIM RX2", NULL, "RX_I2S_CLK"},
+	{"SLIM RX3", NULL, "RX_I2S_CLK"},
+
+	{"SLIM TX6 MUX", NULL, "TX_I2S_CLK"},
+	{"SLIM TX7 MUX", NULL, "TX_I2S_CLK"},
+	{"SLIM TX8 MUX", NULL, "TX_I2S_CLK"},
+	{"SLIM TX11 MUX", NULL, "TX_I2S_CLK"},
+};
 
 static const struct snd_soc_dapm_route audio_map[] = {
 
@@ -9410,8 +9436,8 @@ static int tasha_set_decimator_rate(struct snd_soc_dai *dai,
 			if ((tx_mux_sel == 0x1) || (tx_mux_sel == 0x2))
 				decimator = ((tx_port == 9) ? 7 : 6);
 		} else if (tx_port == 11) {
-			if ((tx_mux_sel >= 1) && (tx_mux_sel < 7))
-				decimator = tx_mux_sel - 1;
+			if ((tx_mux_sel >= 0) && (tx_mux_sel < 7))
+				decimator = 11;
 		} else if (tx_port == 13) {
 			if ((tx_mux_sel == 0x1) || (tx_mux_sel == 0x2))
 				decimator = 5;
@@ -9591,11 +9617,38 @@ static int tasha_hw_params(struct snd_pcm_substream *substream,
 {
 	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(dai->codec);
 	int ret;
-	int tx_fs_rate = -EINVAL;
+	struct snd_soc_codec *codec = dai->codec;
+	int fs_rate = -EINVAL, i2s_bit_mode;
 
 	pr_debug("%s: dai_name = %s DAI-ID %x rate %d num_ch %d\n", __func__,
-		 dai->name, dai->id, params_rate(params),
-		 params_channels(params));
+		dai->name, dai->id, params_rate(params),
+		params_channels(params));
+
+	switch (params_rate(params)) {
+	case 8000:
+		fs_rate = 0;
+		break;
+	case 16000:
+		fs_rate = 1;
+		break;
+	case 32000:
+		fs_rate = 3;
+		break;
+	case 48000:
+		fs_rate = 4;
+		break;
+	case 96000:
+		fs_rate = 5;
+		break;
+	case 192000:
+		fs_rate = 6;
+		break;
+	};
+	if (fs_rate < 0) {
+		dev_err(tasha->dev, "%s: Invalid TX sample rate: %d\n",
+				__func__, fs_rate);
+		return -EINVAL;
+	}
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
@@ -9607,47 +9660,52 @@ static int tasha_hw_params(struct snd_pcm_substream *substream,
 		}
 		switch (params_format(params)) {
 		case SNDRV_PCM_FORMAT_S16_LE:
+			i2s_bit_mode = 0x01;
 			tasha->dai[dai->id].bit_width = 16;
 			break;
 		case SNDRV_PCM_FORMAT_S24_LE:
+			i2s_bit_mode = 0x00;
 			tasha->dai[dai->id].bit_width = 24;
 			break;
 		}
-		tasha->dai[dai->id].rate = params_rate(params);
-		break;
+
+		if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
+			snd_soc_update_bits(codec,
+					WCD9335_DATA_HUB_DATA_HUB_RX_I2S_CTL,
+					0x20, i2s_bit_mode << 5);
+			if (params_rate(params) > 16000)
+				fs_rate--;
+			snd_soc_update_bits(codec,
+					WCD9335_DATA_HUB_DATA_HUB_RX_I2S_CTL,
+					0x1c, (fs_rate << 2));
+
+			snd_soc_update_bits(codec,
+				WCD9335_DATA_HUB_DATA_HUB_RX0_INP_CFG,
+				0x01, 0x01);
+
+			snd_soc_update_bits(codec,
+				WCD9335_DATA_HUB_DATA_HUB_RX1_INP_CFG,
+				0x01, 0x01);
+
+			snd_soc_update_bits(codec,
+				WCD9335_DATA_HUB_DATA_HUB_RX2_INP_CFG,
+				0x01, 0x01);
+
+			snd_soc_update_bits(codec,
+				WCD9335_DATA_HUB_DATA_HUB_RX3_INP_CFG,
+				0x01, 0x01);
+		} else
+			tasha->dai[dai->id].rate = params_rate(params);
+	break;
+
 	case SNDRV_PCM_STREAM_CAPTURE:
-		switch (params_rate(params)) {
-		case 8000:
-			tx_fs_rate = 0;
-			break;
-		case 16000:
-			tx_fs_rate = 1;
-			break;
-		case 32000:
-			tx_fs_rate = 3;
-			break;
-		case 48000:
-			tx_fs_rate = 4;
-			break;
-		case 96000:
-			tx_fs_rate = 5;
-			break;
-		case 192000:
-			tx_fs_rate = 6;
-			break;
-		};
-		if (tx_fs_rate < 0) {
-			dev_err(tasha->dev, "%s: Invalid TX sample rate: %d\n",
-				__func__, tx_fs_rate);
-			return -EINVAL;
-		}
 		if (dai->id != AIF4_VIFEED &&
 		    dai->id != AIF4_MAD_TX) {
-			ret = tasha_set_decimator_rate(dai, tx_fs_rate,
+			ret = tasha_set_decimator_rate(dai, fs_rate,
 					params_rate(params));
 			if (ret < 0) {
-				dev_err(tasha->dev, "%s: cannot set TX Decimator rate: %d\n",
-					__func__, tx_fs_rate);
+				dev_err(tasha->dev, "%s:cannot set TX\n"
+				"Decimator rate: %d\n", __func__, fs_rate);
 				return ret;
 			}
 		}
@@ -9655,18 +9713,49 @@ static int tasha_hw_params(struct snd_pcm_substream *substream,
 		switch (params_format(params)) {
 		case SNDRV_PCM_FORMAT_S16_LE:
 			tasha->dai[dai->id].bit_width = 16;
+			i2s_bit_mode = 0x01;
 			break;
 		case SNDRV_PCM_FORMAT_S24_LE:
 			tasha->dai[dai->id].bit_width = 24;
+			i2s_bit_mode = 0x00;
 			break;
 		case SNDRV_PCM_FORMAT_S32_LE:
 			tasha->dai[dai->id].bit_width = 32;
+			i2s_bit_mode = 0x00;
 			break;
 		default:
 			dev_err(tasha->dev, "%s: Invalid format 0x%x\n",
 				__func__, params_format(params));
 			return -EINVAL;
-		};
+		}
+		if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
+			snd_soc_update_bits(codec,
+				WCD9335_DATA_HUB_DATA_HUB_TX_I2S_CTL,
+				0x20, i2s_bit_mode << 5);
+			if (params_rate(params) > 16000)
+				fs_rate--;
+			snd_soc_update_bits(codec,
+				WCD9335_DATA_HUB_DATA_HUB_TX_I2S_CTL,
+				0x1c, fs_rate << 2);
+
+			snd_soc_update_bits(codec,
+			WCD9335_DATA_HUB_DATA_HUB_TX_I2S_SD0_L_CFG,
+			0x05, 0x05);
+
+			snd_soc_update_bits(codec,
+			WCD9335_DATA_HUB_DATA_HUB_TX_I2S_SD0_R_CFG,
+			0x05, 0x05);
+
+			snd_soc_update_bits(codec,
+			WCD9335_DATA_HUB_DATA_HUB_TX_I2S_SD1_L_CFG,
+			0x05, 0x05);
+
+			snd_soc_update_bits(codec,
+			WCD9335_DATA_HUB_DATA_HUB_TX_I2S_SD1_R_CFG,
+				0x05, 0x05);
+		} else
+			tasha->dai[dai->id].rate = params_rate(params);
+
 		break;
 	default:
 		pr_err("%s: Invalid stream type %d\n", __func__,
@@ -9681,6 +9770,41 @@ static int tasha_hw_params(struct snd_pcm_substream *substream,
 
 static int tasha_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
+	u8 val = 0;
+	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(dai->codec);
+
+	pr_debug("%s\n", __func__);
+	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+	case SND_SOC_DAIFMT_CBS_CFS:
+		/* CPU is master */
+		if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
+			if (dai->id == AIF1_CAP)
+				snd_soc_update_bits(dai->codec,
+					WCD9335_DATA_HUB_DATA_HUB_TX_I2S_CTL,
+					TASHA_I2S_MASTER_MODE_MASK, 0);
+			else if (dai->id == AIF1_PB)
+				snd_soc_update_bits(dai->codec,
+					WCD9335_DATA_HUB_DATA_HUB_RX_I2S_CTL,
+					TASHA_I2S_MASTER_MODE_MASK, 0);
+		}
+		break;
+	case SND_SOC_DAIFMT_CBM_CFM:
+		/* CPU is slave */
+		if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
+			val = TASHA_I2S_MASTER_MODE_MASK;
+			if (dai->id == AIF1_CAP)
+				snd_soc_update_bits(dai->codec,
+					WCD9335_DATA_HUB_DATA_HUB_TX_I2S_CTL,
+					val, val);
+			else if (dai->id == AIF1_PB)
+				snd_soc_update_bits(dai->codec,
+					WCD9335_DATA_HUB_DATA_HUB_RX_I2S_CTL,
+					val, val);
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -9826,6 +9950,65 @@ static struct snd_soc_dai_driver tasha_dai[] = {
 			.channels_min = 1,
 			.channels_max = 4,
 		 },
+		.ops = &tasha_dai_ops,
+	},
+};
+
+static struct snd_soc_dai_driver tasha_i2s_dai[] = {
+	{
+		.name = "tasha_i2s_rx1",
+		.id = AIF1_PB,
+		.playback = {
+			.stream_name = "AIF1 Playback",
+			.rates = WCD9335_RATES_MASK,
+			.formats = TASHA_FORMATS_S16_S24_LE,
+			.rate_max = 192000,
+			.rate_min = 8000,
+			.channels_min = 1,
+			.channels_max = 4,
+		},
+		.ops = &tasha_dai_ops,
+	},
+	{
+		.name = "tasha_i2s_tx1",
+		.id = AIF1_CAP,
+		.capture = {
+			.stream_name = "AIF1 Capture",
+			.rates = WCD9335_RATES_MASK,
+			.formats = TASHA_FORMATS,
+			.rate_max = 192000,
+			.rate_min = 8000,
+			.channels_min = 1,
+			.channels_max = 4,
+		},
+		.ops = &tasha_dai_ops,
+	},
+	{
+		.name = "tasha_i2s_rx2",
+		.id = AIF1_PB,
+		.playback = {
+			.stream_name = "AIF2 Playback",
+			.rates = WCD9335_RATES_MASK,
+			.formats = TASHA_FORMATS_S16_S24_LE,
+			.rate_max = 192000,
+			.rate_min = 8000,
+			.channels_min = 1,
+			.channels_max = 4,
+		},
+		.ops = &tasha_dai_ops,
+	},
+	{
+		.name = "tasha_i2s_tx2",
+		.id = AIF1_CAP,
+		.capture = {
+			.stream_name = "AIF2 Capture",
+			.rates = WCD9335_RATES_MASK,
+			.formats = TASHA_FORMATS,
+			.rate_max = 192000,
+			.rate_min = 8000,
+			.channels_min = 1,
+			.channels_max = 4,
+		},
 		.ops = &tasha_dai_ops,
 	},
 };
@@ -10146,7 +10329,10 @@ int tasha_mbhc_hs_detect(struct snd_soc_codec *codec,
 {
 	struct tasha_priv *tasha = snd_soc_codec_get_drvdata(codec);
 
-	return wcd_mbhc_start(&tasha->mbhc, mbhc_cfg);
+	if (mbhc_cfg->insert_detect)
+		return wcd_mbhc_start(&tasha->mbhc, mbhc_cfg);
+	else
+		return 0;
 }
 EXPORT_SYMBOL(tasha_mbhc_hs_detect);
 
@@ -11208,6 +11394,7 @@ static int tasha_codec_probe(struct snd_soc_codec *codec)
 	for (i = 0; i < COMPANDER_MAX; i++)
 		tasha->comp_enabled[i] = 0;
 
+	tasha->intf_type = wcd9xxx_get_intf_type();
 	tasha_update_reg_reset_values(codec);
 	pr_debug("%s: MCLK Rate = %x\n", __func__, control->mclk_rate);
 	if (control->mclk_rate == TASHA_MCLK_CLK_12P288MHZ)
@@ -11269,7 +11456,16 @@ static int tasha_codec_probe(struct snd_soc_codec *codec)
 		goto err_hwdep;
 	}
 
-	if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_SLIMBUS) {
+	if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
+		snd_soc_dapm_new_controls(dapm, tasha_dapm_i2s_widgets,
+			ARRAY_SIZE(tasha_dapm_i2s_widgets));
+		snd_soc_dapm_add_routes(dapm, audio_i2s_map,
+			ARRAY_SIZE(audio_i2s_map));
+		for (i = 0; i < ARRAY_SIZE(tasha_i2s_dai); i++) {
+			INIT_LIST_HEAD(&tasha->dai[i].wcd9xxx_ch_list);
+			init_waitqueue_head(&tasha->dai[i].dai_wait);
+		}
+	} else if (tasha->intf_type == WCD9XXX_INTERFACE_TYPE_SLIMBUS) {
 		for (i = 0; i < NUM_CODEC_DAIS; i++) {
 			INIT_LIST_HEAD(&tasha->dai[i].wcd9xxx_ch_list);
 			init_waitqueue_head(&tasha->dai[i].dai_wait);
@@ -11489,13 +11685,36 @@ static int tasha_swrm_bulk_write(void *handle, u32 *reg, u32 *val, size_t len)
 		bulk_reg[i+1].bytes = 4;
 	}
 	mutex_lock(&tasha->swr_write_lock);
-	ret = wcd9xxx_slim_bulk_write(wcd9xxx, bulk_reg, (len * 2), false);
-	if (ret)
-		dev_err(tasha->dev, "%s: swrm bulk write failed, ret: %d\n",
-			__func__, ret);
+
+	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C) {
+		for (i = 0; i < (len*2); i += 2) {
+			/* First Write the Data to register */
+			ret = wcd9xxx_bulk_write(&wcd9xxx->core_res,
+				swr_wr_data_base, 4, bulk_reg[i].buf);
+			if (ret < 0) {
+				pr_err("%s: WR Data Failure\n", __func__);
+				goto err;
+			}
+			/* Next Write Address */
+			ret = wcd9xxx_bulk_write(&wcd9xxx->core_res,
+				swr_wr_addr_base, 4, bulk_reg[i+1].buf);
+			if (ret < 0) {
+				pr_err("%s: WR Addr Failure\n", __func__);
+				goto err;
+			}
+		}
+	} else {
+		ret = wcd9xxx_slim_bulk_write(wcd9xxx, bulk_reg,
+				 (len * 2), false);
+		if (ret) {
+			dev_err(tasha->dev, "%s: swrm bulk write\n"
+				"failed, ret: %d\n", __func__, ret);
+			goto err;
+		}
+	}
+err:
 	mutex_unlock(&tasha->swr_write_lock);
 	kfree(bulk_reg);
-
 	return ret;
 }
 
@@ -11527,9 +11746,30 @@ static int tasha_swrm_write(void *handle, int reg, int val)
 	bulk_reg[1].bytes = 4;
 
 	mutex_lock(&tasha->swr_write_lock);
-	ret = wcd9xxx_slim_bulk_write(wcd9xxx, bulk_reg, 2, false);
-	if (ret < 0)
-		pr_err("%s: WR Data Failure\n", __func__);
+
+	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C) {
+		/* First Write the Data to register */
+		ret = wcd9xxx_bulk_write(&wcd9xxx->core_res,
+				swr_wr_data_base, 4, bulk_reg[0].buf);
+		if (ret < 0) {
+			pr_err("%s: WR Data Failure\n", __func__);
+			goto err;
+		}
+		/* Next Write Address */
+		ret = wcd9xxx_bulk_write(&wcd9xxx->core_res,
+				swr_wr_addr_base, 4, bulk_reg[1].buf);
+		if (ret < 0) {
+			pr_err("%s: WR Addr Failure\n", __func__);
+			goto err;
+		}
+	} else {
+		ret = wcd9xxx_slim_bulk_write(wcd9xxx, bulk_reg, 2, false);
+		if (ret < 0) {
+			pr_err("%s: WR Data Failure\n", __func__);
+			goto err;
+		}
+	}
+err:
 	mutex_unlock(&tasha->swr_write_lock);
 	return ret;
 }
@@ -11755,7 +11995,15 @@ static int tasha_probe(struct platform_device *pdev)
 	struct clk *wcd_ext_clk;
 	struct wcd9xxx_resmgr_v2 *resmgr;
 	struct wcd9xxx_power_region *cdc_pwr;
+	int modem_state;
 
+	modem_state = apr_get_modem_state();
+
+	if (modem_state == APR_SUBSYS_DOWN) {
+		pr_err("debug %s Modem is not loaded yet %d\n", __func__,
+				modem_state);
+		return -EPROBE_DEFER;
+	}
 	tasha = devm_kzalloc(&pdev->dev, sizeof(struct tasha_priv),
 			    GFP_KERNEL);
 	if (!tasha) {
@@ -11798,12 +12046,22 @@ static int tasha_probe(struct platform_device *pdev)
 				__func__);
 			goto cdc_reg_fail;
 		}
+	} else if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C) {
+		ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_tasha,
+					     tasha_i2s_dai,
+					     ARRAY_SIZE(tasha_i2s_dai));
+		if (ret) {
+			pr_err("%s: Codec registration failed\n",
+				__func__);
+			goto cdc_reg_fail;
+		}
 	}
 	/*
 	 * Init resource manager so that if child nodes such as SoundWire
 	 * requests for clock, resource manager can honor the request
 	 */
-	resmgr = wcd_resmgr_init(&tasha->wcd9xxx->core_res, NULL);
+	resmgr = wcd_resmgr_init(&tasha->wcd9xxx->core_res, NULL,
+						wcd9xxx_get_intf_type());
 	if (IS_ERR(resmgr)) {
 		ret = PTR_ERR(resmgr);
 		dev_err(&pdev->dev, "%s: Failed to initialize wcd resmgr\n",
@@ -11841,7 +12099,8 @@ static int tasha_probe(struct platform_device *pdev)
 resmgr_remove:
 	wcd_resmgr_remove(tasha->resmgr);
 unregister_codec:
-	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_SLIMBUS)
+	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_SLIMBUS ||
+	   (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C))
 		snd_soc_unregister_codec(&pdev->dev);
 cdc_reg_fail:
 	devm_kfree(&pdev->dev, cdc_pwr);

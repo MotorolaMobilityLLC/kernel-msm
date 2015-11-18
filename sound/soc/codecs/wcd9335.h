@@ -44,6 +44,8 @@
 #define WCD9335_ANC_DMIC_X2_FULL_RATE 1
 #define WCD9335_ANC_DMIC_X2_HALF_RATE 0
 
+#define TASHA_I2S_MASTER_MODE_MASK 0x02
+
 /* Number of input and output Slimbus port */
 enum {
 	TASHA_RX0 = 0,
@@ -119,6 +121,8 @@ extern void *tasha_get_afe_config(struct snd_soc_codec *codec,
 				  enum afe_config_type config_type);
 extern int tasha_cdc_mclk_enable(struct snd_soc_codec *codec, int enable,
 				 bool dapm);
+extern int tasha_mclk_enable(struct snd_soc_codec *codec, int mclk_enable,
+				bool dapm);
 extern int tasha_mbhc_hs_detect(struct snd_soc_codec *codec,
 				struct wcd_mbhc_config *mbhc_cfg);
 extern void tasha_mbhc_hs_detect_exit(struct snd_soc_codec *codec);
