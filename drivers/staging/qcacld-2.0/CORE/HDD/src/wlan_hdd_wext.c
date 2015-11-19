@@ -1910,9 +1910,18 @@ static int iw_set_mode(struct net_device *dev, struct iw_request_info *info,
 	return ret;
 }
 
+/**
+ * __iw_get_mode() - SIOCGIWMODE ioctl handler
+ * @dev: device upon which the ioctl was received
+ * @info: ioctl request information
+ * @wrqu: ioctl request data
+ * @extra: ioctl extra data
+ *
+ * Return: 0 on success, non-zero on error
+ */
 static int
-iw_get_mode(struct net_device *dev, struct iw_request_info *info,
-            union iwreq_data *wrqu, char *extra)
+__iw_get_mode(struct net_device *dev, struct iw_request_info *info,
+	      union iwreq_data *wrqu, char *extra)
 {
     hdd_wext_state_t *pWextState;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -1946,6 +1955,27 @@ iw_get_mode(struct net_device *dev, struct iw_request_info *info,
 
     EXIT();
     return 0;
+}
+
+/**
+ * iw_get_mode() - SSR wrapper for __iw_get_mode()
+ * @dev: pointer to net_device
+ * @info: pointer to iw_request_info
+ * @wrqu: pointer to iwreq_data
+ * @extra: pointer to extra ioctl payload
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int iw_get_mode(struct net_device *dev, struct iw_request_info *info,
+		       union iwreq_data *wrqu, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_get_mode(dev, info, wrqu, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 /**
