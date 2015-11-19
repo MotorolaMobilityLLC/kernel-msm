@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -31,6 +31,9 @@
 #include <adf_nbuf.h> /* adf_nbuf_t */
 #include <vos_getBin.h>
 #include "epping_main.h"
+
+/* HTC Control message receive timeout msec */
+#define HTC_CONTROL_RX_TIMEOUT     3000
 
 #ifdef DEBUG
 void DebugDumpBytes(A_UCHAR *buffer, A_UINT16 length, char *pDescription)
@@ -411,7 +414,7 @@ A_STATUS HTCRxCompletionHandler(
                 target->CtrlResponseProcessing = TRUE;
                 UNLOCK_HTC_RX(target);
 
-                adf_os_mutex_release(target->osdev, &target->CtrlResponseValid);
+                adf_os_complete(&target->CtrlResponseValid);
                 break;
             case HTC_MSG_SEND_SUSPEND_COMPLETE:
                 wow_nack = 0;
@@ -564,8 +567,7 @@ void HTCFlushRxHoldQueue(HTC_TARGET *target, HTC_ENDPOINT *pEndpoint)
 void HTCRecvInit(HTC_TARGET *target)
 {
     /* Initialize CtrlResponseValid to block */
-    adf_os_init_mutex(&target->CtrlResponseValid);
-    adf_os_mutex_acquire(target->osdev, &target->CtrlResponseValid);
+    adf_os_init_completion(&target->CtrlResponseValid);
 }
 
 
@@ -577,7 +579,10 @@ A_STATUS HTCWaitRecvCtrlMessage(HTC_TARGET *target)
     AR_DEBUG_PRINTF(ATH_DEBUG_TRC,("+HTCWaitCtrlMessageRecv\n"));
 
     /* Wait for BMI request/response transaction to complete */
-    while (adf_os_mutex_acquire(target->osdev, &target->CtrlResponseValid)) {
+    if(!adf_os_wait_for_completion_timeout(&target->CtrlResponseValid,
+        adf_os_msecs_to_ticks(HTC_CONTROL_RX_TIMEOUT))) {
+        ADF_BUG(0);
+        return A_ERROR;
     }
 
     AR_DEBUG_PRINTF(ATH_DEBUG_TRC,("-HTCWaitCtrlMessageRecv success\n"));
