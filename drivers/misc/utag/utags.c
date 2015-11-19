@@ -42,6 +42,7 @@
 #define UTAGS_MAX_DEFERRALS 5
 #define DRVNAME "utags"
 #define DEFAULT_ROOT "config"
+#define HW_ROOT "hw"
 
 static const struct file_operations utag_fops;
 struct ctrl;
@@ -120,7 +121,8 @@ struct ctrl {
 	struct platform_device *pdev;
 	struct proc_dir_entry *root;
 	char reload;
-	uint32_t csum;
+	uint32_t key;
+	size_t rsize;
 	struct list_head dir_list;
 	struct list_head node_list;
 	const char *dir_name;
@@ -134,10 +136,11 @@ static void clear_utags_directory(struct ctrl *ctrl);
  * Check util field of head utag for actual data size
  *
  */
-static ssize_t data_size(struct blkdev *cb)
+static size_t data_size(struct blkdev *cb)
 {
-	ssize_t bytes, rsize;
+	size_t bytes;
 	struct frozen_utag buf;
+	struct ctrl *ctrl = container_of(cb, struct ctrl, main);
 
 	bytes = kernel_read(cb->filep, 0, (void *) &buf, UTAG_MIN_TAG_SIZE);
 	if (UTAG_MIN_TAG_SIZE > bytes) {
@@ -145,13 +148,23 @@ static ssize_t data_size(struct blkdev *cb)
 		return 0;
 	}
 
-	rsize = ntohl(buf.util);
-	pr_debug("%s file (%s) head->size %zd\n", __func__, cb->name, rsize);
+	bytes = ntohl(buf.flags);
+	ctrl->key = ntohl(buf.util);
+	pr_debug("%s utag file (%s) saved size %zu block size %zu key %u\n",
+		__func__, cb->name, bytes, cb->size, ctrl->key);
 
-	if (!rsize || rsize > cb->size)
-		rsize = cb->size;
+	/* Until in sync with BL use saved size only for HW block */
+	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT))) {
+		pr_err("%s hw block logic utag", __func__);
+		if (!bytes || bytes > cb->size)
+			bytes = cb->size;
+	} else
+			bytes = cb->size;
 
-	return rsize;
+	ctrl->rsize = bytes;
+
+	pr_debug("%s utag reading %zu bytes\n", __func__, bytes);
+	return bytes;
 }
 
 /*
@@ -345,15 +358,6 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 	struct utag *head = NULL, *cur = NULL;
 	uint8_t *ptr = buf;
 
-	/*
-	 * make sure the block is at least big enough to hold header
-	 * and footer
-	 */
-	if (UTAG_MIN_TAG_SIZE * 2 > block_size) {
-		pr_err("%s invalid tags size\n", __func__);
-		return NULL;
-	}
-
 	while (1) {
 		struct frozen_utag *frozen;
 		uint8_t *next_ptr;
@@ -369,13 +373,13 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 
 		strlcpy(cur->name, frozen->name, MAX_UTAG_NAME - 1);
 		cur->flags = ntohl(frozen->flags);
+		cur->util = ntohl(frozen->util);
 		cur->size = ntohl(frozen->size);
 
 		if (!head) {
 			head = cur;
 
-			if (strcmp(head->name, UTAG_HEAD) ||
-				(0 != head->size)) {
+			if (strcmp(head->name, UTAG_HEAD)) {
 					pr_err("%s bad utags head\n", __func__);
 					goto err_free;
 			}
@@ -437,9 +441,9 @@ static void *freeze_tags(size_t block_size, struct utag *tags,
 {
 	size_t frozen_size = 0;
 	char *buf = NULL, *ptr;
-	const struct utag *cur = tags;
+	struct utag *cur = tags;
 	size_t zeros;
-	struct frozen_utag frozen;
+	struct frozen_utag frozen = { {0} };
 
 	/* Make sure the tags start with the HEAD marker. */
 	if (!tags || strncmp(tags->name, UTAG_HEAD, MAX_UTAG_NAME)) {
@@ -460,9 +464,6 @@ static void *freeze_tags(size_t block_size, struct utag *tags,
 
 	/* round up frozen_size to eMMC sector size */
 	frozen_size = TO_SECT_SIZE(frozen_size);
-	/* root utag stores size of entire image */
-	tags->util = frozen_size;
-	pr_debug("%s frozen size %zu\n", __func__, frozen_size);
 
 	/* do some more sanity checking */
 	if (!cur || cur->next) {
@@ -480,10 +481,13 @@ static void *freeze_tags(size_t block_size, struct utag *tags,
 		return NULL;
 
 	cur = tags;
+	/* root utag stores size of entire image in flags word */
+	cur->flags = frozen_size;
 	while (1) {
 		memcpy(frozen.name, cur->name, MAX_UTAG_NAME);
 		frozen.flags = htonl(cur->flags);
 		frozen.size = htonl(cur->size);
+		frozen.util = htonl(cur->util);
 
 		memcpy(ptr, &frozen, UTAG_MIN_TAG_SIZE);
 		ptr += UTAG_MIN_TAG_SIZE;
@@ -521,11 +525,21 @@ static void *freeze_tags(size_t block_size, struct utag *tags,
  */
 static struct utag *load_utags(struct blkdev *cb)
 {
-	ssize_t bytes;
+	size_t bytes;
 	struct utag *head = NULL;
 	void *data;
 
 	bytes = data_size(cb);
+
+	/*
+	 * make sure the block is at least big enough to hold header
+	 * and footer
+	 */
+	if (UTAG_MIN_TAG_SIZE * 2 > bytes) {
+		pr_err("%s invalid tags size %zu\n", __func__, bytes);
+		return NULL;
+	}
+
 	data = vmalloc(bytes);
 	if (!data)
 		return NULL;
