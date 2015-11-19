@@ -547,10 +547,13 @@ typedef enum {
      */
     WMI_WOW_UDP_SVC_OFLD_CMDID,
 
+    /* configure WOW host wakeup PIN pattern */
+    WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMDID,
+
     /* RTT measurement related cmd */
-    /** reques to make an RTT measurement */
+    /** request to make an RTT measurement */
     WMI_RTT_MEASREQ_CMDID=WMI_CMD_GRP_START_ID(WMI_GRP_RTT),
-    /** reques to report a tsf measurement */
+    /** request to report a tsf measurement */
     WMI_RTT_TSF_CMDID,
 
     /** spectral scan command */
@@ -6638,6 +6641,23 @@ typedef struct {
  */
 } WMI_WOW_UDP_SVC_OFLD_CMD_fixed_param;
 
+/*
+ * This structure is used to set the pattern for WOW host wakeup pin pulse
+ * pattern confirguration.
+ */
+typedef struct {
+    /*
+     * TLV tag and len; tag equals
+     * WMITLV_TAG_STRUC_WMI_WOW_HOSTWAKEUP_PIN_PATTERN_CONFIG_CMD_fixed_param
+     */
+    A_UINT32 tlv_header;
+    A_UINT32 enable; // 1: enable, 0: disable
+    A_UINT32 pin; // pin for host wakeup
+    A_UINT32 interval_low; // interval for keeping low voltage, unit: ms
+    A_UINT32 interval_high; // interval for keeping high voltage, unit: ms
+    A_UINT32 repeat_cnt;// repeat times for pulse (0xffffffff means forever)
+} WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMD_fixed_param;
+
 typedef struct  wow_event_info_s {
     A_UINT32    tlv_header;     /* TLV tag and len; tag equals WMITLV_TAG_STRUC_WOW_EVENT_INFO_fixed_param  */
     A_UINT32    vdev_id;
@@ -11586,7 +11606,7 @@ typedef struct {
     WMI_LRO_INFO_TCP_FLAG_VALS_NUMBITS, \
     tcp_flag_values)
 #define WMI_LRO_INFO_TCP_FLAG_VALS_GET(tcp_flag_u32) \
-    WMI_SET_BITS(tcp_flag_u32, \
+    WMI_GET_BITS(tcp_flag_u32, \
     WMI_LRO_INFO_TCP_FLAG_VALS_BITPOS, \
     WMI_LRO_INFO_TCP_FLAG_VALS_NUMBITS)
 
@@ -11599,7 +11619,7 @@ typedef struct {
     WMI_LRO_INFO_TCP_FLAGS_MASK_NUMBITS, \
     tcp_flags_mask)
 #define WMI_LRO_INFO_TCP_FLAGS_MASK_GET(tcp_flag_u32) \
-    WMI_SET_BITS(tcp_flag_u32, \
+    WMI_GET_BITS(tcp_flag_u32, \
     WMI_LRO_INFO_TCP_FLAGS_MASK_BITPOS, \
     WMI_LRO_INFO_TCP_FLAGS_MASK_NUMBITS)
 
