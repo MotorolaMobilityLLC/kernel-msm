@@ -709,6 +709,11 @@ void
 ol_txrx_pdev_detach(ol_txrx_pdev_handle pdev, int force)
 {
     int i;
+    /*checking to ensure txrx pdev structure is not NULL */
+    if (!pdev) {
+        TXRX_PRINT(TXRX_PRINT_LEVEL_ERR, "NULL pdev passed to %s\n", __func__);
+        return;
+    }
     /* preconditions */
     TXRX_ASSERT2(pdev);
 
