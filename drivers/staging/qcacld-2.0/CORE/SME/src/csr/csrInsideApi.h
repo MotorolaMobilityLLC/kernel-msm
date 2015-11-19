@@ -219,6 +219,9 @@ typedef struct
                                                 ( eCsrForcedDisassocMICFailure ==\
                                                                           (pCommand)->u.roamCmd.roamReason ) ) )
 
+#define CSR_IS_CLOSE_SESSION_COMMAND(pCommand) \
+ ((pCommand)->command == eSmeCommandDelStaSession)
+
 eCsrRoamState csrRoamStateChange( tpAniSirGlobal pMac, eCsrRoamState NewRoamState, tANI_U8 sessionId);
 eHalStatus csrScanningStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf );
 void csrRoamingStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf );
@@ -1058,3 +1061,5 @@ void csrClearVotesForCountryInfo(tpAniSirGlobal pMac);
 eHalStatus csrSetHT2040Mode(tpAniSirGlobal pMac, tANI_U32 sessionId,
                      ePhyChanBondState cbMode, tANI_BOOLEAN obssEnabled);
 #endif
+eHalStatus csr_prepare_disconnect_command(tpAniSirGlobal mac,
+                                    tANI_U32 session_id, tSmeCmd **sme_cmd);

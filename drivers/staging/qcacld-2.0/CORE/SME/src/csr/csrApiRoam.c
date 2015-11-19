@@ -7576,6 +7576,34 @@ eHalStatus csrRoamProcessDisassocDeauth( tpAniSirGlobal pMac, tSmeCmd *pCommand,
     return (status);
 }
 
+/**
+ * csr_prepare_disconnect_command() - function to prepare disconnect command
+ * @mac: pointer to global mac structure
+ * @session_id: sme session index
+ * @sme_cmd: pointer to sme command being prepared
+ *
+ * Function to prepare internal sme disconnect command
+ * Return: eHAL_STATUS_SUCCESS on success else eHAL_STATUS_RESOURCES on failure
+ */
+
+eHalStatus csr_prepare_disconnect_command(tpAniSirGlobal mac,
+                                        tANI_U32 session_id, tSmeCmd **sme_cmd)
+{
+	tSmeCmd *command;
+
+	command = csrGetCommandBuffer(mac);
+	if (!command) {
+		smsLog(mac, LOGE, FL("fail to get command buffer"));
+		return eHAL_STATUS_RESOURCES;
+	}
+
+	command->command = eSmeCommandRoam;
+	command->sessionId = (tANI_U8)session_id;
+	command->u.roamCmd.roamReason = eCsrForcedDisassoc;
+
+	*sme_cmd = command;
+	return eHAL_STATUS_SUCCESS;
+}
 
 eHalStatus csrRoamIssueDisassociateCmd( tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrRoamDisconnectReason reason )
 {

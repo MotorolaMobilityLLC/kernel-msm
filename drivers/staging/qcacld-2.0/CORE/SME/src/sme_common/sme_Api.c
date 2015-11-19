@@ -825,6 +825,25 @@ sme_process_cmd:
                 if( CSR_IS_WAIT_FOR_KEY( pMac, pCommand->sessionId ) &&
                     !CSR_IS_DISCONNECT_COMMAND( pCommand ) )
                 {
+                    if (CSR_IS_CLOSE_SESSION_COMMAND(pCommand)) {
+                        tSmeCmd *sme_cmd = NULL;
+
+                        smsLog(pMac, LOGE,
+                                 FL("SessionId %d: close session command issued while waiting for key, issue disconnect first"),
+                                 pCommand->sessionId);
+                        status = csr_prepare_disconnect_command(pMac,
+                                             pCommand->sessionId, &sme_cmd);
+                        if (HAL_STATUS_SUCCESS(status) && sme_cmd) {
+                            csrLLLock(&pMac->sme.smeCmdPendingList);
+                            csrLLInsertHead(&pMac->sme.smeCmdPendingList,
+                                              &sme_cmd->Link, LL_ACCESS_NOLOCK);
+                            pEntry = csrLLPeekHead(&pMac->sme.smeCmdPendingList,
+                                                      LL_ACCESS_NOLOCK);
+                            csrLLUnlock(&pMac->sme.smeCmdPendingList);
+                            goto sme_process_cmd;
+                        }
+                    }
+
                     if( !CSR_IS_SET_KEY_COMMAND( pCommand ) )
                     {
                         csrLLUnlock( &pMac->sme.smeCmdActiveList );
