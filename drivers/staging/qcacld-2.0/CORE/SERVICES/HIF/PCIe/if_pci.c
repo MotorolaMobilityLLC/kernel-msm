@@ -2178,8 +2178,10 @@ void hif_pci_shutdown(struct pci_dev *pdev)
 
     hif_dump_pipe_debug_count(sc->hif_device);
 
-    if (!WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
+    if (!WLAN_IS_EPPING_ENABLED(vos_get_conparam())) {
+        hif_disable_isr(scn);
         hdd_wlan_shutdown();
+    }
 
     mem = (void __iomem *)sc->mem;
 

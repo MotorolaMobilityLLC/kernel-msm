@@ -8999,7 +8999,10 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
 
             //Indicate disconnect event to supplicant if associated previously
             if (eConnectionState_Associated == connState ||
-                eConnectionState_IbssConnected == connState )
+                eConnectionState_IbssConnected == connState ||
+                eConnectionState_NotConnected == connState ||
+                eConnectionState_IbssDisconnected == connState ||
+                eConnectionState_Disconnecting == connState)
             {
                union iwreq_data wrqu;
                memset(&wrqu, '\0', sizeof(wrqu));
