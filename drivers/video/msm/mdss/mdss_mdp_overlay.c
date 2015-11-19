@@ -2737,7 +2737,8 @@ int mdss_mdp_overlay_vsync_ctrl(struct msm_fb_data_type *mfd, int en)
 		goto exit;
 	}
 	if (!ctl->panel_data->panel_info.cont_splash_enabled
-			&& !mdss_mdp_ctl_is_power_on(ctl)) {
+		&& (!mdss_mdp_ctl_is_power_on(ctl) ||
+		mdss_panel_is_power_on_ulp(ctl->power_state))) {
 		pr_debug("fb%d vsync pending first update en=%d\n",
 				mfd->index, en);
 		rc = -EPERM;
