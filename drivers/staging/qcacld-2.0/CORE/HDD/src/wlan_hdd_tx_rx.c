@@ -1778,11 +1778,14 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
    while (NULL != skb) {
       skb_next = skb->next;
 
-      if ((pHddStaCtx->conn_info.proxyARPService) &&
-         cfg80211_is_gratuitous_arp_unsolicited_na(skb)) {
+      if (((pHddStaCtx->conn_info.proxyARPService) &&
+         cfg80211_is_gratuitous_arp_unsolicited_na(skb)) ||
+         vos_is_load_unload_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
             ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
             VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
-               "%s: Dropping HS 2.0 Gratuitous ARP or Unsolicited NA", __func__);
+               "%s: Dropping HS 2.0 Gratuitous ARP or Unsolicited NA"
+               " else dropping as Driver load/unload is in progress",
+               __func__);
             kfree_skb(skb);
 
             skb = skb_next;
