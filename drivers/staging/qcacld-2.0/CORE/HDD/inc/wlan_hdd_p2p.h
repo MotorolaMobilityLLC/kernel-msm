@@ -190,6 +190,4 @@ void wlan_hdd_cleanup_remain_on_channel_ctx(hdd_adapter_t *pAdapter);
 #define MAX_ROC_REQ_QUEUE_ENTRY 10
 
 void wlan_hdd_roc_request_dequeue(struct work_struct *work);
-void hdd_p2p_roc_work_queue(struct work_struct *work);
-
 #endif // __P2P_H

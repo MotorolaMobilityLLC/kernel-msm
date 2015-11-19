@@ -705,7 +705,7 @@ void wlan_hdd_roc_request_dequeue(struct work_struct *work)
 	int ret = 0;
 	hdd_roc_req_t *hdd_roc_req;
 	hdd_context_t *hdd_ctx =
-			container_of(work, hdd_context_t, rocReqWork);
+			container_of(work, hdd_context_t, rocReqWork.work);
 
         if (0 != (wlan_hdd_validate_context(hdd_ctx))) {
                 VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -845,7 +845,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
                     pRemainChanCtx->duration = HDD_P2P_MAX_ROC_DURATION;
 
                 wlan_hdd_roc_request_enqueue(pAdapter, pRemainChanCtx);
-                schedule_delayed_work(&pAdapter->roc_work,
+                schedule_delayed_work(&pHddCtx->rocReqWork,
                 msecs_to_jiffies(pHddCtx->cfg_ini->p2p_listen_defer_interval));
                 hddLog(LOG1, "Defer interval is %hu, pAdapter %p",
                        pHddCtx->cfg_ini->p2p_listen_defer_interval, pAdapter);
@@ -880,7 +880,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
      * schedule the RoC work directly.
      */
     if (isBusy == VOS_FALSE) {
-        schedule_work(&pHddCtx->rocReqWork);
+        schedule_delayed_work(&pHddCtx->rocReqWork, 0);
     }
 
     return 0;
@@ -1685,31 +1685,6 @@ int wlan_hdd_cfg80211_mgmt_tx_cancel_wait(struct wiphy *wiphy,
 }
 #endif
 
-/**
- * __hdd_p2p_roc_work_queue() - roc delayed work queue handler
- * @work: Pointer to work queue struct
- *
- * Return: none
- */
-static void __hdd_p2p_roc_work_queue(struct work_struct *work)
-{
-	wlan_hdd_roc_request_dequeue(work);
-}
-
-/**
- * hdd_p2p_roc_work_queue() - roc delayed work queue handler
- * @work: Pointer to work queue struct
- *
- * Return: none
- */
-void hdd_p2p_roc_work_queue(struct work_struct *work)
-{
-	vos_ssr_protect(__func__);
-	__hdd_p2p_roc_work_queue(work);
-	vos_ssr_unprotect(__func__);
-
-	return;
-}
 
 void hdd_sendActionCnf( hdd_adapter_t *pAdapter, tANI_BOOLEAN actionSendSuccess )
 {

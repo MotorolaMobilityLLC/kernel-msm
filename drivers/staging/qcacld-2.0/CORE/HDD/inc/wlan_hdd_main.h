@@ -996,8 +996,6 @@ struct hdd_adapter_s
     /* Time stamp for last completed RoC request */
     v_TIME_t lastRocTs;
 
-    /* work queue to defer the back to back p2p_listen */
-    struct delayed_work roc_work;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -1449,6 +1447,9 @@ struct hdd_context_s
     /* Time since boot up to extscan start (in micro seconds) */
     v_U64_t ext_scan_start_since_boot;
 
+    /* RoC request queue and work */
+    struct delayed_work rocReqWork;
+
 #ifdef FEATURE_WLAN_EXTSCAN
     struct hdd_ext_scan_context ext_scan_context;
 #endif /* FEATURE_WLAN_EXTSCAN */
@@ -1471,8 +1472,6 @@ struct hdd_context_s
     /* Is htTxSTBC supported by target */
     uint8_t   ht_tx_stbc_supported;
 
-    /* RoC request queue and work */
-    struct work_struct rocReqWork;
     hdd_list_t hdd_roc_req_q;
 
 #ifdef WLAN_FEATURE_OFFLOAD_PACKETS
