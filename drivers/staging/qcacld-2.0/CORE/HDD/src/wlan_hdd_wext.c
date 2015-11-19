@@ -4906,8 +4906,17 @@ static int iw_set_retry(struct net_device *dev, struct iw_request_info *info,
 	return ret;
 }
 
-static int iw_get_retry(struct net_device *dev, struct iw_request_info *info,
-           union iwreq_data *wrqu, char *extra)
+/**
+ * __iw_get_retry() - SIOCGIWRETRY ioctl handler
+ * @dev: device upon which the ioctl was received
+ * @info: ioctl request information
+ * @wrqu: ioctl request data
+ * @extra: ioctl extra data
+ *
+ * Return: 0 on success, non-zero on error
+ */
+static int __iw_get_retry(struct net_device *dev, struct iw_request_info *info,
+			  union iwreq_data *wrqu, char *extra)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -4957,6 +4966,27 @@ static int iw_get_retry(struct net_device *dev, struct iw_request_info *info,
    EXIT();
 
    return 0;
+}
+
+/**
+ * iw_get_retry() - SSR wrapper for __iw_get_retry()
+ * @dev: pointer to net_device
+ * @info: pointer to iw_request_info
+ * @wrqu: pointer to iwreq_data
+ * @extra: pointer to extra ioctl payload
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int iw_get_retry(struct net_device *dev, struct iw_request_info *info,
+			union iwreq_data *wrqu, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_get_retry(dev, info, wrqu, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 /**
