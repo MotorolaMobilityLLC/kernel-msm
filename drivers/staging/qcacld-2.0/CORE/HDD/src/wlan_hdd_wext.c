@@ -2708,9 +2708,17 @@ static int iw_get_genie(struct net_device *dev,
     return 0;
 }
 
-static int iw_get_encode(struct net_device *dev,
-                       struct iw_request_info *info,
-                       struct iw_point *dwrq, char *extra)
+/**
+ * __iw_get_encode() - SIOCGIWENCODE ioctl handler
+ * @dev: device upon which the ioctl was received
+ * @info: ioctl request information
+ * @dwrq: ioctl request data
+ * @extra: ioctl extra data
+ *
+ * Return: 0 on success, non-zero on error
+ */
+static int __iw_get_encode(struct net_device *dev, struct iw_request_info *info,
+                           struct iw_point *dwrq, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
@@ -2777,6 +2785,27 @@ static int iw_get_encode(struct net_device *dev,
     }
     EXIT();
     return 0;
+}
+
+/**
+ * iw_get_encode() - SSR wrapper for __iw_get_encode()
+ * @dev: pointer to net_device
+ * @info: pointer to iw_request_info
+ * @dwrq: pointer to encoding information
+ * @extra: pointer to extra ioctl payload
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int iw_get_encode(struct net_device *dev, struct iw_request_info *info,
+			 struct iw_point *dwrq, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_get_encode(dev, info, dwrq, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 #define PAE_ROLE_AUTHENTICATOR 1 // =1 for authenticator,
