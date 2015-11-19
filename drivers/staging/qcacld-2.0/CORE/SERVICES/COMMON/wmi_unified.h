@@ -488,6 +488,8 @@ typedef enum {
     WMI_AP_PS_PEER_PARAM_CMDID=WMI_CMD_GRP_START_ID(WMI_GRP_AP_PS),
     /** set AP UAPSD coex pecific param */
     WMI_AP_PS_PEER_UAPSD_COEX_CMDID,
+    /** set Enhanced Green AP param */
+    WMI_AP_PS_EGAP_PARAM_CMDID,
 
 
     /** Rate-control specific commands */
@@ -960,6 +962,9 @@ typedef enum {
 
     /*send noa info to host when noa is changed for beacon tx offload enable*/
     WMI_P2P_NOA_EVENTID,
+
+    /** Send EGAP Info to host */
+    WMI_AP_PS_EGAP_INFO_EVENTID = WMI_EVT_GRP_START_ID(WMI_GRP_AP_PS),
 
     /* send pdev resume event to host after pdev resume. */
     WMI_PDEV_RESUME_EVENTID = WMI_EVT_GRP_START_ID(WMI_GRP_SUSPEND),
@@ -4794,6 +4799,75 @@ typedef struct {
             A_UINT32 tsf_offset_low;
         } wmi_ap_powersave_peer_uapsd_coex_cmd;
 
+typedef enum {
+    WMI_AP_PS_EGAP_F_ENABLE_PHYERR_DETECTION      = 0x0001,
+    WMI_AP_PS_EGAP_F_ENABLE_PWRSAVE_BY_PS_STATE   = 0x0002,
+    WMI_AP_PS_EGAP_F_ENABLE_PWRSAVE_BY_INACTIVITY = 0x0004,
+
+    WMI_AP_PS_EGAP_FLAG_MAX = 0x8000
+} wmi_ap_ps_egap_flag_type;
+
+/**
+ * configure ehanced green ap parameters
+ */
+typedef struct {
+    /*
+     * TLV tag and len; tag equals
+     * wmi_ap_powersave_egap_param_cmd_fixed_param
+     */
+    A_UINT32 tlv_header;
+    /** Enable enhanced green ap
+     * 0 -> disabled
+     * 1 -> enabled
+     */
+    A_UINT32 enable;
+    /** The param indicates a duration that all STAs connected
+     * to S-AP have no traffic.
+     */
+    A_UINT32 inactivity_time; /* in unit of milliseconds */
+    /** The param indicates a duration that all STAs connected
+     * to S-AP have no traffic, after all STAs have entered powersave.
+     */
+    A_UINT32 wait_time; /* in unit of milliseconds */
+    /** The param is used to turn on/off some functions within E-GAP.
+     */
+    A_UINT32 flags; /* wmi_ap_ps_egap_flag_type bitmap */
+} wmi_ap_ps_egap_param_cmd_fixed_param;
+
+typedef enum {
+    WMI_AP_PS_EGAP_STATUS_IDLE        = 1,
+    WMI_AP_PS_EGAP_STATUS_PWRSAVE_OFF = 2,
+    WMI_AP_PS_EGAP_STATUS_PWRSAVE_ON  = 3,
+
+    WMI_AP_PS_EGAP_STATUS_MAX = 15
+} wmi_ap_ps_egap_status_type;
+
+/**
+ * send ehanced green ap status to host
+ */
+typedef struct {
+    A_UINT32 tlv_header;
+    /** The param indicates a mac under dual-mac */
+    A_UINT32 mac_id;
+    /** The param indicates the current tx chainmask with the mac id. */
+    A_UINT32 tx_chainmask;
+    /** The param indicates the current rx chainmask with the mac id. */
+    A_UINT32 rx_chainmask;
+} wmi_ap_ps_egap_info_chainmask_list;
+
+typedef struct {
+    /*
+     * TLV tag and len; tag equals
+     * wmi_ap_powersave_egap_param_cmd_fixed_param
+     */
+    A_UINT32 tlv_header;
+    /** Enhanced green ap status (WMI_AP_PS_EGAP_STATUS). */
+    A_UINT32 status;
+/* This TLV is followed by
+ *     wmi_ap_ps_egap_info_chainmask_list chainmask_list[];
+ */
+} wmi_ap_ps_egap_info_event_fixed_param;
+
         /* 128 clients = 4 words */
         /* WMI_TIM_BITMAP_ARRAY_SIZE can't be modified without breaking the compatibility */
         #define WMI_TIM_BITMAP_ARRAY_SIZE 4
@@ -6456,10 +6530,16 @@ typedef enum {
     WOW_IFACE_PAUSE_DISABLED
 } WOW_IFACE_STATUS;
 
+enum {
+    /* some win10 platfrom will not assert pcie_reset for wow.*/
+    WMI_WOW_FLAG_IGNORE_PCIE_RESET = 0x00000001,
+};
+
 typedef struct {
     A_UINT32    tlv_header;     /* TLV tag and len; tag equals WMITLV_TAG_STRUC_wmi_wow_enable_cmd_fixed_param  */
     A_UINT32    enable;
     A_UINT32 pause_iface_config;
+    A_UINT32 flags;  /* WMI_WOW_FLAG enums */
 } wmi_wow_enable_cmd_fixed_param;
 
 typedef struct {

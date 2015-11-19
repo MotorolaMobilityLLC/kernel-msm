@@ -597,6 +597,8 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_extscan_configure_mawc_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_peer_assoc_conf_event_fixed_param,
     WMITLV_TAG_STRUC_wmi_wow_hostwakeup_gpio_pin_pattern_config_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_ap_ps_egap_param_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_ap_ps_egap_info_event_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -832,7 +834,8 @@ typedef enum {
     OP(WMI_ROAM_CONFIGURE_MAWC_CMDID) \
     OP(WMI_NLO_CONFIGURE_MAWC_CMDID) \
     OP(WMI_EXTSCAN_CONFIGURE_MAWC_CMDID) \
-    OP(WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMDID)
+    OP(WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMDID) \
+    OP(WMI_AP_PS_EGAP_PARAM_CMDID)
 /*
  * IMPORTANT: Please add _ALL_ WMI Events Here.
  * Otherwise, these WMI TLV Functions will be process them.
@@ -946,7 +949,8 @@ typedef enum {
     OP(WMI_DIAG_EVENT_LOG_SUPPORTED_EVENTID) \
     OP(WMI_MGMT_TX_COMPLETION_EVENTID) \
     OP(WMI_MAWC_ENABLE_SENSOR_EVENTID) \
-    OP(WMI_PEER_ASSOC_CONF_EVENTID)
+    OP(WMI_PEER_ASSOC_CONF_EVENTID) \
+    OP(WMI_AP_PS_EGAP_INFO_EVENTID)
 
 /* TLV definitions of WMI commands */
 
@@ -1335,6 +1339,13 @@ WMITLV_CREATE_PARAM_STRUC(WMI_SET_ARP_NS_OFFLOAD_CMDID);
 #define WMITLV_TABLE_WMI_AP_PS_PEER_PARAM_CMDID(id,op,buf,len) \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_ap_ps_peer_cmd_fixed_param, wmi_ap_ps_peer_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_AP_PS_PEER_PARAM_CMDID);
+
+/* AP PS enhanced green ap param Cmd */
+#define WMITLV_TABLE_WMI_AP_PS_EGAP_PARAM_CMDID(id,op,buf,len) \
+    WMITLV_ELEM(id, op, buf, len,\
+        WMITLV_TAG_STRUC_wmi_ap_ps_egap_param_cmd_fixed_param,\
+        wmi_ap_ps_egap_param_cmd_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_AP_PS_EGAP_PARAM_CMDID);
 
 /* Profile Trigger Cmd */
 #define WMITLV_TABLE_WMI_WLAN_PROFILE_TRIGGER_CMDID(id,op,buf,len) \
@@ -2794,6 +2805,15 @@ WMITLV_CREATE_PARAM_STRUC(WMI_OFFLOAD_BCN_TX_STATUS_EVENTID);
 WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_p2p_noa_event_fixed_param, wmi_p2p_noa_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
 WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_p2p_noa_info, wmi_p2p_noa_info, p2p_noa_info, WMITLV_SIZE_FIX)
     WMITLV_CREATE_PARAM_STRUC(WMI_P2P_NOA_EVENTID);
+
+    /* AP PS enhanced green ap Event */
+#define WMITLV_TABLE_WMI_AP_PS_EGAP_INFO_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id, op, buf, len,\
+        WMITLV_TAG_STRUC_wmi_ap_ps_egap_info_event_fixed_param,\
+        wmi_ap_ps_egap_info_event_fixed_param, fixed_param, WMITLV_SIZE_FIX) \
+    WMITLV_ELEM(id, op, buf, len, WMITLV_TAG_ARRAY_STRUC,\
+        wmi_ap_ps_egap_info_chainmask_list, chainmask_list, WMITLV_SIZE_VAR)
+WMITLV_CREATE_PARAM_STRUC(WMI_AP_PS_EGAP_INFO_EVENTID);
 
 #define WMITLV_TABLE_WMI_PEER_INFO_EVENTID(id,op,buf,len)                                                                                                 \
 WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_peer_info_event_fixed_param, wmi_peer_info_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)               \
