@@ -595,6 +595,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_roam_configure_mawc_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_nlo_configure_mawc_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_extscan_configure_mawc_cmd_fixed_param,
+    WMITLV_TAG_STRUC_wmi_peer_assoc_conf_event_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -942,7 +943,8 @@ typedef enum {
     OP(WMI_SOC_SET_DUAL_MAC_CONFIG_RESP_EVENTID) \
     OP(WMI_DIAG_EVENT_LOG_SUPPORTED_EVENTID) \
     OP(WMI_MGMT_TX_COMPLETION_EVENTID) \
-    OP(WMI_MAWC_ENABLE_SENSOR_EVENTID)
+    OP(WMI_MAWC_ENABLE_SENSOR_EVENTID) \
+    OP(WMI_PEER_ASSOC_CONF_EVENTID)
 
 /* TLV definitions of WMI commands */
 
@@ -2842,6 +2844,11 @@ WMITLV_CREATE_PARAM_STRUC(WMI_HOST_AUTO_SHUTDOWN_EVENTID);
 #define WMITLV_TABLE_WMI_PEER_STATE_EVENTID(id,op,buf,len)                                     \
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_peer_state_event_fixed_param, wmi_peer_state_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 WMITLV_CREATE_PARAM_STRUC(WMI_PEER_STATE_EVENTID);
+
+/* peer assoc conf Event */
+#define WMITLV_TABLE_WMI_PEER_ASSOC_CONF_EVENTID(id,op,buf,len) \
+    WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_wmi_peer_assoc_conf_event_fixed_param, wmi_peer_assoc_conf_event_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+WMITLV_CREATE_PARAM_STRUC(WMI_PEER_ASSOC_CONF_EVENTID);
 
 /* D0-WOW Disable Ack event */
 #define WMITLV_TABLE_WMI_D0_WOW_DISABLE_ACK_EVENTID(id,op,buf,len) \

@@ -124,6 +124,7 @@ typedef  enum  {
     WMI_SERVICE_MGMT_TX_WMI,          /* Mgmt Tx via WMI interface */
     WMI_SERVICE_EXT_MSG,              /* WMI_SERVICE_READY_EXT msg follows */
     WMI_SERVICE_MAWC,                 /* Motion Aided WiFi Connectivity (MAWC)*/
+    WMI_SERVICE_PEER_ASSOC_CONF,      /* target will send ASSOC_CONF after ASSOC_CMD is processed */
 
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;
