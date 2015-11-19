@@ -231,6 +231,7 @@ typedef enum {
     WMI_GRP_SOC,
     WMI_GRP_PKT_FILTER,
     WMI_GRP_MAWC,
+    WMI_GRP_PMF_OFFLOAD,
 } WMI_GRP_ID;
 
 #define WMI_CMD_GRP_START_ID(grp_id) (((grp_id) << 12) | 0x1)
@@ -835,6 +836,9 @@ typedef enum {
 
      /** Motion Aided WiFi Connectivity (MAWC) commands */
     WMI_MAWC_SENSOR_REPORT_IND_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_MAWC),
+
+    /** WMI commands related to PMF 11w Offload */
+    WMI_PMF_OFFLOAD_SET_SA_QUERY_CMDID = WMI_CMD_GRP_START_ID(WMI_GRP_PMF_OFFLOAD),
 } WMI_CMD_ID;
 
 typedef enum {
@@ -6361,6 +6365,7 @@ typedef enum wmi_peer_sta_kickout_reason {
     WMI_PEER_STA_KICKOUT_REASON_INACTIVITY = 2,
     WMI_PEER_STA_KICKOUT_REASON_IBSS_DISCONNECT = 3,
     WMI_PEER_STA_KICKOUT_REASON_TDLS_DISCONNECT = 4,    /* TDLS peer has disappeared. All tx is failing */
+    WMI_PEER_STA_KICKOUT_REASON_SA_QUERY_TIMEOUT = 5,
 } PEER_KICKOUT_REASON;
 
 typedef struct {
@@ -7534,6 +7539,13 @@ typedef struct {
     A_UINT8     KCK[GTK_OFFLOAD_KCK_BYTES];     /* key confirmation key */
     A_UINT8     replay_counter[GTK_REPLAY_COUNTER_BYTES];  /* replay counter for re-key */
 }WMI_GTK_OFFLOAD_CMD_fixed_param;
+
+typedef struct {
+    A_UINT32 tlv_header;  /** TLV tag and len; tag equals WMITLV_TAG_STRUC_WMI_PMF_OFFLOAD_SET_SA_QUERY_CMD_fixed_param */
+    A_UINT32 vdev_id;
+    A_UINT32 sa_query_retry_interval;  /* in msec */
+    A_UINT32 sa_query_max_retry_count;
+} WMI_PMF_OFFLOAD_SET_SA_QUERY_CMD_fixed_param;
 
 typedef enum {
     WMI_STA_KEEPALIVE_METHOD_NULL_FRAME = 1,                   /* 802.11 NULL frame */

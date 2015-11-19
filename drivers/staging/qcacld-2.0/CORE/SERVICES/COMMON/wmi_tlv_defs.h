@@ -599,6 +599,7 @@ typedef enum {
     WMITLV_TAG_STRUC_wmi_wow_hostwakeup_gpio_pin_pattern_config_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_ap_ps_egap_param_cmd_fixed_param,
     WMITLV_TAG_STRUC_wmi_ap_ps_egap_info_event_fixed_param,
+    WMITLV_TAG_STRUC_WMI_PMF_OFFLOAD_SET_SA_QUERY_CMD_fixed_param,
 } WMITLV_TAG_ID;
 
 /*
@@ -835,7 +836,8 @@ typedef enum {
     OP(WMI_NLO_CONFIGURE_MAWC_CMDID) \
     OP(WMI_EXTSCAN_CONFIGURE_MAWC_CMDID) \
     OP(WMI_WOW_HOSTWAKEUP_GPIO_PIN_PATTERN_CONFIG_CMDID) \
-    OP(WMI_AP_PS_EGAP_PARAM_CMDID)
+    OP(WMI_AP_PS_EGAP_PARAM_CMDID) \
+    OP(WMI_PMF_OFFLOAD_SET_SA_QUERY_CMDID)
 /*
  * IMPORTANT: Please add _ALL_ WMI Events Here.
  * Otherwise, these WMI TLV Functions will be process them.
@@ -1248,6 +1250,12 @@ WMITLV_CREATE_PARAM_STRUC(WMI_P2P_GO_SET_BEACON_IE);
     WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_WMI_GTK_OFFLOAD_CMD_fixed_param, WMI_GTK_OFFLOAD_CMD_fixed_param, fixed_param, WMITLV_SIZE_FIX)
 
 WMITLV_CREATE_PARAM_STRUC(WMI_GTK_OFFLOAD_CMDID);
+
+/* PMF 11w offload Set SA query cmd */
+#define WMITLV_TABLE_WMI_PMF_OFFLOAD_SET_SA_QUERY_CMDID(id,op,buf,len) \
+   WMITLV_ELEM(id,op,buf,len, WMITLV_TAG_STRUC_WMI_PMF_OFFLOAD_SET_SA_QUERY_CMD_fixed_param, WMI_PMF_OFFLOAD_SET_SA_QUERY_CMD_fixed_param, fixed_param, WMITLV_SIZE_FIX)
+
+WMITLV_CREATE_PARAM_STRUC(WMI_PMF_OFFLOAD_SET_SA_QUERY_CMDID);
 
 /* Scan channel list Cmd */
 #define WMITLV_TABLE_WMI_SCAN_CHAN_LIST_CMDID(id,op,buf,len) \

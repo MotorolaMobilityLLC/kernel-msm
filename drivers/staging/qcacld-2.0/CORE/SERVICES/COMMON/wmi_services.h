@@ -126,6 +126,7 @@ typedef  enum  {
     WMI_SERVICE_MAWC,                 /* Motion Aided WiFi Connectivity (MAWC)*/
     WMI_SERVICE_PEER_ASSOC_CONF,      /* target will send ASSOC_CONF after ASSOC_CMD is processed */
     WMI_SERVICE_EGAP,                 /* enhanced green ap support */
+    WMI_SERVICE_STA_PMF_OFFLOAD,      /* FW supports 11W PMF Offload for STA */
 
     WMI_MAX_SERVICE=128               /* max service */
 } WMI_SERVICE;
