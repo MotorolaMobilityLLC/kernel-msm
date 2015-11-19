@@ -106,9 +106,9 @@
 #endif
 /* Time in msec */
 #ifdef CONFIG_SLUB_DEBUG_ON
-#define HDD_SSR_BRING_UP_TIME 20000
+#define HDD_SSR_BRING_UP_TIME 40000
 #else
-#define HDD_SSR_BRING_UP_TIME 15000
+#define HDD_SSR_BRING_UP_TIME 30000
 #endif
 
 static eHalStatus g_full_pwr_status;
@@ -692,8 +692,7 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
 
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-    if (fenable)
-    {
+    if (fenable) {
         in6_dev = __in6_dev_get(pAdapter->dev);
         if (NULL != in6_dev) {
             list_for_each(p, &in6_dev->addr_list) {
