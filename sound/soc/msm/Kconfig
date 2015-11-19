@@ -142,6 +142,15 @@ config SND_SOC_CPE
 	 The configuration includes the cpe lsm driver to enable
 	 listen on codec.
 
+config SND_SOC_OPALUM
+	tristate
+	help
+	 To add support for Opalum Speaker Protection Library.
+	 This support is to configure the post processing
+	 parameters of QDSP AFE Opalum module. The configuration
+	 includes sending calibration data, tunning parameters and
+	 getting speaker characterization values back.
+
 config SND_SOC_MSM8974
 	tristate "SoC Machine driver for MSM8974 boards"
 	depends on ARCH_MSM8974
@@ -268,6 +277,7 @@ config SND_SOC_MSM8X16
 	select SND_HWDEP
         select DTS_EAGLE
 	select SND_SOC_CS35L34
+	select SND_SOC_OPALUM
 	help
 	 To add support for SoC audio on MSM8X16.
 	 This will enable sound soc drivers which
