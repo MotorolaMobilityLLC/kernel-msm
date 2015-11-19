@@ -10185,6 +10185,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                  ("%s: ERROR: HDD vos wait for single_event failed!!"),
                  __func__);
         smeGetCommandQStatus(hHal);
+#ifdef WLAN_FEATURE_MBSSID
+        WLANSAP_StopBss(WLAN_HDD_GET_SAP_CTX_PTR(pHostapdAdapter));
+#else
+        WLANSAP_StopBss(pHddCtx->pvosContext);
+#endif
         VOS_ASSERT(0);
         return -EINVAL;
     }

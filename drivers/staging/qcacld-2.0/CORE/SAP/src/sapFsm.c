@@ -3023,9 +3023,13 @@ sapFsm
                                                        sapContext->pUsrContext);
                  }
                  vosStatus = sapGotoStarting( sapContext, sapEvent, eCSR_BSS_TYPE_INFRA_AP);
-            }
-            else
-            {
+            } else if (msg == eSAP_HDD_STOP_INFRA_BSS) {
+                 sapContext->sapsMachine = eSAP_DISCONNECTED;
+                 sapSignalHDDevent(sapContext, NULL, eSAP_START_BSS_EVENT,
+                                                (v_PVOID_t)eSAP_STATUS_FAILURE);
+                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                     "%s: BSS stopped during Ch select in Progress", __func__);
+            } else {
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, in state %s, invalid event msg %d",
                             __func__, "eSAP_CH_SELECT", msg);
             }
