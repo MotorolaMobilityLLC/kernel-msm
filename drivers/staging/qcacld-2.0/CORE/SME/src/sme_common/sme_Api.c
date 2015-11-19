@@ -704,21 +704,13 @@ tANI_BOOLEAN smeProcessScanQueue(tpAniSirGlobal pMac)
             if (pEntry) {
                 pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
                 if (pSmeCommand != NULL) {
-                    /*
-                    * if scan is running on one interface and SME receives
-                    * the next command on the same interface then
-                    * dont the allow the command to be queued to
-                    * smeCmdPendingList. If next scan is allowed on
-                    * the same interface the CSR state machine will
-                    * get screwed up.
-                    */
-                     if (pSmeCommand->sessionId == pCommand->sessionId) {
-                          smsLog(pMac, LOGE,
-                                "SME command is pending on session %d",
-                                pSmeCommand->sessionId);
-                            status = eANI_BOOLEAN_FALSE;
-                          goto end;
-                      }
+                    /* if there is an active SME command, do not process
+                     * the pending scan cmd
+                     */
+                    smsLog(pMac, LOGE, "SME scan cmd is pending on session %d",
+                           pSmeCommand->sessionId);
+                    status = eANI_BOOLEAN_FALSE;
+                    goto end;
                 }
                 //We cannot execute any command in wait-for-key state until setKey is through.
                 if (CSR_IS_WAIT_FOR_KEY( pMac, pCommand->sessionId))
