@@ -1104,6 +1104,19 @@
 			};
 		};
 
+		qcom,power-on@800 {
+			qcom,pon_1 {
+				qcom,support-reset = <0>;
+			};
+
+			qcom,pon_2 {
+				qcom,support-reset = <0>;
+			};
+
+			qcom,pon_3 {
+				qcom,support-reset = <0>;
+			};
+		};
 	};
 
 	qcom,pmi8994@3 {
