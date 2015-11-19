@@ -704,7 +704,7 @@
 
 	muc: muc@0 {
 		compatible = "mmi,muc";
-		reg = <0x00>;
+		reg = <0 0>;
 
 		gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
 			<&tlmm 35 0>;   /* gpio_muc_bplus_en, output-low */
