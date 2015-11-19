@@ -182,8 +182,6 @@ void vos_log_submit(v_VOID_t *plog_hdr_ptr)
         memcpy(pBuf, pHdr,data_len);
 
         if( ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, -1) < 0) {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                ("Ptt Socket error sending message to the app!!"));
                 vos_mem_free((v_VOID_t *)wmsg);
                 return;
         }
