@@ -708,6 +708,8 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
         pHddCtx->cfg_ini->fTDLSPuapsdInactivityTimer;
     tInfo->puapsd_rx_frame_threshold =
         pHddCtx->cfg_ini->fTDLSRxFrameThreshold;
+    tInfo->teardown_notification_ms =
+        pHddCtx->cfg_ini->fTDLSIdleTimeout;
 
     VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
               "%s: Setting tdls state and param in fw: "
@@ -723,7 +725,8 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
               "peer_traffic_response_timeout: %d, "
               "puapsd_mask: 0x%x, "
               "puapsd_inactivity_time: %d, "
-              "puapsd_rx_frame_threshold: %d ",
+              "puapsd_rx_frame_threshold: %d, "
+              "teardown_notification_ms: %d ",
               __func__,
               tInfo->vdev_id,
               tInfo->tdls_state,
@@ -737,7 +740,8 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
               tInfo->peer_traffic_response_timeout,
               tInfo->puapsd_mask,
               tInfo->puapsd_inactivity_time,
-              tInfo->puapsd_rx_frame_threshold);
+              tInfo->puapsd_rx_frame_threshold,
+              tInfo->teardown_notification_ms);
 
     halStatus = sme_UpdateFwTdlsState(pHddCtx->hHal, tInfo, TRUE);
     if (eHAL_STATUS_SUCCESS != halStatus)
@@ -830,6 +834,8 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
                 pHddCtx->cfg_ini->fTDLSPuapsdInactivityTimer;
             tInfo->puapsd_rx_frame_threshold =
                 pHddCtx->cfg_ini->fTDLSRxFrameThreshold;
+            tInfo->teardown_notification_ms =
+                pHddCtx->cfg_ini->fTDLSIdleTimeout;
 
             VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
                   "%s: Setting tdls state and param in fw: "
@@ -845,7 +851,8 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
                   "peer_traffic_response_timeout: %d, "
                   "puapsd_mask: 0x%x, "
                   "puapsd_inactivity_time: %d, "
-                  "puapsd_rx_frame_threshold: %d ",
+                  "puapsd_rx_frame_threshold: %d, "
+                  "teardown_notification_ms: %d ",
                   __func__,
                   tInfo->vdev_id,
                   tInfo->tdls_state,
@@ -859,7 +866,8 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
                   tInfo->peer_traffic_response_timeout,
                   tInfo->puapsd_mask,
                   tInfo->puapsd_inactivity_time,
-                  tInfo->puapsd_rx_frame_threshold);
+                  tInfo->puapsd_rx_frame_threshold,
+                  tInfo->teardown_notification_ms);
 
             halStatus = sme_UpdateFwTdlsState(pHddCtx->hHal, tInfo, FALSE);
             if (eHAL_STATUS_SUCCESS != halStatus)
@@ -1523,6 +1531,9 @@ int wlan_hdd_tdls_set_params(struct net_device *dev, tdls_config_params_t *confi
         pHddCtx->cfg_ini->fTDLSPuapsdInactivityTimer;
     tdlsParams->puapsd_rx_frame_threshold =
         pHddCtx->cfg_ini->fTDLSRxFrameThreshold;
+    tdlsParams->teardown_notification_ms =
+        pHddCtx->cfg_ini->fTDLSIdleTimeout;
+
 
 
     VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
@@ -1539,7 +1550,8 @@ int wlan_hdd_tdls_set_params(struct net_device *dev, tdls_config_params_t *confi
               "peer_traffic_response_timeout: %d, "
               "puapsd_mask: 0x%x, "
               "puapsd_inactivity_time: %d, "
-              "puapsd_rx_frame_threshold: %d ",
+              "puapsd_rx_frame_threshold: %d "
+              "teardown_notification_ms: %d ",
               __func__,
               tdlsParams->vdev_id,
               tdlsParams->tdls_state,
@@ -1553,7 +1565,8 @@ int wlan_hdd_tdls_set_params(struct net_device *dev, tdls_config_params_t *confi
               tdlsParams->peer_traffic_response_timeout,
               tdlsParams->puapsd_mask,
               tdlsParams->puapsd_inactivity_time,
-              tdlsParams->puapsd_rx_frame_threshold);
+              tdlsParams->puapsd_rx_frame_threshold,
+              tdlsParams->teardown_notification_ms);
 
     halStatus = sme_UpdateFwTdlsState(pHddCtx->hHal, tdlsParams, TRUE);
     if (eHAL_STATUS_SUCCESS != halStatus)
@@ -1658,6 +1671,8 @@ void wlan_hdd_update_tdls_info(hdd_adapter_t *adapter, bool tdls_prohibited,
         hdd_ctx->cfg_ini->fTDLSPuapsdInactivityTimer;
     tdls_param->puapsd_rx_frame_threshold =
         hdd_ctx->cfg_ini->fTDLSRxFrameThreshold;
+    tdls_param->teardown_notification_ms =
+        hdd_ctx->cfg_ini->fTDLSIdleTimeout;
 
     hddLog(LOG1,
            FL("Setting tdls state and param in fw: "
@@ -1673,7 +1688,8 @@ void wlan_hdd_update_tdls_info(hdd_adapter_t *adapter, bool tdls_prohibited,
               "peer_traffic_response_timeout: %d, "
               "puapsd_mask: 0x%x, "
               "puapsd_inactivity_time: %d, "
-              "puapsd_rx_frame_threshold: %d "),
+              "puapsd_rx_frame_threshold: %d, "
+              "teardown_notification_ms: %d "),
               tdls_param->vdev_id,
               tdls_param->tdls_state,
               tdls_param->notification_interval_ms,
@@ -1686,7 +1702,8 @@ void wlan_hdd_update_tdls_info(hdd_adapter_t *adapter, bool tdls_prohibited,
               tdls_param->peer_traffic_response_timeout,
               tdls_param->puapsd_mask,
               tdls_param->puapsd_inactivity_time,
-              tdls_param->puapsd_rx_frame_threshold);
+              tdls_param->puapsd_rx_frame_threshold,
+              tdls_param->teardown_notification_ms);
 
     hal_status = sme_UpdateFwTdlsState(hdd_ctx->hHal, tdls_param, TRUE);
     if (eHAL_STATUS_SUCCESS != hal_status) {

@@ -1480,6 +1480,7 @@ typedef struct wma_tdls_params
 	tANI_U32    puapsd_mask;
 	tANI_U32    puapsd_inactivity_time;
 	tANI_U32    puapsd_rx_frame_threshold;
+	uint32_t    teardown_notification_ms;
 } t_wma_tdls_params;
 
 typedef struct {

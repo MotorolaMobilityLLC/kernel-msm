@@ -256,6 +256,7 @@ typedef struct {
     tANI_U32 puapsd_mask;
     tANI_U32 puapsd_inactivity_time;
     tANI_U32 puapsd_rx_frame_threshold;
+    uint32_t teardown_notification_ms;
 } tdlsInfo_t;
 
 int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter);

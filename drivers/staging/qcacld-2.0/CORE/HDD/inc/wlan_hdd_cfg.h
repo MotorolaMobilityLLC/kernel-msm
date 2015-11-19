@@ -1950,12 +1950,12 @@ typedef enum
 #define CFG_TDLS_TX_STATS_PERIOD                    "gTDLSTxStatsPeriod"
 #define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 10 )
 #define CFG_TDLS_TX_STATS_PERIOD_MAX                ( 4294967295UL )
-#define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            ( 5000 )
+#define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            (500)
 
 #define CFG_TDLS_TX_PACKET_THRESHOLD                "gTDLSTxPacketThreshold"
 #define CFG_TDLS_TX_PACKET_THRESHOLD_MIN            ( 0 )
 #define CFG_TDLS_TX_PACKET_THRESHOLD_MAX            ( 4294967295UL )
-#define CFG_TDLS_TX_PACKET_THRESHOLD_DEFAULT        ( 100 )
+#define CFG_TDLS_TX_PACKET_THRESHOLD_DEFAULT        (10)
 
 #define CFG_TDLS_DISCOVERY_PERIOD                   "gTDLSDiscoveryPeriod"
 #define CFG_TDLS_DISCOVERY_PERIOD_MIN               ( 5000 )
@@ -1967,15 +1967,22 @@ typedef enum
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MAX          ( 100 )
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_DEFAULT      ( 5 )
 
+/*  teardown notification interval (gTDLSIdleTimeout) should be multiple of
+ *  setup notification (gTDLSTxStatsPeriod) interval.
+ *  e.g.
+ *       if setup notification (gTDLSTxStatsPeriod) interval = 500, then
+ *       teardown notification (gTDLSIdleTimeout) interval should be 1000,
+ *       1500, 2000, 2500...
+ */
 #define CFG_TDLS_IDLE_TIMEOUT                       "gTDLSIdleTimeout"
-#define CFG_TDLS_IDLE_TIMEOUT_MIN                   ( 2000 )
+#define CFG_TDLS_IDLE_TIMEOUT_MIN                   (500)
 #define CFG_TDLS_IDLE_TIMEOUT_MAX                   ( 40000 )
-#define CFG_TDLS_IDLE_TIMEOUT_DEFAULT               ( 5000 )
+#define CFG_TDLS_IDLE_TIMEOUT_DEFAULT               (2000)
 
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD              "gTDLSIdlePacketThreshold"
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 0 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_MAX          ( 40000 )
-#define CFG_TDLS_IDLE_PACKET_THRESHOLD_DEFAULT      ( 5 )
+#define CFG_TDLS_IDLE_PACKET_THRESHOLD_DEFAULT      (1)
 
 #define CFG_TDLS_RSSI_HYSTERESIS                    "gTDLSRssiHysteresis"
 #define CFG_TDLS_RSSI_HYSTERESIS_MIN                ( 0 )
