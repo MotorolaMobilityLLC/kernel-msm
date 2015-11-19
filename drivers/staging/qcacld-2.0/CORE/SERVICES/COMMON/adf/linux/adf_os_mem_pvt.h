@@ -58,7 +58,7 @@ __adf_os_mem_alloc(adf_os_device_t osdev, size_t size)
 {
     int flags = GFP_KERNEL;
 
-    if(in_interrupt() || irqs_disabled())
+    if (in_interrupt() || irqs_disabled() || in_atomic())
         flags = GFP_ATOMIC;
 
     return kzalloc(size, flags);
