@@ -6008,6 +6008,19 @@ typedef struct {
                                           triggered upon FINAL_BMISS **/
 #define WMI_ROAM_REASON_HO_FAILED  0x5  /** LFR3.0 roaming failed, indicate the disconnection to host */
 
+
+/*
+ * These will be used in WMI_ROAM_SYNCH_EVENTID for passing the subnet change
+ * info. Once roaming happens, firmware checks if subnet has changed and
+ * populates roam_reason field in WMI_ROAM_SYNCH_EVENTID using the definitions
+ * below.
+ */
+typedef enum {
+    WMI_ROAM_SUBNET_CHANGE_STATUS_UNKNOWN = 0,
+    WMI_ROAM_SUBNET_CHANGE_STATUS_UNCHANGED,
+    WMI_ROAM_SUBNET_CHANGE_STATUS_CHANGED,
+} wmi_roam_subnet_change_status;
+
 /**whenever RIC request information change, host driver should pass all ric related information to firmware (now only support tsepc)
 * Once, 11r roaming happens, firmware can generate RIC request in reassoc request based on these informations
 */
@@ -6144,7 +6157,7 @@ typedef struct _WMI_IPV6_ADDR {
 } while (0)
 
 #define WMI_GET_ROAM_SUBNET_CHANGE_FLAG_IP4_ENABLED(flag) \
-    ((flag) & (1 << WMI_ROAM_SUBNET_CHANGE_FLAG_IP4_ENABLED)
+    ((flag) & (1 << WMI_ROAM_SUBNET_CHANGE_FLAG_IP4_ENABLED))
 
 /* set IPv6 enabled flag, disabled and get the flag */
 #define WMI_SET_ROAM_SUBNET_CHANGE_FLAG_IP6_ENABLED(flag) do { \
@@ -6155,9 +6168,8 @@ typedef struct _WMI_IPV6_ADDR {
     (flag) &= ~(1 << WMI_ROAM_SUBNET_CHANGE_FLAG_IP6_ENABLED); \
 } while (0)
 
-#define WMI_GET_ROAM_SUBNET_CHANGE_FLAG_IP6_ENABLED(flag) do { \
-    ((flag) & (1 << WMI_ROAM_SUBNET_CHANGE_FLAG_IP6_ENABLED); \
-} while (0)
+#define WMI_GET_ROAM_SUBNET_CHANGE_FLAG_IP6_ENABLED(flag) \
+    ((flag) & (1 << WMI_ROAM_SUBNET_CHANGE_FLAG_IP6_ENABLED))
 
 /**
  * WMI_ROAM_SUBNET_CHANGE_CONFIG : Pass the gateway IP and MAC addresses
@@ -9272,7 +9284,10 @@ typedef struct {
     A_UINT32 vdev_id;
     /** auth_status: connected or authorized */
     A_UINT32 auth_status;
-    /** roam_reason: the reason of roam. see the WMI_ROAM_REASON_ XXX */
+     /*
+      *  roam_reason: whether roaming went to a new subnet;
+      *  see WMI_ROAM_SUBNET_CHANGE_STATUS_XXX
+      */
     A_UINT32 roam_reason;
     /** associated AP's rssi calculated by FW when reason code is WMI_ROAM_REASON_LOW_RSSI. not valid if roam_reason is BMISS */
     A_UINT32 rssi;
@@ -9291,7 +9306,8 @@ typedef struct {
      *     A_UINT8 reassoc_rsp_frame[];  length identified by reassoc_rsp_len
      *     wmi_channel chan;
      *     wmi_key_material key;
-     *     A_UINT32 status; subnet changed status
+     *     A_UINT32 status; subnet changed status not being used
+     *     currently. will pass the information using roam_status.
      **/
 } wmi_roam_synch_event_fixed_param;
 
