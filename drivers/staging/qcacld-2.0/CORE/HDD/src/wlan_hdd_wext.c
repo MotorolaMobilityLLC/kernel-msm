@@ -1920,8 +1920,17 @@ iw_get_mode(struct net_device *dev, struct iw_request_info *info,
     return 0;
 }
 
-static int iw_set_freq(struct net_device *dev, struct iw_request_info *info,
-             union iwreq_data *wrqu, char *extra)
+/**
+ * __iw_set_freq() - SIOCSIWFREQ ioctl handler
+ * @dev: device upon which the ioctl was received
+ * @info: ioctl request information
+ * @wrqu: ioctl request data
+ * @extra: ioctl extra data
+ *
+ * Return: 0 on success, non-zero on error
+ */
+static int __iw_set_freq(struct net_device *dev, struct iw_request_info *info,
+			 union iwreq_data *wrqu, char *extra)
 {
     v_U32_t numChans = 0;
     v_U8_t validChan[WNI_CFG_VALID_CHANNEL_LIST_LEN];
@@ -2017,6 +2026,27 @@ static int iw_set_freq(struct net_device *dev, struct iw_request_info *info,
     EXIT();
 
     return status;
+}
+
+/**
+ * iw_set_freq() - SSR wrapper for __iw_set_freq()
+ * @dev: pointer to net_device
+ * @info: pointer to iw_request_info
+ * @wrqu: pointer to iwreq_data
+ * @extra: pointer to extra ioctl payload
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int iw_set_freq(struct net_device *dev, struct iw_request_info *info,
+		       union iwreq_data *wrqu, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_set_freq(dev, info, wrqu, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
