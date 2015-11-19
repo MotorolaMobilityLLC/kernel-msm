@@ -2049,8 +2049,17 @@ static int iw_set_freq(struct net_device *dev, struct iw_request_info *info,
 	return ret;
 }
 
-static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
-             struct iw_freq *fwrq, char *extra)
+/**
+ * __iw_get_freq() - SIOCGIWFREQ ioctl handler
+ * @dev: device upon which the ioctl was received
+ * @info: ioctl request information
+ * @fwrq: ioctl frequency data
+ * @extra: ioctl extra data
+ *
+ * Return: 0 on success, non-zero on error
+ */
+static int __iw_get_freq(struct net_device *dev, struct iw_request_info *info,
+			 struct iw_freq *fwrq, char *extra)
 {
    v_U32_t status = FALSE, channel = 0, freq = 0;
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -2101,6 +2110,27 @@ static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
        fwrq->e = MHZ;
     }
    return 0;
+}
+
+/**
+ * iw_get_freq() - SSR wrapper for __iw_get_freq()
+ * @dev: pointer to net_device
+ * @info: pointer to iw_request_info
+ * @fwrq: pointer to frequency data
+ * @extra: pointer to extra ioctl payload
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
+		       struct iw_freq *fwrq, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_get_freq(dev, info, fwrq, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 static int iw_get_tx_power(struct net_device *dev,
