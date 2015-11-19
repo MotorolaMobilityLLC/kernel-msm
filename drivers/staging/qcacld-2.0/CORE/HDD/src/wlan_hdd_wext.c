@@ -2218,9 +2218,18 @@ static int iw_get_tx_power(struct net_device *dev,
    return 0;
 }
 
-static int iw_set_tx_power(struct net_device *dev,
-                           struct iw_request_info *info,
-                           union iwreq_data *wrqu, char *extra)
+/**
+ * __iw_set_tx_power() - SIOCSIWTXPOW ioctl handler
+ * @dev: device upon which the ioctl was received
+ * @info: ioctl request information
+ * @wrqu: ioctl request data
+ * @extra: ioctl extra data
+ *
+ * Return: 0 on success, non-zero on error
+ */
+static int __iw_set_tx_power(struct net_device *dev,
+			     struct iw_request_info *info,
+			     union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -2243,6 +2252,28 @@ static int iw_set_tx_power(struct net_device *dev,
     EXIT();
 
     return 0;
+}
+
+/**
+ * iw_set_tx_power() - SSR wrapper for __iw_set_tx_power()
+ * @dev: pointer to net_device
+ * @info: pointer to iw_request_info
+ * @wrqu: pointer to iwreq_data
+ * @extra: pointer to extra ioctl payload
+ *
+ * Return: 0 on success, error number otherwise
+ */
+static int iw_set_tx_power(struct net_device *dev,
+			   struct iw_request_info *info,
+			   union iwreq_data *wrqu, char *extra)
+{
+	int ret;
+
+	vos_ssr_protect(__func__);
+	ret = __iw_set_tx_power(dev, info, wrqu, extra);
+	vos_ssr_unprotect(__func__);
+
+	return ret;
 }
 
 /**
