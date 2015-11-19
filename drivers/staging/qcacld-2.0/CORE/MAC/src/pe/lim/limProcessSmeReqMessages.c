@@ -3000,6 +3000,20 @@ __limProcessSmeDisassocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             return;
         }
 
+        /*
+         * If MlM state is either of del_sta or del_bss state, then no need to
+         * go ahead and clean up further as there must be some cleanup in
+         * progress from upper layer disassoc/deauth request.
+         */
+        if((pStaDs->mlmStaContext.mlmState == eLIM_MLM_WT_DEL_STA_RSP_STATE) ||
+           (pStaDs->mlmStaContext.mlmState == eLIM_MLM_WT_DEL_BSS_RSP_STATE)) {
+            limLog(pMac, LOGE, FL("No need to cleanup for addr:"MAC_ADDRESS_STR
+                   "as Mlm state is %d"),
+                   MAC_ADDR_ARRAY(smeDisassocCnf.peerMacAddr),
+                   pStaDs->mlmStaContext.mlmState);
+           return;
+        }
+
 #if defined WLAN_FEATURE_VOWIFI_11R
         /* Delete FT session if there exists one */
         limFTCleanupPreAuthInfo(pMac, psessionEntry);

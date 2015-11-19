@@ -1576,9 +1576,9 @@ limProcessMlmDeauthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if ((psessionEntry->limSystemRole == eLIM_STA_ROLE)|| (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
     {
         // Deauth Confirm from MLM
-        if (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE)
-        {
-            /**
+        if ((psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE) &&
+            (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE)) {
+            /*
              * Should not have received Deauth confirm
              * from MLM in other states.
              * Log error
