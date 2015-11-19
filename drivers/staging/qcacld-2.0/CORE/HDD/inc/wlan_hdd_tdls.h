@@ -112,6 +112,10 @@ typedef enum {
     eTDLS_SUPPORT_DISABLED, /* suppress implicit trigger and not respond to the peer */
     eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY, /* suppress implicit trigger, but respond to the peer */
     eTDLS_SUPPORT_ENABLED, /* implicit trigger */
+    /* External control means implicit trigger
+     * but only to a peer mac configured by user space.
+     */
+    eTDLS_SUPPORT_EXTERNAL_CONTROL
 } eTDLSSupportMode;
 
 typedef enum eTDLSCapType{
@@ -257,6 +261,7 @@ typedef struct {
     tANI_U32 puapsd_inactivity_time;
     tANI_U32 puapsd_rx_frame_threshold;
     uint32_t teardown_notification_ms;
+    uint32_t tdls_peer_kickout_threshold;
 } tdlsInfo_t;
 
 int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter);
@@ -377,6 +382,10 @@ int wlan_hdd_tdls_set_extctrl_param(hdd_adapter_t *pAdapter,
 int wlan_hdd_tdls_set_force_peer(hdd_adapter_t *pAdapter, u8 *mac,
                                  tANI_BOOLEAN forcePeer);
 int wlan_hdd_tdls_extctrl_deconfig_peer(hdd_adapter_t *pAdapter, u8 *peer);
+int wlan_hdd_tdls_update_peer_mac(hdd_adapter_t *pAdapter,
+				const uint8_t *mac,
+				uint32_t peerState);
+
 int wlan_hdd_tdls_extctrl_config_peer(hdd_adapter_t *pAdapter,
                                       u8 *peer,
                                       cfg80211_exttdls_callback callback,

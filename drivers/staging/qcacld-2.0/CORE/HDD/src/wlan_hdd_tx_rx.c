@@ -1468,8 +1468,8 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    }
 
 #ifdef FEATURE_WLAN_TDLS
-    if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
-    {
+    if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode ||
+        eTDLS_SUPPORT_EXTERNAL_CONTROL == pHddCtx->tdls_mode) {
         hdd_station_ctx_t *pHddStaCtx = &pAdapter->sessionCtx.station;
         u8 mac[6];
 

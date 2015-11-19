@@ -256,6 +256,10 @@ typedef enum {
 	WMA_TDLS_SUPPORT_DISABLED, /* suppress implicit trigger and not respond to the peer */
 	WMA_TDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY, /* suppress implicit trigger, but respond to the peer */
 	WMA_TDLS_SUPPORT_ENABLED, /* implicit trigger */
+	/* External control means implicit trigger
+	 * but only to a peer mac configured by user space.
+	 */
+	WMA_TDLS_SUPPORT_ACTIVE_EXTERNAL_CONTROL,
 }t_wma_tdls_mode;
 
 /** TDLS EVENTS */
@@ -1481,6 +1485,7 @@ typedef struct wma_tdls_params
 	tANI_U32    puapsd_inactivity_time;
 	tANI_U32    puapsd_rx_frame_threshold;
 	uint32_t    teardown_notification_ms;
+	uint32_t    tdls_peer_kickout_threshold;
 } t_wma_tdls_params;
 
 typedef struct {

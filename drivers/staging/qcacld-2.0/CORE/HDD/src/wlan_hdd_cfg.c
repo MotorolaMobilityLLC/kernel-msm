@@ -3027,6 +3027,14 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_TDLS_SCAN_ENABLE_DEFAULT,
                  CFG_TDLS_SCAN_ENABLE_MIN,
                  CFG_TDLS_SCAN_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_TDLS_PEER_KICKOUT_THRESHOLD, WLAN_PARAM_Integer,
+                 hdd_config_t, tdls_peer_kickout_threshold,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_TDLS_PEER_KICKOUT_THRESHOLD_DEFAULT,
+                 CFG_TDLS_PEER_KICKOUT_THRESHOLD_MIN,
+                 CFG_TDLS_PEER_KICKOUT_THRESHOLD_MAX ),
+
 #endif
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE

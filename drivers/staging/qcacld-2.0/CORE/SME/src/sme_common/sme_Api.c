@@ -11235,6 +11235,14 @@ eHalStatus sme_UpdateTdlsPeerState(tHalHandle hHal,
               pTdlsPeerStateParams->peerState = WDA_TDLS_PEER_STATE_TEARDOWN;
               break;
 
+           case eSME_TDLS_PEER_ADD_MAC_ADDR:
+              pTdlsPeerStateParams->peerState = WDA_TDLS_PEER_ADD_MAC_ADDR;
+              break;
+
+           case eSME_TDLS_PEER_REMOVE_MAC_ADDR:
+              pTdlsPeerStateParams->peerState = WDA_TDLS_PEER_REMOVE_MAC_ADDR;
+              break;
+
            default:
               VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                         "%s: invalid peer state param (%d)",

@@ -17320,6 +17320,16 @@ int wlan_hdd_tdls_extctrl_config_peer(hdd_adapter_t *pAdapter,
         return -EINVAL;
     }
 
+    /* Update the peer mac to firmware, so firmware
+     * could update the connection table
+     */
+    if (0 != wlan_hdd_tdls_update_peer_mac(pAdapter, peer,
+        eSME_TDLS_PEER_ADD_MAC_ADDR)) {
+        hddLog(LOGE, FL("TDLS Peer mac update Failed "
+               MAC_ADDRESS_STR), MAC_ADDR_ARRAY(peer));
+        return -EINVAL;
+    }
+
     if ( 0 != wlan_hdd_tdls_set_extctrl_param(pAdapter, peer,
                                               chan, max_latency,
                                               op_class, min_bandwidth) ) {
@@ -17377,6 +17387,17 @@ int wlan_hdd_tdls_extctrl_deconfig_peer(hdd_adapter_t *pAdapter, u8 *peer)
               __func__);
         return -EINVAL;
     }
+
+    /* Update the peer mac to firmware, so firmware
+     * could update the connection table
+     */
+    if (0 != wlan_hdd_tdls_update_peer_mac(pAdapter, peer,
+        eSME_TDLS_PEER_REMOVE_MAC_ADDR)) {
+        hddLog(LOGE, FL("TDLS Peer mac update Failed "
+               MAC_ADDRESS_STR), MAC_ADDR_ARRAY(peer));
+        return -EINVAL;
+    }
+
     /* EXT TDLS */
     if ( 0 != wlan_hdd_set_callback(pTdlsPeer, NULL )) {
 

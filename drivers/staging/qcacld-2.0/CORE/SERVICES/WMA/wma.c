@@ -28940,6 +28940,8 @@ static int wma_update_fw_tdls_state(WMA_HANDLE handle, void *pwmaTdlsparams)
 		cmd->state = WMI_TDLS_ENABLE_PASSIVE;
 	} else if (WMA_TDLS_SUPPORT_ENABLED == tdls_mode) {
 		cmd->state = WMI_TDLS_ENABLE_ACTIVE;
+	} else if (WMA_TDLS_SUPPORT_ACTIVE_EXTERNAL_CONTROL == tdls_mode) {
+		cmd->state = WMI_TDLS_ENABLE_ACTIVE_EXTERNAL_CONTROL;
 	} else {
 		cmd->state = WMI_TDLS_DISABLE;
 	}
@@ -28962,6 +28964,10 @@ static int wma_update_fw_tdls_state(WMA_HANDLE handle, void *pwmaTdlsparams)
 	    wma_tdls->puapsd_rx_frame_threshold;
 	cmd->teardown_notification_ms =
 	    wma_tdls->teardown_notification_ms;
+	cmd->tdls_peer_kickout_threshold =
+	    wma_tdls->tdls_peer_kickout_threshold;
+
+
 
 	WMA_LOGD("%s: tdls_mode: %d, state: %d, "
 	         "notification_interval_ms: %d, "
@@ -28974,8 +28980,9 @@ static int wma_update_fw_tdls_state(WMA_HANDLE handle, void *pwmaTdlsparams)
 	         "tdls_peer_traffic_response_timeout: %d, "
 	         "tdls_puapsd_mask: 0x%x, "
 	         "tdls_puapsd_inactivity_time: %d, "
-	         "tdls_puapsd_rx_frame_threshold: %d "
-	         "teardown_notification_ms: %d ",
+	         "tdls_puapsd_rx_frame_threshold: %d, "
+	         "teardown_notification_ms: %d, "
+	         "tdls_peer_kickout_threshold: %d ",
 	         __func__, tdls_mode, cmd->state,
 	         cmd->notification_interval_ms,
 	         cmd->tx_discovery_threshold,
@@ -28988,7 +28995,8 @@ static int wma_update_fw_tdls_state(WMA_HANDLE handle, void *pwmaTdlsparams)
 	         cmd->tdls_puapsd_mask,
 	         cmd->tdls_puapsd_inactivity_time_ms,
 	         cmd->tdls_puapsd_rx_frame_threshold,
-	         cmd->teardown_notification_ms);
+	         cmd->teardown_notification_ms,
+	         cmd->tdls_peer_kickout_threshold);
 
 	if (wmi_unified_cmd_send(wma_handle->wmi_handle, wmi_buf, len,
 		   WMI_TDLS_SET_STATE_CMDID)) {
@@ -29066,6 +29074,13 @@ static int wma_update_tdls_peer_state(WMA_HANDLE handle,
 		case  WDA_TDLS_PEER_STATE_TEARDOWN:
 			cmd->peer_state = WMI_TDLS_PEER_STATE_TEARDOWN;
 			break;
+		case  WDA_TDLS_PEER_ADD_MAC_ADDR:
+			cmd->peer_state = WMI_TDLS_PEER_ADD_MAC_ADDR;
+			break;
+		case  WDA_TDLS_PEER_REMOVE_MAC_ADDR:
+			cmd->peer_state = WMI_TDLS_PEER_REMOVE_MAC_ADDR;
+			break;
+
 	}
 
 	WMA_LOGD("%s: vdev_id: %d, peerStateParams->peerMacAddr: %pM, "

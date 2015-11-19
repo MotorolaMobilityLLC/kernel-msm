@@ -157,7 +157,11 @@ typedef enum
 {
     eSME_TDLS_PEER_STATE_PEERING,
     eSME_TDLS_PEER_STATE_CONNECTED,
-    eSME_TDLS_PEER_STATE_TEARDOWN
+    eSME_TDLS_PEER_STATE_TEARDOWN,
+    /* Add peer mac into connection table */
+    eSME_TDLS_PEER_ADD_MAC_ADDR,
+    /* Remove peer mac from connection table */
+    eSME_TDLS_PEER_REMOVE_MAC_ADDR,
 } eSmeTdlsPeerState;
 
 typedef struct _smeTdlsPeerStateParams
