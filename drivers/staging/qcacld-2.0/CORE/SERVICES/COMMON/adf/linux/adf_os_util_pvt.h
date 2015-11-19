@@ -111,6 +111,18 @@ __adf_os_init_completion(adf_os_comp_t *ptr)
 	init_completion(ptr);
 }
 
+/**
+ * @brief completion structure re-initialization
+ */
+static __adf_os_inline void
+__adf_os_re_init_completion(adf_os_comp_t comp)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0))
+	reinit_completion(&comp);
+#else
+	INIT_COMPLETION(comp);
+#endif
+}
 
 /**
  * @brief wait for completion till timeout

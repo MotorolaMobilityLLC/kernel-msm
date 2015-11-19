@@ -143,6 +143,17 @@ adf_os_init_completion(adf_os_comp_t *ptr)
 }
 
 /**
+ * @brief re-initialize completion structure
+ *
+ * @param[in] comp - completion structure
+ */
+static inline void
+adf_os_re_init_completion(adf_os_comp_t comp)
+{
+	__adf_os_re_init_completion(comp);
+}
+
+/**
  * @brief wait for completion till timeout
  * @param[in] ptr - completion structure
  * @param[in] timeout - timeout value in jiffies

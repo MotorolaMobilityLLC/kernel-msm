@@ -578,6 +578,7 @@ A_STATUS HTCWaitRecvCtrlMessage(HTC_TARGET *target)
 
     AR_DEBUG_PRINTF(ATH_DEBUG_TRC,("+HTCWaitCtrlMessageRecv\n"));
 
+    adf_os_re_init_completion(target->CtrlResponseValid);
     /* Wait for BMI request/response transaction to complete */
     if(!adf_os_wait_for_completion_timeout(&target->CtrlResponseValid,
         adf_os_msecs_to_ticks(HTC_CONTROL_RX_TIMEOUT))) {
