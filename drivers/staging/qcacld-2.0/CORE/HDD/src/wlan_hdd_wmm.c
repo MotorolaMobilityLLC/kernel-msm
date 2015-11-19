@@ -1850,6 +1850,13 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    v_U8_t STAId;
    v_U8_t *pSTAId = (v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
+   int status = 0;
+   status = wlan_hdd_validate_context(pHddCtx);
+
+   if (status != 0) {
+      skb->priority = SME_QOS_WMM_UP_BE;
+      return HDD_LINUX_AC_BE;
+   }
 
    /*Get the Station ID*/
    if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &STAId))
