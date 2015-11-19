@@ -3363,6 +3363,11 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 		j = 0;
 		nla_for_each_nested(channels,
 			bucket[QCA_WLAN_VENDOR_ATTR_EXTSCAN_CHANNEL_SPEC], rem2) {
+			if ((j >= pReqMsg->buckets[bktIndex].numChannels) ||
+			    hdd_extscan_channel_max_reached(pReqMsg,
+							    total_channels))
+				break;
+
 			if (nla_parse(channel,
 				QCA_WLAN_VENDOR_ATTR_EXTSCAN_SUBCMD_CONFIG_PARAM_MAX,
 				nla_data(channels), nla_len(channels),
@@ -3370,9 +3375,6 @@ static int hdd_extscan_start_fill_bucket_channel_spec(
 				hddLog(LOGE, FL("nla_parse failed"));
 				return -EINVAL;
 			}
-			if (hdd_extscan_channel_max_reached(pReqMsg,
-							    total_channels))
-				break;
 
 			/* Parse and fetch channel */
 			if (!channel[
