@@ -28101,14 +28101,16 @@ int wma_suspend_target(WMA_HANDLE handle, int disable_target_intr)
 		WMA_LOGE("Failed to get ACK from firmware for pdev suspend");
 		wmi_set_target_suspend(wma_handle->wmi_handle, FALSE);
 #ifdef CONFIG_CNSS
-		if (!vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
+		if (vos_is_load_unload_in_progress(VOS_MODULE_ID_WDA, NULL) ||
+		    vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL)) {
+			WMA_LOGE("%s: Unloading/Loading/LOGP is in progress, Ignore!",
+				 __func__);
+		} else {
 			if (pmac->sme.enableSelfRecovery) {
 				vos_trigger_recovery();
 			} else {
 				VOS_BUG(0);
 			}
-		} else {
-			WMA_LOGE("%s: LOGP is in progress, ignore!", __func__);
 		}
 #endif
 		return -1;
