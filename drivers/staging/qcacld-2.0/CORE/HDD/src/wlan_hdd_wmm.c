@@ -1516,6 +1516,9 @@ VOS_STATUS hdd_wmm_init ( hdd_adapter_t *pAdapter )
       hddWmmDscpToUpMap[dscp] = dscp >> 3;
    }
 
+   /* Special case for Expedited Forwarding (DSCP 46) */
+   hddWmmDscpToUpMap[46] = SME_QOS_WMM_UP_VO;
+
    return VOS_STATUS_SUCCESS;
 }
 
