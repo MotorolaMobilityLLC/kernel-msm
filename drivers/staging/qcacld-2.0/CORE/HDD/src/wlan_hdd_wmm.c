@@ -1916,10 +1916,11 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
    sme_QosWmmUpType up = SME_QOS_WMM_UP_BE;
    v_USHORT_t queueIndex;
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   int status = 0;
 
-   if (isWDresetInProgress()) {
-       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                  FL("called during WDReset"));
+   status = wlan_hdd_validate_context(pHddCtx);
+   if (status != 0) {
        skb->priority = SME_QOS_WMM_UP_BE;
        return HDD_LINUX_AC_BE;
    }
