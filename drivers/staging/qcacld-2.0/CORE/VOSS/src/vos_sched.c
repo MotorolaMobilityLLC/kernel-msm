@@ -1511,9 +1511,7 @@ void vos_free_tlshim_pkt_freeq(pVosSchedContext pSchedContext)
    spin_lock_bh(&pSchedContext->VosTlshimPktFreeQLock);
    list_for_each_entry_safe(pkt, tmp, &pSchedContext->VosTlshimPktFreeQ, list) {
        list_del(&pkt->list);
-       spin_unlock_bh(&pSchedContext->VosTlshimPktFreeQLock);
        vos_mem_free(pkt);
-       spin_lock_bh(&pSchedContext->VosTlshimPktFreeQLock);
    }
    spin_unlock_bh(&pSchedContext->VosTlshimPktFreeQLock);
 }
