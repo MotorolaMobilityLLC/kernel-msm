@@ -3888,8 +3888,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
         MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE,
                         psessionEntry->peSessionId,
                         pMac->lim.gLimMlmState));
-        //memory is freed up below.
-        psessionEntry->pLimMlmJoinReq = NULL;
         goto error;
     }
 
