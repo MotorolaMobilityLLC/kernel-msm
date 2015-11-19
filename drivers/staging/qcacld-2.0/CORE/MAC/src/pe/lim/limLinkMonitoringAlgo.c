@@ -324,7 +324,8 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     msgLength += sizeof(tSirMacAddr);
 
     //reasonCode
-    limCopyU16((tANI_U8*)pBuf, (tANI_U16)eLIM_LINK_MONITORING_DISASSOC);
+    limCopyU16((tANI_U8*)pBuf,
+              (tANI_U16)eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON);
     pBuf += sizeof(tANI_U16);
     msgLength += sizeof(tANI_U16);
 
