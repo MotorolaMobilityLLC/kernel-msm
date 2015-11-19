@@ -33,6 +33,7 @@
 #include "../codecs/msm8x16-wcd.h"
 #include "../codecs/wsa881x-analog.h"
 #include <linux/regulator/consumer.h>
+#include <sound/ospl2xx.h>
 #define DRV_NAME "msm8952-asoc-wcd"
 
 #define BTSCO_RATE_8KHZ 8000
@@ -1892,6 +1893,12 @@ static int cs35l34_dai_init(struct snd_soc_pcm_runtime *rtd)
 	ret = snd_soc_dai_set_sysclk(cs35l34_dai, 0, 12288000, 0);
 	if (ret != 0)
 		dev_err(cs35l34_dai->dev, "Cannot set cs35l34 MCLK %d\n", ret);
+
+#ifdef CONFIG_SND_SOC_OPALUM
+	ret = ospl2xx_init(rtd);
+	if (ret != 0)
+		dev_err(cs35l34_dai->dev, "Cannot set Opalum controls %d\n", ret);
+#endif
 
 	return ret;
 }
