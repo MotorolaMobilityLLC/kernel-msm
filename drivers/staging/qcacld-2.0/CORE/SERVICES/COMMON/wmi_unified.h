@@ -7934,6 +7934,8 @@ enum wmi_tdls_state {
     WMI_TDLS_ENABLE_PASSIVE,
     /** TDLS enabled - with firmware connection tracking/notifications */
     WMI_TDLS_ENABLE_ACTIVE,
+    /** TDLS enabled - firmware waits for peer mac for connection tracking */
+    WMI_TDLS_ENABLE_ACTIVE_EXTERNAL_CONTROL,
 };
 
 /* TDLS Options */
@@ -7977,6 +7979,8 @@ typedef struct {
     A_UINT32 tdls_puapsd_rx_frame_threshold;
     /**Duration (in ms) over which to check whether TDLS link needs to be torn down */
     A_UINT32 teardown_notification_ms;
+    /**STA kickout threshold for TDLS peer */
+    A_UINT32 tdls_peer_kickout_threshold;
 } wmi_tdls_set_state_cmd_fixed_param;
 
 /* WMI_TDLS_PEER_UPDATE_CMDID */
@@ -7991,6 +7995,10 @@ enum wmi_tdls_peer_state {
     /** tx peer TDLS link tear down started (link paused, any frames
      * queued for DA will be requeued back through the AP)*/
     WMI_TDLS_PEER_STATE_TEARDOWN,
+    /** Add peer mac into connection table */
+    WMI_TDLS_PEER_ADD_MAC_ADDR,
+    /** Remove peer mac from connection table */
+    WMI_TDLS_PEER_REMOVE_MAC_ADDR,
 };
 
 /* NB: These defines are fixed, and cannot be changed without breaking WMI compatibility */
