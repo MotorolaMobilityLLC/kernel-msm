@@ -1506,14 +1506,19 @@ static int VosRXThread ( void * Arg )
   -------------------------------------------------------------------------*/
 void vos_free_tlshim_pkt_freeq(pVosSchedContext pSchedContext)
 {
-   struct VosTlshimPkt *pkt, *tmp;
+   struct VosTlshimPkt *pkt;
 
    spin_lock_bh(&pSchedContext->VosTlshimPktFreeQLock);
-   list_for_each_entry_safe(pkt, tmp, &pSchedContext->VosTlshimPktFreeQ, list) {
+   while (!list_empty(&pSchedContext->VosTlshimPktFreeQ)) {
+       pkt = list_entry((&pSchedContext->VosTlshimPktFreeQ)->next,
+                     typeof(*pkt), list);
        list_del(&pkt->list);
+       spin_unlock_bh(&pSchedContext->VosTlshimPktFreeQLock);
        vos_mem_free(pkt);
+       spin_lock_bh(&pSchedContext->VosTlshimPktFreeQLock);
    }
    spin_unlock_bh(&pSchedContext->VosTlshimPktFreeQLock);
+
 }
 
 /*---------------------------------------------------------------------------
