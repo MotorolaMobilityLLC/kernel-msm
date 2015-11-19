@@ -173,6 +173,7 @@ struct ieee80211_channel {
 	int orig_mag, orig_mpwr;
 	enum nl80211_dfs_state dfs_state;
 	unsigned long dfs_state_entered;
+	bool disable;
 };
 
 /**

@@ -1308,7 +1308,8 @@ static void handle_band_custom(struct wiphy *wiphy,
 		return;
 
 	for (i = 0; i < sband->n_channels; i++)
-		handle_channel_custom(wiphy, &sband->channels[i], regd);
+		if (!sband->channels[i].disable)
+			handle_channel_custom(wiphy, &sband->channels[i], regd);
 }
 
 /* Used by drivers prior to wiphy registration */
