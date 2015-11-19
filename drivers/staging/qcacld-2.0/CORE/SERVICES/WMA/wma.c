@@ -16496,7 +16496,7 @@ static inline u_int32_t wma_get_uapsd_mask(tpUapsd_Params uapsd_params)
 }
 
 static int32_t wma_set_force_sleep(tp_wma_handle wma, u_int32_t vdev_id,
-			u_int8_t enable, u_int8_t is_qpower_enabled)
+		u_int8_t enable, enum powersave_qpower_mode qpower_config)
 {
 	int32_t ret;
 	tANI_U32 cfg_data_val = 0;
@@ -16567,7 +16567,7 @@ static int32_t wma_set_force_sleep(tp_wma_handle wma, u_int32_t vdev_id,
 	 * So Disable QPower explicitly
 	 */
 	ret = wmi_unified_set_sta_ps_param(wma->wmi_handle, vdev_id,
-				WMI_STA_PS_ENABLE_QPOWER, is_qpower_enabled);
+				WMI_STA_PS_ENABLE_QPOWER, qpower_config);
 	if (ret) {
 		WMA_LOGE("Disable QPower Failed vdevId %d", vdev_id);
 		return ret;
@@ -16759,20 +16759,48 @@ int32_t wma_set_qpower_force_sleep(tp_wma_handle wma, u_int32_t vdev_id,
 	return 0;
 }
 
-static u_int8_t wma_is_qpower_enabled(tp_wma_handle wma)
+/**
+ * wma_get_qpower_config() - get qpower configuration
+ * @wma: WMA handle
+ *
+ * Power Save Offload configuration:
+ * 0 -> Power save offload is disabled
+ * 1 -> Legacy Power save enabled + Deep sleep Disabled
+ * 2 -> QPower enabled + Deep sleep Disabled
+ * 3 -> Legacy Power save enabled + Deep sleep Enabled
+ * 4 -> QPower enabled + Deep sleep Enabled
+ * 5 -> Duty cycling QPower enabled
+ *
+ * Return: enum powersave_qpower_mode with below values
+ * QPOWER_DISABLED if QPOWER is disabled
+ * QPOWER_ENABLED if QPOWER is enabled
+ * QPOWER_DUTY_CYCLING if DUTY CYCLING QPOWER is enabled
+ */
+static enum powersave_qpower_mode wma_get_qpower_config(tp_wma_handle wma)
 {
-	if((wma->powersave_mode == PS_QPOWER_NODEEPSLEEP) ||
-		(wma->powersave_mode == PS_QPOWER_DEEPSLEEP)) {
-		return true;
+	switch (wma->powersave_mode) {
+	case PS_QPOWER_NODEEPSLEEP:
+	case PS_QPOWER_DEEPSLEEP:
+		WMA_LOGI("QPOWER is enabled in power save mode %d",
+			wma->powersave_mode);
+		return QPOWER_ENABLED;
+	case PS_DUTY_CYCLING_QPOWER:
+		WMA_LOGI("DUTY cycling QPOWER is enabled in power save mode %d",
+			wma->powersave_mode);
+		return QPOWER_DUTY_CYCLING;
+
+	default:
+		WMA_LOGI("QPOWER is disabled in power save mode %d",
+			wma->powersave_mode);
+		return QPOWER_DISABLED;
 	}
-	return false;
 }
 
 static void wma_enable_sta_ps_mode(tp_wma_handle wma, tpEnablePsParams ps_req)
 {
 	uint32_t vdev_id = ps_req->sessionid;
 	int32_t ret;
-	u_int8_t is_qpower_enabled = wma_is_qpower_enabled(wma);
+	enum powersave_qpower_mode qpower_config = wma_get_qpower_config(wma);
 	struct wma_txrx_node *iface = &wma->interfaces[vdev_id];
 
 	if (eSIR_ADDON_NOTHING == ps_req->psSetting) {
@@ -16786,7 +16814,7 @@ static void wma_enable_sta_ps_mode(tp_wma_handle wma, tpEnablePsParams ps_req)
 		}
 
 		ret = wma_set_force_sleep(wma, vdev_id, false,
-						is_qpower_enabled);
+						qpower_config);
 		if (ret) {
 			WMA_LOGE("Enable Sta Ps Failed vdevId %d", vdev_id);
 			ps_req->status = VOS_STATUS_E_FAILURE;
@@ -16818,7 +16846,7 @@ static void wma_enable_sta_ps_mode(tp_wma_handle wma, tpEnablePsParams ps_req)
 		WMA_LOGD("Enable Forced Sleep vdevId %d", vdev_id);
 
 		ret = wma_set_force_sleep(wma, vdev_id, true,
-						is_qpower_enabled);
+						qpower_config);
 
 		if (ret) {
 			WMA_LOGE("Enable Forced Sleep Failed vdevId %d",
@@ -16873,7 +16901,7 @@ static void wma_enable_uapsd_mode(tp_wma_handle wma,
 	int32_t ret;
 	u_int32_t vdev_id = ps_req->sessionid;
 	u_int32_t uapsd_val = 0;
-	u_int8_t is_qpower_enabled = wma_is_qpower_enabled(wma);
+	enum powersave_qpower_mode qpower_config = wma_get_qpower_config(wma);
 
 	/* Disable Sta Mode Power save */
 	ret = wmi_unified_set_sta_ps(wma->wmi_handle, vdev_id, false);
@@ -16897,7 +16925,7 @@ static void wma_enable_uapsd_mode(tp_wma_handle wma,
 	WMA_LOGD("Enable Forced Sleep vdevId %d", vdev_id);
 
 	ret = wma_set_force_sleep(wma, vdev_id, true,
-						is_qpower_enabled);
+						qpower_config);
 	if (ret) {
 		WMA_LOGE("Enable Forced Sleep Failed vdevId %d", vdev_id);
 		ps_req->status = VOS_STATUS_E_FAILURE;
@@ -16914,7 +16942,7 @@ static void wma_disable_uapsd_mode(tp_wma_handle wma,
 {
 	int32_t ret;
 	u_int32_t vdev_id = ps_req->sessionid;
-	u_int8_t is_qpower_enabled = wma_is_qpower_enabled(wma);
+	enum powersave_qpower_mode qpower_config = wma_get_qpower_config(wma);
 
 	WMA_LOGD("Disable Uapsd vdevId %d", vdev_id);
 
@@ -16936,7 +16964,7 @@ static void wma_disable_uapsd_mode(tp_wma_handle wma,
 
 	/* Re enable Sta Mode Powersave with proper configuration */
 	ret = wma_set_force_sleep(wma, vdev_id, false,
-						is_qpower_enabled);
+						qpower_config);
 	if (ret) {
 		WMA_LOGE("Disable Forced Sleep Failed vdevId %d", vdev_id);
 		ps_req->status = VOS_STATUS_E_FAILURE;
@@ -29734,7 +29762,7 @@ void WDA_TxAbort(v_U8_t vdev_id)
 static void wma_set_vdev_suspend_dtim(tp_wma_handle wma, v_U8_t vdev_id)
 {
 	struct wma_txrx_node *iface = &wma->interfaces[vdev_id];
-	u_int8_t is_qpower_enabled = wma_is_qpower_enabled(wma);
+	enum powersave_qpower_mode qpower_config = wma_get_qpower_config(wma);
 
 	if ((iface->type == WMI_VDEV_TYPE_STA) &&
 		(iface->ps_enabled == TRUE) &&
@@ -29781,7 +29809,7 @@ static void wma_set_vdev_suspend_dtim(tp_wma_handle wma, v_U8_t vdev_id)
 				vdev_id);
 		}
 
-		if (is_qpower_enabled) {
+		if (qpower_config) {
 			WMA_LOGD("disable Qpower in suspend mode!");
 			ret = wmi_unified_set_sta_ps_param(wma->wmi_handle,
 						vdev_id,
@@ -29826,7 +29854,7 @@ static void wma_set_suspend_dtim(tp_wma_handle wma)
 static void wma_set_vdev_resume_dtim(tp_wma_handle wma, v_U8_t vdev_id)
 {
 	struct wma_txrx_node *iface = &wma->interfaces[vdev_id];
-	u_int8_t is_qpower_enabled = wma_is_qpower_enabled(wma);
+	enum powersave_qpower_mode qpower_config = wma_get_qpower_config(wma);
 
 	if ((iface->type == WMI_VDEV_TYPE_STA) &&
 		(iface->ps_enabled == TRUE) &&
@@ -29869,7 +29897,7 @@ static void wma_set_vdev_resume_dtim(tp_wma_handle wma, v_U8_t vdev_id)
 		iface->dtim_policy = STICK_DTIM;
 		WMA_LOGD("Set DTIM Policy to Stick Dtim vdevId %d", vdev_id);
 
-		if (is_qpower_enabled) {
+		if (qpower_config) {
 			WMA_LOGD("enable Qpower in resume mode!");
 			ret = wmi_unified_set_sta_ps_param(wma->wmi_handle,
 						vdev_id,

@@ -1424,13 +1424,6 @@ struct wma_decap_info_t {
 	int32_t hdr_len;
 };
 
-enum powersave_mode {
-	PS_NOT_SUPPORTED = 0,
-	PS_LEGACY_NODEEPSLEEP = 1,
-	PS_QPOWER_NODEEPSLEEP = 2,
-	PS_LEGACY_DEEPSLEEP = 3,
-	PS_QPOWER_DEEPSLEEP = 4
-};
 
 #define WMA_DEFAULT_MAX_PSPOLL_BEFORE_WAKE 1
 

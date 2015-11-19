@@ -2315,11 +2315,19 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 
 /*
  * Power Save Offload
+ * Power Save Offload configuration:
+ * Current values of gEnablePowerSaveOffload:
+ * 0 -> Power save offload is disabled
+ * 1 -> Legacy Power save enabled + Deep sleep Disabled
+ * 2 -> QPower enabled + Deep sleep Disabled
+ * 3 -> Legacy Power save enabled + Deep sleep Enabled
+ * 4 -> QPower enabled + Deep sleep Enabled
+ * 5 -> Duty cycling QPower enabled
  */
 #define CFG_POWERSAVE_OFFLOAD_NAME                "gEnablePowerSaveOffload"
-#define CFG_POWERSAVE_OFFLOAD_MIN                 ( 0 )
-#define CFG_POWERSAVE_OFFLOAD_MAX                 ( 4 )
-#define CFG_POWERSAVE_OFFLOAD_DEFAULT             ( CFG_POWERSAVE_OFFLOAD_MIN )
+#define CFG_POWERSAVE_OFFLOAD_MIN                 (0)
+#define CFG_POWERSAVE_OFFLOAD_MAX                 (PS_DUTY_CYCLING_QPOWER)
+#define CFG_POWERSAVE_OFFLOAD_DEFAULT             (CFG_POWERSAVE_OFFLOAD_MIN)
 
 #ifdef IPA_OFFLOAD
 /*

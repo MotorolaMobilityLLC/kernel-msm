@@ -6005,4 +6005,33 @@ struct rssi_breach_event {
 	v_MACADDR_t  curr_bssid;
 };
 
+/**
+ * enum powersave_qpower_mode: QPOWER modes
+ * @QPOWER_DISABLED: Qpower is disabled
+ * @QPOWER_ENABLED: Qpower is enabled
+ * @QPOWER_DUTY_CYCLING: Qpower is enabled with duty cycling
+ */
+enum powersave_qpower_mode {
+	QPOWER_DISABLED = 0,
+	QPOWER_ENABLED = 1,
+	QPOWER_DUTY_CYCLING = 2
+};
+
+/**
+ * enum powersave_qpower_mode: powersave_mode
+ * @PS_NOT_SUPPORTED: Power save is not supported
+ * @PS_LEGACY_NODEEPSLEEP: Legacy power save enabled and deep sleep disabled
+ * @PS_QPOWER_NODEEPSLEEP: QPOWER enabled and deep sleep disabled
+ * @PS_LEGACY_DEEPSLEEP: Legacy power save enabled and deep sleep enabled
+ * @PS_QPOWER_DEEPSLEEP: QPOWER enabled and deep sleep enabled
+ * @PS_DUTY_CYCLING_QPOWER: QPOWER enabled in duty cycling mode
+ */
+enum powersave_mode {
+	PS_NOT_SUPPORTED = 0,
+	PS_LEGACY_NODEEPSLEEP = 1,
+	PS_QPOWER_NODEEPSLEEP = 2,
+	PS_LEGACY_DEEPSLEEP = 3,
+	PS_QPOWER_DEEPSLEEP = 4,
+	PS_DUTY_CYCLING_QPOWER = 5
+};
 #endif /* __SIR_API_H */
