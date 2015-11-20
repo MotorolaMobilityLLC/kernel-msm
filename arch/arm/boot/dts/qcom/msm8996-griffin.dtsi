@@ -90,7 +90,7 @@
 
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <0 0xc5 5>;
-		gpios = <&pm8994_gpios 6 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpios = <&pm8994_gpios 6 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "cc-alert";
 
 		maxim,enable_por_init;
@@ -133,7 +133,7 @@
 
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <2 0xc6 6>;
-		gpios = <&pmi8994_gpios 7 0x11>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
+		gpios = <&pmi8994_gpios 7 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "fan-int-n";
 		supply-names = "battery";
 
