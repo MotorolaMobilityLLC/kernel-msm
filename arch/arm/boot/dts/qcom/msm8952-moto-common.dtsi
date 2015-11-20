@@ -62,6 +62,12 @@
 		mmi,backup-utags = "/dev/block/bootdevice/by-name/utagsBackup";
 	};
 
+	hw {
+		compatible = "mmi,utags";
+		mmi,dir-name = "hw";
+		mmi,main-utags = "/dev/block/bootdevice/by-name/hw";
+	};
+
 };
 
 &tlmm_pinmux {
