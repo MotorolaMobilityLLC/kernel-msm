@@ -406,14 +406,16 @@ static int bcl_access_monitor_enable(bool enable)
 					? "Voltage Inactive to Monitor"
 					: "Current Inactive to Monitor",
 					0);
+				perph_data->state = BCL_PARAM_MONITOR;
 				enable_irq(perph_data->irq_num);
+				schedule_delayed_work(&perph_data->poll_work,
+				msecs_to_jiffies(perph_data->polling_delay_ms));
 				break;
 			case BCL_PARAM_POLLING:
 			case BCL_PARAM_MONITOR:
 			default:
 				break;
 			}
-			perph_data->state = BCL_PARAM_MONITOR;
 		} else {
 			switch (perph_data->state) {
 			case BCL_PARAM_MONITOR:
@@ -720,38 +722,39 @@ static void bcl_poll_vbat_high(struct work_struct *work)
 
 	trace_bcl_hw_event("vbat poll high. Enter");
 	mutex_lock(&perph_data->state_trans_lock);
-	if (perph_data->state != BCL_PARAM_POLLING) {
+	if (perph_data->state == BCL_PARAM_INACTIVE) {
 		pr_err("Invalid vbat state %d\n", perph_data->state);
 		goto exit_vbat;
 	}
-
-	ret = perph_data->read_max(&val);
+	ret = perph_data->ops.read(&val);
 	if (ret) {
 		pr_err("Error in reading vbat. err:%d", ret);
 		goto reschedule_vbat;
 	}
-	ret = perph_data->clear_max();
-	if (ret)
-		pr_err("Error clearing min vbat reg. err:%d\n", ret);
 	if (val >= perph_data->high_trip) {
-		pr_debug("Vbat reached high clear trip. vbat:%d\n", val);
+		pr_warn("Vbat reached high clear trip. vbat:%d\n", val);
 		trace_bcl_hw_state_event("Polling to Monitor. vbat[uV]:", val);
 		trace_bcl_hw_mitigation("vbat high trip. vbat[uV]", val);
 		perph_data->ops.notify(perph_data->param_data, val,
 			BCL_HIGH_TRIP);
-		perph_data->state = BCL_PARAM_MONITOR;
-		enable_irq(perph_data->irq_num);
+		if (BCL_PARAM_MONITOR != perph_data->state) {
+			perph_data->state = BCL_PARAM_MONITOR;
+			enable_irq(perph_data->irq_num);
+		}
 	} else {
 		goto reschedule_vbat;
 	}
 
 exit_vbat:
+	pr_debug("bcl_poll_vbat_high exit_vbat:%d, high_trip %d\n",
+				val, perph_data->high_trip);
 	mutex_unlock(&perph_data->state_trans_lock);
 	trace_bcl_hw_event("vbat poll high. Exit");
 	return;
 
 reschedule_vbat:
 	mutex_unlock(&perph_data->state_trans_lock);
+	pr_debug("bcl_poll_vbat_high schedule_delayed_work vbat %d\n", val);
 	schedule_delayed_work(&perph_data->poll_work,
 		msecs_to_jiffies(perph_data->polling_delay_ms));
 	trace_bcl_hw_event("vbat poll high. Exit");
@@ -813,30 +816,25 @@ static irqreturn_t bcl_handle_vbat(int irq, void *data)
 	struct bcl_peripheral_data *perph_data =
 		(struct bcl_peripheral_data *)data;
 
+	disable_irq_nosync(perph_data->irq_num);
 	trace_bcl_hw_mitigation_event("Vbat Interrupted");
 	mutex_lock(&perph_data->state_trans_lock);
 	if (perph_data->state == BCL_PARAM_MONITOR) {
-		ret = perph_data->read_max(&perph_data->trip_val);
+		ret = perph_data->ops.read(&perph_data->trip_val);
 		if (ret) {
-			pr_err("Error reading max/min reg. err:%d\n", ret);
-			goto exit_intr;
+			pr_err("Error reading vbat reg. err:%d\n", ret);
 		}
-		ret = perph_data->clear_max();
-		if (ret)
-			pr_err("Error clearing max/min reg. err:%d\n", ret);
 		thresh_value = perph_data->low_trip;
 		convert_adc_to_vbat_val(&thresh_value);
 		if (perph_data->trip_val > thresh_value) {
-			pr_debug("False vbat min trip. vbat:%d vbat_thresh_val:%d\n",
+			pr_warn("False vbat min trip. vbat:%d vbat_thresh_val:%d\n",
 				perph_data->trip_val, thresh_value);
 			trace_bcl_hw_event("Vbat Invalid interrupt");
-			goto exit_intr;
 		}
-		pr_debug("Vbat reached Low trip. vbat:%d\n",
-			perph_data->trip_val);
+		pr_warn("Vbat reached Low trip. vbat:%d thresh:%d\n",
+			perph_data->trip_val, thresh_value);
 		trace_bcl_hw_state_event("Monitor to Polling. vbat[uV]:",
 				perph_data->trip_val);
-		disable_irq_nosync(perph_data->irq_num);
 		perph_data->state = BCL_PARAM_POLLING;
 		trace_bcl_hw_mitigation("vbat low trip. vbat[uV]",
 				perph_data->trip_val);
@@ -845,11 +843,10 @@ static irqreturn_t bcl_handle_vbat(int irq, void *data)
 		schedule_delayed_work(&perph_data->poll_work,
 			msecs_to_jiffies(perph_data->polling_delay_ms));
 	} else {
-		pr_debug("Ignoring interrupt\n");
+		pr_warn("Ignoring interrupt\n");
 		trace_bcl_hw_event("Vbat Ignoring interrupt");
 	}
 
-exit_intr:
 	mutex_unlock(&perph_data->state_trans_lock);
 	return IRQ_HANDLED;
 }
@@ -1142,7 +1139,7 @@ static int bcl_probe(struct spmi_device *spmi)
 	ret = devm_request_threaded_irq(&spmi->dev,
 			bcl_perph->param[BCL_PARAM_VOLTAGE].irq_num,
 			NULL, bcl_handle_vbat,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+			IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
 			"bcl_vbat_interrupt",
 			&bcl_perph->param[BCL_PARAM_VOLTAGE]);
 	if (ret) {
