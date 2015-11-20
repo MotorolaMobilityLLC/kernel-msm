@@ -5176,6 +5176,21 @@ int arizona_set_fll_refclk(struct arizona_fll *fll, int source,
 }
 EXPORT_SYMBOL_GPL(arizona_set_fll_refclk);
 
+int arizona_get_fll(struct arizona_fll *fll, int *source,
+		    unsigned int *Fref, unsigned int *Fout)
+{
+	if (!fll || !source || !Fref || !Fout)
+		return -EINVAL;
+
+	mutex_lock(&fll->lock);
+	*source = fll->sync_src;
+	*Fref = fll->sync_freq;
+	*Fout = fll->fout;
+	mutex_unlock(&fll->lock);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_get_fll);
+
 int arizona_set_fll(struct arizona_fll *fll, int source,
 		    unsigned int Fref, unsigned int Fout)
 {
@@ -5521,6 +5536,28 @@ int arizona_set_ez2ctrl_cb(struct snd_soc_codec *codec,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(arizona_set_ez2ctrl_cb);
+
+int arizona_set_ez2panic_cb(struct snd_soc_codec *codec,
+			    void (*ez2panic_trigger)(int dsp, u16 *msg))
+{
+	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
+
+	arizona->pdata.ez2panic_trigger = ez2panic_trigger;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_set_ez2panic_cb);
+
+int arizona_set_ez2text_cb(struct snd_soc_codec *codec,
+			   void (*ez2text_trigger)(int dsp))
+{
+	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
+
+	arizona->pdata.ez2text_trigger = ez2text_trigger;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_set_ez2text_cb);
 
 int arizona_set_custom_jd(struct snd_soc_codec *codec,
 			   const struct arizona_jd_state *custom_jd)
