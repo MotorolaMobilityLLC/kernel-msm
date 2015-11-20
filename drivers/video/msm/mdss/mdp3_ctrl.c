@@ -908,6 +908,9 @@ static int mdp3_ctrl_off(struct msm_fb_data_type *mfd)
 		/* Wait to ensure TG to turn off */
 		msleep(20);
 		mfd->panel_info->cont_splash_enabled = 0;
+
+		/* Disable Auto refresh once continuous splash disabled */
+		mdp3_autorefresh_disable(mfd->panel_info);
 		mdp3_splash_done(mfd->panel_info);
 
 		mdp3_irq_deregister();
@@ -997,6 +1000,9 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 	mfd->panel_info->cont_splash_enabled = 0;
 	mdp3_session->in_splash_screen = 0;
 	mdp3_splash_done(mfd->panel_info);
+
+	/* Disable Auto refresh */
+	mdp3_autorefresh_disable(mfd->panel_info);
 reset_error:
 	mutex_unlock(&mdp3_session->lock);
 	return rc;
