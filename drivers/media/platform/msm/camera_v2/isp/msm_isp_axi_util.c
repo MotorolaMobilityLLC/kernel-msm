@@ -18,7 +18,8 @@
 
 
 #define HANDLE_TO_IDX(handle) (handle & 0xFF)
-#define ISP_SOF_DEBUG_COUNT 0
+#define ISP_SOF_DEBUG_COUNT 2
+
 static int msm_isp_update_dual_HW_ms_info_at_start(
 	struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src stream_src,
@@ -1298,7 +1299,8 @@ static int  msm_isp_axi_stream_enable_cfg(
 	struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, int32_t dual_vfe_sync)
 {
-	int i, vfe_id = 0, enable_wm = 0;
+	int i, vfe_id = 0;
+	uint8_t enable_wm = 0;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 	uint32_t stream_idx = HANDLE_TO_IDX(stream_info->stream_handle);
 	struct dual_vfe_resource *dual_vfe_res = NULL;
@@ -3603,15 +3605,35 @@ int msm_isp_update_axi_stream(struct vfe_device *vfe_dev, void *arg)
 			if ((stream_info->state == ACTIVE) &&
 				((vfe_dev->hw_info->runtime_axi_update == 0) ||
 				(vfe_dev->dual_vfe_enable == 1)))  {
+				struct dual_vfe_resource *dual_vfe_res = NULL;
+				uint32_t stream_idx = HANDLE_TO_IDX(stream_info->stream_handle);
+
 				spin_lock_irqsave(&stream_info->lock, flags);
 				stream_info->state = PAUSE_PENDING;
 				msm_isp_axi_stream_enable_cfg(
 					vfe_dev, stream_info, 1);
-				stream_info->state = PAUSING;
-				atomic_set(&axi_data->
-					axi_cfg_update[SRC_TO_INTF(
-					stream_info->stream_src)],
-					UPDATE_REQUESTED);
+				if ((stream_info->stream_src < RDI_INTF_0) &&
+					vfe_dev->is_split && vfe_dev->pdev->id == ISP_VFE1) {
+					dual_vfe_res = vfe_dev->common_data->dual_vfe_res;
+					stream_info->state = PAUSING;
+					atomic_set(&axi_data->
+						axi_cfg_update[SRC_TO_INTF(
+						stream_info->stream_src)],
+						UPDATE_REQUESTED);
+					dual_vfe_res->axi_data[ISP_VFE0]->
+						stream_info[stream_idx].state = PAUSING;
+					atomic_set(&dual_vfe_res->axi_data[ISP_VFE0]->
+						axi_cfg_update[SRC_TO_INTF(
+						stream_info->stream_src)],
+						UPDATE_REQUESTED);
+				} else if ((stream_info->stream_src >= RDI_INTF_0) ||
+					!vfe_dev->is_split) {
+					stream_info->state = PAUSING;
+					atomic_set(&axi_data->
+						axi_cfg_update[SRC_TO_INTF(
+						stream_info->stream_src)],
+						UPDATE_REQUESTED);
+				}
 				spin_unlock_irqrestore(&stream_info->lock,
 					flags);
 			} else {
