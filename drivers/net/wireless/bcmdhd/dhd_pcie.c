@@ -2424,6 +2424,8 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 	dhd_bus_t *bus = dhdp->bus;
 	unsigned long flags;
 	int ret = 0;
+	uint32 val;
+
 #ifdef CONFIG_ARCH_MSM
 	int retry = POWERUP_MAX_RETRY;
 #endif /* CONFIG_ARCH_MSM */
@@ -2512,6 +2514,10 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 					else
 						OSL_SLEEP(10);
 				}
+
+				/* WAR: increase PCIe CMPL_TIMEOUT value */
+				val = dhdpcie_bus_cfg_read_dword(bus, PCIEGEN2_CAP_DEVSTSCTRL2_OFFSET, sizeof(uint32));
+				dhdpcie_bus_cfg_write_dword(bus, PCIEGEN2_CAP_DEVSTSCTRL2_OFFSET, sizeof(uint32), val|0x6);
 
 				if (ret && !retry) {
 					DHD_ERROR(("%s: host pcie clock enable failed: %d\n",
