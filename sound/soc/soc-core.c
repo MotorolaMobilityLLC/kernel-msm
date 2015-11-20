@@ -1159,6 +1159,10 @@ static int soc_probe_component(struct snd_soc_card *card,
 	}
 
 	list_for_each_entry(dai, &component->dai_list, list) {
+
+		if (dai->playback_widget || dai->capture_widget)
+			continue;
+
 		ret = snd_soc_dapm_new_dai_widgets(dapm, dai);
 		if (ret != 0) {
 			dev_err(component->dev,
