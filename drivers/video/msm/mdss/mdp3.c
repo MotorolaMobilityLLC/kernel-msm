@@ -2291,6 +2291,18 @@ static int mdp3_panel_register_done(struct mdss_panel_data *pdata)
 	return rc;
 }
 
+/* mdp3_autorefresh_disable() - Disable Auto refresh
+ * @ panel_info : pointer to panel configuration structure
+ *
+ * This function displable Auto refresh block for command mode panel.
+ */
+int mdp3_autorefresh_disable(struct mdss_panel_info *panel_info) {
+	if ((panel_info->type == MIPI_CMD_PANEL) &&
+		(MDP3_REG_READ(MDP3_REG_AUTOREFRESH_CONFIG_P)))
+		MDP3_REG_WRITE(MDP3_REG_AUTOREFRESH_CONFIG_P, 0);
+	return 0;
+}
+
 int mdp3_splash_done(struct mdss_panel_info *panel_info)
 {
 	if (panel_info->cont_splash_enabled) {

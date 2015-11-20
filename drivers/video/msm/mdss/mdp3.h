@@ -239,7 +239,7 @@ int mdp3_dynamic_clock_gating_ctrl(int enable);
 int mdp3_footswitch_ctrl(int enable);
 int mdp3_qos_remapper_setup(struct mdss_panel_data *panel);
 int mdp3_splash_done(struct mdss_panel_info *panel_info);
-
+int mdp3_autorefresh_disable(struct mdss_panel_info *panel_info);
 u64 mdp3_clk_round_off(u64 clk_rate);
 
 void mdp3_calc_dma_res(struct mdss_panel_info *panel_info, u64 *clk_rate,
