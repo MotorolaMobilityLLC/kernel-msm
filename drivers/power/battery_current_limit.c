@@ -880,6 +880,7 @@ mode_store(struct device *dev, struct device_attribute *attr,
 		bcl_mode_set(BCL_DEVICE_ENABLED);
 		pr_info("bcl enabled\n");
 	} else if (!strcmp(buf, "disable")) {
+		battery_soc_val = 100;
 		bcl_mode_set(BCL_DEVICE_DISABLED);
 		pr_info("bcl disabled\n");
 	} else {
