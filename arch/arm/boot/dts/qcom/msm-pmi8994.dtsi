@@ -157,7 +157,7 @@
 			qcom,vbat-scaling-factor = <39000>;
 			qcom,vbat-gain-numerator = <1>;
 			qcom,vbat-gain-denominator = <128>;
-			qcom,vbat-polling-delay-ms = <100>;
+			qcom,vbat-polling-delay-ms = <1000>;
 			qcom,ibat-scaling-factor = <39000>;
 			qcom,ibat-gain-numerator = <1>;
 			qcom,ibat-gain-denominator = <128>;
