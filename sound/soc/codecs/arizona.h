@@ -74,7 +74,7 @@
 #define CLEARWATER_DSP_CLK_73MHZ  3
 #define CLEARWATER_DSP_CLK_147MHZ 4
 
-#define ARIZONA_MAX_DAI  11
+#define ARIZONA_MAX_DAI  15
 #define ARIZONA_MAX_ADSP 7
 
 #define ARIZONA_SLIM1 4
@@ -433,6 +433,7 @@ struct arizona_fll {
 	unsigned int sync_freq;
 	int ref_src;
 	unsigned int ref_freq;
+	struct mutex lock;
 
 	char lock_name[ARIZONA_FLL_NAME_LEN];
 	char clock_ok_name[ARIZONA_FLL_NAME_LEN];
@@ -446,6 +447,8 @@ extern int arizona_set_fll(struct arizona_fll *fll, int source,
 			   unsigned int Fref, unsigned int Fout);
 extern int arizona_set_fll_ao(struct arizona_fll *fll, int source,
 		    unsigned int fin, unsigned int fout);
+extern int arizona_get_fll(struct arizona_fll *fll, int *source,
+			   unsigned int *Fref, unsigned int *Fout);
 
 extern int arizona_init_spk(struct snd_soc_codec *codec);
 extern int arizona_init_gpio(struct snd_soc_codec *codec);
@@ -467,6 +470,10 @@ extern int arizona_set_micd_cb(struct snd_soc_codec *codec,
 				void (*micd_cb)(bool mic));
 extern int arizona_set_ez2ctrl_cb(struct snd_soc_codec *codec,
 				  void (*ez2ctrl_trigger)(void));
+extern int arizona_set_ez2panic_cb(struct snd_soc_codec *codec,
+				  void (*ez2panic_trigger)(int dsp, u16 *msg));
+extern int arizona_set_ez2text_cb(struct snd_soc_codec *codec,
+				  void (*ez2text_trigger)(int dsp));
 extern int arizona_set_custom_jd(struct snd_soc_codec *codec,
 				 const struct arizona_jd_state *custom_jd);
 
