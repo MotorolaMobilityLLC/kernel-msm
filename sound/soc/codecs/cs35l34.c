@@ -526,6 +526,10 @@ static int cs35l34_codec_set_sysclk(struct snd_soc_dai *dai,
 		cs35l34->mclk_int = freq;
 	break;
 	case CS35L34_MCLK_11289:
+		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
+				0xFF, 0x10);
+		cs35l34->mclk_int = freq/2;
+	break;
 	case CS35L34_MCLK_12:
 		snd_soc_update_bits(codec, CS35L34_MCLK_CTL,
 				0xFF, 0x11);
