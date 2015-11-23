@@ -112,9 +112,37 @@
 
 &soc {
 	tlmm_pinmux: pinctrl@1000000 {
+		/delete-node/ cam_sensor_rear_default;
+		/delete-node/ cam_sensor_rear_sleep;
+
+		cam_sensor_rear_default {
+			/* VDIG, RESET */
+			qcom,pins = <&gp 113>, <&gp 36>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0 0>;
+			label = "cam_sensor_rear_default";
+			/* active state */
+			cam_sensor_rear_default: cam_sensor_rear_default {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
+
+		cam_sensor_rear_sleep {
+			/* VDIG, RESET */
+			qcom,pins = <&gp 113>, <&gp 36>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0 0>;
+			label = "cam_sensor_rear_sleep";
+			/* active state */
+			cam_sensor_rear_sleep: cam_sensor_rear_sleep {
+				drive-strength = <2>; /* 2 MA */
+				bias-disable; /* No PULL */
+			};
+		};
 
 		cam_sensor_front1_default {
-			/* RESET, STANDBY */
+			/* RESET */
 			qcom,pins = <&gp 40>;
 			qcom,num-grp-pins = <1>;
 			label = "cam_sensor_front1_default";
@@ -126,7 +154,7 @@
 		};
 
 		cam_sensor_front1_sleep {
-			/* RESET, STANDBY */
+			/* RESET */
 			qcom,pins = <&gp 40>;
 			qcom,num-grp-pins = <1>;
 			label = "cam_sensor_front1_sleep";
