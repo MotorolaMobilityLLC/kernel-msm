@@ -433,7 +433,6 @@ static void cpufreq_powerstats_create(unsigned int cpu,
 	struct cpufreq_power_stats *powerstats;
 	struct cpufreq_frequency_table *pos;
 	struct device_node *cpu_node;
-	char device_path[16];
 
 	powerstats = kzalloc(sizeof(struct cpufreq_power_stats),
 			GFP_KERNEL);
@@ -457,8 +456,7 @@ static void cpufreq_powerstats_create(unsigned int cpu,
 		powerstats->freq_table[i++] = pos->frequency;
 	powerstats->state_num = i;
 
-	snprintf(device_path, sizeof(device_path), "/cpus/cpu@%d", cpu);
-	cpu_node = of_find_node_by_path(device_path);
+	cpu_node = of_get_cpu_node(cpu, NULL);
 	if (cpu_node) {
 		ret = of_property_read_u32_array(cpu_node, "current",
 				powerstats->curr, count);
