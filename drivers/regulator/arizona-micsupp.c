@@ -99,7 +99,8 @@ static void arizona_micsupp_check_cp(struct work_struct *work)
 	}
 
 	if (dapm) {
-		mutex_lock(&dapm->card->dapm_mutex);
+		mutex_lock_nested(&dapm->card->dapm_mutex,
+				  SND_SOC_DAPM_CLASS_RUNTIME);
 
 		if ((reg & (ARIZONA_CPMIC_ENA | ARIZONA_CPMIC_BYPASS)) ==
 		    ARIZONA_CPMIC_ENA)
