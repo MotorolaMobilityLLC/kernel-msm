@@ -250,9 +250,9 @@ VMM_ENTRY(0x30, CHOPCHOP_CONFIG,					TRUE,
 VMM_ENTRY(0x31, LIFT_CONFIG,						TRUE,
 		vmm_lift_config,
 		sizeof(vmm_lift_config))
-VMM_ENTRY(0x32, UNUSED_32,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x32, GLANCE_PARAMETERS,					TRUE,
+		vmm_glance_config,
+		sizeof(vmm_glance_config))
 VMM_ENTRY(0x33, PROX_ALS_SETTINGS,					TRUE,
 		vmm_prox_als_settings,
 		sizeof(vmm_prox_als_settings))
@@ -409,9 +409,9 @@ VMM_ENTRY(0x57, WAKE_MSG_QUEUE_LEN,					TRUE,
 			0)
 #endif
 
-VMM_ENTRY(0x5C, UNUSED_5C,						FALSE,
-		0,
-		0)
+VMM_ENTRY(0x5C, GLANCE_REG,						FALSE,
+		vmm_glance_data,
+		sizeof(vmm_glance_data))
 VMM_ENTRY(0x5D, ALGO_ACCUM_ALL_MODALITY,				FALSE,
 		vmm_algo_accum_all_modality,
 		sizeof(vmm_algo_accum_all_modality))
