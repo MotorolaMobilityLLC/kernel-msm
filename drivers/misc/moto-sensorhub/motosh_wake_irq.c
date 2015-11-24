@@ -384,6 +384,14 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 					STM32_TO_HOST(data, LIFT_GRAV_DIFF));
 			queue_index += 12;
 			break;
+		case GLANCE_REG:
+			motosh_as_data_buffer_write(ps_motosh, DT_GLANCE,
+							data, 2, 0, false);
+
+			dev_dbg(&ps_motosh->client->dev, "Glance Gesture=%d\n",
+					STM16_TO_HOST(data, 0));
+			queue_index += 2;
+			break;
 		case MOTION_DATA:
 			if (data[0] & M_MMOVEME) {
 				motosh_ms_data_buffer_write(ps_motosh,
