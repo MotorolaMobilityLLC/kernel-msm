@@ -142,6 +142,8 @@
 #define ANTCAP_CONFIG                   0x5A
 #define ANTCAP_DEBUG                    0x5B
 
+#define GLANCE                          0x5C
+
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
 
