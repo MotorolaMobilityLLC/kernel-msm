@@ -75,10 +75,6 @@ struct fusb302_i2c_data {
 	int gpios[FUSB_NUM_GPIOS];
 	int irq;
 	spinlock_t lock;
-
-#if defined(CONFIG_HAS_EARLYSUSPEND) && defined(USE_EARLY_SUSPEND)
-	struct early_suspend early_drv;
-#endif
 };
 
 struct fusb302_i2c_data *fusb_i2c_data;
@@ -2085,13 +2081,6 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	fusb->thread =
 	    kthread_run(fusb302_state_kthread, NULL, "fusb302_state_kthread");
 
-#ifdef USE_EARLY_SUSPEND
-	fusb->early_drv.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING - 2,
-	    fusb->early_drv.suspend = fusb302_early_suspend,
-	    fusb->early_drv.resume = fusb302_late_resume,
-	    register_early_suspend(&fusb->early_drv);
-#endif
-
 	INIT_WORK(&fusb_i2c_data->eint_work, fusb_eint_work);
 	retval = request_threaded_irq(fusb->irq, NULL,
 				      cc_eint_interrupt_handler,
@@ -2102,52 +2091,52 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 			"%s: Failed to create irq thread\n", __func__);
 		return retval;
 	}
-	enable_irq_wake(fusb->irq);
-	enable_irq(fusb->irq);
-#if 0
-	mt_set_gpio_mode(GPIO_CC_DECODER_PIN, GPIO_CC_DECODER_PIN_M_EINT);
-	mt_set_gpio_dir(GPIO_CC_DECODER_PIN, GPIO_DIR_IN);
-	mt_set_gpio_pull_enable(GPIO_CC_DECODER_PIN, true);
-	mt_set_gpio_pull_select(GPIO_CC_DECODER_PIN, GPIO_PULL_UP);
-
-	mt_eint_registration(CUST_EINT_CC_DECODER_NUM, CUST_EINTF_TRIGGER_FALLING, cc_eint_interrupt_handler, 0);	// disable auto-unmask
-	mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
-#endif
 	FUSB_LOG("probe successfully!\n");
 	return 0;
 }
 
 static int fusb302_remove(struct i2c_client *i2c)
 {
-//        i2c_unregister_device(i2c);
-	kfree(i2c_get_clientdata(i2c));
+	struct fusb302_i2c_data *fusb = i2c_get_clientdata(i2c);
+
+	if (fusb->irq)
+		free_irq(fusb->irq, fusb);
+	kfree(fusb);
 	return 0;
 }
 
-#ifndef USE_EARLY_SUSPEND
-static int fusb302_suspend(struct i2c_client *client, pm_message_t msg)
+#ifdef CONFIG_PM_SLEEP
+static int fusb302_suspend(struct device *dev)
 {
-	//wait to do something
+	struct fusb302_i2c_data *fusb = dev_get_drvdata(dev);
+
+	/*
+	 * disable the irq and enable irq_wake
+	 * capability to the interrupt line.
+	 */
+	if (fusb->irq) {
+		disable_irq(fusb->irq);
+		enable_irq_wake(fusb->irq);
+	}
+
 	return 0;
 }
 
-static int fusb302_resume(struct i2c_client *client)
+static int fusb302_resume(struct device *dev)
 {
-	//wait to do something
-	return 0;
-}
-#else
-static void fusb302_early_suspend(struct early_suspend *h)
-{
-	//wait to do something
-}
+	struct fusb302_i2c_data *fusb = dev_get_drvdata(dev);
 
-static void fusb302_late_resume(struct early_suspend *h)
-{
-	//wait to do something
-	//  mt_eint_unmask(CUST_EINT_CC_DECODER_NUM);
+	if (fusb->irq) {
+		disable_irq_wake(fusb->irq);
+		enable_irq(fusb->irq);
+	}
+
+	return 0;
 }
 #endif
+
+static SIMPLE_DEV_PM_OPS(fusb302_pm_ops, fusb302_suspend,
+			fusb302_resume);
 
 static const struct i2c_device_id fusb302_id[] = {
 	{FUSB302_I2C_NAME, 0},
@@ -2175,13 +2164,10 @@ static struct i2c_driver fusb302_i2c_driver = {
 		   .name = FUSB302_I2C_NAME,
 		   .owner = THIS_MODULE,
 		   .of_match_table = fusb302_match_table,
+		   .pm = &fusb302_pm_ops,
 		   },
 	.probe = fusb302_probe,
 	.remove = fusb302_remove,
-#if !defined(USE_EARLY_SUSPEND)
-	.suspend = fusb302_suspend,
-	.resume = fusb302_resume,
-#endif
 	.id_table = fusb302_id,
 };
 
