@@ -1329,8 +1329,7 @@ void SetStateAttachedSrc(void)
 	// Maintain the existing CC term values from the wait state
 	ConnState = AttachedSource;	// Set the state machine variable to Attached.Src
 	/* Enable SSUSB Switch and set orientation */
-	FUSB302_enableSuperspeedUSB(Registers.Switches.MEAS_CC1,
-				    Registers.Switches.MEAS_CC2);
+	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to tPDDebounceMin for detecting a detach
@@ -1366,8 +1365,7 @@ void SetStateAttachedSink(void)
 	ConnState = AttachedSink;	// Set the state machine variable to Attached.Sink
 	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	/* Enable SSUSB Switch and set orientation */
-	FUSB302_enableSuperspeedUSB(Registers.Switches.MEAS_CC1,
-				    Registers.Switches.MEAS_CC2);
+	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to tPDDebounceMin for detecting changes in advertised current
