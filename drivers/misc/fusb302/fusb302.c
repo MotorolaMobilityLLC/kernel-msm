@@ -983,6 +983,8 @@ void StateMachineDebugAccessory(void)
 	}
 	if (CC1TermDeb == CCTypeNone)	// If we have detected an open for > tCCDebounce
 		SetStateDelayUnattached();	// Go to the unattached state
+	else if (CC1TermDeb == CCTypeRa)
+		SetStateUnattached();
 
 }
 
@@ -1001,6 +1003,10 @@ void StateMachineAudioAccessory(void)
 	}
 	if (CC1TermDeb == CCTypeNone)	// If we have detected an open for > tCCDebounce
 		SetStateDelayUnattached();	// Go to the unattached state
+	else if (CC1TermDeb > CCTypeRa) {
+		FUSB302_toggleAudioSwitch(false);
+		SetStateUnattached();
+	}
 }
 
 void StateMachinePoweredAccessory(void)
