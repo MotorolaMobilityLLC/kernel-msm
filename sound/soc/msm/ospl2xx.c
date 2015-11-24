@@ -686,6 +686,7 @@ static int ospl2xx_tx_get_f0(struct snd_kcontrol *kcontrol,
 	ospl2xx_afe_get_param(PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE);
 
 	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
+	ucontrol->value.integer.value[1] = afe_cb_payload32_data[1];
 	mutex_unlock(&mr_lock);
 
 	return 0;
@@ -768,8 +769,8 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* PUT */ SOC_ENUM_EXT("OSPL Tx diagnostic",
 		ospl2xx_tx_run_diagnostic_enum[0],
 		ospl2xx_tx_run_diagnostic_get, ospl2xx_tx_run_diagnostic),
-	/* GET */ SOC_SINGLE_EXT("OSPL Tx F0",
-		SND_SOC_NOPM, 0, 0xFFFF, 0,
+	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx F0",
+		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
 		ospl2xx_tx_get_f0, NULL),
 	/* GET */ SOC_SINGLE_MULTI_EXT("OSPL Tx temp_cal",
 		SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
