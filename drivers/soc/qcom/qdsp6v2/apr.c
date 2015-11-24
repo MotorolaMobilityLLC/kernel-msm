@@ -755,11 +755,11 @@ static int modem_notifier_cb(struct notifier_block *this, unsigned long code,
 	switch (code) {
 	case SUBSYS_BEFORE_SHUTDOWN:
 		pr_debug("M-Notify: Shutdown started\n");
-		apr_set_modem_state(APR_SUBSYS_DOWN);
-		dispatch_event(code, APR_DEST_MODEM);
 		break;
 	case SUBSYS_AFTER_SHUTDOWN:
 		pr_debug("M-Notify: Shutdown Completed\n");
+		apr_set_modem_state(APR_SUBSYS_DOWN);
+		dispatch_event(code, APR_DEST_MODEM);
 		break;
 	case SUBSYS_BEFORE_POWERUP:
 		pr_debug("M-notify: Bootup started\n");
