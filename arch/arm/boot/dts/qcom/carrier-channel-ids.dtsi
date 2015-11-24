@@ -49,9 +49,9 @@
 		"tigca",	/* 32 */
 		"tigca1st",	/* 33 */
 		"retmx",	/* 34 */
-		"undefined",	/* 35 */
-		"undefined",	/* 36 */
-		"undefined",	/* 37 */
+		"attmx",	/* 35 */
+		"womcl",	/* 36 */
+		"avaco",	/* 37 */
 		"undefined",	/* 38 */
 		"undefined",	/* 39 */
 		"undefined",	/* 40 */
