@@ -867,6 +867,11 @@ config STMVL53L0
 	help
 	laser sensor driver.
 
+config EPL8802
+	tristate "EPL8802 support"
+	help
+	proximity sensor driver.
+
 config SENSORS_FPC_1020
 	tristate "fpc fingerprint sensor"
 	default n
