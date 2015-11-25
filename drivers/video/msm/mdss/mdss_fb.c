@@ -3559,6 +3559,10 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	if (mfd->shutdown_pending)
 		return -EPERM;
 
+	/* block fb ioctl when panel is dead */
+	if (mfd->panel_info->panel_dead == PANEL_DEAD_REPORT)
+		return -EPERM;
+
 	atomic_inc(&mfd->ioctl_ref_cnt);
 
 	mdss_fb_power_setting_idle(mfd);
