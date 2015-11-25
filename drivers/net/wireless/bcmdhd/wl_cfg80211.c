@@ -1182,7 +1182,7 @@ wl_validate_wps_ie(char *wps_ie, s32 wps_ie_len, bool *pbc)
 			char devname[100];
 			size_t namelen = MIN(subelt_len, sizeof(devname));
 			memcpy(devname, subel, namelen);
-			devname[subelt_len] = '\0';
+			devname[namelen-1] = '\0';
 			WL_DBG(("  attr WPS_ID_DEVICE_NAME: %s (len %u)\n",
 				devname, subelt_len));
 		} else if (subelt_id == WPS_ID_DEVICE_PWD_ID) {
@@ -9687,8 +9687,9 @@ wl_notify_sched_scan_results(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 			 * cfg80211_scan_request one out of the received PNO event.
 			 */
 			ssid[i].ssid_len = MIN(DOT11_MAX_SSID_LEN, netinfo->pfnsubnet.SSID_len);
- 			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID, ssid[i].ssid_len);
- 			request->n_ssids++;
+			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID,
+			       ssid[i].ssid_len);
+			request->n_ssids++;
 
 			channel_req = netinfo->pfnsubnet.channel;
 			band = (channel_req <= CH_MAX_2G_CHANNEL) ? NL80211_BAND_2GHZ
