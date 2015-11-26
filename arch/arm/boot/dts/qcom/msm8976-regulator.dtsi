@@ -686,4 +686,13 @@
 		enable-avtive-high;
 		gpio = <&pm8004_mpps 4 0>;
 	};
+
+	/* Rome 3.3V supply */
+	rome_vreg: rome_vreg {
+		compatible = "regulator-fixed";
+		startup-delay-us = <4000>;
+		enable-active-high;
+		gpio = <&pm8950_gpios 5 0>;
+		regulator-name = "rome_vreg";
+	};
 };
