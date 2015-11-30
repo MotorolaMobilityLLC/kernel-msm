@@ -835,7 +835,7 @@
 			<&tlmm 81 2>,        /* MOD_MPHY_I2S_SEL, output-high */
 			<&tlmm 36 0>,       /* APBA_RESET_N, output-low */
 			<&tlmm 37 1>,       /* APBA_INT_N, in */
-			<&tlmm 25 2>;        /* APBA_WAKE, output-high */
+			<&tlmm 21 2>;        /* APBA_WAKE, output-high */
 		mmi,gpio-labels = "gpio_apba_1p1_en",
 				  "gpio_apba_bootret",
 				  "gpio_mphy_i2s_en_n",
@@ -1236,7 +1236,7 @@
 		compatible = "moto,muc_spi";
 		reg = <0>;
 		interrupt-parent = <&tlmm>;
-		interrupts = <26 0>;
+		interrupts = <34 0>;
 		spi-max-frequency = <4800000>;
 		gpios = <&tlmm 74 0>, /* WAKE_N */
 			<&tlmm 82 0>; /* RDY_N  */
