@@ -7522,6 +7522,12 @@ static int fg_remove(struct spmi_device *spmi)
 {
 	struct fg_chip *chip = dev_get_drvdata(&spmi->dev);
 
+	power_supply_put(chip->batt_psy);
+	power_supply_put(chip->usb_psy);
+	power_supply_put(chip->dc_psy);
+	chip->batt_psy = NULL;
+	chip->usb_psy = NULL;
+	chip->dc_psy = NULL;
 	fg_cleanup(chip);
 	dev_set_drvdata(&spmi->dev, NULL);
 	return 0;
@@ -9136,6 +9142,8 @@ static int fg_sense_type_set(const char *val, const struct kernel_param *kp)
 
 	chip = container_of(bms_psy, struct fg_chip, bms_psy);
 	rc = set_prop_sense_type(chip, fg_sense_type);
+	power_supply_put(bms_psy);
+
 	return rc;
 }
 
@@ -9161,6 +9169,7 @@ static int fg_restart_set(const char *val, const struct kernel_param *kp)
 	mutex_lock(&chip->sysfs_restart_lock);
 	if (fg_restart != 0) {
 		mutex_unlock(&chip->sysfs_restart_lock);
+		power_supply_put(bms_psy);
 		return 0;
 	}
 	fg_restart = 1;
@@ -9170,6 +9179,7 @@ static int fg_restart_set(const char *val, const struct kernel_param *kp)
 		pr_info("fuel gauge restart initiated from sysfs...\n");
 
 	schedule_work(&chip->sysfs_restart_work);
+	power_supply_put(bms_psy);
 	return 0;
 }
 
