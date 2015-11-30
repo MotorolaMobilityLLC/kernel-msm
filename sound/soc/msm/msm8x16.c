@@ -2347,7 +2347,7 @@ struct snd_soc_card snd_soc_card_msm8916 = {
 };
 
 struct snd_soc_card snd_soc_card_9326_msm8916 = {
-	.name		= "msm8x16-tasha9326-snd-card",
+	.name		= "msm8x09-tasha9326-snd-card",
 	.dai_link	= msm8x16_9326_dai_links,
 	.num_links	= ARRAY_SIZE(msm8x16_9326_dai_links),
 };
