@@ -26,7 +26,7 @@
 &soc {
 	sound-9335 {
 		compatible = "qcom,msm8x16-audio-codec";
-		qcom,model = "msm8x16-tasha9326-snd-card";
+		qcom,model = "msm8x09-tasha9326-snd-card";
 		qcom,msm-snd-card-id = <1>;
 		qcom,msm-codec-type = "external";
 		qcom,msm-mbhc-hphl-swh = <0>;
