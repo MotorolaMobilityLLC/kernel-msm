@@ -859,13 +859,20 @@ static int get_eb_prop(struct smbchg_chip *chip,
 	union power_supply_propval ret = {0, };
 	int eb_prop;
 	int rc;
-	struct power_supply *eb_batt_psy =
-		power_supply_get_by_name((char *)chip->eb_batt_psy_name);
-	struct power_supply *eb_pwr_psy =
-		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+	struct power_supply *eb_batt_psy;
+	struct power_supply *eb_pwr_psy;
 
-	if (!eb_batt_psy || !eb_pwr_psy)
+	eb_batt_psy =
+		power_supply_get_by_name((char *)chip->eb_batt_psy_name);
+	if (!eb_batt_psy)
 		return -EINVAL;
+
+	eb_pwr_psy =
+		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
+	if (!eb_pwr_psy) {
+		power_supply_put(eb_batt_psy);
+		return -EINVAL;
+	}
 
 	rc = eb_batt_psy->get_property(eb_batt_psy, prop, &ret);
 	if (rc) {
@@ -888,6 +895,8 @@ static int get_eb_prop(struct smbchg_chip *chip,
 		eb_prop = -EINVAL;
 	}
 
+	power_supply_put(eb_batt_psy);
+	power_supply_put(eb_pwr_psy);
 
 	return eb_prop;
 }
@@ -3580,6 +3589,7 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 				      &ret);
 	if (rc) {
 		val->intval = 0;
+		power_supply_put(eb_pwr_psy);
 		return 0;
 	}
 
@@ -3592,8 +3602,11 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 			val->intval = 0;
 		break;
 	default:
+		power_supply_put(eb_pwr_psy);
 		return -EINVAL;
 	}
+
+	power_supply_put(eb_pwr_psy);
 
 	return 0;
 }
@@ -3634,6 +3647,7 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 			if (chip->ebchg_state == EB_DISCONN)
 				dev_err(chip->dev,
 					"No Supplemental Battery Ignore!\n");
+			power_supply_put(eb_pwr_psy);
 			return;
 		}
 	}
@@ -3649,6 +3663,7 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 		if (rc < 0) {
 			dev_err(chip->dev,
 				"Couldn't disable HVDCP rc=%d\n", rc);
+			power_supply_put(eb_pwr_psy);
 			return;
 		}
 		ret.intval = POWER_SUPPLY_PTP_CURRENT_FROM_PHONE;
@@ -3702,6 +3717,8 @@ static void smbchg_set_extbat_state(struct smbchg_chip *chip,
 	default:
 		break;
 	}
+
+	power_supply_put(eb_pwr_psy);
 }
 
 #define USBIN_SUSPEND_SRC_BIT		BIT(6)
@@ -8761,6 +8778,11 @@ static int smbchg_remove(struct spmi_device *spmi)
 		device_remove_file(chip->dev,
 				   &dev_attr_force_chg_usb_otg_ctl);
 	}
+
+	power_supply_put(chip->usb_psy);
+	power_supply_put(chip->bms_psy);
+	chip->usb_psy = NULL;
+	chip->bms_psy = NULL;
 
 	power_supply_unregister(&chip->batt_psy);
 	power_supply_unregister(&chip->wls_psy);
