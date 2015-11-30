@@ -93,6 +93,7 @@
 		gpios = <&pm8994_gpios 6 0x21>; /* GPIOF_DIR_IN|GPIOF_EXPORT */
 		gpio-names = "cc-alert";
 
+		maxim,psy-name = "bms";
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
 		maxim,batt-psy-name = "battery";
@@ -165,6 +166,12 @@
 	};
 };
 
+&pmi8994_charger {
+	qcom,bms-psy-name = "msm_bms";
+	qcom,max-psy-name = "bms";
+};
+
 &pmi8994_fg {
+	qcom,bms-psy-name = "msm_bms";
 	/delete-property/ qcom,ext-sense-type; /* External Sense Resistor */
 };
