@@ -369,6 +369,13 @@
 		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "okay";
 	};
+
+	/delete-node/ gpio@c900;
+	gpio@c900 {
+		reg = <0xc900 0x100>;
+		qcom,pin-num = <10>;
+		status = "disabled";
+	};
 };
 
 &pm8994_vadc {
@@ -403,5 +410,15 @@
 		apba_wake {
 			pins = "gpio25";
 		};
+	};
+};
+
+&pm8994_gpios {
+	gpio@cb00 { /* GPIO 12 - AP_VIB_EN */
+		qcom,mode = <1>;         /* Digital output*/
+		qcom,vin-sel = <2>;      /* VIN2 */
+		qcom,src-sel = <0>;      /* GPIO */
+		qcom,master-en = <1>;    /* Enable GPIO */
+		status = "okay";
 	};
 };
