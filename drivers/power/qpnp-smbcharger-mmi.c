@@ -259,8 +259,10 @@ struct smbchg_chip {
 	struct power_supply		dc_psy;
 	struct power_supply		wls_psy;
 	struct power_supply		*bms_psy;
+	struct power_supply		*max_psy;
 	int				dc_psy_type;
 	const char			*bms_psy_name;
+	const char			*max_psy_name;
 	const char			*eb_batt_psy_name;
 	const char			*eb_pwr_psy_name;
 	const char			*battery_psy_name;
@@ -1094,6 +1096,16 @@ static int set_property_on_fg(struct smbchg_chip *chip,
 		return -EINVAL;
 	}
 
+	if (!chip->max_psy && chip->max_psy_name)
+		chip->max_psy =
+			power_supply_get_by_name((char *)chip->max_psy_name);
+	if (chip->max_psy && (prop == POWER_SUPPLY_PROP_TEMP)) {
+		ret.intval = val;
+		rc = chip->max_psy->set_property(chip->max_psy, prop, &ret);
+		if (rc == 0)
+			return rc;
+	}
+
 	ret.intval = val;
 	rc = chip->bms_psy->set_property(chip->bms_psy, prop, &ret);
 	if (rc)
@@ -1116,6 +1128,20 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 	if (!chip->bms_psy) {
 		pr_smb(PR_STATUS, "no bms psy found\n");
 		return -EINVAL;
+	}
+
+	if (!chip->max_psy && chip->max_psy_name)
+		chip->max_psy =
+			power_supply_get_by_name((char *)chip->max_psy_name);
+	if (chip->max_psy && (prop != POWER_SUPPLY_PROP_TEMP)) {
+		if (prop == POWER_SUPPLY_PROP_CHARGE_NOW_RAW)
+			prop = POWER_SUPPLY_PROP_CHARGE_COUNTER;
+
+		rc = chip->max_psy->get_property(chip->max_psy, prop, &ret);
+		if (rc == 0) {
+			*val = ret.intval;
+			return rc;
+		}
 	}
 
 	rc = chip->bms_psy->get_property(chip->bms_psy, prop, &ret);
@@ -1164,6 +1190,9 @@ static int get_prop_batt_temp(struct smbchg_chip *chip)
 		dev_err(chip->dev, "GLITCH: Temperature Read %d \n", temp);
 		temp = ERROR_BATT_TEMP;
 	}
+
+	if (chip->max_psy_name)
+		set_property_on_fg(chip, POWER_SUPPLY_PROP_TEMP, temp);
 
 	return temp;
 }
@@ -6423,6 +6452,12 @@ static int smb_parse_dt(struct smbchg_chip *chip)
 	if (rc)
 		chip->bms_psy_name = NULL;
 
+	/* read the max power supply name */
+	rc = of_property_read_string(node, "qcom,max-psy-name",
+						&chip->max_psy_name);
+	if (rc)
+		chip->max_psy_name = NULL;
+
 	/* read the bms power supply name */
 	rc = of_property_read_string(node, "qcom,battery-psy-name",
 						&chip->battery_psy_name);
@@ -8781,8 +8816,10 @@ static int smbchg_remove(struct spmi_device *spmi)
 
 	power_supply_put(chip->usb_psy);
 	power_supply_put(chip->bms_psy);
+	power_supply_put(chip->max_psy);
 	chip->usb_psy = NULL;
 	chip->bms_psy = NULL;
+	chip->max_psy = NULL;
 
 	power_supply_unregister(&chip->batt_psy);
 	power_supply_unregister(&chip->wls_psy);
