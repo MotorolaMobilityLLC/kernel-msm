@@ -19,6 +19,32 @@
 	qcom,board-id = <0x45 0x81A0>;
 };
 
+&soc {
+	apba_ctrl {
+		gpios = <&pm8994_gpios 7 2>, /* APBA_1P1_EN, output-high */
+			<&tlmm 27 0>,        /* APBA_BOOTRET, output-low */
+			<&pm8994_mpps 2 0>,  /* MOD_MPHY_I2S_EN_N, output-low */
+			<&tlmm 81 2>,        /* MOD_MPHY_I2S_SEL, output-high */
+			<&tlmm 36 0>,       /* APBA_RESET_N, output-low */
+			<&tlmm 37 1>,       /* APBA_INT_N, in */
+			<&tlmm 25 2>;        /* APBA_WAKE, output-high */
+	};
+};
+
+&spi_0 {
+	muc_spi: muc_spi@0 {
+		interrupts = <26 0>;
+	};
+};
+
+&tlmm {
+	apba_default@0 {
+		apba_wake {
+			pins = "gpio25";
+		};
+	};
+};
+
 &cci {
 	st,stmvl53l0 {
 		cell-index = <1>;
