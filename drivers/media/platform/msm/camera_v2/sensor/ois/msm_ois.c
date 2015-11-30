@@ -234,6 +234,32 @@ static int32_t msm_ois_write_settings(struct msm_ois_ctrl_t *o_ctrl,
 				break;
 			}
 		}
+			break;
+
+		case MSM_OIS_READ: {
+			uint16_t data;
+
+			switch (settings[i].data_type) {
+			case MSM_CAMERA_I2C_BYTE_DATA:
+			case MSM_CAMERA_I2C_WORD_DATA:
+				rc = o_ctrl->i2c_client.i2c_func_tbl->i2c_read(
+					&o_ctrl->i2c_client,
+					settings[i].reg_addr,
+					&data,
+					settings[i].data_type);
+				if (rc < 0)
+					return rc;
+				settings[i].reg_data = data;
+				break;
+
+			default:
+				pr_err("Unsupport data type: %d\n",
+					settings[i].data_type);
+				break;
+			}
+		}
+			break;
+
 		}
 
 		if (rc < 0)
@@ -390,6 +416,16 @@ static int32_t msm_ois_control(struct msm_ois_ctrl_t *o_ctrl,
 		rc = msm_ois_write_settings(o_ctrl,
 			set_info->ois_params.setting_size,
 			settings);
+
+		if (copy_to_user((void *)set_info->ois_params.settings,
+			settings,
+			set_info->ois_params.setting_size *
+			sizeof(struct reg_settings_ois_t))) {
+			kfree(settings);
+			pr_err("Error copying\n");
+			return -EFAULT;
+		}
+
 		kfree(settings);
 		if (rc < 0) {
 			pr_err("Error\n");
