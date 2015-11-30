@@ -218,6 +218,9 @@
 		fairchild,fovp-limit-mv = <4700>;
 		fairchild,ocp-limit-ma = <6200>;
 	};
+	cs35l34@41 {
+		reg = <0x40>;
+	};
 };
 
 &i2c_8 {
