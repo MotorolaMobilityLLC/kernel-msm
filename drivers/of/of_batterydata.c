@@ -332,9 +332,10 @@ struct device_node *of_batterydata_get_best_profile(
 	rc = psy->get_property(psy, POWER_SUPPLY_PROP_RESISTANCE_ID, &ret);
 	if (rc) {
 		pr_err("failed to retrieve resistance value rc=%d\n", rc);
+		power_supply_put(psy);
 		return ERR_PTR(-ENOSYS);
 	}
-
+	power_supply_put(psy);
 	batt_id_kohm = ret.intval / 1000;
 
 	/* read battery id range percentage for best profile */
