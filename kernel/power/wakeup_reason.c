@@ -499,7 +499,7 @@ const struct list_head* get_wakeup_reasons(unsigned long timeout,
 		unsigned long signalled = 0;
 		if (timeout)
 			signalled = wait_for_completion_timeout(&wakeups_completion, timeout);
-		if (WARN_ON(!signalled)) {
+		if (!signalled) {
 			stop_logging_wakeup_reasons();
 			walk_irq_node_tree(base_irq_nodes, build_unfinished_nodes, unfinished);
 			return NULL;
@@ -571,7 +571,7 @@ static int wakeup_reason_pm_event(struct notifier_block *notifier,
 		}
 
 		/* log_wakeups should have been cleared by now. */
-		if (WARN_ON(logging_wakeup_reasons())) {
+		if (logging_wakeup_reasons()) {
 			stop_logging_wakeup_reasons();
 			mb();
 			print_wakeup_sources();
