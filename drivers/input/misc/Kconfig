@@ -782,6 +782,13 @@ config STMVL53L0
 	help
 	laser sensor driver.
 
+config SENSORS_FPC_1020
+	tristate "fpc fingerprint sensor"
+	default n
+	help
+	 Say Y here if you wish to include support for finger print sensor.
+	 If unsure, say N.
+
 source "drivers/input/misc/ots_pat9125/Kconfig"
 
 config SENSORS_LTR553
