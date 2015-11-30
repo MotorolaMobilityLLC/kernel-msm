@@ -486,9 +486,9 @@
 		fsa8500-lint-disabled;
 	};
 
-	cs35l34@40 {
+	cs35l34@41 {
 		compatible = "cirrus,cs35l34";
-		reg = <0x40>;
+		reg = <0x41>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cs35l34_reset_default>;
