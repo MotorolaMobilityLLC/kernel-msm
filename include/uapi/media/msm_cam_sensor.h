@@ -353,6 +353,7 @@ enum msm_ois_cfg_type_t {
 enum msm_ois_i2c_operation {
 	MSM_OIS_WRITE = 0,
 	MSM_OIS_POLL,
+	MSM_OIS_READ,
 };
 
 struct reg_settings_ois_t {
