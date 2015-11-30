@@ -41,3 +41,9 @@
 		pinctrl-1 = <&laser_suspend>;
 	};
 };
+
+&i2c_7 {
+	cs35l34@41 {
+		reg = <0x40>;
+	};
+};
