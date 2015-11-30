@@ -554,3 +554,20 @@
 		status = "okay";
 	};
 };
+
+&i2c_7 {
+	stmvl53l0@29 {
+		compatible = "st,stmvl53l0_i2c";
+		reg = <0x29>;
+		gpios =<&pm8994_gpios 10 0>,
+				<&tlmm 119 0>;
+		qcom,gpio-reset = <0>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <0 1>;
+		qcom,gpio-req-tbl-label = "TOF_XSHUTDOWN","TOF_INT";
+		pinctrl-names = "laser_default", "laser_suspend";
+		pinctrl-0 = <&laser_active>;
+		pinctrl-1 = <&laser_suspend>;
+		st,sensorthreshold = <40 45>;
+	};
+};
