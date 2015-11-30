@@ -68,9 +68,9 @@ static int stmvl53l0_parse_vdd(struct device *dev, struct i2c_data *data)
 	vl53l0_dbgmsg("Enter\n");
 
 	if (dev->of_node) {
-		data->vana = regulator_get(dev, "vdd");
+		data->vana = regulator_get_optional(dev, "vdd");
 		if (IS_ERR(data->vana)) {
-			vl53l0_errmsg("%d,vdd supply is not provided\n",
+			vl53l0_dbgmsg("%d,vdd supply is not provided\n",
 				__LINE__);
 			ret = -1;
 		}
@@ -279,16 +279,21 @@ int stmvl53l0_power_up_i2c(void *i2c_object, unsigned int *preset_flag)
 	vl53l0_dbgmsg("Enter i2c powerup\n");
 	pinctrl_select_state(data->pinctrl_info.pinctrl,
 					data->pinctrl_info.gpio_state_active);
-	ret = regulator_set_voltage(data->vana, VL53L0_VDD_MIN, VL53L0_VDD_MAX);
-	if (ret < 0) {
-		vl53l0_errmsg("set_vol(%p) fail %d\n", data->vana, ret);
-		return ret;
-	}
-	ret = regulator_enable(data->vana);
 
-	if (ret < 0) {
-		vl53l0_errmsg("reg enable(%p) failed.rc=%d\n", data->vana, ret);
-		return ret;
+	if (!IS_ERR(data->vana)) {
+		ret = regulator_set_voltage(data->vana, VL53L0_VDD_MIN,
+				VL53L0_VDD_MAX);
+		if (ret < 0) {
+			vl53l0_errmsg("set_vol(%p) fail %d\n", data->vana, ret);
+			return ret;
+		}
+		ret = regulator_enable(data->vana);
+
+		if (ret < 0) {
+			vl53l0_errmsg("reg enable(%p) failed.rc=%d\n",
+					data->vana, ret);
+			return ret;
+		}
 	}
 
 	msm_camera_request_gpio_table(
@@ -322,10 +327,12 @@ int stmvl53l0_power_down_i2c(void *i2c_object)
 		gpio_set_value_cansleep(
 			data->gconf.cam_gpio_req_tbl[0].gpio, 0);
 
-		ret = regulator_disable(data->vana);
-		if (ret < 0)
-			vl53l0_errmsg("reg disable(%p) failed.rc=%d\n",
-			data->vana, ret);
+		if (!IS_ERR(data->vana)) {
+			ret = regulator_disable(data->vana);
+			if (ret < 0)
+				vl53l0_errmsg("reg disable(%p) failed.rc=%d\n",
+				data->vana, ret);
+		}
 
 		data->power_up = 0;
 	}
