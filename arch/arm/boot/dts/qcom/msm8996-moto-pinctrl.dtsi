@@ -212,7 +212,7 @@
 			bias-pull-down;
 		};
 		apba_wake {
-			pins = "gpio25";
+			pins = "gpio21";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
