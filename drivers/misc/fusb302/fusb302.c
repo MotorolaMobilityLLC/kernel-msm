@@ -64,9 +64,6 @@ int VBUS_12V_EN;
 #define FUSB_LOG(fmt, args...)
 #endif
 
-static int disable_ss_switch;
-module_param(disable_ss_switch, int, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
 
 struct fusb302_i2c_data {
 	struct i2c_client *client;
@@ -192,6 +189,7 @@ static int FUSB302_toggleAudioSwitch(bool enable)
 	return 0;
 }
 
+static bool disable_ss_switch;
 static int FUSB302_enableSuperspeedUSB(int CC1, int CC2)
 {
 	int ss_output_en_gpio = fusb_i2c_data->gpios[FUSB_SS_OE_EN_INDEX];
@@ -222,9 +220,6 @@ static int FUSB302_disableSuperspeedUSB(void)
 {
 	int ss_output_en_gpio = fusb_i2c_data->gpios[FUSB_SS_OE_EN_INDEX];
 
-	if (disable_ss_switch)
-		return 0;
-
 	if (gpio_is_valid(ss_output_en_gpio)) {
 		FUSB_LOG("Setting SS OE EN Switch to disabled\n");
 		gpio_set_value(ss_output_en_gpio, 1);
@@ -233,6 +228,26 @@ static int FUSB302_disableSuperspeedUSB(void)
 	return -ENODEV;
 }
 
+static int set_disable_ss_switch(const char *val, const struct kernel_param *kp)
+{
+	int rv = param_set_bool(val, kp);
+	if (rv)
+		return rv;
+
+	if (disable_ss_switch)
+		FUSB302_disableSuperspeedUSB();
+
+	return 0;
+}
+
+static struct kernel_param_ops disable_ss_param_ops = {
+	.set = set_disable_ss_switch,
+	.get = param_get_bool,
+};
+
+module_param_cb(disable_ss_switch, &disable_ss_param_ops,
+		&disable_ss_switch, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(disable_ss_switch, "Disable Super Speed Switch");
 /*
 static void SourceOutput(int vol, int current)
 {
