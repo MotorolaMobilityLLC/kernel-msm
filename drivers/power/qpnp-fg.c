@@ -6359,8 +6359,9 @@ wait:
 	if (fg_debug_mask & FG_STATUS)
 		pr_info("battery id = %d\n",
 				get_sram_prop_now(chip, FG_DATA_BATT_ID));
-	profile_node = of_batterydata_get_best_profile(batt_node, "bms",
-							fg_batt_type);
+	profile_node = of_batterydata_get_best_profile(batt_node,
+						       chip->bms_psy.name,
+						       fg_batt_type);
 	if (IS_ERR_OR_NULL(profile_node)) {
 		rc = PTR_ERR(profile_node);
 		if (rc == -EPROBE_DEFER) {
@@ -7014,6 +7015,12 @@ static int fg_of_init(struct fg_chip *chip)
 	const char *data;
 	struct device_node *node = chip->spmi->dev.of_node;
 	u32 temp[2] = {0};
+
+	/* read the bms power supply name */
+	rc = of_property_read_string(node, "qcom,bms-psy-name",
+						&chip->bms_psy.name);
+	if (rc)
+		chip->bms_psy.name = NULL;
 
 	OF_READ_SETTING(FG_MEM_SOFT_HOT, "warm-bat-decidegc", rc, 1);
 	OF_READ_SETTING(FG_MEM_SOFT_COLD, "cool-bat-decidegc", rc, 1);
@@ -8884,7 +8891,8 @@ static int fg_probe(struct spmi_device *spmi)
 
 	chip->batt_type = default_batt_type;
 
-	chip->bms_psy.name = "bms";
+	if (!chip->bms_psy.name)
+		chip->bms_psy.name = "bms";
 	chip->bms_psy.type = POWER_SUPPLY_TYPE_BMS;
 	chip->bms_psy.properties = fg_power_props;
 	chip->bms_psy.num_properties = ARRAY_SIZE(fg_power_props);
