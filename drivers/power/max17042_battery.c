@@ -2093,7 +2093,12 @@ static int max17042_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
-	chip->battery.name		= "max170xx_battery";
+	/* read the power supply name */
+	ret = of_property_read_string(client->dev.of_node, "maxim,psy-name",
+				      &chip->battery.name);
+	if (ret)
+		chip->battery.name = "max170xx_battery";
+
 	chip->battery.type		= POWER_SUPPLY_TYPE_BMS;
 	chip->battery.get_property	= max17042_get_property;
 	chip->battery.set_property	= max17042_set_property;
