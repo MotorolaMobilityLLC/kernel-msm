@@ -780,6 +780,39 @@ static void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_link_clk_unprepare(ctrl);
 }
 
+static int mdss_dsi_esc_clk_reset(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc = -EFAULT;
+
+	if (ctrl_pdata->link_clk_cnt != 1) {
+		WARN(1, "link clock is enabled (%d)!\n",
+			ctrl_pdata->link_clk_cnt);
+		return rc;
+	}
+
+	rc = clk_set_rate(ctrl_pdata->esc_clk, ctrl_pdata->esc_clk_rate);
+	if (rc) {
+		pr_err("%s: dsi_esc_clk - clk_set_rate failed\n", __func__);
+		return rc;
+	}
+
+	rc = clk_prepare(ctrl_pdata->esc_clk);
+	if (rc) {
+		pr_err("%s: Failed to prepare dsi esc clk\n", __func__);
+		return rc;
+	}
+
+	rc = clk_enable(ctrl_pdata->esc_clk);
+	if (rc)
+		pr_err("%s: Failed to enable dsi esc clk\n", __func__);
+	else
+		clk_disable(ctrl_pdata->esc_clk);
+
+	clk_unprepare(ctrl_pdata->esc_clk);
+
+	return rc;
+}
+
 /**
  * mdss_dsi_ulps_config() - Program DSI lanes to enter/exit ULPS mode
  * @ctrl: pointer to DSI controller structure
@@ -1079,6 +1112,14 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 		if (ctrl->mmss_clamp) {
 			mdss_dsi_phy_init(ctrl);
 			mdss_dsi_ctrl_setup(ctrl);
+			if (ctrl->ulps) {
+				/* clamp does not work after dsi ctrl reset
+				 * reset dsi link clk and re-enable clamp again
+				 */
+				mdss_dsi_esc_clk_reset(ctrl);
+				ctrl->mmss_clamp = false;
+				mdss_dsi_clamp_ctrl(ctrl, 1);
+			}
 		}
 
 		if (ctrl->ulps) {
