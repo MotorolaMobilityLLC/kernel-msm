@@ -405,6 +405,18 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 		stml0xx_as_data_buffer_write(ps_stml0xx, DT_GYRO_CAL,
 				NULL, 0, 0, stm_ws->ts_ns);
 	}
+	if (irq_status & M_GLANCE) {
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_GLANCE,
+			&buf[WAKE_IRQ_IDX_GLANCE],
+			2,
+			0,
+			stm_ws->ts_ns);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Glance Gesture=%d\n",
+				SH_TO_H16(buf + WAKE_IRQ_IDX_GLANCE));
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 
