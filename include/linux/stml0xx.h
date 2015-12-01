@@ -131,6 +131,7 @@ enum vmm_ids {
 #define WAKE_IRQ_IDX_MODALITY_ACCUM_MVMT   52
 #define WAKE_IRQ_IDX_LOG_MSG               56
 #define WAKE_IRQ_IDX_STOWED_ALS		(WAKE_IRQ_IDX_LOG_MSG + LOG_MSG_SIZE)
+#define WAKE_IRQ_IDX_GLANCE                (WAKE_IRQ_IDX_STOWED_ALS + 2)
 
 /* Non-wake IRQ work function flags */
 #define IRQ_WORK_FLAG_NONE                   0x00
