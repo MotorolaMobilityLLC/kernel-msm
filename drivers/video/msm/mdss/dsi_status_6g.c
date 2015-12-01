@@ -132,6 +132,10 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 	ret = ctrl_pdata->check_status(ctrl_pdata);
+	if (ret > 0)
+		pdata->panel_info.panel_dead = PANEL_DEAD_NONE;
+	else
+		pdata->panel_info.panel_dead = PANEL_DEAD_REPORT;
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 
 	wake_unlock(&pstatus_data->mfd->status_wakelock);
@@ -141,11 +145,10 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 		mutex_unlock(&mdp5_data->ov_lock);
 
 	if ((pstatus_data->mfd->panel_power_state != MDSS_PANEL_POWER_OFF)) {
-		if (ret > 0) {
+		if (ret > 0)
 			schedule_delayed_work(&pstatus_data->check_status,
 				msecs_to_jiffies(interval));
-			pdata->panel_info.panel_dead = PANEL_DEAD_NONE;
-		} else
+		else
 			mdss_fb_report_panel_dead(pstatus_data->mfd);
 	}
 }
