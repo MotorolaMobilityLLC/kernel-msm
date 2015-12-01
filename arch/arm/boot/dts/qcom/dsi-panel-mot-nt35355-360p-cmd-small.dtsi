@@ -100,6 +100,7 @@
 		15 01 00 00 00 00 02 FF 10];
 		qcom,mdss-dsi-panel-idle-off-command-state = "dsi_hs_mode";
 		qcom,even-line-align;
+		qcom,ulps-enabled;
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-panel-status-command = [14 01 00 01 01 00 01 0A];
 		qcom,mdss-dsi-panel-status-command-state = "dsi_hs_mode";
