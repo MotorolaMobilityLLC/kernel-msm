@@ -208,7 +208,7 @@
 #define M_LOG_MSG               0x008000
 #define M_CHOPCHOP              0x010000
 #define M_UPDATE_GYRO_CAL       0x020000
-/*#define M_UNUSED              0x040000*/
+#define M_GLANCE                0x040000
 /*#define M_UNUSED              0x080000*/
 /*#define M_UNUSED              0x100000*/
 /*#define M_UNUSED              0x200000*/
@@ -299,7 +299,8 @@ enum STML0XX_data_types {
 	DT_CHOPCHOP,
 	DT_GYRO_CAL,
 	DT_STEP_COUNTER,
-	DT_STEP_DETECTOR
+	DT_STEP_DETECTOR,
+	DT_GLANCE
 };
 
 enum {
