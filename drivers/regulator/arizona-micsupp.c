@@ -40,8 +40,6 @@ struct arizona_micsupp {
 
 	struct regulator_consumer_supply supply;
 	struct regulator_init_data init_data;
-
-	struct work_struct check_cp_work;
 };
 
 static int arizona_micsupp_sel_to_voltage(unsigned int selector)
@@ -82,71 +80,29 @@ static int arizona_micsupp_list_voltage(struct regulator_dev *rdev,
 	}
 }
 
-static void arizona_micsupp_check_cp(struct work_struct *work)
-{
-	struct arizona_micsupp *micsupp =
-		container_of(work, struct arizona_micsupp, check_cp_work);
-	struct snd_soc_dapm_context *dapm = micsupp->arizona->dapm;
-	struct arizona *arizona = micsupp->arizona;
-	struct regmap *regmap = arizona->regmap;
-	unsigned int reg;
-	int ret;
-
-	ret = regmap_read(regmap, ARIZONA_MIC_CHARGE_PUMP_1, &reg);
-	if (ret != 0) {
-		dev_err(arizona->dev, "Failed to read CP state: %d\n", ret);
-		return;
-	}
-
-	if (dapm) {
-		mutex_lock_nested(&dapm->card->dapm_mutex,
-				  SND_SOC_DAPM_CLASS_RUNTIME);
-
-		if ((reg & (ARIZONA_CPMIC_ENA | ARIZONA_CPMIC_BYPASS)) ==
-		    ARIZONA_CPMIC_ENA)
-			snd_soc_dapm_force_enable_pin(dapm, "MICSUPP");
-		else
-			snd_soc_dapm_disable_pin(dapm, "MICSUPP");
-
-		mutex_unlock(&dapm->card->dapm_mutex);
-
-		snd_soc_dapm_sync(dapm);
-	}
-}
-
 static int arizona_micsupp_enable(struct regulator_dev *rdev)
 {
-	struct arizona_micsupp *micsupp = rdev_get_drvdata(rdev);
 	int ret;
 
 	ret = regulator_enable_regmap(rdev);
-
-	if (ret == 0)
-		schedule_work(&micsupp->check_cp_work);
 
 	return ret;
 }
 
 static int arizona_micsupp_disable(struct regulator_dev *rdev)
 {
-	struct arizona_micsupp *micsupp = rdev_get_drvdata(rdev);
 	int ret;
 
 	ret = regulator_disable_regmap(rdev);
-	if (ret == 0)
-		schedule_work(&micsupp->check_cp_work);
 
 	return ret;
 }
 
 static int arizona_micsupp_set_bypass(struct regulator_dev *rdev, bool ena)
 {
-	struct arizona_micsupp *micsupp = rdev_get_drvdata(rdev);
 	int ret;
 
 	ret = regulator_set_bypass_regmap(rdev, ena);
-	if (ret == 0)
-		schedule_work(&micsupp->check_cp_work);
 
 	return ret;
 }
@@ -269,7 +225,6 @@ static int arizona_micsupp_probe(struct platform_device *pdev)
 	}
 
 	micsupp->arizona = arizona;
-	INIT_WORK(&micsupp->check_cp_work, arizona_micsupp_check_cp);
 
 	/*
 	 * Since the chip usually supplies itself we provide some
