@@ -417,7 +417,7 @@ static char *kstruprdup(const char *str, gfp_t gfp)
 int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct power_supply *psy = dev_get_drvdata(dev);
-	int ret = 0, j;
+	int ret = 0, j, prop_count;
 	char *prop_buf;
 	char *attrname;
 
@@ -431,14 +431,22 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 	dev_dbg(dev, "POWER_SUPPLY_NAME=%s\n", psy->name);
 
 	ret = add_uevent_var(env, "POWER_SUPPLY_NAME=%s", psy->name);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "failed to add POWER_SUPPLY_NAME=%s\n",
+							psy->name);
 		return ret;
+	}
 
 	prop_buf = (char *)get_zeroed_page(GFP_KERNEL);
 	if (!prop_buf)
 		return -ENOMEM;
 
-	for (j = 0; j < psy->num_properties; j++) {
+	if ((env->envp_idx + psy->num_properties) >= UEVENT_NUM_ENVP)
+		prop_count = UEVENT_NUM_ENVP - (env->envp_idx+1);
+	else
+		prop_count = psy->num_properties;
+
+	for (j = 0; j < prop_count; j++) {
 		struct device_attribute *attr;
 		char *line;
 
@@ -469,8 +477,11 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 		ret = add_uevent_var(env, "POWER_SUPPLY_%s=%s", attrname, prop_buf);
 		kfree(attrname);
-		if (ret)
+		if (ret) {
+			dev_err(dev, "failed to add POWER_SUPPLY_%s=%s\n",
+							attrname, prop_buf);
 			goto out;
+		}
 	}
 
 out:
