@@ -225,13 +225,6 @@
 /* CS35L34_BST_CTL3 */
 #define BST_IPK_TRIM		0x3F
 
-
-const int gain_ranges[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-EXPORT_SYMBOL_GPL(gain_ranges);
-const char *gain_labels[] = {"9db - MIN", "10db", "11db", "12db",
-			"13db", "14db", "15db", "16db", "17db", "18db - MAX"};
-EXPORT_SYMBOL_GPL(gain_labels);
-
 #define CS35L34_RATES (SNDRV_PCM_RATE_48000 | \
 			SNDRV_PCM_RATE_44100 | \
 			SNDRV_PCM_RATE_32000)
