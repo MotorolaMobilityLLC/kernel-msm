@@ -585,19 +585,16 @@ static int fan54100_chrg_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	ret = gpio_export(chip->fan54100_int_n.gpio, false);
-	if (ret) {
-		dev_err(&client->dev, "Failed to export GPIO %s: %d\n",
-			chip->fan54100_int_n.label, chip->fan54100_int_n.gpio);
-		goto fail_gpio;
-	}
-
-	ret = gpio_export_link(&client->dev, chip->fan54100_int_n.label,
+	if (chip->fan54100_int_n.flags & GPIOF_EXPORT) {
+		ret = gpio_export_link(&client->dev,
+			       chip->fan54100_int_n.label,
 			       chip->fan54100_int_n.gpio);
-	if (ret) {
-		dev_err(&client->dev, "Failed to link GPIO %s: %d\n",
-			chip->fan54100_int_n.label, chip->fan54100_int_n.gpio);
-		goto fail_gpio;
+		if (ret) {
+			dev_err(&client->dev, "Failed to link GPIO %s: %d\n",
+				chip->fan54100_int_n.label,
+				chip->fan54100_int_n.gpio);
+			goto fail_gpio;
+		}
 	}
 
 	if (chip->fan54100_int_n.gpio) {
