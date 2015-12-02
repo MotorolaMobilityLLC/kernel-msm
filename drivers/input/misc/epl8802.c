@@ -74,6 +74,7 @@
 #define PS_FIRST_REPORT 1       // enable ps, report Far or NEAR
 #define ALS_DYN_INTT_REPORT    1
 
+#define ATTR_RANGE_PATH 1
 
 /******************************************************************************
 * ALS / PS define
@@ -133,7 +134,7 @@ static const char ElanALsensorName[]="lightsensor-level";
 #elif SPREAD
 static const char ElanPsensorName[] = "light sensor";
 #elif QCOM || LEADCORE
-static const char ElanPsensorName[] = "proximity";
+static const char ElanPsensorName[] = "Rear proximity sensor";
 static const char ElanALsensorName[] = "light";
 #elif MARVELL
 static const char ElanPsensorName[] = "proximity_sensor";
@@ -200,7 +201,9 @@ struct epl_sensor_priv
     struct pinctrl_state *gpio_state_active;
     struct pinctrl_state *gpio_state_suspend;
 } ;
-
+#if ATTR_RANGE_PATH
+static struct kobject *kernel_kobj_dev;
+#endif
 static struct platform_device *sensor_dev;
 struct epl_sensor_priv *epl_sensor_obj;
 static epl_optical_sensor epl_sensor;
@@ -2647,6 +2650,22 @@ static ssize_t epl_sensor_show_renvo(struct device *dev, struct device_attribute
     return len;
 }
 
+static ssize_t epl_sensor_show_delay_ms(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t len = 0;
+
+	LOG_FUN();
+
+	return len;
+}
+
+static ssize_t epl_sensor_store_delay_ms(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	LOG_FUN();
+
+	return count;
+}
+
 #if ALS_DYN_INTT
 static ssize_t epl_sensor_store_c_gain(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -2670,7 +2689,7 @@ static DEVICE_ATTR(set_threshold,     			S_IROTH  | S_IWOTH, NULL,   					 		epl
 static DEVICE_ATTR(cal_raw, 					S_IROTH  | S_IWOTH, epl_sensor_show_cal_raw, 	  		NULL										);
 static DEVICE_ATTR(als_enable,					S_IROTH  | S_IWOTH, NULL,   							epl_sensor_store_als_enable					);
 static DEVICE_ATTR(als_report_type,				S_IROTH  | S_IWOTH, NULL,								epl_sensor_store_als_report_type			);
-static DEVICE_ATTR(ps_enable,				    S_IROTH  | S_IWOTH, NULL,   							epl_sensor_store_ps_enable					);
+static DEVICE_ATTR(enable_sar, S_IROTH  | S_IWOTH, NULL, epl_sensor_store_ps_enable);
 static DEVICE_ATTR(ps_polling_mode,				S_IROTH  | S_IWOTH, epl_sensor_show_ps_polling,   		epl_sensor_store_ps_polling_mode			);
 static DEVICE_ATTR(als_polling_mode,			S_IROTH  | S_IWOTH, epl_sensor_show_als_polling,   		epl_sensor_store_als_polling_mode			);
 static DEVICE_ATTR(gain,						S_IROTH  | S_IWOTH, NULL,   							epl_sensor_store_gain						);
@@ -2690,6 +2709,7 @@ static DEVICE_ATTR(run_ps_cali, 				S_IROTH  | S_IWOTH, epl_sensor_show_ps_run_c
 static DEVICE_ATTR(pdata,                       S_IROTH  | S_IWOTH, epl_sensor_show_pdata,              NULL                                        );
 static DEVICE_ATTR(als_data,                    S_IROTH  | S_IWOTH, epl_sensor_show_als_data,           NULL                                        );
 static DEVICE_ATTR(elan_renvo,                    S_IROTH  | S_IWOTH, epl_sensor_show_renvo,           NULL                                        );
+static DEVICE_ATTR(set_delay_ms, S_IROTH | S_IWOTH, epl_sensor_show_delay_ms, epl_sensor_store_delay_ms);
 #if ALS_DYN_INTT
 static DEVICE_ATTR(als_dyn_c_gain,              S_IROTH  | S_IWOTH, NULL,                               epl_sensor_store_c_gain);
 #endif
@@ -2699,7 +2719,7 @@ static struct attribute *epl_sensor_attr_list[] =
     &dev_attr_elan_status.attr,
     &dev_attr_elan_reg.attr,
     &dev_attr_als_enable.attr,
-    &dev_attr_ps_enable.attr,
+    &dev_attr_enable_sar.attr,
     &dev_attr_cal_raw.attr,
     &dev_attr_set_threshold.attr,
     &dev_attr_wait_time.attr,
@@ -2724,6 +2744,7 @@ static struct attribute *epl_sensor_attr_list[] =
     &dev_attr_pdata.attr,
     &dev_attr_als_data.attr,
     &dev_attr_elan_renvo.attr,
+    &dev_attr_set_delay_ms.attr,
 #if ALS_DYN_INTT
     &dev_attr_als_dyn_c_gain.attr,
 #endif
@@ -3530,7 +3551,20 @@ static int epl_sensor_probe(struct i2c_client *client,const struct i2c_device_id
 
 #endif
     wake_lock_init(&ps_lock, WAKE_LOCK_SUSPEND, "ps wakelock");
+#if ATTR_RANGE_PATH
+	kernel_kobj_dev = kobject_create_and_add("range", kernel_kobj);
 
+	if (IS_ERR(kernel_kobj_dev)) {
+		printk ("kernel_kobj_dev init: error\n");
+		goto err_fail;
+	}
+
+	err = sysfs_create_group(kernel_kobj_dev, &epl_sensor_attr_group);
+	if (err != 0) {
+		dev_err(&client->dev, "%s:create sysfs group error", __func__);
+		goto err_fail;
+	}
+#else
     sensor_dev = platform_device_register_simple("elan_alsps", -1, NULL, 0);
     if (IS_ERR(sensor_dev))
     {
@@ -3545,7 +3579,7 @@ static int epl_sensor_probe(struct i2c_client *client,const struct i2c_device_id
         dev_err(&client->dev,"%s:create sysfs group error", __func__);
         goto err_fail;
     }
-
+#endif
     LOG_INFO("sensor probe success.\n");
 
     return err;
