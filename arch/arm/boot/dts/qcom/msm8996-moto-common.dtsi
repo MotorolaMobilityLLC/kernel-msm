@@ -448,6 +448,7 @@
 };
 
 &i2c_7 {
+	qcom,disable-dma;
 	fusb302@22 {
 		compatible = "fairchild,fusb302";
 		reg = <0x22>;
@@ -752,8 +753,8 @@
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
 		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <16>;
-		qcom,bam-producer-pipe-index = <17>;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
 		qcom,master-id = <84>;
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
