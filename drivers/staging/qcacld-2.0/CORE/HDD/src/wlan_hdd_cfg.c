@@ -5047,8 +5047,7 @@ VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
 
    if (status)
    {
-      hddLog(VOS_TRACE_LEVEL_ERROR, "%s: request_firmware failed %d",
-             __func__, status);
+      pr_err("%s: request_firmware failed %d", __func__, status);
       vos_status = VOS_STATUS_E_FAILURE;
       return vos_status;
    }
