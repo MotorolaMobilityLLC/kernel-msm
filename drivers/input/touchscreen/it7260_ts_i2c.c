@@ -1063,7 +1063,7 @@ static void readTouchDataPoint_Ambient(void)
 			else
 				lastTouch = TOUCH_UP;
 
-			if (touchMissed || suspend_touch_up - suspend_touch_down < 1000) {
+			if (touchMissed || suspend_touch_up - suspend_touch_down < 700) {
 				if (touchMissed) {
 					LOGI("%s: touch down missed, send touch up\n",
 					     __func__);
