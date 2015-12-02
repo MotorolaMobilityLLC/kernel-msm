@@ -310,9 +310,7 @@ static inline void walk_dir_nodes(struct ctrl *ctrl)
 }
 
 /*
- * compare only the name part of a <name[:type]> formatted full
- * utag name
- *
+ * compare names, break check at any null in names
  * returns true if match, false otherwise
  */
 
@@ -325,12 +323,8 @@ static inline bool names_match(const char *s1, const char *s2)
 	while (count--) {
 		c1 = *s1++;
 		c2 = *s2++;
-		if (c1 == ':')
-			c1 = 0;
-		if (c2 == ':')
-			c2 = 0;
 		r = c1 - c2;
-		if (r || !c1)
+		if (r || !c1 || !c2)
 			return (r) ? false : true;
 	}
 	return true;
@@ -428,10 +422,8 @@ static int add_utag_tail(struct utag *head, char *utag_name, char *utag_type)
 	pr_debug("tail utag [%s]\n", tail->name);
 
 	new = kzalloc(sizeof(struct utag), GFP_KERNEL);
-	if (!new) {
-		pr_err("cannot allocate utag %s\n", utag_name);
+	if (!new)
 		return -ENOMEM;
-	}
 
 	strlcpy(new->name, utag, MAX_UTAG_NAME);
 	new->size = new->flags = new->util = 0;
@@ -884,6 +876,77 @@ static int full_utag_name(struct proc_node *pnode, char *tag)
 	return blen;
 }
 
+static int check_utag_range(char *tag, struct utag *head, char *data,
+	size_t count)
+{
+	char rtag[MAX_UTAG_NAME];
+	struct utag *range;
+	char *buf, *ptr, *tok;
+	size_t check;
+	bool found = false;
+	size_t len;
+
+	/* copy utag name and append .range */
+	strlcpy(rtag, tag, MAX_UTAG_NAME);
+	tok = strnchr(rtag, MAX_UTAG_NAME, ':');
+	if (tok)
+		*tok = 0;
+	if (strlcat(rtag, "/.range", MAX_UTAG_NAME) > MAX_UTAG_NAME) {
+		pr_err("full name [%s] .range error\n", rtag);
+		return -EIO;
+	}
+
+	pr_debug("utag range check [%s]\n", rtag);
+
+	/* walk the thawed list to find the range */
+	range = find_first_utag(head, rtag);
+	if (!range) {
+		pr_err("full name [%s] no .range\n", rtag);
+		return 0;
+	}
+
+	/* check sizes and termination of the data */
+	check = strnlen(range->payload, range->size);
+	if (check == range->size) {
+		pr_err("range payload [%s] not a string\n", rtag);
+		return -EIO;
+	}
+
+	if (count >= check) {
+		pr_err("data for [%s] too big %zu > %zu\n", tag, count, check);
+		return -EIO;
+	}
+
+	if (count == strnlen(data, count)) {
+		pr_err("data for [%s] not a string\n", tag);
+		return -EIO;
+	}
+
+	/* make local copy of .range payload to tokenize */
+	buf = ptr = kzalloc(range->size, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	memcpy(buf, range->payload, range->size);
+
+	while (ptr && !found) {
+		tok = strsep(&ptr, ",");
+		len = strnlen(tok, MAX_UTAG_SIZE);
+		pr_debug("range value [%s] for [%s]\n", tok, rtag);
+		if (!strncmp(tok, data, len))
+			found = true;
+	}
+	kfree(buf);
+
+	/* if ptr is still NULL we did not find a match */
+	if (!found) {
+		pr_err("data [%s] out of range @[%s]\n", data, rtag);
+		return -EINVAL;
+	}
+	pr_debug("data [%s] in range\n", data);
+
+	return 0;
+}
 
 static int replace_first_utag(struct utag *head, char *name,
 		void *payload, size_t size)
@@ -1021,6 +1084,7 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	struct inode *inode = file->f_dentry->d_inode;
 	struct proc_node *proc = PDE_DATA(inode);
 	struct ctrl *ctrl = proc->ctrl;
+	size_t length = count;
 
 	pr_debug("%zu bytes write attempt to [%s](%d)\n",
 					count, proc->name, proc->mode);
@@ -1042,6 +1106,12 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_temp_exit;
 	}
 
+	/* enforce 0 termination for ASCII strings */
+	if (proc->mode == OUT_ASCII)
+		payload[count-1] = 0;
+	else
+		length -= 1;
+
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load config error\n");
@@ -1055,7 +1125,13 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 		goto free_tags_exit;
 	}
 
-	error = replace_first_utag(tags, utag, payload, (count - 1));
+	/* check if this utag has .range child */
+	error = check_utag_range(utag, tags, payload, count);
+	if (error)
+		goto free_tags_exit;
+
+
+	error = replace_first_utag(tags, utag, payload, length);
 	if (error) {
 		pr_err("error storing [%s] new payload\n", utag);
 		goto free_tags_exit;
