@@ -2029,13 +2029,14 @@ iterm_fail:
 static bool max17042_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
-	u32 fact_cable = 0;
+	bool factory = false;
 
 	if (np)
-		of_property_read_u32(np, "mmi,factory-cable", &fact_cable);
+		factory = of_property_read_bool(np, "mmi,factory-cable");
 
 	of_node_put(np);
-	return !!fact_cable ? true : false;
+
+	return factory;
 }
 
 static struct regmap_config max17042_regmap_config = {
