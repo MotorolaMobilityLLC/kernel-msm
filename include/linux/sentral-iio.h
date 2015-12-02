@@ -33,9 +33,9 @@
 
 #define SEN_DRV_PROJECT_ID "1"
 #define SEN_DRV_SUBPROJECT_ID "2"
-#define SEN_DRV_VERSION "1.2.6"
+#define SEN_DRV_VERSION "1.2.7"
 #define SEN_DRV_BUILD "7"
-#define SEN_DRV_DATE "Thu Oct  8 15:25:02 PDT 2015"
+#define SEN_DRV_DATE "Thu Nov  5 14:18:36 PDT 2015"
 
 // comment out the following to use printk logging instead of dyndbg
 #define SENTRAL_LOG_DYNDBG 1
@@ -100,6 +100,8 @@
 #define SENTRAL_CAL_TS_SAMPLE_DELAY_MS 20
 
 #define SENTRAL_FIFO_OVERFLOW_THRD 5
+
+#define SENTRAL_STEP_COUNTER_TIMER 60*HZ
 
 enum sentral_registers {
 	SR_FIFO_START =   0x00,
@@ -646,6 +648,9 @@ struct sentral_device {
 	unsigned int crash_count;
 	unsigned int overflow_count;
 	u16 fifo_watermark;
+	struct timer_list sc_timer;
+	u16 step_counter_rate;
+	bool step_counter_reset_rate_en;
 	wait_queue_head_t wq_fifo;
 	atomic_t fifo_pending;
 	u8 latest_accel_buffer[24];

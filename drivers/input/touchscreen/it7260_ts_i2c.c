@@ -462,6 +462,59 @@ static bool chipFlashWriteAndVerify(unsigned int fwLength, const uint8_t *fwData
 	return true;
 }
 
+static bool CheckSourceFile(uint32_t fwLen, const uint8_t *fwData, uint32_t cfgLen, const uint8_t *cfgData, uint16_t FWReg, uint16_t CFGReg)
+{
+	uint16_t i, j;
+	uint16_t CurFW, CurCFG;
+	uint16_t fwFileCRC, cfgFileCRC;
+	uint8_t FWReg_check, CFGReg_check;
+
+	fwFileCRC = fwData[14];
+	for (i = 0; i < fwLen; i++) {
+
+		if (i == 14 || i == 15) {
+			CurFW = 0;
+		} else {
+			CurFW = ((fwData[i])<< 8);
+		}
+
+		for (j = 0; j < 8; j++) {
+			if((short)(FWReg ^ CurFW) < 0) {
+				FWReg = (FWReg << 1) ^ 0x1021;
+			} else {
+				FWReg <<= 1;
+			}
+			CurFW <<= 1;
+		}
+	}
+
+	cfgFileCRC = cfgData[cfgLen-2];
+	for (i = 0; i < (cfgLen-2); i++) {
+
+		CurCFG = ((cfgData[i])<< 8);
+
+		for (j = 0; j < 8; j++) {
+			if((short)(CFGReg ^ CurCFG) < 0) {
+				CFGReg = (CFGReg << 1) ^ 0x1021;
+			} else {
+				CFGReg <<= 1;
+			}
+			CurCFG <<= 1;
+		}
+	}
+
+	FWReg_check = (uint8_t) FWReg;
+	CFGReg_check = (uint8_t) CFGReg;
+	LOGI("fwFileCRC::0x%x, CalculateFWCRC::0x%x, cfgFileCRC::0x%x, CalculateCFGCRC::0x%x\n", fwFileCRC, FWReg_check, cfgFileCRC, CFGReg_check);
+
+	if((fwFileCRC == FWReg_check)&&(cfgFileCRC == CFGReg_check)) {
+		LOGI("firmware/config source file are correct !!\n");
+		return true;
+	} else {
+		return false;
+	}
+}
+
 static bool VerifyChecksum(struct device *dev, uint32_t fwLen, const uint8_t *fwData, uint32_t cfgLen, const uint8_t *cfgData)
 {
 	uint8_t pucCommandBuffer[3], resp[2];
@@ -670,7 +723,6 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 	else
 		fwLen = fw->size;
 
-
 	if (request_firmware(&cfg, "it7260.cfg", dev))
 		LOGE("failed to get config data for it7260\n");
 	else
@@ -742,44 +794,48 @@ static ssize_t sysfsUpgradeStore(struct device *dev, struct device_attribute *at
 		}
 
 		if (fw_upgrade_flag || config_upgrade_flag) {
-			LOGI("firmware/config will be upgraded\n");
-			disable_irq(gl_ts->client->irq);
-			success = chipFirmwareUpload(dev, fwLen, fw->data, cfgLen, cfg->data);
-			LOGI("upload %s\n", success ? "success" : "failed");
-			if(!success && !TP_DLMODE) {
-				LOGI("enter tp download mode to force updating fw and config.\n");
-				ret = gpio_request(RESET_GPIO, "CTP_RST_N");
-				if (ret < 0) {
-					LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
-					gpio_free(RESET_GPIO);
-				} else {
-					ret = gpio_request(TP_DLMODE_GPIO, "CTP_DLM_N");
-					if (ret < 0) {
-						LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, TP_DLMODE_GPIO, ret);
-						gpio_free(TP_DLMODE_GPIO);
-					} else {
-						gpio_direction_output(TP_DLMODE_GPIO, 1);
-						mdelay(10);
-						gpio_direction_output(RESET_GPIO,0);
-						mdelay(60);
-						gpio_free(RESET_GPIO);
-						mdelay(100);
-						gpio_set_value(TP_DLMODE_GPIO, 0);
-						mdelay(200);
-						TP_DLMODE = true;
-					}
-				}
-				fw_upgrade_flag = 1;
-				config_upgrade_flag = 1;
+			if(CheckSourceFile(fwLen, fw->data, cfgLen, cfg->data, 0xFFFF, 0xFFFF))	{
+				LOGI("firmware/config will be upgraded\n");
+				disable_irq(gl_ts->client->irq);
 				success = chipFirmwareUpload(dev, fwLen, fw->data, cfgLen, cfg->data);
 				LOGI("upload %s\n", success ? "success" : "failed");
-			}
-			enable_irq(gl_ts->client->irq);
+				if(!success && !TP_DLMODE) {
+					LOGI("enter tp download mode to force updating fw and config.\n");
+					ret = gpio_request(RESET_GPIO, "CTP_RST_N");
+					if (ret < 0) {
+						LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, RESET_GPIO, ret);
+						gpio_free(RESET_GPIO);
+					} else {
+						ret = gpio_request(TP_DLMODE_GPIO, "CTP_DLM_N");
+						if (ret < 0) {
+							LOGE("[%d] %s gpio_request %d error: %d\n", __LINE__, __func__, TP_DLMODE_GPIO, ret);
+							gpio_free(TP_DLMODE_GPIO);
+						} else {
+							gpio_direction_output(TP_DLMODE_GPIO, 1);
+							mdelay(10);
+							gpio_direction_output(RESET_GPIO,0);
+							mdelay(60);
+							gpio_free(RESET_GPIO);
+							mdelay(100);
+							gpio_set_value(TP_DLMODE_GPIO, 0);
+							mdelay(200);
+							TP_DLMODE = true;
+						}
+					}
+					fw_upgrade_flag = 1;
+					config_upgrade_flag = 1;
+					success = chipFirmwareUpload(dev, fwLen, fw->data, cfgLen, cfg->data);
+					LOGI("upload %s\n", success ? "success" : "failed");
+				}
+				enable_irq(gl_ts->client->irq);
 
-			fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
-			if (success && TP_DLMODE) {
-				TP_DLMODE = false;
-				LOGI("leave tp download mode.\n");
+				fwUploadResult = success ? SYSFS_RESULT_SUCCESS : SYSFS_RESULT_FAIL;
+				if (success && TP_DLMODE) {
+					TP_DLMODE = false;
+					LOGI("leave tp download mode.\n");
+				}
+			} else {
+				LOGI("firmware/config source file error!!!!!!!\n");
 			}
 		} else {
 			LOGI("firmware/config upgrade not needed\n");

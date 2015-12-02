@@ -33,6 +33,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/time.h>
+#include <linux/timer.h>
 #include <linux/wait.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
@@ -1423,6 +1424,24 @@ static int sentral_set_host_ap_suspend_enable(struct sentral_device *sentral,
 			SEN_HOST_CTRL_AP_SUSPENDED, enable);
 }
 
+// timer
+static void step_counter_timer_set(unsigned long handler)
+{
+	struct sentral_device *sentral = (struct sentral_device *)handler;
+
+	// set flag on
+	sentral->step_counter_reset_rate_en = true;
+
+	// set another timer
+	sentral->sc_timer.expires = jiffies + SENTRAL_STEP_COUNTER_TIMER;
+	sentral->sc_timer.data = (unsigned long)sentral;
+	sentral->sc_timer.function = step_counter_timer_set;
+	add_timer(&(sentral->sc_timer));
+
+	LOGI(&sentral->client->dev, "Timer added for step counter");
+}
+
+// firmware load
 static int sentral_firmware_load(struct sentral_device *sentral,
 		const char *firmware_name)
 {
@@ -2145,6 +2164,7 @@ static ssize_t sentral_sysfs_delay_ms_store(struct device *dev,
 		sample_rate = delay_ms / 10000;
 		break;
 	case SST_STEP_COUNTER:
+		sentral->step_counter_rate = (u16)delay_ms;
 	case SST_SLEEP:
 		sample_rate = (u16)delay_ms;
 		break;
@@ -2200,6 +2220,7 @@ static ssize_t sentral_sysfs_batch_store(struct device *dev,
 		sample_rate = delay_ms / 10000;
 		break;
 	case SST_STEP_COUNTER:
+		sentral->step_counter_rate = (u16)delay_ms;
 	case SST_SLEEP:
 		sample_rate = (u16)delay_ms;
 		break;
@@ -3020,6 +3041,15 @@ static int sentral_suspend_notifier(struct notifier_block *nb,
 					"error (%d) setting AP suspend to false\n", rc);
 		}
 
+		// check to set step counter rate
+		if (sentral->step_counter_reset_rate_en) {
+			LOGI(&sentral->client->dev, "Timer set step counter rate : %u\n", sentral->step_counter_rate);
+			rc = sentral_sensor_batch_set(sentral, SST_STEP_COUNTER, sentral->step_counter_rate, 0);
+			if (rc)
+				return rc;
+			sentral->step_counter_reset_rate_en = false;
+		}
+
 		// reset overflow counter
 		sentral->overflow_count = 0;
 
@@ -3246,6 +3276,16 @@ static int sentral_probe(struct i2c_client *client,
 
 	// mark as cold start
 	sentral->warm_reset = false;
+
+	// init timer for step counter
+	sentral->step_counter_rate = 1000;
+	sentral->step_counter_reset_rate_en = false;
+	init_timer(&(sentral->sc_timer));
+	sentral->sc_timer.expires = jiffies + SENTRAL_STEP_COUNTER_TIMER;
+	sentral->sc_timer.data = (unsigned long)sentral;
+	sentral->sc_timer.function = step_counter_timer_set;
+	add_timer(&(sentral->sc_timer));
+	LOGI(&sentral->client->dev,"Step Counter Timer Init");
 
 	// startup
 	schedule_work(&sentral->work_reset);
