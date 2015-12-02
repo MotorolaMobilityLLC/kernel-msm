@@ -183,9 +183,6 @@ static bool driverInLowPower;
 static bool touchMissed;
 static int suspend_touch_down;
 static int suspend_touch_up;
-static uint16_t suspend_touch_x;
-static uint16_t suspend_touch_y;
-static bool suspend_touch_shift;
 static struct IT7260_ts_data *gl_ts;
 static struct wake_lock touch_lock;
 static struct wake_lock touch_time_lock;
@@ -1016,7 +1013,6 @@ static void readTouchDataPoint_Ambient(void)
 	uint16_t x1, y1;
 	uint8_t pressure2 = FD_PRESSURE_NONE;
 	uint16_t x2, y2;
-	bool point_data_valid = false;
 
 	if (!isTouchLocked) {
 		i2c_read_data(BUF_QUERY, &devStatus, sizeof(devStatus));
@@ -1045,17 +1041,6 @@ static void readTouchDataPoint_Ambient(void)
 
 		if ((pointData.flags & PD_FLAGS_HAVE_FINGERS) & 0x03)
 			readFingerData(&x1, &y1, &pressure1, &x2, &y2, &pressure2, pointData.fd);
-		if (x1 >= 0 && x1 <= 320 && y1 >= 0 && y1 <= 320)
-			point_data_valid = true;
-
-		if (suspend_touch_x == 0 && suspend_touch_y == 0 && point_data_valid == true) {
-				suspend_touch_x = x1;
-				suspend_touch_y = y1;
-		} else if (point_data_valid == true) {
-			if ((x1 - suspend_touch_x >= 50 || x1 - suspend_touch_x <= -50) ||
-				(y1 - suspend_touch_y >= 50 || y1 - suspend_touch_y <= -50))
-				suspend_touch_shift = true;
-		}
 
 		if ((pointData.palm & PD_PALM_FLAG_BIT)) {
 			if (hadFingerDown)
@@ -1078,7 +1063,7 @@ static void readTouchDataPoint_Ambient(void)
 			else
 				lastTouch = TOUCH_UP;
 
-			if (touchMissed || (suspend_touch_up - suspend_touch_down < 1000 && suspend_touch_shift == false)) {
+			if (touchMissed || suspend_touch_up - suspend_touch_down < 1000) {
 				if (touchMissed) {
 					LOGI("%s: touch down missed, send touch up\n",
 					     __func__);
@@ -1111,9 +1096,6 @@ static void readTouchDataPoint_Ambient(void)
 			wake_lock(&touch_lock);
 			isTouchLocked = false;
 			chipInLowPower = false;
-			suspend_touch_x = 0;
-			suspend_touch_y = 0;
-			suspend_touch_shift = false;
 			suspend_touch_down = getMsTime();
 			if (lastTouch == TOUCH_UP)
 				lastTouch = TOUCH_DOWN;
