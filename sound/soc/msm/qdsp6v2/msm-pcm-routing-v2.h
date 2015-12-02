@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,7 @@
 #define LPASS_BE_HDMI "HDMI"
 #define LPASS_BE_INT_BT_SCO_RX "INT_BT_SCO_RX"
 #define LPASS_BE_INT_BT_SCO_TX "INT_BT_SCO_TX"
+#define LPASS_BE_INT_BT_A2DP_RX "INT_BT_A2DP_RX"
 #define LPASS_BE_INT_FM_RX "INT_FM_RX"
 #define LPASS_BE_INT_FM_TX "INT_FM_TX"
 #define LPASS_BE_AFE_PCM_RX "RT_PROXY_DAI_001_RX"
@@ -117,6 +118,7 @@ enum {
 	MSM_BACKEND_DAI_HDMI_RX,
 	MSM_BACKEND_DAI_INT_BT_SCO_RX,
 	MSM_BACKEND_DAI_INT_BT_SCO_TX,
+	MSM_BACKEND_DAI_INT_BT_A2DP_RX,
 	MSM_BACKEND_DAI_INT_FM_RX,
 	MSM_BACKEND_DAI_INT_FM_TX,
 	MSM_BACKEND_DAI_AFE_PCM_RX,
