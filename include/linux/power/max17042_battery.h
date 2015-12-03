@@ -29,6 +29,9 @@
 
 #define MAX17042_CHARACTERIZATION_DATA_SIZE 48
 
+#define MAX17042_CONFIG_TEX (BIT(0)<<8)
+#define MAX17042_CONFIG_TEN (BIT(1)<<8)
+
 enum max17042_register {
 	MAX17042_STATUS		= 0x00,
 	MAX17042_VALRT_Th	= 0x01,
@@ -239,6 +242,7 @@ struct max17042_platform_data {
 	int cool_temp_c;
 	int cold_temp_c;
 	int hotspot_thrs_c;
+	bool use_external_temp;
 };
 
 #endif /* __MAX17042_BATTERY_H_ */
