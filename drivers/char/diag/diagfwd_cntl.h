@@ -132,13 +132,6 @@ struct diag_ctrl_msg_mask {
 	/* Copy msg mask here */
 } __packed;
 
-#ifdef CONFIG_DIAG_EXTENSION
-struct diag_ctrl_msg_diag_flush {
-	uint32_t ctrl_pkt_id;
-	uint32_t ctrl_pkt_data_len;
-} __packed;
-#endif
-
 struct diag_ctrl_feature_mask {
 	uint32_t ctrl_pkt_id;
 	uint32_t ctrl_pkt_data_len;

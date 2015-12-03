@@ -45,9 +45,6 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
-#ifdef CONFIG_DIAG_EXTENSION
-#include "diagaddon_slate.h"
-#endif /* CONFIG_DIAG_EXTENSION */
 
 MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
@@ -1417,10 +1414,6 @@ long diagchar_ioctl(struct file *filp,
 	case DIAG_IOCTL_PERIPHERAL_BUF_DRAIN:
 		result = diag_ioctl_peripheral_drain_immediate(ioarg);
 		break;
-#ifdef CONFIG_DIAG_EXTENSION
-	default:
-		DIAGADDON_ioctl(&result, filp, iocmd, ioarg);
-#endif
 	}
 	return result;
 }
@@ -1932,9 +1925,6 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 						HDLC_OUT_BUF_SIZE) ?
 			((uintptr_t)enc.dest - (uintptr_t)buf_hdlc) :
 						HDLC_OUT_BUF_SIZE;
-#ifdef CONFIG_DIAG_EXTENSION
-	DIAGADDON_force_returntype(&pkt_type, pkt_type);
-#endif
 	if (pkt_type == DATA_TYPE_RESPONSE) {
 		err = diag_mux_write(DIAG_LOCAL_PROC, buf_hdlc, driver->used,
 				     buf_hdlc_ctxt);
