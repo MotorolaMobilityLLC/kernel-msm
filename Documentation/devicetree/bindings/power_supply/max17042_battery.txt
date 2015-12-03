@@ -37,6 +37,8 @@ Optional properties :
 
  - maxim,cold-temp-c : Define this property to set Cold Temperature Level
 
+ - maxim,use-external-temp : Define this property to set External Temperature Control
+
 Optional subnodes:
  - maxim,configuration : Contains configuraiton data for POR initialization
    of the device defined in Maxim appnote. This data is either specific to how
