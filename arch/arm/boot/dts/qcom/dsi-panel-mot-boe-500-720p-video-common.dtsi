@@ -32,6 +32,12 @@ qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>, <0 10>, <1 20>;
 qcom,mdss-dsi-dis-reset-sequence = <1 101>, <0 0>;
 
 qcom,mdss-dsi-on-command = [
+	/* Clear driver IC previous state */
+	29 01 00 00 00 00 05 FF AA 55 25 01
+	29 01 00 00 01 00 02 FC 08
+	29 01 00 00 00 00 02 FC 00
+	29 01 00 00 14 00 05 FF AA 55 25 00
+
 	/* MIPI lanes setting */
 	29 01 00 00 00 00 05 FF AA 55 25 01
 	29 01 00 00 00 00 02 6F 16
