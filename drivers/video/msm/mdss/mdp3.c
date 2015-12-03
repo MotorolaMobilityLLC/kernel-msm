@@ -179,8 +179,7 @@ void mdp3_irq_enable(int type)
 
 	pr_debug("mdp3_irq_enable type=%d\n", type);
 	spin_lock_irqsave(&mdp3_res->irq_lock, flag);
-	mdp3_res->irq_ref_count[type] += 1;
-	if (mdp3_res->irq_ref_count[type] > 1) {
+	if (mdp3_res->irq_ref_count[type] > 0) {
 		pr_debug("interrupt %d already enabled\n", type);
 		spin_unlock_irqrestore(&mdp3_res->irq_lock, flag);
 		return;
@@ -189,6 +188,7 @@ void mdp3_irq_enable(int type)
 	mdp3_res->irq_mask |= BIT(type);
 	MDP3_REG_WRITE(MDP3_REG_INTR_ENABLE, mdp3_res->irq_mask);
 
+	mdp3_res->irq_ref_count[type] += 1;
 	spin_unlock_irqrestore(&mdp3_res->irq_lock, flag);
 }
 
