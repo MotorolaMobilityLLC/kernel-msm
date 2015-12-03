@@ -367,14 +367,16 @@ int stmvl53l0_power_up_cci(void *cci_object, unsigned int *preset_flag)
 	vl53l0_dbgmsg("Enter");
 	pinctrl_select_state(data->pinctrl_info.pinctrl,
 		data->pinctrl_info.gpio_state_active);
+
+	stmvl53l0_vreg_control(data, 1);
+	msleep(20);
+
 	/* need to init cci first */
 	ret = stmvl53l0_cci_init(data);
 	if (ret) {
 		vl53l0_errmsg("stmvl53l0_cci_init failed %d\n", __LINE__);
 		return ret;
 	}
-
-	stmvl53l0_vreg_control(data, 1);
 
 	msm_camera_request_gpio_table(
 		data->gconf.cam_gpio_req_tbl,
@@ -383,7 +385,7 @@ int stmvl53l0_power_up_cci(void *cci_object, unsigned int *preset_flag)
 	data->power_up = 1;
 	*preset_flag = 1;
 	vl53l0_dbgmsg("End\n");
-	msleep(200);
+	msleep(20);
 	return ret;
 }
 
