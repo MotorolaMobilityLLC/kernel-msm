@@ -664,7 +664,7 @@
 			sensor2-supply = <&pm8994_l17>;
 			accel_orient = <1>;     /* Accel Orientation value */
 			gyro_orient = <1>;      /* Gyro Orientation value */
-			mag_orient =  <5>;      /* Mag Orientation value */
+			mag_orient =  <2>;      /* Mag Orientation value */
 			panel_type = <1>;       /* Panel Type value */
 			IR_config = <1>;        /* IR Config value */
 			cover_detect_polarity = <2>; /*Default to MOTOSH_NORTH_DETECT*/
