@@ -847,7 +847,9 @@ int arizona_put_anc_ng(struct snd_kcontrol *kcontrol,
 		* As the clock is a supply widget this call simply ensures
 		* we add it to the dirty list.
 		*/
+		mutex_lock(&codec->card->dapm_mutex);
 		snd_soc_dapm_enable_pin(&codec->dapm, "RXANC NG Clock");
+		mutex_unlock(&codec->card->dapm_mutex);
 		break;
 	case 1:
 		snd_soc_dapm_add_routes(&codec->dapm, routes,
@@ -856,7 +858,9 @@ int arizona_put_anc_ng(struct snd_kcontrol *kcontrol,
 		* As the clock is a supply widget this call simply ensures
 		* we add it to the dirty list.
 		*/
+		mutex_lock(&codec->card->dapm_mutex);
 		snd_soc_dapm_disable_pin(&codec->dapm, "RXANC NG Clock");
+		mutex_unlock(&codec->card->dapm_mutex);
 		break;
 	default:
 		return -EINVAL;
