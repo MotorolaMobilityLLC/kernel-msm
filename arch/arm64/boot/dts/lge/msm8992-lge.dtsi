@@ -34,6 +34,7 @@
 		android,ramoops-record-size = <0x10000>;
 		android,ramoops-pmsg-size = <0x20000>;
 		android,ramoops-dump-oops = <0x1>;
+		android,ramoops-ecc-info = <0 16 0 0>; /* < block_size, ecc_size, sym_size, poly >, only ecc_size will suffice to enable ecc */
 	};
 
 	qcom,wdt@f9017000 {
