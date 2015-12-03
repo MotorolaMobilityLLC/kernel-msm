@@ -439,30 +439,12 @@ static void msm_actuator_write_focus(
 	int8_t sign_direction,
 	int16_t code_boundary)
 {
-	int16_t next_lens_pos = 0;
-	uint16_t damping_code_step = 0;
-	uint16_t wait_time = 0;
 	CDBG("Enter\n");
-
-	damping_code_step = damping_params->damping_step;
-	wait_time = damping_params->damping_delay;
-
-	/* Write code based on damping_code_step in a loop */
-	for (next_lens_pos =
-		curr_lens_pos + (sign_direction * damping_code_step);
-		(sign_direction * next_lens_pos) <=
-			(sign_direction * code_boundary);
-		next_lens_pos =
-			(next_lens_pos +
-				(sign_direction * damping_code_step))) {
-		a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl,
-			next_lens_pos, damping_params->hw_params, wait_time);
-		curr_lens_pos = next_lens_pos;
-	}
 
 	if (curr_lens_pos != code_boundary) {
 		a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl,
-			code_boundary, damping_params->hw_params, wait_time);
+			code_boundary, damping_params->hw_params,
+			damping_params->damping_delay);
 	}
 	CDBG("Exit\n");
 }
@@ -579,9 +561,9 @@ static int32_t msm_actuator_move_focus(
 	int8_t sign_dir = move_params->sign_dir;
 	uint16_t step_boundary = 0;
 	uint16_t target_step_pos = 0;
-	uint16_t target_lens_pos = 0;
+	int16_t target_lens_pos = 0;
 	int16_t dest_step_pos = move_params->dest_step_pos;
-	uint16_t curr_lens_pos = 0;
+	int16_t curr_lens_pos = 0;
 	int dir = move_params->dir;
 	int32_t num_steps = move_params->num_steps;
 	struct msm_camera_i2c_reg_setting reg_setting;
@@ -726,7 +708,7 @@ static int32_t msm_actuator_bivcm_move_focus(
 		pr_err("Invalid direction = %d\n", dir);
 		return -EFAULT;
 	}
-	if (dest_step_pos > a_ctrl->total_steps) {
+	if (dest_step_pos >= a_ctrl->total_steps) {
 		pr_err("Step pos greater than total steps = %d\n",
 		dest_step_pos);
 		return -EFAULT;
