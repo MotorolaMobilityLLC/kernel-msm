@@ -536,6 +536,7 @@ struct gpio_config_data {
  * @lock - to protect the transactions
  * @reg - cached value of led register
  * @num_leds - number of leds in the module
+ * @sync_start - set to 1 to prevent ramp start until rgb_start is done
  * @max_current - maximum current supported by LED
  * @default_on - true: default state max, false, default state 0
  * @turn_off_delay_ms - number of msec before turning off the LED
@@ -550,6 +551,7 @@ struct qpnp_led_data {
 	u16			base;
 	u8			reg;
 	u8			num_leds;
+	u8			sync_start;
 	struct mutex		lock;
 	struct wled_config_data *wled_cfg;
 	struct flash_config_data	*flash_cfg;
@@ -1741,27 +1743,42 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 	unsigned long off_ms = led->rgb_cfg->off_ms;
 	unsigned long ramp_step_ms, num_duty_pcts;
 	struct pwm_config_data  *pwm_cfg = led->rgb_cfg->pwm_cfg;
+	int start_idx = (led->id - 3) * 8;
 
 	if (!on_ms) {
 		return -EINVAL;
-	} else {
-		ramp_step_ms = on_ms / 20;
-		ramp_step_ms = (ramp_step_ms < 5)? 5 : ramp_step_ms;
-		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT;
+	}
 
-		// If off_ms == 0 then the LED will be at 100% solid
+	// duty_pcts are stored per LED and should be stored starting from
+	// 0 in the array.
+	//
+	// lut_params.start_idx is used in the PWM driver to calculate the offset
+	// into the LUT to write duty_pcts into. (IOW, the PWM driver reads from
+	// duty_pcts[n] and puts into LUT[n + start_idx])
+
+	ramp_step_ms = on_ms / 20;
+	ramp_step_ms = (ramp_step_ms < 5)? 5 : ramp_step_ms;
+
+	// If off_ms == 0 then do not ramp the LED
+	if (!off_ms) {
+		num_duty_pcts = 1;
+		pwm_cfg->duty_cycles->duty_pcts[0] =
+			(100 * led->cdev.brightness) / RGB_MAX_LEVEL;
+	} else {
+		num_duty_pcts = RGB_LED_RAMP_STEP_COUNT;
 		for (i = 0; i < num_duty_pcts; i++) {
-			pwm_cfg->duty_cycles->duty_pcts[i] = off_ms ?
-				(led->cdev.brightness * 25 *
-				 (num_duty_pcts-i-1)) / RGB_MAX_LEVEL : 100;
+			pwm_cfg->duty_cycles->duty_pcts[i] =
+				(led->cdev.brightness *
+				 (100 / (RGB_LED_RAMP_STEP_COUNT - 1)) *
+				 (num_duty_pcts - i - 1)) / RGB_MAX_LEVEL;
 		}
 	}
 
 	pwm_cfg->duty_cycles->num_duty_pcts = num_duty_pcts;
 	pwm_cfg->duty_cycles->start_idx = 0;
 	pwm_cfg->lut_params.ramp_step_ms = ramp_step_ms;
-	pwm_cfg->lut_params.start_idx = 0;
-	pwm_cfg->lut_params.idx_len = pwm_cfg->duty_cycles->num_duty_pcts;
+	pwm_cfg->lut_params.start_idx = start_idx;
+	pwm_cfg->lut_params.idx_len = num_duty_pcts;
 	if (on_ms > (ramp_step_ms*num_duty_pcts * 2))
 		pwm_cfg->lut_params.lut_pause_lo =
 			on_ms - (ramp_step_ms * num_duty_pcts * 2);
@@ -1795,7 +1812,6 @@ static int qpnp_rgb_set(struct qpnp_led_data *led)
 {
 	int rc;
 	int duty_us, duty_ns, period_us;
-
 	if (led->cdev.brightness) {
 		if (!led->rgb_cfg->pwm_cfg->blinking)
 			led->rgb_cfg->pwm_cfg->mode =
@@ -1839,9 +1855,11 @@ static int qpnp_rgb_set(struct qpnp_led_data *led)
 			led->rgb_cfg->pwm_cfg->pwm_enabled = 0;
 		}
 
-		rc = pwm_enable(led->rgb_cfg->pwm_cfg->pwm_dev);
-		if (!rc)
-			led->rgb_cfg->pwm_cfg->pwm_enabled = 1;
+		if (!led->sync_start) {
+			rc = pwm_enable(led->rgb_cfg->pwm_cfg->pwm_dev);
+			if (!rc)
+				led->rgb_cfg->pwm_cfg->pwm_enabled = 1;
+		}
 	} else {
 		led->rgb_cfg->pwm_cfg->mode =
 			led->rgb_cfg->pwm_cfg->default_mode;
@@ -2821,11 +2839,12 @@ static ssize_t rgb_start_store(struct device *dev,
 		case QPNP_ID_RGB_RED:
 		case QPNP_ID_RGB_GREEN:
 		case QPNP_ID_RGB_BLUE:
-			pr_info("qpnp_led.%s: b:%02x on:%d off:%d\n", 
+			pr_info("qpnp_led.%s: b:%02x on:%d off:%d\n",
 				led_array[i].cdev.name,
 				led_array[i].cdev.brightness,
 				led_array[i].rgb_cfg->on_ms,
 				led_array[i].rgb_cfg->off_ms);
+			led_array[i].sync_start = 1;
 			ret = qpnp_rgb_set(&led_array[i]);
 			if (ret < 0)
 				dev_err(led_array[i].cdev.dev,
@@ -2834,6 +2853,19 @@ static ssize_t rgb_start_store(struct device *dev,
 		default:
 			break;
 		}
+	}
+
+	for (i = 0; i < led_array->num_leds; i++) {
+		int rc;
+
+		led_array[i].sync_start = 0;
+
+		if (led_array[i].cdev.brightness == 0)
+			continue;
+
+		rc = pwm_enable(led_array[i].rgb_cfg->pwm_cfg->pwm_dev);
+		if (!rc)
+			led_array[i].rgb_cfg->pwm_cfg->pwm_enabled = 1;
 	}
 
 	return count;
