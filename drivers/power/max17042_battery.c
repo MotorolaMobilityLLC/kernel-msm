@@ -145,6 +145,7 @@ struct max17042_chip {
 	struct power_supply *batt_psy;
 	int temp_state;
 	int hotspot_temp;
+	int batt_temp_dc;
 
 	struct delayed_work iterm_work;
 	struct delayed_work thread_work;
@@ -279,6 +280,31 @@ int max17042_read_charge_counter(struct max17042_chip *chip, int ql)
 	return uah;
 }
 
+int max17042_write_temp(struct max17042_chip *chip)
+{
+	int ret;
+	int intval;
+	struct regmap *map = chip->regmap;
+
+	intval = chip->batt_temp_dc * 256 / 10;
+
+	/* The value is signed. */
+	if (chip->batt_temp_dc < 0) {
+		intval--;
+		intval |= 0x8000;
+	} else
+		intval++;
+
+	ret = regmap_write(map, MAX17042_TEMP, intval);
+	if (ret < 0)
+		return ret;
+	ret = regmap_write(map, MAX17042_AvgTA, intval);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 int max17042_read_temp(struct max17042_chip *chip, int *temp_dc)
 {
 	int ret;
@@ -300,7 +326,7 @@ int max17042_read_temp(struct max17042_chip *chip, int *temp_dc)
 	intval = intval * 10 / 256;
 
 	/* Convert IC temp to "real" temp */
-	if (chip->pdata->tcnv)
+	if (!chip->pdata->use_external_temp && chip->pdata->tcnv)
 		intval = max17042_conv_temp(chip->pdata->tcnv,
 					    intval);
 	*temp_dc = intval;
@@ -320,6 +346,10 @@ static int max17042_set_property(struct power_supply *psy,
 		chip->hotspot_temp = val->intval;
 		schedule_work(&chip->check_temp_work);
 		break;
+	case POWER_SUPPLY_PROP_TEMP:
+		chip->batt_temp_dc = val->intval;
+		schedule_work(&chip->check_temp_work);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -334,6 +364,7 @@ static int max17042_is_writeable(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_TEMP_HOTSPOT:
+	case POWER_SUPPLY_PROP_TEMP:
 		rc = 1;
 		break;
 	default:
@@ -934,6 +965,9 @@ static void max17042_set_temp_threshold(struct max17042_chip *chip,
 	s8 min;
 	struct regmap *map = chip->regmap;
 
+	if (chip->pdata->use_external_temp)
+		return;
+
 	max = (s8)max17042_find_temp_threshold(chip->pdata->tcnv, max_c,
 					       false);
 	min = (s8)max17042_find_temp_threshold(chip->pdata->tcnv, min_c,
@@ -965,6 +999,11 @@ static int max17042_check_temp(struct max17042_chip *chip)
 
 	if (!chip)
 		return 0;
+
+	if (chip->pdata->use_external_temp) {
+		max17042_write_temp(chip);
+		return 0;
+	}
 
 	mutex_lock(&chip->check_temp_lock);
 	pdata = chip->pdata;
@@ -1668,19 +1707,27 @@ max17042_get_pdata(struct device *dev)
 	if (pdata->batt_psy_name)
 		pr_warn("BATT SUPPLY NAME = %s\n", pdata->batt_psy_name);
 
-	of_property_read_u32(np, "maxim,warm-temp-c", &pdata->warm_temp_c);
-	of_property_read_u32(np, "maxim,hot-temp-c", &pdata->hot_temp_c);
-	of_property_read_u32(np, "maxim,cool-temp-c", &pdata->cool_temp_c);
-	of_property_read_u32(np, "maxim,cold-temp-c", &pdata->cold_temp_c);
-	rc = of_property_read_u32(np, "maxim,hotspot-thrs-c",
-				  &pdata->hotspot_thrs_c);
-	if (rc) {
-		pdata->hotspot_thrs_c = 50;
-		pr_debug("DT hotspot threshold not available using %d\n",
-			 pdata->hotspot_thrs_c);
-	}
+	pdata->use_external_temp = of_property_read_bool(np,
+						    "maxim,use-external-temp");
+	if (!pdata->use_external_temp) {
+		of_property_read_u32(np, "maxim,warm-temp-c",
+				     &pdata->warm_temp_c);
+		of_property_read_u32(np, "maxim,hot-temp-c",
+				     &pdata->hot_temp_c);
+		of_property_read_u32(np, "maxim,cool-temp-c",
+				     &pdata->cool_temp_c);
+		of_property_read_u32(np, "maxim,cold-temp-c",
+				     &pdata->cold_temp_c);
+		rc = of_property_read_u32(np, "maxim,hotspot-thrs-c",
+					  &pdata->hotspot_thrs_c);
+		if (rc) {
+			pdata->hotspot_thrs_c = 50;
+			pr_debug("DT hotspot threshold not avail using %d\n",
+				 pdata->hotspot_thrs_c);
+		}
 
-	pdata->tcnv = max17042_get_conv_table(dev);
+		pdata->tcnv = max17042_get_conv_table(dev);
+	}
 
 	pdata->config_data = max17042_get_config_data(dev);
 
@@ -1689,6 +1736,11 @@ max17042_get_pdata(struct device *dev)
 
 		pdata->config_data = &eg30_lg_config;
 		pdata->enable_por_init = true;
+	}
+
+	if (pdata->use_external_temp) {
+		pdata->config_data->config &= ~MAX17042_CONFIG_TEN;
+		pdata->config_data->config |= MAX17042_CONFIG_TEX;
 	}
 
 	/* Read Valrt threshold override */
