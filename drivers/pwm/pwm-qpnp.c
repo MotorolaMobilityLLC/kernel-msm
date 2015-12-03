@@ -255,6 +255,11 @@ enum qpnp_lpg_registers_list {
 	(to_pause_cnt = (from_pause / (ramp_ms ? ramp_ms : 1)) + 1)
 
 
+// Cached ramp control value for sub_type QPNP_LPG_CHAN_SUB_TYPE && REV1 ||
+// QPNP_LPG_S_CHAN_SUB_TYPE chips.  For these chips, the LPG_LUT_RAMP_CONTROL
+// is global.
+static u8 qpnp_lut_ramp_control;
+
 static unsigned int pt_t[NUM_LPG_PRE_DIVIDE][NUM_CLOCKS] = {
 	{	PRE_DIVIDE_1 * NSEC_1024HZ,
 		PRE_DIVIDE_1 * NSEC_32768HZ,
@@ -1071,6 +1076,11 @@ static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 	} else if ((chip->sub_type == QPNP_LPG_CHAN_SUB_TYPE
 			&& chip->revision == QPNP_LPG_REVISION_1)
 			|| chip->sub_type == QPNP_LPG_S_CHAN_SUB_TYPE) {
+
+		// Use global cached register
+		reg1 = &qpnp_lut_ramp_control;
+		value1 = *reg1;
+
 		if (state == QPNP_LUT_ENABLE) {
 			QPNP_ENABLE_LUT_V1(value1,
 					lpg_config->lut_config.ramp_index);
@@ -1081,6 +1091,9 @@ static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 		mask1 = value1;
 		addr1 = lpg_config->lut_base_addr +
 			SPMI_LPG_REV1_RAMP_CONTROL_OFFSET;
+
+		if (state == QPNP_LUT_DISABLE)
+			*reg1 &= ~mask1;
 	} else {
 		pr_err("Unsupported LPG subtype 0x%02x, revision 0x%02x\n",
 			chip->sub_type, chip->revision);
@@ -1102,6 +1115,9 @@ static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 	if (rc)
 		return rc;
 
+	// Note that the LPG_LUT_RAMP_CONTROL register cannot be written too
+	// fast.  If the RAMP_START from a previous write has not started yet,
+	// writing a 0 (or RAMP_DIS) to the bit will disable that ramp.
 	if (state == QPNP_LUT_ENABLE
 		|| (chip->sub_type == QPNP_LPG_CHAN_SUB_TYPE
 		&& chip->revision == QPNP_LPG_REVISION_0))
