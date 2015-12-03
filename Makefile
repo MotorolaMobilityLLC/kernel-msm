@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 10
 SUBLEVEL = 40
-EXTRAVERSION = -\(android@gpe\)
+EXTRAVERSION = -android@gpe
 NAME = TOSSUG Baby Fish
 
 # *DOCUMENTATION*
