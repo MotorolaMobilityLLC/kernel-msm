@@ -432,6 +432,7 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	const struct device *dev = &pdev->dev;
 	struct ramoops_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
+	uint32_t ecc_info[4] = {0,};
 	u32 start = 0, size = 0, console = 0, pmsg = 0;
 	u32 record = 0, oops = 0, ftrace = 0;
 	int ret;
@@ -476,6 +477,9 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	if (ret)
 		pr_info("ftrace not configured");
 
+	ret = of_property_read_u32_array(np, "android,ramoops-ecc-info", ecc_info, 4);
+	if (ret)
+		pr_info("ecc_info not configured");
 
 	pdata->mem_address = start;
 	pdata->mem_size = size;
@@ -484,6 +488,10 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	pdata->record_size = record;
 	pdata->ftrace_size = ftrace;
 	pdata->dump_oops = (int)oops;
+	pdata->ecc_info.block_size = ecc_info[0];
+	pdata->ecc_info.ecc_size = ecc_info[1];
+	pdata->ecc_info.symsize = ecc_info[2];
+	pdata->ecc_info.poly = ecc_info[3];
 }
 #else
 static inline void ramoops_of_init(struct platform_device *pdev)
@@ -535,6 +543,9 @@ static int ramoops_probe(struct platform_device *pdev)
 		pdata->ftrace_size = rounddown_pow_of_two(pdata->ftrace_size);
 	if (pdata->pmsg_size && !is_power_of_2(pdata->pmsg_size))
 		pdata->pmsg_size = rounddown_pow_of_two(pdata->pmsg_size);
+	/* If ecc is not defined in pdata, check module param */
+	if (!pdata->ecc_info.ecc_size)
+		pdata->ecc_info.ecc_size = ramoops_ecc == 1 ? 16 : ramoops_ecc;
 
 	cxt->size = pdata->mem_size;
 	cxt->phys_addr = pdata->mem_address;
