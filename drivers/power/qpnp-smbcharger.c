@@ -4982,6 +4982,8 @@ static inline int get_bpd(const char *name)
 #define COLD_SL_FV_COMP		BIT(2)
 #define HOT_SL_FV_COMP			BIT(3)
 #define JEITA_TEMP_HARD_LIMIT_BIT	BIT(5)
+#define CHGPTH_APSD_CFG		0xF5
+#define APSD_EN_BIT			BIT(0)
 static int smbchg_hw_init(struct smbchg_chip *chip)
 {
 	int rc, i;
@@ -5041,6 +5043,17 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 					HVDCP_EN_BIT, 0);
 		if (rc < 0) {
 			dev_err(chip->dev, "Couldn't disable HVDCP rc=%d\n", rc);
+			return rc;
+		}
+	}
+
+	/* disable APSD */
+	if (chip->disable_apsd) {
+		rc = smbchg_sec_masked_write(chip,
+					chip->usb_chgpth_base + CHGPTH_APSD_CFG,
+					APSD_EN_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't disable APSD rc=%d\n", rc);
 			return rc;
 		}
 	}
