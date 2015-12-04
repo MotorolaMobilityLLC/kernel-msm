@@ -362,7 +362,7 @@ void motosh_irq_wake_work_func(struct work_struct *work)
 			motosh_g_wake_sensor_state &= (~M_SIM);
 
 			dev_dbg(&ps_motosh->client->dev, "Sending SIM Value=%d\n",
-						STM16_TO_HOST(data, SIM_DATA));
+				STM16_TO_HOST(data, SIM_OFFSET));
 			queue_index += 2;
 			break;
 		case CHOPCHOP_DATA:
