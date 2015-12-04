@@ -4836,6 +4836,23 @@ static int fg_property_is_writeable(struct power_supply *psy,
 	return 0;
 }
 
+static int fg_property_is_broadcast(struct power_supply *psy,
+						enum power_supply_property psp)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_RESISTANCE:
+		return 1;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 #define SRAM_DUMP_START		0x400
 #define SRAM_DUMP_LEN		0x200
 static void dump_sram(struct work_struct *work)
@@ -8902,6 +8919,7 @@ static int fg_probe(struct spmi_device *spmi)
 	chip->bms_psy.supplied_to = fg_supplicants;
 	chip->bms_psy.num_supplicants = ARRAY_SIZE(fg_supplicants);
 	chip->bms_psy.property_is_writeable = fg_property_is_writeable;
+	chip->bms_psy.property_is_broadcast = fg_property_is_broadcast;
 
 	rc = power_supply_register(chip->dev, &chip->bms_psy);
 	if (rc < 0) {
