@@ -8350,11 +8350,6 @@ wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
  			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID, ssid[i].ssid_len);
  			request->n_ssids++;
 
-			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID,
-				netinfo->pfnsubnet.SSID_len);
-			ssid[i].ssid_len = netinfo->pfnsubnet.SSID_len;
-			request->n_ssids++;
-
 			channel_req = netinfo->pfnsubnet.channel;
 			band = (channel_req <= CH_MAX_2G_CHANNEL) ? NL80211_BAND_2GHZ
 				: NL80211_BAND_5GHZ;
