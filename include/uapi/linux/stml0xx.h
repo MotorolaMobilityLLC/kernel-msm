@@ -186,7 +186,7 @@
 
 #define M_CHOPCHOP		0x010000
 /*#define M_UNUSED		0x020000*/
-/*#define M_UNUSED		0x040000*/
+#define M_GLANCE		0x040000
 /*#define M_UNUSED		0x080000*/
 /*#define M_UNUSED		0x100000*/
 /*#define M_UNUSED		0x200000*/
@@ -275,6 +275,7 @@ enum STML0XX_data_types {
 	DT_FLUSH,
 	DT_LIFT,
 	DT_CHOPCHOP,
+	DT_GLANCE
 };
 
 enum {
