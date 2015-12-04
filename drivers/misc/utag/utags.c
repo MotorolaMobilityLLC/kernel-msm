@@ -1319,10 +1319,6 @@ static void build_utags_directory(struct ctrl *ctrl)
 		memcpy(expendable, cur->name, MAX_UTAG_NAME);
 		parent = NULL, type = NULL;
 		num_names = full_split(expendable, names, &type);
-		if (!type) {
-			pr_err("undefined type\n");
-			goto stop_building_utags;
-		}
 
 		for (i = 0; i < num_names; i++) {
 			pr_debug("creating dir %s%s\n", names[i],
