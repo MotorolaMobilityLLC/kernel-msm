@@ -417,7 +417,7 @@ static char *kstruprdup(const char *str, gfp_t gfp)
 int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct power_supply *psy = dev_get_drvdata(dev);
-	int ret = 0, j, prop_count;
+	int ret = 0, j;
 	char *prop_buf;
 	char *attrname;
 
@@ -437,18 +437,21 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 		return ret;
 	}
 
+	if (!psy->property_is_broadcast)
+		return ret;
+
 	prop_buf = (char *)get_zeroed_page(GFP_KERNEL);
 	if (!prop_buf)
 		return -ENOMEM;
 
-	if ((env->envp_idx + psy->num_properties) >= UEVENT_NUM_ENVP)
-		prop_count = UEVENT_NUM_ENVP - (env->envp_idx+1);
-	else
-		prop_count = psy->num_properties;
-
-	for (j = 0; j < prop_count; j++) {
+	for (j = 0; j < psy->num_properties && env->envp_idx < UEVENT_NUM_ENVP;
+									 j++) {
 		struct device_attribute *attr;
 		char *line;
+
+
+		if (!psy->property_is_broadcast(psy, psy->properties[j]))
+			continue;
 
 		attr = &power_supply_attrs[psy->properties[j]];
 
