@@ -411,6 +411,19 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 			STM32_TO_HOST(LIFT_GRAV_DIFF_OFFSET,
 					&buf[WAKE_IRQ_IDX_LIFT]));
 	}
+	if (irq_status & M_GLANCE) {
+		stml0xx_as_data_buffer_write(
+			ps_stml0xx,
+			DT_GLANCE,
+			&buf[WAKE_IRQ_IDX_GLANCE],
+			2,
+			0,
+			stm_ws->ts_ns);
+
+		dev_dbg(&stml0xx_misc_data->spi->dev, "Glance Gesture=%d\n",
+				STM16_TO_HOST(GLANCE_OFFSET,
+						&buf[WAKE_IRQ_IDX_GLANCE]));
+	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
 
