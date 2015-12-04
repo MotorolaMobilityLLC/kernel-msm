@@ -474,6 +474,9 @@ struct diagchar_dev {
 	unsigned char *cb_buf;
 	int cb_buf_len;
 #endif
+#ifdef CONFIG_DIAG_EXTENSION
+	struct list_head addon_list;
+#endif
 };
 
 extern struct diagchar_dev *driver;

@@ -40,3 +40,29 @@ config DIAGFWD_BRIDGE_CODE
 	help
 	 SMUX/HSIC Transport Layer for DIAG Router
 endmenu
+
+menu "DIAG EXTENSION"
+
+config DIAG_EXTENSION
+	bool "This is a glue which add something on to diag driver"
+	default n
+	depends on DIAG_CHAR
+	help
+	 This feature is used for extension of DIAG CHAR.
+	 It has a role of the glue between DIAG and extension.
+	 Unless you use extension, disable it because this feature has
+	 no meaning.
+endmenu
+
+menu "DIAG EXTENSION - Slate"
+
+config DIAG_EXTENSION_SLATE
+	tristate "Enable extension for slate feature of sprint"
+	default n
+	depends on DIAG_CHAR
+	select DIAG_EXTENSION
+	help
+	 This extension is kernel part of slate feature of sprint.
+	 Add support for Event capture (hardkey and pen tap capture).
+	 If you use slate feature, you must enable it.
+endmenu

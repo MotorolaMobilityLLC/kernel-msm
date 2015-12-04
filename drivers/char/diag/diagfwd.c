@@ -39,6 +39,9 @@
 #include "diag_masks.h"
 #include "diag_usb.h"
 #include "diag_mux.h"
+#ifdef CONFIG_DIAG_EXTENSION
+#include "diagaddon_slate.h"
+#endif /* CONFIG_DIAG_EXTENSION */
 
 #define STM_CMD_VERSION_OFFSET	4
 #define STM_CMD_MASK_OFFSET	5
@@ -1561,6 +1564,30 @@ static struct diag_mux_ops diagfwd_mux_ops = {
 	.write_done = diagfwd_mux_write_done
 };
 
+#ifdef CONFIG_DIAG_EXTENSION
+int diag_addon_register(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	addon->diag_process_apps_pkt = diag_process_apps_pkt;
+	addon->channel_diag_write = diag_usb_write;
+	list_add_tail(&addon->list, &driver->addon_list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_register);
+
+int diag_addon_unregister(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	list_del(&addon->list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_unregister);
+#endif
+
 void diag_smd_notify(void *ctxt, unsigned event)
 {
 	struct diag_smd_info *smd_info = (struct diag_smd_info *)ctxt;
@@ -2035,6 +2062,9 @@ int diagfwd_init(void)
 	wrap_count = 0;
 	diag_debug_buf_idx = 0;
 	driver->use_device_tree = has_device_tree();
+#ifdef CONFIG_DIAG_EXTENSION
+	INIT_LIST_HEAD(&driver->addon_list);
+#endif
 	for (i = 0; i < DIAG_NUM_PROC; i++)
 		driver->real_time_mode[i] = 1;
 	driver->supports_separate_cmdrsp = device_supports_separate_cmdrsp();
