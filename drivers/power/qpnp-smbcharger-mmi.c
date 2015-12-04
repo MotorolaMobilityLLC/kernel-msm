@@ -3365,6 +3365,30 @@ static int smbchg_battery_is_writeable(struct power_supply *psy,
 	return rc;
 }
 
+static int smbchg_battery_is_broadcast(struct power_supply *psy,
+				       enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_STATUS:
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_CAPACITY:
+	case POWER_SUPPLY_PROP_HEALTH:
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+	case POWER_SUPPLY_PROP_TEMP:
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+	case POWER_SUPPLY_PROP_CHARGE_RATE:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
 static int smbchg_battery_get_property(struct power_supply *psy,
 				       enum power_supply_property prop,
 				       union power_supply_propval *val)
@@ -3593,6 +3617,23 @@ static int smbchg_dc_is_writeable(struct power_supply *psy,
 	return rc;
 }
 
+static int smbchg_dc_is_broadcast(struct power_supply *psy,
+				       enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	case POWER_SUPPLY_PROP_PRESENT:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
 static enum power_supply_property smbchg_wls_properties[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -3638,6 +3679,23 @@ static int smbchg_wls_get_property(struct power_supply *psy,
 	power_supply_put(eb_pwr_psy);
 
 	return 0;
+}
+
+static int smbchg_wls_is_broadcast(struct power_supply *psy,
+				       enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	case POWER_SUPPLY_PROP_PRESENT:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
 }
 
 #define HVDCP_EN_BIT			BIT(3)
@@ -8625,6 +8683,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->batt_psy.num_properties	= ARRAY_SIZE(smbchg_battery_properties);
 	chip->batt_psy.external_power_changed = smbchg_external_power_changed;
 	chip->batt_psy.property_is_writeable = smbchg_battery_is_writeable;
+	chip->batt_psy.property_is_broadcast = smbchg_battery_is_broadcast;
 
 	rc = power_supply_register(chip->dev, &chip->batt_psy);
 	if (rc < 0) {
@@ -8640,6 +8699,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	chip->wls_psy.property_is_writeable = NULL;
 	chip->wls_psy.properties		= smbchg_wls_properties;
 	chip->wls_psy.num_properties = ARRAY_SIZE(smbchg_wls_properties);
+	chip->wls_psy.property_is_broadcast = smbchg_wls_is_broadcast;
 	rc = power_supply_register(chip->dev, &chip->wls_psy);
 	if (rc < 0) {
 		dev_err(&spmi->dev,
@@ -8653,6 +8713,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 		chip->dc_psy.get_property	= smbchg_dc_get_property;
 		chip->dc_psy.set_property	= smbchg_dc_set_property;
 		chip->dc_psy.property_is_writeable = smbchg_dc_is_writeable;
+		chip->dc_psy.property_is_broadcast = smbchg_dc_is_broadcast;
 		chip->dc_psy.properties		= smbchg_dc_properties;
 		chip->dc_psy.num_properties = ARRAY_SIZE(smbchg_dc_properties);
 		rc = power_supply_register(chip->dev, &chip->dc_psy);

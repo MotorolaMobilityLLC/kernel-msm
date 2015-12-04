@@ -2699,6 +2699,23 @@ dwc3_msm_property_is_writeable(struct power_supply *psy,
 	return 0;
 }
 
+static int
+dwc3_msm_property_is_broadcast(struct power_supply *psy,
+				enum power_supply_property psp)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_TYPE:
+	case POWER_SUPPLY_PROP_HEALTH:
+		return 1;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 
 static char *dwc3_msm_pm_power_supplied_to[] = {
 	"battery",
@@ -3222,6 +3239,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->usb_psy.set_property = dwc3_msm_power_set_property_usb;
 		mdwc->usb_psy.property_is_writeable =
 				dwc3_msm_property_is_writeable;
+		mdwc->usb_psy.property_is_broadcast =
+				dwc3_msm_property_is_broadcast;
 
 		ret = power_supply_register(&pdev->dev, &mdwc->usb_psy);
 		if (ret < 0) {
