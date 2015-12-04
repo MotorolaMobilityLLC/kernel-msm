@@ -230,7 +230,7 @@ enum vmm_ids {
 #define STEP16_DATA	2
 #define STEP32_DATA	4
 #define STEP64_DATA	6
-#define SIM_DATA	0
+#define SIM_OFFSET	0
 #define STEP_DETECT	0
 #define CHOPCHOP_DATA_OFFSET   0
 #define LIFT_DISTANCE	0
