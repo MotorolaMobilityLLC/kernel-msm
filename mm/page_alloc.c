@@ -1167,9 +1167,11 @@ retry_reserve:
 static struct page *__rmqueue_cma(struct zone *zone, unsigned int order)
 {
 	struct page *page = 0;
+#ifndef CONFIG_UML
 	if (IS_ENABLED(CONFIG_CMA))
 		if (!zone->cma_alloc)
 			page = __rmqueue_smallest(zone, order, MIGRATE_CMA);
+#endif
 	return page;
 }
 
@@ -5321,6 +5323,7 @@ void free_highmem_page(struct page *page)
 
 void __init mem_init_print_info(const char *str)
 {
+#ifndef CONFIG_UML
 	unsigned long physpages, codesize, datasize, rosize, bss_size;
 	unsigned long init_code_size, init_data_size;
 
@@ -5367,6 +5370,7 @@ void __init mem_init_print_info(const char *str)
 	       totalhigh_pages << (PAGE_SHIFT-10),
 #endif
 	       str ? ", " : "", str ? str : "");
+#endif /* CONFIG_UML */
 }
 
 /**
