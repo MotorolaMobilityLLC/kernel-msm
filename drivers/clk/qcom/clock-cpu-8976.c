@@ -141,7 +141,7 @@ static struct pll_clk a72ss_hf_pll = {
 		.vco_mode_masked = BVAL(21, 20, 1),
 	},
 	.base = &virt_bases[APCS_C1_PLL_BASE],
-	.max_rate = 1843200000,
+	.max_rate = 2016000000,
 	.min_rate = 940800000,
 	.c = {
 		.parent = &xo_a_clk.c,
