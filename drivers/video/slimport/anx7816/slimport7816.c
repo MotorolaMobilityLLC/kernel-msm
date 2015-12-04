@@ -1421,6 +1421,8 @@ void anx7816_hpd_cb(bool connected)
 			cancel_delayed_work_sync(&anx7816->work);
 			/* TODO: hack for P0 HDMI HPD detection */
 			hdmi_hpd_hack(0);
+			slimport_set_hdmi_hpd(0);
+			sp_tx_clean_state_machine();
 			wake_unlock(&anx7816->slimport_lock);
 			wake_lock_timeout(&anx7816->slimport_lock, 2*HZ);
 		} else
