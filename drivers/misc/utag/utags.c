@@ -58,6 +58,7 @@ enum utag_flag {
 
 struct utag {
 	char name[MAX_UTAG_NAME]; /* UTAG name and type combined */
+	char name_only[MAX_UTAG_NAME]; /* UTAG name with type removed */
 	uint32_t size;
 	uint32_t flags;
 	uint32_t util;
@@ -79,19 +80,13 @@ struct frozen_utag {
 enum utag_output {
 	OUT_ASCII = 0,
 	OUT_RAW,
-	OUT_TYPE,
-	OUT_NEW,
-	OUT_LOCK,
-	OUT_DELETE
+	OUT_TYPE
 };
 
 static char *files[] = {
 	"ascii",
 	"raw",
-	"type",
-	"new",
-	"lock",
-	"delete"
+	"type"
 };
 
 struct proc_node {
@@ -108,6 +103,7 @@ struct proc_node {
 struct dir_node {
 	struct list_head entry;
 	char name[MAX_UTAG_NAME];
+	char path[MAX_UTAG_NAME];
 	struct proc_dir_entry *dir;
 	struct proc_dir_entry *parent;
 	struct ctrl *ctrl;
@@ -309,7 +305,7 @@ static inline void walk_dir_nodes(struct ctrl *ctrl)
 	struct dir_node *d;
 
 	list_for_each_entry(d, &ctrl->dir_list, entry) {
-		pr_debug("dir-node [%s]\n", d->name);
+		pr_debug("dir-node [%s] path [%s]\n", d->name, d->path);
 	}
 }
 
@@ -367,6 +363,26 @@ static inline bool validate_name(const char *s1, int count)
 }
 
 /*
+ * validate path to have :type as a last element
+ */
+
+static int check_path(char *fullpath, int count)
+{
+	char *ptr, *bptr;
+
+		pr_err("path %s\n", fullpath);
+	ptr = strnchr(fullpath, count, ':');
+	bptr = strnchr(fullpath, count, '/');
+	if (bptr && ptr && bptr > ptr) {
+		pr_err("Invalid path %s\n", fullpath);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
+/*
  * Extract hierarchical names from the fullpath
  * Return: number of pointers in name array
  */
@@ -404,7 +420,7 @@ static int add_utag_tail(struct utag *head, char *utag_name, char *utag_type)
 
 	/* find list tail and check for duplicate utag */
 	for (tail = head; tail->next; tail = tail->next) {
-		if (!strncmp(tail->name, utag, MAX_UTAG_NAME)) {
+		if (!strncmp(tail->name_only, utag, MAX_UTAG_NAME)) {
 			pr_debug("utag [%s] already exists\n", utag);
 			return -EEXIST;
 		}
@@ -490,12 +506,12 @@ static int proc_utag_file(char *utag_name, char *utag_type,
 	return 0;
 }
 
-static struct dir_node *find_dir_node(struct ctrl *ctrl, char *name)
+static struct dir_node *find_dir_node(struct ctrl *ctrl, char *path)
 {
 	struct dir_node *c, *dir_node = NULL;
 
 	list_for_each_entry(c, &ctrl->dir_list, entry) {
-		if (!strncmp(c->name, name, MAX_UTAG_NAME)) {
+		if (!strncmp(c->path, path, MAX_UTAG_NAME)) {
 			dir_node = c;
 			break;
 		}
@@ -503,8 +519,36 @@ static struct dir_node *find_dir_node(struct ctrl *ctrl, char *name)
 	return dir_node;
 }
 
+static int proc_utag_util(struct ctrl *ctrl)
+{
+	struct proc_dir_entry *dir;
+
+	dir = proc_mkdir("all", ctrl->root);
+	if (!dir) {
+		pr_err("failed to create util\n");
+		return -EIO;
+	}
+
+	if (!proc_create_data("new", 0600, dir, &new_fops, ctrl)) {
+		pr_err("Failed to create utag new entry\n");
+		return -EIO;
+	}
+
+	if (!proc_create_data("lock", 0600, dir, &lock_fops, ctrl)) {
+		pr_err("Failed to create lock entry\n");
+		return -EIO;
+	}
+
+	if (!proc_create_data("delete", 0600, dir, &delete_fops, ctrl)) {
+		pr_err("Failed to create delete entry\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
-	char *tname, char *ttype, bool populate, bool regular,
+	char *tname, char *path, char *ttype, bool populate,
 	struct proc_dir_entry *parent)
 {
 	struct dir_node *dnode;
@@ -513,7 +557,7 @@ static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
 	if (!parent)
 		parent = ctrl->root;
 
-	dnode = find_dir_node(ctrl, tname);
+	dnode = find_dir_node(ctrl, path);
 	if (dnode) {
 		if (populate)
 			goto populate_utag_dir;
@@ -540,21 +584,16 @@ static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
 	dnode->dir = dir;
 	list_add_tail(&dnode->entry, &ctrl->dir_list);
 	strlcpy(dnode->name, tname, MAX_UTAG_NAME);
+	strlcpy(dnode->path, path, MAX_UTAG_NAME);
 
 	if (!populate)
 		return dir;
 
 populate_utag_dir:
 
-	if (regular) {
-		proc_utag_file(tname, ttype, OUT_ASCII, dnode, &utag_fops);
-		proc_utag_file(tname, ttype, OUT_RAW, dnode, &utag_fops);
-		proc_utag_file(tname, ttype, OUT_TYPE, dnode, &utag_fops);
-	} else {
-		proc_utag_file(tname, ttype, OUT_NEW, dnode, &new_fops);
-		proc_utag_file(tname, ttype, OUT_LOCK, dnode, &lock_fops);
-		proc_utag_file(tname, ttype, OUT_DELETE, dnode, &delete_fops);
-	}
+	proc_utag_file(tname, ttype, OUT_ASCII, dnode, &utag_fops);
+	proc_utag_file(tname, ttype, OUT_RAW, dnode, &utag_fops);
+	proc_utag_file(tname, ttype, OUT_TYPE, dnode, &utag_fops);
 
 	return dir;
 }
@@ -571,6 +610,7 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 	while (1) {
 		struct frozen_utag *frozen;
 		uint8_t *next_ptr;
+		char *sep;
 
 		frozen = (struct frozen_utag *)ptr;
 
@@ -582,6 +622,10 @@ static struct utag *thaw_tags(size_t block_size, void *buf)
 		}
 
 		strlcpy(cur->name, frozen->name, MAX_UTAG_NAME - 1);
+		strlcpy(cur->name_only, frozen->name, MAX_UTAG_NAME-1);
+		sep = strnchr(cur->name_only, MAX_UTAG_NAME, ':');
+		if (sep)
+			*sep = 0;
 		cur->flags = ntohl(frozen->flags);
 		cur->util = ntohl(frozen->util);
 		cur->size = ntohl(frozen->size);
@@ -1045,8 +1089,7 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	char *pattern, expendable[MAX_UTAG_NAME];
 	struct utag *tags, *cur, *next;
 	struct inode *inode = file->f_dentry->d_inode;
-	struct proc_node *proc = PDE_DATA(inode);
-	struct ctrl *ctrl = proc->ctrl;
+	struct ctrl *ctrl = PDE_DATA(inode);
 
 	if ((MAX_UTAG_NAME < count) || (0 == count)) {
 		pr_err("invalid utag name %zu\n", count);
@@ -1064,6 +1107,9 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 		pr_err("invalid format %s\n", expendable);
 		return count;
 	}
+
+	if (check_path(expendable, count-1))
+		return count;
 
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
@@ -1112,8 +1158,7 @@ just_leave:
 
 static int lock_show(struct seq_file *file, void *v)
 {
-	struct proc_node *proc = (struct proc_node *)file->private;
-	struct ctrl *ctrl = proc->ctrl;
+	struct ctrl *ctrl = (struct ctrl *)file->private;
 
 	if (!ctrl)
 		pr_err("no control data set\n");
@@ -1126,8 +1171,7 @@ static ssize_t lock_store(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
 	struct inode *inode = file->f_dentry->d_inode;
-	struct proc_node *proc = PDE_DATA(inode);
-	struct ctrl *ctrl = proc->ctrl;
+	struct ctrl *ctrl = PDE_DATA(inode);
 	char tag[MAX_UTAG_NAME];
 
 	if (MAX_UTAG_NAME < count) {
@@ -1158,8 +1202,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
 	struct inode *inode = file->f_dentry->d_inode;
-	struct proc_node *proc = PDE_DATA(inode);
-	struct ctrl *ctrl = proc->ctrl;
+	struct ctrl *ctrl = PDE_DATA(inode);
 	struct utag *tags, *cur;
 	struct proc_dir_entry *parent = NULL;
 	char tag[MAX_UTAG_NAME];
@@ -1182,6 +1225,9 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		return -EFAULT;
 	}
 
+	if (check_path(expendable, count-1))
+		return count;
+
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load config error\n");
@@ -1201,22 +1247,19 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		/* slash to all sublevels except first */
 		scnprintf(tag + strlen(tag), MAX_UTAG_NAME - strlen(tag),
 			"%s%s", i ? "/" : "", names[i]);
+		pr_debug("creating subdir %s as %s\n", names[i], tag);
 
 		error = add_utag_tail(tags, tag, type);
 		if (error == -EEXIST) {
 			struct dir_node *dnode;
 			/* need to update parent to ensure proper hierarchy */
-			dnode = find_dir_node(ctrl, names[i]);
+			dnode = find_dir_node(ctrl, tag);
 			parent = dnode->dir;
 			continue;
 		}
 
-		pr_debug("creating dir %s%s\n", names[i],
-			parent ? "(subdir)" : "");
-
 		/* create utag dir for every part of utag name */
-		parent = proc_utag_dir(ctrl, names[i], type,
-					true, true, parent);
+		parent = proc_utag_dir(ctrl, names[i], tag, type, true, parent);
 		if (IS_ERR(parent))
 			break;
 	}
@@ -1267,6 +1310,7 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 		open_utags(&ctrl->backup);
 		rebuild_utags_directory(ctrl);
 	}
+
 	return count;
 }
 
@@ -1311,6 +1355,9 @@ static void build_utags_directory(struct ctrl *ctrl)
 		int i, num_names;
 		char expendable[MAX_UTAG_NAME];
 		char *type, *names[UTAG_DEPTH];
+		char path[MAX_UTAG_NAME];
+
+		memset(path, 0, MAX_UTAG_NAME);
 
 		/* skip utags tail */
 		if (cur->next == NULL)
@@ -1321,12 +1368,14 @@ static void build_utags_directory(struct ctrl *ctrl)
 		num_names = full_split(expendable, names, &type);
 
 		for (i = 0; i < num_names; i++) {
-			pr_debug("creating dir %s%s\n", names[i],
-					parent ? "(subdir)" : "");
-			parent = proc_utag_dir(ctrl, names[i], type,
+			scnprintf(path + strlen(path),
+				MAX_UTAG_NAME - strlen(path),
+				"%s%s", i ? "/" : "", names[i]);
+			pr_debug("creating subdir %s as %s\n", names[i], path);
+			parent = proc_utag_dir(ctrl, names[i], path, type,
 					/* populate only utag dir */
 					(i == (num_names - 1)) ? true : false,
-					true, parent);
+					parent);
 			if (IS_ERR(parent))
 				goto stop_building_utags;
 		}
@@ -1335,10 +1384,6 @@ static void build_utags_directory(struct ctrl *ctrl)
 	}
 
 stop_building_utags:
-	/* add directory for debug purposes */
-	parent = proc_utag_dir(ctrl, "all", "access", true, false, NULL);
-	if (!IS_ERR(parent))
-		pr_debug("debug utag created\n");
 
 	walk_dir_nodes(ctrl);
 	walk_proc_nodes(ctrl);
@@ -1456,8 +1501,14 @@ static int utags_probe(struct platform_device *pdev)
 
 	if (!proc_create_data("reload", 0600, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("Failed to create reload entry\n");
-		remove_proc_entry(ctrl->dir_name, NULL);
+		remove_proc_subtree(ctrl->dir_name, NULL);
 		return -EIO;
+	}
+
+	if (proc_utag_util(ctrl)) {
+		pr_err("Failed to create util dir\n");
+		remove_proc_subtree(ctrl->dir_name, NULL);
+		return -EFAULT;
 	}
 
 	pr_info("Success\n");
@@ -1469,8 +1520,7 @@ static int utags_remove(struct platform_device *pdev)
 	struct ctrl *ctrl = dev_get_drvdata(&pdev->dev);
 
 	clear_utags_directory(ctrl);
-	remove_proc_entry("reload", ctrl->root);
-	remove_proc_entry(ctrl->dir_name, NULL);
+	remove_proc_subtree(ctrl->dir_name, NULL);
 	return 0;
 }
 
