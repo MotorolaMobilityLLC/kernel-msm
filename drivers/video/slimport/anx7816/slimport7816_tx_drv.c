@@ -909,6 +909,9 @@ void slimport_waitting_cable_plug_process(void)
 		hardware_power_ctl(1);
 		goto_next_system_state();
 	} else {
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+		slimport_set_hdmi_hpd(0);
+#endif
 		hardware_power_ctl(0);
 	}
 }
