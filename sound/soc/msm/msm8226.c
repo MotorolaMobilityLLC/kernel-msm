@@ -1182,40 +1182,48 @@ int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value
 	pr_debug("%s:msm_tert_mi2s_clk : %d\n",__func__, msm_tert_mi2s_clk);
 	if(msm_tert_mi2s_clk)
 	{
-		msm8226_tfa98xx_i2c_gpio_request();
-		msm8226_configure_mi2s_gpio(tert_mi2s_gpio,GPIO_TERT_NUM);
-		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_enable);
-		if (ret < 0)
+		if(atomic_inc_return(&(tert_mi2s_clk.mi2s_rsc_ref)) == 1)
 		{
-			pr_err("%s: enable afe_set_lpass_clock failed\n", __func__);
-			return ret;
-		}
+			msm8226_tfa98xx_i2c_gpio_request();
+			msm8226_configure_mi2s_gpio(tert_mi2s_gpio,GPIO_TERT_NUM);
+			ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_enable);
+			if (ret < 0)
+			{
+				pr_err("%s: enable afe_set_lpass_clock failed\n", __func__);
+				return ret;
+			}
 
-		ret = msm_q6_enable_mi2s_clocks(1);
-		if (ret < 0)
-		{
-			pr_err("%s: enable_mi2s_clocks failed\n", __func__);
-			return ret;
+			ret = msm_q6_enable_mi2s_clocks(1);
+			if (ret < 0)
+			{
+				pr_err("%s: enable_mi2s_clocks failed\n", __func__);
+				return ret;
+			}
 		}
 	}
 	else
 	{
-		ret = msm_q6_enable_mi2s_clocks(0);
-		if (ret < 0)
+		if(atomic_dec_return(&(tert_mi2s_clk.mi2s_rsc_ref)) == 0)
 		{
-			pr_err("%s: disable_mi2s_clocks failed\n", __func__);
-			return ret;
-		}
+			ret = msm_q6_enable_mi2s_clocks(0);
+			if (ret < 0)
+			{
+				pr_err("%s: disable_mi2s_clocks failed\n", __func__);
+				return ret;
+			}
 
-		ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_disable);
-		if (ret < 0)
-		{
-			pr_err("%s: disable afe_set_lpass_clock failed\n", __func__);
-			return ret;
+			ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_RX, &lpass_mi2s_disable);
+			if (ret < 0)
+			{
+				pr_err("%s: disable afe_set_lpass_clock failed\n", __func__);
+				return ret;
+			}
+			msm8226_mi2s_free_gpios(tert_mi2s_gpio,GPIO_TERT_NUM);
+			msm8226_tfa98xx_i2c_gpio_free();
+			/*Close tertiary_mi2s_tx, otherwise the current will be up to 15mA when system sleep.
+			Tertiary mi2s tx is for echo reference, it's started up by hfp-sco of mixer_paths in audio HAL.*/
+			afe_close(AFE_PORT_ID_TERTIARY_MI2S_TX);
 		}
-
-		msm8226_mi2s_free_gpios(tert_mi2s_gpio,GPIO_TERT_NUM);
-		msm8226_tfa98xx_i2c_gpio_free();
 	}
 	return ret;
 }
