@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1161,6 +1161,7 @@ static int msm_dai_q6_hw_params(struct snd_pcm_substream *substream,
 		break;
 	case INT_BT_SCO_RX:
 	case INT_BT_SCO_TX:
+	case INT_BT_A2DP_RX:
 	case INT_FM_RX:
 	case INT_FM_TX:
 		rc = msm_dai_q6_bt_fm_hw_params(params, dai, substream->stream);
@@ -1492,6 +1493,25 @@ static struct snd_soc_dai_driver msm_dai_q6_bt_sco_rx_dai = {
 	.probe = msm_dai_q6_dai_probe,
 	.remove = msm_dai_q6_dai_remove,
 };
+
+static struct snd_soc_dai_driver msm_dai_q6_bt_a2dp_rx_dai = {
+	.playback = {
+		.stream_name = "Internal BT-A2DP Playback",
+		.aif_name = "INT_BT_A2DP_RX",
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+		.channels_min = 1,
+		.channels_max = 2,
+		.rate_max = 48000,
+		.rate_min = 48000,
+	},
+	.ops = &msm_dai_q6_ops,
+	.id = INT_BT_A2DP_RX,
+	.probe = msm_dai_q6_dai_probe,
+	.remove = msm_dai_q6_dai_remove,
+};
+
+
 
 static struct snd_soc_dai_driver msm_dai_q6_bt_sco_tx_dai = {
 	.capture = {
@@ -3063,6 +3083,10 @@ register_slim_capture:
 	case INT_BT_SCO_TX:
 		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
 		&msm_dai_q6_bt_sco_tx_dai, 1);
+		break;
+	case INT_BT_A2DP_RX:
+		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
+		&msm_dai_q6_bt_a2dp_rx_dai, 1);
 		break;
 	case INT_FM_RX:
 		rc = snd_soc_register_component(&pdev->dev, &msm_dai_q6_component,
