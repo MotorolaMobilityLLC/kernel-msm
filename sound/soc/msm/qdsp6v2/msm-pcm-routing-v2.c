@@ -842,6 +842,11 @@ void msm_pcm_routing_dereg_phy_stream(int fedai_id, int stream_type)
 			}
 			topology = adm_get_topology_for_port_from_copp_id(
 					msm_bedais[i].port_id, idx);
+			/*adm fails to get topology id during ssr. Fallback
+			to msm_routing_get_adm_topology in that case */
+			if (topology == 0)
+				topology = msm_routing_get_adm_topology(
+						path_type, fedai_id);
 			adm_close(msm_bedais[i].port_id, fdai->perf_mode, idx);
 			pr_debug("%s:copp:%ld,idx bit fe:%d,type:%d,be:%d\n",
 				 __func__, copp, fedai_id, session_type, i);
