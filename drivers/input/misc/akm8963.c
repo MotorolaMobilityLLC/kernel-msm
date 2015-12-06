@@ -906,7 +906,7 @@ static int akm_enable_set(struct sensors_classdev *sensors_cdev,
 				akm->delay[MAG_DATA_FLAG] * NSEC_PER_MSEC);
 			hrtimer_start(&akm->mag_timer, ktime, HRTIMER_MODE_REL);
 		} else {
-			hrtimer_cancel(&akm->mag_timer);
+			ret = hrtimer_try_to_cancel(&akm->mag_timer);
 			AKECS_SetMode(akm, AKM_MODE_POWERDOWN);
 		}
 	} else {
@@ -1473,7 +1473,7 @@ static int akm_compass_suspend(struct device *dev)
 	if (AKM_IS_MAG_DATA_ENABLED() &&
 		akm->use_poll &&
 		akm->pdata->auto_report)
-		hrtimer_cancel(&akm->mag_timer);
+		ret = hrtimer_try_to_cancel(&akm->mag_timer);
 
 	akm->state.power_on = akm->power_enabled;
 	if (akm->state.power_on) {
@@ -1768,19 +1768,30 @@ static int akm8963_pinctrl_init(struct akm_compass_data *s_akm)
 	return 0;
 }
 
+static int mag_manage_polling(struct akm_compass_data *sensor)
+{
+	ktime_t ktime;
+	int ret = 0;
+
+	ktime = ktime_set(0,
+			sensor->delay[MAG_DATA_FLAG] * NSEC_PER_MSEC);
+	ret = hrtimer_start(&sensor->mag_timer,
+				ktime,
+				HRTIMER_MODE_REL);
+	return ret;
+}
+
 static enum hrtimer_restart mag_timer_handle(struct hrtimer *hrtimer)
 {
 	struct akm_compass_data *sensor;
-	ktime_t ktime;
 
 	sensor = container_of(hrtimer, struct akm_compass_data, mag_timer);
-	ktime = ktime_set(0,
-			sensor->delay[MAG_DATA_FLAG] * NSEC_PER_MSEC);
-	hrtimer_forward_now(&sensor->mag_timer, ktime);
 	sensor->mag_wkp_flag = 1;
 	wake_up_interruptible(&sensor->mag_wq);
+	if (mag_manage_polling(sensor) < 0)
+		dev_err(&sensor->i2c->dev, "failed to start timer\n");
 
-	return HRTIMER_RESTART;
+	return HRTIMER_NORESTART;
 }
 
 static int mag_poll_thread(void *data)
@@ -2119,7 +2130,7 @@ int akm8963_compass_probe(
 remove_sysfs:
 	remove_sysfs_interfaces(s_akm);
 err_destroy_timer:
-	hrtimer_cancel(&s_akm->mag_timer);
+	hrtimer_try_to_cancel(&s_akm->mag_timer);
 	kthread_stop(s_akm->mag_task);
 	if (s_akm->i2c->irq)
 		free_irq(s_akm->i2c->irq, s_akm);
@@ -2148,7 +2159,7 @@ static int akm8963_compass_remove(struct i2c_client *i2c)
 	if (akm_compass_power_init(akm, false))
 		dev_err(&i2c->dev, "power deinit failed.\n");
 	remove_sysfs_interfaces(akm);
-	hrtimer_cancel(&akm->mag_timer);
+	hrtimer_try_to_cancel(&akm->mag_timer);
 	kthread_stop(akm->mag_task);
 	if (akm->i2c->irq)
 		free_irq(akm->i2c->irq, akm);
