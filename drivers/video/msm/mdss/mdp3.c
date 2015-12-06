@@ -179,8 +179,7 @@ void mdp3_irq_enable(int type)
 
 	pr_debug("mdp3_irq_enable type=%d\n", type);
 	spin_lock_irqsave(&mdp3_res->irq_lock, flag);
-	mdp3_res->irq_ref_count[type] += 1;
-	if (mdp3_res->irq_ref_count[type] > 1) {
+	if (mdp3_res->irq_ref_count[type] > 0) {
 		pr_debug("interrupt %d already enabled\n", type);
 		spin_unlock_irqrestore(&mdp3_res->irq_lock, flag);
 		return;
@@ -189,6 +188,7 @@ void mdp3_irq_enable(int type)
 	mdp3_res->irq_mask |= BIT(type);
 	MDP3_REG_WRITE(MDP3_REG_INTR_ENABLE, mdp3_res->irq_mask);
 
+	mdp3_res->irq_ref_count[type] += 1;
 	spin_unlock_irqrestore(&mdp3_res->irq_lock, flag);
 }
 
@@ -2289,6 +2289,18 @@ static int mdp3_panel_register_done(struct mdss_panel_data *pdata)
 		mdp3_res->allow_iommu_update = true;
 
 	return rc;
+}
+
+/* mdp3_autorefresh_disable() - Disable Auto refresh
+ * @ panel_info : pointer to panel configuration structure
+ *
+ * This function displable Auto refresh block for command mode panel.
+ */
+int mdp3_autorefresh_disable(struct mdss_panel_info *panel_info) {
+	if ((panel_info->type == MIPI_CMD_PANEL) &&
+		(MDP3_REG_READ(MDP3_REG_AUTOREFRESH_CONFIG_P)))
+		MDP3_REG_WRITE(MDP3_REG_AUTOREFRESH_CONFIG_P, 0);
+	return 0;
 }
 
 int mdp3_splash_done(struct mdss_panel_info *panel_info)
