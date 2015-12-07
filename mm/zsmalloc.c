@@ -135,7 +135,7 @@
 #define FULLNESS_MASK	((1 << FULLNESS_BITS) - 1)
 #define INUSE_BITS	11
 #define INUSE_MASK	((1 << INUSE_BITS) - 1)
-#define ETC_BITS	((sizeof(unsigned long) * 8) - FREE_OBJ_IDX_BITS - \
+#define ETC_BITS	(BITS_PER_LONG - FREE_OBJ_IDX_BITS - \
 			CLASS_IDX_BITS - FULLNESS_BITS - INUSE_BITS)
 /*
  * On systems with 4K page size, this gives 255 size classes! There is a
@@ -269,7 +269,9 @@ struct zs_meta {
 	unsigned long class_idx:CLASS_IDX_BITS;
 	unsigned long fullness:FULLNESS_BITS;
 	unsigned long inuse:INUSE_BITS;
+#if ETC_BITS > 0
 	unsigned long etc:ETC_BITS;
+#endif
 };
 
 struct mapping_area {
