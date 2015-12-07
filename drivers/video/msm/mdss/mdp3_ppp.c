@@ -479,8 +479,8 @@ u32 mdp3_clk_calc(struct msm_fb_data_type *mfd,
 							req->dst_rect.h;
 			}
 			scale = max(scale_x, scale_y);
-			scale = scale >= 100 ? scale : 100;
 		}
+		scale = scale >= 100 ? scale : 100;
 		if (mdp3_is_blend(req))
 			scale = max(scale, blend_l);
 
