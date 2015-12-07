@@ -818,6 +818,16 @@
 		mmi,muc-ctrl-en-seq = <1 0 200>, <1 1 1000>;
 		mmi,muc-ctrl-dis-seq = <1 0 200>;
 
+		/* v1 CC first, BPLUS second on enable */
+		mmi,muc-ctrl-ff-seq-v1 = <0 0 20>, <1 0 100>,
+					<0 1 20>, <1 1 100>,
+					<0 0 20>;
+
+		/* v2 BPLUS first, v2 CC second on enable */
+		mmi,muc-ctrl-ff-seq-v2 = <0 0 100>, <1 0 20>,
+					<1 1 100>, <0 1 20>,
+					<0 0 20>;
+
 		pinctrl-names = "default";
 		pinctrl-0 = <&muc_attach>;
 	};
