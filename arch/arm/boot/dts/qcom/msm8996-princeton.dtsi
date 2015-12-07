@@ -422,3 +422,7 @@
 		status = "okay";
 	};
 };
+
+&drv2605 {
+	gpios = <&pm8994_gpios 12 0>;   /* EN_GPIO */
+};
