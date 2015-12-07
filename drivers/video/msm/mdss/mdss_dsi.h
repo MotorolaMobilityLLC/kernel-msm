@@ -44,6 +44,8 @@
 #define MIPI_DSI_PANEL_WUXGA	7
 #define MIPI_DSI_PANEL_720P_PT	8
 #define DSI_PANEL_MAX	8
+#define DSI_LANE_MAX	4
+#define LANE_SWAP_MAX	8
 
 #define MDSS_DSI_HW_REV_100		0x10000000	/* 8974    */
 #define MDSS_DSI_HW_REV_100_1		0x10000001	/* 8x26    */
