@@ -47,6 +47,10 @@
 	};
 };
 
+&drv2605 {
+	gpios = <&pm8994_gpios 12 0>;   /* EN_GPIO */
+};
+
 &pmi8994_gpios {
 	/delete-node/ gpio@c900;
 	gpio@c900 {
