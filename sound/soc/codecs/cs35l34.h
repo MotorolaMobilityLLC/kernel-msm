@@ -17,6 +17,7 @@
 #define CS35L34_FIRSTREG		0x01
 #define CS35L34_LASTREG			0x7F
 #define CS35L34_CHIP_ID			0x00035A25
+#define CS35L34_CHIP_ID_A1		0x00035A34
 #define CS35L34_DEVID_AB		0x01	/* Device ID A & B [RO] */
 #define CS35L34_DEVID_CD		0x02    /* Device ID C & D [RO] */
 #define CS35L34_DEVID_E			0x03    /* Device ID E [RO] */
