@@ -20,7 +20,7 @@
  *        V1.4:2012/08/28,modified to support GT9XX
  *        V1.6:new proc name
  */
-
+#define pr_fmt(fmt)	"Goodix: " fmt
 #include "gt9xx.h"
 #include <linux/mutex.h>
 #include <linux/proc_fs.h>
@@ -434,15 +434,20 @@ static s32 goodix_tool_write(struct file *filp, const char __user *userbuf,
 		goto exit;
 	} else if (cmd_head.wr == GTP_RW_ENTER_UPDATE_MODE) {
 		/* Enter update mode! */
+		#ifdef CONFIG_GT9XX_TOUCHPANEL_UPDATE
 		if (gup_enter_update_mode(gt_client) ==  FAIL) {
 			ret = -EBUSY;
 			goto exit;
 		}
+		#endif
 	} else if (cmd_head.wr == GTP_RW_LEAVE_UPDATE_MODE) {
 		/* Leave update mode! */
+		#ifdef CONFIG_GT9XX_TOUCHPANEL_UPDATE
 		gup_leave_update_mode(gt_client);
+		#endif
 	} else if (cmd_head.wr == GTP_RW_UPDATE_FW) {
 		/* Update firmware! */
+		#ifdef CONFIG_GT9XX_TOUCHPANEL_UPDATE
 		show_len = 0;
 		total_len = 0;
 		if (cmd_head.data_len + 1 > data_length) {
@@ -459,6 +464,7 @@ static s32 goodix_tool_write(struct file *filp, const char __user *userbuf,
 			ret = -EBUSY;
 			goto exit;
 		}
+		#endif
 	}
 	ret = CMD_HEAD_LENGTH;
 
