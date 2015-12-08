@@ -95,6 +95,14 @@
 
 #define tk_debug(fmt, args...)
 
+extern int FPS_register_notifier(struct notifier_block *nb,
+				unsigned long stype, bool report);
+
+extern int FPS_unregister_notifier(struct notifier_block *nb,
+				unsigned long stype);
+
+static int fps_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data);
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 static int folio_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data);
@@ -3659,10 +3667,17 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					(x <= rmi4_data->clipa->xbr_clip) &&
 					(y >= rmi4_data->clipa->yul_clip) &&
 					(y <= rmi4_data->clipa->ybr_clip);
-
+/*
 				if (!inside) {
 					dev_dbg(&rmi4_data->i2c_client->dev,
 						"%d,%d ouside clipping area\n",
+						x, y);
+					continue;
+				}
+*/
+				if (inside) {
+					dev_dbg(&rmi4_data->i2c_client->dev,
+						"%d,%d inside clipping area\n",
 						x, y);
 					continue;
 				}
@@ -5731,6 +5746,20 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 		return;
 	}
 
+	if (!rmi4_data->is_fps_registered) {
+		error = FPS_register_notifier(
+				&rmi4_data->fps_notif, 0xBEEF, false);
+		if (error) {
+			if (exp_fn_ctrl.det_workqueue)
+				queue_delayed_work(
+					exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work,
+					msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+			pr_err("Failed to register fps_notifier\n");
+		} else
+			rmi4_data->is_fps_registered = true;
+	}
+
 	mutex_lock(&exp_fn_ctrl.list_mutex);
 	if (list_empty(&exp_fn_ctrl.fn_list))
 		goto release_mutex;
@@ -6186,6 +6215,8 @@ static int ps_notifier_register(struct synaptics_rmi4_data *rmi4_data)
 #include <linux/major.h>
 #include <linux/kdev_t.h>
 
+#define __ATTR_WO(attr) __ATTR(attr, 0644, NULL, attr##_store)
+
 /* Attribute: path (RO) */
 static ssize_t path_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -6204,6 +6235,31 @@ static ssize_t path_show(struct device *dev,
 	return blen;
 }
 
+/* Temporary interface to be able to change clipping area dimensions in run time */
+/* Exmaple: echo "450 1850 610 1919" > clipa */
+static ssize_t clipa_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct synaptics_clip_area clipa = {0};
+
+	if (sscanf(buf, "%u %u %u %u",
+			&clipa.xul_clip,
+			&clipa.yul_clip,
+			&clipa.xbr_clip,
+			&clipa.ybr_clip) != 4) {
+		pr_err("Insufficient parameters list\n");
+		return -EINVAL;
+	}
+
+	pr_info("new clipping area: xul=%u, yul=%u, xbr=%u, ybr=%u\n",
+			clipa.xul_clip, clipa.yul_clip,
+			clipa.xbr_clip, clipa.ybr_clip);
+	*rmi4_data->clipa = clipa;
+
+	return (ssize_t)count;
+}
+
 /* Attribute: vendor (RO) */
 static ssize_t vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -6214,6 +6270,7 @@ static ssize_t vendor_show(struct device *dev,
 static struct device_attribute touchscreen_attributes[] = {
 	__ATTR_RO(path),
 	__ATTR_RO(vendor),
+	__ATTR_WO(clipa),
 	__ATTR_NULL
 };
 
@@ -6575,6 +6632,20 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	if (rmi4_data->charger_detection)
 		ps_notifier_register(rmi4_data);
 
+	rmi4_data->fps_notif.notifier_call = fps_notifier_callback;
+	dev_dbg(&client->dev, "registering FPS notifier\n");
+	retval = FPS_register_notifier(&rmi4_data->fps_notif, 0xBEEF, false);
+	if (retval) {
+		if (exp_fn_ctrl.det_workqueue)
+			queue_delayed_work(exp_fn_ctrl.det_workqueue,
+				&exp_fn_ctrl.det_work,
+				msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+		dev_err(&client->dev,
+			"Failed to register fps_notifier: %d\n", retval);
+		retval = 0;
+	} else
+		rmi4_data->is_fps_registered = true;
+
 	return retval;
 
 err_sysfs:
@@ -6681,8 +6752,36 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 	synaptics_dsx_free_modes(rmi4_data);
 	if (rmi4_data->charger_detection)
 		ps_notifier_unregister(rmi4_data);
+	if (rmi4_data->is_fps_registered)
+		FPS_unregister_notifier(&rmi4_data->fps_notif, 0xBEEF);
 	kfree(rmi4_data);
 
+	return 0;
+}
+
+static int fps_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data)
+{
+	int state, fps_state = *(int *)data;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(self, struct synaptics_rmi4_data, fps_notif);
+
+	if (rmi4_data && event == 0xBEEF &&
+			rmi4_data && rmi4_data->i2c_client) {
+		state = synaptics_dsx_get_state_safe(rmi4_data);
+		dev_dbg(&rmi4_data->i2c_client->dev,
+			"FPS: %s(%d), suspend flag: %d, BL flag: %d\n",
+			synaptics_dsx_state_name(state), state,
+			atomic_read(&rmi4_data->touch_stopped),
+			rmi4_data->in_bootloader);
+		if (fps_state) {/* on */
+			rmi4_data->clipping_on = true;
+		} else {/* off */
+			rmi4_data->clipping_on = false;
+		}
+		pr_info("FPS: clipping is %s\n",
+			rmi4_data->clipping_on ? "ON" : "OFF");
+	}
 	return 0;
 }
 
