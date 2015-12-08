@@ -26623,43 +26623,6 @@ VOS_STATUS wma_wmi_service_close(v_VOID_t *vos_ctx)
 	return VOS_STATUS_SUCCESS;
 }
 
-/**
- * wma_wmi_work_close() - close the work queue items associated with WMI
- * @vos_ctx:	Pointer to vos context
- *
- * This function closes work queue items associated with WMI, but not fully
- * closes WMI service.
- *
- * Return: VOS_STATUS_SUCCESS if work close is successful. Otherwise
- *         proper error codes.
- */
-VOS_STATUS wma_wmi_work_close(v_VOID_t *vos_ctx)
-{
-	tp_wma_handle wma_handle;
-
-	WMA_LOGD("%s: Enter", __func__);
-
-	wma_handle = vos_get_context(VOS_MODULE_ID_WDA, vos_ctx);
-
-	/* validate the wma_handle */
-	if (NULL == wma_handle) {
-		WMA_LOGE("%s: Invalid wma handle", __func__);
-		return VOS_STATUS_E_INVAL;
-	}
-
-	/* validate the wmi handle */
-	if (NULL == wma_handle->wmi_handle) {
-		WMA_LOGE("%s: Invalid wmi handle", __func__);
-		return VOS_STATUS_E_INVAL;
-	}
-
-	/* remove the wmi work */
-	WMA_LOGD("calling wmi_unified_remove_work");
-	wmi_unified_remove_work(wma_handle->wmi_handle);
-
-	return VOS_STATUS_SUCCESS;
-}
-
 /*
  * Detach DFS methods
  */

@@ -997,13 +997,6 @@ VOS_STATUS vos_close( v_CONTEXT_t vosContext )
 {
   VOS_STATUS vosStatus;
 
-  vosStatus = wma_wmi_work_close( vosContext );
-  if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
-     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: Failed to close wma_wmi_work", __func__);
-     VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-  }
-
 #ifdef WLAN_BTAMP_FEATURE
   vosStatus = WLANBAP_Close(vosContext);
   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -2232,13 +2225,6 @@ VOS_STATUS vos_shutdown(v_CONTEXT_t vosContext)
                 "%s: Failed to close WDA!", __func__);
       VOS_ASSERT(VOS_IS_STATUS_SUCCESS(vosStatus));
     }
-  }
-
-  vosStatus = wma_wmi_work_close(vosContext);
-  if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: Failed to close wma_wmi_work!", __func__);
-     VOS_ASSERT(VOS_IS_STATUS_SUCCESS(vosStatus));
   }
 
   if (gpVosContext->htc_ctx)
