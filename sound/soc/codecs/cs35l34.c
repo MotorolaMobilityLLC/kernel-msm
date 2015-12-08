@@ -792,10 +792,10 @@ static int cs35l34_i2c_probe(struct i2c_client *i2c_client,
 	ret = regmap_read(cs35l34->regmap, CS35L34_DEVID_E, &reg);
 	devid |= (reg & 0xF0) >> 4;
 
-	if (devid != CS35L34_CHIP_ID) {
+	if (devid != CS35L34_CHIP_ID && devid != CS35L34_CHIP_ID_A1) {
 		dev_err(&i2c_client->dev,
-			"CS35l34 Device ID (%X). Expected ID %X\n",
-			devid, CS35L34_CHIP_ID);
+			"CS35l34 Device ID (%X).\n",
+			devid);
 		ret = -ENODEV;
 		goto err;
 	}
