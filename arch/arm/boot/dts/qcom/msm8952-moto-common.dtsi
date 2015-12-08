@@ -849,8 +849,8 @@
 		interrupts = <65 0>;
 		gpios = <&msm_gpio 65 0>, /* IRQ */
 			<&msm_gpio 64 0>; /* RESET */
+		synaptics,touch-clip-area = <450 1875 610 1919>;
 		vdd_quirk-supply = <&pm8950_l6>;
-		/*vcc_i2c-supply = <&pm8950_l6>;*/
 		synaptics,gpio-config;
 		/* pins used by touchscreen */
 		pinctrl-names = "default", "active";
