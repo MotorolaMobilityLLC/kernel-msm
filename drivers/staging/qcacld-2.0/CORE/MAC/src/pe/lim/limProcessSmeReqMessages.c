@@ -4748,7 +4748,48 @@ limSendVdevRestart(tpAniSirGlobal pMac,
         vos_mem_free(pHalHiddenSsidVdevRestart);
     }
 }
+static void __lim_process_roam_restart_req(tpAniSirGlobal mac_ctx,
+	tANI_U32 *msg_buf)
+{
+	struct sir_sme_roam_restart_req *msg;
+	tSirRoamOffloadScanReq *req_buffer;
+	tpPESession pe_session;
+	tSirMsgQ       wma_msg;
+	tSirRetStatus  status;
 
+	msg = (struct sir_sme_roam_restart_req *)msg_buf;
+	pe_session = pe_find_session_by_sme_session_id(mac_ctx,
+			msg->sme_session_id);
+	if (NULL == pe_session) {
+		limLog(mac_ctx, LOGE,
+			FL("session does not exist for sme_session: %d"),
+			msg->sme_session_id);
+		return;
+	}
+	/* Add log for unset of the flag */
+	pe_session->roaming_in_progress = false;
+	req_buffer = vos_mem_malloc(sizeof(tSirRoamOffloadScanReq));
+	if (NULL == req_buffer) {
+		limLog(mac_ctx, LOGE,
+			FL("Mem Alloc failed for req buffer"));
+		return;
+	}
+	vos_mem_zero(req_buffer, sizeof(tSirRoamOffloadScanReq));
+	vos_mem_zero(&wma_msg, sizeof(tSirMsgQ));
+	req_buffer->Command = msg->command;
+	req_buffer->reason = msg->reason;
+	req_buffer->sessionId = msg->sme_session_id;
+	wma_msg.type = WDA_ROAM_SCAN_OFFLOAD_REQ;
+	wma_msg.bodyptr = req_buffer;
+
+	status = wdaPostCtrlMsg(mac_ctx, &wma_msg);
+	if (eSIR_SUCCESS != status)
+	{
+		limLog(mac_ctx, LOGE,
+			FL("Posting WDA_ROAM_SCAN_OFFLOAD_REQ failed"));
+			vos_mem_free(req_buffer);
+	}
+}
 static void
 __limProcessSmeHideSSID(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
@@ -5830,6 +5871,9 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
        case eWNI_SME_HIDE_SSID_REQ:
             __limProcessSmeHideSSID(pMac, pMsgBuf);
+            break;
+       case eWNI_SME_ROAM_RESTART_REQ:
+            __lim_process_roam_restart_req(pMac, pMsgBuf);
             break;
        case eWNI_SME_UPDATE_APWPSIE_REQ:
             __limProcessSmeUpdateAPWPSIEs(pMac, pMsgBuf);
