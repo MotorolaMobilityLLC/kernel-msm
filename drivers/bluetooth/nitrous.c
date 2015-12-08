@@ -392,6 +392,11 @@ static int lpm_init(struct platform_device *pdev)
 		goto err_request_irq;
 	}
 
+	if (enable_irq_wake(bt_lpm.irq_host_wake) < 0) {
+		pr_err("%s: %s: unable to enable IRQ wake support\n",
+		       MODULE_NAME, __func__);
+	}
+
 	uart_lock_init(&bt_lpm.dev_lock, WAKE_LOCK_NAME_DEV_WAKE, 0);
 	uart_lock_init(&bt_lpm.host_lock, WAKE_LOCK_NAME_HOST_WAKE, HOST_WAKE_TIMEOUT);
 	set_uart_wake_peer(nitrous_uart_sending_buffer_locked);
