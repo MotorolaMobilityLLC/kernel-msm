@@ -139,23 +139,13 @@ struct arizona_enum {
 	int val;
 };
 
-#define ARIZONA_ENUM_DECL(name, xreg, xshift, xmask, xtexts, xvalues) \
-	struct arizona_enum name = { .mixer_enum.reg = xreg, .mixer_enum.shift_l = xshift, .mixer_enum.shift_r = xshift, \
-	.mixer_enum.mask = xmask, .mixer_enum.items = ARRAY_SIZE(xtexts), .mixer_enum.texts = xtexts, \
-	.mixer_enum.values = xvalues, .val = 0 }
-
-
 #define ARIZONA_MUX_ENUM_DECL(name, reg) \
-	ARIZONA_ENUM_DECL(name, reg, 0, 0xff, \
+	SOC_VALUE_ENUM_SINGLE_DECL(name, reg, 0, 0xff,			\
 				   arizona_mixer_texts, arizona_mixer_values)
 
-#define ARIZONA_MUX_CTL_DECL(xname) \
-	const struct snd_kcontrol_new xname##_mux = { \
-		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = "Route", \
-		.info = arizona_mux_info, \
-		.get = arizona_mux_get, \
-		.put = arizona_mux_put, \
-		.private_value = (unsigned long)&xname##_enum }
+#define ARIZONA_MUX_CTL_DECL(name) \
+	const struct snd_kcontrol_new name##_mux =	\
+		SOC_DAPM_ENUM("Route", name##_enum)
 
 #define ARIZONA_MUX_ENUMS(name, base_reg) \
 	static ARIZONA_MUX_ENUM_DECL(name##_enum, base_reg);      \
@@ -176,7 +166,7 @@ struct arizona_enum {
 	ARIZONA_MUX_ENUMS(name##_aux6, base_reg + 40)
 
 #define CLEARWATER_MUX_ENUM_DECL(name, reg) \
-	ARIZONA_ENUM_DECL(name, reg, 0, 0xff,			\
+	SOC_VALUE_ENUM_SINGLE_DECL(name, reg, 0, 0xff,			\
 				   arizona_v2_mixer_texts, arizona_v2_mixer_values)
 
 #define CLEARWATER_MUX_ENUMS(name, base_reg) \
@@ -197,11 +187,8 @@ struct arizona_enum {
 	CLEARWATER_MUX_ENUMS(name##_aux5, base_reg + 32);	\
 	CLEARWATER_MUX_ENUMS(name##_aux6, base_reg + 40)
 
-#define ARIZONA_MUX(wname, wctrl) \
-{	.id = snd_soc_dapm_mux, .name = wname, .reg = SND_SOC_NOPM, \
-	.shift = 0, .kcontrol_news = wctrl, \
-	.num_kcontrols = 1, .event = arizona_mux_event, \
-	.event_flags = SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD }
+#define ARIZONA_MUX(name, ctrl) \
+	SND_SOC_DAPM_MUX(name, SND_SOC_NOPM, 0, 0, ctrl)
 
 #define ARIZONA_MUX_WIDGETS(name, name_str) \
 	ARIZONA_MUX(name_str " Input", &name##_mux)
