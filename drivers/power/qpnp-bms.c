@@ -1438,7 +1438,7 @@ static int calculate_unusable_charge_uah(struct qpnp_bms_chip *chip,
 	int i;
 	int uuc_iavg_ma = params->iavg_ua / 1000;
 	int pc_unusable;
-
+	enum DEVICE_HWID ASUS_hwID;
 	/*
 	 * if called first time, fill all the samples with
 	 * the shutdown_iavg_ma
@@ -1485,6 +1485,15 @@ static int calculate_unusable_charge_uah(struct qpnp_bms_chip *chip,
 	 */
 	if (bms_reset)
 		return (params->fcc_uah * 3) / 100;
+
+	ASUS_hwID = get_hardware_id();
+
+	if ((ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
+		if (batt_temp > 0)
+			uuc_iavg_ma = MIN_IAVG_MA;
+		else
+			uuc_iavg_ma = 200;
+	}
 
 	uuc_uah_iavg = calculate_termination_uuc(chip, params, batt_temp,
 						uuc_iavg_ma, &pc_unusable);
