@@ -1012,6 +1012,22 @@ static int mdss_dsi_parse_reset_seq(struct device_node *np,
 	return 0;
 }
 
+static int mdss_dsi_hx8394f_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if ((ctrl_pdata->status_buf.data[0] != 0x80) ||
+		(ctrl_pdata->status_buf.data[1] != 0x73) ||
+		(ctrl_pdata->status_buf.data[2] != 0x04)) {
+		pr_err("%s: status val incorrect, data: %02x %02x %02x\n",
+			__func__,
+			(u8)ctrl_pdata->status_buf.data[0],
+			(u8)ctrl_pdata->status_buf.data[1],
+			(u8)ctrl_pdata->status_buf.data[2]);
+		return -EINVAL;
+	} else {
+		return 1;
+	}
+}
+
 static int mdss_dsi_gen_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (ctrl_pdata->status_buf.data[0] !=
@@ -1637,6 +1653,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 				ctrl_pdata->status_mode = ESD_TE;
 			else
 				pr_err("TE-ESD not valid for video mode\n");
+		} else if (!strcmp(data, "reg_read_hx8394f")) {
+			ctrl_pdata->status_mode = ESD_REG;
+			ctrl_pdata->status_cmds_rlen = 3;
+			ctrl_pdata->check_read_status =
+						mdss_dsi_hx8394f_read_status;
 		}
 	}
 

@@ -18,6 +18,7 @@
 #include "dsi-panel-dijingILI9881C-720p-video.dtsi"
 #include "dsi-panel-booyiOTM1287-720p-video.dtsi"
 #include "dsi-panel-dijingOTM1287-720p-video.dtsi"
+#include "dsi-panel-truly-HX8394F-720p-video.dtsi"
 #include "msm8916-memory.dtsi"
 
 / {
@@ -307,6 +308,54 @@
 
 	qcom,fs-clk-div = <106>;
 	qcom,high-time-clk-div = <86>;
+
+	goodix@5d {
+		compatible = "goodix,gt9xx";
+		reg = <0x5d>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <13 0x2008>;
+		reset-gpios = <&msm_gpio 12 0x00>;
+		interrupt-gpios = <&msm_gpio 13 0x00>;
+		power_ldo-gpios = <&msm_gpio 17 0x00>;
+		vcc-i2c-supply = <&pm8916_l6>;
+		goodix,panel-coords = <0 0 720 1280>;
+		goodix,display-coords = <0 0 720 1280>;
+		goodix,product-id = "615";
+		goodix,enable-power-off;
+		goodix,fw_name = "goodix_firmware.bin";
+		goodix,driver-send-cfg;
+		goodix,cfg-data0 = [
+			48 D0 02 FD 04 0A 74 C0
+			32 0F 28 0F 55 41 0F 05
+			00 00 46 46 00 00 0C 18
+			18 20 14 8A 2B 0C 4C 4E
+			3F 05 FF FE 00 A4 32 11
+			3C 9C 05 01 1E 3C 44 34
+			43 44 3A 28 5F 94 D5 52
+			07 32 14 04 D2 2B 02 B1
+			34 3C 9A 3D 14 84 49 00
+			72 57 00 72 00 00 00 00
+			00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 28
+			00 00 02 0C 14 00 00 1E
+			50 3C 19 19 00 00 00 00
+			02 04 06 08 0A 0C 0E 10
+			12 14 16 18 FF FF 3F 00
+			FF FF 10 00 FF FF FF 0F
+			10 FF 0F 53 0F 0A 26 24
+			22 21 20 1F 1E 1D 1C 18
+			16 12 10 0F 0C 0A 08 06
+			04 02 00 FF FF FF FF FF
+			00 00 00 FF 00 1E 00 FF
+			1F FF FF FF FF FF FF FF
+			00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 00
+			00 00 71 01
+		];
+	};
 
 	himax@48{
 		compatible = "himax,8528d";
