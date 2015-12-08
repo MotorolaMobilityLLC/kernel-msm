@@ -486,6 +486,8 @@ struct synaptics_rmi4_data {
 #ifdef CONFIG_MMI_HALL_NOTIFICATIONS
 	struct notifier_block folio_notif;
 #endif
+	struct notifier_block fps_notif;
+	bool is_fps_registered;
 	atomic_t panel_off_flag;
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
