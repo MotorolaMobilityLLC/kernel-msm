@@ -16945,6 +16945,10 @@ void csr_roam_send_restart_cmd(tpAniSirGlobal pMac, tANI_U8 session_id,
 
 	msg = vos_mem_malloc(sizeof(struct sir_sme_roam_restart_req));
 	if (msg == NULL) {
+		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+			FL("Memory allocation failed"));
+		VOS_ASSERT(msg);
+		return;
 	}
 	vos_mem_set(msg, sizeof(struct sir_sme_roam_restart_req), 0);
 	msg->message_type = eWNI_SME_ROAM_RESTART_REQ;
