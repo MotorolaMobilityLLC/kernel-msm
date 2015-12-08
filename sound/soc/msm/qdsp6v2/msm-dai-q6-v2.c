@@ -2521,7 +2521,11 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 		 &mi2s_dai_data->tx_dai.mi2s_dai_data);
 	 u16 port_id = 0;
 	int rc = 0;
+	struct snd_kcontrol kcontrol;
+	struct snd_ctl_elem_value ucontrol;
 
+	memset(&kcontrol, 0, sizeof(kcontrol));
+	memset(&ucontrol, 0, sizeof(ucontrol));
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
 				 &port_id) != 0) {
 		dev_err(dai->dev, "%s: Invalid Port ID 0x%x\n",
@@ -2532,7 +2536,20 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 			__func__, port_id);
 
 	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
-		rc = afe_close(port_id);
+		/*we don't want tertiary mi2s to be shutdown form here, we will control it by calling msm_external_pa_put*/
+		if((AFE_PORT_ID_TERTIARY_MI2S_RX == port_id) || (AFE_PORT_ID_TERTIARY_MI2S_TX == port_id))
+		{
+			msm_external_pa_get(&kcontrol, &ucontrol);
+			/*shutdown mi2s when we disable tertiary mi2s clock form audio HAL*/
+			if(0 == ucontrol.value.integer.value[0])
+			{
+				rc = afe_close(port_id);
+			}
+		}
+		else
+		{
+			rc = afe_close(port_id);
+		}
 		if (IS_ERR_VALUE(rc))
 			dev_err(dai->dev, "fail to close AFE port\n");
 		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);

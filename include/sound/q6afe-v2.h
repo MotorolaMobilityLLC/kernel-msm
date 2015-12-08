@@ -13,6 +13,8 @@
 #define __Q6AFE_V2_H__
 #include <sound/apr_audio-v2.h>
 #include <linux/qdsp6v2/rtac.h>
+#include <sound/asound.h>
+#include <sound/control.h>
 
 #define IN			0x000
 #define OUT			0x001
@@ -225,4 +227,5 @@ int afe_port_group_set_param(u16 *port_id, int channel_count);
 int afe_port_group_enable(u16 enable);
 int afe_unmap_rtac_block(uint32_t *mem_map_handle);
 int afe_map_rtac_block(struct rtac_cal_block_data *cal_block);
+int msm_external_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol);
 #endif /* __Q6AFE_V2_H__ */
