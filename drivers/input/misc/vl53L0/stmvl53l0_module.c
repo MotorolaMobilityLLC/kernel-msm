@@ -1563,7 +1563,7 @@ int stmvl53l0_setup(struct stmvl53l0_data *data, uint8_t type)
 	/* dmax */
 	input_set_abs_params(
 		data->input_dev_ps, ABS_HAT3Y, 0, 0xffffffff, 0, 0);
-	data->input_dev_ps->name = "STM VL53L0 proximity sensor";
+	data->input_dev_ps->name = "Rear proximity sensor";
 
 	rc = input_register_device(data->input_dev_ps);
 	if (rc) {
