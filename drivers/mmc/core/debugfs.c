@@ -303,6 +303,30 @@ static int mmc_force_err_set(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(mmc_force_err_fops, NULL, mmc_force_err_set, "%llu\n");
 
+static int mmc_host_caps_get(void *data, u64 *val)
+{
+	struct mmc_host *host = data;
+
+	*val = ((u64)host->caps2 << 32) | host->caps;
+
+	return 0;
+}
+
+static int mmc_host_caps_set(void *data, u64 val)
+{
+	struct mmc_host *host = data;
+
+	mmc_claim_host(host);
+	host->caps = (u32)val;
+	host->caps2 = (u32)(val >> 32);
+	mmc_release_host(host);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(mmc_host_caps_fops, mmc_host_caps_get,
+		mmc_host_caps_set, "0x%016llx\n");
+
 void mmc_add_host_debugfs(struct mmc_host *host)
 {
 	struct dentry *root;
@@ -359,6 +383,10 @@ void mmc_add_host_debugfs(struct mmc_host *host)
 #endif
 	if (!debugfs_create_file("force_error", S_IWUSR, root, host,
 		&mmc_force_err_fops))
+		goto err_node;
+
+	if (!debugfs_create_file("caps", S_IRUSR | S_IWUSR, root, host,
+		&mmc_host_caps_fops))
 		goto err_node;
 
 	return;
