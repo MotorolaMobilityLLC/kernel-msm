@@ -107,8 +107,8 @@ extern int dhd_change_mtu(dhd_pub_t *dhd, int new_mtu, int ifidx);
 extern int dhd_get_concurrent_capabilites(dhd_pub_t *dhd);
 #endif
 extern int dhd_socram_dump(struct dhd_bus *bus);
-static void dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event);
-static int dngl_host_event(dhd_pub_t *dhdp, void *pktdata);
+static void dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event, size_t pktlen);
+static int dngl_host_event(dhd_pub_t *dhdp, void *pktdata, size_t pktlen);
 bool ap_cfg_running = FALSE;
 bool ap_fw_loaded = FALSE;
 
@@ -1377,7 +1377,7 @@ wl_show_host_event(dhd_pub_t *dhd_pub, wl_event_msg_t *event, void *event_data,
 
 /* Check whether packet is a BRCM dngl event pkt. If it is, process event data. */
 int
-dngl_host_event(dhd_pub_t *dhdp, void *pktdata)
+dngl_host_event(dhd_pub_t *dhdp, void *pktdata, size_t pktlen)
 {
 	bcm_dngl_event_t *pvt_data = (bcm_dngl_event_t *)pktdata;
 
@@ -1388,14 +1388,14 @@ dngl_host_event(dhd_pub_t *dhdp, void *pktdata)
 	/* Check to see if this is a DNGL event */
 	if (ntoh16_ua((void *)&pvt_data->bcm_hdr.usr_subtype) ==
 		BCMILCP_BCM_SUBTYPE_DNGLEVENT) {
-  		dngl_host_event_process(dhdp, pvt_data);
+  		dngl_host_event_process(dhdp, pvt_data, pktlen);
 		return BCME_OK;
 	}
 	return BCME_ERROR;
 }
 
 void
-dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event)
+dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event, size_t pktlen)
 {
 	bcm_dngl_event_msg_t *dngl_event = &event->dngl_event;
 	uint8 *p = (uint8 *)(event + 1);
@@ -1404,6 +1404,9 @@ dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event)
 	uint16 version = ntoh16_ua((void *)&dngl_event->version);
 
 	DHD_EVENT(("VERSION:%d, EVENT TYPE:%d, DATALEN:%d\n", version, type, datalen));
+	if (datalen > (pktlen - sizeof(bcm_event_t))) {
+		return;
+	}
 	if (version != BCM_DNGL_EVENT_MSG_VERSION) {
 		DHD_ERROR(("%s:version mismatch:%d:%d\n", __FUNCTION__,
 			version, BCM_DNGL_EVENT_MSG_VERSION));
@@ -1494,7 +1497,7 @@ dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event)
 	break;
 	}
 }
-int wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
+int wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata, size_t pktlen,
 	wl_event_msg_t *event, void **data_ptr, void *raw_event)
 {
 	/* check whether packet is a BRCM event pkt */
@@ -1506,7 +1509,7 @@ int wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	int hostidx;
 
 	/* If it is a DNGL event process it first */
-	if (dngl_host_event(dhd_pub, pktdata) == BCME_OK) {
+	if (dngl_host_event(dhd_pub, pktdata, pktlen) == BCME_OK) {
 		return BCME_OK;
 	}
 
@@ -1521,6 +1524,9 @@ int wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 		return (BCME_ERROR);
 	}
 
+	if (pktlen < sizeof(bcm_event_t))
+		return (BCME_ERROR);
+
 	*data_ptr = &pvt_data[1];
 	event_data = *data_ptr;
 
@@ -1531,8 +1537,15 @@ int wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	type = ntoh32_ua((void *)&event->event_type);
 	flags = ntoh16_ua((void *)&event->flags);
 	status = ntoh32_ua((void *)&event->status);
+
 	datalen = ntoh32_ua((void *)&event->datalen);
+	if (datalen > pktlen)
+		return (BCME_ERROR);
+
 	evlen = datalen + sizeof(bcm_event_t);
+	if (evlen > pktlen) {
+		return BCME_ERROR;
+	}
 
 	/* find equivalent host index for event ifidx */
 	hostidx = dhd_ifidx2hostidx(dhd_pub->info, event->ifidx);
