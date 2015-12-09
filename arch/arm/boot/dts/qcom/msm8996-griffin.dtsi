@@ -86,7 +86,7 @@
 	max17050: max17050-battery@36 {
 		compatible = "maxim,max17050";
 		reg = <0x36>;
-		maxim,rsns-microohm = <10000>;
+		maxim,rsns-microohm = <5000>;
 
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <0 0xc5 5>;
