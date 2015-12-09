@@ -905,6 +905,14 @@
 			qcom,sensor-name = "pcm_therm";
 		};
 	};
+
+	usb2s: hsusb@7600000 {
+		status = "okay";
+
+		dwc3@7600000 {
+			dr_mode = "host";
+		};
+	};
 };
 
 &pmi8994_charger {
