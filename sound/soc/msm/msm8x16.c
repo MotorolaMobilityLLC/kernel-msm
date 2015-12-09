@@ -1778,7 +1778,18 @@ static struct snd_soc_dai_link msm8x16_wcd_dai[] = {
 		.ops = &msm8x16_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-	/* Backend I2S DAI Links */
+	{
+		.name = LPASS_BE_INT_BT_A2DP_RX,
+		.stream_name = "Internal BT-A2DP Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.12290",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_INT_BT_A2DP_RX,
+		.be_hw_params_fixup = msm_bta2dp_be_hw_params_fixup,
+		.ignore_suspend = 1,
+	},
 };
 
 /* Digital audio interface glue - connects codec <---> CPU */
@@ -2240,19 +2251,6 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.be_hw_params_fixup = msm_btsco_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
-	{
-		.name = LPASS_BE_INT_BT_A2DP_RX,
-		.stream_name = "Internal BT-A2DP Playback",
-		.cpu_dai_name = "msm-dai-q6-dev.12290",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_INT_BT_A2DP_RX,
-		.be_hw_params_fixup = msm_bta2dp_be_hw_params_fixup,
-		.ignore_suspend = 1,
-	},
-
 	{
 		.name = LPASS_BE_INT_FM_RX,
 		.stream_name = "Internal FM Playback",
