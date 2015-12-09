@@ -854,7 +854,11 @@
 		mmi,disable-seq = <0 1 0>, <1 0 0>, <2 0 0>, <3 1 0>, <4 0 50>;
 		mmi,wake-assert-seq = <6 0 0>;
 		mmi,wake-deassert-seq = <6 1 0>;
-		apba_cdsi-supply = <&pm8994_l11>;
+	};
+
+	mods_camera_ext {
+		compatible = "mmi,mods-camera-ext";
+		camera_ext_cdsi-supply = <&pm8994_l11>;
 	};
 
 	mods_codec_shim {
