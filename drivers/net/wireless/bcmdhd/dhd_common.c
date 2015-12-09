@@ -108,7 +108,7 @@ extern int dhd_get_concurrent_capabilites(dhd_pub_t *dhd);
 #endif
 extern int dhd_socram_dump(struct dhd_bus *bus);
 #ifdef DNGL_EVENT_SUPPORT
-static void dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event);
+static void dngl_host_event_process(dhd_pub_t *dhdp, bcm_dngl_event_t *event, size_t pktlen);
 static int dngl_host_event(dhd_pub_t *dhdp, void *pktdata, size_t pktlen);
 #endif /* DNGL_EVENT_SUPPORT */
 bool ap_cfg_running = FALSE;
