@@ -39,7 +39,6 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		.cci_subdev     = msm_cci_get_subdev(),
 		.cci_i2c_master = xfer->cci_bus,
 		.sid            = xfer->slave_addr,
-		.i2c_freq_mode  = xfer->i2c_freq_mode,
 	};
 	struct msm_camera_cci_ctrl cci_ctrl = {
 		.cci_info = &cci_info,

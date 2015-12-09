@@ -17,7 +17,6 @@
 
 #include <linux/ioctl.h>
 #include <linux/videodev2.h>
-#include <media/msm_camsensor_sdk.h>
 
 #define MSM_CCI_INTF_MAX_XFER 256
 
@@ -34,7 +33,6 @@ struct msm_cci_intf_data {
 struct msm_cci_intf_xfer {
 	unsigned short cci_bus;     /* 0 = MASTER_0, 1 = MASTER_1 */
 	unsigned short slave_addr;  /* 7-bit addr of intended device */
-	enum i2c_freq_mode_t i2c_freq_mode; /* 0 - normal, 1 - fast, 2 - custom, 3 - fast plus*/
 	struct msm_cci_intf_register  reg;
 	struct msm_cci_intf_data      data;
 };
