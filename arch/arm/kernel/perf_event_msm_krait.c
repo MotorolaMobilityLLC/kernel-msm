@@ -219,9 +219,6 @@ static unsigned int get_krait_evtinfo(unsigned int krait_evt_type,
 	code = (krait_evt_type & 0x00FF0) >> 4;
 	group = krait_evt_type & 0x0000F;
 
-	if ((group > 3) || (reg > krait_max_l1_reg))
-		return -EINVAL;
-
 	if (prefix != KRAIT_EVT_PREFIX && prefix != KRAIT_VENUMEVT_PREFIX)
 		return -EINVAL;
 
@@ -231,6 +228,9 @@ static unsigned int get_krait_evtinfo(unsigned int krait_evt_type,
 		else
 			reg += VENUM_BASE_OFFSET;
 	}
+
+	if ((group > 3) || (reg > krait_max_l1_reg))
+		return -EINVAL;
 
 	evtinfo->group_setval = 0x80000000 | (code << (group * 8));
 	evtinfo->groupcode = reg;
