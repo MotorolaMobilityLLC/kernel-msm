@@ -751,7 +751,8 @@
 		spi-max-frequency = <50000000>;
 
 		qcom,infinite-mode = <0>;
-		qcom,use-bam;
+		/* TODO: undo when QCom TZ issues resolved */
+		/* qcom,use-bam; */
 		qcom,ver-reg-exists;
 		qcom,bam-consumer-pipe-index = <12>;
 		qcom,bam-producer-pipe-index = <13>;
