@@ -69,7 +69,7 @@
 /******************************************************************************
  *  ALS / PS function define
  ******************************************************************************/
-#define PS_DYN_K_ONE    0       // PS DYN K ONE
+#define PS_DYN_K_ONE	1	/*PS DYN K ONE*/
 #define ALS_DYN_INTT    1       // ALS Auto INTT
 #define PS_FIRST_REPORT 1       // enable ps, report Far or NEAR
 #define ALS_DYN_INTT_REPORT    1
