@@ -128,6 +128,7 @@ struct ctrl {
 	const char *dir_name;
 	uint32_t lock;
 	struct work_struct delete_work;
+	struct utag *attrib;
 };
 
 static void build_utags_directory(struct ctrl *ctrl);
@@ -789,6 +790,7 @@ static struct utag *load_utags(struct blkdev *cb)
 	size_t bytes;
 	void *data;
 	struct utag *head = NULL;
+	struct ctrl *ctrl = container_of(cb, struct ctrl, main);
 
 	bytes = data_size(cb);
 
@@ -813,7 +815,6 @@ static struct utag *load_utags(struct blkdev *cb)
 	head = thaw_tags(bytes, data);
 	if (!head) { /* initialize empty utags partition */
 		int error;
-		struct ctrl *ctrl = container_of(cb, struct ctrl, main);
 
 		head = kzalloc(sizeof(struct utag), GFP_KERNEL);
 		if (!head)
@@ -825,6 +826,10 @@ static struct utag *load_utags(struct blkdev *cb)
 		if (error)
 			pr_err("error storing utags partition\n");
 	}
+
+	/* Save pointer to the root attributes UTAG if present */
+	ctrl->attrib = find_first_utag(head, ".attributes");
+	pr_debug(" .attributes %s\n", ctrl->attrib ? "found" : "not found");
 
  free_data:
 	vfree(data);
@@ -1304,6 +1309,8 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	if (check_path(expendable, count-1))
 		return count;
 
+	pr_debug("adding [%s] utag\n", expendable);
+
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load config error\n");
@@ -1318,6 +1325,44 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	}
 
 	num_names = full_split(expendable, names, &type);
+
+	/* check if we are trying to add an attribute file */
+	if ('.' == names[num_names-1][0] && ctrl->attrib) {
+		struct utag *vld = ctrl->attrib;
+		char *buf, *ptr, *tok, *attr;
+		bool found = false;
+		size_t len;
+
+		if (vld->size < 2) {
+			pr_err("invalid .attributes\n");
+			return -EINVAL;
+		}
+
+		attr = names[num_names-1];
+		pr_debug("check for [%s] attribute\n", attr);
+		/* make local copy of .range payload to tokenize */
+		buf = ptr = kzalloc(vld->size, GFP_KERNEL);
+		if (!buf)
+			return -ENOMEM;
+
+		memcpy(buf, vld->payload, vld->size);
+
+		while (ptr && !found) {
+			tok = strsep(&ptr, ",");
+			len = strnlen(tok, MAX_UTAG_NAME);
+			pr_debug("attr value [%s]\n", tok);
+			if (!strncmp(tok, attr, len))
+				found = true;
+		}
+		kfree(buf);
+
+		/* if ptr is still NULL we did not find a match */
+		if (!found) {
+			pr_err("[%s] is not allowed\n", attr);
+			return -EINVAL;
+		}
+	}
+
 	for (i = 0, tag[0] = 0; i < num_names; i++) {
 		/* build name for each sublevel and add */
 		/* slash to all sublevels except first */
