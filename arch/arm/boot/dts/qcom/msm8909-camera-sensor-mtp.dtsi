@@ -157,7 +157,7 @@
 		clock-names = "cam_src_clk", "cam_clk";
 	};
 
-	qcom,camera@1 {
+	qcom_camera1: qcom,camera@1 {
 		cell-index = <1>;
 		compatible = "qcom,camera";
 		reg = <0x1>;
