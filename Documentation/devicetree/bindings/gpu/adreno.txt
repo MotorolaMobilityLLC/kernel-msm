@@ -94,7 +94,7 @@ Optional Properties:
 			   bus width and actual bus transactions.
 - qcom,gpubw-dev:	   a phandle to a device representing bus bandwidth requirements
 			   (see devdw.txt)
-- qcom,idle-timeout:	   This property represents the time in microseconds for idle timeout.
+- qcom,idle-timeout:	   This property represents the time in milliseconds for idle timeout.
 - qcom,chipid:		   If it exists this property is used to replace
 			   the chip identification read from the GPU hardware.
 			   This is used to override faulty hardware readings.
