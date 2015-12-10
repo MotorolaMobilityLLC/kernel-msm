@@ -1388,8 +1388,8 @@
 		};
 
 		pri-tlmm-lines {
-			qcom,pins = <&gp 123>, <&gp 124>, <&gp 125>;
-			qcom,num-grp-pins = <3>;
+			qcom,pins = <&gp 123>, <&gp 124>, <&gp 125>, <&gp 127>;
+			qcom,num-grp-pins = <4>;
 			qcom,pin-func = <1>;
 			label = "pri-tlmm-lines";
 			pri_tlmm_lines_act: pri_tlmm_lines_act {
