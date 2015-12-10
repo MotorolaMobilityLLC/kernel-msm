@@ -77,6 +77,7 @@
 			ite,palm-detect-keycode = <142>;
 			ite,fw-name = "it7260_fw.bin";
 			ite,cfg-name = "it7260_cfg.bin";
+			ite,avdd-lpm-cur = <3000>;
 		};
 	};
 
