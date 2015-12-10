@@ -136,9 +136,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 			dev_dbg(&stml0xx_misc_data->spi->dev,
 				"Sending acc(x,y,z)values:x=%d,y=%d,z=%d",
-				STM16_TO_HOST(ACCEL_RD_X, accel_buf),
-				STM16_TO_HOST(ACCEL_RD_Y, accel_buf),
-				STM16_TO_HOST(ACCEL_RD_Z, accel_buf));
+				STM16_TO_HOST(ACCEL_X_OFFSET, accel_buf),
+				STM16_TO_HOST(ACCEL_Y_OFFSET, accel_buf),
+				STM16_TO_HOST(ACCEL_Z_OFFSET, accel_buf));
 		}
 	}
 	if (irq_status & M_ACCEL2) {
@@ -151,9 +151,9 @@ void stml0xx_irq_work_func(struct work_struct *work)
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
 			"Sending acc2(x,y,z)values:x=%d,y=%d,z=%d",
-			STM16_TO_HOST(ACCEL_RD_X, &buf[IRQ_IDX_ACCEL2]),
-			STM16_TO_HOST(ACCEL_RD_Y, &buf[IRQ_IDX_ACCEL2]),
-			STM16_TO_HOST(ACCEL_RD_Z, &buf[IRQ_IDX_ACCEL2]));
+			STM16_TO_HOST(ACCEL_X_OFFSET, &buf[IRQ_IDX_ACCEL2]),
+			STM16_TO_HOST(ACCEL_Y_OFFSET, &buf[IRQ_IDX_ACCEL2]),
+			STM16_TO_HOST(ACCEL_Z_OFFSET, &buf[IRQ_IDX_ACCEL2]));
 	}
 	if (irq_status & M_ALS) {
 		stml0xx_as_data_buffer_write(
@@ -165,7 +165,7 @@ void stml0xx_irq_work_func(struct work_struct *work)
 			stm_ws->ts_ns);
 
 		dev_dbg(&stml0xx_misc_data->spi->dev,
-			"Sending ALS %d", STM16_TO_HOST(ALS_VALUE,
+			"Sending ALS %d", STM16_TO_HOST(ALS_OFFSET,
 					&buf[IRQ_IDX_ALS]));
 	}
 	if (irq_status & M_DISP_ROTATE) {
