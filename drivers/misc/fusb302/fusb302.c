@@ -5,6 +5,7 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/power_supply.h>
 #include <linux/interrupt.h>
 #include <linux/time.h>
 #include <linux/kthread.h>
@@ -72,6 +73,7 @@ struct fusb302_i2c_data {
 	int gpios[FUSB_NUM_GPIOS];
 	int irq;
 	spinlock_t lock;
+	struct power_supply usbc_psy;
 };
 
 struct fusb302_i2c_data *fusb_i2c_data;
@@ -1190,6 +1192,7 @@ void SetStateUnattached(void)
 	USBPDDisable(false);	// Disable the USB PD state machine (no need to write FUSB300 again since we are doing it here)
 #endif
 	ConnState = Unattached;	// Set the state machine variable to unattached
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
 	SinkCurrent = utccNone;
 	CC1TermDeb = CCTypeNone;	// Clear the termination for this state
 	CC2TermDeb = CCTypeNone;	// Clear the termination for this state
@@ -1229,6 +1232,7 @@ void SetStateAttachWaitSnk(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AttachWaitSink;	// Set the state machine variable to AttachWait.Snk
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
 	SinkCurrent = utccNone;	// Set the current advertisment variable to none until we determine what the current is
 	if (Registers.Switches.MEAS_CC1)	// If CC1 is what initially got us into the wait state...
 	{
@@ -1274,6 +1278,7 @@ void SetStateAttachWaitSrc(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AttachWaitSource;	// Set the state machine variable to AttachWait.Src
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
 	SinkCurrent = utccNone;	// Not used in Src
 	if (Registers.Switches.MEAS_CC1)	// If CC1 is what initially got us into the wait state...
 	{
@@ -1314,6 +1319,7 @@ void SetStateAttachWaitAcc(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AttachWaitAccessory;	// Set the state machine variable to AttachWait.Accessory
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
 	SinkCurrent = utccNone;	// Not used in accessories
 	CC1TermAct = DecodeCCTermination();	// Determine what is initially on CC1
 	CC2TermAct = CCTypeNone;	// Assume that the initial value on CC2 is open
@@ -1349,6 +1355,7 @@ void SetStateAttachedSrc(void)
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	// Maintain the existing CC term values from the wait state
 	ConnState = AttachedSource;	// Set the state machine variable to Attached.Src
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SRC;
 	/* Enable SSUSB Switch and set orientation */
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
@@ -1384,6 +1391,7 @@ void SetStateAttachedSink(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AttachedSink;	// Set the state machine variable to Attached.Sink
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_SINK;
 	SinkCurrent = utccDefault;	// Set the current advertisment variable to the default until we detect something different
 	/* Enable SSUSB Switch and set orientation */
 	FUSB302_enableSuperspeedUSB(blnCCPinIsCC1, blnCCPinIsCC2);
@@ -1479,6 +1487,7 @@ void SetStateTryWaitSnk(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = TryWaitSink;	// Set the state machine variable to TryWait.Snk
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
 	SinkCurrent = utccNone;	// Set the current advertisment variable to none until we determine what the current is
 	if (Registers.Switches.MEAS_CC1) {
 		CC1TermAct = DecodeCCTermination();	// Determine what is initially on CC1
@@ -1521,6 +1530,7 @@ void SetStateTrySrc(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = TrySource;	// Set the state machine variable to Try.Src
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC;
 	SinkCurrent = utccNone;	// Not used in Try.Src
 	blnCCPinIsCC1 = false;	// Clear the CC1 is CC flag (don't know)
 	blnCCPinIsCC2 = false;	// Clear the CC2 is CC flag (don't know)
@@ -1557,6 +1567,7 @@ void SetStateDebugAccessory(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = DebugAccessory;	// Set the state machine variable to Debug.Accessory
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_DBG;
 	SinkCurrent = utccNone;	// Not used in accessories
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
@@ -1581,6 +1592,7 @@ void SetStateAudioAccessory(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = AudioAccessory;	// Set the state machine variable to Audio.Accessory
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_AUDIO;
 	SinkCurrent = utccNone;	// Not used in accessories
 	// Maintain the existing CC term values from the wait state
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
@@ -1611,6 +1623,7 @@ void SetStatePoweredAccessory(void)
 	// TODO: The line below will be uncommented once we have full support for VDM's and can enter an alternate mode as needed for Powered.Accessories
 	// USBPDEnable(true, true);
 	ConnState = PoweredAccessory;	// Set the state machine variable to powered.accessory
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_PWR;
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = tAMETimeout;	// Set the state timer to tAMETimeout (need to enter alternate mode by this time)
 	FUSB302_start_timer(&state_hrtimer, StateTimer);
@@ -1634,6 +1647,7 @@ void SetStateUnsupportedAccessory(void)
 	Delay10us(25);		// Delay the reading of the COMP and BC_LVL to allow time for settling
 	FUSB300Read(regStatus0, 2, &Registers.Status.byte[4]);	// Read the current state of the BC_LVL and COMP
 	ConnState = UnsupportedAccessory;	// Set the state machine variable to unsupported.accessory
+	fusb_i2c_data->usbc_psy.type = POWER_SUPPLY_TYPE_USBC_UNSUPP;
 	SinkCurrent = utccNone;	// Set the Sink current to none (not used in source)
 	StateTimer = USHRT_MAX;	// Disable the state timer, not used in this state
 	DebounceTimer1 = tPDDebounceMin;	// Set the debounce timer to the minimum tPDDebounce to check for detaches
@@ -2040,6 +2054,89 @@ static inline int fusb302_parse_dt(struct device *dev,
 	return 0;
 }
 #endif
+
+static enum power_supply_property fusb_power_supply_props[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_AUTHENTIC,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
+	POWER_SUPPLY_PROP_TYPE,
+};
+
+static int fusb_power_supply_set_property(struct power_supply *psy,
+				 enum power_supply_property prop,
+				 const union power_supply_propval *val)
+{
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int fusb_power_supply_is_writeable(struct power_supply *psy,
+				 enum power_supply_property prop)
+{
+	int rc;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+	return rc;
+}
+
+static int fusb_power_supply_get_property(struct power_supply *psy,
+			    enum power_supply_property psp,
+			    union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_PRESENT:
+		if ((ConnState > Unattached) && (ConnState < DelayUnattached))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_ONLINE:
+		if ((ConnState == PoweredAccessory) ||
+		    (ConnState == UnsupportedAccessory) ||
+		    (ConnState == DebugAccessory) ||
+		    (ConnState == AudioAccessory) ||
+		    (ConnState == AttachedSink) ||
+		    (ConnState == AttachedSource))
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		if (ConnState != AttachedSink)
+			val->intval = 0;
+		else if (SinkCurrent == utcc1p5A)
+			val->intval = 1500000;
+		else if (SinkCurrent == utcc3p0A)
+			val->intval = 3000000;
+		else if (SinkCurrent == utccDefault)
+			val->intval = 500000;
+		break;
+	case POWER_SUPPLY_PROP_AUTHENTIC:
+		val->intval = 0; /* PD Not supported yet */
+		break;
+	case POWER_SUPPLY_PROP_TYPE:
+		val->intval = psy->type;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 {
 	struct fusb302_i2c_data *fusb;
@@ -2114,6 +2211,20 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 			"%s: Failed to create irq thread\n", __func__);
 		return retval;
 	}
+
+	fusb->usbc_psy.name 		= "usbc";
+	fusb->usbc_psy.type		= POWER_SUPPLY_TYPE_USBC;
+	fusb->usbc_psy.get_property	= fusb_power_supply_get_property;
+	fusb->usbc_psy.set_property	= fusb_power_supply_set_property;
+	fusb->usbc_psy.properties	= fusb_power_supply_props;
+	fusb->usbc_psy.num_properties	= ARRAY_SIZE(fusb_power_supply_props);
+	fusb->usbc_psy.property_is_writeable = fusb_power_supply_is_writeable;
+	retval = power_supply_register(&i2c->dev, &fusb->usbc_psy);
+	if (retval) {
+		dev_err(&i2c->dev, "failed: power supply register\n");
+		return retval;
+	}
+
 	FUSB_LOG("probe successfully!\n");
 	return 0;
 }
