@@ -988,6 +988,7 @@ static int stml0xx_probe(struct spi_device *spi)
 	}
 
 	ps_stml0xx->is_suspended = false;
+	ps_stml0xx->irq_wake_work_pending = false;
 
 	/* We could call switch_stml0xx_mode(NORMALMODE) at this point, but
 	 * instead we will hold the part in reset and only go to NORMALMODE on a
@@ -1092,6 +1093,7 @@ static int stml0xx_resume(struct device *dev)
 {
 	static struct timespec ts;
 	static struct stml0xx_work_struct *stm_ws;
+	static struct stml0xx_delayed_work_struct *stm_dws;
 	struct stml0xx_data *ps_stml0xx = spi_get_drvdata(to_spi_device(dev));
 
 	get_monotonic_boottime(&ts);
@@ -1101,18 +1103,37 @@ static int stml0xx_resume(struct device *dev)
 	ps_stml0xx->is_suspended = false;
 	enable_irq(ps_stml0xx->irq);
 
+	/* Schedule work for wake IRQ, if pending */
+	if (ps_stml0xx->irq_wake_work_pending) {
+		stm_dws = kmalloc(sizeof(struct stml0xx_delayed_work_struct),
+					GFP_ATOMIC);
+		if (!stm_dws) {
+			dev_err(&ps_stml0xx->spi->dev,
+				"stml0xx_resume: unable to allocate delayed work struct");
+			mutex_unlock(&ps_stml0xx->lock);
+			return 0;
+		}
+		INIT_DELAYED_WORK((struct delayed_work *)stm_dws,
+				stml0xx_irq_wake_work_func);
+		stm_dws->ts_ns = ps_stml0xx->pending_wake_irq_ts_ns;
+		queue_delayed_work(ps_stml0xx->irq_work_queue,
+			(struct delayed_work *)stm_dws,
+			msecs_to_jiffies(ps_stml0xx->irq_wake_work_delay));
+		ps_stml0xx->irq_wake_work_pending = false;
+	}
+
+	/* Schedule work for non-wake IRQ to discard any streaming sensor data
+	   that was queued at the sensorhub during suspend. Process other
+	   non-wake sensor data that may have updated. */
 	stm_ws = kmalloc(
 		sizeof(struct stml0xx_work_struct),
 		GFP_ATOMIC);
 	if (!stm_ws) {
 		dev_err(&ps_stml0xx->spi->dev,
 			"stml0xx_resume: unable to allocate work struct");
+		mutex_unlock(&ps_stml0xx->lock);
 		return 0;
 	}
-
-	/* Discard any streaming sensor data that was queued at the sensorhub
-	   during suspend. Process other non-wake sensor data that may have
-	   updated. */
 	INIT_WORK((struct work_struct *)stm_ws, stml0xx_irq_work_func);
 	stm_ws->ts_ns = ts_to_ns(ts);
 	stm_ws->flags = IRQ_WORK_FLAG_DISCARD_SENSOR_QUEUE;
