@@ -3197,8 +3197,11 @@ static struct snd_soc_dai_link msm8996_florida_fe_dai_links[] = {
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8996_slimbus_2_be_ops,
-	},
-	/* FLORIDA - cs35l34 codec-codec link */
+	}
+};
+
+/* FLORIDA - cs35l34 codec-codec link */
+static struct snd_soc_dai_link msm8996_left_l34_dai_link[] = {
 	{
 		.name = "FLA-AMP",
 		.stream_name = "FLA-AMP Playback",
@@ -3213,7 +3216,25 @@ static struct snd_soc_dai_link msm8996_florida_fe_dai_links[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 		.params = &cs35l34_params,
-	},
+	}
+};
+
+static struct snd_soc_dai_link msm8996_right_l34_dai_link[] = {
+	{
+		.name = "FLA-AMP",
+		.stream_name = "FLA-AMP Playback",
+		.cpu_name = "florida-codec",
+		.cpu_dai_name = "florida-aif1",
+		.codec_name = "cs35l34.7-0041",
+		.codec_dai_name = "cs35l34",
+		.init = florida_cs35l34_dai_init,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.no_pcm = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.params = &cs35l34_params,
+	}
 };
 
 static struct snd_soc_dai_link msm8996_florida_be_dai_links[] = {
@@ -3755,6 +3776,8 @@ static struct snd_soc_dai_link msm8996_florida_dai_links[
 			 ARRAY_SIZE(msm8996_florida_fe_dai_links) +
 			 ARRAY_SIZE(msm8996_common_be_dai_links) +
 			 ARRAY_SIZE(msm8996_florida_be_dai_links) +
+			 ARRAY_SIZE(msm8996_left_l34_dai_link) +
+			 ARRAY_SIZE(msm8996_right_l34_dai_link) +
 			 ARRAY_SIZE(msm8996_hdmi_dai_link)];
 #endif
 static struct snd_soc_dai_link msm8996_tasha_dai_links[
@@ -4010,11 +4033,15 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		len_4 = len_3 + ARRAY_SIZE(msm8996_tasha_be_dai_links);
 #ifdef CONFIG_SND_SOC_FLORIDA
 	} else  if (!strcmp(match->data, "florida-codec")){
+		int len_2a;
+
 		/* Florida links */
 		card = &snd_soc_card_florida_msm8996;
 		len_1 = ARRAY_SIZE(msm8996_common_dai_links);
 		len_2 = len_1 + ARRAY_SIZE(msm8996_florida_fe_dai_links);
-		len_3 = len_2 + ARRAY_SIZE(msm8996_common_be_dai_links);
+		len_2a = len_2 + ARRAY_SIZE(msm8996_common_be_dai_links);
+		/*MSM8996 currently supports only single L34*/
+		len_3 = len_2a + ARRAY_SIZE(msm8996_right_l34_dai_link);
 
 		memcpy(msm8996_florida_dai_links,
 			msm8996_common_dai_links,
@@ -4025,11 +4052,29 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		memcpy(msm8996_florida_dai_links + len_2,
 		       msm8996_common_be_dai_links,
 		       sizeof(msm8996_common_be_dai_links));
+
+		/*TODO: if we ever support stereo L34, this devtree logic
+			will need to be updated.  Sheridan/Griffin are mono
+			but channel of part can vary depending on HW rev*/
+		if (of_property_read_bool(dev->of_node, "mot,old-l34")) {
+			dev_info(dev, "%s(): left cs35l34 hardware present\n",
+				__func__);
+
+			memcpy(msm8996_florida_dai_links + len_2a,
+				msm8996_left_l34_dai_link,
+				sizeof(msm8996_left_l34_dai_link));
+		} else {
+			dev_info(dev, "%s(): right cs35l34 hardware present\n",
+				__func__);
+			memcpy(msm8996_florida_dai_links + len_2a,
+				msm8996_right_l34_dai_link,
+				sizeof(msm8996_right_l34_dai_link));
+		}
+
 		memcpy(msm8996_florida_dai_links + len_3,
 		       msm8996_florida_be_dai_links,
 		       sizeof(msm8996_florida_be_dai_links));
 
-		/* TODO: Will add cs35l34 links later */
 		dailink = msm8996_florida_dai_links;
 		len_4 = len_3 + ARRAY_SIZE(msm8996_florida_be_dai_links);
 #endif
