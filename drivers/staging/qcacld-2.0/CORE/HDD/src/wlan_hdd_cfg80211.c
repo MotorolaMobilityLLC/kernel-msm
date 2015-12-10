@@ -12975,6 +12975,19 @@ allow_suspend:
      * from supplicant, this result in app's is suspending and not able
      * to process the connect request to AP */
     hdd_prevent_suspend_timeout(1000, WIFI_POWER_EVENT_WAKELOCK_SCAN);
+    /* Today Prevent/allow Runtime PM is tied with wakelocks, thus holding
+     * a wakelock prevents runtime pm. In this specific case host held a
+     * wakelock for 1sec to prevent APPS suspend, so supplicant can initiate
+     * connection which can come asynchronously. Host is already preventing
+     * runtime pm when connection in progress. In this case host can do
+     * runtime suspend. Hence allow runtime suspend to happen.
+     * The ideal approach is to decouple runtime pm from wakelocks and
+     * identify cases where runtime pm should be prevented and allowed.
+     * This is a fix done to address power issue where there is
+     * rise is current cosumption for 1.8sec adding host 1sec wakelock
+     * and 0.5sec auto suspend delay.
+     */
+    hdd_allow_runtime_suspend();
 
 #ifdef FEATURE_WLAN_TDLS
     wlan_hdd_tdls_scan_done_callback(pAdapter);
