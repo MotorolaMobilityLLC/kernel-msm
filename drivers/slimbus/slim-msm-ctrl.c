@@ -1390,10 +1390,6 @@ err_request_irq_failed:
 	kthread_stop(dev->rx_msgq_thread);
 err_thread_create_failed:
 	msm_slim_sps_exit(dev, true);
-	msm_slim_deinit_ep(dev, &dev->rx_msgq,
-				&dev->use_rx_msgqs);
-	msm_slim_deinit_ep(dev, &dev->tx_msgq,
-				&dev->use_tx_msgqs);
 err_sps_init_failed:
 	if (dev->hclk) {
 		clk_disable_unprepare(dev->hclk);
@@ -1439,11 +1435,6 @@ static int msm_slim_remove(struct platform_device *pdev)
 	if (dev->hclk)
 		clk_put(dev->hclk);
 	msm_slim_sps_exit(dev, true);
-	msm_slim_deinit_ep(dev, &dev->rx_msgq,
-				&dev->use_rx_msgqs);
-	msm_slim_deinit_ep(dev, &dev->tx_msgq,
-				&dev->use_tx_msgqs);
-
 	kthread_stop(dev->rx_msgq_thread);
 	iounmap(dev->bam.base);
 	iounmap(dev->base);
