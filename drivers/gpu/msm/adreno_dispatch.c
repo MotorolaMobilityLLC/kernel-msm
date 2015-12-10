@@ -363,7 +363,7 @@ static struct kgsl_cmdbatch *_get_cmdbatch(struct adreno_context *drawctxt)
 		 * it hasn't already been started
 		 */
 		if (!timer_pending(&cmdbatch->timer))
-			mod_timer(&cmdbatch->timer, jiffies + (5 * HZ));
+			mod_timer(&cmdbatch->timer, jiffies + msecs_to_jiffies(5000));
 
 		return ERR_PTR(-EAGAIN);
 	}
