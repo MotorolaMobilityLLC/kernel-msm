@@ -24,4 +24,7 @@ struct msm_hdmi_slimport_ops {
 int msm_hdmi_register_slimport(struct platform_device *pdev,
 			  struct msm_hdmi_slimport_ops *ops, void *data);
 
+/* TODO: hack for P0 HDMI HPD detection */
+void hdmi_hpd_hack(int new_hpd_state);
+
 #endif /* __MDSS_HDMI_SLIMPORT_H__ */
