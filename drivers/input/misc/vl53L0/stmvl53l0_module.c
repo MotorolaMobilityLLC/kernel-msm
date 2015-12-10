@@ -1270,7 +1270,7 @@ int stmvl53l0_checkmoduleid(struct stmvl53l0_data *data,
 */
 static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 {
-	uint8_t id = 0, type = 0;
+	uint8_t id = 0, type = 0, i = 0;
 	uint8_t revision = 0, module_id = 0;
 	VL53L0_Error Status = VL53L0_ERROR_NONE;
 	VL53L0_DeviceInfo_t DeviceInfo;
@@ -1279,13 +1279,19 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 
 	vl53l0_dbgmsg("Enter\n");
 
-
 	/* Read Model ID */
-	VL53L0_RdByte(vl53l0_dev, VL53L0_REG_IDENTIFICATION_MODEL_ID, &id);
-	vl53l0_errmsg("read MODLE_ID: 0x%x\n", id);
-	if (id == 0xee) {
-		vl53l0_errmsg("STM VL53L0 Found\n");
-	} else if (id == 0) {
+	for (i = 0; i < 5; i++) {
+		VL53L0_RdByte(vl53l0_dev,
+			VL53L0_REG_IDENTIFICATION_MODEL_ID, &id);
+		vl53l0_errmsg("read MODLE_ID: 0x%x\n", id);
+		if (id == 0xee) {
+			vl53l0_errmsg("STM VL53L0 Found\n");
+			break;
+		}
+
+		msleep(20);
+	}
+	if (id != 0xee) {
 		vl53l0_errmsg("Not found STM VL53L0\n");
 		return -EIO;
 	}
