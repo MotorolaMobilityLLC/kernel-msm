@@ -29,6 +29,10 @@
 			<&tlmm 37 1>,       /* APBA_INT_N, in */
 			<&tlmm 25 2>;        /* APBA_WAKE, output-high */
 	};
+
+	sound {
+		mot,old-l34;
+	};
 };
 
 &spi_0 {
