@@ -359,6 +359,14 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_DFP,		/* TYpe-C DFP */
 	POWER_SUPPLY_TYPE_PTP,		/* Greybus power transfer protocol */
 	POWER_SUPPLY_TYPE_SWITCH,	/* Charge Path Switch */
+	POWER_SUPPLY_TYPE_USBC,		/* USBC Port */
+	POWER_SUPPLY_TYPE_USBC_PD,	/* USBC Port Power Delivery*/
+	POWER_SUPPLY_TYPE_USBC_SINK,	/* USBC Port Sink*/
+	POWER_SUPPLY_TYPE_USBC_SRC,	/* USBC Port Source*/
+	POWER_SUPPLY_TYPE_USBC_DBG,	/* USBC Port Debug*/
+	POWER_SUPPLY_TYPE_USBC_PWR,	/* USBC Port Powered*/
+	POWER_SUPPLY_TYPE_USBC_AUDIO,	/* USBC Port Audio*/
+	POWER_SUPPLY_TYPE_USBC_UNSUPP,	/* USBC Port Unsupported*/
 };
 
 /* Indicates USB Type-C CC connection status */
