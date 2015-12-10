@@ -1379,6 +1379,8 @@ struct hdd_context_s
     spinlock_t     bus_bw_lock;
     int            cur_rx_level;
     uint64_t       prev_rx;
+    int            cur_tx_level;
+    uint64_t       prev_tx;
 #endif
 
     v_U8_t         issplitscan_enabled;

@@ -95,6 +95,7 @@
 #define WLAN_SVC_DFS_ALL_CHANNEL_UNAVAIL_IND 0x108
 #define WLAN_SVC_WLAN_TP_IND        0x109
 #define WLAN_SVC_RPS_ENABLE_IND     0x10A
+#define WLAN_SVC_WLAN_TP_TX_IND     0x10B
 
 #define WLAN_SVC_MAX_SSID_LEN    32
 #define WLAN_SVC_MAX_BSSID_LEN   6
@@ -157,6 +158,13 @@ struct wlan_version_data {
 struct wlan_dfs_info {
    uint16_t channel;
    uint8_t country_code[WLAN_SVC_COUNTRY_CODE_LEN];
+};
+
+enum wlan_tp_level {
+        WLAN_SVC_TP_NONE,
+        WLAN_SVC_TP_LOW,
+        WLAN_SVC_TP_MEDIUM,
+        WLAN_SVC_TP_HIGH,
 };
 
 #endif //WLAN_NLINK_COMMON_H__
