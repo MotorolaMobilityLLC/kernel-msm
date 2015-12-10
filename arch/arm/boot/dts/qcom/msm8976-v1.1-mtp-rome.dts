@@ -41,3 +41,13 @@
 &blsp1_uart0 {
 	status = "ok";
 };
+
+/ {
+	bluetooth: bt_qca6174 {
+		compatible = "qca,qca6174";
+		qca,bt-reset-gpio = <&msm_gpio 20 0>; /* BT_EN */
+		qca,bt-vdd-pa-supply = <&bt_vreg>;
+		qca,bt-vdd-io-supply = <&pm8950_l5>;
+		qca,bt-vdd-io-voltage-level = <1800000 1800000>;
+	};
+};
