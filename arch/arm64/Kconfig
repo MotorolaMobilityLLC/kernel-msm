@@ -431,7 +431,9 @@ config SWP_EMULATE
 
 	  If unsure, say Y.
 
-source kernel/Kconfig.hz
+config HZ
+	int
+	default 100
 
 config ARCH_HAS_HOLES_MEMORYMODEL
 	def_bool y if SPARSEMEM
