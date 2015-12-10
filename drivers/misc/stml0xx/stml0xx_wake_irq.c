@@ -121,6 +121,15 @@ void stml0xx_irq_wake_work_func(struct work_struct *work)
 	pdata = ps_stml0xx->pdata;
 
 	dev_dbg(&stml0xx_misc_data->spi->dev, "stml0xx_irq_wake_work_func");
+
+	if (ps_stml0xx->is_suspended) {
+		dev_dbg(&stml0xx_misc_data->spi->dev,
+			"Deferring irq wake work until resume");
+		ps_stml0xx->irq_wake_work_pending = true;
+		ps_stml0xx->pending_wake_irq_ts_ns = stm_ws->ts_ns;
+		return;
+	}
+
 	mutex_lock(&ps_stml0xx->lock);
 
 	if (ps_stml0xx->mode == BOOTMODE)
