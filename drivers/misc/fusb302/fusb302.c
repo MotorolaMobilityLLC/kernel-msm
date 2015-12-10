@@ -234,7 +234,7 @@ static int set_disable_ss_switch(const char *val, const struct kernel_param *kp)
 	if (rv)
 		return rv;
 
-	if (disable_ss_switch)
+	if (disable_ss_switch && fusb_i2c_data)
 		FUSB302_disableSuperspeedUSB();
 
 	return 0;
@@ -2083,6 +2083,10 @@ static int fusb302_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	fusb_i2c_data = fusb;
 	i2c_set_clientdata(i2c, fusb);
 	fusb->client = i2c;
+
+	/* Disable the SS Switch if param is disabled at boot */
+	if (disable_ss_switch)
+		FUSB302_disableSuperspeedUSB();
 
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_reg_dump);
 	ret_device_file = device_create_file(&(i2c->dev), &dev_attr_state);
