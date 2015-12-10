@@ -45,6 +45,7 @@
 #include <asm/uaccess.h>
 #include <linux/proc_fs.h>
 #include <linux/asusdebug.h>
+#include <charger/axc_PM8226Charger.h>
 //ASUS_BSP Lenter ---
 
 /* Interrupt offsets */
@@ -413,7 +414,10 @@ struct qpnp_chg_chip {
 	unsigned int			ext_ovp_isns_gpio;
 	unsigned int			usb_trim_default;
 	struct delayed_work		bat_is_cooler_check_work;
+	struct delayed_work		bat_is_warmer_check_work;
 	struct mutex			bat_is_cooler_lock;
+	struct mutex			bat_is_warmer_lock;
+	unsigned int			chg_gpio;
 };
 
 static void
@@ -432,6 +436,7 @@ extern irqreturn_t PM8226_charger_in_out_handler(int irq, void *dev_id);
 extern void asus_fsm_chargingstop(AXE_Charging_Error_Reason reason);
 extern void asus_fsm_chargingstart(void);
 static bool g_PMIC_CHG_EN = true;// bool to record ASUS set PMIC CHG_EN flag actively
+extern AXE_Charger_Type lastTimeCableType;
 #endif
 //ASUS_BSP lenter ---
 //ASUS_BSP Eason: notify thermal limit +++
@@ -465,8 +470,9 @@ extern void notify_batteryService_statusFull(void);
 extern char g_CHG_mode;
 #endif
 //ASUS_BSP ---
-
+static int MPP4_read;
 static bool g_bat_is_cooler = false;
+static bool g_bat_is_warmer = false;
 
 enum bpd_type {
 	BPD_TYPE_BAT_ID,
@@ -1467,7 +1473,7 @@ qpnp_bat_if_adc_disable_work(struct work_struct *work)
 	qpnp_adc_tm_disable_chan_meas(chip->adc_tm_dev, &chip->adc_param);
 }
 
-#define EOC_CHECK_PERIOD_MS	10000
+#define EOC_CHECK_PERIOD_MS	1000
 static irqreturn_t
 qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 {
@@ -1521,7 +1527,9 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 	printk("chg_gone triggered\n");
 	
 	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
-	
+
+	gpio_set_value(chip->chg_gpio,0);
+
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip)
 			|| qpnp_chg_is_dc_chg_plugged_in(chip))
 			&& (usb_sts & CHG_GONE_IRQ)) {
@@ -1689,6 +1697,9 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 				chip->delta_vddmax_mv);
 	else if (chip->bat_is_warm)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
+				chip->delta_vddmax_mv);
+	else if (g_bat_is_warmer)
+			qpnp_chg_vddmax_and_trim_set(chip, 4100,
 				chip->delta_vddmax_mv);
 	else
 		qpnp_chg_vddmax_and_trim_set(chip, chip->max_voltage_mv,
@@ -1894,6 +1905,8 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				}
 			}
 
+			if (lastTimeCableType == 4)
+				gpio_set_value(chip->chg_gpio, 1);
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			printk("[BAT][PM8226][sche_eoc_work]%s\n",__FUNCTION__);//ASUS BSP Eason:check schedule eoc_work
@@ -2453,6 +2466,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
+	POWER_SUPPLY_PROP_USB_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -2541,6 +2555,21 @@ qpnp_aicl_check_work(struct work_struct *work)
 }
 
 static int
+get_prop_mpp4_voltage(struct qpnp_chg_chip *chip)
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+
+	rc = qpnp_vadc_read(chip->vadc_dev, P_MUX4_1_3, &results);
+	if (rc) {
+		pr_debug("Unable to read MPP4 voltage rc=%d\n", rc);
+		return 0;
+	}
+
+	return (int)results.physical;
+}
+
+static int
 get_prop_battery_voltage_now(struct qpnp_chg_chip *chip)
 {
 	int rc = 0;
@@ -2620,6 +2649,40 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
+static int
+get_prop_usb_type(struct qpnp_chg_chip *chip)
+{
+	MPP4_read = get_prop_mpp4_voltage(chip);
+	pr_debug("lastTimeCableType:%d, ADC: %d\n", lastTimeCableType, MPP4_read);
+	if (lastTimeCableType == 4)
+		gpio_set_value(chip->chg_gpio, 1);
+	else
+		gpio_set_value(chip->chg_gpio, 0);
+	if (lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000)) {
+		pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
+		return POWER_SUPPLY_USB_TYPE_AC_FAST;
+	}
+	else if (lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2800000)) {
+		pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
+		return POWER_SUPPLY_USB_TYPE_POWER_BANK;
+	}
+	else if (lastTimeCableType == 2) {
+		pr_debug("POWER_SUPPLY_USB_TYPE_USB_SDP\n");
+		return POWER_SUPPLY_USB_TYPE_USB_NORMAL;
+	}
+	else if (lastTimeCableType == 3) {
+		pr_debug("POWER_SUPPLY_USB_TYPE_USB_CDP\n");
+		return POWER_SUPPLY_USB_TYPE_USB_FAST;
+	}
+	else if (lastTimeCableType == 4) {
+		pr_debug("POWER_SUPPLY_USB_TYPE_USB_DCP\n");
+		return POWER_SUPPLY_USB_TYPE_AC_NORMAL;
+	}
+	else {
+		pr_debug("POWER_SUPPLY_USB_TYPE_UNKNOWN\n");
+		return POWER_SUPPLY_USB_TYPE_UNKNOWN;
+	}
+}
 #define DEFAULT_CAPACITY	50
 #ifndef CONFIG_PM_8226_CHARGER
 static int
@@ -2848,6 +2911,7 @@ get_prop_batt_temp(struct qpnp_chg_chip *chip)
 {
 	int rc = 0;
 	struct qpnp_vadc_result results;
+	u8 reg = 0x80;
 
 	if (chip->use_default_batt_values || !get_prop_batt_present(chip))
 		return DEFAULT_TEMP;
@@ -2859,6 +2923,13 @@ get_prop_batt_temp(struct qpnp_chg_chip *chip)
 	}
 	pr_debug("get_bat_temp %d, %lld\n",
 		results.adc_code, results.physical);
+
+	if (results.physical >= chip->warm_bat_decidegc) {
+		rc = qpnp_chg_write(chip, &reg, 0x3446, 1);
+		if (rc) {
+			pr_debug("Unable to write reg 0x3446 rc=%d\n", rc);
+		}
+	}
 
 	return (int)results.physical;
 }
@@ -3003,6 +3074,9 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		val->intval = get_prop_charge_type(chip);
+		break;
+	case POWER_SUPPLY_PROP_USB_TYPE:
+		val->intval = get_prop_usb_type(chip);
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = get_prop_batt_health(chip);
@@ -3340,7 +3414,9 @@ static void
 qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 {
 	unsigned int chg_current = chip->max_bat_chg_current;
+	enum DEVICE_HWID ASUS_hwID;
 
+	ASUS_hwID = get_hardware_id();
 	if (chip->bat_is_cool){
 		if (g_bat_is_cooler == true){
 			chg_current = 100;
@@ -3351,9 +3427,18 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 		}
 	}
 
-	if (chip->bat_is_warm)
-		chg_current = min(chg_current, chip->warm_bat_chg_ma);
-
+	if (chip->bat_is_warm) {
+		if (g_bat_is_warmer == true) {
+			if (ASUS_hwID == SPARROW_PR3)
+				chg_current = 150;
+			else if (ASUS_hwID == WREN_PR3)
+				chg_current = 100;
+			pr_debug("qpnp_chg_set_appropriate_battery_current(): bat_is_warmer\n");
+		} else {
+			chg_current = min(chg_current, chip->warm_bat_chg_ma);
+			pr_debug("qpnp_chg_set_appropriate_battery_current(): g_bat_is_warm\n");
+		}
+	}
 	//ASUS_BSP Eason: notify thermal limit +++
 	//don't do Qualcomm default thermal_mitigation change IBAT_MAX 0x1044
 #if 0
@@ -3365,6 +3450,7 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 
 	pr_debug("setting %d mA\n", chg_current);
 	qpnp_chg_ibatmax_set(chip, chg_current);
+	qpnp_chg_set_appropriate_vddmax(chip);
 }
 
 static int
@@ -3966,7 +4052,7 @@ qpnp_chg_adjust_vddmax(struct qpnp_chg_chip *chip, int vbat_mv)
 	qpnp_chg_set_appropriate_vddmax(chip);
 }
 
-#define CONSECUTIVE_COUNT	5
+#define CONSECUTIVE_COUNT	10
 #define VBATDET_MAX_ERR_MV	50
 static void
 qpnp_eoc_work(struct work_struct *work)
@@ -4030,6 +4116,12 @@ qpnp_eoc_work(struct work_struct *work)
 #endif
 //ASUS_BSP Eason_Chang: show term_current ---
 
+		MPP4_read = get_prop_mpp4_voltage(chip);
+		printk("MPP4_read: %d\n", MPP4_read);
+		if (lastTimeCableType == 4)
+			gpio_set_value(chip->chg_gpio, 1);
+		else
+			gpio_set_value(chip->chg_gpio, 0);
 		if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				if (get_prop_battery_voltage_now(chip) > 4200000) {
@@ -4041,6 +4133,30 @@ qpnp_eoc_work(struct work_struct *work)
 				} else {
 					printk("VBAT is between 3.2V and 4.2V, modify the charging current to 350 mA\n");
 					qpnp_chg_ibatmax_set(chip, 350);
+				}
+			}
+		}
+		if (ASUS_hwID == SPARROW_PR3) {
+			if (!chip->bat_is_warm && !chip->bat_is_cool) {
+				if (get_prop_battery_voltage_now(chip) < 3000000) {
+					printk("VBAT is smaller than 3V, modify the charging current to 50 mA\n\n");
+					qpnp_chg_ibatmax_set(chip, 50);
+				} else {
+					if (lastTimeCableType == 3) {
+						qpnp_chg_iusbmax_set(chip, 1400);
+						qpnp_chg_ibatmax_set(chip, 1050);
+						printk("[CDP]3C charging mode, modify the charging current to 1050 mA\n");
+					}
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2700000)) ||
+							(lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000))) {
+						qpnp_chg_iusbmax_set(chip, 1400);
+						qpnp_chg_ibatmax_set(chip, 1050);
+						printk("[DCP]3C charging mode, modify the charging current to 1050 mA\n");
+					}
+					else {
+						qpnp_chg_ibatmax_set(chip, 350);
+						printk("1C charging mode, modify the charging current to 350 mA\n");
+					}
 				}
 			}
 		}
@@ -4056,6 +4172,30 @@ qpnp_eoc_work(struct work_struct *work)
 				} else {
 					printk("VBAT is between 3.2V and 4.2V, modify the charging current to 250 mA\n");
 					qpnp_chg_ibatmax_set(chip, 250);
+				}
+			}
+		}
+		if (ASUS_hwID == WREN_PR3) {
+			if (!chip->bat_is_warm && !chip->bat_is_cool) {
+				if (get_prop_battery_voltage_now(chip) < 3000000) {
+					printk("VBAT is smaller than 3V, modify the charging current to 50 mA\n");
+					qpnp_chg_ibatmax_set(chip, 50);
+				} else {
+					if (lastTimeCableType == 3) {
+						qpnp_chg_iusbmax_set(chip, 1400);
+						qpnp_chg_ibatmax_set(chip, 800);
+						printk("[CDP]3C charging mode, modify the charging current to 800 mA\n");
+					}
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2700000)) ||
+							(lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000))) {
+						qpnp_chg_iusbmax_set(chip, 1400);
+						qpnp_chg_ibatmax_set(chip, 800);
+						printk("[DCP]3C charging mode, modify the charging current to 800 mA\n");
+					}
+					else {
+						qpnp_chg_ibatmax_set(chip, 250);
+						printk("1C charging mode, modify the charging current to 250 mA\n");
+					}
 				}
 			}
 		}
@@ -4287,6 +4427,41 @@ asus_bat_is_cooler_check_work(struct work_struct *work)
 }
 
 static void
+asus_bat_is_warmer_check_work(struct work_struct *work)
+{
+	int temp;
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct qpnp_chg_chip *chip = container_of(dwork,
+				struct qpnp_chg_chip, bat_is_warmer_check_work);
+
+	pr_debug("asus_bat_is_warmer_check_work()\n");
+
+	mutex_lock(&chip->bat_is_warmer_lock);
+	temp = get_prop_batt_temp(chip);
+	if ((temp >= 450) && (g_bat_is_warmer == false)){
+		g_bat_is_warmer = true;
+		qpnp_chg_set_appropriate_battery_current(chip);
+		pr_debug("g_bat_is_warmer is true!\n");
+	}else if ((temp <= 420) && (g_bat_is_warmer == true)){
+		g_bat_is_warmer = false;
+		qpnp_chg_set_appropriate_battery_current(chip);
+		pr_debug("g_bat_is_warmer is false!\n");
+	}else if (!chip->bat_is_warm){
+		g_bat_is_warmer = false;
+		pr_debug("g_bat_is_warmer is cancelled!\n");
+		mutex_unlock(&chip->bat_is_warmer_lock);
+		return;
+	}
+
+	schedule_delayed_work(&chip->bat_is_warmer_check_work,
+		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+
+	mutex_unlock(&chip->bat_is_warmer_lock);
+	return;
+
+}
+
+static void
 qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 {
 	struct qpnp_chg_chip *chip = ctx;
@@ -4320,6 +4495,9 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 				chip->warm_bat_decidegc - HYSTERISIS_DECIDEGC;
 			chip->adc_param.state_request =
 				ADC_TM_COOL_THR_ENABLE;
+			schedule_delayed_work(&chip->bat_is_warmer_check_work,
+				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+			pr_debug("qpnp_chg_adc_notification(): Normal to warm!\n");
 		} else if (temp >=
 				chip->cool_bat_decidegc + HYSTERISIS_DECIDEGC){
 			/* Cool to normal */
@@ -5499,6 +5677,15 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		}
 	}
 
+	chip->chg_gpio = of_get_named_gpio_flags(chip->spmi->dev.of_node, "qcom,chg-gpio", 0, NULL);
+	if (gpio_is_valid(chip->chg_gpio)) {
+		rc = gpio_request_one(chip->chg_gpio, GPIOF_OUT_INIT_LOW,
+				"qcom,chg-gpio");
+		if (rc) {
+			return rc;
+		}
+	}
+
 	if (!chip->vbatdet_max_err_mv)
 		chip->vbatdet_max_err_mv = VBATDET_MAX_ERR_MV;
 
@@ -6236,7 +6423,9 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	INIT_DELAYED_WORK(&chip->eoc_work, qpnp_eoc_work);
 	mutex_init(&chip->bat_is_cooler_lock);
+	mutex_init(&chip->bat_is_warmer_lock);
 	INIT_DELAYED_WORK(&chip->bat_is_cooler_check_work, asus_bat_is_cooler_check_work);
+	INIT_DELAYED_WORK(&chip->bat_is_warmer_check_work, asus_bat_is_warmer_check_work);
 	INIT_DELAYED_WORK(&chip->arb_stop_work, qpnp_arb_stop_work);
 	INIT_DELAYED_WORK(&chip->usbin_health_check,
 			qpnp_usbin_health_check_work);
@@ -6400,6 +6589,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	cancel_delayed_work_sync(&chip->arb_stop_work);
 	cancel_delayed_work_sync(&chip->eoc_work);
 	cancel_delayed_work_sync(&chip->bat_is_cooler_check_work);
+	cancel_delayed_work_sync(&chip->bat_is_warmer_check_work);
 	cancel_work_sync(&chip->adc_disable_work);
 	cancel_work_sync(&chip->adc_measure_work);
 	power_supply_unregister(&chip->batt_psy);
@@ -6411,6 +6601,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	mutex_destroy(&chip->batfet_vreg_lock);
 	mutex_destroy(&chip->jeita_configure_lock);
 	mutex_destroy(&chip->bat_is_cooler_lock);
+	mutex_destroy(&chip->bat_is_warmer_lock);
 
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);

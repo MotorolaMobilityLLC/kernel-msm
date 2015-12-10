@@ -53,6 +53,10 @@ static ssize_t power_supply_show_property(struct device *dev,
 	static char *charge_type[] = {
 		"Unknown", "N/A", "Trickle", "Fast"
 	};
+	static char *usb_type[] = {
+		"Unknown", "AC_Fast", "USB_Normal", "USB_Fast", "AC_Normal", "POWER_BANK"
+	};
+
 	static char *health_text[] = {
 		"Unknown", "Good", "Overheat", "Warm", "Dead", "Over voltage",
 		"Unspecified failure", "Cold", "Cool", "Watchdog timer expire",
@@ -92,6 +96,8 @@ static ssize_t power_supply_show_property(struct device *dev,
 		return sprintf(buf, "%s\n", status_text[value.intval]);
 	else if (off == POWER_SUPPLY_PROP_CHARGE_TYPE)
 		return sprintf(buf, "%s\n", charge_type[value.intval]);
+	else if (off == POWER_SUPPLY_PROP_USB_TYPE)
+		return sprintf(buf, "%s\n", usb_type[value.intval]);
 	else if (off == POWER_SUPPLY_PROP_HEALTH)
 		return sprintf(buf, "%s\n", health_text[value.intval]);
 	else if (off == POWER_SUPPLY_PROP_TECHNOLOGY)
@@ -216,7 +222,7 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(model_name),
 	POWER_SUPPLY_ATTR(manufacturer),
 	POWER_SUPPLY_ATTR(serial_number),
-	POWER_SUPPLY_ATTR(battery_type),
+	POWER_SUPPLY_ATTR(usb_type),
 };
 
 static struct attribute *

@@ -53,7 +53,7 @@ extern void pm8226_chg_enable_charging(bool enable);
 extern int pm8226_is_ac_usb_in(void);
 extern void pm8226_chg_usb_suspend_enable(int enable);
 extern int pm8226_get_prop_batt_status(void);
-
+extern void pm8226_chg_ibatmax_set(int chg_current);
 static void (*notify_charger_in_out_func_ptr)(int) = NULL;
 AXC_PM8226Charger *gpCharger = NULL;
 
@@ -239,17 +239,17 @@ void AcUsbPowerSupplyChange_pm8226(void)
 	}
 }
 
-static void limitPM8226chg900(void)
+
+static void limitPM8226chg1400(void)
 {
-	gpCharger->usb_current_max = 900*1000;
-	asus_usbPath_chg_current_set(900);
+	gpCharger->usb_current_max = 1400*1000;
+	asus_usbPath_chg_current_set(1400);
 }
 
-#ifndef ASUS_FACTORY_BUILD
-static void limitPM8226chg700(void)
+static void limitPM8226chg1000(void)
 {
-	gpCharger->usb_current_max = 700*1000;
-	asus_usbPath_chg_current_set(700);
+	gpCharger->usb_current_max = 1000*1000;
+	asus_usbPath_chg_current_set(1000);
 }
 
 static void limitPM8226chg500(void)
@@ -257,18 +257,11 @@ static void limitPM8226chg500(void)
 	gpCharger->usb_current_max = 500*1000;
 	asus_usbPath_chg_current_set(500);
 }
-#endif
-
-static void limitPM8226chg200(void)
-{
-	gpCharger->usb_current_max = 200*1000;
-	asus_usbPath_chg_current_set(200);
-}
 
 static void defaultPM8226chgSetting(void)
 {
-	gpCharger->usb_current_max = 200*1000;// default:200mA
-	asus_usbPath_chg_current_set(200);
+	gpCharger->usb_current_max = 500*1000;// default:500mA
+	asus_usbPath_chg_current_set(500);
 }
 
 //Eason : when thermal too hot, limit charging current +++ 
@@ -278,11 +271,12 @@ void setChgDrawCurrent_pm8226(void)
 	if(true == g_chgTypeBeenSet)//Eason : prevent setChgDrawCurrent_pm8226 before get chgType
 	{
 		if(ILLEGAL_CHARGER_TYPE==gpCharger->type){
-			limitPM8226chg200();
+			defaultPM8226chgSetting();
 			printk("[BAT][CHG][Illegal]: limit chgCur,  darw 200\n");
 		}
 		else if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
-
+				limitPM8226chg1400();
+				printk("[BAT][CHG][AC]: limit charging current 1400mA\n");
 		}
 		else if(NOTDEFINE_TYPE==gpCharger->type || NO_CHARGER_TYPE==gpCharger->type){
 			defaultPM8226chgSetting();
@@ -293,12 +287,12 @@ void setChgDrawCurrent_pm8226(void)
 			printk("[BAT][CHG]:limit charging current 500mA\n");
 		}
 		else if( 2==g_thermal_limit ){
-			limitPM8226chg700();
-			printk("[BAT][CHG]:limit charging current 700mA\n");
+			limitPM8226chg1400();
+			printk("[BAT][CHG]:limit charging current 1400mA\n");
 		}
 		else if(1 == g_thermal_limit){
-			limitPM8226chg900();
-			printk("[BAT][CHG]:limit charging current 900mA\n");
+			limitPM8226chg1400();
+			printk("[BAT][CHG]:limit charging current 1400mA\n");
 		}
 		else{
 			if(LOW_CURRENT_CHARGER_TYPE==gpCharger->type){
@@ -306,8 +300,8 @@ void setChgDrawCurrent_pm8226(void)
 				printk("[BAT][CHG][Low]: limit chgCur,  darw 500\n");
 			}
 			else if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-				limitPM8226chg900();
-				printk("[BAT][CHG][AC]: limit charging current 900mA\n");
+				limitPM8226chg1000();
+				printk("[BAT][CHG][AC]: limit charging current 1000mA\n");
 			}
 		}
 	}
@@ -320,23 +314,23 @@ void setChgDrawACTypeCurrent_withCheckAICL_pm8226(void)
 {
 #ifndef ASUS_FACTORY_BUILD   
 	if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
-
+		limitPM8226chg1400();
 	}
 	else if( (3==g_thermal_limit)||(true==g_audio_limit) ){
 		limitPM8226chg500();
 		printk("[BAT][CHG]:limit charging current 500mA\n");
 	}
 	else if( 2 == g_thermal_limit){
-		limitPM8226chg700();
-		printk("[BAT][CHG]:limit charging current 900mA\n");
+		limitPM8226chg1400();
+		printk("[BAT][CHG]:limit charging current 1400mA\n");
 	}
 	else if( 1 == g_thermal_limit){
-		limitPM8226chg900();
-		printk("[BAT][CHG]:limit charging current 900mA\n");
+		limitPM8226chg1400();
+		printk("[BAT][CHG]:limit charging current 1400mA\n");
 	}
 	else{
 		if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-			limitPM8226chg900();
+			limitPM8226chg1000();
 		}
 	}
 #endif//#ifndef ASUS_FACTORY_BUILD    
@@ -490,6 +484,8 @@ static void AXC_PM8226_Charger_SetCharger(AXI_Charger *apCharger , AXE_Charger_T
 		return;
 	}
 
+	pm8226_chg_ibatmax_set(250);
+
 	printk("[BAT][CHG]CharegeModeSet:%d\n", aeChargerType);
 
 //ASUS BSP Eason_Chang prevent P02 be set as illegal charger +++ 
@@ -515,6 +511,7 @@ static void AXC_PM8226_Charger_SetCharger(AXI_Charger *apCharger , AXE_Charger_T
 	{
 		case NO_CHARGER_TYPE:
 			this->type = aeChargerType;
+			lastTimeCableType = aeChargerType;
 
 			if(NULL != this->mpNotifier)
 				this->mpNotifier->Notify(&this->msParentCharger,this->type);
@@ -543,9 +540,9 @@ static void AXC_PM8226_Charger_SetCharger(AXI_Charger *apCharger , AXE_Charger_T
 			//Eason Factory version AC:1200 Pad:900+++
 			#ifdef ASUS_FACTORY_BUILD
 			if(HIGH_CURRENT_CHARGER_TYPE==aeChargerType)
-				limitPM8226chg900();
+				limitPM8226chg1000();
 			else if(NORMAL_CURRENT_CHARGER_TYPE==aeChargerType)
-				limitPM8226chg900();
+				limitPM8226chg1000();
 			#endif
 			//Eason Factory version AC:1200 Pad:900---
 

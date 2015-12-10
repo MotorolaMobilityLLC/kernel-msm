@@ -81,9 +81,9 @@
 			#size-cells = <1>;
 			status = "disabled";
 
-			qcom,vddmax-mv = <4400>;
-			qcom,vddsafe-mv = <4430>;
-			qcom,vinmin-mv = <4400>;
+			qcom,vddmax-mv = <4350>;
+			qcom,vddsafe-mv = <4380>;
+			qcom,vinmin-mv = <4350>;
 			qcom,vbatdet-delta-mv = <100>;
 			qcom,ibatmax-ma = <350>;
 			qcom,ibatterm-ma = <30>;
@@ -94,13 +94,14 @@
 			qcom,chg-vadc = <&pm8226_vadc>;
 			qcom,chg-adc_tm = <&pm8226_adc_tm>;
 			qcom,pmic-revid = <&pm8226_revid>;
-			qcom,ibatmax-warm-ma = <150>;
-			qcom,warm-bat-decidegc = <450>;
-			qcom,warm-bat-mv = <4100>;
+			qcom,ibatmax-warm-ma = <700>;
+			qcom,warm-bat-decidegc = <420>;
+			qcom,warm-bat-mv = <4350>;
 			qcom,cool-bat-decidegc = <220>;
-			qcom,cool-bat-mv = <4400>;
-			qcom,ibatmax-cool-ma = <150>;
+			qcom,cool-bat-mv = <4350>;
+			qcom,ibatmax-cool-ma = <250>;
 			qcom,use-external-rsense = <1>;
+			qcom,chg-gpio = <&msmgpio 56 0>;
 
 			qcom,chgr@1000 {
 				status = "disabled";
@@ -347,6 +348,10 @@
 			mpp@a300 {
 				reg = <0xa300 0x100>;
 				qcom,pin-num = <4>;
+				qcom,mode = <4>; /* AIN input */
+				qcom,ain-route = <3>; /* AMUX 8 */
+				qcom,master-en = <1>;
+				qcom,src-sel = <0>; /* Function constant */
 			};
 
 			mpp@a400 {
@@ -423,6 +428,17 @@
 				qcom,calibration-type = "absolute";
 				qcom,scale-function = <0>;
 				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+
+			chan@23 {
+				label = "mpp4_div1";
+				reg = <0x23>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <1>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <2>;
 				qcom,fast-avg-setup = <0>;
 			};
 		};

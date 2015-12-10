@@ -195,6 +195,13 @@ static struct msm_gpiomux_config pr3_msm8226_gpio_configs[] __initdata= {
                 },
         },
 #endif
+	{
+		.gpio = 56,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &chg_cfg,
+			[GPIOMUX_SUSPENDED] = &chg_cfg,
+		},
+	},
 // ASUS_BSP Ken_Cheng --- I2S Speaker AMP
 	{
 		.gpio = 60,           /* pri mi2s enable */

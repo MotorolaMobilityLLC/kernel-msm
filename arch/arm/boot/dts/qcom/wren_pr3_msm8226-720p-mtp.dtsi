@@ -378,7 +378,7 @@
 		qcom,rpull-up-kohm = <100>;
 		qcom,vref-batt-therm = <1800000>;
 
-		#include "wren-2013427-300mAh-batterydata.dtsi"
+		#include "wren-C11N1541_2229841_290mAh-batterydata.dtsi"
 		#include "batterydata-mtp-3000mah.dtsi"
 	};
 };

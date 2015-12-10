@@ -378,7 +378,7 @@
 		qcom,rpull-up-kohm = <100>;
 		qcom,vref-batt-therm = <1800000>;
 
-		#include "sparrow-C11N1502-1901242-400mAh-batterydata.dtsi"
+		#include "sparrow-C11N1540_2229781_380mAh-batterydata.dtsi"
 		#include "batterydata-mtp-3000mah.dtsi"
 	};
 };

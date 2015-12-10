@@ -15,6 +15,7 @@ enum asus_chg_src {
 	ASUS_CHG_SRC_WC,
 #endif	
 	ASUS_CHG_SRC_PAD_NONE,
+	ASUS_CHG_SRC_CDP,
 };
 
 
