@@ -24,7 +24,6 @@ extern struct bus_type slimbus_type;
 /* Standard values per SLIMbus spec needed by controllers and devices */
 #define SLIM_CL_PER_SUPERFRAME		6144
 #define SLIM_CL_PER_SUPERFRAME_DIV8	(SLIM_CL_PER_SUPERFRAME >> 3)
-#define SLIM_MAX_TXNS			256
 #define SLIM_MAX_CLK_GEAR		10
 #define SLIM_MIN_CLK_GEAR		1
 #define SLIM_CL_PER_SL			4
@@ -186,7 +185,6 @@ struct slim_val_inf {
  *	(e.g. relevant for mc = SLIM_MSG_MC_REQUEST_INFORMATION)
  * @la: Logical address of the device this message is going to.
  *	(Not used when destination type is broadcast.)
- * @async: If this transaction is async
  * @rbuf: Buffer to be populated by controller when response is received.
  * @wbuf: Payload of the message. (e.g. channel number for DATA channel APIs)
  * @comp: Completion structure. Used by controller to notify response.
@@ -201,7 +199,6 @@ struct slim_msg_txn {
 	u8			len;
 	u8			tid;
 	u8			la;
-	bool			async;
 	u8			*rbuf;
 	const u8		*wbuf;
 	struct completion	*comp;
@@ -226,13 +223,13 @@ enum slim_port_req {
 };
 
 /*
- * enum slim_port_opts: Port options requested.
- * User can request no configuration, packed data, and/or MSB aligned data port
+ * enum slim_port_cfg: Port configuration parameters requested.
+ * User can request no configuration, packed data, or MSB aligned data port
  */
-enum slim_port_opts {
-	SLIM_OPT_NONE = 0,
-	SLIM_OPT_NO_PACK = 1U,
-	SLIM_OPT_ALIGN_MSB = 1U << 1,
+enum slim_port_cfg {
+	SLIM_CFG_NONE,
+	SLIM_CFG_PACKED,
+	SLIM_CFG_ALIGN_MSB,
 };
 
 /* enum slim_port_flow: Port flow type (inbound/outbound). */
@@ -248,16 +245,6 @@ enum slim_port_err {
 	SLIM_P_UNDERFLOW,
 	SLIM_P_DISCONNECT,
 	SLIM_P_NOT_OWNED,
-};
-
-/*
- * struct slim_port_cfg: Port config for the manager port
- * port_opts: port options (bit-map) for this port
- * watermark: watermark level set for this port
- */
-struct slim_port_cfg {
-	u32 port_opts;
-	u32 watermark;
 };
 
 /*
@@ -277,7 +264,7 @@ struct slim_port {
 	enum slim_port_err	err;
 	enum slim_port_state	state;
 	enum slim_port_req	req;
-	struct slim_port_cfg	cfg;
+	enum slim_port_cfg	cfg;
 	enum slim_port_flow	flow;
 	struct slim_ch		*ch;
 	struct completion	*xcomp;
@@ -554,10 +541,6 @@ enum slim_clk_state {
  *	errors (e.g. overflow/underflow) if any.
  * @xfer_user_msg: Send user message to specified logical address. Underlying
  *	controller has to support sending user messages. Returns error if any.
- * @xfer_bulk_wr: Send bulk of write messages to specified logical address.
- *	Underlying controller has to support this. Typically useful to transfer
- *	messages to download firmware, or messages where strict ordering for
- *	slave is necessary
  */
 struct slim_controller {
 	struct device		dev;
@@ -575,9 +558,8 @@ struct slim_controller {
 	u8			num_dev;
 	struct list_head	devs;
 	struct workqueue_struct *wq;
-	struct slim_msg_txn	*txnt[SLIM_MAX_TXNS];
+	struct slim_msg_txn	**txnt;
 	u8			last_tid;
-	spinlock_t		txn_lock;
 	struct slim_port	*ports;
 	int			nports;
 	struct slim_ich		*chans;
@@ -843,19 +825,6 @@ extern int slim_alloc_mgrports(struct slim_device *sb, enum slim_port_req req,
 
 /* Deallocate the port(s) allocated using the API above */
 extern int slim_dealloc_mgrports(struct slim_device *sb, u32 *hdl, int hsz);
-
-/*
- * slim_config_mgrports: Configure manager side ports
- * @sb: device/client handle.
- * @ph: array of port handles for which this configuration is valid
- * @nports: Number of ports in ph
- * @cfg: configuration requested for port(s)
- * Configure port settings if they are different than the default ones.
- * Returns success if the config could be applied. Returns -EISCONN if the
- * port is in use
- */
-extern int slim_config_mgrports(struct slim_device *sb, u32 *ph, int nports,
-				struct slim_port_cfg *cfg);
 
 /*
  * slim_port_xfer: Schedule buffer to be transferred/received using port-handle.
