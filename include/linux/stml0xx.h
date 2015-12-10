@@ -275,6 +275,8 @@ struct stml0xx_data {
 	int irq;
 	int irq_wake;
 	unsigned int irq_wake_work_delay;	/* in ms */
+	bool irq_wake_work_pending;
+	uint64_t pending_wake_irq_ts_ns;
 	unsigned int current_addr;
 	enum stm_mode mode;
 	unsigned char intp_mask;
