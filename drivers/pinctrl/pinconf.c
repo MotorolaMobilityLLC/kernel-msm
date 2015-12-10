@@ -391,6 +391,7 @@ struct dbg_cfg {
 	enum pinctrl_map_type map_type;
 	char dev_name[MAX_NAME_LEN+1];
 	char state_name[MAX_NAME_LEN+1];
+	unsigned index;
 	char pin_name[MAX_NAME_LEN+1];
 };
 
@@ -443,8 +444,8 @@ static int pinconf_dbg_config_print(struct seq_file *s, void *d)
 		seq_printf(s, "Searched dev:%s\n", dbg->dev_name);
 		seq_printf(s, "Searched state:%s\n", dbg->state_name);
 		seq_printf(s, "Searched pin:%s\n", dbg->pin_name);
-		seq_printf(s, "Use: modify config_pin <devname> "\
-				"<state> <pinname> <value>\n");
+		seq_printf(s, "Use: modify config_pin|config_group <devname> "\
+				"<state> <pinname> <index> <value>\n");
 		goto exit;
 	}
 
@@ -485,13 +486,15 @@ static ssize_t pinconf_dbg_config_write(struct file *file,
 	struct pinctrl_dev *pctldev;
 	const struct pinconf_ops *confops = NULL;
 	struct dbg_cfg *dbg = &pinconf_dbg_conf;
-	const struct pinctrl_map_configs *configs;
 	char config[MAX_NAME_LEN+1];
 	char buf[128];
 	char *b = &buf[0];
 	int buf_size;
 	char *token;
 	int i;
+	unsigned long value;
+	unsigned gp;
+	int ret;
 
 	/* Get userspace string and assure termination */
 	buf_size = min(count, sizeof(buf) - 1);
@@ -515,9 +518,12 @@ static ssize_t pinconf_dbg_config_write(struct file *file,
 	token = strsep(&b, " ");
 	if (!token)
 		return -EINVAL;
-	if (strcmp(token, "config_pin"))
+	if (strcmp(token, "config_pin") == 0)
+		dbg->map_type = PIN_MAP_TYPE_CONFIGS_PIN;
+	else if (strcmp(token, "config_group") == 0)
+		dbg->map_type = PIN_MAP_TYPE_CONFIGS_GROUP;
+	else
 		return -EINVAL;
-	dbg->map_type = PIN_MAP_TYPE_CONFIGS_PIN;
 
 	/* get arg 'device_name' */
 	token = strsep(&b, " ");
@@ -542,6 +548,15 @@ static ssize_t pinconf_dbg_config_write(struct file *file,
 	if (strlen(token) >= MAX_NAME_LEN)
 		return -EINVAL;
 	strncpy(dbg->pin_name, token, MAX_NAME_LEN);
+
+	/* get arg 'index' */
+	token = strsep(&b, " ");
+	if (token == NULL)
+		return -EINVAL;
+	if (strlen(token) >= MAX_NAME_LEN)
+		return -EINVAL;
+	if (kstrtouint(token, 0, &dbg->index))
+		return -EINVAL;
 
 	/* get new_value of config' */
 	token = strsep(&b, " ");
@@ -569,7 +584,7 @@ static ssize_t pinconf_dbg_config_write(struct file *file,
 		}
 	}
 
-	if (!found) {
+	if (!found || dbg->index > found->data.configs.num_configs) {
 		count = -EINVAL;
 		goto exit;
 	}
@@ -578,14 +593,43 @@ static ssize_t pinconf_dbg_config_write(struct file *file,
 	if (pctldev)
 		confops = pctldev->desc->confops;
 
-	if (confops && confops->pin_config_dbg_parse_modify) {
-		configs = &found->data.configs;
-		for (i = 0; i < configs->num_configs; i++) {
-			confops->pin_config_dbg_parse_modify(pctldev,
-						     config,
-						     &configs->configs[i]);
-		}
+	if (!confops)
+		goto exit;
+
+	if (confops->pin_config_dbg_parse_modify) {
+		confops->pin_config_dbg_parse_modify(pctldev, config,
+				&found->data.configs.configs[dbg->index]);
+		goto exit;
 	}
+
+	if (kstrtoul(config, 0, &value) < 0) {
+		count = -EINVAL;
+		goto exit;
+	}
+
+	pr_debug("setting %s type %d: %s to 0x%08lX\n", found->ctrl_dev_name,
+			found->type, found->data.configs.group_or_pin, value);
+	if (found->type == PIN_MAP_TYPE_CONFIGS_PIN) {
+		gp = pin_get_from_name(pctldev,
+					found->data.configs.group_or_pin);
+		if (gp < 0)
+			goto exit;
+		ret = confops->pin_config_set(pctldev, gp, &value, 1);
+	} else {
+		gp = pinctrl_get_group_selector(pctldev,
+					found->data.configs.group_or_pin);
+		if (gp < 0)
+			goto exit;
+		ret = confops->pin_config_group_set(pctldev, gp, &value, 1);
+	}
+
+	if (ret < 0) {
+		count = ret;
+		pr_err("%s: failed to set %s: %s to 0x%08lX\n", __func__,
+			found->ctrl_dev_name,
+			found->data.configs.group_or_pin, value);
+	} else
+		found->data.configs.configs[dbg->index] = value;
 
 exit:
 	mutex_unlock(&pinctrl_maps_mutex);
