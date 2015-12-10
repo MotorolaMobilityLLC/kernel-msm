@@ -63,6 +63,9 @@
 		};
 	};
 
+	sound {
+		mot,old-l34;
+	};
 };
 
 &mdss_dsi {
