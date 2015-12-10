@@ -550,6 +550,7 @@ struct synaptics_rmi4_data {
 	bool clipping_on;
 	struct synaptics_clip_area *clipa;
 	struct mutex rmi4_exp_init_mutex;
+	unsigned long event_blank;
 };
 
 struct time_keeping {
