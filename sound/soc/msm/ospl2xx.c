@@ -740,6 +740,35 @@ static const struct soc_enum ospl2xx_tx_ext_config_enum[] = {
 	SOC_ENUM_SINGLE_EXT(1, ospl2xx_tx_ext_config_text),
 };
 
+/* Internal logic to re-load external configuration to driver */
+static int ospl2xx_reload_ext_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int reload = ucontrol->value.integer.value[0];
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd =
+		snd_soc_codec_get_drvdata(codec);
+
+	if (reload) {
+		pr_info("re-loading configuration files\n");
+		INIT_WORK(&msm8x16_wcd->ospl2xx_config, ospl2xx_load_config);
+		queue_work(msm8x16_wcd->ospl2xx_wq,
+			&msm8x16_wcd->ospl2xx_config);
+	}
+
+	return 0;
+}
+static int ospl2xx_reload_ext_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+static const char *const ospl2xx_reload_ext_text[] = {"Stay", "Reload"};
+static const struct soc_enum ospl2xx_reload_ext_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, ospl2xx_reload_ext_text),
+};
+
+
 static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* PUT */ SOC_ENUM_EXT("OSPL Rx",
 		ospl2xx_rx_enable_enum[0],
@@ -778,6 +807,10 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* PUT */ SOC_ENUM_EXT("OSPL Ext TxConfig",
 		ospl2xx_tx_ext_config_enum[0],
 		ospl2xx_tx_ext_config_get, ospl2xx_tx_ext_config_put),
+
+	/* PUT */ SOC_ENUM_EXT("OSPL Ext Reload",
+		ospl2xx_reload_ext_enum[0],
+		ospl2xx_reload_ext_get, ospl2xx_reload_ext_put),
 };
 
 /*
