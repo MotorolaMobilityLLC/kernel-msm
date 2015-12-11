@@ -2947,6 +2947,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 			msm_otg_start_peripheral(otg, 0);
 			motg->chg_type = USB_DCP_CHARGER;
 			clear_bit(B_FALSE_SDP, &motg->inputs);
+			asus_chg_set_chg_mode(ASUS_CHG_SRC_DC);
+			printk("[USB] set_chg_mode: ASUS DCP\n");
 			otg->phy->state = OTG_STATE_B_IDLE;
 			work = 1;
 		} else if (!test_bit(ID, &motg->inputs) ||
