@@ -201,19 +201,19 @@ static size_t data_size(struct blkdev *cb)
 
 	bytes = kernel_read(cb->filep, 0, (void *) &buf, UTAG_MIN_TAG_SIZE);
 	if (UTAG_MIN_TAG_SIZE > bytes) {
-		pr_err("ERR file (%s) read failed\n", cb->name);
+		pr_err("ERR file (%s) read failed ret %zd\n", cb->name, bytes);
 		return 0;
 	}
 
-	bytes = ntohl(buf.flags);
-	ctrl->key = ntohl(buf.util);
-	pr_debug("utag file (%s) saved size %zu block size %zu key %u\n",
+	ctrl->key = ntohl(buf.flags);
+	bytes = ntohl(buf.util);
+	pr_debug("utag file (%s) saved size %zu block size %zu key %#x\n",
 				cb->name, bytes, cb->size, ctrl->key);
 
-	/* Until in sync with BL use saved size only for HW block */
+	/* On the first read always load entire partition */
 	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT))) {
 		pr_err("hw partition block size logic utag\n");
-		if (!bytes || bytes > cb->size)
+		if (!ctrl->rsize || !bytes || bytes > cb->size)
 			bytes = cb->size;
 	} else
 			bytes = cb->size;
@@ -258,6 +258,7 @@ static int open_utags(struct blkdev *cb)
 	}
 
 	cb->size = i_size_read(inode->i_bdev->bd_inode);
+	pr_debug("opening (%s) success\n", cb->name);
 	return 0;
 }
 
@@ -365,7 +366,6 @@ static int check_path(char *fullpath, int count)
 {
 	char *ptr, *bptr;
 
-		pr_err("path %s\n", fullpath);
 	ptr = strnchr(fullpath, count, ':');
 	bptr = strnchr(fullpath, count, '/');
 	if (bptr && ptr && bptr > ptr) {
@@ -735,8 +735,8 @@ static void *freeze_tags(size_t block_size, struct utag *tags,
 		return NULL;
 
 	cur = tags;
-	/* root utag stores size of entire image in flags word */
-	cur->flags = frozen_size;
+	/* root utag stores size of entire image in util word */
+	cur->util = frozen_size;
 	while (1) {
 		written = 0;
 		memcpy(frozen.name, cur->name, MAX_UTAG_NAME);
@@ -788,6 +788,7 @@ static void *freeze_tags(size_t block_size, struct utag *tags,
 static struct utag *load_utags(struct blkdev *cb)
 {
 	size_t bytes;
+	int ret_bytes;
 	void *data;
 	struct utag *head = NULL;
 	struct ctrl *ctrl = container_of(cb, struct ctrl, main);
@@ -807,14 +808,16 @@ static struct utag *load_utags(struct blkdev *cb)
 	if (!data)
 		return NULL;
 
-	if (bytes != kernel_read(cb->filep, 0, data, bytes)) {
-		pr_err("ERR file (%s) read failed\n", cb->name);
+	ret_bytes = kernel_read(cb->filep, 0, data, bytes);
+	if (bytes != ret_bytes) {
+		pr_err("(%s) read failed ret %d\n", cb->name, ret_bytes);
 		goto free_data;
 	}
 
 	head = thaw_tags(bytes, data);
 	if (!head) { /* initialize empty utags partition */
 		int error;
+		pr_debug("initializing empty utags partition\n");
 
 		head = kzalloc(sizeof(struct utag), GFP_KERNEL);
 		if (!head)
@@ -1042,7 +1045,7 @@ static int read_utag(struct seq_file *file, void *v)
 
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
-		pr_err("load config error\n");
+		pr_err("load utags error\n");
 		return -EFAULT;
 	}
 
@@ -1289,6 +1292,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	char tag[MAX_UTAG_NAME];
 	char expendable[MAX_UTAG_NAME], *names[UTAG_DEPTH], *type = NULL;
 	int error, i, num_names;
+	size_t ret = count;
 
 	if ((MAX_UTAG_NAME < count) || (0 == count)) {
 		pr_err("invalid utag name %zu\n", count);
@@ -1307,7 +1311,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	}
 
 	if (check_path(expendable, count-1))
-		return count;
+		return -EFAULT;
 
 	pr_debug("adding [%s] utag\n", expendable);
 
@@ -1321,6 +1325,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 	cur = find_first_utag(tags, expendable);
 	if (NULL != cur) {
 		pr_err("cannot create [%s]; already in use\n", expendable);
+		ret = -EINVAL;
 		goto just_leave;
 	}
 
@@ -1394,7 +1399,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		pr_err("error storing utags partition\n");
 just_leave:
 	free_tags(tags);
-	return count;
+	return ret;
 }
 
 static int reload_show(struct seq_file *file, void *v)
@@ -1405,6 +1410,8 @@ static int reload_show(struct seq_file *file, void *v)
 		pr_err("no control data set\n");
 	else
 		seq_printf(file, "%c\n", ctrl->reload);
+
+	pr_debug("%c\n", ctrl->reload);
 	return 0;
 }
 
@@ -1413,6 +1420,7 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 {
 	struct inode *inode = file->f_dentry->d_inode;
 	struct ctrl *ctrl = PDE_DATA(inode);
+
 
 	/* only single character input plus new line */
 	if (2 < count) {
@@ -1425,9 +1433,13 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 		return -EFAULT;
 	}
 
+	pr_debug("%c\n", ctrl->reload);
+
 	if (UTAG_STATUS_RELOAD == ctrl->reload) {
-		if (open_utags(&ctrl->main))
-			return count;
+		if (open_utags(&ctrl->main)) {
+			ctrl->reload = UTAG_STATUS_NOT_READY;
+			return -EFAULT;
+		}
 		open_utags(&ctrl->backup);
 		rebuild_utags_directory(ctrl);
 	}
@@ -1632,7 +1644,7 @@ static int utags_probe(struct platform_device *pdev)
 		return -EFAULT;
 	}
 
-	pr_info("Success\n");
+	pr_info("Success [%s]\n", ctrl->dir_name);
 	return 0;
 }
 
