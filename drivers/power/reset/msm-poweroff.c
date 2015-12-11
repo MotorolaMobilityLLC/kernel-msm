@@ -52,6 +52,11 @@ static bool scm_deassert_ps_hold_supported;
 static void __iomem *msm_ps_hold;
 static phys_addr_t tcsr_boot_misc_detect;
 
+static int enable_edl = 0;
+static int edl_set(const char *val, struct kernel_param *kp);
+module_param_call(enable_edl, edl_set, param_get_int,
+			&enable_edl, 0644);
+
 #ifdef CONFIG_MSM_DLOAD_MODE
 #define EDL_MODE_PROP "qcom,msm-imem-emergency_download_mode"
 #define DL_MODE_PROP "qcom,msm-imem-download_mode"
@@ -127,6 +132,11 @@ static void enable_emergency_dload_mode(void)
 {
 	int ret;
 
+	if (enable_edl == 0) {
+		pr_info("emergency EDL is not enabled\n");
+		return;
+	}
+
 	if (emergency_dload_mode_addr) {
 		__raw_writel(EMERGENCY_DLOAD_MAGIC1,
 				emergency_dload_mode_addr);
@@ -181,6 +191,25 @@ static bool get_dload_mode(void)
 	return false;
 }
 #endif
+
+static int edl_set(const char *val, struct kernel_param *kp)
+{
+	int ret;
+	int old_val = enable_edl;
+
+	ret = param_set_int(val, kp);
+
+	if (ret)
+		return ret;
+
+	/* If enable_edl is not zero or one, ignore. */
+	if (enable_edl >> 1) {
+		enable_edl = old_val;
+		return -EINVAL;
+	}
+
+	return 0;
+}
 
 void msm_set_restart_mode(int mode)
 {
