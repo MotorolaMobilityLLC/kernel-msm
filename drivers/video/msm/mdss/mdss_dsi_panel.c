@@ -670,6 +670,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			(pinfo->mipi.boot_mode != pinfo->mipi.mode))
 		on_cmds = &ctrl->post_dms_on_cmds;
 
+	if (ctrl->gamma_cmds.cmd_cnt)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->gamma_cmds);
+
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds);
 
@@ -1481,6 +1484,57 @@ static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
 	return;
 }
 
+int mdss_dsi_panel_color_temp(struct device_node *pan_node,
+			struct mdss_dsi_ctrl_pdata *ctrl, int color_temp)
+{
+	int rc = 0;
+	struct mdss_panel_info *pinfo = &(ctrl->panel_data.panel_info);
+	pinfo->color_temp = color_temp;
+
+	if (ctrl->gamma_cmds.cmd_cnt) {
+		kfree(ctrl->gamma_cmds.cmds);
+		kfree(ctrl->gamma_cmds.buf);
+		ctrl->gamma_cmds.cmd_cnt = 0;
+	}
+
+	if (color_temp == PANEL_COLORTEMP_BLUISH) {
+		rc = mdss_dsi_parse_dcs_cmds(pan_node, &ctrl->gamma_cmds,
+			"qcom,mdss-dsi-gamma-bluish", "qcom,mdss-dsi-on-command-state");
+	} else {
+		rc = mdss_dsi_parse_dcs_cmds(pan_node, &ctrl->gamma_cmds,
+			"qcom,mdss-dsi-gamma-default", "qcom,mdss-dsi-on-command-state");
+	}
+	if (rc) {
+		pr_err("%s: failed to get gamma commands. color_temp=%d\n",
+				__func__, pinfo->color_temp);
+		return -EINVAL;
+	}
+	pr_debug("%s: gamma-cmds-cnt=%d color_temp=%d (%s)\n",
+			__func__, ctrl->gamma_cmds.cmd_cnt, pinfo->color_temp,
+			(pinfo->blank_state == MDSS_PANEL_BLANK_BLANK)?
+				"blank" : "un-blank");
+
+	if (pinfo->blank_state == MDSS_PANEL_BLANK_BLANK)
+		return 0;
+
+	if (ctrl->gamma_cmds.cmd_cnt > 0) {
+		struct dcs_cmd_req cmdreq;
+
+		memset(&cmdreq, 0, sizeof(cmdreq));
+		cmdreq.cmds = ctrl->gamma_cmds.cmds;
+		cmdreq.cmds_cnt = ctrl->gamma_cmds.cmd_cnt;
+
+		/* HS when LCD unblank */
+		cmdreq.flags = CMD_REQ_COMMIT | CMD_REQ_HS_MODE;
+
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
+
+		mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	}
+	return 0;
+}
+
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -1798,6 +1852,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->gamma_cmds,
+		"qcom,mdss-dsi-gamma-default", "qcom,mdss-dsi-on-command-state");
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->on_cmds,
 		"qcom,mdss-dsi-on-command", "qcom,mdss-dsi-on-command-state");

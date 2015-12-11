@@ -35,6 +35,8 @@ static struct dsi_drv_cm_data shared_ctrl_data;
 
 static int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 					bool active);
+static struct device_node *mdss_dsi_find_panel_of_node(
+		struct platform_device *pdev, char *panel_cfg);
 
 static int mdss_dsi_labibb_vreg_init(struct platform_device *pdev)
 {
@@ -1487,6 +1489,47 @@ static int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata)
 	return rc;
 }
 
+static int mdss_dsi_set_color_temp(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+				int color_temp)
+{
+	int rc = 0;
+	struct mdss_panel_cfg *pan_cfg = NULL;
+	char panel_cfg[MDSS_MAX_PANEL_LEN];
+	struct device_node *dsi_pan_node = NULL;
+
+	if (!ctrl_pdata->mdss_util) {
+		pr_err("Failed to get mdss utility functions\n");
+		return -ENODEV;
+	}
+	pan_cfg = ctrl_pdata->mdss_util->panel_intf_type(MDSS_PANEL_INTF_DSI);
+	if (IS_ERR(pan_cfg)) {
+		return PTR_ERR(pan_cfg);
+	} else if (!pan_cfg) {
+		pr_err("%s: failed to get pan cfg\n", __func__);
+		return -ENODEV;
+	}
+	pr_debug("%s:%d: cfg:[%s]\n", __func__, __LINE__,
+			pan_cfg->arg_cfg);
+
+	if (!strlcpy(panel_cfg, pan_cfg->arg_cfg,
+		     sizeof(pan_cfg->arg_cfg))) {
+		pr_err("%s:%d:dsi specific cfg not present\n",
+				__func__, __LINE__);
+		return -EINVAL;
+	}
+
+	dsi_pan_node = mdss_dsi_find_panel_of_node(ctrl_pdata->pdev, panel_cfg);
+	if (!dsi_pan_node) {
+		pr_err("%s: can't find panel node %s\n", __func__, panel_cfg);
+		return rc;
+	}
+
+	rc = mdss_dsi_panel_color_temp(dsi_pan_node, ctrl_pdata, color_temp);
+
+	of_node_put(dsi_pan_node);
+	return rc;
+}
+
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
 {
@@ -1596,6 +1639,9 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_DSI_PANEL_STATUS:
 		if (ctrl_pdata->check_status)
 			rc = ctrl_pdata->check_status(ctrl_pdata);
+		break;
+	case MDSS_EVENT_DSI_PANEL_COLOR_TEMP:
+		rc = mdss_dsi_set_color_temp(ctrl_pdata, (long)arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
@@ -1748,6 +1794,7 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	}
 	ctrl_pdata->mdss_util = util;
 	atomic_set(&ctrl_pdata->te_irq_ready, 0);
+	ctrl_pdata->pdev = pdev;
 
 	ctrl_name = of_get_property(pdev->dev.of_node, "label", NULL);
 	if (!ctrl_name)

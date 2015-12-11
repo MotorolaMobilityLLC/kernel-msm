@@ -373,6 +373,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds post_dms_on_cmds;
 	struct dsi_panel_cmds off_cmds;
 	struct dsi_panel_cmds status_cmds;
+	struct dsi_panel_cmds gamma_cmds;
 	u32 status_cmds_rlen;
 	u32 *status_value;
 	u32 status_error_count;
@@ -424,6 +425,7 @@ struct mdss_dsi_ctrl_pdata {
 	bool dsvreg_pre_off;
 	struct regulator *dsvreg;
 	bool dfps_status;	/* dynamic refresh status */
+	struct platform_device *pdev;
 };
 
 struct dsi_status_data {
@@ -507,6 +509,8 @@ int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 
 int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct mdss_intf_recovery *recovery);
+int mdss_dsi_panel_color_temp(struct device_node *pan_node,
+		struct mdss_dsi_ctrl_pdata *ctrl, int color_temp);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {
