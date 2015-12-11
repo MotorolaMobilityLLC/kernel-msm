@@ -2948,6 +2948,55 @@ static ssize_t mdss_mdp_cmd_autorefresh_store(struct device *dev,
 	return len;
 }
 
+static ssize_t mdss_mdp_colortemp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	ssize_t ret;
+	struct mdss_panel_data *pdata;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected for fb%d\n", mfd->index);
+		return -ENODEV;
+	}
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n",
+		pdata->panel_info.color_temp);
+
+	return ret;
+}
+
+static ssize_t mdss_mdp_colortemp_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	int ret;
+	struct mdss_panel_data *pdata;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	int colortemp = 0;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected for fb%d\n", mfd->index);
+		return -ENODEV;
+	}
+
+	ret = kstrtoint(buf, 10, &colortemp);
+	if (ret) {
+		pr_err("kstrtoint failed. ret=%d\n", ret);
+		return ret;
+	}
+	if (pdata->panel_info.color_temp == colortemp) {
+		pr_info("Color temp is already %d\n", colortemp);
+		return count;
+	}
+	mdss_mdp_ctl_intf_event(ctl,
+		MDSS_EVENT_DSI_PANEL_COLOR_TEMP, (void *)(long)colortemp);
+	return count;
+}
 
 static DEVICE_ATTR(msm_cmd_autorefresh_en, S_IRUGO | S_IWUSR,
 	mdss_mdp_cmd_autorefresh_show, mdss_mdp_cmd_autorefresh_store);
@@ -2956,12 +3005,15 @@ static DEVICE_ATTR(ad, S_IRUGO | S_IWUSR | S_IWGRP, mdss_mdp_ad_show,
 	mdss_mdp_ad_store);
 static DEVICE_ATTR(dyn_pu, S_IRUGO | S_IWUSR | S_IWGRP, mdss_mdp_dyn_pu_show,
 	mdss_mdp_dyn_pu_store);
+static DEVICE_ATTR(color_temp, S_IRUGO | S_IWUSR, mdss_mdp_colortemp_show,
+	mdss_mdp_colortemp_store);
 
 static struct attribute *mdp_overlay_sysfs_attrs[] = {
 	&dev_attr_vsync_event.attr,
 	&dev_attr_ad.attr,
 	&dev_attr_dyn_pu.attr,
 	&dev_attr_msm_cmd_autorefresh_en.attr,
+	&dev_attr_color_temp.attr,
 	NULL,
 };
 
