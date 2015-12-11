@@ -471,6 +471,8 @@ extern char g_CHG_mode;
 #endif
 //ASUS_BSP ---
 static int MPP4_read;
+enum DEVICE_HWID ASUS_hwID;
+
 static bool g_bat_is_cooler = false;
 static bool g_bat_is_warmer = false;
 
@@ -1528,7 +1530,8 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 	
 	qpnp_chg_write(chip, &chg_led, 0x104D, 1);//ASUS_BSP +
 
-	gpio_set_value(chip->chg_gpio,0);
+	if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3))
+		gpio_set_value(chip->chg_gpio,0);
 
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip)
 			|| qpnp_chg_is_dc_chg_plugged_in(chip))
@@ -1904,8 +1907,8 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 					power_supply_changed(chip->usb_psy);
 				}
 			}
-
-			if (lastTimeCableType == 4)
+			if ((lastTimeCableType == 4) &&
+				((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)))
 				gpio_set_value(chip->chg_gpio, 1);
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
@@ -2652,36 +2655,40 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 static int
 get_prop_usb_type(struct qpnp_chg_chip *chip)
 {
-	MPP4_read = get_prop_mpp4_voltage(chip);
-	pr_debug("lastTimeCableType:%d, ADC: %d\n", lastTimeCableType, MPP4_read);
-	if (lastTimeCableType == 4)
-		gpio_set_value(chip->chg_gpio, 1);
-	else
-		gpio_set_value(chip->chg_gpio, 0);
-	if (lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000)) {
-		pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
-		return POWER_SUPPLY_USB_TYPE_AC_FAST;
-	}
-	else if (lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2800000)) {
-		pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
-		return POWER_SUPPLY_USB_TYPE_POWER_BANK;
-	}
-	else if (lastTimeCableType == 2) {
-		pr_debug("POWER_SUPPLY_USB_TYPE_USB_SDP\n");
-		return POWER_SUPPLY_USB_TYPE_USB_NORMAL;
-	}
-	else if (lastTimeCableType == 3) {
-		pr_debug("POWER_SUPPLY_USB_TYPE_USB_CDP\n");
-		return POWER_SUPPLY_USB_TYPE_USB_FAST;
-	}
-	else if (lastTimeCableType == 4) {
-		pr_debug("POWER_SUPPLY_USB_TYPE_USB_DCP\n");
-		return POWER_SUPPLY_USB_TYPE_AC_NORMAL;
-	}
-	else {
+	if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
+		MPP4_read = get_prop_mpp4_voltage(chip);
+		pr_debug("lastTimeCableType:%d, ADC: %d\n", lastTimeCableType, MPP4_read);
+		if (lastTimeCableType == 4)
+			gpio_set_value(chip->chg_gpio, 1);
+		else
+			gpio_set_value(chip->chg_gpio, 0);
+		if (lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000)) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
+			return POWER_SUPPLY_USB_TYPE_AC_FAST;
+		}
+		else if (lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2800000)) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
+			return POWER_SUPPLY_USB_TYPE_POWER_BANK;
+		}
+		else if (lastTimeCableType == 2) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_USB_SDP\n");
+			return POWER_SUPPLY_USB_TYPE_USB_NORMAL;
+		}
+		else if (lastTimeCableType == 3) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_USB_CDP\n");
+			return POWER_SUPPLY_USB_TYPE_USB_FAST;
+		}
+		else if (lastTimeCableType == 4) {
+			pr_debug("POWER_SUPPLY_USB_TYPE_USB_DCP\n");
+			return POWER_SUPPLY_USB_TYPE_AC_NORMAL;
+		}
+		else {
 		pr_debug("POWER_SUPPLY_USB_TYPE_UNKNOWN\n");
 		return POWER_SUPPLY_USB_TYPE_UNKNOWN;
+		}
 	}
+	pr_debug("POWER_SUPPLY_USB_TYPE_UNKNOWN\n");
+	return POWER_SUPPLY_USB_TYPE_UNKNOWN;
 }
 #define DEFAULT_CAPACITY	50
 #ifndef CONFIG_PM_8226_CHARGER
@@ -3414,9 +3421,7 @@ static void
 qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 {
 	unsigned int chg_current = chip->max_bat_chg_current;
-	enum DEVICE_HWID ASUS_hwID;
 
-	ASUS_hwID = get_hardware_id();
 	if (chip->bat_is_cool){
 		if (g_bat_is_cooler == true){
 			chg_current = 100;
@@ -4065,9 +4070,6 @@ qpnp_eoc_work(struct work_struct *work)
 	int ibat_ma, vbat_mv, rc = 0;
 	u8 batt_sts = 0, buck_sts = 0, chg_sts = 0;
 	bool vbat_lower_than_vbatdet;
-	enum DEVICE_HWID ASUS_hwID;
-
-	ASUS_hwID = get_hardware_id();
 
 	pm_stay_awake(chip->dev);
 	pr_debug("[BAT][PM8226][pm_stay_awake]%s\n",__FUNCTION__);//ASUS BSP Eason:check pm_stay_awake
@@ -4116,12 +4118,6 @@ qpnp_eoc_work(struct work_struct *work)
 #endif
 //ASUS_BSP Eason_Chang: show term_current ---
 
-		MPP4_read = get_prop_mpp4_voltage(chip);
-		printk("MPP4_read: %d\n", MPP4_read);
-		if (lastTimeCableType == 4)
-			gpio_set_value(chip->chg_gpio, 1);
-		else
-			gpio_set_value(chip->chg_gpio, 0);
 		if ((ASUS_hwID == SPARROW_SR2) || (ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
 				if (get_prop_battery_voltage_now(chip) > 4200000) {
@@ -4138,6 +4134,12 @@ qpnp_eoc_work(struct work_struct *work)
 		}
 		if (ASUS_hwID == SPARROW_PR3) {
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
+				MPP4_read = get_prop_mpp4_voltage(chip);
+				printk("MPP4_read: %d\n", MPP4_read);
+				if (lastTimeCableType == 4)
+					gpio_set_value(chip->chg_gpio, 1);
+				else
+					gpio_set_value(chip->chg_gpio, 0);
 				if (get_prop_battery_voltage_now(chip) < 3000000) {
 					printk("VBAT is smaller than 3V, modify the charging current to 50 mA\n\n");
 					qpnp_chg_ibatmax_set(chip, 50);
@@ -4177,6 +4179,12 @@ qpnp_eoc_work(struct work_struct *work)
 		}
 		if (ASUS_hwID == WREN_PR3) {
 			if (!chip->bat_is_warm && !chip->bat_is_cool) {
+				MPP4_read = get_prop_mpp4_voltage(chip);
+				printk("MPP4_read: %d\n", MPP4_read);
+				if (lastTimeCableType == 4)
+					gpio_set_value(chip->chg_gpio, 1);
+				else
+					gpio_set_value(chip->chg_gpio, 0);
 				if (get_prop_battery_voltage_now(chip) < 3000000) {
 					printk("VBAT is smaller than 3V, modify the charging current to 50 mA\n");
 					qpnp_chg_ibatmax_set(chip, 50);
@@ -5676,13 +5684,14 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			return rc;
 		}
 	}
-
-	chip->chg_gpio = of_get_named_gpio_flags(chip->spmi->dev.of_node, "qcom,chg-gpio", 0, NULL);
-	if (gpio_is_valid(chip->chg_gpio)) {
-		rc = gpio_request_one(chip->chg_gpio, GPIOF_OUT_INIT_LOW,
-				"qcom,chg-gpio");
-		if (rc) {
-			return rc;
+	if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
+		chip->chg_gpio = of_get_named_gpio_flags(chip->spmi->dev.of_node, "qcom,chg-gpio", 0, NULL);
+		if (gpio_is_valid(chip->chg_gpio)) {
+			rc = gpio_request_one(chip->chg_gpio, GPIOF_OUT_INIT_LOW,
+					"qcom,chg-gpio");
+			if (rc) {
+				return rc;
+			}
 		}
 	}
 
@@ -6139,7 +6148,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	//ASUS_BSP --- frank_tao "add asus battery driver"
 
 	printk("qpnp_charger_probe\n");
-
+	ASUS_hwID = get_hardware_id();
 	chip = devm_kzalloc(&spmi->dev,
 			sizeof(struct qpnp_chg_chip), GFP_KERNEL);
 	if (chip == NULL) {
