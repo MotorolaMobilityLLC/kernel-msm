@@ -850,6 +850,7 @@
 		gpios = <&msm_gpio 65 0>, /* IRQ */
 			<&msm_gpio 64 0>; /* RESET */
 		synaptics,touch-clip-area = <450 1875 610 1919>;
+		synaptics,use-in-progress-event-blank;
 		vdd_quirk-supply = <&pm8950_l6>;
 		synaptics,gpio-config;
 		/* pins used by touchscreen */
@@ -863,7 +864,7 @@
 			patch-data = "";
 		};
 		default_suspended: touchstate_aod_suspended {
-			patch-data = "F1@0=1&7";
+			patch-data = "F12@20:1=2;F1@0=1&7";
 		};
 	};
 };
