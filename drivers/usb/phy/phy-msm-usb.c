@@ -73,7 +73,7 @@ static bool msm_otg_bsv = 0;
 #define DRIVER_NAME	"msm_otg"
 
 #define ID_TIMER_FREQ		(jiffies + msecs_to_jiffies(500))
-#define CHG_RECHECK_DELAY	(jiffies + msecs_to_jiffies(2000))
+#define CHG_RECHECK_DELAY	(jiffies + msecs_to_jiffies(3000))
 #define ULPI_IO_TIMEOUT_USEC	(10 * 1000)
 #define USB_PHY_3P3_VOL_MIN	3050000 /* uV */
 #define USB_PHY_3P3_VOL_MAX	3300000 /* uV */
@@ -2574,8 +2574,13 @@ static void msm_chg_detect_work(struct work_struct *w)
 //ASUS_BSP+++ "[USB][NA][Spec] Add ASUS charger mode support"
 #ifdef CONFIG_CHARGER_ASUS
 		if(motg->chg_type != USB_SDP_CHARGER){
-			asus_chg_set_chg_mode(ASUS_CHG_SRC_DC);
-			printk("[USB] set_chg_mode: ASUS AC\n");
+			if(motg->chg_type == USB_CDP_CHARGER) {
+				asus_chg_set_chg_mode(ASUS_CHG_SRC_CDP);
+				printk("[USB] set_chg_mode: ASUS CDP\n");
+			}else{
+				asus_chg_set_chg_mode(ASUS_CHG_SRC_DC);
+				printk("[USB] set_chg_mode: ASUS DCP\n");
+			}
 		}
 		else{
 			if(g_usb_boot == MSM_OTG_USB_BOOT_IRQ){
