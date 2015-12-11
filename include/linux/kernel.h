@@ -24,12 +24,12 @@ enum DEVICE_HWID {
 	SPARROW_SR2    = 0x3,
 	SPARROW_ER     = 0x4,
 	SPARROW_PR     = 0x5,
-	SPARROW_MP     = 0x6,
+	SPARROW_PR3     = 0x6,
 	// WI300QF
 	WREN_EVB_SR    = 0x8,
 	WREN_ER        = 0x9,
 	WREN_PR        = 0x10,
-	WREN_MP        = 0x11,
+	WREN_PR3        = 0x11,
 	HWID_UNKNOWN = 0xFF
 };
 // --- ASUS_BSP : add for hardware ID

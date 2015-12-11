@@ -1,9 +1,9 @@
-#ifndef _PR_GPIO_PINMUX_H_
-#define _PR_GPIO_PINMUX_H_
+#ifndef _PR3_GPIO_PINMUX_H_
+#define _PR3_GPIO_PINMUX_H_
 
 #include "gpio_pinmux_setting.h"
 
-static struct msm_gpiomux_config pr_msm8226_gpio_configs[] __initdata= {
+static struct msm_gpiomux_config pr3_msm8226_gpio_configs[] __initdata= {
 // ASUS_BSP BerylHou +++ "BT config"
 	{
 		.gpio = 0,	/* BLSP1 BT Uart Tx */
@@ -195,6 +195,13 @@ static struct msm_gpiomux_config pr_msm8226_gpio_configs[] __initdata= {
 		},
 	},
 #endif
+	{
+		.gpio = 56,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &chg_cfg,
+			[GPIOMUX_SUSPENDED] = &chg_cfg,
+		},
+	},
 // ASUS_BSP Ken_Cheng --- I2S Speaker AMP
 	{
 		.gpio = 60,           /* pri mi2s enable */
@@ -309,4 +316,4 @@ static struct msm_gpiomux_config pr_msm8226_gpio_configs[] __initdata= {
 	},
 };
 
-#endif  /* _PR_GPIO_PINMUX_H_  */
+#endif  /* _PR3_GPIO_PINMUX_H_  */

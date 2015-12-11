@@ -215,4 +215,4 @@
 */
 };
 
-#include "sparrow_mp_msm8226-mdss-panels.dtsi"
+#include "sparrow_pr3_msm8226-mdss-panels.dtsi"

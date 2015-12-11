@@ -49,6 +49,15 @@ enum {
 };
 
 enum {
+	POWER_SUPPLY_USB_TYPE_UNKNOWN = 0,
+	POWER_SUPPLY_USB_TYPE_AC_FAST,
+	POWER_SUPPLY_USB_TYPE_USB_NORMAL,
+	POWER_SUPPLY_USB_TYPE_USB_FAST,
+	POWER_SUPPLY_USB_TYPE_AC_NORMAL,
+	POWER_SUPPLY_USB_TYPE_POWER_BANK,
+};
+
+enum {
 	POWER_SUPPLY_HEALTH_UNKNOWN = 0,
 	POWER_SUPPLY_HEALTH_GOOD,
 	POWER_SUPPLY_HEALTH_OVERHEAT,
@@ -169,7 +178,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
-	POWER_SUPPLY_PROP_BATTERY_TYPE,
+	POWER_SUPPLY_PROP_USB_TYPE,
 };
 
 enum power_supply_type {
@@ -277,6 +286,7 @@ extern int power_supply_set_present(struct power_supply *psy, bool enable);
 extern int power_supply_set_scope(struct power_supply *psy, int scope);
 extern int power_supply_set_usb_otg(struct power_supply *psy, int otg);
 extern int power_supply_set_charge_type(struct power_supply *psy, int type);
+extern int power_supply_set_usb_type(struct power_supply *psy, int type);
 extern int power_supply_set_supply_type(struct power_supply *psy,
 					enum power_supply_type supply_type);
 extern int power_supply_set_hi_power_state(struct power_supply *psy, int value);
@@ -316,6 +326,9 @@ static inline int power_supply_set_scope(struct power_supply *psy,
 static inline int power_supply_set_usb_otg(struct power_supply *psy, int otg)
 							{ return -ENOSYS; }
 static inline int power_supply_set_charge_type(struct power_supply *psy,
+							int type)
+							{ return -ENOSYS; }
+static inline int power_supply_set_usb_type(struct power_supply *psy,
 							int type)
 							{ return -ENOSYS; }
 static inline int power_supply_set_supply_type(struct power_supply *psy,

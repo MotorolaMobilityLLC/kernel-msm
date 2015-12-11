@@ -232,6 +232,18 @@ int power_supply_set_charge_type(struct power_supply *psy, int charge_type)
 }
 EXPORT_SYMBOL_GPL(power_supply_set_charge_type);
 
+int power_supply_set_usb_type(struct power_supply *psy, int usb_type)
+{
+	const union power_supply_propval ret = {usb_type,};
+
+	if (psy->set_property)
+		return psy->set_property(psy, POWER_SUPPLY_PROP_USB_TYPE,
+								&ret);
+
+	return -ENXIO;
+}
+EXPORT_SYMBOL_GPL(power_supply_set_usb_type);
+
 /**
  * power_supply_set_hi_power_state - set power state for power_supply
  * @psy:	the power supply to control

@@ -73,7 +73,7 @@
 #include "msm8226-smp2p.dtsi"
 #include "msm8226-gpu.dtsi"
 #include "msm8226-bus.dtsi"
-#include "wren_mp_msm8226-mdss.dtsi"
+#include "sparrow_pr3_msm8226-mdss.dtsi"
 #include "msm8226-coresight.dtsi"
 #include "msm8226-iommu-domains.dtsi"
 #include "msm8226-pinctrl.dtsi"
@@ -389,7 +389,7 @@
 		qcom,vdd-voltage-level = <1 5 7>;
 
 		qcom,hsusb-otg-phy-init-seq =
-			<0x44 0x80 0x68 0x81 0x24 0x82 0x13 0x83 0xffffffff>;
+			<0x44 0x80 0x68 0x81 0x34 0x82 0x13 0x83 0xffffffff>;
 		qcom,hsusb-otg-phy-type = <2>;
 		qcom,hsusb-otg-mode = <1>;
 		qcom,hsusb-otg-otg-control = <2>;
@@ -536,12 +536,17 @@
 		qcom,pri-mi2s-gpio-sck = <&msmgpio 63 0>; /* ASUS_BSP Ken Cheng */
 		qcom,pri-mi2s-gpio-ws  = <&msmgpio 64 0>; /* ASUS_BSP Ken Cheng */
 		qcom,pri-mi2s-gpio-din = <&msmgpio 65 0>; /* ASUS_BSP Ken Cheng */
-		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 63 0>;
-		qcom,prim-auxpcm-gpio-sync = <&msmgpio 64 0>;
-		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
-		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
-		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
+		qcom,tert-mi2s-gpio-sck  = <&msmgpio 49 0>;
+		qcom,tert-mi2s-gpio-ws   = <&msmgpio 50 0>;
+		qcom,tert-mi2s-gpio-dout = <&msmgpio 52 0>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 70 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 69 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 71 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 68 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-secd";
 		DMIC-supply = <&pm8226_l23>; //ASUS BSP Jessy config DMIC
+		SPK1P8-supply = <&pm8226_l9>;
+		SPK3P0-supply = <&pm8226_l16>;
 	};
 
 	qcom,msm-pcm {
@@ -729,6 +734,13 @@
 			qcom,msm-mi2s-rx-lines = <0>;
 			qcom,msm-mi2s-tx-lines = <1>;
 		};
+
+		qcom,msm-dai-q6-mi2s-tert {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <0>;
+		};
 	};
 /* ASUS_BSP --- Ken Cheng "MI2S for digital MIC" */
 	qcom,msm-pcm-hostless {
@@ -739,13 +751,13 @@
 		compatible = "qcom,msm-auxpcm-dev";
 		qcom,msm-cpudai-auxpcm-mode = <0>, <0>;
 		qcom,msm-cpudai-auxpcm-sync = <1>, <1>;
-		qcom,msm-cpudai-auxpcm-frame = <5>, <4>;
+		qcom,msm-cpudai-auxpcm-frame = <3>, <3>;
 		qcom,msm-cpudai-auxpcm-quant = <2>, <2>;
 		qcom,msm-cpudai-auxpcm-num-slots = <1>, <1>;
 		qcom,msm-cpudai-auxpcm-slot-mapping = <1>, <1>;
 		qcom,msm-cpudai-auxpcm-data = <0>, <0>;
-		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>, <2048000>;
-		qcom,msm-auxpcm-interface = "primary";
+		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <512000>, <512000>;
+		qcom,msm-auxpcm-interface = "secondary";
 	};
 
 	qcom,msm-ssc-sensors {
@@ -1422,8 +1434,8 @@
 };
 
 #include "msm-pm8226-rpm-regulator.dtsi"
-#include "wren_mp_msm-pm8226.dtsi"
-#include "wren_mp_105_msm8226-regulator.dtsi"
+#include "sparrow_pr3_msm-pm8226.dtsi"
+#include "sparrow_pr3_105_msm8226-regulator.dtsi"
 
 &pm8226_vadc {
 	chan@0 {

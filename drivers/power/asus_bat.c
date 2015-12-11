@@ -1591,6 +1591,9 @@ extern void asus_chg_set_chg_mode(enum asus_chg_src chg_src)
 			//printk("[BAT]SetCharger  ILLEGAL_CHARGER_TYPE\n");
 			lpCharger->SetCharger(lpCharger,ILLEGAL_CHARGER_TYPE);
 			break;
+		case ASUS_CHG_SRC_CDP:
+			lpCharger->SetCharger(lpCharger,NORMAL_CURRENT_CHARGER_TYPE);
+			break;
 		default:
 			break;
 	}
