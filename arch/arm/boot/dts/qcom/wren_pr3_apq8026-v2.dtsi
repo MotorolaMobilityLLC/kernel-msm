@@ -17,7 +17,7 @@
  */
 
 /*+++ASUS_BSP: rename #include "msm8226-v2.dtsi"*/
-#include "sparrow_mp_105_msm8226-v2.dtsi"
+#include "wren_pr3_msm8226-v2.dtsi"
 
 / {
 	model = "Qualcomm APQ 8026";

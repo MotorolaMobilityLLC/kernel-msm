@@ -231,4 +231,4 @@
 */
 };
 
-#include "wren_mp_msm8226-mdss-panels.dtsi"
+#include "wren_pr3_msm8226-mdss-panels.dtsi"
