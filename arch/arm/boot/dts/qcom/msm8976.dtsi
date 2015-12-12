@@ -2650,6 +2650,11 @@
 		qcom,ce-opp-freq = <100000000>;
 	};
 
+	qcom,cnss_sdio {
+		compatible = "qcom,cnss_sdio";
+		vdd-wlan-supply = <&rome_vreg>;
+		vdd-wlan-io-supply = <&pm8950_l5>;
+	};
 };
 
 #include "msm-pm8950-rpm-regulator.dtsi"
