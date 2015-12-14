@@ -695,4 +695,12 @@
 		gpio = <&pm8950_gpios 5 0>;
 		regulator-name = "rome_vreg";
 	};
+
+	bt_vreg: bt_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "bt_vreg";
+		startup-delay-us = <4000>;
+		enable-active-high;
+		gpio = <&pm8950_gpios 5 0>;
+	};
 };
