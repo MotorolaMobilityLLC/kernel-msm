@@ -869,13 +869,13 @@ static int get_eb_prop(struct smbchg_chip *chip,
 	eb_batt_psy =
 		power_supply_get_by_name((char *)chip->eb_batt_psy_name);
 	if (!eb_batt_psy)
-		return -EINVAL;
+		return -ENODEV;
 
 	eb_pwr_psy =
 		power_supply_get_by_name((char *)chip->eb_pwr_psy_name);
 	if (!eb_pwr_psy) {
 		power_supply_put(eb_batt_psy);
-		return -EINVAL;
+		return -ENODEV;
 	}
 
 	rc = eb_batt_psy->get_property(eb_batt_psy, prop, &ret);
@@ -896,7 +896,7 @@ static int get_eb_prop(struct smbchg_chip *chip,
 		eb_prop = -EINVAL;
 	} else if (ret.intval !=
 		   POWER_SUPPLY_PTP_INT_SND_SUPPLEMENTAL) {
-		eb_prop = -EINVAL;
+		eb_prop = -ENODEV;
 	}
 
 	power_supply_put(eb_batt_psy);
@@ -939,12 +939,12 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 
 	if ((reg & BAT_TCC_REACHED_BIT) && !chip->demo_mode &&
 	    (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD) &&
-	    (eb_soc == -EINVAL))
+	    (eb_soc == -ENODEV))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	if ((chip->stepchg_state == STEP_FULL) && !(batt_soc < 100) &&
 	    !chip->demo_mode && (chip->temp_state == POWER_SUPPLY_HEALTH_GOOD)
-	    && ((eb_soc == -EINVAL) || (eb_soc >= 100)))
+	    && ((eb_soc == -ENODEV) || (eb_soc >= 100)))
 		return POWER_SUPPLY_STATUS_FULL;
 
 	charger_present = is_usb_present(chip) | is_wls_present(chip);
@@ -1275,7 +1275,7 @@ static int smbchg_calc_batt_cap_full(struct smbchg_chip *chip)
 	batt_size = get_prop_charge_full(chip);
 
 	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
-	if (eb_size != -EINVAL)
+	if (eb_size >= 0)
 	    batt_size += eb_size;
 
 	return batt_size;
@@ -1303,7 +1303,7 @@ static int smbchg_calc_batt_cap_full_design(struct smbchg_chip *chip)
 	batt_size = get_prop_charge_full_design(chip);
 
 	eb_size = get_eb_prop(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN);
-	if (eb_size != -EINVAL)
+	if (eb_size >= 0)
 	    batt_size += eb_size;
 
 	return batt_size;
@@ -8328,8 +8328,10 @@ static void smbchg_heartbeat_work(struct work_struct *work)
 
 	eb_soc = get_eb_prop(chip, POWER_SUPPLY_PROP_CAPACITY);
 
-	if (eb_soc == -EINVAL)
+	if (eb_soc == -ENODEV)
 		smbchg_set_extbat_state(chip, EB_DISCONN);
+	else if (eb_soc == -EINVAL)
+		eb_soc = 0;
 	else if (chip->ebchg_state == EB_DISCONN)
 		smbchg_set_extbat_state(chip, EB_OFF);
 
