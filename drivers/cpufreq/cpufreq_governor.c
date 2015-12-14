@@ -22,10 +22,8 @@
 
 #include "cpufreq_governor.h"
 
-#if ASUS_DEBUG==2
 unsigned int cpu_max_loading = 0;
 EXPORT_SYMBOL_GPL(cpu_max_loading);
-#endif
 
 static struct attribute_group *get_sysfs_attr(struct dbs_data *dbs_data)
 {
@@ -106,9 +104,9 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 		if (load > max_load)
 			max_load = load;
 	}
-#if ASUS_DEBUG==2
+
 	cpu_max_loading = max_load;
-#endif
+
 	dbs_data->cdata->gov_check_cpu(cpu, max_load);
 }
 EXPORT_SYMBOL_GPL(dbs_check_cpu);
