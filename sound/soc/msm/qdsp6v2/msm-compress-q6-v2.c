@@ -2488,7 +2488,7 @@ static int msm_compr_app_type_cfg_info(struct snd_kcontrol *kcontrol,
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 	uinfo->count = 5;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = 0xFFFFFFFF;
+	uinfo->value.integer.max = 0x7FFFFFFF;
 	return 0;
 }
 
