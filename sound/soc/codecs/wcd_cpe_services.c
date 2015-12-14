@@ -716,8 +716,6 @@ static void cpe_process_irq_int(u32 irq,
 			temp_node.data = m->payload;
 			t_info->substate = CPE_SS_MSG_SENT;
 			t_info->cpe_process_command(&temp_node);
-			kfree(m);
-			t_info->pending = NULL;
 			break;
 
 		default:
@@ -885,14 +883,17 @@ static bool cpe_mt_process_cmd(struct cpe_command_node *command_node)
 		break;
 
 	case CPE_CMD_SEND_MSG_COMPLETE:
+
 		hdr = CMI_GET_HEADER(t_info->tgt->outbox);
 		service = CMI_HDR_GET_SERVICE(hdr);
+		cpe_command_cleanup(command_node);
+		t_info->state = CPE_STATE_IDLE;
+		kfree(t_info->pending);
+		t_info->pending = NULL;
 		pr_debug("%s: msg send success, notifying clients\n",
 			 __func__);
 		cpe_notify_cmi_client(t_info,
 			t_info->tgt->outbox, CPE_SVC_SUCCESS);
-		cpe_command_cleanup(command_node);
-		t_info->state = CPE_STATE_IDLE;
 		break;
 
 	case CPE_CMD_KILL_THREAD:
