@@ -776,6 +776,20 @@ static void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_disable_unprepare(ctrl_pdata->mdp_core_clk);
 }
 
+static int mdss_dsi_ulp_escclk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc = 0;
+
+	rc = clk_prepare(ctrl_pdata->esc_clk);
+	if (rc) {
+		pr_err("%s: Failed to prepare dsi esc clk\n", __func__);
+		goto esc_clk_err;
+	}
+
+esc_clk_err:
+	return rc;
+}
+
 static int mdss_dsi_link_clk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -820,6 +834,38 @@ static void mdss_dsi_link_clk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_unprepare(ctrl_pdata->esc_clk);
 }
 
+static void mdss_dsi_ulp_escclk_unprepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+	clk_unprepare(ctrl_pdata->esc_clk);
+}
+
+static int mdss_dsi_ulp_escclk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	u32 esc_clk_rate = 19200000;
+	int rc = 0;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!ctrl_pdata->panel_data.panel_info.cont_splash_enabled) {
+		rc = clk_set_rate(ctrl_pdata->esc_clk, esc_clk_rate);
+		if (rc) {
+			pr_err("%s: dsi_esc_clk - clk_set_rate failed\n",
+				__func__);
+			goto error;
+		}
+	}
+
+error:
+	return rc;
+}
+
 static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	u32 esc_clk_rate = 19200000;
@@ -859,6 +905,38 @@ static int mdss_dsi_link_clk_set_rate(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 error:
 	return rc;
+}
+
+static int mdss_dsi_ulp_escclk_enable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rc = 0;
+
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	pr_debug("%s: ndx=%d\n", __func__, ctrl_pdata->ndx);
+
+	rc = clk_enable(ctrl_pdata->esc_clk);
+	if (rc) {
+		pr_err("%s: Failed to enable dsi esc clk\n", __func__);
+		goto esc_clk_err;
+	}
+
+esc_clk_err:
+	return rc;
+}
+
+static void mdss_dsi_ulp_escclk_disable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if (!ctrl_pdata) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	pr_debug("%s: ndx=%d\n", __func__, ctrl_pdata->ndx);
+	clk_disable(ctrl_pdata->esc_clk);
 }
 
 static int mdss_dsi_link_clk_enable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -914,6 +992,8 @@ static void mdss_dsi_link_clk_disable(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	clk_disable(ctrl_pdata->byte_clk);
 }
 
+
+
 static int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	int rc = 0;
@@ -948,6 +1028,57 @@ static void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	mdss_dsi_link_clk_disable(ctrl);
 	mdss_dsi_link_clk_unprepare(ctrl);
+}
+
+/**
+ * mdss_dsi_ulp_escclk_start() - Enable DSI controller clock for ULPS transition
+ * @ctrl: pointer to DSI controller structure
+ *
+ * This function is used for enable DSI controller clock when all MDSS and DSI
+ * clocks off and there refcounts are zero. escape clock is enabled without
+ * updating refcount to handle the ULPS entry during core_power ON.
+ */
+static int mdss_dsi_ulp_escclk_start(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int rc = 0;
+
+	rc = mdss_dsi_ulp_escclk_set_rate(ctrl);
+	if (rc) {
+		pr_err("%s: failed to set clk rates. rc=%d\n",
+			__func__, rc);
+		goto error;
+	}
+
+	rc = mdss_dsi_ulp_escclk_prepare(ctrl);
+	if (rc) {
+		pr_err("%s: failed to prepare clks. rc=%d\n",
+			__func__, rc);
+		goto error;
+	}
+
+	rc = mdss_dsi_ulp_escclk_enable(ctrl);
+	if (rc) {
+		pr_err("%s: failed to enable clks. rc=%d\n",
+			__func__, rc);
+		mdss_dsi_ulp_escclk_unprepare(ctrl);
+		goto error;
+	}
+
+error:
+	return rc;
+}
+
+/**
+ * mdss_dsi_ulp_escclk_stop() - Disable DSI controller clock after ULPS transition
+ * @ctrl: pointer to DSI controller structure
+ *
+ * This function is used for disabling DSI controller after handling ULPS entry,
+ * when escape clock is turned on by mdss_dsi_ulp_escclk_start() function.
+ */
+static void mdss_dsi_ulp_escclk_stop(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	mdss_dsi_ulp_escclk_disable(ctrl);
+	mdss_dsi_ulp_escclk_unprepare(ctrl);
 }
 
 /**
@@ -1266,7 +1397,17 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 			 * Also, reset the ulps flag so that ulps_config
 			 * function would reconfigure the controller state to
 			 * ULPS.
+			 *
+			 * Controller clock (escape clock) need to be turned on
+			 * in order for the controller to process ULPS entry
+			 * request.
 			 */
+			rc = mdss_dsi_ulp_escclk_start(ctrl);
+			if (rc) {
+				pr_err("%s: Failed to start esc clocks. rc=%d\n",
+					   __func__, rc);
+				goto error_bus_clk_start;
+			}
 			ctrl->ulps = false;
 			rc = mdss_dsi_ulps_config(ctrl, 1);
 			if (rc) {
@@ -1274,6 +1415,7 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 					__func__, rc);
 				goto error_ulps;
 			}
+			mdss_dsi_ulp_escclk_stop(ctrl);
 		}
 
 		rc = mdss_dsi_clamp_ctrl(ctrl, 0);
