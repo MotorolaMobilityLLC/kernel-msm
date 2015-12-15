@@ -634,7 +634,6 @@
 		pinctrl-names = "i2c_active", "i2c_sleep";
 		pinctrl-0 = <&i2c_5_active>;
 		pinctrl-1 = <&i2c_5_sleep>;
-		qcom,enable-dma;
 
 		motosh@43 {
 			compatible = "stm,motosh";
