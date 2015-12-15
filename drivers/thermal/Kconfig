@@ -368,6 +368,15 @@ config THERMAL_QPNP_ADC_TM
 	  the sensor. Also able to set threshold temperature for both hot and cold
 	  and update when a threshold is reached.
 
+config MMI_SYS_TEMP
+	tristate "Motorola Surface Temperature Driver"
+	depends on THERMAL
+	default n
+	help
+	  This creates a sysfs property for front and back surface
+	  temperatures. These are meant to be populated by the a
+	  user space thermal management daemon.
+
 menu "Texas Instruments thermal drivers"
 source "drivers/thermal/ti-soc-thermal/Kconfig"
 endmenu
