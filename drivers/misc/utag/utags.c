@@ -32,6 +32,7 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/of.h>
+#include <linux/mutex.h>
 
 #define MAX_UTAG_SIZE 1024
 #define MAX_UTAG_NAME 32
@@ -127,7 +128,7 @@ struct ctrl {
 	struct list_head node_list;
 	const char *dir_name;
 	uint32_t lock;
-	struct work_struct delete_work;
+	struct mutex access_lock;
 	struct utag *attrib;
 };
 
@@ -212,7 +213,7 @@ static size_t data_size(struct blkdev *cb)
 
 	/* On the first read always load entire partition */
 	if (!strncmp(ctrl->dir_name, HW_ROOT, sizeof(HW_ROOT))) {
-		pr_err("hw partition block size logic utag\n");
+		pr_debug("hw partition block size logic utag\n");
 		if (!ctrl->rsize || !bytes || bytes > cb->size)
 			bytes = cb->size;
 	} else
@@ -555,7 +556,7 @@ static struct proc_dir_entry *proc_utag_dir(struct ctrl *ctrl,
 		if (populate)
 			goto populate_utag_dir;
 
-		pr_info("procfs dir %s exists; skip\n", tname);
+		pr_debug("procfs dir %s exists; skip\n", tname);
 		return dnode->dir;
 	}
 
@@ -1043,9 +1044,11 @@ static int read_utag(struct seq_file *file, void *v)
 	struct proc_node *proc = (struct proc_node *)file->private;
 	struct ctrl *ctrl = proc->ctrl;
 
+	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load utags error\n");
+		mutex_unlock(&ctrl->access_lock);
 		return -EFAULT;
 	}
 
@@ -1080,6 +1083,7 @@ static int read_utag(struct seq_file *file, void *v)
 
 free_tags_exit:
 	free_tags(tags);
+	mutex_unlock(&ctrl->access_lock);
 	return 0;
 }
 
@@ -1120,6 +1124,7 @@ static ssize_t write_utag(struct file *file, const char __user *buffer,
 	else
 		length -= 1;
 
+	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load config error\n");
@@ -1152,6 +1157,7 @@ free_tags_exit:
 	free_tags(tags);
 free_temp_exit:
 	kfree(payload);
+	mutex_unlock(&ctrl->access_lock);
 	return count;
 }
 
@@ -1195,9 +1201,11 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	if (check_path(expendable, count-1))
 		return count;
 
+	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load config error\n");
+		mutex_unlock(&ctrl->access_lock);
 		return count;
 	}
 
@@ -1232,11 +1240,11 @@ static ssize_t delete_utag(struct file *file, const char __user *buffer,
 	error = store_utags(ctrl, tags);
 	if (error)
 		pr_err("error storing utags partition\n");
-
-	queue_work(system_wq, &ctrl->delete_work);
-
+	else
+		rebuild_utags_directory(ctrl);
 just_leave:
 	free_tags(tags);
+	mutex_unlock(&ctrl->access_lock);
 	return count;
 }
 
@@ -1315,9 +1323,11 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 
 	pr_debug("adding [%s] utag\n", expendable);
 
+	mutex_lock(&ctrl->access_lock);
 	tags = load_utags(&ctrl->main);
 	if (NULL == tags) {
 		pr_err("load config error\n");
+		mutex_unlock(&ctrl->access_lock);
 		return -EFAULT;
 	}
 
@@ -1340,15 +1350,18 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 
 		if (vld->size < 2) {
 			pr_err("invalid .attributes\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto just_leave;
 		}
 
 		attr = names[num_names-1];
 		pr_debug("check for [%s] attribute\n", attr);
 		/* make local copy of .range payload to tokenize */
 		buf = ptr = kzalloc(vld->size, GFP_KERNEL);
-		if (!buf)
-			return -ENOMEM;
+		if (!buf) {
+			ret = -ENOMEM;
+			goto just_leave;
+		}
 
 		memcpy(buf, vld->payload, vld->size);
 
@@ -1364,7 +1377,8 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		/* if ptr is still NULL we did not find a match */
 		if (!found) {
 			pr_err("[%s] is not allowed\n", attr);
-			return -EINVAL;
+			ret =  -EINVAL;
+			goto just_leave;
 		}
 	}
 
@@ -1399,6 +1413,7 @@ static ssize_t new_utag(struct file *file, const char __user *buffer,
 		pr_err("error storing utags partition\n");
 just_leave:
 	free_tags(tags);
+	mutex_unlock(&ctrl->access_lock);
 	return ret;
 }
 
@@ -1433,17 +1448,20 @@ static ssize_t reload_write(struct file *file, const char __user *buffer,
 		return -EFAULT;
 	}
 
+	mutex_lock(&ctrl->access_lock);
 	pr_debug("%c\n", ctrl->reload);
 
 	if (UTAG_STATUS_RELOAD == ctrl->reload) {
 		if (open_utags(&ctrl->main)) {
 			ctrl->reload = UTAG_STATUS_NOT_READY;
+			mutex_unlock(&ctrl->access_lock);
 			return -EFAULT;
 		}
 		open_utags(&ctrl->backup);
 		rebuild_utags_directory(ctrl);
 	}
 
+	mutex_unlock(&ctrl->access_lock);
 	return count;
 }
 
@@ -1586,12 +1604,6 @@ static void clear_utags_directory(struct ctrl *ctrl)
 	}
 }
 
-static void rebuild_utags_work(struct work_struct *w)
-{
-	struct ctrl *ctrl = container_of(w, struct ctrl, delete_work);
-
-	rebuild_utags_directory(ctrl);
-}
 
 static int utags_probe(struct platform_device *pdev)
 {
@@ -1607,9 +1619,8 @@ static int utags_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&ctrl->node_list);
 	ctrl->pdev = pdev;
 	ctrl->reload = UTAG_STATUS_NOT_READY;
+	mutex_init(&ctrl->access_lock);
 	dev_set_drvdata(&pdev->dev, ctrl);
-
-	INIT_WORK(&ctrl->delete_work, rebuild_utags_work);
 
 	rc = utags_dt_init(pdev);
 	if (rc)
@@ -1632,6 +1643,10 @@ static int utags_probe(struct platform_device *pdev)
 		return -EIO;
 	}
 
+	/* if we were able to open file descriptor, build utags */
+	if (ctrl->main.filep)
+		rebuild_utags_directory(ctrl);
+
 	if (!proc_create_data("reload", 0600, ctrl->root, &reload_fops, ctrl)) {
 		pr_err("Failed to create reload entry\n");
 		remove_proc_subtree(ctrl->dir_name, NULL);
@@ -1644,7 +1659,7 @@ static int utags_probe(struct platform_device *pdev)
 		return -EFAULT;
 	}
 
-	pr_info("Success [%s]\n", ctrl->dir_name);
+	pr_info("Done [%s]\n", ctrl->dir_name);
 	return 0;
 }
 
