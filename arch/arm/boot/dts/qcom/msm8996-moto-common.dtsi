@@ -923,6 +923,14 @@
 			dr_mode = "host";
 		};
 	};
+
+	sys_temp_support {
+		compatible = "mmi,sys-temp";
+		mmi,temperature-names = "front_temp",
+					"back_temp";
+		status = "ok";
+	};
+
 };
 
 &pmi8994_charger {
