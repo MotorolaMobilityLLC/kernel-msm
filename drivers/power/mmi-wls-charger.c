@@ -325,8 +325,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 	switch (chip->state) {
 	case MMI_WLS_CHRG_WAIT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (powered) {
 			chip->state = MMI_WLS_CHRG_RUNNING;
@@ -343,8 +341,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_RUNNING:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (batt_temp >= chip->hot_temp) {
 			gpio_set_value(chip->charge_term_gpio, 1);
@@ -353,8 +349,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 			gpio_set_value(chip->charge_term_gpio, 1);
 			chip->state = MMI_WLS_CHRG_OUT_OF_TEMP_COLD;
 		} else if (batt_soc >= MMI_WLS_CHRG_CHRG_CMPLT_SOC) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_CHRG_CMPLT;
 		}  else if (!powered) {
 			gpio_set_value(chip->charge_cmplt_n_gpio, 1);
@@ -364,8 +358,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_OUT_OF_TEMP_HOT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (batt_temp < (chip->hot_temp -
 					MMI_WLS_CHRG_TEMP_HYS_HOT)) {
@@ -376,8 +368,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_OUT_OF_TEMP_COLD:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if (batt_temp > (chip->cold_temp +
 					MMI_WLS_CHRG_TEMP_HYS_COLD)) {
@@ -388,8 +378,6 @@ static void mmi_wls_chrg_worker(struct work_struct *work)
 		break;
 	case MMI_WLS_CHRG_CHRG_CMPLT:
 		if (wired && (chip->priority == MMI_WLS_CHRG_WIRED)) {
-			if (chip->mode == MMI_WLS_CHRG_WPC)
-				gpio_set_value(chip->charge_cmplt_n_gpio, 0);
 			chip->state = MMI_WLS_CHRG_WIRED_CONN;
 		} else if ((batt_soc <= chip->resume_soc) ||
 			   (batt_volt <= chip->resume_vbatt)) {
