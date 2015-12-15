@@ -441,6 +441,15 @@ config QCOM_THERMAL_LIMITS_DCVS
 	  tracking temperatures of the CPUs and taking thermal action in the
 	  hardware without s/w intervention.
 
+config MMI_SYS_TEMP
+	tristate "Motorola Surface Temperature Driver"
+	depends on THERMAL
+	default n
+	help
+	  This creates a sysfs property for front and back surface
+	  temperatures. These are meant to be populated by the a
+	  user space thermal management daemon.
+
 menu "Texas Instruments thermal drivers"
 depends on ARCH_HAS_BANDGAP || COMPILE_TEST
 source "drivers/thermal/ti-soc-thermal/Kconfig"
