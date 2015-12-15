@@ -12,5 +12,5 @@
 
 &msm_gpu {
 	qcom,initial-pwrlevel = <2>;
-	qcom,idle-timeout = <5>;
+	qcom,idle-timeout = <50>; //msecs
 };
