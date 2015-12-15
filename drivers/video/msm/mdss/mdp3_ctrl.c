@@ -1368,6 +1368,7 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 		mdp3_clk_enable(0, 0);
 	}
 
+	panel = mdp3_session->panel;
 	if (mdp3_session->first_commit) {
 		/*wait to ensure frame is sent to panel*/
 		if (panel_info->mipi.post_init_delay)
@@ -1376,10 +1377,12 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 		else
 			msleep(1000 / panel_info->mipi.frame_rate);
 		mdp3_session->first_commit = false;
+		if (panel)
+			panel->event_handler(panel, MDSS_EVENT_POST_PANEL_ON,
+					NULL);
 	}
 
 	mdp3_session->vsync_before_commit = 0;
-	panel = mdp3_session->panel;
 	if (!splash_done || mdp3_session->esd_recovery == true) {
 		if(panel && panel->set_backlight)
 			panel->set_backlight(panel, panel->panel_info.bl_max);
