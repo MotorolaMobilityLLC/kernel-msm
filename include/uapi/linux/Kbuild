@@ -269,6 +269,7 @@ header-y += mic_ioctl.h
 header-y += mii.h
 header-y += minix_fs.h
 header-y += mman.h
+header-y += mmi_sys_temp.h
 header-y += mmtimer.h
 header-y += motosh.h
 header-y += motosh_vmm.h
