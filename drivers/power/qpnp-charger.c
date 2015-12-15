@@ -2860,6 +2860,55 @@ get_batt_capacity(struct qpnp_chg_chip *chip)
 }
 
 static int
+get_prop_current_now(struct qpnp_chg_chip *chip)
+{
+	union power_supply_propval ret = {0,};
+
+	if (chip->bms_psy) {
+		chip->bms_psy->get_property(chip->bms_psy,
+			  POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
+		return ret.intval;
+	} else {
+		pr_debug("No BMS supply registered return 0\n");
+	}
+
+	return 0;
+}
+
+static int
+qpnp_chg_is_usb_chg_gone(struct qpnp_chg_chip *chip)
+{
+#ifdef CONFIG_HUAWEI_BATTERY_SETTING
+	u8 usb_chgpth_rt_sts;
+	int rc;
+	rc = qpnp_chg_read(chip, &usb_chgpth_rt_sts,
+				 INT_RT_STS(chip->usb_chgpth_base), 1);
+	if (rc) {
+		pr_err("spmi read failed: addr=%03X, rc=%d\n",
+				INT_RT_STS(chip->usb_chgpth_base), rc);
+		return rc;
+	}
+	pr_debug("chgr usb sts 0x%x\n", usb_chgpth_rt_sts);
+
+	/* When charger out, charging icon does not disappear low probability. In one case, charger status is always
+	 * 0x7(bit2 represents charger gone, bit 1 represents usb in). The status is abnormal and normal status is 0x4.
+	 * (get_prop_current_now(chip) / 1000) will ignore less than 1mA current output
+	 */
+	if(((CHG_GONE_IRQ | USBIN_VALID_IRQ | COARSE_DET_USB_IRQ) == usb_chgpth_rt_sts)
+		&& ((get_prop_current_now(chip) / 1000) > 0))
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+#else
+	return 0;
+#endif
+}
+
+static int
 get_prop_batt_status(struct qpnp_chg_chip *chip)
 {
 	int rc;
@@ -2886,7 +2935,17 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 	if ((chgr_sts & TRKL_CHG_ON_IRQ) && !(bat_if_sts & BAT_FET_ON_IRQ))
 		return POWER_SUPPLY_STATUS_CHARGING;
 	if (chgr_sts & FAST_CHG_ON_IRQ && bat_if_sts & BAT_FET_ON_IRQ)
-		return POWER_SUPPLY_STATUS_CHARGING;
+	{
+		if(qpnp_chg_is_usb_chg_gone(chip))
+		{
+			pr_err("adjust charging status from charging to discharging\n");
+			return POWER_SUPPLY_STATUS_DISCHARGING;
+		}
+		else
+		{
+			return POWER_SUPPLY_STATUS_CHARGING;
+		}
+	}
 
 	/*
 	 * Report full if state of charge is 100 or chg_done is true
@@ -2895,8 +2954,17 @@ get_prop_batt_status(struct qpnp_chg_chip *chip)
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
 		qpnp_chg_is_dc_chg_plugged_in(chip)) &&
 		(chip->chg_done || get_batt_capacity(chip) == 100)
-		&& qpnp_chg_is_boost_en_set(chip) == 0) {
-		return POWER_SUPPLY_STATUS_FULL;
+		&& qpnp_chg_is_boost_en_set(chip) == 0)
+	{
+		if(qpnp_chg_is_usb_chg_gone(chip))
+		{
+			pr_err("adjust charging status from full to discharging\n");
+			return POWER_SUPPLY_STATUS_DISCHARGING;
+		}
+		else
+		{
+			return POWER_SUPPLY_STATUS_FULL;
+		}
 	}
 
 	return POWER_SUPPLY_STATUS_DISCHARGING;
@@ -3009,21 +3077,6 @@ static void qpnp_chg_usb_low_power_work(struct work_struct *work)
 }
 #endif
 #endif
-static int
-get_prop_current_now(struct qpnp_chg_chip *chip)
-{
-	union power_supply_propval ret = {0,};
-
-	if (chip->bms_psy) {
-		chip->bms_psy->get_property(chip->bms_psy,
-			  POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
-		return ret.intval;
-	} else {
-		pr_debug("No BMS supply registered return 0\n");
-	}
-
-	return 0;
-}
 
 static int
 get_prop_full_design(struct qpnp_chg_chip *chip)
