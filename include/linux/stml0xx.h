@@ -38,8 +38,8 @@
 #define ENABLE_VERBOSE_LOGGING 0
 
 /* SPI */
-#define SPI_FLASH_CLK_SPD_HZ    4000000
-#define SPI_NORMAL_CLK_SPD_HZ   4000000
+#define SPI_FLASH_CLK_SPD_HZ     960000
+#define SPI_NORMAL_CLK_SPD_HZ   4800000
 #define SPI_BUFF_SIZE           1152
 #define SPI_RETRIES             5
 #define SPI_RETRY_DELAY         20
