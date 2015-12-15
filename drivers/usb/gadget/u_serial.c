@@ -136,6 +136,7 @@ struct gs_port {
 static struct portmaster {
 	struct mutex	lock;			/* protect open/close */
 	struct gs_port	*port;
+	struct dentry	*debugfs_entry;
 } ports[MAX_U_SERIAL_PORTS];
 
 static struct workqueue_struct *gserial_wq;
@@ -1302,7 +1303,7 @@ static ssize_t debug_read_status(struct file *file, char __user *ubuf,
 		i += scnprintf(buf + i, BUF_SIZE - i,
 			"tty_flags: %lu\n", tty->flags);
 
-	if (gser->get_dtr) {
+	if (gser && gser->get_dtr) {
 		result |= (gser->get_dtr(gser) ? TIOCM_DTR : 0);
 		i += scnprintf(buf + i, BUF_SIZE - i,
 			"DTR_status: %d\n", result);
@@ -1347,29 +1348,31 @@ const struct file_operations debug_adb_ops = {
 	.read = debug_read_status,
 };
 
-struct dentry *gs_dent;
-static void usb_debugfs_init(struct gs_port *ui_dev, int port_num)
+static struct dentry *usb_debugfs_init(struct gs_port *ui_dev, int port_num)
 {
 	char buf[48];
-
+	struct dentry *gs_dent;
 	snprintf(buf, 48, "usb_serial%d", port_num);
 	gs_dent = debugfs_create_dir(buf, 0);
 	if (!gs_dent || IS_ERR(gs_dent))
-		return;
+		return NULL;
 
 	debugfs_create_file("readstatus", 0444, gs_dent, ui_dev,
 			&debug_adb_ops);
 	debugfs_create_file("reset", S_IRUGO | S_IWUSR,
 			gs_dent, ui_dev, &debug_rst_ops);
+	return gs_dent;
 }
 
-static void usb_debugfs_remove(void)
+static void usb_debugfs_remove(struct dentry *gs_dent)
 {
-	debugfs_remove_recursive(gs_dent);
+	if (gs_dent)
+		debugfs_remove_recursive(gs_dent);
 }
+
 #else
-static inline void usb_debugfs_init(struct gs_port *ui_dev, int port_num) {}
-static inline void usb_debugfs_remove(void) {}
+static inline struct dentry *usb_debugfs_init(struct gs_port *ui_dev, int port_num) { return NULL;}
+static inline void usb_debugfs_remove(struct dentry *gs_dent) {}
 #endif
 
 static int gs_closed(struct gs_port *port)
@@ -1402,6 +1405,8 @@ void gserial_free_line(unsigned char port_num)
 		return;
 	}
 	port = ports[port_num].port;
+	usb_debugfs_remove(ports[port_num].debugfs_entry);
+	ports[port_num].debugfs_entry = NULL;
 	ports[port_num].port = NULL;
 	mutex_unlock(&ports[port_num].lock);
 
@@ -1450,6 +1455,11 @@ int gserial_alloc_line(unsigned char *line_num)
 		goto err;
 	}
 	*line_num = port_num;
+	mutex_lock(&ports[port_num].lock);
+	if (!ports[port_num].debugfs_entry)
+		ports[port_num].debugfs_entry =
+				usb_debugfs_init(ports[port_num].port, port_num);
+	mutex_unlock(&ports[port_num].lock);
 err:
 	return ret;
 }
@@ -1650,9 +1660,6 @@ static int userial_init(void)
 		goto fail;
 	}
 
-	for (i = 0; i < MAX_U_SERIAL_PORTS; i++)
-		usb_debugfs_init(ports[i].port, i);
-
 	pr_debug("%s: registered %d ttyGS* device%s\n", __func__,
 			MAX_U_SERIAL_PORTS,
 			(MAX_U_SERIAL_PORTS == 1) ? "" : "s");
@@ -1669,7 +1676,13 @@ module_init(userial_init);
 
 static void userial_cleanup(void)
 {
-	usb_debugfs_remove();
+	int i;
+	for (i = 0; i < MAX_U_SERIAL_PORTS; i++) {
+		mutex_lock(&ports[i].lock);
+		usb_debugfs_remove(ports[i].debugfs_entry);
+		ports[i].debugfs_entry = NULL;
+		mutex_unlock(&ports[i].lock);
+	}
 	destroy_workqueue(gserial_wq);
 	tty_unregister_driver(gs_tty_driver);
 	put_tty_driver(gs_tty_driver);
