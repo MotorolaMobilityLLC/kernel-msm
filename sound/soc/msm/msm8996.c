@@ -40,6 +40,7 @@
 #include "../codecs/fsa8500-core.h"
 #ifdef CONFIG_SND_SOC_FLORIDA
 #include "../codecs/florida.h"
+#include "../codecs/aov_trigger.h"
 #endif
 
 #define DRV_NAME "msm8996-asoc-snd"
@@ -2094,6 +2095,7 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	dev_crit(codec->dev, "florida_dai_init first BE dai initing ...\n");
 
+	aov_trigger_init(codec);
 	ret = snd_soc_codec_set_pll(codec, FLORIDA_FLL1_REFCLK,
 					ARIZONA_FLL_SRC_NONE,
 					0, 0);
@@ -2152,6 +2154,10 @@ static int florida_dai_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "HPOUT2R");
 	snd_soc_dapm_ignore_suspend(dapm, "SLIMTX5");
 	snd_soc_dapm_ignore_suspend(dapm, "Slim2 Capture");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP2 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP3 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP4 Virtual Output");
+	snd_soc_dapm_ignore_suspend(dapm, "DSP Virtual Input");
 
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to add florida_audio_routes\n");
@@ -3197,6 +3203,42 @@ static struct snd_soc_dai_link msm8996_florida_fe_dai_links[] = {
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8996_slimbus_2_be_ops,
+	},
+	{
+		.name = "CPU-DSP Voice Control",
+		.stream_name = "CPU-DSP Voice Control",
+		.cpu_dai_name = "florida-cpu-voicectrl",
+		.platform_name = "florida-codec",
+		.codec_dai_name = "florida-dsp-voicectrl",
+		.codec_name = "florida-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP Trace",
+		.stream_name = "CPU-DSP Trace",
+		.cpu_dai_name = "florida-cpu-trace",
+		.platform_name = "florida-codec",
+		.codec_dai_name = "florida-dsp-trace",
+		.codec_name = "florida-codec",
+		.ignore_suspend = 1,
+		.dynamic = 0,
+	},
+	{
+		.name = "CPU-DSP2 Text",
+		.stream_name = "CPU-DSP2 Text",
+		.cpu_dai_name = "florida-dsp2-cpu-txt",
+		.platform_name = "florida-codec",
+		.codec_dai_name = "florida-dsp2-txt",
+		.codec_name = "florida-codec",
+	},
+	{
+		.name = "CPU-DSP3 Text",
+		.stream_name = "CPU-DSP2 Text",
+		.cpu_dai_name = "florida-dsp3-cpu-txt",
+		.platform_name = "florida-codec",
+		.codec_dai_name = "florida-dsp3-txt",
+		.codec_name = "florida-codec",
 	}
 };
 
@@ -3868,7 +3910,8 @@ static int msm8996_populate_dai_link_component_of_node(
 
 		/* populate platform_of_node for snd card dai links */
 		if (dai_link[i].platform_name &&
-		    !dai_link[i].platform_of_node) {
+			!dai_link[i].platform_of_node &&
+			strcmp(dai_link[i].platform_name, "florida-codec")) {
 			index = of_property_match_string(cdev->of_node,
 						"asoc-platform-names",
 						dai_link[i].platform_name);
