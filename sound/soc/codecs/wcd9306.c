@@ -1752,9 +1752,9 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 		 __func__, widget->name, widget->sname,
 		 widget->value, widget->shift);
 
+	mutex_unlock(&codec->mutex);
 	snd_soc_dapm_mixer_update_power(widget, kcontrol, enable);
 
-	mutex_unlock(&codec->mutex);
 	return 0;
 }
 
