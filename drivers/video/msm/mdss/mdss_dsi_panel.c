@@ -223,12 +223,75 @@ static void mdss_dsi_panel_cmds_send_async(struct mdss_dsi_ctrl_pdata *ctrl,
 {
 	return _mdss_dsi_panel_cmds_send(ctrl,pcmds, 0 /*async*/);
 }
+extern void mdss_mdp_clk_ctrl(int enable);
+#ifndef CONFIG_ASUS_WREN
+static char idle_on_p1[] = {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x02};
+static char idle_on_p2[] = {0xED, 0x48, 0x00, 0xF0};
+static char idle_on_p3[] = {0xF0, 0x55, 0xAA, 0x52, 0x01};
+static char idle_on_p4[] = {0xC2, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02};
+
+static struct dsi_cmd_desc set_idle_on_cmd_p[] = {
+	{{DTYPE_DCS_LWRITE, 0, 0, 0, 1, sizeof(idle_on_p1)}, idle_on_p1},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(idle_on_p2)}, idle_on_p2},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(idle_on_p3)}, idle_on_p3},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(idle_on_p4)}, idle_on_p4},
+};
+static char idle_on_1[2] = {0x39, 0x00};
+static char idle_on_2[2] = {0xB3, 0x89};
+static char idle_on_3[2] = {0xC0, 0x26};
+static struct dsi_cmd_desc idle_cmd_1 = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1, sizeof(idle_on_1)},
+	idle_on_1
+};
+static struct dsi_cmd_desc idle_cmd_2 = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(idle_on_2)},
+	idle_on_2
+};
+static struct dsi_cmd_desc idle_cmd_3 = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(idle_on_3)},
+	idle_on_3
+};
+static void mdss_dsi_panel_idle(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo;
+	int value = 0;
+	int circle = 0;
+
+	mdss_mdp_clk_ctrl(1);
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->partial_update_dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			return;
+	}
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = set_idle_on_cmd_p;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	cmdreq.cmds = &idle_cmd_1;
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	for (;;) {
+		value = gpio_get_value(24);
+		if (value == 1 && circle == 1) break;
+		if (value == 0) circle = 1;
+	}
+	cmdreq.cmds = &idle_cmd_2;
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	cmdreq.cmds = &idle_cmd_3;
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	mdss_mdp_clk_ctrl(0);
+}
+#endif
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
 	led_pwm1
 };
-extern void mdss_mdp_clk_ctrl(int enable);
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct dcs_cmd_req cmdreq;
@@ -879,7 +942,11 @@ int mdss_dsi_panel_ambient_enable(struct mdss_panel_data *pdata,int on)
 			printk("MDSS:AMB:skip ambient on cmd due to panel_ambient_mode = AMBIENT_MODE_ON\n");
 		}else if (ctrl->idle_on_cmds.cmd_cnt){
 			mdss_mdp_clk_ctrl(1);
+#ifndef CONFIG_ASUS_WREN
+			mdss_dsi_panel_idle(ctrl);
+#else
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->idle_on_cmds);
+#endif
 			mdss_mdp_clk_ctrl(0);
 			mdss_dsi_panel_bl_ctrl(pdata,ambient_bl_level);
 			panel_ambient_mode = AMBIENT_MODE_ON;
