@@ -41,6 +41,33 @@
 	};
 };
 
+&muc {
+	gpios = <&tlmm 73 1>,   /* gpio_muc_det_n,    input */
+		<&tlmm 35 0>,   /* gpio_muc_bplus_en, output-low */
+		<0>;            /* gpio_muc_ff,       not used */
+	mmi,muc-ctrl-gpio-labels = "gpio_muc_det_n",
+				"gpio_muc_bplus_en";
+
+	/* v1 CC first, BPLUS second on enable */
+	mmi,muc-ctrl-ff-seq-v1 = <0 0 20>, <1 0 100>,
+				<0 1 20>, <1 1 100>,
+				<0 0 20>;
+
+	/* v2 BPLUS first, v2 CC second on enable */
+	mmi,muc-ctrl-ff-seq-v2 = <0 0 100>, <1 0 20>,
+				<1 1 100>, <0 1 20>,
+				<0 0 20>;
+
+	mmi,muc-det-pin-reconfig;
+};
+
+&muc_attach {
+	config {
+		pins = "gpio73", "gpio35";
+		bias-disable;
+	};
+};
+
 &pm8994_gpios {
 	gpio@cb00 { /* GPIO 12 - AP_VIB_EN */
 		qcom,mode = <1>;         /* Digital output*/
