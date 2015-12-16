@@ -89,7 +89,15 @@
 
 &muc {
 	gpios = <&tlmm  73 1>,   /* gpio_muc_det_n,    input */
-	        <&tlmm 130 0>;   /* gpio_muc_bplus_en, output-low */
+		<&tlmm 130 0>,   /* gpio_muc_bplus_en, output-low */
+		<0>;             /* gpio_muc_ff,       not used */
+};
+
+&muc_attach {
+	config {
+		pins = "gpio73", "gpio130";
+		bias-disable;
+	};
 };
 
 &spmi_bus {
