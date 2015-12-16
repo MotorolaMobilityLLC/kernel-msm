@@ -248,7 +248,7 @@
 
 	muc_attach: muc_attach@0 {
 		config {
-			pins = "gpio73";
+			pins = "gpio73", "gpio35", "gpio143";
 			bias-disable;
 		};
 	};
