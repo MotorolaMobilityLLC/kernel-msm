@@ -2644,10 +2644,27 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 		return POWER_SUPPLY_CHARGE_TYPE_NONE;
 	}
 
-	if (chgr_sts & TRKL_CHG_ON_IRQ)
-		return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
-	if (chgr_sts & FAST_CHG_ON_IRQ)
-		return POWER_SUPPLY_CHARGE_TYPE_FAST;
+	if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
+		MPP4_read = get_prop_mpp4_voltage(chip);
+		pr_debug("lastTimeCableType:%d, ADC: %d\n", lastTimeCableType, MPP4_read);
+		if (lastTimeCableType == 4)
+			gpio_set_value(chip->chg_gpio, 1);
+		else
+			gpio_set_value(chip->chg_gpio, 0);
+		if (lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))
+			return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000))
+			return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		else if (lastTimeCableType == 3)
+			return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		else if (lastTimeCableType == 2 || lastTimeCableType == 4)
+			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+		else
+			return POWER_SUPPLY_CHARGE_TYPE_NONE;
+	}
+	else
+		if (chgr_sts & TRKL_CHG_ON_IRQ)
+			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
 
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
@@ -2662,11 +2679,11 @@ get_prop_usb_type(struct qpnp_chg_chip *chip)
 			gpio_set_value(chip->chg_gpio, 1);
 		else
 			gpio_set_value(chip->chg_gpio, 0);
-		if (lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000)) {
+		if (lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000)) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
 			return POWER_SUPPLY_USB_TYPE_AC_FAST;
 		}
-		else if (lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2800000)) {
+		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
 			return POWER_SUPPLY_USB_TYPE_POWER_BANK;
 		}
@@ -4149,8 +4166,8 @@ qpnp_eoc_work(struct work_struct *work)
 						qpnp_chg_ibatmax_set(chip, 1050);
 						printk("[CDP]3C charging mode, modify the charging current to 1050 mA\n");
 					}
-					else if ((lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2700000)) ||
-							(lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000))) {
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) ||
+							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 1050);
 						printk("[DCP]3C charging mode, modify the charging current to 1050 mA\n");
@@ -4194,8 +4211,8 @@ qpnp_eoc_work(struct work_struct *work)
 						qpnp_chg_ibatmax_set(chip, 800);
 						printk("[CDP]3C charging mode, modify the charging current to 800 mA\n");
 					}
-					else if ((lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2700000)) ||
-							(lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000))) {
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) ||
+							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 800);
 						printk("[DCP]3C charging mode, modify the charging current to 800 mA\n");
