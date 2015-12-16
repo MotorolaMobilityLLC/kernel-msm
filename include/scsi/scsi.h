@@ -192,6 +192,10 @@ enum scsi_timeouts {
 #define	ATA_16		      0x85	/* 16-byte pass-thru */
 #define	ATA_12		      0xa1	/* 12-byte pass-thru */
 
+/* Vendor Specific */
+#define SC_REBOOT             0xd7
+#define SC_REBOOT_2           0xd8
+
 /*
  *	SCSI command lengths
  */
