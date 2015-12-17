@@ -1510,11 +1510,6 @@ static int exfat_readpages(struct file *file, struct address_space *mapping,
 	return ret;
 }
 
-static void exfat_end_buffer_async_write(struct buffer_head *bh, int uptodate)
-{
-	bdev_end_buffer_write(bh, uptodate, 0);
-}
-
 static int exfat_writepage(struct page *page, struct writeback_control *wbc)
 {
 	if (exfat_readonly(page->mapping->host->i_sb)) {
@@ -1522,8 +1517,7 @@ static int exfat_writepage(struct page *page, struct writeback_control *wbc)
 		SetPageError(page);
 		return 0;
 	}
-	return block_write_full_page_endio(page, exfat_get_block, wbc,
-					   exfat_end_buffer_async_write);
+	return block_write_full_page(page, exfat_get_block, wbc);
 }
 
 static int exfat_writepages(struct address_space *mapping,
