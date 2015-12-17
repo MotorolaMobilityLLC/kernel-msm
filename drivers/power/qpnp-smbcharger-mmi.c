@@ -2367,15 +2367,15 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 	int pcurrent_max_ma = chip->parallel.current_max_ma;
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 
-	if (!parallel_psy)
-		return;
-	pr_smb(PR_STATUS, "disabling parallel charger\n");
-	taper_irq_en(chip, false);
-	chip->parallel.initial_aicl_ma = 0;
-	chip->parallel.current_max_ma = 0;
-	power_supply_set_current_limit(parallel_psy,
-				SUSPEND_CURRENT_MA * 1000);
-	power_supply_set_present(parallel_psy, false);
+	if (parallel_psy) {
+		pr_smb(PR_STATUS, "disabling parallel charger\n");
+		taper_irq_en(chip, false);
+		chip->parallel.initial_aicl_ma = 0;
+		chip->parallel.current_max_ma = 0;
+		power_supply_set_current_limit(parallel_psy,
+					       SUSPEND_CURRENT_MA * 1000);
+		power_supply_set_present(parallel_psy, false);
+	}
 
 	current_max_ma = chip->stepchg_current_ma;
 	current_max_ma =
@@ -2624,10 +2624,8 @@ static void smbchg_parallel_usb_check_ok(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 
-	if (!parallel_psy)
-		return;
 	mutex_lock(&chip->parallel.lock);
-	if (smbchg_is_parallel_usb_ok(chip)) {
+	if ((parallel_psy) && (smbchg_is_parallel_usb_ok(chip))) {
 		smbchg_stay_awake(chip, PM_PARALLEL_CHECK);
 		schedule_delayed_work(
 			&chip->parallel_en_work,
