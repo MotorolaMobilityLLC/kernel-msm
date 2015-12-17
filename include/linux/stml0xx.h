@@ -89,7 +89,7 @@ enum vmm_ids {
 #define STREAM_SENSOR_TYPE_ACCEL1        1
 #define STREAM_SENSOR_TYPE_ACCEL2        2
 #define STREAM_SENSOR_TYPE_UNCAL_GYRO    3
-#define STREAM_SENSOR_QUEUE_DEPTH        10
+#define STREAM_SENSOR_QUEUE_DEPTH        16
 #define STREAM_SENSOR_QUEUE_ENTRY_SIZE   9
 #define STREAM_SENSOR_QUEUE_INSERT_IDX \
 	(STREAM_SENSOR_QUEUE_DEPTH * STREAM_SENSOR_QUEUE_ENTRY_SIZE)
@@ -101,12 +101,12 @@ enum vmm_ids {
 #define IRQ_IDX_STATUS_MED           1
 #define IRQ_IDX_STATUS_HI            2
 #define IRQ_IDX_STREAM_SENSOR_QUEUE  3
-#define IRQ_IDX_GYRO_CAL_X           98
-#define IRQ_IDX_GYRO_CAL_Y           100
-#define IRQ_IDX_GYRO_CAL_Z           102
-#define IRQ_IDX_ALS                  104
-#define IRQ_IDX_DISP_ROTATE          106
-#define IRQ_IDX_STEP_COUNTER         107
+#define IRQ_IDX_GYRO_CAL_X           152
+#define IRQ_IDX_GYRO_CAL_Y           154
+#define IRQ_IDX_GYRO_CAL_Z           156
+#define IRQ_IDX_ALS                  158
+#define IRQ_IDX_DISP_ROTATE          160
+#define IRQ_IDX_STEP_COUNTER         161
 
 /* stml0xx wake IRQ SPI buffer indexes */
 #define WAKE_IRQ_IDX_STATUS_LO              0
