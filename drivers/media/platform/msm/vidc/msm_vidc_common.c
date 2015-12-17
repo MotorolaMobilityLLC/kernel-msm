@@ -173,8 +173,7 @@ static int msm_comm_get_inst_load(struct msm_vidc_inst *inst,
 	}
 
 	if (is_non_realtime_session(inst) &&
-		(quirks & LOAD_CALC_IGNORE_NON_REALTIME_LOAD) &&
-		inst->prop.fps)
+		(quirks & LOAD_CALC_IGNORE_NON_REALTIME_LOAD))
 		load = msm_comm_get_mbs_per_sec(inst) / inst->prop.fps;
 	return load;
 }
