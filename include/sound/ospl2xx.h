@@ -33,6 +33,10 @@
 #define PARAM_ID_OPLAUM_RX_TEMPERATURE                 0x00A1AF07
 /* Set temperature calibration values */
 #define PARAM_ID_OPALUM_RX_TEMP_CAL_DATA               0x00A1AF08
+/* Get the array index of the parameter set currently in use.
+   Will return -1 when an external string is used */
+#define PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET           0x00A1AF11
+
 
 /* TX module parameter IDs */
 /* Run production line test */
