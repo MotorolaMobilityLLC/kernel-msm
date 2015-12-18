@@ -21,6 +21,7 @@
 #define BASEBAND_MAX_LEN 97
 #define MSMHW_MAX_LEN 32
 #define DEVICE_MAX_LEN 33
+#define RADIO_MAX_LEN 33
 struct mmi_unit_info {
 	uint32_t version;
 	uint32_t system_rev;
@@ -33,6 +34,7 @@ struct mmi_unit_info {
 	char device[DEVICE_MAX_LEN];
 	uint32_t radio;
 	uint32_t powerup_reason;
+	char radio_str[RADIO_MAX_LEN];
 };
 
 /* Function that sets the modem reset value in the SMEM location
