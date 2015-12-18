@@ -903,6 +903,11 @@ static void process_init_reply(struct fuse_conn *fc, struct fuse_req *req)
 				fc->async_dio = 1;
 			if (arg->flags & FUSE_WRITEBACK_CACHE)
 				fc->writeback_cache = 1;
+			if (arg->flags & FUSE_STACKED_IO) {
+				fc->stacked_io = 1;
+				pr_info("FUSE: Stacked io is enabled [%s : %d]!\n",
+					current->comm, current->pid);
+			}
 		} else {
 			ra_pages = fc->max_read / PAGE_CACHE_SIZE;
 			fc->no_lock = 1;
