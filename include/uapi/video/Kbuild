@@ -4,3 +4,4 @@ header-y += sisfb.h
 header-y += uvesafb.h
 header-y += msm_hdmi_modes.h
 header-y += msm_hdmi_hdcp_mgr.h
+header-y += camera_ext_ctrls.h
