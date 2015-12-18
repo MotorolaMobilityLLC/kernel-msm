@@ -2171,7 +2171,7 @@
 
 	qcom,cnss {
 		compatible = "qcom,cnss";
-		wlan-bootstrap-gpio = <&tlmm 46 0>;
+		wlan-bootstrap-gpio = <&tlmm 26 0>;
 		wlan-en-gpio = <&pm8994_gpios 8 0>;
 		vdd-wlan-supply = <&rome_vreg>;
 		vdd-wlan-io-supply = <&pm8994_s4>;
