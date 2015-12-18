@@ -391,6 +391,7 @@ config SND_SOC_MSM8X16_WCD
 config SND_SOC_WCD_CPE
 	tristate
 	default y if SND_SOC_WCD9330=y || SND_SOC_WCD9335=y
+	default y if SND_SOC_MSM8909_WCD=y
 
 config SND_SOC_MSM8909_WCD
 	tristate
@@ -398,7 +399,7 @@ config SND_SOC_MSM8909_WCD
 config AUDIO_EXT_CLK
 	tristate
 	default y if SND_SOC_WCD9335=y || SND_SOC_WCD9330=y || SND_SOC_MSM8X16_WCD=y
-	default y if SND_SOC_MSM8909_WCD
+	default y if SND_SOC_MSM8909_WCD=y
 
 config SND_SOC_WCD_MBHC
 	tristate
