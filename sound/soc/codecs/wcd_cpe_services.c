@@ -50,7 +50,7 @@
 #define TOMTOM_A_SVASS_SPE_OUTBOX(N)	(TOMTOM_A_SVASS_SPE_OUTBOX_0 + (N))
 
 #define WCD9335_CPE_SS_SPE_DRAM_OFFSET		0x48000
-#define WCD9335_CPE_SS_SPE_DRAM_SIZE		0x38000
+#define WCD9335_CPE_SS_SPE_DRAM_SIZE		0x34000
 #define WCD9335_CPE_SS_SPE_IRAM_OFFSET		0x80000
 #define WCD9335_CPE_SS_SPE_IRAM_SIZE		0x20000
 
@@ -321,9 +321,9 @@ static int cpe_register_write_repeat(u32 reg, u8 *ptr, u32 to_write)
 	struct wcd9xxx *wcd9xxx = dev_get_drvdata(codec->dev->parent);
 	int ret = 0;
 
-	ret = wcd9xxx_slim_write_repeat(wcd9xxx, reg, to_write, ptr);
+	ret = wcd9xxx_bus_write_repeat(wcd9xxx, reg, to_write, ptr);
 	if (ret != 0)
-		pr_err("%s: slim_write_repeat failed\n", __func__);
+		pr_err("%s: bus_write_repeat failed\n", __func__);
 
 	if (ret < 0)
 		return CPE_SVC_FAILED;
