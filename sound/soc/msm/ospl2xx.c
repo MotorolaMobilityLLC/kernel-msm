@@ -443,6 +443,7 @@ static int32_t ospl2xx_afe_callback(struct apr_client_data *data)
 			case AFE_PARAM_ID_ENABLE:
 			case PARAM_ID_OPALUM_RX_EXC_MODEL:
 			case PARAM_ID_OPLAUM_RX_TEMPERATURE:
+			case PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET:
 			case PARAM_ID_OPALUM_TX_F0_CALIBRATION_VALUE:
 			case PARAM_ID_OPALUM_TX_TEMP_MEASUREMENT_VALUE:
 				afe_cb_payload32_data[0] = payload32[4];
@@ -500,6 +501,10 @@ static const struct soc_enum ospl2xx_rx_enable_enum[] = {
 static int ospl2xx_rx_int_config_get(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	ospl2xx_afe_set_callback(ospl2xx_afe_callback);
+	ospl2xx_afe_get_param(PARAM_ID_OPALUM_RX_CURRENT_PARAM_SET);
+
+	ucontrol->value.integer.value[0] = afe_cb_payload32_data[0];
 	return 0;
 }
 static int ospl2xx_rx_int_config_put(struct snd_kcontrol *kcontrol,
@@ -785,7 +790,7 @@ static const struct snd_kcontrol_new ospl2xx_params_controls[] = {
 	/* GET,PUT */ SOC_ENUM_EXT("OSPL Rx",
 		ospl2xx_rx_enable_enum[0],
 		ospl2xx_rx_enable_get, ospl2xx_rx_enable_put),
-	/* PUT */ SOC_ENUM_EXT("OSPL Int RxConfig",
+	/* GET,PUT */ SOC_ENUM_EXT("OSPL Int RxConfig",
 		ospl2xx_rx_int_config_enum[0],
 		ospl2xx_rx_int_config_get, ospl2xx_rx_int_config_put),
 	/* PUT */ SOC_ENUM_EXT("OSPL Ext RxConfig",
