@@ -189,6 +189,10 @@ struct mdp3_hw_resource {
 	struct regulator *vdd_cx;
 	struct regulator *fs;
 	bool fs_ena;
+	int  clk_ena;
+	bool idle_pc_enabled;
+	bool idle_pc;
+	atomic_t active_intf_cnt;
 	u8 smart_blit_en;
 	bool solid_fill_vote_en;
 };

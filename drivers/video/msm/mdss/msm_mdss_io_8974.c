@@ -1366,6 +1366,9 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 			}
 			ctrl->core_power = true;
 		}
+		/* Disable dynamic clock gating*/
+		if (ctrl->mdss_util->dyn_clk_gating_ctrl)
+			ctrl->mdss_util->dyn_clk_gating_ctrl(0);
 
 		rc = mdss_dsi_bus_clk_start(ctrl);
 		if (rc) {
