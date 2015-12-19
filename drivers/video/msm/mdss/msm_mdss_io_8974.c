@@ -1247,31 +1247,15 @@ static int mdss_dsi_clamp_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 	phyrst_reg_off = ctrl->ulps_phyrst_ctrl_off;
 	mipi = &ctrl->panel_data.panel_info.mipi;
 
+	/* DSI lane clamp mask */
+	clamp_reg = mipi->phy_lane_clamp_mask;
 	/* clock lane will always be clamped */
-	clamp_reg = BIT(9);
+	clamp_reg |= BIT(9);
+
+	/* Enable ULPS request bit of active Lanes */
 	if (ctrl->ulps)
-		clamp_reg |= BIT(8);
-	/* make a note of all active data lanes which need to be clamped */
-	if (mipi->data_lane0) {
-		clamp_reg |= BIT(7);
-		if (ctrl->ulps)
-			clamp_reg |= BIT(6);
-	}
-	if (mipi->data_lane1) {
-		clamp_reg |= BIT(5);
-		if (ctrl->ulps)
-			clamp_reg |= BIT(4);
-	}
-	if (mipi->data_lane2) {
-		clamp_reg |= BIT(3);
-		if (ctrl->ulps)
-			clamp_reg |= BIT(2);
-	}
-	if (mipi->data_lane3) {
-		clamp_reg |= BIT(1);
-		if (ctrl->ulps)
-			clamp_reg |= BIT(0);
-	}
+		clamp_reg |= clamp_reg >> 1;
+
 	pr_debug("%s: called for ctrl%d, enable=%d, clamp_reg=0x%08x\n",
 		__func__, ctrl->ndx, enable, clamp_reg);
 	if (enable && !ctrl->mmss_clamp) {
