@@ -2727,6 +2727,12 @@
 		vdd-wlan-supply = <&rome_vreg>;
 		vdd-wlan-io-supply = <&pm8950_l5>;
 	};
+
+	cpu-pmu {
+		compatible = "arm,armv8-pmuv3";
+		qcom,irq-is-percpu;
+		interrupts = <1 7 0xff00>;
+	};
 };
 
 #include "msm-pm8950-rpm-regulator.dtsi"
