@@ -1,0 +1,50 @@
+/* Copyright (c) 2015, Motorola Mobility Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+#include "msm8952-moto-common.dtsi"
+#include "dsi-panel-mot-lgd-546-1080p-cmd.dtsi"
+#include "dsi-panel-mot-boe-546-1080p-cmd.dtsi"
+
+/ {
+	model = "Addison";
+	compatible = "qcom,msm8952-addison", "qcom,msm8952-moto",
+			"qcom,msm8952";
+};
+
+&soc {
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		vin-supply = <&pm8950_l6>;
+		startup-delay-us = <300>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_lgd_546_1080p_cmd_v0>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	vsp_disp-supply = <&lab_regulator>;
+	vsn_disp-supply = <&ibb_regulator>;
+};
+
+/* display boost and inverting boost regulators */
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "lcd";
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-discharge-resistor = <32>;
+};
