@@ -626,10 +626,10 @@
 			"SPK_RX_BIAS", "MCLK",
 			"INT_LDO_H", "MCLK",
 			"MIC BIAS External", "Handset Mic",
-			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS External", "Headset Mic",
 			"MIC BIAS External", "Secondary Mic",
 			"AMIC1", "MIC BIAS External",
-			"AMIC2", "MIC BIAS External2",
+			"AMIC2", "MIC BIAS External",
 			"AMIC3", "MIC BIAS External";
 		qcom,msm-gpios =
 			"cs35l34_clk",
