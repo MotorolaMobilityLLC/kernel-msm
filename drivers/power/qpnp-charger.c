@@ -359,6 +359,7 @@ struct qpnp_chg_chip {
 	int				delta_vddmax_mv;
 	u8				trim_center;
 	unsigned int			warm_bat_mv;
+	unsigned int			warmer_bat_mv;
 	unsigned int			cool_bat_mv;
 	unsigned int			resume_delta_mv;
 	int				insertion_ocv_uv;
@@ -1698,11 +1699,11 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 	if (chip->bat_is_cool)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->cool_bat_mv,
 				chip->delta_vddmax_mv);
-	else if (chip->bat_is_warm)
+	else if (chip->bat_is_warm && g_bat_is_warmer == false)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
 				chip->delta_vddmax_mv);
 	else if (g_bat_is_warmer)
-			qpnp_chg_vddmax_and_trim_set(chip, 4100,
+		qpnp_chg_vddmax_and_trim_set(chip, chip->warmer_bat_mv,
 				chip->delta_vddmax_mv);
 	else
 		qpnp_chg_vddmax_and_trim_set(chip, chip->max_voltage_mv,
@@ -2644,11 +2645,27 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 		return POWER_SUPPLY_CHARGE_TYPE_NONE;
 	}
 
-	if (chgr_sts & TRKL_CHG_ON_IRQ)
-		return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
-	if (chgr_sts & FAST_CHG_ON_IRQ)
-		return POWER_SUPPLY_CHARGE_TYPE_FAST;
-
+	if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
+		MPP4_read = get_prop_mpp4_voltage(chip);
+		pr_debug("lastTimeCableType:%d, ADC: %d\n", lastTimeCableType, MPP4_read);
+		if (lastTimeCableType == 4)
+			gpio_set_value(chip->chg_gpio, 1);
+		else
+			gpio_set_value(chip->chg_gpio, 0);
+		if (lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))
+			return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000))
+			return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		else if (lastTimeCableType == 3)
+			return POWER_SUPPLY_CHARGE_TYPE_FAST;
+		else if (lastTimeCableType == 2 || lastTimeCableType == 4)
+			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
+		else
+			return POWER_SUPPLY_CHARGE_TYPE_NONE;
+	}
+	else
+		if (chgr_sts & TRKL_CHG_ON_IRQ || chgr_sts & FAST_CHG_ON_IRQ)
+			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
@@ -2662,11 +2679,11 @@ get_prop_usb_type(struct qpnp_chg_chip *chip)
 			gpio_set_value(chip->chg_gpio, 1);
 		else
 			gpio_set_value(chip->chg_gpio, 0);
-		if (lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000)) {
+		if (lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000)) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_AC_FAST\n");
 			return POWER_SUPPLY_USB_TYPE_AC_FAST;
 		}
-		else if (lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2800000)) {
+		else if (lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) {
 			pr_debug("POWER_SUPPLY_USB_TYPE_POWER_BANK\n");
 			return POWER_SUPPLY_USB_TYPE_POWER_BANK;
 		}
@@ -4149,8 +4166,8 @@ qpnp_eoc_work(struct work_struct *work)
 						qpnp_chg_ibatmax_set(chip, 1050);
 						printk("[CDP]3C charging mode, modify the charging current to 1050 mA\n");
 					}
-					else if ((lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2700000)) ||
-							(lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000))) {
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) ||
+							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 1050);
 						printk("[DCP]3C charging mode, modify the charging current to 1050 mA\n");
@@ -4194,8 +4211,8 @@ qpnp_eoc_work(struct work_struct *work)
 						qpnp_chg_ibatmax_set(chip, 800);
 						printk("[CDP]3C charging mode, modify the charging current to 800 mA\n");
 					}
-					else if ((lastTimeCableType == 4 && (MPP4_read > 2400000 && MPP4_read < 2700000)) ||
-							(lastTimeCableType == 4 && (MPP4_read > 600000 && MPP4_read < 900000))) {
+					else if ((lastTimeCableType == 4 && (MPP4_read > 2200000 && MPP4_read < 2700000)) ||
+							(lastTimeCableType == 4 && (MPP4_read > 500000 && MPP4_read < 900000))) {
 						qpnp_chg_iusbmax_set(chip, 1400);
 						qpnp_chg_ibatmax_set(chip, 800);
 						printk("[DCP]3C charging mode, modify the charging current to 800 mA\n");
@@ -5711,6 +5728,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		OF_PROP_READ(chip, warm_bat_chg_ma, "ibatmax-warm-ma", rc, 1);
 		OF_PROP_READ(chip, cool_bat_chg_ma, "ibatmax-cool-ma", rc, 1);
 		OF_PROP_READ(chip, warm_bat_mv, "warm-bat-mv", rc, 1);
+		OF_PROP_READ(chip, warmer_bat_mv, "warmer-bat-mv", rc, 1);
 		OF_PROP_READ(chip, cool_bat_mv, "cool-bat-mv", rc, 1);
 		if (rc)
 			return rc;
@@ -5837,6 +5855,11 @@ int pm8226_is_dc_usb_in(void)
 void pm8226_chg_usb_suspend_enable(int enable)
 {
 	qpnp_chg_usb_suspend_enable(g_qpnp_chg_chip, enable);
+}
+
+int pm8226_get_prop_mpp4_voltage(void)
+{
+	return get_prop_mpp4_voltage(g_qpnp_chg_chip);
 }
 
 int pm8226_get_prop_batt_status(void)

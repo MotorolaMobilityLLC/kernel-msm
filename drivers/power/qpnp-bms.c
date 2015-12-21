@@ -28,9 +28,7 @@
 #include <linux/qpnp/power-on.h>
 #include <linux/of_batterydata.h>
 #include <linux/wakelock.h>
-#if ASUS_DEBUG==2
 #include <linux/asusdebug.h>
-#endif
 
 //ASUS_BSP lenter +++
 #include <linux/proc_fs.h>
@@ -378,9 +376,7 @@ static int g_bms_cc;
 //Eason don't calculate BMS actively, only read---
 #endif
 //ASUS_BSP lenter ---
-#if ASUS_DEBUG==2
 extern unsigned int cpu_max_loading;
-#endif
 
 static int qpnp_read_wrapper(struct qpnp_bms_chip *chip, u8 *val,
 			u16 base, int count)
@@ -1559,7 +1555,7 @@ static int calculate_unusable_charge_uah(struct qpnp_bms_chip *chip,
 	int i;
 	int uuc_iavg_ma = params->iavg_ua / 1000;
 	int pc_unusable;
-
+	enum DEVICE_HWID ASUS_hwID;
 	/*
 	 * if called first time, fill all the samples with
 	 * the shutdown_iavg_ma
@@ -1606,6 +1602,15 @@ static int calculate_unusable_charge_uah(struct qpnp_bms_chip *chip,
 	 */
 	if (bms_reset)
 		return (params->fcc_uah * 3) / 100;
+
+	ASUS_hwID = get_hardware_id();
+
+	if ((ASUS_hwID == SPARROW_ER) || (ASUS_hwID == SPARROW_PR)){
+		if (batt_temp > 0)
+			uuc_iavg_ma = MIN_IAVG_MA;
+		else
+			uuc_iavg_ma = 200;
+	}
 
 	uuc_uah_iavg = calculate_termination_uuc(chip, params, batt_temp,
 						uuc_iavg_ma, &pc_unusable);
@@ -1794,6 +1799,9 @@ static void calculate_soc_params(struct qpnp_bms_chip *chip,
 	//Eason don't calculate BMS actively, only read---
 
 	//ASUS_BSP Eason add BMS log+++
+	ASUSEvtlog("[BAT][BMS]FCC:%d, OCV:%d, CC:%d, UUC:%d, temp:%d, rbatt:%d\n"
+			,params->fcc_uah, params->ocv_charge_uah, params->cc_uah, params->uuc_uah, batt_temp, params->rbatt_mohm);
+
 	pr_debug("[BAT][BMS]FCC:%d, OCV:%d, CC:%d, UUC:%d, temp:%d, rbatt:%d\n"
 			,params->fcc_uah, params->ocv_charge_uah, params->cc_uah, params->uuc_uah, batt_temp, params->rbatt_mohm);
 	//ASUS_BSP Eason add BMS log---
@@ -2837,14 +2845,11 @@ static void calculate_soc_work(struct work_struct *work)
 	struct qpnp_bms_chip *chip = container_of(work,
 				struct qpnp_bms_chip,
 				calculate_soc_delayed_work.work);
-#if ASUS_DEBUG==2
+
 	int soc;
 	soc = recalculate_soc(chip);
 	if (chip->low_soc_calc_threshold && chip->low_soc_calc_threshold < soc)
 		ASUSEvtlog("[CPU] report cpu loading: %lu", cpu_max_loading);
-#else
-	recalculate_soc(chip);
-#endif
 
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
 		round_jiffies_relative(msecs_to_jiffies

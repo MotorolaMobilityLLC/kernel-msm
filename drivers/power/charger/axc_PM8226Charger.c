@@ -54,8 +54,10 @@ extern int pm8226_is_ac_usb_in(void);
 extern void pm8226_chg_usb_suspend_enable(int enable);
 extern int pm8226_get_prop_batt_status(void);
 extern void pm8226_chg_ibatmax_set(int chg_current);
+extern int pm8226_get_prop_mpp4_voltage(void);
 static void (*notify_charger_in_out_func_ptr)(int) = NULL;
 AXC_PM8226Charger *gpCharger = NULL;
+static int MPP4_read;
 
 static bool isAcUsbPsyRegst = 0;
 //ASUS_BSP porting charger mode +++
@@ -246,10 +248,10 @@ static void limitPM8226chg1400(void)
 	asus_usbPath_chg_current_set(1400);
 }
 
-static void limitPM8226chg1000(void)
+static void limitPM8226chg900(void)
 {
-	gpCharger->usb_current_max = 1000*1000;
-	asus_usbPath_chg_current_set(1000);
+	gpCharger->usb_current_max = 900*1000;
+	asus_usbPath_chg_current_set(900);
 }
 
 static void limitPM8226chg500(void)
@@ -268,6 +270,7 @@ static void defaultPM8226chgSetting(void)
 void setChgDrawCurrent_pm8226(void)
 {
 #ifndef ASUS_FACTORY_BUILD
+	enum DEVICE_HWID ASUS_hwID;
 	if(true == g_chgTypeBeenSet)//Eason : prevent setChgDrawCurrent_pm8226 before get chgType
 	{
 		if(ILLEGAL_CHARGER_TYPE==gpCharger->type){
@@ -300,8 +303,19 @@ void setChgDrawCurrent_pm8226(void)
 				printk("[BAT][CHG][Low]: limit chgCur,  darw 500\n");
 			}
 			else if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-				limitPM8226chg1000();
-				printk("[BAT][CHG][AC]: limit charging current 1000mA\n");
+				if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
+					MPP4_read = pm8226_get_prop_mpp4_voltage();
+					if ((MPP4_read > 500000 && MPP4_read < 900000) || (MPP4_read > 2200000 && MPP4_read < 2700000)) {
+						limitPM8226chg1400();
+						printk("[BAT][CHG][AC]: limit charging current 1400mA\n");
+					} else {
+						limitPM8226chg900();
+						printk("[BAT][CHG][AC]: limit charging current 900mA\n");
+					}
+				} else {
+						limitPM8226chg900();
+						printk("[BAT][CHG][AC]: limit charging current 900mA\n");
+				}
 			}
 		}
 	}
@@ -313,6 +327,7 @@ void setChgDrawCurrent_pm8226(void)
 void setChgDrawACTypeCurrent_withCheckAICL_pm8226(void)
 {
 #ifndef ASUS_FACTORY_BUILD   
+	enum DEVICE_HWID ASUS_hwID;
 	if(NORMAL_CURRENT_CHARGER_TYPE==gpCharger->type){
 		limitPM8226chg1400();
 	}
@@ -330,7 +345,14 @@ void setChgDrawACTypeCurrent_withCheckAICL_pm8226(void)
 	}
 	else{
 		if(HIGH_CURRENT_CHARGER_TYPE==gpCharger->type){
-			limitPM8226chg1000();
+			if ((ASUS_hwID == SPARROW_PR3) || (ASUS_hwID == WREN_PR3)) {
+				MPP4_read = pm8226_get_prop_mpp4_voltage();
+				if ((MPP4_read > 500000 && MPP4_read < 900000) || (MPP4_read > 2200000 && MPP4_read < 2700000))
+					limitPM8226chg1400();
+				else
+					limitPM8226chg900();
+			} else
+					limitPM8226chg900();
 		}
 	}
 #endif//#ifndef ASUS_FACTORY_BUILD    

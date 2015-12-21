@@ -115,7 +115,7 @@ extern bool reportRtcReady(void);
 //Eason:cap queue  interval plugs a small value, prevent less than target interval
 #define DEFAULT_CAP_QUEUE_INTERVAL_PLUGGED 2
 
-#define USE_SW_GAUGE 1
+#define USE_SW_GAUGE 0
 
 //Hank enterRomMode_test++++
 #ifdef CONFIG_TI_GAUGE
