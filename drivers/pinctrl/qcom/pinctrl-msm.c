@@ -542,6 +542,11 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 	if (!gpiochip_line_is_valid(chip, offset))
 		return;
 
+	if (!gpiochip_is_requested(chip, offset)) {
+		seq_printf(s, " gpio%d: is not allocated in gpiolib\n", offset);
+		return;
+	}
+
 	g = &pctrl->soc->groups[offset];
 	ctl_reg = readl(pctrl->regs + g->ctl_reg);
 	io_reg = readl(pctrl->regs + g->io_reg);
