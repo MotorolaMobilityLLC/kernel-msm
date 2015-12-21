@@ -359,6 +359,7 @@ struct qpnp_chg_chip {
 	int				delta_vddmax_mv;
 	u8				trim_center;
 	unsigned int			warm_bat_mv;
+	unsigned int			warmer_bat_mv;
 	unsigned int			cool_bat_mv;
 	unsigned int			resume_delta_mv;
 	int				insertion_ocv_uv;
@@ -1698,11 +1699,11 @@ qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 	if (chip->bat_is_cool)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->cool_bat_mv,
 				chip->delta_vddmax_mv);
-	else if (chip->bat_is_warm)
+	else if (chip->bat_is_warm && g_bat_is_warmer == false)
 		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
 				chip->delta_vddmax_mv);
 	else if (g_bat_is_warmer)
-			qpnp_chg_vddmax_and_trim_set(chip, 4100,
+		qpnp_chg_vddmax_and_trim_set(chip, chip->warmer_bat_mv,
 				chip->delta_vddmax_mv);
 	else
 		qpnp_chg_vddmax_and_trim_set(chip, chip->max_voltage_mv,
@@ -2663,9 +2664,8 @@ get_prop_charge_type(struct qpnp_chg_chip *chip)
 			return POWER_SUPPLY_CHARGE_TYPE_NONE;
 	}
 	else
-		if (chgr_sts & TRKL_CHG_ON_IRQ)
+		if (chgr_sts & TRKL_CHG_ON_IRQ || chgr_sts & FAST_CHG_ON_IRQ)
 			return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
-
 	return POWER_SUPPLY_CHARGE_TYPE_NONE;
 }
 
@@ -5728,6 +5728,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		OF_PROP_READ(chip, warm_bat_chg_ma, "ibatmax-warm-ma", rc, 1);
 		OF_PROP_READ(chip, cool_bat_chg_ma, "ibatmax-cool-ma", rc, 1);
 		OF_PROP_READ(chip, warm_bat_mv, "warm-bat-mv", rc, 1);
+		OF_PROP_READ(chip, warmer_bat_mv, "warmer-bat-mv", rc, 1);
 		OF_PROP_READ(chip, cool_bat_mv, "cool-bat-mv", rc, 1);
 		if (rc)
 			return rc;
@@ -5854,6 +5855,11 @@ int pm8226_is_dc_usb_in(void)
 void pm8226_chg_usb_suspend_enable(int enable)
 {
 	qpnp_chg_usb_suspend_enable(g_qpnp_chg_chip, enable);
+}
+
+int pm8226_get_prop_mpp4_voltage(void)
+{
+	return get_prop_mpp4_voltage(g_qpnp_chg_chip);
 }
 
 int pm8226_get_prop_batt_status(void)

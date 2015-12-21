@@ -97,6 +97,7 @@
 			qcom,ibatmax-warm-ma = <550>;
 			qcom,warm-bat-decidegc = <420>;
 			qcom,warm-bat-mv = <4350>;
+			qcom,warmer-bat-mv = <4100>;
 			qcom,cool-bat-decidegc = <220>;
 			qcom,cool-bat-mv = <4350>;
 			qcom,ibatmax-cool-ma = <200>;
