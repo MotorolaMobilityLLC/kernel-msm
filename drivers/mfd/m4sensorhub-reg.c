@@ -510,9 +510,14 @@ int m4sensorhub_i2c_write_read(struct m4sensorhub_data *m4sensorhub,
 	else if (++i2c_failures >= I2C_FAILURES_BEFORE_RESET) {
 		if (m4_panic_on_fail || i2c_failures >=
 			  I2C_FAILURES_BEFORE_BUG) {
-			KDEBUG(M4SH_ERROR,
-			       "%s: Too many I2C failures, panic!\n",
+			KDEBUG(M4SH_ERROR, "%s: Too many I2C failures\n",
 			       __func__);
+			KDEBUG(M4SH_ERROR, "%s: Sleeping 13 seconds.\n",
+			       __func__);
+			KDEBUG(M4SH_ERROR, "%s: Then panic.\n", __func__);
+			/* Sleep 13 seconds to allow aplogd to write the panic
+			 * information to file. The timeout is 10 seconds */
+			msleep(13000);
 			BUG();
 		} else{
 			KDEBUG(M4SH_ERROR,
@@ -525,6 +530,14 @@ int m4sensorhub_i2c_write_read(struct m4sensorhub_data *m4sensorhub,
 				KDEBUG(M4SH_ERROR,
 				       "%s: Failed to restart M4, ret = %d\n",
 				       __func__, ret);
+				KDEBUG(M4SH_ERROR, "%s: Sleeping 13 seconds.\n",
+				       __func__);
+				KDEBUG(M4SH_ERROR, "%s: Then panic.\n",
+				       __func__);
+				/* Sleep 13 seconds to allow aplogd to write the
+				 * panic information to file. The timeout is 10
+				 * seconds */
+				msleep(13000);
 				BUG();
 			}
 			i2c_failures = 0;
