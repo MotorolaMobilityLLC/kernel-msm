@@ -90,7 +90,7 @@ static int msm_slim_5_rx_ch = 1;
 static int msm_slim_6_rx_ch = 1;
 static int msm_hifi_control;
 static int msm_vi_feed_tx_ch = 2;
-
+static atomic_t tert_mi2s_active;
 static int msm_hdmi_rx_ch = 2;
 static int msm_proxy_rx_ch = 2;
 static int hdmi_rx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -1453,6 +1453,8 @@ static int msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	pr_debug("%s: substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 
+	atomic_inc(&tert_mi2s_active);
+
 	mi2s_tx_clk.enable = 1;
 	ret = afe_set_lpass_clock_v2(AFE_PORT_ID_TERTIARY_MI2S_TX,
 				&mi2s_tx_clk);
@@ -1473,6 +1475,12 @@ static void msm8996_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 
 	pr_debug("%s: substream = %s  stream = %d\n", __func__,
 		substream->name, substream->stream);
+
+	if (!atomic_dec_and_test(&tert_mi2s_active)) {
+		pr_debug("%s: port users not zero don't shut down yet\n",
+				__func__);
+		return;
+	}
 
 	mi2s_tx_clk.enable = 0;
 	ret = afe_set_lpass_clock_v2(AFE_PORT_ID_TERTIARY_MI2S_TX,
@@ -4471,6 +4479,7 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "msm8996_prepare_us_euro failed (%d)\n",
 			ret);
 #endif
+	atomic_set(&tert_mi2s_active, 0);
 	return 0;
 err:
 	if (pdata->us_euro_gpio > 0) {
