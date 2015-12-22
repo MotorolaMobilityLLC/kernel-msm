@@ -3195,13 +3195,31 @@ error_invalid_data:
 
 static int msm_dai_q6_mi2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
+	int rx_port_started;
+	int tx_port_started;
 	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
-	dev_get_drvdata(dai->dev);
+		dev_get_drvdata(dai->dev);
 
-	if (test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) ||
-	    test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask)) {
+	rx_port_started = test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask);
+	tx_port_started = test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask);
+	if (rx_port_started || tx_port_started) {
+		/* if port is already started but fmt is not changed don't return failure */
+		if (rx_port_started) {
+			if (((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFS
+				&& mi2s_dai_data->rx_dai.mi2s_dai_data.port_config.i2s.ws_src) ||
+				((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFM
+				&& !mi2s_dai_data->rx_dai.mi2s_dai_data.port_config.i2s.ws_src))
+					return 0;
+		}
+		if (tx_port_started) {
+			if (((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFS
+				&& mi2s_dai_data->tx_dai.mi2s_dai_data.port_config.i2s.ws_src) ||
+				((fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFM
+				&& !mi2s_dai_data->tx_dai.mi2s_dai_data.port_config.i2s.ws_src))
+					return 0;
+		}
 		dev_err(dai->dev, "%s: err chg i2s mode while dai running",
 			__func__);
 		return -EPERM;
@@ -3253,6 +3271,7 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 		 &mi2s_dai_data->tx_dai.mi2s_dai_data);
 	 u16 port_id = 0;
 	int rc = 0;
+	int port_started;
 
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
 				 &port_id) != 0) {
@@ -3272,11 +3291,18 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 	if (test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status))
 		clear_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
 
-	rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
-					mi2s_dai_data->pinctrl_info.disable);
-	if (rc != 0) {
-		dev_err(dai->dev, "%s: setting pin state to disable failed %d\n",
-			__func__, rc);
+	port_started =
+			(test_bit(STATUS_PORT_STARTED,
+				mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) |
+			test_bit(STATUS_PORT_STARTED,
+				mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask));
+	if (!port_started) {
+		rc = pinctrl_select_state(mi2s_dai_data->pinctrl_info.pinctrl,
+						mi2s_dai_data->pinctrl_info.disable);
+		if (rc != 0) {
+			dev_err(dai->dev, "%s: setting pin state to disable failed %d\n",
+				__func__, rc);
+		}
 	}
 }
 
