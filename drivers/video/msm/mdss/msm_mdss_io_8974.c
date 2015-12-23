@@ -1147,11 +1147,6 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 			pr_debug("%s: leaving mdss gdsc on\n", __func__);
 		} else {
 			pr_debug("%s: Disable MDP FS\n", __func__);
-			/*
-			 * temp workaround to keep MDP FS enable to avoid image
-			 * shift after exit idle mode
-			 */
-#if 0
 			rc = msm_dss_enable_vreg(
 				ctrl->power_data[DSI_CORE_PM].vreg_config,
 				ctrl->power_data[DSI_CORE_PM].num_vreg, 0);
@@ -1163,9 +1158,6 @@ static int mdss_dsi_core_power_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 			} else {
 				ctrl->core_power = false;
 			}
-#else
-			ctrl->core_power = false;
-#endif
 		}
 
 		/*
